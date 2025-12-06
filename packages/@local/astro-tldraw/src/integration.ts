@@ -1,4 +1,7 @@
 import { fileURLToPath } from 'node:url'
+
+import { Effect } from '@livestore/utils/effect'
+import { PlatformNode } from '@livestore/utils/node'
 import type { AstroIntegration } from 'astro'
 import { type BuildDiagramsOptions, buildDiagrams } from './cli.ts'
 import { createTldrawPlugin } from './vite-plugin.ts'
@@ -19,13 +22,10 @@ export const createAstroTldrawIntegration = (options: AstroTldrawOptions = {}): 
   const autoBuild = options.autoBuild ?? true
   let resolvedBuildOptions: BuildDiagramsOptions | undefined
 
-  const runDiagramBuild = () => {
-    if (!resolvedBuildOptions) {
-      return Promise.resolve()
-    }
-
-    return buildDiagrams(resolvedBuildOptions)
-  }
+  const runDiagramBuild = () =>
+    resolvedBuildOptions
+      ? Effect.runPromise(buildDiagrams(resolvedBuildOptions).pipe(Effect.provide(PlatformNode.NodeFileSystem.layer)))
+      : Promise.resolve()
 
   return {
     name: '@local/astro-tldraw/integration',

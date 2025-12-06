@@ -1,9 +1,16 @@
 import crypto from 'node:crypto'
-import fs from 'node:fs/promises'
 import path from 'node:path'
+
+import { Effect, FileSystem, Schema } from '@livestore/utils/effect'
 import type { RenderResult } from './renderer.ts'
 
 const hashString = (value: string): string => crypto.createHash('sha256').update(value).digest('hex')
+
+export class FileSystemError extends Schema.TaggedError<FileSystemError>()('Tldraw.FileSystemError', {
+  path: Schema.String,
+  operation: Schema.String,
+  cause: Schema.Any,
+}) {}
 
 export interface DiagramCacheEntry {
   /** Relative path from diagrams root (e.g., "architecture.tldr") */
@@ -62,24 +69,48 @@ export const resolveCachePaths = (projectRoot: string): TldrawCachePaths => {
 }
 
 /** Load existing manifest or return empty one */
-export const loadManifest = async (manifestPath: string): Promise<DiagramManifest> => {
-  try {
-    const content = await fs.readFile(manifestPath, 'utf-8')
-    const manifest = JSON.parse(content) as DiagramManifest
-    return manifest
-  } catch {
-    return {
-      entries: [],
-      version: CACHE_VERSION,
-    }
-  }
-}
+export const loadManifest = (
+  manifestPath: string,
+): Effect.Effect<DiagramManifest, FileSystemError, FileSystem.FileSystem> =>
+  Effect.withSpan('tldraw.cache.load-manifest')(
+    Effect.gen(function* () {
+      const fs = yield* FileSystem.FileSystem
+
+      const manifest = yield* fs.readFileString(manifestPath).pipe(
+        Effect.map((content) => JSON.parse(content) as DiagramManifest),
+        Effect.mapError((cause) => new FileSystemError({ path: manifestPath, operation: 'read manifest', cause })),
+        Effect.catchAll(() =>
+          Effect.succeed({
+            entries: [],
+            version: CACHE_VERSION,
+          }),
+        ),
+      )
+
+      return manifest
+    }),
+  )
 
 /** Save manifest to disk */
-export const saveManifest = async (manifestPath: string, manifest: DiagramManifest): Promise<void> => {
-  await fs.mkdir(path.dirname(manifestPath), { recursive: true })
-  await fs.writeFile(manifestPath, JSON.stringify(manifest, null, 2), 'utf-8')
-}
+export const saveManifest = (
+  manifestPath: string,
+  manifest: DiagramManifest,
+): Effect.Effect<void, FileSystemError, FileSystem.FileSystem> =>
+  Effect.withSpan('tldraw.cache.save-manifest')(
+    Effect.gen(function* () {
+      const fs = yield* FileSystem.FileSystem
+
+      yield* fs
+        .makeDirectory(path.dirname(manifestPath), { recursive: true })
+        .pipe(Effect.mapError((cause) => new FileSystemError({ path: manifestPath, operation: 'mkdir', cause })))
+
+      yield* fs
+        .writeFileString(manifestPath, JSON.stringify(manifest, null, 2))
+        .pipe(
+          Effect.mapError((cause) => new FileSystemError({ path: manifestPath, operation: 'write manifest', cause })),
+        )
+    }),
+  )
 
 /** Get cache entry for a specific diagram */
 export const getCacheEntry = (manifest: DiagramManifest, entryFile: string): DiagramCacheEntry | undefined =>
@@ -99,49 +130,78 @@ const getArtifactPath = (entryFile: string): string => {
 }
 
 /** Save rendered diagram to cache */
-export const saveDiagramToCache = async (
+export const saveDiagramToCache = (
   paths: TldrawCachePaths,
   entryFile: string,
   renderResult: RenderResult,
   metadata?: { width?: number; height?: number },
-): Promise<DiagramCacheEntry> => {
-  const artifactPath = getArtifactPath(entryFile)
-  const fullArtifactPath = path.join(paths.cacheRoot, artifactPath)
+): Effect.Effect<DiagramCacheEntry, FileSystemError, FileSystem.FileSystem> =>
+  Effect.withSpan('tldraw.cache.save-diagram')(
+    Effect.gen(function* () {
+      const artifactPath = getArtifactPath(entryFile)
+      const fullArtifactPath = path.join(paths.cacheRoot, artifactPath)
 
-  /* Ensure directory exists */
-  await fs.mkdir(path.dirname(fullArtifactPath), { recursive: true })
+      /* Ensure directory exists */
+      const fs = yield* FileSystem.FileSystem
 
-  /* Prepare cached diagram data */
-  const cachedDiagram: CachedDiagram = {
-    lightSvg: renderResult.lightSvg,
-    darkSvg: renderResult.darkSvg,
-    sourceHash: renderResult.sourceHash,
-    generatedAt: renderResult.timestamp,
-    metadata: metadata ?? {},
-  }
+      yield* fs
+        .makeDirectory(path.dirname(fullArtifactPath), { recursive: true })
+        .pipe(Effect.mapError((cause) => new FileSystemError({ path: fullArtifactPath, operation: 'mkdir', cause })))
 
-  /* Write to disk */
-  await fs.writeFile(fullArtifactPath, JSON.stringify(cachedDiagram, null, 2), 'utf-8')
+      /* Prepare cached diagram data */
+      const cachedDiagram: CachedDiagram = {
+        lightSvg: renderResult.lightSvg,
+        darkSvg: renderResult.darkSvg,
+        sourceHash: renderResult.sourceHash,
+        generatedAt: renderResult.timestamp,
+        metadata: metadata ?? {},
+      }
 
-  /* Create cache entry */
-  const entry: DiagramCacheEntry = {
-    entryFile,
-    artifactPath,
-    sourceHash: renderResult.sourceHash,
-    lightSvgHash: hashString(renderResult.lightSvg),
-    darkSvgHash: hashString(renderResult.darkSvg),
-    generatedAt: renderResult.timestamp,
-  }
+      /* Write to disk */
+      yield* fs
+        .writeFileString(fullArtifactPath, JSON.stringify(cachedDiagram, null, 2))
+        .pipe(
+          Effect.mapError(
+            (cause) => new FileSystemError({ path: fullArtifactPath, operation: 'write diagram', cause }),
+          ),
+        )
 
-  return entry
-}
+      /* Create cache entry */
+      const entry: DiagramCacheEntry = {
+        entryFile,
+        artifactPath,
+        sourceHash: renderResult.sourceHash,
+        lightSvgHash: hashString(renderResult.lightSvg),
+        darkSvgHash: hashString(renderResult.darkSvg),
+        generatedAt: renderResult.timestamp,
+      }
+
+      yield* Effect.annotateCurrentSpan({ entryFile, artifactPath })
+
+      return entry
+    }),
+  )
 
 /** Load cached diagram from disk */
-export const loadCachedDiagram = async (paths: TldrawCachePaths, entry: DiagramCacheEntry): Promise<CachedDiagram> => {
-  const fullArtifactPath = path.join(paths.cacheRoot, entry.artifactPath)
-  const content = await fs.readFile(fullArtifactPath, 'utf-8')
-  return JSON.parse(content) as CachedDiagram
-}
+export const loadCachedDiagram = (
+  paths: TldrawCachePaths,
+  entry: DiagramCacheEntry,
+): Effect.Effect<CachedDiagram, FileSystemError, FileSystem.FileSystem> =>
+  Effect.withSpan('tldraw.cache.load-diagram')(
+    Effect.gen(function* () {
+      const fullArtifactPath = path.join(paths.cacheRoot, entry.artifactPath)
+      const fs = yield* FileSystem.FileSystem
+      const content = yield* fs
+        .readFileString(fullArtifactPath)
+        .pipe(
+          Effect.mapError((cause) => new FileSystemError({ path: fullArtifactPath, operation: 'read diagram', cause })),
+        )
+
+      yield* Effect.annotateCurrentSpan({ entryFile: entry.entryFile, artifactPath: entry.artifactPath })
+
+      return JSON.parse(content) as CachedDiagram
+    }),
+  )
 
 /** Update manifest with new/updated entry */
 export const updateManifestEntry = (manifest: DiagramManifest, entry: DiagramCacheEntry): DiagramManifest => {
