@@ -1,5 +1,5 @@
 import type { Subscribable } from '@livestore/utils/effect'
-import { Chunk, Duration, Effect, Either, Option, Queue, Schedule, Sink, Stream } from '@livestore/utils/effect'
+import { Chunk, Duration, Effect, Option, Queue, Schedule, Sink, Stream } from '@livestore/utils/effect'
 import { EventSequenceNumber, type LiveStoreEvent } from '../schema/mod.ts'
 import type * as SyncState from '../sync/syncstate.ts'
 import * as Eventlog from './eventlog.ts'
@@ -103,6 +103,7 @@ export const streamEventsWithSyncState = ({
           }),
       )
 
+      // CREATE GISTS FOR THESE AND LINK IN DOCS
       const splitFetchPlanByWindow = (plan: FetchPlan): Chunk.Chunk<FetchPlan> => {
         const span = plan.upperBound.global - plan.cursor.global
         if (span <= maxEventsPerWindow || span <= 0) {
