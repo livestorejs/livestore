@@ -105,14 +105,6 @@ const cleanupChromiumChildren = Effect.fn('cleanup-chromium-children')(function*
   )
 })
 
-/**
- * @internal
- * @remarks
- * `@kitschpatrol/tldraw-cli` can leave a local HTTP server running when an export fails, even
- * after Playwright/Chromium shuts down, which keeps `mono docs build` alive. We defensively close
- * any listening HTTP servers owned by this Bun process. Upstream tracking:
- * https://github.com/kitschpatrol/tldraw-cli/issues/23
- */
 const docsBuildCommand = Cli.Command.make(
   'build',
   {
