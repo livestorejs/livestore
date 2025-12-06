@@ -25,7 +25,8 @@ const provideNodeFileSystem = <T, E, R>(effect: Effect.Effect<T, E, R>) =>
 const provideNodeRecursiveWatch = <T, E, R>(effect: Effect.Effect<T, E, R>) =>
   effect.pipe(Effect.provide(NodeRecursiveWatchLayer))
 
-const shouldSkipAutoBuild = () => process.env.LS_TWOSLASH_SKIP_AUTO_BUILD === '1'
+/** When set, skip auto-build and watch (snippets are managed externally, e.g. by mono CLI) */
+const shouldSkipSnippetAutoBuildAndWatch = () => process.env.LS_SKIP_SNIPPET_AUTO_BUILD_AND_WATCH === '1'
 
 export const createAstroTwoslashCodeIntegration = (options: AstroTwoslashCodeOptions = {}): AstroIntegration => {
   const autoBuild = options.autoBuild ?? true
@@ -68,7 +69,7 @@ export const createAstroTwoslashCodeIntegration = (options: AstroTwoslashCodeOpt
         })
       },
       'astro:server:start': async (_context: ServerStartContext) => {
-        if (!autoBuild || shouldSkipAutoBuild()) {
+        if (!autoBuild || shouldSkipSnippetAutoBuildAndWatch()) {
           return
         }
 
@@ -80,7 +81,7 @@ export const createAstroTwoslashCodeIntegration = (options: AstroTwoslashCodeOpt
         }
       },
       'astro:build:start': async (_context: BuildStartContext) => {
-        if (!autoBuild || shouldSkipAutoBuild()) {
+        if (!autoBuild || shouldSkipSnippetAutoBuildAndWatch()) {
           return
         }
 

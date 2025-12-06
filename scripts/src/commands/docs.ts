@@ -1,11 +1,11 @@
 import fs from 'node:fs'
 import { liveStoreVersion } from '@livestore/common'
 import { shouldNeverHappen } from '@livestore/utils'
-import { Effect, HttpClient, HttpClientRequest } from '@livestore/utils/effect'
+import { Effect, HttpClient, HttpClientRequest, Schedule } from '@livestore/utils/effect'
 import { Cli, getFreePort } from '@livestore/utils/node'
 import { cmd, cmdText, LivestoreWorkspace } from '@livestore/utils-dev/node'
 import { buildDiagrams } from '@local/astro-tldraw'
-import { createSnippetsCommand } from '@local/astro-twoslash-code'
+import { buildSnippets, createSnippetsCommand } from '@local/astro-twoslash-code'
 
 import { appendGithubSummaryMarkdown, formatMarkdownTable } from '../shared/misc.ts'
 import { deployToNetlify, purgeNetlifyCdn } from '../shared/netlify.ts'
@@ -18,10 +18,20 @@ const isGithubAction = process.env.GITHUB_ACTIONS === 'true'
 
 const docsSnippetsCommand = createSnippetsCommand({ projectRoot: docsPath })
 
-const runDocsDiagramsBuild = () => buildDiagrams({ projectRoot: docsPath, verbose: true })
+const runDocsDiagramsBuild = buildDiagrams({ projectRoot: docsPath, verbose: true }).pipe(
+  Effect.tapError((error) =>
+    error._tag === 'Tldraw.RenderTimeoutError'
+      ? Effect.logWarning('Docs diagram render timed out — retrying with exponential backoff up to 10s...')
+      : Effect.void,
+  ),
+  Effect.retry({
+    schedule: Schedule.exponentialBackoff10Sec,
+    while: (error) => error._tag === 'Tldraw.RenderTimeoutError',
+  }),
+)
 
-const docsDiagramsCommand = Cli.Command.make('diagrams', {}, () => Effect.promise(runDocsDiagramsBuild)).pipe(
-  Cli.Command.withSubcommands([Cli.Command.make('build', {}, () => Effect.promise(runDocsDiagramsBuild))]),
+const docsDiagramsCommand = Cli.Command.make('diagrams', {}, () => runDocsDiagramsBuild).pipe(
+  Cli.Command.withSubcommands([Cli.Command.make('build', {}, () => runDocsDiagramsBuild)]),
 )
 
 type NetlifyDeploySummary = {
@@ -75,28 +85,59 @@ const formatDocsDeploymentSummaryMarkdown = ({
   })
 }
 
+/**
+ * Tldraw diagram rendering (via @kitschpatrol/tldraw-cli/Puppeteer) can leave a Chromium
+ * child alive after work completes, keeping `mono docs build` hanging in CI
+ * (e.g. https://github.com/livestorejs/livestore/actions/runs/19968500091/job/57266669492).
+ * This helper force-kills Chromium children of the current mono process in the docs CWD.
+ */
+const cleanupChromiumChildren = Effect.fn('cleanup-chromium-children')(function* () {
+  const parentPid = String(process.pid)
+  const script =
+    'pids=$(ps -eo pid=,ppid=,comm= | awk -v ppid="' +
+    parentPid +
+    "\" '/chromium|chrome_crashpad_handler/ { if ($2==ppid) print $1 }'); " +
+    'if [ -z "$pids" ]; then exit 0; fi; echo "Cleaning up stale Chromium processes: $pids"; kill $pids 2>/dev/null || true'
+
+  yield* cmd(script, { shell: true, stdout: 'inherit', stderr: 'inherit' }).pipe(
+    Effect.provide(LivestoreWorkspace.toCwd('docs')),
+    Effect.ignoreLogged,
+  )
+})
+
 const docsBuildCommand = Cli.Command.make(
   'build',
   {
     apiDocs: Cli.Options.boolean('api-docs').pipe(Cli.Options.withDefault(false)),
     clean: Cli.Options.boolean('clean').pipe(
       Cli.Options.withDefault(false),
-      Cli.Options.withDescription('Remove docs build artifacts before compilation'),
+      Cli.Options.withDescription('Remove docs build artifacts and cached snippet/tldraw renders before compilation'),
     ),
-    skipSnippets: Cli.Options.boolean('skip-snippets').pipe(
+    skipDeps: Cli.Options.boolean('skip-deps').pipe(
       Cli.Options.withDefault(false),
-      Cli.Options.withDescription('Skip the Twoslash snippet prebuild step'),
+      Cli.Options.withDescription('Skip building snippets and diagrams'),
     ),
   },
-  Effect.fn(function* ({ apiDocs, clean, skipSnippets }) {
+  Effect.fn(function* ({ apiDocs, clean, skipDeps }) {
     if (clean) {
-      yield* cmd('rm -rf dist .astro tsconfig.tsbuildinfo', { shell: true }).pipe(
-        Effect.provide(LivestoreWorkspace.toCwd('docs')),
-      )
+      // Wipe Astro output plus cached diagram/snippet artefacts to avoid stale renders between builds.
+      yield* cmd(
+        'rm -rf dist .astro tsconfig.tsbuildinfo node_modules/.astro-tldraw node_modules/.astro-twoslash-code .cache/snippets',
+        { shell: true },
+      ).pipe(Effect.provide(LivestoreWorkspace.toCwd('docs')))
     }
 
     // Always clean up .netlify folder as it can cause issues with the build
     yield* cmd('rm -rf .netlify').pipe(Effect.provide(LivestoreWorkspace.toCwd('docs')))
+
+    if (!skipDeps) {
+      yield* Effect.log('Building snippets and diagrams...')
+      yield* Effect.all([buildSnippets({ projectRoot: docsPath }), runDocsDiagramsBuild], {
+        concurrency: 'unbounded',
+      })
+      yield* Effect.log('Snippets and diagrams built successfully')
+      yield* cleanupChromiumChildren()
+    }
 
     // Local/CI prebuild uses Astro directly. The deploy step performs the
     // Netlify build (single build overall), which handles Edge bundling.
@@ -105,10 +146,14 @@ const docsBuildCommand = Cli.Command.make(
         STARLIGHT_INCLUDE_API_DOCS: apiDocs ? '1' : undefined,
         // Building the docs sometimes runs out of memory, so we give it more
         NODE_OPTIONS: '--max_old_space_size=4096',
-        LS_TWOSLASH_SKIP_AUTO_BUILD: skipSnippets ? '1' : undefined,
+        // Snippets/diagrams already built above (or skipped), tell Astro integrations not to auto-build.
+        // Without these flags, the integrations would rebuild during astro:build:start, duplicating work.
+        LS_SKIP_SNIPPET_AUTO_BUILD_AND_WATCH: '1',
+        LS_TLDRAW_SKIP_AUTO_BUILD: '1',
         LS_SKIP_OG_IMAGES: process.env.LS_SKIP_OG_IMAGES ?? '1',
       },
     }).pipe(Effect.provide(LivestoreWorkspace.toCwd('docs')))
+    yield* cleanupChromiumChildren()
   }),
 )
 
@@ -118,13 +163,24 @@ export const docsCommand = Cli.Command.make('docs').pipe(
       'dev',
       {
         open: Cli.Options.boolean('open').pipe(Cli.Options.withDefault(false)),
-      },
-      ({ open }) =>
-        Effect.asVoid(
-          cmd(['pnpm', 'astro', 'dev', open ? '--open' : undefined], {
-            logDir: `${docsPath}/logs`,
-          }).pipe(Effect.provide(LivestoreWorkspace.toCwd('docs'))),
+        skipDeps: Cli.Options.boolean('skip-deps').pipe(
+          Cli.Options.withDefault(false),
+          Cli.Options.withDescription('Skip building snippets and diagrams'),
         ),
+      },
+      Effect.fn(function* ({ open, skipDeps }) {
+        if (!skipDeps) {
+          yield* Effect.log('Building snippets and diagrams...')
+          yield* Effect.all([buildSnippets({ projectRoot: docsPath }), runDocsDiagramsBuild], {
+            concurrency: 'unbounded',
+          })
+          yield* Effect.log('Snippets and diagrams built successfully')
+        }
+
+        yield* cmd(['pnpm', 'astro', 'dev', open ? '--open' : undefined], {
+          logDir: `${docsPath}/logs`,
+        }).pipe(Effect.provide(LivestoreWorkspace.toCwd('docs')))
+      }),
     ),
     docsBuildCommand,
     docsSnippetsCommand,
@@ -144,7 +200,7 @@ export const docsCommand = Cli.Command.make('docs').pipe(
       },
       Effect.fn(function* ({ port: portOption, build }) {
         if (build) {
-          yield* docsBuildCommand.handler({ apiDocs: false, clean: false, skipSnippets: false })
+          yield* docsBuildCommand.handler({ apiDocs: false, clean: false, skipDeps: false })
         }
 
         const requestedPort = portOption._tag === 'Some' ? Number.parseInt(portOption.value, 10) : undefined
@@ -291,7 +347,7 @@ export const docsCommand = Cli.Command.make('docs').pipe(
           // Split mode: build first only when requested via --build
           const shouldBuild = buildOption._tag === 'Some' && buildOption.value === true
           if (shouldBuild) {
-            yield* docsBuildCommand.handler({ apiDocs: true, clean: false, skipSnippets: false })
+            yield* docsBuildCommand.handler({ apiDocs: true, clean: false, skipDeps: false })
           }
 
           const finalDeploy: NetlifyDeploySummary = yield* deployToNetlify({

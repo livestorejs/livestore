@@ -10,7 +10,7 @@
     "./components/TldrawDiagram.astro": "./src/components/TldrawDiagram.astro"
   },
   "dependencies": {
-    "@kitschpatrol/tldraw-cli": "5.0.0",
+    "@kitschpatrol/tldraw-cli": "5.0.5",
     "@livestore/utils": "workspace:*"
   },
   "devDependencies": {

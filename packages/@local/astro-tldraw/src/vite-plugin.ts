@@ -1,6 +1,8 @@
 import path from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { shouldNeverHappen } from '@livestore/utils'
+import { Effect, Schema } from '@livestore/utils/effect'
+import { PlatformNode } from '@livestore/utils/node'
 import { getCacheEntry, loadCachedDiagram, loadManifest, resolveCachePaths, type TldrawCachePaths } from './cache.ts'
 import { getSvgDimensions } from './renderer.ts'
 
@@ -28,6 +30,14 @@ export interface TldrawDiagramPayload {
   sourceHash: string
   generatedAt: string
 }
+
+export class CachedDiagramMissingError extends Schema.TaggedError<CachedDiagramMissingError>()(
+  'Tldraw.CachedDiagramMissingError',
+  {
+    entryRelative: Schema.String,
+    rebuildInstruction: Schema.String,
+  },
+) {}
 
 const diagramComponentSpecifier = (() => {
   const filePath = fileURLToPath(new URL('./components/TldrawDiagram.astro', import.meta.url))
@@ -89,52 +99,61 @@ export const createTldrawPlugin = (options: TldrawPluginOptions = {}): MinimalVi
         return null
       }
 
-      /* Load manifest and find cache entry */
-      const manifestPromise = loadManifest(paths.manifestPath)
+      const effect = Effect.withSpan('tldraw.vite-transform')(
+        Effect.gen(function* () {
+          /* Load manifest and find cache entry */
+          const manifest = yield* loadManifest(paths.manifestPath)
 
-      return manifestPromise.then(async (manifest) => {
-        /* Resolve filepath to absolute path if it's relative */
-        const absoluteFilepath = path.isAbsolute(filepath) ? filepath : path.resolve(filepath)
-        const entryRelative = path.relative(paths.diagramsRoot, absoluteFilepath).replace(/\\/g, '/')
-        const entry = getCacheEntry(manifest, entryRelative)
+          /* Resolve filepath to absolute path if it's relative */
+          const absoluteFilepath = path.isAbsolute(filepath) ? filepath : path.resolve(filepath)
+          const entryRelative = path.relative(paths.diagramsRoot, absoluteFilepath).replace(/\\/g, '/')
+          const entry = getCacheEntry(manifest, entryRelative)
 
-        if (!entry) {
-          throw new Error(`No cached diagram artifact for ${entryRelative}. ${rebuildInstruction}`)
-        }
+          if (!entry) {
+            return yield* Effect.fail(
+              new CachedDiagramMissingError({
+                entryRelative,
+                rebuildInstruction,
+              }),
+            )
+          }
 
-        /* Load cached diagram */
-        const cached = await loadCachedDiagram(paths, entry)
+          /* Load cached diagram */
+          const cached = yield* loadCachedDiagram(paths, entry)
 
-        /* Extract dimensions from SVGs */
-        const lightDimensions = getSvgDimensions(cached.lightSvg)
-        const darkDimensions = getSvgDimensions(cached.darkSvg)
+          /* Extract dimensions from SVGs */
+          const lightDimensions = getSvgDimensions(cached.lightSvg)
+          const darkDimensions = getSvgDimensions(cached.darkSvg)
 
-        /* Prepare payload */
-        const width = lightDimensions?.width ?? darkDimensions?.width
-        const height = lightDimensions?.height ?? darkDimensions?.height
+          /* Prepare payload */
+          const width = lightDimensions?.width ?? darkDimensions?.width
+          const height = lightDimensions?.height ?? darkDimensions?.height
 
-        const payload: TldrawDiagramPayload = {
-          lightSvg: cached.lightSvg,
-          darkSvg: cached.darkSvg,
-          metadata:
-            width !== undefined && height !== undefined
-              ? { width, height }
-              : width !== undefined
-                ? { width }
-                : height !== undefined
-                  ? { height }
-                  : {},
-          sourceHash: cached.sourceHash,
-          generatedAt: cached.generatedAt,
-        }
+          const payload: TldrawDiagramPayload = {
+            lightSvg: cached.lightSvg,
+            darkSvg: cached.darkSvg,
+            metadata:
+              width !== undefined && height !== undefined
+                ? { width, height }
+                : width !== undefined
+                  ? { width }
+                  : height !== undefined
+                    ? { height }
+                    : {},
+            sourceHash: cached.sourceHash,
+            generatedAt: cached.generatedAt,
+          }
 
-        const serializedPayload = JSON.stringify(payload)
+          const serializedPayload = JSON.stringify(payload)
 
-        return {
-          code: createComponentModuleSource(serializedPayload, diagramComponentSpecifier),
-          map: null,
-        }
-      })
+          return {
+            code: createComponentModuleSource(serializedPayload, diagramComponentSpecifier),
+            map: null,
+          }
+        }),
+      ).pipe(Effect.provide(PlatformNode.NodeFileSystem.layer))
+
+      return Effect.runPromise(effect)
     },
   }
 }

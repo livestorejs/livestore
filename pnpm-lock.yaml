@@ -2591,8 +2591,8 @@ importers:
   packages/@local/astro-tldraw:
     dependencies:
       '@kitschpatrol/tldraw-cli':
-        specifier: 5.0.0
-        version: 5.0.0(typescript@5.9.3)
+        specifier: 5.0.5
+        version: 5.0.5(typescript@5.9.3)
       '@livestore/utils':
         specifier: workspace:*
         version: link:../../@livestore/utils
@@ -5772,8 +5772,8 @@ packages:
   '@jridgewell/trace-mapping@0.3.9':
     resolution: {integrity: sha512-3Belt6tdc8bPgAtbcmdtNJlirVoTmEb5e2gC94PnkwEW9jI6CAHUeoG85tjWP5WquqfavoMtMwiG4P926ZKKuQ==}
 
-  '@kitschpatrol/tldraw-cli@5.0.0':
-    resolution: {integrity: sha512-RO4eDDDv4UUejTBkqAK7khLhIlfmSuW+70Abs9iaP88hx/uc8KMHruEQ6bf7MJo0AmSfE4NifMmXllyoEjabvg==}
+  '@kitschpatrol/tldraw-cli@5.0.5':
+    resolution: {integrity: sha512-9xmY7Xo0K7TLr6x/CN1gZohvWVnJJJPmN9oDtD2uVxqFGxYZJugavXwxTHOBo/yTt/9QfdsAR5OaG5+Rha5lIA==}
     engines: {node: '>=20.19.0'}
     hasBin: true
 
@@ -20182,7 +20182,7 @@ snapshots:
       '@jridgewell/resolve-uri': 3.1.2
       '@jridgewell/sourcemap-codec': 1.5.5
 
-  '@kitschpatrol/tldraw-cli@5.0.0(typescript@5.9.3)':
+  '@kitschpatrol/tldraw-cli@5.0.5(typescript@5.9.3)':
     dependencies:
       '@fontsource/inter': 5.2.8
       '@hono/node-server': 1.19.6(hono@4.10.7)
