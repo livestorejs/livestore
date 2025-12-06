@@ -54,8 +54,16 @@ export default defineConfig({
   },
   env: {
     schema: {
-      MXBAI_API_KEY: envField.string({ context: 'server', access: 'secret', optional: true }),
-      MXBAI_VECTOR_STORE_ID: envField.string({ context: 'server', access: 'secret', optional: true }),
+      MXBAI_API_KEY: envField.string({
+        context: 'server',
+        access: 'secret',
+        optional: true,
+      }),
+      MXBAI_VECTOR_STORE_ID: envField.string({
+        context: 'server',
+        access: 'secret',
+        optional: true,
+      }),
     },
   },
   integrations: [
@@ -74,12 +82,22 @@ export default defineConfig({
     starlight({
       title: `LiveStore (${liveStoreVersion})`,
       social: [
-        { icon: 'github', label: 'GitHub', href: `https://github.com/livestorejs/livestore/tree/${branch}` },
+        {
+          icon: 'github',
+          label: 'GitHub',
+          href: `https://github.com/livestorejs/livestore/tree/${branch}`,
+        },
         { icon: 'discord', label: 'Discord', href: DISCORD_INVITE_URL },
         { icon: 'x.com', label: 'X', href: 'https://x.com/livestoredev' },
-        { icon: 'blueSky', label: 'Bluesky', href: 'https://bsky.app/profile/livestore.dev' },
+        {
+          icon: 'blueSky',
+          label: 'Bluesky',
+          href: 'https://bsky.app/profile/livestore.dev',
+        },
       ],
-
+      expressiveCode: {
+        themes: ['github-dark', 'github-dark'],
+      },
       components: {
         SocialIcons: './src/components/SocialIcons.astro',
       },
@@ -114,10 +132,6 @@ export default defineConfig({
               // Sidebar structure is defined in ./src/data/sidebar.ts
               // to be shared with llms.txt generators
               ...toStarlightSidebar(docsSidebar),
-              {
-                label: 'Changelog',
-                link: '/changelog',
-              },
             ],
           },
           {
@@ -270,9 +284,10 @@ export default defineConfig({
             ]
           : []),
       ],
-      customCss: ['./src/tailwind.css'],
+      customCss: ['./src/fonts/geist-font.css', './src/tailwind.css'],
       logo: {
-        src: './src/assets/livestore.png',
+        light: './src/assets/logo-beta-light.png',
+        dark: './src/assets/logo-beta-dark.png',
         alt: 'LiveStore Logo',
         replacesTitle: true,
       },

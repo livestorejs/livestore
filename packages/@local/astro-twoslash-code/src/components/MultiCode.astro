@@ -100,42 +100,66 @@ if (shouldRenderClientScript) {
 }
 ---
 
-{shouldRenderBaseStyles && globalBaseStyles && <style data-ls-twoslash="base" set:html={globalBaseStyles} />}
-{shouldRenderThemeStyles && globalThemeStyles && <style data-ls-twoslash="themes" set:html={globalThemeStyles} />}
+{
+  shouldRenderBaseStyles && globalBaseStyles && (
+    <style data-ls-twoslash="base" set:html={globalBaseStyles} />
+  )
+}
+{
+  shouldRenderThemeStyles && globalThemeStyles && (
+    <style data-ls-twoslash="themes" set:html={globalThemeStyles} />
+  )
+}
 {
   jsModulesToRender.map((moduleCode, index) => (
-    <script type="module" data-ls-twoslash={`module-${index}`} set:html={moduleCode} />
+    <script
+      type="module"
+      data-ls-twoslash={`module-${index}`}
+      set:html={moduleCode}
+    />
   ))
 }
 
-<div class={prepared.containerClass} data-ls-multi-code data-ls-multi-code-id={prepared.baseId}>
+<div
+  class={prepared.containerClass}
+  data-ls-multi-code
+  data-ls-multi-code-id={prepared.baseId}
+>
   <div class="ls-multi-code__frame">
     <div class="ls-multi-code__toolbar">
       <div class="ls-multi-code__tablist" role="tablist">
         {
           prepared.panels.map((file, index) => {
-            const diagCount = file.diagnostics.length
-            const diagLabel = diagCount === 1 ? '1 diagnostic' : `${diagCount} diagnostics`
+            const diagCount = file.diagnostics.length;
+            const diagLabel =
+              diagCount === 1 ? "1 diagnostic" : `${diagCount} diagnostics`;
 
             return (
               <button
                 type="button"
-                class={`ls-multi-code__tab${index === 0 ? ' ls-multi-code__tab--active' : ''}`}
+                class={`ls-multi-code__tab${index === 0 ? " ls-multi-code__tab--active" : ""}`}
                 role="tab"
-                aria-selected={index === 0 ? 'true' : 'false'}
+                aria-selected={index === 0 ? "true" : "false"}
                 aria-controls={`${prepared.baseId}-panel-${index}`}
                 id={`${prepared.baseId}-tab-${index}`}
-                tabindex={index === 0 ? '0' : '-1'}
-                data-active={index === 0 ? '' : undefined}
+                tabindex={index === 0 ? "0" : "-1"}
+                data-active={index === 0 ? "" : undefined}
                 title={file.filename}
                 data-index={index}
-                aria-label={diagCount > 0 ? `${file.baseName} (${diagLabel})` : undefined}
-                data-has-diagnostics={diagCount > 0 ? '' : undefined}
+                aria-label={
+                  diagCount > 0 ? `${file.baseName} (${diagLabel})` : undefined
+                }
+                data-has-diagnostics={diagCount > 0 ? "" : undefined}
               >
                 <span class="ls-multi-code__tab-label">{file.baseName}</span>
-                {diagCount > 0 && <span class="ls-multi-code__tab-indicator" aria-hidden="true" />}
+                {diagCount > 0 && (
+                  <span
+                    class="ls-multi-code__tab-indicator"
+                    aria-hidden="true"
+                  />
+                )}
               </button>
-            )
+            );
           })
         }
       </div>
@@ -144,7 +168,9 @@ if (shouldRenderClientScript) {
         data-ls-multi-code-diagnostics
         aria-live="polite"
         hidden={shouldHideStatus ? true : undefined}
-        title={initialDiagnosticsTitle.length > 0 ? initialDiagnosticsTitle : undefined}
+        title={initialDiagnosticsTitle.length > 0
+          ? initialDiagnosticsTitle
+          : undefined}
       >
         {initialDiagnosticsLabel}
       </div>
@@ -156,8 +182,8 @@ if (shouldRenderClientScript) {
             role="tabpanel"
             id={`${prepared.baseId}-panel-${index}`}
             aria-labelledby={`${prepared.baseId}-tab-${index}`}
-            class={`ls-multi-code__panel${index === 0 ? ' ls-multi-code__panel--active' : ''}`}
-            data-active={index === 0 ? '' : undefined}
+            class={`ls-multi-code__panel${index === 0 ? " ls-multi-code__panel--active" : ""}`}
+            data-active={index === 0 ? "" : undefined}
             hidden={index === 0 ? undefined : true}
             data-index={index}
           >
@@ -174,14 +200,20 @@ if (shouldRenderClientScript) {
                 {file.styles.length > 0 && (
                   <style
                     data-ls-twoslash-style={`${prepared.baseId}-style-${index}`}
-                    set:html={file.styles.join('\n')}
+                    set:html={file.styles.join("\n")}
                   />
                 )}
                 <div class="ls-multi-code__html" set:html={file.html} />
               </>
             ) : (
-              <div class="ls-multi-code__error" role="alert" data-ls-multi-code-error="">
-                <p class="ls-multi-code__error-title">Unable to render Twoslash snippet</p>
+              <div
+                class="ls-multi-code__error"
+                role="alert"
+                data-ls-multi-code-error=""
+              >
+                <p class="ls-multi-code__error-title">
+                  Unable to render Twoslash snippet
+                </p>
                 <p class="ls-multi-code__error-details">
                   {`Check the diagnostics below for ${file.baseName ?? file.filename}.`}
                 </p>
@@ -192,7 +224,9 @@ if (shouldRenderClientScript) {
                     ))}
                   </ul>
                 ) : (
-                  <p class="ls-multi-code__error-details">No diagnostics were provided.</p>
+                  <p class="ls-multi-code__error-details">
+                    No diagnostics were provided.
+                  </p>
                 )}
               </div>
             )}
@@ -201,15 +235,25 @@ if (shouldRenderClientScript) {
       }
     </div>
 
-    {/* Load the shared client runtime once per page; the module guards against duplicate setup. */}
-    {shouldRenderClientScript && clientModuleSource && <script type="module" is:inline set:html={clientModuleSource} />}
+    {
+      /* Load the shared client runtime once per page; the module guards against duplicate setup. */
+    }
+    {
+      shouldRenderClientScript && clientModuleSource && (
+        <script type="module" is:inline set:html={clientModuleSource} />
+      )
+    }
   </div>
 </div>
 
 <style>
   .ls-multi-code {
     display: block;
-    --ls-multi-code-frame-shadow: color-mix(in srgb, var(--ec-frm-shdCol, rgba(15, 23, 42, 0.32)) 55%, transparent);
+    --ls-multi-code-frame-shadow: color-mix(
+      in srgb,
+      var(--ec-frm-shdCol, rgba(15, 23, 42, 0.32)) 55%,
+      transparent
+    );
     --ec-frm-frameBoxShdCssVal: 0 14px 32px var(--ls-multi-code-frame-shadow);
   }
 
@@ -227,14 +271,22 @@ if (shouldRenderClientScript) {
     gap: 1rem;
     background: linear-gradient(
         to top,
-        var(--ec-frm-edTabBarBrdBtmCol, rgba(148, 163, 184, 0.35)) var(--ec-brdWd, 1px),
+        var(--ec-frm-edTabBarBrdBtmCol, rgba(148, 163, 184, 0.35))
+          var(--ec-brdWd, 1px),
         transparent var(--ec-brdWd, 1px)
       ),
       linear-gradient(
-        var(--ec-frm-edTabBarBg, var(--ec-codeBg, color-mix(in srgb, #0f172a 75%, transparent))),
-        var(--ec-frm-edTabBarBg, var(--ec-codeBg, color-mix(in srgb, #0f172a 75%, transparent)))
+        var(
+          --ec-frm-edTabBarBg,
+          var(--ec-codeBg, color-mix(in srgb, #0f172a 75%, transparent))
+        ),
+        var(
+          --ec-frm-edTabBarBg,
+          var(--ec-codeBg, color-mix(in srgb, #0f172a 75%, transparent))
+        )
       );
-    border: var(--ec-brdWd, 1px) solid var(--ec-frm-edTabBarBrdCol, rgba(148, 163, 184, 0.35));
+    border: var(--ec-brdWd, 1px) solid
+      var(--ec-frm-edTabBarBrdCol, rgba(148, 163, 184, 0.35));
     border-bottom: none;
     border-radius: calc(var(--ec-brdRad, 0.65rem) + var(--ec-brdWd, 1px))
       calc(var(--ec-brdRad, 0.65rem) + var(--ec-brdWd, 1px)) 0 0;
@@ -251,12 +303,21 @@ if (shouldRenderClientScript) {
     position: relative;
     appearance: none;
     border: var(--ec-brdWd, 1px) solid transparent;
-    background: color-mix(in srgb, var(--ec-frm-edTabBarBg, var(--ec-codeBg, #1e1e1e)) 65%, transparent);
+    background: color-mix(
+      in srgb,
+      var(--ec-frm-edTabBarBg, var(--ec-codeBg, #1e1e1e)) 65%,
+      transparent
+    );
     color: var(--ec-codeFg, inherit);
     font: inherit;
     font-size: calc(var(--ec-uiFontSize, 0.9rem) * 0.92);
-    padding: calc(var(--ec-uiPadBlk, 0.6rem) + var(--ec-frm-edActTabIndHt, 0.2rem) * 0.5) var(--ec-uiPadInl, 1rem);
-    border-radius: calc(var(--ec-frm-edTabBrdRad, 0.65rem) + var(--ec-brdWd, 1px))
+    padding: calc(
+        var(--ec-uiPadBlk, 0.6rem) + var(--ec-frm-edActTabIndHt, 0.2rem) * 0.5
+      )
+      var(--ec-uiPadInl, 1rem);
+    border-radius: calc(
+        var(--ec-frm-edTabBrdRad, 0.65rem) + var(--ec-brdWd, 1px)
+      )
       calc(var(--ec-frm-edTabBrdRad, 0.65rem) + var(--ec-brdWd, 1px)) 0 0;
     cursor: pointer;
     margin: 0 !important;
@@ -269,7 +330,11 @@ if (shouldRenderClientScript) {
 
   .ls-multi-code__tab:hover,
   .ls-multi-code__tab:focus-visible {
-    background: color-mix(in srgb, var(--ec-frm-edTabBarBg, var(--ec-codeBg, #1e1e1e)) 85%, transparent);
+    background: color-mix(
+      in srgb,
+      var(--ec-frm-edTabBarBg, var(--ec-codeBg, #1e1e1e)) 85%,
+      transparent
+    );
     outline: none;
   }
 
@@ -280,12 +345,14 @@ if (shouldRenderClientScript) {
   }
 
   .ls-multi-code__tab--active::after {
-    content: '';
+    content: "";
     position: absolute;
     pointer-events: none;
     inset: 0;
-    border-top: var(--ec-frm-edActTabIndHt, 0) solid var(--ec-frm-edActTabIndTopCol, transparent);
-    border-bottom: var(--ec-frm-edActTabIndHt, 0) solid var(--ec-frm-edActTabIndBtmCol, transparent);
+    border-top: var(--ec-frm-edActTabIndHt, 0) solid
+      var(--ec-frm-edActTabIndTopCol, transparent);
+    border-bottom: var(--ec-frm-edActTabIndHt, 0) solid
+      var(--ec-frm-edActTabIndBtmCol, transparent);
   }
 
   .ls-multi-code__tab-label {
@@ -299,7 +366,8 @@ if (shouldRenderClientScript) {
     height: 0.5rem;
     border-radius: 999px;
     background: var(--sl-color-text-destructive, #ef4444);
-    box-shadow: 0 0 0 1px color-mix(in srgb, var(--ec-codeBg, #1e1e1e) 90%, transparent);
+    box-shadow: 0 0 0 1px
+      color-mix(in srgb, var(--ec-codeBg, #1e1e1e) 90%, transparent);
   }
 
   .ls-multi-code__status {
@@ -337,7 +405,11 @@ if (shouldRenderClientScript) {
     position: relative;
     display: block;
     --ec-frm-frameBoxShdCssVal: 0 16px 34px
-      color-mix(in srgb, var(--ec-frm-shdCol, rgba(15, 23, 42, 0.28)) 42%, transparent);
+      color-mix(
+        in srgb,
+        var(--ec-frm-shdCol, rgba(15, 23, 42, 0.28)) 42%,
+        transparent
+      );
   }
 
   /*
@@ -353,7 +425,12 @@ if (shouldRenderClientScript) {
     snippet so the snippet still looks like a floating panel.
   */
   .ls-multi-code__html :global(.frame) {
-    box-shadow: 0 16px 34px color-mix(in srgb, var(--ec-frm-shdCol, rgba(15, 23, 42, 0.28)) 42%, transparent);
+    box-shadow: 0 16px 34px
+      color-mix(
+        in srgb,
+        var(--ec-frm-shdCol, rgba(15, 23, 42, 0.28)) 42%,
+        transparent
+      );
     border-radius: 0 0 calc(var(--ec-brdRad, 0.65rem) + var(--ec-brdWd, 1px))
       calc(var(--ec-brdRad, 0.65rem) + var(--ec-brdWd, 1px));
   }
@@ -368,7 +445,12 @@ if (shouldRenderClientScript) {
     background: var(--ec-twoSlash-bg, var(--ec-codeBg, #1f2937));
     border: 1px solid var(--ec-twoSlash-brdCol, rgba(148, 163, 184, 0.35));
     border-radius: 4px;
-    box-shadow: 0 16px 32px color-mix(in srgb, var(--ec-frm-shdCol, rgba(15, 23, 42, 0.28)) 40%, transparent);
+    box-shadow: 0 16px 32px
+      color-mix(
+        in srgb,
+        var(--ec-frm-shdCol, rgba(15, 23, 42, 0.28)) 40%,
+        transparent
+      );
     color: var(--ec-twoSlash-textCol, var(--ec-codeFg, #e1e4e8));
     font-size: 0.9em;
     margin-top: 0.5rem;
@@ -396,7 +478,11 @@ if (shouldRenderClientScript) {
     styling so paragraphs and tags stay legible in both themes.
   */
   :global(.twoslash-popup-docs) {
-    background: color-mix(in srgb, var(--ec-twoSlash-bg, #1f2937) 96%, transparent);
+    background: color-mix(
+      in srgb,
+      var(--ec-twoSlash-bg, #1f2937) 96%,
+      transparent
+    );
     border-top: 1px solid var(--ec-twoSlash-brdCol, rgba(148, 163, 184, 0.35));
     color: var(--ec-twoSlash-textCol, var(--ec-codeFg, #e1e4e8));
     display: block;
@@ -411,7 +497,10 @@ if (shouldRenderClientScript) {
   }
 
   :global(.twoslash-popup-docs code) {
-    background: var(--ec-frm-edBg, color-mix(in srgb, #0f172a 80%, transparent)) !important;
+    background: var(
+      --ec-frm-edBg,
+      color-mix(in srgb, #0f172a 80%, transparent)
+    ) !important;
     border: 1px solid var(--ec-twoSlash-brdCol, rgba(148, 163, 184, 0.35));
     border-radius: 4px;
     padding: 0.1rem 0.35rem !important;
@@ -423,8 +512,17 @@ if (shouldRenderClientScript) {
     gap: 0.5rem;
     padding: 1rem;
     border-radius: 0.75rem;
-    border: 1px solid color-mix(in srgb, var(--sl-color-text-destructive, var(--sl-color-red)) 40%, transparent);
-    background: color-mix(in srgb, var(--sl-color-text-destructive, var(--sl-color-red)) 8%, transparent);
+    border: 1px solid
+      color-mix(
+        in srgb,
+        var(--sl-color-text-destructive, var(--sl-color-red)) 40%,
+        transparent
+      );
+    background: color-mix(
+      in srgb,
+      var(--sl-color-text-destructive, var(--sl-color-red)) 8%,
+      transparent
+    );
     color: var(--sl-color-text-destructive, var(--sl-color-red));
   }
 
@@ -435,7 +533,11 @@ if (shouldRenderClientScript) {
 
   .ls-multi-code__error-details {
     margin: 0;
-    color: color-mix(in srgb, var(--sl-color-text-destructive, var(--sl-color-red)) 80%, transparent);
+    color: color-mix(
+      in srgb,
+      var(--sl-color-text-destructive, var(--sl-color-red)) 80%,
+      transparent
+    );
   }
 
   .ls-multi-code__error-list {
