@@ -4,11 +4,11 @@
   "type": "module",
   "private": true,
   "dependencies": {
-    "@cloudflare/workers-types": "4.20250923.0",
-    "@livestore/adapter-cloudflare": "0.4.0-dev.17",
-    "@livestore/livestore": "0.4.0-dev.17",
-    "@livestore/peer-deps": "0.4.0-dev.17",
-    "@livestore/sync-cf": "0.4.0-dev.17"
+    "@cloudflare/workers-types": "4.20251118.0",
+    "@livestore/adapter-cloudflare": "0.4.0-dev.20",
+    "@livestore/livestore": "0.4.0-dev.20",
+    "@livestore/peer-deps": "0.4.0-dev.20",
+    "@livestore/sync-cf": "0.4.0-dev.20"
   },
   "devDependencies": {
     "wrangler": "^4.42.2"

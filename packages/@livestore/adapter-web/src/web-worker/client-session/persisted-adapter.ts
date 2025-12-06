@@ -5,7 +5,7 @@ import {
   makeClientSession,
   StoreInterrupted,
   sessionChangesetMetaTable,
-  UnexpectedError,
+  UnknownError,
 } from '@livestore/common'
 // TODO bring back - this currently doesn't work due to https://github.com/vitejs/vite/issues/8427
 // NOTE We're using a non-relative import here for Vite to properly resolve the import during app builds
@@ -14,7 +14,6 @@ import { EventSequenceNumber } from '@livestore/common/schema'
 import { sqliteDbFactory } from '@livestore/sqlite-wasm/browser'
 import { isDevEnv, shouldNeverHappen, tryAsFunctionAndNew } from '@livestore/utils'
 import {
-  BrowserWorker,
   Cause,
   Deferred,
   Effect,
@@ -27,14 +26,15 @@ import {
   Stream,
   Subscribable,
   SubscriptionRef,
-  WebLock,
   Worker,
   WorkerError,
 } from '@livestore/utils/effect'
+import { BrowserWorker, Opfs, WebLock } from '@livestore/utils/effect/browser'
 import { nanoid } from '@livestore/utils/nanoid'
-
-import * as OpfsUtils from '../../opfs-utils.ts'
-import { readPersistedAppDbFromClientSession, resetPersistedDataFromClientSession } from '../common/persisted-sqlite.ts'
+import {
+  readPersistedStateDbFromClientSession,
+  resetPersistedDataFromClientSession,
+} from '../common/persisted-sqlite.ts'
 import { makeShutdownChannel } from '../common/shutdown-channel.ts'
 import { DedicatedWorkerDisconnectBroadcast, makeWorkerDisconnectChannel } from '../common/worker-disconnect-channel.ts'
 import * as WorkerSchema from '../common/worker-schema.ts'
@@ -43,9 +43,8 @@ import { loadSqlite3 } from './sqlite-loader.ts'
 
 if (isDevEnv()) {
   globalThis.__debugLiveStoreUtils = {
-    opfs: OpfsUtils,
-    runSync: (effect: Effect.Effect<any, any, never>) => Effect.runSync(effect),
-    runFork: (effect: Effect.Effect<any, any, never>) => Effect.runFork(effect),
+    ...globalThis.__debugLiveStoreUtils,
+    opfs: Opfs.debugUtils,
   }
 }
 
@@ -184,7 +183,15 @@ export const makePersistedAdapter =
       const dataFromFile =
         options.experimental?.disableFastPath === true
           ? undefined
-          : yield* readPersistedAppDbFromClientSession({ storageOptions, storeId, schema })
+          : yield* readPersistedStateDbFromClientSession({ storageOptions, storeId, schema }).pipe(
+              Effect.tapError((error) =>
+                Effect.logDebug('[@livestore/adapter-web:client-session] Could not read persisted state db', error, {
+                  storeId,
+                }),
+              ),
+              // If we get any error here, we return `undefined` to fall back to the slow path
+              Effect.orElseSucceed(() => undefined),
+            )
 
       // The same across all client sessions (i.e. tabs, windows)
       const clientId = options.clientId ?? getPersistedId(`clientId:${storeId}`, 'local')
@@ -219,7 +226,7 @@ export const makePersistedAdapter =
       }).pipe(
         Effect.provide(sharedWorkerContext),
         Effect.tapCauseLogPretty,
-        UnexpectedError.mapToUnexpectedError,
+        UnknownError.mapToUnknownError,
         Effect.tapErrorCause((cause) => shutdown(Exit.failCause(cause))),
         Effect.withSpan('@livestore/adapter-web:client-session:setupSharedWorker'),
         Effect.forkScoped,
@@ -261,7 +268,7 @@ export const makePersistedAdapter =
           initialMessage: () => new WorkerSchema.LeaderWorkerOuterInitialMessage({ port: mc.port1, storeId, clientId }),
         }).pipe(
           Effect.provide(BrowserWorker.layer(() => worker)),
-          UnexpectedError.mapToUnexpectedError,
+          UnknownError.mapToUnknownError,
           Effect.tapErrorCause((cause) => shutdown(Exit.failCause(cause))),
           Effect.withSpan('@livestore/adapter-web:client-session:setupDedicatedWorker'),
           Effect.tapCauseLogPretty,
@@ -287,7 +294,7 @@ export const makePersistedAdapter =
             }),
           )
           .pipe(
-            UnexpectedError.mapToUnexpectedError,
+            UnknownError.mapToUnknownError,
             Effect.tapErrorCause((cause) => shutdown(Exit.failCause(cause))),
           )
 
@@ -319,7 +326,7 @@ export const makePersistedAdapter =
       const runInWorker = <TReq extends typeof WorkerSchema.SharedWorkerRequest.Type>(
         req: TReq,
       ): TReq extends Schema.WithResult<infer A, infer _I, infer E, infer _EI, infer R>
-        ? Effect.Effect<A, UnexpectedError | E, R>
+        ? Effect.Effect<A, UnknownError | E, R>
         : never =>
         Fiber.join(sharedWorkerFiber).pipe(
           // NOTE we need to wait for the shared worker to be initialized before we can send requests to it
@@ -334,28 +341,28 @@ export const makePersistedAdapter =
           }),
           Effect.withSpan(`@livestore/adapter-web:client-session:runInWorker:${req._tag}`),
           Effect.mapError((cause) =>
-            Schema.is(UnexpectedError)(cause)
+            Schema.is(UnknownError)(cause)
               ? cause
               : ParseResult.isParseError(cause) || Schema.is(WorkerError.WorkerError)(cause)
-                ? new UnexpectedError({ cause })
+                ? new UnknownError({ cause })
                 : cause,
           ),
-          Effect.catchAllDefect((cause) => new UnexpectedError({ cause })),
+          Effect.catchAllDefect((cause) => new UnknownError({ cause })),
         ) as any
 
       const runInWorkerStream = <TReq extends typeof WorkerSchema.SharedWorkerRequest.Type>(
         req: TReq,
       ): TReq extends Schema.WithResult<infer A, infer _I, infer _E, infer _EI, infer R>
-        ? Stream.Stream<A, UnexpectedError, R>
+        ? Stream.Stream<A, UnknownError, R>
         : never =>
         Effect.gen(function* () {
           const sharedWorker = yield* Fiber.join(sharedWorkerFiber)
           return sharedWorker.execute(req as any).pipe(
             Stream.mapError((cause) =>
-              Schema.is(UnexpectedError)(cause)
+              Schema.is(UnknownError)(cause)
                 ? cause
                 : ParseResult.isParseError(cause) || Schema.is(WorkerError.WorkerError)(cause)
-                  ? new UnexpectedError({ cause })
+                  ? new UnknownError({ cause })
                   : cause,
             ),
             Stream.withSpan(`@livestore/adapter-web:client-session:runInWorkerStream:${req._tag}`),
@@ -403,7 +410,7 @@ export const makePersistedAdapter =
       const numberOfTables =
         sqliteDb.select<{ count: number }>(`select count(*) as count from sqlite_master`)[0]?.count ?? 0
       if (numberOfTables === 0) {
-        return yield* UnexpectedError.make({
+        return yield* UnknownError.make({
           cause: `Encountered empty or corrupted database`,
           payload: { snapshotByteLength: initialResult.snapshot.byteLength, storageOptions: options.storage },
         })
@@ -422,12 +429,12 @@ export const makePersistedAdapter =
       )
 
       const initialLeaderHead = initialLeaderHeadRes
-        ? EventSequenceNumber.make({
+        ? EventSequenceNumber.Client.Composite.make({
             global: initialLeaderHeadRes.seqNumGlobal,
             client: initialLeaderHeadRes.seqNumClient,
             rebaseGeneration: initialLeaderHeadRes.seqNumRebaseGeneration,
           })
-        : EventSequenceNumber.ROOT
+        : EventSequenceNumber.Client.ROOT
 
       // console.debug('[@livestore/adapter-web:client-session] initialLeaderHead', initialLeaderHead)
 
@@ -454,7 +461,7 @@ export const makePersistedAdapter =
       const leaderThread: ClientSession['leaderThread'] = {
         export: runInWorker(new WorkerSchema.LeaderWorkerInnerExport()).pipe(
           Effect.timeout(10_000),
-          UnexpectedError.mapToUnexpectedError,
+          UnknownError.mapToUnknownError,
           Effect.withSpan('@livestore/adapter-web:client-session:export'),
         ),
 
@@ -478,13 +485,13 @@ export const makePersistedAdapter =
 
         getEventlogData: runInWorker(new WorkerSchema.LeaderWorkerInnerExportEventlog()).pipe(
           Effect.timeout(10_000),
-          UnexpectedError.mapToUnexpectedError,
+          UnknownError.mapToUnknownError,
           Effect.withSpan('@livestore/adapter-web:client-session:getEventlogData'),
         ),
 
         syncState: Subscribable.make({
           get: runInWorker(new WorkerSchema.LeaderWorkerInnerGetLeaderSyncState()).pipe(
-            UnexpectedError.mapToUnexpectedError,
+            UnknownError.mapToUnknownError,
             Effect.withSpan('@livestore/adapter-web:client-session:getLeaderSyncState'),
           ),
           changes: runInWorkerStream(new WorkerSchema.LeaderWorkerInnerSyncStateStream()).pipe(Stream.orDie),
@@ -492,7 +499,7 @@ export const makePersistedAdapter =
 
         sendDevtoolsMessage: (message) =>
           runInWorker(new WorkerSchema.LeaderWorkerInnerExtraDevtoolsMessage({ message })).pipe(
-            UnexpectedError.mapToUnexpectedError,
+            UnknownError.mapToUnknownError,
             Effect.withSpan('@livestore/adapter-web:client-session:devtoolsMessageForLeader'),
           ),
         networkStatus: Subscribable.make({
@@ -527,7 +534,7 @@ export const makePersistedAdapter =
       })
 
       return clientSession
-    }).pipe(UnexpectedError.mapToUnexpectedError)
+    }).pipe(Effect.provide(Opfs.Opfs.Default), UnknownError.mapToUnknownError)
 
 // NOTE for `local` storage we could also use the eventlog db to store the data
 const getPersistedId = (key: string, storageType: 'session' | 'local') => {
@@ -563,7 +570,7 @@ const ensureBrowserRequirements = Effect.gen(function* () {
   const validate = (condition: boolean, label: string) =>
     Effect.gen(function* () {
       if (condition) {
-        return yield* UnexpectedError.make({
+        return yield* UnknownError.make({
           cause: `[@livestore/adapter-web] Browser not supported. The LiveStore web adapter needs '${label}' to work properly`,
         })
       }

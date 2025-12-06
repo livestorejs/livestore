@@ -1,6 +1,6 @@
 import { Schema, Transferable } from '@livestore/utils/effect'
 
-import * as LiveStoreEvent from '../schema/LiveStoreEvent.ts'
+import * as LiveStoreEvent from '../schema/LiveStoreEvent/mod.ts'
 import { EventSequenceNumber } from '../schema/mod.ts'
 import * as SyncState from '../sync/syncstate.ts'
 import { LeaderReqResMessage, LSDMessage, LSDReqResMessage, NetworkStatus } from './devtools-messages-common.ts'
@@ -51,7 +51,7 @@ export class SyncHistoryUnsubscribe extends LSDReqResMessage('LSD.Leader.SyncHis
   subscriptionId: Schema.String,
 }) {}
 export class SyncHistoryRes extends LSDReqResMessage('LSD.Leader.SyncHistoryRes', {
-  eventEncoded: LiveStoreEvent.AnyEncodedGlobal,
+  eventEncoded: LiveStoreEvent.Global.Encoded,
   metadata: Schema.Option(Schema.JsonValue),
   subscriptionId: Schema.String,
 }) {}
@@ -63,8 +63,8 @@ export class SyncHeadUnsubscribe extends LSDReqResMessage('LSD.Leader.SyncHeadUn
   subscriptionId: Schema.String,
 }) {}
 export class SyncHeadRes extends LSDReqResMessage('LSD.Leader.SyncHeadRes', {
-  local: EventSequenceNumber.EventSequenceNumber,
-  upstream: EventSequenceNumber.EventSequenceNumber,
+  local: EventSequenceNumber.Client.Composite,
+  upstream: EventSequenceNumber.Client.Composite,
   subscriptionId: Schema.String,
 }) {}
 
@@ -84,7 +84,7 @@ export const LoadDatabaseFile = LeaderReqResMessage('LSD.Leader.LoadDatabaseFile
     cause: Schema.Union(
       Schema.TaggedStruct('unsupported-file', {}),
       Schema.TaggedStruct('unsupported-database', {}),
-      Schema.TaggedStruct('unexpected-error', { cause: Schema.Defect }),
+      Schema.TaggedStruct('unknown-error', { cause: Schema.Defect }),
     ),
   },
 })
@@ -96,7 +96,7 @@ export class SyncPull extends LSDMessage('LSD.Leader.SyncPull', {
 
 // TODO refactor this to use push/pull semantics
 export class CommitEventReq extends LSDReqResMessage('LSD.Leader.CommitEventReq', {
-  eventEncoded: LiveStoreEvent.PartialAnyEncoded,
+  eventEncoded: LiveStoreEvent.Input.Encoded,
 }) {}
 
 export class CommitEventRes extends LSDReqResMessage('LSD.Leader.CommitEventRes', {}) {}
@@ -134,7 +134,7 @@ export const ResetAllData = LeaderReqResMessage('LSD.Leader.ResetAllData', {
 //     liveStoreVersion,
 //   },
 //   success: DatabaseFileInfo,
-//   failure: UnexpectedError,
+//   failure: UnknownError,
 // }) {}
 
 // export class NetworkStatus_ extends Schema.TaggedRequest<NetworkStatus_>()('LSD.Leader.NetworkStatus', {
@@ -143,7 +143,7 @@ export const ResetAllData = LeaderReqResMessage('LSD.Leader.ResetAllData', {
 //     liveStoreVersion,
 //   },
 //   success: NetworkStatus,
-//   failure: UnexpectedError,
+//   failure: UnknownError,
 // }) {}
 
 // export const MessageToApp_ = Schema.Union(DatabaseFileInfo_, NetworkStatus_)

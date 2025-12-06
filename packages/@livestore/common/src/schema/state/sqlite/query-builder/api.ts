@@ -347,22 +347,26 @@ export namespace QueryBuilder {
     >
 
     /**
-     * Example: If the row already exists, it will be ignored.
+     * Upsert: insert a row, or handle conflicts on existing rows.
+     * Equivalent to SQLite's `INSERT ... ON CONFLICT` clause.
+     *
+     * Actions:
+     * - `'ignore'`: Skip the insert if a row with the same key exists
+     * - `'replace'`: Delete the existing row and insert the new one
+     * - `'update'`: Update specific columns on the existing row
+     *
      * ```ts
+     * // Ignore: skip if row exists
      * db.todos.insert({ id: '123', text: 'Buy milk', status: 'active' }).onConflict('id', 'ignore')
-     * ```
      *
-     * Example: If the row already exists, it will be replaced.
-     * ```ts
+     * // Replace: delete existing row and insert new one
      * db.todos.insert({ id: '123', text: 'Buy milk', status: 'active' }).onConflict('id', 'replace')
-     * ```
      *
-     * Example: If the row already exists, it will be updated.
-     * ```ts
+     * // Update: merge specific columns into existing row
      * db.todos.insert({ id: '123', text: 'Buy milk', status: 'active' }).onConflict('id', 'update', { text: 'Buy soy milk' })
      * ```
      *
-     * NOTE This API doesn't yet support composite primary keys.
+     * NOTE: Composite primary keys are not yet supported.
      */
     readonly onConflict: {
       <TTarget extends SingleOrReadonlyArray<keyof TTableDef['sqliteDef']['columns']>>(

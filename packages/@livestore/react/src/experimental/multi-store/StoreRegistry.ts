@@ -4,19 +4,20 @@ import type { CachedStoreOptions, StoreId } from './types.ts'
 
 type StoreEntryState<TSchema extends LiveStoreSchema> =
   | { status: 'idle' }
-  | { status: 'loading'; promise: Promise<Store<TSchema>> }
+  | { status: 'loading'; promise: Promise<Store<TSchema>>; abortController: AbortController }
   | { status: 'success'; store: Store<TSchema> }
   | { status: 'error'; error: unknown }
+  | { status: 'shutting_down'; shutdownPromise: Promise<void> }
 
 /**
- * Default garbage collection time for inactive stores.
+ * Default time to keep unused stores in cache.
  *
  * - Browser: 60 seconds (60,000ms)
- * - SSR: Infinity (disables GC to avoid disposing stores before server render completes)
+ * - SSR: Infinity (disables disposal to avoid disposing stores before server render completes)
  *
  * @internal Exported primarily for testing purposes.
  */
-export const DEFAULT_GC_TIME = typeof window === 'undefined' ? Number.POSITIVE_INFINITY : 60_000
+export const DEFAULT_UNUSED_CACHE_TIME = typeof window === 'undefined' ? Number.POSITIVE_INFINITY : 60_000
 
 /**
  * @typeParam TSchema - The schema for this entry's store.
@@ -28,8 +29,8 @@ class StoreEntry<TSchema extends LiveStoreSchema = LiveStoreSchema> {
 
   #state: StoreEntryState<TSchema> = { status: 'idle' }
 
-  #gcTime?: number
-  #gcTimeout?: ReturnType<typeof setTimeout> | null
+  #unusedCacheTime?: number
+  #disposalTimeout?: ReturnType<typeof setTimeout> | null
 
   /**
    * Set of subscriber callbacks to notify on state changes.
@@ -41,38 +42,46 @@ class StoreEntry<TSchema extends LiveStoreSchema = LiveStoreSchema> {
     this.#cache = cache
   }
 
-  #scheduleGC = (): void => {
-    this.#cancelGC()
+  #scheduleDisposal = (): void => {
+    this.#cancelDisposal()
 
-    const effectiveGcTime = this.#gcTime === undefined ? DEFAULT_GC_TIME : this.#gcTime
+    const effectiveTime = this.#unusedCacheTime === undefined ? DEFAULT_UNUSED_CACHE_TIME : this.#unusedCacheTime
 
-    if (effectiveGcTime === Number.POSITIVE_INFINITY) return // Infinity disables GC
+    if (effectiveTime === Number.POSITIVE_INFINITY) return // Infinity disables disposal
 
-    this.#gcTimeout = setTimeout(() => {
-      this.#gcTimeout = null
+    this.#disposalTimeout = setTimeout(() => {
+      this.#disposalTimeout = null
 
       // Re-check to avoid racing with a new subscription
       if (this.#subscribers.size > 0) return
 
-      void this.#shutdown().finally(() => {
-        // Double-check again just in case shutdown was slow
+      // Abort any in-progress loading to release resources early
+      this.#abortLoading()
+
+      // Transition to shutting_down state BEFORE starting async shutdown.
+      // This prevents new subscribers from receiving a store that's about to be disposed.
+      const shutdownPromise = this.#shutdown().finally(() => {
+        // Reset to idle so fresh loads can proceed, then remove from cache if still inactive
+        this.#setIdle()
         if (this.#subscribers.size === 0) this.#cache.delete(this.#storeId)
       })
-    }, effectiveGcTime)
+
+      this.#setShuttingDown(shutdownPromise)
+    }, effectiveTime)
   }
 
-  #cancelGC = (): void => {
-    if (!this.#gcTimeout) return
-    clearTimeout(this.#gcTimeout)
-    this.#gcTimeout = null
+  #cancelDisposal = (): void => {
+    if (!this.#disposalTimeout) return
+    clearTimeout(this.#disposalTimeout)
+    this.#disposalTimeout = null
   }
 
   /**
    * Transitions to the loading state.
    */
-  #setPromise(promise: Promise<Store<TSchema>>): void {
+  #setLoading(promise: Promise<Store<TSchema>>, abortController: AbortController): void {
     if (this.#state.status === 'success' || this.#state.status === 'loading') return
-    this.#state = { status: 'loading', promise }
+    this.#state = { status: 'loading', promise, abortController }
     this.#notify()
   }
 
@@ -90,6 +99,22 @@ class StoreEntry<TSchema extends LiveStoreSchema = LiveStoreSchema> {
   #setError = (error: unknown): void => {
     this.#state = { status: 'error', error }
     this.#notify()
+  }
+
+  /**
+   * Transitions to the shutting_down state.
+   */
+  #setShuttingDown = (shutdownPromise: Promise<void>): void => {
+    this.#state = { status: 'shutting_down', shutdownPromise }
+    this.#notify()
+  }
+
+  /**
+   * Transitions to the idle state.
+   */
+  #setIdle = (): void => {
+    this.#state = { status: 'idle' }
+    // No notify needed - getOrLoad will handle the fresh load
   }
 
   /**
@@ -115,35 +140,44 @@ class StoreEntry<TSchema extends LiveStoreSchema = LiveStoreSchema> {
    * @returns Unsubscribe function
    */
   subscribe = (listener: () => void): Unsubscribe => {
-    this.#cancelGC()
+    this.#cancelDisposal()
     this.#subscribers.add(listener)
     return () => {
       this.#subscribers.delete(listener)
-      // If no more subscribers remain, schedule GC
-      if (this.#subscribers.size === 0) this.#scheduleGC()
+      // If no more subscribers remain, schedule disposal
+      if (this.#subscribers.size === 0) this.#scheduleDisposal()
     }
   }
 
   /**
-   * Initiates loading of the store if not already in progress.
+   * Gets the loaded store or initiates loading if not already in progress.
    *
    * @param options - Store creation options
-   * @returns Promise that resolves to the loaded store or rejects with an error
+   * @returns The loaded store if available, or a Promise that resolves to the loaded store
    *
    * @remarks
    * This method handles the complete lifecycle of loading a store:
-   * - Creates the store promise via createStorePromise
+   * - Returns the store directly if already loaded (synchronous)
+   * - Returns a Promise if loading is in progress or needs to be initiated
    * - Transitions through loading → success/error states
-   * - Invokes onSettle callback for GC scheduling when needed
+   * - Schedules disposal when loading completes without active subscribers
    */
   getOrLoad = (options: CachedStoreOptions<TSchema>): Store<TSchema> | Promise<Store<TSchema>> => {
-    if (options.gcTime !== undefined) this.#gcTime = Math.max(this.#gcTime ?? 0, options.gcTime)
+    if (options.unusedCacheTime !== undefined)
+      this.#unusedCacheTime = Math.max(this.#unusedCacheTime ?? 0, options.unusedCacheTime)
 
     if (this.#state.status === 'success') return this.#state.store
     if (this.#state.status === 'loading') return this.#state.promise
     if (this.#state.status === 'error') throw this.#state.error
 
-    const promise = createStorePromise(options)
+    // Wait for shutdown to complete, then recursively call to load a fresh store
+    if (this.#state.status === 'shutting_down') {
+      return this.#state.shutdownPromise.then(() => this.getOrLoad(options))
+    }
+
+    const abortController = new AbortController()
+
+    const promise = createStorePromise({ ...options, signal: abortController.signal })
       .then((store) => {
         this.#setStore(store)
         return store
@@ -153,19 +187,30 @@ class StoreEntry<TSchema extends LiveStoreSchema = LiveStoreSchema> {
         throw error
       })
       .finally(() => {
-        // The store entry may have become inactive (no subscribers) while loading the store
-        if (this.#subscribers.size === 0) this.#scheduleGC()
+        // The store entry may have become unused (no subscribers) while loading the store
+        if (this.#subscribers.size === 0) this.#scheduleDisposal()
       })
 
-    this.#setPromise(promise)
+    this.#setLoading(promise, abortController)
 
     return promise
+  }
+
+  /**
+   * Aborts an in-progress store load.
+   *
+   * This signals the createStorePromise to cancel, releasing resources like
+   * worker threads, SQLite connections, and network requests.
+   */
+  #abortLoading = (): void => {
+    if (this.#state.status !== 'loading') return
+    this.#state.abortController.abort()
   }
 
   #shutdown = async (): Promise<void> => {
     if (this.#state.status !== 'success') return
     await this.#state.store.shutdownPromise().catch((reason) => {
-      console.warn(`Store ${this.#storeId} failed to shutdown cleanly during GC:`, reason)
+      console.warn(`Store ${this.#storeId} failed to shutdown cleanly during disposal:`, reason)
     })
   }
 }
@@ -174,7 +219,7 @@ class StoreEntry<TSchema extends LiveStoreSchema = LiveStoreSchema> {
  * In-memory map of {@link StoreEntry} instances keyed by {@link StoreId}.
  *
  * @privateRemarks
- * The cache is intentionally small; eviction and GC timers are coordinated by the client.
+ * The cache is intentionally small; eviction and disposal timers are coordinated by the client.
  *
  * @internal
  */
@@ -213,22 +258,22 @@ type DefaultStoreOptions = Partial<
   >
 > & {
   /**
-   * The time in milliseconds that inactive stores remain in memory.
-   * When a store becomes inactive, it will be garbage collected
+   * The time in milliseconds that unused stores remain in memory.
+   * When a store becomes unused (no subscribers), it will be disposed
    * after this duration.
    *
-   * Stores transition to the inactive state as soon as they have no
+   * Stores transition to the unused state as soon as they have no
    * subscriptions registered, so when all components which use that
    * store have unmounted.
    *
    * @remarks
-   * - If set to `infinity`, will disable garbage collection
+   * - If set to `Infinity`, will disable disposal
    * - The maximum allowed time is about {@link https://developer.mozilla.org/en-US/docs/Web/API/Window/setTimeout#maximum_delay_value | 24 days}
    *
    * @defaultValue `60_000` (60 seconds) or `Infinity` during SSR to avoid
    * disposing stores before server render completes.
    */
-  gcTime?: number
+  unusedCacheTime?: number
 }
 
 type StoreRegistryConfig = {
@@ -236,7 +281,7 @@ type StoreRegistryConfig = {
 }
 
 /**
- * Store Registry coordinating cache, GC, and Suspense reads.
+ * Store Registry coordinating store loading, caching, and subscription
  *
  * @public
  */
@@ -259,14 +304,13 @@ export class StoreRegistry {
    * Get or load a store, returning it directly if loaded or a promise if loading.
    *
    * @typeParam TSchema - The schema of the store to load
-   * @returns The loaded store if available, or a Promise that resolves to the store if loading
+   * @returns The loaded store if available, or a Promise that resolves to the loaded store
    * @throws unknown loading error
    *
    * @remarks
-   * - Designed to work with React.use() for Suspense integration.
-   * - When the store is already loaded, returns the store instance directly (not wrapped in a Promise)
-   * - When loading, returns a stable Promise reference that can be used with React.use()
-   * - This prevents re-suspension on subsequent renders when the store is already loaded
+   * - Returns the store instance directly (synchronous) when already loaded
+   * - Returns a stable Promise reference when loading is in progress or needs to be initiated
+   * - Applies default options from registry config, with call-site options taking precedence
    */
   getOrLoad = <TSchema extends LiveStoreSchema>(
     options: CachedStoreOptions<TSchema>,
@@ -285,7 +329,7 @@ export class StoreRegistry {
    *
    * @remarks
    * - We don't return the store or throw as this is a fire-and-forget operation.
-   * - If the entry remains unused after preload resolves/rejects, it is scheduled for GC.
+   * - If the entry remains unused after preload resolves/rejects, it is scheduled for disposal.
    */
   preload = async <TSchema extends LiveStoreSchema>(options: CachedStoreOptions<TSchema>): Promise<void> => {
     try {

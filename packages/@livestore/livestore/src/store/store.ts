@@ -15,7 +15,7 @@ import {
   prepareBindValues,
   QueryBuilderAstSymbol,
   replaceSessionIdSymbol,
-  UnexpectedError,
+  UnknownError,
 } from '@livestore/common'
 import type { StreamEventsOptions } from '@livestore/common/leader-thread'
 import type { LiveStoreSchema } from '@livestore/common/schema'
@@ -75,12 +75,62 @@ export const DEFAULT_PARAMS = {
   leaderPushBatchSize: 100,
   eventQueryBatchSize: 1000,
 }
+
 //
+/**
+ * Central interface to a LiveStore database providing reactive queries, event commits, and sync.
+ *
+ * A `Store` instance wraps a local SQLite database that is kept in sync with other clients via
+ * an event log. Instead of mutating state directly, you commit events that get materialized
+ * into database rows. Queries automatically re-run when their underlying tables change.
+ *
+ * ## Creating a Store
+ *
+ * Use `createStore` (Effect-based) or `createStorePromise` to obtain a Store instance.
+ * In React applications, use the `<LiveStoreProvider>` component which manages the Store lifecycle
+ * and exposes it via React context.
+ *
+ * ## Querying Data
+ *
+ * Use {@link Store.query} for one-shot reads or {@link Store.subscribe} for reactive subscriptions.
+ * Both accept query builders (e.g. `tables.todo.where({ complete: true })`) or custom `LiveQueryDef`s.
+ *
+ * ## Committing Events
+ *
+ * Use {@link Store.commit} to persist events. Events are immediately materialized locally and
+ * asynchronously synced to other clients. Multiple events can be committed atomically.
+ *
+ * ## Lifecycle
+ *
+ * The Store must be shut down when no longer needed via {@link Store.shutdown} or
+ * {@link Store.shutdownPromise}. Framework integrations (React, Effect) handle this automatically.
+ *
+ * @typeParam TSchema - The LiveStore schema defining tables and events
+ * @typeParam TContext - Optional user-defined context attached to the Store (e.g. for dependency injection)
+ *
+ * @example
+ * ```ts
+ * // Query data
+ * const todos = store.query(tables.todo.where({ complete: false }))
+ *
+ * // Subscribe to changes
+ * const unsubscribe = store.subscribe(tables.todo.all(), (todos) => {
+ *   console.log('Todos updated:', todos)
+ * })
+ *
+ * // Commit an event
+ * store.commit(events.todoCreated({ id: nanoid(), text: 'Buy milk' }))
+ * ```
+ */
 export class Store<TSchema extends LiveStoreSchema = LiveStoreSchema.Any, TContext = {}> extends Inspectable.Class {
+  /** Unique identifier for this Store instance, stable for its lifetime. */
   readonly storeId: string
-  schema: LiveStoreSchema
-  context: TContext
-  params: StoreOptions<TSchema, TContext>['params']
+
+  /** The LiveStore schema defining tables, events, and materializers. */
+  readonly schema: LiveStoreSchema
+
+  /** User-defined context attached to this Store (e.g. for dependency injection). */
+  readonly context: TContext
   /**
    * Reactive connectivity updates emitted by the backing sync backend.
    *
@@ -98,16 +148,12 @@ export class Store<TSchema extends LiveStoreSchema = LiveStoreSchema.Any, TConte
    * )
    * ```
    */
-  readonly networkStatus: ClientSession['leaderThread']['networkStatus'];
-
-  /** Tracks whether the store has been shut down is kept in internals */
-
-  /** RC-based set to see which queries are currently subscribed to */
+  readonly networkStatus: ClientSession['leaderThread']['networkStatus']
 
   /**
-   * Store internals. Shouldn't be used directly in application code.
+   * Store internals. Not part of the public API — shapes and semantics may change without notice.
    */
-  [StoreInternalsSymbol]: StoreInternals
+  readonly [StoreInternalsSymbol]: StoreInternals
 
   // #region constructor
   constructor({
@@ -198,7 +244,7 @@ export class Store<TSchema extends LiveStoreSchema = LiveStoreSchema.Any, TConte
                   })
                 } catch (cause) {
                   // TOOD refactor with `SqliteError`
-                  throw UnexpectedError.make({
+                  throw UnknownError.make({
                     cause,
                     note: `Error executing materializer for event "${eventEncoded.name}".\nStatement: ${statementSql}\nBind values: ${JSON.stringify(bindValues)}`,
                   })
@@ -323,9 +369,9 @@ export class Store<TSchema extends LiveStoreSchema = LiveStoreSchema.Any, TConte
 
     // Initialize internals bag
     this[StoreInternalsSymbol] = {
-      eventSchema: LiveStoreEvent.makeEventDefSchemaMemo(schema) as Schema.Schema<
-        LiveStoreEvent.AnyDecoded,
-        LiveStoreEvent.AnyEncoded
+      eventSchema: LiveStoreEvent.Client.makeSchemaMemo(schema) as Schema.Schema<
+        LiveStoreEvent.Client.Decoded,
+        LiveStoreEvent.Client.Encoded
       >,
       clientSession,
       sqliteDbWrapper,
@@ -366,7 +412,7 @@ export class Store<TSchema extends LiveStoreSchema = LiveStoreSchema.Any, TConte
 
   private checkShutdown = (operation: string): void => {
     if (this[StoreInternalsSymbol].isShutdown) {
-      throw new UnexpectedError({
+      throw new UnknownError({
         cause: `Store has been shut down (while performing "${operation}").`,
         note: `You cannot perform this operation after the store has been shut down.`,
       })
@@ -428,10 +474,23 @@ export class Store<TSchema extends LiveStoreSchema = LiveStoreSchema.Any, TConte
         const query$ = queryRcRef.value
 
         const label = `subscribe:${options?.label}`
+        let suppressCallback = options?.skipInitialRun === true
         const effect = this[StoreInternalsSymbol].reactivityGraph.makeEffect(
-          (get, _otelContext, debugRefreshReason) => onUpdate(get(query$.results$, otelContext, debugRefreshReason)),
+          (get, _otelContext, debugRefreshReason) => {
+            const result = get(query$.results$, otelContext, debugRefreshReason)
+            if (suppressCallback) {
+              return
+            }
+            onUpdate(result)
+          },
           { label },
         )
+        const runInitialEffect = () => {
+          effect.doEffect(otelContext, {
+            _tag: 'subscribe.initial',
+            label: `subscribe-initial-run:${options?.label}`,
+          })
+        }
 
         if (options?.stackInfo) {
           query$.activeSubscriptions.add(options.stackInfo)
@@ -441,11 +500,15 @@ export class Store<TSchema extends LiveStoreSchema = LiveStoreSchema.Any, TConte
 
         this[StoreInternalsSymbol].activeQueries.add(query$ as LiveQuery<TResult>)
 
-        if (options?.skipInitialRun !== true && !query$.isDestroyed) {
-          effect.doEffect(otelContext, {
-            _tag: 'subscribe.initial',
-            label: `subscribe-initial-run:${options?.label}`,
-          })
+        if (!query$.isDestroyed) {
+          if (suppressCallback) {
+            // We still run once to register dependencies in the reactive graph, but suppress the initial callback so the
+            // caller truly skips the first emission; subsequent runs (after commits) will call the callback.
+            runInitialEffect()
+            suppressCallback = false
+          } else {
+            runInitialEffect()
+          }
         }
 
         const unsubscribe = () => {
@@ -672,19 +735,19 @@ export class Store<TSchema extends LiveStoreSchema = LiveStoreSchema.Any, TConte
    * ```
    */
   commit: {
-    <const TCommitArg extends ReadonlyArray<LiveStoreEvent.PartialForSchema<TSchema>>>(...list: TCommitArg): void
+    <const TCommitArg extends ReadonlyArray<LiveStoreEvent.Input.ForSchema<TSchema>>>(...list: TCommitArg): void
     (
-      txn: <const TCommitArg extends ReadonlyArray<LiveStoreEvent.PartialForSchema<TSchema>>>(
+      txn: <const TCommitArg extends ReadonlyArray<LiveStoreEvent.Input.ForSchema<TSchema>>>(
         ...list: TCommitArg
       ) => void,
     ): void
-    <const TCommitArg extends ReadonlyArray<LiveStoreEvent.PartialForSchema<TSchema>>>(
+    <const TCommitArg extends ReadonlyArray<LiveStoreEvent.Input.ForSchema<TSchema>>>(
       options: StoreCommitOptions,
       ...list: TCommitArg
     ): void
     (
       options: StoreCommitOptions,
-      txn: <const TCommitArg extends ReadonlyArray<LiveStoreEvent.PartialForSchema<TSchema>>>(
+      txn: <const TCommitArg extends ReadonlyArray<LiveStoreEvent.Input.ForSchema<TSchema>>>(
         ...list: TCommitArg
       ) => void,
     ): void
@@ -719,7 +782,7 @@ export class Store<TSchema extends LiveStoreSchema = LiveStoreSchema.Any, TConte
             return runMaterializeEvents()
           }
         },
-        catch: (cause) => UnexpectedError.make({ cause }),
+        catch: (cause) => UnknownError.make({ cause }),
       })
 
       // Materialize events to state
@@ -857,7 +920,7 @@ export class Store<TSchema extends LiveStoreSchema = LiveStoreSchema.Any, TConte
    *
    * This is called automatically when the store was created using the React or Effect API.
    */
-  shutdownPromise = async (cause?: UnexpectedError) => {
+  shutdownPromise = async (cause?: UnknownError) => {
     this.checkShutdown('shutdownPromise')
 
     this[StoreInternalsSymbol].isShutdown = true
@@ -869,7 +932,7 @@ export class Store<TSchema extends LiveStoreSchema = LiveStoreSchema.Any, TConte
    *
    * This is called automatically when the store was created using the React or Effect API.
    */
-  shutdown = (cause?: Cause.Cause<UnexpectedError | MaterializeError>): Effect.Effect<void> => {
+  shutdown = (cause?: Cause.Cause<UnknownError | MaterializeError>): Effect.Effect<void> => {
     this[StoreInternalsSymbol].isShutdown = true
     return this[StoreInternalsSymbol].clientSession.shutdown(
       cause ? Exit.failCause(cause) : Exit.succeed(IntentionalShutdownCause.make({ reason: 'manual' })),
@@ -968,10 +1031,10 @@ export class Store<TSchema extends LiveStoreSchema = LiveStoreSchema.Any, TConte
     firstEventOrTxnFnOrOptions: any,
     restEvents: any[],
   ): {
-    events: LiveStoreEvent.PartialForSchema<TSchema>[]
+    events: LiveStoreEvent.Input.ForSchema<TSchema>[]
     options: StoreCommitOptions | undefined
   } => {
-    let events: LiveStoreEvent.PartialForSchema<TSchema>[]
+    let events: LiveStoreEvent.Input.ForSchema<TSchema>[]
     let options: StoreCommitOptions | undefined
 
     if (typeof firstEventOrTxnFnOrOptions === 'function') {

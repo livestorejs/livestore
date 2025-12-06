@@ -7,6 +7,7 @@ description: How to integrate LiveStore with React.
 
 import ReactContextSnippet from '../../../_assets/code/reference/framework-integrations/react/context-provider.tsx?snippet'
 import ReactProviderSnippet from '../../../_assets/code/reference/framework-integrations/react/provider.tsx?snippet'
+import ReactProviderLoggingSnippet from '../../../_assets/code/reference/framework-integrations/react/provider-logging.tsx?snippet'
 import ReactUseClientDocumentSnippet from '../../../_assets/code/reference/framework-integrations/react/use-client-document.tsx?snippet'
 import ReactUseQuerySnippet from '../../../_assets/code/reference/framework-integrations/react/use-query.tsx?snippet'
 import ReactUseStoreSnippet from '../../../_assets/code/reference/framework-integrations/react/use-store.tsx?snippet'
@@ -15,6 +16,7 @@ import MultiStoreRegistrySnippet from '../../../_assets/code/reference/framework
 import MultiStoreUseStoreSnippet from '../../../_assets/code/reference/framework-integrations/react/multi-store/IssueView.tsx?snippet'
 import MultiStorePreloadSnippet from '../../../_assets/code/reference/framework-integrations/react/multi-store/PreloadedIssue.tsx?snippet'
 import MultiStoreInstanceSnippet from '../../../_assets/code/reference/framework-integrations/react/multi-store/IssueList.tsx?snippet'
+import MultiStoreMinimalSnippet from '../../../_assets/code/reference/framework-integrations/react/multi-store/minimal.tsx?snippet'
 import { getBranchName } from "../../../../data/data.ts";
 
 While LiveStore is framework agnostic, the `@livestore/react` package provides a first-class integration with React.
@@ -39,21 +41,7 @@ In order to use LiveStore with React, you need to wrap your application in a `Li
 
 `LiveStoreProvider` accepts optional logging configuration:
 
-```tsx
-import { Logger, LogLevel } from '@livestore/utils/effect'
-
-<LiveStoreProvider
-  schema={schema}
-  adapter={adapter}
-  batchUpdates={batchUpdates}
-  // Optional: swap the logger implementation
-  logger={Logger.prettyWithThread('app')}
-  // Optional: set minimum log level (use LogLevel.None to disable)
-  logLevel={LogLevel.Info}
->
-  <App />
-</LiveStoreProvider>
-```
+<ReactProviderLoggingSnippet />
 
 For scenarios where you have an existing store instance, you can manually create a `LiveStoreContext.Provider`:
 
@@ -96,6 +84,8 @@ The multi-store API enables managing multiple stores within a single React appli
 - **Partial data synchronization** - Load only the data you need, when you need it
 - **Multi-tenant applications** - Separate stores for each workspace, organization, or project (like Slack workspaces, Notion pages, or Linear teams)
 
+<MultiStoreMinimalSnippet />
+
 :::caution[Experimental API]
 The Multi-Store API is still early in its development.
 
@@ -110,7 +100,7 @@ The multi-store API introduces four main primitives:
 - **useStore()** - Suspense-enabled hook for accessing individual store instances
 - **storeOptions()** - Type-safe way to define reusable store configurations
 
-Stores are cached by their `storeId` and automatically disposed after being inactive for a configurable duration.
+Stores are cached by their `storeId` and automatically disposed after being unused for a configurable duration (`unusedCacheTime`)
 
 ### Setting Up
 
@@ -164,7 +154,7 @@ Options:
 - `storeId` - Unique identifier for this store instance (required)
 - `schema` - The LiveStore schema (required)
 - `adapter` - The platform adapter (required)
-- `gcTime` - Time in milliseconds to keep inactive stores in memory (default: 60_000 in browser, infinity in non-browser)
+- `unusedCacheTime` - Time in milliseconds to keep unused stores in memory (default: 60_000 in browser, infinity in non-browser)
 - `boot` - Function called when the store is first loaded
 - `batchUpdates` - Function for batching React updates
 - And other `CreateStoreOptions`

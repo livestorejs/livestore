@@ -1,4 +1,4 @@
-import { UnexpectedError } from '@livestore/common'
+import { UnknownError } from '@livestore/common'
 import type { LiveStoreEvent } from '@livestore/common/schema'
 import type { CfTypes } from '@livestore/common-cf'
 import { Chunk, Effect, Option, Schema, Stream } from '@livestore/utils/effect'
@@ -12,17 +12,17 @@ export type SyncStorage = {
     {
       total: number
       stream: Stream.Stream<
-        { eventEncoded: LiveStoreEvent.AnyEncodedGlobal; metadata: Option.Option<SyncMetadata> },
-        UnexpectedError
+        { eventEncoded: LiveStoreEvent.Global.Encoded; metadata: Option.Option<SyncMetadata> },
+        UnknownError
       >
     },
-    UnexpectedError
+    UnknownError
   >
   appendEvents: (
-    batch: ReadonlyArray<LiveStoreEvent.AnyEncodedGlobal>,
+    batch: ReadonlyArray<LiveStoreEvent.Global.Encoded>,
     createdAt: string,
-  ) => Effect.Effect<void, UnexpectedError>
-  resetStore: Effect.Effect<void, UnexpectedError>
+  ) => Effect.Effect<void, UnknownError>
+  resetStore: Effect.Effect<void, UnknownError>
 }
 
 export const makeStorage = (
@@ -35,7 +35,7 @@ export const makeStorage = (
   const execDb = <T>(cb: (db: CfTypes.D1Database) => Promise<CfTypes.D1Result<T>>) =>
     Effect.tryPromise({
       try: () => cb(engine._tag === 'd1' ? engine.db : (undefined as never)),
-      catch: (error) => new UnexpectedError({ cause: error, payload: { dbName } }),
+      catch: (error) => new UnknownError({ cause: error, payload: { dbName } }),
     }).pipe(
       Effect.map((_) => _.results),
       Effect.withSpan('@livestore/sync-cf:durable-object:execDb'),
@@ -76,11 +76,11 @@ export const makeStorage = (
     {
       total: number
       stream: Stream.Stream<
-        { eventEncoded: LiveStoreEvent.AnyEncodedGlobal; metadata: Option.Option<SyncMetadata> },
-        UnexpectedError
+        { eventEncoded: LiveStoreEvent.Global.Encoded; metadata: Option.Option<SyncMetadata> },
+        UnknownError
       >
     },
-    UnexpectedError
+    UnknownError
   > =>
     Effect.gen(function* () {
       const countStatement =
@@ -96,13 +96,13 @@ export const makeStorage = (
       const total = Number(countRows[0]?.total ?? 0)
 
       type State = { cursor: number | undefined; limit: number }
-      type EmittedEvent = { eventEncoded: LiveStoreEvent.AnyEncodedGlobal; metadata: Option.Option<SyncMetadata> }
+      type EmittedEvent = { eventEncoded: LiveStoreEvent.Global.Encoded; metadata: Option.Option<SyncMetadata> }
 
       const initialState: State = { cursor, limit: D1_INITIAL_PAGE_SIZE }
 
       const fetchPage = (
         state: State,
-      ): Effect.Effect<Option.Option<readonly [Chunk.Chunk<EmittedEvent>, State]>, UnexpectedError> =>
+      ): Effect.Effect<Option.Option<readonly [Chunk.Chunk<EmittedEvent>, State]>, UnknownError> =>
         Effect.gen(function* () {
           const statement =
             state.cursor === undefined
@@ -147,7 +147,7 @@ export const makeStorage = (
 
       return { total, stream }
     }).pipe(
-      UnexpectedError.mapToUnexpectedError,
+      UnknownError.mapToUnknownError,
       Effect.withSpan('@livestore/sync-cf:durable-object:getEvents', {
         attributes: { dbName, cursor, engine: engine._tag },
       }),
@@ -188,14 +188,14 @@ export const makeStorage = (
         )
       }
     }).pipe(
-      UnexpectedError.mapToUnexpectedError,
+      UnknownError.mapToUnknownError,
       Effect.withSpan('@livestore/sync-cf:durable-object:appendEvents', {
         attributes: { dbName, batchLength: batch.length, engine: engine._tag },
       }),
     )
 
   const resetStore = Effect.promise(() => ctx.storage.deleteAll()).pipe(
-    UnexpectedError.mapToUnexpectedError,
+    UnknownError.mapToUnknownError,
     Effect.withSpan('@livestore/sync-cf:durable-object:resetStore'),
   )
 
@@ -206,11 +206,11 @@ export const makeStorage = (
     {
       total: number
       stream: Stream.Stream<
-        { eventEncoded: LiveStoreEvent.AnyEncodedGlobal; metadata: Option.Option<SyncMetadata> },
-        UnexpectedError
+        { eventEncoded: LiveStoreEvent.Global.Encoded; metadata: Option.Option<SyncMetadata> },
+        UnknownError
       >
     },
-    UnexpectedError
+    UnknownError
   > =>
     Effect.gen(function* () {
       const selectCountSql =
@@ -228,18 +228,18 @@ export const makeStorage = (
           }
           return computed
         },
-        catch: (error) => new UnexpectedError({ cause: error, payload: { dbName, stage: 'count' } }),
+        catch: (error) => new UnknownError({ cause: error, payload: { dbName, stage: 'count' } }),
       })
 
       type State = { cursor: number | undefined }
-      type EmittedEvent = { eventEncoded: LiveStoreEvent.AnyEncodedGlobal; metadata: Option.Option<SyncMetadata> }
+      type EmittedEvent = { eventEncoded: LiveStoreEvent.Global.Encoded; metadata: Option.Option<SyncMetadata> }
 
       const DO_PAGE_SIZE = 256
       const initialState: State = { cursor }
 
       const fetchPage = (
         state: State,
-      ): Effect.Effect<Option.Option<readonly [Chunk.Chunk<EmittedEvent>, State]>, UnexpectedError> =>
+      ): Effect.Effect<Option.Option<readonly [Chunk.Chunk<EmittedEvent>, State]>, UnknownError> =>
         Effect.try({
           try: () => {
             const sql =
@@ -270,14 +270,14 @@ export const makeStorage = (
 
             return Option.some([eventsChunk, nextState] as const)
           },
-          catch: (error) => new UnexpectedError({ cause: error, payload: { dbName, stage: 'select' } }),
+          catch: (error) => new UnknownError({ cause: error, payload: { dbName, stage: 'select' } }),
         })
 
       const stream = Stream.unfoldChunkEffect(initialState, fetchPage)
 
       return { total, stream }
     }).pipe(
-      UnexpectedError.mapToUnexpectedError,
+      UnknownError.mapToUnknownError,
       Effect.withSpan('@livestore/sync-cf:durable-object:getEvents', {
         attributes: { dbName, cursor, engine: engine._tag },
       }),
@@ -305,12 +305,12 @@ export const makeStorage = (
           ctx.storage.sql.exec(sql, ...params)
         }
       },
-      catch: (error) => new UnexpectedError({ cause: error, payload: { dbName, stage: 'insert' } }),
+      catch: (error) => new UnknownError({ cause: error, payload: { dbName, stage: 'insert' } }),
     }).pipe(
       Effect.withSpan('@livestore/sync-cf:durable-object:appendEvents', {
         attributes: { dbName, batchLength: batch.length, engine: engine._tag },
       }),
-      UnexpectedError.mapToUnexpectedError,
+      UnknownError.mapToUnknownError,
     )
 
   if (engine._tag === 'd1') {

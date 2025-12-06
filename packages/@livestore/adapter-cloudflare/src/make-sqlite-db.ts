@@ -149,7 +149,7 @@ export const makeSqliteDb_ = <
     metadata,
     debug: {
       // Setting initially to root but will be set to correct value shortly after
-      head: EventSequenceNumber.ROOT,
+      head: EventSequenceNumber.Client.ROOT,
     },
     prepare: (queryStr) => {
       try {
@@ -193,10 +193,6 @@ export const makeSqliteDb_ = <
         code: -1,
         cause: 'Database destroy not supported with public SqlStorage API',
       })
-
-      // if (metadata._tag === 'opfs') {
-      //   metadata.vfs.resetAccessHandle(metadata.fileName)
-      // }
     },
     close: () => {
       if (isClosed) {

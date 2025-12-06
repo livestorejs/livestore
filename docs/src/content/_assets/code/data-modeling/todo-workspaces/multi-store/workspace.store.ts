@@ -17,5 +17,5 @@ export const workspaceStoreOptions = (workspaceId: string) =>
     storeId: `workspace-${workspaceId}`,
     schema,
     adapter,
-    gcTime: 60_000, // Keep in memory for 60 seconds after last use
+    unusedCacheTime: 60_000, // Keep in memory for 60 seconds after last use
   })

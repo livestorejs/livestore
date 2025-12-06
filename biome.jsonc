@@ -1,5 +1,5 @@
 {
-  "$schema": "https://biomejs.dev/schemas/2.2.7/schema.json",
+  "$schema": "https://biomejs.dev/schemas/2.3.8/schema.json",
   // WORKAROUND: Biome 2.1.x nested root configuration issue
   // Prevents "Found a nested root configuration" errors in parent repo
   // Related issues:
@@ -19,29 +19,28 @@
       "examples/**",
       "!**/routeTree.gen.ts",
       "docs/**",
-      "!docs/**/.astro",
+      "!docs/**/.astro", // TODO re-enable once Biome supports Astro files
+      "!**/*.svelte", // TODO re-enable once Biome supports Svelte files
       "tests/**",
       "scripts/**",
       "contributor-docs/**",
-      "*.{json,jsonc,js,ts,md}"
+      "*.{json,jsonc,js,ts,md}",
+      "!!**/node_modules/**",
+      "!!**/dist/**",
+      "!!**/.wrangler/**",
+      "!!**/.vercel/**",
+      "!!**/.netlify/**",
+      "!!**/.astro/**",
+      "!!**/.nitro/**",
+      "!!**/.tanstack/**",
+      "!!**/.direnv/**",
+      "!!**/playwright-report/**",
+      "!!**/test-results/**",
+      "!!**/nix/**",
+      "!!**/wip/**",
+      "!!**/patches/**"
     ],
-    "ignoreUnknown": true,
-    "experimentalScannerIgnores": [
-      "node_modules",
-      "dist",
-      ".wrangler",
-      ".vercel",
-      ".netlify",
-      ".astro",
-      ".nitro",
-      ".tanstack",
-      ".direnv",
-      "playwright-report",
-      "test-results",
-      "nix",
-      "wip",
-      "patches"
-    ]
+    "ignoreUnknown": true
   },
   "formatter": {
     "enabled": true,
@@ -96,6 +95,11 @@
     "formatter": {
       "quoteStyle": "single",
       "semicolons": "asNeeded"
+    }
+  },
+  "css": {
+    "parser": {
+      "tailwindDirectives": true
     }
   },
   "json": {

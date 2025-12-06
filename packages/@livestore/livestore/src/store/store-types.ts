@@ -10,7 +10,7 @@ import {
   type QueryBuilder,
   type StoreInterrupted,
   type SyncError,
-  type UnexpectedError,
+  type UnknownError,
 } from '@livestore/common'
 import type { StreamEventsOptions } from '@livestore/common/leader-thread'
 import type { LiveStoreEvent, LiveStoreSchema } from '@livestore/common/schema'
@@ -31,11 +31,19 @@ import type { ReferenceCountedSet } from '../utils/data-structures.ts'
 import type { StackInfo } from '../utils/stack-info.ts'
 import type { Store } from './store.ts'
 
+/**
+ * Union type representing the possible states of a LiveStore context.
+ *
+ * Used by framework integrations (React, Solid, etc.) to track Store lifecycle:
+ * - `running`: Store is active and ready for queries/commits
+ * - `error`: Store failed during boot or operation
+ * - `shutdown`: Store was intentionally shut down or interrupted
+ */
 export type LiveStoreContext =
   | LiveStoreContextRunning
   | {
       stage: 'error'
-      error: UnexpectedError | unknown
+      error: UnknownError | unknown
     }
   | {
       stage: 'shutdown'
@@ -44,13 +52,19 @@ export type LiveStoreContext =
 
 export type ShutdownDeferred = Deferred.Deferred<
   IntentionalShutdownCause,
-  UnexpectedError | SyncError | StoreInterrupted | MaterializeError | InvalidPullError | IsOfflineError
+  UnknownError | SyncError | StoreInterrupted | MaterializeError | InvalidPullError | IsOfflineError
 >
 export const makeShutdownDeferred: Effect.Effect<ShutdownDeferred> = Deferred.make<
   IntentionalShutdownCause,
-  UnexpectedError | SyncError | StoreInterrupted | MaterializeError | InvalidPullError | IsOfflineError
+  UnknownError | SyncError | StoreInterrupted | MaterializeError | InvalidPullError | IsOfflineError
 >()
 
+/**
+ * Context state when the Store is active and ready for use.
+ *
+ * This is the normal operating state where you can query data, commit events,
+ * and subscribe to changes.
+ */
 export type LiveStoreContextRunning = {
   stage: 'running'
   store: Store
@@ -78,7 +92,7 @@ export type StoreInternals = {
    * Exposed primarily for Devtools (e.g. databrowser) to validate ad‑hoc
    * event payloads. Application code should not depend on it directly.
    */
-  readonly eventSchema: Schema.Schema<LiveStoreEvent.AnyDecoded, LiveStoreEvent.AnyEncoded>
+  readonly eventSchema: Schema.Schema<LiveStoreEvent.Client.Decoded, LiveStoreEvent.Client.Encoded>
 
   /**
    * The active client session backing this Store. Provides access to the
@@ -147,7 +161,7 @@ export type StoreInternals = {
    * once per Store instance. Scoped; installs finalizers to end spans and
    * detach reactive refs.
    */
-  readonly boot: Effect.Effect<void, UnexpectedError, Scope.Scope>
+  readonly boot: Effect.Effect<void, UnknownError, Scope.Scope>
 
   /**
    * Tracks whether the Store has been shut down. When true, mutating APIs
@@ -178,12 +192,18 @@ export type StoreOptions<TSchema extends LiveStoreSchema = LiveStoreSchema.Any, 
   __runningInDevtools: boolean
 }
 
+/**
+ * Tagged union describing why a reactive refresh occurred.
+ *
+ * Used internally for debugging and devtools to trace the cause of query re-evaluations.
+ * Each variant includes context about what triggered the refresh.
+ */
 export type RefreshReason =
   | DebugRefreshReasonBase
   | {
       _tag: 'commit'
       /** The events that were applied */
-      events: ReadonlyArray<LiveStoreEvent.AnyDecoded | LiveStoreEvent.PartialAnyDecoded>
+      events: ReadonlyArray<LiveStoreEvent.Client.Decoded | LiveStoreEvent.Input.Decoded>
 
       /** The tables that were written to by the event */
       writeTables: ReadonlyArray<string>
@@ -199,10 +219,19 @@ export type RefreshReason =
   | { _tag: 'subscribe.update'; label?: string }
   | { _tag: 'manual'; label?: string }
 
+/**
+ * Debug information captured for each query execution.
+ *
+ * Used by devtools and performance monitoring to track query behavior.
+ */
 export type QueryDebugInfo = {
+  /** Query type discriminator ('db', 'computed', etc.) */
   _tag: string
+  /** Human-readable query label */
   label: string
+  /** SQL query string or computed function representation */
   query: string
+  /** Execution time in milliseconds */
   durationMs: number
 }
 
@@ -228,14 +257,37 @@ export type StoreEventsOptions<TSchema extends LiveStoreSchema> = Omit<StreamEve
   filter?: ReadonlyArray<keyof TSchema['_EventDefMapType']>
 }
 
+/**
+ * Function returned by `store.subscribe()` to stop receiving updates.
+ *
+ * Call this to unsubscribe from a query and release the associated resources.
+ *
+ * @example
+ * ```ts
+ * const unsubscribe = store.subscribe(todos$, (todos) => console.log(todos))
+ * // Later...
+ * unsubscribe()
+ * ```
+ */
 export type Unsubscribe = () => void
 
+/**
+ * Options for `store.subscribe()`.
+ *
+ * @typeParam TResult - The result type of the subscribed query
+ */
 export type SubscribeOptions<TResult> = {
+  /** Callback invoked when the subscription is established (receives the live query instance) */
   onSubscribe?: (query$: LiveQuery<TResult>) => void
+  /** Callback invoked when the subscription is terminated */
   onUnsubsubscribe?: () => void
+  /** Label for debugging and devtools */
   label?: string
+  /** If true, skips invoking the callback for the initial value */
   skipInitialRun?: boolean
+  /** OpenTelemetry context for tracing */
   otelContext?: otel.Context
+  /** Stack trace info for debugging subscription origins */
   stackInfo?: StackInfo
 }
 
@@ -264,7 +316,22 @@ export namespace Queryable {
   export type Result<TQueryable extends Queryable<any>> = TQueryable extends Queryable<infer TResult> ? TResult : never
 }
 
-const isLiveQueryDef = (value: unknown): value is LiveQueryDef<any> | SignalDef<any> => {
+/**
+ * Type guard that checks if a value is a query or signal definition.
+ *
+ * Use this to distinguish between definitions (blueprints) and instances (live queries).
+ * Definitions are created by `queryDb()`, `computed()`, and `signal()`.
+ *
+ * @example
+ * ```ts
+ * const todos$ = queryDb(tables.todos.all())
+ *
+ * if (isLiveQueryDef(todos$)) {
+ *   console.log('This is a definition:', todos$.label)
+ * }
+ * ```
+ */
+export const isLiveQueryDef = (value: unknown): value is LiveQueryDef<any> | SignalDef<any> => {
   if (typeof value !== 'object' || value === null) {
     return false
   }
@@ -292,7 +359,41 @@ const isLiveQueryDef = (value: unknown): value is LiveQueryDef<any> | SignalDef<
   return true
 }
 
-const isLiveQueryInstance = (value: unknown): value is LiveQuery<any> => Predicate.hasProperty(value, TypeId)
+/**
+ * Type guard that checks if a value is a live query instance.
+ *
+ * Live query instances are stateful objects bound to a Store's reactivity graph.
+ * They're created internally when you use a definition with `store.query()` or `store.subscribe()`.
+ *
+ * @example
+ * ```ts
+ * const [, , , query$] = useClientDocument(tables.uiState)
+ *
+ * if (isLiveQueryInstance(query$)) {
+ *   console.log('Execution count:', query$.runs)
+ * }
+ * ```
+ */
+export const isLiveQueryInstance = (value: unknown): value is LiveQuery<any> => Predicate.hasProperty(value, TypeId)
 
+/**
+ * Type guard that checks if a value can be used with `store.query()` or `store.subscribe()`.
+ *
+ * Queryable values include:
+ * - Query definitions (`LiveQueryDef` from `queryDb()`, `computed()`)
+ * - Signal definitions (`SignalDef` from `signal()`)
+ * - Live query instances (`LiveQuery`)
+ * - Query builders (e.g., `tables.todos.where(...)`)
+ *
+ * @example
+ * ```ts
+ * const handleQuery = (input: unknown) => {
+ *   if (isQueryable(input)) {
+ *     return store.query(input)
+ *   }
+ *   throw new Error('Not a valid query')
+ * }
+ * ```
+ */
 export const isQueryable = (value: unknown): value is Queryable<unknown> =>
   isQueryBuilder(value) || isLiveQueryInstance(value) || isLiveQueryDef(value)

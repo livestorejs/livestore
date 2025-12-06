@@ -1,4 +1,4 @@
-import { type MockSyncBackend, makeMockSyncBackend, UnexpectedError } from '@livestore/common'
+import { type MockSyncBackend, makeMockSyncBackend, UnknownError } from '@livestore/common'
 import { Effect, Layer, Ref } from '@livestore/utils/effect'
 import { SyncProviderImpl, type SyncProviderLayer } from '../types.ts'
 
@@ -48,4 +48,4 @@ export const layer: SyncProviderLayer = Layer.scoped(
       providerSpecific: {},
     }
   }),
-).pipe(UnexpectedError.mapToUnexpectedErrorLayer)
+).pipe(UnknownError.mapToUnknownErrorLayer)

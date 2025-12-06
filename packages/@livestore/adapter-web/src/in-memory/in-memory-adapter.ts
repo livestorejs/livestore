@@ -6,7 +6,7 @@ import {
   makeClientSession,
   migrateDb,
   type SyncOptions,
-  UnexpectedError,
+  UnknownError,
 } from '@livestore/common'
 import type { DevtoolsOptions, LeaderSqliteDb } from '@livestore/common/leader-thread'
 import {
@@ -24,16 +24,8 @@ import type { MakeWebSqliteDb } from '@livestore/sqlite-wasm/browser'
 import { sqliteDbFactory } from '@livestore/sqlite-wasm/browser'
 import { tryAsFunctionAndNew } from '@livestore/utils'
 import type { Scope } from '@livestore/utils/effect'
-import {
-  BrowserWorker,
-  Effect,
-  FetchHttpClient,
-  Fiber,
-  Layer,
-  type Schema,
-  SubscriptionRef,
-  Worker,
-} from '@livestore/utils/effect'
+import { Effect, FetchHttpClient, Fiber, Layer, type Schema, SubscriptionRef, Worker } from '@livestore/utils/effect'
+import { BrowserWorker } from '@livestore/utils/effect/browser'
 import { nanoid } from '@livestore/utils/nanoid'
 import * as Webmesh from '@livestore/webmesh'
 
@@ -68,14 +60,48 @@ export interface InMemoryAdapterOptions {
 }
 
 /**
- * Create a web-only in-memory LiveStore adapter.
+ * Creates a web-only in-memory LiveStore adapter.
  *
- * - Runs entirely in memory: fast, zero I/O, great for tests, sandboxes, or ephemeral sessions.
- * - Works across browser execution contexts: Window, WebWorker, SharedWorker, and ServiceWorker.
- * - DevTools: to inspect this adapter from the browser DevTools, provide a `sharedWorker` in `options.devtools`.
- *   (The shared worker is used to bridge the DevTools UI to the running session.)
- * - No persistence support: nothing is written to OPFS/IndexedDB/localStorage. `importSnapshot`
- *   can bootstrap initial state only; subsequent changes are not persisted anywhere.
+ * This adapter runs entirely in memory with no persistence. Ideal for:
+ * - Unit tests and integration tests
+ * - Sandboxes and demos
+ * - Ephemeral sessions where persistence isn't needed
+ *
+ * **Characteristics:**
+ * - Fast, zero I/O overhead
+ * - Works in all browser contexts: Window, WebWorker, SharedWorker, ServiceWorker
+ * - Supports optional sync backends for real-time collaboration
+ * - No data persists after page reload
+ *
+ * For persistent storage, use `makePersistedAdapter` instead.
+ *
+ * @example
+ * ```ts
+ * import { makeInMemoryAdapter } from '@livestore/adapter-web'
+ *
+ * const adapter = makeInMemoryAdapter()
+ * ```
+ *
+ * @example
+ * ```ts
+ * // With sync backend for real-time collaboration
+ * import { makeInMemoryAdapter } from '@livestore/adapter-web'
+ * import { makeWsSync } from '@livestore/sync-cf/client'
+ *
+ * const adapter = makeInMemoryAdapter({
+ *   sync: {
+ *     backend: makeWsSync({ url: 'wss://api.example.com/sync' }),
+ *   },
+ * })
+ * ```
+ *
+ * @example
+ * ```ts
+ * // Pre-populate with existing data
+ * const adapter = makeInMemoryAdapter({
+ *   importSnapshot: existingDbSnapshot,
+ * })
+ * ```
  */
 export const makeInMemoryAdapter =
   (options: InMemoryAdapterOptions = {}): Adapter =>
@@ -102,7 +128,7 @@ export const makeInMemoryAdapter =
           }).pipe(
             Effect.provide(BrowserWorker.layer(() => sharedWebWorker)),
             Effect.tapCauseLogPretty,
-            UnexpectedError.mapToUnexpectedError,
+            UnknownError.mapToUnknownError,
             Effect.forkScoped,
           )
         : undefined
@@ -157,7 +183,7 @@ export const makeInMemoryAdapter =
       })
 
       return clientSession
-    }).pipe(UnexpectedError.mapToUnexpectedError, Effect.provide(FetchHttpClient.layer))
+    }).pipe(UnknownError.mapToUnknownError, Effect.provide(FetchHttpClient.layer))
 
 export interface MakeLeaderThreadArgs {
   schema: LiveStoreSchema
@@ -242,7 +268,7 @@ const makeLeaderThread = ({
           pull: ({ cursor }) => syncProcessor.pull({ cursor }),
           push: (batch) =>
             syncProcessor.push(
-              batch.map((item) => new LiveStoreEvent.EncodedWithMeta(item)),
+              batch.map((item) => new LiveStoreEvent.Client.EncodedWithMeta(item)),
               { waitForProcessing: true },
             ),
           stream: (options) =>
@@ -268,7 +294,7 @@ const makeLeaderThread = ({
 
 type SharedWorkerFiber = Fiber.Fiber<
   Worker.SerializedWorkerPool<typeof WebmeshWorker.Schema.Request.Type>,
-  UnexpectedError
+  UnknownError
 >
 
 const makeDevtoolsOptions = ({
@@ -285,7 +311,7 @@ const makeDevtoolsOptions = ({
   dbEventlog: LeaderSqliteDb
   storeId: string
   clientId: string
-}): Effect.Effect<DevtoolsOptions, UnexpectedError, Scope.Scope> =>
+}): Effect.Effect<DevtoolsOptions, UnknownError, Scope.Scope> =>
   Effect.gen(function* () {
     if (devtoolsEnabled === false || sharedWorkerFiber === undefined) {
       return { enabled: false }

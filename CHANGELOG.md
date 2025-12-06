@@ -115,6 +115,56 @@
 
   To use the default DO SQLite, omit the `storage` option or pass `{ _tag: 'do-sqlite' }`.
 
+- **Restructured `LiveStoreEvent` and `EventSequenceNumber` APIs:** Types are now organized into symmetric `Global`, `Client`, and `Input` namespaces that clarify the distinction between sync backend format, client format, and events without sequence numbers (#855):
+
+  | Old Name | New Name |
+  |----------|----------|
+  | `LiveStoreEvent.AnyEncodedGlobal` | `LiveStoreEvent.Global.Encoded` |
+  | `LiveStoreEvent.AnyEncoded` | `LiveStoreEvent.Client.Encoded` |
+  | `LiveStoreEvent.AnyDecoded` | `LiveStoreEvent.Client.Decoded` |
+  | `LiveStoreEvent.PartialAnyEncoded` | `LiveStoreEvent.Input.Encoded` |
+  | `LiveStoreEvent.PartialAnyDecoded` | `LiveStoreEvent.Input.Decoded` |
+  | `LiveStoreEvent.EncodedWithMeta` | `LiveStoreEvent.Client.EncodedWithMeta` |
+  | `EventSequenceNumber.GlobalEventSequenceNumber` | `EventSequenceNumber.Global` |
+  | `EventSequenceNumber.globalEventSequenceNumber` | `EventSequenceNumber.Global.make` |
+  | `EventSequenceNumber.localEventSequenceNumber` | `EventSequenceNumber.Client.make` |
+  | `EventSequenceNumber.clientDefault` | `EventSequenceNumber.Client.DEFAULT` |
+  | `EventSequenceNumber.rebaseGenerationDefault` | `EventSequenceNumber.REBASE_GENERATION_DEFAULT` |
+  | `LiveStoreEvent.EventDefPartialSchema` | `LiveStoreEvent.EventDefInputSchema` |
+  | `LiveStoreEvent.makeEventDefPartialSchema` | `LiveStoreEvent.makeEventDefInputSchema` |
+
+  ```typescript
+  // Before
+  import { LiveStoreEvent, EventSequenceNumber } from '@livestore/livestore'
+  const event: LiveStoreEvent.AnyEncoded = { ... }
+  const globalSeq: EventSequenceNumber.GlobalEventSequenceNumber = 1
+
+  // After
+  import { LiveStoreEvent, EventSequenceNumber } from '@livestore/livestore'
+  const event: LiveStoreEvent.Client.Encoded = { ... }
+  const globalSeq: EventSequenceNumber.Global = 1
+  ```
+
+- **Error class rename:** `UnexpectedError` has been renamed to `UnknownError` for better semantic clarity and consistency with Effect ecosystem naming conventions. The previous name conflicted with Effect's terminology where "unexpected errors" refer to defects, while this error type represents errors of unknown type from external libraries or infrastructure failures (See [PR #823](https://github.com/livestorejs/livestore/pull/823)).
+
+  Update all references:
+  - Class name: `UnexpectedError` → `UnknownError`
+  - Error tag: `'LiveStore.UnexpectedError'` → `'LiveStore.UnknownError'`
+  - Static methods: `mapToUnexpectedError*` → `mapToUnknownError*`
+  - Related type: `MergeResultUnexpectedError` → `MergeResultUnknownError`
+
+  ```typescript
+  // Before
+  import { UnexpectedError } from '@livestore/common'
+
+  effect.pipe(UnexpectedError.mapToUnexpectedError)
+
+  // After
+  import { UnknownError } from '@livestore/common'
+
+  effect.pipe(UnknownError.mapToUnknownError)
+  ```
+
 ### Changes
 
 #### Platform adapters
@@ -211,7 +261,7 @@ See the [S2 sync provider docs](https://dev.docs.livestore.dev/reference/syncing
 - Query builder const assertions improve type inference, and `store.subscribe()` now accepts query builders (#371, thanks @rgbkrk).
 - **Store.subscribe async iteration:** The async iterator overload now exposes a first-class `AsyncIterable` so `for await` loops work without manual casts, and the new exported `Queryable` type documents the accepted inputs (livestorejs/livestore#736).
 - **Queryable type export:** `packages/@livestore/livestore` now re-exports `Queryable<TResult>` so shared utilities and framework adapters can describe the exact shapes accepted by `store.subscribe` and `subscribeStream` (livestorejs/livestore#736).
-- Store operations after shutdown are rejected with a descriptive `UnexpectedError`. Shutdown now returns an Effect (see breaking changes).
+- Store operations after shutdown are rejected with a descriptive `UnknownError`. Shutdown now returns an Effect (see breaking changes).
 - Exact optional property types are enabled, surfacing missing optional handling at compile time (#600).
 - Effect `Equal` and `Hash` implementations for `LiveQueryDef` and `SignalDef` improve comparisons.
 - Sync payload and store ID are exposed to `onPull`/`onPush` handlers (#451).
@@ -230,6 +280,7 @@ See the [S2 sync provider docs](https://dev.docs.livestore.dev/reference/syncing
 
 - Fix query builder method order to preserve where clauses (#586)
 - Fix Symbol values in QueryCache key generation
+- Fix SQLite query builder clause order so LIMIT precedes OFFSET, preventing syntax errors (#882)
 
 ##### SQLite & Storage
 
@@ -246,6 +297,7 @@ See the [S2 sync provider docs](https://dev.docs.livestore.dev/reference/syncing
 - Detect sync backend identity mismatches after Cloudflare state resets and surface an actionable error instead of silent failure (#389)
 - Stop advancing the backend head when materializers crash so subsequent boots no longer fail (#409)
 - Prevent `store.subscribe` reentrancy crashes by restoring the reactive debug context after nested commits (#577, #656)
+- Fix `subscribe` with `skipInitialRun` to properly register reactive dependencies while suppressing the initial callback (#847)
 
 ##### TypeScript & Build
 
@@ -258,6 +310,7 @@ See the [S2 sync provider docs](https://dev.docs.livestore.dev/reference/syncing
 - Cloudflare examples now default to DO SQLite storage. D1 usage is documented via an explicit binding and a one‑line `storage` option in code.
 - **Cloudflare Workers deployments:** `mono examples deploy` now provisions Worker targets so DO-backed demos stay current across prod and dev environments (#690, #735).
 - Add Netlify dev deployments for examples to simplify testing (#684).
+- **Svelte integration docs:** Added the Svelte framework guide plus the Svelte TodoMVC example so `@livestore/svelte` is documented alongside React and Solid.
 - Use Twoslash for select getting started snippets in docs (#658).
 - **TanStack Start examples:** `web-linearlite`, `web-todomvc-sync-electric`, and `web-todomvc-sync-s2` now run on TanStack Start with Vite 7 compatibility fixes and Cloudflare runtime flags (#747).
 - **Docs for coding agents:** Documentation now serves agent-optimised Markdown so automations get concise answers without burning unnecessary tokens (#715).
@@ -292,7 +345,6 @@ See the [S2 sync provider docs](https://dev.docs.livestore.dev/reference/syncing
 - Comprehensive dependency update script (#516)
 - Add GitHub issue templates to improve issue quality (#602)
 - Reworked the documentation tooling so maintainers continuously publish token-efficient, TypeScript-backed snippets that stay reliable for coding agents (#715)
-- **Tldraw renderer:** Lazy-load tldraw-cli module to ensure Puppeteer uses Playwright's Chromium instead of downloading its own, reducing build times and preventing duplicate browser downloads in Nix/CI environments (#806)
 
 #### wa-sqlite Integration
 

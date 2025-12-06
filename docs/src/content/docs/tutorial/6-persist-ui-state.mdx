@@ -222,28 +222,29 @@ Here, both the event definition and materializer are automatically derived from 
 
 In this step, you need to add the local state for the tabbed UI element to the `App` component. Additionally, you're going to replace the `useState` hook that you currently use for the `input` state with LiveStore's approach as well.
 
-Remove the two lines where you're using `useState` for `input` and `filter` with the following:
+Replace the `useState` usage for `input` and `filter` with LiveStore's [`useClientDocument`](/reference/framework-integrations/react-integration/#useclientdocument):
 
 ```diff title="src/App.tsx" lang="tsx"
-+const uiState$ = queryDb(() => tables.uiState.get())
-+const { input, filter } = store.useQuery(uiState$)
++const [{ input, filter }, setUiState, , uiState$] = store.useClientDocument(tables.uiState)
 
-+const updatedInput = (input: string) => store.commit(events.uiStateSet({ input }))
-+const updatedFilter = (filter: Filter) => store.commit(events.uiStateSet({ filter }))
++const updatedInput = (input: string) => setUiState((state) => ({ ...state, input }))
++const updatedFilter = (filter: Filter) => setUiState((state) => ({ ...state, filter }))
 -const [input, setInput] = useState('')
 -const [filter, setFilter] = useState<'All' | 'Active' | 'Completed'>('All')
+-const updatedInput = (input: string) => store.commit(events.uiStateSet({ input }))
+-const updatedFilter = (filter: Filter) => store.commit(events.uiStateSet({ filter }))
 ```
 
-Don't forget to update the imports to include `Filter` type and drop `useState`:
+Don't forget to update the imports to include the `Filter` type and drop `useState`:
 
 ```diff title="src/App.tsx" lang="tsx"
 -import { useState } from 'react'
 import { useStore } from '@livestore/react'
-+import { tables, events, Filter } from './livestore/schema'
+import { tables, events, Filter } from './livestore/schema'
 import { queryDb } from '@livestore/livestore'
 ```
 
-Instead of using `useState` for managing the UI state, you're now committing it into your local SQLite DB via LiveStore as well.
+`useClientDocument` persists the UI state inside LiveStore while giving you a React-friendly setter function similar to `useState`.
 
 Since you've renamed the functions to update the values of `input` and `filter` you need to adjust the parts of the `App` component where they are used:
 
@@ -288,10 +289,11 @@ const todos$ = queryDb((
 const todos = store.useQuery(todos$)
 ```
 
+Here, `uiState$` comes from `useClientDocument`, ensuring that the todos query automatically reacts whenever the persisted UI state changes.
+
 This is the final code for the `App` component:
 
 ```tsx title="src/App.tsx"
-import { useState } from 'react'
 import { useStore } from '@livestore/react'
 import { tables, events, Filter } from './livestore/schema'
 import { queryDb } from '@livestore/livestore'
@@ -301,7 +303,9 @@ function App() {
 
   const { store } = useStore()
 
-  const todos$ = queryDb((
+  const [{ input, filter }, setUiState, , uiState$] = store.useClientDocument(tables.uiState)
+
+  const todos$ = queryDb(
     (get) => {
       const { filter } = get(uiState$)
       return tables.todos.where({
@@ -309,15 +313,13 @@ function App() {
           : filter === 'Active' ? false
             : undefined
       })
-    }
-  ), { label: 'todos' })
+    },
+    { label: 'todos' },
+  )
   const todos = store.useQuery(todos$)
 
-  const uiState$ = queryDb(() => tables.uiState.get())
-  const { input, filter } = store.useQuery(uiState$)
-  
-  const updatedInput = (input: string) => store.commit(events.uiStateSet({ input }))
-  const updatedFilter = (filter: Filter) => store.commit(events.uiStateSet({ filter }))
+  const updatedInput = (input: string) => setUiState((state) => ({ ...state, input }))
+  const updatedFilter = (filter: Filter) => setUiState((state) => ({ ...state, filter }))
 
   const addTodo = () => {
     if (input.trim()) {
@@ -340,7 +342,7 @@ function App() {
     )
   }
 
-  const handleKeyDown = (e: React.KeyboardEvent) => {
+  const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
     if (e.key === 'Enter') {
       addTodo()
     }

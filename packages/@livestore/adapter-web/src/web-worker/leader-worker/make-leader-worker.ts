@@ -1,13 +1,7 @@
 import type { SqliteDb, SyncOptions } from '@livestore/common'
-import { Devtools, LogConfig, UnexpectedError } from '@livestore/common'
+import { Devtools, LogConfig, UnknownError } from '@livestore/common'
 import type { DevtoolsOptions, StreamEventsOptions } from '@livestore/common/leader-thread'
-import {
-  configureConnection,
-  Eventlog,
-  LeaderThreadCtx,
-  makeLeaderThreadLayer,
-  streamEventsWithSyncState,
-} from '@livestore/common/leader-thread'
+import { configureConnection, Eventlog, LeaderThreadCtx, makeLeaderThreadLayer, streamEventsWithSyncState } from '@livestore/common/leader-thread'
 import type { LiveStoreSchema } from '@livestore/common/schema'
 import { LiveStoreEvent } from '@livestore/common/schema'
 import * as WebmeshWorker from '@livestore/devtools-web-common/worker'
@@ -16,7 +10,6 @@ import { loadSqlite3Wasm } from '@livestore/sqlite-wasm/load-wasm'
 import { isDevEnv, LS_DEV } from '@livestore/utils'
 import type { HttpClient, Scope, WorkerError } from '@livestore/utils/effect'
 import {
-  BrowserWorkerRunner,
   Effect,
   FetchHttpClient,
   identity,
@@ -28,9 +21,9 @@ import {
   TaskTracing,
   WorkerRunner,
 } from '@livestore/utils/effect'
+import { BrowserWorkerRunner, Opfs } from '@livestore/utils/effect/browser'
 import type * as otel from '@opentelemetry/api'
 
-import * as OpfsUtils from '../../opfs-utils.ts'
 import { cleanupOldStateDbFiles, getStateDbFileName, sanitizeOpfsDir } from '../common/persisted-sqlite.ts'
 import { makeShutdownChannel } from '../common/shutdown-channel.ts'
 import * as WorkerSchema from '../common/worker-schema.ts'
@@ -46,7 +39,7 @@ export type WorkerOptions = {
 
 if (isDevEnv()) {
   globalThis.__debugLiveStoreUtils = {
-    opfs: OpfsUtils,
+    opfs: Opfs.debugUtils,
     blobUrl: (buffer: Uint8Array<ArrayBuffer>) =>
       URL.createObjectURL(new Blob([buffer], { type: 'application/octet-stream' })),
     runSync: (effect: Effect.Effect<any, any, never>) => Effect.runSync(effect),
@@ -99,7 +92,12 @@ const makeWorkerRunnerOuter = (
           Effect.withSpan('@livestore/adapter-web:worker:wrapper:InitialMessage:innerFiber'),
           Effect.tapCauseLogPretty,
           Effect.provide(
-            WebmeshWorker.CacheService.layer({ nodeName: Devtools.makeNodeName.client.leader({ storeId, clientId }) }),
+            Layer.mergeAll(
+              Opfs.Opfs.Default,
+              WebmeshWorker.CacheService.layer({
+                nodeName: Devtools.makeNodeName.client.leader({ storeId, clientId }),
+              }),
+            ),
           ),
           Effect.forkScoped,
         )
@@ -114,12 +112,13 @@ const makeWorkerRunnerInner = ({ schema, sync: syncOptions, syncPayloadSchema }:
       Effect.gen(function* () {
         const sqlite3 = yield* Effect.promise(() => loadSqlite3Wasm())
         const makeSqliteDb = sqliteDbFactory({ sqlite3 })
+        const opfsDirectory = yield* sanitizeOpfsDir(storageOptions.directory, storeId)
         const runtime = yield* Effect.runtime<never>()
 
         const makeDb = (kind: 'state' | 'eventlog') =>
           makeSqliteDb({
             _tag: 'opfs',
-            opfsDirectory: sanitizeOpfsDir(storageOptions.directory, storeId),
+            opfsDirectory,
             fileName: kind === 'state' ? getStateDbFileName(schema) : 'eventlog.db',
             configureDb: (db) =>
               configureConnection(db, {
@@ -165,7 +164,7 @@ const makeWorkerRunnerInner = ({ schema, sync: syncOptions, syncPayloadSchema }:
         })
       }).pipe(
         Effect.tapCauseLogPretty,
-        UnexpectedError.mapToUnexpectedError,
+        UnknownError.mapToUnknownError,
         Effect.withPerformanceMeasure('@livestore/adapter-web:worker:InitialMessage'),
         Effect.withSpan('@livestore/adapter-web:worker:InitialMessage'),
         Effect.annotateSpans({ debugInstanceId }),
@@ -183,10 +182,7 @@ const makeWorkerRunnerInner = ({ schema, sync: syncOptions, syncPayloadSchema }:
 
         const snapshot = workerCtx.dbState.export()
         return { snapshot, migrationsReport: workerCtx.initialState.migrationsReport }
-      }).pipe(
-        UnexpectedError.mapToUnexpectedError,
-        Effect.withSpan('@livestore/adapter-web:worker:GetRecreateSnapshot'),
-      ),
+      }).pipe(UnknownError.mapToUnknownError, Effect.withSpan('@livestore/adapter-web:worker:GetRecreateSnapshot')),
     PullStream: ({ cursor }) =>
       Effect.gen(function* () {
         const { syncProcessor } = yield* LeaderThreadCtx // <- syncState comes from here
@@ -199,7 +195,7 @@ const makeWorkerRunnerInner = ({ schema, sync: syncOptions, syncPayloadSchema }:
     PushToLeader: ({ batch }) =>
       Effect.andThen(LeaderThreadCtx, ({ syncProcessor }) =>
         syncProcessor.push(
-          batch.map((event) => new LiveStoreEvent.EncodedWithMeta(event)),
+          batch.map((event) => new LiveStoreEvent.Client.EncodedWithMeta(event)),
           // We'll wait in order to keep back pressure on the client session
           { waitForProcessing: true },
         ),
@@ -220,12 +216,12 @@ const makeWorkerRunnerInner = ({ schema, sync: syncOptions, syncPayloadSchema }:
       ),
     Export: () =>
       Effect.andThen(LeaderThreadCtx, (_) => _.dbState.export()).pipe(
-        UnexpectedError.mapToUnexpectedError,
+        UnknownError.mapToUnknownError,
         Effect.withSpan('@livestore/adapter-web:worker:Export'),
       ),
     ExportEventlog: () =>
       Effect.andThen(LeaderThreadCtx, (_) => _.dbEventlog.export()).pipe(
-        UnexpectedError.mapToUnexpectedError,
+        UnknownError.mapToUnknownError,
         Effect.withSpan('@livestore/adapter-web:worker:ExportEventlog'),
       ),
     BootStatusStream: () =>
@@ -234,15 +230,12 @@ const makeWorkerRunnerInner = ({ schema, sync: syncOptions, syncPayloadSchema }:
       Effect.gen(function* () {
         const workerCtx = yield* LeaderThreadCtx
         return Eventlog.getClientHeadFromDb(workerCtx.dbEventlog)
-      }).pipe(UnexpectedError.mapToUnexpectedError, Effect.withSpan('@livestore/adapter-web:worker:GetLeaderHead')),
+      }).pipe(UnknownError.mapToUnknownError, Effect.withSpan('@livestore/adapter-web:worker:GetLeaderHead')),
     GetLeaderSyncState: () =>
       Effect.gen(function* () {
         const workerCtx = yield* LeaderThreadCtx
         return yield* workerCtx.syncProcessor.syncState
-      }).pipe(
-        UnexpectedError.mapToUnexpectedError,
-        Effect.withSpan('@livestore/adapter-web:worker:GetLeaderSyncState'),
-      ),
+      }).pipe(UnknownError.mapToUnknownError, Effect.withSpan('@livestore/adapter-web:worker:GetLeaderSyncState')),
     SyncStateStream: () =>
       Effect.gen(function* () {
         const workerCtx = yield* LeaderThreadCtx
@@ -252,7 +245,7 @@ const makeWorkerRunnerInner = ({ schema, sync: syncOptions, syncPayloadSchema }:
       Effect.gen(function* () {
         const workerCtx = yield* LeaderThreadCtx
         return yield* workerCtx.networkStatus
-      }).pipe(UnexpectedError.mapToUnexpectedError, Effect.withSpan('@livestore/adapter-web:worker:GetNetworkStatus')),
+      }).pipe(UnknownError.mapToUnknownError, Effect.withSpan('@livestore/adapter-web:worker:GetNetworkStatus')),
     NetworkStatusStream: () =>
       Effect.gen(function* () {
         const workerCtx = yield* LeaderThreadCtx
@@ -265,10 +258,10 @@ const makeWorkerRunnerInner = ({ schema, sync: syncOptions, syncPayloadSchema }:
         // Buy some time for Otel to flush
         // TODO find a cleaner way to do this
         yield* Effect.sleep(300)
-      }).pipe(UnexpectedError.mapToUnexpectedError, Effect.withSpan('@livestore/adapter-web:worker:Shutdown')),
+      }).pipe(UnknownError.mapToUnknownError, Effect.withSpan('@livestore/adapter-web:worker:Shutdown')),
     ExtraDevtoolsMessage: ({ message }) =>
       Effect.andThen(LeaderThreadCtx, (_) => _.extraIncomingMessagesQueue.offer(message)).pipe(
-        UnexpectedError.mapToUnexpectedError,
+        UnknownError.mapToUnknownError,
         Effect.withSpan('@livestore/adapter-web:worker:ExtraDevtoolsMessage'),
       ),
     'DevtoolsWebCommon.CreateConnection': WebmeshWorker.CreateConnection,
@@ -282,7 +275,7 @@ const makeDevtoolsOptions = ({
   devtoolsEnabled: boolean
   dbState: SqliteDb
   dbEventlog: SqliteDb
-}): Effect.Effect<DevtoolsOptions, UnexpectedError, Scope.Scope | WebmeshWorker.CacheService> =>
+}): Effect.Effect<DevtoolsOptions, UnknownError, Scope.Scope | WebmeshWorker.CacheService> =>
   Effect.gen(function* () {
     if (devtoolsEnabled === false) {
       return { enabled: false }

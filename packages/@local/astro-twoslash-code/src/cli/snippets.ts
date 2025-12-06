@@ -96,7 +96,7 @@ import * as astroExpressiveCodeModuleStatic from 'astro-expressive-code'
  * Twoslash in the browser.
  */
 
-import { type Duration, Effect, FileSystem, Schema, Stream } from '@livestore/utils/effect'
+import { type Duration, Effect, FileSystem, type PlatformError, Schema, Stream } from '@livestore/utils/effect'
 import { Cli, NodeRecursiveWatchLayer } from '@livestore/utils/node'
 import type { ExpressiveCodeBlockOptions } from 'expressive-code'
 import type {
@@ -1373,6 +1373,23 @@ const buildSnippetsInternal = ({ paths, runtimeOptions }: ResolvedBuildOptions) 
     const buildSnippet = (entry: TSnippetEntry) =>
       Effect.gen(function* () {
         const bundle = buildSnippetBundle({ entryFilePath: entry.entryPath, baseDir: paths.snippetAssetsRoot })
+
+        if (!isWithinDirectory(bundle.entryFilePath, paths.snippetAssetsRoot)) {
+          return yield* new SnippetBuildError({
+            message: `Snippet entry ${bundle.entryFilePath} is outside the snippet root (${paths.snippetAssetsRoot}). Copy the file into the docs snippet assets and import it from there.`,
+            entry: entry.entryPath,
+          })
+        }
+
+        for (const file of Object.values(bundle.files)) {
+          if (!isWithinDirectory(file.absolutePath, paths.snippetAssetsRoot)) {
+            return yield* new SnippetBuildError({
+              message: `Snippet file ${file.absolutePath} is outside the snippet root (${paths.snippetAssetsRoot}). Move or copy it under the snippet assets directory.`,
+              entry: entry.entryPath,
+            })
+          }
+        }
+
         const entryFileRelative = path.relative(paths.snippetAssetsRoot, bundle.entryFilePath).replace(/\\/g, '/')
 
         const filesWithHash = bundle.fileOrder.map((filename, index) => {
@@ -1453,7 +1470,13 @@ const buildSnippetsInternal = ({ paths, runtimeOptions }: ResolvedBuildOptions) 
           rendered: renderedSnippets,
         }
 
-        const artifactPath = path.join(paths.cacheRoot, `${bundle.mainFileRelativePath}.json`)
+        const artifactPath = path.resolve(paths.cacheRoot, `${bundle.mainFileRelativePath}.json`)
+        if (!isWithinDirectory(artifactPath, paths.cacheRoot)) {
+          return yield* new SnippetBuildError({
+            message: `Resolved artefact path escapes cache root: ${artifactPath}`,
+            entry: entry.entryPath,
+          })
+        }
         yield* fs
           .makeDirectory(path.dirname(artifactPath), { recursive: true })
           .pipe(
@@ -1507,7 +1530,7 @@ const createWatchStream = (
   scope: WatchScope,
   root: string,
   cacheRoot: string,
-): Stream.Stream<WatchEventSummary, unknown, never> =>
+): Stream.Stream<WatchEventSummary, PlatformError.PlatformError> =>
   fs.watch(root).pipe(
     Stream.map((event) => summarizeWatchEvent(scope, root, cacheRoot, event)),
     Stream.filter((summary): summary is WatchEventSummary => summary !== null),
@@ -1527,7 +1550,7 @@ const watchSnippetsInternal = (
         .pipe(Effect.catchAll(() => Effect.succeed(false)))
       const sourceRootExists = yield* fs.exists(paths.srcRoot).pipe(Effect.catchAll(() => Effect.succeed(false)))
 
-      const watchStreams: Array<Stream.Stream<WatchEventSummary, unknown, never>> = []
+      const watchStreams: Array<Stream.Stream<WatchEventSummary, PlatformError.PlatformError>> = []
       if (snippetRootExists) {
         watchStreams.push(createWatchStream(fs, 'snippet', paths.snippetAssetsRoot, paths.cacheRoot))
       }

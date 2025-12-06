@@ -3,7 +3,7 @@ import { fileURLToPath } from 'node:url'
 import { BrowserContext, browserContextLayer } from '@livestore/effect-playwright'
 import { Duration, Effect, FetchHttpClient, HttpClient, Layer, Schedule } from '@livestore/utils/effect'
 import { getFreePort, PlatformNode } from '@livestore/utils/node'
-import { cmd } from '@livestore/utils-dev/node'
+import { CurrentWorkingDirectory, cmd } from '@livestore/utils-dev/node'
 import { Vitest } from '@livestore/utils-dev/node-vitest'
 import { expect } from 'vitest'
 
@@ -40,12 +40,11 @@ Vitest.describe('adapter-web', { timeout: testTimeout }, () => {
 
       // Start a Vite dev server for the React fixtures without devtools plugin
       yield* cmd(`vite --config ${viteConfigRel} dev --port ${port}`, {
-        cwd: integrationRoot,
         env: {
           TEST_LIVESTORE_SCHEMA_PATH_JSON: undefined, // ensure devtools plugin is disabled
           LSD_DEVTOOLS_LOCAL_PREVIEW: undefined,
         },
-      }).pipe(Effect.forkScoped)
+      }).pipe(Effect.provide(CurrentWorkingDirectory.fromPath(integrationRoot)), Effect.forkScoped)
 
       const appUrl = (pathname: string) => `http://localhost:${port}${pathname}`
 

@@ -1,10 +1,4 @@
-import {
-  InvalidPullError,
-  InvalidPushError,
-  type IsOfflineError,
-  SyncBackend,
-  UnexpectedError,
-} from '@livestore/common'
+import { InvalidPullError, InvalidPushError, type IsOfflineError, SyncBackend, UnknownError } from '@livestore/common'
 import { LiveStoreEvent } from '@livestore/common/schema'
 import { notYetImplemented } from '@livestore/utils'
 import {
@@ -79,12 +73,7 @@ const LiveStoreEventGlobalFromStringRecord = Schema.Struct({
   clientId: Schema.String,
   sessionId: Schema.String,
 })
-  .pipe(
-    Schema.transform(LiveStoreEvent.AnyEncodedGlobal, {
-      decode: (_) => _,
-      encode: (_) => _,
-    }),
-  )
+  .pipe(Schema.compose(LiveStoreEvent.Global.Encoded))
   .annotations({ title: '@livestore/sync-electric:LiveStoreEventGlobalFromStringRecord' })
 
 const ResponseItemInsert = Schema.Struct({
@@ -161,6 +150,47 @@ export const SyncMetadata = Schema.Struct({
 
 export type SyncMetadata = typeof SyncMetadata.Type
 
+/**
+ * Creates a sync backend that uses ElectricSQL for real-time event synchronization.
+ *
+ * ElectricSQL enables real-time sync by streaming PostgreSQL changes to clients.
+ * This backend handles push (inserting events) and pull (streaming events via Electric's
+ * shape-based sync protocol).
+ *
+ * The endpoint should typically be part of your API layer to handle authentication,
+ * rate limiting, and proxying requests to the Electric server.
+ *
+ * @example
+ * ```ts
+ * import { makeSyncBackend } from '@livestore/sync-electric'
+ *
+ * const adapter = makePersistedAdapter({
+ *   sync: {
+ *     backend: makeSyncBackend({
+ *       endpoint: '/api/electric',
+ *     }),
+ *   },
+ * })
+ * ```
+ *
+ * @example
+ * ```ts
+ * // With separate endpoints for push/pull/ping
+ * const backend = makeSyncBackend({
+ *   endpoint: {
+ *     push: '/api/push-event',
+ *     pull: '/api/pull-events',
+ *     ping: '/api/ping',
+ *   },
+ *   ping: {
+ *     enabled: true,
+ *     requestInterval: 15_000, // 15 seconds
+ *   },
+ * })
+ * ```
+ *
+ * @see https://livestore.dev/docs/sync/electric for setup guide
+ */
 export const makeSyncBackend =
   ({ endpoint, ...options }: SyncBackendOptions): SyncBackend.SyncBackendConstructor<SyncMetadata> =>
   ({ storeId, payload }) =>
@@ -181,7 +211,7 @@ export const makeSyncBackend =
             /** The batch of events */
             ReadonlyArray<{
               metadata: Option.Option<SyncMetadata>
-              eventEncoded: LiveStoreEvent.AnyEncodedGlobal
+              eventEncoded: LiveStoreEvent.Global.Encoded
             }>,
             /** The next handle to use for the next pull */
             Option.Option<SyncMetadata>,
@@ -256,7 +286,7 @@ export const makeSyncBackend =
 
           const items = allItems.filter(Schema.is(ResponseItemInsert)).map((item) => ({
             metadata: Option.some({ offset: nextHandle.offset, handle: nextHandle.handle }),
-            eventEncoded: item.value as LiveStoreEvent.AnyEncodedGlobal,
+            eventEncoded: item.value as LiveStoreEvent.Global.Encoded,
           }))
 
           yield* Effect.annotateCurrentSpan({ itemsCount: items.length, nextHandle })
@@ -279,7 +309,7 @@ export const makeSyncBackend =
 
         yield* SubscriptionRef.set(isConnected, true)
       }).pipe(
-        UnexpectedError.mapToUnexpectedError,
+        UnknownError.mapToUnknownError,
         Effect.timeout(pingTimeout),
         Effect.catchTag('TimeoutException', () => SubscriptionRef.set(isConnected, false)),
         Effect.withSpan('electric-provider:ping'),
@@ -296,7 +326,7 @@ export const makeSyncBackend =
       // otherwise we send a HEAD request to speed up the connection process
       const connect: SyncBackend.SyncBackend<SyncMetadata>['connect'] = pullEndpointHasSameOrigin
         ? Effect.void
-        : ping.pipe(UnexpectedError.mapToUnexpectedError)
+        : ping.pipe(UnknownError.mapToUnknownError)
 
       return SyncBackend.of({
         connect,
@@ -343,11 +373,11 @@ export const makeSyncBackend =
               Effect.andThen(httpClient.pipe(HttpClient.filterStatusOk).execute),
               Effect.andThen(HttpClientResponse.schemaBodyJson(Schema.Struct({ success: Schema.Boolean }))),
               Effect.scoped,
-              Effect.mapError((cause) => InvalidPushError.make({ cause: UnexpectedError.make({ cause }) })),
+              Effect.mapError((cause) => InvalidPushError.make({ cause: UnknownError.make({ cause }) })),
             )
 
             if (!resp.success) {
-              return yield* InvalidPushError.make({ cause: new UnexpectedError({ cause: new Error('Push failed') }) })
+              return yield* InvalidPushError.make({ cause: new UnknownError({ cause: new Error('Push failed') }) })
             }
           }).pipe(Effect.withSpan('electric-provider:push')),
         ping,

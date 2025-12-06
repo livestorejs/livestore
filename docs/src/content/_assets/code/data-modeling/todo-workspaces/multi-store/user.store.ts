@@ -17,5 +17,5 @@ export const userStoreOptions = (username: string) =>
     storeId: `user-${username}`,
     schema,
     adapter,
-    gcTime: Number.POSITIVE_INFINITY, // Keep user store in memory indefinitely
+    unusedCacheTime: Number.POSITIVE_INFINITY, // Keep user store in memory indefinitely
   })

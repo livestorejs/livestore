@@ -5,15 +5,15 @@ import { InvalidPushError, ServerAheadError } from './sync.ts'
 
 // TODO proper batch validation
 export const validatePushPayload = (
-  batch: ReadonlyArray<LiveStoreEvent.AnyEncodedGlobal>,
-  currentEventSequenceNumber: EventSequenceNumber.GlobalEventSequenceNumber,
+  batch: ReadonlyArray<LiveStoreEvent.Global.Encoded>,
+  currentEventSequenceNumber: EventSequenceNumber.Global.Type,
 ) =>
   Effect.gen(function* () {
     if (batch[0]!.seqNum <= currentEventSequenceNumber) {
       return yield* InvalidPushError.make({
         cause: new ServerAheadError({
-          minimumExpectedNum: EventSequenceNumber.globalEventSequenceNumber(currentEventSequenceNumber + 1),
-          providedNum: EventSequenceNumber.globalEventSequenceNumber(batch[0]!.seqNum),
+          minimumExpectedNum: EventSequenceNumber.Global.make(currentEventSequenceNumber + 1),
+          providedNum: EventSequenceNumber.Global.make(batch[0]!.seqNum),
         }),
       })
     }

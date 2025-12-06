@@ -14,8 +14,7 @@ export const maybeResetStore = async ({
   ctx: CfTypes.DurableObjectState
 }) => {
   const url = new URL(request.url)
-  const shouldReset =
-    env.ADMIN_SECRET === url.searchParams.get('token') && url.pathname === '/internal/livestore-dev-reset'
+  const shouldReset = url.pathname === '/internal/livestore-dev-reset'
 
   const storeId = url.searchParams.get('storeId') ?? nanoid()
 

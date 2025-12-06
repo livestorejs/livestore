@@ -1,0 +1,33 @@
+name = "livestore-example-web-email-client"
+main = "src/cf-worker/index.ts"
+compatibility_date = "2025-08-24"
+compatibility_flags = [
+    "enable_request_signal",
+    "nodejs_compat",
+]
+
+[[durable_objects.bindings]]
+name = "SYNC_BACKEND_DO"
+class_name = "SyncBackendDO"
+
+[[durable_objects.bindings]]
+name = "MAILBOX_CLIENT_DO"
+class_name = "MailboxClientDO"
+
+[[durable_objects.bindings]]
+name = "THREAD_CLIENT_DO"
+class_name = "ThreadClientDO"
+
+[[migrations]]
+tag = "v1"
+new_sqlite_classes = ["SyncBackendDO", "MailboxClientDO", "ThreadClientDO"]
+
+[[queues.producers]]
+queue = "cross-store-events"
+binding = "CROSS_STORE_EVENTS_QUEUE"
+
+[[queues.consumers]]
+queue = "cross-store-events"
+
+[observability]
+enabled = true

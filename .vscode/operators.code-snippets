@@ -23,5 +23,10 @@
     "prefix": "+otel",
     "body": ["import * as otel from '@opentelemetry/api'\n$0"],
     "description": "Import OpenTelemetry"
-  }
+  },
+  "Right arrow": {
+    "prefix": "->",
+    "body": ["→"],
+    "description": "Convert -> to → (useful for event notation)"
+  },
 }

@@ -1,14 +1,14 @@
 import { shouldNeverHappen } from '@livestore/utils'
 import { Graph } from '@livestore/utils/effect'
-import type { EventDefFactsGroup } from '../../schema/EventDef.ts'
-import * as EventSequenceNumber from '../../schema/EventSequenceNumber.ts'
+import type { EventDefFactsGroup } from '../../schema/EventDef/mod.ts'
+import * as EventSequenceNumber from '../../schema/EventSequenceNumber/mod.ts'
 
 export const connectionTypeOptions = ['parent', 'facts'] as const
 export type ConnectionType = (typeof connectionTypeOptions)[number]
 
 export type HistoryDagNode = {
-  seqNum: EventSequenceNumber.EventSequenceNumber
-  parentSeqNum: EventSequenceNumber.EventSequenceNumber
+  seqNum: EventSequenceNumber.Client.Composite
+  parentSeqNum: EventSequenceNumber.Client.Composite
   name: string
   args: any
   /** Facts are being used for conflict detection and history compaction */
@@ -283,13 +283,13 @@ export class HistoryDag {
 export const emptyHistoryDag = (): HistoryDag => HistoryDag.create({ allowSelfLoops: false })
 
 // TODO consider making `ROOT_ID` parent to itself
-export const rootParentNum = EventSequenceNumber.make({
-  global: EventSequenceNumber.ROOT.global - 1,
-  client: EventSequenceNumber.clientDefault,
+export const rootParentNum = EventSequenceNumber.Client.Composite.make({
+  global: EventSequenceNumber.Client.ROOT.global - 1,
+  client: EventSequenceNumber.Client.DEFAULT,
 })
 
 export const rootEventNode: HistoryDagNode = {
-  seqNum: EventSequenceNumber.ROOT,
+  seqNum: EventSequenceNumber.Client.ROOT,
   parentSeqNum: rootParentNum,
   // unused below
   name: '__Root__',

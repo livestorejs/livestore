@@ -24,7 +24,7 @@ export const issueStoreOptions = (issueId: string) =>
     storeId: `issue-${issueId}`,
     schema,
     adapter,
-    gcTime: 20_000,
+    unusedCacheTime: 20_000,
     boot: (store) => {
       // In a real-world app, you would handle seeding in the server by subscribing to the workspaceEvents.issueCreated event
       if (store.query(issueTables.issue.count()) === 0) {

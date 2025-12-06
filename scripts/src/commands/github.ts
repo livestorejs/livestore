@@ -2,7 +2,7 @@ import path from 'node:path'
 
 import { Effect, FileSystem, Schema } from '@livestore/utils/effect'
 import { Cli } from '@livestore/utils/node'
-import { cmd, cmdText } from '@livestore/utils-dev/node'
+import { cmd, cmdText, LivestoreWorkspace } from '@livestore/utils-dev/node'
 import YAML from 'yaml'
 
 /**
@@ -182,7 +182,7 @@ const getCurrentRequiredContexts = (branch: string) =>
     const response = yield* cmdText(
       ['gh', 'api', `repos/${OWNER}/${REPO}/branches/${branch}/protection`, '--jq', '.'],
       { stderr: 'pipe' },
-    )
+    ).pipe(Effect.provide(LivestoreWorkspace.toCwd()))
 
     const parsed = JSON.parse(response) as { required_status_checks?: { contexts?: string[] } } | null
     const current = parsed?.required_status_checks?.contexts ?? []
@@ -200,7 +200,7 @@ const getStrictFlag = (branch: string) =>
         '.required_status_checks.strict // true',
       ],
       { stderr: 'pipe' },
-    )
+    ).pipe(Effect.provide(LivestoreWorkspace.toCwd()))
     return out.trim() === 'true'
   })
 
@@ -230,7 +230,7 @@ const patchRequiredChecks = ({ branch, contexts, strict }: { branch: string; con
         bodyPath,
       ],
       { stderr: 'pipe' },
-    )
+    ).pipe(Effect.provide(LivestoreWorkspace.toCwd()))
   })
 
 /**
@@ -245,7 +245,7 @@ const updateBranchProtectionCommand = Cli.Command.make(
   },
   Effect.fn(function* ({ branch, dryRun }) {
     // Preflight: GH CLI installed
-    yield* cmdText('gh --version', { stderr: 'pipe' })
+    yield* cmdText('gh --version', { stderr: 'pipe' }).pipe(Effect.provide(LivestoreWorkspace.toCwd()))
 
     const contexts = yield* computeRequiredContextsFromWorkflow(
       path.join(process.env.WORKSPACE_ROOT ?? '.', '.github', 'workflows', 'ci.yml'),

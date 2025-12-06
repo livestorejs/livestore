@@ -35,9 +35,16 @@ export {
   signal,
 } from './live-queries/mod.ts'
 export { emptyDebugInfo, SqliteDbWrapper } from './SqliteDbWrapper.ts'
-export { type CreateStoreOptions, createStore, createStorePromise } from './store/create-store.ts'
+export {
+  type CreateStoreOptions,
+  type CreateStoreOptionsPromise,
+  createStore,
+  createStorePromise,
+} from './store/create-store.ts'
 export { Store } from './store/store.ts'
 export {
+  isLiveQueryDef,
+  isLiveQueryInstance,
   isQueryable,
   type LiveStoreContext,
   type LiveStoreContextRunning,

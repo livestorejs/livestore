@@ -10,7 +10,7 @@
  */
 import http from 'node:http'
 import path from 'node:path'
-import { UnexpectedError } from '@livestore/common'
+import { UnknownError } from '@livestore/common'
 import type { LiveStoreEvent } from '@livestore/livestore'
 import { nanoid, Schema } from '@livestore/livestore'
 import * as ElectricSync from '@livestore/sync-electric'
@@ -82,7 +82,7 @@ export const layer: SyncProviderLayer = Layer.scoped(
 ).pipe(
   Layer.provide(DockerComposeLive),
   Layer.provide(PlatformNode.NodeContext.layer),
-  UnexpectedError.mapToUnexpectedErrorLayer,
+  UnknownError.mapToUnknownErrorLayer,
 )
 
 const startElectricApi = Effect.gen(function* () {
@@ -228,7 +228,7 @@ const makeDb = ({ storeId, postgresPort }: { storeId: string; postgresPort: numb
   `,
   ).pipe(Effect.withSpan('electric-provider:migrate'))
 
-  const createEvents = (events: ReadonlyArray<LiveStoreEvent.AnyEncodedGlobal>) =>
+  const createEvents = (events: ReadonlyArray<LiveStoreEvent.Global.Encoded>) =>
     Effect.tryPromise(async () => {
       // For postgres library, we need to use the exact column names as properties
       // Since our columns are quoted in the CREATE TABLE, we need to match them

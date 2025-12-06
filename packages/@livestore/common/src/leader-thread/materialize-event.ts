@@ -155,7 +155,7 @@ export const makeMaterializeEvent = ({
           attributes: {
             eventName: eventEncoded.name,
             eventNum: eventEncoded.seqNum,
-            'span.label': `${EventSequenceNumber.toString(eventEncoded.seqNum)} ${eventEncoded.name}`,
+            'span.label': `${EventSequenceNumber.Client.toString(eventEncoded.seqNum)} ${eventEncoded.name}`,
           },
         }),
         // Effect.logDuration('@livestore/common:leader-thread:materializeEvent'),
@@ -169,7 +169,7 @@ export const rollback = ({
 }: {
   dbState: SqliteDb
   dbEventlog: SqliteDb
-  eventNumsToRollback: EventSequenceNumber.EventSequenceNumber[]
+  eventNumsToRollback: EventSequenceNumber.Client.Composite[]
 }) =>
   Effect.gen(function* () {
     const rollbackEvents = dbState
@@ -185,7 +185,7 @@ export const rollback = ({
         changeset: _.changeset,
         debug: _.debug,
       }))
-      .toSorted((a, b) => EventSequenceNumber.compare(a.seqNum, b.seqNum))
+      .toSorted((a, b) => EventSequenceNumber.Client.compare(a.seqNum, b.seqNum))
 
     // Apply changesets in reverse order
     for (let i = rollbackEvents.length - 1; i >= 0; i--) {

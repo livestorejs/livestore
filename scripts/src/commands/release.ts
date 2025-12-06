@@ -3,7 +3,7 @@ import fs from 'node:fs'
 import { shouldNeverHappen } from '@livestore/utils'
 import { Effect, FileSystem } from '@livestore/utils/effect'
 import { Cli } from '@livestore/utils/node'
-import { cmd, cmdText } from '@livestore/utils-dev/node'
+import { CurrentWorkingDirectory, cmd, cmdText } from '@livestore/utils-dev/node'
 
 import { appendGithubSummaryMarkdown, formatMarkdownTable } from '../shared/misc.ts'
 
@@ -34,7 +34,7 @@ const listSnapshotPackages = (cwd: string) =>
         Effect.flatMap((content) =>
           Effect.try({
             try: () => JSON.parse(content) as { name?: unknown; private?: unknown },
-            catch: (cause) => cause as unknown,
+            catch: (cause) => new Error(`Failed to parse ${packageJsonPath}`, { cause }),
           }),
         ),
         Effect.either,
@@ -108,7 +108,10 @@ export const releaseSnapshotCommand = Cli.Command.make(
       import('../../../packages/@livestore/common/package.json').then((m: any) => m.version as string),
     )
 
-    const gitSha = gitShaOption._tag === 'Some' ? gitShaOption.value : yield* cmdText('git rev-parse HEAD', { cwd })
+    const gitSha =
+      gitShaOption._tag === 'Some'
+        ? gitShaOption.value
+        : yield* cmdText('git rev-parse HEAD').pipe(Effect.provide(CurrentWorkingDirectory.fromPath(cwd)))
     const filterStr = '--filter @livestore/* --filter !@livestore/effect-playwright'
 
     const snapshotVersion = versionOption._tag === 'Some' ? versionOption.value : `0.0.0-snapshot-${gitSha}`
@@ -122,19 +125,16 @@ export const releaseSnapshotCommand = Cli.Command.make(
 
     yield* cmd(`pnpm ${filterStr} exec -- pnpm version '${snapshotVersion}' --no-git-tag-version`, {
       shell: true,
-      cwd,
-    })
+    }).pipe(Effect.provide(CurrentWorkingDirectory.fromPath(cwd)))
 
     yield* cmd(`pnpm ${filterStr} exec -- pnpm publish --tag=snapshot --no-git-checks ${dryRun ? '--dry-run' : ''}`, {
       shell: true,
-      cwd,
-    })
+    }).pipe(Effect.provide(CurrentWorkingDirectory.fromPath(cwd)))
 
     // Rollback package.json versions
     yield* cmd(`pnpm ${filterStr} exec -- pnpm version '${originalVersion}' --no-git-tag-version`, {
       shell: true,
-      cwd,
-    })
+    }).pipe(Effect.provide(CurrentWorkingDirectory.fromPath(cwd)))
 
     // Rollback version.ts
     fs.writeFileSync(

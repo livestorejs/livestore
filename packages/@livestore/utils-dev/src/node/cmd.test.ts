@@ -1,14 +1,15 @@
 import fs from 'node:fs'
 import path from 'node:path'
 
-import { CommandExecutor, Duration, Effect } from '@livestore/utils/effect'
+import { CommandExecutor, Duration, Effect, Layer } from '@livestore/utils/effect'
 import { PlatformNode } from '@livestore/utils/node'
 import { Vitest } from '@livestore/utils-dev/node-vitest'
 import { expect } from 'vitest'
 import { cmd } from './cmd.ts'
+import { CurrentWorkingDirectory } from './workspace.ts'
 
 const withNode = Vitest.makeWithTestCtx({
-  makeLayer: () => PlatformNode.NodeContext.layer,
+  makeLayer: () => Layer.mergeAll(PlatformNode.NodeContext.layer, CurrentWorkingDirectory.live),
   timeout: 20_000,
 })
 

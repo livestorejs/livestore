@@ -9,6 +9,4 @@ export const issueStoreOptions = (issueId: string) =>
     storeId: `issue-${issueId}`,
     schema,
     adapter: makeInMemoryAdapter(),
-    // Optional: Configure garbage collection time
-    gcTime: 30_000, // 30 seconds
   })

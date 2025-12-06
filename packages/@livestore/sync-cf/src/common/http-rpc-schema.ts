@@ -1,4 +1,4 @@
-import { InvalidPullError, InvalidPushError, UnexpectedError } from '@livestore/common'
+import { InvalidPullError, InvalidPushError, UnknownError } from '@livestore/common'
 import { Rpc, RpcGroup, Schema } from '@livestore/utils/effect'
 import * as SyncMessage from './sync-message-types.ts'
 
@@ -35,6 +35,6 @@ export class SyncHttpRpc extends RpcGroup.make(
       payload: Schema.optional(Schema.JsonValue),
     }),
     success: SyncMessage.Pong,
-    error: UnexpectedError,
+    error: UnknownError,
   }),
 ) {}
