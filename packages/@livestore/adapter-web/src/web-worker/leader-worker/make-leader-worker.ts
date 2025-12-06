@@ -1,7 +1,13 @@
 import type { SqliteDb, SyncOptions } from '@livestore/common'
 import { Devtools, LogConfig, UnknownError } from '@livestore/common'
 import type { DevtoolsOptions, StreamEventsOptions } from '@livestore/common/leader-thread'
-import { configureConnection, Eventlog, LeaderThreadCtx, makeLeaderThreadLayer, streamEventsWithSyncState } from '@livestore/common/leader-thread'
+import {
+  configureConnection,
+  Eventlog,
+  LeaderThreadCtx,
+  makeLeaderThreadLayer,
+  streamEventsWithSyncState,
+} from '@livestore/common/leader-thread'
 import type { LiveStoreSchema } from '@livestore/common/schema'
 import { LiveStoreEvent } from '@livestore/common/schema'
 import * as WebmeshWorker from '@livestore/devtools-web-common/worker'

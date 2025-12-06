@@ -2,6 +2,7 @@ import { LS_DEV, shouldNeverHappen } from '@livestore/utils'
 import { Chunk, Effect, Option, Schema } from '@livestore/utils/effect'
 import type { SqliteDb } from '../adapter-types.ts'
 import * as EventSequenceNumber from '../schema/EventSequenceNumber/mod.ts'
+import type { ClientEventSequenceNumber } from '../schema/EventSequenceNumber.ts'
 import * as LiveStoreEvent from '../schema/LiveStoreEvent/mod.ts'
 import {
   EVENTLOG_META_TABLE,
@@ -17,7 +18,6 @@ import { sql } from '../util.ts'
 import { execSql } from './connection.ts'
 import type { InitialSyncInfo, StreamEventsOptions } from './types.ts'
 import { LeaderThreadCtx, STREAM_EVENTS_BATCH_SIZE_MAX } from './types.ts'
-import type { ClientEventSequenceNumber } from '../schema/EventSequenceNumber.ts'
 
 export const initEventlogDb = (dbEventlog: SqliteDb) =>
   Effect.gen(function* () {
