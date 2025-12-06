@@ -210,6 +210,9 @@ export const getMetadata = Effect.fn('@livestore/utils:Opfs.getMetadata')(functi
  *
  * @param path - Slash-delimited file path.
  * @param data - Bytes to persist.
+ *
+ * @remarks
+ * - Only available in Safari 26 or higher (as of Dec 2025, not yet widely available).
  */
 export const writeFile = Effect.fn('@livestore/utils:Opfs.writeFile')(function* (path: string, data: Uint8Array) {
   if (isRootPath(path)) {
@@ -234,10 +237,10 @@ export const writeFile = Effect.fn('@livestore/utils:Opfs.writeFile')(function* 
 })
 
 /**
- * Synchronously write bytes to the target file handle, truncating any existing content.
+ * Synchronously write bytes to an OPFS path, creating or replacing the target file.
  *
- * @param handle - Sync access handle to overwrite.
- * @param buffer - Raw data to persist.
+ * @param path - Slash-delimited file path.
+ * @param data - Bytes to persist.
  * @returns Effect that resolves once every byte is flushed to durable storage.
  *
  * @remarks
@@ -246,25 +249,38 @@ export const writeFile = Effect.fn('@livestore/utils:Opfs.writeFile')(function* 
  *   For atomic replacement, prefer `writeFile` or a temp-file pattern with two prepared handles.
  */
 export const syncWriteFile = Effect.fn('@livestore/utils:Opfs.syncWriteFile')(function* (
-  handle: FileSystemSyncAccessHandle,
-  buffer: AllowSharedBufferSource,
+  path: string,
+  data: Uint8Array,
 ) {
-  const bytes = ArrayBuffer.isView(buffer)
-    ? new Uint8Array(buffer.buffer, buffer.byteOffset, buffer.byteLength)
-    : new Uint8Array(buffer as ArrayBufferLike)
-
-  yield* Opfs.syncTruncate(handle, 0)
-
-  let offset = 0
-  while (offset < bytes.byteLength) {
-    const wrote = yield* Opfs.syncWrite(handle, bytes.subarray(offset), { at: offset })
-    if (wrote === 0) {
-      return yield* new OpfsError({
-        message: `Short write: wrote ${offset} of ${bytes.byteLength} bytes.`,
-      })
-    }
-    offset += Number(wrote)
+  if (isRootPath(path)) {
+    return yield* new OpfsError({
+      message: `Invalid OPFS path '${path}': cannot write file directly to the OPFS root`,
+    })
   }
 
-  yield* Opfs.syncFlush(handle)
+  const pathSegments = yield* parsePathSegments(path)
+  const { parentSegments, leafSegment: fileName } = splitPathSegments(pathSegments)
+
+  return yield* Effect.scoped(
+    Effect.gen(function* () {
+      const parentDirHandle = yield* traverseDirectoryPath(parentSegments)
+      const fileHandle = yield* Opfs.getFileHandle(parentDirHandle, fileName, { create: true })
+      const syncHandle = yield* Opfs.createSyncAccessHandle(fileHandle)
+
+      yield* Opfs.syncTruncate(syncHandle, 0)
+
+      let offset = 0
+      while (offset < data.byteLength) {
+        const wrote = yield* Opfs.syncWrite(syncHandle, data.subarray(offset), { at: offset })
+        if (wrote === 0) {
+          return yield* new OpfsError({
+            message: `Short write: wrote ${offset} of ${data.byteLength} bytes.`,
+          })
+        }
+        offset += Number(wrote)
+      }
+
+      yield* Opfs.syncFlush(syncHandle)
+    }),
+  )
 })
