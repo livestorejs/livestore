@@ -43,7 +43,9 @@ test(
         schema: Bridge.ResultStoreBootError,
       })
 
-      expect(exit).toStrictEqual(Exit.fail(UnknownError.make({ cause: new Error('Boom!') })))
+      expect(exit).toStrictEqual(
+        Exit.fail(UnknownError.make({ cause: new Error('Boom!', { cause: { name: 'Error', message: 'Boom!' } }) })),
+      )
     }),
   ),
 )
