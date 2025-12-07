@@ -131,6 +131,10 @@ export class Store<TSchema extends LiveStoreSchema = LiveStoreSchema.Any, TConte
 
   /** User-defined context attached to this Store (e.g. for dependency injection). */
   readonly context: TContext
+
+  /** Options provided to the Store constructor. */
+  readonly params: StoreOptions<TSchema, TContext>['params']
+
   /**
    * Reactive connectivity updates emitted by the backing sync backend.
    *
@@ -861,7 +865,7 @@ export class Store<TSchema extends LiveStoreSchema = LiveStoreSchema.Any, TConte
    * }
    * ```
    */
-  events = (options?: StoreEventsOptions<TSchema>): AsyncIterable<LiveStoreEvent.ForSchema<TSchema>> => {
+  events = (options?: StoreEventsOptions<TSchema>): AsyncIterable<LiveStoreEvent.Client.ForSchema<TSchema>> => {
     const stream = this.eventsStream(options)
     return {
       async *[Symbol.asyncIterator]() {
@@ -875,9 +879,9 @@ export class Store<TSchema extends LiveStoreSchema = LiveStoreSchema.Any, TConte
 
   eventsStream = (
     options?: StoreEventsOptions<TSchema>,
-  ): Stream.Stream<LiveStoreEvent.ForSchema<TSchema>, UnexpectedError> => {
+  ): Stream.Stream<LiveStoreEvent.Client.ForSchema<TSchema>, UnknownError> => {
     const { clientSession } = this[StoreInternalsSymbol]
-    const eventSchema = LiveStoreEvent.makeEventDefSchemaMemo(this.schema)
+    const eventSchema = LiveStoreEvent.Client.makeSchema(this.schema)
 
     const preferredBatchSize =
       options?.batchSize ?? this.params.eventQueryBatchSize ?? DEFAULT_PARAMS.eventQueryBatchSize
@@ -890,7 +894,7 @@ export class Store<TSchema extends LiveStoreSchema = LiveStoreSchema.Any, TConte
 
     return clientSession.leaderThread.events.stream(baseOptions).pipe(
       Stream.mapChunksEffect(Schema.decode(Schema.ChunkFromSelf(eventSchema))),
-      Stream.catchTag('ParseError', (cause) => Stream.fail(UnexpectedError.make({ cause }))),
+      Stream.catchTag('ParseError', (cause) => Stream.fail(UnknownError.make({ cause }))),
       Stream.tapError((error) => Effect.logError('Error in eventsStream', error)),
     )
   }

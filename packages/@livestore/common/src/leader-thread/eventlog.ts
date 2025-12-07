@@ -2,7 +2,6 @@ import { LS_DEV, shouldNeverHappen } from '@livestore/utils'
 import { Chunk, Effect, Option, Schema } from '@livestore/utils/effect'
 import type { SqliteDb } from '../adapter-types.ts'
 import * as EventSequenceNumber from '../schema/EventSequenceNumber/mod.ts'
-import type { ClientEventSequenceNumber } from '../schema/EventSequenceNumber.ts'
 import * as LiveStoreEvent from '../schema/LiveStoreEvent/mod.ts'
 import {
   EVENTLOG_META_TABLE,
@@ -106,9 +105,9 @@ export const getEventsFromEventlog = ({
 }: {
   dbEventlog: SqliteDb
   options: StreamEventsOptions
-}): Effect.Effect<Chunk.Chunk<LiveStoreEvent.AnyEncoded>> =>
+}): Effect.Effect<Chunk.Chunk<LiveStoreEvent.Client.Encoded>> =>
   Effect.gen(function* () {
-    const since = options.since ?? EventSequenceNumber.ROOT
+    const since = options.since ?? EventSequenceNumber.Client.ROOT
     const batchSize = options.batchSize ?? STREAM_EVENTS_BATCH_SIZE_MAX
 
     const makeQuery = () => {
@@ -131,7 +130,7 @@ export const getEventsFromEventlog = ({
       }
 
       if (options.includeClientOnly !== true) {
-        query = query.where('seqNumClient', '<=', 0 as ClientEventSequenceNumber)
+        query = query.where('seqNumClient', '<=', EventSequenceNumber.Client.DEFAULT)
       }
 
       return query
@@ -145,7 +144,7 @@ export const getEventsFromEventlog = ({
     const eventlogEvents = yield* Effect.sync(() => dbEventlog.select(makeQuery()))
 
     if (eventlogEvents.length === 0) {
-      return Chunk.empty<LiveStoreEvent.AnyEncoded>()
+      return Chunk.empty<LiveStoreEvent.Client.Encoded>()
     }
 
     const spanAttributes = {
@@ -155,7 +154,7 @@ export const getEventsFromEventlog = ({
 
     return yield* Effect.sync(() => {
       const encodedEvents = eventlogEvents.map((eventlogEvent) => {
-        return LiveStoreEvent.AnyEncoded.make({
+        return LiveStoreEvent.Client.Encoded.make({
           name: eventlogEvent.name,
           args: eventlogEvent.argsJson,
           seqNum: {

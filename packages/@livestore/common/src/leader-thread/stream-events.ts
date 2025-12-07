@@ -31,8 +31,8 @@ export const streamEventsWithSyncState = ({
   dbEventlog: LeaderSqliteDb
   syncState: Subscribable.Subscribable<SyncState.SyncState>
   options: StreamEventsOptions
-}): Stream.Stream<LiveStoreEvent.AnyEncoded> => {
-  const initialCursor = options.since ?? EventSequenceNumber.ROOT
+}): Stream.Stream<LiveStoreEvent.Client.Encoded> => {
+  const initialCursor = options.since ?? EventSequenceNumber.Client.ROOT
   const batchSize = options.batchSize ?? STREAM_EVENTS_BATCH_SIZE_MAX
 
   return Stream.unwrapScoped(
@@ -47,7 +47,7 @@ export const streamEventsWithSyncState = ({
        * lastest head from syncState is the one present on the queue without the
        * need for manual substitution.
        */
-      const headQueue = yield* Queue.sliding<EventSequenceNumber.EventSequenceNumber>(1)
+      const headQueue = yield* Queue.sliding<EventSequenceNumber.Client.Composite>(1)
 
       /**
        * We run a separate fiber which listens to changes in syncState and
@@ -73,14 +73,14 @@ export const streamEventsWithSyncState = ({
         Effect.forkScoped,
       )
 
-      return Stream.paginateChunkEffect({ cursor: initialCursor, head: EventSequenceNumber.ROOT }, ({ cursor, head }) =>
+      return Stream.paginateChunkEffect({ cursor: initialCursor, head: EventSequenceNumber.Client.ROOT }, ({ cursor, head }) =>
         Effect.gen(function* () {
           /**
-           * This early check guards agains:
+           * Early check guards agains:
            * since === until : Prevent empty query
            * since > until : Incorrectly inverted interval
            */
-          if (options.until && EventSequenceNumber.isGreaterThanOrEqual(cursor, options.until)) {
+          if (options.until && EventSequenceNumber.Client.isGreaterThanOrEqual(cursor, options.until)) {
             return [Chunk.empty(), Option.none()]
           }
 
@@ -114,13 +114,13 @@ export const streamEventsWithSyncState = ({
            * current cursor + batchSize: A batchSize step towards the latest head from headQueue
            * head: The latest head from headQueue
            */
-          const waitForHead = EventSequenceNumber.isGreaterThanOrEqual(cursor, head)
+          const waitForHead = EventSequenceNumber.Client.isGreaterThanOrEqual(cursor, head)
           const headHasAdvanced = yield* Queue.isFull(headQueue)
           const nextHead = (waitForHead ?? headHasAdvanced) ? yield* Queue.take(headQueue) : head
           const hardStop = options.until?.global ?? Number.POSITIVE_INFINITY
-          const target = EventSequenceNumber.make({
+          const target = EventSequenceNumber.Client.Composite.make({
             global: Math.min(hardStop, cursor.global + batchSize, nextHead.global),
-            client: EventSequenceNumber.clientDefault,
+            client: EventSequenceNumber.Client.DEFAULT,
           })
 
           /**
@@ -145,11 +145,11 @@ export const streamEventsWithSyncState = ({
            * finalization of the stream by passing Option.none() instead.
            */
           const reachedUntil =
-            options.until !== undefined && EventSequenceNumber.isGreaterThanOrEqual(target, options.until)
+            options.until !== undefined && EventSequenceNumber.Client.isGreaterThanOrEqual(target, options.until)
 
           const nextState: Option.Option<{
-            cursor: EventSequenceNumber.EventSequenceNumber
-            head: EventSequenceNumber.EventSequenceNumber
+            cursor: EventSequenceNumber.Client.Composite
+            head: EventSequenceNumber.Client.Composite
           }> = reachedUntil ? Option.none() : Option.some({ cursor: target, head: nextHead })
 
           const spanAttributes = {
@@ -159,7 +159,7 @@ export const streamEventsWithSyncState = ({
             'livestore.streamEvents.waitedForHead': waitForHead,
           }
 
-          return yield* Effect.succeed<[Chunk.Chunk<LiveStoreEvent.AnyEncoded>, typeof nextState]>([
+          return yield* Effect.succeed<[Chunk.Chunk<LiveStoreEvent.Client.Encoded>, typeof nextState]>([
             chunk,
             nextState,
           ]).pipe(Effect.withSpan('@livestore/common:streamEvents:segment', { attributes: spanAttributes }))

@@ -137,8 +137,8 @@ export type InitialBlockingSyncContext = {
 export const STREAM_EVENTS_BATCH_SIZE_MAX = 1_000
 
 export const StreamEventsOptionsFields = {
-  since: Schema.optional(EventSequenceNumber.EventSequenceNumber),
-  until: Schema.optional(EventSequenceNumber.EventSequenceNumber),
+  since: Schema.optional(EventSequenceNumber.Client.Composite),
+  until: Schema.optional(EventSequenceNumber.Client.Composite),
   filter: Schema.optional(Schema.Array(Schema.String)),
   clientIds: Schema.optional(Schema.Array(Schema.String)),
   sessionIds: Schema.optional(Schema.Array(Schema.String)),
@@ -151,13 +151,13 @@ export const StreamEventsOptionsSchema = Schema.Struct(StreamEventsOptionsFields
 export interface StreamEventsOptions {
   /**
    * Only include events after this logical timestamp (exclusive).
-   * Defaults to `EventSequenceNumber.ROOT` when omitted.
+   * Defaults to `EventSequenceNumber.Client.ROOT` when omitted.
    */
-  since?: EventSequenceNumber.EventSequenceNumber
+  since?: EventSequenceNumber.Client.Composite
   /**
    * Only include events up to this logical timestamp (inclusive).
    */
-  until?: EventSequenceNumber.EventSequenceNumber
+  until?: EventSequenceNumber.Client.Composite
   /**
    * Only include events of the given names.
    */
