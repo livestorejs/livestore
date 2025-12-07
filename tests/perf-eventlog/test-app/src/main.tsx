@@ -1,7 +1,7 @@
 import { makePersistedAdapter } from '@livestore/adapter-web'
 import LiveStoreSharedWorker from '@livestore/adapter-web/shared-worker?sharedworker'
 import { LiveStoreProvider } from '@livestore/react'
-import { useCallback, useState } from 'react'
+import { useMemo, useState } from 'react'
 import { unstable_batchedUpdates as batchUpdates } from 'react-dom'
 import { createRoot } from 'react-dom/client'
 import { STORE_ID } from '../../src/shared/constants.ts'
@@ -11,15 +11,13 @@ import { schema } from './livestore/schema.ts'
 import LiveStoreWorker from './livestore.worker.ts?worker'
 import { makeTracer } from './otel.ts'
 
-const createAdapter = (resetPersistence = false) =>
-  makePersistedAdapter({
-    worker: LiveStoreWorker,
-    sharedWorker: LiveStoreSharedWorker,
-    storage: { type: 'opfs' },
-    resetPersistence,
-  })
+const adapter = makePersistedAdapter({
+  worker: LiveStoreWorker,
+  sharedWorker: LiveStoreSharedWorker,
+  storage: { type: 'opfs' },
+})
 
-const App = ({ onResetHarness }: { onResetHarness: () => void }) => {
+const App = () => {
   const [eventsVisible, setEventsVisible] = useState(false)
   const [eventBatchSize, setEventBatchSize] = useState(DEFAULT_EVENT_BATCH_SIZE)
   const [eventUntil, setEventUntil] = useState<number | undefined>(undefined)
@@ -33,7 +31,6 @@ const App = ({ onResetHarness }: { onResetHarness: () => void }) => {
         </p>
       </header>
       <EventControls
-        onResetHarness={onResetHarness}
         eventsVisible={eventsVisible}
         onEventsVisibleChange={setEventsVisible}
         eventBatchSize={eventBatchSize}
@@ -47,30 +44,27 @@ const App = ({ onResetHarness }: { onResetHarness: () => void }) => {
 }
 
 const LiveStoreRoot = () => {
-  const [providerState, setProviderState] = useState(() => ({
-    key: 0,
-    adapter: createAdapter(),
-  }))
-
-  const handleResetHarness = useCallback(() => {
-    setProviderState((prev) => ({
-      key: prev.key + 1,
-      adapter: createAdapter(true),
-    }))
-  }, [])
+  const otelTracer = useMemo(() => makeTracer('livestore-perf-streaming-loopback'), [])
 
   return (
     <LiveStoreProvider
-      key={providerState.key}
       schema={schema}
-      adapter={providerState.adapter}
+      adapter={adapter}
       batchUpdates={batchUpdates}
       storeId={STORE_ID}
-      otelOptions={{ tracer: makeTracer('livestore-perf-streaming-loopback') }}
+      otelOptions={{ tracer: otelTracer }}
       // params={{ leaderPushBatchSize: 1000, eventQueryBatchSize: 1000 }}
       renderLoading={(boot) => <p data-testid="boot-stage">Stage: {boot.stage}</p>}
+      renderShutdown={(cause) => {
+        // Auto-reload on reset to start fresh
+        if (cause._tag === 'LiveStore.IntentionalShutdownCause' && cause.reason === 'devtools-reset') {
+          window.location.reload()
+          return <p data-testid="boot-stage">Reloading...</p>
+        }
+        return <p data-testid="boot-stage">Shutdown: {cause._tag}</p>
+      }}
     >
-      <App onResetHarness={handleResetHarness} />
+      <App />
     </LiveStoreProvider>
   )
 }

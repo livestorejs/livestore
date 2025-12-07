@@ -84,7 +84,6 @@ const generateTodoText = (index: number) =>
   )
 
 type EventControlsProps = {
-  onResetHarness: () => void
   eventsVisible: boolean
   onEventsVisibleChange: (visible: boolean) => void
   eventBatchSize: number
@@ -155,7 +154,6 @@ const makeGeneratorState = (): GeneratorState => ({
 const sanitizeRate = (value: number) => Math.max(EVENT_RATE_MIN, Math.floor(value))
 
 export const EventControls: React.FC<EventControlsProps> = ({
-  onResetHarness,
   eventsVisible,
   onEventsVisibleChange,
   eventBatchSize,
@@ -262,7 +260,8 @@ export const EventControls: React.FC<EventControlsProps> = ({
     idCounterRef.current = 1
     onEventBatchSizeChange(DEFAULT_EVENT_BATCH_SIZE)
     onEventUntilChange(undefined)
-    onResetHarness()
+    // Use the same reset mechanism as devtools - triggers clean shutdown and page reload
+    store._dev.hardReset('all-data')
   }
 
   const handleLoadSnapshotFiles = async () => {
