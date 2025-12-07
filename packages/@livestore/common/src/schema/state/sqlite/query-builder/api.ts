@@ -242,7 +242,12 @@ export namespace QueryBuilder {
       ): QueryBuilder<TResult, TTableDef, TWithout | 'row' | 'select'>
       <TColName extends keyof TTableDef['sqliteDef']['columns']>(
         col: TColName,
-        op: QueryBuilder.WhereOps,
+        op: QueryBuilder.WhereOps.MultiValue,
+        value: ReadonlyArray<TTableDef['sqliteDef']['columns'][TColName]['schema']['Type']>,
+      ): QueryBuilder<TResult, TTableDef, TWithout | 'row' | 'select'>
+      <TColName extends keyof TTableDef['sqliteDef']['columns']>(
+        col: TColName,
+        op: QueryBuilder.WhereOps.SingleValue,
         value: TTableDef['sqliteDef']['columns'][TColName]['schema']['Type'],
       ): QueryBuilder<TResult, TTableDef, TWithout | 'row' | 'select'>
     }
