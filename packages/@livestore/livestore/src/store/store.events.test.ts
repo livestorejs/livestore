@@ -1,6 +1,6 @@
 import { makeInMemoryAdapter } from '@livestore/adapter-web'
 import type { MockSyncBackend } from '@livestore/common'
-import { type ClientSessionLeaderThreadProxy, makeMockSyncBackend, type UnexpectedError } from '@livestore/common'
+import { type ClientSessionLeaderThreadProxy, makeMockSyncBackend, type UnknownError } from '@livestore/common'
 import type { LiveStoreEvent, LiveStoreSchema } from '@livestore/common/schema'
 import { EventFactory } from '@livestore/common/testing'
 import type { ShutdownDeferred, Store } from '@livestore/livestore'
@@ -41,7 +41,7 @@ Vitest.describe('Store events API', () => {
       })
 
       // Queue is used in order to allow analyzing the stream in stages
-      const eventsQueue = yield* Queue.unbounded<LiveStoreEvent.ForSchema<typeof schema>>()
+      const eventsQueue = yield* Queue.unbounded<LiveStoreEvent.Client.ForSchema<typeof schema>>()
 
       yield* store.eventsStream().pipe(
         Stream.tap((event) => Queue.offer(eventsQueue, event)),
@@ -81,7 +81,7 @@ class TestContext extends Context.Tag('TestContext')<
           }
         }
       }
-    }) => Effect.Effect<Store, UnexpectedError, Scope.Scope | OtelTracer.OtelTracer>
+    }) => Effect.Effect<Store, UnknownError, Scope.Scope | OtelTracer.OtelTracer>
     mockSyncBackend: MockSyncBackend
     shutdownDeferred: ShutdownDeferred
   }

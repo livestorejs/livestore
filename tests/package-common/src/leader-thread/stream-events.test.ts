@@ -51,8 +51,8 @@ const makeTestEnvironment = Effect.gen(function* () {
 
   const initialSyncState = SyncState.SyncState.make({
     pending: [],
-    upstreamHead: EventSequenceNumber.ROOT,
-    localHead: EventSequenceNumber.ROOT,
+    upstreamHead: EventSequenceNumber.Client.ROOT,
+    localHead: EventSequenceNumber.Client.ROOT,
   })
 
   const syncStateRef = yield* Ref.make(initialSyncState)
@@ -63,7 +63,7 @@ const makeTestEnvironment = Effect.gen(function* () {
     changes: Stream.fromQueue(headQueue),
   })
 
-  const advanceHead = (head: EventSequenceNumber.EventSequenceNumber) =>
+  const advanceHead = (head: EventSequenceNumber.Client.Composite) =>
     Effect.gen(function* () {
       const nextState = SyncState.SyncState.make({
         pending: [],
@@ -79,8 +79,8 @@ const makeTestEnvironment = Effect.gen(function* () {
   return { dbEventlog, dbState, syncState, advanceHead, closeHeads }
 })
 
-const toEncodedWithMeta = (event: LiveStoreEvent.AnyEncodedGlobal): LiveStoreEvent.EncodedWithMeta =>
-  LiveStoreEvent.EncodedWithMeta.fromGlobal(event, {
+const toEncodedWithMeta = (event: LiveStoreEvent.Global.Encoded): LiveStoreEvent.Client.EncodedWithMeta =>
+  LiveStoreEvent.Client.EncodedWithMeta.fromGlobal(event, {
     syncMetadata: Option.none(),
     materializerHashLeader: Option.none(),
     materializerHashSession: Option.none(),
@@ -90,20 +90,20 @@ const makeClientOnlyEvent = ({
   base,
   event,
 }: {
-  base: EventSequenceNumber.EventSequenceNumber
-  event: LiveStoreEvent.AnyEncodedGlobal
+  base: EventSequenceNumber.Client.Composite
+  event: LiveStoreEvent.Global.Encoded
 }): {
-  encoded: LiveStoreEvent.EncodedWithMeta
-  nextBase: EventSequenceNumber.EventSequenceNumber
+  encoded: LiveStoreEvent.Client.EncodedWithMeta
+  nextBase: EventSequenceNumber.Client.Composite
 } => {
-  const nextPair = EventSequenceNumber.nextPair({
+  const nextPair = EventSequenceNumber.Client.nextPair({
     seqNum: base,
     isClient: true,
     rebaseGeneration: base.rebaseGeneration,
   })
 
   return {
-    encoded: LiveStoreEvent.EncodedWithMeta.make({
+    encoded: LiveStoreEvent.Client.EncodedWithMeta.make({
       name: event.name,
       args: event.args,
       seqNum: nextPair.seqNum,
@@ -115,7 +115,7 @@ const makeClientOnlyEvent = ({
   }
 }
 
-const insertEvents = (dbEventlog: unknown, events: ReadonlyArray<LiveStoreEvent.EncodedWithMeta>) =>
+const insertEvents = (dbEventlog: unknown, events: ReadonlyArray<LiveStoreEvent.Client.EncodedWithMeta>) =>
   Effect.forEach(events, (event) =>
     Effect.gen(function* () {
       const eventDef = fixtureSchema.eventsDefsMap.get(event.name)
@@ -154,7 +154,7 @@ Vitest.describe.concurrent('streamEventsWithSyncState', () => {
           dbEventlog,
           syncState,
           options: {
-            since: EventSequenceNumber.ROOT,
+            since: EventSequenceNumber.Client.ROOT,
           },
         })
 
@@ -212,7 +212,7 @@ Vitest.describe.concurrent('streamEventsWithSyncState', () => {
           dbEventlog,
           syncState,
           options: {
-            since: EventSequenceNumber.ROOT,
+            since: EventSequenceNumber.Client.ROOT,
             filter: ['todoCompleted'],
           },
         })
@@ -248,7 +248,7 @@ Vitest.describe.concurrent('streamEventsWithSyncState', () => {
           dbEventlog,
           syncState,
           options: {
-            since: EventSequenceNumber.ROOT,
+            since: EventSequenceNumber.Client.ROOT,
             until: encodedEvents[1]!.seqNum,
           },
         })
@@ -319,7 +319,7 @@ Vitest.describe.concurrent('streamEventsWithSyncState', () => {
           dbEventlog,
           syncState,
           options: {
-            since: EventSequenceNumber.ROOT,
+            since: EventSequenceNumber.Client.ROOT,
             clientIds: ['client-b'] as const,
           },
         })
@@ -361,7 +361,7 @@ Vitest.describe.concurrent('streamEventsWithSyncState', () => {
           dbEventlog,
           syncState,
           options: {
-            since: EventSequenceNumber.ROOT,
+            since: EventSequenceNumber.Client.ROOT,
             sessionIds: ['session-2'] as const,
           },
         })
@@ -413,7 +413,7 @@ Vitest.describe.concurrent('streamEventsWithSyncState', () => {
           dbEventlog,
           syncState,
           options: {
-            since: EventSequenceNumber.ROOT,
+            since: EventSequenceNumber.Client.ROOT,
           },
         })
 
@@ -465,7 +465,7 @@ Vitest.describe.concurrent('streamEventsWithSyncState', () => {
           dbEventlog,
           syncState,
           options: {
-            since: EventSequenceNumber.ROOT,
+            since: EventSequenceNumber.Client.ROOT,
             until: untilEvent.seqNum,
             batchSize: 10,
           },
@@ -525,7 +525,7 @@ Vitest.describe.concurrent('streamEventsWithSyncState', () => {
             dbEventlog,
             syncState,
             options: {
-              since: EventSequenceNumber.ROOT,
+              since: EventSequenceNumber.Client.ROOT,
               batchSize,
             },
           })

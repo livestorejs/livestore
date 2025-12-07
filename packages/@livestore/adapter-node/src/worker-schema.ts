@@ -116,8 +116,8 @@ export class LeaderWorkerInnerStreamEvents extends Schema.TaggedRequest<LeaderWo
   'StreamEvents',
   {
     payload: StreamEventsOptionsFields,
-    success: LiveStoreEvent.AnyEncoded,
-    failure: UnexpectedError,
+    success: LiveStoreEvent.Client.Encoded,
+    failure: UnknownError,
   },
 ) {}
 

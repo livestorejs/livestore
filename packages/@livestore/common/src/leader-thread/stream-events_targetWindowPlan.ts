@@ -8,8 +8,8 @@ import { STREAM_EVENTS_BATCH_SIZE_MAX } from './types.ts'
 
 type TargetWindowState = {
   hasEvents: boolean
-  since: EventSequenceNumber.EventSequenceNumber
-  until: EventSequenceNumber.EventSequenceNumber
+  since: EventSequenceNumber.Client.Composite
+  until: EventSequenceNumber.Client.Composite
 }
 
 /**
@@ -37,8 +37,8 @@ export const streamEventsWithSyncState = ({
   dbEventlog: LeaderSqliteDb
   syncState: Subscribable.Subscribable<SyncState.SyncState>
   options: StreamEventsOptions
-}): Stream.Stream<LiveStoreEvent.AnyEncoded> => {
-  const initialCursor = options.since ?? EventSequenceNumber.ROOT
+}): Stream.Stream<LiveStoreEvent.Client.Encoded> => {
+  const initialCursor = options.since ?? EventSequenceNumber.Client.ROOT
   const batchSize = options.batchSize ?? STREAM_EVENTS_BATCH_SIZE_MAX
   const maxEventsPerWindow = 10
   const flushWindow = Duration.millis(2000)
@@ -46,7 +46,7 @@ export const streamEventsWithSyncState = ({
   return Stream.unwrapScoped(
     Effect.gen(function* () {
       // Single-element Queue allws suspending the event stream until head advances
-      const headQueue = yield* Queue.sliding<EventSequenceNumber.EventSequenceNumber>(1)
+      const headQueue = yield* Queue.sliding<EventSequenceNumber.Client.Composite>(1)
 
       // When upstream advances we put the latest head in the headQueue. Keeping
       // track of previous prevents other syncState changes to trigger emtpty queries
@@ -67,31 +67,31 @@ export const streamEventsWithSyncState = ({
       const currentCursorRef = yield* Ref.make(initialCursor)
 
       const targetStream = Stream.paginateChunkEffect(
-        { cursor: initialCursor, head: EventSequenceNumber.ROOT },
+        { cursor: initialCursor, head: EventSequenceNumber.Client.ROOT },
         ({ cursor, head }) =>
           Effect.gen(function* () {
-            if (options.until && EventSequenceNumber.isGreaterThanOrEqual(cursor, options.until)) {
-              return [Chunk.empty<EventSequenceNumber.EventSequenceNumber>(), Option.none()]
+            if (options.until && EventSequenceNumber.Client.isGreaterThanOrEqual(cursor, options.until)) {
+              return [Chunk.empty<EventSequenceNumber.Client.Composite>(), Option.none()]
             }
 
             // When we reach the current head or upstreamead has advanced we take the latest upstreamHead.
-            const waitForHead = EventSequenceNumber.isGreaterThanOrEqual(cursor, head)
+            const waitForHead = EventSequenceNumber.Client.isGreaterThanOrEqual(cursor, head)
             const headHasAdvanced = yield* Queue.isFull(headQueue)
             const nextHead = waitForHead || headHasAdvanced ? yield* Queue.take(headQueue) : head
             const hardStop = options.until?.global || Number.POSITIVE_INFINITY
-            const target = EventSequenceNumber.make({
+            const target = EventSequenceNumber.Client.Composite.make({
               global: Math.min(hardStop, cursor.global + batchSize, nextHead.global),
-              client: EventSequenceNumber.clientDefault,
+              client: EventSequenceNumber.Client.DEFAULT,
             })
 
             yield* Ref.set(currentCursorRef, target)
 
             const reachedUntil =
-              options.until !== undefined && EventSequenceNumber.isGreaterThanOrEqual(target, options.until)
+              options.until !== undefined && EventSequenceNumber.Client.isGreaterThanOrEqual(target, options.until)
 
             const nextState: Option.Option<{
-              cursor: EventSequenceNumber.EventSequenceNumber
-              head: EventSequenceNumber.EventSequenceNumber
+              cursor: EventSequenceNumber.Client.Composite
+              head: EventSequenceNumber.Client.Composite
             }> = reachedUntil ? Option.none() : Option.some({ cursor: target, head: nextHead })
 
             const spanAttributes = {
@@ -101,7 +101,7 @@ export const streamEventsWithSyncState = ({
               'livestore.streamEvents.waitedForHead': waitForHead,
             }
 
-            return yield* Effect.succeed<[Chunk.Chunk<EventSequenceNumber.EventSequenceNumber>, typeof nextState]>([
+            return yield* Effect.succeed<[Chunk.Chunk<EventSequenceNumber.Client.Composite>, typeof nextState]>([
               Chunk.of(target),
               nextState,
             ]).pipe(Effect.withSpan('@livestore/common:streamEvents:targetStream', { attributes: spanAttributes }))
@@ -111,7 +111,7 @@ export const streamEventsWithSyncState = ({
       const targetWindowSink = Sink.unwrapScoped(
         Ref.get(currentCursorRef).pipe(
           Effect.map((baseCursor) =>
-            Sink.fold<TargetWindowState, EventSequenceNumber.EventSequenceNumber>(
+            Sink.fold<TargetWindowState, EventSequenceNumber.Client.Composite>(
               {
                 hasEvents: false,
                 since: baseCursor,

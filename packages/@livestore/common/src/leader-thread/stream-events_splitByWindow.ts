@@ -7,8 +7,8 @@ import type { LeaderSqliteDb, StreamEventsOptions } from './types.ts'
 import { STREAM_EVENTS_BATCH_SIZE_MAX } from './types.ts'
 
 type FetchPlan = {
-  cursor: EventSequenceNumber.EventSequenceNumber
-  upperBound: EventSequenceNumber.EventSequenceNumber
+  cursor: EventSequenceNumber.Client.Composite
+  upperBound: EventSequenceNumber.Client.Composite
 }
 
 /**
@@ -36,8 +36,8 @@ export const streamEventsWithSyncState = ({
   dbEventlog: LeaderSqliteDb
   syncState: Subscribable.Subscribable<SyncState.SyncState>
   options: StreamEventsOptions
-}): Stream.Stream<LiveStoreEvent.AnyEncoded> => {
-  const initialCursor = options.since ?? EventSequenceNumber.ROOT
+}): Stream.Stream<LiveStoreEvent.Client.Encoded> => {
+  const initialCursor = options.since ?? EventSequenceNumber.Client.ROOT
   const batchSize = options.batchSize ?? STREAM_EVENTS_BATCH_SIZE_MAX
   const maxEventsPerWindow = 10
   const flushWindow = Duration.millis(300)
@@ -45,7 +45,7 @@ export const streamEventsWithSyncState = ({
   return Stream.unwrapScoped(
     Effect.gen(function* () {
       // Single-element Queue allws suspending the event stream until head advances
-      const headQueue = yield* Queue.sliding<EventSequenceNumber.EventSequenceNumber>(1)
+      const headQueue = yield* Queue.sliding<EventSequenceNumber.Client.Composite>(1)
 
       // When upstream advances we put the latest head in the headQueue. Keeping
       // track of previous prevents other syncState changes to trigger emtpty queries
@@ -64,30 +64,30 @@ export const streamEventsWithSyncState = ({
       )
 
       const fetchPlanStream = Stream.paginateChunkEffect(
-        { cursor: initialCursor, head: EventSequenceNumber.ROOT },
+        { cursor: initialCursor, head: EventSequenceNumber.Client.ROOT },
         ({ cursor, head }) =>
           Effect.gen(function* () {
-            if (options.until && EventSequenceNumber.isGreaterThanOrEqual(cursor, options.until)) {
+            if (options.until && EventSequenceNumber.Client.isGreaterThanOrEqual(cursor, options.until)) {
               return [Chunk.empty<FetchPlan>(), Option.none()]
             }
 
             // When we reach the current head or upstreamead has advanced we take the latest upstreamHead.
-            const waitForHead = EventSequenceNumber.isGreaterThanOrEqual(cursor, head)
+            const waitForHead = EventSequenceNumber.Client.isGreaterThanOrEqual(cursor, head)
             const headHasAdvanced = yield* Queue.isFull(headQueue)
             const nextHead = waitForHead || headHasAdvanced ? yield* Queue.take(headQueue) : head
             const hardStop = options.until?.global || Number.POSITIVE_INFINITY
-            const target = EventSequenceNumber.make({
+            const target = EventSequenceNumber.Client.Composite.make({
               global: Math.min(hardStop, cursor.global + batchSize, nextHead.global),
-              client: EventSequenceNumber.clientDefault,
+              client: EventSequenceNumber.Client.DEFAULT,
             })
             const plan: FetchPlan = { cursor, upperBound: target }
 
             const reachedUntil =
-              options.until !== undefined && EventSequenceNumber.isGreaterThanOrEqual(target, options.until)
+              options.until !== undefined && EventSequenceNumber.Client.isGreaterThanOrEqual(target, options.until)
 
             const nextState: Option.Option<{
-              cursor: EventSequenceNumber.EventSequenceNumber
-              head: EventSequenceNumber.EventSequenceNumber
+              cursor: EventSequenceNumber.Client.Composite
+              head: EventSequenceNumber.Client.Composite
             }> = reachedUntil ? Option.none() : Option.some({ cursor: target, head: nextHead })
 
             const spanAttributes = {
@@ -113,9 +113,9 @@ export const streamEventsWithSyncState = ({
         let cursor = plan.cursor
         let acc = Chunk.empty<FetchPlan>()
         while (cursor.global < plan.upperBound.global) {
-          const upperBound = EventSequenceNumber.make({
+          const upperBound = EventSequenceNumber.Client.Composite.make({
             global: Math.min(plan.upperBound.global, cursor.global + maxEventsPerWindow),
-            client: EventSequenceNumber.clientDefault,
+            client: EventSequenceNumber.Client.DEFAULT,
           })
           acc = Chunk.append(acc, { cursor, upperBound })
           cursor = upperBound
