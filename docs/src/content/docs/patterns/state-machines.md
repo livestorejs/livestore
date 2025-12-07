@@ -1,5 +1,5 @@
 ---
-title: State Machines
+title: State machines
 description: How to use state machines with LiveStore
 ---
 

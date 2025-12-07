@@ -1,5 +1,5 @@
 ---
-title: Code of Conduct
+title: Code of conduct
 description: Our code of conduct for the LiveStore community.
 ---
 

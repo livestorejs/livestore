@@ -18,7 +18,6 @@ import starlightLinksValidator from 'starlight-links-validator'
 import starlightSidebarTopics from 'starlight-sidebar-topics'
 import starlightTypeDoc from 'starlight-typedoc'
 import { getBranchName } from './src/data/data.ts'
-import { docsSidebar, toStarlightSidebar } from './src/data/sidebar.ts'
 import { rehypeExternalLinks } from './src/plugins/rehype/externalLinks.js'
 import { remarkGithubIssueLinks } from './src/plugins/remark/githubIssueLinks.js'
 import { createCopyPageClipboardFallbackIntegration } from './src/plugins/starlight/contextual-menu-fallback/plugin.ts'
@@ -129,9 +128,82 @@ export default defineConfig({
             link: '/',
             icon: 'open-book',
             items: [
+              'index',
+              {
+                label: 'Getting started',
+                autogenerate: { directory: 'getting-started' },
+              },
+              {
+                label: 'Tutorial',
+                autogenerate: { directory: 'tutorial' },
+              },
+              {
+                label: 'Overview',
+                autogenerate: { directory: 'overview' },
+              },
+              {
+                label: 'Building with LiveStore',
+                items: [
+                  // Top-level files first (manually ordered)
+                  'building-with-livestore/rules-for-ai-agents',
+                  'building-with-livestore/events',
+                  'building-with-livestore/data-modeling',
+                  'building-with-livestore/crud',
+                  'building-with-livestore/store',
+                  'building-with-livestore/complex-ui-state',
+                  'building-with-livestore/reactivity-system',
+                  'building-with-livestore/syncing',
+                  'building-with-livestore/debugging',
+                  'building-with-livestore/devtools',
+                  'building-with-livestore/opentelemetry',
+                  'building-with-livestore/production-checklist',
+                  // Then nested directories with explicit labels
+                  { label: 'State', autogenerate: { directory: 'building-with-livestore/state' } },
+                  { label: 'Tools', autogenerate: { directory: 'building-with-livestore/tools' } },
+                  { label: 'Examples', autogenerate: { directory: 'building-with-livestore/examples' } },
+                ],
+              },
+              {
+                label: 'Framework integrations',
+                autogenerate: { directory: 'framework-integrations' },
+              },
+              {
+                label: 'Platform adapters',
+                autogenerate: { directory: 'platform-adapters' },
+              },
+              {
+                label: 'Sync providers',
+                autogenerate: { directory: 'sync-providers' },
+              },
+              {
+                label: 'Patterns',
+                autogenerate: { directory: 'patterns' },
+              },
+              {
+                label: 'Understanding LiveStore',
+                autogenerate: { directory: 'understanding-livestore' },
+              },
+              {
+                label: 'Sustainable open source',
+                items: [
+                  'sustainable-open-source/sponsoring',
+                  {
+                    label: 'Contributing',
+                    autogenerate: { directory: 'sustainable-open-source/contributing' },
+                  },
+                ],
+              },
+              {
+                label: 'Miscellaneous',
+                autogenerate: { directory: 'misc' },
+              },
+              {
+                label: 'Changelog',
+                link: '/changelog',
+              },
               // Sidebar structure is defined in ./src/data/sidebar.ts
               // to be shared with llms.txt generators
-              ...toStarlightSidebar(docsSidebar),
+              // ...toStarlightSidebar(docsSidebar),
             ],
           },
           {

@@ -1,0 +1,53 @@
+---
+title: Vue integration for LiveStore
+sidebar:
+  label: Vue
+description: How to integrate LiveStore with Vue.
+---
+
+import ProviderSnippet from '../../_assets/code/reference/framework-integrations/vue/provider.vue?snippet'
+import UseStoreSnippet from '../../_assets/code/reference/framework-integrations/vue/use-store.ts?snippet'
+import UseQuerySnippet from '../../_assets/code/reference/framework-integrations/vue/use-query.vue?snippet'
+import UseClientDocumentSnippet from '../../_assets/code/reference/framework-integrations/vue/use-client-document.vue?snippet'
+
+The [vue-livestore](https://github.com/slashv/vue-livestore) package provides integration with Vue. It's currently in beta but aims to match feature parity with the React integration.
+
+## API
+
+### `LiveStoreProvider`
+
+In order to use LiveStore with Vue, you need to wrap your application in a `LiveStoreProvider`.
+
+<ProviderSnippet />
+
+### useStore
+
+<UseStoreSnippet />
+
+### useQuery
+
+<UseQuerySnippet />
+
+### useClientDocument
+
+**[!] The interface for useClientDocument is experimental and might change**
+
+Since it's more common in Vue to work with a single writable ref (as compared to state, setState in React) the useClientDocument composable for Vue tries to make that easier by directly returning a collection of refs.
+
+The current implementation destructures all client state variables into the return object which allows directly binding to v-model or editing the .value reactivly.
+
+<UseClientDocumentSnippet />
+
+## Usage with ...
+
+### Vite
+
+LiveStore and vue-livestore works with Vite out of the box.
+
+### Nuxt.js
+
+Works out of the box with Nuxt if SSR is disabled by just wrapping the main content in a LiveStoreProvider. Example repo upcoming.
+
+## Technical notes
+
+- Vue-livestore uses the provider component pattern similar to the React integration. In Vue the plugin pattern is more common but it isn't clear that that's the most suitable structure for LiveStore in Vue. We might switch to the plugin pattern if we later find that more suitable especially with regards to Nuxt support and supporting multiple stores.
