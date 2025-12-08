@@ -1,14 +1,13 @@
+import { isQueryBuilder } from '@livestore/common'
 import type { LiveQuery, LiveQueryDef, Queryable, SignalDef, StackInfo, Store } from '@livestore/livestore'
 import { extractStackInfoFromStackTrace, isQueryable, queryDb, stackInfoToString } from '@livestore/livestore'
 import type { LiveQueries } from '@livestore/livestore/internal'
 import { deepEqual, indent, shouldNeverHappen } from '@livestore/utils'
 import * as otel from '@opentelemetry/api'
 import { type Accessor, createMemo, createSignal, on, onCleanup, useContext } from 'solid-js'
-
 import { LiveStoreContext } from './LiveStoreContext.ts'
 import { originalStackLimit } from './utils/stack-info.ts'
 import { type AccessorMaybe, resolve } from './utils.ts'
-import { isQueryBuilder } from '@livestore/common'
 
 /**
  * Returns the result of a query and subscribes to future updates.
