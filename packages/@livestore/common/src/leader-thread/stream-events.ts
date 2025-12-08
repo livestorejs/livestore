@@ -27,6 +27,23 @@ import { STREAM_EVENTS_BATCH_SIZE_MAX } from './types.ts'
  * Unit: `tests/package-common/src/leader-thread/stream-events.test.ts`
  * Integration: `packages/@livestore/livestore/src/store/store-eventstream.test.ts`
  * Performance: `tests/perf-eventlog/tests/suites/event-streaming.test.ts`
+ *
+ * Optimization explorations
+ *
+ * In order to alleviate the occurence of many small queries when the syncState
+ * is sequentially progressing quickly we have explored some time-based batching
+ * approaches. It remains to be determined if and when the added complexity of
+ * these approaches are worth the benefit. They come with some drawbacks such as
+ * degraded time to first event or general performance degredation for larger
+ * query steps. These aspects can likely be mitigated with some more work but
+ * that is best assessed when we have a final implementation of event streaming
+ * with support for session and leader level streams.
+ *
+ * Fetch plans into a Sink
+ * https://gist.github.com/slashv/f1223689f2d1171d2eeb60a2823f4c7c
+ *
+ * Fetch plans into sink and decompose into windows
+ * https://gist.github.com/slashv/a8f55f50121c080937f42e44b4039ac8
  */
 export const streamEventsWithSyncState = ({
   dbEventlog,
@@ -119,7 +136,7 @@ export const streamEventsWithSyncState = ({
              *
              * hardStop: A user supplied until marker
              * current cursor + batchSize: A batchSize step towards the latest head from headQueue
-             * head: The latest head from headQueue
+             * nextHead: The latest head from headQueue
              */
             const waitForHead = EventSequenceNumber.Client.isGreaterThanOrEqual(cursor, head)
             const maybeHead = waitForHead
