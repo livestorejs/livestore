@@ -5,6 +5,114 @@ sidebar:
   order: 5
 ---
 
-## Why should you use LiveStore?
+import SourceOfTruthDiagram from '../../_assets/diagrams/sot-vs-cache.tldr?tldraw';
 
-TBD 
+## The problem LiveStore solves
+
+Building modern apps with great UX means handling a lot of complexity:
+
+- **State management**: Keeping UI in sync with data
+- **Persistence**: Surviving refreshes and app restarts  
+- **Offline support**: Working without a network connection
+- **Real-time sync**: Reflecting changes across devices instantly
+- **Conflict resolution**: Handling concurrent edits gracefully
+
+Traditionally, each of these concerns requires separate solutions—a state library, local storage, a sync service, optimistic update logic, retry queues. These pieces don't naturally fit together, leading to complex, fragile code and subtle bugs.
+
+LiveStore provides a _unified architecture_ that handles all of these concerns through one coherent model: event sourcing.
+
+As a positive side-effect, the simplicity of LiveStore's event-driven abstractions also leads to a superior DX compared to the traditional ways of dealing with state.
+
+## What makes LiveStore different
+
+### A real database, not just a cache
+
+Most state management tools treat local data as a _cache_ of server state. This introduces complexity that's hard to manage due to the inherent intricacies of caching.
+
+LiveStore flips this: your local SQLite database is the primary data source, and the server is just a sync target to which data is distributed automatically.
+
+<SourceOfTruthDiagram class="my-8" />
+
+This means:
+- **No loading states for reads**—queries execute synchronously against local SQLite
+- **Full SQL power**—joins, aggregations, complex filters, all instant
+- **Offline by default**—your app works the same whether online or not
+
+### Events as the source of truth
+
+Instead of syncing mutable state (which leads to "who wins?" conflicts), LiveStore syncs an append-only log of events. This is fundamentally easier to reason about:
+
+- Events merge naturally—you're combining histories, not reconciling states
+- Every change is auditable—you have a complete record of what happened
+- State is always rebuildable—replay events to reconstruct any point in time
+
+### Sync that actually works
+
+LiveStore includes a battle-tested sync engine that handles the hard problems:
+
+- **Optimistic updates**: Changes appear instantly, sync happens in the background
+- **Automatic offline queue**: Events committed offline sync when connectivity returns  
+- **Deterministic conflict resolution**: Same events always produce the same state
+- **Pluggable backends**: Use Cloudflare, ElectricSQL, or build your own
+
+### Built for demanding apps
+
+LiveStore was developed as the foundation for [Overtone](https://overtone.pro), a professional music application requiring 120fps performance with complex, real-time collaborative state. It's designed for apps where performance and reliability aren't negotiable.
+
+### Open-source: By developers, for developers
+
+LiveStore is entirely open-source. There is no company behind it and it's only possible through its generous [sponsors](/sustainable-open-source/sponsoring).
+
+## LiveStore vs. the alternatives
+
+### vs. State management libraries (Redux, Zustand, MobX)
+
+These solve state management but not persistence or sync. You'll need to add:
+- Local storage or IndexedDB for persistence
+- A sync layer for real-time updates
+- Optimistic update logic
+- Offline queue management
+
+LiveStore handles all of this out of the box.
+
+### vs. Backend-as-a-Service (Firebase, Supabase)
+
+These provide sync but treat the server as the source of truth. The consequences are:
+- Reads require network round-trips (or complex caching)
+- Offline support is limited or requires significant extra work
+- You're locked into their data model and pricing
+
+LiveStore is client-first, works fully offline, and syncs via any backend you choose.
+
+### vs. Other local-first solutions (ElectricSQL, Zero, PowerSync)
+
+These are excellent if you have an existing Postgres database you want to sync to clients. LiveStore is better when:
+- You're building a new app without legacy data
+- You want event sourcing semantics (not just row-level sync)
+- You need the flexibility to materialize state in different ways
+
+See the [local-first landscape](https://localfirst.fm/landscape) for a comprehensive comparison.
+
+## A great developer experience (DX)
+
+LiveStore is designed to make the right thing easy:
+
+- **Type-safe schema**: Your events, tables, and queries are fully typed
+- **Reactive by default**: UI updates automatically when data changes
+- **Powerful devtools**: Inspect state, browse events, time-travel debug
+- **Cross-platform**: Same mental model on web, mobile, desktop, and server
+
+## When to choose LiveStore
+
+**Choose LiveStore if:**
+- You're building a new app that should work offline
+- You want a unified solution for state, persistence, and sync
+- Your app has complex local state that benefits from SQL queries
+- You value auditability and the ability to replay/debug state changes
+
+**Consider alternatives if:**
+- You need to sync with an existing server database
+- Your data won't fit in client memory
+- You're building a traditional request/response app without offline needs
+
+Still unsure? Try the [evaluation exercise](/overview/when-livestore#evaluation-exercise) to model your app's events and see if it feels natural.
