@@ -7,12 +7,12 @@ sidebar:
 
 ## What is LiveStore?
 
-LiveStore is an event-driven data layer. Its prime use case is building complex, client-side apps like [Linear](http://linear.app/), [Figma](https://www.figma.com/) or [Notion](https://notion.so/) that can also work offline.
+LiveStore is an event-driven data layer with a built-in sync engine. Its prime use case is building complex, client-side apps like [Linear](http://linear.app/), [Figma](https://www.figma.com/) or [Notion](https://notion.so/) that also work offline.
 
-You can imagine LiveStore as a next-generation version of state management libraries like Zustand, Redux or MobX that:
+You can imagine LiveStore as a next-generation version of state management libraries like Zustand, Redux or MobX that distinguishes itself through:
 
-- _persists_ state, making it available across refreshes and browser sessions
-- _distributes_ (or _syncs_) state across various clients (browsers, devices, ...)
+- _persisting_ state, making it available across refreshes and browser sessions
+- _distributing_ (or _syncing_) state across various clients (browsers, app, devices, ...) 
 
 The combination of persisted and distributed state is a giant leap for creating an **amazing user experience** (UX), while also providing a **superior developer experience** (DX) through well-designed primitives and abstractions for state management.
 
@@ -42,9 +42,25 @@ Instead of mutating state directly, you commit **events** that _describe_ what h
 While the majority of apps will probably use SQLite as the data store for persistence, LiveStore is flexible enough to materialize state into other targets as well (e.g. file systems).
 :::
 
+If you want to learn more, you can dive deeper into [how LiveStore works](/overview/how-livestore-works).
+
+### Comparison with traditional state management like Redux
+
+If you've used Redux, this pattern of "comitting events" will feel familiar: **Events are like actions, materializers are like reducers, and the SQLite state is like your store.**
+
+But there are key differences:
+
+| Redux                                              | LiveStore                                   |
+| -------------------------------------------------- | ------------------------------------------- |
+| Actions dispatch → reducers update in-memory state | Events commit → materializers update SQLite |
+| State lost on refresh                              | Events persisted locally                    |
+| Sync requires external setup                       | Sync built-in via eventlog                  |
+| Fixed state shape                                  | Query any shape with SQL                    |
+
+
 ## A practical example
 
-Let's walk through a simple example of a todo list with LiveStore and React:
+Let's walk through a simple example of a todo list with LiveStore and React.
 
 ### Define your schema
 
@@ -73,10 +89,6 @@ export const events = {
     name: "v1.TodoCompleted",
     schema: Schema.Struct({ id: Schema.String }),
   }),
-  todoDeleted: Events.synced({
-    name: "v1.TodoDeleted",
-    schema: Schema.Struct({ id: Schema.String }),
-  }),
 };
 
 // 2. Define state (SQLite tables)
@@ -87,7 +99,6 @@ export const tables = {
       id: State.SQLite.text({ primaryKey: true }),
       text: State.SQLite.text({ default: "" }),
       completed: State.SQLite.boolean({ default: false }),
-      deleted: State.SQLite.boolean({ default: false }),
     },
   }),
 };
@@ -97,8 +108,6 @@ const materializers = State.SQLite.materializers(events, {
   "v1.TodoCreated": ({ id, text }) => tables.todos.insert({ id, text }),
   "v1.TodoCompleted": ({ id }) =>
     tables.todos.update({ completed: true }).where({ id }),
-  "v1.TodoDeleted": ({ id }) =>
-    tables.todos.update({ deleted: true }).where({ id }),
 });
 
 const state = State.SQLite.makeState({ tables, materializers });
@@ -107,9 +116,9 @@ export const schema = makeSchema({ events, state });
 
 ### Usage on the frontend
 
-LiveStore comes with integrations for all major frontend frameworks, e.g. for [React](../../framework-integrations/react-integration) or [Vue](../../framework-integrations/vue-integration).
+LiveStore comes with integrations for all major frontend frameworks, e.g. for [React](/framework-integrations/react-integration) or [Vue](/framework-integrations/vue-integration).
 
-The `queryDb` function creates a [reactive query](../../building-with-livestore/reactivity-system) which updates automatically when its data in the database changes. Here's how to use it in React:
+The [`queryDb`](/building-with-livestore/reactivity-system#reactive-sql-queries) function creates a [reactive query](/building-with-livestore/reactivity-system) which updates automatically when its data in the database changes. Here's how to use it in React:
 
 ```tsx
 // TodoApp.tsx
@@ -124,9 +133,12 @@ const visibleTodos$ = queryDb(() => tables.todos.where({ deleted: false }), {
 
 export function TodoApp() {
   const { store } = useStore();
-  const todos = useQuery(visibleTodos$); // Reactively updates
+
+   // Reactively updates when todos change in the DB
+  const todos = useQuery(visibleTodos$);
 
   const addTodo = (text: string) => {
+    // Commit an event to the store
     store.commit(
       events.todoCreated({
         id: crypto.randomUUID(),
@@ -136,6 +148,7 @@ export function TodoApp() {
   };
 
   const completeTodo = (id: string) => {
+    // Commit an event to the store
     store.commit(events.todoCompleted({ id }));
   };
 
@@ -152,43 +165,43 @@ export function TodoApp() {
 }
 ```
 
-Notice there's no loading state for queries—SQLite runs in-memory on the main thread, so reads are synchronous and instant.
+This code replaces all the API calls, state management, UI update, caching, and synchronization logic you may be used to from writing apps in a more traditional way. If configured, it also automatically takes care of syncing data to other clients.
+
+Also notice how there's no loading state for queries—SQLite runs in-memory on the main thread, so reads are synchronous and instant, making your app super snappy and reactive to user input.
 
 ## Why events?
 
-If you've used Redux, this pattern will feel familiar:
+But why use events at all, rather than directly mutating state?
 
-Events are like actions, materializers are like reducers, and the SQLite state is like your store. 
+### Benefits of using events for state management
 
-But there are key differences:
+- **Events capture intent, not just outcome.** When you mutate state directly (`todo.completed = true`), you lose the _why_. Events like `TodoCompleted` preserve the user's intent, which matters for debugging, analytics, undo/redo, and features like activity feeds.
+- **Events decouple what happened from how it's stored.** Your state shape can evolve independently of your event history. Need a new denormalized table for performance? Just add a materializer—no data migration required.
+- **Events make sync tractable.** Syncing mutable state across devices is hard (which field wins?). Syncing an append-only event log is simpler: you're merging histories, not reconciling conflicting states.
 
-| Redux                                              | LiveStore                                   |
-| -------------------------------------------------- | ------------------------------------------- |
-| Actions dispatch → reducers update in-memory state | Events commit → materializers update SQLite |
-| State lost on refresh                              | Events persisted locally                    |
-| Sync requires external setup                       | Sync built-in via eventlog                  |
-| Fixed state shape                                  | Query any shape with SQL                    |
+### Benefits of LiveStore's eventlog 
 
-The eventlog is the core of LiveStore and gives you several advantages:
+The [eventlog](/building-with-livestore/events/#eventlog) sits the core of LiveStore and gives you several benefits:
 
 - **Persistence**: Events survive page refreshes and app restarts
 - **Sync**: Events replay identically across devices
-- **History**: Full audit trail of every change (enabling time travel and help with debugging)
+- **History**: Full audit trail of every change (enables time travel and helps with debugging)
 - **Flexibility**: Change your queries without migrations—just materialize differently
 
+## How syncing works
 
-## How sync works
+LiveStore includes a **sync engine** which handles [syncing](/building-with-livestore/syncing) for you under the hood. 
 
-You can enable syncing in LiveStore, which distributes your state across various other clients (these can be other browsers, apps, devices, servers—anything that can connect to your store via an _adapter_).
+When you can enable syncing, the sync engine distributes your state across various other clients (these can be other browsers, apps, devices, servers—anything that can connect to your store via an [adapter](/overview/how-livestore-works#platform-adapters)).
 
-When you enable sync, LiveStore uses a push/pull model inspired by git:
+LiveStore uses a push/pull model inspired by git:
 
 1. Local events are committed immediately (optimistic updates by default)
 1. Events sync to a central backend when online
 1. Other clients pull new events and materialize them locally
 1. Conflicts resolve deterministically (last-write-wins by default, or custom logic)
 
-Here's an example that syncs your state via Cloudflare:
+Here's an example that syncs your state via Cloudflare (using the [`@livestore/sync=cf`](/sync-providers/cloudflare/) package):
 
 ```ts title="/src/livestore/livestore.worker.ts" lang="ts"
 import { makeWorker } from '@livestore/adapter-web/worker'
@@ -210,10 +223,12 @@ That's all the configuration needed—your app works offline automatically. When
 
 LiveStore works well for:
 
-- **Productivity apps** (todo lists, note-taking, project management)
-- **Collaborative tools** with offline support
+- **Productivity apps** (todo lists, note-taking, project management, ...)
+- **Collaborative tools** with multi-player support
 - **Apps with complex local state** that need SQL-level queries
+- **Local-first** apps with offline support
 - **Cross-platform apps** (web, mobile, desktop, server)
+- ... or any combination of the above
 
 LiveStore may not fit if:
 
@@ -221,9 +236,11 @@ LiveStore may not fit if:
 - You're building a traditional client-server app without offline needs
 - You need unbounded data that won't fit in client memory
 
-If you're unsure, go through our [evaluation exercise](./when-livestore) to find out whether LiveStore is a good fit for your project.
+If you're unsure, go through our [evaluation exercise](/overview/when-livestore) to find out whether LiveStore is a good fit for your project or [compare it with similar tools](/overview/technology-comparison).
 
 ## Key concepts summary
+
+Here's an overview of LiveStore's key concepts:
 
 | Concept          | What It Is                                                           |
 | ---------------- | -------------------------------------------------------------------- |
@@ -234,7 +251,9 @@ If you're unsure, go through our [evaluation exercise](./when-livestore) to find
 | **Query**        | A reactive subscription to SQLite data                               |
 | **Store**        | The main interface for committing events and querying state          |
 
-## Next Steps
+If you want to learn more, check out the [Concepts](/overview/concepts) section in the docs.
+
+## Next steps
 
 - [Tutorial](/tutorial) — Step-by-step tutorial introducing the main concepts and workflows of LiveStore
 - [Getting started with React](/getting-started/react-web) — Set up a project from scratch

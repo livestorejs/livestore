@@ -20,7 +20,7 @@ On the client, LiveStore provides a reactive SQLite database for application sta
 
 Application state is materialized into a local SQLite database, offering high-performance, offline-capable data access. This SQLite database is reactive: UI components subscribe to data changes and update automatically when the state changes. LiveStore uses in-memory SQLite for sub-millisecond queries and persistent SQLite for durable storage across application sessions.
 
-#### Event Sourcing
+#### Event sourcing
 
 Underpinning the reactive state, LiveStore implements the event sourcing pattern. All data modifications are captured as an immutable, ordered sequence of events. This eventlog serves as the canonical history, enabling reliable state reconstruction and providing inherent auditability, which aids in debugging. The reactive SQLite state is a projection of this eventlog.
 
