@@ -22,6 +22,11 @@ import { STREAM_EVENTS_BATCH_SIZE_MAX } from './types.ts'
  * Each caller resolves dependencies inside the leader scope before invoking this helper,
  * so the stream stays environment-agnostic and does not leak `LeaderThreadCtx` into runtime
  * entry points such as `Store.eventsStream`.
+ *
+ * Test files:
+ * Unit: `tests/package-common/src/leader-thread/stream-events.test.ts`
+ * Integration: `packages/@livestore/livestore/src/store/store-eventstream.test.ts`
+ * Performance: `tests/perf-eventlog/tests/suites/event-streaming.test.ts`
  */
 export const streamEventsWithSyncState = ({
   dbEventlog,
@@ -117,8 +122,10 @@ export const streamEventsWithSyncState = ({
              * head: The latest head from headQueue
              */
             const waitForHead = EventSequenceNumber.Client.isGreaterThanOrEqual(cursor, head)
-            const headHasAdvanced = yield* Queue.isFull(headQueue)
-            const nextHead = (waitForHead ?? headHasAdvanced) ? yield* Queue.take(headQueue) : head
+            const maybeHead = waitForHead
+              ? yield* Queue.take(headQueue).pipe(Effect.map(Option.some))
+              : yield* Queue.poll(headQueue)
+            const nextHead = Option.getOrElse(maybeHead, () => head)
             const hardStop = options.until?.global ?? Number.POSITIVE_INFINITY
             const target = EventSequenceNumber.Client.Composite.make({
               global: Math.min(hardStop, cursor.global + batchSize, nextHead.global),
