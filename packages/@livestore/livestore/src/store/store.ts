@@ -71,9 +71,12 @@ if (isDevEnv()) {
   exposeDebugUtils()
 }
 
-export const DEFAULT_PARAMS = {
+/**
+ * Default parameters for the Store. Also used in `create-store.ts`
+ */
+export const STORE_DEFAULT_PARAMS = {
   leaderPushBatchSize: 100,
-  eventQueryBatchSize: 1000,
+  eventQueryBatchSize: 100,
 }
 
 //
@@ -840,27 +843,39 @@ export class Store<TSchema extends LiveStoreSchema = LiveStoreSchema.Any, TConte
    * Returns an async iterable of events from the eventlog.
    * Currently only events confirmed by the sync backend is supported.
    *
-   * Defaults to tracking upstreamHead as it advances.
-   * If an until marker is supplied the stream finalizes upon reaching the marker.
+   * Defaults to tracking upstreamHead as it advances. If an `until` event is
+   * supplied the stream finalizes upon reaching it.
    *
-   * Supports filtering by eventName, clientId and sessionId
+   * To start streaming from a specific point in the eventlog
+   * you can provide a `since` event.
+   *
+   * Allows filtering by:
+   *  - `filter`: event types
+   *  - `clientIds`: client identifiers
+   *  - `sessionIds`: session identifiers
+   *
+   * The batchSize option controls the maximum amount of events that are fetched
+   * from the eventlog in each query. Defaults to 100 and has a max allowed
+   * value of 1000.
    *
    * TODO:
-   * - Support rebase with leader
-   * - Support rebase with sync backend
-   * - Support client-only events
+   * - Support streaming unconfirmed events
+   *  - Leader level
+   *  - Session level
+   * - Support streaming client-only events
    *
    * @example
    * ```ts
-   * for await (const event of store.events()) {
+   * // Stream todoCompleted events from the start
+   * for await (const event of store.events(filter: ['todoCompleted'])) {
    *   console.log(event)
    * }
    * ```
    *
    * @example
    * ```ts
-   * // Start streaming from a specific event number
-   * for await (const event of store.events({ since: EventSequenceNumber.fromString('e3') })) {
+   * // Start streaming from a specific event
+   * for await (const event of store.events({ since: EventSequenceNumber.Client.fromString('e3') })) {
    *   console.log(event)
    * }
    * ```
@@ -877,6 +892,10 @@ export class Store<TSchema extends LiveStoreSchema = LiveStoreSchema.Any, TConte
     }
   }
 
+  /**
+   * Returns an Effect Stream of events from the eventlog.
+   * See `store.events` for details on options and behaviour.
+   */
   eventsStream = (
     options?: StoreEventsOptions<TSchema>,
   ): Stream.Stream<LiveStoreEvent.Client.ForSchema<TSchema>, UnknownError> => {
@@ -884,7 +903,7 @@ export class Store<TSchema extends LiveStoreSchema = LiveStoreSchema.Any, TConte
     const eventSchema = LiveStoreEvent.Client.makeSchema(this.schema)
 
     const preferredBatchSize =
-      options?.batchSize ?? this.params.eventQueryBatchSize ?? DEFAULT_PARAMS.eventQueryBatchSize
+      options?.batchSize ?? this.params.eventQueryBatchSize ?? STORE_DEFAULT_PARAMS.eventQueryBatchSize
 
     const baseOptions: StreamEventsOptions = {
       ...options,

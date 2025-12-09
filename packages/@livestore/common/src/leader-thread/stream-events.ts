@@ -4,13 +4,15 @@ import { EventSequenceNumber, type LiveStoreEvent } from '../schema/mod.ts'
 import type * as SyncState from '../sync/syncstate.ts'
 import * as Eventlog from './eventlog.ts'
 import type { LeaderSqliteDb, StreamEventsOptions } from './types.ts'
-import { STREAM_EVENTS_BATCH_SIZE_MAX } from './types.ts'
 
 /**
  * Streams events for leader-thread adapters.
  *
  * Provides a continuous stream from the eventlog as the upstream head advances.
  * When an until event is passed in the stream finalizes upon reaching it.
+ *
+ * The batch size is set to 100 by default as this was meassured to provide the
+ * best performance and 1000 as the upper limit.
  *
  * Adapters that call this helper:
  * - `packages/@livestore/adapter-web/src/in-memory/in-memory-adapter.ts`
@@ -55,7 +57,7 @@ export const streamEventsWithSyncState = ({
   options: StreamEventsOptions
 }): Stream.Stream<LiveStoreEvent.Client.Encoded> => {
   const initialCursor = options.since ?? EventSequenceNumber.Client.ROOT
-  const batchSize = options.batchSize ?? STREAM_EVENTS_BATCH_SIZE_MAX
+  const batchSize = options.batchSize ?? 100
 
   return Stream.unwrapScoped(
     Effect.gen(function* () {

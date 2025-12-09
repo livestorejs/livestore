@@ -35,7 +35,7 @@ import { nanoid } from '@livestore/utils/nanoid'
 import * as otel from '@opentelemetry/api'
 
 import { connectDevtoolsToStore } from './devtools.ts'
-import { DEFAULT_PARAMS, Store } from './store.ts'
+import { STORE_DEFAULT_PARAMS, Store } from './store.ts'
 import type {
   LiveStoreContextRunning as LiveStoreContextRunning_,
   OtelOptions,
@@ -344,8 +344,8 @@ export const createStore = <
         batchUpdates: (run) => run(),
         storeId,
         params: {
-          leaderPushBatchSize: params?.leaderPushBatchSize ?? DEFAULT_PARAMS.leaderPushBatchSize,
-          eventQueryBatchSize: params?.eventQueryBatchSize ?? DEFAULT_PARAMS.eventQueryBatchSize,
+          leaderPushBatchSize: params?.leaderPushBatchSize ?? STORE_DEFAULT_PARAMS.leaderPushBatchSize,
+          eventQueryBatchSize: params?.eventQueryBatchSize ?? STORE_DEFAULT_PARAMS.eventQueryBatchSize,
           ...omitUndefineds({ simulation: params?.simulation }),
         },
       })
