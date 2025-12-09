@@ -253,7 +253,10 @@ export type StoreCommitOptions = {
  * filter: Narrowed to the store's event types
  * includeClientOnly: Omitted from public API until supported
  */
-export type StoreEventsOptions<TSchema extends LiveStoreSchema> = Omit<StreamEventsOptions, 'filter' | 'includeClientOnly'> & {
+export type StoreEventsOptions<TSchema extends LiveStoreSchema> = Omit<
+  StreamEventsOptions,
+  'filter' | 'includeClientOnly'
+> & {
   /**
    * Only include events of the given names.
    * @default undefined (include all)
