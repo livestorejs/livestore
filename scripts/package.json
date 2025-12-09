@@ -17,7 +17,7 @@
     "@local/docs": "workspace:*",
     "@local/tests-integration": "workspace:*",
     "@local/tests-sync-provider": "workspace:*",
-    "@types/bun": "^1.2.21",
+    "@types/bun": "catalog:",
     "@types/node": "catalog:",
     "@types/semver": "^7.7.0",
     "semver": "^7.7.3",
