@@ -26,9 +26,6 @@ const App = () => {
     <div style={{ fontFamily: 'system-ui, sans-serif', margin: '1.5rem auto', maxWidth: '48rem' }} data-testid="app">
       <header>
         <h1>LiveStore Event Streaming Perf</h1>
-        <p style={{ color: '#555' }}>
-          Emit deterministic synced events and render them as they arrive through the backend-confirmed stream.
-        </p>
       </header>
       <EventControls
         eventsVisible={eventsVisible}

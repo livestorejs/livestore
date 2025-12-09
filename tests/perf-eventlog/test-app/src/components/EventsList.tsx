@@ -38,7 +38,7 @@ export const EventsList: React.FC<EventsListProps> = ({ batchSize, until }) => {
     const iterator = store
       .events({
         batchSize: preferredBatchSize,
-        ...(until !== undefined && { until: EventSequenceNumber.fromString(`e${until}`) }),
+        ...(until !== undefined && { until: EventSequenceNumber.Client.fromString(`e${until}`) }),
       })
       [Symbol.asyncIterator]()
 
@@ -95,8 +95,7 @@ export const EventsList: React.FC<EventsListProps> = ({ batchSize, until }) => {
             style={{
               borderBottom: '1px solid #ddd',
               padding: '0.5rem 0.25rem',
-              fontFamily:
-                'ui-monospace, SFMono-Regular, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace',
+              fontFamily: 'monospace',
               fontSize: '0.85rem',
               whiteSpace: 'pre-wrap',
               wordBreak: 'break-word',
@@ -127,7 +126,7 @@ export const SimpleEventsStream: React.FC<EventsListProps> = ({ batchSize, until
       try {
         for await (const event of store.events({
           batchSize: preferredBatchSize,
-          ...(until !== undefined && { until: EventSequenceNumber.fromString(`e${until}`) }),
+          ...(until !== undefined && { until: EventSequenceNumber.Client.fromString(`e${until}`) }),
         })) {
           if (cancelled) break
           if (!event) continue

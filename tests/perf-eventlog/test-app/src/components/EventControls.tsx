@@ -342,9 +342,9 @@ export const EventControls: React.FC<EventControlsProps> = ({
   return (
     <section>
       <div style={{ fontSize: '0.9rem', display: 'flex', gap: '0.75rem', marginBottom: '0.75rem' }}>
-        <div data-testid="syncstate">{todoCount === syncHead.upstream ? 'Synced' : 'Syncing...'}</div>
-        <div>Todo count: {typeof todoCount === 'number' ? todoCount.toLocaleString() : String(todoCount ?? '')}</div>
-        <div>Upstream head: {syncHead.upstream}</div>
+        <div style={{ width: '10rem' }} data-testid="syncstate">{todoCount === syncHead.upstream ? 'Synced' : 'Syncing...'}</div>
+        <div style={{ width: '10rem' }}>Todo count: {typeof todoCount === 'number' ? todoCount.toLocaleString() : String(todoCount ?? '')}</div>
+        <div style={{ width: '10rem' }}>Upstream head: {syncHead.upstream}</div>
       </div>
       <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.75rem', alignItems: 'end' }}>
         <label style={{ display: 'flex', flexDirection: 'column', fontSize: '0.9rem' }}>
