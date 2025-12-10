@@ -1,55 +1,37 @@
-import type { Adapter } from '@livestore/common'
 import type { LiveStoreSchema } from '@livestore/common/schema'
 import type { CreateStoreOptions, OtelOptions } from '@livestore/livestore'
 
-export type StoreId = string
-
-/**
- * Minimum information required to create a store
- */
-export type StoreDescriptor<TSchema extends LiveStoreSchema> = {
+export type CachedStoreOptions<TSchema extends LiveStoreSchema = LiveStoreSchema.Any, TContext = {}> = Pick<
+  CreateStoreOptions<TSchema, TContext>,
+  | 'storeId'
+  | 'schema'
+  | 'adapter'
+  | 'boot'
+  | 'batchUpdates'
+  | 'disableDevtools'
+  | 'confirmUnsavedChanges'
+  | 'syncPayload'
+  | 'debug'
+  | 'shutdownDeferred'
+> & {
+  signal?: AbortSignal
+  otelOptions?: Partial<OtelOptions>
   /**
-   * Schema describing the data structure.
+   * The time in milliseconds that this store should remain
+   * in memory after becoming unused. When this store becomes
+   * unused (no active retentions), it will be disposed after this duration.
+   *
+   * Stores transition to the unused state as soon as they have no
+   * active retentions, so when all components which use that store
+   * have unmounted.
+   *
+   * @remarks
+   * - When different `unusedCacheTime` values are used for the same store, the longest one will be used.
+   * - If set to `Infinity`, will disable automatic disposal
+   * - The maximum allowed time is about {@link https://developer.mozilla.org/en-US/docs/Web/API/Window/setTimeout#maximum_delay_value | 24 days}
+   *
+   * @defaultValue `60_000` (60 seconds) or `Infinity` during SSR to avoid
+   * disposing stores before server render completes.
    */
-  readonly schema: TSchema
-
-  /**
-   * Adapter for persistence and synchronization.
-   */
-  readonly adapter: Adapter
-
-  /**
-   * The ID of the store.
-   */
-  readonly storeId: StoreId
+  unusedCacheTime?: number
 }
-
-export type CachedStoreOptions<
-  TSchema extends LiveStoreSchema = LiveStoreSchema.Any,
-  TContext = {},
-> = StoreDescriptor<TSchema> &
-  Pick<
-    CreateStoreOptions<TSchema, TContext>,
-    'boot' | 'batchUpdates' | 'disableDevtools' | 'confirmUnsavedChanges' | 'syncPayload' | 'debug'
-  > & {
-    signal?: AbortSignal
-    otelOptions?: Partial<OtelOptions>
-    /**
-     * The time in milliseconds that this store should remain
-     * in memory after becoming unused. When this store becomes
-     * unused (no subscribers), it will be disposed after this duration.
-     *
-     * Stores transition to the unused state as soon as they have no
-     * subscriptions registered, so when all components which use that
-     * store have unmounted.
-     *
-     * @remarks
-     * - When different `unusedCacheTime` values are used for the same store, the longest one will be used.
-     * - If set to `Infinity`, will disable automatic disposal
-     * - The maximum allowed time is about {@link https://developer.mozilla.org/en-US/docs/Web/API/Window/setTimeout#maximum_delay_value | 24 days}
-     *
-     * @defaultValue `60_000` (60 seconds) or `Infinity` during SSR to avoid
-     * disposing stores before server render completes.
-     */
-    unusedCacheTime?: number
-  }

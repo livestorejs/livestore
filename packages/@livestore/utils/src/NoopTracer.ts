@@ -21,7 +21,10 @@ export const makeNoopSpan = () => {
       ;(span as any)._duration = [durationSecs, durationRestNs]
     },
     spanContext: () => {
-      return { traceId: 'livestore-noop-trace-id', spanId: 'livestore-noop-span-id' }
+      return {
+        traceId: `livestore-noop-trace-id${crypto.randomUUID()}`,
+        spanId: `livestore-noop-span-id${crypto.randomUUID()}`,
+      }
     },
     _duration: [0, 0],
   } as unknown as otel.Span
