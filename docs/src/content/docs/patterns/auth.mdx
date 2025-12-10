@@ -42,15 +42,15 @@ When you rely on `syncPayload`, treat it as untrusted input. Decode the token in
 
 You can extend `ensureAuthorized` to project additional claims, memoise verification per `authToken`, or enforce application-specific policies without changing LiveStore internals.
 
-## Client Identity vs User Identity
+## Client identity vs user identity
 
 LiveStore's `clientId` identifies a client instance, while user identity is an application-level concern that must be modeled through your application's events and logic.
 
-### Key Points
+### Key points
 - `clientId`: Automatically managed by LiveStore, identifies a client instance
 - User identity: Managed by your application through events and syncPayload
 
-### Using syncPayload for Authentication
+### Using syncPayload for authentication
 
 The `syncPayload` is primarily intended for authentication purposes:
 

@@ -71,33 +71,39 @@ export const group = (
  */
 export const docsSidebar: ReadonlyArray<TSidebarItem> = [
   link('index'),
-  autoGroup('Getting Started', 'getting-started'),
+  autoGroup('Getting started', 'getting-started'),
   autoGroup('Tutorial', 'tutorial'),
-  autoGroup('Evaluating LiveStore', 'evaluation'),
-  autoGroup('Data Modeling', 'data-modeling'),
-  group('Reference', [
-    link('reference/concepts'),
-    link('reference/store'),
-    link('reference/reactivity-system'),
-    link('reference/events'),
-    link('reference/devtools'),
-    link('reference/debugging'),
-    link('reference/opentelemetry'),
-    link('reference/cli'),
-    link('reference/mcp'),
-    autoGroup('State', 'reference/state'),
-    group('Syncing', [
-      link('reference/syncing'),
-      link('reference/syncing/server-side-clients'),
-      autoGroup('Sync Provider', 'reference/syncing/sync-provider'),
-    ]),
-    autoGroup('Platform Adapters', 'reference/platform-adapters'),
-    autoGroup('Framework Integrations', 'reference/framework-integrations'),
+  autoGroup('Overview', 'overview'),
+  group('Building with LiveStore', [
+    // Top-level files first (manually ordered)
+    link('building-with-livestore/rules-for-ai-agents'),
+    link('building-with-livestore/events'),
+    link('building-with-livestore/data-modeling'),
+    link('building-with-livestore/crud'),
+    link('building-with-livestore/store'),
+    link('building-with-livestore/complex-ui-state'),
+    link('building-with-livestore/reactivity-system'),
+    link('building-with-livestore/syncing'),
+    link('building-with-livestore/debugging'),
+    link('building-with-livestore/devtools'),
+    link('building-with-livestore/opentelemetry'),
+    link('building-with-livestore/production-checklist'),
+    // Then nested directories with explicit labels
+    autoGroup('State', 'building-with-livestore/state'),
+    autoGroup('Tools', 'building-with-livestore/tools'),
+    autoGroup('Examples', 'building-with-livestore/examples'),
   ]),
+  autoGroup('Framework integrations', 'framework-integrations'),
+  autoGroup('Platform adapters', 'platform-adapters'),
+  autoGroup('Sync providers', 'sync-providers'),
   autoGroup('Patterns', 'patterns'),
+  autoGroup('Understanding LiveStore', 'understanding-livestore'),
+  group('Sustainable open source', [
+    link('sustainable-open-source/sponsoring'),
+    autoGroup('Contributing', 'sustainable-open-source/contributing'),
+  ]),
   autoGroup('Miscellaneous', 'misc'),
   link('changelog', 'Changelog'),
-  autoGroup('Contributing', 'contributing'),
 ]
 
 /**

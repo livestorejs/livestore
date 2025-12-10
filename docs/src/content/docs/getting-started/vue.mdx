@@ -71,7 +71,7 @@ For a quick start, we recommend referencing the [playground](https://github.com/
 
 </Steps>
 
-### Define Your Schema
+### Define your schema
 
 Create a file named `schema.ts` inside the `src/livestore` folder. This file defines your LiveStore schema consisting of your app's event definitions (describing how data changes), derived state (i.e. SQLite tables), and materializers (how state is derived from events).
 
@@ -79,13 +79,13 @@ Here's an example schema:
 
 <SchemaSnippet />
 
-### Create the LiveStore Worker
+### Create the LiveStore worker
 
 Create a file named `livestore.worker.ts` inside the `src/livestore` folder. This file will contain the LiveStore web worker. When importing this file, make sure to add the `?worker` extension to the import path to ensure that Vite treats it as a worker file.
 
 <WorkerSnippet />
 
-### Add the LiveStore Provider
+### Add the LiveStore provider
 
 To make the LiveStore available throughout your app, wrap your app's root component with the `LiveStoreProvider` component from `vue-livestore`. This provider manages your app's data store, loading, and error states.
 

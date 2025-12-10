@@ -81,7 +81,7 @@ export class DoCtx extends Effect.Service<DoCtx>()('DoCtx', {
 
       // TODO do concistency check with eventlog table to make sure the head is consistent
 
-      // Should be the same backendId for lifetime of the durable object
+      // Should be the same backendId for lifetime of the Durable Object
       const backendId = storageRow?.backendId ?? nanoid()
 
       const updateCurrentHead = (currentHead: EventSequenceNumber.Global.Type) => {

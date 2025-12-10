@@ -38,7 +38,7 @@ For convenience, LiveStore re-exports the `Schema` module from the `effect` pack
 
 LiveStore's reactive primitives (`LiveQueryDef` and `SignalDef`) implement Effect's `Equal` and `Hash` traits, enabling efficient integration with Effect's data structures and collections.
 
-## Effect Atom Integration
+## Effect atom integration
 
 LiveStore integrates seamlessly with [Effect Atom](https://github.com/effect-atom/effect-atom) for reactive state management in React applications. This provides a powerful combination of Effect's functional programming capabilities with LiveStore's event sourcing and CQRS patterns.
 
@@ -50,7 +50,7 @@ Effect Atom is an external package developed by [Tim Smart](https://github.com/t
 pnpm install @effect-atom/atom-livestore @effect-atom/atom-react
 ```
 
-### Store Creation
+### Store creation
 
 Create a LiveStore-backed atom store with persistence and worker support using the `AtomLivestore.Tag` pattern:
 
@@ -64,45 +64,45 @@ The `StoreTag` class provides the following static methods:
 - `StoreTag.makeQuery` - Create query atoms with Effect
 - `StoreTag.makeQueryUnsafe` - Create query atoms without Effect
 
-### Defining Query Atoms
+### Defining query atoms
 
 Create reactive query atoms that automatically update when the underlying data changes:
 
 <SNIPPETS.queries />
 
-### Using Queries in React Components
+### Using queries in React components
 
 Access query results in React components with the `useAtomValue` hook. When using `StoreTag.makeQuery` (non-unsafe API), the result is wrapped in a Result type for proper loading and error handling:
 
 <SNIPPETS.userList />
 
-### Integrating Effect Services
+### Integrating Effect services
 
 Combine Effect services with LiveStore operations using the store's runtime:
 
 <SNIPPETS.services />
 
-### Advanced Patterns
+### Advanced patterns
 
-#### Optimistic Updates
+#### Optimistic updates
 
 Combine local state with LiveStore for optimistic UI updates. When using `StoreTag.makeQueryUnsafe`, the data is directly available:
 
 <SNIPPETS.optimistic />
 
-#### Derived State
+#### Derived state
 
 Create computed atoms based on LiveStore queries. When using the non-unsafe API, handle the Result type:
 
 <SNIPPETS.derived />
 
-#### Batch Operations
+#### Batch operations
 
 Perform multiple commits efficiently (commits are synchronous):
 
 <SNIPPETS.batch />
 
-### Best Practices
+### Best practices
 
 1. **Use `StoreTag.makeQuery` for queries**: This ensures proper Effect integration and error handling
 2. **Leverage Effect services**: Integrate business logic through Effect services for better testability

@@ -1,0 +1,249 @@
+---
+title: Events
+sidebar:
+  label: Events
+  order: 5
+---
+
+import CommitEventSnippet from '../../_assets/code/reference/events/commit.ts?snippet'
+import EventSchemaSnippet from '../../_assets/code/reference/events/livestore-schema.ts?snippet'
+import { EventsVisualizer } from '../../../components/EventsVisualizer'
+import EventNodesDiagram from '../../_assets/diagrams/event-nodes.tldr?tldraw'
+import UnknownEventHandlingSnippet from '../../_assets/code/reference/events/unknown-event-handling.ts?snippet'
+import EventTypeNamespacesSnippet from '../../_assets/code/reference/events/event-type-namespaces.ts?snippet'
+import StreamEventsSnippet from '../../_assets/code/reference/events/stream.ts?snippet'
+
+## Event definitions
+
+There are two types of events:
+
+- `synced`: Events that are synced across clients
+- `clientOnly`: Events that are only processed locally on the client (but still synced across client sessions e.g. across browser tabs/windows)
+
+An event definition consists of a unique name of the event and a schema for the event arguments. It's recommended to version event definitions to make it easier to evolve them over time.
+
+Events will be synced across clients and materialized into state (i.e. SQLite tables) via [materializers](/building-with-livestore/state/materializers).
+
+### Example
+
+<EventSchemaSnippet />
+
+### Commiting events
+
+<CommitEventSnippet />
+
+### Streaming events
+
+Currently only events confirmed by the sync backend are supported.
+
+<StreamEventsSnippet />
+
+### Best practices
+
+- It's strongly recommended to use past-tense event names (e.g. `todoCreated`/`createdTodo` instead of `todoCreate`/`createTodo`) to indicate something already occurred.
+- When generating IDs for events (e.g. for the todo in the example above), it's recommended to use a globally unique ID generator (e.g. UUID, nanoid, etc.) to avoid conflicts. For convenience, `@livestore/livestore` re-exports the `nanoid` function.
+- TODO: write down more best practices
+- TODO: mention AI linting (either manually or via a CI step)
+  - core idea: feed list of best practices to AI and check if events adhere to them + get suggestions if not
+- It's recommended to avoid `DELETE` events and instead use soft-deletes (e.g. add a `deleted` date/boolean column with a default value of `null`). This helps avoid some common concurrency issues.
+
+## Nodes in the LiveStore system
+
+<EventNodesDiagram class="my-8" />
+
+#### Client Session
+- `SyncState`: in-memory for pending events only
+- `dbState`: Materialized state that matches the schema (SQLite database)
+
+#### Client Leader
+- `dbEventLog`: Database that stores the durable event log and tracks global sequence of events which the backend has acknowledged
+- `dbState`: Materialized state that matches the schema (SQLite database) so leader can materialize events and handle rollbacks
+
+#### Sync backend
+- `EventLog`: Any storage solution that supports pushing and pulling events. Append only storage.
+
+### Happy event path
+
+1. Client session commits an event
+    - Client session merges the new event `e3` into its local `SyncState` as pending
+    - Client session pushes the pending event to the client leader thread; the leader still shows the previous head until it persists the event
+    <EventsVisualizer
+      client={["e1", "e2", "A:e3'{todoCreated}"]}
+      leader={["e1", "e2"]}
+      backend={["e1", "e2"]} />
+
+2. Client leader persists the event
+    - Client leader materializes the event and writes it to `EventLog`
+    - Event `e3` remains unconfirmed from the leader's perspective because the backend has not acknowledged it yet
+    <EventsVisualizer
+      client={["e1", "e2", "A:e3'{todoCreated}"]}
+      leader={["e1", "e2", "A:e3'{todoCreated}"]}
+      backend={["e1", "e2"]} />
+
+3. Leader thread emits signal back to subscribed clients
+    - Client session merges the authoritative event from the leader
+    - Event transitions from pending to confirmed on the client while the leader still waits for backend confirmation
+    <EventsVisualizer
+      client={["e1", "e2", "A:e3{todoCreated}"]}
+      leader={["e1", "e2", "A:e3'{todoCreated}"]}
+      backend={["e1", "e2"]} />
+
+4. Leader thread pushes the event to the sync backend
+    - Leader pushes the pending event upstream; it stays marked as unconfirmed in the client leader's eventlog until the backend acknowledges receipt
+    <EventsVisualizer
+      client={["e1", "e2", "A:e3{todoCreated}"]}
+      leader={["e1", "e2", "A:e3'{todoCreated}"]}
+      backend={["e1", "e2"]} />
+
+5. Sync backend pulls the event from the client leader
+    - Sync backend acknowledges the event and advances its head
+    - Client leader receives the acknowledgement and marks the event as confirmed
+    - All heads align on the confirmed sequence
+    <EventsVisualizer
+      client={["e1", "e2", "A:e3{todoCreated}"]}
+      leader={["e1", "e2", "A:e3{todoCreated}"]}
+      backend={["e1", "e2", "A:e3{todoCreated}"]} />
+
+### Conflict resolution
+
+This example shows how a client session rebases its pending events when new authoritative events arrive from upstream. Client `A` owns the local work that gets rebased, while client `B` introduces the authoritative change. Colors follow the client IDs so lineage remains visible, and origin notation tracks the rebased event.
+
+1. Client session has local pending work while upstream advances
+    - Client session holds pending event `A:e3'{todoRenamed}` built on top of shared history `e1 → e2`
+    - Sync backend publishes authoritative event `B:e3{todoRenamed}` that replaces the client's local change
+    <EventsVisualizer
+      client={["e1", "e2", "A:e3{todoRenamed}"]}
+      leader={["e1", "e2", "A:e3'{todoRenamed}"]}
+      backend={["e1", "e2", "B:e3{todoRenamed}"]} />
+
+2. Client leader pulls authoritative events from the sync backend
+    - Client compares its pending chain with upstream events and spots the divergence at `e2`
+    - Client rolls back events and state to the point of divergence
+    <EventsVisualizer
+      client={["e1", "e2"]}
+      leader={["e1", "e2"]}
+      backend={["e1", "e2", "B:e3{todoRenamed}"]} />
+
+3. Client applies authoritative upstream events
+    - Client session and leader apply the authoritative upstream events and advances their heads to `e3`
+    <EventsVisualizer
+      client={["e1", "e2", "B:e3{todoRenamed}"]}
+      leader={["e1", "e2", "B:e3{todoRenamed}"]}
+      backend={["e1", "e2", "B:e3{todoRenamed}"]} />
+
+4. Client replays its local pending events on top of the new head
+    - Stored original events keep their payload but their sequence number gets updated to follow upstream head
+    - Each newly numbered event is re-appplied and materialized to state in both client session and client leader
+    <EventsVisualizer
+      client={["e1", "e2", "B:e3{todoRenamed}", "A:e4{todoRenamed}/e3"]}
+      leader={["e1", "e2", "B:e3{todoRenamed}", "A:e4'{todoRenamed}/e3"]}
+      backend={["e1", "e2", "B:e3{todoRenamed}"]} />
+
+5. Client pushes its local pending events to sync backend
+    - Upon receipt local pending events are marked as confirmed and the client leader advances its head to `e4`
+    <EventsVisualizer
+      client={["e1", "e2", "B:e3{todoRenamed}", "A:e4{todoRenamed}/e3"]}
+      leader={["e1", "e2", "B:e3{todoRenamed}", "A:e4{todoRenamed}/e3"]}
+      backend={["e1", "e2", "B:e3{todoRenamed}", "A:e4{todoRenamed}/e3"]} />
+
+## Unknown events
+
+Older clients might receive events that were introduced in newer app versions. Configure the behaviour centrally via `unknownEventHandling` when constructing the schema:
+
+<UnknownEventHandlingSnippet />
+
+Pick `'warn'` (default) to log every occurrence, `'ignore'` to silently drop new events until the client updates, `'fail'` to halt immediately, or `'callback'` to delegate to custom logging/telemetry while continuing to process the log.
+
+## Schema evolution \{#schema-evolution\}
+
+- Event definitions can't be removed after they were added to your app.
+- Event schema definitions can be evolved as long as the changes are forward-compatible.
+  - That means data encoded with the old schema can be decoded with the new schema.
+  - In practice, this means ...
+    - for structs ...
+      - you can add new fields if they have default values or are optional
+      - you can remove fields
+
+## Event format
+
+Each event has the following structure:
+
+| Field | Description |
+|-------|-------------|
+| `name` | Event name matching the event definition |
+| `args` | Event arguments as defined by the event schema |
+| `seqNum` | Sequence number identifying this event |
+| `parentSeqNum` | Parent event's sequence number (for causal ordering) |
+| `clientId` | Identifier of the client that created the event |
+| `sessionId` | Identifier of the session |
+
+### Encoded vs decoded events
+
+Events exist in two formats:
+
+**Decoded** - Native TypeScript types used in application code:
+
+```json
+{
+  "name": "todoCreated-v1",
+  "args": { "id": "abc123", "text": "Buy milk", "createdAt": Date },
+  "seqNum": 5,
+  "parentSeqNum": 4,
+  "clientId": "client-xyz",
+  "sessionId": "session-123"
+}
+```
+
+**Encoded** - Serialized format for storage and sync:
+
+```json
+{
+  "name": "todoCreated-v1",
+  "args": { "id": "abc123", "text": "Buy milk", "createdAt": "2024-01-15T10:30:00.000Z" },
+  "seqNum": 5,
+  "parentSeqNum": 4,
+  "clientId": "client-xyz",
+  "sessionId": "session-123"
+}
+```
+
+The `args` field is encoded according to the event's schema (e.g., `Date` objects become ISO strings, binary data becomes base64). LiveStore handles encoding/decoding automatically.
+
+### Client-side sequence numbers
+
+On the client, sequence numbers are expanded to track additional information for local events:
+
+```json
+{
+  "seqNum": { "global": 5, "client": 1, "rebaseGeneration": 0 },
+  "parentSeqNum": { "global": 5, "client": 0, "rebaseGeneration": 0 }
+}
+```
+
+- **global**: Globally unique integer assigned by the sync backend (`EventSequenceNumber.Global`)
+- **client**: Client-local counter (0 for synced events, increments for client-only events) (`EventSequenceNumber.Client`)
+- **rebaseGeneration**: Increments when the client rebases unconfirmed events
+
+Events can be represented as strings like `e5` (global event 5), `e5.1` (client-local event), or `e5r1` (after a rebase).
+
+For the full type definitions, see [`LiveStoreEvent`](https://github.com/livestorejs/livestore/tree/dev/packages/@livestore/common/src/schema/LiveStoreEvent) and [`EventSequenceNumber`](https://github.com/livestorejs/livestore/tree/dev/packages/@livestore/common/src/schema/EventSequenceNumber).
+
+### Event type namespaces
+
+LiveStore organizes event types into namespaces based on their usage context:
+
+| Namespace | Description | Sequence Number Format |
+|-----------|-------------|----------------------|
+| `LiveStoreEvent.Input` | Events without sequence numbers (for committing) | None |
+| `LiveStoreEvent.Global` | Sync backend format | Integer (`seqNum: number`) |
+| `LiveStoreEvent.Client` | Client-side format with full metadata | Struct (`seqNum: { global, client, rebaseGeneration }`) |
+
+<EventTypeNamespacesSnippet />
+
+## Eventlog
+
+The history of all events that have been committed is stored forms the "eventlog". It is persisted in the client as well as in the sync backend.
+
+Example `eventlog.db`:
+
+![](https://share.cleanshot.com/R6ny879w+)

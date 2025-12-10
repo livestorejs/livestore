@@ -3,7 +3,7 @@
 ## Goals
 
 - Flexible: Leverage the strenghts of Cloudflare abstractions and let app developers choose right setup for their use case (configurable transports/storage)
-- Efficient: Let's durable objects hibernate when not possible to avoid CPU billing while still staying fully reactive
+- Efficient: Let's Durable Objects hibernate when not possible to avoid CPU billing while still staying fully reactive
 - Cloudflare idiomatic: Embrace Cloudflare's APIs and abstractions so using LiveStore on Cloudflare feels right at home
 
 ## Transports

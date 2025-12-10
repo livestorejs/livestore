@@ -1,5 +1,5 @@
 ---
-title: Frequently Asked Questions
+title: Frequently asked questions
 sidebar:
   label: FAQ
   order: 1

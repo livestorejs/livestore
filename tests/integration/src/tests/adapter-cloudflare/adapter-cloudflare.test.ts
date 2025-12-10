@@ -48,7 +48,7 @@ const makeStoreUrl = (serverUrl: string, pathname: string, storeId: string) => {
 }
 
 Vitest.describe('adapter-cloudflare', { timeout: testTimeout }, () => {
-  Vitest.scopedLive('keeps durable object state when resetPersistence is not requested', (test) =>
+  Vitest.scopedLive('keeps Durable Object state when resetPersistence is not requested', (test) =>
     Effect.gen(function* () {
       const server = yield* WranglerDevServerService
       const storeId = `cf-adapter-${nanoid(6)}`
@@ -118,7 +118,7 @@ Vitest.describe('adapter-cloudflare', { timeout: testTimeout }, () => {
     }).pipe(withTestCtx(test)),
   )
 
-  Vitest.scopedLive('clears durable object persistence when resetPersistence is true', (test) =>
+  Vitest.scopedLive('clears Durable Object persistence when resetPersistence is true', (test) =>
     Effect.gen(function* () {
       const server = yield* WranglerDevServerService
       const storeId = `cf-reset-${nanoid(6)}`

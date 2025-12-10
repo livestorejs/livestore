@@ -215,7 +215,8 @@ const loadSnippetFiles = async (entryFile: string | null, paths: Paths): Promise
 }
 
 const replaceComponentWithMarkdown = (body: string, identifier: string, markdown: string | undefined): string => {
-  if (!markdown) return body
+  if (!markdown) return body ?? ''
+  if (!body) return ''
 
   const escaped = escapeForRegex(identifier)
   const blockPattern = new RegExp(String.raw`\n?[\t ]*<${escaped}(?:\s[^>]*)?>[\s\S]*?</${escaped}>\s*`, 'g')
@@ -297,7 +298,7 @@ export const transformMultiCodeDocument = async (input: TransformInput): Promise
   const docDir = path.dirname(path.join(paths.contentRoot, normalizedDocPath))
 
   const snippetImports = new Map<string, string>()
-  let workingBody = body.replace(SNIPPET_IMPORT_PATTERN, (_match, identifier: string, specifier: string) => {
+  let workingBody = (body ?? '').replace(SNIPPET_IMPORT_PATTERN, (_match, identifier: string, specifier: string) => {
     snippetImports.set(identifier, specifier)
     return ''
   })
@@ -335,5 +336,5 @@ export const transformMultiCodeDocument = async (input: TransformInput): Promise
     workingBody = replaceComponentWithMarkdown(workingBody, `SNIPPETS.${property}`, markdown)
   }
 
-  return workingBody.replace(/^\s*\n/, '')
+  return (workingBody ?? '').replace(/^\s*\n/, '')
 }

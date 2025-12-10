@@ -53,7 +53,7 @@ Here's an overview of each of these dependencies:
 
 - `@livestore/livestore@0.4.0-dev.14` → Implements the core LiveStore functionality (schema, events, queries, ...).
 - `@livestore/wa-sqlite@0.4.0-dev.14` → Implements usage of a [SQLite build in WebAssembly](https://github.com/livestorejs/wa-sqlite), so you can use SQLite inside your browser.
-- `@livestore/adapter-web@0.4.0-dev.14` → Implements the [LiveStore web adapter.](https://dev.docs.livestore.dev/reference/platform-adapters/web-adapter/)
+- `@livestore/adapter-web@0.4.0-dev.14` → Implements the [LiveStore web adapter.](/platform-adapters/web-adapter)
 - `@livestore/react@0.4.0-dev.14` → Provides [LiveStore integration for React](https://github.com/livestorejs/wa-sqlite).
 - `@livestore/peer-deps@0.4.0-dev.14` → Required to [satisfy LiveStore peer dependencies](https://dev.docs.livestore.dev/misc/package-management/#peer-dependencies).
 
@@ -61,7 +61,7 @@ Here's an overview of each of these dependencies:
 
 ## Define your LiveStore schema
 
-In this step, you're going to define the [schema](/reference/state/sqlite-schema/) that LiveStore uses to represent the data of your app. The schema is one of the core concepts of LiveStore.
+In this step, you're going to define the [schema](/building-with-livestore/state/sqlite-schema) that LiveStore uses to represent the data of your app. The schema is one of the core concepts of LiveStore.
 
 Your LiveStore-related files typically live in a `livestore` directory in your app, so create that first:
 
@@ -72,9 +72,9 @@ touch src/livestore/schema.ts
 
 The schema contains three major components:
 
-- The [**table**](/reference/state/sqlite-schema/#defining-tables) structures of your local SQLite database.
+- The [**table**](/building-with-livestore/state/sqlite-schema#defining-tables) structures of your local SQLite database.
 - The [**events**](https://dev.docs.livestore.dev/reference/events/) that can be emitted by your app.
-- The [**materializers**](https://dev.docs.livestore.dev/reference/state/materializers/) that use the events to alter the state of your database.
+- The [**materializers**](/building-with-livestore/state/materializers) that use the events to alter the state of your database.
 
 Here's how you define the schema for the current version of the todo app:
 
@@ -128,8 +128,8 @@ It's good practice in LiveStore to version your events and materializers to ensu
 
 To now "connect" LiveStore with your React app, you need to:
 
-1. Create the [LiveStore web worker](/reference/platform-adapters/web-adapter/#web-worker) that is responsible for the logic of persisting data on your file system.
-2. Create a LiveStore [adapter](/reference/platform-adapters/web-adapter/) that enables persistences with local SQLite via [OPFS](https://web.dev/articles/origin-private-file-system).
+1. Create the [LiveStore web worker](/platform-adapters/web-adapter#web-worker) that is responsible for the logic of persisting data on your file system.
+2. Create a LiveStore [adapter](/platform-adapters/web-adapter) that enables persistences with local SQLite via [OPFS](https://web.dev/articles/origin-private-file-system).
 3. Wrap your root component in `main.tsx` with the LiveStore [provider](https://dev.docs.livestore.dev/reference/framework-integrations/react-integration/#livestoreprovider) (which will receive both the web worker and adapter from above as arguments).
 4. Update your Vite Config to work with LiveStore.
 
@@ -238,7 +238,7 @@ The todos themselves are not yet persisted because you haven't modified the logi
 
 The current version of the app still stores the todos _in-memory_ via the [state](https://react.dev/learn/state-a-components-memory) of your `App` component. However, with the basic LiveStore setup in place, you can now move to persisting your todos inside SQLite via LiveStore!
 
-In order to read todos, you need to define a LiveStore [query](/reference/state/sql-queries). LiveStore queries are _live_ or _reactive_, meaning they will automatically update your UI components when the underlying data changes.
+In order to read todos, you need to define a LiveStore [query](/building-with-livestore/state/sql-queries). LiveStore queries are _live_ or _reactive_, meaning they will automatically update your UI components when the underlying data changes.
 
 Here's how you can define and use a query to fetch all todos from the local SQLite database using LiveStore inside the `App` component (you don't need to update your code yet, you'll get the full snippet at the end of this section):
 
@@ -479,11 +479,11 @@ You may have wondered: "If the data is persisted, _where_ is it?". If the data i
 
 Unfortunately, that's not how OPFS works. While the SQLite files do exist _somewhere_ on your file system, they are hidden in the browser's internals and not easily accessible.
 
-That being said, there is a convenient way how you can actually see the data on your file system: Using [LiveStore DevTools](/reference/devtools/)!
+That being said, there is a convenient way how you can actually see the data on your file system: Using [LiveStore DevTools](/building-with-livestore/devtools)!
 
 :::note[LiveStore DevTools are a sponsor-only feature]
 
-Our goal is to grow the project in a [sustainable](/misc/sponsoring/#goal-sustainable-open-source) way (e.g. not rely on VC funding), that's why DevTools are currently a [sponsor-only](/misc/sponsoring/) feature. 
+Our goal is to grow the project in a [sustainable](/sustainable-open-source/sponsoring#goal-sustainable-open-source) way (e.g. not rely on VC funding), that's why DevTools are currently a [sponsor-only](/sustainable-open-source/sponsoring) feature. 
 
 That being said, we still include them in this tutorial since you'll be able to use them without sponsorship for one week.
 
@@ -540,6 +540,6 @@ There are several tabs in the LiveStore DevTools:
 
 - **Database**: Browse the data that's currently in your DB, send SQL queries, export the database to your file system, and more.
 - **Queries**: Shows the last results of the currently active live queries.
-- **Events**: The [event log](/evaluation/event-sourcing/) that stores all the events emitted by your app.
+- **Events**: The [event log](/understanding-livestore/event-sourcing) that stores all the events emitted by your app.
 
 If you're curious, add and delete a few todos via the UI and observe what's happening in the three tabs.

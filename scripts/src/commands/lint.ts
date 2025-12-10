@@ -18,10 +18,13 @@ const checkMdFilesNoImports = Effect.gen(function* () {
     runInShell: true,
   }).pipe(Effect.provide(LivestoreWorkspace.toCwd()))
 
+  const ignoredGeneratedDocPaths = ['docs/src/content/docs/api/']
+
   const filesWithImports = result
     .trim()
     .split('\n')
     .filter((line) => line.length > 0)
+    .filter((line) => ignoredGeneratedDocPaths.every((ignoredPath) => !line.includes(ignoredPath)))
 
   if (filesWithImports.length > 0) {
     yield* Console.error(

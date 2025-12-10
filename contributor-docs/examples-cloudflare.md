@@ -33,7 +33,7 @@ The command builds examples in parallel (three at a time) and retries Worker upl
 
 ## Creating a New Example Worker
 
-1. Add an entry to `scripts/src/shared/cloudflare-manifest.ts` describing the example slug, Worker name, durable object bindings, and production/dev domains.
+1. Add an entry to `scripts/src/shared/cloudflare-manifest.ts` describing the example slug, Worker name, Durable Object bindings, and production/dev domains.
 2. Ensure the example’s `package.json` has `@cloudflare/vite-plugin` and `wrangler` in `devDependencies`, plus a `wrangler.toml` with `[assets]` pointing at the built client output.
 3. Add `[env.prod]`, `[env.preview]`, and `[env.dev]` sections in `wrangler.toml`; duplicate any bindings (Durable Objects, D1, queues, secrets, etc.) inside each environment block because Wrangler does not inherit them automatically.
 4. Provision Cloudflare resources if needed (Durable Objects, D1, secrets) via `wrangler`. Update the manifest with any required metadata.

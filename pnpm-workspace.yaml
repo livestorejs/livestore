@@ -14,6 +14,8 @@ catalog:
   "@types/react-dom": 19.1.9
   "@types/node": 24.10.1
   "@types/chrome": 0.1.4
+  "@types/bun": 1.2.21
+  "@types/web": 0.0.264
 
   # Build tools
   typescript: 5.9.2
@@ -36,14 +38,39 @@ catalog:
   # Testing
   "@playwright/test": 1.57.0
 
-  # Effect/OpenTelemetry
-  effect: 3.18.4
+  # Effect
+  "@effect/ai": 0.29.0
+  "@effect/ai-openai": 0.32.0
+  "@effect/cli": 0.71.0
+  "@effect/experimental": 0.56.0
+  effect: 3.19.9
+  "@effect/cluster": 0.50.6
+  "@effect/rpc": 0.71.1
+  "@effect/language-service": 0.60.0
+  "@effect/platform": 0.92.1
+  "@effect/platform-browser": 0.72.0
+  "@effect/platform-bun": 0.81.1
+  "@effect/platform-node": 0.98.4
+  "@effect/platform-node-shared": 0.51.6
+  "@effect/printer": 0.46.0
+  "@effect/printer-ansi": 0.46.0
   "@effect/opentelemetry": 0.58.0
+  "@effect/sql": 0.46.0
+  "@effect/sql-sqlite-node": 0.47.0
+  "@effect/typeclass": 0.37.0
+  "@effect/vitest": 0.26.0
+  "@effect/workflow": 0.11.5
+
+  # OpenTelemetry
   "@opentelemetry/api": 1.9.0
   "@opentelemetry/context-zone": 2.0.1
   "@opentelemetry/core": 2.0.1
+  "@opentelemetry/exporter-metrics-otlp-grpc": 0.200.0
   "@opentelemetry/exporter-metrics-otlp-http": 0.203.0
+  "@opentelemetry/exporter-trace-otlp-grpc": 0.200.0
   "@opentelemetry/exporter-trace-otlp-http": 0.203.0
+  "@opentelemetry/otlp-exporter-base": 0.200.0
+  "@opentelemetry/otlp-transformer": 0.200.0
   "@opentelemetry/resources": 2.0.1
   "@opentelemetry/sdk-metrics": 2.0.1
   "@opentelemetry/sdk-trace-base": 2.0.1

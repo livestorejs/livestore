@@ -50,6 +50,45 @@ const getDocsForDirectory = (directory: string): TLlmsEntry[] => {
       return orderA - orderB
     })
 }
+
+type TProcessedItem<T extends { _tag: string }> =
+  | { type: 'linkBatch'; entries: TLlmsEntry[] }
+  | { type: 'item'; item: T }
+
+/**
+ * Groups consecutive link items together into batches, preserving order.
+ * This ensures all links at the same level are rendered in a single <ul>.
+ */
+function processItems<T extends { _tag: string }>(
+  items: readonly T[],
+  getEntry: (item: T) => TLlmsEntry | undefined,
+): TProcessedItem<T>[] {
+  const result: TProcessedItem<T>[] = []
+  let currentBatch: TLlmsEntry[] = []
+
+  for (const item of items) {
+    if (item._tag === 'link') {
+      const entry = getEntry(item)
+      if (entry) {
+        currentBatch.push(entry)
+      }
+    } else {
+      // Flush any collected links before processing non-link item
+      if (currentBatch.length > 0) {
+        result.push({ type: 'linkBatch', entries: currentBatch })
+        currentBatch = []
+      }
+      result.push({ type: 'item', item })
+    }
+  }
+
+  // Flush any remaining links
+  if (currentBatch.length > 0) {
+    result.push({ type: 'linkBatch', entries: currentBatch })
+  }
+
+  return result
+}
 ---
 <section>
   {showHeading ? <h2>LiveStore Documentation for LLMs</h2> : null}
@@ -91,21 +130,30 @@ const getDocsForDirectory = (directory: string): TLlmsEntry[] => {
       )
     }
     if (item._tag === 'group') {
+      const processed = processItems(item.items, (subItem) => {
+        if (subItem._tag === 'link') {
+          return docsMap.get(subItem.slug)
+        }
+        return undefined
+      })
+      
       return (
         <>
           <h3>{item.label}</h3>
-          {item.items.map((subItem) => {
-            if (subItem._tag === 'link') {
-              const entry = docsMap.get(subItem.slug)
-              return entry ? (
+          {processed.map((processedItem) => {
+            if (processedItem.type === 'linkBatch') {
+              return (
                 <ul>
-                  <li>
-                    <a href={entry.href}>{entry.title}</a>
-                    {entry.description.length > 0 ? <span>{`: ${entry.description}`}</span> : null}
-                  </li>
+                  {processedItem.entries.map((entry) => (
+                    <li>
+                      <a href={entry.href}>{entry.title}</a>
+                      {entry.description.length > 0 ? <span>{`: ${entry.description}`}</span> : null}
+                    </li>
+                  ))}
                 </ul>
-              ) : null
+              )
             }
+            const subItem = processedItem.item
             if (subItem._tag === 'autoGroup') {
               const dirDocs = getDocsForDirectory(subItem.directory)
               return (
@@ -123,20 +171,27 @@ const getDocsForDirectory = (directory: string): TLlmsEntry[] => {
               )
             }
             if (subItem._tag === 'group') {
+              const nestedProcessed = processItems(subItem.items, (nestedItem) => {
+                if (nestedItem._tag === 'link') {
+                  return docsMap.get(nestedItem.slug)
+                }
+                return undefined
+              })
+              
               return (
                 <>
                   <h4>{subItem.label}</h4>
                   <ul>
-                    {subItem.items.map((nestedItem) => {
-                      if (nestedItem._tag === 'link') {
-                        const entry = docsMap.get(nestedItem.slug)
-                        return entry ? (
+                    {nestedProcessed.map((nestedProcessedItem) => {
+                      if (nestedProcessedItem.type === 'linkBatch') {
+                        return nestedProcessedItem.entries.map((entry) => (
                           <li>
                             <a href={entry.href}>{entry.title}</a>
                             {entry.description.length > 0 ? <span>{`: ${entry.description}`}</span> : null}
                           </li>
-                        ) : null
+                        ))
                       }
+                      const nestedItem = nestedProcessedItem.item
                       if (nestedItem._tag === 'autoGroup') {
                         const dirDocs = getDocsForDirectory(nestedItem.directory)
                         return (
