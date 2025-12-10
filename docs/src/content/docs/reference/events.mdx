@@ -10,6 +10,7 @@ import { EventsVisualizer } from '../../../components/EventsVisualizer'
 import EventNodesDiagram from '../../_assets/diagrams/event-nodes.tldr?tldraw'
 import UnknownEventHandlingSnippet from '../../_assets/code/reference/events/unknown-event-handling.ts?snippet'
 import EventTypeNamespacesSnippet from '../../_assets/code/reference/events/event-type-namespaces.ts?snippet'
+import StreamEventsSnippet from '../../_assets/code/reference/events/stream.ts?snippet'
 
 ## Event definitions
 
@@ -29,6 +30,12 @@ Events will be synced across clients and materialized into state (i.e. SQLite ta
 ### Commiting events
 
 <CommitEventSnippet />
+
+### Streaming events
+
+Currently only events confirmed by the sync backend are supported.
+
+<StreamEventsSnippet />
 
 ### Best Practices
 
