@@ -4,7 +4,6 @@ import { LiveStoreProvider } from '@livestore/react'
 import { useMemo, useState } from 'react'
 import { unstable_batchedUpdates as batchUpdates } from 'react-dom'
 import { createRoot } from 'react-dom/client'
-import { STORE_ID } from '../../src/shared/constants.ts'
 import { DEFAULT_EVENT_BATCH_SIZE, EventControls } from './components/EventControls.tsx'
 import { EventsList } from './components/EventsList.tsx'
 import { schema } from './livestore/schema.ts'
@@ -48,7 +47,6 @@ const LiveStoreRoot = () => {
       schema={schema}
       adapter={adapter}
       batchUpdates={batchUpdates}
-      storeId={STORE_ID}
       otelOptions={{ tracer: otelTracer }}
       // params={{ leaderPushBatchSize: 1000, eventQueryBatchSize: 1000 }}
       renderLoading={(boot) => <p data-testid="boot-stage">Stage: {boot.stage}</p>}

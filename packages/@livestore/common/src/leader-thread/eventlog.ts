@@ -16,7 +16,7 @@ import type { PreparedBindValues } from '../util.ts'
 import { sql } from '../util.ts'
 import { execSql } from './connection.ts'
 import type { InitialSyncInfo, StreamEventsOptions } from './types.ts'
-import { LeaderThreadCtx, STREAM_EVENTS_BATCH_SIZE_MAX } from './types.ts'
+import { LeaderThreadCtx, STREAM_EVENTS_BATCH_SIZE_DEFAULT } from './types.ts'
 
 export const initEventlogDb = (dbEventlog: SqliteDb) =>
   Effect.gen(function* () {
@@ -108,7 +108,7 @@ export const getEventsFromEventlog = ({
 }): Effect.Effect<Chunk.Chunk<LiveStoreEvent.Client.Encoded>> =>
   Effect.gen(function* () {
     const since = options.since ?? EventSequenceNumber.Client.ROOT
-    const batchSize = options.batchSize ?? STREAM_EVENTS_BATCH_SIZE_MAX
+    const batchSize = options.batchSize ?? STREAM_EVENTS_BATCH_SIZE_DEFAULT
 
     const makeQuery = () => {
       let query = eventlogMetaTable.where('seqNumGlobal', '>', since.global)

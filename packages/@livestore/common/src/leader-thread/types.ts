@@ -134,6 +134,7 @@ export type InitialBlockingSyncContext = {
   update: (_: { pageInfo: SyncBackend.PullResPageInfo; processed: number }) => Effect.Effect<void>
 }
 
+export const STREAM_EVENTS_BATCH_SIZE_DEFAULT = 100
 export const STREAM_EVENTS_BATCH_SIZE_MAX = 1_000
 
 export const StreamEventsOptionsFields = {
