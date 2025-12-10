@@ -167,6 +167,31 @@ export type StoreInternals = {
    * should reject via `checkShutdown`.
    */
   isShutdown: boolean
+
+  // #region Lifecycle Hooks (for framework integrations)
+
+  /**
+   * Subscribe to be notified before any state change (commit or setSignal) is applied.
+   *
+   * Intended for framework integrations (Jotai, Preact Signals, etc.) that need to
+   * observe or prepare for state changes before they happen.
+   *
+   * @returns An unsubscribe function to stop receiving notifications.
+   */
+  readonly subscribeToBeforeChange: (callback: (event: BeforeChangeEvent) => void) => Unsubscribe
+
+  /**
+   * Subscribe to be notified after the reactive graph has settled following a state change.
+   *
+   * Intended for framework integrations that need to sync external state after all
+   * LiveStore reactive effects have completed. Guarantees that any state changes made
+   * from within the callback will trigger a NEW refresh cycle (batch isolation).
+   *
+   * @returns An unsubscribe function to stop receiving notifications.
+   */
+  readonly subscribeToAfterRefresh: (callback: (info: AfterRefreshInfo) => void) => Unsubscribe
+
+  // #endregion Lifecycle Hooks
 }
 
 export type StoreOptions<TSchema extends LiveStoreSchema = LiveStoreSchema.Any, TContext = {}> = {
@@ -410,3 +435,43 @@ export const isLiveQueryInstance = (value: unknown): value is LiveQuery<any> => 
  */
 export const isQueryable = (value: unknown): value is Queryable<unknown> =>
   isQueryBuilder(value) || isLiveQueryInstance(value) || isLiveQueryDef(value)
+
+// #region Store Hooks
+
+/**
+ * Discriminated union describing a pending state change before it is applied.
+ *
+ * Passed to `onBeforeChange` callbacks so subscribers can react to or inspect
+ * changes before the reactive graph is updated.
+ */
+export type BeforeChangeEvent<TSchema extends LiveStoreSchema = LiveStoreSchema.Any> =
+  | {
+      _tag: 'commit'
+      /** The events about to be committed */
+      events: ReadonlyArray<LiveStoreEvent.Input.ForSchema<TSchema>>
+    }
+  | {
+      _tag: 'setSignal'
+      /** The signal definition being updated */
+      signal: SignalDef<any>
+      /** The new value (after applying any updater function) */
+      value: unknown
+    }
+
+/**
+ * Information passed to `onAfterRefresh` callbacks after the reactive graph settles.
+ *
+ * Contains debug information about what changed and how long it took.
+ */
+export type AfterRefreshInfo = {
+  /** What triggered this refresh */
+  reason: RefreshReason
+  /** Atoms that were recomputed during this refresh */
+  refreshedAtoms: ReadonlyArray<{ label?: string; resultChanged: boolean }>
+  /** Whether the refresh was skipped (e.g., due to skipRefresh option) */
+  skippedRefresh: boolean
+  /** Time taken for the refresh cycle in milliseconds */
+  durationMs: number
+}
+
+// #endregion Store Hooks
