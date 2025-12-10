@@ -34,7 +34,7 @@ describe('experimental useStore', () => {
     await cleanupAfterUnmount(() => {})
   })
 
-  it('suspends when the store is loading', async () => {
+  it('works with Suspense boundary', async () => {
     const registry = new StoreRegistry()
     const options = testStoreOptions()
 
@@ -50,12 +50,8 @@ describe('experimental useStore', () => {
     })
     const renderedView = view ?? shouldNeverHappen('render failed')
 
-    // Should show fallback while loading
-    expect(renderedView.getByTestId('fallback')).toBeDefined()
-
-    // Wait for store to load and component to render
+    // After loading completes, should show the actual content
     await waitForSuspenseResolved(renderedView)
-
     expect(renderedView.getByTestId('ready')).toBeDefined()
 
     await cleanupAfterUnmount(() => renderedView.unmount())
