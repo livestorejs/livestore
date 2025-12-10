@@ -174,7 +174,8 @@ describe('experimental useStore', () => {
     await cleanupAfterUnmount(unmount)
   })
 
-  // TODO: Known issue - useStore doesn't handle unusedCacheTime=0 correctly because it calls StoreRegistry.retain not immediately
+  // useStore doesn't handle unusedCacheTime=0 correctly because retain is called in useEffect (after render)
+  // See https://github.com/livestorejs/livestore/issues/916
   it.skip('should load store with unusedCacheTime set to 0', async () => {
     const registry = new StoreRegistry({ defaultOptions: { unusedCacheTime: 0 } })
     const options = testStoreOptions({ unusedCacheTime: 0 })
