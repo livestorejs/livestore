@@ -46,6 +46,9 @@ import type { LeaderSqliteDb, StreamEventsOptions } from './types.ts'
  *
  * Fetch plans into sink and decompose into windows
  * https://gist.github.com/slashv/a8f55f50121c080937f42e44b4039ac8
+ *
+ * Mailbox and Latch approach (suggestion by Tim Smart)
+ * https://gist.github.com/slashv/d6b12395c85415bf0d3363372a1636c3
  */
 export const streamEventsWithSyncState = ({
   dbEventlog,
