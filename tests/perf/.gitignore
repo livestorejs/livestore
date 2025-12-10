@@ -3,6 +3,3 @@
 /playwright-report/
 /blob-report/
 /playwright/.cache/
-
-# Snapshots
-/snapshots/
