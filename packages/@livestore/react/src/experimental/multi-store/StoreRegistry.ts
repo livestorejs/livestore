@@ -139,7 +139,8 @@ export class StoreRegistry {
 
           return yield* createStore(options).pipe(Effect.catchAllDefect((cause) => UnknownError.make({ cause })))
         }).pipe(Effect.withSpan(`StoreRegistry.lookup:${key.options.storeId}`)),
-      // TODO: Make idleTimeToLive vary for each store when https://github.com/Effect-TS/effect/pull/5859 is released
+      // TODO: Make idleTimeToLive vary for each store when Effect supports per-resource TTL
+      // See https://github.com/livestorejs/livestore/issues/917
       idleTimeToLive: params.defaultOptions?.unusedCacheTime ?? DEFAULT_UNUSED_CACHE_TIME,
     }).pipe(Runtime.runSync(this.#runtime))
   }
