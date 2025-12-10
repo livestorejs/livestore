@@ -220,8 +220,8 @@ describe('StoreRegistry', () => {
     await nextStore.shutdownPromise()
   })
 
-  // This test is skipped because we don't yet support dynamic `unusedCacheTime` values. This is a known limitation.
-  // TODO: Enable this test when it's possible to have dynamic `idleTimeToLive` values for each resource in `RcMap`
+  // This test is skipped because we don't yet support dynamic `unusedCacheTime` updates for cached stores.
+  // See https://github.com/livestorejs/livestore/issues/918
   it.skip('keeps the longest unusedCacheTime seen for a store when options vary across calls', async () => {
     const registry = new StoreRegistry()
 
