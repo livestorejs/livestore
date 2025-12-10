@@ -173,7 +173,7 @@ export interface StreamEventsOptions {
   sessionIds?: ReadonlyArray<string>
   /**
    * Number of events to fetch in each batch when streaming from the eventlog.
-   * @default STREAM_EVENTS_BATCH_SIZE_MAX (when the downstream consumer uses the default)
+   * Defaults to 100.
    */
   batchSize?: number
   /**
