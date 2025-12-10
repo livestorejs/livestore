@@ -37,7 +37,7 @@ describe('StoreRegistry', () => {
     await store.shutdownPromise()
   })
 
-  it('reuses the same promise for concurrent getOrLoadStore calls while loading', async () => {
+  it('reuses the same promise for concurrent getOrLoadPromise calls while loading', async () => {
     const registry = new StoreRegistry()
     const options = testStoreOptions()
 

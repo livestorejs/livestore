@@ -59,6 +59,13 @@ type DefaultStoreOptions = Partial<
 /**
  * RcMap cache key that uses storeId for equality/hashing but carries full options.
  * This allows RcMap to deduplicate by storeId while the lookup function has access to all options.
+ *
+ * @remarks
+ * Only `storeId` is used for equality and hashing. This means if `getOrLoadPromise` is called
+ * with different options (e.g., different `adapter`) but the same `storeId`, the cached store
+ * from the first call will be returned. This is intentional - a store's identity is determined
+ * solely by its `storeId`, and callers should not expect to get different stores by varying
+ * other options while keeping the same `storeId`.
  */
 class StoreCacheKey<TSchema extends LiveStoreSchema = LiveStoreSchema.Any> implements Equal.Equal {
   readonly options: CachedStoreOptions<TSchema>
@@ -67,6 +74,11 @@ class StoreCacheKey<TSchema extends LiveStoreSchema = LiveStoreSchema.Any> imple
     this.options = options
   }
 
+  /**
+   * Equality is based solely on `storeId`. Other options in `CachedStoreOptions` are ignored
+   * for cache key comparison. The first options used for a given `storeId` determine the
+   * store's configuration.
+   */
   [Equal.symbol](that: Equal.Equal): boolean {
     return that instanceof StoreCacheKey && this.options.storeId === that.options.storeId
   }
