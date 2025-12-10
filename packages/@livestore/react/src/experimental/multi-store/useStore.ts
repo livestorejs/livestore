@@ -18,10 +18,7 @@ export const useStore = <TSchema extends LiveStoreSchema>(
 
   React.useEffect(() => storeRegistry.retain(options), [storeRegistry, options])
 
-  const storeOrPromise = React.useMemo(
-    () => storeRegistry.getOrLoadPromise(options),
-    [storeRegistry, options],
-  )
+  const storeOrPromise = React.useMemo(() => storeRegistry.getOrLoadPromise(options), [storeRegistry, options])
 
   const store = storeOrPromise instanceof Promise ? React.use(storeOrPromise) : storeOrPromise
 
