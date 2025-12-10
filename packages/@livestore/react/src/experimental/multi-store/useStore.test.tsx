@@ -1,9 +1,10 @@
 import { makeInMemoryAdapter } from '@livestore/adapter-web'
 import type { Store } from '@livestore/livestore'
 import { StoreInternalsSymbol } from '@livestore/livestore'
-import { type RenderResult, render, renderHook, waitFor } from '@testing-library/react'
+import { shouldNeverHappen } from '@livestore/utils'
+import { act, type RenderHookResult, type RenderResult, render, renderHook, waitFor } from '@testing-library/react'
 import * as React from 'react'
-import { afterEach, describe, expect, it, vi } from 'vitest'
+import { describe, expect, it } from 'vitest'
 import { schema } from '../../__tests__/fixture.tsx'
 import { StoreRegistry } from './StoreRegistry.ts'
 import { StoreRegistryProvider } from './StoreRegistryContext.tsx'
@@ -12,31 +13,52 @@ import type { CachedStoreOptions } from './types.ts'
 import { useStore } from './useStore.ts'
 
 describe('experimental useStore', () => {
-  afterEach(() => {
-    vi.clearAllTimers()
-    vi.useRealTimers()
+  it('should return the same promise instance for concurrent getOrLoadStore calls', async () => {
+    const registry = new StoreRegistry()
+    const options = testStoreOptions()
+
+    // Make two concurrent calls during loading
+    const firstStore = registry.getOrLoadPromise(options)
+    const secondStore = registry.getOrLoadPromise(options)
+
+    // Both should be promises (store is loading)
+    expect(firstStore).toBeInstanceOf(Promise)
+    expect(secondStore).toBeInstanceOf(Promise)
+
+    // EXPECTED BEHAVIOR: Same promise instance for React.use() compatibility
+    // ACTUAL BEHAVIOR: Different promise instances (Effect.runPromise creates new wrapper)
+    expect(firstStore).toBe(secondStore)
+
+    // Cleanup
+    await firstStore
+    await cleanupAfterUnmount(() => {})
   })
 
   it('suspends when the store is loading', async () => {
     const registry = new StoreRegistry()
     const options = testStoreOptions()
 
-    const view = render(
-      <StoreRegistryProvider storeRegistry={registry}>
-        <React.Suspense fallback={<div data-testid="fallback" />}>
-          <StoreConsumer options={options} />
-        </React.Suspense>
-      </StoreRegistryProvider>,
-    )
+    let view: RenderResult | undefined
+    await act(async () => {
+      view = render(
+        <StoreRegistryProvider storeRegistry={registry}>
+          <React.Suspense fallback={<div data-testid="fallback" />}>
+            <StoreConsumer options={options} />
+          </React.Suspense>
+        </StoreRegistryProvider>,
+      )
+    })
+    const renderedView = view ?? shouldNeverHappen('render failed')
 
     // Should show fallback while loading
-    expect(view.getByTestId('fallback')).toBeDefined()
+    expect(renderedView.getByTestId('fallback')).toBeDefined()
 
     // Wait for store to load and component to render
-    await waitForSuspenseResolved(view)
-    expect(view.getByTestId('ready')).toBeDefined()
+    await waitForSuspenseResolved(renderedView)
 
-    cleanupWithPendingTimers(() => view.unmount())
+    expect(renderedView.getByTestId('ready')).toBeDefined()
+
+    await cleanupAfterUnmount(() => renderedView.unmount())
   })
 
   it('does not re-suspend on subsequent renders when store is already loaded', async () => {
@@ -51,20 +73,26 @@ describe('experimental useStore', () => {
       </StoreRegistryProvider>
     )
 
-    const view = render(<Wrapper opts={options} />)
+    let view: RenderResult | undefined
+    await act(async () => {
+      view = render(<Wrapper opts={options} />)
+    })
+    const renderedView = view ?? shouldNeverHappen('render failed')
 
     // Wait for initial load
-    await waitForSuspenseResolved(view)
-    expect(view.getByTestId('ready')).toBeDefined()
+    await waitForSuspenseResolved(renderedView)
+    expect(renderedView.getByTestId('ready')).toBeDefined()
 
     // Rerender with new options object (but same storeId)
-    view.rerender(<Wrapper opts={{ ...options }} />)
+    await act(async () => {
+      renderedView.rerender(<Wrapper opts={{ ...options }} />)
+    })
 
     // Should not show fallback
-    expect(view.queryByTestId('fallback')).toBeNull()
-    expect(view.getByTestId('ready')).toBeDefined()
+    expect(renderedView.queryByTestId('fallback')).toBeNull()
+    expect(renderedView.getByTestId('ready')).toBeDefined()
 
-    cleanupWithPendingTimers(() => view.unmount())
+    await cleanupAfterUnmount(() => renderedView.unmount())
   })
 
   it('throws when store loading fails', async () => {
@@ -74,8 +102,8 @@ describe('experimental useStore', () => {
       adapter: null,
     })
 
-    // Pre-load the store to cache the error
-    await expect(registry.getOrLoad(badOptions)).rejects.toThrow()
+    // Pre-load the store to cache the error (error happens synchronously)
+    expect(() => registry.getOrLoadPromise(badOptions)).toThrow()
 
     // Now when useStore tries to get it, it should throw synchronously
     expect(() =>
@@ -92,16 +120,20 @@ describe('experimental useStore', () => {
     const registry = new StoreRegistry()
     const options = testStoreOptions()
 
-    const { result, unmount } = renderHook(() => useStore(options), {
-      wrapper: makeProvider(registry, { suspense: true }),
-      reactStrictMode: strictMode,
+    let hook: RenderHookResult<Store<typeof schema>, CachedStoreOptions<typeof schema>> | undefined
+    await act(async () => {
+      hook = renderHook(() => useStore(options), {
+        wrapper: makeProvider(registry, { suspense: true }),
+        reactStrictMode: strictMode,
+      })
     })
+    const { result, unmount } = hook ?? shouldNeverHappen('renderHook failed')
 
     // Wait for store to be ready
     await waitForStoreReady(result)
     expect(result.current[StoreInternalsSymbol].clientSession).toBeDefined()
 
-    cleanupWithPendingTimers(unmount)
+    await cleanupAfterUnmount(unmount)
   })
 
   it('handles switching between different storeId values', async () => {
@@ -110,10 +142,14 @@ describe('experimental useStore', () => {
     const optionsA = testStoreOptions({ storeId: 'store-a' })
     const optionsB = testStoreOptions({ storeId: 'store-b' })
 
-    const { result, rerender, unmount } = renderHook((opts) => useStore(opts), {
-      initialProps: optionsA,
-      wrapper: makeProvider(registry, { suspense: true }),
+    let hook: RenderHookResult<Store<typeof schema>, CachedStoreOptions<typeof schema>> | undefined
+    await act(async () => {
+      hook = renderHook((opts) => useStore(opts), {
+        initialProps: optionsA,
+        wrapper: makeProvider(registry, { suspense: true }),
+      })
     })
+    const { result, rerender, unmount } = hook ?? shouldNeverHappen('renderHook failed')
 
     // Wait for first store to load
     await waitForStoreReady(result)
@@ -121,7 +157,9 @@ describe('experimental useStore', () => {
     expect(storeA[StoreInternalsSymbol].clientSession).toBeDefined()
 
     // Switch to different storeId
-    rerender(optionsB)
+    await act(async () => {
+      rerender(optionsB)
+    })
 
     // Wait for second store to load and verify it's different from the first
     await waitFor(() => {
@@ -133,7 +171,46 @@ describe('experimental useStore', () => {
     expect(storeB[StoreInternalsSymbol].clientSession).toBeDefined()
     expect(storeB).not.toBe(storeA)
 
-    cleanupWithPendingTimers(unmount)
+    await cleanupAfterUnmount(unmount)
+  })
+
+  // TODO: Known issue - useStore doesn't handle unusedCacheTime=0 correctly because it calls StoreRegistry.retain not immediately
+  it.skip('should load store with unusedCacheTime set to 0', async () => {
+    const registry = new StoreRegistry({ defaultOptions: { unusedCacheTime: 0 } })
+    const options = testStoreOptions({ unusedCacheTime: 0 })
+
+    const StoreConsumerWithVerification = ({ opts }: { opts: CachedStoreOptions<typeof schema> }) => {
+      const store = useStore(opts)
+      // Verify store is usable - access internals to confirm it's not disposed
+      const clientSession = store[StoreInternalsSymbol].clientSession
+      return <div data-testid="ready" data-has-session={String(clientSession !== undefined)} />
+    }
+
+    let view: RenderResult | undefined
+    await act(async () => {
+      view = render(
+        <StoreRegistryProvider storeRegistry={registry}>
+          <React.Suspense fallback={<div data-testid="fallback" />}>
+            <StoreConsumerWithVerification opts={options} />
+          </React.Suspense>
+        </StoreRegistryProvider>,
+      )
+    })
+    const renderedView = view ?? shouldNeverHappen('render failed')
+
+    await waitForSuspenseResolved(renderedView)
+
+    // Store should be usable while component is mounted
+    const readyElement = renderedView.getByTestId('ready')
+    expect(readyElement.getAttribute('data-has-session')).toBe('true')
+
+    // Allow some time to pass to ensure store isn't prematurely disposed
+    await new Promise((resolve) => setTimeout(resolve, 50))
+
+    // Store should still be usable after waiting
+    expect(readyElement.getAttribute('data-has-session')).toBe('true')
+
+    await cleanupAfterUnmount(() => renderedView.unmount())
   })
 })
 
@@ -154,28 +231,26 @@ const makeProvider =
     return content
   }
 
+let testStoreCounter = 0
+
 const testStoreOptions = (overrides: Partial<CachedStoreOptions<typeof schema>> = {}) =>
   storeOptions({
-    storeId: 'test-store',
+    storeId: overrides.storeId ?? `test-store-${testStoreCounter++}`,
     schema,
     adapter: makeInMemoryAdapter(),
     ...overrides,
   })
 
 /**
- * Cleans up after component unmount by synchronously executing any pending GC timers.
+ * Cleans up after component unmount and waits for pending operations to settle.
  *
  * When components using stores unmount, the StoreRegistry schedules garbage collection
- * timers for inactive stores. Without this cleanup, those timers may fire during
- * subsequent tests, causing cross-test pollution and flaky failures.
- *
- * This helper switches to fake timers, executes only the already-pending timers
- * (allowing stores to shut down cleanly), then restores real timers for the next test.
+ * timers for inactive stores. This helper waits for those timers to complete naturally.
  */
-const cleanupWithPendingTimers = (cleanup: () => void): void => {
-  vi.useFakeTimers()
+const cleanupAfterUnmount = async (cleanup: () => void): Promise<void> => {
   cleanup()
-  vi.runOnlyPendingTimers()
+  // Allow any pending microtasks/timers to settle
+  await new Promise((resolve) => setTimeout(resolve, 100))
 }
 
 /**

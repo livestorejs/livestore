@@ -7,7 +7,7 @@ import { useStoreRegistry } from './StoreRegistryContext.tsx'
 import type { CachedStoreOptions } from './types.ts'
 
 /**
- * Suspense + Error Boundary friendly hook.
+ * Suspense and Error Boundary friendly hook.
  * - Returns data or throws (Promise|Error).
  * - No loading or error states are returned.
  */
@@ -16,19 +16,16 @@ export const useStore = <TSchema extends LiveStoreSchema>(
 ): Store<TSchema> & ReactApi => {
   const storeRegistry = useStoreRegistry()
 
-  const subscribe = React.useCallback(
-    (onChange: () => void) => storeRegistry.subscribe(options.storeId, onChange),
-    [storeRegistry, options.storeId],
+  const memoizedOptions = React.useMemo(() => options, [options])
+
+  React.useEffect(() => storeRegistry.retain(memoizedOptions), [storeRegistry, memoizedOptions])
+
+  const storeOrPromise = React.useMemo(
+    () => storeRegistry.getOrLoadPromise(memoizedOptions),
+    [storeRegistry, memoizedOptions],
   )
-  const getSnapshot = React.useCallback(() => {
-    const storeOrPromise = storeRegistry.getOrLoad(options)
 
-    if (storeOrPromise instanceof Promise) throw storeOrPromise
+  const store = storeOrPromise instanceof Promise ? React.use(storeOrPromise) : storeOrPromise
 
-    return storeOrPromise
-  }, [storeRegistry, options])
-
-  const loadedStore = React.useSyncExternalStore(subscribe, getSnapshot, getSnapshot)
-
-  return withReactApi(loadedStore)
+  return withReactApi(store)
 }
