@@ -211,6 +211,9 @@ export class StoreRegistry {
     const release = Effect.gen(this, function* () {
       const key = new StoreCacheKey(options)
       yield* RcMap.get(this.#rcMap, key)
+      // Effect.never suspends indefinitely, keeping the RcMap reference alive.
+      // When `release()` is called, the fiber is interrupted, closing the scope
+      // and releasing the RcMap entry (which may trigger disposal after idleTimeToLive).
       yield* Effect.never
     }).pipe(Effect.scoped, Runtime.runCallback(this.#runtime))
 
