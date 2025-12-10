@@ -9,7 +9,13 @@ import {
   UnknownError,
 } from '@livestore/common'
 import type { DevtoolsOptions, LeaderSqliteDb } from '@livestore/common/leader-thread'
-import { configureConnection, Eventlog, LeaderThreadCtx, makeLeaderThreadLayer } from '@livestore/common/leader-thread'
+import {
+  configureConnection,
+  Eventlog,
+  LeaderThreadCtx,
+  makeLeaderThreadLayer,
+  streamEventsWithSyncState,
+} from '@livestore/common/leader-thread'
 import type { LiveStoreSchema } from '@livestore/common/schema'
 import { LiveStoreEvent } from '@livestore/common/schema'
 import * as DevtoolsWeb from '@livestore/devtools-web-common/web-channel'
@@ -265,6 +271,12 @@ const makeLeaderThread = ({
               batch.map((item) => new LiveStoreEvent.Client.EncodedWithMeta(item)),
               { waitForProcessing: true },
             ),
+          stream: (options) =>
+            streamEventsWithSyncState({
+              dbEventlog,
+              syncState: syncProcessor.syncState,
+              options,
+            }),
         },
         initialState: { leaderHead: initialLeaderHead, migrationsReport: initialState.migrationsReport },
         export: Effect.sync(() => dbState.export()),

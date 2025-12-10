@@ -17,9 +17,10 @@ import {
   replaceSessionIdSymbol,
   UnknownError,
 } from '@livestore/common'
+import type { StreamEventsOptions } from '@livestore/common/leader-thread'
 import type { LiveStoreSchema } from '@livestore/common/schema'
 import { LiveStoreEvent, resolveEventDef, SystemTables } from '@livestore/common/schema'
-import { assertNever, isDevEnv, notYetImplemented, omitUndefineds, shouldNeverHappen } from '@livestore/utils'
+import { assertNever, isDevEnv, omitUndefineds, shouldNeverHappen } from '@livestore/utils'
 import type { Scope } from '@livestore/utils/effect'
 import {
   Cause,
@@ -70,6 +71,15 @@ if (isDevEnv()) {
   exposeDebugUtils()
 }
 
+/**
+ * Default parameters for the Store. Also used in `create-store.ts`
+ */
+export const STORE_DEFAULT_PARAMS = {
+  leaderPushBatchSize: 100,
+  eventQueryBatchSize: 100,
+}
+
+//
 /**
  * Central interface to a LiveStore database providing reactive queries, event commits, and sync.
  *
@@ -124,6 +134,10 @@ export class Store<TSchema extends LiveStoreSchema = LiveStoreSchema.Any, TConte
 
   /** User-defined context attached to this Store (e.g. for dependency injection). */
   readonly context: TContext
+
+  /** Options provided to the Store constructor. */
+  readonly params: StoreOptions<TSchema, TContext>['params']
+
   /**
    * Reactive connectivity updates emitted by the backing sync backend.
    *
@@ -166,6 +180,8 @@ export class Store<TSchema extends LiveStoreSchema = LiveStoreSchema.Any, TConte
     this.storeId = storeId
     this.schema = schema
     this.context = context
+    this.params = params
+    this.networkStatus = clientSession.leaderThread.networkStatus
 
     const reactivityGraph = makeReactivityGraph()
 
@@ -824,33 +840,82 @@ export class Store<TSchema extends LiveStoreSchema = LiveStoreSchema.Any, TConte
   // #endregion commit
 
   /**
-   * Returns an async iterable of events.
+   * Returns an async iterable of events from the eventlog.
+   * Currently only events confirmed by the sync backend is supported.
+   *
+   * Defaults to tracking upstreamHead as it advances. If an `until` event is
+   * supplied the stream finalizes upon reaching it.
+   *
+   * To start streaming from a specific point in the eventlog
+   * you can provide a `since` event.
+   *
+   * Allows filtering by:
+   *  - `filter`: event types
+   *  - `clientIds`: client identifiers
+   *  - `sessionIds`: session identifiers
+   *
+   * The batchSize option controls the maximum amount of events that are fetched
+   * from the eventlog in each query. Defaults to 100 and has a max allowed
+   * value of 1000.
+   *
+   * TODO:
+   * - Support streaming unconfirmed events
+   *  - Leader level
+   *  - Session level
+   * - Support streaming client-only events
    *
    * @example
    * ```ts
-   * for await (const event of store.events()) {
+   * // Stream todoCompleted events from the start
+   * for await (const event of store.events(filter: ['todoCompleted'])) {
    *   console.log(event)
    * }
    * ```
    *
    * @example
    * ```ts
-   * // Get all events from the beginning of time
-   * for await (const event of store.events({ cursor: EventSequenceNumber.ROOT })) {
+   * // Start streaming from a specific event
+   * for await (const event of store.events({ since: EventSequenceNumber.Client.fromString('e3') })) {
    *   console.log(event)
    * }
    * ```
    */
-  events = (_options?: StoreEventsOptions<TSchema>): AsyncIterable<LiveStoreEvent.Client.ForSchema<TSchema>> => {
-    this.checkShutdown('events')
-
-    return notYetImplemented(`store.events() is not yet implemented but planned soon`)
+  events = (options?: StoreEventsOptions<TSchema>): AsyncIterable<LiveStoreEvent.Client.ForSchema<TSchema>> => {
+    const stream = this.eventsStream(options)
+    return {
+      async *[Symbol.asyncIterator]() {
+        const iterator = Stream.toAsyncIterable(stream)
+        for await (const event of iterator) {
+          yield event
+        }
+      },
+    }
   }
 
-  eventsStream = (_options?: StoreEventsOptions<TSchema>): Stream.Stream<LiveStoreEvent.Client.ForSchema<TSchema>> => {
-    this.checkShutdown('eventsStream')
+  /**
+   * Returns an Effect Stream of events from the eventlog.
+   * See `store.events` for details on options and behaviour.
+   */
+  eventsStream = (
+    options?: StoreEventsOptions<TSchema>,
+  ): Stream.Stream<LiveStoreEvent.Client.ForSchema<TSchema>, UnknownError> => {
+    const { clientSession } = this[StoreInternalsSymbol]
+    const eventSchema = LiveStoreEvent.Client.makeSchema(this.schema)
 
-    return notYetImplemented(`store.eventsStream() is not yet implemented but planned soon`)
+    const preferredBatchSize =
+      options?.batchSize ?? this.params.eventQueryBatchSize ?? STORE_DEFAULT_PARAMS.eventQueryBatchSize
+
+    const baseOptions: StreamEventsOptions = {
+      ...options,
+      filter: options?.filter as readonly string[],
+      batchSize: preferredBatchSize,
+    }
+
+    return clientSession.leaderThread.events.stream(baseOptions).pipe(
+      Stream.mapChunksEffect(Schema.decode(Schema.ChunkFromSelf(eventSchema))),
+      Stream.catchTag('ParseError', (cause) => Stream.fail(UnknownError.make({ cause }))),
+      Stream.tapError((error) => Effect.logError('Error in eventsStream', error)),
+    )
   }
 
   /**

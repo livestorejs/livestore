@@ -9,6 +9,7 @@ import CreateStoreSnippet from '../../_assets/code/reference/store/create-store.
 import QueryDataSnippet from '../../_assets/code/reference/store/query-data.ts?snippet'
 import ShutdownSnippet from '../../_assets/code/reference/store/shutdown.ts?snippet'
 import SubscribeSnippet from '../../_assets/code/reference/store/subscribe.ts?snippet'
+import StreamEventsSnippet from '../../_assets/code/reference/store/stream-events.ts?snippet'
 
 The `Store` is the most common way to interact with LiveStore from your application code. It provides a way to query data, commit events, and subscribe to data changes.
 
@@ -31,6 +32,12 @@ For how to create a store in React, see the [React integration docs](/framework-
 ### Committing events
 
 <CommitEventSnippet />
+
+### Streaming events
+
+Currently only events confirmed by the sync backend are supported.
+
+<StreamEventsSnippet />
 
 ### Shutting down a store
 
@@ -58,4 +65,4 @@ __debugLiveStore.default._dev.hardReset()
 
 // See the current sync state
 __debugLiveStore.default._dev.syncStates()
-```   
+```

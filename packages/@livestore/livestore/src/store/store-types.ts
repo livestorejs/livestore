@@ -12,7 +12,8 @@ import {
   type SyncError,
   type UnknownError,
 } from '@livestore/common'
-import type { EventSequenceNumber, LiveStoreEvent, LiveStoreSchema } from '@livestore/common/schema'
+import type { StreamEventsOptions } from '@livestore/common/leader-thread'
+import type { LiveStoreEvent, LiveStoreSchema } from '@livestore/common/schema'
 import type { Effect, Runtime, Schema, Scope } from '@livestore/utils/effect'
 import { Deferred, Predicate } from '@livestore/utils/effect'
 import type * as otel from '@opentelemetry/api'
@@ -183,6 +184,7 @@ export type StoreOptions<TSchema extends LiveStoreSchema = LiveStoreSchema.Any, 
   batchUpdates: (runUpdates: () => void) => void
   params: {
     leaderPushBatchSize: number
+    eventQueryBatchSize?: number
     simulation?: {
       clientSessionSyncProcessor: typeof ClientSessionSyncProcessorSimulationParams.Type
     }
@@ -247,27 +249,19 @@ export type StoreCommitOptions = {
   otelContext?: otel.Context
 }
 
-export type StoreEventsOptions<TSchema extends LiveStoreSchema> = {
+/**
+ * filter: Narrowed to the store's event types
+ * includeClientOnly: Omitted from public API until supported
+ */
+export type StoreEventsOptions<TSchema extends LiveStoreSchema> = Omit<
+  StreamEventsOptions,
+  'filter' | 'includeClientOnly'
+> & {
   /**
-   * By default only new events are returned.
-   * Use this to get all events from a specific point in time.
-   */
-  cursor?: EventSequenceNumber.Client.Composite
-  /**
-   * Only include events of the given names
+   * Only include events of the given names.
    * @default undefined (include all)
    */
   filter?: ReadonlyArray<keyof TSchema['_EventDefMapType']>
-  /**
-   * Whether to include client-only events or only return synced events
-   * @default true
-   */
-  includeClientOnly?: boolean
-  /**
-   * Exclude own events that have not been pushed to the sync backend yet
-   * @default false
-   */
-  excludeUnpushed?: boolean
 }
 
 /**

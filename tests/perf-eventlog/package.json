@@ -1,0 +1,39 @@
+{
+  "name": "@local/tests-perf-streaming-loopback",
+  "version": "0.0.0",
+  "type": "module",
+  "private": true,
+  "dependencies": {
+    "@livestore/adapter-web": "workspace:*",
+    "@livestore/common": "workspace:*",
+    "@livestore/livestore": "workspace:*",
+    "@livestore/react": "workspace:*",
+    "@livestore/sqlite-wasm": "workspace:*",
+    "@livestore/utils": "workspace:*",
+    "@livestore/utils-dev": "workspace:*",
+    "@opentelemetry/api": "catalog:",
+    "@opentelemetry/core": "catalog:",
+    "@opentelemetry/resources": "catalog:",
+    "@opentelemetry/sdk-trace-base": "catalog:",
+    "@opentelemetry/sdk-trace-web": "catalog:",
+    "@types/node": "catalog:",
+    "@types/react": "catalog:",
+    "@types/react-dom": "catalog:",
+    "@vitejs/plugin-react": "catalog:",
+    "react": "catalog:",
+    "react-dom": "catalog:",
+    "typescript": "catalog:",
+    "vite": "catalog:"
+  },
+  "devDependencies": {
+    "@livestore/devtools-vite": "0.4.0-dev.20",
+    "@playwright/test": "catalog:",
+    "tsx": "^4.20.0"
+  },
+  "scripts": {
+    "build": "pnpm exec vite build --config test-app/vite.config.ts",
+    "dev": "pnpm exec vite --config test-app/vite.config.ts",
+    "preview": "pnpm exec vite preview --config test-app/vite.config.ts",
+    "test": "NODE_OPTIONS=--disable-warning=ExperimentalWarning playwright test"
+  }
+}

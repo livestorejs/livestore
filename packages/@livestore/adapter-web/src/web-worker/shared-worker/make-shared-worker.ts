@@ -243,6 +243,7 @@ const makeWorkerRunner = Effect.gen(function* () {
     BootStatusStream: forwardRequestStream,
     PushToLeader: forwardRequest,
     PullStream: forwardRequestStream,
+    StreamEvents: forwardRequestStream,
     Export: forwardRequest,
     GetRecreateSnapshot: forwardRequest,
     ExportEventlog: forwardRequest,

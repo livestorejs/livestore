@@ -77,6 +77,7 @@ export class SnapshotRes extends LSDReqResMessage('LSD.Leader.SnapshotRes', {
 export const LoadDatabaseFile = LeaderReqResMessage('LSD.Leader.LoadDatabaseFile', {
   payload: {
     data: Transferable.Uint8Array as Schema.Schema<Uint8Array<ArrayBuffer>>,
+    batchId: Schema.optional(Schema.String),
   },
   success: {},
   error: {
