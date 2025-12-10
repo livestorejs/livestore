@@ -196,7 +196,7 @@ describe('StoreRegistry', () => {
   })
 
   // This test is skipped because Effect doesn't yet support different `idleTimeToLive` values for each resource in `RcMap`
-  // TODO: Enable this test when https://github.com/Effect-TS/effect/pull/5859 is released and StoreRegistry is updated to support different `unusedCacheTime` per store
+  // See https://github.com/livestorejs/livestore/issues/917
   it.skip('allows call-site options to override default options', async () => {
     const registry = new StoreRegistry({
       defaultOptions: {
