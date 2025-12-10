@@ -16,13 +16,11 @@ export const useStore = <TSchema extends LiveStoreSchema>(
 ): Store<TSchema> & ReactApi => {
   const storeRegistry = useStoreRegistry()
 
-  const memoizedOptions = React.useMemo(() => options, [options])
-
-  React.useEffect(() => storeRegistry.retain(memoizedOptions), [storeRegistry, memoizedOptions])
+  React.useEffect(() => storeRegistry.retain(options), [storeRegistry, options])
 
   const storeOrPromise = React.useMemo(
-    () => storeRegistry.getOrLoadPromise(memoizedOptions),
-    [storeRegistry, memoizedOptions],
+    () => storeRegistry.getOrLoadPromise(options),
+    [storeRegistry, options],
   )
 
   const store = storeOrPromise instanceof Promise ? React.use(storeOrPromise) : storeOrPromise
