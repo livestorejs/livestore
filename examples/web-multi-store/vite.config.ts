@@ -16,9 +16,7 @@ export default defineConfig({
   worker: isProdBuild ? { format: 'es' } : undefined,
   plugins: [
     tsConfigPaths(),
-    tanstackStart({
-      spa: { enabled: true },
-    }),
+    tanstackStart({ spa: { enabled: true } }),
     viteReact(),
     livestoreDevtoolsPlugin({ schemaPath: ['./src/stores/workspace/schema.ts', './src/stores/issue/schema.ts'] }),
   ],
