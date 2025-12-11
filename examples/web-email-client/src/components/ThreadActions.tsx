@@ -1,4 +1,4 @@
-import { useStore } from '@livestore/react/experimental'
+import { useStore } from '@livestore/react'
 import type React from 'react'
 import { useMailboxStore } from '../stores/mailbox/index.ts'
 import { archiveThread, trashThread } from '../stores/thread/commands.ts'

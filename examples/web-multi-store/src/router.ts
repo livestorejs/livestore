@@ -1,4 +1,4 @@
-import { StoreRegistry } from '@livestore/react/experimental'
+import { StoreRegistry } from '@livestore/react'
 import { createRouter } from '@tanstack/react-router'
 import { unstable_batchedUpdates as batchUpdates } from 'react-dom'
 

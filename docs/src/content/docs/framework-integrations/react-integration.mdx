@@ -120,9 +120,9 @@ function RootShell({ children }: { children: React.ReactNode }) {
 // App shell - persists across SPA navigation
 function RootComponent() {
   return (
-    <LiveStoreProvider 
-      schema={schema} 
-      adapter={adapter} 
+    <LiveStoreProvider
+      schema={schema}
+      adapter={adapter}
       batchUpdates={batchUpdates}
     >
       <Outlet />
@@ -161,12 +161,6 @@ The multi-store API enables managing multiple stores within a single React appli
 - **Multi-tenant applications** - Separate stores for each workspace, organization, or project (like Slack workspaces, Notion pages, or Linear teams)
 
 <MultiStoreMinimalSnippet />
-
-:::caution[Experimental API]
-The Multi-Store API is still early in its development.
-
-If you have feedback or questions about this API, please don't hesitate to comment on the [RFC](https://github.com/livestorejs/livestore/pull/585)
-:::
 
 ### Core Concepts
 
