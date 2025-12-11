@@ -1,5 +1,5 @@
 import { queryDb } from '@livestore/livestore'
-import { StoreRegistryProvider, useStore } from '@livestore/react/experimental'
+import { StoreRegistryProvider, useStore } from '@livestore/react'
 import { createFileRoute } from '@tanstack/react-router'
 import { Suspense } from 'react'
 import { ErrorBoundary } from 'react-error-boundary'

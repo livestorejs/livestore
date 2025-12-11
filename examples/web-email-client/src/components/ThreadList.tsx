@@ -1,5 +1,5 @@
 import { queryDb } from '@livestore/livestore'
-import { useStoreRegistry } from '@livestore/react/experimental'
+import { useStoreRegistry } from '@livestore/react'
 import type React from 'react'
 import { useMailboxStore } from '../stores/mailbox/index.ts'
 import { mailboxTables } from '../stores/mailbox/schema.ts'

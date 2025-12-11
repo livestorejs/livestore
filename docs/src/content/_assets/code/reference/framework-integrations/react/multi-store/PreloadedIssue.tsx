@@ -1,4 +1,4 @@
-import { useStoreRegistry } from '@livestore/react/experimental'
+import { useStoreRegistry } from '@livestore/react'
 import { Suspense, useState } from 'react'
 import { ErrorBoundary } from 'react-error-boundary'
 import { IssueView } from './IssueView.tsx'
