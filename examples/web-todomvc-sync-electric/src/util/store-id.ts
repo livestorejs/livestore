@@ -9,4 +9,5 @@ export const getStoreId = () => {
   searchParams.set('storeId', newAppId)
 
   window.location.search = searchParams.toString()
+  return newAppId
 }
