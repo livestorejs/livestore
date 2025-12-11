@@ -1,14 +1,16 @@
 import { makeInMemoryAdapter } from '@livestore/adapter-web'
-import type { Store } from '@livestore/livestore'
-import { StoreInternalsSymbol } from '@livestore/livestore'
+import {
+  type CachedStoreOptions,
+  type Store,
+  StoreInternalsSymbol,
+  StoreRegistry,
+  storeOptions,
+} from '@livestore/livestore'
 import { shouldNeverHappen } from '@livestore/utils'
 import { act, type RenderHookResult, type RenderResult, render, renderHook, waitFor } from '@testing-library/react'
 import * as React from 'react'
 import { describe, expect, it } from 'vitest'
 import { schema } from './__tests__/fixture.tsx'
-import { StoreRegistry } from './experimental/multi-store/StoreRegistry.ts'
-import { storeOptions } from './experimental/multi-store/storeOptions.ts'
-import type { CachedStoreOptions } from './experimental/multi-store/types.ts'
 import { StoreRegistryProvider } from './StoreRegistryContext.tsx'
 import { useStore } from './useStore.ts'
 

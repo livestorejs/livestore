@@ -1,6 +1,5 @@
 import { OtelLiveDummy, UnknownError } from '@livestore/common'
 import type { LiveStoreSchema } from '@livestore/common/schema'
-import { createStore, type Store } from '@livestore/livestore'
 import {
   Cause,
   Effect,
@@ -15,12 +14,14 @@ import {
   Runtime,
   type Scope,
 } from '@livestore/utils/effect'
+import { createStore } from './create-store.ts'
+import type { Store } from './store.ts'
 import type { CachedStoreOptions } from './types.ts'
 
 /**
  * Default time to keep unused stores in cache.
  *
- * - Browser: 60 seconds (60,000ms)
+ * - Browser: 60 seconds (60,000 ms)
  * - SSR: Infinity (disables disposal to avoid disposing stores before server render completes)
  *
  * @internal Exported primarily for testing purposes.
