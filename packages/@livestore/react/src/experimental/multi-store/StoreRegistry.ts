@@ -172,7 +172,7 @@ export class StoreRegistry {
    *
    * @typeParam TSchema - The schema type for the store
    * @returns The loaded store if available, or a Promise that resolves to the loaded store
-   * @throws unknown loading error
+   * @throws unknown - store loading error
    *
    * @remarks
    * - Returns the store instance directly (synchronous) when already loaded
@@ -212,13 +212,14 @@ export class StoreRegistry {
   }
 
   /**
-   * Retains the store in cache until the returned release function is called.
+   * Retains the store in cache.
    *
    * @returns A release function that, when called, removes this retention hold
    *
    * @remarks
    * - Multiple retains on the same store are independent; each must be released separately
    * - If the store isn't cached yet, it will be loaded and then retained
+   * - The store will remain in cache until all retains are released and after `unusedCacheTime` expires
    */
   retain = (options: CachedStoreOptions<any>): (() => void) => {
     const release = Effect.gen(this, function* () {
@@ -234,7 +235,7 @@ export class StoreRegistry {
   }
 
   /**
-   * Warms the cache for a store without adding a retention.
+   * Warms the cache for a store.
    *
    * @typeParam TSchema - The schema of the store to preload
    * @returns A promise that resolves when the loading is complete (success or failure)
@@ -242,6 +243,7 @@ export class StoreRegistry {
    * @remarks
    * - We don't return the store or throw as this is a fire-and-forget operation.
    * - If the entry remains unused after preload resolves/rejects, it is scheduled for disposal.
+   * - Does not affect the retention of the store in cache.
    */
   preload = async <TSchema extends LiveStoreSchema>(options: CachedStoreOptions<TSchema>): Promise<void> => {
     try {

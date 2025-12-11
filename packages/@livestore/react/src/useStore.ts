@@ -1,11 +1,69 @@
 import type { LiveStoreSchema } from '@livestore/common/schema'
 import type { Store } from '@livestore/livestore'
 import React from 'react'
-
+import { useStoreRegistry } from './experimental/multi-store/StoreRegistryContext.tsx'
+import type { CachedStoreOptions } from './experimental/multi-store/types.ts'
 import type { ReactApi } from './LiveStoreContext.ts'
-import { LiveStoreContext } from './LiveStoreContext.ts'
 import { useClientDocument } from './useClientDocument.ts'
 import { useQuery } from './useQuery.ts'
+
+/**
+ * Returns a store instance, augmented with React hooks for reactive queries.
+ *
+ * @example
+ * ```tsx
+ * function Issue() {
+ *   const issueStore = useStore(issueStoreOptions('abc123'))
+ *   const [issue] = issueStore.useQuery(queryDb(tables.issue.select()))
+ *
+ *   const toggleStatus = () =>
+ *     issueStore.commit(
+ *       issueEvents.issueStatusChanged({
+ *         id: issue.id,
+ *         status: issue.status === 'done' ? 'todo' : 'done',
+ *       }),
+ *     )
+ *
+ *   const preloadParentIssue = (issueId: string) =>
+ *     storeRegistry.preload({
+ *       ...issueStoreOptions(issueId),
+ *       unusedCacheTime: 10_000,
+ *     })
+ *
+ *   return (
+ *     <>
+ *       <h2>{issue.title}</h2>
+ *       <button onClick={() => toggleStatus()}>Toggle Status</button>
+ *       <button onMouseEnter={() => preloadParentIssue(issue.parentIssueId)}>Open Parent Issue</button>
+ *     </>
+ *   )
+ * }
+ * ```
+ *
+ * @remarks
+ * - Suspends until the store is loaded.
+ * - Store is cached by `storeId`. Multiple calls with the same `storeId` return the same store instance.
+ * - Store is cached as long as it's being used, and after `unusedCacheTime` expires (default `60_000` ms in browser, `Infinity` in non-browser)
+ * - Default store options can be configured in `StoreRegistry` constructor.
+ * - Store options are only applied when the store is first loaded. Subsequent calls with different options will not affect the store.
+ *
+ * @typeParam TSchema - The schema type for the store
+ * @returns The loaded store instance augmented with React hooks
+ * @throws unknown - store loading error or if called outside `<StoreRegistryProvider>`
+ */
+export const useStore = <TSchema extends LiveStoreSchema>(
+  options: CachedStoreOptions<TSchema>,
+): Store<TSchema> & ReactApi => {
+  const storeRegistry = useStoreRegistry()
+
+  React.useEffect(() => storeRegistry.retain(options), [storeRegistry, options])
+
+  const storeOrPromise = React.useMemo(() => storeRegistry.getOrLoadPromise(options), [storeRegistry, options])
+
+  const store = storeOrPromise instanceof Promise ? React.use(storeOrPromise) : storeOrPromise
+
+  return withReactApi(store)
+}
 
 /**
  * Augments a Store instance with React-specific methods (`useQuery`, `useClientDocument`).
@@ -13,76 +71,13 @@ import { useQuery } from './useQuery.ts'
  * This is called automatically by `useStore()` and `LiveStoreProvider`. You typically
  * don't need to call it directly unless you're building custom integrations.
  *
- * @example
- * ```ts
- * // Usually not needed—useStore() does this automatically
- * const store = withReactApi(myStore)
- * const todos = store.useQuery(tables.todos.all())
- * ```
+ * @internal
  */
 export const withReactApi = <TSchema extends LiveStoreSchema>(store: Store<TSchema>): Store<TSchema> & ReactApi => {
   // @ts-expect-error TODO properly implement this
-
   store.useQuery = (queryable) => useQuery(queryable, { store })
-  // @ts-expect-error TODO properly implement this
 
+  // @ts-expect-error TODO properly implement this
   store.useClientDocument = (table, idOrOptions, options) => useClientDocument(table, idOrOptions, options, { store })
   return store as Store<TSchema> & ReactApi
-}
-
-/**
- * Returns the current Store instance from React context, augmented with React-specific methods.
- *
- * Use this hook when you need direct access to the Store for operations like
- * `store.commit()`, `store.subscribe()`, or accessing `store.sessionId`.
- *
- * For reactive queries, prefer `useQuery()` or `useClientDocument()` which handle
- * subscriptions and re-renders automatically.
- *
- * @example
- * ```ts
- * const MyComponent = () => {
- *   const { store } = useStore()
- *
- *   const handleClick = () => {
- *     store.commit(events.todoCreated({ id: nanoid(), text: 'New todo' }))
- *   }
- *
- *   return <button onClick={handleClick}>Add Todo</button>
- * }
- * ```
- *
- * @example
- * ```ts
- * // Access store metadata
- * const { store } = useStore()
- * console.log('Session ID:', store.sessionId)
- * console.log('Client ID:', store.clientId)
- * ```
- *
- * @example
- * ```ts
- * // Use with an explicit store instance (bypasses context)
- * const { store } = useStore({ store: myExternalStore })
- * ```
- *
- * @throws Error if called outside of `<LiveStoreProvider>` or before the store is running
- */
-export const useStore = (options?: { store?: Store }): { store: Store & ReactApi } => {
-  if (options?.store !== undefined) {
-    return { store: withReactApi(options.store) }
-  }
-
-  // biome-ignore lint/correctness/useHookAtTopLevel: store is stable
-  const storeContext = React.useContext(LiveStoreContext)
-
-  if (storeContext === undefined) {
-    throw new Error(`useStore can only be used inside StoreContext.Provider`)
-  }
-
-  if (storeContext.stage !== 'running') {
-    throw new Error(`useStore can only be used after the store is running`)
-  }
-
-  return { store: withReactApi(storeContext.store) }
 }
