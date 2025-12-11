@@ -174,11 +174,11 @@ const Main = () => {
 }
 
 const App = () => {
-  const [registry] = useState(() => new StoreRegistry())
+  const [storeRegistry] = useState(() => new StoreRegistry())
 
   return (
     <Suspense fallback={<p>Loading...</p>}>
-      <StoreRegistryProvider storeRegistry={registry}>
+      <StoreRegistryProvider storeRegistry={storeRegistry}>
         <Main />
       </StoreRegistryProvider>
     </Suspense>

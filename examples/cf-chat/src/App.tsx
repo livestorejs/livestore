@@ -60,12 +60,12 @@ export const ChatComponent = () => {
 
 // App component with LiveStore provider - exported as ChatApp for main.tsx
 export const ChatApp = () => {
-  const [registry] = useState(() => new StoreRegistry())
+  const [storeRegistry] = useState(() => new StoreRegistry())
 
   return (
     <ErrorBoundary fallback={<div>Something went wrong</div>}>
       <Suspense fallback={<div>Loading...</div>}>
-        <StoreRegistryProvider storeRegistry={registry}>
+        <StoreRegistryProvider storeRegistry={storeRegistry}>
           <UserNameWrapper>
             <ChatComponent />
           </UserNameWrapper>

@@ -24,12 +24,12 @@ const AppBody: React.FC = () => (
 )
 
 const Layout: React.FC = () => {
-  const [registry] = useState(() => new StoreRegistry())
+  const [storeRegistry] = useState(() => new StoreRegistry())
 
   return (
     <ErrorBoundary fallback={<div>Something went wrong</div>}>
       <Suspense fallback={<div>Loading LiveStore...</div>}>
-        <StoreRegistryProvider storeRegistry={registry}>
+        <StoreRegistryProvider storeRegistry={storeRegistry}>
           <div style={{ top: 0, right: 0, position: 'absolute', background: '#333' }}>
             <FPSMeter height={40} />
           </div>
