@@ -1,8 +1,8 @@
 import { StoreInternalsSymbol } from '@livestore/livestore'
-import { useStore } from '@livestore/react'
 import { Effect, Stream } from '@livestore/utils/effect'
 import React from 'react'
 import { Switch } from 'react-aria-components'
+import { useAppStore } from '../../../livestore/store.ts'
 
 export const SyncToggle = ({ className }: { className?: string }) => {
   // TODO hook up actual sync/network state
@@ -49,7 +49,7 @@ export const SyncToggle = ({ className }: { className?: string }) => {
 }
 
 const usePendingSyncEvents = () => {
-  const { store } = useStore()
+  const store = useAppStore()
   const [hasPendingEvents, setHasPendingEvents] = React.useState(false)
   const sessionPendingRef = React.useRef(false)
   const leaderPendingRef = React.useRef(false)

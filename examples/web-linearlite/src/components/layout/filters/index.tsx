@@ -1,7 +1,7 @@
-import { useStore } from '@livestore/react'
 import { Button } from 'react-aria-components'
 import { statusOptions } from '../../../data/status-options.ts'
 import { issueCount$, useFilterState } from '../../../livestore/queries.ts'
+import { useAppStore } from '../../../livestore/store.ts'
 import type { Status } from '../../../types/status.ts'
 import { Icon } from '../../icons/index.tsx'
 import { SearchBar } from '../search/search-bar.tsx'
@@ -22,7 +22,7 @@ export const Filters = ({
   hideSorting?: boolean
   search?: boolean
 }) => {
-  const { store } = useStore()
+  const store = useAppStore()
   const totalCount = store.useQuery(issueCount$)
   const [filterState] = useFilterState()
 

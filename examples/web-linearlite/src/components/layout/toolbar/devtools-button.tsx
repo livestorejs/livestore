@@ -1,9 +1,9 @@
 import { CodeBracketIcon } from '@heroicons/react/16/solid'
-import { useStore } from '@livestore/react'
 import React from 'react'
+import { useAppStore } from '../../../livestore/store.ts'
 
 export const DevtoolsButton = ({ className }: { className?: string }) => {
-  const { store } = useStore()
+  const store = useAppStore()
   const devtoolsUrl = React.useMemo(() => {
     // Respect Vite base + plugin mount path when available
     const basePath = (globalThis as { LIVESTORE_DEVTOOLS_PATH?: string }).LIVESTORE_DEVTOOLS_PATH ?? '/_livestore'

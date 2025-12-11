@@ -1,7 +1,7 @@
-import { useStore } from '@livestore/react'
 import { useNavigate, useParams } from '@tanstack/react-router'
 import { Button } from 'react-aria-components'
 import { events, type Issue } from '../../../livestore/schema/index.ts'
+import { useAppStore } from '../../../livestore/store.ts'
 import type { Priority } from '../../../types/priority.ts'
 import type { Status } from '../../../types/status.ts'
 import { getIssueTag } from '../../../utils/get-issue-tag.ts'
@@ -11,7 +11,7 @@ import { StatusMenu } from '../../common/status-menu.tsx'
 
 export const Card = ({ issue, className }: { issue: Issue; className?: string }) => {
   const navigate = useNavigate()
-  const { store } = useStore()
+  const store = useAppStore()
   const { storeId } = useParams({ from: '/$storeId' })
 
   const handleChangeStatus = (status: Status) =>
