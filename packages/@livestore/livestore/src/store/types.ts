@@ -1,5 +1,6 @@
 import type { LiveStoreSchema } from '@livestore/common/schema'
-import type { CreateStoreOptions, OtelOptions } from '@livestore/livestore'
+import type { CreateStoreOptions } from './create-store.ts'
+import type { OtelOptions } from './store-types.ts'
 
 export type CachedStoreOptions<TSchema extends LiveStoreSchema = LiveStoreSchema.Any, TContext = {}> = Pick<
   CreateStoreOptions<TSchema, TContext>,

@@ -1,11 +1,11 @@
 import { makeInMemoryAdapter } from '@livestore/adapter-web'
 import { UnknownError } from '@livestore/common'
-import { StoreInternalsSymbol } from '@livestore/livestore'
 import { sleep } from '@livestore/utils'
 import { Effect } from '@livestore/utils/effect'
 import { describe, expect, it } from 'vitest'
-import { schema } from '../../__tests__/fixture.tsx'
+import { schema } from '../utils/tests/fixture.ts'
 import { StoreRegistry } from './StoreRegistry.ts'
+import { StoreInternalsSymbol } from './store-types.ts'
 import { storeOptions } from './storeOptions.ts'
 import type { CachedStoreOptions } from './types.ts'
 
