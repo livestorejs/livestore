@@ -12,6 +12,7 @@ import {
   type OtelTracer,
   RcMap,
   Runtime,
+  type Schema,
   type Scope,
 } from '@livestore/utils/effect'
 import { createStore } from './create-store.ts'
@@ -68,10 +69,10 @@ type DefaultStoreOptions = Partial<
  * solely by its `storeId`, and callers should not expect to get different stores by varying
  * other options while keeping the same `storeId`.
  */
-class StoreCacheKey<TSchema extends LiveStoreSchema = LiveStoreSchema.Any> implements Equal.Equal {
-  readonly options: CachedStoreOptions<TSchema>
+class StoreCacheKey implements Equal.Equal {
+  readonly options: CachedStoreOptions<any, any, any>
 
-  constructor(options: CachedStoreOptions<TSchema>) {
+  constructor(options: CachedStoreOptions<any, any, any>) {
     this.options = options
   }
 
@@ -99,19 +100,19 @@ export class StoreRegistry {
    * Reference-counted cache mapping storeId to Store instances.
    * Stores are created on first access and disposed after `unusedCacheTime` when all references are released.
    */
-  #rcMap: RcMap.RcMap<StoreCacheKey<any>, Store, UnknownError>
+  readonly #rcMap: RcMap.RcMap<StoreCacheKey, Store<any, any>, UnknownError>
 
   /**
    * Effect runtime providing Scope and OtelTracer for all registry operations.
    * When the runtime's scope closes, all managed stores are automatically shut down.
    */
-  #runtime: Runtime.Runtime<Scope.Scope | OtelTracer.OtelTracer>
+  readonly #runtime: Runtime.Runtime<Scope.Scope | OtelTracer.OtelTracer>
 
   /**
    * In-flight loading promises keyed by storeId.
    * Ensures concurrent `getOrLoadPromise` calls receive the same Promise reference.
    */
-  #loadingPromises: Map<string, Promise<Store<any>>> = new Map()
+  readonly #loadingPromises: Map<string, Promise<Store<any, any>>> = new Map()
 
   /**
    * Creates a new StoreRegistry instance.
@@ -150,6 +151,8 @@ export class StoreRegistry {
    * Gets a cached store or loads a new one, with the store lifetime scoped to the caller.
    *
    * @typeParam TSchema - The schema type for the store
+   * @typeParam TContext - The context type for the store
+   * @typeParam TSyncPayloadSchema - The sync payload schema type
    * @returns An Effect that yields the store, scoped to the provided Scope
    *
    * @remarks
@@ -158,20 +161,27 @@ export class StoreRegistry {
    *   if no other scopes retain it
    * - Concurrent calls with the same storeId share the same store instance
    */
-  getOrLoad = <TSchema extends LiveStoreSchema>(
-    options: CachedStoreOptions<TSchema>,
-  ): Effect.Effect<Store<TSchema>, UnknownError, Scope.Scope> =>
+  getOrLoad = <
+    TSchema extends LiveStoreSchema,
+    TContext = {},
+    TSyncPayloadSchema extends Schema.Schema<any> = typeof Schema.JsonValue,
+  >(
+    options: CachedStoreOptions<TSchema, TContext, TSyncPayloadSchema>,
+  ): Effect.Effect<Store<TSchema, TContext>, UnknownError, Scope.Scope> =>
     Effect.gen(this, function* () {
+      // Cast options to satisfy StoreCacheKey's wider type (type safety enforced at API boundary)
       const key = new StoreCacheKey(options)
       const store = yield* RcMap.get(this.#rcMap, key)
 
-      return store as unknown as Store<TSchema>
+      return store as Store<TSchema, TContext>
     }).pipe(Effect.withSpan(`StoreRegistry.getOrLoad:${options.storeId}`))
 
   /**
    * Get or load a store, returning it directly if already loaded or a promise if loading.
    *
    * @typeParam TSchema - The schema type for the store
+   * @typeParam TContext - The context type for the store
+   * @typeParam TSyncPayloadSchema - The sync payload schema type
    * @returns The loaded store if available, or a Promise that resolves to the loaded store
    * @throws unknown - store loading error
    *
@@ -182,12 +192,16 @@ export class StoreRegistry {
    * - Applies default options from registry config, with call-site options taking precedence
    * - Concurrent calls with the same storeId share the same store instance
    */
-  getOrLoadPromise = <TSchema extends LiveStoreSchema>(
-    options: CachedStoreOptions<TSchema>,
-  ): Store<TSchema> | Promise<Store<TSchema>> => {
-    const exit = this.getOrLoad<TSchema>(options).pipe(Effect.scoped, Runtime.runSyncExit(this.#runtime))
+  getOrLoadPromise = <
+    TSchema extends LiveStoreSchema,
+    TContext = {},
+    TSyncPayloadSchema extends Schema.Schema<any> = typeof Schema.JsonValue,
+  >(
+    options: CachedStoreOptions<TSchema, TContext, TSyncPayloadSchema>,
+  ): Store<TSchema, TContext> | Promise<Store<TSchema, TContext>> => {
+    const exit = this.getOrLoad(options).pipe(Effect.scoped, Runtime.runSyncExit(this.#runtime))
 
-    if (Exit.isSuccess(exit)) return exit.value as Store<TSchema>
+    if (Exit.isSuccess(exit)) return exit.value
 
     // Check if the failure is due to async work
     const defect = Cause.dieOption(exit.cause)
@@ -196,13 +210,13 @@ export class StoreRegistry {
 
       // Return cached promise if one exists (ensures concurrent calls get the same Promise reference)
       const cached = this.#loadingPromises.get(storeId)
-      if (cached) return cached as Promise<Store<TSchema>>
+      if (cached) return cached as Promise<Store<TSchema, TContext>>
 
       // Create and cache the promise
       const fiber = defect.value.fiber
       const promise = Fiber.join(fiber)
         .pipe(Runtime.runPromise(this.#runtime))
-        .finally(() => this.#loadingPromises.delete(storeId)) as Promise<Store<TSchema>>
+        .finally(() => this.#loadingPromises.delete(storeId)) as Promise<Store<TSchema, TContext>>
 
       this.#loadingPromises.set(storeId, promise)
       return promise
@@ -215,6 +229,9 @@ export class StoreRegistry {
   /**
    * Retains the store in cache.
    *
+   * @typeParam TSchema - The schema type for the store
+   * @typeParam TContext - The context type for the store
+   * @typeParam TSyncPayloadSchema - The sync payload schema type
    * @returns A release function that, when called, removes this retention hold
    *
    * @remarks
@@ -222,8 +239,15 @@ export class StoreRegistry {
    * - If the store isn't cached yet, it will be loaded and then retained
    * - The store will remain in cache until all retains are released and after `unusedCacheTime` expires
    */
-  retain = (options: CachedStoreOptions<any>): (() => void) => {
+  retain = <
+    TSchema extends LiveStoreSchema,
+    TContext = {},
+    TSyncPayloadSchema extends Schema.Schema<any> = typeof Schema.JsonValue,
+  >(
+    options: CachedStoreOptions<TSchema, TContext, TSyncPayloadSchema>,
+  ): (() => void) => {
     const release = Effect.gen(this, function* () {
+      // Cast options to satisfy StoreCacheKey's wider type (type safety enforced at API boundary)
       const key = new StoreCacheKey(options)
       yield* RcMap.get(this.#rcMap, key)
       // Effect.never suspends indefinitely, keeping the RcMap reference alive.
@@ -239,6 +263,8 @@ export class StoreRegistry {
    * Warms the cache for a store.
    *
    * @typeParam TSchema - The schema of the store to preload
+   * @typeParam TContext - The context type for the store
+   * @typeParam TSyncPayloadSchema - The sync payload schema type
    * @returns A promise that resolves when the loading is complete (success or failure)
    *
    * @remarks
@@ -246,7 +272,13 @@ export class StoreRegistry {
    * - If the entry remains unused after preload resolves/rejects, it is scheduled for disposal.
    * - Does not affect the retention of the store in cache.
    */
-  preload = async <TSchema extends LiveStoreSchema>(options: CachedStoreOptions<TSchema>): Promise<void> => {
+  preload = async <
+    TSchema extends LiveStoreSchema,
+    TContext = {},
+    TSyncPayloadSchema extends Schema.Schema<any> = typeof Schema.JsonValue,
+  >(
+    options: CachedStoreOptions<TSchema, TContext, TSyncPayloadSchema>,
+  ): Promise<void> => {
     try {
       await this.getOrLoadPromise(options)
     } catch {

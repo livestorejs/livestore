@@ -1,9 +1,14 @@
 import type { LiveStoreSchema } from '@livestore/common/schema'
+import type { Schema } from '@livestore/utils/effect'
 import type { CreateStoreOptions } from './create-store.ts'
 import type { OtelOptions } from './store-types.ts'
 
-export type CachedStoreOptions<TSchema extends LiveStoreSchema = LiveStoreSchema.Any, TContext = {}> = Pick<
-  CreateStoreOptions<TSchema, TContext>,
+export type CachedStoreOptions<
+  TSchema extends LiveStoreSchema = LiveStoreSchema.Any,
+  TContext = {},
+  TSyncPayloadSchema extends Schema.Schema<any> = typeof Schema.JsonValue,
+> = Pick<
+  CreateStoreOptions<TSchema, TContext, TSyncPayloadSchema>,
   | 'storeId'
   | 'schema'
   | 'adapter'
@@ -11,6 +16,7 @@ export type CachedStoreOptions<TSchema extends LiveStoreSchema = LiveStoreSchema
   | 'batchUpdates'
   | 'disableDevtools'
   | 'confirmUnsavedChanges'
+  | 'syncPayloadSchema'
   | 'syncPayload'
   | 'debug'
   | 'shutdownDeferred'

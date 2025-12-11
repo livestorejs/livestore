@@ -1,5 +1,6 @@
 import type { LiveStoreSchema } from '@livestore/common/schema'
 import type { CachedStoreOptions, Store } from '@livestore/livestore'
+import type { Schema } from '@livestore/utils/effect'
 import React from 'react'
 import type { ReactApi } from './LiveStoreContext.ts'
 import { useStoreRegistry } from './StoreRegistryContext.tsx'
@@ -51,9 +52,13 @@ import { useQuery } from './useQuery.ts'
  * @returns The loaded store instance augmented with React hooks
  * @throws unknown - store loading error or if called outside `<StoreRegistryProvider>`
  */
-export const useStore = <TSchema extends LiveStoreSchema>(
-  options: CachedStoreOptions<TSchema>,
-): Store<TSchema> & ReactApi => {
+export const useStore = <
+  TSchema extends LiveStoreSchema,
+  TContext = {},
+  TSyncPayloadSchema extends Schema.Schema<any> = typeof Schema.JsonValue,
+>(
+  options: CachedStoreOptions<TSchema, TContext, TSyncPayloadSchema>,
+): Store<TSchema, TContext> & ReactApi => {
   const storeRegistry = useStoreRegistry()
 
   React.useEffect(() => storeRegistry.retain(options), [storeRegistry, options])
@@ -73,11 +78,13 @@ export const useStore = <TSchema extends LiveStoreSchema>(
  *
  * @internal
  */
-export const withReactApi = <TSchema extends LiveStoreSchema>(store: Store<TSchema>): Store<TSchema> & ReactApi => {
+export const withReactApi = <TSchema extends LiveStoreSchema, TContext = {}>(
+  store: Store<TSchema, TContext>,
+): Store<TSchema, TContext> & ReactApi => {
   // @ts-expect-error TODO properly implement this
   store.useQuery = (queryable) => useQuery(queryable, { store })
 
   // @ts-expect-error TODO properly implement this
   store.useClientDocument = (table, idOrOptions, options) => useClientDocument(table, idOrOptions, options, { store })
-  return store as Store<TSchema> & ReactApi
+  return store as Store<TSchema, TContext> & ReactApi
 }
