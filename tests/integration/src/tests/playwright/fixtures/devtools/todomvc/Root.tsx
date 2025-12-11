@@ -18,12 +18,12 @@ const AppBody: React.FC = () => (
 )
 
 export const App: React.FC = () => {
-  const [registry] = useState(() => new StoreRegistry())
+  const [storeRegistry] = useState(() => new StoreRegistry())
 
   return (
     <ErrorBoundary fallback={<div>Something went wrong</div>}>
       <Suspense fallback={<div>Loading app...</div>}>
-        <StoreRegistryProvider storeRegistry={registry}>
+        <StoreRegistryProvider storeRegistry={storeRegistry}>
           <AppBody />
         </StoreRegistryProvider>
       </Suspense>

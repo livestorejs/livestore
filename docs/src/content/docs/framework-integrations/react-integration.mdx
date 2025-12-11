@@ -218,7 +218,7 @@ When creating `storeId` values:
 
 #### `storeOptions(options)`
 
-Defines reusable store configuration with type safety. Returns options that can be passed to `useStore()` or `registry.preload()`.
+Defines reusable store configuration with type safety. Returns options that can be passed to `useStore()` or `storeRegistry.preload()`.
 
 Options:
 - `storeId` - Unique identifier for this store instance (required)
@@ -256,7 +256,7 @@ Hook that returns a store instance, suspending until it's loaded.
 
 Returns the current `StoreRegistry` from context. Useful for advanced operations like preloading.
 
-#### `registry.preload(options)`
+#### `storeRegistry.preload(options)`
 
 Starts loading a store without suspending. Returns a Promise that resolves when loading completes (or rejects on error). This is a fire-and-forget operation.
 

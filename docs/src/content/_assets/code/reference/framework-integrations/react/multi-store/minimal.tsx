@@ -13,9 +13,9 @@ const issueStoreOptions = (issueId: string) =>
   })
 
 export function App() {
-  const [registry] = useState(() => new StoreRegistry({ defaultOptions: { batchUpdates } }))
+  const [storeRegistry] = useState(() => new StoreRegistry({ defaultOptions: { batchUpdates } }))
   return (
-    <StoreRegistryProvider storeRegistry={registry}>
+    <StoreRegistryProvider storeRegistry={storeRegistry}>
       <IssueView />
     </StoreRegistryProvider>
   )

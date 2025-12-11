@@ -5,14 +5,7 @@ import { unstable_batchedUpdates as batchUpdates } from 'react-dom'
 import { routeTree } from './routeTree.gen.ts'
 
 export const getRouter = () => {
-  const storeRegistry = new StoreRegistry({
-    defaultOptions: {
-      batchUpdates,
-      disableDevtools: false,
-      confirmUnsavedChanges: true,
-      syncPayload: { authToken: 'insecure-token-change-me' },
-    },
-  })
+  const storeRegistry = new StoreRegistry({ defaultOptions: { batchUpdates } })
 
   return createRouter({
     routeTree,

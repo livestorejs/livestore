@@ -154,10 +154,10 @@ The multi-store architecture introduces three key concepts:
 |:--------------------------|:------------------------------------------|:---------------------------------------------------------------|
 | `storeOptions()`          | Define re-usable store options            | `storeOptions({ storeId: 'workspace-root', schema, adapter })` |
 | `new StoreRegistry()`     | Create store registry instance            | `new StoreRegistry({ defaultOptions: { ... } })`               |
-| `<StoreRegistryProvider>` | StoreRegistry provider                    | `<StoreRegistryProvider storeRegistry={registry}>`             |
+| `<StoreRegistryProvider>` | StoreRegistry provider                    | `<StoreRegistryProvider storeRegistry={storeRegistry}>`        |
 | `useStore()`              | Get store instance (suspends until ready) | `useStore(storeOptions)`                                       |
 | `useStoreRegistry()`      | Get registry for advanced operations      | `useStoreRegistry()`                                           |
-| `registry.preload()`      | Preload store                             | `await registry.preload(storeOptions)`                         |
+| `storeRegistry.preload()` | Preload store                             | `await storeRegistry.preload(storeOptions)`                    |
 
 #### `storeOptions()`
 
@@ -308,7 +308,7 @@ function useStoreRegistry(override?: StoreRegistry): StoreRegistry
 **Throws:**
 - Error if called outside `<StoreRegistryProvider>` and no override provided
 
-#### `registry.preload()`
+#### `storeRegistry.preload()`
 
 Preloads a store instance without suspending the component. It silently discards errors. Useful for preloading on hover, focus, or in route loaders.
 
@@ -457,7 +457,7 @@ A store progresses through these states:
 ```
 ┌─────────────────────────────────────────────────────────┐
 │                        LOADING                          │
-│  • registry.read() called for the first time            │
+│  • storeRegistry.read() called for the first time       │
 │  • Promise created, store loading                       │
 │  • Components suspend while store loads                 │
 └────────────────┬────────────────────────────────────────┘
@@ -498,7 +498,7 @@ Two layers define an effective store's configuration.
 
 ```tsx
 // Registry default (lowest priority)
-const registry = new StoreRegistry({
+const storeRegistry = new StoreRegistry({
   defaultOptions: { unusedCacheTime: 60_000 },
 })
 

@@ -9,13 +9,13 @@ import { ErrorBoundary } from 'react-error-boundary'
 import { VersionBadge } from '../components/VersionBadge.tsx'
 
 const RootComponent = () => {
-  const [registry] = useState(() => new StoreRegistry())
+  const [storeRegistry] = useState(() => new StoreRegistry())
 
   return (
     <RootDocument>
       <ErrorBoundary fallback={<div>Something went wrong</div>}>
         <Suspense fallback={<div>Loading...</div>}>
-          <StoreRegistryProvider storeRegistry={registry}>
+          <StoreRegistryProvider storeRegistry={storeRegistry}>
             <Outlet />
             <VersionBadge />
           </StoreRegistryProvider>
