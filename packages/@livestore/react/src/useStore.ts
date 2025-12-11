@@ -13,6 +13,7 @@ import { useQuery } from './useQuery.ts'
  * @example
  * ```tsx
  * function Issue() {
+ *   // Suspends until loaded or returns immediately if already loaded
  *   const issueStore = useStore(issueStoreOptions('abc123'))
  *   const [issue] = issueStore.useQuery(queryDb(tables.issue.select()))
  *
