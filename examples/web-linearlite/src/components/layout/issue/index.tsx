@@ -1,9 +1,9 @@
 import { ChevronRightIcon } from '@heroicons/react/16/solid'
 import { queryDb } from '@livestore/livestore'
-import { useStore } from '@livestore/react'
 import { useNavigate, useParams, useRouter } from '@tanstack/react-router'
 import { Button } from 'react-aria-components'
 import { events, tables } from '../../../livestore/schema/index.ts'
+import { useAppStore } from '../../../livestore/store.ts'
 import type { Priority } from '../../../types/priority.ts'
 import type { Status } from '../../../types/status.ts'
 import { formatDate } from '../../../utils/format-date.ts'
@@ -22,7 +22,7 @@ import { TitleInput } from './title-input.tsx'
 export const Issue = ({ issueId }: { issueId: number }) => {
   const navigate = useNavigate()
   const router = useRouter()
-  const { store } = useStore()
+  const store = useAppStore()
   const { storeId } = useParams({ from: '/$storeId' })
   const issue = store.useQuery(
     queryDb(tables.issue.where({ id: issueId }).first({ behaviour: 'error' }), { deps: [issueId] }),

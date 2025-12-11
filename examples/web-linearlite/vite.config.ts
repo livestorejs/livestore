@@ -23,7 +23,7 @@ export default defineConfig({
   plugins: [
     // https://tanstack.com/start/latest/docs/framework/react/guide/hosting#cloudflare-workers--official-partner
     cloudflare({ viteEnvironment: { name: 'ssr' } }),
-    tanstackStart(),
+    tanstackStart({ spa: { enabled: true } }),
     react(),
     tailwindcss(),
     livestoreDevtoolsPlugin({ schemaPath: './src/livestore/schema/index.ts' }),
