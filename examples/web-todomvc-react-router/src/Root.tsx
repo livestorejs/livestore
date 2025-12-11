@@ -2,7 +2,6 @@ import { StoreRegistry, StoreRegistryProvider } from '@livestore/react'
 import { FPSMeter } from '@overengineering/fps-meter'
 import type React from 'react'
 import { Suspense, useEffect, useState } from 'react'
-import { ErrorBoundary } from 'react-error-boundary'
 import { createBrowserRouter, Outlet, RouterProvider } from 'react-router-dom'
 
 import { Footer } from './components/Footer.tsx'
@@ -27,17 +26,15 @@ const Layout: React.FC = () => {
   const [storeRegistry] = useState(() => new StoreRegistry())
 
   return (
-    <ErrorBoundary fallback={<div>Something went wrong</div>}>
-      <Suspense fallback={<div>Loading LiveStore...</div>}>
-        <StoreRegistryProvider storeRegistry={storeRegistry}>
-          <div style={{ top: 0, right: 0, position: 'absolute', background: '#333' }}>
-            <FPSMeter height={40} />
-          </div>
-          <Outlet />
-          <VersionBadge />
-        </StoreRegistryProvider>
-      </Suspense>
-    </ErrorBoundary>
+    <Suspense fallback={<div>Loading app...</div>}>
+      <StoreRegistryProvider storeRegistry={storeRegistry}>
+        <div style={{ top: 0, right: 0, position: 'absolute', background: '#333' }}>
+          <FPSMeter height={40} />
+        </div>
+        <Outlet />
+        <VersionBadge />
+      </StoreRegistryProvider>
+    </Suspense>
   )
 }
 

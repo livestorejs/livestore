@@ -1,16 +1,15 @@
 import 'todomvc-app-css/index.css'
 
-import { StoreRegistry, StoreRegistryProvider } from '@livestore/react'
-import { createRootRoute, HeadContent, Outlet, Scripts } from '@tanstack/react-router'
+import { type StoreRegistry, StoreRegistryProvider } from '@livestore/react'
+import { createRootRouteWithContext, HeadContent, Outlet, Scripts } from '@tanstack/react-router'
 import type * as React from 'react'
-import { Suspense, useState } from 'react'
-import { ErrorBoundary } from 'react-error-boundary'
+import { Suspense } from 'react'
 
 import { VersionBadge } from '../components/VersionBadge.tsx'
 
 const RootComponent = () => {
   const isServer = typeof window === 'undefined'
-  const [storeRegistry] = useState(() => new StoreRegistry())
+  const { storeRegistry } = Route.useRouteContext()
 
   if (isServer) {
     return (
@@ -22,14 +21,12 @@ const RootComponent = () => {
 
   return (
     <RootDocument>
-      <ErrorBoundary fallback={<div>Something went wrong</div>}>
-        <Suspense fallback={<div>Loading...</div>}>
-          <StoreRegistryProvider storeRegistry={storeRegistry}>
-            <Outlet />
-            <VersionBadge />
-          </StoreRegistryProvider>
-        </Suspense>
-      </ErrorBoundary>
+      <Suspense fallback={<div>Loading...</div>}>
+        <StoreRegistryProvider storeRegistry={storeRegistry}>
+          <Outlet />
+          <VersionBadge />
+        </StoreRegistryProvider>
+      </Suspense>
     </RootDocument>
   )
 }
@@ -48,6 +45,10 @@ const RootDocument = ({ children }: { children: React.ReactNode }) => {
   )
 }
 
-export const Route = createRootRoute({
+type RouterContext = {
+  storeRegistry: StoreRegistry
+}
+
+export const Route = createRootRouteWithContext<RouterContext>()({
   component: RootComponent,
 })

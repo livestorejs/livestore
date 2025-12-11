@@ -12,7 +12,6 @@
     "@overengineering/fps-meter": "0.2.4",
     "react": "19.1.0",
     "react-dom": "19.1.0",
-    "react-error-boundary": "6.0.0",
     "react-router": "7.9.4",
     "react-router-dom": "7.9.4",
     "todomvc-app-css": "2.4.3"

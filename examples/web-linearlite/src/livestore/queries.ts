@@ -1,5 +1,4 @@
 import { queryDb } from '@livestore/livestore'
-import { useClientDocument } from '@livestore/react'
 import React from 'react'
 import { tables } from './schema/index.ts'
 import { useAppStore } from './store.ts'
