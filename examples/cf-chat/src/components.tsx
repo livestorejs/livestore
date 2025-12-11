@@ -1,7 +1,7 @@
 import type { SyncState } from '@livestore/livestore'
-import { useStore } from '@livestore/react'
 import React, { useState } from 'react'
 import { useReactionPickerClickOutside } from './hooks.ts'
+import { useAppStore } from './livestore/store.ts'
 
 interface User {
   userId: string
@@ -373,7 +373,7 @@ export const MessagesContainer: React.FC<MessagesContainerProps> = ({
 }
 
 const SyncStates = () => {
-  const { store } = useStore()
+  const store = useAppStore()
   const [syncStates, setSyncStates] = useState<{ session: SyncState.SyncState; leader: SyncState.SyncState } | null>(
     null,
   )

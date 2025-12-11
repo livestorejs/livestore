@@ -1,20 +1,17 @@
 /// <reference types="vite/client" />
 
-import { makePersistedAdapter } from '@livestore/adapter-web'
-import LiveStoreSharedWorker from '@livestore/adapter-web/shared-worker?sharedworker'
-import { LiveStoreProvider, useClientDocument, useStore } from '@livestore/react'
-import React, { useRef } from 'react'
-import { unstable_batchedUpdates as batchUpdates } from 'react-dom'
+import { StoreRegistry, StoreRegistryProvider, useClientDocument } from '@livestore/react'
+import React, { Suspense, useRef, useState } from 'react'
+import { ErrorBoundary } from 'react-error-boundary'
 import { VersionBadge } from './components/VersionBadge.tsx'
 import { ChatHeader, MessageInput, MessagesContainer, UserSidebar } from './components.tsx'
 import { useChat } from './hooks.ts'
-import { events, schema, tables } from './livestore/schema.ts'
-import LiveStoreWorker from './livestore.worker.ts?worker'
-// React already imported above
+import { events, tables } from './livestore/schema.ts'
+import { useAppStore } from './livestore/store.ts'
 
 // Main chat component that uses LiveStore hooks
 export const ChatComponent = () => {
-  const { store } = useStore()
+  const store = useAppStore()
   const chatHook = useChat()
 
   React.useEffect(() => {
@@ -63,26 +60,19 @@ export const ChatComponent = () => {
 
 // App component with LiveStore provider - exported as ChatApp for main.tsx
 export const ChatApp = () => {
-  const storeId = getStoreId()
-  const adapter = makePersistedAdapter({
-    storage: { type: 'opfs' },
-    worker: LiveStoreWorker,
-    sharedWorker: LiveStoreSharedWorker,
-  })
+  const [registry] = useState(() => new StoreRegistry())
 
   return (
-    <LiveStoreProvider
-      schema={schema}
-      storeId={storeId}
-      renderLoading={() => <div>Loading...</div>}
-      adapter={adapter}
-      batchUpdates={batchUpdates}
-    >
-      <UserNameWrapper>
-        <ChatComponent />
-      </UserNameWrapper>
-      <VersionBadge />
-    </LiveStoreProvider>
+    <ErrorBoundary fallback={<div>Something went wrong</div>}>
+      <Suspense fallback={<div>Loading...</div>}>
+        <StoreRegistryProvider storeRegistry={registry}>
+          <UserNameWrapper>
+            <ChatComponent />
+          </UserNameWrapper>
+          <VersionBadge />
+        </StoreRegistryProvider>
+      </Suspense>
+    </ErrorBoundary>
   )
 }
 
@@ -90,7 +80,7 @@ export default ChatApp
 
 const UserNameWrapper: React.FC<React.PropsWithChildren> = ({ children }) => {
   const [uiState, setUiState] = useClientDocument(tables.uiState)
-  const { store } = useStore()
+  const store = useAppStore()
   const newUserId = useRef(crypto.randomUUID())
 
   const joinChat = () => {
@@ -181,19 +171,6 @@ const UserNameWrapper: React.FC<React.PropsWithChildren> = ({ children }) => {
   }
 
   return children
-}
-
-export const getStoreId = () => {
-  if (typeof window === 'undefined') return 'unused'
-
-  const searchParams = new URLSearchParams(window.location.search)
-  const storeId = searchParams.get('storeId')
-  if (storeId !== null) return storeId
-
-  const newAppId = crypto.randomUUID()
-  searchParams.set('storeId', newAppId)
-
-  window.location.search = searchParams.toString()
 }
 
 const avatarOptions: { emoji: string; color: string }[] = [

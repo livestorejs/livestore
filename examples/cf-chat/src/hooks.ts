@@ -1,7 +1,8 @@
 import { queryDb } from '@livestore/livestore'
-import { useClientDocument, useStore } from '@livestore/react'
+import { useClientDocument } from '@livestore/react'
 import React, { useRef, useState } from 'react'
 import { events, tables } from './livestore/schema.ts'
+import { useAppStore } from './livestore/store.ts'
 import { playIncomingSound, playSentSound } from './sounds.ts'
 
 // Define queries
@@ -11,7 +12,7 @@ const usersQuery = queryDb(tables.users.where({}), { label: 'users' })
 const readReceiptsQuery = queryDb(tables.readReceipts.where({}), { label: 'readReceipts' })
 
 export const useChat = () => {
-  const { store } = useStore()
+  const store = useAppStore()
   const [currentMessage, setCurrentMessage] = useState('')
   const [showReactionPicker, setShowReactionPicker] = useState<string | null>(null)
   const [uiState, setUiState] = useClientDocument(tables.uiState)
