@@ -35,6 +35,7 @@
     "@types/react-dom": "catalog:",
     "react": "catalog:",
     "react-dom": "catalog:",
+    "react-error-boundary": "^6.0.0",
     "todomvc-app-css": "^2.4.3",
     "vite": "catalog:",
     "vitest": "catalog:",
