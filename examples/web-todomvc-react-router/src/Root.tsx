@@ -1,10 +1,8 @@
-import { makePersistedAdapter } from '@livestore/adapter-web'
-import LiveStoreSharedWorker from '@livestore/adapter-web/shared-worker?sharedworker'
-import { LiveStoreProvider, useStore } from '@livestore/react'
+import { StoreRegistry, StoreRegistryProvider } from '@livestore/react'
 import { FPSMeter } from '@overengineering/fps-meter'
 import type React from 'react'
-import { useEffect } from 'react'
-import { unstable_batchedUpdates as batchUpdates } from 'react-dom'
+import { Suspense, useEffect, useState } from 'react'
+import { ErrorBoundary } from 'react-error-boundary'
 import { createBrowserRouter, Outlet, RouterProvider } from 'react-router-dom'
 
 import { Footer } from './components/Footer.tsx'
@@ -12,8 +10,8 @@ import { Header } from './components/Header.tsx'
 import { MainSection } from './components/MainSection.tsx'
 import { VersionBadge } from './components/VersionBadge.tsx'
 import { uiState$ } from './livestore/queries.ts'
-import { events, schema, type tables } from './livestore/schema.ts'
-import LiveStoreWorker from './livestore.worker.ts?worker'
+import { events, type tables } from './livestore/schema.ts'
+import { useAppStore } from './livestore/store.ts'
 
 type Filter = (typeof tables.uiState.Value)['filter']
 
@@ -25,38 +23,26 @@ const AppBody: React.FC = () => (
   </section>
 )
 
-const resetPersistence = import.meta.env.DEV && new URLSearchParams(window.location.search).get('reset') !== null
+const Layout: React.FC = () => {
+  const [registry] = useState(() => new StoreRegistry())
 
-if (resetPersistence) {
-  const searchParams = new URLSearchParams(window.location.search)
-  searchParams.delete('reset')
-  window.history.replaceState(null, '', `${window.location.pathname}?${searchParams.toString()}`)
+  return (
+    <ErrorBoundary fallback={<div>Something went wrong</div>}>
+      <Suspense fallback={<div>Loading LiveStore...</div>}>
+        <StoreRegistryProvider storeRegistry={registry}>
+          <div style={{ top: 0, right: 0, position: 'absolute', background: '#333' }}>
+            <FPSMeter height={40} />
+          </div>
+          <Outlet />
+          <VersionBadge />
+        </StoreRegistryProvider>
+      </Suspense>
+    </ErrorBoundary>
+  )
 }
 
-const adapter = makePersistedAdapter({
-  storage: { type: 'opfs' },
-  worker: LiveStoreWorker,
-  sharedWorker: LiveStoreSharedWorker,
-  resetPersistence,
-})
-
-const Layout: React.FC = () => (
-  <LiveStoreProvider
-    schema={schema}
-    adapter={adapter}
-    renderLoading={(_) => <div>Loading LiveStore ({_.stage})...</div>}
-    batchUpdates={batchUpdates}
-  >
-    <div style={{ top: 0, right: 0, position: 'absolute', background: '#333' }}>
-      <FPSMeter height={40} />
-    </div>
-    <Outlet />
-    <VersionBadge />
-  </LiveStoreProvider>
-)
-
 const FilteredTodos: React.FC<{ filter: Filter }> = ({ filter }) => {
-  const { store } = useStore()
+  const store = useAppStore()
   const { filter: activeFilter } = store.useQuery(uiState$)
 
   useEffect(() => {
