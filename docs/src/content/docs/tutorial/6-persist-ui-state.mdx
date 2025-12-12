@@ -12,9 +12,9 @@ As you saw in the beginning of the tutorial, the state of an application is typi
 - **App state**: State that represents the _application data_ a user needs to achieve their goals with your app. In your current case, that's the list of todos. App state _typically_ lives in the Cloud somewhere (in traditional apps, the Cloud is the source of truth for it; in local-first apps, the data is stored locally and backed up in the Cloud).
 - **UI state**: UI state that is only relevant for a particular browser session.
 
-Many websites have the problem of "losing UI state" on browser refreshes. This can be incredibly frustrating for users, especially when they've already invested a lot of time getting to a certain point in an app (e.g. filling out a form). Then, the site reloads for some reason and they have to start over! 
+Many websites have the problem of "losing UI state" on browser refreshes. This can be incredibly frustrating for users, especially when they've already invested a lot of time getting to a certain point in an app (e.g. filling out a form). Then, the site reloads for some reason and they have to start over!
 
-With LiveStore, this problem is easily solved: It allows you to persist _UI state_ (e.g. form inputs, active tabs, custom UI elements, and pretty much anything you'd otherwise manage via `React.useState`). This means users can always pick up exactly where they left off.
+With LiveStore, this problem is easily solved: It allows you to persist _UI state_ (e.g. form inputs, active tabs, custom UI elements, and pretty much anything you'd otherwise manage via `React.useState()`). This means users can always pick up exactly where they left off.
 
 ## Add another UI element
 
@@ -186,7 +186,7 @@ export const tables = {
 On this table, you define:
 
 - A name for this client document.
-- The structure of the client document via `schema`; in your case: 
+- The structure of the client document via `schema`; in your case:
     - The current state of the `input` text field for adding a new todo.
     - The `filter` that'll be used to filter the todos according to their `completed` status.
 - Default values for this client document.
@@ -220,9 +220,9 @@ Here, both the event definition and materializer are automatically derived from 
 
 ## Implement local state with LiveStore
 
-In this step, you need to add the local state for the tabbed UI element to the `App` component. Additionally, you're going to replace the `useState` hook that you currently use for the `input` state with LiveStore's approach as well.
+In this step, you need to add the local state for the tabbed UI element to the `<App>` component. Additionally, you're going to replace the `useState()` hook that you currently use for the `input` state with LiveStore's approach as well.
 
-Replace the `useState` usage for `input` and `filter` with LiveStore's [`useClientDocument`](/framework-integrations/react-integration#useclientdocument):
+Replace the `useState()` usage for `input` and `filter` with LiveStore's [`useClientDocument()`](/framework-integrations/react-integration#useclientdocument):
 
 ```diff title="src/App.tsx" lang="tsx"
 +const [{ input, filter }, setUiState, , uiState$] = store.useClientDocument(tables.uiState)
@@ -235,7 +235,7 @@ Replace the `useState` usage for `input` and `filter` with LiveStore's [`useClie
 -const updatedFilter = (filter: Filter) => store.commit(events.uiStateSet({ filter }))
 ```
 
-Don't forget to update the imports to include the `Filter` type and drop `useState`:
+Don't forget to update the imports to include the `Filter` type and drop `useState()`:
 
 ```diff title="src/App.tsx" lang="tsx"
 -import { useState } from 'react'
@@ -244,9 +244,9 @@ import { useAppStore } from './livestore/store'
 import { queryDb } from '@livestore/livestore'
 ```
 
-`useClientDocument` persists the UI state inside LiveStore while giving you a React-friendly setter function similar to `useState`.
+`useClientDocument()` persists the UI state inside LiveStore while giving you a React-friendly setter function similar to `useState()`.
 
-Since you've renamed the functions to update the values of `input` and `filter` you need to adjust the parts of the `App` component where they are used:
+Since you've renamed the functions to update the values of `input` and `filter` you need to adjust the parts of the `<App>` component where they are used:
 
 - `setInput` → `updatedInput`
 - `setFilter` → `updatedFilter`
@@ -289,9 +289,9 @@ const todos$ = queryDb((
 const todos = store.useQuery(todos$)
 ```
 
-Here, `uiState$` comes from `useClientDocument`, ensuring that the todos query automatically reacts whenever the persisted UI state changes.
+Here, `uiState$` comes from `useClientDocument()`, ensuring that the todos query automatically reacts whenever the persisted UI state changes.
 
-This is the final code for the `App` component:
+This is the final code for the `<App>` component:
 
 ```tsx title="src/App.tsx"
 import { tables, events, Filter } from './livestore/schema'

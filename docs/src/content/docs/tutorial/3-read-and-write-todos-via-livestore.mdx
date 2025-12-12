@@ -158,7 +158,7 @@ This is boilerplate code that you'll almost never need to touch. (In this tutori
 When importing this file, make sure to add the `?worker` extension to the import path to ensure that [Vite treats it as a worker file](https://vite.dev/guide/features.html#web-workers).
 :::
 
-Next, create a `store.ts` file that defines your store configuration and a `useAppStore` hook:
+Next, create a `store.ts` file that defines your store configuration and a `useAppStore()` hook:
 
 ```bash
 touch src/livestore/store.ts
@@ -187,7 +187,7 @@ export const useAppStore = () =>
   })
 ```
 
-Then, update `main.tsx` to wrap your `App` component inside the `<StoreRegistryProvider>`:
+Then, update `main.tsx` to wrap your `<App>` component inside the `<StoreRegistryProvider>`:
 
 ```tsx title="src/main.tsx"
 import { createRoot } from 'react-dom/client'
@@ -257,11 +257,11 @@ The todos themselves are not yet persisted because you haven't modified the logi
 
 ## Read and write todos from local SQLite via LiveStore
 
-The current version of the app still stores the todos _in-memory_ via the [state](https://react.dev/learn/state-a-components-memory) of your `App` component. However, with the basic LiveStore setup in place, you can now move to persisting your todos inside SQLite via LiveStore!
+The current version of the app still stores the todos _in-memory_ via the [state](https://react.dev/learn/state-a-components-memory) of your `<App>` component. However, with the basic LiveStore setup in place, you can now move to persisting your todos inside SQLite via LiveStore!
 
 In order to read todos, you need to define a LiveStore [query](/building-with-livestore/state/sql-queries). LiveStore queries are _live_ or _reactive_, meaning they will automatically update your UI components when the underlying data changes.
 
-Here's how you can define and use a query to fetch all todos from the local SQLite database using LiveStore inside the `App` component (you don't need to update your code yet, you'll get the full snippet at the end of this section):
+Here's how you can define and use a query to fetch all todos from the local SQLite database using LiveStore inside the `<App>` component (you don't need to update your code yet, you'll get the full snippet at the end of this section):
 
 ```diff title="src/App.tsx" lang="ts"
 function App() {
@@ -278,7 +278,7 @@ function App() {
 +  const todos = store.useQuery(todos$)
 -  const [todos, setTodos] = useState<Todo[]>([])
 
-  // ... remaining code for the `App` component
+  // ... remaining code for the `<App>` component
 }
 ```
 
@@ -312,7 +312,7 @@ function App() {
 +    )
   }
 
-  // ... remaining code for the `App` component
+  // ... remaining code for the `<App>` component
 
 }
 ```
@@ -321,13 +321,13 @@ See how the data now will flow through the app _unidirectionally_ with this setu
 
 Let's follow it from the first time the app is started:
 
-1. The `App` component registers the `todos$` "live query" with the store.
+1. The `<App>` component registers the `todos$` "live query" with the store.
 1. The query fires initially; the returned `todos` array is empty.
-1. The `App` component renders an empty list.
+1. The `<App>` component renders an empty list.
 1. A user adds a `todo`; the `todoCreated` event is triggered and committed to the DB.
 1. The `v1.TodoCreated` materializer is invoked and writes the data into the DB.
 1. The `todos$` query fires again because the state of the DB changed; the returned `todos` array now contains the newly created todo.
-1. The `App` component renders a single todo.
+1. The `<App>` component renders a single todo.
 
 Now try it out! Here's the full code for `App.tsx` that you can copy and paste:
 

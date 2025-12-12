@@ -58,7 +58,7 @@ Note on terminology
 
 ### Query doesn't update properly
 
-If you notice the result of a `useQuery` hook is not updating properly, you might be missing some dependencies in the query's hash.
+If you notice the result of a `useQuery()` hook is not updating properly, you might be missing some dependencies in the query's hash.
 
 For example, the following query:
 

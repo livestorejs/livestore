@@ -68,7 +68,7 @@ Migration strategies:
 
 - Meant for convenience
 - Client-only
-- Goal: Similar ease of use as `React.useState`
+- Goal: Similar ease of use as `React.useState()`
 - When schema changes in a non-backwards compatible way, previous events are dropped and the state is reset
   - Don't use client documents for sensitive data which must not be lost
 - Implies
@@ -131,7 +131,7 @@ You can also provide a custom schema for a column which is used to automatically
 ### General practices
 
 - It's usually recommend to **not distinguish** between app state vs app data but rather keep all state in LiveStore.
-	- This means you'll rarely use `React.useState` when using LiveStore
+	- This means you'll rarely use `React.useState()` when using LiveStore
 - In some cases for "fast changing values" it can make sense to keep a version of a state value outside of LiveStore with a reactive setter for React and a debounced setter for LiveStore to avoid excessive LiveStore mutations. Cases where this can make sense can include:
   - Text input / rich text editing
   - Scroll position tracking, resize events, move/drag events
