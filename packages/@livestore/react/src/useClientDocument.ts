@@ -6,7 +6,6 @@ import { queryDb } from '@livestore/livestore'
 import { omitUndefineds, shouldNeverHappen } from '@livestore/utils'
 import React from 'react'
 
-import { LiveStoreContext } from './LiveStoreContext.ts'
 import { useQueryRef } from './useQuery.ts'
 
 /**
@@ -115,10 +114,7 @@ export const useClientDocument: {
 
   const tableName = table.sqliteDef.name
 
-  const store =
-    storeArg?.store ?? // biome-ignore lint/correctness/useHookAtTopLevel: store is stable
-    React.useContext(LiveStoreContext)?.store ??
-    shouldNeverHappen(`No store provided to useClientDocument`)
+  const store = storeArg?.store ?? shouldNeverHappen(`No store provided to useClientDocument`)
 
   // console.debug('useClientDocument', tableName, id)
 
