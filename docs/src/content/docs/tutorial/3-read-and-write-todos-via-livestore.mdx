@@ -129,9 +129,10 @@ It's good practice in LiveStore to version your events and materializers to ensu
 To now "connect" LiveStore with your React app, you need to:
 
 1. Create the [LiveStore web worker](/platform-adapters/web-adapter#web-worker) that is responsible for the logic of persisting data on your file system.
-2. Create a LiveStore [adapter](/platform-adapters/web-adapter) that enables persistences with local SQLite via [OPFS](https://web.dev/articles/origin-private-file-system).
-3. Wrap your root component in `main.tsx` with the LiveStore [provider](https://dev.docs.livestore.dev/reference/framework-integrations/react-integration/#livestoreprovider) (which will receive both the web worker and adapter from above as arguments).
-4. Update your Vite Config to work with LiveStore.
+2. Create a LiveStore [adapter](/platform-adapters/web-adapter) that enables persistence with local SQLite via [OPFS](https://web.dev/articles/origin-private-file-system).
+3. Create a store configuration file that exports a custom hook wrapping [`useStore()`](/framework-integrations/react-integration#1-configure-the-store).
+4. Create and provide a `StoreRegistry` with [`<StoreRegistryProvider>`](/framework-integrations/react-integration#2-set-up-the-registry) in `main.tsx`.
+5. Update your Vite Config to work with LiveStore.
 
 Let's get started!
 

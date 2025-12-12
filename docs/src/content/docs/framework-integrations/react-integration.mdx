@@ -44,7 +44,7 @@ Stores are cached by their `storeId` and automatically disposed after being unus
 
 ### 1. Configure the Store
 
-Create a store configuration file that exports a custom hook wrapping `useStore`:
+Create a store configuration file that exports a custom hook wrapping `useStore()`:
 
 <ReactStoreSnippet />
 
@@ -52,7 +52,7 @@ The `useStore` hook accepts store configuration options and returns a store inst
 
 ### 2. Set Up the Registry
 
-Create a `StoreRegistry` and provide it via `StoreRegistryProvider`. Wrap in `Suspense` to handle loading states and `ErrorBoundary` to handle errors:
+Create a `StoreRegistry` and provide it via `<StoreRegistryProvider>`. Wrap in `<Suspense>` to handle loading states and `<ErrorBoundary>` to handle errors:
 
 <ReactProviderSnippet />
 
