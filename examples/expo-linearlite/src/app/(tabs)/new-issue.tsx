@@ -1,5 +1,4 @@
 import { nanoid } from '@livestore/livestore'
-import { useQuery } from '@livestore/react'
 import { Stack, useRouter } from 'expo-router'
 import { Fragment } from 'react'
 import { Pressable, StyleSheet, Text, TextInput, useColorScheme, View } from 'react-native'
@@ -14,7 +13,7 @@ const NewIssueScreen = () => {
   const user = useUser()
   const router = useRouter()
   const store = useAppStore()
-  const { newIssueText, newIssueDescription } = useQuery(uiState$)
+  const { newIssueText, newIssueDescription } = store.useQuery(uiState$)
   const colorScheme = useColorScheme()
   const isDark = colorScheme === 'dark'
 

@@ -1,5 +1,4 @@
 import { queryDb } from '@livestore/livestore'
-import { useQuery } from '@livestore/react'
 import { Stack, useLocalSearchParams, useRouter } from 'expo-router'
 import { Image, Pressable, ScrollView, StyleSheet, TextInput, View } from 'react-native'
 
@@ -16,14 +15,14 @@ const EditIssueScreen = () => {
   const router = useRouter()
   const textColor = useThemeColor({}, 'text')
 
-  const issue = useQuery(
+  const issue = store.useQuery(
     queryDb(tables.issues.where({ id: issueId }).first({ behaviour: 'error' }), {
       label: 'edit-issue',
       deps: `edit-issue-${issueId}`,
     }),
   )
 
-  const assignee = useQuery(
+  const assignee = store.useQuery(
     queryDb(tables.users.where({ id: issue.assigneeId! }).first({ behaviour: 'error' }), {
       label: 'assignee',
       deps: `edit-issue-assignee-${issue.assigneeId}`,

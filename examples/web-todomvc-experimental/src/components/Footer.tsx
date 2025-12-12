@@ -1,5 +1,4 @@
 import { queryDb } from '@livestore/livestore'
-import { useQuery } from '@livestore/react'
 import type React from 'react'
 import { uiState$ } from '../livestore/queries.ts'
 import { events, tables } from '../livestore/schema.ts'
@@ -12,8 +11,8 @@ const incompleteCount$ = queryDb(tables.todos.count().where({ completed: false, 
 
 export const Footer: React.FC = () => {
   const store = useAppStore()
-  const { filter } = useQuery(uiState$)
-  const incompleteCount = useQuery(incompleteCount$)
+  const { filter } = store.useQuery(uiState$)
+  const incompleteCount = store.useQuery(incompleteCount$)
 
   const setFilter = (filter: Filter) => store.commit(events.uiStateSet({ filter }))
 

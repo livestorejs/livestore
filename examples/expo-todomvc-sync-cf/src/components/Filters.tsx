@@ -1,4 +1,3 @@
-import { useQuery } from '@livestore/react'
 import type React from 'react'
 import { Pressable, StyleSheet, Text, View } from 'react-native'
 
@@ -9,7 +8,7 @@ import type { Filter } from '../types.ts'
 
 export const Filters: React.FC = () => {
   const store = useAppStore()
-  const { filter } = useQuery(uiState$)
+  const { filter } = store.useQuery(uiState$)
 
   const setFilter = (newFilter: Filter) => store.commit(events.uiStateSet({ filter: newFilter }))
 

@@ -1,5 +1,4 @@
 import { nanoid } from '@livestore/livestore'
-import { useQuery } from '@livestore/react'
 import React from 'react'
 import { Keyboard, Pressable, StyleSheet, Text, TextInput, TouchableWithoutFeedback, View } from 'react-native'
 
@@ -9,7 +8,7 @@ import { useAppStore } from '../livestore/store.ts'
 
 export const NewTodo: React.FC = () => {
   const store = useAppStore()
-  const { newTodoText } = useQuery(uiState$)
+  const { newTodoText } = store.useQuery(uiState$)
 
   const updatedNewTodoText = (text: string) => store.commit(events.uiStateSet({ newTodoText: text }))
   const todoCreated = () =>
