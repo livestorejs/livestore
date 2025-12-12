@@ -4,7 +4,8 @@
   "type": "module",
   "sideEffects": false,
   "exports": {
-    ".": "./src/mod.ts"
+    ".": "./src/mod.ts",
+    "./experimental": "./src/experimental/mod.ts"
   },
   "dependencies": {
     "@livestore/common": "workspace:*",
@@ -40,7 +41,8 @@
   "publishConfig": {
     "access": "public",
     "exports": {
-      ".": "./dist/mod.js"
+      ".": "./dist/mod.js",
+      "./experimental": "./dist/experimental/mod.js"
     }
   },
   "scripts": {
