@@ -97,7 +97,7 @@ export type LiveStoreContextProps<
    */
   syncPayloadSchema?: TSyncPayloadSchema
   /**
-   * Payload that is sent to the sync backend during connection establishment.
+   * Payload that is sent to the sync backend when connecting
    *
    * - Its TypeScript type is inferred from `syncPayloadSchema` (i.e. `typeof SyncPayload.Type`).
    * - At runtime this value is encoded with `syncPayloadSchema` before being handed to the adapter.
@@ -114,9 +114,13 @@ export interface CreateStoreOptions<
   TContext = {},
   TSyncPayloadSchema extends Schema.Schema<any> = typeof Schema.JsonValue,
 > extends LogConfig.WithLoggerOptions {
+  /** The LiveStore schema defining tables, events, and materializers. */
   schema: TSchema
+  /** Adapter used for data storage and synchronization. */
   adapter: Adapter
+  /** Unique identifier for the Store instance, stable for its lifetime. */
   storeId: string
+  /** User-defined context that will be attached to the created Store (e.g. for dependency injection). */
   context?: TContext
   boot?: (
     store: Store<TSchema, TContext>,
@@ -125,6 +129,18 @@ export interface CreateStoreOptions<
       parentSpan: otel.Span
     },
   ) => Effect.SyncOrPromiseOrEffect<void, unknown, OtelTracer.OtelTracer | LiveStoreContextRunning>
+  /**
+   * Needed in React so LiveStore can apply multiple events in a single render.
+   *
+   * @example
+   * ```ts
+   * // With React DOM
+   * import { unstable_batchedUpdates as batchUpdates } from 'react-dom'
+   *
+   * // With React Native
+   * import { unstable_batchedUpdates as batchUpdates } from 'react-native'
+   * ```
+   */
   batchUpdates?: (run: () => void) => void
   /**
    * Whether to disable devtools.
@@ -150,7 +166,7 @@ export interface CreateStoreOptions<
    */
   syncPayloadSchema?: TSyncPayloadSchema
   /**
-   * Payload that is sent to the sync backend during connection establishment.
+   * Payload that is sent to the sync backend when connecting
    *
    * - Its TypeScript type is inferred from `syncPayloadSchema` (i.e. `typeof SyncPayload.Type`).
    * - At runtime this value is encoded with `syncPayloadSchema` and carried through the adapter
@@ -159,8 +175,11 @@ export interface CreateStoreOptions<
    * @default undefined
    */
   syncPayload?: Schema.Schema.Type<TSyncPayloadSchema>
+  /** Options provided to the Store constructor. */
   params?: {
+    /** Max events pushed to the leader per write batch. */
     leaderPushBatchSize?: number
+    /** Chunk size used when the stream replays confirmed events. */
     eventQueryBatchSize?: number
     simulation?: {
       clientSessionSyncProcessor: typeof ClientSessionSyncProcessorSimulationParams.Type
