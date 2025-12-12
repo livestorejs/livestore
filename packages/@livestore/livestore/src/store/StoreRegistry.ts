@@ -1,4 +1,4 @@
-import { OtelLiveDummy, UnknownError } from '@livestore/common'
+import { LogConfig, OtelLiveDummy, UnknownError } from '@livestore/common'
 import type { LiveStoreSchema } from '@livestore/common/schema'
 import {
   Cause,
@@ -15,9 +15,9 @@ import {
   type Schema,
   type Scope,
 } from '@livestore/utils/effect'
-import { createStore } from './create-store.ts'
+import { type CreateStoreOptions, createStore } from './create-store.ts'
 import type { Store } from './store.ts'
-import type { RegistryStoreOptions } from './types.ts'
+import type { OtelOptions } from './store-types.ts'
 
 /**
  * Default time to keep unused stores in cache.
@@ -29,29 +29,45 @@ import type { RegistryStoreOptions } from './types.ts'
  */
 export const DEFAULT_UNUSED_CACHE_TIME = typeof window === 'undefined' ? Number.POSITIVE_INFINITY : 60_000
 
-type RegistryDefaultStoreOptions = Partial<
-  Pick<
-    RegistryStoreOptions,
-    'batchUpdates' | 'disableDevtools' | 'confirmUnsavedChanges' | 'syncPayload' | 'debug' | 'otelOptions'
-  >
-> & {
+export type RegistryStoreOptions<
+  TSchema extends LiveStoreSchema = LiveStoreSchema.Any,
+  TContext = {},
+  TSyncPayloadSchema extends Schema.Schema<any> = typeof Schema.JsonValue,
+> = CreateStoreOptions<TSchema, TContext, TSyncPayloadSchema> & {
+  signal?: AbortSignal
+  otelOptions?: Partial<OtelOptions>
   /**
-   * The time in milliseconds that unused stores remain in memory.
-   * When a store becomes unused (no active retentions), it will be disposed
-   * after this duration.
+   * The time in milliseconds that this store should remain
+   * in memory after becoming unused. When this store becomes
+   * unused (no active retentions), it will be disposed after this duration.
    *
    * Stores transition to the unused state as soon as they have no
    * active retentions, so when all components which use that store
    * have unmounted.
    *
    * @remarks
-   * - If set to `Infinity`, will disable disposal
+   * - When different `unusedCacheTime` values are used for the same store, the longest one will be used.
+   * - If set to `Infinity`, will disable automatic disposal
    * - The maximum allowed time is about {@link https://developer.mozilla.org/en-US/docs/Web/API/Window/setTimeout#maximum_delay_value | 24 days}
    *
    * @defaultValue `60_000` (60 seconds) or `Infinity` during SSR to avoid
    * disposing stores before server render completes.
    */
   unusedCacheTime?: number
+}
+
+type RegistryDefaultStoreOptions = Partial<
+  Pick<
+    RegistryStoreOptions,
+    | 'batchUpdates'
+    | 'disableDevtools'
+    | 'confirmUnsavedChanges'
+    | 'syncPayload'
+    | 'debug'
+    | 'otelOptions'
+    | 'unusedCacheTime'
+  >
+> & {
   /**
    * Optionally, pass a custom runtime that will be used to run all operations (loading, caching, etc.).
    */
@@ -140,7 +156,10 @@ export class StoreRegistry {
           const { options } = key
 
           return yield* createStore(options).pipe(Effect.catchAllDefect((cause) => UnknownError.make({ cause })))
-        }).pipe(Effect.withSpan(`StoreRegistry.lookup:${key.options.storeId}`)),
+        }).pipe(
+          Effect.withSpan(`StoreRegistry.lookup:${key.options.storeId}`),
+          LogConfig.withLoggerConfig(key.options, { threadName: 'window' }),
+        ),
       // TODO: Make idleTimeToLive vary for each store when Effect supports per-resource TTL
       // See https://github.com/livestorejs/livestore/issues/917
       idleTimeToLive: params.defaultOptions?.unusedCacheTime ?? DEFAULT_UNUSED_CACHE_TIME,

@@ -1,6 +1,6 @@
 import type { LiveStoreSchema } from '@livestore/common/schema'
 import type { Schema } from '@livestore/utils/effect'
-import type { RegistryStoreOptions } from './types.ts'
+import type { RegistryStoreOptions } from './StoreRegistry.ts'
 
 export function storeOptions<
   TSchema extends LiveStoreSchema,
