@@ -22,13 +22,13 @@ First, update `App.tsx` to look as follows:
 
 ```diff title="src/App.tsx" lang="tsx"
 import { useState } from 'react'
-import { useStore } from '@livestore/react'
 import { tables, events } from './livestore/schema'
+import { useAppStore } from './livestore/store'
 import { queryDb } from '@livestore/livestore'
 
 function App() {
 
-  const { store } = useStore()
+  const store = useAppStore()
 
   const todos$ = queryDb(() => tables.todos.select())
   const todos = store.useQuery(todos$)
@@ -239,8 +239,8 @@ Don't forget to update the imports to include the `Filter` type and drop `useSta
 
 ```diff title="src/App.tsx" lang="tsx"
 -import { useState } from 'react'
-import { useStore } from '@livestore/react'
 import { tables, events, Filter } from './livestore/schema'
+import { useAppStore } from './livestore/store'
 import { queryDb } from '@livestore/livestore'
 ```
 
@@ -294,14 +294,14 @@ Here, `uiState$` comes from `useClientDocument`, ensuring that the todos query a
 This is the final code for the `App` component:
 
 ```tsx title="src/App.tsx"
-import { useStore } from '@livestore/react'
 import { tables, events, Filter } from './livestore/schema'
+import { useAppStore } from './livestore/store'
 import { queryDb } from '@livestore/livestore'
 
 
 function App() {
 
-  const { store } = useStore()
+  const store = useAppStore()
 
   const [{ input, filter }, setUiState, , uiState$] = store.useClientDocument(tables.uiState)
 
