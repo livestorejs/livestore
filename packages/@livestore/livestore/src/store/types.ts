@@ -12,14 +12,17 @@ export type RegistryStoreOptions<
   | 'storeId'
   | 'schema'
   | 'adapter'
+  | 'context'
   | 'boot'
   | 'batchUpdates'
   | 'disableDevtools'
+  | 'onBootStatus'
+  | 'shutdownDeferred'
   | 'confirmUnsavedChanges'
   | 'syncPayloadSchema'
   | 'syncPayload'
+  | 'params'
   | 'debug'
-  | 'shutdownDeferred'
 > & {
   signal?: AbortSignal
   otelOptions?: Partial<OtelOptions>
