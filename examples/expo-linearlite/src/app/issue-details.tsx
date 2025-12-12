@@ -1,5 +1,5 @@
 import { queryDb, Schema, sql } from '@livestore/livestore'
-import { useQuery, useStore } from '@livestore/react'
+import { useQuery } from '@livestore/react'
 import { Stack, useGlobalSearchParams, useRouter } from 'expo-router'
 import { Undo2Icon } from 'lucide-react-native'
 import { Image, Pressable, SafeAreaView, ScrollView, StyleSheet, Text, useColorScheme, View } from 'react-native'
@@ -8,6 +8,7 @@ import { IssueDetailsBottomTab } from '../components/IssueDetailsBottomTab.tsx'
 import { IssueStatusIcon, PriorityIcon } from '../components/IssueItem.tsx'
 import { ThemedText } from '../components/ThemedText.tsx'
 import { events, tables } from '../livestore/schema.ts'
+import { useAppStore } from '../livestore/store.ts'
 import type { Priority, Status } from '../types.ts'
 
 const styles = StyleSheet.create({
@@ -138,7 +139,7 @@ const styles = StyleSheet.create({
 
 const IssueDetailsScreen = () => {
   const issueId = useGlobalSearchParams().issueId as string
-  const store = useStore()
+  const store = useAppStore()
   const router = useRouter()
   const theme = useColorScheme()
   const isDark = theme === 'dark'
@@ -234,7 +235,7 @@ const IssueDetailsScreen = () => {
                   })}{' '}
                 </ThemedText>
                 <Pressable
-                  onPress={() => store.store.commit(events.issueRestored({ id: issue.id }))}
+                  onPress={() => store.commit(events.issueRestored({ id: issue.id }))}
                   style={styles.undoButton}
                 >
                   <Undo2Icon size={18} />
