@@ -1,10 +1,10 @@
-import { useStore } from '@livestore/react'
 import type { FC } from 'react'
 
 import { tables } from './schema.ts'
+import { useAppStore } from './store.ts'
 
 export const TodoItem: FC<{ id: string }> = ({ id }) => {
-  const { store } = useStore()
+  const store = useAppStore()
   const [todo, updateTodo] = store.useClientDocument(tables.uiState, id)
 
   return (
