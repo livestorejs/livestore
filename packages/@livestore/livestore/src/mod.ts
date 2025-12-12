@@ -61,6 +61,6 @@ export {
   type Unsubscribe,
 } from './store/store-types.ts'
 export { storeOptions } from './store/storeOptions.ts'
-export type { CachedStoreOptions } from './store/types.ts'
+export type { RegistryStoreOptions } from './store/types.ts'
 export { exposeDebugUtils } from './utils/dev.ts'
 export * from './utils/stack-info.ts'

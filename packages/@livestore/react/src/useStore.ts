@@ -1,5 +1,5 @@
 import type { LiveStoreSchema } from '@livestore/common/schema'
-import type { CachedStoreOptions, Store } from '@livestore/livestore'
+import type { RegistryStoreOptions, Store } from '@livestore/livestore'
 import type { Schema } from '@livestore/utils/effect'
 import React from 'react'
 import type { ReactApi } from './LiveStoreContext.ts'
@@ -57,7 +57,7 @@ export const useStore = <
   TContext = {},
   TSyncPayloadSchema extends Schema.Schema<any> = typeof Schema.JsonValue,
 >(
-  options: CachedStoreOptions<TSchema, TContext, TSyncPayloadSchema>,
+  options: RegistryStoreOptions<TSchema, TContext, TSyncPayloadSchema>,
 ): Store<TSchema, TContext> & ReactApi => {
   const storeRegistry = useStoreRegistry()
 

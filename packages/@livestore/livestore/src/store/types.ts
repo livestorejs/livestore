@@ -3,7 +3,7 @@ import type { Schema } from '@livestore/utils/effect'
 import type { CreateStoreOptions } from './create-store.ts'
 import type { OtelOptions } from './store-types.ts'
 
-export type CachedStoreOptions<
+export type RegistryStoreOptions<
   TSchema extends LiveStoreSchema = LiveStoreSchema.Any,
   TContext = {},
   TSyncPayloadSchema extends Schema.Schema<any> = typeof Schema.JsonValue,
