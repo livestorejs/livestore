@@ -1,20 +1,8 @@
-import { makePersistedAdapter } from '@livestore/adapter-web'
-import LiveStoreSharedWorker from '@livestore/adapter-web/shared-worker?sharedworker'
-import { LiveStoreProvider } from '@livestore/react'
-import { useMemo, useState } from 'react'
-import { unstable_batchedUpdates as batchUpdates } from 'react-dom'
+import { StoreRegistry, StoreRegistryProvider } from '@livestore/react'
+import { Suspense, useState } from 'react'
 import { createRoot } from 'react-dom/client'
 import { DEFAULT_EVENT_BATCH_SIZE, EventControls } from './components/EventControls.tsx'
 import { EventsList } from './components/EventsList.tsx'
-import { schema } from './livestore/schema.ts'
-import LiveStoreWorker from './livestore.worker.ts?worker'
-import { makeTracer } from './otel.ts'
-
-const adapter = makePersistedAdapter({
-  worker: LiveStoreWorker,
-  sharedWorker: LiveStoreSharedWorker,
-  storage: { type: 'opfs' },
-})
 
 const App = () => {
   const [eventsVisible, setEventsVisible] = useState(false)
@@ -40,27 +28,14 @@ const App = () => {
 }
 
 const LiveStoreRoot = () => {
-  const otelTracer = useMemo(() => makeTracer('livestore-perf-streaming-loopback'), [])
+  const [storeRegistry] = useState(() => new StoreRegistry())
 
   return (
-    <LiveStoreProvider
-      schema={schema}
-      adapter={adapter}
-      batchUpdates={batchUpdates}
-      otelOptions={{ tracer: otelTracer }}
-      // params={{ leaderPushBatchSize: 1000, eventQueryBatchSize: 1000 }}
-      renderLoading={(boot) => <p data-testid="boot-stage">Stage: {boot.stage}</p>}
-      renderShutdown={(cause) => {
-        // Auto-reload on reset to start fresh
-        if (cause._tag === 'LiveStore.IntentionalShutdownCause' && cause.reason === 'devtools-reset') {
-          window.location.reload()
-          return <p data-testid="boot-stage">Reloading...</p>
-        }
-        return <p data-testid="boot-stage">Shutdown: {cause._tag}</p>
-      }}
-    >
-      <App />
-    </LiveStoreProvider>
+    <Suspense fallback={<div>Loading...</div>}>
+      <StoreRegistryProvider storeRegistry={storeRegistry}>
+        <App />
+      </StoreRegistryProvider>
+    </Suspense>
   )
 }
 

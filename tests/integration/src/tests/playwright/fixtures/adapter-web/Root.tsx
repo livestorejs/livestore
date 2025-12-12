@@ -1,9 +1,9 @@
 import { makePersistedAdapter } from '@livestore/adapter-web'
 import LiveStoreSharedWorker from '@livestore/adapter-web/shared-worker?sharedworker'
-import { LiveStoreProvider } from '@livestore/react'
-import React from 'react'
+import { StoreRegistry, StoreRegistryProvider, useStore } from '@livestore/react'
+import React, { memo, Suspense, useState } from 'react'
 import { unstable_batchedUpdates as batchUpdates } from 'react-dom'
-
+import { ErrorBoundary } from 'react-error-boundary'
 import LiveStoreWorker from '../devtools/todomvc/livestore/livestore.worker.ts?worker'
 import { schema } from '../devtools/todomvc/livestore/schema.ts'
 
@@ -35,6 +35,7 @@ const useBarrierStart = () => {
 
 export const Root: React.FC = () => {
   const started = useBarrierStart()
+  const [storeRegistry] = useState(() => new StoreRegistry())
 
   const sp = new URLSearchParams(window.location.search)
   const reset = sp.get('reset') !== null
@@ -77,18 +78,23 @@ export const Root: React.FC = () => {
     return <div>Waiting delay…</div>
   }
 
-  const renderError = () => <div data-webtest="error">Error</div>
-  const renderShutdown = () => <div data-webtest="shutdown">Shutdown</div>
-
   return (
-    <LiveStoreProvider
-      schema={schema}
-      adapter={adapter}
-      batchUpdates={batchUpdates}
-      renderError={renderError}
-      renderShutdown={renderShutdown}
-    >
-      <div>Adapter Web Test App</div>
-    </LiveStoreProvider>
+    <ErrorBoundary fallback={<div data-webtest="error">Error</div>}>
+      <Suspense fallback={<div>Loading...</div>}>
+        <StoreRegistryProvider storeRegistry={storeRegistry}>
+          <AppWithStore adapter={adapter} />
+        </StoreRegistryProvider>
+      </Suspense>
+    </ErrorBoundary>
   )
 }
+
+const AppWithStore: React.FC<{ adapter: ReturnType<typeof makePersistedAdapter> }> = memo(({ adapter }) => {
+  useStore({
+    storeId: 'adapter-web-test',
+    schema,
+    adapter,
+    batchUpdates,
+  })
+  return <div>Adapter Web Test App</div>
+})

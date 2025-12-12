@@ -1,6 +1,6 @@
 import { EventSequenceNumber } from '@livestore/common/schema'
-import { useStore } from '@livestore/react'
 import React from 'react'
+import { useAppStore } from '../livestore/store.ts'
 
 const MAX_EVENT_ITEMS = 500
 
@@ -26,7 +26,7 @@ const stringify = (value: unknown) => {
 }
 
 export const EventsList: React.FC<EventsListProps> = ({ batchSize, until }) => {
-  const { store } = useStore()
+  const store = useAppStore()
   const [events, setEvents] = React.useState<ReadonlyArray<DisplayEvent>>([])
   const [streamedCount, setStreamedCount] = React.useState(0)
   const lastSeqRef = React.useRef(0)
@@ -115,7 +115,7 @@ export const EventsList: React.FC<EventsListProps> = ({ batchSize, until }) => {
  * Saves 4-16% rendering time on larger event logs.
  */
 export const SimpleEventsStream: React.FC<EventsListProps> = ({ batchSize, until }) => {
-  const { store } = useStore()
+  const store = useAppStore()
   const [streamedCount, setStreamedCount] = React.useState(0)
   const preferredBatchSize = sanitizeBatchSize(batchSize)
 
