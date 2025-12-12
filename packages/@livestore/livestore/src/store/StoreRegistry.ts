@@ -56,20 +56,26 @@ export type RegistryStoreOptions<
   unusedCacheTime?: number
 }
 
+/**
+ * Default options that can be set once on the registry constructor and applied to all stores.
+ *
+ * These are fields that typically stay constant across an application:
+ * - Framework integration (`batchUpdates`)
+ * - Environment settings (`disableDevtools`, `debug`, `otelOptions`)
+ * - Behavior defaults (`confirmUnsavedChanges`, `unusedCacheTime`)
+ *
+ * Store-specific fields like `schema`, `adapter`, `storeId`, and `boot` are intentionally
+ * excluded since they vary per store definition.
+ */
 type RegistryDefaultStoreOptions = Partial<
   Pick<
     RegistryStoreOptions,
-    | 'batchUpdates'
-    | 'disableDevtools'
-    | 'confirmUnsavedChanges'
-    | 'syncPayload'
-    | 'debug'
-    | 'otelOptions'
-    | 'unusedCacheTime'
+    'batchUpdates' | 'disableDevtools' | 'confirmUnsavedChanges' | 'debug' | 'otelOptions' | 'unusedCacheTime'
   >
 > & {
   /**
-   * Optionally, pass a custom runtime that will be used to run all operations (loading, caching, etc.).
+   * Custom Effect runtime for all registry operations (loading, caching, etc.).
+   * When the runtime's scope closes, all managed stores are automatically shut down.
    */
   runtime?: Runtime.Runtime<Scope.Scope | OtelTracer.OtelTracer>
 }
