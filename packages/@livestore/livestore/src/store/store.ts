@@ -53,7 +53,7 @@ import {
   type StoreEventsOptions,
   type StoreInternals,
   StoreInternalsSymbol,
-  type StoreOptions,
+  type StoreConstructorParams,
   type StoreOtel,
   type SubscribeOptions,
   type Unsubscribe,
@@ -137,7 +137,7 @@ export class Store<TSchema extends LiveStoreSchema = LiveStoreSchema.Any, TConte
   readonly context: TContext
 
   /** Options provided to the Store constructor. */
-  readonly params: StoreOptions<TSchema, TContext>['params']
+  readonly params: StoreConstructorParams<TSchema, TContext>['params']
 
   /**
    * Reactive connectivity updates emitted by the backing sync backend.
@@ -193,7 +193,7 @@ export class Store<TSchema extends LiveStoreSchema = LiveStoreSchema.Any, TConte
     params,
     confirmUnsavedChanges,
     __runningInDevtools,
-  }: StoreOptions<TSchema, TContext>) {
+  }: StoreConstructorParams<TSchema, TContext>) {
     super()
 
     this.storeId = storeId
