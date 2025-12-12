@@ -17,7 +17,7 @@ import {
 } from '@livestore/utils/effect'
 import { createStore } from './create-store.ts'
 import type { Store } from './store.ts'
-import type { CachedStoreOptions } from './types.ts'
+import type { RegistryStoreOptions } from './types.ts'
 
 /**
  * Default time to keep unused stores in cache.
@@ -29,9 +29,9 @@ import type { CachedStoreOptions } from './types.ts'
  */
 export const DEFAULT_UNUSED_CACHE_TIME = typeof window === 'undefined' ? Number.POSITIVE_INFINITY : 60_000
 
-type DefaultStoreOptions = Partial<
+type RegistryDefaultStoreOptions = Partial<
   Pick<
-    CachedStoreOptions,
+    RegistryStoreOptions,
     'batchUpdates' | 'disableDevtools' | 'confirmUnsavedChanges' | 'syncPayload' | 'debug' | 'otelOptions'
   >
 > & {
@@ -70,14 +70,14 @@ type DefaultStoreOptions = Partial<
  * other options while keeping the same `storeId`.
  */
 class StoreCacheKey implements Equal.Equal {
-  readonly options: CachedStoreOptions<any, any, any>
+  readonly options: RegistryStoreOptions<any, any, any>
 
-  constructor(options: CachedStoreOptions<any, any, any>) {
+  constructor(options: RegistryStoreOptions<any, any, any>) {
     this.options = options
   }
 
   /**
-   * Equality is based solely on `storeId`. Other options in `CachedStoreOptions` are ignored
+   * Equality is based solely on `storeId`. Other options in `RegistryStoreOptions` are ignored
    * for cache key comparison. The first options used for a given `storeId` determine the
    * store's configuration.
    */
@@ -129,7 +129,7 @@ export class StoreRegistry {
    * })
    * ```
    */
-  constructor(params: { defaultOptions?: DefaultStoreOptions } = {}) {
+  constructor(params: { defaultOptions?: RegistryDefaultStoreOptions } = {}) {
     this.#runtime =
       params.defaultOptions?.runtime ??
       ManagedRuntime.make(Layer.mergeAll(Layer.scope, OtelLiveDummy)).runtimeEffect.pipe(Effect.runSync)
@@ -166,7 +166,7 @@ export class StoreRegistry {
     TContext = {},
     TSyncPayloadSchema extends Schema.Schema<any> = typeof Schema.JsonValue,
   >(
-    options: CachedStoreOptions<TSchema, TContext, TSyncPayloadSchema>,
+    options: RegistryStoreOptions<TSchema, TContext, TSyncPayloadSchema>,
   ): Effect.Effect<Store<TSchema, TContext>, UnknownError, Scope.Scope> =>
     Effect.gen(this, function* () {
       // Cast options to satisfy StoreCacheKey's wider type (type safety enforced at API boundary)
@@ -197,7 +197,7 @@ export class StoreRegistry {
     TContext = {},
     TSyncPayloadSchema extends Schema.Schema<any> = typeof Schema.JsonValue,
   >(
-    options: CachedStoreOptions<TSchema, TContext, TSyncPayloadSchema>,
+    options: RegistryStoreOptions<TSchema, TContext, TSyncPayloadSchema>,
   ): Store<TSchema, TContext> | Promise<Store<TSchema, TContext>> => {
     const exit = this.getOrLoad(options).pipe(Effect.scoped, Runtime.runSyncExit(this.#runtime))
 
@@ -244,7 +244,7 @@ export class StoreRegistry {
     TContext = {},
     TSyncPayloadSchema extends Schema.Schema<any> = typeof Schema.JsonValue,
   >(
-    options: CachedStoreOptions<TSchema, TContext, TSyncPayloadSchema>,
+    options: RegistryStoreOptions<TSchema, TContext, TSyncPayloadSchema>,
   ): (() => void) => {
     const release = Effect.gen(this, function* () {
       // Cast options to satisfy StoreCacheKey's wider type (type safety enforced at API boundary)
@@ -277,7 +277,7 @@ export class StoreRegistry {
     TContext = {},
     TSyncPayloadSchema extends Schema.Schema<any> = typeof Schema.JsonValue,
   >(
-    options: CachedStoreOptions<TSchema, TContext, TSyncPayloadSchema>,
+    options: RegistryStoreOptions<TSchema, TContext, TSyncPayloadSchema>,
   ): Promise<void> => {
     try {
       await this.getOrLoadPromise(options)

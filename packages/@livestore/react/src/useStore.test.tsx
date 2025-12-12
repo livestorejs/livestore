@@ -1,6 +1,6 @@
 import { makeInMemoryAdapter } from '@livestore/adapter-web'
 import {
-  type CachedStoreOptions,
+  type RegistryStoreOptions,
   type Store,
   StoreInternalsSymbol,
   StoreRegistry,
@@ -63,7 +63,7 @@ describe('experimental useStore', () => {
     const storeRegistry = new StoreRegistry()
     const options = testStoreOptions()
 
-    const Wrapper = ({ opts }: { opts: CachedStoreOptions<typeof schema> }) => (
+    const Wrapper = ({ opts }: { opts: RegistryStoreOptions<typeof schema> }) => (
       <StoreRegistryProvider storeRegistry={storeRegistry}>
         <React.Suspense fallback={<div data-testid="fallback" />}>
           <StoreConsumer options={opts} />
@@ -118,7 +118,7 @@ describe('experimental useStore', () => {
     const storeRegistry = new StoreRegistry()
     const options = testStoreOptions()
 
-    let hook: RenderHookResult<Store<typeof schema>, CachedStoreOptions<typeof schema>> | undefined
+    let hook: RenderHookResult<Store<typeof schema>, RegistryStoreOptions<typeof schema>> | undefined
     await act(async () => {
       hook = renderHook(() => useStore(options), {
         wrapper: makeProvider(storeRegistry, { suspense: true }),
@@ -140,7 +140,7 @@ describe('experimental useStore', () => {
     const optionsA = testStoreOptions({ storeId: 'store-a' })
     const optionsB = testStoreOptions({ storeId: 'store-b' })
 
-    let hook: RenderHookResult<Store<typeof schema>, CachedStoreOptions<typeof schema>> | undefined
+    let hook: RenderHookResult<Store<typeof schema>, RegistryStoreOptions<typeof schema>> | undefined
     await act(async () => {
       hook = renderHook((opts) => useStore(opts), {
         initialProps: optionsA,
@@ -178,7 +178,7 @@ describe('experimental useStore', () => {
     const storeRegistry = new StoreRegistry({ defaultOptions: { unusedCacheTime: 0 } })
     const options = testStoreOptions({ unusedCacheTime: 0 })
 
-    const StoreConsumerWithVerification = ({ opts }: { opts: CachedStoreOptions<typeof schema> }) => {
+    const StoreConsumerWithVerification = ({ opts }: { opts: RegistryStoreOptions<typeof schema> }) => {
       const store = useStore(opts)
       // Verify store is usable - access internals to confirm it's not disposed
       const clientSession = store[StoreInternalsSymbol].clientSession
@@ -213,7 +213,7 @@ describe('experimental useStore', () => {
   })
 })
 
-const StoreConsumer = ({ options }: { options: CachedStoreOptions<any> }) => {
+const StoreConsumer = ({ options }: { options: RegistryStoreOptions<any> }) => {
   useStore(options)
   return <div data-testid="ready" />
 }
@@ -232,7 +232,7 @@ const makeProvider =
 
 let testStoreCounter = 0
 
-const testStoreOptions = (overrides: Partial<CachedStoreOptions<typeof schema>> = {}) =>
+const testStoreOptions = (overrides: Partial<RegistryStoreOptions<typeof schema>> = {}) =>
   storeOptions({
     storeId: overrides.storeId ?? `test-store-${testStoreCounter++}`,
     schema,

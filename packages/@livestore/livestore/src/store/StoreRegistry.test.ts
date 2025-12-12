@@ -7,7 +7,7 @@ import { schema } from '../utils/tests/fixture.ts'
 import { StoreRegistry } from './StoreRegistry.ts'
 import { StoreInternalsSymbol } from './store-types.ts'
 import { storeOptions } from './storeOptions.ts'
-import type { CachedStoreOptions } from './types.ts'
+import type { RegistryStoreOptions } from './types.ts'
 
 describe('StoreRegistry', () => {
   it('returns a promise when the store is loading', async () => {
@@ -509,7 +509,7 @@ describe('StoreRegistry', () => {
   })
 })
 
-const testStoreOptions = (overrides: Partial<CachedStoreOptions<typeof schema>> = {}) =>
+const testStoreOptions = (overrides: Partial<RegistryStoreOptions<typeof schema>> = {}) =>
   storeOptions({
     storeId: 'test-store',
     schema,
