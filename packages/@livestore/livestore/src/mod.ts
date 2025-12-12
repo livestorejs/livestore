@@ -41,7 +41,7 @@ export {
   createStore,
   createStorePromise,
 } from './store/create-store.ts'
-export { StoreRegistry } from './store/StoreRegistry.ts'
+export { type RegistryStoreOptions, StoreRegistry } from './store/StoreRegistry.ts'
 export { Store } from './store/store.ts'
 export {
   isLiveQueryDef,
@@ -61,6 +61,5 @@ export {
   type Unsubscribe,
 } from './store/store-types.ts'
 export { storeOptions } from './store/storeOptions.ts'
-export type { RegistryStoreOptions } from './store/types.ts'
 export { exposeDebugUtils } from './utils/dev.ts'
 export * from './utils/stack-info.ts'
