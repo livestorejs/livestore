@@ -1,5 +1,5 @@
 import { queryDb } from '@livestore/livestore'
-import { useQuery, useStore } from '@livestore/react'
+import { useQuery } from '@livestore/react'
 import { Stack } from 'expo-router'
 import React from 'react'
 import type { ViewStyle } from 'react-native'
@@ -9,6 +9,7 @@ import { ThemedText } from '../../components/ThemedText.tsx'
 import { useUser } from '../../hooks/useUser.ts'
 import type { Comment, Issue, Reaction, User } from '../../livestore/schema.ts'
 import { events, tables } from '../../livestore/schema.ts'
+import { useAppStore } from '../../livestore/store.ts'
 import {
   createRandomComment,
   createRandomIssue,
@@ -22,7 +23,7 @@ const users$ = queryDb(tables.users.select(), { label: 'inbox-users' })
 
 const InboxScreen = () => {
   const user = useUser()
-  const { store } = useStore()
+  const store = useAppStore()
   const [isLoading, setIsLoading] = React.useState(false)
   const [loadingMessage, setLoadingMessage] = React.useState<{
     operation: string
