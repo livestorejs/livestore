@@ -546,6 +546,9 @@ importers:
       react-dom:
         specifier: 19.1.0
         version: 19.1.0(react@19.1.0)
+      react-error-boundary:
+        specifier: 6.0.0
+        version: 6.0.0(react@19.1.0)
     devDependencies:
       '@biomejs/biome':
         specifier: ^2.3.8
@@ -1359,6 +1362,9 @@ importers:
       react-dom:
         specifier: 19.1.0
         version: 19.1.0(react@19.1.0)
+      react-error-boundary:
+        specifier: 6.0.0
+        version: 6.0.0(react@19.1.0)
       todomvc-app-css:
         specifier: 2.4.3
         version: 2.4.3
@@ -1695,6 +1701,9 @@ importers:
       react-dom:
         specifier: 19.1.0
         version: 19.1.0(react@19.1.0)
+      react-error-boundary:
+        specifier: 6.0.0
+        version: 6.0.0(react@19.1.0)
       todomvc-app-css:
         specifier: 2.4.3
         version: 2.4.3
@@ -1768,9 +1777,6 @@ importers:
       react-dom:
         specifier: 19.1.0
         version: 19.1.0(react@19.1.0)
-      react-error-boundary:
-        specifier: 6.0.0
-        version: 6.0.0(react@19.1.0)
       todomvc-app-css:
         specifier: 2.4.3
         version: 2.4.3
@@ -1850,9 +1856,6 @@ importers:
       react-dom:
         specifier: 19.1.0
         version: 19.1.0(react@19.1.0)
-      react-error-boundary:
-        specifier: 6.0.0
-        version: 6.0.0(react@19.1.0)
       todomvc-app-css:
         specifier: 2.4.3
         version: 2.4.3
@@ -2879,6 +2882,9 @@ importers:
       react-dom:
         specifier: 'catalog:'
         version: 19.1.0(react@19.1.0)
+      react-error-boundary:
+        specifier: ^6.0.0
+        version: 6.0.0(react@19.1.0)
       todomvc-app-css:
         specifier: ^2.4.3
         version: 2.4.3
