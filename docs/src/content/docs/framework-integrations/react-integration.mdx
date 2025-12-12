@@ -48,7 +48,7 @@ Create a store configuration file that exports a custom hook wrapping `useStore(
 
 <ReactStoreSnippet />
 
-The `useStore` hook accepts store configuration options and returns a store instance. It suspends while the store is loading, so components using it need to be wrapped in a `Suspense` boundary.
+The `useStore()` hook accepts store configuration options and returns a store instance. It suspends while the store is loading, so components using it need to be wrapped in a `Suspense` boundary.
 
 ### 2. Set Up the Registry
 
@@ -236,5 +236,5 @@ See the <a href={`https://github.com/livestorejs/livestore/tree/${getBranchName(
 
 ## Technical Notes
 
-- `@livestore/react` uses `React.useState` under the hood for `useQuery` / `useClientDocument` to bind LiveStore's reactivity to React's reactivity. Some libraries use `React.useSyncExternalStore` for similar purposes but `React.useState` is more efficient for LiveStore's architecture.
+- `@livestore/react` uses `React.useState()` under the hood for `useQuery()` / `useClientDocument()` to bind LiveStore's reactivity to React's reactivity. Some libraries use `React.useSyncExternalStore()` for similar purposes but `React.useState()` is more efficient for LiveStore's architecture.
 - `@livestore/react` supports React Strict Mode.

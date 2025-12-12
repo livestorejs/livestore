@@ -153,7 +153,7 @@ Create a file named `livestore.worker.ts` inside the `src` folder. This file wil
 
 Create a `store.ts` file in the `src` folder. This file configures the store adapter and exports a custom hook that components will use to access the store.
 
-The `useStore` hook accepts store configuration options (schema, adapter, store ID) and returns a store instance. It suspends while the store is loading, so make sure to use a `Suspense` boundary to handle the loading state.
+The `useStore()` hook accepts store configuration options (schema, adapter, store ID) and returns a store instance. It suspends while the store is loading, so make sure to use a `Suspense` boundary to handle the loading state.
 
 <SNIPPETS.store />
 
@@ -167,7 +167,7 @@ Wrap the provider in a `Suspense` boundary to handle the loading state for when 
 
 ## Commit events
 
-After setting up the registry, use the `useAppStore` hook from any component to access the store and commit events.
+After setting up the registry, use the `useAppStore()` hook from any component to access the store and commit events.
 
 <SNIPPETS.header />
 

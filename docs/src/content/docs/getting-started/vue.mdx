@@ -87,7 +87,7 @@ Create a file named `livestore.worker.ts` inside the `src/livestore` folder. Thi
 
 ### Add the LiveStore provider
 
-To make the LiveStore available throughout your app, wrap your app's root component with the `LiveStoreProvider` component from `vue-livestore`. This provider manages your app's data store, loading, and error states.
+To make the LiveStore available throughout your app, wrap your app's root component with the `<LiveStoreProvider>` component from `vue-livestore`. This provider manages your app's data store, loading, and error states.
 
 Here's an example:
 
@@ -95,7 +95,7 @@ Here's an example:
 
 ### Commit events
 
-After wrapping your app with the `LiveStoreProvider`, you can use the `useStore` hook from any component to commit events.
+After wrapping your app with the `<LiveStoreProvider>`, you can use the `useStore()` hook from any component to commit events.
 
 Here's an example:
 
@@ -103,7 +103,7 @@ Here's an example:
 
 ### Queries
 
-To retrieve data from the database, first define a query using `queryDb` from `@livestore/livestore`. Then, execute the query with the `useQuery` hook from `vue-livestore`.
+To retrieve data from the database, first define a query using `queryDb` from `@livestore/livestore`. Then, execute the query with the `useQuery()` hook from `vue-livestore`.
 
 Consider abstracting queries into a separate file to keep your code organized, though you can also define them directly within components if preferred.
 
