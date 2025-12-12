@@ -104,7 +104,7 @@ export type LiveStoreContextProps<
    *
    * Example:
    *   const SyncPayload = Schema.Struct({ authToken: Schema.String })
-   *   <LiveStoreProvider syncPayloadSchema={SyncPayload} syncPayload={{ authToken: '...' }} />
+   *   useStore({ ..., syncPayloadSchema: SyncPayload, syncPayload: { authToken: '...' } })
    */
   syncPayload?: Schema.Schema.Type<TSyncPayloadSchema>
 }

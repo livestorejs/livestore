@@ -2,10 +2,23 @@ import type { LiveStoreSchema } from '@livestore/common/schema'
 import type { RegistryStoreOptions, Store } from '@livestore/livestore'
 import type { Schema } from '@livestore/utils/effect'
 import React from 'react'
-import type { ReactApi } from './LiveStoreContext.ts'
 import { useStoreRegistry } from './StoreRegistryContext.tsx'
 import { useClientDocument } from './useClientDocument.ts'
 import { useQuery } from './useQuery.ts'
+
+/**
+ * React-specific methods added to the Store when used via React hooks.
+ *
+ * These methods are attached by `withReactApi()` and `useStore()`, allowing you
+ * to call `store.useQuery()` and `store.useClientDocument()` directly on the
+ * Store instance.
+ */
+export type ReactApi = {
+  /** Hook version of query subscription—re-renders component when query result changes */
+  useQuery: typeof useQuery
+  /** Hook for reading and writing client-document tables with React state semantics */
+  useClientDocument: typeof useClientDocument
+}
 
 /**
  * Returns a store instance, augmented with React hooks for reactive queries.
@@ -80,8 +93,8 @@ export const useStore = <
 /**
  * Augments a Store instance with React-specific methods (`useQuery`, `useClientDocument`).
  *
- * This is called automatically by `useStore()` and `LiveStoreProvider`. You typically
- * don't need to call it directly unless you're building custom integrations.
+ * This is called automatically by `useStore()`. You typically don't need to call it
+ * directly unless you're building custom integrations.
  *
  * @internal
  */

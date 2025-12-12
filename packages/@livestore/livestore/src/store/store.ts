@@ -91,8 +91,8 @@ export const STORE_DEFAULT_PARAMS = {
  * ## Creating a Store
  *
  * Use `createStore` (Effect-based) or `createStorePromise` to obtain a Store instance.
- * In React applications, use the `<LiveStoreProvider>` component which manages the Store lifecycle
- * and exposes it via React context.
+ * In React applications, use `StoreRegistry` with `<StoreRegistryProvider>` and the `useStore()` hook
+ * which manages the Store lifecycle.
  *
  * ## Querying Data
  *
