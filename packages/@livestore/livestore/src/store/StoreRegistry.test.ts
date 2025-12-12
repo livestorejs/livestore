@@ -4,9 +4,8 @@ import { sleep } from '@livestore/utils'
 import { Effect } from '@livestore/utils/effect'
 import { describe, expect, it } from 'vitest'
 import { schema } from '../utils/tests/fixture.ts'
-import { type RegistryStoreOptions, StoreRegistry } from './StoreRegistry.ts'
+import { type RegistryStoreOptions, StoreRegistry, storeOptions } from './StoreRegistry.ts'
 import { StoreInternalsSymbol } from './store-types.ts'
-import { storeOptions } from './storeOptions.ts'
 
 describe('StoreRegistry', () => {
   it('returns a promise when the store is loading', async () => {
