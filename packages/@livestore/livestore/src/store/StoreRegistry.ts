@@ -30,11 +30,30 @@ import type { OtelOptions } from './store-types.ts'
  */
 export const DEFAULT_UNUSED_CACHE_TIME = typeof window === 'undefined' ? Number.POSITIVE_INFINITY : 60_000
 
+/**
+ * Configuration options for stores managed by a {@link StoreRegistry}.
+ *
+ * Extends {@link CreateStoreOptions} with registry-specific settings for caching and observability.
+ * Use with {@link storeOptions} helper to get full type inference when defining reusable store configurations.
+ *
+ * @typeParam TSchema - The LiveStore schema type
+ * @typeParam TContext - User-defined context attached to the store
+ * @typeParam TSyncPayloadSchema - Schema for the sync payload sent to the backend
+ *
+ * @see {@link storeOptions} for defining reusable store configurations
+ * @see {@link StoreRegistry} for managing store lifecycles
+ */
 export type RegistryStoreOptions<
   TSchema extends LiveStoreSchema = LiveStoreSchema.Any,
   TContext = {},
   TSyncPayloadSchema extends Schema.Schema<any> = typeof Schema.JsonValue,
 > = CreateStoreOptions<TSchema, TContext, TSyncPayloadSchema> & {
+  /**
+   * OpenTelemetry configuration for tracing store operations.
+   *
+   * When provided, store operations (boot, queries, commits) will be traced
+   * under the given root span context using the specified tracer.
+   */
   otelOptions?: Partial<OtelOptions>
   /**
    * The time in milliseconds that this store should remain
