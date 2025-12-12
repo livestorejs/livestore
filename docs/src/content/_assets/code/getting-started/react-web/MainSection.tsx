@@ -1,8 +1,7 @@
 import { queryDb } from '@livestore/livestore'
-import { useStore } from '@livestore/react'
 import React from 'react'
-
 import { events, tables } from './livestore/schema.ts'
+import { useAppStore } from './store.ts'
 
 const uiState$ = queryDb(tables.uiState.get(), { label: 'uiState' })
 
@@ -18,7 +17,7 @@ const visibleTodos$ = queryDb(
 )
 
 export const MainSection: React.FC = () => {
-  const { store } = useStore()
+  const store = useAppStore()
 
   const toggleTodo = React.useCallback(
     ({ id, completed }: typeof tables.todos.Type) =>
