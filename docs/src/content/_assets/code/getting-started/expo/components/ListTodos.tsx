@@ -1,13 +1,13 @@
-import { useQuery, useStore } from '@livestore/react'
 import { type FC, useCallback } from 'react'
 import { Button, ScrollView, Text, View } from 'react-native'
 
 import { visibleTodos$ } from '../livestore/queries.ts'
 import { events, type tables } from '../livestore/schema.ts'
+import { useAppStore } from '../livestore/store.ts'
 
 export const ListTodos: FC = () => {
-  const { store } = useStore()
-  const todos = useQuery(visibleTodos$)
+  const store = useAppStore()
+  const todos = store.useQuery(visibleTodos$)
 
   const toggleTodo = useCallback(
     ({ id, completed }: typeof tables.todos.Type) => {
