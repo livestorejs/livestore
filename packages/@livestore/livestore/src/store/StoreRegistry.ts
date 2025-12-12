@@ -1,5 +1,6 @@
-import { LogConfig, OtelLiveDummy, UnknownError } from '@livestore/common'
+import { LogConfig, OtelLiveDummy, provideOtel, UnknownError } from '@livestore/common'
 import type { LiveStoreSchema } from '@livestore/common/schema'
+import { omitUndefineds } from '@livestore/utils'
 import {
   Cause,
   Effect,
@@ -150,14 +151,18 @@ export class StoreRegistry {
       ManagedRuntime.make(Layer.mergeAll(Layer.scope, OtelLiveDummy)).runtimeEffect.pipe(Effect.runSync)
 
     this.#rcMap = RcMap.make({
-      lookup: (key: StoreCacheKey) =>
+      lookup: ({ options }: StoreCacheKey) =>
         Effect.gen(this, function* () {
-          const { options } = key
-
           return yield* createStore(options).pipe(Effect.catchAllDefect((cause) => UnknownError.make({ cause })))
         }).pipe(
-          Effect.withSpan(`StoreRegistry.lookup:${key.options.storeId}`),
-          LogConfig.withLoggerConfig(key.options, { threadName: 'window' }),
+          Effect.withSpan(`StoreRegistry.lookup:${options.storeId}`),
+          LogConfig.withLoggerConfig(options, { threadName: 'window' }),
+          provideOtel(
+            omitUndefineds({
+              parentSpanContext: options.otelOptions?.rootSpanContext,
+              otelTracer: options.otelOptions?.tracer,
+            }),
+          ),
         ),
       // TODO: Make idleTimeToLive vary for each store when Effect supports per-resource TTL
       // See https://github.com/livestorejs/livestore/issues/917
