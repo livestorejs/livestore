@@ -28,7 +28,7 @@ export const WithInitialText: Story = {
     ])
   ],
 }`,
-  
+
   storybookPreview: `import React from 'react'
 import { createLiveStoreDecorator } from '../src/decorator'
 
@@ -37,47 +37,65 @@ const LiveStoreDecorator = createLiveStoreDecorator()
 
 export const decorators = [LiveStoreDecorator]`,
 
-  decorator: `import React from 'react'
-import { LiveStoreProvider } from '@livestore/react'
+  decorator: `import React, { Suspense, useState } from 'react'
+import { StoreRegistry, StoreRegistryProvider, useStore } from '@livestore/react'
 import { makeInMemoryAdapter } from '@livestore/adapter-web'
 import { unstable_batchedUpdates as batchUpdates } from 'react-dom'
 import { schema } from './schema'
 
+const adapter = makeInMemoryAdapter()
+
 // Create LiveStore decorator with optional seeding
 export const createLiveStoreDecorator = (seedEvents = []) => (Story) => {
-  const onBoot = (store) => {
-    // Seed data through events during boot
-    if (seedEvents.length > 0) {
-      store.commit(...seedEvents)
-    }
-  }
+  const [storeRegistry] = useState(() => new StoreRegistry())
 
   return (
-    <LiveStoreProvider
-      schema={schema}
-      adapter={makeInMemoryAdapter()}
-      batchUpdates={batchUpdates}
-      boot={onBoot}
-      renderLoading={(status) => <div>Loading LiveStore ({status.stage})...</div>}
-    >
-      <Story />
-    </LiveStoreProvider>
+    <Suspense fallback={<div>Loading LiveStore...</div>}>
+      <StoreRegistryProvider storeRegistry={storeRegistry}>
+        <StoryWithStore Story={Story} seedEvents={seedEvents} />
+      </StoreRegistryProvider>
+    </Suspense>
   )
+}
+
+const StoryWithStore = ({ Story, seedEvents }) => {
+  const store = useStore({
+    storeId: 'storybook',
+    schema,
+    adapter,
+    batchUpdates,
+    boot: (store) => {
+      if (seedEvents.length > 0) {
+        store.commit(...seedEvents)
+      }
+    },
+  })
+  return <Story />
 }`,
 
-  todoInput: `import React from 'react'
-import { useStore } from '@livestore/react'
+  todoInput: `import { useStore } from '@livestore/react'
 import { queryDb } from '@livestore/livestore'
-import { tables, events } from './schema'
+import { makeInMemoryAdapter } from '@livestore/adapter-web'
+import { unstable_batchedUpdates as batchUpdates } from 'react-dom'
+import { tables, events, schema } from './schema'
+
+const adapter = makeInMemoryAdapter()
 
 // Define queries (like in TodoMVC)
 const uiState$ = queryDb(tables.uiState.get(), { label: 'uiState' })
 
+const useAppStore = () => useStore({
+  storeId: 'todo-app',
+  schema,
+  adapter,
+  batchUpdates,
+})
+
 export const TodoInput = () => {
-  const { store } = useStore()
+  const store = useAppStore()
   const { newTodoText } = store.useQuery(uiState$)
 
-  const updateNewTodoText = (text: string) => 
+  const updateNewTodoText = (text: string) =>
     store.commit(events.uiStateSet({ newTodoText: text }))
 
   const createTodo = () => {
@@ -126,13 +144,13 @@ export const tables = {
   // Client document for UI state
   uiState: State.SQLite.clientDocument({
     name: 'uiState',
-    schema: Schema.Struct({ 
-      newTodoText: Schema.String, 
-      filter: Schema.Literal('all', 'active', 'completed') 
+    schema: Schema.Struct({
+      newTodoText: Schema.String,
+      filter: Schema.Literal('all', 'active', 'completed')
     }),
-    default: { 
-      id: SessionIdSymbol, 
-      value: { newTodoText: '', filter: 'all' } 
+    default: {
+      id: SessionIdSymbol,
+      value: { newTodoText: '', filter: 'all' }
     },
   }),
 }
