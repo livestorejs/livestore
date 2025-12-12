@@ -1,6 +1,6 @@
 /// <reference types="vite/client" />
 
-import { StoreRegistry, StoreRegistryProvider, useClientDocument } from '@livestore/react'
+import { StoreRegistry, StoreRegistryProvider } from '@livestore/react'
 import React, { Suspense, useRef, useState } from 'react'
 import { ErrorBoundary } from 'react-error-boundary'
 import { VersionBadge } from './components/VersionBadge.tsx'
@@ -79,8 +79,8 @@ export const ChatApp = () => {
 export default ChatApp
 
 const UserNameWrapper: React.FC<React.PropsWithChildren> = ({ children }) => {
-  const [uiState, setUiState] = useClientDocument(tables.uiState)
   const store = useAppStore()
+  const [uiState, setUiState] = store.useClientDocument(tables.uiState)
   const newUserId = useRef(crypto.randomUUID())
 
   const joinChat = () => {

@@ -1,5 +1,4 @@
 import { queryDb } from '@livestore/livestore'
-import { useQuery } from '@livestore/react'
 import { Stack } from 'expo-router'
 import React from 'react'
 import type { ViewStyle } from 'react-native'
@@ -40,7 +39,7 @@ const InboxScreen = () => {
     totalTime: number
   } | null>(null)
 
-  const users = useQuery(users$)
+  const users = store.useQuery(users$)
 
   const generateRandomData = async (numUsers: number, numIssuesPerUser: number) => {
     const startTime = performance.now()
@@ -336,8 +335,8 @@ const InboxScreen = () => {
 
   const issuesCount$ = queryDb(tables.issues.count().where({ deletedAt: null }))
   const issuesDeletedCount$ = queryDb(tables.issues.count().where({ deletedAt: { op: '!=', value: null } }))
-  const issuesCount = useQuery(issuesCount$)
-  const issuesDeletedCount = useQuery(issuesDeletedCount$)
+  const issuesCount = store.useQuery(issuesCount$)
+  const issuesDeletedCount = store.useQuery(issuesDeletedCount$)
 
   const isDarkMode = useColorScheme() === 'dark'
   const sectionStyle = StyleSheet.compose<ViewStyle, any, any>(styles.section, {

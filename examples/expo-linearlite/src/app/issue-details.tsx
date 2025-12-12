@@ -1,5 +1,4 @@
 import { queryDb, Schema, sql } from '@livestore/livestore'
-import { useQuery } from '@livestore/react'
 import { Stack, useGlobalSearchParams, useRouter } from 'expo-router'
 import { Undo2Icon } from 'lucide-react-native'
 import { Image, Pressable, SafeAreaView, ScrollView, StyleSheet, Text, useColorScheme, View } from 'react-native'
@@ -144,7 +143,7 @@ const IssueDetailsScreen = () => {
   const theme = useColorScheme()
   const isDark = theme === 'dark'
 
-  const issue = useQuery(
+  const issue = store.useQuery(
     queryDb(
       {
         query: sql`
@@ -166,7 +165,7 @@ const IssueDetailsScreen = () => {
     ),
   )
 
-  const comments = useQuery(
+  const comments = store.useQuery(
     queryDb(
       {
         query: sql`

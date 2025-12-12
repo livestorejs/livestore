@@ -1,5 +1,4 @@
 import { queryDb } from '@livestore/livestore'
-import { useClientDocument } from '@livestore/react'
 import React, { useRef, useState } from 'react'
 import { events, tables } from './livestore/schema.ts'
 import { useAppStore } from './livestore/store.ts'
@@ -15,7 +14,7 @@ export const useChat = () => {
   const store = useAppStore()
   const [currentMessage, setCurrentMessage] = useState('')
   const [showReactionPicker, setShowReactionPicker] = useState<string | null>(null)
-  const [uiState, setUiState] = useClientDocument(tables.uiState)
+  const [uiState, setUiState] = store.useClientDocument(tables.uiState)
   const messagesEndRef = useRef<HTMLDivElement>(null)
   // Circuit breaker: track which messageIds we've already emitted a read receipt for
   const readCircuitBreakerRef = useRef<Set<string>>(new Set())

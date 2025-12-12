@@ -1,4 +1,3 @@
-import { useQuery } from '@livestore/react'
 import { useGlobalSearchParams, usePathname, useRouter } from 'expo-router'
 import React, { useEffect } from 'react'
 
@@ -10,7 +9,7 @@ export const NavigationHistoryTracker = () => {
   const pathname = usePathname()
   const globalParams = useGlobalSearchParams()
   const store = useAppStore()
-  const { navigationHistory } = useQuery(uiState$)
+  const { navigationHistory } = store.useQuery(uiState$)
   const router = useRouter()
 
   const constructPathWithParams = React.useCallback((path: string, params: any) => {

@@ -1,5 +1,4 @@
 import { queryDb, Schema, sql } from '@livestore/livestore'
-import { useQuery } from '@livestore/react'
 import * as Haptics from 'expo-haptics'
 import { useCallback, useMemo } from 'react'
 import { FlatList, Pressable, StyleSheet, useColorScheme, View } from 'react-native'
@@ -98,7 +97,7 @@ const getOrderingOptions = (
 const HomeScreen = () => {
   const user = useUser()
   const store = useAppStore()
-  const appSettings = useQuery(uiState$)
+  const appSettings = store.useQuery(uiState$)
   const colorScheme = useColorScheme()
   const isDark = colorScheme === 'dark'
 
@@ -127,7 +126,7 @@ const HomeScreen = () => {
     [appSettings],
   )
 
-  const issues = useQuery(
+  const issues = store.useQuery(
     queryDb(
       {
         query: sql`

@@ -1,6 +1,6 @@
 /** biome-ignore-all lint/nursery: testing */
 /** biome-ignore-all lint/correctness/useUniqueElementIds: it's ok for testing */
-import { StoreRegistry, StoreRegistryProvider, useQuery } from '@livestore/react'
+import { StoreRegistry, StoreRegistryProvider } from '@livestore/react'
 import React, { StrictMode, Suspense, useState } from 'react'
 import { createRoot } from 'react-dom/client'
 
@@ -70,7 +70,7 @@ const RemoveIcon = <span>X</span>
 
 const ItemRow = React.memo(({ item }: { item: Item }) => {
   const store = useAppStore()
-  const { selected } = useQuery(uiState$)
+  const { selected } = store.useQuery(uiState$)
   const isSelected = selected === item.id
   return (
     <tr style={{ backgroundColor: isSelected ? 'lightblue' : 'white' }}>
@@ -101,7 +101,8 @@ const ItemRow = React.memo(({ item }: { item: Item }) => {
 })
 
 const ItemRowList = React.memo(() => {
-  const items = useQuery(allItems$)
+  const store = useAppStore()
+  const items = store.useQuery(allItems$)
   return items.map((item) => <ItemRow key={item.id} item={item} />)
 })
 

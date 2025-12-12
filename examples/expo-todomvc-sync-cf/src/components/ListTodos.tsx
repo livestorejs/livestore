@@ -1,10 +1,9 @@
 import { queryDb } from '@livestore/livestore'
-import { useQuery } from '@livestore/react'
 import type React from 'react'
 import { FlatList } from 'react-native'
-
 import { uiState$ } from '../livestore/queries.ts'
 import { tables } from '../livestore/schema.ts'
+import { useAppStore } from '../livestore/store.ts'
 import { Todo } from './Todo.tsx'
 
 const visibleTodos$ = queryDb(
@@ -19,7 +18,8 @@ const visibleTodos$ = queryDb(
 )
 
 export const ListTodos: React.FC = () => {
-  const visibleTodos = useQuery(visibleTodos$)
+  const store = useAppStore()
+  const visibleTodos = store.useQuery(visibleTodos$)
 
   return (
     <FlatList
