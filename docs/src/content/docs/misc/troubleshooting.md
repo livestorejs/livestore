@@ -64,11 +64,11 @@ For example, the following query:
 
 ```ts
 // Don't do this
-const query$ = useQuery(queryDb(tables.issues.query.where({ id: issueId }).first()))
+const query$ = store.useQuery(queryDb(tables.issues.query.where({ id: issueId }).first()))
 //                                                              ^^^^^^^ missing in deps
 
 // Do this instead
-const query$ = useQuery(queryDb(tables.issues.query.where({ id: issueId }).first(), { deps: [issueId] }))
+const query$ = store.useQuery(queryDb(tables.issues.query.where({ id: issueId }).first(), { deps: [issueId] }))
 ```
 
 ## `node_modules` related issues
