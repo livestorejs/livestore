@@ -34,7 +34,6 @@ export type RegistryStoreOptions<
   TContext = {},
   TSyncPayloadSchema extends Schema.Schema<any> = typeof Schema.JsonValue,
 > = CreateStoreOptions<TSchema, TContext, TSyncPayloadSchema> & {
-  signal?: AbortSignal
   otelOptions?: Partial<OtelOptions>
   /**
    * The time in milliseconds that this store should remain
