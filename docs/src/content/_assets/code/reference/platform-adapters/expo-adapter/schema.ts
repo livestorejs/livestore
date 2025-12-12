@@ -1,6 +1,6 @@
 import { defineMaterializer, Events, makeSchema, Schema, State } from '@livestore/livestore'
 
-const tables = {
+export const tables = {
   todos: State.SQLite.table({
     name: 'todos',
     columns: {
