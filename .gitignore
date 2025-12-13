@@ -50,3 +50,6 @@ scripts/.completions
 
 # Generated markdown bundle embedded into @livestore/livestore
 packages/@livestore/livestore/docs
+
+# Task context files
+tasks/
