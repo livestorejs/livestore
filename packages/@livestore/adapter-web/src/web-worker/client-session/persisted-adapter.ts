@@ -1,4 +1,4 @@
-import type { Adapter, ClientSession, LockStatus } from '@livestore/common'
+import type { Adapter, BootWarningReason, ClientSession, LockStatus } from '@livestore/common'
 import {
   IntentionalShutdownCause,
   liveStoreVersion,
@@ -29,7 +29,7 @@ import {
   Worker,
   WorkerError,
 } from '@livestore/utils/effect'
-import { BrowserWorker, Opfs, WebLock } from '@livestore/utils/effect/browser'
+import { BrowserWorker, Opfs, WebError, WebLock } from '@livestore/utils/effect/browser'
 import { nanoid } from '@livestore/utils/nanoid'
 import {
   readPersistedStateDbFromClientSession,
@@ -168,10 +168,21 @@ export const makePersistedAdapter =
 
       const shutdownChannel = yield* makeShutdownChannel(storeId)
 
-      if (options.resetPersistence === true) {
+      // Check OPFS availability early and notify user if storage is unavailable (e.g. private browsing)
+      const opfsWarning = yield* checkOpfsAvailability
+      if (opfsWarning !== undefined) {
+        yield* Effect.logWarning('[@livestore/adapter-web:client-session] OPFS unavailable', opfsWarning)
+      }
+
+      if (options.resetPersistence === true && opfsWarning === undefined) {
         yield* shutdownChannel.send(IntentionalShutdownCause.make({ reason: 'adapter-reset' }))
 
         yield* resetPersistedDataFromClientSession({ storageOptions, storeId })
+      } else if (options.resetPersistence === true) {
+        yield* Effect.logWarning(
+          '[@livestore/adapter-web:client-session] Skipping persistence reset because storage is unavailable',
+          opfsWarning,
+        )
       }
 
       // Note on fast-path booting:
@@ -181,7 +192,7 @@ export const makePersistedAdapter =
       // We need to be extra careful though to not run into any race conditions or inconsistencies.
       // TODO also verify persisted data
       const dataFromFile =
-        options.experimental?.disableFastPath === true
+        options.experimental?.disableFastPath === true || opfsWarning !== undefined
           ? undefined
           : yield* readPersistedStateDbFromClientSession({ storageOptions, storeId, schema }).pipe(
               Effect.tapError((error) =>
@@ -480,7 +491,11 @@ export const makePersistedAdapter =
             ),
         },
 
-        initialState: { leaderHead: initialLeaderHead, migrationsReport },
+        initialState: {
+          leaderHead: initialLeaderHead,
+          migrationsReport,
+          storageMode: opfsWarning === undefined ? 'persisted' : 'in-memory',
+        },
 
         getEventlogData: runInWorker(new WorkerSchema.LeaderWorkerInnerExportEventlog()).pipe(
           Effect.timeout(10_000),
@@ -583,4 +598,30 @@ const ensureBrowserRequirements = Effect.gen(function* () {
     validate(typeof window === 'undefined', 'window'),
     validate(typeof sessionStorage === 'undefined', 'sessionStorage'),
   ])
+})
+
+/**
+ * Attempts to access OPFS and returns a warning if unavailable.
+ *
+ * Common failure scenarios:
+ * - Safari/Firefox private browsing: SecurityError or NotAllowedError
+ * - Permission denied: NotAllowedError
+ * - Quota exceeded: QuotaExceededError
+ */
+const checkOpfsAvailability = Effect.gen(function* () {
+  const opfs = yield* Opfs.Opfs
+  return yield* opfs.getRootDirectoryHandle.pipe(
+    Effect.as(undefined),
+    Effect.catchAll((error) => {
+      const reason: BootWarningReason =
+        Schema.is(WebError.SecurityError)(error) || Schema.is(WebError.NotAllowedError)(error)
+          ? 'private-browsing'
+          : 'storage-unavailable'
+      const message =
+        reason === 'private-browsing'
+          ? 'Storage unavailable in private browsing mode. LiveStore will continue without persistence.'
+          : 'Storage access denied. LiveStore will continue without persistence.'
+      return Effect.succeed({ reason, message } as const)
+    }),
+  )
 })

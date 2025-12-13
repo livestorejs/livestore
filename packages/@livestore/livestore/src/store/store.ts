@@ -15,6 +15,7 @@ import {
   prepareBindValues,
   QueryBuilderAstSymbol,
   replaceSessionIdSymbol,
+  type StorageMode,
   UnknownError,
 } from '@livestore/common'
 import type { StreamEventsOptions } from '@livestore/common/leader-thread'
@@ -158,6 +159,24 @@ export class Store<TSchema extends LiveStoreSchema = LiveStoreSchema.Any, TConte
   readonly networkStatus: ClientSession['leaderThread']['networkStatus']
 
   /**
+   * Indicates how data is being stored.
+   *
+   * - `persisted`: Data is persisted to disk (e.g., via OPFS on web, SQLite file on native)
+   * - `in-memory`: Data is only stored in memory and will be lost on page refresh
+   *
+   * The store operates in `in-memory` mode when persistent storage is unavailable,
+   * such as in Safari/Firefox private browsing mode where OPFS is restricted.
+   *
+   * @example
+   * ```tsx
+   * if (store.storageMode === 'in-memory') {
+   *   showWarning('Data will not be persisted in private browsing mode')
+   * }
+   * ```
+   */
+  readonly storageMode: StorageMode
+
+  /**
    * Store internals. Not part of the public API — shapes and semantics may change without notice.
    */
   readonly [StoreInternalsSymbol]: StoreInternals
@@ -182,6 +201,7 @@ export class Store<TSchema extends LiveStoreSchema = LiveStoreSchema.Any, TConte
     this.context = context
     this.params = params
     this.networkStatus = clientSession.leaderThread.networkStatus
+    this.storageMode = clientSession.leaderThread.initialState.storageMode
 
     const reactivityGraph = makeReactivityGraph()
 
