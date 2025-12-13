@@ -6,6 +6,7 @@ sidebar:
 import PassAuthPayloadSnippet from '../../_assets/code/patterns/auth/pass-auth-payload.ts?snippet'
 import LiveStoreProviderSnippet from '../../_assets/code/patterns/auth/live-store-provider.tsx?snippet'
 import KeepPayloadCanonicalSnippet from '../../_assets/code/patterns/auth/keep-payload-canonical.ts?snippet'
+import CookieAuthSnippet from '../../_assets/code/patterns/auth/cookie-auth.ts?snippet'
 
 
 LiveStore doesn't include built-in authentication or authorization support, but you can implement it in your app's logic.
@@ -41,6 +42,41 @@ When you rely on `syncPayload`, treat it as untrusted input. Decode the token in
 - The HTTP transport does not forward payloads today; embed the necessary authorization context directly in the events or move those clients to WebSocket/DO-RPC if you must rely on shared payload metadata.
 
 You can extend `ensureAuthorized` to project additional claims, memoise verification per `authToken`, or enforce application-specific policies without changing LiveStore internals.
+
+## Cookie-based authentication
+
+If you prefer cookie-based authentication (e.g., with [better-auth](https://www.better-auth.com/)), you can forward HTTP headers to your `onPush` and `onPull` callbacks using the `forwardHeaders` option.
+
+### Why forward headers?
+
+Passing tokens in URL parameters (`syncPayload`) exposes them in browser history, server logs, and referrer headers. Cookie-based auth avoids these issues since cookies are sent automatically with each request and aren't logged in URLs.
+
+### Example
+
+The following example forwards `Cookie` and `Authorization` headers to the Durable Object callbacks:
+
+<CookieAuthSnippet />
+
+### How it works
+
+1. **Configure `forwardHeaders`** in `makeDurableObject()` to specify which headers to forward.
+2. **Headers are stored** in the WebSocket attachment during connection upgrade, surviving hibernation.
+3. **Access headers** via `context.headers` in `onPush` and `onPull` callbacks.
+4. **Worker-level validation** can also access headers via `context.headers` in `validatePayload`.
+
+### Custom header extraction
+
+For more control, pass a function to `forwardHeaders`:
+
+```typescript
+export class SyncBackendDO extends makeDurableObject({
+  forwardHeaders: (request) => ({
+    'x-user-id': request.headers.get('x-user-id') ?? '',
+    'x-session': request.headers.get('cookie')?.split('session=')[1]?.split(';')[0] ?? '',
+  }),
+  // ...
+}) {}
+```
 
 ## Client identity vs user identity
 
