@@ -10,7 +10,13 @@ import { type CfTypes, emitStreamResponse } from '@livestore/common-cf'
 import { Chunk, Effect, Option, type RpcMessage, Schema } from '@livestore/utils/effect'
 import { MAX_PUSH_EVENTS_PER_REQUEST, MAX_WS_MESSAGE_BYTES } from '../../common/constants.ts'
 import { SyncMessage } from '../../common/mod.ts'
-import { type Env, type MakeDurableObjectClassOptions, type StoreId, WebSocketAttachmentSchema } from '../shared.ts'
+import {
+  type Env,
+  type ForwardedHeaders,
+  type MakeDurableObjectClassOptions,
+  type StoreId,
+  WebSocketAttachmentSchema,
+} from '../shared.ts'
 import { DoCtx } from './layer.ts'
 
 const encodePullResponse = Schema.encodeSync(SyncMessage.PullResponse)
@@ -19,12 +25,14 @@ type PullBatchItem = SyncMessage.PullResponse['batch'][number]
 export const makePush =
   ({
     payload,
+    headers,
     options,
     storeId,
     ctx,
     env,
   }: {
     payload: Schema.JsonValue | undefined
+    headers: ForwardedHeaders | undefined
     options: MakeDurableObjectClassOptions | undefined
     storeId: StoreId
     ctx: CfTypes.DurableObjectState
@@ -40,7 +48,7 @@ export const makePush =
       }
 
       if (options?.onPush) {
-        yield* Effect.tryAll(() => options.onPush!(pushRequest, { storeId, payload })).pipe(
+        yield* Effect.tryAll(() => options.onPush!(pushRequest, { storeId, payload, headers })).pipe(
           UnknownError.mapToUnknownError,
         )
       }

@@ -17,6 +17,7 @@
 
 import { notYetImplemented, omitUndefineds } from '@livestore/utils'
 import {
+  Context,
   constVoid,
   Effect,
   Exit,
@@ -33,6 +34,13 @@ import {
 import type * as CfTypes from '../cf-types.ts'
 
 /**
+ * Context service providing access to the current WebSocket.
+ * This is useful for reading WebSocket attachment data (e.g., forwarded headers)
+ * inside RPC handlers.
+ */
+export class WsContext extends Context.Tag('WsContext')<WsContext, { readonly ws: CfTypes.WebSocket }>() {}
+
+/**
  * Configuration options for setting up WebSocket RPC on a Durable Object.
  */
 export interface DurableObjectWebSocketRpcConfig {
@@ -44,8 +52,22 @@ export interface DurableObjectWebSocketRpcConfig {
    * - 'accept': Use traditional WebSocket handling (not yet implemented)
    */
   webSocketMode: 'hibernate' | 'accept'
-  /** Effect RPC layer that defines the available RPC methods and handlers */
-  rpcLayer: Layer.Layer<never, never, RpcServer.Protocol>
+  /**
+   * Effect RPC layer that requires `RpcServer.Protocol` (and `WsContext` if used)
+   * and provides the RPC server runtime.
+   *
+   * This is typically created by:
+   * ```typescript
+   * RpcServer.layer(MyRpcs).pipe(Layer.provide(handlersLayer))
+   * ```
+   *
+   * `WsContext` is provided by the WebSocket protocol layer, so handlers can access
+   * WebSocket attachment data (e.g., forwarded headers stored after WebSocket upgrade).
+   *
+   * The layer requirements (`RIn`) must be a subset of `RpcServer.Protocol | WsContext`,
+   * which are both provided by the WebSocket protocol layer.
+   */
+  rpcLayer: Layer.Layer<never, never, RpcServer.Protocol | WsContext>
   /** Function to get access to incoming requests */
   onMessage?: (msg: RpcMessage.FromClientEncoded, ws: CfTypes.WebSocket) => void
   mainLayer?: Layer.Layer<never, never, never>
@@ -221,13 +243,16 @@ export interface WsRpcServerArgs {
  * This layer handles the low-level WebSocket protocol details for RPC communication,
  * including message serialization, routing, and error handling.
  *
+ * Also provides `WsContext` with the current WebSocket so handlers can access
+ * WebSocket attachment data (e.g., forwarded headers).
+ *
  * @param args Configuration for WebSocket RPC protocol
- * @returns Effect layer that provides RPC server protocol functionality
+ * @returns Effect layer that provides RPC server protocol functionality and WsContext
  *
  * @internal This is typically used internally by `setupDurableObjectWebSocketRpc`
  */
 export const layerRpcServerWebsocket = (args: WsRpcServerArgs) =>
-  Layer.scoped(RpcServer.Protocol, makeSocketProtocol(args))
+  Layer.mergeAll(Layer.scoped(RpcServer.Protocol, makeSocketProtocol(args)), Layer.succeed(WsContext, { ws: args.ws }))
 
 /**
  * Creates the low-level RPC protocol implementation for WebSocket communication.
