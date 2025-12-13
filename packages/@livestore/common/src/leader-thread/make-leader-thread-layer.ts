@@ -55,6 +55,8 @@ export interface MakeLeaderThreadLayerParams {
   dbEventlog: LeaderSqliteDb
   devtoolsOptions: DevtoolsOptions
   shutdownChannel: ShutdownChannel
+  /** Boot warning to emit (e.g., OPFS unavailable in private browsing) */
+  bootWarning?: BootStatus
   params?: {
     localPushBatchSize?: number
     backendPushBatchSize?: number
@@ -80,6 +82,7 @@ export const makeLeaderThreadLayer = ({
   dbEventlog,
   devtoolsOptions,
   shutdownChannel,
+  bootWarning,
   params,
   testing,
 }: MakeLeaderThreadLayerParams): Layer.Layer<LeaderThreadCtx, UnknownError, Scope.Scope | HttpClient.HttpClient> =>
@@ -88,6 +91,11 @@ export const makeLeaderThreadLayer = ({
       syncPayloadEncoded === undefined ? undefined : yield* Schema.decodeUnknown(syncPayloadSchema)(syncPayloadEncoded)
 
     const bootStatusQueue = yield* Queue.unbounded<BootStatus>().pipe(Effect.acquireRelease(Queue.shutdown))
+
+    // Emit boot warning if present (e.g., OPFS unavailable in private browsing)
+    if (bootWarning !== undefined) {
+      yield* Queue.offer(bootStatusQueue, bootWarning)
+    }
 
     const dbEventlogMissing = !hasEventlogTables(dbEventlog)
 
