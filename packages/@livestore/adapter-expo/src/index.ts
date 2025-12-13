@@ -312,7 +312,11 @@ const makeLeaderThread = ({
               options,
             }),
         },
-        initialState: { leaderHead: initialLeaderHead, migrationsReport: initialState.migrationsReport },
+        initialState: {
+          leaderHead: initialLeaderHead,
+          migrationsReport: initialState.migrationsReport,
+          storageMode: 'persisted',
+        },
         export: Effect.sync(() => db.export()),
         getEventlogData: Effect.sync(() => dbEventlog.export()),
         syncState: syncProcessor.syncState,

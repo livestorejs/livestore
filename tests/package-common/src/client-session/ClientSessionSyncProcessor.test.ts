@@ -343,6 +343,7 @@ Vitest.describe.concurrent('ClientSessionSyncProcessor', () => {
         initialState: {
           leaderHead: baseHead,
           migrationsReport: { migrations: [] },
+          storageMode: 'persisted',
         },
         export: Effect.dieMessage('not implemented'),
         getEventlogData: Effect.dieMessage('not implemented'),
@@ -519,6 +520,7 @@ Vitest.describe.concurrent('ClientSessionSyncProcessor', () => {
           initialState: {
             leaderHead: EventSequenceNumber.Client.ROOT,
             migrationsReport: { migrations: [] },
+            storageMode: 'persisted',
           },
           events: {
             push: () => Effect.void,

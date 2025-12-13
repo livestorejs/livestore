@@ -491,7 +491,11 @@ export const makePersistedAdapter =
             ),
         },
 
-        initialState: { leaderHead: initialLeaderHead, migrationsReport },
+        initialState: {
+          leaderHead: initialLeaderHead,
+          migrationsReport,
+          storageMode: opfsWarning === undefined ? 'persisted' : 'in-memory',
+        },
 
         getEventlogData: runInWorker(new WorkerSchema.LeaderWorkerInnerExportEventlog()).pipe(
           Effect.timeout(10_000),

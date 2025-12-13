@@ -413,7 +413,11 @@ const makeLocalLeaderThread = ({
                 options,
               }),
           },
-          initialState: { leaderHead: initialLeaderHead, migrationsReport: initialState.migrationsReport },
+          initialState: {
+            leaderHead: initialLeaderHead,
+            migrationsReport: initialState.migrationsReport,
+            storageMode: 'persisted',
+          },
           export: Effect.sync(() => dbState.export()),
           getEventlogData: Effect.sync(() => dbEventlog.export()),
           syncState: syncProcessor.syncState,
@@ -561,6 +565,7 @@ const makeWorkerLeaderThread = ({
         initialState: {
           leaderHead: initialLeaderHead,
           migrationsReport: bootResult.migrationsReport,
+          storageMode: 'persisted',
         },
         export: runInWorker(new WorkerSchema.LeaderWorkerInnerExport()).pipe(
           Effect.timeout(10_000),

@@ -1,5 +1,6 @@
 import type { Effect, Stream, Subscribable } from '@livestore/utils/effect'
 
+import type { StorageMode } from './adapter-types.ts'
 import type { MigrationsReport } from './defs.ts'
 import type * as Devtools from './devtools/mod.ts'
 import type { UnknownError } from './errors.ts'
@@ -25,6 +26,12 @@ export interface ClientSessionLeaderThreadProxy {
     readonly leaderHead: EventSequenceNumber.Client.Composite
     /** The migrations report from the leader thread */
     readonly migrationsReport: MigrationsReport
+    /**
+     * Indicates how data is being stored.
+     * - `persisted`: Data is persisted to disk (e.g., via OPFS)
+     * - `in-memory`: Data is only stored in memory and will be lost on page refresh (e.g., private browsing)
+     */
+    readonly storageMode: StorageMode
   }
   export: Effect.Effect<Uint8Array<ArrayBuffer>, UnknownError>
   getEventlogData: Effect.Effect<Uint8Array<ArrayBuffer>, UnknownError>
