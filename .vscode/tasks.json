@@ -3,43 +3,195 @@
   // for the documentation about the tasks.json format
   "version": "2.0.0",
   "tasks": [
+    // ============================================================
+    // install
+    // ============================================================
     {
-      "label": "pnpm-install",
+      "label": "install",
       "type": "shell",
       "command": "direnv exec . pnpm install",
       "problemMatcher": [],
       "presentation": {
         "focus": true,
         "panel": "shared",
-        "group": "pnpm",
+        "group": "install",
         "showReuseMessage": false,
         "clear": false,
         "close": true
       }
     },
+
+    // ============================================================
+    // ts
+    // ============================================================
     {
-      "label": "build:clean",
+      "label": "ts",
       "type": "shell",
-      "command": "direnv exec . pnpm build:clean",
+      "command": "direnv exec . mono ts",
+      "problemMatcher": ["$tsc"],
+      "presentation": {
+        "focus": false,
+        "panel": "shared",
+        "group": "ts",
+        "showReuseMessage": false,
+        "clear": false
+      }
+    },
+    {
+      "label": "ts:watch",
+      "type": "shell",
+      "command": "direnv exec . mono ts --watch",
+      "problemMatcher": ["$tsc-watch"],
+      "isBackground": true,
+      "presentation": {
+        "focus": false,
+        "panel": "shared",
+        "group": "ts",
+        "showReuseMessage": false,
+        "clear": false
+      }
+    },
+    {
+      "label": "ts:clean",
+      "type": "shell",
+      "command": "direnv exec . mono ts --clean",
+      "problemMatcher": ["$tsc"],
+      "presentation": {
+        "focus": false,
+        "panel": "shared",
+        "group": "ts",
+        "showReuseMessage": false,
+        "clear": false
+      }
+    },
+    {
+      "label": "ts:clean:watch",
+      "type": "shell",
+      "command": "direnv exec . mono ts --clean --watch",
+      "problemMatcher": ["$tsc-watch"],
+      "isBackground": true,
+      "presentation": {
+        "focus": false,
+        "panel": "shared",
+        "group": "ts",
+        "showReuseMessage": false,
+        "clear": false
+      }
+    },
+
+    // ============================================================
+    // lint
+    // ============================================================
+    {
+      "label": "lint",
+      "type": "shell",
+      "command": "direnv exec . mono lint",
+      // TODO add biome problem matcher once available https://github.com/biomejs/biome-vscode/discussions/121
+      "problemMatcher": {
+        "owner": "biome",
+        "source": "biome",
+        "pattern": [
+          {
+            "regexp": "^::(?<severity>\\S+)\\s+title=(?<title>.+),file=(?<file>.+),line=(?<line>\\d+),endLine=(?<endLine>\\d+),col=(?<col>\\d+),endColumn=(?<endColumn>\\d+)::(?<message>.+)$",
+            "kind": "location",
+            "severity": 1,
+            "code": 2,
+            "file": 3,
+            "line": 4,
+            "endLine": 5,
+            "column": 6,
+            "endColumn": 7,
+            "message": 8
+          }
+        ]
+      },
+      "presentation": {
+        "focus": false,
+        "panel": "shared",
+        "group": "lint",
+        "showReuseMessage": false,
+        "clear": true
+      }
+    },
+    {
+      "label": "lint:fix",
+      "type": "shell",
+      "command": "direnv exec . mono lint --fix",
       "problemMatcher": [],
       "presentation": {
         "focus": true,
         "panel": "shared",
-        "group": "dev",
+        "group": "lint",
         "showReuseMessage": false,
-        "clear": false,
-        "close": true
+        "clear": true
+      }
+    },
+
+    // ============================================================
+    // test
+    // ============================================================
+    {
+      "label": "test",
+      "type": "shell",
+      "command": "direnv exec . pnpm test",
+      "problemMatcher": [],
+      "presentation": {
+        "focus": true,
+        "panel": "shared",
+        "group": "test",
+        "showReuseMessage": false,
+        "clear": true
       }
     },
     {
-      "label": "dev:docs",
+      "label": "test:unit",
       "type": "shell",
-      "command": "direnv exec . pnpm dev",
+      "command": "direnv exec . mono test unit",
+      "problemMatcher": [],
+      "presentation": {
+        "focus": true,
+        "panel": "shared",
+        "group": "test",
+        "showReuseMessage": false,
+        "clear": true
+      }
+    },
+    {
+      "label": "test:integration",
+      "type": "shell",
+      "command": "direnv exec . mono test integration all",
+      "problemMatcher": [],
+      "presentation": {
+        "focus": true,
+        "panel": "shared",
+        "group": "test",
+        "showReuseMessage": false,
+        "clear": true
+      }
+    },
+    {
+      "label": "test:perf",
+      "type": "shell",
+      "command": "direnv exec . mono test perf",
+      "problemMatcher": [],
+      "presentation": {
+        "focus": true,
+        "panel": "shared",
+        "group": "test",
+        "showReuseMessage": false,
+        "clear": true
+      }
+    },
+
+    // ============================================================
+    // docs
+    // ============================================================
+    {
+      "label": "docs:dev",
+      "type": "shell",
+      "command": "direnv exec . mono docs dev",
       "isBackground": true,
       "problemMatcher": [],
-      "options": {
-        "cwd": "${workspaceFolder}/docs"
-      },
       "presentation": {
         "focus": false,
         "panel": "shared",
@@ -49,7 +201,87 @@
       }
     },
     {
-      "label": "dev:proxy",
+      "label": "docs:build",
+      "type": "shell",
+      "command": "direnv exec . mono docs build",
+      "problemMatcher": [],
+      "presentation": {
+        "focus": true,
+        "panel": "shared",
+        "group": "docs",
+        "showReuseMessage": false,
+        "clear": false
+      }
+    },
+    {
+      "label": "docs:preview",
+      "type": "shell",
+      "command": "direnv exec . mono docs preview",
+      "isBackground": true,
+      "problemMatcher": [],
+      "presentation": {
+        "focus": false,
+        "panel": "shared",
+        "group": "docs",
+        "showReuseMessage": false,
+        "clear": false
+      }
+    },
+
+    // ============================================================
+    // examples
+    // ============================================================
+    {
+      "label": "examples:todomvc",
+      "dependsOn": ["ts:clean:watch", "infra:proxy"],
+      "type": "shell",
+      "command": "direnv exec . mono examples run web-todomvc",
+      "isBackground": true,
+      "problemMatcher": [],
+      "presentation": {
+        "focus": false,
+        "panel": "shared",
+        "group": "examples",
+        "showReuseMessage": false,
+        "clear": false
+      }
+    },
+    {
+      "label": "examples:linearlite",
+      "dependsOn": ["ts:clean:watch", "infra:proxy"],
+      "type": "shell",
+      "command": "direnv exec . mono examples run web-linearlite",
+      "isBackground": true,
+      "problemMatcher": [],
+      "presentation": {
+        "focus": false,
+        "panel": "shared",
+        "group": "examples",
+        "showReuseMessage": false,
+        "clear": false
+      }
+    },
+    {
+      "label": "examples:todomvc-custom-elements",
+      "dependsOn": ["ts:clean:watch", "infra:proxy"],
+      "type": "shell",
+      "command": "direnv exec . mono examples run web-todomvc-custom-elements",
+      "isBackground": true,
+      "problemMatcher": [],
+      "presentation": {
+        "focus": false,
+        "panel": "shared",
+        "group": "examples",
+        "showReuseMessage": false,
+        "clear": false
+      }
+    },
+
+    // ============================================================
+    // infrastructure
+    // ============================================================
+    {
+      "label": "infra:proxy",
       "type": "shell",
       "command": "direnv exec . fkill --silent :443 && caddy run",
       "problemMatcher": {
@@ -72,141 +304,40 @@
       "presentation": {
         "focus": false,
         "panel": "shared",
-        "group": "dev:proxy",
+        "group": "infra",
         "showReuseMessage": false,
         "clear": false
       }
     },
+
+    // ============================================================
+    // misc
+    // ============================================================
     {
-      "label": "dev:ts:watch",
+      "label": "circular",
       "type": "shell",
-      "command": "direnv exec . mono ts --clean --watch",
-      "problemMatcher": ["$tsc-watch"],
-      "isBackground": true,
-      "presentation": {
-        "focus": false,
-        "panel": "shared",
-        "group": "dev",
-        "showReuseMessage": false,
-        "clear": false
-      }
-    },
-    {
-      "label": "dev:example",
-      "dependsOn": ["dev:example:todomvc", "dev:example:todomvc-custom-elements", "dev:example:linearlite"],
-      "problemMatcher": []
-    },
-    {
-      "label": "dev:example:todomvc",
-      "dependsOn": ["dev:ts:watch", "dev:proxy"],
-      "type": "shell",
-      "command": "direnv exec . pnpm dev",
-      "isBackground": true,
-      "problemMatcher": [],
-      "options": {
-        "cwd": "${workspaceFolder}/examples/web-todomvc"
-      },
-      "presentation": {
-        "focus": false,
-        "panel": "shared",
-        "group": "examples:todomvc",
-        "showReuseMessage": false,
-        "clear": false
-      }
-    },
-    {
-      "label": "dev:example:todomvc-custom-elements",
-      "dependsOn": ["dev:ts:watch", "dev:proxy"],
-      "type": "shell",
-      "command": "direnv exec . pnpm dev",
-      "isBackground": true,
-      "problemMatcher": [],
-      "options": {
-        "cwd": "${workspaceFolder}/examples/web-todomvc-custom-elements"
-      },
-      "presentation": {
-        "focus": false,
-        "panel": "shared",
-        "group": "examples:todomvc-custom-elements",
-        "showReuseMessage": false,
-        "clear": false
-      }
-    },
-    {
-      "label": "dev:example:linearlite",
-      "dependsOn": ["dev:ts:watch", "dev:proxy"],
-      "type": "shell",
-      "command": "direnv exec . pnpm dev",
-      "isBackground": true,
-      "problemMatcher": [],
-      "options": {
-        "cwd": "${workspaceFolder}/examples/web-linearlite"
-      },
-      "presentation": {
-        "focus": false,
-        "panel": "shared",
-        "group": "examples:linearlite",
-        "showReuseMessage": false,
-        "clear": false
-      }
-    },
-    {
-      "label": "lint",
-      "type": "shell",
-      "command": "direnv exec . mono lint",
-      // TODO add biome problem matcher once available https://github.com/biomejs/biome-vscode/discussions/121
-      // "problemMatcher": [],
-      "problemMatcher": {
-        "owner": "biome",
-        "source": "biome",
-        "pattern": [
-          {
-            "regexp": "^::(?<severity>\\S+)\\s+title=(?<title>.+),file=(?<file>.+),line=(?<line>\\d+),endLine=(?<endLine>\\d+),col=(?<col>\\d+),endColumn=(?<endColumn>\\d+)::(?<message>.+)$",
-            "kind": "location",
-            "severity": 1,
-            "code": 2,
-            "file": 3,
-            "line": 4,
-            "endLine": 5,
-            "column": 6,
-            "endColumn": 7,
-            "message": 8
-          }
-        ]
-      },
-      "presentation": {
-        "focus": false,
-        "panel": "shared",
-        "group": "dev:lint",
-        "showReuseMessage": false,
-        "clear": true
-      }
-    },
-    {
-      "label": "lint:fix",
-      "type": "shell",
-      "command": "direnv exec . mono lint --fix",
+      "command": "direnv exec . mono circular",
       "problemMatcher": [],
       "presentation": {
         "focus": true,
         "panel": "shared",
-        "group": "dev:lint",
+        "group": "misc",
         "showReuseMessage": false,
         "clear": true
       }
     },
     {
-      "label": "test",
+      "label": "update-deps",
       "type": "shell",
-      "command": "direnv exec . pnpm test",
+      "command": "direnv exec . mono update-deps",
       "problemMatcher": [],
       "presentation": {
         "focus": true,
         "panel": "shared",
-        "group": "test",
+        "group": "misc",
         "showReuseMessage": false,
-        "clear": true
+        "clear": false
       }
-    },
+    }
   ]
 }
