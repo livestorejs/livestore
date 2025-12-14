@@ -26,18 +26,18 @@ Think of LiveStore as a next-generation state management library (like Zustand o
 
 The combination of persisted and distributed state is a giant leap for creating an **amazing user experience** (UX), while also providing a **best-in-class developer experience** (DX). The **immutable eventlog** enables robust testing and tight feedback loops, making it perfect for agentic coding.
 
-<!-- - UX
-  - Persisted state survives page refresh
-  - Works offline by default
-  - Magical syncing across devices
+- UX
+  - : Persisted state survives page refresh
+  - **Offline**: Works offline by default
+  - **Magical**: syncing across devices
 - DX
-  - Full type safety
-  - Reactive queries (UI updates automatically)
-  - Time travel for debugging
+  - **Principled**: Handle data 
+  - **Type-safe**: Full type safety
+  - **Reactive**: Automatic UI updates when data changes
 - AX
-  - Immutable eventlog enables testing and tight feedback loops
-  - Deterministic state replay—same events always produce same state
-  - State can be reset/forked for experimentation -->
+  - Testable: Immutable eventlog enables testing and tight feedback loops
+  - Debuggable: Deterministic state replay—same events always produce same state
+  - Evolvable: State can be reset/forked for experimentation
 
 LiveStore works cross-platform and can be used for building UI apps (web, mobile, desktop, ...), agents, and any other software like CLIs, scripts or server-to-server applications.
 
@@ -127,10 +127,6 @@ But there are key differences:
 | State lost on refresh                              | Events persisted locally                    |
 | Sync requires external setup                       | Sync built-in via eventlog                  |
 | Fixed state shape                                  | Query any shape with SQL                    |
-
-## Built for AI agents and agentic development
-
-LiveStore has been built for the age of AI agents. With the immutable eventlog at its core, it is perfectly suited for testing and creating tight feedback loops which are crucial properties for productive agentic development.
 
 ## A practical example
 
