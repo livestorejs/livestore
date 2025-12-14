@@ -6,7 +6,6 @@ import { StoreRegistryProvider } from '@livestore/react'
 import { createRootRouteWithContext, HeadContent, Outlet, Scripts } from '@tanstack/react-router'
 import React, { type ReactNode, Suspense } from 'react'
 import { MenuContext, NewIssueModalContext } from '../app/contexts.ts'
-import { KeyboardShortcuts } from '../components/common/keyboard-shortcuts.tsx'
 import { Icon } from '../components/icons/index.tsx'
 import { VersionBadge } from '../components/VersionBadge.tsx'
 import type { Status } from '../types/status.ts'
@@ -43,7 +42,6 @@ const RootComponent = () => {
         <StoreRegistryProvider storeRegistry={storeRegistry}>
           <MenuContext.Provider value={{ showMenu, setShowMenu }}>
             <NewIssueModalContext.Provider value={{ newIssueModalStatus, setNewIssueModalStatus }}>
-              <KeyboardShortcuts />
               <Outlet />
             </NewIssueModalContext.Provider>
           </MenuContext.Provider>
