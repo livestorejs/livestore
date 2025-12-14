@@ -222,7 +222,7 @@ Here, both the event definition and materializer are automatically derived from 
 
 In this step, you need to add the local state for the tabbed UI element to the `<App>` component. Additionally, you're going to replace the `useState()` hook that you currently use for the `input` state with LiveStore's approach as well.
 
-Replace the `useState()` usage for `input` and `filter` with LiveStore's [`useClientDocument()`](/framework-integrations/react-integration#useclientdocument):
+Replace the `useState()` usage for `input` and `filter` with LiveStore's [`useClientDocument()`](/framework-integrations/react-integration#storeuseclientdocumenttable-id-options):
 
 ```diff title="src/App.tsx" lang="tsx"
 +const [{ input, filter }, setUiState, , uiState$] = store.useClientDocument(tables.uiState)
