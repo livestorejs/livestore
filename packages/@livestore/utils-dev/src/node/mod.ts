@@ -97,9 +97,10 @@ export const OtelLiveHttp = ({
 
     const layer = yield* Layer.memoize(RootSpanLive.pipe(Layer.provideMerge(OtelLive)))
 
-    if (traceNodeBootstrap) {
+    if (traceNodeBootstrap && !IS_BUN) {
       /**
        * Create a span representing the Node.js bootstrap duration.
+       * Note: Skipped in Bun since performance.nodeTiming is not properly supported.
        */
       yield* Effect.gen(function* () {
         const tracer = yield* OtelTracer.OtelTracer

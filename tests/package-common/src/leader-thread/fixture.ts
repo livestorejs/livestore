@@ -22,10 +22,18 @@ const appConfig = State.SQLite.clientDocument({
   default: { value: { fontSize: 16, theme: 'light' } },
 })
 
+const appConfigTable = appConfig as typeof appConfig & State.SQLite.ClientDocumentTableDef<any, any, any, any>
+
+export const appConfigSetEvent = appConfigTable[State.SQLite.ClientDocumentTableDefSymbol].derived.setEventDef
+
 export const events = {
   todoCreated: Events.synced({
     name: 'todoCreated',
     schema: Schema.Struct({ id: Schema.String, text: Schema.String, completed: Schema.Boolean.pipe(Schema.optional) }),
+  }),
+  todoCompleted: Events.synced({
+    name: 'todoCompleted',
+    schema: Schema.Struct({ id: Schema.String }),
   }),
   todoDeletedNonPure: Events.synced({
     name: 'todoDeletedNonPure',
@@ -35,6 +43,7 @@ export const events = {
 
 const materializers = State.SQLite.materializers(events, {
   todoCreated: ({ id, text, completed }) => todos.insert({ id, text, completed: completed ?? false }),
+  todoCompleted: ({ id }) => todos.update({ completed: true }).where({ id }),
   // This materialize is non-pure as `new Date()` is side effecting
   todoDeletedNonPure: ({ id }) => todos.update({ deletedAt: new Date() }).where({ id }),
 })

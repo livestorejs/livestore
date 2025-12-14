@@ -8,6 +8,7 @@ import {
   SyncState,
   UnknownError,
 } from '@livestore/common'
+import { StreamEventsOptionsFields } from '@livestore/common/leader-thread'
 import { EventSequenceNumber, LiveStoreEvent } from '@livestore/common/schema'
 import * as WebmeshWorker from '@livestore/devtools-web-common/worker'
 import { Schema, Transferable } from '@livestore/utils/effect'
@@ -101,6 +102,15 @@ export class LeaderWorkerInnerPullStream extends Schema.TaggedRequest<LeaderWork
   }),
   failure: UnknownError,
 }) {}
+
+export class LeaderWorkerInnerStreamEvents extends Schema.TaggedRequest<LeaderWorkerInnerStreamEvents>()(
+  'StreamEvents',
+  {
+    payload: StreamEventsOptionsFields,
+    success: LiveStoreEvent.Client.Encoded,
+    failure: UnknownError,
+  },
+) {}
 
 export class LeaderWorkerInnerExport extends Schema.TaggedRequest<LeaderWorkerInnerExport>()('Export', {
   payload: {},
@@ -196,6 +206,7 @@ export const LeaderWorkerInnerRequest = Schema.Union(
   LeaderWorkerInnerBootStatusStream,
   LeaderWorkerInnerPushToLeader,
   LeaderWorkerInnerPullStream,
+  LeaderWorkerInnerStreamEvents,
   LeaderWorkerInnerExport,
   LeaderWorkerInnerExportEventlog,
   LeaderWorkerInnerGetRecreateSnapshot,
@@ -237,6 +248,7 @@ export class SharedWorkerRequest extends Schema.Union(
   LeaderWorkerInnerBootStatusStream,
   LeaderWorkerInnerPushToLeader,
   LeaderWorkerInnerPullStream,
+  LeaderWorkerInnerStreamEvents,
   LeaderWorkerInnerExport,
   LeaderWorkerInnerGetRecreateSnapshot,
   LeaderWorkerInnerExportEventlog,

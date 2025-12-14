@@ -192,8 +192,20 @@ export const cleanupOldStateDbFiles: (options: {
       const archiveFileData = yield* vfs.readFilePayload(fileName)
 
       const archiveFileName = `${Date.now()}-${fileName}`
+      const archivePath = `${opfsDirectory}/archive/${archiveFileName}`
+      const archiveData = new Uint8Array(archiveFileData)
 
-      yield* Opfs.writeFile(`${opfsDirectory}/archive/${archiveFileName}`, new Uint8Array(archiveFileData))
+      // Prefer writeFile (atomic) when createWritable is available (Chrome, Firefox, Safari 26+),
+      // fall back to syncWriteFile (non-atomic) for Safari 18.x compatibility.
+      // TODO: Remove feature detection and use writeFile directly when Safari >= 26 is widely available.
+      const supportsCreateWritable =
+        typeof FileSystemFileHandle !== 'undefined' && 'createWritable' in FileSystemFileHandle.prototype
+
+      if (supportsCreateWritable) {
+        yield* Opfs.writeFile(archivePath, archiveData)
+      } else {
+        yield* Opfs.syncWriteFile(archivePath, archiveData)
+      }
     }
 
     const vfsResultCode = yield* Effect.try({

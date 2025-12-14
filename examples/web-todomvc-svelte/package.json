@@ -4,11 +4,11 @@
   "type": "module",
   "private": true,
   "dependencies": {
-    "@livestore/adapter-web": "0.4.0-dev.20",
-    "@livestore/livestore": "0.4.0-dev.20",
-    "@livestore/peer-deps": "0.4.0-dev.20",
-    "@livestore/svelte": "0.4.0-dev.20",
-    "@livestore/wa-sqlite": "0.4.0-dev.20",
+    "@livestore/adapter-web": "0.4.0-dev.21",
+    "@livestore/livestore": "0.4.0-dev.21",
+    "@livestore/peer-deps": "0.4.0-dev.21",
+    "@livestore/svelte": "0.4.0-dev.21",
+    "@livestore/wa-sqlite": "0.4.0-dev.21",
     "svelte": "5.43.14",
     "todomvc-app-css": "2.4.3",
     "uuid": "11.1.0"
@@ -17,7 +17,7 @@
   "devDependencies": {
     "@cloudflare/vite-plugin": "^1.13.12",
     "@cloudflare/workers-types": "4.20251118.0",
-    "@livestore/devtools-vite": "0.4.0-dev.20",
+    "@livestore/devtools-vite": "0.4.0-dev.21",
     "@playwright/test": "^1.56.0",
     "@sveltejs/vite-plugin-svelte": "^6.2.1",
     "typescript": "^5.9.2",

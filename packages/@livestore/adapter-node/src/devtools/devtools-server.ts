@@ -21,6 +21,16 @@ import { makeMeshNode, makeWebSocketEdge } from '@livestore/webmesh'
 import { makeViteMiddleware } from './vite-dev-server.ts'
 
 /**
+ * Determines if a request URL should be routed to the Vite middleware.
+ * Includes LiveStore devtools paths and Vite internal paths like `/@fs/`, `/@vite/`, etc.
+ */
+const shouldRouteToVite = (url: string): boolean =>
+  url.startsWith('/_livestore') ||
+  url.startsWith('/@fs') ||
+  url.startsWith('/@vite') ||
+  url.startsWith('/@react-refresh')
+
+/**
  * Starts a devtools HTTP/WS server which serves ...
  * - the Devtools UI via Vite
  * - the Devtools Protocol via WebSocket Webmesh
@@ -96,7 +106,7 @@ export const startDevtoolsServer = ({
       } else {
         if (req.url === '/' || req.url === '') {
           return HttpServerResponse.redirect('/_livestore/node')
-        } else if (req.url.startsWith('/_livestore')) {
+        } else if (shouldRouteToVite(req.url)) {
           // Here we're delegating to the Vite middleware
 
           // TODO replace this once @effect/platform-node supports Node HTTP middlewares

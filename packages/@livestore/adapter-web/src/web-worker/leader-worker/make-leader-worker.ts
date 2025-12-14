@@ -1,7 +1,13 @@
-import type { SqliteDb, SyncOptions } from '@livestore/common'
+import type { BootStatus, BootWarningReason, SqliteDb, SyncOptions } from '@livestore/common'
 import { Devtools, LogConfig, UnknownError } from '@livestore/common'
-import type { DevtoolsOptions } from '@livestore/common/leader-thread'
-import { configureConnection, Eventlog, LeaderThreadCtx, makeLeaderThreadLayer } from '@livestore/common/leader-thread'
+import type { DevtoolsOptions, StreamEventsOptions } from '@livestore/common/leader-thread'
+import {
+  configureConnection,
+  Eventlog,
+  LeaderThreadCtx,
+  makeLeaderThreadLayer,
+  streamEventsWithSyncState,
+} from '@livestore/common/leader-thread'
 import type { LiveStoreSchema } from '@livestore/common/schema'
 import { LiveStoreEvent } from '@livestore/common/schema'
 import * as WebmeshWorker from '@livestore/devtools-web-common/worker'
@@ -16,12 +22,12 @@ import {
   Layer,
   OtelTracer,
   Scheduler,
-  type Schema,
+  Schema,
   Stream,
   TaskTracing,
   WorkerRunner,
 } from '@livestore/utils/effect'
-import { BrowserWorkerRunner, Opfs } from '@livestore/utils/effect/browser'
+import { BrowserWorkerRunner, Opfs, WebError } from '@livestore/utils/effect/browser'
 import type * as otel from '@opentelemetry/api'
 
 import { cleanupOldStateDbFiles, getStateDbFileName, sanitizeOpfsDir } from '../common/persisted-sqlite.ts'
@@ -112,13 +118,28 @@ const makeWorkerRunnerInner = ({ schema, sync: syncOptions, syncPayloadSchema }:
       Effect.gen(function* () {
         const sqlite3 = yield* Effect.promise(() => loadSqlite3Wasm())
         const makeSqliteDb = sqliteDbFactory({ sqlite3 })
-        const opfsDirectory = yield* sanitizeOpfsDir(storageOptions.directory, storeId)
         const runtime = yield* Effect.runtime<never>()
 
-        const makeDb = (kind: 'state' | 'eventlog') =>
+        // Check OPFS availability and determine storage mode
+        const opfsCheck = yield* checkOpfsAvailability
+        const useOpfs = opfsCheck === undefined
+
+        // Track boot warning to emit later
+        let bootWarning: BootStatus | undefined
+        if (!useOpfs) {
+          yield* Effect.logWarning(
+            '[@livestore/adapter-web:worker] OPFS unavailable, using in-memory storage',
+            opfsCheck,
+          )
+          bootWarning = { stage: 'warning', ...opfsCheck }
+        }
+
+        const opfsDirectory = useOpfs ? yield* sanitizeOpfsDir(storageOptions.directory, storeId) : undefined
+
+        const makeOpfsDb = (kind: 'state' | 'eventlog') =>
           makeSqliteDb({
             _tag: 'opfs',
-            opfsDirectory,
+            opfsDirectory: opfsDirectory!,
             fileName: kind === 'state' ? getStateDbFileName(schema) : 'eventlog.db',
             configureDb: (db) =>
               configureConnection(db, {
@@ -131,10 +152,17 @@ const makeWorkerRunnerInner = ({ schema, sync: syncOptions, syncPayloadSchema }:
               }).pipe(Effect.provide(runtime), Effect.runSync),
           }).pipe(Effect.acquireRelease((db) => Effect.try(() => db.close()).pipe(Effect.ignoreLogged)))
 
-        // Might involve some async work, so we're running them concurrently
-        const [dbState, dbEventlog] = yield* Effect.all([makeDb('state'), makeDb('eventlog')], {
-          concurrency: 2,
-        })
+        const makeInMemoryDb = () =>
+          makeSqliteDb({
+            _tag: 'in-memory',
+            configureDb: (db) =>
+              configureConnection(db, { foreignKeys: true }).pipe(Effect.provide(runtime), Effect.runSync),
+          }).pipe(Effect.acquireRelease((db) => Effect.try(() => db.close()).pipe(Effect.ignoreLogged)))
+
+        // Use OPFS if available, otherwise fall back to in-memory
+        const [dbState, dbEventlog] = useOpfs
+          ? yield* Effect.all([makeOpfsDb('state'), makeOpfsDb('eventlog')], { concurrency: 2 })
+          : yield* Effect.all([makeInMemoryDb(), makeInMemoryDb()], { concurrency: 2 })
 
         // Clean up old state database files after successful database creation
         // This prevents OPFS file pool capacity exhaustion from accumulated state db files after schema changes/migrations
@@ -161,6 +189,7 @@ const makeWorkerRunnerInner = ({ schema, sync: syncOptions, syncPayloadSchema }:
           shutdownChannel,
           syncPayloadEncoded,
           syncPayloadSchema,
+          ...(bootWarning !== undefined ? { bootWarning } : {}),
         })
       }).pipe(
         Effect.tapCauseLogPretty,
@@ -185,7 +214,7 @@ const makeWorkerRunnerInner = ({ schema, sync: syncOptions, syncPayloadSchema }:
       }).pipe(UnknownError.mapToUnknownError, Effect.withSpan('@livestore/adapter-web:worker:GetRecreateSnapshot')),
     PullStream: ({ cursor }) =>
       Effect.gen(function* () {
-        const { syncProcessor } = yield* LeaderThreadCtx
+        const { syncProcessor } = yield* LeaderThreadCtx // <- syncState comes from here
         return syncProcessor.pull({ cursor })
       }).pipe(
         Stream.unwrapScoped,
@@ -200,6 +229,20 @@ const makeWorkerRunnerInner = ({ schema, sync: syncOptions, syncPayloadSchema }:
           { waitForProcessing: true },
         ),
       ).pipe(Effect.uninterruptible, Effect.withSpan('@livestore/adapter-web:worker:PushToLeader')),
+    StreamEvents: (options) =>
+      LeaderThreadCtx.pipe(
+        Effect.map(({ dbEventlog, syncProcessor }) => {
+          const { _tag: _ignored, ...payload } = options as any
+          const streamOptions = payload as StreamEventsOptions
+          return streamEventsWithSyncState({
+            dbEventlog,
+            syncState: syncProcessor.syncState,
+            options: streamOptions,
+          })
+        }),
+        Stream.unwrapScoped,
+        Stream.withSpan('@livestore/adapter-web:worker:StreamEvents'),
+      ),
     Export: () =>
       Effect.andThen(LeaderThreadCtx, (_) => _.dbState.export()).pipe(
         UnknownError.mapToUnknownError,
@@ -271,13 +314,39 @@ const makeDevtoolsOptions = ({
 
     return {
       enabled: true,
-      boot: Effect.gen(function* () {
-        const persistenceInfo = {
+      boot: Effect.succeed({
+        node,
+        persistenceInfo: {
           state: dbState.metadata.persistenceInfo,
           eventlog: dbEventlog.metadata.persistenceInfo,
-        }
-
-        return { node, persistenceInfo, mode: 'direct' }
+        },
+        mode: 'direct' as const,
       }),
     }
   })
+
+/**
+ * Attempts to access OPFS and returns a warning if unavailable.
+ *
+ * Common failure scenarios:
+ * - Safari/Firefox private browsing: SecurityError or NotAllowedError
+ * - Permission denied: NotAllowedError
+ * - Quota exceeded: QuotaExceededError
+ */
+const checkOpfsAvailability = Effect.gen(function* () {
+  const opfs = yield* Opfs.Opfs
+  return yield* opfs.getRootDirectoryHandle.pipe(
+    Effect.as(undefined),
+    Effect.catchAll((error) => {
+      const reason: BootWarningReason =
+        Schema.is(WebError.SecurityError)(error) || Schema.is(WebError.NotAllowedError)(error)
+          ? 'private-browsing'
+          : 'storage-unavailable'
+      const message =
+        reason === 'private-browsing'
+          ? 'Storage unavailable in private browsing mode. LiveStore will continue without persistence.'
+          : 'Storage access denied. LiveStore will continue without persistence.'
+      return Effect.succeed({ reason, message } as const)
+    }),
+  )
+})

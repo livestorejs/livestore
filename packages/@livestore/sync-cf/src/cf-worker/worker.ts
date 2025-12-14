@@ -4,7 +4,7 @@ import type { HelperTypes } from '@livestore/common-cf'
 import { Effect, Schema } from '@livestore/utils/effect'
 import type { CfTypes, SearchParams } from '../common/mod.ts'
 import type { CfDeclare } from './mod.ts'
-import { type Env, matchSyncRequest } from './shared.ts'
+import { type Env, type ForwardedHeaders, matchSyncRequest } from './shared.ts'
 
 // NOTE We need to redeclare runtime types here to avoid type conflicts with the lib.dom Response type.
 declare class Response extends CfDeclare.Response {}
@@ -18,6 +18,13 @@ export type CFWorker<TEnv extends Env = Env, _T extends CfTypes.Rpc.DurableObjec
   ) => Promise<CfTypes.Response>
 }
 
+/** Context passed to validatePayload callback */
+export type ValidatePayloadContext = {
+  storeId: string
+  /** Request headers (raw, not filtered by forwardHeaders) */
+  headers: ForwardedHeaders
+}
+
 /**
  * Options accepted by {@link makeWorker}. The Durable Object binding has to be
  * supplied explicitly so we never fall back to deprecated defaults when Cloudflare config changes.
@@ -28,20 +35,29 @@ export type MakeWorkerOptions<TEnv extends Env = Env, TSyncPayload = Schema.Json
    */
   syncBackendBinding: HelperTypes.ExtractDurableObjectKeys<TEnv>
   /**
-   * Validates the payload during WebSocket connection establishment.
-   * Note: This runs only at connection time, not for individual push events.
-   * For push event validation, use the `onPush` callback in the Durable Object.
-   */
-  /**
    * Optionally pass a schema to decode the client-provided payload into a typed object
    * before calling {@link validatePayload}. If omitted, the raw JSON value is forwarded.
    */
   syncPayloadSchema?: Schema.Schema<TSyncPayload>
   /**
    * Validates the (optionally decoded) payload during WebSocket connection establishment.
-   * If {@link syncPayloadSchema} is provided, `payload` will be of the schema’s inferred type.
+   * If {@link syncPayloadSchema} is provided, `payload` will be of the schema's inferred type.
+   *
+   * The context includes request headers for cookie-based or header-based authentication.
+   *
+   * @example Cookie-based authentication
+   * ```ts
+   * validatePayload: async (payload, { storeId, headers }) => {
+   *   const cookie = headers.get('cookie')
+   *   const session = await validateSessionFromCookie(cookie)
+   *   if (!session) throw new Error('Unauthorized')
+   * }
+   * ```
+   *
+   * Note: This runs only at connection time, not for individual push events.
+   * For push event validation, use the `onPush` callback in the Durable Object.
    */
-  validatePayload?: (payload: TSyncPayload, context: { storeId: string }) => void | Promise<void>
+  validatePayload?: (payload: TSyncPayload, context: ValidatePayloadContext) => void | Promise<void>
   /** @default false */
   enableCORS?: boolean
 }
@@ -117,37 +133,33 @@ export const makeWorker = <
   }
 }
 
+/** Convert CF Request headers to a ForwardedHeaders map */
+const requestHeadersToMap = (request: CfTypes.Request): ForwardedHeaders => {
+  const result = new Map<string, string>()
+  request.headers.forEach((value, key) => {
+    result.set(key.toLowerCase(), value)
+  })
+  return result
+}
+
 /**
  * Handles LiveStore sync requests (e.g. with search params `?storeId=...&transport=...`).
  *
- * @example
+ * @example Token-based authentication
  * ```ts
  * const validatePayload = (payload: Schema.JsonValue | undefined, context: { storeId: string }) => {
- *   console.log(`Validating connection for store: ${context.storeId}`)
  *   if (payload?.authToken !== 'insecure-token-change-me') {
  *     throw new Error('Invalid auth token')
  *   }
  * }
+ * ```
  *
- * export default {
- *   fetch: async (request, env, ctx) => {
- *     const searchParams = matchSyncRequest(request)
- *
- *     // Is LiveStore sync request
- *     if (searchParams !== undefined) {
- *       return handleSyncRequest({
- *         request,
- *         searchParams,
- *         env,
- *         ctx,
- *         syncBackendBinding: 'SYNC_BACKEND_DO',
- *         headers: {},
- *         validatePayload,
- *       })
- *     }
- *
- *     return new Response('Invalid path', { status: 400 })
- *   }
+ * @example Cookie-based authentication
+ * ```ts
+ * const validatePayload = async (payload: Schema.JsonValue | undefined, { storeId, headers }) => {
+ *   const cookie = headers.get('cookie')
+ *   const session = await validateSessionFromCookie(cookie)
+ *   if (!session) throw new Error('Unauthorized')
  * }
  * ```
  *
@@ -180,6 +192,9 @@ export const handleSyncRequest = <
 }): Promise<CfTypes.Response> =>
   Effect.gen(function* () {
     if (validatePayload !== undefined) {
+      // Convert request headers to a Map for the validation context
+      const requestHeaders = requestHeadersToMap(request)
+
       // Always decode with the supplied schema when present, even if payload is undefined.
       // This ensures required payloads are enforced by the schema.
       if (syncPayloadSchema !== undefined) {
@@ -191,7 +206,7 @@ export const handleSyncRequest = <
         }
 
         const result = yield* Effect.promise(async () =>
-          validatePayload(decodedEither.right as TSyncPayload, { storeId }),
+          validatePayload(decodedEither.right as TSyncPayload, { storeId, headers: requestHeaders }),
         ).pipe(UnknownError.mapToUnknownError, Effect.either)
 
         if (result._tag === 'Left') {
@@ -199,10 +214,9 @@ export const handleSyncRequest = <
           return new Response(result.left.toString(), { status: 400, headers })
         }
       } else {
-        const result = yield* Effect.promise(async () => validatePayload(payload as TSyncPayload, { storeId })).pipe(
-          UnknownError.mapToUnknownError,
-          Effect.either,
-        )
+        const result = yield* Effect.promise(async () =>
+          validatePayload(payload as TSyncPayload, { storeId, headers: requestHeaders }),
+        ).pipe(UnknownError.mapToUnknownError, Effect.either)
 
         if (result._tag === 'Left') {
           console.error('Invalid payload (validation failed)', result.left)

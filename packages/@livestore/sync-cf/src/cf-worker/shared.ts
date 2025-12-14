@@ -7,17 +7,61 @@ import { SearchParamsSchema, SyncMessage } from '../common/mod.ts'
 
 export type Env = {}
 
+/** Headers forwarded from the request to callbacks */
+export type ForwardedHeaders = ReadonlyMap<string, string>
+
+/**
+ * Configuration for forwarding request headers to DO callbacks.
+ * - `string[]`: List of header names to forward (case-insensitive)
+ * - `(request) => Record<string, string>`: Custom extraction function (sync)
+ */
+export type ForwardHeadersOption = readonly string[] | ((request: CfTypes.Request) => Record<string, string>)
+
+/** Context passed to onPush/onPull callbacks */
+export type CallbackContext = {
+  storeId: StoreId
+  payload?: Schema.JsonValue
+  /** Headers forwarded from the request (only present if `forwardHeaders` is configured) */
+  headers?: ForwardedHeaders
+}
+
 export type MakeDurableObjectClassOptions = {
-  onPush?: (
-    message: SyncMessage.PushRequest,
-    context: { storeId: StoreId; payload?: Schema.JsonValue },
-  ) => Effect.SyncOrPromiseOrEffect<void>
+  onPush?: (message: SyncMessage.PushRequest, context: CallbackContext) => Effect.SyncOrPromiseOrEffect<void>
   onPushRes?: (message: SyncMessage.PushAck | InvalidPushError) => Effect.SyncOrPromiseOrEffect<void>
-  onPull?: (
-    message: SyncMessage.PullRequest,
-    context: { storeId: StoreId; payload?: Schema.JsonValue },
-  ) => Effect.SyncOrPromiseOrEffect<void>
+  onPull?: (message: SyncMessage.PullRequest, context: CallbackContext) => Effect.SyncOrPromiseOrEffect<void>
   onPullRes?: (message: SyncMessage.PullResponse | InvalidPullError) => Effect.SyncOrPromiseOrEffect<void>
+
+  /**
+   * Forward request headers to `onPush`/`onPull` callbacks for authentication.
+   *
+   * This enables cookie-based or header-based authentication patterns where
+   * you need access to request headers inside the Durable Object.
+   *
+   * @example Forward specific headers by name (case-insensitive)
+   * ```ts
+   * makeDurableObject({
+   *   forwardHeaders: ['cookie', 'authorization'],
+   *   onPush: async (message, { headers }) => {
+   *     const cookie = headers?.get('cookie')
+   *     const session = await validateSession(cookie)
+   *   },
+   * })
+   * ```
+   *
+   * @example Custom extraction function for derived values
+   * ```ts
+   * makeDurableObject({
+   *   forwardHeaders: (request) => ({
+   *     'x-user-id': request.headers.get('x-user-id') ?? '',
+   *     'x-session': request.headers.get('cookie')?.split('session=')[1]?.split(';')[0] ?? '',
+   *   }),
+   *   onPush: async (message, { headers }) => {
+   *     const userId = headers?.get('x-user-id')
+   *   },
+   * })
+   * ```
+   */
+  forwardHeaders?: ForwardHeadersOption
   /**
    * Storage engine for event persistence.
    * - Default: `{ _tag: 'do-sqlite' }` (Durable Object SQLite)
@@ -137,5 +181,39 @@ export const WebSocketAttachmentSchema = Schema.parseJson(
     // Different for each websocket connection
     payload: Schema.optional(Schema.JsonValue),
     pullRequestIds: Schema.Array(Schema.String),
+    // Headers forwarded from the initial request (via forwardHeaders option)
+    headers: Schema.optional(Schema.Record({ key: Schema.String, value: Schema.String })),
   }),
 )
+
+/** Helper to extract headers from a request based on the forwardHeaders option */
+export const extractForwardedHeaders = (
+  request: CfTypes.Request,
+  forwardHeaders: ForwardHeadersOption | undefined,
+): Record<string, string> | undefined => {
+  if (forwardHeaders === undefined) {
+    return undefined
+  }
+
+  if (typeof forwardHeaders === 'function') {
+    return forwardHeaders(request)
+  }
+
+  // Array of header names - extract them case-insensitively
+  const result: Record<string, string> = {}
+  for (const name of forwardHeaders) {
+    const value = request.headers.get(name)
+    if (value !== null) {
+      result[name.toLowerCase()] = value
+    }
+  }
+  return Object.keys(result).length > 0 ? result : undefined
+}
+
+/** Convert a headers record to a ReadonlyMap */
+export const headersRecordToMap = (headers: Record<string, string> | undefined): ForwardedHeaders | undefined => {
+  if (headers === undefined) {
+    return undefined
+  }
+  return new Map(Object.entries(headers).map(([key, value]) => [key.toLowerCase(), value]))
+}

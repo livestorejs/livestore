@@ -16,6 +16,7 @@ import {
 } from '@livestore/utils/effect'
 import {
   type Env,
+  extractForwardedHeaders,
   type MakeDurableObjectClassOptions,
   matchSyncRequest,
   type SyncBackendRpcInterface,
@@ -155,16 +156,20 @@ export const makeDurableObject: MakeDurableObjectClass = (options) => {
           throw new Error(`Transport ${transport} is not enabled (based on \`options.enabledTransports\`)`)
         }
 
+        // Extract headers to forward based on configuration (available for all transports)
+        const headers = extractForwardedHeaders(request, options?.forwardHeaders)
+
         if (transport === 'http') {
-          return yield* this.handleHttp(request)
+          return yield* this.handleHttp(request, headers)
         }
 
         if (transport === 'ws') {
           const { 0: client, 1: server } = new WebSocketPair()
 
           // Since we're using websocket hibernation, we need to remember the storeId for subsequent `webSocketMessage` calls
+          // Also store forwarded headers so they're available after hibernation resume
           server.serializeAttachment(
-            Schema.encodeSync(WebSocketAttachmentSchema)({ storeId, payload, pullRequestIds: [] }),
+            Schema.encodeSync(WebSocketAttachmentSchema)({ storeId, payload, pullRequestIds: [], headers }),
           )
 
           // See https://developers.cloudflare.com/durable-objects/examples/websocket-hibernation-server
@@ -220,10 +225,11 @@ export const makeDurableObject: MakeDurableObjectClass = (options) => {
      *
      * Requires the `enable_request_signal` compatibility flag to properly support `pull` streaming responses
      */
-    private handleHttp = (request: CfTypes.Request) =>
+    private handleHttp = (request: CfTypes.Request, forwardedHeaders: Record<string, string> | undefined) =>
       createHttpRpcHandler({
         request,
         responseHeaders: options?.http?.responseHeaders,
+        forwardedHeaders,
       }).pipe(Effect.withSpan('@livestore/sync-cf:durable-object:handleHttp'))
 
     private runEffectAsPromise = <T, E = never>(effect: Effect.Effect<T, E, Scope.Scope>): Promise<T> =>

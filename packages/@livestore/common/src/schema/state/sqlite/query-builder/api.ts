@@ -128,15 +128,25 @@ export type QueryBuilder<
 
 export namespace QueryBuilder {
   export type Any = QueryBuilder<any, any, any>
-  export type WhereOps = WhereOps.Equality | WhereOps.Order | WhereOps.Like | WhereOps.In
+  export type WhereOps = WhereOps.Equality | WhereOps.Order | WhereOps.Like | WhereOps.In | WhereOps.JsonArray
 
   export namespace WhereOps {
     export type Equality = '=' | '!='
     export type Order = '<' | '>' | '<=' | '>='
     export type Like = 'LIKE' | 'NOT LIKE' | 'ILIKE' | 'NOT ILIKE'
     export type In = 'IN' | 'NOT IN'
+    /**
+     * Operators for checking if a JSON array column contains a value.
+     *
+     * ⚠️ **Performance note**: These operators use SQLite's `json_each()` table-valued function
+     * which **cannot be indexed** and requires a full table scan. For large tables with frequent
+     * lookups, consider denormalizing the data into a separate indexed table.
+     *
+     * @see https://sqlite.org/json1.html#jeach
+     */
+    export type JsonArray = 'JSON_CONTAINS' | 'JSON_NOT_CONTAINS'
 
-    export type SingleValue = Equality | Order | Like
+    export type SingleValue = Equality | Order | Like | JsonArray
     export type MultiValue = In
   }
 
@@ -155,14 +165,26 @@ export namespace QueryBuilder {
     | 'returning'
     | 'onConflict'
 
+  /** Extracts the element type from an array type, or returns never if not an array */
+  type ArrayElement<T> = T extends ReadonlyArray<infer E> ? E : never
+
   export type WhereParams<TTableDef extends TableDefBase> = Partial<{
     [K in keyof TTableDef['sqliteDef']['columns']]:
       | TTableDef['sqliteDef']['columns'][K]['schema']['Type']
-      | { op: QueryBuilder.WhereOps.SingleValue; value: TTableDef['sqliteDef']['columns'][K]['schema']['Type'] }
+      | {
+          op: Exclude<QueryBuilder.WhereOps.SingleValue, QueryBuilder.WhereOps.JsonArray>
+          value: TTableDef['sqliteDef']['columns'][K]['schema']['Type']
+        }
       | {
           op: QueryBuilder.WhereOps.MultiValue
           value: ReadonlyArray<TTableDef['sqliteDef']['columns'][K]['schema']['Type']>
         }
+      | (ArrayElement<TTableDef['sqliteDef']['columns'][K]['schema']['Type']> extends never
+          ? never
+          : {
+              op: QueryBuilder.WhereOps.JsonArray
+              value: ArrayElement<TTableDef['sqliteDef']['columns'][K]['schema']['Type']>
+            })
       | undefined
   }>
 

@@ -4,16 +4,16 @@
   "type": "module",
   "private": true,
   "dependencies": {
-    "@livestore/adapter-web": "0.4.0-dev.20",
-    "@livestore/livestore": "0.4.0-dev.20",
-    "@livestore/peer-deps": "0.4.0-dev.20",
-    "@livestore/sync-cf": "0.4.0-dev.20",
-    "@livestore/wa-sqlite": "0.4.0-dev.20"
+    "@livestore/adapter-web": "0.4.0-dev.21",
+    "@livestore/livestore": "0.4.0-dev.21",
+    "@livestore/peer-deps": "0.4.0-dev.21",
+    "@livestore/sync-cf": "0.4.0-dev.21",
+    "@livestore/wa-sqlite": "0.4.0-dev.21"
   },
   "devDependencies": {
     "@cloudflare/vite-plugin": "^1.13.12",
     "@cloudflare/workers-types": "4.20251118.0",
-    "@livestore/devtools-vite": "0.4.0-dev.20",
+    "@livestore/devtools-vite": "0.4.0-dev.21",
     "@playwright/test": "^1.56.0",
     "typescript": "^5.9.2",
     "vite": "^7.2.4",

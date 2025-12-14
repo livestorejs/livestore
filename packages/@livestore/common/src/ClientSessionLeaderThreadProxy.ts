@@ -1,8 +1,10 @@
 import type { Effect, Stream, Subscribable } from '@livestore/utils/effect'
 
+import type { StorageMode } from './adapter-types.ts'
 import type { MigrationsReport } from './defs.ts'
 import type * as Devtools from './devtools/mod.ts'
 import type { UnknownError } from './errors.ts'
+import type { StreamEventsOptions } from './leader-thread/types.ts'
 import type * as EventSequenceNumber from './schema/EventSequenceNumber/mod.ts'
 import type { LiveStoreEvent } from './schema/mod.ts'
 import type { LeaderAheadError, SyncBackend } from './sync/sync.ts'
@@ -15,6 +17,8 @@ export interface ClientSessionLeaderThreadProxy {
     }) => Stream.Stream<{ payload: typeof PayloadUpstream.Type }, UnknownError>
     /** It's important that a client session doesn't call `push` concurrently. */
     push(batch: ReadonlyArray<LiveStoreEvent.Client.Encoded>): Effect.Effect<void, UnknownError | LeaderAheadError>
+    /** Stream events with filtering */
+    stream(options: StreamEventsOptions): Stream.Stream<LiveStoreEvent.Client.Encoded, UnknownError>
   }
   /** The initial state after the leader thread has booted */
   readonly initialState: {
@@ -22,6 +26,12 @@ export interface ClientSessionLeaderThreadProxy {
     readonly leaderHead: EventSequenceNumber.Client.Composite
     /** The migrations report from the leader thread */
     readonly migrationsReport: MigrationsReport
+    /**
+     * Indicates how data is being stored.
+     * - `persisted`: Data is persisted to disk (e.g., via OPFS)
+     * - `in-memory`: Data is only stored in memory and will be lost on page refresh (e.g., private browsing)
+     */
+    readonly storageMode: StorageMode
   }
   export: Effect.Effect<Uint8Array<ArrayBuffer>, UnknownError>
   getEventlogData: Effect.Effect<Uint8Array<ArrayBuffer>, UnknownError>

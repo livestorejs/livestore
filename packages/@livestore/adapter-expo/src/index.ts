@@ -13,7 +13,12 @@ import {
   UnknownError,
 } from '@livestore/common'
 import type { DevtoolsOptions, LeaderSqliteDb } from '@livestore/common/leader-thread'
-import { Eventlog, LeaderThreadCtx, makeLeaderThreadLayer } from '@livestore/common/leader-thread'
+import {
+  Eventlog,
+  LeaderThreadCtx,
+  makeLeaderThreadLayer,
+  streamEventsWithSyncState,
+} from '@livestore/common/leader-thread'
 import type { LiveStoreSchema } from '@livestore/common/schema'
 import { LiveStoreEvent } from '@livestore/common/schema'
 import { shouldNeverHappen } from '@livestore/utils'
@@ -300,8 +305,18 @@ const makeLeaderThread = ({
                 { waitForProcessing: true },
               )
               .pipe(Effect.provide(layer), Effect.scoped),
+          stream: (options) =>
+            streamEventsWithSyncState({
+              dbEventlog,
+              syncState: syncProcessor.syncState,
+              options,
+            }),
         },
-        initialState: { leaderHead: initialLeaderHead, migrationsReport: initialState.migrationsReport },
+        initialState: {
+          leaderHead: initialLeaderHead,
+          migrationsReport: initialState.migrationsReport,
+          storageMode: 'persisted',
+        },
         export: Effect.sync(() => db.export()),
         getEventlogData: Effect.sync(() => dbEventlog.export()),
         syncState: syncProcessor.syncState,

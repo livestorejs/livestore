@@ -86,6 +86,7 @@ Vitest.describe.concurrent('ClientSessionSyncProcessor', () => {
                       return leader.events.pull({ cursor })
                     }).pipe(Stream.unwrap),
                   push: leader.events.push,
+                  stream: leader.events.stream,
                 },
               }),
             },
@@ -199,6 +200,7 @@ Vitest.describe.concurrent('ClientSessionSyncProcessor', () => {
                       })),
                     ),
                   push: () => Effect.void,
+                  stream: () => Stream.empty,
                 },
               }),
             },
@@ -336,10 +338,12 @@ Vitest.describe.concurrent('ClientSessionSyncProcessor', () => {
         events: {
           pull: () => Stream.empty,
           push: () => Effect.void,
+          stream: () => Stream.empty,
         },
         initialState: {
           leaderHead: baseHead,
           migrationsReport: { migrations: [] },
+          storageMode: 'persisted',
         },
         export: Effect.dieMessage('not implemented'),
         getEventlogData: Effect.dieMessage('not implemented'),
@@ -434,6 +438,7 @@ Vitest.describe.concurrent('ClientSessionSyncProcessor', () => {
                       })),
                     ),
                   push: () => Effect.void,
+                  stream: () => Stream.empty,
                 },
               }),
             },
@@ -515,6 +520,7 @@ Vitest.describe.concurrent('ClientSessionSyncProcessor', () => {
           initialState: {
             leaderHead: EventSequenceNumber.Client.ROOT,
             migrationsReport: { migrations: [] },
+            storageMode: 'persisted',
           },
           events: {
             push: () => Effect.void,
@@ -524,6 +530,7 @@ Vitest.describe.concurrent('ClientSessionSyncProcessor', () => {
                   payload: SyncState.PayloadUpstreamAdvance.make({ newEvents: [event] }),
                 })),
               ),
+            stream: () => Stream.empty,
           },
           export: Effect.dieMessage('not used'),
           getEventlogData: Effect.dieMessage('not used'),
