@@ -118,7 +118,15 @@ export interface CreateStoreOptions<
   schema: TSchema
   /** Adapter used for data storage and synchronization. */
   adapter: Adapter
-  /** Unique identifier for the Store instance, stable for its lifetime. */
+  /**
+   * Unique identifier for the Store instance, stable for its lifetime.
+   *
+   * - **Valid characters**: Only alphanumeric characters, underscores (`_`), and hyphens (`-`)
+   *   are allowed. Must match `/^[a-zA-Z0-9_-]+$/`.
+   * - **Globally unique**: Use globally unique IDs (e.g., nanoid) to prevent collisions across stores.
+   * - **Use namespaces**: Prefix to avoid collisions and for easier identification when debugging
+   *   (e.g., `app-root`, `workspace-abc123`, `issue-456`)
+   */
   storeId: string
   /** User-defined context that will be attached to the created Store (e.g. for dependency injection). */
   context?: TContext
@@ -129,6 +137,7 @@ export interface CreateStoreOptions<
       parentSpan: otel.Span
     },
   ) => Effect.SyncOrPromiseOrEffect<void, unknown, OtelTracer.OtelTracer | LiveStoreContextRunning>
+  onBootStatus?: (status: BootStatus) => void
   /**
    * Needed in React so LiveStore can apply multiple events in a single render.
    *
@@ -148,7 +157,6 @@ export interface CreateStoreOptions<
    * @default 'auto'
    */
   disableDevtools?: boolean | 'auto'
-  onBootStatus?: (status: BootStatus) => void
   shutdownDeferred?: ShutdownDeferred
   /**
    * Currently only used in the web adapter:
