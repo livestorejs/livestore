@@ -5,16 +5,28 @@ sidebar:
   order: 0
 ---
 
+import CapabilitiesDiagram from '../../_assets/diagrams/capabilities.tldr?tldraw';
+import SchemaSnippet from '../../_assets/code/reference/overview/introduction/schema.ts?snippet';
+import TodoAppSnippet from '../../_assets/code/reference/overview/introduction/todo-app.tsx?snippet';
+import WorkerSnippet from '../../_assets/code/reference/overview/introduction/worker.ts?snippet';
+
+export const SNIPPETS = {
+  schema: SchemaSnippet,
+  todoApp: TodoAppSnippet,
+  worker: WorkerSnippet,
+};
+
 ## What is LiveStore?
 
 LiveStore is an event-driven data layer with a built-in sync engine. Its prime use case is building complex, client-side apps like [Linear](http://linear.app/), [Figma](https://www.figma.com/) or [Notion](https://notion.so/) that also work offline.
 
-You can imagine LiveStore as a next-generation version of state management libraries like Zustand, Redux or MobX that distinguishes itself through:
+Think of LiveStore as a next-generation state management library (like Zustand or Redux) that also persists and distributes state:
 
-- _persisting_ state, making it available across refreshes and browser sessions
-- _distributing_ (or _syncing_) state across various clients (browsers, app, devices, ...) 
+<CapabilitiesDiagram class="my-8" />
 
-The combination of persisted and distributed state is a giant leap for creating an **amazing user experience** (UX), while also providing a **superior developer experience** (DX). It's also ideal for agentic coding by providing well-designed primitives and abstractions that can be composed to build complex applications.
+The combination of persisted and distributed state is a giant leap for creating an **amazing user experience** (UX), while also providing a **superior developer experience** (DX). It's also **ideal for agentic coding** by providing well-designed primitives and abstractions that can be composed to build complex applications.
+
+LiveStore works cross-platform and can be used for building UI apps (web, mobile, desktop, ...), agents, and any other software like CLIs, scripts or server-to-server application.
 
 See this talk for more info: [Sync different: Event sourcing in local-first apps](https://www.youtube.com/watch?v=nyPl84BopKc&list=PL4isNRKAwz2MabH6AMhUz1yS3j1DqGdtT).
 
@@ -24,16 +36,49 @@ Due to its event-driven nature, LiveStore requires a bit of a mindset shift comp
 
 ### Traditional state management uses ephemeral, in-memory state
 
-Traditional state management works like this: you dispatch actions that update an in-memory store, and your UI reacts to changes. But that state vanishes when the user refreshes or closes the browser. Add persistence and you need to manage local storage which essentially serves as a secondary database to the data you've stored in the cloud. Add sync and you're dealing with conflict resolution, offline queues, and backend integration.
+Traditional state management works like this: you dispatch actions that update an in-memory store, and your UI reacts to changes. But that state vanishes when the user refreshes or closes the browser. Add persistence and you need to manage local storage which essentially serves as a secondary database to the data you've stored in the cloud. Add sync and you're dealing with conflict resolution, offline queues, and backend integration. LiveStore handles all this for you with one simple, event-driven API!
 
 ### LiveStore persists events which materialize into state
 
 LiveStore handles all of this through one unified pattern: **event sourcing**.
 
-```
-User action → Event → Eventlog → SQLite state → UI
-                         ↓
-                  Sync to other clients
+```d2
+...@../../../../src/content/base.d2
+
+direction: right
+
+"User action": {
+  label: "User action"
+  shape: rectangle
+}
+
+Event: {
+  label: "Event"
+  shape: rectangle
+}
+
+Eventlog: {
+  label: "Eventlog"
+  shape: rectangle
+}
+
+"SQLite state": {
+  label: "SQLite state"
+  shape: rectangle
+}
+
+UI: {
+  label: "UI"
+  shape: rectangle
+}
+
+"Sync to other clients": {
+  label: "Sync to other clients"
+  shape: rectangle
+}
+
+"User action" -> Event -> Eventlog -> "SQLite state" -> UI
+Eventlog -> "Sync to other clients"
 ```
 
 Instead of mutating state directly, you commit **events** that _describe_ what happened. These events are persisted to an **eventlog** (like a git history) and automatically materialized into a local **SQLite database** that your UI queries reactively.
@@ -57,6 +102,10 @@ But there are key differences:
 | Sync requires external setup                       | Sync built-in via eventlog                  |
 | Fixed state shape                                  | Query any shape with SQL                    |
 
+## Built for AI agents and agentic development
+
+LiveStore has been built for the age of AI agents. With the immutable eventlog at its core, it is perfectly suited for testing and creating tight feedback loops which are crucial properties for productive agentic development.
+
 ## A practical example
 
 Let's walk through a simple example of a todo list with LiveStore and React.
@@ -71,47 +120,7 @@ At the core of every app built with LiveStore, you have a _schema_ which consist
 
 Here's an example:
 
-```ts
-// schema.ts
-import { Events, Schema, State, makeSchema } from "@livestore/livestore";
-
-// 1. Define events (the things that can happen)
-export const events = {
-  todoCreated: Events.synced({
-    name: "v1.TodoCreated",
-    schema: Schema.Struct({
-      id: Schema.String,
-      text: Schema.String,
-    }),
-  }),
-  todoCompleted: Events.synced({
-    name: "v1.TodoCompleted",
-    schema: Schema.Struct({ id: Schema.String }),
-  }),
-};
-
-// 2. Define state (SQLite tables)
-export const tables = {
-  todos: State.SQLite.table({
-    name: "todos",
-    columns: {
-      id: State.SQLite.text({ primaryKey: true }),
-      text: State.SQLite.text({ default: "" }),
-      completed: State.SQLite.boolean({ default: false }),
-    },
-  }),
-};
-
-// 3. Define materializers (how events become state)
-const materializers = State.SQLite.materializers(events, {
-  "v1.TodoCreated": ({ id, text }) => tables.todos.insert({ id, text }),
-  "v1.TodoCompleted": ({ id }) =>
-    tables.todos.update({ completed: true }).where({ id }),
-});
-
-const state = State.SQLite.makeState({ tables, materializers });
-export const schema = makeSchema({ events, state });
-```
+<SNIPPETS.schema />
 
 ### Usage on the frontend
 
@@ -119,50 +128,7 @@ LiveStore comes with integrations for all major frontend frameworks, e.g. for [R
 
 The [`queryDb`](/building-with-livestore/reactivity-system#reactive-sql-queries) function creates a [reactive query](/building-with-livestore/reactivity-system) which updates automatically when its data in the database changes. Here's how to use it in React:
 
-```tsx
-// TodoApp.tsx
-import { useQuery, useStore } from "@livestore/react";
-import { queryDb } from "@livestore/livestore";
-import { events, tables } from "./schema";
-
-// Define a reactive query
-const visibleTodos$ = queryDb(() => tables.todos.where({ deleted: false }), {
-  label: "visibleTodos",
-});
-
-export function TodoApp() {
-  const { store } = useStore();
-
-   // Reactively updates when todos change in the DB
-  const todos = useQuery(visibleTodos$);
-
-  const addTodo = (text: string) => {
-    // Commit an event to the store
-    store.commit(
-      events.todoCreated({
-        id: crypto.randomUUID(),
-        text,
-      })
-    );
-  };
-
-  const completeTodo = (id: string) => {
-    // Commit an event to the store
-    store.commit(events.todoCompleted({ id }));
-  };
-
-  return (
-    <div>
-      <button onClick={() => addTodo("New todo")}>Add</button>
-      {todos.map((todo) => (
-        <div key={todo.id} onClick={() => completeTodo(todo.id)}>
-          {todo.completed ? "✓" : "○"} {todo.text}
-        </div>
-      ))}
-    </div>
-  );
-}
-```
+<SNIPPETS.todoApp />
 
 This code replaces all the API calls, state management, UI update, caching, and synchronization logic you may be used to from writing apps in a more traditional way. If configured, it also automatically takes care of syncing data to other clients.
 
@@ -202,19 +168,7 @@ LiveStore uses a push/pull model inspired by git:
 
 Here's an example that syncs your state via Cloudflare (using the [`@livestore/sync=cf`](/sync-providers/cloudflare/) package):
 
-```ts title="/src/livestore/livestore.worker.ts" lang="ts"
-import { makeWorker } from '@livestore/adapter-web/worker'
-import { makeWsSync } from '@livestore/sync-cf/client'
-
-import { schema } from './schema.ts'
-
-makeWorker({ 
-  schema,
-  sync: {
-    backend: makeWsSync({ url: `${location.origin}/sync` }),
-  }
-})
-```
+<SNIPPETS.worker />
 
 That's all the configuration needed—your app works offline automatically. When connectivity returns, LiveStore syncs pending events and reconciles state.
 
@@ -236,21 +190,6 @@ LiveStore may not fit if:
 - You need unbounded data that won't fit in client memory
 
 If you're unsure, go through our [evaluation exercise](/overview/when-livestore) to find out whether LiveStore is a good fit for your project or [compare it with similar tools](/overview/technology-comparison).
-
-## Key concepts summary
-
-Here's an overview of LiveStore's key concepts:
-
-| Concept          | What It Is                                                           |
-| ---------------- | -------------------------------------------------------------------- |
-| **Event**        | An immutable record of something that happened (e.g., `TodoCreated`) |
-| **Eventlog**     | The ordered history of all events—your source of truth               |
-| **Materializer** | A function that transforms an event into SQL operations              |
-| **State**        | SQLite tables derived from the eventlog                              |
-| **Query**        | A reactive subscription to SQLite data                               |
-| **Store**        | The main interface for committing events and querying state          |
-
-If you want to learn more, check out the [Concepts](/overview/concepts) section in the docs.
 
 ## Next steps
 
