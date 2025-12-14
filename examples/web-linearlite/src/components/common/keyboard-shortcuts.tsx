@@ -1,7 +1,7 @@
 import { useRouter } from '@tanstack/react-router'
 import React from 'react'
-import { useAppStore } from '../../livestore/store.ts'
 import { NewIssueModalContext } from '../../app/contexts.ts'
+import { useAppStore } from '../../livestore/store.ts'
 
 export const KeyboardShortcuts = () => {
   const store = useAppStore()
