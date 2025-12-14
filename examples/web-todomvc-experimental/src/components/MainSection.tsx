@@ -43,7 +43,7 @@ export const MainSection: React.FC = () => {
   return (
     <section className="main">
       <ul className="todo-list">
-        <LiveList items$={visibleTodos$} getKey={getKey} renderItem={renderItem} />
+        <LiveList items$={visibleTodos$} getKey={getKey} renderItem={renderItem} store={store} />
       </ul>
     </section>
   )
@@ -56,7 +56,7 @@ const Item = ({
 }: {
   todo: Todo
   toggleTodo: (_: Todo) => void
-  store: Store
+  store: Store<any, any>
   parentHasMounted: boolean
 }) => {
   const [state, setState] = React.useState<'initial' | 'deleting' | 'mounted'>('initial')
