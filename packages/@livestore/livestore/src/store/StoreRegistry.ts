@@ -171,7 +171,8 @@ export class StoreRegistry {
    * ```
    */
   constructor(config: StoreRegistryConfig = {}) {
-    this.#runtime = config.runtime ??
+    this.#runtime =
+      config.runtime ??
       ManagedRuntime.make(Layer.mergeAll(Layer.scope, OtelLiveDummy)).runtimeEffect.pipe(Effect.runSync)
 
     this.#rcMap = RcMap.make({
