@@ -3,12 +3,12 @@ import '../app/style.css'
 
 import type { StoreRegistry } from '@livestore/livestore'
 import { StoreRegistryProvider } from '@livestore/react'
-import { createRootRouteWithContext, HeadContent, Outlet, Scripts, useRouter } from '@tanstack/react-router'
+import { createRootRouteWithContext, HeadContent, Outlet, Scripts } from '@tanstack/react-router'
 import React, { type ReactNode, Suspense } from 'react'
 import { MenuContext, NewIssueModalContext } from '../app/contexts.ts'
+import { KeyboardShortcuts } from '../components/common/keyboard-shortcuts.tsx'
 import { Icon } from '../components/icons/index.tsx'
 import { VersionBadge } from '../components/VersionBadge.tsx'
-import { useAppStore } from '../livestore/store.ts'
 import type { Status } from '../types/status.ts'
 
 const RootDocument = ({ children }: { children: ReactNode }) => {
@@ -67,34 +67,6 @@ function Loading() {
       <div>Loading...</div>
     </div>
   )
-}
-
-const KeyboardShortcuts = () => {
-  const store = useAppStore()
-  const router = useRouter()
-  const { setNewIssueModalStatus } = React.useContext(NewIssueModalContext)!
-
-  React.useEffect(() => {
-    const handleKeyDown = (e: KeyboardEvent) => {
-      const element = e.target as HTMLElement
-      if (element.classList.contains('input')) return
-
-      if (e.key === 'c') {
-        setNewIssueModalStatus(0)
-        e.preventDefault()
-      }
-
-      // We use '?' instead of '/' because Shift+/ is '?'
-      if (e.key === '?' && e.shiftKey) {
-        router.navigate({ to: '/$storeId/search', params: { storeId: store.storeId } })
-        e.preventDefault()
-      }
-    }
-    window.addEventListener('keydown', handleKeyDown)
-    return () => window.removeEventListener('keydown', handleKeyDown)
-  }, [router, store.storeId, setNewIssueModalStatus])
-
-  return null
 }
 
 type RouterContext = {
