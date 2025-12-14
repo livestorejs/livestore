@@ -24,20 +24,40 @@ Think of LiveStore as a next-generation state management library (like Zustand o
 
 <CapabilitiesDiagram class="my-8" />
 
-The combination of persisted and distributed state is a giant leap for creating an **amazing user experience** (UX), while also providing a **best-in-class developer experience** (DX). The **immutable eventlog** enables robust testing and tight feedback loops, making it perfect for agentic coding.
 
-- UX
-  - : Persisted state survives page refresh
-  - **Offline**: Works offline by default
-  - **Magical**: syncing across devices
-- DX
-  - **Principled**: Handle data 
-  - **Type-safe**: Full type safety
-  - **Reactive**: Automatic UI updates when data changes
-- AX
-  - Testable: Immutable eventlog enables testing and tight feedback loops
-  - Debuggable: Deterministic state replay—same events always produce same state
-  - Evolvable: State can be reset/forked for experimentation
+
+The combination of persisted and distributed state is a giant leap for creating an **amazing user experience** (UX), while also providing a **best-in-class developer experience** (DX). The **immutable eventlog** enables robust testing and tight feedback loops, making it perfect for agentic coding. 
+
+
+
+<div class="not-content grid grid-cols-1 md:grid-cols-3 gap-4 my-8">
+  <div class="rounded-xl border border-gray-700 p-5">
+    <h3 class="text-base font-medium !mt-0 !mb-2">UX</h3>
+    <ul class="!space-y-2 text-sm list-none p-0 m-0">
+      <li><strong>Synced</strong>: Real-time updates across devices</li>
+      <li><strong>Fast</strong>: No async loading over the network</li>
+      <li><strong>Persistent</strong>: Works offline, survives page refresh</li>
+    </ul>
+  </div>
+
+  <div class="rounded-xl border border-gray-700 p-5">
+    <h3 class="text-base font-medium !mt-0 !mb-2">DX</h3>
+    <ul class="!space-y-2 text-sm list-none p-0 m-0">
+      <li><strong>Principled</strong>: Event-driven instead of mutable state</li>
+      <li><strong>Composable & Type-safe</strong>: Fully typed events & queries</li>
+      <li><strong>Reactive</strong>: Automatic UI updates when data changes</li>
+    </ul>
+  </div>
+
+  <div class="rounded-xl border border-gray-700 p-5">
+    <h3 class="text-base font-medium !mt-0 !mb-2">AX</h3>
+    <ul class="!space-y-2 text-sm list-none p-0 m-0">
+      <li><strong>Testable</strong>: Immutable eventlog for feedback loop</li>
+      <li><strong>Debuggable</strong>: Same events always produce same state</li>
+      <li><strong>Evolvable</strong>: Reset & fork state for experiments</li>
+    </ul>
+  </div>
+</div>
 
 LiveStore works cross-platform and can be used for building UI apps (web, mobile, desktop, ...), agents, and any other software like CLIs, scripts or server-to-server applications.
 
@@ -52,9 +72,13 @@ See this talk for more info: [Sync different: Event sourcing in local-first apps
 - How LiveStore is perfect for coding agents.
 </details>
 
-## The core idea: Events -> State -> UI
+## The core idea: Synced events -> State -> UI
 
-Due to its event-driven nature, LiveStore requires a bit of a mindset shift compared to the traditional way of building apps.
+Unlike other sync solutions, LiveStore syncs events—not state!
+
+Events are immutable facts that describe what happened ("TodoCreated", "TodoCompleted"), while state is derived by replaying them. This means every client reconstructs the same state from the same event history, making sync predictable and debuggable.
+
+The state then changes trigger reaactive UI updates.
 
 ### Traditional state management uses ephemeral, in-memory state
 
