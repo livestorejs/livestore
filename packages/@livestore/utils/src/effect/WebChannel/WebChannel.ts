@@ -1,4 +1,4 @@
-import { Deferred, Either, Exit, GlobalValue, identity, Option, PubSub, Queue, Scope } from 'effect'
+import { Deferred, Either, Exit, GlobalValue, identity, PubSub, Queue, Scope } from 'effect'
 import type { DurationInput } from 'effect/Duration'
 
 import { shouldNeverHappen } from '../../misc.ts'
@@ -136,6 +136,15 @@ export const messagePortChannelWithAck: <MsgListen, MsgSend, MsgListenEncoded, M
       type RequestId = string
       const requestAckMap = new Map<RequestId, Deferred.Deferred<void>>()
 
+      /**
+       * We buffer decoded payload messages in a queue and handle acks eagerly via `port.onmessage`.
+       *
+       * Rationale: If we process messages only inside a `Stream.fromEventListener(...).pipe(Stream.runDrain)`
+       * fiber, acks depend on a consumer pulling `listen` (or on an "open channel" drain starting in time).
+       * This can lead to hangs during very early handshakes (see #262).
+       */
+      const listenQueue = yield* Queue.unbounded<Either.Either<any, any>>().pipe(Effect.acquireRelease(Queue.shutdown))
+
       const ChannelRequest = Schema.TaggedStruct('ChannelRequest', {
         id: Schema.String,
         payload: Schema.Union(schema.listen, schema.send),
@@ -154,65 +163,88 @@ export const messagePortChannelWithAck: <MsgListen, MsgSend, MsgListenEncoded, M
         id: debugId,
       }
 
-      const send = (message: any) =>
-        Effect.gen(function* () {
+      const onMessage = (event: MessageEvent) => {
+        const decoded = Schema.decodeEither(ChannelMessage)(event.data)
+        if (decoded._tag === 'Left') {
+          Queue.unsafeOffer(listenQueue, Either.left(decoded.left))
+          return
+        }
+
+        const msg = decoded.right
+
+        switch (msg._tag) {
+          case 'ChannelRequestAck': {
+            const deferred = requestAckMap.get(msg.reqId)
+            if (deferred !== undefined) {
+              Deferred.unsafeDone(deferred, Effect.void)
+            }
+            return
+          }
+          case 'ChannelRequest': {
+            debugInfo.listenTotal++
+
+            port.postMessage(Schema.encodeSync(ChannelMessage)({ _tag: 'ChannelRequestAck', reqId: msg.id }))
+
+            Queue.unsafeOffer(listenQueue, Either.right(msg.payload))
+            return
+          }
+        }
+      }
+
+      port.onmessage = onMessage
+
+      // TODO also handle `messageerror` (if we can get access to the raw payload)
+      port.onmessageerror = () => {
+        // no-op
+      }
+
+      const send = (message: any) => {
+        let requestId: RequestId | undefined
+        return Effect.gen(function* () {
           debugInfo.sendTotal++
           debugInfo.sendPending++
 
-          const id = crypto.randomUUID()
-          const [messageEncoded, transferables] = yield* Schema.encodeWithTransferables(ChannelMessage)({
-            _tag: 'ChannelRequest',
-            id,
-            payload: message,
-          })
+          requestId = crypto.randomUUID()
 
           const ack = yield* Deferred.make<void>()
-          requestAckMap.set(id, ack)
+          requestAckMap.set(requestId, ack)
+
+          const [messageEncoded, transferables] = yield* Schema.encodeWithTransferables(ChannelMessage)({
+            _tag: 'ChannelRequest',
+            id: requestId,
+            payload: message,
+          })
 
           port.postMessage(messageEncoded, transferables)
 
           yield* ack
-
-          requestAckMap.delete(id)
-
-          debugInfo.sendPending--
-        })
-
-      // TODO re-implement this via `port.onmessage`
-      // https://github.com/livestorejs/livestore/issues/262
-      const listen = Stream.fromEventListener<MessageEvent>(port, 'message').pipe(
-        // Stream.onStart(Effect.log(`${label}:listen:start`)),
-        // Stream.tap((_) => Effect.log(`${label}:message`, _.data)),
-        Stream.map((_) => Schema.decodeEither(ChannelMessage)(_.data)),
-        Stream.tap((msg) =>
-          Effect.gen(function* () {
-            if (msg._tag === 'Right') {
-              if (msg.right._tag === 'ChannelRequestAck') {
-                yield* Deferred.succeed(requestAckMap.get(msg.right.reqId)!, void 0)
-              } else if (msg.right._tag === 'ChannelRequest') {
-                debugInfo.listenTotal++
-                port.postMessage(Schema.encodeSync(ChannelMessage)({ _tag: 'ChannelRequestAck', reqId: msg.right.id }))
+        }).pipe(
+          Effect.ensuring(
+            Effect.sync(() => {
+              if (requestId !== undefined) {
+                requestAckMap.delete(requestId)
               }
-            }
-          }),
-        ),
-        Stream.filterMap((msg) =>
-          msg._tag === 'Left'
-            ? Option.some(msg as any)
-            : msg.right._tag === 'ChannelRequest'
-              ? Option.some(Either.right(msg.right.payload))
-              : Option.none(),
-        ),
-        (_) => _ as Stream.Stream<Either.Either<any, any>>,
-        listenToDebugPing(label),
-      )
+              debugInfo.sendPending--
+            }),
+          ),
+        )
+      }
+
+      const listen = Stream.fromQueue(listenQueue, { maxChunkSize: 1 }).pipe(listenToDebugPing(label)) as Stream.Stream<
+        Either.Either<any, any>
+      >
 
       port.start()
 
       const closedDeferred = yield* Deferred.make<void>().pipe(Effect.acquireRelease(Deferred.done(Exit.void)))
       const supportsTransferables = true
 
-      yield* Effect.addFinalizer(() => Effect.try(() => port.close()).pipe(Effect.ignoreLogged))
+      yield* Effect.addFinalizer(() =>
+        Effect.sync(() => {
+          port.onmessage = null
+          port.onmessageerror = null
+        }).pipe(Effect.andThen(Effect.try(() => port.close()).pipe(Effect.ignoreLogged))),
+      )
 
       return {
         [WebChannelSymbol]: WebChannelSymbol,
