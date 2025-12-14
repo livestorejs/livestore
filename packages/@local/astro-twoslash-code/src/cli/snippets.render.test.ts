@@ -318,11 +318,11 @@ describe('Sentinel node removal regression', () => {
     // sentinel markers (from the __LS_FILE_START__/__LS_FILE_END__ markers), it would remove
     // the entire <pre> element, resulting in empty code blocks in the rendered HTML.
 
-    const entryFilePath = path.join(docsPaths.snippetAssetsRoot, 'patterns/auth/live-store-provider.tsx')
+    const entryFilePath = path.join(docsPaths.snippetAssetsRoot, 'patterns/auth/store-with-auth.tsx')
     const bundle = buildSnippetBundle({ entryFilePath, baseDir: docsPaths.snippetAssetsRoot })
 
     const rendered = await Effect.runPromise(
-      __internal.renderSnippet(docsRenderer, bundle, 'patterns/auth/live-store-provider.tsx'),
+      __internal.renderSnippet(docsRenderer, bundle, 'patterns/auth/store-with-auth.tsx'),
     )
 
     const html = rendered.html ?? ''
@@ -335,8 +335,8 @@ describe('Sentinel node removal regression', () => {
     expect(html).not.toMatch(/<pre[^>]*>\s*<\/pre>/)
 
     // Should contain the actual code content
-    expect(html).toContain('AuthenticatedProvider')
-    expect(html).toContain('LiveStoreProvider')
+    expect(html).toContain('useAppStore')
+    expect(html).toContain('StoreRegistryProvider')
     expect(html).toContain('syncPayload')
 
     // Should NOT contain sentinel markers in the final output
