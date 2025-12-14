@@ -1,7 +1,7 @@
 import fs from 'node:fs'
 import { liveStoreVersion } from '@livestore/common'
 import { shouldNeverHappen } from '@livestore/utils'
-import { Effect, HttpClient, HttpClientRequest, Schedule } from '@livestore/utils/effect'
+import { Effect, Fiber, HttpClient, HttpClientRequest, Schedule } from '@livestore/utils/effect'
 import { Cli, getFreePort } from '@livestore/utils/node'
 import { cmd, cmdText, LivestoreWorkspace } from '@livestore/utils-dev/node'
 import { buildDiagrams, watchDiagrams } from '@local/astro-tldraw'
@@ -179,31 +179,29 @@ export const docsCommand = Cli.Command.make('docs').pipe(
         ),
       },
       Effect.fn(function* ({ open, skipDeps }) {
-        yield* Effect.scoped(
-          Effect.gen(function* () {
-            if (!skipDeps) {
-              yield* Effect.log('Building snippets and diagrams...')
-              yield* Effect.all([buildSnippets({ projectRoot: docsPath }), runDocsDiagramsBuild], {
-                concurrency: 'unbounded',
-              })
-              yield* Effect.log('Snippets and diagrams built successfully')
-            }
+        if (!skipDeps) {
+          yield* Effect.log('Building snippets and diagrams...')
+          yield* Effect.all([buildSnippets({ projectRoot: docsPath }), runDocsDiagramsBuild], {
+            concurrency: 'unbounded',
+          })
+          yield* Effect.log('Snippets and diagrams built successfully')
+        }
 
-            /* Run Astro dev server (and optionally diagrams watch) */
-            const astroDevEffect = cmd(['pnpm', 'astro', 'dev', open ? '--open' : undefined], {
-              logDir: `${docsPath}/logs`,
-            }).pipe(Effect.provide(LivestoreWorkspace.toCwd('docs')))
+        /* Run Astro dev server (and optionally diagrams watch) */
+        const astroDevEffect = cmd(['pnpm', 'astro', 'dev', open ? '--open' : undefined], {
+          logDir: `${docsPath}/logs`,
+        }).pipe(Effect.provide(LivestoreWorkspace.toCwd('docs')))
 
-            if (!skipDeps) {
-              yield* runDocsDiagramsWatchNoInitialBuild.pipe(
-                Effect.catchAllCause((cause) => Effect.logWarning(`Diagrams watch stopped: ${cause}`)),
-                Effect.forkScoped,
-              )
-            }
+        if (skipDeps) {
+          return yield* astroDevEffect
+        }
 
-            yield* astroDevEffect
-          }),
+        const watchFiber = yield* runDocsDiagramsWatchNoInitialBuild.pipe(
+          Effect.catchAllCause((cause) => Effect.logWarning(`Diagrams watch stopped: ${cause}`)),
+          Effect.forkDaemon,
         )
+
+        yield* astroDevEffect.pipe(Effect.ensuring(Fiber.interrupt(watchFiber)))
       }),
     ),
     docsBuildCommand,

@@ -58,41 +58,39 @@ const writeInitialProject = (fs: FileSystem.FileSystem, projectRoot: string): Ef
 
 describe('watchSnippets', () => {
   it('rebuilds when snippet assets change', async () => {
-    const program = Effect.scoped(
-      Effect.gen(function* () {
-        const fs = yield* FileSystem.FileSystem
-        const projectRoot = yield* fs.makeTempDirectoryScoped({ prefix: 'twoslash-watch-' })
-        yield* writeInitialProject(fs, projectRoot).pipe(Effect.orDie)
+    const program = Effect.gen(function* () {
+      const fs = yield* FileSystem.FileSystem
+      const projectRoot = yield* fs.makeTempDirectoryScoped({ prefix: 'twoslash-watch-' })
+      yield* writeInitialProject(fs, projectRoot).pipe(Effect.orDie)
 
-        const rebuildEvents = yield* Queue.unbounded<WatchSnippetsRebuildInfo>()
+      const rebuildEvents = yield* Queue.unbounded<WatchSnippetsRebuildInfo>()
 
-        const watchEffect = watchSnippets({
-          projectRoot,
-          debounce: '20 millis',
-          onRebuild: (info) => Queue.offer(rebuildEvents, info),
-        })
+      const watchEffect = watchSnippets({
+        projectRoot,
+        debounce: '20 millis',
+        onRebuild: (info) => Queue.offer(rebuildEvents, info),
+      })
 
-        yield* Effect.forkScoped(watchEffect)
+      yield* Effect.forkScoped(watchEffect)
 
-        const initial = yield* Queue.take(rebuildEvents)
-        expect(initial.reason).toBe('initial')
+      const initial = yield* Queue.take(rebuildEvents)
+      expect(initial.reason).toBe('initial')
 
-        const snippetPath = path.join(projectRoot, 'src', 'content', '_assets', 'code', 'example.ts')
-        yield* fs.writeFileString(snippetPath, 'export const value = 2\n').pipe(Effect.orDie)
+      const snippetPath = path.join(projectRoot, 'src', 'content', '_assets', 'code', 'example.ts')
+      yield* fs.writeFileString(snippetPath, 'export const value = 2\n').pipe(Effect.orDie)
 
-        const maybeUpdate = yield* Queue.take(rebuildEvents).pipe(Effect.timeout('2 seconds'), Effect.option)
+      const maybeUpdate = yield* Queue.take(rebuildEvents).pipe(Effect.timeout('2 seconds'), Effect.option)
 
-        if (maybeUpdate._tag === 'None') {
-          return
-        }
+      if (maybeUpdate._tag === 'None') {
+        return
+      }
 
-        const update = maybeUpdate.value
-        expect(update.reason).toBe('watch')
-        expect(update.event?.relativePath).toContain('example.ts')
-        expect(update.renderedCount).toBeGreaterThanOrEqual(0)
-      }),
-    )
+      const update = maybeUpdate.value
+      expect(update.reason).toBe('watch')
+      expect(update.event?.relativePath).toContain('example.ts')
+      expect(update.renderedCount).toBeGreaterThanOrEqual(0)
+    })
 
-    await Effect.runPromise(program.pipe(Effect.provide(PlatformNode.NodeFileSystem.layer)))
+    await program.pipe(Effect.scoped, Effect.provide(PlatformNode.NodeFileSystem.layer), Effect.runPromise)
   }, 10000)
 })

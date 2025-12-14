@@ -293,67 +293,65 @@ const watchDiagramsInternal = (
   options: BuildDiagramsOptions,
   watchOptions: NormalizedWatchOptions,
 ): Effect.Effect<void, never, FileSystem.FileSystem> =>
-  Effect.scoped(
-    Effect.gen(function* () {
-      const fs = yield* FileSystem.FileSystem
-      const paths = resolveCachePaths(options.projectRoot)
+  Effect.gen(function* () {
+    const fs = yield* FileSystem.FileSystem
+    const paths = resolveCachePaths(options.projectRoot)
 
-      const diagramsRootExists = yield* fs.exists(paths.diagramsRoot).pipe(Effect.catchAll(() => Effect.succeed(false)))
+    const diagramsRootExists = yield* fs.exists(paths.diagramsRoot).pipe(Effect.catchAll(() => Effect.succeed(false)))
 
-      if (!diagramsRootExists) {
-        yield* Effect.logWarning(`Diagrams watch: diagrams root does not exist at ${paths.diagramsRoot}`)
-        return yield* Effect.never
-      }
+    if (!diagramsRootExists) {
+      yield* Effect.logWarning(`Diagrams watch: diagrams root does not exist at ${paths.diagramsRoot}`)
+      return yield* Effect.never
+    }
 
-      const notify = (info: WatchDiagramsRebuildInfo) => watchOptions.onRebuild(info)
+    const notify = (info: WatchDiagramsRebuildInfo) => watchOptions.onRebuild(info)
 
-      const runRebuild = (reason: WatchDiagramsRebuildInfo['reason'], event: WatchEventSummary | null) =>
-        Effect.gen(function* () {
-          const startedAt = Date.now()
-          if (event) {
-            yield* Effect.log(`Diagrams watch: ${event.kind.toLowerCase()} at ${event.relativePath}, rebuilding...`)
-          } else {
-            yield* Effect.log('Diagrams watch: running initial build')
-          }
+    const runRebuild = (reason: WatchDiagramsRebuildInfo['reason'], event: WatchEventSummary | null) =>
+      Effect.gen(function* () {
+        const startedAt = Date.now()
+        if (event) {
+          yield* Effect.log(`Diagrams watch: ${event.kind.toLowerCase()} at ${event.relativePath}, rebuilding...`)
+        } else {
+          yield* Effect.log('Diagrams watch: running initial build')
+        }
 
-          const result = yield* buildDiagrams(options).pipe(Effect.either)
-          const durationMs = Date.now() - startedAt
+        const result = yield* buildDiagrams(options).pipe(Effect.either)
+        const durationMs = Date.now() - startedAt
 
-          if (result._tag === 'Left') {
-            const error = result.left
-            yield* Effect.logError(
-              `Diagrams watch: build failed${event ? ` (trigger: ${event.relativePath})` : ''}: ${error.message}`,
-            )
-            yield* notify({ reason, event, renderedCount: -1, durationMs })
-            return
-          }
+        if (result._tag === 'Left') {
+          const error = result.left
+          yield* Effect.logError(
+            `Diagrams watch: build failed${event ? ` (trigger: ${event.relativePath})` : ''}: ${error.message}`,
+          )
+          yield* notify({ reason, event, renderedCount: -1, durationMs })
+          return
+        }
 
-          yield* Effect.log(`Diagrams watch: completed in ${durationMs}ms`)
-          yield* notify({ reason, event, renderedCount: 0, durationMs })
-        })
+        yield* Effect.log(`Diagrams watch: completed in ${durationMs}ms`)
+        yield* notify({ reason, event, renderedCount: 0, durationMs })
+      })
 
-      /* Initial build */
-      if (watchOptions.initialBuild) {
-        yield* runRebuild('initial', null)
-      }
+    /* Initial build */
+    if (watchOptions.initialBuild) {
+      yield* runRebuild('initial', null)
+    }
 
-      /* Set up watch stream with debounce */
-      const watchStream = createWatchStream(fs, paths)
-      const debouncedStream = Stream.debounce(watchOptions.debounce)(watchStream)
+    /* Set up watch stream with debounce */
+    const watchStream = createWatchStream(fs, paths)
+    const debouncedStream = Stream.debounce(watchOptions.debounce)(watchStream)
 
-      /* Process events sequentially via mapEffect with concurrency 1 */
-      const streamEffect = debouncedStream.pipe(
-        Stream.mapEffect((event) => runRebuild('watch', event), { concurrency: 1 }),
-        Stream.runDrain,
-      )
+    /* Process events sequentially via mapEffect with concurrency 1 */
+    const streamEffect = debouncedStream.pipe(
+      Stream.mapEffect((event) => runRebuild('watch', event), { concurrency: 1 }),
+      Stream.runDrain,
+    )
 
-      yield* streamEffect.pipe(
-        Effect.catchAll((cause) =>
-          Effect.logWarning(`Diagrams watch: stream failed with ${String(cause)}`).pipe(Effect.zipRight(Effect.never)),
-        ),
-      )
-    }),
-  )
+    yield* streamEffect.pipe(
+      Effect.catchAll((cause) =>
+        Effect.logWarning(`Diagrams watch: stream failed with ${String(cause)}`).pipe(Effect.zipRight(Effect.never)),
+      ),
+    )
+  })
 
 /** Watch diagrams directory for changes and rebuild on modifications */
 export const watchDiagrams = (options: WatchDiagramsOptions): Effect.Effect<void, never, FileSystem.FileSystem> => {

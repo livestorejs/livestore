@@ -1618,84 +1618,80 @@ const watchSnippetsInternal = (
   resolved: ResolvedBuildOptions,
   options: NormalizedWatchOptions,
 ): Effect.Effect<void, never, FileSystem.FileSystem> =>
-  Effect.scoped(
-    Effect.gen(function* () {
-      const fs = yield* FileSystem.FileSystem
-      const { paths } = resolved
+  Effect.gen(function* () {
+    const fs = yield* FileSystem.FileSystem
+    const { paths } = resolved
 
-      const snippetRootExists = yield* fs
-        .exists(paths.snippetAssetsRoot)
-        .pipe(Effect.catchAll(() => Effect.succeed(false)))
-      const sourceRootExists = yield* fs.exists(paths.srcRoot).pipe(Effect.catchAll(() => Effect.succeed(false)))
+    const snippetRootExists = yield* fs
+      .exists(paths.snippetAssetsRoot)
+      .pipe(Effect.catchAll(() => Effect.succeed(false)))
+    const sourceRootExists = yield* fs.exists(paths.srcRoot).pipe(Effect.catchAll(() => Effect.succeed(false)))
 
-      const watchStreams: Array<Stream.Stream<WatchEventSummary, PlatformError.PlatformError>> = []
-      if (snippetRootExists) {
-        watchStreams.push(createWatchStream(fs, 'snippet', paths.snippetAssetsRoot, paths.cacheRoot))
-      }
-      if (sourceRootExists) {
-        watchStreams.push(createWatchStream(fs, 'source', paths.srcRoot, paths.cacheRoot))
-      }
+    const watchStreams: Array<Stream.Stream<WatchEventSummary, PlatformError.PlatformError>> = []
+    if (snippetRootExists) {
+      watchStreams.push(createWatchStream(fs, 'snippet', paths.snippetAssetsRoot, paths.cacheRoot))
+    }
+    if (sourceRootExists) {
+      watchStreams.push(createWatchStream(fs, 'source', paths.srcRoot, paths.cacheRoot))
+    }
 
-      const notify = (info: WatchSnippetsRebuildInfo) => options.onRebuild(info)
+    const notify = (info: WatchSnippetsRebuildInfo) => options.onRebuild(info)
 
-      const runRebuild = (reason: WatchSnippetsRebuildInfo['reason'], event: WatchEventSummary | null) =>
-        Effect.gen(function* () {
-          const startedAt = Date.now()
-          if (event) {
-            yield* Effect.log(
-              `Snippets watch: ${event.scope} ${event.kind.toLowerCase()} at ${event.relativePath}, rebuilding...`,
-            )
-          } else {
-            yield* Effect.log('Snippets watch: running initial build')
-          }
-
-          const result = yield* buildSnippetsInternal(resolved).pipe(Effect.either)
-          const durationMs = Date.now() - startedAt
-
-          if (result._tag === 'Left') {
-            const error = result.left
-            yield* Effect.logError(
-              `Snippets watch: build failed${event ? ` (trigger: ${event.relativePath})` : ''}: ${error.message}`,
-            )
-            yield* notify({ reason, event, renderedCount: -1, durationMs })
-            return
-          }
-
-          const renderedCount = result.right ?? 0
+    const runRebuild = (reason: WatchSnippetsRebuildInfo['reason'], event: WatchEventSummary | null) =>
+      Effect.gen(function* () {
+        const startedAt = Date.now()
+        if (event) {
           yield* Effect.log(
-            `Snippets watch: rendered ${renderedCount} bundle${renderedCount === 1 ? '' : 's'} in ${durationMs}ms`,
+            `Snippets watch: ${event.scope} ${event.kind.toLowerCase()} at ${event.relativePath}, rebuilding...`,
           )
-          yield* notify({ reason, event, renderedCount, durationMs })
-        })
+        } else {
+          yield* Effect.log('Snippets watch: running initial build')
+        }
 
-      yield* runRebuild('initial', null)
+        const result = yield* buildSnippetsInternal(resolved).pipe(Effect.either)
+        const durationMs = Date.now() - startedAt
 
-      if (watchStreams.length === 0) {
-        yield* Effect.logWarning('Snippets watch: no watchable directories found; waiting for manual interruption')
-        return yield* Effect.never
-      }
+        if (result._tag === 'Left') {
+          const error = result.left
+          yield* Effect.logError(
+            `Snippets watch: build failed${event ? ` (trigger: ${event.relativePath})` : ''}: ${error.message}`,
+          )
+          yield* notify({ reason, event, renderedCount: -1, durationMs })
+          return
+        }
 
-      const merged =
-        watchStreams.length === 1
-          ? watchStreams[0]!
-          : Stream.mergeAll(watchStreams, { concurrency: watchStreams.length })
+        const renderedCount = result.right ?? 0
+        yield* Effect.log(
+          `Snippets watch: rendered ${renderedCount} bundle${renderedCount === 1 ? '' : 's'} in ${durationMs}ms`,
+        )
+        yield* notify({ reason, event, renderedCount, durationMs })
+      })
 
-      const debounced = Stream.debounce(options.debounce)(merged)
+    yield* runRebuild('initial', null)
 
-      const streamEffect = debounced.pipe(
-        Stream.mapEffect((event) => runRebuild('watch', event), {
-          concurrency: 1,
-        }),
-        Stream.runDrain,
-      )
+    if (watchStreams.length === 0) {
+      yield* Effect.logWarning('Snippets watch: no watchable directories found; waiting for manual interruption')
+      return yield* Effect.never
+    }
 
-      yield* streamEffect.pipe(
-        Effect.catchAll((cause) =>
-          Effect.logWarning(`Snippets watch: stream failed with ${String(cause)}`).pipe(Effect.zipRight(Effect.never)),
-        ),
-      )
-    }),
-  )
+    const merged =
+      watchStreams.length === 1 ? watchStreams[0]! : Stream.mergeAll(watchStreams, { concurrency: watchStreams.length })
+
+    const debounced = Stream.debounce(options.debounce)(merged)
+
+    const streamEffect = debounced.pipe(
+      Stream.mapEffect((event) => runRebuild('watch', event), {
+        concurrency: 1,
+      }),
+      Stream.runDrain,
+    )
+
+    yield* streamEffect.pipe(
+      Effect.catchAll((cause) =>
+        Effect.logWarning(`Snippets watch: stream failed with ${String(cause)}`).pipe(Effect.zipRight(Effect.never)),
+      ),
+    )
+  })
 
 const normalizeOptions = (options: BuildSnippetsOptions = {}): BuildSnippetsOptions => {
   const normalized: BuildSnippetsOptions = {}
@@ -1748,6 +1744,7 @@ export const createSnippetsCommand = ({
 
   const watchHandler = watchSnippetsInternal(resolved, normalizeWatchOptions({})).pipe(
     Effect.withSpan('astro-twoslash-code/cli/snippets-watch'),
+    Effect.provide(NodeRecursiveWatchLayer),
     Effect.asVoid,
   )
 
