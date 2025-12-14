@@ -4,9 +4,8 @@ import { shouldNeverHappen } from '@livestore/utils'
 import { Effect, HttpClient, HttpClientRequest, Schedule } from '@livestore/utils/effect'
 import { Cli, getFreePort } from '@livestore/utils/node'
 import { cmd, cmdText, LivestoreWorkspace } from '@livestore/utils-dev/node'
-import { buildDiagrams } from '@local/astro-tldraw'
+import { buildDiagrams, watchDiagrams } from '@local/astro-tldraw'
 import { buildSnippets, createSnippetsCommand } from '@local/astro-twoslash-code'
-
 import { appendGithubSummaryMarkdown, formatMarkdownTable } from '../shared/misc.ts'
 import { deployToNetlify, purgeNetlifyCdn } from '../shared/netlify.ts'
 import { exportMarkdownCommand } from './docs-export.ts'
@@ -30,8 +29,19 @@ const runDocsDiagramsBuild = buildDiagrams({ projectRoot: docsPath, verbose: tru
   }),
 )
 
+const runDocsDiagramsWatch = watchDiagrams({ projectRoot: docsPath, verbose: true })
+
+const runDocsDiagramsWatchNoInitialBuild = watchDiagrams({
+  projectRoot: docsPath,
+  verbose: true,
+  initialBuild: false,
+})
+
 const docsDiagramsCommand = Cli.Command.make('diagrams', {}, () => runDocsDiagramsBuild).pipe(
-  Cli.Command.withSubcommands([Cli.Command.make('build', {}, () => runDocsDiagramsBuild)]),
+  Cli.Command.withSubcommands([
+    Cli.Command.make('build', {}, () => runDocsDiagramsBuild),
+    Cli.Command.make('watch', {}, () => runDocsDiagramsWatch),
+  ]),
 )
 
 type NetlifyDeploySummary = {
@@ -177,6 +187,14 @@ export const docsCommand = Cli.Command.make('docs').pipe(
           yield* Effect.log('Snippets and diagrams built successfully')
         }
 
+        if (!skipDeps) {
+          yield* runDocsDiagramsWatchNoInitialBuild.pipe(
+            Effect.catchAllCause((cause) => Effect.logWarning(`Diagrams watch stopped: ${cause}`)),
+            Effect.forkScoped,
+          )
+        }
+
+        /* Run Astro dev server */
         yield* cmd(['pnpm', 'astro', 'dev', open ? '--open' : undefined], {
           logDir: `${docsPath}/logs`,
         }).pipe(Effect.provide(LivestoreWorkspace.toCwd('docs')))
