@@ -30,11 +30,11 @@ While LiveStore is framework agnostic, the `@livestore/react` package provides a
 
 ## Core Concepts
 
-The React integration is built around these primitives:
+When using LiveStore in React, you'll primarily interact with these fundamental components:
 
-- **`StoreRegistry`** - Manages store instances with automatic caching and disposal
-- **`<StoreRegistryProvider>`** - React context provider that supplies the registry to components
-- **`useStore()`** - Suspense-enabled hook for accessing store instances
+- [**`StoreRegistry`**](#new-storeregistryconfig) - Manages store instances with automatic caching and disposal
+- [**`<StoreRegistryProvider>`**](#storeregistryprovider) - React context provider that supplies the registry to components
+- [**`useStore()`**](#usestoreoptions) - Suspense-enabled hook for accessing store instances
 
 Stores are cached by their `storeId` and automatically disposed after being unused for a configurable duration (`unusedCacheTime`).
 
@@ -44,15 +44,15 @@ Stores are cached by their `storeId` and automatically disposed after being unus
 
 ### 1. Configure the Store
 
-Create a store configuration file that exports a custom hook wrapping `useStore()`:
+Create a store configuration file that exports a custom hook wrapping [`useStore()`](#usestoreoptions):
 
 <ReactStoreSnippet />
 
-The `useStore()` hook accepts store configuration options and returns a store instance. It suspends while the store is loading, so components using it need to be wrapped in a `Suspense` boundary.
+The [`useStore()`](#usestoreoptions) hook accepts store configuration options and returns a store instance. It suspends while the store is loading, so components using it need to be wrapped in a `Suspense` boundary.
 
 ### 2. Set Up the Registry
 
-Create a `StoreRegistry` and provide it via `<StoreRegistryProvider>`. Wrap in `<Suspense>` to handle loading states and `<ErrorBoundary>` to handle errors:
+Create a [`StoreRegistry`](#new-storeregistryconfig) and provide it via [`<StoreRegistryProvider>`](#storeregistryprovider). Wrap in `<Suspense>` to handle loading states and `<ErrorBoundary>` to handle errors:
 
 <ReactProviderSnippet />
 
@@ -83,7 +83,7 @@ You can have multiple stores within a single React application. This is useful f
 - **Partial data synchronization** - Load only the data you need, when you need it
 - **Multi-tenant applications** - Separate stores for each workspace, organization, or project (like Slack workspaces, Notion pages, or Linear teams)
 
-Use the `storeOptions()` helper for type-safe, reusable configurations, and then create multiple instances of the same store type by using different `storeId` values:
+Use the [`storeOptions()`](#storeoptionsoptions) helper for type-safe, reusable configurations, and then create multiple instances of the same store type by using different `storeId` values:
 
 <MultiStoreOptionsSnippet/>
 
@@ -172,7 +172,7 @@ LiveStore works with Tanstack Start out of the box.
 
 #### Provider Placement
 
-When using LiveStore with TanStack Start, place `<StoreRegistryProvider>` in the correct location to avoid remounting on navigation.
+When using LiveStore with TanStack Start, place [`<StoreRegistryProvider>`](#storeregistryprovider) in the correct location to avoid remounting on navigation.
 
 :::caution
 **Do NOT place `<StoreRegistryProvider>` inside `shellComponent`**. The `shellComponent` can be re-rendered on navigation, causing LiveStore to remount and show the loading screen on every page transition.
