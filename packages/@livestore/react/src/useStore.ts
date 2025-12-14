@@ -21,7 +21,7 @@ export type ReactApi = {
 }
 
 /**
- * Returns a store instance, augmented with React hooks for reactive queries.
+ * Returns a store instance augmented with hooks (`store.useQuery()` and `store.useClientDocument()`) for reactive queries.
  *
  * @example
  * ```tsx
@@ -56,10 +56,10 @@ export type ReactApi = {
  *
  * @remarks
  * - Suspends until the store is loaded.
- * - Store is cached by `storeId`. Multiple calls with the same `storeId` return the same store instance.
+ * - Store is cached by its `storeId` in the `StoreRegistry`. Multiple calls with the same `storeId` return the same store instance.
  * - Store is cached as long as it's being used, and after `unusedCacheTime` expires (default `60_000` ms in browser, `Infinity` in non-browser)
  * - Default store options can be configured in `StoreRegistry` constructor.
- * - Store options are only applied when the store is first loaded. Subsequent calls with different options will not affect the store.
+ * - Store options are only applied when the store is loaded. Subsequent calls with different options will not affect the store if it's already loaded and cached in the registry.
  *
  * @typeParam TSchema - The schema type for the store
  * @returns The loaded store instance augmented with React hooks

@@ -52,7 +52,7 @@ The [`useStore()`](#usestoreoptions) hook accepts store configuration options an
 
 ### 2. Set Up the Registry
 
-Create a [`StoreRegistry`](#new-storeregistryconfig) and provide it via [`<StoreRegistryProvider>`](#storeregistryprovider). Wrap in `<Suspense>` to handle loading states and `<ErrorBoundary>` to handle errors:
+Create a [`StoreRegistry`](#new-storeregistryconfig) and provide it via [`<StoreRegistryProvider>`](#storeregistryprovider). Wrap in a `<Suspense>` to handle loading states and a `<ErrorBoundary>` to handle errors:
 
 <ReactProviderSnippet />
 
@@ -64,13 +64,13 @@ Components can now access the store via your custom hook:
 
 ## Querying Data
 
-Use `store.useQuery()` to subscribe to reactive queries:
+Use [`store.useQuery()`](#storeusequeryqueryable) to subscribe to reactive queries:
 
 <ReactUseQuerySnippet />
 
 ## Client Documents
 
-Use `store.useClientDocument()` for client-specific state:
+Use [`store.useClientDocument()`](#storeuseclientdocumenttable-id-options) for client-specific state:
 
 <ReactUseClientDocumentSnippet />
 
@@ -81,9 +81,9 @@ Use `store.useClientDocument()` for client-specific state:
 You can have multiple stores within a single React application. This is useful for:
 
 - **Partial data synchronization** - Load only the data you need, when you need it
-- **Multi-tenant applications** - Separate stores for each workspace, organization, or project (like Slack workspaces, Notion pages, or Linear teams)
+- **Multi-tenant applications** - Separate stores for each workspace, organization, or team (like Slack workspaces or Linear teams)
 
-Use the [`storeOptions()`](#storeoptionsoptions) helper for type-safe, reusable configurations, and then create multiple instances of the same store type by using different `storeId` values:
+Use the [`storeOptions()`](#storeoptionsoptions) helper for type-safe, reusable configurations, and then create multiple instances for the same store configuration by using different `storeId` values:
 
 <MultiStoreOptionsSnippet/>
 
@@ -101,8 +101,9 @@ When you know a store will be needed soon, preload it in advance to warm up the 
 
 When creating `storeId` values:
 
-- **Use namespaces** - Prefix with the entity type (e.g., `workspace-abc123`, `issue-456`) to avoid collisions and improve debugging
+- **Valid characters** - Only alphanumeric characters, underscores (`_`), and hyphens (`-`) are allowed (regex: `/^[a-zA-Z0-9_-]+$/`)
 - **Globally unique** - Prefer globally unique IDs (e.g., nanoid) to prevent collisions
+- **Use namespaces** - Prefix with the entity type (e.g., `workspace-abc123`, `issue-456`) to avoid collisions and easier identification when debugging
 - **Keep them stable** - The same entity should always use the same `storeId` across renders
 - **Sanitize user input** - If incorporating user data, validate/sanitize to prevent injection attacks
 - **Document your conventions** - Document special IDs like `user-current` as they're part of your API contract
@@ -117,48 +118,94 @@ Use `LogLevel.None` to disable logging entirely.
 
 ## API Reference
 
-### `useStore(options)`
-
-Hook that returns a store instance, suspending until it's loaded.
-
-- Throws a Promise during loading (for React Suspense)
-- Throws an Error if loading fails (for Error Boundaries)
-- Returns the loaded store when ready
-
-Options:
-- `storeId` - Unique identifier for this store instance (required)
-- `schema` - The LiveStore schema (required)
-- `adapter` - The platform adapter (required)
-- `batchUpdates` - Function for batching React updates (recommended)
-- `boot` - Function called when the store is first loaded
-- `unusedCacheTime` - Time in ms to keep unused stores in cache (default: 60_000 in browser)
-
 ### `storeOptions(options)`
 
-Helper for defining reusable store configurations with type safety. Returns options that can be passed to `useStore()` or `storeRegistry.preload()`.
+Helper for defining reusable store options with full type inference. Returns options that can be passed to [`useStore()`](#usestoreoptions) or [`storeRegistry.preload()`](#storeregistrypreloadoptions).
+
+Options:
+- `storeId` - Unique identifier for this store instance
+- `schema` - The LiveStore schema
+- `adapter` - The platform adapter
+- `unusedCacheTime?` - Time in ms to keep unused stores in cache (default: `60_000` in browser, `Infinity` in non-browser environments)
+- `batchUpdates?` - Function for batching React updates (recommended)
+- `boot?` - Function called when the store is loaded
+- `onBootStatus?` - Callback for boot status updates
+- `context?` - User-defined context for dependency injection
+- `syncPayload?` - Payload sent to sync backend (e.g., auth tokens)
+- `syncPayloadSchema?` - Schema for type-safe sync payload validation
+- `confirmUnsavedChanges?` - Register beforeunload handler (default: `true`, web only)
+- `logger?` - Custom logger implementation
+- `logLevel?` - Log level (e.g., `LogLevel.Info`, `LogLevel.Debug`, `LogLevel.None`)
+- `otelOptions?` - OpenTelemetry configuration (`{ tracer, rootSpanContext }`)
+- `disableDevtools?` - Whether to disable devtools (`boolean | 'auto'`, default: `'auto'`)
+- `debug?` - Debug options (`{ instanceId?: string }`)
+
+### `useStore(options)`
+
+Returns a store instance augmented with hooks ([`store.useQuery()`](#storeusequeryqueryable) and [`store.useClientDocument()`](#storeuseclientdocumenttable-id-options)) for reactive queries.
+
+- Suspends until the store is loaded.
+- Throws an error if loading fails.
+- Store gets cached by its `storeId` in the [`StoreRegistry`](#new-storeregistryconfig). Multiple calls with the same `storeId` return the same store instance.
+- Store is cached as long as it's being used, and after `unusedCacheTime` expires (default `60_000` ms in browser, `Infinity` in non-browser)
+- Default store options can be configured in [`StoreRegistry`](#new-storeregistryconfig) constructor.
+- Store options are only applied when the store is loaded. Subsequent calls with different options will not affect the store if it's already loaded and cached in the registry.
+
+### `store.commit(...events)` / `store.commit(txnFn)`
+
+Commits events to the store. Supports multiple calling patterns:
+
+- `store.commit(...events)` - Commit one or more events
+- `store.commit(txnFn)` - Commit events via a transaction function
+- `store.commit(options, ...events)` - Commit with options
+- `store.commit(options, txnFn)` - Options with transaction function
+
+Options:
+- `skipRefresh` - Skip refreshing reactive queries after commit (advanced)
+
+### `store.useQuery(queryable)`
+
+Subscribes to a reactive query. Re-renders the component when the result changes.
+
+- Takes any `Queryable`: `QueryBuilder`, `LiveQueryDef`, `SignalDef`, or `LiveQuery` instance
+- Returns the query result
+
+### `store.useClientDocument(table, id?, options?)`
+
+React.useState-like hook for client-document tables.
+
+- Returns `[row, setRow, id, query$]` tuple
+- Works only with tables defined via `State.SQLite.clientDocument()`
+- If the table has a default id, the `id` argument is optional
 
 ### `new StoreRegistry(config?)`
 
-Creates a registry that manages store instances.
+Creates a registry that coordinates store loading, caching, and retention.
 
 Config:
-- `defaultOptions` - Default options applied to all stores (can be overridden per-store)
+- `defaultOptions?` - Default options that are applied to all stores when they are loaded.:
+  - `batchUpdates?` - Function for batching React updates
+  - `unusedCacheTime?` - Cache time for unused stores
+  - `disableDevtools?` - Whether to disable devtools
+  - `confirmUnsavedChanges?` - beforeunload confirmation
+  - `otelOptions?` - OpenTelemetry configuration
+  - `debug?` - Debug options
+- `runtime?` - Effect runtime for registry operations
 
 ### `<StoreRegistryProvider>`
 
-React context provider that supplies the registry to components.
+React context provider that makes a [`StoreRegistry`](#new-storeregistryconfig) available to descendant components.
 
 Props:
-- `storeRegistry` - The registry instance (required)
-- `children` - React nodes (required)
+- `storeRegistry` - The registry instance
 
-### `useStoreRegistry()`
+### `useStoreRegistry(override?)`
 
-Returns the current `StoreRegistry` from context. Useful for advanced operations like preloading.
+Hook that returns the [`StoreRegistry`](#new-storeregistryconfig) provided by the nearest [`<StoreRegistryProvider>`](#storeregistryprovider) ancestor, or the `override` if provided.
 
 ### `storeRegistry.preload(options)`
 
-Starts loading a store without suspending. Returns a Promise that resolves when loading completes. This is a fire-and-forget operation useful for warming up the cache.
+Loads a store (without suspending) to warm up the cache. Returns a Promise that resolves when loading completes. This is a fire-and-forget operation useful for warming up the cache.
 
 ## Framework-Specific Notes
 

@@ -43,11 +43,11 @@ export const DEFAULT_UNUSED_CACHE_TIME = typeof window === 'undefined' ? Number.
  * @see {@link storeOptions} for defining reusable store configurations
  * @see {@link StoreRegistry} for managing store lifecycles
  */
-export type RegistryStoreOptions<
+export interface RegistryStoreOptions<
   TSchema extends LiveStoreSchema = LiveStoreSchema.Any,
   TContext = {},
   TSyncPayloadSchema extends Schema.Schema<any> = typeof Schema.JsonValue,
-> = CreateStoreOptions<TSchema, TContext, TSyncPayloadSchema> & {
+> extends CreateStoreOptions<TSchema, TContext, TSyncPayloadSchema> {
   /**
    * OpenTelemetry configuration for tracing store operations.
    *
@@ -75,23 +75,25 @@ export type RegistryStoreOptions<
   unusedCacheTime?: number
 }
 
-/**
- * Default options that can be set once on the registry constructor and applied to all stores.
- *
- * These are fields that typically stay constant across an application:
- * - Framework integration (`batchUpdates`)
- * - Environment settings (`disableDevtools`, `debug`, `otelOptions`)
- * - Behavior defaults (`confirmUnsavedChanges`, `unusedCacheTime`)
- *
- * Store-specific fields like `schema`, `adapter`, `storeId`, and `boot` are intentionally
- * excluded since they vary per store definition.
- */
-type RegistryDefaultStoreOptions = Partial<
-  Pick<
-    RegistryStoreOptions,
-    'batchUpdates' | 'disableDevtools' | 'confirmUnsavedChanges' | 'debug' | 'otelOptions' | 'unusedCacheTime'
+type StoreRegistryConfig = {
+  /**
+   * Default options that are applied to all stores when they are loaded.
+   *
+   * @remarks
+   * These are options that typically don't depend on the specific store being loaded:
+   * - Framework integration (`batchUpdates`)
+   * - Environment settings (`disableDevtools`, `debug`, `otelOptions`)
+   * - Behavior defaults (`confirmUnsavedChanges`, `unusedCacheTime`)
+   *
+   * Store-specific fields like `schema`, `adapter`, `storeId`, and `boot` are intentionally
+   * excluded since they vary per store definition.
+   */
+  defaultOptions?: Partial<
+    Pick<
+      RegistryStoreOptions,
+      'batchUpdates' | 'disableDevtools' | 'confirmUnsavedChanges' | 'debug' | 'otelOptions' | 'unusedCacheTime'
+    >
   >
-> & {
   /**
    * Custom Effect runtime for all registry operations (loading, caching, etc.).
    * When the runtime's scope closes, all managed stores are automatically shut down.
@@ -158,8 +160,6 @@ export class StoreRegistry {
   /**
    * Creates a new StoreRegistry instance.
    *
-   * @param params.defaultOptions - Default options applied to all stores managed by this registry when they are loaded.
-   *
    * @example
    * ```ts
    * const registry = new StoreRegistry({
@@ -170,9 +170,8 @@ export class StoreRegistry {
    * })
    * ```
    */
-  constructor(params: { defaultOptions?: RegistryDefaultStoreOptions } = {}) {
-    this.#runtime =
-      params.defaultOptions?.runtime ??
+  constructor(config: StoreRegistryConfig = {}) {
+    this.#runtime = config.runtime ??
       ManagedRuntime.make(Layer.mergeAll(Layer.scope, OtelLiveDummy)).runtimeEffect.pipe(Effect.runSync)
 
     this.#rcMap = RcMap.make({
@@ -191,7 +190,7 @@ export class StoreRegistry {
         ),
       // TODO: Make idleTimeToLive vary for each store when Effect supports per-resource TTL
       // See https://github.com/livestorejs/livestore/issues/917
-      idleTimeToLive: params.defaultOptions?.unusedCacheTime ?? DEFAULT_UNUSED_CACHE_TIME,
+      idleTimeToLive: config.defaultOptions?.unusedCacheTime ?? DEFAULT_UNUSED_CACHE_TIME,
     }).pipe(Runtime.runSync(this.#runtime))
   }
 
@@ -308,7 +307,7 @@ export class StoreRegistry {
   }
 
   /**
-   * Warms the cache for a store.
+   * Loads a store (without suspending) to warm up the cache.
    *
    * @typeParam TSchema - The schema of the store to preload
    * @typeParam TContext - The context type for the store
@@ -336,8 +335,10 @@ export class StoreRegistry {
 }
 
 /**
- * Helper to define reusable store options with full type inference.
+ * Helper for defining reusable store options with full type inference. Returns
+ * options that can be passed to `useStore()` or `storeRegistry.preload()`.
  *
+ * @remarks
  * At runtime this is an identity function that returns the input unchanged.
  * Its value lies in enabling TypeScript's excess property checking to catch
  * typos and configuration errors, while allowing options to be shared across
