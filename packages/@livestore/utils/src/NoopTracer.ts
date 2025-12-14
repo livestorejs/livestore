@@ -1,4 +1,6 @@
 /** biome-ignore-all lint/complexity/noArguments: using arguments is fine here */
+
+import { cuid } from '@livestore/utils/cuid'
 import type * as otel from '@opentelemetry/api'
 
 export const makeNoopSpan = () => {
@@ -21,7 +23,10 @@ export const makeNoopSpan = () => {
       ;(span as any)._duration = [durationSecs, durationRestNs]
     },
     spanContext: () => {
-      return { traceId: 'livestore-noop-trace-id', spanId: 'livestore-noop-span-id' }
+      return {
+        traceId: `livestore-noop-trace-id${cuid()}`,
+        spanId: `livestore-noop-span-id${cuid()}`,
+      }
     },
     _duration: [0, 0],
   } as unknown as otel.Span

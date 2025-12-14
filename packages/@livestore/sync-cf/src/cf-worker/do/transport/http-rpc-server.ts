@@ -2,6 +2,7 @@ import type { CfTypes } from '@livestore/common-cf'
 import { Effect, HttpApp, Layer, RpcSerialization, RpcServer } from '@livestore/utils/effect'
 import { SyncHttpRpc } from '../../../common/http-rpc-schema.ts'
 import * as SyncMessage from '../../../common/sync-message-types.ts'
+import { headersRecordToMap } from '../../shared.ts'
 import { DoCtx } from '../layer.ts'
 import { makeEndingPullStream } from '../pull.ts'
 import { makePush } from '../push.ts'
@@ -9,12 +10,14 @@ import { makePush } from '../push.ts'
 export const createHttpRpcHandler = ({
   request,
   responseHeaders,
+  forwardedHeaders,
 }: {
   request: CfTypes.Request
   responseHeaders?: Record<string, string>
+  forwardedHeaders?: Record<string, string>
 }) =>
   Effect.gen(function* () {
-    const handlerLayer = createHttpRpcLayer
+    const handlerLayer = createHttpRpcLayer(forwardedHeaders)
     const httpApp = RpcServer.toHttpApp(SyncHttpRpc).pipe(Effect.provide(handlerLayer))
     const webHandler = yield* httpApp.pipe(Effect.map(HttpApp.toWebHandler))
 
@@ -31,15 +34,17 @@ export const createHttpRpcHandler = ({
     return response
   }).pipe(Effect.withSpan('createHttpRpcHandler'))
 
-const createHttpRpcLayer =
+const createHttpRpcLayer = (forwardedHeaders: Record<string, string> | undefined) => {
+  const headers = headersRecordToMap(forwardedHeaders)
+
   // TODO implement admin requests
-  SyncHttpRpc.toLayer({
-    'SyncHttpRpc.Pull': (req) => makeEndingPullStream(req, req.payload),
+  return SyncHttpRpc.toLayer({
+    'SyncHttpRpc.Pull': (req) => makeEndingPullStream({ req, payload: req.payload, headers }),
 
     'SyncHttpRpc.Push': (req) =>
       Effect.gen(function* () {
         const { ctx, env, doOptions, storeId } = yield* DoCtx
-        const push = makePush({ payload: undefined, options: doOptions, storeId, ctx, env })
+        const push = makePush({ payload: undefined, headers, options: doOptions, storeId, ctx, env })
 
         return yield* push(req)
       }),
@@ -49,3 +54,4 @@ const createHttpRpcLayer =
     Layer.provideMerge(RpcServer.layerProtocolHttp({ path: '/http-rpc' })),
     Layer.provideMerge(RpcSerialization.layerJson),
   )
+}

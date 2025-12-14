@@ -13,7 +13,7 @@ import {
   type SyncOptions,
   UnknownError,
 } from '@livestore/common'
-import { Eventlog, LeaderThreadCtx } from '@livestore/common/leader-thread'
+import { Eventlog, LeaderThreadCtx, streamEventsWithSyncState } from '@livestore/common/leader-thread'
 import type { LiveStoreSchema } from '@livestore/common/schema'
 import { LiveStoreEvent } from '@livestore/common/schema'
 import { loadSqlite3Wasm } from '@livestore/sqlite-wasm/load-wasm'
@@ -406,8 +406,18 @@ const makeLocalLeaderThread = ({
                 batch.map((item) => new LiveStoreEvent.Client.EncodedWithMeta(item)),
                 { waitForProcessing: true },
               ),
+            stream: (options) =>
+              streamEventsWithSyncState({
+                dbEventlog,
+                syncState: syncProcessor.syncState,
+                options,
+              }),
           },
-          initialState: { leaderHead: initialLeaderHead, migrationsReport: initialState.migrationsReport },
+          initialState: {
+            leaderHead: initialLeaderHead,
+            migrationsReport: initialState.migrationsReport,
+            storageMode: 'persisted',
+          },
           export: Effect.sync(() => dbState.export()),
           getEventlogData: Effect.sync(() => dbEventlog.export()),
           syncState: syncProcessor.syncState,
@@ -546,10 +556,16 @@ const makeWorkerLeaderThread = ({
                 attributes: { batchSize: batch.length },
               }),
             ),
+          stream: (options) =>
+            runInWorkerStream(new WorkerSchema.LeaderWorkerInnerStreamEvents(options)).pipe(
+              Stream.withSpan('@livestore/adapter-node:client-session:streamEvents'),
+              Stream.orDie,
+            ),
         },
         initialState: {
           leaderHead: initialLeaderHead,
           migrationsReport: bootResult.migrationsReport,
+          storageMode: 'persisted',
         },
         export: runInWorker(new WorkerSchema.LeaderWorkerInnerExport()).pipe(
           Effect.timeout(10_000),

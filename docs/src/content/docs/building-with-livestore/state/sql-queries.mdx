@@ -19,6 +19,22 @@ LiveStore supports arbitrary SQL queries on top of SQLite. In order for LiveStor
 
 <RawSqlSnippet />
 
+## JSON array containment
+
+For JSON array columns, you can use `JSON_CONTAINS` and `JSON_NOT_CONTAINS` operators to check if an array contains (or doesn't contain) a specific value:
+
+```ts
+// Find items with a specific tag
+table.where({ tags: { op: 'JSON_CONTAINS', value: 'important' } })
+
+// Find items without a specific tag
+table.where({ tags: { op: 'JSON_NOT_CONTAINS', value: 'archived' } })
+```
+
+:::caution[Performance consideration]
+These operators use SQLite's `json_each()` table-valued function which **cannot be indexed** and requires a full table scan. For large tables with frequent lookups, consider denormalizing the data into a separate indexed table.
+:::
+
 ## Best practices
 
 - Query results should be treated as immutable/read-only

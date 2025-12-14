@@ -35,6 +35,7 @@
       "!!**/test-results/**",
       "!!**/nix/**",
       "!!**/wip/**",
+      "!!**/.vite/**",
       "!!**/patches/**"
     ],
     "ignoreUnknown": true

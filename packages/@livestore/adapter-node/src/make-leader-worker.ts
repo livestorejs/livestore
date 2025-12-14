@@ -9,7 +9,8 @@ if (process.execArgv.includes('--inspect')) {
 
 import type { SyncOptions } from '@livestore/common'
 import { LogConfig, UnknownError } from '@livestore/common'
-import { Eventlog, LeaderThreadCtx } from '@livestore/common/leader-thread'
+import type { StreamEventsOptions } from '@livestore/common/leader-thread'
+import { Eventlog, LeaderThreadCtx, streamEventsWithSyncState } from '@livestore/common/leader-thread'
 import type { LiveStoreSchema } from '@livestore/common/schema'
 import { LiveStoreEvent } from '@livestore/common/schema'
 import { loadSqlite3Wasm } from '@livestore/sqlite-wasm/load-wasm'
@@ -86,6 +87,20 @@ export const makeWorkerEffect = (options: WorkerOptions) => {
         const { syncProcessor } = yield* LeaderThreadCtx
         return syncProcessor.pull({ cursor })
       }).pipe(Stream.unwrapScoped),
+    StreamEvents: (options: WorkerSchema.LeaderWorkerInnerStreamEvents) =>
+      LeaderThreadCtx.pipe(
+        Effect.map(({ dbEventlog, syncProcessor }) => {
+          const { _tag: _ignored, ...payload } = options
+          const streamOptions = payload as StreamEventsOptions
+          return streamEventsWithSyncState({
+            dbEventlog,
+            syncState: syncProcessor.syncState,
+            options: streamOptions,
+          })
+        }),
+        Stream.unwrapScoped,
+        Stream.withSpan('@livestore/adapter-node:worker:StreamEvents'),
+      ),
     Export: () =>
       Effect.andThen(LeaderThreadCtx, (_) => _.dbState.export()).pipe(
         UnknownError.mapToUnknownError,

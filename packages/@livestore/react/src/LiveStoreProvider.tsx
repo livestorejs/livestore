@@ -63,6 +63,13 @@ export interface LiveStoreProviderProps<TSyncPayloadSchema extends Schema.Schema
    */
   confirmUnsavedChanges?: boolean
   /**
+   * Advanced store parameters forwarded to `createStore`.
+   * Currently supports:
+   * - `leaderPushBatchSize`: max events pushed to the leader per write batch.
+   * - `eventQueryBatchSize`: chunk size used when the stream replays confirmed events.
+   */
+  params?: CreateStoreOptions<LiveStoreSchema>['params']
+  /**
    * Payload that will be passed to the sync backend when connecting
    *
    * @default undefined
@@ -113,6 +120,7 @@ export const LiveStoreProvider = <TSyncPayloadSchema extends Schema.Schema<any> 
   disableDevtools,
   signal,
   confirmUnsavedChanges = true,
+  params,
   syncPayload,
   syncPayloadSchema,
   debug,
@@ -129,6 +137,7 @@ export const LiveStoreProvider = <TSyncPayloadSchema extends Schema.Schema<any> 
       otelOptions,
       boot,
       disableDevtools,
+      params,
       signal,
       syncPayload,
       syncPayloadSchema,

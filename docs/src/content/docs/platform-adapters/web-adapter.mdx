@@ -66,6 +66,41 @@ During development (`NODE_ENV !== 'production'`), LiveStore automatically copies
 
 LiveStore also uses `window.sessionStorage` to retain the identity of a client session (e.g. tab/window) across reloads.
 
+### Private browsing mode
+
+In Safari and Firefox private browsing mode, OPFS is not available due to browser restrictions. When this happens, LiveStore automatically falls back to in-memory storage. This means:
+
+- The app will continue to work normally during the session
+- Data will not persist across page reloads or tab closures
+- Sync functionality (if configured) will still work
+
+You can detect when the store is running in-memory mode using `store.storageMode`:
+
+```tsx
+if (store.storageMode === 'in-memory') {
+  // Show a warning to the user
+  showToast('Data will not be saved in private browsing mode')
+}
+```
+
+The `storageMode` property returns:
+- `'persisted'`: Data is being persisted to disk (e.g., via OPFS)
+- `'in-memory'`: Data is only stored in memory and will be lost on page refresh
+
+The boot status callback will also emit a `warning` stage with details about why persistence is unavailable:
+
+```tsx
+<LiveStoreProvider
+  // ...
+  renderLoading={(status) => {
+    if (status.stage === 'warning') {
+      console.warn(`Storage warning (${status.reason}): ${status.message}`)
+    }
+    return <div>Loading...</div>
+  }}
+/>
+```
+
 ### Resetting local persistence
 
 Resetting local persistence only clears data stored in the browser and does not affect any connected sync backend.

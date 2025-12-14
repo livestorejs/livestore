@@ -7,6 +7,7 @@ import {
   SyncState,
   UnknownError,
 } from '@livestore/common'
+import { StreamEventsOptionsFields } from '@livestore/common/leader-thread'
 import { EventSequenceNumber, LiveStoreEvent } from '@livestore/common/schema'
 import { Schema, Transferable } from '@livestore/utils/effect'
 
@@ -110,6 +111,15 @@ export class LeaderWorkerInnerPullStream extends Schema.TaggedRequest<LeaderWork
   }),
   failure: UnknownError,
 }) {}
+
+export class LeaderWorkerInnerStreamEvents extends Schema.TaggedRequest<LeaderWorkerInnerStreamEvents>()(
+  'StreamEvents',
+  {
+    payload: StreamEventsOptionsFields,
+    success: LiveStoreEvent.Client.Encoded,
+    failure: UnknownError,
+  },
+) {}
 
 export class LeaderWorkerInnerPushToLeader extends Schema.TaggedRequest<LeaderWorkerInnerPushToLeader>()(
   'PushToLeader',
@@ -215,6 +225,7 @@ export const LeaderWorkerInnerRequest = Schema.Union(
   LeaderWorkerInnerInitialMessage,
   LeaderWorkerInnerBootStatusStream,
   LeaderWorkerInnerPullStream,
+  LeaderWorkerInnerStreamEvents,
   LeaderWorkerInnerPushToLeader,
   LeaderWorkerInnerExport,
   LeaderWorkerInnerGetRecreateSnapshot,

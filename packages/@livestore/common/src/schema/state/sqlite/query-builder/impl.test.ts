@@ -81,7 +81,22 @@ const selections = State.SQLite.table({
   },
 })
 
-const db = { todos, todosWithIntId, comments, issue, selections, UiState, UiStateWithDefaultId }
+const Source = Schema.Literal('google', 'linkedin', 'facebook')
+const ProfileAttribute = Schema.Struct({ key: Schema.String, value: Schema.String })
+
+const personProfiles = State.SQLite.table({
+  name: 'person_profiles',
+  columns: {
+    personId: State.SQLite.text({ primaryKey: true }),
+    sources: State.SQLite.json({ schema: Schema.Array(Source), default: [] }),
+    tags: State.SQLite.json({ schema: Schema.Array(Schema.String), default: [] }),
+    attributes: State.SQLite.json({ schema: Schema.Array(ProfileAttribute), default: [] }),
+    /** Nullable JSON array column for testing JSON_CONTAINS on nullable columns */
+    optionalTags: State.SQLite.json({ schema: Schema.Array(Schema.String), nullable: true }),
+  },
+})
+
+const db = { todos, todosWithIntId, comments, issue, selections, UiState, UiStateWithDefaultId, personProfiles }
 
 const dump = (qb: QueryBuilder<any, any, any>) => ({
   bindValues: qb.asSql().bindValues,
@@ -363,6 +378,131 @@ describe('query builder', () => {
           "schema": "ReadonlyArray<todos>",
         }
       `)
+    })
+
+    it('should handle JSON_CONTAINS operator for JSON array columns', () => {
+      expect(
+        dump(db.personProfiles.where({ sources: { op: 'JSON_CONTAINS', value: 'google' } })),
+      ).toMatchInlineSnapshot(`
+        {
+          "bindValues": [
+            "google",
+          ],
+          "query": "SELECT * FROM 'person_profiles' WHERE EXISTS (SELECT 1 FROM json_each("sources") WHERE value = ?)",
+          "schema": "ReadonlyArray<person_profiles>",
+        }
+      `)
+
+      // With select
+      expect(
+        dump(db.personProfiles.select('personId').where({ sources: { op: 'JSON_CONTAINS', value: 'linkedin' } })),
+      ).toMatchInlineSnapshot(`
+        {
+          "bindValues": [
+            "linkedin",
+          ],
+          "query": "SELECT "personId" FROM 'person_profiles' WHERE EXISTS (SELECT 1 FROM json_each("sources") WHERE value = ?)",
+          "schema": "ReadonlyArray<({ readonly personId: string } <-> string)>",
+        }
+      `)
+
+      // With plain string array column
+      expect(
+        dump(db.personProfiles.where({ tags: { op: 'JSON_CONTAINS', value: 'important' } })),
+      ).toMatchInlineSnapshot(`
+        {
+          "bindValues": [
+            "important",
+          ],
+          "query": "SELECT * FROM 'person_profiles' WHERE EXISTS (SELECT 1 FROM json_each("tags") WHERE value = ?)",
+          "schema": "ReadonlyArray<person_profiles>",
+        }
+      `)
+    })
+
+    it('should handle JSON_NOT_CONTAINS operator for JSON array columns', () => {
+      expect(
+        dump(db.personProfiles.where({ sources: { op: 'JSON_NOT_CONTAINS', value: 'google' } })),
+      ).toMatchInlineSnapshot(`
+        {
+          "bindValues": [
+            "google",
+          ],
+          "query": "SELECT * FROM 'person_profiles' WHERE NOT EXISTS (SELECT 1 FROM json_each("sources") WHERE value = ?)",
+          "schema": "ReadonlyArray<person_profiles>",
+        }
+      `)
+    })
+
+    it('should JSON-stringify object elements for JSON_CONTAINS', () => {
+      expect(
+        dump(
+          db.personProfiles.where({
+            attributes: { op: 'JSON_CONTAINS', value: { key: 'language', value: 'typescript' } },
+          }),
+        ),
+      ).toMatchInlineSnapshot(`
+        {
+          "bindValues": [
+            "{"key":"language","value":"typescript"}",
+          ],
+          "query": "SELECT * FROM 'person_profiles' WHERE EXISTS (SELECT 1 FROM json_each("attributes") WHERE value = ?)",
+          "schema": "ReadonlyArray<person_profiles>",
+        }
+      `)
+    })
+
+    it('should handle combining JSON_CONTAINS with other WHERE clauses', () => {
+      expect(
+        dump(
+          db.personProfiles
+            .where({ sources: { op: 'JSON_CONTAINS', value: 'google' } })
+            .where({ sources: { op: 'JSON_NOT_CONTAINS', value: 'facebook' } }),
+        ),
+      ).toMatchInlineSnapshot(`
+        {
+          "bindValues": [
+            "google",
+            "facebook",
+          ],
+          "query": "SELECT * FROM 'person_profiles' WHERE EXISTS (SELECT 1 FROM json_each("sources") WHERE value = ?) AND NOT EXISTS (SELECT 1 FROM json_each("sources") WHERE value = ?)",
+          "schema": "ReadonlyArray<person_profiles>",
+        }
+      `)
+    })
+
+    it('should handle JSON_CONTAINS on nullable JSON array columns', () => {
+      expect(
+        dump(db.personProfiles.where({ optionalTags: { op: 'JSON_CONTAINS', value: 'important' } })),
+      ).toMatchInlineSnapshot(`
+        {
+          "bindValues": [
+            "important",
+          ],
+          "query": "SELECT * FROM 'person_profiles' WHERE EXISTS (SELECT 1 FROM json_each("optionalTags") WHERE value = ?)",
+          "schema": "ReadonlyArray<person_profiles>",
+        }
+      `)
+
+      // With JSON_NOT_CONTAINS
+      expect(
+        dump(db.personProfiles.where({ optionalTags: { op: 'JSON_NOT_CONTAINS', value: 'archived' } })),
+      ).toMatchInlineSnapshot(`
+        {
+          "bindValues": [
+            "archived",
+          ],
+          "query": "SELECT * FROM 'person_profiles' WHERE NOT EXISTS (SELECT 1 FROM json_each("optionalTags") WHERE value = ?)",
+          "schema": "ReadonlyArray<person_profiles>",
+        }
+      `)
+    })
+
+    it('should throw error when using JSON_CONTAINS on non-JSON array column', () => {
+      expect(() =>
+        // Type system prevents this at compile time for non-array columns, but test runtime check
+        dump(db.todos.where({ status: { op: 'JSON_CONTAINS', value: 'active' } } as any)),
+      ).toThrow('JSON_CONTAINS operator can only be used on JSON array columns')
     })
   })
 

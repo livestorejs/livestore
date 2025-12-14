@@ -1,10 +1,73 @@
 import { shouldNeverHappen } from '@livestore/utils'
-import { Schema } from '@livestore/utils/effect'
+import { Schema, SchemaAST } from '@livestore/utils/effect'
 
 import { SessionIdSymbol } from '../../../../adapter-types.ts'
 import type { SqlValue } from '../../../../util.ts'
 import type { State } from '../../../mod.ts'
 import type { QueryBuilderAst } from './api.ts'
+
+/**
+ * Extracts array element schema from a JSON array transformation AST.
+ * Returns the element schema, or undefined if not a JSON array transformation.
+ */
+const extractArrayElementFromTransformation = (ast: SchemaAST.AST): Schema.Schema.Any | undefined => {
+  if (!SchemaAST.isTransformation(ast)) return undefined
+
+  const toAst = ast.to
+  // Check if the "to" side is a TupleType (Effect's internal representation of Array)
+  if (!SchemaAST.isTupleType(toAst)) return undefined
+
+  // For Schema.Array, rest contains { type: AST } elements - get the first one's type
+  const restElement = toAst.rest[0]
+  if (restElement === undefined) return undefined
+
+  return Schema.make(restElement.type)
+}
+
+/**
+ * For JSON array columns, extracts the element schema from Schema.parseJson(Schema.Array(ElementSchema)).
+ * Also handles nullable JSON arrays (Schema.NullOr(Schema.parseJson(Schema.Array(...)))).
+ * Returns the element schema, or undefined if the column is not a JSON array.
+ */
+const getJsonArrayElementSchema = (colSchema: Schema.Schema.Any): Schema.Schema.Any | undefined => {
+  const ast = colSchema.ast
+
+  // Case 1: Direct transformation (non-nullable JSON array)
+  // Schema.parseJson(Schema.Array(ElementSchema)) creates a Transformation AST
+  if (SchemaAST.isTransformation(ast)) {
+    return extractArrayElementFromTransformation(ast)
+  }
+
+  // Case 2: Nullable JSON array - Schema.NullOr wraps the parseJson in a Union
+  // Structure: Union([Transformation (JSON array), Literal (null)])
+  if (SchemaAST.isUnion(ast)) {
+    for (const member of ast.types) {
+      const result = extractArrayElementFromTransformation(member)
+      if (result !== undefined) return result
+    }
+  }
+
+  return undefined
+}
+
+/**
+ * Encodes a JSON array element to the representation returned by SQLite's json_each().
+ * Objects/arrays are stringified so they match json_each's TEXT representation.
+ */
+const encodeJsonArrayElementValue = (elementSchema: Schema.Schema.Any, value: unknown): SqlValue => {
+  const encoded = Schema.encodeSync(elementSchema as Schema.Schema<unknown, SqlValue>)(value)
+
+  if (encoded === null) return null
+  if (typeof encoded === 'object') {
+    // Objects and arrays need to be JSON-stringified to match json_each() output
+    return JSON.stringify(encoded)
+  }
+  if (typeof encoded === 'boolean') {
+    return encoded ? 1 : 0
+  }
+
+  return encoded
+}
 
 // Helper functions for SQL generation
 const quoteIdentifier = (identifier: string): string => `"${identifier.replace(/"/g, '""')}"`
@@ -33,6 +96,23 @@ const formatWhereClause = (
       const colDef = tableDef.sqliteDef.columns[col]
       if (colDef === undefined) {
         throw new Error(`Column ${col} not found`)
+      }
+
+      // Handle JSON array containment operators
+      if (op === 'JSON_CONTAINS' || op === 'JSON_NOT_CONTAINS') {
+        const elementSchema = getJsonArrayElementSchema(colDef.schema)
+        if (elementSchema === undefined) {
+          throw new Error(
+            `${op} operator can only be used on JSON array columns, but column "${col}" is not a JSON array`,
+          )
+        }
+
+        const existsOp = op === 'JSON_CONTAINS' ? 'EXISTS' : 'NOT EXISTS'
+        // Encode the element value using the element schema
+        // Objects are JSON-stringified to match json_each() output
+        const encodedValue = encodeJsonArrayElementValue(elementSchema, value)
+        bindValues.push(encodedValue)
+        return `${existsOp} (SELECT 1 FROM json_each(${quotedCol}) WHERE value = ?)`
       }
 
       // Handle array values for IN/NOT IN operators

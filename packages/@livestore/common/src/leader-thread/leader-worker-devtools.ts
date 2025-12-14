@@ -94,6 +94,22 @@ const listenToDevtools = ({
     type RequestId = string
     const handledRequestIds = new Set<RequestId>()
 
+    type LoadDatabaseKind = 'state' | 'eventlog'
+    const loadDatabaseBatchTracker = new Map<string, Set<LoadDatabaseKind>>()
+
+    const registerBatchProgress = (batchId: string, kind: LoadDatabaseKind) => {
+      const entry = loadDatabaseBatchTracker.get(batchId) ?? new Set<LoadDatabaseKind>()
+      entry.add(kind)
+      loadDatabaseBatchTracker.set(batchId, entry)
+      const finished = entry.has('state') && entry.has('eventlog')
+
+      if (finished) {
+        loadDatabaseBatchTracker.delete(batchId)
+      }
+
+      return finished
+    }
+
     yield* incomingMessages.pipe(
       Stream.tap((decodedEvent) =>
         Effect.gen(function* () {
@@ -133,7 +149,7 @@ const listenToDevtools = ({
               return
             }
             case 'LSD.Leader.LoadDatabaseFile.Request': {
-              const { data } = decodedEvent
+              const { data, batchId } = decodedEvent
 
               const handleLoadDb = Effect.gen(function* () {
                 const tableNames = yield* Effect.acquireRelease(makeSqliteDb({ _tag: 'in-memory' }), (db) =>
@@ -148,25 +164,44 @@ const listenToDevtools = ({
                   ),
                 )
 
+                let databaseKind: LoadDatabaseKind | undefined
+
                 if (tableNames.has(SystemTables.EVENTLOG_META_TABLE)) {
-                  // Is eventlog db
+                  databaseKind = 'eventlog'
                   yield* SubscriptionRef.set(shutdownStateSubRef, 'shutting-down')
                   yield* Effect.try(() => void dbEventlog.import(data))
-                  yield* Effect.try(() => void dbState.destroy())
+
+                  if (batchId === undefined) {
+                    yield* Effect.try(() => void dbState.destroy())
+                  }
                 } else if (
                   tableNames.has(SystemTables.SCHEMA_META_TABLE) &&
                   tableNames.has(SystemTables.SCHEMA_EVENT_DEFS_META_TABLE)
                 ) {
-                  // Is state db
+                  databaseKind = 'state'
                   yield* SubscriptionRef.set(shutdownStateSubRef, 'shutting-down')
                   yield* Effect.try(() => void dbState.import(data))
-                  yield* Effect.try(() => void dbEventlog.destroy())
+
+                  if (batchId === undefined) {
+                    yield* Effect.try(() => void dbEventlog.destroy())
+                  }
                 } else {
                   return yield* Effect.fail({ _tag: 'unsupported-database' } as const)
                 }
 
+                const resolvedDatabaseKind = databaseKind
+                if (resolvedDatabaseKind === undefined) {
+                  return yield* Effect.fail({ _tag: 'unsupported-database' } as const)
+                }
+
+                const shouldShutdown =
+                  batchId === undefined ? true : registerBatchProgress(batchId, resolvedDatabaseKind)
+
                 yield* sendMessage(Devtools.Leader.LoadDatabaseFile.Success.make({ ...reqPayload }))
-                yield* shutdownChannel.send(IntentionalShutdownCause.make({ reason: 'devtools-import' }))
+
+                if (shouldShutdown) {
+                  yield* shutdownChannel.send(IntentionalShutdownCause.make({ reason: 'devtools-import' }))
+                }
               })
 
               yield* handleLoadDb.pipe(

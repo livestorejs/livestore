@@ -1,6 +1,5 @@
 import { LS_DEV, shouldNeverHappen } from '@livestore/utils'
-import { Effect, Option, Schema } from '@livestore/utils/effect'
-
+import { Chunk, Effect, Option, Schema } from '@livestore/utils/effect'
 import type { SqliteDb } from '../adapter-types.ts'
 import * as EventSequenceNumber from '../schema/EventSequenceNumber/mod.ts'
 import * as LiveStoreEvent from '../schema/LiveStoreEvent/mod.ts'
@@ -16,8 +15,8 @@ import { insertRow, updateRows } from '../sql-queries/sql-queries.ts'
 import type { PreparedBindValues } from '../util.ts'
 import { sql } from '../util.ts'
 import { execSql } from './connection.ts'
-import type { InitialSyncInfo } from './types.ts'
-import { LeaderThreadCtx } from './types.ts'
+import type { InitialSyncInfo, StreamEventsOptions } from './types.ts'
+import { LeaderThreadCtx, STREAM_EVENTS_BATCH_SIZE_DEFAULT } from './types.ts'
 
 export const initEventlogDb = (dbEventlog: SqliteDb) =>
   Effect.gen(function* () {
@@ -99,6 +98,83 @@ export const getEventsSince = ({
     .filter((_) => EventSequenceNumber.Client.compare(_.seqNum, since) > 0)
     .sort((a, b) => EventSequenceNumber.Client.compare(a.seqNum, b.seqNum))
 }
+
+export const getEventsFromEventlog = ({
+  dbEventlog,
+  options,
+}: {
+  dbEventlog: SqliteDb
+  options: StreamEventsOptions
+}): Effect.Effect<Chunk.Chunk<LiveStoreEvent.Client.Encoded>> =>
+  Effect.gen(function* () {
+    const since = options.since ?? EventSequenceNumber.Client.ROOT
+    const batchSize = options.batchSize ?? STREAM_EVENTS_BATCH_SIZE_DEFAULT
+
+    const makeQuery = () => {
+      let query = eventlogMetaTable.where('seqNumGlobal', '>', since.global)
+
+      if (options.until) {
+        query = query.where('seqNumGlobal', '<=', options.until.global)
+      }
+
+      if (options.filter && options.filter.length > 0) {
+        query = query.where({ name: { op: 'IN', value: options.filter } })
+      }
+
+      if (options.clientIds && options.clientIds.length > 0) {
+        query = query.where({ clientId: { op: 'IN', value: options.clientIds } })
+      }
+
+      if (options.sessionIds && options.sessionIds.length > 0) {
+        query = query.where({ sessionId: { op: 'IN', value: options.sessionIds } })
+      }
+
+      if (options.includeClientOnly !== true) {
+        query = query.where('seqNumClient', '<=', EventSequenceNumber.Client.DEFAULT)
+      }
+
+      return query
+        .orderBy([
+          { col: 'seqNumGlobal', direction: 'asc' },
+          { col: 'seqNumClient', direction: 'asc' },
+        ])
+        .limit(batchSize)
+    }
+
+    const eventlogEvents = yield* Effect.sync(() => dbEventlog.select(makeQuery()))
+
+    if (eventlogEvents.length === 0) {
+      return Chunk.empty<LiveStoreEvent.Client.Encoded>()
+    }
+
+    const spanAttributes = {
+      'livestore.eventLog.since': since.global,
+      'livestore.eventLog.until': options.until?.global,
+    }
+
+    return yield* Effect.sync(() => {
+      const encodedEvents = eventlogEvents.map((eventlogEvent) => {
+        return LiveStoreEvent.Client.Encoded.make({
+          name: eventlogEvent.name,
+          args: eventlogEvent.argsJson,
+          seqNum: {
+            global: eventlogEvent.seqNumGlobal,
+            client: eventlogEvent.seqNumClient,
+            rebaseGeneration: eventlogEvent.seqNumRebaseGeneration,
+          },
+          parentSeqNum: {
+            global: eventlogEvent.parentSeqNumGlobal,
+            client: eventlogEvent.parentSeqNumClient,
+            rebaseGeneration: eventlogEvent.parentSeqNumRebaseGeneration,
+          },
+          clientId: eventlogEvent.clientId,
+          sessionId: eventlogEvent.sessionId,
+        })
+      })
+
+      return Chunk.fromIterable(encodedEvents)
+    }).pipe(Effect.withSpan('@livestore/common:eventlog:getEventsFromEventlog', { attributes: spanAttributes }))
+  })
 
 export const getClientHeadFromDb = (dbEventlog: SqliteDb): EventSequenceNumber.Client.Composite => {
   const res = dbEventlog.select<{

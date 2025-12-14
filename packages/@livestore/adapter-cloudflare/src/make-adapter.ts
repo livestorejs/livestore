@@ -7,7 +7,13 @@ import {
   type SyncOptions,
   UnknownError,
 } from '@livestore/common'
-import { type DevtoolsOptions, Eventlog, LeaderThreadCtx, makeLeaderThreadLayer } from '@livestore/common/leader-thread'
+import {
+  type DevtoolsOptions,
+  Eventlog,
+  LeaderThreadCtx,
+  makeLeaderThreadLayer,
+  streamEventsWithSyncState,
+} from '@livestore/common/leader-thread'
 import type { CfTypes } from '@livestore/common-cf'
 import { LiveStoreEvent } from '@livestore/livestore'
 import { sqliteDbFactory } from '@livestore/sqlite-wasm/cf'
@@ -112,8 +118,18 @@ export const makeAdapter =
                   batch.map((item) => new LiveStoreEvent.Client.EncodedWithMeta(item)),
                   { waitForProcessing: true },
                 ),
+              stream: (options) =>
+                streamEventsWithSyncState({
+                  dbEventlog,
+                  syncState: syncProcessor.syncState,
+                  options,
+                }),
             },
-            initialState: { leaderHead: initialLeaderHead, migrationsReport: initialState.migrationsReport },
+            initialState: {
+              leaderHead: initialLeaderHead,
+              migrationsReport: initialState.migrationsReport,
+              storageMode: 'persisted',
+            },
             export: Effect.sync(() => dbState.export()),
             getEventlogData: Effect.sync(() => dbEventlog.export()),
             syncState: syncProcessor.syncState,

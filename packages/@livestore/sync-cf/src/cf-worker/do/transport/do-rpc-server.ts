@@ -49,7 +49,8 @@ export const createDoRpcHandler = (
             })
           }
 
-          return makeEndingPullStream(req, req.payload)
+          // DO-RPC doesn't have HTTP headers context - headers are undefined
+          return makeEndingPullStream({ req, payload: req.payload, headers: undefined })
         }).pipe(
           Stream.unwrap,
           Stream.map((res) => ({
@@ -63,7 +64,8 @@ export const createDoRpcHandler = (
       'SyncDoRpc.Push': (req) =>
         Effect.gen(this, function* () {
           const { doOptions, ctx, env, storeId } = yield* DoCtx
-          const push = makePush({ storeId, payload: req.payload, options: doOptions, ctx, env })
+          // DO-RPC doesn't have HTTP headers context - headers are undefined
+          const push = makePush({ storeId, payload: req.payload, headers: undefined, options: doOptions, ctx, env })
 
           return yield* push(req)
         }).pipe(

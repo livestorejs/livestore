@@ -3,6 +3,7 @@ import { splitChunkBySize } from '@livestore/common/sync'
 import { Chunk, Effect, Option, Schema, Stream } from '@livestore/utils/effect'
 import { MAX_PULL_EVENTS_PER_MESSAGE, MAX_WS_MESSAGE_BYTES } from '../../common/constants.ts'
 import { SyncMessage } from '../../common/mod.ts'
+import type { ForwardedHeaders } from '../shared.ts'
 import { DoCtx } from './layer.ts'
 
 const encodePullResponse = Schema.encodeSync(SyncMessage.PullResponse)
@@ -16,15 +17,22 @@ const encodePullResponse = Schema.encodeSync(SyncMessage.PullResponse)
 // DO RPC:
 // - Further chunks will be emitted manually in `push.ts`
 // - If the client sends a `Interrupt` RPC message, TODO
-export const makeEndingPullStream = (
-  req: SyncMessage.PullRequest,
-  payload: Schema.JsonValue | undefined,
-): Stream.Stream<SyncMessage.PullResponse, InvalidPullError, DoCtx> =>
+export const makeEndingPullStream = ({
+  req,
+  payload,
+  headers,
+}: {
+  req: SyncMessage.PullRequest
+  payload: Schema.JsonValue | undefined
+  headers: ForwardedHeaders | undefined
+}): Stream.Stream<SyncMessage.PullResponse, InvalidPullError, DoCtx> =>
   Effect.gen(function* () {
     const { doOptions, backendId, storeId, storage } = yield* DoCtx
 
     if (doOptions?.onPull) {
-      yield* Effect.tryAll(() => doOptions!.onPull!(req, { storeId, payload })).pipe(UnknownError.mapToUnknownError)
+      yield* Effect.tryAll(() => doOptions!.onPull!(req, { storeId, payload, headers })).pipe(
+        UnknownError.mapToUnknownError,
+      )
     }
 
     if (req.cursor._tag === 'Some' && req.cursor.value.backendId !== backendId) {
