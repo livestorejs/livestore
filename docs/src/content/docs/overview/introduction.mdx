@@ -24,11 +24,33 @@ Think of LiveStore as a next-generation state management library (like Zustand o
 
 <CapabilitiesDiagram class="my-8" />
 
-The combination of persisted and distributed state is a giant leap for creating an **amazing user experience** (UX), while also providing a **superior developer experience** (DX). The **immutable eventlog** enables robust testing and tight feedback loops, making it perfect for agentic coding.
+The combination of persisted and distributed state is a giant leap for creating an **amazing user experience** (UX), while also providing a **best-in-class developer experience** (DX). The **immutable eventlog** enables robust testing and tight feedback loops, making it perfect for agentic coding.
+
+<!-- - UX
+  - Persisted state survives page refresh
+  - Works offline by default
+  - Magical syncing across devices
+- DX
+  - Full type safety
+  - Reactive queries (UI updates automatically)
+  - Time travel for debugging
+- AX
+  - Immutable eventlog enables testing and tight feedback loops
+  - Deterministic state replay—same events always produce same state
+  - State can be reset/forked for experimentation -->
 
 LiveStore works cross-platform and can be used for building UI apps (web, mobile, desktop, ...), agents, and any other software like CLIs, scripts or server-to-server applications.
 
 See this talk for more info: [Sync different: Event sourcing in local-first apps](https://www.youtube.com/watch?v=nyPl84BopKc&list=PL4isNRKAwz2MabH6AMhUz1yS3j1DqGdtT).
+
+<details>
+<summary>Are you an expert? See here for advanced topics.</summary>
+- [How LiveStore deals with merge conflicts?](/overview/how-livestore-works#conflict-resolution)
+- Why event-sourcing instead of CRDTs or query-driven sync?
+- How do schema migrations work?
+- What are limitations of LiveStore?
+- How LiveStore is perfect for coding agents.
+</details>
 
 ## The core idea: Events -> State -> UI
 
@@ -41,6 +63,8 @@ Traditional state management works like this: you dispatch actions that update a
 ### LiveStore persists events which materialize into state
 
 LiveStore handles all of this through one unified pattern: **event sourcing**.
+
+<div class="d2-full-width">
 
 ```d2
 ...@../../../../src/content/base.d2
@@ -80,6 +104,8 @@ UI: {
 "User action" -> Event -> Eventlog -> "SQLite state" -> UI
 Eventlog -> "Sync to other clients"
 ```
+
+</div>
 
 Instead of mutating state directly, you commit **events** that _describe_ what happened. These events are persisted to an **eventlog** (like a git history) and automatically materialized into a local **SQLite database** that your UI queries reactively.
 
