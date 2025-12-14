@@ -2654,6 +2654,9 @@ importers:
         specifier: workspace:*
         version: link:../../@livestore/utils
     devDependencies:
+      '@effect/vitest':
+        specifier: 'catalog:'
+        version: 0.26.0(effect@3.19.9)(vitest@3.2.4)
       '@types/node':
         specifier: 'catalog:'
         version: 24.10.1

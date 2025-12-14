@@ -1,8 +1,8 @@
 import os from 'node:os'
 import path from 'node:path'
 
-import { Effect, FileSystem, Schema } from '@livestore/utils/effect'
-
+import { type Duration, Effect, FileSystem, type PlatformError, Schema, Stream } from '@livestore/utils/effect'
+import { NodeRecursiveWatchLayer } from '@livestore/utils/node'
 import {
   FileSystemError,
   getCacheEntry,
@@ -11,6 +11,7 @@ import {
   resolveCachePaths,
   saveDiagramToCache,
   saveManifest,
+  type TldrawCachePaths,
   updateManifestEntry,
 } from './cache.ts'
 import {
@@ -191,3 +192,184 @@ export const buildDiagrams = (
       }
     }),
   )
+
+/* ─────────────────────────────────────────────────────────────────────────────
+ * Watch Mode Implementation
+ * ───────────────────────────────────────────────────────────────────────────── */
+
+const DEFAULT_WATCH_DEBOUNCE: Duration.DurationInput = '300 millis'
+
+type WatchEventSummary = {
+  absolutePath: string
+  relativePath: string
+  kind: FileSystem.WatchEvent['_tag']
+}
+
+export type WatchDiagramsRebuildInfo = {
+  reason: 'initial' | 'watch'
+  event: WatchEventSummary | null
+  renderedCount: number
+  durationMs: number
+}
+
+type NormalizedWatchOptions = {
+  debounce: Duration.DurationInput
+  initialBuild: boolean
+  onRebuild: (info: WatchDiagramsRebuildInfo) => Effect.Effect<void, never>
+}
+
+export type WatchDiagramsOptions = BuildDiagramsOptions & {
+  debounce?: Duration.DurationInput
+  /**
+   * Run an initial build on startup before processing watch events.
+   *
+   * Useful to disable when the caller already ran `buildDiagrams` and only wants incremental rebuilds.
+   */
+  initialBuild?: boolean
+  onRebuild?: (info: WatchDiagramsRebuildInfo) => Effect.Effect<void, never>
+}
+
+const toPosix = (value: string): string => value.replace(/\\/g, '/')
+
+const isWithinDirectory = (candidate: string, directory: string): boolean => {
+  const normalizedDirectory = path.resolve(directory)
+  const normalizedCandidate = path.resolve(candidate)
+  return (
+    normalizedCandidate === normalizedDirectory || normalizedCandidate.startsWith(`${normalizedDirectory}${path.sep}`)
+  )
+}
+
+/** Summarize a watch event, filtering out non-.tldr files and cache directory changes */
+const summarizeWatchEvent = (paths: TldrawCachePaths, event: FileSystem.WatchEvent): WatchEventSummary | null => {
+  const rootAbsolute = path.resolve(paths.diagramsRoot)
+  const rawPath = event.path
+  const absolutePath = path.resolve(path.isAbsolute(rawPath) ? rawPath : path.join(rootAbsolute, rawPath))
+
+  /* Ignore events inside cache directory */
+  if (isWithinDirectory(absolutePath, paths.cacheRoot)) {
+    return null
+  }
+
+  /* Ignore events outside diagrams root */
+  if (!isWithinDirectory(absolutePath, rootAbsolute)) {
+    return null
+  }
+
+  /* Only watch .tldr files */
+  if (!absolutePath.endsWith('.tldr')) {
+    return null
+  }
+
+  const relativeRaw = path.relative(rootAbsolute, absolutePath)
+  const relativePath = relativeRaw.length === 0 ? '.' : toPosix(relativeRaw)
+
+  return {
+    absolutePath,
+    relativePath,
+    kind: event._tag,
+  }
+}
+
+/** Create a filtered watch stream for .tldr files */
+const createWatchStream = (
+  fs: FileSystem.FileSystem,
+  paths: TldrawCachePaths,
+): Stream.Stream<WatchEventSummary, PlatformError.PlatformError> =>
+  fs.watch(paths.diagramsRoot).pipe(
+    Stream.map((event) => summarizeWatchEvent(paths, event)),
+    Stream.filter((summary): summary is WatchEventSummary => summary !== null),
+  )
+
+const normalizeWatchOptions = (
+  options: Partial<Pick<WatchDiagramsOptions, 'debounce' | 'initialBuild' | 'onRebuild'>> = {},
+): NormalizedWatchOptions => ({
+  debounce: options.debounce ?? DEFAULT_WATCH_DEBOUNCE,
+  initialBuild: options.initialBuild ?? true,
+  onRebuild: options.onRebuild ?? (() => Effect.void),
+})
+
+/** Internal watch implementation with queue-based sequential processing */
+const watchDiagramsInternal = (
+  options: BuildDiagramsOptions,
+  watchOptions: NormalizedWatchOptions,
+): Effect.Effect<void, never, FileSystem.FileSystem> =>
+  Effect.gen(function* () {
+    const fs = yield* FileSystem.FileSystem
+    const paths = resolveCachePaths(options.projectRoot)
+
+    const diagramsRootExists = yield* fs.exists(paths.diagramsRoot).pipe(Effect.catchAll(() => Effect.succeed(false)))
+
+    if (!diagramsRootExists) {
+      yield* Effect.logWarning(`Diagrams watch: diagrams root does not exist at ${paths.diagramsRoot}`)
+      return yield* Effect.never
+    }
+
+    const notify = (info: WatchDiagramsRebuildInfo) => watchOptions.onRebuild(info)
+
+    const runRebuild = (reason: WatchDiagramsRebuildInfo['reason'], event: WatchEventSummary | null) =>
+      Effect.gen(function* () {
+        const startedAt = Date.now()
+        if (event) {
+          yield* Effect.log(`Diagrams watch: ${event.kind.toLowerCase()} at ${event.relativePath}, rebuilding...`)
+        } else {
+          yield* Effect.log('Diagrams watch: running initial build')
+        }
+
+        const result = yield* buildDiagrams(options).pipe(Effect.either)
+        const durationMs = Date.now() - startedAt
+
+        if (result._tag === 'Left') {
+          const error = result.left
+          yield* Effect.logError(
+            `Diagrams watch: build failed${event ? ` (trigger: ${event.relativePath})` : ''}: ${error.message}`,
+          )
+          yield* notify({ reason, event, renderedCount: -1, durationMs })
+          return
+        }
+
+        yield* Effect.log(`Diagrams watch: completed in ${durationMs}ms`)
+        yield* notify({ reason, event, renderedCount: 0, durationMs })
+      })
+
+    /* Initial build */
+    if (watchOptions.initialBuild) {
+      yield* runRebuild('initial', null)
+    }
+
+    /* Set up watch stream with debounce */
+    const watchStream = createWatchStream(fs, paths)
+    const debouncedStream = Stream.debounce(watchOptions.debounce)(watchStream)
+
+    /* Process events sequentially via mapEffect with concurrency 1 */
+    const streamEffect = debouncedStream.pipe(
+      Stream.mapEffect((event) => runRebuild('watch', event), { concurrency: 1 }),
+      Stream.runDrain,
+    )
+
+    yield* streamEffect.pipe(
+      Effect.catchAll((cause) =>
+        Effect.logWarning(`Diagrams watch: stream failed with ${String(cause)}`).pipe(Effect.zipRight(Effect.never)),
+      ),
+    )
+  })
+
+/** Watch diagrams directory for changes and rebuild on modifications */
+export const watchDiagrams = (options: WatchDiagramsOptions): Effect.Effect<void, never, FileSystem.FileSystem> => {
+  const { debounce, initialBuild, onRebuild, ...baseOptions } = options
+  const normalizedWatch = normalizeWatchOptions({
+    ...(debounce !== undefined ? { debounce } : {}),
+    ...(initialBuild !== undefined ? { initialBuild } : {}),
+    ...(onRebuild !== undefined ? { onRebuild } : {}),
+  })
+  return watchDiagramsInternal(baseOptions, normalizedWatch).pipe(
+    Effect.withSpan('tldraw.watch-diagrams'),
+    Effect.provide(NodeRecursiveWatchLayer),
+  )
+}
+
+/** Exported for testing */
+export const __internal = {
+  summarizeWatchEvent,
+  createWatchStream,
+  DEFAULT_WATCH_DEBOUNCE,
+}
