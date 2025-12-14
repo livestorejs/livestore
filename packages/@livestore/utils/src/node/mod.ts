@@ -1,5 +1,4 @@
 import * as http from 'node:http'
-import * as PlatformNode from '@effect/platform-node'
 import { layer as ParcelWatcherLayer } from '@effect/platform-node/NodeFileSystem/ParcelWatcher'
 import { Effect, Layer } from 'effect'
 import { OtelTracer, UnknownError } from '../effect/mod.ts'
@@ -57,4 +56,4 @@ export const OtelLiveDummy: Layer.Layer<OtelTracer.OtelTracer> = Layer.suspend((
  * the Parcel-based watch backend. Mirrored from Effect’s platform-node Parcel watcher layer:
  * https://github.com/Effect-TS/effect/blob/main/packages/platform-node/src/NodeFileSystem/ParcelWatcher.ts
  */
-export const NodeRecursiveWatchLayer = Layer.mergeAll(PlatformNode.NodeFileSystem.layer, ParcelWatcherLayer)
+export const NodeRecursiveWatchLayer = ParcelWatcherLayer

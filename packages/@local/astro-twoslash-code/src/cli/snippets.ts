@@ -1720,7 +1720,10 @@ export const watchSnippets = (options: WatchSnippetsOptions = {}) => {
     ...(debounce !== undefined ? { debounce } : {}),
     ...(onRebuild !== undefined ? { onRebuild } : {}),
   })
-  return Effect.withSpan('astro-twoslash-code/watch-snippets')(watchSnippetsInternal(resolved, normalizedWatch))
+  return watchSnippetsInternal(resolved, normalizedWatch).pipe(
+    Effect.withSpan('astro-twoslash-code/watch-snippets'),
+    Effect.provide(NodeRecursiveWatchLayer),
+  )
 }
 
 export type CreateSnippetsCommandOptions = BuildSnippetsOptions & {
@@ -1748,8 +1751,8 @@ export const createSnippetsCommand = ({
     Effect.asVoid,
   )
 
-  const buildCommand = Cli.Command.make('build', {}, () => buildHandler.pipe(Effect.provide(NodeRecursiveWatchLayer)))
-  const watchCommand = Cli.Command.make('watch', {}, () => watchHandler.pipe(Effect.provide(NodeRecursiveWatchLayer)))
+  const buildCommand = Cli.Command.make('build', {}, () => buildHandler)
+  const watchCommand = Cli.Command.make('watch', {}, () => watchHandler)
 
   return Cli.Command.make(commandName).pipe(Cli.Command.withSubcommands([buildCommand, watchCommand]))
 }

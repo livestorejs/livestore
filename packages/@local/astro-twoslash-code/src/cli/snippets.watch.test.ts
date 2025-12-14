@@ -1,7 +1,7 @@
 import path from 'node:path'
 
 import { Effect, FileSystem, Queue } from '@livestore/utils/effect'
-import { NodeRecursiveWatchLayer } from '@livestore/utils/node'
+import { PlatformNode } from '@livestore/utils/node'
 import { describe, expect, it } from 'vitest'
 
 import { type WatchSnippetsRebuildInfo, watchSnippets } from './snippets.ts'
@@ -93,6 +93,6 @@ describe('watchSnippets', () => {
       }),
     )
 
-    await Effect.runPromise(program.pipe(Effect.provide(NodeRecursiveWatchLayer)))
+    await Effect.runPromise(program.pipe(Effect.provide(PlatformNode.NodeFileSystem.layer)))
   }, 10000)
 })
