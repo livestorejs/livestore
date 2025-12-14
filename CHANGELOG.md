@@ -24,6 +24,7 @@
 - **Schema-first tables:** LiveStore now accepts Effect schema definitions as SQLite table definitions, removing duplicate column configuration in applications (#544).
 - **Cloudflare sync provider storage:** Default storage is now Durable Object (DO) SQLite, with an explicit option to use D1 via a named binding. Examples and docs updated to the DO‑by‑default posture (see issue #266, #693).
 - **MCP support:** LiveStore now ships a CLI with a first-class MCP server so automation flows can connect to instances, query data, and commit events using the bundled tools (#705).
+- **React multi-store API:** The multi-store API is now the primary React integration, replacing `<LiveStoreProvider>` with `<StoreRegistryProvider>` and `useStore()` with store options. The new API supports multiple stores, preloading, and caching out of the box. See the [React integration docs](https://dev.docs.livestore.dev/reference/framework-integrations/react-integration/).
 
 ### Breaking Changes
 
@@ -117,21 +118,21 @@
 
 - **Restructured `LiveStoreEvent` and `EventSequenceNumber` APIs:** Types are now organized into symmetric `Global`, `Client`, and `Input` namespaces that clarify the distinction between sync backend format, client format, and events without sequence numbers (#855):
 
-  | Old Name | New Name |
-  |----------|----------|
-  | `LiveStoreEvent.AnyEncodedGlobal` | `LiveStoreEvent.Global.Encoded` |
-  | `LiveStoreEvent.AnyEncoded` | `LiveStoreEvent.Client.Encoded` |
-  | `LiveStoreEvent.AnyDecoded` | `LiveStoreEvent.Client.Decoded` |
-  | `LiveStoreEvent.PartialAnyEncoded` | `LiveStoreEvent.Input.Encoded` |
-  | `LiveStoreEvent.PartialAnyDecoded` | `LiveStoreEvent.Input.Decoded` |
-  | `LiveStoreEvent.EncodedWithMeta` | `LiveStoreEvent.Client.EncodedWithMeta` |
-  | `EventSequenceNumber.GlobalEventSequenceNumber` | `EventSequenceNumber.Global` |
-  | `EventSequenceNumber.globalEventSequenceNumber` | `EventSequenceNumber.Global.make` |
-  | `EventSequenceNumber.localEventSequenceNumber` | `EventSequenceNumber.Client.make` |
-  | `EventSequenceNumber.clientDefault` | `EventSequenceNumber.Client.DEFAULT` |
-  | `EventSequenceNumber.rebaseGenerationDefault` | `EventSequenceNumber.REBASE_GENERATION_DEFAULT` |
-  | `LiveStoreEvent.EventDefPartialSchema` | `LiveStoreEvent.EventDefInputSchema` |
-  | `LiveStoreEvent.makeEventDefPartialSchema` | `LiveStoreEvent.makeEventDefInputSchema` |
+  | Old Name                                        | New Name                                        |
+  |-------------------------------------------------|-------------------------------------------------|
+  | `LiveStoreEvent.AnyEncodedGlobal`               | `LiveStoreEvent.Global.Encoded`                 |
+  | `LiveStoreEvent.AnyEncoded`                     | `LiveStoreEvent.Client.Encoded`                 |
+  | `LiveStoreEvent.AnyDecoded`                     | `LiveStoreEvent.Client.Decoded`                 |
+  | `LiveStoreEvent.PartialAnyEncoded`              | `LiveStoreEvent.Input.Encoded`                  |
+  | `LiveStoreEvent.PartialAnyDecoded`              | `LiveStoreEvent.Input.Decoded`                  |
+  | `LiveStoreEvent.EncodedWithMeta`                | `LiveStoreEvent.Client.EncodedWithMeta`         |
+  | `EventSequenceNumber.GlobalEventSequenceNumber` | `EventSequenceNumber.Global`                    |
+  | `EventSequenceNumber.globalEventSequenceNumber` | `EventSequenceNumber.Global.make`               |
+  | `EventSequenceNumber.localEventSequenceNumber`  | `EventSequenceNumber.Client.make`               |
+  | `EventSequenceNumber.clientDefault`             | `EventSequenceNumber.Client.DEFAULT`            |
+  | `EventSequenceNumber.rebaseGenerationDefault`   | `EventSequenceNumber.REBASE_GENERATION_DEFAULT` |
+  | `LiveStoreEvent.EventDefPartialSchema`          | `LiveStoreEvent.EventDefInputSchema`            |
+  | `LiveStoreEvent.makeEventDefPartialSchema`      | `LiveStoreEvent.makeEventDefInputSchema`        |
 
   ```typescript
   // Before
@@ -163,6 +164,59 @@
   import { UnknownError } from '@livestore/common'
 
   effect.pipe(UnknownError.mapToUnknownError)
+  ```
+
+- **React integration API:** The multi-store API is now the primary React integration, replacing `<LiveStoreProvider>` and the old `useStore()`. The new API uses `StoreRegistry`, `<StoreRegistryProvider>`, and `useStore()` with store options. See the [React integration docs](https://dev.docs.livestore.dev/reference/framework-integrations/react-integration/) for full details.
+
+  | Before                                           | After                                                                   |
+  |--------------------------------------------------|-------------------------------------------------------------------------|
+  | `<LiveStoreProvider schema={...} adapter={...}>` | `<StoreRegistryProvider storeRegistry={...}>` + `storeOptions({ ... })` |
+  | `const { store } = useStore()`                   | `const store = useStore({ ... })`                                       |
+  | `useQuery(query$)`                               | `store.useQuery(query$)`                                                |
+ 
+
+  ```tsx
+  // Before
+  import { LiveStoreProvider, useStore, useQuery } from '@livestore/react'
+
+  const App = () => (
+    <LiveStoreProvider schema={schema} adapter={adapter} batchUpdates={batchUpdates}>
+      <MyComponent />
+    </LiveStoreProvider>
+  )
+
+  const MyComponent = () => {
+    const { store } = useStore()
+    const todos = useQuery(visibleTodos$)
+    // ...
+  }
+
+  // After
+  import { StoreRegistry, StoreRegistryProvider, useStore } from '@livestore/react'
+
+  const useAppStore = () => useStore({
+    storeId: 'app-root',
+    schema,
+    adapter,
+    batchUpdates,
+  })
+
+  const App = () => {
+    const [storeRegistry] = useState(() => new StoreRegistry())
+    return (
+      <Suspense fallback={<div>Loading...</div>}>
+        <StoreRegistryProvider storeRegistry={storeRegistry}>
+          <MyComponent />
+        </StoreRegistryProvider>
+      </Suspense>
+    )
+  }
+
+  const MyComponent = () => {
+    const store = useAppStore()
+    const todos = store.useQuery(visibleTodos$)
+    // ...
+  }
   ```
 
 ### Changes
@@ -376,7 +430,6 @@ Open issues:
 - store.shutdown() doesn't wait for pending writes to complete, causing data loss (#416)
 - Consider mechanism to reject events on sync (#404)
 - [Devtools] Clicking on session doesn't work (#474)
-- Improved multi-store support (#585)
 - Fix: Rolling back empty materializers currently fails
 
 ## 0.3.0
