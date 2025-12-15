@@ -68,6 +68,7 @@ export const miscTest: Cli.Command.Command<
         ['pnpm', 'playwright', 'test', mode === 'ui' ? '--ui' : undefined, 'src/tests/playwright/misc-tests.play.ts'],
         {
           env: {
+            FORCE_PLAYWRIGHT_VIA_CLI: '1',
             PLAYWRIGHT_SUITE: 'misc',
             LIVESTORE_PLAYWRIGHT_DEV_SERVER_PORT: devPort,
             DEV_SERVER_COMMAND: `vite --config src/tests/playwright/fixtures/vite.config.ts dev --port ${devPort}`,
@@ -108,6 +109,7 @@ export const todomvcTest: Cli.Command.Command<
         ['pnpm', 'playwright', 'test', mode === 'ui' ? '--ui' : undefined, 'src/tests/playwright/todomvc.play.ts'],
         {
           env: {
+            FORCE_PLAYWRIGHT_VIA_CLI: '1',
             PLAYWRIGHT_SUITE: 'todomvc',
             LIVESTORE_PLAYWRIGHT_DEV_SERVER_PORT: devPort,
             PLAYWRIGHT_HEADLESS: mode === 'headless' ? '1' : '0',
@@ -174,6 +176,7 @@ export const devtoolsTest: Cli.Command.Command<
           ['pnpm', 'playwright', 'test', mode === 'ui' ? '--ui' : undefined, 'src/tests/playwright/devtools/*'],
           {
             env: {
+              FORCE_PLAYWRIGHT_VIA_CLI: '1',
               PLAYWRIGHT_SUITE: 'devtools',
               PLAYWRIGHT_HEADLESS: mode === 'headless' ? '1' : '0',
               PLAYWRIGHT_UI: mode === 'ui' ? '1' : '0',

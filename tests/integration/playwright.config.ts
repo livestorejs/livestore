@@ -5,6 +5,14 @@ import type { PlaywrightTestConfig } from '@playwright/test'
 import { devices } from '@playwright/test'
 
 /**
+ * Ensure Playwright tests are run via the mono CLI (or VS Code extension) to guarantee proper environment setup.
+ */
+const isVSCode = process.env.VSCODE_PID !== undefined
+if (!envTruish(process.env.FORCE_PLAYWRIGHT_VIA_CLI) && !isVSCode) {
+  throw new Error(`Playwright tests must be run via 'mono test integration <devtools|todomvc|misc>'.`)
+}
+
+/**
  * See https://playwright.dev/docs/test-configuration.
  */
 const config: PlaywrightTestConfig = {

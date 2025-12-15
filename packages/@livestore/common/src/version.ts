@@ -2,7 +2,15 @@
 // import packageJson from '../package.json' with { type: 'json' }
 // export const liveStoreVersion = packageJson.version
 
-export const liveStoreVersion = '0.4.0-dev.21' as const
+const _liveStoreVersion = '0.4.0-dev.21' as const
+
+/**
+ * Current LiveStore version used for DevTools version compatibility checks.
+ *
+ * Can be overridden at runtime via `globalThis.__LIVESTORE_VERSION_OVERRIDE__` for testing purposes.
+ * This allows Playwright tests to simulate version mismatch scenarios without rebuilding.
+ */
+export const liveStoreVersion: string = (globalThis as any).__LIVESTORE_VERSION_OVERRIDE__ ?? _liveStoreVersion
 
 /**
  * CRITICAL: Increment this version whenever you modify client-side EVENTLOG table schemas.

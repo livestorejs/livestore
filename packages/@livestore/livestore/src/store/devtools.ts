@@ -316,6 +316,20 @@ export const connectDevtoolsToStore = ({
           break
         }
         case 'LSD.ClientSession.Ping': {
+          // Check version mismatch and respond with VersionMismatch if versions don't match
+          if (decodedMessage.liveStoreVersion !== liveStoreVersion) {
+            sendToDevtools(
+              Devtools.ClientSession.VersionMismatch.make({
+                requestId,
+                clientId,
+                sessionId,
+                liveStoreVersion,
+                appVersion: liveStoreVersion,
+                receivedVersion: decodedMessage.liveStoreVersion,
+              }),
+            )
+            break
+          }
           sendToDevtools(Devtools.ClientSession.Pong.make({ requestId, clientId, sessionId, liveStoreVersion }))
           break
         }

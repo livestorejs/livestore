@@ -111,6 +111,17 @@ export class Ping extends LSDReqResMessage('LSD.Leader.Ping', {}) {}
 
 export class Pong extends LSDReqResMessage('LSD.Leader.Pong', {}) {}
 
+/**
+ * Sent by the app when DevTools version doesn't match.
+ * Contains the app's actual version so DevTools can display a meaningful error.
+ */
+export class VersionMismatch extends LSDReqResMessage('LSD.Leader.VersionMismatch', {
+  /** The version running in the app */
+  appVersion: Schema.String,
+  /** The version that was sent by DevTools (that caused the mismatch) */
+  receivedVersion: Schema.String,
+}) {}
+
 export class Disconnect extends LSDReqResMessage('LSD.Leader.Disconnect', {}) {}
 
 export const SetSyncLatch = LeaderReqResMessage('LSD.Leader.SetSyncLatch', {
@@ -181,6 +192,7 @@ export const MessageFromApp = Schema.Union(
   NetworkStatusRes,
   CommitEventRes,
   Pong,
+  VersionMismatch,
   DatabaseFileInfoRes,
   SyncHistoryRes,
   SyncingInfoRes,

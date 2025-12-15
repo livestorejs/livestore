@@ -107,6 +107,17 @@ export class Ping extends LSDClientSessionReqResMessage('LSD.ClientSession.Ping'
 
 export class Pong extends LSDClientSessionReqResMessage('LSD.ClientSession.Pong', {}) {}
 
+/**
+ * Sent by the app when DevTools version doesn't match.
+ * Contains the app's actual version so DevTools can display a meaningful error.
+ */
+export class VersionMismatch extends LSDClientSessionReqResMessage('LSD.ClientSession.VersionMismatch', {
+  /** The version running in the app */
+  appVersion: Schema.String,
+  /** The version that was sent by DevTools (that caused the mismatch) */
+  receivedVersion: Schema.String,
+}) {}
+
 export class Disconnect extends LSDClientSessionChannelMessage('LSD.ClientSession.Disconnect', {}) {}
 
 export const MessageToApp = Schema.Union(
@@ -136,6 +147,7 @@ export const MessageFromApp = Schema.Union(
   LiveQueriesRes,
   Disconnect,
   Pong,
+  VersionMismatch,
   SyncHeadRes,
 ).annotations({ identifier: 'LSD.ClientSession.MessageFromApp' })
 
