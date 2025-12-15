@@ -187,6 +187,7 @@ export const testPerfCommand = Cli.Command.make(
   Effect.fn(function* () {
     yield* cmd('NODE_OPTIONS=--disable-warning=ExperimentalWarning pnpm playwright test', {
       shell: true,
+      env: { FORCE_PLAYWRIGHT_VIA_CLI: '1' },
     }).pipe(Effect.provide(LivestoreWorkspace.toCwd('tests/perf')))
   }),
 )

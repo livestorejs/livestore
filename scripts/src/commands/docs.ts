@@ -4,9 +4,8 @@ import { shouldNeverHappen } from '@livestore/utils'
 import { Effect, HttpClient, HttpClientRequest, Schedule } from '@livestore/utils/effect'
 import { Cli, getFreePort } from '@livestore/utils/node'
 import { cmd, cmdText, LivestoreWorkspace } from '@livestore/utils-dev/node'
-import { buildDiagrams } from '@local/astro-tldraw'
+import { buildDiagrams, watchDiagrams } from '@local/astro-tldraw'
 import { buildSnippets, createSnippetsCommand } from '@local/astro-twoslash-code'
-
 import { appendGithubSummaryMarkdown, formatMarkdownTable } from '../shared/misc.ts'
 import { deployToNetlify, purgeNetlifyCdn } from '../shared/netlify.ts'
 import { exportMarkdownCommand } from './docs-export.ts'
@@ -30,8 +29,19 @@ const runDocsDiagramsBuild = buildDiagrams({ projectRoot: docsPath, verbose: tru
   }),
 )
 
+const runDocsDiagramsWatch = watchDiagrams({ projectRoot: docsPath, verbose: true })
+
+const runDocsDiagramsWatchNoInitialBuild = watchDiagrams({
+  projectRoot: docsPath,
+  verbose: true,
+  initialBuild: false,
+})
+
 const docsDiagramsCommand = Cli.Command.make('diagrams', {}, () => runDocsDiagramsBuild).pipe(
-  Cli.Command.withSubcommands([Cli.Command.make('build', {}, () => runDocsDiagramsBuild)]),
+  Cli.Command.withSubcommands([
+    Cli.Command.make('build', {}, () => runDocsDiagramsBuild),
+    Cli.Command.make('watch', {}, () => runDocsDiagramsWatch),
+  ]),
 )
 
 type NetlifyDeploySummary = {
@@ -42,40 +52,65 @@ type NetlifyDeploySummary = {
   logs: string
 }
 
+type PrDeployAliases = {
+  /** Sticky alias that stays constant for all commits in a PR (e.g. `pr-123`) */
+  stickyAlias: string
+  /** Commit-specific alias unique to each commit (e.g. `pr-123-abc1234`) */
+  commitAlias: string
+}
+
 const formatDocsDeploymentSummaryMarkdown = ({
   site,
-  alias,
   prod,
   purgeCdn,
-  draftDeploy,
-  finalDeploy,
+  prAliases,
+  branchAlias,
+  stickyDeploy,
+  commitDeploy,
 }: {
   site: string
-  alias: string
   prod: boolean
   purgeCdn: boolean
-  draftDeploy: NetlifyDeploySummary
-  finalDeploy: NetlifyDeploySummary
+  /** For PR deploys: both sticky and commit-specific aliases */
+  prAliases: PrDeployAliases | undefined
+  /** For non-PR branch deploys: the branch alias */
+  branchAlias: string | undefined
+  /** Deploy result with sticky PR alias (same as commitDeploy for non-PR deploys) */
+  stickyDeploy: NetlifyDeploySummary
+  /** Deploy result with commit-specific alias (or prod/branch deploy) */
+  commitDeploy: NetlifyDeploySummary
 }) => {
   const rows: Array<ReadonlyArray<string>> = []
 
-  rows.push(['draft', site, draftDeploy.deploy_id, draftDeploy.deploy_url, 'draft URL'])
-
-  const notes: string[] = []
-  if (!prod) {
-    notes.push(`alias: ${alias}`)
+  if (prAliases !== undefined) {
+    /** PR deployment: show both sticky and commit-specific aliases */
+    rows.push([
+      'sticky',
+      site,
+      stickyDeploy.deploy_id,
+      stickyDeploy.deploy_url,
+      `alias: ${prAliases.stickyAlias} (stable for PR)`,
+    ])
+    const commitNotes: string[] = [`alias: ${prAliases.commitAlias}`]
+    if (purgeCdn) commitNotes.push('CDN purged')
+    rows.push(['commit', site, commitDeploy.deploy_id, commitDeploy.deploy_url, commitNotes.join(', ')])
+  } else {
+    /** Non-PR deployment: single row */
+    const notes: string[] = []
+    if (!prod && branchAlias) {
+      notes.push(`alias: ${branchAlias}`)
+    }
+    if (purgeCdn) {
+      notes.push('CDN purged')
+    }
+    rows.push([
+      prod ? 'prod' : 'alias',
+      site,
+      commitDeploy.deploy_id,
+      commitDeploy.deploy_url,
+      notes.length > 0 ? notes.join(', ') : '—',
+    ])
   }
-  if (purgeCdn) {
-    notes.push('CDN purged')
-  }
-
-  rows.push([
-    prod ? 'prod' : 'alias',
-    site,
-    finalDeploy.deploy_id,
-    finalDeploy.deploy_url,
-    notes.length > 0 ? notes.join(', ') : '—',
-  ])
 
   return formatMarkdownTable({
     title: 'Docs deployment',
@@ -177,6 +212,14 @@ export const docsCommand = Cli.Command.make('docs').pipe(
           yield* Effect.log('Snippets and diagrams built successfully')
         }
 
+        if (!skipDeps) {
+          yield* runDocsDiagramsWatchNoInitialBuild.pipe(
+            Effect.catchAllCause((cause) => Effect.logWarning(`Diagrams watch stopped: ${cause}`)),
+            Effect.forkScoped,
+          )
+        }
+
+        /* Run Astro dev server */
         yield* cmd(['pnpm', 'astro', 'dev', open ? '--open' : undefined], {
           logDir: `${docsPath}/logs`,
         }).pipe(Effect.provide(LivestoreWorkspace.toCwd('docs')))
@@ -325,11 +368,21 @@ export const docsCommand = Cli.Command.make('docs').pipe(
               .filter((p): p is string => typeof p === 'string')
               .join(' | ')
 
-          const alias = (() => {
-            if (aliasOption._tag === 'Some') return aliasOption.value
-            if (isPr && prNumber !== undefined) return `pr-${prNumber}-${shortSha}`
-            return branchName.replaceAll(/[^a-zA-Z0-9]/g, '-').toLowerCase()
-          })()
+          /**
+           * For PRs: create both a sticky alias (stable for PR lifetime) and a commit-specific alias
+           * For non-PRs: use the explicit alias option or derive from branch name
+           */
+          const prAliases: PrDeployAliases | undefined =
+            isPr && prNumber !== undefined && aliasOption._tag === 'None'
+              ? { stickyAlias: `pr-${prNumber}`, commitAlias: `pr-${prNumber}-${shortSha}` }
+              : undefined
+
+          const branchAlias =
+            aliasOption._tag === 'Some'
+              ? aliasOption.value
+              : prAliases === undefined
+                ? branchName.replaceAll(/[^a-zA-Z0-9]/g, '-').toLowerCase()
+                : undefined
 
           const prod =
             prodOption._tag === 'Some' && prodOption.value === true // TODO clean up when Effect CLI boolean flag is fixed
@@ -342,7 +395,13 @@ export const docsCommand = Cli.Command.make('docs').pipe(
             return yield* Effect.die('Cannot deploy docs for dev version of LiveStore to prod')
           }
 
-          yield* Effect.log(`Deploying to "${site}" ${prod ? 'in prod' : `with alias (${alias})`}`)
+          const deployAliasLabel =
+            prAliases !== undefined
+              ? `with PR aliases (${prAliases.stickyAlias}, ${prAliases.commitAlias})`
+              : branchAlias !== undefined
+                ? `with alias (${branchAlias})`
+                : ''
+          yield* Effect.log(`Deploying to "${site}" ${prod ? 'in prod' : deployAliasLabel}`)
 
           // Split mode: build first only when requested via --build
           const shouldBuild = buildOption._tag === 'Some' && buildOption.value === true
@@ -350,15 +409,43 @@ export const docsCommand = Cli.Command.make('docs').pipe(
             yield* docsBuildCommand.handler({ apiDocs: true, clean: false, skipDeps: false })
           }
 
-          const finalDeploy: NetlifyDeploySummary = yield* deployToNetlify({
-            site,
-            target: prod ? { _tag: 'prod' } : { _tag: 'alias', alias },
-            message: buildMessage(contextLabelFor(prod, alias)),
-          }).pipe(Effect.provide(LivestoreWorkspace.toCwd('docs')))
+          const docsWorkspaceCwd = Effect.provide(LivestoreWorkspace.toCwd('docs'))
 
-          // Verify root returns Markdown on Accept negotiation
+          /**
+           * For PR deploys: deploy twice to create both sticky and commit-specific aliases.
+           * For non-PR deploys: deploy once with prod or branch alias.
+           */
+          const { stickyDeploy, commitDeploy } = yield* Effect.gen(function* () {
+            if (prAliases !== undefined) {
+              /** PR deploy: first create sticky alias, then commit-specific alias */
+              const stickyDeploy: NetlifyDeploySummary = yield* deployToNetlify({
+                site,
+                target: { _tag: 'alias', alias: prAliases.stickyAlias },
+                message: buildMessage(contextLabelFor(false, prAliases.stickyAlias)),
+              }).pipe(docsWorkspaceCwd)
+
+              const commitDeploy: NetlifyDeploySummary = yield* deployToNetlify({
+                site,
+                target: { _tag: 'alias', alias: prAliases.commitAlias },
+                message: buildMessage(contextLabelFor(false, prAliases.commitAlias)),
+              }).pipe(docsWorkspaceCwd)
+
+              return { stickyDeploy, commitDeploy }
+            } else {
+              /** Non-PR deploy: single deploy with prod or branch alias */
+              const deploy: NetlifyDeploySummary = yield* deployToNetlify({
+                site,
+                target: prod ? { _tag: 'prod' } : { _tag: 'alias', alias: branchAlias! },
+                message: buildMessage(contextLabelFor(prod, branchAlias ?? '')),
+              }).pipe(docsWorkspaceCwd)
+
+              return { stickyDeploy: deploy, commitDeploy: deploy }
+            }
+          })
+
+          // Verify root returns Markdown on Accept negotiation (use commitDeploy URL as canonical)
           const rootContentType = yield* HttpClient.execute(
-            HttpClientRequest.get(`${finalDeploy.deploy_url}/`).pipe(
+            HttpClientRequest.get(`${commitDeploy.deploy_url}/`).pipe(
               HttpClientRequest.setHeaders({ Accept: 'text/markdown' }),
             ),
           ).pipe(Effect.map((res) => res.headers['content-type']))
@@ -368,18 +455,19 @@ export const docsCommand = Cli.Command.make('docs').pipe(
           }
 
           if (purgeCdn) {
-            const purgeSiteId = finalDeploy.site_id
+            const purgeSiteId = commitDeploy.site_id
             yield* purgeNetlifyCdn({ siteId: purgeSiteId, siteSlug: site })
           }
 
           yield* appendGithubSummaryMarkdown({
             markdown: formatDocsDeploymentSummaryMarkdown({
               site,
-              alias,
               prod,
               purgeCdn,
-              draftDeploy: finalDeploy,
-              finalDeploy,
+              prAliases,
+              branchAlias,
+              stickyDeploy,
+              commitDeploy,
             }),
             context: 'docs deployment',
           })

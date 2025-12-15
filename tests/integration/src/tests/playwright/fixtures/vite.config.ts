@@ -11,6 +11,9 @@ export default defineConfig({
   },
   root: import.meta.dirname,
   optimizeDeps: {
+    // Pre-bundle dependencies from entry points to avoid Vite's dependency optimization during
+    // tests which causes page reloads and React duplicate issues (Invalid hook call errors).
+    entries: ['./main.tsx', './devtools/**/*.tsx'],
     // TODO remove @livestore/wa-sqlite once fixed https://github.com/vitejs/vite/issues/8427
     // TODO figure out why `fsevents` is needed. Otherwise seems to throw error when starting Vite
     // Error: `No loader is configured for ".node" files`

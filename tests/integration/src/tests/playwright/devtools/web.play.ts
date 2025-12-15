@@ -11,13 +11,17 @@ import type * as otel from '@opentelemetry/api'
 import type * as PW from '@playwright/test'
 import { test } from '@playwright/test'
 
-import { checkDevtoolsState } from './shared.ts'
+import { checkDevtoolsState, checkVersionMismatchOverlay } from './shared.ts'
 
 const usedPages = new Set<PW.Page>()
 
 type AdapterKind = 'persisted' | 'inmemory'
 
-const makeTabPair = (url: string, tabName: string, adapter: AdapterKind) =>
+/**
+ * Creates a tab pair with an app page and a DevTools page.
+ * @param appVersionOverride - Optional version override to inject via globalThis.__LIVESTORE_VERSION_OVERRIDE__ for testing version mismatch scenarios.
+ */
+const makeTabPair = (url: string, tabName: string, adapter: AdapterKind, options?: { appVersionOverride?: string }) =>
   Effect.gen(function* () {
     const { browserContext } = yield* Playwright.BrowserContext
 
@@ -52,6 +56,13 @@ const makeTabPair = (url: string, tabName: string, adapter: AdapterKind) =>
       await page.pause()
     })
 
+    // Inject version override before page loads (for version mismatch testing)
+    if (options?.appVersionOverride) {
+      yield* Effect.tryPromise(() =>
+        page.addInitScript(`globalThis.__LIVESTORE_VERSION_OVERRIDE__ = '${options.appVersionOverride}';`),
+      )
+    }
+
     // NOTE we need to start the console listening right away, otherwise we might miss some messages
     const pageConsoleFiber = yield* Playwright.handlePageConsole({
       page,
@@ -66,18 +77,21 @@ const makeTabPair = (url: string, tabName: string, adapter: AdapterKind) =>
       page.goto(`${url}/devtools/todomvc?sessionId=${tabName}&clientId=${tabName}&adapter=${adapter}`),
     )
 
-    const rootSpanContext = yield* Effect.tryPromise(() =>
-      page
-        .waitForFunction('window.__debugLiveStore?.default !== undefined')
-        .then(() => page.evaluate('window.__debugLiveStore.default._dev.otel.rootSpanContext()')),
-    ).pipe(Effect.andThen(Schema.decodeUnknown(Schema.Struct({ traceId: Schema.String, spanId: Schema.String }))))
+    // Skip OTel span linking when testing version mismatch (app may not initialize properly)
+    if (!options?.appVersionOverride) {
+      const rootSpanContext = yield* Effect.tryPromise(() =>
+        page
+          .waitForFunction('window.__debugLiveStore?.default !== undefined')
+          .then(() => page.evaluate('window.__debugLiveStore.default._dev.otel.rootSpanContext()')),
+      ).pipe(Effect.andThen(Schema.decodeUnknown(Schema.Struct({ traceId: Schema.String, spanId: Schema.String }))))
 
-    yield* Effect.linkSpanCurrent(
-      Tracer.externalSpan({
-        traceId: rootSpanContext.traceId,
-        spanId: rootSpanContext.spanId,
-      }),
-    )
+      yield* Effect.linkSpanCurrent(
+        Tracer.externalSpan({
+          traceId: rootSpanContext.traceId,
+          spanId: rootSpanContext.spanId,
+        }),
+      )
+    }
 
     const devtools = yield* newPage
 
@@ -307,3 +321,53 @@ const shutdownTab = (tab: PW.Page) =>
 
     yield* Playwright.withPage(() => tab.getByText('LiveStore Shutdown').waitFor())
   }).pipe(Effect.withSpan('shutdown-tab'))
+
+test(
+  'version mismatch overlay',
+  runTest(
+    Effect.gen(function* () {
+      const fakeAppVersion = '0.0.0-fake-version'
+
+      const tab1 = yield* makeTabPair(
+        `http://localhost:${process.env.LIVESTORE_PLAYWRIGHT_DEV_SERVER_PORT}`,
+        'tab-version-mismatch',
+        'inmemory',
+        { appVersionOverride: fakeAppVersion },
+      )
+
+      yield* Effect.gen(function* () {
+        yield* Effect.tryPromise(async () => {
+          // Wait for the app to load
+          const el = tab1.page.locator('.new-todo').describe('tab-version-mismatch:new-todo')
+          await el.waitFor({ timeout: 3000 })
+
+          // Click on the session in devtools to connect
+          const tabChannelId = await tab1.page.evaluate<string>(
+            `window.__debugLiveStore.default.clientId + ':' + window.__debugLiveStore.default.sessionId`,
+          )
+          await tab1.devtools.locator(`a:text("${tabChannelId}")`).describe('devtools:click-session').click()
+
+          // Get the DevTools version (the real version since DevTools isn't overridden)
+          const devtoolsVersion = await tab1.devtools.evaluate<string>(() => {
+            // The devtools bundles the same liveStoreVersion constant
+            return (window as any).__LIVESTORE_DEVTOOLS_VERSION__ ?? 'unknown'
+          })
+
+          // Check version mismatch overlay is displayed
+          await checkVersionMismatchOverlay({
+            devtools: tab1.devtools,
+            label: 'devtools-version-mismatch',
+            expect: {
+              devtoolsVersion: devtoolsVersion !== 'unknown' ? devtoolsVersion : '0.4', // Partial match
+              appVersion: fakeAppVersion,
+            },
+          })
+        })
+
+        yield* shutdownTab(tab1.page)
+
+        yield* Effect.sleep(500).pipe(Effect.withSpan('wait-for-otel-flush'))
+      }).pipe(Effect.raceFirst(Fiber.joinAll([tab1.pageConsoleFiber, tab1.devtoolsConsoleFiber])))
+    }),
+  ),
+)

@@ -103,10 +103,19 @@ in
 
     export NODE_OPTIONS="--disable-warning=ExperimentalWarning"
 
-    # Project setup + completions
+    # Project setup + completions generation
     if [ -z "''${DEVENV_SKIP_SETUP:-}" ]; then
       bun run "$WORKSPACE_ROOT/scripts/standalone/setup.ts" || true
     fi
     [ -f "$WORKSPACE_ROOT/scripts/completions.sh" ] && source "$WORKSPACE_ROOT/scripts/completions.sh"
+
+    # Zsh completions: export FPATH with project-local completions prepended
+    # The FPATH env var syncs with zsh's fpath array automatically
+    if [ -d "$WORKSPACE_ROOT/scripts/.completions/zsh/site-functions" ]; then
+      # Avoid introducing an empty FPATH entry (e.g. trailing ':') when FPATH is unset/empty.
+      export FPATH="$WORKSPACE_ROOT/scripts/.completions/zsh/site-functions''${FPATH:+:''${FPATH}}"
+      # Export a marker so zsh knows to reload compinit
+      export LIVESTORE_ZSH_COMPLETIONS="$WORKSPACE_ROOT/scripts/.completions/zsh/site-functions"
+    fi
   '';
 }

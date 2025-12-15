@@ -138,6 +138,17 @@ const listenToDevtools = ({
 
           switch (decodedEvent._tag) {
             case 'LSD.Leader.Ping': {
+              // Check version mismatch and respond with VersionMismatch if versions don't match
+              if (decodedEvent.liveStoreVersion !== liveStoreVersion) {
+                yield* sendMessage(
+                  Devtools.Leader.VersionMismatch.make({
+                    ...reqPayload,
+                    appVersion: liveStoreVersion,
+                    receivedVersion: decodedEvent.liveStoreVersion,
+                  }),
+                )
+                return
+              }
               yield* sendMessage(Devtools.Leader.Pong.make({ ...reqPayload }))
               return
             }

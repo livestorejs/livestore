@@ -1,6 +1,39 @@
 import type * as PW from '@playwright/test'
 import { expect } from '@playwright/test'
 
+/**
+ * Checks that the version mismatch overlay is displayed with correct content.
+ */
+export const checkVersionMismatchOverlay = async (options: {
+  devtools: PW.Frame | PW.Page
+  label: string
+  expect: {
+    devtoolsVersion: string
+    appVersion: string
+  }
+}) => {
+  const overlay = options.devtools.locator('[data-testid="version-mismatch-overlay"]')
+  await overlay.describe(`${options.label}:version-mismatch-overlay`).waitFor({ state: 'attached', timeout: 5000 })
+
+  // Check for version mismatch text
+  await expect(
+    options.devtools
+      .getByText('Version Mismatch', { exact: false })
+      .describe(`${options.label}:version-mismatch-title`),
+  ).toBeVisible()
+
+  // Check that the versions are displayed
+  await expect(
+    options.devtools
+      .getByText(options.expect.devtoolsVersion, { exact: false })
+      .describe(`${options.label}:devtools-version`),
+  ).toBeVisible()
+
+  await expect(
+    options.devtools.getByText(options.expect.appVersion, { exact: false }).describe(`${options.label}:app-version`),
+  ).toBeVisible()
+}
+
 const checkDevtoolsState_ = async (options: {
   devtools: PW.Frame | PW.Page
   label: string
