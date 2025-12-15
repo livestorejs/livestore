@@ -65,7 +65,10 @@ export interface RegistryStoreOptions<
    * have unmounted.
    *
    * @remarks
-   * - When different `unusedCacheTime` values are used for the same store, the longest one will be used.
+   * - **Limitation:** Per-store values are not yet supported. Only the registry-level default
+   *   (via `StoreRegistry` constructor's `defaultOptions.unusedCacheTime`) is used.
+   *   See {@link https://github.com/livestorejs/livestore/issues/917 | #917} for per-store support
+   *   and {@link https://github.com/livestorejs/livestore/issues/918 | #918} for dynamic "longest wins" behavior.
    * - If set to `Infinity`, will disable automatic disposal
    * - The maximum allowed time is about {@link https://developer.mozilla.org/en-US/docs/Web/API/Window/setTimeout#maximum_delay_value | 24 days}
    *
