@@ -4,6 +4,7 @@
   "type": "module",
   "private": true,
   "dependencies": {
+    "@livestore/adapter-node": "0.4.0-dev.21",
     "@livestore/adapter-web": "0.4.0-dev.21",
     "@livestore/common": "0.4.0-dev.21",
     "@livestore/livestore": "0.4.0-dev.21",
@@ -29,7 +30,8 @@
     "@types/react-dom": "^19.1.9",
     "@vitejs/plugin-react": "^5.0.3",
     "typescript": "^5.9.2",
-    "vite": "^7.2.4"
+    "vite": "^7.2.4",
+    "vite-plugin-devtools-json": "^1.0.0"
   },
   "engines": {
     "node": ">=24.0.0"

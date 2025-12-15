@@ -7,6 +7,7 @@ import tailwindcss from '@tailwindcss/vite'
 import { tanstackStart } from '@tanstack/react-start/plugin/vite'
 import react from '@vitejs/plugin-react'
 import { defineConfig } from 'vite'
+import devtoolsJson from 'vite-plugin-devtools-json'
 import svgr from 'vite-plugin-svgr'
 
 // https://vitejs.dev/config/
@@ -36,5 +37,6 @@ export default defineConfig({
         },
       },
     }),
+    devtoolsJson(), // Needed for https://github.com/TanStack/router/issues/2459#issuecomment-2969318833
   ],
 })
