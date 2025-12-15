@@ -60,6 +60,12 @@ export const useStore = <
 ): Store<TSchema, TContext> & ReactApi => {
   const storeRegistry = useStoreRegistry()
 
+  // NOTE: retain() is called in useEffect (after render), while getOrLoadPromise() is called
+  // in useMemo (during render). This creates a timing gap where with very short unusedCacheTime
+  // values (e.g., 0), the store could theoretically be disposed before the effect fires.
+  // In practice, this is not an issue with the default 60s cache time, but it becomes an issue when
+  // `unusedCacheTime` is configured to values less than ~100ms.
+  // See https://github.com/livestorejs/livestore/issues/916
   React.useEffect(() => storeRegistry.retain(options), [storeRegistry, options])
 
   const storeOrPromise = React.useMemo(() => storeRegistry.getOrLoadPromise(options), [storeRegistry, options])
