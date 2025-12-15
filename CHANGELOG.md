@@ -24,7 +24,7 @@
 - **Schema-first tables:** LiveStore now accepts Effect schema definitions as SQLite table definitions, removing duplicate column configuration in applications (#544).
 - **Cloudflare sync provider storage:** Default storage is now Durable Object (DO) SQLite, with an explicit option to use D1 via a named binding. Examples and docs updated to the DO‑by‑default posture (see issue #266, #693).
 - **MCP support:** LiveStore now ships a CLI with a first-class MCP server so automation flows can connect to instances, query data, and commit events using the bundled tools (#705).
-- **React multi-store API:** The multi-store API is now the primary React integration, replacing `<LiveStoreProvider>` with `<StoreRegistryProvider>` and `useStore()` with store options. The new API supports multiple stores, preloading, and caching out of the box. See the [React integration docs](https://dev.docs.livestore.dev/reference/framework-integrations/react-integration/).
+- **React multi-store API:** The multi-store API is now the primary React integration, replacing `<LiveStoreProvider>` with `<StoreRegistryProvider>` and `useStore()` with store options. The new API supports multiple stores, preloading, and caching out of the box. See the [React integration docs](https://dev.docs.livestore.dev/reference/framework-integrations/react-integration/) (#841).
 
 ### Breaking Changes
 
@@ -166,7 +166,7 @@
   effect.pipe(UnknownError.mapToUnknownError)
   ```
 
-- **React integration API:** The multi-store API is now the primary React integration, replacing `<LiveStoreProvider>` and the old `useStore()`. The new API uses `StoreRegistry`, `<StoreRegistryProvider>`, and `useStore()` with store options. See the [React integration docs](https://dev.docs.livestore.dev/reference/framework-integrations/react-integration/) for full details.
+- **React integration API:** The multi-store API is now the primary React integration, replacing `<LiveStoreProvider>` and the old `useStore()`. The new API uses `StoreRegistry`, `<StoreRegistryProvider>`, and `useStore()` with store options. See the [React integration docs](https://dev.docs.livestore.dev/reference/framework-integrations/react-integration/) for full details (#841).
 
   | Before                                           | After                                                                   |
   |--------------------------------------------------|-------------------------------------------------------------------------|
