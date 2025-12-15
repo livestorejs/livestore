@@ -72,7 +72,7 @@ export const useStore = <
 
   const store = storeOrPromise instanceof Promise ? React.use(storeOrPromise) : storeOrPromise
 
-  // Add store to the global object so that it can be inspected in the browser console
+  // Expose store on the global object for browser console debugging.
   globalThis.__debugLiveStore ??= {}
   if (Object.keys(globalThis.__debugLiveStore).length === 0) {
     globalThis.__debugLiveStore._ = store
