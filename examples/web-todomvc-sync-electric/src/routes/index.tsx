@@ -18,4 +18,5 @@ const Home = () => {
 
 export const Route = createFileRoute('/')({
   component: Home,
+  ssr: false,
 })

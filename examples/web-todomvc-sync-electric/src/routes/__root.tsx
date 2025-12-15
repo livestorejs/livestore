@@ -1,10 +1,8 @@
-import 'todomvc-app-css/index.css'
-
 import { type StoreRegistry, StoreRegistryProvider } from '@livestore/react'
 import { createRootRouteWithContext, HeadContent, Outlet, Scripts } from '@tanstack/react-router'
 import type * as React from 'react'
 import { Suspense } from 'react'
-
+import stylesheetUrl from 'todomvc-app-css/index.css?url'
 import { VersionBadge } from '../components/VersionBadge.tsx'
 
 const RootComponent = () => {
@@ -41,5 +39,16 @@ type RouterContext = {
 }
 
 export const Route = createRootRouteWithContext<RouterContext>()({
+  head: () => ({
+    meta: [
+      { charSet: 'utf-8' },
+      { name: 'viewport', content: 'width=device-width, initial-scale=1' },
+      { title: 'TodoMVC Sync Electric · LiveStore' },
+    ],
+    links: [
+      { rel: 'stylesheet', href: stylesheetUrl },
+      { rel: 'icon', type: 'image/svg+xml', href: '/icon.svg' },
+    ],
+  }),
   component: RootComponent,
 })

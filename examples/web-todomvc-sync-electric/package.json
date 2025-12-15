@@ -30,7 +30,8 @@
     "@vitejs/plugin-react": "^5.0.3",
     "postgres": "^3.4.7",
     "typescript": "^5.9.2",
-    "vite": "^7.2.4"
+    "vite": "^7.2.4",
+    "vite-plugin-devtools-json": "^1.0.0"
   },
   "engines": {
     "node": ">=24.0.0"
