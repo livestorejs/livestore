@@ -158,6 +158,11 @@ export class StoreRegistry {
   readonly #loadingPromises: Map<string, Promise<Store<any, any>>> = new Map()
 
   /**
+   * Default options merged into all store configurations at load time.
+   */
+  readonly #defaultOptions: StoreRegistryConfig['defaultOptions']
+
+  /**
    * Creates a new StoreRegistry instance.
    *
    * @example
@@ -171,24 +176,27 @@ export class StoreRegistry {
    * ```
    */
   constructor(config: StoreRegistryConfig = {}) {
+    this.#defaultOptions = config.defaultOptions
     this.#runtime =
       config.runtime ??
       ManagedRuntime.make(Layer.mergeAll(Layer.scope, OtelLiveDummy)).runtimeEffect.pipe(Effect.runSync)
 
     this.#rcMap = RcMap.make({
-      lookup: ({ options }: StoreCacheKey) =>
-        Effect.gen(this, function* () {
-          return yield* createStore(options).pipe(Effect.catchAllDefect((cause) => UnknownError.make({ cause })))
-        }).pipe(
-          Effect.withSpan(`StoreRegistry.lookup:${options.storeId}`),
-          LogConfig.withLoggerConfig(options, { threadName: 'window' }),
+      lookup: ({ options }: StoreCacheKey) => {
+        // Merge registry defaults with call-site options (call-site takes precedence)
+        const mergedOptions = { ...this.#defaultOptions, ...options }
+        return createStore(mergedOptions).pipe(
+          Effect.catchAllDefect((cause) => UnknownError.make({ cause })),
+          Effect.withSpan(`StoreRegistry.lookup:${mergedOptions.storeId}`),
+          LogConfig.withLoggerConfig(mergedOptions, { threadName: 'window' }),
           provideOtel(
             omitUndefineds({
-              parentSpanContext: options.otelOptions?.rootSpanContext,
-              otelTracer: options.otelOptions?.tracer,
+              parentSpanContext: mergedOptions.otelOptions?.rootSpanContext,
+              otelTracer: mergedOptions.otelOptions?.tracer,
             }),
           ),
-        ),
+        )
+      },
       // TODO: Make idleTimeToLive vary for each store when Effect supports per-resource TTL
       // See https://github.com/livestorejs/livestore/issues/917
       idleTimeToLive: config.defaultOptions?.unusedCacheTime ?? DEFAULT_UNUSED_CACHE_TIME,
