@@ -55,7 +55,8 @@ The adapter requires minimal configuration. For more details on the provider pro
 
 | Option | Type | Description |
 |--------|------|-------------|
-| `storage.subDirectory` | `string` | Subdirectory within the default SQLite location for organizing databases |
+| `storage.directory` | `string` | Base directory for database files (defaults to `expo-sqlite`'s default directory) |
+| `storage.subDirectory` | `string` | Subdirectory relative to `directory` for organizing databases |
 | `sync` | `SyncOptions` | Sync backend configuration (see [Syncing](/building-with-livestore/syncing)) |
 | `clientId` | `string` | Custom client identifier (defaults to device ID) |
 | `sessionId` | `string` | Session identifier (defaults to `'static'`) |
