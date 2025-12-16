@@ -97,7 +97,7 @@ import * as astroExpressiveCodeModuleStatic from 'astro-expressive-code'
  */
 
 import { type Duration, Effect, FileSystem, type PlatformError, Schema, Stream } from '@livestore/utils/effect'
-import { Cli, NodeRecursiveWatchLayer } from '@livestore/utils/node'
+import { Cli, NodeFileSystemWithWatch } from '@livestore/utils/node'
 import type { ExpressiveCodeBlockOptions } from 'expressive-code'
 import type {
   Element as THastElement,
@@ -1718,7 +1718,11 @@ export const watchSnippets = (options: WatchSnippetsOptions = {}) => {
   })
   return watchSnippetsInternal(resolved, normalizedWatch).pipe(
     Effect.withSpan('astro-twoslash-code/watch-snippets'),
-    Effect.provide(NodeRecursiveWatchLayer),
+    /**
+     * Must use NodeFileSystemWithWatch to ensure recursive file watching works correctly.
+     * @see https://github.com/Effect-TS/effect/issues/5913
+     */
+    Effect.provide(NodeFileSystemWithWatch),
   )
 }
 
@@ -1744,7 +1748,11 @@ export const createSnippetsCommand = ({
 
   const watchHandler = watchSnippetsInternal(resolved, normalizeWatchOptions({})).pipe(
     Effect.withSpan('astro-twoslash-code/cli/snippets-watch'),
-    Effect.provide(NodeRecursiveWatchLayer),
+    /**
+     * Must use NodeFileSystemWithWatch to ensure recursive file watching works correctly.
+     * @see https://github.com/Effect-TS/effect/issues/5913
+     */
+    Effect.provide(NodeFileSystemWithWatch),
     Effect.asVoid,
   )
 

@@ -73,8 +73,7 @@ export const createAstroTwoslashCodeIntegration = (options: AstroTwoslashCodeOpt
         await runSnippetBuild()
 
         if (resolvedBuildOptions && watchFiber === null) {
-          const watchEffect = watchSnippets(resolvedBuildOptions)
-          watchFiber = Effect.runFork(watchEffect.pipe(Effect.provide(PlatformNode.NodeFileSystem.layer)))
+          watchFiber = Effect.runFork(watchSnippets(resolvedBuildOptions))
         }
       },
       'astro:build:start': async (_context: BuildStartContext) => {

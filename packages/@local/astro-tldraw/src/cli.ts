@@ -2,7 +2,7 @@ import os from 'node:os'
 import path from 'node:path'
 
 import { type Duration, Effect, FileSystem, type PlatformError, Schema, Stream } from '@livestore/utils/effect'
-import { NodeRecursiveWatchLayer } from '@livestore/utils/node'
+import { NodeFileSystemWithWatch } from '@livestore/utils/node'
 import {
   FileSystemError,
   getCacheEntry,
@@ -354,7 +354,7 @@ const watchDiagramsInternal = (
   })
 
 /** Watch diagrams directory for changes and rebuild on modifications */
-export const watchDiagrams = (options: WatchDiagramsOptions): Effect.Effect<void, never, FileSystem.FileSystem> => {
+export const watchDiagrams = (options: WatchDiagramsOptions): Effect.Effect<void, never> => {
   const { debounce, initialBuild, onRebuild, ...baseOptions } = options
   const normalizedWatch = normalizeWatchOptions({
     ...(debounce !== undefined ? { debounce } : {}),
@@ -363,7 +363,11 @@ export const watchDiagrams = (options: WatchDiagramsOptions): Effect.Effect<void
   })
   return watchDiagramsInternal(baseOptions, normalizedWatch).pipe(
     Effect.withSpan('tldraw.watch-diagrams'),
-    Effect.provide(NodeRecursiveWatchLayer),
+    /**
+     * Must use NodeFileSystemWithWatch to ensure recursive file watching works correctly.
+     * @see https://github.com/Effect-TS/effect/issues/5913
+     */
+    Effect.provide(NodeFileSystemWithWatch),
   )
 }
 
