@@ -12,7 +12,7 @@ import {
 // import LiveStoreSharedWorker from '@livestore/adapter-web/internal-shared-worker?sharedworker'
 import { EventSequenceNumber } from '@livestore/common/schema'
 import { sqliteDbFactory } from '@livestore/sqlite-wasm/browser'
-import { isDevEnv, shouldNeverHappen, tryAsFunctionAndNew } from '@livestore/utils'
+import { isDevEnv, omitUndefineds, shouldNeverHappen, tryAsFunctionAndNew } from '@livestore/utils'
 import {
   Cause,
   Deferred,
@@ -31,6 +31,7 @@ import {
 } from '@livestore/utils/effect'
 import { BrowserWorker, Opfs, WebError, WebLock } from '@livestore/utils/effect/browser'
 import { nanoid } from '@livestore/utils/nanoid'
+import { makeSingleTabAdapter } from '../../single-tab/single-tab-adapter.ts'
 import {
   readPersistedStateDbFromClientSession,
   resetPersistedDataFromClientSession,
@@ -40,6 +41,16 @@ import { DedicatedWorkerDisconnectBroadcast, makeWorkerDisconnectChannel } from 
 import * as WorkerSchema from '../common/worker-schema.ts'
 import { connectWebmeshNodeClientSession } from './client-session-devtools.ts'
 import { loadSqlite3 } from './sqlite-loader.ts'
+
+/**
+ * Checks if SharedWorker API is available in the current browser context.
+ *
+ * Returns false on Android Chrome and other browsers without SharedWorker support.
+ *
+ * @see https://github.com/livestorejs/livestore/issues/321
+ * @see https://issues.chromium.org/issues/40290702
+ */
+export const canUseSharedWorker = (): boolean => typeof SharedWorker !== 'undefined'
 
 if (isDevEnv()) {
   globalThis.__debugLiveStoreUtils = {
@@ -120,6 +131,15 @@ export type WebAdapterOptions = {
  * Creates a web adapter with persistent storage (currently only supports OPFS).
  * Requires both a web worker and a shared worker.
  *
+ * On browsers without SharedWorker support (e.g. Android Chrome), this adapter
+ * automatically falls back to single-tab mode. In single-tab mode:
+ * - Each tab runs independently with its own leader worker
+ * - Multi-tab synchronization is not available
+ * - Devtools are not supported
+ *
+ * @see https://github.com/livestorejs/livestore/issues/321 - SharedWorker tracking issue
+ * @see https://issues.chromium.org/issues/40290702 - Chromium SharedWorker bug
+ *
  * @example
  * ```ts
  * import { makePersistedAdapter } from '@livestore/adapter-web'
@@ -137,6 +157,26 @@ export const makePersistedAdapter =
   (options: WebAdapterOptions): Adapter =>
   (adapterArgs) =>
     Effect.gen(function* () {
+      // Check SharedWorker availability first and fall back to single-tab mode if unavailable
+      if (!canUseSharedWorker()) {
+        yield* Effect.logWarning(
+          '[@livestore/adapter-web] SharedWorker unavailable (e.g. Android Chrome). ' +
+            'Falling back to single-tab mode. Multi-tab synchronization and devtools are disabled. ' +
+            'See: https://github.com/livestorejs/livestore/issues/321',
+        )
+
+        return yield* makeSingleTabAdapter({
+          worker: options.worker,
+          storage: options.storage,
+          ...omitUndefineds({
+            resetPersistence: options.resetPersistence,
+            clientId: options.clientId,
+            sessionId: options.sessionId,
+            experimental: options.experimental,
+          }),
+        })(adapterArgs)
+      }
+
       const {
         schema,
         storeId,
