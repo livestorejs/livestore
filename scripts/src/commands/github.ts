@@ -6,7 +6,7 @@ import { cmd, cmdText, LivestoreWorkspace } from '@livestore/utils-dev/node'
 import YAML from 'yaml'
 
 /**
- * GitHub branch protection updater for required status checks.
+ * GitHub branch protection and rulesets management.
  *
  * Why this exists:
  * - GitHub branch protection requires an explicit, static list of required check contexts.
@@ -17,12 +17,22 @@ import YAML from 'yaml'
  * Key properties:
  * - Deterministic and branch-agnostic: reads `.github/workflows/ci.yml` instead of inspecting runs.
  * - Single source of truth: parses the workflow jobs (including matrix axes) directly from YAML.
- * - Idempotent: clears existing required checks first, then sets the precise, desired set.
+ * - Idempotent: clears existing checks first, then sets the precise, desired set.
+ *
+ * Rulesets vs Branch Protection:
+ * - Rulesets are newer and support bypass actors that work with auto-merge.
+ * - Branch protection bypass only works for manual merges, not auto-merge.
+ * - Use `mono github rulesets update` for the newer ruleset-based approach.
  */
 const OWNER = 'livestorejs'
 const REPO = 'livestore'
 /** Flagged on jobs in the workflow YAML to mark them as branch protection required. */
 const BRANCH_PROTECTION_ENV_KEY = 'LIVESTORE_BRANCH_PROTECTION_REQUIRED'
+/** GitHub Actions app ID for status checks. */
+const GITHUB_ACTIONS_APP_ID = 15368
+/** User ID for schickling (main maintainer with bypass permissions). */
+const _MAINTAINER_USER_ID = 1567498
+const MAINTAINER_USERNAME = 'schickling'
 
 const isRecord = (input: unknown): input is Record<string, unknown> =>
   typeof input === 'object' && input !== null && !Array.isArray(input)
@@ -291,8 +301,238 @@ const updateBranchProtectionCommand = Cli.Command.make(
   }),
 ).pipe(Cli.Command.withDescription('Update branch protection required status checks'))
 
+// ============================================================================
+// Rulesets Management
+// ============================================================================
+
+/**
+ * Schema for the ruleset API request body.
+ *
+ * References:
+ * - GitHub API: https://docs.github.com/en/rest/repos/rules#create-a-repository-ruleset
+ * - Terraform provider (verified against): https://github.com/integrations/terraform-provider-github/blob/main/github/resource_github_repository_ruleset.go
+ *
+ * Actor types and IDs (from Terraform validation):
+ * - RepositoryRole: 1=Read, 2=Triage, 3=Write, 4=Maintain, 5=Admin
+ * - OrganizationAdmin: use actor_id=1
+ * - Team/Integration: use the actual team_id or app_id
+ */
+const RulesetRequestBody = Schema.Struct({
+  name: Schema.String,
+  target: Schema.Literal('branch', 'tag'),
+  enforcement: Schema.Literal('disabled', 'active', 'evaluate'),
+  bypass_actors: Schema.Array(
+    Schema.Struct({
+      actor_id: Schema.Number,
+      actor_type: Schema.Literal('RepositoryRole', 'Team', 'Integration', 'OrganizationAdmin', 'DeployKey'),
+      bypass_mode: Schema.Literal('always', 'pull_request', 'exempt'),
+    }),
+  ),
+  conditions: Schema.Struct({
+    ref_name: Schema.Struct({
+      include: Schema.Array(Schema.String),
+      exclude: Schema.Array(Schema.String),
+    }),
+  }),
+  rules: Schema.Array(
+    Schema.Union(
+      Schema.Struct({ type: Schema.Literal('pull_request'), parameters: Schema.optional(Schema.Unknown) }),
+      Schema.Struct({ type: Schema.Literal('required_status_checks'), parameters: Schema.optional(Schema.Unknown) }),
+      Schema.Struct({ type: Schema.Literal('non_fast_forward') }),
+      Schema.Struct({ type: Schema.Literal('deletion') }),
+    ),
+  ),
+})
+
+type TRulesetRequestBody = typeof RulesetRequestBody.Type
+
+interface TExistingRuleset {
+  id: number
+  name: string
+  enforcement: string
+}
+
+const getRulesetByName = (name: string) =>
+  Effect.gen(function* () {
+    const response = yield* cmdText(['gh', 'api', `repos/${OWNER}/${REPO}/rulesets`, '--jq', '.'], {
+      stderr: 'pipe',
+    }).pipe(Effect.provide(LivestoreWorkspace.toCwd()))
+
+    const rulesets = JSON.parse(response) as TExistingRuleset[]
+    return rulesets.find((r) => r.name === name) ?? null
+  })
+
+const createRuleset = (body: TRulesetRequestBody) =>
+  Effect.gen(function* () {
+    const fs = yield* FileSystem.FileSystem
+    const tmpDir = path.join(process.env.WORKSPACE_ROOT ?? '.', 'tmp', 'gh-rulesets')
+    yield* fs.makeDirectory(tmpDir, { recursive: true })
+
+    const bodyPath = path.join(tmpDir, 'ruleset-body.json')
+    const bodyJson = yield* Schema.encode(Schema.parseJson(RulesetRequestBody))(body)
+    yield* fs.writeFileString(bodyPath, bodyJson)
+
+    yield* cmd(['gh', 'api', '-X', 'POST', `repos/${OWNER}/${REPO}/rulesets`, '--input', bodyPath], {
+      stderr: 'pipe',
+    }).pipe(Effect.provide(LivestoreWorkspace.toCwd()))
+  })
+
+const updateRuleset = (rulesetId: number, body: TRulesetRequestBody) =>
+  Effect.gen(function* () {
+    const fs = yield* FileSystem.FileSystem
+    const tmpDir = path.join(process.env.WORKSPACE_ROOT ?? '.', 'tmp', 'gh-rulesets')
+    yield* fs.makeDirectory(tmpDir, { recursive: true })
+
+    const bodyPath = path.join(tmpDir, 'ruleset-body.json')
+    const bodyJson = yield* Schema.encode(Schema.parseJson(RulesetRequestBody))(body)
+    yield* fs.writeFileString(bodyPath, bodyJson)
+
+    yield* cmd(['gh', 'api', '-X', 'PUT', `repos/${OWNER}/${REPO}/rulesets/${rulesetId}`, '--input', bodyPath], {
+      stderr: 'pipe',
+    }).pipe(Effect.provide(LivestoreWorkspace.toCwd()))
+  })
+
+const buildRulesetBody = (branch: string, contexts: string[]): TRulesetRequestBody => ({
+  name: `${branch}-branch-rules`,
+  target: 'branch',
+  enforcement: 'active',
+  bypass_actors: [
+    {
+      /** RepositoryRole actor_id 5 = Admin role */
+      actor_id: 5,
+      actor_type: 'RepositoryRole',
+      bypass_mode: 'always',
+    },
+  ],
+  conditions: {
+    ref_name: {
+      include: [`refs/heads/${branch}`],
+      exclude: [],
+    },
+  },
+  rules: [
+    {
+      type: 'pull_request',
+      parameters: {
+        required_approving_review_count: 1,
+        dismiss_stale_reviews_on_push: false,
+        require_code_owner_review: false,
+        require_last_push_approval: false,
+        required_review_thread_resolution: true,
+      },
+    },
+    {
+      type: 'required_status_checks',
+      parameters: {
+        strict_required_status_checks_policy: true,
+        do_not_enforce_on_create: false,
+        required_status_checks: contexts.map((context) => ({
+          context,
+          integration_id: GITHUB_ACTIONS_APP_ID,
+        })),
+      },
+    },
+    { type: 'non_fast_forward' },
+    { type: 'deletion' },
+  ],
+})
+
+/**
+ * Subcommand to update rulesets for a branch.
+ * Rulesets are the newer alternative to branch protection with better bypass support for auto-merge.
+ */
+const updateRulesetsCommand = Cli.Command.make(
+  'update',
+  {
+    branch: Cli.Options.text('branch').pipe(
+      Cli.Options.withDescription('Target branch to update (dev is the main PR target, main is for releases)'),
+      Cli.Options.withDefault('dev'),
+    ),
+    dryRun: Cli.Options.boolean('dry-run').pipe(Cli.Options.withDefault(false)),
+  },
+  Effect.fn(function* ({ branch, dryRun }) {
+    yield* cmdText('gh --version', { stderr: 'pipe' }).pipe(Effect.provide(LivestoreWorkspace.toCwd()))
+
+    const contexts = yield* computeRequiredContextsFromWorkflow(
+      path.join(process.env.WORKSPACE_ROOT ?? '.', '.github', 'workflows', 'ci.yml'),
+    )
+
+    const rulesetName = `${branch}-branch-rules`
+    const existing = yield* getRulesetByName(rulesetName)
+    const body = buildRulesetBody(branch, contexts)
+
+    if (dryRun) {
+      console.log(`Ruleset name: ${rulesetName}`)
+      console.log(`Existing: ${existing ? `yes (id: ${existing.id})` : 'no'}`)
+      console.log(`Action: ${existing ? 'update' : 'create'}`)
+      console.log(`\nBypass actors:`)
+      console.log(`- Repository Admins (actor_id: 5, bypass_mode: always)`)
+      console.log(`\nRequired status checks (${contexts.length}):`)
+      for (const c of contexts) console.log(`- ${c}`)
+      console.log(`\nPull request rules:`)
+      console.log(`- required_approving_review_count: 1`)
+      console.log(`- required_review_thread_resolution: true`)
+      console.log(`\nOther rules:`)
+      console.log(`- non_fast_forward`)
+      console.log(`- deletion`)
+      return
+    }
+
+    if (existing) {
+      yield* updateRuleset(existing.id, body)
+      console.log(`Updated ruleset '${rulesetName}' (id: ${existing.id}) on ${OWNER}/${REPO}`)
+    } else {
+      yield* createRuleset(body)
+      console.log(`Created ruleset '${rulesetName}' on ${OWNER}/${REPO}`)
+    }
+
+    console.log(`\nNote: To use rulesets, you should disable the corresponding branch protection rule.`)
+    console.log(`The ruleset bypass allows ${MAINTAINER_USERNAME} to auto-merge PRs without waiting for reviews.`)
+  }),
+).pipe(Cli.Command.withDescription('Create or update repository rulesets (recommended over branch protection)'))
+
+/**
+ * Subcommand to show current ruleset status.
+ */
+const showRulesetsCommand = Cli.Command.make(
+  'show',
+  {
+    branch: Cli.Options.text('branch').pipe(
+      Cli.Options.withDescription('Target branch to show rulesets for'),
+      Cli.Options.withDefault('dev'),
+    ),
+  },
+  Effect.fn(function* ({ branch }) {
+    yield* cmdText('gh --version', { stderr: 'pipe' }).pipe(Effect.provide(LivestoreWorkspace.toCwd()))
+
+    const rulesetName = `${branch}-branch-rules`
+    const existing = yield* getRulesetByName(rulesetName)
+
+    if (!existing) {
+      console.log(`No ruleset found with name '${rulesetName}'`)
+      console.log(`Run 'mono github rulesets update --branch ${branch}' to create one.`)
+      return
+    }
+
+    console.log(`Ruleset: ${existing.name}`)
+    console.log(`ID: ${existing.id}`)
+    console.log(`Enforcement: ${existing.enforcement}`)
+
+    const details = yield* cmdText(['gh', 'api', `repos/${OWNER}/${REPO}/rulesets/${existing.id}`, '--jq', '.'], {
+      stderr: 'pipe',
+    }).pipe(Effect.provide(LivestoreWorkspace.toCwd()))
+
+    console.log(`\nFull details:`)
+    console.log(JSON.stringify(JSON.parse(details), null, 2))
+  }),
+).pipe(Cli.Command.withDescription('Show current ruleset configuration'))
+
 export const githubCommand = Cli.Command.make('github').pipe(
   Cli.Command.withSubcommands([
     Cli.Command.make('branch-protection').pipe(Cli.Command.withSubcommands([updateBranchProtectionCommand])),
+    Cli.Command.make('rulesets').pipe(
+      Cli.Command.withDescription('Manage repository rulesets (recommended over branch protection)'),
+      Cli.Command.withSubcommands([updateRulesetsCommand, showRulesetsCommand]),
+    ),
   ]),
 )
