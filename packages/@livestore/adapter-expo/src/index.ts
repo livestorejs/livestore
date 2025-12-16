@@ -52,7 +52,7 @@ export type MakeDbOptions = {
      */
     directory?: string
     /**
-     * Relative to expo-sqlite's default directory
+     * Sub-directory relative to the configured `directory` (or expo-sqlite's default directory if not specified).
      *
      * Example of a resulting path for `subDirectory: 'my-app'`:
      * `/data/Containers/Data/Application/<APP_UUID>/Documents/ExponentExperienceData/@<USERNAME>/<APPNAME>/SQLite/my-app/<STORE_ID>/livestore-eventlog@3.db`
