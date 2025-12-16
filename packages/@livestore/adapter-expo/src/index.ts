@@ -47,7 +47,7 @@ export type MakeDbOptions = {
   sync?: SyncOptions
   storage?: {
     /**
-     * The defualt directory for expo-sqlite
+     * The directory where the database file is located.
      * @default SQLite.defaultDatabaseDirectory
      */
     directory?: string
