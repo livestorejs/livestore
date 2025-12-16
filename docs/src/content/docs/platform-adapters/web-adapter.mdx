@@ -8,6 +8,7 @@ sidebar:
 import WebAdapterInMemorySnippet from '../../_assets/code/reference/platform-adapters/web-adapter/in-memory.ts?snippet'
 import WebAdapterMainSnippet from '../../_assets/code/reference/platform-adapters/web-adapter/main.ts?snippet'
 import WebAdapterResetSnippet from '../../_assets/code/reference/platform-adapters/web-adapter/reset-persistence.ts?snippet'
+import WebAdapterSingleTabSnippet from '../../_assets/code/reference/platform-adapters/web-adapter/single-tab.ts?snippet'
 import WebAdapterSyncSnippet from '../../_assets/code/reference/platform-adapters/web-adapter/sync-backend.ts?snippet'
 import WebAdapterWorkerSnippet from '../../_assets/code/reference/platform-adapters/web-adapter/livestore.worker.ts?snippet'
 
@@ -133,8 +134,28 @@ Assuming the web adapter in a multi-client, multi-tab browser application, a dia
 
 ## Browser support
 
-- Notable required browser APIs: OPFS, SharedWorker, `navigator.locks`, WASM
-- The web adapter of LiveStore currently doesn't work on Android browsers as they don't support the `SharedWorker` API (see [Chromium bug](https://issues.chromium.org/issues/40290702)).
+- Notable required browser APIs: OPFS, `navigator.locks`, WASM
+- SharedWorker is used for multi-tab synchronization but is not strictly required
+
+### Android Chrome (Single-tab mode)
+
+Android Chrome does not support the `SharedWorker` API ([Chromium bug #40290702](https://issues.chromium.org/issues/40290702)). When running on Android Chrome, LiveStore automatically falls back to **single-tab mode**:
+
+- Each browser tab runs independently with its own leader worker
+- Data is still persisted to OPFS (same as full mode)
+- Multi-tab synchronization is not available
+- Devtools are not supported in single-tab mode
+- A warning is logged to the console when this fallback occurs
+
+You can also explicitly use single-tab mode if you don't need multi-tab support:
+
+<WebAdapterSingleTabSnippet />
+
+:::note
+The single-tab adapter is intended as a fallback for browsers without SharedWorker support.
+We plan to remove it once SharedWorker is supported in Android Chrome.
+Track progress: [LiveStore #321](https://github.com/livestorejs/livestore/issues/321)
+:::
 
 ## Best practices
 
