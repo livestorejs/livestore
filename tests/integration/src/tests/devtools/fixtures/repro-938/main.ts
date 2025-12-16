@@ -1,4 +1,4 @@
-import { LiveStoreProvider } from '@livestore/react'
+import { StoreRegistryProvider } from '@livestore/react'
 
 import { liveStoreAdapter } from './adapter.ts'
 import { schema } from './schema.ts'
@@ -6,7 +6,7 @@ import { schema } from './schema.ts'
 const snapshot = {
   schema: Boolean(schema),
   adapter: Boolean(liveStoreAdapter),
-  provider: typeof LiveStoreProvider === 'function',
+  provider: typeof StoreRegistryProvider === 'function',
 }
 
 const root = document.getElementById('root')
