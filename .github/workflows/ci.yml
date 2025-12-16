@@ -1,6 +1,7 @@
 # Jobs tagged with LIVESTORE_BRANCH_PROTECTION_REQUIRED are used by
-# scripts/src/commands/github.ts (mono github branch-protection update)
-# to keep GitHub’s branch protection checks in sync with this workflow.
+# scripts/src/commands/github.ts to keep GitHub's branch protection checks in sync.
+# Run `mono github branch-protection update` to sync (defaults to dev branch).
+# For main branch: `mono github branch-protection update --branch main`
 name: ci
 run-name: ${{ github.event.pull_request.title || format('Push to {0}', github.ref_name) }} (${{ github.event.pull_request.head.sha || github.sha }})
 

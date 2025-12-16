@@ -240,7 +240,10 @@ const patchRequiredChecks = ({ branch, contexts, strict }: { branch: string; con
 const updateBranchProtectionCommand = Cli.Command.make(
   'update',
   {
-    branch: Cli.Options.text('branch').pipe(Cli.Options.withDefault('main')),
+    branch: Cli.Options.text('branch').pipe(
+      Cli.Options.withDescription('Target branch to update (dev is the main PR target, main is for releases)'),
+      Cli.Options.withDefault('dev'),
+    ),
     dryRun: Cli.Options.boolean('dry-run').pipe(Cli.Options.withDefault(false)),
   },
   Effect.fn(function* ({ branch, dryRun }) {
