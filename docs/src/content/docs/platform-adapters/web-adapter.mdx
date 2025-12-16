@@ -8,6 +8,7 @@ sidebar:
 import WebAdapterInMemorySnippet from '../../_assets/code/reference/platform-adapters/web-adapter/in-memory.ts?snippet'
 import WebAdapterMainSnippet from '../../_assets/code/reference/platform-adapters/web-adapter/main.ts?snippet'
 import WebAdapterResetSnippet from '../../_assets/code/reference/platform-adapters/web-adapter/reset-persistence.ts?snippet'
+import WebAdapterSingleTabSnippet from '../../_assets/code/reference/platform-adapters/web-adapter/single-tab.ts?snippet'
 import WebAdapterSyncSnippet from '../../_assets/code/reference/platform-adapters/web-adapter/sync-backend.ts?snippet'
 import WebAdapterWorkerSnippet from '../../_assets/code/reference/platform-adapters/web-adapter/livestore.worker.ts?snippet'
 
@@ -148,17 +149,7 @@ Android Chrome does not support the `SharedWorker` API ([Chromium bug #40290702]
 
 You can also explicitly use single-tab mode if you don't need multi-tab support:
 
-```ts
-import { makeSingleTabAdapter } from '@livestore/adapter-web'
-import LiveStoreWorker from './livestore.worker.ts?worker'
-
-// Use this only if you specifically need single-tab mode.
-// Prefer makePersistedAdapter which auto-detects SharedWorker support.
-const adapter = makeSingleTabAdapter({
-  worker: LiveStoreWorker,
-  storage: { type: 'opfs' },
-})
-```
+<WebAdapterSingleTabSnippet />
 
 :::note
 The single-tab adapter is intended as a fallback for browsers without SharedWorker support.
