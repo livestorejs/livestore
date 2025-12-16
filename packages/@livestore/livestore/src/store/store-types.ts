@@ -170,7 +170,13 @@ export type StoreInternals = {
   isShutdown: boolean
 }
 
-export type StoreOptions<TSchema extends LiveStoreSchema = LiveStoreSchema.Any, TContext = {}> = {
+/**
+ * Parameters for constructing a Store instance.
+ *
+ * @internal This type is used by the Store constructor and is not part of the public API.
+ * For creating stores, use `createStore()` or `StoreRegistry` instead.
+ */
+export type StoreConstructorParams<TSchema extends LiveStoreSchema = LiveStoreSchema.Any, TContext = {}> = {
   clientSession: ClientSession
   schema: TSchema
   storeId: string

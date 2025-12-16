@@ -1,52 +1,21 @@
-import 'todomvc-app-css/index.css'
-
-import { makeAdapter } from '@livestore/adapter-node'
-import { makePersistedAdapter } from '@livestore/adapter-web'
-
-// can remain static import
-import LiveStoreSharedWorker from '@livestore/adapter-web/shared-worker?sharedworker'
-import { LiveStoreProvider } from '@livestore/react'
-import { createRootRoute, HeadContent, Outlet, Scripts } from '@tanstack/react-router'
-import { createIsomorphicFn } from '@tanstack/react-start'
+import { type StoreRegistry, StoreRegistryProvider } from '@livestore/react'
+import { createRootRouteWithContext, HeadContent, Outlet, Scripts } from '@tanstack/react-router'
 import type * as React from 'react'
-import { unstable_batchedUpdates as batchUpdates } from 'react-dom'
-import { ErrorBoundary } from 'react-error-boundary'
-
+import { Suspense } from 'react'
+import stylesheetUrl from 'todomvc-app-css/index.css?url'
 import { VersionBadge } from '../components/VersionBadge.tsx'
-import { SyncPayload, schema } from '../livestore/schema.ts'
-import LiveStoreWorker from '../livestore.worker.ts?worker'
-import { getStoreId } from '../util/store-id.ts'
-
-// module level vars are kept across requests
-const getAdapter = createIsomorphicFn()
-  .server(() => makeAdapter({ storage: { type: 'in-memory' } }))
-  .client(() =>
-    makePersistedAdapter({ storage: { type: 'opfs' }, worker: LiveStoreWorker, sharedWorker: LiveStoreSharedWorker }),
-  )
-
-// TODO: otel support for tanstack start
-
-const adapter = getAdapter()
 
 const RootComponent = () => {
-  const storeId = getStoreId()
+  const { storeRegistry } = Route.useRouteContext()
 
   return (
     <RootDocument>
-      <ErrorBoundary fallback={<div>Something went wrong</div>}>
-        <LiveStoreProvider
-          schema={schema}
-          storeId={storeId}
-          renderLoading={() => <div>Loading...</div>}
-          adapter={adapter}
-          batchUpdates={batchUpdates}
-          syncPayloadSchema={SyncPayload}
-          syncPayload={{ authToken: 'insecure-token-change-me' }}
-        >
+      <Suspense fallback={<div>Loading...</div>}>
+        <StoreRegistryProvider storeRegistry={storeRegistry}>
           <Outlet />
           <VersionBadge />
-        </LiveStoreProvider>
-      </ErrorBoundary>
+        </StoreRegistryProvider>
+      </Suspense>
     </RootDocument>
   )
 }
@@ -65,6 +34,21 @@ const RootDocument = ({ children }: { children: React.ReactNode }) => {
   )
 }
 
-export const Route = createRootRoute({
+type RouterContext = {
+  storeRegistry: StoreRegistry
+}
+
+export const Route = createRootRouteWithContext<RouterContext>()({
+  head: () => ({
+    meta: [
+      { charSet: 'utf-8' },
+      { name: 'viewport', content: 'width=device-width, initial-scale=1' },
+      { title: 'TodoMVC Sync Electric · LiveStore' },
+    ],
+    links: [
+      { rel: 'stylesheet', href: stylesheetUrl },
+      { rel: 'icon', type: 'image/svg+xml', href: '/icon.svg' },
+    ],
+  }),
   component: RootComponent,
 })

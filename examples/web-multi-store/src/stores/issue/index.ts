@@ -1,14 +1,16 @@
-import { makePersistedAdapter } from '@livestore/adapter-web'
+import { makeAdapter as makeNodeAdapter } from '@livestore/adapter-node'
+import { makePersistedAdapter as makeWebPersistedAdapter } from '@livestore/adapter-web'
 import sharedWorker from '@livestore/adapter-web/shared-worker?sharedworker'
-import { storeOptions } from '@livestore/react/experimental'
+import { storeOptions } from '@livestore/react'
+import { createIsomorphicFn } from '@tanstack/react-start'
 import { issueEvents, issueTables, schema } from './schema.ts'
 import worker from './worker.ts?worker'
 
-const adapter = makePersistedAdapter({
-  storage: { type: 'opfs' },
-  worker,
-  sharedWorker,
-})
+const makeAdapter = createIsomorphicFn()
+  .server(() => makeNodeAdapter({ storage: { type: 'in-memory' } }))
+  .client(() => makeWebPersistedAdapter({ storage: { type: 'opfs' }, worker, sharedWorker }))
+
+const adapter = makeAdapter()
 
 // Simple function to generate issue titles by using alphabet letters sequentially
 let issueCount = 0

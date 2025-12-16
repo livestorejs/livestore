@@ -1,6 +1,6 @@
 import { makeInMemoryAdapter } from '@livestore/adapter-web'
 import { queryDb } from '@livestore/livestore'
-import { StoreRegistry, StoreRegistryProvider, storeOptions, useStore } from '@livestore/react/experimental'
+import { StoreRegistry, StoreRegistryProvider, storeOptions, useStore } from '@livestore/react'
 import { useState } from 'react'
 import { unstable_batchedUpdates as batchUpdates } from 'react-dom'
 import { schema, tables } from './schema.ts'
@@ -13,9 +13,9 @@ const issueStoreOptions = (issueId: string) =>
   })
 
 export function App() {
-  const [registry] = useState(() => new StoreRegistry({ defaultOptions: { batchUpdates } }))
+  const [storeRegistry] = useState(() => new StoreRegistry({ defaultOptions: { batchUpdates } }))
   return (
-    <StoreRegistryProvider storeRegistry={registry}>
+    <StoreRegistryProvider storeRegistry={storeRegistry}>
       <IssueView />
     </StoreRegistryProvider>
   )

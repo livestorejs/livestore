@@ -1,13 +1,13 @@
-import { useQuery, useStore } from '@livestore/react'
 import type { FC } from 'react'
 import { Button, TextInput, View } from 'react-native'
 
 import { uiState$ } from '../livestore/queries.ts'
 import { events } from '../livestore/schema.ts'
+import { useAppStore } from '../livestore/store.ts'
 
 export const NewTodo: FC = () => {
-  const { store } = useStore()
-  const { newTodoText } = useQuery(uiState$)
+  const store = useAppStore()
+  const { newTodoText } = store.useQuery(uiState$)
 
   const updateText = (text: string) => store.commit(events.uiStateSet({ newTodoText: text }))
   const createTodo = () =>

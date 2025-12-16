@@ -88,18 +88,20 @@ The `storageMode` property returns:
 - `'persisted'`: Data is being persisted to disk (e.g., via OPFS)
 - `'in-memory'`: Data is only stored in memory and will be lost on page refresh
 
-The boot status callback will also emit a `warning` stage with details about why persistence is unavailable:
+You can also listen for boot status events including warnings using the `onBootStatus` callback in your store options:
 
-```tsx
-<LiveStoreProvider
-  // ...
-  renderLoading={(status) => {
+```ts
+const useAppStore = () => useStore({
+  storeId: 'app',
+  schema,
+  adapter,
+  batchUpdates: ReactDOM.unstable_batchedUpdates,
+  onBootStatus: (status) => {
     if (status.stage === 'warning') {
       console.warn(`Storage warning (${status.reason}): ${status.message}`)
     }
-    return <div>Loading...</div>
-  }}
-/>
+  },
+})
 ```
 
 ### Resetting local persistence

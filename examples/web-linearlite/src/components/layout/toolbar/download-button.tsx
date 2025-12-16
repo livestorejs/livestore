@@ -1,9 +1,9 @@
 import { ArrowDownIcon } from '@heroicons/react/16/solid'
-import { useStore } from '@livestore/react'
 import { Button } from 'react-aria-components'
+import { useAppStore } from '../../../livestore/store.ts'
 
 export const DownloadButton = ({ className }: { className?: string }) => {
-  const { store } = useStore()
+  const store = useAppStore()
   const onClick = () => {
     ;(store as any)._dev.downloadDb()
   }

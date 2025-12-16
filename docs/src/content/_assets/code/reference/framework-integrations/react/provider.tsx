@@ -1,14 +1,16 @@
-import { makeInMemoryAdapter } from '@livestore/adapter-web'
-import { LiveStoreProvider } from '@livestore/react'
+import { StoreRegistry, StoreRegistryProvider } from '@livestore/react'
 import type { FC, ReactNode } from 'react'
-import { unstable_batchedUpdates as batchUpdates } from 'react-dom'
+import { Suspense, useState } from 'react'
+import { ErrorBoundary } from 'react-error-boundary'
 
-import { schema } from './schema.ts'
+export const Root: FC<{ children: ReactNode }> = ({ children }) => {
+  const [storeRegistry] = useState(() => new StoreRegistry())
 
-const adapter = makeInMemoryAdapter()
-
-export const Root: FC<{ children: ReactNode }> = ({ children }) => (
-  <LiveStoreProvider schema={schema} adapter={adapter} batchUpdates={batchUpdates}>
-    {children}
-  </LiveStoreProvider>
-)
+  return (
+    <ErrorBoundary fallback={<div>Something went wrong</div>}>
+      <Suspense fallback={<div>Loading LiveStore...</div>}>
+        <StoreRegistryProvider storeRegistry={storeRegistry}>{children}</StoreRegistryProvider>
+      </Suspense>
+    </ErrorBoundary>
+  )
+}

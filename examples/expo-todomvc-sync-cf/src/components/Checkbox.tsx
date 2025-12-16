@@ -1,15 +1,15 @@
 import { Entypo } from '@expo/vector-icons'
-import { useStore } from '@livestore/react'
 import type React from 'react'
 import { StyleSheet, TouchableOpacity } from 'react-native'
 
 import { events } from '../livestore/schema.ts'
+import { useAppStore } from '../livestore/store.ts'
 
 export const Checkbox: React.FC<{
   id: string
   isCompleted: boolean
 }> = ({ id, isCompleted }) => {
-  const { store } = useStore()
+  const store = useAppStore()
 
   const handleCheckbox = () => store.commit(isCompleted ? events.todoUncompleted({ id }) : events.todoCompleted({ id }))
 

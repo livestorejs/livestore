@@ -1,4 +1,3 @@
-import { useClientDocument } from '@livestore/react'
 import SegmentedControl from '@react-native-segmented-control/segmented-control'
 import { Stack } from 'expo-router'
 import { ScrollView, StyleSheet, useColorScheme, View } from 'react-native'
@@ -7,6 +6,7 @@ import { RowPropertySwitch } from '../components/RowPropertySwitch.tsx'
 import { ThemedText } from '../components/ThemedText.tsx'
 import { darkSecondary } from '../constants/Colors.ts'
 import { tables } from '../livestore/schema.ts'
+import { useAppStore } from '../livestore/store.ts'
 
 const tabGroupingOptions = ['NoGrouping', 'Assignee', 'Priority', 'Status']
 const tabOrderingOptions = ['Priority', 'Last Updated', 'Last Created']
@@ -17,6 +17,7 @@ const FilterSettingsScreen = () => {
   const colorScheme = useColorScheme()
   const isDark = colorScheme === 'dark'
 
+  const store = useAppStore()
   const [
     {
       selectedHomeTab,
@@ -34,7 +35,7 @@ const FilterSettingsScreen = () => {
       createdTabShowPriority,
     },
     setUiState,
-  ] = useClientDocument(tables.uiState)
+  ] = store.useClientDocument(tables.uiState)
 
   const styles = StyleSheet.create({
     container: {

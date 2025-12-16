@@ -119,7 +119,7 @@ Here's a quick summary of the code:
 The `tables`, `events` and `materializers` are packaged up into a `schema` object that's needed in the parts of your app where you interact with LiveStore.
 
 :::note[Versioning events and materializers]
-You may have noticed that event and materializer names are prefixed with `v1`. 
+You may have noticed that event and materializer names are prefixed with `v1`.
 
 It's good practice in LiveStore to version your events and materializers to ensure future compatibility between them as your app evolves.
 :::
@@ -129,9 +129,10 @@ It's good practice in LiveStore to version your events and materializers to ensu
 To now "connect" LiveStore with your React app, you need to:
 
 1. Create the [LiveStore web worker](/platform-adapters/web-adapter#web-worker) that is responsible for the logic of persisting data on your file system.
-2. Create a LiveStore [adapter](/platform-adapters/web-adapter) that enables persistences with local SQLite via [OPFS](https://web.dev/articles/origin-private-file-system).
-3. Wrap your root component in `main.tsx` with the LiveStore [provider](https://dev.docs.livestore.dev/reference/framework-integrations/react-integration/#livestoreprovider) (which will receive both the web worker and adapter from above as arguments).
-4. Update your Vite Config to work with LiveStore.
+2. Create a LiveStore [adapter](/platform-adapters/web-adapter) that enables persistence with local SQLite via [OPFS](https://web.dev/articles/origin-private-file-system).
+3. Create a store configuration file that exports a custom hook wrapping [`useStore()`](/framework-integrations/react-integration#1-configure-the-store).
+4. Create and provide a `StoreRegistry` with [`<StoreRegistryProvider>`](/framework-integrations/react-integration#2-set-up-the-registry) in `main.tsx`.
+5. Update your Vite Config to work with LiveStore.
 
 Let's get started!
 
@@ -157,18 +158,19 @@ This is boilerplate code that you'll almost never need to touch. (In this tutori
 When importing this file, make sure to add the `?worker` extension to the import path to ensure that [Vite treats it as a worker file](https://vite.dev/guide/features.html#web-workers).
 :::
 
-Next, update `main.tsx` to create an adapter and wrap your `App` component inside the `LiveStoreProvider`:
+Next, create a `store.ts` file that defines your store configuration and a `useAppStore()` hook:
 
-```tsx title="src/main.tsx"
-import { createRoot } from 'react-dom/client'
-import './index.css'
-import App from './App.tsx'
+```bash
+touch src/livestore/store.ts
+```
+
+```ts title="src/livestore/store.ts"
 import { makePersistedAdapter } from '@livestore/adapter-web'
-import { LiveStoreProvider } from '@livestore/react'
-import { schema } from './livestore/schema.ts'
-import LiveStoreWorker from './livestore/livestore.worker.ts?worker'
+import { useStore } from '@livestore/react'
 import LiveStoreSharedWorker from '@livestore/adapter-web/shared-worker?sharedworker'
 import { unstable_batchedUpdates as batchUpdates } from 'react-dom'
+import { schema } from './schema.ts'
+import LiveStoreWorker from './livestore.worker.ts?worker'
 
 const adapter = makePersistedAdapter({
   storage: { type: 'opfs' },
@@ -176,23 +178,42 @@ const adapter = makePersistedAdapter({
   sharedWorker: LiveStoreSharedWorker,
 })
 
-createRoot(document.getElementById('root')!).render(
-  <LiveStoreProvider
-    schema={schema}
-    adapter={adapter}
-    renderLoading={(_) => <div>Loading LiveStore ({_.stage})...</div>}
-    storeId="todo-db-tutorial"
-    batchUpdates={batchUpdates}
-  >
-    <App />
-  </LiveStoreProvider>
-)
+export const useAppStore = () =>
+  useStore({
+    storeId: 'todo-db-tutorial',
+    schema,
+    adapter,
+    batchUpdates,
+  })
+```
+
+Then, update `main.tsx` to wrap your `<App>` component inside the `<StoreRegistryProvider>`:
+
+```tsx title="src/main.tsx"
+import { createRoot } from 'react-dom/client'
+import './index.css'
+import App from './App.tsx'
+import { StoreRegistry, StoreRegistryProvider } from '@livestore/react'
+import { Suspense, useState } from 'react'
+
+const Root = () => {
+  const [storeRegistry] = useState(() => new StoreRegistry())
+  return (
+    <Suspense fallback={<div>Loading LiveStore...</div>}>
+      <StoreRegistryProvider storeRegistry={storeRegistry}>
+        <App />
+      </StoreRegistryProvider>
+    </Suspense>
+  )
+}
+
+createRoot(document.getElementById('root')!).render(<Root />)
 ```
 
 :::note[So many "workers" ...]
 There's some ambiguity with the "worker" terminology in this tutorial. In general, there are three different kinds of Workers at play.
 - The **LiveStore web worker** (`LiveStoreWorker`); this is the Worker you defined in `livestore.worker.ts`. Technically, this is a _browser_ web worker, i.e. a separate JavaScript thread that runs in the browser, isolated from the main UI thread.
--  The **LiveStore shared web worker** (`LiveStoreSharedWorker`); you just imported it from `@livestore/adapter-web/shared-worker`, also a _browser_ web worker. It's actually more of an _implementation detail_ but currently required to be exposed, so that the setup works with Vite. 
+-  The **LiveStore shared web worker** (`LiveStoreSharedWorker`); you just imported it from `@livestore/adapter-web/shared-worker`, also a _browser_ web worker. It's actually more of an _implementation detail_ but currently required to be exposed, so that the setup works with Vite.
 - The **Cloudflare Worker** that will automatically sync the data in the background; you'll set this up in the next step.
 
 Note that both the LiveStore web worker and the LiveStore Shared web worker are regular [web workers,](https://www.dhiwise.com/post/web-workers-vs-service-workers-in-javascript#what-are-web-workers-) not [service workers](https://www.dhiwise.com/post/web-workers-vs-service-workers-in-javascript#what-are-service-workers-)!
@@ -203,7 +224,7 @@ Here's how to think about the workers in the context of browser tabs (or windows
 ```
 Tab 1 ──┐
 Tab 2 ──┼──→ Shared Worker (tab coordination) ──→ Web Worker (persistence)
-Tab 3 ──┘ 
+Tab 3 ──┘
 ```
 
 :::
@@ -228,7 +249,7 @@ export default defineConfig({
 })
 ```
 
-Now, your app is set up to start reading and writing data in a local SQLite database via LiveStore. If you run the app via `pnpm dev`, you'll briefly see a loading screen (implemented via the `renderLoading` prop on the `LiveStoreProvider`) before the todo list UI from the previous steps will appear again:
+Now, your app is set up to start reading and writing data in a local SQLite database via LiveStore. If you run the app via `pnpm dev`, you'll briefly see a loading screen (the Suspense fallback) before the todo list UI from the previous steps will appear again:
 
 ![](../../../assets/tutorial/chapter-3/0-livestore-loading.gif)
 
@@ -236,16 +257,16 @@ The todos themselves are not yet persisted because you haven't modified the logi
 
 ## Read and write todos from local SQLite via LiveStore
 
-The current version of the app still stores the todos _in-memory_ via the [state](https://react.dev/learn/state-a-components-memory) of your `App` component. However, with the basic LiveStore setup in place, you can now move to persisting your todos inside SQLite via LiveStore!
+The current version of the app still stores the todos _in-memory_ via the [state](https://react.dev/learn/state-a-components-memory) of your `<App>` component. However, with the basic LiveStore setup in place, you can now move to persisting your todos inside SQLite via LiveStore!
 
 In order to read todos, you need to define a LiveStore [query](/building-with-livestore/state/sql-queries). LiveStore queries are _live_ or _reactive_, meaning they will automatically update your UI components when the underlying data changes.
 
-Here's how you can define and use a query to fetch all todos from the local SQLite database using LiveStore inside the `App` component (you don't need to update your code yet, you'll get the full snippet at the end of this section):
+Here's how you can define and use a query to fetch all todos from the local SQLite database using LiveStore inside the `<App>` component (you don't need to update your code yet, you'll get the full snippet at the end of this section):
 
 ```diff title="src/App.tsx" lang="ts"
 function App() {
 
-+  const { store } = useStore()
++  const store = useAppStore()
 
   // The trailing `$` is a convention to indicate that this
   // variable is a "live query".
@@ -257,7 +278,7 @@ function App() {
 +  const todos = store.useQuery(todos$)
 -  const [todos, setTodos] = useState<Todo[]>([])
 
-  // ... remaining code for the `App` component
+  // ... remaining code for the `<App>` component
 }
 ```
 
@@ -268,13 +289,13 @@ This was only half of the job though: Right now your code would throw a type err
 ```diff title="src/App.tsx" lang="ts"
 function App() {
 
-  const { store } = useStore()
+  const store = useAppStore()
 
   const todos$ = queryDb(() => tables.todos.select())
 
   const todos = store.useQuery(todos$)
 
-  // Commit an event to the `store` instead of 
+  // Commit an event to the `store` instead of
   // updating local React state.
   const addTodo = () => {
 +    store.commit(
@@ -283,7 +304,7 @@ function App() {
     setInput('')
   }
 
-  // Commit an event to the `store` instead of 
+  // Commit an event to the `store` instead of
   // updating local React state.
   const deleteTodo = (id: number) => {
 +    store.commit(
@@ -291,7 +312,7 @@ function App() {
 +    )
   }
 
-  // ... remaining code for the `App` component
+  // ... remaining code for the `<App>` component
 
 }
 ```
@@ -300,26 +321,26 @@ See how the data now will flow through the app _unidirectionally_ with this setu
 
 Let's follow it from the first time the app is started:
 
-1. The `App` component registers the `todos$` "live query" with the store.
+1. The `<App>` component registers the `todos$` "live query" with the store.
 1. The query fires initially; the returned `todos` array is empty.
-1. The `App` component renders an empty list.
+1. The `<App>` component renders an empty list.
 1. A user adds a `todo`; the `todoCreated` event is triggered and committed to the DB.
 1. The `v1.TodoCreated` materializer is invoked and writes the data into the DB.
 1. The `todos$` query fires again because the state of the DB changed; the returned `todos` array now contains the newly created todo.
-1. The `App` component renders a single todo. 
+1. The `<App>` component renders a single todo.
 
 Now try it out! Here's the full code for `App.tsx` that you can copy and paste:
 
 ```ts title="src/App.tsx"
 import { useState } from 'react'
-import { useStore } from '@livestore/react'
 import { tables, events } from './livestore/schema'
+import { useAppStore } from './livestore/store'
 import { queryDb } from '@livestore/livestore'
 
 
 function App() {
 
-  const { store } = useStore()
+  const store = useAppStore()
 
   const todos$ = queryDb(() => tables.todos.select())
   const todos = store.useQuery(todos$)
@@ -466,7 +487,7 @@ Here's a little GIF demonstrating the current state of the live updates via brow
 
 ![](../../../assets/tutorial/chapter-3/3-livestore-sync-local-480.gif)
 
-- When a change is made in one Chrome window, it is automatically reflected in the other Chrome window. 
+- When a change is made in one Chrome window, it is automatically reflected in the other Chrome window.
 - Similarly, when a change is made in one Safari window, it is automatically reflected in the other Safari window.
 
 To recap, here's a visualization of the data flow in the app at this point:
@@ -475,7 +496,7 @@ To recap, here's a visualization of the data flow in the app at this point:
 
 ## Set up LiveStore DevTools
 
-You may have wondered: "If the data is persisted, _where_ is it?". If the data is somewhere on your file system, you _should_ be able to spin up a database viewer of your choice and inspect the local SQLite DB file. 
+You may have wondered: "If the data is persisted, _where_ is it?". If the data is somewhere on your file system, you _should_ be able to spin up a database viewer of your choice and inspect the local SQLite DB file.
 
 Unfortunately, that's not how OPFS works. While the SQLite files do exist _somewhere_ on your file system, they are hidden in the browser's internals and not easily accessible.
 
@@ -483,7 +504,7 @@ That being said, there is a convenient way how you can actually see the data on 
 
 :::note[LiveStore DevTools are a sponsor-only feature]
 
-Our goal is to grow the project in a [sustainable](/sustainable-open-source/sponsoring#goal-sustainable-open-source) way (e.g. not rely on VC funding), that's why DevTools are currently a [sponsor-only](/sustainable-open-source/sponsoring) feature. 
+Our goal is to grow the project in a [sustainable](/sustainable-open-source/sponsoring#goal-sustainable-open-source) way (e.g. not rely on VC funding), that's why DevTools are currently a [sponsor-only](/sustainable-open-source/sponsoring) feature.
 
 That being said, we still include them in this tutorial since you'll be able to use them without sponsorship for one week.
 

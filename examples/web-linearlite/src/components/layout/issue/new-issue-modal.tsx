@@ -1,10 +1,10 @@
-import { useStore } from '@livestore/react'
 import { generateKeyBetween } from 'fractional-indexing'
 import React from 'react'
 import { Button } from 'react-aria-components'
 import { NewIssueModalContext } from '../../../app/contexts.ts'
 import { highestIssueId$, useFrontendState } from '../../../livestore/queries.ts'
 import { events, tables } from '../../../livestore/schema/index.ts'
+import { useAppStore } from '../../../livestore/store.ts'
 import type { Priority } from '../../../types/priority.ts'
 import type { Status } from '../../../types/status.ts'
 import { Modal } from '../../common/modal.tsx'
@@ -19,7 +19,7 @@ export const NewIssueModal = () => {
   const [title, setTitle] = React.useState('')
   const [description, setDescription] = React.useState('')
   const [priority, setPriority] = React.useState<Priority>(0)
-  const { store } = useStore()
+  const store = useAppStore()
 
   const closeModal = () => {
     setTitle('')

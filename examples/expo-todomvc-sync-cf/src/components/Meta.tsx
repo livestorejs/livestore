@@ -1,16 +1,17 @@
 import { queryDb } from '@livestore/livestore'
-import { useQuery } from '@livestore/react'
 import type * as React from 'react'
 import { StyleSheet, Text, View } from 'react-native'
 
 import { tables } from '../livestore/schema.ts'
+import { useAppStore } from '../livestore/store.ts'
 
 const incompleteCount$ = queryDb(tables.todos.count().where({ deletedAt: null, completed: false }), {
   label: 'incompleteCount',
 })
 
 export const Meta: React.FC = () => {
-  const count = useQuery(incompleteCount$)
+  const store = useAppStore()
+  const count = store.useQuery(incompleteCount$)
 
   return (
     <View style={styles.container}>

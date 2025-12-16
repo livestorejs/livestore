@@ -1,5 +1,5 @@
-import { useStore } from '@livestore/react'
 import { events } from '../../../livestore/schema/index.ts'
+import { useAppStore } from '../../../livestore/store.ts'
 import type { Issue } from '../../../types/issue.ts'
 
 export const TitleInput = ({
@@ -13,7 +13,7 @@ export const TitleInput = ({
   setTitle?: (title: string) => void
   className?: string
 }) => {
-  const { store } = useStore()
+  const store = useAppStore()
 
   const handleTitleChange = (title: string) => {
     if (issue) store.commit(events.updateIssueTitle({ id: issue.id, title, modified: new Date() }))

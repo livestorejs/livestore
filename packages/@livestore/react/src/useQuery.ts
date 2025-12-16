@@ -14,7 +14,6 @@ import { deepEqual, indent, shouldNeverHappen } from '@livestore/utils'
 import * as otel from '@opentelemetry/api'
 import React from 'react'
 
-import { LiveStoreContext } from './LiveStoreContext.ts'
 import { useRcResource } from './useRcResource.ts'
 import { originalStackLimit } from './utils/stack-info.ts'
 import { useStateRefWithReactiveInput } from './utils/useStateRefWithReactiveInput.ts'
@@ -49,7 +48,7 @@ export const useQuery = <TQueryable extends Queryable<any>>(
  *
  * Parameters
  * - `queryable`: The query definition/instance/builder to run and subscribe to.
- * - `options.store`: Optional store to use; by default the store from `LiveStoreContext` is used.
+ * - `options.store`: The store to use. Required when calling `useQueryRef` directly; automatically provided when using `store.useQuery()`.
  * - `options.otelContext`: Optional parent otel context for the query span.
  * - `options.otelSpanName`: Optional explicit span name; otherwise derived from the query label.
  *
@@ -71,10 +70,7 @@ export const useQueryRef = <TQueryable extends Queryable<any>>(
   valueRef: React.RefObject<Queryable.Result<TQueryable>>
   queryRcRef: LiveQueries.RcRef<LiveQuery<Queryable.Result<TQueryable>>>
 } => {
-  const store =
-    options?.store ?? // biome-ignore lint/correctness/useHookAtTopLevel: store is stable
-    React.useContext(LiveStoreContext)?.store ??
-    shouldNeverHappen(`No store provided to useQuery`)
+  const store = options?.store ?? shouldNeverHappen(`No store provided to useQuery`)
 
   type TResult = Queryable.Result<TQueryable>
   type NormalizedQueryable =

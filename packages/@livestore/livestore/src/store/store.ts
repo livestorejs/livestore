@@ -50,10 +50,10 @@ import {
   type Queryable,
   type RefreshReason,
   type StoreCommitOptions,
+  type StoreConstructorParams,
   type StoreEventsOptions,
   type StoreInternals,
   StoreInternalsSymbol,
-  type StoreOptions,
   type StoreOtel,
   type SubscribeOptions,
   type Unsubscribe,
@@ -91,8 +91,8 @@ export const STORE_DEFAULT_PARAMS = {
  * ## Creating a Store
  *
  * Use `createStore` (Effect-based) or `createStorePromise` to obtain a Store instance.
- * In React applications, use the `<LiveStoreProvider>` component which manages the Store lifecycle
- * and exposes it via React context.
+ * In React applications, use `StoreRegistry` with `<StoreRegistryProvider>` and the `useStore()` hook
+ * which manages the Store lifecycle.
  *
  * ## Querying Data
  *
@@ -137,7 +137,7 @@ export class Store<TSchema extends LiveStoreSchema = LiveStoreSchema.Any, TConte
   readonly context: TContext
 
   /** Options provided to the Store constructor. */
-  readonly params: StoreOptions<TSchema, TContext>['params']
+  readonly params: StoreConstructorParams<TSchema, TContext>['params']
 
   /**
    * Reactive connectivity updates emitted by the backing sync backend.
@@ -193,7 +193,7 @@ export class Store<TSchema extends LiveStoreSchema = LiveStoreSchema.Any, TConte
     params,
     confirmUnsavedChanges,
     __runningInDevtools,
-  }: StoreOptions<TSchema, TContext>) {
+  }: StoreConstructorParams<TSchema, TContext>) {
     super()
 
     this.storeId = storeId

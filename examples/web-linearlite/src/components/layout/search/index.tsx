@@ -1,7 +1,7 @@
 import { queryDb } from '@livestore/livestore'
-import { useStore } from '@livestore/react'
 import { filterState$, useFilterState } from '../../../livestore/queries.ts'
 import { tables } from '../../../livestore/schema/index.ts'
+import { useAppStore } from '../../../livestore/store.ts'
 import { filterStateToOrderBy, filterStateToWhere } from '../../../livestore/utils.tsx'
 import { Filters } from '../filters/index.tsx'
 import { FilteredList } from '../list/filtered-list.tsx'
@@ -16,7 +16,7 @@ const filteredIssueIds$ = queryDb(
 )
 
 export const Search = () => {
-  const { store } = useStore()
+  const store = useAppStore()
   const filteredIssueIds = store.useQuery(filteredIssueIds$)
   const [filterState] = useFilterState()
 

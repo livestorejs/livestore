@@ -41,6 +41,7 @@ export {
   createStore,
   createStorePromise,
 } from './store/create-store.ts'
+export { type RegistryStoreOptions, StoreRegistry, storeOptions } from './store/StoreRegistry.ts'
 export { Store } from './store/store.ts'
 export {
   isLiveQueryDef,

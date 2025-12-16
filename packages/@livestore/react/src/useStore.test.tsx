@@ -1,25 +1,27 @@
 import { makeInMemoryAdapter } from '@livestore/adapter-web'
-import type { Store } from '@livestore/livestore'
-import { StoreInternalsSymbol } from '@livestore/livestore'
+import {
+  type RegistryStoreOptions,
+  type Store,
+  StoreInternalsSymbol,
+  StoreRegistry,
+  storeOptions,
+} from '@livestore/livestore'
 import { shouldNeverHappen } from '@livestore/utils'
 import { act, type RenderHookResult, type RenderResult, render, renderHook, waitFor } from '@testing-library/react'
 import * as React from 'react'
 import { describe, expect, it } from 'vitest'
-import { schema } from '../../__tests__/fixture.tsx'
-import { StoreRegistry } from './StoreRegistry.ts'
+import { schema } from './__tests__/fixture.tsx'
 import { StoreRegistryProvider } from './StoreRegistryContext.tsx'
-import { storeOptions } from './storeOptions.ts'
-import type { CachedStoreOptions } from './types.ts'
 import { useStore } from './useStore.ts'
 
 describe('experimental useStore', () => {
   it('should return the same promise instance for concurrent getOrLoadStore calls', async () => {
-    const registry = new StoreRegistry()
+    const storeRegistry = new StoreRegistry()
     const options = testStoreOptions()
 
     // Make two concurrent calls during loading
-    const firstStore = registry.getOrLoadPromise(options)
-    const secondStore = registry.getOrLoadPromise(options)
+    const firstStore = storeRegistry.getOrLoadPromise(options)
+    const secondStore = storeRegistry.getOrLoadPromise(options)
 
     // Both should be promises (store is loading)
     expect(firstStore).toBeInstanceOf(Promise)
@@ -35,13 +37,13 @@ describe('experimental useStore', () => {
   })
 
   it('works with Suspense boundary', async () => {
-    const registry = new StoreRegistry()
+    const storeRegistry = new StoreRegistry()
     const options = testStoreOptions()
 
     let view: RenderResult | undefined
     await act(async () => {
       view = render(
-        <StoreRegistryProvider storeRegistry={registry}>
+        <StoreRegistryProvider storeRegistry={storeRegistry}>
           <React.Suspense fallback={<div data-testid="fallback" />}>
             <StoreConsumer options={options} />
           </React.Suspense>
@@ -58,11 +60,11 @@ describe('experimental useStore', () => {
   })
 
   it('does not re-suspend on subsequent renders when store is already loaded', async () => {
-    const registry = new StoreRegistry()
+    const storeRegistry = new StoreRegistry()
     const options = testStoreOptions()
 
-    const Wrapper = ({ opts }: { opts: CachedStoreOptions<typeof schema> }) => (
-      <StoreRegistryProvider storeRegistry={registry}>
+    const Wrapper = ({ opts }: { opts: RegistryStoreOptions<typeof schema> }) => (
+      <StoreRegistryProvider storeRegistry={storeRegistry}>
         <React.Suspense fallback={<div data-testid="fallback" />}>
           <StoreConsumer options={opts} />
         </React.Suspense>
@@ -92,19 +94,19 @@ describe('experimental useStore', () => {
   })
 
   it('throws when store loading fails', async () => {
-    const registry = new StoreRegistry()
+    const storeRegistry = new StoreRegistry()
     const badOptions = testStoreOptions({
       // @ts-expect-error - intentionally passing invalid adapter to trigger error
       adapter: null,
     })
 
     // Pre-load the store to cache the error (error happens synchronously)
-    expect(() => registry.getOrLoadPromise(badOptions)).toThrow()
+    expect(() => storeRegistry.getOrLoadPromise(badOptions)).toThrow()
 
     // Now when useStore tries to get it, it should throw synchronously
     expect(() =>
       renderHook(() => useStore(badOptions), {
-        wrapper: makeProvider(registry),
+        wrapper: makeProvider(storeRegistry),
       }),
     ).toThrow()
   })
@@ -113,13 +115,13 @@ describe('experimental useStore', () => {
     { label: 'non-strict mode', strictMode: false },
     { label: 'strict mode', strictMode: true },
   ])('works in $label', async ({ strictMode }) => {
-    const registry = new StoreRegistry()
+    const storeRegistry = new StoreRegistry()
     const options = testStoreOptions()
 
-    let hook: RenderHookResult<Store<typeof schema>, CachedStoreOptions<typeof schema>> | undefined
+    let hook: RenderHookResult<Store<typeof schema>, RegistryStoreOptions<typeof schema>> | undefined
     await act(async () => {
       hook = renderHook(() => useStore(options), {
-        wrapper: makeProvider(registry, { suspense: true }),
+        wrapper: makeProvider(storeRegistry, { suspense: true }),
         reactStrictMode: strictMode,
       })
     })
@@ -133,16 +135,16 @@ describe('experimental useStore', () => {
   })
 
   it('handles switching between different storeId values', async () => {
-    const registry = new StoreRegistry()
+    const storeRegistry = new StoreRegistry()
 
     const optionsA = testStoreOptions({ storeId: 'store-a' })
     const optionsB = testStoreOptions({ storeId: 'store-b' })
 
-    let hook: RenderHookResult<Store<typeof schema>, CachedStoreOptions<typeof schema>> | undefined
+    let hook: RenderHookResult<Store<typeof schema>, RegistryStoreOptions<typeof schema>> | undefined
     await act(async () => {
       hook = renderHook((opts) => useStore(opts), {
         initialProps: optionsA,
-        wrapper: makeProvider(registry, { suspense: true }),
+        wrapper: makeProvider(storeRegistry, { suspense: true }),
       })
     })
     const { result, rerender, unmount } = hook ?? shouldNeverHappen('renderHook failed')
@@ -173,10 +175,10 @@ describe('experimental useStore', () => {
   // useStore doesn't handle unusedCacheTime=0 correctly because retain is called in useEffect (after render)
   // See https://github.com/livestorejs/livestore/issues/916
   it.skip('should load store with unusedCacheTime set to 0', async () => {
-    const registry = new StoreRegistry({ defaultOptions: { unusedCacheTime: 0 } })
+    const storeRegistry = new StoreRegistry({ defaultOptions: { unusedCacheTime: 0 } })
     const options = testStoreOptions({ unusedCacheTime: 0 })
 
-    const StoreConsumerWithVerification = ({ opts }: { opts: CachedStoreOptions<typeof schema> }) => {
+    const StoreConsumerWithVerification = ({ opts }: { opts: RegistryStoreOptions<typeof schema> }) => {
       const store = useStore(opts)
       // Verify store is usable - access internals to confirm it's not disposed
       const clientSession = store[StoreInternalsSymbol].clientSession
@@ -186,7 +188,7 @@ describe('experimental useStore', () => {
     let view: RenderResult | undefined
     await act(async () => {
       view = render(
-        <StoreRegistryProvider storeRegistry={registry}>
+        <StoreRegistryProvider storeRegistry={storeRegistry}>
           <React.Suspense fallback={<div data-testid="fallback" />}>
             <StoreConsumerWithVerification opts={options} />
           </React.Suspense>
@@ -211,15 +213,15 @@ describe('experimental useStore', () => {
   })
 })
 
-const StoreConsumer = ({ options }: { options: CachedStoreOptions<any> }) => {
+const StoreConsumer = ({ options }: { options: RegistryStoreOptions<any> }) => {
   useStore(options)
   return <div data-testid="ready" />
 }
 
 const makeProvider =
-  (registry: StoreRegistry, { suspense = false }: { suspense?: boolean } = {}) =>
+  (storeRegistry: StoreRegistry, { suspense = false }: { suspense?: boolean } = {}) =>
   ({ children }: { children: React.ReactNode }) => {
-    let content = <StoreRegistryProvider storeRegistry={registry}>{children}</StoreRegistryProvider>
+    let content = <StoreRegistryProvider storeRegistry={storeRegistry}>{children}</StoreRegistryProvider>
 
     if (suspense) {
       content = <React.Suspense fallback={null}>{content}</React.Suspense>
@@ -230,7 +232,7 @@ const makeProvider =
 
 let testStoreCounter = 0
 
-const testStoreOptions = (overrides: Partial<CachedStoreOptions<typeof schema>> = {}) =>
+const testStoreOptions = (overrides: Partial<RegistryStoreOptions<typeof schema>> = {}) =>
   storeOptions({
     storeId: overrides.storeId ?? `test-store-${testStoreCounter++}`,
     schema,

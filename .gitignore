@@ -7,6 +7,9 @@ test-results
 playwright-report
 .playwright-mcp
 
+# Vite cache (created by test fixtures)
+.vite
+
 # Process IDs
 *.pid
 

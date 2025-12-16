@@ -1,12 +1,11 @@
-import { useQuery, useStore } from '@livestore/react'
 import type React from 'react'
-
 import { uiState$ } from '../livestore/queries.ts'
 import { events } from '../livestore/schema.ts'
+import { useAppStore } from '../livestore/store.ts'
 
 export const Header: React.FC = () => {
-  const { store } = useStore()
-  const { newTodoText } = useQuery(uiState$)
+  const store = useAppStore()
+  const { newTodoText } = store.useQuery(uiState$)
 
   const updatedNewTodoText = (text: string) => store.commit(events.uiStateSet({ newTodoText: text }))
   const handleTodoCreated = () =>

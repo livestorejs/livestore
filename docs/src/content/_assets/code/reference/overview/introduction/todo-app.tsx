@@ -1,7 +1,19 @@
 // TodoApp.tsx
+import { makeInMemoryAdapter } from '@livestore/adapter-web'
 import { queryDb } from '@livestore/livestore'
-import { useQuery, useStore } from '@livestore/react'
-import { events, tables } from './schema.ts'
+import { useStore } from '@livestore/react'
+import { unstable_batchedUpdates as batchUpdates } from 'react-dom'
+import { events, schema, tables } from './schema.ts'
+
+const adapter = makeInMemoryAdapter()
+
+const useAppStore = () =>
+  useStore({
+    storeId: 'my-app',
+    schema,
+    adapter,
+    batchUpdates,
+  })
 
 // Define a reactive query
 const visibleTodos$ = queryDb(() => tables.todos, {
@@ -9,10 +21,10 @@ const visibleTodos$ = queryDb(() => tables.todos, {
 })
 
 export function TodoApp() {
-  const { store } = useStore()
+  const store = useAppStore()
 
   // Reactively updates when todos change in the DB
-  const todos = useQuery(visibleTodos$)
+  const todos = store.useQuery(visibleTodos$)
 
   const addTodo = (text: string) => {
     // Commit an event to the store

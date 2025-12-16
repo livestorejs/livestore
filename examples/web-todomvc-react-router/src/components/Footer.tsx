@@ -1,10 +1,9 @@
 import { queryDb } from '@livestore/livestore'
-import { useStore } from '@livestore/react'
 import type React from 'react'
 import { NavLink } from 'react-router-dom'
-
 import { uiState$ } from '../livestore/queries.ts'
 import { events, tables } from '../livestore/schema.ts'
+import { useAppStore } from '../livestore/store.ts'
 
 const incompleteCount$ = queryDb(tables.todos.count().where({ completed: false, deletedAt: null }), {
   label: 'incompleteCount',
@@ -13,7 +12,7 @@ const incompleteCount$ = queryDb(tables.todos.count().where({ completed: false, 
 type Filter = (typeof tables.uiState.Value)['filter']
 
 export const Footer: React.FC = () => {
-  const { store } = useStore()
+  const store = useAppStore()
   const { filter } = store.useQuery(uiState$)
   const incompleteCount = store.useQuery(incompleteCount$)
   const handleFilterClick = (nextFilter: Filter) => {

@@ -11,9 +11,10 @@ import { MIN_NODE_VERSION } from '@local/shared'
 import babelConfigCode from '../../../../../examples/expo-todomvc-sync-cf/babel.config.js?raw'
 import metroConfigCode from '../../../../../examples/expo-todomvc-sync-cf/metro.config.js?raw'
 import SchemaSnippet from '../../_assets/code/getting-started/expo/livestore/schema.ts?snippet'
+import StoreSnippet from '../../_assets/code/getting-started/expo/livestore/store.ts?snippet'
 import RootSnippet from '../../_assets/code/getting-started/expo/Root.tsx?snippet'
-import HeaderSnippet from '../../_assets/code/getting-started/expo/components/NewTodo.tsx?snippet'
-import MainSectionSnippet from '../../_assets/code/getting-started/expo/components/ListTodos.tsx?snippet'
+import NewTodoSnippet from '../../_assets/code/getting-started/expo/components/NewTodo.tsx?snippet'
+import ListTodosSnippet from '../../_assets/code/getting-started/expo/components/ListTodos.tsx?snippet'
 
 export const CODE = {
   babelConfig: babelConfigCode,
@@ -22,9 +23,10 @@ export const CODE = {
 
 export const SNIPPETS = {
   schema: SchemaSnippet,
+  store: StoreSnippet,
   root: RootSnippet,
-  header: HeaderSnippet,
-  mainSection: MainSectionSnippet,
+  newTodo: NewTodoSnippet,
+  listTodos: ListTodosSnippet,
 }
 
 {/* We're adjusting the package to use the dev version on the dev branch */}
@@ -208,31 +210,35 @@ Here's an example schema:
 
 <SNIPPETS.schema />
 
-## Add the LiveStore Provider
+## Configure the store
 
-To make the LiveStore available throughout your app, wrap your app's root component with the `LiveStoreProvider` component from `@livestore/react`. This provider manages your app’s data store, loading, and error states.
+Create a `store.ts` file in the `src/livestore` folder. This file configures the store adapter and exports a custom hook that components will use to access the store.
 
-Here's an example:
+The `useStore()` hook accepts store configuration options (schema, adapter, store ID) and returns a store instance. It suspends while the store is loading, so make sure to use a `Suspense` boundary to handle the loading state.
+
+<SNIPPETS.store />
+
+## Set up the store registry
+
+To enable store management throughout your app, create a `StoreRegistry` and provide it with a `<StoreRegistryProvider>`. The registry manages store instance lifecycles (loading, caching, disposal).
+
+Wrap the provider in a `Suspense` boundary to handle the loading state for when the store is loading.
 
 <SNIPPETS.root />
 
-### Commit events
+## Commit events
 
-After wrapping your app with the `LiveStoreProvider`, you can use the `useStore` hook from any component to commit events.
+After setting up the registry, use the `useAppStore()` hook from any component to access the store and commit events.
 
-Here's an example:
-
-<SNIPPETS.header />
+<SNIPPETS.newTodo />
 
 ## Queries
 
-To retrieve data from the database, first define a query using `queryDb` from `@livestore/livestore`. Then, execute the query with the `useQuery` hook from `@livestore/react`.
+To retrieve data from the database, define a query using `queryDb` from `@livestore/livestore`, then execute it with `store.useQuery()`.
 
 Consider abstracting queries into a separate file to keep your code organized, though you can also define them directly within components if preferred.
 
-Here's an example:
-
-<SNIPPETS.mainSection />
+<SNIPPETS.listTodos />
 
 ## Devtools
 
