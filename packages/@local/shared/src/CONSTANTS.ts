@@ -1,7 +1,7 @@
 import path from 'node:path'
 import process from 'node:process'
 
-export const EFFECT_VERSION = '3.18.0'
+export const EFFECT_VERSION = '3.19.12'
 /** Needs to align with Expo's React version */
 export const REACT_VERSION = '19.1.0'
 export const MIN_NODE_VERSION = '23.0.0'
