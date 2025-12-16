@@ -52,8 +52,39 @@ export const OtelLiveDummy: Layer.Layer<OtelTracer.OtelTracer> = Layer.suspend((
 })
 
 /**
- * Layer that enables recursive file watching by combining the Node filesystem implementation with
- * the Parcel-based watch backend. Mirrored from Effect’s platform-node Parcel watcher layer:
- * https://github.com/Effect-TS/effect/blob/main/packages/platform-node/src/NodeFileSystem/ParcelWatcher.ts
+ * Layer that provides WatchBackend for recursive file watching via @parcel/watcher.
+ * This layer alone does NOT provide FileSystem - it only provides the watch backend.
+ *
+ * IMPORTANT: Layer ordering matters! When composing with NodeFileSystem.layer, use
+ * `NodeFileSystemWithWatch` instead, or ensure WatchBackend is available when FileSystem
+ * is constructed by using `Layer.provideMerge`:
+ *
+ * ```ts
+ * // ✅ CORRECT: Use the pre-composed layer
+ * Effect.provide(NodeFileSystemWithWatch)
+ *
+ * // ✅ CORRECT: Manual composition with Layer.provideMerge
+ * const layer = PlatformNode.NodeFileSystem.layer.pipe(Layer.provideMerge(NodeRecursiveWatchLayer))
+ * Effect.provide(layer)
+ *
+ * // ❌ WRONG: Chained Effect.provide - WatchBackend won't be used!
+ * Effect.provide(NodeRecursiveWatchLayer).pipe(Effect.provide(PlatformNode.NodeFileSystem.layer))
+ * ```
+ *
+ * @see https://github.com/Effect-TS/effect/issues/5913
  */
 export const NodeRecursiveWatchLayer = ParcelWatcherLayer
+
+/**
+ * Pre-composed layer providing FileSystem with recursive file watching via @parcel/watcher.
+ * This is the recommended way to get a FileSystem that supports recursive watching.
+ *
+ * Use this layer when you need to watch files recursively (e.g., watching nested directories).
+ * Without recursive watching, Node.js's built-in fs.watch only detects changes in the
+ * immediate directory, not in subdirectories.
+ */
+export { NodeFileSystem } from '@effect/platform-node'
+
+import { NodeFileSystem } from '@effect/platform-node'
+
+export const NodeFileSystemWithWatch = NodeFileSystem.layer.pipe(Layer.provideMerge(ParcelWatcherLayer))
