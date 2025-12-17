@@ -1,6 +1,6 @@
 # Commands
 
-[Write a short summary]
+[WRITE A SHORT SUMMARY]
 
 ## Context
 
@@ -64,48 +64,20 @@ Problem: E may not be valid for state B
 
 The core issue is that rebasing re-parents events without re-checking whether the conditions that justified their creation still hold. An event valid in Context A might be invalid or nonsensical in Context B.
 
+Rebase is only safe if:
+- The operation is **context-free** (commutative/CRDT-like), **or**
+- The “event” carries enough **preconditions** to become conditional, **or**
+- You accept that some “events” will become invalid and must be **rejected/compensated**.
+
+Without one of these, rebase gives you convergence without correctness.
+
 **Example:**
 
-[Provide basic example]
-
-### Why Git Rebase Works But Event Rebase Doesn't
-
-| Aspect             | Git Commits                 | Domain Events                           |
-|--------------------|-----------------------------|-----------------------------------------|
-| **Content**        | Text/code changes (diffs)   | State transitions with preconditions    |
-| **Validation**     | Syntactic (merge conflicts) | Semantic (business invariants)          |
-| **Resolution**     | Human reviews and fixes     | Automatic + LWW (no human intervention) |
-| **Meaning**        | "Change line X to Y"        | "Fact: balance decreased by $100"       |
-| **Reapply safety** | Safe if no textual conflict | Unsafe—preconditions may not hold       |
-
-Git rebase is acceptable because commits are developer-authored artifacts representing intended changes, humans review and resolve semantic conflicts, and the "meaning" of a commit is the diff. Event rebase is dangerous because events are facts that happened, automatic rebase provides no mechanism to re-validate preconditions, and the "meaning" of an event is a state transition that required specific preconditions.
+[PROVIDE BASIC EXAMPLE]
 
 ### Concrete Scenarios
 
 #### Scenario 1: Referential Integrity Violation
-
-**Setup**: A project management app with Tasks and Comments.
-
-```
-Initial State S₀:
-- Task "T1" exists with status: "active"
-- User Alice is offline
-
-Server Events (while Alice offline):
-- TaskDeleted { taskId: "T1" }
-- Results in State S₂: Task T1 no longer exists
-
-Alice's Local Events (against S₀):
-- CommentCreated { taskId: "T1", text: "Great progress!" }
-- This was VALID: T1 existed when she wrote the comment
-
-After Rebase:
-- CommentCreated is re-parented onto S₂
-- Applied to state where T1 doesn't exist
-- Result: Orphaned comment referencing non-existent task
-```
-
-**The Invariant Violated**: "Comments can only be created on existing tasks"
 
 **Domain Invariant**: Comments can only reference existing tasks.
 
@@ -133,30 +105,6 @@ Result: Comment references non-existent task ❌
 
 #### Scenario 2: Business Rule Violation
 
-**Setup**: A booking system with capacity constraints.
-
-```
-Initial State S₀:
-- Room "R1" has capacity: 2
-- Current bookings: 1
-- Available slots: 1
-
-Server Events (concurrent):
-- BookingCreated { roomId: "R1", guestId: "Bob" }
-- Results in S₂: Room R1 now at capacity (2/2)
-
-Alice's Local Event (against S₀):
-- BookingCreated { roomId: "R1", guestId: "Charlie" }
-- This was VALID: Room had 1 available slot
-
-After Rebase:
-- Alice's BookingCreated applied to S₂
-- Room now has 3 bookings with capacity 2
-- Overbooking invariant violated
-```
-
-**The Invariant Violated**: "Room bookings cannot exceed capacity"
-
 **Domain Invariant**: Room can hold maximum 2 guests.
 
 ```
@@ -171,143 +119,35 @@ Client A reconnects, rebases:
 Result: Room has 3 guests (capacity exceeded) ❌
 ```
 
-#### Scenario 4: Uniqueness Constraint Violation
+#### Scenario 3: Uniqueness Constraint Violation
 
-**Domain Invariant**: Usernames must be unique.
+**Domain Invariant**: Each seat on a flight can only be assigned to one passenger.
 
 ```
-Initial State: No user "alice"
+Initial State: Seat 12A is available
 
-Client A (offline): Registers username "alice" → UserRegistered("alice")
-Client B (online): Registers username "alice" → UserRegistered("alice"), syncs
+Client A (offline): Assigns seat 12A to passenger Alice → SeatAssigned("12A", "Alice")
+Client B (online): Assigns seat 12A to passenger Bob → SeatAssigned("12A", "Bob"), syncs
 
 Client A reconnects:
-  1. Pulls Client B's UserRegistered
-  2. Rebases own UserRegistered after
-  3. Event log: [UserRegistered("alice"), UserRegistered("alice")]
+  1. Pulls Client B's SeatAssigned
+  2. Rebases own SeatAssigned after
+  3. Event log: [SeatAssigned("12A", "Bob"), SeatAssigned("12A", "Alice")]
 
-Result: Two users with same username, or materializer crash ❌
+Result: Two passengers assigned to the same seat ❌
 ```
-
-**Setup**: A system where usernames must be unique.
-
-```
-Initial State S₀:
-- Username "alice_dev" is available
-
-Concurrent Events:
-- Server: UserCreated { username: "alice_dev", userId: "U2" }
-- Client: UserCreated { username: "alice_dev", userId: "U3" }
-
-Both were VALID at their time of creation (username was available).
-
-After Rebase:
-- Both events in the stream
-- Two users with same username
-- Uniqueness invariant violated
-```
-
-### The Semantic Tension: "Facts" vs. "Rebase"
-
-LiveStore describes events as the "source of truth"—immutable facts. The rebase operation contradicts this:
-
-| Concept | Event Sourcing Semantic | LiveStore Rebase Behavior |
-|---------|------------------------|---------------------------|
-| Events are... | Immutable facts | Reordered/re-parented |
-| Event order is... | Causal history | Synthetic (post-hoc reordering) |
-| Event validity is... | Established at creation | Assumed to persist across contexts |
-| Parent relationship | Causal predecessor | Arbitrary (assigned by rebase) |
-
-If events are "facts that happened," you cannot reorder them without changing history. Moving `MoneyWithdrawn($100)` after another withdrawal doesn't change the fact—it changes the context in which the fact is interpreted, potentially making it a lie.
-
-This manifests in: audit trail corruption, debugging difficulty (replaying events produces different states than clients experienced), compliance violations, and causality reasoning breakdown.
-
-> **Rebase semantics: Rebase + “events are facts” is conceptually inconsistent**
-> 
-> Git rebase is acceptable because commits are developer-authored artifacts and humans resolve conflicts. In event sourcing, “events” are normally **facts that happened** and are not rewritten.
-> 
-> The explanation (“events are immutable facts” + “rebase”) is at tension. That’s a red flag because it often produces subtle correctness bugs later (audit, debugging, compliance, causality reasoning).
-
-### Why Last-Write-Wins Cannot Save This Design
-
-LWW ensures all clients converge to the same state. This is true but irrelevant:
-
-```
-All clients converge to: Balance = -$100
-
-This is:
-✓ Consistent (all nodes agree)
-✓ Convergent (eventual consistency achieved)
-✗ Correct (business invariant violated)
-```
-
-LWW solves replica convergence. It does not solve invariant preservation.
-
-**The Materializer Defense fails**: Adding guard logic to materializers violates separation of concerns, causes silent data loss (event exists but has no effect), creates inconsistent projections, and cannot prevent all violations.
-
 
 ### Requirements
 
 - Clients must be able to generate events while offline in order to simulate changes (optimistic updates).
 - Clients can optimistically enforce some invariants locally based on their view of the event log
-- The server can enforce invariants that require server-only knowledge or authority (e.g., cross-aggregate consistency, global uniqueness, permission..).
+- The server can enforce invariants that require server-only (global) knowledge or authority (e.g., cross-aggregate consistency, global uniqueness, permission..).
 - Write-side state must be strongly consistent with the event stream; Event append and the write-side state update must be atomic; The write-side state must be updated transactionally with the event write. The state DB must work as the aggregate state.
 
-### Potential Solutions
 
-#### Option 1: Invariant Assertions in Materializers
-
-```typescript
-events.on.commentCreated(tables.comments, (event, state) => {
-  // Assert referential integrity before materializing
-  const taskExists = state.query(`SELECT 1 FROM tasks WHERE id = ?`, event.taskId);
-  if (!taskExists) {
-    throw new InvariantViolation(`Task ${event.taskId} not found for comment`);
-  }
-  return sql`INSERT INTO comments ...`;
-});
-```
-
-This catches violations but only at materialization time, and the response options are limited.
-
-#### Option 2: Validation Hooks During Rebase
-
-```typescript
-interface RebaseValidator {
-  // Called for each local event before it's re-parented
-  validate(event: Event, newParentState: State): ValidationResult;
-}
-
-type ValidationResult = 
-  | { valid: true }
-  | { valid: false, reason: string, suggestedAction: 'drop' | 'conflict' | 'transform' }
-```
-
-This would at least detect violations, though resolution is still complex.
-
-#### Option 3: Semantic Conflict Detection (explicit preconditions)
-
-If LiveStore wants to replicate “events” from clients, each event must carry sufficient precondition metadata (expected version, expected prior values, reservation tokens, etc.) so that apply-time can deterministically decide: apply vs reject vs transform. This resembles optimistic concurrency control and fine-grained conflict detection approaches.
-
-
-Define which event pairs can coexist vs conflict:
-
-```typescript
-const conflictRules: ConflictRule[] = [
-  {
-    event1: 'TaskDeleted',
-    event2: 'CommentCreated',
-    condition: (e1, e2) => e1.taskId === e2.taskId,
-    resolution: 'reject_e2_with_notification'
-  },
-  // ...
-];
-```
-
-#### Option 4: Replicate commands/intents
+## Proposed Solution
 
 Instead of rebasing outcome events, treat offline actions as a command queue and, upon reconnect, re-run decision logic against the authoritative or updated base state; if the command no longer validates, it is rejected or requires user resolution. This aligns with common CQRS guidance for occasionally connected clients.
-
 
 Store commands (with their original context) rather than events:
 
@@ -334,9 +174,26 @@ Keep the optimistic UI, but change the sync protocol.
 3. **Server Validation:** On sync, send Commands. The server executes them.
 4. **Reconciliation:** The server sends back the *actual* resulting events. The client discards its provisional events and replaces them with the authoritative server events.
 
-## Proposed Solution
+### The Semantic Tension: "Facts" vs. "Rebase"
 
-[A description of how the problem will be solved. Include detailed API design with examples.]
+LiveStore describes events as the "source of truth"—immutable facts. The rebase operation contradicts this:
+
+| Concept              | Event Sourcing Semantic | LiveStore Rebase Behavior          |
+|----------------------|-------------------------|------------------------------------|
+| Events are...        | Immutable facts         | Reordered/re-parented              |
+| Event order is...    | Causal history          | Synthetic (post-hoc reordering)    |
+| Event validity is... | Established at creation | Assumed to persist across contexts |
+| Parent relationship  | Causal predecessor      | Arbitrary (assigned by rebase)     |
+
+If events are "facts that happened," you cannot reorder them without changing history. Moving `MoneyWithdrawn($100)` after another withdrawal doesn't change the fact—it changes the context in which the fact is interpreted, potentially making it a lie.
+
+This manifests in: audit trail corruption, debugging difficulty (replaying events produces different states than clients experienced), compliance violations, and causality reasoning breakdown.
+
+> **Rebase semantics: Rebase + “events are facts” is conceptually inconsistent**
+>
+> Git rebase is acceptable because commits are developer-authored artifacts and humans resolve conflicts. In event sourcing, “events” are normally **facts that happened** and are not rewritten.
+>
+> The explanation (“events are immutable facts” + “rebase”) is at tension. That’s a red flag because it often produces subtle correctness bugs later (audit, debugging, compliance, causality reasoning).
 
 ### The Command vs. Event Distinction
 
@@ -346,10 +203,10 @@ This is why the Neos CMS team (and others) arrived at command-sourcing for offli
 
 The distinction:
 
-| Approach | What's Stored Offline | At Sync Time | Invariant Safety |
-|----------|----------------------|--------------|------------------|
-| **Event Rebase** (LiveStore) | Events | Re-parent events onto new head | ❌ No re-validation |
-| **Command Queue** | Commands | Re-execute commands against current state | ✅ Full validation |
+| Approach                     | What's Stored Offline | At Sync Time                              | Invariant Safety   |
+|------------------------------|-----------------------|-------------------------------------------|--------------------|
+| **Event Rebase** (LiveStore) | Events                | Re-parent events onto new head            | ❌ No re-validation |
+| **Command Queue**            | Commands              | Re-execute commands against current state | ✅ Full validation  |
 
 With command queuing:
 ```
@@ -360,8 +217,6 @@ At sync time:     Execute against current state
                   If T1 exists: Generate CommentCreated event
                   If T1 deleted: Return error to Alice
 ```
-
----
 
 ### Cascading Corruption
 
@@ -387,7 +242,52 @@ The SQLite state DB may end up in an inconsistent state that no sequence of vali
 
 ## Alternatives Considered
 
-[Detail other approaches that were considered and why they were not chosen.]
+### Invariant Assertions in Materializers
+
+```typescript
+State.SQLite.materializers(events, {
+  commentCreated: ({ taskId }, state) => {
+    // Assert referential integrity before materializing
+    const taskExists = state.query(`SELECT 1 FROM tasks WHERE id = ?`, taskId)
+    if (!taskExists) {
+      throw new InvariantViolation(`Task ${taskId} not found for comment`)
+    }
+    return sql`INSERT INTO comments ...`
+  },
+})
+```
+
+#### What it gives you
+* A **tripwire**: when replaying (especially during rebase), the projector can detect that applying event \(E\) would violate a constraint (FK, unique seat, capacity).
+* A way to surface conflicts *immediately* and keep the SQLite projection from silently entering an impossible state.
+
+#### Why it’s insufficient as “the fix”
+Materializers are downstream. By the time you’re in the materializer, the event is already in the log. You then have three bad choices:
+
+* Stop projecting and mark the store broken → you lose LiveStore’s “eventlog ↔ SQLite strongly consistent” invariant.
+* Project anyway → you violate domain invariants (your current problem).
+* “Fix it” by emitting compensating events → now the projector is doing domain decision-making, and you must ensure:
+  * Determinism across all clients (or server-only emission), otherwise replicas diverge.
+  * Correct handling of side effects (often non-reversible).
+
+### Validation Hooks During Rebase
+
+```typescript
+interface RebaseValidator {
+  // Called for each local event before it's re-parented
+  validate(event: Event, newParentState: State): ValidationResult;
+}
+
+type ValidationResult = 
+  | { valid: true }
+  | { valid: false, reason: string, suggestedAction: 'drop' | 'conflict' | 'transform' }
+```
+
+This would at least detect violations, though resolution is still complex.
+
+### Preconditions as Event Metadata
+
+Events carry explicit preconditions that describe the state assumptions under which they were generated.
 
 ## Open Questions
 
