@@ -411,6 +411,7 @@ The SQLite state DB may end up in an inconsistent state that no sequence of vali
 - @antl3x (GitHub)
 - @rubywwwilde (Discord)
 - @bohdanbirdie (GitHub)
+- @cortopy (GitHub)
 
 ## References
 
