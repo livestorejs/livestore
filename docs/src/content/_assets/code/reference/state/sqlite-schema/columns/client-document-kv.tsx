@@ -1,6 +1,8 @@
 import { Schema, State, type Store } from '@livestore/livestore'
-import { useClientDocument } from '@livestore/react'
+import type { useStore } from '@livestore/react'
 import type React from 'react'
+
+declare const useAppStore: () => ReturnType<typeof useStore>
 
 export const kv = State.SQLite.clientDocument({
   name: 'Kv',
@@ -15,7 +17,8 @@ export const setKvValue = (store: Store, id: string, value: unknown): void => {
 }
 
 export const KvViewer: React.FC<{ id: string }> = ({ id }) => {
-  const [value, setValue] = useClientDocument(kv, id)
+  const store = useAppStore()
+  const [value, setValue] = store.useClientDocument(kv, id)
 
   return (
     <button type="button" onClick={() => setValue('hello')}>

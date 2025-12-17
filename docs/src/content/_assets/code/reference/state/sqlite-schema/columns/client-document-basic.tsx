@@ -1,6 +1,8 @@
 import { Schema, SessionIdSymbol, State, type Store } from '@livestore/livestore'
-import { useClientDocument } from '@livestore/react'
+import type { useStore } from '@livestore/react'
 import React from 'react'
+
+declare const useAppStore: () => ReturnType<typeof useStore>
 
 export const uiState = State.SQLite.clientDocument({
   name: 'UiState',
@@ -19,7 +21,8 @@ export const setNewTodoText = (store: Store, newTodoText: string): void => {
 }
 
 export const UiStateFilter: React.FC = () => {
-  const [state, setState] = useClientDocument(uiState)
+  const store = useAppStore()
+  const [state, setState] = store.useClientDocument(uiState)
 
   const showActive = React.useCallback(() => {
     setState({ filter: 'active' })
