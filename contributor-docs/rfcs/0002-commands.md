@@ -174,6 +174,14 @@ Keep the optimistic UI, but change the sync protocol.
 3. **Server Validation:** On sync, send Commands. The server executes them.
 4. **Reconciliation:** The server sends back the *actual* resulting events. The client discards its provisional events and replaces them with the authoritative server events.
 
+### Trade-offs
+
+- Lost decision context: Cannot prove what client believed when it queued a command. The "why" is lost
+- Cascading failures: If cmd1 fails, cmd2 (based on cmd1's optimistic result) likely also fails
+- Less autonomy: Clients make requests, not decisions. Nothing is real until server confirms
+- Rejection handling complexity: Need robust UX for "your action from 2 hours ago was rejected"
+- Server dependency for truth: Offline work is always tentative. Extended offline = large uncertainty
+
 ### The Semantic Tension: "Facts" vs. "Rebase"
 
 LiveStore describes events as the "source of truth"—immutable facts. The rebase operation contradicts this:
