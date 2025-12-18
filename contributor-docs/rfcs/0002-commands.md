@@ -242,7 +242,7 @@ The SQLite state DB may end up in an inconsistent state that no sequence of vali
 
 ## Alternatives Considered
 
-### Invariant Assertions in Materializers
+### Alternative A: Invariant Assertions in Materializers
 
 ```typescript
 State.SQLite.materializers(events, {
@@ -270,7 +270,7 @@ Materializers are downstream. By the time you’re in the materializer, the even
   * Determinism across all clients (or server-only emission), otherwise replicas diverge.
   * Correct handling of side effects (often non-reversible).
 
-### Validation Hooks During Rebase
+### Alternative B: Validation Hooks During Rebase
 
 ```typescript
 interface RebaseValidator {
@@ -285,7 +285,7 @@ type ValidationResult =
 
 This would at least detect violations, though resolution is still complex.
 
-### Preconditions as Event Metadata
+### Alternative C: Preconditions as Event Metadata
 
 Events carry explicit preconditions that describe the state assumptions under which they were generated.
 
@@ -303,6 +303,19 @@ Events carry explicit preconditions that describe the state assumptions under wh
 - Do not add constraints to the state db. Validations should be done in the decider. Why?
 - We shouldn't be able to read the DB in materializer (it breaks determinism)?
 - Preserve atomicity of event commits across the network?
+
+### Alternative D: Client-Side Authoritative Events
+
+In this approach, clients generate authoritative events that are immediately committed to the event log. These events aren't ever discarded, even if they later conflict with events from other clients. Instead, compensating events are generated to resolve conflicts.
+
+Good use case: imagine a hospital where a doctor prescribes a medication. The doctor records the prescription as a `MedicationPrescribed` event in their computer. Later on, the app syncs with the server and sees that the medication does not interact well with another medication previously prescribed to the patient by another doctor.
+
+We don't want to lose the information that the medication was prescribed.
+
+#### Benefits
+
+- Audit trail remains intact
+
 
 ## Acknowledgments
 
