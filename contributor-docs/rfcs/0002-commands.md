@@ -297,6 +297,46 @@ This would at least detect violations, though resolution is still complex.
 
 Events carry explicit preconditions that describe the state assumptions under which they were generated.
 
+### Alternative D: Client-Side Authoritative Events
+
+In this approach, clients generate authoritative events that are immediately committed to the event log. These events aren't ever discarded, even if they later conflict with events from other clients. Instead, compensating events are generated to resolve conflicts.
+
+Good use case: imagine a hospital where a doctor prescribes a medication. The doctor records the prescription as a `MedicationPrescribed` event in their computer. Later on, the app syncs with the server and sees that the medication does not interact well with another medication previously prescribed to the patient by another doctor. 
+
+We don't want to lose the information that the medication was prescribed. This is a real event that must be maintained. Rebase doesn't work because in this alternative.
+
+Another scenario:
+
+**10:15am (offline):** Camera operator notices sensor overheating, marks camera C-07 as defective.
+→ Emits `EquipmentDefectReported { camera: "C-07", reason: "sensor_overheating", reportedBy: "Jake" }`
+
+**11:30am (offline, different unit):** 2nd unit requests C-07 for a pickup shot, unaware of defect.
+→ Emits `EquipmentRequested { camera: "C-07", requestedBy: "2nd-unit" }`
+
+**14:00pm:** Both units sync.
+
+With Solution A, the system preserves that Jake's defect report *occurred* before the request, and crucially, that 2nd unit *didn't know* about the defect when they requested it. With Solution B, you lose the decision context—you can't prove Jake caught the defect before anyone else used the camera, which matters enormously if footage shot on a "defective" camera becomes a $200k insurance dispute.
+
+Choose when:
+
+1. **Regulatory/compliance requirements** - Healthcare, finance, legal. "Prove what you knew when you made that decision"
+2. **Extended offline periods** - Field workers gone for days. Their decisions must be binding, not requests
+3. **Audit trails are core product value** - The history is the product (accounting, supply chain tracking)
+4. **Multi-authority scenarios** - Multiple parties who each have legitimate decision-making power that shouldn't require central approval
+5. **"What-if" analysis matters** - Need to replay history from different perspectives
+
+Trade-offs:
+
+- **Storage multiplication:** Each client stores RecordedAt for every event. N clients × M events metadata
+- **Query complexity:** Every query needs two time dimensions. UI must decide which "view" to show
+- **Conflict resolution burden:** Concurrent modifications need explicit handling (CRDTs, dynamic ownership, manual resolution)
+- **Sync complexity:** Version vectors, version matrices, stability calculations
+- **UX uncertainty:** User sees their action succeed locally, but state might change after sync when conflicts resolve
+
+### Alternative F: Hybrid Approach
+
+In this approach, clients are able to issue both authoritative events and commands. This way, clients can emit events for data they own and commands for actions they request. The server can enforce business rules and reject commands that violate them.
+
 ## Open Questions
 
 - How to enforce the first business rule on the server? We can't reject it sync
@@ -312,13 +352,6 @@ Events carry explicit preconditions that describe the state assumptions under wh
 - We shouldn't be able to read the DB in materializer (it breaks determinism)?
 - Preserve atomicity of event commits across the network?
 
-### Alternative D: Client-Side Authoritative Events
-
-In this approach, clients generate authoritative events that are immediately committed to the event log. These events aren't ever discarded, even if they later conflict with events from other clients. Instead, compensating events are generated to resolve conflicts.
-
-Good use case: imagine a hospital where a doctor prescribes a medication. The doctor records the prescription as a `MedicationPrescribed` event in their computer. Later on, the app syncs with the server and sees that the medication does not interact well with another medication previously prescribed to the patient by another doctor.
-
-We don't want to lose the information that the medication was prescribed.
 
 #### Benefits
 
