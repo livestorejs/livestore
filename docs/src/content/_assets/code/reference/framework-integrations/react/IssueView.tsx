@@ -2,8 +2,8 @@ import { queryDb } from '@livestore/livestore'
 import { useStore } from '@livestore/react'
 import { Suspense } from 'react'
 import { ErrorBoundary } from 'react-error-boundary'
-import { tables } from './schema.ts'
-import { issueStoreOptions } from './store.ts'
+import { tables } from './issue.schema.ts'
+import { issueStoreOptions } from './issue.store.ts'
 
 export function IssueView({ issueId }: { issueId: string }) {
   // useStore() suspends the component until the store is loaded
