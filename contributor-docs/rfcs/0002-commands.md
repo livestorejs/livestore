@@ -347,10 +347,10 @@ Maybe?
   - Authoritative/Confirmed Event
 - **Aggregate**: A consistency boundary — a single transactional unit that enforces business invariants, accepts commands, and emits events. It state is rebuilt by replaying its event stream.
 - **Event Stream**: An ordered, append-only sequence of events belonging to a single aggregate instance, representing the complete history of state changes for that specific aggregate.
-- **Event Log**: A append-only storage of all events, which can span multiple event streams.
-- **Projection**: A transformation process that reads events and builds a specific representation of data, optimized for a particular use case. [REDEFINE]
-- **Projector**: A function or process that listens to events, executes projection logic, and updates one or more specific representations of data. In LiveStore, a materializer is a projector.
-- **Read Model**: A query-optimized data structure built by projections, serving the read side of CQRS.
+- **Event Log**: An append-only storage of all events, which can span multiple event streams.
+- **Projection**: A specific data representation derived from one or more event streams, optimized for a particular use case.
+- **Projector**: A function or process that listens to events and updates one or more projections. In LiveStore, a materializer is a projector.
+- **Read Model**: A projection optimized for querying, serving as the read side of CQRS.
 - **Commands**: Commands are explicit instructions from the user or external systems that request a change in the application's state. In other words, commands represent an intention to change the system's state.
 - **Command Handler**: An orchestration component that handles infrastructure concerns — receives a commands, loads the current state, invokes the decider, persists and the resulting events. It has side effects and interacts with external systems.
 - **Command Handler**: An orchestration component that receives a command, loads the current state, invokes the decider, commit event(s), and deals with concerns like authorization, idempotency, concurrency, and cross-stream checks. It has side effects and interacts with external systems.
