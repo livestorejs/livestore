@@ -47,8 +47,8 @@ const workspaceTable = State.SQLite.table({
 })
 
 // Table for the todo items in this workspace
-const todoTable = State.SQLite.table({
-  name: 'todo',
+const todosTable = State.SQLite.table({
+  name: 'todos',
   columns: {
     todoId: State.SQLite.text({ primaryKey: true }),
     text: State.SQLite.text(),
@@ -59,26 +59,26 @@ const todoTable = State.SQLite.table({
 })
 
 // Table for members of this workspace
-const memberTable = State.SQLite.table({
-  name: 'member',
+const membersTable = State.SQLite.table({
+  name: 'members',
   columns: {
     username: State.SQLite.text({ primaryKey: true }),
     // Could add role/permissions here later
   },
 })
 
-export const workspaceTables = { workspace: workspaceTable, todo: todoTable, member: memberTable }
+export const workspaceTables = { workspace: workspaceTable, todos: todosTable, members: membersTable }
 
 const materializers = State.SQLite.materializers(workspaceEvents, {
   'v1.WorkspaceCreated': ({ workspaceId, name, createdByUsername }) => [
     workspaceTables.workspace.insert({ workspaceId, name, createdByUsername }),
     // Add the creator as the first member
-    workspaceTables.member.insert({ username: createdByUsername }),
+    workspaceTables.members.insert({ username: createdByUsername }),
   ],
-  'v1.TodoAdded': ({ todoId, text }) => workspaceTables.todo.insert({ todoId, text }),
-  'v1.TodoCompleted': ({ todoId }) => workspaceTables.todo.update({ completed: true }).where({ todoId }),
-  'v1.TodoDeleted': ({ todoId, deletedAt }) => workspaceTables.todo.update({ deletedAt }).where({ todoId }),
-  'v1.UserJoined': ({ username }) => workspaceTables.member.insert({ username }),
+  'v1.TodoAdded': ({ todoId, text }) => workspaceTables.todos.insert({ todoId, text }),
+  'v1.TodoCompleted': ({ todoId }) => workspaceTables.todos.update({ completed: true }).where({ todoId }),
+  'v1.TodoDeleted': ({ todoId, deletedAt }) => workspaceTables.todos.update({ deletedAt }).where({ todoId }),
+  'v1.UserJoined': ({ username }) => workspaceTables.members.insert({ username }),
 })
 
 const state = State.SQLite.makeState({ tables: workspaceTables, materializers })

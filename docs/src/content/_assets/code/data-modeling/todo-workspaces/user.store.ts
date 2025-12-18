@@ -1,6 +1,6 @@
 import { makePersistedAdapter } from '@livestore/adapter-web'
 import sharedWorker from '@livestore/adapter-web/shared-worker?sharedworker'
-import { storeOptions } from '@livestore/react'
+import { useStore } from '@livestore/react'
 import { schema } from './user.schema.ts'
 import worker from './user.worker.ts?worker'
 
@@ -10,11 +10,10 @@ const adapter = makePersistedAdapter({
   sharedWorker,
 })
 
-// Define user store configuration
-// Each user has their own store to track which workspaces they're part of
-export const userStoreOptions = (username: string) =>
-  storeOptions({
-    storeId: `user-${username}`,
+// Hook to access the current user's store
+export const useCurrentUserStore = () =>
+  useStore({
+    storeId: 'user-current', // Backend should resolve this to the authenticated user's store
     schema,
     adapter,
     unusedCacheTime: Number.POSITIVE_INFINITY, // Keep user store in memory indefinitely

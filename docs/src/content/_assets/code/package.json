@@ -30,6 +30,7 @@
     "@opentelemetry/resources": "catalog:",
     "@opentelemetry/sdk-trace-base": "catalog:",
     "@opentelemetry/sdk-trace-web": "catalog:",
+    "@tanstack/react-router": "1.139.14",
     "@types/node": "catalog:",
     "@vitejs/plugin-vue": "6.0.0",
     "effect": "catalog:",

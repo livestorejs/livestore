@@ -1,20 +1,27 @@
 import { queryDb } from '@livestore/livestore'
 import { useStore } from '@livestore/react'
-import { Suspense } from 'react'
-import { ErrorBoundary } from 'react-error-boundary'
+import { userTables } from './user.schema.ts'
+import { useCurrentUserStore } from './user.store.ts'
 import { workspaceEvents, workspaceTables } from './workspace.schema.ts'
 import { workspaceStoreOptions } from './workspace.store.ts'
 
 // Component that accesses a specific workspace store
-function WorkspaceContent({ workspaceId }: { workspaceId: string }) {
-  // Load the workspace store for this specific workspace
+export function Workspace({ workspaceId }: { workspaceId: string }) {
+  const userStore = useCurrentUserStore()
   const workspaceStore = useStore(workspaceStoreOptions(workspaceId))
+
+  // Check if this workspace exists in user's workspace list
+  const [knownWorkspace] = userStore.useQuery(queryDb(userTables.userWorkspaces.select().where({ workspaceId })))
 
   // Query workspace data
   const [workspace] = workspaceStore.useQuery(queryDb(workspaceTables.workspace.select().limit(1)))
-  const todos = workspaceStore.useQuery(queryDb(workspaceTables.todo.select()))
+  const todos = workspaceStore.useQuery(queryDb(workspaceTables.todos.select()))
 
-  if (!workspace) return <div>Workspace not found</div>
+  // Workspace not in user's list → truly doesn't exist
+  if (!knownWorkspace) return <div>Workspace not found</div>
+
+  // Workspace is in user's list but not yet initialized → loading state
+  if (!workspace) return <div>Loading workspace...</div>
 
   const addTodo = (text: string) => {
     workspaceStore.commit(
@@ -44,16 +51,5 @@ function WorkspaceContent({ workspaceId }: { workspaceId: string }) {
         Add Todo
       </button>
     </div>
-  )
-}
-
-// Workspace component with Suspense and ErrorBoundary
-export function Workspace({ workspaceId }: { workspaceId: string }) {
-  return (
-    <ErrorBoundary fallback={<div>Error loading workspace</div>}>
-      <Suspense fallback={<div>Loading workspace...</div>}>
-        <WorkspaceContent workspaceId={workspaceId} />
-      </Suspense>
-    </ErrorBoundary>
   )
 }
