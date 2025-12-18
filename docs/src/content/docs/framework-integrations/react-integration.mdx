@@ -5,15 +5,15 @@ sidebar:
 description: How to integrate LiveStore with React.
 ---
 
-import ReactProviderSnippet from '../../_assets/code/reference/framework-integrations/react/provider.tsx?snippet'
-import ReactStoreSnippet from '../../_assets/code/reference/framework-integrations/react/store.ts?snippet'
+import AppSnippet from '../../_assets/code/reference/framework-integrations/react/App.tsx?snippet'
+import StoreSnippet from '../../_assets/code/reference/framework-integrations/react/store.ts?snippet'
 import ReactUseClientDocumentSnippet from '../../_assets/code/reference/framework-integrations/react/use-client-document.tsx?snippet'
 import ReactUseQuerySnippet from '../../_assets/code/reference/framework-integrations/react/use-query.tsx?snippet'
 import ReactUseStoreSnippet from '../../_assets/code/reference/framework-integrations/react/use-store.tsx?snippet'
-import MultiStoreOptionsSnippet from '../../_assets/code/reference/framework-integrations/react/multi-store/store.ts?snippet'
-import MultiStoreUseStoreSnippet from '../../_assets/code/reference/framework-integrations/react/multi-store/IssueView.tsx?snippet'
-import MultiStorePreloadSnippet from '../../_assets/code/reference/framework-integrations/react/multi-store/PreloadedIssue.tsx?snippet'
-import MultiStoreMinimalSnippet from '../../_assets/code/reference/framework-integrations/react/multi-store/minimal.tsx?snippet'
+import IssueStoreOptionsSnippet from '../../_assets/code/reference/framework-integrations/react/issue.store.ts?snippet'
+import IssueViewSnippet from '../../_assets/code/reference/framework-integrations/react/IssueView.tsx?snippet'
+import PreloadedIssueSnippet from '../../_assets/code/reference/framework-integrations/react/PreloadedIssue.tsx?snippet'
+import MinimalSnippet from '../../_assets/code/reference/framework-integrations/react/minimal.tsx?snippet'
 import StoreWithLoggingSnippet from '../../_assets/code/reference/framework-integrations/react/store-with-logging.ts?snippet'
 import { getBranchName } from '../../../data/data.ts'
 
@@ -38,7 +38,7 @@ When using LiveStore in React, you'll primarily interact with these fundamental 
 
 Stores are cached by their `storeId` and automatically disposed after being unused for a configurable duration (`unusedCacheTime`).
 
-<MultiStoreMinimalSnippet />
+<MinimalSnippet />
 
 ## Setting Up
 
@@ -46,7 +46,7 @@ Stores are cached by their `storeId` and automatically disposed after being unus
 
 Create a store configuration file that exports a custom hook wrapping [`useStore()`](#usestoreoptions):
 
-<ReactStoreSnippet />
+<StoreSnippet />
 
 The [`useStore()`](#usestoreoptions) hook accepts store configuration options and returns a store instance. It suspends while the store is loading, so components using it need to be wrapped in a `Suspense` boundary.
 
@@ -54,7 +54,7 @@ The [`useStore()`](#usestoreoptions) hook accepts store configuration options an
 
 Create a [`StoreRegistry`](#new-storeregistryconfig) and provide it via [`<StoreRegistryProvider>`](#storeregistryprovider). Wrap in a `<Suspense>` to handle loading states and a `<ErrorBoundary>` to handle errors:
 
-<ReactProviderSnippet />
+<AppSnippet />
 
 ### 3. Use the Store
 
@@ -85,9 +85,9 @@ You can have multiple stores within a single React application. This is useful f
 
 Use the [`storeOptions()`](#storeoptionsoptions) helper for type-safe, reusable configurations, and then create multiple instances for the same store configuration by using different `storeId` values:
 
-<MultiStoreOptionsSnippet/>
+<IssueStoreOptionsSnippet/>
 
-<MultiStoreUseStoreSnippet/>
+<IssueViewSnippet/>
 
 Each store instance is completely isolated with its own data, event log, and synchronization state.
 
@@ -95,7 +95,7 @@ Each store instance is completely isolated with its own data, event log, and syn
 
 When you know a store will be needed soon, preload it in advance to warm up the cache:
 
-<MultiStorePreloadSnippet />
+<PreloadedIssueSnippet />
 
 ### StoreId Guidelines
 

@@ -1,6 +1,6 @@
 import { makeInMemoryAdapter } from '@livestore/adapter-web'
 import { storeOptions } from '@livestore/react'
-import { schema } from './schema.ts'
+import { schema } from './issue.schema.ts'
 
 // Define reusable store configuration with storeOptions()
 // This helper provides type safety and can be reused across your app

@@ -3,7 +3,7 @@ import { queryDb } from '@livestore/livestore'
 import { StoreRegistry, StoreRegistryProvider, storeOptions, useStore } from '@livestore/react'
 import { useState } from 'react'
 import { unstable_batchedUpdates as batchUpdates } from 'react-dom'
-import { schema, tables } from './schema.ts'
+import { schema, tables } from './issue.schema.ts'
 
 const issueStoreOptions = (issueId: string) =>
   storeOptions({

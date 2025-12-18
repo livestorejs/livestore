@@ -1,10 +1,10 @@
 import { StoreRegistry, StoreRegistryProvider } from '@livestore/react'
-import type { FC, ReactNode } from 'react'
-import { Suspense, useState } from 'react'
+import { type ReactNode, Suspense, useState } from 'react'
+import { unstable_batchedUpdates as batchUpdates } from 'react-dom'
 import { ErrorBoundary } from 'react-error-boundary'
 
-export const Root: FC<{ children: ReactNode }> = ({ children }) => {
-  const [storeRegistry] = useState(() => new StoreRegistry())
+export function App({ children }: { children: ReactNode }) {
+  const [storeRegistry] = useState(() => new StoreRegistry({ defaultOptions: { batchUpdates } }))
 
   return (
     <ErrorBoundary fallback={<div>Something went wrong</div>}>
