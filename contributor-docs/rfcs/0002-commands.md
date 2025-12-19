@@ -382,8 +382,6 @@ In this approach, clients are able to issue both authoritative events and comman
 
 To read:
 
-- https://softwaremill.com/local-second-event-driven-webapps/#section-offline-support
-- https://www.goeleven.com/blog/client-side-event-sourcing/
 
 Maybe?
 
