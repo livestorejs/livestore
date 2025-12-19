@@ -1,8 +1,6 @@
 import { Schema, SessionIdSymbol, State, type Store } from '@livestore/livestore'
-import type { useStore } from '@livestore/react'
 import React from 'react'
-
-declare const useAppStore: () => ReturnType<typeof useStore>
+import { useAppStore } from '../../../framework-integrations/react/store.ts'
 
 export const uiState = State.SQLite.clientDocument({
   name: 'UiState',

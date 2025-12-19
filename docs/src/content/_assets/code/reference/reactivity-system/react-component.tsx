@@ -1,9 +1,8 @@
 import type { LiveQueryDef } from '@livestore/livestore'
-import type { useStore } from '@livestore/react'
 import type { FC } from 'react'
+import { useAppStore } from '../framework-integrations/react/store.ts'
 
 declare const state$: LiveQueryDef<number>
-declare const useAppStore: () => ReturnType<typeof useStore>
 
 export const MyComponent: FC = () => {
   const store = useAppStore()
