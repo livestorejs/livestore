@@ -375,13 +375,12 @@ In this approach, clients are able to issue both authoritative events and comman
 - https://groups.google.com/g/dddcqrs/c/X5YGVl36RS0
 - https://groups.google.com/g/dddcqrs/c/f0et--D-8zU
 - https://stackoverflow.com/questions/35350780/offline-sync-and-event-sourcing
-- https://discuss.axoniq.io/t/using-axonframework-event-sourcing-for-offline-synchronisation/483/13
 - https://www.youtube.com/watch?v=m1FhLPmiK9A
 - https://www.youtube.com/watch?v=avi-TZI9t2I
 - https://www.youtube.com/watch?v=72W_VvFRqc0
 
 To read:
-
+- https://discuss.axoniq.io/t/using-axonframework-event-sourcing-for-offline-synchronisation/483/13
 
 Maybe?
 
