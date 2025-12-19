@@ -230,7 +230,7 @@
   // After
   import { useStore } from '@livestore/react'
 
-  const store = useStore(storeOptions) // or via a custom hook wrapping useStore
+  const store = useStore(storeOptions) // or via a custom hook wrapping useStore() (e.g. useAppStore())
   const todos = store.useQuery(query$)
   const [state, setState] = store.useClientDocument(table)
   ```

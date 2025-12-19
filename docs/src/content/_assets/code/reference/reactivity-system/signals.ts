@@ -1,6 +1,7 @@
 import { type Store, signal } from '@livestore/livestore'
+import type { schema } from '../framework-integrations/react/schema.ts'
 
-declare const store: Store
+declare const store: Store<typeof schema>
 
 const now$ = signal(Date.now(), { label: 'now$' })
 

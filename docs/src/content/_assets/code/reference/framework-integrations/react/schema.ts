@@ -1,4 +1,4 @@
-import { defineMaterializer, Events, makeSchema, Schema, State } from '@livestore/livestore'
+import { defineMaterializer, Events, makeSchema, Schema, SessionIdSymbol, State } from '@livestore/livestore'
 
 export const tables = {
   todos: State.SQLite.table({
@@ -7,25 +7,29 @@ export const tables = {
       id: State.SQLite.text({ primaryKey: true }),
       text: State.SQLite.text(),
       completed: State.SQLite.boolean({ default: false }),
+      createdAt: State.SQLite.datetime(),
     },
   }),
   uiState: State.SQLite.clientDocument({
     name: 'UiState',
-    schema: Schema.Struct({ text: Schema.String }),
-    default: { value: { text: '' } },
+    schema: Schema.Struct({
+      newTodoText: Schema.String,
+      filter: Schema.Literal('all', 'active', 'completed'),
+    }),
+    default: { id: SessionIdSymbol, value: { newTodoText: '', filter: 'all' } },
   }),
 } as const
 
 export const events = {
   todoCreated: Events.synced({
     name: 'v1.TodoCreated',
-    schema: Schema.Struct({ id: Schema.String, text: Schema.String }),
+    schema: Schema.Struct({ id: Schema.String, text: Schema.String, createdAt: Schema.Date }),
   }),
 } as const
 
 const materializers = State.SQLite.materializers(events, {
-  [events.todoCreated.name]: defineMaterializer(events.todoCreated, ({ id, text }) =>
-    tables.todos.insert({ id, text, completed: false }),
+  [events.todoCreated.name]: defineMaterializer(events.todoCreated, ({ id, text, createdAt }) =>
+    tables.todos.insert({ id, text, completed: false, createdAt }),
   ),
 })
 

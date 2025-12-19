@@ -1,26 +1,18 @@
-import { Schema, SessionIdSymbol, State, type Store } from '@livestore/livestore'
+import type { Store } from '@livestore/livestore'
 import React from 'react'
+import { tables } from '../../../framework-integrations/react/schema.ts'
 import { useAppStore } from '../../../framework-integrations/react/store.ts'
 
-export const uiState = State.SQLite.clientDocument({
-  name: 'UiState',
-  schema: Schema.Struct({
-    newTodoText: Schema.String,
-    filter: Schema.Literal('all', 'active', 'completed'),
-  }),
-  default: { id: SessionIdSymbol, value: { newTodoText: '', filter: 'all' } },
-})
-
 export const readUiState = (store: Store): { newTodoText: string; filter: 'all' | 'active' | 'completed' } =>
-  store.query(uiState.get())
+  store.query(tables.uiState.get())
 
 export const setNewTodoText = (store: Store, newTodoText: string): void => {
-  store.commit(uiState.set({ newTodoText }))
+  store.commit(tables.uiState.set({ newTodoText }))
 }
 
 export const UiStateFilter: React.FC = () => {
   const store = useAppStore()
-  const [state, setState] = store.useClientDocument(uiState)
+  const [state, setState] = store.useClientDocument(tables.uiState)
 
   const showActive = React.useCallback(() => {
     setState({ filter: 'active' })
