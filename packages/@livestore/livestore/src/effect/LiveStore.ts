@@ -85,7 +85,6 @@ export const LiveStoreContextDeferred = Layer.effect(
 
 /** Branded type for unique store context identity */
 declare const StoreContextTypeId: unique symbol
-type StoreContextTypeId = typeof StoreContextTypeId
 
 /** Phantom type carrying schema and storeId information */
 export interface StoreContextId<TSchema extends LiveStoreSchema, TStoreId extends string> {
@@ -97,7 +96,6 @@ export interface StoreContextId<TSchema extends LiveStoreSchema, TStoreId extend
 
 /** Phantom type for deferred store context */
 declare const DeferredContextTypeId: unique symbol
-type DeferredContextTypeId = typeof DeferredContextTypeId
 
 export interface DeferredContextId<TStoreId extends string> {
   readonly [DeferredContextTypeId]: {
