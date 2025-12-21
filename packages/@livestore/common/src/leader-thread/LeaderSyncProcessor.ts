@@ -37,6 +37,11 @@ import { rollback } from './materialize-event.ts'
 import type { InitialBlockingSyncContext, LeaderSyncProcessor } from './types.ts'
 import { LeaderThreadCtx } from './types.ts'
 
+// WORKAROUND: @effect/opentelemetry mis-parses `Span.addEvent(name, attributes)` and treats the attributes object as a
+// time input, causing `TypeError: {} is not iterable` at runtime.
+// Upstream: https://github.com/Effect-TS/effect/pull/5929
+// TODO: simplify back to the 2-arg overload once the upstream fix is released and adopted.
+
 type LocalPushQueueItem = [
   event: LiveStoreEvent.Client.EncodedWithMeta,
   deferred: Deferred.Deferred<void, LeaderAheadError> | undefined,
@@ -476,10 +481,14 @@ const backgroundApplyLocalPushes = ({
       )
 
       if (droppedItems.length > 0) {
-        otelSpan?.addEvent(`push:drop-old-generation`, {
-          droppedCount: droppedItems.length,
-          currentRebaseGeneration,
-        })
+        otelSpan?.addEvent(
+          `push:drop-old-generation`,
+          {
+            droppedCount: droppedItems.length,
+            currentRebaseGeneration,
+          },
+          undefined,
+        )
 
         /**
          * Dropped pushes may still have a deferred awaiting completion.
@@ -517,20 +526,28 @@ const backgroundApplyLocalPushes = ({
 
       switch (mergeResult._tag) {
         case 'unknown-error': {
-          otelSpan?.addEvent(`push:unknown-error`, {
-            batchSize: newEvents.length,
-            newEvents: TRACE_VERBOSE ? JSON.stringify(newEvents) : undefined,
-          })
+          otelSpan?.addEvent(
+            `push:unknown-error`,
+            {
+              batchSize: newEvents.length,
+              newEvents: TRACE_VERBOSE ? JSON.stringify(newEvents) : undefined,
+            },
+            undefined,
+          )
           return yield* new UnknownError({ cause: mergeResult.message })
         }
         case 'rebase': {
           return shouldNeverHappen('The leader thread should never have to rebase due to a local push')
         }
         case 'reject': {
-          otelSpan?.addEvent(`push:reject`, {
-            batchSize: newEvents.length,
-            mergeResult: TRACE_VERBOSE ? JSON.stringify(mergeResult) : undefined,
-          })
+          otelSpan?.addEvent(
+            `push:reject`,
+            {
+              batchSize: newEvents.length,
+              mergeResult: TRACE_VERBOSE ? JSON.stringify(mergeResult) : undefined,
+            },
+            undefined,
+          )
 
           // TODO: how to test this?
           const nextRebaseGeneration = currentRebaseGeneration + 1
@@ -585,10 +602,14 @@ const backgroundApplyLocalPushes = ({
         leaderHead: mergeResult.newSyncState.localHead,
       })
 
-      otelSpan?.addEvent(`push:advance`, {
-        batchSize: newEvents.length,
-        mergeResult: TRACE_VERBOSE ? JSON.stringify(mergeResult) : undefined,
-      })
+      otelSpan?.addEvent(
+        `push:advance`,
+        {
+          batchSize: newEvents.length,
+          mergeResult: TRACE_VERBOSE ? JSON.stringify(mergeResult) : undefined,
+        },
+        undefined,
+      )
 
       // Don't sync client-local events
       const filteredBatch = mergeResult.newEvents.filter((eventEncoded) => {
@@ -719,10 +740,14 @@ const backgroundBackendPulling = ({
         if (mergeResult._tag === 'reject') {
           return shouldNeverHappen('The leader thread should never reject upstream advances')
         } else if (mergeResult._tag === 'unknown-error') {
-          otelSpan?.addEvent(`pull:unknown-error`, {
-            newEventsCount: newEvents.length,
-            newEvents: TRACE_VERBOSE ? JSON.stringify(newEvents) : undefined,
-          })
+          otelSpan?.addEvent(
+            `pull:unknown-error`,
+            {
+              newEventsCount: newEvents.length,
+              newEvents: TRACE_VERBOSE ? JSON.stringify(newEvents) : undefined,
+            },
+            undefined,
+          )
           return yield* new UnknownError({ cause: mergeResult.message })
         }
 
@@ -731,12 +756,16 @@ const backgroundBackendPulling = ({
         Eventlog.updateBackendHead(dbEventlog, newBackendHead)
 
         if (mergeResult._tag === 'rebase') {
-          otelSpan?.addEvent(`pull:rebase[${mergeResult.newSyncState.localHead.rebaseGeneration}]`, {
-            newEventsCount: newEvents.length,
-            newEvents: TRACE_VERBOSE ? JSON.stringify(newEvents) : undefined,
-            rollbackCount: mergeResult.rollbackEvents.length,
-            mergeResult: TRACE_VERBOSE ? JSON.stringify(mergeResult) : undefined,
-          })
+          otelSpan?.addEvent(
+            `pull:rebase[${mergeResult.newSyncState.localHead.rebaseGeneration}]`,
+            {
+              newEventsCount: newEvents.length,
+              newEvents: TRACE_VERBOSE ? JSON.stringify(newEvents) : undefined,
+              rollbackCount: mergeResult.rollbackEvents.length,
+              mergeResult: TRACE_VERBOSE ? JSON.stringify(mergeResult) : undefined,
+            },
+            undefined,
+          )
 
           const globalRebasedPendingEvents = mergeResult.newSyncState.pending.filter((event) => {
             const eventDef = schema.eventsDefsMap.get(event.name)
@@ -757,10 +786,14 @@ const backgroundBackendPulling = ({
             leaderHead: mergeResult.newSyncState.localHead,
           })
         } else {
-          otelSpan?.addEvent(`pull:advance`, {
-            newEventsCount: newEvents.length,
-            mergeResult: TRACE_VERBOSE ? JSON.stringify(mergeResult) : undefined,
-          })
+          otelSpan?.addEvent(
+            `pull:advance`,
+            {
+              newEventsCount: newEvents.length,
+              mergeResult: TRACE_VERBOSE ? JSON.stringify(mergeResult) : undefined,
+            },
+            undefined,
+          )
 
           // Ensure push fiber is active after advance by restarting with current pending (non-client) events
           const globalPendingEvents = mergeResult.newSyncState.pending.filter((event) => {
@@ -870,10 +903,14 @@ const backgroundBackendPushing = ({
         yield* devtoolsLatch.await
       }
 
-      otelSpan?.addEvent('backend-push', {
-        batchSize: queueItems.length,
-        batch: TRACE_VERBOSE ? JSON.stringify(queueItems) : undefined,
-      })
+      otelSpan?.addEvent(
+        'backend-push',
+        {
+          batchSize: queueItems.length,
+          batch: TRACE_VERBOSE ? JSON.stringify(queueItems) : undefined,
+        },
+        undefined,
+      )
 
       // Push with declarative retry/backoff using Effect schedules
       // - Exponential backoff starting at 1s and doubling (1s, 2s, 4s, 8s, 16s, 30s ...)
@@ -900,15 +937,19 @@ const backgroundBackendPushing = ({
 
         const retries = iteration.recurrence
         if (retries > 0 && pushResult._tag === 'Right') {
-          otelSpan?.addEvent('backend-push-retry-success', { retries, batchSize: queueItems.length })
+          otelSpan?.addEvent('backend-push-retry-success', { retries, batchSize: queueItems.length }, undefined)
         }
 
         if (pushResult._tag === 'Left') {
-          otelSpan?.addEvent('backend-push-error', {
-            error: pushResult.left.toString(),
-            retries,
-            batchSize: queueItems.length,
-          })
+          otelSpan?.addEvent(
+            'backend-push-error',
+            {
+              error: pushResult.left.toString(),
+              retries,
+              batchSize: queueItems.length,
+            },
+            undefined,
+          )
           const error = pushResult.left
           if (
             error._tag === 'IsOfflineError' ||

@@ -22,6 +22,11 @@ import * as LiveStoreEvent from '../schema/LiveStoreEvent/mod.ts'
 import type { LiveStoreSchema } from '../schema/mod.ts'
 import * as SyncState from './syncstate.ts'
 
+// WORKAROUND: @effect/opentelemetry mis-parses `Span.addEvent(name, attributes)` and treats the attributes object as a
+// time input, causing `TypeError: {} is not iterable` at runtime.
+// Upstream: https://github.com/Effect-TS/effect/pull/5929
+// TODO: simplify back to the 2-arg overload once the upstream fix is released and adopted.
+
 /**
  * Rebase behaviour:
  * - We continously pull events from the leader and apply them to the local store.
@@ -245,13 +250,17 @@ export const makeClientSessionSyncProcessor = ({
           syncStateRef.current = mergeResult.newSyncState
 
           if (mergeResult._tag === 'rebase') {
-            span.addEvent('merge:pull:rebase', {
-              payloadTag: payload._tag,
-              payload: TRACE_VERBOSE ? JSON.stringify(payload) : undefined,
-              newEventsCount: mergeResult.newEvents.length,
-              rollbackCount: mergeResult.rollbackEvents.length,
-              res: TRACE_VERBOSE ? JSON.stringify(mergeResult) : undefined,
-            })
+            span.addEvent(
+              'merge:pull:rebase',
+              {
+                payloadTag: payload._tag,
+                payload: TRACE_VERBOSE ? JSON.stringify(payload) : undefined,
+                newEventsCount: mergeResult.newEvents.length,
+                rollbackCount: mergeResult.rollbackEvents.length,
+                res: TRACE_VERBOSE ? JSON.stringify(mergeResult) : undefined,
+              },
+              undefined,
+            )
 
             debugInfo.rebaseCount++
 
@@ -290,12 +299,16 @@ export const makeClientSessionSyncProcessor = ({
 
             yield* FiberHandle.run(leaderPushingFiberHandle, backgroundLeaderPushing)
           } else {
-            span.addEvent('merge:pull:advance', {
-              payloadTag: payload._tag,
-              payload: TRACE_VERBOSE ? JSON.stringify(payload) : undefined,
-              newEventsCount: mergeResult.newEvents.length,
-              res: TRACE_VERBOSE ? JSON.stringify(mergeResult) : undefined,
-            })
+            span.addEvent(
+              'merge:pull:advance',
+              {
+                payloadTag: payload._tag,
+                payload: TRACE_VERBOSE ? JSON.stringify(payload) : undefined,
+                newEventsCount: mergeResult.newEvents.length,
+                res: TRACE_VERBOSE ? JSON.stringify(mergeResult) : undefined,
+              },
+              undefined,
+            )
 
             debugInfo.advanceCount++
           }
