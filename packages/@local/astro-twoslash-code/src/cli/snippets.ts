@@ -217,7 +217,7 @@ const assembleSnippet = (
       })
       insertStartSentinel()
       pushLines(focusLines, file.content, owner, (line) => {
-        if (line.trimStart().startsWith('// ---cut')) {
+        if (isCutMarkerLine(line)) {
           insertStartSentinel()
         }
       })
@@ -244,7 +244,7 @@ const assembleSnippet = (
     })
     insertSupportStartSentinel()
     pushLines(supportLines, file.content, owner, (line) => {
-      if (line.trimStart().startsWith('// ---cut')) {
+      if (isCutMarkerLine(line)) {
         insertSupportStartSentinel()
       }
     })
@@ -268,7 +268,36 @@ const assembleSnippet = (
   }
 }
 
-const sanitizeSnippetContent = (content: string): string => content.replace(/^\s*\/\/\/\s*<reference[^\n]*\n?/g, '')
+type SnippetLineKind =
+  | { _tag: 'filename' }
+  | { _tag: 'cut' }
+  | { _tag: 'start'; remainder: string }
+  | { _tag: 'end'; remainder: string }
+  | { _tag: 'code'; content: string }
+
+const classifySnippetLine = (line: string): SnippetLineKind => {
+  const trimmed = line.trimStart()
+  if (trimmed.startsWith('// @filename:')) {
+    return { _tag: 'filename' }
+  }
+  if (trimmed.startsWith('// ---cut---') || trimmed.startsWith('// __LS_CUT__')) {
+    return { _tag: 'cut' }
+  }
+  const startMatch = line.match(/^\s*\/\/ __LS_FILE_START__:[^\s]+\s*/)
+  if (startMatch) {
+    return { _tag: 'start', remainder: line.slice(startMatch[0].length) }
+  }
+  const endMatch = line.match(/^\s*\/\/ __LS_FILE_END__:[^\s]+\s*/)
+  if (endMatch) {
+    return { _tag: 'end', remainder: line.slice(endMatch[0].length) }
+  }
+  return { _tag: 'code', content: line }
+}
+
+const isCutMarkerLine = (line: string): boolean => classifySnippetLine(line)._tag === 'cut'
+
+const sanitizeSnippetContent = (content: string): string =>
+  content.replace(/^\s*\/\/\/\s*<reference[^\n]*\n?/g, '').replace(/\/\/ ---cut---/g, '// __LS_CUT__')
 
 /**
  * Establishes canonical snippet filenames that mirror the on-disk structure.
@@ -570,24 +599,18 @@ const stripSnippetSentinels = (value: string): string => {
    * Sentinel-only rows are dropped entirely so they don't introduce synthetic whitespace artifacts.
    */
   for (const line of normalised.split(/\r?\n/)) {
-    let current = line
-    const trimmed = current.trimStart()
-    if (trimmed.startsWith('// @filename:')) {
+    const classified = classifySnippetLine(line)
+    if (classified._tag === 'filename' || classified._tag === 'cut') {
       continue
     }
-    if (trimmed.startsWith('// ---cut---')) {
+    if (classified._tag === 'start' || classified._tag === 'end') {
+      if (classified.remainder.trim().length === 0) {
+        continue
+      }
+      cleanedLines.push(classified.remainder)
       continue
     }
-    const beforeStart = current
-    current = current.replace(/^\s*\/\/ __LS_FILE_START__:[^\s]+\s*/, '')
-    const removedStart = beforeStart !== current
-    const beforeEnd = current
-    current = current.replace(/^\s*\/\/ __LS_FILE_END__:[^\s]+\s*/, '')
-    const removedEnd = beforeEnd !== current
-    if ((removedStart || removedEnd) && current.trim().length === 0) {
-      continue
-    }
-    cleanedLines.push(current)
+    cleanedLines.push(classified.content)
   }
 
   // Remove trailing whitespace-only rows while keeping interior blank lines intact.
@@ -623,11 +646,8 @@ const isSentinelText = (text: string): boolean => {
   if (text.includes('__LS_FILE_START__') || text.includes('__LS_FILE_END__')) {
     return true
   }
-  const trimmed = text.trim()
-  if (trimmed.startsWith('// @filename:')) {
-    return true
-  }
-  return false
+  const classified = classifySnippetLine(text)
+  return classified._tag === 'filename' || classified._tag === 'cut'
 }
 
 const removeSentinelNodes = (current: THastElementContent | THastRootContent | null | undefined): void => {
@@ -737,7 +757,7 @@ const trimRenderedAst = (root: THastElement, focusVirtualPath: string, assembled
     if (trimmedText.startsWith('// @filename:')) {
       continue
     }
-    if (trimmedText.startsWith('// ---cut---')) {
+    if (isCutMarkerLine(trimmedText)) {
       continue
     }
 
@@ -802,7 +822,7 @@ const trimRenderedAst = (root: THastElement, focusVirtualPath: string, assembled
             return false
           }
           const trimmed = line.content.trimStart()
-          if (trimmed.startsWith('// ---cut')) {
+          if (isCutMarkerLine(trimmed)) {
             return false
           }
           return true

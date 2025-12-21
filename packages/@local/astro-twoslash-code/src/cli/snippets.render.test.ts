@@ -86,6 +86,54 @@ const loadCompilerOptions = () => {
     noEmit: true,
   }
 }
+
+const stripTwoslashPopups = (input: string): string => {
+  const target = '<div class="twoslash-popup-container'
+  let result = ''
+  let cursor = 0
+
+  while (cursor < input.length) {
+    const start = input.indexOf(target, cursor)
+    if (start === -1) {
+      result += input.slice(cursor)
+      break
+    }
+
+    result += input.slice(cursor, start)
+    let depth = 0
+    let index = start
+
+    while (index < input.length) {
+      const nextOpen = input.indexOf('<div', index)
+      const nextClose = input.indexOf('</div>', index)
+      if (nextClose === -1) {
+        index = input.length
+        break
+      }
+      if (nextOpen !== -1 && nextOpen < nextClose) {
+        depth += 1
+        index = nextOpen + 4
+        continue
+      }
+      depth -= 1
+      index = nextClose + 6
+      if (depth <= 0) {
+        break
+      }
+    }
+
+    cursor = index
+  }
+
+  return result
+}
+
+const stripMarkup = (input: string) =>
+  stripTwoslashPopups(input)
+    .replace(/<[^>]*>/g, ' ')
+    .replace(/&[#0-9a-zA-Z]+;/g, ' ')
+    .replace(/\s+/g, ' ')
+    .trim()
 const runTwoslashOnFixture = (entryRelativePath: string) => {
   const entryFilePath = path.join(snippetRoot, entryRelativePath)
   const bundle = buildSnippetBundle({ entryFilePath, baseDir: snippetRoot })
@@ -148,16 +196,9 @@ describe('renderSnippet integration', () => {
 
     const mainHtml = renderedMain.html ?? ''
     const utilsHtml = renderedUtils.html ?? ''
-    const removeMarkup = (input: string) =>
-      input
-        .replace(/<div class="twoslash-popup-container[^"]*"[\s\S]*?<\/div>/g, ' ')
-        .replace(/<[^>]*>/g, ' ')
-        .replace(/&[#0-9a-zA-Z]+;/g, ' ')
-        .replace(/\s+/g, ' ')
-        .trim()
 
-    const mainText = removeMarkup(mainHtml)
-    const utilsText = removeMarkup(utilsHtml)
+    const mainText = stripMarkup(mainHtml)
+    const utilsText = stripMarkup(utilsHtml)
 
     expect(mainText).toMatch(/export const\s+message/)
     expect(mainText).not.toMatch(/export const\s+greet\s*=\s*\(\s*name/)
@@ -184,6 +225,27 @@ describe('renderSnippet integration', () => {
     expect(mainDataCode).not.toMatch(/__LS_FILE_(START|END)__/)
     expect(utilsDataCode).toContain('greet = (name: string)')
     expect(utilsDataCode).not.toMatch(/__LS_FILE_(START|END)__/)
+  })
+
+  it('restarts focus ownership after cut markers', () => {
+    const focusVirtualPath = './focus.ts'
+    const focusContent = __internal.sanitizeSnippetContent(
+      [
+        'export const first = true',
+        '// ---cut---',
+        'export const second = true',
+      ].join('\n'),
+    )
+
+    const assembled = __internal.assembleSnippet(
+      [{ virtualPath: focusVirtualPath, content: focusContent }],
+      focusVirtualPath,
+    )
+    const focusStarts = assembled.lines.filter(
+      (line) => line.marker === 'start' && line.content.includes(focusVirtualPath),
+    )
+
+    expect(focusStarts).toHaveLength(2)
   })
 
   it('trims trailing blank lines from snippet payloads', async () => {
