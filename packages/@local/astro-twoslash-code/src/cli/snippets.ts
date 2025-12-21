@@ -296,8 +296,7 @@ const classifySnippetLine = (line: string): SnippetLineKind => {
 
 const isCutMarkerLine = (line: string): boolean => classifySnippetLine(line)._tag === 'cut'
 
-const sanitizeSnippetContent = (content: string): string =>
-  content.replace(/^\s*\/\/\/\s*<reference[^\n]*\n?/g, '')
+const sanitizeSnippetContent = (content: string): string => content.replace(/^\s*\/\/\/\s*<reference[^\n]*\n?/g, '')
 
 /**
  * Establishes canonical snippet filenames that mirror the on-disk structure.

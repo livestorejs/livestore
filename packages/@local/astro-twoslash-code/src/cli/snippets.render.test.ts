@@ -187,7 +187,7 @@ describe('renderSnippet integration', () => {
   it('does not rewrite literal cut marker content', () => {
     const source = [
       "const message = '// ---cut--- should stay literal'",
-      "const inline = 1 // ---cut--- explanation",
+      'const inline = 1 // ---cut--- explanation',
       'const double = "// ---cut---"',
     ].join('\n')
 
