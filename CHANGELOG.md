@@ -322,6 +322,27 @@ See the [S2 sync provider docs](https://dev.docs.livestore.dev/reference/syncing
 - Sync payload and store ID are exposed to `onPull`/`onPush` handlers (#451).
 - Materializers receive each event's `clientId`, simplifying multi-client workflows (#574).
 - React peer dependency relaxed from exact to caret range for smoother upgrades (#621).
+- **Effect integration:** Added `Store.Tag(schema, storeId)` API for idiomatic Effect usage. Returns a yieldable `Context.Tag` with static accessors (`query`, `commit`, `use`) and a `layer()` factory method. The previous `makeStoreContext()` and `LiveStoreContextLayer()` APIs are now deprecated:
+
+  ```typescript
+  import { Store } from '@livestore/livestore/effect'
+
+  // Before (deprecated)
+  const MainStoreContext = makeStoreContext<typeof schema>()('main')
+  const MainStore = MainStoreContext.Tag
+  const MainStoreLayer = MainStoreContext.Layer({ schema, adapter, ... })
+
+  // After
+  const TodoStore = Store.Tag(schema, 'todos')
+  const TodoStoreLayer = TodoStore.layer({ adapter, batchUpdates })
+
+  // Use in Effect code - yield directly or use static accessors
+  Effect.gen(function* () {
+    const { store } = yield* TodoStore
+    const todos = yield* TodoStore.query(tables.todos.select())
+    yield* TodoStore.commit(events.todoCreated({ id: '1', text: 'Buy milk' }))
+  })
+  ```
 
 #### Bug fixes
 
