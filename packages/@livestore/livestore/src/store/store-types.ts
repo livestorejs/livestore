@@ -38,9 +38,11 @@ import type { Store } from './store.ts'
  * - `running`: Store is active and ready for queries/commits
  * - `error`: Store failed during boot or operation
  * - `shutdown`: Store was intentionally shut down or interrupted
+ *
+ * @typeParam TSchema - The LiveStore schema type. Defaults to `LiveStoreSchema.Any`.
  */
-export type LiveStoreContext =
-  | LiveStoreContextRunning
+export type LiveStoreContext<TSchema extends LiveStoreSchema = LiveStoreSchema.Any> =
+  | LiveStoreContextRunning<TSchema>
   | {
       stage: 'error'
       error: UnknownError | unknown
@@ -64,10 +66,14 @@ export const makeShutdownDeferred: Effect.Effect<ShutdownDeferred> = Deferred.ma
  *
  * This is the normal operating state where you can query data, commit events,
  * and subscribe to changes.
+ *
+ * @typeParam TSchema - The LiveStore schema type. Defaults to `LiveStoreSchema.Any`
+ *   for backwards compatibility, but prefer providing the concrete schema type
+ *   for full type safety.
  */
-export type LiveStoreContextRunning = {
+export type LiveStoreContextRunning<TSchema extends LiveStoreSchema = LiveStoreSchema.Any> = {
   stage: 'running'
-  store: Store
+  store: Store<TSchema>
 }
 
 export type OtelOptions = {

@@ -10,6 +10,10 @@ import QueryDataSnippet from '../../_assets/code/reference/store/query-data.ts?s
 import ShutdownSnippet from '../../_assets/code/reference/store/shutdown.ts?snippet'
 import SubscribeSnippet from '../../_assets/code/reference/store/subscribe.ts?snippet'
 import StreamEventsSnippet from '../../_assets/code/reference/store/stream-events.ts?snippet'
+import MakeStoreContextSnippet from '../../_assets/code/reference/store/effect/make-store-context.ts?snippet'
+import UsageInServiceSnippet from '../../_assets/code/reference/store/effect/usage-in-service.ts?snippet'
+import MultipleStoresSnippet from '../../_assets/code/reference/store/effect/multiple-stores.ts?snippet'
+import LayerCompositionSnippet from '../../_assets/code/reference/store/effect/layer-composition.ts?snippet'
 
 The `Store` is the most common way to interact with LiveStore from your application code. It provides a way to query data, commit events, and subscribe to data changes.
 
@@ -44,6 +48,43 @@ Currently only events confirmed by the sync backend are supported.
 LiveStore provides two APIs for shutting down a store:
 
 <ShutdownSnippet />
+
+## Effect integration
+
+For applications using [Effect](https://effect.website), LiveStore provides a type-safe way to access stores through the Effect layer system via `makeStoreContext()`.
+
+### Creating a typed store context
+
+Use `makeStoreContext()` to create a typed context that preserves your schema types:
+
+<MakeStoreContextSnippet />
+
+The factory takes your schema type as a generic parameter and returns a `StoreContext` with:
+- `Tag` - Context tag for dependency injection
+- `Layer` - Creates a layer that initializes the store
+- `DeferredTag` - For async initialization patterns
+- `DeferredLayer` - Layer providing the deferred context
+- `fromDeferred` - Layer that waits for deferred initialization
+
+### Using the store in Effect services
+
+Access the store in Effect code with full type safety and autocomplete:
+
+<UsageInServiceSnippet />
+
+### Layer composition
+
+Compose store layers with your application services:
+
+<LayerCompositionSnippet />
+
+### Multiple stores with Effect
+
+Each store gets a unique context tag, allowing multiple stores in the same Effect context:
+
+<MultipleStoresSnippet />
+
+For more Effect patterns including Effect Atom integration, see the [Effect patterns](/patterns/effect) page.
 
 ## Multiple stores
 

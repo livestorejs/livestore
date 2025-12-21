@@ -1,0 +1,38 @@
+import { defineMaterializer, Events, makeSchema, Schema, State } from '@livestore/livestore'
+
+const tables = {
+  todos: State.SQLite.table({
+    name: 'todos',
+    columns: {
+      id: State.SQLite.text({ primaryKey: true }),
+      text: State.SQLite.text(),
+      completed: State.SQLite.boolean({ default: false }),
+    },
+  }),
+} as const
+
+const events = {
+  todoCreated: Events.synced({
+    name: 'v1.TodoCreated',
+    schema: Schema.Struct({ id: Schema.String, text: Schema.String }),
+  }),
+  todoCompleted: Events.synced({
+    name: 'v1.TodoCompleted',
+    schema: Schema.Struct({ id: Schema.String }),
+  }),
+} as const
+
+const materializers = State.SQLite.materializers(events, {
+  [events.todoCreated.name]: defineMaterializer(events.todoCreated, ({ id, text }) =>
+    tables.todos.insert({ id, text, completed: false }),
+  ),
+  [events.todoCompleted.name]: defineMaterializer(events.todoCompleted, ({ id }) =>
+    tables.todos.update({ completed: true }).where({ id }),
+  ),
+})
+
+const state = State.SQLite.makeState({ tables, materializers })
+
+export const schema = makeSchema({ events, state })
+export const storeTables = tables
+export const storeEvents = events

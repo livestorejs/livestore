@@ -43,6 +43,22 @@ import type {
 } from './store-types.ts'
 import { StoreInternalsSymbol } from './store-types.ts'
 
+/**
+ * @deprecated Use `makeStoreContext()` from `@livestore/livestore/effect` instead.
+ * This service doesn't preserve schema types. See the Effect integration docs for migration.
+ *
+ * @example Migration
+ * ```ts
+ * // Before (untyped)
+ * import { LiveStoreContextRunning } from '@livestore/livestore/effect'
+ * const { store } = yield* LiveStoreContextRunning
+ *
+ * // After (typed)
+ * import { makeStoreContext } from '@livestore/livestore/effect'
+ * const AppStore = makeStoreContext<typeof schema>()('app')
+ * const { store } = yield* AppStore.Tag
+ * ```
+ */
 export class LiveStoreContextRunning extends Context.Tag('@livestore/livestore/effect/LiveStoreContextRunning')<
   LiveStoreContextRunning,
   LiveStoreContextRunning_
@@ -54,6 +70,9 @@ export class LiveStoreContextRunning extends Context.Tag('@livestore/livestore/e
   }).pipe(Layer.unwrapScoped)
 }
 
+/**
+ * @deprecated Use `StoreContext.DeferredTag` from `makeStoreContext()` instead.
+ */
 export class DeferredStoreContext extends Context.Tag('@livestore/livestore/effect/DeferredStoreContext')<
   DeferredStoreContext,
   Deferred.Deferred<LiveStoreContextRunning['Type'], UnknownError>
