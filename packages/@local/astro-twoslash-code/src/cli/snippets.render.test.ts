@@ -184,6 +184,18 @@ describe('buildSnippets manifests', () => {
 })
 
 describe('renderSnippet integration', () => {
+  it('does not rewrite literal cut marker content', () => {
+    const source = [
+      "const message = '// ---cut--- should stay literal'",
+      "const inline = 1 // ---cut--- explanation",
+      'const double = "// ---cut---"',
+    ].join('\n')
+
+    const sanitized = __internal.sanitizeSnippetContent(source)
+
+    expect(sanitized).toBe(source)
+  })
+
   it('emits isolated HTML for each file in a multi-file snippet', async () => {
     const entryFilePath = path.join(examplePaths.snippetAssetsRoot, 'main.ts')
     const bundle = buildSnippetBundle({ entryFilePath, baseDir: examplePaths.snippetAssetsRoot })
@@ -230,11 +242,7 @@ describe('renderSnippet integration', () => {
   it('restarts focus ownership after cut markers', () => {
     const focusVirtualPath = './focus.ts'
     const focusContent = __internal.sanitizeSnippetContent(
-      [
-        'export const first = true',
-        '// ---cut---',
-        'export const second = true',
-      ].join('\n'),
+      ['export const first = true', '// ---cut---', 'export const second = true'].join('\n'),
     )
 
     const assembled = __internal.assembleSnippet(
