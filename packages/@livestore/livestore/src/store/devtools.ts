@@ -235,6 +235,7 @@ export const connectDevtoolsToStore = ({
                 sendToDevtools(
                   Devtools.ClientSession.LiveQueriesRes.make({
                     liveQueries: [...store[StoreInternalsSymbol].activeQueries].map((q) => ({
+                      /** TODO: include schema metadata for schema-aware rendering in devtools (e.g., schema AST/hash/identifier or table+columns for QueryBuilder-derived queries). */
                       _tag: q._tag,
                       id: q.id,
                       label: q.label,
