@@ -42,7 +42,9 @@ test.describe('TodoMVC (custom-elements)', () => {
 
     // Sanity-check persistence: on a normal reload, the draft text should come back.
     await page.reload()
-    await expect(input).toHaveValue(draftText)
+    // Wait for the input to be visible again after reload (store needs to initialize)
+    await expect(input).toBeVisible({ timeout: 30_000 })
+    await expect(input).toHaveValue(draftText, { timeout: 15_000 })
 
     await page.goto(`${baseURL}?reset`)
 
