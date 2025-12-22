@@ -61,6 +61,21 @@ export type SyncBackend<TSyncMetadata = Schema.JsonValue> = {
       live?: boolean
     },
   ) => Stream.Stream<PullResItem<TSyncMetadata>, IsOfflineError | InvalidPullError>
+  pullEffect?: (
+    cursor: Option.Option<{
+      eventSequenceNumber: EventSequenceNumber.Global.Type
+      /** Metadata is needed by some sync backends */
+      metadata: Option.Option<TSyncMetadata>
+    }>,
+    options?: {
+      /**
+       * If true, the sync backend will return a stream of events that have been pushed after the cursor.
+       *
+       * @default false
+       */
+      live?: boolean
+    },
+  ) => Effect.Effect<PullResItem<TSyncMetadata>, IsOfflineError | InvalidPullError>
   // TODO support transactions (i.e. group of mutation events which need to be applied together)
   push: (
     /**
