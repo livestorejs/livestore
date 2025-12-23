@@ -7,8 +7,7 @@ import { Vitest } from '@livestore/utils-dev/node-vitest'
 import * as otel from '@opentelemetry/api'
 import { BasicTracerProvider, InMemorySpanExporter, SimpleSpanProcessor } from '@opentelemetry/sdk-trace-base'
 import * as SolidTesting from '@solidjs/testing-library'
-import { createSignal, For, Show } from 'solid-js'
-import { expect, it } from 'vitest'
+import  * as Solid from 'solid-js'
 import { events, makeTodoMvcSolid, StoreInternalsSymbol, tables } from './__tests__/fixture.tsx'
 import type * as LiveStoreSolid from './mod.ts'
 
@@ -20,7 +19,7 @@ Vitest.describe('useClientDocument', () => {
     Effect.gen(function* () {
       const { wrapper, store } = yield* makeTodoMvcSolid({})
 
-      const [userId, setUserId] = createSignal('u1')
+      const [userId, setUserId] = Solid.createSignal('u1')
 
       const { result } = SolidTesting.renderHook(
         () => {
@@ -30,16 +29,16 @@ Vitest.describe('useClientDocument', () => {
         { wrapper },
       )
 
-      expect(result.id()).toBe('u1')
-      expect(result.state().username).toBe('')
-      expect(store[StoreInternalsSymbol].reactivityGraph.getSnapshot({ includeResults: true })).toMatchSnapshot()
+      Vitest.expect(result.id()).toBe('u1')
+      Vitest.expect(result.state().username).toBe('')
+      Vitest.expect(store[StoreInternalsSymbol].reactivityGraph.getSnapshot({ includeResults: true })).toMatchSnapshot()
       store.commit(tables.userInfo.set({ username: 'username_u2' }, 'u2'))
 
       setUserId('u2')
 
-      expect(store[StoreInternalsSymbol].reactivityGraph.getSnapshot({ includeResults: true })).toMatchSnapshot()
-      expect(result.id()).toBe('u2')
-      expect(result.state().username).toBe('username_u2')
+      Vitest.expect(store[StoreInternalsSymbol].reactivityGraph.getSnapshot({ includeResults: true })).toMatchSnapshot()
+      Vitest.expect(result.id()).toBe('u2')
+      Vitest.expect(result.state().username).toBe('username_u2')
     }),
   )
 
@@ -57,13 +56,13 @@ Vitest.describe('useClientDocument', () => {
         { wrapper },
       )
 
-      expect(result.id()).toBe('u1')
-      expect(result.state().username).toBe('')
+      Vitest.expect(result.id()).toBe('u1')
+      Vitest.expect(result.state().username).toBe('')
 
       result.setState({ username: 'username_u1_hello' })
 
-      expect(result.id()).toBe('u1')
-      expect(result.state().username).toBe('username_u1_hello')
+      Vitest.expect(result.id()).toBe('u1')
+      Vitest.expect(result.state().username).toBe('username_u1_hello')
     }),
   )
 
@@ -79,13 +78,13 @@ Vitest.describe('useClientDocument', () => {
         { wrapper },
       )
 
-      expect(result.id()).toBe('u1')
-      expect(result.state().username).toBe('')
+      Vitest.expect(result.id()).toBe('u1')
+      Vitest.expect(result.state().username).toBe('')
 
       store.commit(events.UserInfoSet({ username: 'username_u1_hello' }, 'u1'))
 
-      expect(result.id()).toBe('u1')
-      expect(result.state().username).toBe('username_u1_hello')
+      Vitest.expect(result.id()).toBe('u1')
+      Vitest.expect(result.state().username).toBe('username_u1_hello')
     }),
   )
 
@@ -111,9 +110,9 @@ Vitest.describe('useClientDocument', () => {
           <div>
             <TasksList setTaskId={(taskId) => setState({ currentTaskId: taskId })} />
             <div role={'current-id' as any}>Current Task Id: {state().currentTaskId ?? '-'}</div>
-            <Show when={state().currentTaskId} fallback={<div>Click on a task to see details</div>}>
+            <Solid.Show when={state().currentTaskId} fallback={<div>Click on a task to see details</div>}>
               {(id) => <TaskDetails id={id()} />}
-            </Show>
+            </Solid.Show>
           </div>
         )
       }
@@ -123,7 +122,7 @@ Vitest.describe('useClientDocument', () => {
 
         return (
           <div>
-            <For each={allTodos()}>{(todo) => <div onClick={() => props.setTaskId(todo.id)}>{todo.id}</div>}</For>
+            <Solid.For each={allTodos()}>{(todo) => <div onClick={() => props.setTaskId(todo.id)}>{todo.id}</div>}</Solid.For>
           </div>
         )
       }
@@ -140,13 +139,13 @@ Vitest.describe('useClientDocument', () => {
 
       store.commit(events.todoCreated({ id: 't1', text: 'buy milk', completed: false }))
 
-      expect(getByRole('current-id').innerHTML).toMatchInlineSnapshot('"Current Task Id: -"')
+      Vitest.expect(getByRole('current-id').innerHTML).toMatchInlineSnapshot('"Current Task Id: -"')
 
       globalSetState!({ currentTaskId: 't1' })
 
-      expect(getByRole('content').innerHTML).toMatchInlineSnapshot(`"{"id":"t1","text":"buy milk","completed":false}"`)
+      Vitest.expect(getByRole('content').innerHTML).toMatchInlineSnapshot(`"{"id":"t1","text":"buy milk","completed":false}"`)
 
-      expect(getByRole('current-id').innerHTML).toMatchInlineSnapshot('"Current Task Id: t1"')
+      Vitest.expect(getByRole('current-id').innerHTML).toMatchInlineSnapshot('"Current Task Id: t1"')
 
       store.commit(
         events.todoCreated({ id: 't2', text: 'buy eggs', completed: false }),
@@ -154,7 +153,7 @@ Vitest.describe('useClientDocument', () => {
         events.todoCreated({ id: 't3', text: 'buy bread', completed: false }),
       )
 
-      expect(getByRole('current-id').innerHTML).toMatchInlineSnapshot('"Current Task Id: t2"')
+      Vitest.expect(getByRole('current-id').innerHTML).toMatchInlineSnapshot('"Current Task Id: t2"')
     }),
   )
 
@@ -167,7 +166,7 @@ Vitest.describe('useClientDocument', () => {
         events.todoCreated({ id: 't2', text: 'buy bread', completed: false }),
       )
 
-      const [userId, setUserId] = createSignal('u1')
+      const [userId, setUserId] = Solid.createSignal('u1')
 
       const { result } = SolidTesting.renderHook(
         () => {
@@ -188,14 +187,14 @@ Vitest.describe('useClientDocument', () => {
         { wrapper },
       )
 
-      expect(result.todos().length).toBe(2)
+      Vitest.expect(result.todos().length).toBe(2)
 
       // Set text filter for u2 and test with second user
       store.commit(events.UserInfoSet({ username: 'username_u2', text: 'milk' }, 'u2'))
 
       setUserId('u2')
 
-      expect(result.todos().length).toBe(1)
+      Vitest.expect(result.todos().length).toBe(1)
     }),
   )
 
@@ -211,18 +210,18 @@ Vitest.describe('useClientDocument', () => {
         { wrapper },
       )
 
-      expect(result.state()).toBe(null)
+      Vitest.expect(result.state()).toBe(null)
 
       result.setState(1)
-      expect(result.state()).toEqual(1)
+      Vitest.expect(result.state()).toEqual(1)
 
       result.setState({ b: 2 })
-      expect(result.state()).toEqual({ b: 2 })
+      Vitest.expect(result.state()).toEqual({ b: 2 })
     }),
   )
 
   Vitest.describe('otel', () => {
-    it('should update the data based on component key', async () => {
+    Vitest.it('should update the data based on component key', async () => {
       const exporter = new InMemorySpanExporter()
 
       const provider = new BasicTracerProvider({
@@ -240,7 +239,7 @@ Vitest.describe('useClientDocument', () => {
           otelTracer,
         })
 
-        const [userId, setUserId] = createSignal('u1')
+        const [userId, setUserId] = Solid.createSignal('u1')
 
         // Test with first user
         const { result } = SolidTesting.renderHook(
@@ -251,8 +250,8 @@ Vitest.describe('useClientDocument', () => {
           { wrapper },
         )
 
-        expect(result.id()).toBe('u1')
-        expect(result.state().username).toBe('')
+        Vitest.expect(result.id()).toBe('u1')
+        Vitest.expect(result.state().username).toBe('')
 
         // For u2 we'll make sure that the row already exists,
         // so the lazy `insert` will be skipped
@@ -261,8 +260,8 @@ Vitest.describe('useClientDocument', () => {
         // Test with second user (new hook instance)
         setUserId('u2')
 
-        expect(result.id()).toBe('u2')
-        expect(result.state().username).toBe('username_u2')
+        Vitest.expect(result.id()).toBe('u2')
+        Vitest.expect(result.state().username).toBe('username_u2')
 
         span.end()
       }).pipe(Effect.scoped, Effect.tapCauseLogPretty, Effect.runPromise)
@@ -288,8 +287,8 @@ Vitest.describe('useClientDocument', () => {
         })
       }
 
-      expect(getSimplifiedRootSpan(exporter, 'createStore', mapAttributes)).toMatchSnapshot()
-      expect(getAllSimplifiedRootSpans(exporter, 'LiveStore:commit', mapAttributes)).toMatchSnapshot()
+      Vitest.expect(getSimplifiedRootSpan(exporter, 'createStore', mapAttributes)).toMatchSnapshot()
+      Vitest.expect(getAllSimplifiedRootSpans(exporter, 'LiveStore:commit', mapAttributes)).toMatchSnapshot()
 
       await provider.shutdown()
     })

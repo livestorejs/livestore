@@ -1,6 +1,7 @@
 /**
- * Vitest setup file to provide DOM globals for Solid tests in Node environment
- * This allows Solid tests to run in Node.js environment while avoiding WASM loading issues in jsdom
+ * Vitest setup file to provide DOM globals for Solid tests in Node environment.
+ * This allows Solid tests to run with full reactivity while using Node for WASM loading.
+ * Same pattern as React tests - node environment with jsdom globals.
  */
 
 import { JSDOM } from 'jsdom'

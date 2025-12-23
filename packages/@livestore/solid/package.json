@@ -14,11 +14,13 @@
     "@solid-primitives/deep": "0.3.3"
   },
   "devDependencies": {
+    "@effect/vitest": "catalog:",
     "@livestore/adapter-web": "workspace:*",
     "@livestore/utils-dev": "workspace:*",
     "@opentelemetry/sdk-trace-base": "catalog:",
     "@solidjs/testing-library": "^0.8.10",
     "@testing-library/jest-dom": "^6.9.1",
+    "effect": "catalog:",
     "jsdom": "^26.1.0",
     "solid-js": "catalog:",
     "typescript": "catalog:",
@@ -43,6 +45,8 @@
   },
   "scripts": {
     "build": "tsc",
-    "test": "vitest run"
+    "test": "pnpm run test:client && pnpm run test:ssr",
+    "test:client": "vitest run",
+    "test:ssr": "vitest run --mode ssr"
   }
 }
