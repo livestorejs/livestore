@@ -129,6 +129,19 @@
           }
         }
       }
+    },
+    {
+      // Disable React hook rules for Solid.js package
+      // Solid's useContext/createSignal/etc are not React hooks and don't follow React's "rules of hooks"
+      "includes": ["packages/@livestore/solid/**"],
+      "linter": {
+        "rules": {
+          "correctness": {
+            "useHookAtTopLevel": "off",
+            "useExhaustiveDependencies": "off"
+          }
+        }
+      }
     }
   ]
 }
