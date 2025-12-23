@@ -1,11 +1,16 @@
 import { isQueryBuilder } from '@livestore/common'
 import type { LiveQuery, LiveQueryDef, Queryable, SignalDef, StackInfo, Store } from '@livestore/livestore'
-import { extractStackInfoFromStackTrace, isQueryable, queryDb, stackInfoToString } from '@livestore/livestore'
+import {
+  extractStackInfoFromStackTrace,
+  isQueryable,
+  queryDb,
+  StoreInternalsSymbol,
+  stackInfoToString,
+} from '@livestore/livestore'
 import type { LiveQueries } from '@livestore/livestore/internal'
 import { deepEqual, indent, shouldNeverHappen } from '@livestore/utils'
 import * as otel from '@opentelemetry/api'
-import { type Accessor, createMemo, createSignal, on, onCleanup, useContext } from 'solid-js'
-import { LiveStoreContext } from './LiveStoreContext.ts'
+import { type Accessor, createMemo, createSignal, on, onCleanup } from 'solid-js'
 import { originalStackLimit } from './utils/stack-info.ts'
 import { type AccessorMaybe, resolve } from './utils.ts'
 
@@ -40,12 +45,7 @@ export const useQueryRef = <TQueryable extends Queryable<any>>(
   valueRef: Accessor<Queryable.Result<TQueryable>>
   queryRcRef: Accessor<LiveQueries.RcRef<LiveQuery<Queryable.Result<TQueryable>>>>
 } => {
-  // SOLID  - does this imply we assume storeArg?.store will never change from being defined to being undefined and vice versa?
-  //          because this breaks both react's hook rules and solid's assumptions around context
-  const store =
-    options?.store ?? // biome-ignore lint/correctness/useHookAtTopLevel: store is stable
-    useContext(LiveStoreContext)?.store ??
-    shouldNeverHappen(`No store provided to useQuery`)
+  const store = options?.store ?? shouldNeverHappen(`No store provided to useQuery`)
 
   type TResult = Queryable.Result<TQueryable>
   type NormalizedQueryable =
@@ -102,17 +102,17 @@ export const useQueryRef = <TQueryable extends Queryable<any>>(
     on(rcRefKey, () => {
       const _normalized = normalized()
 
-      const span = store.otel.tracer.startSpan(
+      const span = store[StoreInternalsSymbol].otel.tracer.startSpan(
         options?.otelSpanName ?? `LiveStore:useQuery:${resourceLabel()}`,
         { attributes: { label: resourceLabel(), firstStackInfo: JSON.stringify(stackInfo) } },
-        options?.otelContext ?? store.otel.queriesSpanContext,
+        options?.otelContext ?? store[StoreInternalsSymbol].otel.queriesSpanContext,
       )
 
       const otelContext = otel.trace.setSpan(otel.context.active(), span)
 
       const queryRcRef =
         _normalized._tag === 'definition'
-          ? _normalized.def.make(store.reactivityGraph.context!, otelContext)
+          ? _normalized.def.make(store[StoreInternalsSymbol].reactivityGraph.context!, otelContext)
           : ({
               value: _normalized.query$,
               deref: () => {},

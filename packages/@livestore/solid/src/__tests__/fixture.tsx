@@ -1,14 +1,16 @@
 import { makeInMemoryAdapter } from '@livestore/adapter-web'
-import { provideOtel, type UnexpectedError } from '@livestore/common'
+import { provideOtel, type UnknownError } from '@livestore/common'
 import { Events, makeSchema, State } from '@livestore/common/schema'
 import type { LiveStoreSchema, SqliteDsl, Store } from '@livestore/livestore'
-import { createStore } from '@livestore/livestore'
+import { createStore, StoreInternalsSymbol } from '@livestore/livestore'
 import { omitUndefineds } from '@livestore/utils'
 import { Effect, Schema, type Scope } from '@livestore/utils/effect'
 import type * as otel from '@opentelemetry/api'
 import type { JSX } from 'solid-js'
 
 import * as LiveStoreSolid from '../mod.ts'
+
+export { StoreInternalsSymbol }
 
 export type Todo = {
   id: string
@@ -106,7 +108,7 @@ export const makeTodoMvcSolid = ({
     wrapper: ({ children }: any) => JSX.Element
     store: Store<LiveStoreSchema<SqliteDsl.DbSchema, State.SQLite.EventDefRecord>, {}> & LiveStoreSolid.SolidApi
   },
-  UnexpectedError,
+  UnknownError,
   Scope.Scope
 > =>
   Effect.gen(function* () {
@@ -119,17 +121,7 @@ export const makeTodoMvcSolid = ({
 
     const storeWithSolidApi = LiveStoreSolid.withSolidApi(store)
 
-    // TODO improve typing of `LiveStoreContext`
-    const storeContext = {
-      stage: 'running' as const,
-      store: storeWithSolidApi,
-    }
-
-    const wrapper = ({ children }: any) => (
-      <LiveStoreSolid.LiveStoreContext.Provider value={storeContext}>
-        {children}
-      </LiveStoreSolid.LiveStoreContext.Provider>
-    )
+    const wrapper = ({ children }: any) => <>{children}</>
 
     return { wrapper, store: storeWithSolidApi }
   }).pipe(provideOtel(omitUndefineds({ parentSpanContext: otelContext, otelTracer })))

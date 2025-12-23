@@ -8,7 +8,7 @@ import * as SolidTesting from '@solidjs/testing-library'
 import { createMemo, createSignal, For } from 'solid-js'
 import { expect } from 'vitest'
 
-import { events, makeTodoMvcSolid, tables } from './__tests__/fixture.tsx'
+import { events, makeTodoMvcSolid, StoreInternalsSymbol, tables } from './__tests__/fixture.tsx'
 
 Vitest.describe('useQuery', () => {
   Vitest.afterEach(() => {
@@ -29,13 +29,13 @@ Vitest.describe('useQuery', () => {
       )
 
       expect(result().length).toBe(0)
-      expect(store.reactivityGraph.getSnapshot({ includeResults: true })).toMatchSnapshot()
+      expect(store[StoreInternalsSymbol].reactivityGraph.getSnapshot({ includeResults: true })).toMatchSnapshot()
 
       store.commit(events.todoCreated({ id: 't1', text: 'buy milk', completed: false }))
 
       expect(result().length).toBe(1)
       expect(result()[0]!.text).toBe('buy milk')
-      expect(store.reactivityGraph.getSnapshot({ includeResults: true })).toMatchSnapshot()
+      expect(store[StoreInternalsSymbol].reactivityGraph.getSnapshot({ includeResults: true })).toMatchSnapshot()
     }),
   )
 
@@ -68,17 +68,23 @@ Vitest.describe('useQuery', () => {
       )
 
       expect(result()).toBe('buy milk')
-      expect(store.reactivityGraph.getSnapshot({ includeResults: true })).toMatchSnapshot('1: after first render')
+      expect(store[StoreInternalsSymbol].reactivityGraph.getSnapshot({ includeResults: true })).toMatchSnapshot(
+        '1: after first render',
+      )
 
       store.commit(events.todoUpdated({ id: 't1', text: 'buy soy milk' }))
 
       expect(result()).toBe('buy soy milk')
-      expect(store.reactivityGraph.getSnapshot({ includeResults: true })).toMatchSnapshot('2: after first commit')
+      expect(store[StoreInternalsSymbol].reactivityGraph.getSnapshot({ includeResults: true })).toMatchSnapshot(
+        '2: after first commit',
+      )
 
       setTodoId('t2')
 
       expect(result()).toBe('buy eggs')
-      expect(store.reactivityGraph.getSnapshot({ includeResults: true })).toMatchSnapshot('3: after forced rerender')
+      expect(store[StoreInternalsSymbol].reactivityGraph.getSnapshot({ includeResults: true })).toMatchSnapshot(
+        '3: after forced rerender',
+      )
     }),
   )
 
@@ -105,17 +111,17 @@ Vitest.describe('useQuery', () => {
 
       expect(result()).toBe('buy milk')
 
-      expect(store.reactivityGraph.getSnapshot({ includeResults: true })).toMatchSnapshot()
+      expect(store[StoreInternalsSymbol].reactivityGraph.getSnapshot({ includeResults: true })).toMatchSnapshot()
 
       store.commit(events.todoUpdated({ id: 't1', text: 'buy soy milk' }))
 
       expect(result()).toBe('buy soy milk')
-      expect(store.reactivityGraph.getSnapshot({ includeResults: true })).toMatchSnapshot()
+      expect(store[StoreInternalsSymbol].reactivityGraph.getSnapshot({ includeResults: true })).toMatchSnapshot()
 
       store.setSignal(filter$, 't2')
 
       expect(result()).toBe('buy eggs')
-      expect(store.reactivityGraph.getSnapshot({ includeResults: true })).toMatchSnapshot()
+      expect(store[StoreInternalsSymbol].reactivityGraph.getSnapshot({ includeResults: true })).toMatchSnapshot()
     }),
   )
 

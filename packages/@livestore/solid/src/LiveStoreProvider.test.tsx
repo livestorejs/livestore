@@ -1,14 +1,14 @@
 /** biome-ignore-all lint/a11y: test files need a11y disabled */
 import { makeInMemoryAdapter } from '@livestore/adapter-web'
-import { queryDb, type Store } from '@livestore/livestore'
+import { queryDb, type Store, StoreInternalsSymbol } from '@livestore/livestore'
 import { Schema } from '@livestore/utils/effect'
 import * as SolidTesting from '@solidjs/testing-library'
 import { onMount } from 'solid-js'
 import { describe, expect, it } from 'vitest'
 
 import { events, schema, tables } from './__tests__/fixture.tsx'
+import { useLiveStoreContext } from './LiveStoreContext.ts'
 import { LiveStoreProvider } from './LiveStoreProvider.tsx'
-import * as LiveStoreSolid from './mod.ts'
 
 describe('LiveStoreProvider', () => {
   it('simple', async () => {
@@ -18,7 +18,7 @@ describe('LiveStoreProvider', () => {
 
     const App = () => {
       appRenderCount++
-      const { store } = LiveStoreSolid.useStore()
+      const { store } = useLiveStoreContext()
 
       const todos = store.useQuery(allTodos$)
 
@@ -105,7 +105,7 @@ describe('LiveStoreProvider', () => {
 
     const App = () => {
       appRenderCount++
-      const { store } = LiveStoreSolid.useStore()
+      const { store } = useLiveStoreContext()
 
       onMount(() => {
         shutdownDeferred.promise.then(() => {
@@ -157,8 +157,8 @@ describe('LiveStoreProvider', () => {
     }
 
     const App = () => {
-      const { store } = LiveStoreSolid.useStore()
-      const instanceId = store.clientSession.debugInstanceId as 'store1' | 'store2'
+      const { store } = useLiveStoreContext()
+      const instanceId = store[StoreInternalsSymbol].clientSession.debugInstanceId as 'store1' | 'store2'
       appRenderCount[instanceId]!++
 
       const todos = store.useQuery(allTodos$)
@@ -166,7 +166,7 @@ describe('LiveStoreProvider', () => {
       return (
         <div id={instanceId}>
           <div role="heading">{instanceId}</div>
-          <div role="content">{JSON.stringify(todos())}</div>
+          <div data-testid="content">{JSON.stringify(todos())}</div>
           <button onClick={() => store.commit(events.todoCreated({ id: 't1', text: 'buy milk', completed: false }))}>
             create todo {instanceId}
           </button>
@@ -208,11 +208,11 @@ describe('LiveStoreProvider', () => {
 
     SolidTesting.fireEvent.click(SolidTesting.screen.getByText('create todo store1'))
 
-    expect(container.querySelector('#store1 > div[role="content"]')?.textContent).toBe(
+    expect(container.querySelector('#store1 > div[data-testid="content"]')?.textContent).toBe(
       '[{"id":"t1","text":"buy milk","completed":false}]',
     )
 
-    expect(container.querySelector('#store2 > div[role="content"]')?.textContent).toBe('[]')
+    expect(container.querySelector('#store2 > div[data-testid="content"]')?.textContent).toBe('[]')
   })
 })
 

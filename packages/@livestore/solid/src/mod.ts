@@ -1,5 +1,5 @@
-export { LiveStoreContext, type SolidApi } from './LiveStoreContext.ts'
-export { LiveStoreProvider } from './LiveStoreProvider.tsx'
+export { StoreRegistry, storeOptions } from '@livestore/livestore'
+export * from './StoreRegistryContext.tsx'
 export {
   type Dispatch,
   type SetStateAction,
@@ -9,5 +9,5 @@ export {
   useClientDocument,
 } from './useClientDocument.ts'
 export { useQuery, useQueryRef } from './useQuery.ts'
-export { useStore, withSolidApi } from './useStore.ts'
+export { type SolidApi, useStore, withSolidApi } from './useStore.ts'
 export { useStackInfo } from './utils/stack-info.ts'

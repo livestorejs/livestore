@@ -5,9 +5,8 @@ import { State } from '@livestore/common/schema'
 import type { LiveQuery, LiveQueryDef, Store } from '@livestore/livestore'
 import { queryDb } from '@livestore/livestore'
 import { omitUndefineds, shouldNeverHappen } from '@livestore/utils'
-import { type Accessor, createMemo, createRenderEffect, mergeProps, useContext } from 'solid-js'
+import { type Accessor, createMemo, createRenderEffect, mergeProps } from 'solid-js'
 
-import { LiveStoreContext } from './LiveStoreContext.ts'
 import { useQueryRef } from './useQuery.ts'
 import { type AccessorMaybe, resolve } from './utils.ts'
 
@@ -109,16 +108,11 @@ export const useClientDocument: {
 
   const tableName = () => resolve(table).sqliteDef.name
 
-  // SOLID  - does this imply we assume storeArg?.store will never change from being defined to being undefined and vice versa?
-  //          because this breaks both react's hook rules and solid's assumptions around context
-  const store =
-    storeArg?.store ?? // biome-ignore lint/correctness/useHookAtTopLevel: store is stable
-    useContext(LiveStoreContext)?.store ??
-    shouldNeverHappen(`No store provided to useClientDocument`)
+  const store = storeArg?.store ?? shouldNeverHappen(`No store provided to useClientDocument`)
 
   // console.debug('useClientDocument', tableName, id)
 
-  const idStr: Accessor<string> = () => (id() === SessionIdSymbol ? store.clientSession.sessionId : id())
+  const idStr: Accessor<string> = () => (id() === SessionIdSymbol ? store.sessionId : id())
 
   type QueryDef = LiveQueryDef<TTableDef['Value']>
   const queryDef = createMemo<QueryDef>(() =>

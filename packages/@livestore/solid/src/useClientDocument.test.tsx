@@ -9,7 +9,7 @@ import { BasicTracerProvider, InMemorySpanExporter, SimpleSpanProcessor } from '
 import * as SolidTesting from '@solidjs/testing-library'
 import { createSignal, For, Show } from 'solid-js'
 import { expect, it } from 'vitest'
-import { events, makeTodoMvcSolid, tables } from './__tests__/fixture.tsx'
+import { events, makeTodoMvcSolid, StoreInternalsSymbol, tables } from './__tests__/fixture.tsx'
 import type * as LiveStoreSolid from './mod.ts'
 
 // const strictMode = process.env.REACT_STRICT_MODE !== undefined
@@ -32,12 +32,12 @@ Vitest.describe('useClientDocument', () => {
 
       expect(result.id()).toBe('u1')
       expect(result.state().username).toBe('')
-      expect(store.reactivityGraph.getSnapshot({ includeResults: true })).toMatchSnapshot()
+      expect(store[StoreInternalsSymbol].reactivityGraph.getSnapshot({ includeResults: true })).toMatchSnapshot()
       store.commit(tables.userInfo.set({ username: 'username_u2' }, 'u2'))
 
       setUserId('u2')
 
-      expect(store.reactivityGraph.getSnapshot({ includeResults: true })).toMatchSnapshot()
+      expect(store[StoreInternalsSymbol].reactivityGraph.getSnapshot({ includeResults: true })).toMatchSnapshot()
       expect(result.id()).toBe('u2')
       expect(result.state().username).toBe('username_u2')
     }),

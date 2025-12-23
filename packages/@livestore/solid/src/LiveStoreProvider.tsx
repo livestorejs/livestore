@@ -1,5 +1,5 @@
 import type { Adapter, BootStatus, IntentionalShutdownCause, MigrationsReport, SyncError } from '@livestore/common'
-import { provideOtel, UnexpectedError } from '@livestore/common'
+import { provideOtel, UnknownError } from '@livestore/common'
 import type { LiveStoreSchema } from '@livestore/common/schema'
 import type {
   CreateStoreOptions,
@@ -61,7 +61,7 @@ export interface LiveStoreProviderProps {
   ) => void | Promise<void> | Effect.Effect<void, unknown, OtelTracer.OtelTracer>
   otelOptions?: Partial<OtelOptions>
   renderLoading?: (status: BootStatus) => JSX.Element
-  renderError?: (error: UnexpectedError | unknown) => JSX.Element
+  renderError?: (error: UnknownError | unknown) => JSX.Element
   renderShutdown?: (cause: IntentionalShutdownCause | StoreInterrupted | SyncError) => JSX.Element
   adapter: Adapter
   disableDevtools?: boolean
@@ -84,8 +84,8 @@ export interface LiveStoreProviderProps {
   }
 }
 
-const defaultRenderError = (error: UnexpectedError | unknown) => (
-  <>{Schema.is(UnexpectedError)(error) ? error.toString() : errorToString(error)}</>
+const defaultRenderError = (error: UnknownError | unknown) => (
+  <>{Schema.is(UnknownError)(error) ? error.toString() : errorToString(error)}</>
 )
 
 const defaultRenderShutdown = (cause: IntentionalShutdownCause | StoreInterrupted | SyncError) => {
