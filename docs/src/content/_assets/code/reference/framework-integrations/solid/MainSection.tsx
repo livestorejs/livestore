@@ -8,7 +8,6 @@ import { useAppStore } from './livestore/store.ts'
 
 export const MainSection: Component = () => {
   const store = useAppStore()
-  // biome-ignore lint/correctness/useHookAtTopLevel: Solid uses different hook rules than React
   const todos = () => store()?.useQuery(visibleTodos$)
   const todoItems = () => todos()?.() ?? ([] as (typeof tables.todos.Type)[])
 

@@ -142,6 +142,18 @@
           }
         }
       }
+    },
+    {
+      // Disable React hook rules for Solid.js documentation snippets
+      "includes": ["docs/src/content/_assets/code/reference/solid-integration/**"],
+      "linter": {
+        "rules": {
+          "correctness": {
+            "useHookAtTopLevel": "off",
+            "useExhaustiveDependencies": "off"
+          }
+        }
+      }
     }
   ]
 }
