@@ -26,7 +26,7 @@
     "solid-js": "catalog:",
     "typescript": "catalog:",
     "vite": "catalog:",
-    "vite-plugin-solid": "^2.11.8",
+    "vite-plugin-solid": "^2.11.10",
     "vitest": "catalog:"
   },
   "files": [
@@ -47,7 +47,7 @@
   "scripts": {
     "build": "tsc",
     "test": "pnpm run test:client && pnpm run test:ssr",
-    "test:client": "vitest run",
-    "test:ssr": "vitest run --mode ssr"
+    "test:client": "vitest run  --config vitest.client.config.ts",
+    "test:ssr": "vitest run --config vitest.ssr.config.ts"
   }
 }

@@ -1,32 +1,21 @@
-/**
- * Vitest setup file to provide DOM globals for Solid tests in Node environment.
- * This allows Solid tests to run with full reactivity while using Node for WASM loading.
- * Same pattern as React tests - node environment with jsdom globals.
- */
+import { readFile } from 'node:fs/promises'
+import path from 'node:path'
+import { shouldNeverHappen } from '@livestore/utils'
 
-import { JSDOM } from 'jsdom'
+// In jsdom the browser build of wa-sqlite tries to fetch the wasm; jsdom cannot
+// fetch local files, so we serve the compiled wasm from disk via a fetch shim.
+const workspaceRoot = process.env.WORKSPACE_ROOT ?? shouldNeverHappen('WORKSPACE_ROOT is not set')
+const wasmPath = path.join(workspaceRoot, 'packages', '@livestore', 'wa-sqlite', 'dist', 'wa-sqlite.node.wasm')
+const wasmBinary = await readFile(wasmPath)
+const originalFetch = globalThis.fetch.bind(globalThis)
 
-// Setup minimal DOM globals for Solid testing in Node environment
-const dom = new JSDOM('<!DOCTYPE html><html><body></body></html>', {
-  url: 'http://localhost:3000',
-  pretendToBeVisual: true,
-  resources: 'usable',
-})
-
-// Set essential DOM globals that Solid needs
-global.window = dom.window as any
-global.document = dom.window.document
-global.HTMLElement = dom.window.HTMLElement
-global.Element = dom.window.Element
-
-// Add other DOM globals, skipping ones that cause conflicts
-const skipProperties = ['navigator']
-Object.keys(dom.window).forEach((property) => {
-  if (typeof (global as any)[property] === 'undefined' && !skipProperties.includes(property)) {
-    try {
-      ;(global as any)[property] = (dom.window as any)[property]
-    } catch {
-      // Skip properties that can't be set
-    }
+globalThis.fetch = async (input, init) => {
+  if (typeof input === 'string' && input.includes('wa-sqlite') && input.endsWith('.wasm')) {
+    return new Response(wasmBinary, {
+      status: 200,
+      headers: { 'Content-Type': 'application/wasm' },
+    })
   }
-})
+
+  return originalFetch(input, init)
+}

@@ -28,15 +28,18 @@ exports[`useClientDocument > otel > should update the data based on component ke
       },
     },
     {
+      "_name": "client-session-sync-processor:pull",
+      "attributes": {
+        "code.stacktrace": "<STACKTRACE>",
+        "span.label": "⚠︎ Interrupted",
+        "status.interrupted": true,
+      },
+    },
+    {
       "_name": "@livestore/common:LeaderSyncProcessor:push",
       "attributes": {
         "batch": "undefined",
         "batchSize": 1,
-      },
-    },
-    {
-      "_name": "client-session-sync-processor:pull",
-      "attributes": {
         "code.stacktrace": "<STACKTRACE>",
         "span.label": "⚠︎ Interrupted",
         "status.interrupted": true,
@@ -254,7 +257,7 @@ exports[`useClientDocument > should update the data based on component key 1`] =
       "refreshes": 1,
       "sub": [],
       "super": [
-        "node-6",
+        "node-9",
       ],
     },
     {
@@ -292,8 +295,59 @@ exports[`useClientDocument > should update the data based on component key 1`] =
       "super": [],
     },
     {
-      "_tag": "thunk",
+      "_tag": "ref",
       "id": "node-6",
+      "isDestroyed": false,
+      "isDirty": false,
+      "label": "tableRef:__livestore_schema",
+      "meta": {
+        "liveStoreRefType": "table",
+      },
+      "previousResult": {
+        "_tag": "Some",
+        "value": "null",
+      },
+      "refreshes": 0,
+      "sub": [],
+      "super": [],
+    },
+    {
+      "_tag": "ref",
+      "id": "node-7",
+      "isDestroyed": false,
+      "isDirty": false,
+      "label": "tableRef:__livestore_schema_event_defs",
+      "meta": {
+        "liveStoreRefType": "table",
+      },
+      "previousResult": {
+        "_tag": "Some",
+        "value": "null",
+      },
+      "refreshes": 0,
+      "sub": [],
+      "super": [],
+    },
+    {
+      "_tag": "ref",
+      "id": "node-8",
+      "isDestroyed": false,
+      "isDirty": false,
+      "label": "tableRef:__livestore_session_changeset",
+      "meta": {
+        "liveStoreRefType": "table",
+      },
+      "previousResult": {
+        "_tag": "Some",
+        "value": "null",
+      },
+      "refreshes": 0,
+      "sub": [],
+      "super": [],
+    },
+    {
+      "_tag": "thunk",
+      "id": "node-9",
       "isDestroyed": false,
       "isDirty": false,
       "label": "UserInfo.get:u1:results",
@@ -309,7 +363,7 @@ exports[`useClientDocument > should update the data based on component key 1`] =
         "node-3",
       ],
       "super": [
-        "node-7",
+        "node-10",
       ],
     },
   ],
@@ -317,12 +371,12 @@ exports[`useClientDocument > should update the data based on component key 1`] =
   "effects": [
     {
       "_tag": "effect",
-      "id": "node-7",
+      "id": "node-10",
       "invocations": 1,
       "isDestroyed": false,
       "label": "subscribe:UserInfo.get:u1",
       "sub": [
-        "node-6",
+        "node-9",
       ],
     },
   ],
@@ -382,7 +436,7 @@ exports[`useClientDocument > should update the data based on component key 2`] =
       "refreshes": 2,
       "sub": [],
       "super": [
-        "node-8",
+        "node-11",
       ],
     },
     {
@@ -420,8 +474,59 @@ exports[`useClientDocument > should update the data based on component key 2`] =
       "super": [],
     },
     {
-      "_tag": "thunk",
+      "_tag": "ref",
+      "id": "node-6",
+      "isDestroyed": false,
+      "isDirty": false,
+      "label": "tableRef:__livestore_schema",
+      "meta": {
+        "liveStoreRefType": "table",
+      },
+      "previousResult": {
+        "_tag": "Some",
+        "value": "null",
+      },
+      "refreshes": 0,
+      "sub": [],
+      "super": [],
+    },
+    {
+      "_tag": "ref",
+      "id": "node-7",
+      "isDestroyed": false,
+      "isDirty": false,
+      "label": "tableRef:__livestore_schema_event_defs",
+      "meta": {
+        "liveStoreRefType": "table",
+      },
+      "previousResult": {
+        "_tag": "Some",
+        "value": "null",
+      },
+      "refreshes": 0,
+      "sub": [],
+      "super": [],
+    },
+    {
+      "_tag": "ref",
       "id": "node-8",
+      "isDestroyed": false,
+      "isDirty": false,
+      "label": "tableRef:__livestore_session_changeset",
+      "meta": {
+        "liveStoreRefType": "table",
+      },
+      "previousResult": {
+        "_tag": "Some",
+        "value": "null",
+      },
+      "refreshes": 0,
+      "sub": [],
+      "super": [],
+    },
+    {
+      "_tag": "thunk",
+      "id": "node-11",
       "isDestroyed": false,
       "isDirty": false,
       "label": "UserInfo.get:u2:results",
@@ -437,7 +542,7 @@ exports[`useClientDocument > should update the data based on component key 2`] =
         "node-3",
       ],
       "super": [
-        "node-9",
+        "node-12",
       ],
     },
   ],
@@ -445,12 +550,12 @@ exports[`useClientDocument > should update the data based on component key 2`] =
   "effects": [
     {
       "_tag": "effect",
-      "id": "node-9",
+      "id": "node-12",
       "invocations": 1,
       "isDestroyed": false,
       "label": "subscribe:UserInfo.get:u2",
       "sub": [
-        "node-8",
+        "node-11",
       ],
     },
   ],

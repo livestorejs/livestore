@@ -41,8 +41,8 @@ describe('useQuery SSR', () => {
       const html = renderToString(() => <TodoList />)
 
       expect(html).toContain('SSR Todo')
-      expect(html).toContain('<ul>')
-      expect(html).toContain('<li>')
+      expect(html).toContain('<ul')
+      expect(html).toContain('<li')
     }).pipe(provideOtel({}), Effect.scoped, Effect.runPromise)
   })
 
