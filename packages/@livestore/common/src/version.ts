@@ -2,7 +2,7 @@
 // import packageJson from '../package.json' with { type: 'json' }
 // export const liveStoreVersion = packageJson.version
 
-const _liveStoreVersion = '0.4.0-dev.21' as const
+const _liveStoreVersion = '0.4.0-dev.22' as const
 
 /**
  * Current LiveStore version used for DevTools version compatibility checks.

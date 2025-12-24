@@ -162,7 +162,7 @@ overrides:
   '@livestore/cli': workspace:*
   '@livestore/common': workspace:*
   '@livestore/devtools-expo': workspace:*
-  '@livestore/devtools-vite': 0.4.0-dev.21
+  '@livestore/devtools-vite': 0.4.0-dev.22
   '@livestore/devtools-web-common': workspace:*
   '@livestore/livestore': workspace:*
   '@livestore/peer-deps': workspace:*
@@ -289,7 +289,7 @@ importers:
         version: 0.28.1
       '@tailwindcss/vite':
         specifier: 'catalog:'
-        version: 4.1.13(vite@7.2.6(@types/node@24.10.1)(jiti@2.6.1)(lightningcss@1.30.2)(terser@5.44.1)(tsx@4.21.0)(yaml@2.8.2))
+        version: 4.1.13(vite@7.2.4(@types/node@24.10.1)(jiti@2.6.1)(lightningcss@1.30.2)(terser@5.44.1)(tsx@4.21.0)(yaml@2.8.2))
       '@types/react':
         specifier: 'catalog:'
         version: 19.1.13
@@ -415,8 +415,8 @@ importers:
         specifier: workspace:*
         version: link:../../../../../packages/@livestore/devtools-expo
       '@livestore/devtools-vite':
-        specifier: 0.4.0-dev.21
-        version: 0.4.0-dev.21(vite@7.2.4(@types/node@24.10.1)(jiti@2.6.1)(lightningcss@1.30.2)(terser@5.44.1)(tsx@4.21.0)(yaml@2.8.2))
+        specifier: 0.4.0-dev.22
+        version: 0.4.0-dev.22(vite@7.2.4(@types/node@24.10.1)(jiti@2.6.1)(lightningcss@1.30.2)(terser@5.44.1)(tsx@4.21.0)(yaml@2.8.2))
       '@livestore/livestore':
         specifier: workspace:*
         version: link:../../../../../packages/@livestore/livestore
@@ -557,8 +557,8 @@ importers:
         specifier: ^1.13.12
         version: 1.16.1(vite@7.2.6(@types/node@24.10.1)(jiti@2.6.1)(lightningcss@1.30.2)(terser@5.44.1)(tsx@4.21.0)(yaml@2.8.2))(workerd@1.20251202.0)(wrangler@4.52.1)
       '@livestore/devtools-vite':
-        specifier: 0.4.0-dev.21
-        version: 0.4.0-dev.21(vite@7.2.6(@types/node@24.10.1)(jiti@2.6.1)(lightningcss@1.30.2)(terser@5.44.1)(tsx@4.21.0)(yaml@2.8.2))
+        specifier: 0.4.0-dev.22
+        version: 0.4.0-dev.22(vite@7.2.6(@types/node@24.10.1)(jiti@2.6.1)(lightningcss@1.30.2)(terser@5.44.1)(tsx@4.21.0)(yaml@2.8.2))
       '@playwright/test':
         specifier: ^1.56.0
         version: 1.57.0
@@ -960,8 +960,8 @@ importers:
         version: 6.0.0(react@19.1.0)
     devDependencies:
       '@livestore/devtools-vite':
-        specifier: 0.4.0-dev.21
-        version: 0.4.0-dev.21(vite@7.2.6(@types/node@24.10.1)(jiti@2.6.1)(lightningcss@1.30.2)(terser@5.44.1)(tsx@4.21.0)(yaml@2.8.2))
+        specifier: 0.4.0-dev.22
+        version: 0.4.0-dev.22(vite@7.2.6(@types/node@24.10.1)(jiti@2.6.1)(lightningcss@1.30.2)(terser@5.44.1)(tsx@4.21.0)(yaml@2.8.2))
       '@tailwindcss/vite':
         specifier: ^4.1.13
         version: 4.1.17(vite@7.2.6(@types/node@24.10.1)(jiti@2.6.1)(lightningcss@1.30.2)(terser@5.44.1)(tsx@4.21.0)(yaml@2.8.2))
@@ -1093,8 +1093,8 @@ importers:
         specifier: ^1.13.12
         version: 1.16.1(vite@7.2.6(@types/node@24.10.1)(jiti@2.6.1)(lightningcss@1.30.2)(terser@5.44.1)(tsx@4.21.0)(yaml@2.8.2))(workerd@1.20251202.0)(wrangler@4.52.1)
       '@livestore/devtools-vite':
-        specifier: 0.4.0-dev.21
-        version: 0.4.0-dev.21(vite@7.2.6(@types/node@24.10.1)(jiti@2.6.1)(lightningcss@1.30.2)(terser@5.44.1)(tsx@4.21.0)(yaml@2.8.2))
+        specifier: 0.4.0-dev.22
+        version: 0.4.0-dev.22(vite@7.2.6(@types/node@24.10.1)(jiti@2.6.1)(lightningcss@1.30.2)(terser@5.44.1)(tsx@4.21.0)(yaml@2.8.2))
       '@playwright/test':
         specifier: ^1.56.0
         version: 1.57.0
@@ -1187,8 +1187,8 @@ importers:
         version: 6.0.0(react@19.1.0)
     devDependencies:
       '@livestore/devtools-vite':
-        specifier: 0.4.0-dev.21
-        version: 0.4.0-dev.21(vite@7.2.6(@types/node@24.10.1)(jiti@2.6.1)(lightningcss@1.30.2)(terser@5.44.1)(tsx@4.21.0)(yaml@2.8.2))
+        specifier: 0.4.0-dev.22
+        version: 0.4.0-dev.22(vite@7.2.6(@types/node@24.10.1)(jiti@2.6.1)(lightningcss@1.30.2)(terser@5.44.1)(tsx@4.21.0)(yaml@2.8.2))
       '@types/node':
         specifier: ^24.9.2
         version: 24.10.1
@@ -1254,8 +1254,8 @@ importers:
         specifier: 4.20251118.0
         version: 4.20251118.0
       '@livestore/devtools-vite':
-        specifier: 0.4.0-dev.21
-        version: 0.4.0-dev.21(vite@7.2.6(@types/node@24.10.1)(jiti@2.6.1)(lightningcss@1.30.2)(terser@5.44.1)(tsx@4.21.0)(yaml@2.8.2))
+        specifier: 0.4.0-dev.22
+        version: 0.4.0-dev.22(vite@7.2.6(@types/node@24.10.1)(jiti@2.6.1)(lightningcss@1.30.2)(terser@5.44.1)(tsx@4.21.0)(yaml@2.8.2))
       '@playwright/test':
         specifier: ^1.56.0
         version: 1.57.0
@@ -1312,8 +1312,8 @@ importers:
         specifier: 4.20251118.0
         version: 4.20251118.0
       '@livestore/devtools-vite':
-        specifier: 0.4.0-dev.21
-        version: 0.4.0-dev.21(vite@7.2.6(@types/node@24.10.1)(jiti@2.6.1)(lightningcss@1.30.2)(terser@5.44.1)(tsx@4.21.0)(yaml@2.8.2))
+        specifier: 0.4.0-dev.22
+        version: 0.4.0-dev.22(vite@7.2.6(@types/node@24.10.1)(jiti@2.6.1)(lightningcss@1.30.2)(terser@5.44.1)(tsx@4.21.0)(yaml@2.8.2))
       '@playwright/test':
         specifier: ^1.56.0
         version: 1.57.0
@@ -1385,8 +1385,8 @@ importers:
         specifier: 4.20251118.0
         version: 4.20251118.0
       '@livestore/devtools-vite':
-        specifier: 0.4.0-dev.21
-        version: 0.4.0-dev.21(vite@7.2.6(@types/node@24.10.1)(jiti@2.6.1)(lightningcss@1.30.2)(terser@5.44.1)(tsx@4.21.0)(yaml@2.8.2))
+        specifier: 0.4.0-dev.22
+        version: 0.4.0-dev.22(vite@7.2.6(@types/node@24.10.1)(jiti@2.6.1)(lightningcss@1.30.2)(terser@5.44.1)(tsx@4.21.0)(yaml@2.8.2))
       '@playwright/test':
         specifier: ^1.56.0
         version: 1.57.0
@@ -1446,8 +1446,8 @@ importers:
         version: 2.4.3
     devDependencies:
       '@livestore/devtools-vite':
-        specifier: 0.4.0-dev.21
-        version: 0.4.0-dev.21(vite@7.2.6(@types/node@24.10.1)(jiti@2.6.1)(lightningcss@1.30.2)(terser@5.44.1)(tsx@4.21.0)(yaml@2.8.2))
+        specifier: 0.4.0-dev.22
+        version: 0.4.0-dev.22(vite@7.2.6(@types/node@24.10.1)(jiti@2.6.1)(lightningcss@1.30.2)(terser@5.44.1)(tsx@4.21.0)(yaml@2.8.2))
       '@playwright/test':
         specifier: ^1.56.0
         version: 1.57.0
@@ -1559,8 +1559,8 @@ importers:
         specifier: 4.20251118.0
         version: 4.20251118.0
       '@livestore/devtools-vite':
-        specifier: 0.4.0-dev.21
-        version: 0.4.0-dev.21(vite@7.2.6(@types/node@24.10.1)(jiti@2.6.1)(lightningcss@1.30.2)(terser@5.44.1)(tsx@4.21.0)(yaml@2.8.2))
+        specifier: 0.4.0-dev.22
+        version: 0.4.0-dev.22(vite@7.2.6(@types/node@24.10.1)(jiti@2.6.1)(lightningcss@1.30.2)(terser@5.44.1)(tsx@4.21.0)(yaml@2.8.2))
       '@playwright/test':
         specifier: ^1.56.0
         version: 1.57.0
@@ -1608,8 +1608,8 @@ importers:
         specifier: 4.20251118.0
         version: 4.20251118.0
       '@livestore/devtools-vite':
-        specifier: 0.4.0-dev.21
-        version: 0.4.0-dev.21(vite@7.2.6(@types/node@24.10.1)(jiti@2.6.1)(lightningcss@1.30.2)(terser@5.44.1)(tsx@4.21.0)(yaml@2.8.2))
+        specifier: 0.4.0-dev.22
+        version: 0.4.0-dev.22(vite@7.2.6(@types/node@24.10.1)(jiti@2.6.1)(lightningcss@1.30.2)(terser@5.44.1)(tsx@4.21.0)(yaml@2.8.2))
       '@playwright/test':
         specifier: ^1.56.0
         version: 1.57.0
@@ -1663,8 +1663,8 @@ importers:
         specifier: 4.20251118.0
         version: 4.20251118.0
       '@livestore/devtools-vite':
-        specifier: 0.4.0-dev.21
-        version: 0.4.0-dev.21(vite@7.2.6(@types/node@24.10.1)(jiti@2.6.1)(lightningcss@1.30.2)(terser@5.44.1)(tsx@4.21.0)(yaml@2.8.2))
+        specifier: 0.4.0-dev.22
+        version: 0.4.0-dev.22(vite@7.2.6(@types/node@24.10.1)(jiti@2.6.1)(lightningcss@1.30.2)(terser@5.44.1)(tsx@4.21.0)(yaml@2.8.2))
       '@playwright/test':
         specifier: ^1.56.0
         version: 1.57.0
@@ -1724,8 +1724,8 @@ importers:
         specifier: 4.20251118.0
         version: 4.20251118.0
       '@livestore/devtools-vite':
-        specifier: 0.4.0-dev.21
-        version: 0.4.0-dev.21(vite@7.2.6(@types/node@24.10.1)(jiti@2.6.1)(lightningcss@1.30.2)(terser@5.44.1)(tsx@4.21.0)(yaml@2.8.2))
+        specifier: 0.4.0-dev.22
+        version: 0.4.0-dev.22(vite@7.2.6(@types/node@24.10.1)(jiti@2.6.1)(lightningcss@1.30.2)(terser@5.44.1)(tsx@4.21.0)(yaml@2.8.2))
       '@playwright/test':
         specifier: ^1.56.0
         version: 1.57.0
@@ -1791,8 +1791,8 @@ importers:
         version: 2.4.3
     devDependencies:
       '@livestore/devtools-vite':
-        specifier: 0.4.0-dev.21
-        version: 0.4.0-dev.21(vite@7.2.6(@types/node@24.10.1)(jiti@2.6.1)(lightningcss@1.30.2)(terser@5.44.1)(tsx@4.21.0)(yaml@2.8.2))
+        specifier: 0.4.0-dev.22
+        version: 0.4.0-dev.22(vite@7.2.6(@types/node@24.10.1)(jiti@2.6.1)(lightningcss@1.30.2)(terser@5.44.1)(tsx@4.21.0)(yaml@2.8.2))
       '@playwright/test':
         specifier: ^1.56.0
         version: 1.57.0
@@ -1876,8 +1876,8 @@ importers:
         version: 2.4.3
     devDependencies:
       '@livestore/devtools-vite':
-        specifier: 0.4.0-dev.21
-        version: 0.4.0-dev.21(vite@7.2.6(@types/node@24.10.1)(jiti@2.6.1)(lightningcss@1.30.2)(terser@5.44.1)(tsx@4.21.0)(yaml@2.8.2))
+        specifier: 0.4.0-dev.22
+        version: 0.4.0-dev.22(vite@7.2.6(@types/node@24.10.1)(jiti@2.6.1)(lightningcss@1.30.2)(terser@5.44.1)(tsx@4.21.0)(yaml@2.8.2))
       '@playwright/test':
         specifier: ^1.56.0
         version: 1.57.0
@@ -1971,8 +1971,8 @@ importers:
         specifier: workspace:*
         version: link:../common
       '@livestore/devtools-vite':
-        specifier: 0.4.0-dev.21
-        version: 0.4.0-dev.21(vite@7.2.4(@types/node@24.10.1)(jiti@2.6.1)(lightningcss@1.30.2)(terser@5.44.1)(tsx@4.21.0)(yaml@2.8.2))
+        specifier: 0.4.0-dev.22
+        version: 0.4.0-dev.22(vite@7.2.4(@types/node@24.10.1)(jiti@2.6.1)(lightningcss@1.30.2)(terser@5.44.1)(tsx@4.21.0)(yaml@2.8.2))
       '@livestore/sqlite-wasm':
         specifier: workspace:*
         version: link:../sqlite-wasm
@@ -2673,7 +2673,7 @@ importers:
     dependencies:
       '@kitschpatrol/tldraw-cli':
         specifier: 5.0.5
-        version: 5.0.5(typescript@5.9.3)
+        version: 5.0.5(typescript@5.9.2)
       '@livestore/utils':
         specifier: workspace:*
         version: link:../../@livestore/utils
@@ -2686,7 +2686,7 @@ importers:
         version: 24.10.1
       astro:
         specifier: ^5.13.4
-        version: 5.16.4(@netlify/blobs@10.4.2)(@types/node@24.10.1)(jiti@2.6.1)(lightningcss@1.30.2)(rollup@4.53.3)(terser@5.44.1)(tsx@4.21.0)(typescript@5.9.3)(yaml@2.8.2)
+        version: 5.16.4(@netlify/blobs@10.4.2)(@types/node@24.10.1)(jiti@2.6.1)(lightningcss@1.30.2)(rollup@4.53.3)(terser@5.44.1)(tsx@4.21.0)(typescript@5.9.2)(yaml@2.8.2)
       vitest:
         specifier: 'catalog:'
         version: 3.2.4(@types/debug@4.1.12)(@types/node@24.10.1)(@vitest/ui@3.2.4)(jiti@2.6.1)(jsdom@26.1.0)(lightningcss@1.30.2)(terser@5.44.1)(tsx@4.21.0)(yaml@2.8.2)
@@ -2760,7 +2760,7 @@ importers:
         version: 1.57.0
       '@tailwindcss/vite':
         specifier: 'catalog:'
-        version: 4.1.13(vite@7.2.6(@types/node@24.10.1)(jiti@2.6.1)(lightningcss@1.30.2)(terser@5.44.1)(tsx@4.21.0)(yaml@2.8.2))
+        version: 4.1.13(vite@7.2.4(@types/node@24.10.1)(jiti@2.6.1)(lightningcss@1.30.2)(terser@5.44.1)(tsx@4.21.0)(yaml@2.8.2))
       '@types/node':
         specifier: 'catalog:'
         version: 24.10.1
@@ -2834,8 +2834,8 @@ importers:
         specifier: workspace:*
         version: link:../../packages/@livestore/common
       '@livestore/devtools-vite':
-        specifier: 0.4.0-dev.21
-        version: 0.4.0-dev.21(vite@7.2.4(@types/node@24.10.1)(jiti@2.6.1)(lightningcss@1.30.2)(terser@5.44.1)(tsx@4.21.0)(yaml@2.8.2))
+        specifier: 0.4.0-dev.22
+        version: 0.4.0-dev.22(vite@7.2.4(@types/node@24.10.1)(jiti@2.6.1)(lightningcss@1.30.2)(terser@5.44.1)(tsx@4.21.0)(yaml@2.8.2))
       '@livestore/effect-playwright':
         specifier: workspace:*
         version: link:../../packages/@livestore/effect-playwright
@@ -3062,8 +3062,8 @@ importers:
         version: 7.2.4(@types/node@24.10.1)(jiti@2.6.1)(lightningcss@1.30.2)(terser@5.44.1)(tsx@4.21.0)(yaml@2.8.2)
     devDependencies:
       '@livestore/devtools-vite':
-        specifier: 0.4.0-dev.21
-        version: 0.4.0-dev.21(vite@7.2.4(@types/node@24.10.1)(jiti@2.6.1)(lightningcss@1.30.2)(terser@5.44.1)(tsx@4.21.0)(yaml@2.8.2))
+        specifier: 0.4.0-dev.22
+        version: 0.4.0-dev.22(vite@7.2.4(@types/node@24.10.1)(jiti@2.6.1)(lightningcss@1.30.2)(terser@5.44.1)(tsx@4.21.0)(yaml@2.8.2))
       '@playwright/test':
         specifier: 'catalog:'
         version: 1.57.0
@@ -5100,7 +5100,7 @@ packages:
 
   '@expo/bunyan@4.0.1':
     resolution: {integrity: sha512-+Lla7nYSiHZirgK+U/uYzsLv/X+HaJienbD5AKX1UQZHYfWaP+9uuQluRB4GrEVWF0GZ7vEVp/jzaOT9k/SQlg==}
-    engines: {'0': node >=0.10.0}
+    engines: {node: '>=0.10.0'}
 
   '@expo/cli@54.0.10':
     resolution: {integrity: sha512-iw9gAnN6+PKWWLIyYmiskY/wzZjuFMctunqGXuC8BGATWgtr/HpzjVqWbcL3KIX/GvEBCCh74Tkckrh+Ylxh5Q==}
@@ -5924,8 +5924,8 @@ packages:
     engines: {node: '>=20.19.0'}
     hasBin: true
 
-  '@livestore/devtools-vite@0.4.0-dev.21':
-    resolution: {integrity: sha512-SlHdopKsFMg58UYRZm5EUuDYb+FXTGEsdYeo0kN6A7wyu1o+pcxXZW/Wdse8Ng4gMS5WoZbHqFwrSu+3SsH+sA==}
+  '@livestore/devtools-vite@0.4.0-dev.22':
+    resolution: {integrity: sha512-J+hKbCPmdXGNW5Y6JK3ia0bHXzEi0zIRXP6xJATm77arCCmIYU2SrQanK4s/9oAGfx3VARONupYCtC+a+JNbsQ==}
     peerDependencies:
       vite: ^7.2.4
 
@@ -6154,6 +6154,7 @@ packages:
   '@oclif/screen@3.0.8':
     resolution: {integrity: sha512-yx6KAqlt3TAHBduS2fMQtJDL2ufIHnDRArrJEOoTTuizxqmjLT+psGYOHpmMl3gvQpFJ11Hs76guUUktzAF9Bg==}
     engines: {node: '>=12.0.0'}
+    deprecated: Package no longer supported. Contact Support at https://www.npmjs.com/support for more info.
 
   '@oozcitak/dom@2.0.2':
     resolution: {integrity: sha512-GjpKhkSYC3Mj4+lfwEyI1dqnsKTgwGy48ytZEhm4A/xnH/8z9M3ZVXKr/YGQi3uCLs1AEBS+x5T2JPiueEDW8w==}
@@ -9204,6 +9205,7 @@ packages:
   '@xmldom/xmldom@0.7.13':
     resolution: {integrity: sha512-lm2GW5PkosIzccsaZIz7tp8cPADSIlIHWDFTR1N0SzfinhhYgeIQjFMz4rYzanCScr3DqQLeomUDArp6MWKm+g==}
     engines: {node: '>=10.0.0'}
+    deprecated: this version is no longer supported, please update to at least 0.8.*
 
   '@xmldom/xmldom@0.8.11':
     resolution: {integrity: sha512-cQzWCtO6C8TQiYl1ruKNn2U6Ao4o4WBBcbL61yJl84x+j5sOWWFU9X7DpND8XZG3daDppSsigMdfAIl2upQBRw==}
@@ -11768,9 +11770,11 @@ packages:
 
   glob@6.0.4:
     resolution: {integrity: sha512-MKZeRNyYZAVVVG1oZeLaWie1uweH40m9AZwIwxyPbTSX4hHrVYSzLg0Ro5Z5R7XKkIX+Cc6oD1rqeDJnwsB8/A==}
+    deprecated: Glob versions prior to v9 are no longer supported
 
   glob@7.2.3:
     resolution: {integrity: sha512-nFR0zLpU2YCaRxwoCJvL6UvCH2JFyFVIvwTLsIf21AuHlMskA1hhTdk+LlYJtOlYt9v6dvszD2BGRqBL+iQK9Q==}
+    deprecated: Glob versions prior to v9 are no longer supported
 
   global-dirs@0.1.1:
     resolution: {integrity: sha512-NknMLn7F2J7aflwFOlGdNIuCDpN3VGoSoB+aap3KABFWbHVn1TCgFC+np23J8W2BiZbjfEw3BFBycSMv1AFblg==}
@@ -11931,6 +11935,7 @@ packages:
 
   hast@1.0.0:
     resolution: {integrity: sha512-vFUqlRV5C+xqP76Wwq2SrM0kipnmpxJm7OfvVXpB35Fp+Fn4MV+ozr+JZr5qFvyR1q/U+Foim2x+3P+x9S1PLA==}
+    deprecated: Renamed to rehype
 
   hastscript@9.0.1:
     resolution: {integrity: sha512-g7df9rMFX/SPi34tyGCyUBREQoKkapwdY/T04Qn9TDWfHhAYt4/I0gMVirzK5wEzeUqIjEB+LXC/ypb7Aqno5w==}
@@ -12136,6 +12141,7 @@ packages:
 
   inflight@1.0.6:
     resolution: {integrity: sha512-k92I/b08q4wvFscXCLvqfsHCrjrF7yiXsQuIVvVE7N82W3+aqpzuUdBbfhWcy/FZR3/4IgflMgKLOsvPDrGCJA==}
+    deprecated: This module is not supported, and leaks memory. Do not use it. Check out lru-cache if you want a good and tested way to coalesce async requests by a key value, which is much more comprehensive and powerful.
 
   inherits@2.0.3:
     resolution: {integrity: sha512-x00IRNXNy63jwGkJmzPigoySHbaqpNuzKbBOmzK+g2OdZpQ9w+sxCN+VSB3ja7IAge2OP2qpfxTjeNcyjmW1uw==}
@@ -12608,6 +12614,7 @@ packages:
   keygrip@1.1.0:
     resolution: {integrity: sha512-iYSchDJ+liQ8iwbSI2QqsQOvqv58eJCEanyJPJi+Khyu8smkcKSFUCbPwzFcL7YVtZ6eONjqRX/38caJ7QjRAQ==}
     engines: {node: '>= 0.6'}
+    deprecated: Package no longer supported. Contact Support at https://www.npmjs.com/support for more info.
 
   khroma@2.1.0:
     resolution: {integrity: sha512-Ls993zuzfayK269Svk9hzpeGUKob/sIgZzyHYdjQoAdQetRKpOLj+k/QQQ/6Qi0Yz65mlROrfd+Ev+1+7dz9Kw==}
@@ -12878,6 +12885,7 @@ packages:
 
   lodash.get@4.4.2:
     resolution: {integrity: sha512-z+Uw/vLuy6gQe8cfaFWD7p0wVv8fJl3mbzXh33RS+0oW2wvUqiRXiQ69gLWSLpgB5/6sU+r6BlQR0MBILadqTQ==}
+    deprecated: This package is deprecated. Use the optional chaining (?.) operator instead.
 
   lodash.includes@4.3.0:
     resolution: {integrity: sha512-W3Bx6mdkRTGtlJISOvVD/lbqjTlPPUDTMnlXZFnVwi9NKJ6tiAk6LVdlhZMm17VZisqhKcgzpO5Wz91PCt5b0w==}
@@ -13686,6 +13694,7 @@ packages:
   node-domexception@1.0.0:
     resolution: {integrity: sha512-/jKZoMpw0F8GRwl4/eLROPA3cfcXtLApP0QzLmUT/HuPCZWyB7IY9ZrMeKw2O/nFIqPQB3PVM9aYm0F312AXDQ==}
     engines: {node: '>=10.5.0'}
+    deprecated: Use your platform's native DOMException instead
 
   node-fetch-native@1.6.7:
     resolution: {integrity: sha512-g9yhqoedzIUm0nTnTqAQvueMPVOuIY16bqgAJJC8XOOubYFNwz6IER9qs0Gq2Xd0+CecCKFjtdDTMA4u4xG06Q==}
@@ -14459,6 +14468,7 @@ packages:
   puppeteer@23.11.1:
     resolution: {integrity: sha512-53uIX3KR5en8l7Vd8n5DUv90Ae9QDQsyIthaUFVzwV6yU750RjqRznEtNMBT20VthqAdemnJN+hxVdmMHKt7Zw==}
     engines: {node: '>=18'}
+    deprecated: < 24.15.0 is no longer supported
     hasBin: true
 
   pure-rand@6.1.0:
@@ -15046,10 +15056,12 @@ packages:
 
   rimraf@2.4.5:
     resolution: {integrity: sha512-J5xnxTyqaiw06JjMftq7L9ouA448dw/E7dKghkP9WpKNuwmARNNg+Gk8/u5ryb9N/Yo2+z3MCwuqFK/+qPOPfQ==}
+    deprecated: Rimraf versions prior to v4 are no longer supported
     hasBin: true
 
   rimraf@3.0.2:
     resolution: {integrity: sha512-JZkJMZkAGFFPP2YqXZXPbMlMBgsxzE8ILs4lMIX/2o0L9UBw9O/Y3o6wFw/i9YLapcUJWwqbi3kdxIPdC62TIA==}
+    deprecated: Rimraf versions prior to v4 are no longer supported
     hasBin: true
 
   rimraf@5.0.10:
@@ -15626,6 +15638,7 @@ packages:
 
   sudo-prompt@9.1.1:
     resolution: {integrity: sha512-es33J1g2HjMpyAhz8lOR+ICmXXAqTuKbuXuUWLhOLew20oN9oUCgCJx615U/v7aioZg7IX5lIh9x34vwneu4pA==}
+    deprecated: Package no longer supported. Contact Support at https://www.npmjs.com/support for more info.
 
   superjson@2.2.6:
     resolution: {integrity: sha512-H+ue8Zo4vJmV2nRjpx86P35lzwDT3nItnIsocgumgr0hHMQ+ZGq5vrERg9kJBo5AWGmxZDhzDo+WVIJqkB0cGA==}
@@ -20278,12 +20291,12 @@ snapshots:
       '@jridgewell/resolve-uri': 3.1.2
       '@jridgewell/sourcemap-codec': 1.5.5
 
-  '@kitschpatrol/tldraw-cli@5.0.5(typescript@5.9.3)':
+  '@kitschpatrol/tldraw-cli@5.0.5(typescript@5.9.2)':
     dependencies:
       '@fontsource/inter': 5.2.8
       '@hono/node-server': 1.19.6(hono@4.10.7)
       hono: 4.10.7
-      puppeteer: 23.11.1(typescript@5.9.3)
+      puppeteer: 23.11.1(typescript@5.9.2)
       uint8array-extras: 1.5.0
       yargs: 18.0.0
     transitivePeerDependencies:
@@ -20295,13 +20308,13 @@ snapshots:
       - typescript
       - utf-8-validate
 
-  '@livestore/devtools-vite@0.4.0-dev.21(vite@7.2.4(@types/node@24.10.1)(jiti@2.6.1)(lightningcss@1.30.2)(terser@5.44.1)(tsx@4.21.0)(yaml@2.8.2))':
+  '@livestore/devtools-vite@0.4.0-dev.22(vite@7.2.4(@types/node@24.10.1)(jiti@2.6.1)(lightningcss@1.30.2)(terser@5.44.1)(tsx@4.21.0)(yaml@2.8.2))':
     dependencies:
       '@livestore/adapter-web': link:packages/@livestore/adapter-web
       '@livestore/utils': link:packages/@livestore/utils
       vite: 7.2.4(@types/node@24.10.1)(jiti@2.6.1)(lightningcss@1.30.2)(terser@5.44.1)(tsx@4.21.0)(yaml@2.8.2)
 
-  '@livestore/devtools-vite@0.4.0-dev.21(vite@7.2.6(@types/node@24.10.1)(jiti@2.6.1)(lightningcss@1.30.2)(terser@5.44.1)(tsx@4.21.0)(yaml@2.8.2))':
+  '@livestore/devtools-vite@0.4.0-dev.22(vite@7.2.6(@types/node@24.10.1)(jiti@2.6.1)(lightningcss@1.30.2)(terser@5.44.1)(tsx@4.21.0)(yaml@2.8.2))':
     dependencies:
       '@livestore/adapter-web': link:packages/@livestore/adapter-web
       '@livestore/utils': link:packages/@livestore/utils
@@ -23450,12 +23463,12 @@ snapshots:
       postcss-selector-parser: 6.0.10
       tailwindcss: 4.1.17
 
-  '@tailwindcss/vite@4.1.13(vite@7.2.6(@types/node@24.10.1)(jiti@2.6.1)(lightningcss@1.30.2)(terser@5.44.1)(tsx@4.21.0)(yaml@2.8.2))':
+  '@tailwindcss/vite@4.1.13(vite@7.2.4(@types/node@24.10.1)(jiti@2.6.1)(lightningcss@1.30.2)(terser@5.44.1)(tsx@4.21.0)(yaml@2.8.2))':
     dependencies:
       '@tailwindcss/node': 4.1.13
       '@tailwindcss/oxide': 4.1.13
       tailwindcss: 4.1.13
-      vite: 7.2.6(@types/node@24.10.1)(jiti@2.6.1)(lightningcss@1.30.2)(terser@5.44.1)(tsx@4.21.0)(yaml@2.8.2)
+      vite: 7.2.4(@types/node@24.10.1)(jiti@2.6.1)(lightningcss@1.30.2)(terser@5.44.1)(tsx@4.21.0)(yaml@2.8.2)
 
   '@tailwindcss/vite@4.1.17(vite@7.2.6(@types/node@24.10.1)(jiti@2.6.1)(lightningcss@1.30.2)(terser@5.44.1)(tsx@4.21.0)(yaml@2.8.2))':
     dependencies:
@@ -25535,108 +25548,6 @@ snapshots:
       - uploadthing
       - yaml
 
-  astro@5.16.4(@netlify/blobs@10.4.2)(@types/node@24.10.1)(jiti@2.6.1)(lightningcss@1.30.2)(rollup@4.53.3)(terser@5.44.1)(tsx@4.21.0)(typescript@5.9.3)(yaml@2.8.2):
-    dependencies:
-      '@astrojs/compiler': 2.13.0
-      '@astrojs/internal-helpers': 0.7.5
-      '@astrojs/markdown-remark': 6.3.9
-      '@astrojs/telemetry': 3.3.0
-      '@capsizecss/unpack': 3.0.1
-      '@oslojs/encoding': 1.1.0
-      '@rollup/pluginutils': 5.3.0(rollup@4.53.3)
-      acorn: 8.15.0
-      aria-query: 5.3.2
-      axobject-query: 4.1.0
-      boxen: 8.0.1
-      ci-info: 4.3.1
-      clsx: 2.1.1
-      common-ancestor-path: 1.0.1
-      cookie: 1.1.1
-      cssesc: 3.0.0
-      debug: 4.4.3(supports-color@8.1.1)
-      deterministic-object-hash: 2.0.2
-      devalue: 5.5.0
-      diff: 5.2.0
-      dlv: 1.1.3
-      dset: 3.1.4
-      es-module-lexer: 1.7.0
-      esbuild: 0.25.12
-      estree-walker: 3.0.3
-      flattie: 1.1.1
-      fontace: 0.3.1
-      github-slugger: 2.0.0
-      html-escaper: 3.0.3
-      http-cache-semantics: 4.2.0
-      import-meta-resolve: 4.2.0
-      js-yaml: 4.1.1
-      magic-string: 0.30.21
-      magicast: 0.5.1
-      mrmime: 2.0.1
-      neotraverse: 0.6.18
-      p-limit: 6.2.0
-      p-queue: 8.1.1
-      package-manager-detector: 1.6.0
-      piccolore: 0.1.3
-      picomatch: 4.0.3
-      prompts: 2.4.2
-      rehype: 13.0.2
-      semver: 7.7.3
-      shiki: 3.19.0
-      smol-toml: 1.5.2
-      svgo: 4.0.0
-      tinyexec: 1.0.2
-      tinyglobby: 0.2.15
-      tsconfck: 3.1.6(typescript@5.9.3)
-      ultrahtml: 1.6.0
-      unifont: 0.6.0
-      unist-util-visit: 5.0.0
-      unstorage: 1.17.3(@netlify/blobs@10.4.2)
-      vfile: 6.0.3
-      vite: 6.4.1(@types/node@24.10.1)(jiti@2.6.1)(lightningcss@1.30.2)(terser@5.44.1)(tsx@4.21.0)(yaml@2.8.2)
-      vitefu: 1.1.1(vite@6.4.1(@types/node@24.10.1)(jiti@2.6.1)(lightningcss@1.30.2)(terser@5.44.1)(tsx@4.21.0)(yaml@2.8.2))
-      xxhash-wasm: 1.1.0
-      yargs-parser: 21.1.1
-      yocto-spinner: 0.2.3
-      zod: 3.25.76
-      zod-to-json-schema: 3.25.0(zod@3.25.76)
-      zod-to-ts: 1.2.0(typescript@5.9.3)(zod@3.25.76)
-    optionalDependencies:
-      sharp: 0.34.5
-    transitivePeerDependencies:
-      - '@azure/app-configuration'
-      - '@azure/cosmos'
-      - '@azure/data-tables'
-      - '@azure/identity'
-      - '@azure/keyvault-secrets'
-      - '@azure/storage-blob'
-      - '@capacitor/preferences'
-      - '@deno/kv'
-      - '@netlify/blobs'
-      - '@planetscale/database'
-      - '@types/node'
-      - '@upstash/redis'
-      - '@vercel/blob'
-      - '@vercel/functions'
-      - '@vercel/kv'
-      - aws4fetch
-      - db0
-      - idb-keyval
-      - ioredis
-      - jiti
-      - less
-      - lightningcss
-      - rollup
-      - sass
-      - sass-embedded
-      - stylus
-      - sugarss
-      - supports-color
-      - terser
-      - tsx
-      - typescript
-      - uploadthing
-      - yaml
-
   async-limiter@1.0.1: {}
 
   async-mutex@0.4.0:
@@ -26597,15 +26508,6 @@ snapshots:
       parse-json: 5.2.0
     optionalDependencies:
       typescript: 5.9.2
-
-  cosmiconfig@9.0.0(typescript@5.9.3):
-    dependencies:
-      env-paths: 2.2.1
-      import-fresh: 3.3.1
-      js-yaml: 4.1.1
-      parse-json: 5.2.0
-    optionalDependencies:
-      typescript: 5.9.3
 
   crc-32@1.2.2: {}
 
@@ -32195,11 +32097,11 @@ snapshots:
       - supports-color
       - utf-8-validate
 
-  puppeteer@23.11.1(typescript@5.9.3):
+  puppeteer@23.11.1(typescript@5.9.2):
     dependencies:
       '@puppeteer/browsers': 2.6.1
       chromium-bidi: 0.11.0(devtools-protocol@0.0.1367902)
-      cosmiconfig: 9.0.0(typescript@5.9.3)
+      cosmiconfig: 9.0.0(typescript@5.9.2)
       devtools-protocol: 0.0.1367902
       puppeteer-core: 23.11.1
       typed-query-selector: 2.12.0
@@ -34985,7 +34887,7 @@ snapshots:
   vue-livestore@0.2.3(typescript@5.9.3)(vite@7.2.4(@types/node@24.10.1)(jiti@2.6.1)(lightningcss@1.30.2)(terser@5.44.1)(tsx@4.21.0)(yaml@2.8.2)):
     dependencies:
       '@livestore/adapter-web': link:packages/@livestore/adapter-web
-      '@livestore/devtools-vite': 0.4.0-dev.21(vite@7.2.4(@types/node@24.10.1)(jiti@2.6.1)(lightningcss@1.30.2)(terser@5.44.1)(tsx@4.21.0)(yaml@2.8.2))
+      '@livestore/devtools-vite': 0.4.0-dev.22(vite@7.2.4(@types/node@24.10.1)(jiti@2.6.1)(lightningcss@1.30.2)(terser@5.44.1)(tsx@4.21.0)(yaml@2.8.2))
       '@livestore/livestore': link:packages/@livestore/livestore
       '@livestore/peer-deps': link:packages/@livestore/peer-deps
       '@livestore/sync-cf': link:packages/@livestore/sync-cf
@@ -35385,11 +35287,6 @@ snapshots:
   zod-to-ts@1.2.0(typescript@5.9.2)(zod@3.25.76):
     dependencies:
       typescript: 5.9.2
-      zod: 3.25.76
-
-  zod-to-ts@1.2.0(typescript@5.9.3)(zod@3.25.76):
-    dependencies:
-      typescript: 5.9.3
       zod: 3.25.76
 
   zod@3.22.3: {}
