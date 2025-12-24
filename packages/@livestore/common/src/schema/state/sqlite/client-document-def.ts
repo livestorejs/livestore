@@ -178,6 +178,9 @@ export const createOptimisticEventSchema = ({
   partialSet: boolean
 }) => {
   const targetSchema = partialSet ? Schema.partial(valueSchema) : valueSchema
+  // The transform decode must yield values in the target schema's ENCODED shape.
+  // This keeps JSON columns consistent when Encoded != Type (e.g. Option).
+  const encodeTarget = Schema.encodeSync(targetSchema)
 
   return Schema.transform(
     Schema.Unknown, // Accept any historical event structure
@@ -186,14 +189,16 @@ export const createOptimisticEventSchema = ({
       decode: (eventValue) => {
         // Try direct decode first (for current schema events)
         try {
-          return Schema.decodeUnknownSync(targetSchema)(eventValue)
+          const decoded = Schema.decodeUnknownSync(targetSchema)(eventValue)
+          // Re-encode so downstream parseJson/column decoding sees encoded values.
+          return encodeTarget(decoded)
         } catch {
           // Optimistic decoding for historical events
 
           // Handle null/undefined/non-object cases
           if (typeof eventValue !== 'object' || eventValue === null) {
             console.warn(`Client document: Non-object event value, using ${partialSet ? 'empty partial' : 'defaults'}`)
-            return partialSet ? {} : defaultValue
+            return encodeTarget(partialSet ? {} : defaultValue)
           }
 
           if (partialSet) {
@@ -211,14 +216,15 @@ export const createOptimisticEventSchema = ({
 
             if (hasValidFields) {
               try {
-                return Schema.decodeUnknownSync(targetSchema)(partialResult)
+                const decoded = Schema.decodeUnknownSync(targetSchema)(partialResult)
+                return encodeTarget(decoded)
               } catch {
                 // Even filtered fields don't match schema
                 console.warn('Client document: Partial fields incompatible, returning empty partial')
-                return {}
+                return encodeTarget({})
               }
             }
-            return {}
+            return encodeTarget({})
           } else {
             // Full set: merge old data with new defaults
             const merged: Record<string, unknown> = { ...defaultValue }
@@ -233,12 +239,13 @@ export const createOptimisticEventSchema = ({
 
             // Try to decode the merged value
             try {
-              return Schema.decodeUnknownSync(valueSchema)(merged)
+              const decoded = Schema.decodeUnknownSync(valueSchema)(merged)
+              return encodeTarget(decoded)
             } catch {
               // Merged value still doesn't match (e.g., type changes)
               // Fall back to pure defaults
               console.warn('Client document: Could not preserve event data, using defaults')
-              return defaultValue
+              return encodeTarget(defaultValue)
             }
           }
         }
