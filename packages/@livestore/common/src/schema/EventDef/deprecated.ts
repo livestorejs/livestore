@@ -2,7 +2,7 @@
  * Deprecation Annotations for Events
  *
  * This module provides utilities for marking event fields and entire events as deprecated.
- * When a deprecated field is used or a deprecated event is created, a warning is logged.
+ * When a deprecated field is used or a deprecated event is committed, a warning is logged.
  *
  * @example
  * ```ts
@@ -31,17 +31,16 @@
  */
 
 import type { Schema } from '@livestore/utils/effect'
-import { Option, SchemaAST } from '@livestore/utils/effect'
+import { Effect, Option, SchemaAST } from '@livestore/utils/effect'
+
+import type { EventDef } from './event-def.ts'
 
 /** Symbol used to mark schemas as deprecated. */
 export const DeprecatedId = Symbol.for('livestore/schema/annotations/deprecated')
 
-/** Type for objects that have an annotations method (Schemas and PropertySignatures). */
-type Annotatable<T> = T & { annotations: (annotations: Record<symbol, unknown>) => T }
-
 /**
  * Marks a schema field as deprecated with a reason message.
- * When an event is created with a deprecated field that has a value,
+ * When an event is committed with a deprecated field that has a value,
  * a warning will be logged.
  *
  * Works with both Schema types and PropertySignatures (from Schema.optional).
@@ -59,7 +58,7 @@ type Annotatable<T> = T & { annotations: (annotations: Record<symbol, unknown>) 
  */
 export const deprecated =
   (reason: string) =>
-  <T>(schema: Annotatable<T>): T =>
+  <T extends { annotations: (annotations: { readonly [DeprecatedId]?: string }) => T }>(schema: T): T =>
     schema.annotations({ [DeprecatedId]: reason })
 
 /**
@@ -128,30 +127,44 @@ const warnedDeprecatedEvents = new Set<string>()
 const warnedDeprecatedFields = new Set<string>()
 
 /**
- * Logs a deprecation warning for an event, deduplicating repeated warnings.
+ * Logs deprecation warnings for an event using Effect.logWarning.
+ * Checks both event-level and field-level deprecation, with deduplication.
  *
- * @param eventName - The name of the deprecated event
- * @param reason - The deprecation reason
+ * @param eventDef - The event definition to check
+ * @param args - The event arguments
+ * @returns An Effect that logs warnings for any deprecations found
  */
-export const warnDeprecatedEvent = (eventName: string, reason: string): void => {
-  if (warnedDeprecatedEvents.has(eventName)) return
-  warnedDeprecatedEvents.add(eventName)
-  console.warn(`[LiveStore] Deprecated event '${eventName}': ${reason}`)
-}
+export const logDeprecationWarnings = (
+  eventDef: EventDef.AnyWithoutFn,
+  args: Record<string, unknown>,
+): Effect.Effect<void> =>
+  Effect.gen(function* () {
+    const eventName = eventDef.name
 
-/**
- * Logs a deprecation warning for a field, deduplicating repeated warnings.
- *
- * @param eventName - The name of the event containing the deprecated field
- * @param fieldName - The name of the deprecated field
- * @param reason - The deprecation reason
- */
-export const warnDeprecatedField = (eventName: string, fieldName: string, reason: string): void => {
-  const key = `${eventName}:${fieldName}`
-  if (warnedDeprecatedFields.has(key)) return
-  warnedDeprecatedFields.add(key)
-  console.warn(`[LiveStore] Deprecated field '${fieldName}' in event '${eventName}': ${reason}`)
-}
+    // Check for event-level deprecation
+    const eventDeprecation = eventDef.options.deprecated
+    if (eventDeprecation !== undefined && !warnedDeprecatedEvents.has(eventName)) {
+      warnedDeprecatedEvents.add(eventName)
+      yield* Effect.logWarning('@livestore/schema:deprecated-event', {
+        event: eventName,
+        reason: eventDeprecation,
+      })
+    }
+
+    // Check for deprecated fields with values
+    const deprecatedFields = findDeprecatedFieldsWithValues(eventDef.schema, args)
+    for (const { field, reason } of deprecatedFields) {
+      const key = `${eventName}:${field}`
+      if (!warnedDeprecatedFields.has(key)) {
+        warnedDeprecatedFields.add(key)
+        yield* Effect.logWarning('@livestore/schema:deprecated-field', {
+          event: eventName,
+          field,
+          reason,
+        })
+      }
+    }
+  })
 
 /**
  * Resets the deprecation warning state. Useful for testing.

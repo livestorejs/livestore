@@ -3,6 +3,7 @@ import { Effect, Option, ReadonlyArray, Schema } from '@livestore/utils/effect'
 
 import { MaterializeError, MaterializerHashMismatchError, type SqliteDb } from '../adapter-types.ts'
 import { getExecStatementsFromMaterializer, hashMaterializerResults } from '../materializer-helper.ts'
+import { logDeprecationWarnings } from '../schema/EventDef/deprecated.ts'
 import type { LiveStoreSchema } from '../schema/mod.ts'
 import { EventSequenceNumber, resolveEventDef, SystemTables, UNKNOWN_EVENT_SCHEMA_HASH } from '../schema/mod.ts'
 import { insertRow } from '../sql-queries/index.ts'
@@ -61,6 +62,9 @@ export const makeMaterializeEvent = ({
         }
 
         const { eventDef, materializer } = resolution
+
+        // Log deprecation warnings for deprecated events/fields
+        yield* logDeprecationWarnings(eventDef, eventEncoded.args as Record<string, unknown>)
 
         const execArgsArr = getExecStatementsFromMaterializer({
           eventDef,

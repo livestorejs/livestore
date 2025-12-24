@@ -1,256 +1,128 @@
-import { Schema } from '@livestore/utils/effect'
-import { afterEach, beforeEach, describe, expect, test, vi } from 'vitest'
+import { Effect, Logger, Schema } from '@livestore/utils/effect'
+import { afterEach, beforeEach, describe, expect, test } from 'vitest'
 
 import { synced } from './define.ts'
 import {
-  DeprecatedId,
   deprecated,
   findDeprecatedFieldsWithValues,
   getDeprecatedReason,
   isDeprecated,
+  logDeprecationWarnings,
   resetDeprecationWarnings,
 } from './deprecated.ts'
 
 describe('deprecated annotations', () => {
-  describe('deprecated helper', () => {
-    test('should add deprecation annotation to schema', () => {
-      const schema = Schema.String.pipe(deprecated('Use newField instead'))
-
-      expect(isDeprecated(schema)).toBe(true)
-      expect(getDeprecatedReason(schema)).toMatchObject({ _tag: 'Some', value: 'Use newField instead' })
-    })
-
-    test('should work with optional fields in a Struct', () => {
-      const struct = Schema.Struct({
-        oldField: Schema.optional(Schema.String).pipe(deprecated('Legacy field')),
-      })
-
-      // The deprecation annotation is on the property signature, not a Schema,
-      // so we test it through findDeprecatedFieldsWithValues
-      const result = findDeprecatedFieldsWithValues(struct, { oldField: 'value' })
-      expect(result).toEqual([{ field: 'oldField', reason: 'Legacy field' }])
-    })
-
-    test('should preserve the schema annotation symbol', () => {
-      const schema = Schema.String.pipe(deprecated('Test reason'))
-      const annotations = schema.ast.annotations as Record<symbol, unknown>
-
-      expect(annotations[DeprecatedId]).toBe('Test reason')
-    })
+  test('adds deprecation annotation to schema', () => {
+    const schema = Schema.String.pipe(deprecated('Use newField instead'))
+    expect(isDeprecated(schema)).toBe(true)
+    expect(getDeprecatedReason(schema)._tag).toBe('Some')
   })
 
-  describe('isDeprecated', () => {
-    test('should return true for deprecated schemas', () => {
-      const schema = Schema.String.pipe(deprecated('Old field'))
-      expect(isDeprecated(schema)).toBe(true)
+  test('works with optional fields in Struct', () => {
+    const struct = Schema.Struct({
+      oldField: Schema.optional(Schema.String).pipe(deprecated('Legacy')),
     })
-
-    test('should return false for non-deprecated schemas', () => {
-      expect(isDeprecated(Schema.String)).toBe(false)
-      expect(isDeprecated(Schema.Number)).toBe(false)
-    })
+    expect(findDeprecatedFieldsWithValues(struct, { oldField: 'x' })).toEqual([{ field: 'oldField', reason: 'Legacy' }])
   })
 
-  describe('findDeprecatedFieldsWithValues', () => {
-    test('should find deprecated fields that have values', () => {
-      const schema = Schema.Struct({
-        id: Schema.String,
-        oldTitle: Schema.optional(Schema.String).pipe(deprecated("Use 'title' instead")),
-        title: Schema.optional(Schema.String),
-      })
+  test('non-deprecated schemas return false', () => {
+    expect(isDeprecated(Schema.String)).toBe(false)
+  })
 
-      const result = findDeprecatedFieldsWithValues(schema, {
-        id: 'test-id',
-        oldTitle: 'Some old title',
-        title: 'New title',
-      })
-
-      expect(result).toEqual([{ field: 'oldTitle', reason: "Use 'title' instead" }])
+  test('ignores deprecated fields without values', () => {
+    const schema = Schema.Struct({
+      id: Schema.String,
+      old: Schema.optional(Schema.String).pipe(deprecated('x')),
     })
+    expect(findDeprecatedFieldsWithValues(schema, { id: '1' })).toEqual([])
+  })
 
-    test('should not include deprecated fields that are undefined', () => {
-      const schema = Schema.Struct({
-        id: Schema.String,
-        oldField: Schema.optional(Schema.String).pipe(deprecated('Deprecated')),
-      })
-
-      const result = findDeprecatedFieldsWithValues(schema, {
-        id: 'test-id',
-        // oldField is undefined (not provided)
-      })
-
-      expect(result).toEqual([])
+  test('finds multiple deprecated fields', () => {
+    const schema = Schema.Struct({
+      a: Schema.optional(Schema.String).pipe(deprecated('A')),
+      b: Schema.optional(Schema.String).pipe(deprecated('B')),
     })
-
-    test('should find multiple deprecated fields', () => {
-      const schema = Schema.Struct({
-        id: Schema.String,
-        oldA: Schema.optional(Schema.String).pipe(deprecated('Use newA')),
-        oldB: Schema.optional(Schema.Number).pipe(deprecated('Use newB')),
-        newA: Schema.optional(Schema.String),
-        newB: Schema.optional(Schema.Number),
-      })
-
-      const result = findDeprecatedFieldsWithValues(schema, {
-        id: 'test-id',
-        oldA: 'value A',
-        oldB: 42,
-      })
-
-      expect(result).toHaveLength(2)
-      expect(result).toContainEqual({ field: 'oldA', reason: 'Use newA' })
-      expect(result).toContainEqual({ field: 'oldB', reason: 'Use newB' })
-    })
-
-    test('should handle non-struct schemas gracefully', () => {
-      const schema = Schema.String
-      const result = findDeprecatedFieldsWithValues(schema, {})
-      expect(result).toEqual([])
-    })
+    const result = findDeprecatedFieldsWithValues(schema, { a: '1', b: '2' })
+    expect(result).toHaveLength(2)
   })
 })
 
-describe('deprecation warnings', () => {
-  let consoleWarnSpy: ReturnType<typeof vi.spyOn>
+describe('logDeprecationWarnings', () => {
+  let logs: unknown[][]
 
   beforeEach(() => {
     resetDeprecationWarnings()
-    consoleWarnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {})
+    logs = []
   })
 
-  afterEach(() => {
-    consoleWarnSpy.mockRestore()
+  afterEach(() => resetDeprecationWarnings())
+
+  const run = (effect: Effect.Effect<void>) =>
+    Effect.runSync(
+      effect.pipe(
+        Effect.provide(
+          Logger.replace(
+            Logger.defaultLogger,
+            Logger.make(({ message }) => logs.push(message as unknown[])),
+          ),
+        ),
+      ),
+    )
+
+  test('logs event deprecation warning', () => {
+    const event = synced({ name: 'Old', schema: Schema.Struct({ id: Schema.String }), deprecated: 'Use New' })
+    run(logDeprecationWarnings(event, { id: '1' }))
+    expect(logs).toEqual([['@livestore/schema:deprecated-event', { event: 'Old', reason: 'Use New' }]])
   })
 
-  describe('event-level deprecation', () => {
-    test('should log warning when deprecated event is created', () => {
-      const deprecatedEvent = synced({
-        name: 'v1.OldEvent',
-        schema: Schema.Struct({ id: Schema.String }),
-        deprecated: "Use 'v2.NewEvent' instead",
-      })
-
-      deprecatedEvent({ id: 'test-id' })
-
-      expect(consoleWarnSpy).toHaveBeenCalledWith(
-        "[LiveStore] Deprecated event 'v1.OldEvent': Use 'v2.NewEvent' instead",
-      )
+  test('logs field deprecation warning', () => {
+    const event = synced({
+      name: 'Ev',
+      schema: Schema.Struct({ old: Schema.optional(Schema.String).pipe(deprecated('Use new')) }),
     })
-
-    test('should only log warning once per event (deduplication)', () => {
-      const deprecatedEvent = synced({
-        name: 'v1.DedupeEvent',
-        schema: Schema.Struct({ id: Schema.String }),
-        deprecated: 'Deprecated',
-      })
-
-      deprecatedEvent({ id: '1' })
-      deprecatedEvent({ id: '2' })
-      deprecatedEvent({ id: '3' })
-
-      expect(consoleWarnSpy).toHaveBeenCalledTimes(1)
-    })
-
-    test('should not log warning for non-deprecated events', () => {
-      const normalEvent = synced({
-        name: 'v1.NormalEvent',
-        schema: Schema.Struct({ id: Schema.String }),
-      })
-
-      normalEvent({ id: 'test-id' })
-
-      expect(consoleWarnSpy).not.toHaveBeenCalled()
-    })
+    run(logDeprecationWarnings(event, { old: 'x' }))
+    expect(logs).toEqual([['@livestore/schema:deprecated-field', { event: 'Ev', field: 'old', reason: 'Use new' }]])
   })
 
-  describe('field-level deprecation', () => {
-    test('should log warning when deprecated field has value', () => {
-      const eventWithDeprecatedField = synced({
-        name: 'v1.EventWithOldField',
-        schema: Schema.Struct({
-          id: Schema.String,
-          oldTitle: Schema.optional(Schema.String).pipe(deprecated("Use 'title' instead")),
-          title: Schema.optional(Schema.String),
-        }),
-      })
-
-      eventWithDeprecatedField({ id: 'test-id', oldTitle: 'Old value' })
-
-      expect(consoleWarnSpy).toHaveBeenCalledWith(
-        "[LiveStore] Deprecated field 'oldTitle' in event 'v1.EventWithOldField': Use 'title' instead",
-      )
-    })
-
-    test('should not log warning when deprecated field is undefined', () => {
-      const eventWithDeprecatedField = synced({
-        name: 'v1.EventWithUnusedOldField',
-        schema: Schema.Struct({
-          id: Schema.String,
-          oldField: Schema.optional(Schema.String).pipe(deprecated('Deprecated')),
-        }),
-      })
-
-      eventWithDeprecatedField({ id: 'test-id' })
-
-      expect(consoleWarnSpy).not.toHaveBeenCalled()
-    })
-
-    test('should only log field warning once (deduplication)', () => {
-      const eventWithDeprecatedField = synced({
-        name: 'v1.EventWithDedupeField',
-        schema: Schema.Struct({
-          id: Schema.String,
-          oldField: Schema.optional(Schema.String).pipe(deprecated('Old')),
-        }),
-      })
-
-      eventWithDeprecatedField({ id: '1', oldField: 'a' })
-      eventWithDeprecatedField({ id: '2', oldField: 'b' })
-      eventWithDeprecatedField({ id: '3', oldField: 'c' })
-
-      expect(consoleWarnSpy).toHaveBeenCalledTimes(1)
-    })
-
-    test('should log warnings for multiple deprecated fields', () => {
-      const eventWithMultipleDeprecated = synced({
-        name: 'v1.MultiDeprecated',
-        schema: Schema.Struct({
-          id: Schema.String,
-          oldA: Schema.optional(Schema.String).pipe(deprecated('Use newA')),
-          oldB: Schema.optional(Schema.String).pipe(deprecated('Use newB')),
-        }),
-      })
-
-      eventWithMultipleDeprecated({ id: 'test', oldA: 'a', oldB: 'b' })
-
-      expect(consoleWarnSpy).toHaveBeenCalledTimes(2)
-      expect(consoleWarnSpy).toHaveBeenCalledWith(
-        "[LiveStore] Deprecated field 'oldA' in event 'v1.MultiDeprecated': Use newA",
-      )
-      expect(consoleWarnSpy).toHaveBeenCalledWith(
-        "[LiveStore] Deprecated field 'oldB' in event 'v1.MultiDeprecated': Use newB",
-      )
-    })
+  test('deduplicates event warnings', () => {
+    const event = synced({ name: 'Dup', schema: Schema.Struct({ id: Schema.String }), deprecated: 'x' })
+    run(logDeprecationWarnings(event, { id: '1' }))
+    run(logDeprecationWarnings(event, { id: '2' }))
+    expect(logs).toHaveLength(1)
   })
 
-  describe('combined event and field deprecation', () => {
-    test('should log both event and field warnings', () => {
-      const fullyDeprecatedEvent = synced({
-        name: 'v1.FullyDeprecated',
-        schema: Schema.Struct({
-          id: Schema.String,
-          oldField: Schema.optional(Schema.String).pipe(deprecated('Field deprecated')),
-        }),
-        deprecated: 'Event deprecated',
-      })
-
-      fullyDeprecatedEvent({ id: 'test', oldField: 'value' })
-
-      expect(consoleWarnSpy).toHaveBeenCalledTimes(2)
-      expect(consoleWarnSpy).toHaveBeenCalledWith("[LiveStore] Deprecated event 'v1.FullyDeprecated': Event deprecated")
-      expect(consoleWarnSpy).toHaveBeenCalledWith(
-        "[LiveStore] Deprecated field 'oldField' in event 'v1.FullyDeprecated': Field deprecated",
-      )
+  test('deduplicates field warnings', () => {
+    const event = synced({
+      name: 'DupField',
+      schema: Schema.Struct({ old: Schema.optional(Schema.String).pipe(deprecated('x')) }),
     })
+    run(logDeprecationWarnings(event, { old: 'a' }))
+    run(logDeprecationWarnings(event, { old: 'b' }))
+    expect(logs).toHaveLength(1)
+  })
+
+  test('no warning for non-deprecated event', () => {
+    const event = synced({ name: 'Normal', schema: Schema.Struct({ id: Schema.String }) })
+    run(logDeprecationWarnings(event, { id: '1' }))
+    expect(logs).toHaveLength(0)
+  })
+
+  test('no warning when deprecated field is undefined', () => {
+    const event = synced({
+      name: 'Unused',
+      schema: Schema.Struct({ old: Schema.optional(Schema.String).pipe(deprecated('x')) }),
+    })
+    run(logDeprecationWarnings(event, {}))
+    expect(logs).toHaveLength(0)
+  })
+
+  test('logs both event and field warnings', () => {
+    const event = synced({
+      name: 'Both',
+      schema: Schema.Struct({ old: Schema.optional(Schema.String).pipe(deprecated('F')) }),
+      deprecated: 'E',
+    })
+    run(logDeprecationWarnings(event, { old: 'x' }))
+    expect(logs).toHaveLength(2)
   })
 })

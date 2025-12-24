@@ -98,7 +98,9 @@ export const clientDocument = <
       value: options.partialSet ? Schema.partial(valueSchema) : valueSchema,
     }).annotations({ title: `${name}Set:Args` }),
   })
-  Object.defineProperty(setEventDef, 'options', { value: { derived: true, clientOnly: true, facts: undefined } })
+  Object.defineProperty(setEventDef, 'options', {
+    value: { derived: true, clientOnly: true, facts: undefined, deprecated: undefined },
+  })
 
   const clientDocumentTableDefTrait: ClientDocumentTableDef.Trait<
     TName,
@@ -544,7 +546,7 @@ export namespace ClientDocumentTableDef {
       readonly name: `${TName}Set`
       readonly args: { id: string; value: TType }
     }
-    readonly options: { derived: true; clientOnly: true; facts: undefined }
+    readonly options: { derived: true; clientOnly: true; facts: undefined; deprecated: undefined }
   }
 
   export type SetEventDef<TName extends string, TType, TOptions extends ClientDocumentTableOptions<TType>> = EventDef<

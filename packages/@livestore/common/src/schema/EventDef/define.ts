@@ -31,7 +31,6 @@
 import { shouldNeverHappen } from '@livestore/utils'
 import { Schema } from '@livestore/utils/effect'
 
-import { findDeprecatedFieldsWithValues, warnDeprecatedEvent, warnDeprecatedField } from './deprecated.ts'
 import type { EventDef } from './event-def.ts'
 import type { EventDefFactInput, EventDefFacts } from './facts.ts'
 
@@ -73,7 +72,7 @@ export type DefineEventOptions<TTo, TDerived extends boolean = false> = {
 
   /**
    * Marks the entire event as deprecated with a reason message.
-   * When this event is created, a warning will be logged.
+   * When this event is committed, a warning will be logged.
    *
    * @example
    * ```ts
@@ -116,18 +115,6 @@ export const defineEvent = <TName extends string, TType, TEncoded = TType, TDeri
     if (res._tag === 'Left') {
       shouldNeverHappen(`Invalid event args for event '${name}':`, res.left.message, '\n')
     }
-
-    // Check for event-level deprecation
-    if (options.deprecated) {
-      warnDeprecatedEvent(name, options.deprecated)
-    }
-
-    // Check for deprecated fields with values
-    const deprecatedFields = findDeprecatedFieldsWithValues(schema, args as Record<string, unknown>)
-    for (const { field, reason } of deprecatedFields) {
-      warnDeprecatedField(name, field, reason)
-    }
-
     return { name: name, args }
   }
 
@@ -153,6 +140,7 @@ export const defineEvent = <TName extends string, TType, TEncoded = TType, TDeri
           }
         : undefined,
       derived: options?.derived ?? false,
+      deprecated: options?.deprecated,
     } satisfies EventDef.Any['options'],
   })
 
