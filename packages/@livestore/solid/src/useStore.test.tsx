@@ -7,7 +7,7 @@ import {
   storeOptions,
 } from '@livestore/livestore'
 import * as SolidTesting from '@solidjs/testing-library'
-import { createSignal, type JSX } from 'solid-js'
+import { createSignal, type JSX, Suspense } from 'solid-js'
 import { describe, expect, it } from 'vitest'
 import { schema } from './__tests__/fixture.tsx'
 import { StoreRegistryProvider } from './StoreRegistryContext.tsx'
@@ -35,15 +35,65 @@ describe('useStore', () => {
     await cleanupAfterUnmount(() => {})
   })
 
-  // NOTE: Tests using SolidTesting.render() are skipped due to pre-existing SSR detection issue
-  // in the Solid testing environment. See useQuery.test.tsx for similar skip pattern.
-  // Error: "Client-only API called on the server side"
-  it.skip('works with Suspense boundary', async () => {
-    // This test requires SolidTesting.render() which has SSR detection issues
+  it('works with Suspense boundary', async () => {
+    const storeRegistry = new StoreRegistry()
+    const options = testStoreOptions()
+
+    const StoreConsumer = (props: { options: RegistryStoreOptions<typeof schema> }) => {
+      useStore(() => props.options)
+      return <div data-testid="ready" />
+    }
+
+    const { findByTestId, queryByTestId } = SolidTesting.render(
+      () => (
+        <StoreRegistryProvider storeRegistry={storeRegistry}>
+          <Suspense fallback={<div data-testid="fallback" />}>
+            <StoreConsumer options={options} />
+          </Suspense>
+        </StoreRegistryProvider>
+      ),
+    )
+
+    // After loading completes, should show the actual content
+    await findByTestId('ready')
+    expect(queryByTestId('fallback')).toBeNull()
+
+    await cleanupAfterUnmount(() => {})
   })
 
-  it.skip('does not re-suspend on subsequent renders when store is already loaded', async () => {
-    // This test requires SolidTesting.render() which has SSR detection issues
+  it('does not re-suspend on subsequent renders when store is already loaded', async () => {
+    const storeRegistry = new StoreRegistry()
+    const options = testStoreOptions()
+
+    const [currentOptions, setCurrentOptions] = createSignal(options)
+
+    const StoreConsumer = (props: { options: () => RegistryStoreOptions<typeof schema> }) => {
+      useStore(props.options)
+      return <div data-testid="ready" />
+    }
+
+    const { findByTestId, queryByTestId } = SolidTesting.render(
+      () => (
+        <StoreRegistryProvider storeRegistry={storeRegistry}>
+          <Suspense fallback={<div data-testid="fallback" />}>
+            <StoreConsumer options={currentOptions} />
+          </Suspense>
+        </StoreRegistryProvider>
+      ),
+    )
+
+    // Wait for initial load
+    await findByTestId('ready')
+    expect(queryByTestId('fallback')).toBeNull()
+
+    // Update with new options object (but same storeId) - this triggers reactivity
+    setCurrentOptions({ ...options })
+
+    // Should not show fallback - store is already cached
+    expect(queryByTestId('fallback')).toBeNull()
+    expect(queryByTestId('ready')).not.toBeNull()
+
+    await cleanupAfterUnmount(() => {})
   })
 
   it('throws when store loading fails', async () => {

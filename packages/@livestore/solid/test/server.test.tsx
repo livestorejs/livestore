@@ -9,8 +9,8 @@ import { provideOtel } from '@livestore/common'
 import { Events, makeSchema, State } from '@livestore/common/schema'
 import { createStore, queryDb } from '@livestore/livestore'
 import { Effect, Schema } from '@livestore/utils/effect'
-import { describe, expect, it } from 'vitest'
 import { isServer, renderToString } from 'solid-js/web'
+import { describe, expect, it } from 'vitest'
 
 import * as LiveStoreSolid from '../src/mod.ts'
 

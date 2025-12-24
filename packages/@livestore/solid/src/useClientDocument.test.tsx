@@ -7,7 +7,7 @@ import { Vitest } from '@livestore/utils-dev/node-vitest'
 import * as otel from '@opentelemetry/api'
 import { BasicTracerProvider, InMemorySpanExporter, SimpleSpanProcessor } from '@opentelemetry/sdk-trace-base'
 import * as SolidTesting from '@solidjs/testing-library'
-import  * as Solid from 'solid-js'
+import * as Solid from 'solid-js'
 import { events, makeTodoMvcSolid, StoreInternalsSymbol, tables } from './__tests__/fixture.tsx'
 import type * as LiveStoreSolid from './mod.ts'
 
@@ -122,7 +122,9 @@ Vitest.describe('useClientDocument', () => {
 
         return (
           <div>
-            <Solid.For each={allTodos()}>{(todo) => <div onClick={() => props.setTaskId(todo.id)}>{todo.id}</div>}</Solid.For>
+            <Solid.For each={allTodos()}>
+              {(todo) => <div onClick={() => props.setTaskId(todo.id)}>{todo.id}</div>}
+            </Solid.For>
           </div>
         )
       }
@@ -143,7 +145,9 @@ Vitest.describe('useClientDocument', () => {
 
       globalSetState!({ currentTaskId: 't1' })
 
-      Vitest.expect(getByRole('content').innerHTML).toMatchInlineSnapshot(`"{"id":"t1","text":"buy milk","completed":false}"`)
+      Vitest.expect(getByRole('content').innerHTML).toMatchInlineSnapshot(
+        `"{"id":"t1","text":"buy milk","completed":false}"`,
+      )
 
       Vitest.expect(getByRole('current-id').innerHTML).toMatchInlineSnapshot('"Current Task Id: t1"')
 
