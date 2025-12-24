@@ -69,6 +69,21 @@ export type DefineEventOptions<TTo, TDerived extends boolean = false> = {
    * @default false
    */
   derived?: TDerived
+
+  /**
+   * Marks the entire event as deprecated with a reason message.
+   * When this event is committed, a warning will be logged.
+   *
+   * @example
+   * ```ts
+   * Events.synced({
+   *   name: 'v1.TodoRenamed',
+   *   schema: Schema.Struct({ id: Schema.String, name: Schema.String }),
+   *   deprecated: "Use 'v1.TodoUpdated' instead",
+   * })
+   * ```
+   */
+  deprecated?: string
 }
 
 /**
@@ -125,6 +140,7 @@ export const defineEvent = <TName extends string, TType, TEncoded = TType, TDeri
           }
         : undefined,
       derived: options?.derived ?? false,
+      deprecated: options?.deprecated,
     } satisfies EventDef.Any['options'],
   })
 

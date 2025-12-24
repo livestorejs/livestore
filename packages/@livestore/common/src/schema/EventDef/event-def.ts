@@ -51,6 +51,11 @@ export type EventDef<TName extends string, TType, TEncoded = TType, TDerived ext
 
     /** Whether this is a derived event. Derived events cannot have materializers. */
     derived: TDerived
+
+    /**
+     * Deprecation reason for this event. When set, a warning is logged at commit time.
+     */
+    deprecated: string | undefined
   }
 
   /**
