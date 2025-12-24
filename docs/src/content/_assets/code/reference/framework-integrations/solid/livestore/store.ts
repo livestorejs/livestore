@@ -1,6 +1,6 @@
 import { makePersistedAdapter } from '@livestore/adapter-web'
 import LiveStoreSharedWorker from '@livestore/adapter-web/shared-worker?sharedworker'
-import { getStore } from '@livestore/solid'
+import { useStore } from '@livestore/solid'
 
 import LiveStoreWorker from './livestore.worker.ts?worker'
 import { schema } from './schema.ts'
@@ -11,8 +11,9 @@ const adapter = makePersistedAdapter({
   sharedWorker: LiveStoreSharedWorker,
 })
 
-export const store = await getStore({
-  adapter,
-  schema,
-  storeId: 'default',
-})
+export const useAppStore = () =>
+  useStore({
+    adapter,
+    schema,
+    storeId: 'default',
+  })
