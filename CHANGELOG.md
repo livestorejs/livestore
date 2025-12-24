@@ -309,6 +309,31 @@ See the [S2 sync provider docs](https://dev.docs.livestore.dev/reference/syncing
 
   Pure materializers ensure deterministic replay during sync, improve test reliability, and make debugging predictable.
 
+- **Event deprecation support:** Mark entire events or individual fields as deprecated to guide schema evolution. When deprecated events are created or deprecated fields have values, a warning is logged to help teams migrate away from legacy patterns (#956).
+
+  ```typescript
+  import { Events } from '@livestore/livestore'
+  import { Schema } from 'effect'
+  import { deprecated } from '@livestore/common/schema'
+
+  // Field-level deprecation
+  const todoUpdated = Events.synced({
+    name: 'v1.TodoUpdated',
+    schema: Schema.Struct({
+      id: Schema.String,
+      title: Schema.optional(Schema.String).pipe(deprecated("Use 'text' instead")),
+      text: Schema.optional(Schema.String),
+    }),
+  })
+
+  // Event-level deprecation
+  const todoRenamed = Events.synced({
+    name: 'v1.TodoRenamed',
+    schema: Schema.Struct({ id: Schema.String, name: Schema.String }),
+    deprecated: "Use 'v1.TodoUpdated' instead",
+  })
+  ```
+
 #### API & DX
 
 - **Store:** `store.networkStatus` now surfaces sync backend connectivity so apps can read the latest status or subscribe directly; the signal is no longer re-exposed on client sessions (livestorejs/livestore#394).
