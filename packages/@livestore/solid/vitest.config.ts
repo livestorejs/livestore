@@ -30,11 +30,9 @@ export default defineConfig(({ mode }) => {
       setupFiles: testSSR ? [] : ['./test/setup.ts'],
       globals: true,
       transformMode: { web: [/\.[jt]sx$/] },
-      // SSR mode: only run server.test.* files
-      // Client mode: run all tests except server.test.* files
-      ...(testSSR
-        ? { include: ['test/server.test.{ts,tsx}'] }
-        : { include: ['src/**/*.test.{ts,tsx}'], exclude: ['**/node_modules/**', 'test/server.test.{ts,tsx}'] }),
+      // SSR mode: only run *.server.test.* files
+      // Client mode: only run *.client.test.* files
+      ...(testSSR ? { include: ['src/**/*.server.test.{ts,tsx}'] } : { include: ['src/**/*.client.test.{ts,tsx}'] }),
     },
     esbuild: {
       // TODO remove once `using` keyword supported OOTB with Vite https://github.com/vitejs/vite/issues/15464#issuecomment-1872485703

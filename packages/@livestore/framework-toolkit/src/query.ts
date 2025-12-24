@@ -1,6 +1,6 @@
 import { isQueryBuilder } from '@livestore/common'
 import type { LiveQuery, LiveQueryDef, Queryable, SignalDef, StackInfo, Store } from '@livestore/livestore'
-import { isQueryable, queryDb, stackInfoToString, StoreInternalsSymbol } from '@livestore/livestore'
+import { isQueryable, queryDb, StoreInternalsSymbol, stackInfoToString } from '@livestore/livestore'
 import type { LiveQueries } from '@livestore/livestore/internal'
 import { indent, shouldNeverHappen } from '@livestore/utils'
 import * as otel from '@opentelemetry/api'
