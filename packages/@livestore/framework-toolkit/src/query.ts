@@ -1,7 +1,9 @@
 import { isQueryBuilder } from '@livestore/common'
 import type { LiveQuery, LiveQueryDef, Queryable, SignalDef, StackInfo, Store } from '@livestore/livestore'
-import { isQueryable, queryDb, stackInfoToString } from '@livestore/livestore'
+import { isQueryable, queryDb, stackInfoToString, StoreInternalsSymbol } from '@livestore/livestore'
+import type { LiveQueries } from '@livestore/livestore/internal'
 import { indent, shouldNeverHappen } from '@livestore/utils'
+import * as otel from '@opentelemetry/api'
 
 import type { NormalizedQueryable } from './types.ts'
 
@@ -83,4 +85,84 @@ Stack trace:
 `,
     { cause },
   )
+}
+
+/**
+ * Runs the initial query and returns the result.
+ * Handles errors by formatting them with framework-specific context.
+ *
+ * @param query$ - The live query to run
+ * @param otelContext - OpenTelemetry context for tracing
+ * @param stackInfo - Stack information for debugging
+ * @param framework - The framework name (e.g., 'react', 'solid')
+ * @returns The query result
+ * @throws Formatted error if the query fails
+ */
+export const runInitialQuery = <TResult>(
+  query$: LiveQuery<TResult>,
+  otelContext: otel.Context,
+  stackInfo: StackInfo,
+  framework: 'react' | 'solid' | 'svelte' | string,
+): TResult => {
+  try {
+    return query$.run({
+      otelContext,
+      debugRefreshReason: {
+        // NOTE: The RefreshReason type currently only supports 'react' for this variant.
+        // See TODO in store-types.ts to rename this to be framework-agnostic.
+        _tag: 'react' as const,
+        api: 'useQuery',
+        label: `useQuery:initial-run:${query$.label}`,
+        stackInfo,
+      },
+    })
+  } catch (cause: any) {
+    console.error(`[@livestore/${framework}:useQuery] Error running query`, cause)
+    throw formatQueryError(cause, query$.label, stackInfo, framework)
+  }
+}
+
+/**
+ * Gets the label from a normalized queryable.
+ */
+export const getResourceLabel = <TResult>(normalized: NormalizedQueryable<TResult>): string =>
+  normalized._tag === 'definition' ? normalized.def.label : normalized.query$.label
+
+/**
+ * Creates the query resource (span, otelContext, queryRcRef) from a normalized queryable.
+ * This is the common factory logic shared between React and Solid hooks.
+ */
+export const createQueryResource = <TResult>(
+  store: Store,
+  normalized: NormalizedQueryable<TResult>,
+  stackInfo: StackInfo,
+  options?: {
+    otelSpanName?: string | undefined
+    otelContext?: otel.Context | undefined
+  },
+): {
+  queryRcRef: LiveQueries.RcRef<LiveQuery<TResult>>
+  span: otel.Span
+  otelContext: otel.Context
+} => {
+  const resourceLabel = getResourceLabel(normalized)
+
+  const span = store[StoreInternalsSymbol].otel.tracer.startSpan(
+    options?.otelSpanName ?? `LiveStore:useQuery:${resourceLabel}`,
+    { attributes: { label: resourceLabel, firstStackInfo: JSON.stringify(stackInfo) } },
+    options?.otelContext ?? store[StoreInternalsSymbol].otel.queriesSpanContext,
+  )
+
+  const otelContext = otel.trace.setSpan(otel.context.active(), span)
+
+  const queryRcRef =
+    normalized._tag === 'definition'
+      ? normalized.def.make(store[StoreInternalsSymbol].reactivityGraph.context!, otelContext)
+      : ({
+          value: normalized.query$,
+          deref: () => {},
+          rc: Number.POSITIVE_INFINITY,
+        } satisfies LiveQueries.RcRef<LiveQuery<TResult>>)
+
+  return { queryRcRef, span, otelContext }
 }

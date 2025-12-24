@@ -1,15 +1,15 @@
 import {
   captureStackInfo,
   computeRcRefKey,
-  formatQueryError,
+  createQueryResource,
   type NormalizedQueryable,
   normalizeQueryable,
+  runInitialQuery,
 } from '@livestore/framework-toolkit'
 import type { LiveQuery, Queryable, Store } from '@livestore/livestore'
-import { StoreInternalsSymbol } from '@livestore/livestore'
 import type { LiveQueries } from '@livestore/livestore/internal'
 import { deepEqual, shouldNeverHappen } from '@livestore/utils'
-import * as otel from '@opentelemetry/api'
+import type * as otel from '@opentelemetry/api'
 import React from 'react'
 
 import { useRcResource } from './useRcResource.ts'
@@ -78,32 +78,15 @@ export const useQueryRef = <TQueryable extends Queryable<any>>(
 
   const rcRefKey = React.useMemo(() => computeRcRefKey(store, normalized), [normalized, store])
 
-  const resourceLabel = normalized._tag === 'definition' ? normalized.def.label : normalized.query$.label
-
   const stackInfo = React.useMemo(() => captureStackInfo(), [])
 
   const { queryRcRef, span, otelContext } = useRcResource(
     rcRefKey,
-    () => {
-      const span = store[StoreInternalsSymbol].otel.tracer.startSpan(
-        options?.otelSpanName ?? `LiveStore:useQuery:${resourceLabel}`,
-        { attributes: { label: resourceLabel, firstStackInfo: JSON.stringify(stackInfo) } },
-        options?.otelContext ?? store[StoreInternalsSymbol].otel.queriesSpanContext,
-      )
-
-      const otelContext = otel.trace.setSpan(otel.context.active(), span)
-
-      const queryRcRef =
-        normalized._tag === 'definition'
-          ? normalized.def.make(store[StoreInternalsSymbol].reactivityGraph.context!, otelContext)
-          : ({
-              value: normalized.query$,
-              deref: () => {},
-              rc: Number.POSITIVE_INFINITY,
-            } satisfies LiveQueries.RcRef<LiveQuery<TResult>>)
-
-      return { queryRcRef, span, otelContext }
-    },
+    () =>
+      createQueryResource(store, normalized, stackInfo, {
+        otelSpanName: options?.otelSpanName,
+        otelContext: options?.otelContext,
+      }),
     // We need to keep the queryRcRef alive a bit longer, so we have a second `useRcResource` below
     // which takes care of disposing the queryRcRef
     () => {},
@@ -113,22 +96,10 @@ export const useQueryRef = <TQueryable extends Queryable<any>>(
 
   React.useDebugValue(`LiveStore:useQuery:${query$.id}:${query$.label}`)
 
-  const initialResult = React.useMemo(() => {
-    try {
-      return query$.run({
-        otelContext,
-        debugRefreshReason: {
-          _tag: 'react',
-          api: 'useQuery',
-          label: `useQuery:initial-run:${query$.label}`,
-          stackInfo,
-        },
-      })
-    } catch (cause: any) {
-      console.error('[@livestore/react:useQuery] Error running query', cause)
-      throw formatQueryError(cause, query$.label, stackInfo, 'react')
-    }
-  }, [otelContext, query$, stackInfo])
+  const initialResult = React.useMemo(
+    () => runInitialQuery(query$, otelContext, stackInfo, 'react'),
+    [otelContext, query$, stackInfo],
+  )
 
   // We know the query has a result by the time we use it; so we can synchronously populate a default state
   const [valueRef, setValue] = useStateRefWithReactiveInput<TResult>(initialResult)

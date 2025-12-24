@@ -1,16 +1,15 @@
 import {
   captureStackInfo,
   computeRcRefKey,
-  formatQueryError,
+  createQueryResource,
   type NormalizedQueryable,
   normalizeQueryable,
-  type StackInfo,
+  runInitialQuery,
 } from '@livestore/framework-toolkit'
 import type { LiveQuery, Queryable, Store } from '@livestore/livestore'
-import { StoreInternalsSymbol } from '@livestore/livestore'
 import type { LiveQueries } from '@livestore/livestore/internal'
 import { deepEqual, shouldNeverHappen } from '@livestore/utils'
-import * as otel from '@opentelemetry/api'
+import type * as otel from '@opentelemetry/api'
 import * as Solid from 'solid-js'
 
 import { type AccessorMaybe, resolve } from './utils.ts'
@@ -56,36 +55,19 @@ export const useQueryRef = <TQueryable extends Queryable<any>>(
 
   const rcRefKey = Solid.createMemo(() => computeRcRefKey(store, normalized()))
 
-  const resourceLabel = () => {
-    const _normalized = normalized()
-    return _normalized._tag === 'definition' ? _normalized.def.label : _normalized.query$.label
-  }
-
   const stackInfo = captureStackInfo()
 
   const resource = Solid.createMemo(
     Solid.on(rcRefKey, () => {
       const _normalized = normalized()
 
-      const span = store[StoreInternalsSymbol].otel.tracer.startSpan(
-        options?.otelSpanName ?? `LiveStore:useQuery:${resourceLabel()}`,
-        { attributes: { label: resourceLabel(), firstStackInfo: JSON.stringify(stackInfo) } },
-        options?.otelContext ?? store[StoreInternalsSymbol].otel.queriesSpanContext,
-      )
-
-      const otelContext = otel.trace.setSpan(otel.context.active(), span)
-
-      const queryRcRef =
-        _normalized._tag === 'definition'
-          ? _normalized.def.make(store[StoreInternalsSymbol].reactivityGraph.context!, otelContext)
-          : ({
-              value: _normalized.query$,
-              deref: () => {},
-              rc: Number.POSITIVE_INFINITY,
-            } satisfies LiveQueries.RcRef<LiveQuery<TResult>>)
+      const { queryRcRef, span, otelContext } = createQueryResource(store, _normalized, stackInfo, {
+        otelSpanName: options?.otelSpanName,
+        otelContext: options?.otelContext,
+      })
 
       const [valueRef, setValueRef] = Solid.createSignal<Queryable.Result<TQueryable>>(
-        getInitialResult(queryRcRef.value, otelContext, stackInfo),
+        runInitialQuery(queryRcRef.value, otelContext, stackInfo, 'solid'),
       )
 
       queryRcRef.value.activeSubscriptions.add(stackInfo)
@@ -130,26 +112,5 @@ export const useQueryRef = <TQueryable extends Queryable<any>>(
     queryRcRef() {
       return resource().queryRcRef
     },
-  }
-}
-
-function getInitialResult<TQueryable extends Queryable<any>>(
-  query$: LiveQuery<Queryable.Result<TQueryable>>,
-  otelContext: otel.Context,
-  stackInfo: StackInfo,
-) {
-  try {
-    return query$.run({
-      otelContext,
-      debugRefreshReason: {
-        _tag: 'react',
-        api: 'useQuery',
-        label: `useQuery:initial-run:${query$.label}`,
-        stackInfo,
-      },
-    })
-  } catch (cause: any) {
-    console.error('[@livestore/solid:useQuery] Error running query', cause)
-    throw formatQueryError(cause, query$.label, stackInfo, 'solid')
   }
 }
