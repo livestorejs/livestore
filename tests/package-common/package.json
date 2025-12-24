@@ -3,12 +3,17 @@
   "version": "0.0.0",
   "type": "module",
   "private": true,
+  "exports": {
+    "./todomvc-fixture": "./src/todomvc-fixture.ts"
+  },
   "dependencies": {
     "@livestore/adapter-node": "workspace:*",
+    "@livestore/adapter-web": "workspace:*",
     "@livestore/common": "workspace:*",
     "@livestore/livestore": "workspace:*",
     "@livestore/sqlite-wasm": "workspace:*",
-    "@livestore/utils": "workspace:*"
+    "@livestore/utils": "workspace:*",
+    "@opentelemetry/api": "catalog:"
   },
   "devDependencies": {
     "@livestore/utils-dev": "workspace:*",

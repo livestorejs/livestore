@@ -2289,6 +2289,9 @@ importers:
       '@livestore/utils-dev':
         specifier: workspace:*
         version: link:../utils-dev
+      '@local/tests-package-common':
+        specifier: workspace:*
+        version: link:../../../tests/package-common
       '@opentelemetry/sdk-trace-base':
         specifier: 'catalog:'
         version: 2.2.0(@opentelemetry/api@1.9.0)
@@ -2347,12 +2350,18 @@ importers:
         specifier: 0.3.3
         version: 0.3.3(solid-js@1.9.9)
     devDependencies:
+      '@effect/vitest':
+        specifier: 'catalog:'
+        version: 0.27.0(effect@3.19.14)(vitest@4.0.16(@opentelemetry/api@1.9.0)(@types/node@25.0.3)(@vitest/ui@3.2.4)(jiti@2.6.1)(jsdom@26.1.0)(lightningcss@1.30.2)(terser@5.44.1)(tsx@4.21.0)(yaml@2.8.2))
       '@livestore/adapter-web':
         specifier: workspace:*
         version: link:../adapter-web
       '@livestore/utils-dev':
         specifier: workspace:*
         version: link:../utils-dev
+      '@local/tests-package-common':
+        specifier: workspace:*
+        version: link:../../../tests/package-common
       '@opentelemetry/sdk-trace-base':
         specifier: 'catalog:'
         version: 2.2.0(@opentelemetry/api@1.9.0)
@@ -2362,6 +2371,9 @@ importers:
       '@testing-library/jest-dom':
         specifier: ^6.9.1
         version: 6.9.1
+      effect:
+        specifier: 'catalog:'
+        version: 3.19.14
       jsdom:
         specifier: ^26.1.0
         version: 26.1.0
@@ -2930,6 +2942,9 @@ importers:
       '@livestore/adapter-node':
         specifier: workspace:*
         version: link:../../packages/@livestore/adapter-node
+      '@livestore/adapter-web':
+        specifier: workspace:*
+        version: link:../../packages/@livestore/adapter-web
       '@livestore/common':
         specifier: workspace:*
         version: link:../../packages/@livestore/common
@@ -2942,6 +2957,9 @@ importers:
       '@livestore/utils':
         specifier: workspace:*
         version: link:../../packages/@livestore/utils
+      '@opentelemetry/api':
+        specifier: 'catalog:'
+        version: 1.9.0
     devDependencies:
       '@livestore/utils-dev':
         specifier: workspace:*
@@ -10961,9 +10979,6 @@ packages:
 
   ee-first@1.1.1:
     resolution: {integrity: sha512-WMwm9LhRUo+WUaRN+vRuETqG89IgZphVSNkdFgeb6sS/E4OrDIN7t48CAewSHXc6C8lefD8KKfr5vY61brQlow==}
-
-  effect@3.19.12:
-    resolution: {integrity: sha512-7F9RGTrCTC3D7nh9Zw+3VlJWwZgo5k33KA+476BAaD0rKIXKZsY/jQ+ipyhR/Avo239Fi6GqAVFs1mqM1IJ7yg==}
 
   effect@3.19.14:
     resolution: {integrity: sha512-3vwdq0zlvQOxXzXNKRIPKTqZNMyGCdaFUBfMPqpsyzZDre67kgC1EEHDV4EoQTovJ4w5fmJW756f86kkuz7WFA==}
@@ -27702,11 +27717,6 @@ snapshots:
 
   ee-first@1.1.1: {}
 
-  effect@3.19.12:
-    dependencies:
-      '@standard-schema/spec': 1.0.0
-      fast-check: 3.23.2
-
   effect@3.19.14:
     dependencies:
       '@standard-schema/spec': 1.0.0
@@ -34647,7 +34657,7 @@ snapshots:
       chalk-template: 1.1.2
       commander: 13.1.0
       cosmiconfig: 9.0.0(typescript@5.9.3)
-      effect: 3.19.12
+      effect: 3.19.14
       enquirer: 2.4.1
       fast-check: 3.23.2
       globby: 14.1.0

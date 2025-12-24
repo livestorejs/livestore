@@ -14,6 +14,7 @@
     { "path": "../adapter-web" },
     { "path": "../livestore" },
     { "path": "../utils" },
-    { "path": "../utils-dev" }
+    { "path": "../utils-dev" },
+    { "path": "../../../tests/package-common" }
   ]
 }
