@@ -1,7 +1,7 @@
 import type { LiveStoreSchema } from '@livestore/common/schema'
 import type { RegistryStoreOptions, Store } from '@livestore/livestore'
 import type { Schema } from '@livestore/utils/effect'
-import { createMemo, createResource, onCleanup, type Resource } from 'solid-js'
+import * as Solid from 'solid-js'
 import { useStoreRegistry } from './StoreRegistryContext.tsx'
 import { useClientDocument } from './useClientDocument.ts'
 import { useQuery } from './useQuery.ts'
@@ -66,19 +66,19 @@ export const useStore = <
   TSyncPayloadSchema extends Schema.Schema<any> = typeof Schema.JsonValue,
 >(
   options: AccessorMaybe<RegistryStoreOptions<TSchema, TContext, TSyncPayloadSchema>>,
-): Resource<Store<TSchema, TContext> & SolidApi> => {
+): Solid.Resource<Store<TSchema, TContext> & SolidApi> => {
   const storeRegistry = useStoreRegistry()
 
-  const resolvedOptions = createMemo(() => resolve(options))
+  const resolvedOptions = Solid.createMemo(() => resolve(options))
 
   // Retain store while component is mounted
-  createMemo(() => {
+  Solid.createMemo(() => {
     const opts = resolvedOptions()
     const release = storeRegistry.retain(opts)
-    onCleanup(() => release())
+    Solid.onCleanup(() => release())
   })
 
-  const [storeResource] = createResource(resolvedOptions, async (opts) => {
+  const [storeResource] = Solid.createResource(resolvedOptions, async (opts) => {
     const result = storeRegistry.getOrLoadPromise(opts)
     const store = result instanceof Promise ? await result : result
 

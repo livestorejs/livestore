@@ -10,7 +10,7 @@ import {
 import type { LiveQueries } from '@livestore/livestore/internal'
 import { deepEqual, indent, shouldNeverHappen } from '@livestore/utils'
 import * as otel from '@opentelemetry/api'
-import { type Accessor, createMemo, createSignal, on, onCleanup } from 'solid-js'
+import * as Solid from 'solid-js'
 import { originalStackLimit } from './utils/stack-info.ts'
 import { type AccessorMaybe, resolve } from './utils.ts'
 
@@ -28,7 +28,7 @@ import { type AccessorMaybe, resolve } from './utils.ts'
 export const useQuery = <TQueryable extends Queryable<any>>(
   queryDef: AccessorMaybe<TQueryable>,
   options?: { store?: Store },
-): Accessor<Queryable.Result<TQueryable>> => useQueryRef(queryDef, options).valueRef
+): Solid.Accessor<Queryable.Result<TQueryable>> => useQueryRef(queryDef, options).valueRef
 
 /**
  */
@@ -42,8 +42,8 @@ export const useQueryRef = <TQueryable extends Queryable<any>>(
     otelSpanName?: string
   },
 ): {
-  valueRef: Accessor<Queryable.Result<TQueryable>>
-  queryRcRef: Accessor<LiveQueries.RcRef<LiveQuery<Queryable.Result<TQueryable>>>>
+  valueRef: Solid.Accessor<Queryable.Result<TQueryable>>
+  queryRcRef: Solid.Accessor<LiveQueries.RcRef<LiveQuery<Queryable.Result<TQueryable>>>>
 } => {
   const store = options?.store ?? shouldNeverHappen(`No store provided to useQuery`)
 
@@ -52,7 +52,7 @@ export const useQueryRef = <TQueryable extends Queryable<any>>(
     | { _tag: 'definition'; def: LiveQueryDef<TResult> | SignalDef<TResult> }
     | { _tag: 'live-query'; query$: LiveQuery<TResult> }
 
-  const normalized = createMemo<NormalizedQueryable>(() => {
+  const normalized = Solid.createMemo<NormalizedQueryable>(() => {
     const _queryable = resolve(queryable)
 
     if (!isQueryable(_queryable)) {
@@ -74,7 +74,7 @@ export const useQueryRef = <TQueryable extends Queryable<any>>(
   })
 
   // It's important to use all "aspects" of a store instance here, otherwise we get unexpected cache mappings
-  const rcRefKey = createMemo(() => {
+  const rcRefKey = Solid.createMemo(() => {
     const _normalized = normalized()
 
     const base = `${store.storeId}_${store.clientId}_${store.sessionId}`
@@ -98,8 +98,8 @@ export const useQueryRef = <TQueryable extends Queryable<any>>(
     return extractStackInfoFromStackTrace(stack)
   })()
 
-  const resource = createMemo(
-    on(rcRefKey, () => {
+  const resource = Solid.createMemo(
+    Solid.on(rcRefKey, () => {
       const _normalized = normalized()
 
       const span = store[StoreInternalsSymbol].otel.tracer.startSpan(
@@ -119,7 +119,7 @@ export const useQueryRef = <TQueryable extends Queryable<any>>(
               rc: Number.POSITIVE_INFINITY,
             } satisfies LiveQueries.RcRef<LiveQuery<TResult>>)
 
-      const [valueRef, setValueRef] = createSignal<Queryable.Result<TQueryable>>(
+      const [valueRef, setValueRef] = Solid.createSignal<Queryable.Result<TQueryable>>(
         getInitialResult(queryRcRef.value, otelContext, stackInfo),
       )
 
@@ -151,7 +151,7 @@ export const useQueryRef = <TQueryable extends Queryable<any>>(
         },
       )
 
-      onCleanup(() => {
+      Solid.onCleanup(() => {
         queryRcRef.deref()
         span.end()
         cleanup()

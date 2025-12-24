@@ -5,7 +5,7 @@ import { RG } from '@livestore/livestore/internal/testing-utils'
 import { Effect, Schema } from '@livestore/utils/effect'
 import { Vitest } from '@livestore/utils-dev/node-vitest'
 import * as SolidTesting from '@solidjs/testing-library'
-import { createMemo, createSignal, For } from 'solid-js'
+import * as Solid from 'solid-js'
 import { expect } from 'vitest'
 
 import { events, makeTodoMvcSolid, StoreInternalsSymbol, tables } from './__tests__/fixture.tsx'
@@ -57,7 +57,7 @@ Vitest.describe('useQuery', () => {
         events.todoCreated({ id: 't2', text: 'buy eggs', completed: false }),
       )
 
-      const [todoId, setTodoId] = createSignal('t1')
+      const [todoId, setTodoId] = Solid.createSignal('t1')
 
       const { result } = SolidTesting.renderHook(
         () => {
@@ -136,12 +136,14 @@ Vitest.describe('useQuery', () => {
         return <div role="listitem">{String(res())}</div>
       }
 
-      const [numItems, setNumItems] = createSignal(1)
+      const [numItems, setNumItems] = Solid.createSignal(1)
 
       const ListWrapper = () => {
         return (
           <div>
-            <For each={Array.from({ length: numItems() }, (_, i) => i).reverse()}>{(id) => <ListItem id={id} />}</For>
+            <Solid.For each={Array.from({ length: numItems() }, (_, i) => i).reverse()}>
+              {(id) => <ListItem id={id} />}
+            </Solid.For>
           </div>
         )
       }
@@ -164,10 +166,10 @@ Vitest.describe('useQuery', () => {
       const { wrapper, store } = yield* makeTodoMvcSolid({})
 
       // Create a signal to control the number of items
-      const [numItems, setNumItems] = createSignal(1)
+      const [numItems, setNumItems] = Solid.createSignal(1)
 
       const VirtualizedList = () => {
-        const itemData = createMemo(() => Array.from({ length: numItems() }, (_, i) => i).reverse())
+        const itemData = Solid.createMemo(() => Array.from({ length: numItems() }, (_, i) => i).reverse())
 
         const containerHeight = 100
         const itemHeight = 10
@@ -176,7 +178,7 @@ Vitest.describe('useQuery', () => {
         return (
           <div style={{ height: `${containerHeight}px`, overflow: 'auto' }}>
             <div style={{ height: `${itemData().length * itemHeight}px`, position: 'relative' }}>
-              <For each={itemData().slice(0, visibleCount + 1)}>
+              <Solid.For each={itemData().slice(0, visibleCount + 1)}>
                 {(id, index) => (
                   <VirtualListItem
                     id={id}
@@ -188,7 +190,7 @@ Vitest.describe('useQuery', () => {
                     }}
                   />
                 )}
-              </For>
+              </Solid.For>
             </div>
           </div>
         )

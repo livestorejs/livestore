@@ -5,16 +5,16 @@ import { State } from '@livestore/common/schema'
 import type { LiveQuery, LiveQueryDef, Store } from '@livestore/livestore'
 import { queryDb } from '@livestore/livestore'
 import { omitUndefineds, shouldNeverHappen } from '@livestore/utils'
-import { type Accessor, createMemo, createRenderEffect, mergeProps } from 'solid-js'
+import * as Solid from 'solid-js'
 
 import { useQueryRef } from './useQuery.ts'
 import { type AccessorMaybe, resolve } from './utils.ts'
 
 export type UseClientDocumentResult<TTableDef extends State.SQLite.ClientDocumentTableDef.TraitAny> = [
-  row: Accessor<TTableDef['Value']>,
+  row: Solid.Accessor<TTableDef['Value']>,
   setRow: StateSetters<TTableDef>,
-  id: Accessor<string>,
-  query$: Accessor<LiveQuery<TTableDef['Value']>>,
+  id: Solid.Accessor<string>,
+  query$: Solid.Accessor<LiveQuery<TTableDef['Value']>>,
 ]
 
 /**
@@ -91,20 +91,20 @@ export const useClientDocument: {
   options_?: Partial<RowQuery.GetOrCreateOptions<TTableDef>>,
   storeArg?: { store?: Store },
 ): UseClientDocumentResult<TTableDef> => {
-  const id = when(idOrOptions, (idOrOptions) =>
-    typeof idOrOptions === 'string' || idOrOptions === SessionIdSymbol
-      ? idOrOptions
-      : resolve(table)[State.SQLite.ClientDocumentTableDefSymbol].options.default.id,
-  )
-
-  const options: Partial<RowQuery.GetOrCreateOptions<TTableDef>> = mergeProps(
+  const options: Partial<RowQuery.GetOrCreateOptions<TTableDef>> = Solid.mergeProps(
     {},
     when(idOrOptions, (idOrOptions) =>
       typeof idOrOptions === 'string' || idOrOptions === SessionIdSymbol ? options_ : idOrOptions,
     ),
   )
 
-  createRenderEffect(() => validateTableOptions(resolve(table)))
+  const id = when(idOrOptions, (idOrOptions) =>
+    typeof idOrOptions === 'string' || idOrOptions === SessionIdSymbol
+      ? idOrOptions
+      : resolve(table)[State.SQLite.ClientDocumentTableDefSymbol].options.default.id,
+  )
+
+  Solid.createRenderEffect(() => validateTableOptions(resolve(table)))
 
   const tableName = () => resolve(table).sqliteDef.name
 
@@ -112,16 +112,16 @@ export const useClientDocument: {
 
   // console.debug('useClientDocument', tableName, id)
 
-  const idStr: Accessor<string> = () => (id() === SessionIdSymbol ? store.sessionId : id())
+  const idStr: Solid.Accessor<string> = () => (id() === SessionIdSymbol ? store.sessionId : id())
 
   type QueryDef = LiveQueryDef<TTableDef['Value']>
-  const queryDef = createMemo<QueryDef>(() =>
+  const queryDef = Solid.createMemo<QueryDef>(() =>
     queryDb(resolve(table).get(id()!, { default: options.default! }), {
       deps: [idStr()!, resolve(table).sqliteDef.name, JSON.stringify(options.default)],
     }),
   )
 
-  const queryRefOptions = mergeProps(
+  const queryRefOptions = Solid.mergeProps(
     {
       get otelSpanName() {
         return `LiveStore:useClientDocument:${tableName()}:${idStr()}`

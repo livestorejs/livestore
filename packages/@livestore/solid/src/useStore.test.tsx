@@ -7,7 +7,7 @@ import {
   storeOptions,
 } from '@livestore/livestore'
 import * as SolidTesting from '@solidjs/testing-library'
-import { createSignal, type JSX, Suspense } from 'solid-js'
+import * as Solid from 'solid-js'
 import { describe, expect, it } from 'vitest'
 import { schema } from './__tests__/fixture.tsx'
 import { StoreRegistryProvider } from './StoreRegistryContext.tsx'
@@ -46,9 +46,9 @@ describe('useStore', () => {
 
     const { findByTestId, queryByTestId } = SolidTesting.render(() => (
       <StoreRegistryProvider storeRegistry={storeRegistry}>
-        <Suspense fallback={<div data-testid="fallback" />}>
+        <Solid.Suspense fallback={<div data-testid="fallback" />}>
           <StoreConsumer options={options} />
-        </Suspense>
+        </Solid.Suspense>
       </StoreRegistryProvider>
     ))
 
@@ -63,7 +63,7 @@ describe('useStore', () => {
     const storeRegistry = new StoreRegistry()
     const options = testStoreOptions()
 
-    const [currentOptions, setCurrentOptions] = createSignal(options)
+    const [currentOptions, setCurrentOptions] = Solid.createSignal(options)
 
     const StoreConsumer = (props: { options: () => RegistryStoreOptions<typeof schema> }) => {
       useStore(props.options)
@@ -72,9 +72,9 @@ describe('useStore', () => {
 
     const { findByTestId, queryByTestId } = SolidTesting.render(() => (
       <StoreRegistryProvider storeRegistry={storeRegistry}>
-        <Suspense fallback={<div data-testid="fallback" />}>
+        <Solid.Suspense fallback={<div data-testid="fallback" />}>
           <StoreConsumer options={currentOptions} />
-        </Suspense>
+        </Solid.Suspense>
       </StoreRegistryProvider>
     ))
 
@@ -125,7 +125,7 @@ describe('useStore', () => {
     const optionsB = testStoreOptions({ storeId: 'store-b' })
 
     // Use a signal to trigger reactive updates (Solid's pattern instead of rerender)
-    const [currentOptions, setCurrentOptions] = createSignal<RegistryStoreOptions<typeof schema>>(optionsA)
+    const [currentOptions, setCurrentOptions] = Solid.createSignal<RegistryStoreOptions<typeof schema>>(optionsA)
 
     const { result } = SolidTesting.renderHook(() => useStore(currentOptions), {
       wrapper: makeProvider(storeRegistry),
@@ -160,7 +160,7 @@ describe('useStore', () => {
   })
 })
 
-const makeProvider = (storeRegistry: StoreRegistry) => (props: { children: JSX.Element }) => {
+const makeProvider = (storeRegistry: StoreRegistry) => (props: { children: Solid.JSX.Element }) => {
   return <StoreRegistryProvider storeRegistry={storeRegistry}>{props.children}</StoreRegistryProvider>
 }
 

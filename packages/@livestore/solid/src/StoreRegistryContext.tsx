@@ -1,11 +1,11 @@
 import type { StoreRegistry } from '@livestore/livestore'
-import { createContext, type JSX, useContext } from 'solid-js'
+import * as Solid from 'solid-js'
 
-export const StoreRegistryContext = createContext<StoreRegistry | undefined>(undefined)
+export const StoreRegistryContext = Solid.createContext<StoreRegistry | undefined>(undefined)
 
 export type StoreRegistryProviderProps = {
   storeRegistry: StoreRegistry
-  children: JSX.Element
+  children: Solid.JSX.Element
 }
 
 /**
@@ -33,7 +33,7 @@ export type StoreRegistryProviderProps = {
  * }
  * ```
  */
-export const StoreRegistryProvider = (props: StoreRegistryProviderProps): JSX.Element => {
+export const StoreRegistryProvider = (props: StoreRegistryProviderProps): Solid.JSX.Element => {
   return <StoreRegistryContext.Provider value={props.storeRegistry}>{props.children}</StoreRegistryContext.Provider>
 }
 
@@ -61,7 +61,7 @@ export const StoreRegistryProvider = (props: StoreRegistryProviderProps): JSX.El
 export const useStoreRegistry = (override?: StoreRegistry): StoreRegistry => {
   if (override) return override
 
-  const storeRegistry = useContext(StoreRegistryContext)
+  const storeRegistry = Solid.useContext(StoreRegistryContext)
 
   if (!storeRegistry) throw new Error('useStoreRegistry() must be used within <StoreRegistryProvider>')
 
