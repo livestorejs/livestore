@@ -44,15 +44,13 @@ describe('useStore', () => {
       return <div data-testid="ready" />
     }
 
-    const { findByTestId, queryByTestId } = SolidTesting.render(
-      () => (
-        <StoreRegistryProvider storeRegistry={storeRegistry}>
-          <Suspense fallback={<div data-testid="fallback" />}>
-            <StoreConsumer options={options} />
-          </Suspense>
-        </StoreRegistryProvider>
-      ),
-    )
+    const { findByTestId, queryByTestId } = SolidTesting.render(() => (
+      <StoreRegistryProvider storeRegistry={storeRegistry}>
+        <Suspense fallback={<div data-testid="fallback" />}>
+          <StoreConsumer options={options} />
+        </Suspense>
+      </StoreRegistryProvider>
+    ))
 
     // After loading completes, should show the actual content
     await findByTestId('ready')
@@ -72,15 +70,13 @@ describe('useStore', () => {
       return <div data-testid="ready" />
     }
 
-    const { findByTestId, queryByTestId } = SolidTesting.render(
-      () => (
-        <StoreRegistryProvider storeRegistry={storeRegistry}>
-          <Suspense fallback={<div data-testid="fallback" />}>
-            <StoreConsumer options={currentOptions} />
-          </Suspense>
-        </StoreRegistryProvider>
-      ),
-    )
+    const { findByTestId, queryByTestId } = SolidTesting.render(() => (
+      <StoreRegistryProvider storeRegistry={storeRegistry}>
+        <Suspense fallback={<div data-testid="fallback" />}>
+          <StoreConsumer options={currentOptions} />
+        </Suspense>
+      </StoreRegistryProvider>
+    ))
 
     // Wait for initial load
     await findByTestId('ready')
