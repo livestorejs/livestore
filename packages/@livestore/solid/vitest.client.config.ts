@@ -1,25 +1,25 @@
-import solidPlugin from "vite-plugin-solid";
-import { defineConfig, Plugin } from "vitest/config";
+import solidPlugin from 'vite-plugin-solid'
+import { defineConfig, type Plugin } from 'vitest/config'
 
 export default defineConfig({
   plugins: [
     solidPlugin({
       hot: false,
-      solid: { generate: "dom" },
+      solid: { generate: 'dom' },
     }) as Plugin,
   ],
   test: {
     name: 'solid-client',
     watch: false,
     env: {
-      NODE_ENV: "production",
-      SSR: "0",
-      PROD: "1",
+      NODE_ENV: 'production',
+      SSR: '0',
+      PROD: '1',
     },
-    environment: "jsdom",
+    environment: 'jsdom',
     setupFiles: ['./test/setup.ts'],
     globals: true,
-    include: ["src/**/*.client.test.{ts,tsx}"],
+    include: ['src/**/*.client.test.{ts,tsx}'],
     server: {
       deps: {
         inline: [/solid-js/],
@@ -29,4 +29,4 @@ export default defineConfig({
   resolve: {
     conditions: ['development', 'browser'],
   },
-});
+})

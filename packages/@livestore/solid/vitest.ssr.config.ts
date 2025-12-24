@@ -1,11 +1,11 @@
-import solidPlugin from "vite-plugin-solid";
-import { defineConfig, type Plugin } from "vitest/config";
+import solidPlugin from 'vite-plugin-solid'
+import { defineConfig, type Plugin } from 'vitest/config'
 
 export default defineConfig({
   plugins: [
     solidPlugin({
       hot: false,
-      solid: { generate: "ssr" },
+      solid: { generate: 'ssr' },
       ssr: true,
     }) as Plugin,
   ],
@@ -13,20 +13,20 @@ export default defineConfig({
     name: 'solid-ssr',
     watch: false,
     env: {
-      NODE_ENV: "production",
-      SSR: "1",
-      PROD: "1",
+      NODE_ENV: 'production',
+      SSR: '1',
+      PROD: '1',
     },
-    environment: "node",
+    environment: 'node',
     globals: true,
-    include: ["src/**/*.server.test.{ts,tsx}"],
+    include: ['src/**/*.server.test.{ts,tsx}'],
   },
   resolve: {
-    conditions: ["node"],
+    conditions: ['node'],
   },
   ssr: {
     resolve: {
-      conditions: ["node"],
+      conditions: ['node'],
     },
   },
-});
+})
