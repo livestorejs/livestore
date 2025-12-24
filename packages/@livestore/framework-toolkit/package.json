@@ -1,0 +1,37 @@
+{
+  "name": "@livestore/framework-toolkit",
+  "version": "0.4.0-dev.21",
+  "type": "module",
+  "sideEffects": false,
+  "exports": {
+    ".": "./src/mod.ts",
+    "./testing": "./src/testing.ts"
+  },
+  "dependencies": {
+    "@livestore/adapter-web": "workspace:*",
+    "@livestore/common": "workspace:*",
+    "@livestore/livestore": "workspace:*",
+    "@livestore/utils": "workspace:*",
+    "@opentelemetry/api": "catalog:"
+  },
+  "devDependencies": {
+    "@livestore/utils-dev": "workspace:*",
+    "typescript": "catalog:"
+  },
+  "files": [
+    "package.json",
+    "src",
+    "dist"
+  ],
+  "license": "Apache-2.0",
+  "publishConfig": {
+    "access": "public",
+    "exports": {
+      ".": "./dist/mod.js",
+      "./testing": "./dist/testing.js"
+    }
+  },
+  "scripts": {
+    "build": "tsc"
+  }
+}

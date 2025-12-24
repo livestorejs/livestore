@@ -3,17 +3,13 @@
   "compilerOptions": {
     "outDir": "./dist",
     "rootDir": "./src",
-    "jsx": "preserve",
-    "skipLibCheck": true,
     "resolveJsonModule": true,
-    "jsxImportSource": "solid-js",
     "tsBuildInfoFile": "./dist/.tsbuildinfo"
   },
   "include": ["./src"],
   "references": [
     { "path": "../common" },
     { "path": "../adapter-web" },
-    { "path": "../framework-toolkit" },
     { "path": "../livestore" },
     { "path": "../utils" },
     { "path": "../utils-dev" }

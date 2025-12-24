@@ -9,6 +9,7 @@
   },
   "dependencies": {
     "@livestore/common": "workspace:*",
+    "@livestore/framework-toolkit": "workspace:*",
     "@livestore/livestore": "workspace:*",
     "@livestore/utils": "workspace:*",
     "@opentelemetry/api": "catalog:"
@@ -16,7 +17,6 @@
   "devDependencies": {
     "@livestore/adapter-web": "workspace:*",
     "@livestore/utils-dev": "workspace:*",
-    "@local/tests-package-common": "workspace:*",
     "@opentelemetry/sdk-trace-base": "catalog:",
     "@testing-library/dom": "^10.4.1",
     "@testing-library/react": "^16.3.0",

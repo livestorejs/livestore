@@ -1,17 +1,18 @@
-import { isQueryBuilder } from '@livestore/common'
-import type { LiveQuery, LiveQueryDef, Queryable, SignalDef, StackInfo, Store } from '@livestore/livestore'
 import {
-  extractStackInfoFromStackTrace,
-  isQueryable,
-  queryDb,
-  StoreInternalsSymbol,
-  stackInfoToString,
-} from '@livestore/livestore'
+  captureStackInfo,
+  computeRcRefKey,
+  formatQueryError,
+  type NormalizedQueryable,
+  normalizeQueryable,
+  type StackInfo,
+} from '@livestore/framework-toolkit'
+import type { LiveQuery, Queryable, Store } from '@livestore/livestore'
+import { StoreInternalsSymbol } from '@livestore/livestore'
 import type { LiveQueries } from '@livestore/livestore/internal'
-import { deepEqual, indent, shouldNeverHappen } from '@livestore/utils'
+import { deepEqual, shouldNeverHappen } from '@livestore/utils'
 import * as otel from '@opentelemetry/api'
 import * as Solid from 'solid-js'
-import { originalStackLimit } from './utils/stack-info.ts'
+
 import { type AccessorMaybe, resolve } from './utils.ts'
 
 /**
@@ -48,55 +49,19 @@ export const useQueryRef = <TQueryable extends Queryable<any>>(
   const store = options?.store ?? shouldNeverHappen(`No store provided to useQuery`)
 
   type TResult = Queryable.Result<TQueryable>
-  type NormalizedQueryable =
-    | { _tag: 'definition'; def: LiveQueryDef<TResult> | SignalDef<TResult> }
-    | { _tag: 'live-query'; query$: LiveQuery<TResult> }
 
-  const normalized = Solid.createMemo<NormalizedQueryable>(() => {
-    const _queryable = resolve(queryable)
+  const normalized = Solid.createMemo<NormalizedQueryable<TResult>>(() =>
+    normalizeQueryable(resolve(queryable) as Queryable<TResult>),
+  )
 
-    if (!isQueryable(_queryable)) {
-      return shouldNeverHappen('useQuery expected a Queryable value')
-    }
-
-    if (isQueryBuilder(_queryable)) {
-      return { _tag: 'definition', def: queryDb(_queryable) }
-    }
-
-    if (
-      (_queryable as LiveQueryDef<TResult> | SignalDef<TResult>)._tag === 'def' ||
-      (_queryable as LiveQueryDef<TResult> | SignalDef<TResult>)._tag === 'signal-def'
-    ) {
-      return { _tag: 'definition', def: _queryable as LiveQueryDef<TResult> | SignalDef<TResult> }
-    }
-
-    return { _tag: 'live-query', query$: _queryable as LiveQuery<TResult> }
-  })
-
-  // It's important to use all "aspects" of a store instance here, otherwise we get unexpected cache mappings
-  const rcRefKey = Solid.createMemo(() => {
-    const _normalized = normalized()
-
-    const base = `${store.storeId}_${store.clientId}_${store.sessionId}`
-
-    if (_normalized._tag === 'definition') {
-      return `${base}:def:${_normalized.def.hash}`
-    }
-
-    return `${base}:instance:${_normalized.query$.id}`
-  })
+  const rcRefKey = Solid.createMemo(() => computeRcRefKey(store, normalized()))
 
   const resourceLabel = () => {
     const _normalized = normalized()
     return _normalized._tag === 'definition' ? _normalized.def.label : _normalized.query$.label
   }
 
-  const stackInfo = (() => {
-    Error.stackTraceLimit = 10
-    const stack = new Error().stack!
-    Error.stackTraceLimit = originalStackLimit
-    return extractStackInfoFromStackTrace(stack)
-  })()
+  const stackInfo = captureStackInfo()
 
   const resource = Solid.createMemo(
     Solid.on(rcRefKey, () => {
@@ -123,7 +88,6 @@ export const useQueryRef = <TQueryable extends Queryable<any>>(
         getInitialResult(queryRcRef.value, otelContext, stackInfo),
       )
 
-      // TODO double check whether we still need `activeSubscriptions`
       queryRcRef.value.activeSubscriptions.add(stackInfo)
 
       // Dynamic queries only set their actual label after they've been run the first time,
@@ -133,8 +97,6 @@ export const useQueryRef = <TQueryable extends Queryable<any>>(
       const cleanup = store.subscribe(
         queryRcRef.value,
         (newValue) => {
-          // SOLID  - I wonder if this has implications if we would do setStore({reconcile})
-          //          because then the proxy is mutated, which might be backed by the original LiveStore-object
           // NOTE: we return a reference to the result object within LiveStore;
           // this implies that app code must not mutate the results, or else
           // there may be weird reactivity bugs.
@@ -187,20 +149,7 @@ function getInitialResult<TQueryable extends Queryable<any>>(
       },
     })
   } catch (cause: any) {
-    console.error('[@livestore/react:useQuery] Error running query', cause)
-    throw new Error(
-      `\
-[@livestore/react:useQuery] Error running query: ${cause.name}
-
-Query: ${query$.label}
-
-React trace:
-
-${indent(stackInfoToString(stackInfo), 4)}
-
-Stack trace:
-`,
-      { cause },
-    )
+    console.error('[@livestore/solid:useQuery] Error running query', cause)
+    throw formatQueryError(cause, query$.label, stackInfo, 'solid')
   }
 }

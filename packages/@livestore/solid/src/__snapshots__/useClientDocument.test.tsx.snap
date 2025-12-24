@@ -54,7 +54,7 @@ exports[`useClientDocument > otel > should update the data based on component ke
         {
           "_name": "LiveStore:useClientDocument:UserInfo:u1",
           "attributes": {
-            "firstStackInfo": "{"frames":[{"name":"Store.useClientDocument","filePath":"__REPLACED_FOR_SNAPSHOT__"},{"name":"useClientDocument","filePath":"__REPLACED_FOR_SNAPSHOT__"}]}",
+            "firstStackInfo": "{"frames":[{"name":"useQueryRef","filePath":"__REPLACED_FOR_SNAPSHOT__"},{"name":"useStackInfo","filePath":"__REPLACED_FOR_SNAPSHOT__"}]}",
             "label": "SELECT * FROM 'UserInfo' WHERE id = ?",
           },
           "children": [

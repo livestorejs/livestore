@@ -1,6 +1,4 @@
 import type { UnknownError } from '@livestore/common'
-import type { Store } from '@livestore/livestore'
-import { Effect, type Scope } from '@livestore/utils/effect'
 import {
   type AppState,
   type CreateTodoMvcStoreOptions,
@@ -10,7 +8,9 @@ import {
   schema,
   type Todo,
   tables,
-} from '@local/tests-package-common/todomvc-fixture'
+} from '@livestore/framework-toolkit/testing'
+import type { Store } from '@livestore/livestore'
+import { Effect, type Scope } from '@livestore/utils/effect'
 import React from 'react'
 import * as LiveStoreReact from '../mod.ts'
 

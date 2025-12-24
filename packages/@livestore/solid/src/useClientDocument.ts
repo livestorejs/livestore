@@ -2,6 +2,7 @@ import { when } from '@bigmistqke/solid-whenever'
 import type { RowQuery } from '@livestore/common'
 import { SessionIdSymbol } from '@livestore/common'
 import { State } from '@livestore/common/schema'
+import { removeUndefinedValues, type StateSetters, validateTableOptions } from '@livestore/framework-toolkit'
 import type { LiveQuery, LiveQueryDef, Store } from '@livestore/livestore'
 import { queryDb } from '@livestore/livestore'
 import { omitUndefineds, shouldNeverHappen } from '@livestore/utils'
@@ -141,30 +142,4 @@ export const useClientDocument: {
   }
 
   return [queryRef.valueRef, setState, idStr, () => queryRef.queryRcRef().value]
-}
-
-export type Dispatch<A> = (action: A) => void
-export type SetStateActionPartial<S> = Partial<S> | ((previousValue: S) => Partial<S>)
-export type SetStateAction<S> = S | ((previousValue: S) => S)
-
-export type StateSetters<TTableDef extends State.SQLite.ClientDocumentTableDef.TraitAny> = Dispatch<
-  TTableDef[State.SQLite.ClientDocumentTableDefSymbol]['options']['partialSet'] extends false
-    ? SetStateAction<TTableDef['Value']>
-    : SetStateActionPartial<TTableDef['Value']>
->
-
-const validateTableOptions = (table: State.SQLite.TableDef<any, any>) => {
-  if (State.SQLite.tableIsClientDocumentTable(table) === false) {
-    return shouldNeverHappen(
-      `useClientDocument called on table "${table.sqliteDef.name}" which is not a client document table`,
-    )
-  }
-}
-
-const removeUndefinedValues = (value: any) => {
-  if (typeof value === 'object' && value !== null) {
-    return Object.fromEntries(Object.entries(value).filter(([_, v]) => v !== undefined))
-  }
-
-  return value
 }

@@ -8,6 +8,7 @@
   "dependencies": {
     "@bigmistqke/solid-whenever": "0.1.1",
     "@livestore/common": "workspace:*",
+    "@livestore/framework-toolkit": "workspace:*",
     "@livestore/livestore": "workspace:*",
     "@livestore/utils": "workspace:*",
     "@opentelemetry/api": "catalog:",
@@ -17,7 +18,6 @@
     "@effect/vitest": "catalog:",
     "@livestore/adapter-web": "workspace:*",
     "@livestore/utils-dev": "workspace:*",
-    "@local/tests-package-common": "workspace:*",
     "@opentelemetry/sdk-trace-base": "catalog:",
     "@solidjs/testing-library": "^0.8.10",
     "@testing-library/jest-dom": "^6.9.1",

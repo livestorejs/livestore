@@ -12,9 +12,9 @@
   "references": [
     { "path": "../common" },
     { "path": "../adapter-web" },
+    { "path": "../framework-toolkit" },
     { "path": "../livestore" },
     { "path": "../utils" },
-    { "path": "../utils-dev" },
-    { "path": "../../../tests/package-common" }
+    { "path": "../utils-dev" }
   ]
 }
