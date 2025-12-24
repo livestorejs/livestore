@@ -104,7 +104,7 @@ export const useClientDocument: {
       : resolve(table)[State.SQLite.ClientDocumentTableDefSymbol].options.default.id,
   )
 
-  Solid.createRenderEffect(() => validateTableOptions(resolve(table)))
+  Solid.createComputed(() => validateTableOptions(resolve(table)))
 
   const tableName = () => resolve(table).sqliteDef.name
 

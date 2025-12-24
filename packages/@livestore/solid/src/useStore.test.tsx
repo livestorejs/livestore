@@ -153,7 +153,7 @@ describe('useStore', () => {
     await cleanupAfterUnmount(() => {})
   })
 
-  // useStore doesn't handle unusedCacheTime=0 correctly because retain is called in createMemo (after resource fetch)
+  // useStore doesn't handle unusedCacheTime=0 correctly because retain is called in createComputed (after resource fetch)
   // See https://github.com/livestorejs/livestore/issues/916
   it.skip('should load store with unusedCacheTime set to 0', async () => {
     // Skipped: retain timing issue with unusedCacheTime=0

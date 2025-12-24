@@ -72,7 +72,7 @@ export const useStore = <
   const resolvedOptions = Solid.createMemo(() => resolve(options))
 
   // Retain store while component is mounted
-  Solid.createMemo(() => {
+  Solid.createComputed(() => {
     const opts = resolvedOptions()
     const release = storeRegistry.retain(opts)
     Solid.onCleanup(() => release())
