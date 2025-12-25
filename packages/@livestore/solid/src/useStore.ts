@@ -70,20 +70,16 @@ export const useStore = <
 ): Solid.Resource<Store<TSchema, TContext> & SolidApi> => {
   const storeRegistry = useStoreRegistry()
 
-  const resolvedOptions = Solid.createMemo(() => resolve(options))
-
-  // Retain store while component is mounted
-  Solid.createComputed(() => {
-    const opts = resolvedOptions()
+  const [storeResource] = Solid.createResource(() => resolve(options), async (opts) => {
+    const id  = opts.debug?.instanceId ?? opts.storeId
+    
     const release = storeRegistry.retain(opts)
-    Solid.onCleanup(() => release())
-  })
+    Solid.onCleanup(release)
 
-  const [storeResource] = Solid.createResource(resolvedOptions, async (opts) => {
     const result = storeRegistry.getOrLoadPromise(opts)
     const store = result instanceof Promise ? await result : result
 
-    exposeStoreForDebugging(store, opts.debug?.instanceId ?? opts.storeId)
+    exposeStoreForDebugging(store, id)
 
     return withSolidApi(store) as Store<TSchema, TContext> & SolidApi
   })
