@@ -109,9 +109,19 @@ export const useClientDocument: UseClientDocument = <TTableDef extends State.SQL
 
   type QueryDef = LiveQueryDef<TTableDef['Value']>
   const queryDef = Solid.createMemo<QueryDef>(() =>
-    queryDb(resolve(table).get(id(), { default: options?.default }), {
-      deps: [serializedId(), resolve(table).sqliteDef.name, JSON.stringify(options?.default)],
-    }),
+    queryDb(
+      resolve(table).get(
+        id(),
+        options?.default
+          ? {
+              default: options.default,
+            }
+          : undefined,
+      ),
+      {
+        deps: [serializedId(), resolve(table).sqliteDef.name, JSON.stringify(options?.default)],
+      },
+    ),
   )
 
   const queryRef = useQueryRef(queryDef, {
