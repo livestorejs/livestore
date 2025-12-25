@@ -1,4 +1,4 @@
-import type { LiveQueryDef } from '@livestore/livestore'
+import type { LiveQueryDef, Store } from '@livestore/livestore'
 import { computed } from '@livestore/livestore'
 import type { Accessor, JSX } from 'solid-js'
 import * as Solid from 'solid-js'
@@ -17,6 +17,8 @@ export type LiveListProps<TItem> = {
   renderItem: (item: Accessor<TItem>, index: Accessor<number>) => JSX.Element
   /** Needs to be unique across all list items */
   getKey: (item: TItem, index: number) => string | number
+  /** The store instance to use for queries */
+  store: Store<any, any>
 }
 
 /**
@@ -28,17 +30,24 @@ export type LiveListProps<TItem> = {
  * e.g. when an item is added/removed/moved to only re-render the affected DOM nodes.
  */
 export const LiveList = <TItem,>(props: LiveListProps<TItem>): JSX.Element => {
-  const keys = useQuery(() => computed((get) => get(props.items$).map((item, index) => props.getKey(item, index))))
+  const [config] = Solid.splitProps(props, ['store'])
+  const keys = useQuery(
+    () => computed((get) => get(props.items$).map((item, index) => props.getKey(item, index))),
+    config,
+  )
   return <Solid.For each={keys()}>{(key, index) => <ItemWrapper {...props} key={key} index={index} />}</Solid.For>
 }
 
 export const ItemWrapper = <TItem,>(
   props: { key: string | number; index: Accessor<number> } & LiveListProps<TItem>,
 ) => {
-  const item = useQuery(() =>
-    computed((get) => get(props.items$).find((item, index) => props.getKey(item, index) === props.key)!, {
-      deps: [props.key],
-    }),
+  const [config] = Solid.splitProps(props, ['store'])
+  const item = useQuery(
+    () =>
+      computed((get) => get(props.items$).find((item, index) => props.getKey(item, index) === props.key)!, {
+        deps: [props.key],
+      }),
+    config,
   )
   return <>{props.renderItem(item, props.index)}</>
 }
