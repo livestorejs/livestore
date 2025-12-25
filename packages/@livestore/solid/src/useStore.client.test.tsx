@@ -187,6 +187,55 @@ describe('useStore.useQuery', () => {
     await cleanupAfterUnmount(() => {})
   })
 
+  it('updates when store changes', async () => {
+    const storeRegistry = new StoreRegistry()
+    const optionsA = testStoreOptions({ storeId: 'store-a' })
+    const optionsB = testStoreOptions({ storeId: 'store-b' })
+
+    const [currentOptions, setCurrentOptions] = Solid.createSignal(optionsA)
+
+    const allTodos$ = queryDb(
+      { query: `select * from todos`, schema: Schema.Array(tables.todos.rowSchema) },
+      { label: 'allTodos' },
+    )
+
+    const { result } = SolidTesting.renderHook(
+      () => {
+        const store = useStore(currentOptions)
+        return { store, todos: store.useQuery(allTodos$) }
+      },
+      { wrapper: makeProvider(storeRegistry) },
+    )
+
+    // Wait for store A to load
+    await SolidTesting.waitFor(() => {
+      expect(result.store()).toBeDefined()
+    })
+
+    // Add todo to store A
+    result.store()!.commit(events.todoCreated({ id: 't1', text: 'store A todo', completed: false }))
+    expect(result.todos()?.length).toBe(1)
+    expect(result.todos()?.[0]?.text).toBe('store A todo')
+
+    // Switch to store B
+    setCurrentOptions(optionsB)
+
+    // Wait for store B to load
+    await SolidTesting.waitFor(() => {
+      expect(result.store()?.storeId).toBe('store-b')
+    })
+
+    // Store B should have no todos (it's a fresh store)
+    expect(result.todos()).toEqual([])
+
+    // Add todo to store B
+    result.store()!.commit(events.todoCreated({ id: 't2', text: 'store B todo', completed: false }))
+    expect(result.todos()?.length).toBe(1)
+    expect(result.todos()?.[0]?.text).toBe('store B todo')
+
+    await cleanupAfterUnmount(() => {})
+  })
+
   it('updates reactively when data changes', async () => {
     const storeRegistry = new StoreRegistry()
     const options = testStoreOptions()
@@ -341,6 +390,60 @@ describe('useStore.useClientDocument', () => {
     result.store()!.commit(events.UserInfoSet({ username: 'commit-user', text: 'hello' }, 'u1'))
 
     expect(result.state()?.username).toBe('commit-user')
+
+    await cleanupAfterUnmount(() => {})
+  })
+
+  it('updates when store changes', async () => {
+    const storeRegistry = new StoreRegistry()
+    const optionsA = testStoreOptions({ storeId: 'store-a' })
+    const optionsB = testStoreOptions({ storeId: 'store-b' })
+
+    const [currentOptions, setCurrentOptions] = Solid.createSignal(optionsA)
+
+    const { result } = SolidTesting.renderHook(
+      () => {
+        const store = useStore(currentOptions)
+        const [state, setState, id] = store.useClientDocument(tables.userInfo, 'u1')
+        return { store, state, setState, id }
+      },
+      { wrapper: makeProvider(storeRegistry) },
+    )
+
+    // Wait for store A to load
+    await SolidTesting.waitFor(() => {
+      expect(result.store()).toBeDefined()
+    })
+
+    // Set username in store A
+    result.setState({ username: 'store-a-user', text: 'hello from A' })
+    expect(result.state()?.username).toBe('store-a-user')
+
+    // Switch to store B
+    setCurrentOptions(optionsB)
+
+    // Wait for store B to load
+    await SolidTesting.waitFor(() => {
+      expect(result.store()?.storeId).toBe('store-b')
+    })
+
+    // Store B should have default/empty state (fresh store)
+    expect(result.state()?.username).toBe('')
+
+    // Set username in store B
+    result.setState({ username: 'store-b-user', text: 'hello from B' })
+    expect(result.state()?.username).toBe('store-b-user')
+
+    // Switch back to store A
+    setCurrentOptions(optionsA)
+
+    // Wait for store A to load
+    await SolidTesting.waitFor(() => {
+      expect(result.store()?.storeId).toBe('store-a')
+    })
+
+    // Store A should still have its original data
+    expect(result.state()?.username).toBe('store-a-user')
 
     await cleanupAfterUnmount(() => {})
   })
