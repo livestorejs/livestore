@@ -24,10 +24,41 @@ const runTestGroup =
       console.log(`::endgroup::`)
     }).pipe(Effect.withSpan(`test-group(${name})`))
 
+interface TestTarget {
+  path: string
+  config?: string
+}
+
+const vitestConfigPattern = /^vitest.*\.config\.(ts|js)$/
+
+/** Find vitest config files in a directory (root and tests/ subdirectory). */
+const findVitestConfigs = (pkgPath: string): string[] => {
+  const configs: string[] = []
+  for (const file of fs.readdirSync(pkgPath)) {
+    if (vitestConfigPattern.test(file)) configs.push(path.join(pkgPath, file))
+  }
+  const testsDir = path.join(pkgPath, 'tests')
+  if (fs.existsSync(testsDir) && fs.statSync(testsDir).isDirectory()) {
+    for (const file of fs.readdirSync(testsDir)) {
+      if (vitestConfigPattern.test(file)) configs.push(path.join(testsDir, file))
+    }
+  }
+  return configs
+}
+
 // Dynamically discover packages that have test files
-const discoverPackagesWithTests = (workspaceRoot: string, excludePackages: string[] = []): string[] => {
+const discoverPackagesWithTests = (workspaceRoot: string, excludePackages: string[] = []): TestTarget[] => {
   const packagesDir = path.join(workspaceRoot, 'packages')
-  const results: string[] = []
+  const results: TestTarget[] = []
+
+  const addPackage = (pkgPath: string, relativePath: string) => {
+    const configs = findVitestConfigs(pkgPath)
+    if (configs.length > 0) {
+      for (const config of configs) results.push({ path: relativePath, config })
+    } else {
+      results.push({ path: relativePath })
+    }
+  }
 
   try {
     // Check packages/@livestore/* directories
@@ -44,7 +75,7 @@ const discoverPackagesWithTests = (workspaceRoot: string, excludePackages: strin
           // Check if package has test files
           const hasTests = hasTestFiles(pkgPath)
           if (hasTests) {
-            results.push(relativePath)
+            addPackage(pkgPath, relativePath)
           }
         }
       }
@@ -63,7 +94,7 @@ const discoverPackagesWithTests = (workspaceRoot: string, excludePackages: strin
         if (fs.statSync(pkgPath).isDirectory()) {
           const hasTests = hasTestFiles(pkgPath)
           if (hasTests) {
-            results.push(relativePath)
+            addPackage(pkgPath, relativePath)
           }
         }
       }
@@ -73,14 +104,14 @@ const discoverPackagesWithTests = (workspaceRoot: string, excludePackages: strin
     if (!excludePackages.includes('tests/package-common')) {
       const packageCommonPath = path.join(workspaceRoot, 'tests/package-common')
       if (fs.existsSync(packageCommonPath) && hasTestFiles(packageCommonPath)) {
-        results.push('tests/package-common')
+        addPackage(packageCommonPath, 'tests/package-common')
       }
     }
   } catch (error) {
     console.warn('Warning: Failed to discover packages with tests:', error)
   }
 
-  return results.sort()
+  return results.sort((a, b) => a.path.localeCompare(b.path))
 }
 
 // Helper function to check if a directory contains test files
@@ -132,7 +163,16 @@ export const testUnitCommand = Cli.Command.make(
 
     if (Option.isSome(filter)) {
       const target = path.isAbsolute(filter.value) ? filter.value : path.join(workspaceRoot, filter.value)
-      yield* cmd(['vitest', 'run', target]).pipe(Effect.provide(LivestoreWorkspace.toCwd()))
+      const configs = findVitestConfigs(target)
+      if (configs.length > 0) {
+        yield* Effect.forEach(
+          configs,
+          (config) => cmd(['vitest', 'run', '--config', config]).pipe(Effect.provide(LivestoreWorkspace.toCwd())),
+          { concurrency: 'unbounded' },
+        )
+      } else {
+        yield* cmd(['vitest', 'run', target]).pipe(Effect.provide(LivestoreWorkspace.toCwd()))
+      }
       return
     }
 
@@ -147,7 +187,6 @@ export const testUnitCommand = Cli.Command.make(
       process.env.CI = '1'
 
       const vitestPathsToRunSequentially = sequentialPackages.map((pkg) => `${workspaceRoot}/${pkg}`)
-      const vitestPathsToRunInParallel = allPackagesWithTests.map((pkg) => `${workspaceRoot}/${pkg}`)
 
       // Currently getting a bunch of flaky webmesh tests on CI (https://share.cleanshot.com/Q2WWD144)
       // Ignoring them for now but we should fix them eventually
@@ -157,24 +196,37 @@ export const testUnitCommand = Cli.Command.make(
         )
       }
 
-      // Run the rest of the tests in parallel
-      if (vitestPathsToRunInParallel.length > 0) {
+      // Run the rest of the tests in parallel (each config as separate vitest invocation)
+      if (allPackagesWithTests.length > 0) {
         yield* runTestGroup('Parallel tests')(
-          cmd(['vitest', 'run', ...vitestPathsToRunInParallel]).pipe(Effect.provide(LivestoreWorkspace.toCwd())),
+          Effect.forEach(
+            allPackagesWithTests,
+            (target) => {
+              const args = target.config
+                ? ['vitest', 'run', '--config', target.config]
+                : ['vitest', 'run', `${workspaceRoot}/${target.path}`]
+              return cmd(args).pipe(Effect.provide(LivestoreWorkspace.toCwd()))
+            },
+            { concurrency: 'unbounded' },
+          ),
         )
       }
     } else {
-      // For local development, run sequential packages first, then parallel ones
-      const allPaths = [...sequentialPackages, ...allPackagesWithTests]
-
+      // For local development, run all in parallel (including sequential packages)
+      const sequentialTargets: TestTarget[] = sequentialPackages.map((pkg) => ({ path: pkg }))
       yield* Effect.forEach(
-        allPaths,
-        (vitestPath) =>
+        [...sequentialTargets, ...allPackagesWithTests],
+        (target) => {
+          const args = target.config
+            ? ['vitest', 'run', '--config', target.config]
+            : ['vitest', 'run', `${workspaceRoot}/${target.path}`]
+          const label = target.config ?? target.path
           // TODO use this https://x.com/luxdav/status/1942532247833436656
-          cmdText(`vitest run ${vitestPath}`, { stderr: 'pipe' }).pipe(
+          return cmdText(args.join(' '), { stderr: 'pipe' }).pipe(
             Effect.provide(LivestoreWorkspace.toCwd()),
-            Effect.tap((text) => console.log(`Output for ${vitestPath}:\n\n${text}\n\n`)),
-          ),
+            Effect.tap((text) => console.log(`Output for ${label}:\n\n${text}\n\n`)),
+          )
+        },
         { concurrency: 'unbounded' },
       )
     }

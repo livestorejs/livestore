@@ -10,6 +10,7 @@ export default defineConfig({
     }) as Plugin,
   ],
   test: {
+    root: import.meta.dirname,
     name: 'solid-ssr',
     watch: false,
     env: {

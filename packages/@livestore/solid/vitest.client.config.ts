@@ -9,6 +9,7 @@ export default defineConfig({
     }) as Plugin,
   ],
   test: {
+    root: import.meta.dirname,
     name: 'solid-client',
     watch: false,
     env: {
