@@ -1,3 +1,4 @@
+import { exposeStoreForDebugging } from '@livestore/common'
 import type { LiveStoreSchema } from '@livestore/common/schema'
 import type { RegistryStoreOptions, Store, SyncStatus } from '@livestore/livestore'
 import type { Schema } from '@livestore/utils/effect'
@@ -72,6 +73,8 @@ export const useStore = <
   const storeOrPromise = React.useMemo(() => storeRegistry.getOrLoadPromise(options), [storeRegistry, options])
 
   const store = storeOrPromise instanceof Promise ? React.use(storeOrPromise) : storeOrPromise
+
+  exposeStoreForDebugging(store, options.debug?.instanceId ?? options.storeId)
 
   return withReactApi(store)
 }

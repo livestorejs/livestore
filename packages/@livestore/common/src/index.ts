@@ -1,6 +1,7 @@
 export * from './adapter-types.ts'
 export * from './bounded-collections.ts'
 export * from './debug-info.ts'
+export * from './debug-store.ts'
 export * as Devtools from './devtools/mod.ts'
 export * as LogConfig from './logging.ts'
 export * from './make-client-session.ts'
