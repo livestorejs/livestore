@@ -11,14 +11,14 @@ const incompleteCount$ = queryDb(tables.todos.count().where({ completed: false, 
 
 export const Footer: Component = () => {
   const store = useAppStore()
-  const uiState = () => store()?.useQuery(uiState$)()
-  const incompleteCount = () => store()?.useQuery(incompleteCount$)() ?? 0
+  const uiState = store.useQuery(uiState$)
+  const incompleteCount = store.useQuery(incompleteCount$)
 
   const setFilter = (filter: (typeof tables.uiState.Value)['filter']) => store()?.commit(events.uiStateSet({ filter }))
 
   return (
     <footer class="footer">
-      <span class="todo-count">{incompleteCount()} items left</span>
+      <span class="todo-count">{incompleteCount() ?? 0} items left</span>
       <ul class="filters">
         <li>
           {/* biome-ignore lint/a11y/useValidAnchor: TodoMVC standard convention for filter buttons */}

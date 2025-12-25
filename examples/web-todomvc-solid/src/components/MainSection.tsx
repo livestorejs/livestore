@@ -18,7 +18,7 @@ const visibleTodos$ = queryDb(
 
 export const MainSection: Component = () => {
   const store = useAppStore()
-  const visibleTodos = () => store()?.useQuery(visibleTodos$)() ?? []
+  const visibleTodos = store.useQuery(visibleTodos$)
 
   const toggleTodo = ({ id, completed }: typeof tables.todos.Type) => {
     store()?.commit(completed ? events.todoUncompleted({ id }) : events.todoCompleted({ id }))
@@ -31,12 +31,7 @@ export const MainSection: Component = () => {
           {(todo) => (
             <li>
               <div class="view">
-                <input
-                  type="checkbox"
-                  class="toggle"
-                  checked={todo.completed}
-                  onChange={() => toggleTodo(todo)}
-                />
+                <input type="checkbox" class="toggle" checked={todo.completed} onChange={() => toggleTodo(todo)} />
                 {/* biome-ignore lint/a11y/noLabelWithoutControl: otherwise breaks TODO MVC CSS */}
                 <label>{todo.text}</label>
                 <button

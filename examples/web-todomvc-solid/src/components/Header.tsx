@@ -6,9 +6,11 @@ import { useAppStore } from '../livestore/store.ts'
 
 export const Header: Component = () => {
   const store = useAppStore()
-  const uiState = () => store()?.useQuery(uiState$)()
+  const uiState = store.useQuery(uiState$)
 
-  const updateNewTodoText = (text: string) => store()?.commit(events.uiStateSet({ newTodoText: text }))
+  const updateNewTodoText = (text: string) => {
+    store()?.commit(events.uiStateSet({ newTodoText: text }))
+  }
 
   const createTodo = () => {
     const text = uiState()?.newTodoText
