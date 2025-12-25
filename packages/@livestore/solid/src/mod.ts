@@ -5,4 +5,4 @@ export { LiveList, type LiveListProps } from './experimental/components/LiveList
 export * from './StoreRegistryContext.tsx'
 export { type UseClientDocumentResult, useClientDocument } from './useClientDocument.ts'
 export { useQuery, useQueryRef } from './useQuery.ts'
-export { type SolidApi, useStore, withSolidApi } from './useStore.ts'
+export { type SolidApi, type SolidResourceApi, useStore, withSolidApi } from './useStore.ts'

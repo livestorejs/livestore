@@ -1,3 +1,4 @@
+import { when } from '@bigmistqke/solid-whenever'
 import type { RowQuery, SessionIdSymbol } from '@livestore/common'
 import { exposeStoreForDebugging } from '@livestore/common'
 import type { LiveStoreSchema, State } from '@livestore/common/schema'
@@ -12,9 +13,9 @@ import { type AccessorMaybe, resolve } from './utils.ts'
 /**
  * Solid-specific methods added to the Store when used via Solid hooks.
  *
- * These methods are attached by `withSolidApi()` and `useStore()`, allowing you
+ * These methods are attached by `withSolidApi()`, allowing you
  * to call `store.useQuery()` and `store.useClientDocument()` directly on the
- * Store instance.
+ * Store instance when the store is already loaded.
  */
 export type SolidApi = {
   useClientDocument: {
@@ -52,6 +53,50 @@ export type SolidApi = {
   useQuery<TQueryable extends Queryable<any>>(
     queryDef: AccessorMaybe<TQueryable>,
   ): Solid.Accessor<Queryable.Result<TQueryable>>
+}
+
+/**
+ * Solid-specific methods added to the store Resource returned by `useStore()`.
+ *
+ * These methods handle the case where the store might not be loaded yet,
+ * returning `undefined` or buffering locally until ready.
+ */
+export type SolidResourceApi = {
+  useClientDocument: {
+    // case: table has default id → id is optional
+    <
+      TTableDef extends State.SQLite.ClientDocumentTableDef.Trait<
+        any,
+        any,
+        any,
+        {
+          partialSet: boolean
+          default: { id: string | SessionIdSymbol; value: any }
+        }
+      >,
+    >(
+      table: AccessorMaybe<TTableDef>,
+      id?: AccessorMaybe<State.SQLite.ClientDocumentTableDef.DefaultIdType<TTableDef> | SessionIdSymbol>,
+      options?: Partial<RowQuery.GetOrCreateOptions<TTableDef>>,
+    ): UseClientDocumentResult<TTableDef>
+
+    // case: table has no default id → id is required
+    <
+      TTableDef extends State.SQLite.ClientDocumentTableDef.Trait<
+        any,
+        any,
+        any,
+        { partialSet: boolean; default: { id: undefined; value: any } }
+      >,
+    >(
+      table: AccessorMaybe<TTableDef>,
+      id: AccessorMaybe<string | SessionIdSymbol>,
+      options?: Partial<RowQuery.GetOrCreateOptions<TTableDef>>,
+    ): UseClientDocumentResult<TTableDef>
+  }
+  useQuery<TQueryable extends Queryable<any>>(
+    queryDef: AccessorMaybe<TQueryable>,
+  ): Solid.Accessor<Queryable.Result<TQueryable> | undefined>
 }
 
 /**
@@ -101,7 +146,7 @@ export const useStore = <
   TSyncPayloadSchema extends Schema.Schema<any> = typeof Schema.JsonValue,
 >(
   options: AccessorMaybe<RegistryStoreOptions<TSchema, TContext, TSyncPayloadSchema>>,
-): Solid.Resource<Store<TSchema, TContext> & SolidApi> => {
+): Solid.Resource<Store<TSchema, TContext>> & SolidResourceApi => {
   const storeRegistry = useStoreRegistry()
 
   const [storeResource] = Solid.createResource(
@@ -121,7 +166,56 @@ export const useStore = <
     },
   )
 
-  return storeResource
+  return Object.assign(storeResource, {
+    useQuery(queryDef) {
+      const queryAccessor = Solid.createMemo(() => {
+        const store = storeResource()
+        if (!store) return undefined
+        return useQuery(queryDef, { store })
+      })
+      return () => queryAccessor()?.()
+    },
+    useClientDocument(table: any, id: any, options: any) {
+      // Local buffer for state before store is ready
+      let localState: any
+
+      // Memo that creates the actual useClientDocument result when store is ready
+      const clientDocument = Solid.createMemo(
+        when(storeResource, (store) => {
+          const client = useClientDocument(table, id, options, { store })
+          if (localState !== undefined) {
+            client[1](localState)
+          }
+          return client
+        }),
+      )
+
+      // State accessor: return store state if available, otherwise local buffer
+      const state = when(
+        clientDocument,
+        ([get]) => get(),
+        () => localState,
+      )
+
+      // Setter: update store if ready, otherwise buffer locally
+      const setState = when(
+        clientDocument,
+        ([, set], value: any) => set(value),
+        (value: any) => {
+          localState = typeof value === 'function' ? value(localState) : value
+          return localState
+        },
+      )
+
+      // ID accessor
+      const idAccessor = when(clientDocument, ([, , id]) => id())
+
+      // Query accessor
+      const queryAccessor = when(clientDocument, ([, , , query]) => query())
+
+      return [state, setState, idAccessor, queryAccessor] as UseClientDocumentResult<any>
+    },
+  } as SolidResourceApi)
 }
 
 /**
@@ -132,8 +226,10 @@ export const useStore = <
  *
  * @internal
  */
-export const withSolidApi = <TSchema extends LiveStoreSchema, TContext = {}>(store: Store<TSchema, TContext>): Store<TSchema, TContext> & SolidApi => {
-  const solidApi: SolidApi ={
+export const withSolidApi = <TSchema extends LiveStoreSchema, TContext = {}>(
+  store: Store<TSchema, TContext>,
+): Store<TSchema, TContext> & SolidApi => {
+  const solidApi: SolidApi = {
     useQuery(queryDef) {
       return useQuery(queryDef, { store })
     },

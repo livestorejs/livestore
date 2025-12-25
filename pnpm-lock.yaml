@@ -2356,6 +2356,9 @@ importers:
 
   packages/@livestore/solid:
     dependencies:
+      '@bigmistqke/solid-whenever':
+        specifier: 0.1.1
+        version: 0.1.1(solid-js@1.9.9)
       '@livestore/common':
         specifier: workspace:*
         version: link:../common
@@ -3888,6 +3891,12 @@ packages:
   '@babel/types@7.28.5':
     resolution: {integrity: sha512-qQ5m48eI/MFLQ5PxQj4PFaprjyCTLI37ElWMmNs0K8Lk3dVeOdNpB3ks8jc7yM5CDmVC73eMVk/trk3fgmrUpA==}
     engines: {node: '>=6.9.0'}
+
+  '@bigmistqke/solid-whenever@0.1.1':
+    resolution: {integrity: sha512-BhAtrauFOsYsNVhoNV93CPNIcj++R3tPzCok4eWB6BVCYVPedHGDtvqlUcAvftt67bOq9yAkF8DSJMjx3zfYeQ==}
+    engines: {node: '>=18', pnpm: '>=9.0.0'}
+    peerDependencies:
+      solid-js: ^1.6.0
 
   '@biomejs/biome@2.3.8':
     resolution: {integrity: sha512-Qjsgoe6FEBxWAUzwFGFrB+1+M8y/y5kwmg5CHac+GSVOdmOIqsAiXM5QMVGZJ1eCUCLlPZtq4aFAQ0eawEUuUA==}
@@ -18210,6 +18219,10 @@ snapshots:
     dependencies:
       '@babel/helper-string-parser': 7.27.1
       '@babel/helper-validator-identifier': 7.28.5
+
+  '@bigmistqke/solid-whenever@0.1.1(solid-js@1.9.9)':
+    dependencies:
+      solid-js: 1.9.9
 
   '@biomejs/biome@2.3.8':
     optionalDependencies:
