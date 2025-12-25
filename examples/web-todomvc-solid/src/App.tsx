@@ -1,6 +1,6 @@
 import type { Component } from 'solid-js'
 
-import { ActionBar } from './components/ActionBar.tsx'
+import { Footer } from './components/Footer.tsx'
 import { Header } from './components/Header.tsx'
 import { MainSection } from './components/MainSection.tsx'
 import { VersionBadge } from './components/VersionBadge.tsx'
@@ -11,7 +11,7 @@ const App: Component = () => {
       <section class="todoapp">
         <Header />
         <MainSection />
-        <ActionBar />
+        <Footer />
       </section>
       <VersionBadge />
     </>

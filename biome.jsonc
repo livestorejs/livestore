@@ -154,6 +154,18 @@
           }
         }
       }
+    },
+    {
+      // Disable React hook rules for Solid.js TodoMVC example
+      "includes": ["examples/web-todomvc-solid/**"],
+      "linter": {
+        "rules": {
+          "correctness": {
+            "useHookAtTopLevel": "off",
+            "useExhaustiveDependencies": "off"
+          }
+        }
+      }
     }
   ]
 }
