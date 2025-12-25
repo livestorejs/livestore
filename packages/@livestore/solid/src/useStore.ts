@@ -185,6 +185,7 @@ export const useStore = <
           const client = useClientDocument(table, id, options, { store })
           if (localState !== undefined) {
             client[1](localState)
+            localState = undefined
           }
           return client
         }),

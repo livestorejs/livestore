@@ -233,4 +233,52 @@ Vitest.describe('useQuery', () => {
       expect(result()).toBe(1)
     }),
   )
+
+  Vitest.scopedLive('supports query builders directly', () =>
+    Effect.gen(function* () {
+      const { wrapper, store } = yield* makeTodoMvcSolid({})
+
+      store.commit(
+        events.todoCreated({ id: 't1', text: 'buy milk', completed: false }),
+        events.todoCreated({ id: 't2', text: 'buy eggs', completed: true }),
+      )
+
+      const todosWhereIncomplete = tables.todos.where({ completed: false })
+
+      const { result } = SolidTesting.renderHook(
+        () => {
+          const todos = store.useQuery(todosWhereIncomplete)
+          return () => todos().map((todo) => todo.id)
+        },
+        { wrapper },
+      )
+
+      expect(result()).toEqual(['t1'])
+    }),
+  )
+
+  Vitest.scopedLive('union of different result types with useQuery', () =>
+    Effect.gen(function* () {
+      const { wrapper, store } = yield* makeTodoMvcSolid({})
+
+      const str$ = signal('hello', { label: 'str' })
+      const num$ = signal(123, { label: 'num' })
+
+      const [useNum, setUseNum] = Solid.createSignal(false)
+
+      const { result } = SolidTesting.renderHook(
+        () => {
+          const query$ = Solid.createMemo(() => (useNum() ? num$ : str$))
+          return store.useQuery(query$)
+        },
+        { wrapper },
+      )
+
+      expect(result()).toBe('hello')
+
+      setUseNum(true)
+
+      expect(result()).toBe(123)
+    }),
+  )
 })

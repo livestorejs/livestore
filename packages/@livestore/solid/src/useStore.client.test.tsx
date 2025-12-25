@@ -1,15 +1,17 @@
 import { makeInMemoryAdapter } from '@livestore/adapter-web'
 import {
+  queryDb,
   type RegistryStoreOptions,
   type Store,
   StoreInternalsSymbol,
   StoreRegistry,
   storeOptions,
 } from '@livestore/livestore'
+import { Schema } from '@livestore/utils/effect'
 import * as SolidTesting from '@solidjs/testing-library'
 import * as Solid from 'solid-js'
 import { describe, expect, it } from 'vitest'
-import { schema } from './__tests__/fixture.tsx'
+import { events, schema, tables } from './__tests__/fixture.tsx'
 import { StoreRegistryProvider } from './StoreRegistryContext.tsx'
 import { useStore } from './useStore.ts'
 
@@ -157,6 +159,190 @@ describe('useStore', () => {
   // See https://github.com/livestorejs/livestore/issues/916
   it.skip('should load store with unusedCacheTime set to 0', async () => {
     // Skipped: retain timing issue with unusedCacheTime=0
+  })
+})
+
+describe('useStore.useQuery', () => {
+  it('returns undefined before store is loaded, then returns result', async () => {
+    const storeRegistry = new StoreRegistry()
+    const options = testStoreOptions()
+
+    const allTodos$ = queryDb({ query: `select * from todos`, schema: Schema.Array(tables.todos.rowSchema) })
+
+    const { result } = SolidTesting.renderHook(
+      () => {
+        const store = useStore(() => options)
+        return store.useQuery(allTodos$)
+      },
+      { wrapper: makeProvider(storeRegistry) },
+    )
+
+    // Wait for store to load and query to return results
+    await SolidTesting.waitFor(() => {
+      expect(result()).toBeDefined()
+    })
+
+    expect(result()).toEqual([])
+
+    await cleanupAfterUnmount(() => {})
+  })
+
+  it('updates reactively when data changes', async () => {
+    const storeRegistry = new StoreRegistry()
+    const options = testStoreOptions()
+
+    const allTodos$ = queryDb(
+      { query: `select * from todos`, schema: Schema.Array(tables.todos.rowSchema) },
+      { label: 'allTodos' },
+    )
+
+    const { result } = SolidTesting.renderHook(
+      () => {
+        const store = useStore(() => options)
+        return { store, todos: store.useQuery(allTodos$) }
+      },
+      { wrapper: makeProvider(storeRegistry) },
+    )
+
+    // Wait for store to load
+    await SolidTesting.waitFor(() => {
+      expect(result.store()).toBeDefined()
+    })
+
+    expect(result.todos()).toEqual([])
+
+    // Add a todo
+    result.store()!.commit(events.todoCreated({ id: 't1', text: 'buy milk', completed: false }))
+
+    expect(result.todos()?.length).toBe(1)
+    expect(result.todos()?.[0]?.text).toBe('buy milk')
+
+    await cleanupAfterUnmount(() => {})
+  })
+})
+
+describe('useStore.useClientDocument', () => {
+  it('returns state accessor and setter', async () => {
+    const storeRegistry = new StoreRegistry()
+    const options = testStoreOptions()
+
+    const { result } = SolidTesting.renderHook(
+      () => {
+        const store = useStore(() => options)
+        const [state, setState, id] = store.useClientDocument(tables.userInfo, 'u1')
+        return { store, state, setState, id }
+      },
+      { wrapper: makeProvider(storeRegistry) },
+    )
+
+    // Wait for store to load
+    await SolidTesting.waitFor(() => {
+      expect(result.store()).toBeDefined()
+    })
+
+    expect(result.id()).toBe('u1')
+    expect(result.state()?.username).toBe('')
+
+    // Update via setState
+    result.setState({ username: 'test-user' })
+
+    expect(result.state()?.username).toBe('test-user')
+
+    await cleanupAfterUnmount(() => {})
+  })
+
+  it('setter works with multiple updates', async () => {
+    const storeRegistry = new StoreRegistry()
+    const options = testStoreOptions()
+
+    const { result } = SolidTesting.renderHook(
+      () => {
+        const store = useStore(() => options)
+        const [state, setState, id] = store.useClientDocument(tables.userInfo, 'u1')
+        return { store, state, setState, id }
+      },
+      { wrapper: makeProvider(storeRegistry) },
+    )
+
+    // Wait for store to load first
+    await SolidTesting.waitFor(() => {
+      expect(result.store()).toBeDefined()
+    })
+
+    // Multiple setState calls should work
+    result.setState({ username: 'first' })
+    expect(result.state()?.username).toBe('first')
+
+    result.setState({ username: 'second' })
+    expect(result.state()?.username).toBe('second')
+
+    result.setState({ username: 'third', text: 'hello' })
+    expect(result.state()?.username).toBe('third')
+    expect(result.state()?.text).toBe('hello')
+
+    await cleanupAfterUnmount(() => {})
+  })
+
+  it('buffers state when called before store loads', async () => {
+    const storeRegistry = new StoreRegistry()
+    const options = testStoreOptions()
+
+    const { result } = SolidTesting.renderHook(
+      () => {
+        const store = useStore(() => options)
+        const [state, setState, id] = store.useClientDocument(tables.userInfo, 'u1')
+        return { store, state, setState, id }
+      },
+      { wrapper: makeProvider(storeRegistry) },
+    )
+
+    // Call setState BEFORE store is loaded - should buffer
+    result.setState({ username: 'buffered', text: 'test' })
+
+    // The buffered state should be synced
+    expect(result.state().username).toBe('buffered')
+
+    // Wait for store to load
+    await SolidTesting.waitFor(() => {
+      expect(result.store()).toBeDefined()
+    })
+
+    // The buffered state should be synced
+    expect(result.state().username).toBe('buffered')
+
+    // Now update again - this should overwrite
+    result.setState({ username: 'updated', text: 'test2' })
+    expect(result.state()?.username).toBe('updated')
+
+    await cleanupAfterUnmount(() => {})
+  })
+
+  it('updates reactively via raw store commit', async () => {
+    const storeRegistry = new StoreRegistry()
+    const options = testStoreOptions()
+
+    const { result } = SolidTesting.renderHook(
+      () => {
+        const store = useStore(() => options)
+        const [state, setState, id] = store.useClientDocument(tables.userInfo, 'u1')
+        return { store, state, setState, id }
+      },
+      { wrapper: makeProvider(storeRegistry) },
+    )
+
+    // Wait for store to load
+    await SolidTesting.waitFor(() => {
+      expect(result.store()).toBeDefined()
+    })
+
+    expect(result.state()?.username).toBe('')
+
+    // Update via raw store commit
+    result.store()!.commit(events.UserInfoSet({ username: 'commit-user', text: 'hello' }, 'u1'))
+
+    expect(result.state()?.username).toBe('commit-user')
+
+    await cleanupAfterUnmount(() => {})
   })
 })
 
