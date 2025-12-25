@@ -1,4 +1,4 @@
-import { when } from '@bigmistqke/solid-whenever'
+import { every, when } from '@bigmistqke/solid-whenever'
 import type { RowQuery, SessionIdSymbol } from '@livestore/common'
 import { exposeStoreForDebugging } from '@livestore/common'
 import type { LiveStoreSchema, State } from '@livestore/common/schema'
@@ -11,57 +11,12 @@ import { useQuery } from './useQuery.ts'
 import { type AccessorMaybe, resolve } from './utils.ts'
 
 /**
- * Solid-specific methods added to the Store when used via Solid hooks.
- *
- * These methods are attached by `withSolidApi()`, allowing you
- * to call `store.useQuery()` and `store.useClientDocument()` directly on the
- * Store instance when the store is already loaded.
- */
-export type SolidApi = {
-  useClientDocument: {
-    // case: table has default id → id is optional
-    <
-      TTableDef extends State.SQLite.ClientDocumentTableDef.Trait<
-        any,
-        any,
-        any,
-        {
-          partialSet: boolean
-          default: { id: string | SessionIdSymbol; value: any }
-        }
-      >,
-    >(
-      table: AccessorMaybe<TTableDef>,
-      id?: AccessorMaybe<State.SQLite.ClientDocumentTableDef.DefaultIdType<TTableDef> | SessionIdSymbol>,
-      options?: Partial<RowQuery.GetOrCreateOptions<TTableDef>>,
-    ): UseClientDocumentResult<TTableDef>
-
-    // case: table has no default id → id is required
-    <
-      TTableDef extends State.SQLite.ClientDocumentTableDef.Trait<
-        any,
-        any,
-        any,
-        { partialSet: boolean; default: { id: undefined; value: any } }
-      >,
-    >(
-      table: AccessorMaybe<TTableDef>,
-      id: AccessorMaybe<string | SessionIdSymbol>,
-      options?: Partial<RowQuery.GetOrCreateOptions<TTableDef>>,
-    ): UseClientDocumentResult<TTableDef>
-  }
-  useQuery<TQueryable extends Queryable<any>>(
-    queryDef: AccessorMaybe<TQueryable>,
-  ): Solid.Accessor<Queryable.Result<TQueryable>>
-}
-
-/**
  * Solid-specific methods added to the store Resource returned by `useStore()`.
  *
  * These methods handle the case where the store might not be loaded yet,
  * returning `undefined` or buffering locally until ready.
  */
-export type SolidResourceApi = {
+export type SolidApi = {
   useClientDocument: {
     // case: table has default id → id is optional
     <
@@ -146,7 +101,7 @@ export const useStore = <
   TSyncPayloadSchema extends Schema.Schema<any> = typeof Schema.JsonValue,
 >(
   options: AccessorMaybe<RegistryStoreOptions<TSchema, TContext, TSyncPayloadSchema>>,
-): Solid.Resource<Store<TSchema, TContext>> & SolidResourceApi => {
+): Solid.Resource<Store<TSchema, TContext>> & SolidApi => {
   const storeRegistry = useStoreRegistry()
 
   const [storeResource] = Solid.createResource(
@@ -162,61 +117,11 @@ export const useStore = <
 
       exposeStoreForDebugging(store, id)
 
-      return withSolidApi(store) as Store<TSchema, TContext> & SolidApi
+      return store
     },
   )
 
-  return Object.assign(storeResource, {
-    useQuery(queryDef) {
-      const queryAccessor = Solid.createMemo(() => {
-        const store = storeResource()
-        if (!store) return undefined
-        return useQuery(queryDef, { store })
-      })
-      return () => queryAccessor()?.()
-    },
-    useClientDocument(table: any, id: any, options: any) {
-      // Local buffer for state before store is ready
-      let localState: any
-
-      // Memo that creates the actual useClientDocument result when store is ready
-      const clientDocument = Solid.createMemo(
-        when(storeResource, (store) => {
-          const client = useClientDocument(table, id, options, { store })
-          if (localState !== undefined) {
-            client[1](localState)
-            localState = undefined
-          }
-          return client
-        }),
-      )
-
-      // State accessor: return store state if available, otherwise local buffer
-      const state = when(
-        clientDocument,
-        ([get]) => get(),
-        () => localState,
-      )
-
-      // Setter: update store if ready, otherwise buffer locally
-      const setState = when(
-        clientDocument,
-        ([, set], value: any) => set(value),
-        (value: any) => {
-          localState = typeof value === 'function' ? value(localState) : value
-          return localState
-        },
-      )
-
-      // ID accessor
-      const idAccessor = when(clientDocument, ([, , id]) => id())
-
-      // Query accessor
-      const queryAccessor = when(clientDocument, ([, , , query]) => query())
-
-      return [state, setState, idAccessor, queryAccessor] as UseClientDocumentResult<any>
-    },
-  } as SolidResourceApi)
+  return withSolidApi(storeResource)
 }
 
 /**
@@ -227,16 +132,58 @@ export const useStore = <
  *
  * @internal
  */
-export const withSolidApi = <TSchema extends LiveStoreSchema, TContext = {}>(
-  store: Store<TSchema, TContext>,
-): Store<TSchema, TContext> & SolidApi => {
-  const solidApi: SolidApi = {
+export const withSolidApi = <T extends Store<any, any> | Solid.Accessor<Store<any, any> | undefined>>(
+  store: T,
+): T & SolidApi => {
+  return Object.assign(store, {
     useQuery(queryDef) {
-      return useQuery(queryDef, { store })
+      // Lazy evaluation: only read _store when the result is accessed
+      // This defers Suspense to read time, not declaration time
+      let cachedStore: Store<any, any> | undefined
+      let cachedQuery: Solid.Accessor<any> | undefined
+
+      return when(store, (store) => {
+        // Invalidate cache if store changed
+        if (store !== cachedStore) {
+          cachedStore = store
+          cachedQuery = useQuery(queryDef, { store })
+        }
+
+        return cachedQuery!()
+      })
     },
     useClientDocument(table: any, id: any, options: any) {
-      return useClientDocument(table, id, options, { store })
+      const [localState, setLocalState] = Solid.createSignal()
+
+      const getClient = Solid.createMemo<UseClientDocumentResult<any> | undefined>(
+        when(
+          every(store, table, id),
+          ([store, table, id]) => {
+            const client = useClientDocument(table, id, options, { store: store })
+            const _localState = Solid.untrack(localState)
+            if (_localState !== undefined) {
+              client[1](_localState)
+              setLocalState(undefined)
+            }
+            return client
+          },
+          (previous: UseClientDocumentResult<any> | undefined) => previous,
+        ),
+      )
+
+      // State accessor: return store state if available, otherwise local buffer
+      const state = when(getClient, ([state]) => state(), localState)
+
+      // Setter: update store if ready, otherwise buffer locally
+      const setState = when(getClient, ([, set], value: any) => set(value), setLocalState)
+
+      // ID accessor
+      const idAccessor = when(getClient, ([, , id]) => id())
+
+      // Query accessor
+      const queryAccessor = when(getClient, ([, , , query]) => query())
+
+      return [state, setState, idAccessor, queryAccessor] as UseClientDocumentResult<any>
     },
-  }
-  return Object.assign(store, solidApi)
+  } as SolidApi)
 }
