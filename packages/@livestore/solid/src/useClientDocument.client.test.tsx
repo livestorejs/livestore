@@ -191,14 +191,14 @@ Vitest.describe('useClientDocument', () => {
         { wrapper },
       )
 
-      Vitest.expect(result.todos().length).toBe(2)
+      Vitest.expect(result.todos()?.length).toBe(2)
 
       // Set text filter for u2 and test with second user
       store.commit(events.UserInfoSet({ username: 'username_u2', text: 'milk' }, 'u2'))
 
       setUserId('u2')
 
-      Vitest.expect(result.todos().length).toBe(1)
+      Vitest.expect(result.todos()?.length).toBe(1)
     }),
   )
 

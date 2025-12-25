@@ -73,7 +73,7 @@ describe('useClientDocument SSR', () => {
         return (
           <div>
             <div>Current Task: {routerState().currentTaskId ?? 'none'}</div>
-            <div>Total Tasks: {allTodos().length}</div>
+            <div>Total Tasks: {allTodos()?.length}</div>
           </div>
         )
       }

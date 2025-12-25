@@ -28,13 +28,13 @@ Vitest.describe('useQuery', () => {
         { wrapper },
       )
 
-      expect(result().length).toBe(0)
+      expect(result()?.length).toBe(0)
       expect(store[StoreInternalsSymbol].reactivityGraph.getSnapshot({ includeResults: true })).toMatchSnapshot()
 
       store.commit(events.todoCreated({ id: 't1', text: 'buy milk', completed: false }))
 
-      expect(result().length).toBe(1)
-      expect(result()[0]!.text).toBe('buy milk')
+      expect(result()?.length).toBe(1)
+      expect(result()?.[0]?.text).toBe('buy milk')
       expect(store[StoreInternalsSymbol].reactivityGraph.getSnapshot({ includeResults: true })).toMatchSnapshot()
     }),
   )
@@ -62,7 +62,7 @@ Vitest.describe('useQuery', () => {
       const { result } = SolidTesting.renderHook(
         () => {
           const query = store.useQuery(() => (todoId() === 't1' ? todo1$ : todo2$))
-          return () => query()[0]!.text
+          return () => query()?.[0]?.text
         },
         { wrapper },
       )
@@ -104,7 +104,7 @@ Vitest.describe('useQuery', () => {
       const { result } = SolidTesting.renderHook(
         () => {
           const query = store.useQuery(todo$)
-          return () => query()[0]!.text
+          return () => query()?.[0]?.text
         },
         { wrapper },
       )
@@ -248,7 +248,7 @@ Vitest.describe('useQuery', () => {
       const { result } = SolidTesting.renderHook(
         () => {
           const todos = store.useQuery(todosWhereIncomplete)
-          return () => todos().map((todo) => todo.id)
+          return () => todos()?.map((todo) => todo.id)
         },
         { wrapper },
       )

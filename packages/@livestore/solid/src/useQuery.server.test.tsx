@@ -31,7 +31,7 @@ describe('useQuery SSR', () => {
         const todos = store.useQuery(allTodos$)
         return (
           <ul>
-            {todos().map((todo) => (
+            {todos()?.map((todo) => (
               <li>{todo.text}</li>
             ))}
           </ul>
@@ -60,7 +60,7 @@ describe('useQuery SSR', () => {
 
       const TodoItem = () => {
         const query = store.useQuery(todo$)
-        return <div>{query()[0]?.text ?? 'No todo'}</div>
+        return <div>{query()?.[0]?.text ?? 'No todo'}</div>
       }
 
       const html = renderToString(() => <TodoItem />)
@@ -103,9 +103,9 @@ describe('useQuery SSR', () => {
         return (
           <div>
             <h1>Todo App</h1>
-            <p>Count: {todos().length}</p>
+            <p>Count: {todos()?.length}</p>
             <ul>
-              {todos().map((todo) => (
+              {todos()?.map((todo) => (
                 <li>{todo.text}</li>
               ))}
             </ul>
