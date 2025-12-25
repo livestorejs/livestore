@@ -1,10 +1,11 @@
+import type { RowQuery, SessionIdSymbol } from '@livestore/common'
 import { exposeStoreForDebugging } from '@livestore/common'
-import type { LiveStoreSchema } from '@livestore/common/schema'
-import type { RegistryStoreOptions, Store } from '@livestore/livestore'
+import type { LiveStoreSchema, State } from '@livestore/common/schema'
+import type { Queryable, RegistryStoreOptions, Store } from '@livestore/livestore'
 import type { Schema } from '@livestore/utils/effect'
 import * as Solid from 'solid-js'
 import { useStoreRegistry } from './StoreRegistryContext.tsx'
-import { useClientDocument } from './useClientDocument.ts'
+import { type UseClientDocumentResult, useClientDocument } from './useClientDocument.ts'
 import { useQuery } from './useQuery.ts'
 import { type AccessorMaybe, resolve } from './utils.ts'
 
@@ -16,8 +17,41 @@ import { type AccessorMaybe, resolve } from './utils.ts'
  * Store instance.
  */
 export type SolidApi = {
-  useQuery: typeof useQuery
-  useClientDocument: typeof useClientDocument
+  useClientDocument: {
+    // case: table has default id → id is optional
+    <
+      TTableDef extends State.SQLite.ClientDocumentTableDef.Trait<
+        any,
+        any,
+        any,
+        {
+          partialSet: boolean
+          default: { id: string | SessionIdSymbol; value: any }
+        }
+      >,
+    >(
+      table: AccessorMaybe<TTableDef>,
+      id?: AccessorMaybe<State.SQLite.ClientDocumentTableDef.DefaultIdType<TTableDef> | SessionIdSymbol>,
+      options?: Partial<RowQuery.GetOrCreateOptions<TTableDef>>,
+    ): UseClientDocumentResult<TTableDef>
+
+    // case: table has no default id → id is required
+    <
+      TTableDef extends State.SQLite.ClientDocumentTableDef.Trait<
+        any,
+        any,
+        any,
+        { partialSet: boolean; default: { id: undefined; value: any } }
+      >,
+    >(
+      table: AccessorMaybe<TTableDef>,
+      id: AccessorMaybe<string | SessionIdSymbol>,
+      options?: Partial<RowQuery.GetOrCreateOptions<TTableDef>>,
+    ): UseClientDocumentResult<TTableDef>
+  }
+  useQuery<TQueryable extends Queryable<any>>(
+    queryDef: AccessorMaybe<TQueryable>,
+  ): Solid.Accessor<Queryable.Result<TQueryable>>
 }
 
 /**
@@ -70,19 +104,22 @@ export const useStore = <
 ): Solid.Resource<Store<TSchema, TContext> & SolidApi> => {
   const storeRegistry = useStoreRegistry()
 
-  const [storeResource] = Solid.createResource(() => resolve(options), async (opts) => {
-    const id  = opts.debug?.instanceId ?? opts.storeId
-    
-    const release = storeRegistry.retain(opts)
-    Solid.onCleanup(release)
+  const [storeResource] = Solid.createResource(
+    () => resolve(options),
+    async (opts) => {
+      const id = opts.debug?.instanceId ?? opts.storeId
 
-    const result = storeRegistry.getOrLoadPromise(opts)
-    const store = result instanceof Promise ? await result : result
+      const release = storeRegistry.retain(opts)
+      Solid.onCleanup(release)
 
-    exposeStoreForDebugging(store, id)
+      const result = storeRegistry.getOrLoadPromise(opts)
+      const store = result instanceof Promise ? await result : result
 
-    return withSolidApi(store) as Store<TSchema, TContext> & SolidApi
-  })
+      exposeStoreForDebugging(store, id)
+
+      return withSolidApi(store) as Store<TSchema, TContext> & SolidApi
+    },
+  )
 
   return storeResource
 }
@@ -95,12 +132,14 @@ export const useStore = <
  *
  * @internal
  */
-export const withSolidApi = <TSchema extends LiveStoreSchema, TContext = {}>(
-  store: Store<TSchema, TContext>,
-): Store<TSchema, TContext> & SolidApi => {
-  // @ts-expect-error TODO properly implement this
-  store.useQuery = (queryDef) => useQuery(queryDef, { store })
-  // @ts-expect-error TODO properly implement this
-  store.useClientDocument = (table, idOrOptions, options) => useClientDocument(table, idOrOptions, options, { store })
-  return store as Store<TSchema, TContext> & SolidApi
+export const withSolidApi = <TSchema extends LiveStoreSchema, TContext = {}>(store: Store<TSchema, TContext>): Store<TSchema, TContext> & SolidApi => {
+  const solidApi: SolidApi ={
+    useQuery(queryDef) {
+      return useQuery(queryDef, { store })
+    },
+    useClientDocument(table: any, id: any, options: any) {
+      return useClientDocument(table, id, options, { store })
+    },
+  }
+  return Object.assign(store, solidApi)
 }

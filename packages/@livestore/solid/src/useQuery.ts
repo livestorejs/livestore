@@ -8,7 +8,7 @@ import {
 } from '@livestore/framework-toolkit'
 import type { LiveQuery, Queryable, Store } from '@livestore/livestore'
 import type { LiveQueries } from '@livestore/livestore/internal'
-import { deepEqual, shouldNeverHappen } from '@livestore/utils'
+import { deepEqual } from '@livestore/utils'
 import type * as otel from '@opentelemetry/api'
 import * as Solid from 'solid-js'
 
@@ -27,15 +27,15 @@ import { type AccessorMaybe, resolve } from './utils.ts'
  */
 export const useQuery = <TQueryable extends Queryable<any>>(
   queryDef: AccessorMaybe<TQueryable>,
-  options?: { store?: Store },
+  options: { store: Store<any, any> },
 ): Solid.Accessor<Queryable.Result<TQueryable>> => useQueryRef(queryDef, options).valueRef
 
 /**
  */
 export const useQueryRef = <TQueryable extends Queryable<any>>(
   queryable: AccessorMaybe<TQueryable>,
-  options?: {
-    store?: Store
+  options: {
+    store: Store<any, any>
     /** Parent otel context for the query */
     otelContext?: otel.Context
     /** The name of the span to use for the query */
@@ -45,15 +45,13 @@ export const useQueryRef = <TQueryable extends Queryable<any>>(
   valueRef: Solid.Accessor<Queryable.Result<TQueryable>>
   queryRcRef: Solid.Accessor<LiveQueries.RcRef<LiveQuery<Queryable.Result<TQueryable>>>>
 } => {
-  const store = options?.store ?? shouldNeverHappen(`No store provided to useQuery`)
-
   type TResult = Queryable.Result<TQueryable>
 
   const normalized = Solid.createMemo<NormalizedQueryable<TResult>>(() =>
     normalizeQueryable(resolve(queryable) as Queryable<TResult>),
   )
 
-  const rcRefKey = Solid.createMemo(() => computeRcRefKey(store, normalized()))
+  const rcRefKey = Solid.createMemo(() => computeRcRefKey(options.store, normalized()))
 
   const stackInfo = captureStackInfo()
 
@@ -61,9 +59,9 @@ export const useQueryRef = <TQueryable extends Queryable<any>>(
     Solid.on(rcRefKey, () => {
       const _normalized = normalized()
 
-      const { queryRcRef, span, otelContext } = createQueryResource(store, _normalized, stackInfo, {
-        otelSpanName: options?.otelSpanName,
-        otelContext: options?.otelContext,
+      const { queryRcRef, span, otelContext } = createQueryResource(options.store, _normalized, stackInfo, {
+        otelSpanName: options.otelSpanName,
+        otelContext: options.otelContext,
       })
 
       const [valueRef, setValueRef] = Solid.createSignal<Queryable.Result<TQueryable>>(
@@ -74,9 +72,9 @@ export const useQueryRef = <TQueryable extends Queryable<any>>(
 
       // Dynamic queries only set their actual label after they've been run the first time,
       // so we're also updating the span name here.
-      span.updateName(options?.otelSpanName ?? `LiveStore:useQuery:${queryRcRef.value.label}`)
+      span.updateName(options.otelSpanName ?? `LiveStore:useQuery:${queryRcRef.value.label}`)
 
-      const cleanup = store.subscribe(
+      const cleanup = options.store.subscribe(
         queryRcRef.value,
         (newValue) => {
           // NOTE: we return a reference to the result object within LiveStore;

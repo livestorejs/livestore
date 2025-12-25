@@ -1,11 +1,9 @@
-import { when } from '@bigmistqke/solid-whenever'
 import type { RowQuery } from '@livestore/common'
 import { SessionIdSymbol } from '@livestore/common'
 import { State } from '@livestore/common/schema'
 import { removeUndefinedValues, type StateSetters, validateTableOptions } from '@livestore/framework-toolkit'
 import type { LiveQuery, LiveQueryDef, Store } from '@livestore/livestore'
 import { queryDb } from '@livestore/livestore'
-import { omitUndefineds, shouldNeverHappen } from '@livestore/utils'
 import * as Solid from 'solid-js'
 
 import { useQueryRef } from './useQuery.ts'
@@ -19,7 +17,47 @@ export type UseClientDocumentResult<TTableDef extends State.SQLite.ClientDocumen
 ]
 
 /**
- * Similar to `React.useState` but returns a tuple of `[state, setState, id, query$]` for a given table where ...
+ * Type for useClientDocument that enforces id requirement based on table definition.
+ * If table has a default id → id parameter is optional.
+ * If table has no default id → id parameter is required.
+ */
+export interface UseClientDocument {
+  // case: table has default id → id is optional
+  <
+    TTableDef extends State.SQLite.ClientDocumentTableDef.Trait<
+      any,
+      any,
+      any,
+      {
+        partialSet: boolean
+        default: { id: string | SessionIdSymbol; value: any }
+      }
+    >,
+  >(
+    table: AccessorMaybe<TTableDef>,
+    id: AccessorMaybe<State.SQLite.ClientDocumentTableDef.DefaultIdType<TTableDef> | SessionIdSymbol> | undefined,
+    options: Partial<RowQuery.GetOrCreateOptions<TTableDef>> | undefined,
+    config: { store: Store<any, any> },
+  ): UseClientDocumentResult<TTableDef>
+
+  // case: table has no default id → id is required
+  <
+    TTableDef extends State.SQLite.ClientDocumentTableDef.Trait<
+      any,
+      any,
+      any,
+      { partialSet: boolean; default: { id: undefined; value: any } }
+    >,
+  >(
+    table: AccessorMaybe<TTableDef>,
+    id: AccessorMaybe<string | SessionIdSymbol>,
+    options: Partial<RowQuery.GetOrCreateOptions<TTableDef>> | undefined,
+    config: { store: Store<any, any> },
+  ): UseClientDocumentResult<TTableDef>
+}
+
+/**
+ * Similar to `Solid.createSignal` but returns a tuple of `[state, setState, id, query$]` for a given table where ...
  *
  *   - `state` is the current value of the row (fully decoded according to the table schema)
  *   - `setState` is a function that can be used to update the document
@@ -49,97 +87,49 @@ export type UseClientDocumentResult<TTableDef extends State.SQLite.ClientDocumen
  *
  * If the table has a default id, `useClientDocument` can be called without an `id` argument. Otherwise, the `id` argument is required.
  */
-export const useClientDocument: {
-  // case: with default id
-  <
-    TTableDef extends State.SQLite.ClientDocumentTableDef.Trait<
-      any,
-      any,
-      any,
-      {
-        partialSet: boolean
-        /** Default value to use instead of the default value from the table definition */
-        default: any
-      }
-    >,
-  >(
-    table: AccessorMaybe<TTableDef>,
-    id?: AccessorMaybe<State.SQLite.ClientDocumentTableDef.DefaultIdType<TTableDef> | SessionIdSymbol>,
-    options?: Partial<RowQuery.GetOrCreateOptions<TTableDef>>,
-  ): UseClientDocumentResult<TTableDef>
-
-  // case: no default id → id arg is required
-  <
-    TTableDef extends State.SQLite.ClientDocumentTableDef.Trait<
-      any,
-      any,
-      any,
-      {
-        partialSet: boolean
-        /** Default value to use instead of the default value from the table definition */
-        default: any
-      }
-    >,
-  >(
-    table: AccessorMaybe<TTableDef>,
-    // TODO adjust so it works with arbitrary primary keys or unique constraints
-    id: AccessorMaybe<State.SQLite.ClientDocumentTableDef.DefaultIdType<TTableDef> | string | SessionIdSymbol>,
-    options?: Partial<RowQuery.GetOrCreateOptions<TTableDef>>,
-  ): UseClientDocumentResult<TTableDef>
-} = <TTableDef extends State.SQLite.ClientDocumentTableDef.Any>(
+export const useClientDocument: UseClientDocument = <TTableDef extends State.SQLite.ClientDocumentTableDef.Any>(
   table: AccessorMaybe<TTableDef>,
-  idOrOptions?: AccessorMaybe<string | SessionIdSymbol>,
-  options_?: Partial<RowQuery.GetOrCreateOptions<TTableDef>>,
-  storeArg?: { store?: Store },
+  _id: AccessorMaybe<string | SessionIdSymbol> | undefined,
+  options: Partial<RowQuery.GetOrCreateOptions<TTableDef>> | undefined,
+  config: { store: Store<any, any> },
 ): UseClientDocumentResult<TTableDef> => {
-  const options: Partial<RowQuery.GetOrCreateOptions<TTableDef>> = Solid.mergeProps(
-    {},
-    when(idOrOptions, (idOrOptions) =>
-      typeof idOrOptions === 'string' || idOrOptions === SessionIdSymbol ? options_ : idOrOptions,
-    ),
-  )
+  const id = (): string | SessionIdSymbol => {
+    const id = resolve(_id)
+    return typeof id === 'string' || id === SessionIdSymbol
+      ? id
+      : resolve(table)[State.SQLite.ClientDocumentTableDefSymbol].options.default.id
+  }
 
-  const id = when(idOrOptions, (idOrOptions) =>
-    typeof idOrOptions === 'string' || idOrOptions === SessionIdSymbol
-      ? idOrOptions
-      : resolve(table)[State.SQLite.ClientDocumentTableDefSymbol].options.default.id,
-  )
+  const serializedId = () => {
+    const _id = id()
+    return typeof _id === 'string' ? _id : config.store.sessionId
+  }
 
   Solid.createComputed(() => validateTableOptions(resolve(table)))
 
-  const tableName = () => resolve(table).sqliteDef.name
-
-  const store = storeArg?.store ?? shouldNeverHappen(`No store provided to useClientDocument`)
-
-  // console.debug('useClientDocument', tableName, id)
-
-  const idStr: Solid.Accessor<string> = () => (id() === SessionIdSymbol ? store.sessionId : id())
-
   type QueryDef = LiveQueryDef<TTableDef['Value']>
   const queryDef = Solid.createMemo<QueryDef>(() =>
-    queryDb(resolve(table).get(id()!, { default: options.default! }), {
-      deps: [idStr()!, resolve(table).sqliteDef.name, JSON.stringify(options.default)],
+    queryDb(resolve(table).get(id(), { default: options?.default }), {
+      deps: [serializedId(), resolve(table).sqliteDef.name, JSON.stringify(options?.default)],
     }),
   )
 
-  const queryRefOptions = Solid.mergeProps(
-    {
-      get otelSpanName() {
-        return `LiveStore:useClientDocument:${tableName()}:${idStr()}`
-      },
+  const queryRef = useQueryRef(queryDef, {
+    get otelSpanName() {
+      return `LiveStore:useClientDocument:${resolve(table).sqliteDef.name}:${serializedId()}`
     },
-    () => omitUndefineds({ store: storeArg?.store }),
-  )
-
-  const queryRef = useQueryRef(queryDef, queryRefOptions)
+    get store() {
+      return config.store
+    },
+  })
 
   const setState = (newValueOrFn: TTableDef['Value']) => {
     const newValue = typeof newValueOrFn === 'function' ? newValueOrFn(queryRef.valueRef()) : newValueOrFn
 
     if (queryRef.valueRef() === newValue) return
 
-    store.commit(resolve(table).set(removeUndefinedValues(newValue), id()))
+    config.store.commit(resolve(table).set(removeUndefinedValues(newValue), id()))
   }
 
-  return [queryRef.valueRef, setState, idStr, () => queryRef.queryRcRef().value]
+  return [queryRef.valueRef, setState, serializedId, () => queryRef.queryRcRef().value]
 }
