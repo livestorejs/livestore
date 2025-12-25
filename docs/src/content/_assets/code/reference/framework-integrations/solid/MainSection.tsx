@@ -8,8 +8,8 @@ import { useAppStore } from './livestore/store.ts'
 
 export const MainSection: Component = () => {
   const store = useAppStore()
-  const todos = () => store()?.useQuery(visibleTodos$)
-  const todoItems = () => todos()?.() ?? ([] as (typeof tables.todos.Type)[])
+  const todos = store.useQuery(visibleTodos$)
+  const todoItems = () => todos() ?? ([] as (typeof tables.todos.Type)[])
 
   const toggleTodo = ({ id, completed }: typeof tables.todos.Type) =>
     store()?.commit(completed ? events.todoUncompleted({ id }) : events.todoCompleted({ id }))
