@@ -15,48 +15,73 @@ import { events, schema, tables } from './__tests__/fixture.tsx'
 import { StoreRegistryProvider } from './StoreRegistryContext.tsx'
 import { useStore } from './useStore.ts'
 
+function createSuspenseCount(id: string) {
+  let count = 0
+  function Comp(props: Solid.ParentProps) {
+    return (
+      <Solid.Suspense
+        fallback={
+          <div
+            data-testid={id}
+            ref={() => {
+              count++
+            }}
+          />
+        }
+      >
+        {props.children}
+      </Solid.Suspense>
+    )
+  }
+  return Object.assign(Comp, { count: () => count, id })
+}
+
 describe('useStore', () => {
   it('should return the same promise instance for concurrent getOrLoadStore calls', async () => {
     const storeRegistry = new StoreRegistry()
     const options = testStoreOptions()
 
-    // Make two concurrent calls during loading
     const firstStore = storeRegistry.getOrLoadPromise(options)
     const secondStore = storeRegistry.getOrLoadPromise(options)
 
-    // Both should be promises (store is loading)
     expect(firstStore).toBeInstanceOf(Promise)
     expect(secondStore).toBeInstanceOf(Promise)
 
-    // EXPECTED BEHAVIOR: Same promise instance for Suspense compatibility
-    // ACTUAL BEHAVIOR: Different promise instances (Effect.runPromise creates new wrapper)
     expect(firstStore).toBe(secondStore)
-
-    // Cleanup
-    await firstStore
-    await cleanupAfterUnmount(() => {})
   })
 
-  it('works with Suspense boundary', async () => {
+  it('triggers Suspense when store() is read', async () => {
     const storeRegistry = new StoreRegistry()
     const options = testStoreOptions()
 
-    const StoreConsumer = (props: { options: RegistryStoreOptions<typeof schema> }) => {
-      useStore(() => props.options)
-      return <div data-testid="ready" />
+    const RootSuspense = createSuspenseCount('root')
+    const ChildSuspense = createSuspenseCount('child')
+
+    const ChildComponent = () => {
+      const store = useStore(() => options)
+      return (
+        <ChildSuspense>
+          <div data-testid="ready">Store loaded: {store()?.storeId}</div>
+        </ChildSuspense>
+      )
     }
 
     const { findByTestId, queryByTestId } = SolidTesting.render(() => (
       <StoreRegistryProvider storeRegistry={storeRegistry}>
-        <Solid.Suspense fallback={<div data-testid="fallback" />}>
-          <StoreConsumer options={options} />
-        </Solid.Suspense>
+        <RootSuspense>
+          <ChildComponent />
+        </RootSuspense>
       </StoreRegistryProvider>
     ))
 
-    // After loading completes, should show the actual content
+    await findByTestId(ChildSuspense.id)
+    expect(queryByTestId(RootSuspense.id)).toBeNull()
+
     await findByTestId('ready')
-    expect(queryByTestId('fallback')).toBeNull()
+    expect(queryByTestId(ChildSuspense.id)).toBeNull()
+
+    expect(RootSuspense.count()).toBe(0)
+    expect(ChildSuspense.count()).toBe(1)
 
     await cleanupAfterUnmount(() => {})
   })
@@ -67,29 +92,42 @@ describe('useStore', () => {
 
     const [currentOptions, setCurrentOptions] = Solid.createSignal(options)
 
+    const RootSuspense = createSuspenseCount('root')
+    const ChildSuspense = createSuspenseCount('child')
+
     const StoreConsumer = (props: { options: () => RegistryStoreOptions<typeof schema> }) => {
-      useStore(props.options)
-      return <div data-testid="ready" />
+      const store = useStore(props.options)
+      return (
+        <ChildSuspense>
+          <div data-testid="ready">Store: {store()?.storeId}</div>
+        </ChildSuspense>
+      )
     }
 
     const { findByTestId, queryByTestId } = SolidTesting.render(() => (
       <StoreRegistryProvider storeRegistry={storeRegistry}>
-        <Solid.Suspense fallback={<div data-testid="fallback" />}>
+        <RootSuspense>
           <StoreConsumer options={currentOptions} />
-        </Solid.Suspense>
+        </RootSuspense>
       </StoreRegistryProvider>
     ))
 
     // Wait for initial load
     await findByTestId('ready')
-    expect(queryByTestId('fallback')).toBeNull()
+    expect(queryByTestId(ChildSuspense.id)).toBeNull()
+    expect(queryByTestId(RootSuspense.id)).toBeNull()
 
     // Update with new options object (but same storeId) - this triggers reactivity
     setCurrentOptions({ ...options })
 
-    // Should not show fallback - store is already cached
-    expect(queryByTestId('fallback')).toBeNull()
+    // Should not show fallback - store is already cached and returns synchronously
+    expect(queryByTestId(ChildSuspense.id)).toBeNull()
+    expect(queryByTestId(RootSuspense.id)).toBeNull()
     expect(queryByTestId('ready')).not.toBeNull()
+
+    // Suspense triggered once during initial load, not again after re-render
+    expect(RootSuspense.count()).toBe(0)
+    expect(ChildSuspense.count()).toBe(1)
 
     await cleanupAfterUnmount(() => {})
   })
@@ -115,7 +153,7 @@ describe('useStore', () => {
 
     // Wait for store to be ready
     await waitForStoreReady(result)
-    expect(result()![StoreInternalsSymbol].clientSession).toBeDefined()
+    expect(result()?.[StoreInternalsSymbol].clientSession).toBeDefined()
 
     await cleanupAfterUnmount(() => {})
   })
@@ -163,6 +201,55 @@ describe('useStore', () => {
 })
 
 describe('useStore.useQuery', () => {
+  it('Triggers Suspense - returns undefined while store is loading', async () => {
+    const storeRegistry = new StoreRegistry()
+    const options = testStoreOptions()
+
+    const allTodos$ = queryDb({ query: `select * from todos`, schema: Schema.Array(tables.todos.rowSchema) })
+
+    const RootSuspense = createSuspenseCount('root')
+    const UseStoreSuspense = createSuspenseCount('useStore')
+    const UseQuerySuspense = createSuspenseCount('useQuery')
+
+    const UseQueryComponent = (props: { store: any }) => {
+      const todos = props.store.useQuery(allTodos$)
+      return (
+        <UseQuerySuspense>
+          <div data-testid="content">Todos: {todos()?.length ?? 'loading'}</div>
+        </UseQuerySuspense>
+      )
+    }
+
+    const UseStoreComponent = () => {
+      const store = useStore(() => options)
+      return (
+        <UseStoreSuspense>
+          <UseQueryComponent store={store} />
+        </UseStoreSuspense>
+      )
+    }
+
+    const { queryByTestId } = SolidTesting.render(() => (
+      <StoreRegistryProvider storeRegistry={storeRegistry}>
+        <RootSuspense>
+          <UseStoreComponent />
+        </RootSuspense>
+      </StoreRegistryProvider>
+    ))
+
+    // Wait for store to fully load
+    await SolidTesting.waitFor(() => {
+      const content = queryByTestId('content')
+      expect(content?.textContent).toBe('Todos: 0')
+    })
+
+    expect(RootSuspense.count()).toBe(0)
+    expect(UseStoreSuspense.count()).toBe(1)
+    expect(UseQuerySuspense.count()).toBe(0)
+
+    await cleanupAfterUnmount(() => {})
+  })
+
   it('returns undefined before store is loaded, then returns result', async () => {
     const storeRegistry = new StoreRegistry()
     const options = testStoreOptions()
@@ -176,6 +263,8 @@ describe('useStore.useQuery', () => {
       },
       { wrapper: makeProvider(storeRegistry) },
     )
+
+    expect(result()).toBeUndefined()
 
     // Wait for store to load and query to return results
     await SolidTesting.waitFor(() => {
@@ -271,6 +360,46 @@ describe('useStore.useQuery', () => {
 })
 
 describe('useStore.useClientDocument', () => {
+  it('can set state before store loads', async () => {
+    const storeRegistry = new StoreRegistry()
+    const options = testStoreOptions()
+
+    const RootSuspense = createSuspenseCount('root')
+    const ChildSuspense = createSuspenseCount('child')
+
+    const ChildComponent = () => {
+      const store = useStore(() => options)
+      const [state, setState] = store.useClientDocument(tables.userInfo, 'u1')
+
+      // Set state immediately - should work even before store loads
+      setState({ username: 'early-bird', text: 'set before load' })
+
+      return (
+        <ChildSuspense>
+          <div data-testid="content">Username: {state().username}</div>
+        </ChildSuspense>
+      )
+    }
+
+    const { findByTestId, queryByTestId } = SolidTesting.render(() => (
+      <StoreRegistryProvider storeRegistry={storeRegistry}>
+        <RootSuspense>
+          <ChildComponent />
+        </RootSuspense>
+      </StoreRegistryProvider>
+    ))
+
+    await findByTestId('content')
+
+    const content = queryByTestId('content')
+    expect(content?.textContent).toBe('Username: early-bird')
+
+    expect(RootSuspense.count()).toBe(1)
+    expect(ChildSuspense.count()).toBe(0)
+
+    await cleanupAfterUnmount(() => {})
+  })
+
   it('returns state accessor and setter', async () => {
     const storeRegistry = new StoreRegistry()
     const options = testStoreOptions()
