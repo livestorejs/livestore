@@ -137,20 +137,8 @@ export const withSolidApi = <T extends Store<any, any> | Solid.Accessor<Store<an
 ): T & SolidApi => {
   return Object.assign(store, {
     useQuery(queryDef) {
-      // Lazy evaluation: only read _store when the result is accessed
-      // This defers Suspense to read time, not declaration time
-      let cachedStore: Store<any, any> | undefined
-      let cachedQuery: Solid.Accessor<any> | undefined
-
-      return when(store, (store) => {
-        // Invalidate cache if store changed
-        if (store !== cachedStore) {
-          cachedStore = store
-          cachedQuery = useQuery(queryDef, { store })
-        }
-
-        return cachedQuery!()
-      })
+      const memo = Solid.createMemo(when(store, (store) => useQuery(queryDef, { store })))
+      return () => memo()?.()
     },
     useClientDocument(table: any, id: any, options: any) {
       const [localState, setLocalState] = Solid.createSignal()
