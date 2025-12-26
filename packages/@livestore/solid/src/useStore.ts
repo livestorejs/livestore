@@ -106,18 +106,25 @@ export const useStore = <
 
   const [storeResource] = Solid.createResource(
     () => resolve(options),
-    async (opts) => {
+    (opts) => {
       const id = opts.debug?.instanceId ?? opts.storeId
 
       const release = storeRegistry.retain(opts)
       Solid.onCleanup(release)
 
       const result = storeRegistry.getOrLoadPromise(opts)
-      const store = result instanceof Promise ? await result : result
 
-      exposeStoreForDebugging(store, id)
+      // Only suspend if store has not yet been initialized
+      if (result instanceof Promise) {
+        return result.then((store) => {
+          exposeStoreForDebugging(store, id)
+          return store
+        })
+      }
 
-      return store
+      exposeStoreForDebugging(result, id)
+
+      return result
     },
   )
 
