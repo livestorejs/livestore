@@ -1,10 +1,11 @@
-import type { LiveQueryDef } from '@livestore/livestore'
+import { queryDb } from '@livestore/livestore'
 import { query } from '@livestore/solid'
+import { tables } from '../solid-integration/livestore/schema.ts'
 
-declare const state$: LiveQueryDef<number>
+const todos$ = queryDb(tables.todos.where({ deletedAt: null }), { label: 'todos' })
 
-export const MyComponent = () => {
-  const value = query(state$, 0)
+export const TodoList = () => {
+  const todos = query(todos$, [])
 
-  return <div>{value()}</div>
+  return <div>{todos().length} items</div>
 }
