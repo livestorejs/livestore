@@ -1,5 +1,5 @@
 import { queryDb } from '@livestore/livestore'
-import { useStore } from '@livestore/react/experimental'
+import { useStore } from '@livestore/react'
 import { Suspense } from 'react'
 import { ErrorBoundary } from 'react-error-boundary'
 import { workspaceEvents, workspaceTables } from './workspace.schema.ts'

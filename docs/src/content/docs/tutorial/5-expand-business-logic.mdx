@@ -70,14 +70,14 @@ Next, add a `toggleTodo` function in `App.tsx` in which you're emitting the even
 
 ```diff title="src/App.tsx" lang="ts"
 import { useState } from 'react'
-import { useStore } from '@livestore/react'
 import { tables, events } from './livestore/schema'
+import { useAppStore } from './livestore/store'
 import { queryDb } from '@livestore/livestore'
 
 
 function App() {
 
-  const { store } = useStore()
+  const store = useAppStore()
 
   const todos$ = queryDb(() => tables.todos.select())
 

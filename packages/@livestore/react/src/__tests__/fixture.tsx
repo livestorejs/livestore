@@ -136,21 +136,9 @@ export const makeTodoMvcReact: (opts?: MakeTodoMvcReactOptions) => Effect.Effect
 
     const storeWithReactApi = LiveStoreReact.withReactApi(store)
 
-    // TODO improve typing of `LiveStoreContext`
-    const storeContext = {
-      stage: 'running' as const,
-      store: storeWithReactApi,
-    }
-
     const MaybeStrictMode = strictMode ? React.StrictMode : React.Fragment
 
-    const wrapper = ({ children }: any) => (
-      <MaybeStrictMode>
-        <LiveStoreReact.LiveStoreContext.Provider value={storeContext}>
-          {children}
-        </LiveStoreReact.LiveStoreContext.Provider>
-      </MaybeStrictMode>
-    )
+    const wrapper = ({ children }: any) => <MaybeStrictMode>{children}</MaybeStrictMode>
 
     const renderCount = makeRenderCount()
 

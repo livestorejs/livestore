@@ -66,6 +66,7 @@ Use the `mono` CLI for common workflows:
 
 ## Git
 
+- The default branch of this repository is `dev`.
 - Before committing, run `direnv exec . mono lint --fix` to auto-fix most linting errors. Make sure there are no type check/lint errors.
 
 ### Branch Naming Conventions

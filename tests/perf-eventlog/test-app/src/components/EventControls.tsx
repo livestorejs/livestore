@@ -1,10 +1,10 @@
 import { Devtools, liveStoreVersion } from '@livestore/common'
 import { StoreInternalsSymbol } from '@livestore/livestore'
-import { useStore } from '@livestore/react'
 import { Effect, Stream } from '@livestore/utils/effect'
 import { nanoid } from '@livestore/utils/nanoid'
 import React from 'react'
 import { events, tables } from '../livestore/schema.ts'
+import { useAppStore } from '../livestore/store.ts'
 
 const ADJECTIVES = [
   'agile',
@@ -103,7 +103,7 @@ type SnapshotPayload = {
   eventlog: ArrayBuffer | Uint8Array<ArrayBuffer>
 }
 
-type StoreInstance = ReturnType<typeof useStore>['store']
+type StoreInstance = ReturnType<typeof useAppStore>
 
 const readSyncHeadSnapshot = (store: StoreInstance) => {
   try {
@@ -161,7 +161,7 @@ export const EventControls: React.FC<EventControlsProps> = ({
   eventUntil,
   onEventUntilChange,
 }) => {
-  const { store } = useStore()
+  const store = useAppStore()
 
   const todoCount = store.useQuery(tables.todos.count())
 

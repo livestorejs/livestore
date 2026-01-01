@@ -1,17 +1,17 @@
 import { ArrowUpIcon } from '@heroicons/react/20/solid'
-import { useStore } from '@livestore/react'
 import React from 'react'
 import { useKeyboard } from 'react-aria'
 import { Button } from 'react-aria-components'
 import { useFrontendState } from '../../../livestore/queries.ts'
 import { events } from '../../../livestore/schema/index.ts'
+import { useAppStore } from '../../../livestore/store.ts'
 import Editor from '../../common/editor.tsx'
 
 export const CommentInput = ({ issueId, className }: { issueId: number; className?: string }) => {
   // TODO move this into LiveStore
   const [commentDraft, setCommentDraft] = React.useState<string>('')
   const [frontendState] = useFrontendState()
-  const { store } = useStore()
+  const store = useAppStore()
 
   const { keyboardProps } = useKeyboard({
     onKeyDown: (e) => {

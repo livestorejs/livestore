@@ -1,12 +1,16 @@
 import { queryDb } from '@livestore/livestore'
-import { useClientDocument } from '@livestore/react'
 import React from 'react'
 import { tables } from './schema/index.ts'
+import { useAppStore } from './store.ts'
 
-export const useFilterState = () => useClientDocument(tables.filterState)
+export const useFilterState = () => {
+  const appStore = useAppStore()
+  return appStore.useClientDocument(tables.filterState)
+}
 
 export const useDebouncedScrollState = (id: string, { debounce = 100 }: { debounce?: number } = {}) => {
-  const [initialState, setPersistedState] = useClientDocument(tables.scrollState, id)
+  const appStore = useAppStore()
+  const [initialState, setPersistedState] = appStore.useClientDocument(tables.scrollState, id)
   const [state, setReactState] = React.useState(initialState)
 
   const debounceTimeoutRef = React.useRef<NodeJS.Timeout | null>(null)
@@ -28,7 +32,10 @@ export const useDebouncedScrollState = (id: string, { debounce = 100 }: { deboun
   return [state, setState] as const
 }
 
-export const useFrontendState = () => useClientDocument(tables.frontendState)
+export const useFrontendState = () => {
+  const appStore = useAppStore()
+  return appStore.useClientDocument(tables.frontendState)
+}
 
 export const issueCount$ = queryDb(tables.issue.count().where({ deleted: null }), { label: 'global.issueCount' })
 export const highestIssueId$ = queryDb(

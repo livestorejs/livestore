@@ -148,3 +148,63 @@ const runConfigHook = async (plugin: any, config: Record<string, unknown>, env: 
   }
   return config
 }
+
+/**
+ * Regression guard: Devtools must work with Vite resolution aliases.
+ *
+ * Known failure mode (issue #938):
+ * - When the schema file imports modules via Vite aliases (e.g. `@/utils`),
+ *   the devtools plugin's eager schema validation fails because `runnerImport`
+ *   doesn't receive the user's resolve.alias configuration.
+ */
+describe('livestoreDevtoolsPlugin with Vite aliases (issue #938)', () => {
+  const fixtureRoot938 = path.resolve(import.meta.dirname, 'fixtures', 'repro-938')
+
+  it('opening /_livestore should work when schema uses Vite aliases', async () => {
+    const cacheDir = path.join(fixtureRoot938, '.vite')
+    fs.rmSync(cacheDir, { recursive: true, force: true })
+
+    const server = await createServer({
+      configFile: path.join(fixtureRoot938, 'vite.config.ts'),
+      root: fixtureRoot938,
+      cacheDir,
+      logLevel: 'error',
+      clearScreen: false,
+      server: { port: 0, host: '127.0.0.1' },
+    })
+
+    const capturedErrors: string[] = []
+    const loggerAny = server.config.logger as any
+    if (typeof loggerAny.error === 'function') {
+      const orig = loggerAny.error.bind(loggerAny)
+      loggerAny.error = (msg: unknown, ...rest: unknown[]) => {
+        capturedErrors.push(String(msg))
+        return orig(msg, ...rest)
+      }
+    }
+
+    try {
+      await server.listen()
+      const address = server.httpServer?.address() as AddressInfo
+      const baseUrl = `http://127.0.0.1:${address.port}`
+
+      // Request the devtools page - this should succeed even with aliased imports in schema
+      const res = await fetch(`${baseUrl}/_livestore`)
+      const body = await res.text()
+
+      expect(res.status).toBe(200)
+      expect(res.headers.get('content-type')).toMatch(/text\/html/)
+      expect(body).toContain('LiveStore Devtools')
+      // Should not contain schema validation error message
+      expect(body).not.toContain('schema validation failed')
+    } finally {
+      await server.close()
+    }
+
+    // No errors related to alias resolution should have been logged
+    const aliasErrors = capturedErrors.filter(
+      (log) => log.includes('@/') || log.includes('Cannot find module') || log.includes('Failed to resolve'),
+    )
+    expect(aliasErrors).toEqual([])
+  })
+})

@@ -13,10 +13,19 @@ export const html = (strings: TemplateStringsArray, ...values: unknown[]) =>
   parseTemplate(String.raw({ raw: strings }, ...values))
 export const css = (strings: TemplateStringsArray, ...values: unknown[]) => String.raw({ raw: strings }, ...values)
 
+const resetPersistence = import.meta.env.DEV && new URLSearchParams(window.location.search).get('reset') !== null
+
+if (resetPersistence) {
+  const searchParams = new URLSearchParams(window.location.search)
+  searchParams.delete('reset')
+  window.history.replaceState(undefined, '', `${window.location.pathname}?${searchParams.toString()}`)
+}
+
 const adapter = makePersistedAdapter({
   storage: { type: 'opfs' },
   worker: LiveStoreWorker,
   sharedWorker: LiveStoreSharedWorker,
+  resetPersistence,
 })
 
 const syncPayload = { authToken: 'insecure-token-change-me' }

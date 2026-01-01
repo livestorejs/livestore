@@ -1,4 +1,4 @@
-import { useStoreRegistry } from '@livestore/react/experimental'
+import { useStoreRegistry } from '@livestore/react'
 import { Suspense, useState } from 'react'
 import { ErrorBoundary } from 'react-error-boundary'
 import { IssueView } from './IssueView.tsx'
@@ -8,9 +8,12 @@ export function PreloadedIssue({ issueId }: { issueId: string }) {
   const [showIssue, setShowIssue] = useState(false)
   const storeRegistry = useStoreRegistry()
 
-  // Preload the store when user hovers (before they click)
+  // Preload the store when the user hovers (before they click)
   const handleMouseEnter = () => {
-    storeRegistry.preload(issueStoreOptions(issueId))
+    storeRegistry.preload({
+      ...issueStoreOptions(issueId),
+      unusedCacheTime: 10_000, // Optionally override options
+    })
   }
 
   return (

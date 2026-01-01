@@ -1,12 +1,12 @@
 import { PlusIcon } from '@heroicons/react/16/solid'
-import { useStore } from '@livestore/react'
 import React from 'react'
 import { Button, Input } from 'react-aria-components'
 import { seed } from '../../../livestore/seed.ts'
+import { useAppStore } from '../../../livestore/store.ts'
 
 export const SeedInput = ({ className }: { className?: string }) => {
   const [count, setCount] = React.useState(50)
-  const { store } = useStore()
+  const store = useAppStore()
 
   const onClick = () => {
     if (count === 0) return

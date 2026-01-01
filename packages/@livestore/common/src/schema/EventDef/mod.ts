@@ -1,4 +1,5 @@
 export * from './define.ts'
+export * from './deprecated.ts'
 export * from './event-def.ts'
 export * from './facts.ts'
 export * from './materializer.ts'

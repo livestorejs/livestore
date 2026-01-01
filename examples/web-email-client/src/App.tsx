@@ -1,4 +1,4 @@
-import { StoreRegistry, StoreRegistryProvider } from '@livestore/react/experimental'
+import { StoreRegistry, StoreRegistryProvider } from '@livestore/react'
 import { Suspense, useEffect, useState } from 'react'
 import { unstable_batchedUpdates as batchUpdates } from 'react-dom'
 import { ErrorBoundary } from 'react-error-boundary'

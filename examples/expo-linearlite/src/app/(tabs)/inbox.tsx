@@ -1,5 +1,4 @@
 import { queryDb } from '@livestore/livestore'
-import { useQuery, useStore } from '@livestore/react'
 import { Stack } from 'expo-router'
 import React from 'react'
 import type { ViewStyle } from 'react-native'
@@ -9,6 +8,7 @@ import { ThemedText } from '../../components/ThemedText.tsx'
 import { useUser } from '../../hooks/useUser.ts'
 import type { Comment, Issue, Reaction, User } from '../../livestore/schema.ts'
 import { events, tables } from '../../livestore/schema.ts'
+import { useAppStore } from '../../livestore/store.ts'
 import {
   createRandomComment,
   createRandomIssue,
@@ -22,7 +22,7 @@ const users$ = queryDb(tables.users.select(), { label: 'inbox-users' })
 
 const InboxScreen = () => {
   const user = useUser()
-  const { store } = useStore()
+  const store = useAppStore()
   const [isLoading, setIsLoading] = React.useState(false)
   const [loadingMessage, setLoadingMessage] = React.useState<{
     operation: string
@@ -39,7 +39,7 @@ const InboxScreen = () => {
     totalTime: number
   } | null>(null)
 
-  const users = useQuery(users$)
+  const users = store.useQuery(users$)
 
   const generateRandomData = async (numUsers: number, numIssuesPerUser: number) => {
     const startTime = performance.now()
@@ -335,8 +335,8 @@ const InboxScreen = () => {
 
   const issuesCount$ = queryDb(tables.issues.count().where({ deletedAt: null }))
   const issuesDeletedCount$ = queryDb(tables.issues.count().where({ deletedAt: { op: '!=', value: null } }))
-  const issuesCount = useQuery(issuesCount$)
-  const issuesDeletedCount = useQuery(issuesDeletedCount$)
+  const issuesCount = store.useQuery(issuesCount$)
+  const issuesDeletedCount = store.useQuery(issuesDeletedCount$)
 
   const isDarkMode = useColorScheme() === 'dark'
   const sectionStyle = StyleSheet.compose<ViewStyle, any, any>(styles.section, {

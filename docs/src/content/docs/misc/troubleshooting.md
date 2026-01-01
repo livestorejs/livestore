@@ -58,17 +58,17 @@ Note on terminology
 
 ### Query doesn't update properly
 
-If you notice the result of a `useQuery` hook is not updating properly, you might be missing some dependencies in the query's hash.
+If you notice the result of a `useQuery()` hook is not updating properly, you might be missing some dependencies in the query's hash.
 
 For example, the following query:
 
 ```ts
 // Don't do this
-const query$ = useQuery(queryDb(tables.issues.query.where({ id: issueId }).first()))
+const query$ = store.useQuery(queryDb(tables.issues.query.where({ id: issueId }).first()))
 //                                                              ^^^^^^^ missing in deps
 
 // Do this instead
-const query$ = useQuery(queryDb(tables.issues.query.where({ id: issueId }).first(), { deps: [issueId] }))
+const query$ = store.useQuery(queryDb(tables.issues.query.where({ id: issueId }).first(), { deps: [issueId] }))
 ```
 
 ## `node_modules` related issues

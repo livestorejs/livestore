@@ -1,7 +1,7 @@
-/** biome-ignore-all lint/correctness/noUnusedVariables: docs snippet */
 import { makeInMemoryAdapter } from '@livestore/adapter-web'
-import { LiveStoreProvider } from '@livestore/react'
-import type { FC, ReactNode } from 'react'
+import { StoreRegistry, StoreRegistryProvider, useStore } from '@livestore/react'
+import type { FC } from 'react'
+import { Suspense, useState } from 'react'
 import { unstable_batchedUpdates as batchUpdates } from 'react-dom'
 
 import { tracer } from './otel.ts'
@@ -10,8 +10,28 @@ import { schema } from './schema.ts'
 const adapter = makeInMemoryAdapter()
 
 // ---cut---
-export const Root: FC<{ children: ReactNode }> = ({ children }) => (
-  <LiveStoreProvider schema={schema} adapter={adapter} batchUpdates={batchUpdates} otelOptions={{ tracer }}>
-    {children}
-  </LiveStoreProvider>
-)
+const useAppStore = () =>
+  useStore({
+    storeId: 'otel-demo',
+    schema,
+    adapter,
+    batchUpdates,
+    otelOptions: { tracer },
+  })
+
+export const App: FC = () => {
+  const [storeRegistry] = useState(() => new StoreRegistry())
+  return (
+    <Suspense fallback={<div>Loading...</div>}>
+      <StoreRegistryProvider storeRegistry={storeRegistry}>
+        <AppContent />
+      </StoreRegistryProvider>
+    </Suspense>
+  )
+}
+
+const AppContent: FC = () => {
+  const _store = useAppStore()
+  // Use the store in your components
+  return <div>{/* Your app content */}</div>
+}

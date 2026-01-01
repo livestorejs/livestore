@@ -9,6 +9,12 @@ import * as RuntimeFlags from 'effect/RuntimeFlags'
 import * as Scope from 'effect/Scope'
 import type * as Tracer from 'effect/Tracer'
 
+/**
+ * How to use:
+ * 1. Call `Debug.attachSlowDebugInstrumentation` in the root/main file of your program to ensure it is loaded as soon as possible.
+ * 2. Call `Debug.logDebug` to log the current state of the effect system.
+ */
+
 interface SpanEvent {
   readonly name: string
   readonly startTime: bigint

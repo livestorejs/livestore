@@ -3,5 +3,9 @@
 import { makePersistedAdapter } from '@livestore/adapter-expo'
 
 const adapter = makePersistedAdapter({
-  storage: { subDirectory: 'my-app' },
+  storage: {
+    // Optional: custom base directory (defaults to expo-sqlite's default)
+    // directory: '/custom/path/to/databases',
+    subDirectory: 'my-app',
+  },
 })

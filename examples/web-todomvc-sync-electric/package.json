@@ -4,23 +4,22 @@
   "type": "module",
   "private": true,
   "dependencies": {
-    "@livestore/adapter-node": "0.4.0-dev.21",
-    "@livestore/adapter-web": "0.4.0-dev.21",
-    "@livestore/common": "0.4.0-dev.21",
-    "@livestore/livestore": "0.4.0-dev.21",
-    "@livestore/peer-deps": "0.4.0-dev.21",
-    "@livestore/react": "0.4.0-dev.21",
-    "@livestore/sync-electric": "0.4.0-dev.21",
-    "@livestore/wa-sqlite": "0.4.0-dev.21",
+    "@livestore/adapter-node": "0.4.0-dev.22",
+    "@livestore/adapter-web": "0.4.0-dev.22",
+    "@livestore/common": "0.4.0-dev.22",
+    "@livestore/livestore": "0.4.0-dev.22",
+    "@livestore/peer-deps": "0.4.0-dev.22",
+    "@livestore/react": "0.4.0-dev.22",
+    "@livestore/sync-electric": "0.4.0-dev.22",
+    "@livestore/wa-sqlite": "0.4.0-dev.22",
     "@overengineering/fps-meter": "0.2.4",
     "@tanstack/react-start": "1.139.14",
     "react": "19.1.0",
     "react-dom": "19.1.0",
-    "react-error-boundary": "6.0.0",
     "todomvc-app-css": "2.4.3"
   },
   "devDependencies": {
-    "@livestore/devtools-vite": "0.4.0-dev.21",
+    "@livestore/devtools-vite": "0.4.0-dev.22",
     "@playwright/test": "^1.56.0",
     "@tanstack/react-router": "^1.139.14",
     "@tanstack/router-devtools": "^1.132.47",
@@ -31,7 +30,8 @@
     "@vitejs/plugin-react": "^5.0.3",
     "postgres": "^3.4.7",
     "typescript": "^5.9.2",
-    "vite": "^7.2.4"
+    "vite": "^7.2.4",
+    "vite-plugin-devtools-json": "^1.0.0"
   },
   "engines": {
     "node": ">=24.0.0"

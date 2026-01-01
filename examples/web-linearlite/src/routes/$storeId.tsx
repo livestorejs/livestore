@@ -1,14 +1,13 @@
 import { createFileRoute, Outlet } from '@tanstack/react-router'
-import { Provider } from '../app/provider.tsx'
+import { KeyboardShortcuts } from '../components/common/keyboard-shortcuts.tsx'
 import { Layout } from '../components/layout/index.tsx'
 import { NewIssueModal } from '../components/layout/issue/new-issue-modal.tsx'
 import { Sidebar } from '../components/layout/sidebar/index.tsx'
 
 const StoreIdLayout = () => {
-  const { storeId } = Route.useParams()
-
   return (
-    <Provider storeId={storeId}>
+    <>
+      <KeyboardShortcuts />
       <Layout>
         <Sidebar className="hidden lg:flex" />
         <div className="w-full lg:max-w-[calc(100%-16rem)] p-2 lg:pl-0">
@@ -18,10 +17,11 @@ const StoreIdLayout = () => {
         </div>
       </Layout>
       <NewIssueModal />
-    </Provider>
+    </>
   )
 }
 
 export const Route = createFileRoute('/$storeId')({
   component: StoreIdLayout,
+  ssr: false,
 })

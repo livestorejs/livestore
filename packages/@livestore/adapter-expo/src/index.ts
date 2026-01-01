@@ -47,7 +47,12 @@ export type MakeDbOptions = {
   sync?: SyncOptions
   storage?: {
     /**
-     * Relative to expo-sqlite's default directory
+     * The directory where the database file is located.
+     * @default SQLite.defaultDatabaseDirectory
+     */
+    directory?: string
+    /**
+     * Sub-directory relative to the configured `directory` (or expo-sqlite's default directory if not specified).
      *
      * Example of a resulting path for `subDirectory: 'my-app'`:
      * `/data/Containers/Data/Application/<APP_UUID>/Documents/ExponentExperienceData/@<USERNAME>/<APPNAME>/SQLite/my-app/<STORE_ID>/livestore-eventlog@3.db`
@@ -225,6 +230,7 @@ const makeLeaderThread = ({
   makeSqliteDb: MakeExpoSqliteDb
   syncOptions: SyncOptions | undefined
   storage: {
+    directory?: string
     subDirectory?: string
   }
   devtoolsEnabled: boolean
@@ -336,12 +342,14 @@ const resolveExpoPersistencePaths = ({
   schema,
 }: {
   storeId: string
-  storage: { subDirectory?: string } | undefined
   schema: LiveStoreSchema
+  storage: { directory?: string; subDirectory?: string } | undefined
 }) => {
   const subDirectory = storage?.subDirectory ? `${storage.subDirectory.replace(/\/$/, '')}/` : ''
   const pathJoin = (...paths: string[]) => paths.join('/').replaceAll(/\/+/g, '/')
-  const directory = pathJoin(SQLite.defaultDatabaseDirectory, subDirectory, storeId)
+  const directoryBasePath = storage?.directory ?? SQLite.defaultDatabaseDirectory
+
+  const directory = pathJoin(directoryBasePath, subDirectory, storeId)
 
   const schemaHashSuffix =
     schema.state.sqlite.migrations.strategy === 'manual' ? 'fixed' : schema.state.sqlite.hash.toString()

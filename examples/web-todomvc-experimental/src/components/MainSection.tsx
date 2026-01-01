@@ -1,11 +1,10 @@
 import type { Store } from '@livestore/livestore'
 import { queryDb } from '@livestore/livestore'
-import { useStore } from '@livestore/react'
-import { LiveList } from '@livestore/react/experimental'
+import { LiveList } from '@livestore/react'
 import React from 'react'
-
 import { uiState$ } from '../livestore/queries.ts'
 import { events, tables } from '../livestore/schema.ts'
+import { useAppStore } from '../livestore/store.ts'
 
 type Todo = typeof tables.todos.Type
 
@@ -21,7 +20,7 @@ const visibleTodos$ = queryDb(
 )
 
 export const MainSection: React.FC = () => {
-  const { store } = useStore()
+  const store = useAppStore()
 
   // We record an event that specifies marking complete or incomplete,
   // The reason is that this better captures the user's intention
@@ -44,7 +43,7 @@ export const MainSection: React.FC = () => {
   return (
     <section className="main">
       <ul className="todo-list">
-        <LiveList items$={visibleTodos$} getKey={getKey} renderItem={renderItem} />
+        <LiveList items$={visibleTodos$} getKey={getKey} renderItem={renderItem} store={store} />
       </ul>
     </section>
   )
@@ -57,7 +56,7 @@ const Item = ({
 }: {
   todo: Todo
   toggleTodo: (_: Todo) => void
-  store: Store
+  store: Store<any, any>
   parentHasMounted: boolean
 }) => {
   const [state, setState] = React.useState<'initial' | 'deleting' | 'mounted'>('initial')

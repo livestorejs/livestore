@@ -24,6 +24,16 @@ export const SNIPPETS = {
 
 LiveStore itself is built on top of [Effect](https://effect.website) which is a powerful library to write production-grade TypeScript code. It's also possible (and recommended) to use Effect directly in your application code.
 
+## Store context for Effect
+
+For applications built with Effect, LiveStore provides `makeStoreContext()` - a factory that creates typed store contexts for the Effect layer system. This preserves your schema types through Effect's dependency injection and supports multiple stores.
+
+See the [Store Effect integration](/building-with-livestore/store#effect-integration) section for details on:
+- Creating typed store contexts
+- Using stores in Effect services
+- Layer composition patterns
+- Multiple stores in the same app
+
 ## Schema
 
 LiveStore uses the [Effect Schema](https://effect.website/docs/schema/introduction/) library to define schemas for the following:
@@ -72,7 +82,7 @@ Create reactive query atoms that automatically update when the underlying data c
 
 ### Using queries in React components
 
-Access query results in React components with the `useAtomValue` hook. When using `StoreTag.makeQuery` (non-unsafe API), the result is wrapped in a Result type for proper loading and error handling:
+Access query results in React components with the `useAtomValue()` hook. When using `StoreTag.makeQuery` (non-unsafe API), the result is wrapped in a Result type for proper loading and error handling:
 
 <SNIPPETS.userList />
 

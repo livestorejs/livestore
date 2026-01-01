@@ -10,7 +10,16 @@ export {
   saveManifest,
   type TldrawCachePaths,
 } from './cache.ts'
-export { type BuildDiagramsError, type BuildDiagramsOptions, buildDiagrams, DiagramDiscoveryError } from './cli.ts'
+export {
+  __internal as __cliInternal,
+  type BuildDiagramsError,
+  type BuildDiagramsOptions,
+  buildDiagrams,
+  DiagramDiscoveryError,
+  type WatchDiagramsOptions,
+  type WatchDiagramsRebuildInfo,
+  watchDiagrams,
+} from './cli.ts'
 export { type AstroTldrawOptions, createAstroTldrawIntegration } from './integration.ts'
 export {
   getSvgDimensions,

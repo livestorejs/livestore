@@ -1,16 +1,12 @@
 /** biome-ignore-all lint/nursery: testing */
 /** biome-ignore-all lint/correctness/useUniqueElementIds: it's ok for testing */
-import { makePersistedAdapter } from '@livestore/adapter-web'
-import LiveStoreSharedWorker from '@livestore/adapter-web/shared-worker?sharedworker'
-import { LiveStoreProvider, useQuery, useStore } from '@livestore/react'
-import React, { StrictMode } from 'react'
-import { unstable_batchedUpdates as batchUpdates } from 'react-dom'
+import { StoreRegistry, StoreRegistryProvider } from '@livestore/react'
+import React, { StrictMode, Suspense, useState } from 'react'
 import { createRoot } from 'react-dom/client'
 
-import LiveStoreWorker from './livestore.worker.ts?worker'
-import { makeTracer } from './otel.ts'
 import { allItems$, uiState$ } from './queries.ts'
-import { events, type Item, type Items, schema } from './schema.ts'
+import { events, type Item, type Items } from './schema.ts'
+import { useAppStore } from './store.ts'
 
 const A = [
   'pretty',
@@ -70,17 +66,11 @@ const generateRandomItems = (count: number): Items => {
   return items
 }
 
-const adapter = makePersistedAdapter({
-  worker: LiveStoreWorker,
-  sharedWorker: LiveStoreSharedWorker,
-  storage: { type: 'opfs' },
-})
-
 const RemoveIcon = <span>X</span>
 
 const ItemRow = React.memo(({ item }: { item: Item }) => {
-  const { store } = useStore()
-  const { selected } = useQuery(uiState$)
+  const store = useAppStore()
+  const { selected } = store.useQuery(uiState$)
   const isSelected = selected === item.id
   return (
     <tr style={{ backgroundColor: isSelected ? 'lightblue' : 'white' }}>
@@ -111,7 +101,8 @@ const ItemRow = React.memo(({ item }: { item: Item }) => {
 })
 
 const ItemRowList = React.memo(() => {
-  const items = useQuery(allItems$)
+  const store = useAppStore()
+  const items = store.useQuery(allItems$)
   return items.map((item) => <ItemRow key={item.id} item={item} />)
 })
 
@@ -124,7 +115,7 @@ const Button = React.memo(
 )
 
 const Main = () => {
-  const { store } = useStore()
+  const store = useAppStore()
   return (
     <div>
       <div>
@@ -133,8 +124,8 @@ const Main = () => {
           <Button
             id="create1k"
             onClick={() => {
-              // We commit a single event instead of one per item to better represent user intention. The user didn’t press a button 1000 times for each item; they pressed it once to create 1000 items.
-              // We need to include the items in the event payload rather than generating them in the materializer. Otherwise, the materializer wouldn’t be deterministic.
+              // We commit a single event instead of one per item to better represent user intention. The user didn't press a button 1000 times for each item; they pressed it once to create 1000 items.
+              // We need to include the items in the event payload rather than generating them in the materializer. Otherwise, the materializer wouldn't be deterministic.
               store.commit(events.thousandItemsCreated(generateRandomItems(1000)))
             }}
           >
@@ -183,18 +174,20 @@ const Main = () => {
   )
 }
 
-const otelTracer = makeTracer('livestore-perf-tests-app')
+const App = () => {
+  const [storeRegistry] = useState(() => new StoreRegistry())
+
+  return (
+    <Suspense fallback={<p>Loading...</p>}>
+      <StoreRegistryProvider storeRegistry={storeRegistry}>
+        <Main />
+      </StoreRegistryProvider>
+    </Suspense>
+  )
+}
 
 createRoot(document.getElementById('root')!).render(
   <StrictMode>
-    <LiveStoreProvider
-      schema={schema}
-      adapter={adapter}
-      batchUpdates={batchUpdates}
-      renderLoading={(bootStatus) => <p>Stage: {bootStatus.stage}</p>}
-      otelOptions={{ tracer: otelTracer }}
-    >
-      <Main />
-    </LiveStoreProvider>
+    <App />
   </StrictMode>,
 )

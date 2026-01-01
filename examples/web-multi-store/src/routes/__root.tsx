@@ -1,4 +1,4 @@
-import type { StoreRegistry } from '@livestore/react/experimental'
+import type { StoreRegistry } from '@livestore/react'
 import { createRootRouteWithContext, HeadContent, Link, Outlet, Scripts } from '@tanstack/react-router'
 import type { ReactNode } from 'react'
 import stylesheetUrl from '@/styles.css?url'
@@ -14,7 +14,10 @@ export const Route = createRootRouteWithContext<RouterContext>()({
       { name: 'viewport', content: 'width=device-width, initial-scale=1' },
       { title: 'Multi-Store · LiveStore' },
     ],
-    links: [{ rel: 'stylesheet', href: stylesheetUrl }],
+    links: [
+      { rel: 'stylesheet', href: stylesheetUrl },
+      { rel: 'icon', type: 'image/svg+xml', href: '/icon.svg' },
+    ],
   }),
   component: RootComponent,
 })

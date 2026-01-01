@@ -16,9 +16,9 @@ const styles = StyleSheet.create({
   },
 })
 
-export const LoadingLiveStore = ({ stage }: { stage: string }) => (
+export const LoadingLiveStore = () => (
   <Animated.View exiting={FadeOut} style={styles.container}>
     <ActivityIndicator style={styles.activityIndicator} />
-    <Text style={styles.text}>{stage}</Text>
+    <Text style={styles.text}>Loading</Text>
   </Animated.View>
 )

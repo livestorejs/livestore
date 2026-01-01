@@ -1,5 +1,4 @@
 import { nanoid } from '@livestore/livestore'
-import { useQuery, useStore } from '@livestore/react'
 import { Stack, useRouter } from 'expo-router'
 import { Fragment } from 'react'
 import { Pressable, StyleSheet, Text, TextInput, useColorScheme, View } from 'react-native'
@@ -7,13 +6,14 @@ import { Pressable, StyleSheet, Text, TextInput, useColorScheme, View } from 're
 import { useUser } from '../../hooks/useUser.ts'
 import { uiState$ } from '../../livestore/queries.ts'
 import { events } from '../../livestore/schema.ts'
+import { useAppStore } from '../../livestore/store.ts'
 import { PRIORITIES, STATUSES } from '../../types.ts'
 
 const NewIssueScreen = () => {
   const user = useUser()
   const router = useRouter()
-  const { store } = useStore()
-  const { newIssueText, newIssueDescription } = useQuery(uiState$)
+  const store = useAppStore()
+  const { newIssueText, newIssueDescription } = store.useQuery(uiState$)
   const colorScheme = useColorScheme()
   const isDark = colorScheme === 'dark'
 

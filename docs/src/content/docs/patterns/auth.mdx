@@ -4,7 +4,7 @@ sidebar:
   order: 21
 ---
 import PassAuthPayloadSnippet from '../../_assets/code/patterns/auth/pass-auth-payload.ts?snippet'
-import LiveStoreProviderSnippet from '../../_assets/code/patterns/auth/live-store-provider.tsx?snippet'
+import StoreWithAuthSnippet from '../../_assets/code/patterns/auth/store-with-auth.tsx?snippet'
 import KeepPayloadCanonicalSnippet from '../../_assets/code/patterns/auth/keep-payload-canonical.ts?snippet'
 import CookieAuthSnippet from '../../_assets/code/patterns/auth/cookie-auth.ts?snippet'
 
@@ -19,7 +19,7 @@ Use the `syncPayload` store option to send a custom payload to your sync backend
 
 The following example sends the authenticated user's JWT to the server.
 
-<LiveStoreProviderSnippet />
+<StoreWithAuthSnippet />
 
 On the sync server, validate the token and allow or reject the sync based on the result. See the following example:
 
@@ -90,6 +90,6 @@ LiveStore's `clientId` identifies a client instance, while user identity is an a
 
 The `syncPayload` is primarily intended for authentication purposes:
 
-<LiveStoreProviderSnippet />
+<StoreWithAuthSnippet />
 
 User identification and semantic data (like user IDs) should typically be handled through your event payloads and application state rather than relying solely on the sync payload.

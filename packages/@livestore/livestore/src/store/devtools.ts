@@ -235,6 +235,7 @@ export const connectDevtoolsToStore = ({
                 sendToDevtools(
                   Devtools.ClientSession.LiveQueriesRes.make({
                     liveQueries: [...store[StoreInternalsSymbol].activeQueries].map((q) => ({
+                      /** TODO: include schema metadata for schema-aware rendering in devtools (e.g., schema AST/hash/identifier or table+columns for QueryBuilder-derived queries). */
                       _tag: q._tag,
                       id: q.id,
                       label: q.label,
@@ -316,6 +317,20 @@ export const connectDevtoolsToStore = ({
           break
         }
         case 'LSD.ClientSession.Ping': {
+          // Check version mismatch and respond with VersionMismatch if versions don't match
+          if (decodedMessage.liveStoreVersion !== liveStoreVersion) {
+            sendToDevtools(
+              Devtools.ClientSession.VersionMismatch.make({
+                requestId,
+                clientId,
+                sessionId,
+                liveStoreVersion,
+                appVersion: liveStoreVersion,
+                receivedVersion: decodedMessage.liveStoreVersion,
+              }),
+            )
+            break
+          }
           sendToDevtools(Devtools.ClientSession.Pong.make({ requestId, clientId, sessionId, liveStoreVersion }))
           break
         }

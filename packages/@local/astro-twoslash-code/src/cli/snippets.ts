@@ -97,7 +97,7 @@ import * as astroExpressiveCodeModuleStatic from 'astro-expressive-code'
  */
 
 import { type Duration, Effect, FileSystem, type PlatformError, Schema, Stream } from '@livestore/utils/effect'
-import { Cli, NodeRecursiveWatchLayer } from '@livestore/utils/node'
+import { Cli, NodeFileSystemWithWatch } from '@livestore/utils/node'
 import type { ExpressiveCodeBlockOptions } from 'expressive-code'
 import type {
   Element as THastElement,
@@ -217,7 +217,7 @@ const assembleSnippet = (
       })
       insertStartSentinel()
       pushLines(focusLines, file.content, owner, (line) => {
-        if (line.trimStart().startsWith('// ---cut')) {
+        if (isCutMarkerLine(line)) {
           insertStartSentinel()
         }
       })
@@ -244,7 +244,7 @@ const assembleSnippet = (
     })
     insertSupportStartSentinel()
     pushLines(supportLines, file.content, owner, (line) => {
-      if (line.trimStart().startsWith('// ---cut')) {
+      if (isCutMarkerLine(line)) {
         insertSupportStartSentinel()
       }
     })
@@ -267,6 +267,34 @@ const assembleSnippet = (
     lines,
   }
 }
+
+type SnippetLineKind =
+  | { _tag: 'filename' }
+  | { _tag: 'cut' }
+  | { _tag: 'start'; remainder: string }
+  | { _tag: 'end'; remainder: string }
+  | { _tag: 'code'; content: string }
+
+const classifySnippetLine = (line: string): SnippetLineKind => {
+  const trimmed = line.trimStart()
+  if (trimmed.startsWith('// @filename:')) {
+    return { _tag: 'filename' }
+  }
+  if (trimmed.startsWith('// ---cut---') || trimmed.startsWith('// __LS_CUT__')) {
+    return { _tag: 'cut' }
+  }
+  const startMatch = line.match(/^\s*\/\/ __LS_FILE_START__:[^\s]+\s*/)
+  if (startMatch) {
+    return { _tag: 'start', remainder: line.slice(startMatch[0].length) }
+  }
+  const endMatch = line.match(/^\s*\/\/ __LS_FILE_END__:[^\s]+\s*/)
+  if (endMatch) {
+    return { _tag: 'end', remainder: line.slice(endMatch[0].length) }
+  }
+  return { _tag: 'code', content: line }
+}
+
+const isCutMarkerLine = (line: string): boolean => classifySnippetLine(line)._tag === 'cut'
 
 const sanitizeSnippetContent = (content: string): string => content.replace(/^\s*\/\/\/\s*<reference[^\n]*\n?/g, '')
 
@@ -570,24 +598,18 @@ const stripSnippetSentinels = (value: string): string => {
    * Sentinel-only rows are dropped entirely so they don't introduce synthetic whitespace artifacts.
    */
   for (const line of normalised.split(/\r?\n/)) {
-    let current = line
-    const trimmed = current.trimStart()
-    if (trimmed.startsWith('// @filename:')) {
+    const classified = classifySnippetLine(line)
+    if (classified._tag === 'filename' || classified._tag === 'cut') {
       continue
     }
-    if (trimmed.startsWith('// ---cut---')) {
+    if (classified._tag === 'start' || classified._tag === 'end') {
+      if (classified.remainder.trim().length === 0) {
+        continue
+      }
+      cleanedLines.push(classified.remainder)
       continue
     }
-    const beforeStart = current
-    current = current.replace(/^\s*\/\/ __LS_FILE_START__:[^\s]+\s*/, '')
-    const removedStart = beforeStart !== current
-    const beforeEnd = current
-    current = current.replace(/^\s*\/\/ __LS_FILE_END__:[^\s]+\s*/, '')
-    const removedEnd = beforeEnd !== current
-    if ((removedStart || removedEnd) && current.trim().length === 0) {
-      continue
-    }
-    cleanedLines.push(current)
+    cleanedLines.push(classified.content)
   }
 
   // Remove trailing whitespace-only rows while keeping interior blank lines intact.
@@ -623,11 +645,8 @@ const isSentinelText = (text: string): boolean => {
   if (text.includes('__LS_FILE_START__') || text.includes('__LS_FILE_END__')) {
     return true
   }
-  const trimmed = text.trim()
-  if (trimmed.startsWith('// @filename:')) {
-    return true
-  }
-  return false
+  const classified = classifySnippetLine(text)
+  return classified._tag === 'filename' || classified._tag === 'cut'
 }
 
 const removeSentinelNodes = (current: THastElementContent | THastRootContent | null | undefined): void => {
@@ -737,7 +756,7 @@ const trimRenderedAst = (root: THastElement, focusVirtualPath: string, assembled
     if (trimmedText.startsWith('// @filename:')) {
       continue
     }
-    if (trimmedText.startsWith('// ---cut---')) {
+    if (isCutMarkerLine(trimmedText)) {
       continue
     }
 
@@ -802,7 +821,7 @@ const trimRenderedAst = (root: THastElement, focusVirtualPath: string, assembled
             return false
           }
           const trimmed = line.content.trimStart()
-          if (trimmed.startsWith('// ---cut')) {
+          if (isCutMarkerLine(trimmed)) {
             return false
           }
           return true
@@ -1618,84 +1637,80 @@ const watchSnippetsInternal = (
   resolved: ResolvedBuildOptions,
   options: NormalizedWatchOptions,
 ): Effect.Effect<void, never, FileSystem.FileSystem> =>
-  Effect.scoped(
-    Effect.gen(function* () {
-      const fs = yield* FileSystem.FileSystem
-      const { paths } = resolved
+  Effect.gen(function* () {
+    const fs = yield* FileSystem.FileSystem
+    const { paths } = resolved
 
-      const snippetRootExists = yield* fs
-        .exists(paths.snippetAssetsRoot)
-        .pipe(Effect.catchAll(() => Effect.succeed(false)))
-      const sourceRootExists = yield* fs.exists(paths.srcRoot).pipe(Effect.catchAll(() => Effect.succeed(false)))
+    const snippetRootExists = yield* fs
+      .exists(paths.snippetAssetsRoot)
+      .pipe(Effect.catchAll(() => Effect.succeed(false)))
+    const sourceRootExists = yield* fs.exists(paths.srcRoot).pipe(Effect.catchAll(() => Effect.succeed(false)))
 
-      const watchStreams: Array<Stream.Stream<WatchEventSummary, PlatformError.PlatformError>> = []
-      if (snippetRootExists) {
-        watchStreams.push(createWatchStream(fs, 'snippet', paths.snippetAssetsRoot, paths.cacheRoot))
-      }
-      if (sourceRootExists) {
-        watchStreams.push(createWatchStream(fs, 'source', paths.srcRoot, paths.cacheRoot))
-      }
+    const watchStreams: Array<Stream.Stream<WatchEventSummary, PlatformError.PlatformError>> = []
+    if (snippetRootExists) {
+      watchStreams.push(createWatchStream(fs, 'snippet', paths.snippetAssetsRoot, paths.cacheRoot))
+    }
+    if (sourceRootExists) {
+      watchStreams.push(createWatchStream(fs, 'source', paths.srcRoot, paths.cacheRoot))
+    }
 
-      const notify = (info: WatchSnippetsRebuildInfo) => options.onRebuild(info)
+    const notify = (info: WatchSnippetsRebuildInfo) => options.onRebuild(info)
 
-      const runRebuild = (reason: WatchSnippetsRebuildInfo['reason'], event: WatchEventSummary | null) =>
-        Effect.gen(function* () {
-          const startedAt = Date.now()
-          if (event) {
-            yield* Effect.log(
-              `Snippets watch: ${event.scope} ${event.kind.toLowerCase()} at ${event.relativePath}, rebuilding...`,
-            )
-          } else {
-            yield* Effect.log('Snippets watch: running initial build')
-          }
-
-          const result = yield* buildSnippetsInternal(resolved).pipe(Effect.either)
-          const durationMs = Date.now() - startedAt
-
-          if (result._tag === 'Left') {
-            const error = result.left
-            yield* Effect.logError(
-              `Snippets watch: build failed${event ? ` (trigger: ${event.relativePath})` : ''}: ${error.message}`,
-            )
-            yield* notify({ reason, event, renderedCount: -1, durationMs })
-            return
-          }
-
-          const renderedCount = result.right ?? 0
+    const runRebuild = (reason: WatchSnippetsRebuildInfo['reason'], event: WatchEventSummary | null) =>
+      Effect.gen(function* () {
+        const startedAt = Date.now()
+        if (event) {
           yield* Effect.log(
-            `Snippets watch: rendered ${renderedCount} bundle${renderedCount === 1 ? '' : 's'} in ${durationMs}ms`,
+            `Snippets watch: ${event.scope} ${event.kind.toLowerCase()} at ${event.relativePath}, rebuilding...`,
           )
-          yield* notify({ reason, event, renderedCount, durationMs })
-        })
+        } else {
+          yield* Effect.log('Snippets watch: running initial build')
+        }
 
-      yield* runRebuild('initial', null)
+        const result = yield* buildSnippetsInternal(resolved).pipe(Effect.either)
+        const durationMs = Date.now() - startedAt
 
-      if (watchStreams.length === 0) {
-        yield* Effect.logWarning('Snippets watch: no watchable directories found; waiting for manual interruption')
-        return yield* Effect.never
-      }
+        if (result._tag === 'Left') {
+          const error = result.left
+          yield* Effect.logError(
+            `Snippets watch: build failed${event ? ` (trigger: ${event.relativePath})` : ''}: ${error.message}`,
+          )
+          yield* notify({ reason, event, renderedCount: -1, durationMs })
+          return
+        }
 
-      const merged =
-        watchStreams.length === 1
-          ? watchStreams[0]!
-          : Stream.mergeAll(watchStreams, { concurrency: watchStreams.length })
+        const renderedCount = result.right ?? 0
+        yield* Effect.log(
+          `Snippets watch: rendered ${renderedCount} bundle${renderedCount === 1 ? '' : 's'} in ${durationMs}ms`,
+        )
+        yield* notify({ reason, event, renderedCount, durationMs })
+      })
 
-      const debounced = Stream.debounce(options.debounce)(merged)
+    yield* runRebuild('initial', null)
 
-      const streamEffect = debounced.pipe(
-        Stream.mapEffect((event) => runRebuild('watch', event), {
-          concurrency: 1,
-        }),
-        Stream.runDrain,
-      )
+    if (watchStreams.length === 0) {
+      yield* Effect.logWarning('Snippets watch: no watchable directories found; waiting for manual interruption')
+      return yield* Effect.never
+    }
 
-      yield* streamEffect.pipe(
-        Effect.catchAll((cause) =>
-          Effect.logWarning(`Snippets watch: stream failed with ${String(cause)}`).pipe(Effect.zipRight(Effect.never)),
-        ),
-      )
-    }),
-  )
+    const merged =
+      watchStreams.length === 1 ? watchStreams[0]! : Stream.mergeAll(watchStreams, { concurrency: watchStreams.length })
+
+    const debounced = Stream.debounce(options.debounce)(merged)
+
+    const streamEffect = debounced.pipe(
+      Stream.mapEffect((event) => runRebuild('watch', event), {
+        concurrency: 1,
+      }),
+      Stream.runDrain,
+    )
+
+    yield* streamEffect.pipe(
+      Effect.catchAll((cause) =>
+        Effect.logWarning(`Snippets watch: stream failed with ${String(cause)}`).pipe(Effect.zipRight(Effect.never)),
+      ),
+    )
+  })
 
 const normalizeOptions = (options: BuildSnippetsOptions = {}): BuildSnippetsOptions => {
   const normalized: BuildSnippetsOptions = {}
@@ -1720,7 +1735,14 @@ export const watchSnippets = (options: WatchSnippetsOptions = {}) => {
     ...(debounce !== undefined ? { debounce } : {}),
     ...(onRebuild !== undefined ? { onRebuild } : {}),
   })
-  return Effect.withSpan('astro-twoslash-code/watch-snippets')(watchSnippetsInternal(resolved, normalizedWatch))
+  return watchSnippetsInternal(resolved, normalizedWatch).pipe(
+    Effect.withSpan('astro-twoslash-code/watch-snippets'),
+    /**
+     * Must use NodeFileSystemWithWatch to ensure recursive file watching works correctly.
+     * @see https://github.com/Effect-TS/effect/issues/5913
+     */
+    Effect.provide(NodeFileSystemWithWatch),
+  )
 }
 
 export type CreateSnippetsCommandOptions = BuildSnippetsOptions & {
@@ -1745,11 +1767,16 @@ export const createSnippetsCommand = ({
 
   const watchHandler = watchSnippetsInternal(resolved, normalizeWatchOptions({})).pipe(
     Effect.withSpan('astro-twoslash-code/cli/snippets-watch'),
+    /**
+     * Must use NodeFileSystemWithWatch to ensure recursive file watching works correctly.
+     * @see https://github.com/Effect-TS/effect/issues/5913
+     */
+    Effect.provide(NodeFileSystemWithWatch),
     Effect.asVoid,
   )
 
-  const buildCommand = Cli.Command.make('build', {}, () => buildHandler.pipe(Effect.provide(NodeRecursiveWatchLayer)))
-  const watchCommand = Cli.Command.make('watch', {}, () => watchHandler.pipe(Effect.provide(NodeRecursiveWatchLayer)))
+  const buildCommand = Cli.Command.make('build', {}, () => buildHandler)
+  const watchCommand = Cli.Command.make('watch', {}, () => watchHandler)
 
   return Cli.Command.make(commandName).pipe(Cli.Command.withSubcommands([buildCommand, watchCommand]))
 }

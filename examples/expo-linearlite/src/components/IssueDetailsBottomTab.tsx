@@ -1,4 +1,3 @@
-import { useStore } from '@livestore/react'
 import { useRouter } from 'expo-router'
 import {
   Clock3Icon,
@@ -14,6 +13,7 @@ import { Pressable, StyleSheet, TextInput, useColorScheme, View } from 'react-na
 
 import { Colors } from '../constants/Colors.ts'
 import { events } from '../livestore/schema.ts'
+import { useAppStore } from '../livestore/store.ts'
 
 import { Modal } from './Modal.tsx'
 import { ThemedText } from './ThemedText.tsx'
@@ -25,7 +25,7 @@ interface IssueDetailsBottomTabProps {
 export const IssueDetailsBottomTab = ({ issueId }: IssueDetailsBottomTabProps) => {
   const theme = useColorScheme()
   const router = useRouter()
-  const { store } = useStore()
+  const store = useAppStore()
   const isDark = theme === 'dark'
 
   const [visible, setVisible] = React.useState(false)

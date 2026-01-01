@@ -3,6 +3,7 @@ import { livestoreDevtoolsPlugin } from '@livestore/devtools-vite'
 import { tanstackStart } from '@tanstack/react-start/plugin/vite'
 import viteReact from '@vitejs/plugin-react'
 import { defineConfig } from 'vite'
+import devtoolsJson from 'vite-plugin-devtools-json'
 
 // const __dirname = import.meta.dirname
 
@@ -23,5 +24,10 @@ export default defineConfig({
       'fsevents', // Native module, should not be optimized
     ],
   },
-  plugins: [tanstackStart(), viteReact(), livestoreDevtoolsPlugin({ schemaPath: './src/livestore/schema.ts' })],
+  plugins: [
+    tanstackStart(),
+    viteReact(),
+    livestoreDevtoolsPlugin({ schemaPath: './src/livestore/schema.ts' }),
+    devtoolsJson(), // Needed for https://github.com/TanStack/router/issues/2459#issuecomment-2969318833
+  ],
 })

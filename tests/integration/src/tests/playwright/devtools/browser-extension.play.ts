@@ -22,13 +22,17 @@ import type * as otel from '@opentelemetry/api'
 import type * as PW from '@playwright/test'
 import { expect, test } from '@playwright/test'
 import { downloadChromeExtension } from '../../../../scripts/download-chrome-extension.ts'
-import { checkDevtoolsState } from './shared.ts'
+import { checkDevtoolsState, checkVersionMismatchOverlay } from './shared.ts'
 
 const usedPages = new Set<PW.Page>()
 
 type AdapterKind = 'persisted' | 'inmemory'
 
-const makeTabPair = (url: string, tabName: string, adapter: AdapterKind) =>
+/**
+ * Creates a tab pair with an app page and a DevTools page (browser extension).
+ * @param appVersionOverride - Optional version override to inject via globalThis.__LIVESTORE_VERSION_OVERRIDE__ for testing version mismatch scenarios.
+ */
+const makeTabPair = (url: string, tabName: string, adapter: AdapterKind, options?: { appVersionOverride?: string }) =>
   Effect.gen(function* () {
     const { browserContext } = yield* Playwright.BrowserContext
 
@@ -52,6 +56,13 @@ const makeTabPair = (url: string, tabName: string, adapter: AdapterKind) =>
         .pages()
         .filter(isUnused)
         .find((p) => p.url() === 'about:blank') ?? (yield* newPage)
+
+    // Inject version override before page loads (for version mismatch testing)
+    if (options?.appVersionOverride) {
+      yield* Effect.tryPromise(() =>
+        page.addInitScript(`globalThis.__LIVESTORE_VERSION_OVERRIDE__ = '${options.appVersionOverride}';`),
+      )
+    }
 
     // NOTE we need to start the console listening right away, otherwise we might miss some messages
     const pageConsoleFiber = yield* Playwright.handlePageConsole({
@@ -448,6 +459,39 @@ test(
           ]),
         ),
       )
+    }),
+  ),
+)
+
+test(
+  'version mismatch overlay',
+  runTest(
+    Effect.gen(function* () {
+      const fakeAppVersion = '0.0.0-fake-version'
+
+      const tab1 = yield* makeTabPair(
+        `http://localhost:${process.env.LIVESTORE_PLAYWRIGHT_DEV_SERVER_PORT}/devtools/todomvc`,
+        'tab-version-mismatch',
+        'inmemory',
+        { appVersionOverride: fakeAppVersion },
+      )
+
+      yield* Effect.tryPromise(async () => {
+        // Wait for the app to load
+        const el = tab1.page.locator('.new-todo').describe('tab-version-mismatch:new-todo')
+        await el.waitFor({ timeout: 10_000 })
+
+        // The browser extension auto-connects to the session, so we just need to wait for the mismatch overlay
+        // Check version mismatch overlay is displayed in the LiveStore DevTools frame
+        await checkVersionMismatchOverlay({
+          devtools: tab1.liveStoreDevtools,
+          label: 'devtools-version-mismatch',
+          expect: {
+            devtoolsVersion: '0.4', // Partial match for the real DevTools version
+            appVersion: fakeAppVersion,
+          },
+        })
+      }).pipe(Effect.raceFirst(Fiber.joinAll([tab1.pageConsoleFiber, tab1.devtoolsConsoleFiber])))
     }),
   ),
 )

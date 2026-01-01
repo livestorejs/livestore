@@ -1,5 +1,4 @@
 import { queryDb } from '@livestore/livestore'
-import * as LiveStoreReact from '@livestore/react'
 import { generateKeyBetween } from 'fractional-indexing'
 import React from 'react'
 import {
@@ -17,6 +16,7 @@ import AutoSizer from 'react-virtualized-auto-sizer'
 import type { StatusDetails } from '../../../data/status-options.ts'
 import { filterState$, useDebouncedScrollState, useFilterState } from '../../../livestore/queries.ts'
 import { events, tables } from '../../../livestore/schema/index.ts'
+import { useAppStore } from '../../../livestore/store.ts'
 import { filterStateToWhere } from '../../../livestore/utils.tsx'
 import type { Status } from '../../../types/status.ts'
 import { Icon } from '../../icons/index.tsx'
@@ -24,7 +24,7 @@ import { NewIssueButton } from '../sidebar/new-issue-button.tsx'
 import { Card } from './card.tsx'
 
 export const Column = ({ status, statusDetails }: { status: Status; statusDetails: StatusDetails }) => {
-  const { store } = LiveStoreReact.useStore()
+  const store = useAppStore()
   // TODO restore initial scroll position once React Aria supports this scenario
   const [_scrollState, setScrollState] = useDebouncedScrollState(`column-${status}-${store.sessionId}`)
   const [filterState] = useFilterState()

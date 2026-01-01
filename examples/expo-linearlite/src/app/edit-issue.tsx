@@ -1,5 +1,4 @@
 import { queryDb } from '@livestore/livestore'
-import { useQuery, useStore } from '@livestore/react'
 import { Stack, useLocalSearchParams, useRouter } from 'expo-router'
 import { Image, Pressable, ScrollView, StyleSheet, TextInput, View } from 'react-native'
 
@@ -7,22 +6,23 @@ import { IssueStatusIcon, PriorityIcon } from '../components/IssueItem.tsx'
 import { ThemedText } from '../components/ThemedText.tsx'
 import { useThemeColor } from '../hooks/useThemeColor.ts'
 import { events, tables } from '../livestore/schema.ts'
+import { useAppStore } from '../livestore/store.ts'
 import type { Priority, Status } from '../types.ts'
 
 const EditIssueScreen = () => {
   const issueId = useLocalSearchParams().issueId as string
-  const { store } = useStore()
+  const store = useAppStore()
   const router = useRouter()
   const textColor = useThemeColor({}, 'text')
 
-  const issue = useQuery(
+  const issue = store.useQuery(
     queryDb(tables.issues.where({ id: issueId }).first({ behaviour: 'error' }), {
       label: 'edit-issue',
       deps: `edit-issue-${issueId}`,
     }),
   )
 
-  const assignee = useQuery(
+  const assignee = store.useQuery(
     queryDb(tables.users.where({ id: issue.assigneeId! }).first({ behaviour: 'error' }), {
       label: 'assignee',
       deps: `edit-issue-assignee-${issue.assigneeId}`,

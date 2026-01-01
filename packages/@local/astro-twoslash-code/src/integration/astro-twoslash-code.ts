@@ -1,7 +1,7 @@
 import { fileURLToPath } from 'node:url'
 
 import { Effect, Fiber } from '@livestore/utils/effect'
-import { NodeRecursiveWatchLayer, PlatformNode } from '@livestore/utils/node'
+import { PlatformNode } from '@livestore/utils/node'
 import type { AstroIntegration } from 'astro'
 
 import { type BuildSnippetsOptions, buildSnippets, watchSnippets } from '../cli/snippets.ts'
@@ -19,12 +19,6 @@ type ConfigSetupContext = Parameters<NonNullable<AstroIntegration['hooks']['astr
 type ServerStartContext = Parameters<NonNullable<AstroIntegration['hooks']['astro:server:start']>>[0]
 type BuildStartContext = Parameters<NonNullable<AstroIntegration['hooks']['astro:build:start']>>[0]
 
-const provideNodeFileSystem = <T, E, R>(effect: Effect.Effect<T, E, R>) =>
-  effect.pipe(Effect.provide(PlatformNode.NodeFileSystem.layer))
-
-const provideNodeRecursiveWatch = <T, E, R>(effect: Effect.Effect<T, E, R>) =>
-  effect.pipe(Effect.provide(NodeRecursiveWatchLayer))
-
 /** When set, skip auto-build and watch (snippets are managed externally, e.g. by mono CLI) */
 const shouldSkipSnippetAutoBuildAndWatch = () => process.env.LS_SKIP_SNIPPET_AUTO_BUILD_AND_WATCH === '1'
 
@@ -38,7 +32,10 @@ export const createAstroTwoslashCodeIntegration = (options: AstroTwoslashCodeOpt
       return Promise.resolve()
     }
 
-    return provideNodeFileSystem(buildSnippets(resolvedBuildOptions)).pipe(Effect.runPromise)
+    return buildSnippets(resolvedBuildOptions).pipe(
+      Effect.provide(PlatformNode.NodeFileSystem.layer),
+      Effect.runPromise,
+    )
   }
 
   return {
@@ -76,8 +73,7 @@ export const createAstroTwoslashCodeIntegration = (options: AstroTwoslashCodeOpt
         await runSnippetBuild()
 
         if (resolvedBuildOptions && watchFiber === null) {
-          const watchEffect = watchSnippets(resolvedBuildOptions)
-          watchFiber = Effect.runFork(provideNodeRecursiveWatch(watchEffect))
+          watchFiber = Effect.runFork(watchSnippets(resolvedBuildOptions))
         }
       },
       'astro:build:start': async (_context: BuildStartContext) => {

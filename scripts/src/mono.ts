@@ -86,6 +86,7 @@ if (import.meta.main) {
     Effect.provide(layer),
     Effect.annotateLogs({ thread: 'mono' }),
     Logger.withMinimumLogLevel(LogLevel.Debug),
+    Effect.scoped,
     PlatformNode.NodeRuntime.runMain,
   )
 }
