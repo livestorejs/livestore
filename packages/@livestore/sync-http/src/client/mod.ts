@@ -1,24 +1,26 @@
 import type { SyncBackend } from '@livestore/common'
 import { EventSequenceNumber } from '@livestore/common/schema'
-import { Effect, identity, Mailbox, Socket, Stream } from '@livestore/utils/effect'
+import { Effect, FetchHttpClient, identity, Socket } from '@livestore/utils/effect'
 import { ConnectionManager } from './connection-manager.ts'
 
-export const makeSyncBackend = (options: { readonly baseUrl: string }): SyncBackend.SyncBackendConstructor =>
+export const makeSyncBackend = (options: {
+  readonly baseUrl: string
+  readonly protocol?: 'websocket' | 'http' | undefined
+}): SyncBackend.SyncBackendConstructor =>
   Effect.fnUntraced(function* ({ storeId }) {
     const manager = yield* ConnectionManager.make({
       baseUrl: options.baseUrl,
       storeId,
-    }).pipe(Effect.provide(Socket.layerWebSocketConstructorGlobal))
+      protocol: options.protocol ?? 'websocket',
+    }).pipe(Effect.provide([Socket.layerWebSocketConstructorGlobal, FetchHttpClient.layer]))
 
     return identity<SyncBackend.SyncBackend>({
       connect: manager.connect,
       pull: (cursor, options) =>
-        manager
-          .pull({
-            cursor: cursor._tag === 'Some' ? cursor.value.eventSequenceNumber : EventSequenceNumber.Global.make(-1),
-            live: options?.live ?? false,
-          })
-          .pipe(Effect.map(Mailbox.toStream), Stream.unwrapScoped),
+        manager.pull({
+          cursor: cursor._tag === 'Some' ? cursor.value.eventSequenceNumber : EventSequenceNumber.Global.make(-1),
+          live: options?.live ?? false,
+        }),
       push: (events) => manager.push(events),
       ping: manager.ping.pipe(Effect.timeout('10 seconds')),
       isConnected: manager.isConnected,

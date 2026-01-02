@@ -9,14 +9,11 @@
   },
   "dependencies": {
     "@effect/sql": "catalog:",
-    "@effect/sql-mysql2": "0.50.0",
-    "@effect/sql-pg": "0.50.0",
+    "@effect/sql-pg": "catalog:",
+    "@effect/sql-sqlite-bun": "catalog:",
     "@effect/sql-sqlite-node": "catalog:",
     "@livestore/common": "workspace:*",
     "@livestore/utils": "workspace:*"
-  },
-  "devDependencies": {
-    "tsx": "^4.21.0"
   },
   "files": [
     "dist",
@@ -29,7 +26,8 @@
     "access": "public",
     "exports": {
       "./client": "./dist/client/mod.js",
-      "./server": "./dist/server/mod.js"
+      "./server/bun": "./dist/server/bun.js",
+      "./server/node": "./dist/server/node.js"
     }
   },
   "scripts": {
