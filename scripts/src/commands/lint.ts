@@ -68,6 +68,6 @@ export const lintCommand = Cli.Command.make(
     yield* checkMdFilesNoImports
 
     // Check for unused files, dependencies, and exports
-    yield* cmd('knip').pipe(Effect.provide(LivestoreWorkspace.toCwd()))
+    yield* cmd('scripts/node_modules/.bin/knip').pipe(Effect.provide(LivestoreWorkspace.toCwd()))
   }),
 )

@@ -206,9 +206,6 @@ importers:
       husky:
         specifier: ^9.1.7
         version: 9.1.7
-      knip:
-        specifier: ^5.79.0
-        version: 5.79.0(@types/node@24.10.1)(typescript@5.9.2)
       madge:
         specifier: ^8.0.0
         version: 8.0.0(typescript@5.9.2)
@@ -2815,6 +2812,9 @@ importers:
       '@types/semver':
         specifier: ^7.7.0
         version: 7.7.1
+      knip:
+        specifier: ^5.79.0
+        version: 5.79.0(@types/node@24.10.1)(typescript@5.9.3)
       semver:
         specifier: ^7.7.3
         version: 7.7.3
@@ -29864,7 +29864,7 @@ snapshots:
 
   klona@2.0.6: {}
 
-  knip@5.79.0(@types/node@24.10.1)(typescript@5.9.2):
+  knip@5.79.0(@types/node@24.10.1)(typescript@5.9.3):
     dependencies:
       '@nodelib/fs.walk': 1.2.8
       '@types/node': 24.10.1
@@ -29878,7 +29878,7 @@ snapshots:
       picomatch: 4.0.3
       smol-toml: 1.5.2
       strip-json-comments: 5.0.3
-      typescript: 5.9.2
+      typescript: 5.9.3
       zod: 4.1.13
 
   koa-compose@4.1.0: {}
