@@ -1,0 +1,70 @@
+{
+  "$schema": "https://unpkg.com/knip@5/schema.json",
+  "workspaces": {
+    ".": {
+      "ignore": ["patches/**", "scripts/**"]
+    },
+    "scripts": {
+      "entry": ["bin/*", "src/mono.ts", "standalone/setup.ts"]
+    },
+    "packages/@livestore/*": {
+      "entry": ["src/**/*.ts", "!src/**/*.test.ts"],
+      "ignore": ["dist/**", "**/*.test.ts"]
+    },
+    "packages/@local/*": {
+      "entry": ["src/**/*.ts", "!src/**/*.test.ts"],
+      "ignore": ["dist/**", "**/*.test.ts", "**/test-fixtures/**"]
+    },
+    "packages/@livestore/wa-sqlite": {
+      "ignore": ["**"]
+    },
+    "packages/@livestore/peer-deps": {
+      "ignore": ["**"]
+    }
+  },
+  "ignoreWorkspaces": [
+    "docs",
+    "docs/src/content/_assets/code",
+    "packages/@local/astro-twoslash-code/example",
+    "examples/*",
+    "tests/*"
+  ],
+  "ignore": [
+    "**/dist/**",
+    "**/node_modules/**",
+    "**/*.d.ts",
+    "**/*.worker.ts",
+    "**/*.test.ts",
+    "**/__tests__/**",
+    "**/*.bundle.ts",
+    "**/leader-thread-lazy.ts"
+  ],
+  "ignoreDependencies": [
+    "cloudflare",
+    "@cloudflare/workers-types",
+    "@types/chrome",
+    "@types/wicg-file-system-access",
+    "@types/web",
+    "wrangler",
+    "@effect/typeclass",
+    "@effect/workflow",
+    "@effect/vitest",
+    "@astrojs/starlight",
+    "jsdom",
+    "vitest",
+    "vite",
+    "@opentelemetry/sdk-trace-base",
+    "@biomejs/biome",
+    "madge",
+    "@livestore/utils-dev",
+    "@livestore/peer-deps",
+    "@livestore/sync-cf",
+    "@standard-schema/spec",
+    "@livestore/common"
+  ],
+  "rules": {
+    "duplicates": "off",
+    "catalog": "off"
+  },
+  "ignoreExportsUsedInFile": true
+}

@@ -66,5 +66,8 @@ export const lintCommand = Cli.Command.make(
 
     // Check that .md files don't contain imports (should be .mdx)
     yield* checkMdFilesNoImports
+
+    // Check for unused files, dependencies, and exports
+    yield* cmd('knip').pipe(Effect.provide(LivestoreWorkspace.toCwd()))
   }),
 )
