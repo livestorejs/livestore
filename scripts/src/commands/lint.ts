@@ -1,3 +1,6 @@
+import * as fs from 'node:fs'
+import * as os from 'node:os'
+import * as path from 'node:path'
 import { Console, Effect } from '@livestore/utils/effect'
 import { Cli } from '@livestore/utils/node'
 import { cmd, cmdText, LivestoreWorkspace } from '@livestore/utils-dev/node'
@@ -34,6 +37,97 @@ const checkMdFilesNoImports = Effect.gen(function* () {
   }
 }).pipe(Effect.withSpan('checkMdFilesNoImports'))
 
+/**
+ * Knip configuration for detecting unused files, dependencies, and exports.
+ *
+ * Note on disabled rules:
+ * - duplicates: Disabled because constants like MAX_TRANSPORT_PAYLOAD_BYTES share values intentionally
+ * - catalog: Disabled because catalog entries used in ignored workspaces (examples/tests/docs) appear unused
+ */
+const knipConfig = {
+  workspaces: {
+    '.': {
+      ignore: ['patches/**', 'scripts/**'],
+    },
+    scripts: {
+      entry: ['bin/*', 'src/mono.ts', 'standalone/setup.ts'],
+    },
+    'packages/@livestore/*': {
+      entry: ['src/**/*.ts', '!src/**/*.test.ts'],
+      ignore: ['dist/**', '**/*.test.ts'],
+    },
+    'packages/@local/*': {
+      entry: ['src/**/*.ts', '!src/**/*.test.ts'],
+      ignore: ['dist/**', '**/*.test.ts', '**/test-fixtures/**'],
+    },
+    'packages/@livestore/wa-sqlite': {
+      ignore: ['**'],
+    },
+    'packages/@livestore/peer-deps': {
+      ignore: ['**'],
+    },
+  },
+  ignoreWorkspaces: [
+    'docs',
+    'docs/src/content/_assets/code',
+    'packages/@local/astro-twoslash-code/example',
+    'examples/*',
+    'tests/*',
+  ],
+  ignore: [
+    '**/dist/**',
+    '**/node_modules/**',
+    '**/*.d.ts',
+    '**/*.worker.ts',
+    '**/*.test.ts',
+    '**/__tests__/**',
+    '**/*.bundle.ts',
+    '**/leader-thread-lazy.ts',
+  ],
+  ignoreDependencies: [
+    'cloudflare',
+    '@cloudflare/workers-types',
+    '@types/chrome',
+    '@types/wicg-file-system-access',
+    '@types/web',
+    'wrangler',
+    '@effect/typeclass',
+    '@effect/workflow',
+    '@effect/vitest',
+    '@astrojs/starlight',
+    'jsdom',
+    'vitest',
+    'vite',
+    '@opentelemetry/sdk-trace-base',
+    '@biomejs/biome',
+    'madge',
+    '@livestore/utils-dev',
+    '@livestore/peer-deps',
+    '@livestore/sync-cf',
+    '@standard-schema/spec',
+    '@livestore/common',
+  ],
+  rules: {
+    duplicates: 'off',
+    catalog: 'off',
+  },
+  ignoreExportsUsedInFile: true,
+}
+
+const runKnipCheck = Effect.gen(function* () {
+  const workspaceRoot = yield* LivestoreWorkspace
+
+  // Write config to temp file and run knip with it
+  const tempConfigPath = path.join(os.tmpdir(), `knip-config-${Date.now()}.json`)
+  yield* Effect.sync(() => fs.writeFileSync(tempConfigPath, JSON.stringify(knipConfig, null, 2)))
+
+  yield* Effect.addFinalizer(() => Effect.sync(() => fs.unlinkSync(tempConfigPath)))
+
+  yield* cmd(`scripts/node_modules/.bin/knip -c ${tempConfigPath}`).pipe(
+    Effect.provide(LivestoreWorkspace.fromPath(workspaceRoot)),
+  )
+}).pipe(Effect.scoped, Effect.withSpan('runKnipCheck'))
+
 export const lintCommand = Cli.Command.make(
   'lint',
   { fix: Cli.Options.boolean('fix').pipe(Cli.Options.withDefault(false)) },
@@ -68,6 +162,6 @@ export const lintCommand = Cli.Command.make(
     yield* checkMdFilesNoImports
 
     // Check for unused files, dependencies, and exports
-    yield* cmd('scripts/node_modules/.bin/knip').pipe(Effect.provide(LivestoreWorkspace.toCwd()))
+    yield* runKnipCheck.pipe(Effect.provide(LivestoreWorkspace.toCwd()))
   }),
 )
