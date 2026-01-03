@@ -1,7 +1,7 @@
 import { Effect, Fiber, Option } from '@livestore/utils/effect'
 import { Cli } from '@livestore/utils/node'
 import { allLintChecks, fastLintChecks } from './checks/lint.ts'
-import { allTestChecks, fastTestChecks } from './checks/test.ts'
+import { allTestChecks, changedTestCheck, fastTestChecks, unitTestCheck } from './checks/test.ts'
 import { typecheckCheck } from './checks/typecheck.ts'
 import type { Check } from './checks/types.ts'
 import { CheckEventPubSub } from './events.ts'
@@ -25,7 +25,12 @@ const parseCategories = (input: string): CheckCategory[] =>
     .filter((s): s is CheckCategory => ['typecheck', 'lint', 'test', 'ts'].includes(s))
     .map((s) => (s === 'ts' ? 'typecheck' : s)) // Alias 'ts' -> 'typecheck'
 
-const resolveChecks = (opts: { full: boolean; skip: Option.Option<string>; only: Option.Option<string> }): Check[] => {
+const resolveChecks = (opts: {
+  full: boolean
+  skip: Option.Option<string>
+  only: Option.Option<string>
+  changed: boolean
+}): Check[] => {
   let checks: Check[]
 
   // Start with fast or all checks based on --full flag
@@ -33,6 +38,11 @@ const resolveChecks = (opts: { full: boolean; skip: Option.Option<string>; only:
     checks = [...allChecks]
   } else {
     checks = [...fastChecks]
+  }
+
+  // If --changed is specified, replace unitTestCheck with changedTestCheck
+  if (opts.changed) {
+    checks = checks.map((check) => (check === unitTestCheck ? changedTestCheck : check))
   }
 
   // Apply --only filter
@@ -87,13 +97,17 @@ export const checkCommand = Cli.Command.make(
       Cli.Options.withDefault(false),
       Cli.Options.withDescription('Stop on first failure'),
     ),
+    changed: Cli.Options.boolean('changed').pipe(
+      Cli.Options.withDefault(false),
+      Cli.Options.withDescription('Only run tests related to uncommitted changes'),
+    ),
   },
-  Effect.fn(function* ({ full, skip, only, verbose, failFast }) {
+  Effect.fn(function* ({ full, skip, only, verbose, failFast, changed }) {
     const startTime = Date.now()
     const isCI = process.env.GITHUB_ACTIONS === 'true' || process.env.CI === 'true'
 
     // Resolve which checks to run
-    const checks = resolveChecks({ full, skip, only })
+    const checks = resolveChecks({ full, skip, only, changed })
 
     if (checks.length === 0) {
       console.log('No checks to run.')

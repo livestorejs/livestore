@@ -2,7 +2,7 @@ import fs from 'node:fs'
 import path from 'node:path'
 
 import { Effect } from '@livestore/utils/effect'
-import { LivestoreWorkspace } from '@livestore/utils-dev/node'
+import { cmdText, LivestoreWorkspace } from '@livestore/utils-dev/node'
 import * as integrationTests from '@local/tests-integration/run-tests'
 import * as syncProviderTestsPrepare from '@local/tests-sync-provider/prepare-ci'
 
@@ -13,9 +13,9 @@ import type { Check } from './types.ts'
 // --- Helpers ---
 
 /**
- * Dynamically discover packages that have test files.
+ * Dynamically discover packages that have test files and return their vitest project names.
  */
-const discoverPackagesWithTests = (workspaceRoot: string, excludePackages: string[] = []): string[] => {
+const discoverProjectsWithTests = (workspaceRoot: string, excludePackages: string[] = []): string[] => {
   const packagesDir = path.join(workspaceRoot, 'packages')
   const results: string[] = []
 
@@ -33,7 +33,8 @@ const discoverPackagesWithTests = (workspaceRoot: string, excludePackages: strin
         if (fs.statSync(pkgPath).isDirectory()) {
           const hasTests = hasTestFiles(pkgPath)
           if (hasTests) {
-            results.push(relativePath)
+            // Return the project name format that vitest expects
+            results.push(`@livestore/${pkg}`)
           }
         }
       }
@@ -52,17 +53,9 @@ const discoverPackagesWithTests = (workspaceRoot: string, excludePackages: strin
         if (fs.statSync(pkgPath).isDirectory()) {
           const hasTests = hasTestFiles(pkgPath)
           if (hasTests) {
-            results.push(relativePath)
+            results.push(`@local/${pkg}`)
           }
         }
-      }
-    }
-
-    // Also check tests/package-common if not excluded
-    if (!excludePackages.includes('tests/package-common')) {
-      const packageCommonPath = path.join(workspaceRoot, 'tests/package-common')
-      if (fs.existsSync(packageCommonPath) && hasTestFiles(packageCommonPath)) {
-        results.push('tests/package-common')
       }
     }
   } catch (error) {
@@ -104,11 +97,29 @@ const hasTestFiles = (dirPath: string): boolean => {
   }
 }
 
+/**
+ * Files that, when changed, should trigger a full test run instead of --changed.
+ */
+const CRITICAL_CONFIG_FILES = [
+  'vitest.config.ts',
+  'tsconfig.json',
+  'tsconfig.dev.json',
+  'pnpm-lock.yaml',
+  'package.json',
+]
+
+/**
+ * Check if any critical config files have been modified.
+ */
+const hasCriticalConfigChanges = (changedFiles: string[]): boolean => {
+  return changedFiles.some((file) => CRITICAL_CONFIG_FILES.some((critical) => file.endsWith(critical)))
+}
+
 // --- Unit Tests ---
 
 /**
  * Unit tests - all vitest-based tests across packages.
- * This is fast enough to include in the default path.
+ * Uses --project flag to only load relevant workspace projects (faster collection).
  */
 export const unitTestCheck: Check = {
   type: 'test',
@@ -117,26 +128,112 @@ export const unitTestCheck: Check = {
   run: Effect.gen(function* () {
     const workspaceRoot = yield* LivestoreWorkspace
 
-    // Packages that need to run sequentially due to CI flakiness
-    const sequentialPackages = ['packages/@livestore/webmesh', 'tests/package-common']
+    // Packages that are known to have tests - use project names for faster loading
+    const sequentialProjects = ['@livestore/webmesh']
+    const otherProjects = discoverProjectsWithTests(workspaceRoot, [
+      'packages/@livestore/webmesh',
+      'tests/package-common',
+    ])
 
-    // Dynamically discover all packages with tests, excluding sequential ones
-    const allPackagesWithTests = discoverPackagesWithTests(workspaceRoot, sequentialPackages)
-
-    // Combine all paths
-    const allPaths = [...sequentialPackages, ...allPackagesWithTests].map((pkg) => `${workspaceRoot}/${pkg}`)
+    // Also include tests/package-common (not a vitest project, just a path)
+    const allProjects = [...sequentialProjects, ...otherProjects]
 
     yield* CheckEventPubSub.publishOutput(
       'test',
       'Unit Tests',
       'stdout',
-      `Running unit tests across ${allPaths.length} packages...`,
+      `Running unit tests across ${allProjects.length + 1} packages...`,
     )
 
-    // Run all tests together via vitest (it handles parallelization internally)
-    yield* runCommandWithEvents('test', 'Unit Tests', ['vitest', 'run', ...allPaths]).pipe(
+    // Build vitest command with --project flags for each workspace project
+    // This is MUCH faster than passing directory paths because vitest only loads those projects
+    const projectArgs = allProjects.flatMap((p) => ['--project', p])
+
+    // Run vitest with project flags
+    // Note: tests/package-common is passed as a path since it's not a named project
+    yield* runCommandWithEvents('test', 'Unit Tests', [
+      'vitest',
+      'run',
+      ...projectArgs,
+      `${workspaceRoot}/tests/package-common`,
+    ]).pipe(Effect.provide(LivestoreWorkspace.toCwd()))
+  }),
+}
+
+/**
+ * Changed tests - only run tests for files that have changed.
+ * Falls back to full tests if critical config files changed.
+ */
+export const changedTestCheck: Check = {
+  type: 'test',
+  name: 'Changed Tests',
+  fast: true,
+  run: Effect.gen(function* () {
+    const workspaceRoot = yield* LivestoreWorkspace
+
+    // Get list of changed files (staged + unstaged)
+    const stagedFiles = yield* cmdText('git diff --cached --name-only', { runInShell: true }).pipe(
       Effect.provide(LivestoreWorkspace.toCwd()),
+      Effect.map((s) => s.trim().split('\n').filter(Boolean)),
     )
+
+    const unstagedFiles = yield* cmdText('git diff --name-only', { runInShell: true }).pipe(
+      Effect.provide(LivestoreWorkspace.toCwd()),
+      Effect.map((s) => s.trim().split('\n').filter(Boolean)),
+    )
+
+    const changedFiles = [...new Set([...stagedFiles, ...unstagedFiles])]
+
+    if (changedFiles.length === 0) {
+      yield* CheckEventPubSub.publishOutput('test', 'Changed Tests', 'stdout', 'No files changed, skipping tests.')
+      return
+    }
+
+    yield* CheckEventPubSub.publishOutput(
+      'test',
+      'Changed Tests',
+      'stdout',
+      `Found ${changedFiles.length} changed file(s)...`,
+    )
+
+    // Check if critical config files changed - if so, run full tests
+    if (hasCriticalConfigChanges(changedFiles)) {
+      yield* CheckEventPubSub.publishOutput(
+        'test',
+        'Changed Tests',
+        'stdout',
+        'Critical config changed, running full test suite...',
+      )
+
+      // Fall back to the same logic as unitTestCheck
+      const sequentialProjects = ['@livestore/webmesh']
+      const otherProjects = discoverProjectsWithTests(workspaceRoot, [
+        'packages/@livestore/webmesh',
+        'tests/package-common',
+      ])
+      const allProjects = [...sequentialProjects, ...otherProjects]
+      const projectArgs = allProjects.flatMap((p) => ['--project', p])
+
+      yield* runCommandWithEvents('test', 'Changed Tests', [
+        'vitest',
+        'run',
+        ...projectArgs,
+        `${workspaceRoot}/tests/package-common`,
+      ]).pipe(Effect.provide(LivestoreWorkspace.toCwd()))
+    } else {
+      // Use vitest's built-in --changed flag
+      // This runs tests related to uncommitted changes
+      yield* CheckEventPubSub.publishOutput(
+        'test',
+        'Changed Tests',
+        'stdout',
+        'Running tests for changed files only...',
+      )
+
+      yield* runCommandWithEvents('test', 'Changed Tests', ['vitest', 'run', '--changed']).pipe(
+        Effect.provide(LivestoreWorkspace.toCwd()),
+      )
+    }
   }),
 }
 
