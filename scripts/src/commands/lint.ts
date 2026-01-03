@@ -39,6 +39,13 @@ const checkMdFilesNoImports = Effect.gen(function* () {
 
 /**
  * Knip configuration for detecting unused files, dependencies, and exports.
+ * https://knip.dev
+ *
+ * Library export handling:
+ * Knip automatically detects entry files from package.json (main, exports, bin) and excludes
+ * their exports from "unused export" detection. This is correct for a library - public API
+ * exports are meant for external consumers, not internal use. To audit which public APIs
+ * aren't used internally (e.g., deprecation candidates), run: `knip --include-entry-exports`
  *
  * Uses `ignoreIssues` for targeted suppressions instead of disabling rules globally:
  * - constants.ts: Intentionally exports multiple constants with the same value for semantic clarity
