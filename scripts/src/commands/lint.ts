@@ -40,9 +40,9 @@ const checkMdFilesNoImports = Effect.gen(function* () {
 /**
  * Knip configuration for detecting unused files, dependencies, and exports.
  *
- * Note on disabled rules:
- * - duplicates: Disabled because constants like MAX_TRANSPORT_PAYLOAD_BYTES share values intentionally
- * - catalog: Disabled because catalog entries used in ignored workspaces (examples/tests/docs) appear unused
+ * Uses `ignoreIssues` for targeted suppressions instead of disabling rules globally:
+ * - constants.ts: Intentionally exports multiple constants with the same value for semantic clarity
+ * - pnpm-workspace.yaml: Catalog entries appear unused because examples/tests/docs workspaces are excluded
  */
 const knipConfig = {
   workspaces: {
@@ -107,9 +107,11 @@ const knipConfig = {
     '@standard-schema/spec',
     '@livestore/common',
   ],
-  rules: {
-    duplicates: 'off',
-    catalog: 'off',
+  ignoreIssues: {
+    // Constants intentionally share the same value for semantic clarity
+    'packages/@livestore/sync-cf/src/common/constants.ts': ['duplicates'],
+    // Catalog entries are used in ignored workspaces (examples/tests/docs)
+    'pnpm-workspace.yaml': ['catalog'],
   },
   ignoreExportsUsedInFile: true,
 }
