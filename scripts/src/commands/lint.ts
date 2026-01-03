@@ -85,27 +85,28 @@ const knipConfig = {
     '**/leader-thread-lazy.ts',
   ],
   ignoreDependencies: [
+    // Types-only packages (no runtime imports)
     'cloudflare',
     '@cloudflare/workers-types',
     '@types/chrome',
     '@types/wicg-file-system-access',
     '@types/web',
+    // Dev/build tools (used by scripts, not source code)
     'wrangler',
-    '@effect/typeclass',
-    '@effect/workflow',
     '@effect/vitest',
     '@astrojs/starlight',
     'jsdom',
     'vitest',
     'vite',
-    '@opentelemetry/sdk-trace-base',
     '@biomejs/biome',
     'madge',
     '@livestore/utils-dev',
+    // Re-exported or used transitively
+    '@effect/typeclass',
+    '@effect/workflow',
+    '@opentelemetry/sdk-trace-base',
+    // Meta package for peer deps (not directly imported)
     '@livestore/peer-deps',
-    '@livestore/sync-cf',
-    '@standard-schema/spec',
-    '@livestore/common',
   ],
   ignoreIssues: {
     // Constants intentionally share the same value for semantic clarity
