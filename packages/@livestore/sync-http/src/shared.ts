@@ -14,6 +14,7 @@ export class PushRpc extends Rpc.make('push', {
 export class PullRpc extends Rpc.make('pull', {
   payload: {
     storeId: Schema.String,
+    clientId: Schema.String,
     cursor: EventSequenceNumber.Global.Schema,
     live: Schema.Boolean,
   },
@@ -22,6 +23,13 @@ export class PullRpc extends Rpc.make('pull', {
   error: InvalidPullError,
 }) {}
 
+export class BackendIdRpc extends Rpc.make('backendId', {
+  payload: {
+    storeId: Schema.String,
+  },
+  success: Schema.String,
+}) {}
+
 export class PingRpc extends Rpc.make('ping') {}
 
-export const SyncRpcGroup = RpcGroup.make(PushRpc, PullRpc, PingRpc)
+export const SyncRpcGroup = RpcGroup.make(PushRpc, PullRpc, BackendIdRpc, PingRpc)

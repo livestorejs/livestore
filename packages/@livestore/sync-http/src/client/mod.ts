@@ -1,16 +1,16 @@
 import type { SyncBackend } from '@livestore/common'
-import { EventSequenceNumber } from '@livestore/common/schema'
-import { Effect, FetchHttpClient, identity, Socket } from '@livestore/utils/effect'
+import { Effect, FetchHttpClient, identity, Option, Socket } from '@livestore/utils/effect'
 import { ConnectionManager } from './connection-manager.ts'
 
 export const makeSyncBackend = (options: {
   readonly baseUrl: string
   readonly protocol?: 'websocket' | 'http' | undefined
 }): SyncBackend.SyncBackendConstructor =>
-  Effect.fnUntraced(function* ({ storeId }) {
+  Effect.fnUntraced(function* ({ storeId, clientId }) {
     const manager = yield* ConnectionManager.make({
       baseUrl: options.baseUrl,
       storeId,
+      clientId,
       protocol: options.protocol ?? 'websocket',
     }).pipe(Effect.provide([Socket.layerWebSocketConstructorGlobal, FetchHttpClient.layer]))
 
@@ -18,7 +18,7 @@ export const makeSyncBackend = (options: {
       connect: manager.connect,
       pull: (cursor, options) =>
         manager.pull({
-          cursor: cursor._tag === 'Some' ? cursor.value.eventSequenceNumber : EventSequenceNumber.Global.make(-1),
+          cursor: Option.map(cursor, (_) => _.eventSequenceNumber),
           live: options?.live ?? false,
         }),
       push: (events) => manager.push(events),

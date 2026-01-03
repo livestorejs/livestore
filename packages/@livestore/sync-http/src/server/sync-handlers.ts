@@ -65,6 +65,13 @@ export const SyncHandlers = SyncRpcGroup.toLayer(
         },
         (effect, { storeId }) => Effect.provide(effect, lookup.get(storeId)),
       ),
+      backendId: Effect.fnUntraced(
+        function* (_) {
+          const storage = yield* EventStorage
+          return yield* storage.backendId
+        },
+        (effect, { storeId }) => Effect.provide(effect, lookup.get(storeId)),
+      ),
       ping: (_) => Effect.void,
     })
   }),
