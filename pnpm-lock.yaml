@@ -2065,15 +2065,9 @@ importers:
       '@livestore/peer-deps':
         specifier: workspace:*
         version: link:../peer-deps
-      '@livestore/sync-cf':
-        specifier: workspace:*
-        version: link:../sync-cf
       '@livestore/utils':
         specifier: workspace:*
         version: link:../utils
-      '@standard-schema/spec':
-        specifier: 1.0.0
-        version: 1.0.0
       effect:
         specifier: 'catalog:'
         version: 3.19.12
@@ -2112,9 +2106,6 @@ importers:
       '@cloudflare/workers-types':
         specifier: 'catalog:'
         version: 4.20251118.0
-      '@livestore/common':
-        specifier: workspace:*
-        version: link:../common
       '@livestore/utils':
         specifier: workspace:*
         version: link:../utils
