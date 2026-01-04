@@ -153,6 +153,7 @@ export const unitTestCheck: Check = {
     // - --config vitest.unit.config.ts: minimal config with only packages that have tests
     // - --cache: enable transform caching
     // - --no-isolate: run tests in same context (faster, tests must be isolated)
+    // - --minWorkers/maxWorkers 1: single worker reduces spawn overhead (9s -> 500ms)
     yield* runCommandWithEvents('test', 'Unit Tests', [
       'vitest',
       'run',
@@ -160,6 +161,10 @@ export const unitTestCheck: Check = {
       'vitest.unit.config.ts',
       '--cache',
       '--no-isolate',
+      '--minWorkers',
+      '1',
+      '--maxWorkers',
+      '1',
       ...projectArgs,
     ]).pipe(Effect.provide(LivestoreWorkspace.toCwd()))
   }),
@@ -226,6 +231,10 @@ export const changedTestCheck: Check = {
         'vitest.unit.config.ts',
         '--cache',
         '--no-isolate',
+        '--minWorkers',
+        '1',
+        '--maxWorkers',
+        '1',
         ...projectArgs,
       ]).pipe(Effect.provide(LivestoreWorkspace.toCwd()))
     } else {
@@ -245,6 +254,10 @@ export const changedTestCheck: Check = {
         'vitest.unit.config.ts',
         '--cache',
         '--no-isolate',
+        '--minWorkers',
+        '1',
+        '--maxWorkers',
+        '1',
         '--changed',
       ]).pipe(Effect.provide(LivestoreWorkspace.toCwd()))
     }
