@@ -9,7 +9,6 @@
   },
   "dependencies": {
     "@cloudflare/workers-types": "catalog:",
-    "@livestore/common": "workspace:*",
     "@livestore/utils": "workspace:*"
   },
   "devDependencies": {

@@ -7,8 +7,7 @@
     ".": "./src/index.ts",
     "./worker": "./src/web-worker/leader-worker/make-leader-worker.ts",
     "./worker-vite-dev-polyfill": "./src/web-worker/vite-dev-polyfill.ts",
-    "./shared-worker": "./src/web-worker/shared-worker/make-shared-worker.ts",
-    "./sqlite": "./src/sqlite/index.ts"
+    "./shared-worker": "./src/web-worker/shared-worker/make-shared-worker.ts"
   },
   "dependencies": {
     "@livestore/common": "workspace:*",
@@ -35,8 +34,7 @@
       ".": "./dist/index.js",
       "./worker": "./dist/web-worker/leader-worker/make-leader-worker.js",
       "./worker-vite-dev-polyfill": "./dist/web-worker/vite-dev-polyfill.js",
-      "./shared-worker": "./dist/web-worker/shared-worker/make-shared-worker.js",
-      "./sqlite": "./dist/sqlite/index.js"
+      "./shared-worker": "./dist/web-worker/shared-worker/make-shared-worker.js"
     }
   },
   "scripts": {

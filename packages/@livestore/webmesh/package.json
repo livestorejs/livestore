@@ -4,8 +4,7 @@
   "type": "module",
   "sideEffects": false,
   "exports": {
-    ".": "./src/mod.ts",
-    "./websocket-server": "./src/websocket-server.ts"
+    ".": "./src/mod.ts"
   },
   "dependencies": {
     "@livestore/utils": "workspace:*"
@@ -22,8 +21,7 @@
   "publishConfig": {
     "access": "public",
     "exports": {
-      ".": "./dist/mod.js",
-      "./websocket-server": "./dist/websocket-server.js"
+      ".": "./dist/mod.js"
     }
   },
   "scripts": {

@@ -20,9 +20,7 @@
     "@livestore/common": "workspace:*",
     "@livestore/livestore": "workspace:*",
     "@livestore/peer-deps": "workspace:*",
-    "@livestore/sync-cf": "workspace:*",
     "@livestore/utils": "workspace:*",
-    "@standard-schema/spec": "1.0.0",
     "effect": "catalog:"
   },
   "devDependencies": {
