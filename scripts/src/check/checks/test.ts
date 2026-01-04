@@ -149,13 +149,18 @@ export const unitTestCheck: Check = {
     // This is MUCH faster than passing directory paths because vitest only loads those projects
     const projectArgs = allProjects.flatMap((p) => ['--project', p])
 
-    // Run vitest with project flags
-    // Note: tests/package-common is passed as a path since it's not a named project
+    // Run vitest with project flags and optimizations:
+    // - --config vitest.unit.config.ts: minimal config with only packages that have tests
+    // - --cache: enable transform caching
+    // - --no-isolate: run tests in same context (faster, tests must be isolated)
     yield* runCommandWithEvents('test', 'Unit Tests', [
       'vitest',
       'run',
+      '--config',
+      'vitest.unit.config.ts',
+      '--cache',
+      '--no-isolate',
       ...projectArgs,
-      `${workspaceRoot}/tests/package-common`,
     ]).pipe(Effect.provide(LivestoreWorkspace.toCwd()))
   }),
 }
@@ -217,8 +222,11 @@ export const changedTestCheck: Check = {
       yield* runCommandWithEvents('test', 'Changed Tests', [
         'vitest',
         'run',
+        '--config',
+        'vitest.unit.config.ts',
+        '--cache',
+        '--no-isolate',
         ...projectArgs,
-        `${workspaceRoot}/tests/package-common`,
       ]).pipe(Effect.provide(LivestoreWorkspace.toCwd()))
     } else {
       // Use vitest's built-in --changed flag
@@ -230,9 +238,15 @@ export const changedTestCheck: Check = {
         'Running tests for changed files only...',
       )
 
-      yield* runCommandWithEvents('test', 'Changed Tests', ['vitest', 'run', '--changed']).pipe(
-        Effect.provide(LivestoreWorkspace.toCwd()),
-      )
+      yield* runCommandWithEvents('test', 'Changed Tests', [
+        'vitest',
+        'run',
+        '--config',
+        'vitest.unit.config.ts',
+        '--cache',
+        '--no-isolate',
+        '--changed',
+      ]).pipe(Effect.provide(LivestoreWorkspace.toCwd()))
     }
   }),
 }
