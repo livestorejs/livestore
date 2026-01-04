@@ -1,9 +1,7 @@
 import * as Runner from '@effect/platform/WorkerRunner'
 import { Context, Effect, Layer, Option, Stream } from 'effect'
 
-// import { NodeRuntime, NodeWorkerRunner } from '@effect/platform-node'
-import { PlatformNode } from '../../mod.ts'
-import * as ChildProcessRunner from '../ChildProcessRunner.ts'
+import { ChildProcessRunner, PlatformNode } from '@livestore/utils/node'
 import { Person, User, WorkerMessage } from './schema.ts'
 
 interface Name {
@@ -19,20 +17,10 @@ const WorkerLive = Runner.layerSerialized(WorkerMessage, {
     )
   },
   GetUserById: (req) => Effect.map(Name, (name) => new User({ id: req.id, name })),
-  // InitialMessage: (req) => Layer.succeed(Name, req.name),
   InitialMessage: (req) =>
     Effect.gen(function* () {
-      // yield* Effect.addFinalizer(() => Effect.log('closing worker scope'))
       return Layer.succeed(Name, req.name)
     }).pipe(Layer.unwrapScoped),
-  // InitialMessage: (req) =>
-  //   Layer.scoped(
-  //     Name,
-  //     Effect.gen(function* () {
-  //       yield* Effect.addFinalizer(() => Effect.log('closing worker scope'))
-  //       return req.name
-  //     }),
-  //   ),
   GetSpan: (_) =>
     Effect.gen(function* () {
       const span = yield* Effect.currentSpan.pipe(Effect.orDie)
@@ -61,6 +49,5 @@ const WorkerLive = Runner.layerSerialized(WorkerMessage, {
       return { pid }
     }),
 }).pipe(Layer.provide(ChildProcessRunner.layer))
-// }).pipe(Layer.provide(PlatformNode.NodeWorkerRunner.layer))
 
 PlatformNode.NodeRuntime.runMain(Runner.launch(WorkerLive))

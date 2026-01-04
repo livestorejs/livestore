@@ -1,4 +1,3 @@
-// import * as Transferable from '@effect/platform/Transferable'
 import * as Schema from 'effect/Schema'
 
 export class User extends Schema.Class<User>('User')({
@@ -17,7 +16,6 @@ export class GetUserById extends Schema.TaggedRequest<GetUserById>()('GetUserByI
 export class Person extends Schema.Class<Person>('Person')({
   id: Schema.Number,
   name: Schema.String,
-  // data: Transferable.Uint8Array,
   data: Schema.Uint8Array,
 }) {}
 
@@ -47,7 +45,6 @@ export class InitialMessage extends Schema.TaggedRequest<InitialMessage>()('Init
   payload: {
     name: Schema.String,
     data: Schema.Uint8Array,
-    // data: Transferable.Uint8Array,
   },
 }) {}
 

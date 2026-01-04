@@ -300,6 +300,17 @@ export const nodeSyncTest: Check = {
   ),
 }
 
+export const childProcessRunnerTest: Check = {
+  type: 'test',
+  name: 'Child Process Runner',
+  fast: false,
+  run: runCommandWithEvents('test', 'Child Process Runner', [
+    'vitest',
+    'run',
+    'src/tests/child-process-runner/src/ChildProcessRunner.test.ts',
+  ]).pipe(Effect.provide(LivestoreWorkspace.toCwd('tests/integration'))),
+}
+
 export const perfTest: Check = {
   type: 'test',
   name: 'Performance',
@@ -329,6 +340,7 @@ export const slowTestChecks: Check[] = [
   syncProviderTest,
   waSqliteTest,
   nodeSyncTest,
+  childProcessRunnerTest,
   perfTest,
 ]
 

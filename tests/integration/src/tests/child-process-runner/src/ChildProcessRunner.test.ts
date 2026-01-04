@@ -2,24 +2,17 @@ import * as ChildProcess from 'node:child_process'
 
 import * as EffectWorker from '@effect/platform/Worker'
 import { assert, describe, it } from '@effect/vitest'
+import { ChildProcessWorker } from '@livestore/utils/node'
 import { Chunk, Deferred, Effect, Exit, Fiber, Scope, Stream } from 'effect'
 
-import * as ChildProcessWorker from '../ChildProcessWorker.ts'
 import type { WorkerMessage } from './schema.ts'
 import { GetPersonById, GetUserById, InitialMessage, Person, StartStubbornWorker, User } from './schema.ts'
 
 const WorkerLive = ChildProcessWorker.layer(() =>
-  ChildProcess.fork(
-    new URL('../../../../dist/node/ChildProcessRunner/ChildProcessRunnerTest/serializedWorker.js', import.meta.url),
-  ),
+  ChildProcess.fork(new URL('./serializedWorker.ts', import.meta.url), [], {
+    execArgv: ['--import', 'tsx'],
+  }),
 )
-
-// const WorkerLive = NodeWorker.layer(
-//   () =>
-//     new WorkerThreads.Worker(
-//       new URL('../../../../dist/node/ChildProcessRunner/ChildProcessRunnerTest/serializedWorker.js', import.meta.url),
-//     ),
-// )
 
 describe('ChildProcessRunner', { timeout: 10_000 }, () => {
   it('Serialized', () =>
@@ -253,13 +246,9 @@ describe('ChildProcessRunner', { timeout: 10_000 }, () => {
         let childPid: number | undefined
 
         // This mimics the exact pattern used in node-sync tests
-        const nodeChildProcess = ChildProcess.fork(
-          new URL(
-            '../../../../dist/node/ChildProcessRunner/ChildProcessRunnerTest/serializedWorker.js',
-            import.meta.url,
-          ),
-          ['test-client'],
-        )
+        const nodeChildProcess = ChildProcess.fork(new URL('./serializedWorker.ts', import.meta.url), ['test-client'], {
+          execArgv: ['--import', 'tsx'],
+        })
 
         childPid = nodeChildProcess.pid
 
