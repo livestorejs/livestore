@@ -30,7 +30,7 @@
   },
   "scripts": {
     "build": "vite build",
-    "deploy": "pnpm build && wrangler deploy",
+    "deploy": "bun run build && wrangler deploy",
     "dev": "vite",
     "preview": "vite preview"
   }

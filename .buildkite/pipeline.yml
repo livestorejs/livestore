@@ -141,7 +141,7 @@ steps:
   - label: "examples:build+test"
     commands:
       - direnv allow .
-      - direnv exec . pnpm --filter "livestore-example-*" --workspace-concurrency=1 build
+      - direnv exec . bun run --filter "livestore-example-*" build
       - direnv exec . mono examples test
       - |
         if [ -n "${CLOUDFLARE_API_TOKEN:-}" ] && [ -n "${CLOUDFLARE_ACCOUNT_ID:-}" ] && [ "${BUILDKITE_PULL_REQUEST:-false}" = "false" ]; then
@@ -182,19 +182,17 @@ steps:
           APP_NAME="{{matrix.app}}"
           APP_PATH="examples/${APP_NAME}"
 
-          WORKSPACE_DEPS=$(cd "${APP_PATH}" && pnpm list --only-projects --json | jq -r ".[0].dependencies | keys | join(\" \")")
+          WORKSPACE_DEPS=$(cd "${APP_PATH}" && cat package.json | jq -r ".dependencies | keys | join(\" \")")
           export WORKSPACE_DEPS
 
-          pnpm dlx @livestore/cli@"${SNAPSHOT_VERSION}" create --example "${APP_NAME}" --branch "${BUILDKITE_BRANCH}" "${BUILDKITE_BUILD_CHECKOUT_PATH}/${APP_PATH}.tmp"
-
-          pnpm config set fetchRetries 3
+          bunx @livestore/cli@"${SNAPSHOT_VERSION}" create --example "${APP_NAME}" --branch "${BUILDKITE_BRANCH}" "${BUILDKITE_BUILD_CHECKOUT_PATH}/${APP_PATH}.tmp"
 
           cd "${BUILDKITE_BUILD_CHECKOUT_PATH}/${APP_PATH}.tmp"
           if [ -n "${WORKSPACE_DEPS}" ]; then
-            pnpm add $(for dep in $WORKSPACE_DEPS; do echo "$dep@${SNAPSHOT_VERSION}"; done)
+            bun add $(for dep in $WORKSPACE_DEPS; do echo "$dep@${SNAPSHOT_VERSION}"; done)
           fi
 
           if [ "${APP_NAME}" != "expo-linearlite" ]; then
-            pnpm build
+            bun run build
           fi
         '

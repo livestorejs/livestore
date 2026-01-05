@@ -2,8 +2,8 @@
 
 # This script is used to bootstrap the project.
 
-# TODO validate correct node version, pnpm version, etc. are installed
+# TODO validate correct node version, bun version, etc. are installed
 
 direnv allow
-pnpm install
-pnpm build
+bun install --no-progress
+bun run build

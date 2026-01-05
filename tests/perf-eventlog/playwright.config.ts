@@ -19,7 +19,7 @@ export default defineConfig({
     },
   ],
   webServer: {
-    command: 'pnpm --filter @local/tests-perf-streaming-loopback dev',
+    command: 'bun run --filter @local/tests-perf-streaming-loopback dev',
     url: 'http://localhost:46001',
     reuseExistingServer: !process.env.CI,
   },

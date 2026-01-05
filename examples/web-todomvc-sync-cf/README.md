@@ -5,8 +5,8 @@
 ## Running locally
 
 ```bash
-pnpm install
-pnpm --filter examples/web-todomvc-sync-cf dev
+bun install
+bun run --filter livestore-example-web-todomvc-sync-cf dev
 ```
 
 The Cloudflare Vite plugin starts both the React front-end and the Durable Object

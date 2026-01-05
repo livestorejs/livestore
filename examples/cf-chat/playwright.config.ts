@@ -19,11 +19,11 @@ export default defineConfig({
   ],
   webServer: [
     {
-      command: 'pnpm wrangler dev --port 8788',
+      command: 'bunx wrangler dev --port 8788',
       port: 8788,
     },
     {
-      command: 'pnpm vite dev --port 5175',
+      command: 'bunx vite dev --port 5175',
       port: 5175,
     },
   ],

@@ -122,7 +122,7 @@ export const runExampleTests = (examples: ReadonlyArray<string>, options: { skip
       }
 
       yield* Effect.log(`Running tests for ${example}`)
-      yield* cmd('pnpm test', {
+      yield* cmd('bun run test', {
         env: { CI: '1' },
       }).pipe(Effect.provide(LivestoreWorkspace.toCwd(`examples/${example}`)))
     }

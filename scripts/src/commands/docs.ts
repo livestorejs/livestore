@@ -176,7 +176,7 @@ const docsBuildCommand = Cli.Command.make(
 
     // Local/CI prebuild uses Astro directly. The deploy step performs the
     // Netlify build (single build overall), which handles Edge bundling.
-    yield* cmd('pnpm astro build', {
+    yield* cmd('bunx astro build', {
       env: {
         STARLIGHT_INCLUDE_API_DOCS: apiDocs ? '1' : undefined,
         // Building the docs sometimes runs out of memory, so we give it more
@@ -220,7 +220,7 @@ export const docsCommand = Cli.Command.make('docs').pipe(
         }
 
         /* Run Astro dev server */
-        yield* cmd(['pnpm', 'astro', 'dev', open ? '--open' : undefined], {
+        yield* cmd(['bunx', 'astro', 'dev', open ? '--open' : undefined], {
           logDir: `${docsPath}/logs`,
         }).pipe(Effect.provide(LivestoreWorkspace.toCwd('docs')))
       }),

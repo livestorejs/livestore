@@ -25,5 +25,5 @@ Svelte bindings for LiveStore. The `createStore` helper wires LiveStore queries 
 
 ## Development
 
-- Build: `pnpm --filter @livestore/svelte build`
-- Test: `pnpm --filter @livestore/svelte test`
+- Build: `bun run --filter @livestore/svelte build`
+- Test: `bun run --filter @livestore/svelte test`

@@ -56,7 +56,7 @@ Tests for the CloudflareWorkerVFS implementation, which uses DurableObjectStorag
 ### Prerequisites
 1. Install dependencies:
    ```bash
-   pnpm install
+   bun install
    ```
 
 2. Ensure Wrangler configuration is correct:
@@ -68,24 +68,24 @@ Tests for the CloudflareWorkerVFS implementation, which uses DurableObjectStorag
 
 ```bash
 # Run all tests
-pnpm test
+bun run test
 
 # Run tests in watch mode
-pnpm test:watch
+bun run test:watch
 
 # Run tests with UI
-pnpm test:ui
+bun run test:ui
 
 # Run specific test directory
-pnpm test src/cf/                         # All cf tests (SQL + async storage)
-pnpm test src/cf/test/sql/                # SQL storage tests only
-pnpm test src/cf/test/async-storage/      # Async storage tests only
+bun run test src/cf/                         # All cf tests (SQL + async storage)
+bun run test src/cf/test/sql/                # SQL storage tests only
+bun run test src/cf/test/async-storage/      # Async storage tests only
 
 # Run specific test file
-pnpm test cloudflare-sql-vfs-core.test.ts
+bun run test cloudflare-sql-vfs-core.test.ts
 
 # Run with coverage
-pnpm test --coverage
+bun run test --coverage
 ```
 
 ### Test Environment

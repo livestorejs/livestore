@@ -16,7 +16,7 @@
   "devDependencies": {
     "@effect/vitest": "catalog:",
     "@types/node": "catalog:",
-    "astro": "^5.13.4",
+    "astro": "^5.16.6",
     "vitest": "catalog:"
   },
   "peerDependencies": {

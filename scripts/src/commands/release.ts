@@ -9,11 +9,17 @@ import { appendGithubSummaryMarkdown, formatMarkdownTable } from '../shared/misc
 
 const toErrorMessage = (cause: unknown) => (cause instanceof Error ? cause.message : String(cause))
 
+interface SnapshotPackage {
+  name: string
+  dir: string
+  version: string
+}
+
 const listSnapshotPackages = (cwd: string) =>
   Effect.gen(function* () {
     const fsEffect = yield* FileSystem.FileSystem
     const baseDir = `${cwd}/packages/@livestore`
-    const packages: string[] = []
+    const packages: SnapshotPackage[] = []
 
     const baseExists = yield* fsEffect.exists(baseDir)
     if (!baseExists) {
@@ -33,7 +39,7 @@ const listSnapshotPackages = (cwd: string) =>
       const pkgResult = yield* fsEffect.readFileString(packageJsonPath).pipe(
         Effect.flatMap((content) =>
           Effect.try({
-            try: () => JSON.parse(content) as { name?: unknown; private?: unknown },
+            try: () => JSON.parse(content) as Record<string, unknown>,
             catch: (cause) => new Error(`Failed to parse ${packageJsonPath}`, { cause }),
           }),
         ),
@@ -60,20 +66,27 @@ const listSnapshotPackages = (cwd: string) =>
         continue
       }
 
-      packages.push(name)
+      const version = typeof pkgJson.version === 'string' ? pkgJson.version : '0.0.0'
+      packages.push({ name, dir: `${baseDir}/${entry}`, version })
     }
 
-    packages.sort((a, b) => a.localeCompare(b))
+    packages.sort((a, b) => a.name.localeCompare(b.name))
     return packages
   }).pipe(
     Effect.catchAll((error) =>
       Effect.gen(function* () {
         const message = toErrorMessage(error)
         yield* Effect.logWarning(`Unable to enumerate snapshot packages: ${message}`)
-        return [] as string[]
+        return [] as SnapshotPackage[]
       }),
     ),
   )
+
+const updatePackageVersion = (packageJsonPath: string, version: string) => {
+  const packageJson = JSON.parse(fs.readFileSync(packageJsonPath, 'utf8')) as Record<string, unknown>
+  packageJson.version = version
+  fs.writeFileSync(packageJsonPath, `${JSON.stringify(packageJson, null, 2)}\n`)
+}
 
 const formatSnapshotSummaryMarkdown = ({
   packages,
@@ -112,8 +125,6 @@ export const releaseSnapshotCommand = Cli.Command.make(
       gitShaOption._tag === 'Some'
         ? gitShaOption.value
         : yield* cmdText('git rev-parse HEAD').pipe(Effect.provide(CurrentWorkingDirectory.fromPath(cwd)))
-    const filterStr = '--filter @livestore/* --filter !@livestore/effect-playwright'
-
     const snapshotVersion = versionOption._tag === 'Some' ? versionOption.value : `0.0.0-snapshot-${gitSha}`
     const snapshotPackages = yield* listSnapshotPackages(cwd)
 
@@ -123,18 +134,22 @@ export const releaseSnapshotCommand = Cli.Command.make(
       fs.readFileSync(versionFilePath, 'utf8').replace(originalVersion, snapshotVersion),
     )
 
-    yield* cmd(`pnpm ${filterStr} exec -- pnpm version '${snapshotVersion}' --no-git-tag-version`, {
-      shell: true,
-    }).pipe(Effect.provide(CurrentWorkingDirectory.fromPath(cwd)))
+    for (const pkg of snapshotPackages) {
+      const packageJsonPath = `${pkg.dir}/package.json`
+      updatePackageVersion(packageJsonPath, snapshotVersion)
+    }
 
-    yield* cmd(`pnpm ${filterStr} exec -- pnpm publish --tag=snapshot --no-git-checks ${dryRun ? '--dry-run' : ''}`, {
-      shell: true,
-    }).pipe(Effect.provide(CurrentWorkingDirectory.fromPath(cwd)))
+    for (const pkg of snapshotPackages) {
+      const publishArgs = ['bun', 'publish', '--tag', 'snapshot']
+      if (dryRun) publishArgs.push('--dry-run')
+      yield* cmd(publishArgs, { shell: false }).pipe(Effect.provide(CurrentWorkingDirectory.fromPath(pkg.dir)))
+    }
 
     // Rollback package.json versions
-    yield* cmd(`pnpm ${filterStr} exec -- pnpm version '${originalVersion}' --no-git-tag-version`, {
-      shell: true,
-    }).pipe(Effect.provide(CurrentWorkingDirectory.fromPath(cwd)))
+    for (const pkg of snapshotPackages) {
+      const packageJsonPath = `${pkg.dir}/package.json`
+      updatePackageVersion(packageJsonPath, pkg.version)
+    }
 
     // Rollback version.ts
     fs.writeFileSync(
@@ -144,7 +159,7 @@ export const releaseSnapshotCommand = Cli.Command.make(
 
     yield* appendGithubSummaryMarkdown({
       markdown: formatSnapshotSummaryMarkdown({
-        packages: snapshotPackages,
+        packages: snapshotPackages.map((pkg) => pkg.name),
         snapshotVersion,
         dryRun,
       }),

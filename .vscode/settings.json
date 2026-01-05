@@ -47,7 +47,7 @@
     "**/.wrangler": true,
     "**/dist": true,
     "**/*.tsbuildinfo": true,
-    "pnpm-lock.yaml": true
+    "bun.lock": true
   },
   "typescript.tsdk": "node_modules/typescript/lib",
   "workbench.editor.customLabels.enabled": true,

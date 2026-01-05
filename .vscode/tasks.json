@@ -9,7 +9,7 @@
     {
       "label": "install",
       "type": "shell",
-      "command": "direnv exec . pnpm install",
+      "command": "direnv exec . bun install --no-progress",
       "problemMatcher": [],
       "presentation": {
         "focus": true,
@@ -133,7 +133,7 @@
     {
       "label": "test",
       "type": "shell",
-      "command": "direnv exec . pnpm test",
+      "command": "direnv exec . bun run test",
       "problemMatcher": [],
       "presentation": {
         "focus": true,

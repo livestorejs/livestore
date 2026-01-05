@@ -6,7 +6,7 @@ export default defineConfig({
     alias: {
       /**
        * @standard-schema/spec is re-exported by @livestore/utils but not directly imported here.
-       * In pnpm strict mode, it's isolated to utils's node_modules, so Vite can't resolve it.
+       * In workspace installs, it's isolated to utils's node_modules, so Vite can't resolve it.
        * This alias points to the actual location without adding a phantom devDependency.
        */
       '@standard-schema/spec': path.join(

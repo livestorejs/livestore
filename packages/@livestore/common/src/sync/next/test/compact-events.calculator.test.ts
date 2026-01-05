@@ -4,8 +4,7 @@ import { describe, expect, it } from 'vitest'
 
 import { compactEvents } from '../compact-events.ts'
 import { historyDagFromNodes } from '../history-dag.ts'
-import { customSerializer } from './compact-events.test.ts'
-import { printEvent, toEventNodes } from './event-fixtures.ts'
+import { customSerializer, printEvent, toEventNodes } from './event-fixtures.ts'
 
 expect.addSnapshotSerializer(customSerializer)
 

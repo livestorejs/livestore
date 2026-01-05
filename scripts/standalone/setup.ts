@@ -33,8 +33,8 @@ if (lastGitHash !== currentGitHash) {
   const parentDir = (await $`dirname "$PWD"`.text()).trim()
   const parentIsGitRepo = await $`git -C ${parentDir} rev-parse --is-inside-work-tree >/dev/null`.nothrow().quiet()
   if (parentIsGitRepo.exitCode !== 0) {
-    console.log('Installing node dependencies via pnpm...')
-    await $`pnpm install`
+    console.log('Installing node dependencies via bun...')
+    await $`bun install --no-progress`
   } else {
     console.log(`Parent (${parentDir}) is a git repo, skipping node dependencies installation`)
   }

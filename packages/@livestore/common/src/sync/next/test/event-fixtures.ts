@@ -1,4 +1,6 @@
+import type { EventDefFacts } from '@livestore/common/schema'
 import { Schema } from '@livestore/utils/effect'
+import type { SnapshotSerializer } from 'vitest'
 
 import type { EventDef } from '../../../schema/EventDef/mod.ts'
 import { defineEvent, defineFacts } from '../../../schema/EventDef/mod.ts'
@@ -6,7 +8,7 @@ import * as EventSequenceNumber from '../../../schema/EventSequenceNumber/mod.ts
 import { factsSnapshotForDag, getFactsGroupForEventArgs } from '../facts.ts'
 import { historyDagFromNodes } from '../history-dag.ts'
 import type { HistoryDagNode } from '../history-dag-common.ts'
-import { rootEventNode } from '../history-dag-common.ts'
+import { EMPTY_FACT_VALUE, rootEventNode } from '../history-dag-common.ts'
 
 export const printEvent = ({ seqNum, parentSeqNum, factsGroup, ...rest }: HistoryDagNode) => ({
   seqNum: EventSequenceNumber.Client.toString(seqNum),
@@ -14,6 +16,16 @@ export const printEvent = ({ seqNum, parentSeqNum, factsGroup, ...rest }: Histor
   ...rest,
   facts: factsGroup,
 })
+
+export const customSerializer: SnapshotSerializer = {
+  test: (val) => Array.isArray(val),
+  print: (val, _print, _indent, _options, _colors) => {
+    if (!Array.isArray(val)) {
+      return String(val)
+    }
+    return `[\n${val.map((item) => `  ${customStringify(item)}`).join('\n')}\n]`
+  },
+}
 
 /** Used for conflict detection and event history compaction */
 export const facts = defineFacts({
@@ -218,6 +230,60 @@ export const toEventNodes = (
 
   return eventNodes
 }
+
+const customStringify = (value: any): string => {
+  if (value === null) {
+    return 'null'
+  }
+  const type = typeof value
+
+  if (type === 'string') {
+    return JSON.stringify(value)
+  }
+  if (type === 'number' || type === 'boolean') {
+    return String(value)
+  }
+  if (Array.isArray(value)) {
+    const elements = value.map((el) => customStringify(el))
+    return `[${elements.join(', ')}]`
+  }
+  if (value instanceof Set) {
+    const elements = Array.from(value).map((el) => customStringify(el))
+    return `[${elements.join(', ')}]`
+  }
+  if (value instanceof Map) {
+    const keys = Array.from(value.keys()).map(customStringify).join(', ')
+    return `[${keys}]`
+  }
+  if (type === 'object') {
+    const entries = Object.keys(value).map((key) => {
+      const val = value[key]
+      const valStr =
+        key === 'facts'
+          ? `"${factsToString(val)}"`
+          : (key === 'id' || key === 'parentSeqNum') && Object.keys(val).length === 2 && val.client === 0
+            ? val.global
+            : customStringify(val)
+
+      return `${key}: ${valStr}`
+    })
+    return `{ ${entries.join(', ')} }`
+  }
+  return String(value)
+}
+
+const factsToString = (facts: HistoryDagNode['factsGroup']) =>
+  [
+    factsSetToString(facts.depRequire, '↖'),
+    factsSetToString(facts.depRead, '?'),
+    factsSetToString(facts.modifySet, '+'),
+    factsSetToString(facts.modifyUnset, '-'),
+  ]
+    .flat()
+    .join(' ')
+
+const factsSetToString = (facts: EventDefFacts, prefix: string) =>
+  Array.from(facts.entries()).map(([key, value]) => prefix + key + (value === EMPTY_FACT_VALUE ? '' : `=${value}`))
 
 const getParentNum = (eventNum: EventSequenceNumber.Client.Composite): EventSequenceNumber.Client.Composite => {
   const globalParentNum = eventNum.global

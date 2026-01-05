@@ -41,6 +41,6 @@
     "dev": "vite dev",
     "start": "node .output/server/index.mjs",
     "test": "playwright test",
-    "test:e2e": "pnpm test"
+    "test:e2e": "bun run test"
   }
 }

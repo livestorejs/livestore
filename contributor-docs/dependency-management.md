@@ -12,7 +12,7 @@ direnv exec . mono update-deps --dry-run
 direnv exec . mono update-deps
 
 # 3. Review changes  
-git diff package.json packages/*/package.json examples/*/package.json pnpm-lock.yaml
+git diff package.json packages/*/package.json examples/*/package.json bun.lock
 
 # 4. Update version constants (see below)
 ```
@@ -38,15 +38,15 @@ After updating dependencies, check if version constants in `packages/@local/shar
 - Update constants when their corresponding dependencies are updated
 - Common patterns: Framework versions, runtime requirements, tool versions
 
-## PNPM Catalog Management
+## Catalog Dependency Management
 
-The catalog is used for:
+Catalog dependencies are used for:
 - ✅ Regular dependencies
 - ✅ Dev dependencies  
 - ❌ Peer dependencies (use explicit versions)
 
-### Adding to Catalog
-Add dependencies to the catalog (`pnpm-workspace.yaml`) when used in **3 or more packages** (excluding examples):
+### Adding Catalog Dependencies
+Add dependencies to `package.json#catalog` when used in **3 or more packages** (excluding examples):
 
 ```bash
 # Check for repeated dependencies (excluding examples)
@@ -62,14 +62,14 @@ Peer dependencies must use **explicit version ranges** instead of catalog refere
 
 ### Guidelines
 - Use `^` (caret) for peer dependencies to allow minor updates
-- Keep peer dependencies in sync with catalog versions manually
+- Keep peer dependencies in sync with catalog dependency versions manually
 - When updating catalog versions, also update corresponding peer dependencies
 
 ### Example
 ```json
-// ❌ Don't use catalog for peer deps
+// ❌ Don't use catalog dependencies for peer deps
 "peerDependencies": {
-  "react": "catalog:"
+  "react": "19.1.0"
 }
 
 // ✅ Use explicit version with range
@@ -80,16 +80,18 @@ Peer dependencies must use **explicit version ranges** instead of catalog refere
 
 ### Enforcement
 Syncpack is configured to:
-- NOT enforce catalog protocol for peer dependencies
+- NOT enforce catalog pins for peer dependencies
 - Enforce `^` range for all peer dependencies
 - Keep peer dependency versions consistent across packages
+
+Catalog enforcement is scoped to core packages (`packages/*` and `scripts`). Docs, tests, and examples keep explicit versions to reduce churn.
 
 ## Expected Warnings
 
 These warnings are normal and can be ignored:
 - **npm config warnings:** "Unknown project config dedupe-direct-deps", etc.
 - **Peer dependency warnings:** Generally safe unless causing build failures
-- **Catalog warnings:** "Skip adding to catalog because it already exists"
+- **Bun peer warnings:** `incorrect peer dependency` warnings are common and should be reviewed if builds fail
 
 ## Validation Checklist
 
@@ -132,4 +134,4 @@ To update patched dependencies manually:
 3. If not needed, remove from `patchedDependencies` configuration
 4. Then run the update process
 
-Current patched dependencies are listed in the root `package.json` under `pnpm.patchedDependencies`.
+Current patched dependencies are listed in the root `package.json` under `patchedDependencies`.

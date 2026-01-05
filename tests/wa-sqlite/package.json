@@ -5,7 +5,7 @@
   "private": true,
   "devDependencies": {
     "@livestore/wa-sqlite": "workspace:*",
-    "vitest": "catalog:"
+    "vitest": "3.2.4"
   },
   "scripts": {
     "test": "vitest"

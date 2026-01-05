@@ -22,27 +22,26 @@ runs:
       shell: bash
       run: DEVENV_SKIP_SETUP=1 devenv shell --verbose env
 
-    - name: Get pnpm store directory
-      # This is needed because pnpm's store path is not fixed and can vary based on the environment.
-      id: pnpm-store
+    - name: Get bun cache directory
+      # This is needed because bun's cache path can vary based on the environment.
+      id: bun-cache
       shell: bash
-      # We use `devenv shell` because the `pnpm` CLI is installed via Nix.
-      # But we still skip the setup step as it would call `pnpm install` which we don't want to do here yet.
+      # We use `devenv shell` because the `bun` CLI is installed via Nix.
+      # But we still skip the setup step as it would call `bun install` which we don't want to do here yet.
       # Write to $GITHUB_ENV so subsequent steps can read it as env
       run: |
-        PNPM_STORE_PATH=$(DEVENV_SKIP_SETUP=1 devenv shell --quiet pnpm store path --silent 2>/dev/null | tail -n 1 | tr -d '\r')
-        echo "PNPM_STORE_PATH=${PNPM_STORE_PATH}" >> "$GITHUB_ENV"
+        BUN_CACHE_PATH=$(DEVENV_SKIP_SETUP=1 devenv shell --quiet bun pm cache 2>/dev/null | tail -n 1 | tr -d '\r')
+        echo "BUN_CACHE_PATH=${BUN_CACHE_PATH}" >> "$GITHUB_ENV"
 
-    - name: Cache pnpm store
+    - name: Cache bun cache
       uses: actions/cache@v4
       with:
-       # We only should cache the pnpm store, and not the node_modules directory. Caching it duplicates effort since the
-       # pnpm store already covers the package contents, and leads to issues with package resolution.
-       path: ${{ env.PNPM_STORE_PATH }}
-       key: ${{ runner.os }}-pnpm-store-${{ hashFiles('**/pnpm-lock.yaml') }}
-       restore-keys: ${{ runner.os }}-pnpm-store-
+       # We only should cache bun's global cache, and not the node_modules directory.
+       path: ${{ env.BUN_CACHE_PATH }}
+       key: ${{ runner.os }}-bun-cache-${{ hashFiles('**/bun.lock') }}
+       restore-keys: ${{ runner.os }}-bun-cache-
     
-    # Calls `pnpm install` and other setup steps.
+    # Calls `bun install` and other setup steps.
     - name: Run devenv setup script
       shell: bash
       run: devenv shell --verbose env

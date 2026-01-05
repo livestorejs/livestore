@@ -120,7 +120,7 @@ PlatformNode.NodeRuntime.runMain(
 )
 ```
 
-Wire this script into the project (e.g. `pnpm snippets:build`). The CLI caches each rendered bundle and logs `Rendered X snippet bundles (Y cache hits)` after every run, so a warm build prints something like `Rendered 0 snippet bundles (43 cache hits)`. The Vite plugin validates hashes at runtime and fails fast if the cache is missing or stale, so keep this command in your pipeline even when the integration’s auto-build is enabled.
+Wire this script into the project (e.g. `bun run snippets:build`). The CLI caches each rendered bundle and logs `Rendered X snippet bundles (Y cache hits)` after every run, so a warm build prints something like `Rendered 0 snippet bundles (43 cache hits)`. The Vite plugin validates hashes at runtime and fails fast if the cache is missing or stale, so keep this command in your pipeline even when the integration’s auto-build is enabled.
 
 ### 3. Render Snippets
 
@@ -137,15 +137,15 @@ The named `snippetData` export mirrors the structure returned by `?snippet-raw`,
 `packages/@local/astro-twoslash-code/example` is a minimal Astro app that uses the integration, prebuild script, and Playwright test to exercise the full workflow. Run:
 
 ```bash
-pnpm install
-pnpm --filter @local/astro-twoslash-code-demo snippets:build
-pnpm --filter @local/astro-twoslash-code-demo dev
+bun install
+bun run --filter @local/astro-twoslash-code-demo snippets:build
+bun run --filter @local/astro-twoslash-code-demo dev
 ```
 
 To execute the regression test:
 
 ```bash
-pnpm --filter @local/astro-twoslash-code-demo test
+bun run --filter @local/astro-twoslash-code-demo test
 ```
 
 ## API Surface

@@ -1,72 +1,8 @@
-import type { EventDefFacts } from '@livestore/common/schema'
 import { describe, expect, it } from 'vitest'
 
 import { compactEvents } from '../compact-events.ts'
 import { historyDagFromNodes } from '../history-dag.ts'
-import type { HistoryDagNode } from '../history-dag-common.ts'
-import { EMPTY_FACT_VALUE } from '../history-dag-common.ts'
-import { events as eventDefs, printEvent, toEventNodes } from './event-fixtures.ts'
-
-const customStringify = (value: any): string => {
-  if (value === null) {
-    return 'null'
-  }
-  const type = typeof value
-
-  if (type === 'string') {
-    return JSON.stringify(value)
-  }
-  if (type === 'number' || type === 'boolean') {
-    return String(value)
-  }
-  if (Array.isArray(value)) {
-    const elements = value.map((el) => customStringify(el))
-    return `[${elements.join(', ')}]`
-  }
-  if (value instanceof Set) {
-    const elements = Array.from(value).map((el) => customStringify(el))
-    return `[${elements.join(', ')}]`
-  }
-  if (value instanceof Map) {
-    const keys = Array.from(value.keys()).map(customStringify).join(', ')
-    return `[${keys}]`
-  }
-  if (type === 'object') {
-    const entries = Object.keys(value).map((key) => {
-      const val = value[key]
-      const valStr =
-        key === 'facts'
-          ? `"${factsToString(val)}"`
-          : (key === 'id' || key === 'parentSeqNum') && Object.keys(val).length === 2 && val.client === 0
-            ? val.global
-            : customStringify(val)
-
-      return `${key}: ${valStr}`
-    })
-    return `{ ${entries.join(', ')} }`
-  }
-  return String(value)
-}
-
-const factsToString = (facts: HistoryDagNode['factsGroup']) =>
-  [
-    factsSetToString(facts.depRequire, '↖'),
-    factsSetToString(facts.depRead, '?'),
-    factsSetToString(facts.modifySet, '+'),
-    factsSetToString(facts.modifyUnset, '-'),
-  ]
-    .flat()
-    .join(' ')
-
-const factsSetToString = (facts: EventDefFacts, prefix: string) =>
-  Array.from(facts.entries()).map(([key, value]) => prefix + key + (value === EMPTY_FACT_VALUE ? '' : `=${value}`))
-
-export const customSerializer = {
-  test: (val: unknown) => Array.isArray(val),
-  print: (val: unknown[], _serialize: (item: unknown) => string) => {
-    return `[\n${(val as any[]).map((item) => `  ${customStringify(item)}`).join('\n')}\n]`
-  },
-} as any
+import { customSerializer, events as eventDefs, printEvent, toEventNodes } from './event-fixtures.ts'
 
 expect.addSnapshotSerializer(customSerializer)
 

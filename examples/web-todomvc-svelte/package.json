@@ -29,7 +29,7 @@
   },
   "scripts": {
     "build": "vite build",
-    "deploy": "pnpm run build && bunx wrangler deploy",
+    "deploy": "bun run build && bunx wrangler deploy",
     "dev": "vite --force",
     "preview": "vite preview",
     "test": "playwright test"

@@ -11,29 +11,29 @@
     "@livestore/sqlite-wasm": "workspace:*",
     "@livestore/utils": "workspace:*",
     "@livestore/utils-dev": "workspace:*",
-    "@opentelemetry/api": "catalog:",
-    "@opentelemetry/core": "catalog:",
-    "@opentelemetry/resources": "catalog:",
-    "@opentelemetry/sdk-trace-base": "catalog:",
-    "@opentelemetry/sdk-trace-web": "catalog:",
-    "@types/node": "catalog:",
-    "@types/react": "catalog:",
-    "@types/react-dom": "catalog:",
-    "@vitejs/plugin-react": "catalog:",
-    "react": "catalog:",
-    "react-dom": "catalog:",
-    "typescript": "catalog:",
-    "vite": "catalog:"
+    "@opentelemetry/api": "1.9.0",
+    "@opentelemetry/core": "2.2.0",
+    "@opentelemetry/resources": "2.2.0",
+    "@opentelemetry/sdk-trace-base": "2.2.0",
+    "@opentelemetry/sdk-trace-web": "2.2.0",
+    "@types/node": "24.10.1",
+    "@types/react": "19.1.13",
+    "@types/react-dom": "19.1.9",
+    "@vitejs/plugin-react": "5.0.3",
+    "react": "19.1.0",
+    "react-dom": "19.1.0",
+    "typescript": "5.9.2",
+    "vite": "7.2.4"
   },
   "devDependencies": {
     "@livestore/devtools-vite": "0.4.0-dev.22",
-    "@playwright/test": "catalog:",
+    "@playwright/test": "1.57.0",
     "tsx": "^4.20.0"
   },
   "scripts": {
-    "build": "pnpm exec vite build --config test-app/vite.config.ts",
-    "dev": "pnpm exec vite --config test-app/vite.config.ts",
-    "preview": "pnpm exec vite preview --config test-app/vite.config.ts",
+    "build": "bunx vite build --config test-app/vite.config.ts",
+    "dev": "bunx vite --config test-app/vite.config.ts",
+    "preview": "bunx vite preview --config test-app/vite.config.ts",
     "test": "NODE_OPTIONS=--disable-warning=ExperimentalWarning playwright test"
   }
 }

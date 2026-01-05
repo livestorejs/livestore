@@ -12,9 +12,9 @@
 
 > **Installing v0.4.0 dev release:** Use the `dev` tag to install the latest development version. Make sure all LiveStore packages use the same version:
 > ```bash
-> pnpm add @livestore/livestore@dev @livestore/adapter-web@dev @livestore/wa-sqlite@dev @livestore/react@dev
+> bun add @livestore/livestore@dev @livestore/adapter-web@dev @livestore/wa-sqlite@dev @livestore/react@dev
 > # Or for Cloudflare
-> pnpm add @livestore/livestore@dev @livestore/adapter-cloudflare@dev @livestore/sync-cf@dev
+> bun add @livestore/livestore@dev @livestore/adapter-cloudflare@dev @livestore/sync-cf@dev
 > ```
 
 ### Highlights
@@ -81,10 +81,10 @@
 
   ```bash
   # Before: wa-sqlite had independent versioning
-  pnpm add wa-sqlite@1.0.5
+  bun add wa-sqlite@1.0.5
 
   # After: wa-sqlite follows LiveStore versioning
-  pnpm add @livestore/wa-sqlite@dev
+  bun add @livestore/wa-sqlite@dev
   ```
 
   This change affects projects that directly depend on wa-sqlite. Most users rely on it indirectly through LiveStore adapters and don't need to change anything.

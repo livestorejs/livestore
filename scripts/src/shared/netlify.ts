@@ -80,7 +80,6 @@ export const deployToNetlify = ({
       return yield* new NetlifyError({ message: 'Not logged in to Netlify', reason: 'auth' })
     }
 
-    // TODO replace pnpm dlx with bunx again once fixed (https://share.cleanshot.com/CKSg1dX9)
     const debugEnabled =
       debug === true || process.env.NETLIFY_CLI_DEBUG === '1' || process.env.NETLIFY_CLI_DEBUG === 'true'
 
@@ -88,7 +87,7 @@ export const deployToNetlify = ({
       const explicit = process.env.NETLIFY_SITE_ID
       if (explicit && explicit !== '') return explicit
       // Resolve site name → id for more reliable config resolution
-      const raw = yield* cmdText(['pnpm', '--package=netlify-cli', 'dlx', 'netlify', 'sites:list', '--json'], {
+      const raw = yield* cmdText(['bunx', 'netlify-cli', 'sites:list', '--json'], {
         stderr: 'pipe',
       })
 
@@ -112,12 +111,8 @@ export const deployToNetlify = ({
 
     const deployCommand = cmdText(
       [
-        'pnpm',
-        '--package=netlify-cli',
-        'dlx',
-        'netlify',
-        // 'bunx',
-        // 'netlify-cli',
+        'bunx',
+        'netlify-cli',
         'deploy',
         // In debug mode, omit --json so we get full build logs in stdout/stderr
         // Request machine-readable JSON from Netlify CLI on success

@@ -56,7 +56,7 @@ The tests are executed on GitHub Actions for every commit on `main` and opened p
 You can also run the tests locally to see how the performance changes between your code changes:
 
 ```shell
-pnpm test
+bun run test
 ```
 
 > [!NOTE]
@@ -65,7 +65,7 @@ pnpm test
 If you want to record a performance profile for each test, you can use the following command. This will record a performance profile for each test scenario and save it as `./test-results/<test-scenario>/perf-profile.json`. This can be useful for investigating performance issues or for analyzing the performance in more detail.
 
 ```shell
-pnpm test:profiler
+bun run test:profiler
 ```
 
 > [!NOTE]
@@ -101,4 +101,3 @@ pnpm test:profiler
 ### Test dimensions
 - [ ] Test on different browsers (Chrome, Firefox, Safari)
 - [ ] Test on different device types (desktop, mobile)
-

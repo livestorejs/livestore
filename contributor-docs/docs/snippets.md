@@ -51,7 +51,7 @@ component always reflects the pre-rendered bundle stored in `docs/node_modules/.
 - The snippet workspace has its own `tsconfig.json` aligned with the Twoslash compiler options
   (NodeNext modules/resolution, React JSX, `exactOptionalPropertyTypes`, etc.).  Use it when
   running targeted type checks.
-- Install snippet-only dependencies with `pnpm --filter docs-code-snippets add <pkg>` so the
+- Install snippet-only dependencies with `bun add <pkg>` from `docs/src/content/_assets/code` so the
   regular docs app stays lean.
 
 ## Testing

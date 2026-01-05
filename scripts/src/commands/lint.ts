@@ -49,12 +49,25 @@ const checkMdFilesNoImports = Effect.gen(function* () {
  *
  * Uses `ignoreIssues` for targeted suppressions instead of disabling rules globally:
  * - constants.ts: Intentionally exports multiple constants with the same value for semantic clarity
- * - pnpm-workspace.yaml: Catalog entries appear unused because examples/tests/docs workspaces are excluded
  */
 const knipConfig = {
+  rules: {
+    catalog: 'warn',
+  },
   workspaces: {
     '.': {
       ignore: ['patches/**', 'scripts/**'],
+    },
+    'docs/src/content/_assets/code': {
+      entry: ['**/*.{ts,tsx,js,jsx,vue}'],
+      project: ['tsconfig.json'],
+      includeEntryExports: true,
+    },
+    'packages/@local/astro-twoslash-code/example': {
+      entry: ['src/**/*.{ts,tsx,js,jsx,astro,mdx}'],
+      project: ['tsconfig.json'],
+      includeEntryExports: true,
+      ignoreUnresolved: ['@astrojs/astro-types'],
     },
     scripts: {
       entry: ['bin/*', 'src/mono.ts', 'standalone/setup.ts'],
@@ -77,8 +90,8 @@ const knipConfig = {
   ignoreWorkspaces: [
     'docs',
     'docs/src/content/_assets/code',
-    'packages/@local/astro-twoslash-code/example',
     'examples/*',
+    'packages/@local/astro-twoslash-code/example',
     'tests/*',
   ],
   ignore: [
@@ -118,25 +131,35 @@ const knipConfig = {
   ignoreIssues: {
     // Constants intentionally share the same value for semantic clarity
     'packages/@livestore/sync-cf/src/common/constants.ts': ['duplicates'],
-    // Catalog entries are used in ignored workspaces (examples/tests/docs)
-    'pnpm-workspace.yaml': ['catalog'],
   },
   ignoreExportsUsedInFile: true,
 }
 
-const runKnipCheck = Effect.gen(function* () {
-  const workspaceRoot = yield* LivestoreWorkspace
+const runKnipCheck = (config: typeof knipConfig, extraArgs: string[] = []) =>
+  Effect.gen(function* () {
+    const workspaceRoot = yield* LivestoreWorkspace
 
-  // Write config to temp file and run knip with it
-  const tempConfigPath = path.join(os.tmpdir(), `knip-config-${Date.now()}.json`)
-  yield* Effect.sync(() => fs.writeFileSync(tempConfigPath, JSON.stringify(knipConfig, null, 2)))
+    // Write config to temp file and run knip with it
+    const tempConfigPath = path.join(os.tmpdir(), `knip-config-${Date.now()}.json`)
+    yield* Effect.sync(() => fs.writeFileSync(tempConfigPath, JSON.stringify(config, null, 2)))
 
-  yield* Effect.addFinalizer(() => Effect.sync(() => fs.unlinkSync(tempConfigPath)))
+    yield* Effect.addFinalizer(() => Effect.sync(() => fs.unlinkSync(tempConfigPath)))
 
-  yield* cmd(`scripts/node_modules/.bin/knip -c ${tempConfigPath}`).pipe(
-    Effect.provide(LivestoreWorkspace.fromPath(workspaceRoot)),
-  )
-}).pipe(Effect.scoped, Effect.withSpan('runKnipCheck'))
+    const extraArgsString = extraArgs.length > 0 ? ` ${extraArgs.join(' ')}` : ''
+
+    yield* cmd(`scripts/node_modules/.bin/knip -c ${tempConfigPath}${extraArgsString}`).pipe(
+      Effect.provide(LivestoreWorkspace.fromPath(workspaceRoot)),
+    )
+  }).pipe(Effect.scoped, Effect.withSpan('runKnipCheck'))
+
+const knipSupplementalWorkspaces = ['docs/src/content/_assets/code', 'packages/@local/astro-twoslash-code/example']
+
+const knipSupplementalConfig = {
+  ...knipConfig,
+  ignoreWorkspaces: knipConfig.ignoreWorkspaces.filter(
+    (workspace) => knipSupplementalWorkspaces.includes(workspace) === false,
+  ),
+}
 
 export const lintCommand = Cli.Command.make(
   'lint',
@@ -151,7 +174,7 @@ export const lintCommand = Cli.Command.make(
       yield* cmd('syncpack format').pipe(Effect.provide(LivestoreWorkspace.toCwd()))
 
       if ((yield* hasParentGitRepo) === false) {
-        yield* cmd('pnpm install --fix-lockfile').pipe(Effect.provide(LivestoreWorkspace.toCwd()))
+        yield* cmd('bun install --no-progress').pipe(Effect.provide(LivestoreWorkspace.toCwd()))
       }
     }
 
@@ -172,6 +195,12 @@ export const lintCommand = Cli.Command.make(
     yield* checkMdFilesNoImports
 
     // Check for unused files, dependencies, and exports
-    yield* runKnipCheck.pipe(Effect.provide(LivestoreWorkspace.toCwd()))
+    yield* runKnipCheck(knipConfig).pipe(Effect.provide(LivestoreWorkspace.toCwd()))
+
+    yield* Effect.forEach(knipSupplementalWorkspaces, (workspace) =>
+      runKnipCheck(knipSupplementalConfig, ['--workspace', workspace, '--no-exit-code']).pipe(
+        Effect.provide(LivestoreWorkspace.toCwd()),
+      ),
+    )
   }),
 )

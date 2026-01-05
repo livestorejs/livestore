@@ -3,7 +3,7 @@
 ## How to run locally
 
 ```bash
-pnpm dev
+bun run dev
 ```
 
 Now you can open `http://localhost:8787/client-do?storeId=123` in your browser which will show you the todos for the store `123` and also start a live subscription for the todos table.
@@ -11,5 +11,5 @@ Now you can open `http://localhost:8787/client-do?storeId=123` in your browser w
 ## How to deploy to Cloudflare
 
 ```bash
-pnpm deploy
+bun run deploy
 ```

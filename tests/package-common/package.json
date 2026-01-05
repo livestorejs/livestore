@@ -12,6 +12,6 @@
   },
   "devDependencies": {
     "@livestore/utils-dev": "workspace:*",
-    "vitest": "catalog:"
+    "vitest": "3.2.4"
   }
 }

@@ -5,12 +5,12 @@ This example mirrors the LiveStore TodoMVC app but uses React Router v7 instead 
 ## Running locally
 
 ```bash
-pnpm install
-pnpm --filter livestore-example-web-todomvc-react-router dev
+bun install
+bun run --filter livestore-example-web-todomvc-react-router dev
 ```
 
 Then open http://localhost:60001.
 
 ## Notes
 - Navigation routes (`/`, `/active`, `/completed`) stay in sync with the LiveStore filter state.
-- Run the smoke test with `pnpm --filter livestore-example-web-todomvc-react-router test:e2e`.
+- Run the smoke test with `bun run --filter livestore-example-web-todomvc-react-router test:e2e`.

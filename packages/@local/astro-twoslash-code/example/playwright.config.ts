@@ -23,7 +23,7 @@ export default defineConfig({
     baseURL: `http://127.0.0.1:${resolvedPort}`,
   },
   webServer: {
-    command: `pnpm astro dev --host 127.0.0.1 --port ${resolvedPort}`,
+    command: `bunx astro dev --host 127.0.0.1 --port ${resolvedPort}`,
     url: `http://127.0.0.1:${resolvedPort}`,
     timeout: 120_000,
     stdout: 'pipe',

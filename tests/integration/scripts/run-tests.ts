@@ -65,7 +65,7 @@ export const miscTest: Cli.Command.Command<
       })
 
       yield* cmd(
-        ['pnpm', 'playwright', 'test', mode === 'ui' ? '--ui' : undefined, 'src/tests/playwright/misc-tests.play.ts'],
+        ['bunx', 'playwright', 'test', mode === 'ui' ? '--ui' : undefined, 'src/tests/playwright/misc-tests.play.ts'],
         {
           env: {
             FORCE_PLAYWRIGHT_VIA_CLI: '1',
@@ -106,7 +106,7 @@ export const todomvcTest: Cli.Command.Command<
       })
 
       yield* cmd(
-        ['pnpm', 'playwright', 'test', mode === 'ui' ? '--ui' : undefined, 'src/tests/playwright/todomvc.play.ts'],
+        ['bunx', 'playwright', 'test', mode === 'ui' ? '--ui' : undefined, 'src/tests/playwright/todomvc.play.ts'],
         {
           env: {
             FORCE_PLAYWRIGHT_VIA_CLI: '1',
@@ -173,7 +173,7 @@ export const devtoolsTest: Cli.Command.Command<
         return yield* Effect.never
       } else {
         yield* cmd(
-          ['pnpm', 'playwright', 'test', mode === 'ui' ? '--ui' : undefined, 'src/tests/playwright/devtools/*'],
+          ['bunx', 'playwright', 'test', mode === 'ui' ? '--ui' : undefined, 'src/tests/playwright/devtools/*'],
           {
             env: {
               FORCE_PLAYWRIGHT_VIA_CLI: '1',

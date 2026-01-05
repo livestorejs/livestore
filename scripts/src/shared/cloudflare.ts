@@ -191,7 +191,7 @@ export const buildCloudflareWorker = ({
    * wrangler.json when CLOUDFLARE_ENV is set. The rest of the pipeline works
    * off the build output.
    */
-  return cmd(['pnpm', 'build'], {
+  return cmd(['bun', 'run', 'build'], {
     env: {
       ...process.env,
       CLOUDFLARE_ENV: envName,

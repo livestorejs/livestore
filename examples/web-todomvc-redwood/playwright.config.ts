@@ -6,7 +6,7 @@ import type { PlaywrightTestConfig } from '@playwright/test'
  */
 const config: PlaywrightTestConfig = {
   webServer: {
-    command: 'pnpm run build && pnpm run preview -- --host 0.0.0.0 --port 4173',
+    command: 'bun run build && bun run preview -- --host 0.0.0.0 --port 4173',
     port: 4173,
     reuseExistingServer: true,
     timeout: 180_000,

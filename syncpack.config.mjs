@@ -2,14 +2,15 @@
 import fs, { readFileSync } from 'node:fs'
 import path from 'node:path'
 import url from 'node:url'
+const getCatalogDependencies = () => {
+  const rootPackageJson = JSON.parse(readFileSync('package.json', 'utf8'))
+  const catalog = rootPackageJson.catalog ?? {}
+  return Object.keys(catalog)
+}
 
-import { parse } from 'yaml'
-
-const getPnpmCatalogDependencies = () => {
-  const workspaceConfig = readFileSync('pnpm-workspace.yaml', 'utf8')
-  const pnpmWorkspaceConfig = parse(workspaceConfig)
-
-  return Object.keys(pnpmWorkspaceConfig.catalog)
+const getCatalogVersions = () => {
+  const rootPackageJson = JSON.parse(readFileSync('package.json', 'utf8'))
+  return rootPackageJson.catalog ?? {}
 }
 
 /*
@@ -35,6 +36,17 @@ const localPackages = fs
   .filter((dir) => fs.statSync(path.join(__dirname, './packages/@livestore', dir)).isDirectory())
   .filter((dir) => fs.existsSync(path.join(__dirname, './packages/@livestore', dir, 'package.json')))
   .map((dir) => `@livestore/${dir}`)
+
+const catalogDependencies = getCatalogDependencies()
+const catalogVersions = getCatalogVersions()
+
+const catalogVersionGroups = Object.entries(catalogVersions).map(([dependency]) => ({
+  label: `catalog dependency: ${dependency}`,
+  dependencies: [dependency],
+  dependencyTypes: ['!local', '!peer'],
+  packages: ['!livestore-example-**', '!livestore-tutorial-starter', '!@local/docs', '!@local/tests-*', '!docs-code-snippets'],
+  pinVersion: 'catalog:',
+}))
 
 /** @type {import("syncpack").RcFile} */
 const config = {
@@ -63,15 +75,19 @@ const config = {
       packages: ['!livestore-example-**', '!livestore-tutorial-starter'],
       pinVersion: 'workspace:*',
     },
+    ...catalogVersionGroups,
     {
-      label: 'catalog protocol for catalog dependencies',
-      dependencies: getPnpmCatalogDependencies(),
-      // Exclude peer deps - they need explicit versions with ranges (e.g. ^19.0.0)
-      // so published packages work with compatible versions, not just exact matches
+      label: 'ignore catalog dependencies in docs/examples/tests',
+      dependencies: catalogDependencies,
       dependencyTypes: ['!local', '!peer'],
-      // Except for examples
-      packages: ['!livestore-example-**', '!livestore-tutorial-starter'],
-      pinVersion: 'catalog:',
+      packages: [
+        '@local/docs',
+        'docs-code-snippets',
+        '@local/tests-*',
+        'livestore-example-**',
+        'livestore-tutorial-starter',
+      ],
+      isIgnored: true,
     },
     {
       label: 'ignore peer dependencies from version normalization',
@@ -85,9 +101,9 @@ const config = {
       isIgnored: true,
     },
     {
-      label: 'ignore pnpm overrides',
-      // pnpm overrides require exact versions to work correctly
-      dependencyTypes: ['pnpmOverrides'],
+      label: 'ignore overrides and resolutions',
+      // overrides require exact versions to work correctly
+      dependencyTypes: ['overrides', 'resolutions'],
       packages: ['**'],
       isIgnored: true,
     },
@@ -103,7 +119,7 @@ const config = {
   semverGroups: [
     {
       label: 'ignore catalog dependencies',
-      dependencies: getPnpmCatalogDependencies(),
+      dependencies: catalogDependencies,
       isIgnored: true,
       packages: ['**'],
     },

@@ -1,7 +1,7 @@
 /**
  * Peer Dependency Checker - Validates peer dependencies against resolved versions
  *
- * Parses the pnpm-lock.yaml to find all packages and their peer dependencies,
+ * Parses the bun.lock to find all packages and their peer dependencies,
  * then checks if the resolved versions satisfy those requirements.
  */
 
@@ -9,7 +9,6 @@ import path from 'node:path'
 import { Console, Effect, FileSystem, Schema } from '@livestore/utils/effect'
 import { LivestoreWorkspace } from '@livestore/utils-dev/node'
 import semver from 'semver'
-import * as yaml from 'yaml'
 
 /** Represents a single peer dependency violation */
 export interface PeerDepViolation {
@@ -49,13 +48,17 @@ const parsePackageSpec = (spec: string): { name: string; version: string } | und
   return undefined
 }
 
-interface LockfilePackage {
-  resolution?: { integrity?: string }
-  peerDependencies?: Record<string, string>
-  peerDependenciesMeta?: Record<string, { optional?: boolean }>
+interface BunLockfilePackageMeta {
   dependencies?: Record<string, string>
-  optionalDependencies?: Record<string, string>
+  peerDependencies?: Record<string, string>
+  optionalPeers?: string[]
 }
+
+type BunLockfilePackageEntry =
+  | [string]
+  | [string, string]
+  | [string, string, BunLockfilePackageMeta]
+  | [string, string, BunLockfilePackageMeta, string]
 
 const ignoredPeerViolations = new Set([
   // rwsdk currently targets React 19 canary builds; we stay on stable 19.1.0 until upstream aligns
@@ -64,10 +67,64 @@ const ignoredPeerViolations = new Set([
   'rwsdk->react-server-dom-webpack',
 ])
 
-interface ParsedLockfile {
-  lockfileVersion: string
-  packages?: Record<string, LockfilePackage>
-  snapshots?: Record<string, LockfilePackage>
+interface BunLockfile {
+  lockfileVersion?: number
+  workspaces?: Record<
+    string,
+    {
+      name?: string
+      version?: string
+    }
+  >
+  packages?: Record<string, BunLockfilePackageEntry>
+}
+
+/** bun.lock is JSON-ish and allows trailing commas, so normalize before JSON.parse. */
+const stripTrailingCommas = (input: string) => {
+  let output = ''
+  let inString = false
+  let isEscaped = false
+
+  for (let index = 0; index < input.length; index += 1) {
+    const char = input[index]!
+
+    if (inString) {
+      output += char
+      if (isEscaped) {
+        isEscaped = false
+        continue
+      }
+      if (char === '\\') {
+        isEscaped = true
+        continue
+      }
+      if (char === '"') {
+        inString = false
+      }
+      continue
+    }
+
+    if (char === '"') {
+      inString = true
+      output += char
+      continue
+    }
+
+    if (char === ',') {
+      let lookahead = index + 1
+      while (lookahead < input.length && /\s/.test(input[lookahead]!)) {
+        lookahead += 1
+      }
+      const nextChar = input[lookahead]
+      if (nextChar === '}' || nextChar === ']') {
+        continue
+      }
+    }
+
+    output += char
+  }
+
+  return output
 }
 
 /**
@@ -76,30 +133,27 @@ interface ParsedLockfile {
 export const checkPeerDependencies = Effect.gen(function* () {
   const fs = yield* FileSystem.FileSystem
   const workspaceRoot = yield* LivestoreWorkspace
-  const lockfilePath = path.join(workspaceRoot, 'pnpm-lock.yaml')
+  const lockfilePath = path.join(workspaceRoot, 'bun.lock')
 
   // Read and parse the lockfile
   const lockfileContent = yield* fs
     .readFileString(lockfilePath)
-    .pipe(Effect.mapError((cause) => new PeerDepCheckError({ message: `Failed to read pnpm-lock.yaml`, cause })))
+    .pipe(Effect.mapError((cause) => new PeerDepCheckError({ message: `Failed to read bun.lock`, cause })))
 
   const lockfile = yield* Effect.try({
-    try: () => yaml.parse(lockfileContent) as ParsedLockfile,
-    catch: (cause) => new PeerDepCheckError({ message: `Failed to parse pnpm-lock.yaml`, cause }),
+    try: () => JSON.parse(stripTrailingCommas(lockfileContent)) as BunLockfile,
+    catch: (cause) => new PeerDepCheckError({ message: `Failed to parse bun.lock`, cause }),
   })
 
-  // pnpm v9+ uses "snapshots" and "packages" separately
-  // "packages" contains package metadata (including peerDependencies definitions)
-  // "snapshots" contains resolved versions with peer dep context
   const packages = lockfile.packages ?? {}
-  const snapshots = lockfile.snapshots ?? {}
+  const workspaces = lockfile.workspaces ?? {}
 
-  // Build a map of resolved package versions from snapshots
+  // Build a map of resolved package versions from the lockfile packages
   // Key: package name, Value: Set of resolved versions
   const resolvedVersions = new Map<string, Set<string>>()
 
-  for (const snapshotKey of Object.keys(snapshots)) {
-    const parsed = parsePackageSpec(snapshotKey)
+  for (const packageEntry of Object.values(packages)) {
+    const parsed = parsePackageSpec(packageEntry[0])
     if (parsed) {
       if (!resolvedVersions.has(parsed.name)) {
         resolvedVersions.set(parsed.name, new Set())
@@ -108,36 +162,33 @@ export const checkPeerDependencies = Effect.gen(function* () {
     }
   }
 
-  // Also add versions from the packages section
-  for (const packageKey of Object.keys(packages)) {
-    const parsed = parsePackageSpec(packageKey)
-    if (parsed) {
-      if (!resolvedVersions.has(parsed.name)) {
-        resolvedVersions.set(parsed.name, new Set())
-      }
-      resolvedVersions.get(parsed.name)!.add(parsed.version)
+  for (const workspace of Object.values(workspaces)) {
+    if (!workspace?.name || !workspace?.version) continue
+    if (!resolvedVersions.has(workspace.name)) {
+      resolvedVersions.set(workspace.name, new Set())
     }
+    resolvedVersions.get(workspace.name)!.add(workspace.version)
   }
 
   const violations: PeerDepViolation[] = []
 
-  // Check peer dependencies defined in the packages section
-  for (const [packageKey, packageData] of Object.entries(packages)) {
-    const parsed = parsePackageSpec(packageKey)
-    if (!parsed || !packageData.peerDependencies) continue
+  // Check peer dependencies defined in the lockfile packages
+  for (const packageEntry of Object.values(packages)) {
+    const parsed = parsePackageSpec(packageEntry[0])
+    const packageData = packageEntry[2]
+    if (!parsed || !packageData?.peerDependencies) continue
 
     for (const [peerDep, requiredRange] of Object.entries(packageData.peerDependencies)) {
       const ignoreKey = `${parsed.name}->${peerDep}`
       if (ignoredPeerViolations.has(ignoreKey)) continue
 
-      const isOptional = packageData.peerDependenciesMeta?.[peerDep]?.optional === true
+      const isOptional = packageData.optionalPeers?.includes(peerDep) === true
       if (isOptional) continue
 
       const resolvedSet = resolvedVersions.get(peerDep)
 
       if (!resolvedSet || resolvedSet.size === 0) {
         // Peer dependency not found at all - this might be optional or provided differently
-        // We'll skip these for now as pnpm handles optional peers
         continue
       }
 

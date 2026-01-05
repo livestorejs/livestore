@@ -284,15 +284,16 @@ export const createCommand = Cli.Command.make(
     yield* Console.log('\n📋 Next steps:')
     yield* Console.log(`   cd ${nodePath.basename(destinationPath)}`)
 
-    // Yarn is not recommended for LiveStore projects. When detected, show a warning
+    // Yarn and pnpm are not recommended for LiveStore projects. When detected, show a warning
     // and suggest using bun instead for the next steps.
     if (pmResult._tag === 'unsupported') {
-      yield* Console.log('   bun install    # Install dependencies (yarn is not recommended)')
+      const unsupportedLabel = pmResult.pm === 'pnpm' ? 'pnpm' : 'yarn'
+      yield* Console.log(`   bun install    # Install dependencies (${unsupportedLabel} is not recommended)`)
       if (runScript !== undefined) {
         yield* Console.log(`   bun ${runScript}        # Start development server`)
       }
-      yield* Console.log('\n⚠️  Yarn is not recommended for LiveStore projects.')
-      yield* Console.log('   We recommend using bun, pnpm, or npm instead.')
+      yield* Console.log(`\n⚠️  ${unsupportedLabel} is not recommended for LiveStore projects.`)
+      yield* Console.log('   We recommend using bun or npm instead.')
       yield* Console.log('   The commands above use bun by default.')
     } else {
       const pm = pmResult.pm

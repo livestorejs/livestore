@@ -11,8 +11,8 @@ The `perf-eventlog` performance tests are focused on event streaming. These test
 
 ## Commands
 
-- `pnpm dev` – run the test-app
-- `pnpm test` – run performance test
+- `bun run dev` – run the test-app
+- `bun run test` – run performance test
 
 ## Snapshot loading
 

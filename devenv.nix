@@ -4,10 +4,10 @@ let
   playwrightDriver = inputs.playwright-web-flake.packages.${pkgs.system}.playwright-driver;
 in
 {
-  # JavaScript toolchain with Corepack (pnpm/yarn) enabled
+  # JavaScript toolchain with Corepack enabled (legacy npm/yarn compatibility)
   languages.javascript = {
     enable = true;
-    # Pin Corepack to Node 24 so pnpm/yarn shims run on Node 24
+    # Pin Corepack to Node 24 so legacy shims run on Node 24
     package = pkgs.nodejs_24;
     corepack.enable = true;
   };

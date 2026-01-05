@@ -1,4 +1,5 @@
 import fs from 'node:fs'
+import { createRequire } from 'node:module'
 import path from 'node:path'
 import { fileURLToPath, pathToFileURL } from 'node:url'
 
@@ -31,6 +32,7 @@ const tsconfigPath = path.join(fixturesRoot, 'tsconfig.json')
 const packageRoot = fileURLToPath(new URL('../..', import.meta.url))
 const workspaceRoot = process.env.WORKSPACE_ROOT ?? path.resolve(packageRoot, '../../..')
 const exampleProjectRoot = path.join(packageRoot, 'example')
+const require = createRequire(import.meta.url)
 let twoslasher: TTwoslasher
 type TRenderer = Parameters<typeof __internal.renderSnippet>[0]
 let exampleRenderer: TRenderer
@@ -39,10 +41,7 @@ let docsRenderer: TRenderer
 let docsPaths: ReturnType<typeof resolveProjectPaths>
 
 beforeAll(async () => {
-  const modulePath = path.join(
-    workspaceRoot,
-    'node_modules/.pnpm/twoslash@0.2.12_typescript@5.9.2/node_modules/twoslash/dist/index.mjs',
-  )
+  const modulePath = require.resolve('twoslash/dist/index.mjs')
   const module = await import(pathToFileURL(modulePath).href)
   twoslasher = module.twoslasher as TTwoslasher
 

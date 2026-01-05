@@ -25,7 +25,7 @@ export default defineConfig({
     baseURL: `http://127.0.0.1:${resolvedPort}`,
   },
   webServer: {
-    command: `pnpm dev --host 127.0.0.1 --port ${resolvedPort}`,
+    command: `bun run dev --host 127.0.0.1 --port ${resolvedPort}`,
     url: `http://127.0.0.1:${resolvedPort}`,
     cwd: docsRoot,
     timeout: 120_000,

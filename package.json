@@ -2,6 +2,64 @@
   "name": "@livestore/monorepo",
   "version": "0.0.0",
   "private": true,
+  "catalog": {
+    "@cloudflare/workers-types": "4.20251118.0",
+    "@effect/ai": "0.32.1",
+    "@effect/ai-openai": "0.36.0",
+    "@effect/cli": "0.72.1",
+    "@effect/cluster": "0.55.0",
+    "@effect/experimental": "0.57.11",
+    "@effect/language-service": "0.62.3",
+    "@effect/opentelemetry": "0.59.3",
+    "@effect/platform": "0.93.8",
+    "@effect/platform-browser": "0.73.0",
+    "@effect/platform-bun": "0.86.0",
+    "@effect/platform-node": "0.103.0",
+    "@effect/platform-node-shared": "0.56.0",
+    "@effect/printer": "0.47.0",
+    "@effect/printer-ansi": "0.47.0",
+    "@effect/rpc": "0.72.2",
+    "@effect/sql": "0.48.6",
+    "@effect/sql-sqlite-node": "0.49.1",
+    "@effect/typeclass": "0.38.0",
+    "@effect/vitest": "0.27.0",
+    "@effect/workflow": "0.15.2",
+    "@opentelemetry/api": "1.9.0",
+    "@opentelemetry/context-zone": "2.2.0",
+    "@opentelemetry/core": "2.2.0",
+    "@opentelemetry/exporter-metrics-otlp-grpc": "0.208.0",
+    "@opentelemetry/exporter-metrics-otlp-http": "0.208.0",
+    "@opentelemetry/exporter-trace-otlp-grpc": "0.208.0",
+    "@opentelemetry/exporter-trace-otlp-http": "0.208.0",
+    "@opentelemetry/otlp-exporter-base": "0.208.0",
+    "@opentelemetry/otlp-transformer": "0.208.0",
+    "@opentelemetry/resources": "2.2.0",
+    "@opentelemetry/sdk-metrics": "2.2.0",
+    "@opentelemetry/sdk-trace-base": "2.2.0",
+    "@opentelemetry/sdk-trace-node": "2.2.0",
+    "@opentelemetry/sdk-trace-web": "2.2.0",
+    "@opentelemetry/semantic-conventions": "1.38.0",
+    "@playwright/test": "1.57.0",
+    "@tailwindcss/vite": "4.1.13",
+    "@types/bun": "1.2.21",
+    "@types/chrome": "0.1.4",
+    "@types/node": "24.10.1",
+    "@types/react": "19.1.13",
+    "@types/react-dom": "19.1.9",
+    "@types/web": "0.0.264",
+    "@vitejs/plugin-react": "5.0.3",
+    "@vitest/ui": "3.2.4",
+    "effect": "3.19.12",
+    "graphql": "16.11.0",
+    "react": "19.1.0",
+    "react-dom": "19.1.0",
+    "solid-js": "1.9.10",
+    "tailwindcss": "4.1.13",
+    "typescript": "5.9.2",
+    "vite": "7.2.4",
+    "vitest": "3.2.4",
+    "wrangler": "4.42.2"
+  },
   "devDependencies": {
     "@biomejs/biome": "^2.3.8",
     "@effect/language-service": "catalog:",
@@ -15,27 +73,14 @@
     "vitest": "catalog:",
     "yaml": "^2.8.1"
   },
-  "packageManager": "pnpm@10.17.1",
-  "pnpm": {
-    "patchedDependencies": {
-      "starlight-contextual-menu@0.1.3": "patches/starlight-contextual-menu@0.1.3.patch",
-      "starlight-markdown@0.1.5": "patches/starlight-markdown@0.1.5.patch"
-    },
-    "onlyBuiltDependencies": [
-      "@mixedbread/cli",
-      "@parcel/watcher",
-      "@tailwindcss/oxide",
-      "dtrace-provider",
-      "esbuild",
-      "msgpackr-extract",
-      "protobufjs",
-      "sharp",
-      "workerd"
-    ],
-    "overrides": {
-      "puppeteer": "23.11.1"
-    },
-    "overrides#puppeteer": "Pin to 23.11.1 (uses Chrome 131) to match Playwright 1.57.0's bundled Chromium. tldraw-cli depends on Puppeteer which needs a Chrome binary provided by devenv via PUPPETEER_EXECUTABLE_PATH."
+  "overrides": {
+    "puppeteer": "23.11.1"
+  },
+  "overrides#puppeteer": "Pin to 23.11.1 (uses Chrome 131) to match Playwright 1.57.0's bundled Chromium. tldraw-cli depends on Puppeteer which needs a Chrome binary provided by devenv via PUPPETEER_EXECUTABLE_PATH.",
+  "packageManager": "bun@1.3.5",
+  "patchedDependencies": {
+    "starlight-contextual-menu@0.1.3": "patches/starlight-contextual-menu@0.1.3.patch",
+    "starlight-markdown@0.1.5": "patches/starlight-markdown@0.1.5.patch"
   },
   "resolutions": {
     "@livestore/adapter-cloudflare": "workspace:*",
@@ -62,16 +107,37 @@
     "@livestore/webmesh": "workspace:*"
   },
   "resolutions#": {
-    "@livestore/*": "Needed to force PNPM to install local packages"
+    "@livestore/*": "Needed to force Bun to install local packages"
   },
   "scripts": {
     "_build:ts": "tsc --build tsconfig.dev.json && tsc --build tsconfig.examples.json",
-    "build": "pnpm run build:ts",
+    "build": "bun run build:ts",
     "build:clean": "bash -c \"find {examples,packages,tests,docs} -path '*node_modules*' -prune -o \\( -name 'dist' -type d -o -name '*.tsbuildinfo' \\) -exec rm -rf {} +\"",
     "build:ts": "tsc --build tsconfig.dev.json",
-    "pack:tmp": "pnpm --filter '@livestore/*' exec -- pnpm pack --out tmp/pack.tgz",
+    "pack:tmp": "bun pm pack --destination tmp --filename pack.tgz",
     "prepare": "husky && effect-language-service patch || true",
-    "test": "CI=1 pnpm --parallel run test",
-    "update-lockfile": "CI=1 pnpm install --lockfile-only"
-  }
+    "test": "CI=1 bun run --workspaces --if-present test",
+    "update-lockfile": "CI=1 bun install --lockfile-only --no-progress"
+  },
+  "trustedDependencies": [
+    "@mixedbread/cli",
+    "@parcel/watcher",
+    "@tailwindcss/oxide",
+    "dtrace-provider",
+    "esbuild",
+    "msgpackr-extract",
+    "protobufjs",
+    "sharp",
+    "workerd"
+  ],
+  "workspaces": [
+    "scripts",
+    "docs",
+    "docs/src/content/_assets/code",
+    "packages/@livestore/*",
+    "packages/@local/*",
+    "packages/@local/astro-twoslash-code/example",
+    "examples/*",
+    "tests/*"
+  ]
 }

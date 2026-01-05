@@ -36,7 +36,7 @@
   },
   "scripts": {
     "build": "vite build",
-    "deploy": "pnpm run build && bunx wrangler deploy",
+    "deploy": "bun run build && bunx wrangler deploy",
     "dev": "vite --force",
     "lint": "biome check .",
     "lint:fix": "biome check . --fix",

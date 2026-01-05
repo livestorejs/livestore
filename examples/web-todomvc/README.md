@@ -5,6 +5,6 @@
 ## Running locally
 
 ```bash
-pnpm install
-pnpm dev
+bun install
+bun run dev
 ```
