@@ -4,6 +4,7 @@ import * as CloudflareWsProvider from './cloudflare-ws.ts'
 import * as ElectricProvider from './electric.ts'
 import * as MockProvider from './mock.ts'
 import * as S2Provider from './s2.ts'
+import * as SyncHttpProvider from './sync-http.ts'
 
 // Single source of truth for sync providers used across CLI and tests
 export const providerRegistry = {
@@ -16,6 +17,8 @@ export const providerRegistry = {
   'cf-ws-do': CloudflareWsProvider.doSqlite,
   'cf-do-rpc-d1': CloudflareDoRpcProvider.d1,
   'cf-do-rpc-do': CloudflareDoRpcProvider.doSqlite,
+  'sync-http': SyncHttpProvider.memory,
+  'sync-http-sse': SyncHttpProvider.memorySse,
 } as const
 
 export type ProviderKey = keyof typeof providerRegistry

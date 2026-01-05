@@ -22,6 +22,7 @@
     "@livestore/svelte": "workspace:*",
     "@livestore/sync-cf": "workspace:*",
     "@livestore/sync-electric": "workspace:*",
+    "@livestore/sync-http": "workspace:*",
     "@livestore/sync-s2": "workspace:*",
     "@livestore/utils": "workspace:*",
     "@opentelemetry/context-zone": "catalog:",

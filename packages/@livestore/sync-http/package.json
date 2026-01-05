@@ -1,0 +1,39 @@
+{
+  "name": "@livestore/sync-http",
+  "version": "0.4.0-dev.21",
+  "type": "module",
+  "sideEffects": false,
+  "exports": {
+    "./server": "./src/server/mod.ts",
+    "./client": "./src/client/mod.ts",
+    "./common": "./src/common/mod.ts"
+  },
+  "dependencies": {
+    "@livestore/common": "workspace:*",
+    "@livestore/utils": "workspace:*",
+    "@msgpack/msgpack": "3.0.0"
+  },
+  "files": [
+    "dist",
+    "src",
+    "package.json",
+    "README.md"
+  ],
+  "license": "Apache-2.0",
+  "peerDependencies": {
+    "@effect/platform": "^0.92.0",
+    "@effect/platform-node": "^0.98.0",
+    "effect": "^3.19.0"
+  },
+  "publishConfig": {
+    "access": "public",
+    "exports": {
+      "./server": "./dist/server/mod.js",
+      "./client": "./dist/client/mod.js",
+      "./common": "./dist/common/mod.js"
+    }
+  },
+  "scripts": {
+    "test": "echo 'Tests run via sync-provider test suite'"
+  }
+}
