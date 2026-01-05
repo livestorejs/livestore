@@ -25,6 +25,7 @@
       "@mixedbread/cli",
       "@parcel/watcher",
       "@tailwindcss/oxide",
+      "better-sqlite3",
       "dtrace-provider",
       "esbuild",
       "msgpackr-extract",

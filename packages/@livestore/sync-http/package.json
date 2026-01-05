@@ -1,0 +1,36 @@
+{
+  "name": "@livestore/sync-http",
+  "version": "0.4.0-dev.22",
+  "type": "module",
+  "sideEffects": false,
+  "exports": {
+    "./client": "./src/client/mod.ts",
+    "./server": "./src/server/mod.ts"
+  },
+  "dependencies": {
+    "@effect/sql": "catalog:",
+    "@effect/sql-pg": "catalog:",
+    "@effect/sql-sqlite-bun": "catalog:",
+    "@effect/sql-sqlite-node": "catalog:",
+    "@livestore/common": "workspace:*",
+    "@livestore/utils": "workspace:*"
+  },
+  "files": [
+    "dist",
+    "src",
+    "package.json",
+    "README.md"
+  ],
+  "license": "Apache-2.0",
+  "publishConfig": {
+    "access": "public",
+    "exports": {
+      "./client": "./dist/client/mod.js",
+      "./server/bun": "./dist/server/bun.js",
+      "./server/node": "./dist/server/node.js"
+    }
+  },
+  "scripts": {
+    "test": "echo 'No tests yet'"
+  }
+}
