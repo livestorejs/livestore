@@ -3,7 +3,7 @@ import * as os from 'node:os'
 import * as path from 'node:path'
 import { Console, Effect, Schema } from '@livestore/utils/effect'
 import { Cli } from '@livestore/utils/node'
-import { cmd, cmdText, LivestoreWorkspace } from '@livestore/utils-dev/node'
+import { CurrentWorkingDirectory, cmd, cmdText, LivestoreWorkspace } from '@livestore/utils-dev/node'
 import { hasParentGitRepo } from '../shared/misc.ts'
 import { runPeerDepCheck } from '../shared/peer-deps.ts'
 
@@ -137,8 +137,8 @@ const runKnipCheck = Effect.gen(function* () {
 
   yield* Effect.addFinalizer(() => Effect.sync(() => fs.unlinkSync(tempConfigPath)))
 
-  yield* cmd(`scripts/node_modules/.bin/knip -c ${tempConfigPath}`).pipe(
-    Effect.provide(LivestoreWorkspace.fromPath(workspaceRoot)),
+  yield* cmd(['scripts/node_modules/.bin/knip', '-c', tempConfigPath, '--directory', workspaceRoot]).pipe(
+    Effect.provide(CurrentWorkingDirectory.fromPath(workspaceRoot)),
   )
 }).pipe(Effect.scoped, Effect.withSpan('runKnipCheck'))
 

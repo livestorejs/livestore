@@ -311,7 +311,9 @@ export const updateDepsCommand = Cli.Command.make(
     // Validate target option
     const validTargets = ['latest', 'minor', 'patch']
     if (!validTargets.includes(target)) {
-      return yield* new UpdateDepsError({ message: `Invalid target: ${target}. Must be one of: ${validTargets.join(', ')}` })
+      return yield* new UpdateDepsError({
+        message: `Invalid target: ${target}. Must be one of: ${validTargets.join(', ')}`,
+      })
     }
 
     // Step 1: Read patched dependencies

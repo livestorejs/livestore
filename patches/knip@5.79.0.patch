@@ -1,0 +1,30 @@
+diff --git a/dist/graph/build.js b/dist/graph/build.js
+--- a/dist/graph/build.js
++++ b/dist/graph/build.js
+@@ -303,11 +303,17 @@
+             for (const _import of file.imports.imports) {
+                 if (_import.filePath) {
+                     const packageName = getPackageNameFromModuleSpecifier(_import.specifier);
+-                    if (packageName && isInternalWorkspace(packageName)) {
+-                        file.imports.external.add({ ..._import, specifier: packageName });
+-                        const principal = getPrincipalByFilePath(_import.filePath);
+-                        if (principal && !isGitIgnored(_import.filePath)) {
+-                            principal.addProgramPath(_import.filePath);
+-                        }
++                    if (packageName) {
++                        // Treat workspace links outside the knip root as external deps to avoid false unused warnings.
++                        const relativePath = relative(options.cwd, _import.filePath);
++                        const isOutsideCwd = relativePath.startsWith('..') || isAbsolute(relativePath);
++                        const isWorkspaceImport = isInternalWorkspace(packageName);
++                        if (isWorkspaceImport || isOutsideCwd) {
++                            file.imports.external.add({ ..._import, specifier: packageName });
++                        }
++                        if (isWorkspaceImport) {
++                            const principal = getPrincipalByFilePath(_import.filePath);
++                            if (principal && !isGitIgnored(_import.filePath)) {
++                                principal.addProgramPath(_import.filePath);
++                            }
++                        }
+                     }
+                 }
+             }
