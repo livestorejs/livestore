@@ -70,7 +70,7 @@ const platformRunnerImpl = Runner.PlatformRunner.of({
       const port = {
         postMessage: (message: any) => process.send!(message),
         on: (event: string, handler: (message: any) => void) => process.on(event, handler),
-        close: () => process.disconnect(),
+        close: () => process.disconnect?.(),
       }
       const send = (_portId: number, message: O, _transfers?: ReadonlyArray<unknown>) =>
         Effect.sync(() => port.postMessage([1, message] /*, transfers as any*/))
