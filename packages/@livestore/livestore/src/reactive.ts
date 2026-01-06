@@ -210,6 +210,7 @@ export class ReactiveGraph<
   private deferredEffects: Map<Effect<TDebugRefreshReason>, Set<TDebugRefreshReason>> = new Map()
 
   private refreshCallbacks: Set<() => void> = new Set()
+  private afterRefreshCallbacks: Set<(info: RefreshDebugInfo<TDebugRefreshReason, TDebugThunkInfo>) => void> = new Set()
 
   private nodeIdCounter = 0
   private uniqueNodeId = () => `node-${++this.nodeIdCounter}`
@@ -507,6 +508,7 @@ export class ReactiveGraph<
       this.debugRefreshInfos.push(refreshDebugInfo)
 
       this.runRefreshCallbacks()
+      this.runAfterRefreshCallbacks(refreshDebugInfo)
     })
   }
 
@@ -529,6 +531,12 @@ export class ReactiveGraph<
   runRefreshCallbacks = () => {
     for (const cb of this.refreshCallbacks) {
       cb()
+    }
+  }
+
+  private runAfterRefreshCallbacks = (info: RefreshDebugInfo<TDebugRefreshReason, TDebugThunkInfo>) => {
+    for (const cb of this.afterRefreshCallbacks) {
+      cb(info)
     }
   }
 
@@ -588,6 +596,13 @@ export class ReactiveGraph<
     this.refreshCallbacks.add(cb)
     return () => {
       this.refreshCallbacks.delete(cb)
+    }
+  }
+
+  subscribeToAfterRefresh = (cb: (info: RefreshDebugInfo<TDebugRefreshReason, TDebugThunkInfo>) => void) => {
+    this.afterRefreshCallbacks.add(cb)
+    return () => {
+      this.afterRefreshCallbacks.delete(cb)
     }
   }
 }

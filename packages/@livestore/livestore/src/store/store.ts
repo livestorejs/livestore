@@ -47,6 +47,8 @@ import { SqliteDbWrapper } from '../SqliteDbWrapper.ts'
 import { ReferenceCountedSet } from '../utils/data-structures.ts'
 import { downloadBlob, exposeDebugUtils } from '../utils/dev.ts'
 import {
+  type AfterRefreshInfo,
+  type BeforeChangeEvent,
   type Queryable,
   type RefreshReason,
   type StoreCommitOptions,
@@ -180,6 +182,9 @@ export class Store<TSchema extends LiveStoreSchema = LiveStoreSchema.Any, TConte
    * Store internals. Not part of the public API — shapes and semantics may change without notice.
    */
   readonly [StoreInternalsSymbol]: StoreInternals
+
+  /** @internal Used by lifecycle hooks - set during constructor */
+  private beforeChangeCallbacks!: Set<(event: BeforeChangeEvent) => void>
 
   // #region constructor
   constructor({
@@ -394,6 +399,9 @@ export class Store<TSchema extends LiveStoreSchema = LiveStoreSchema.Any, TConte
     // Build Sqlite wrapper last to avoid using getters before internals are set
     const sqliteDbWrapper = new SqliteDbWrapper({ otel: otelOptions, db: clientSession.sqliteDb })
 
+    // Lifecycle hooks callbacks storage
+    const beforeChangeCallbacks = new Set<(event: BeforeChangeEvent) => void>()
+
     // Initialize internals bag
     this[StoreInternalsSymbol] = {
       eventSchema: LiveStoreEvent.Client.makeSchemaMemo(schema) as Schema.Schema<
@@ -410,7 +418,32 @@ export class Store<TSchema extends LiveStoreSchema = LiveStoreSchema.Any, TConte
       syncProcessor,
       boot,
       isShutdown: false,
+
+      // Lifecycle hooks for framework integrations
+      subscribeToBeforeChange: (callback) => {
+        beforeChangeCallbacks.add(callback)
+        return () => {
+          beforeChangeCallbacks.delete(callback)
+        }
+      },
+      subscribeToAfterRefresh: (callback) => {
+        return reactivityGraph.subscribeToAfterRefresh((debugInfo) => {
+          const info: AfterRefreshInfo = {
+            reason: debugInfo.reason,
+            refreshedAtoms: debugInfo.refreshedAtoms.map((atom) => ({
+              label: atom.atom.label,
+              resultChanged: atom.resultChanged,
+            })),
+            skippedRefresh: debugInfo.skippedRefresh,
+            durationMs: debugInfo.durationMs,
+          }
+          callback(info)
+        })
+      },
     }
+
+    // Store reference to beforeChangeCallbacks for use in commit/setSignal
+    this.beforeChangeCallbacks = beforeChangeCallbacks
 
     // Initialize stable network status property from client session
     this.networkStatus = clientSession.leaderThread.networkStatus
@@ -697,6 +730,12 @@ export class Store<TSchema extends LiveStoreSchema = LiveStoreSchema.Any, TConte
 
     const signalRef = signalDef.make(this[StoreInternalsSymbol].reactivityGraph.context!)
     const newValue: T = typeof value === 'function' ? (value as any)(signalRef.value.get()) : value
+
+    // Notify before-change subscribers
+    for (const callback of this.beforeChangeCallbacks) {
+      callback({ _tag: 'setSignal', signal: signalDef, value: newValue })
+    }
+
     signalRef.value.set(newValue)
 
     // The current implementation of signals i.e. the separation into `signal-def` and `signal`
@@ -794,6 +833,11 @@ export class Store<TSchema extends LiveStoreSchema = LiveStoreSchema.Any, TConte
       }
 
       if (events.length === 0) return
+
+      // Notify before-change subscribers
+      for (const callback of this.beforeChangeCallbacks) {
+        callback({ _tag: 'commit', events })
+      }
 
       const localRuntime = yield* Effect.runtime()
 
