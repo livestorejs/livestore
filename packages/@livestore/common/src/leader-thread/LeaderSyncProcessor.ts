@@ -392,8 +392,12 @@ export const makeLeaderSyncProcessor = ({
         advancePushHead,
       }).pipe(
         Effect.retry({
+          // FIXME: shouldn't maybeShutdownOnError decide whether we shut down or not?
+          //  This will stop retrying if while returns false and require page refresh to reconnect
           // We want to retry pulling if we've lost connection to the sync backend
           while: (cause) => cause._tag === 'IsOfflineError',
+          // FIXME: make that configurable, should match the non-failure repeat inside
+          schedule: Schedule.spaced("10 seconds")
         }),
         Effect.catchAllCause(maybeShutdownOnError),
         // Needed to avoid `Fiber terminated with an unhandled error` logs which seem to happen because of the `Effect.retry` above.
@@ -951,8 +955,7 @@ const backgroundBackendPushing = ({
       // TODO(metrics): expose counters/gauges for retry attempts and queue health via devtools/metrics
 
       // Only retry for transient UnknownError cases
-      const isRetryable = (err: InvalidPushError | IsOfflineError) =>
-        err._tag === 'InvalidPushError' && err.cause._tag === 'LiveStore.UnknownError'
+      const isRetryable = (err: InvalidPushError | IsOfflineError) => err._tag === 'IsOfflineError'
 
       // Input: InvalidPushError | IsOfflineError, Output: Duration
       const retrySchedule: Schedule.Schedule<Duration.DurationInput, InvalidPushError | IsOfflineError> =
