@@ -722,7 +722,7 @@ const backgroundBackendPulling = ({
   isClientEvent: (eventEncoded: LiveStoreEvent.Client.EncodedWithMeta) => boolean
   restartBackendPushing: (
     filteredRebasedPending: ReadonlyArray<LiveStoreEvent.Client.EncodedWithMeta>,
-  ) => Effect.Effect<void, UnknownError, LeaderThreadCtx | HttpClient.HttpClient>
+  ) => Effect.Effect<void, UnknownError, Scope.Scope | LeaderThreadCtx | HttpClient.HttpClient>
   otelSpan: otel.Span | undefined
   syncStateSref: SubscriptionRef.SubscriptionRef<SyncState.SyncState | undefined>
   dbState: SqliteDb
@@ -743,7 +743,13 @@ const backgroundBackendPulling = ({
       newEvents: LiveStoreEvent.Client.EncodedWithMeta[],
       pageInfo: SyncBackend.PullResPageInfo,
     ) =>
-      Effect.gen(function* () {
+      Effect.scoped(Effect.gen(function* () {
+        yield* Effect.addFinalizer(() => Effect.gen(function* () {
+          // Allow local pushes to be processed again
+          if (pageInfo._tag === 'NoMore') {
+            yield* localPushesLatch.open
+          }
+        }))
         if (newEvents.length === 0) return
 
         if (devtoolsLatch !== undefined) {
@@ -862,12 +868,7 @@ const backgroundBackendPulling = ({
           yield* Effect.logDebug(`Updating syncState after pull: local=${localSeq}, upstream=${newHead}`)
         }
         yield* SubscriptionRef.set(syncStateSref, mergeResult.newSyncState)
-
-        // Allow local pushes to be processed again
-        if (pageInfo._tag === 'NoMore') {
-          yield* localPushesLatch.open
-        }
-      })
+      }))
 
     const syncState = yield* syncStateSref
     if (syncState === undefined) return shouldNeverHappen('Not initialized')
