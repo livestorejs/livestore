@@ -1,6 +1,7 @@
 import process from 'node:process'
 
 import { Effect, FileSystem, Layer, Logger, LogLevel, Option, Schema } from '@livestore/utils/effect'
+
 import { Cli, PlatformNode } from '@livestore/utils/node'
 import { cmd, cmdText, LivestoreWorkspace } from '@livestore/utils-dev/node'
 
@@ -17,6 +18,10 @@ import {
 } from '../../shared/cloudflare.ts'
 import { cloudflareExamples } from '../../shared/cloudflare-manifest.ts'
 import { appendGithubSummaryMarkdown, formatMarkdownTable } from '../../shared/misc.ts'
+
+export class ScriptError extends Schema.TaggedError<ScriptError>()('ScriptError', {
+  message: Schema.String,
+}) {}
 
 /**
  * Deploys the example gallery to Cloudflare Workers. Handles prod/dev/preview behaviour while
@@ -68,11 +73,9 @@ export const readExampleSlugs = Effect.fn('deploy-examples/readExampleSlugs')(fu
 export const ensureExampleExists = (example: string, available: readonly string[]) =>
   available.includes(example)
     ? Effect.succeed(example)
-    : Effect.fail(
-        new Error(
-          `Unknown example "${example}". Available examples: ${available.length > 0 ? available.join(', ') : 'none'}`,
-        ),
-      )
+    : new ScriptError({
+        message: `Unknown example "${example}". Available examples: ${available.length > 0 ? available.join(', ') : 'none'}`,
+      })
 
 export const runExampleTests = (examples: ReadonlyArray<string>, options: { skipMissing?: boolean } = {}) =>
   Effect.gen(function* () {
@@ -98,7 +101,7 @@ export const runExampleTests = (examples: ReadonlyArray<string>, options: { skip
           yield* Effect.logWarning(`Skipping ${example}: package.json not found`)
           continue
         }
-        return yield* Effect.fail(new Error(`Cannot run tests for ${example}: package.json not found`))
+        return yield* new ScriptError({ message: `Cannot run tests for ${example}: package.json not found` })
       }
 
       const packageJsonContent = yield* fs.readFileString(packageJsonPath)
@@ -109,7 +112,7 @@ export const runExampleTests = (examples: ReadonlyArray<string>, options: { skip
           yield* Effect.logWarning(`Skipping ${example}: unable to decode package.json`)
           continue
         }
-        return yield* Effect.fail(new Error(`Cannot run tests for ${example}: invalid package.json`))
+        return yield* new ScriptError({ message: `Cannot run tests for ${example}: invalid package.json` })
       }
 
       const packageJson = decoded.right
@@ -118,7 +121,7 @@ export const runExampleTests = (examples: ReadonlyArray<string>, options: { skip
           yield* Effect.logWarning(`Skipping ${example}: no test script defined`)
           continue
         }
-        return yield* Effect.fail(new Error(`Cannot run tests for ${example}: no test script defined`))
+        return yield* new ScriptError({ message: `Cannot run tests for ${example}: no test script defined` })
       }
 
       yield* Effect.log(`Running tests for ${example}`)

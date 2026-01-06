@@ -1,5 +1,9 @@
-import { Effect, FastCheck } from '@livestore/utils/effect'
+import { Effect, FastCheck, Schema } from '@livestore/utils/effect'
 import * as Vitest from './Vitest.ts'
+
+export class TestError extends Schema.TaggedError<TestError>()('TestError', {
+  message: Schema.String,
+}) {}
 
 // Demonstrate enhanced asProp functionality with clear shrinking progress
 // This showcases the fix for the "Run 26/6" bug and accurate shrinking detection
@@ -16,7 +20,7 @@ Vitest.describe('Vitest.asProp', () => {
       Effect.gen(function* () {
         const [value] = properties
         if (value === undefined) {
-          return yield* Effect.fail(new Error('Value is undefined'))
+          return yield* new TestError({ message: 'Value is undefined' })
         }
 
         console.log(
@@ -43,7 +47,7 @@ Vitest.describe('Vitest.asProp', () => {
       Effect.gen(function* () {
         const [value] = properties
         if (value === undefined) {
-          return yield* Effect.fail(new Error('Value is undefined'))
+          return yield* new TestError({ message: 'Value is undefined' })
         }
 
         const displayInfo =
@@ -59,7 +63,7 @@ Vitest.describe('Vitest.asProp', () => {
         // Fail when value is greater than 80 to trigger shrinking
         if (value > 80) {
           alreadyFailed = true
-          return yield* Effect.fail(new Error(`Value ${value} is too large (> 80)`))
+          return yield* new TestError({ message: `Value ${value} is too large (> 80)` })
         }
 
         if (alreadyFailed && enhanced._tag === 'shrinking') {
@@ -81,7 +85,7 @@ Vitest.describe('Vitest.asProp', () => {
       Effect.gen(function* () {
         const [value] = properties
         if (value === undefined) {
-          return yield* Effect.fail(new Error('Value is undefined'))
+          return yield* new TestError({ message: 'Value is undefined' })
         }
 
         console.log(
@@ -91,7 +95,7 @@ Vitest.describe('Vitest.asProp', () => {
 
         // This will fail but shrinking is disabled
         if (value > 50) {
-          return yield* Effect.fail(new Error(`Value ${value} is too large (> 50) - but no shrinking!`))
+          return yield* new TestError({ message: `Value ${value} is too large (> 50) - but no shrinking!` })
         }
 
         return

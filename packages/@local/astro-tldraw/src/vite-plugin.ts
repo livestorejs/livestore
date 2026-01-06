@@ -110,12 +110,10 @@ export const createTldrawPlugin = (options: TldrawPluginOptions = {}): MinimalVi
           const entry = getCacheEntry(manifest, entryRelative)
 
           if (!entry) {
-            return yield* Effect.fail(
-              new CachedDiagramMissingError({
-                entryRelative,
-                rebuildInstruction,
-              }),
-            )
+            return yield* new CachedDiagramMissingError({
+              entryRelative,
+              rebuildInstruction,
+            })
           }
 
           /* Load cached diagram */

@@ -1,11 +1,15 @@
 import * as fs from 'node:fs'
 import * as os from 'node:os'
 import * as path from 'node:path'
-import { Console, Effect } from '@livestore/utils/effect'
+import { Console, Effect, Schema } from '@livestore/utils/effect'
 import { Cli } from '@livestore/utils/node'
 import { cmd, cmdText, LivestoreWorkspace } from '@livestore/utils-dev/node'
 import { hasParentGitRepo } from '../shared/misc.ts'
 import { runPeerDepCheck } from '../shared/peer-deps.ts'
+
+export class LintError extends Schema.TaggedError<LintError>()('LintError', {
+  message: Schema.String,
+}) {}
 
 /**
  * Checks that no `.md` files contain ESM import statements.
@@ -33,7 +37,7 @@ const checkMdFilesNoImports = Effect.gen(function* () {
     yield* Console.error(
       `Error: Found .md files with import statements. These must be renamed to .mdx:\n${filesWithImports.map((p) => `  - ${p}`).join('\n')}`,
     )
-    return yield* Effect.fail(new Error('Found .md files with imports'))
+    return yield* new LintError({ message: 'Found .md files with imports' })
   }
 }).pipe(Effect.withSpan('checkMdFilesNoImports'))
 

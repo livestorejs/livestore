@@ -181,7 +181,7 @@ const renderSvgWithTheme = (
 
         const error = attemptResult.left
         if (attempt >= MAX_RETRIES) {
-          return yield* Effect.fail(error)
+          return yield* error
         }
 
         yield* Effect.logWarning(

@@ -118,7 +118,7 @@ export const makeWebSocketEdge = ({
               yield* isConnectedLatch.close
               return yield* Effect.interrupt
             } else {
-              return yield* Effect.fail(error)
+              return yield* error
             }
           }),
         ),

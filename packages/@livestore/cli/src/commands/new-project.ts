@@ -47,6 +47,10 @@ export class DirectoryExistsError extends Schema.TaggedError<DirectoryExistsErro
   message: Schema.String,
 }) {}
 
+export class NoExamplesError extends Schema.TaggedError<NoExamplesError>()('NoExamplesError', {
+  message: Schema.String,
+}) {}
+
 // Fetch available examples from GitHub
 const fetchExamples = (ref: string) =>
   Effect.gen(function* () {
@@ -92,7 +96,7 @@ const fetchExamples = (ref: string) =>
 const selectExample = (examples: string[]) =>
   Effect.gen(function* () {
     if (examples.length === 0) {
-      return yield* Effect.fail(new Error('No examples available'))
+      return yield* new NoExamplesError({ message: 'No examples available' })
     }
 
     const prompt = Cli.Prompt.select({

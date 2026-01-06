@@ -48,12 +48,10 @@ export const downloadChromeExtension = ({ version, targetDir }: { version?: stri
     )
 
     if (chromeExtensionAsset === undefined) {
-      return yield* Effect.fail(
-        new UnknownError({
-          cause: `Chrome extension asset not found in release ${releaseResponse.tag_name}`,
-          note: 'Expected to find an asset with name containing "chrome-extension" and ending with ".zip"',
-        }),
-      )
+      return yield* new UnknownError({
+        cause: `Chrome extension asset not found in release ${releaseResponse.tag_name}`,
+        note: 'Expected to find an asset with name containing "chrome-extension" and ending with ".zip"',
+      })
     }
 
     yield* Effect.logInfo(

@@ -60,7 +60,7 @@ const handleUnknownEvent = ({
 
     switch (config.strategy) {
       case 'fail': {
-        return yield* Effect.fail(error)
+        return yield* error
       }
       case 'warn': {
         yield* Effect.logWarning('@livestore/common:schema:unknown-event', context)

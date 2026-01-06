@@ -2,7 +2,11 @@ import * as ChildProcess from 'node:child_process'
 
 import * as EffectWorker from '@effect/platform/Worker'
 import { assert, describe, it } from '@effect/vitest'
-import { Chunk, Deferred, Effect, Exit, Fiber, Scope, Stream } from 'effect'
+import { Chunk, Deferred, Effect, Exit, Fiber, Schema, Scope, Stream } from 'effect'
+
+export class TestError extends Schema.TaggedError<TestError>()('TestError', {
+  message: Schema.String,
+}) {}
 
 import * as ChildProcessWorker from '../ChildProcessWorker.ts'
 import type { WorkerMessage } from './schema.ts'
@@ -84,7 +88,7 @@ describe('ChildProcessRunner', { timeout: 10_000 }, () => {
         const workerPid = yield* Deferred.await(workerPidDeferred).pipe(
           Effect.raceFirst(
             Fiber.join(fiber).pipe(
-              Effect.flatMap(() => Effect.fail(new Error('testEffect completed before reporting worker PID'))),
+              Effect.flatMap(() => new TestError({ message: 'testEffect completed before reporting worker PID' })),
             ),
           ),
           Effect.timeout(10_000),

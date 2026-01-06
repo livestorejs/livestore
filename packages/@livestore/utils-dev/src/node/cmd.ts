@@ -99,15 +99,13 @@ export const cmd: (
     : runWithoutLogging(baseArgs)
 
   if (exitCode !== SUCCESS_EXIT_CODE) {
-    return yield* Effect.fail(
-      CmdError.make({
-        command: command!,
-        args,
-        cwd,
-        env: options?.env ?? {},
-        stderr: stderrMode,
-      }),
-    )
+    return yield* CmdError.make({
+      command: command!,
+      args,
+      cwd,
+      env: options?.env ?? {},
+      stderr: stderrMode,
+    })
   }
 
   return exitCode

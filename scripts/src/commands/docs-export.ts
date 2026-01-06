@@ -453,12 +453,10 @@ const assertSnippetManifest = (docsRoot: string) =>
         return
       }
     }
-    return yield* Effect.fail(
-      new SnippetManifestMissing({
-        message: 'Snippet manifest not found. Run "bun ./scripts/src/mono.ts docs snippets build" first.',
-        checked: candidates,
-      }),
-    )
+    return yield* new SnippetManifestMissing({
+      message: 'Snippet manifest not found. Run "bun ./scripts/src/mono.ts docs snippets build" first.',
+      checked: candidates,
+    })
   })
 
 const writeDoc = (outputRoot: string, doc: DocMeta, content: string) =>

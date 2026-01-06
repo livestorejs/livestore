@@ -30,6 +30,10 @@ import {
 import { Cli, PlatformNode } from '@livestore/utils/node'
 import { cmd, cmdText, LivestoreWorkspace } from '@livestore/utils-dev/node'
 
+export class UpdateDepsError extends Schema.TaggedError<UpdateDepsError>()('UpdateDepsError', {
+  message: Schema.String,
+}) {}
+
 // Dependencies that should never be automatically updated
 const DEPENDENCY_DENY_LIST = [
   '@playwright/test', // Must be updated manually in lockstep with Nix flake dependency
@@ -74,12 +78,12 @@ const readPatchedDependencies = () =>
 
       const packageJsonContent = yield* Effect.try({
         try: () => fs.readFileSync(packageJsonPath, 'utf8'),
-        catch: () => new Error('Failed to read root package.json'),
+        catch: () => new UpdateDepsError({ message: 'Failed to read root package.json' }),
       })
 
       const packageJson = yield* Effect.try({
         try: () => JSON.parse(packageJsonContent),
-        catch: () => new Error('Failed to parse root package.json'),
+        catch: () => new UpdateDepsError({ message: 'Failed to parse root package.json' }),
       })
 
       const patchedDeps = packageJson?.pnpm?.patchedDependencies ?? {}
@@ -98,11 +102,11 @@ const discoverUpdates = (target: string) =>
       const ncuCommand = `bunx npm-check-updates --deep --jsonUpgraded --packageManager pnpm${target !== 'latest' ? ` --target ${target}` : ''}`
       const ncuOutput = yield* cmdText(ncuCommand).pipe(
         Effect.provide(LivestoreWorkspace.toCwd()),
-        Effect.catchAll((error) => Effect.fail(new Error(`Failed to run npm-check-updates: ${error}`))),
+        Effect.catchAll((error) => new UpdateDepsError({ message: `Failed to run npm-check-updates: ${error}` })),
       )
 
       const validated = yield* Schema.decodeUnknown(Schema.parseJson(NCUOutput))(ncuOutput).pipe(
-        Effect.mapError((error) => new Error(`Failed to parse NCU output: ${error}`)),
+        Effect.mapError((error) => new UpdateDepsError({ message: `Failed to parse NCU output: ${error}` })),
       )
 
       const totalUpdates = Object.values(validated).reduce((sum, updates) => sum + Object.keys(updates).length, 0)
@@ -124,7 +128,7 @@ const fetchExpoConstraints = () =>
       const expoVersion = yield* cmdText('pnpm view expo version').pipe(
         Effect.provide(LivestoreWorkspace.toCwd()),
         Effect.map((version) => version.trim().replace(/(\d+\.\d+)\.\d+/, '$1.0')),
-        Effect.catchAll((error) => Effect.fail(new Error(`Failed to get Expo version: ${error}`))),
+        Effect.catchAll((error) => new UpdateDepsError({ message: `Failed to get Expo version: ${error}` })),
       )
 
       yield* Console.log(`Using Expo SDK: ${expoVersion}`)
@@ -133,7 +137,7 @@ const fetchExpoConstraints = () =>
       const apiUrl = `https://api.expo.dev/v2/sdks/${expoVersion}/native-modules`
       const apiResponse = yield* HttpClient.get(apiUrl).pipe(
         Effect.andThen(HttpClientResponse.schemaBodyJson(ExpoApiResponse)),
-        Effect.mapError((error) => new Error(`Failed to fetch Expo constraints: ${error}`)),
+        Effect.mapError((error) => new UpdateDepsError({ message: `Failed to fetch Expo constraints: ${error}` })),
       )
 
       // Transform to package -> version mapping
@@ -229,12 +233,12 @@ const executeUpdates = (filteredUpdates: Record<string, Record<string, string>>,
             // Read current package.json
             const content = yield* Effect.try({
               try: () => fs.readFileSync(packageJsonPath, 'utf8'),
-              catch: () => new Error(`Failed to read ${packageJsonPath}`),
+              catch: () => new UpdateDepsError({ message: `Failed to read ${packageJsonPath}` }),
             })
 
             const packageJson = yield* Effect.try({
               try: () => JSON.parse(content),
-              catch: () => new Error(`Failed to parse ${packageJsonPath}`),
+              catch: () => new UpdateDepsError({ message: `Failed to parse ${packageJsonPath}` }),
             })
 
             // Update dependencies in all sections
@@ -253,7 +257,7 @@ const executeUpdates = (filteredUpdates: Record<string, Record<string, string>>,
             // Write back to file with consistent formatting
             yield* Effect.try({
               try: () => fs.writeFileSync(packageJsonPath, `${JSON.stringify(packageJson, null, 2)}\n`),
-              catch: () => new Error(`Failed to write ${packageJsonPath}`),
+              catch: () => new UpdateDepsError({ message: `Failed to write ${packageJsonPath}` }),
             })
 
             return { success: true } as const
@@ -307,7 +311,7 @@ export const updateDepsCommand = Cli.Command.make(
     // Validate target option
     const validTargets = ['latest', 'minor', 'patch']
     if (!validTargets.includes(target)) {
-      return yield* Effect.fail(new Error(`Invalid target: ${target}. Must be one of: ${validTargets.join(', ')}`))
+      return yield* new UpdateDepsError({ message: `Invalid target: ${target}. Must be one of: ${validTargets.join(', ')}` })
     }
 
     // Step 1: Read patched dependencies

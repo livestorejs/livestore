@@ -14,8 +14,11 @@ import {
   Layer,
   Logger,
   OtelTracer,
+  Schema,
 } from '@livestore/utils/effect'
+
 import { PlatformNode } from '@livestore/utils/node'
+
 import { OtelLiveHttp } from '@livestore/utils-dev/node'
 import { LIVESTORE_DEVTOOLS_CHROME_DIST_PATH } from '@local/shared'
 import type * as otel from '@opentelemetry/api'
@@ -23,6 +26,10 @@ import type * as PW from '@playwright/test'
 import { expect, test } from '@playwright/test'
 import { downloadChromeExtension } from '../../../../scripts/download-chrome-extension.ts'
 import { checkDevtoolsState, checkVersionMismatchOverlay } from './shared.ts'
+
+export class TestError extends Schema.TaggedError<TestError>()('TestError', {
+  message: Schema.String,
+}) {}
 
 const usedPages = new Set<PW.Page>()
 
@@ -180,7 +187,7 @@ const getExtensionPath = Effect.gen(function* () {
     Effect.gen(function* () {
       const fs = yield* FileSystem.FileSystem
       if ((yield* fs.exists(path)) === false) {
-        return yield* Effect.fail(new Error(`Chrome extension not found at ${path}`))
+        return yield* new TestError({ message: `Chrome extension not found at ${path}` })
       }
     }),
   ),
@@ -366,7 +373,7 @@ const PWLive = ({ extensionPath }: { extensionPath: string }) =>
       Effect.gen(function* () {
         const port = process.env.LIVESTORE_PLAYWRIGHT_DEV_SERVER_PORT
         if (!port) {
-          return yield* Effect.fail(new Error('LIVESTORE_PLAYWRIGHT_DEV_SERVER_PORT not set'))
+          return yield* new TestError({ message: 'LIVESTORE_PLAYWRIGHT_DEV_SERVER_PORT not set' })
         }
 
         // Open two tabs on different origins
