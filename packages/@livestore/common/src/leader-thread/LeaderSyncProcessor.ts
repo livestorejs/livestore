@@ -281,6 +281,7 @@ export const makeLeaderSyncProcessor = ({
       }
 
       /** State transitions need to happen atomically, so we use a Ref to track the state */
+      yield* Effect.logDebug(`Init syncState: local=${initialSyncState.localHead.global}, upstream=${initialSyncState.upstreamHead.global}`)
       yield* SubscriptionRef.set(syncStateSref, initialSyncState)
 
       // Rehydrate sync queue
@@ -324,14 +325,14 @@ export const makeLeaderSyncProcessor = ({
 
           // Handle other errors with existing logic
           if (onError === 'ignore') {
-            if (LS_DEV) {
-              yield* Effect.logDebug(
-                `Ignoring sync error (${cause._tag === 'Fail' ? cause.error._tag : cause._tag})`,
-                Cause.pretty(cause),
-              )
-            }
+            yield* Effect.logDebug(
+              `Ignoring sync error (${cause._tag === 'Fail' ? cause.error._tag : cause._tag})`,
+              Cause.pretty(cause),
+            )
             return
           }
+
+          yield* Effect.logError('leader thread crashed', cause)
 
           const errorToSend = Cause.isFailType(cause) ? cause.error : UnknownError.make({ cause })
           yield* shutdownChannel.send(errorToSend).pipe(Effect.orDie)
@@ -616,6 +617,11 @@ const backgroundApplyLocalPushes = ({
         }
       }
 
+      const localSeq = mergeResult.newSyncState.localHead.global
+      const upstreamSeq = mergeResult.newSyncState.upstreamHead.global
+      if (syncState.localHead.global != localSeq) {
+        yield* Effect.logDebug(`Updating syncState after local push: local=${localSeq}, upstream=${upstreamSeq}`)
+      }
       yield* SubscriptionRef.set(syncStateSref, mergeResult.newSyncState)
 
       yield* connectedClientSessionPullQueues.offer({
@@ -847,6 +853,11 @@ const backgroundBackendPulling = ({
 
         yield* materializeEventsBatch({ batchItems: mergeResult.newEvents, deferreds: undefined })
 
+        const localSeq = mergeResult.newSyncState.localHead.global
+        const newHead = mergeResult.newSyncState.upstreamHead.global
+        if (syncState.upstreamHead.global !== newHead) {
+          yield* Effect.logDebug(`Updating syncState after pull: local=${localSeq}, upstream=${newHead}`)
+        }
         yield* SubscriptionRef.set(syncStateSref, mergeResult.newSyncState)
 
         // Allow local pushes to be processed again
@@ -979,6 +990,8 @@ const backgroundBackendPushing = ({
             // It's a core part of the sync protocol that the sync backend will emit a new pull chunk alongside the ServerAheadError
             yield* Effect.logDebug('handled backend-push-error (waiting for interupt caused by pull)', { error })
             return yield* Effect.never
+          } else {
+            yield* Effect.logDebug('handled unknown backend-push-error', { error })
           }
 
           return yield* error
