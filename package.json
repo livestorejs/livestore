@@ -18,7 +18,7 @@
   "packageManager": "pnpm@10.17.1",
   "pnpm": {
     "patchedDependencies": {
-      "knip@5.79.0": "patches/knip@5.79.0.patch",
+      "knip@5.80.0": "patches/knip@5.80.0.patch",
       "starlight-contextual-menu@0.1.3": "patches/starlight-contextual-menu@0.1.3.patch",
       "starlight-markdown@0.1.5": "patches/starlight-markdown@0.1.5.patch"
     },
