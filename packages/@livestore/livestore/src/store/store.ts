@@ -976,6 +976,29 @@ export class Store<TSchema extends LiveStoreSchema = LiveStoreSchema.Any, TConte
   }
 
   /**
+   * Returns an Effect Stream of sync status updates.
+   *
+   * Emits the current status immediately and then whenever the sync state changes.
+   * Use this for Effect-based workflows or when you need more control over the stream.
+   *
+   * @example
+   * ```ts
+   * store.syncStatusStream().pipe(
+   *   Stream.tap((status) => Effect.log(`Sync status: ${status.isSynced}`)),
+   *   Stream.runDrain,
+   * )
+   * ```
+   */
+  syncStatusStream = (): Stream.Stream<SyncStatus> => {
+    const syncStateSubscribable = this[StoreInternalsSymbol].syncProcessor.syncState
+
+    return Stream.concat(
+      Stream.fromEffect(syncStateSubscribable.pipe(Effect.map(this.makeSyncStatus))),
+      syncStateSubscribable.changes.pipe(Stream.map(this.makeSyncStatus)),
+    )
+  }
+
+  /**
    * Subscribes to sync status changes.
    *
    * The callback is invoked immediately with the current status and then
@@ -993,46 +1016,33 @@ export class Store<TSchema extends LiveStoreSchema = LiveStoreSchema.Any, TConte
    * // Later, stop listening
    * unsubscribe()
    * ```
-   *
-   * @example
-   * ```ts
-   * // React usage (in a custom hook or effect)
-   * useEffect(() => {
-   *   return store.subscribeSyncStatus((status) => {
-   *     setSyncState(status)
-   *   })
-   * }, [store])
-   * ```
    */
   subscribeSyncStatus = (onUpdate: (status: SyncStatus) => void): Unsubscribe => {
     this.checkShutdown('subscribeSyncStatus')
 
-    const makeSyncStatus = (syncState: {
-      localHead: EventSequenceNumber.Client.Composite
-      upstreamHead: EventSequenceNumber.Client.Composite
-      pending: readonly any[]
-    }): SyncStatus => {
-      const pendingCount = syncState.pending.length
-
-      return {
-        localHead: EventSequenceNumber.Client.toString(syncState.localHead),
-        upstreamHead: EventSequenceNumber.Client.toString(syncState.upstreamHead),
-        pendingCount,
-        isSynced: pendingCount === 0,
-      }
-    }
-
-    const initialSyncState = this[StoreInternalsSymbol].syncProcessor.syncState.pipe(Effect.runSync)
-    onUpdate(makeSyncStatus(initialSyncState))
-
-    const fiber = this[StoreInternalsSymbol].syncProcessor.syncState.changes.pipe(
-      Stream.tap((syncState) => Effect.sync(() => onUpdate(makeSyncStatus(syncState)))),
+    const fiber = this.syncStatusStream().pipe(
+      Stream.tap((status) => Effect.sync(() => onUpdate(status))),
       Stream.runDrain,
       this.runEffectFork,
     )
 
     return () => {
       Fiber.interrupt(fiber).pipe(Runtime.runFork(this[StoreInternalsSymbol].effectContext.runtime))
+    }
+  }
+
+  private makeSyncStatus = (syncState: {
+    localHead: EventSequenceNumber.Client.Composite
+    upstreamHead: EventSequenceNumber.Client.Composite
+    pending: readonly any[]
+  }): SyncStatus => {
+    const pendingCount = syncState.pending.length
+
+    return {
+      localHead: EventSequenceNumber.Client.toString(syncState.localHead),
+      upstreamHead: EventSequenceNumber.Client.toString(syncState.upstreamHead),
+      pendingCount,
+      isSynced: pendingCount === 0,
     }
   }
 

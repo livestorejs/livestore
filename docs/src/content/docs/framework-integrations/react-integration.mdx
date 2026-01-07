@@ -220,6 +220,17 @@ const unsubscribe = store.subscribeSyncStatus((status) => {
 
 Returns an unsubscribe function.
 
+### `store.syncStatusStream()`
+
+Returns an Effect Stream of sync status updates. For Effect-based workflows.
+
+```ts
+store.syncStatusStream().pipe(
+  Stream.tap((status) => Effect.log(`Sync: ${status.isSynced}`)),
+  Stream.runDrain,
+)
+```
+
 ### `new StoreRegistry(config?)`
 
 Creates a registry that coordinates store loading, caching, and retention.
