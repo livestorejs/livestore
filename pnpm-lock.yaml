@@ -180,9 +180,9 @@ overrides:
   puppeteer: 23.11.1
 
 patchedDependencies:
-  knip@5.79.0:
-    hash: 8d7c600785235d3bed6f9b7899a2f9ff31cb2b274f8f4a3fced22df73ed5f295
-    path: patches/knip@5.79.0.patch
+  knip@5.80.0:
+    hash: deecfd9ef9113112cfad6ededfcbe1f12b7269c5fc082724e91c4a476bac7cb7
+    path: patches/knip@5.80.0.patch
   starlight-contextual-menu@0.1.3:
     hash: 102253fd3bdb5ceed9522afe86d06341e63052dd22c734bdd9a2af790abc0545
     path: patches/starlight-contextual-menu@0.1.3.patch
