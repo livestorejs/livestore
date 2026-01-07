@@ -108,6 +108,23 @@ export const makeClientSessionSyncProcessor = ({
   /** We're queuing push requests to reduce the number of messages sent to the leader by batching them */
   const leaderPushQueue = BucketQueue.make<LiveStoreEvent.Client.EncodedWithMeta>().pipe(Effect.runSync)
 
+  /**
+   * Buffer for session-computed materializer hashes awaiting verification via hash-correction.
+   *
+   * When events are materialized, their computed hashes are stored here keyed by sequence number.
+   * When a hash-correction message arrives from the leader, we compare the leader's hash against
+   * our stored hash and log a warning on mismatch.
+   *
+   * This is part of the deferred hash verification flow that fixes false positives for
+   * materializers using ctx.query(). See PayloadUpstreamHashCorrection for full design context.
+   *
+   * @see https://github.com/livestorejs/livestore/issues/852
+   */
+  const pendingHashVerifications = new Map<
+    string, // Stringified seqNum for reliable key comparison
+    { seqNum: EventSequenceNumber.Client.Composite; sessionHash: number; eventName: string }
+  >()
+
   const push: ClientSessionSyncProcessor['push'] = Effect.fn('client-session-sync-processor:push')(function* (batch) {
     // TODO validate batch
 
@@ -234,6 +251,39 @@ export const makeClientSessionSyncProcessor = ({
             yield* clientSession.devtools.pullLatch.await
           }
 
+          // Handle hash-correction separately - it doesn't affect sync state, only verifies hashes
+          if (payload._tag === 'upstream-hash-correction') {
+            for (const { seqNum, hash: leaderHash } of payload.hashes) {
+              const seqNumKey = EventSequenceNumber.Client.toString(seqNum)
+              const pending = pendingHashVerifications.get(seqNumKey)
+
+              if (pending === undefined) {
+                // Session hasn't materialized this event yet, or it was already verified.
+                // This can happen if:
+                // - Hash correction arrived before events (rare, due to ordering)
+                // - Event was already cleaned up from the buffer
+                // Either way, we can safely skip - this is best-effort verification.
+                continue
+              }
+
+              // Compare hashes and log warning on mismatch
+              if (pending.sessionHash !== leaderHash) {
+                // Log warning instead of throwing error - this is a dev-time diagnostic
+                console.warn(
+                  `[LiveStore] Materializer hash mismatch detected for event "${pending.eventName}"`,
+                  `(seqNum: ${seqNumKey}).`,
+                  'This may indicate an impure materializer with side effects.',
+                  'Please ensure materializers are pure functions.',
+                  { sessionHash: pending.sessionHash, leaderHash },
+                )
+              }
+
+              // Clean up after verification (successful or not)
+              pendingHashVerifications.delete(seqNumKey)
+            }
+            return
+          }
+
           const mergeResult = SyncState.merge({
             syncState: syncStateRef.current,
             payload,
@@ -327,6 +377,7 @@ export const makeClientSessionSyncProcessor = ({
               materializerHash,
             } = yield* materializeEvent(event, {
               withChangeset: true,
+              // Note: materializerHashLeader is now Option.none() - verification happens via hash-correction
               materializerHashLeader: event.meta.materializerHashLeader,
             })
             for (const table of newWriteTables) {
@@ -335,6 +386,17 @@ export const makeClientSessionSyncProcessor = ({
 
             event.meta.sessionChangeset = sessionChangeset
             event.meta.materializerHashSession = materializerHash
+
+            // Store session hash for deferred verification when hash-correction arrives
+            // Only store if hash was computed (dev mode only, known event definitions)
+            if (materializerHash._tag === 'Some') {
+              const seqNumKey = EventSequenceNumber.Client.toString(event.seqNum)
+              pendingHashVerifications.set(seqNumKey, {
+                seqNum: event.seqNum,
+                sessionHash: materializerHash.value,
+                eventName: event.name,
+              })
+            }
           }
 
           refreshTables(writeTables)

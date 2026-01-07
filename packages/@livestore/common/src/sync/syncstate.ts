@@ -69,13 +69,73 @@ export class PayloadUpstreamAdvance extends Schema.TaggedStruct('upstream-advanc
   newEvents: Schema.Array(LiveStoreEvent.Client.EncodedWithMeta),
 }) {}
 
+/**
+ * Hash correction payload sent by the leader after materializing a batch of events.
+ *
+ * ## Design Context
+ *
+ * The materializer hash check detects impure materializers (those with side effects) during
+ * development. The original design computed hashes in the leader before broadcasting events,
+ * but this caused false positives for materializers using `ctx.query()` because:
+ *
+ * 1. Leader computes hashes for ALL events in a batch against the PRE-batch database state
+ * 2. Session computes hashes progressively as each event is materialized
+ * 3. For events 2+ in a batch, the database states differ, causing hash mismatches
+ *
+ * ## Solution: Deferred Hash Verification
+ *
+ * Instead of computing hashes before broadcasting, the leader now:
+ * 1. Broadcasts events immediately (with `materializerHashLeader: Option.none()`)
+ * 2. Materializes events one-by-one, computing the correct hash after each
+ * 3. Sends this `hash-correction` message with the correctly-computed hashes
+ *
+ * The session:
+ * 1. Receives events and materializes them (computing its own hashes)
+ * 2. Buffers computed hashes pending verification
+ * 3. When hash-correction arrives, compares and logs warnings on mismatch
+ *
+ * ## Trade-offs
+ *
+ * - **Pro**: Eliminates false positives for `ctx.query()` materializers
+ * - **Pro**: No latency impact on event delivery (events broadcast immediately)
+ * - **Con**: Adds protocol complexity (new message type)
+ * - **Con**: Session must buffer pending verifications (memory overhead)
+ * - **Con**: Hash verification is asynchronous (not immediate on mismatch)
+ *
+ * ## Edge Cases
+ *
+ * - If correction arrives before events: Session ignores (no pending hashes to verify)
+ * - If session disconnects before correction: Pending verifications are dropped (acceptable
+ *   since this is a dev-time diagnostic, not a correctness requirement)
+ * - If correction is lost: Same as above, verification is best-effort
+ *
+ * @see https://github.com/livestorejs/livestore/issues/852
+ * @see https://github.com/livestorejs/livestore/issues/503
+ */
+export class PayloadUpstreamHashCorrection extends Schema.TaggedStruct('upstream-hash-correction', {
+  /**
+   * Array of event sequence numbers and their correctly-computed materializer hashes.
+   * Only includes events where hash was computable (known event definitions).
+   */
+  hashes: Schema.Array(
+    Schema.Struct({
+      seqNum: EventSequenceNumber.Client.Composite,
+      hash: Schema.Number,
+    }),
+  ),
+}) {}
+
 export class PayloadLocalPush extends Schema.TaggedStruct('local-push', {
   newEvents: Schema.Array(LiveStoreEvent.Client.EncodedWithMeta),
 }) {}
 
 export class Payload extends Schema.Union(PayloadUpstreamRebase, PayloadUpstreamAdvance, PayloadLocalPush) {}
 
-export class PayloadUpstream extends Schema.Union(PayloadUpstreamRebase, PayloadUpstreamAdvance) {}
+export class PayloadUpstream extends Schema.Union(
+  PayloadUpstreamRebase,
+  PayloadUpstreamAdvance,
+  PayloadUpstreamHashCorrection,
+) {}
 
 /** Only used for debugging purposes */
 export class MergeContext extends Schema.Class<MergeContext>('MergeContext')({

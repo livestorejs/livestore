@@ -9,7 +9,6 @@ import {
   isQueryBuilder,
   liveStoreVersion,
   MaterializeError,
-  MaterializerHashMismatchError,
   makeClientSessionSyncProcessor,
   type PreparedBindValues,
   prepareBindValues,
@@ -241,16 +240,36 @@ export class Store<TSchema extends LiveStoreSchema = LiveStoreSchema.Any, TConte
 
             const materializerHash = isDevEnv() ? Option.some(hashMaterializerResults(execArgsArr)) : Option.none()
 
-            // Hash mismatch detection only occurs during the pull path (when receiving events from the leader).
-            // During push path (local commits), materializerHashLeader is always Option.none(), so this condition
-            // will never be met. The check happens when the same event comes back from the leader during sync,
-            // allowing us to compare the leader's computed hash with our local re-materialization hash.
+            // NOTE: Hash verification is now handled via the deferred hash-correction flow.
+            //
+            // Previously, this code compared materializerHashLeader (computed before materialization)
+            // with materializerHash (computed during materialization). This caused false positives for
+            // materializers using ctx.query() because the leader computed hashes for all events in a
+            // batch against the PRE-batch database state.
+            //
+            // The new flow:
+            // 1. Leader sends events with materializerHashLeader: Option.none()
+            // 2. Session materializes and stores computed hash in pendingHashVerifications buffer
+            // 3. Leader sends hash-correction message with post-materialization hashes
+            // 4. Session compares and logs warning on mismatch (non-fatal)
+            //
+            // This code path is now effectively dead since materializerHashLeader is always Option.none()
+            // for events received from the leader. We keep it for backwards compatibility in case
+            // older leaders send pre-computed hashes.
+            //
+            // See: https://github.com/livestorejs/livestore/issues/852
             if (
               materializerHashLeader._tag === 'Some' &&
               materializerHash._tag === 'Some' &&
               materializerHashLeader.value !== materializerHash.value
             ) {
-              return yield* MaterializerHashMismatchError.make({ eventName: eventEncoded.name })
+              // Log warning instead of throwing - this is now a dev-time diagnostic, not a fatal error
+              console.warn(
+                `[LiveStore] Materializer hash mismatch detected for event "${eventEncoded.name}"`,
+                '(legacy pre-computed hash path).',
+                'This may indicate an impure materializer with side effects.',
+                { leaderHash: materializerHashLeader.value, sessionHash: materializerHash.value },
+              )
             }
 
             const span = yield* OtelTracer.currentOtelSpan.pipe(Effect.orDie)

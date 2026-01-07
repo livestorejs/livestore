@@ -20,7 +20,6 @@ import {
 } from '@livestore/utils/effect'
 import type * as otel from '@opentelemetry/api'
 import { type IntentionalShutdownCause, type MaterializeError, type SqliteDb, UnknownError } from '../adapter-types.ts'
-import { makeMaterializerHash } from '../materializer-helper.ts'
 import type { LiveStoreSchema } from '../schema/mod.ts'
 import { EventSequenceNumber, LiveStoreEvent, resolveEventDef, SystemTables } from '../schema/mod.ts'
 import {
@@ -79,7 +78,7 @@ type LocalPushQueueItem = [
  */
 export const makeLeaderSyncProcessor = ({
   schema,
-  dbState,
+  dbState: _dbState, // NOTE: dbState is now accessed from LeaderThreadCtx instead of being passed as parameter
   initialBlockingSyncContext,
   initialSyncState,
   onError,
@@ -362,7 +361,6 @@ export const makeLeaderSyncProcessor = ({
         localPushesLatch,
         pullLatch,
         livePull,
-        dbState,
         otelSpan,
         initialBlockingSyncContext,
         devtoolsLatch: ctxRef.current?.devtoolsLatch,
@@ -619,12 +617,44 @@ const backgroundApplyLocalPushes = ({
 
       yield* BucketQueue.offerAll(syncBackendPushQueue, filteredBatch)
 
-      yield* materializeEventsBatch({ batchItems: mergeResult.newEvents, deferreds })
+      const { computedHashes } = yield* materializeEventsBatch({ batchItems: mergeResult.newEvents, deferreds })
+
+      // Send hash-correction message to client sessions so they can verify their computed hashes
+      // against the leader's post-materialization hashes. This is part of the deferred hash
+      // verification flow that fixes false positives for ctx.query() materializers.
+      // See: https://github.com/livestorejs/livestore/issues/852
+      if (computedHashes.length > 0) {
+        yield* connectedClientSessionPullQueues.offer({
+          payload: SyncState.PayloadUpstreamHashCorrection.make({ hashes: computedHashes }),
+          leaderHead: mergeResult.newSyncState.localHead,
+        })
+      }
 
       // Allow the backend pulling to start
       yield* pullLatch.open
     }
   })
+
+/**
+ * Result of materializing a batch of events, including computed hashes for hash-correction.
+ *
+ * The hashes are computed AFTER each event is materialized, ensuring they reflect the correct
+ * database state. This is critical for the deferred hash verification flow - see
+ * {@link SyncState.PayloadUpstreamHashCorrection} for the full design context.
+ */
+type MaterializeEventsBatchResult = {
+  /**
+   * Computed materializer hashes for events in this batch.
+   * Only includes events where:
+   * - `isDevEnv()` is true (hash computation is dev-only)
+   * - Event definition exists (unknown events are skipped)
+   * - Materializer exists for the event
+   */
+  computedHashes: ReadonlyArray<{
+    seqNum: EventSequenceNumber.Client.Composite
+    hash: number
+  }>
+}
 
 type MaterializeEventsBatch = (_: {
   batchItems: ReadonlyArray<LiveStoreEvent.Client.EncodedWithMeta>
@@ -633,7 +663,7 @@ type MaterializeEventsBatch = (_: {
    * Indexes are aligned with `batchItems`
    */
   deferreds: ReadonlyArray<Deferred.Deferred<void, LeaderAheadError> | undefined> | undefined
-}) => Effect.Effect<void, MaterializeError, LeaderThreadCtx>
+}) => Effect.Effect<MaterializeEventsBatchResult, MaterializeError, LeaderThreadCtx>
 
 // TODO how to handle errors gracefully
 const materializeEventsBatch: MaterializeEventsBatch = ({ batchItems, deferreds }) =>
@@ -654,10 +684,24 @@ const materializeEventsBatch: MaterializeEventsBatch = ({ batchItems, deferreds 
       }),
     )
 
+    // Collect hashes as we materialize each event. The hash is computed AFTER materialization
+    // so it reflects the correct post-event database state. This fixes the batching bug where
+    // pre-computed hashes used stale state for events 2+ in a batch.
+    // See: https://github.com/livestorejs/livestore/issues/852
+    const computedHashes: Array<{ seqNum: EventSequenceNumber.Client.Composite; hash: number }> = []
+
     for (let i = 0; i < batchItems.length; i++) {
       const { sessionChangeset, hash } = yield* materializeEvent(batchItems[i]!)
       batchItems[i]!.meta.sessionChangeset = sessionChangeset
       batchItems[i]!.meta.materializerHashLeader = hash
+
+      // Collect hash for hash-correction message (only if hash was computed)
+      if (hash._tag === 'Some') {
+        computedHashes.push({
+          seqNum: batchItems[i]!.seqNum,
+          hash: hash.value,
+        })
+      }
 
       if (deferreds?.[i] !== undefined) {
         yield* Deferred.succeed(deferreds[i]!, void 0)
@@ -666,6 +710,8 @@ const materializeEventsBatch: MaterializeEventsBatch = ({ batchItems, deferreds 
 
     db.execute('COMMIT', undefined) // Commit the transaction
     dbEventlog.execute('COMMIT', undefined) // Commit the transaction
+
+    return { computedHashes }
   }).pipe(
     Effect.uninterruptible,
     Effect.scoped,
@@ -679,7 +725,6 @@ const backgroundBackendPulling = ({
   isClientEvent,
   restartBackendPushing,
   otelSpan,
-  dbState,
   syncStateSref,
   localPushesLatch,
   livePull,
@@ -695,7 +740,6 @@ const backgroundBackendPulling = ({
   ) => Effect.Effect<void, UnknownError, LeaderThreadCtx | HttpClient.HttpClient>
   otelSpan: otel.Span | undefined
   syncStateSref: SubscriptionRef.SubscriptionRef<SyncState.SyncState | undefined>
-  dbState: SqliteDb
   localPushesLatch: Effect.Latch
   pullLatch: Effect.Latch
   livePull: boolean
@@ -824,7 +868,21 @@ const backgroundBackendPulling = ({
 
         advancePushHead(mergeResult.newSyncState.localHead)
 
-        yield* materializeEventsBatch({ batchItems: mergeResult.newEvents, deferreds: undefined })
+        const { computedHashes } = yield* materializeEventsBatch({
+          batchItems: mergeResult.newEvents,
+          deferreds: undefined,
+        })
+
+        // Send hash-correction message to client sessions so they can verify their computed hashes
+        // against the leader's post-materialization hashes. This is part of the deferred hash
+        // verification flow that fixes false positives for ctx.query() materializers.
+        // See: https://github.com/livestorejs/livestore/issues/852
+        if (computedHashes.length > 0) {
+          yield* connectedClientSessionPullQueues.offer({
+            payload: SyncState.PayloadUpstreamHashCorrection.make({ hashes: computedHashes }),
+            leaderHead: mergeResult.newSyncState.localHead,
+          })
+        }
 
         yield* SubscriptionRef.set(syncStateSref, mergeResult.newSyncState)
 
@@ -838,18 +896,23 @@ const backgroundBackendPulling = ({
     if (syncState === undefined) return shouldNeverHappen('Not initialized')
     const cursorInfo = yield* Eventlog.getSyncBackendCursorInfo({ remoteHead: syncState.upstreamHead.global })
 
-    const hashMaterializerResult = makeMaterializerHash({ schema, dbState })
+    // NOTE: We intentionally do NOT compute materializer hashes here (before materialization).
+    // Previously, hashes were computed for all events in a batch against the PRE-batch database
+    // state, which caused false positives for materializers using ctx.query(). The hash for
+    // event N depends on the database state AFTER events 1..N-1 are materialized.
+    //
+    // Instead, we now:
+    // 1. Send events immediately with materializerHashLeader: Option.none()
+    // 2. Compute correct hashes during materializeEventsBatch (after each event)
+    // 3. Send a hash-correction message with the correctly-computed hashes
+    //
+    // See: https://github.com/livestorejs/livestore/issues/852 (this fix)
+    // See: https://github.com/livestorejs/livestore/issues/503 (original bug report)
 
     yield* syncBackend.pull(cursorInfo, { live: livePull }).pipe(
       // TODO only take from queue while connected
       Stream.tap(({ batch, pageInfo }) =>
         Effect.gen(function* () {
-          // yield* Effect.spanEvent('batch', {
-          //   attributes: {
-          //     batchSize: batch.length,
-          //     batch: TRACE_VERBOSE ? batch : undefined,
-          //   },
-          // })
           // NOTE we only want to take process events when the sync backend is connected
           // (e.g. needed for simulating being offline)
           // TODO remove when there's a better way to handle this in stream above
@@ -858,9 +921,8 @@ const backgroundBackendPulling = ({
             batch.map((_) =>
               LiveStoreEvent.Client.EncodedWithMeta.fromGlobal(_.eventEncoded, {
                 syncMetadata: _.metadata,
-                // TODO we can't really know the materializer result here yet beyond the first event batch item as we need to materialize it one by one first
-                // This is a bug and needs to be fixed https://github.com/livestorejs/livestore/issues/503#issuecomment-3114533165
-                materializerHashLeader: hashMaterializerResult(LiveStoreEvent.Global.toClientEncoded(_.eventEncoded)),
+                // Hash is not computed here - see comment above. Will be sent via hash-correction.
+                materializerHashLeader: Option.none(),
                 materializerHashSession: Option.none(),
               }),
             ),

@@ -418,14 +418,24 @@ Vitest.describe.concurrent('ClientSessionSyncProcessor', () => {
     }).pipe(withTestCtx(test)),
   )
 
-  // This test covers the client-session-side hash mismatch detection, which occurs during the pull path (when receiving events from the leader).
-  Vitest.scopedLive('should fail gracefully if client-session-side materializer hash mismatch is detected', (test) =>
+  // This test covers the client-session-side hash mismatch detection, which occurs during the pull path
+  // (when receiving events from the leader).
+  //
+  // NOTE: As of the deferred hash verification fix (https://github.com/livestorejs/livestore/issues/852),
+  // hash mismatches from the leader now log a warning instead of causing a shutdown. This is because:
+  // 1. Events now arrive with materializerHashLeader: Option.none() (hashes computed post-materialization)
+  // 2. Leader sends hash-correction messages with correct hashes after materialization
+  // 3. Session compares and logs warnings on mismatch (non-fatal)
+  //
+  // This test verifies the legacy path (when materializerHashLeader is Some) still works gracefully.
+  Vitest.scopedLive('should log warning for legacy client-session-side materializer hash mismatch', (test) =>
     Effect.gen(function* () {
       const pullQueue = yield* Queue.unbounded<LiveStoreEvent.Client.EncodedWithMeta>()
+      const consoleWarnSpy = Vitest.vi.spyOn(console, 'warn').mockImplementation(() => {})
 
-      const { makeStore, shutdownDeferred } = yield* TestContext
+      const { makeStore } = yield* TestContext
 
-      yield* makeStore({
+      const store = yield* makeStore({
         testing: {
           overrides: {
             clientSession: {
@@ -452,15 +462,15 @@ Vitest.describe.concurrent('ClientSessionSyncProcessor', () => {
       // Create an event that comes from the leader with a specific hash that won't match the client-side materializer's computed hash.
       const eventFromLeader = LiveStoreEvent.Client.EncodedWithMeta.make({
         ...encode(events.todoCreated({ id: 'test-id', text: 'from-leader', completed: false })),
-        seqNum: EventSequenceNumber.Client.Composite.make({ global: 0, client: 1 }),
+        seqNum: EventSequenceNumber.Client.Composite.make({ global: 1, client: 0 }),
         parentSeqNum: EventSequenceNumber.Client.ROOT,
-        clientId: 'this-client',
-        sessionId: 'static-session-id',
+        clientId: 'other-client',
+        sessionId: 'other-session-id',
         meta: {
           sessionChangeset: { _tag: 'no-op' } as const,
           syncMetadata: Option.none(),
           materializerHashSession: Option.none(),
-          // Set a leader hash that won't match what our non-deterministic materializer computes
+          // Set a leader hash that won't match what the materializer computes (legacy path)
           materializerHashLeader: Option.some(99), // This hash will not match the computed hash
         },
       })
@@ -468,10 +478,22 @@ Vitest.describe.concurrent('ClientSessionSyncProcessor', () => {
       // Send the event from the leader to trigger the pull path
       yield* Queue.offer(pullQueue, eventFromLeader)
 
-      // Wait for the shutdown to be triggered by the client-side hash mismatch detection
-      const error = yield* shutdownDeferred.pipe(Effect.flip)
+      // Give the event time to be processed
+      yield* Effect.sleep(100)
 
-      expect(error._tag).toEqual('LiveStore.MaterializeError')
+      // Verify a warning was logged (not a fatal error)
+      expect(consoleWarnSpy).toHaveBeenCalledWith(
+        expect.stringContaining('[LiveStore] Materializer hash mismatch detected'),
+        expect.anything(),
+        expect.anything(),
+        expect.anything(),
+      )
+
+      // Verify the store is still operational (didn't shut down)
+      // The store can still process queries - this would throw if the store was shut down
+      expect(() => store.storeId).not.toThrow()
+
+      consoleWarnSpy.mockRestore()
     }).pipe(withTestCtx(test)),
   )
 
