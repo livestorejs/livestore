@@ -44,7 +44,7 @@ test(
       })
 
       expect(exit).toStrictEqual(
-        Exit.fail(UnknownError.make({ cause: new Error('Boom!', { cause: { name: 'Error', message: 'Boom!' } }) })),
+        Exit.fail(UnknownError.make({ cause: new Error('Boom!', { cause: { name: 'TestError', message: 'Boom!' } }) })),
       )
     }),
   ),
