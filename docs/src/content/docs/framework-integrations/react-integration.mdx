@@ -178,6 +178,48 @@ React.useState-like hook for client-document tables.
 - Works only with tables defined via `State.SQLite.clientDocument()`
 - If the table has a default id, the `id` argument is optional
 
+### `store.useSyncStatus()`
+
+React hook that subscribes to sync status changes. Re-renders the component when sync status changes.
+
+```tsx
+function SyncIndicator() {
+  const store = useStore(storeOptions)
+  const status = store.useSyncStatus()
+  
+  return <span>{status.isSynced ? '✓ Synced' : `Syncing (${status.pendingCount} pending)...`}</span>
+}
+```
+
+Returns a `SyncStatus` object:
+- `localHead` - The most recent event sequence number in the client session
+- `upstreamHead` - The confirmed head from the leader thread
+- `pendingCount` - Number of events pending synchronization
+- `isSynced` - Whether all local events have been synced
+
+### `store.syncStatus()`
+
+Returns the current synchronization status (non-reactive, synchronous).
+
+```ts
+const status = store.syncStatus()
+// { localHead: 'e5.2', upstreamHead: 'e3', pendingCount: 2, isSynced: false }
+```
+
+This is useful for one-off health checks outside of React components.
+
+### `store.subscribeSyncStatus(callback)`
+
+Subscribes to sync status changes (callback-based, for non-React usage).
+
+```ts
+const unsubscribe = store.subscribeSyncStatus((status) => {
+  console.log(status.isSynced ? 'Synced' : 'Syncing...')
+})
+```
+
+Returns an unsubscribe function.
+
 ### `new StoreRegistry(config?)`
 
 Creates a registry that coordinates store loading, caching, and retention.

@@ -56,6 +56,7 @@ import {
   StoreInternalsSymbol,
   type StoreOtel,
   type SubscribeOptions,
+  type SyncStatus,
   type Unsubscribe,
 } from './store-types.ts'
 
@@ -936,6 +937,103 @@ export class Store<TSchema extends LiveStoreSchema = LiveStoreSchema.Any, TConte
       Stream.catchTag('ParseError', (cause) => Stream.fail(UnknownError.make({ cause }))),
       Stream.tapError((error) => Effect.logError('Error in eventsStream', error)),
     )
+  }
+
+  /**
+   * Returns the current synchronization status of the store.
+   *
+   * This is a synchronous operation that returns the sync state between the
+   * client session and the leader thread. Use this to display sync indicators
+   * or check if local changes have been pushed to the leader.
+   *
+   * @example
+   * ```ts
+   * const status = store.syncStatus()
+   * console.log(status.isSynced ? 'Synced' : `${status.pendingCount} pending`)
+   * ```
+   *
+   * @example
+   * ```ts
+   * // Health check for backend connectivity
+   * const status = store.syncStatus()
+   * if (!status.isSynced && status.pendingCount > 100) {
+   *   console.warn('Large backlog of unsynced events')
+   * }
+   * ```
+   */
+  syncStatus = (): SyncStatus => {
+    this.checkShutdown('syncStatus')
+
+    const syncState = this[StoreInternalsSymbol].syncProcessor.syncState.pipe(Effect.runSync)
+    const localHead = syncState.localHead
+    const upstreamHead = syncState.upstreamHead
+    const pendingCount = syncState.pending.length
+
+    return {
+      localHead: `e${localHead.global}${localHead.client > 0 ? `.${localHead.client}` : ''}`,
+      upstreamHead: `e${upstreamHead.global}${upstreamHead.client > 0 ? `.${upstreamHead.client}` : ''}`,
+      pendingCount,
+      isSynced: pendingCount === 0,
+    }
+  }
+
+  /**
+   * Subscribes to sync status changes.
+   *
+   * The callback is invoked immediately with the current status and then
+   * whenever the sync state changes (e.g., when events are pushed or confirmed).
+   *
+   * @param onUpdate - Callback invoked with the current sync status
+   * @returns Unsubscribe function to stop receiving updates
+   *
+   * @example
+   * ```ts
+   * const unsubscribe = store.subscribeSyncStatus((status) => {
+   *   updateUI(status.isSynced ? 'Synced' : 'Syncing...')
+   * })
+   *
+   * // Later, stop listening
+   * unsubscribe()
+   * ```
+   *
+   * @example
+   * ```ts
+   * // React usage (in a custom hook or effect)
+   * useEffect(() => {
+   *   return store.subscribeSyncStatus((status) => {
+   *     setSyncState(status)
+   *   })
+   * }, [store])
+   * ```
+   */
+  subscribeSyncStatus = (onUpdate: (status: SyncStatus) => void): Unsubscribe => {
+    this.checkShutdown('subscribeSyncStatus')
+
+    const makeSyncStatus = (syncState: { localHead: any; upstreamHead: any; pending: readonly any[] }): SyncStatus => {
+      const localHead = syncState.localHead
+      const upstreamHead = syncState.upstreamHead
+      const pendingCount = syncState.pending.length
+
+      return {
+        localHead: `e${localHead.global}${localHead.client > 0 ? `.${localHead.client}` : ''}`,
+        upstreamHead: `e${upstreamHead.global}${upstreamHead.client > 0 ? `.${upstreamHead.client}` : ''}`,
+        pendingCount,
+        isSynced: pendingCount === 0,
+      }
+    }
+
+    const initialSyncState = this[StoreInternalsSymbol].syncProcessor.syncState.pipe(Effect.runSync)
+    onUpdate(makeSyncStatus(initialSyncState))
+
+    const fiber = this[StoreInternalsSymbol].syncProcessor.syncState.changes.pipe(
+      Stream.tap((syncState) => Effect.sync(() => onUpdate(makeSyncStatus(syncState)))),
+      Stream.runDrain,
+      this.runEffectFork,
+    )
+
+    return () => {
+      Fiber.interrupt(fiber).pipe(Runtime.runFork(this[StoreInternalsSymbol].effectContext.runtime))
+    }
   }
 
   /**

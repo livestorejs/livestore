@@ -11,4 +11,5 @@ export {
 } from './useClientDocument.ts'
 export { useQuery, useQueryRef } from './useQuery.ts'
 export { type ReactApi, useStore, withReactApi } from './useStore.ts'
+export { useSyncStatus } from './useSyncStatus.ts'
 export { useStackInfo } from './utils/stack-info.ts'
