@@ -20,7 +20,7 @@
     "@types/bun": "catalog:",
     "@types/node": "catalog:",
     "@types/semver": "^7.7.0",
-    "knip": "^5.79.0",
+    "knip": "5.80.0",
     "semver": "^7.7.3",
     "yaml": "^2.8.1"
   }

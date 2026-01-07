@@ -7,6 +7,9 @@ import { Effect, FileSystem, type Mailbox, Schema } from '@livestore/utils/effec
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url))
 
+// Use package-local temp directory for test config files to ensure proper module resolution
+const tmpDir = path.join(__dirname, '.tmp-test-configs')
+
 const items = State.SQLite.table({
   name: 'items',
   columns: {
@@ -33,7 +36,6 @@ const state = State.SQLite.makeState({
 
 export const schema = makeSchema({ state, events })
 
-const tmpDir = path.join(process.cwd(), 'tmp', 'cli-sync-tests')
 const schemaModuleUrl = pathToFileURL(path.join(__dirname, 'mock-config.ts')).href
 
 /** Generates a per-test config module exporting schema, a mock backend, and connection event taps. */

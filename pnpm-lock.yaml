@@ -2807,8 +2807,8 @@ importers:
         specifier: ^7.7.0
         version: 7.7.1
       knip:
-        specifier: ^5.79.0
-        version: 5.79.0(@types/node@25.0.3)(typescript@5.9.3)
+        specifier: 5.80.0
+        version: 5.80.0(patch_hash=deecfd9ef9113112cfad6ededfcbe1f12b7269c5fc082724e91c4a476bac7cb7)(@types/node@25.0.3)(typescript@5.9.3)
       semver:
         specifier: ^7.7.3
         version: 7.7.3
@@ -5112,7 +5112,7 @@ packages:
 
   '@expo/bunyan@4.0.1':
     resolution: {integrity: sha512-+Lla7nYSiHZirgK+U/uYzsLv/X+HaJienbD5AKX1UQZHYfWaP+9uuQluRB4GrEVWF0GZ7vEVp/jzaOT9k/SQlg==}
-    engines: {node: '>=0.10.0'}
+    engines: {'0': node >=0.10.0}
 
   '@expo/cli@54.0.10':
     resolution: {integrity: sha512-iw9gAnN6+PKWWLIyYmiskY/wzZjuFMctunqGXuC8BGATWgtr/HpzjVqWbcL3KIX/GvEBCCh74Tkckrh+Ylxh5Q==}
@@ -12743,8 +12743,8 @@ packages:
     resolution: {integrity: sha512-dhG34DXATL5hSxJbIexCft8FChFXtmskoZYnoPWjXQuebWYCNkVeV3KkGegCK9CP1oswI/vQibS2GY7Em/sJJA==}
     engines: {node: '>= 8'}
 
-  knip@5.79.0:
-    resolution: {integrity: sha512-rcg+mNdqm6UiTuRVyy6UuuHw1n4ABMpNXDtrfGaCeUtJoRBAvAENIebr8YMtOz6XE7iVHZ8+rY7skgEtosczhQ==}
+  knip@5.80.0:
+    resolution: {integrity: sha512-K/Ga2f/SHEUXXriVdaw2GfeIUJ5muwdqusHGkCtaG/1qeMmQJiuwZj9KnPxaDbnYPAu8RWjYYh8Nyb+qlJ3d8A==}
     engines: {node: '>=18.18.0'}
     hasBin: true
     peerDependencies:
@@ -30238,7 +30238,7 @@ snapshots:
 
   klona@2.0.6: {}
 
-  knip@5.79.0(@types/node@25.0.3)(typescript@5.9.3):
+  knip@5.80.0(patch_hash=deecfd9ef9113112cfad6ededfcbe1f12b7269c5fc082724e91c4a476bac7cb7)(@types/node@25.0.3)(typescript@5.9.3):
     dependencies:
       '@nodelib/fs.walk': 1.2.8
       '@types/node': 25.0.3

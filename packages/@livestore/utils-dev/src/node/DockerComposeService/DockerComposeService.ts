@@ -20,6 +20,8 @@ export class DockerComposeError extends Schema.TaggedError<DockerComposeError>()
 export interface DockerComposeArgs {
   readonly cwd: string
   readonly serviceName?: string
+  /** Unique project name to isolate this compose instance. If not provided, a random one is generated. */
+  readonly projectName?: string
 }
 
 export interface StartOptions {
@@ -52,20 +54,27 @@ export interface DockerComposeOperations {
   readonly logs: (
     options?: LogsOptions,
   ) => Stream.Stream<string, DockerComposeError | PlatformError.PlatformError, Scope.Scope>
+  /** The unique project name used to isolate this compose instance */
+  readonly projectName: string
 }
+
+const generateProjectName = (): string => `ls-test-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`
 
 export class DockerComposeService extends Effect.Service<DockerComposeService>()('DockerComposeService', {
   scoped: (args: DockerComposeArgs) =>
     Effect.gen(function* () {
       const { cwd, serviceName } = args
+      const projectName = args.projectName ?? generateProjectName()
 
       const commandExecutorContext = yield* Effect.context<CommandExecutor.CommandExecutor>()
+
+      const baseComposeArgs = ['-p', projectName]
 
       const pull = Effect.gen(function* () {
         yield* Effect.log(`Pulling Docker Compose images in ${cwd}`)
 
         // TODO (@IMax153) Refactor the effect command related code below as there is probably a much more elegant way to accomplish what we want here in a more effect idiomatic way.
-        const pullCommand = Command.make('docker', 'compose', 'pull').pipe(
+        const pullCommand = Command.make('docker', 'compose', ...baseComposeArgs, 'pull').pipe(
           Command.workingDirectory(cwd),
           Command.stdout('pipe'),
           Command.stderr('pipe'),
@@ -123,11 +132,11 @@ export class DockerComposeService extends Effect.Service<DockerComposeService>()
           const { detached = true, healthCheck } = options
 
           // Build start command
-          const baseArgs = ['docker', 'compose', 'up']
-          if (detached) baseArgs.push('-d')
-          if (serviceName) baseArgs.push(serviceName)
+          const startArgs = ['docker', 'compose', ...baseComposeArgs, 'up']
+          if (detached) startArgs.push('-d')
+          if (serviceName) startArgs.push(serviceName)
 
-          const command = yield* Command.make(baseArgs[0]!, ...baseArgs.slice(1)).pipe(
+          const command = yield* Command.make(startArgs[0]!, ...startArgs.slice(1)).pipe(
             Command.workingDirectory(cwd),
             Command.env(options.env ?? {}),
             Command.stderr('inherit'),
@@ -171,8 +180,8 @@ export class DockerComposeService extends Effect.Service<DockerComposeService>()
         yield* Effect.log(`Stopping Docker Compose services in ${cwd}`)
 
         const stopCommand = serviceName
-          ? Command.make('docker', 'compose', 'stop', serviceName)
-          : Command.make('docker', 'compose', 'stop')
+          ? Command.make('docker', 'compose', ...baseComposeArgs, 'stop', serviceName)
+          : Command.make('docker', 'compose', ...baseComposeArgs, 'stop')
 
         yield* stopCommand.pipe(
           Command.workingDirectory(cwd),
@@ -197,13 +206,13 @@ export class DockerComposeService extends Effect.Service<DockerComposeService>()
         Effect.gen(function* () {
           const { follow = false, tail, since } = options
 
-          const baseArgs = ['docker', 'compose', 'logs']
-          if (follow) baseArgs.push('-f')
-          if (tail) baseArgs.push('--tail', tail.toString())
-          if (since) baseArgs.push('--since', since)
-          if (serviceName) baseArgs.push(serviceName)
+          const logsArgs = ['docker', 'compose', ...baseComposeArgs, 'logs']
+          if (follow) logsArgs.push('-f')
+          if (tail) logsArgs.push('--tail', tail.toString())
+          if (since) logsArgs.push('--since', since)
+          if (serviceName) logsArgs.push(serviceName)
 
-          const command = yield* Command.make(baseArgs[0]!, ...baseArgs.slice(1)).pipe(
+          const command = yield* Command.make(logsArgs[0]!, ...logsArgs.slice(1)).pipe(
             Command.workingDirectory(cwd),
             Command.start,
             Effect.catchAll((cause) =>
@@ -238,12 +247,12 @@ export class DockerComposeService extends Effect.Service<DockerComposeService>()
         Effect.gen(function* () {
           yield* Effect.log(`Tearing down Docker Compose services in ${cwd}`)
 
-          const baseArgs = ['docker', 'compose', 'down']
-          if (options?.volumes) baseArgs.push('-v')
-          if (options?.removeOrphans) baseArgs.push('--remove-orphans')
-          if (serviceName) baseArgs.push(serviceName)
+          const downArgs = ['docker', 'compose', ...baseComposeArgs, 'down']
+          if (options?.volumes) downArgs.push('-v')
+          if (options?.removeOrphans) downArgs.push('--remove-orphans')
+          if (serviceName) downArgs.push(serviceName)
 
-          yield* Command.make(baseArgs[0]!, ...baseArgs.slice(1)).pipe(
+          yield* Command.make(downArgs[0]!, ...downArgs.slice(1)).pipe(
             Command.workingDirectory(cwd),
             Command.env(options?.env ?? {}),
             Command.exitCode,
@@ -263,7 +272,15 @@ export class DockerComposeService extends Effect.Service<DockerComposeService>()
           yield* Effect.log(`Docker Compose services torn down successfully`)
         }).pipe(Effect.withSpan('downDockerCompose'))
 
-      return { pull, start, stop, down, logs }
+      // Register cleanup finalizer to ensure containers are removed when scope closes
+      yield* Effect.addFinalizer(() =>
+        down({ volumes: true, removeOrphans: true }).pipe(
+          Effect.tap(() => Effect.log(`Docker Compose cleanup completed for project ${projectName}`)),
+          Effect.catchAll((error) => Effect.log(`Docker Compose cleanup failed for project ${projectName}: ${error}`)),
+        ),
+      )
+
+      return { pull, start, stop, down, logs, projectName }
     }),
 }) {}
 
