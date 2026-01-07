@@ -2,7 +2,7 @@ import { defineProject } from 'vitest/config'
 
 export default defineProject({
   test: {
-    name: '@livestore/common-cf',
+    name: '@local/tests-package-common',
     include: ['src/**/*.test.ts'],
   },
 })

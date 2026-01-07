@@ -416,3 +416,42 @@ export const isLiveQueryInstance = (value: unknown): value is LiveQuery<any> => 
  */
 export const isQueryable = (value: unknown): value is Queryable<unknown> =>
   isQueryBuilder(value) || isLiveQueryInstance(value) || isLiveQueryDef(value)
+
+/**
+ * Represents the current synchronization status of the store.
+ *
+ * This provides visibility into the sync state between the client session
+ * and the leader thread, allowing applications to show sync indicators
+ * or determine backend health.
+ *
+ * @example
+ * ```ts
+ * const status = store.syncStatus()
+ * if (status.isSynced) {
+ *   console.log('All changes synced')
+ * } else {
+ *   console.log(`${status.pendingCount} events pending sync`)
+ * }
+ * ```
+ */
+export type SyncStatus = {
+  /**
+   * The local head sequence number (most recent event in the client session).
+   * Represented as a string in the format "e{global}.{client}" (e.g., "e5.2").
+   */
+  localHead: string
+  /**
+   * The upstream head sequence number (what the leader thread has confirmed).
+   * Represented as a string in the format "e{global}" (e.g., "e3").
+   */
+  upstreamHead: string
+  /**
+   * Number of events pending synchronization to the leader thread.
+   */
+  pendingCount: number
+  /**
+   * Whether the client session is fully synced with the leader thread.
+   * True when there are no pending events (pendingCount === 0).
+   */
+  isSynced: boolean
+}

@@ -1,10 +1,11 @@
 import type { LiveStoreSchema } from '@livestore/common/schema'
-import type { RegistryStoreOptions, Store } from '@livestore/livestore'
+import type { RegistryStoreOptions, Store, SyncStatus } from '@livestore/livestore'
 import type { Schema } from '@livestore/utils/effect'
 import React from 'react'
 import { useStoreRegistry } from './StoreRegistryContext.tsx'
 import { useClientDocument } from './useClientDocument.ts'
 import { useQuery } from './useQuery.ts'
+import { useSyncStatus } from './useSyncStatus.ts'
 
 /**
  * Returns a store instance augmented with hooks (`store.useQuery()` and `store.useClientDocument()`) for reactive queries.
@@ -94,6 +95,8 @@ export type ReactApi = {
   useQuery: typeof useQuery
   /** Hook for reading and writing client-document tables with React state semantics */
   useClientDocument: typeof useClientDocument
+  /** Hook for subscribing to sync status changes */
+  useSyncStatus: () => SyncStatus
 }
 
 /**
@@ -112,5 +115,9 @@ export const withReactApi = <TSchema extends LiveStoreSchema, TContext = {}>(
 
   // @ts-expect-error TODO properly implement this
   store.useClientDocument = (table, idOrOptions, options) => useClientDocument(table, idOrOptions, options, { store })
+
+  // @ts-expect-error TODO properly implement this
+  store.useSyncStatus = () => useSyncStatus({ store })
+
   return store as Store<TSchema, TContext> & ReactApi
 }

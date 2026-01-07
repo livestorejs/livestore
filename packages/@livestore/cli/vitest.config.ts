@@ -17,5 +17,6 @@ export default defineConfig({
   },
   test: {
     name: '@livestore/cli',
+    include: ['src/**/*.test.ts'],
   },
 })

@@ -1,6 +1,6 @@
 import fs from 'node:fs'
 import path from 'node:path'
-import { fileURLToPath, pathToFileURL } from 'node:url'
+import { fileURLToPath } from 'node:url'
 
 import { shouldNeverHappen } from '@livestore/utils'
 import { Effect } from '@livestore/utils/effect'
@@ -39,11 +39,9 @@ let docsRenderer: TRenderer
 let docsPaths: ReturnType<typeof resolveProjectPaths>
 
 beforeAll(async () => {
-  const modulePath = path.join(
-    workspaceRoot,
-    'node_modules/.pnpm/twoslash@0.2.12_typescript@5.9.2/node_modules/twoslash/dist/index.mjs',
-  )
-  const module = await import(pathToFileURL(modulePath).href)
+  // Resolve twoslash dynamically via expressive-code-twoslash's dependencies
+  const twoslashPath = import.meta.resolve('twoslash', import.meta.resolve('expressive-code-twoslash'))
+  const module = await import(twoslashPath)
   twoslasher = module.twoslasher as TTwoslasher
 
   examplePaths = resolveProjectPaths(exampleProjectRoot)

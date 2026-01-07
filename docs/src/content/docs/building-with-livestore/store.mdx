@@ -90,6 +90,60 @@ For more Effect patterns including Effect Atom integration, see the [Effect patt
 
 You can create and use multiple stores in the same app. This can be useful when breaking up your data model into smaller pieces.
 
+## Sync Status
+
+LiveStore provides APIs to monitor the synchronization status between the client session and the leader thread. This is useful for displaying sync indicators or performing health checks.
+
+### SyncStatus type
+
+```ts
+type SyncStatus = {
+  localHead: string      // e.g., "e5.2" or "e5.2r1"
+  upstreamHead: string   // e.g., "e3"
+  pendingCount: number   // Number of events pending sync
+  isSynced: boolean      // true when pendingCount === 0
+}
+```
+
+### `store.syncStatus()`
+
+Returns the current sync status synchronously.
+
+```ts
+const status = store.syncStatus()
+if (!status.isSynced) {
+  console.log(`${status.pendingCount} events pending sync`)
+}
+```
+
+### `store.subscribeSyncStatus(callback)`
+
+Subscribes to sync status changes. The callback is invoked immediately with the current status and whenever the sync state changes.
+
+```ts
+const unsubscribe = store.subscribeSyncStatus((status) => {
+  updateUI(status.isSynced ? 'Synced' : 'Syncing...')
+})
+
+// Later, stop listening
+unsubscribe()
+```
+
+### `store.syncStatusStream()`
+
+Returns an Effect Stream of sync status updates. For Effect-based workflows.
+
+```ts
+import { Effect, Stream } from 'effect'
+
+store.syncStatusStream().pipe(
+  Stream.tap((status) => Effect.log(`Sync: ${status.isSynced}`)),
+  Stream.runDrain,
+)
+```
+
+For React, see [`store.useSyncStatus()`](/framework-integrations/react-integration#storeusesyncstatus).
+
 ## Development/debugging helpers
 
 A store instance also exposes a `_dev` property that contains some helpful methods for development. For convenience you can access a store on `globalThis`/`window` like via `__debugLiveStore.default._dev` (`default` is the store id):

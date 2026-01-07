@@ -2,6 +2,8 @@ import { defineConfig } from 'vite'
 
 export default defineConfig({
   test: {
+    name: '@livestore/react',
+    include: ['src/**/*.test.{ts,tsx}', 'test/**/*.test.{ts,tsx}'],
     // Try node environment with DOM globals for React tests
     environment: 'node',
     setupFiles: ['./test/setup.ts'],

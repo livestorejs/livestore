@@ -178,6 +178,21 @@ React.useState-like hook for client-document tables.
 - Works only with tables defined via `State.SQLite.clientDocument()`
 - If the table has a default id, the `id` argument is optional
 
+### `store.useSyncStatus()`
+
+React hook that subscribes to sync status changes. Re-renders the component when sync status changes.
+
+```tsx
+function SyncIndicator() {
+  const store = useStore(storeOptions)
+  const status = store.useSyncStatus()
+  
+  return <span>{status.isSynced ? '✓ Synced' : `Syncing (${status.pendingCount} pending)...`}</span>
+}
+```
+
+For the `SyncStatus` type and non-React APIs (`syncStatus()`, `subscribeSyncStatus()`, `syncStatusStream()`), see the [Store documentation](/building-with-livestore/store#sync-status).
+
 ### `new StoreRegistry(config?)`
 
 Creates a registry that coordinates store loading, caching, and retention.

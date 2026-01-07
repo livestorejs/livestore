@@ -20,7 +20,7 @@ import {
 } from '@livestore/common'
 import type { StreamEventsOptions } from '@livestore/common/leader-thread'
 import type { LiveStoreSchema } from '@livestore/common/schema'
-import { LiveStoreEvent, resolveEventDef, SystemTables } from '@livestore/common/schema'
+import { EventSequenceNumber, LiveStoreEvent, resolveEventDef, SystemTables } from '@livestore/common/schema'
 import { assertNever, isDevEnv, omitUndefineds, shouldNeverHappen } from '@livestore/utils'
 import type { Scope } from '@livestore/utils/effect'
 import {
@@ -56,6 +56,7 @@ import {
   StoreInternalsSymbol,
   type StoreOtel,
   type SubscribeOptions,
+  type SyncStatus,
   type Unsubscribe,
 } from './store-types.ts'
 
@@ -936,6 +937,113 @@ export class Store<TSchema extends LiveStoreSchema = LiveStoreSchema.Any, TConte
       Stream.catchTag('ParseError', (cause) => Stream.fail(UnknownError.make({ cause }))),
       Stream.tapError((error) => Effect.logError('Error in eventsStream', error)),
     )
+  }
+
+  /**
+   * Returns the current synchronization status of the store.
+   *
+   * This is a synchronous operation that returns the sync state between the
+   * client session and the leader thread. Use this to display sync indicators
+   * or check if local changes have been pushed to the leader.
+   *
+   * @example
+   * ```ts
+   * const status = store.syncStatus()
+   * console.log(status.isSynced ? 'Synced' : `${status.pendingCount} pending`)
+   * ```
+   *
+   * @example
+   * ```ts
+   * // Health check for backend connectivity
+   * const status = store.syncStatus()
+   * if (!status.isSynced && status.pendingCount > 100) {
+   *   console.warn('Large backlog of unsynced events')
+   * }
+   * ```
+   */
+  syncStatus = (): SyncStatus => {
+    this.checkShutdown('syncStatus')
+
+    const syncState = this[StoreInternalsSymbol].syncProcessor.syncState.pipe(Effect.runSync)
+    const pendingCount = syncState.pending.length
+
+    return {
+      localHead: EventSequenceNumber.Client.toString(syncState.localHead),
+      upstreamHead: EventSequenceNumber.Client.toString(syncState.upstreamHead),
+      pendingCount,
+      isSynced: pendingCount === 0,
+    }
+  }
+
+  /**
+   * Returns an Effect Stream of sync status updates.
+   *
+   * Emits the current status immediately and then whenever the sync state changes.
+   * Use this for Effect-based workflows or when you need more control over the stream.
+   *
+   * @example
+   * ```ts
+   * store.syncStatusStream().pipe(
+   *   Stream.tap((status) => Effect.log(`Sync status: ${status.isSynced}`)),
+   *   Stream.runDrain,
+   * )
+   * ```
+   */
+  syncStatusStream = (): Stream.Stream<SyncStatus> => {
+    const syncStateSubscribable = this[StoreInternalsSymbol].syncProcessor.syncState
+
+    return Stream.concat(
+      Stream.fromEffect(syncStateSubscribable.pipe(Effect.map(this.makeSyncStatus))),
+      syncStateSubscribable.changes.pipe(Stream.map(this.makeSyncStatus)),
+    )
+  }
+
+  /**
+   * Subscribes to sync status changes.
+   *
+   * The callback is invoked immediately with the current status and then
+   * whenever the sync state changes (e.g., when events are pushed or confirmed).
+   *
+   * @param onUpdate - Callback invoked with the current sync status
+   * @returns Unsubscribe function to stop receiving updates
+   *
+   * @example
+   * ```ts
+   * const unsubscribe = store.subscribeSyncStatus((status) => {
+   *   updateUI(status.isSynced ? 'Synced' : 'Syncing...')
+   * })
+   *
+   * // Later, stop listening
+   * unsubscribe()
+   * ```
+   */
+  subscribeSyncStatus = (onUpdate: (status: SyncStatus) => void): Unsubscribe => {
+    this.checkShutdown('subscribeSyncStatus')
+
+    const fiber = this.syncStatusStream().pipe(
+      Stream.tap((status) => Effect.sync(() => onUpdate(status))),
+      Stream.runDrain,
+      this.runEffectFork,
+    )
+
+    return () => {
+      Fiber.interrupt(fiber).pipe(Runtime.runFork(this[StoreInternalsSymbol].effectContext.runtime))
+    }
+  }
+
+  private makeSyncStatus = (syncState: {
+    localHead: EventSequenceNumber.Client.Composite
+    upstreamHead: EventSequenceNumber.Client.Composite
+    pending: readonly any[]
+  }): SyncStatus => {
+    const pendingCount = syncState.pending.length
+
+    return {
+      localHead: EventSequenceNumber.Client.toString(syncState.localHead),
+      upstreamHead: EventSequenceNumber.Client.toString(syncState.upstreamHead),
+      pendingCount,
+      isSynced: pendingCount === 0,
+    }
   }
 
   /**
