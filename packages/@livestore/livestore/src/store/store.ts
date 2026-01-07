@@ -20,7 +20,7 @@ import {
 } from '@livestore/common'
 import type { StreamEventsOptions } from '@livestore/common/leader-thread'
 import type { LiveStoreSchema } from '@livestore/common/schema'
-import { LiveStoreEvent, resolveEventDef, SystemTables } from '@livestore/common/schema'
+import { EventSequenceNumber, LiveStoreEvent, resolveEventDef, SystemTables } from '@livestore/common/schema'
 import { assertNever, isDevEnv, omitUndefineds, shouldNeverHappen } from '@livestore/utils'
 import type { Scope } from '@livestore/utils/effect'
 import {
@@ -965,13 +965,11 @@ export class Store<TSchema extends LiveStoreSchema = LiveStoreSchema.Any, TConte
     this.checkShutdown('syncStatus')
 
     const syncState = this[StoreInternalsSymbol].syncProcessor.syncState.pipe(Effect.runSync)
-    const localHead = syncState.localHead
-    const upstreamHead = syncState.upstreamHead
     const pendingCount = syncState.pending.length
 
     return {
-      localHead: `e${localHead.global}${localHead.client > 0 ? `.${localHead.client}` : ''}`,
-      upstreamHead: `e${upstreamHead.global}${upstreamHead.client > 0 ? `.${upstreamHead.client}` : ''}`,
+      localHead: EventSequenceNumber.Client.toString(syncState.localHead),
+      upstreamHead: EventSequenceNumber.Client.toString(syncState.upstreamHead),
       pendingCount,
       isSynced: pendingCount === 0,
     }
@@ -1009,14 +1007,16 @@ export class Store<TSchema extends LiveStoreSchema = LiveStoreSchema.Any, TConte
   subscribeSyncStatus = (onUpdate: (status: SyncStatus) => void): Unsubscribe => {
     this.checkShutdown('subscribeSyncStatus')
 
-    const makeSyncStatus = (syncState: { localHead: any; upstreamHead: any; pending: readonly any[] }): SyncStatus => {
-      const localHead = syncState.localHead
-      const upstreamHead = syncState.upstreamHead
+    const makeSyncStatus = (syncState: {
+      localHead: EventSequenceNumber.Client.Composite
+      upstreamHead: EventSequenceNumber.Client.Composite
+      pending: readonly any[]
+    }): SyncStatus => {
       const pendingCount = syncState.pending.length
 
       return {
-        localHead: `e${localHead.global}${localHead.client > 0 ? `.${localHead.client}` : ''}`,
-        upstreamHead: `e${upstreamHead.global}${upstreamHead.client > 0 ? `.${upstreamHead.client}` : ''}`,
+        localHead: EventSequenceNumber.Client.toString(syncState.localHead),
+        upstreamHead: EventSequenceNumber.Client.toString(syncState.upstreamHead),
         pendingCount,
         isSynced: pendingCount === 0,
       }
