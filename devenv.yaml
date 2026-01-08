@@ -6,4 +6,6 @@ inputs:
     inputs:
       nixpkgs:
         follows: nixpkgs
-
+  effect-utils:
+    url: github:overengineeringstudio/effect-utils
+    flake: false

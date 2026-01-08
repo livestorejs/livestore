@@ -3,10 +3,10 @@
     "devenv": {
       "locked": {
         "dir": "src/modules",
-        "lastModified": 1765663102,
+        "lastModified": 1767874416,
         "owner": "cachix",
         "repo": "devenv",
-        "rev": "2858d76996ef35d7c65843f278f5739d8e9014fc",
+        "rev": "791e15d51632d4a2e55476d9f074f6d313a164ab",
         "type": "github"
       },
       "original": {
@@ -16,17 +16,32 @@
         "type": "github"
       }
     },
-    "flake-compat": {
+    "effect-utils": {
       "flake": false,
       "locked": {
-        "lastModified": 1765121682,
-        "owner": "edolstra",
-        "repo": "flake-compat",
-        "rev": "65f23138d8d09a92e30f1e5c87611b23ef451bf3",
+        "lastModified": 1767875506,
+        "owner": "overengineeringstudio",
+        "repo": "effect-utils",
+        "rev": "50d786d81f8e907262d76ba8e0d0852c31770c79",
         "type": "github"
       },
       "original": {
-        "owner": "edolstra",
+        "owner": "overengineeringstudio",
+        "repo": "effect-utils",
+        "type": "github"
+      }
+    },
+    "flake-compat": {
+      "flake": false,
+      "locked": {
+        "lastModified": 1767039857,
+        "owner": "NixOS",
+        "repo": "flake-compat",
+        "rev": "5edf11c44bc78a0d334f6334cdaf7d60d732daab",
+        "type": "github"
+      },
+      "original": {
+        "owner": "NixOS",
         "repo": "flake-compat",
         "type": "github"
       }
@@ -57,10 +72,10 @@
         ]
       },
       "locked": {
-        "lastModified": 1765464257,
+        "lastModified": 1767281941,
         "owner": "cachix",
         "repo": "git-hooks.nix",
-        "rev": "09e45f2598e1a8499c3594fe11ec2943f34fe509",
+        "rev": "f0927703b7b1c8d97511c4116eb9b4ec6645a0fa",
         "type": "github"
       },
       "original": {
@@ -91,10 +106,10 @@
     },
     "nixpkgs": {
       "locked": {
-        "lastModified": 1765472234,
+        "lastModified": 1767767207,
         "owner": "NixOS",
         "repo": "nixpkgs",
-        "rev": "2fbfb1d73d239d2402a8fe03963e37aab15abe8b",
+        "rev": "5912c1772a44e31bf1c63c0390b90501e5026886",
         "type": "github"
       },
       "original": {
@@ -127,6 +142,7 @@
     "root": {
       "inputs": {
         "devenv": "devenv",
+        "effect-utils": "effect-utils",
         "git-hooks": "git-hooks",
         "nixpkgs": "nixpkgs",
         "playwright-web-flake": "playwright-web-flake",

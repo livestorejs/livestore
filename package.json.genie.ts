@@ -1,0 +1,46 @@
+import { rootPackageJson } from './genie/repo.ts'
+// Relative import - works when running from overtone root via submodules
+import { packageJSON } from '../effect-utils/packages/@overeng/genie/src/lib/mod.ts'
+
+export default packageJSON({
+  name: '@livestore/monorepo',
+  version: '0.0.0',
+  private: true,
+  packageManager: rootPackageJson.packageManager,
+  devDependencies: rootPackageJson.devDependencies,
+  pnpm: rootPackageJson.pnpm,
+  resolutions: {
+    '@livestore/adapter-cloudflare': 'workspace:*',
+    '@livestore/adapter-expo': 'workspace:*',
+    '@livestore/adapter-node': 'workspace:*',
+    '@livestore/adapter-web': 'workspace:*',
+    '@livestore/cli': 'workspace:*',
+    '@livestore/common': 'workspace:*',
+    '@livestore/devtools-expo': 'workspace:*',
+    '@livestore/devtools-vite': '0.4.0-dev.22',
+    '@livestore/devtools-web-common': 'workspace:*',
+    '@livestore/livestore': 'workspace:*',
+    '@livestore/peer-deps': 'workspace:*',
+    '@livestore/react': 'workspace:*',
+    '@livestore/solid': 'workspace:*',
+    '@livestore/sqlite-wasm': 'workspace:*',
+    '@livestore/svelte': 'workspace:*',
+    '@livestore/sync-cf': 'workspace:*',
+    '@livestore/sync-electric': 'workspace:*',
+    '@livestore/sync-s2': 'workspace:*',
+    '@livestore/utils': 'workspace:*',
+    '@livestore/utils-dev': 'workspace:*',
+    '@livestore/wa-sqlite': 'workspace:*',
+    '@livestore/webmesh': 'workspace:*',
+  },
+  scripts: {
+    '_build:ts': 'tsc --build tsconfig.dev.json && tsc --build tsconfig.examples.json',
+    'build': 'pnpm run build:ts',
+    'build:clean': 'bash -c "find {examples,packages,tests,docs} -path \'*node_modules*\' -prune -o \\( -name \'dist\' -type d -o -name \'*.tsbuildinfo\' \\) -exec rm -rf {} +"',
+    'build:ts': 'tsc --build tsconfig.dev.json',
+    'pack:tmp': "pnpm --filter '@livestore/*' exec -- pnpm pack --out tmp/pack.tgz",
+    'prepare': 'husky && effect-language-service patch || true',
+    'test': 'CI=1 pnpm --parallel run test',
+    'update-lockfile': 'CI=1 pnpm install --lockfile-only',
+  },
+})
