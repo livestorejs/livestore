@@ -195,22 +195,23 @@ const getColumnForSchema = (schema: Schema.Schema.AnyNoContext, nullable = false
 }
 
 const stripNullable = (ast: SchemaAST.AST): SchemaAST.AST => {
-  if (!SchemaAST.isUnion(ast)) return ast
+  let cur = ast
+  // could be wrapped twice like [null | [undefined | X] ]
+  while (SchemaAST.isUnion(cur)) {
+      // Filter out null/undefined members while preserving any annotations on the union
+      const coreTypes = cur.types.filter(
+        (type) => !(SchemaAST.isLiteral(type) && type.literal === null) && !SchemaAST.isUndefinedKeyword(type),
+      )
 
-  // Filter out null/undefined members while preserving any annotations on the union
-  const coreTypes = ast.types.filter(
-    (type) => !(SchemaAST.isLiteral(type) && type.literal === null) && !SchemaAST.isUndefinedKeyword(type),
-  )
-
-  if (coreTypes.length === 0 || coreTypes.length === ast.types.length) {
-    return ast
+    if (coreTypes.length === 0 || coreTypes.length === cur.types.length) {
+      return cur
+    } else if (coreTypes.length === 1) {
+      cur = coreTypes[0]!
+    } else {
+      cur = SchemaAST.Union.make(coreTypes, cur.annotations)
+    }
   }
-
-  if (coreTypes.length === 1) {
-    return coreTypes[0]!
-  }
-
-  return SchemaAST.Union.make(coreTypes, ast.annotations)
+  return cur
 }
 
 const getLiteralColumnDefinition = (
