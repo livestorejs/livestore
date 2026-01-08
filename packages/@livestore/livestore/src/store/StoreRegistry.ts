@@ -187,6 +187,12 @@ export class StoreRegistry {
   readonly #defaultOptions: StoreRegistryConfig['defaultOptions']
 
   /**
+   * Function to dispose the managed runtime, if this registry owns it.
+   * Undefined when a custom runtime was provided (user owns cleanup).
+   */
+  readonly #disposeRuntime: (() => Promise<void>) | undefined
+
+  /**
    * Creates a new StoreRegistry instance.
    *
    * @example
@@ -205,13 +211,15 @@ export class StoreRegistry {
     if (config.runtime) {
       // User provided a runtime - they own it, no automatic cleanup
       this.#runtime = config.runtime
+      this.#disposeRuntime = undefined
     } else {
       // Create runtime and register for automatic cleanup when this registry is GC'd.
       // The closure captures managedRuntime; when this StoreRegistry is GC'd, dispose is called,
       // which closes the runtime's scope and cascades to shut down all managed stores.
       const managedRuntime = ManagedRuntime.make(Layer.mergeAll(Layer.scope, OtelLiveDummy))
       this.#runtime = managedRuntime.runtimeEffect.pipe(Effect.runSync)
-      runtimeFinalizationRegistry.register(this, () => managedRuntime.dispose())
+      this.#disposeRuntime = () => managedRuntime.dispose()
+      runtimeFinalizationRegistry.register(this, this.#disposeRuntime)
     }
 
     // Copy defaultOptions to a local variable so the lookup closure doesn't capture `this`.
@@ -376,6 +384,45 @@ export class StoreRegistry {
       await this.getOrLoadPromise(options)
     } catch {
       // Do nothing; preload is best-effort
+    }
+  }
+
+  /**
+   * Disposes the registry and all its managed stores.
+   *
+   * Call this method when the registry is no longer needed to immediately release resources
+   * (database connections, WebSocket connections, etc.).
+   *
+   * Most applications should use a single, long-lived `StoreRegistry` and don't need to call
+   * this method. It's only necessary when creating multiple short-lived registries (e.g., one per client island)
+   * to immediately release resources and avoid lock conflicts with subsequent registries.
+   *
+   * @remarks
+   * - Has no effect if a custom runtime was provided (caller owns cleanup in that case)
+   * - Safe to call multiple times; subsequent calls are no-ops
+   * - After disposal, the registry should not be used
+   * - The {@link FinalizationRegistry} cleanup is unregistered to avoid double-disposal
+   *
+   * @example
+   * ```tsx
+   * function MyComponent() {
+   *   const [storeRegistry] = useState(() => new StoreRegistry())
+   *
+   *   useEffect(() => {
+   *     return () => {
+   *       void storeRegistry.dispose()
+   *     }
+   *   }, [storeRegistry])
+   *
+   *   // ...
+   * }
+   * ```
+   */
+  dispose = async (): Promise<void> => {
+    if (this.#disposeRuntime) {
+      // Unregister from `FinalizationRegistry` to avoid double-disposal
+      runtimeFinalizationRegistry.unregister(this)
+      await this.#disposeRuntime()
     }
   }
 }
