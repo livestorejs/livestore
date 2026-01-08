@@ -148,7 +148,7 @@ class StoreCacheKey implements Equal.Equal {
  *
  * @remarks
  * - Finalization callbacks are not guaranteed to run, and timing is non-deterministic. This is acceptable for resource
- * cleanup but should not be relied upon for essential program logic.
+ *   cleanup but should not be relied upon for essential program logic.
  * - When passing a custom runtime to `StoreRegistry`, the caller is responsible for ensuring it is properly disposed.
  *
  * @see {@link https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/FinalizationRegistry | FinalizationRegistry}
@@ -214,10 +214,14 @@ export class StoreRegistry {
       runtimeFinalizationRegistry.register(this, () => managedRuntime.dispose())
     }
 
+    // Copy defaultOptions to a local variable so the lookup closure doesn't capture `this`.
+    // Capturing `this` creates a reference cycle that prevents the garbage collection of `StoreRegistry`.
+    const defaultOptions = this.#defaultOptions
+
     this.#rcMap = RcMap.make({
       lookup: ({ options }: StoreCacheKey) => {
         // Merge registry defaults with call-site options (call-site takes precedence)
-        const mergedOptions = { ...this.#defaultOptions, ...options }
+        const mergedOptions = { ...defaultOptions, ...options }
         return createStore(mergedOptions).pipe(
           Effect.catchAllDefect((cause) => UnknownError.make({ cause })),
           Effect.withSpan(`StoreRegistry.lookup:${mergedOptions.storeId}`),
