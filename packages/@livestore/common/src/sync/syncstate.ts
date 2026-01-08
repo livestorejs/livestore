@@ -465,7 +465,7 @@ export const findDivergencePoint = ({
 
     if (divergencePointWithoutClientEvents === -1) return -1
 
-    const divergencePointEventSequenceNumber = existingEvents[divergencePointWithoutClientEvents]!.seqNum
+    const divergencePointEventSequenceNumber = filteredExistingEvents[divergencePointWithoutClientEvents]!.seqNum
     // Now find the divergence point in the original array
     return existingEvents.findIndex((event) =>
       EventSequenceNumber.Client.isEqual(event.seqNum, divergencePointEventSequenceNumber),
