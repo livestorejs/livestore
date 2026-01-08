@@ -13,7 +13,7 @@ import {
   workspaceRoot,
   oxlintConfig,
   oxfmtConfig,
-} from '../../@overeng/genie/src/runtime/mod.ts'
+} from '../repos/effect-utils/packages/@overeng/genie/src/runtime/mod.ts'
 
 export { tsconfigJson, dotdotConfig, packageJson, workspaceRoot, oxlintConfig, oxfmtConfig }
 
@@ -22,7 +22,7 @@ import {
   baseTsconfigCompilerOptions,
   domLib,
   reactJsx,
-} from '../../effect-utils/genie/external.ts'
+} from '../repos/effect-utils/genie/external.ts'
 
 export { baseTsconfigCompilerOptions, domLib, reactJsx }
 
@@ -306,7 +306,7 @@ export const effectDevDeps = (...additionalDeps: Parameters<typeof catalog.pick>
  */
 export const livestoreBaseTsconfigCompilerOptions = {
   paths: {
-    '#genie/*': ['../@overeng/genie/src/runtime/*'],
+    '#genie/*': ['../repos/effect-utils/packages/@overeng/genie/src/runtime/*'],
   },
   strict: true,
   exactOptionalPropertyTypes: true,
@@ -375,7 +375,7 @@ export const solidJsx = { jsx: 'preserve' as const, jsxImportSource: 'solid-js' 
 // GitHub Workflow Helpers
 // =============================================================================
 
-export { githubWorkflow } from '../../@overeng/genie/src/runtime/mod.ts'
+export { githubWorkflow } from '../repos/effect-utils/packages/@overeng/genie/src/runtime/mod.ts'
 
 /**
  * Namespace runner configuration for livestore CI.
