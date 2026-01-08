@@ -137,6 +137,27 @@ class StoreCacheKey implements Equal.Equal {
 }
 
 /**
+ * Finalization registry used for automatic disposal of resources when a {@link StoreRegistry} instance is garbage collected.
+ *
+ * When a `StoreRegistry` goes out of scope (e.g., React component unmounts), JavaScript's garbage
+ * collector eventually reclaims it. This `FinalizationRegistry` ensures that the associated `ManagedRuntime` is
+ * disposed, which closes all store scopes, shutting them down and releasing resources to avoid resource leaks.
+ *
+ * Without this, garbage collection of a `StoreRegistry` would not trigger Effect finalizers, leaving store resources
+ * open indefinitely.
+ *
+ * @remarks
+ * - Finalization callbacks are not guaranteed to run, and timing is non-deterministic. This is acceptable for resource
+ * cleanup but should not be relied upon for essential program logic.
+ * - When passing a custom runtime to `StoreRegistry`, the caller is responsible for ensuring it is properly disposed.
+ *
+ * @see {@link https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/FinalizationRegistry | FinalizationRegistry}
+ */
+const runtimeFinalizationRegistry = new FinalizationRegistry<() => Promise<void>>(
+  (disposeRuntime) => void disposeRuntime(),
+)
+
+/**
  * Store Registry coordinating store loading, caching, and retention
  *
  * @public
@@ -180,9 +201,18 @@ export class StoreRegistry {
    */
   constructor(config: StoreRegistryConfig = {}) {
     this.#defaultOptions = config.defaultOptions
-    this.#runtime =
-      config.runtime ??
-      ManagedRuntime.make(Layer.mergeAll(Layer.scope, OtelLiveDummy)).runtimeEffect.pipe(Effect.runSync)
+
+    if (config.runtime) {
+      // User provided a runtime - they own it, no automatic cleanup
+      this.#runtime = config.runtime
+    } else {
+      // Create runtime and register for automatic cleanup when this registry is GC'd.
+      // The closure captures managedRuntime; when this StoreRegistry is GC'd, dispose is called,
+      // which closes the runtime's scope and cascades to shut down all managed stores.
+      const managedRuntime = ManagedRuntime.make(Layer.mergeAll(Layer.scope, OtelLiveDummy))
+      this.#runtime = managedRuntime.runtimeEffect.pipe(Effect.runSync)
+      runtimeFinalizationRegistry.register(this, () => managedRuntime.dispose())
+    }
 
     this.#rcMap = RcMap.make({
       lookup: ({ options }: StoreCacheKey) => {
