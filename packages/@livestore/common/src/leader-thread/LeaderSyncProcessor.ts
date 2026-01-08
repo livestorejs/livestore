@@ -179,6 +179,7 @@ export const makeLeaderSyncProcessor = ({
 
     const localPushesQueue = yield* BucketQueue.make<LocalPushQueueItem>()
     const localPushesLatch = yield* Effect.makeLatch(true)
+    const syncPushesLatch = yield* Effect.makeLatch(false)
     const pullLatch = yield* Effect.makeLatch(true)
 
     /**
@@ -358,6 +359,7 @@ export const makeLeaderSyncProcessor = ({
 
       const backendPushingFiberHandle = yield* FiberHandle.make<void, never>()
       const backendPushingEffect = backgroundBackendPushing({
+        syncPushesLatch,
         syncBackendPushQueue,
         otelSpan,
         devtoolsLatch: ctxRef.current?.devtoolsLatch,
@@ -381,6 +383,7 @@ export const makeLeaderSyncProcessor = ({
             yield* FiberHandle.run(backendPushingFiberHandle, backendPushingEffect)
           }),
         syncStateSref,
+        syncPushesLatch,
         localPushesLatch,
         pullLatch,
         livePull,
@@ -707,6 +710,7 @@ const backgroundBackendPulling = ({
   otelSpan,
   dbState,
   syncStateSref,
+  syncPushesLatch,
   localPushesLatch,
   livePull,
   pullLatch,
@@ -722,6 +726,7 @@ const backgroundBackendPulling = ({
   otelSpan: otel.Span | undefined
   syncStateSref: SubscriptionRef.SubscriptionRef<SyncState.SyncState | undefined>
   dbState: SqliteDb
+  syncPushesLatch: Effect.Latch
   localPushesLatch: Effect.Latch
   pullLatch: Effect.Latch
   livePull: boolean
@@ -744,6 +749,7 @@ const backgroundBackendPulling = ({
           // Allow local pushes to be processed again
           if (pageInfo._tag === 'NoMore') {
             yield* localPushesLatch.open
+            yield* syncPushesLatch.release
           }
         }))
         if (newEvents.length === 0) return
@@ -752,6 +758,17 @@ const backgroundBackendPulling = ({
           yield* devtoolsLatch.await
         }
 
+        // FIXME: close it BEFORE the actual pull is done. This point in time is AFTER response is fetched.
+        //  race condition:
+        //    1. pull | local push
+        //    2. backend gets new event
+        //    3. pull result is [], close local push latch and wait for local push to finish | local push finishes
+        //    4. pull processing of empty result finishes releasing backend push
+        //    5. backend push fires without knowing the new backend event from 2.
+        //    6. pull gets the new event from 2. and local event from 1.
+        //    7. rebase or something happens leading to local having duplicate local event from 1. while the backend is fine
+        //    The 7. might have flawed rebase logic but the problem is 5. and the root cause is that we need
+        //      to close the local pushes latch before we do the pull and not before we process the outdated pull result
         // Prevent more local pushes from being processed until this pull is finished
         yield* localPushesLatch.close
 
@@ -910,11 +927,13 @@ const backgroundBackendPulling = ({
   }).pipe(Effect.withSpan('@livestore/common:LeaderSyncProcessor:backend-pulling'))
 
 const backgroundBackendPushing = ({
+  syncPushesLatch,
   syncBackendPushQueue,
   otelSpan,
   devtoolsLatch,
   backendPushBatchSize,
 }: {
+  syncPushesLatch: Effect.Latch
   syncBackendPushQueue: BucketQueue.BucketQueue<LiveStoreEvent.Client.EncodedWithMeta>
   otelSpan: otel.Span | undefined
   devtoolsLatch: Effect.Latch | undefined
@@ -934,6 +953,9 @@ const backgroundBackendPushing = ({
       if (devtoolsLatch !== undefined) {
         yield* devtoolsLatch.await
       }
+
+      // Wait for the backend pulling to finish
+      yield* syncPushesLatch.await
 
       otelSpan?.addEvent(
         'backend-push',
