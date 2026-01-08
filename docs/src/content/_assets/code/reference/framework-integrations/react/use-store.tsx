@@ -8,7 +8,7 @@ export const MyComponent: FC = () => {
   const store = useAppStore()
 
   useEffect(() => {
-    store.commit(events.todoCreated({ id: '1', text: 'Hello, world!' }))
+    store.commit(events.todoCreated({ id: '1', text: 'Hello, world!', createdAt: new Date() }))
   }, [store])
 
   return <div>...</div>

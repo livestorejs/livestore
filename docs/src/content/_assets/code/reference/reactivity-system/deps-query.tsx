@@ -1,19 +1,7 @@
-import { queryDb, State, type Store } from '@livestore/livestore'
-import type { ReactApi } from '@livestore/react'
+import { queryDb } from '@livestore/livestore'
 import type { FC } from 'react'
-
-const tables = {
-  todos: State.SQLite.table({
-    name: 'todos',
-    columns: {
-      id: State.SQLite.text({ primaryKey: true }),
-      text: State.SQLite.text(),
-      completed: State.SQLite.boolean({ default: false }),
-    },
-  }),
-} as const
-
-declare const store: Store & ReactApi
+import { tables } from '../framework-integrations/react/schema.ts'
+import { useAppStore } from '../framework-integrations/react/store.ts'
 
 export const todos$ = ({ showCompleted }: { showCompleted: boolean }) =>
   queryDb(
@@ -27,6 +15,7 @@ export const todos$ = ({ showCompleted }: { showCompleted: boolean }) =>
   )
 
 export const MyComponent: FC<{ showCompleted: boolean }> = ({ showCompleted }) => {
+  const store = useAppStore()
   const todos = store.useQuery(todos$({ showCompleted })) as ReadonlyArray<{
     id: string
     text: string

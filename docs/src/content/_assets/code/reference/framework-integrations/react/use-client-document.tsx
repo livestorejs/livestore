@@ -8,8 +8,8 @@ export const TodoItem: FC<{ id: string }> = ({ id }) => {
   const [todo, updateTodo] = store.useClientDocument(tables.uiState, id)
 
   return (
-    <button type="button" onClick={() => updateTodo({ text: 'Hello, world!' })}>
-      {todo.text}
+    <button type="button" onClick={() => updateTodo({ newTodoText: 'Hello, world!' })}>
+      {todo.newTodoText}
     </button>
   )
 }

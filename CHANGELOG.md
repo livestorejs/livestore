@@ -219,6 +219,24 @@
   }
   ```
 
+- **Removed top-level React hook exports:** `useQuery`, `useQueryRef`, and `useClientDocument` are no longer exported at the top level from `@livestore/react`. Use the store methods instead (#946):
+
+  ```typescript
+  // Before
+  import { useQuery, useClientDocument } from '@livestore/react'
+  const todos = useQuery(query$)
+  const [state, setState] = useClientDocument(table)
+
+  // After
+  import { useStore } from '@livestore/react'
+
+  const store = useStore(storeOptions) // or via a custom hook wrapping useStore() (e.g. useAppStore())
+  const todos = store.useQuery(query$)
+  const [state, setState] = store.useClientDocument(table)
+  ```
+
+  Type exports (`UseClientDocumentResult`, `Dispatch`, `SetStateAction`, etc.) remain available.
+
 ### Changes
 
 #### Platform adapters

@@ -4,20 +4,20 @@ import { useClientDocument } from 'vue-livestore'
 import { tables } from './schema.ts'
 
 // biome-ignore lint/correctness/useHookAtTopLevel: Vue composables run at script setup level
-const { text: newTodoText, filters } = useClientDocument(tables.uiState)
+const { newTodoText, filter } = useClientDocument(tables.uiState)
 
 void newTodoText
-void filters
+void filter
 
 void newTodoText
-void filters
+void filter
 </script>
 
 <template>
   <div>
     <input type="text" v-model="newTodoText" />
 
-    <select v-model="filters">
+    <select v-model="filter">
       <option value="all">All</option>
       <option value="active">Active</option>
       <option value="completed">Completed</option>

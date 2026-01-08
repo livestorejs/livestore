@@ -1,18 +1,7 @@
 /** biome-ignore-all lint/correctness/noUnusedVariables: docs snippet exposes intermediate streams */
 // ---cut---
-import { queryDb, State, signal } from '@livestore/livestore'
-
-const tables = {
-  todos: State.SQLite.table({
-    name: 'todos',
-    columns: {
-      id: State.SQLite.text({ primaryKey: true }),
-      text: State.SQLite.text(),
-      completed: State.SQLite.boolean({ default: false }),
-      createdAt: State.SQLite.datetime(),
-    },
-  }),
-} as const
+import { queryDb, signal } from '@livestore/livestore'
+import { tables } from '../framework-integrations/react/schema.ts'
 
 const uiState$ = signal({ showCompleted: false }, { label: 'uiState$' })
 
