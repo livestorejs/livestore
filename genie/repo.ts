@@ -71,6 +71,9 @@ const livestoreOnlyCatalog = {
   // Published @livestore packages (not workspace packages)
   '@livestore/devtools-vite': '0.4.0-dev.22',
 
+  // Build/lint tools
+  '@biomejs/biome': '2.3.8',
+
   // Additional type packages
   '@types/chrome': '0.1.4',
   '@types/web': '0.0.264',
