@@ -1,12 +1,26 @@
 {
+  "$genie": {
+    "source": "package.json.genie.ts",
+    "warning": "DO NOT EDIT - changes will be overwritten"
+  },
   "name": "@livestore/sync-cf",
   "version": "0.4.0-dev.22",
   "type": "module",
   "sideEffects": false,
+  "license": "Apache-2.0",
   "exports": {
+    "./cf-worker": "./src/cf-worker/mod.ts",
     "./client": "./src/client/mod.ts",
-    "./common": "./src/common/mod.ts",
-    "./cf-worker": "./src/cf-worker/mod.ts"
+    "./common": "./src/common/mod.ts"
+  },
+  "files": [
+    "dist",
+    "package.json",
+    "src",
+    "README.md"
+  ],
+  "scripts": {
+    "test": "echo 'No tests yet'"
   },
   "dependencies": {
     "@cloudflare/workers-types": "catalog:",
@@ -14,13 +28,6 @@
     "@livestore/common-cf": "workspace:*",
     "@livestore/utils": "workspace:*"
   },
-  "files": [
-    "dist",
-    "src",
-    "package.json",
-    "README.md"
-  ],
-  "license": "Apache-2.0",
   "publishConfig": {
     "access": "public",
     "exports": {
@@ -28,8 +35,5 @@
       "./common": "./dist/common/mod.js",
       "./cf-worker": "./dist/cf-worker/mod.js"
     }
-  },
-  "scripts": {
-    "test": "echo 'No tests yet'"
   }
 }

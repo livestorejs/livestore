@@ -1,16 +1,28 @@
+// Generated file - DO NOT EDIT
+// Source: tsconfig.json.genie.ts
 {
   "extends": "../../../tsconfig.base.json",
   "compilerOptions": {
-    "outDir": "./dist",
     "rootDir": "./src",
-    "resolveJsonModule": true,
-    "tsBuildInfoFile": "./dist/.tsbuildinfo"
+    "outDir": "./dist",
+    "tsBuildInfoFile": "./dist/.tsbuildinfo",
+    "resolveJsonModule": true
   },
-  "include": ["./src"],
+  "include": [
+    "./src"
+  ],
   "references": [
-    { "path": "../common" },
-    { "path": "../utils" },
-    { "path": "../webmesh" },
-    { "path": "../sqlite-wasm" }
+    {
+      "path": "../common"
+    },
+    {
+      "path": "../utils"
+    },
+    {
+      "path": "../webmesh"
+    },
+    {
+      "path": "../sqlite-wasm"
+    }
   ]
 }

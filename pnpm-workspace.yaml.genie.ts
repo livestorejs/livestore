@@ -1,8 +1,16 @@
-import { catalog, workspacePackages } from './genie/repo.ts'
-// Relative import - works when running from overtone root via submodules
+import { catalog } from './genie/repo.ts'
 import { pnpmWorkspace } from '../effect-utils/packages/@overeng/genie/src/lib/mod.ts'
 
 export default pnpmWorkspace({
-  packages: workspacePackages,
+  packages: [
+    'scripts',
+    'docs',
+    'docs/src/content/_assets/code',
+    'packages/@livestore/*',
+    'packages/@local/*',
+    'packages/@local/astro-twoslash-code/example',
+    'examples/*',
+    'tests/*',
+  ],
   catalog,
 })

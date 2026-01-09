@@ -1,17 +1,33 @@
+// Generated file - DO NOT EDIT
+// Source: tsconfig.json.genie.ts
 {
   "extends": "../../../tsconfig.base.json",
   "compilerOptions": {
-    "outDir": "dist",
-    "tsBuildInfoFile": "dist/tsconfig.tsbuildinfo",
-    "rootDir": "src"
+    "rootDir": "./src",
+    "outDir": "./dist",
+    "tsBuildInfoFile": "./dist/.tsbuildinfo"
   },
-  "include": ["src/**/*"],
+  "include": [
+    "src/**/*"
+  ],
   "references": [
-    { "path": "../common" },
-    { "path": "../utils" },
-    { "path": "../livestore" },
-    { "path": "../adapter-node" },
-    { "path": "../sync-cf" },
-    { "path": "../utils-dev" }
+    {
+      "path": "../common"
+    },
+    {
+      "path": "../utils"
+    },
+    {
+      "path": "../livestore"
+    },
+    {
+      "path": "../adapter-node"
+    },
+    {
+      "path": "../sync-cf"
+    },
+    {
+      "path": "../utils-dev"
+    }
   ]
 }

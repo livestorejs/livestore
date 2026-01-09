@@ -15,7 +15,7 @@
     "@livestore/wa-sqlite": "0.4.0-dev.22",
     "@overengineering/fps-meter": "0.2.4",
     "@tailwindcss/forms": "0.5.10",
-    "@tanstack/react-router": "1.139.14",
+    "@tanstack/react-router": "^1.139.14",
     "@tanstack/react-start": "1.139.14",
     "@tiptap/core": "3.12.1",
     "@tiptap/extension-placeholder": "3.12.1",

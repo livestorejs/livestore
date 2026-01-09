@@ -1,33 +1,36 @@
 {
+  "$genie": {
+    "source": "package.json.genie.ts",
+    "warning": "DO NOT EDIT - changes will be overwritten"
+  },
   "name": "@livestore/sync-s2",
   "version": "0.4.0-dev.22",
   "type": "module",
   "sideEffects": false,
+  "license": "Apache-2.0",
   "exports": {
     ".": "./src/mod.ts",
     "./s2-proxy-helpers": "./src/s2-proxy-helpers.ts"
+  },
+  "files": [
+    "dist",
+    "package.json",
+    "src"
+  ],
+  "scripts": {
+    "build": "",
+    "test": "echo 'No tests yet'"
   },
   "dependencies": {
     "@livestore/common": "workspace:*",
     "@livestore/livestore": "workspace:*",
     "@livestore/utils": "workspace:*"
   },
-  "devDependencies": {},
-  "files": [
-    "package.json",
-    "src",
-    "dist"
-  ],
-  "license": "Apache-2.0",
   "publishConfig": {
     "access": "public",
     "exports": {
       ".": "./dist/mod.js",
       "./s2-proxy-helpers": "./dist/s2-proxy-helpers.js"
     }
-  },
-  "scripts": {
-    "build": "",
-    "test": "echo 'No tests yet'"
   }
 }

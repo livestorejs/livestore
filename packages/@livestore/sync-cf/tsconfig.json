@@ -1,12 +1,26 @@
+// Generated file - DO NOT EDIT
+// Source: tsconfig.json.genie.ts
 {
   "extends": "../../../tsconfig.base.json",
   "compilerOptions": {
-    "exactOptionalPropertyTypes": false,
-    "outDir": "./dist",
     "rootDir": "./src",
-    "target": "es2022",
-    "tsBuildInfoFile": "./dist/.tsbuildinfo"
+    "outDir": "./dist",
+    "tsBuildInfoFile": "./dist/.tsbuildinfo",
+    "exactOptionalPropertyTypes": false,
+    "target": "es2022"
   },
-  "include": ["./src"],
-  "references": [{ "path": "../common" }, { "path": "../utils" }, { "path": "../common-cf" }]
+  "include": [
+    "./src"
+  ],
+  "references": [
+    {
+      "path": "../common"
+    },
+    {
+      "path": "../utils"
+    },
+    {
+      "path": "../common-cf"
+    }
+  ]
 }

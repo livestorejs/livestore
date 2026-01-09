@@ -1,13 +1,26 @@
 {
+  "$genie": {
+    "source": "package.json.genie.ts",
+    "warning": "DO NOT EDIT - changes will be overwritten"
+  },
   "name": "@livestore/adapter-web",
   "version": "0.4.0-dev.22",
   "type": "module",
   "sideEffects": false,
+  "license": "Apache-2.0",
   "exports": {
     ".": "./src/index.ts",
+    "./shared-worker": "./src/web-worker/shared-worker/make-shared-worker.ts",
     "./worker": "./src/web-worker/leader-worker/make-leader-worker.ts",
-    "./worker-vite-dev-polyfill": "./src/web-worker/vite-dev-polyfill.ts",
-    "./shared-worker": "./src/web-worker/shared-worker/make-shared-worker.ts"
+    "./worker-vite-dev-polyfill": "./src/web-worker/vite-dev-polyfill.ts"
+  },
+  "files": [
+    "dist",
+    "package.json",
+    "src"
+  ],
+  "scripts": {
+    "test": "echo No tests yet"
   },
   "dependencies": {
     "@livestore/common": "workspace:*",
@@ -19,15 +32,9 @@
   },
   "devDependencies": {
     "@types/chrome": "catalog:",
-    "@types/wicg-file-system-access": "^2023.10.6",
+    "@types/wicg-file-system-access": "catalog:",
     "vitest": "catalog:"
   },
-  "files": [
-    "package.json",
-    "src",
-    "dist"
-  ],
-  "license": "Apache-2.0",
   "publishConfig": {
     "access": "public",
     "exports": {
@@ -36,8 +43,5 @@
       "./worker-vite-dev-polyfill": "./dist/web-worker/vite-dev-polyfill.js",
       "./shared-worker": "./dist/web-worker/shared-worker/make-shared-worker.js"
     }
-  },
-  "scripts": {
-    "test": "echo No tests yet"
   }
 }

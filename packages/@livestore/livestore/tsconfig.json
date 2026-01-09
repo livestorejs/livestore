@@ -1,18 +1,27 @@
+// Generated file - DO NOT EDIT
+// Source: tsconfig.json.genie.ts
 {
   "extends": "../../../tsconfig.base.json",
   "compilerOptions": {
-    "outDir": "./dist",
     "rootDir": "./src",
-    "skipLibCheck": true,
-    "resolveJsonModule": true,
-    // "jsx": "preserve",
+    "outDir": "./dist",
     "tsBuildInfoFile": "./dist/.tsbuildinfo"
   },
-  "include": ["./src"],
+  "include": [
+    "./src"
+  ],
   "references": [
-    { "path": "../common" },
-    { "path": "../adapter-web" },
-    { "path": "../utils" },
-    { "path": "../utils-dev" }
+    {
+      "path": "../common"
+    },
+    {
+      "path": "../adapter-web"
+    },
+    {
+      "path": "../utils"
+    },
+    {
+      "path": "../utils-dev"
+    }
   ]
 }

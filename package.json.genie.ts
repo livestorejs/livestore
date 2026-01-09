@@ -1,14 +1,45 @@
-import { rootPackageJson } from './genie/repo.ts'
-// Relative import - works when running from overtone root via submodules
-import { packageJSON } from '../effect-utils/packages/@overeng/genie/src/lib/mod.ts'
+import { pkg } from './genie/repo.ts'
 
-export default packageJSON({
+export default pkg({
   name: '@livestore/monorepo',
   version: '0.0.0',
   private: true,
-  packageManager: rootPackageJson.packageManager,
-  devDependencies: rootPackageJson.devDependencies,
-  pnpm: rootPackageJson.pnpm,
+  packageManager: 'pnpm@10.17.1',
+  devDependencies: [
+    '@biomejs/biome',
+    '@effect/language-service',
+    '@overeng/genie',
+    '@types/node',
+    '@vitest/ui',
+    'husky',
+    'madge',
+    'syncpack',
+    'typescript',
+    'vite',
+    'vitest',
+    'yaml',
+  ],
+  pnpm: {
+    patchedDependencies: {
+      'knip@5.80.0': 'patches/knip@5.80.0.patch',
+      'starlight-contextual-menu@0.1.3': 'patches/starlight-contextual-menu@0.1.3.patch',
+      'starlight-markdown@0.1.5': 'patches/starlight-markdown@0.1.5.patch',
+    },
+    onlyBuiltDependencies: [
+      '@mixedbread/cli',
+      '@parcel/watcher',
+      '@tailwindcss/oxide',
+      'dtrace-provider',
+      'esbuild',
+      'msgpackr-extract',
+      'protobufjs',
+      'sharp',
+      'workerd',
+    ],
+    overrides: {
+      puppeteer: '23.11.1',
+    },
+  },
   resolutions: {
     '@livestore/adapter-cloudflare': 'workspace:*',
     '@livestore/adapter-expo': 'workspace:*',

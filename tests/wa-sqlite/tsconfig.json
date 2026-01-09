@@ -1,9 +1,20 @@
+// Generated file - DO NOT EDIT
+// Source: tsconfig.json.genie.ts
 {
   "extends": "../../tsconfig.base.json",
   "compilerOptions": {
     "noEmit": true
   },
-  "include": ["test"],
-  "exclude": ["node_modules", "**/dist"],
-  "references": [{ "path": "../../packages/@livestore/wa-sqlite" }]
+  "include": [
+    "test"
+  ],
+  "exclude": [
+    "node_modules",
+    "**/dist"
+  ],
+  "references": [
+    {
+      "path": "../../packages/@livestore/wa-sqlite"
+    }
+  ]
 }

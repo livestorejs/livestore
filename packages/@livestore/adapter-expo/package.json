@@ -1,10 +1,23 @@
 {
+  "$genie": {
+    "source": "package.json.genie.ts",
+    "warning": "DO NOT EDIT - changes will be overwritten"
+  },
   "name": "@livestore/adapter-expo",
   "version": "0.4.0-dev.22",
   "type": "module",
   "sideEffects": false,
+  "license": "Apache-2.0",
   "exports": {
     ".": "./src/index.ts"
+  },
+  "files": [
+    "dist",
+    "package.json",
+    "src"
+  ],
+  "scripts": {
+    "test": "echo No tests yet"
   },
   "dependencies": {
     "@livestore/common": "workspace:*",
@@ -13,16 +26,10 @@
     "@opentelemetry/api": "catalog:"
   },
   "devDependencies": {
-    "expo-application": "^7.0.7",
-    "expo-sqlite": "^16.0.8",
-    "react-native": "^0.81.4"
+    "expo-application": "catalog:",
+    "expo-sqlite": "catalog:",
+    "react-native": "catalog:"
   },
-  "files": [
-    "package.json",
-    "src",
-    "dist"
-  ],
-  "license": "Apache-2.0",
   "peerDependencies": {
     "expo-application": "^7.0.7",
     "expo-sqlite": "^16.0.8"
@@ -32,8 +39,5 @@
     "exports": {
       ".": "./dist/index.js"
     }
-  },
-  "scripts": {
-    "test": "echo No tests yet"
   }
 }

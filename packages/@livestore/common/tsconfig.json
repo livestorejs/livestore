@@ -1,12 +1,28 @@
+// Generated file - DO NOT EDIT
+// Source: tsconfig.json.genie.ts
 {
   "extends": "../../../tsconfig.base.json",
   "compilerOptions": {
-    "lib": ["ES2023"], // Needed for `Array.toSorted`
-    "outDir": "./dist",
     "rootDir": "./src",
-    "resolveJsonModule": true,
-    "tsBuildInfoFile": "./dist/.tsbuildinfo"
+    "outDir": "./dist",
+    "tsBuildInfoFile": "./dist/.tsbuildinfo",
+    "lib": [
+      "ES2023"
+    ],
+    "resolveJsonModule": true
   },
-  "include": ["./src"],
-  "references": [{ "path": "../utils" }, { "path": "../utils-dev" }, { "path": "../webmesh" }]
+  "include": [
+    "./src"
+  ],
+  "references": [
+    {
+      "path": "../utils"
+    },
+    {
+      "path": "../utils-dev"
+    },
+    {
+      "path": "../webmesh"
+    }
+  ]
 }

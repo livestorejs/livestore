@@ -1,11 +1,18 @@
+// Generated file - DO NOT EDIT
+// Source: tsconfig.json.genie.ts
 {
   "extends": "../../../tsconfig.base.json",
   "compilerOptions": {
-    "outDir": "./dist",
     "rootDir": "./src",
-    "resolveJsonModule": true,
+    "outDir": "./dist",
     "tsBuildInfoFile": "./dist/.tsbuildinfo"
   },
-  "include": ["./src"],
-  "references": [{ "path": "../utils" }]
+  "include": [
+    "./src"
+  ],
+  "references": [
+    {
+      "path": "../utils"
+    }
+  ]
 }

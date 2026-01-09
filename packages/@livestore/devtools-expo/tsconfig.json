@@ -1,11 +1,27 @@
+// Generated file - DO NOT EDIT
+// Source: tsconfig.json.genie.ts
 {
   "extends": "../../../tsconfig.base.json",
   "compilerOptions": {
-    "outDir": "./dist",
     "rootDir": "./src",
-    "verbatimModuleSyntax": true,
-    "tsBuildInfoFile": "./dist/.tsbuildinfo"
+    "outDir": "./dist",
+    "tsBuildInfoFile": "./dist/.tsbuildinfo",
+    "jsx": "react-jsx",
+    "verbatimModuleSyntax": true
   },
-  "include": ["./src", "src/types.d.ts"],
-  "references": [{ "path": "../adapter-web" }, { "path": "../adapter-node" }, { "path": "../utils" }]
+  "include": [
+    "./src",
+    "src/types.d.ts"
+  ],
+  "references": [
+    {
+      "path": "../adapter-web"
+    },
+    {
+      "path": "../adapter-node"
+    },
+    {
+      "path": "../utils"
+    }
+  ]
 }

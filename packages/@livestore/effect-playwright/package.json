@@ -1,10 +1,17 @@
 {
+  "$genie": {
+    "source": "package.json.genie.ts",
+    "warning": "DO NOT EDIT - changes will be overwritten"
+  },
   "name": "@livestore/effect-playwright",
   "version": "0.0.0",
   "type": "module",
   "private": true,
   "exports": {
     ".": "./src/index.ts"
+  },
+  "scripts": {
+    "test": "echo 'No tests'"
   },
   "dependencies": {
     "@livestore/utils": "workspace:*"
@@ -15,8 +22,5 @@
   },
   "peerDependencies": {
     "@playwright/test": "^1.56.0"
-  },
-  "scripts": {
-    "test": "echo 'No tests'"
   }
 }

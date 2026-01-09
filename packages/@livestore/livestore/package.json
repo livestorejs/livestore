@@ -1,13 +1,28 @@
 {
+  "$genie": {
+    "source": "package.json.genie.ts",
+    "warning": "DO NOT EDIT - changes will be overwritten"
+  },
   "name": "@livestore/livestore",
   "version": "0.4.0-dev.22",
   "type": "module",
   "sideEffects": false,
+  "license": "Apache-2.0",
   "exports": {
     ".": "./src/mod.ts",
+    "./effect": "./src/effect/mod.ts",
     "./internal": "./src/internal/mod.ts",
-    "./internal/testing-utils": "./src/utils/tests/mod.ts",
-    "./effect": "./src/effect/mod.ts"
+    "./internal/testing-utils": "./src/utils/tests/mod.ts"
+  },
+  "files": [
+    "dist",
+    "package.json",
+    "src",
+    "docs"
+  ],
+  "scripts": {
+    "build": "tsc",
+    "test": "vitest"
   },
   "dependencies": {
     "@livestore/common": "workspace:*",
@@ -18,18 +33,11 @@
     "@livestore/adapter-web": "workspace:*",
     "@livestore/utils-dev": "workspace:*",
     "@opentelemetry/sdk-trace-base": "catalog:",
-    "jsdom": "^26.1.0",
+    "jsdom": "catalog:",
     "typescript": "catalog:",
     "vite": "catalog:",
     "vitest": "catalog:"
   },
-  "files": [
-    "package.json",
-    "src",
-    "dist",
-    "docs"
-  ],
-  "license": "Apache-2.0",
   "publishConfig": {
     "access": "public",
     "exports": {
@@ -38,9 +46,5 @@
       "./internal/testing-utils": "./dist/utils/tests/mod.js",
       "./effect": "./dist/effect/mod.js"
     }
-  },
-  "scripts": {
-    "build": "tsc",
-    "test": "vitest"
   }
 }

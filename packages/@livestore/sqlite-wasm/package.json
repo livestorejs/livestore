@@ -1,9 +1,17 @@
 {
+  "$genie": {
+    "source": "package.json.genie.ts",
+    "warning": "DO NOT EDIT - changes will be overwritten"
+  },
   "name": "@livestore/sqlite-wasm",
   "version": "0.4.0-dev.22",
   "type": "module",
+  "sideEffects": false,
+  "license": "Apache-2.0",
   "exports": {
     ".": "./src/index.ts",
+    "./browser": "./src/browser/mod.ts",
+    "./cf": "./src/cf/mod.ts",
     "./load-wasm": {
       "workerd": "./src/load-wasm/mod.workerd.ts",
       "browser": "./src/load-wasm/mod.browser.ts",
@@ -11,9 +19,17 @@
       "node": "./src/load-wasm/mod.node.ts",
       "default": "./src/load-wasm/mod.browser.ts"
     },
-    "./node": "./src/node/mod.ts",
-    "./cf": "./src/cf/mod.ts",
-    "./browser": "./src/browser/mod.ts"
+    "./node": "./src/node/mod.ts"
+  },
+  "files": [
+    "dist",
+    "package.json",
+    "src"
+  ],
+  "scripts": {
+    "test": "vitest",
+    "test:ui": "vitest --ui",
+    "test:watch": "vitest --watch"
   },
   "dependencies": {
     "@cloudflare/workers-types": "catalog:",
@@ -25,16 +41,10 @@
   "devDependencies": {
     "@types/chrome": "catalog:",
     "@types/node": "catalog:",
-    "@types/wicg-file-system-access": "^2023.10.6",
+    "@types/wicg-file-system-access": "catalog:",
     "vitest": "catalog:",
     "wrangler": "catalog:"
   },
-  "files": [
-    "package.json",
-    "src",
-    "dist"
-  ],
-  "license": "Apache-2.0",
   "publishConfig": {
     "access": "public",
     "exports": {
@@ -63,10 +73,5 @@
         "default": "./dist/browser/mod.js"
       }
     }
-  },
-  "scripts": {
-    "test": "vitest",
-    "test:ui": "vitest --ui",
-    "test:watch": "vitest --watch"
   }
 }

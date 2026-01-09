@@ -1,11 +1,23 @@
+// Generated file - DO NOT EDIT
+// Source: tsconfig.json.genie.ts
 {
   "extends": "../../../tsconfig.base.json",
   "compilerOptions": {
     "composite": true,
     "rootDir": ".",
     "outDir": "./dist",
-    "types": ["node", "astro"]
+    "types": [
+      "node",
+      "astro"
+    ]
   },
-  "include": ["src", "tests", "examples"],
-  "exclude": ["dist", "node_modules"]
+  "include": [
+    "src",
+    "tests",
+    "examples"
+  ],
+  "exclude": [
+    "dist",
+    "node_modules"
+  ]
 }
