@@ -27,7 +27,7 @@ jobs:
         "namespace-features:github.run-id=${{ github.run_id }}",
       ]
     env:
-      LIVESTORE_BRANCH_PROTECTION_REQUIRED: "true"
+      LIVESTORE_BRANCH_PROTECTION_REQUIRED: 'true'
     defaults:
       run:
         shell: devenv shell bash -- -e {0}
@@ -43,7 +43,7 @@ jobs:
         "namespace-features:github.run-id=${{ github.run_id }}",
       ]
     env:
-      LIVESTORE_BRANCH_PROTECTION_REQUIRED: "true"
+      LIVESTORE_BRANCH_PROTECTION_REQUIRED: 'true'
     defaults:
       run:
         shell: devenv shell bash -- -e {0}
@@ -59,7 +59,7 @@ jobs:
         "namespace-features:github.run-id=${{ github.run_id }}",
       ]
     env:
-      LIVESTORE_BRANCH_PROTECTION_REQUIRED: "true"
+      LIVESTORE_BRANCH_PROTECTION_REQUIRED: 'true'
     defaults:
       run:
         shell: devenv shell bash -- -e {0}
@@ -69,7 +69,7 @@ jobs:
         uses: ./.github/actions/setup-env
       - name: Set OTEL_EXPORTER_OTLP_HEADERS environment variable
         env:
-          GRAFANA_CLOUD_OTLP_INSTANCE_ID: "1227256"
+          GRAFANA_CLOUD_OTLP_INSTANCE_ID: '1227256'
           GRAFANA_CLOUD_OTLP_API_KEY: ${{ secrets.GRAFANA_CLOUD_OTLP_API_KEY }}
         run: |
           echo "OTEL_EXPORTER_OTLP_HEADERS=Authorization=Basic $(echo -n "$GRAFANA_CLOUD_OTLP_INSTANCE_ID:$GRAFANA_CLOUD_OTLP_API_KEY" | base64 -w 0)" >> $GITHUB_ENV
@@ -126,7 +126,7 @@ jobs:
         "namespace-features:github.run-id=${{ github.run_id }}",
       ]
     env:
-      LIVESTORE_BRANCH_PROTECTION_REQUIRED: "true"
+      LIVESTORE_BRANCH_PROTECTION_REQUIRED: 'true'
     defaults:
       run:
         shell: devenv shell bash -- -e {0}
@@ -136,7 +136,7 @@ jobs:
         uses: ./.github/actions/setup-env
       - name: Set OTEL_EXPORTER_OTLP_HEADERS environment variable
         env:
-          GRAFANA_CLOUD_OTLP_INSTANCE_ID: "1227256"
+          GRAFANA_CLOUD_OTLP_INSTANCE_ID: '1227256'
           GRAFANA_CLOUD_OTLP_API_KEY: ${{ secrets.GRAFANA_CLOUD_OTLP_API_KEY }}
         run: |
           echo "OTEL_EXPORTER_OTLP_HEADERS=Authorization=Basic $(echo -n "$GRAFANA_CLOUD_OTLP_INSTANCE_ID:$GRAFANA_CLOUD_OTLP_API_KEY" | base64 -w 0)" >> $GITHUB_ENV
@@ -184,7 +184,7 @@ jobs:
         "namespace-features:github.run-id=${{ github.run_id }}",
       ]
     env:
-      LIVESTORE_BRANCH_PROTECTION_REQUIRED: "true"
+      LIVESTORE_BRANCH_PROTECTION_REQUIRED: 'true'
     defaults:
       run:
         shell: devenv shell bash -- -e {0}
@@ -194,7 +194,7 @@ jobs:
         uses: ./.github/actions/setup-env
       - name: Set OTEL_EXPORTER_OTLP_HEADERS environment variable
         env:
-          GRAFANA_CLOUD_OTLP_INSTANCE_ID: "1227256"
+          GRAFANA_CLOUD_OTLP_INSTANCE_ID: '1227256'
           GRAFANA_CLOUD_OTLP_API_KEY: ${{ secrets.GRAFANA_CLOUD_OTLP_API_KEY }}
         run: |
           echo "OTEL_EXPORTER_OTLP_HEADERS=Authorization=Basic $(echo -n "$GRAFANA_CLOUD_OTLP_INSTANCE_ID:$GRAFANA_CLOUD_OTLP_API_KEY" | base64 -w 0)" >> $GITHUB_ENV
@@ -242,7 +242,7 @@ jobs:
         uses: ./.github/actions/setup-env
       - name: Set OTEL_EXPORTER_OTLP_HEADERS environment variable
         env:
-          GRAFANA_CLOUD_OTLP_INSTANCE_ID: "1227256"
+          GRAFANA_CLOUD_OTLP_INSTANCE_ID: '1227256'
           GRAFANA_CLOUD_OTLP_API_KEY: ${{ secrets.GRAFANA_CLOUD_OTLP_API_KEY }}
         run: |
           echo "OTEL_EXPORTER_OTLP_HEADERS=Authorization=Basic $(echo -n "$GRAFANA_CLOUD_OTLP_INSTANCE_ID:$GRAFANA_CLOUD_OTLP_API_KEY" | base64 -w 0)" >> $GITHUB_ENV
@@ -254,12 +254,12 @@ jobs:
         run: mono test perf
         env:
           COMMIT_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
-          GRAFANA_ENDPOINT: "https://livestore.grafana.net"
-          OTEL_EXPORTER_OTLP_ENDPOINT: "https://otlp-gateway-prod-us-east-2.grafana.net/otlp"
+          GRAFANA_ENDPOINT: 'https://livestore.grafana.net'
+          OTEL_EXPORTER_OTLP_ENDPOINT: 'https://otlp-gateway-prod-us-east-2.grafana.net/otlp'
   wa-sqlite-test:
     runs-on: ubuntu-24.04
     env:
-      LIVESTORE_BRANCH_PROTECTION_REQUIRED: "true"
+      LIVESTORE_BRANCH_PROTECTION_REQUIRED: 'true'
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
@@ -267,7 +267,7 @@ jobs:
         uses: ./.github/actions/setup-env
       - name: Set OTEL_EXPORTER_OTLP_HEADERS environment variable
         env:
-          GRAFANA_CLOUD_OTLP_INSTANCE_ID: "1227256"
+          GRAFANA_CLOUD_OTLP_INSTANCE_ID: '1227256'
           GRAFANA_CLOUD_OTLP_API_KEY: ${{ secrets.GRAFANA_CLOUD_OTLP_API_KEY }}
         run: |
           echo "OTEL_EXPORTER_OTLP_HEADERS=Authorization=Basic $(echo -n "$GRAFANA_CLOUD_OTLP_INSTANCE_ID:$GRAFANA_CLOUD_OTLP_API_KEY" | base64 -w 0)" >> $GITHUB_ENV
@@ -277,13 +277,13 @@ jobs:
           echo "VITE_OTEL_EXPORTER_OTLP_ENDPOINT=" >> $GITHUB_ENV
       - name: Build wa-sqlite
         working-directory: packages/@livestore/wa-sqlite
-        run: "nix run .#build"
+        run: 'nix run .#build'
       - name: Run wa-sqlite tests
         run: devenv shell mono test integration wa-sqlite
         env:
           COMMIT_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
-          GRAFANA_ENDPOINT: "https://livestore.grafana.net"
-          OTEL_EXPORTER_OTLP_ENDPOINT: "https://otlp-gateway-prod-us-east-2.grafana.net/otlp"
+          GRAFANA_ENDPOINT: 'https://livestore.grafana.net'
+          OTEL_EXPORTER_OTLP_ENDPOINT: 'https://otlp-gateway-prod-us-east-2.grafana.net/otlp'
   publish-snapshot-version:
     if: github.event.pull_request.head.repo.fork != true
     runs-on:
@@ -306,6 +306,7 @@ jobs:
       - name: Set up environment
         uses: ./.github/actions/setup-env
       - name: Configure NPM authentication
+        run: 'echo "//registry.npmjs.org/:_authToken=${NPM_TOKEN}" >> ~/.npmrc'
         run: 'echo "//registry.npmjs.org/:_authToken=${NPM_TOKEN}" >> ~/.npmrc'
         env:
           NPM_TOKEN: ${{ secrets.NPM_TOKEN }}

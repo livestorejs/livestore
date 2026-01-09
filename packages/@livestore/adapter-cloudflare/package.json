@@ -1,22 +1,25 @@
 {
-  "$genie": {
-    "source": "package.json.genie.ts",
-    "warning": "DO NOT EDIT - changes will be overwritten"
-  },
   "name": "@livestore/adapter-cloudflare",
   "version": "0.4.0-dev.22",
-  "type": "module",
-  "sideEffects": false,
   "license": "Apache-2.0",
-  "exports": {
-    ".": "./src/mod.ts",
-    "./polyfill": "./src/polyfill.ts"
-  },
   "files": [
     "dist",
     "package.json",
     "src"
   ],
+  "type": "module",
+  "sideEffects": false,
+  "exports": {
+    ".": "./src/mod.ts",
+    "./polyfill": "./src/polyfill.ts"
+  },
+  "publishConfig": {
+    "access": "public",
+    "exports": {
+      ".": "./dist/mod.js",
+      "./polyfill": "./dist/polyfill.js"
+    }
+  },
   "scripts": {
     "test": "echo No tests yet"
   },
@@ -32,11 +35,8 @@
   "devDependencies": {
     "wrangler": "catalog:"
   },
-  "publishConfig": {
-    "access": "public",
-    "exports": {
-      ".": "./dist/mod.js",
-      "./polyfill": "./dist/polyfill.js"
-    }
+  "$genie": {
+    "source": "package.json.genie.ts",
+    "warning": "DO NOT EDIT - changes will be overwritten"
   }
 }

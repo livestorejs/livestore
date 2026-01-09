@@ -5,11 +5,11 @@
  * The pnpm-workspace.yaml is generated from this file via Genie.
  */
 
-import { createPackageJson } from '../../effect-utils/packages/@overeng/genie/src/lib/mod.ts'
+import { createPackageJson } from '../submodules/effect-utils/packages/@overeng/genie/src/lib/mod.ts'
 import {
   catalog as effectUtilsCatalog,
   baseTsconfigCompilerOptions,
-} from '../../effect-utils/genie/repo.ts'
+} from '../submodules/effect-utils/genie/repo.ts'
 
 export { baseTsconfigCompilerOptions }
 
@@ -70,7 +70,7 @@ const livestoreOnlyCatalog = {
   'react-window': '1.8.11',
   'monaco-editor': '0.34.1',
   nanoid: '5.0.9',
-  'pretty-bytes': '6.1.1',
+  'pretty-bytes': '7.0.1',
   'qrcode-generator': '1.4.4',
   '@standard-schema/spec': '1.0.0',
   '@iarna/toml': '3.0.0',
@@ -156,7 +156,7 @@ export const localPackageDefaults = {
 // TypeScript Configuration Helpers
 // =============================================================================
 
-export { tsconfigJSON } from '../../effect-utils/packages/@overeng/genie/src/lib/mod.ts'
+export { tsconfigJSON } from '../submodules/effect-utils/packages/@overeng/genie/src/lib/mod.ts'
 
 /** Standard package tsconfig compiler options (composite mode with src/dist structure) */
 export const packageTsconfigCompilerOptions = {
@@ -178,7 +178,7 @@ export const solidJsx = { jsx: 'preserve' as const, jsxImportSource: 'solid-js' 
 // GitHub Workflow Helpers
 // =============================================================================
 
-export { githubWorkflow } from '../../effect-utils/packages/@overeng/genie/src/lib/mod.ts'
+export { githubWorkflow } from '../submodules/effect-utils/packages/@overeng/genie/src/lib/mod.ts'
 
 /**
  * Namespace runner configuration for livestore CI.

@@ -22,8 +22,5 @@ export default tsconfigJSON({
   },
   include: ['src'],
   exclude: ['src/content/_assets/code/**/*'],
-  references: [
-    { path: '../packages/@local/shared' },
-    { path: '../packages/@local/astro-twoslash-code' },
-  ],
+  references: [{ path: '../packages/@local/shared' }, { path: '../packages/@local/astro-twoslash-code' }],
 })

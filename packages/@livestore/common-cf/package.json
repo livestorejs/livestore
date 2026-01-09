@@ -1,23 +1,26 @@
 {
-  "$genie": {
-    "source": "package.json.genie.ts",
-    "warning": "DO NOT EDIT - changes will be overwritten"
-  },
   "name": "@livestore/common-cf",
   "version": "0.4.0-dev.22",
+  "license": "Apache-2.0",
+  "files": [
+    "dist",
+    "package.json",
+    "README.md",
+    "src"
+  ],
   "type": "module",
   "sideEffects": false,
-  "license": "Apache-2.0",
   "exports": {
     ".": "./src/mod.ts",
     "./declare": "./src/declare/mod.ts"
   },
-  "files": [
-    "dist",
-    "package.json",
-    "src",
-    "README.md"
-  ],
+  "publishConfig": {
+    "access": "public",
+    "exports": {
+      ".": "./dist/mod.js",
+      "./declare": "./dist/declare/mod.js"
+    }
+  },
   "scripts": {
     "test": "vitest run"
   },
@@ -30,11 +33,8 @@
     "vitest": "catalog:",
     "wrangler": "catalog:"
   },
-  "publishConfig": {
-    "access": "public",
-    "exports": {
-      ".": "./dist/mod.js",
-      "./declare": "./dist/declare/mod.js"
-    }
+  "$genie": {
+    "source": "package.json.genie.ts",
+    "warning": "DO NOT EDIT - changes will be overwritten"
   }
 }

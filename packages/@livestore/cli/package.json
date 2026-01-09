@@ -1,16 +1,7 @@
 {
-  "$genie": {
-    "source": "package.json.genie.ts",
-    "warning": "DO NOT EDIT - changes will be overwritten"
-  },
   "name": "@livestore/cli",
   "version": "0.4.0-dev.22",
-  "type": "module",
-  "sideEffects": false,
   "license": "Apache-2.0",
-  "exports": {
-    ".": "./src/mod.ts"
-  },
   "bin": {
     "livestore": "./src/bin.ts"
   },
@@ -19,6 +10,20 @@
     "package.json",
     "src"
   ],
+  "type": "module",
+  "sideEffects": false,
+  "exports": {
+    ".": "./src/mod.ts"
+  },
+  "publishConfig": {
+    "access": "public",
+    "bin": {
+      "livestore": "./dist/bin.js"
+    },
+    "exports": {
+      ".": "./dist/mod.js"
+    }
+  },
   "scripts": {
     "build": "tsc",
     "dev": "bun src/bin.ts"
@@ -42,13 +47,8 @@
     "@types/node": "catalog:",
     "typescript": "catalog:"
   },
-  "publishConfig": {
-    "access": "public",
-    "exports": {
-      ".": "./dist/mod.js"
-    },
-    "bin": {
-      "livestore": "./dist/bin.js"
-    }
+  "$genie": {
+    "source": "package.json.genie.ts",
+    "warning": "DO NOT EDIT - changes will be overwritten"
   }
 }

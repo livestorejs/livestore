@@ -1,13 +1,14 @@
 {
-  "$genie": {
-    "source": "package.json.genie.ts",
-    "warning": "DO NOT EDIT - changes will be overwritten"
-  },
   "name": "@livestore/common",
   "version": "0.4.0-dev.22",
+  "license": "Apache-2.0",
+  "files": [
+    "dist",
+    "package.json",
+    "src"
+  ],
   "type": "module",
   "sideEffects": false,
-  "license": "Apache-2.0",
   "exports": {
     ".": "./src/index.ts",
     "./leader-thread": "./src/leader-thread/mod.ts",
@@ -17,23 +18,6 @@
     "./sync/next": "./src/sync/next/mod.ts",
     "./sync/next/test": "./src/sync/next/test/mod.ts",
     "./testing": "./src/testing/mod.ts"
-  },
-  "files": [
-    "dist",
-    "package.json",
-    "src"
-  ],
-  "scripts": {
-    "test": "vitest"
-  },
-  "dependencies": {
-    "@livestore/utils": "workspace:*",
-    "@livestore/webmesh": "workspace:*",
-    "@opentelemetry/api": "catalog:"
-  },
-  "devDependencies": {
-    "@livestore/utils-dev": "workspace:*",
-    "vitest": "catalog:"
   },
   "publishConfig": {
     "access": "public",
@@ -47,5 +31,21 @@
       "./sync/next/test": "./dist/sync/next/test/mod.js",
       "./testing": "./dist/testing/mod.js"
     }
+  },
+  "scripts": {
+    "test": "vitest"
+  },
+  "dependencies": {
+    "@livestore/utils": "workspace:*",
+    "@livestore/webmesh": "workspace:*",
+    "@opentelemetry/api": "catalog:"
+  },
+  "devDependencies": {
+    "@livestore/utils-dev": "workspace:*",
+    "vitest": "catalog:"
+  },
+  "$genie": {
+    "source": "package.json.genie.ts",
+    "warning": "DO NOT EDIT - changes will be overwritten"
   }
 }

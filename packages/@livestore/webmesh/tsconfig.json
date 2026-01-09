@@ -9,9 +9,7 @@
     "exactOptionalPropertyTypes": false,
     "resolveJsonModule": true
   },
-  "include": [
-    "./src"
-  ],
+  "include": ["./src"],
   "references": [
     {
       "path": "../utils"

@@ -8,9 +8,7 @@
     "tsBuildInfoFile": "./dist/.tsbuildinfo",
     "jsx": "react-jsx"
   },
-  "include": [
-    "./src"
-  ],
+  "include": ["./src"],
   "references": [
     {
       "path": "../common"

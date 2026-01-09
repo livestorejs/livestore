@@ -8,9 +8,7 @@
     "tsBuildInfoFile": "./dist/.tsbuildinfo",
     "resolveJsonModule": true
   },
-  "include": [
-    "./src"
-  ],
+  "include": ["./src"],
   "references": [
     {
       "path": "../common"

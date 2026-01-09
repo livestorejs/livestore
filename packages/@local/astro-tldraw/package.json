@@ -1,12 +1,8 @@
 {
-  "$genie": {
-    "source": "package.json.genie.ts",
-    "warning": "DO NOT EDIT - changes will be overwritten"
-  },
   "name": "@local/astro-tldraw",
   "version": "0.0.0",
-  "type": "module",
   "private": true,
+  "type": "module",
   "exports": {
     ".": "./src/mod.ts",
     "./components/TldrawDiagram.astro": "./src/components/TldrawDiagram.astro",
@@ -25,5 +21,9 @@
   },
   "peerDependencies": {
     "astro": "^5.0.0"
+  },
+  "$genie": {
+    "source": "package.json.genie.ts",
+    "warning": "DO NOT EDIT - changes will be overwritten"
   }
 }

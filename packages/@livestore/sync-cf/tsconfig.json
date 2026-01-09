@@ -9,9 +9,7 @@
     "exactOptionalPropertyTypes": false,
     "target": "es2022"
   },
-  "include": [
-    "./src"
-  ],
+  "include": ["./src"],
   "references": [
     {
       "path": "../common"

@@ -1,23 +1,27 @@
 {
-  "$genie": {
-    "source": "package.json.genie.ts",
-    "warning": "DO NOT EDIT - changes will be overwritten"
-  },
   "name": "@livestore/adapter-node",
   "version": "0.4.0-dev.22",
-  "type": "module",
-  "sideEffects": false,
   "license": "Apache-2.0",
-  "exports": {
-    ".": "./src/index.ts",
-    "./devtools": "./src/devtools/mod.ts",
-    "./worker": "./src/make-leader-worker.ts"
-  },
   "files": [
     "dist",
     "package.json",
     "src"
   ],
+  "type": "module",
+  "sideEffects": false,
+  "exports": {
+    ".": "./src/index.ts",
+    "./devtools": "./src/devtools/mod.ts",
+    "./worker": "./src/make-leader-worker.ts"
+  },
+  "publishConfig": {
+    "access": "public",
+    "exports": {
+      ".": "./dist/index.js",
+      "./devtools": "./dist/devtools/mod.js",
+      "./worker": "./dist/make-leader-worker.js"
+    }
+  },
   "scripts": {
     "test": "echo No tests yet"
   },
@@ -45,12 +49,8 @@
       "optional": true
     }
   },
-  "publishConfig": {
-    "access": "public",
-    "exports": {
-      ".": "./dist/index.js",
-      "./devtools": "./dist/devtools/mod.js",
-      "./worker": "./dist/make-leader-worker.js"
-    }
+  "$genie": {
+    "source": "package.json.genie.ts",
+    "warning": "DO NOT EDIT - changes will be overwritten"
   }
 }

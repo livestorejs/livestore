@@ -1,13 +1,14 @@
 {
-  "$genie": {
-    "source": "package.json.genie.ts",
-    "warning": "DO NOT EDIT - changes will be overwritten"
-  },
   "name": "@livestore/sqlite-wasm",
   "version": "0.4.0-dev.22",
+  "license": "Apache-2.0",
+  "files": [
+    "dist",
+    "package.json",
+    "src"
+  ],
   "type": "module",
   "sideEffects": false,
-  "license": "Apache-2.0",
   "exports": {
     ".": "./src/index.ts",
     "./browser": "./src/browser/mod.ts",
@@ -20,30 +21,6 @@
       "default": "./src/load-wasm/mod.browser.ts"
     },
     "./node": "./src/node/mod.ts"
-  },
-  "files": [
-    "dist",
-    "package.json",
-    "src"
-  ],
-  "scripts": {
-    "test": "vitest",
-    "test:ui": "vitest --ui",
-    "test:watch": "vitest --watch"
-  },
-  "dependencies": {
-    "@cloudflare/workers-types": "catalog:",
-    "@livestore/common": "workspace:*",
-    "@livestore/common-cf": "workspace:*",
-    "@livestore/utils": "workspace:*",
-    "@livestore/wa-sqlite": "workspace:*"
-  },
-  "devDependencies": {
-    "@types/chrome": "catalog:",
-    "@types/node": "catalog:",
-    "@types/wicg-file-system-access": "catalog:",
-    "vitest": "catalog:",
-    "wrangler": "catalog:"
   },
   "publishConfig": {
     "access": "public",
@@ -73,5 +50,28 @@
         "default": "./dist/browser/mod.js"
       }
     }
+  },
+  "scripts": {
+    "test": "vitest",
+    "test:ui": "vitest --ui",
+    "test:watch": "vitest --watch"
+  },
+  "dependencies": {
+    "@cloudflare/workers-types": "catalog:",
+    "@livestore/common": "workspace:*",
+    "@livestore/common-cf": "workspace:*",
+    "@livestore/utils": "workspace:*",
+    "@livestore/wa-sqlite": "workspace:*"
+  },
+  "devDependencies": {
+    "@types/chrome": "catalog:",
+    "@types/node": "catalog:",
+    "@types/wicg-file-system-access": "catalog:",
+    "vitest": "catalog:",
+    "wrangler": "catalog:"
+  },
+  "$genie": {
+    "source": "package.json.genie.ts",
+    "warning": "DO NOT EDIT - changes will be overwritten"
   }
 }

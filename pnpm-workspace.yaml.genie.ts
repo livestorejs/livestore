@@ -1,5 +1,5 @@
 import { catalog } from './genie/repo.ts'
-import { pnpmWorkspace } from '../effect-utils/packages/@overeng/genie/src/lib/mod.ts'
+import { pnpmWorkspace } from './submodules/effect-utils/packages/@overeng/genie/src/lib/mod.ts'
 
 export default pnpmWorkspace({
   packages: [
@@ -11,6 +11,7 @@ export default pnpmWorkspace({
     'packages/@local/astro-twoslash-code/example',
     'examples/*',
     'tests/*',
+    'submodules/effect-utils/packages/*',
   ],
   catalog,
 })

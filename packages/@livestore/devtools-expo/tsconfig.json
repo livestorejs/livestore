@@ -9,10 +9,7 @@
     "jsx": "react-jsx",
     "verbatimModuleSyntax": true
   },
-  "include": [
-    "./src",
-    "src/types.d.ts"
-  ],
+  "include": ["./src", "src/types.d.ts"],
   "references": [
     {
       "path": "../adapter-web"

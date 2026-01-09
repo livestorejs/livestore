@@ -6,18 +6,8 @@
     "composite": true,
     "rootDir": ".",
     "outDir": "./dist",
-    "types": [
-      "node",
-      "astro"
-    ]
+    "types": ["node", "astro"]
   },
-  "include": [
-    "src",
-    "tests",
-    "examples"
-  ],
-  "exclude": [
-    "dist",
-    "node_modules"
-  ]
+  "include": ["src", "tests", "examples"],
+  "exclude": ["dist", "node_modules"]
 }

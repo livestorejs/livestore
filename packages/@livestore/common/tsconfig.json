@@ -6,14 +6,10 @@
     "rootDir": "./src",
     "outDir": "./dist",
     "tsBuildInfoFile": "./dist/.tsbuildinfo",
-    "lib": [
-      "ES2023"
-    ],
+    "lib": ["ES2023"],
     "resolveJsonModule": true
   },
-  "include": [
-    "./src"
-  ],
+  "include": ["./src"],
   "references": [
     {
       "path": "../utils"
