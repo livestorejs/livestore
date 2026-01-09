@@ -1,6 +1,6 @@
 import { livestorePackageDefaults, pkg } from '../../../genie/repo.ts'
 
-export default pkg({
+export default pkg.package({
   name: '@livestore/devtools-expo',
   types: './dist/index.d.cts',
   main: './dist/index.cjs',

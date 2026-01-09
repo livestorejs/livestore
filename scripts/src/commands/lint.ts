@@ -161,16 +161,9 @@ export const lintCommand = Cli.Command.make(
     yield* cmd(`biome check scripts tests packages docs examples --error-on-warnings ${fixFlag}`, {
       shell: true,
     }).pipe(Effect.provide(LivestoreWorkspace.toCwd()))
-    if (fix) {
-      yield* cmd('syncpack fix-mismatches').pipe(Effect.provide(LivestoreWorkspace.toCwd()))
-      yield* cmd('syncpack format').pipe(Effect.provide(LivestoreWorkspace.toCwd()))
-
-      if ((yield* hasParentGitRepo) === false) {
-        yield* cmd('pnpm install --fix-lockfile').pipe(Effect.provide(LivestoreWorkspace.toCwd()))
-      }
+    if (fix && (yield* hasParentGitRepo) === false) {
+      yield* cmd('pnpm install --fix-lockfile').pipe(Effect.provide(LivestoreWorkspace.toCwd()))
     }
-
-    yield* cmd('syncpack lint').pipe(Effect.provide(LivestoreWorkspace.toCwd()))
 
     // Shell needed for wildcards
     yield* cmd('madge --circular --no-spinner examples/*/src packages/*/*/src', { shell: true }).pipe(

@@ -20,7 +20,6 @@
     "@vitest/ui": "catalog:",
     "husky": "catalog:",
     "madge": "catalog:",
-    "syncpack": "catalog:",
     "typescript": "catalog:",
     "vite": "catalog:",
     "vitest": "catalog:",

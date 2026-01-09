@@ -79,10 +79,7 @@ Peer dependencies must use **explicit version ranges** instead of catalog refere
 ```
 
 ### Enforcement
-Syncpack is configured to:
-- NOT enforce catalog protocol for peer dependencies
-- Enforce `^` range for all peer dependencies
-- Keep peer dependency versions consistent across packages
+The Genie configuration system enforces peer dependency conventions through package.json generation.
 
 ## Expected Warnings
 

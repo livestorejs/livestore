@@ -1,4 +1,4 @@
-import { packageTsconfigCompilerOptions, reactJsx, tsconfigJSON } from '../../../genie/repo.ts'
+import { packageTsconfigCompilerOptions, reactJsx, refs, tsconfigJSON } from '../../../genie/repo.ts'
 
 export default tsconfigJSON({
   extends: '../../../tsconfig.base.json',
@@ -8,5 +8,5 @@ export default tsconfigJSON({
     verbatimModuleSyntax: true,
   },
   include: ['./src', 'src/types.d.ts'],
-  references: [{ path: '../adapter-web' }, { path: '../adapter-node' }, { path: '../utils' }],
+  references: [refs.adapterWeb, refs.adapterNode, refs.utils],
 })

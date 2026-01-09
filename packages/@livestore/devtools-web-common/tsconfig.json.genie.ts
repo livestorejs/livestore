@@ -1,4 +1,4 @@
-import { packageTsconfigCompilerOptions, reactJsx, tsconfigJSON } from '../../../genie/repo.ts'
+import { packageTsconfigCompilerOptions, reactJsx, refs, tsconfigJSON } from '../../../genie/repo.ts'
 
 export default tsconfigJSON({
   extends: '../../../tsconfig.base.json',
@@ -7,5 +7,5 @@ export default tsconfigJSON({
     ...reactJsx,
   },
   include: ['./src'],
-  references: [{ path: '../common' }, { path: '../utils' }, { path: '../webmesh' }],
+  references: [refs.common, refs.utils, refs.webmesh],
 })

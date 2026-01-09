@@ -1,10 +1,9 @@
 import { pkg } from './genie/repo.ts'
 
-export default pkg({
+export default pkg.root({
   name: '@livestore/monorepo',
   version: '0.0.0',
   private: true,
-  packageManager: 'pnpm@10.17.1',
   devDependencies: [
     '@biomejs/biome',
     '@effect/language-service',
@@ -13,7 +12,6 @@ export default pkg({
     '@vitest/ui',
     'husky',
     'madge',
-    'syncpack',
     'typescript',
     'vite',
     'vitest',

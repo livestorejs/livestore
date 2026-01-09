@@ -1,6 +1,6 @@
 import { pkg } from '../../../genie/repo.ts'
 
-export default pkg({
+export default pkg.package({
   name: '@livestore/wa-sqlite',
   version: '0.4.0-dev.22',
   type: 'module',

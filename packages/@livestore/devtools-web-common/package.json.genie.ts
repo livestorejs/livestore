@@ -1,6 +1,6 @@
 import { livestorePackageDefaults, pkg } from '../../../genie/repo.ts'
 
-export default pkg({
+export default pkg.package({
   name: '@livestore/devtools-web-common',
   exports: {
     './web-channel': './src/web-channel/index.ts',

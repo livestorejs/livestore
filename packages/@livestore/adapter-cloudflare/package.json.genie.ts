@@ -1,6 +1,6 @@
 import { livestorePackageDefaults, pkg } from '../../../genie/repo.ts'
 
-export default pkg({
+export default pkg.package({
   name: '@livestore/adapter-cloudflare',
   sideEffects: ['./src/polyfill.ts', './dist/polyfill.js'],
   exports: {

@@ -1,4 +1,4 @@
-import { packageTsconfigCompilerOptions, solidJsx, tsconfigJSON } from '../../../genie/repo.ts'
+import { packageTsconfigCompilerOptions, refs, solidJsx, tsconfigJSON } from '../../../genie/repo.ts'
 
 export default tsconfigJSON({
   extends: '../../../tsconfig.base.json',
@@ -7,5 +7,5 @@ export default tsconfigJSON({
     ...solidJsx,
   },
   include: ['./src'],
-  references: [{ path: '../common' }, { path: '../livestore' }, { path: '../utils' }],
+  references: [refs.common, refs.livestore, refs.utils],
 })

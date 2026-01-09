@@ -1,4 +1,4 @@
-import { packageTsconfigCompilerOptions, tsconfigJSON } from '../../../genie/repo.ts'
+import { packageTsconfigCompilerOptions, refs, tsconfigJSON } from '../../../genie/repo.ts'
 
 export default tsconfigJSON({
   extends: '../../../tsconfig.base.json',
@@ -8,5 +8,5 @@ export default tsconfigJSON({
     resolveJsonModule: true,
   },
   include: ['./src'],
-  references: [{ path: '../utils' }, { path: '../utils-dev' }, { path: '../webmesh' }],
+  references: [refs.utils, refs.utilsDev, refs.webmesh],
 })

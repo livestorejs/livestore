@@ -61,6 +61,7 @@ catalog:
   oxlint: 1.36.0
   '@noble/hashes': 1.7.1
   is-dom: 1.1.0
+  ioredis: 5.6.1
   '@effect-atom/atom': 0.4.11
   '@effect-atom/atom-react': 0.4.4
   '@opentui/core': 0.1.68
@@ -136,5 +137,4 @@ catalog:
   '@biomejs/biome': 2.3.8
   husky: 9.1.7
   madge: 8.0.0
-  syncpack: 13.0.4
   yaml: 2.8.1

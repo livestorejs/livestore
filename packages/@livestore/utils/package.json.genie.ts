@@ -1,6 +1,6 @@
 import { livestorePackageDefaults, pkg } from '../../../genie/repo.ts'
 
-export default pkg({
+export default pkg.package({
   name: '@livestore/utils',
   sideEffects: ['./src/global.ts', './dist/global.js'],
   exports: {

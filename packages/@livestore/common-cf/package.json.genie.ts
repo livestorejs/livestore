@@ -1,6 +1,6 @@
 import { livestorePackageDefaults, pkg } from '../../../genie/repo.ts'
 
-export default pkg({
+export default pkg.package({
   name: '@livestore/common-cf',
   exports: {
     '.': './src/mod.ts',

@@ -1,6 +1,6 @@
 import { pkg } from '../../../genie/repo.ts'
 
-export default pkg({
+export default pkg.package({
   name: '@livestore/effect-playwright',
   version: '0.0.0',
   type: 'module',

@@ -1,4 +1,4 @@
-import { packageTsconfigCompilerOptions, tsconfigJSON } from '../../../genie/repo.ts'
+import { packageTsconfigCompilerOptions, refs, tsconfigJSON } from '../../../genie/repo.ts'
 
 export default tsconfigJSON({
   extends: '../../../tsconfig.base.json',
@@ -7,12 +7,5 @@ export default tsconfigJSON({
     resolveJsonModule: true,
   },
   include: ['./src'],
-  references: [
-    { path: '../common' },
-    { path: '../utils' },
-    { path: '../livestore' },
-    { path: '../sqlite-wasm' },
-    { path: '../sync-cf' },
-    { path: '../common-cf' },
-  ],
+  references: [refs.common, refs.utils, refs.livestore, refs.sqliteWasm, refs.syncCf, refs.commonCf],
 })

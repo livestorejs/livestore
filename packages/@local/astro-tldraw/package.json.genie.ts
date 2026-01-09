@@ -1,6 +1,6 @@
 import { localPackageDefaults, pkg } from '../../../genie/repo.ts'
 
-export default pkg({
+export default pkg.package({
   name: '@local/astro-tldraw',
   exports: {
     '.': './src/mod.ts',

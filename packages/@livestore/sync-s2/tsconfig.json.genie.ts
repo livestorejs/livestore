@@ -1,4 +1,4 @@
-import { packageTsconfigCompilerOptions, tsconfigJSON } from '../../../genie/repo.ts'
+import { packageTsconfigCompilerOptions, refs, tsconfigJSON } from '../../../genie/repo.ts'
 
 export default tsconfigJSON({
   extends: '../../../tsconfig.base.json',
@@ -7,5 +7,5 @@ export default tsconfigJSON({
     composite: true,
   },
   include: ['./src'],
-  references: [{ path: '../common' }, { path: '../utils' }],
+  references: [refs.common, refs.utils],
 })

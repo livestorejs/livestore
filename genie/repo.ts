@@ -113,7 +113,6 @@ const livestoreOnlyCatalog = {
   '@biomejs/biome': '2.3.8',
   husky: '9.1.7',
   madge: '8.0.0',
-  syncpack: '13.0.4',
   yaml: '2.8.1',
 } as const
 
@@ -132,6 +131,8 @@ export const workspacePackagePatterns = [
 
 /** Type-safe package.json builder */
 export const pkg = createPackageJson({
+  packageManager: 'pnpm',
+  packageManagerVersion: '10.17.1',
   catalog,
   workspacePackages: workspacePackagePatterns,
 })
@@ -217,3 +218,53 @@ echo "OTEL_EXPORTER_OTLP_ENDPOINT=https://otlp-gateway-prod-us-east-2.grafana.ne
 # Disable in Vite (otherwise CORS issues)
 echo "VITE_OTEL_EXPORTER_OTLP_ENDPOINT=" >> $GITHUB_ENV`,
 }
+
+// =============================================================================
+// TypeScript Reference Helpers
+// =============================================================================
+
+/** All @livestore package short names (directory names under packages/@livestore/) */
+const livestorePackageNames = [
+  'utils',
+  'utils-dev',
+  'common',
+  'common-cf',
+  'livestore',
+  'react',
+  'solid',
+  'svelte',
+  'adapter-web',
+  'adapter-node',
+  'adapter-expo',
+  'adapter-cloudflare',
+  'sqlite-wasm',
+  'webmesh',
+  'devtools-web-common',
+  'devtools-expo',
+  'graphql',
+  'sync-cf',
+  'sync-s2',
+  'sync-electric',
+  'cli',
+  'effect-playwright',
+] as const
+
+type LivestorePackageName = (typeof livestorePackageNames)[number]
+type LivestoreRefKey = {
+  [K in LivestorePackageName]: K extends `${infer A}-${infer B}`
+    ? `${A}${Capitalize<B>}` extends `${infer A2}-${infer B2}`
+      ? `${A2}${Capitalize<B2>}`
+      : `${A}${Capitalize<B>}`
+    : K
+}[LivestorePackageName]
+
+/** Convert kebab-case to camelCase */
+const toCamelCase = (s: string) => s.replace(/-([a-z])/g, (_, c) => c.toUpperCase())
+
+/**
+ * Internal refs for use within LiveStore repo.
+ * All packages are siblings, so paths are simple relative refs.
+ */
+export const refs = Object.fromEntries(
+  livestorePackageNames.map((name) => [toCamelCase(name), { path: `../${name}` }]),
+) as { [K in LivestoreRefKey]: { path: string } }
