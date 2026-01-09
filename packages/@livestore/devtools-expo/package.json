@@ -1,21 +1,22 @@
 {
+  "$genie": {
+    "source": "package.json.genie.ts",
+    "warning": "DO NOT EDIT - changes will be overwritten"
+  },
   "name": "@livestore/devtools-expo",
   "version": "0.4.0-dev.22",
-  "license": "Apache-2.0",
-  "files": [
-    "dist",
-    "expo-module.config.json",
-    "package.json",
-    "src",
-    "webui"
-  ],
   "type": "module",
   "sideEffects": false,
+  "license": "Apache-2.0",
   "main": "./dist/index.cjs",
   "types": "./dist/index.d.cts",
-  "publishConfig": {
-    "access": "public"
-  },
+  "files": [
+    "dist",
+    "package.json",
+    "src",
+    "expo-module.config.json",
+    "webui"
+  ],
   "scripts": {
     "test": "echo No tests yet"
   },
@@ -31,8 +32,7 @@
   "peerDependencies": {
     "expo": "^54.0.12"
   },
-  "$genie": {
-    "source": "package.json.genie.ts",
-    "warning": "DO NOT EDIT - changes will be overwritten"
+  "publishConfig": {
+    "access": "public"
   }
 }

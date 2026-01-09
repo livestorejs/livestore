@@ -3,7 +3,9 @@
 {
   "compilerOptions": {
     "paths": {
-      "#genie/*": ["../@overeng/genie/src/runtime/*"]
+      "#genie/*": [
+        "../repos/effect-utils/packages/@overeng/genie/src/runtime/*"
+      ]
     },
     "strict": true,
     "exactOptionalPropertyTypes": true,
@@ -44,8 +46,14 @@
     "tsBuildInfoFile": "./dist/.tsbuildinfo",
     "jsx": "react-jsx"
   },
-  "include": ["./src"],
-  "exclude": ["node_modules", "**/dist", "**/node_modules/.pnpm"],
+  "include": [
+    "./src"
+  ],
+  "exclude": [
+    "node_modules",
+    "**/dist",
+    "**/node_modules/.pnpm"
+  ],
   "references": [
     {
       "path": "../common"

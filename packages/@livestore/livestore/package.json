@@ -1,30 +1,25 @@
 {
+  "$genie": {
+    "source": "package.json.genie.ts",
+    "warning": "DO NOT EDIT - changes will be overwritten"
+  },
   "name": "@livestore/livestore",
   "version": "0.4.0-dev.22",
-  "license": "Apache-2.0",
-  "files": [
-    "dist",
-    "docs",
-    "package.json",
-    "src"
-  ],
   "type": "module",
   "sideEffects": false,
+  "license": "Apache-2.0",
   "exports": {
     ".": "./src/mod.ts",
     "./effect": "./src/effect/mod.ts",
     "./internal": "./src/internal/mod.ts",
     "./internal/testing-utils": "./src/utils/tests/mod.ts"
   },
-  "publishConfig": {
-    "access": "public",
-    "exports": {
-      ".": "./dist/mod.js",
-      "./internal": "./dist/internal/mod.js",
-      "./internal/testing-utils": "./dist/utils/tests/mod.js",
-      "./effect": "./dist/effect/mod.js"
-    }
-  },
+  "files": [
+    "dist",
+    "package.json",
+    "src",
+    "docs"
+  ],
   "scripts": {
     "build": "tsc",
     "test": "vitest"
@@ -43,8 +38,13 @@
     "vite": "7.3.0",
     "vitest": "3.2.4"
   },
-  "$genie": {
-    "source": "package.json.genie.ts",
-    "warning": "DO NOT EDIT - changes will be overwritten"
+  "publishConfig": {
+    "access": "public",
+    "exports": {
+      ".": "./dist/mod.js",
+      "./internal": "./dist/internal/mod.js",
+      "./internal/testing-utils": "./dist/utils/tests/mod.js",
+      "./effect": "./dist/effect/mod.js"
+    }
   }
 }

@@ -1,4 +1,4 @@
-import { dotdotConfig } from '../@overeng/genie/src/runtime/dotdot-config/mod.ts'
+import { dotdotConfig } from './repos/effect-utils/packages/@overeng/genie/src/runtime/dotdot-config/mod.ts'
 
 /** dotdot member config for the livestore workspace */
 export default dotdotConfig({

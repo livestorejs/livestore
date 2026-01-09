@@ -1,8 +1,12 @@
 {
+  "$genie": {
+    "source": "package.json.genie.ts",
+    "warning": "DO NOT EDIT - changes will be overwritten"
+  },
   "name": "@local/astro-twoslash-code",
   "version": "0.0.0",
-  "private": true,
   "type": "module",
+  "private": true,
   "exports": {
     ".": "./src/mod.ts",
     "./cli": "./src/cli/snippets.ts",
@@ -31,9 +35,5 @@
   "peerDependencies": {
     "@astrojs/starlight": "^0.35.0",
     "astro": "^5.0.0"
-  },
-  "$genie": {
-    "source": "package.json.genie.ts",
-    "warning": "DO NOT EDIT - changes will be overwritten"
   }
 }

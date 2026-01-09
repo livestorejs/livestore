@@ -3,7 +3,9 @@
 {
   "compilerOptions": {
     "paths": {
-      "#genie/*": ["../@overeng/genie/src/runtime/*"]
+      "#genie/*": [
+        "../repos/effect-utils/packages/@overeng/genie/src/runtime/*"
+      ]
     },
     "strict": true,
     "exactOptionalPropertyTypes": false,
@@ -43,10 +45,19 @@
     "rootDir": "./src",
     "resolveJsonModule": true,
     "tsBuildInfoFile": "./dist/.tsbuildinfo",
-    "types": ["vitest/globals", "@types/node"]
+    "types": [
+      "vitest/globals",
+      "@types/node"
+    ]
   },
-  "include": ["./src"],
-  "exclude": ["node_modules", "**/dist", "**/node_modules/.pnpm"],
+  "include": [
+    "./src"
+  ],
+  "exclude": [
+    "node_modules",
+    "**/dist",
+    "**/node_modules/.pnpm"
+  ],
   "references": [
     {
       "path": "../../packages/@livestore/common"

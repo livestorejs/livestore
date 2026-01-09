@@ -3,7 +3,9 @@
 {
   "compilerOptions": {
     "paths": {
-      "#genie/*": ["../@overeng/genie/src/runtime/*"]
+      "#genie/*": [
+        "../repos/effect-utils/packages/@overeng/genie/src/runtime/*"
+      ]
     },
     "strict": true,
     "exactOptionalPropertyTypes": true,
@@ -41,8 +43,20 @@
     ],
     "rootDir": ".",
     "outDir": "./dist",
-    "types": ["node", "astro"]
+    "types": [
+      "node",
+      "astro"
+    ]
   },
-  "include": ["src", "tests", "examples"],
-  "exclude": ["node_modules", "**/dist", "**/node_modules/.pnpm", "dist"]
+  "include": [
+    "src",
+    "tests",
+    "examples"
+  ],
+  "exclude": [
+    "node_modules",
+    "**/dist",
+    "**/node_modules/.pnpm",
+    "dist"
+  ]
 }

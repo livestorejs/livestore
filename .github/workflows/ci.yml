@@ -22,10 +22,7 @@ env:
 jobs:
   lint:
     runs-on:
-      [
-        namespace-profile-linux-x86-64,
-        "namespace-features:github.run-id=${{ github.run_id }}",
-      ]
+      [namespace-profile-linux-x86-64, "namespace-features:github.run-id=${{ github.run_id }}"]
     env:
       LIVESTORE_BRANCH_PROTECTION_REQUIRED: "true"
     defaults:
@@ -38,10 +35,7 @@ jobs:
       - run: mono lint
   test-unit:
     runs-on:
-      [
-        namespace-profile-linux-x86-64,
-        "namespace-features:github.run-id=${{ github.run_id }}",
-      ]
+      [namespace-profile-linux-x86-64, "namespace-features:github.run-id=${{ github.run_id }}"]
     env:
       LIVESTORE_BRANCH_PROTECTION_REQUIRED: "true"
     defaults:
@@ -54,10 +48,7 @@ jobs:
       - run: mono test unit
   test-integration-node-sync:
     runs-on:
-      [
-        namespace-profile-linux-x86-64,
-        "namespace-features:github.run-id=${{ github.run_id }}",
-      ]
+      [namespace-profile-linux-x86-64, "namespace-features:github.run-id=${{ github.run_id }}"]
     env:
       LIVESTORE_BRANCH_PROTECTION_REQUIRED: "true"
     defaults:
@@ -121,10 +112,7 @@ jobs:
           - cf-do-rpc-d1
           - cf-do-rpc-do
     runs-on:
-      [
-        namespace-profile-linux-x86-64,
-        "namespace-features:github.run-id=${{ github.run_id }}",
-      ]
+      [namespace-profile-linux-x86-64, "namespace-features:github.run-id=${{ github.run_id }}"]
     env:
       LIVESTORE_BRANCH_PROTECTION_REQUIRED: "true"
     defaults:
@@ -144,24 +132,8 @@ jobs:
           echo "OTEL_EXPORTER_OTLP_ENDPOINT=https://otlp-gateway-prod-us-east-2.grafana.net/otlp" >> $GITHUB_ENV
           # Disable in Vite (otherwise CORS issues)
           echo "VITE_OTEL_EXPORTER_OTLP_ENDPOINT=" >> $GITHUB_ENV
-      - name: Start s2-lite container
-        if: ${{ matrix.provider == 's2' }}
-        run: |
-          docker run -d --name s2-lite -p 4566:80 ghcr.io/s2-streamstore/s2-lite
-          # Wait for s2-lite to be ready
-          for i in {1..30}; do
-            if curl -sf http://localhost:4566/ping > /dev/null 2>&1; then
-              echo "s2-lite is ready"
-              break
-            fi
-            echo "Waiting for s2-lite... ($i/30)"
-            sleep 1
-          done
-        shell: bash
-      # TODO: Remove Cloudflare workaround once upstream issues are resolved:
-      # - Upstream: https://github.com/cloudflare/workers-sdk/issues/11122 (Durable object hanging tests)
-      # - LiveStore tracking: https://github.com/livestorejs/livestore/issues/625
       - name: Run sync-provider tests for ${{ matrix.provider }}
+        if: ${{ matrix.provider != 's2' || env.S2_ACCESS_TOKEN != '' }}
         run: |
           if [[ "${{ matrix.provider }}" == cf-* ]]; then
             if mono test integration sync-provider --provider ${{ matrix.provider }}; then
@@ -173,16 +145,15 @@ jobs:
           else
             mono test integration sync-provider --provider ${{ matrix.provider }}
           fi
-
+      - name: Skip S2 sync-provider tests (missing S2_ACCESS_TOKEN)
+        if: ${{ matrix.provider == 's2' && env.S2_ACCESS_TOKEN == '' }}
+        run: 'echo "Skipping S2 sync-provider tests: S2_ACCESS_TOKEN not set"'
   test-integration-playwright:
     strategy:
       matrix:
         suite: [misc, todomvc, devtools]
     runs-on:
-      [
-        namespace-profile-linux-x86-64,
-        "namespace-features:github.run-id=${{ github.run_id }}",
-      ]
+      [namespace-profile-linux-x86-64, "namespace-features:github.run-id=${{ github.run_id }}"]
     env:
       LIVESTORE_BRANCH_PROTECTION_REQUIRED: "true"
     defaults:
@@ -287,10 +258,7 @@ jobs:
   publish-snapshot-version:
     if: github.event.pull_request.head.repo.fork != true
     runs-on:
-      [
-        namespace-profile-linux-x86-64,
-        "namespace-features:github.run-id=${{ github.run_id }}",
-      ]
+      [namespace-profile-linux-x86-64, "namespace-features:github.run-id=${{ github.run_id }}"]
     needs:
       [
         test-unit,
@@ -313,10 +281,7 @@ jobs:
       - run: mono release snapshot --git-sha=${{ github.sha }}
   build-and-deploy-examples-src:
     runs-on:
-      [
-        namespace-profile-linux-x86-64,
-        "namespace-features:github.run-id=${{ github.run_id }}",
-      ]
+      [namespace-profile-linux-x86-64, "namespace-features:github.run-id=${{ github.run_id }}"]
     defaults:
       run:
         shell: devenv shell bash -- -e {0}
@@ -336,10 +301,7 @@ jobs:
           CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
   build-deploy-docs:
     runs-on:
-      [
-        namespace-profile-linux-x86-64,
-        "namespace-features:github.run-id=${{ github.run_id }}",
-      ]
+      [namespace-profile-linux-x86-64, "namespace-features:github.run-id=${{ github.run_id }}"]
     defaults:
       run:
         shell: devenv shell bash -- -e {0}
@@ -361,10 +323,7 @@ jobs:
       matrix:
         app: [web-todomvc, web-linearlite, expo-linearlite]
     runs-on:
-      [
-        namespace-profile-linux-x86-64,
-        "namespace-features:github.run-id=${{ github.run_id }}",
-      ]
+      [namespace-profile-linux-x86-64, "namespace-features:github.run-id=${{ github.run_id }}"]
     env:
       APP_PATH: examples/${{ matrix.app }}
       SNAPSHOT_VERSION: 0.0.0-snapshot-${{ github.sha }}

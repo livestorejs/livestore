@@ -1,25 +1,22 @@
 {
+  "$genie": {
+    "source": "package.json.genie.ts",
+    "warning": "DO NOT EDIT - changes will be overwritten"
+  },
   "name": "@livestore/react",
   "version": "0.4.0-dev.22",
+  "type": "module",
+  "sideEffects": false,
   "license": "Apache-2.0",
+  "exports": {
+    ".": "./src/mod.ts",
+    "./experimental": "./src/experimental/mod.ts"
+  },
   "files": [
     "dist",
     "package.json",
     "src"
   ],
-  "type": "module",
-  "sideEffects": false,
-  "exports": {
-    ".": "./src/mod.ts",
-    "./experimental": "./src/experimental/mod.ts"
-  },
-  "publishConfig": {
-    "access": "public",
-    "exports": {
-      ".": "./dist/mod.js",
-      "./experimental": "./dist/experimental/mod.js"
-    }
-  },
   "scripts": {
     "build": "tsc",
     "test": "vitest && REACT_STRICT_MODE=1 vitest"
@@ -50,8 +47,11 @@
   "peerDependencies": {
     "react": "^19.2.3"
   },
-  "$genie": {
-    "source": "package.json.genie.ts",
-    "warning": "DO NOT EDIT - changes will be overwritten"
+  "publishConfig": {
+    "access": "public",
+    "exports": {
+      ".": "./dist/mod.js",
+      "./experimental": "./dist/experimental/mod.js"
+    }
   }
 }

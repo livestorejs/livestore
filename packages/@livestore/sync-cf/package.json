@@ -1,28 +1,24 @@
 {
+  "$genie": {
+    "source": "package.json.genie.ts",
+    "warning": "DO NOT EDIT - changes will be overwritten"
+  },
   "name": "@livestore/sync-cf",
   "version": "0.4.0-dev.22",
-  "license": "Apache-2.0",
-  "files": [
-    "dist",
-    "package.json",
-    "README.md",
-    "src"
-  ],
   "type": "module",
   "sideEffects": false,
+  "license": "Apache-2.0",
   "exports": {
     "./cf-worker": "./src/cf-worker/mod.ts",
     "./client": "./src/client/mod.ts",
     "./common": "./src/common/mod.ts"
   },
-  "publishConfig": {
-    "access": "public",
-    "exports": {
-      "./client": "./dist/client/mod.js",
-      "./common": "./dist/common/mod.js",
-      "./cf-worker": "./dist/cf-worker/mod.js"
-    }
-  },
+  "files": [
+    "dist",
+    "package.json",
+    "src",
+    "README.md"
+  ],
   "scripts": {
     "test": "echo 'No tests yet'"
   },
@@ -32,8 +28,12 @@
     "@livestore/common-cf": "link:../common-cf",
     "@livestore/utils": "link:../utils"
   },
-  "$genie": {
-    "source": "package.json.genie.ts",
-    "warning": "DO NOT EDIT - changes will be overwritten"
+  "publishConfig": {
+    "access": "public",
+    "exports": {
+      "./client": "./dist/client/mod.js",
+      "./common": "./dist/common/mod.js",
+      "./cf-worker": "./dist/cf-worker/mod.js"
+    }
   }
 }

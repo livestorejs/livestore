@@ -1,23 +1,21 @@
 {
+  "$genie": {
+    "source": "package.json.genie.ts",
+    "warning": "DO NOT EDIT - changes will be overwritten"
+  },
   "name": "@livestore/sync-electric",
   "version": "0.4.0-dev.22",
+  "type": "module",
+  "sideEffects": false,
   "license": "Apache-2.0",
+  "exports": {
+    ".": "./src/index.ts"
+  },
   "files": [
     "dist",
     "package.json",
     "src"
   ],
-  "type": "module",
-  "sideEffects": false,
-  "exports": {
-    ".": "./src/index.ts"
-  },
-  "publishConfig": {
-    "access": "public",
-    "exports": {
-      ".": "./dist/index.js"
-    }
-  },
   "scripts": {
     "build": "",
     "test": "echo 'No tests yet'"
@@ -26,8 +24,10 @@
     "@livestore/common": "link:../common",
     "@livestore/utils": "link:../utils"
   },
-  "$genie": {
-    "source": "package.json.genie.ts",
-    "warning": "DO NOT EDIT - changes will be overwritten"
+  "publishConfig": {
+    "access": "public",
+    "exports": {
+      ".": "./dist/index.js"
+    }
   }
 }

@@ -1,25 +1,22 @@
 {
+  "$genie": {
+    "source": "package.json.genie.ts",
+    "warning": "DO NOT EDIT - changes will be overwritten"
+  },
   "name": "@livestore/devtools-web-common",
   "version": "0.4.0-dev.22",
+  "type": "module",
+  "sideEffects": false,
   "license": "Apache-2.0",
+  "exports": {
+    "./web-channel": "./src/web-channel/index.ts",
+    "./worker": "./src/worker/mod.ts"
+  },
   "files": [
     "dist",
     "package.json",
     "src"
   ],
-  "type": "module",
-  "sideEffects": false,
-  "exports": {
-    "./web-channel": "./src/web-channel/index.ts",
-    "./worker": "./src/worker/mod.ts"
-  },
-  "publishConfig": {
-    "access": "public",
-    "exports": {
-      "./web-channel": "./dist/web-channel/index.js",
-      "./worker": "./dist/worker/mod.js"
-    }
-  },
   "scripts": {
     "test": "echo No tests yet"
   },
@@ -28,8 +25,11 @@
     "@livestore/utils": "link:../utils",
     "@livestore/webmesh": "link:../webmesh"
   },
-  "$genie": {
-    "source": "package.json.genie.ts",
-    "warning": "DO NOT EDIT - changes will be overwritten"
+  "publishConfig": {
+    "access": "public",
+    "exports": {
+      "./web-channel": "./dist/web-channel/index.js",
+      "./worker": "./dist/worker/mod.js"
+    }
   }
 }

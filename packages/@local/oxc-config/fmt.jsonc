@@ -9,10 +9,27 @@
   "useTabs": false,
   "trailingComma": "all",
   "experimentalSortImports": {
-    "groups": ["builtin", "external", "internal", ["parent", "sibling", "index"]],
-    "internalPattern": ["@livestore/", "@local/"],
-    "newlinesBetween": true,
+    "groups": [
+      "builtin",
+      "external",
+      "internal",
+      [
+        "parent",
+        "sibling",
+        "index"
+      ]
+    ],
+    "internalPattern": [
+      "@livestore/",
+      "@local/"
+    ],
+    "newlinesBetween": true
   },
   "experimentalSortPackageJson": true,
-  "ignorePatterns": ["**/*.gen.ts", "**/*.gen.tsx", "**/*.generated.ts", "**/*.generated.tsx"],
+  "ignorePatterns": [
+    "**/*.gen.ts",
+    "**/*.gen.tsx",
+    "**/*.generated.ts",
+    "**/*.generated.tsx"
+  ]
 }

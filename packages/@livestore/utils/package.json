@@ -1,18 +1,16 @@
 {
+  "$genie": {
+    "source": "package.json.genie.ts",
+    "warning": "DO NOT EDIT - changes will be overwritten"
+  },
   "name": "@livestore/utils",
   "version": "0.4.0-dev.22",
-  "license": "Apache-2.0",
-  "files": [
-    "dist",
-    "package.json",
-    "src"
-  ],
   "type": "module",
   "sideEffects": [
     "./src/global.ts",
     "./dist/global.js"
   ],
-  "react-native": "./dist/index.js",
+  "license": "Apache-2.0",
   "exports": {
     ".": "./src/mod.ts",
     "./browser": "./src/browser/mod.ts",
@@ -27,45 +25,11 @@
     "./nanoid": "./src/nanoid/index.ts",
     "./node": "./src/node/mod.ts"
   },
-  "publishConfig": {
-    "access": "public",
-    "exports": {
-      ".": {
-        "types": "./dist/mod.d.ts",
-        "default": "./dist/mod.js"
-      },
-      "./browser": {
-        "types": "./dist/browser/mod.d.ts",
-        "default": "./dist/browser/mod.js"
-      },
-      "./cuid": {
-        "types": "./dist/cuid/cuid.node.d.ts",
-        "browser": "./dist/cuid/cuid.browser.js",
-        "react-native": "./dist/cuid/cuid.browser.js",
-        "default": "./dist/cuid/cuid.node.js"
-      },
-      "./nanoid": {
-        "types": "./dist/nanoid/index.d.ts",
-        "default": "./dist/nanoid/index.js"
-      },
-      "./effect": {
-        "types": "./dist/effect/mod.d.ts",
-        "default": "./dist/effect/mod.js"
-      },
-      "./effect/browser": {
-        "types": "./dist/browser/mod.d.ts",
-        "default": "./dist/browser/mod.js"
-      },
-      "./node": {
-        "types": "./dist/node/mod.d.ts",
-        "default": "./dist/node/mod.js"
-      },
-      "./bun": {
-        "types": "./dist/bun/mod.d.ts",
-        "default": "./dist/bun/mod.js"
-      }
-    }
-  },
+  "files": [
+    "dist",
+    "package.json",
+    "src"
+  ],
   "scripts": {
     "test": "vitest"
   },
@@ -122,8 +86,44 @@
     "@opentelemetry/resources": "^2.2.0",
     "effect": "^3.19.14"
   },
-  "$genie": {
-    "source": "package.json.genie.ts",
-    "warning": "DO NOT EDIT - changes will be overwritten"
-  }
+  "publishConfig": {
+    "access": "public",
+    "exports": {
+      ".": {
+        "types": "./dist/mod.d.ts",
+        "default": "./dist/mod.js"
+      },
+      "./browser": {
+        "types": "./dist/browser/mod.d.ts",
+        "default": "./dist/browser/mod.js"
+      },
+      "./cuid": {
+        "types": "./dist/cuid/cuid.node.d.ts",
+        "browser": "./dist/cuid/cuid.browser.js",
+        "react-native": "./dist/cuid/cuid.browser.js",
+        "default": "./dist/cuid/cuid.node.js"
+      },
+      "./nanoid": {
+        "types": "./dist/nanoid/index.d.ts",
+        "default": "./dist/nanoid/index.js"
+      },
+      "./effect": {
+        "types": "./dist/effect/mod.d.ts",
+        "default": "./dist/effect/mod.js"
+      },
+      "./effect/browser": {
+        "types": "./dist/browser/mod.d.ts",
+        "default": "./dist/browser/mod.js"
+      },
+      "./node": {
+        "types": "./dist/node/mod.d.ts",
+        "default": "./dist/node/mod.js"
+      },
+      "./bun": {
+        "types": "./dist/bun/mod.d.ts",
+        "default": "./dist/bun/mod.js"
+      }
+    }
+  },
+  "react-native": "./dist/index.js"
 }

@@ -1,14 +1,13 @@
 {
+  "$genie": {
+    "source": "package.json.genie.ts",
+    "warning": "DO NOT EDIT - changes will be overwritten"
+  },
   "name": "@livestore/common",
   "version": "0.4.0-dev.22",
-  "license": "Apache-2.0",
-  "files": [
-    "dist",
-    "package.json",
-    "src"
-  ],
   "type": "module",
   "sideEffects": false,
+  "license": "Apache-2.0",
   "exports": {
     ".": "./src/index.ts",
     "./leader-thread": "./src/leader-thread/mod.ts",
@@ -19,19 +18,11 @@
     "./sync/next/test": "./src/sync/next/test/mod.ts",
     "./testing": "./src/testing/mod.ts"
   },
-  "publishConfig": {
-    "access": "public",
-    "exports": {
-      ".": "./dist/index.js",
-      "./sql-queries": "./dist/sql-queries/index.js",
-      "./leader-thread": "./dist/leader-thread/mod.js",
-      "./schema": "./dist/schema/mod.js",
-      "./sync": "./dist/sync/index.js",
-      "./sync/next": "./dist/sync/next/mod.js",
-      "./sync/next/test": "./dist/sync/next/test/mod.js",
-      "./testing": "./dist/testing/mod.js"
-    }
-  },
+  "files": [
+    "dist",
+    "package.json",
+    "src"
+  ],
   "scripts": {
     "test": "vitest"
   },
@@ -80,8 +71,17 @@
     "@opentelemetry/resources": "^2.2.0",
     "effect": "^3.19.14"
   },
-  "$genie": {
-    "source": "package.json.genie.ts",
-    "warning": "DO NOT EDIT - changes will be overwritten"
+  "publishConfig": {
+    "access": "public",
+    "exports": {
+      ".": "./dist/index.js",
+      "./sql-queries": "./dist/sql-queries/index.js",
+      "./leader-thread": "./dist/leader-thread/mod.js",
+      "./schema": "./dist/schema/mod.js",
+      "./sync": "./dist/sync/index.js",
+      "./sync/next": "./dist/sync/next/mod.js",
+      "./sync/next/test": "./dist/sync/next/test/mod.js",
+      "./testing": "./dist/testing/mod.js"
+    }
   }
 }
