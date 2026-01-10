@@ -10,6 +10,7 @@ import {
   catalog as effectUtilsCatalog,
   baseTsconfigCompilerOptions,
 } from '../submodules/effect-utils/genie/repo.ts'
+import { validateLivestorePackageJson } from './validation.ts'
 
 export { baseTsconfigCompilerOptions }
 
@@ -129,12 +130,18 @@ export const workspacePackagePatterns = [
   '@overeng/*',
 ] as const
 
-/** Type-safe package.json builder */
+/** Type-safe package.json builder with validation */
 export const pkg = createPackageJson({
   packageManager: 'pnpm',
   packageManagerVersion: '10.17.1',
   catalog,
   workspacePackages: workspacePackagePatterns,
+  validation: {
+    /** Examples are exempt from strict dependency validation */
+    excludePackages: ['livestore-example-**', 'livestore-tutorial-starter'],
+    /** LiveStore-specific validation rules */
+    validate: validateLivestorePackageJson,
+  },
 })
 
 /** Common fields for published @livestore packages */

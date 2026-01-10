@@ -48,7 +48,7 @@
     "vitest": "catalog:"
   },
   "peerDependencies": {
-    "react": "^19.1.0"
+    "react": "^19.2.3"
   },
   "$genie": {
     "source": "package.json.genie.ts",

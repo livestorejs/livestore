@@ -24,7 +24,7 @@ export default pkg.package({
     'vitest',
   ],
   peerDependencies: {
-    react: '^19.1.0',
+    react: '^',
   },
   ...livestorePackageDefaults,
   publishConfig: {
