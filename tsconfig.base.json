@@ -2,6 +2,9 @@
 // Source: tsconfig.base.json.genie.ts
 {
   "compilerOptions": {
+    "paths": {
+      "#genie/*": ["./submodules/effect-utils/packages/@overeng/genie/src/lib/*"]
+    },
     "strict": true,
     "exactOptionalPropertyTypes": true,
     "noUncheckedIndexedAccess": true,

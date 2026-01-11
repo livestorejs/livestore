@@ -5,20 +5,21 @@
  * The pnpm-workspace.yaml is generated from this file via Genie.
  */
 
-import { createPackageJson } from '../submodules/effect-utils/packages/@overeng/genie/src/lib/mod.ts'
+import { createPackageJson, defineCatalog } from '#genie/mod.ts'
 import {
   catalog as effectUtilsCatalog,
   baseTsconfigCompilerOptions,
+  domLib,
+  reactJsx,
 } from '../submodules/effect-utils/genie/repo.ts'
 import { validateLivestorePackageJson } from './validation.ts'
 
-export { baseTsconfigCompilerOptions }
+export { baseTsconfigCompilerOptions, domLib, reactJsx }
 
 /** LiveStore-specific packages not in effect-utils catalog */
 const livestoreOnlyCatalog = {
   // Additional type packages
   '@types/chrome': '0.1.4',
-  '@types/bun': '1.2.21',
   '@types/web': '0.0.264',
   '@types/hast': '3.0.4',
   '@types/jasmine': '5.1.4',
@@ -43,7 +44,7 @@ const livestoreOnlyCatalog = {
   'web-test-runner-jasmine': '0.0.6',
 
   // Additional Effect packages
-  '@effect/ai-openai': '0.36.0',
+  '@effect/ai-openai': '0.37.2',
   '@effect/platform-browser': '0.73.0',
   '@effect/platform-bun': '0.86.0',
   '@effect/platform-node-shared': '0.56.0',
@@ -118,10 +119,10 @@ const livestoreOnlyCatalog = {
 } as const
 
 /** Composed catalog - effect-utils base + livestore-specific */
-export const catalog = {
-  ...effectUtilsCatalog,
-  ...livestoreOnlyCatalog,
-} as const
+export const catalog = defineCatalog({
+  extends: effectUtilsCatalog,
+  packages: livestoreOnlyCatalog,
+})
 
 /** Workspace package patterns for type-safe package.json generation */
 export const workspacePackagePatterns = [
@@ -144,6 +145,61 @@ export const pkg = createPackageJson({
   },
 })
 
+// =============================================================================
+// Root Package Config Exports (for parent repo composition)
+// =============================================================================
+
+/** PNPM patched dependencies (paths relative to livestore repo root) */
+export const patchedDependencies = {
+  'knip@5.80.0': 'patches/knip@5.80.0.patch',
+  'starlight-contextual-menu@0.1.3': 'patches/starlight-contextual-menu@0.1.3.patch',
+  'starlight-markdown@0.1.5': 'patches/starlight-markdown@0.1.5.patch',
+} as const
+
+/** PNPM overrides for version alignment */
+export const overrides = {
+  puppeteer: '23.11.1',
+} as const
+
+/** Packages that should only be built (not hoisted) */
+export const onlyBuiltDependencies = [
+  '@mixedbread/cli',
+  '@parcel/watcher',
+  '@tailwindcss/oxide',
+  'dtrace-provider',
+  'esbuild',
+  'msgpackr-extract',
+  'protobufjs',
+  'sharp',
+  'workerd',
+] as const
+
+/** Workspace package resolutions for parent repo composition */
+export const workspaceResolutions = {
+  '@livestore/adapter-cloudflare': 'workspace:*',
+  '@livestore/adapter-expo': 'workspace:*',
+  '@livestore/adapter-node': 'workspace:*',
+  '@livestore/adapter-web': 'workspace:*',
+  '@livestore/cli': 'workspace:*',
+  '@livestore/common': 'workspace:*',
+  '@livestore/devtools-expo': 'workspace:*',
+  '@livestore/devtools-vite': '0.4.0-dev.22',
+  '@livestore/devtools-web-common': 'workspace:*',
+  '@livestore/livestore': 'workspace:*',
+  '@livestore/peer-deps': 'workspace:*',
+  '@livestore/react': 'workspace:*',
+  '@livestore/solid': 'workspace:*',
+  '@livestore/sqlite-wasm': 'workspace:*',
+  '@livestore/svelte': 'workspace:*',
+  '@livestore/sync-cf': 'workspace:*',
+  '@livestore/sync-electric': 'workspace:*',
+  '@livestore/sync-s2': 'workspace:*',
+  '@livestore/utils': 'workspace:*',
+  '@livestore/utils-dev': 'workspace:*',
+  '@livestore/wa-sqlite': 'workspace:*',
+  '@livestore/webmesh': 'workspace:*',
+} as const
+
 /** Common fields for published @livestore packages */
 export const livestorePackageDefaults = {
   version: '0.4.0-dev.22',
@@ -164,7 +220,6 @@ export const localPackageDefaults = {
 // TypeScript Configuration Helpers
 // =============================================================================
 
-export { tsconfigJSON } from '../submodules/effect-utils/packages/@overeng/genie/src/lib/mod.ts'
 
 /** Standard package tsconfig compiler options (composite mode with src/dist structure) */
 export const packageTsconfigCompilerOptions = {
@@ -173,12 +228,6 @@ export const packageTsconfigCompilerOptions = {
   tsBuildInfoFile: './dist/.tsbuildinfo',
 } as const
 
-/** DOM library set for browser-compatible packages */
-export const domLib = ['ES2022', 'DOM', 'DOM.Iterable'] as const
-
-/** React JSX configuration */
-export const reactJsx = { jsx: 'react-jsx' as const }
-
 /** Solid JSX configuration */
 export const solidJsx = { jsx: 'preserve' as const, jsxImportSource: 'solid-js' }
 
@@ -186,7 +235,7 @@ export const solidJsx = { jsx: 'preserve' as const, jsxImportSource: 'solid-js' 
 // GitHub Workflow Helpers
 // =============================================================================
 
-export { githubWorkflow } from '../submodules/effect-utils/packages/@overeng/genie/src/lib/mod.ts'
+export { githubWorkflow } from '#genie/mod.ts'
 
 /**
  * Namespace runner configuration for livestore CI.

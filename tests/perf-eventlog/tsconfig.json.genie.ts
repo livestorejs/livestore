@@ -1,4 +1,5 @@
-import { reactJsx, tsconfigJSON } from '../../genie/repo.ts'
+import { tsconfigJSON } from '#genie/mod.ts'
+import { reactJsx } from '../../genie/repo.ts'
 
 export default tsconfigJSON({
   extends: '../../tsconfig.base.json',

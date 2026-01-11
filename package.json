@@ -2,6 +2,10 @@
   "name": "@livestore/monorepo",
   "version": "0.0.0",
   "private": true,
+  "type": "module",
+  "imports": {
+    "#genie/*": "./submodules/effect-utils/packages/@overeng/genie/src/lib/*"
+  },
   "scripts": {
     "_build:ts": "tsc --build tsconfig.dev.json && tsc --build tsconfig.examples.json",
     "build": "pnpm run build:ts",
@@ -15,7 +19,6 @@
   "devDependencies": {
     "@biomejs/biome": "catalog:",
     "@effect/language-service": "catalog:",
-    "@overeng/genie": "workspace:*",
     "@types/node": "catalog:",
     "@vitest/ui": "catalog:",
     "husky": "catalog:",

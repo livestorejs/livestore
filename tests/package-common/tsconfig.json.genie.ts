@@ -1,4 +1,4 @@
-import { tsconfigJSON } from '../../genie/repo.ts'
+import { tsconfigJSON } from '#genie/mod.ts'
 
 export default tsconfigJSON({
   extends: '../../tsconfig.base.json',

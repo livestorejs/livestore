@@ -1,5 +1,5 @@
+import { pnpmWorkspace } from '#genie/mod.ts'
 import { catalog } from './genie/repo.ts'
-import { pnpmWorkspace } from './submodules/effect-utils/packages/@overeng/genie/src/lib/mod.ts'
 
 export default pnpmWorkspace({
   packages: [

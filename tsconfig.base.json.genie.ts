@@ -11,10 +11,13 @@
  * - Note: missedPipeableOpportunity is disabled (too noisy)
  */
 
-import { tsconfigJSON } from './genie/repo.ts'
+import { tsconfigJSON } from '#genie/mod.ts'
 
 export default tsconfigJSON({
   compilerOptions: {
+    paths: {
+      '#genie/*': ['./submodules/effect-utils/packages/@overeng/genie/src/lib/*'],
+    },
     strict: true,
     exactOptionalPropertyTypes: true,
     noUncheckedIndexedAccess: true,
