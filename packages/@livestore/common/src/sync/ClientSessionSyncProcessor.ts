@@ -11,7 +11,7 @@ import {
   Schema,
   type Scope,
   Stream,
-  Subscribable,
+  Subscribable
 } from '@livestore/utils/effect'
 import type * as otel from '@opentelemetry/api'
 
@@ -99,6 +99,10 @@ export const makeClientSessionSyncProcessor = ({
       pending: [],
     }),
   }
+  // FIXME: https://github.com/livestorejs/livestore/issues/970
+  Effect.runCallback(clientSession.leaderThread.syncState.get.pipe(Effect.andThen(leaderState => {
+    syncStateRef.current = leaderState
+  })))
 
   /** Only used for debugging / observability / testing, it's not relied upon for correctness of the sync processor. */
   const syncStateUpdateQueue = Queue.unbounded<SyncState.SyncState>().pipe(Effect.runSync)
@@ -226,12 +230,80 @@ export const makeClientSessionSyncProcessor = ({
     yield* Stream.suspend(() =>
       clientSession.leaderThread.events.pull({ cursor: syncStateRef.current.upstreamHead }),
     ).pipe(
-      Stream.tap(({ payload }) =>
+      Stream.tap(({ payload: payloadOriginal }) =>
         Effect.gen(function* () {
           // yield* Effect.logDebug('ClientSessionSyncProcessor:pull', payload)
 
           if (clientSession.devtools.enabled) {
             yield* clientSession.devtools.pullLatch.await
+          }
+
+          /*
+           * Full problem statement:
+           *
+           * while backend is offline I make a local push. Then I refresh the page and while I do that the backend comes back.
+           * Once refresh finished, backend push is made automatically. Then a backend pull happens which returns 2 events,
+           * where 1 of them is a blank (intentional, i.e. args={} to signify sequence advance
+           * as backend internally has more events but we can't see them), and the other one is the one we just pushed.
+           * Since it has the same sequence we are not processing it again (i.t. sync state merge is "advance"
+           * and merge.newEvents only has the blank that is later ignored). In the client session processor,
+           * the clientSession.leaderThread.events.pull returns the blank but the syncStateRef.current.pending
+           * still has the local event that we just pushed, so on SyncState.merge the new state is "rebase"
+           * and the newEvents contains 2 items - the blank and the rebased event, meaning it is the same
+           * but it now has increased sequence number and so later it goes through into local push again
+           * which leads to duplicate event with 2 different sequence numbers.
+           *
+           * I see via debugger that when clientSession.leaderThread.events.pull result is processed in the client session processor,
+           * the merge is called in the following state:
+           * syncState: {localHead=4744, upstreamHead=4743,
+           * pending=[{... the event in question that has already been pushed to backend, seqNum=4744}]} -
+           * this is the sync state from the client session processor
+           * and it was given to merge payload=blankEvent in the meantime,
+           * the sync state from the leader is {localHead=4745, upstreamHead=4745}
+           * then the merge result becomes {newEvents=[{...blank},
+           * {...the event in question that has been rebased with new sequence number, seqNum=4746}],
+           * newSyncState={localHead=4746, upstreamHead=4745, pending=[{...the event in question, seqNum=4746}]}}
+           */
+          let payload = payloadOriginal
+          if (syncStateRef.current.pending.length > 0) {
+            const leaderSyncState = yield* clientSession.leaderThread.syncState.get
+            syncStateRef.current = new SyncState.SyncState({
+              // another issue: given that the sync backend is offline for a long time, all events end up inside
+              //   syncStateRef.current.pending as well as leaderSyncState.pending - duplicating the same events.
+              //   as you add more events, both pending arrays grow at the same time, and then somehow I see
+              //   leader doing local push for duplicate events (probably somehow gets from here into local push queue in leader)
+              //   and it just blows up really quickly, I'm seeing hundreds of events being rebased and applied for every 1 new event after a while
+              pending: syncStateRef.current.pending.filter(e => leaderSyncState.pending.every(le => !EventSequenceNumber.Client.isEqual(le.seqNum, e.seqNum)) && EventSequenceNumber.Client.isGreaterThan(
+                e.seqNum,
+                leaderSyncState.upstreamHead,
+              )),
+              localHead: EventSequenceNumber.Client.max(
+                syncStateRef.current.localHead,
+                leaderSyncState.upstreamHead,
+              ),
+              upstreamHead: leaderSyncState.upstreamHead
+            })
+            const leaderHasAdvancedPastClient = EventSequenceNumber.Client.isGreaterThan(
+              leaderSyncState.upstreamHead,
+              syncStateRef.current.localHead,
+            )
+            if (leaderHasAdvancedPastClient) {
+              const newEvents = payloadOriginal.newEvents.filter(e => EventSequenceNumber.Client.isGreaterThan(
+                e.seqNum,
+                syncStateRef.current.upstreamHead,
+              ))
+              if (payloadOriginal._tag === 'upstream-advance') {
+                payload = SyncState.PayloadUpstreamAdvance.make({ newEvents })
+              } else {
+                payload = SyncState.PayloadUpstreamRebase.make({
+                  newEvents,
+                  rollbackEvents: payloadOriginal.rollbackEvents.filter(e => EventSequenceNumber.Client.isGreaterThan(
+                    e.seqNum,
+                    syncStateRef.current.localHead,
+                  ))
+                })
+              }
+            }
           }
 
           const mergeResult = SyncState.merge({
