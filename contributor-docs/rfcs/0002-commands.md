@@ -58,6 +58,16 @@ Rebase is only safe when at least one of these holds:
 
 Without one of these, rebase gives you convergence without correctness.
 
+### Why This Matters
+
+Invariant violations have compounding consequences:
+
+- **Corrupted state**: The state DB ends up in configurations that no valid sequence of operations could produce—foreign key violations, impossible counts, orphaned records.
+- **Cascading corruption**: Invalid events cause further invalid events. A comment on a deleted task gets liked; the like references an orphaned comment.
+- **Audit trail pollution**: The eventlog contains events valid only in contexts that no longer exist. Replaying produces different states than clients experienced.
+- **Difficult recovery**: Append-only logs can't simply delete bad events. Remediation requires compensating events or manual intervention.
+- **Eroded trust**: Users see actions succeed locally, then discover after sync that reality changed. The offline-first promise breaks down.
+
 ### Concrete Scenarios
 
 #### Scenario 1: Referential Integrity Violation
@@ -92,16 +102,6 @@ Without one of these, rebase gives you convergence without correctness.
 4. Client A reconnects and rebases: `[SeatAssigned("12A", "Bob"), SeatAssigned("12A", "Alice")]`
 
 **Result**: Two passengers assigned to the same seat ❌
-
-### Why This Matters
-
-Invariant violations have compounding consequences:
-
-- **Corrupted state**: The state DB ends up in configurations that no valid sequence of operations could produce. Foreign key violations, impossible counts, orphaned records.
-- **Silent failures**: Without explicit detection, the corruption propagates silently. Users and developers don't know something is wrong until downstream symptoms appear.
-- **Broken UIs**: Queries may return data that doesn't make sense: comments on deleted tasks. The UI either crashes, displays nonsense, or we're forced to handle such state.
-- **Audit trail pollution**: The eventlog now contains events that were only valid in a context that no longer exists. Replaying the log produces different states than clients actually experienced.
-- **Eroded trust**: Users see their actions succeed locally, then discover after sync that reality changed. If local state can't be trusted, the offline-first promise breaks down.
 
 ## Requirements
 
