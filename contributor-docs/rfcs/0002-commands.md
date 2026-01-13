@@ -109,7 +109,7 @@ Git rebase has built-in textual conflict detection. When replaying a commit onto
 
 This is often a reasonable proxy for semantic conflict in source code. However, semantic conflicts can still slip through when changes are textually disjointed (e.g., one commit renames a function, another adds a call to the old name). These require external validation like compilation, tests, and human review.
 
-### Requirements
+## Requirements
 
 Any solution must satisfy these constraints:
 
