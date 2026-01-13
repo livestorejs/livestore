@@ -93,6 +93,16 @@ Without one of these, rebase gives you convergence without correctness.
 
 **Result**: Two passengers assigned to the same seat ❌
 
+### Why This Matters
+
+Invariant violations have compounding consequences:
+
+- **Corrupted state**: The state DB ends up in configurations that no valid sequence of operations could produce. Foreign key violations, impossible counts, orphaned records.
+- **Silent failures**: Without explicit detection, the corruption propagates silently. Users and developers don't know something is wrong until downstream symptoms appear.
+- **Broken UIs**: Queries may return data that doesn't make sense: comments on deleted tasks. The UI either crashes, displays nonsense, or we're forced to handle such state.
+- **Audit trail pollution**: The eventlog now contains events that were only valid in a context that no longer exists. Replaying the log produces different states than clients actually experienced.
+- **Eroded trust**: Users see their actions succeed locally, then discover after sync that reality changed. If local state can't be trusted, the offline-first promise breaks down.
+
 ### Comparison with Git Rebase
 
 Git rebase has built-in textual conflict detection. When replaying a commit onto a new base, git checks for textual overlap—if two commits modify the same lines, git halts with merge conflict markers and requires human resolution before proceeding.
