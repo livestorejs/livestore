@@ -10,7 +10,7 @@ In event sourcing vocabulary, a store can be thought as an [**aggregate**](#glos
 - The **eventlog** is a single [event stream](#glossary-event-stream)
 - The **state DB** is a [projection](#glossary-projection) that serves as both the aggregate's state and also as a [read model](#glossary-read-model)
 - [**Materializers**](https://dev.docs.livestore.dev/building-with-livestore/state/materializers/) are [projectors](#glossary-projector) that build the state DB out of the eventlog
-- `storeId` function as both the stream and aggregate ID
+- `storeId` functions as both the stream and aggregate ID
 
 > [!NOTE]
 > A LiveStore application can and will often be composed of multiple stores.
