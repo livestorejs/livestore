@@ -1,6 +1,6 @@
 # Commands
 
-[WRITE A SHORT SUMMARY]
+[TODO: Write a short summary]
 
 ## Context
 
