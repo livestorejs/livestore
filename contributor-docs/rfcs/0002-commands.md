@@ -4,51 +4,44 @@
 
 ## Context
 
-In LiveStore, the core concept is a **store**. It combines an eventlog and a SQLite state DB that are **strongly consistent** with each other within a single client/node. **A same application can be composed of multiple stores.**
+In LiveStore, a **store** combines an eventlog and a state DB that are kept **strongly consistent** with each other within a single client session.
 
-Because of this design, a store functions as a **single aggregate** where:
-- The **event log** is a single event stream
-- The **state DB** function as the aggregate state and also as the read model
-- **Materializers** are projectors that build the SQLite state DB out of the event log
-- `storeId` function as the stream and aggregate ID
+In event sourcing vocabulary, a store can be thought as an **aggregate** where:
+- The **eventlog** is a single event stream
+- The **state DB** is a projection that serves as both the aggregate's state and also as a read model
+- [**Materializers**](https://dev.docs.livestore.dev/building-with-livestore/state/materializers/) are projectors that build the state DB out of the event log
+- `storeId` function as both the stream and aggregate ID
 
-LiveStore supports having multiple stores within a same application.
+> [!NOTE]
+> A LiveStore application can and will often be composed of multiple stores.
 
-**Events are the source of truth**
+### 1. Events as the record of changes
 
-Instead of mutating state directly, you commit events that describe what happened:
+Instead of mutating the state DB directly, the user commits events to the store:
 ```ts
 store.commit(events.todoCreated({ id: 'todo-1', text: 'Buy groceries' }))
 store.commit(events.todoCompleted({ id: 'todo-1' }))
 ```
 
-**Materializers transform events into SQLite state DB**
+### 2. Materializers process events and build the state DB
 
-Events are persisted to the eventlog and immediately materialized into SQLite tables via materializers:
+Events are immediately appended to the eventlog and processed by user-defined materializers that update the state DB:
 ```ts
 State.SQLite.materializers(events, {
-  todoCreated: ({ id, text }) => sql`INSERT INTO todos (id, text, completed) VALUES (${event.id}, ${event.text}, false)`,
-  todoCompleted: ({ id }) => sql`UPDATE todos SET completed = true WHERE id = ${id}`,
+  'v1.TodoCreated': ({ id, text }) => tables.todos.insert({ id, text, completed: false }),
+  'v1.TodoCompleted': ({ id }) => tables.todos.update({ completed: true }).where({ id }),
 })
 ```
 
-**Syncing**
+### 3. Events are synced
 
-LiveStore uses a git-inspired push/pull model with event sourcing semantics. Events are appended to an immutable log (eventlog synced across clients (through a sync backend), and materialized into SQLite state DB:
+Events are synced across clients through a sync backend using a git **rebase**-inspired model:
 
-1. Local events are materialized immediately (optimistic updates)
-2. Events sync to a sync backend when online
-3. Other clients pull new events from sync backend and materialize them locally
+1. Pull the latest remote events from the sync backend
+2. Rebase local pending (not yet pushed/confirmed) events on top of pulled remote events
+3. Push local pending events to the sync backend
 
-Sync flow:
-- Pull latest remote events from sync backend before pushing local events
-- Rebase local unpushed events on top of remote events
-- Push local events to sync backend
-- All clients eventually converge to the same state
-
-When remote events arrive that conflict with local pending events, LiveStore performs a rebase operation similar to git rebase.
-
-Currently, LiveStore uses last-write-wins based on the total ordering. Since all clients converge to the same event order (via the sync backend's sequential ordering), they all arrive at the same final state.
+A client must have pulled the latest remote events before being able to push events to the sync backend. This is what allows LiveStore to ensure that events eventually end up in the same total order across all clients when events are committed concurrently between clients.
 
 ## Problem
 
