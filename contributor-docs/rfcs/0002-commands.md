@@ -372,8 +372,6 @@ Maybe?
 
 ### B. Similar Technologies
 
-## Similar Technologies
-
 - [Kurrent](https://docs.kurrent.io/getting-started/concepts.html)
 - [Axon Framework](https://docs.axoniq.io/axon-framework-reference/4.12/)
 - [f(model)](https://github.com/fraktalio/fmodel-ts)
