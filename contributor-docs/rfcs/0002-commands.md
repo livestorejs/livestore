@@ -4,12 +4,12 @@
 
 ## Context
 
-In LiveStore, a **store** combines an eventlog and a state DB that are kept **strongly consistent** with each other within a single client session.
+In LiveStore, a **store** combines an [eventlog](https://dev.docs.livestore.dev/building-with-livestore/events/#eventlog) and a [state DB](https://dev.docs.livestore.dev/overview/concepts/#overview) that are kept **strongly consistent** with each other within a single client session.
 
-In event sourcing vocabulary, a store can be thought as an **aggregate** where:
-- The **eventlog** is a single event stream
-- The **state DB** is a projection that serves as both the aggregate's state and also as a read model
-- [**Materializers**](https://dev.docs.livestore.dev/building-with-livestore/state/materializers/) are projectors that build the state DB out of the event log
+In event sourcing vocabulary, a store can be thought as an [**aggregate**](#glossary-aggregate) where:
+- The **eventlog** is a single [event stream](#glossary-event-stream)
+- The **state DB** is a [projection](#glossary-projection) that serves as both the aggregate's state and also as a [read model](#glossary-read-model)
+- [**Materializers**](https://dev.docs.livestore.dev/building-with-livestore/state/materializers/) are [projectors](#glossary-projector) that build the state DB out of the eventlog
 - `storeId` function as both the stream and aggregate ID
 
 > [!NOTE]
@@ -362,20 +362,20 @@ Maybe?
 
 ### A. Glossary
 
-- **Event**: An immutable fact about something that has happened in the past. Events can be categorized to domain events, integration events, and external events. None of these are exclusive to event sourcing, but domain events are in the center of it and as a result in context of event sourcing domain events are usually referenced just as events.
+- <span id="glossary-event">**Event**</span>: An immutable fact about something that has happened in the past. Events can be categorized to domain events, integration events, and external events. None of these are exclusive to event sourcing, but domain events are in the center of it and as a result in context of event sourcing domain events are usually referenced just as events.
   - Provisional Event
   - Authoritative/Confirmed Event
-- **Aggregate**: A consistency boundary — a single transactional unit that enforces business invariants, accepts commands, and emits events. It state is rebuilt by replaying its event stream.
-- **Event Stream**: An ordered, append-only sequence of events belonging to a single aggregate instance, representing the complete history of state changes for that specific aggregate.
-- **Event Log**: An append-only storage of all events, which can span multiple event streams.
-- **Projection**: A specific data representation derived from one or more event streams, optimized for a particular use case.
-- **Projector**: A function or process that listens to events and updates one or more projections. In LiveStore, a materializer is a projector.
-- **Read Model**: A projection optimized for querying, serving as the read side of CQRS.
-- **Commands**: Commands are explicit instructions from the user or external systems that request a change in the application's state. In other words, commands represent an intention to change the system's state.
-- **Command Handler**: An orchestration component that receives a command, loads the current state, invokes the decider, commit event(s). It deals with concerns like authorization, idempotency, concurrency, and cross-stream checks. It has side effects and interacts with external systems.
-- **(Event) Deciders**: Event deciders are responsible for handling commands, determining which events to generate by encapsulating business rules and state, and applying those rules to the current state. They contain no side effects or infrastructure concerns. They ensure that commands result in valid and consistent state transitions. `decide` (Command × Initial State → Event(s)) and `evolve` (State × Event → New State)
-- **Business Rules**: Business rules are specific guidelines or constraints that dictate how data can be created, stored, and modified within a system. These rules are essential for ensuring that all changes to the system's state are valid and consistent with the domain logic. In an event-sourced system, business rules are applied to ensure that only valid state changes occur.
-- **Invariants**: Invariants are conditions that must always hold true for the system to be considered in a valid state. They are critical for maintaining the integrity of an event-sourced system.
+- <span id="glossary-aggregate">**Aggregate**</span>: A consistency boundary — a single transactional unit that enforces business invariants, accepts commands, and emits events. It state is rebuilt by replaying its event stream.
+- <span id="glossary-event-stream">**Event Stream**</span>: An ordered, append-only sequence of events belonging to a single aggregate instance, representing the complete history of state changes for that specific aggregate.
+- <span id="glossary-event-log">**Event Log**</span>: An append-only storage of all events, which can span multiple event streams.
+- <span id="glossary-projection">**Projection**</span>: A specific data representation derived from one or more event streams, optimized for a particular use case.
+- <span id="glossary-projector">**Projector**</span>: A function or process that listens to events and updates one or more projections. In LiveStore, a materializer is a projector.
+- <span id="glossary-read-model">**Read Model**</span>: A projection optimized for querying, serving as the read side of CQRS.
+- <span id="glossary-command">**Command**</span>: An explicit instruction from the user or external systems that requests a change in the application's state. In other words, commands represent an intention to change the system's state.
+- <span id="glossary-command-handler">**Command Handler**</span>: An orchestration component that receives a command, loads the current state, invokes the decider, commit event(s). It deals with concerns like authorization, idempotency, concurrency, and cross-stream checks. It has side effects and interacts with external systems.
+- <span id="glossary-decider">**(Event) Decider**</span>: Event deciders are responsible for handling commands, determining which events to generate by encapsulating business rules and state, and applying those rules to the current state. They contain no side effects or infrastructure concerns. They ensure that commands result in valid and consistent state transitions. `decide` (Command × Initial State → Event(s)) and `evolve` (State × Event → New State)
+- <span id="glossary-business-rules">**Business Rules**</span>: Business rules are specific guidelines or constraints that dictate how data can be created, stored, and modified within a system. These rules are essential for ensuring that all changes to the system's state are valid and consistent with the domain logic. In an event-sourced system, business rules are applied to ensure that only valid state changes occur.
+- <span id="glossary-invariant">**Invariant**</span>: Invariants are conditions that must always hold true for the system to be considered in a valid state. They are critical for maintaining the integrity of an event-sourced system.
 
 ### B. Similar Technologies
 
