@@ -1,6 +1,6 @@
 { pkgs, lib, inputs, ... }:
 let
-  playwrightDriver = inputs.playwright-web-flake.packages.${pkgs.system}.playwright-driver;
+  playwrightDriver = inputs.playwright-web-flake.packages.${pkgs.stdenv.hostPlatform.system}.playwright-driver;
 in
 {
   # Apply pnpm guard overlay from pnpm-compose (prevents `pnpm install` in submodules)
