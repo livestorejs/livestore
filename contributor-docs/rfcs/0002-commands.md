@@ -49,12 +49,6 @@ When a client produces an event, it does so based on the current local state. Th
 
 Rebasing changes the **base state** against which an event will be applied. An event that was valid in Context A may be invalid, nonsensical, or catastrophically wrong in Context B.
 
-```
-Original: Event E was produced when state was A
-After Rebase: state has transitioned to B. Event E is applied to state B
-Problem: E may not be valid for state B
-```
-
 The core issue is that rebasing re-parents events without re-checking whether the conditions that justified their creation still hold.
 
 Rebase is only safe if:
