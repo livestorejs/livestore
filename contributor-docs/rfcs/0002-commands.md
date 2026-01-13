@@ -321,12 +321,6 @@ In this approach, clients are able to issue both authoritative events and comman
 - We shouldn't be able to read the DB in materializer (it breaks determinism)?
 - Preserve atomicity of event commits across the network?
 
-
-#### Benefits
-
-- Audit trail remains intact
-
-
 ## Acknowledgments
 
 - @imagio (Discord)
