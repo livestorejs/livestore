@@ -103,12 +103,6 @@ Invariant violations have compounding consequences:
 - **Audit trail pollution**: The eventlog now contains events that were only valid in a context that no longer exists. Replaying the log produces different states than clients actually experienced.
 - **Eroded trust**: Users see their actions succeed locally, then discover after sync that reality changed. If local state can't be trusted, the offline-first promise breaks down.
 
-### Comparison with Git Rebase
-
-Git rebase has built-in textual conflict detection. When replaying a commit onto a new base, git checks for textual overlap—if two commits modify the same lines, git halts with merge conflict markers and requires human resolution before proceeding.
-
-This is often a reasonable proxy for semantic conflict in source code. However, semantic conflicts can still slip through when changes are textually disjointed (e.g., one commit renames a function, another adds a call to the old name). These require external validation like compilation, tests, and human review.
-
 ## Requirements
 
 Any solution must satisfy these constraints:
