@@ -386,7 +386,7 @@ Maybe?
 
 ### A. Glossary
 
-- **Event**: An immutable fact about something that has happened in the past. Events can be categorized to domain events, integration events and external events. None of these are exclusive to event sourcing, but domain events are in the center of it and as a result in context of event sourcing domain events are usually referenced just as events.
+- **Event**: An immutable fact about something that has happened in the past. Events can be categorized to domain events, integration events, and external events. None of these are exclusive to event sourcing, but domain events are in the center of it and as a result in context of event sourcing domain events are usually referenced just as events.
   - Provisional Event
   - Authoritative/Confirmed Event
 - **Aggregate**: A consistency boundary — a single transactional unit that enforces business invariants, accepts commands, and emits events. It state is rebuilt by replaying its event stream.
@@ -396,8 +396,7 @@ Maybe?
 - **Projector**: A function or process that listens to events and updates one or more projections. In LiveStore, a materializer is a projector.
 - **Read Model**: A projection optimized for querying, serving as the read side of CQRS.
 - **Commands**: Commands are explicit instructions from the user or external systems that request a change in the application's state. In other words, commands represent an intention to change the system's state.
-- **Command Handler**: An orchestration component that handles infrastructure concerns — receives a commands, loads the current state, invokes the decider, persists and the resulting events. It has side effects and interacts with external systems.
-- **Command Handler**: An orchestration component that receives a command, loads the current state, invokes the decider, commit event(s), and deals with concerns like authorization, idempotency, concurrency, and cross-stream checks. It has side effects and interacts with external systems.
+- **Command Handler**: An orchestration component that receives a command, loads the current state, invokes the decider, commit event(s). It deals with concerns like authorization, idempotency, concurrency, and cross-stream checks. It has side effects and interacts with external systems.
 - **(Event) Deciders**: Event deciders are responsible for handling commands, determining which events to generate by encapsulating business rules and state, and applying those rules to the current state. They contain no side effects or infrastructure concerns. They ensure that commands result in valid and consistent state transitions. `decide` (Command × Initial State → Event(s)) and `evolve` (State × Event → New State)
 - **Business Rules**: Business rules are specific guidelines or constraints that dictate how data can be created, stored, and modified within a system. These rules are essential for ensuring that all changes to the system's state are valid and consistent with the domain logic. In an event-sourced system, business rules are applied to ensure that only valid state changes occur.
 - **Invariants**: Invariants are conditions that must always hold true for the system to be considered in a valid state. They are critical for maintaining the integrity of an event-sourced system.
