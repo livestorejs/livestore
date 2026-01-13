@@ -45,98 +45,74 @@ A client must have pulled the latest remote events before being able to push eve
 
 ## Problem
 
-When a client generates an event, it does so based on the current local state. The event represents a valid state transition *given that specific context*. For example, a `MoneyWithdrawn($100)` event is generated only after verifying the balance is sufficient.
+When a client produces an event, it does so based on the current local state. The event represents a valid state transition *given that specific context*. For example, a `MoneyWithdrawn($100)` event is only committed if the balance contains sufficient funds.
 
 Rebasing changes the **base state** against which an event will be applied. An event that was valid in Context A may be invalid, nonsensical, or catastrophically wrong in Context B.
 
 ```
-Original: Event E was generated when state was A
-After Rebase: Event E is applied to state B
+Original: Event E was produced when state was A
+After Rebase: state has transitioned to B. Event E is applied to state B
 Problem: E may not be valid for state B
 ```
 
-The core issue is that rebasing re-parents events without re-checking whether the conditions that justified their creation still hold. An event valid in Context A might be invalid or nonsensical in Context B.
+The core issue is that rebasing re-parents events without re-checking whether the conditions that justified their creation still hold.
 
 Rebase is only safe if:
 - The operation is **context-free** (commutative/CRDT-like), **or**
 - The “event” carries enough **preconditions** to become conditional, **or**
-- You accept that some “events” will become invalid and must be **rejected/compensated**.
+- We accept that some “events” will become invalid and must be **rejected or compensated**.
 
 Without one of these, rebase gives you convergence without correctness.
-
-**Example:**
-
-[PROVIDE BASIC EXAMPLE]
 
 ### Concrete Scenarios
 
 #### Scenario 1: Referential Integrity Violation
 
-**Domain Invariant**: Comments can only reference existing tasks.
+**Invariant**: Comments can only reference existing tasks.
 
-```
-Initial State: Task-A exists, no comments
+1. Initial State: Task-1 exists, no comments
+2. Client A (offline): Creates comment on Task-1 → `CommentCreated("Task-1", "Great work!")`
+3. Client B (online): Deletes Task-1 → `TaskDeleted("Task-1")`
+4. Client A reconnects and rebases: `[TaskDeleted("Task-1"), CommentCreated("Task-1", "Great work!")]`
 
-Client A (offline):
-  1. Creates comment on Task-A
-  2. Event: CommentCreated(taskId: "Task-A", text: "Great work!")
-
-Client B (online):
-  1. Deletes Task-A
-  2. Event: TaskDeleted(taskId: "Task-A")
-  3. Syncs to backend
-
-Client A reconnects:
-  1. Pulls TaskDeleted event
-  2. Rebases CommentCreated after TaskDeleted
-  3. Event log: [TaskDeleted("Task-A"), CommentCreated("Task-A", ...)]
-  
-Result: Comment references non-existent task ❌
-```
-
----
+**Result**: Comment references non-existent task ❌
 
 #### Scenario 2: Business Rule Violation
 
-**Domain Invariant**: Room can hold maximum 2 guests.
+**Invariant**: Room can hold a maximum of two guests.
 
-```
-Initial State: Room has 0 guests
+1. Initial State: Room-1 has 0 guests
+2. Client A (offline): Checks in Guest-A → `GuestCheckedIn("Room-1", "Guest-A")`
+3. Client B (online): Checks in Guest-B and Guest-C → `[GuestCheckedIn("Room-1", "Guest-B"), GuestCheckedIn("Room-1", "Guest-C")]`
+4. Client A reconnects and rebases: `[GuestCheckedIn("Room-1", "Guest-B"), GuestCheckedIn("Room-1", "Guest-C"), GuestCheckedIn("Room-1", "Guest-A")]`
 
-Client A (offline): CheckIn(guest1) → GuestCheckedIn(room, guest1)
-Client B (online): CheckIn(guest2), CheckIn(guest3) → syncs both
-
-Client A reconnects, rebases:
-  Event log: [CheckIn(guest2), CheckIn(guest3), CheckIn(guest1)]
-  
-Result: Room has 3 guests (capacity exceeded) ❌
-```
+**Result**: Room has three guests (capacity exceeded) ❌
 
 #### Scenario 3: Uniqueness Constraint Violation
 
-**Domain Invariant**: Each seat on a flight can only be assigned to one passenger.
+**Invariant**: Each seat on a flight can only be assigned to one passenger.
 
-```
-Initial State: Seat 12A is available
+1. Initial State: Seat 12A is available
+2. Client A (offline): Assigns seat 12A to passenger Alice → `SeatAssigned("12A", "Alice")`
+3. Client B (online): Assigns seat 12A to passenger Bob → `SeatAssigned("12A", "Bob")`
+4. Client A reconnects and rebases: `[SeatAssigned("12A", "Bob"), SeatAssigned("12A", "Alice")]`
 
-Client A (offline): Assigns seat 12A to passenger Alice → SeatAssigned("12A", "Alice")
-Client B (online): Assigns seat 12A to passenger Bob → SeatAssigned("12A", "Bob"), syncs
+**Result**: Two passengers assigned to the same seat ❌
 
-Client A reconnects:
-  1. Pulls Client B's SeatAssigned
-  2. Rebases own SeatAssigned after
-  3. Event log: [SeatAssigned("12A", "Bob"), SeatAssigned("12A", "Alice")]
+### Comparison with Git Rebase
 
-Result: Two passengers assigned to the same seat ❌
-```
+Git rebase has built-in textual conflict detection. When replaying a commit onto a new base, git checks for textual overlap—if two commits modify the same lines, git halts with merge conflict markers and requires human resolution before proceeding.
+
+This is often a reasonable proxy for semantic conflict in source code. However, semantic conflicts can still slip through when changes are textually disjointed (e.g., one commit renames a function, another adds a call to the old name). These require external validation like compilation, tests, and human review.
 
 ### Requirements
 
-- Clients must be able to generate events while offline in order to simulate changes (optimistic updates).
-- Clients can optimistically enforce some invariants locally based on their view of the event log
-- The server can enforce invariants that require server-only (global) knowledge or authority (e.g., cross-aggregate consistency, global uniqueness, permission..).
-- Write-side state must be strongly consistent with the event stream; Event append and the write-side state update must be atomic; The write-side state must be updated transactionally with the event write. The state DB must work as the aggregate state.
+Any solution must satisfy these constraints:
 
+- Clients must be able to commit events while offline to simulate changes (optimistic updates).
+- Clients can enforce some invariants locally based on their view of the event log.
+- Server can enforce invariants that require server-only knowledge or authority (e.g., cross-aggregate consistency, global uniqueness, permissions).
+- The state DB must remain strongly consistent with the eventlog within a client session; Appending events and updating the state DB must be done atomically within a single commit. Note: This is required because we effectively use the state DB as the aggregate's state
 
 ## Proposed Solution
 
@@ -163,7 +139,7 @@ for (const pending of pendingCommands) {
 
 Keep the optimistic UI, but change the sync protocol.
 1. **Queue Commands, Don't Log Events:** Offline actions are stored as "Pending Commands."
-2. **Optimistic Events:** Generate temporary local events to update SQLite, but mark them as "Provisional"
+2. **Optimistic Events:** Produce temporary local events to update SQLite, but mark them as "Provisional"
 3. **Server Validation:** On sync, send Commands. The server executes them.
 4. **Reconciliation:** The server sends back the *actual* resulting events. The client discards its provisional events and replaces them with the authoritative server events.
 
