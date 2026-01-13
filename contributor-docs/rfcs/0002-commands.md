@@ -116,7 +116,8 @@ Any solution must satisfy these constraints:
 - Clients must be able to commit events while offline to simulate changes (optimistic updates).
 - Clients can enforce some invariants locally based on their view of the event log.
 - Server can enforce invariants that require server-only knowledge or authority (e.g., cross-aggregate consistency, global uniqueness, permissions).
-- The state DB must remain strongly consistent with the eventlog within a client session; Appending events and updating the state DB must be done atomically within a single commit. Note: This is required because we effectively use the state DB as the aggregate's state
+- The state DB must remain strongly consistent with the eventlog within a client session; appending events and updating the state DB must be atomic.
+  - This is required because we use the state DB as the aggregate's state.
 
 ## Proposed Solution
 
