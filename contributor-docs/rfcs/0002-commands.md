@@ -45,16 +45,16 @@ A client must have pulled the latest remote events before being able to push eve
 
 ## Problem
 
+> **Problem Statement**: Rebasing re-parents events without re-checking whether the conditions that justified their creation still hold, resulting in potentially invalid states
+
 When a client produces an event, it does so based on the current local state. The event represents a valid state transition *given that specific context*. For example, a `MoneyWithdrawn($100)` event is only committed if the balance contains sufficient funds.
 
 Rebasing changes the **base state** against which an event will be applied. An event that was valid in Context A may be invalid, nonsensical, or catastrophically wrong in Context B.
 
-The core issue is that rebasing re-parents events without re-checking whether the conditions that justified their creation still hold.
-
-Rebase is only safe if:
-- The operation is **context-free** (commutative/CRDT-like), **or**
-- The “event” carries enough **preconditions** to become conditional, **or**
-- We accept that some “events” will become invalid and must be **rejected or compensated**.
+Rebase is only safe when at least one of these holds:
+- The operation is **context-free** (commutative/CRDT-like)
+- The event carries explicit **preconditions** that can be checked against the new state
+- We accept that some “events” will become invalid and must be **rejected or compensated**
 
 Without one of these, rebase gives you convergence without correctness.
 
