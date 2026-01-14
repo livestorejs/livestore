@@ -34,12 +34,6 @@ export const makeLiveStoreContext = <TSchema extends LiveStoreSchema, TContext =
         ...omitUndefineds({ context, boot, disableDevtools, onBootStatus, syncPayload, syncPayloadSchema }),
       })
 
-      globalThis.__debugLiveStore ??= {}
-      if (Object.keys(globalThis.__debugLiveStore).length === 0) {
-        globalThis.__debugLiveStore._ = store
-      }
-      globalThis.__debugLiveStore[storeId] = store
-
       return { stage: 'running', store } as any as LiveStoreContextRunning['Type']
     }),
     Effect.tapErrorCause((cause) => Effect.flatMap(DeferredStoreContext, (def) => Deferred.failCause(def, cause))),
@@ -249,12 +243,6 @@ const makeStoreTag = <TSchema extends LiveStoreSchema, TStoreId extends string>(
             }),
           })
 
-          globalThis.__debugLiveStore ??= {}
-          if (Object.keys(globalThis.__debugLiveStore).length === 0) {
-            globalThis.__debugLiveStore._ = store
-          }
-          globalThis.__debugLiveStore[storeId] = store
-
           const ctx: RunningType = { stage: 'running', store: store as StoreClass<TSchema> }
 
           // Also fulfill the deferred if it exists in context
@@ -398,12 +386,6 @@ export const makeStoreContext =
               syncPayloadSchema: props.syncPayloadSchema,
             }),
           })
-
-          globalThis.__debugLiveStore ??= {}
-          if (Object.keys(globalThis.__debugLiveStore).length === 0) {
-            globalThis.__debugLiveStore._ = store
-          }
-          globalThis.__debugLiveStore[storeId] = store
 
           const ctx: RunningType = { stage: 'running', store: store as StoreClass<TSchema> }
 

@@ -420,6 +420,16 @@ export const createStore = <
 
       yield* Deferred.succeed(storeDeferred, store as any as Store)
 
+      // Expose store on globalThis for console debugging
+      globalThis.__debugLiveStore ??= {}
+      globalThis.__debugLiveStore[storeId] = store
+
+      yield* Effect.addFinalizer(() =>
+        Effect.sync(() => {
+          delete globalThis.__debugLiveStore?.[storeId]
+        }),
+      )
+
       return store
     }).pipe(
       Effect.withSpan('createStore', { attributes: { debugInstanceId, storeId } }),
