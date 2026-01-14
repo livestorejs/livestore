@@ -1,4 +1,10 @@
-import { livestoreBaseTsconfigCompilerOptions, packageTsconfigCompilerOptions, reactJsx, refs, tsconfigJson } from '../../../genie/repo.ts'
+import {
+  livestoreBaseTsconfigCompilerOptions,
+  packageTsconfigCompilerOptions,
+  reactJsx,
+  refs,
+  tsconfigJson,
+} from '../../../genie/repo.ts'
 
 export default tsconfigJson({
   compilerOptions: {
