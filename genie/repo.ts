@@ -2,22 +2,70 @@
  * LiveStore monorepo configuration
  *
  * Extends effect-utils catalog with livestore-specific packages.
- * The pnpm-workspace.yaml is generated from this file via Genie.
+ * Uses genie from @overeng/genie for config file generation.
  */
 
-import { createPackageJson, defineCatalog } from '#genie/mod.ts'
+import {
+  defineCatalog,
+  packageJson,
+  tsconfigJson,
+  dotdotConfig,
+  workspaceRoot,
+} from '../../@overeng/genie/src/runtime/mod.ts'
+
+export { tsconfigJson, dotdotConfig, packageJson, workspaceRoot }
+
 import {
   catalog as effectUtilsCatalog,
   baseTsconfigCompilerOptions,
   domLib,
   reactJsx,
-} from '../submodules/effect-utils/genie/repo.ts'
-import { validateLivestorePackageJson } from './validation.ts'
+} from '../../effect-utils/genie/external.ts'
 
 export { baseTsconfigCompilerOptions, domLib, reactJsx }
 
+/**
+ * Internal workspace packages with file: paths.
+ * These are resolved to relative paths at stringify time by genie.
+ */
+const workspaceCatalog = {
+  // @livestore/* packages
+  '@livestore/utils': 'file:packages/@livestore/utils',
+  '@livestore/utils-dev': 'file:packages/@livestore/utils-dev',
+  '@livestore/common': 'file:packages/@livestore/common',
+  '@livestore/common-cf': 'file:packages/@livestore/common-cf',
+  '@livestore/livestore': 'file:packages/@livestore/livestore',
+  '@livestore/react': 'file:packages/@livestore/react',
+  '@livestore/solid': 'file:packages/@livestore/solid',
+  '@livestore/svelte': 'file:packages/@livestore/svelte',
+  '@livestore/adapter-web': 'file:packages/@livestore/adapter-web',
+  '@livestore/adapter-node': 'file:packages/@livestore/adapter-node',
+  '@livestore/adapter-expo': 'file:packages/@livestore/adapter-expo',
+  '@livestore/adapter-cloudflare': 'file:packages/@livestore/adapter-cloudflare',
+  '@livestore/sqlite-wasm': 'file:packages/@livestore/sqlite-wasm',
+  '@livestore/webmesh': 'file:packages/@livestore/webmesh',
+  '@livestore/devtools-web-common': 'file:packages/@livestore/devtools-web-common',
+  '@livestore/devtools-expo': 'file:packages/@livestore/devtools-expo',
+  '@livestore/graphql': 'file:packages/@livestore/graphql',
+  '@livestore/sync-cf': 'file:packages/@livestore/sync-cf',
+  '@livestore/sync-s2': 'file:packages/@livestore/sync-s2',
+  '@livestore/sync-electric': 'file:packages/@livestore/sync-electric',
+  '@livestore/cli': 'file:packages/@livestore/cli',
+  '@livestore/effect-playwright': 'file:packages/@livestore/effect-playwright',
+  '@livestore/peer-deps': 'file:packages/@livestore/peer-deps',
+  '@livestore/wa-sqlite': 'file:packages/@livestore/wa-sqlite',
+
+  // @local/* packages (internal tooling)
+  '@local/astro-tldraw': 'file:packages/@local/astro-tldraw',
+  '@local/astro-twoslash-code': 'file:packages/@local/astro-twoslash-code',
+  '@local/shared': 'file:packages/@local/shared',
+} as const
+
 /** LiveStore-specific packages not in effect-utils catalog */
 const livestoreOnlyCatalog = {
+  // Published @livestore packages (not workspace packages)
+  '@livestore/devtools-vite': '0.4.0-dev.22',
+
   // Additional type packages
   '@types/chrome': '0.1.4',
   '@types/web': '0.0.264',
@@ -79,9 +127,9 @@ const livestoreOnlyCatalog = {
   '@graphql-typed-document-node/core': '3.2.0',
 
   // Astro ecosystem for docs
-  'astro-expressive-code': '0.40.1',
-  'expressive-code': '0.40.2',
-  'expressive-code-twoslash': '0.4.0',
+  'astro-expressive-code': '0.41.5',
+  'expressive-code': '0.41.5',
+  'expressive-code-twoslash': '0.5.3',
   hast: '1.0.0',
   'hast-util-to-html': '9.0.4',
   '@kitschpatrol/tldraw-cli': '5.0.1',
@@ -118,32 +166,15 @@ const livestoreOnlyCatalog = {
   yaml: '2.8.1',
 } as const
 
-/** Composed catalog - effect-utils base + livestore-specific */
+/** Composed catalog - effect-utils base + livestore-specific + workspace packages */
 export const catalog = defineCatalog({
   extends: effectUtilsCatalog,
-  packages: livestoreOnlyCatalog,
-})
-
-/** Workspace package patterns for type-safe package.json generation */
-export const workspacePackagePatterns = [
-  '@livestore/*',
-  '@local/*',
-  '@overeng/*',
-] as const
-
-/** Type-safe package.json builder with validation */
-export const pkg = createPackageJson({
-  packageManager: 'pnpm',
-  packageManagerVersion: '10.17.1',
-  catalog,
-  workspacePackages: workspacePackagePatterns,
-  validation: {
-    /** Examples are exempt from strict dependency validation */
-    excludePackages: ['livestore-example-**', 'livestore-tutorial-starter'],
-    /** LiveStore-specific validation rules */
-    validate: validateLivestorePackageJson,
+  packages: {
+    ...workspaceCatalog,
+    ...livestoreOnlyCatalog,
   },
 })
+
 
 // =============================================================================
 // Root Package Config Exports (for parent repo composition)
@@ -220,6 +251,58 @@ export const localPackageDefaults = {
 // TypeScript Configuration Helpers
 // =============================================================================
 
+/**
+ * LiveStore base TypeScript compiler options.
+ * Uses ESNext target for maximum modern syntax support.
+ * NodeNext module resolution for proper ESM handling.
+ *
+ * Effect Language Service plugin configuration:
+ * - reportSuggestionsAsWarningsInTsc: show suggestions in tsc output
+ * - pipeableMinArgCount: 2 - recommend pipe() for 2+ args
+ * - schemaUnionOfLiterals: warning - prefer Schema.Literal union
+ */
+export const livestoreBaseTsconfigCompilerOptions = {
+  paths: {
+    '#genie/*': ['../@overeng/genie/src/runtime/*'],
+  },
+  strict: true,
+  exactOptionalPropertyTypes: true,
+  noUncheckedIndexedAccess: true,
+  esModuleInterop: true,
+  sourceMap: true,
+  declarationMap: true,
+  declaration: true,
+  strictNullChecks: true,
+  incremental: true,
+  composite: true,
+  allowJs: true,
+  stripInternal: true,
+  skipLibCheck: true,
+  forceConsistentCasingInFileNames: true,
+  noFallthroughCasesInSwitch: true,
+  noErrorTruncation: true,
+  isolatedModules: true,
+  target: 'ESNext' as const,
+  module: 'NodeNext' as const,
+  moduleResolution: 'NodeNext' as const,
+  verbatimModuleSyntax: true,
+  allowImportingTsExtensions: true,
+  rewriteRelativeImportExtensions: true,
+  erasableSyntaxOnly: true,
+  plugins: [
+    {
+      name: '@effect/language-service',
+      reportSuggestionsAsWarningsInTsc: true,
+      pipeableMinArgCount: 2,
+      diagnosticSeverity: {
+        schemaUnionOfLiterals: 'warning',
+      },
+    },
+  ],
+} as const
+
+/** Standard exclude patterns for tsconfig */
+export const tsconfigExclude = ['packages/**/dist', 'node_modules', 'packages/**/node_modules', 'tests/**/node_modules']
 
 /** Standard package tsconfig compiler options (composite mode with src/dist structure) */
 export const packageTsconfigCompilerOptions = {
@@ -235,7 +318,7 @@ export const solidJsx = { jsx: 'preserve' as const, jsxImportSource: 'solid-js' 
 // GitHub Workflow Helpers
 // =============================================================================
 
-export { githubWorkflow } from '#genie/mod.ts'
+export { githubWorkflow } from '../../@overeng/genie/src/runtime/mod.ts'
 
 /**
  * Namespace runner configuration for livestore CI.

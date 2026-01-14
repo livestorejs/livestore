@@ -1,13 +1,13 @@
-import { tsconfigJSON } from '#genie/mod.ts'
+import { livestoreBaseTsconfigCompilerOptions, tsconfigJson } from '../genie/repo.ts'
 
 /**
  * Astro docs site tsconfig.
  * Uses bundler resolution for Astro compatibility.
  * @see https://github.com/withastro/astro/blob/main/packages/astro/tsconfigs/base.json
  */
-export default tsconfigJSON({
-  extends: '../tsconfig.base.json',
+export default tsconfigJson({
   compilerOptions: {
+    ...livestoreBaseTsconfigCompilerOptions,
     outDir: './dist',
     rootDir: './src',
     resolveJsonModule: true,

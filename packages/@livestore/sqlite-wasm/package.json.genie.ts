@@ -1,7 +1,8 @@
-import { livestorePackageDefaults, pkg } from '../../../genie/repo.ts'
+import { catalog, livestorePackageDefaults, packageJson } from '../../../genie/repo.ts'
 
-export default pkg.package({
+export default packageJson({
   name: '@livestore/sqlite-wasm',
+  ...livestorePackageDefaults,
   exports: {
     '.': './src/index.ts',
     './load-wasm': {
@@ -15,15 +16,18 @@ export default pkg.package({
     './cf': './src/cf/mod.ts',
     './browser': './src/browser/mod.ts',
   },
-  dependencies: [
-    '@cloudflare/workers-types',
-    '@livestore/common',
-    '@livestore/common-cf',
-    '@livestore/utils',
-    '@livestore/wa-sqlite',
-  ],
-  devDependencies: ['@types/chrome', '@types/node', '@types/wicg-file-system-access', 'vitest', 'wrangler'],
-  ...livestorePackageDefaults,
+  dependencies: {
+    ...catalog.pick(
+      '@cloudflare/workers-types',
+      '@livestore/common',
+      '@livestore/common-cf',
+      '@livestore/utils',
+      '@livestore/wa-sqlite',
+    ),
+  },
+  devDependencies: {
+    ...catalog.pick('@types/chrome', '@types/node', '@types/wicg-file-system-access', 'vitest', 'wrangler'),
+  },
   publishConfig: {
     access: 'public',
     exports: {

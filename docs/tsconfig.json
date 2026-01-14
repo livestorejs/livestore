@@ -1,22 +1,58 @@
 // Generated file - DO NOT EDIT
 // Source: tsconfig.json.genie.ts
 {
-  "extends": "../tsconfig.base.json",
   "compilerOptions": {
+    "paths": {
+      "#genie/*": [
+        "../@overeng/genie/src/runtime/*"
+      ]
+    },
+    "strict": true,
+    "exactOptionalPropertyTypes": true,
+    "noUncheckedIndexedAccess": true,
+    "esModuleInterop": true,
+    "sourceMap": true,
+    "declarationMap": false,
+    "declaration": false,
+    "strictNullChecks": true,
+    "incremental": true,
+    "composite": false,
+    "allowJs": true,
+    "stripInternal": true,
+    "skipLibCheck": true,
+    "forceConsistentCasingInFileNames": true,
+    "noFallthroughCasesInSwitch": true,
+    "noErrorTruncation": true,
+    "isolatedModules": true,
+    "target": "ESNext",
+    "module": "ESNext",
+    "moduleResolution": "bundler",
+    "verbatimModuleSyntax": true,
+    "allowImportingTsExtensions": true,
+    "rewriteRelativeImportExtensions": true,
+    "erasableSyntaxOnly": true,
+    "plugins": [
+      {
+        "name": "@effect/language-service",
+        "reportSuggestionsAsWarningsInTsc": true,
+        "pipeableMinArgCount": 2,
+        "diagnosticSeverity": {
+          "schemaUnionOfLiterals": "warning"
+        }
+      }
+    ],
     "outDir": "./dist",
     "rootDir": "./src",
     "resolveJsonModule": true,
-    "composite": false,
-    "declaration": false,
-    "declarationMap": false,
-    "moduleResolution": "bundler",
-    "module": "ESNext",
-    "target": "ESNext",
     "jsx": "preserve",
     "tsBuildInfoFile": "./dist/.tsbuildinfo"
   },
-  "include": ["src"],
-  "exclude": ["src/content/_assets/code/**/*"],
+  "include": [
+    "src"
+  ],
+  "exclude": [
+    "src/content/_assets/code/**/*"
+  ],
   "references": [
     {
       "path": "../packages/@local/shared"

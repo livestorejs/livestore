@@ -1,20 +1,42 @@
 {
+  "$genie": {
+    "source": "package.json.genie.ts",
+    "warning": "DO NOT EDIT - changes will be overwritten"
+  },
   "name": "@livestore/livestore",
   "version": "0.4.0-dev.22",
-  "license": "Apache-2.0",
-  "files": [
-    "dist",
-    "docs",
-    "package.json",
-    "src"
-  ],
   "type": "module",
   "sideEffects": false,
+  "license": "Apache-2.0",
   "exports": {
     ".": "./src/mod.ts",
     "./effect": "./src/effect/mod.ts",
     "./internal": "./src/internal/mod.ts",
     "./internal/testing-utils": "./src/utils/tests/mod.ts"
+  },
+  "files": [
+    "dist",
+    "package.json",
+    "src",
+    "docs"
+  ],
+  "scripts": {
+    "build": "tsc",
+    "test": "vitest"
+  },
+  "dependencies": {
+    "@livestore/common": "file:../common",
+    "@livestore/utils": "file:../utils",
+    "@opentelemetry/api": "1.9.0"
+  },
+  "devDependencies": {
+    "@livestore/adapter-web": "file:../adapter-web",
+    "@livestore/utils-dev": "file:../utils-dev",
+    "@opentelemetry/sdk-trace-base": "2.2.0",
+    "jsdom": "26.1.0",
+    "typescript": "5.9.3",
+    "vite": "7.3.0",
+    "vitest": "3.2.4"
   },
   "publishConfig": {
     "access": "public",
@@ -24,27 +46,5 @@
       "./internal/testing-utils": "./dist/utils/tests/mod.js",
       "./effect": "./dist/effect/mod.js"
     }
-  },
-  "scripts": {
-    "build": "tsc",
-    "test": "vitest"
-  },
-  "dependencies": {
-    "@livestore/common": "workspace:*",
-    "@livestore/utils": "workspace:*",
-    "@opentelemetry/api": "catalog:"
-  },
-  "devDependencies": {
-    "@livestore/adapter-web": "workspace:*",
-    "@livestore/utils-dev": "workspace:*",
-    "@opentelemetry/sdk-trace-base": "catalog:",
-    "jsdom": "catalog:",
-    "typescript": "catalog:",
-    "vite": "catalog:",
-    "vitest": "catalog:"
-  },
-  "$genie": {
-    "source": "package.json.genie.ts",
-    "warning": "DO NOT EDIT - changes will be overwritten"
   }
 }

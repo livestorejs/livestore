@@ -10,7 +10,7 @@ import {
   type ValidationIssue,
   type VersionConstraint,
   validateVersionConstraints,
-} from '#genie/mod.ts'
+} from '../../@overeng/genie/src/runtime/package-json/validation.ts'
 
 // =============================================================================
 // LiveStore-Specific Rules

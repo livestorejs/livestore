@@ -1,20 +1,25 @@
 { pkgs, lib, inputs, ... }:
 let
-  playwrightDriver = inputs.playwright-web-flake.packages.${pkgs.stdenv.hostPlatform.system}.playwright-driver;
+  system = pkgs.stdenv.hostPlatform.system;
+  pkgsUnstable = import inputs.nixpkgsUnstable { inherit system; };
+  playwrightDriver = inputs.playwright-web-flake.packages.${system}.playwright-driver;
+
+  # Effect-utils lib for building CLIs (used by local mono if needed)
+  mkBunCli = inputs.effect-utils.lib.mkBunCli { inherit pkgs pkgsUnstable; };
 in
 {
-  # Apply pnpm guard overlay from pnpm-compose (prevents `pnpm install` in submodules)
-  overlays = [ (import "${inputs.effect-utils}/packages/@overeng/pnpm-compose/nix/overlay.nix") ];
-
   packages =
     [
-      pkgs.pnpm
-      pkgs.nodejs_24
+      pkgsUnstable.bun
+      pkgsUnstable.nodejs_24
+      pkgsUnstable.typescript
       pkgs.caddy
       pkgs.jq
       pkgs.unzip
-      pkgs.bun
       pkgs.deno
+
+      # Note: genie/dotdot CLIs are available via bun scripts in $PATH
+      # (added via enterShell from ../effect-utils/scripts/bin/)
     ]
     ++ lib.optionals (!pkgs.stdenv.isDarwin) [ pkgs.stdenv.cc.cc.lib pkgs.nix-ld ]
     ++ lib.optionals pkgs.stdenv.isDarwin [ pkgs.cocoapods ];
@@ -68,6 +73,11 @@ in
       fi
     fi
     export PUPPETEER_SKIP_DOWNLOAD="''${PUPPETEER_SKIP_DOWNLOAD:-1}"
+
+    # Add effect-utils scripts to PATH (genie, dotdot, etc)
+    if [ -d "$MONOREPO_ROOT/effect-utils/scripts/bin" ]; then
+      export PATH="$MONOREPO_ROOT/effect-utils/scripts/bin:$PATH"
+    fi
 
     export PATH="$WORKSPACE_ROOT/scripts/bin:$WORKSPACE_ROOT/node_modules/.bin:$PATH"
 

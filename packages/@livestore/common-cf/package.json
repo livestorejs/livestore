@@ -1,18 +1,34 @@
 {
+  "$genie": {
+    "source": "package.json.genie.ts",
+    "warning": "DO NOT EDIT - changes will be overwritten"
+  },
   "name": "@livestore/common-cf",
   "version": "0.4.0-dev.22",
-  "license": "Apache-2.0",
-  "files": [
-    "dist",
-    "package.json",
-    "README.md",
-    "src"
-  ],
   "type": "module",
   "sideEffects": false,
+  "license": "Apache-2.0",
   "exports": {
     ".": "./src/mod.ts",
     "./declare": "./src/declare/mod.ts"
+  },
+  "files": [
+    "dist",
+    "package.json",
+    "src",
+    "README.md"
+  ],
+  "scripts": {
+    "test": "vitest run"
+  },
+  "dependencies": {
+    "@cloudflare/workers-types": "4.20251118.0",
+    "@livestore/utils": "file:../utils"
+  },
+  "devDependencies": {
+    "@livestore/utils-dev": "file:../utils-dev",
+    "vitest": "3.2.4",
+    "wrangler": "4.42.2"
   },
   "publishConfig": {
     "access": "public",
@@ -20,21 +36,5 @@
       ".": "./dist/mod.js",
       "./declare": "./dist/declare/mod.js"
     }
-  },
-  "scripts": {
-    "test": "vitest run"
-  },
-  "dependencies": {
-    "@cloudflare/workers-types": "catalog:",
-    "@livestore/utils": "workspace:*"
-  },
-  "devDependencies": {
-    "@livestore/utils-dev": "workspace:*",
-    "vitest": "catalog:",
-    "wrangler": "catalog:"
-  },
-  "$genie": {
-    "source": "package.json.genie.ts",
-    "warning": "DO NOT EDIT - changes will be overwritten"
   }
 }

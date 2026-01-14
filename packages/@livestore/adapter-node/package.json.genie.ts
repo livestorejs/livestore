@@ -1,23 +1,27 @@
-import { livestorePackageDefaults, pkg } from '../../../genie/repo.ts'
+import { catalog, livestorePackageDefaults, packageJson } from '../../../genie/repo.ts'
 
-export default pkg.package({
+export default packageJson({
   name: '@livestore/adapter-node',
+  ...livestorePackageDefaults,
   exports: {
     '.': './src/index.ts',
     './devtools': './src/devtools/mod.ts',
     './worker': './src/make-leader-worker.ts',
   },
-  dependencies: [
-    '@livestore/common',
-    '@livestore/devtools-vite',
-    '@livestore/sqlite-wasm',
-    '@livestore/utils',
-    '@livestore/webmesh',
-    '@opentelemetry/api',
-    'vite',
-  ],
-  devDependencies: ['@rollup/plugin-commonjs', '@rollup/plugin-node-resolve', '@rollup/plugin-terser', 'rollup'],
-  ...livestorePackageDefaults,
+  dependencies: {
+    ...catalog.pick(
+      '@livestore/common',
+      '@livestore/devtools-vite',
+      '@livestore/sqlite-wasm',
+      '@livestore/utils',
+      '@livestore/webmesh',
+      '@opentelemetry/api',
+      'vite',
+    ),
+  },
+  devDependencies: {
+    ...catalog.pick('@rollup/plugin-commonjs', '@rollup/plugin-node-resolve', '@rollup/plugin-terser', 'rollup'),
+  },
   publishConfig: {
     access: 'public',
     exports: {

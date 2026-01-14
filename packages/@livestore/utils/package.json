@@ -1,15 +1,16 @@
 {
+  "$genie": {
+    "source": "package.json.genie.ts",
+    "warning": "DO NOT EDIT - changes will be overwritten"
+  },
   "name": "@livestore/utils",
   "version": "0.4.0-dev.22",
-  "license": "Apache-2.0",
-  "files": [
-    "dist",
-    "package.json",
-    "src"
-  ],
   "type": "module",
-  "sideEffects": false,
-  "react-native": "./dist/index.js",
+  "sideEffects": [
+    "./src/global.ts",
+    "./dist/global.js"
+  ],
+  "license": "Apache-2.0",
   "exports": {
     ".": "./src/mod.ts",
     "./browser": "./src/browser/mod.ts",
@@ -23,6 +24,67 @@
     "./effect/browser": "./src/browser/mod.ts",
     "./nanoid": "./src/nanoid/index.ts",
     "./node": "./src/node/mod.ts"
+  },
+  "files": [
+    "dist",
+    "package.json",
+    "src"
+  ],
+  "scripts": {
+    "test": "vitest"
+  },
+  "dependencies": {
+    "@effect/platform-node": "0.104.0",
+    "@standard-schema/spec": "1.0.0",
+    "nanoid": "5.0.9",
+    "pretty-bytes": "7.0.1",
+    "qrcode-generator": "1.4.4"
+  },
+  "devDependencies": {
+    "@effect/ai": "0.33.2",
+    "@effect/cli": "0.73.0",
+    "@effect/cluster": "0.56.0",
+    "@effect/experimental": "0.58.0",
+    "@effect/opentelemetry": "0.60.0",
+    "@effect/platform": "0.94.1",
+    "@effect/platform-browser": "0.73.0",
+    "@effect/platform-bun": "0.86.0",
+    "@effect/platform-node": "0.104.0",
+    "@effect/printer": "0.47.0",
+    "@effect/printer-ansi": "0.47.0",
+    "@effect/rpc": "0.73.0",
+    "@effect/sql": "0.49.0",
+    "@effect/typeclass": "0.38.0",
+    "@effect/vitest": "0.27.0",
+    "@effect/workflow": "0.16.0",
+    "@opentelemetry/api": "1.9.0",
+    "@opentelemetry/resources": "2.2.0",
+    "@types/bun": "1.3.5",
+    "@types/jsdom": "21.1.7",
+    "@types/node": "25.0.3",
+    "@types/web": "0.0.264",
+    "effect": "3.19.14",
+    "jsdom": "26.1.0",
+    "vitest": "3.2.4"
+  },
+  "peerDependencies": {
+    "@effect/ai": "^0.29.0",
+    "@effect/cli": "^0.71.0",
+    "@effect/cluster": "^0.50.6",
+    "@effect/experimental": "^0.56.0",
+    "@effect/opentelemetry": "^0.58.0",
+    "@effect/platform": "^0.92.1",
+    "@effect/platform-browser": "^0.72.0",
+    "@effect/platform-bun": "^0.81.1",
+    "@effect/platform-node": "^0.98.4",
+    "@effect/printer": "^0.46.0",
+    "@effect/printer-ansi": "^0.46.0",
+    "@effect/rpc": "^0.71.1",
+    "@effect/sql": "^0.46.0",
+    "@effect/typeclass": "^0.37.0",
+    "@opentelemetry/api": "^1.9.0",
+    "@opentelemetry/resources": "^2.0.1",
+    "effect": "^3.19.9"
   },
   "publishConfig": {
     "access": "public",
@@ -63,64 +125,5 @@
       }
     }
   },
-  "scripts": {
-    "test": "vitest"
-  },
-  "dependencies": {
-    "@effect/platform-node": "catalog:",
-    "@standard-schema/spec": "catalog:",
-    "nanoid": "catalog:",
-    "pretty-bytes": "catalog:",
-    "qrcode-generator": "catalog:"
-  },
-  "devDependencies": {
-    "@effect/ai": "catalog:",
-    "@effect/cli": "catalog:",
-    "@effect/cluster": "catalog:",
-    "@effect/experimental": "catalog:",
-    "@effect/opentelemetry": "catalog:",
-    "@effect/platform": "catalog:",
-    "@effect/platform-browser": "catalog:",
-    "@effect/platform-bun": "catalog:",
-    "@effect/platform-node": "catalog:",
-    "@effect/printer": "catalog:",
-    "@effect/printer-ansi": "catalog:",
-    "@effect/rpc": "catalog:",
-    "@effect/sql": "catalog:",
-    "@effect/typeclass": "catalog:",
-    "@effect/vitest": "catalog:",
-    "@effect/workflow": "catalog:",
-    "@opentelemetry/api": "catalog:",
-    "@opentelemetry/resources": "catalog:",
-    "@types/bun": "catalog:",
-    "@types/jsdom": "catalog:",
-    "@types/node": "catalog:",
-    "@types/web": "catalog:",
-    "effect": "catalog:",
-    "jsdom": "catalog:",
-    "vitest": "catalog:"
-  },
-  "peerDependencies": {
-    "@effect/ai": "^0.29.0",
-    "@effect/cli": "^0.71.0",
-    "@effect/cluster": "^0.50.6",
-    "@effect/experimental": "^0.56.0",
-    "@effect/opentelemetry": "^0.58.0",
-    "@effect/platform": "^0.92.1",
-    "@effect/platform-browser": "^0.72.0",
-    "@effect/platform-bun": "^0.81.1",
-    "@effect/platform-node": "^0.98.4",
-    "@effect/printer": "^0.46.0",
-    "@effect/printer-ansi": "^0.46.0",
-    "@effect/rpc": "^0.71.1",
-    "@effect/sql": "^0.46.0",
-    "@effect/typeclass": "^0.37.0",
-    "@opentelemetry/api": "^1.9.0",
-    "@opentelemetry/resources": "^2.0.1",
-    "effect": "^3.19.9"
-  },
-  "$genie": {
-    "source": "package.json.genie.ts",
-    "warning": "DO NOT EDIT - changes will be overwritten"
-  }
+  "react-native": "./dist/index.js"
 }

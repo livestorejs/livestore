@@ -1,6 +1,6 @@
-import { pkg } from '../../../genie/repo.ts'
+import { catalog, packageJson } from '../../../genie/repo.ts'
 
-export default pkg.package({
+export default packageJson({
   name: '@livestore/effect-playwright',
   version: '0.0.0',
   type: 'module',
@@ -8,8 +8,8 @@ export default pkg.package({
   exports: {
     '.': './src/index.ts',
   },
-  dependencies: ['@livestore/utils'],
-  devDependencies: ['@playwright/test', '@types/node'],
+  dependencies: { ...catalog.pick('@livestore/utils') },
+  devDependencies: { ...catalog.pick('@playwright/test', '@types/node') },
   peerDependencies: {
     '@playwright/test': '^1.56.0',
   },

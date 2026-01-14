@@ -1,10 +1,12 @@
-import { localPackageDefaults, pkg } from '../../../genie/repo.ts'
+import { catalog, localPackageDefaults, packageJson } from '../../../genie/repo.ts'
 
-export default pkg.package({
+export default packageJson({
   name: '@local/shared',
   exports: {
     '.': './src/index.ts',
   },
-  devDependencies: ['@types/node'],
+  devDependencies: {
+    ...catalog.pick('@types/node'),
+  },
   ...localPackageDefaults,
 })

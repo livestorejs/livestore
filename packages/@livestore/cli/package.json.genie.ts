@@ -1,29 +1,31 @@
-import { livestorePackageDefaults, pkg } from '../../../genie/repo.ts'
+import { catalog, livestorePackageDefaults, packageJson } from '../../../genie/repo.ts'
 
-export default pkg.package({
+export default packageJson({
   name: '@livestore/cli',
+  ...livestorePackageDefaults,
   exports: {
     '.': './src/mod.ts',
   },
   bin: {
     livestore: './src/bin.ts',
   },
-  dependencies: [
-    '@effect/ai',
-    '@effect/ai-openai',
-    '@effect/experimental',
-    '@effect/opentelemetry',
-    '@effect/platform',
-    '@effect/rpc',
-    '@livestore/adapter-node',
-    '@livestore/common',
-    '@livestore/livestore',
-    '@livestore/peer-deps',
-    '@livestore/utils',
-    'effect',
-  ],
-  devDependencies: ['@livestore/utils-dev', '@types/node', 'typescript'],
-  ...livestorePackageDefaults,
+  dependencies: {
+    ...catalog.pick(
+      '@effect/ai',
+      '@effect/ai-openai',
+      '@effect/experimental',
+      '@effect/opentelemetry',
+      '@effect/platform',
+      '@effect/rpc',
+      '@livestore/adapter-node',
+      '@livestore/common',
+      '@livestore/livestore',
+      '@livestore/peer-deps',
+      '@livestore/utils',
+      'effect',
+    ),
+  },
+  devDependencies: { ...catalog.pick('@livestore/utils-dev', '@types/node', 'typescript') },
   publishConfig: {
     access: 'public',
     exports: {

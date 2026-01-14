@@ -1,19 +1,44 @@
 {
+  "$genie": {
+    "source": "package.json.genie.ts",
+    "warning": "DO NOT EDIT - changes will be overwritten"
+  },
   "name": "@livestore/utils-dev",
   "version": "0.4.0-dev.22",
-  "license": "Apache-2.0",
-  "files": [
-    "dist",
-    "package.json",
-    "src"
-  ],
   "type": "module",
-  "sideEffects": false,
+  "sideEffects": [
+    "./src/node-vitest/global.ts",
+    "./dist/node-vitest/global.js"
+  ],
+  "license": "Apache-2.0",
   "exports": {
     "./node": "./src/node/mod.ts",
     "./node-vitest": "./src/node-vitest/mod.ts",
     "./wrangler": "./src/wrangler/mod.ts"
   },
+  "files": [
+    "dist",
+    "package.json",
+    "src"
+  ],
+  "scripts": {
+    "test": "echo 'No tests for utils-dev'"
+  },
+  "dependencies": {
+    "@effect/opentelemetry": "0.60.0",
+    "@effect/vitest": "0.27.0",
+    "@iarna/toml": "3.0.0",
+    "@livestore/utils": "file:../utils",
+    "@opentelemetry/api": "1.9.0",
+    "@opentelemetry/exporter-metrics-otlp-http": "0.208.0",
+    "@opentelemetry/exporter-trace-otlp-http": "0.208.0",
+    "@opentelemetry/sdk-metrics": "2.2.0",
+    "@opentelemetry/sdk-trace-base": "2.2.0",
+    "@opentelemetry/sdk-trace-node": "2.2.0",
+    "wrangler": "4.42.2"
+  },
+  "devDependencies": {},
+  "peerDependencies": {},
   "publishConfig": {
     "access": "public",
     "exports": {
@@ -21,27 +46,5 @@
       "./node-vitest": "./dist/node-vitest/mod.js",
       "./wrangler": "./dist/wrangler/mod.js"
     }
-  },
-  "scripts": {
-    "test": "echo 'No tests for utils-dev'"
-  },
-  "dependencies": {
-    "@effect/opentelemetry": "catalog:",
-    "@effect/vitest": "catalog:",
-    "@iarna/toml": "catalog:",
-    "@livestore/utils": "workspace:*",
-    "@opentelemetry/api": "catalog:",
-    "@opentelemetry/exporter-metrics-otlp-http": "catalog:",
-    "@opentelemetry/exporter-trace-otlp-http": "catalog:",
-    "@opentelemetry/sdk-metrics": "catalog:",
-    "@opentelemetry/sdk-trace-base": "catalog:",
-    "@opentelemetry/sdk-trace-node": "catalog:",
-    "wrangler": "catalog:"
-  },
-  "devDependencies": {},
-  "peerDependencies": {},
-  "$genie": {
-    "source": "package.json.genie.ts",
-    "warning": "DO NOT EDIT - changes will be overwritten"
   }
 }

@@ -1,7 +1,16 @@
 {
+  "$genie": {
+    "source": "package.json.genie.ts",
+    "warning": "DO NOT EDIT - changes will be overwritten"
+  },
   "name": "@livestore/cli",
   "version": "0.4.0-dev.22",
+  "type": "module",
+  "sideEffects": false,
   "license": "Apache-2.0",
+  "exports": {
+    ".": "./src/mod.ts"
+  },
   "bin": {
     "livestore": "./src/bin.ts"
   },
@@ -10,45 +19,36 @@
     "package.json",
     "src"
   ],
-  "type": "module",
-  "sideEffects": false,
-  "exports": {
-    ".": "./src/mod.ts"
-  },
-  "publishConfig": {
-    "access": "public",
-    "bin": {
-      "livestore": "./dist/bin.js"
-    },
-    "exports": {
-      ".": "./dist/mod.js"
-    }
-  },
   "scripts": {
     "build": "tsc",
     "dev": "bun src/bin.ts"
   },
   "dependencies": {
-    "@effect/ai": "catalog:",
-    "@effect/ai-openai": "catalog:",
-    "@effect/experimental": "catalog:",
-    "@effect/opentelemetry": "catalog:",
-    "@effect/platform": "catalog:",
-    "@effect/rpc": "catalog:",
-    "@livestore/adapter-node": "workspace:*",
-    "@livestore/common": "workspace:*",
-    "@livestore/livestore": "workspace:*",
-    "@livestore/peer-deps": "workspace:*",
-    "@livestore/utils": "workspace:*",
-    "effect": "catalog:"
+    "@effect/ai": "0.33.2",
+    "@effect/ai-openai": "0.37.2",
+    "@effect/experimental": "0.58.0",
+    "@effect/opentelemetry": "0.60.0",
+    "@effect/platform": "0.94.1",
+    "@effect/rpc": "0.73.0",
+    "@livestore/adapter-node": "file:../adapter-node",
+    "@livestore/common": "file:../common",
+    "@livestore/livestore": "file:../livestore",
+    "@livestore/peer-deps": "file:../peer-deps",
+    "@livestore/utils": "file:../utils",
+    "effect": "3.19.14"
   },
   "devDependencies": {
-    "@livestore/utils-dev": "workspace:*",
-    "@types/node": "catalog:",
-    "typescript": "catalog:"
+    "@livestore/utils-dev": "file:../utils-dev",
+    "@types/node": "25.0.3",
+    "typescript": "5.9.3"
   },
-  "$genie": {
-    "source": "package.json.genie.ts",
-    "warning": "DO NOT EDIT - changes will be overwritten"
+  "publishConfig": {
+    "access": "public",
+    "exports": {
+      ".": "./dist/mod.js"
+    },
+    "bin": {
+      "livestore": "./dist/bin.js"
+    }
   }
 }

@@ -8,23 +8,23 @@
     "./registry": "./src/providers/registry.ts"
   },
   "dependencies": {
-    "@cloudflare/workers-types": "catalog:",
-    "@livestore/adapter-cloudflare": "workspace:*",
-    "@livestore/adapter-node": "workspace:*",
-    "@livestore/common": "workspace:*",
-    "@livestore/common-cf": "workspace:*",
-    "@livestore/livestore": "workspace:*",
-    "@livestore/sqlite-wasm": "workspace:*",
-    "@livestore/sync-cf": "workspace:*",
-    "@livestore/sync-electric": "workspace:*",
-    "@livestore/sync-s2": "workspace:*",
-    "@livestore/utils": "workspace:*",
+    "@cloudflare/workers-types": "4.20251118.0",
+    "@livestore/adapter-cloudflare": "file:../../packages/@livestore/adapter-cloudflare",
+    "@livestore/adapter-node": "file:../../packages/@livestore/adapter-node",
+    "@livestore/common": "file:../../packages/@livestore/common",
+    "@livestore/common-cf": "file:../../packages/@livestore/common-cf",
+    "@livestore/livestore": "file:../../packages/@livestore/livestore",
+    "@livestore/sqlite-wasm": "file:../../packages/@livestore/sqlite-wasm",
+    "@livestore/sync-cf": "file:../../packages/@livestore/sync-cf",
+    "@livestore/sync-electric": "file:../../packages/@livestore/sync-electric",
+    "@livestore/sync-s2": "file:../../packages/@livestore/sync-s2",
+    "@livestore/utils": "file:../../packages/@livestore/utils",
     "postgres": "3.4.7"
   },
   "devDependencies": {
-    "@livestore/utils-dev": "workspace:*",
-    "@types/node": "catalog:",
-    "vitest": "catalog:"
+    "@livestore/utils-dev": "file:../../packages/@livestore/utils-dev",
+    "@types/node": "25.0.3",
+    "vitest": "3.2.4"
   },
   "scripts": {
     "test": "vitest run",

@@ -1,27 +1,31 @@
-import { livestorePackageDefaults, pkg } from '../../../genie/repo.ts'
+import { catalog, livestorePackageDefaults, packageJson } from '../../../genie/repo.ts'
 
-export default pkg.package({
+export default packageJson({
   name: '@livestore/svelte',
+  ...livestorePackageDefaults,
   exports: {
     '.': './src/mod.ts',
   },
-  dependencies: ['@livestore/common', '@livestore/livestore', '@livestore/utils', '@opentelemetry/api'],
-  devDependencies: [
-    '@livestore/adapter-web',
-    '@livestore/utils-dev',
-    '@sveltejs/vite-plugin-svelte',
-    '@testing-library/jest-dom',
-    '@testing-library/svelte',
-    'jsdom',
-    'svelte',
-    'typescript',
-    'vite',
-    'vitest',
-  ],
+  dependencies: {
+    ...catalog.pick('@livestore/common', '@livestore/livestore', '@livestore/utils', '@opentelemetry/api'),
+  },
+  devDependencies: {
+    ...catalog.pick(
+      '@livestore/adapter-web',
+      '@livestore/utils-dev',
+      '@sveltejs/vite-plugin-svelte',
+      '@testing-library/jest-dom',
+      '@testing-library/svelte',
+      'jsdom',
+      'svelte',
+      'typescript',
+      'vite',
+      'vitest',
+    ),
+  },
   peerDependencies: {
     svelte: '^5.31.0',
   },
-  ...livestorePackageDefaults,
   keywords: ['svelte'],
   publishConfig: {
     access: 'public',

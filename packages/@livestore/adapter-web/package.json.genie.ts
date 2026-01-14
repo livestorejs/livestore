@@ -1,23 +1,27 @@
-import { livestorePackageDefaults, pkg } from '../../../genie/repo.ts'
+import { catalog, livestorePackageDefaults, packageJson } from '../../../genie/repo.ts'
 
-export default pkg.package({
+export default packageJson({
   name: '@livestore/adapter-web',
+  ...livestorePackageDefaults,
   exports: {
     '.': './src/index.ts',
     './worker': './src/web-worker/leader-worker/make-leader-worker.ts',
     './worker-vite-dev-polyfill': './src/web-worker/vite-dev-polyfill.ts',
     './shared-worker': './src/web-worker/shared-worker/make-shared-worker.ts',
   },
-  dependencies: [
-    '@livestore/common',
-    '@livestore/devtools-web-common',
-    '@livestore/sqlite-wasm',
-    '@livestore/utils',
-    '@livestore/webmesh',
-    '@opentelemetry/api',
-  ],
-  devDependencies: ['@types/chrome', '@types/wicg-file-system-access', 'vitest'],
-  ...livestorePackageDefaults,
+  dependencies: {
+    ...catalog.pick(
+      '@livestore/common',
+      '@livestore/devtools-web-common',
+      '@livestore/sqlite-wasm',
+      '@livestore/utils',
+      '@livestore/webmesh',
+      '@opentelemetry/api',
+    ),
+  },
+  devDependencies: {
+    ...catalog.pick('@types/chrome', '@types/wicg-file-system-access', 'vitest'),
+  },
   publishConfig: {
     access: 'public',
     exports: {

@@ -3,10 +3,10 @@
     "devenv": {
       "locked": {
         "dir": "src/modules",
-        "lastModified": 1767874416,
+        "lastModified": 1768368374,
         "owner": "cachix",
         "repo": "devenv",
-        "rev": "791e15d51632d4a2e55476d9f074f6d313a164ab",
+        "rev": "d68f9d218db9f54e5133dd0c2cb40107e931064f",
         "type": "github"
       },
       "original": {
@@ -17,12 +17,16 @@
       }
     },
     "effect-utils": {
-      "flake": false,
+      "inputs": {
+        "flake-utils": "flake-utils",
+        "nixpkgs": "nixpkgs",
+        "nixpkgsUnstable": "nixpkgsUnstable"
+      },
       "locked": {
-        "lastModified": 1767875506,
+        "lastModified": 1768388265,
         "owner": "overengineeringstudio",
         "repo": "effect-utils",
-        "rev": "50d786d81f8e907262d76ba8e0d0852c31770c79",
+        "rev": "1d6abd1800c5616a35a48f9e7141ad7803309804",
         "type": "github"
       },
       "original": {
@@ -49,6 +53,23 @@
     "flake-utils": {
       "inputs": {
         "systems": "systems"
+      },
+      "locked": {
+        "lastModified": 1731533236,
+        "owner": "numtide",
+        "repo": "flake-utils",
+        "rev": "11707dc2f618dd54ca8739b309ec4fc024de578b",
+        "type": "github"
+      },
+      "original": {
+        "owner": "numtide",
+        "repo": "flake-utils",
+        "type": "github"
+      }
+    },
+    "flake-utils_2": {
+      "inputs": {
+        "systems": "systems_2"
       },
       "locked": {
         "lastModified": 1731533236,
@@ -106,10 +127,25 @@
     },
     "nixpkgs": {
       "locked": {
-        "lastModified": 1767767207,
+        "lastModified": 1768323494,
         "owner": "NixOS",
         "repo": "nixpkgs",
-        "rev": "5912c1772a44e31bf1c63c0390b90501e5026886",
+        "rev": "2c3e5ec5df46d3aeee2a1da0bfedd74e21f4bf3a",
+        "type": "github"
+      },
+      "original": {
+        "owner": "NixOS",
+        "ref": "release-25.11",
+        "repo": "nixpkgs",
+        "type": "github"
+      }
+    },
+    "nixpkgsUnstable": {
+      "locked": {
+        "lastModified": 1768127708,
+        "owner": "NixOS",
+        "repo": "nixpkgs",
+        "rev": "ffbc9f8cbaacfb331b6017d5a5abb21a492c9a38",
         "type": "github"
       },
       "original": {
@@ -119,11 +155,41 @@
         "type": "github"
       }
     },
+    "nixpkgsUnstable_2": {
+      "locked": {
+        "lastModified": 1768127708,
+        "owner": "NixOS",
+        "repo": "nixpkgs",
+        "rev": "ffbc9f8cbaacfb331b6017d5a5abb21a492c9a38",
+        "type": "github"
+      },
+      "original": {
+        "owner": "NixOS",
+        "ref": "nixos-unstable",
+        "repo": "nixpkgs",
+        "type": "github"
+      }
+    },
+    "nixpkgs_2": {
+      "locked": {
+        "lastModified": 1768387411,
+        "owner": "NixOS",
+        "repo": "nixpkgs",
+        "rev": "1412c6b7dc01571ee529feb78141843bc802b32a",
+        "type": "github"
+      },
+      "original": {
+        "owner": "NixOS",
+        "ref": "release-25.11",
+        "repo": "nixpkgs",
+        "type": "github"
+      }
+    },
     "playwright-web-flake": {
       "inputs": {
-        "flake-utils": "flake-utils",
+        "flake-utils": "flake-utils_2",
         "nixpkgs": [
-          "nixpkgs"
+          "nixpkgsUnstable"
         ]
       },
       "locked": {
@@ -144,7 +210,8 @@
         "devenv": "devenv",
         "effect-utils": "effect-utils",
         "git-hooks": "git-hooks",
-        "nixpkgs": "nixpkgs",
+        "nixpkgs": "nixpkgs_2",
+        "nixpkgsUnstable": "nixpkgsUnstable_2",
         "playwright-web-flake": "playwright-web-flake",
         "pre-commit-hooks": [
           "git-hooks"
@@ -152,6 +219,20 @@
       }
     },
     "systems": {
+      "locked": {
+        "lastModified": 1681028828,
+        "owner": "nix-systems",
+        "repo": "default",
+        "rev": "da67096a3b9bf56a91d16901293e51ba5b49a27e",
+        "type": "github"
+      },
+      "original": {
+        "owner": "nix-systems",
+        "repo": "default",
+        "type": "github"
+      }
+    },
+    "systems_2": {
       "locked": {
         "lastModified": 1681028828,
         "owner": "nix-systems",

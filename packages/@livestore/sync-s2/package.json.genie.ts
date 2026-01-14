@@ -1,13 +1,13 @@
-import { livestorePackageDefaults, pkg } from '../../../genie/repo.ts'
+import { catalog, livestorePackageDefaults, packageJson } from '../../../genie/repo.ts'
 
-export default pkg.package({
+export default packageJson({
   name: '@livestore/sync-s2',
+  ...livestorePackageDefaults,
   exports: {
     '.': './src/mod.ts',
     './s2-proxy-helpers': './src/s2-proxy-helpers.ts',
   },
-  dependencies: ['@livestore/common', '@livestore/livestore', '@livestore/utils'],
-  ...livestorePackageDefaults,
+  dependencies: { ...catalog.pick('@livestore/common', '@livestore/livestore', '@livestore/utils') },
   publishConfig: {
     access: 'public',
     exports: {

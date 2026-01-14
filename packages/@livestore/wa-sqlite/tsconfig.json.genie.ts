@@ -1,9 +1,8 @@
-import { tsconfigJSON } from '#genie/mod.ts'
-import { packageTsconfigCompilerOptions } from '../../../genie/repo.ts'
+import { livestoreBaseTsconfigCompilerOptions, packageTsconfigCompilerOptions, tsconfigJson } from '../../../genie/repo.ts'
 
-export default tsconfigJSON({
-  extends: '../../../tsconfig.base.json',
+export default tsconfigJson({
   compilerOptions: {
+    ...livestoreBaseTsconfigCompilerOptions,
     ...packageTsconfigCompilerOptions,
     declaration: true,
     declarationMap: true,

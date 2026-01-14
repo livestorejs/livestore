@@ -1,13 +1,57 @@
 // Generated file - DO NOT EDIT
 // Source: tsconfig.json.genie.ts
 {
-  "extends": "../../tsconfig.base.json",
   "compilerOptions": {
+    "paths": {
+      "#genie/*": [
+        "../@overeng/genie/src/runtime/*"
+      ]
+    },
+    "strict": true,
+    "exactOptionalPropertyTypes": true,
+    "noUncheckedIndexedAccess": true,
+    "esModuleInterop": true,
+    "sourceMap": true,
+    "declarationMap": true,
+    "declaration": true,
+    "strictNullChecks": true,
+    "incremental": true,
+    "composite": true,
+    "allowJs": true,
+    "stripInternal": true,
+    "skipLibCheck": true,
+    "forceConsistentCasingInFileNames": true,
+    "noFallthroughCasesInSwitch": true,
+    "noErrorTruncation": true,
+    "isolatedModules": true,
+    "target": "ESNext",
+    "module": "NodeNext",
+    "moduleResolution": "NodeNext",
+    "verbatimModuleSyntax": true,
+    "allowImportingTsExtensions": true,
+    "rewriteRelativeImportExtensions": true,
+    "erasableSyntaxOnly": true,
+    "plugins": [
+      {
+        "name": "@effect/language-service",
+        "reportSuggestionsAsWarningsInTsc": true,
+        "pipeableMinArgCount": 2,
+        "diagnosticSeverity": {
+          "schemaUnionOfLiterals": "warning"
+        }
+      }
+    ],
     "noEmit": true,
     "jsx": "react-jsx"
   },
-  "include": ["./test-app", "./tests"],
-  "exclude": ["node_modules", "**/dist"],
+  "include": [
+    "./test-app",
+    "./tests"
+  ],
+  "exclude": [
+    "node_modules",
+    "**/dist"
+  ],
   "references": [
     {
       "path": "../../packages/@livestore/adapter-web"

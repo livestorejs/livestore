@@ -1,20 +1,11 @@
 {
+  "$genie": {
+    "source": "package.json.genie.ts",
+    "warning": "DO NOT EDIT - changes will be overwritten"
+  },
   "name": "@livestore/wa-sqlite",
   "version": "0.4.0-dev.22",
-  "files": [
-    "dist/*",
-    "src/FacadeVFS.js",
-    "src/sqlite-api.js",
-    "src/sqlite-constants.js",
-    "src/VFS.js",
-    "src/WebLocksMixin.js",
-    "test/*",
-    "src/examples/*",
-    "src/types/*"
-  ],
   "type": "module",
-  "main": "src/sqlite-api.js",
-  "types": "src/types/index.d.ts",
   "exports": {
     ".": {
       "types": "./src/types/index.d.ts",
@@ -28,6 +19,19 @@
     "./src/VFS.js": "./src/VFS.js",
     "./src/WebLocksMixin.js": "./src/WebLocksMixin.js"
   },
+  "main": "src/sqlite-api.js",
+  "types": "src/types/index.d.ts",
+  "files": [
+    "src/sqlite-constants.js",
+    "src/sqlite-api.js",
+    "src/types/*",
+    "src/FacadeVFS.js",
+    "src/VFS.js",
+    "src/WebLocksMixin.js",
+    "src/examples/*",
+    "dist/*",
+    "test/*"
+  ],
   "scripts": {
     "build-docs": "typedoc",
     "start": "web-dev-server --node-resolve",
@@ -35,16 +39,16 @@
     "test-manual": "web-test-runner --manual"
   },
   "devDependencies": {
-    "@types/jasmine": "catalog:",
-    "@web/dev-server": "catalog:",
-    "@web/test-runner": "catalog:",
-    "@web/test-runner-core": "catalog:",
-    "comlink": "catalog:",
-    "jasmine-core": "catalog:",
-    "monaco-editor": "catalog:",
-    "typedoc": "catalog:",
-    "typescript": "catalog:",
-    "web-test-runner-jasmine": "catalog:"
+    "@types/jasmine": "5.1.4",
+    "@web/dev-server": "0.4.6",
+    "@web/test-runner": "0.20.0",
+    "@web/test-runner-core": "0.13.4",
+    "comlink": "4.4.1",
+    "jasmine-core": "4.5.0",
+    "monaco-editor": "0.34.1",
+    "typedoc": "0.28.11",
+    "typescript": "5.9.3",
+    "web-test-runner-jasmine": "0.0.6"
   },
   "dependenciesMeta": {
     "monaco-editor@0.34.1": {
@@ -53,9 +57,5 @@
     "web-test-runner-jasmine@0.0.6": {
       "unplugged": true
     }
-  },
-  "$genie": {
-    "source": "package.json.genie.ts",
-    "warning": "DO NOT EDIT - changes will be overwritten"
   }
 }

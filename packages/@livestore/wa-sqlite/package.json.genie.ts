@@ -1,6 +1,6 @@
-import { pkg } from '../../../genie/repo.ts'
+import { catalog, packageJson } from '../../../genie/repo.ts'
 
-export default pkg.package({
+export default packageJson({
   name: '@livestore/wa-sqlite',
   version: '0.4.0-dev.22',
   type: 'module',
@@ -27,18 +27,20 @@ export default pkg.package({
       unplugged: true,
     },
   },
-  devDependencies: [
-    '@types/jasmine',
-    '@web/dev-server',
-    '@web/test-runner',
-    '@web/test-runner-core',
-    'comlink',
-    'jasmine-core',
-    'monaco-editor',
-    'typescript',
-    'typedoc',
-    'web-test-runner-jasmine',
-  ],
+  devDependencies: {
+    ...catalog.pick(
+      '@types/jasmine',
+      '@web/dev-server',
+      '@web/test-runner',
+      '@web/test-runner-core',
+      'comlink',
+      'jasmine-core',
+      'monaco-editor',
+      'typescript',
+      'typedoc',
+      'web-test-runner-jasmine',
+    ),
+  },
   files: [
     'src/sqlite-constants.js',
     'src/sqlite-api.js',

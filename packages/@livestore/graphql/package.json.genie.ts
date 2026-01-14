@@ -1,22 +1,24 @@
-import { livestorePackageDefaults, pkg } from '../../../genie/repo.ts'
+import { catalog, livestorePackageDefaults, packageJson } from '../../../genie/repo.ts'
 
-export default pkg.package({
+export default packageJson({
   name: '@livestore/graphql',
+  ...livestorePackageDefaults,
   exports: {
     '.': './src/index.ts',
   },
-  dependencies: [
-    '@graphql-typed-document-node/core',
-    '@livestore/common',
-    '@livestore/livestore',
-    '@livestore/utils',
-    '@opentelemetry/api',
-  ],
-  devDependencies: ['graphql'],
+  dependencies: {
+    ...catalog.pick(
+      '@graphql-typed-document-node/core',
+      '@livestore/common',
+      '@livestore/livestore',
+      '@livestore/utils',
+      '@opentelemetry/api',
+    ),
+  },
+  devDependencies: { ...catalog.pick('graphql') },
   peerDependencies: {
     graphql: '^16.11.0',
   },
-  ...livestorePackageDefaults,
   publishConfig: {
     access: 'public',
     exports: {

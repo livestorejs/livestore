@@ -1,6 +1,6 @@
-import { localPackageDefaults, pkg } from '../../../genie/repo.ts'
+import { catalog, localPackageDefaults, packageJson } from '../../../genie/repo.ts'
 
-export default pkg.package({
+export default packageJson({
   name: '@local/astro-twoslash-code',
   exports: {
     '.': './src/mod.ts',
@@ -10,17 +10,21 @@ export default pkg.package({
     './components/multi-code': './src/components/multi-code.ts',
     './components/MultiCode.astro': './src/components/MultiCode.astro',
   },
-  dependencies: [
-    '@effect/platform-node',
-    '@livestore/utils',
-    'astro-expressive-code',
-    'expressive-code',
-    'expressive-code-twoslash',
-    'hast',
-    'hast-util-to-html',
-    'typescript',
-  ],
-  devDependencies: ['@astrojs/starlight', '@types/hast', '@types/node', 'astro', 'vitest'],
+  dependencies: {
+    ...catalog.pick(
+      '@effect/platform-node',
+      '@livestore/utils',
+      'astro-expressive-code',
+      'expressive-code',
+      'expressive-code-twoslash',
+      'hast',
+      'hast-util-to-html',
+      'typescript',
+    ),
+  },
+  devDependencies: {
+    ...catalog.pick('@astrojs/starlight', '@types/hast', '@types/node', 'astro', 'vitest'),
+  },
   ...localPackageDefaults,
   peerDependencies: {
     '@astrojs/starlight': '^0.35.0',

@@ -1,8 +1,12 @@
 {
+  "$genie": {
+    "source": "package.json.genie.ts",
+    "warning": "DO NOT EDIT - changes will be overwritten"
+  },
   "name": "@local/astro-tldraw",
   "version": "0.0.0",
-  "private": true,
   "type": "module",
+  "private": true,
   "exports": {
     ".": "./src/mod.ts",
     "./components/TldrawDiagram.astro": "./src/components/TldrawDiagram.astro",
@@ -10,20 +14,16 @@
     "./vite": "./src/vite-plugin.ts"
   },
   "dependencies": {
-    "@kitschpatrol/tldraw-cli": "catalog:",
-    "@livestore/utils": "workspace:*"
+    "@kitschpatrol/tldraw-cli": "5.0.1",
+    "@livestore/utils": "file:../../@livestore/utils"
   },
   "devDependencies": {
-    "@effect/vitest": "catalog:",
-    "@types/node": "catalog:",
-    "astro": "catalog:",
-    "vitest": "catalog:"
+    "@effect/vitest": "0.27.0",
+    "@types/node": "25.0.3",
+    "astro": "5.13.4",
+    "vitest": "3.2.4"
   },
   "peerDependencies": {
     "astro": "^5.0.0"
-  },
-  "$genie": {
-    "source": "package.json.genie.ts",
-    "warning": "DO NOT EDIT - changes will be overwritten"
   }
 }

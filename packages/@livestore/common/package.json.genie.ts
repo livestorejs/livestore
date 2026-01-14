@@ -1,7 +1,8 @@
-import { livestorePackageDefaults, pkg } from '../../../genie/repo.ts'
+import { catalog, livestorePackageDefaults, packageJson } from '../../../genie/repo.ts'
 
-export default pkg.package({
+export default packageJson({
   name: '@livestore/common',
+  ...livestorePackageDefaults,
   exports: {
     '.': './src/index.ts',
     './sql-queries': './src/sql-queries/index.ts',
@@ -12,9 +13,12 @@ export default pkg.package({
     './sync/next/test': './src/sync/next/test/mod.ts',
     './testing': './src/testing/mod.ts',
   },
-  dependencies: ['@livestore/utils', '@livestore/webmesh', '@opentelemetry/api'],
-  devDependencies: ['@livestore/utils-dev', 'vitest'],
-  ...livestorePackageDefaults,
+  dependencies: {
+    ...catalog.pick('@livestore/utils', '@livestore/webmesh', '@opentelemetry/api'),
+  },
+  devDependencies: {
+    ...catalog.pick('@livestore/utils-dev', 'vitest'),
+  },
   publishConfig: {
     access: 'public',
     exports: {

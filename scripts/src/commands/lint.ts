@@ -4,7 +4,6 @@ import * as path from 'node:path'
 import { Console, Effect, Schema } from '@livestore/utils/effect'
 import { Cli } from '@livestore/utils/node'
 import { CurrentWorkingDirectory, cmd, cmdText, LivestoreWorkspace } from '@livestore/utils-dev/node'
-import { hasParentGitRepo } from '../shared/misc.ts'
 import { runPeerDepCheck } from '../shared/peer-deps.ts'
 
 export class LintError extends Schema.TaggedError<LintError>()('LintError', {
@@ -133,8 +132,6 @@ const knipConfig = {
   ignoreIssues: {
     // Constants intentionally share the same value for semantic clarity
     'packages/@livestore/sync-cf/src/common/constants.ts': ['duplicates'],
-    // Catalog entries are used in ignored workspaces (examples/tests/docs)
-    'pnpm-workspace.yaml': ['catalog'],
   },
   ignoreExportsUsedInFile: true,
 }
@@ -148,7 +145,7 @@ const runKnipCheck = Effect.gen(function* () {
 
   yield* Effect.addFinalizer(() => Effect.sync(() => fs.unlinkSync(tempConfigPath)))
 
-  yield* cmd(['scripts/node_modules/.bin/knip', '-c', tempConfigPath, '--directory', workspaceRoot]).pipe(
+  yield* cmd(['bun', 'run', 'scripts/node_modules/.bin/knip', '-c', tempConfigPath, '--directory', workspaceRoot]).pipe(
     Effect.provide(CurrentWorkingDirectory.fromPath(workspaceRoot)),
   )
 }).pipe(Effect.scoped, Effect.withSpan('runKnipCheck'))
@@ -158,15 +155,12 @@ export const lintCommand = Cli.Command.make(
   { fix: Cli.Options.boolean('fix').pipe(Cli.Options.withDefault(false)) },
   Effect.fn(function* ({ fix }) {
     const fixFlag = fix ? '--fix --unsafe' : ''
-    yield* cmd(`biome check scripts tests packages docs examples --error-on-warnings ${fixFlag}`, {
+    yield* cmd(`bun run biome check scripts tests packages docs examples --error-on-warnings ${fixFlag}`, {
       shell: true,
     }).pipe(Effect.provide(LivestoreWorkspace.toCwd()))
-    if (fix && (yield* hasParentGitRepo) === false) {
-      yield* cmd('pnpm install --fix-lockfile').pipe(Effect.provide(LivestoreWorkspace.toCwd()))
-    }
 
     // Shell needed for wildcards
-    yield* cmd('madge --circular --no-spinner examples/*/src packages/*/*/src', { shell: true }).pipe(
+    yield* cmd('bun run madge --circular --no-spinner examples/*/src packages/*/*/src', { shell: true }).pipe(
       Effect.provide(LivestoreWorkspace.toCwd()),
     )
 

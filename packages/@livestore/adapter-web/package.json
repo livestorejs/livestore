@@ -1,19 +1,39 @@
 {
+  "$genie": {
+    "source": "package.json.genie.ts",
+    "warning": "DO NOT EDIT - changes will be overwritten"
+  },
   "name": "@livestore/adapter-web",
   "version": "0.4.0-dev.22",
-  "license": "Apache-2.0",
-  "files": [
-    "dist",
-    "package.json",
-    "src"
-  ],
   "type": "module",
   "sideEffects": false,
+  "license": "Apache-2.0",
   "exports": {
     ".": "./src/index.ts",
     "./shared-worker": "./src/web-worker/shared-worker/make-shared-worker.ts",
     "./worker": "./src/web-worker/leader-worker/make-leader-worker.ts",
     "./worker-vite-dev-polyfill": "./src/web-worker/vite-dev-polyfill.ts"
+  },
+  "files": [
+    "dist",
+    "package.json",
+    "src"
+  ],
+  "scripts": {
+    "test": "echo No tests yet"
+  },
+  "dependencies": {
+    "@livestore/common": "file:../common",
+    "@livestore/devtools-web-common": "file:../devtools-web-common",
+    "@livestore/sqlite-wasm": "file:../sqlite-wasm",
+    "@livestore/utils": "file:../utils",
+    "@livestore/webmesh": "file:../webmesh",
+    "@opentelemetry/api": "1.9.0"
+  },
+  "devDependencies": {
+    "@types/chrome": "0.1.4",
+    "@types/wicg-file-system-access": "2023.10.6",
+    "vitest": "3.2.4"
   },
   "publishConfig": {
     "access": "public",
@@ -23,25 +43,5 @@
       "./worker-vite-dev-polyfill": "./dist/web-worker/vite-dev-polyfill.js",
       "./shared-worker": "./dist/web-worker/shared-worker/make-shared-worker.js"
     }
-  },
-  "scripts": {
-    "test": "echo No tests yet"
-  },
-  "dependencies": {
-    "@livestore/common": "workspace:*",
-    "@livestore/devtools-web-common": "workspace:*",
-    "@livestore/sqlite-wasm": "workspace:*",
-    "@livestore/utils": "workspace:*",
-    "@livestore/webmesh": "workspace:*",
-    "@opentelemetry/api": "catalog:"
-  },
-  "devDependencies": {
-    "@types/chrome": "catalog:",
-    "@types/wicg-file-system-access": "catalog:",
-    "vitest": "catalog:"
-  },
-  "$genie": {
-    "source": "package.json.genie.ts",
-    "warning": "DO NOT EDIT - changes will be overwritten"
   }
 }

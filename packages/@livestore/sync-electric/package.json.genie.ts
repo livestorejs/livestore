@@ -1,12 +1,12 @@
-import { livestorePackageDefaults, pkg } from '../../../genie/repo.ts'
+import { catalog, livestorePackageDefaults, packageJson } from '../../../genie/repo.ts'
 
-export default pkg.package({
+export default packageJson({
   name: '@livestore/sync-electric',
+  ...livestorePackageDefaults,
   exports: {
     '.': './src/index.ts',
   },
-  dependencies: ['@livestore/common', '@livestore/utils'],
-  ...livestorePackageDefaults,
+  dependencies: { ...catalog.pick('@livestore/common', '@livestore/utils') },
   publishConfig: {
     access: 'public',
     exports: {

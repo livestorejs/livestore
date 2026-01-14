@@ -3,7 +3,9 @@
 {
   "compilerOptions": {
     "paths": {
-      "#genie/*": ["./submodules/effect-utils/packages/@overeng/genie/src/lib/*"]
+      "#genie/*": [
+        "../@overeng/genie/src/runtime/*"
+      ]
     },
     "strict": true,
     "exactOptionalPropertyTypes": true,

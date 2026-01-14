@@ -1,24 +1,26 @@
-import { livestorePackageDefaults, pkg } from '../../../genie/repo.ts'
+import { catalog, livestorePackageDefaults, packageJson } from '../../../genie/repo.ts'
 
-export default pkg.package({
+export default packageJson({
   name: '@livestore/livestore',
+  ...livestorePackageDefaults,
   exports: {
     '.': './src/mod.ts',
     './internal': './src/internal/mod.ts',
     './internal/testing-utils': './src/utils/tests/mod.ts',
     './effect': './src/effect/mod.ts',
   },
-  dependencies: ['@livestore/common', '@livestore/utils', '@opentelemetry/api'],
-  devDependencies: [
-    '@livestore/adapter-web',
-    '@livestore/utils-dev',
-    '@opentelemetry/sdk-trace-base',
-    'jsdom',
-    'typescript',
-    'vite',
-    'vitest',
-  ],
-  ...livestorePackageDefaults,
+  dependencies: { ...catalog.pick('@livestore/common', '@livestore/utils', '@opentelemetry/api') },
+  devDependencies: {
+    ...catalog.pick(
+      '@livestore/adapter-web',
+      '@livestore/utils-dev',
+      '@opentelemetry/sdk-trace-base',
+      'jsdom',
+      'typescript',
+      'vite',
+      'vitest',
+    ),
+  },
   files: [...livestorePackageDefaults.files, 'docs'],
   publishConfig: {
     access: 'public',

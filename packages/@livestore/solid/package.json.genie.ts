@@ -1,16 +1,20 @@
-import { livestorePackageDefaults, pkg } from '../../../genie/repo.ts'
+import { catalog, livestorePackageDefaults, packageJson } from '../../../genie/repo.ts'
 
-export default pkg.package({
+export default packageJson({
   name: '@livestore/solid',
+  ...livestorePackageDefaults,
   exports: {
     '.': './src/mod.ts',
   },
-  dependencies: ['@livestore/common', '@livestore/livestore', '@livestore/utils', '@opentelemetry/api'],
-  devDependencies: ['@opentelemetry/sdk-trace-base', 'jsdom', 'solid-js', 'typescript', 'vite', 'vitest'],
+  dependencies: {
+    ...catalog.pick('@livestore/common', '@livestore/livestore', '@livestore/utils', '@opentelemetry/api'),
+  },
+  devDependencies: {
+    ...catalog.pick('@opentelemetry/sdk-trace-base', 'jsdom', 'solid-js', 'typescript', 'vite', 'vitest'),
+  },
   peerDependencies: {
     'solid-js': '^1.9.10',
   },
-  ...livestorePackageDefaults,
   publishConfig: {
     access: 'public',
     exports: {

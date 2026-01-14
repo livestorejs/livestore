@@ -1,6 +1,6 @@
-import { localPackageDefaults, pkg } from '../../../genie/repo.ts'
+import { catalog, localPackageDefaults, packageJson } from '../../../genie/repo.ts'
 
-export default pkg.package({
+export default packageJson({
   name: '@local/astro-tldraw',
   exports: {
     '.': './src/mod.ts',
@@ -8,8 +8,12 @@ export default pkg.package({
     './vite': './src/vite-plugin.ts',
     './components/TldrawDiagram.astro': './src/components/TldrawDiagram.astro',
   },
-  dependencies: ['@kitschpatrol/tldraw-cli', '@livestore/utils'],
-  devDependencies: ['@effect/vitest', '@types/node', 'astro', 'vitest'],
+  dependencies: {
+    ...catalog.pick('@kitschpatrol/tldraw-cli', '@livestore/utils'),
+  },
+  devDependencies: {
+    ...catalog.pick('@effect/vitest', '@types/node', 'astro', 'vitest'),
+  },
   ...localPackageDefaults,
   peerDependencies: {
     astro: '^5.0.0',

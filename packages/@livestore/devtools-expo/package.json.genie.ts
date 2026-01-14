@@ -1,15 +1,15 @@
-import { livestorePackageDefaults, pkg } from '../../../genie/repo.ts'
+import { catalog, livestorePackageDefaults, packageJson } from '../../../genie/repo.ts'
 
-export default pkg.package({
+export default packageJson({
   name: '@livestore/devtools-expo',
+  ...livestorePackageDefaults,
   types: './dist/index.d.cts',
   main: './dist/index.cjs',
-  dependencies: ['@livestore/adapter-node', '@livestore/utils'],
-  devDependencies: ['@types/node', 'expo', 'vite'],
+  dependencies: { ...catalog.pick('@livestore/adapter-node', '@livestore/utils') },
+  devDependencies: { ...catalog.pick('@types/node', 'expo', 'vite') },
   peerDependencies: {
     expo: '^54.0.12',
   },
-  ...livestorePackageDefaults,
   files: [...livestorePackageDefaults.files, 'expo-module.config.json', 'webui'],
   publishConfig: {
     access: 'public',

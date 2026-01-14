@@ -1,13 +1,13 @@
-import { livestorePackageDefaults, pkg } from '../../../genie/repo.ts'
+import { catalog, livestorePackageDefaults, packageJson } from '../../../genie/repo.ts'
 
-export default pkg.package({
+export default packageJson({
   name: '@livestore/devtools-web-common',
+  ...livestorePackageDefaults,
   exports: {
     './web-channel': './src/web-channel/index.ts',
     './worker': './src/worker/mod.ts',
   },
-  dependencies: ['@livestore/common', '@livestore/utils', '@livestore/webmesh'],
-  ...livestorePackageDefaults,
+  dependencies: { ...catalog.pick('@livestore/common', '@livestore/utils', '@livestore/webmesh') },
   publishConfig: {
     access: 'public',
     exports: {

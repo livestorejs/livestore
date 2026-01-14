@@ -1,32 +1,36 @@
-import { livestorePackageDefaults, pkg } from '../../../genie/repo.ts'
+import { catalog, livestorePackageDefaults, packageJson } from '../../../genie/repo.ts'
 
-export default pkg.package({
+export default packageJson({
   name: '@livestore/react',
+  ...livestorePackageDefaults,
   exports: {
     '.': './src/mod.ts',
     './experimental': './src/experimental/mod.ts',
   },
-  dependencies: ['@livestore/common', '@livestore/livestore', '@livestore/utils', '@opentelemetry/api'],
-  devDependencies: [
-    '@livestore/adapter-web',
-    '@livestore/utils-dev',
-    '@opentelemetry/sdk-trace-base',
-    '@testing-library/dom',
-    '@testing-library/react',
-    '@types/react',
-    '@types/react-dom',
-    'jsdom',
-    'react',
-    'react-dom',
-    'react-window',
-    'typescript',
-    'vite',
-    'vitest',
-  ],
-  peerDependencies: {
-    react: '^',
+  dependencies: {
+    ...catalog.pick('@livestore/common', '@livestore/livestore', '@livestore/utils', '@opentelemetry/api'),
   },
-  ...livestorePackageDefaults,
+  devDependencies: {
+    ...catalog.pick(
+      '@livestore/adapter-web',
+      '@livestore/utils-dev',
+      '@opentelemetry/sdk-trace-base',
+      '@testing-library/dom',
+      '@testing-library/react',
+      '@types/react',
+      '@types/react-dom',
+      'jsdom',
+      'react',
+      'react-dom',
+      'react-window',
+      'typescript',
+      'vite',
+      'vitest',
+    ),
+  },
+  peerDependencies: {
+    react: '^19.0.0',
+  },
   publishConfig: {
     access: 'public',
     exports: {

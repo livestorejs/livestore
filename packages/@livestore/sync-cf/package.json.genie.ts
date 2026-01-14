@@ -1,14 +1,16 @@
-import { livestorePackageDefaults, pkg } from '../../../genie/repo.ts'
+import { catalog, livestorePackageDefaults, packageJson } from '../../../genie/repo.ts'
 
-export default pkg.package({
+export default packageJson({
   name: '@livestore/sync-cf',
+  ...livestorePackageDefaults,
   exports: {
     './client': './src/client/mod.ts',
     './common': './src/common/mod.ts',
     './cf-worker': './src/cf-worker/mod.ts',
   },
-  dependencies: ['@cloudflare/workers-types', '@livestore/common', '@livestore/common-cf', '@livestore/utils'],
-  ...livestorePackageDefaults,
+  dependencies: {
+    ...catalog.pick('@cloudflare/workers-types', '@livestore/common', '@livestore/common-cf', '@livestore/utils'),
+  },
   files: [...livestorePackageDefaults.files, 'README.md'],
   publishConfig: {
     access: 'public',

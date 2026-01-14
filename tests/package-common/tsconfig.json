@@ -1,12 +1,52 @@
 {
-  "extends": "../../tsconfig.base.json",
   "compilerOptions": {
+    "paths": {
+      "#genie/*": [
+        "../@overeng/genie/src/runtime/*"
+      ]
+    },
+    "strict": true,
+    "exactOptionalPropertyTypes": true,
+    "noUncheckedIndexedAccess": true,
+    "esModuleInterop": true,
+    "sourceMap": true,
+    "declarationMap": true,
+    "declaration": true,
+    "strictNullChecks": true,
+    "incremental": true,
+    "composite": true,
+    "allowJs": true,
+    "stripInternal": true,
+    "skipLibCheck": true,
+    "forceConsistentCasingInFileNames": true,
+    "noFallthroughCasesInSwitch": true,
+    "noErrorTruncation": true,
+    "isolatedModules": true,
+    "target": "ESNext",
+    "module": "NodeNext",
+    "moduleResolution": "NodeNext",
+    "verbatimModuleSyntax": true,
+    "allowImportingTsExtensions": true,
+    "rewriteRelativeImportExtensions": true,
+    "erasableSyntaxOnly": true,
+    "plugins": [
+      {
+        "name": "@effect/language-service",
+        "reportSuggestionsAsWarningsInTsc": true,
+        "pipeableMinArgCount": 2,
+        "diagnosticSeverity": {
+          "schemaUnionOfLiterals": "warning"
+        }
+      }
+    ],
     "outDir": "./dist",
     "rootDir": "./src",
     "resolveJsonModule": true,
     "tsBuildInfoFile": "./dist/.tsbuildinfo"
   },
-  "include": ["./src"],
+  "include": [
+    "./src"
+  ],
   "references": [
     { "path": "../../packages/@livestore/common" },
     { "path": "../../packages/@livestore/utils" },
