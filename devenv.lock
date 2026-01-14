@@ -3,10 +3,17 @@
     "devenv": {
       "locked": {
         "dir": "src/modules",
+<<<<<<< HEAD
         "lastModified": 1769080719,
         "owner": "cachix",
         "repo": "devenv",
         "rev": "a13cd68223ccb1c50aa9c253504463fda67e6554",
+=======
+        "lastModified": 1768368374,
+        "owner": "cachix",
+        "repo": "devenv",
+        "rev": "d68f9d218db9f54e5133dd0c2cb40107e931064f",
+>>>>>>> 2ce0ebb0 (chore: update package configurations and remove unused files)
         "type": "github"
       },
       "original": {
@@ -19,6 +26,7 @@
     "effect-utils": {
       "inputs": {
         "flake-utils": "flake-utils",
+<<<<<<< HEAD
         "nixpkgs": [
           "nixpkgs"
         ]
@@ -28,6 +36,16 @@
         "owner": "overengineeringstudio",
         "repo": "effect-utils",
         "rev": "59189750891d81cd7b92c9fe8cb9ae0bbacc4173",
+=======
+        "nixpkgs": "nixpkgs",
+        "nixpkgsUnstable": "nixpkgsUnstable"
+      },
+      "locked": {
+        "lastModified": 1768388265,
+        "owner": "overengineeringstudio",
+        "repo": "effect-utils",
+        "rev": "1d6abd1800c5616a35a48f9e7141ad7803309804",
+>>>>>>> 2ce0ebb0 (chore: update package configurations and remove unused files)
         "type": "github"
       },
       "original": {
@@ -128,10 +146,32 @@
     },
     "nixpkgs": {
       "locked": {
+<<<<<<< HEAD
         "lastModified": 1769018530,
         "owner": "NixOS",
         "repo": "nixpkgs",
         "rev": "88d3861acdd3d2f0e361767018218e51810df8a1",
+=======
+        "lastModified": 1768323494,
+        "owner": "NixOS",
+        "repo": "nixpkgs",
+        "rev": "2c3e5ec5df46d3aeee2a1da0bfedd74e21f4bf3a",
+        "type": "github"
+      },
+      "original": {
+        "owner": "NixOS",
+        "ref": "release-25.11",
+        "repo": "nixpkgs",
+        "type": "github"
+      }
+    },
+    "nixpkgsUnstable": {
+      "locked": {
+        "lastModified": 1768127708,
+        "owner": "NixOS",
+        "repo": "nixpkgs",
+        "rev": "ffbc9f8cbaacfb331b6017d5a5abb21a492c9a38",
+>>>>>>> 2ce0ebb0 (chore: update package configurations and remove unused files)
         "type": "github"
       },
       "original": {
@@ -141,12 +181,21 @@
         "type": "github"
       }
     },
+<<<<<<< HEAD
     "nixpkgs_2": {
       "locked": {
         "lastModified": 1769018530,
         "owner": "NixOS",
         "repo": "nixpkgs",
         "rev": "88d3861acdd3d2f0e361767018218e51810df8a1",
+=======
+    "nixpkgsUnstable_2": {
+      "locked": {
+        "lastModified": 1768127708,
+        "owner": "NixOS",
+        "repo": "nixpkgs",
+        "rev": "ffbc9f8cbaacfb331b6017d5a5abb21a492c9a38",
+>>>>>>> 2ce0ebb0 (chore: update package configurations and remove unused files)
         "type": "github"
       },
       "original": {
@@ -156,6 +205,7 @@
         "type": "github"
       }
     },
+<<<<<<< HEAD
     "overeng-beads-public": {
       "inputs": {
         "nixpkgs": "nixpkgs_2"
@@ -170,6 +220,20 @@
       "original": {
         "owner": "overengineeringstudio",
         "repo": "overeng-beads-public",
+=======
+    "nixpkgs_2": {
+      "locked": {
+        "lastModified": 1768387411,
+        "owner": "NixOS",
+        "repo": "nixpkgs",
+        "rev": "1412c6b7dc01571ee529feb78141843bc802b32a",
+        "type": "github"
+      },
+      "original": {
+        "owner": "NixOS",
+        "ref": "release-25.11",
+        "repo": "nixpkgs",
+>>>>>>> 2ce0ebb0 (chore: update package configurations and remove unused files)
         "type": "github"
       }
     },
@@ -177,7 +241,7 @@
       "inputs": {
         "flake-utils": "flake-utils_2",
         "nixpkgs": [
-          "nixpkgs"
+          "nixpkgsUnstable"
         ]
       },
       "locked": {
@@ -198,8 +262,13 @@
         "devenv": "devenv",
         "effect-utils": "effect-utils",
         "git-hooks": "git-hooks",
+<<<<<<< HEAD
         "nixpkgs": "nixpkgs",
         "overeng-beads-public": "overeng-beads-public",
+=======
+        "nixpkgs": "nixpkgs_2",
+        "nixpkgsUnstable": "nixpkgsUnstable_2",
+>>>>>>> 2ce0ebb0 (chore: update package configurations and remove unused files)
         "playwright-web-flake": "playwright-web-flake",
         "pre-commit-hooks": [
           "git-hooks"
