@@ -177,7 +177,7 @@ function storeOptions<TSchema extends LiveStoreSchema>(
 // src/stores/workspace/index.ts
 import { makePersistedAdapter } from '@livestore/adapter-web'
 import sharedWorker from '@livestore/adapter-web/shared-worker?sharedworker'
-import { storeOptions } from '@livestore/react'
+import { storeOptions } from '@livestore/livestore'
 import { schema, workspaceEvents, workspaceTables } from './schema.ts'
 import worker from './worker.ts?worker'
 
@@ -204,7 +204,7 @@ export const workspaceStoreOptions = storeOptions({
 // src/stores/issue/index.ts
 import { makePersistedAdapter } from '@livestore/adapter-web'
 import sharedWorker from '@livestore/adapter-web/shared-worker?sharedworker'
-import { storeOptions } from '@livestore/react'
+import { storeOptions } from '@livestore/livestore'
 import { issueEvents, issueTables, schema } from './schema.ts'
 import worker from './worker.ts?worker'
 
@@ -230,7 +230,7 @@ Instantiates the registry that coordinates caching, ref-counting, garbage collec
 **Example:**
 
 ```tsx
-import { StoreRegistry } from '@livestore/react'
+import { StoreRegistry } from '@livestore/livestore'
 import { unstable_batchedUpdates as batchUpdates } from 'react-dom'
 
 const storeRegistry = new StoreRegistry({
@@ -250,13 +250,14 @@ Supplies a `StoreRegistry` instance to descendants via context.
 **Example:**
 
 ```tsx
-import { StoreRegistry, StoreRegistryProvider } from '@livestore/react'
+import { StoreRegistry } from '@livestore/livestore'
+import { StoreRegistryProvider } from '@livestore/react'
 import { unstable_batchedUpdates as batchUpdates } from 'react-dom'
 
 
 export default function App({ children }: { children: React.ReactNode }) {
   const [storeRegistry] = useState(() => new StoreRegistry())
-  
+
   return <StoreRegistryProvider storeRegistry={storeRegistry}>{children}</StoreRegistryProvider>
 }
 ```
@@ -853,12 +854,11 @@ declare function useStore<TSchema extends LiveStoreSchema>(
 ```tsx
 import { useState, useMemo, Suspense } from "react";
 import { unstable_batchedUpdates as batchUpdates } from "react-dom";
+import { StoreRegistry, storeOptions } from "@livestore/livestore";
 import {
-  StoreRegistry,
   StoreRegistryProvider,
   useStoreRegistry,
   useStore,
-  storeOptions,
 } from "@livestore/react";
 import {
   workspaceSchema,

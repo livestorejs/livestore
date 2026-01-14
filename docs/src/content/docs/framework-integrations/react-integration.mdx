@@ -244,7 +244,8 @@ Use the `component` prop on `createRootRoute` for `<StoreRegistryProvider>`:
 
 ```tsx
 import { Outlet, HeadContent, Scripts, createRootRoute } from '@tanstack/react-router'
-import { StoreRegistry, StoreRegistryProvider } from '@livestore/react'
+import { StoreRegistry } from '@livestore/livestore'
+import { StoreRegistryProvider } from '@livestore/react'
 import { Suspense, useState } from 'react'
 
 export const Route = createRootRoute({

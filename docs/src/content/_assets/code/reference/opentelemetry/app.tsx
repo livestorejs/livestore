@@ -1,5 +1,6 @@
 import { makeInMemoryAdapter } from '@livestore/adapter-web'
-import { StoreRegistry, StoreRegistryProvider, useStore } from '@livestore/react'
+import { StoreRegistry } from '@livestore/livestore'
+import { StoreRegistryProvider, useStore } from '@livestore/react'
 import type { FC } from 'react'
 import { Suspense, useState } from 'react'
 import { unstable_batchedUpdates as batchUpdates } from 'react-dom'

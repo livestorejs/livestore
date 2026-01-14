@@ -1,7 +1,8 @@
 import 'react-native-reanimated'
 import '../polyfill.ts'
 
-import { StoreRegistry, StoreRegistryProvider } from '@livestore/react'
+import { StoreRegistry } from '@livestore/livestore'
+import { StoreRegistryProvider } from '@livestore/react'
 import { Stack } from 'expo-router'
 import { Suspense, useState } from 'react'
 import { LogBox, Platform } from 'react-native'

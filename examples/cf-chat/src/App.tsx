@@ -1,6 +1,7 @@
 /// <reference types="vite/client" />
 
-import { StoreRegistry, StoreRegistryProvider } from '@livestore/react'
+import { StoreRegistry } from '@livestore/livestore'
+import { StoreRegistryProvider } from '@livestore/react'
 import React, { Suspense, useRef, useState } from 'react'
 import { ErrorBoundary } from 'react-error-boundary'
 import { VersionBadge } from './components/VersionBadge.tsx'

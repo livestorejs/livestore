@@ -1,6 +1,7 @@
 /** biome-ignore-all lint/nursery: testing */
 /** biome-ignore-all lint/correctness/useUniqueElementIds: it's ok for testing */
-import { StoreRegistry, StoreRegistryProvider } from '@livestore/react'
+import { StoreRegistry } from '@livestore/livestore'
+import { StoreRegistryProvider } from '@livestore/react'
 import React, { StrictMode, Suspense, useState } from 'react'
 import { createRoot } from 'react-dom/client'
 

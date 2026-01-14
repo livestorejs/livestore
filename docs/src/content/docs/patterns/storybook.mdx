@@ -38,7 +38,8 @@ const LiveStoreDecorator = createLiveStoreDecorator()
 export const decorators = [LiveStoreDecorator]`,
 
   decorator: `import React, { Suspense, useState } from 'react'
-import { StoreRegistry, StoreRegistryProvider, useStore } from '@livestore/react'
+import { StoreRegistry } from '@livestore/livestore'
+import { StoreRegistryProvider, useStore } from '@livestore/react'
 import { makeInMemoryAdapter } from '@livestore/adapter-web'
 import { unstable_batchedUpdates as batchUpdates } from 'react-dom'
 import { schema } from './schema'

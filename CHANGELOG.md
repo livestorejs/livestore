@@ -192,7 +192,8 @@
   }
 
   // After
-  import { StoreRegistry, StoreRegistryProvider, useStore } from '@livestore/react'
+  import { StoreRegistry } from '@livestore/livestore'
+  import { StoreRegistryProvider, useStore } from '@livestore/react'
 
   const useAppStore = () => useStore({
     storeId: 'app-root',
