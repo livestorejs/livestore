@@ -161,11 +161,6 @@ export class StoreRegistry {
   readonly #loadingPromises: Map<string, Promise<Store<any, any>>> = new Map()
 
   /**
-   * Default options merged into all store configurations at load time.
-   */
-  readonly #defaultOptions: StoreRegistryConfig['defaultOptions']
-
-  /**
    * Creates a new StoreRegistry instance.
    *
    * @example
@@ -179,7 +174,6 @@ export class StoreRegistry {
    * ```
    */
   constructor(config: StoreRegistryConfig = {}) {
-    this.#defaultOptions = config.defaultOptions
     this.#runtime =
       config.runtime ??
       ManagedRuntime.make(Layer.mergeAll(Layer.scope, OtelLiveDummy)).runtimeEffect.pipe(Effect.runSync)
@@ -187,7 +181,7 @@ export class StoreRegistry {
     this.#rcMap = RcMap.make({
       lookup: ({ options }: StoreCacheKey) => {
         // Merge registry defaults with call-site options (call-site takes precedence)
-        const mergedOptions = { ...this.#defaultOptions, ...options }
+        const mergedOptions = { ...config.defaultOptions, ...options }
         return createStore(mergedOptions).pipe(
           Effect.catchAllDefect((cause) => UnknownError.make({ cause })),
           Effect.withSpan(`StoreRegistry.lookup:${mergedOptions.storeId}`),
