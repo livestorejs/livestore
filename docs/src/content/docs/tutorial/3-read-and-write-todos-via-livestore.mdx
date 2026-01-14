@@ -193,7 +193,8 @@ Then, update `main.tsx` to wrap your `<App>` component inside the `<StoreRegistr
 import { createRoot } from 'react-dom/client'
 import './index.css'
 import App from './App.tsx'
-import { StoreRegistry, StoreRegistryProvider } from '@livestore/react'
+import { StoreRegistry } from '@livestore/livestore'
+import { StoreRegistryProvider } from '@livestore/react'
 import { Suspense, useState } from 'react'
 
 const Root = () => {

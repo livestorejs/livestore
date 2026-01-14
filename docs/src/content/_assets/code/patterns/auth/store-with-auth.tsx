@@ -1,6 +1,6 @@
 import { makeInMemoryAdapter } from '@livestore/adapter-web'
-import type { LiveStoreSchema } from '@livestore/livestore'
-import { StoreRegistry, StoreRegistryProvider, useStore } from '@livestore/react'
+import { type LiveStoreSchema, StoreRegistry } from '@livestore/livestore'
+import { StoreRegistryProvider, useStore } from '@livestore/react'
 import { Suspense, useState } from 'react'
 import { unstable_batchedUpdates as batchUpdates } from 'react-dom'
 

@@ -1,4 +1,5 @@
-import { StoreRegistry, StoreRegistryProvider } from '@livestore/react'
+import { StoreRegistry } from '@livestore/livestore'
+import { StoreRegistryProvider } from '@livestore/react'
 import { Suspense, useState } from 'react'
 import { createRoot } from 'react-dom/client'
 import { DEFAULT_EVENT_BATCH_SIZE, EventControls } from './components/EventControls.tsx'

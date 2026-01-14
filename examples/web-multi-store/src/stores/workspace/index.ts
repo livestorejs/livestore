@@ -1,7 +1,7 @@
 import { makeAdapter as makeNodeAdapter } from '@livestore/adapter-node'
 import { makePersistedAdapter as makeWebPersistedAdapter } from '@livestore/adapter-web'
 import sharedWorker from '@livestore/adapter-web/shared-worker?sharedworker'
-import { storeOptions } from '@livestore/react'
+import { storeOptions } from '@livestore/livestore'
 import { createIsomorphicFn } from '@tanstack/react-start'
 import { schema, workspaceEvents, workspaceTables } from './schema.ts'
 import worker from './worker.ts?worker'

@@ -1,6 +1,6 @@
 import { makeInMemoryAdapter } from '@livestore/adapter-web'
-import { queryDb } from '@livestore/livestore'
-import { StoreRegistry, StoreRegistryProvider, storeOptions, useStore } from '@livestore/react'
+import { queryDb, StoreRegistry, storeOptions } from '@livestore/livestore'
+import { StoreRegistryProvider, useStore } from '@livestore/react'
 import { useState } from 'react'
 import { unstable_batchedUpdates as batchUpdates } from 'react-dom'
 import { schema, tables } from './issue.schema.ts'

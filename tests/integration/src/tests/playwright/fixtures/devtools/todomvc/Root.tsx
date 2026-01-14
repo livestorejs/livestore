@@ -1,6 +1,7 @@
 import 'todomvc-app-css/index.css'
 
-import { StoreRegistry, StoreRegistryProvider } from '@livestore/react'
+import { StoreRegistry } from '@livestore/livestore'
+import { StoreRegistryProvider } from '@livestore/react'
 import type React from 'react'
 import { Suspense, useState } from 'react'
 import { ErrorBoundary } from 'react-error-boundary'

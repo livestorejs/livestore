@@ -1,4 +1,5 @@
-import { type StoreRegistry, StoreRegistryProvider } from '@livestore/react'
+import type { StoreRegistry } from '@livestore/livestore'
+import { StoreRegistryProvider } from '@livestore/react'
 import { createRootRouteWithContext, HeadContent, Outlet, Scripts } from '@tanstack/react-router'
 import type * as React from 'react'
 import { Suspense } from 'react'
