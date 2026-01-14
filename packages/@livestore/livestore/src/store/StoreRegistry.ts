@@ -155,6 +155,12 @@ export class StoreRegistry {
   readonly #runtime: Runtime.Runtime<Scope.Scope | OtelTracer.OtelTracer>
 
   /**
+   * Disposal callback for the runtime created by the registry.
+   * Undefined when caller provided their own runtime (caller owns cleanup in that case).
+   */
+  readonly #disposeOwnedRuntime: (() => Promise<void>) | undefined
+
+  /**
    * In-flight loading promises keyed by storeId.
    * Ensures concurrent `getOrLoadPromise` calls receive the same Promise reference.
    */
@@ -174,9 +180,13 @@ export class StoreRegistry {
    * ```
    */
   constructor(config: StoreRegistryConfig = {}) {
-    this.#runtime =
-      config.runtime ??
-      ManagedRuntime.make(Layer.mergeAll(Layer.scope, OtelLiveDummy)).runtimeEffect.pipe(Effect.runSync)
+    if (config.runtime) {
+      this.#runtime = config.runtime
+    } else {
+      const ownedRuntime = ManagedRuntime.make(Layer.mergeAll(Layer.scope, OtelLiveDummy))
+      this.#runtime = ownedRuntime.runtimeEffect.pipe(Effect.runSync)
+      this.#disposeOwnedRuntime = () => ownedRuntime.dispose()
+    }
 
     this.#rcMap = RcMap.make({
       lookup: ({ options }: StoreCacheKey) => {
@@ -337,6 +347,25 @@ export class StoreRegistry {
     } catch {
       // Do nothing; preload is best-effort
     }
+  }
+
+  /**
+   * Disposes the registry and all its managed stores, immediately releasing resources
+   * (database connections, WebSocket connections, web workers, etc.).
+   *
+   * Most applications should use a single `StoreRegistry` and don't need to call
+   * this method. It's only necessary when creating multiple short-lived registries to
+   * immediately release resources and avoid conflicts with subsequent registries.
+   *
+   * @returns A promise that resolves when disposal is complete
+   *
+   * @remarks
+   * - No-op if a custom `runtime` was provided to the constructor (caller owns cleanup)
+   * - Idempotent: safe to call multiple times
+   * - After disposal, the registry should not be used
+   */
+  dispose = async (): Promise<void> => {
+    await this.#disposeOwnedRuntime?.()
   }
 }
 
