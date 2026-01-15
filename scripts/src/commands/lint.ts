@@ -109,7 +109,6 @@ const knipConfig = {
     'jsdom',
     'vitest',
     'vite',
-    '@biomejs/biome',
     'madge',
     '@livestore/utils-dev',
     // Test dependencies (used in test files which are ignored by knip)
@@ -150,14 +149,54 @@ const runKnipCheck = Effect.gen(function* () {
   )
 }).pipe(Effect.scoped, Effect.withSpan('runKnipCheck'))
 
+/** Oxc config path (relative to workspace root) */
+const oxcConfigPath = 'packages/@local/oxc-config'
+
+/** Exclude patterns for oxfmt (genie-generated read-only files) */
+const oxfmtExcludePatterns = [
+  '!**/package.json',
+  '!**/tsconfig.json',
+  '!**/tsconfig.*.json',
+  '!.github/workflows/*.yml',
+  '!packages/@local/oxc-config/*.jsonc',
+]
+
+/** Run oxfmt format check */
+const runFormatCheck = cmd(['oxfmt', '-c', `${oxcConfigPath}/fmt.jsonc`, '--check', '.', ...oxfmtExcludePatterns]).pipe(
+  Effect.provide(LivestoreWorkspace.toCwd()),
+  Effect.withSpan('formatCheck'),
+)
+
+/** Run oxfmt format fix */
+const runFormatFix = cmd(['oxfmt', '-c', `${oxcConfigPath}/fmt.jsonc`, '.', ...oxfmtExcludePatterns]).pipe(
+  Effect.provide(LivestoreWorkspace.toCwd()),
+  Effect.withSpan('formatFix'),
+)
+
+/** Run oxlint check */
+const runLintCheck = cmd(['oxlint', '-c', `${oxcConfigPath}/lint.jsonc`, '--import-plugin', '--deny-warnings']).pipe(
+  Effect.provide(LivestoreWorkspace.toCwd()),
+  Effect.withSpan('lintCheck'),
+)
+
+/** Run oxlint fix */
+const runLintFix = cmd(['oxlint', '-c', `${oxcConfigPath}/lint.jsonc`, '--import-plugin', '--deny-warnings', '--fix']).pipe(
+  Effect.provide(LivestoreWorkspace.toCwd()),
+  Effect.withSpan('lintFix'),
+)
+
 export const lintCommand = Cli.Command.make(
   'lint',
   { fix: Cli.Options.boolean('fix').pipe(Cli.Options.withDefault(false)) },
   Effect.fn(function* ({ fix }) {
-    const fixFlag = fix ? '--fix --unsafe' : ''
-    yield* cmd(`bun run biome check scripts tests packages docs examples --error-on-warnings ${fixFlag}`, {
-      shell: true,
-    }).pipe(Effect.provide(LivestoreWorkspace.toCwd()))
+    // Run oxfmt and oxlint (format + lint)
+    if (fix) {
+      yield* runFormatFix
+      yield* runLintFix
+    } else {
+      yield* runFormatCheck
+      yield* runLintCheck
+    }
 
     // Shell needed for wildcards
     yield* cmd('bun run madge --circular --no-spinner examples/*/src packages/*/*/src', { shell: true }).pipe(

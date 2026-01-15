@@ -6,8 +6,8 @@
         Instead, import and spread the base config directly for better composability:
         compilerOptions: { ...baseTsconfigCompilerOptions, ...yourOptions }
 - [ ] adjust ci
-- [ ] fully migrate from biome to oxlint/oxfmt
+- [x] fully migrate from biome to oxlint/oxfmt
 - [ ] load genie, dotdot via devenv from effect-utils
-- [ ] rethink setup script (e.g. auto install)
+- [x] rethink setup script (e.g. auto install)
 - [ ] think of a way to make dotdot opt in to improve contributor experience (e.g. auto link effect-utils somehow into the repo on checkout)
 - [ ] delete this file (done by user)

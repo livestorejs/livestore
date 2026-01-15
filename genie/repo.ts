@@ -11,9 +11,11 @@ import {
   tsconfigJson,
   dotdotConfig,
   workspaceRoot,
+  oxlintConfig,
+  oxfmtConfig,
 } from '../../@overeng/genie/src/runtime/mod.ts'
 
-export { tsconfigJson, dotdotConfig, packageJson, workspaceRoot }
+export { tsconfigJson, dotdotConfig, packageJson, workspaceRoot, oxlintConfig, oxfmtConfig }
 
 import {
   catalog as effectUtilsCatalog,
@@ -58,6 +60,7 @@ const workspaceCatalog = {
   // @local/* packages (internal tooling)
   '@local/astro-tldraw': 'file:packages/@local/astro-tldraw',
   '@local/astro-twoslash-code': 'file:packages/@local/astro-twoslash-code',
+  '@local/oxc-config': 'file:packages/@local/oxc-config',
   '@local/shared': 'file:packages/@local/shared',
 } as const
 
@@ -160,7 +163,6 @@ const livestoreOnlyCatalog = {
   '@cloudflare/workers-types': '4.20251118.0',
 
   // Development tools
-  '@biomejs/biome': '2.3.8',
   husky: '9.1.7',
   madge: '8.0.0',
   yaml: '2.8.1',
