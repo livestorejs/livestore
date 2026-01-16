@@ -373,10 +373,13 @@ Maybe?
 ### B. Similar Technologies
 
 - [Kurrent](https://docs.kurrent.io/getting-started/concepts.html)
-- [Axon Framework](https://docs.axoniq.io/axon-framework-reference/4.12/)
+- [Axon Framework](https://docs.axoniq.io/axon-framework-reference/5.0/)
 - [f(model)](https://github.com/fraktalio/fmodel-ts)
 - [Actyx](https://developer.actyx.com/docs/conceptual/overview)
+- [Synchrotron](https://github.com/evelant/synchrotron)
 - [Akka](https://doc.akka.io/libraries/akka-core/current/typed/replicated-eventsourcing.html)
+- [Eventuate (by RBMH)](https://rbmhtechnology.github.io/eventuate/)
+- [Logux](https://logux.io/)
 
 ### C. Relevant Community Discussions
 
