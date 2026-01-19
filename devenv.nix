@@ -1,42 +1,59 @@
-{ pkgs, lib, inputs, ... }:
+{
+  pkgs,
+  lib,
+  inputs,
+  ...
+}:
 let
   system = pkgs.stdenv.hostPlatform.system;
   pkgsUnstable = import inputs.nixpkgsUnstable { inherit system; };
   playwrightDriver = inputs.playwright-web-flake.packages.${system}.playwright-driver;
-  effectUtilsPkgs = inputs.effect-utils.packages.${system};
+  cliPackages = inputs.effect-utils.lib.mkCliPackages {
+    inherit pkgs;
+    pkgsUnstable = pkgs;
+  };
 in
 {
-  packages =
-    [
-      pkgsUnstable.bun
-      pkgsUnstable.nodejs_24
-      pkgsUnstable.typescript
-      effectUtilsPkgs.genie
-      effectUtilsPkgs.dotdot
-      pkgs.caddy
-      pkgs.jq
-      pkgs.unzip
-      pkgs.deno
+  # Beads commit correlation for issue tracking
+  imports = [
+    (inputs.overeng-beads-public.devenvModules.beads {
+      beadsPrefix = "eu";
+      beadsRepoName = "overeng-beads-public";
+    })
+  ];
 
-      # Note: local dirty CLIs are wired via direnv helper in .envrc.
-    ]
-    ++ lib.optionals (!pkgs.stdenv.isDarwin) [ pkgs.stdenv.cc.cc.lib pkgs.nix-ld ]
-    ++ lib.optionals pkgs.stdenv.isDarwin [ pkgs.cocoapods ];
+  packages = [
+    pkgsUnstable.bun
+    pkgsUnstable.nodejs_24
+    pkgsUnstable.typescript
+    cliPackages.genie
+    cliPackages.dotdot
+    pkgs.caddy
+    pkgs.jq
+    pkgs.unzip
+    pkgs.deno
 
-  env =
+    # Note: local dirty CLIs are wired via direnv helper in .envrc.
+  ]
+  ++ lib.optionals (!pkgs.stdenv.isDarwin) [
+    pkgs.stdenv.cc.cc.lib
+    pkgs.nix-ld
+  ]
+  ++ lib.optionals pkgs.stdenv.isDarwin [ pkgs.cocoapods ];
+
+  env = {
+    PLAYWRIGHT_BROWSERS_PATH = playwrightDriver.browsers;
+    PUPPETEER_SKIP_DOWNLOAD = "1";
+  }
+  // lib.optionalAttrs (!pkgs.stdenv.isDarwin) (
+    let
+      ldPath = lib.makeLibraryPath [ pkgs.stdenv.cc.cc.lib ];
+    in
     {
-      PLAYWRIGHT_BROWSERS_PATH = playwrightDriver.browsers;
-      PUPPETEER_SKIP_DOWNLOAD = "1";
+      LD_LIBRARY_PATH = ldPath;
+      NIX_LD_LIBRARY_PATH = ldPath;
     }
-    // lib.optionalAttrs (!pkgs.stdenv.isDarwin) (
-      let
-        ldPath = lib.makeLibraryPath [ pkgs.stdenv.cc.cc.lib ];
-      in
-      {
-        LD_LIBRARY_PATH = ldPath;
-        NIX_LD_LIBRARY_PATH = ldPath;
-      }
-    );
+  );
 
   enterShell = ''
     sp="$(git rev-parse --show-superproject-working-tree 2>/dev/null)";

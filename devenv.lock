@@ -23,10 +23,10 @@
         "nixpkgsUnstable": "nixpkgsUnstable"
       },
       "locked": {
-        "lastModified": 1768833370,
+        "lastModified": 1768844750,
         "owner": "overengineeringstudio",
         "repo": "effect-utils",
-        "rev": "a2c1eadd2d57df186ad46305c5a3f487f30a44e2",
+        "rev": "2321e90167645afeccdf6f1678b658e3559dc3c8",
         "type": "github"
       },
       "original": {
@@ -172,16 +172,30 @@
     },
     "nixpkgs_2": {
       "locked": {
-        "lastModified": 1768836677,
+        "lastModified": 1768843991,
         "owner": "NixOS",
         "repo": "nixpkgs",
-        "rev": "941f81d6417c1dc5462a36f10179f5f057f6b023",
+        "rev": "7f0857c5a1bffd38d5694d0979f708fec368577a",
         "type": "github"
       },
       "original": {
         "owner": "NixOS",
         "ref": "release-25.11",
         "repo": "nixpkgs",
+        "type": "github"
+      }
+    },
+    "overeng-beads-public": {
+      "locked": {
+        "lastModified": 1768836991,
+        "owner": "overengineeringstudio",
+        "repo": "overeng-beads-public",
+        "rev": "9f7b5dce2b709f4d6a07e67eb28f438118107e78",
+        "type": "github"
+      },
+      "original": {
+        "owner": "overengineeringstudio",
+        "repo": "overeng-beads-public",
         "type": "github"
       }
     },
@@ -212,6 +226,7 @@
         "git-hooks": "git-hooks",
         "nixpkgs": "nixpkgs_2",
         "nixpkgsUnstable": "nixpkgsUnstable_2",
+        "overeng-beads-public": "overeng-beads-public",
         "playwright-web-flake": "playwright-web-flake",
         "pre-commit-hooks": [
           "git-hooks"
