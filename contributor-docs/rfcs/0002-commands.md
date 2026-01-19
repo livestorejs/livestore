@@ -107,7 +107,7 @@ Invariant violations have compounding consequences:
 
 Any solution must satisfy these constraints:
 
-- Clients must be able to commit events while offline to simulate changes (optimistic updates).
+- Clients must be able to perform changes while offline (optimistic UI).
 - Clients can enforce some invariants locally based on their view of the event log.
 - Server can enforce invariants that require server-only knowledge or authority (e.g., cross-aggregate consistency, global uniqueness, permissions).
 - The state DB must remain strongly consistent with the eventlog within a client session; appending events and updating the state DB must be atomic.
@@ -115,32 +115,97 @@ Any solution must satisfy these constraints:
 
 ## Proposed Solution
 
-Instead of rebasing outcome events, treat offline actions as a command queue and, upon reconnect, re-run decision logic against the authoritative or updated base state; if the command no longer validates, it is rejected or requires user resolution. This aligns with common CQRS guidance for occasionally connected clients.
+The solution introduces **commands** as first-class citizens in LiveStore. Instead of committing events directly, users execute commands that encapsulate business logic. Commands locally produce provisional events that are applied immediately for optimistic UI. Clients push commands to the sync backend and pull confirmed events. After pulling confirmed events, pending commands are replayed against the new authoritative state.
 
-Store commands (with their original context) rather than events:
+### Core Concepts
 
-```typescript
-interface PendingCommand {
-  command: Command;
-  originalStateVersion: SeqNum;
-  timestamp: DateTime;
+#### Commands vs. Events
+
+| Aspect     | Command                                      | Event                             |
+|------------|----------------------------------------------|-----------------------------------|
+| Semantics  | Intent to change state                       | Fact that something happened      |
+| Evaluation | Can be re-evaluated against different states | Immutable once confirmed          |
+| Contains   | Business logic, invariant validation rules   | Pure data describing what changed |
+| Lifecycle  | Pending → Accepted/Rejected                  | Provisional → Confirmed           |
+
+A command encapsulates the *decision logic* that determines whether a state transition is valid and what events should result. This is the key insight: by replaying commands rather than rebasing events, we re-evaluate business rules against the current authoritative state.
+
+```ts
+// Command definitions
+export const commands = {
+  checkInGuest: Commands.synced({
+    name: 'CheckInGuest',
+    schema: Schema.Struct({ roomId: Schema.String, guestId: Schema.String }),
+  }),
 }
 
-// At sync time:
-for (const pending of pendingCommands) {
-  const result = await executeCommand(pending.command, currentState);
-  if (result.isError) {
-    // Surface to user for resolution
-    conflicts.push({ command: pending, error: result.error });
-  }
-}
+// Usage
+store.execute(commands.checkInGuest({ roomId: 'room-1', guestId: 'guest-a' }))
 ```
 
-Keep the optimistic UI, but change the sync protocol.
-1. **Queue Commands, Don't Log Events:** Offline actions are stored as "Pending Commands."
-2. **Optimistic Events:** Produce temporary local events to update SQLite, but mark them as "Provisional"
-3. **Server Validation:** On sync, send Commands. The server executes them.
-4. **Reconciliation:** The server sends back the *actual* resulting events. The client discards its provisional events and replaces them with the authoritative server events.
+#### Event Lifecycle
+
+Events transition through two states:
+
+1. **Provisional**: Produced locally by command execution against local state. Applied immediately to the local state DB for optimistic UI. Not yet confirmed by the sync backend.
+
+2. **Confirmed**: Received from the sync backend as the authoritative result of a command. Represents the canonical event history.
+
+### Sync Flow
+
+The revised sync model replaces event rebasing with command replay:
+
+1. **Execute Locally**: When the user triggers an action, the client executes the command against local state. If validation passes, provisional events are emitted and applied to the state DB immediately through materializers.
+
+2. **Push Commands**: Pending commands are pushed to the sync backend.
+
+3. **Server Execution**: The sync backend executes each command against the authoritative state. Commands that pass validation produce confirmed events appended to the eventlog. Commands that fail are rejected with a reason.
+
+4. **Pull Confirmed Events**: Clients pull newly confirmed events from the sync backend.
+
+5. **Reconcile**:
+  - Roll back all provisional events from the local state DB
+  - Apply confirmed events to advance to the authoritative state
+  - Replay each pending command against the new state
+  - Commands may now produce different events, no events (if rejected), or the same events as before
+
+### Client-Side vs. Server-Side Validation
+
+Commands support a layered validation model:
+
+| Validation Layer | Responsibility                                       | Examples                                              |
+|------------------|------------------------------------------------------|-------------------------------------------------------|
+| **Client-side**  | Immediate feedback, optimistic UI                    | Field validation, local state checks, capacity limits |
+| **Server-side**  | Authoritative enforcement, cross-client coordination | Global uniqueness, permissions, cross-aggregate rules |
+
+Both layers share the same command definition, but the server may apply additional constraints:
+
+```ts
+// TODO: Figure out the API
+```
+
+### Handling Rejected Commands
+
+When a command is rejected during replay, the application must handle the user experience:
+
+```ts
+store.execute(command, {
+  onRejected: (reason, { retry, dismiss }) => {
+    // Show UI notification
+    notifications.show({
+      message: `Action failed: ${reason}`,
+      actions: [
+        { label: 'Retry', onClick: retry },
+        { label: 'Dismiss', onClick: dismiss }
+      ]
+    })
+  }
+})
+```
+
+#### Cascading Corruption
+
+[TODO: Describe how cascading corruption is handled]
 
 ### Trade-offs
 
@@ -149,72 +214,6 @@ Keep the optimistic UI, but change the sync protocol.
 - Less autonomy: Clients make requests, not decisions. Nothing is real until server confirms
 - Rejection handling complexity: Need robust UX for "your action from 2 hours ago was rejected"
 - Server dependency for truth: Offline work is always tentative. Extended offline = large uncertainty
-
-### The Semantic Tension: "Facts" vs. "Rebase"
-
-LiveStore describes events as the "source of truth"—immutable facts. The rebase operation contradicts this:
-
-| Concept              | Event Sourcing Semantic | LiveStore Rebase Behavior          |
-|----------------------|-------------------------|------------------------------------|
-| Events are...        | Immutable facts         | Reordered/re-parented              |
-| Event order is...    | Causal history          | Synthetic (post-hoc reordering)    |
-| Event validity is... | Established at creation | Assumed to persist across contexts |
-| Parent relationship  | Causal predecessor      | Arbitrary (assigned by rebase)     |
-
-If events are "facts that happened," you cannot reorder them without changing history. Moving `MoneyWithdrawn($100)` after another withdrawal doesn't change the fact—it changes the context in which the fact is interpreted, potentially making it a lie.
-
-This manifests in: audit trail corruption, debugging difficulty (replaying events produces different states than clients experienced), compliance violations, and causality reasoning breakdown.
-
-> **Rebase semantics: Rebase + “events are facts” is conceptually inconsistent**
->
-> Git rebase is acceptable because commits are developer-authored artifacts and humans resolve conflicts. In event sourcing, “events” are normally **facts that happened** and are not rewritten.
->
-> The explanation (“events are immutable facts” + “rebase”) is at tension. That’s a red flag because it often produces subtle correctness bugs later (audit, debugging, compliance, causality reasoning).
-
-### The Command vs. Event Distinction
-
-This is why the Neos CMS team (and others) arrived at command-sourcing for offline scenarios:
-
-> "We rebase the content stream by re-applying its commands on a new content stream... You might wonder why we re-execute commands, and not events? The reason is that we need to do conflict detection at this point."
-
-The distinction:
-
-| Approach                     | What's Stored Offline | At Sync Time                              | Invariant Safety   |
-|------------------------------|-----------------------|-------------------------------------------|--------------------|
-| **Event Rebase** (LiveStore) | Events                | Re-parent events onto new head            | ❌ No re-validation |
-| **Command Queue**            | Commands              | Re-execute commands against current state | ✅ Full validation  |
-
-With command queuing:
-```
-Alice's offline action: CreateComment(taskId: "T1", text: "...")
-                                    ↓
-At sync time:     Execute against current state
-                                    ↓
-                  If T1 exists: Generate CommentCreated event
-                  If T1 deleted: Return error to Alice
-```
-
-### Cascading Corruption
-
-The problem compounds because invalid events can cause further invalid state:
-
-```
-E1: CommentCreated { taskId: "T1" }     // T1 doesn't exist after rebase
-                    ↓
-    Materializer runs: INSERT INTO comments (task_id, ...) VALUES ('T1', ...)
-                    ↓
-E2: CommentLiked { commentId: "C1" }    // References the invalid comment
-                    ↓
-    Materializer runs: UPDATE comments SET likes = likes + 1 WHERE id = 'C1'
-                    ↓
-    Read model now has:
-    - Orphaned comment referencing non-existent task
-    - Like count on orphaned comment
-    - Possible foreign key violations if DB enforces them
-    - UI showing comment on a "ghost" task
-```
-
-The SQLite state DB may end up in an inconsistent state that no sequence of valid operations could have produced.
 
 ## Alternatives Considered
 
