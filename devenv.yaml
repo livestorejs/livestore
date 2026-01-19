@@ -10,3 +10,6 @@ inputs:
         follows: nixpkgsUnstable
   effect-utils:
     url: github:overengineeringstudio/effect-utils
+  overeng-beads-public:
+    url: github:overengineeringstudio/overeng-beads-public
+    flake: true

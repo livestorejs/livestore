@@ -50,6 +50,7 @@ scripts/.completions
 
 .devenv
 .devenv*
+.pre-commit-config.yaml
 
 # Generated markdown bundle embedded into @livestore/livestore
 packages/@livestore/livestore/docs
