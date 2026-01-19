@@ -37,6 +37,9 @@ export default oxlintConfig({
 
     /** Don't enforce explicit any (already enforced by TypeScript strict mode) */
     'typescript/no-explicit-any': 'off',
+
+    /** Given we're publishing a library, we can't enforce this rule */
+    'typescript/no-deprecated': 'off',
   },
   overrides: [
     /** Allow re-exports in mod.ts and index.ts entry point files */
