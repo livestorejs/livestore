@@ -60,7 +60,8 @@
     "typescript/consistent-type-imports": "warn",
     "typescript/consistent-type-definitions": "off",
     "unicorn/no-array-callback-reference": "off",
-    "typescript/no-explicit-any": "off"
+    "typescript/no-explicit-any": "off",
+    "typescript/no-deprecated": "off"
   },
   "overrides": [
     {
