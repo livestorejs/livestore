@@ -101,7 +101,7 @@ const livestoreOnlyCatalog = {
   '@effect/platform-node-shared': '0.56.0',
   '@effect/sql-sqlite-node': '0.49.1',
 
-  // Additional OpenTelemetry packages
+  // Additional OpenTelemetry packages (base packages inherited from effect-utils)
   '@opentelemetry/context-zone': '2.2.0',
   '@opentelemetry/core': '2.2.0',
   '@opentelemetry/exporter-metrics-otlp-grpc': '0.208.0',
@@ -110,12 +110,6 @@ const livestoreOnlyCatalog = {
   '@opentelemetry/exporter-trace-otlp-http': '0.208.0',
   '@opentelemetry/otlp-exporter-base': '0.208.0',
   '@opentelemetry/otlp-transformer': '0.208.0',
-  '@opentelemetry/resources': '2.2.0',
-  '@opentelemetry/sdk-metrics': '2.2.0',
-  '@opentelemetry/sdk-trace-base': '2.2.0',
-  '@opentelemetry/sdk-trace-node': '2.2.0',
-  '@opentelemetry/sdk-trace-web': '2.2.0',
-  '@opentelemetry/semantic-conventions': '1.38.0',
 
   // Common utilities
   graphql: '16.11.0',
