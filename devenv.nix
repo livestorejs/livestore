@@ -3,9 +3,7 @@ let
   system = pkgs.stdenv.hostPlatform.system;
   pkgsUnstable = import inputs.nixpkgsUnstable { inherit system; };
   playwrightDriver = inputs.playwright-web-flake.packages.${system}.playwright-driver;
-
-  # Effect-utils lib for building CLIs (used by local mono if needed)
-  mkBunCli = inputs.effect-utils.lib.mkBunCli { inherit pkgs pkgsUnstable; };
+  effectUtilsPkgs = inputs.effect-utils.packages.${system};
 in
 {
   packages =
@@ -13,13 +11,14 @@ in
       pkgsUnstable.bun
       pkgsUnstable.nodejs_24
       pkgsUnstable.typescript
+      effectUtilsPkgs.genie
+      effectUtilsPkgs.dotdot
       pkgs.caddy
       pkgs.jq
       pkgs.unzip
       pkgs.deno
 
-      # Note: genie/dotdot CLIs are available via bun scripts in $PATH
-      # (added via enterShell from ../effect-utils/scripts/bin/)
+      # Note: local dirty CLIs are wired via direnv helper in .envrc.
     ]
     ++ lib.optionals (!pkgs.stdenv.isDarwin) [ pkgs.stdenv.cc.cc.lib pkgs.nix-ld ]
     ++ lib.optionals pkgs.stdenv.isDarwin [ pkgs.cocoapods ];
@@ -74,7 +73,7 @@ in
     fi
     export PUPPETEER_SKIP_DOWNLOAD="''${PUPPETEER_SKIP_DOWNLOAD:-1}"
 
-    # Add effect-utils scripts to PATH (genie, dotdot, etc)
+    # Add effect-utils scripts to PATH (utility helpers beyond packaged CLIs).
     if [ -d "$MONOREPO_ROOT/effect-utils/scripts/bin" ]; then
       export PATH="$MONOREPO_ROOT/effect-utils/scripts/bin:$PATH"
     fi
