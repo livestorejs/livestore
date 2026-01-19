@@ -1,4 +1,4 @@
-# Commands
+a# Commands
 
 [TODO: Write a short summary]
 
@@ -326,7 +326,6 @@ In this approach, clients are able to issue both authoritative events and comman
 - @antl3x (GitHub)
 - @rubywwwilde (Discord)
 - @bohdanbirdie (GitHub)
-- @cortopy (GitHub)
 
 ## References
 
