@@ -32,5 +32,9 @@ export default dotdotConfig({
     'effect-utils': {
       url: 'git@github.com:overengineeringstudio/effect-utils.git',
     },
+    /** Centralized beads issue tracking */
+    'overeng-beads-public': {
+      url: 'git@github.com:overengineeringstudio/overeng-beads-public.git',
+    },
   },
 })
