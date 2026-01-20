@@ -1,13 +1,13 @@
 inputs:
   nixpkgs:
-    url: github:NixOS/nixpkgs/release-25.11
-  nixpkgsUnstable:
-    url: github:NixOS/nixpkgs/nixos-unstable
+    follows: workspace/nixpkgs
+  workspace:
+    url: github:overengineeringstudio/effect-utils?dir=nix/workspace-flake
   playwright-web-flake:
     url: github:pietdevries94/playwright-web-flake
     inputs:
       nixpkgs:
-        follows: nixpkgsUnstable
+        follows: nixpkgs
   effect-utils:
     url: github:overengineeringstudio/effect-utils
   overeng-beads-public:

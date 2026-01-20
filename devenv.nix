@@ -6,7 +6,6 @@
 }:
 let
   system = pkgs.stdenv.hostPlatform.system;
-  pkgsUnstable = import inputs.nixpkgsUnstable { inherit system; };
   playwrightDriver = inputs.playwright-web-flake.packages.${system}.playwright-driver;
   cliPackages = inputs.effect-utils.lib.mkCliPackages {
     inherit pkgs;
@@ -23,9 +22,9 @@ in
   ];
 
   packages = [
-    pkgsUnstable.bun
-    pkgsUnstable.nodejs_24
-    pkgsUnstable.typescript
+    pkgs.bun
+    pkgs.nodejs_24
+    pkgs.typescript
     cliPackages.genie
     cliPackages.dotdot
     pkgs.caddy
