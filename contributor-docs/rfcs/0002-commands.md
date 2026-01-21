@@ -273,14 +273,7 @@ interface Command<TName extends string, TArgs> {
 }
 ```
 
-The `state` parameter provides read-only access to the state DB via `state.query()`, similar to the `query` function available in materializers:
-
-```ts
-interface CommandState {
-  query<T>(query: QueryBuilder<T>): T
-  query(args: { query: string; bindValues: ParamsObject }): ReadonlyArray<unknown>
-}
-```
+The `state` parameter provides read-only access to the state DB via `state.query()`.
 
 #### Composing Command Handlers
 
