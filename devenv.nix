@@ -16,7 +16,7 @@ in
   # Beads commit correlation for issue tracking
   imports = [
     (inputs.overeng-beads-public.devenvModules.beads {
-      beadsPrefix = "eu";
+      beadsPrefix = "oep";
       beadsRepoName = "overeng-beads-public";
     })
   ];
