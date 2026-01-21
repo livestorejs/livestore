@@ -115,20 +115,47 @@ Any solution must satisfy these constraints:
 
 ## Proposed Solution
 
-The solution introduces **commands** as first-class citizens in LiveStore. Instead of committing events directly, users execute commands that encapsulate business logic. Commands locally produce provisional events that are applied immediately for optimistic UI. Clients push commands to the sync backend and pull confirmed events. After pulling confirmed events, pending commands are replayed against the new authoritative state.
+The solution introduces [**commands**](#command) as first-class citizens in LiveStore. Instead of committing events directly, the app executes commands. Commands encode intentions that can be re-evaluated.
 
-### Core Concepts
+The revised sync model replaces event rebasing with command replay:
 
-#### Commands vs. Events
+1. **Client Execution**: When the user triggers an action, the client executes the command against local state. If validation passes, provisional events are committed and materialized to the state DB atomically.
 
-| Aspect     | Command                                      | Event                             |
-|------------|----------------------------------------------|-----------------------------------|
-| Semantics  | Intent to change state                       | Fact that something happened      |
-| Evaluation | Can be re-evaluated against different states | Immutable once confirmed          |
-| Contains   | Business logic, invariant validation rules   | Pure data describing what changed |
-| Lifecycle  | Pending → Accepted/Rejected                  | Provisional → Confirmed           |
+2. **Push Commands**: Pending commands are pushed to the server.
 
-A command encapsulates the *decision logic* that determines whether a state transition is valid and what events should result. This is the key insight: by replaying commands rather than rebasing events, we re-evaluate business rules against the current authoritative state.
+3. **Server Execution**: The server executes each command against its (authoritative) state. Commands that pass validation produce authoritative events. Commands that fail are rejected with a reason.
+
+4. **Pull Authoritative Events**: Clients pull newly authoritative events from the server.
+
+5. **Reconciliation**:
+- Roll back all provisional events and their associated state changes
+- Materialize pulled authoritative events to advance to the authoritative state
+- Replay each pending command against the new state
+- Commands may now produce different events, no events (if rejected), or the same events as before
+
+```
+┌─────────────────────────────────────────────────────────────────────────────────┐        ┌───────────────────────────────────────────────────────┐
+│                                      CLIENT                                     │        │                        SERVER                         │
+│                                                             Pending Commands    │        │                                                       │
+│                                                                 Queue           │        │                                                       │
+│   ┌────────┐    Command                                    ┌────┬────┬────┐     │  Push  │   ┌─────────────────┐              ┌───────┐          │
+│   │  User  │────────┬──────────────────────────────────────│ C1 │ C2 │ ...│─────┼────────┼──▶│ Command Handler │◀─────────────│ State │          │
+│   └────────┘        │                                      └────┴────┴────┘     │        │   └────────┬────────┘              └───────┘          │
+│        ▲            │                                                           │        │            │ Authoritative             │              │
+│        │            │                                                           │        │            │ Event(s)                  │              │
+│        │            ▼                                                           │        │            ▼                           │              │
+│        │   ┌─────────────────┐   Provisional  ┌───────────────┬─────────────┐   │  Pull  │   ┌────────────────────┐      ┌───────────────────┐   │
+│        │   │ Command Handler │───Event(s)────▶│ Authoritative │ Provisional │◀──┼────────┼───│    Authoritative   │─────▶│  Materializer(s)  │   │
+│        │   └─────────────────┘                │ E1 │ E2 │ E3  │  E4 │ E5    │   │        │   │ E1 │ E2 │ E3 │ ... │      └───────────────────┘   │
+│        │            ▲                         └───────────────┴───────┬─────┘   │        │   └────────────────────┘                              │
+│        │            │                                   Event Log     │         │        │          Event Log                                    │
+│        │            │                                                 ▼         │        │                                                       │
+│        │   UI   ┌───┴───┐                          ┌───────────────────┐        │        │                                                       │
+│        └────────│ State │◀─────────────────────────┤  Materializer(s)  │        │        │                                                       │
+│                 └───────┘                          └───────────────────┘        │        │                                                       │
+│                                                                                 │        │                                                       │
+└─────────────────────────────────────────────────────────────────────────────────┘        └───────────────────────────────────────────────────────┘
+```
 
 ```ts
 // Command definitions
@@ -143,42 +170,8 @@ export const commands = {
 store.execute(commands.checkInGuest({ roomId: 'room-1', guestId: 'guest-a' }))
 ```
 
-#### Event Lifecycle
 
-Events transition through two states:
-
-1. **Provisional**: Produced locally by command execution against local state. Applied immediately to the local state DB for optimistic UI. Not yet confirmed by the sync backend.
-
-2. **Confirmed**: Received from the sync backend as the authoritative result of a command. Represents the canonical event history.
-
-### Sync Flow
-
-The revised sync model replaces event rebasing with command replay:
-
-1. **Execute Locally**: When the user triggers an action, the client executes the command against local state. If validation passes, provisional events are emitted and applied to the state DB immediately through materializers.
-
-2. **Push Commands**: Pending commands are pushed to the sync backend.
-
-3. **Server Execution**: The sync backend executes each command against the authoritative state. Commands that pass validation produce confirmed events appended to the eventlog. Commands that fail are rejected with a reason.
-
-4. **Pull Confirmed Events**: Clients pull newly confirmed events from the sync backend.
-
-5. **Reconcile**:
-  - Roll back all provisional events from the local state DB
-  - Apply confirmed events to advance to the authoritative state
-  - Replay each pending command against the new state
-  - Commands may now produce different events, no events (if rejected), or the same events as before
-
-### Client-Side vs. Server-Side Validation
-
-Commands support a layered validation model:
-
-| Validation Layer | Responsibility                                       | Examples                                              |
-|------------------|------------------------------------------------------|-------------------------------------------------------|
-| **Client-side**  | Immediate feedback, optimistic UI                    | Field validation, local state checks, capacity limits |
-| **Server-side**  | Authoritative enforcement, cross-client coordination | Global uniqueness, permissions, cross-aggregate rules |
-
-Both layers share the same command definition, but the server may apply additional constraints:
+### Client/Server Logic Asymmetry in Command Handling
 
 ```ts
 // TODO: Figure out the API
