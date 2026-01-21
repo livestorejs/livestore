@@ -177,36 +177,282 @@ The revised sync model replaces event rebasing with command replay:
 
 ### API
 
-#### Defining Commands
+#### Commands
 
-Commands are defined with a name and schema.
-
+Commands are defined with a name and schema:
 
 ```ts
-// Command definitions
+import { Commands, Schema } from '@livestore/livestore'
+
 export const commands = {
   checkInGuest: Commands.synced({
     name: 'CheckInGuest',
     schema: Schema.Struct({ roomId: Schema.String, guestId: Schema.String }),
   }),
+  checkOutGuest: Commands.synced({
+    name: 'CheckOutGuest',
+    schema: Schema.Struct({ roomId: Schema.String, guestId: Schema.String }),
+  }),
 }
+```
+
+#### Command Errors
+
+Command errors are defined as tagged errors using Effect's `Schema.TaggedError`. This enables type-safe, exhaustive handling of all possible error cases.
+
+```ts
+import { Schema } from 'effect'
+
+class RoomNotFound extends Schema.TaggedError<RoomNotFound>()('RoomNotFound', {
+  roomId: Schema.String,
+}) {}
+
+class RoomAtCapacity extends Schema.TaggedError<RoomAtCapacity>()('RoomAtCapacity', {
+  roomId: Schema.String,
+  capacity: Schema.Number,
+}) {}
+
+class GuestAlreadyCheckedIn extends Schema.TaggedError<GuestAlreadyCheckedIn>()(
+  'GuestAlreadyCheckedIn',
+  { roomId: Schema.String, guestId: Schema.String },
+) {}
+```
+
+#### Command Handlers
+
+Command handlers are functions that receive a command and the current state, and return an Effect. Using Effect provides two key benefits:
+
+1. **Type-safe error handling**: All possible errors are visible in the handler's type signature (the `E` parameter)
+2. **Dependency injection**: External services are declared in the type signature (the `R` parameter) and provided at runtime via Effect's Layer system, making handlers testable and composable
+
+```ts
+// Handler signature: (command, state) => Effect<Events, Error, R>
+
+const checkInGuestHandler = Commands.handler(commands.checkInGuest)(
+  (command, state) =>
+    Effect.gen(function* () {
+      const { roomId, guestId } = command.args
+
+      const room = state.query(tables.rooms.where({ id: roomId }).first())
+      if (!room) {
+        return yield* new RoomNotFound({ roomId })
+      }
+
+      const currentGuests = state.query(
+        tables.roomGuests.where({ roomId }).count()
+      )
+      if (currentGuests >= room.capacity) {
+        return yield* new RoomAtCapacity({ roomId, capacity: room.capacity })
+      }
+
+      const alreadyCheckedIn = state.query(
+        tables.roomGuests.where({ roomId, guestId }).first()
+      )
+      if (alreadyCheckedIn) {
+        return yield* new GuestAlreadyCheckedIn({ roomId, guestId })
+      }
+
+      return events.guestCheckedIn({ roomId, guestId, checkedInAt: new Date() })
+    })
+)
+// Type: Handler<CheckInGuest, RoomNotFound | RoomAtCapacity | GuestAlreadyCheckedIn, never>
+```
+
+##### Parameters
+
+The `command` parameter provides access to both the command arguments and metadata:
+
+```ts
+interface Command<TName extends string, TArgs> {
+  readonly name: TName
+  readonly args: TArgs
+  readonly id: CommandId       // Unique ID for idempotency
+  readonly timestamp: Date     // When client issued the command
+  readonly clientId: string
+  readonly sessionId: string
+}
+```
+
+The `state` parameter provides read-only access to the state DB via `state.query()`, similar to the `query` function available in materializers:
+
+```ts
+interface CommandState {
+  query<T>(query: QueryBuilder<T>): T
+  query(args: { query: string; bindValues: ParamsObject }): ReadonlyArray<unknown>
+}
+```
+
+#### Composing Command Handlers
+
+Command handlers are composable. A handler can delegate to another handler, enabling reuse of business logic while adding additional checks.
+
+```ts
+// Base handler with core business logic
+const checkInGuestHandler = Commands.handler(commands.checkInGuest)(
+  (command, state) =>
+    Effect.gen(function* () {
+      const { roomId, guestId } = command.args
+
+      const room = state.query(tables.rooms.where({ id: roomId }).first())
+      if (!room) {
+        return yield* new RoomNotFound({ roomId })
+      }
+
+      const currentGuests = state.query(tables.roomGuests.where({ roomId }).count())
+      if (currentGuests >= room.capacity) {
+        return yield* new RoomAtCapacity({ roomId, capacity: room.capacity })
+      }
+
+      return events.guestCheckedIn({ roomId, guestId, checkedInAt: new Date() })
+    })
+)
+
+// Extended handler that adds authorization and external service checks
+const checkInGuestWithAuthHandler = Commands.handler(commands.checkInGuest)(
+  (command, state) =>
+    Effect.gen(function* () {
+      // Authorization check (requires PermissionsService)
+      const { hasPermission } = yield* PermissionsService
+      if (!hasPermission('guests.checkin')) {
+        return yield* new Unauthorized({ reason: 'Missing permission' })
+      }
+
+      // External service check (requires GuestService)
+      const guestService = yield* GuestService
+      if (yield* guestService.isBlacklisted(command.args.guestId)) {
+        return yield* new GuestBlacklisted({ guestId: command.args.guestId })
+      }
+
+      // Delegate to base handler
+      return yield* checkInGuestHandler.handle(command, state)
+    })
+)
+```
+
+The handler's type signature captures its requirements through Effect's `R` parameter:
+
+```ts
+// Base handler: no external services needed
+checkInGuestHandler
+// Type: Handler<CheckInGuest, RoomNotFound | RoomAtCapacity, never>
+
+// Extended handler: requires PermissionsService and GuestService
+checkInGuestWithAuthHandler
+// Type: Handler<CheckInGuest, RoomNotFound | RoomAtCapacity | Unauthorized | GuestBlacklisted, PermissionsService | GuestService>
+```
+
+##### Reusable Middleware
+
+Common checks can be extracted into reusable middleware functions:
+
+```ts
+const withPermission = (permission: string) =>
+  <TCommand, E, R>(handler: Commands.Handler<TCommand, E, R>) =>
+    Commands.handler(handler.command)(
+      (command, state) =>
+        Effect.gen(function* () {
+          const { hasPermission } = yield* PermissionsService
+          if (!hasPermission(permission)) {
+            return yield* new Unauthorized({ reason: `Missing: ${permission}` })
+          }
+          return yield* handler.handle(command, state)
+        })
+    )
+
+const withAuditLog = <TCommand, E, R>(handler: Commands.Handler<TCommand, E, R>) =>
+  Commands.handler(handler.command)(
+    (command, state) =>
+      Effect.gen(function* () {
+        const audit = yield* AuditService
+        yield* audit.log({ command: command.name, args: command.args, timestamp: command.timestamp })
+        return yield* handler.handle(command, state)
+      })
+  )
+
+// Compose with pipe
+const checkInGuestFullHandler = pipe(
+  checkInGuestHandler,
+  withPermission('guests.checkin'),
+  withAuditLog,
+)
+```
+
+##### Server-Specific Logic
+
+Servers can enforce invariants that require server-only knowledge or authority by:
+
+1. Using handlers that require server-only services (captured in the `R` type parameter)
+2. Providing those services via Effect Layers at runtime
+
+```ts
+// Define server-only services
+class AuthService extends Context.Tag('AuthService')<
+  AuthService,
+  { hasPermission: (permission: string) => boolean; userId: string }
+>() {}
+
+class GuestService extends Context.Tag('GuestService')<
+  GuestService,
+  { isBlacklisted: (guestId: string) => Effect.Effect<boolean> }
+>() {}
+
+// Server provides real implementations
+const ServerServicesLayer = Layer.mergeAll(
+  Layer.succeed(AuthService, {
+    hasPermission: (perm) => userPermissions.includes(perm),
+    userId: authenticatedUserId,
+  }),
+  Layer.succeed(GuestService, {
+    isBlacklisted: (guestId) => checkBlacklistDatabase(guestId),
+  }),
+)
+
+// Client provides permissive stubs (for optimistic execution)
+const ClientServicesLayer = Layer.mergeAll(
+  Layer.succeed(AuthService, {
+    hasPermission: () => true,  // Optimistically assume authorized
+    userId: localUserId,
+  }),
+  Layer.succeed(GuestService, {
+    isBlacklisted: () => Effect.succeed(false),  // Skip check locally
+  }),
+)
+```
+
+#### Registering Command Handlers
+
+Command handlers are registered in the schema:
+
+```ts
+const schema = makeSchema({
+  events,
+  state: {
+    sqlite: { tables, materializers },
+  },
+  commands: {
+    handlers: {
+      CheckInGuest: checkInGuestFullHandler,
+      CheckOutGuest: checkOutGuestHandler,
+    },
+  },
+})
 ```
 
 #### Executing Commands
 
-[TODO: Figure out the API]
+Commands are executed through the store instead of committing events directly:
 
-##### Client/Server Logic Asymmetry in Command Handling
-
-[TODO: Describe the asymmetry and provide examples]
+```ts
+// Instead of: store.commit(events.guestCheckedIn({ roomId, guestId, checkedInAt }))
+// Now:
+store.execute(commands.checkInGuest({ roomId: 'room-1', guestId: 'guest-a' }))
+```
 
 #### Handling Rejected Commands
 
-When a command is rejected during replay, the application must handle the user experience:
-
 [TODO: Figure out the API]
 
-##### Cascading Corruption
+##### Cascading Rejections
 
 [TODO: Describe how cascading corruption is handled]
 
