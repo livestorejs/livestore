@@ -131,12 +131,12 @@ The key insight is that commands are re-executable. When the underlying state ch
 │   └────────┘        │                                      └────┴────┴────┘     │        │   └────────┬────────┘              └───────┘          │
 │        ▲            │                                                           │        │            │ Authoritative             │              │
 │        │            │                                                           │        │            │ Event(s)                  │              │
-│        │            ▼                                                           │        │            ▼                           │              │
+│        │            ▼                                   Event Log               │        │            ▼                           │              │
 │        │   ┌─────────────────┐   Provisional  ┌───────────────┬─────────────┐   │  Pull  │   ┌────────────────────┐      ┌───────────────────┐   │
 │        │   │ Command Handler │───Event(s)────▶│ Authoritative │ Provisional │◀──┼────────┼───│    Authoritative   │─────▶│  Materializer(s)  │   │
 │        │   └─────────────────┘                │ E1 │ E2 │ E3  │  E4 │ E5    │   │        │   │ E1 │ E2 │ E3 │ ... │      └───────────────────┘   │
 │        │            ▲                         └───────────────┴───────┬─────┘   │        │   └────────────────────┘                              │
-│        │            │                                   Event Log     │         │        │          Event Log                                    │
+│        │            │                                                 │         │        │          Event Log                                    │
 │        │            │                                                 ▼         │        │                                                       │
 │        │   UI   ┌───┴───┐                          ┌───────────────────┐        │        │                                                       │
 │        └────────│ State │◀─────────────────────────┤  Materializer(s)  │        │        │                                                       │
@@ -144,6 +144,18 @@ The key insight is that commands are re-executable. When the underlying state ch
 │                                                                                 │        │                                                       │
 └─────────────────────────────────────────────────────────────────────────────────┘        └───────────────────────────────────────────────────────┘
 ```
+
+| Component              | Description                                                        |
+|------------------------|--------------------------------------------------------------------|
+| Command                | User intention sent to both local and server command handlers      |
+| Command Handler        | Validates commands against current state and produces events       |
+| Pending Commands Queue | Commands awaiting push to server (C1, C2, ...)                     |
+| Provisional Events     | Optimistic events (E4, E5) produced locally, not yet confirmed     |
+| Authoritative Events   | Server-confirmed events (E1, E2, E3) that form the source of truth |
+| Materializer(s)        | Processes events to update State                                   |
+| State                  | Queryable projection used by UI and command handlers               |
+| Push                   | Client sends pending commands to server                            |
+| Pull                   | Client receives authoritative events from server                   |
 
 ### Sync Model
 
@@ -346,10 +358,7 @@ Maybe?
 
 #### Event
 
-An immutable fact about something that has happened in the past. Events can be categorized to domain events, integration events, and external events. None of these are exclusive to event sourcing, but domain events are in the center of it and as a result in context of event sourcing domain events are usually referenced just as events.
-
-- Provisional Event
-- Authoritative/Confirmed Event
+An immutable fact about something that has happened in the past. Events can be categorized to domain events, integration events, and external events. None of these are exclusive to event sourcing, but domain events are in the center of it and as a result, in the context of event sourcing, domain events are usually referenced just as events.
 
 #### Aggregate
 
