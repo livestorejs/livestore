@@ -1,4 +1,4 @@
-a# Commands
+# Commands
 
 [TODO: Write a short summary]
 
@@ -117,21 +117,9 @@ Any solution must satisfy these constraints:
 
 The solution introduces [**commands**](#command) as first-class citizens in LiveStore. Instead of committing events directly, the app executes commands. Commands encode intentions that can be re-evaluated.
 
-The revised sync model replaces event rebasing with command replay:
+The key insight is that commands are re-executable. When the underlying state changes (due to sync), the same command can be re-evaluated against the new state, potentially producing different events, being rejected, or succeeding as before. This preserves correctness while still enabling optimistic UI.
 
-1. **Client Execution**: When the user triggers an action, the client executes the command against local state. If validation passes, provisional events are committed and materialized to the state DB atomically.
-
-2. **Push Commands**: Pending commands are pushed to the server.
-
-3. **Server Execution**: The server executes each command against its (authoritative) state. Commands that pass validation produce authoritative events. Commands that fail are rejected with a reason.
-
-4. **Pull Authoritative Events**: Clients pull newly authoritative events from the server.
-
-5. **Reconciliation**:
-- Roll back all provisional events and their associated state changes
-- Materialize pulled authoritative events to advance to the authoritative state
-- Replay each pending command against the new state
-- Commands may now produce different events, no events (if rejected), or the same events as before
+### Architecture
 
 ```
 ┌─────────────────────────────────────────────────────────────────────────────────┐        ┌───────────────────────────────────────────────────────┐
@@ -157,6 +145,31 @@ The revised sync model replaces event rebasing with command replay:
 └─────────────────────────────────────────────────────────────────────────────────┘        └───────────────────────────────────────────────────────┘
 ```
 
+### Sync Model
+
+The revised sync model replaces event rebasing with command replay:
+
+1. **Client Execution**: When the user triggers an action, the client executes the command against local state. If validation passes, provisional events are committed and materialized to the state DB atomically. The command itself is queued for sync.
+
+2. **Push Commands**: Pending commands (not events) are pushed to the server.
+
+3. **Server Execution**: The server executes each command against its (authoritative) state. Commands that pass validation produce authoritative events. Commands that fail are rejected with a reason.
+
+4. **Pull Authoritative Events**: Clients pull newly authoritative events from the server.
+
+5. **Reconciliation**: When the client pulls authoritative events but still has provisional events in its log:
+  - Roll back all provisional events and their associated state changes
+  - Materialize pulled authoritative events to advance to the authoritative state
+  - Replay each pending command against the new state
+  - Commands may now produce different events (context changed), no events (rejected), or the same events as before
+
+### API
+
+#### Defining Commands
+
+Commands are defined with a name and schema.
+
+
 ```ts
 // Command definitions
 export const commands = {
@@ -165,38 +178,23 @@ export const commands = {
     schema: Schema.Struct({ roomId: Schema.String, guestId: Schema.String }),
   }),
 }
-
-// Usage
-store.execute(commands.checkInGuest({ roomId: 'room-1', guestId: 'guest-a' }))
 ```
 
+#### Executing Commands
 
-### Client/Server Logic Asymmetry in Command Handling
+[TODO: Figure out the API]
 
-```ts
-// TODO: Figure out the API
-```
+##### Client/Server Logic Asymmetry in Command Handling
 
-### Handling Rejected Commands
+[TODO: Describe the asymmetry and provide examples]
+
+#### Handling Rejected Commands
 
 When a command is rejected during replay, the application must handle the user experience:
 
-```ts
-store.execute(command, {
-  onRejected: (reason, { retry, dismiss }) => {
-    // Show UI notification
-    notifications.show({
-      message: `Action failed: ${reason}`,
-      actions: [
-        { label: 'Retry', onClick: retry },
-        { label: 'Dismiss', onClick: dismiss }
-      ]
-    })
-  }
-})
-```
+[TODO: Figure out the API]
 
-#### Cascading Corruption
+##### Cascading Corruption
 
 [TODO: Describe how cascading corruption is handled]
 
