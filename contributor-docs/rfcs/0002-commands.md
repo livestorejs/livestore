@@ -308,7 +308,7 @@ const checkInGuestHandler = Commands.handler(commands.checkInGuest)(
 )
 
 // Extended handler that adds authorization and external service checks
-const checkInGuestWithAuthHandler = Commands.handler(commands.checkInGuest)(
+const checkInGuestWithPermissionsHandler = Commands.handler(commands.checkInGuest)(
   (command, state) =>
     Effect.gen(function* () {
       // Authorization check (requires PermissionsService)
@@ -337,7 +337,7 @@ checkInGuestHandler
 // Type: Handler<CheckInGuest, RoomNotFound | RoomAtCapacity, never>
 
 // Extended handler: requires PermissionsService and GuestService
-checkInGuestWithAuthHandler
+checkInGuestWithPermissionsHandler
 // Type: Handler<CheckInGuest, RoomNotFound | RoomAtCapacity | Unauthorized | GuestBlacklisted, PermissionsService | GuestService>
 ```
 
@@ -386,8 +386,8 @@ Servers can enforce invariants that require server-only knowledge or authority b
 
 ```ts
 // Define server-only services
-class AuthService extends Context.Tag('AuthService')<
-  AuthService,
+class PermissionsService extends Context.Tag('PermissionsService')<
+  PermissionsService,
   { hasPermission: (permission: string) => boolean; userId: string }
 >() {}
 
@@ -398,7 +398,7 @@ class GuestService extends Context.Tag('GuestService')<
 
 // Server provides real implementations
 const ServerServicesLayer = Layer.mergeAll(
-  Layer.succeed(AuthService, {
+  Layer.succeed(PermissionsService, {
     hasPermission: (perm) => userPermissions.includes(perm),
     userId: authenticatedUserId,
   }),
@@ -409,7 +409,7 @@ const ServerServicesLayer = Layer.mergeAll(
 
 // Client provides permissive stubs (for optimistic execution)
 const ClientServicesLayer = Layer.mergeAll(
-  Layer.succeed(AuthService, {
+  Layer.succeed(PermissionsService, {
     hasPermission: () => true,  // Optimistically assume authorized
     userId: localUserId,
   }),
