@@ -13,7 +13,7 @@ playwright-report
 # Process IDs
 *.pid
 
-.envrc.local
+.envrc.*
 
 tmp*
 dist

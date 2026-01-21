@@ -1,8 +1,6 @@
 inputs:
   nixpkgs:
-    follows: workspace/nixpkgs
-  workspace:
-    url: github:overengineeringstudio/effect-utils?dir=nix/workspace-flake
+    url: github:NixOS/nixpkgs/nixos-unstable
   playwright-web-flake:
     url: github:pietdevries94/playwright-web-flake
     inputs:
