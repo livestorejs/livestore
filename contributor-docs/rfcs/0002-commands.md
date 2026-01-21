@@ -115,9 +115,9 @@ Any solution must satisfy these constraints:
 
 ## Proposed Solution
 
-The solution introduces [**commands**](#command) as first-class citizens in LiveStore. Instead of committing events directly, the app executes commands. Commands encode intentions that can be re-evaluated.
+The solution introduces [**commands**](#command) as first-class citizens in LiveStore. Instead of committing events directly, the app executes commands through a [**command handler**](#command-handler). Commands encode intentions that can be re-evaluated; command handlers validate them against the current state and produce events.
 
-The key insight is that commands are re-executable. When the underlying state changes (due to sync), the same command can be re-evaluated against the new state, potentially producing different events, being rejected, or succeeding as before. This preserves correctness while still enabling optimistic UI.
+The key insight is that commands are re-executable. When the underlying state changes (due to sync), the command handler can re-evaluate the same command against the new state, potentially producing different events, rejecting the command, or succeeding as before. This preserves correctness while still enabling optimistic UI.
 
 ### Architecture
 
