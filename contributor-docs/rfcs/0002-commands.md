@@ -394,7 +394,7 @@ An orchestration component that receives a command, loads the current state, inv
 
 #### Event Decider
 
-Event deciders are responsible for handling commands, determining which events to generate by encapsulating business rules and state, and applying those rules to the current state. They contain no side effects or infrastructure concerns. They ensure that commands result in valid and consistent state transitions. `decide` (Command × Initial State → Event(s)) and `evolve` (State × Event → New State)
+Event deciders are responsible for handling commands, determining which events to generate by encapsulating business rules and state, and applying those rules to the current state. They contain no side effects or infrastructure concerns. They ensure that commands result in valid and consistent state transitions.
 
 #### Business Rules
 
