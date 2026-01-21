@@ -548,18 +548,12 @@ In this approach, clients are able to issue both authoritative events and comman
 
 ## Open Questions
 
-- How to enforce the first business rule on the server? We can't reject it sync
-- Should each stream stored in the same log or in separate?
-- Should we use vector clocks?
+- Should there be client-only commands?
+- Should we still allow store to commit events directly?
+- Should each event stream be stored in the same log or in separate logs?
 - Should we introduce a correlation ID?
 - Should we introduce a causation ID?
-- Can we generate an event for an external system/aggregate in a command handler/dcider? (side effect)?
-- How can we support reading from an external system in the client and in the server?
 - What happens when the write-side projection (state DB) errors?
-- What happens to subsequent pending events/commands when one is rejected?
-- Do not add constraints to the state db. Validations should be done in the decider. Why?
-- We shouldn't be able to read the DB in materializer (it breaks determinism)?
-- Preserve atomicity of event commits across the network?
 
 ## Acknowledgments
 
