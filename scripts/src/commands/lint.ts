@@ -91,6 +91,7 @@ const knipConfig = {
     '**/*.d.ts',
     '**/*.worker.ts',
     '**/*.test.ts',
+    '**/*.test.tsx',
     '**/__tests__/**',
     '**/*.bundle.ts',
     '**/leader-thread-lazy.ts',
@@ -112,6 +113,14 @@ const knipConfig = {
     '@biomejs/biome',
     'madge',
     '@livestore/utils-dev',
+    // Test dependencies (used in test files which are ignored by knip)
+    '@solidjs/testing-library',
+    '@testing-library/react',
+    '@testing-library/dom',
+    '@types/react-dom',
+    'react-dom',
+    'react-window',
+    '@livestore/adapter-web',
     // Re-exported or used transitively
     '@effect/typeclass',
     '@effect/workflow',

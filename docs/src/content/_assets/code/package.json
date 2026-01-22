@@ -43,6 +43,7 @@
     "react-error-boundary": "6.0.0",
     "react-native": "0.81.4",
     "solid-js": "catalog:",
+    "vite-plugin-vue-devtools": "7.7.9",
     "vue-livestore": "0.2.3"
   }
 }
