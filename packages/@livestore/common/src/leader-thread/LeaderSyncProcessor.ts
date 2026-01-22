@@ -36,6 +36,7 @@ import * as SyncState from '../sync/syncstate.ts'
 import { sql } from '../util.ts'
 import * as Eventlog from './eventlog.ts'
 import { rollback } from './materialize-event.ts'
+import type { ShutdownChannel } from './shutdown-channel.ts'
 import type { InitialBlockingSyncContext, LeaderSyncProcessor } from './types.ts'
 import { LeaderThreadCtx } from './types.ts'
 
@@ -307,50 +308,18 @@ export const makeLeaderSyncProcessor = ({
         >,
       ) =>
         Effect.gen(function* () {
-          const { dbEventlog, dbState } = yield* LeaderThreadCtx
-
-          // Check if this is a BackendIdMismatchError
+          // Check if this is a BackendIdMismatchError and handle it specially
           const isBackendIdMismatch =
             Cause.isFailType(cause) &&
             (cause.error._tag === 'InvalidPullError' || cause.error._tag === 'InvalidPushError') &&
             cause.error.cause._tag === 'BackendIdMismatchError'
 
           if (isBackendIdMismatch) {
-            if (onBackendIdMismatch === 'reset') {
-              yield* Effect.logWarning(
-                'Sync backend identity changed (backend was reset). Clearing local storage and shutting down.',
-                { cause: cause.error.cause },
-              )
-
-              // Clear local databases so the client can start fresh on next boot
-              yield* clearLocalDatabases({ dbEventlog, dbState })
-
-              // Send shutdown signal with special reason
-              yield* shutdownChannel
-                .send(IntentionalShutdownCause.make({ reason: 'backend-id-mismatch' }))
-                .pipe(Effect.orDie)
-
-              return yield* Effect.die(cause)
-            } else if (onBackendIdMismatch === 'shutdown') {
-              yield* Effect.logWarning(
-                'Sync backend identity changed (backend was reset). Shutting down without clearing local storage.',
-                { cause: cause.error.cause },
-              )
-
-              const errorToSend = Cause.isFailType(cause) ? cause.error : UnknownError.make({ cause })
-              yield* shutdownChannel.send(errorToSend).pipe(Effect.orDie)
-
-              return yield* Effect.die(cause)
-            } else {
-              // ignore
-              if (LS_DEV) {
-                yield* Effect.logDebug(
-                  'Ignoring BackendIdMismatchError (sync backend was reset but client continues with stale data)',
-                  Cause.pretty(cause),
-                )
-              }
-              return
-            }
+            return yield* handleBackendIdMismatch({
+              cause,
+              onBackendIdMismatch,
+              shutdownChannel,
+            })
           }
 
           // Handle other errors with existing logic
@@ -1181,6 +1150,60 @@ const validatePushBatch = (
       })
     }
   })
+
+/**
+ * Handles a BackendIdMismatchError based on the configured behavior.
+ * This occurs when the sync backend has been reset and has a new identity.
+ */
+const handleBackendIdMismatch = ({
+  cause,
+  onBackendIdMismatch,
+  shutdownChannel,
+}: {
+  cause: Cause.Cause<
+    UnknownError | IntentionalShutdownCause | IsOfflineError | InvalidPushError | InvalidPullError | MaterializeError
+  >
+  onBackendIdMismatch: 'reset' | 'shutdown' | 'ignore'
+  shutdownChannel: ShutdownChannel
+}) =>
+  Effect.gen(function* () {
+    const { dbEventlog, dbState } = yield* LeaderThreadCtx
+
+    if (onBackendIdMismatch === 'reset') {
+      yield* Effect.logWarning(
+        'Sync backend identity changed (backend was reset). Clearing local storage and shutting down.',
+        { cause: Cause.isFailType(cause) ? cause.error.cause : cause },
+      )
+
+      // Clear local databases so the client can start fresh on next boot
+      yield* clearLocalDatabases({ dbEventlog, dbState })
+
+      // Send shutdown signal with special reason
+      yield* shutdownChannel.send(IntentionalShutdownCause.make({ reason: 'backend-id-mismatch' })).pipe(Effect.orDie)
+
+      return yield* Effect.die(cause)
+    }
+
+    if (onBackendIdMismatch === 'shutdown') {
+      yield* Effect.logWarning(
+        'Sync backend identity changed (backend was reset). Shutting down without clearing local storage.',
+        { cause: Cause.isFailType(cause) ? cause.error.cause : cause },
+      )
+
+      const errorToSend = Cause.isFailType(cause) ? cause.error : UnknownError.make({ cause })
+      yield* shutdownChannel.send(errorToSend).pipe(Effect.orDie)
+
+      return yield* Effect.die(cause)
+    }
+
+    // ignore mode
+    if (LS_DEV) {
+      yield* Effect.logDebug(
+        'Ignoring BackendIdMismatchError (sync backend was reset but client continues with stale data)',
+        Cause.pretty(cause),
+      )
+    }
+  }).pipe(Effect.withSpan('@livestore/common:LeaderSyncProcessor:handleBackendIdMismatch'))
 
 /**
  * Clears local databases (eventlog and state) so the client can start fresh on next boot.
