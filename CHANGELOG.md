@@ -238,6 +238,29 @@
 
   Type exports (`UseClientDocumentResult`, `Dispatch`, `SetStateAction`, etc.) remain available.
 
+- **S2 proxy helper signature changes:** The `getSSEHeaders` and `getPushHeaders` functions in `@livestore/sync-s2/s2-proxy-helpers` now accept an `S2Config` object instead of a token string. This enables s2-lite support via the new `lite` flag which adds the `S2-Basin` header for self-hosted S2 deployments (#978).
+
+  ```typescript
+  // Before
+  import * as S2Helpers from '@livestore/sync-s2/s2-proxy-helpers'
+  const headers = S2Helpers.getSSEHeaders(token)
+  const pushHeaders = S2Helpers.getPushHeaders(token)
+
+  // After
+  const config: S2Helpers.S2Config = { basin: 'my-basin', token: 'my-token' }
+  const headers = S2Helpers.getSSEHeaders(config)
+  const pushHeaders = S2Helpers.getPushHeaders(config)
+
+  // For s2-lite (self-hosted), add the lite flag:
+  const liteConfig: S2Helpers.S2Config = {
+    basin: 'my-basin',
+    token: 'unused',
+    accountBase: 'http://localhost:4566/v1',
+    basinBase: 'http://localhost:4566/v1',
+    lite: true,  // Adds S2-Basin header for s2-lite routing
+  }
+  ```
+
 ### Changes
 
 #### Platform adapters
@@ -280,6 +303,7 @@ LiveStore now ships `@livestore/sync-s2`, a first-party integration with S2—th
 - **Stream primitives:** Helper utilities (`ensureBasin()`, `ensureStream()`, `makeS2StreamName()`) manage S2 provisioning and naming so apps can wire up a single `/api/s2` entry point without manual HTTP plumbing (#292).
 - **Live pull over SSE:** The client understands S2's `batch`, `ping`, and `error` SSE events, keeping live cursors in sync while avoiding dropped connections and manual tail loops (#292).
 - **Transport-safe batching:** Append helpers respect S2's 1 MiB / 1000-record limits, preventing 413 responses while you stream large batches into managed storage (#709).
+- **s2-lite support:** Added support for [s2-lite](https://github.com/s2-streamstore/s2-lite), the open-source self-hosted S2. Set `lite: true` in `S2Config` to enable header-based basin routing. CI tests now run against s2-lite, removing the dependency on hosted S2 credentials (#978).
 
 See the [S2 sync provider docs](https://dev.docs.livestore.dev/reference/syncing/sync-provider/s2/) for full deployment guidance and operational notes.
 

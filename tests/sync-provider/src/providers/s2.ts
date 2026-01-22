@@ -5,7 +5,6 @@ import * as S2Sync from '@livestore/sync-s2'
 import { makeSyncBackend } from '@livestore/sync-s2'
 import * as S2Helpers from '@livestore/sync-s2/s2-proxy-helpers'
 import {
-  Config,
   Effect,
   HttpClient,
   HttpClientRequest,
@@ -21,9 +20,9 @@ import {
 } from '@livestore/utils/effect'
 import { getFreePort, PlatformNode } from '@livestore/utils/node'
 import { SyncProviderImpl, type SyncProviderLayer } from '../types.ts'
-// HTTP-based proxy to hosted S2
 
-export const name = 'S2 (hosted)'
+/** S2-Lite based sync provider for testing. Uses the open-source s2-lite container. */
+export const name = 'S2-Lite'
 
 export const prepare = Effect.void
 
@@ -36,19 +35,7 @@ export type ProviderSpecific = {
 export const layer: SyncProviderLayer = Layer.scoped(
   SyncProviderImpl,
   Effect.gen(function* () {
-    const { endpointPort, basin, accountClient } = yield* startApiProxy
-    const keepBasins = process.env.LIVESTORE_S2_KEEP_BASINS === '1'
-    yield* Effect.addFinalizer(() =>
-      keepBasins
-        ? Effect.void
-        : accountClient
-            .deleteBasin(basin)
-            .pipe(
-              Effect.retry(Schedule.exponentialBackoff10Sec),
-              Effect.withSpan('s2-provider:delete-basin', { attributes: { basin } }),
-              Effect.ignoreLogged,
-            ),
-    )
+    const { endpointPort } = yield* startS2LiteProxy
 
     return {
       makeProvider: makeSyncBackend({ endpoint: `http://localhost:${endpointPort}` }),
@@ -68,7 +55,7 @@ export const layer: SyncProviderLayer = Layer.scoped(
               .pipe(
                 Effect.andThen((res) => res.text),
                 Effect.retry(Schedule.exponentialBackoff10Sec),
-                Effect.withSpan('s2-provider:append-raw-request', {
+                Effect.withSpan('s2-lite-provider:append-raw-request', {
                   attributes: { storeId, recordCount: bodies.length },
                 }),
               )
@@ -86,7 +73,7 @@ export const layer: SyncProviderLayer = Layer.scoped(
               .pipe(
                 Effect.andThen((res) => res.text),
                 Effect.retry(Schedule.exponentialBackoff10Sec),
-                Effect.withSpan('s2-provider:fail-next-append-request', { attributes: { storeId, count } }),
+                Effect.withSpan('s2-lite-provider:fail-next-append-request', { attributes: { storeId, count } }),
               )
           }),
         failNextRead: (storeId: string, count: number) =>
@@ -102,7 +89,7 @@ export const layer: SyncProviderLayer = Layer.scoped(
               .pipe(
                 Effect.andThen((res) => res.text),
                 Effect.retry(Schedule.exponentialBackoff10Sec),
-                Effect.withSpan('s2-provider:fail-next-read-request', { attributes: { storeId, count } }),
+                Effect.withSpan('s2-lite-provider:fail-next-read-request', { attributes: { storeId, count } }),
               )
           }),
       },
@@ -110,27 +97,25 @@ export const layer: SyncProviderLayer = Layer.scoped(
   }),
 ).pipe(UnknownError.mapToUnknownErrorLayer)
 
-const startApiProxy = Effect.gen(function* () {
+const startS2LiteProxy = Effect.gen(function* () {
   const endpointPort = yield* getFreePort
   const basin = `ls-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`
-  const token = yield* Config.string('S2_ACCESS_TOKEN')
+  const s2LiteEndpoint = process.env.S2_LITE_ENDPOINT ?? 'http://localhost:4566'
+  const s2LiteApiBase = `${s2LiteEndpoint}/v1`
 
   const s2Config: S2Helpers.S2Config = {
     basin,
-    token,
+    token: 'unused',
+    accountBase: s2LiteApiBase,
+    basinBase: s2LiteApiBase,
+    lite: true,
   }
 
-  // Prefer HTTP API for provisioning if available
   const httpClient = yield* HttpClient.HttpClient.pipe(
-    Effect.andThen(HttpClient.mapRequest(HttpClientRequest.setHeaders({ Authorization: `Bearer ${token}` }))),
+    Effect.andThen(
+      HttpClient.mapRequest(HttpClientRequest.setHeaders({ Authorization: 'Bearer unused', 's2-basin': basin })),
+    ),
   )
-
-  const accountClient = S2Sync.HttpClientGenerated.make(httpClient, {
-    transformClient: (client) =>
-      Effect.succeed(
-        client.pipe(HttpClient.mapRequest(HttpClientRequest.prependUrl(S2Helpers.getAccountUrl(s2Config, '')))),
-      ),
-  })
 
   const basinClient = S2Sync.HttpClientGenerated.make(httpClient, {
     transformClient: (client) =>
@@ -139,12 +124,16 @@ const startApiProxy = Effect.gen(function* () {
       ),
   })
 
-  yield* accountClient
-    .createBasin({ basin })
-    .pipe(
-      Effect.retry(Schedule.exponentialBackoff10Sec),
-      Effect.withSpan('s2-provider:create-basin', { attributes: { basin } }),
-    )
+  yield* Effect.tryPromise(() =>
+    fetch(`${s2LiteApiBase}/basins`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ basin }),
+    }),
+  ).pipe(
+    Effect.retry(Schedule.exponentialBackoff10Sec),
+    Effect.withSpan('s2-lite-provider:create-basin', { attributes: { basin } }),
+  )
 
   yield* makeRouter({ s2Config, basinClient }).pipe(
     HttpServer.serve(),
@@ -154,7 +143,7 @@ const startApiProxy = Effect.gen(function* () {
     Effect.forkScoped,
   )
 
-  return { endpointPort, basin, accountClient }
+  return { endpointPort }
 })
 
 const createdStreams = new Set<string>()
@@ -183,7 +172,7 @@ const makeRouter = ({
             .createStream({ stream })
             .pipe(
               Effect.retry(Schedule.exponentialBackoff10Sec),
-              Effect.withSpan('s2-provider:create-stream', { attributes: { stream, route: 'pull' } }),
+              Effect.withSpan('s2-lite-provider:create-stream', { attributes: { stream, route: 'pull' } }),
             )
           createdStreams.add(stream)
         }
@@ -197,12 +186,11 @@ const makeRouter = ({
         }
         // SSE tailing: proxy S2 SSE stream directly
         const pullRequest = S2Helpers.buildPullRequest({ config: s2Config, args })
-        // console.log('[s2] pull request:', S2Helpers.asCurl({ ...pullRequest, method: 'GET' }))
         const resp = yield* HttpClientRequest.get(pullRequest.url).pipe(
           HttpClientRequest.setHeaders(pullRequest.headers),
           HttpClient.execute,
           Effect.retry(Schedule.exponentialBackoff10Sec),
-          Effect.withSpan('s2-provider:pull-stream', { attributes: { stream, live: args.live } }),
+          Effect.withSpan('s2-lite-provider:pull-stream', { attributes: { stream, live: args.live } }),
         )
 
         const bodyStream = HttpClientResponse.stream(Effect.succeed(resp))
@@ -229,7 +217,7 @@ const makeRouter = ({
               () => Effect.void,
             ),
             Effect.retry(Schedule.exponentialBackoff10Sec),
-            Effect.withSpan('s2-provider:create-stream', {
+            Effect.withSpan('s2-lite-provider:create-stream', {
               attributes: { stream: streamName, route: 'push' },
             }),
           )
@@ -247,7 +235,9 @@ const makeRouter = ({
           })
           .pipe(
             Effect.retry(Schedule.exponentialBackoff10Sec),
-            Effect.withSpan('s2-provider:append', { attributes: { stream: streamName, recordCount: lines.length } }),
+            Effect.withSpan('s2-lite-provider:append', {
+              attributes: { stream: streamName, recordCount: lines.length },
+            }),
           )
 
         return yield* HttpServerResponse.json({ success: true })
@@ -268,7 +258,7 @@ const makeRouter = ({
               () => Effect.void,
             ),
             Effect.retry(Schedule.exponentialBackoff10Sec),
-            Effect.withSpan('s2-provider:create-stream', {
+            Effect.withSpan('s2-lite-provider:create-stream', {
               attributes: { stream, route: 'append-raw' },
             }),
           )
@@ -281,7 +271,7 @@ const makeRouter = ({
           })
           .pipe(
             Effect.retry(Schedule.exponentialBackoff10Sec),
-            Effect.withSpan('s2-provider:append', {
+            Effect.withSpan('s2-lite-provider:append', {
               attributes: { stream, recordCount: body.bodies.length, route: 'append-raw' },
             }),
           )
