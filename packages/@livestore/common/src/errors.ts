@@ -39,7 +39,7 @@ export class MaterializerHashMismatchError extends Schema.TaggedError<Materializ
 export class IntentionalShutdownCause extends Schema.TaggedError<IntentionalShutdownCause>()(
   'LiveStore.IntentionalShutdownCause',
   {
-    reason: Schema.Literal('devtools-reset', 'devtools-import', 'adapter-reset', 'manual'),
+    reason: Schema.Literal('devtools-reset', 'devtools-import', 'adapter-reset', 'manual', 'backend-id-mismatch'),
   },
 ) {}
 

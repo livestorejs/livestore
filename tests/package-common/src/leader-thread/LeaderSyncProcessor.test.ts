@@ -1,6 +1,7 @@
 import type { SyncOptions } from '@livestore/common'
 import {
   BackendIdMismatchError,
+  type IntentionalShutdownCause,
   InvalidPushError,
   type LeaderAheadError,
   type MockSyncBackend,
@@ -435,7 +436,7 @@ Vitest.describe.concurrent('LeaderSyncProcessor', { timeout: 60000 }, () => {
     ),
   )
 
-  // Should escalate and shutdown on BackendIdMismatchError when onSyncError='shutdown'
+  // Should escalate and shutdown on BackendIdMismatchError when onBackendIdMismatch='shutdown' (legacy behavior)
   Vitest.scopedLive('shutdowns on BackendIdMismatchError push', (test) =>
     Effect.gen(function* () {
       const testContext = yield* TestContext
@@ -453,8 +454,169 @@ Vitest.describe.concurrent('LeaderSyncProcessor', { timeout: 60000 }, () => {
       const shutdownMsg = yield* testContext.shutdownDeferred.pipe(Effect.flip, Effect.timeout(3000))
 
       expect(shutdownMsg._tag).toEqual('InvalidPushError')
-      // expect((shutdownMsg.cause as InvalidPushError).cause._tag).toEqual('BackendIdMismatchError')
-    }).pipe(withTestCtx({ syncOptions: { onSyncError: 'shutdown', livePull: false }, captureShutdown: true })(test)),
+      expect((shutdownMsg as InvalidPushError).cause._tag).toEqual('BackendIdMismatchError')
+    }).pipe(
+      withTestCtx({
+        syncOptions: { onBackendIdMismatch: 'shutdown', livePull: false },
+        captureShutdown: true,
+      })(test),
+    ),
+  )
+
+  // Tests for onBackendIdMismatch option
+
+  // Should clear databases and shutdown with IntentionalShutdownCause when onBackendIdMismatch='reset'
+  Vitest.scopedLive('clears databases on BackendIdMismatchError push with reset', (test) =>
+    Effect.gen(function* () {
+      const testContext = yield* TestContext
+      const leaderThreadCtx = yield* LeaderThreadCtx
+      const eventFactory = testContext.eventFactory
+
+      // First create some data
+      yield* testContext.pushEncoded(eventFactory.todoCreated.next({ id: '1', text: 't1', completed: false }))
+
+      // Wait for sync to complete
+      yield* leaderThreadCtx.syncProcessor.syncState.changes.pipe(
+        Stream.takeUntil((_) => _.localHead.global === 1),
+        Stream.runDrain,
+      )
+
+      // Verify data exists in eventlog before the error
+      const beforeRows = leaderThreadCtx.dbEventlog.select<{ name: string }>(`SELECT name FROM eventlog`)
+      expect(beforeRows.length).toBeGreaterThan(0)
+
+      // Fail the next push due to backend id mismatch
+      yield* testContext.mockSyncBackend.failNextPushes(1, () =>
+        Effect.fail(
+          new InvalidPushError({ cause: new BackendIdMismatchError({ expected: 'new-id', received: 'old-id' }) }),
+        ),
+      )
+
+      // Trigger another push that will fail
+      yield* testContext.pushEncoded(eventFactory.todoCreated.next({ id: '2', text: 't2', completed: false }))
+
+      // Expect a shutdown message with IntentionalShutdownCause and reason 'backend-id-mismatch'
+      const shutdownMsg = yield* testContext.shutdownDeferred.pipe(Effect.flip, Effect.timeout(3000))
+
+      expect(shutdownMsg._tag).toEqual('LiveStore.IntentionalShutdownCause')
+      expect((shutdownMsg as IntentionalShutdownCause).reason).toEqual('backend-id-mismatch')
+
+      // Verify databases were cleared
+      const afterEventlogRows = leaderThreadCtx.dbEventlog.select<{ name: string }>(`SELECT name FROM eventlog`)
+      expect(afterEventlogRows.length).toBe(0)
+
+      const afterSyncStatusRows = leaderThreadCtx.dbEventlog.select<{ head: number }>(
+        `SELECT head FROM __livestore_sync_status`,
+      )
+      expect(afterSyncStatusRows.length).toBe(0)
+    }).pipe(
+      withTestCtx({ syncOptions: { onBackendIdMismatch: 'reset', livePull: false }, captureShutdown: true })(test),
+    ),
+  )
+
+  // Should shutdown without clearing databases when onBackendIdMismatch='shutdown'
+  Vitest.scopedLive('shutdowns without clearing on BackendIdMismatchError push with shutdown', (test) =>
+    Effect.gen(function* () {
+      const testContext = yield* TestContext
+      const leaderThreadCtx = yield* LeaderThreadCtx
+      const eventFactory = testContext.eventFactory
+
+      // First create some data
+      yield* testContext.pushEncoded(eventFactory.todoCreated.next({ id: '1', text: 't1', completed: false }))
+
+      // Wait for sync to complete
+      yield* leaderThreadCtx.syncProcessor.syncState.changes.pipe(
+        Stream.takeUntil((_) => _.localHead.global === 1),
+        Stream.runDrain,
+      )
+
+      // Verify data exists
+      const beforeRows = leaderThreadCtx.dbEventlog.select<{ name: string }>(`SELECT name FROM eventlog`)
+      expect(beforeRows.length).toBeGreaterThan(0)
+
+      // Fail the next push due to backend id mismatch
+      yield* testContext.mockSyncBackend.failNextPushes(1, () =>
+        Effect.fail(
+          new InvalidPushError({ cause: new BackendIdMismatchError({ expected: 'new-id', received: 'old-id' }) }),
+        ),
+      )
+
+      // Trigger another push that will fail
+      yield* testContext.pushEncoded(eventFactory.todoCreated.next({ id: '2', text: 't2', completed: false }))
+
+      // Expect a shutdown message with InvalidPushError (not IntentionalShutdownCause)
+      const shutdownMsg = yield* testContext.shutdownDeferred.pipe(Effect.flip, Effect.timeout(3000))
+
+      expect(shutdownMsg._tag).toEqual('InvalidPushError')
+
+      // Verify databases were NOT cleared
+      const afterRows = leaderThreadCtx.dbEventlog.select<{ name: string }>(`SELECT name FROM eventlog`)
+      expect(afterRows.length).toBeGreaterThan(0)
+    }).pipe(
+      withTestCtx({ syncOptions: { onBackendIdMismatch: 'shutdown', livePull: false }, captureShutdown: true })(test),
+    ),
+  )
+
+  // Should ignore BackendIdMismatchError and continue when onBackendIdMismatch='ignore'
+  Vitest.scopedLive('ignores BackendIdMismatchError push when ignore', (test) =>
+    Effect.gen(function* () {
+      const testContext = yield* TestContext
+      const leaderThreadCtx = yield* LeaderThreadCtx
+      const eventFactory = testContext.eventFactory
+
+      // First create some data
+      yield* testContext.pushEncoded(eventFactory.todoCreated.next({ id: '1', text: 't1', completed: false }))
+
+      // Wait for sync to complete
+      yield* leaderThreadCtx.syncProcessor.syncState.changes.pipe(
+        Stream.takeUntil((_) => _.localHead.global === 1),
+        Stream.runDrain,
+      )
+
+      // Fail the next push due to backend id mismatch
+      yield* testContext.mockSyncBackend.failNextPushes(1, () =>
+        Effect.fail(
+          new InvalidPushError({ cause: new BackendIdMismatchError({ expected: 'new-id', received: 'old-id' }) }),
+        ),
+      )
+
+      // Trigger another push that will fail
+      yield* testContext.pushEncoded(eventFactory.todoCreated.next({ id: '2', text: 't2', completed: false }))
+
+      // Give some time for the error to be processed
+      yield* Effect.sleep(Duration.millis(500))
+
+      // Verify data still exists (not cleared)
+      const afterRows = leaderThreadCtx.dbEventlog.select<{ name: string }>(`SELECT name FROM eventlog`)
+      expect(afterRows.length).toBeGreaterThan(0)
+
+      // Verify no shutdown happened (deferred should still be pending)
+      // We use race with a small timeout to check if deferred is still pending
+      const result = yield* Effect.race(
+        testContext.shutdownDeferred.pipe(
+          Effect.flip,
+          Effect.map(() => 'shutdown' as const),
+        ),
+        Effect.sleep(Duration.millis(100)).pipe(Effect.map(() => 'no-shutdown' as const)),
+      )
+
+      expect(result).toEqual('no-shutdown')
+    }).pipe(
+      withTestCtx({ syncOptions: { onBackendIdMismatch: 'ignore', livePull: false }, captureShutdown: true })(test),
+    ),
+  )
+
+  // NOTE: Pull path test is skipped because the MockSyncBackend's failNextPulls works on the
+  // initial pull, not on live pulls after advance. The core functionality for handling
+  // BackendIdMismatchError is shared with the push path via maybeShutdownOnError.
+  // The real pull scenario is tested in integration tests with actual sync providers.
+  Vitest.scopedLive.skip('clears databases on BackendIdMismatchError pull with reset', (test) =>
+    Effect.gen(function* () {
+      // This test would require more complex mocking of the pull stream to inject errors
+      // during live pulls. For now, we rely on push tests and integration tests.
+    }).pipe(
+      withTestCtx({ syncOptions: { onBackendIdMismatch: 'reset', livePull: true }, captureShutdown: true })(test),
+    ),
   )
 })
 
@@ -512,6 +674,7 @@ const LeaderThreadCtxLive = ({
         ...omitUndefineds({
           livePull: syncOptions?.livePull,
           onSyncError: syncOptions?.onSyncError,
+          onBackendIdMismatch: syncOptions?.onBackendIdMismatch,
           initialSyncOptions: syncOptions?.initialSyncOptions,
         }),
       },

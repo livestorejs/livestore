@@ -20,6 +20,11 @@ catalog:
   # Build tools
   typescript: 5.9.3
   vite: 7.3.0
+  # NOTE (2026-01-22): Known peer dependency violations with vitest@4:
+  # - @effect/vitest@0.27.0 requires vitest@^3.2.0
+  # - @vitest/ui@3.2.4 requires vitest@3.2.4
+  # We're intentionally staying on vitest@4 for its new features.
+  # These violations don't affect runtime behavior.
   vitest: 4.0.16
   "@vitest/ui": 3.2.4
   "@vitejs/plugin-react": 5.1.2
@@ -39,19 +44,26 @@ catalog:
   "@playwright/test": 1.57.0
 
   # Effect
-  "@effect/ai": 0.32.1
-  "@effect/ai-openai": 0.36.0
+  # NOTE (2026-01-22): Known peer dependency violations with @effect-atom/atom@0.3.0
+  # (in docs/src/content/_assets/code/package.json):
+  # - requires @effect/experimental@^0.56.0 (we have 0.58.0)
+  # - requires @effect/platform@^0.92.0 (we have 0.94.1)
+  # - requires @effect/rpc@^0.71.0 (we have 0.73.0)
+  # The @effect-atom packages haven't caught up with the latest effect releases.
+  # These violations don't affect runtime behavior.
+  "@effect/ai": 0.33.2
+  "@effect/ai-openai": 0.37.2
   "@effect/cli": 0.73.0
   "@effect/experimental": 0.58.0
   effect: 3.19.14
-  "@effect/cluster": 0.56.0
+  "@effect/cluster": 0.56.1
   "@effect/rpc": 0.73.0
   "@effect/language-service": 0.63.2
   "@effect/platform": 0.94.1
-  "@effect/platform-browser": 0.73.0
-  "@effect/platform-bun": 0.86.0
+  "@effect/platform-browser": 0.74.0
+  "@effect/platform-bun": 0.87.0
   "@effect/platform-node": 0.104.0
-  "@effect/platform-node-shared": 0.56.0
+  "@effect/platform-node-shared": 0.57.0
   "@effect/printer": 0.47.0
   "@effect/printer-ansi": 0.47.0
   "@effect/opentelemetry": 0.60.0
