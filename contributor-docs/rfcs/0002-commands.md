@@ -550,6 +550,7 @@ In this approach, clients are able to issue both authoritative events and comman
 
 - Should there be client-only commands?
 - Should we still allow store to commit events directly?
+  - **No.** Commands should be the only path for producing events. Routing all synced state changes through handlers encourages validation checks (most events reference entities that may not exist after rebase) and supports evolution—when invariants are added later, the command path is already in place.
 - Should each event stream be stored in the same log or in separate logs?
 - Should we introduce a correlation ID?
 - Should we introduce a causation ID?
