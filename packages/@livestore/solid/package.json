@@ -11,8 +11,7 @@
     "@livestore/framework-toolkit": "workspace:*",
     "@livestore/livestore": "workspace:*",
     "@livestore/utils": "workspace:*",
-    "@opentelemetry/api": "catalog:",
-    "@solid-primitives/deep": "0.3.3"
+    "@opentelemetry/api": "catalog:"
   },
   "devDependencies": {
     "@effect/vitest": "catalog:",
