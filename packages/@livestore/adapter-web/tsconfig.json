@@ -3,9 +3,7 @@
 {
   "compilerOptions": {
     "paths": {
-      "#genie/*": [
-        "../@overeng/genie/src/runtime/*"
-      ]
+      "#genie/*": ["../@overeng/genie/src/runtime/*"]
     },
     "strict": true,
     "exactOptionalPropertyTypes": true,
@@ -46,9 +44,7 @@
     "tsBuildInfoFile": "./dist/.tsbuildinfo",
     "resolveJsonModule": true
   },
-  "include": [
-    "./src"
-  ],
+  "include": ["./src"],
   "references": [
     {
       "path": "../common"

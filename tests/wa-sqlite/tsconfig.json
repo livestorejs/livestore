@@ -3,9 +3,7 @@
 {
   "compilerOptions": {
     "paths": {
-      "#genie/*": [
-        "../@overeng/genie/src/runtime/*"
-      ]
+      "#genie/*": ["../@overeng/genie/src/runtime/*"]
     },
     "strict": true,
     "exactOptionalPropertyTypes": true,
@@ -43,13 +41,8 @@
     ],
     "noEmit": true
   },
-  "include": [
-    "test"
-  ],
-  "exclude": [
-    "node_modules",
-    "**/dist"
-  ],
+  "include": ["test"],
+  "exclude": ["node_modules", "**/dist"],
   "references": [
     {
       "path": "../../packages/@livestore/wa-sqlite"

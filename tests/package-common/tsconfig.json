@@ -1,9 +1,7 @@
 {
   "compilerOptions": {
     "paths": {
-      "#genie/*": [
-        "../@overeng/genie/src/runtime/*"
-      ]
+      "#genie/*": ["../@overeng/genie/src/runtime/*"]
     },
     "strict": true,
     "exactOptionalPropertyTypes": true,
@@ -44,9 +42,7 @@
     "resolveJsonModule": true,
     "tsBuildInfoFile": "./dist/.tsbuildinfo"
   },
-  "include": [
-    "./src"
-  ],
+  "include": ["./src"],
   "references": [
     { "path": "../../packages/@livestore/common" },
     { "path": "../../packages/@livestore/utils" },

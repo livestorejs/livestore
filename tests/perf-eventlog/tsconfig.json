@@ -3,9 +3,7 @@
 {
   "compilerOptions": {
     "paths": {
-      "#genie/*": [
-        "../@overeng/genie/src/runtime/*"
-      ]
+      "#genie/*": ["../@overeng/genie/src/runtime/*"]
     },
     "strict": true,
     "exactOptionalPropertyTypes": true,
@@ -44,15 +42,8 @@
     "noEmit": true,
     "jsx": "react-jsx"
   },
-  "include": [
-    "./test-app",
-    "./src",
-    "./tests"
-  ],
-  "exclude": [
-    "node_modules",
-    "**/dist"
-  ],
+  "include": ["./test-app", "./src", "./tests"],
+  "exclude": ["node_modules", "**/dist"],
   "references": [
     {
       "path": "../../packages/@livestore/adapter-web"

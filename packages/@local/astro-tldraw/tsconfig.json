@@ -3,9 +3,7 @@
 {
   "compilerOptions": {
     "paths": {
-      "#genie/*": [
-        "../@overeng/genie/src/runtime/*"
-      ]
+      "#genie/*": ["../@overeng/genie/src/runtime/*"]
     },
     "strict": true,
     "exactOptionalPropertyTypes": true,
@@ -44,7 +42,5 @@
     "rootDir": ".",
     "outDir": "dist"
   },
-  "include": [
-    "src"
-  ]
+  "include": ["src"]
 }

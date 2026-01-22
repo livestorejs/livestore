@@ -3,9 +3,7 @@
 {
   "compilerOptions": {
     "paths": {
-      "#genie/*": [
-        "../@overeng/genie/src/runtime/*"
-      ]
+      "#genie/*": ["../@overeng/genie/src/runtime/*"]
     },
     "strict": true,
     "exactOptionalPropertyTypes": false,
@@ -47,13 +45,8 @@
     "jsx": "react-jsx",
     "tsBuildInfoFile": "./dist/.tsbuildinfo"
   },
-  "include": [
-    "./src",
-    "./scripts"
-  ],
-  "exclude": [
-    "./src/tests/devtools/fixtures"
-  ],
+  "include": ["./src", "./scripts"],
+  "exclude": ["./src/tests/devtools/fixtures"],
   "references": [
     {
       "path": "../../packages/@local/shared"

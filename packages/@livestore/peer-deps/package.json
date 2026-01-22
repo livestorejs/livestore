@@ -1,17 +1,16 @@
 {
-  "$genie": {
-    "source": "package.json.genie.ts",
-    "warning": "DO NOT EDIT - changes will be overwritten"
-  },
   "name": "@livestore/peer-deps",
   "version": "0.4.0-dev.22",
-  "type": "module",
-  "sideEffects": false,
   "description": "This is a convenience package that can be installed to satisfy peer dependencies of Livestore packages.",
   "license": "Apache-2.0",
   "files": [
     "package.json"
   ],
+  "type": "module",
+  "sideEffects": false,
+  "publishConfig": {
+    "access": "public"
+  },
   "scripts": {
     "test": "echo 'No tests for peer-deps'"
   },
@@ -34,7 +33,8 @@
     "@opentelemetry/resources": "2.2.0",
     "effect": "3.19.14"
   },
-  "publishConfig": {
-    "access": "public"
+  "$genie": {
+    "source": "package.json.genie.ts",
+    "warning": "DO NOT EDIT - changes will be overwritten"
   }
 }

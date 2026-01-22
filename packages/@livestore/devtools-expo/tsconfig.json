@@ -3,9 +3,7 @@
 {
   "compilerOptions": {
     "paths": {
-      "#genie/*": [
-        "../@overeng/genie/src/runtime/*"
-      ]
+      "#genie/*": ["../@overeng/genie/src/runtime/*"]
     },
     "strict": true,
     "exactOptionalPropertyTypes": true,
@@ -46,10 +44,7 @@
     "tsBuildInfoFile": "./dist/.tsbuildinfo",
     "jsx": "react-jsx"
   },
-  "include": [
-    "./src",
-    "src/types.d.ts"
-  ],
+  "include": ["./src", "src/types.d.ts"],
   "references": [
     {
       "path": "../adapter-web"

@@ -3,9 +3,7 @@
 {
   "compilerOptions": {
     "paths": {
-      "#genie/*": [
-        "../@overeng/genie/src/runtime/*"
-      ]
+      "#genie/*": ["../@overeng/genie/src/runtime/*"]
     },
     "strict": true,
     "exactOptionalPropertyTypes": true,
@@ -47,12 +45,8 @@
     "jsx": "preserve",
     "tsBuildInfoFile": "./dist/.tsbuildinfo"
   },
-  "include": [
-    "src"
-  ],
-  "exclude": [
-    "src/content/_assets/code/**/*"
-  ],
+  "include": ["src"],
+  "exclude": ["src/content/_assets/code/**/*"],
   "references": [
     {
       "path": "../packages/@local/shared"
