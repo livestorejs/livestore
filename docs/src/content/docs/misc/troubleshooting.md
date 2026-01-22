@@ -12,7 +12,20 @@ While hopefully rare in practice, it might still happen that a client or a sync 
 To avoid being stuck, you can either:
 
 - use a different `storeId`
-- or reset the sync backend and local client for the given `storeId` 
+- or reset the sync backend and local client for the given `storeId`
+
+### Client shows stale data after backend reset
+
+If you reset your sync backend (e.g., deleted `.wrangler/state` for Cloudflare, reset Postgres, or used a `--reset` flag) and your client is still showing old data, the client needs to detect that the backend identity has changed.
+
+By default (`onBackendIdMismatch: 'reset'`), LiveStore will automatically clear local storage when it detects that the sync backend was reset. The app will shut down and needs to be restarted to sync fresh data from the backend.
+
+If you're seeing stale data, check that:
+1. The `onBackendIdMismatch` option is set to `'reset'` (the default)
+2. The app was restarted after the backend reset
+3. For browser apps, you may need to close all tabs and reopen
+
+See the [Backend Reset Detection](/building-with-livestore/syncing#backend-reset-detection) section in the syncing docs for more details. 
 
 ## React related issues
 

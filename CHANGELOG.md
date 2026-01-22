@@ -295,6 +295,7 @@ Key improvements include streaming pull operations (faster initial sync), a two-
 - Reliability: Retry and backoff on push errors, restart push on advance, and add regression tests (#639).
 - Resilience: Improve sync provider robustness and align test helpers for CI and local development (#682, #646).
 - Header forwarding: Added `forwardHeaders` option to `makeDurableObject()` for cookie-based authentication. Headers are stored in WebSocket attachments to survive hibernation and accessible via `context.headers` in `onPush`/`onPull` callbacks (#929).
+- **Backend reset detection:** LiveStore now detects when a sync backend has been reset and handles it based on the `onBackendIdMismatch` option in `SyncOptions`. Default behaviour (`'reset'`) clears local storage and shuts down so the app can restart with fresh data. Alternative modes include `'shutdown'` (shut down without clearing) and `'ignore'` (continue with stale data). See [Backend Reset Detection docs](https://livestore.dev/building-with-livestore/syncing#backend-reset-detection) (#980).
 
 ##### S2 sync backend
 

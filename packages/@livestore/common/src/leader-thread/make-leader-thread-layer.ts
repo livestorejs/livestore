@@ -166,6 +166,7 @@ export const makeLeaderThreadLayer = ({
       initialSyncState: getInitialSyncState({ dbEventlog, dbState, dbEventlogMissing }),
       initialBlockingSyncContext,
       onError: syncOptions?.onSyncError ?? 'ignore',
+      onBackendIdMismatch: syncOptions?.onBackendIdMismatch ?? 'reset',
       livePull: syncOptions?.livePull ?? true,
       params: {
         ...omitUndefineds({

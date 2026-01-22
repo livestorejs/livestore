@@ -129,6 +129,46 @@ Client -> Client: "Client is in sync"
 - In the future, LiveStore aims to support multiple eventlogs (see [this issue](https://github.com/livestorejs/livestore/issues/255)).
 
 
+## Backend Reset Detection
+
+When a sync backend is reset (e.g., deleting `.wrangler/state` for Cloudflare, or resetting Postgres), clients that have cached data locally may not know about this reset. LiveStore detects backend resets using a unique `backendId` that is generated when the backend is first created.
+
+### How it works
+
+1. When a sync backend is initialized, it generates a unique `backendId`
+2. Clients store this `backendId` locally alongside their eventlog
+3. On subsequent sync operations, the client sends its stored `backendId` to verify the backend identity
+4. If the backend has been reset, it will have a new `backendId`, causing a mismatch
+
+### Configuring the behavior
+
+You can configure how LiveStore handles backend identity changes using the `onBackendIdMismatch` option:
+
+```ts
+const store = await makeStore({
+  // ... other options
+  sync: {
+    backend: yourSyncBackend,
+    onBackendIdMismatch: 'reset', // 'reset' | 'shutdown' | 'ignore'
+  }
+})
+```
+
+**Options:**
+
+- **`'reset'`** (default): Clear local storage (eventlog and state databases) and shutdown. The app will need to restart and will sync fresh data from the backend. This is the recommended option for development.
+- **`'shutdown'`**: Shutdown without clearing local storage. On restart, the client will still have stale data and encounter the same error.
+- **`'ignore'`**: Log the error and continue running. The client will show stale data but keep running (effectively offline mode).
+
+### Common scenarios
+
+This feature is particularly useful during development when:
+
+- The sync backend state is deleted (e.g., `.wrangler/state` for Cloudflare)
+- Running with a `--reset` flag
+- Schema changes require re-backfilling data
+- Running multiple services (CLI and web UI) that need to stay in sync after a reset
+
 ## Design decisions / trade-offs
 
 - Require a central sync backend to enforce a global total order of events.
