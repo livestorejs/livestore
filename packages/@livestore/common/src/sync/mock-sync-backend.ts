@@ -2,7 +2,7 @@ import type { Schema, Scope } from '@livestore/utils/effect'
 import { Effect, Mailbox, Option, Queue, Stream, SubscriptionRef } from '@livestore/utils/effect'
 import { UnknownError } from '../errors.ts'
 import { EventSequenceNumber, type LiveStoreEvent } from '../schema/mod.ts'
-import { InvalidPushError } from './errors.ts'
+import { InvalidPullError, InvalidPushError } from './errors.ts'
 import * as SyncBackend from './sync-backend.ts'
 import { validatePushPayload } from './validate-push-payload.ts'
 
@@ -17,6 +17,8 @@ export interface MockSyncBackend {
     count: number,
     error?: (batch: ReadonlyArray<LiveStoreEvent.Global.Encoded>) => Effect.Effect<never, InvalidPushError>,
   ) => Effect.Effect<void>
+  /** Fail the next N pull calls with an InvalidPullError (or custom error) */
+  failNextPulls: (count: number, error?: () => Effect.Effect<never, InvalidPullError>) => Effect.Effect<void>
 }
 
 export interface MockSyncBackendOptions {
@@ -42,10 +44,14 @@ export const makeMockSyncBackend = (
     const semaphore = yield* Effect.makeSemaphore(1)
 
     // TODO improve the API and implementation of simulating errors
-    const failCounterRef = yield* SubscriptionRef.make(0)
-    const failEffectRef = yield* SubscriptionRef.make<
+    const failPushCounterRef = yield* SubscriptionRef.make(0)
+    const failPushEffectRef = yield* SubscriptionRef.make<
       ((batch: ReadonlyArray<LiveStoreEvent.Global.Encoded>) => Effect.Effect<never, InvalidPushError>) | undefined
     >(undefined)
+    const failPullCounterRef = yield* SubscriptionRef.make(0)
+    const failPullEffectRef = yield* SubscriptionRef.make<(() => Effect.Effect<never, InvalidPullError>) | undefined>(
+      undefined,
+    )
 
     const makeSyncBackend = Effect.gen(function* () {
       const nonLiveChunkSize = Math.max(1, options?.nonLiveChunkSize ?? 100)
@@ -58,59 +64,79 @@ export const makeMockSyncBackend = (
         connect: SubscriptionRef.set(syncIsConnectedRef, true),
         ping: Effect.void,
         pull: (cursor, options) =>
-          (options?.live
-            ? Stream.concat(
-                Stream.make(SyncBackend.pullResItemEmpty()),
-                Stream.fromQueue(syncPullQueue).pipe(
-                  Stream.chunks,
-                  Stream.map((chunk) => ({
-                    batch: [...chunk].map((eventEncoded) => ({ eventEncoded, metadata: Option.none() })),
-                    pageInfo: SyncBackend.pageInfoNoMore,
-                  })),
-                ),
-              )
-            : Stream.fromEffect(
-                Effect.sync(() => {
-                  const lastSeen = cursor.pipe(
-                    Option.match({
-                      onNone: () => EventSequenceNumber.Client.ROOT.global,
-                      onSome: (_) => _.eventSequenceNumber,
-                    }),
+          Stream.fromEffect(
+            Effect.gen(function* () {
+              // Check for simulated pull failures
+              const remaining = yield* SubscriptionRef.get(failPullCounterRef)
+              if (remaining > 0) {
+                const maybeFail = yield* SubscriptionRef.get(failPullEffectRef)
+                yield* SubscriptionRef.set(failPullCounterRef, remaining - 1)
+                if (maybeFail) {
+                  return yield* maybeFail()
+                }
+                return yield* new InvalidPullError({
+                  cause: new UnknownError({ cause: new Error('MockSyncBackend: simulated pull failure') }),
+                })
+              }
+            }),
+          ).pipe(
+            Stream.flatMap(() =>
+              options?.live
+                ? Stream.concat(
+                    Stream.make(SyncBackend.pullResItemEmpty()),
+                    Stream.fromQueue(syncPullQueue).pipe(
+                      Stream.chunks,
+                      Stream.map((chunk) => ({
+                        batch: [...chunk].map((eventEncoded) => ({ eventEncoded, metadata: Option.none() })),
+                        pageInfo: SyncBackend.pageInfoNoMore,
+                      })),
+                    ),
                   )
-                  // All events with seqNum greater than lastSeen
-                  const slice = allEventsRef.current.filter((e) => e.seqNum > lastSeen)
-                  // Split into configured chunk size
-                  const chunks: { events: LiveStoreEvent.Global.Encoded[]; remaining: number }[] = []
-                  for (let i = 0; i < slice.length; i += nonLiveChunkSize) {
-                    const end = Math.min(i + nonLiveChunkSize, slice.length)
-                    const remaining = Math.max(slice.length - end, 0)
-                    chunks.push({ events: slice.slice(i, end), remaining })
-                  }
-                  if (chunks.length === 0) {
-                    chunks.push({ events: [], remaining: 0 })
-                  }
-                  return chunks
-                }),
-              ).pipe(
-                Stream.flatMap((chunks) =>
-                  Stream.fromIterable(chunks).pipe(
-                    Stream.map(({ events, remaining }) => ({
-                      batch: events.map((eventEncoded) => ({ eventEncoded, metadata: Option.none() })),
-                      pageInfo: remaining > 0 ? SyncBackend.pageInfoMoreKnown(remaining) : SyncBackend.pageInfoNoMore,
-                    })),
+                : Stream.fromEffect(
+                    Effect.sync(() => {
+                      const lastSeen = cursor.pipe(
+                        Option.match({
+                          onNone: () => EventSequenceNumber.Client.ROOT.global,
+                          onSome: (_) => _.eventSequenceNumber,
+                        }),
+                      )
+                      // All events with seqNum greater than lastSeen
+                      const slice = allEventsRef.current.filter((e) => e.seqNum > lastSeen)
+                      // Split into configured chunk size
+                      const chunks: { events: LiveStoreEvent.Global.Encoded[]; remaining: number }[] = []
+                      for (let i = 0; i < slice.length; i += nonLiveChunkSize) {
+                        const end = Math.min(i + nonLiveChunkSize, slice.length)
+                        const remaining = Math.max(slice.length - end, 0)
+                        chunks.push({ events: slice.slice(i, end), remaining })
+                      }
+                      if (chunks.length === 0) {
+                        chunks.push({ events: [], remaining: 0 })
+                      }
+                      return chunks
+                    }),
+                  ).pipe(
+                    Stream.flatMap((chunks) =>
+                      Stream.fromIterable(chunks).pipe(
+                        Stream.map(({ events, remaining }) => ({
+                          batch: events.map((eventEncoded) => ({ eventEncoded, metadata: Option.none() })),
+                          pageInfo:
+                            remaining > 0 ? SyncBackend.pageInfoMoreKnown(remaining) : SyncBackend.pageInfoNoMore,
+                        })),
+                      ),
+                    ),
                   ),
-                ),
-              )
-          ).pipe(Stream.withSpan('MockSyncBackend:pull', { parent: span })),
+            ),
+            Stream.withSpan('MockSyncBackend:pull', { parent: span }),
+          ),
         push: (batch) =>
           Effect.gen(function* () {
             yield* validatePushPayload(batch, syncEventSequenceNumberRef.current)
 
-            const remaining = yield* SubscriptionRef.get(failCounterRef)
+            const remaining = yield* SubscriptionRef.get(failPushCounterRef)
             if (remaining > 0) {
-              const maybeFail = yield* SubscriptionRef.get(failEffectRef)
+              const maybeFail = yield* SubscriptionRef.get(failPushEffectRef)
               // decrement counter first
-              yield* SubscriptionRef.set(failCounterRef, remaining - 1)
+              yield* SubscriptionRef.set(failPushCounterRef, remaining - 1)
               if (maybeFail) {
                 return yield* maybeFail(batch)
               }
@@ -167,8 +193,14 @@ export const makeMockSyncBackend = (
       error?: (batch: ReadonlyArray<LiveStoreEvent.Global.Encoded>) => Effect.Effect<never, InvalidPushError>,
     ) =>
       Effect.gen(function* () {
-        yield* SubscriptionRef.set(failCounterRef, count)
-        yield* SubscriptionRef.set(failEffectRef, error)
+        yield* SubscriptionRef.set(failPushCounterRef, count)
+        yield* SubscriptionRef.set(failPushEffectRef, error)
+      })
+
+    const failNextPulls = (count: number, error?: () => Effect.Effect<never, InvalidPullError>) =>
+      Effect.gen(function* () {
+        yield* SubscriptionRef.set(failPullCounterRef, count)
+        yield* SubscriptionRef.set(failPullEffectRef, error)
       })
 
     return {
@@ -180,5 +212,6 @@ export const makeMockSyncBackend = (
       makeSyncBackend,
       advance,
       failNextPushes,
+      failNextPulls,
     }
   }).pipe(Effect.withSpanScoped('MockSyncBackend'))

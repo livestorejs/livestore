@@ -19,10 +19,12 @@ import {
   SubscriptionRef,
 } from '@livestore/utils/effect'
 import type * as otel from '@opentelemetry/api'
-import { type IntentionalShutdownCause, type MaterializeError, type SqliteDb, UnknownError } from '../adapter-types.ts'
+import { type MaterializeError, type SqliteDb, UnknownError } from '../adapter-types.ts'
+import { IntentionalShutdownCause } from '../errors.ts'
 import { makeMaterializerHash } from '../materializer-helper.ts'
 import type { LiveStoreSchema } from '../schema/mod.ts'
 import { EventSequenceNumber, LiveStoreEvent, resolveEventDef, SystemTables } from '../schema/mod.ts'
+import { EVENTLOG_META_TABLE, SYNC_STATUS_TABLE } from '../schema/state/sqlite/system-tables/eventlog-tables.ts'
 import {
   type InvalidPullError,
   type InvalidPushError,
@@ -83,6 +85,7 @@ export const makeLeaderSyncProcessor = ({
   initialBlockingSyncContext,
   initialSyncState,
   onError,
+  onBackendIdMismatch,
   livePull,
   params,
   testing,
@@ -93,6 +96,8 @@ export const makeLeaderSyncProcessor = ({
   /** Initial sync state rehydrated from the persisted eventlog or initial sync state */
   initialSyncState: SyncState.SyncState
   onError: 'shutdown' | 'ignore'
+  /** What to do when the sync backend identity has changed (backend was reset) */
+  onBackendIdMismatch: 'reset' | 'shutdown' | 'ignore'
   params: {
     /**
      * Maximum number of local events to process per batch cycle.
@@ -302,6 +307,53 @@ export const makeLeaderSyncProcessor = ({
         >,
       ) =>
         Effect.gen(function* () {
+          const { dbEventlog, dbState } = yield* LeaderThreadCtx
+
+          // Check if this is a BackendIdMismatchError
+          const isBackendIdMismatch =
+            Cause.isFailType(cause) &&
+            (cause.error._tag === 'InvalidPullError' || cause.error._tag === 'InvalidPushError') &&
+            cause.error.cause._tag === 'BackendIdMismatchError'
+
+          if (isBackendIdMismatch) {
+            if (onBackendIdMismatch === 'reset') {
+              yield* Effect.logWarning(
+                'Sync backend identity changed (backend was reset). Clearing local storage and shutting down.',
+                { cause: cause.error.cause },
+              )
+
+              // Clear local databases so the client can start fresh on next boot
+              yield* clearLocalDatabases({ dbEventlog, dbState })
+
+              // Send shutdown signal with special reason
+              yield* shutdownChannel
+                .send(IntentionalShutdownCause.make({ reason: 'backend-id-mismatch' }))
+                .pipe(Effect.orDie)
+
+              return yield* Effect.die(cause)
+            } else if (onBackendIdMismatch === 'shutdown') {
+              yield* Effect.logWarning(
+                'Sync backend identity changed (backend was reset). Shutting down without clearing local storage.',
+                { cause: cause.error.cause },
+              )
+
+              const errorToSend = Cause.isFailType(cause) ? cause.error : UnknownError.make({ cause })
+              yield* shutdownChannel.send(errorToSend).pipe(Effect.orDie)
+
+              return yield* Effect.die(cause)
+            } else {
+              // ignore
+              if (LS_DEV) {
+                yield* Effect.logDebug(
+                  'Ignoring BackendIdMismatchError (sync backend was reset but client continues with stale data)',
+                  Cause.pretty(cause),
+                )
+              }
+              return
+            }
+          }
+
+          // Handle other errors with existing logic
           if (onError === 'ignore') {
             if (LS_DEV) {
               yield* Effect.logDebug(
@@ -1127,5 +1179,24 @@ const validatePushBatch = (
         minimumExpectedNum: pushHead,
         providedNum: batch[0]!.seqNum,
       })
+    }
+  })
+
+/**
+ * Clears local databases (eventlog and state) so the client can start fresh on next boot.
+ * This is used when the sync backend identity has changed (i.e. backend was reset).
+ */
+const clearLocalDatabases = ({ dbEventlog, dbState }: { dbEventlog: SqliteDb; dbState: SqliteDb }) =>
+  Effect.sync(() => {
+    // Clear eventlog tables
+    dbEventlog.execute(sql`DELETE FROM ${EVENTLOG_META_TABLE}`)
+    dbEventlog.execute(sql`DELETE FROM ${SYNC_STATUS_TABLE}`)
+
+    // Drop all state tables - they'll be recreated on next boot
+    const tables = dbState.select<{ name: string }>(
+      sql`SELECT name FROM sqlite_master WHERE type='table' AND name NOT LIKE 'sqlite_%'`,
+    )
+    for (const { name } of tables) {
+      dbState.execute(`DROP TABLE IF EXISTS "${name}"`)
     }
   })
