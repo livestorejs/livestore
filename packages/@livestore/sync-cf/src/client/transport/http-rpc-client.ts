@@ -166,7 +166,9 @@ export const makeHttpSync =
             : identity,
           Stream.tap((res) => backendIdHelper.lazySet(res.backendId)),
           Stream.map((res) => omit(res, ['backendId'])),
-          Stream.mapError((cause) => (cause._tag === 'InvalidPullError' ? cause : InvalidPullError.make({ cause }))),
+          Stream.mapError((cause) =>
+            cause._tag === 'InvalidPullError' ? cause : InvalidPullError.make({ cause: new UnknownError({ cause }) }),
+          ),
           Stream.withSpan('http-sync-client:pull'),
         )
 

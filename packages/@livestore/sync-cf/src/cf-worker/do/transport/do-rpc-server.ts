@@ -1,4 +1,4 @@
-import { InvalidPullError, InvalidPushError } from '@livestore/common'
+import { InvalidPullError, InvalidPushError, UnknownError } from '@livestore/common'
 import { type CfTypes, toDurableObjectHandler } from '@livestore/common-cf'
 import {
   Effect,
@@ -58,7 +58,9 @@ export const createDoRpcHandler = (
             rpcRequestId: Headers.get(headers, 'x-rpc-request-id').pipe(Option.getOrThrow),
           })),
           Stream.provideLayer(DoCtx.Default({ ...input, from: { storeId: req.storeId } })),
-          Stream.mapError((cause) => (cause._tag === 'InvalidPullError' ? cause : InvalidPullError.make({ cause }))),
+          Stream.mapError((cause) =>
+            cause._tag === 'InvalidPullError' ? cause : InvalidPullError.make({ cause: new UnknownError({ cause }) }),
+          ),
           Stream.tapErrorCause(Effect.log),
         ),
       'SyncDoRpc.Push': (req) =>

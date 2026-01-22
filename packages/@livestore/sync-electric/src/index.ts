@@ -230,7 +230,9 @@ export const makeSyncBackend =
           if (resp.status === 401) {
             const body = yield* resp.text.pipe(Effect.catchAll(() => Effect.succeed('-')))
             return yield* InvalidPullError.make({
-              cause: new Error(`Unauthorized (401): Couldn't connect to ElectricSQL: ${body}`),
+              cause: new UnknownError({
+                cause: new Error(`Unauthorized (401): Couldn't connect to ElectricSQL: ${body}`),
+              }),
             })
           } else if (resp.status === 400) {
             // Electric returns 400 when table doesn't exist
@@ -251,7 +253,7 @@ export const makeSyncBackend =
           } else if (resp.status < 200 || resp.status >= 300) {
             const body = yield* resp.text
             return yield* InvalidPullError.make({
-              cause: new Error(`Unexpected status code: ${resp.status}: ${body}`),
+              cause: new UnknownError({ cause: new Error(`Unexpected status code: ${resp.status}: ${body}`) }),
             })
           }
 
@@ -294,7 +296,9 @@ export const makeSyncBackend =
           return Option.some([items, Option.some(nextHandle)] as const)
         }).pipe(
           Effect.scoped,
-          Effect.mapError((cause) => (cause._tag === 'InvalidPullError' ? cause : InvalidPullError.make({ cause }))),
+          Effect.mapError((cause) =>
+            cause._tag === 'InvalidPullError' ? cause : InvalidPullError.make({ cause: new UnknownError({ cause }) }),
+          ),
           Effect.withSpan('electric-provider:runPull', { attributes: { handle, live } }),
         )
 
