@@ -1,4 +1,4 @@
-import { InvalidPullError, InvalidPushError } from '@livestore/common'
+import { InvalidPullError, InvalidPushError, UnknownError } from '@livestore/common'
 import { WsContext } from '@livestore/common-cf'
 import { Effect, identity, Layer, RpcServer, Schema, Stream } from '@livestore/utils/effect'
 import { SyncWsRpc } from '../../../common/ws-rpc-schema.ts'
@@ -16,7 +16,9 @@ export const makeRpcServer = ({ doSelf, doOptions }: Omit<DoCtxInput, 'from'>) =
           // Needed to keep the stream alive on the client side for phase 2 (i.e. not send the `Exit` stream RPC message)
           req.live ? Stream.concat(Stream.never) : identity,
           Stream.provideLayer(DoCtx.Default({ doSelf, doOptions, from: { storeId: req.storeId } })),
-          Stream.mapError((cause) => (cause._tag === 'InvalidPullError' ? cause : InvalidPullError.make({ cause }))),
+          Stream.mapError((cause) =>
+            cause._tag === 'InvalidPullError' ? cause : InvalidPullError.make({ cause: new UnknownError({ cause }) }),
+          ),
         )
       }).pipe(Stream.unwrap),
     'SyncWsRpc.Push': (req) =>

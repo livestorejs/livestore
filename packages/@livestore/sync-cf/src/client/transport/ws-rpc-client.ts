@@ -147,7 +147,7 @@ export const makeWsSync =
                 ? new IsOfflineError({ cause: cause.cause })
                 : cause._tag === 'InvalidPullError'
                   ? cause
-                  : InvalidPullError.make({ cause }),
+                  : InvalidPullError.make({ cause: new UnknownError({ cause }) }),
             ),
             Stream.withSpan('pull'),
           ),

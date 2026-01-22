@@ -78,6 +78,13 @@ export const makeEndingPullStream = ({
     )
   }).pipe(
     Stream.unwrap,
-    Stream.mapError((cause) => InvalidPullError.make({ cause })),
+    Stream.mapError((cause) =>
+      InvalidPullError.make({
+        cause:
+          cause._tag === 'BackendIdMismatchError' || cause._tag === 'LiveStore.UnknownError'
+            ? cause
+            : new UnknownError({ cause }),
+      }),
+    ),
     Stream.withSpan('cloudflare-provider:pull'),
   )

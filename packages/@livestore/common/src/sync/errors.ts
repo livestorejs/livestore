@@ -24,7 +24,7 @@ export class InvalidPushError extends Schema.TaggedError<InvalidPushError>()('In
 }) {}
 
 export class InvalidPullError extends Schema.TaggedError<InvalidPullError>()('InvalidPullError', {
-  cause: Schema.Defect,
+  cause: Schema.Union(UnknownError, BackendIdMismatchError),
 }) {}
 
 export class LeaderAheadError extends Schema.TaggedError<LeaderAheadError>()('LeaderAheadError', {

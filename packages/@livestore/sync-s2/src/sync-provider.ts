@@ -145,7 +145,9 @@ export const makeSyncBackend =
                 const evt = msg.event.toLowerCase()
                 if (evt === 'ping') return Option.none()
                 if (evt === 'error') {
-                  return yield* new InvalidPullError({ cause: new Error(`SSE error: ${msg.data}`) })
+                  return yield* new InvalidPullError({
+                    cause: new UnknownError({ cause: new Error(`SSE error: ${msg.data}`) }),
+                  })
                 }
                 if (evt === 'batch') {
                   const readBatch = yield* Schema.decode(Schema.parseJson(HttpClientGenerated.ReadBatch))(msg.data)
@@ -177,7 +179,9 @@ export const makeSyncBackend =
               }),
             ),
             Stream.filterMap((_) => _), // filter out Option.none()
-            Stream.mapError((cause) => (cause._tag === 'InvalidPullError' ? cause : new InvalidPullError({ cause }))),
+            Stream.mapError((cause) =>
+              cause._tag === 'InvalidPullError' ? cause : new InvalidPullError({ cause: new UnknownError({ cause }) }),
+            ),
             Stream.retry(retry?.pull ?? defaultRetry),
           )
       }
