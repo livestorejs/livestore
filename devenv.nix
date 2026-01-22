@@ -17,7 +17,50 @@ let
   localTaskModules = {
     lint = import ./nix/devenv-modules/tasks/lint.nix;
     ts = ./nix/devenv-modules/tasks/ts.nix;
+    bun = import ./nix/devenv-modules/tasks/bun.nix;
   };
+
+  # All packages with bun.lock files (for per-package install tasks)
+  bunPackages = [
+    # packages/@livestore
+    "packages/@livestore/adapter-cloudflare"
+    "packages/@livestore/adapter-expo"
+    "packages/@livestore/adapter-node"
+    "packages/@livestore/adapter-web"
+    "packages/@livestore/cli"
+    "packages/@livestore/common"
+    "packages/@livestore/common-cf"
+    "packages/@livestore/devtools-expo"
+    "packages/@livestore/devtools-web-common"
+    "packages/@livestore/effect-playwright"
+    "packages/@livestore/graphql"
+    "packages/@livestore/livestore"
+    "packages/@livestore/react"
+    "packages/@livestore/solid"
+    "packages/@livestore/sqlite-wasm"
+    "packages/@livestore/svelte"
+    "packages/@livestore/sync-cf"
+    "packages/@livestore/sync-electric"
+    "packages/@livestore/sync-s2"
+    "packages/@livestore/utils"
+    "packages/@livestore/utils-dev"
+    "packages/@livestore/wa-sqlite"
+    "packages/@livestore/webmesh"
+    # packages/@local
+    "packages/@local/astro-tldraw"
+    "packages/@local/astro-twoslash-code"
+    "packages/@local/shared"
+    # tests
+    "tests/integration"
+    "tests/package-common"
+    "tests/perf"
+    "tests/perf-eventlog"
+    "tests/sync-provider"
+    "tests/wa-sqlite"
+    # other
+    "docs"
+    "scripts"
+  ];
 
   # Explicit glob patterns for execIfModified (avoids node_modules traversal)
   execIfModifiedPatterns = [
@@ -65,6 +108,8 @@ in
     (localTaskModules.lint {
       inherit execIfModifiedPatterns geniePatterns;
     })
+    # Per-package bun install tasks
+    (localTaskModules.bun { packages = bunPackages; })
   ];
 
   packages = [
