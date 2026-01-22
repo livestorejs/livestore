@@ -43,6 +43,11 @@ import type {
 } from './store-types.ts'
 import { StoreInternalsSymbol } from './store-types.ts'
 
+declare global {
+  /** Store instances for console debugging */
+  var __debugLiveStore: Record<string, Store<any, any>> | undefined
+}
+
 /**
  * @deprecated Use `makeStoreContext()` from `@livestore/livestore/effect` instead.
  * This service doesn't preserve schema types. See the Effect integration docs for migration.
