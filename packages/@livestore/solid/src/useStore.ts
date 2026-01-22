@@ -1,4 +1,3 @@
-import { every, when } from '@bigmistqke/solid-whenever'
 import type { RowQuery, SessionIdSymbol } from '@livestore/common'
 import { exposeStoreForDebugging } from '@livestore/common'
 import type { LiveStoreSchema, State } from '@livestore/common/schema'
@@ -9,6 +8,7 @@ import { useStoreRegistry } from './StoreRegistryContext.tsx'
 import { type UseClientDocumentResult, useClientDocument } from './useClientDocument.ts'
 import { useQuery } from './useQuery.ts'
 import { type AccessorMaybe, resolve } from './utils.ts'
+import { every, when } from './whenever.ts'
 
 /**
  * Solid-specific methods added to the store Resource returned by `useStore()`.
