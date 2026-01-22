@@ -27,6 +27,10 @@ export const name = 'S2 (hosted)'
 
 export const prepare = Effect.void
 
+export const liteName = 'S2-Lite'
+
+export const litePrepare = Effect.void
+
 export type ProviderSpecific = {
   appendRaw: (storeId: string, bodies: string[]) => Effect.Effect<void>
   failNextAppend: (storeId: string, count: number) => Effect.Effect<void>
@@ -110,6 +114,71 @@ export const layer: SyncProviderLayer = Layer.scoped(
   }),
 ).pipe(UnknownError.mapToUnknownErrorLayer)
 
+export const liteLayer: SyncProviderLayer = Layer.scoped(
+  SyncProviderImpl,
+  Effect.gen(function* () {
+    const { endpointPort } = yield* startS2LiteProxy
+
+    return {
+      makeProvider: makeSyncBackend({ endpoint: `http://localhost:${endpointPort}` }),
+      turnBackendOffline: Effect.log('TODO implement turnBackendOffline'),
+      turnBackendOnline: Effect.log('TODO implement turnBackendOnline'),
+      providerSpecific: {
+        appendRaw: (storeId: string, bodies: string[]) =>
+          Effect.gen(function* () {
+            const http = yield* HttpClient.HttpClient
+            const req = HttpClientRequest.post(`http://localhost:${endpointPort}/_test/append-raw`).pipe(
+              HttpClientRequest.setHeader('content-type', 'application/json'),
+              HttpClientRequest.bodyUnsafeJson({ storeId, bodies }),
+            )
+            yield* http
+              .pipe(HttpClient.filterStatusOk)
+              .execute(req)
+              .pipe(
+                Effect.andThen((res) => res.text),
+                Effect.retry(Schedule.exponentialBackoff10Sec),
+                Effect.withSpan('s2-lite-provider:append-raw-request', {
+                  attributes: { storeId, recordCount: bodies.length },
+                }),
+              )
+          }),
+        failNextAppend: (storeId: string, count: number) =>
+          Effect.gen(function* () {
+            const http = yield* HttpClient.HttpClient
+            const req = HttpClientRequest.post(`http://localhost:${endpointPort}/_test/fail-next-append`).pipe(
+              HttpClientRequest.setHeader('content-type', 'application/json'),
+              HttpClientRequest.bodyUnsafeJson({ storeId, count }),
+            )
+            yield* http
+              .pipe(HttpClient.filterStatusOk)
+              .execute(req)
+              .pipe(
+                Effect.andThen((res) => res.text),
+                Effect.retry(Schedule.exponentialBackoff10Sec),
+                Effect.withSpan('s2-lite-provider:fail-next-append-request', { attributes: { storeId, count } }),
+              )
+          }),
+        failNextRead: (storeId: string, count: number) =>
+          Effect.gen(function* () {
+            const http = yield* HttpClient.HttpClient
+            const req = HttpClientRequest.post(`http://localhost:${endpointPort}/_test/fail-next-read`).pipe(
+              HttpClientRequest.setHeader('content-type', 'application/json'),
+              HttpClientRequest.bodyUnsafeJson({ storeId, count }),
+            )
+            yield* http
+              .pipe(HttpClient.filterStatusOk)
+              .execute(req)
+              .pipe(
+                Effect.andThen((res) => res.text),
+                Effect.retry(Schedule.exponentialBackoff10Sec),
+                Effect.withSpan('s2-lite-provider:fail-next-read-request', { attributes: { storeId, count } }),
+              )
+          }),
+      },
+    }
+  }),
+).pipe(UnknownError.mapToUnknownErrorLayer)
+
 const startApiProxy = Effect.gen(function* () {
   const endpointPort = yield* getFreePort
   const basin = `ls-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`
@@ -155,6 +224,55 @@ const startApiProxy = Effect.gen(function* () {
   )
 
   return { endpointPort, basin, accountClient }
+})
+
+const startS2LiteProxy = Effect.gen(function* () {
+  const endpointPort = yield* getFreePort
+  const basin = `ls-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`
+  const s2LiteEndpoint = process.env.S2_LITE_ENDPOINT ?? 'http://localhost:4566'
+  const s2LiteApiBase = `${s2LiteEndpoint}/v1`
+
+  const s2Config: S2Helpers.S2Config = {
+    basin,
+    token: 'unused',
+    accountBase: s2LiteApiBase,
+    basinBase: s2LiteApiBase,
+    lite: true,
+  }
+
+  const httpClient = yield* HttpClient.HttpClient.pipe(
+    Effect.andThen(
+      HttpClient.mapRequest(HttpClientRequest.setHeaders({ Authorization: 'Bearer unused', 's2-basin': basin })),
+    ),
+  )
+
+  const basinClient = S2Sync.HttpClientGenerated.make(httpClient, {
+    transformClient: (client) =>
+      Effect.succeed(
+        client.pipe(HttpClient.mapRequest(HttpClientRequest.prependUrl(S2Helpers.getBasinUrl(s2Config, '')))),
+      ),
+  })
+
+  yield* Effect.tryPromise(() =>
+    fetch(`${s2LiteApiBase}/basins`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ basin }),
+    }),
+  ).pipe(
+    Effect.retry(Schedule.exponentialBackoff10Sec),
+    Effect.withSpan('s2-lite-provider:create-basin', { attributes: { basin } }),
+  )
+
+  yield* makeRouter({ s2Config, basinClient }).pipe(
+    HttpServer.serve(),
+    Layer.provide(PlatformNode.NodeHttpServer.layer(() => http.createServer(), { port: endpointPort })),
+    Layer.launch,
+    Effect.tapCauseLogPretty,
+    Effect.forkScoped,
+  )
+
+  return { endpointPort }
 })
 
 const createdStreams = new Set<string>()

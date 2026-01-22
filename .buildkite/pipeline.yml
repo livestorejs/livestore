@@ -48,7 +48,7 @@ steps:
         provider:
           - mock
           - electric
-          - s2
+          - s2-lite
           - cf-http-d1
           - cf-http-do
           - cf-ws-d1
@@ -63,9 +63,16 @@ steps:
         OTEL_EXPORTER_OTLP_HEADERS="Authorization=Basic $(printf "%s:%s" "$GRAFANA_CLOUD_OTLP_INSTANCE_ID" "$GRAFANA_CLOUD_OTLP_API_KEY" | base64 | tr -d "\n")"
         export OTEL_EXPORTER_OTLP_HEADERS
 
-        if [ "{{matrix.provider}}" = "s2" ] && [ -z "${S2_ACCESS_TOKEN:-}" ]; then
-          echo "Skipping S2 sync-provider tests: S2_ACCESS_TOKEN not set"
-          exit 0
+        if [ "{{matrix.provider}}" = "s2-lite" ]; then
+          docker run -d --name s2-lite -p 4566:80 ghcr.io/s2-streamstore/s2-lite
+          for i in $(seq 1 30); do
+            if curl -sf http://localhost:4566/ping > /dev/null 2>&1; then
+              echo "s2-lite is ready"
+              break
+            fi
+            echo "Waiting for s2-lite... ($i/30)"
+            sleep 1
+          done
         fi
 
         direnv exec . mono test integration sync-provider --provider "{{matrix.provider}}"

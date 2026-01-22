@@ -10,6 +10,7 @@ export const providerRegistry = {
   mock: { name: MockProvider.name, layer: MockProvider.layer, prepare: MockProvider.prepare },
   electric: { name: ElectricProvider.name, layer: ElectricProvider.layer, prepare: ElectricProvider.prepare },
   s2: { name: S2Provider.name, layer: S2Provider.layer, prepare: S2Provider.prepare },
+  's2-lite': { name: S2Provider.liteName, layer: S2Provider.liteLayer, prepare: S2Provider.litePrepare },
   'cf-http-d1': CloudflareHttpProvider.d1,
   'cf-http-do': CloudflareHttpProvider.doSqlite,
   'cf-ws-d1': CloudflareWsProvider.d1,

@@ -16,7 +16,14 @@ export interface S2Config {
   accountBase?: string
   /** @default 'https://{basin}.b.aws.s2.dev/v1' */
   basinBase?: string
+  /** When true, adds S2-Basin header for s2-lite */
+  lite?: boolean
 }
+
+export const isLiteMode = (config: S2Config): boolean => config.lite === true
+
+const getBasinHeader = (config: S2Config): Record<string, string> =>
+  isLiteMode(config) ? { 's2-basin': config.basin } : {}
 
 // URL construction helpers
 export const getBasinUrl = (config: S2Config, path: string): string => {
@@ -55,14 +62,16 @@ export const getAuthHeaders = (token: string): Record<string, string> => ({
   Authorization: `Bearer ${token}`,
 })
 
-export const getSSEHeaders = (token: string): Record<string, string> => ({
-  ...getAuthHeaders(token),
+export const getSSEHeaders = (config: S2Config): Record<string, string> => ({
+  ...getAuthHeaders(config.token),
+  ...getBasinHeader(config),
   accept: 'text/event-stream',
   's2-format': 'raw',
 })
 
-export const getPushHeaders = (token: string): Record<string, string> => ({
-  ...getAuthHeaders(token),
+export const getPushHeaders = (config: S2Config): Record<string, string> => ({
+  ...getAuthHeaders(config.token),
+  ...getBasinHeader(config),
   'content-type': 'application/json',
   's2-format': 'raw',
 })
@@ -89,6 +98,7 @@ export const ensureStream = async (config: S2Config, stream: string): Promise<vo
       method: 'POST',
       headers: {
         ...getAuthHeaders(config.token),
+        ...getBasinHeader(config),
         'content-type': 'application/json',
       },
       body: JSON.stringify({ stream }),
@@ -116,13 +126,13 @@ export const buildPullRequest = ({
 
   if (args.live) {
     const url = getStreamRecordsUrl(config, streamName, { seq_num, clamp: true })
-    return { url, headers: getSSEHeaders(config.token) }
+    return { url, headers: getSSEHeaders(config) }
   } else {
     // Non-live pulls also stream over SSE. We ask S2 to return immediately when
     // the tail is reached by setting wait=0 which gives us an explicit
     // end-of-stream without requesting an arbitrarily large page size.
     const url = getStreamRecordsUrl(config, streamName, { seq_num, wait: 0, clamp: true })
-    return { url, headers: getSSEHeaders(config.token) }
+    return { url, headers: getSSEHeaders(config) }
   }
 }
 
@@ -155,7 +165,7 @@ export const buildPushRequests = ({
   return chunks.map((chunk) => ({
     url,
     method: 'POST' as const,
-    headers: getPushHeaders(config.token),
+    headers: getPushHeaders(config),
     body: JSON.stringify({ records: chunk.records }),
   }))
 }

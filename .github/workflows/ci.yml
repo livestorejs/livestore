@@ -133,7 +133,7 @@ jobs:
           [
             mock,
             electric,
-            s2,
+            s2-lite,
             cf-http-d1,
             cf-http-do,
             cf-ws-d1,
@@ -169,6 +169,20 @@ jobs:
           echo "OTEL_EXPORTER_OTLP_ENDPOINT=https://otlp-gateway-prod-us-east-2.grafana.net/otlp" >> $GITHUB_ENV
           # Disable in Vite (otherwise CORS issues)
           echo "VITE_OTEL_EXPORTER_OTLP_ENDPOINT=" >> $GITHUB_ENV
+      - name: Start s2-lite container
+        if: ${{ matrix.provider == 's2-lite' }}
+        run: |
+          docker run -d --name s2-lite -p 4566:80 ghcr.io/s2-streamstore/s2-lite
+          # Wait for s2-lite to be ready
+          for i in {1..30}; do
+            if curl -sf http://localhost:4566/ping > /dev/null 2>&1; then
+              echo "s2-lite is ready"
+              break
+            fi
+            echo "Waiting for s2-lite... ($i/30)"
+            sleep 1
+          done
+        shell: bash
       # TODO: Remove Cloudflare workaround once upstream issues are resolved:
       # - Upstream: https://github.com/cloudflare/workers-sdk/issues/11122 (Durable object hanging tests)
       # - LiveStore tracking: https://github.com/livestorejs/livestore/issues/625
