@@ -48,7 +48,7 @@ steps:
         provider:
           - mock
           - electric
-          - s2-lite
+          - s2
           - cf-http-d1
           - cf-http-do
           - cf-ws-d1
@@ -63,7 +63,7 @@ steps:
         OTEL_EXPORTER_OTLP_HEADERS="Authorization=Basic $(printf "%s:%s" "$GRAFANA_CLOUD_OTLP_INSTANCE_ID" "$GRAFANA_CLOUD_OTLP_API_KEY" | base64 | tr -d "\n")"
         export OTEL_EXPORTER_OTLP_HEADERS
 
-        if [ "{{matrix.provider}}" = "s2-lite" ]; then
+        if [ "{{matrix.provider}}" = "s2" ]; then
           docker run -d --name s2-lite -p 4566:80 ghcr.io/s2-streamstore/s2-lite
           for i in $(seq 1 30); do
             if curl -sf http://localhost:4566/ping > /dev/null 2>&1; then

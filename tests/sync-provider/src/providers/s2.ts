@@ -37,6 +37,59 @@ export type ProviderSpecific = {
   failNextRead: (storeId: string, count: number) => Effect.Effect<void>
 }
 
+const makeProviderSpecific = (endpointPort: number, spanPrefix: string): ProviderSpecific => ({
+  appendRaw: (storeId: string, bodies: string[]) =>
+    Effect.gen(function* () {
+      const http = yield* HttpClient.HttpClient
+      const req = HttpClientRequest.post(`http://localhost:${endpointPort}/_test/append-raw`).pipe(
+        HttpClientRequest.setHeader('content-type', 'application/json'),
+        HttpClientRequest.bodyUnsafeJson({ storeId, bodies }),
+      )
+      yield* http
+        .pipe(HttpClient.filterStatusOk)
+        .execute(req)
+        .pipe(
+          Effect.andThen((res) => res.text),
+          Effect.retry(Schedule.exponentialBackoff10Sec),
+          Effect.withSpan(`${spanPrefix}:append-raw-request`, {
+            attributes: { storeId, recordCount: bodies.length },
+          }),
+        )
+    }),
+  failNextAppend: (storeId: string, count: number) =>
+    Effect.gen(function* () {
+      const http = yield* HttpClient.HttpClient
+      const req = HttpClientRequest.post(`http://localhost:${endpointPort}/_test/fail-next-append`).pipe(
+        HttpClientRequest.setHeader('content-type', 'application/json'),
+        HttpClientRequest.bodyUnsafeJson({ storeId, count }),
+      )
+      yield* http
+        .pipe(HttpClient.filterStatusOk)
+        .execute(req)
+        .pipe(
+          Effect.andThen((res) => res.text),
+          Effect.retry(Schedule.exponentialBackoff10Sec),
+          Effect.withSpan(`${spanPrefix}:fail-next-append-request`, { attributes: { storeId, count } }),
+        )
+    }),
+  failNextRead: (storeId: string, count: number) =>
+    Effect.gen(function* () {
+      const http = yield* HttpClient.HttpClient
+      const req = HttpClientRequest.post(`http://localhost:${endpointPort}/_test/fail-next-read`).pipe(
+        HttpClientRequest.setHeader('content-type', 'application/json'),
+        HttpClientRequest.bodyUnsafeJson({ storeId, count }),
+      )
+      yield* http
+        .pipe(HttpClient.filterStatusOk)
+        .execute(req)
+        .pipe(
+          Effect.andThen((res) => res.text),
+          Effect.retry(Schedule.exponentialBackoff10Sec),
+          Effect.withSpan(`${spanPrefix}:fail-next-read-request`, { attributes: { storeId, count } }),
+        )
+    }),
+})
+
 export const layer: SyncProviderLayer = Layer.scoped(
   SyncProviderImpl,
   Effect.gen(function* () {
@@ -58,58 +111,7 @@ export const layer: SyncProviderLayer = Layer.scoped(
       makeProvider: makeSyncBackend({ endpoint: `http://localhost:${endpointPort}` }),
       turnBackendOffline: Effect.log('TODO implement turnBackendOffline'),
       turnBackendOnline: Effect.log('TODO implement turnBackendOnline'),
-      providerSpecific: {
-        appendRaw: (storeId: string, bodies: string[]) =>
-          Effect.gen(function* () {
-            const http = yield* HttpClient.HttpClient
-            const req = HttpClientRequest.post(`http://localhost:${endpointPort}/_test/append-raw`).pipe(
-              HttpClientRequest.setHeader('content-type', 'application/json'),
-              HttpClientRequest.bodyUnsafeJson({ storeId, bodies }),
-            )
-            yield* http
-              .pipe(HttpClient.filterStatusOk)
-              .execute(req)
-              .pipe(
-                Effect.andThen((res) => res.text),
-                Effect.retry(Schedule.exponentialBackoff10Sec),
-                Effect.withSpan('s2-provider:append-raw-request', {
-                  attributes: { storeId, recordCount: bodies.length },
-                }),
-              )
-          }),
-        failNextAppend: (storeId: string, count: number) =>
-          Effect.gen(function* () {
-            const http = yield* HttpClient.HttpClient
-            const req = HttpClientRequest.post(`http://localhost:${endpointPort}/_test/fail-next-append`).pipe(
-              HttpClientRequest.setHeader('content-type', 'application/json'),
-              HttpClientRequest.bodyUnsafeJson({ storeId, count }),
-            )
-            yield* http
-              .pipe(HttpClient.filterStatusOk)
-              .execute(req)
-              .pipe(
-                Effect.andThen((res) => res.text),
-                Effect.retry(Schedule.exponentialBackoff10Sec),
-                Effect.withSpan('s2-provider:fail-next-append-request', { attributes: { storeId, count } }),
-              )
-          }),
-        failNextRead: (storeId: string, count: number) =>
-          Effect.gen(function* () {
-            const http = yield* HttpClient.HttpClient
-            const req = HttpClientRequest.post(`http://localhost:${endpointPort}/_test/fail-next-read`).pipe(
-              HttpClientRequest.setHeader('content-type', 'application/json'),
-              HttpClientRequest.bodyUnsafeJson({ storeId, count }),
-            )
-            yield* http
-              .pipe(HttpClient.filterStatusOk)
-              .execute(req)
-              .pipe(
-                Effect.andThen((res) => res.text),
-                Effect.retry(Schedule.exponentialBackoff10Sec),
-                Effect.withSpan('s2-provider:fail-next-read-request', { attributes: { storeId, count } }),
-              )
-          }),
-      },
+      providerSpecific: makeProviderSpecific(endpointPort, 's2-provider'),
     }
   }),
 ).pipe(UnknownError.mapToUnknownErrorLayer)
@@ -123,58 +125,7 @@ export const liteLayer: SyncProviderLayer = Layer.scoped(
       makeProvider: makeSyncBackend({ endpoint: `http://localhost:${endpointPort}` }),
       turnBackendOffline: Effect.log('TODO implement turnBackendOffline'),
       turnBackendOnline: Effect.log('TODO implement turnBackendOnline'),
-      providerSpecific: {
-        appendRaw: (storeId: string, bodies: string[]) =>
-          Effect.gen(function* () {
-            const http = yield* HttpClient.HttpClient
-            const req = HttpClientRequest.post(`http://localhost:${endpointPort}/_test/append-raw`).pipe(
-              HttpClientRequest.setHeader('content-type', 'application/json'),
-              HttpClientRequest.bodyUnsafeJson({ storeId, bodies }),
-            )
-            yield* http
-              .pipe(HttpClient.filterStatusOk)
-              .execute(req)
-              .pipe(
-                Effect.andThen((res) => res.text),
-                Effect.retry(Schedule.exponentialBackoff10Sec),
-                Effect.withSpan('s2-lite-provider:append-raw-request', {
-                  attributes: { storeId, recordCount: bodies.length },
-                }),
-              )
-          }),
-        failNextAppend: (storeId: string, count: number) =>
-          Effect.gen(function* () {
-            const http = yield* HttpClient.HttpClient
-            const req = HttpClientRequest.post(`http://localhost:${endpointPort}/_test/fail-next-append`).pipe(
-              HttpClientRequest.setHeader('content-type', 'application/json'),
-              HttpClientRequest.bodyUnsafeJson({ storeId, count }),
-            )
-            yield* http
-              .pipe(HttpClient.filterStatusOk)
-              .execute(req)
-              .pipe(
-                Effect.andThen((res) => res.text),
-                Effect.retry(Schedule.exponentialBackoff10Sec),
-                Effect.withSpan('s2-lite-provider:fail-next-append-request', { attributes: { storeId, count } }),
-              )
-          }),
-        failNextRead: (storeId: string, count: number) =>
-          Effect.gen(function* () {
-            const http = yield* HttpClient.HttpClient
-            const req = HttpClientRequest.post(`http://localhost:${endpointPort}/_test/fail-next-read`).pipe(
-              HttpClientRequest.setHeader('content-type', 'application/json'),
-              HttpClientRequest.bodyUnsafeJson({ storeId, count }),
-            )
-            yield* http
-              .pipe(HttpClient.filterStatusOk)
-              .execute(req)
-              .pipe(
-                Effect.andThen((res) => res.text),
-                Effect.retry(Schedule.exponentialBackoff10Sec),
-                Effect.withSpan('s2-lite-provider:fail-next-read-request', { attributes: { storeId, count } }),
-              )
-          }),
-      },
+      providerSpecific: makeProviderSpecific(endpointPort, 's2-lite-provider'),
     }
   }),
 ).pipe(UnknownError.mapToUnknownErrorLayer)

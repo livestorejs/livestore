@@ -133,7 +133,7 @@ jobs:
           [
             mock,
             electric,
-            s2-lite,
+            s2,
             cf-http-d1,
             cf-http-do,
             cf-ws-d1,
@@ -170,7 +170,7 @@ jobs:
           # Disable in Vite (otherwise CORS issues)
           echo "VITE_OTEL_EXPORTER_OTLP_ENDPOINT=" >> $GITHUB_ENV
       - name: Start s2-lite container
-        if: ${{ matrix.provider == 's2-lite' }}
+        if: ${{ matrix.provider == 's2' }}
         run: |
           docker run -d --name s2-lite -p 4566:80 ghcr.io/s2-streamstore/s2-lite
           # Wait for s2-lite to be ready
@@ -187,7 +187,6 @@ jobs:
       # - Upstream: https://github.com/cloudflare/workers-sdk/issues/11122 (Durable object hanging tests)
       # - LiveStore tracking: https://github.com/livestorejs/livestore/issues/625
       - name: Run sync-provider tests for ${{ matrix.provider }}
-        if: ${{ matrix.provider != 's2' || env.S2_ACCESS_TOKEN != '' }}
         run: |
           if [[ "${{ matrix.provider }}" == cf-* ]]; then
             if mono test integration sync-provider --provider ${{ matrix.provider }}; then
@@ -199,9 +198,6 @@ jobs:
           else
             mono test integration sync-provider --provider ${{ matrix.provider }}
           fi
-      - name: Skip S2 sync-provider tests (missing S2_ACCESS_TOKEN)
-        if: ${{ matrix.provider == 's2' && env.S2_ACCESS_TOKEN == '' }}
-        run: 'echo "Skipping S2 sync-provider tests: S2_ACCESS_TOKEN not set"'
 
   test-integration-playwright:
     strategy:
