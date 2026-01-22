@@ -23,10 +23,10 @@
         "nixpkgsUnstable": "nixpkgsUnstable"
       },
       "locked": {
-        "lastModified": 1769076879,
+        "lastModified": 1769099425,
         "owner": "overengineeringstudio",
         "repo": "effect-utils",
-        "rev": "64eeb06255c735df3b5953351c72a1c4c075c3fd",
+        "rev": "85884a370cd75080c1fcb21dce37a47483a6496c",
         "type": "github"
       },
       "original": {
@@ -127,10 +127,10 @@
     },
     "nixpkgs": {
       "locked": {
-        "lastModified": 1769075790,
+        "lastModified": 1769097597,
         "owner": "NixOS",
         "repo": "nixpkgs",
-        "rev": "cab852429863d64846b4204337f4988d1119222f",
+        "rev": "66b5c713b02b44cffc13d2d71148341c1569cdaf",
         "type": "github"
       },
       "original": {

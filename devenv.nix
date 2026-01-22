@@ -20,8 +20,10 @@ let
     bun = import ./nix/devenv-modules/tasks/bun.nix;
   };
 
-  # All packages with bun.lock files (for per-package install tasks)
-  bunPackages = [
+  # All packages for per-package install tasks
+  # NOTE: Using pnpm instead of bun due to bun bugs. See effect-utils/context/workarounds/bun-issues.md
+  # TODO: Switch back to bun:install once bun file: dependency issues are fixed
+  installPackages = [
     # packages/@livestore
     "packages/@livestore/adapter-cloudflare"
     "packages/@livestore/adapter-expo"
@@ -108,11 +110,17 @@ in
     (localTaskModules.lint {
       inherit execIfModifiedPatterns geniePatterns;
     })
-    # Per-package bun install tasks
-    (localTaskModules.bun { packages = bunPackages; })
+    # Per-package pnpm install tasks (using pnpm due to bun bugs, see effect-utils/context/workarounds/bun-issues.md)
+    # TODO: Switch back to bun:install once bun file: dependency issues are fixed
+    (taskModules.pnpm { packages = installPackages; })
+    # Setup task (auto-runs in enterShell)
+    (taskModules.setup {
+      tasks = [ "pnpm:install" "genie:run" "ts:build" ];
+    })
   ];
 
   packages = [
+    pkgs.pnpm
     pkgs.bun
     pkgs.nodejs_24
     pkgs.typescript
@@ -201,9 +209,8 @@ in
 
     export NODE_OPTIONS="--disable-warning=ExperimentalWarning"
 
-    if [ -z "''${DEVENV_SKIP_SETUP:-}" ]; then
-      bun run "$WORKSPACE_ROOT/scripts/standalone/setup.ts" || true
-    fi
+    # Setup runs via setup module (taskModules.setup) - auto-wired to enterShell
+
     [ -f "$WORKSPACE_ROOT/scripts/completions.sh" ] && source "$WORKSPACE_ROOT/scripts/completions.sh"
 
     if [ -d "$WORKSPACE_ROOT/scripts/.completions/zsh/site-functions" ]; then
