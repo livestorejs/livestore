@@ -11,13 +11,59 @@ let
     inherit pkgs;
     pkgsUnstable = pkgs;
   };
+  taskModules = inputs.effect-utils.devenvModules.tasks;
+  
+  # Local task modules
+  localTaskModules = {
+    lint = import ./nix/devenv-modules/tasks/lint.nix;
+    ts = ./nix/devenv-modules/tasks/ts.nix;
+  };
+
+  # Explicit glob patterns for execIfModified (avoids node_modules traversal)
+  execIfModifiedPatterns = [
+    # packages
+    "packages/@livestore/*/src/**/*.ts"
+    "packages/@local/*/src/**/*.ts"
+    # examples
+    "examples/*/src/**/*.ts"
+    "examples/*/src/**/*.tsx"
+    # tests
+    "tests/*/src/**/*.ts"
+    # scripts
+    "scripts/src/**/*.ts"
+    # docs
+    "docs/src/**/*.ts"
+    "docs/src/**/*.tsx"
+  ];
+
+  # Genie file patterns for caching
+  geniePatterns = [
+    "packages/@livestore/*/*.genie.ts"
+    "packages/@local/*/*.genie.ts"
+    "tests/*/*.genie.ts"
+    "docs/*.genie.ts"
+    "*.genie.ts"
+    ".github/workflows/*.genie.ts"
+  ];
 in
 {
-  # Beads commit correlation for issue tracking
   imports = [
+    # Beads commit correlation for issue tracking
     (inputs.overeng-beads-public.devenvModules.beads {
       beadsPrefix = "oep";
       beadsRepoName = "overeng-beads-public";
+    })
+    # dt command for running devenv tasks
+    inputs.effect-utils.devenvModules.dt
+    # Shared task modules from effect-utils
+    taskModules.genie
+    (taskModules.check { hasTests = false; })
+    # Local ts module (uses tsconfig.dev.json instead of tsconfig.all.json)
+    localTaskModules.ts
+    (taskModules.clean { extraDirs = [ ".astro" ]; })
+    # Local lint module (livestore-specific oxfmt + oxlint config)
+    (localTaskModules.lint {
+      inherit execIfModifiedPatterns geniePatterns;
     })
   ];
 
@@ -25,6 +71,8 @@ in
     pkgs.bun
     pkgs.nodejs_24
     pkgs.typescript
+    pkgs.oxlint
+    pkgs.oxfmt
     cliPackages.genie
     cliPackages.dotdot
     pkgs.caddy
