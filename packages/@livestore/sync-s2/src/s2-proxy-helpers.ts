@@ -16,7 +16,12 @@ export interface S2Config {
   accountBase?: string
   /** @default 'https://{basin}.b.aws.s2.dev/v1' */
   basinBase?: string
-  /** When true, adds S2-Basin header for s2-lite */
+  /**
+   * When true, adds `S2-Basin` header to requests. This is required for s2-lite
+   * (the open-source self-hosted S2) which uses header-based basin routing instead
+   * of subdomain-based routing used by hosted S2.
+   * @see https://github.com/s2-streamstore/s2-lite
+   */
   lite?: boolean
 }
 
