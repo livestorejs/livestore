@@ -1,14 +1,14 @@
 /** biome-ignore-all lint/a11y/noLabelWithoutControl: TODO 🫠 */
 /** @jsxImportSource solid-js */
-import { query } from '@livestore/solid'
 import { type Component, For } from 'solid-js'
 
 import { visibleTodos$ } from './livestore/queries.ts'
 import { events, type tables } from './livestore/schema.ts'
-import { store } from './livestore/store.ts'
+import { useAppStore } from './livestore/store.ts'
 
 export const MainSection: Component = () => {
-  const todos = query(visibleTodos$, [] as (typeof tables.todos.Type)[])
+  const store = useAppStore()
+  const todos = store.useQuery(visibleTodos$)
   const todoItems = () => todos() ?? ([] as (typeof tables.todos.Type)[])
 
   const toggleTodo = ({ id, completed }: typeof tables.todos.Type) =>

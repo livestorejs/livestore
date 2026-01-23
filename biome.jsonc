@@ -129,6 +129,43 @@
           }
         }
       }
+    },
+    {
+      // Disable React hook rules for Solid.js package
+      // Solid's useContext/createSignal/etc are not React hooks and don't follow React's "rules of hooks"
+      "includes": ["packages/@livestore/solid/**"],
+      "linter": {
+        "rules": {
+          "correctness": {
+            "useHookAtTopLevel": "off",
+            "useExhaustiveDependencies": "off"
+          }
+        }
+      }
+    },
+    {
+      // Disable React hook rules for Solid.js documentation snippets
+      "includes": ["docs/src/content/_assets/code/reference/solid-integration/**"],
+      "linter": {
+        "rules": {
+          "correctness": {
+            "useHookAtTopLevel": "off",
+            "useExhaustiveDependencies": "off"
+          }
+        }
+      }
+    },
+    {
+      // Disable React hook rules for Solid.js TodoMVC example
+      "includes": ["examples/web-todomvc-solid/**"],
+      "linter": {
+        "rules": {
+          "correctness": {
+            "useHookAtTopLevel": "off",
+            "useExhaustiveDependencies": "off"
+          }
+        }
+      }
     }
   ]
 }

@@ -9,6 +9,7 @@
   },
   "dependencies": {
     "@livestore/common": "workspace:*",
+    "@livestore/framework-toolkit": "workspace:*",
     "@livestore/livestore": "workspace:*",
     "@livestore/utils": "workspace:*",
     "@opentelemetry/api": "catalog:"

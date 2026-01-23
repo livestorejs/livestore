@@ -56,3 +56,4 @@ packages/@livestore/livestore/docs
 
 # Task context files
 tasks/
+.claude/settings.local.json

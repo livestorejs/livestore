@@ -1,5 +1,7 @@
 import 'todomvc-app-css/index.css'
 
+import { StoreRegistry, StoreRegistryProvider } from '@livestore/solid'
+import { ErrorBoundary, Suspense } from 'solid-js'
 import { render } from 'solid-js/web'
 
 import App from './App.tsx'
@@ -12,4 +14,17 @@ if (import.meta.env.DEV && !(root instanceof HTMLElement)) {
   )
 }
 
-render(() => <App />, root!)
+const storeRegistry = new StoreRegistry()
+
+render(
+  () => (
+    <ErrorBoundary fallback={<div>Something went wrong</div>}>
+      <Suspense fallback={<div>Loading app...</div>}>
+        <StoreRegistryProvider storeRegistry={storeRegistry}>
+          <App />
+        </StoreRegistryProvider>
+      </Suspense>
+    </ErrorBoundary>
+  ),
+  root!,
+)

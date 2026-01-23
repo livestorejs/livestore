@@ -1,2 +1,6 @@
-export { query } from './query.ts'
-export { getStore } from './store.ts'
+export type { Dispatch, SetStateAction, SetStateActionPartial, StateSetters } from '@livestore/framework-toolkit'
+export { StoreRegistry, storeOptions } from '@livestore/livestore'
+export { LiveList, type LiveListProps } from './experimental/components/LiveList.tsx'
+export * from './StoreRegistryContext.tsx'
+export type { UseClientDocumentResult } from './useClientDocument.ts'
+export { type SolidApi, useStore, withSolidApi } from './useStore.ts'

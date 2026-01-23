@@ -1,6 +1,7 @@
 import type { RowQuery } from '@livestore/common'
 import { SessionIdSymbol } from '@livestore/common'
 import { State } from '@livestore/common/schema'
+import { removeUndefinedValues, type StateSetters, validateTableOptions } from '@livestore/framework-toolkit'
 import type { LiveQuery, LiveQueryDef, Store } from '@livestore/livestore'
 import { queryDb } from '@livestore/livestore'
 import { omitUndefineds, shouldNeverHappen } from '@livestore/utils'
@@ -116,8 +117,6 @@ export const useClientDocument: {
 
   const store = storeArg?.store ?? shouldNeverHappen(`No store provided to useClientDocument`)
 
-  // console.debug('useClientDocument', tableName, id)
-
   const idStr: string = id === SessionIdSymbol ? store.sessionId : id
 
   type QueryDef = LiveQueryDef<TTableDef['Value']>
@@ -145,54 +144,4 @@ export const useClientDocument: {
   )
 
   return [queryRef.valueRef.current, setState, idStr, queryRef.queryRcRef.value]
-}
-
-/**
- * A function that dispatches an action. Mirrors React's `Dispatch` type.
- * @typeParam A - The action type
- */
-export type Dispatch<A> = (action: A) => void
-
-/**
- * A state update that can be either a partial value or a function returning a partial value.
- * Used when the client-document table has `partialSet: true`.
- * @typeParam S - The state type
- */
-export type SetStateActionPartial<S> = Partial<S> | ((previousValue: S) => Partial<S>)
-
-/**
- * A state update that can be either a full value or a function returning a full value.
- * Mirrors React's `SetStateAction` type.
- * @typeParam S - The state type
- */
-export type SetStateAction<S> = S | ((previousValue: S) => S)
-
-/**
- * The setter function type for `useClientDocument`, determined by the table's `partialSet` option.
- *
- * - If `partialSet: false` (default), requires full state replacement
- * - If `partialSet: true`, accepts partial updates merged with existing state
- *
- * @typeParam TTableDef - The client-document table definition type
- */
-export type StateSetters<TTableDef extends State.SQLite.ClientDocumentTableDef.TraitAny> = Dispatch<
-  TTableDef[State.SQLite.ClientDocumentTableDefSymbol]['options']['partialSet'] extends false
-    ? SetStateAction<TTableDef['Value']>
-    : SetStateActionPartial<TTableDef['Value']>
->
-
-const validateTableOptions = (table: State.SQLite.TableDef<any, any>) => {
-  if (State.SQLite.tableIsClientDocumentTable(table) === false) {
-    return shouldNeverHappen(
-      `useClientDocument called on table "${table.sqliteDef.name}" which is not a client document table`,
-    )
-  }
-}
-
-const removeUndefinedValues = (value: any) => {
-  if (typeof value === 'object' && value !== null) {
-    return Object.fromEntries(Object.entries(value).filter(([_, v]) => v !== undefined))
-  }
-
-  return value
 }

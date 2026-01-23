@@ -22,7 +22,7 @@
     "solid-devtools": "^0.34.3",
     "typescript": "^5.9.2",
     "vite": "^7.2.4",
-    "vite-plugin-solid": "^2.11.8",
+    "vite-plugin-solid": "^2.11.10",
     "wrangler": "^4.42.2"
   },
   "engines": {

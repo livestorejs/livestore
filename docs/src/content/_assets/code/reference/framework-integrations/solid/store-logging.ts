@@ -1,6 +1,6 @@
 import { makePersistedAdapter } from '@livestore/adapter-web'
 import LiveStoreSharedWorker from '@livestore/adapter-web/shared-worker?sharedworker'
-import { getStore } from '@livestore/solid'
+import { useStore } from '@livestore/solid'
 import { Logger, LogLevel } from '@livestore/utils/effect'
 
 import LiveStoreWorker from './livestore/livestore.worker.ts?worker'
@@ -14,11 +14,12 @@ const adapter = makePersistedAdapter({
   sharedWorker: LiveStoreSharedWorker,
 })
 
-const _store = await getStore({
-  schema,
-  adapter,
-  storeId: 'default',
-  // Optional: swap logger and minimum log level
-  logger: Logger.prettyWithThread('window'),
-  logLevel: LogLevel.Info, // use LogLevel.None to disable logs
-})
+export const useAppStore = () =>
+  useStore({
+    schema,
+    adapter,
+    storeId: 'default',
+    // Optional: swap logger and minimum log level
+    logger: Logger.prettyWithThread('window'),
+    logLevel: LogLevel.Info, // use LogLevel.None to disable logs
+  })

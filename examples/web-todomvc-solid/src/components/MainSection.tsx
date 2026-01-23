@@ -1,10 +1,9 @@
 import { queryDb } from '@livestore/livestore'
-import { query } from '@livestore/solid'
-import { type Component, Index } from 'solid-js'
+import { type Component, For } from 'solid-js'
 
 import { uiState$ } from '../livestore/queries.ts'
 import { events, tables } from '../livestore/schema.ts'
-import { store } from '../livestore/store.ts'
+import { useAppStore } from '../livestore/store.ts'
 
 const visibleTodos$ = queryDb(
   (get) => {
@@ -18,36 +17,32 @@ const visibleTodos$ = queryDb(
 )
 
 export const MainSection: Component = () => {
+  const store = useAppStore()
+  const visibleTodos = store.useQuery(visibleTodos$)
+
   const toggleTodo = ({ id, completed }: typeof tables.todos.Type) => {
     store()?.commit(completed ? events.todoUncompleted({ id }) : events.todoCompleted({ id }))
   }
 
-  const visibleTodos = query(visibleTodos$, [])
-
   return (
     <section class="main">
       <ul class="todo-list">
-        <Index each={visibleTodos() || []}>
+        <For each={visibleTodos()}>
           {(todo) => (
-            <li onClick={() => toggleTodo(todo())}>
+            <li>
               <div class="view">
-                <label>
-                  <input title="check " type="checkbox" class="toggle" checked={todo().completed} />
-                  {todo().text}
-                </label>
+                <input type="checkbox" class="toggle" checked={todo.completed} onChange={() => toggleTodo(todo)} />
+                {/* biome-ignore lint/a11y/noLabelWithoutControl: otherwise breaks TODO MVC CSS */}
+                <label>{todo.text}</label>
                 <button
                   type="button"
-                  title="button"
                   class="destroy"
-                  onClick={(e) => {
-                    e.stopPropagation()
-                    store()?.commit(events.todoDeleted({ id: todo().id, deletedAt: new Date() }))
-                  }}
+                  onClick={() => store()?.commit(events.todoDeleted({ id: todo.id, deletedAt: new Date() }))}
                 />
               </div>
             </li>
           )}
-        </Index>
+        </For>
       </ul>
     </section>
   )

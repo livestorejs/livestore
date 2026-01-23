@@ -7,16 +7,24 @@
   },
   "dependencies": {
     "@livestore/common": "workspace:*",
+    "@livestore/framework-toolkit": "workspace:*",
     "@livestore/livestore": "workspace:*",
     "@livestore/utils": "workspace:*",
     "@opentelemetry/api": "catalog:"
   },
   "devDependencies": {
+    "@effect/vitest": "catalog:",
+    "@livestore/adapter-web": "workspace:*",
+    "@livestore/utils-dev": "workspace:*",
     "@opentelemetry/sdk-trace-base": "catalog:",
+    "@solidjs/testing-library": "^0.8.10",
+    "@testing-library/jest-dom": "^6.9.1",
+    "effect": "catalog:",
     "jsdom": "^26.1.0",
     "solid-js": "catalog:",
     "typescript": "catalog:",
     "vite": "catalog:",
+    "vite-plugin-solid": "^2.11.10",
     "vitest": "catalog:"
   },
   "files": [
@@ -36,6 +44,8 @@
   },
   "scripts": {
     "build": "tsc",
-    "test": "echo 'todo'"
+    "test": "pnpm run test:client && pnpm run test:ssr",
+    "test:client": "vitest run  --config vitest.client.config.ts",
+    "test:ssr": "vitest run --config vitest.ssr.config.ts"
   }
 }
