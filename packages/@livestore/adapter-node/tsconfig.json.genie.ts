@@ -10,7 +10,7 @@ export default tsconfigJson({
   compilerOptions: {
     ...baseTsconfigCompilerOptions,
     ...packageTsconfigCompilerOptions,
-    resolveJsonModule: true,
+    types: ['node'],
   },
   include: ['./src'],
   exclude: [...packageTsconfigExclude],

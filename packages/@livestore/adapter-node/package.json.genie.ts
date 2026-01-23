@@ -20,7 +20,13 @@ export default packageJson({
     ),
   },
   devDependencies: {
-    ...catalog.pick('@rollup/plugin-commonjs', '@rollup/plugin-node-resolve', '@rollup/plugin-terser', 'rollup'),
+    ...catalog.pick(
+      '@rollup/plugin-commonjs',
+      '@rollup/plugin-node-resolve',
+      '@rollup/plugin-terser',
+      '@types/node',
+      'rollup',
+    ),
   },
   publishConfig: {
     access: 'public',
