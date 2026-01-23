@@ -8,7 +8,13 @@ export default packageJson({
     './experimental': './src/experimental/mod.ts',
   },
   dependencies: {
-    ...catalog.pick('@livestore/common', '@livestore/livestore', '@livestore/utils', '@opentelemetry/api'),
+    ...catalog.pick(
+      '@livestore/common',
+      '@livestore/framework-toolkit',
+      '@livestore/livestore',
+      '@livestore/utils',
+      '@opentelemetry/api',
+    ),
   },
   devDependencies: {
     ...catalog.pick(

@@ -11,6 +11,9 @@ importers:
       '@livestore/common':
         specifier: link:../common
         version: link:../common
+      '@livestore/framework-toolkit':
+        specifier: link:../framework-toolkit
+        version: link:../framework-toolkit
       '@livestore/livestore':
         specifier: link:../livestore
         version: link:../livestore

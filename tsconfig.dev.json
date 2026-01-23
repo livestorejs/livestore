@@ -5,9 +5,6 @@
   "include": [],
   "references": [
     {
-      "path": "./docs"
-    },
-    {
       "path": "./docs/src/content/_assets/code"
     },
     {
@@ -66,6 +63,9 @@
     },
     {
       "path": "./packages/@livestore/effect-playwright"
+    },
+    {
+      "path": "./packages/@livestore/framework-toolkit"
     },
     {
       "path": "./packages/@livestore/graphql"

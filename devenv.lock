@@ -24,17 +24,12 @@
         ]
       },
       "locked": {
-        "lastModified": 1769169888,
-        "narHash": "sha256-bqd7xg355spFwFxNlFB8xEuS3uJRDwZhDa41z/qHifE=",
-        "owner": "overengineeringstudio",
-        "repo": "effect-utils",
-        "rev": "6cfd127312a584d3b5b3cabe76a6cff082361ea6",
-        "type": "github"
+        "path": "/Users/schickling/.megarepo/github.com/livestorejs/livestore/refs/heads/dev/.direnv/megarepo-nix/workspace//effect-utils",
+        "type": "path"
       },
       "original": {
-        "owner": "overengineeringstudio",
-        "repo": "effect-utils",
-        "type": "github"
+        "path": "/Users/schickling/.megarepo/github.com/livestorejs/livestore/refs/heads/dev/.direnv/megarepo-nix/workspace//effect-utils",
+        "type": "path"
       }
     },
     "flake-compat": {

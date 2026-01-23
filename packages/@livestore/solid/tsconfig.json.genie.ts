@@ -1,5 +1,6 @@
 import {
   baseTsconfigCompilerOptions,
+  domLib,
   packageTsconfigCompilerOptions,
   packageTsconfigExclude,
   refs,
@@ -11,9 +12,10 @@ export default tsconfigJson({
   compilerOptions: {
     ...baseTsconfigCompilerOptions,
     ...packageTsconfigCompilerOptions,
+    lib: domLib,
     ...solidJsx,
   },
   include: ['./src'],
   exclude: [...packageTsconfigExclude],
-  references: [refs.common, refs.livestore, refs.utils],
+  references: [refs.adapterWeb, refs.common, refs.frameworkToolkit, refs.livestore, refs.utils, refs.utilsDev],
 })

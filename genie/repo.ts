@@ -3,6 +3,15 @@
  *
  * Extends effect-utils catalog with livestore-specific packages.
  * Uses genie from @overeng/genie for config file generation.
+ *
+ * ## Design Decisions
+ *
+ * ### Examples are not managed by genie
+ * The `examples/` directory is intentionally excluded from genie management.
+ * Examples must remain standalone and self-contained so users can copy them
+ * directly without any genie dependencies or monorepo-specific configuration.
+ * Each example has its own package.json, tsconfig.json, etc. that are manually
+ * maintained to reflect what a real user project would look like.
  */
 
 import {
@@ -66,6 +75,7 @@ const workspaceCatalog = {
   '@livestore/sync-electric': 'link:packages/@livestore/sync-electric',
   '@livestore/cli': 'link:packages/@livestore/cli',
   '@livestore/effect-playwright': 'link:packages/@livestore/effect-playwright',
+  '@livestore/framework-toolkit': 'link:packages/@livestore/framework-toolkit',
   '@livestore/peer-deps': 'link:packages/@livestore/peer-deps',
   '@livestore/wa-sqlite': 'link:packages/@livestore/wa-sqlite',
 
@@ -97,6 +107,7 @@ const livestoreOnlyCatalog = {
 
   // SolidJS ecosystem
   'solid-js': '1.9.10',
+  '@solidjs/testing-library': '0.8.10',
 
   // Additional testing tools
   '@testing-library/dom': '10.4.1',
@@ -338,6 +349,9 @@ const livestorePackageNames = [
   'sync-electric',
   'cli',
   'effect-playwright',
+  'framework-toolkit',
+  'peer-deps',
+  'wa-sqlite',
 ] as const
 
 type LivestorePackageName = (typeof livestorePackageNames)[number]

@@ -92,7 +92,8 @@ export const makeSyncBackend =
 
       const pullEndpointHasSameOrigin =
         pullEndpoint.startsWith('/') ||
-        (globalThis.location !== undefined && globalThis.location.origin === new URL(pullEndpoint).origin)
+        ('location' in globalThis &&
+          (globalThis as { location?: { origin: string } }).location?.origin === new URL(pullEndpoint).origin)
 
       const pingTimeout = pingOptions?.requestTimeout ?? 10_000
 

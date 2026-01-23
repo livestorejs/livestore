@@ -8,7 +8,8 @@ export default tsconfigJson({
   compilerOptions: {},
   include: [],
   references: [
-    { path: './docs' },
+    // NOTE: docs is excluded from project references - use `astro check` instead
+    // { path: './docs' },
     { path: './docs/src/content/_assets/code' },
     { path: './scripts' },
     { path: './packages/@local/astro-tldraw' },
@@ -29,6 +30,7 @@ export default tsconfigJson({
     { path: './packages/@livestore/devtools-expo' },
     { path: './packages/@livestore/devtools-web-common' },
     { path: './packages/@livestore/effect-playwright' },
+    { path: './packages/@livestore/framework-toolkit' },
     { path: './packages/@livestore/graphql' },
     { path: './packages/@livestore/livestore' },
     { path: './packages/@livestore/svelte' },

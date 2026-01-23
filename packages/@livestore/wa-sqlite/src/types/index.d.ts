@@ -1296,6 +1296,17 @@ declare module '@livestore/wa-sqlite/dist/wa-sqlite-async.mjs' {
 }
 
 /** @ignore */
+declare module '@livestore/wa-sqlite/dist/wa-sqlite.node.mjs' {
+  function ModuleFactory(config?: object): Promise<any>;
+  export = ModuleFactory;
+}
+
+/** @ignore */
+declare module '@livestore/wa-sqlite/src/sqlite-api.js' {
+  export * from '@livestore/wa-sqlite';
+}
+
+/** @ignore */
 declare module '@livestore/wa-sqlite/src/VFS.js' {
   export * from '@livestore/wa-sqlite/src/sqlite-constants.js';
 

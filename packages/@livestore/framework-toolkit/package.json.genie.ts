@@ -1,44 +1,32 @@
 import { catalog, livestorePackageDefaults, packageJson } from '../../../genie/repo.ts'
 
 export default packageJson({
-  name: '@livestore/solid',
+  name: '@livestore/framework-toolkit',
   ...livestorePackageDefaults,
   exports: {
     '.': './src/mod.ts',
+    './testing': './src/testing.ts',
   },
   dependencies: {
     ...catalog.pick(
+      '@livestore/adapter-web',
       '@livestore/common',
-      '@livestore/framework-toolkit',
       '@livestore/livestore',
       '@livestore/utils',
       '@opentelemetry/api',
     ),
   },
   devDependencies: {
-    ...catalog.pick(
-      '@livestore/adapter-web',
-      '@livestore/utils-dev',
-      '@opentelemetry/sdk-trace-base',
-      '@solidjs/testing-library',
-      'jsdom',
-      'solid-js',
-      'typescript',
-      'vite',
-      'vitest',
-    ),
-  },
-  peerDependencies: {
-    'solid-js': '^1.9.10',
+    ...catalog.pick('@livestore/utils-dev', 'typescript'),
   },
   publishConfig: {
     access: 'public',
     exports: {
       '.': './dist/mod.js',
+      './testing': './dist/testing.js',
     },
   },
   scripts: {
     build: 'tsc',
-    test: "echo 'todo'",
   },
 })

@@ -26,6 +26,7 @@
   },
   "dependencies": {
     "@livestore/common": "link:../common",
+    "@livestore/framework-toolkit": "link:../framework-toolkit",
     "@livestore/livestore": "link:../livestore",
     "@livestore/utils": "link:../utils",
     "@opentelemetry/api": "1.9.0"

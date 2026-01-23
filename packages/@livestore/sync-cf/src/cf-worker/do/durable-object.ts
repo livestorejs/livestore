@@ -143,7 +143,7 @@ export const makeDurableObject: MakeDurableObjectClass = (options) => {
       }
     }
 
-    fetch = async (request: Request): Promise<Response> =>
+    override fetch = async (request: Request): Promise<Response> =>
       Effect.gen(this, function* () {
         const searchParams = matchSyncRequest(request)
         if (searchParams === undefined) {
