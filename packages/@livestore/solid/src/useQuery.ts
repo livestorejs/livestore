@@ -12,7 +12,7 @@ import { deepEqual } from '@livestore/utils'
 import type * as otel from '@opentelemetry/api'
 import * as Solid from 'solid-js'
 
-import { type AccessorMaybe, resolve } from './utils.ts'
+import { type AccessorMaybe, resolve } from './utils.tsx'
 
 /**
  * Returns the result of a query and subscribes to future updates.

@@ -201,7 +201,7 @@ describe('useStore', () => {
 })
 
 describe('useStore.useQuery', () => {
-  it('Triggers Suspense - returns undefined while store is loading', async () => {
+  it('Triggers Suspense at read-site (suspend-at-read pattern)', async () => {
     const storeRegistry = new StoreRegistry()
     const options = testStoreOptions()
 
@@ -215,6 +215,7 @@ describe('useStore.useQuery', () => {
       const todos = props.store.useQuery(allTodos$)
       return (
         <UseQuerySuspense>
+          {/* Suspense triggers here when todos() is read, not when useQuery is called */}
           <div data-testid="content">Todos: {todos()?.length ?? 'loading'}</div>
         </UseQuerySuspense>
       )
@@ -243,9 +244,11 @@ describe('useStore.useQuery', () => {
       expect(content?.textContent).toBe('Todos: 0')
     })
 
+    // With suspend-at-read pattern, Suspense triggers at the innermost boundary where the signal is read
+    // UseQuerySuspense catches because todos() is read inside it (not UseStoreSuspense)
     expect(RootSuspense.count()).toBe(0)
-    expect(UseStoreSuspense.count()).toBe(1)
-    expect(UseQuerySuspense.count()).toBe(0)
+    expect(UseStoreSuspense.count()).toBe(0)
+    expect(UseQuerySuspense.count()).toBe(1)
 
     await cleanupAfterUnmount(() => {})
   })
@@ -360,7 +363,7 @@ describe('useStore.useQuery', () => {
 })
 
 describe('useStore.useClientDocument', () => {
-  it('can set state before store loads', async () => {
+  it('can set state before store loads (optimistic updates without suspending)', async () => {
     const storeRegistry = new StoreRegistry()
     const options = testStoreOptions()
 
@@ -376,6 +379,7 @@ describe('useStore.useClientDocument', () => {
 
       return (
         <ChildSuspense>
+          {/* No Suspense because state() returns the locally buffered value immediately */}
           <div data-testid="content">Username: {state().username}</div>
         </ChildSuspense>
       )
@@ -394,7 +398,10 @@ describe('useStore.useClientDocument', () => {
     const content = queryByTestId('content')
     expect(content?.textContent).toBe('Username: early-bird')
 
-    expect(RootSuspense.count()).toBe(1)
+    // useClientDocument supports optimistic updates: when setState is called before the store loads,
+    // the value is buffered locally and state() returns it immediately without suspending.
+    // This is intentional - it allows UI to render optimistically while the store loads in the background.
+    expect(RootSuspense.count()).toBe(0)
     expect(ChildSuspense.count()).toBe(0)
 
     await cleanupAfterUnmount(() => {})

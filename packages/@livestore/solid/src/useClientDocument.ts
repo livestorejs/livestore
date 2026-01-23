@@ -7,7 +7,7 @@ import { queryDb } from '@livestore/livestore'
 import * as Solid from 'solid-js'
 
 import { useQueryRef } from './useQuery.ts'
-import { type AccessorMaybe, resolve } from './utils.ts'
+import { type AccessorMaybe, resolve } from './utils.tsx'
 
 export type UseClientDocumentResult<TTableDef extends State.SQLite.ClientDocumentTableDef.TraitAny> = [
   row: Solid.Accessor<TTableDef['Value']>,
