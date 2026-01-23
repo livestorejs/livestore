@@ -345,14 +345,14 @@ describe('StoreRegistry', () => {
     await abortedPromise
 
     // After abort, a new getOrLoadStore should start a fresh load
-    const freshLoadPromise = storeRegistry.getOrLoadPromise(options)
+    const freshLoadResult = storeRegistry.getOrLoadPromise(options)
 
-    // This should be a new promise (not the aborted one)
-    expect(freshLoadPromise).toBeInstanceOf(Promise)
-    expect(freshLoadPromise).not.toBe(loadPromise)
+    // This should be a new load (not the aborted one)
+    // Note: getOrLoadPromise can return either a Store or Promise<Store> depending on timing
+    expect(freshLoadResult).not.toBe(loadPromise)
 
-    // Wait for fresh load to complete
-    const store = await freshLoadPromise
+    // Wait for fresh load to complete (handles both sync and async cases)
+    const store = await Promise.resolve(freshLoadResult)
     expect(store).toBeDefined()
 
     await store.shutdownPromise()
