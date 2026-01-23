@@ -467,31 +467,7 @@ store.execute(commands.checkInGuest({ roomId: 'room-1', guestId: 'guest-a' }))
 
 ### Alternative A: Invariant Assertions in Materializers
 
-```typescript
-State.SQLite.materializers(events, {
-  commentCreated: ({ taskId }, state) => {
-    // Assert referential integrity before materializing
-    const taskExists = state.query(`SELECT 1 FROM tasks WHERE id = ?`, taskId)
-    if (!taskExists) {
-      throw new InvariantViolation(`Task ${taskId} not found for comment`)
-    }
-    return sql`INSERT INTO comments ...`
-  },
-})
-```
-
-#### What it gives you
-* A **tripwire**: when replaying (especially during rebase), the projector can detect that applying event \(E\) would violate a constraint (FK, unique seat, capacity).
-* A way to surface conflicts *immediately* and keep the SQLite projection from silently entering an impossible state.
-
-#### Why it’s insufficient as “the fix”
-Materializers are downstream. By the time you’re in the materializer, the event is already in the log. You then have three bad choices:
-
-* Stop projecting and mark the store broken → you lose LiveStore’s “eventlog ↔ SQLite strongly consistent” invariant.
-* Project anyway → you violate domain invariants (your current problem).
-* “Fix it” by emitting compensating events → now the projector is doing domain decision-making, and you must ensure:
-  * Determinism across all clients (or server-only emission), otherwise replicas diverge.
-  * Correct handling of side effects (often non-reversible).
+[TODO: Write down]
 
 ### Alternative B: Validation Hooks During Rebase
 
