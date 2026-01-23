@@ -10,10 +10,13 @@ importers:
     dependencies:
       '@livestore/adapter-node':
         specifier: file:../../packages/@livestore/adapter-node
-        version: file:../../packages/@livestore/adapter-node(@opentelemetry/resources@2.2.0(@opentelemetry/api@1.9.0))(@types/node@25.0.10)(effect@3.19.14)(yaml@2.8.2)
+        version: file:../../packages/@livestore/adapter-node(@opentelemetry/resources@2.2.0(@opentelemetry/api@1.9.0))(@types/node@25.0.10)(effect@3.19.15)
+      '@livestore/adapter-web':
+        specifier: file:../../packages/@livestore/adapter-web
+        version: file:../../packages/@livestore/adapter-web
       '@livestore/common':
         specifier: file:../../packages/@livestore/common
-        version: file:../../packages/@livestore/common(@opentelemetry/api@1.9.0)(@opentelemetry/resources@2.2.0(@opentelemetry/api@1.9.0))(effect@3.19.14)
+        version: file:../../packages/@livestore/common(@opentelemetry/api@1.9.0)(@opentelemetry/resources@2.2.0(@opentelemetry/api@1.9.0))(effect@3.19.15)
       '@livestore/livestore':
         specifier: file:../../packages/@livestore/livestore
         version: file:../../packages/@livestore/livestore
@@ -22,14 +25,17 @@ importers:
         version: file:../../packages/@livestore/sqlite-wasm
       '@livestore/utils':
         specifier: file:../../packages/@livestore/utils
-        version: file:../../packages/@livestore/utils(@opentelemetry/api@1.9.0)(@opentelemetry/resources@2.2.0(@opentelemetry/api@1.9.0))(effect@3.19.14)
+        version: file:../../packages/@livestore/utils(@opentelemetry/api@1.9.0)(@opentelemetry/resources@2.2.0(@opentelemetry/api@1.9.0))(effect@3.19.15)
+      '@opentelemetry/api':
+        specifier: 1.9.0
+        version: 1.9.0
     devDependencies:
       '@livestore/utils-dev':
         specifier: file:../../packages/@livestore/utils-dev
-        version: file:../../packages/@livestore/utils-dev(@cloudflare/workers-types@4.20251118.0)(@opentelemetry/api@1.9.0)(@opentelemetry/resources@2.2.0(@opentelemetry/api@1.9.0))(effect@3.19.14)(vitest@3.2.4(@types/node@25.0.10)(yaml@2.8.2))
+        version: file:../../packages/@livestore/utils-dev(@cloudflare/workers-types@4.20251118.0)(@opentelemetry/api@1.9.0)(@opentelemetry/resources@2.2.0(@opentelemetry/api@1.9.0))(effect@3.19.15)(vitest@3.2.4(@types/node@25.0.10))
       vitest:
         specifier: 3.2.4
-        version: 3.2.4(@types/node@25.0.10)(yaml@2.8.2)
+        version: 3.2.4(@types/node@25.0.10)
 
 packages:
 
@@ -522,6 +528,9 @@ packages:
   '@livestore/adapter-web@0.4.0-dev.22':
     resolution: {integrity: sha512-TXr+LCQYiijr3H5aDzmHjCH0OFBC2l4jnuSZm47Gjk7nFW7oba+kRNuLRjy5/T84H64+WBEvUemuiKBcQQkwOg==}
 
+  '@livestore/adapter-web@file:../../packages/@livestore/adapter-web':
+    resolution: {directory: ../../packages/@livestore/adapter-web, type: directory}
+
   '@livestore/common-cf@0.4.0-dev.22':
     resolution: {integrity: sha512-eWHeOpQ4Lwa39WpgHGPZvDCTo5Muf6qHO0SKklOibUDGxhb7yCX3qcV/cOH7cwiFU6FTZI6cZr7PMUYlSwr5UQ==}
 
@@ -997,8 +1006,8 @@ packages:
     resolution: {integrity: sha512-Btj2BOOO83o3WyH59e8MgXsxEQVcarkUOpEYrubB0urwnN10yQ364rsiByU11nZlqWYZm05i/of7io4mzihBtQ==}
     engines: {node: '>=8'}
 
-  effect@3.19.14:
-    resolution: {integrity: sha512-3vwdq0zlvQOxXzXNKRIPKTqZNMyGCdaFUBfMPqpsyzZDre67kgC1EEHDV4EoQTovJ4w5fmJW756f86kkuz7WFA==}
+  effect@3.19.15:
+    resolution: {integrity: sha512-vzMmgfZKLcojmUjBdlQx+uaKryO7yULlRxjpDnHdnvcp1NPHxJyoM6IOXBLlzz2I/uPtZpGKavt5hBv7IvGZkA==}
 
   error-stack-parser-es@1.0.5:
     resolution: {integrity: sha512-5qucVt2XcuGMcEGgWI7i+yZpmpByQ8J1lHhcL7PwqCwu9FPP3VUXzT4ltHe5i2z9dePwEHcDVOAfSnHsOlCXRA==}
@@ -1363,11 +1372,6 @@ packages:
       utf-8-validate:
         optional: true
 
-  yaml@2.8.2:
-    resolution: {integrity: sha512-mplynKqc1C2hTVYxd0PU2xQAc22TI1vShAYGksCCfxbn/dFwnHTNi1bvYsBTkhdUNtGIf5xNOg938rrSSYvS9A==}
-    engines: {node: '>= 14.6'}
-    hasBin: true
-
   youch-core@0.3.3:
     resolution: {integrity: sha512-ho7XuGjLaJ2hWHoK8yFnsUGy2Y5uDpqSTq1FkHLK4/oqKtyUU1AFbOOxY4IpC9f0fTLjwYbslUz0Po5BpD1wrA==}
 
@@ -1410,10 +1414,10 @@ snapshots:
     dependencies:
       '@jridgewell/trace-mapping': 0.3.9
 
-  '@effect/vitest@0.27.0(effect@3.19.14)(vitest@3.2.4(@types/node@25.0.10)(yaml@2.8.2))':
+  '@effect/vitest@0.27.0(effect@3.19.15)(vitest@3.2.4(@types/node@25.0.10))':
     dependencies:
-      effect: 3.19.14
-      vitest: 3.2.4(@types/node@25.0.10)(yaml@2.8.2)
+      effect: 3.19.15
+      vitest: 3.2.4(@types/node@25.0.10)
 
   '@emnapi/runtime@1.8.1':
     dependencies:
@@ -1659,15 +1663,15 @@ snapshots:
       '@jridgewell/resolve-uri': 3.1.2
       '@jridgewell/sourcemap-codec': 1.5.5
 
-  '@livestore/adapter-node@file:../../packages/@livestore/adapter-node(@opentelemetry/resources@2.2.0(@opentelemetry/api@1.9.0))(@types/node@25.0.10)(effect@3.19.14)(yaml@2.8.2)':
+  '@livestore/adapter-node@file:../../packages/@livestore/adapter-node(@opentelemetry/resources@2.2.0(@opentelemetry/api@1.9.0))(@types/node@25.0.10)(effect@3.19.15)':
     dependencies:
       '@livestore/common': link:../common
-      '@livestore/devtools-vite': 0.4.0-dev.22(@opentelemetry/api@1.9.0)(@opentelemetry/resources@2.2.0(@opentelemetry/api@1.9.0))(effect@3.19.14)(vite@7.3.0(@types/node@25.0.10)(yaml@2.8.2))
+      '@livestore/devtools-vite': 0.4.0-dev.22(@opentelemetry/api@1.9.0)(@opentelemetry/resources@2.2.0(@opentelemetry/api@1.9.0))(effect@3.19.15)(vite@7.3.0(@types/node@25.0.10))
       '@livestore/sqlite-wasm': link:../sqlite-wasm
       '@livestore/utils': link:../utils
       '@livestore/webmesh': link:../webmesh
       '@opentelemetry/api': 1.9.0
-      vite: 7.3.0(@types/node@25.0.10)(yaml@2.8.2)
+      vite: 7.3.0(@types/node@25.0.10)
     transitivePeerDependencies:
       - '@effect/ai'
       - '@effect/cli'
@@ -1697,13 +1701,13 @@ snapshots:
       - tsx
       - yaml
 
-  '@livestore/adapter-web@0.4.0-dev.22(@opentelemetry/resources@2.2.0(@opentelemetry/api@1.9.0))(effect@3.19.14)':
+  '@livestore/adapter-web@0.4.0-dev.22(@opentelemetry/resources@2.2.0(@opentelemetry/api@1.9.0))(effect@3.19.15)':
     dependencies:
-      '@livestore/common': 0.4.0-dev.22(@opentelemetry/resources@2.2.0(@opentelemetry/api@1.9.0))(effect@3.19.14)
-      '@livestore/devtools-web-common': 0.4.0-dev.22(@opentelemetry/api@1.9.0)(@opentelemetry/resources@2.2.0(@opentelemetry/api@1.9.0))(effect@3.19.14)
-      '@livestore/sqlite-wasm': 0.4.0-dev.22(@opentelemetry/api@1.9.0)(@opentelemetry/resources@2.2.0(@opentelemetry/api@1.9.0))(effect@3.19.14)
-      '@livestore/utils': 0.4.0-dev.22(@opentelemetry/api@1.9.0)(@opentelemetry/resources@2.2.0(@opentelemetry/api@1.9.0))(effect@3.19.14)
-      '@livestore/webmesh': 0.4.0-dev.22(@opentelemetry/api@1.9.0)(@opentelemetry/resources@2.2.0(@opentelemetry/api@1.9.0))(effect@3.19.14)
+      '@livestore/common': 0.4.0-dev.22(@opentelemetry/resources@2.2.0(@opentelemetry/api@1.9.0))(effect@3.19.15)
+      '@livestore/devtools-web-common': 0.4.0-dev.22(@opentelemetry/api@1.9.0)(@opentelemetry/resources@2.2.0(@opentelemetry/api@1.9.0))(effect@3.19.15)
+      '@livestore/sqlite-wasm': 0.4.0-dev.22(@opentelemetry/api@1.9.0)(@opentelemetry/resources@2.2.0(@opentelemetry/api@1.9.0))(effect@3.19.15)
+      '@livestore/utils': 0.4.0-dev.22(@opentelemetry/api@1.9.0)(@opentelemetry/resources@2.2.0(@opentelemetry/api@1.9.0))(effect@3.19.15)
+      '@livestore/webmesh': 0.4.0-dev.22(@opentelemetry/api@1.9.0)(@opentelemetry/resources@2.2.0(@opentelemetry/api@1.9.0))(effect@3.19.15)
       '@opentelemetry/api': 1.9.0
     transitivePeerDependencies:
       - '@effect/ai'
@@ -1723,11 +1727,20 @@ snapshots:
       - '@opentelemetry/resources'
       - effect
 
-  '@livestore/common-cf@0.4.0-dev.22(@opentelemetry/api@1.9.0)(@opentelemetry/resources@2.2.0(@opentelemetry/api@1.9.0))(effect@3.19.14)':
+  '@livestore/adapter-web@file:../../packages/@livestore/adapter-web':
+    dependencies:
+      '@livestore/common': link:../common
+      '@livestore/devtools-web-common': link:../devtools-web-common
+      '@livestore/sqlite-wasm': link:../sqlite-wasm
+      '@livestore/utils': link:../utils
+      '@livestore/webmesh': link:../webmesh
+      '@opentelemetry/api': 1.9.0
+
+  '@livestore/common-cf@0.4.0-dev.22(@opentelemetry/api@1.9.0)(@opentelemetry/resources@2.2.0(@opentelemetry/api@1.9.0))(effect@3.19.15)':
     dependencies:
       '@cloudflare/workers-types': 4.20251118.0
-      '@livestore/common': 0.4.0-dev.22(@opentelemetry/resources@2.2.0(@opentelemetry/api@1.9.0))(effect@3.19.14)
-      '@livestore/utils': 0.4.0-dev.22(@opentelemetry/api@1.9.0)(@opentelemetry/resources@2.2.0(@opentelemetry/api@1.9.0))(effect@3.19.14)
+      '@livestore/common': 0.4.0-dev.22(@opentelemetry/resources@2.2.0(@opentelemetry/api@1.9.0))(effect@3.19.15)
+      '@livestore/utils': 0.4.0-dev.22(@opentelemetry/api@1.9.0)(@opentelemetry/resources@2.2.0(@opentelemetry/api@1.9.0))(effect@3.19.15)
     transitivePeerDependencies:
       - '@effect/ai'
       - '@effect/cli'
@@ -1747,10 +1760,10 @@ snapshots:
       - '@opentelemetry/resources'
       - effect
 
-  '@livestore/common@0.4.0-dev.22(@opentelemetry/resources@2.2.0(@opentelemetry/api@1.9.0))(effect@3.19.14)':
+  '@livestore/common@0.4.0-dev.22(@opentelemetry/resources@2.2.0(@opentelemetry/api@1.9.0))(effect@3.19.15)':
     dependencies:
-      '@livestore/utils': 0.4.0-dev.22(@opentelemetry/api@1.9.0)(@opentelemetry/resources@2.2.0(@opentelemetry/api@1.9.0))(effect@3.19.14)
-      '@livestore/webmesh': 0.4.0-dev.22(@opentelemetry/api@1.9.0)(@opentelemetry/resources@2.2.0(@opentelemetry/api@1.9.0))(effect@3.19.14)
+      '@livestore/utils': 0.4.0-dev.22(@opentelemetry/api@1.9.0)(@opentelemetry/resources@2.2.0(@opentelemetry/api@1.9.0))(effect@3.19.15)
+      '@livestore/webmesh': 0.4.0-dev.22(@opentelemetry/api@1.9.0)(@opentelemetry/resources@2.2.0(@opentelemetry/api@1.9.0))(effect@3.19.15)
       '@opentelemetry/api': 1.9.0
     transitivePeerDependencies:
       - '@effect/ai'
@@ -1770,19 +1783,19 @@ snapshots:
       - '@opentelemetry/resources'
       - effect
 
-  '@livestore/common@file:../../packages/@livestore/common(@opentelemetry/api@1.9.0)(@opentelemetry/resources@2.2.0(@opentelemetry/api@1.9.0))(effect@3.19.14)':
+  '@livestore/common@file:../../packages/@livestore/common(@opentelemetry/api@1.9.0)(@opentelemetry/resources@2.2.0(@opentelemetry/api@1.9.0))(effect@3.19.15)':
     dependencies:
       '@livestore/utils': link:../utils
       '@livestore/webmesh': link:../webmesh
       '@opentelemetry/api': 1.9.0
       '@opentelemetry/resources': 2.2.0(@opentelemetry/api@1.9.0)
-      effect: 3.19.14
+      effect: 3.19.15
 
-  '@livestore/devtools-vite@0.4.0-dev.22(@opentelemetry/api@1.9.0)(@opentelemetry/resources@2.2.0(@opentelemetry/api@1.9.0))(effect@3.19.14)(vite@7.3.0(@types/node@25.0.10)(yaml@2.8.2))':
+  '@livestore/devtools-vite@0.4.0-dev.22(@opentelemetry/api@1.9.0)(@opentelemetry/resources@2.2.0(@opentelemetry/api@1.9.0))(effect@3.19.15)(vite@7.3.0(@types/node@25.0.10))':
     dependencies:
-      '@livestore/adapter-web': 0.4.0-dev.22(@opentelemetry/resources@2.2.0(@opentelemetry/api@1.9.0))(effect@3.19.14)
-      '@livestore/utils': 0.4.0-dev.22(@opentelemetry/api@1.9.0)(@opentelemetry/resources@2.2.0(@opentelemetry/api@1.9.0))(effect@3.19.14)
-      vite: 7.3.0(@types/node@25.0.10)(yaml@2.8.2)
+      '@livestore/adapter-web': 0.4.0-dev.22(@opentelemetry/resources@2.2.0(@opentelemetry/api@1.9.0))(effect@3.19.15)
+      '@livestore/utils': 0.4.0-dev.22(@opentelemetry/api@1.9.0)(@opentelemetry/resources@2.2.0(@opentelemetry/api@1.9.0))(effect@3.19.15)
+      vite: 7.3.0(@types/node@25.0.10)
     transitivePeerDependencies:
       - '@effect/ai'
       - '@effect/cli'
@@ -1802,11 +1815,11 @@ snapshots:
       - '@opentelemetry/resources'
       - effect
 
-  '@livestore/devtools-web-common@0.4.0-dev.22(@opentelemetry/api@1.9.0)(@opentelemetry/resources@2.2.0(@opentelemetry/api@1.9.0))(effect@3.19.14)':
+  '@livestore/devtools-web-common@0.4.0-dev.22(@opentelemetry/api@1.9.0)(@opentelemetry/resources@2.2.0(@opentelemetry/api@1.9.0))(effect@3.19.15)':
     dependencies:
-      '@livestore/common': 0.4.0-dev.22(@opentelemetry/resources@2.2.0(@opentelemetry/api@1.9.0))(effect@3.19.14)
-      '@livestore/utils': 0.4.0-dev.22(@opentelemetry/api@1.9.0)(@opentelemetry/resources@2.2.0(@opentelemetry/api@1.9.0))(effect@3.19.14)
-      '@livestore/webmesh': 0.4.0-dev.22(@opentelemetry/api@1.9.0)(@opentelemetry/resources@2.2.0(@opentelemetry/api@1.9.0))(effect@3.19.14)
+      '@livestore/common': 0.4.0-dev.22(@opentelemetry/resources@2.2.0(@opentelemetry/api@1.9.0))(effect@3.19.15)
+      '@livestore/utils': 0.4.0-dev.22(@opentelemetry/api@1.9.0)(@opentelemetry/resources@2.2.0(@opentelemetry/api@1.9.0))(effect@3.19.15)
+      '@livestore/webmesh': 0.4.0-dev.22(@opentelemetry/api@1.9.0)(@opentelemetry/resources@2.2.0(@opentelemetry/api@1.9.0))(effect@3.19.15)
     transitivePeerDependencies:
       - '@effect/ai'
       - '@effect/cli'
@@ -1832,12 +1845,12 @@ snapshots:
       '@livestore/utils': link:../utils
       '@opentelemetry/api': 1.9.0
 
-  '@livestore/sqlite-wasm@0.4.0-dev.22(@opentelemetry/api@1.9.0)(@opentelemetry/resources@2.2.0(@opentelemetry/api@1.9.0))(effect@3.19.14)':
+  '@livestore/sqlite-wasm@0.4.0-dev.22(@opentelemetry/api@1.9.0)(@opentelemetry/resources@2.2.0(@opentelemetry/api@1.9.0))(effect@3.19.15)':
     dependencies:
       '@cloudflare/workers-types': 4.20251118.0
-      '@livestore/common': 0.4.0-dev.22(@opentelemetry/resources@2.2.0(@opentelemetry/api@1.9.0))(effect@3.19.14)
-      '@livestore/common-cf': 0.4.0-dev.22(@opentelemetry/api@1.9.0)(@opentelemetry/resources@2.2.0(@opentelemetry/api@1.9.0))(effect@3.19.14)
-      '@livestore/utils': 0.4.0-dev.22(@opentelemetry/api@1.9.0)(@opentelemetry/resources@2.2.0(@opentelemetry/api@1.9.0))(effect@3.19.14)
+      '@livestore/common': 0.4.0-dev.22(@opentelemetry/resources@2.2.0(@opentelemetry/api@1.9.0))(effect@3.19.15)
+      '@livestore/common-cf': 0.4.0-dev.22(@opentelemetry/api@1.9.0)(@opentelemetry/resources@2.2.0(@opentelemetry/api@1.9.0))(effect@3.19.15)
+      '@livestore/utils': 0.4.0-dev.22(@opentelemetry/api@1.9.0)(@opentelemetry/resources@2.2.0(@opentelemetry/api@1.9.0))(effect@3.19.15)
       '@livestore/wa-sqlite': 0.4.0-dev.22
     transitivePeerDependencies:
       - '@effect/ai'
@@ -1866,9 +1879,9 @@ snapshots:
       '@livestore/utils': link:../utils
       '@livestore/wa-sqlite': link:../wa-sqlite
 
-  '@livestore/utils-dev@file:../../packages/@livestore/utils-dev(@cloudflare/workers-types@4.20251118.0)(@opentelemetry/api@1.9.0)(@opentelemetry/resources@2.2.0(@opentelemetry/api@1.9.0))(effect@3.19.14)(vitest@3.2.4(@types/node@25.0.10)(yaml@2.8.2))':
+  '@livestore/utils-dev@file:../../packages/@livestore/utils-dev(@cloudflare/workers-types@4.20251118.0)(@opentelemetry/api@1.9.0)(@opentelemetry/resources@2.2.0(@opentelemetry/api@1.9.0))(effect@3.19.15)(vitest@3.2.4(@types/node@25.0.10))':
     dependencies:
-      '@effect/vitest': 0.27.0(effect@3.19.14)(vitest@3.2.4(@types/node@25.0.10)(yaml@2.8.2))
+      '@effect/vitest': 0.27.0(effect@3.19.15)(vitest@3.2.4(@types/node@25.0.10))
       '@iarna/toml': 3.0.0
       '@livestore/utils': link:../utils
       '@opentelemetry/api': 1.9.0
@@ -1878,7 +1891,7 @@ snapshots:
       '@opentelemetry/sdk-metrics': 2.2.0(@opentelemetry/api@1.9.0)
       '@opentelemetry/sdk-trace-base': 2.2.0(@opentelemetry/api@1.9.0)
       '@opentelemetry/sdk-trace-node': 2.2.0(@opentelemetry/api@1.9.0)
-      effect: 3.19.14
+      effect: 3.19.15
       wrangler: 4.42.2(@cloudflare/workers-types@4.20251118.0)
     transitivePeerDependencies:
       - '@cloudflare/workers-types'
@@ -1886,31 +1899,31 @@ snapshots:
       - utf-8-validate
       - vitest
 
-  '@livestore/utils@0.4.0-dev.22(@opentelemetry/api@1.9.0)(@opentelemetry/resources@2.2.0(@opentelemetry/api@1.9.0))(effect@3.19.14)':
+  '@livestore/utils@0.4.0-dev.22(@opentelemetry/api@1.9.0)(@opentelemetry/resources@2.2.0(@opentelemetry/api@1.9.0))(effect@3.19.15)':
     dependencies:
       '@opentelemetry/api': 1.9.0
       '@opentelemetry/resources': 2.2.0(@opentelemetry/api@1.9.0)
       '@standard-schema/spec': 1.0.0
-      effect: 3.19.14
+      effect: 3.19.15
       nanoid: 5.1.5
       pretty-bytes: 7.0.1
       qrcode-generator: 2.0.4
 
-  '@livestore/utils@file:../../packages/@livestore/utils(@opentelemetry/api@1.9.0)(@opentelemetry/resources@2.2.0(@opentelemetry/api@1.9.0))(effect@3.19.14)':
+  '@livestore/utils@file:../../packages/@livestore/utils(@opentelemetry/api@1.9.0)(@opentelemetry/resources@2.2.0(@opentelemetry/api@1.9.0))(effect@3.19.15)':
     dependencies:
       '@opentelemetry/api': 1.9.0
       '@opentelemetry/resources': 2.2.0(@opentelemetry/api@1.9.0)
       '@standard-schema/spec': 1.0.0
-      effect: 3.19.14
+      effect: 3.19.15
       nanoid: 5.0.9
       pretty-bytes: 7.0.1
       qrcode-generator: 1.4.4
 
   '@livestore/wa-sqlite@0.4.0-dev.22': {}
 
-  '@livestore/webmesh@0.4.0-dev.22(@opentelemetry/api@1.9.0)(@opentelemetry/resources@2.2.0(@opentelemetry/api@1.9.0))(effect@3.19.14)':
+  '@livestore/webmesh@0.4.0-dev.22(@opentelemetry/api@1.9.0)(@opentelemetry/resources@2.2.0(@opentelemetry/api@1.9.0))(effect@3.19.15)':
     dependencies:
-      '@livestore/utils': 0.4.0-dev.22(@opentelemetry/api@1.9.0)(@opentelemetry/resources@2.2.0(@opentelemetry/api@1.9.0))(effect@3.19.14)
+      '@livestore/utils': 0.4.0-dev.22(@opentelemetry/api@1.9.0)(@opentelemetry/resources@2.2.0(@opentelemetry/api@1.9.0))(effect@3.19.15)
     transitivePeerDependencies:
       - '@effect/ai'
       - '@effect/cli'
@@ -2154,13 +2167,13 @@ snapshots:
       chai: 5.3.3
       tinyrainbow: 2.0.0
 
-  '@vitest/mocker@3.2.4(vite@7.3.1(@types/node@25.0.10)(yaml@2.8.2))':
+  '@vitest/mocker@3.2.4(vite@7.3.1(@types/node@25.0.10))':
     dependencies:
       '@vitest/spy': 3.2.4
       estree-walker: 3.0.3
       magic-string: 0.30.21
     optionalDependencies:
-      vite: 7.3.1(@types/node@25.0.10)(yaml@2.8.2)
+      vite: 7.3.1(@types/node@25.0.10)
 
   '@vitest/pretty-format@3.2.4':
     dependencies:
@@ -2236,7 +2249,7 @@ snapshots:
 
   detect-libc@2.1.2: {}
 
-  effect@3.19.14:
+  effect@3.19.15:
     dependencies:
       '@standard-schema/spec': 1.1.0
       fast-check: 3.23.2
@@ -2519,13 +2532,13 @@ snapshots:
       pathe: 2.0.3
       ufo: 1.6.3
 
-  vite-node@3.2.4(@types/node@25.0.10)(yaml@2.8.2):
+  vite-node@3.2.4(@types/node@25.0.10):
     dependencies:
       cac: 6.7.14
       debug: 4.4.3
       es-module-lexer: 1.7.0
       pathe: 2.0.3
-      vite: 7.3.1(@types/node@25.0.10)(yaml@2.8.2)
+      vite: 7.3.1(@types/node@25.0.10)
     transitivePeerDependencies:
       - '@types/node'
       - jiti
@@ -2540,7 +2553,7 @@ snapshots:
       - tsx
       - yaml
 
-  vite@7.3.0(@types/node@25.0.10)(yaml@2.8.2):
+  vite@7.3.0(@types/node@25.0.10):
     dependencies:
       esbuild: 0.27.2
       fdir: 6.5.0(picomatch@4.0.3)
@@ -2551,9 +2564,8 @@ snapshots:
     optionalDependencies:
       '@types/node': 25.0.10
       fsevents: 2.3.3
-      yaml: 2.8.2
 
-  vite@7.3.1(@types/node@25.0.10)(yaml@2.8.2):
+  vite@7.3.1(@types/node@25.0.10):
     dependencies:
       esbuild: 0.27.2
       fdir: 6.5.0(picomatch@4.0.3)
@@ -2564,13 +2576,12 @@ snapshots:
     optionalDependencies:
       '@types/node': 25.0.10
       fsevents: 2.3.3
-      yaml: 2.8.2
 
-  vitest@3.2.4(@types/node@25.0.10)(yaml@2.8.2):
+  vitest@3.2.4(@types/node@25.0.10):
     dependencies:
       '@types/chai': 5.2.3
       '@vitest/expect': 3.2.4
-      '@vitest/mocker': 3.2.4(vite@7.3.1(@types/node@25.0.10)(yaml@2.8.2))
+      '@vitest/mocker': 3.2.4(vite@7.3.1(@types/node@25.0.10))
       '@vitest/pretty-format': 3.2.4
       '@vitest/runner': 3.2.4
       '@vitest/snapshot': 3.2.4
@@ -2588,8 +2599,8 @@ snapshots:
       tinyglobby: 0.2.15
       tinypool: 1.1.1
       tinyrainbow: 2.0.0
-      vite: 7.3.1(@types/node@25.0.10)(yaml@2.8.2)
-      vite-node: 3.2.4(@types/node@25.0.10)(yaml@2.8.2)
+      vite: 7.3.1(@types/node@25.0.10)
+      vite-node: 3.2.4(@types/node@25.0.10)
       why-is-node-running: 2.3.0
     optionalDependencies:
       '@types/node': 25.0.10
@@ -2638,9 +2649,6 @@ snapshots:
       - utf-8-validate
 
   ws@8.18.0: {}
-
-  yaml@2.8.2:
-    optional: true
 
   youch-core@0.3.3:
     dependencies:

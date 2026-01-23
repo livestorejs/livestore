@@ -1,0 +1,85 @@
+import { catalog, packageJson } from '../../../../../genie/repo.ts'
+
+export default packageJson({
+  name: 'docs-code-snippets',
+  version: '0.0.0',
+  type: 'module',
+  private: true,
+  dependencies: {
+    // Automerge (not in catalog - doc-specific)
+    '@automerge/automerge': '3.2.0',
+    '@automerge/react': '2.5.0',
+
+    // Effect Atom (not in catalog - doc-specific)
+    '@effect-atom/atom': '0.3.0',
+    '@effect-atom/atom-livestore': '0.3.0',
+    '@effect-atom/atom-react': '0.3.0',
+
+    // @livestore packages via file: paths
+    '@livestore/adapter-cloudflare': 'file:../../../../../packages/@livestore/adapter-cloudflare',
+    '@livestore/adapter-expo': 'file:../../../../../packages/@livestore/adapter-expo',
+    '@livestore/adapter-node': 'file:../../../../../packages/@livestore/adapter-node',
+    '@livestore/adapter-web': 'file:../../../../../packages/@livestore/adapter-web',
+    '@livestore/devtools-expo': 'file:../../../../../packages/@livestore/devtools-expo',
+    '@livestore/livestore': 'file:../../../../../packages/@livestore/livestore',
+    '@livestore/react': 'file:../../../../../packages/@livestore/react',
+    '@livestore/solid': 'file:../../../../../packages/@livestore/solid',
+    '@livestore/svelte': 'file:../../../../../packages/@livestore/svelte',
+    '@livestore/sync-cf': 'file:../../../../../packages/@livestore/sync-cf',
+    '@livestore/sync-electric': 'file:../../../../../packages/@livestore/sync-electric',
+    '@livestore/sync-s2': 'file:../../../../../packages/@livestore/sync-s2',
+    '@livestore/utils': 'file:../../../../../packages/@livestore/utils',
+
+    // Published @livestore packages (from catalog)
+    ...catalog.pick('@livestore/devtools-vite'),
+
+    // Cloudflare types (from catalog)
+    ...catalog.pick('@cloudflare/workers-types'),
+
+    // OpenTelemetry (from catalog)
+    ...catalog.pick(
+      '@opentelemetry/context-zone',
+      '@opentelemetry/core',
+      '@opentelemetry/exporter-trace-otlp-http',
+      '@opentelemetry/resources',
+      '@opentelemetry/sdk-trace-base',
+      '@opentelemetry/sdk-trace-web',
+    ),
+
+    // TanStack (doc-specific version, not from catalog)
+    '@tanstack/react-router': '1.139.14',
+
+    // Types (from catalog)
+    ...catalog.pick('@types/node'),
+
+    // Vue (doc-specific, not from catalog)
+    '@vitejs/plugin-vue': '6.0.0',
+
+    // Effect (from catalog)
+    ...catalog.pick('effect'),
+
+    // Expo (doc-specific, not from catalog)
+    expo: '54.0.12',
+    'expo-status-bar': '3.0.8',
+
+    // Misc doc-specific deps
+    'fractional-indexing': '3.2.0',
+    jose: '6.1.0',
+
+    // React (from catalog)
+    ...catalog.pick('react', 'react-dom'),
+
+    // React error boundary (doc-specific)
+    'react-error-boundary': '6.0.0',
+
+    // React Native (doc-specific)
+    'react-native': '0.81.4',
+
+    // SolidJS (from catalog)
+    ...catalog.pick('solid-js'),
+
+    // Vue (doc-specific)
+    'vite-plugin-vue-devtools': '7.7.9',
+    'vue-livestore': '0.2.3',
+  },
+})
