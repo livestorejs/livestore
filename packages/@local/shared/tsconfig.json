@@ -43,5 +43,6 @@
     "outDir": "./dist",
     "tsBuildInfoFile": "./dist/.tsbuildinfo"
   },
-  "include": ["./src"]
+  "include": ["./src"],
+  "exclude": ["node_modules", "**/dist", "**/node_modules/.pnpm"]
 }

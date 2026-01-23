@@ -26,10 +26,10 @@
   },
   "dependencies": {
     "@cloudflare/workers-types": "4.20251118.0",
-    "@livestore/utils": "file:../utils"
+    "@livestore/utils": "link:../utils"
   },
   "devDependencies": {
-    "@livestore/utils-dev": "file:../utils-dev",
+    "@livestore/utils-dev": "link:../utils-dev",
     "vitest": "3.2.4",
     "wrangler": "4.42.2"
   },

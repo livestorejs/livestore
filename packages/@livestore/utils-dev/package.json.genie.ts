@@ -1,4 +1,5 @@
-import { catalog, livestorePackageDefaults, packageJson } from '../../../genie/repo.ts'
+import { catalog, livestorePackageDefaults, packageJson, utilsEffectPeerDeps } from '../../../genie/repo.ts'
+import utilsPkg from '../utils/package.json.genie.ts'
 
 export default packageJson({
   name: '@livestore/utils-dev',
@@ -24,8 +25,12 @@ export default packageJson({
       'wrangler',
     ),
   },
-  devDependencies: {},
-  peerDependencies: {},
+  devDependencies: {
+    // Include all peer deps from utils for local development + vitest for tests
+    ...catalog.pick(...utilsEffectPeerDeps, 'vitest'),
+  },
+  // Re-expose utils' peer dependencies for consumers
+  peerDependencies: utilsPkg.data.peerDependencies,
   publishConfig: {
     access: 'public',
     exports: {

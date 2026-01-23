@@ -58,10 +58,10 @@
   },
   "dependencies": {
     "@cloudflare/workers-types": "4.20251118.0",
-    "@livestore/common": "file:../common",
-    "@livestore/common-cf": "file:../common-cf",
-    "@livestore/utils": "file:../utils",
-    "@livestore/wa-sqlite": "file:../wa-sqlite"
+    "@livestore/common": "link:../common",
+    "@livestore/common-cf": "link:../common-cf",
+    "@livestore/utils": "link:../utils",
+    "@livestore/wa-sqlite": "link:../wa-sqlite"
   },
   "devDependencies": {
     "@types/chrome": "0.1.4",

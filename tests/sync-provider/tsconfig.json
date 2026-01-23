@@ -46,6 +46,7 @@
     "types": ["vitest/globals", "@types/node"]
   },
   "include": ["./src"],
+  "exclude": ["node_modules", "**/dist", "**/node_modules/.pnpm"],
   "references": [
     {
       "path": "../../packages/@livestore/common"

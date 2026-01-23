@@ -1,6 +1,7 @@
 import {
   livestoreBaseTsconfigCompilerOptions,
   packageTsconfigCompilerOptions,
+  packageTsconfigExclude,
   refs,
   solidJsx,
   tsconfigJson,
@@ -13,5 +14,6 @@ export default tsconfigJson({
     ...solidJsx,
   },
   include: ['./src'],
+  exclude: [...packageTsconfigExclude],
   references: [refs.common, refs.livestore, refs.utils],
 })

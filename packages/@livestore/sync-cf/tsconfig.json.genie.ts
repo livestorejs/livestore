@@ -1,6 +1,7 @@
 import {
   livestoreBaseTsconfigCompilerOptions,
   packageTsconfigCompilerOptions,
+  packageTsconfigExclude,
   refs,
   tsconfigJson,
 } from '../../../genie/repo.ts'
@@ -13,5 +14,6 @@ export default tsconfigJson({
     target: 'es2022',
   },
   include: ['./src'],
+  exclude: [...packageTsconfigExclude],
   references: [refs.common, refs.utils, refs.commonCf],
 })

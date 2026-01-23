@@ -23,9 +23,9 @@
   },
   "dependencies": {
     "@graphql-typed-document-node/core": "3.2.0",
-    "@livestore/common": "file:../common",
-    "@livestore/livestore": "file:../livestore",
-    "@livestore/utils": "file:../utils",
+    "@livestore/common": "link:../common",
+    "@livestore/livestore": "link:../livestore",
+    "@livestore/utils": "link:../utils",
     "@opentelemetry/api": "1.9.0"
   },
   "devDependencies": {

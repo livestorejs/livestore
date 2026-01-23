@@ -14,8 +14,8 @@ let
   taskModules = inputs.effect-utils.devenvModules.tasks;
 
   # Packages managed by pnpm (shared between pnpm and clean modules)
-  # NOTE: Using pnpm instead of bun due to bun bugs. See effect-utils/context/workarounds/bun-issues.md
-  # TODO: Switch back to bun:install once bun file: dependency issues are fixed
+  # NOTE: Using pnpm temporarily due to bun bugs. Plan to switch back once fixed.
+  # See: effect-utils/context/workarounds/bun-issues.md
   pnpmPackages = [
     # packages/@livestore
     "packages/@livestore/adapter-cloudflare"

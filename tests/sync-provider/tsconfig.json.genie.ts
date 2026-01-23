@@ -1,4 +1,4 @@
-import { livestoreBaseTsconfigCompilerOptions, tsconfigJson } from '../../genie/repo.ts'
+import { livestoreBaseTsconfigCompilerOptions, packageTsconfigExclude, tsconfigJson } from '../../genie/repo.ts'
 
 export default tsconfigJson({
   compilerOptions: {
@@ -11,6 +11,7 @@ export default tsconfigJson({
     types: ['vitest/globals', '@types/node'],
   },
   include: ['./src'],
+  exclude: [...packageTsconfigExclude],
   references: [
     { path: '../../packages/@livestore/common' },
     { path: '../../packages/@livestore/common-cf' },

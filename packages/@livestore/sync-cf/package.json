@@ -28,9 +28,9 @@
   },
   "dependencies": {
     "@cloudflare/workers-types": "4.20251118.0",
-    "@livestore/common": "file:../common",
-    "@livestore/common-cf": "file:../common-cf",
-    "@livestore/utils": "file:../utils"
+    "@livestore/common": "link:../common",
+    "@livestore/common-cf": "link:../common-cf",
+    "@livestore/utils": "link:../utils"
   },
   "$genie": {
     "source": "package.json.genie.ts",

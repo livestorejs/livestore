@@ -22,9 +22,9 @@
     "test": "echo No tests yet"
   },
   "dependencies": {
-    "@livestore/common": "file:../common",
-    "@livestore/utils": "file:../utils",
-    "@livestore/webmesh": "file:../webmesh",
+    "@livestore/common": "link:../common",
+    "@livestore/utils": "link:../utils",
+    "@livestore/webmesh": "link:../webmesh",
     "@opentelemetry/api": "1.9.0"
   },
   "devDependencies": {

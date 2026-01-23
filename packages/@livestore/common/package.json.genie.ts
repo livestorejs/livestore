@@ -1,4 +1,5 @@
-import { catalog, livestorePackageDefaults, packageJson } from '../../../genie/repo.ts'
+import { catalog, livestorePackageDefaults, packageJson, utilsEffectPeerDeps } from '../../../genie/repo.ts'
+import utilsPkg from '../utils/package.json.genie.ts'
 
 export default packageJson({
   name: '@livestore/common',
@@ -17,8 +18,11 @@ export default packageJson({
     ...catalog.pick('@livestore/utils', '@livestore/webmesh', '@opentelemetry/api'),
   },
   devDependencies: {
-    ...catalog.pick('@livestore/utils-dev', 'vitest'),
+    // Include peer deps from utils for local development
+    ...catalog.pick(...utilsEffectPeerDeps, '@livestore/utils-dev', 'vitest'),
   },
+  // Re-expose utils' peer dependencies
+  peerDependencies: utilsPkg.data.peerDependencies,
   publishConfig: {
     access: 'public',
     exports: {

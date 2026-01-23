@@ -27,41 +27,43 @@ import {
 export { baseTsconfigCompilerOptions, domLib, reactJsx }
 
 /**
- * Internal workspace packages with file: paths.
+ * Internal workspace packages with link: paths.
+ * link: creates symlinks to the original package (no copy in .pnpm/).
+ * This avoids TypeScript TS2742 errors caused by file: protocol copying source files.
  * These are resolved to relative paths at stringify time by genie.
  */
 const workspaceCatalog = {
   // @livestore/* packages
-  '@livestore/utils': 'file:packages/@livestore/utils',
-  '@livestore/utils-dev': 'file:packages/@livestore/utils-dev',
-  '@livestore/common': 'file:packages/@livestore/common',
-  '@livestore/common-cf': 'file:packages/@livestore/common-cf',
-  '@livestore/livestore': 'file:packages/@livestore/livestore',
-  '@livestore/react': 'file:packages/@livestore/react',
-  '@livestore/solid': 'file:packages/@livestore/solid',
-  '@livestore/svelte': 'file:packages/@livestore/svelte',
-  '@livestore/adapter-web': 'file:packages/@livestore/adapter-web',
-  '@livestore/adapter-node': 'file:packages/@livestore/adapter-node',
-  '@livestore/adapter-expo': 'file:packages/@livestore/adapter-expo',
-  '@livestore/adapter-cloudflare': 'file:packages/@livestore/adapter-cloudflare',
-  '@livestore/sqlite-wasm': 'file:packages/@livestore/sqlite-wasm',
-  '@livestore/webmesh': 'file:packages/@livestore/webmesh',
-  '@livestore/devtools-web-common': 'file:packages/@livestore/devtools-web-common',
-  '@livestore/devtools-expo': 'file:packages/@livestore/devtools-expo',
-  '@livestore/graphql': 'file:packages/@livestore/graphql',
-  '@livestore/sync-cf': 'file:packages/@livestore/sync-cf',
-  '@livestore/sync-s2': 'file:packages/@livestore/sync-s2',
-  '@livestore/sync-electric': 'file:packages/@livestore/sync-electric',
-  '@livestore/cli': 'file:packages/@livestore/cli',
-  '@livestore/effect-playwright': 'file:packages/@livestore/effect-playwright',
-  '@livestore/peer-deps': 'file:packages/@livestore/peer-deps',
-  '@livestore/wa-sqlite': 'file:packages/@livestore/wa-sqlite',
+  '@livestore/utils': 'link:packages/@livestore/utils',
+  '@livestore/utils-dev': 'link:packages/@livestore/utils-dev',
+  '@livestore/common': 'link:packages/@livestore/common',
+  '@livestore/common-cf': 'link:packages/@livestore/common-cf',
+  '@livestore/livestore': 'link:packages/@livestore/livestore',
+  '@livestore/react': 'link:packages/@livestore/react',
+  '@livestore/solid': 'link:packages/@livestore/solid',
+  '@livestore/svelte': 'link:packages/@livestore/svelte',
+  '@livestore/adapter-web': 'link:packages/@livestore/adapter-web',
+  '@livestore/adapter-node': 'link:packages/@livestore/adapter-node',
+  '@livestore/adapter-expo': 'link:packages/@livestore/adapter-expo',
+  '@livestore/adapter-cloudflare': 'link:packages/@livestore/adapter-cloudflare',
+  '@livestore/sqlite-wasm': 'link:packages/@livestore/sqlite-wasm',
+  '@livestore/webmesh': 'link:packages/@livestore/webmesh',
+  '@livestore/devtools-web-common': 'link:packages/@livestore/devtools-web-common',
+  '@livestore/devtools-expo': 'link:packages/@livestore/devtools-expo',
+  '@livestore/graphql': 'link:packages/@livestore/graphql',
+  '@livestore/sync-cf': 'link:packages/@livestore/sync-cf',
+  '@livestore/sync-s2': 'link:packages/@livestore/sync-s2',
+  '@livestore/sync-electric': 'link:packages/@livestore/sync-electric',
+  '@livestore/cli': 'link:packages/@livestore/cli',
+  '@livestore/effect-playwright': 'link:packages/@livestore/effect-playwright',
+  '@livestore/peer-deps': 'link:packages/@livestore/peer-deps',
+  '@livestore/wa-sqlite': 'link:packages/@livestore/wa-sqlite',
 
   // @local/* packages (internal tooling)
-  '@local/astro-tldraw': 'file:packages/@local/astro-tldraw',
-  '@local/astro-twoslash-code': 'file:packages/@local/astro-twoslash-code',
-  '@local/oxc-config': 'file:packages/@local/oxc-config',
-  '@local/shared': 'file:packages/@local/shared',
+  '@local/astro-tldraw': 'link:packages/@local/astro-tldraw',
+  '@local/astro-twoslash-code': 'link:packages/@local/astro-twoslash-code',
+  '@local/oxc-config': 'link:packages/@local/oxc-config',
+  '@local/shared': 'link:packages/@local/shared',
 } as const
 
 /** LiveStore-specific packages not in effect-utils catalog */
@@ -244,6 +246,51 @@ export const localPackageDefaults = {
 }
 
 // =============================================================================
+// Effect Peer Dependency Helpers
+// =============================================================================
+
+/**
+ * Core Effect ecosystem peer dependencies for @livestore/utils.
+ * These are the packages that utils exposes types from and consumers need.
+ *
+ * Usage pattern:
+ * - Include in devDependencies via catalog.pick() for local development
+ * - Include in peerDependencies via catalog.peers() for consumers
+ */
+export const utilsEffectPeerDeps = [
+  'effect',
+  '@effect/platform',
+  '@effect/platform-browser',
+  '@effect/platform-bun',
+  '@effect/platform-node',
+  '@effect/ai',
+  '@effect/cli',
+  '@effect/cluster',
+  '@effect/experimental',
+  '@effect/opentelemetry',
+  '@effect/printer',
+  '@effect/printer-ansi',
+  '@effect/rpc',
+  '@effect/sql',
+  '@effect/typeclass',
+  '@opentelemetry/api',
+  '@opentelemetry/resources',
+] as const
+
+/**
+ * Helper to get peer dependencies object from utils package.
+ * Used by packages that depend on @livestore/utils to re-expose its peer deps.
+ */
+export const getUtilsPeerDeps = () => catalog.peers(...utilsEffectPeerDeps)
+
+/**
+ * Helper to get dev dependencies for packages using Effect types.
+ * Combines peer deps (for local dev) with additional dev-only deps.
+ */
+export const effectDevDeps = (...additionalDeps: Parameters<typeof catalog.pick>) =>
+  catalog.pick(...utilsEffectPeerDeps, ...additionalDeps)
+
+// =============================================================================
 // TypeScript Configuration Helpers
 // =============================================================================
 
@@ -298,7 +345,21 @@ export const livestoreBaseTsconfigCompilerOptions = {
 } as const
 
 /** Standard exclude patterns for tsconfig */
-export const tsconfigExclude = ['packages/**/dist', 'node_modules', 'packages/**/node_modules', 'tests/**/node_modules']
+export const tsconfigExclude = [
+  'packages/**/dist',
+  'node_modules',
+  'packages/**/node_modules',
+  'tests/**/node_modules',
+  // Exclude pnpm's .pnpm directory to avoid type-checking copied local packages
+  // See: effect-utils/context/workarounds/pnpm-issues.md
+  '**/node_modules/.pnpm',
+]
+
+/** Standard package tsconfig exclude patterns.
+ * Excludes node_modules and dist to avoid type-checking copied local packages.
+ * See: effect-utils/context/workarounds/pnpm-issues.md
+ */
+export const packageTsconfigExclude = ['node_modules', '**/dist', '**/node_modules/.pnpm'] as const
 
 /** Standard package tsconfig compiler options (composite mode with src/dist structure) */
 export const packageTsconfigCompilerOptions = {

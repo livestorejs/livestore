@@ -1,4 +1,4 @@
-import { livestoreBaseTsconfigCompilerOptions, tsconfigJson } from '../genie/repo.ts'
+import { livestoreBaseTsconfigCompilerOptions, packageTsconfigExclude, tsconfigJson } from '../genie/repo.ts'
 
 /**
  * Astro docs site tsconfig.
@@ -21,6 +21,6 @@ export default tsconfigJson({
     tsBuildInfoFile: './dist/.tsbuildinfo',
   },
   include: ['src'],
-  exclude: ['src/content/_assets/code/**/*'],
+  exclude: [...packageTsconfigExclude, 'src/content/_assets/code/**/*'],
   references: [{ path: '../packages/@local/shared' }, { path: '../packages/@local/astro-twoslash-code' }],
 })

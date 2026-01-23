@@ -1,4 +1,4 @@
-import { livestoreBaseTsconfigCompilerOptions, tsconfigJson } from '../../genie/repo.ts'
+import { livestoreBaseTsconfigCompilerOptions, packageTsconfigExclude, tsconfigJson } from '../../genie/repo.ts'
 
 export default tsconfigJson({
   compilerOptions: {
@@ -6,6 +6,6 @@ export default tsconfigJson({
     noEmit: true,
   },
   include: ['test'],
-  exclude: ['node_modules', '**/dist'],
+  exclude: [...packageTsconfigExclude],
   references: [{ path: '../../packages/@livestore/wa-sqlite' }],
 })

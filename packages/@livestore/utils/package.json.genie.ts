@@ -1,4 +1,10 @@
-import { catalog, livestorePackageDefaults, packageJson } from '../../../genie/repo.ts'
+import {
+  catalog,
+  livestorePackageDefaults,
+  packageJson,
+  utilsEffectPeerDeps,
+  getUtilsPeerDeps,
+} from '../../../genie/repo.ts'
 
 export default packageJson({
   name: '@livestore/utils',
@@ -22,53 +28,21 @@ export default packageJson({
     ...catalog.pick('@effect/platform-node', '@standard-schema/spec', 'nanoid', 'pretty-bytes', 'qrcode-generator'),
   },
   devDependencies: {
+    // Include peer deps for local development + dev-only deps
     ...catalog.pick(
-      '@effect/ai',
-      '@effect/cli',
-      '@effect/cluster',
-      '@effect/experimental',
-      '@effect/opentelemetry',
-      '@effect/platform',
-      '@effect/platform-browser',
-      '@effect/platform-bun',
-      '@effect/platform-node',
-      '@effect/printer',
-      '@effect/printer-ansi',
-      '@effect/rpc',
-      '@effect/sql',
-      '@effect/typeclass',
+      ...utilsEffectPeerDeps,
       '@effect/vitest',
       '@effect/workflow',
-      '@opentelemetry/api',
-      '@opentelemetry/resources',
       '@types/bun',
       '@types/jsdom',
       '@types/node',
       '@types/web',
-      'effect',
       'jsdom',
       'vitest',
     ),
   },
-  peerDependencies: {
-    '@effect/ai': '^0.29.0',
-    '@effect/cli': '^0.71.0',
-    '@effect/cluster': '^0.50.6',
-    '@effect/experimental': '^0.56.0',
-    '@effect/opentelemetry': '^0.58.0',
-    '@effect/platform': '^0.92.1',
-    '@effect/platform-browser': '^0.72.0',
-    '@effect/platform-bun': '^0.81.1',
-    '@effect/platform-node': '^0.98.4',
-    '@effect/printer': '^0.46.0',
-    '@effect/printer-ansi': '^0.46.0',
-    '@effect/rpc': '^0.71.1',
-    '@effect/sql': '^0.46.0',
-    '@effect/typeclass': '^0.37.0',
-    '@opentelemetry/api': '^1.9.0',
-    '@opentelemetry/resources': '^2.0.1',
-    effect: '^3.19.9',
-  },
+  // Use catalog.peers() for consistent versioning with ^ prefix
+  peerDependencies: getUtilsPeerDeps(),
   publishConfig: {
     access: 'public',
     exports: {

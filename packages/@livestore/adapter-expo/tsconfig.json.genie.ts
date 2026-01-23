@@ -1,6 +1,7 @@
 import {
   livestoreBaseTsconfigCompilerOptions,
   packageTsconfigCompilerOptions,
+  packageTsconfigExclude,
   refs,
   tsconfigJson,
 } from '../../../genie/repo.ts'
@@ -11,5 +12,6 @@ export default tsconfigJson({
     ...packageTsconfigCompilerOptions,
   },
   include: ['./src'],
+  exclude: [...packageTsconfigExclude],
   references: [refs.common, refs.utils, refs.webmesh],
 })

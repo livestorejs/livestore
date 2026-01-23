@@ -45,6 +45,7 @@
     "resolveJsonModule": true
   },
   "include": ["./src"],
+  "exclude": ["node_modules", "**/dist", "**/node_modules/.pnpm"],
   "references": [
     {
       "path": "../utils"

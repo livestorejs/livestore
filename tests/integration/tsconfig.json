@@ -46,7 +46,7 @@
     "tsBuildInfoFile": "./dist/.tsbuildinfo"
   },
   "include": ["./src", "./scripts"],
-  "exclude": ["./src/tests/devtools/fixtures"],
+  "exclude": ["node_modules", "**/dist", "**/node_modules/.pnpm", "./src/tests/devtools/fixtures"],
   "references": [
     {
       "path": "../../packages/@local/shared"

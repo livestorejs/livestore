@@ -1,6 +1,7 @@
 import {
   livestoreBaseTsconfigCompilerOptions,
   packageTsconfigCompilerOptions,
+  packageTsconfigExclude,
   reactJsx,
   refs,
   tsconfigJson,
@@ -14,5 +15,6 @@ export default tsconfigJson({
     verbatimModuleSyntax: true,
   },
   include: ['./src', 'src/types.d.ts'],
+  exclude: [...packageTsconfigExclude],
   references: [refs.adapterWeb, refs.adapterNode, refs.utils],
 })

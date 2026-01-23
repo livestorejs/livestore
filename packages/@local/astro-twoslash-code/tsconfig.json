@@ -44,5 +44,5 @@
     "types": ["node", "astro"]
   },
   "include": ["src", "tests", "examples"],
-  "exclude": ["dist", "node_modules"]
+  "exclude": ["node_modules", "**/dist", "**/node_modules/.pnpm", "dist"]
 }

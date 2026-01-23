@@ -1,4 +1,4 @@
-import { livestoreBaseTsconfigCompilerOptions, tsconfigJson } from '../../../genie/repo.ts'
+import { livestoreBaseTsconfigCompilerOptions, packageTsconfigExclude, tsconfigJson } from '../../../genie/repo.ts'
 
 export default tsconfigJson({
   compilerOptions: {
@@ -9,5 +9,5 @@ export default tsconfigJson({
     types: ['node', 'astro'],
   },
   include: ['src', 'tests', 'examples'],
-  exclude: ['dist', 'node_modules'],
+  exclude: [...packageTsconfigExclude, 'dist'],
 })

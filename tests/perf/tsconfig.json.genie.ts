@@ -1,4 +1,4 @@
-import { livestoreBaseTsconfigCompilerOptions, reactJsx, tsconfigJson } from '../../genie/repo.ts'
+import { livestoreBaseTsconfigCompilerOptions, packageTsconfigExclude, reactJsx, tsconfigJson } from '../../genie/repo.ts'
 
 export default tsconfigJson({
   compilerOptions: {
@@ -7,7 +7,7 @@ export default tsconfigJson({
     ...reactJsx,
   },
   include: ['./test-app', './tests'],
-  exclude: ['node_modules', '**/dist'],
+  exclude: [...packageTsconfigExclude],
   references: [
     { path: '../../packages/@livestore/adapter-web' },
     { path: '../../packages/@livestore/livestore' },

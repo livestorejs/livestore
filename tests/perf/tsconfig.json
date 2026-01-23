@@ -43,7 +43,7 @@
     "jsx": "react-jsx"
   },
   "include": ["./test-app", "./tests"],
-  "exclude": ["node_modules", "**/dist"],
+  "exclude": ["node_modules", "**/dist", "**/node_modules/.pnpm"],
   "references": [
     {
       "path": "../../packages/@livestore/adapter-web"

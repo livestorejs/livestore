@@ -11,7 +11,7 @@
   },
   "dependencies": {
     "@kitschpatrol/tldraw-cli": "5.0.1",
-    "@livestore/utils": "file:../../@livestore/utils"
+    "@livestore/utils": "link:../../@livestore/utils"
   },
   "devDependencies": {
     "@effect/vitest": "0.27.0",
