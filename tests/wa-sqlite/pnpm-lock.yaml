@@ -9,8 +9,8 @@ importers:
   .:
     devDependencies:
       '@livestore/wa-sqlite':
-        specifier: file:../../packages/@livestore/wa-sqlite
-        version: file:../../packages/@livestore/wa-sqlite
+        specifier: link:../../packages/@livestore/wa-sqlite
+        version: link:../../packages/@livestore/wa-sqlite
       vitest:
         specifier: 3.2.4
         version: 3.2.4
@@ -175,9 +175,6 @@ packages:
 
   '@jridgewell/sourcemap-codec@1.5.5':
     resolution: {integrity: sha512-cYQ9310grqxueWbl+WuIUIaiUaDcj7WOq5fVhEljNVgRfOUhY9fy2zTvfoqWsnebh8Sl70VScFbICvJnLKB0Og==}
-
-  '@livestore/wa-sqlite@file:../../packages/@livestore/wa-sqlite':
-    resolution: {directory: ../../packages/@livestore/wa-sqlite, type: directory}
 
   '@rollup/rollup-android-arm-eabi@4.56.0':
     resolution: {integrity: sha512-LNKIPA5k8PF1+jAFomGe3qN3bbIgJe/IlpDBwuVjrDKrJhVWywgnJvflMt/zkbVNLFtF1+94SljYQS6e99klnw==}
@@ -637,8 +634,6 @@ snapshots:
     optional: true
 
   '@jridgewell/sourcemap-codec@1.5.5': {}
-
-  '@livestore/wa-sqlite@file:../../packages/@livestore/wa-sqlite': {}
 
   '@rollup/rollup-android-arm-eabi@4.56.0':
     optional: true
