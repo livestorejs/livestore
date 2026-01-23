@@ -65,6 +65,8 @@ in
     inputs.effect-utils.devenvModules.dt
     # Shared task modules from effect-utils
     taskModules.genie
+    # NOTE: megarepo task module not imported - requires CI-aware changes in effect-utils first
+    # taskModules.megarepo
     (taskModules.ts { tsconfigFile = "tsconfig.dev.json"; })
     # NOTE: check module temporarily disabled for debugging
     # (taskModules.check { hasTests = false; hasLint = false; })
@@ -74,7 +76,8 @@ in
     # Setup task (auto-runs in enterShell)
     (taskModules.setup {
       tasks = [
-        "megarepo:generate"
+        # NOTE: megarepo:generate removed - requires CI-aware changes in effect-utils first
+        # For local dev, megarepo setup happens via .envrc.generated.megarepo
         "pnpm:install"
         "genie:run"
         "ts:build"
