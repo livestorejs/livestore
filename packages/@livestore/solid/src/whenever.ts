@@ -3,17 +3,12 @@
  * Inlined from @bigmistqke/solid-whenever to reduce external dependencies.
  */
 
-import type { Accessor } from 'solid-js'
+import { type AccessorMaybe, resolve } from './utils.ts'
 
-type MaybeAccessor<T> = T | Accessor<T>
 type NonNullable<T> = Exclude<T, null | undefined | false | 0 | ''>
-type InferNonNullable<T> = T extends MaybeAccessor<infer TValue> | undefined ? NonNullable<TValue> : never
-type InferNonNullableTuple<TAccessors extends Array<MaybeAccessor<any>>> = {
+type InferNonNullable<T> = T extends AccessorMaybe<infer TValue> | undefined ? NonNullable<TValue> : never
+type InferNonNullableTuple<TAccessors extends Array<AccessorMaybe<any>>> = {
   [TKey in keyof TAccessors]: InferNonNullable<TAccessors[TKey]>
-}
-
-function resolve<T>(value: MaybeAccessor<T>): T {
-  return typeof value !== 'function' ? value : (value as Accessor<T>)()
 }
 
 /**
@@ -24,7 +19,7 @@ function resolve<T>(value: MaybeAccessor<T>): T {
  * @returns The result of the callback if truthy, fallback result if falsy, or undefined if no fallback
  */
 const check = <TValue, TResult, TFallbackResult = undefined>(
-  accessor: MaybeAccessor<TValue>,
+  accessor: AccessorMaybe<TValue>,
   callback: (value: NonNullable<TValue>) => TResult,
   fallback?: () => TFallbackResult,
 ): TResult | TFallbackResult | undefined => {
@@ -42,16 +37,16 @@ const check = <TValue, TResult, TFallbackResult = undefined>(
  */
 export const when: {
   <Args extends any[], TValue, TResult>(
-    accessor: MaybeAccessor<TValue>,
+    accessor: AccessorMaybe<TValue>,
     callback: (value: NonNullable<TValue>, ...args: Args) => TResult,
   ): (...args: Args) => TResult | undefined
   <Args extends any[], TValue, TResult, TFallbackResult>(
-    accessor: MaybeAccessor<TValue>,
+    accessor: AccessorMaybe<TValue>,
     callback: (value: NonNullable<TValue>, ...args: Args) => TResult,
     fallback: (...args: Args) => TFallbackResult,
   ): (...args: Args) => TResult | TFallbackResult
 } = <Args extends any[], TValue, TResult, TFallbackResult>(
-  accessor: MaybeAccessor<TValue>,
+  accessor: AccessorMaybe<TValue>,
   callback: (value: NonNullable<TValue>, ...args: Args) => TResult,
   fallback?: (...args: Args) => TFallbackResult,
 ): ((...args: Args) => TResult | TFallbackResult | undefined) => {
@@ -66,7 +61,7 @@ export const when: {
  * @returns A function that can be called to conditionally execute based on the truthiness of all accessor values,
  *          returning their results as an array or undefined if any are not truthy.
  */
-export function every<TAccessors extends Array<MaybeAccessor<any>>>(
+export function every<TAccessors extends Array<AccessorMaybe<any>>>(
   ...accessors: TAccessors
 ): () => InferNonNullableTuple<TAccessors> | undefined {
   return () => {
