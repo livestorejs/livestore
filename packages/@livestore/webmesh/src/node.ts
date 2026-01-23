@@ -192,6 +192,7 @@ export const makeMeshNode = <TName extends MeshNodeName>(
           hops: [],
         })
       }
+      return undefined
     }
 
     const sendPacket = (packet: typeof WebmeshSchema.Packet.Type) =>
