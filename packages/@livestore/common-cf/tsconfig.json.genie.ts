@@ -10,6 +10,7 @@ export default tsconfigJson({
   compilerOptions: {
     ...baseTsconfigCompilerOptions,
     ...packageTsconfigCompilerOptions,
+    types: ['@cloudflare/workers-types'],
   },
   include: ['./src'],
   exclude: [...packageTsconfigExclude],

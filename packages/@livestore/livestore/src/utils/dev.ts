@@ -6,11 +6,21 @@ declare global {
   var __debugLiveStoreUtils: any
 }
 
+// TODO refactor: Move downloadBlob/downloadURL to browser-specific module or expose via adapter
+// These are browser-only utilities that shouldn't require DOM type declarations in isomorphic code.
+
+/** Browser globals - only available in browser environments */
+declare const window: { URL: { createObjectURL(blob: Blob): string; revokeObjectURL(url: string): void } } | undefined
+declare const document: { createElement(tag: string): any; body: { append(el: any): void } } | undefined
+
+/** Download a blob as a file. Browser-only. */
 export const downloadBlob = (
   data: Uint8Array<ArrayBuffer> | Blob | string,
   fileName: string,
   mimeType = 'application/octet-stream',
 ) => {
+  if (typeof window === 'undefined') throw new Error('downloadBlob is only available in browser environments')
+
   const blob = data instanceof Blob ? data : new Blob([data], { type: mimeType })
 
   const url = window.URL.createObjectURL(blob)
@@ -20,7 +30,10 @@ export const downloadBlob = (
   setTimeout(() => window.URL.revokeObjectURL(url), 1000)
 }
 
+/** Download a URL as a file. Browser-only. */
 export const downloadURL = (data: string, fileName: string) => {
+  if (typeof document === 'undefined') throw new Error('downloadURL is only available in browser environments')
+
   const a = document.createElement('a')
   a.href = data
   a.download = fileName

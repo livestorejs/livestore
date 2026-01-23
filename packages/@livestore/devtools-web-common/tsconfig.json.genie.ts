@@ -1,5 +1,6 @@
 import {
   baseTsconfigCompilerOptions,
+  domLib,
   packageTsconfigCompilerOptions,
   packageTsconfigExclude,
   reactJsx,
@@ -12,6 +13,7 @@ export default tsconfigJson({
     ...baseTsconfigCompilerOptions,
     ...packageTsconfigCompilerOptions,
     ...reactJsx,
+    lib: [...domLib],
   },
   include: ['./src'],
   exclude: [...packageTsconfigExclude],

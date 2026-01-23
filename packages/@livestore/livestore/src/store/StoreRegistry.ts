@@ -20,6 +20,9 @@ import { type CreateStoreOptions, createStore } from './create-store.ts'
 import type { Store } from './store.ts'
 import type { OtelOptions } from './store-types.ts'
 
+// TODO refactor: Make environment detection injectable via adapter instead of globalThis sniffing
+const isBrowser = 'window' in globalThis
+
 /**
  * Default time to keep unused stores in cache.
  *
@@ -28,7 +31,7 @@ import type { OtelOptions } from './store-types.ts'
  *
  * @internal Exported primarily for testing purposes.
  */
-export const DEFAULT_UNUSED_CACHE_TIME = typeof window === 'undefined' ? Number.POSITIVE_INFINITY : 60_000
+export const DEFAULT_UNUSED_CACHE_TIME = isBrowser ? 60_000 : Number.POSITIVE_INFINITY
 
 /**
  * Configuration options for stores managed by a {@link StoreRegistry}.
