@@ -84,6 +84,14 @@ const workspaceCatalog = {
   '@local/astro-twoslash-code': 'link:packages/@local/astro-twoslash-code',
   '@local/oxc-config': 'link:packages/@local/oxc-config',
   '@local/shared': 'link:packages/@local/shared',
+  '@local/docs': 'link:docs',
+  '@local/scripts': 'link:scripts',
+  '@local/tests-integration': 'link:tests/integration',
+  '@local/tests-package-common': 'link:tests/package-common',
+  '@local/tests-perf': 'link:tests/perf',
+  '@local/tests-perf-streaming-loopback': 'link:tests/perf-eventlog',
+  '@local/tests-sync-provider': 'link:tests/sync-provider',
+  '@local/tests-wa-sqlite': 'link:tests/wa-sqlite',
 } as const
 
 /** LiveStore-specific packages not in effect-utils catalog */

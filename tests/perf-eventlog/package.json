@@ -1,16 +1,22 @@
 {
   "name": "@local/tests-perf-streaming-loopback",
   "version": "0.0.0",
-  "type": "module",
   "private": true,
+  "type": "module",
+  "scripts": {
+    "build": "pnpm exec vite build --config test-app/vite.config.ts",
+    "dev": "pnpm exec vite --config test-app/vite.config.ts",
+    "preview": "pnpm exec vite preview --config test-app/vite.config.ts",
+    "test": "NODE_OPTIONS=--disable-warning=ExperimentalWarning playwright test"
+  },
   "dependencies": {
-    "@livestore/adapter-web": "file:../../packages/@livestore/adapter-web",
-    "@livestore/common": "file:../../packages/@livestore/common",
-    "@livestore/livestore": "file:../../packages/@livestore/livestore",
-    "@livestore/react": "file:../../packages/@livestore/react",
-    "@livestore/sqlite-wasm": "file:../../packages/@livestore/sqlite-wasm",
-    "@livestore/utils": "file:../../packages/@livestore/utils",
-    "@livestore/utils-dev": "file:../../packages/@livestore/utils-dev",
+    "@livestore/adapter-web": "link:../../packages/@livestore/adapter-web",
+    "@livestore/common": "link:../../packages/@livestore/common",
+    "@livestore/livestore": "link:../../packages/@livestore/livestore",
+    "@livestore/react": "link:../../packages/@livestore/react",
+    "@livestore/sqlite-wasm": "link:../../packages/@livestore/sqlite-wasm",
+    "@livestore/utils": "link:../../packages/@livestore/utils",
+    "@livestore/utils-dev": "link:../../packages/@livestore/utils-dev",
     "@opentelemetry/api": "1.9.0",
     "@opentelemetry/core": "2.2.0",
     "@opentelemetry/resources": "2.2.0",
@@ -30,10 +36,8 @@
     "@playwright/test": "1.57.0",
     "tsx": "^4.20.0"
   },
-  "scripts": {
-    "build": "pnpm exec vite build --config test-app/vite.config.ts",
-    "dev": "pnpm exec vite --config test-app/vite.config.ts",
-    "preview": "pnpm exec vite preview --config test-app/vite.config.ts",
-    "test": "NODE_OPTIONS=--disable-warning=ExperimentalWarning playwright test"
+  "$genie": {
+    "source": "package.json.genie.ts",
+    "warning": "DO NOT EDIT - changes will be overwritten"
   }
 }

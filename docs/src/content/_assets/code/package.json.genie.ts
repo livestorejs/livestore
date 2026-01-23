@@ -15,20 +15,22 @@ export default packageJson({
     '@effect-atom/atom-livestore': '0.3.0',
     '@effect-atom/atom-react': '0.3.0',
 
-    // @livestore packages via file: paths
-    '@livestore/adapter-cloudflare': 'file:../../../../../packages/@livestore/adapter-cloudflare',
-    '@livestore/adapter-expo': 'file:../../../../../packages/@livestore/adapter-expo',
-    '@livestore/adapter-node': 'file:../../../../../packages/@livestore/adapter-node',
-    '@livestore/adapter-web': 'file:../../../../../packages/@livestore/adapter-web',
-    '@livestore/devtools-expo': 'file:../../../../../packages/@livestore/devtools-expo',
-    '@livestore/livestore': 'file:../../../../../packages/@livestore/livestore',
-    '@livestore/react': 'file:../../../../../packages/@livestore/react',
-    '@livestore/solid': 'file:../../../../../packages/@livestore/solid',
-    '@livestore/svelte': 'file:../../../../../packages/@livestore/svelte',
-    '@livestore/sync-cf': 'file:../../../../../packages/@livestore/sync-cf',
-    '@livestore/sync-electric': 'file:../../../../../packages/@livestore/sync-electric',
-    '@livestore/sync-s2': 'file:../../../../../packages/@livestore/sync-s2',
-    '@livestore/utils': 'file:../../../../../packages/@livestore/utils',
+    // @livestore packages via catalog (uses link: protocol)
+    ...catalog.pick(
+      '@livestore/adapter-cloudflare',
+      '@livestore/adapter-expo',
+      '@livestore/adapter-node',
+      '@livestore/adapter-web',
+      '@livestore/devtools-expo',
+      '@livestore/livestore',
+      '@livestore/react',
+      '@livestore/solid',
+      '@livestore/svelte',
+      '@livestore/sync-cf',
+      '@livestore/sync-electric',
+      '@livestore/sync-s2',
+      '@livestore/utils',
+    ),
 
     // Published @livestore packages (from catalog)
     ...catalog.pick('@livestore/devtools-vite'),

@@ -7,16 +7,16 @@
     "./todomvc-fixture": "./src/todomvc-fixture.ts"
   },
   "dependencies": {
-    "@livestore/adapter-node": "file:../../packages/@livestore/adapter-node",
-    "@livestore/adapter-web": "file:../../packages/@livestore/adapter-web",
-    "@livestore/common": "file:../../packages/@livestore/common",
-    "@livestore/livestore": "file:../../packages/@livestore/livestore",
-    "@livestore/sqlite-wasm": "file:../../packages/@livestore/sqlite-wasm",
-    "@livestore/utils": "file:../../packages/@livestore/utils",
+    "@livestore/adapter-node": "link:../../packages/@livestore/adapter-node",
+    "@livestore/adapter-web": "link:../../packages/@livestore/adapter-web",
+    "@livestore/common": "link:../../packages/@livestore/common",
+    "@livestore/livestore": "link:../../packages/@livestore/livestore",
+    "@livestore/sqlite-wasm": "link:../../packages/@livestore/sqlite-wasm",
+    "@livestore/utils": "link:../../packages/@livestore/utils",
     "@opentelemetry/api": "1.9.0"
   },
   "devDependencies": {
-    "@livestore/utils-dev": "file:../../packages/@livestore/utils-dev",
+    "@livestore/utils-dev": "link:../../packages/@livestore/utils-dev",
     "vitest": "3.2.4"
   },
   "$genie": {

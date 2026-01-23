@@ -1,13 +1,20 @@
 {
   "name": "@local/tests-perf",
   "version": "0.0.0",
+  "private": true,
   "type": "module",
+  "scripts": {
+    "test": "NODE_OPTIONS=--disable-warning=ExperimentalWarning playwright test",
+    "test-app": "vite build test-app && vite preview test-app",
+    "test-app:dev": "vite test-app",
+    "test:profiler": "PERF_PROFILER=1 pnpm test"
+  },
   "dependencies": {
-    "@livestore/adapter-web": "file:../../packages/@livestore/adapter-web",
-    "@livestore/livestore": "file:../../packages/@livestore/livestore",
-    "@livestore/react": "file:../../packages/@livestore/react",
-    "@livestore/utils": "file:../../packages/@livestore/utils",
-    "@livestore/utils-dev": "file:../../packages/@livestore/utils-dev",
+    "@livestore/adapter-web": "link:../../packages/@livestore/adapter-web",
+    "@livestore/livestore": "link:../../packages/@livestore/livestore",
+    "@livestore/react": "link:../../packages/@livestore/react",
+    "@livestore/utils": "link:../../packages/@livestore/utils",
+    "@livestore/utils-dev": "link:../../packages/@livestore/utils-dev",
     "@opentelemetry/exporter-trace-otlp-http": "0.208.0",
     "@opentelemetry/resources": "2.2.0",
     "@opentelemetry/sdk-trace-base": "2.2.0",
@@ -22,10 +29,8 @@
     "typescript": "5.9.3",
     "vite": "7.3.0"
   },
-  "scripts": {
-    "test": "NODE_OPTIONS=--disable-warning=ExperimentalWarning playwright test",
-    "test-app": "vite build test-app && vite preview test-app",
-    "test-app:dev": "vite test-app",
-    "test:profiler": "PERF_PROFILER=1 pnpm test"
+  "$genie": {
+    "source": "package.json.genie.ts",
+    "warning": "DO NOT EDIT - changes will be overwritten"
   }
 }

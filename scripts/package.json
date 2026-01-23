@@ -1,27 +1,31 @@
 {
   "name": "@local/scripts",
   "version": "0.0.0",
-  "type": "module",
   "private": true,
+  "type": "module",
   "exports": {
-    "./release": "./src/commands/release.ts",
     "./docs-export": "./src/commands/docs-export.ts",
-    "./lint": "./src/commands/lint.ts"
+    "./lint": "./src/commands/lint.ts",
+    "./release": "./src/commands/release.ts"
   },
   "devDependencies": {
-    "@livestore/common": "file:../packages/@livestore/common",
-    "@livestore/utils": "file:../packages/@livestore/utils",
-    "@livestore/utils-dev": "file:../packages/@livestore/utils-dev",
-    "@local/astro-tldraw": "file:../packages/@local/astro-tldraw",
-    "@local/astro-twoslash-code": "file:../packages/@local/astro-twoslash-code",
-    "@local/docs": "file:../docs",
-    "@local/tests-integration": "file:../tests/integration",
-    "@local/tests-sync-provider": "file:../tests/sync-provider",
+    "@livestore/common": "link:../packages/@livestore/common",
+    "@livestore/utils": "link:../packages/@livestore/utils",
+    "@livestore/utils-dev": "link:../packages/@livestore/utils-dev",
+    "@local/astro-tldraw": "link:../packages/@local/astro-tldraw",
+    "@local/astro-twoslash-code": "link:../packages/@local/astro-twoslash-code",
+    "@local/docs": "link:docs",
+    "@local/tests-integration": "link:tests/integration",
+    "@local/tests-sync-provider": "link:tests/sync-provider",
     "@types/bun": "1.3.5",
     "@types/node": "25.0.3",
     "@types/semver": "^7.7.0",
     "knip": "^5.80.0",
     "semver": "^7.7.3",
     "yaml": "2.8.1"
+  },
+  "$genie": {
+    "source": "package.json.genie.ts",
+    "warning": "DO NOT EDIT - changes will be overwritten"
   }
 }

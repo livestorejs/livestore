@@ -1,11 +1,20 @@
 {
   "name": "@local/docs",
   "version": "0.1.1",
-  "type": "module",
   "private": true,
+  "type": "module",
   "exports": {
     "./multi-code-markdown": "./src/utils/multi-code-markdown.ts",
     "./sidebar": "./src/data/sidebar.ts"
+  },
+  "scripts": {
+    "astro": "astro",
+    "build": "astro check && astro build",
+    "dev": "astro dev",
+    "dev:docs:sync": "mxbai vs sync \"livestore-docs-dev\" \"./src/content/**/*.mdx\" \"./src/content/**/*.md\"  --yes --strategy fast",
+    "dev:docs:sync:dry-run": "mxbai vs sync \"livestore-docs-dev\" \"./src/content/**/*.mdx\" \"./src/content/**/*.md\" --dry-run",
+    "preview": "astro preview",
+    "start": "astro dev"
   },
   "dependencies": {
     "@astrojs/check": "0.9.4",
@@ -13,19 +22,19 @@
     "@astrojs/react": "4.3.0",
     "@astrojs/starlight": "0.35.2",
     "@astrojs/starlight-tailwind": "4.0.1",
-    "@livestore/adapter-cloudflare": "file:../packages/@livestore/adapter-cloudflare",
-    "@livestore/adapter-expo": "file:../packages/@livestore/adapter-expo",
-    "@livestore/adapter-web": "file:../packages/@livestore/adapter-web",
-    "@livestore/common": "file:../packages/@livestore/common",
-    "@livestore/livestore": "file:../packages/@livestore/livestore",
-    "@livestore/react": "file:../packages/@livestore/react",
-    "@livestore/solid": "file:../packages/@livestore/solid",
-    "@livestore/sync-cf": "file:../packages/@livestore/sync-cf",
-    "@livestore/sync-s2": "file:../packages/@livestore/sync-s2",
-    "@livestore/utils": "file:../packages/@livestore/utils",
-    "@local/astro-tldraw": "file:../packages/@local/astro-tldraw",
-    "@local/astro-twoslash-code": "file:../packages/@local/astro-twoslash-code",
-    "@local/shared": "file:../packages/@local/shared",
+    "@livestore/adapter-cloudflare": "link:../packages/@livestore/adapter-cloudflare",
+    "@livestore/adapter-expo": "link:../packages/@livestore/adapter-expo",
+    "@livestore/adapter-web": "link:../packages/@livestore/adapter-web",
+    "@livestore/common": "link:../packages/@livestore/common",
+    "@livestore/livestore": "link:../packages/@livestore/livestore",
+    "@livestore/react": "link:../packages/@livestore/react",
+    "@livestore/solid": "link:../packages/@livestore/solid",
+    "@livestore/sync-cf": "link:../packages/@livestore/sync-cf",
+    "@livestore/sync-s2": "link:../packages/@livestore/sync-s2",
+    "@livestore/utils": "link:../packages/@livestore/utils",
+    "@local/astro-tldraw": "link:../packages/@local/astro-tldraw",
+    "@local/astro-twoslash-code": "link:../packages/@local/astro-twoslash-code",
+    "@local/shared": "link:../packages/@local/shared",
     "@mixedbread/cli": "1.2.1",
     "@mixedbread/sdk": "0.28.1",
     "@tailwindcss/vite": "4.1.18",
@@ -61,13 +70,8 @@
     "@types/hast": "3.0.4",
     "@types/react-dom": "19.2.3"
   },
-  "scripts": {
-    "astro": "astro",
-    "build": "astro check && astro build",
-    "dev": "astro dev",
-    "dev:docs:sync": "mxbai vs sync \"livestore-docs-dev\" \"./src/content/**/*.mdx\" \"./src/content/**/*.md\"  --yes --strategy fast",
-    "dev:docs:sync:dry-run": "mxbai vs sync \"livestore-docs-dev\" \"./src/content/**/*.mdx\" \"./src/content/**/*.md\" --dry-run",
-    "preview": "astro preview",
-    "start": "astro dev"
+  "$genie": {
+    "source": "package.json.genie.ts",
+    "warning": "DO NOT EDIT - changes will be overwritten"
   }
 }
