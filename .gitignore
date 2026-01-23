@@ -25,6 +25,7 @@ dist
 *.db
 
 .direnv
+repos/
 
 # Codex project-local config
 .codex

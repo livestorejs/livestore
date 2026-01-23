@@ -1,6 +1,6 @@
 {
   inputs = {
-    workspace.url = "github:overengineeringstudio/effect-utils?dir=nix/workspace-flake";
+    workspace.url = "path:../../../repos/effect-utils?dir=nix/workspace-flake";
     nixpkgs.follows = "workspace/nixpkgs";
     flake-utils.url = "github:numtide/flake-utils";
   };
