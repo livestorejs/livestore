@@ -60,15 +60,9 @@ Without one of these, rebase gives you convergence without correctness.
 
 ### Current Behavior
 
-When a rebased event becomes invalid against the new base state, LiveStore has no built-in mechanism to handle it gracefully. The behavior depends on how constraints are enforced:
+When a rebased event becomes invalid against the new base state, LiveStore has no mechanism to handle it gracefully. Whether constraints are enforced through SQLite (e.g., `FOREIGN KEY`, `UNIQUE`, `CHECK`) or manually in materializers, the outcome is the same: the materializer throws an error (`LiveStore.MaterializeError`) and the store **shuts down**.
 
-**Database Constraints (Foreign Keys, Unique, Check)**
-
-If constraints are enforced through SQLite (e.g., `FOREIGN KEY`, `UNIQUE`, `CHECK`), the materializer will attempt to execute the SQL statement and SQLite will throw an error. Since event append and state materialization are atomic, the event is not written to the eventlog. However, there is no recovery mechanism—the store **shuts down** with an error.
-
-**Manual Checks in Materializers**
-
-If constraints are checked manually in the materializer (e.g., querying for a referenced entity before inserting) and an exception is thrown, the same behavior occurs: the transaction rolls back and the store shuts down.
+If we try to refresh the page, the store fails to boot with an error like `During boot the backend head (6) should never be greater than the local head (5)`. The only recovery is to clear local storage, losing all non-pushed data.
 
 ### Why This Matters
 
