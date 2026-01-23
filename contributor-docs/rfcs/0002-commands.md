@@ -548,14 +548,15 @@ In this approach, clients are able to issue both authoritative events and comman
 
 ## Open Questions
 
-- Should there be client-only commands?
-  - **Likely no, at least not in the first version.** The primary benefit of commands is re-validation during sync and reconciliation. Client-only commands skip the sync cycle entirely, so that value proposition doesn't apply. For client-only state mutations, a simple function that validates and calls `store.commit(clientDocTable.set(...))` achieves the same outcome with less ceremony. The potential benefits (devtools visibility, middleware reuse, uniform programming model) don't justify the added API surface until there's demonstrated demand. The existing `clientDocument` API already handles the common case of local UI state.
-- Should we still allow store to commit events directly?
-  - **No.** Commands should be the only path for producing events. Routing all synced state changes through handlers encourages validation checks (most events reference entities that may not exist after rebase) and supports evolution—when invariants are added later, the command path is already in place.
+- How should the initial state (before any commands have been executed) be handled?
 - Should each event stream be stored in the same log or in separate logs?
 - Should we introduce a correlation ID?
 - Should we introduce a causation ID?
 - What happens when the write-side projection (state DB) errors?
+- Should there be client-only commands?
+  - **Likely no, at least not in the first version.** The primary benefit of commands is re-validation during sync and reconciliation. Client-only commands skip the sync cycle entirely, so that value proposition doesn't apply. For client-only state mutations, a simple function that validates and calls `store.commit(clientDocTable.set(...))` achieves the same outcome with less ceremony. The potential benefits (devtools visibility, middleware reuse, uniform programming model) don't justify the added API surface until there's demonstrated demand. The existing `clientDocument` API already handles the common case of local UI state.
+- Should we still allow store to commit events directly?
+  - **No.** Commands should be the only path for producing events. Routing all synced state changes through handlers encourages validation checks (most events reference entities that may not exist after rebase) and supports evolution—when invariants are added later, the command path is already in place.
 
 ## Acknowledgments
 
