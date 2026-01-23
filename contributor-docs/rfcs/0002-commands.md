@@ -467,7 +467,57 @@ store.execute(commands.checkInGuest({ roomId: 'room-1', guestId: 'guest-a' }))
 
 ### Alternative A: Invariant Assertions in Materializers
 
-[TODO: Write down]
+In this approach, materializers would include assertion logic that validates events against the current state before or during materialization. When an assertion fails (e.g., during rebase), the materializer would take a configured action rather than crashing.
+
+```typescript
+State.SQLite.materializers(events, {
+  'v1.CommentCreated': ({ taskId, commentId, text }, state) => {
+    const task = state.query(tables.tasks.where({ id: taskId }).first())
+    if (!task) {
+      // Assertion failed - task doesn't exist
+      return MaterializeResult.skip({ reason: 'Task not found', taskId })
+    }
+    return tables.comments.insert({ id: commentId, taskId, text })
+  },
+
+  'v1.GuestCheckedIn': ({ roomId, guestId }, state) => {
+    const guestCount = state.query(tables.roomGuests.where({ roomId }).count())
+    const room = state.query(tables.rooms.where({ id: roomId }).first())
+    if (!room || guestCount >= room.capacity) {
+      return MaterializeResult.skip({ reason: 'Room at capacity or not found' })
+    }
+    return tables.roomGuests.insert({ roomId, guestId })
+  },
+})
+```
+
+The `MaterializeResult` could support different actions:
+
+```typescript
+type MaterializeResult =
+  | { action: 'apply', statements: SQL[] }
+  | { action: 'skip', reason: string, metadata?: Record<string, unknown> }
+  | { action: 'compensate', events: Event[] }  // Emit compensating events
+  | { action: 'conflict', resolution: 'manual' | 'auto' }
+```
+
+#### Why This Was Rejected
+
+1. **Events are facts, not requests.** Once an event is appended to the log, it represents something that happened. Silently skipping events during materialization creates a divergence between what the eventlog says happened and what the state DB reflects. The eventlog becomes an unreliable audit trail.
+
+2. **Doesn't prevent log pollution.** Invalid events still get appended to the eventlog. The "fix" happens only at the read side. Replaying the log on a new client or rebuilding projections will encounter the same invalid events.
+
+3. **Materializers become validators.** Materializers are supposed to be simple projectors—pure functions that transform events into state changes. Adding validation logic bloats them with business rules that should live elsewhere (command handlers/deciders).
+
+4. **Duplicate validation.** You'd need validation both when committing events (to catch local errors) and in materializers (to catch rebase errors). This duplication is error-prone and increases maintenance burden.
+
+5. **Ambiguous failure semantics.** When a materializer assertion fails, what does it mean? A bug in the materializer? An invalid event? A temporary state issue? The system can't distinguish between these cases, making debugging difficult.
+
+6. **No re-evaluation opportunity.** Unlike commands, events don't carry enough information to re-evaluate the original intent. If `CommentCreated` fails because the task was deleted, what should happen? Skip the comment? Create the task? The event itself doesn't encode what the user wanted—only what action was taken given a specific (now outdated) context.
+
+7. **Cascading complexity.** If event E1 is skipped, subsequent events (E2, E3) that depended on E1's side effects may also fail or produce nonsensical results. Tracking and handling these cascades within materializers becomes unwieldy.
+
+This approach treats the symptom (materialization failures) rather than the cause (events committed against stale state). The Commands solution addresses the root issue by ensuring that state-dependent operations are always validated against current state before events are produced.
 
 ### Alternative B: Validation Hooks During Rebase
 
