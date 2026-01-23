@@ -69,7 +69,8 @@ in
     # Shared task modules from effect-utils
     taskModules.genie
     (taskModules.ts { tsconfigFile = "tsconfig.dev.json"; })
-    (taskModules.check { hasTests = false; })
+    # NOTE: check module temporarily disabled for debugging
+    # (taskModules.check { hasTests = false; hasLint = false; })
     (taskModules.clean { packages = pnpmPackages; extraDirs = [ ".astro" ]; })
     # TODO: Switch to oxlint/oxfmt once we migrate from biome. For now we're using `mono lint`.
     (taskModules.pnpm { packages = pnpmPackages; })

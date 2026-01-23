@@ -19,14 +19,15 @@
     "effect-utils": {
       "inputs": {
         "flake-utils": "flake-utils",
-        "nixpkgs": "nixpkgs",
-        "nixpkgsUnstable": "nixpkgsUnstable"
+        "nixpkgs": [
+          "nixpkgs"
+        ]
       },
       "locked": {
-        "lastModified": 1769155475,
+        "lastModified": 1769165529,
         "owner": "overengineeringstudio",
         "repo": "effect-utils",
-        "rev": "ff5b50c15eb0764475d5023070e097fa28c4815e",
+        "rev": "59189750891d81cd7b92c9fe8cb9ae0bbacc4173",
         "type": "github"
       },
       "original": {
@@ -127,25 +128,10 @@
     },
     "nixpkgs": {
       "locked": {
-        "lastModified": 1769152215,
+        "lastModified": 1769018530,
         "owner": "NixOS",
         "repo": "nixpkgs",
-        "rev": "52d5f265a5ab20f6d32f480b2eefb28ceaac9ccc",
-        "type": "github"
-      },
-      "original": {
-        "owner": "NixOS",
-        "ref": "release-25.11",
-        "repo": "nixpkgs",
-        "type": "github"
-      }
-    },
-    "nixpkgsUnstable": {
-      "locked": {
-        "lastModified": 1768564909,
-        "owner": "NixOS",
-        "repo": "nixpkgs",
-        "rev": "e4bae1bd10c9c57b2cf517953ab70060a828ee6f",
+        "rev": "88d3861acdd3d2f0e361767018218e51810df8a1",
         "type": "github"
       },
       "original": {
@@ -170,24 +156,9 @@
         "type": "github"
       }
     },
-    "nixpkgs_3": {
-      "locked": {
-        "lastModified": 1769018530,
-        "owner": "NixOS",
-        "repo": "nixpkgs",
-        "rev": "88d3861acdd3d2f0e361767018218e51810df8a1",
-        "type": "github"
-      },
-      "original": {
-        "owner": "NixOS",
-        "ref": "nixos-unstable",
-        "repo": "nixpkgs",
-        "type": "github"
-      }
-    },
     "overeng-beads-public": {
       "inputs": {
-        "nixpkgs": "nixpkgs_3"
+        "nixpkgs": "nixpkgs_2"
       },
       "locked": {
         "lastModified": 1768983505,
@@ -227,7 +198,7 @@
         "devenv": "devenv",
         "effect-utils": "effect-utils",
         "git-hooks": "git-hooks",
-        "nixpkgs": "nixpkgs_2",
+        "nixpkgs": "nixpkgs",
         "overeng-beads-public": "overeng-beads-public",
         "playwright-web-flake": "playwright-web-flake",
         "pre-commit-hooks": [
