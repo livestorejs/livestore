@@ -10,7 +10,6 @@
   },
   "dependencies": {
     "@livestore/common": "workspace:*",
-    "@livestore/devtools-vite": "0.4.0-dev.22",
     "@livestore/sqlite-wasm": "workspace:*",
     "@livestore/utils": "workspace:*",
     "@livestore/webmesh": "workspace:*",
@@ -29,6 +28,14 @@
     "dist"
   ],
   "license": "Apache-2.0",
+  "peerDependencies": {
+    "@livestore/devtools-vite": "workspace:*"
+  },
+  "peerDependenciesMeta": {
+    "@livestore/devtools-vite": {
+      "optional": true
+    }
+  },
   "publishConfig": {
     "access": "public",
     "exports": {

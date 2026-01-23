@@ -127,6 +127,8 @@ const knipConfig = {
     '@opentelemetry/sdk-trace-base',
     // Meta package for peer deps (not directly imported)
     '@livestore/peer-deps',
+    // Optional peer dep, dynamically imported in adapter-node
+    '@livestore/devtools-vite',
   ],
   ignoreIssues: {
     // Constants intentionally share the same value for semantic clarity
