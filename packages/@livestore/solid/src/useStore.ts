@@ -152,8 +152,8 @@ export const withSolidApi = <T extends Store<any, any> | Solid.Accessor<Store<an
 
       const getClient = Solid.createMemo<UseClientDocumentResult<any> | undefined>(
         when(
-          every(store, table, id),
-          ([store, table, id]) => {
+          every(store, table),
+          ([store, table]) => {
             const client = useClientDocument(table, id, options, { store: store })
             const _localState = Solid.untrack(localState)
             if (_localState !== undefined) {

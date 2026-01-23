@@ -65,7 +65,7 @@ export const UserSidebar = (props: UserSidebarProps) => (
         />
       )}
     </For>
-    <UserListItem testId="user-bot" name="ChatBot" emoji="🤖" color="#22c55e" />
+    <UserListItem testId="user-bot" name="ChatBot 🤖" emoji="🤖" color="#22c55e" />
 
     <div class="flex-1" />
     <SyncStates />
