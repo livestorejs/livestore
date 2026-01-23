@@ -10,12 +10,11 @@ import {
   packageJson,
   tsconfigJson,
   dotdotConfig,
-  workspaceRoot,
   oxlintConfig,
   oxfmtConfig,
 } from '../repos/effect-utils/packages/@overeng/genie/src/runtime/mod.ts'
 
-export { tsconfigJson, dotdotConfig, packageJson, workspaceRoot, oxlintConfig, oxfmtConfig }
+export { tsconfigJson, dotdotConfig, packageJson, oxlintConfig, oxfmtConfig }
 
 import {
   catalog as effectUtilsCatalog,
@@ -189,59 +188,8 @@ export const catalog = defineCatalog({
 
 
 // =============================================================================
-// Root Package Config Exports (for parent repo composition)
+// Package Config Exports
 // =============================================================================
-
-/** PNPM patched dependencies (paths relative to livestore repo root) */
-export const patchedDependencies = {
-  'knip@5.80.0': 'patches/knip@5.80.0.patch',
-  'starlight-contextual-menu@0.1.3': 'patches/starlight-contextual-menu@0.1.3.patch',
-  'starlight-markdown@0.1.5': 'patches/starlight-markdown@0.1.5.patch',
-} as const
-
-/** PNPM overrides for version alignment */
-export const overrides = {
-  puppeteer: '23.11.1',
-} as const
-
-/** Packages that should only be built (not hoisted) */
-export const onlyBuiltDependencies = [
-  '@mixedbread/cli',
-  '@parcel/watcher',
-  '@tailwindcss/oxide',
-  'dtrace-provider',
-  'esbuild',
-  'msgpackr-extract',
-  'protobufjs',
-  'sharp',
-  'workerd',
-] as const
-
-/** Workspace package resolutions for parent repo composition */
-export const workspaceResolutions = {
-  '@livestore/adapter-cloudflare': 'workspace:*',
-  '@livestore/adapter-expo': 'workspace:*',
-  '@livestore/adapter-node': 'workspace:*',
-  '@livestore/adapter-web': 'workspace:*',
-  '@livestore/cli': 'workspace:*',
-  '@livestore/common': 'workspace:*',
-  '@livestore/devtools-expo': 'workspace:*',
-  '@livestore/devtools-vite': '0.4.0-dev.22',
-  '@livestore/devtools-web-common': 'workspace:*',
-  '@livestore/livestore': 'workspace:*',
-  '@livestore/peer-deps': 'workspace:*',
-  '@livestore/react': 'workspace:*',
-  '@livestore/solid': 'workspace:*',
-  '@livestore/sqlite-wasm': 'workspace:*',
-  '@livestore/svelte': 'workspace:*',
-  '@livestore/sync-cf': 'workspace:*',
-  '@livestore/sync-electric': 'workspace:*',
-  '@livestore/sync-s2': 'workspace:*',
-  '@livestore/utils': 'workspace:*',
-  '@livestore/utils-dev': 'workspace:*',
-  '@livestore/wa-sqlite': 'workspace:*',
-  '@livestore/webmesh': 'workspace:*',
-} as const
 
 /** Common fields for published @livestore packages */
 export const livestorePackageDefaults = {
@@ -311,8 +259,9 @@ export const effectDevDeps = (...additionalDeps: Parameters<typeof catalog.pick>
 /** Standard package tsconfig exclude patterns.
  * Excludes node_modules and dist to avoid type-checking copied local packages.
  * See: effect-utils/context/workarounds/pnpm-issues.md
+ * Also excludes *.genie.ts files which are only used by genie CLI, not tsc.
  */
-export const packageTsconfigExclude = ['node_modules', '**/dist', '**/node_modules/.pnpm'] as const
+export const packageTsconfigExclude = ['node_modules', '**/dist', '**/node_modules/.pnpm', '**/*.genie.ts'] as const
 
 /** Solid JSX configuration */
 export const solidJsx = { jsx: 'preserve' as const, jsxImportSource: 'solid-js' }

@@ -42,7 +42,13 @@
     "tsBuildInfoFile": "./dist/.tsbuildinfo"
   },
   "include": ["./src", "./scripts"],
-  "exclude": ["node_modules", "**/dist", "**/node_modules/.pnpm", "./src/tests/devtools/fixtures"],
+  "exclude": [
+    "node_modules",
+    "**/dist",
+    "**/node_modules/.pnpm",
+    "**/*.genie.ts",
+    "./src/tests/devtools/fixtures"
+  ],
   "references": [
     {
       "path": "../../packages/@local/shared"

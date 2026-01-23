@@ -40,7 +40,7 @@
     "noEmit": true
   },
   "include": ["test"],
-  "exclude": ["node_modules", "**/dist", "**/node_modules/.pnpm"],
+  "exclude": ["node_modules", "**/dist", "**/node_modules/.pnpm", "**/*.genie.ts"],
   "references": [
     {
       "path": "../../packages/@livestore/wa-sqlite"

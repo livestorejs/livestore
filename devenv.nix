@@ -7,10 +7,7 @@
 let
   system = pkgs.stdenv.hostPlatform.system;
   playwrightDriver = inputs.playwright-web-flake.packages.${system}.playwright-driver;
-  cliPackages = inputs.effect-utils.lib.mkCliPackages {
-    inherit pkgs;
-    pkgsUnstable = pkgs;
-  };
+  effectUtilsPackages = inputs.effect-utils.packages.${system};
   taskModules = inputs.effect-utils.devenvModules.tasks;
 
   # Packages managed by pnpm (shared between pnpm and clean modules)
@@ -77,6 +74,7 @@ in
     # Setup task (auto-runs in enterShell)
     (taskModules.setup {
       tasks = [
+        "megarepo:generate"
         "pnpm:install"
         "genie:run"
         "ts:build"
@@ -91,8 +89,9 @@ in
     pkgs.typescript
     pkgs.oxlint
     pkgs.oxfmt
-    cliPackages.genie
-    cliPackages.dotdot
+    effectUtilsPackages.genie
+    effectUtilsPackages.dotdot
+    effectUtilsPackages.megarepo
     pkgs.caddy
     pkgs.jq
     pkgs.unzip

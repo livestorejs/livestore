@@ -43,7 +43,7 @@
     "jsx": "react-jsx"
   },
   "include": ["./src", "src/types.d.ts"],
-  "exclude": ["node_modules", "**/dist", "**/node_modules/.pnpm"],
+  "exclude": ["node_modules", "**/dist", "**/node_modules/.pnpm", "**/*.genie.ts"],
   "references": [
     {
       "path": "../adapter-web"

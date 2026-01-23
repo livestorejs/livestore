@@ -39,7 +39,7 @@
     "tsBuildInfoFile": "./dist/.tsbuildinfo"
   },
   "include": ["./src"],
-  "exclude": ["node_modules", "**/dist", "**/node_modules/.pnpm"],
+  "exclude": ["node_modules", "**/dist", "**/node_modules/.pnpm", "**/*.genie.ts"],
   "references": [
     { "path": "../../packages/@livestore/common" },
     { "path": "../../packages/@livestore/utils" },

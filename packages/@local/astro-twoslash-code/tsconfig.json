@@ -3,7 +3,7 @@
 {
   "compilerOptions": {
     "target": "ES2024",
-    "lib": ["ES2024"],
+    "lib": ["ES2024", "DOM", "DOM.Iterable"],
     "module": "NodeNext",
     "moduleResolution": "NodeNext",
     "allowImportingTsExtensions": true,
@@ -42,5 +42,5 @@
     "types": ["node", "astro"]
   },
   "include": ["src", "tests", "examples"],
-  "exclude": ["node_modules", "**/dist", "**/node_modules/.pnpm", "dist"]
+  "exclude": ["node_modules", "**/dist", "**/node_modules/.pnpm", "**/*.genie.ts", "dist"]
 }
