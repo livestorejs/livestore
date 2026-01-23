@@ -1,4 +1,4 @@
-import { exposeStoreForDebugging, type UnknownError } from '@livestore/common'
+import type { UnknownError } from '@livestore/common'
 import type { LiveStoreEvent, LiveStoreSchema } from '@livestore/common/schema'
 import { omitUndefineds } from '@livestore/utils'
 import type { Cause, OtelTracer, Scope } from '@livestore/utils/effect'
@@ -33,8 +33,6 @@ export const makeLiveStoreContext = <TSchema extends LiveStoreSchema, TContext =
         batchUpdates,
         ...omitUndefineds({ context, boot, disableDevtools, onBootStatus, syncPayload, syncPayloadSchema }),
       })
-
-      exposeStoreForDebugging(store, storeId)
 
       return { stage: 'running', store } as any as LiveStoreContextRunning['Type']
     }),
@@ -245,8 +243,6 @@ const makeStoreTag = <TSchema extends LiveStoreSchema, TStoreId extends string>(
             }),
           })
 
-          exposeStoreForDebugging(store, storeId)
-
           const ctx: RunningType = { stage: 'running', store: store as StoreClass<TSchema> }
 
           // Also fulfill the deferred if it exists in context
@@ -390,8 +386,6 @@ export const makeStoreContext =
               syncPayloadSchema: props.syncPayloadSchema,
             }),
           })
-
-          exposeStoreForDebugging(store, storeId)
 
           const ctx: RunningType = { stage: 'running', store: store as StoreClass<TSchema> }
 

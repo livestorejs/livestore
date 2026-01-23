@@ -45,7 +45,7 @@ import { StoreInternalsSymbol } from './store-types.ts'
 
 declare global {
   /** Store instances for console debugging */
-  var __debugLiveStore: Record<string, unknown> | undefined
+  var __debugLiveStore: Record<string, Store<any, any>> | undefined
 }
 
 /**
