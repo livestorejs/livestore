@@ -2,60 +2,48 @@
 // Source: tsconfig.json.genie.ts
 {
   "compilerOptions": {
-    "paths": {
-      "#genie/*": [
-        "../repos/effect-utils/packages/@overeng/genie/src/runtime/*"
-      ]
-    },
-    "strict": true,
-    "exactOptionalPropertyTypes": true,
-    "noUncheckedIndexedAccess": true,
-    "esModuleInterop": true,
-    "sourceMap": true,
-    "declarationMap": false,
-    "declaration": false,
-    "strictNullChecks": true,
-    "incremental": true,
-    "composite": false,
-    "allowJs": true,
-    "stripInternal": true,
-    "skipLibCheck": true,
-    "forceConsistentCasingInFileNames": true,
-    "noFallthroughCasesInSwitch": true,
-    "noErrorTruncation": true,
-    "isolatedModules": true,
     "target": "ESNext",
+    "lib": ["ES2024"],
     "module": "ESNext",
     "moduleResolution": "bundler",
-    "verbatimModuleSyntax": true,
     "allowImportingTsExtensions": true,
     "rewriteRelativeImportExtensions": true,
-    "erasableSyntaxOnly": true,
+    "resolveJsonModule": true,
+    "esModuleInterop": true,
+    "allowJs": false,
+    "declaration": false,
+    "declarationMap": false,
+    "sourceMap": true,
+    "outDir": "./dist",
+    "strict": true,
+    "noUncheckedIndexedAccess": true,
+    "exactOptionalPropertyTypes": true,
+    "noImplicitReturns": true,
+    "noFallthroughCasesInSwitch": true,
+    "noImplicitOverride": true,
+    "isolatedModules": true,
+    "verbatimModuleSyntax": true,
+    "skipLibCheck": true,
+    "forceConsistentCasingInFileNames": true,
     "plugins": [
       {
         "name": "@effect/language-service",
         "reportSuggestionsAsWarningsInTsc": true,
         "pipeableMinArgCount": 2,
         "diagnosticSeverity": {
-          "schemaUnionOfLiterals": "warning"
+          "missedPipeableOpportunity": "suggestion",
+          "schemaUnionOfLiterals": "warning",
+          "anyUnknownInErrorContext": "warning"
         }
       }
     ],
-    "outDir": "./dist",
     "rootDir": "./src",
-    "resolveJsonModule": true,
+    "composite": false,
     "jsx": "preserve",
     "tsBuildInfoFile": "./dist/.tsbuildinfo"
   },
-  "include": [
-    "src"
-  ],
-  "exclude": [
-    "node_modules",
-    "**/dist",
-    "**/node_modules/.pnpm",
-    "src/content/_assets/code/**/*"
-  ],
+  "include": ["src"],
+  "exclude": ["node_modules", "**/dist", "**/node_modules/.pnpm", "src/content/_assets/code/**/*"],
   "references": [
     {
       "path": "../packages/@local/shared"

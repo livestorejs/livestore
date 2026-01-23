@@ -1,5 +1,5 @@
 import {
-  livestoreBaseTsconfigCompilerOptions,
+  baseTsconfigCompilerOptions,
   packageTsconfigCompilerOptions,
   packageTsconfigExclude,
   refs,
@@ -8,7 +8,7 @@ import {
 
 export default tsconfigJson({
   compilerOptions: {
-    ...livestoreBaseTsconfigCompilerOptions,
+    ...baseTsconfigCompilerOptions,
     ...packageTsconfigCompilerOptions,
     lib: ['ES2023'], // Needed for `Array.toSorted`
     resolveJsonModule: true,

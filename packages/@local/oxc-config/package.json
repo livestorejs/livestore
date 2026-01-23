@@ -1,17 +1,17 @@
 {
-  "$genie": {
-    "source": "package.json.genie.ts",
-    "warning": "DO NOT EDIT - changes will be overwritten"
-  },
   "name": "@local/oxc-config",
   "version": "0.0.0",
-  "type": "module",
   "private": true,
+  "type": "module",
   "exports": {
     "./fmt.jsonc": "./fmt.jsonc",
     "./lint.jsonc": "./lint.jsonc"
   },
   "devDependencies": {
     "@types/node": "25.0.3"
+  },
+  "$genie": {
+    "source": "package.json.genie.ts",
+    "warning": "DO NOT EDIT - changes will be overwritten"
   }
 }

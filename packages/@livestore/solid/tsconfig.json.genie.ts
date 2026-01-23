@@ -1,5 +1,5 @@
 import {
-  livestoreBaseTsconfigCompilerOptions,
+  baseTsconfigCompilerOptions,
   packageTsconfigCompilerOptions,
   packageTsconfigExclude,
   refs,
@@ -9,7 +9,7 @@ import {
 
 export default tsconfigJson({
   compilerOptions: {
-    ...livestoreBaseTsconfigCompilerOptions,
+    ...baseTsconfigCompilerOptions,
     ...packageTsconfigCompilerOptions,
     ...solidJsx,
   },

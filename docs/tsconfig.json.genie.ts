@@ -1,4 +1,4 @@
-import { livestoreBaseTsconfigCompilerOptions, packageTsconfigExclude, tsconfigJson } from '../genie/repo.ts'
+import { baseTsconfigCompilerOptions, packageTsconfigExclude, tsconfigJson } from '../genie/repo.ts'
 
 /**
  * Astro docs site tsconfig.
@@ -7,7 +7,7 @@ import { livestoreBaseTsconfigCompilerOptions, packageTsconfigExclude, tsconfigJ
  */
 export default tsconfigJson({
   compilerOptions: {
-    ...livestoreBaseTsconfigCompilerOptions,
+    ...baseTsconfigCompilerOptions,
     outDir: './dist',
     rootDir: './src',
     resolveJsonModule: true,

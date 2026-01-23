@@ -20,11 +20,22 @@ export { tsconfigJson, dotdotConfig, packageJson, workspaceRoot, oxlintConfig, o
 import {
   catalog as effectUtilsCatalog,
   baseTsconfigCompilerOptions,
+  packageTsconfigCompilerOptions as effectUtilsPackageTsconfigCompilerOptions,
   domLib,
   reactJsx,
 } from '../repos/effect-utils/genie/external.ts'
 
 export { baseTsconfigCompilerOptions, domLib, reactJsx }
+
+/**
+ * Package tsconfig compiler options for livestore.
+ * Uses src/ as rootDir (effect-utils uses . for rootDir).
+ */
+export const packageTsconfigCompilerOptions = {
+  ...effectUtilsPackageTsconfigCompilerOptions,
+  rootDir: './src',
+  tsBuildInfoFile: './dist/.tsbuildinfo',
+} as const
 
 /**
  * Internal workspace packages with link: paths.
@@ -297,79 +308,11 @@ export const effectDevDeps = (...additionalDeps: Parameters<typeof catalog.pick>
 // TypeScript Configuration Helpers
 // =============================================================================
 
-/**
- * LiveStore base TypeScript compiler options.
- * Uses ESNext target for maximum modern syntax support.
- * NodeNext module resolution for proper ESM handling.
- *
- * Effect Language Service plugin configuration:
- * - reportSuggestionsAsWarningsInTsc: show suggestions in tsc output
- * - pipeableMinArgCount: 2 - recommend pipe() for 2+ args
- * - schemaUnionOfLiterals: warning - prefer Schema.Literal union
- */
-export const livestoreBaseTsconfigCompilerOptions = {
-  paths: {
-    '#genie/*': ['../repos/effect-utils/packages/@overeng/genie/src/runtime/*'],
-  },
-  strict: true,
-  exactOptionalPropertyTypes: true,
-  noUncheckedIndexedAccess: true,
-  esModuleInterop: true,
-  sourceMap: true,
-  declarationMap: true,
-  declaration: true,
-  strictNullChecks: true,
-  incremental: true,
-  composite: true,
-  allowJs: true,
-  stripInternal: true,
-  skipLibCheck: true,
-  forceConsistentCasingInFileNames: true,
-  noFallthroughCasesInSwitch: true,
-  noErrorTruncation: true,
-  isolatedModules: true,
-  target: 'ESNext' as const,
-  module: 'NodeNext' as const,
-  moduleResolution: 'NodeNext' as const,
-  verbatimModuleSyntax: true,
-  allowImportingTsExtensions: true,
-  rewriteRelativeImportExtensions: true,
-  erasableSyntaxOnly: true,
-  plugins: [
-    {
-      name: '@effect/language-service',
-      reportSuggestionsAsWarningsInTsc: true,
-      pipeableMinArgCount: 2,
-      diagnosticSeverity: {
-        schemaUnionOfLiterals: 'warning',
-      },
-    },
-  ],
-} as const
-
-/** Standard exclude patterns for tsconfig */
-export const tsconfigExclude = [
-  'packages/**/dist',
-  'node_modules',
-  'packages/**/node_modules',
-  'tests/**/node_modules',
-  // Exclude pnpm's .pnpm directory to avoid type-checking copied local packages
-  // See: effect-utils/context/workarounds/pnpm-issues.md
-  '**/node_modules/.pnpm',
-]
-
 /** Standard package tsconfig exclude patterns.
  * Excludes node_modules and dist to avoid type-checking copied local packages.
  * See: effect-utils/context/workarounds/pnpm-issues.md
  */
 export const packageTsconfigExclude = ['node_modules', '**/dist', '**/node_modules/.pnpm'] as const
-
-/** Standard package tsconfig compiler options (composite mode with src/dist structure) */
-export const packageTsconfigCompilerOptions = {
-  rootDir: './src',
-  outDir: './dist',
-  tsBuildInfoFile: './dist/.tsbuildinfo',
-} as const
 
 /** Solid JSX configuration */
 export const solidJsx = { jsx: 'preserve' as const, jsxImportSource: 'solid-js' }

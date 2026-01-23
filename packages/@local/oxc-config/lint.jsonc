@@ -2,14 +2,7 @@
 // Source: lint.jsonc.genie.ts
 {
   "$schema": "https://raw.githubusercontent.com/oxc-project/oxc/main/npm/oxlint/configuration_schema.json",
-  "plugins": [
-    "import",
-    "typescript",
-    "unicorn",
-    "oxc",
-    "react",
-    "react-perf"
-  ],
+  "plugins": ["import", "typescript", "unicorn", "oxc", "react", "react-perf"],
   "ignorePatterns": [
     "**/node_modules/**",
     "**/dist/**",
@@ -25,7 +18,7 @@
     "**/nix/**",
     "**/wip/**",
     "**/.vite/**",
-    "**/patches/**"
+    "**/patches/**",
   ],
   "categories": {
     "correctness": "error",
@@ -33,20 +26,20 @@
     "pedantic": "off",
     "perf": "warn",
     "style": "off",
-    "restriction": "off"
+    "restriction": "off",
   },
   "rules": {
     "import/no-dynamic-require": [
       "warn",
       {
-        "esmodule": true
-      }
+        "esmodule": true,
+      },
     ],
     "oxc/no-barrel-file": [
       "warn",
       {
-        "threshold": 0
-      }
+        "threshold": 0,
+      },
     ],
     "import/no-commonjs": "error",
     "import/no-cycle": "warn",
@@ -54,24 +47,21 @@
       "warn",
       "expression",
       {
-        "allowArrowFunctions": true
-      }
+        "allowArrowFunctions": true,
+      },
     ],
     "typescript/consistent-type-imports": "warn",
     "typescript/consistent-type-definitions": "off",
     "unicorn/no-array-callback-reference": "off",
     "typescript/no-explicit-any": "off",
-    "typescript/no-deprecated": "off"
+    "typescript/no-deprecated": "off",
   },
   "overrides": [
     {
-      "files": [
-        "**/mod.ts",
-        "**/index.ts"
-      ],
+      "files": ["**/mod.ts", "**/index.ts"],
       "rules": {
-        "oxc/no-barrel-file": "off"
-      }
+        "oxc/no-barrel-file": "off",
+      },
     },
     {
       "files": [
@@ -80,28 +70,22 @@
         "**/*.spec.ts",
         "**/*.spec.tsx",
         "**/test/**",
-        "**/tests/**"
+        "**/tests/**",
       ],
       "rules": {
         "unicorn/no-array-sort": "off",
         "unicorn/consistent-function-scoping": "off",
-        "require-yield": "off"
-      }
+        "require-yield": "off",
+      },
     },
     {
-      "files": [
-        "**/*.d.ts"
-      ],
+      "files": ["**/*.d.ts"],
       "rules": {
-        "typescript/consistent-type-imports": "off"
-      }
+        "typescript/consistent-type-imports": "off",
+      },
     },
     {
-      "files": [
-        "**/*.gen.*",
-        "**/.astro/**",
-        "**/routeTree.gen.ts"
-      ],
+      "files": ["**/*.gen.*", "**/.astro/**", "**/routeTree.gen.ts"],
       "rules": {
         "func-style": "off",
         "import/no-commonjs": "off",
@@ -109,39 +93,35 @@
         "import/no-unassigned-import": "off",
         "oxc/no-barrel-file": "off",
         "oxc/no-map-spread": "off",
-        "unicorn/consistent-function-scoping": "off"
-      }
+        "unicorn/consistent-function-scoping": "off",
+      },
     },
     {
       "files": [
         "**/vitest.config.ts",
         "**/vite.config.ts",
         "**/playwright.config.ts",
-        "**/*.genie.ts"
+        "**/*.genie.ts",
       ],
       "rules": {
-        "func-style": "off"
-      }
+        "func-style": "off",
+      },
     },
     {
-      "files": [
-        "**/wa-sqlite/**"
-      ],
+      "files": ["**/wa-sqlite/**"],
       "rules": {
         "func-style": "off",
         "import/no-commonjs": "off",
         "unicorn/no-new-array": "off",
         "unicorn/no-array-sort": "off",
-        "unicorn/consistent-function-scoping": "off"
-      }
+        "unicorn/consistent-function-scoping": "off",
+      },
     },
     {
-      "files": [
-        "**/*.svelte"
-      ],
+      "files": ["**/*.svelte"],
       "rules": {
-        "import/no-unassigned-import": "off"
-      }
-    }
-  ]
+        "import/no-unassigned-import": "off",
+      },
+    },
+  ],
 }
