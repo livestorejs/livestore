@@ -58,6 +58,18 @@ Rebase is only safe when at least one of these holds:
 
 Without one of these, rebase gives you convergence without correctness.
 
+### Current Behavior
+
+When a rebased event becomes invalid against the new base state, LiveStore has no built-in mechanism to handle it gracefully. The behavior depends on how constraints are enforced:
+
+**Database Constraints (Foreign Keys, Unique, Check)**
+
+If constraints are enforced through SQLite (e.g., `FOREIGN KEY`, `UNIQUE`, `CHECK`), the materializer will attempt to execute the SQL statement and SQLite will throw an error. Since event append and state materialization are atomic, the event is not written to the eventlog. However, there is no recovery mechanism—the store **shuts down** with an error.
+
+**Manual Checks in Materializers**
+
+If constraints are checked manually in the materializer (e.g., querying for a referenced entity before inserting) and an exception is thrown, the same behavior occurs: the transaction rolls back and the store shuts down.
+
 ### Why This Matters
 
 Invariant violations have compounding consequences:
