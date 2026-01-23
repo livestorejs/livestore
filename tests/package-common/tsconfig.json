@@ -1,3 +1,5 @@
+// Generated file - DO NOT EDIT
+// Source: tsconfig.json.genie.ts
 {
   "compilerOptions": {
     "target": "ES2024",
@@ -41,12 +43,23 @@
   "include": ["./src"],
   "exclude": ["node_modules", "**/dist", "**/node_modules/.pnpm", "**/*.genie.ts"],
   "references": [
-    { "path": "../../packages/@livestore/common" },
-    { "path": "../../packages/@livestore/utils" },
-    { "path": "../../packages/@livestore/utils-dev" },
-    { "path": "../../packages/@livestore/sqlite-wasm" },
-    { "path": "../../packages/@livestore/adapter-node" },
-    { "path": "../../packages/@livestore/adapter-web" },
-    { "path": "../../packages/@livestore/livestore" }
+    {
+      "path": "../../packages/@livestore/common"
+    },
+    {
+      "path": "../../packages/@livestore/utils"
+    },
+    {
+      "path": "../../packages/@livestore/utils-dev"
+    },
+    {
+      "path": "../../packages/@livestore/sqlite-wasm"
+    },
+    {
+      "path": "../../packages/@livestore/adapter-node"
+    },
+    {
+      "path": "../../packages/@livestore/livestore"
+    }
   ]
 }

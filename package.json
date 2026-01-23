@@ -1,0 +1,78 @@
+{
+  "name": "@livestore/monorepo",
+  "version": "0.0.0",
+  "private": true,
+  "devDependencies": {
+    "@biomejs/biome": "^2.3.8",
+    "@effect/language-service": "catalog:",
+    "@types/node": "catalog:",
+    "@vitest/ui": "catalog:",
+    "husky": "^9.1.7",
+    "madge": "^8.0.0",
+    "syncpack": "^13.0.4",
+    "typescript": "catalog:",
+    "vite": "catalog:",
+    "vitest": "catalog:",
+    "yaml": "^2.8.1"
+  },
+  "packageManager": "pnpm@10.17.1",
+  "pnpm": {
+    "patchedDependencies": {
+      "knip@5.80.0": "patches/knip@5.80.0.patch",
+      "starlight-contextual-menu@0.1.3": "patches/starlight-contextual-menu@0.1.3.patch",
+      "starlight-markdown@0.1.5": "patches/starlight-markdown@0.1.5.patch"
+    },
+    "onlyBuiltDependencies": [
+      "@mixedbread/cli",
+      "@parcel/watcher",
+      "@tailwindcss/oxide",
+      "dtrace-provider",
+      "esbuild",
+      "msgpackr-extract",
+      "protobufjs",
+      "sharp",
+      "workerd"
+    ],
+    "overrides": {
+      "puppeteer": "23.11.1"
+    },
+    "overrides#puppeteer": "Pin to 23.11.1 (uses Chrome 131) to match Playwright 1.57.0's bundled Chromium. tldraw-cli depends on Puppeteer which needs a Chrome binary provided by devenv via PUPPETEER_EXECUTABLE_PATH."
+  },
+  "resolutions": {
+    "@livestore/adapter-cloudflare": "workspace:*",
+    "@livestore/adapter-expo": "workspace:*",
+    "@livestore/adapter-node": "workspace:*",
+    "@livestore/adapter-web": "workspace:*",
+    "@livestore/cli": "workspace:*",
+    "@livestore/common": "workspace:*",
+    "@livestore/devtools-expo": "workspace:*",
+    "@livestore/devtools-vite": "0.4.0-dev.22",
+    "@livestore/devtools-web-common": "workspace:*",
+    "@livestore/livestore": "workspace:*",
+    "@livestore/peer-deps": "workspace:*",
+    "@livestore/react": "workspace:*",
+    "@livestore/solid": "workspace:*",
+    "@livestore/sqlite-wasm": "workspace:*",
+    "@livestore/svelte": "workspace:*",
+    "@livestore/sync-cf": "workspace:*",
+    "@livestore/sync-electric": "workspace:*",
+    "@livestore/sync-s2": "workspace:*",
+    "@livestore/utils": "workspace:*",
+    "@livestore/utils-dev": "workspace:*",
+    "@livestore/wa-sqlite": "workspace:*",
+    "@livestore/webmesh": "workspace:*"
+  },
+  "resolutions#": {
+    "@livestore/*": "Needed to force PNPM to install local packages"
+  },
+  "scripts": {
+    "_build:ts": "tsc --build tsconfig.dev.json && tsc --build tsconfig.examples.json",
+    "build": "pnpm run build:ts",
+    "build:clean": "bash -c \"find {examples,packages,tests,docs} -path '*node_modules*' -prune -o \\( -name 'dist' -type d -o -name '*.tsbuildinfo' \\) -exec rm -rf {} +\"",
+    "build:ts": "tsc --build tsconfig.dev.json",
+    "pack:tmp": "pnpm --filter '@livestore/*' exec -- pnpm pack --out tmp/pack.tgz",
+    "prepare": "husky && effect-language-service patch || true",
+    "test": "CI=1 pnpm --parallel run test",
+    "update-lockfile": "CI=1 pnpm install --lockfile-only"
+  }
+}

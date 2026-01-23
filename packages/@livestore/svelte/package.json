@@ -1,39 +1,19 @@
 {
   "name": "@livestore/svelte",
   "version": "0.4.0-dev.22",
+  "keywords": [
+    "svelte"
+  ],
+  "license": "Apache-2.0",
+  "files": [
+    "dist",
+    "package.json",
+    "src"
+  ],
   "type": "module",
   "sideEffects": false,
   "exports": {
     ".": "./src/mod.ts"
-  },
-  "dependencies": {
-    "@livestore/common": "workspace:*",
-    "@livestore/livestore": "workspace:*",
-    "@livestore/utils": "workspace:*",
-    "@opentelemetry/api": "catalog:"
-  },
-  "devDependencies": {
-    "@livestore/adapter-web": "workspace:*",
-    "@livestore/utils-dev": "workspace:*",
-    "@sveltejs/vite-plugin-svelte": "^6.2.1",
-    "@testing-library/jest-dom": "^6.9.1",
-    "@testing-library/svelte": "^5.2.4",
-    "jsdom": "^26.1.0",
-    "svelte": "^5.43.14",
-    "typescript": "catalog:",
-    "vite": "catalog:",
-    "vitest": "catalog:"
-  },
-  "files": [
-    "package.json",
-    "src",
-    "dist"
-  ],
-  "keywords": [
-    "svelte"
-  ],
-  "peerDependencies": {
-    "svelte": "^5.31.0"
   },
   "publishConfig": {
     "access": "public",
@@ -44,5 +24,30 @@
   "scripts": {
     "build": "tsc",
     "test": "vitest --config ./tests/vitest.config.ts"
+  },
+  "dependencies": {
+    "@livestore/common": "link:../common",
+    "@livestore/livestore": "link:../livestore",
+    "@livestore/utils": "link:../utils",
+    "@opentelemetry/api": "1.9.0"
+  },
+  "devDependencies": {
+    "@livestore/adapter-web": "link:../adapter-web",
+    "@livestore/utils-dev": "link:../utils-dev",
+    "@sveltejs/vite-plugin-svelte": "6.2.1",
+    "@testing-library/jest-dom": "6.6.3",
+    "@testing-library/svelte": "5.2.4",
+    "jsdom": "26.1.0",
+    "svelte": "5.43.14",
+    "typescript": "5.9.3",
+    "vite": "7.3.0",
+    "vitest": "3.2.4"
+  },
+  "peerDependencies": {
+    "svelte": "^5.31.0"
+  },
+  "$genie": {
+    "source": "package.json.genie.ts",
+    "warning": "DO NOT EDIT - changes will be overwritten"
   }
 }
