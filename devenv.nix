@@ -12,18 +12,11 @@ let
     pkgsUnstable = pkgs;
   };
   taskModules = inputs.effect-utils.devenvModules.tasks;
-  
-  # Local task modules
-  localTaskModules = {
-    lint = import ./nix/devenv-modules/tasks/lint.nix;
-    ts = ./nix/devenv-modules/tasks/ts.nix;
-    bun = import ./nix/devenv-modules/tasks/bun.nix;
-  };
 
-  # All packages for per-package install tasks
+  # Packages managed by pnpm (shared between pnpm and clean modules)
   # NOTE: Using pnpm instead of bun due to bun bugs. See effect-utils/context/workarounds/bun-issues.md
   # TODO: Switch back to bun:install once bun file: dependency issues are fixed
-  installPackages = [
+  pnpmPackages = [
     # packages/@livestore
     "packages/@livestore/adapter-cloudflare"
     "packages/@livestore/adapter-expo"
@@ -63,33 +56,6 @@ let
     "docs"
     "scripts"
   ];
-
-  # Explicit glob patterns for execIfModified (avoids node_modules traversal)
-  execIfModifiedPatterns = [
-    # packages
-    "packages/@livestore/*/src/**/*.ts"
-    "packages/@local/*/src/**/*.ts"
-    # examples
-    "examples/*/src/**/*.ts"
-    "examples/*/src/**/*.tsx"
-    # tests
-    "tests/*/src/**/*.ts"
-    # scripts
-    "scripts/src/**/*.ts"
-    # docs
-    "docs/src/**/*.ts"
-    "docs/src/**/*.tsx"
-  ];
-
-  # Genie file patterns for caching
-  geniePatterns = [
-    "packages/@livestore/*/*.genie.ts"
-    "packages/@local/*/*.genie.ts"
-    "tests/*/*.genie.ts"
-    "docs/*.genie.ts"
-    "*.genie.ts"
-    ".github/workflows/*.genie.ts"
-  ];
 in
 {
   imports = [
@@ -102,20 +68,18 @@ in
     inputs.effect-utils.devenvModules.dt
     # Shared task modules from effect-utils
     taskModules.genie
+    (taskModules.ts { tsconfigFile = "tsconfig.dev.json"; })
     (taskModules.check { hasTests = false; })
-    # Local ts module (uses tsconfig.dev.json instead of tsconfig.all.json)
-    localTaskModules.ts
-    (taskModules.clean { extraDirs = [ ".astro" ]; })
-    # Local lint module (livestore-specific oxfmt + oxlint config)
-    (localTaskModules.lint {
-      inherit execIfModifiedPatterns geniePatterns;
-    })
-    # Per-package pnpm install tasks (using pnpm due to bun bugs, see effect-utils/context/workarounds/bun-issues.md)
-    # TODO: Switch back to bun:install once bun file: dependency issues are fixed
-    (taskModules.pnpm { packages = installPackages; })
+    (taskModules.clean { packages = pnpmPackages; extraDirs = [ ".astro" ]; })
+    # TODO: Switch to oxlint/oxfmt once we migrate from biome. For now we're using `mono lint`.
+    (taskModules.pnpm { packages = pnpmPackages; })
     # Setup task (auto-runs in enterShell)
     (taskModules.setup {
-      tasks = [ "pnpm:install" "genie:run" "ts:build" ];
+      tasks = [
+        "pnpm:install"
+        "genie:run"
+        "ts:build"
+      ];
     })
   ];
 

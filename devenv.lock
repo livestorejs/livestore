@@ -3,10 +3,10 @@
     "devenv": {
       "locked": {
         "dir": "src/modules",
-        "lastModified": 1769074151,
+        "lastModified": 1769080719,
         "owner": "cachix",
         "repo": "devenv",
-        "rev": "1cde97dea0d8af62a29872cc55c4c9eeac6a5e56",
+        "rev": "a13cd68223ccb1c50aa9c253504463fda67e6554",
         "type": "github"
       },
       "original": {
@@ -23,10 +23,10 @@
         "nixpkgsUnstable": "nixpkgsUnstable"
       },
       "locked": {
-        "lastModified": 1769099425,
+        "lastModified": 1769155475,
         "owner": "overengineeringstudio",
         "repo": "effect-utils",
-        "rev": "85884a370cd75080c1fcb21dce37a47483a6496c",
+        "rev": "ff5b50c15eb0764475d5023070e097fa28c4815e",
         "type": "github"
       },
       "original": {
@@ -127,10 +127,10 @@
     },
     "nixpkgs": {
       "locked": {
-        "lastModified": 1769097597,
+        "lastModified": 1769152215,
         "owner": "NixOS",
         "repo": "nixpkgs",
-        "rev": "66b5c713b02b44cffc13d2d71148341c1569cdaf",
+        "rev": "52d5f265a5ab20f6d32f480b2eefb28ceaac9ccc",
         "type": "github"
       },
       "original": {
@@ -157,10 +157,10 @@
     },
     "nixpkgs_2": {
       "locked": {
-        "lastModified": 1768886240,
+        "lastModified": 1769018530,
         "owner": "NixOS",
         "repo": "nixpkgs",
-        "rev": "80e4adbcf8992d3fd27ad4964fbb84907f9478b0",
+        "rev": "88d3861acdd3d2f0e361767018218e51810df8a1",
         "type": "github"
       },
       "original": {
@@ -172,10 +172,10 @@
     },
     "nixpkgs_3": {
       "locked": {
-        "lastModified": 1768886240,
+        "lastModified": 1769018530,
         "owner": "NixOS",
         "repo": "nixpkgs",
-        "rev": "80e4adbcf8992d3fd27ad4964fbb84907f9478b0",
+        "rev": "88d3861acdd3d2f0e361767018218e51810df8a1",
         "type": "github"
       },
       "original": {
