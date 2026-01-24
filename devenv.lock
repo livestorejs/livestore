@@ -24,11 +24,11 @@
         ]
       },
       "locked": {
-        "lastModified": 1769186226,
-        "narHash": "sha256-2auggq+W44ZWjPXdHnRt6M9YFRkIjYu5laHEQwRJ/JI=",
+        "lastModified": 1769244178,
+        "narHash": "sha256-l+REgKGkeFxbtbDRV1xuMhZMOoKJcBSgTQuVYR4aweE=",
         "owner": "overengineeringstudio",
         "repo": "effect-utils",
-        "rev": "5afb856d410e1bd5c72780c068f434c6e926821d",
+        "rev": "c3d8b41ab19885b16b5118ce7302345e252cba6a",
         "type": "github"
       },
       "original": {
