@@ -3,9 +3,8 @@ import { Effect } from '@livestore/utils/effect'
 
 import type { SqliteDb } from '../adapter-types.ts'
 import { SqliteError } from '../adapter-types.ts'
-import type { BindValues } from '../sql-queries/index.ts'
-import type { PreparedBindValues } from '../util.ts'
-import { prepareBindValues, sql } from '../util.ts'
+import type { PreparedBindValues, SqlQueryBindParams } from '../util.ts'
+import { prepareQueryBindValues, sql } from '../util.ts'
 
 // TODO
 namespace WaSqlite {
@@ -68,8 +67,8 @@ export const configureConnection = (sqliteDb: SqliteDb, { foreignKeys, lockingMo
     {},
   )
 
-export const execSql = (sqliteDb: SqliteDb, sql: string, bind: BindValues) => {
-  const bindValues = prepareBindValues(bind, sql)
+export const execSql = (sqliteDb: SqliteDb, sql: string, bind: SqlQueryBindParams) => {
+  const bindValues = prepareQueryBindValues(bind, sql)
   return Effect.try({
     try: () => sqliteDb.execute(sql, bindValues),
     catch: (cause) =>

@@ -150,7 +150,7 @@ export const schema = Schema.create({
 
   // Execute a raw SQL query against the local client DB
   livestore_instance_query: Effect.fnUntraced(function* ({ sql, bindValues }) {
-    return yield* Runtime.query({ sql, bindValues })
+    return yield* Runtime.query({ sql, ...(bindValues !== undefined ? { bindValues } : {}) })
   }),
 
   // Validate and commit events

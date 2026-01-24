@@ -1,4 +1,4 @@
-import type { Bindable, QueryBuilder } from '@livestore/common'
+import type { QueryBuilder, SqlBindParams } from '@livestore/common'
 import {
   getDurationMsFromSpan,
   getResultSchema,
@@ -25,7 +25,7 @@ import { makeExecBeforeFirstRun, rowQueryLabel } from './client-document-get-que
 export type QueryInputRaw<TDecoded, TEncoded> = {
   query: string
   schema: Schema.Schema<TDecoded, TEncoded>
-  bindValues?: Bindable
+  bindValues?: SqlBindParams
   /**
    * Can be provided explicitly to slightly speed up initial query performance
    *
@@ -142,7 +142,7 @@ export const queryDb: {
   return def
 }
 
-const bindValuesToDepKey = (bindValues: Bindable | undefined): DepKey => {
+const bindValuesToDepKey = (bindValues: SqlBindParams | undefined): DepKey => {
   if (bindValues === undefined) {
     return []
   }

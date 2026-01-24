@@ -9,8 +9,7 @@ import type { LiveStoreSchema } from './schema/schema.ts'
 import type { QueryBuilder } from './schema/state/sqlite/query-builder/api.ts'
 import { isQueryBuilder } from './schema/state/sqlite/query-builder/api.ts'
 import { getResultSchema } from './schema/state/sqlite/query-builder/impl.ts'
-import type { BindValues } from './sql-queries/sql-queries.ts'
-import type { ParamsObject, PreparedBindValues } from './util.ts'
+import type { ParamsObject, PreparedBindValues, SqlQueryBindParams } from './util.ts'
 import { prepareBindValues } from './util.ts'
 
 export const getExecStatementsFromMaterializer = ({
@@ -123,7 +122,7 @@ const fromMaterializerResult = (
   materializerResult: MaterializerResult | ReadonlyArray<MaterializerResult>,
 ): ReadonlyArray<{
   sql: string
-  bindValues: BindValues
+  bindValues: SqlQueryBindParams
   writeTables: ReadonlySet<string> | undefined
 }> => {
   if (isReadonlyArray(materializerResult)) {
@@ -131,9 +130,9 @@ const fromMaterializerResult = (
   }
   if (isQueryBuilder(materializerResult)) {
     const { query, bindValues, usedTables } = materializerResult.asSql()
-    return [{ sql: query, bindValues: bindValues as BindValues, writeTables: usedTables }]
+    return [{ sql: query, bindValues: bindValues as SqlQueryBindParams, writeTables: usedTables }]
   } else if (typeof materializerResult === 'string') {
-    return [{ sql: materializerResult, bindValues: {} as BindValues, writeTables: undefined }]
+    return [{ sql: materializerResult, bindValues: {} as SqlQueryBindParams, writeTables: undefined }]
   } else {
     return [
       {

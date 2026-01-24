@@ -3,10 +3,42 @@
 import type { Brand } from '@livestore/utils/effect'
 import { Schema } from '@livestore/utils/effect'
 
-export type ParamsObject = Record<string, SqlValue>
+/** A primitive value that can be stored in SQLite. */
 export type SqlValue = string | number | Uint8Array<ArrayBuffer> | null
 
-export type Bindable = ReadonlyArray<SqlValue> | ParamsObject
+/** Record of column names to SQL-compatible values. */
+export type ParamsObject = Record<string, SqlValue>
+
+/**
+ * Parameters supplied to LiveStore's user-facing query APIs (raw SQL).
+ *
+ * Shapes:
+ * - Positional parameters for `?` placeholders: `readonly SqlValue[]`
+ * - Named parameters for `$name` placeholders: `{ name: SqlValue }`
+ *   (keys are provided WITHOUT the leading `$`; `prepareBindValues()` adds it)
+ *
+ * These are normalized immediately before execution using `prepareBindValues()`
+ * into `PreparedBindValues` (driver-ready).
+ */
+export type SqlBindParams = ReadonlyArray<SqlValue> | ParamsObject
+
+/**
+ * Bind params produced by SQL helpers/materializers.
+ *
+ * This layer is intentionally LOOSER than `SqlBindParams` because:
+ * - materializers sometimes return positional arrays
+ * - helper-generated objects may contain values that still need encoding/coercion
+ *
+ * Before execution, these must be normalized into `PreparedBindValues`.
+ *
+ * NOTE: If you later want to enforce strictness, `prepareQueryBindValues()` is the
+ * recommended chokepoint for validation/coercion.
+ */
+export type SqlQueryBindParams =
+  | ReadonlyArray<unknown>
+  | {
+      readonly [param: string]: unknown
+    }
 
 export const SqlValueSchema = Schema.Union(
   Schema.String,
@@ -15,12 +47,22 @@ export const SqlValueSchema = Schema.Union(
   Schema.Null,
 )
 
+/**
+ * Driver-ready bind parameters sent to `PreparedStatement.execute/select`.
+ *
+ * - Positional arrays are passed through as-is.
+ * - Named-parameter objects are normalized to include `$`-prefixed keys (e.g. `$userId`)
+ *   and may have unused keys removed (some SQLite implementations reject unused named params).
+ *
+ * Values should be produced via `prepareBindValues(...)` or `prepareQueryBindValues(...)`
+ * immediately before execution.
+ */
 export const PreparedBindValues = Schema.Union(
   Schema.Array(SqlValueSchema),
   Schema.Record({ key: Schema.String, value: SqlValueSchema }),
 ).pipe(Schema.brand('PreparedBindValues'))
 
-export type PreparedBindValues = Brand.Branded<Bindable, 'PreparedBindValues'>
+export type PreparedBindValues = Brand.Branded<SqlBindParams, 'PreparedBindValues'>
 
 /**
  * This is a tag function for tagged literals.
@@ -39,14 +81,15 @@ export const sql = (template: TemplateStringsArray, ...args: unknown[]): string 
 }
 
 /**
- * Prepare bind values to send to SQLite
- * Add $ to the beginning of keys; which we use as our interpolation syntax
- * We also strip out any params that aren't used in the statement,
- * because rusqlite doesn't allow unused named params
+ * Prepare API-layer bind values for SQLite execution.
+ *
+ * Add `$` prefix to named parameter keys. We also strip out any params that aren't
+ * used in the statement, because rusqlite doesn't allow unused named params.
+ *
  * TODO: Search for unused params via proper parsing, not string search
  * TODO: Also make sure that the SQLite binding limit of 1000 is respected
  */
-export const prepareBindValues = (values: Bindable, statement: string): PreparedBindValues => {
+export const prepareBindValues = (values: SqlBindParams, statement: string): PreparedBindValues => {
   if (Array.isArray(values)) return values as any as PreparedBindValues
 
   const result: ParamsObject = {}
@@ -57,4 +100,16 @@ export const prepareBindValues = (values: Bindable, statement: string): Prepared
   }
 
   return result as PreparedBindValues
+}
+
+/**
+ * Normalizes *loose* bind params (from SQL helpers/materializers) for driver execution.
+ *
+ * This currently normalizes keys (adds `$`) and filters unused keys, but does not
+ * guarantee values are valid `SqlValue`s.
+ *
+ * If you want stricter enforcement, add runtime checks/coercion here.
+ */
+export const prepareQueryBindValues = (values: SqlQueryBindParams, statement: string): PreparedBindValues => {
+  return prepareBindValues(values as SqlBindParams, statement)
 }

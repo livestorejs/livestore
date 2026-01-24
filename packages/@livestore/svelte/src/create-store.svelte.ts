@@ -1,5 +1,4 @@
 import {
-  type Bindable,
   type CreateStoreOptionsPromise,
   createStorePromise,
   isLiveQueryDef,
@@ -7,6 +6,7 @@ import {
   type Queryable,
   type RefreshReason,
   type Schema,
+  type SqlBindParams,
   type Store,
 } from '@livestore/livestore'
 import { omitUndefineds } from '@livestore/utils'
@@ -61,7 +61,7 @@ export const createStore = async <TSchema extends LiveStoreSchema>(
 
   // monkey-patch `store.query` to add some ✨ svelte magic ✨
   store.query = <TResult>(
-    queryDef: Queryable<TResult> | { query: string; bindValues: Bindable; schema?: Schema.Schema<TResult> },
+    queryDef: Queryable<TResult> | { query: string; bindValues: SqlBindParams; schema?: Schema.Schema<TResult> },
     options?: { otelContext?: otel.Context; debugRefreshReason?: RefreshReason },
   ): TResult => {
     // TODO support other query types
