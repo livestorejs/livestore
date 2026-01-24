@@ -10,35 +10,38 @@ export type SqlValue = string | number | Uint8Array<ArrayBuffer> | null
 export type ParamsObject = Record<string, SqlValue>
 
 /**
+ * Generic bind parameters shape for SQL queries.
+ *
+ * Both positional (array) and named (record) parameter styles are supported:
+ * - Positional: `[value1, value2]` for `?` placeholders
+ * - Named: `{ name: value }` for `$name` placeholders
+ *   (keys are provided WITHOUT the leading `$`; `prepareBindValues()` adds it)
+ */
+export type BindParams<T> = ReadonlyArray<T> | Readonly<Record<string, T>>
+
+/**
  * Parameters supplied to LiveStore's user-facing query APIs (raw SQL).
  *
- * Shapes:
- * - Positional parameters for `?` placeholders: `readonly SqlValue[]`
- * - Named parameters for `$name` placeholders: `{ name: SqlValue }`
- *   (keys are provided WITHOUT the leading `$`; `prepareBindValues()` adds it)
- *
+ * Uses strict `SqlValue` typing to catch invalid bind values at compile time.
  * These are normalized immediately before execution using `prepareBindValues()`
  * into `PreparedBindValues` (driver-ready).
  */
-export type SqlBindParams = ReadonlyArray<SqlValue> | ParamsObject
+export type SqlBindParams = BindParams<SqlValue>
 
 /**
  * Bind params produced by SQL helpers/materializers.
  *
- * This layer is intentionally LOOSER than `SqlBindParams` because:
- * - materializers sometimes return positional arrays
- * - helper-generated objects may contain values that still need encoding/coercion
+ * Uses loose `unknown` typing because internal helpers may produce values
+ * that still need encoding/coercion before execution.
  *
- * Before execution, these must be normalized into `PreparedBindValues`.
+ * Before execution, these must be normalized into `PreparedBindValues`
+ * via `prepareQueryBindValues()`.
  *
- * NOTE: If you later want to enforce strictness, `prepareQueryBindValues()` is the
- * recommended chokepoint for validation/coercion.
+ * @deprecated Prefer using `SqlBindParams` where possible. This type exists
+ * for internal flexibility but may be removed in a future version once all
+ * internal producers are tightened to return `SqlValue`.
  */
-export type SqlQueryBindParams =
-  | ReadonlyArray<unknown>
-  | {
-      readonly [param: string]: unknown
-    }
+export type SqlQueryBindParams = BindParams<unknown>
 
 export const SqlValueSchema = Schema.Union(
   Schema.String,
