@@ -321,7 +321,7 @@ export const makeProxyChannel = ({
                 )
               })
 
-              yield* ackSendEffect.pipe(Effect.forkScoped)
+              yield* ackSendEffect.pipe(Effect.tapCauseLogPretty, Effect.forkScoped)
 
               // Simulation point: delay after forking ACK (before processing message)
               yield* simSleep('onPayload', 'afterAckFork')
@@ -346,9 +346,12 @@ export const makeProxyChannel = ({
                 return
               }
 
-              // Handle missing ACK gracefully - can happen with synthetic ACKs from relay
+              // Handle missing ACK gracefully - can happen with synthetic ACKs from relay or duplicate ACKs
               const ack = channelState.ackMap.get(packet.reqId)
               if (ack === undefined) {
+                yield* Effect.logDebug(
+                  `Received ACK for unknown reqId: ${packet.reqId} (may be synthetic or duplicate)`,
+                )
                 return
               }
               yield* Deferred.succeed(ack, void 0)
