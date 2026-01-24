@@ -26,6 +26,38 @@ import {
 } from '../common.ts'
 import * as MeshSchema from '../mesh-schema.ts'
 
+/**
+ * Simulation parameters for proxy channel operations.
+ * Used for testing race conditions and timing-sensitive behavior.
+ *
+ * Each parameter represents a delay (in ms) injected at a specific point in the code.
+ * Values are bounded 0-500ms to prevent tests from running too long.
+ */
+export const ProxyChannelSimulationParams = Schema.Struct({
+  /**
+   * Delays related to receiving and processing payload messages
+   */
+  onPayload: Schema.Struct({
+    /** Delay before sending the ACK response (simulates slow ACK send) */
+    beforeAckSend: Schema.Int.pipe(Schema.between(0, 500)),
+    /** Delay after forking the ACK send, before adding message to listen queue */
+    afterAckFork: Schema.Int.pipe(Schema.between(0, 500)),
+    /** Delay after adding message to listen queue */
+    afterListenQueueOffer: Schema.Int.pipe(Schema.between(0, 500)),
+  }),
+})
+
+export type ProxyChannelSimulationParams = typeof ProxyChannelSimulationParams.Type
+
+/** Default simulation params with no delays */
+export const defaultSimulationParams: ProxyChannelSimulationParams = {
+  onPayload: {
+    beforeAckSend: 0,
+    afterAckFork: 0,
+    afterListenQueueOffer: 0,
+  },
+}
+
 interface MakeProxyChannelArgs {
   queue: Queue.Queue<ProxyQueueItem>
   nodeName: MeshNodeName
@@ -37,6 +69,8 @@ interface MakeProxyChannelArgs {
     send: Schema.Schema<any, any>
     listen: Schema.Schema<any, any>
   }
+  /** Optional simulation parameters for testing timing-sensitive behavior */
+  simulation?: ProxyChannelSimulationParams
 }
 
 export const makeProxyChannel = ({
@@ -47,9 +81,18 @@ export const makeProxyChannel = ({
   target,
   channelName,
   schema,
+  simulation = defaultSimulationParams,
 }: MakeProxyChannelArgs) =>
   Effect.scopeWithCloseable((scope) =>
     Effect.gen(function* () {
+      /** Helper to inject simulation delays at specific code points */
+      const simSleep = <TKey extends keyof ProxyChannelSimulationParams>(
+        key: TKey,
+        key2: keyof ProxyChannelSimulationParams[TKey],
+      ) => {
+        const delay = (simulation[key]?.[key2] ?? 0) as number
+        return delay > 0 ? Effect.sleep(delay) : Effect.void
+      }
       type ProxiedChannelState =
         | {
             _tag: 'Initial'
@@ -255,34 +298,46 @@ export const makeProxyChannel = ({
                 )
               }
 
-              // yield* Effect.logDebug(`[${nodeName}] Received payload reqId: ${packet.id}. Sending Ack.`)
-              yield* respondToSender(
-                MeshSchema.ProxyChannelPayloadAck.make({
-                  reqId: packet.id,
-                  remainingHops: packet.hops,
-                  hops: [],
-                  target,
-                  source: nodeName,
-                  channelName,
-                  combinedChannelId:
-                    channelState._tag === 'Established' ? channelState.combinedChannelId : packet.combinedChannelId,
-                }),
-              )
+              // Send ACK fire-and-forget to avoid blocking message processing
+              // This is critical because blocking ACK sends can prevent messages from reaching the listen queue
+              // See test: "ACK forkScoped regression tests" for documentation
+
+              // The ACK send effect with optional simulation delay INSIDE the fork
+              // This is key for testing: with forkScoped, the delay happens in background and doesn't block message processing
+              // Without forkScoped (blocking), the delay would block the message from being added to listen queue
+              const ackSendEffect = Effect.gen(function* () {
+                yield* simSleep('onPayload', 'beforeAckSend')
+                yield* respondToSender(
+                  MeshSchema.ProxyChannelPayloadAck.make({
+                    reqId: packet.id,
+                    remainingHops: packet.hops,
+                    hops: [],
+                    target,
+                    source: nodeName,
+                    channelName,
+                    combinedChannelId:
+                      channelState._tag === 'Established' ? channelState.combinedChannelId : packet.combinedChannelId,
+                  }),
+                )
+              })
+
+              yield* ackSendEffect.pipe(Effect.tapCauseLogPretty, Effect.forkScoped)
+
+              // Simulation point: delay after forking ACK (before processing message)
+              yield* simSleep('onPayload', 'afterAckFork')
 
               if (channelState._tag === 'Established') {
                 const decodedMessage = yield* Schema.decodeUnknown(channelState.listenSchema)(packet.payload)
                 yield* channelState.listenQueue.pipe(Queue.offer(decodedMessage))
+
+                // Simulation point: delay after adding to listen queue
+                yield* simSleep('onPayload', 'afterListenQueueOffer')
               } else {
-                // yield* Effect.logDebug(
-                //   `[${nodeName}] Buffering early payload reqId: ${packet.id} (state: ${channelState._tag})`,
-                // )
                 yield* Queue.offer(earlyPayloadBuffer, packet)
               }
               return
             }
             case 'ProxyChannelPayloadAck': {
-              // yield* Effect.logDebug(`[${nodeName}] Received Ack for reqId: ${packet.reqId}`)
-
               if (channelState._tag !== 'Established') {
                 yield* Effect.spanEvent(`Not yet connected to ${target}. dropping message`)
                 yield* Effect.logWarning(
@@ -291,9 +346,14 @@ export const makeProxyChannel = ({
                 return
               }
 
-              const ack =
-                channelState.ackMap.get(packet.reqId) ??
-                shouldNeverHappen(`[ProxyChannel[${channelKey}]] Expected ack for ${packet.reqId}`)
+              // Handle missing ACK gracefully - can happen with synthetic ACKs from relay or duplicate ACKs
+              const ack = channelState.ackMap.get(packet.reqId)
+              if (ack === undefined) {
+                yield* Effect.logDebug(
+                  `Received ACK for unknown reqId: ${packet.reqId} (may be synthetic or duplicate)`,
+                )
+                return
+              }
               yield* Deferred.succeed(ack, void 0)
 
               channelState.ackMap.delete(packet.reqId)

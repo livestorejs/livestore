@@ -16,7 +16,7 @@ import {
 } from '@livestore/utils/effect'
 
 import { makeDirectChannel } from './channel/direct-channel.ts'
-import { makeProxyChannel } from './channel/proxy-channel.ts'
+import { makeProxyChannel, type ProxyChannelSimulationParams } from './channel/proxy-channel.ts'
 import type { ChannelKey, ListenForChannelResult, MeshNodeName, MessageQueueItem, ProxyQueueItem } from './common.ts'
 import { EdgeAlreadyExistsError, packetAsOtelAttributes } from './common.ts'
 import * as WebmeshSchema from './mesh-schema.ts'
@@ -114,6 +114,11 @@ export interface MeshNode<TName extends MeshNodeName = MeshNodeName> {
      * @default false
      */
     closeExisting?: boolean
+    /**
+     * Optional simulation parameters for testing timing-sensitive behavior.
+     * Only used when mode is 'proxy'.
+     */
+    simulation?: ProxyChannelSimulationParams
   }) => Effect.Effect<WebChannel.WebChannel<MsgListen, MsgSend>, never, Scope.Scope>
 
   listenForChannel: Stream.Stream<ListenForChannelResult>
@@ -477,6 +482,7 @@ export const makeMeshNode = <TName extends MeshNodeName>(
       mode,
       timeout = Duration.seconds(1),
       closeExisting = false,
+      simulation,
     }) =>
       Effect.gen(function* () {
         const schema = WebChannel.mapSchema(inputSchema)
@@ -546,6 +552,7 @@ export const makeMeshNode = <TName extends MeshNodeName>(
             schema,
             queue: channelQueue,
             sendPacket,
+            simulation,
           })
 
           channelMap.set(channelKey, { queue: channelQueue, debugInfo: { channel, target } })

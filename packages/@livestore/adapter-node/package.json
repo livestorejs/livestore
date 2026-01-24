@@ -10,7 +10,6 @@
   },
   "dependencies": {
     "@livestore/common": "workspace:*",
-    "@livestore/devtools-vite": "0.4.0-dev.22",
     "@livestore/sqlite-wasm": "workspace:*",
     "@livestore/utils": "workspace:*",
     "@livestore/webmesh": "workspace:*",
@@ -18,6 +17,7 @@
     "vite": "catalog:"
   },
   "devDependencies": {
+    "@livestore/devtools-vite": "0.4.0-dev.22",
     "@rollup/plugin-commonjs": "^28.0.6",
     "@rollup/plugin-node-resolve": "^16.0.1",
     "@rollup/plugin-terser": "^0.4.4",
@@ -29,6 +29,14 @@
     "dist"
   ],
   "license": "Apache-2.0",
+  "peerDependencies": {
+    "@livestore/devtools-vite": "workspace:*"
+  },
+  "peerDependenciesMeta": {
+    "@livestore/devtools-vite": {
+      "optional": true
+    }
+  },
   "publishConfig": {
     "access": "public",
     "exports": {

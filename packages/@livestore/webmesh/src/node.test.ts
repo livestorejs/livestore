@@ -622,6 +622,270 @@ Vitest.describe('webmesh node', { timeout: testTimeout }, () => {
       }).pipe(Vitest.withTestCtx(test)),
     )
 
+    /**
+     * Pattern test: ACK sending must not block message processing.
+     *
+     * This test documents the pattern where ACKs are sent fire-and-forget using `Effect.forkScoped`
+     * to avoid blocking the message processing loop.
+     *
+     * Background: Before the fix, ACKs were sent with `await` which blocked message processing.
+     * This caused heartbeat timeouts in devtools after ~30 seconds ("Connection to app lost").
+     *
+     * Note: This unit test passes both with and without the fix because in-memory channels
+     * complete ACK sends instantly. The actual regression test is the Playwright test
+     * `node-adapter-timeout.play.ts` which uses real network conditions.
+     *
+     * This test exists to:
+     * 1. Document the expected pattern (high message throughput via proxy channels)
+     * 2. Verify the pattern works correctly with forked ACKs
+     * 3. Serve as a reference for the fix in proxy-channel.ts
+     */
+    Vitest.scopedLive('ACK sending should not block message processing', (test) =>
+      Effect.gen(function* () {
+        const nodeA = yield* makeMeshNode('A')
+        const nodeB = yield* makeMeshNode('B')
+        const nodeC = yield* makeMeshNode('C')
+
+        yield* connectNodesViaBroadcastChannel(nodeA, nodeB)
+        yield* connectNodesViaBroadcastChannel(nodeB, nodeC)
+
+        // Send many messages to stress the ACK handling
+        const messageCount = 10
+
+        const nodeACode = Effect.gen(function* () {
+          const channelAToC = yield* createChannel(nodeA, 'C', { mode: 'proxy' })
+          // Send multiple messages concurrently
+          yield* Effect.forEach(
+            Chunk.makeBy(messageCount, (i) => ({ message: `A${i}` })),
+            channelAToC.send,
+            { concurrency: 'unbounded' },
+          )
+          // Receive responses
+          const responses = yield* channelAToC.listen.pipe(
+            Stream.flatten(),
+            Stream.take(messageCount),
+            Stream.runCollect,
+          )
+          expect(Chunk.size(responses)).toBe(messageCount)
+        })
+
+        const nodeCCode = Effect.gen(function* () {
+          const channelCToA = yield* createChannel(nodeC, 'A', { mode: 'proxy' })
+          // Send multiple messages concurrently
+          yield* Effect.forEach(
+            Chunk.makeBy(messageCount, (i) => ({ message: `C${i}` })),
+            channelCToA.send,
+            { concurrency: 'unbounded' },
+          )
+          // Receive responses
+          const responses = yield* channelCToA.listen.pipe(
+            Stream.flatten(),
+            Stream.take(messageCount),
+            Stream.runCollect,
+          )
+          expect(Chunk.size(responses)).toBe(messageCount)
+        })
+
+        yield* Effect.all([nodeACode, nodeCCode], { concurrency: 'unbounded' })
+      }).pipe(Vitest.withTestCtx(test)),
+    )
+
+    Vitest.describe('ACK forkScoped regression tests', { timeout: 10_000 }, () => {
+      /**
+       * REGRESSION TEST: ACK sends must be forked (non-blocking) to allow message processing to continue.
+       *
+       * This test uses simulation parameters to inject a delay BEFORE the ACK send.
+       * It then measures when messages arrive at the receiver's listen queue.
+       *
+       * With the fix (Effect.forkScoped):
+       * - ACK send is forked in the background
+       * - Message is added to listen queue IMMEDIATELY (before ACK send completes)
+       * - Multiple messages arrive close together regardless of ACK delay
+       *
+       * Without the fix (blocking yield*):
+       * - ACK send blocks the processing loop
+       * - Message is added to listen queue AFTER ACK send completes
+       * - Messages arrive spread out by the ACK delay
+       *
+       * To verify this test catches the regression:
+       * 1. Temporarily change `Effect.forkScoped` to `yield*` in proxy-channel.ts:319
+       * 2. Run this test - it should FAIL because messages arrive too slowly
+       * 3. Revert the change - test should PASS
+       */
+      /**
+       * This test verifies the fix works: messages should arrive at the listen queue
+       * without being blocked by slow ACK sends. We measure how long it takes to receive
+       * all messages - with forked ACKs it should be fast, with blocking ACKs it would be slow.
+       */
+      Vitest.scopedLive('messages arrive in listen queue without waiting for ACK send', (test) =>
+        Effect.gen(function* () {
+          const ACK_DELAY_MS = 50
+          const MESSAGE_COUNT = 5
+
+          const nodeA = yield* makeMeshNode('A')
+          const nodeB = yield* makeMeshNode('B')
+
+          yield* connectNodesViaMessageChannel(nodeA, nodeB)
+
+          const receivedMessages: string[] = []
+
+          const senderCode = Effect.gen(function* () {
+            const channelAToB = yield* nodeA.makeChannel({
+              target: 'B',
+              channelName: 'test-ack-timing',
+              schema: ExampleSchema,
+              mode: 'proxy',
+              timeout: 3000,
+            })
+
+            // Send all messages concurrently - this is key!
+            // With forked ACKs, all messages get processed immediately at receiver
+            // With blocking ACKs, messages would be processed one at a time with delays
+            yield* Effect.forEach(
+              Chunk.makeBy(MESSAGE_COUNT, (i) => ({ message: `msg${i}` })),
+              channelAToB.send,
+              { concurrency: 'unbounded' },
+            )
+          })
+
+          const receiverCode = Effect.gen(function* () {
+            const channelBToA = yield* nodeB.makeChannel({
+              target: 'A',
+              channelName: 'test-ack-timing',
+              schema: ExampleSchema,
+              mode: 'proxy',
+              timeout: 3000,
+              // KEY: Inject delay BEFORE ACK send
+              // With forkScoped: message arrives in queue immediately, then ACK is sent in background
+              // Without forkScoped: message waits for ACK delay before being added to queue
+              simulation: {
+                onPayload: {
+                  beforeAckSend: ACK_DELAY_MS,
+                  afterAckFork: 0,
+                  afterListenQueueOffer: 0,
+                },
+              },
+            })
+
+            yield* channelBToA.listen.pipe(
+              Stream.flatten(),
+              Stream.tap((msg) =>
+                Effect.sync(() => {
+                  receivedMessages.push(msg.message)
+                }),
+              ),
+              Stream.take(MESSAGE_COUNT),
+              Stream.runDrain,
+            )
+          })
+
+          const startTime = Date.now()
+          yield* Effect.all([senderCode, receiverCode], { concurrency: 'unbounded' })
+          const elapsed = Date.now() - startTime
+
+          console.log(`[regression-test-1] Received ${receivedMessages.length} messages in ${elapsed}ms`)
+          console.log(`[regression-test-1] Messages: ${receivedMessages.join(', ')}`)
+
+          expect(receivedMessages.length).toBe(MESSAGE_COUNT)
+
+          // With forked ACKs, elapsed time should be much less than MESSAGE_COUNT * ACK_DELAY_MS
+          // because ACKs don't block message processing
+          const blockingTime = MESSAGE_COUNT * ACK_DELAY_MS
+          console.log(`[regression-test-1] Elapsed: ${elapsed}ms, Blocking estimate: ${blockingTime}ms`)
+
+          // The test passes if messages arrive faster than they would with blocking ACKs
+          // Allow some margin for test overhead (2x faster than blocking)
+          if (elapsed > blockingTime / 2) {
+            throw new Error(
+              `REGRESSION DETECTED: Processing took ${elapsed}ms, blocking estimate: ${blockingTime}ms. ` +
+                `With forked ACKs, processing should be much faster. ` +
+                `Check that proxy-channel.ts uses Effect.forkScoped for ACK sends.`,
+            )
+          }
+        }).pipe(Vitest.withTestCtx(test)),
+      )
+
+      /**
+       * Additional test: Verify message processing continues during slow ACK sends.
+       *
+       * This test sends multiple messages concurrently and verifies they're all
+       * processed even when ACK sends are slow.
+       */
+      Vitest.scopedLive('concurrent messages processed despite slow ACK sends', (test) =>
+        Effect.gen(function* () {
+          const ACK_DELAY_MS = 50
+          const MESSAGE_COUNT = 5
+
+          const nodeA = yield* makeMeshNode('A')
+          const nodeB = yield* makeMeshNode('B')
+
+          yield* connectNodesViaMessageChannel(nodeA, nodeB)
+
+          const receivedMessages: string[] = []
+
+          const senderCode = Effect.gen(function* () {
+            const channelAToB = yield* nodeA.makeChannel({
+              target: 'B',
+              channelName: 'test-concurrent',
+              schema: ExampleSchema,
+              mode: 'proxy',
+              timeout: 3000,
+            })
+
+            // Send all messages concurrently
+            yield* Effect.forEach(
+              Chunk.makeBy(MESSAGE_COUNT, (i) => ({ message: `msg${i}` })),
+              channelAToB.send,
+              { concurrency: 'unbounded' },
+            )
+          })
+
+          const receiverCode = Effect.gen(function* () {
+            const channelBToA = yield* nodeB.makeChannel({
+              target: 'A',
+              channelName: 'test-concurrent',
+              schema: ExampleSchema,
+              mode: 'proxy',
+              timeout: 3000,
+              simulation: {
+                onPayload: {
+                  beforeAckSend: ACK_DELAY_MS,
+                  afterAckFork: 0,
+                  afterListenQueueOffer: 0,
+                },
+              },
+            })
+
+            yield* channelBToA.listen.pipe(
+              Stream.flatten(),
+              Stream.tap((msg) =>
+                Effect.sync(() => {
+                  receivedMessages.push(msg.message)
+                }),
+              ),
+              Stream.take(MESSAGE_COUNT),
+              Stream.runDrain,
+            )
+          })
+
+          const startTime = Date.now()
+          yield* Effect.all([senderCode, receiverCode], { concurrency: 'unbounded' })
+          const elapsed = Date.now() - startTime
+
+          console.log(`[regression-test] Received ${receivedMessages.length} messages in ${elapsed}ms`)
+          console.log(`[regression-test] Messages: ${receivedMessages.join(', ')}`)
+
+          // All messages should be received
+          expect(receivedMessages.length).toBe(MESSAGE_COUNT)
+
+          // With forked ACKs, elapsed time should be much less than MESSAGE_COUNT * ACK_DELAY_MS
+          // because ACKs don't block message processing
+          const blockingTime = MESSAGE_COUNT * ACK_DELAY_MS
+          console.log(`[regression-test] Elapsed: ${elapsed}ms, Blocking estimate: ${blockingTime}ms`)
+        }).pipe(Vitest.withTestCtx(test)),
+      )
+    })
+
     Vitest.scopedLive('should fail with timeout due to missing edge', (test) =>
       Effect.gen(function* () {
         const nodeA = yield* makeMeshNode('A')
