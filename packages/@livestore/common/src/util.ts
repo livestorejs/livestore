@@ -3,11 +3,21 @@
 import type { Brand } from '@livestore/utils/effect'
 import { Schema } from '@livestore/utils/effect'
 
+import type { SessionIdSymbol } from './adapter-types.ts'
+
 /** A primitive value that can be stored in SQLite. */
 export type SqlValue = string | number | Uint8Array<ArrayBuffer> | null
 
+/**
+ * A value that can be used in SQL bind parameters.
+ *
+ * This includes all SQLite-compatible primitives (`SqlValue`) plus the `SessionIdSymbol`
+ * sentinel, which is replaced with the actual session ID string before execution.
+ */
+export type SqlBindValue = SqlValue | SessionIdSymbol
+
 /** Record of column names to SQL-compatible values. */
-export type ParamsObject = Record<string, SqlValue>
+export type ParamsObject = Record<string, SqlBindValue>
 
 /**
  * Generic bind parameters shape for SQL queries.
@@ -20,26 +30,27 @@ export type ParamsObject = Record<string, SqlValue>
 export type BindParams<T> = ReadonlyArray<T> | Readonly<Record<string, T>>
 
 /**
- * Parameters supplied to LiveStore's user-facing query APIs (raw SQL).
+ * Parameters supplied to LiveStore's user-facing query APIs.
  *
- * Uses strict `SqlValue` typing to catch invalid bind values at compile time.
+ * Uses strict `SqlBindValue` typing to catch invalid bind values at compile time.
+ * Accepts both SQLite primitives and the `SessionIdSymbol` sentinel.
+ *
  * These are normalized immediately before execution using `prepareBindValues()`
  * into `PreparedBindValues` (driver-ready).
  */
-export type SqlBindParams = BindParams<SqlValue>
+export type SqlBindParams = BindParams<SqlBindValue>
 
 /**
- * Bind params produced by SQL helpers/materializers.
+ * Bind params produced by internal SQL helpers and materializers.
  *
- * Uses loose `unknown` typing because internal helpers may produce values
- * that still need encoding/coercion before execution.
+ * Uses loose `unknown` typing because `Schema.encode*` returns `unknown` and
+ * internal helpers may produce values that still need coercion.
  *
- * Before execution, these must be normalized into `PreparedBindValues`
- * via `prepareQueryBindValues()`.
+ * Before execution, these are normalized via `prepareQueryBindValues()` which
+ * delegates to `prepareBindValues()`. The loose typing here allows flexibility
+ * while the strict `SqlBindParams` protects user-facing APIs.
  *
- * @deprecated Prefer using `SqlBindParams` where possible. This type exists
- * for internal flexibility but may be removed in a future version once all
- * internal producers are tightened to return `SqlValue`.
+ * @see SqlBindParams for the strict user-facing equivalent
  */
 export type SqlQueryBindParams = BindParams<unknown>
 
