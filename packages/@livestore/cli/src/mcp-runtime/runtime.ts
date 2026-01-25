@@ -102,7 +102,7 @@ export const status = Effect.gen(function* () {
   }
 }).pipe(Effect.withSpan('mcp-runtime:status'))
 
-export const query = ({ sql, bindValues }: { sql: string; bindValues?: BindValues }) =>
+export const query = ({ sql, bindValues }: { sql: string; bindValues: BindValues | undefined }) =>
   Effect.gen(function* () {
     const opt = yield* getStore
     if (opt._tag === 'None') {
