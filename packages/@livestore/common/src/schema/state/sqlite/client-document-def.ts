@@ -3,7 +3,7 @@ import type { Option, Types } from '@livestore/utils/effect'
 import { Schema } from '@livestore/utils/effect'
 
 import { SessionIdSymbol } from '../../../adapter-types.ts'
-import { type BindValues, type SqlBindValue, sql } from '../../../util.ts'
+import { type SqlBindValue, sql } from '../../../util.ts'
 import type { EventDef, Materializer } from '../../EventDef/mod.ts'
 import { defineEvent, defineMaterializer } from '../../EventDef/mod.ts'
 import { SqliteDsl } from './db-schema/mod.ts'
@@ -296,7 +296,9 @@ export const deriveEventAndMaterializer = ({
     } else {
       const valueColJsonSchema = Schema.parseJson(Schema.partial(valueSchema))
 
-      const encodedInsertValue: string = Schema.encodeSyncDebug(valueColJsonSchema)(mergeDefaultValues(defaultValue, value))
+      const encodedInsertValue: string = Schema.encodeSyncDebug(valueColJsonSchema)(
+        mergeDefaultValues(defaultValue, value),
+      )
 
       let jsonSetSql = 'value'
       const setBindValues: SqlBindValue[] = []
