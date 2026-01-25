@@ -2,8 +2,8 @@
 
 import type { Brand } from '@livestore/utils/effect'
 import { Schema } from '@livestore/utils/effect'
-
-import type { SessionIdSymbol } from './adapter-types.ts'
+import type { SessionIdSymbol as SessionIdSymbolType } from './adapter-types.ts'
+import { SessionIdSymbol } from './adapter-types.ts'
 
 /** A primitive value that can be stored in SQLite. */
 export type SqlValue = string | number | Uint8Array<ArrayBuffer> | null
@@ -14,7 +14,7 @@ export type SqlValue = string | number | Uint8Array<ArrayBuffer> | null
  * This includes all SQLite-compatible primitives (`SqlValue`) plus the `SessionIdSymbol`
  * sentinel, which is replaced with the actual session ID string before execution.
  */
-export type SqlBindValue = SqlValue | SessionIdSymbol
+export type SqlBindValue = SqlValue | SessionIdSymbolType
 
 /** Record of column names to SQL-compatible values. */
 export type ParamsObject = Record<string, SqlBindValue>
@@ -35,6 +35,12 @@ export const SqlValueSchema = Schema.Union(
   Schema.Uint8Array as any as Schema.Schema<Uint8Array<ArrayBuffer>>,
   Schema.Null,
 )
+
+/**
+ * Schema for SQL bind values, which includes SQLite primitives plus the
+ * `SessionIdSymbol` sentinel (replaced with actual session ID before execution).
+ */
+export const SqlBindValueSchema = Schema.Union(SqlValueSchema, Schema.UniqueSymbolFromSelf(SessionIdSymbol))
 
 /**
  * Driver-ready bind parameters sent to `PreparedStatement.execute/select`.

@@ -3,6 +3,7 @@ import { Schema, SchemaAST } from '@livestore/utils/effect'
 
 import { SessionIdSymbol } from '../../../../adapter-types.ts'
 import type { BindValues, SqlBindValue, SqlValue } from '../../../../util.ts'
+import { SqlBindValueSchema } from '../../../../util.ts'
 import type { State } from '../../../mod.ts'
 import type { QueryBuilderAst } from './api.ts'
 
@@ -129,12 +130,14 @@ const formatWhereClause = (
           return op === 'IN' ? '0=1' : '1=1'
         }
 
-        const encodedValues = value.map((v) => toSqlBindValue(Schema.encodeSync(colDef.schema)(v)))
+        const encodedValues = value.map((v) =>
+          Schema.encodeSync(SqlBindValueSchema)(Schema.encodeSync(colDef.schema)(v)),
+        )
         bindValues.push(...encodedValues)
         const placeholders = encodedValues.map(() => '?').join(', ')
         return `${quotedCol} ${op} (${placeholders})`
       } else {
-        const encodedValue = toSqlBindValue(Schema.encodeSync(colDef.schema)(value))
+        const encodedValue = Schema.encodeSync(SqlBindValueSchema)(Schema.encodeSync(colDef.schema)(value))
         bindValues.push(encodedValue)
         return `${quotedCol} ${op} ?`
       }
@@ -147,28 +150,6 @@ const formatWhereClause = (
 const formatReturningClause = (returning?: string[]): string => {
   if (!returning || returning.length === 0) return ''
   return ` RETURNING ${returning.map(quoteIdentifier).join(', ')}`
-}
-
-/**
- * Validates that a value is a valid SQL bind value.
- * Throws early if an unsupported type is encountered (e.g., boolean, object).
- */
-const toSqlBindValue = (value: unknown): SqlBindValue => {
-  if (value === null) return value
-  if (typeof value === 'string') return value
-  if (typeof value === 'number') return value
-  if (value instanceof Uint8Array) return value as Uint8Array<ArrayBuffer>
-  if (typeof value === 'boolean') {
-    // SQLite stores booleans as 0/1
-    return value ? 1 : 0
-  }
-  if (typeof value === 'symbol') {
-    // Allow SessionIdSymbol to pass through
-    return value as SqlBindValue
-  }
-  throw new Error(
-    `Invalid SQL bind value: expected string, number, Uint8Array, null, or boolean, got ${typeof value}: ${String(value)}`,
-  )
 }
 
 export const astToSql = (ast: QueryBuilderAst): { query: string; bindValues: BindValues; usedTables: Set<string> } => {
@@ -184,7 +165,7 @@ export const astToSql = (ast: QueryBuilderAst): { query: string; bindValues: Bin
 
     // Ensure bind values are added in the same order as columns
     columns.forEach((col) => {
-      bindValues.push(toSqlBindValue(encodedValues[col]))
+      bindValues.push(Schema.encodeSync(SqlBindValueSchema)(encodedValues[col]))
     })
 
     let insertVerb = 'INSERT'
@@ -227,7 +208,7 @@ export const astToSql = (ast: QueryBuilderAst): { query: string; bindValues: Bin
               if (colDef === undefined) {
                 throw new Error(`Column ${col} not found`)
               }
-              const encodedValue = toSqlBindValue(Schema.encodeSync(colDef.schema)(value))
+              const encodedValue = Schema.encodeSync(SqlBindValueSchema)(Schema.encodeSync(colDef.schema)(value))
               bindValues.push(encodedValue)
             }
           })
@@ -263,7 +244,7 @@ export const astToSql = (ast: QueryBuilderAst): { query: string; bindValues: Bin
 
     // Ensure bind values are added in the same order as columns
     setColumns.forEach((col) => {
-      bindValues.push(toSqlBindValue(encodedValues[col]))
+      bindValues.push(Schema.encodeSync(SqlBindValueSchema)(encodedValues[col]))
     })
 
     let query = `UPDATE '${ast.tableDef.sqliteDef.name}' SET ${setColumns
@@ -313,7 +294,7 @@ export const astToSql = (ast: QueryBuilderAst): { query: string; bindValues: Bin
 
     return {
       query: `SELECT * FROM '${ast.tableDef.sqliteDef.name}' WHERE ${quoteIdentifier('id')} = ?`,
-      bindValues: [toSqlBindValue(encodedId)],
+      bindValues: [Schema.encodeSync(SqlBindValueSchema)(encodedId)],
       usedTables,
     }
   }
