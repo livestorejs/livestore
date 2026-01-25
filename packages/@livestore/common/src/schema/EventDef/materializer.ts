@@ -28,7 +28,7 @@
  */
 
 import type { SingleOrReadonlyArray } from '@livestore/utils'
-import type { ParamsObject, SqlQueryBindParams } from '../../util.ts'
+import type { ParamsObject, SqlBindParams } from '../../util.ts'
 import type * as LiveStoreEvent from '../LiveStoreEvent/mod.ts'
 import type { QueryBuilder } from '../state/sqlite/query-builder/mod.ts'
 import type { EventDef } from './event-def.ts'
@@ -45,7 +45,7 @@ import type { EventDefFacts } from './facts.ts'
 export type MaterializerResult =
   | {
       sql: string
-      bindValues: SqlQueryBindParams
+      bindValues: SqlBindParams
       writeTables?: ReadonlySet<string>
     }
   | QueryBuilder.Any

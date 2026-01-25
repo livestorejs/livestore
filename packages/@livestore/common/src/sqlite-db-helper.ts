@@ -2,7 +2,7 @@ import { Schema } from '@livestore/utils/effect'
 
 import { type SqliteDb, SqliteError } from './adapter-types.ts'
 import { getResultSchema, isQueryBuilder } from './schema/state/sqlite/query-builder/mod.ts'
-import type { PreparedBindValues } from './util.ts'
+import { type PreparedBindValues, prepareBindValues } from './util.ts'
 
 export const makeExecute = (
   execute: (
@@ -16,7 +16,7 @@ export const makeExecute = (
 
     if (isQueryBuilder(queryStrOrQueryBuilder)) {
       const { query, bindValues } = queryStrOrQueryBuilder.asSql()
-      return execute(query, bindValues as unknown as PreparedBindValues, bindValuesOrOptions)
+      return execute(query, prepareBindValues(bindValues, query), bindValuesOrOptions)
     } else {
       return execute(queryStrOrQueryBuilder, bindValuesOrOptions, maybeOptions)
     }
@@ -32,7 +32,7 @@ export const makeSelect = <T>(
     if (isQueryBuilder(queryStrOrQueryBuilder)) {
       const { query, bindValues } = queryStrOrQueryBuilder.asSql()
       const resultSchema = getResultSchema(queryStrOrQueryBuilder)
-      const results = select(query, bindValues as unknown as PreparedBindValues)
+      const results = select(query, prepareBindValues(bindValues, query))
       return Schema.decodeSync(resultSchema)(results)
     } else {
       return select(queryStrOrQueryBuilder, maybeBindValues)

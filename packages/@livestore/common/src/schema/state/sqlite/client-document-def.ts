@@ -3,7 +3,7 @@ import type { Option, Types } from '@livestore/utils/effect'
 import { Schema } from '@livestore/utils/effect'
 
 import { SessionIdSymbol } from '../../../adapter-types.ts'
-import { sql } from '../../../util.ts'
+import { type SqlBindParams, sql } from '../../../util.ts'
 import type { EventDef, Materializer } from '../../EventDef/mod.ts'
 import { defineEvent, defineMaterializer } from '../../EventDef/mod.ts'
 import { SqliteDsl } from './db-schema/mod.ts'
@@ -290,7 +290,7 @@ export const deriveEventAndMaterializer = ({
 
       return {
         sql: `INSERT INTO '${name}' (id, value) VALUES (?, ?) ON CONFLICT (id) DO UPDATE SET value = ?`,
-        bindValues: [id, encodedInsertValue, encodedUpdateValue],
+        bindValues: [id, encodedInsertValue, encodedUpdateValue] as SqlBindParams,
         writeTables: new Set([name]),
       }
     } else {
@@ -328,7 +328,7 @@ export const deriveEventAndMaterializer = ({
 
       return {
         sql: sqlQuery,
-        bindValues: [id, encodedInsertValue, ...setBindValues],
+        bindValues: [id, encodedInsertValue, ...setBindValues] as SqlBindParams,
         writeTables: new Set([name]),
       }
     }

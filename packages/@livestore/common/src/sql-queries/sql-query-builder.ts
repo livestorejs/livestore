@@ -1,10 +1,10 @@
 import { omitUndefineds } from '@livestore/utils'
 import type { SqliteDsl } from '../schema/state/sqlite/db-schema/mod.ts'
-import type { SqlQueryBindParams } from '../util.ts'
+import type { SqlBindParams } from '../util.ts'
 import * as SqlQueries from './sql-queries.ts'
 import type * as ClientTypes from './types.ts'
 
-export type SqlQuery = [stmt: string, bindValues: SqlQueryBindParams, tableName: string]
+export type SqlQuery = [stmt: string, bindValues: SqlBindParams, tableName: string]
 
 export const makeSqlQueryBuilder = <TSchema extends SqliteDsl.DbSchema>(schema: TSchema) => {
   const findManyRows = <TTableName extends keyof TSchema & string>({
@@ -15,7 +15,7 @@ export const makeSqlQueryBuilder = <TSchema extends SqliteDsl.DbSchema>(schema: 
     tableName: TTableName
     where: ClientTypes.WhereValuesForTable<TSchema, TTableName>
     limit?: number
-  }): [string, SqlQueryBindParams, TTableName] => {
+  }): [string, SqlBindParams, TTableName] => {
     const columns = schema[tableName]!.columns
     const [stmt, bindValues] = SqlQueries.findManyRows({ columns, tableName, where, ...omitUndefineds({ limit }) })
     return [stmt, bindValues, tableName]
@@ -27,7 +27,7 @@ export const makeSqlQueryBuilder = <TSchema extends SqliteDsl.DbSchema>(schema: 
   }: {
     tableName: TTableName
     where: ClientTypes.WhereValuesForTable<TSchema, TTableName>
-  }): [string, SqlQueryBindParams, TTableName] => {
+  }): [string, SqlBindParams, TTableName] => {
     const columns = schema[tableName]!.columns
     const [stmt, bindValues] = SqlQueries.countRows({ columns, tableName, where })
     return [stmt, bindValues, tableName]
@@ -41,7 +41,7 @@ export const makeSqlQueryBuilder = <TSchema extends SqliteDsl.DbSchema>(schema: 
     tableName: TTableName
     values: ClientTypes.DecodedValuesForTable<TSchema, TTableName>
     options?: { orReplace: boolean }
-  }): [string, SqlQueryBindParams, TTableName] => {
+  }): [string, SqlBindParams, TTableName] => {
     const columns = schema[tableName]!.columns
     const [stmt, bindValues] = SqlQueries.insertRow({ columns, tableName, values, options })
     return [stmt, bindValues, tableName]
@@ -53,7 +53,7 @@ export const makeSqlQueryBuilder = <TSchema extends SqliteDsl.DbSchema>(schema: 
   }: {
     tableName: TTableName
     valuesArray: ClientTypes.DecodedValuesForTable<TSchema, TTableName>[]
-  }): [string, SqlQueryBindParams, TTableName] => {
+  }): [string, SqlBindParams, TTableName] => {
     const columns = schema[tableName]!.columns
     const [stmt, bindValues] = SqlQueries.insertRows({ columns, tableName, valuesArray })
     return [stmt, bindValues, tableName]
@@ -67,7 +67,7 @@ export const makeSqlQueryBuilder = <TSchema extends SqliteDsl.DbSchema>(schema: 
     tableName: TTableName
     values: ClientTypes.DecodedValuesForTable<TSchema, TTableName>
     returnRow?: boolean
-  }): [string, SqlQueryBindParams, TTableName] => {
+  }): [string, SqlBindParams, TTableName] => {
     const columns = schema[tableName]!.columns
     const [stmt, bindValues] = SqlQueries.insertOrIgnoreRow({ columns, tableName, values, returnRow })
     return [stmt, bindValues, tableName]
@@ -81,7 +81,7 @@ export const makeSqlQueryBuilder = <TSchema extends SqliteDsl.DbSchema>(schema: 
     tableName: TTableName
     updateValues: Partial<ClientTypes.DecodedValuesForTableAll<TSchema, TTableName>>
     where: ClientTypes.WhereValuesForTable<TSchema, TTableName>
-  }): [string, SqlQueryBindParams, TTableName] => {
+  }): [string, SqlBindParams, TTableName] => {
     const columns = schema[tableName]!.columns
     const [stmt, bindValues] = SqlQueries.updateRows({ columns, tableName, updateValues, where })
     return [stmt, bindValues, tableName]
@@ -93,7 +93,7 @@ export const makeSqlQueryBuilder = <TSchema extends SqliteDsl.DbSchema>(schema: 
   }: {
     tableName: TTableName
     where: ClientTypes.WhereValuesForTable<TSchema, TTableName>
-  }): [string, SqlQueryBindParams, TTableName] => {
+  }): [string, SqlBindParams, TTableName] => {
     const columns = schema[tableName]!.columns
     const [stmt, bindValues] = SqlQueries.deleteRows({ columns, tableName, where })
     return [stmt, bindValues, tableName]
@@ -110,7 +110,7 @@ export const makeSqlQueryBuilder = <TSchema extends SqliteDsl.DbSchema>(schema: 
     updateValues: Partial<ClientTypes.DecodedValuesForTableAll<TSchema, TTableName>>
     // TODO where VALUES are actually not used here. Maybe adjust API?
     where: ClientTypes.WhereValuesForTable<TSchema, TTableName>
-  }): [string, SqlQueryBindParams, TTableName] => {
+  }): [string, SqlBindParams, TTableName] => {
     const columns = schema[tableName]!.columns
     const [stmt, bindValues] = SqlQueries.upsertRow({
       columns,

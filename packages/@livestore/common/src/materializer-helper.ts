@@ -9,7 +9,7 @@ import type { LiveStoreSchema } from './schema/schema.ts'
 import type { QueryBuilder } from './schema/state/sqlite/query-builder/api.ts'
 import { isQueryBuilder } from './schema/state/sqlite/query-builder/api.ts'
 import { getResultSchema } from './schema/state/sqlite/query-builder/impl.ts'
-import type { ParamsObject, PreparedBindValues, SqlQueryBindParams } from './util.ts'
+import type { ParamsObject, PreparedBindValues, SqlBindParams } from './util.ts'
 import { prepareBindValues } from './util.ts'
 
 export const getExecStatementsFromMaterializer = ({
@@ -72,13 +72,12 @@ export const getExecStatementsFromMaterializer = ({
   )
 
   return statementResults.map((statementRes) => {
-    const statementSql = statementRes.sql
-
-    const bindValues = typeof statementRes === 'string' ? eventArgsEncoded : statementRes.bindValues
-
-    const writeTables = typeof statementRes === 'string' ? undefined : statementRes.writeTables
-
-    return { statementSql, bindValues: prepareBindValues(bindValues ?? {}, statementSql), writeTables }
+    const { sql: statementSql, bindValues, writeTables } = statementRes
+    return {
+      statementSql,
+      bindValues: prepareBindValues(bindValues ?? {}, statementSql),
+      writeTables,
+    }
   })
 }
 
@@ -122,7 +121,7 @@ const fromMaterializerResult = (
   materializerResult: MaterializerResult | ReadonlyArray<MaterializerResult>,
 ): ReadonlyArray<{
   sql: string
-  bindValues: SqlQueryBindParams
+  bindValues: SqlBindParams
   writeTables: ReadonlySet<string> | undefined
 }> => {
   if (isReadonlyArray(materializerResult)) {
@@ -130,9 +129,9 @@ const fromMaterializerResult = (
   }
   if (isQueryBuilder(materializerResult)) {
     const { query, bindValues, usedTables } = materializerResult.asSql()
-    return [{ sql: query, bindValues: bindValues as SqlQueryBindParams, writeTables: usedTables }]
+    return [{ sql: query, bindValues, writeTables: usedTables }]
   } else if (typeof materializerResult === 'string') {
-    return [{ sql: materializerResult, bindValues: {} as SqlQueryBindParams, writeTables: undefined }]
+    return [{ sql: materializerResult, bindValues: {}, writeTables: undefined }]
   } else {
     return [
       {

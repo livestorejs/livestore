@@ -1,5 +1,4 @@
-import type { PreparedBindValues } from '@livestore/common'
-import { SessionIdSymbol } from '@livestore/common'
+import { prepareBindValues, SessionIdSymbol } from '@livestore/common'
 import { State } from '@livestore/common/schema'
 import { shouldNeverHappen } from '@livestore/utils'
 import type * as otel from '@opentelemetry/api'
@@ -33,12 +32,11 @@ export const makeExecBeforeFirstRun =
     const otelContext = otelContext_ ?? store[StoreInternalsSymbol].otel.queriesSpanContext
 
     const idVal = id === SessionIdSymbol ? store.sessionId : id!
+    const query = `SELECT 1 FROM '${table.sqliteDef.name}' WHERE id = ?`
     const rowExists =
-      store[StoreInternalsSymbol].sqliteDbWrapper.cachedSelect(
-        `SELECT 1 FROM '${table.sqliteDef.name}' WHERE id = ?`,
-        [idVal] as any as PreparedBindValues,
-        { otelContext },
-      ).length === 1
+      store[StoreInternalsSymbol].sqliteDbWrapper.cachedSelect(query, prepareBindValues([idVal], query), {
+        otelContext,
+      }).length === 1
 
     if (rowExists) return
 

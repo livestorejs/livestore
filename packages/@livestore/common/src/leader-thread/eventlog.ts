@@ -12,8 +12,7 @@ import {
 import { sessionChangesetMetaTable } from '../schema/state/sqlite/system-tables/state-tables.ts'
 import { migrateTable } from '../schema-management/migrations.ts'
 import { insertRow, updateRows } from '../sql-queries/sql-queries.ts'
-import type { PreparedBindValues } from '../util.ts'
-import { sql } from '../util.ts'
+import { prepareBindValues, sql } from '../util.ts'
 import { execSql } from './connection.ts'
 import type { InitialSyncInfo, StreamEventsOptions } from './types.ts'
 import { LeaderThreadCtx, STREAM_EVENTS_BATCH_SIZE_DEFAULT } from './types.ts'
@@ -216,10 +215,11 @@ export const insertIntoEventlog = (
   Effect.gen(function* () {
     // Check history consistency during LS_DEV
     if (LS_DEV && eventEncoded.parentSeqNum.global !== EventSequenceNumber.Client.ROOT.global) {
+      const query = `SELECT COUNT(*) as count FROM ${EVENTLOG_META_TABLE} WHERE seqNumGlobal = ? AND seqNumClient = ?`
       const parentEventExists =
         dbEventlog.select<{ count: number }>(
-          `SELECT COUNT(*) as count FROM ${EVENTLOG_META_TABLE} WHERE seqNumGlobal = ? AND seqNumClient = ?`,
-          [eventEncoded.parentSeqNum.global, eventEncoded.parentSeqNum.client] as any as PreparedBindValues,
+          query,
+          prepareBindValues([eventEncoded.parentSeqNum.global, eventEncoded.parentSeqNum.client], query),
         )[0]!.count === 1
 
       if (parentEventExists === false) {

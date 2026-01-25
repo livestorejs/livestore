@@ -7,6 +7,7 @@ import {
   type MutableDebugInfo,
   type PreparedBindValues,
   type PreparedStatement,
+  prepareBindValues,
   type SqliteDb,
   type SqliteDbChangeset,
   SqliteDbHelper,
@@ -146,7 +147,7 @@ export class SqliteDbWrapper implements SqliteDb {
     const stmt = this.tablesUsedStmt
     const tablesUsed = new Set<string>()
     try {
-      const results = stmt.select<{ tbl_name: string }>([query] as unknown as PreparedBindValues)
+      const results = stmt.select<{ tbl_name: string }>(prepareBindValues([query], stmt.sql))
 
       for (const row of results) {
         tablesUsed.add(row.tbl_name)

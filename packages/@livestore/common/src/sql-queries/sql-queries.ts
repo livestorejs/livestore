@@ -2,7 +2,7 @@ import { shouldNeverHappen } from '@livestore/utils'
 import { pipe, ReadonlyArray, Schema, TreeFormatter } from '@livestore/utils/effect'
 
 import type { SqliteDsl } from '../schema/state/sqlite/db-schema/mod.ts'
-import { type SqlQueryBindParams, sql } from '../util.ts'
+import { type SqlBindParams, sql } from '../util.ts'
 import { objectEntries } from './misc.ts'
 import * as ClientTypes from './types.ts'
 
@@ -16,7 +16,7 @@ export const findManyRows = <TColumns extends SqliteDsl.Columns>({
   columns: TColumns
   where: ClientTypes.WhereValuesForColumns<TColumns>
   limit?: number
-}): [string, SqlQueryBindParams] => {
+}): [string, SqlBindParams] => {
   const whereSql = buildWhereSql({ where })
   const whereModifier = whereSql === '' ? '' : `WHERE ${whereSql}`
   const limitModifier = limit ? `LIMIT ${limit}` : ''
@@ -34,7 +34,7 @@ export const countRows = <TColumns extends SqliteDsl.Columns>({
   tableName: string
   columns: TColumns
   where: ClientTypes.WhereValuesForColumns<TColumns>
-}): [string, SqlQueryBindParams] => {
+}): [string, SqlBindParams] => {
   const whereSql = buildWhereSql({ where })
   const whereModifier = whereSql === '' ? '' : `WHERE ${whereSql}`
 
@@ -53,7 +53,7 @@ export const insertRow = <TColumns extends SqliteDsl.Columns>({
   columns: TColumns
   values: ClientTypes.DecodedValuesForColumns<TColumns>
   options?: { orReplace: boolean }
-}): [string, SqlQueryBindParams] => {
+}): [string, SqlBindParams] => {
   const stmt = insertRowPrepared({
     tableName,
     columns,
@@ -87,7 +87,7 @@ export const insertRows = <TColumns extends SqliteDsl.Columns>({
   tableName: string
   columns: TColumns
   valuesArray: ClientTypes.DecodedValuesForColumns<TColumns>[]
-}): [string, SqlQueryBindParams] => {
+}): [string, SqlBindParams] => {
   const keysStr = Object.keys(valuesArray[0]!).join(', ')
 
   // NOTE consider batching for large arrays (https://sqlite.org/forum/info/f832398c19d30a4a)
@@ -122,7 +122,7 @@ export const insertOrIgnoreRow = <TColumns extends SqliteDsl.Columns>({
   columns: TColumns
   values: ClientTypes.DecodedValuesForColumns<TColumns>
   returnRow: boolean
-}): [string, SqlQueryBindParams] => {
+}): [string, SqlBindParams] => {
   const values = filterUndefinedFields(values_)
   const keysStr = Object.keys(values).join(', ')
   const valuesStr = Object.keys(values)
@@ -145,7 +145,7 @@ export const updateRows = <TColumns extends SqliteDsl.Columns>({
   tableName: string
   updateValues: Partial<ClientTypes.DecodedValuesForColumnsAll<TColumns>>
   where: ClientTypes.WhereValuesForColumns<TColumns>
-}): [string, SqlQueryBindParams] => {
+}): [string, SqlBindParams] => {
   const updateValues = filterUndefinedFields(updateValues_)
 
   // TODO return an Option instead of `select 1` if there are no update values
@@ -176,7 +176,7 @@ export const deleteRows = <TColumns extends SqliteDsl.Columns>({
   columns: TColumns
   tableName: string
   where: ClientTypes.WhereValuesForColumns<TColumns>
-}): [string, SqlQueryBindParams] => {
+}): [string, SqlBindParams] => {
   const bindValues = {
     ...makeBindValues({ columns, values: where, variablePrefix: 'where_', skipNil: true }),
   }
@@ -200,7 +200,7 @@ export const upsertRow = <TColumns extends SqliteDsl.Columns>({
   updateValues: Partial<ClientTypes.DecodedValuesForColumnsAll<TColumns>>
   // TODO where VALUES are actually not used here. Maybe adjust API?
   where: ClientTypes.WhereValuesForColumns<TColumns>
-}): [string, SqlQueryBindParams] => {
+}): [string, SqlBindParams] => {
   const createValues = filterUndefinedFields(createValues_)
   const updateValues = filterUndefinedFields(updateValues_)
 
