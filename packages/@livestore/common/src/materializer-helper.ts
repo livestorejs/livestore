@@ -38,7 +38,7 @@ export const getExecStatementsFromMaterializer = ({
         }
       : event.decoded
 
-  const eventArgsEncoded = isNil(event.decoded?.args)
+  const _eventArgsEncoded = isNil(event.decoded?.args)
     ? undefined
     : Schema.encodeUnknownSync(eventDef.schema)(event.decoded!.args)
 

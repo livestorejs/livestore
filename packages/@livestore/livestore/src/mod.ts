@@ -1,5 +1,6 @@
 export type { Adapter, ClientSession, PreparedStatement } from '@livestore/common'
 export {
+  type BindValues,
   type BootStatus,
   type DebugInfo,
   IntentionalShutdownCause,
@@ -12,7 +13,6 @@ export {
   type QueryBuilderAst,
   type RowQuery,
   SessionIdSymbol,
-  type BindValues,
   type SqliteDb,
   StoreInterrupted,
   type SyncState,

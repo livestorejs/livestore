@@ -1,4 +1,5 @@
 import {
+  type BindValues,
   type ClientSession,
   Devtools,
   getExecStatementsFromMaterializer,
@@ -13,7 +14,6 @@ import {
   prepareBindValues,
   QueryBuilderAstSymbol,
   replaceSessionIdSymbol,
-  type BindValues,
   type StorageMode,
   UnknownError,
 } from '@livestore/common'

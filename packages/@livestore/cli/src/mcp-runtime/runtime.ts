@@ -2,7 +2,7 @@ import { makeAdapter as makeNodeAdapter } from '@livestore/adapter-node'
 import { UnknownError } from '@livestore/common'
 import { LiveStoreEvent, SystemTables } from '@livestore/common/schema'
 import type { Store } from '@livestore/livestore'
-import { createStorePromise, type BindValues } from '@livestore/livestore'
+import { type BindValues, createStorePromise } from '@livestore/livestore'
 import { Effect, FetchHttpClient, Layer, Option, Schema } from '@livestore/utils/effect'
 import { PlatformNode } from '@livestore/utils/node'
 

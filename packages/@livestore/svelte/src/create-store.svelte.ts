@@ -1,4 +1,5 @@
 import {
+  type BindValues,
   type CreateStoreOptionsPromise,
   createStorePromise,
   isLiveQueryDef,
@@ -6,7 +7,6 @@ import {
   type Queryable,
   type RefreshReason,
   type Schema,
-  type BindValues,
   type Store,
 } from '@livestore/livestore'
 import { omitUndefineds } from '@livestore/utils'

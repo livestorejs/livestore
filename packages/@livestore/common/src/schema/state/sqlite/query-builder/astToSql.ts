@@ -171,9 +171,7 @@ const toSqlBindValue = (value: unknown): SqlBindValue => {
   )
 }
 
-export const astToSql = (
-  ast: QueryBuilderAst,
-): { query: string; bindValues: BindValues; usedTables: Set<string> } => {
+export const astToSql = (ast: QueryBuilderAst): { query: string; bindValues: BindValues; usedTables: Set<string> } => {
   const bindValues: SqlBindValue[] = []
   const usedTables = new Set<string>([ast.tableDef.sqliteDef.name])
 
