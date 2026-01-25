@@ -20,16 +20,6 @@ export type SqlBindValue = SqlValue | SessionIdSymbol
 export type ParamsObject = Record<string, SqlBindValue>
 
 /**
- * Generic bind parameters shape for SQL queries.
- *
- * Both positional (array) and named (record) parameter styles are supported:
- * - Positional: `[value1, value2]` for `?` placeholders
- * - Named: `{ name: value }` for `$name` placeholders
- *   (keys are provided WITHOUT the leading `$`; `prepareBindValues()` adds it)
- */
-export type BindParams<T> = ReadonlyArray<T> | Readonly<Record<string, T>>
-
-/**
  * Parameters supplied to LiveStore's user-facing query APIs.
  *
  * Uses strict `SqlBindValue` typing to catch invalid bind values at compile time.
@@ -37,8 +27,13 @@ export type BindParams<T> = ReadonlyArray<T> | Readonly<Record<string, T>>
  *
  * These are normalized immediately before execution using `prepareBindValues()`
  * into `PreparedBindValues` (driver-ready).
+ *
+ * Both positional (array) and named (record) parameter styles are supported:
+ * - Positional: `[value1, value2]` for `?` placeholders
+ * - Named: `{ name: value }` for `$name` placeholders
+ *   (keys are provided WITHOUT the leading `$`; `prepareBindValues()` adds it)
  */
-export type SqlBindParams = BindParams<SqlBindValue>
+export type SqlBindParams = ReadonlyArray<SqlBindValue> | Readonly<ParamsObject>
 
 export const SqlValueSchema = Schema.Union(
   Schema.String,
