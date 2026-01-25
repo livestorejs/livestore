@@ -18,7 +18,10 @@ export type SynchronousDatabase = {
   execute(
     queryStr: string,
     bindValues?: PreparedBindValues | undefined,
-    options?: { onRowsChanged?: (rowsChanged: number) => void },
+    options?: {
+      onRowsChanged?: (rowsChanged: number) => void
+      multiStatementWithSchemaChanges?: boolean
+    },
   ): void
   select<T>(queryStr: string, bindValues?: PreparedBindValues | undefined): ReadonlyArray<T>
   export(): Uint8Array
@@ -138,9 +141,30 @@ export const makeSynchronousDatabase = (sqlite3: SQLiteAPI, db: number): Synchro
     },
     export: () => exportDb(sqlite3, db),
     execute: (queryStr, bindValues, options) => {
-      const stmt = syncDb.prepare(queryStr)
-      stmt.execute(bindValues, options)
-      stmt.finalize()
+      if (options?.multiStatementWithSchemaChanges) {
+        // Use _iterStatements to support multiple statements where later ones
+        // depend on earlier ones (e.g., CREATE TABLE then INSERT)
+        for (const stmt of sqlite3._iterStatements(db, queryStr.trim(), { unscoped: true })) {
+          try {
+            if (bindValues !== undefined && Object.keys(bindValues).length > 0) {
+              sqlite3.bind_collection(stmt, bindValues as any)
+            }
+
+            sqlite3.step(stmt)
+
+            if (options?.onRowsChanged) {
+              options.onRowsChanged(sqlite3.changes(db))
+            }
+          } finally {
+            sqlite3.finalize(stmt)
+          }
+        }
+      } else {
+        // Default behavior
+        const stmt = syncDb.prepare(queryStr)
+        stmt.execute(bindValues, options)
+        stmt.finalize()
+      }
     },
     select: (queryStr, bindValues) => {
       const stmt = syncDb.prepare(queryStr)

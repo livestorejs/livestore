@@ -814,6 +814,29 @@ interface SQLiteAPI {
   statements(db: number, sql: string, options?: SQLitePrepareOptions): ReadonlyArray<number>;
 
   /**
+   * Iterate over SQL statements one at a time (synchronous generator version).
+   * 
+   * This is similar to upstream wa-sqlite's async generator pattern, but uses
+   * a synchronous generator to avoid async overhead. Unlike statements(), this
+   * prepares each statement lazily as you iterate, which allows later statements
+   * to depend on earlier ones (e.g., CREATE TABLE then INSERT INTO that table).
+   * 
+   * @param db - Database handle
+   * @param sql - SQL string containing one or more statements
+   * @param options - Options object
+   * @returns Generator that yields statement handles
+   * 
+   * @example
+   * for (const stmt of sqlite3._iterStatements(db, sql, { unscoped: true })) {
+   *   sqlite3.step(stmt);
+   *   sqlite3.finalize(stmt);
+   * }
+   * 
+   * @private This is an internal API that may change without notice
+   */
+  _iterStatements(db: number, sql: string, options?: SQLitePrepareOptions): Generator<number>;
+
+  /**
    * Evaluate an SQL statement
    * @see https://www.sqlite.org/c3ref/step.html
    * @param stmt prepared statement pointer

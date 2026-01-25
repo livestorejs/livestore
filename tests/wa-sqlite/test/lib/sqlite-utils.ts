@@ -94,19 +94,50 @@ export const select = (
   return results
 }
 
+/**
+ * Execute one or more SQL statements.
+ *
+ * @param sqlite3 - SQLite API instance
+ * @param dbPointer - Database pointer
+ * @param query - SQL string containing one or more statements
+ * @param bindValues - Optional bind values (only applied to first statement if multiple)
+ * @param options - Execution options
+ * @param options.multiStatementWithSchemaChanges - If true, uses _iterStatements() to prepare
+ *   statements one at a time, allowing later statements to depend on earlier ones (e.g., CREATE
+ *   TABLE then INSERT). Default is false for backward compatibility.
+ */
 export const exec = (
   sqlite3: WaSqlite.SQLiteAPI,
   dbPointer: number,
   query: string,
   bindValues?: PreparedBindValues,
+  options?: { multiStatementWithSchemaChanges?: boolean },
 ) => {
-  const stmt = prepare(sqlite3, dbPointer, query)
-  stmt.execute(bindValues ?? {}, {
-    onRowsChanged: (changes: number) => {
-      return changes
-    },
-  })
-  stmt.finalize()
+  if (options?.multiStatementWithSchemaChanges) {
+    // Use _iterStatements to prepare and execute statements one at a time.
+    // This allows later statements to depend on earlier ones (e.g., CREATE TABLE then INSERT).
+    for (const stmt of sqlite3._iterStatements(dbPointer, query, { unscoped: true })) {
+      try {
+        // Only bind values to the first statement
+        if (bindValues !== undefined && Object.keys(bindValues).length > 0) {
+          sqlite3.bind_collection(stmt, bindValues as any)
+        }
+
+        sqlite3.step(stmt)
+      } finally {
+        sqlite3.finalize(stmt)
+      }
+    }
+  } else {
+    // Default behavior: use statements() which prepares all statements upfront
+    const stmt = prepare(sqlite3, dbPointer, query)
+    stmt.execute(bindValues ?? {}, {
+      onRowsChanged: (changes: number) => {
+        return changes
+      },
+    })
+    stmt.finalize()
+  }
 }
 
 export const prepare = (sqlite3: WaSqlite.SQLiteAPI, dbPointer: number, queryStr: string) => {
