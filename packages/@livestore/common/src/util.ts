@@ -20,18 +20,12 @@ export type SqlBindValue = SqlValue | SessionIdSymbol
 export type ParamsObject = Record<string, SqlBindValue>
 
 /**
- * Parameters supplied to LiveStore's user-facing query APIs.
+ * Parameters supplied to LiveStore's query APIs.
  *
- * Uses strict `SqlBindValue` typing to catch invalid bind values at compile time.
  * Accepts both SQLite primitives and the `SessionIdSymbol` sentinel.
  *
  * These are normalized immediately before execution using `prepareBindValues()`
  * into `PreparedBindValues` (driver-ready).
- *
- * Both positional (array) and named (record) parameter styles are supported:
- * - Positional: `[value1, value2]` for `?` placeholders
- * - Named: `{ name: value }` for `$name` placeholders
- *   (keys are provided WITHOUT the leading `$`; `prepareBindValues()` adds it)
  */
 export type BindValues = ReadonlyArray<SqlBindValue> | Readonly<ParamsObject>
 
