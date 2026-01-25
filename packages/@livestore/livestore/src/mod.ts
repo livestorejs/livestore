@@ -12,7 +12,7 @@ export {
   type QueryBuilderAst,
   type RowQuery,
   SessionIdSymbol,
-  type SqlBindParams,
+  type BindValues,
   type SqliteDb,
   StoreInterrupted,
   type SyncState,

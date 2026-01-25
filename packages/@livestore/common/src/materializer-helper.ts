@@ -9,7 +9,7 @@ import type { LiveStoreSchema } from './schema/schema.ts'
 import type { QueryBuilder } from './schema/state/sqlite/query-builder/api.ts'
 import { isQueryBuilder } from './schema/state/sqlite/query-builder/api.ts'
 import { getResultSchema } from './schema/state/sqlite/query-builder/impl.ts'
-import type { ParamsObject, PreparedBindValues, SqlBindParams } from './util.ts'
+import type { BindValues, ParamsObject, PreparedBindValues } from './util.ts'
 import { prepareBindValues } from './util.ts'
 
 export const getExecStatementsFromMaterializer = ({
@@ -121,7 +121,7 @@ const fromMaterializerResult = (
   materializerResult: MaterializerResult | ReadonlyArray<MaterializerResult>,
 ): ReadonlyArray<{
   sql: string
-  bindValues: SqlBindParams
+  bindValues: BindValues
   writeTables: ReadonlySet<string> | undefined
 }> => {
   if (isReadonlyArray(materializerResult)) {

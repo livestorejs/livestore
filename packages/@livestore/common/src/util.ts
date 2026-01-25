@@ -33,7 +33,7 @@ export type ParamsObject = Record<string, SqlBindValue>
  * - Named: `{ name: value }` for `$name` placeholders
  *   (keys are provided WITHOUT the leading `$`; `prepareBindValues()` adds it)
  */
-export type SqlBindParams = ReadonlyArray<SqlBindValue> | Readonly<ParamsObject>
+export type BindValues = ReadonlyArray<SqlBindValue> | Readonly<ParamsObject>
 
 export const SqlValueSchema = Schema.Union(
   Schema.String,
@@ -57,7 +57,7 @@ export const PreparedBindValues = Schema.Union(
   Schema.Record({ key: Schema.String, value: SqlValueSchema }),
 ).pipe(Schema.brand('PreparedBindValues'))
 
-export type PreparedBindValues = Brand.Branded<SqlBindParams, 'PreparedBindValues'>
+export type PreparedBindValues = Brand.Branded<BindValues, 'PreparedBindValues'>
 
 /**
  * This is a tag function for tagged literals.
@@ -84,7 +84,7 @@ export const sql = (template: TemplateStringsArray, ...args: unknown[]): string 
  * TODO: Search for unused params via proper parsing, not string search
  * TODO: Also make sure that the SQLite binding limit of 1000 is respected
  */
-export const prepareBindValues = (values: SqlBindParams, statement: string): PreparedBindValues => {
+export const prepareBindValues = (values: BindValues, statement: string): PreparedBindValues => {
   if (Array.isArray(values)) return values as any as PreparedBindValues
 
   const result: ParamsObject = {}

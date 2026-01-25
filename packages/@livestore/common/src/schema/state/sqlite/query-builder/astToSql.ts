@@ -2,7 +2,7 @@ import { shouldNeverHappen } from '@livestore/utils'
 import { Schema, SchemaAST } from '@livestore/utils/effect'
 
 import { SessionIdSymbol } from '../../../../adapter-types.ts'
-import type { SqlBindParams, SqlBindValue, SqlValue } from '../../../../util.ts'
+import type { BindValues, SqlBindValue, SqlValue } from '../../../../util.ts'
 import type { State } from '../../../mod.ts'
 import type { QueryBuilderAst } from './api.ts'
 
@@ -173,7 +173,7 @@ const toSqlBindValue = (value: unknown): SqlBindValue => {
 
 export const astToSql = (
   ast: QueryBuilderAst,
-): { query: string; bindValues: SqlBindParams; usedTables: Set<string> } => {
+): { query: string; bindValues: BindValues; usedTables: Set<string> } => {
   const bindValues: SqlBindValue[] = []
   const usedTables = new Set<string>([ast.tableDef.sqliteDef.name])
 

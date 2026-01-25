@@ -13,7 +13,7 @@ import {
   prepareBindValues,
   QueryBuilderAstSymbol,
   replaceSessionIdSymbol,
-  type SqlBindParams,
+  type BindValues,
   type StorageMode,
   UnknownError,
 } from '@livestore/common'
@@ -604,7 +604,7 @@ export class Store<TSchema extends LiveStoreSchema = LiveStoreSchema.Any, TConte
    * ```
    */
   query = <TResult>(
-    query: Queryable<TResult> | { query: string; bindValues: SqlBindParams; schema?: Schema.Schema<TResult> },
+    query: Queryable<TResult> | { query: string; bindValues: BindValues; schema?: Schema.Schema<TResult> },
     options?: { otelContext?: otel.Context; debugRefreshReason?: RefreshReason },
   ): TResult => {
     this.checkShutdown('query')

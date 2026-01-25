@@ -3,7 +3,7 @@ import { Effect } from '@livestore/utils/effect'
 
 import type { SqliteDb } from '../adapter-types.ts'
 import { SqliteError } from '../adapter-types.ts'
-import type { PreparedBindValues, SqlBindParams } from '../util.ts'
+import type { BindValues, PreparedBindValues } from '../util.ts'
 import { prepareBindValues, sql } from '../util.ts'
 
 // TODO
@@ -67,7 +67,7 @@ export const configureConnection = (sqliteDb: SqliteDb, { foreignKeys, lockingMo
     {},
   )
 
-export const execSql = (sqliteDb: SqliteDb, sql: string, bind: SqlBindParams) => {
+export const execSql = (sqliteDb: SqliteDb, sql: string, bind: BindValues) => {
   const bindValues = prepareBindValues(bind, sql)
   return Effect.try({
     try: () => sqliteDb.execute(sql, bindValues),

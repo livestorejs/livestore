@@ -1,9 +1,9 @@
 import type { PreparedBindValues, SqliteDb } from '@livestore/common'
-import { prepareBindValues, type SqlBindParams, SqliteError } from '@livestore/common'
+import { prepareBindValues, type BindValues, SqliteError } from '@livestore/common'
 import type { WaSqlite } from '@livestore/sqlite-wasm'
 import { Effect } from '@livestore/utils/effect'
 
-export const execSql = (sqliteDb: SqliteDb, sql: string, bind: SqlBindParams) => {
+export const execSql = (sqliteDb: SqliteDb, sql: string, bind: BindValues) => {
   const bindValues = prepareBindValues(bind, sql)
   return Effect.try({
     try: () => sqliteDb.execute(sql, bindValues),

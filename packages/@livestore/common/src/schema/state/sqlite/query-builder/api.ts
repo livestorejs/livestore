@@ -2,7 +2,7 @@ import type { GetValForKey, SingleOrReadonlyArray } from '@livestore/utils'
 import { type Option, Predicate, type Schema } from '@livestore/utils/effect'
 
 import type { SessionIdSymbol } from '../../../../adapter-types.ts'
-import type { SqlBindParams } from '../../../../util.ts'
+import type { BindValues } from '../../../../util.ts'
 import type { ClientDocumentTableDef, ClientDocumentTableDefSymbol } from '../client-document-def.ts'
 import type { SqliteDsl } from '../db-schema/mod.ts'
 import type { TableDefBase } from '../table-def.ts'
@@ -122,7 +122,7 @@ export type QueryBuilder<
   readonly [QueryBuilderTypeId]: QueryBuilderTypeId
   readonly [QueryBuilderAstSymbol]: QueryBuilderAst
   readonly ResultType: TResult
-  readonly asSql: () => { query: string; bindValues: SqlBindParams; usedTables: Set<string> }
+  readonly asSql: () => { query: string; bindValues: BindValues; usedTables: Set<string> }
   readonly toString: () => string
 } & Omit<QueryBuilder.ApiFull<TResult, TTableDef, TWithout>, TWithout>
 

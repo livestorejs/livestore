@@ -2,7 +2,7 @@ import { makeAdapter as makeNodeAdapter } from '@livestore/adapter-node'
 import { UnknownError } from '@livestore/common'
 import { LiveStoreEvent, SystemTables } from '@livestore/common/schema'
 import type { Store } from '@livestore/livestore'
-import { createStorePromise, type SqlBindParams } from '@livestore/livestore'
+import { createStorePromise, type BindValues } from '@livestore/livestore'
 import { Effect, FetchHttpClient, Layer, Option, Schema } from '@livestore/utils/effect'
 import { PlatformNode } from '@livestore/utils/node'
 
@@ -102,7 +102,7 @@ export const status = Effect.gen(function* () {
   }
 }).pipe(Effect.withSpan('mcp-runtime:status'))
 
-export const query = ({ sql, bindValues }: { sql: string; bindValues?: SqlBindParams }) =>
+export const query = ({ sql, bindValues }: { sql: string; bindValues?: BindValues }) =>
   Effect.gen(function* () {
     const opt = yield* getStore
     if (opt._tag === 'None') {
