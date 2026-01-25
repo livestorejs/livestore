@@ -39,8 +39,17 @@ import type { EventDefFacts } from './facts.ts'
  *
  * Can be one of:
  * - A QueryBuilder operation (recommended for type safety)
- * - A raw SQL string
+ * - A raw SQL string (executed as-is with no bind values; use the object form
+ *   or QueryBuilder if you need parameters)
  * - An object with SQL, bind values, and optional write table tracking
+ *
+ * @example Using raw SQL with parameters (object form required):
+ * ```ts
+ * 'v1.TodoRenamed': ({ id, text }) => ({
+ *   sql: 'UPDATE todos SET text = :text WHERE id = :id',
+ *   bindValues: { id, text },
+ * })
+ * ```
  */
 export type MaterializerResult =
   | {

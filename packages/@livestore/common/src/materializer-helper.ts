@@ -1,4 +1,4 @@
-import { isDevEnv, isNil, isReadonlyArray } from '@livestore/utils'
+import { isDevEnv, isReadonlyArray } from '@livestore/utils'
 import { Hash, Option, Schema } from '@livestore/utils/effect'
 
 import type { SqliteDb } from './adapter-types.ts'
@@ -37,10 +37,6 @@ export const getExecStatementsFromMaterializer = ({
           args: Schema.decodeUnknownSync(eventDef.schema)(event.encoded!.args),
         }
       : event.decoded
-
-  const _eventArgsEncoded = isNil(event.decoded?.args)
-    ? undefined
-    : Schema.encodeUnknownSync(eventDef.schema)(event.decoded!.args)
 
   const query: MaterializerContextQuery = (
     rawQueryOrQueryBuilder:
