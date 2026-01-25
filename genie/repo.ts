@@ -305,10 +305,47 @@ export const devenvShellDefaults = {
   run: { shell: 'devenv shell bash -- -e {0}' },
 } as const
 
-/** Standard setup steps for livestore CI jobs */
+/**
+ * Setup steps for livestore CI jobs (without checkout).
+ * Installs Nix, enables Cachix caching, syncs megarepo dependencies, and warms up devenv.
+ * Use this when you need a custom checkout step (e.g., with specific ref).
+ */
+export const livestoreSetupStepsAfterCheckout = [
+  { name: 'Install Nix', uses: 'cachix/install-nix-action@v31' },
+  {
+    name: 'Enable Cachix cache',
+    uses: 'cachix/cachix-action@v16',
+    with: { name: 'livestore', authToken: '${{ env.CACHIX_AUTH_TOKEN }}' },
+  },
+  {
+    name: 'Install megarepo CLI',
+    run: 'nix profile install github:overengineeringstudio/effect-utils#megarepo',
+    shell: 'bash',
+  },
+  {
+    name: 'Sync megarepo dependencies',
+    run: 'mr sync --frozen',
+    shell: 'bash',
+  },
+  {
+    name: 'Install devenv',
+    run: 'nix profile install nixpkgs#devenv',
+    shell: 'bash',
+  },
+  {
+    name: 'Warmup devenv',
+    run: 'devenv shell --verbose env',
+    shell: 'bash',
+  },
+] as const
+
+/**
+ * Full setup steps for livestore CI jobs (includes checkout).
+ * Use livestoreSetupStepsAfterCheckout if you need a custom checkout step.
+ */
 export const livestoreSetupSteps = [
   { uses: 'actions/checkout@v4' },
-  { name: 'Set up environment', uses: './.github/actions/setup-env' },
+  ...livestoreSetupStepsAfterCheckout,
 ] as const
 
 /**

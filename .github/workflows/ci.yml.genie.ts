@@ -2,6 +2,7 @@ import {
   devenvShellDefaults,
   githubWorkflow,
   livestoreSetupSteps,
+  livestoreSetupStepsAfterCheckout,
   namespaceRunner,
   otelSetupStep,
 } from '../../genie/repo.ts'
@@ -266,7 +267,7 @@ fi`,
           uses: 'actions/checkout@v4',
           with: { ref: PR_HEAD_SHA },
         },
-        { name: 'Set up environment', uses: './.github/actions/setup-env' },
+        ...livestoreSetupStepsAfterCheckout,
         otelSetupStep,
         {
           name: 'Run performance tests',
@@ -285,8 +286,7 @@ fi`,
       'runs-on': 'ubuntu-24.04',
       env: branchProtectionEnv,
       steps: [
-        { name: 'Checkout code', uses: 'actions/checkout@v4' },
-        { name: 'Set up environment', uses: './.github/actions/setup-env' },
+        ...livestoreSetupSteps,
         otelSetupStep,
         {
           name: 'Build wa-sqlite',
