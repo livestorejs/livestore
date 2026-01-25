@@ -25,12 +25,17 @@
         ]
       },
       "locked": {
-        "path": "/Users/schickling/.megarepo/github.com/livestorejs/livestore/refs/heads/dev/.direnv/megarepo-nix/workspace/effect-utils",
-        "type": "path"
+        "lastModified": 1769338501,
+        "narHash": "sha256-S2h6T1okIPDGu+DRwWeQKlETIhxPZlpbr9jZ8gssmwU=",
+        "owner": "overengineeringstudio",
+        "repo": "effect-utils",
+        "rev": "e76d4c5010decd3109a46182bc635b0afa3e50c8",
+        "type": "github"
       },
       "original": {
-        "path": "/Users/schickling/.megarepo/github.com/livestorejs/livestore/refs/heads/dev/.direnv/megarepo-nix/workspace/effect-utils",
-        "type": "path"
+        "owner": "overengineeringstudio",
+        "repo": "effect-utils",
+        "type": "github"
       }
     },
     "flake-compat": {
