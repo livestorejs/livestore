@@ -6,7 +6,6 @@
 }:
 let
   system = pkgs.stdenv.hostPlatform.system;
-  playwrightDriver = inputs.playwright-web-flake.packages.${system}.playwright-driver;
   effectUtilsPackages = inputs.effect-utils.packages.${system};
   taskModules = inputs.effect-utils.devenvModules.tasks;
 
@@ -63,6 +62,8 @@ in
     })
     # dt command for running devenv tasks
     inputs.effect-utils.devenvModules.dt
+    # Playwright browser drivers and environment setup
+    inputs.playwright.devenvModules.default
     # Shared task modules from effect-utils
     taskModules.genie
     taskModules.megarepo
@@ -106,8 +107,8 @@ in
   ]
   ++ lib.optionals pkgs.stdenv.isDarwin [ pkgs.cocoapods ];
 
+  # Note: PLAYWRIGHT_BROWSERS_PATH is set by inputs.playwright.devenvModules.default
   env = {
-    PLAYWRIGHT_BROWSERS_PATH = playwrightDriver.browsers;
     PUPPETEER_SKIP_DOWNLOAD = "1";
   }
   // lib.optionalAttrs (!pkgs.stdenv.isDarwin) (

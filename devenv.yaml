@@ -6,8 +6,8 @@ inputs:
     inputs:
       nixpkgs:
         follows: nixpkgs
-  playwright-web-flake:
-    url: github:pietdevries94/playwright-web-flake
+  playwright:
+    url: path:repos/effect-utils/nix/playwright-flake
     inputs:
       nixpkgs:
         follows: nixpkgs
