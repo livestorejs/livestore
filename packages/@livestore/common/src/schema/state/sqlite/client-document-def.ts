@@ -3,7 +3,7 @@ import type { Option, Types } from '@livestore/utils/effect'
 import { Schema } from '@livestore/utils/effect'
 
 import { SessionIdSymbol } from '../../../adapter-types.ts'
-import { type BindValues, sql } from '../../../util.ts'
+import { type BindValues, type SqlBindValue, sql } from '../../../util.ts'
 import type { EventDef, Materializer } from '../../EventDef/mod.ts'
 import { defineEvent, defineMaterializer } from '../../EventDef/mod.ts'
 import { SqliteDsl } from './db-schema/mod.ts'
@@ -285,21 +285,21 @@ export const deriveEventAndMaterializer = ({
     const schemaProps = Schema.getResolvedPropertySignatures(valueSchema)
     if (schemaProps.length === 0 || partialSet === false) {
       const valueColJsonSchema = Schema.parseJson(valueSchema)
-      const encodedInsertValue = Schema.encodeSyncDebug(valueColJsonSchema)(value ?? defaultValue)
-      const encodedUpdateValue = Schema.encodeSyncDebug(valueColJsonSchema)(value)
+      const encodedInsertValue: string = Schema.encodeSyncDebug(valueColJsonSchema)(value ?? defaultValue)
+      const encodedUpdateValue: string = Schema.encodeSyncDebug(valueColJsonSchema)(value)
 
       return {
         sql: `INSERT INTO '${name}' (id, value) VALUES (?, ?) ON CONFLICT (id) DO UPDATE SET value = ?`,
-        bindValues: [id, encodedInsertValue, encodedUpdateValue] as BindValues,
+        bindValues: [id, encodedInsertValue, encodedUpdateValue],
         writeTables: new Set([name]),
       }
     } else {
       const valueColJsonSchema = Schema.parseJson(Schema.partial(valueSchema))
 
-      const encodedInsertValue = Schema.encodeSyncDebug(valueColJsonSchema)(mergeDefaultValues(defaultValue, value))
+      const encodedInsertValue: string = Schema.encodeSyncDebug(valueColJsonSchema)(mergeDefaultValues(defaultValue, value))
 
       let jsonSetSql = 'value'
-      const setBindValues: unknown[] = []
+      const setBindValues: SqlBindValue[] = []
 
       const keys = Object.keys(value)
       const partialUpdateSchema = valueSchema.pipe(Schema.pick(...keys))
@@ -328,7 +328,7 @@ export const deriveEventAndMaterializer = ({
 
       return {
         sql: sqlQuery,
-        bindValues: [id, encodedInsertValue, ...setBindValues] as BindValues,
+        bindValues: [id, encodedInsertValue, ...setBindValues],
         writeTables: new Set([name]),
       }
     }
