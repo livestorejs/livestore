@@ -11,7 +11,6 @@ export default packageJson({
   dependencies: {
     ...catalog.pick(
       '@livestore/common',
-      '@livestore/devtools-vite',
       '@livestore/sqlite-wasm',
       '@livestore/utils',
       '@livestore/webmesh',
@@ -21,12 +20,19 @@ export default packageJson({
   },
   devDependencies: {
     ...catalog.pick(
+      '@livestore/devtools-vite',
       '@rollup/plugin-commonjs',
       '@rollup/plugin-node-resolve',
       '@rollup/plugin-terser',
       '@types/node',
       'rollup',
     ),
+  },
+  peerDependencies: {
+    ...catalog.peers('@livestore/devtools-vite'),
+  },
+  peerDependenciesMeta: {
+    '@livestore/devtools-vite': { optional: true },
   },
   publishConfig: {
     access: 'public',

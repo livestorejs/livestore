@@ -25,17 +25,12 @@
         ]
       },
       "locked": {
-        "lastModified": 1769334872,
-        "narHash": "sha256-IvKqtLJb/g3Cd9qTgjuVkbWdvdjHrUihNUXsYP1EGsY=",
-        "owner": "overengineeringstudio",
-        "repo": "effect-utils",
-        "rev": "d8a20b190be44dc26da435a4db47789b3dc1acac",
-        "type": "github"
+        "path": "/Users/schickling/.megarepo/github.com/livestorejs/livestore/refs/heads/dev/.direnv/megarepo-nix/workspace/effect-utils",
+        "type": "path"
       },
       "original": {
-        "owner": "overengineeringstudio",
-        "repo": "effect-utils",
-        "type": "github"
+        "path": "/Users/schickling/.megarepo/github.com/livestorejs/livestore/refs/heads/dev/.direnv/megarepo-nix/workspace/effect-utils",
+        "type": "path"
       }
     },
     "flake-compat": {
@@ -183,19 +178,37 @@
         "type": "github"
       }
     },
+    "playwright": {
+      "inputs": {
+        "nixpkgs": [
+          "nixpkgs"
+        ],
+        "playwright-web-flake": "playwright-web-flake"
+      },
+      "locked": {
+        "path": "../../../../../overengineeringstudio/effect-utils/refs/heads/main/nix/playwright-flake",
+        "type": "path"
+      },
+      "original": {
+        "path": "../../../../../overengineeringstudio/effect-utils/refs/heads/main/nix/playwright-flake",
+        "type": "path"
+      },
+      "parent": []
+    },
     "playwright-web-flake": {
       "inputs": {
         "flake-utils": "flake-utils_2",
         "nixpkgs": [
+          "playwright",
           "nixpkgs"
         ]
       },
       "locked": {
-        "lastModified": 1764677445,
-        "narHash": "sha256-TKpMwDUR6dJ3JG0Ypw9y/tIiZbqEVnzGWbsqZRMoqgs=",
+        "lastModified": 1769301472,
+        "narHash": "sha256-fiKhxirKov9lGJYr0yUIHA0d0v/Fa8qaNmhO5gMnaes=",
         "owner": "pietdevries94",
         "repo": "playwright-web-flake",
-        "rev": "276c607189273ab3b4a3e163fed738bef7f18a7c",
+        "rev": "fd645cb4e9f168903b745ec4440c8a2d62ba9933",
         "type": "github"
       },
       "original": {
@@ -211,7 +224,7 @@
         "git-hooks": "git-hooks",
         "nixpkgs": "nixpkgs",
         "overeng-beads-public": "overeng-beads-public",
-        "playwright-web-flake": "playwright-web-flake"
+        "playwright": "playwright"
       }
     },
     "systems": {

@@ -14,8 +14,10 @@ export default packageJson({
     ...catalog.pick(
       '@livestore/adapter-cloudflare',
       '@livestore/adapter-expo',
+      '@livestore/adapter-node',
       '@livestore/adapter-web',
       '@livestore/common',
+      '@livestore/devtools-vite',
       '@livestore/livestore',
       '@livestore/react',
       '@livestore/solid',

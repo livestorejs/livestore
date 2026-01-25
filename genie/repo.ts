@@ -18,12 +18,11 @@ import {
   defineCatalog,
   packageJson,
   tsconfigJson,
-  dotdotConfig,
   oxlintConfig,
   oxfmtConfig,
 } from '../repos/effect-utils/packages/@overeng/genie/src/runtime/mod.ts'
 
-export { tsconfigJson, dotdotConfig, packageJson, oxlintConfig, oxfmtConfig }
+export { tsconfigJson, packageJson, oxlintConfig, oxfmtConfig }
 
 import {
   catalog as effectUtilsCatalog,
