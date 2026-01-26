@@ -181,6 +181,29 @@ The revised sync model replaces event rebasing with command replay:
   - Replay each pending command against the new state
   - Commands may now produce different events (context changed), no events (rejected), or the same events as before
 
+### Atomicity of Command Execution
+
+Command execution is atomic on both client and server. When a command handler runs:
+
+1. Read current state
+2. Validate against the state DB (and/or external services) and produce event(s)
+3. Append events to log + materialize to state DB
+
+All three steps happen as a single atomic operation. Without this, the state could change between validation and commit—meaning events get applied to a different state than the one they were validated against.
+
+**Example:** A room has capacity for 2 guests and currently has 1. Two commands arrive concurrently:
+- Command A: Check in Guest-A
+- Command B: Check in Guest-B
+
+If materialization runs async (not atomic with event commit):
+1. Handler A reads state DB: 1 guest → room has space ✓
+2. Handler A commits `GuestCheckedIn(Guest-A)` to event log
+3. Handler B reads state DB: still shows 1 guest (materializer hasn't run yet) → room has space ✓
+4. Handler B commits `GuestCheckedIn(Guest-B)` to event log
+5. Materializer processes both events → 3 guests ❌
+
+Both commands passed validation because they read stale state. With atomic execution (commit + materialize together), Handler B would see 2 guests and reject the command.
+
 ### API
 
 #### Commands
