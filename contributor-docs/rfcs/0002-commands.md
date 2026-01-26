@@ -181,6 +181,17 @@ The revised sync model replaces event rebasing with command replay:
   - Replay each pending command against the new state
   - Commands may now produce different events (context changed), no events (rejected), or the same events as before
 
+### Pending Commands Queue
+
+The pending commands queue holds commands that have been executed locally but not yet confirmed by the server. It is persisted to durable storage (alongside the eventlog) to survive app restarts, crashes, or browser refreshes.
+
+**Queue lifecycle:**
+
+1. **Enqueue**: When a command executes successfully on the client (producing provisional events), it's appended to the queue.
+2. **Push**: Commands are pushed to the server in order. The server executes each command and either produces authoritative events or rejects the command.
+3. **Dequeue**: A command is removed from the queue only after the server confirms it—either by producing authoritative events or by rejecting it.
+4. **Replay**: During reconciliation (when new authoritative events arrive), pending commands are replayed against the updated state. Commands remain in the queue until the server confirms them.
+
 ### Atomicity of Command Execution
 
 Command execution is atomic on both client and server. When a command handler runs:
