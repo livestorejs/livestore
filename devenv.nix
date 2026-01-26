@@ -92,7 +92,6 @@ in
     pkgs.oxlint
     pkgs.oxfmt
     effectUtilsPackages.genie
-    effectUtilsPackages.dotdot
     effectUtilsPackages.megarepo
     pkgs.caddy
     pkgs.jq

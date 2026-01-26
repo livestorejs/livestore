@@ -32,15 +32,15 @@
     "@effect/ai": "0.33.2",
     "@effect/ai-openai": "0.37.2",
     "@effect/experimental": "0.58.0",
-    "@effect/opentelemetry": "0.60.0",
-    "@effect/platform": "0.94.1",
+    "@effect/opentelemetry": "0.61.0",
+    "@effect/platform": "0.94.2",
     "@effect/rpc": "0.73.0",
     "@livestore/adapter-node": "workspace:*",
     "@livestore/common": "workspace:*",
     "@livestore/livestore": "workspace:*",
     "@livestore/peer-deps": "workspace:*",
     "@livestore/utils": "workspace:*",
-    "effect": "3.19.14"
+    "effect": "3.19.15"
   },
   "devDependencies": {
     "@livestore/utils-dev": "workspace:*",

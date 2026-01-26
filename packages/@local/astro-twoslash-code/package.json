@@ -12,7 +12,7 @@
     "./vite": "./src/vite/vite-plugin-snippet.ts"
   },
   "dependencies": {
-    "@effect/platform-node": "0.104.0",
+    "@effect/platform-node": "0.104.1",
     "@livestore/utils": "workspace:*",
     "astro-expressive-code": "0.41.5",
     "expressive-code": "0.41.5",
