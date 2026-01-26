@@ -491,11 +491,32 @@ store.execute(commands.checkInGuest({ roomId: 'room-1', guestId: 'guest-a' }))
 
 ### Trade-offs
 
-- Lost decision context: Cannot prove what client believed when it queued a command. The "why" is lost
-- Cascading failures: If cmd1 fails, cmd2 (based on cmd1's optimistic result) likely also fails
-- Less autonomy: Clients make requests, not decisions. Nothing is real until server confirms
-- Rejection handling complexity: Need robust UX for "your action from 2 hours ago was rejected"
-- Server dependency for truth: Offline work is always tentative. Extended offline = large uncertainty
+#### Duplicated Constraint Logic
+
+Command handlers must re-implement checks that databases traditionally enforce declaratively (FOREIGN KEY, UNIQUE, CHECK). This increases boilerplate and risks divergence between handler validation and schema definitions.
+
+This duplication exists because DB constraints currently can only reject—they cannot:
+
+- **Compensate:** When a guest check-in exceeds capacity, a handler can emit `GuestWaitlisted`. A constraint just fails.
+- **Suggest alternatives:** When a username is taken, a handler can propose `username_2`. A constraint just fails.
+- **Degrade gracefully:** When a comment references a deleted task, a handler can relocate it to an orphaned-comments bucket. A constraint just fails.
+- **Provide rich context:** A handler returns `TaskNotFound({ taskId, lastKnownTitle: "Buy groceries" })`. A constraint returns `SQLITE_CONSTRAINT_FOREIGNKEY`.
+
+##### Potential Mitigations
+
+**Schema introspection.** The framework could introspect table definitions (foreign keys, unique constraints, check constraints) and auto-generate basic validation checks in handlers, leaving developers to write only complex business rules.
+
+**Constraints as safety net.** DB constraints remain in place but serve as a backstop for handler bugs rather than primary validation. Commands handle the common cases with rich, typed errors. If a constraint fires unexpectedly (handler bug, schema drift), the system logs an error for developers rather than relying on constraints for business logic.
+
+**Graceful constraint failure recovery.** Instead of shutting down when a constraint fails during rebase, the system could mark the event as "conflicted" and continue processing. This approach preserves the event for audit purposes, avoids catastrophic store failure, and allows app-specific resolution. However, it shares limitations with Alternative A: constraints are coarse-grained (can't distinguish "task deleted" from "task never existed") and conflict handlers still require domain logic. It works best as a fallback behind command validation—catching handler bugs rather than serving as the primary validation mechanism.
+
+#### Offline Work is Tentative
+
+Clients make requests, not decisions—nothing is real until the server confirms. Extended offline periods mean large uncertainty about what will actually persist. When commands are rejected, cascading failures are common: if C1 fails during replay, C2 (issued based on C1's optimistic result) will likely also fail. Explaining these delayed, cascading rejections to users is challenging—they may have moved on, and the context that made the action make sense may no longer be obvious.
+
+#### Limited Auditability
+
+Provisional events are discarded during reconciliation and replaced with authoritative events to maintain a single global total order. This means the eventlog cannot prove what the client originally produced—only the server's re-evaluated result is preserved. For domains where "what did you know and when" is legally or operationally significant (healthcare, finance, compliance), a client-authoritative model (see Alternative D) may be more appropriate.
 
 ## Alternatives Considered
 
