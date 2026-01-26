@@ -10,11 +10,11 @@
     "test:profiler": "PERF_PROFILER=1 pnpm test"
   },
   "dependencies": {
-    "@livestore/adapter-web": "link:../../packages/@livestore/adapter-web",
-    "@livestore/livestore": "link:../../packages/@livestore/livestore",
-    "@livestore/react": "link:../../packages/@livestore/react",
-    "@livestore/utils": "link:../../packages/@livestore/utils",
-    "@livestore/utils-dev": "link:../../packages/@livestore/utils-dev",
+    "@livestore/adapter-web": "workspace:*",
+    "@livestore/livestore": "workspace:*",
+    "@livestore/react": "workspace:*",
+    "@livestore/utils": "workspace:*",
+    "@livestore/utils-dev": "workspace:*",
     "@opentelemetry/exporter-trace-otlp-http": "0.208.0",
     "@opentelemetry/resources": "2.2.0",
     "@opentelemetry/sdk-trace-base": "2.2.0",

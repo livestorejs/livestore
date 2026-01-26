@@ -22,7 +22,7 @@
     "test": "vitest"
   },
   "dependencies": {
-    "@livestore/utils": "link:../utils"
+    "@livestore/utils": "workspace:*"
   },
   "devDependencies": {
     "@effect/ai": "0.33.2",
@@ -39,7 +39,7 @@
     "@effect/rpc": "0.73.0",
     "@effect/sql": "0.49.0",
     "@effect/typeclass": "0.38.0",
-    "@livestore/utils-dev": "link:../utils-dev",
+    "@livestore/utils-dev": "workspace:*",
     "@opentelemetry/api": "1.9.0",
     "@opentelemetry/resources": "2.2.0",
     "effect": "3.19.14",

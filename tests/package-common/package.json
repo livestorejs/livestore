@@ -7,16 +7,16 @@
     "./todomvc-fixture": "./src/todomvc-fixture.ts"
   },
   "dependencies": {
-    "@livestore/adapter-node": "link:../../packages/@livestore/adapter-node",
-    "@livestore/adapter-web": "link:../../packages/@livestore/adapter-web",
-    "@livestore/common": "link:../../packages/@livestore/common",
-    "@livestore/livestore": "link:../../packages/@livestore/livestore",
-    "@livestore/sqlite-wasm": "link:../../packages/@livestore/sqlite-wasm",
-    "@livestore/utils": "link:../../packages/@livestore/utils",
+    "@livestore/adapter-node": "workspace:*",
+    "@livestore/adapter-web": "workspace:*",
+    "@livestore/common": "workspace:*",
+    "@livestore/livestore": "workspace:*",
+    "@livestore/sqlite-wasm": "workspace:*",
+    "@livestore/utils": "workspace:*",
     "@opentelemetry/api": "1.9.0"
   },
   "devDependencies": {
-    "@livestore/utils-dev": "link:../../packages/@livestore/utils-dev",
+    "@livestore/utils-dev": "workspace:*",
     "vitest": "3.2.4"
   },
   "$genie": {

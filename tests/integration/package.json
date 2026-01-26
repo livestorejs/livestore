@@ -10,18 +10,18 @@
     "test": "CI=1 bun ./scripts/run-tests.ts"
   },
   "dependencies": {
-    "@livestore/adapter-cloudflare": "link:../../packages/@livestore/adapter-cloudflare",
-    "@livestore/adapter-node": "link:../../packages/@livestore/adapter-node",
-    "@livestore/adapter-web": "link:../../packages/@livestore/adapter-web",
-    "@livestore/common": "link:../../packages/@livestore/common",
+    "@livestore/adapter-cloudflare": "workspace:*",
+    "@livestore/adapter-node": "workspace:*",
+    "@livestore/adapter-web": "workspace:*",
+    "@livestore/common": "workspace:*",
     "@livestore/devtools-vite": "0.4.0-dev.22",
-    "@livestore/effect-playwright": "link:../../packages/@livestore/effect-playwright",
-    "@livestore/livestore": "link:../../packages/@livestore/livestore",
-    "@livestore/react": "link:../../packages/@livestore/react",
-    "@livestore/sync-cf": "link:../../packages/@livestore/sync-cf",
-    "@livestore/utils": "link:../../packages/@livestore/utils",
-    "@livestore/utils-dev": "link:../../packages/@livestore/utils-dev",
-    "@local/shared": "link:../../packages/@local/shared"
+    "@livestore/effect-playwright": "workspace:*",
+    "@livestore/livestore": "workspace:*",
+    "@livestore/react": "workspace:*",
+    "@livestore/sync-cf": "workspace:*",
+    "@livestore/utils": "workspace:*",
+    "@livestore/utils-dev": "workspace:*",
+    "@local/shared": "workspace:*"
   },
   "devDependencies": {
     "@cloudflare/workers-types": "4.20251118.0",

@@ -25,9 +25,9 @@
     "test": "echo 'No tests yet'"
   },
   "dependencies": {
-    "@livestore/common": "link:../common",
-    "@livestore/livestore": "link:../livestore",
-    "@livestore/utils": "link:../utils"
+    "@livestore/common": "workspace:*",
+    "@livestore/livestore": "workspace:*",
+    "@livestore/utils": "workspace:*"
   },
   "$genie": {
     "source": "package.json.genie.ts",

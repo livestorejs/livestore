@@ -25,17 +25,12 @@
         ]
       },
       "locked": {
-        "lastModified": 1769343677,
-        "narHash": "sha256-JeaEcHjfNp3rB6cO7fEhuKlfrGG4qNvM0XfsGrVGedc=",
-        "owner": "overengineeringstudio",
-        "repo": "effect-utils",
-        "rev": "5ac08f4d460e9dfbe0caa2b574db21d3ad4caf6d",
-        "type": "github"
+        "path": "/Users/schickling/.megarepo/github.com/livestorejs/livestore/refs/heads/dev/.direnv/megarepo-nix/workspace/effect-utils",
+        "type": "path"
       },
       "original": {
-        "owner": "overengineeringstudio",
-        "repo": "effect-utils",
-        "type": "github"
+        "path": "/Users/schickling/.megarepo/github.com/livestorejs/livestore/refs/heads/dev/.direnv/megarepo-nix/workspace/effect-utils",
+        "type": "path"
       }
     },
     "flake-compat": {
@@ -191,14 +186,20 @@
         "playwright-web-flake": "playwright-web-flake"
       },
       "locked": {
-        "path": "../../../../../overengineeringstudio/effect-utils/refs/heads/main/nix/playwright-flake",
-        "type": "path"
+        "dir": "nix/playwright-flake",
+        "lastModified": 1769436233,
+        "narHash": "sha256-8izWTIKuSBPD8WOF3A7iY9X5uJFAw6Bojfmxi4sLhkA=",
+        "owner": "overengineeringstudio",
+        "repo": "effect-utils",
+        "rev": "57354bec32a4dad271afa2613af4d4677c6a88d6",
+        "type": "github"
       },
       "original": {
-        "path": "../../../../../overengineeringstudio/effect-utils/refs/heads/main/nix/playwright-flake",
-        "type": "path"
-      },
-      "parent": []
+        "dir": "nix/playwright-flake",
+        "owner": "overengineeringstudio",
+        "repo": "effect-utils",
+        "type": "github"
+      }
     },
     "playwright-web-flake": {
       "inputs": {

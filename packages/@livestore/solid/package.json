@@ -23,15 +23,15 @@
     "test": "echo 'todo'"
   },
   "dependencies": {
-    "@livestore/common": "link:../common",
-    "@livestore/framework-toolkit": "link:../framework-toolkit",
-    "@livestore/livestore": "link:../livestore",
-    "@livestore/utils": "link:../utils",
+    "@livestore/common": "workspace:*",
+    "@livestore/framework-toolkit": "workspace:*",
+    "@livestore/livestore": "workspace:*",
+    "@livestore/utils": "workspace:*",
     "@opentelemetry/api": "1.9.0"
   },
   "devDependencies": {
-    "@livestore/adapter-web": "link:../adapter-web",
-    "@livestore/utils-dev": "link:../utils-dev",
+    "@livestore/adapter-web": "workspace:*",
+    "@livestore/utils-dev": "workspace:*",
     "@opentelemetry/sdk-trace-base": "2.2.0",
     "@solidjs/testing-library": "0.8.10",
     "jsdom": "26.1.0",

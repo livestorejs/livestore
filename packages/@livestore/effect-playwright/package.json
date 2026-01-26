@@ -10,7 +10,7 @@
     "test": "echo 'No tests'"
   },
   "dependencies": {
-    "@livestore/utils": "link:../utils"
+    "@livestore/utils": "workspace:*"
   },
   "devDependencies": {
     "@playwright/test": "1.57.0",

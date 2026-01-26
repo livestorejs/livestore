@@ -24,14 +24,14 @@
     "build": "tsc"
   },
   "dependencies": {
-    "@livestore/adapter-web": "link:../adapter-web",
-    "@livestore/common": "link:../common",
-    "@livestore/livestore": "link:../livestore",
-    "@livestore/utils": "link:../utils",
+    "@livestore/adapter-web": "workspace:*",
+    "@livestore/common": "workspace:*",
+    "@livestore/livestore": "workspace:*",
+    "@livestore/utils": "workspace:*",
     "@opentelemetry/api": "1.9.0"
   },
   "devDependencies": {
-    "@livestore/utils-dev": "link:../utils-dev",
+    "@livestore/utils-dev": "workspace:*",
     "typescript": "5.9.3"
   },
   "$genie": {

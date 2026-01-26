@@ -45,52 +45,55 @@ export const packageTsconfigCompilerOptions = {
 } as const
 
 /**
- * Internal workspace packages with link: paths.
- * link: creates symlinks to the original package (no copy in .pnpm/).
- * This avoids TypeScript TS2742 errors caused by file: protocol copying source files.
- * These are resolved to relative paths at stringify time by genie.
+ * Internal workspace packages using workspace:* protocol.
+ *
+ * Each package has its own pnpm-workspace.yaml that includes sibling packages.
+ * This enables:
+ * 1. Per-package workspace setup (no monorepo root workspace needed)
+ * 2. External consumption via workspace:* when consumers include these in their workspace
+ * 3. Proper symlink resolution in both internal and external contexts
  */
 const workspaceCatalog = {
   // @livestore/* packages
-  '@livestore/utils': 'link:packages/@livestore/utils',
-  '@livestore/utils-dev': 'link:packages/@livestore/utils-dev',
-  '@livestore/common': 'link:packages/@livestore/common',
-  '@livestore/common-cf': 'link:packages/@livestore/common-cf',
-  '@livestore/livestore': 'link:packages/@livestore/livestore',
-  '@livestore/react': 'link:packages/@livestore/react',
-  '@livestore/solid': 'link:packages/@livestore/solid',
-  '@livestore/svelte': 'link:packages/@livestore/svelte',
-  '@livestore/adapter-web': 'link:packages/@livestore/adapter-web',
-  '@livestore/adapter-node': 'link:packages/@livestore/adapter-node',
-  '@livestore/adapter-expo': 'link:packages/@livestore/adapter-expo',
-  '@livestore/adapter-cloudflare': 'link:packages/@livestore/adapter-cloudflare',
-  '@livestore/sqlite-wasm': 'link:packages/@livestore/sqlite-wasm',
-  '@livestore/webmesh': 'link:packages/@livestore/webmesh',
-  '@livestore/devtools-web-common': 'link:packages/@livestore/devtools-web-common',
-  '@livestore/devtools-expo': 'link:packages/@livestore/devtools-expo',
-  '@livestore/graphql': 'link:packages/@livestore/graphql',
-  '@livestore/sync-cf': 'link:packages/@livestore/sync-cf',
-  '@livestore/sync-s2': 'link:packages/@livestore/sync-s2',
-  '@livestore/sync-electric': 'link:packages/@livestore/sync-electric',
-  '@livestore/cli': 'link:packages/@livestore/cli',
-  '@livestore/effect-playwright': 'link:packages/@livestore/effect-playwright',
-  '@livestore/framework-toolkit': 'link:packages/@livestore/framework-toolkit',
-  '@livestore/peer-deps': 'link:packages/@livestore/peer-deps',
-  '@livestore/wa-sqlite': 'link:packages/@livestore/wa-sqlite',
+  '@livestore/utils': 'workspace:*',
+  '@livestore/utils-dev': 'workspace:*',
+  '@livestore/common': 'workspace:*',
+  '@livestore/common-cf': 'workspace:*',
+  '@livestore/livestore': 'workspace:*',
+  '@livestore/react': 'workspace:*',
+  '@livestore/solid': 'workspace:*',
+  '@livestore/svelte': 'workspace:*',
+  '@livestore/adapter-web': 'workspace:*',
+  '@livestore/adapter-node': 'workspace:*',
+  '@livestore/adapter-expo': 'workspace:*',
+  '@livestore/adapter-cloudflare': 'workspace:*',
+  '@livestore/sqlite-wasm': 'workspace:*',
+  '@livestore/webmesh': 'workspace:*',
+  '@livestore/devtools-web-common': 'workspace:*',
+  '@livestore/devtools-expo': 'workspace:*',
+  '@livestore/graphql': 'workspace:*',
+  '@livestore/sync-cf': 'workspace:*',
+  '@livestore/sync-s2': 'workspace:*',
+  '@livestore/sync-electric': 'workspace:*',
+  '@livestore/cli': 'workspace:*',
+  '@livestore/effect-playwright': 'workspace:*',
+  '@livestore/framework-toolkit': 'workspace:*',
+  '@livestore/peer-deps': 'workspace:*',
+  '@livestore/wa-sqlite': 'workspace:*',
 
   // @local/* packages (internal tooling)
-  '@local/astro-tldraw': 'link:packages/@local/astro-tldraw',
-  '@local/astro-twoslash-code': 'link:packages/@local/astro-twoslash-code',
-  '@local/oxc-config': 'link:packages/@local/oxc-config',
-  '@local/shared': 'link:packages/@local/shared',
-  '@local/docs': 'link:docs',
-  '@local/scripts': 'link:scripts',
-  '@local/tests-integration': 'link:tests/integration',
-  '@local/tests-package-common': 'link:tests/package-common',
-  '@local/tests-perf': 'link:tests/perf',
-  '@local/tests-perf-streaming-loopback': 'link:tests/perf-eventlog',
-  '@local/tests-sync-provider': 'link:tests/sync-provider',
-  '@local/tests-wa-sqlite': 'link:tests/wa-sqlite',
+  '@local/astro-tldraw': 'workspace:*',
+  '@local/astro-twoslash-code': 'workspace:*',
+  '@local/oxc-config': 'workspace:*',
+  '@local/shared': 'workspace:*',
+  '@local/docs': 'workspace:*',
+  '@local/scripts': 'workspace:*',
+  '@local/tests-integration': 'workspace:*',
+  '@local/tests-package-common': 'workspace:*',
+  '@local/tests-perf': 'workspace:*',
+  '@local/tests-perf-streaming-loopback': 'workspace:*',
+  '@local/tests-sync-provider': 'workspace:*',
+  '@local/tests-wa-sqlite': 'workspace:*',
 } as const
 
 /** LiveStore-specific packages not in effect-utils catalog */
@@ -223,6 +226,26 @@ export const localPackageDefaults = {
   version: '0.0.0',
   type: 'module' as const,
   private: true as const,
+}
+
+// =============================================================================
+// pnpm Workspace Configuration
+// =============================================================================
+
+/**
+ * Per-package pnpm workspace configuration.
+ * Each package includes itself and related packages in its workspace.
+ * This enables workspace:* protocol to resolve correctly.
+ *
+ * @param patterns - Glob patterns for workspace packages (default: ['../*'] for sibling packages)
+ */
+export const pnpmWorkspace = (...patterns: string[]) => {
+  const allPatterns = patterns.length > 0 ? patterns : ['../*']
+  const content = ['packages:', '  - .', ...allPatterns.map(p => `  - ${p}`)].join('\n') + '\n'
+  return {
+    data: { packages: ['.', ...allPatterns] },
+    stringify: () => content,
+  }
 }
 
 // =============================================================================

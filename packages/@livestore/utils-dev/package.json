@@ -32,7 +32,7 @@
     "@effect/opentelemetry": "0.60.0",
     "@effect/vitest": "0.27.0",
     "@iarna/toml": "3.0.0",
-    "@livestore/utils": "link:../utils",
+    "@livestore/utils": "workspace:*",
     "@opentelemetry/api": "1.9.0",
     "@opentelemetry/exporter-metrics-otlp-http": "0.208.0",
     "@opentelemetry/exporter-trace-otlp-http": "0.208.0",

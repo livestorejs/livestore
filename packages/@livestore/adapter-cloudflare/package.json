@@ -28,12 +28,12 @@
   },
   "dependencies": {
     "@cloudflare/workers-types": "4.20251118.0",
-    "@livestore/common": "link:../common",
-    "@livestore/common-cf": "link:../common-cf",
-    "@livestore/livestore": "link:../livestore",
-    "@livestore/sqlite-wasm": "link:../sqlite-wasm",
-    "@livestore/sync-cf": "link:../sync-cf",
-    "@livestore/utils": "link:../utils"
+    "@livestore/common": "workspace:*",
+    "@livestore/common-cf": "workspace:*",
+    "@livestore/livestore": "workspace:*",
+    "@livestore/sqlite-wasm": "workspace:*",
+    "@livestore/sync-cf": "workspace:*",
+    "@livestore/utils": "workspace:*"
   },
   "devDependencies": {
     "wrangler": "4.42.2"
