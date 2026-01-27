@@ -39,9 +39,9 @@ if (lastGitHash !== currentGitHash) {
     console.log(`Parent (${parentDir}) is a git repo, skipping node dependencies installation`)
   }
 
-  // Run an initial TS build
-  console.log('Running initial TS build...')
-  await $`mono ts`
+  // Run an initial TS build (skip type checking for speed; IDE and pre-commit handle type errors)
+  console.log('Running initial TS build (no type check)...')
+  await $`mono ts --no-check`
 
   // Update the last git hash
   await $`echo ${currentGitHash} > ${lastGitHashFile}`
