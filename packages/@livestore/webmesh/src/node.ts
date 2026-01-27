@@ -553,7 +553,7 @@ export const makeMeshNode = <TName extends MeshNodeName>(
             schema,
             queue: channelQueue,
             sendPacket,
-            ...(simulation !== undefined ? { simulation } : {}),
+            simulation,
           })
 
           channelMap.set(channelKey, { queue: channelQueue, debugInfo: { channel, target } })
