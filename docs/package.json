@@ -1,11 +1,20 @@
 {
   "name": "@local/docs",
   "version": "0.1.1",
-  "type": "module",
   "private": true,
+  "type": "module",
   "exports": {
     "./multi-code-markdown": "./src/utils/multi-code-markdown.ts",
     "./sidebar": "./src/data/sidebar.ts"
+  },
+  "scripts": {
+    "astro": "astro",
+    "build": "astro check && astro build",
+    "dev": "astro dev",
+    "dev:docs:sync": "mxbai vs sync \"livestore-docs-dev\" \"./src/content/**/*.mdx\" \"./src/content/**/*.md\"  --yes --strategy fast",
+    "dev:docs:sync:dry-run": "mxbai vs sync \"livestore-docs-dev\" \"./src/content/**/*.mdx\" \"./src/content/**/*.md\" --dry-run",
+    "preview": "astro preview",
+    "start": "astro dev"
   },
   "dependencies": {
     "@astrojs/check": "0.9.4",
@@ -15,8 +24,10 @@
     "@astrojs/starlight-tailwind": "4.0.1",
     "@livestore/adapter-cloudflare": "workspace:*",
     "@livestore/adapter-expo": "workspace:*",
+    "@livestore/adapter-node": "workspace:*",
     "@livestore/adapter-web": "workspace:*",
     "@livestore/common": "workspace:*",
+    "@livestore/devtools-vite": "0.4.0-dev.22",
     "@livestore/livestore": "workspace:*",
     "@livestore/react": "workspace:*",
     "@livestore/solid": "workspace:*",
@@ -28,17 +39,17 @@
     "@local/shared": "workspace:*",
     "@mixedbread/cli": "1.2.1",
     "@mixedbread/sdk": "0.28.1",
-    "@tailwindcss/vite": "catalog:",
-    "@types/react": "catalog:",
+    "@tailwindcss/vite": "4.1.18",
+    "@types/react": "19.2.7",
     "astro": "5.13.4",
     "astro-d2": "0.8.1",
-    "astro-expressive-code": "0.41.3",
+    "astro-expressive-code": "0.41.5",
     "astro-og-canvas": "0.7.0",
     "canvaskit-wasm": "0.40.0",
     "expressive-code-twoslash": "0.5.3",
     "github-slugger": "2.0.0",
-    "react": "catalog:",
-    "react-dom": "catalog:",
+    "react": "19.2.3",
+    "react-dom": "19.2.3",
     "rehype-mermaid": "3.0.0",
     "remark-custom-header-id": "1.0.0",
     "remove-markdown": "0.6.2",
@@ -49,25 +60,20 @@
     "starlight-markdown": "0.1.5",
     "starlight-sidebar-topics": "0.6.0",
     "starlight-typedoc": "0.21.3",
-    "tailwindcss": "catalog:",
+    "tailwindcss": "4.1.18",
     "terrastruct-d2-bin": "0.7.1",
     "typedoc": "0.28.11",
     "typedoc-plugin-markdown": "4.8.1",
-    "typescript": "catalog:",
+    "typescript": "5.9.3",
     "unist-util-visit": "5.0.0"
   },
   "devDependencies": {
-    "@playwright/test": "catalog:",
-    "@types/hast": "^3.0.4",
-    "@types/react-dom": "catalog:"
+    "@playwright/test": "1.57.0",
+    "@types/hast": "3.0.4",
+    "@types/react-dom": "19.2.3"
   },
-  "scripts": {
-    "astro": "astro",
-    "build": "astro check && astro build",
-    "dev": "astro dev",
-    "dev:docs:sync": "mxbai vs sync \"livestore-docs-dev\" \"./src/content/**/*.mdx\" \"./src/content/**/*.md\"  --yes --strategy fast",
-    "dev:docs:sync:dry-run": "mxbai vs sync \"livestore-docs-dev\" \"./src/content/**/*.mdx\" \"./src/content/**/*.md\" --dry-run",
-    "preview": "astro preview",
-    "start": "astro dev"
+  "$genie": {
+    "source": "package.json.genie.ts",
+    "warning": "DO NOT EDIT - changes will be overwritten"
   }
 }

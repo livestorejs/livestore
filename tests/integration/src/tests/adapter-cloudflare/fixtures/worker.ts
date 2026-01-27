@@ -3,6 +3,7 @@
 import { DurableObject } from 'cloudflare:workers'
 import { type ClientDoWithRpcCallback, createStoreDoPromise } from '@livestore/adapter-cloudflare'
 import { liveStoreStorageFormatVersion } from '@livestore/common'
+import { CfDeclare } from '@livestore/common-cf/declare'
 import type { Store } from '@livestore/livestore'
 import {
   type CfTypes,
@@ -14,6 +15,8 @@ import {
 import { handleSyncUpdateRpc } from '@livestore/sync-cf/client'
 import { shouldNeverHappen } from '@livestore/utils'
 import { events, schema, tables } from '../schema.ts'
+
+declare class Response extends CfDeclare.Response {}
 
 type PersistenceSnapshot = {
   state: PersistenceCounts
@@ -39,13 +42,13 @@ type Env = {
 export class SyncBackendDO extends makeDurableObject({}) {}
 
 export class TestStoreDo extends DurableObject<Env> implements ClientDoWithRpcCallback {
-  __DURABLE_OBJECT_BRAND = 'TestStoreDo' as never
+  override __DURABLE_OBJECT_BRAND = 'TestStoreDo' as never
   private cachedStore: Store<typeof schema> | undefined
   private cachedStoreId: string | undefined
   /** Captures the VFS counts immediately before/after a reset so tests can assert the deletion actually happened. */
   private lastResetSnapshot: ResetPersistenceSnapshot | undefined
 
-  async fetch(request: Request): Promise<Response> {
+  override async fetch(request: CfTypes.Request): Promise<CfTypes.Response> {
     const url = new URL(request.url)
     const storeId = url.searchParams.get('storeId')
 

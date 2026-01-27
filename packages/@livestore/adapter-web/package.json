@@ -1,33 +1,20 @@
 {
   "name": "@livestore/adapter-web",
   "version": "0.4.0-dev.22",
+  "license": "Apache-2.0",
+  "files": [
+    "dist",
+    "package.json",
+    "src"
+  ],
   "type": "module",
   "sideEffects": false,
   "exports": {
     ".": "./src/index.ts",
+    "./shared-worker": "./src/web-worker/shared-worker/make-shared-worker.ts",
     "./worker": "./src/web-worker/leader-worker/make-leader-worker.ts",
-    "./worker-vite-dev-polyfill": "./src/web-worker/vite-dev-polyfill.ts",
-    "./shared-worker": "./src/web-worker/shared-worker/make-shared-worker.ts"
+    "./worker-vite-dev-polyfill": "./src/web-worker/vite-dev-polyfill.ts"
   },
-  "dependencies": {
-    "@livestore/common": "workspace:*",
-    "@livestore/devtools-web-common": "workspace:*",
-    "@livestore/sqlite-wasm": "workspace:*",
-    "@livestore/utils": "workspace:*",
-    "@livestore/webmesh": "workspace:*",
-    "@opentelemetry/api": "catalog:"
-  },
-  "devDependencies": {
-    "@types/chrome": "catalog:",
-    "@types/wicg-file-system-access": "^2023.10.6",
-    "vitest": "catalog:"
-  },
-  "files": [
-    "package.json",
-    "src",
-    "dist"
-  ],
-  "license": "Apache-2.0",
   "publishConfig": {
     "access": "public",
     "exports": {
@@ -39,5 +26,22 @@
   },
   "scripts": {
     "test": "echo No tests yet"
+  },
+  "dependencies": {
+    "@livestore/common": "workspace:*",
+    "@livestore/devtools-web-common": "workspace:*",
+    "@livestore/sqlite-wasm": "workspace:*",
+    "@livestore/utils": "workspace:*",
+    "@livestore/webmesh": "workspace:*",
+    "@opentelemetry/api": "1.9.0"
+  },
+  "devDependencies": {
+    "@types/chrome": "0.1.4",
+    "@types/wicg-file-system-access": "2023.10.6",
+    "vitest": "3.2.4"
+  },
+  "$genie": {
+    "source": "package.json.genie.ts",
+    "warning": "DO NOT EDIT - changes will be overwritten"
   }
 }

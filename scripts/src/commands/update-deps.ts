@@ -9,7 +9,7 @@
  * 2. **Expo constraints**: Fetches constraints from Expo API (113+ managed packages)
  * 3. **Global application**: Applies Expo constraints to ALL packages for consistency
  * 4. **Direct updates**: Modifies package.json files directly, then runs `pnpm install --fix-lockfile`
- * 5. **Validation**: Runs `syncpack` and `expo install --check` automatically
+ * 5. **Validation**: Runs `expo install --check` automatically
  *
  * Benefits: Ensures consistent versions across the entire monorepo, preventing
  * type conflicts and bundle bloat from multiple versions of the same package.
@@ -348,16 +348,6 @@ export const updateDepsCommand = Cli.Command.make(
     // Step 6: Validation (if not dry run and validate enabled)
     if (!dryRun && validate) {
       yield* Console.log('\n🔍 Running validation...')
-
-      yield* cmd('syncpack lint').pipe(
-        Effect.provide(LivestoreWorkspace.toCwd()),
-        Effect.catchAll((error) => Console.warn(`Syncpack validation failed: ${error}`)),
-      )
-
-      yield* cmd('syncpack fix-mismatches').pipe(
-        Effect.provide(LivestoreWorkspace.toCwd()),
-        Effect.catchAll((error) => Console.warn(`Syncpack fix failed: ${error}`)),
-      )
 
       // Check Expo examples
       const expoExamples = yield* cmdText('find examples -name "expo" -type d -o -name "*expo*" -type d').pipe(

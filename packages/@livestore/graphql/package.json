@@ -1,28 +1,16 @@
 {
   "name": "@livestore/graphql",
   "version": "0.4.0-dev.22",
+  "license": "Apache-2.0",
+  "files": [
+    "dist",
+    "package.json",
+    "src"
+  ],
   "type": "module",
+  "sideEffects": false,
   "exports": {
     ".": "./src/index.ts"
-  },
-  "dependencies": {
-    "@graphql-typed-document-node/core": "3.2.0",
-    "@livestore/common": "workspace:*",
-    "@livestore/livestore": "workspace:*",
-    "@livestore/utils": "workspace:*",
-    "@opentelemetry/api": "catalog:"
-  },
-  "devDependencies": {
-    "graphql": "catalog:"
-  },
-  "files": [
-    "package.json",
-    "src",
-    "dist"
-  ],
-  "license": "Apache-2.0",
-  "peerDependencies": {
-    "graphql": "^16.11.0"
   },
   "publishConfig": {
     "access": "public",
@@ -32,5 +20,22 @@
   },
   "scripts": {
     "test": "echo 'No tests'"
+  },
+  "dependencies": {
+    "@graphql-typed-document-node/core": "3.2.0",
+    "@livestore/common": "workspace:*",
+    "@livestore/livestore": "workspace:*",
+    "@livestore/utils": "workspace:*",
+    "@opentelemetry/api": "1.9.0"
+  },
+  "devDependencies": {
+    "graphql": "16.11.0"
+  },
+  "peerDependencies": {
+    "graphql": "^16.11.0"
+  },
+  "$genie": {
+    "source": "package.json.genie.ts",
+    "warning": "DO NOT EDIT - changes will be overwritten"
   }
 }

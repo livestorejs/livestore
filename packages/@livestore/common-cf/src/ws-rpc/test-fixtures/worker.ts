@@ -11,7 +11,7 @@ export interface Env {
 }
 
 export class TestRpcDurableObject extends DurableObject<Env, unknown> {
-  __DURABLE_OBJECT_BRAND = 'TestRpcDurableObject' as never
+  override __DURABLE_OBJECT_BRAND = 'TestRpcDurableObject' as never
 
   constructor(state: DurableObjectState, env: Env) {
     super(state, env)
@@ -59,7 +59,7 @@ export class TestRpcDurableObject extends DurableObject<Env, unknown> {
     })
   }
 
-  async fetch(request: Request): Promise<Response> {
+  override async fetch(request: Request): Promise<Response> {
     const upgradeHeader = request.headers.get('Upgrade')
     if (upgradeHeader === undefined || upgradeHeader !== 'websocket') {
       return new Response('Durable Object expected Upgrade: websocket', { status: 426 })

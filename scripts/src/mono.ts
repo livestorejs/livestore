@@ -41,7 +41,7 @@ const circularCommand = Cli.Command.make(
   'circular',
   {},
   Effect.fn(function* () {
-    yield* cmd('madge --circular --no-spinner examples/*/src packages/*/*/src', { shell: true }).pipe(
+    yield* cmd('bunx madge --circular --no-spinner examples/*/src packages/*/*/src', { shell: true }).pipe(
       Effect.provide(LivestoreWorkspace.toCwd()),
     )
   }),

@@ -33,7 +33,7 @@
  */
 import { InvalidPullError, InvalidPushError, SyncBackend, UnknownError } from '@livestore/common'
 import type { EventSequenceNumber } from '@livestore/common/schema'
-import { shouldNeverHappen } from '@livestore/utils'
+import { IS_BROWSER, shouldNeverHappen } from '@livestore/utils'
 import {
   type Duration,
   Effect,
@@ -92,7 +92,8 @@ export const makeSyncBackend =
 
       const pullEndpointHasSameOrigin =
         pullEndpoint.startsWith('/') ||
-        (globalThis.location !== undefined && globalThis.location.origin === new URL(pullEndpoint).origin)
+        (IS_BROWSER &&
+          (globalThis as { location?: { origin: string } }).location?.origin === new URL(pullEndpoint).origin)
 
       const pingTimeout = pingOptions?.requestTimeout ?? 10_000
 

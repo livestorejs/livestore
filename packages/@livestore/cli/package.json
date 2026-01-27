@@ -1,49 +1,55 @@
 {
   "name": "@livestore/cli",
   "version": "0.4.0-dev.22",
+  "license": "Apache-2.0",
+  "bin": {
+    "livestore": "./src/bin.ts"
+  },
+  "files": [
+    "dist",
+    "package.json",
+    "src"
+  ],
   "type": "module",
   "sideEffects": false,
   "exports": {
     ".": "./src/mod.ts"
   },
-  "bin": {
-    "livestore": "./src/bin.ts"
-  },
-  "dependencies": {
-    "@effect/ai": "catalog:",
-    "@effect/ai-openai": "catalog:",
-    "@effect/experimental": "catalog:",
-    "@effect/opentelemetry": "catalog:",
-    "@effect/platform": "catalog:",
-    "@effect/rpc": "catalog:",
-    "@livestore/adapter-node": "workspace:*",
-    "@livestore/common": "workspace:*",
-    "@livestore/livestore": "workspace:*",
-    "@livestore/peer-deps": "workspace:*",
-    "@livestore/utils": "workspace:*",
-    "effect": "catalog:"
-  },
-  "devDependencies": {
-    "@livestore/utils-dev": "workspace:*",
-    "@types/node": "catalog:",
-    "typescript": "catalog:"
-  },
-  "files": [
-    "package.json",
-    "src",
-    "dist"
-  ],
   "publishConfig": {
     "access": "public",
-    "exports": {
-      ".": "./dist/mod.js"
-    },
     "bin": {
       "livestore": "./dist/bin.js"
+    },
+    "exports": {
+      ".": "./dist/mod.js"
     }
   },
   "scripts": {
     "build": "tsc",
     "dev": "bun src/bin.ts"
+  },
+  "dependencies": {
+    "@effect/ai": "0.33.2",
+    "@effect/ai-openai": "0.37.2",
+    "@effect/experimental": "0.58.0",
+    "@effect/opentelemetry": "0.61.0",
+    "@effect/platform": "0.94.2",
+    "@effect/rpc": "0.73.0",
+    "@livestore/adapter-node": "workspace:*",
+    "@livestore/common": "workspace:*",
+    "@livestore/livestore": "workspace:*",
+    "@livestore/peer-deps": "workspace:*",
+    "@livestore/utils": "workspace:*",
+    "effect": "3.19.15"
+  },
+  "devDependencies": {
+    "@livestore/utils-dev": "workspace:*",
+    "@types/node": "25.0.3",
+    "typescript": "5.9.3",
+    "vitest": "3.2.4"
+  },
+  "$genie": {
+    "source": "package.json.genie.ts",
+    "warning": "DO NOT EDIT - changes will be overwritten"
   }
 }

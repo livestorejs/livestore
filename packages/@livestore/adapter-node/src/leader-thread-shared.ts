@@ -184,7 +184,7 @@ const makeDevtoolsOptions = ({
           eventlog: dbEventlog.metadata.persistenceInfo,
         }
 
-        return { node, persistenceInfo, mode: 'proxy' }
+        return { node, persistenceInfo, mode: 'proxy' as const }
       }),
     }
   })

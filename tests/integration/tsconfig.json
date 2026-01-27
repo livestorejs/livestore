@@ -1,25 +1,81 @@
+// Generated file - DO NOT EDIT
+// Source: tsconfig.json.genie.ts
 {
-  "extends": "../../tsconfig.base.json",
   "compilerOptions": {
-    "exactOptionalPropertyTypes": false,
-    "outDir": "./dist",
-    "rootDir": ".",
+    "target": "ES2024",
+    "lib": ["ES2024"],
+    "module": "NodeNext",
+    "moduleResolution": "NodeNext",
+    "allowImportingTsExtensions": true,
+    "rewriteRelativeImportExtensions": true,
     "resolveJsonModule": true,
+    "esModuleInterop": true,
+    "allowJs": false,
+    "declaration": true,
+    "declarationMap": true,
+    "sourceMap": true,
+    "outDir": "./dist",
+    "strict": true,
+    "noUncheckedIndexedAccess": true,
+    "exactOptionalPropertyTypes": false,
+    "noImplicitReturns": true,
+    "noFallthroughCasesInSwitch": true,
+    "noImplicitOverride": true,
+    "isolatedModules": true,
+    "verbatimModuleSyntax": true,
+    "skipLibCheck": true,
+    "forceConsistentCasingInFileNames": true,
+    "plugins": [
+      {
+        "name": "@effect/language-service",
+        "reportSuggestionsAsWarningsInTsc": true,
+        "pipeableMinArgCount": 2,
+        "diagnosticSeverity": {
+          "missedPipeableOpportunity": "suggestion",
+          "schemaUnionOfLiterals": "warning",
+          "anyUnknownInErrorContext": "warning",
+          "preferSchemaOverJson": "warning"
+        }
+      }
+    ],
+    "composite": true,
+    "rootDir": ".",
     "jsx": "react-jsx",
-    "tsBuildInfoFile": "./dist/.tsbuildinfo"
+    "tsBuildInfoFile": "./dist/.tsbuildinfo",
+    "types": ["@cloudflare/workers-types"]
   },
   "include": ["./src", "./scripts"],
-  "exclude": ["./src/tests/devtools/fixtures"],
+  "exclude": ["node_modules", "**/dist", "**/node_modules/.pnpm", "**/*.genie.ts", "./src/tests/devtools/fixtures"],
   "references": [
-    { "path": "../../packages/@local/shared" },
-    { "path": "../../packages/@livestore/effect-playwright" },
-    { "path": "../../packages/@livestore/common" },
-    { "path": "../../packages/@livestore/react" },
-    { "path": "../../packages/@livestore/livestore" },
-    { "path": "../../packages/@livestore/adapter-node" },
-    { "path": "../../packages/@livestore/sync-cf" },
-    { "path": "../../packages/@livestore/utils" },
-    { "path": "../../packages/@livestore/utils-dev" },
-    { "path": "../../packages/@livestore/adapter-web" }
+    {
+      "path": "../../packages/@local/shared"
+    },
+    {
+      "path": "../../packages/@livestore/effect-playwright"
+    },
+    {
+      "path": "../../packages/@livestore/common"
+    },
+    {
+      "path": "../../packages/@livestore/react"
+    },
+    {
+      "path": "../../packages/@livestore/livestore"
+    },
+    {
+      "path": "../../packages/@livestore/adapter-node"
+    },
+    {
+      "path": "../../packages/@livestore/sync-cf"
+    },
+    {
+      "path": "../../packages/@livestore/utils"
+    },
+    {
+      "path": "../../packages/@livestore/utils-dev"
+    },
+    {
+      "path": "../../packages/@livestore/adapter-web"
+    }
   ]
 }

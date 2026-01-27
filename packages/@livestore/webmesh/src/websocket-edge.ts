@@ -105,12 +105,13 @@ export const makeWebSocketEdge = ({
         Schedule.whileInput((_: Socket.SocketError) => _.reason === 'OpenTimeout' || _.reason === 'Open'),
       )
 
+      const sendToSocket = yield* socket.writer
+
       yield* Stream.never.pipe(
         Stream.pipeThroughChannel(Socket.toChannel(socket)),
         Stream.catchTag(
           'SocketError',
           Effect.fnUntraced(function* (error) {
-            // yield* Effect.logError(`[websocket-edge] Socket error`, error, { socketType, debugId: debugInfo?.id })
             // In the case of the socket being closed, we're interrupting the stream
             // and close the WebChannel (which can be observed from the outside)
             if (error.reason === 'Close') {
@@ -130,7 +131,6 @@ export const makeWebSocketEdge = ({
               yield* Deferred.succeed(fromDeferred, msg.from)
             } else {
               const decodedPayload = yield* Schema.decode(schema.listen)(msg.payload)
-              // yield* Effect.logDebug(`[websocket-edge] recv from ${msg.from}: ${decodedPayload._tag}`, decodedPayload)
               yield* Queue.offer(listenQueue, decodedPayload)
             }
           }),
@@ -147,8 +147,6 @@ export const makeWebSocketEdge = ({
         Effect.tapCauseLogPretty,
         Effect.forkScoped,
       )
-
-      const sendToSocket = yield* socket.writer
 
       const initHandshake = (from: string) =>
         sendToSocket(Schema.encodeSync(MessageMsgPack)({ _tag: 'WSEdgeInit', from }))

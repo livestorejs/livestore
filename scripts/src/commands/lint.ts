@@ -4,7 +4,6 @@ import * as path from 'node:path'
 import { Console, Effect, Schema } from '@livestore/utils/effect'
 import { Cli } from '@livestore/utils/node'
 import { CurrentWorkingDirectory, cmd, cmdText, LivestoreWorkspace } from '@livestore/utils-dev/node'
-import { hasParentGitRepo } from '../shared/misc.ts'
 import { runPeerDepCheck } from '../shared/peer-deps.ts'
 
 export class LintError extends Schema.TaggedError<LintError>()('LintError', {
@@ -110,7 +109,6 @@ const knipConfig = {
     'jsdom',
     'vitest',
     'vite',
-    '@biomejs/biome',
     'madge',
     '@livestore/utils-dev',
     // Test dependencies (used in test files which are ignored by knip)
@@ -127,12 +125,12 @@ const knipConfig = {
     '@opentelemetry/sdk-trace-base',
     // Meta package for peer deps (not directly imported)
     '@livestore/peer-deps',
+    // Optional peer dep, dynamically imported in adapter-node
+    '@livestore/devtools-vite',
   ],
   ignoreIssues: {
     // Constants intentionally share the same value for semantic clarity
     'packages/@livestore/sync-cf/src/common/constants.ts': ['duplicates'],
-    // Catalog entries are used in ignored workspaces (examples/tests/docs)
-    'pnpm-workspace.yaml': ['catalog'],
   },
   ignoreExportsUsedInFile: true,
 }
@@ -146,32 +144,56 @@ const runKnipCheck = Effect.gen(function* () {
 
   yield* Effect.addFinalizer(() => Effect.sync(() => fs.unlinkSync(tempConfigPath)))
 
-  yield* cmd(['scripts/node_modules/.bin/knip', '-c', tempConfigPath, '--directory', workspaceRoot]).pipe(
+  yield* cmd(['bun', 'run', 'scripts/node_modules/.bin/knip', '-c', tempConfigPath, '--directory', workspaceRoot]).pipe(
     Effect.provide(CurrentWorkingDirectory.fromPath(workspaceRoot)),
   )
 }).pipe(Effect.scoped, Effect.withSpan('runKnipCheck'))
+
+/**
+ * Exclude patterns for oxfmt (genie-generated read-only files).
+ * Note: Generated .jsonc files and package.json/tsconfig.json are in .oxfmtrc.json ignorePatterns.
+ */
+const oxfmtExcludePatterns = ['!.github/workflows/*.yml']
+
+/** Run oxfmt format check (uses .oxfmtrc.json) */
+const runFormatCheck = cmd(['oxfmt', '--check', '.', ...oxfmtExcludePatterns]).pipe(
+  Effect.provide(LivestoreWorkspace.toCwd()),
+  Effect.withSpan('formatCheck'),
+)
+
+/** Run oxfmt format fix (uses .oxfmtrc.json) */
+const runFormatFix = cmd(['oxfmt', '.', ...oxfmtExcludePatterns]).pipe(
+  Effect.provide(LivestoreWorkspace.toCwd()),
+  Effect.withSpan('formatFix'),
+)
+
+/** Run oxlint check (uses .oxlintrc.json) */
+const runLintCheck = cmd(['oxlint', '--import-plugin', '--deny-warnings']).pipe(
+  Effect.provide(LivestoreWorkspace.toCwd()),
+  Effect.withSpan('lintCheck'),
+)
+
+/** Run oxlint fix (uses .oxlintrc.json) */
+const runLintFix = cmd(['oxlint', '--import-plugin', '--deny-warnings', '--fix']).pipe(
+  Effect.provide(LivestoreWorkspace.toCwd()),
+  Effect.withSpan('lintFix'),
+)
 
 export const lintCommand = Cli.Command.make(
   'lint',
   { fix: Cli.Options.boolean('fix').pipe(Cli.Options.withDefault(false)) },
   Effect.fn(function* ({ fix }) {
-    const fixFlag = fix ? '--fix --unsafe' : ''
-    yield* cmd(`biome check scripts tests packages docs examples --error-on-warnings ${fixFlag}`, {
-      shell: true,
-    }).pipe(Effect.provide(LivestoreWorkspace.toCwd()))
+    // Run oxfmt and oxlint (format + lint)
     if (fix) {
-      yield* cmd('syncpack fix-mismatches').pipe(Effect.provide(LivestoreWorkspace.toCwd()))
-      yield* cmd('syncpack format').pipe(Effect.provide(LivestoreWorkspace.toCwd()))
-
-      if ((yield* hasParentGitRepo) === false) {
-        yield* cmd('pnpm install --fix-lockfile').pipe(Effect.provide(LivestoreWorkspace.toCwd()))
-      }
+      yield* runFormatFix
+      yield* runLintFix
+    } else {
+      yield* runFormatCheck
+      yield* runLintCheck
     }
 
-    yield* cmd('syncpack lint').pipe(Effect.provide(LivestoreWorkspace.toCwd()))
-
     // Shell needed for wildcards
-    yield* cmd('madge --circular --no-spinner examples/*/src packages/*/*/src', { shell: true }).pipe(
+    yield* cmd('bun run madge --circular --no-spinner examples/*/src packages/*/*/src', { shell: true }).pipe(
       Effect.provide(LivestoreWorkspace.toCwd()),
     )
 

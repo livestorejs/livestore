@@ -47,7 +47,7 @@ const debugDiffImpl = (ast: SchemaAST.AST, a: any, b: any, path: string, bag: Di
   }
 }
 
-const isTaggedUnion = (ast: SchemaAST.AST) => {
+const isTaggedUnion = (ast: SchemaAST.AST): boolean => {
   if (SchemaAST.isUnion(ast)) {
     return ast.types.every((type) => {
       if (SchemaAST.isTypeLiteral(type) === false) return false
@@ -55,4 +55,5 @@ const isTaggedUnion = (ast: SchemaAST.AST) => {
       return props.some((prop) => prop.name.toString() === '_tag')
     })
   }
+  return false
 }

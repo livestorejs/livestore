@@ -111,7 +111,7 @@ Vitest.describe('useClientDocument', () => {
             <TasksList setTaskId={(taskId) => setState({ currentTaskId: taskId })} />
             <div role={'current-id' as any}>Current Task Id: {state().currentTaskId ?? '-'}</div>
             <Solid.Show when={state().currentTaskId} fallback={<div>Click on a task to see details</div>}>
-              {(id) => <TaskDetails id={id()} />}
+              {(id: Solid.Accessor<string>) => <TaskDetails id={id()} />}
             </Solid.Show>
           </div>
         )

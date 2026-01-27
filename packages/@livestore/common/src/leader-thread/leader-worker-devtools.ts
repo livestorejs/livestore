@@ -8,6 +8,15 @@ import { LeaderThreadCtx } from './types.ts'
 
 type SendMessageToDevtools = (message: Devtools.Leader.MessageFromApp) => Effect.Effect<void>
 
+/**
+ * Type guard for DevtoolsViteNotInstalledError.
+ * This error is defined in @livestore/adapter-node but we need to handle it here.
+ */
+const isDevtoolsViteNotInstalledError = (
+  error: unknown,
+): error is { _tag: 'DevtoolsViteNotInstalledError'; message: string } =>
+  typeof error === 'object' && error !== null && '_tag' in error && error._tag === 'DevtoolsViteNotInstalledError'
+
 // TODO bind scope to the webchannel lifetime
 export const bootDevtools = (options: DevtoolsOptions) =>
   Effect.gen(function* () {
@@ -22,7 +31,26 @@ export const bootDevtools = (options: DevtoolsOptions) =>
       sendMessage: () => Effect.void,
     }).pipe(Effect.tapCauseLogPretty, Effect.forkScoped)
 
-    const { node, persistenceInfo, mode } = yield* options.boot
+    const bootResult = yield* options.boot.pipe(
+      Effect.map(Option.some),
+      Effect.catchIf(isDevtoolsViteNotInstalledError, (error) =>
+        Effect.logWarning(`[@livestore/devtools] ${error.message} Devtools will be disabled.`).pipe(
+          Effect.as(Option.none()),
+        ),
+      ),
+      Effect.catchAllCause((cause) =>
+        Effect.logWarning(
+          `[@livestore/devtools] Failed to start devtools server. Devtools will be disabled.`,
+          cause,
+        ).pipe(Effect.as(Option.none())),
+      ),
+    )
+
+    if (Option.isNone(bootResult)) {
+      return
+    }
+
+    const { node, persistenceInfo, mode } = bootResult.value
 
     yield* node.listenForChannel.pipe(
       Stream.filter(

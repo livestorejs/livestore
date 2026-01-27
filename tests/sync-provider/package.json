@@ -1,14 +1,18 @@
 {
   "name": "@local/tests-sync-provider",
   "version": "0.0.0",
-  "type": "module",
   "private": true,
+  "type": "module",
   "exports": {
     "./prepare-ci": "./src/prepare-ci.ts",
     "./registry": "./src/providers/registry.ts"
   },
+  "scripts": {
+    "test": "vitest run",
+    "test:watch": "vitest"
+  },
   "dependencies": {
-    "@cloudflare/workers-types": "catalog:",
+    "@cloudflare/workers-types": "4.20251118.0",
     "@livestore/adapter-cloudflare": "workspace:*",
     "@livestore/adapter-node": "workspace:*",
     "@livestore/common": "workspace:*",
@@ -23,11 +27,11 @@
   },
   "devDependencies": {
     "@livestore/utils-dev": "workspace:*",
-    "@types/node": "catalog:",
-    "vitest": "catalog:"
+    "@types/node": "25.0.3",
+    "vitest": "3.2.4"
   },
-  "scripts": {
-    "test": "vitest run",
-    "test:watch": "vitest"
+  "$genie": {
+    "source": "package.json.genie.ts",
+    "warning": "DO NOT EDIT - changes will be overwritten"
   }
 }

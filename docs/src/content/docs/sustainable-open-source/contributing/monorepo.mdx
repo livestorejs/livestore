@@ -143,16 +143,10 @@ export VITE_OTEL_EXPORTER_OTLP_ENDPOINT="http://localhost:4318"
   - We're also using the `resolutions` field in the root `package.json` to force
     some packages to be the same across the monorepo (ideally not needed but for
     some packages it's necessary currently).
-- We're using [syncpack](https://github.com/JamieMason/syncpack) to help
-  maintain consistent dependency versions across the monorepo.
-  - See `syncpack.config.mjs` for the configuration.
-  - Common commands:
-    - `bunx syncpack format` to format the `package.json` files
-    - `bunx syncpack lint` to check all version ranges
-    - `bunx syncpack fix-mismatches` to adjust versions across `package.json`
-      files (check before with `lint`)
-    - `bunx syncpack update` to update packages across the monorepo to the
-      latest versions
+- We use a centralized catalog in `genie/repo.ts` combined with [PNPM catalogs](https://pnpm.io/catalogs)
+  to maintain consistent dependency versions across the monorepo.
+  - All `package.json` files are generated via Genie from `.genie.ts` source files.
+  - Use `mono update-deps` to update dependencies across the monorepo.
 
 ### Notes on external dependencies
 
@@ -177,8 +171,8 @@ The following packages need to be updated with extra care:
 
 #### Updating dependencies
 
-- Either update the versions manually in each `package.json` file or use
-  `bunx syncpack update`.
+- Use `mono update-deps` to update dependencies automatically with Expo constraints applied.
+- For manual updates, modify the catalog in `genie/repo.ts` and regenerate with `genie`.
 
 ### Notes on monorepo structure
 

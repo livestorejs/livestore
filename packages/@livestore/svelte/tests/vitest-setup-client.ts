@@ -12,7 +12,7 @@ const wasmPath = path.join(workspaceRoot, 'packages', '@livestore', 'wa-sqlite',
 const wasmBinary = await readFile(wasmPath)
 const originalFetch = globalThis.fetch.bind(globalThis)
 
-globalThis.fetch = async (input, init) => {
+const customFetch = async (input: RequestInfo | URL, init?: RequestInit) => {
   if (typeof input === 'string' && input.includes('wa-sqlite') && input.endsWith('.wasm')) {
     return new Response(wasmBinary, {
       status: 200,
@@ -22,6 +22,9 @@ globalThis.fetch = async (input, init) => {
 
   return originalFetch(input, init)
 }
+
+/** Shim fetch to serve wa-sqlite wasm from disk in jsdom environment */
+globalThis.fetch = Object.assign(customFetch, originalFetch) as typeof globalThis.fetch
 
 // required for svelte5 + jsdom as jsdom does not support matchMedia
 Object.defineProperty(globalThis, 'matchMedia', {

@@ -1,0 +1,49 @@
+lockfileVersion: '9.0'
+
+settings:
+  autoInstallPeers: true
+  excludeLinksFromLockfile: false
+
+importers:
+
+  .:
+    dependencies:
+      '@livestore/adapter-web':
+        specifier: link:../adapter-web
+        version: link:../adapter-web
+      '@livestore/common':
+        specifier: link:../common
+        version: link:../common
+      '@livestore/livestore':
+        specifier: link:../livestore
+        version: link:../livestore
+      '@livestore/utils':
+        specifier: link:../utils
+        version: link:../utils
+      '@opentelemetry/api':
+        specifier: 1.9.0
+        version: 1.9.0
+    devDependencies:
+      '@livestore/utils-dev':
+        specifier: link:../utils-dev
+        version: link:../utils-dev
+      typescript:
+        specifier: 5.9.3
+        version: 5.9.3
+
+packages:
+
+  '@opentelemetry/api@1.9.0':
+    resolution: {integrity: sha512-3giAOQvZiH5F9bMlMiv8+GSPMeqg0dbaeo58/0SlA9sxSqZhnUtxzX9/2FzyhS9sWQf5S0GJE0AKBrFqjpeYcg==}
+    engines: {node: '>=8.0.0'}
+
+  typescript@5.9.3:
+    resolution: {integrity: sha512-jl1vZzPDinLr9eUt3J/t7V6FgNEw9QjvBPdysz9KfQDD41fQrC2Y4vKQdiaUpFT4bXlb1RHhLpp8wtm6M5TgSw==}
+    engines: {node: '>=14.17'}
+    hasBin: true
+
+snapshots:
+
+  '@opentelemetry/api@1.9.0': {}
+
+  typescript@5.9.3: {}

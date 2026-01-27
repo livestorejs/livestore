@@ -1,20 +1,68 @@
+// Generated file - DO NOT EDIT
+// Source: tsconfig.json.genie.ts
 {
-  "extends": "../../../tsconfig.base.json",
   "compilerOptions": {
-    "outDir": "./dist",
-    "rootDir": "./src",
-    "jsx": "react-jsx",
+    "target": "ES2024",
+    "lib": ["ES2024", "DOM", "DOM.Iterable"],
+    "module": "NodeNext",
+    "moduleResolution": "NodeNext",
+    "allowImportingTsExtensions": true,
+    "rewriteRelativeImportExtensions": true,
     "resolveJsonModule": true,
-    // "jsx": "preserve",
-    "tsBuildInfoFile": "./dist/.tsbuildinfo"
+    "esModuleInterop": true,
+    "allowJs": false,
+    "declaration": true,
+    "declarationMap": true,
+    "sourceMap": true,
+    "outDir": "./dist",
+    "strict": true,
+    "noUncheckedIndexedAccess": true,
+    "exactOptionalPropertyTypes": true,
+    "noImplicitReturns": true,
+    "noFallthroughCasesInSwitch": true,
+    "noImplicitOverride": true,
+    "isolatedModules": true,
+    "verbatimModuleSyntax": true,
+    "skipLibCheck": true,
+    "forceConsistentCasingInFileNames": true,
+    "plugins": [
+      {
+        "name": "@effect/language-service",
+        "reportSuggestionsAsWarningsInTsc": true,
+        "pipeableMinArgCount": 2,
+        "diagnosticSeverity": {
+          "missedPipeableOpportunity": "suggestion",
+          "schemaUnionOfLiterals": "warning",
+          "anyUnknownInErrorContext": "warning",
+          "preferSchemaOverJson": "warning"
+        }
+      }
+    ],
+    "composite": true,
+    "rootDir": "./src",
+    "tsBuildInfoFile": "./dist/.tsbuildinfo",
+    "jsx": "react-jsx"
   },
   "include": ["./src"],
+  "exclude": ["node_modules", "**/dist", "**/node_modules/.pnpm", "**/*.genie.ts"],
   "references": [
-    { "path": "../common" },
-    { "path": "../adapter-web" },
-    { "path": "../framework-toolkit" },
-    { "path": "../livestore" },
-    { "path": "../utils" },
-    { "path": "../utils-dev" }
+    {
+      "path": "../common"
+    },
+    {
+      "path": "../adapter-web"
+    },
+    {
+      "path": "../framework-toolkit"
+    },
+    {
+      "path": "../livestore"
+    },
+    {
+      "path": "../utils"
+    },
+    {
+      "path": "../utils-dev"
+    }
   ]
 }
