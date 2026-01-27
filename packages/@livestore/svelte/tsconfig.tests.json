@@ -42,13 +42,7 @@
     "rootDir": "."
   },
   "include": ["./tests/**/*.ts", "./tests/**/*.svelte", "./tests/**/*.d.ts"],
-  "exclude": [
-    "./tests/vitest.config.ts",
-    "node_modules",
-    "**/dist",
-    "**/node_modules/.pnpm",
-    "**/*.genie.ts"
-  ],
+  "exclude": ["./tests/vitest.config.ts", "node_modules", "**/dist", "**/node_modules/.pnpm", "**/*.genie.ts"],
   "references": [
     {
       "path": "../common"

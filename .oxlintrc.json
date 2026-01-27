@@ -73,12 +73,7 @@
       }
     },
     {
-      "files": [
-        "**/vitest.config.ts",
-        "**/vite.config.ts",
-        "**/playwright.config.ts",
-        "**/*.genie.ts"
-      ],
+      "files": ["**/vitest.config.ts", "**/vite.config.ts", "**/playwright.config.ts", "**/*.genie.ts"],
       "rules": {
         "func-style": "off",
         "overeng/jsdoc-require-exports": "off"

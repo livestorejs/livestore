@@ -21,10 +21,9 @@ env:
 
 jobs:
   lint:
-    runs-on:
-      [namespace-profile-linux-x86-64, "namespace-features:github.run-id=${{ github.run_id }}"]
+    runs-on: [namespace-profile-linux-x86-64, 'namespace-features:github.run-id=${{ github.run_id }}']
     env:
-      LIVESTORE_BRANCH_PROTECTION_REQUIRED: "true"
+      LIVESTORE_BRANCH_PROTECTION_REQUIRED: 'true'
     defaults:
       run:
         shell: devenv shell bash -- -e {0}
@@ -38,23 +37,22 @@ jobs:
           name: livestore
           authToken: ${{ env.CACHIX_AUTH_TOKEN }}
       - name: Install megarepo CLI
-        run: "nix profile install github:overengineeringstudio/effect-utils#megarepo"
+        run: 'nix profile install github:overengineeringstudio/effect-utils#megarepo'
         shell: bash
       - name: Sync megarepo dependencies
         run: mr sync --frozen
         shell: bash
       - name: Install devenv
-        run: "nix profile install nixpkgs#devenv"
+        run: 'nix profile install nixpkgs#devenv'
         shell: bash
       - name: Warmup devenv
         run: devenv shell --verbose env
         shell: bash
       - run: mono lint
   test-unit:
-    runs-on:
-      [namespace-profile-linux-x86-64, "namespace-features:github.run-id=${{ github.run_id }}"]
+    runs-on: [namespace-profile-linux-x86-64, 'namespace-features:github.run-id=${{ github.run_id }}']
     env:
-      LIVESTORE_BRANCH_PROTECTION_REQUIRED: "true"
+      LIVESTORE_BRANCH_PROTECTION_REQUIRED: 'true'
     defaults:
       run:
         shell: devenv shell bash -- -e {0}
@@ -68,23 +66,22 @@ jobs:
           name: livestore
           authToken: ${{ env.CACHIX_AUTH_TOKEN }}
       - name: Install megarepo CLI
-        run: "nix profile install github:overengineeringstudio/effect-utils#megarepo"
+        run: 'nix profile install github:overengineeringstudio/effect-utils#megarepo'
         shell: bash
       - name: Sync megarepo dependencies
         run: mr sync --frozen
         shell: bash
       - name: Install devenv
-        run: "nix profile install nixpkgs#devenv"
+        run: 'nix profile install nixpkgs#devenv'
         shell: bash
       - name: Warmup devenv
         run: devenv shell --verbose env
         shell: bash
       - run: mono test unit
   test-integration-node-sync:
-    runs-on:
-      [namespace-profile-linux-x86-64, "namespace-features:github.run-id=${{ github.run_id }}"]
+    runs-on: [namespace-profile-linux-x86-64, 'namespace-features:github.run-id=${{ github.run_id }}']
     env:
-      LIVESTORE_BRANCH_PROTECTION_REQUIRED: "true"
+      LIVESTORE_BRANCH_PROTECTION_REQUIRED: 'true'
     defaults:
       run:
         shell: devenv shell bash -- -e {0}
@@ -98,20 +95,20 @@ jobs:
           name: livestore
           authToken: ${{ env.CACHIX_AUTH_TOKEN }}
       - name: Install megarepo CLI
-        run: "nix profile install github:overengineeringstudio/effect-utils#megarepo"
+        run: 'nix profile install github:overengineeringstudio/effect-utils#megarepo'
         shell: bash
       - name: Sync megarepo dependencies
         run: mr sync --frozen
         shell: bash
       - name: Install devenv
-        run: "nix profile install nixpkgs#devenv"
+        run: 'nix profile install nixpkgs#devenv'
         shell: bash
       - name: Warmup devenv
         run: devenv shell --verbose env
         shell: bash
       - name: Set OTEL_EXPORTER_OTLP_HEADERS environment variable
         env:
-          GRAFANA_CLOUD_OTLP_INSTANCE_ID: "1227256"
+          GRAFANA_CLOUD_OTLP_INSTANCE_ID: '1227256'
           GRAFANA_CLOUD_OTLP_API_KEY: ${{ secrets.GRAFANA_CLOUD_OTLP_API_KEY }}
         run: |
           echo "OTEL_EXPORTER_OTLP_HEADERS=Authorization=Basic $(echo -n "$GRAFANA_CLOUD_OTLP_INSTANCE_ID:$GRAFANA_CLOUD_OTLP_API_KEY" | base64 -w 0)" >> $GITHUB_ENV
@@ -162,10 +159,9 @@ jobs:
           - cf-ws-do
           - cf-do-rpc-d1
           - cf-do-rpc-do
-    runs-on:
-      [namespace-profile-linux-x86-64, "namespace-features:github.run-id=${{ github.run_id }}"]
+    runs-on: [namespace-profile-linux-x86-64, 'namespace-features:github.run-id=${{ github.run_id }}']
     env:
-      LIVESTORE_BRANCH_PROTECTION_REQUIRED: "true"
+      LIVESTORE_BRANCH_PROTECTION_REQUIRED: 'true'
     defaults:
       run:
         shell: devenv shell bash -- -e {0}
@@ -179,20 +175,20 @@ jobs:
           name: livestore
           authToken: ${{ env.CACHIX_AUTH_TOKEN }}
       - name: Install megarepo CLI
-        run: "nix profile install github:overengineeringstudio/effect-utils#megarepo"
+        run: 'nix profile install github:overengineeringstudio/effect-utils#megarepo'
         shell: bash
       - name: Sync megarepo dependencies
         run: mr sync --frozen
         shell: bash
       - name: Install devenv
-        run: "nix profile install nixpkgs#devenv"
+        run: 'nix profile install nixpkgs#devenv'
         shell: bash
       - name: Warmup devenv
         run: devenv shell --verbose env
         shell: bash
       - name: Set OTEL_EXPORTER_OTLP_HEADERS environment variable
         env:
-          GRAFANA_CLOUD_OTLP_INSTANCE_ID: "1227256"
+          GRAFANA_CLOUD_OTLP_INSTANCE_ID: '1227256'
           GRAFANA_CLOUD_OTLP_API_KEY: ${{ secrets.GRAFANA_CLOUD_OTLP_API_KEY }}
         run: |
           echo "OTEL_EXPORTER_OTLP_HEADERS=Authorization=Basic $(echo -n "$GRAFANA_CLOUD_OTLP_INSTANCE_ID:$GRAFANA_CLOUD_OTLP_API_KEY" | base64 -w 0)" >> $GITHUB_ENV
@@ -220,10 +216,9 @@ jobs:
     strategy:
       matrix:
         suite: [misc, todomvc, devtools]
-    runs-on:
-      [namespace-profile-linux-x86-64, "namespace-features:github.run-id=${{ github.run_id }}"]
+    runs-on: [namespace-profile-linux-x86-64, 'namespace-features:github.run-id=${{ github.run_id }}']
     env:
-      LIVESTORE_BRANCH_PROTECTION_REQUIRED: "true"
+      LIVESTORE_BRANCH_PROTECTION_REQUIRED: 'true'
     defaults:
       run:
         shell: devenv shell bash -- -e {0}
@@ -237,20 +232,20 @@ jobs:
           name: livestore
           authToken: ${{ env.CACHIX_AUTH_TOKEN }}
       - name: Install megarepo CLI
-        run: "nix profile install github:overengineeringstudio/effect-utils#megarepo"
+        run: 'nix profile install github:overengineeringstudio/effect-utils#megarepo'
         shell: bash
       - name: Sync megarepo dependencies
         run: mr sync --frozen
         shell: bash
       - name: Install devenv
-        run: "nix profile install nixpkgs#devenv"
+        run: 'nix profile install nixpkgs#devenv'
         shell: bash
       - name: Warmup devenv
         run: devenv shell --verbose env
         shell: bash
       - name: Set OTEL_EXPORTER_OTLP_HEADERS environment variable
         env:
-          GRAFANA_CLOUD_OTLP_INSTANCE_ID: "1227256"
+          GRAFANA_CLOUD_OTLP_INSTANCE_ID: '1227256'
           GRAFANA_CLOUD_OTLP_API_KEY: ${{ secrets.GRAFANA_CLOUD_OTLP_API_KEY }}
         run: |
           echo "OTEL_EXPORTER_OTLP_HEADERS=Authorization=Basic $(echo -n "$GRAFANA_CLOUD_OTLP_INSTANCE_ID:$GRAFANA_CLOUD_OTLP_API_KEY" | base64 -w 0)" >> $GITHUB_ENV
@@ -302,20 +297,20 @@ jobs:
           name: livestore
           authToken: ${{ env.CACHIX_AUTH_TOKEN }}
       - name: Install megarepo CLI
-        run: "nix profile install github:overengineeringstudio/effect-utils#megarepo"
+        run: 'nix profile install github:overengineeringstudio/effect-utils#megarepo'
         shell: bash
       - name: Sync megarepo dependencies
         run: mr sync --frozen
         shell: bash
       - name: Install devenv
-        run: "nix profile install nixpkgs#devenv"
+        run: 'nix profile install nixpkgs#devenv'
         shell: bash
       - name: Warmup devenv
         run: devenv shell --verbose env
         shell: bash
       - name: Set OTEL_EXPORTER_OTLP_HEADERS environment variable
         env:
-          GRAFANA_CLOUD_OTLP_INSTANCE_ID: "1227256"
+          GRAFANA_CLOUD_OTLP_INSTANCE_ID: '1227256'
           GRAFANA_CLOUD_OTLP_API_KEY: ${{ secrets.GRAFANA_CLOUD_OTLP_API_KEY }}
         run: |
           echo "OTEL_EXPORTER_OTLP_HEADERS=Authorization=Basic $(echo -n "$GRAFANA_CLOUD_OTLP_INSTANCE_ID:$GRAFANA_CLOUD_OTLP_API_KEY" | base64 -w 0)" >> $GITHUB_ENV
@@ -327,12 +322,12 @@ jobs:
         run: mono test perf
         env:
           COMMIT_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
-          GRAFANA_ENDPOINT: "https://livestore.grafana.net"
-          OTEL_EXPORTER_OTLP_ENDPOINT: "https://otlp-gateway-prod-us-east-2.grafana.net/otlp"
+          GRAFANA_ENDPOINT: 'https://livestore.grafana.net'
+          OTEL_EXPORTER_OTLP_ENDPOINT: 'https://otlp-gateway-prod-us-east-2.grafana.net/otlp'
   wa-sqlite-test:
     runs-on: ubuntu-24.04
     env:
-      LIVESTORE_BRANCH_PROTECTION_REQUIRED: "true"
+      LIVESTORE_BRANCH_PROTECTION_REQUIRED: 'true'
     steps:
       - uses: actions/checkout@v4
       - name: Install Nix
@@ -343,20 +338,20 @@ jobs:
           name: livestore
           authToken: ${{ env.CACHIX_AUTH_TOKEN }}
       - name: Install megarepo CLI
-        run: "nix profile install github:overengineeringstudio/effect-utils#megarepo"
+        run: 'nix profile install github:overengineeringstudio/effect-utils#megarepo'
         shell: bash
       - name: Sync megarepo dependencies
         run: mr sync --frozen
         shell: bash
       - name: Install devenv
-        run: "nix profile install nixpkgs#devenv"
+        run: 'nix profile install nixpkgs#devenv'
         shell: bash
       - name: Warmup devenv
         run: devenv shell --verbose env
         shell: bash
       - name: Set OTEL_EXPORTER_OTLP_HEADERS environment variable
         env:
-          GRAFANA_CLOUD_OTLP_INSTANCE_ID: "1227256"
+          GRAFANA_CLOUD_OTLP_INSTANCE_ID: '1227256'
           GRAFANA_CLOUD_OTLP_API_KEY: ${{ secrets.GRAFANA_CLOUD_OTLP_API_KEY }}
         run: |
           echo "OTEL_EXPORTER_OTLP_HEADERS=Authorization=Basic $(echo -n "$GRAFANA_CLOUD_OTLP_INSTANCE_ID:$GRAFANA_CLOUD_OTLP_API_KEY" | base64 -w 0)" >> $GITHUB_ENV
@@ -366,24 +361,17 @@ jobs:
           echo "VITE_OTEL_EXPORTER_OTLP_ENDPOINT=" >> $GITHUB_ENV
       - name: Build wa-sqlite
         working-directory: packages/@livestore/wa-sqlite
-        run: "nix run .#build"
+        run: 'nix run .#build'
       - name: Run wa-sqlite tests
         run: devenv shell mono test integration wa-sqlite
         env:
           COMMIT_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
-          GRAFANA_ENDPOINT: "https://livestore.grafana.net"
-          OTEL_EXPORTER_OTLP_ENDPOINT: "https://otlp-gateway-prod-us-east-2.grafana.net/otlp"
+          GRAFANA_ENDPOINT: 'https://livestore.grafana.net'
+          OTEL_EXPORTER_OTLP_ENDPOINT: 'https://otlp-gateway-prod-us-east-2.grafana.net/otlp'
   publish-snapshot-version:
     if: github.event.pull_request.head.repo.fork != true
-    runs-on:
-      [namespace-profile-linux-x86-64, "namespace-features:github.run-id=${{ github.run_id }}"]
-    needs:
-      [
-        test-unit,
-        test-integration-node-sync,
-        test-integration-sync-provider,
-        test-integration-playwright,
-      ]
+    runs-on: [namespace-profile-linux-x86-64, 'namespace-features:github.run-id=${{ github.run_id }}']
+    needs: [test-unit, test-integration-node-sync, test-integration-sync-provider, test-integration-playwright]
     defaults:
       run:
         shell: devenv shell bash -- -e {0}
@@ -397,13 +385,13 @@ jobs:
           name: livestore
           authToken: ${{ env.CACHIX_AUTH_TOKEN }}
       - name: Install megarepo CLI
-        run: "nix profile install github:overengineeringstudio/effect-utils#megarepo"
+        run: 'nix profile install github:overengineeringstudio/effect-utils#megarepo'
         shell: bash
       - name: Sync megarepo dependencies
         run: mr sync --frozen
         shell: bash
       - name: Install devenv
-        run: "nix profile install nixpkgs#devenv"
+        run: 'nix profile install nixpkgs#devenv'
         shell: bash
       - name: Warmup devenv
         run: devenv shell --verbose env
@@ -414,8 +402,7 @@ jobs:
           NPM_TOKEN: ${{ secrets.NPM_TOKEN }}
       - run: mono release snapshot --git-sha=${{ github.sha }}
   build-and-deploy-examples-src:
-    runs-on:
-      [namespace-profile-linux-x86-64, "namespace-features:github.run-id=${{ github.run_id }}"]
+    runs-on: [namespace-profile-linux-x86-64, 'namespace-features:github.run-id=${{ github.run_id }}']
     defaults:
       run:
         shell: devenv shell bash -- -e {0}
@@ -429,13 +416,13 @@ jobs:
           name: livestore
           authToken: ${{ env.CACHIX_AUTH_TOKEN }}
       - name: Install megarepo CLI
-        run: "nix profile install github:overengineeringstudio/effect-utils#megarepo"
+        run: 'nix profile install github:overengineeringstudio/effect-utils#megarepo'
         shell: bash
       - name: Sync megarepo dependencies
         run: mr sync --frozen
         shell: bash
       - name: Install devenv
-        run: "nix profile install nixpkgs#devenv"
+        run: 'nix profile install nixpkgs#devenv'
         shell: bash
       - name: Warmup devenv
         run: devenv shell --verbose env
@@ -451,8 +438,7 @@ jobs:
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
   build-deploy-docs:
-    runs-on:
-      [namespace-profile-linux-x86-64, "namespace-features:github.run-id=${{ github.run_id }}"]
+    runs-on: [namespace-profile-linux-x86-64, 'namespace-features:github.run-id=${{ github.run_id }}']
     defaults:
       run:
         shell: devenv shell bash -- -e {0}
@@ -466,13 +452,13 @@ jobs:
           name: livestore
           authToken: ${{ env.CACHIX_AUTH_TOKEN }}
       - name: Install megarepo CLI
-        run: "nix profile install github:overengineeringstudio/effect-utils#megarepo"
+        run: 'nix profile install github:overengineeringstudio/effect-utils#megarepo'
         shell: bash
       - name: Sync megarepo dependencies
         run: mr sync --frozen
         shell: bash
       - name: Install devenv
-        run: "nix profile install nixpkgs#devenv"
+        run: 'nix profile install nixpkgs#devenv'
         shell: bash
       - name: Warmup devenv
         run: devenv shell --verbose env
@@ -490,8 +476,7 @@ jobs:
     strategy:
       matrix:
         app: [web-todomvc, web-linearlite, expo-linearlite]
-    runs-on:
-      [namespace-profile-linux-x86-64, "namespace-features:github.run-id=${{ github.run_id }}"]
+    runs-on: [namespace-profile-linux-x86-64, 'namespace-features:github.run-id=${{ github.run_id }}']
     env:
       APP_PATH: examples/${{ matrix.app }}
       SNAPSHOT_VERSION: 0.0.0-snapshot-${{ github.sha }}
