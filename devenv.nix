@@ -6,10 +6,6 @@
 }:
 let
   effectUtils = inputs.effect-utils;
-  effectUtilsRoot = effectUtils.outPath;
-  # Source-based CLIs for dev - no hash management needed
-  # Root is baked in at Nix eval time, pointing to effect-utils
-  mkSourceCli = effectUtils.lib.mkSourceCli { inherit pkgs; };
   taskModules = effectUtils.devenvModules.tasks;
 
   # Packages managed by pnpm (shared between pnpm and clean modules)
@@ -94,8 +90,9 @@ in
     pkgs.typescript
     pkgs.oxlint
     pkgs.oxfmt
-    (mkSourceCli { name = "genie"; entry = "packages/@overeng/genie/src/build/mod.ts"; root = effectUtilsRoot; })
-    (mkSourceCli { name = "mr"; entry = "packages/@overeng/megarepo/bin/mr.ts"; root = effectUtilsRoot; })
+    # CLIs from effect-utils (Nix-built packages)
+    effectUtils.packages.${pkgs.system}.genie
+    effectUtils.packages.${pkgs.system}.megarepo
     pkgs.caddy
     pkgs.jq
     pkgs.unzip
