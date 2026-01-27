@@ -149,38 +149,32 @@ const runKnipCheck = Effect.gen(function* () {
   )
 }).pipe(Effect.scoped, Effect.withSpan('runKnipCheck'))
 
-/** Oxc config path (relative to workspace root) */
-const oxcConfigPath = 'packages/@local/oxc-config'
+/**
+ * Exclude patterns for oxfmt (genie-generated read-only files).
+ * Note: Generated .jsonc files and package.json/tsconfig.json are in .oxfmtrc.json ignorePatterns.
+ */
+const oxfmtExcludePatterns = ['!.github/workflows/*.yml']
 
-/** Exclude patterns for oxfmt (genie-generated read-only files) */
-const oxfmtExcludePatterns = [
-  '!**/package.json',
-  '!**/tsconfig.json',
-  '!**/tsconfig.*.json',
-  '!.github/workflows/*.yml',
-  '!packages/@local/oxc-config/*.jsonc',
-]
-
-/** Run oxfmt format check */
-const runFormatCheck = cmd(['oxfmt', '-c', `${oxcConfigPath}/fmt.jsonc`, '--check', '.', ...oxfmtExcludePatterns]).pipe(
+/** Run oxfmt format check (uses .oxfmtrc.json) */
+const runFormatCheck = cmd(['oxfmt', '--check', '.', ...oxfmtExcludePatterns]).pipe(
   Effect.provide(LivestoreWorkspace.toCwd()),
   Effect.withSpan('formatCheck'),
 )
 
-/** Run oxfmt format fix */
-const runFormatFix = cmd(['oxfmt', '-c', `${oxcConfigPath}/fmt.jsonc`, '.', ...oxfmtExcludePatterns]).pipe(
+/** Run oxfmt format fix (uses .oxfmtrc.json) */
+const runFormatFix = cmd(['oxfmt', '.', ...oxfmtExcludePatterns]).pipe(
   Effect.provide(LivestoreWorkspace.toCwd()),
   Effect.withSpan('formatFix'),
 )
 
-/** Run oxlint check */
-const runLintCheck = cmd(['oxlint', '-c', `${oxcConfigPath}/lint.jsonc`, '--import-plugin', '--deny-warnings']).pipe(
+/** Run oxlint check (uses .oxlintrc.json) */
+const runLintCheck = cmd(['oxlint', '--import-plugin', '--deny-warnings']).pipe(
   Effect.provide(LivestoreWorkspace.toCwd()),
   Effect.withSpan('lintCheck'),
 )
 
-/** Run oxlint fix */
-const runLintFix = cmd(['oxlint', '-c', `${oxcConfigPath}/lint.jsonc`, '--import-plugin', '--deny-warnings', '--fix']).pipe(
+/** Run oxlint fix (uses .oxlintrc.json) */
+const runLintFix = cmd(['oxlint', '--import-plugin', '--deny-warnings', '--fix']).pipe(
   Effect.provide(LivestoreWorkspace.toCwd()),
   Effect.withSpan('lintFix'),
 )

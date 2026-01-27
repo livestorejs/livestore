@@ -1,5 +1,3 @@
-// Generated file - DO NOT EDIT
-// Source: lint.jsonc.genie.ts
 {
   "$schema": "https://raw.githubusercontent.com/oxc-project/oxc/main/npm/oxlint/configuration_schema.json",
   "plugins": ["import", "typescript", "unicorn", "oxc", "react", "react-perf"],
@@ -24,7 +22,7 @@
     "**/.vite/**",
     "**/patches/**",
     "**/.cache/**",
-    "**/.turbo/**",
+    "**/.turbo/**"
   ],
   "categories": {
     "correctness": "error",
@@ -32,63 +30,89 @@
     "pedantic": "off",
     "perf": "warn",
     "style": "off",
-    "restriction": "off",
+    "restriction": "off"
   },
   "rules": {
     "import/no-dynamic-require": [
       "warn",
       {
-        "esmodule": true,
-      },
+        "esmodule": true
+      }
     ],
     "oxc/no-barrel-file": [
       "warn",
       {
-        "threshold": 0,
-      },
+        "threshold": 0
+      }
     ],
+    "overeng/named-args": "off",
     "import/no-commonjs": "error",
     "import/no-cycle": "warn",
     "func-style": [
       "warn",
       "expression",
       {
-        "allowArrowFunctions": true,
-      },
+        "allowArrowFunctions": true
+      }
     ],
-    "typescript/consistent-type-imports": "warn",
-    "typescript/consistent-type-definitions": "off",
+    "overeng/exports-first": "off",
+    "overeng/jsdoc-require-exports": "off",
+    "no-unused-vars": "off",
+    "eqeqeq": "off",
     "unicorn/no-array-callback-reference": "off",
     "typescript/no-explicit-any": "off",
     "typescript/no-deprecated": "off",
+    "typescript/consistent-type-definitions": "off",
+    "typescript/consistent-type-imports": "warn"
   },
   "overrides": [
     {
-      "files": ["**/mod.ts", "**/index.ts"],
+      "files": ["**/mod.ts"],
       "rules": {
-        "oxc/no-barrel-file": "off",
-      },
+        "oxc/no-barrel-file": "off"
+      }
     },
     {
       "files": [
-        "**/*.test.ts",
-        "**/*.test.tsx",
-        "**/*.spec.ts",
-        "**/*.spec.tsx",
-        "**/test/**",
-        "**/tests/**",
+        "**/vitest.config.ts",
+        "**/vite.config.ts",
+        "**/playwright.config.ts",
+        "**/*.genie.ts"
       ],
       "rules": {
+        "func-style": "off",
+        "overeng/jsdoc-require-exports": "off"
+      }
+    },
+    {
+      "files": ["**/*.test.ts", "**/*.test.tsx", "**/__tests__/**"],
+      "rules": {
+        "overeng/named-args": "off",
         "unicorn/no-array-sort": "off",
         "unicorn/consistent-function-scoping": "off",
-        "require-yield": "off",
-      },
+        "require-yield": "off"
+      }
+    },
+    {
+      "files": ["**/index.ts"],
+      "rules": {
+        "oxc/no-barrel-file": "off"
+      }
+    },
+    {
+      "files": ["**/tests/**"],
+      "rules": {
+        "overeng/named-args": "off",
+        "unicorn/no-array-sort": "off",
+        "unicorn/consistent-function-scoping": "off",
+        "require-yield": "off"
+      }
     },
     {
       "files": ["**/*.d.ts"],
       "rules": {
-        "typescript/consistent-type-imports": "off",
-      },
+        "typescript/consistent-type-imports": "off"
+      }
     },
     {
       "files": ["**/*.gen.*", "**/.astro/**", "**/routeTree.gen.ts"],
@@ -99,19 +123,11 @@
         "import/no-unassigned-import": "off",
         "oxc/no-barrel-file": "off",
         "oxc/no-map-spread": "off",
-        "unicorn/consistent-function-scoping": "off",
-      },
-    },
-    {
-      "files": [
-        "**/vitest.config.ts",
-        "**/vite.config.ts",
-        "**/playwright.config.ts",
-        "**/*.genie.ts",
-      ],
-      "rules": {
-        "func-style": "off",
-      },
+        "overeng/exports-first": "off",
+        "overeng/jsdoc-require-exports": "off",
+        "overeng/named-args": "off",
+        "unicorn/consistent-function-scoping": "off"
+      }
     },
     {
       "files": ["**/wa-sqlite/**"],
@@ -120,14 +136,14 @@
         "import/no-commonjs": "off",
         "unicorn/no-new-array": "off",
         "unicorn/no-array-sort": "off",
-        "unicorn/consistent-function-scoping": "off",
-      },
+        "unicorn/consistent-function-scoping": "off"
+      }
     },
     {
       "files": ["**/*.svelte"],
       "rules": {
-        "import/no-unassigned-import": "off",
-      },
-    },
-  ],
+        "import/no-unassigned-import": "off"
+      }
+    }
+  ]
 }

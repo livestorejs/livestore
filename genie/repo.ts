@@ -84,7 +84,6 @@ const workspaceCatalog = {
   // @local/* packages (internal tooling)
   '@local/astro-tldraw': 'workspace:*',
   '@local/astro-twoslash-code': 'workspace:*',
-  '@local/oxc-config': 'workspace:*',
   '@local/shared': 'workspace:*',
   '@local/docs': 'workspace:*',
   '@local/scripts': 'workspace:*',

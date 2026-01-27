@@ -1,5 +1,3 @@
-// Generated file - DO NOT EDIT
-// Source: fmt.jsonc.genie.ts
 {
   "$schema": "https://raw.githubusercontent.com/nicksrandall/oxfmt/refs/heads/main/configuration_schema.json",
   "semi": false,
@@ -11,8 +9,16 @@
   "experimentalSortImports": {
     "groups": ["builtin", "external", "internal", ["parent", "sibling", "index"]],
     "internalPattern": ["@livestore/", "@local/"],
-    "newlinesBetween": true,
+    "newlinesBetween": true
   },
   "experimentalSortPackageJson": true,
-  "ignorePatterns": ["**/*.gen.ts", "**/*.gen.tsx", "**/*.generated.ts", "**/*.generated.tsx"],
+  "ignorePatterns": [
+    "**/*.gen.ts",
+    "**/*.gen.tsx",
+    "**/*.generated.ts",
+    "**/*.generated.tsx",
+    "**/package.json",
+    "**/tsconfig.json",
+    "**/tsconfig.*.json"
+  ]
 }
