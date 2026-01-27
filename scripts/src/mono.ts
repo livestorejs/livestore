@@ -22,17 +22,13 @@ const tsCommand = Cli.Command.make(
       Cli.Options.withDefault(false),
       Cli.Options.withDescription('Disable full type checking (only critical parse and emit errors will be reported)'),
     ),
-    noEmit: Cli.Options.boolean('no-emit').pipe(
-      Cli.Options.withDefault(false),
-      Cli.Options.withDescription('Type check only without emitting files'),
-    ),
   },
-  Effect.fn(function* ({ watch, clean, noCheck, noEmit }) {
+  Effect.fn(function* ({ watch, clean, noCheck }) {
     if (clean) {
       yield* cmd('tsc --build tsconfig.dev.json --clean').pipe(Effect.provide(LivestoreWorkspace.toCwd()))
     }
 
-    const flags = ['--build', 'tsconfig.dev.json', noCheck && '--noCheck', noEmit && '--noEmit', watch && '--watch']
+    const flags = ['--build', 'tsconfig.dev.json', noCheck && '--noCheck', watch && '--watch']
       .filter(Boolean)
       .join(' ')
 
