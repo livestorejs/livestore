@@ -28,9 +28,7 @@ const tsCommand = Cli.Command.make(
       yield* cmd('tsc --build tsconfig.dev.json --clean').pipe(Effect.provide(LivestoreWorkspace.toCwd()))
     }
 
-    const flags = ['--build', 'tsconfig.dev.json', noCheck && '--noCheck', watch && '--watch']
-      .filter(Boolean)
-      .join(' ')
+    const flags = ['--build', 'tsconfig.dev.json', noCheck && '--noCheck', watch && '--watch'].filter(Boolean).join(' ')
 
     yield* cmd(`tsc ${flags}`).pipe(Effect.provide(LivestoreWorkspace.toCwd()))
     // TODO bring back when implemented https://github.com/livestorejs/livestore/issues/477
