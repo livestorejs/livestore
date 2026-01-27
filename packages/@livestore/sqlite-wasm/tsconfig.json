@@ -33,7 +33,8 @@
         "diagnosticSeverity": {
           "missedPipeableOpportunity": "suggestion",
           "schemaUnionOfLiterals": "warning",
-          "anyUnknownInErrorContext": "warning"
+          "anyUnknownInErrorContext": "warning",
+          "preferSchemaOverJson": "warning"
         }
       }
     ],
