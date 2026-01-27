@@ -1,8 +1,8 @@
-# Jobs tagged with LIVESTORE_BRANCH_PROTECTION_REQUIRED are used by
-# scripts/src/commands/github.ts to keep GitHub's branch protection checks in sync.
-# Run `mono github branch-protection update` to sync (defaults to dev branch).
-# For main branch: `mono github branch-protection update --branch main`
+# Generated file - DO NOT EDIT
+# Source: ci.yml.genie.ts
+
 name: ci
+
 run-name: ${{ github.event.pull_request.title || format('Push to {0}', github.ref_name) }} (${{ github.event.pull_request.head.sha || github.sha }})
 
 permissions:
@@ -11,10 +11,8 @@ permissions:
 
 on:
   push:
-    branches:
-      - main # Only run on pushes to main
-      - dev # Also run on pushes to dev to keep dev docs deploys consistent
-  pull_request:
+    branches: [main, dev]
+  pull_request: {}
 
 env:
   GITHUB_BRANCH_NAME: ${{ github.head_ref || github.ref_name }}
@@ -23,84 +21,100 @@ env:
 
 jobs:
   lint:
-    runs-on:
-      - namespace-profile-linux-x86-64
-      # By default, any runner with matching labels can pick up any waiting job, even from different
-      # workflow runs. This causes jobs from newer runs to "jump the queue" ahead of older runs when
-      # hitting concurrency limits, resulting in longer workflow run times. Adding the run ID as a
-      # label creates runner affinity: runners spawned for this workflow run can only execute jobs
-      # from this same run, ensuring older workflow runs finish before newer ones consume runner
-      # capacity.
-      - namespace-features:github.run-id=${{ github.run_id }}
+    runs-on: [namespace-profile-linux-x86-64, 'namespace-features:github.run-id=${{ github.run_id }}']
     env:
-      LIVESTORE_BRANCH_PROTECTION_REQUIRED: "true"
+      LIVESTORE_BRANCH_PROTECTION_REQUIRED: 'true'
     defaults:
       run:
         shell: devenv shell bash -- -e {0}
     steps:
       - uses: actions/checkout@v4
-      - name: Set up environment
-        uses: ./.github/actions/setup-env
+      - name: Install Nix
+        uses: cachix/install-nix-action@v31
+      - name: Enable Cachix cache
+        uses: cachix/cachix-action@v16
+        with:
+          name: livestore
+          authToken: ${{ env.CACHIX_AUTH_TOKEN }}
+      - name: Install megarepo CLI
+        run: 'nix profile install github:overengineeringstudio/effect-utils#megarepo'
+        shell: bash
+      - name: Sync megarepo dependencies
+        run: mr sync --frozen --verbose
+        shell: bash
+      - name: Install devenv
+        run: |
+          nix profile install nixpkgs#devenv
+          echo "$HOME/.nix-profile/bin" >> $GITHUB_PATH
+        shell: bash
+      - name: Warmup devenv
+        run: devenv shell --verbose env
+        shell: bash
       - run: mono lint
-
-  type-check:
-    runs-on:
-      - namespace-profile-linux-x86-64
-      - namespace-features:github.run-id=${{ github.run_id }}
-    env:
-      LIVESTORE_BRANCH_PROTECTION_REQUIRED: "true"
-    defaults:
-      run:
-        shell: devenv shell bash -- -e {0}
-    steps:
-      - uses: actions/checkout@v4
-      - name: Set up environment
-        uses: ./.github/actions/setup-env
-      - run: mono ts
-
   test-unit:
-    runs-on:
-      - namespace-profile-linux-x86-64
-      # By default, any runner with matching labels can pick up any waiting job, even from different
-      # workflow runs. This causes jobs from newer runs to "jump the queue" ahead of older runs when
-      # hitting concurrency limits, resulting in longer workflow run times. Adding the run ID as a
-      # label creates runner affinity: runners spawned for this workflow run can only execute jobs
-      # from this same run, ensuring older workflow runs finish before newer ones consume runner
-      # capacity.
-      - namespace-features:github.run-id=${{ github.run_id }}
+    runs-on: [namespace-profile-linux-x86-64, 'namespace-features:github.run-id=${{ github.run_id }}']
     env:
-      LIVESTORE_BRANCH_PROTECTION_REQUIRED: "true"
+      LIVESTORE_BRANCH_PROTECTION_REQUIRED: 'true'
     defaults:
       run:
         shell: devenv shell bash -- -e {0}
     steps:
       - uses: actions/checkout@v4
-      - name: Set up environment
-        uses: ./.github/actions/setup-env
+      - name: Install Nix
+        uses: cachix/install-nix-action@v31
+      - name: Enable Cachix cache
+        uses: cachix/cachix-action@v16
+        with:
+          name: livestore
+          authToken: ${{ env.CACHIX_AUTH_TOKEN }}
+      - name: Install megarepo CLI
+        run: 'nix profile install github:overengineeringstudio/effect-utils#megarepo'
+        shell: bash
+      - name: Sync megarepo dependencies
+        run: mr sync --frozen --verbose
+        shell: bash
+      - name: Install devenv
+        run: |
+          nix profile install nixpkgs#devenv
+          echo "$HOME/.nix-profile/bin" >> $GITHUB_PATH
+        shell: bash
+      - name: Warmup devenv
+        run: devenv shell --verbose env
+        shell: bash
       - run: mono test unit
-
   test-integration-node-sync:
-    runs-on:
-      - namespace-profile-linux-x86-64
-      # By default, any runner with matching labels can pick up any waiting job, even from different
-      # workflow runs. This causes jobs from newer runs to "jump the queue" ahead of older runs when
-      # hitting concurrency limits, resulting in longer workflow run times. Adding the run ID as a
-      # label creates runner affinity: runners spawned for this workflow run can only execute jobs
-      # from this same run, ensuring older workflow runs finish before newer ones consume runner
-      # capacity.
-      - namespace-features:github.run-id=${{ github.run_id }}
+    runs-on: [namespace-profile-linux-x86-64, 'namespace-features:github.run-id=${{ github.run_id }}']
     env:
-      LIVESTORE_BRANCH_PROTECTION_REQUIRED: "true"
+      LIVESTORE_BRANCH_PROTECTION_REQUIRED: 'true'
     defaults:
       run:
         shell: devenv shell bash -- -e {0}
     steps:
       - uses: actions/checkout@v4
-      - name: Set up environment
-        uses: ./.github/actions/setup-env
+      - name: Install Nix
+        uses: cachix/install-nix-action@v31
+      - name: Enable Cachix cache
+        uses: cachix/cachix-action@v16
+        with:
+          name: livestore
+          authToken: ${{ env.CACHIX_AUTH_TOKEN }}
+      - name: Install megarepo CLI
+        run: 'nix profile install github:overengineeringstudio/effect-utils#megarepo'
+        shell: bash
+      - name: Sync megarepo dependencies
+        run: mr sync --frozen --verbose
+        shell: bash
+      - name: Install devenv
+        run: |
+          nix profile install nixpkgs#devenv
+          echo "$HOME/.nix-profile/bin" >> $GITHUB_PATH
+        shell: bash
+      - name: Warmup devenv
+        run: devenv shell --verbose env
+        shell: bash
       - name: Set OTEL_EXPORTER_OTLP_HEADERS environment variable
         env:
-          GRAFANA_CLOUD_OTLP_INSTANCE_ID: 1227256
+          GRAFANA_CLOUD_OTLP_INSTANCE_ID: '1227256'
           GRAFANA_CLOUD_OTLP_API_KEY: ${{ secrets.GRAFANA_CLOUD_OTLP_API_KEY }}
         run: |
           echo "OTEL_EXPORTER_OTLP_HEADERS=Authorization=Basic $(echo -n "$GRAFANA_CLOUD_OTLP_INSTANCE_ID:$GRAFANA_CLOUD_OTLP_API_KEY" | base64 -w 0)" >> $GITHUB_ENV
@@ -108,8 +122,6 @@ jobs:
           echo "OTEL_EXPORTER_OTLP_ENDPOINT=https://otlp-gateway-prod-us-east-2.grafana.net/otlp" >> $GITHUB_ENV
           # Disable in Vite (otherwise CORS issues)
           echo "VITE_OTEL_EXPORTER_OTLP_ENDPOINT=" >> $GITHUB_ENV
-      # - run: mono test integration node-sync
-      # TODO: Remove once node-sync flakiness is resolved https://github.com/livestorejs/livestore/issues/624
       - name: Run node-sync integration tests
         run: |
           if mono test integration node-sync; then
@@ -140,43 +152,51 @@ jobs:
           name: node-sync-logs
           path: tests/integration/tmp/logs/
           retention-days: 30
-
   test-integration-sync-provider:
     strategy:
       matrix:
         provider:
-          [
-            mock,
-            electric,
-            s2,
-            cf-http-d1,
-            cf-http-do,
-            cf-ws-d1,
-            cf-ws-do,
-            cf-do-rpc-d1,
-            cf-do-rpc-do,
-          ]
-    runs-on:
-      - namespace-profile-linux-x86-64
-      # By default, any runner with matching labels can pick up any waiting job, even from different
-      # workflow runs. This causes jobs from newer runs to "jump the queue" ahead of older runs when
-      # hitting concurrency limits, resulting in longer workflow run times. Adding the run ID as a
-      # label creates runner affinity: runners spawned for this workflow run can only execute jobs
-      # from this same run, ensuring older workflow runs finish before newer ones consume runner
-      # capacity.
-      - namespace-features:github.run-id=${{ github.run_id }}
+          - mock
+          - electric
+          - s2
+          - cf-http-d1
+          - cf-http-do
+          - cf-ws-d1
+          - cf-ws-do
+          - cf-do-rpc-d1
+          - cf-do-rpc-do
+    runs-on: [namespace-profile-linux-x86-64, 'namespace-features:github.run-id=${{ github.run_id }}']
     env:
-      LIVESTORE_BRANCH_PROTECTION_REQUIRED: "true"
+      LIVESTORE_BRANCH_PROTECTION_REQUIRED: 'true'
     defaults:
       run:
         shell: devenv shell bash -- -e {0}
     steps:
       - uses: actions/checkout@v4
-      - name: Set up environment
-        uses: ./.github/actions/setup-env
+      - name: Install Nix
+        uses: cachix/install-nix-action@v31
+      - name: Enable Cachix cache
+        uses: cachix/cachix-action@v16
+        with:
+          name: livestore
+          authToken: ${{ env.CACHIX_AUTH_TOKEN }}
+      - name: Install megarepo CLI
+        run: 'nix profile install github:overengineeringstudio/effect-utils#megarepo'
+        shell: bash
+      - name: Sync megarepo dependencies
+        run: mr sync --frozen --verbose
+        shell: bash
+      - name: Install devenv
+        run: |
+          nix profile install nixpkgs#devenv
+          echo "$HOME/.nix-profile/bin" >> $GITHUB_PATH
+        shell: bash
+      - name: Warmup devenv
+        run: devenv shell --verbose env
+        shell: bash
       - name: Set OTEL_EXPORTER_OTLP_HEADERS environment variable
         env:
-          GRAFANA_CLOUD_OTLP_INSTANCE_ID: 1227256
+          GRAFANA_CLOUD_OTLP_INSTANCE_ID: '1227256'
           GRAFANA_CLOUD_OTLP_API_KEY: ${{ secrets.GRAFANA_CLOUD_OTLP_API_KEY }}
         run: |
           echo "OTEL_EXPORTER_OTLP_HEADERS=Authorization=Basic $(echo -n "$GRAFANA_CLOUD_OTLP_INSTANCE_ID:$GRAFANA_CLOUD_OTLP_API_KEY" | base64 -w 0)" >> $GITHUB_ENV
@@ -184,24 +204,8 @@ jobs:
           echo "OTEL_EXPORTER_OTLP_ENDPOINT=https://otlp-gateway-prod-us-east-2.grafana.net/otlp" >> $GITHUB_ENV
           # Disable in Vite (otherwise CORS issues)
           echo "VITE_OTEL_EXPORTER_OTLP_ENDPOINT=" >> $GITHUB_ENV
-      - name: Start s2-lite container
-        if: ${{ matrix.provider == 's2' }}
-        run: |
-          docker run -d --name s2-lite -p 4566:80 ghcr.io/s2-streamstore/s2-lite
-          # Wait for s2-lite to be ready
-          for i in {1..30}; do
-            if curl -sf http://localhost:4566/ping > /dev/null 2>&1; then
-              echo "s2-lite is ready"
-              break
-            fi
-            echo "Waiting for s2-lite... ($i/30)"
-            sleep 1
-          done
-        shell: bash
-      # TODO: Remove Cloudflare workaround once upstream issues are resolved:
-      # - Upstream: https://github.com/cloudflare/workers-sdk/issues/11122 (Durable object hanging tests)
-      # - LiveStore tracking: https://github.com/livestorejs/livestore/issues/625
       - name: Run sync-provider tests for ${{ matrix.provider }}
+        if: ${{ matrix.provider != 's2' || env.S2_ACCESS_TOKEN != '' }}
         run: |
           if [[ "${{ matrix.provider }}" == cf-* ]]; then
             if mono test integration sync-provider --provider ${{ matrix.provider }}; then
@@ -213,32 +217,45 @@ jobs:
           else
             mono test integration sync-provider --provider ${{ matrix.provider }}
           fi
-
+      - name: Skip S2 sync-provider tests (missing S2_ACCESS_TOKEN)
+        if: ${{ matrix.provider == 's2' && env.S2_ACCESS_TOKEN == '' }}
+        run: 'echo "Skipping S2 sync-provider tests: S2_ACCESS_TOKEN not set"'
   test-integration-playwright:
     strategy:
       matrix:
         suite: [misc, todomvc, devtools]
-    runs-on:
-      - namespace-profile-linux-x86-64
-      # By default, any runner with matching labels can pick up any waiting job, even from different
-      # workflow runs. This causes jobs from newer runs to "jump the queue" ahead of older runs when
-      # hitting concurrency limits, resulting in longer workflow run times. Adding the run ID as a
-      # label creates runner affinity: runners spawned for this workflow run can only execute jobs
-      # from this same run, ensuring older workflow runs finish before newer ones consume runner
-      # capacity.
-      - namespace-features:github.run-id=${{ github.run_id }}
+    runs-on: [namespace-profile-linux-x86-64, 'namespace-features:github.run-id=${{ github.run_id }}']
     env:
-      LIVESTORE_BRANCH_PROTECTION_REQUIRED: "true"
+      LIVESTORE_BRANCH_PROTECTION_REQUIRED: 'true'
     defaults:
       run:
         shell: devenv shell bash -- -e {0}
     steps:
       - uses: actions/checkout@v4
-      - name: Set up environment
-        uses: ./.github/actions/setup-env
+      - name: Install Nix
+        uses: cachix/install-nix-action@v31
+      - name: Enable Cachix cache
+        uses: cachix/cachix-action@v16
+        with:
+          name: livestore
+          authToken: ${{ env.CACHIX_AUTH_TOKEN }}
+      - name: Install megarepo CLI
+        run: 'nix profile install github:overengineeringstudio/effect-utils#megarepo'
+        shell: bash
+      - name: Sync megarepo dependencies
+        run: mr sync --frozen --verbose
+        shell: bash
+      - name: Install devenv
+        run: |
+          nix profile install nixpkgs#devenv
+          echo "$HOME/.nix-profile/bin" >> $GITHUB_PATH
+        shell: bash
+      - name: Warmup devenv
+        run: devenv shell --verbose env
+        shell: bash
       - name: Set OTEL_EXPORTER_OTLP_HEADERS environment variable
         env:
-          GRAFANA_CLOUD_OTLP_INSTANCE_ID: 1227256
+          GRAFANA_CLOUD_OTLP_INSTANCE_ID: '1227256'
           GRAFANA_CLOUD_OTLP_API_KEY: ${{ secrets.GRAFANA_CLOUD_OTLP_API_KEY }}
         run: |
           echo "OTEL_EXPORTER_OTLP_HEADERS=Authorization=Basic $(echo -n "$GRAFANA_CLOUD_OTLP_INSTANCE_ID:$GRAFANA_CLOUD_OTLP_API_KEY" | base64 -w 0)" >> $GITHUB_ENV
@@ -251,7 +268,6 @@ jobs:
           PLAYWRIGHT_SUITE: ${{ matrix.suite }}
         run: |
           if [ "${{ matrix.suite }}" = "devtools" ]; then
-            # TODO fix flaky devtools test
             mono test integration devtools || echo "::warning::Script failed but continuing"
           else
             mono test integration ${{ matrix.suite }}
@@ -262,12 +278,11 @@ jobs:
           name: playwright-report-${{ matrix.suite }}
           path: tests/integration/playwright-report/
           retention-days: 30
-      - name: "Upload trace"
+      - name: Upload trace
         if: ${{ !cancelled() }}
         env:
           NETLIFY_AUTH_TOKEN: ${{ secrets.NETLIFY_AUTH_TOKEN }}
           PLAYWRIGHT_SUITE: ${{ matrix.suite }}
-          # TODO surface deploy url in github UI via environments
         run: |
           if [ -n "$NETLIFY_AUTH_TOKEN" ]; then
             bunx netlify-cli deploy --no-build --dir=tests/integration/playwright-report --site livestore-ci --filter @local/tests-integration --alias ${{ matrix.suite }}-$(git rev-parse --short HEAD)
@@ -275,7 +290,7 @@ jobs:
             echo "Skipping Netlify deploy: NETLIFY_AUTH_TOKEN not set"
           fi
   perf-test:
-    runs-on: ubuntu-24.04 # Prefer a specific version for more consistent performance measurements between runs
+    runs-on: ubuntu-24.04
     defaults:
       run:
         shell: devenv shell bash -- -e {0}
@@ -283,93 +298,153 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v4
         with:
-          ref: ${{ github.event.pull_request.head.sha || github.sha }} # See https://github.com/orgs/community/discussions/26325
-      - name: Set up environment
-        uses: ./.github/actions/setup-env
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+      - name: Install Nix
+        uses: cachix/install-nix-action@v31
+      - name: Enable Cachix cache
+        uses: cachix/cachix-action@v16
+        with:
+          name: livestore
+          authToken: ${{ env.CACHIX_AUTH_TOKEN }}
+      - name: Install megarepo CLI
+        run: 'nix profile install github:overengineeringstudio/effect-utils#megarepo'
+        shell: bash
+      - name: Sync megarepo dependencies
+        run: mr sync --frozen --verbose
+        shell: bash
+      - name: Install devenv
+        run: |
+          nix profile install nixpkgs#devenv
+          echo "$HOME/.nix-profile/bin" >> $GITHUB_PATH
+        shell: bash
+      - name: Warmup devenv
+        run: devenv shell --verbose env
+        shell: bash
       - name: Set OTEL_EXPORTER_OTLP_HEADERS environment variable
         env:
-          GRAFANA_CLOUD_OTLP_INSTANCE_ID: 1227256
+          GRAFANA_CLOUD_OTLP_INSTANCE_ID: '1227256'
           GRAFANA_CLOUD_OTLP_API_KEY: ${{ secrets.GRAFANA_CLOUD_OTLP_API_KEY }}
-        run: echo "OTEL_EXPORTER_OTLP_HEADERS=Authorization=Basic $(echo -n "$GRAFANA_CLOUD_OTLP_INSTANCE_ID:$GRAFANA_CLOUD_OTLP_API_KEY" | base64 -w 0)" >> $GITHUB_ENV
+        run: |
+          echo "OTEL_EXPORTER_OTLP_HEADERS=Authorization=Basic $(echo -n "$GRAFANA_CLOUD_OTLP_INSTANCE_ID:$GRAFANA_CLOUD_OTLP_API_KEY" | base64 -w 0)" >> $GITHUB_ENV
+          echo "GRAFANA_ENDPOINT=https://livestore.grafana.net" >> $GITHUB_ENV
+          echo "OTEL_EXPORTER_OTLP_ENDPOINT=https://otlp-gateway-prod-us-east-2.grafana.net/otlp" >> $GITHUB_ENV
+          # Disable in Vite (otherwise CORS issues)
+          echo "VITE_OTEL_EXPORTER_OTLP_ENDPOINT=" >> $GITHUB_ENV
       - name: Run performance tests
         run: mono test perf
         env:
-          COMMIT_SHA: ${{ github.event.pull_request.head.sha || github.sha }} # See https://github.com/orgs/community/discussions/26325
-          GRAFANA_ENDPOINT: https://livestore.grafana.net
-          OTEL_EXPORTER_OTLP_ENDPOINT: https://otlp-gateway-prod-us-east-2.grafana.net/otlp
+          COMMIT_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
+          GRAFANA_ENDPOINT: 'https://livestore.grafana.net'
+          OTEL_EXPORTER_OTLP_ENDPOINT: 'https://otlp-gateway-prod-us-east-2.grafana.net/otlp'
   wa-sqlite-test:
-    runs-on: ubuntu-24.04 # Prefer a specific version for more consistent performance measurements between runs
+    runs-on: ubuntu-24.04
     env:
-      LIVESTORE_BRANCH_PROTECTION_REQUIRED: "true"
+      LIVESTORE_BRANCH_PROTECTION_REQUIRED: 'true'
     steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
-      - name: Set up environment
-        uses: ./.github/actions/setup-env
+      - uses: actions/checkout@v4
+      - name: Install Nix
+        uses: cachix/install-nix-action@v31
+      - name: Enable Cachix cache
+        uses: cachix/cachix-action@v16
+        with:
+          name: livestore
+          authToken: ${{ env.CACHIX_AUTH_TOKEN }}
+      - name: Install megarepo CLI
+        run: 'nix profile install github:overengineeringstudio/effect-utils#megarepo'
+        shell: bash
+      - name: Sync megarepo dependencies
+        run: mr sync --frozen --verbose
+        shell: bash
+      - name: Install devenv
+        run: |
+          nix profile install nixpkgs#devenv
+          echo "$HOME/.nix-profile/bin" >> $GITHUB_PATH
+        shell: bash
+      - name: Warmup devenv
+        run: devenv shell --verbose env
+        shell: bash
       - name: Set OTEL_EXPORTER_OTLP_HEADERS environment variable
         env:
-          GRAFANA_CLOUD_OTLP_INSTANCE_ID: 1227256
+          GRAFANA_CLOUD_OTLP_INSTANCE_ID: '1227256'
           GRAFANA_CLOUD_OTLP_API_KEY: ${{ secrets.GRAFANA_CLOUD_OTLP_API_KEY }}
-        run: echo "OTEL_EXPORTER_OTLP_HEADERS=Authorization=Basic $(echo -n "$GRAFANA_CLOUD_OTLP_INSTANCE_ID:$GRAFANA_CLOUD_OTLP_API_KEY" | base64 -w 0)" >> $GITHUB_ENV
+        run: |
+          echo "OTEL_EXPORTER_OTLP_HEADERS=Authorization=Basic $(echo -n "$GRAFANA_CLOUD_OTLP_INSTANCE_ID:$GRAFANA_CLOUD_OTLP_API_KEY" | base64 -w 0)" >> $GITHUB_ENV
+          echo "GRAFANA_ENDPOINT=https://livestore.grafana.net" >> $GITHUB_ENV
+          echo "OTEL_EXPORTER_OTLP_ENDPOINT=https://otlp-gateway-prod-us-east-2.grafana.net/otlp" >> $GITHUB_ENV
+          # Disable in Vite (otherwise CORS issues)
+          echo "VITE_OTEL_EXPORTER_OTLP_ENDPOINT=" >> $GITHUB_ENV
       - name: Build wa-sqlite
         working-directory: packages/@livestore/wa-sqlite
-        run: nix run .#build
+        run: 'nix run .#build'
       - name: Run wa-sqlite tests
         run: devenv shell mono test integration wa-sqlite
         env:
-          COMMIT_SHA: ${{ github.event.pull_request.head.sha || github.sha }} # See https://github.com/orgs/community/discussions/26325
-          GRAFANA_ENDPOINT: https://livestore.grafana.net
-          OTEL_EXPORTER_OTLP_ENDPOINT: https://otlp-gateway-prod-us-east-2.grafana.net/otlp
-
+          COMMIT_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
+          GRAFANA_ENDPOINT: 'https://livestore.grafana.net'
+          OTEL_EXPORTER_OTLP_ENDPOINT: 'https://otlp-gateway-prod-us-east-2.grafana.net/otlp'
   publish-snapshot-version:
     if: github.event.pull_request.head.repo.fork != true
-    runs-on:
-      - namespace-profile-linux-x86-64
-      # By default, any runner with matching labels can pick up any waiting job, even from different
-      # workflow runs. This causes jobs from newer runs to "jump the queue" ahead of older runs when
-      # hitting concurrency limits, resulting in longer workflow run times. Adding the run ID as a
-      # label creates runner affinity: runners spawned for this workflow run can only execute jobs
-      # from this same run, ensuring older workflow runs finish before newer ones consume runner
-      # capacity.
-      - namespace-features:github.run-id=${{ github.run_id }}
-    needs:
-      [
-        test-unit,
-        test-integration-node-sync,
-        test-integration-sync-provider,
-        test-integration-playwright,
-      ]
+    runs-on: [namespace-profile-linux-x86-64, 'namespace-features:github.run-id=${{ github.run_id }}']
+    needs: [test-unit, test-integration-node-sync, test-integration-sync-provider, test-integration-playwright]
     defaults:
       run:
         shell: devenv shell bash -- -e {0}
     steps:
       - uses: actions/checkout@v4
-      - name: Set up environment
-        uses: ./.github/actions/setup-env
-      - name: Configure NPM authentication
+      - name: Install Nix
+        uses: cachix/install-nix-action@v31
+      - name: Enable Cachix cache
+        uses: cachix/cachix-action@v16
+        with:
+          name: livestore
+          authToken: ${{ env.CACHIX_AUTH_TOKEN }}
+      - name: Install megarepo CLI
+        run: 'nix profile install github:overengineeringstudio/effect-utils#megarepo'
+        shell: bash
+      - name: Sync megarepo dependencies
+        run: mr sync --frozen --verbose
+        shell: bash
+      - name: Install devenv
         run: |
-          echo "//registry.npmjs.org/:_authToken=${NPM_TOKEN}" >> ~/.npmrc
+          nix profile install nixpkgs#devenv
+          echo "$HOME/.nix-profile/bin" >> $GITHUB_PATH
+        shell: bash
+      - name: Warmup devenv
+        run: devenv shell --verbose env
+        shell: bash
+      - name: Configure NPM authentication
+        run: 'echo "//registry.npmjs.org/:_authToken=${NPM_TOKEN}" >> ~/.npmrc'
         env:
           NPM_TOKEN: ${{ secrets.NPM_TOKEN }}
       - run: mono release snapshot --git-sha=${{ github.sha }}
-
   build-and-deploy-examples-src:
-    runs-on:
-      - namespace-profile-linux-x86-64
-      # By default, any runner with matching labels can pick up any waiting job, even from different
-      # workflow runs. This causes jobs from newer runs to "jump the queue" ahead of older runs when
-      # hitting concurrency limits, resulting in longer workflow run times. Adding the run ID as a
-      # label creates runner affinity: runners spawned for this workflow run can only execute jobs
-      # from this same run, ensuring older workflow runs finish before newer ones consume runner
-      # capacity.
-      - namespace-features:github.run-id=${{ github.run_id }}
+    runs-on: [namespace-profile-linux-x86-64, 'namespace-features:github.run-id=${{ github.run_id }}']
     defaults:
       run:
         shell: devenv shell bash -- -e {0}
     steps:
       - uses: actions/checkout@v4
-      - name: Set up environment
-        uses: ./.github/actions/setup-env
+      - name: Install Nix
+        uses: cachix/install-nix-action@v31
+      - name: Enable Cachix cache
+        uses: cachix/cachix-action@v16
+        with:
+          name: livestore
+          authToken: ${{ env.CACHIX_AUTH_TOKEN }}
+      - name: Install megarepo CLI
+        run: 'nix profile install github:overengineeringstudio/effect-utils#megarepo'
+        shell: bash
+      - name: Sync megarepo dependencies
+        run: mr sync --frozen --verbose
+        shell: bash
+      - name: Install devenv
+        run: |
+          nix profile install nixpkgs#devenv
+          echo "$HOME/.nix-profile/bin" >> $GITHUB_PATH
+        shell: bash
+      - name: Warmup devenv
+        run: devenv shell --verbose env
+        shell: bash
       - name: Build examples
         run: pnpm --filter 'livestore-example-*' --workspace-concurrency=1 build
       - name: Test examples
@@ -380,71 +455,60 @@ jobs:
         env:
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
-
   build-deploy-docs:
-    runs-on:
-      - namespace-profile-linux-x86-64
-      # By default, any runner with matching labels can pick up any waiting job, even from different
-      # workflow runs. This causes jobs from newer runs to "jump the queue" ahead of older runs when
-      # hitting concurrency limits, resulting in longer workflow run times. Adding the run ID as a
-      # label creates runner affinity: runners spawned for this workflow run can only execute jobs
-      # from this same run, ensuring older workflow runs finish before newer ones consume runner
-      # capacity.
-      - namespace-features:github.run-id=${{ github.run_id }}
+    runs-on: [namespace-profile-linux-x86-64, 'namespace-features:github.run-id=${{ github.run_id }}']
     defaults:
       run:
         shell: devenv shell bash -- -e {0}
     steps:
       - uses: actions/checkout@v4
-      - name: Set up environment
-        uses: ./.github/actions/setup-env
-
-      # Docs deployment mapping (authoritative, with domains) — handled by `mono docs deploy`:
-      # - pull_request (any base): deploy alias on dev docs site (no purge)
-      #     example domain: https://<alias>--livestore-docs-dev.netlify.app
-      # - push to dev: deploy to dev docs site as prod
-      #     domain: https://dev.docs.livestore.dev
-      # - push to main: deploy to prod docs site as prod
-      #     domain: https://docs.livestore.dev
-      # `mono docs deploy` applies filter="docs" and infers context from GitHub env.
-
+      - name: Install Nix
+        uses: cachix/install-nix-action@v31
+      - name: Enable Cachix cache
+        uses: cachix/cachix-action@v16
+        with:
+          name: livestore
+          authToken: ${{ env.CACHIX_AUTH_TOKEN }}
+      - name: Install megarepo CLI
+        run: 'nix profile install github:overengineeringstudio/effect-utils#megarepo'
+        shell: bash
+      - name: Sync megarepo dependencies
+        run: mr sync --frozen --verbose
+        shell: bash
+      - name: Install devenv
+        run: |
+          nix profile install nixpkgs#devenv
+          echo "$HOME/.nix-profile/bin" >> $GITHUB_PATH
+        shell: bash
+      - name: Warmup devenv
+        run: devenv shell --verbose env
+        shell: bash
       - name: Build docs
         run: mono docs build --api-docs
-
       - name: Deploy docs
         if: ${{ github.event_name != 'pull_request' || github.event.pull_request.head.repo.fork != true }}
         run: mono docs deploy
         env:
           NETLIFY_AUTH_TOKEN: ${{ secrets.NETLIFY_AUTH_TOKEN }}
-
   build-example-create:
     if: github.event.pull_request.head.repo.fork != true
     needs: publish-snapshot-version
     strategy:
       matrix:
         app: [web-todomvc, web-linearlite, expo-linearlite]
-    runs-on:
-      - namespace-profile-linux-x86-64
-      # By default, any runner with matching labels can pick up any waiting job, even from different
-      # workflow runs. This causes jobs from newer runs to "jump the queue" ahead of older runs when
-      # hitting concurrency limits, resulting in longer workflow run times. Adding the run ID as a
-      # label creates runner affinity: runners spawned for this workflow run can only execute jobs
-      # from this same run, ensuring older workflow runs finish before newer ones consume runner
-      # capacity.
-      - namespace-features:github.run-id=${{ github.run_id }}
+    runs-on: [namespace-profile-linux-x86-64, 'namespace-features:github.run-id=${{ github.run_id }}']
     env:
       APP_PATH: examples/${{ matrix.app }}
-      SNAPSHOT_VERSION: "0.0.0-snapshot-${{ github.sha }}"
+      SNAPSHOT_VERSION: 0.0.0-snapshot-${{ github.sha }}
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
       - name: Install dependencies
-        # We're only using pnpm instead of the ./.github/actions/setup-env action to simulate a simple, user-facing setup.
         uses: pnpm/action-setup@v4
         with:
           standalone: true
           run_install: true
-      - name: Get app’s workspace dependencies
+      - name: Get app's workspace dependencies
         working-directory: ${{ env.APP_PATH }}
         run: |
           echo "WORKSPACE_DEPS=$( \
@@ -452,18 +516,8 @@ jobs:
             jq -r '.[0].dependencies | keys | join(" ")' \
           )" >> $GITHUB_ENV
       - name: Copy example app
-        # - We use `github.ref` instead of `github.sha` because, when a workflow is triggered by a pull request,
-        #   `github.sha` refers to a temporary commit SHA that can become inaccessible in some contexts.
-        # - We use `github.ref` instead of `github.ref_name` because GitHub's public API requires full refs.
-        #   `github.ref_name` produces shortened refs like `123/merge` for PRs, which the API doesn't recognize.
-        #   `github.ref` provides the full ref (e.g., `refs/pull/123/merge`) that the API understands.
-        #
-        # See https://www.kenmuse.com/blog/the-many-shas-of-a-github-pull-request/
         run: pnpm dlx @livestore/cli@${{ env.SNAPSHOT_VERSION }} create --example ${{ matrix.app }} --ref ${{ github.ref }} ${{ runner.temp }}/${{ env.APP_PATH }}
       - name: Increase pnpm fetch retries
-        # Sometimes the snapshot version is not available immediately after publishing due to network propagation delays.
-        # We increase the fetch retries to mitigate this issue.
-        # See https://pnpm.io/settings#fetchretries
         run: pnpm config set fetchRetries 3
       - name: Use snapshot version of workspace dependencies
         working-directory: ${{ runner.temp }}/${{ env.APP_PATH }}
@@ -473,6 +527,6 @@ jobs:
               echo "$dep@${{ env.SNAPSHOT_VERSION }}"
             done
           )
-      - if: ${{ matrix.app != 'expo-linearlite' }} # TODO: build expo app with EAS
+      - if: ${{ matrix.app != 'expo-linearlite' }}
         working-directory: ${{ runner.temp }}/${{ env.APP_PATH }}
         run: pnpm build

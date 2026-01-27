@@ -5,24 +5,24 @@
   "private": true,
   "dependencies": {
     "@astrojs/starlight": "0.35.2",
-    "@livestore/utils": "workspace:*",
-    "@local/astro-twoslash-code": "workspace:*",
+    "@livestore/utils": "file:../../../@livestore/utils",
+    "@local/astro-twoslash-code": "file:..",
     "astro": "5.13.4",
-    "astro-expressive-code": "0.41.3",
+    "astro-expressive-code": "0.41.5",
     "expressive-code-twoslash": "0.5.3"
   },
   "devDependencies": {
-    "@playwright/test": "catalog:",
-    "@tailwindcss/vite": "catalog:",
-    "@types/node": "catalog:",
-    "tailwindcss": "catalog:",
-    "typescript": "catalog:"
+    "@playwright/test": "1.57.0",
+    "@tailwindcss/vite": "4.1.18",
+    "@types/node": "25.0.3",
+    "tailwindcss": "4.1.18",
+    "typescript": "5.9.3"
   },
   "scripts": {
     "build": "astro build",
     "dev": "astro dev",
     "preview": "astro preview",
     "snippets:build": "bun run scripts/build-snippets.ts",
-    "test": "pnpm snippets:build && pnpm playwright test"
+    "test": "bun run snippets:build && bun run playwright test"
   }
 }

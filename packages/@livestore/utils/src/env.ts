@@ -26,4 +26,8 @@ export const IS_CI = envTruish(env('CI'))
 
 export const IS_BUN = typeof Bun !== 'undefined'
 
-export const IS_REACT_NATIVE = typeof navigator !== 'undefined' && navigator.product === 'ReactNative'
+export const IS_REACT_NATIVE =
+  typeof navigator !== 'undefined' && (navigator as Navigator & { product?: string }).product === 'ReactNative'
+
+/** Whether we're running in a browser environment (has window global) */
+export const IS_BROWSER = 'window' in globalThis

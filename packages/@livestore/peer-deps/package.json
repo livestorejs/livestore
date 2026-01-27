@@ -1,36 +1,40 @@
 {
   "name": "@livestore/peer-deps",
   "version": "0.4.0-dev.22",
-  "type": "module",
-  "sideEffects": false,
-  "dependencies": {
-    "@effect/ai": "catalog:",
-    "@effect/cli": "catalog:",
-    "@effect/cluster": "catalog:",
-    "@effect/experimental": "catalog:",
-    "@effect/opentelemetry": "catalog:",
-    "@effect/platform": "catalog:",
-    "@effect/platform-browser": "catalog:",
-    "@effect/platform-bun": "catalog:",
-    "@effect/platform-node": "catalog:",
-    "@effect/printer": "catalog:",
-    "@effect/printer-ansi": "catalog:",
-    "@effect/rpc": "catalog:",
-    "@effect/sql": "catalog:",
-    "@effect/typeclass": "catalog:",
-    "@opentelemetry/api": "catalog:",
-    "@opentelemetry/resources": "catalog:",
-    "effect": "catalog:"
-  },
   "description": "This is a convenience package that can be installed to satisfy peer dependencies of Livestore packages.",
+  "license": "Apache-2.0",
   "files": [
     "package.json"
   ],
-  "license": "Apache-2.0",
+  "type": "module",
+  "sideEffects": false,
   "publishConfig": {
     "access": "public"
   },
   "scripts": {
     "test": "echo 'No tests for peer-deps'"
+  },
+  "dependencies": {
+    "@effect/ai": "0.33.2",
+    "@effect/cli": "0.73.1",
+    "@effect/cluster": "0.56.1",
+    "@effect/experimental": "0.58.0",
+    "@effect/opentelemetry": "0.61.0",
+    "@effect/platform": "0.94.2",
+    "@effect/platform-browser": "0.73.0",
+    "@effect/platform-bun": "0.86.0",
+    "@effect/platform-node": "0.104.1",
+    "@effect/printer": "0.47.0",
+    "@effect/printer-ansi": "0.47.0",
+    "@effect/rpc": "0.73.0",
+    "@effect/sql": "0.49.0",
+    "@effect/typeclass": "0.38.0",
+    "@opentelemetry/api": "1.9.0",
+    "@opentelemetry/resources": "2.2.0",
+    "effect": "3.19.15"
+  },
+  "$genie": {
+    "source": "package.json.genie.ts",
+    "warning": "DO NOT EDIT - changes will be overwritten"
   }
 }

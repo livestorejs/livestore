@@ -6,7 +6,7 @@ export const loadSqlite3Wasm = async () => {
   // https://github.com/rhashimoto/wa-sqlite/issues/143#issuecomment-1899060056
   // module._free(module._malloc(10_000 * 4096 + 65_536))
   const sqlite3 = WaSqlite.Factory(module)
-  // @ts-expect-error TODO fix types
+  // @ts-expect-error Adding module property for internal use (not in wa-sqlite types)
   sqlite3.module = module
   return sqlite3
 }

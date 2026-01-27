@@ -1,10 +1,13 @@
 {
   "name": "@local/tests-integration",
   "version": "0.0.54-dev.23",
-  "type": "module",
   "private": true,
+  "type": "module",
   "exports": {
     "./run-tests": "./scripts/run-tests.ts"
+  },
+  "scripts": {
+    "test": "CI=1 bun ./scripts/run-tests.ts"
   },
   "dependencies": {
     "@livestore/adapter-cloudflare": "workspace:*",
@@ -21,27 +24,28 @@
     "@local/shared": "workspace:*"
   },
   "devDependencies": {
-    "@cloudflare/workers-types": "catalog:",
-    "@opentelemetry/api": "catalog:",
-    "@opentelemetry/exporter-trace-otlp-http": "catalog:",
-    "@opentelemetry/resources": "catalog:",
-    "@opentelemetry/sdk-trace-base": "catalog:",
-    "@opentelemetry/sdk-trace-web": "catalog:",
-    "@playwright/test": "catalog:",
-    "@tanstack/react-router": "^1.139.14",
-    "@tanstack/router-plugin": "^1.132.56",
-    "@types/node": "catalog:",
-    "@types/react": "catalog:",
-    "@types/react-dom": "catalog:",
-    "react": "catalog:",
-    "react-dom": "catalog:",
+    "@cloudflare/workers-types": "4.20251118.0",
+    "@opentelemetry/api": "1.9.0",
+    "@opentelemetry/exporter-trace-otlp-http": "0.208.0",
+    "@opentelemetry/resources": "2.2.0",
+    "@opentelemetry/sdk-trace-base": "2.2.0",
+    "@opentelemetry/sdk-trace-web": "2.2.0",
+    "@playwright/test": "1.57.0",
+    "@tanstack/react-router": "1.145.7",
+    "@tanstack/router-plugin": "1.145.10",
+    "@types/node": "25.0.3",
+    "@types/react": "19.2.7",
+    "@types/react-dom": "19.2.3",
+    "react": "19.2.3",
+    "react-dom": "19.2.3",
     "react-error-boundary": "^6.0.0",
     "todomvc-app-css": "^2.4.3",
-    "vite": "catalog:",
-    "vitest": "catalog:",
-    "wrangler": "catalog:"
+    "vite": "7.3.0",
+    "vitest": "3.2.4",
+    "wrangler": "4.42.2"
   },
-  "scripts": {
-    "test": "CI=1 bun ./scripts/run-tests.ts"
+  "$genie": {
+    "source": "package.json.genie.ts",
+    "warning": "DO NOT EDIT - changes will be overwritten"
   }
 }
