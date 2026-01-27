@@ -5,9 +5,12 @@
   ...
 }:
 let
-  system = pkgs.stdenv.hostPlatform.system;
-  effectUtilsPackages = inputs.effect-utils.packages.${system};
-  taskModules = inputs.effect-utils.devenvModules.tasks;
+  effectUtils = inputs.effect-utils;
+  effectUtilsRoot = effectUtils.outPath;
+  # Source-based CLIs for dev - no hash management needed
+  # Root is baked in at Nix eval time, pointing to effect-utils
+  mkSourceCli = effectUtils.lib.mkSourceCli { inherit pkgs; };
+  taskModules = effectUtils.devenvModules.tasks;
 
   # Packages managed by pnpm (shared between pnpm and clean modules)
   # NOTE: Using pnpm temporarily due to bun bugs. Plan to switch back once fixed.
@@ -61,7 +64,7 @@ in
       beadsRepoName = "overeng-beads-public";
     })
     # dt command for running devenv tasks
-    inputs.effect-utils.devenvModules.dt
+    effectUtils.devenvModules.dt
     # Playwright browser drivers and environment setup
     inputs.playwright.devenvModules.default
     # Shared task modules from effect-utils
@@ -91,14 +94,12 @@ in
     pkgs.typescript
     pkgs.oxlint
     pkgs.oxfmt
-    effectUtilsPackages.genie
-    effectUtilsPackages.megarepo
+    (mkSourceCli { name = "genie"; entry = "packages/@overeng/genie/src/build/mod.ts"; root = effectUtilsRoot; })
+    (mkSourceCli { name = "mr"; entry = "packages/@overeng/megarepo/bin/mr.ts"; root = effectUtilsRoot; })
     pkgs.caddy
     pkgs.jq
     pkgs.unzip
     pkgs.deno
-
-    # Note: local dirty CLIs are wired via direnv helper in .envrc.
   ]
   ++ lib.optionals (!pkgs.stdenv.isDarwin) [
     pkgs.stdenv.cc.cc.lib
