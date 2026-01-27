@@ -372,8 +372,7 @@ env | grep -iE '(git|github|ssh|http|proxy)' | grep -v TOKEN | grep -v SECRET ||
   },
   {
     name: 'Sync megarepo dependencies',
-    // Use --git-protocol=https for CI environments without SSH keys
-    run: 'mr sync --frozen --verbose --git-protocol=https',
+    run: 'mr sync --frozen --verbose',
     shell: 'bash',
   },
   {
