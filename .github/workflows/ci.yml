@@ -64,7 +64,7 @@ jobs:
           env | grep -iE '(git|github|ssh|http|proxy)' | grep -v TOKEN | grep -v SECRET || echo "No relevant env vars found"
         shell: bash
       - name: Sync megarepo dependencies
-        run: mr sync --frozen
+        run: mr sync --frozen --verbose
         shell: bash
       - name: Install devenv
         run: 'nix profile install nixpkgs#devenv'
@@ -117,7 +117,7 @@ jobs:
           env | grep -iE '(git|github|ssh|http|proxy)' | grep -v TOKEN | grep -v SECRET || echo "No relevant env vars found"
         shell: bash
       - name: Sync megarepo dependencies
-        run: mr sync --frozen
+        run: mr sync --frozen --verbose
         shell: bash
       - name: Install devenv
         run: 'nix profile install nixpkgs#devenv'
@@ -170,7 +170,7 @@ jobs:
           env | grep -iE '(git|github|ssh|http|proxy)' | grep -v TOKEN | grep -v SECRET || echo "No relevant env vars found"
         shell: bash
       - name: Sync megarepo dependencies
-        run: mr sync --frozen
+        run: mr sync --frozen --verbose
         shell: bash
       - name: Install devenv
         run: 'nix profile install nixpkgs#devenv'
@@ -274,7 +274,7 @@ jobs:
           env | grep -iE '(git|github|ssh|http|proxy)' | grep -v TOKEN | grep -v SECRET || echo "No relevant env vars found"
         shell: bash
       - name: Sync megarepo dependencies
-        run: mr sync --frozen
+        run: mr sync --frozen --verbose
         shell: bash
       - name: Install devenv
         run: 'nix profile install nixpkgs#devenv'
@@ -355,7 +355,7 @@ jobs:
           env | grep -iE '(git|github|ssh|http|proxy)' | grep -v TOKEN | grep -v SECRET || echo "No relevant env vars found"
         shell: bash
       - name: Sync megarepo dependencies
-        run: mr sync --frozen
+        run: mr sync --frozen --verbose
         shell: bash
       - name: Install devenv
         run: 'nix profile install nixpkgs#devenv'
@@ -444,7 +444,7 @@ jobs:
           env | grep -iE '(git|github|ssh|http|proxy)' | grep -v TOKEN | grep -v SECRET || echo "No relevant env vars found"
         shell: bash
       - name: Sync megarepo dependencies
-        run: mr sync --frozen
+        run: mr sync --frozen --verbose
         shell: bash
       - name: Install devenv
         run: 'nix profile install nixpkgs#devenv'
@@ -509,7 +509,7 @@ jobs:
           env | grep -iE '(git|github|ssh|http|proxy)' | grep -v TOKEN | grep -v SECRET || echo "No relevant env vars found"
         shell: bash
       - name: Sync megarepo dependencies
-        run: mr sync --frozen
+        run: mr sync --frozen --verbose
         shell: bash
       - name: Install devenv
         run: 'nix profile install nixpkgs#devenv'
@@ -580,7 +580,7 @@ jobs:
           env | grep -iE '(git|github|ssh|http|proxy)' | grep -v TOKEN | grep -v SECRET || echo "No relevant env vars found"
         shell: bash
       - name: Sync megarepo dependencies
-        run: mr sync --frozen
+        run: mr sync --frozen --verbose
         shell: bash
       - name: Install devenv
         run: 'nix profile install nixpkgs#devenv'
@@ -635,7 +635,7 @@ jobs:
           env | grep -iE '(git|github|ssh|http|proxy)' | grep -v TOKEN | grep -v SECRET || echo "No relevant env vars found"
         shell: bash
       - name: Sync megarepo dependencies
-        run: mr sync --frozen
+        run: mr sync --frozen --verbose
         shell: bash
       - name: Install devenv
         run: 'nix profile install nixpkgs#devenv'
@@ -695,7 +695,7 @@ jobs:
           env | grep -iE '(git|github|ssh|http|proxy)' | grep -v TOKEN | grep -v SECRET || echo "No relevant env vars found"
         shell: bash
       - name: Sync megarepo dependencies
-        run: mr sync --frozen
+        run: mr sync --frozen --verbose
         shell: bash
       - name: Install devenv
         run: 'nix profile install nixpkgs#devenv'

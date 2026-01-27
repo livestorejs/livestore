@@ -372,7 +372,7 @@ env | grep -iE '(git|github|ssh|http|proxy)' | grep -v TOKEN | grep -v SECRET ||
   },
   {
     name: 'Sync megarepo dependencies',
-    run: 'mr sync --frozen',
+    run: 'mr sync --frozen --verbose',
     shell: 'bash',
   },
   {
