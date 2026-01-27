@@ -27,7 +27,7 @@ export const makeWebSocket = ({
 
     const socket = yield* Effect.tryPromise({
       try: () =>
-        durableObject.fetch(url, { headers: { Upgrade: 'websocket' } }).then((res: any) => {
+        durableObject.fetch(url.toString(), { headers: { Upgrade: 'websocket' } }).then((res: any) => {
           if (!res.webSocket) {
             throw new Error('WebSocket upgrade failed')
           }

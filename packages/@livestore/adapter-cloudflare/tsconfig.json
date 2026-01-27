@@ -39,7 +39,8 @@
     ],
     "composite": true,
     "rootDir": "./src",
-    "tsBuildInfoFile": "./dist/.tsbuildinfo"
+    "tsBuildInfoFile": "./dist/.tsbuildinfo",
+    "types": ["@cloudflare/workers-types"]
   },
   "include": ["./src"],
   "exclude": ["node_modules", "**/dist", "**/node_modules/.pnpm", "**/*.genie.ts"],

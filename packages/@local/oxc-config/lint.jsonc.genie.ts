@@ -114,7 +114,11 @@ export default oxlintConfig({
   ],
   ignorePatterns: [
     '**/node_modules/**',
+    '**/.pnpm/**',
+    '**/.pnpm-store/**',
     '**/dist/**',
+    '**/build/**',
+    '**/out/**',
     '**/.wrangler/**',
     '**/.vercel/**',
     '**/.netlify/**',
@@ -128,5 +132,7 @@ export default oxlintConfig({
     '**/wip/**',
     '**/.vite/**',
     '**/patches/**',
+    '**/.cache/**',
+    '**/.turbo/**',
   ],
 })

@@ -134,7 +134,7 @@ export class TestClientDo extends DurableObjectBase implements ClientDoWithRpcCa
     })
   }
 
-  async fetch(request: Request): Promise<Response> {
+  override async fetch(request: CfTypes.Request): Promise<CfTypes.Response> {
     const upgradeHeader = request.headers.get('Upgrade')
     if (upgradeHeader === undefined || upgradeHeader !== 'websocket') {
       return new Response('Durable Object expected Upgrade: websocket', { status: 426 })

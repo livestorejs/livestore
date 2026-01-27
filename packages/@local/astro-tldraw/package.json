@@ -14,9 +14,11 @@
     "@livestore/utils": "workspace:*"
   },
   "devDependencies": {
+    "@effect/platform-node": "0.104.1",
     "@effect/vitest": "0.27.0",
     "@types/node": "25.0.3",
     "astro": "5.13.4",
+    "effect": "3.19.15",
     "vitest": "3.2.4"
   },
   "peerDependencies": {

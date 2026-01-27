@@ -45,7 +45,8 @@
   "devDependencies": {
     "@livestore/utils-dev": "workspace:*",
     "@types/node": "25.0.3",
-    "typescript": "5.9.3"
+    "typescript": "5.9.3",
+    "vitest": "3.2.4"
   },
   "$genie": {
     "source": "package.json.genie.ts",

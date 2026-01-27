@@ -14,7 +14,7 @@ import * as Vite from 'vite'
 export class DevtoolsViteNotInstalledError extends Data.TaggedError('DevtoolsViteNotInstalledError')<{
   readonly cause: unknown
 }> {
-  get message(): string {
+  override get message(): string {
     return (
       `@livestore/devtools-vite is required for devtools but not installed. ` +
       `Install it with: pnpm add @livestore/devtools-vite@<version>. ` +

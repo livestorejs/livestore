@@ -42,5 +42,12 @@
     "types": ["node", "astro"]
   },
   "include": ["src", "tests", "examples"],
-  "exclude": ["node_modules", "**/dist", "**/node_modules/.pnpm", "**/*.genie.ts", "dist"]
+  "exclude": [
+    "node_modules",
+    "**/dist",
+    "**/node_modules/.pnpm",
+    "**/*.genie.ts",
+    "dist",
+    "src/cli/test-fixtures"
+  ]
 }

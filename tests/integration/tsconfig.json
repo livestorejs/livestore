@@ -37,9 +37,11 @@
         }
       }
     ],
+    "composite": true,
     "rootDir": ".",
     "jsx": "react-jsx",
-    "tsBuildInfoFile": "./dist/.tsbuildinfo"
+    "tsBuildInfoFile": "./dist/.tsbuildinfo",
+    "types": ["@cloudflare/workers-types"]
   },
   "include": ["./src", "./scripts"],
   "exclude": [

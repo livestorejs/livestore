@@ -8,6 +8,7 @@ export default packageJson({
     './s2-proxy-helpers': './src/s2-proxy-helpers.ts',
   },
   dependencies: { ...catalog.pick('@livestore/common', '@livestore/livestore', '@livestore/utils') },
+  devDependencies: { ...catalog.pick('vitest') },
   publishConfig: {
     access: 'public',
     exports: {

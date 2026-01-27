@@ -1,5 +1,6 @@
 import {
   baseTsconfigCompilerOptions,
+  domLib,
   packageTsconfigCompilerOptions,
   packageTsconfigExclude,
   refs,
@@ -10,6 +11,8 @@ export default tsconfigJson({
   compilerOptions: {
     ...baseTsconfigCompilerOptions,
     ...packageTsconfigCompilerOptions,
+    lib: [...domLib],
+    types: ['node'],
   },
   include: ['./src'],
   exclude: [...packageTsconfigExclude],

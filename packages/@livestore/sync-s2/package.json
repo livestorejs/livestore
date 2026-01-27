@@ -29,6 +29,9 @@
     "@livestore/livestore": "workspace:*",
     "@livestore/utils": "workspace:*"
   },
+  "devDependencies": {
+    "vitest": "3.2.4"
+  },
   "$genie": {
     "source": "package.json.genie.ts",
     "warning": "DO NOT EDIT - changes will be overwritten"

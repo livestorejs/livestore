@@ -25,7 +25,7 @@ export default packageJson({
       'effect',
     ),
   },
-  devDependencies: { ...catalog.pick('@livestore/utils-dev', '@types/node', 'typescript') },
+  devDependencies: { ...catalog.pick('@livestore/utils-dev', '@types/node', 'typescript', 'vitest') },
   publishConfig: {
     access: 'public',
     exports: {

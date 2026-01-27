@@ -3,8 +3,11 @@ import { baseTsconfigCompilerOptions, packageTsconfigExclude, tsconfigJson } fro
 export default tsconfigJson({
   compilerOptions: {
     ...baseTsconfigCompilerOptions,
+    composite: true,
     rootDir: '.',
     outDir: 'dist',
+    tsBuildInfoFile: './dist/.tsbuildinfo',
+    types: ['node'],
   },
   include: ['src'],
   exclude: [...packageTsconfigExclude],

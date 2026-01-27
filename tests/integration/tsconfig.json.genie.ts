@@ -3,12 +3,14 @@ import { baseTsconfigCompilerOptions, packageTsconfigExclude, reactJsx, tsconfig
 export default tsconfigJson({
   compilerOptions: {
     ...baseTsconfigCompilerOptions,
+    composite: true,
     exactOptionalPropertyTypes: false,
     outDir: './dist',
     rootDir: '.',
     resolveJsonModule: true,
     ...reactJsx,
     tsBuildInfoFile: './dist/.tsbuildinfo',
+    types: ['@cloudflare/workers-types'],
   },
   include: ['./src', './scripts'],
   exclude: [...packageTsconfigExclude, './src/tests/devtools/fixtures'],

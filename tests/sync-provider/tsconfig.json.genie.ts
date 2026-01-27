@@ -3,12 +3,13 @@ import { baseTsconfigCompilerOptions, packageTsconfigExclude, tsconfigJson } fro
 export default tsconfigJson({
   compilerOptions: {
     ...baseTsconfigCompilerOptions,
+    composite: true,
     exactOptionalPropertyTypes: false,
     outDir: './dist',
     rootDir: './src',
     resolveJsonModule: true,
     tsBuildInfoFile: './dist/.tsbuildinfo',
-    types: ['vitest/globals', '@types/node'],
+    types: ['vitest/globals', '@types/node', '@cloudflare/workers-types'],
   },
   include: ['./src'],
   exclude: [...packageTsconfigExclude],

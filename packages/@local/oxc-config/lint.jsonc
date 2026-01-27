@@ -5,7 +5,11 @@
   "plugins": ["import", "typescript", "unicorn", "oxc", "react", "react-perf"],
   "ignorePatterns": [
     "**/node_modules/**",
+    "**/.pnpm/**",
+    "**/.pnpm-store/**",
     "**/dist/**",
+    "**/build/**",
+    "**/out/**",
     "**/.wrangler/**",
     "**/.vercel/**",
     "**/.netlify/**",
@@ -19,6 +23,8 @@
     "**/wip/**",
     "**/.vite/**",
     "**/patches/**",
+    "**/.cache/**",
+    "**/.turbo/**",
   ],
   "categories": {
     "correctness": "error",

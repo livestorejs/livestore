@@ -11,6 +11,7 @@ export default tsconfigJson({
     ...baseTsconfigCompilerOptions,
     ...packageTsconfigCompilerOptions,
     resolveJsonModule: true,
+    types: ['@cloudflare/workers-types'],
   },
   include: ['./src'],
   exclude: [...packageTsconfigExclude],
