@@ -345,32 +345,6 @@ export const livestoreSetupStepsAfterCheckout = [
     shell: 'bash',
   },
   {
-    // TODO: Remove this debug step once megarepo sync issues are resolved
-    name: 'Debug git config (investigating megarepo sync failures)',
-    run: `echo "=== Git version ==="
-git --version
-echo ""
-echo "=== Global git config ==="
-git config --global --list 2>/dev/null || echo "No global config"
-echo ""
-echo "=== Local git config ==="
-git config --local --list 2>/dev/null || echo "No local config"
-echo ""
-echo "=== URL rewrite rules ==="
-git config --get-regexp 'url\\..*\\.insteadOf' 2>/dev/null || echo "No URL rewrite rules"
-echo ""
-echo "=== Testing direct git access to public repos ==="
-echo "Testing effect-utils..."
-git ls-remote --exit-code https://github.com/overengineeringstudio/effect-utils HEAD && echo "SUCCESS: effect-utils accessible" || echo "FAILED: effect-utils not accessible"
-echo ""
-echo "Testing overeng-beads-public..."
-git ls-remote --exit-code https://github.com/overengineeringstudio/overeng-beads-public HEAD && echo "SUCCESS: overeng-beads-public accessible" || echo "FAILED: overeng-beads-public not accessible"
-echo ""
-echo "=== Environment variables that might affect git ==="
-env | grep -iE '(git|github|ssh|http|proxy)' | grep -v TOKEN | grep -v SECRET || echo "No relevant env vars found"`,
-    shell: 'bash',
-  },
-  {
     name: 'Sync megarepo dependencies',
     run: 'mr sync --frozen --verbose',
     shell: 'bash',
