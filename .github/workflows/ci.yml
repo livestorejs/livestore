@@ -43,6 +43,21 @@ jobs:
         uses: ./.github/actions/setup-env
       - run: mono lint
 
+  type-check:
+    runs-on:
+      - namespace-profile-linux-x86-64
+      - namespace-features:github.run-id=${{ github.run_id }}
+    env:
+      LIVESTORE_BRANCH_PROTECTION_REQUIRED: "true"
+    defaults:
+      run:
+        shell: devenv shell bash -- -e {0}
+    steps:
+      - uses: actions/checkout@v4
+      - name: Set up environment
+        uses: ./.github/actions/setup-env
+      - run: mono ts --no-emit
+
   test-unit:
     runs-on:
       - namespace-profile-linux-x86-64

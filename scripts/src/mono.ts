@@ -18,22 +18,27 @@ const tsCommand = Cli.Command.make(
       Cli.Options.withDefault(false),
       Cli.Options.withDescription('Clean build artifacts before compilation'),
     ),
+    noCheck: Cli.Options.boolean('no-check').pipe(
+      Cli.Options.withDefault(false),
+      Cli.Options.withDescription('Disable full type checking (only critical parse and emit errors will be reported)'),
+    ),
+    noEmit: Cli.Options.boolean('no-emit').pipe(
+      Cli.Options.withDefault(false),
+      Cli.Options.withDescription('Type check only without emitting files'),
+    ),
   },
-  Effect.fn(function* ({ watch, clean }) {
+  Effect.fn(function* ({ watch, clean, noCheck, noEmit }) {
     if (clean) {
-      yield* cmd(
-        'find {examples,packages,tests,docs} -path "*node_modules*" -prune -o \\( -name "dist" -type d -a -not -path "*/wa-sqlite/dist" -o -name "*.tsbuildinfo" \\) -exec rm -rf {} +',
-        { shell: true },
-      ).pipe(Effect.provide(LivestoreWorkspace.toCwd()))
+      yield* cmd('tsc --build tsconfig.dev.json --clean').pipe(Effect.provide(LivestoreWorkspace.toCwd()))
     }
 
-    if (watch) {
-      yield* cmd('tsc --build tsconfig.dev.json --watch').pipe(Effect.provide(LivestoreWorkspace.toCwd()))
-    } else {
-      yield* cmd('tsc --build tsconfig.dev.json').pipe(Effect.provide(LivestoreWorkspace.toCwd()))
-      // TODO bring back when implemented https://github.com/livestorejs/livestore/issues/477
-      // yield* cmd('tsc --build tsconfig.examples.json', { cwd })
-    }
+    const flags = ['--build', 'tsconfig.dev.json', noCheck && '--noCheck', noEmit && '--noEmit', watch && '--watch']
+      .filter(Boolean)
+      .join(' ')
+
+    yield* cmd(`tsc ${flags}`).pipe(Effect.provide(LivestoreWorkspace.toCwd()))
+    // TODO bring back when implemented https://github.com/livestorejs/livestore/issues/477
+    // yield* cmd('tsc --build tsconfig.examples.json', { cwd })
   }),
 )
 

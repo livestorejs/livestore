@@ -1,4 +1,5 @@
 direnv exec . mono lint --fix
+direnv exec . mono ts --no-emit
 
 # Check if docs files have changed
 if git diff --cached --name-only | grep -q "^docs/"; then
