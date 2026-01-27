@@ -1,5 +1,5 @@
 import type { SqliteDb } from '@livestore/common'
-import { prettyBytes } from '@livestore/utils'
+import { prettyBytes, shouldNeverHappen } from '@livestore/utils'
 import { Effect } from '@livestore/utils/effect'
 
 declare global {
@@ -19,7 +19,7 @@ export const downloadBlob = (
   fileName: string,
   mimeType = 'application/octet-stream',
 ) => {
-  if (typeof window === 'undefined') throw new Error('downloadBlob is only available in browser environments')
+  if (typeof window === 'undefined') return shouldNeverHappen('downloadBlob is only available in browser environments')
 
   const blob = data instanceof Blob ? data : new Blob([data], { type: mimeType })
 
@@ -32,7 +32,7 @@ export const downloadBlob = (
 
 /** Download a URL as a file. Browser-only. */
 export const downloadURL = (data: string, fileName: string) => {
-  if (typeof document === 'undefined') throw new Error('downloadURL is only available in browser environments')
+  if (typeof document === 'undefined') return shouldNeverHappen('downloadURL is only available in browser environments')
 
   const a = document.createElement('a')
   a.href = data

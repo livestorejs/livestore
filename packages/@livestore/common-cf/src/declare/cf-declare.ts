@@ -1,20 +1,18 @@
+/// <reference types="@cloudflare/workers-types" />
+
 // TODO we should figure out a way to avoid needing this entire file/module to begin with (cc Sunil Pai)
-// Re-exports Cloudflare Workers runtime globals with proper CF types for use in non-CF-typed contexts
+// Re-exports Cloudflare Workers runtime globals with proper CF types for use in non-CF-typed contexts.
+// Uses ambient declarations since globalThis isn't typed with CF globals without DOM lib.
 
-const _ReadableStream = ReadableStream
-const _Request = Request
-const _Response = Response
-const _Rpc = Rpc
-const _WebSocket = WebSocket
-const _WebSocketPair = WebSocketPair
-const _WebSocketRequestResponsePair = WebSocketRequestResponsePair
+import type * as CF from '@cloudflare/workers-types'
 
-export {
-  _ReadableStream as ReadableStream,
-  _Request as Request,
-  _Response as Response,
-  _Rpc as Rpc,
-  _WebSocket as WebSocket,
-  _WebSocketPair as WebSocketPair,
-  _WebSocketRequestResponsePair as WebSocketRequestResponsePair,
-}
+// Declare that these CF runtime globals exist (they're provided by @cloudflare/workers-types as ambient)
+declare const ReadableStream: typeof CF.ReadableStream
+declare const Request: typeof CF.Request
+declare const Response: typeof CF.Response
+declare const WebSocket: typeof CF.WebSocket
+declare const Rpc: typeof CF.Rpc
+declare const WebSocketPair: typeof CF.WebSocketPair
+declare const WebSocketRequestResponsePair: typeof CF.WebSocketRequestResponsePair
+
+export { ReadableStream, Request, Response, Rpc, WebSocket, WebSocketPair, WebSocketRequestResponsePair }
