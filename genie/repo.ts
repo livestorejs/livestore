@@ -351,7 +351,9 @@ export const livestoreSetupStepsAfterCheckout = [
   },
   {
     name: 'Install devenv',
-    run: 'nix profile install nixpkgs#devenv',
+    // Add nix profile to PATH for subsequent steps that use devenv shell
+    run: `nix profile install nixpkgs#devenv
+echo "$HOME/.nix-profile/bin" >> $GITHUB_PATH`,
     shell: 'bash',
   },
   {

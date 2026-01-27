@@ -43,7 +43,9 @@ jobs:
         run: mr sync --frozen --verbose
         shell: bash
       - name: Install devenv
-        run: 'nix profile install nixpkgs#devenv'
+        run: |
+          nix profile install nixpkgs#devenv
+          echo "$HOME/.nix-profile/bin" >> $GITHUB_PATH
         shell: bash
       - name: Warmup devenv
         run: devenv shell --verbose env
@@ -72,7 +74,9 @@ jobs:
         run: mr sync --frozen --verbose
         shell: bash
       - name: Install devenv
-        run: 'nix profile install nixpkgs#devenv'
+        run: |
+          nix profile install nixpkgs#devenv
+          echo "$HOME/.nix-profile/bin" >> $GITHUB_PATH
         shell: bash
       - name: Warmup devenv
         run: devenv shell --verbose env
@@ -101,7 +105,9 @@ jobs:
         run: mr sync --frozen --verbose
         shell: bash
       - name: Install devenv
-        run: 'nix profile install nixpkgs#devenv'
+        run: |
+          nix profile install nixpkgs#devenv
+          echo "$HOME/.nix-profile/bin" >> $GITHUB_PATH
         shell: bash
       - name: Warmup devenv
         run: devenv shell --verbose env
@@ -181,7 +187,9 @@ jobs:
         run: mr sync --frozen --verbose
         shell: bash
       - name: Install devenv
-        run: 'nix profile install nixpkgs#devenv'
+        run: |
+          nix profile install nixpkgs#devenv
+          echo "$HOME/.nix-profile/bin" >> $GITHUB_PATH
         shell: bash
       - name: Warmup devenv
         run: devenv shell --verbose env
@@ -238,7 +246,9 @@ jobs:
         run: mr sync --frozen --verbose
         shell: bash
       - name: Install devenv
-        run: 'nix profile install nixpkgs#devenv'
+        run: |
+          nix profile install nixpkgs#devenv
+          echo "$HOME/.nix-profile/bin" >> $GITHUB_PATH
         shell: bash
       - name: Warmup devenv
         run: devenv shell --verbose env
@@ -303,7 +313,9 @@ jobs:
         run: mr sync --frozen --verbose
         shell: bash
       - name: Install devenv
-        run: 'nix profile install nixpkgs#devenv'
+        run: |
+          nix profile install nixpkgs#devenv
+          echo "$HOME/.nix-profile/bin" >> $GITHUB_PATH
         shell: bash
       - name: Warmup devenv
         run: devenv shell --verbose env
@@ -344,7 +356,9 @@ jobs:
         run: mr sync --frozen --verbose
         shell: bash
       - name: Install devenv
-        run: 'nix profile install nixpkgs#devenv'
+        run: |
+          nix profile install nixpkgs#devenv
+          echo "$HOME/.nix-profile/bin" >> $GITHUB_PATH
         shell: bash
       - name: Warmup devenv
         run: devenv shell --verbose env
@@ -391,7 +405,9 @@ jobs:
         run: mr sync --frozen --verbose
         shell: bash
       - name: Install devenv
-        run: 'nix profile install nixpkgs#devenv'
+        run: |
+          nix profile install nixpkgs#devenv
+          echo "$HOME/.nix-profile/bin" >> $GITHUB_PATH
         shell: bash
       - name: Warmup devenv
         run: devenv shell --verbose env
@@ -422,7 +438,9 @@ jobs:
         run: mr sync --frozen --verbose
         shell: bash
       - name: Install devenv
-        run: 'nix profile install nixpkgs#devenv'
+        run: |
+          nix profile install nixpkgs#devenv
+          echo "$HOME/.nix-profile/bin" >> $GITHUB_PATH
         shell: bash
       - name: Warmup devenv
         run: devenv shell --verbose env
@@ -458,7 +476,9 @@ jobs:
         run: mr sync --frozen --verbose
         shell: bash
       - name: Install devenv
-        run: 'nix profile install nixpkgs#devenv'
+        run: |
+          nix profile install nixpkgs#devenv
+          echo "$HOME/.nix-profile/bin" >> $GITHUB_PATH
         shell: bash
       - name: Warmup devenv
         run: devenv shell --verbose env
