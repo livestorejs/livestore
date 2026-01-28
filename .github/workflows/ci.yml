@@ -51,6 +51,37 @@ jobs:
         run: devenv shell --verbose env
         shell: bash
       - run: mono lint
+  type-check:
+    runs-on: [namespace-profile-linux-x86-64, 'namespace-features:github.run-id=${{ github.run_id }}']
+    env:
+      LIVESTORE_BRANCH_PROTECTION_REQUIRED: 'true'
+    defaults:
+      run:
+        shell: devenv shell bash -- -e {0}
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install Nix
+        uses: cachix/install-nix-action@v31
+      - name: Enable Cachix cache
+        uses: cachix/cachix-action@v16
+        with:
+          name: livestore
+          authToken: ${{ env.CACHIX_AUTH_TOKEN }}
+      - name: Install megarepo CLI
+        run: 'nix profile install github:overengineeringstudio/effect-utils#megarepo'
+        shell: bash
+      - name: Sync megarepo dependencies
+        run: mr sync --frozen --verbose
+        shell: bash
+      - name: Install devenv
+        run: |
+          nix profile install nixpkgs#devenv
+          echo "$HOME/.nix-profile/bin" >> $GITHUB_PATH
+        shell: bash
+      - name: Warmup devenv
+        run: devenv shell --verbose env
+        shell: bash
+      - run: mono ts
   test-unit:
     runs-on: [namespace-profile-linux-x86-64, 'namespace-features:github.run-id=${{ github.run_id }}']
     env:

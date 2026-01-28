@@ -118,6 +118,10 @@ export default githubWorkflow({
       steps: [...livestoreSetupSteps, { run: 'mono lint' }],
     }),
 
+    'type-check': standardCIJob({
+      steps: [...livestoreSetupSteps, { run: 'mono ts' }],
+    }),
+
     'test-unit': standardCIJob({
       steps: [...livestoreSetupSteps, { run: 'mono test unit' }],
     }),
