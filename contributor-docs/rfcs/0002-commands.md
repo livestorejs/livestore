@@ -54,7 +54,7 @@ Rebasing changes the **base state** against which an event will be applied. An e
 Rebase is only safe when at least one of these holds:
 - The operation is **context-free** (commutative/CRDT-like)
 - The event carries explicit **preconditions** that can be checked against the new state
-- We accept that some “events” will become invalid and must be **rejected or compensated**
+- We accept that some "events" will become invalid and must be **rejected or compensated**
 
 Without one of these, rebase gives you convergence without correctness.
 
@@ -114,8 +114,7 @@ Invariant violations have compounding consequences:
 Any solution must satisfy these constraints:
 
 - Clients must be able to perform changes while offline (optimistic UI).
-- Clients can enforce some invariants locally based on their view of the event log.
-- Server can enforce invariants that require server-only knowledge or authority (e.g., cross-aggregate consistency, global uniqueness, permissions).
+- Clients can enforce invariants locally based on their view of the event log.
 - The state DB must remain strongly consistent with the eventlog within a client session; appending events and updating the state DB must be atomic.
   - This is required because we use the state DB as the aggregate's state.
 
@@ -123,78 +122,80 @@ Any solution must satisfy these constraints:
 
 The solution introduces [**commands**](#command) as first-class citizens in LiveStore. Instead of committing events directly, the app executes commands through a [**command handler**](#command-handler). Commands encode intentions that can be re-evaluated; command handlers validate them against the current state and produce events.
 
-The key insight is that commands are re-executable. When the underlying state changes (due to sync), the command handler can re-evaluate the same command against the new state, potentially producing different events, rejecting the command, or succeeding as before. This preserves correctness while still enabling optimistic UI.
+The key insight is that commands are re-executable. When the underlying state changes (due to sync), the client can re-evaluate the same command against the new state, potentially producing different events, rejecting the command, or succeeding as before. This preserves correctness while still enabling optimistic UI.
+
+Commands live entirely on the client—the sync backend continues to sync events, not commands. This keeps the sync backend simple (just event processing) while giving clients the ability to re-validate their pending work against newly-pulled state.
 
 ### Architecture
 
 ```
-┌─────────────────────────────────────────────────────────────────────────────────┐        ┌───────────────────────────────────────────────────────┐
-│                                      CLIENT                                     │        │                        SERVER                         │
-│                                                             Pending Commands    │        │                                                       │
-│                                                                 Queue           │        │                                                       │
-│   ┌────────┐    Command                                    ┌────┬────┬────┐     │  Push  │   ┌─────────────────┐              ┌───────┐          │
-│   │  User  │────────┬──────────────────────────────────────│ C1 │ C2 │ ...│─────┼────────┼──▶│ Command Handler │◀─────────────│ State │          │
-│   └────────┘        │                                      └────┴────┴────┘     │        │   └────────┬────────┘              └───────┘          │
-│        ▲            │                                                           │        │            │ Authoritative             │              │
-│        │            │                                                           │        │            │ Event(s)                  │              │
-│        │            ▼                                   Event Log               │        │            ▼                           │              │
-│        │   ┌─────────────────┐   Provisional  ┌───────────────┬─────────────┐   │  Pull  │   ┌────────────────────┐      ┌───────────────────┐   │
-│        │   │ Command Handler │───Event(s)────▶│ Authoritative │ Provisional │◀──┼────────┼───│    Authoritative   │─────▶│  Materializer(s)  │   │
-│        │   └─────────────────┘                │ E1 │ E2 │ E3  │  E4 │ E5    │   │        │   │ E1 │ E2 │ E3 │ ... │      └───────────────────┘   │
-│        │            ▲                         └───────────────┴───────┬─────┘   │        │   └────────────────────┘                              │
-│        │            │                                                 │         │        │          Event Log                                    │
-│        │            │                                                 ▼         │        │                                                       │
-│        │   UI   ┌───┴───┐                          ┌───────────────────┐        │        │                                                       │
-│        └────────│ State │◀─────────────────────────┤  Materializer(s)  │        │        │                                                       │
-│                 └───────┘                          └───────────────────┘        │        │                                                       │
-│                                                                                 │        │                                                       │
-└─────────────────────────────────────────────────────────────────────────────────┘        └───────────────────────────────────────────────────────┘
+┌───────────────────────────────────────────────────────────────────────┐
+│                                      CLIENT                           │
+│                                                                       │
+│                             Pending Commands Queue                    │
+│   ┌────────┐    Command     ┌────┬────┬────┐                          │
+│   │  User  │────────┬───────│ C1 │ C2 │ ...│                          │
+│   └────────┘        │       └────┴────┴──┬─┘                          │
+│        ▲            │        Replay      │                            │        ┌────────────────────────────┐
+│        │            │────────────────────┘                            │        │        SYNC BACKEND        │
+│        │            ▼                             Event Log           │        │                            │
+│        │       ┌─────────┐   Pending    ┌───────────────┬─────────┐   │  Push  │   ┌────────────────────┐   │
+│        │       │ Command │───Event(s)──▶│   Confirmed   │ Pending │───┼────────┼──▶│     Confirmed      │   │
+│        │       │ Handler │              │ E1 │ E2 │ E3  │ E4 │ E5 │◀──┼────────┼───│ E1 │ E2 │ E3 │ ... │   │
+│        │       └─────────┘              └───────────────┴───────┬─┘   │  Pull  │   └────────────────────┘   │
+│        │            ▲                                           │     │        │          Event Log         │
+│        │            │                                           ▼     │        └────────────────────────────┘
+│        │   UI   ┌───┴───┐                    ┌───────────────────┐    │
+│        └────────│ State │◀───────────────────┤  Materializer(s)  │    │
+│                 └───────┘                    └───────────────────┘    │
+│                                                                       │
+└───────────────────────────────────────────────────────────────────────┘
 ```
 
-| Component              | Description                                                        |
-|------------------------|--------------------------------------------------------------------|
-| Command                | User intention sent to both local and server command handlers      |
-| Command Handler        | Validates commands against current state and produces events       |
-| Pending Commands Queue | Commands awaiting push to server (C1, C2, ...)                     |
-| Provisional Events     | Optimistic events (E4, E5) produced locally, not yet confirmed     |
-| Authoritative Events   | Server-confirmed events (E1, E2, E3) that form the source of truth |
-| Materializer(s)        | Processes events to update State                                   |
-| State                  | Queryable projection used by UI and command handlers               |
-| Push                   | Client sends pending commands to server                            |
-| Pull                   | Client receives authoritative events from server                   |
+| Component              | Description                                                    |
+|------------------------|----------------------------------------------------------------|
+| Command                | User intention executed by the client command handler          |
+| Command Handler        | Validates commands against current state and produces events   |
+| Pending Commands Queue | Commands awaiting confirmation; replayed during reconciliation |
+| Pending Events         | Events produced locally, not yet pushed to the sync backend    |
+| Confirmed Events       | Events that have been pushed to the sync backend               |
+| Materializer(s)        | Processes events to update State                               |
+| State                  | Queryable projection used by the UI and command handlers       |
+| Push                   | Client pushes pending events to the sync backend               |
+| Pull                   | Client receives confirmed events from the sync backend         |
 
 ### Sync Model
 
 The revised sync model replaces event rebasing with command replay:
 
-1. **Client Execution**: When the user triggers an action, the client executes the command against local state. If validation passes, provisional events are committed and materialized to the state DB atomically. The command itself is queued for sync.
+1. **Client Execution**: When the user triggers an action, the client executes the command against local state. If validation passes, pending events are committed and materialized to the state DB atomically. The command is queued for potential replay.
 
-2. **Push Commands**: Pending commands (not events) are pushed to the server.
+2. **Pull Events**: Client pulls newly confirmed events from the sync backend.
 
-3. **Server Execution**: The server executes each command against its (authoritative) state. Commands that pass validation produce authoritative events. Commands that fail are rejected with a reason.
+3. **Reconciliation**: When the client pulls confirmed events but still has pending events in its log:
+   - Roll back all pending events and their associated state changes
+   - Materialize pulled confirmed events to advance to the confirmed state
+   - Replay each pending command against the new state
+   - Commands may now produce different events (context changed), no events (rejected), or the same events as before
 
-4. **Pull Authoritative Events**: Clients pull newly authoritative events from the server.
+4. **Push Events**: Once reconciliation is complete, the client pushes its pending events to the sync backend.
 
-5. **Reconciliation**: When the client pulls authoritative events but still has provisional events in its log:
-  - Roll back all provisional events and their associated state changes
-  - Materialize pulled authoritative events to advance to the authoritative state
-  - Replay each pending command against the new state
-  - Commands may now produce different events (context changed), no events (rejected), or the same events as before
+5. **Dequeue**: After events are successfully pushed, the corresponding commands are removed from the pending queue.
 
 ### Pending Commands Queue
 
-The pending commands queue holds commands that have been executed locally but not yet confirmed by the server. It is persisted to durable storage (alongside the eventlog) to survive app restarts, crashes, or browser refreshes.
+The pending commands queue holds commands that have been executed locally but whose resulting events have not yet been pushed to the sync backend. It is persisted to durable storage to survive app restarts, crashes, or browser refreshes.
 
 **Queue lifecycle:**
 
-1. **Enqueue**: When a command executes successfully on the client (producing provisional events), it's appended to the queue.
-2. **Push**: Commands are pushed to the server in order. The server executes each command and either produces authoritative events or rejects the command.
-3. **Dequeue**: A command is removed from the queue only after the server confirms it—either by producing authoritative events or by rejecting it.
-4. **Replay**: During reconciliation (when new authoritative events arrive), pending commands are replayed against the updated state. Commands remain in the queue until the server confirms them.
+1. **Enqueue**: When a command executes successfully on the client (producing pending events), it's appended to the queue.
+2. **Replay**: During reconciliation (when new confirmed events arrive), pending commands are replayed against the updated state.
+3. **Push**: After reconciliation, events are pushed to the sync backend.
+4. **Dequeue**: A command is removed from the queue only after its events are successfully pushed to the sync backend.
 
 ### Atomicity of Command Execution
 
-Command execution is atomic on both client and server. When a command handler runs:
+Command execution is atomic. When a command handler runs:
 
 1. Read current state
 2. Validate against the state DB (and/or external services) and produce event(s)
@@ -219,7 +220,7 @@ Both commands passed validation because they read stale state. With atomic execu
 
 #### Commands
 
-Commands are defined with a name and schema:
+Similarly to events, commands are defined with a name and schema:
 
 ```ts
 import { Commands, Schema } from '@livestore/livestore'
@@ -243,17 +244,17 @@ Command errors are defined as tagged errors using Effect's `Schema.TaggedError`.
 ```ts
 import { Schema } from 'effect'
 
-class RoomNotFound extends Schema.TaggedError<RoomNotFound>()('RoomNotFound', {
+class RoomNotFoundError extends Schema.TaggedError<RoomNotFoundError>()('RoomNotFoundError', {
   roomId: Schema.String,
 }) {}
 
-class RoomAtCapacity extends Schema.TaggedError<RoomAtCapacity>()('RoomAtCapacity', {
+class RoomAtCapacityError extends Schema.TaggedError<RoomAtCapacityError>()('RoomAtCapacityError', {
   roomId: Schema.String,
   capacity: Schema.Number,
 }) {}
 
-class GuestAlreadyCheckedIn extends Schema.TaggedError<GuestAlreadyCheckedIn>()(
-  'GuestAlreadyCheckedIn',
+class GuestAlreadyCheckedInError extends Schema.TaggedError<GuestAlreadyCheckedInError>()(
+  'GuestAlreadyCheckedInError',
   { roomId: Schema.String, guestId: Schema.String },
 ) {}
 ```
@@ -266,7 +267,7 @@ Command handlers are functions that receive a command and the current state, and
 2. **Dependency injection**: External services are declared in the type signature (the `R` parameter) and provided at runtime via Effect's Layer system, making handlers testable and composable
 
 ```ts
-// Handler signature: (command, state) => Effect<Events, Error, R>
+// Handler signature: (command, state) => Effect<Events, E, R>
 
 const checkInGuestHandler = Commands.handler(commands.checkInGuest)(
   (command, state) =>
@@ -295,7 +296,12 @@ const checkInGuestHandler = Commands.handler(commands.checkInGuest)(
       return events.guestCheckedIn({ roomId, guestId, checkedInAt: new Date() })
     })
 )
-// Type: Handler<CheckInGuest, RoomNotFound | RoomAtCapacity | GuestAlreadyCheckedIn, never>
+// Type: Commands.Handler<
+//         CheckInGuest,                                          // Command
+//         GuestCheckedIn,                                        // Events
+//         RoomNotFound | RoomAtCapacity | GuestAlreadyCheckedIn, // Errors
+//         never                                                  // Requirements
+//       >
 ```
 
 ##### Parameters
@@ -371,7 +377,7 @@ checkInGuestHandler
 //         CheckInGuest,                  // Command
 //         GuestCheckedIn,                // Events
 //         RoomNotFound | RoomAtCapacity, // Errors
-//         never                          // Services
+//         never                          // Requirements
 //       >
 
 // Extended handler: requires PermissionsService and GuestService
@@ -380,7 +386,7 @@ checkInGuestWithPermissionsHandler
 //         CheckInGuest,                                                    // Command
 //         GuestCheckedIn,                                                  // Events
 //         RoomNotFound | RoomAtCapacity | Unauthorized | GuestBlacklisted, // Errors
-//         PermissionsService | GuestService                                // Services
+//         PermissionsService | GuestService                                // Requirements
 //       >
 ```
 
@@ -418,67 +424,6 @@ const checkInGuestFullHandler = pipe(
   withPermission('guests.checkin'),
   withAuditLog,
 )
-```
-
-##### Server-Specific Logic
-
-Servers can enforce invariants that require server-only knowledge or authority by:
-
-1. Using handlers that require server-only services (captured in the `R` type parameter)
-2. Providing those services via Effect Layers at runtime
-
-```ts
-// Define server-only services
-class PermissionsService extends Context.Tag('PermissionsService')<
-  PermissionsService,
-  { hasPermission: (permission: string) => boolean; userId: string }
->() {}
-
-class GuestService extends Context.Tag('GuestService')<
-  GuestService,
-  { isBlacklisted: (guestId: string) => Effect.Effect<boolean> }
->() {}
-
-// Server provides real implementations
-const ServerServicesLayer = Layer.mergeAll(
-  Layer.succeed(PermissionsService, {
-    hasPermission: (perm) => userPermissions.includes(perm),
-    userId: authenticatedUserId,
-  }),
-  Layer.succeed(GuestService, {
-    isBlacklisted: (guestId) => checkBlacklistDatabase(guestId),
-  }),
-)
-
-// Client provides permissive stubs (for optimistic execution)
-const ClientServicesLayer = Layer.mergeAll(
-  Layer.succeed(PermissionsService, {
-    hasPermission: () => true,  // Optimistically assume authorized
-    userId: localUserId,
-  }),
-  Layer.succeed(GuestService, {
-    isBlacklisted: () => Effect.succeed(false),  // Skip check locally
-  }),
-)
-```
-
-#### Registering Command Handlers
-
-Command handlers are registered in the schema:
-
-```ts
-const schema = makeSchema({
-  events,
-  state: {
-    sqlite: { tables, materializers },
-  },
-  commands: {
-    handlers: {
-      CheckInGuest: checkInGuestFullHandler,
-      CheckOutGuest: checkOutGuestHandler,
-    },
-  },
-})
 ```
 
 #### Executing Commands
@@ -520,13 +465,36 @@ This duplication exists because DB constraints currently can only reject—they 
 
 **Graceful constraint failure recovery.** Instead of shutting down when a constraint fails during rebase, the system could mark the event as "conflicted" and continue processing. This approach preserves the event for audit purposes, avoids catastrophic store failure, and allows app-specific resolution. However, it shares limitations with Alternative A: constraints are coarse-grained (can't distinguish "task deleted" from "task never existed") and conflict handlers still require domain logic. It works best as a fallback behind command validation—catching handler bugs rather than serving as the primary validation mechanism.
 
-#### Offline Work is Tentative
+#### Offline Work May Change on Sync
 
-Clients make requests, not decisions—nothing is real until the server confirms. Extended offline periods mean large uncertainty about what will actually persist. When commands are rejected, cascading failures are common: if C1 fails during replay, C2 (issued based on C1's optimistic result) will likely also fail. Explaining these delayed, cascading rejections to users is challenging—they may have moved on, and the context that made the action make sense may no longer be obvious.
+When a client reconnects and pulls remote events, pending commands are replayed against the new state. Commands may produce different events, fewer events, or be rejected entirely. While the client retains authority over validation, the context against which commands are validated changes.
+
+When commands are rejected during replay, cascading failures are common: if C1 fails, C2 (issued based on C1's optimistic result) will likely also fail. Explaining these delayed rejections to users is challenging—they may have moved on, and the context that made the action make sense may no longer be obvious.
+
+#### Server Validation Requires Explicit Coordination
+
+Since commands execute only on the client, invariants can only be enforced based on locally-available data. The sync backend cannot directly validate or reject commands—it simply processes events.
+
+This means certain invariants cannot be enforced through commands alone:
+
+- **Global uniqueness**: Is this username taken by another user? The client only sees its own data.
+- **Cross-aggregate constraints**: Does this booking conflict with another user's reservation?
+- **Server-authoritative permissions**: Did the user's role change on the server?
+
+However, server-side validation can be achieved within this model using a **Request/Response Events** pattern or **Compensating Events**:
+
+##### Potential Mitigations
+
+**Request/Response Events**: Instead of producing final events directly, commands produce "request" events. A server-side client listens for such events, validates them against some server-side state, and emits "accepted" or "rejected" response events.
+
+**Compensating Events**: A server-side client can listen for events and run checks that may produce compensating events to correct for violations.
+
+> [!NOTE]
+> In the future, we may want to support native **Server-Side Command Execution**. See [Alternative E: Server-Side Command Execution](#alternative-e-server-side-command-execution).
 
 #### Limited Auditability
 
-Provisional events are discarded during reconciliation and replaced with authoritative events to maintain a single global total order. This means the eventlog cannot prove what the client originally produced—only the server's re-evaluated result is preserved. For domains where "what did you know and when" is legally or operationally significant (healthcare, finance, compliance), a client-authoritative model (see Alternative D) may be more appropriate.
+Pending events may be discarded during reconciliation and replaced with the events produced by replayed commands. This means the eventlog reflects the final validated state, not necessarily what the client originally produced before sync. For domains where "what did you know and when" is legally or operationally significant (healthcare, finance, compliance), a client-authoritative model (see Alternative D) may be more appropriate.
 
 ## Alternatives Considered
 
@@ -639,9 +607,98 @@ Trade-offs:
 - **Sync complexity:** Version vectors, version matrices, stability calculations
 - **UX uncertainty:** User sees their action succeed locally, but state might change after sync when conflicts resolve
 
+### Alternative E: Server-Side Command Execution
+
+In this approach, commands are pushed to the server instead of events. The server executes each command against its authoritative state, producing events that become the source of truth. Clients still execute commands locally for optimistic UI, but their provisional events are replaced by whatever the server produces.
+
+**Architecture:**
+
+```
+┌─────────────────────────────────────────────────────────────────────────────────┐        ┌───────────────────────────────────────────────────────┐
+│                                      CLIENT                                     │        │                        SERVER                         │
+│                                                             Pending Commands    │        │                                                       │
+│                                                                 Queue           │        │                                                       │
+│   ┌────────┐    Command                                    ┌────┬────┬────┐     │  Push  │   ┌─────────────────┐              ┌───────┐          │
+│   │  User  │────────┬──────────────────────────────────────│ C1 │ C2 │ ...│─────┼────────┼──▶│ Command Handler │◀─────────────│ State │          │
+│   └────────┘        │                                      └────┴────┴────┘     │        │   └────────┬────────┘              └───────┘          │
+│        ▲            │                                                           │        │            │ Authoritative             ▲              │
+│        │            │                                                           │        │            │ Event(s)                  │              │
+│        │            ▼                                   Event Log               │        │            ▼                           │              │
+│        │   ┌─────────────────┐   Provisional  ┌───────────────┬─────────────┐   │  Pull  │   ┌────────────────────┐      ┌────────┴──────────┐   │
+│        │   │ Command Handler │───Event(s)────▶│ Authoritative │ Provisional │◀──┼────────┼───│    Authoritative   │─────▶│  Materializer(s)  │   │
+│        │   └─────────────────┘                │ E1 │ E2 │ E3  │  E4 │ E5    │   │        │   │ E1 │ E2 │ E3 │ ... │      └───────────────────┘   │
+│        │            ▲                         └───────────────┴───────┬─────┘   │        │   └────────────────────┘                              │
+│        │            │                                                 │         │        │          Event Log                                    │
+│        │            │                                                 ▼         │        │                                                       │
+│        │   UI   ┌───┴───┐                          ┌───────────────────┐        │        │                                                       │
+│        └────────│ State │◀─────────────────────────┤  Materializer(s)  │        │        │                                                       │
+│                 └───────┘                          └───────────────────┘        │        │                                                       │
+│                                                                                 │        │                                                       │
+└─────────────────────────────────────────────────────────────────────────────────┘        └───────────────────────────────────────────────────────┘
+```
+
+**Sync flow:**
+
+1. Client executes command locally → produces provisional events (optimistic UI)
+2. Client pushes commands (not events) to server
+3. Server executes each command against authoritative state → produces authoritative events or rejects
+4. Client pulls authoritative events
+5. Client discards provisional events and replays pending commands against new state
+
+**Choose when:**
+
+- **Server-side invariants are required**: Permissions, global uniqueness across users, rate limits, cross-aggregate constraints
+- **You don't trust the client**: Server has final authority over what events are produced
+- **Regulatory requirements for server validation**: Some domains require server-side verification of all state changes
+
+**Trade-offs:**
+
+- **More server-centric**: Clients make requests, not decisions—nothing is real until the server confirms
+- **Increased server complexity**: Server must run command handlers, not just store events
+- **Higher latency for confirmation**: Offline work remains uncertain longer
+- **Command determinism**: Handlers should ideally produce the same events given the same state, or accept that server may produce different results
+
+**Implementation notes:**
+
+Handlers can require server-only services via Effect's dependency injection:
+
+```ts
+// Server provides real implementations
+const ServerServicesLayer = Layer.mergeAll(
+  Layer.succeed(PermissionsService, {
+    hasPermission: (perm) => userPermissions.includes(perm),
+    userId: authenticatedUserId,
+  }),
+  Layer.succeed(RateLimitService, {
+    checkLimit: (userId) => checkRateLimitDatabase(userId),
+  }),
+)
+
+// Client provides permissive stubs (for optimistic execution)
+const ClientServicesLayer = Layer.mergeAll(
+  Layer.succeed(PermissionsService, {
+    hasPermission: () => true,  // Optimistically assume authorized
+    userId: localUserId,
+  }),
+  Layer.succeed(RateLimitService, {
+    checkLimit: () => Effect.succeed({ allowed: true }),
+  }),
+)
+```
+
 ### Alternative F: Hybrid Approach
 
-In this approach, clients are able to issue both authoritative events and commands. This way, clients can emit events for data they own and commands for actions they request. The server can enforce business rules and reject commands that violate them.
+This approach combines elements of local commands and server-side command execution. Clients can choose per-command whether to:
+
+1. **Execute locally and push events** (default, as in the proposed solution) - for invariants that can be validated with local data
+2. **Push commands to server for execution** (as in Alternative E) - for invariants requiring server authority
+
+This provides flexibility at the cost of increased complexity. Each command would need to declare whether it requires server-side execution, and the sync infrastructure must handle both flows.
+
+**Choose when:**
+
+- Most operations can be validated locally, but some require server authority
+- You want to minimize server complexity for the common case while supporting server-side validation where needed
 
 ## Open Questions
 
@@ -654,6 +711,8 @@ In this approach, clients are able to issue both authoritative events and comman
   - **Likely no, at least not in the first version.** The primary benefit of commands is re-validation during sync and reconciliation. Client-only commands skip the sync cycle entirely, so that value proposition doesn't apply. For client-only state mutations, a simple function that validates and calls `store.commit(clientDocTable.set(...))` achieves the same outcome with less ceremony. The potential benefits (devtools visibility, middleware reuse, uniform programming model) don't justify the added API surface until there's demonstrated demand. The existing `clientDocument` API already handles the common case of local UI state.
 - Should we still allow store to commit events directly?
   - **No.** Commands should be the only path for producing events. Routing all synced state changes through handlers encourages validation checks (most events reference entities that may not exist after rebase) and supports evolution—when invariants are added later, the command path is already in place.
+- Should we support server-side command execution (Alternative E) as a built-in option?
+  - This would allow apps to opt into server authority for specific commands while keeping local execution as the default. The infrastructure cost is significant (server must run command handlers, sync protocol changes), so this may be better as a future enhancement once there's demonstrated demand.
 
 ## Acknowledgments
 
