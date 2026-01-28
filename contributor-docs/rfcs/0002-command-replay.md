@@ -276,31 +276,31 @@ const checkInGuestHandler = Commands.handler(commands.checkInGuest)(
 
       const room = state.query(tables.rooms.where({ id: roomId }).first())
       if (!room) {
-        return yield* new RoomNotFound({ roomId })
+        return yield* new RoomNotFoundError({ roomId })
       }
 
       const currentGuests = state.query(
         tables.roomGuests.where({ roomId }).count()
       )
       if (currentGuests >= room.capacity) {
-        return yield* new RoomAtCapacity({ roomId, capacity: room.capacity })
+        return yield* new RoomAtCapacityError({ roomId, capacity: room.capacity })
       }
 
       const alreadyCheckedIn = state.query(
         tables.roomGuests.where({ roomId, guestId }).first()
       )
       if (alreadyCheckedIn) {
-        return yield* new GuestAlreadyCheckedIn({ roomId, guestId })
+        return yield* new GuestAlreadyCheckedInError({ roomId, guestId })
       }
 
       return events.guestCheckedIn({ roomId, guestId, checkedInAt: new Date() })
     })
 )
 // Type: Commands.Handler<
-//         CheckInGuest,                                          // Command
-//         GuestCheckedIn,                                        // Events
-//         RoomNotFound | RoomAtCapacity | GuestAlreadyCheckedIn, // Errors
-//         never                                                  // Requirements
+//         CheckInGuestCommand,
+//         GuestCheckedInEvent,
+//         RoomNotFoundError | RoomAtCapacityError | GuestAlreadyCheckedInError,
+//         never
 //       >
 ```
 
@@ -334,12 +334,12 @@ const checkInGuestHandler = Commands.handler(commands.checkInGuest)(
 
       const room = state.query(tables.rooms.where({ id: roomId }).first())
       if (!room) {
-        return yield* new RoomNotFound({ roomId })
+        return yield* new RoomNotFoundError({ roomId })
       }
 
       const currentGuests = state.query(tables.roomGuests.where({ roomId }).count())
       if (currentGuests >= room.capacity) {
-        return yield* new RoomAtCapacity({ roomId, capacity: room.capacity })
+        return yield* new RoomAtCapacityError({ roomId, capacity: room.capacity })
       }
 
       return events.guestCheckedIn({ roomId, guestId, checkedInAt: new Date() })
@@ -353,21 +353,21 @@ const checkInGuestWithServicesHandler = Commands.handler(commands.checkInGuest)(
       const { roomId, guestId } = command.args
 
       // Generate a unique check-in ID (requires IdGenerator service)
-      const idGenerator = yield* IdGenerator
+      const idGenerator = yield* IdGeneratorService
       const checkInId = yield* idGenerator.generate()
 
       const room = state.query(tables.rooms.where({ id: roomId }).first())
       if (!room) {
-        return yield* new RoomNotFound({ roomId })
+        return yield* new RoomNotFoundError({ roomId })
       }
 
       const currentGuests = state.query(tables.roomGuests.where({ roomId }).count())
       if (currentGuests >= room.capacity) {
-        return yield* new RoomAtCapacity({ roomId, capacity: room.capacity })
+        return yield* new RoomAtCapacityError({ roomId, capacity: room.capacity })
       }
 
       // Track analytics (requires Analytics service)
-      const analytics = yield* Analytics
+      const analytics = yield* AnalyticsService
       yield* analytics.track('guest_checked_in', { roomId, guestId })
 
       return events.guestCheckedIn({ checkInId, roomId, guestId, checkedInAt: new Date() })
@@ -381,19 +381,19 @@ The handler's type signature captures its requirements through Effect's `R` para
 // Base handler: no external services needed
 checkInGuestHandler
 // Type: Commands.Handler<
-//         CheckInGuest,                  // Command
-//         GuestCheckedIn,                // Events
-//         RoomNotFound | RoomAtCapacity, // Errors
-//         never                          // Requirements
+//         CheckInGuestCommand,
+//         GuestCheckedInEvent,
+//         RoomNotFoundError | RoomAtCapacityError,
+//         never
 //       >
 
 // Extended handler: requires IdGenerator and Analytics
 checkInGuestWithServicesHandler
 // Type: Commands.Handler<
-//         CheckInGuest,                  // Command
-//         GuestCheckedIn,                // Events
-//         RoomNotFound | RoomAtCapacity, // Errors
-//         IdGenerator | Analytics        // Requirements
+//         CheckInGuestCommand,
+//         GuestCheckedInEvent,
+//         RoomNotFoundError | RoomAtCapacityError,
+//         IdGeneratorService | AnalyticsService
 //       >
 ```
 
@@ -407,7 +407,7 @@ const withAnalytics = (eventName: string) =>
     Commands.handler(handler.command)(
       (command, state) =>
         Effect.gen(function* () {
-          const analytics = yield* Analytics
+          const analytics = yield* AnalyticsService
           yield* analytics.track(eventName, { command: command.name, args: command.args })
           return yield* handler.handle(command, state)
         })
@@ -417,7 +417,7 @@ const withLogging = <TCommand, TEvents, E, R>(handler: Commands.Handler<TCommand
   Commands.handler(handler.command)(
     (command, state) =>
       Effect.gen(function* () {
-        const logger = yield* Logger
+        const logger = yield* LoggerService
         yield* logger.debug('Executing command', { name: command.name, args: command.args })
         const result = yield* handler.handle(command, state)
         yield* logger.debug('Command completed', { name: command.name })
