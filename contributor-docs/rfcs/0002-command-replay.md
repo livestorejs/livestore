@@ -346,24 +346,31 @@ const checkInGuestHandler = Commands.handler(commands.checkInGuest)(
     })
 )
 
-// Extended handler that adds authorization and external service checks
-const checkInGuestWithPermissionsHandler = Commands.handler(commands.checkInGuest)(
+// Extended handler that adds ID generation and analytics
+const checkInGuestWithServicesHandler = Commands.handler(commands.checkInGuest)(
   (command, state) =>
     Effect.gen(function* () {
-      // Authorization check (requires PermissionsService)
-      const { hasPermission } = yield* PermissionsService
-      if (!hasPermission('guests.checkin')) {
-        return yield* new Unauthorized({ reason: 'Missing permission' })
+      const { roomId, guestId } = command.args
+
+      // Generate a unique check-in ID (requires IdGenerator service)
+      const idGenerator = yield* IdGenerator
+      const checkInId = yield* idGenerator.generate()
+
+      const room = state.query(tables.rooms.where({ id: roomId }).first())
+      if (!room) {
+        return yield* new RoomNotFound({ roomId })
       }
 
-      // External service check (requires GuestService)
-      const guestService = yield* GuestService
-      if (yield* guestService.isBlacklisted(command.args.guestId)) {
-        return yield* new GuestBlacklisted({ guestId: command.args.guestId })
+      const currentGuests = state.query(tables.roomGuests.where({ roomId }).count())
+      if (currentGuests >= room.capacity) {
+        return yield* new RoomAtCapacity({ roomId, capacity: room.capacity })
       }
 
-      // Delegate to base handler
-      return yield* checkInGuestHandler.handle(command, state)
+      // Track analytics (requires Analytics service)
+      const analytics = yield* Analytics
+      yield* analytics.track('guest_checked_in', { roomId, guestId })
+
+      return events.guestCheckedIn({ checkInId, roomId, guestId, checkedInAt: new Date() })
     })
 )
 ```
@@ -380,13 +387,13 @@ checkInGuestHandler
 //         never                          // Requirements
 //       >
 
-// Extended handler: requires PermissionsService and GuestService
-checkInGuestWithPermissionsHandler
+// Extended handler: requires IdGenerator and Analytics
+checkInGuestWithServicesHandler
 // Type: Commands.Handler<
-//         CheckInGuest,                                                    // Command
-//         GuestCheckedIn,                                                  // Events
-//         RoomNotFound | RoomAtCapacity | Unauthorized | GuestBlacklisted, // Errors
-//         PermissionsService | GuestService                                // Requirements
+//         CheckInGuest,                  // Command
+//         GuestCheckedIn,                // Events
+//         RoomNotFound | RoomAtCapacity, // Errors
+//         IdGenerator | Analytics        // Requirements
 //       >
 ```
 
@@ -395,34 +402,34 @@ checkInGuestWithPermissionsHandler
 Common checks can be extracted into reusable middleware functions:
 
 ```ts
-const withPermission = (permission: string) =>
+const withAnalytics = (eventName: string) =>
   <TCommand, TEvents, E, R>(handler: Commands.Handler<TCommand, TEvents, E, R>) =>
     Commands.handler(handler.command)(
       (command, state) =>
         Effect.gen(function* () {
-          const { hasPermission } = yield* PermissionsService
-          if (!hasPermission(permission)) {
-            return yield* new Unauthorized({ reason: `Missing: ${permission}` })
-          }
+          const analytics = yield* Analytics
+          yield* analytics.track(eventName, { command: command.name, args: command.args })
           return yield* handler.handle(command, state)
         })
     )
 
-const withAuditLog = <TCommand, TEvents, E, R>(handler: Commands.Handler<TCommand, TEvents, E, R>) =>
+const withLogging = <TCommand, TEvents, E, R>(handler: Commands.Handler<TCommand, TEvents, E, R>) =>
   Commands.handler(handler.command)(
     (command, state) =>
       Effect.gen(function* () {
-        const audit = yield* AuditService
-        yield* audit.log({ command: command.name, args: command.args, timestamp: command.timestamp })
-        return yield* handler.handle(command, state)
+        const logger = yield* Logger
+        yield* logger.debug('Executing command', { name: command.name, args: command.args })
+        const result = yield* handler.handle(command, state)
+        yield* logger.debug('Command completed', { name: command.name })
+        return result
       })
   )
 
 // Compose with pipe
 const checkInGuestFullHandler = pipe(
   checkInGuestHandler,
-  withPermission('guests.checkin'),
-  withAuditLog,
+  withAnalytics('guest_check_in'),
+  withLogging,
 )
 ```
 
