@@ -367,11 +367,21 @@ The handler's type signature captures its requirements through Effect's `R` para
 ```ts
 // Base handler: no external services needed
 checkInGuestHandler
-// Type: Handler<CheckInGuest, RoomNotFound | RoomAtCapacity, never>
+// Type: Commands.Handler<
+//         CheckInGuest,                  // Command
+//         GuestCheckedIn,                // Events
+//         RoomNotFound | RoomAtCapacity, // Errors
+//         never                          // Services
+//       >
 
 // Extended handler: requires PermissionsService and GuestService
 checkInGuestWithPermissionsHandler
-// Type: Handler<CheckInGuest, RoomNotFound | RoomAtCapacity | Unauthorized | GuestBlacklisted, PermissionsService | GuestService>
+// Type: Commands.Handler<
+//         CheckInGuest,                                                    // Command
+//         GuestCheckedIn,                                                  // Events
+//         RoomNotFound | RoomAtCapacity | Unauthorized | GuestBlacklisted, // Errors
+//         PermissionsService | GuestService                                // Services
+//       >
 ```
 
 ##### Reusable Middleware
@@ -380,7 +390,7 @@ Common checks can be extracted into reusable middleware functions:
 
 ```ts
 const withPermission = (permission: string) =>
-  <TCommand, E, R>(handler: Commands.Handler<TCommand, E, R>) =>
+  <TCommand, TEvents, E, R>(handler: Commands.Handler<TCommand, TEvents, E, R>) =>
     Commands.handler(handler.command)(
       (command, state) =>
         Effect.gen(function* () {
@@ -392,7 +402,7 @@ const withPermission = (permission: string) =>
         })
     )
 
-const withAuditLog = <TCommand, E, R>(handler: Commands.Handler<TCommand, E, R>) =>
+const withAuditLog = <TCommand, TEvents, E, R>(handler: Commands.Handler<TCommand, TEvents, E, R>) =>
   Commands.handler(handler.command)(
     (command, state) =>
       Effect.gen(function* () {
