@@ -20,7 +20,7 @@ export S2_BASIN="ls-examples"        # Optional, defaults to "ls-examples"
 
 Start s2-lite locally:
 ```bash
-docker run -p 8080:80 ghcr.io/s2-streamstore/s2-lite
+docker run -p 8080:80 ghcr.io/s2-streamstore/s2 lite
 ```
 
 Then configure the example:

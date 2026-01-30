@@ -187,7 +187,7 @@ jobs:
       - name: Start s2-lite container
         if: ${{ matrix.provider == 's2' }}
         run: |
-          docker run -d --name s2-lite -p 4566:80 ghcr.io/s2-streamstore/s2-lite
+          docker run -d --name s2-lite -p 4566:80 ghcr.io/s2-streamstore/s2 lite
           # Wait for s2-lite to be ready
           for i in {1..30}; do
             if curl -sf http://localhost:4566/ping > /dev/null 2>&1; then

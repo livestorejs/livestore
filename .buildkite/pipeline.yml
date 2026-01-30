@@ -64,7 +64,7 @@ steps:
         export OTEL_EXPORTER_OTLP_HEADERS
 
         if [ "{{matrix.provider}}" = "s2" ]; then
-          docker run -d --name s2-lite -p 4566:80 ghcr.io/s2-streamstore/s2-lite
+          docker run -d --name s2-lite -p 4566:80 ghcr.io/s2-streamstore/s2 lite
           for i in $(seq 1 30); do
             if curl -sf http://localhost:4566/ping > /dev/null 2>&1; then
               echo "s2-lite is ready"
