@@ -1,7 +1,4 @@
 # Generated file - DO NOT EDIT
 # Source: pnpm-workspace.yaml.genie.ts
 
-packages:
-  - .
-  - packages/@livestore/*
-  - packages/@local/*
+packages: [., packages/@livestore/*, packages/@local/*]
