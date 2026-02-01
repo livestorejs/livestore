@@ -88,5 +88,5 @@ export default oxlintConfig({
       rules: { 'import/no-unassigned-import': 'off' },
     },
   ],
-  ignorePatterns: baseOxlintIgnorePatterns,
+  ignorePatterns: [...baseOxlintIgnorePatterns, 'tests/integration/node_modules/**'],
 })

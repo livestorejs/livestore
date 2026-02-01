@@ -20,9 +20,10 @@ import {
   tsconfigJson,
   oxlintConfig,
   oxfmtConfig,
+  pnpmWorkspaceYaml,
 } from '../repos/effect-utils/packages/@overeng/genie/src/runtime/mod.ts'
 
-export { tsconfigJson, packageJson, oxlintConfig, oxfmtConfig }
+export { tsconfigJson, packageJson, oxlintConfig, oxfmtConfig, pnpmWorkspaceYaml }
 
 import {
   catalog as effectUtilsCatalog,
@@ -236,15 +237,15 @@ export const localPackageDefaults = {
  * Each package includes itself and related packages in its workspace.
  * This enables workspace:* protocol to resolve correctly.
  *
+ * Uses effect-utils pnpmWorkspaceYaml for consistent settings (dedupePeerDependents, etc.)
+ *
  * @param patterns - Glob patterns for workspace packages (default: ['../*'] for sibling packages)
  */
 export const pnpmWorkspace = (...patterns: string[]) => {
   const allPatterns = patterns.length > 0 ? patterns : ['../*']
-  const content = ['packages:', '  - .', ...allPatterns.map(p => `  - ${p}`)].join('\n') + '\n'
-  return {
-    data: { packages: ['.', ...allPatterns] },
-    stringify: () => content,
-  }
+  return pnpmWorkspaceYaml({
+    packages: ['.', ...allPatterns],
+  })
 }
 
 // =============================================================================

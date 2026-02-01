@@ -13,12 +13,22 @@
   },
   "experimentalSortPackageJson": true,
   "ignorePatterns": [
+    "**/node_modules/**",
+    "**/.pnpm/**",
+    "**/.pnpm-store/**",
+    "**/dist/**",
+    "**/storybook-static/**",
+    "**/.turbo/**",
     "**/*.gen.ts",
     "**/*.gen.tsx",
     "**/*.generated.ts",
     "**/*.generated.tsx",
     "**/package.json",
     "**/tsconfig.json",
-    "**/tsconfig.*.json"
+    "**/tsconfig.*.json",
+    "**/node_modules/**",
+    "**/.pnpm/**",
+    "**/.pnpm-store/**",
+    "tests/integration/node_modules/**"
   ]
 }

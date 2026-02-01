@@ -13,5 +13,11 @@ export default oxfmtConfig({
     internalPattern: ['@livestore/', '@local/'],
   },
 
-  ignorePatterns: baseOxfmtIgnorePatterns,
+  ignorePatterns: [
+    ...baseOxfmtIgnorePatterns,
+    '**/node_modules/**',
+    '**/.pnpm/**',
+    '**/.pnpm-store/**',
+    'tests/integration/node_modules/**',
+  ],
 })

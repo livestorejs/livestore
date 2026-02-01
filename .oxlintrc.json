@@ -15,6 +15,7 @@
     "**/.nitro/**",
     "**/.tanstack/**",
     "**/.direnv/**",
+    "**/tmp/**",
     "**/playwright-report/**",
     "**/test-results/**",
     "**/nix/**",
@@ -22,7 +23,8 @@
     "**/.vite/**",
     "**/patches/**",
     "**/.cache/**",
-    "**/.turbo/**"
+    "**/.turbo/**",
+    "tests/integration/node_modules/**"
   ],
   "categories": {
     "correctness": "error",

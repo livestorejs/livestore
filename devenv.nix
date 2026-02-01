@@ -67,10 +67,62 @@ in
     taskModules.genie
     taskModules.megarepo
     (taskModules.ts { tsconfigFile = "tsconfig.dev.json"; })
-    # NOTE: check module temporarily disabled for debugging
-    # (taskModules.check { hasTests = false; hasLint = false; })
+    (taskModules.check { hasTests = false; hasNixCheck = false; })
     (taskModules.clean { packages = pnpmPackages; extraDirs = [ ".astro" ]; })
-    # TODO: Switch to oxlint/oxfmt once we migrate from biome. For now we're using `mono lint`.
+    # TODO: Switch fully to oxlint/oxfmt once we migrate from biome. For now `mono lint` remains primary.
+    (taskModules.lint-oxc {
+      lintPaths = [
+        "packages"
+        "tests"
+        "scripts"
+        "docs"
+        ".github"
+      ];
+      execIfModifiedPatterns = [
+        # packages/@livestore
+        "packages/@livestore/*/src/**/*.ts"
+        "packages/@livestore/*/src/**/*.tsx"
+        "packages/@livestore/*/src/**/*.js"
+        "packages/@livestore/*/src/**/*.jsx"
+        "packages/@livestore/*/*.ts"
+        "packages/@livestore/*/*.js"
+        "packages/@livestore/*/bin/*.ts"
+        "packages/@livestore/*/examples/*/*.ts"
+        "packages/@livestore/*/examples/*/*.tsx"
+        "packages/@livestore/*/examples/*/src/**/*.ts"
+        "packages/@livestore/*/examples/*/src/**/*.tsx"
+        # packages/@local
+        "packages/@local/*/src/**/*.ts"
+        "packages/@local/*/src/**/*.tsx"
+        "packages/@local/*/*.ts"
+        "packages/@local/*/*.js"
+        # tests
+        "tests/**/*.ts"
+        "tests/**/*.tsx"
+        # scripts
+        "scripts/**/*.ts"
+        "scripts/**/*.js"
+        # docs
+        "docs/src/**/*.ts"
+        "docs/src/**/*.tsx"
+        # linter configs
+        ".oxfmtrc.json"
+        ".oxlintrc.json"
+      ];
+      geniePatterns = [
+        ".github/workflows/*.genie.ts"
+        ".oxfmtrc.json.genie.ts"
+        ".oxlintrc.json.genie.ts"
+        "scripts/*.genie.ts"
+        "docs/*.genie.ts"
+        "docs/src/**/*.genie.ts"
+        "tests/**/*.genie.ts"
+        "packages/@livestore/*/*.genie.ts"
+        "packages/@local/*/*.genie.ts"
+        "packages/@local/*/**/*.genie.ts"
+      ];
+      genieCoverageDirs = [ "packages" "tests" "docs" "scripts" ];
+    })
     (taskModules.pnpm { packages = pnpmPackages; })
     # Setup task (auto-runs in enterShell)
     (taskModules.setup {
