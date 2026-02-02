@@ -8,6 +8,9 @@ let
   effectUtils = inputs.effect-utils;
   taskModules = effectUtils.devenvModules.tasks;
 
+  # Custom oxlint with NAPI bindings for JavaScript plugin support
+  oxlintNpm = effectUtils.lib.mkOxlintNpm { inherit pkgs; bun = pkgs.bun; };
+
   # Packages managed by pnpm (shared between pnpm and clean modules)
   # NOTE: Using pnpm temporarily due to bun bugs. Plan to switch back once fixed.
   # See: effect-utils/context/workarounds/bun-issues.md
@@ -133,16 +136,13 @@ in
         "docs"
         "scripts"
       ];
+      tsconfig = "tsconfig.dev.json";
     })
     (taskModules.pnpm { packages = pnpmPackages; })
     # Setup task (auto-runs in enterShell)
     (taskModules.setup {
-      tasks = [
-        "megarepo:generate"
-        "pnpm:install"
-        "genie:run"
-        "ts:build"
-      ];
+      requiredTasks = [ ];
+      optionalTasks = [ "megarepo:generate" "pnpm:install" "genie:run" "ts:build" ];
     })
   ];
 
@@ -151,7 +151,7 @@ in
     pkgs.bun
     pkgs.nodejs_24
     pkgs.typescript
-    pkgs.oxlint
+    oxlintNpm
     pkgs.oxfmt
     # CLIs from effect-utils (Nix-built packages)
     effectUtils.packages.${pkgs.system}.genie
