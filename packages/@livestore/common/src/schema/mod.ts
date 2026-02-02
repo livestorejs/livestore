@@ -1,3 +1,5 @@
+export { defineCommand } from './CommandDef/define.ts'
+export * as CommandDef from './CommandDef/mod.ts'
 export * from './EventDef/mod.ts'
 export * as EventSequenceNumber from './EventSequenceNumber/mod.ts'
 export * as Events from './events.ts'

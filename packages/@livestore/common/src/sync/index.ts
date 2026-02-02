@@ -1,4 +1,5 @@
 export * from './ClientSessionSyncProcessor.ts'
+export * from './CommandQueueManager.ts'
 export * from './mock-sync-backend.ts'
 export * from './sync.ts'
 export { NetworkStatus } from './sync-backend.ts'
