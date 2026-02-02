@@ -1,6 +1,7 @@
 import {
   type Bindable,
   type ClientSession,
+  CommandExecutionError,
   Devtools,
   getExecStatementsFromMaterializer,
   getResultSchema,
@@ -21,7 +22,13 @@ import {
 } from '@livestore/common'
 import type { StreamEventsOptions } from '@livestore/common/leader-thread'
 import type { LiveStoreSchema } from '@livestore/common/schema'
-import { EventSequenceNumber, LiveStoreEvent, resolveEventDef, SystemTables } from '@livestore/common/schema'
+import {
+  type CommandDef,
+  EventSequenceNumber,
+  LiveStoreEvent,
+  resolveEventDef,
+  SystemTables,
+} from '@livestore/common/schema'
 import { assertNever, isDevEnv, objectToString, omitUndefineds, shouldNeverHappen } from '@livestore/utils'
 import type { Scope } from '@livestore/utils/effect'
 import {
@@ -868,6 +875,131 @@ export class Store<TSchema extends LiveStoreSchema = LiveStoreSchema.Any, TConte
     )
   }
   //#endregion commit
+
+  // #region execute
+  /**
+   * Execute a command against the current state.
+   *
+   * Commands encode user intentions that can be validated against the current state
+   * and re-evaluated during sync reconciliation. The handler produces events that
+   * are committed atomically.
+   *
+   * @param command - The command instance to execute (created by calling a CommandDef)
+   * @returns An ExecuteResult indicating success or failure
+   *
+   * @example
+   * ```ts
+   * const result = store.execute(commands.checkInGuest({ roomId, guestId }))
+   *
+   * if (result._tag === 'failed') {
+   *   // Command failed validation
+   *   toast.error(result.error.message)
+   *   return
+   * }
+   *
+   * // Command succeeded locally - events are materialized (optimistic UI)
+   * const guest = store.query(tables.guests.get(guestId))
+   * toast.success(guest.status === 'waitlisted' ? 'Waitlisted' : 'Checked in')
+   *
+   * // Optionally await server confirmation
+   * await result.confirmed
+   * ```
+   */
+  execute = <TName extends string, TArgs>(
+    command: CommandDef.CommandInstance<TName, TArgs>,
+  ): CommandDef.ExecuteResult => {
+    this.checkShutdown('execute')
+
+    // Look up command definition from schema
+    const commandDef = this.schema.commandDefsMap.get(command.name) as CommandDef.CommandDef<TName, TArgs> | undefined
+    if (!commandDef) {
+      return {
+        _tag: 'failed',
+        error: new CommandExecutionError({
+          commandName: command.name,
+          commandId: command.id,
+          phase: 'validation',
+          cause: `No command definition found for '${command.name}'`,
+        }),
+      }
+    }
+
+    // Create handler context with state.query
+    const handlerContext = {
+      state: {
+        query: <TResult>(query: Queryable<TResult>): TResult => this.query(query),
+      },
+    }
+
+    // Execute handler and catch errors
+    let events: ReadonlyArray<LiveStoreEvent.Input.Decoded>
+    try {
+      events = commandDef.handler(command.args, handlerContext)
+    } catch (error) {
+      return {
+        _tag: 'failed',
+        error: new CommandExecutionError({
+          commandName: command.name,
+          commandId: command.id,
+          phase: 'validation',
+          cause: error,
+        }),
+      }
+    }
+
+    // Commit produced events (uses existing commit path)
+    if (events.length > 0) {
+      this.commit(...events)
+    }
+
+    // TODO: In full implementation, enqueue command to pending queue
+    // and return a proper confirmation promise that resolves when
+    // events are pushed to sync backend.
+    // For now, we return a promise that resolves immediately.
+
+    return {
+      _tag: 'pending',
+      commandId: command.id,
+      confirmed: Promise.resolve(),
+    }
+  }
+
+  /**
+   * Returns an async iterable of command conflicts.
+   *
+   * Conflicts occur when a command fails during replay after sync reconciliation.
+   * This happens when the underlying state changes (due to remote events being pulled)
+   * and the command handler throws an error when re-executed against the new state.
+   *
+   * @param options - Optional filter to only receive conflicts for specific commands
+   * @returns AsyncIterable that yields CommandConflict objects
+   *
+   * @example
+   * ```ts
+   * // Handle all conflicts
+   * for await (const conflict of store.conflicts()) {
+   *   toast.error(`Action failed: ${conflict.command.name}`)
+   * }
+   *
+   * // Filter by command name
+   * for await (const conflict of store.conflicts({ commands: ['CheckInGuest', 'Payment'] })) {
+   *   handleCriticalConflict(conflict)
+   * }
+   * ```
+   */
+  conflicts = (_options?: {
+    /** Only include conflicts for these command names */
+    commands?: ReadonlyArray<string>
+  }): AsyncIterable<CommandDef.CommandConflict> => {
+    // TODO: In full implementation, this should return conflicts from the
+    // LeaderSyncProcessor command replay. For now, return an empty async iterable.
+    return {
+      [Symbol.asyncIterator]: () => ({
+        next: async () => ({ done: true as const, value: undefined as never }),
+      }),
+    }
+  }
+  // #endregion execute
 
   /**
    * Returns an async iterable of events from the eventlog.

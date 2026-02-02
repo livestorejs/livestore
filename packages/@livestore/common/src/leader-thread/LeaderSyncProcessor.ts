@@ -24,9 +24,10 @@ import type * as otel from '@opentelemetry/api'
 import { type MaterializeError, type SqliteDb, UnknownError } from '../adapter-types.ts'
 import { IntentionalShutdownCause } from '../errors.ts'
 import { makeMaterializerHash } from '../materializer-helper.ts'
-import type { LiveStoreSchema } from '../schema/mod.ts'
+import type { CommandDef, LiveStoreSchema } from '../schema/mod.ts'
 import { EventSequenceNumber, LiveStoreEvent, resolveEventDef, SystemTables } from '../schema/mod.ts'
 import { EVENTLOG_META_TABLE, SYNC_STATUS_TABLE } from '../schema/state/sqlite/system-tables/eventlog-tables.ts'
+import type { CommandQueueManager } from '../sync/CommandQueueManager.ts'
 import {
   type InvalidPullError,
   type InvalidPushError,
@@ -839,7 +840,19 @@ const backgroundBackendPulling = Effect.fn('@livestore/common:LeaderSyncProcesso
 
       yield* materializeEventsBatch({ batchItems: mergeResult.newEvents, deferreds: undefined })
 
-      yield* SubscriptionRef.set(syncStateSref, mergeResult.newSyncState)
+      // Replay pending commands after rebase to validate them against the new state
+        if (mergeResult._tag === 'rebase') {
+          const { commandQueueManager, commandConflictQueue } = yield* LeaderThreadCtx
+          yield* replayPendingCommands({
+            commandQueueManager,
+            commandConflictQueue,
+            schema,
+            dbState: db,
+            otelSpan,
+          })
+        }
+
+        yield* SubscriptionRef.set(syncStateSref, mergeResult.newSyncState)
 
       // Allow local pushes to be processed again
       if (pageInfo._tag === 'NoMore') {
@@ -1213,3 +1226,164 @@ const clearLocalDatabases = ({ dbEventlog, dbState }: { dbEventlog: SqliteDb; db
       dbState.execute(`DROP TABLE IF EXISTS "${name}"`)
     }
   })
+
+/**
+ * Replay pending commands after a rebase to validate them against the new state.
+ *
+ * When a rebase occurs, the local state has changed due to incoming remote events.
+ * Commands that were executed against the old state need to be re-validated against
+ * the new state. If a command's preconditions are no longer met, it fails and a
+ * conflict is emitted.
+ *
+ * @returns Object containing:
+ *   - `conflicts`: Commands that failed during replay
+ *   - `validCommandIds`: IDs of commands that succeeded replay
+ */
+const replayPendingCommands = ({
+  commandQueueManager,
+  commandConflictQueue,
+  schema,
+  dbState,
+  otelSpan,
+}: {
+  commandQueueManager: CommandQueueManager
+  commandConflictQueue: Queue.Queue<CommandDef.CommandConflict>
+  schema: LiveStoreSchema
+  dbState: SqliteDb
+  otelSpan: otel.Span | undefined
+}): Effect.Effect<
+  {
+    conflicts: ReadonlyArray<CommandDef.CommandConflict>
+    validCommandIds: ReadonlyArray<string>
+  },
+  never,
+  never
+> =>
+  Effect.gen(function* () {
+    const pendingCommands = commandQueueManager.getPending()
+
+    if (pendingCommands.length === 0) {
+      return { conflicts: [], validCommandIds: [] }
+    }
+
+    otelSpan?.addEvent('command-replay:start', { commandCount: pendingCommands.length }, undefined)
+
+    const conflicts: CommandDef.CommandConflict[] = []
+    const validCommandIds: string[] = []
+
+    for (const pendingCommand of pendingCommands) {
+      const commandDef = schema.commandDefsMap.get(pendingCommand.name)
+      // args is stored as a JSON string in SQLite
+      const parsedArgs: unknown = JSON.parse(pendingCommand.args as string)
+
+      if (commandDef === undefined) {
+        // Command definition no longer exists in schema - treat as conflict
+        const conflict: CommandDef.CommandConflict = {
+          command: {
+            id: pendingCommand.id,
+            name: pendingCommand.name,
+            payload: parsedArgs,
+          },
+          error: new Error(`Command definition '${pendingCommand.name}' not found in schema`),
+          timestamp: Date.now(),
+        }
+        conflicts.push(conflict)
+        commandQueueManager.fail(pendingCommand.id, conflict.error)
+        yield* Queue.offer(commandConflictQueue, conflict)
+        continue
+      }
+
+      // Create handler context with state query
+      const handlerContext: CommandDef.CommandHandlerContext = {
+        state: {
+          query: <TResult>(query: unknown): TResult => {
+            // Execute the query against the current state db
+            // The query is expected to be a SQL query or query builder
+            if (typeof query === 'string') {
+              const result = dbState.select(query)
+              return result as TResult
+            }
+            // Handle query builders and live query definitions
+            if (query && typeof query === 'object' && 'sql' in query) {
+              const result = dbState.select((query as { sql: string }).sql)
+              return result as TResult
+            }
+            // For other query types, attempt to execute as-is
+            return dbState.select(query as string) as TResult
+          },
+        },
+      }
+
+      // Execute the handler to validate the command against the new state
+      // We use a synchronous try-catch here since handlers are synchronous
+      const replayResult = executeCommandHandler(commandDef, parsedArgs, handlerContext)
+
+      if (replayResult.success) {
+        // Command executed successfully - it's still valid
+        validCommandIds.push(pendingCommand.id)
+
+        otelSpan?.addEvent(
+          'command-replay:success',
+          { commandId: pendingCommand.id, commandName: pendingCommand.name },
+          undefined,
+        )
+      } else {
+        // Command failed during replay - emit conflict
+        const conflict: CommandDef.CommandConflict = {
+          command: {
+            id: pendingCommand.id,
+            name: pendingCommand.name,
+            payload: parsedArgs,
+          },
+          error: replayResult.error,
+          timestamp: Date.now(),
+        }
+
+        conflicts.push(conflict)
+        commandQueueManager.fail(pendingCommand.id, replayResult.error)
+        yield* Queue.offer(commandConflictQueue, conflict)
+
+        otelSpan?.addEvent(
+          'command-replay:failure',
+          {
+            commandId: pendingCommand.id,
+            commandName: pendingCommand.name,
+            error: replayResult.error.message,
+          },
+          undefined,
+        )
+      }
+    }
+
+    otelSpan?.addEvent(
+      'command-replay:complete',
+      {
+        totalCommands: pendingCommands.length,
+        validCount: validCommandIds.length,
+        conflictCount: conflicts.length,
+      },
+      undefined,
+    )
+
+    return { conflicts, validCommandIds }
+  }).pipe(Effect.withSpan('@livestore/common:LeaderSyncProcessor:replayPendingCommands'))
+
+/**
+ * Execute a command handler synchronously, catching any errors.
+ * Returns a discriminated union indicating success or failure.
+ */
+const executeCommandHandler = (
+  commandDef: CommandDef.CommandDef.AnyWithoutFn,
+  args: unknown,
+  context: CommandDef.CommandHandlerContext,
+): { success: true } | { success: false; error: Error } => {
+  try {
+    commandDef.handler(args, context)
+    return { success: true }
+  } catch (error) {
+    return {
+      success: false,
+      error: error instanceof Error ? error : new Error(String(error)),
+    }
+  }
+}

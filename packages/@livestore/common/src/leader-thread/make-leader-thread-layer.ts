@@ -23,8 +23,9 @@ import {
 } from '../adapter-types.ts'
 import type { MigrationsReport } from '../defs.ts'
 import type * as Devtools from '../devtools/mod.ts'
-import type { LiveStoreSchema } from '../schema/mod.ts'
+import type { CommandDef, LiveStoreSchema } from '../schema/mod.ts'
 import { EventSequenceNumber, LiveStoreEvent, SystemTables } from '../schema/mod.ts'
+import { makeCommandQueueManager } from '../sync/CommandQueueManager.ts'
 import type { InvalidPullError, IsOfflineError, SyncBackend, SyncOptions } from '../sync/sync.ts'
 import { SyncState } from '../sync/syncstate.ts'
 import { sql } from '../util.ts'
@@ -185,6 +186,12 @@ export const makeLeaderThreadLayer = ({
       Effect.acquireRelease(Queue.shutdown),
     )
 
+    // Initialize command infrastructure
+    const commandQueueManager = makeCommandQueueManager(dbState)
+    const commandConflictQueue = yield* Queue.unbounded<CommandDef.CommandConflict>().pipe(
+      Effect.acquireRelease(Queue.shutdown),
+    )
+
     const devtoolsContext =
       devtoolsOptions.enabled === true
         ? {
@@ -213,6 +220,8 @@ export const makeLeaderThreadLayer = ({
       extraIncomingMessagesQueue,
       devtools: devtoolsContext,
       networkStatus,
+      commandQueueManager,
+      commandConflictQueue,
       // State will be set during `bootLeaderThread`
       initialState: {} as any as LeaderThreadCtx['Type']['initialState'],
     } satisfies typeof LeaderThreadCtx.Service
