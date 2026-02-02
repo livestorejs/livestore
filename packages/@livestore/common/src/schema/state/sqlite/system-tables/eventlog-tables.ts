@@ -61,4 +61,58 @@ export const syncStatusTable = table({
 
 export type SyncStatusRow = typeof syncStatusTable.Type
 
-export const eventlogSystemTables = [eventlogMetaTable, syncStatusTable] as const
+export const PENDING_COMMANDS_TABLE = '__livestore_pending_commands'
+
+/**
+ * Tracks pending commands awaiting confirmation.
+ *
+ * Commands are:
+ * 1. Enqueued when successfully executed locally (producing pending events)
+ * 2. Replayed during reconciliation when new confirmed events arrive
+ * 3. Dequeued when their events are successfully pushed to the sync backend
+ */
+export const pendingCommandsTable = table({
+  name: PENDING_COMMANDS_TABLE,
+  columns: {
+    /** Unique identifier for the command instance (nanoid). */
+    id: SqliteDsl.text({ primaryKey: true }),
+
+    /** The command type name (e.g., 'CheckInGuest'). */
+    name: SqliteDsl.text({ nullable: false }),
+
+    /** Serialized command arguments (JSON). */
+    args: SqliteDsl.json({ nullable: false }),
+
+    /** ISO timestamp when the command was enqueued. */
+    createdAt: SqliteDsl.text({ nullable: false }),
+
+    /**
+     * Array of event sequence numbers produced by this command.
+     * Used to correlate events with their originating command.
+     * Format: Array of { global: number, client: number, rebaseGeneration: number }
+     */
+    producedEventSeqNums: SqliteDsl.json({ nullable: true }),
+
+    /**
+     * Current status of the command.
+     * - 'pending': Awaiting confirmation
+     * - 'confirmed': Events pushed to sync backend
+     * - 'failed': Failed during replay (conflict)
+     */
+    status: SqliteDsl.text({ nullable: false }),
+
+    /** Error details if status is 'failed' (JSON). */
+    error: SqliteDsl.json({ nullable: true }),
+  },
+  indexes: [
+    { columns: ['status'], name: 'idx_pending_commands_status' },
+    { columns: ['createdAt'], name: 'idx_pending_commands_created' },
+  ],
+})
+
+export type PendingCommandRow = typeof pendingCommandsTable.Type
+
+/** Status values for pending commands. */
+export type PendingCommandStatus = 'pending' | 'confirmed' | 'failed'
+
+export const eventlogSystemTables = [eventlogMetaTable, syncStatusTable, pendingCommandsTable] as const

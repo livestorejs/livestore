@@ -186,8 +186,8 @@ export const makeLeaderThreadLayer = ({
       Effect.acquireRelease(Queue.shutdown),
     )
 
-    // Initialize command infrastructure
-    const commandQueueManager = makeCommandQueueManager(dbState)
+    // Initialize command infrastructure (uses eventlog DB for persistence across schema changes)
+    const commandQueueManager = makeCommandQueueManager(dbEventlog)
     const commandConflictQueue = yield* Queue.unbounded<CommandDef.CommandConflict>().pipe(
       Effect.acquireRelease(Queue.shutdown),
     )

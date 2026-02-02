@@ -2,10 +2,6 @@ import * as EventSequenceNumber from '../../../EventSequenceNumber/mod.ts'
 import { SqliteDsl } from '../db-schema/mod.ts'
 import { table } from '../table-def.ts'
 
-export * from './pending-commands-table.ts'
-
-import { pendingCommandsTable } from './pending-commands-table.ts'
-
 /**
  * STATE DATABASE SYSTEM TABLES
  *
@@ -68,11 +64,6 @@ export const sessionChangesetMetaTable = table({
 
 export type SessionChangesetMetaRow = typeof sessionChangesetMetaTable.Type
 
-export const stateSystemTables = [
-  schemaMetaTable,
-  schemaEventDefsMetaTable,
-  sessionChangesetMetaTable,
-  pendingCommandsTable,
-] as const
+export const stateSystemTables = [schemaMetaTable, schemaEventDefsMetaTable, sessionChangesetMetaTable] as const
 
 export const isStateSystemTable = (tableName: string) => stateSystemTables.some((_) => _.sqliteDef.name === tableName)
