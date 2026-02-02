@@ -67,8 +67,14 @@ in
     taskModules.genie
     taskModules.megarepo
     (taskModules.ts { tsconfigFile = "tsconfig.dev.json"; })
-    (taskModules.check { hasTests = false; hasNixCheck = false; })
-    (taskModules.clean { packages = pnpmPackages; extraDirs = [ ".astro" ]; })
+    (taskModules.check {
+      hasTests = false;
+      hasNixCheck = false;
+    })
+    (taskModules.clean {
+      packages = pnpmPackages;
+      extraDirs = [ ".astro" ];
+    })
     # TODO: Switch fully to oxlint/oxfmt once we migrate from biome. For now `mono lint` remains primary.
     (taskModules.lint-oxc {
       lintPaths = [
@@ -121,7 +127,12 @@ in
         "packages/@local/*/*.genie.ts"
         "packages/@local/*/**/*.genie.ts"
       ];
-      genieCoverageDirs = [ "packages" "tests" "docs" "scripts" ];
+      genieCoverageDirs = [
+        "packages"
+        "tests"
+        "docs"
+        "scripts"
+      ];
     })
     (taskModules.pnpm { packages = pnpmPackages; })
     # Setup task (auto-runs in enterShell)
@@ -169,6 +180,15 @@ in
       NIX_LD_LIBRARY_PATH = ldPath;
     }
   );
+
+  git-hooks.enable = true;
+  git-hooks.hooks.check-quick = {
+    enable = true;
+    entry = "${pkgs.bash}/bin/bash -c 'dt check:quick'";
+    stages = [ "pre-commit" ];
+    always_run = true;
+    pass_filenames = false;
+  };
 
   enterShell = ''
     sp="$(git rev-parse --show-superproject-working-tree 2>/dev/null)";
