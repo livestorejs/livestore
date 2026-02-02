@@ -64,12 +64,10 @@ export type SyncStatusRow = typeof syncStatusTable.Type
 export const PENDING_COMMANDS_TABLE = '__livestore_pending_commands'
 
 /**
- * Tracks pending commands awaiting confirmation.
+ * Stores pending commands awaiting confirmation.
  *
- * Commands are:
- * 1. Enqueued when successfully executed locally (producing pending events)
- * 2. Replayed during reconciliation when new confirmed events arrive
- * 3. Dequeued when their events are successfully pushed to the sync backend
+ * Commands are inserted when executed locally and deleted when confirmed or failed.
+ * If a row exists, the command is pending.
  */
 export const pendingCommandsTable = table({
   name: PENDING_COMMANDS_TABLE,
@@ -92,27 +90,10 @@ export const pendingCommandsTable = table({
      * Format: Array of { global: number, client: number, rebaseGeneration: number }
      */
     producedEventSeqNums: SqliteDsl.json({ nullable: true }),
-
-    /**
-     * Current status of the command.
-     * - 'pending': Awaiting confirmation
-     * - 'confirmed': Events pushed to sync backend
-     * - 'failed': Failed during replay (conflict)
-     */
-    status: SqliteDsl.text({ nullable: false }),
-
-    /** Error details if status is 'failed' (JSON). */
-    error: SqliteDsl.json({ nullable: true }),
   },
-  indexes: [
-    { columns: ['status'], name: 'idx_pending_commands_status' },
-    { columns: ['createdAt'], name: 'idx_pending_commands_created' },
-  ],
+  indexes: [{ columns: ['createdAt'], name: 'idx_pending_commands_created' }],
 })
 
 export type PendingCommandRow = typeof pendingCommandsTable.Type
-
-/** Status values for pending commands. */
-export type PendingCommandStatus = 'pending' | 'confirmed' | 'failed'
 
 export const eventlogSystemTables = [eventlogMetaTable, syncStatusTable, pendingCommandsTable] as const

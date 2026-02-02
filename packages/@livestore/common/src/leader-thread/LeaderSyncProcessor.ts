@@ -1288,7 +1288,7 @@ const replayPendingCommands = ({
           timestamp: Date.now(),
         }
         conflicts.push(conflict)
-        commandQueueManager.fail(pendingCommand.id, conflict.error)
+        commandQueueManager.fail(pendingCommand.id)
         yield* Queue.offer(commandConflictQueue, conflict)
         continue
       }
@@ -1340,7 +1340,7 @@ const replayPendingCommands = ({
         }
 
         conflicts.push(conflict)
-        commandQueueManager.fail(pendingCommand.id, replayResult.error)
+        commandQueueManager.fail(pendingCommand.id)
         yield* Queue.offer(commandConflictQueue, conflict)
 
         otelSpan?.addEvent(
