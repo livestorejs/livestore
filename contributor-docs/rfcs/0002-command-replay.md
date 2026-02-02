@@ -237,219 +237,119 @@ export const commands = {
 }
 ```
 
-#### Command Errors
-
-Command errors are defined as tagged errors using Effect's `Schema.TaggedError`. This enables type-safe, exhaustive handling of all possible error cases.
-
-```ts
-import { Schema } from 'effect'
-
-class RoomNotFoundError extends Schema.TaggedError<RoomNotFoundError>()('RoomNotFoundError', {
-  roomId: Schema.String,
-}) {}
-
-class RoomAtCapacityError extends Schema.TaggedError<RoomAtCapacityError>()('RoomAtCapacityError', {
-  roomId: Schema.String,
-  capacity: Schema.Number,
-}) {}
-
-class GuestAlreadyCheckedInError extends Schema.TaggedError<GuestAlreadyCheckedInError>()(
-  'GuestAlreadyCheckedInError',
-  { roomId: Schema.String, guestId: Schema.String },
-) {}
-```
-
 #### Command Handlers
 
-Command handlers are functions that receive a command and the current state, and return an Effect. Using Effect provides two key benefits:
-
-1. **Type-safe error handling**: All possible errors are visible in the handler's type signature (the `E` parameter)
-2. **Dependency injection**: External services are declared in the type signature (the `R` parameter) and provided at runtime via Effect's Layer system, making handlers testable and composable
+Command handlers validate commands against the current state and produce events. They are defined alongside commands:
 
 ```ts
-// Handler signature: (command, state) => Effect<Events, E, R>
+import { Commands, Schema } from '@livestore/livestore'
 
-const checkInGuestHandler = Commands.handler(commands.checkInGuest)(
-  (command, state) =>
-    Effect.gen(function* () {
-      const { roomId, guestId } = command.args
+export const commands = {
+  checkInGuest: Commands.synced({
+    name: 'CheckInGuest',
+    schema: Schema.Struct({ roomId: Schema.String, guestId: Schema.String }),
+    handler: (cmd, { state }) => {
+      const room = state.query(tables.rooms.get(cmd.roomId))
+      const guestCount = state.query(tables.roomGuests.where({ roomId: cmd.roomId }).count())
 
-      const room = state.query(tables.rooms.where({ id: roomId }).first())
       if (!room) {
-        return yield* new RoomNotFoundError({ roomId })
+        throw new Error("Room not found")
       }
 
-      const currentGuests = state.query(
-        tables.roomGuests.where({ roomId }).count()
-      )
-      if (currentGuests >= room.capacity) {
-        return yield* new RoomAtCapacityError({ roomId, capacity: room.capacity })
+      if (guestCount >= room.capacity) {
+        throw new Error("Room is at capacity")
       }
 
-      const alreadyCheckedIn = state.query(
-        tables.roomGuests.where({ roomId, guestId }).first()
-      )
-      if (alreadyCheckedIn) {
-        return yield* new GuestAlreadyCheckedInError({ roomId, guestId })
-      }
-
-      return events.guestCheckedIn({ roomId, guestId, checkedInAt: new Date() })
-    })
-)
-// Type: Commands.Handler<
-//         CheckInGuestCommand,
-//         GuestCheckedInEvent,
-//         RoomNotFoundError | RoomAtCapacityError | GuestAlreadyCheckedInError,
-//         never
-//       >
-```
-
-##### Parameters
-
-The `command` parameter provides access to both the command arguments and metadata:
-
-```ts
-interface Command<TName extends string, TArgs> {
-  readonly name: TName
-  readonly args: TArgs
-  readonly id: CommandId       // Unique ID for idempotency
-  readonly timestamp: Date     // When client issued the command
-  readonly clientId: string
-  readonly sessionId: string
+      return [events.guestCheckedIn({ roomId: cmd.roomId, guestId: cmd.guestId })]
+    },
+  }),
 }
-```
-
-The `state` parameter provides read-only access to the state DB via `state.query()`.
-
-#### Composing Command Handlers
-
-Command handlers are composable. A handler can delegate to another handler, enabling reuse of business logic while adding additional checks.
-
-```ts
-// Base handler with core business logic
-const checkInGuestHandler = Commands.handler(commands.checkInGuest)(
-  (command, state) =>
-    Effect.gen(function* () {
-      const { roomId, guestId } = command.args
-
-      const room = state.query(tables.rooms.where({ id: roomId }).first())
-      if (!room) {
-        return yield* new RoomNotFoundError({ roomId })
-      }
-
-      const currentGuests = state.query(tables.roomGuests.where({ roomId }).count())
-      if (currentGuests >= room.capacity) {
-        return yield* new RoomAtCapacityError({ roomId, capacity: room.capacity })
-      }
-
-      return events.guestCheckedIn({ roomId, guestId, checkedInAt: new Date() })
-    })
-)
-
-// Extended handler that adds ID generation and analytics
-const checkInGuestWithServicesHandler = Commands.handler(commands.checkInGuest)(
-  (command, state) =>
-    Effect.gen(function* () {
-      const { roomId, guestId } = command.args
-
-      // Generate a unique check-in ID (requires IdGenerator service)
-      const idGenerator = yield* IdGeneratorService
-      const checkInId = yield* idGenerator.generate()
-
-      const room = state.query(tables.rooms.where({ id: roomId }).first())
-      if (!room) {
-        return yield* new RoomNotFoundError({ roomId })
-      }
-
-      const currentGuests = state.query(tables.roomGuests.where({ roomId }).count())
-      if (currentGuests >= room.capacity) {
-        return yield* new RoomAtCapacityError({ roomId, capacity: room.capacity })
-      }
-
-      // Track analytics (requires Analytics service)
-      const analytics = yield* AnalyticsService
-      yield* analytics.track('guest_checked_in', { roomId, guestId })
-
-      return events.guestCheckedIn({ checkInId, roomId, guestId, checkedInAt: new Date() })
-    })
-)
-```
-
-The handler's type signature captures its requirements through Effect's `R` parameter:
-
-```ts
-// Base handler: no external services needed
-checkInGuestHandler
-// Type: Commands.Handler<
-//         CheckInGuestCommand,
-//         GuestCheckedInEvent,
-//         RoomNotFoundError | RoomAtCapacityError,
-//         never
-//       >
-
-// Extended handler: requires IdGenerator and Analytics
-checkInGuestWithServicesHandler
-// Type: Commands.Handler<
-//         CheckInGuestCommand,
-//         GuestCheckedInEvent,
-//         RoomNotFoundError | RoomAtCapacityError,
-//         IdGeneratorService | AnalyticsService
-//       >
-```
-
-##### Reusable Middleware
-
-Common checks can be extracted into reusable middleware functions:
-
-```ts
-const withAnalytics = (eventName: string) =>
-  <TCommand, TEvents, E, R>(handler: Commands.Handler<TCommand, TEvents, E, R>) =>
-    Commands.handler(handler.command)(
-      (command, state) =>
-        Effect.gen(function* () {
-          const analytics = yield* AnalyticsService
-          yield* analytics.track(eventName, { command: command.name, args: command.args })
-          return yield* handler.handle(command, state)
-        })
-    )
-
-const withLogging = <TCommand, TEvents, E, R>(handler: Commands.Handler<TCommand, TEvents, E, R>) =>
-  Commands.handler(handler.command)(
-    (command, state) =>
-      Effect.gen(function* () {
-        const logger = yield* LoggerService
-        yield* logger.debug('Executing command', { name: command.name, args: command.args })
-        const result = yield* handler.handle(command, state)
-        yield* logger.debug('Command completed', { name: command.name })
-        return result
-      })
-  )
-
-// Compose with pipe
-const checkInGuestFullHandler = pipe(
-  checkInGuestHandler,
-  withAnalytics('guest_check_in'),
-  withLogging,
-)
 ```
 
 #### Executing Commands
 
-Commands are executed through the store instead of committing events directly:
+Commands are executed via `store.execute()`, which returns a discriminated union result:
 
 ```ts
-// Instead of: store.commit(events.guestCheckedIn({ roomId, guestId, checkedInAt }))
-// Now:
-store.execute(commands.checkInGuest({ roomId: 'room-1', guestId: 'guest-a' }))
+type ExecuteResult =
+  | { type: 'failed'; error: Error }
+  | { type: 'pending'; confirmed: Promise<void> }
 ```
 
-#### Handling Rejected Commands
+**Usage:**
 
-[TODO: Figure out the API]
+```ts
+const result = store.execute(commands.checkInGuest({ roomId, guestId }))
 
-##### Cascading Rejections
+// Command succeeded locally, its events are materialized locally (optimistic UI) but are pending server's confirmation
+// Query state for the outcome
+const guest = store.query(tables.guests.get(guestId))
+toast.success(guest.status === 'waitlisted' ? "Waitlisted" : "Checked in")
 
-[TODO: Describe how cascading corruption is handled]
+// Optionally, await server confirmation
+await result.confirmed
+```
+
+#### Error Handling
+
+Commands may fail immediately during initial execution or during replay.
+
+##### During Initial Execution
+
+If a command fails immediately during initial execution, the result will be `{ type: 'failed', error: Error }`, and the error may be handled contextually:
+
+```ts
+const result = store.execute(commands.checkInGuest({ roomId, guestId }))
+
+if (result.type === 'failed') {
+  // Immediate failure—command failed validation against current state
+  toast.error(result.error.message)
+  return
+}
+```
+
+##### During Replay
+
+If a command fails (command handler throws an error) during replay, it means a **conflict** has occurred.
+
+**What is NOT a conflict:**
+
+- **Different event types produced**: If a handler returns `GuestWaitlisted` instead of `GuestCheckedIn`, that's the handler adapting to the new state—not a conflict.
+- **Same event types with different values**: Structural differences like different IDs or timestamps are not considered conflicts.
+
+> [!TIP]
+> Instead of throwing an error, you may want to consider returning a different event when a conflict occurs to handle the situation in a domain-native way.
+
+```ts
+const result = store.execute(commands.checkInGuest({ roomId, guestId }))
+
+// Catch errors that occur during replay
+result.confirmed.catch((error) => {
+  toast.error("Your check-in was cancelled: " + error.message)
+})
+```
+
+For catch-all handling of conflicts use `store.conflicts()`:
+
+```ts
+// Handle all conflicts
+for await (const conflict of store.conflicts()) {
+  toast.error(`Action failed: ${conflict.command.name}`)
+}
+
+// Filter by command name
+for await (const conflict of store.conflicts({ commands: ['Payment', 'CheckInGuest'] })) {
+  handleCriticalConflict(conflict)
+}
+
+type Conflict = {
+  command: {
+    name: string
+    payload: unknown
+  }
+  error: Error
+}
+```
 
 ### Trade-offs
 
