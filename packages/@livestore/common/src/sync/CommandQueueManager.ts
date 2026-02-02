@@ -13,7 +13,7 @@ import {
   PENDING_COMMANDS_TABLE,
   type PendingCommandRow,
   type PendingCommandStatus,
-} from '../schema/state/sqlite/system-tables/pending-commands-table.ts'
+} from '../schema/state/sqlite/system-tables/eventlog-tables.ts'
 
 // Re-export PendingCommandRow for use in LeaderSyncProcessor
 export type { PendingCommandRow }
