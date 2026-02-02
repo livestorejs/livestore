@@ -223,14 +223,14 @@ Both commands passed validation because they read stale state. With atomic execu
 Similarly to events, commands are defined with a name and schema:
 
 ```ts
-import { Commands, Schema } from '@livestore/livestore'
+import { defineCommand, Schema } from '@livestore/livestore'
 
 export const commands = {
-  checkInGuest: Commands.synced({
+  checkInGuest: defineCommand({
     name: 'CheckInGuest',
     schema: Schema.Struct({ roomId: Schema.String, guestId: Schema.String }),
   }),
-  checkOutGuest: Commands.synced({
+  checkOutGuest: defineCommand({
     name: 'CheckOutGuest',
     schema: Schema.Struct({ roomId: Schema.String, guestId: Schema.String }),
   }),
@@ -242,10 +242,10 @@ export const commands = {
 Command handlers validate commands against the current state and produce events. They are defined alongside commands:
 
 ```ts
-import { Commands, Schema } from '@livestore/livestore'
+import { defineCommand, Schema } from '@livestore/livestore'
 
 export const commands = {
-  checkInGuest: Commands.synced({
+  checkInGuest: defineCommand({
     name: 'CheckInGuest',
     schema: Schema.Struct({ roomId: Schema.String, guestId: Schema.String }),
     handler: (cmd, { state }) => {
@@ -272,8 +272,8 @@ Commands are executed via `store.execute()`, which returns a discriminated union
 
 ```ts
 type ExecuteResult =
-  | { type: 'failed'; error: Error }
-  | { type: 'pending'; confirmed: Promise<void> }
+  | { _tag: 'failed'; error: Error }
+  | { _tag: 'pending'; confirmed: Promise<void> }
 ```
 
 **Usage:**
@@ -296,12 +296,12 @@ Commands may fail immediately during initial execution or during replay.
 
 ##### During Initial Execution
 
-If a command fails immediately during initial execution, the result will be `{ type: 'failed', error: Error }`, and the error may be handled contextually:
+If a command fails immediately during initial execution, the result will be `{ _tag: 'failed', error: Error }`, and the error may be handled contextually:
 
 ```ts
 const result = store.execute(commands.checkInGuest({ roomId, guestId }))
 
-if (result.type === 'failed') {
+if (result._tag === 'failed') {
   // Immediate failure—command failed validation against current state
   toast.error(result.error.message)
   return
