@@ -2,8 +2,5 @@
   "members": {
     "effect-utils": "overengineeringstudio/effect-utils",
     "overeng-beads-public": "overengineeringstudio/overeng-beads-public"
-  },
-  "generators": {
-    "nix": { "enabled": true }
   }
 }
