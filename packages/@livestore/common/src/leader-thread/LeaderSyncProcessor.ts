@@ -27,7 +27,7 @@ import { makeMaterializerHash } from '../materializer-helper.ts'
 import type { CommandDef, LiveStoreSchema } from '../schema/mod.ts'
 import { EventSequenceNumber, LiveStoreEvent, resolveEventDef, SystemTables } from '../schema/mod.ts'
 import { EVENTLOG_META_TABLE, SYNC_STATUS_TABLE } from '../schema/state/sqlite/system-tables/eventlog-tables.ts'
-import type { CommandQueueManager } from '../sync/CommandQueueManager.ts'
+import { CommandQueue } from '../sync/CommandQueue.ts'
 import {
   type InvalidPullError,
   type InvalidPushError,
@@ -842,9 +842,8 @@ const backgroundBackendPulling = Effect.fn('@livestore/common:LeaderSyncProcesso
 
       // Replay pending commands after rebase to validate them against the new state
         if (mergeResult._tag === 'rebase') {
-          const { commandQueueManager, commandConflictQueue } = yield* LeaderThreadCtx
+          const { commandConflictQueue } = yield* LeaderThreadCtx
           yield* replayPendingCommands({
-            commandQueueManager,
             commandConflictQueue,
             schema,
             dbState: db,
@@ -1240,13 +1239,11 @@ const clearLocalDatabases = ({ dbEventlog, dbState }: { dbEventlog: SqliteDb; db
  *   - `validCommandIds`: IDs of commands that succeeded replay
  */
 const replayPendingCommands = ({
-  commandQueueManager,
   commandConflictQueue,
   schema,
   dbState,
   otelSpan,
 }: {
-  commandQueueManager: CommandQueueManager
   commandConflictQueue: Queue.Queue<CommandDef.CommandConflict>
   schema: LiveStoreSchema
   dbState: SqliteDb
@@ -1257,10 +1254,11 @@ const replayPendingCommands = ({
     validCommandIds: ReadonlyArray<string>
   },
   never,
-  never
+  CommandQueue
 > =>
   Effect.gen(function* () {
-    const pendingCommands = commandQueueManager.getPending()
+    const commandQueue = yield* CommandQueue
+    const pendingCommands = yield* commandQueue.getPending()
 
     if (pendingCommands.length === 0) {
       return { conflicts: [], validCommandIds: [] }
@@ -1288,7 +1286,7 @@ const replayPendingCommands = ({
           timestamp: Date.now(),
         }
         conflicts.push(conflict)
-        commandQueueManager.fail(pendingCommand.id)
+        yield* commandQueue.fail(pendingCommand.id)
         yield* Queue.offer(commandConflictQueue, conflict)
         continue
       }
@@ -1340,7 +1338,7 @@ const replayPendingCommands = ({
         }
 
         conflicts.push(conflict)
-        commandQueueManager.fail(pendingCommand.id)
+        yield* commandQueue.fail(pendingCommand.id)
         yield* Queue.offer(commandConflictQueue, conflict)
 
         otelSpan?.addEvent(
@@ -1366,7 +1364,11 @@ const replayPendingCommands = ({
     )
 
     return { conflicts, validCommandIds }
-  }).pipe(Effect.withSpan('@livestore/common:LeaderSyncProcessor:replayPendingCommands'))
+  }).pipe(
+    // CommandQueueError is effectively fatal (SQLite failure), convert to defect
+    Effect.orDie,
+    Effect.withSpan('@livestore/common:LeaderSyncProcessor:replayPendingCommands'),
+  )
 
 /**
  * Execute a command handler synchronously, catching any errors.

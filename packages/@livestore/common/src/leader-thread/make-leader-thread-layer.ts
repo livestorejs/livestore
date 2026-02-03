@@ -25,7 +25,7 @@ import type { MigrationsReport } from '../defs.ts'
 import type * as Devtools from '../devtools/mod.ts'
 import type { CommandDef, LiveStoreSchema } from '../schema/mod.ts'
 import { EventSequenceNumber, LiveStoreEvent, SystemTables } from '../schema/mod.ts'
-import { makeCommandQueueManager } from '../sync/CommandQueueManager.ts'
+import { type CommandQueue, layer as makeCommandQueueLayer } from '../sync/CommandQueue.ts'
 import type { InvalidPullError, IsOfflineError, SyncBackend, SyncOptions } from '../sync/sync.ts'
 import { SyncState } from '../sync/syncstate.ts'
 import { sql } from '../util.ts'
@@ -87,7 +87,11 @@ export const makeLeaderThreadLayer = ({
   bootWarning,
   params,
   testing,
-}: MakeLeaderThreadLayerParams): Layer.Layer<LeaderThreadCtx, UnknownError, Scope.Scope | HttpClient.HttpClient> =>
+}: MakeLeaderThreadLayerParams): Layer.Layer<
+  LeaderThreadCtx | CommandQueue,
+  UnknownError,
+  Scope.Scope | HttpClient.HttpClient
+> =>
   Effect.gen(function* () {
     const syncPayloadDecoded =
       syncPayloadEncoded === undefined ? undefined : yield* Schema.decodeUnknown(syncPayloadSchema)(syncPayloadEncoded)
@@ -187,7 +191,7 @@ export const makeLeaderThreadLayer = ({
     )
 
     // Initialize command infrastructure (uses eventlog DB for persistence across schema changes)
-    const commandQueueManager = makeCommandQueueManager(dbEventlog)
+    const commandQueueLayer = makeCommandQueueLayer(dbEventlog)
     const commandConflictQueue = yield* Queue.unbounded<CommandDef.CommandConflict>().pipe(
       Effect.acquireRelease(Queue.shutdown),
     )
@@ -220,7 +224,6 @@ export const makeLeaderThreadLayer = ({
       extraIncomingMessagesQueue,
       devtools: devtoolsContext,
       networkStatus,
-      commandQueueManager,
       commandConflictQueue,
       // State will be set during `bootLeaderThread`
       initialState: {} as any as LeaderThreadCtx['Type']['initialState'],
@@ -229,15 +232,16 @@ export const makeLeaderThreadLayer = ({
     // @ts-expect-error For debugging purposes
     globalThis.__leaderThreadCtx = ctx
 
-    const layer = Layer.succeed(LeaderThreadCtx, ctx)
+    const leaderThreadCtxLayer = Layer.succeed(LeaderThreadCtx, ctx)
+    const combinedLayer = Layer.merge(leaderThreadCtxLayer, commandQueueLayer)
 
     ctx.initialState = yield* bootLeaderThread({
       migrationsReport,
       initialBlockingSyncContext,
       devtoolsOptions,
-    }).pipe(Effect.provide(layer))
+    }).pipe(Effect.provide(combinedLayer))
 
-    return layer
+    return combinedLayer
   }).pipe(
     Effect.withSpan('@livestore/common:leader-thread:boot'),
     Effect.withSpanScoped('@livestore/common:leader-thread'),
@@ -373,7 +377,7 @@ const bootLeaderThread = ({
 }): Effect.Effect<
   LeaderThreadCtx['Type']['initialState'],
   UnknownError | SqliteError | IsOfflineError | InvalidPullError | MaterializerHashMismatchError,
-  LeaderThreadCtx | Scope.Scope | HttpClient.HttpClient
+  LeaderThreadCtx | Scope.Scope | HttpClient.HttpClient | CommandQueue
 > =>
   Effect.gen(function* () {
     const { bootStatusQueue, syncProcessor } = yield* LeaderThreadCtx
