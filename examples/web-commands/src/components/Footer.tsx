@@ -1,0 +1,52 @@
+import { queryDb } from '@livestore/livestore'
+import type React from 'react'
+import { uiState$ } from '../livestore/queries.ts'
+import { commands, events, tables } from '../livestore/schema.ts'
+import { useAppStore } from '../livestore/store.ts'
+
+const incompleteCount$ = queryDb(tables.todos.count().where({ completed: false, deletedAt: null }), {
+  label: 'incompleteCount',
+})
+
+export const Footer: React.FC = () => {
+  const store = useAppStore()
+  const { filter } = store.useQuery(uiState$)
+  const incompleteCount = store.useQuery(incompleteCount$)
+  const setFilter = (filter: (typeof tables.uiState.Value)['filter']) => store.commit(events.uiStateSet({ filter }))
+
+  const clearCompleted = () => {
+    const result = store.execute(commands.clearCompleted({ deletedAt: new Date() }))
+    if (result._tag === 'failed') {
+      console.error('Failed to clear completed:', result.error.message)
+    }
+  }
+
+  return (
+    <footer className="footer">
+      <span className="todo-count">{incompleteCount} items left</span>
+      <ul className="filters">
+        <li>
+          {/* biome-ignore lint/a11y/useValidAnchor: TodoMVC standard convention for filter buttons */}
+          <a href="#/" className={filter === 'all' ? 'selected' : ''} onClick={() => setFilter('all')}>
+            All
+          </a>
+        </li>
+        <li>
+          {/* biome-ignore lint/a11y/useValidAnchor: TodoMVC standard convention for filter buttons */}
+          <a href="#/" className={filter === 'active' ? 'selected' : ''} onClick={() => setFilter('active')}>
+            Active
+          </a>
+        </li>
+        <li>
+          {/* biome-ignore lint/a11y/useValidAnchor: TodoMVC standard convention for filter buttons */}
+          <a href="#/" className={filter === 'completed' ? 'selected' : ''} onClick={() => setFilter('completed')}>
+            Completed
+          </a>
+        </li>
+      </ul>
+      <button type="button" className="clear-completed" onClick={clearCompleted}>
+        Clear completed
+      </button>
+    </footer>
+  )
+}
