@@ -47,11 +47,8 @@ jobs:
           nix profile install nixpkgs#devenv
           echo "$HOME/.nix-profile/bin" >> $GITHUB_PATH
         shell: bash
-      - name: Warmup devenv (skip setup)
-        run: DEVENV_SKIP_SETUP=1 devenv shell --verbose env
-        shell: bash
-      - name: Run devenv setup
-        run: devenv shell --verbose env
+      - name: Setup devenv and run tasks
+        run: 'DEVENV_SKIP_SETUP=1 devenv tasks run pnpm:install genie:run ts:build --mode before --verbose'
         shell: bash
       - run: 'dt lint:full'
   type-check:
@@ -81,11 +78,8 @@ jobs:
           nix profile install nixpkgs#devenv
           echo "$HOME/.nix-profile/bin" >> $GITHUB_PATH
         shell: bash
-      - name: Warmup devenv (skip setup)
-        run: DEVENV_SKIP_SETUP=1 devenv shell --verbose env
-        shell: bash
-      - name: Run devenv setup
-        run: devenv shell --verbose env
+      - name: Setup devenv and run tasks
+        run: 'DEVENV_SKIP_SETUP=1 devenv tasks run pnpm:install genie:run ts:build --mode before --verbose'
         shell: bash
       - run: 'dt ts:build'
   test-unit:
@@ -115,11 +109,8 @@ jobs:
           nix profile install nixpkgs#devenv
           echo "$HOME/.nix-profile/bin" >> $GITHUB_PATH
         shell: bash
-      - name: Warmup devenv (skip setup)
-        run: DEVENV_SKIP_SETUP=1 devenv shell --verbose env
-        shell: bash
-      - name: Run devenv setup
-        run: devenv shell --verbose env
+      - name: Setup devenv and run tasks
+        run: 'DEVENV_SKIP_SETUP=1 devenv tasks run pnpm:install genie:run ts:build --mode before --verbose'
         shell: bash
       - run: 'dt test:unit'
   test-integration-node-sync:
@@ -149,11 +140,8 @@ jobs:
           nix profile install nixpkgs#devenv
           echo "$HOME/.nix-profile/bin" >> $GITHUB_PATH
         shell: bash
-      - name: Warmup devenv (skip setup)
-        run: DEVENV_SKIP_SETUP=1 devenv shell --verbose env
-        shell: bash
-      - name: Run devenv setup
-        run: devenv shell --verbose env
+      - name: Setup devenv and run tasks
+        run: 'DEVENV_SKIP_SETUP=1 devenv tasks run pnpm:install genie:run ts:build --mode before --verbose'
         shell: bash
       - name: Set OTEL_EXPORTER_OTLP_HEADERS environment variable
         env:
@@ -234,11 +222,8 @@ jobs:
           nix profile install nixpkgs#devenv
           echo "$HOME/.nix-profile/bin" >> $GITHUB_PATH
         shell: bash
-      - name: Warmup devenv (skip setup)
-        run: DEVENV_SKIP_SETUP=1 devenv shell --verbose env
-        shell: bash
-      - name: Run devenv setup
-        run: devenv shell --verbose env
+      - name: Setup devenv and run tasks
+        run: 'DEVENV_SKIP_SETUP=1 devenv tasks run pnpm:install genie:run ts:build --mode before --verbose'
         shell: bash
       - name: Set OTEL_EXPORTER_OTLP_HEADERS environment variable
         env:
@@ -296,11 +281,8 @@ jobs:
           nix profile install nixpkgs#devenv
           echo "$HOME/.nix-profile/bin" >> $GITHUB_PATH
         shell: bash
-      - name: Warmup devenv (skip setup)
-        run: DEVENV_SKIP_SETUP=1 devenv shell --verbose env
-        shell: bash
-      - name: Run devenv setup
-        run: devenv shell --verbose env
+      - name: Setup devenv and run tasks
+        run: 'DEVENV_SKIP_SETUP=1 devenv tasks run pnpm:install genie:run ts:build --mode before --verbose'
         shell: bash
       - name: Set OTEL_EXPORTER_OTLP_HEADERS environment variable
         env:
@@ -366,11 +348,8 @@ jobs:
           nix profile install nixpkgs#devenv
           echo "$HOME/.nix-profile/bin" >> $GITHUB_PATH
         shell: bash
-      - name: Warmup devenv (skip setup)
-        run: DEVENV_SKIP_SETUP=1 devenv shell --verbose env
-        shell: bash
-      - name: Run devenv setup
-        run: devenv shell --verbose env
+      - name: Setup devenv and run tasks
+        run: 'DEVENV_SKIP_SETUP=1 devenv tasks run pnpm:install genie:run ts:build --mode before --verbose'
         shell: bash
       - name: Set OTEL_EXPORTER_OTLP_HEADERS environment variable
         env:
@@ -412,11 +391,8 @@ jobs:
           nix profile install nixpkgs#devenv
           echo "$HOME/.nix-profile/bin" >> $GITHUB_PATH
         shell: bash
-      - name: Warmup devenv (skip setup)
-        run: DEVENV_SKIP_SETUP=1 devenv shell --verbose env
-        shell: bash
-      - name: Run devenv setup
-        run: devenv shell --verbose env
+      - name: Setup devenv and run tasks
+        run: 'DEVENV_SKIP_SETUP=1 devenv tasks run pnpm:install genie:run ts:build --mode before --verbose'
         shell: bash
       - name: Set OTEL_EXPORTER_OTLP_HEADERS environment variable
         env:
@@ -464,11 +440,8 @@ jobs:
           nix profile install nixpkgs#devenv
           echo "$HOME/.nix-profile/bin" >> $GITHUB_PATH
         shell: bash
-      - name: Warmup devenv (skip setup)
-        run: DEVENV_SKIP_SETUP=1 devenv shell --verbose env
-        shell: bash
-      - name: Run devenv setup
-        run: devenv shell --verbose env
+      - name: Setup devenv and run tasks
+        run: 'DEVENV_SKIP_SETUP=1 devenv tasks run pnpm:install genie:run ts:build --mode before --verbose'
         shell: bash
       - name: Configure NPM authentication
         run: 'echo "//registry.npmjs.org/:_authToken=${NPM_TOKEN}" >> ~/.npmrc'
@@ -500,11 +473,8 @@ jobs:
           nix profile install nixpkgs#devenv
           echo "$HOME/.nix-profile/bin" >> $GITHUB_PATH
         shell: bash
-      - name: Warmup devenv (skip setup)
-        run: DEVENV_SKIP_SETUP=1 devenv shell --verbose env
-        shell: bash
-      - name: Run devenv setup
-        run: devenv shell --verbose env
+      - name: Setup devenv and run tasks
+        run: 'DEVENV_SKIP_SETUP=1 devenv tasks run pnpm:install genie:run ts:build --mode before --verbose'
         shell: bash
       - name: Build examples
         run: pnpm --filter 'livestore-example-*' --workspace-concurrency=1 build
@@ -541,11 +511,8 @@ jobs:
           nix profile install nixpkgs#devenv
           echo "$HOME/.nix-profile/bin" >> $GITHUB_PATH
         shell: bash
-      - name: Warmup devenv (skip setup)
-        run: DEVENV_SKIP_SETUP=1 devenv shell --verbose env
-        shell: bash
-      - name: Run devenv setup
-        run: devenv shell --verbose env
+      - name: Setup devenv and run tasks
+        run: 'DEVENV_SKIP_SETUP=1 devenv tasks run pnpm:install genie:run ts:build --mode before --verbose'
         shell: bash
       - name: Build docs
         run: 'dt docs:build:api'

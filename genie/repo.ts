@@ -368,12 +368,10 @@ export const devenvShellDefaults = {
  * Installs Nix, enables Cachix caching, syncs megarepo dependencies, and warms up devenv.
  * Use this when you need a custom checkout step (e.g., with specific ref).
  *
- * Note: We use a two-phase devenv warmup:
- * 1. DEVENV_SKIP_SETUP=1 warms the Nix shell without running setup tasks
- * 2. Full devenv shell runs setup tasks (pnpm install, genie, ts build)
- *
- * This split avoids nested devenv shell issues where temp script files
- * become inaccessible when setup tasks spawn their own devenv shells.
+ * Note: We use DEVENV_SKIP_SETUP=1 to prevent enterShell from running setup
+ * tasks via nested devenv processes (which fail in GitHub Actions due to
+ * temp script file access issues). Instead, setup tasks are run explicitly
+ * via `devenv tasks run`.
  */
 export const livestoreSetupStepsAfterCheckout = [
   { name: 'Install Nix', uses: 'cachix/install-nix-action@v31' },
@@ -400,17 +398,11 @@ echo "$HOME/.nix-profile/bin" >> $GITHUB_PATH`,
     shell: 'bash',
   },
   {
-    // Phase 1: Warmup Nix shell without running setup tasks
-    // This builds/fetches Nix dependencies without triggering enterShell setup
-    name: 'Warmup devenv (skip setup)',
-    run: 'DEVENV_SKIP_SETUP=1 devenv shell --verbose env',
-    shell: 'bash',
-  },
-  {
-    // Phase 2: Run full setup (pnpm install, genie, ts build)
-    // Now that Nix is warmed up, run the actual setup tasks
-    name: 'Run devenv setup',
-    run: 'devenv shell --verbose env',
+    // Warmup Nix shell and run setup tasks explicitly
+    // DEVENV_SKIP_SETUP=1 prevents enterShell from running nested devenv processes
+    // which fail in GitHub Actions due to temp script file access issues
+    name: 'Setup devenv and run tasks',
+    run: `DEVENV_SKIP_SETUP=1 devenv tasks run pnpm:install genie:run ts:build --mode before --verbose`,
     shell: 'bash',
   },
 ] as const
