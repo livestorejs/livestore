@@ -41,10 +41,7 @@ const branchProtectionEnv = {
 }
 
 /** Standard CI job configuration (namespace runner + devenv shell + branch protection) */
-const standardCIJob = (config: {
-  env?: Record<string, string>
-  steps: unknown[]
-}) => ({
+const standardCIJob = (config: { env?: Record<string, string>; steps: unknown[] }) => ({
   ...namespaceRunnerConfig,
   env: { ...branchProtectionEnv, ...config.env },
   defaults: devenvShellDefaults,
@@ -52,10 +49,7 @@ const standardCIJob = (config: {
 })
 
 /** OTEL-enabled CI job with Grafana Cloud export */
-const otelCIJob = (config: {
-  env?: Record<string, string>
-  steps: unknown[]
-}) =>
+const otelCIJob = (config: { env?: Record<string, string>; steps: unknown[] }) =>
   standardCIJob({
     ...config,
     steps: [...livestoreSetupSteps, otelSetupStep, ...config.steps],
@@ -65,12 +59,7 @@ const otelCIJob = (config: {
  * Flaky test wrapper that warns but doesn't fail.
  * TODO: Remove these once the underlying flakiness is resolved.
  */
-const flakyTestStep = (
-  name: string,
-  command: string,
-  issueUrl: string,
-  warningMessage: string,
-) => ({
+const flakyTestStep = (name: string, command: string, issueUrl: string, warningMessage: string) => ({
   name,
   run: `if ${command}; then
   exit 0

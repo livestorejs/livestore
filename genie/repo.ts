@@ -207,7 +207,6 @@ export const catalog = defineCatalog({
   },
 })
 
-
 // =============================================================================
 // Package Config Exports
 // =============================================================================
@@ -357,10 +356,7 @@ export { githubWorkflow } from '../repos/effect-utils/packages/@overeng/genie/sr
  * Uses run ID-based labels for runner affinity to prevent queue jumping.
  */
 export const namespaceRunner = (runId: string) =>
-  [
-    'namespace-profile-linux-x86-64',
-    `namespace-features:github.run-id=${runId}`,
-  ] as const
+  ['namespace-profile-linux-x86-64', `namespace-features:github.run-id=${runId}`] as const
 
 /** Standard devenv shell for CI jobs */
 export const devenvShellDefaults = {
@@ -371,6 +367,13 @@ export const devenvShellDefaults = {
  * Setup steps for livestore CI jobs (without checkout).
  * Installs Nix, enables Cachix caching, syncs megarepo dependencies, and warms up devenv.
  * Use this when you need a custom checkout step (e.g., with specific ref).
+ *
+ * Note: We use a two-phase devenv warmup:
+ * 1. DEVENV_SKIP_SETUP=1 warms the Nix shell without running setup tasks
+ * 2. Full devenv shell runs setup tasks (pnpm install, genie, ts build)
+ *
+ * This split avoids nested devenv shell issues where temp script files
+ * become inaccessible when setup tasks spawn their own devenv shells.
  */
 export const livestoreSetupStepsAfterCheckout = [
   { name: 'Install Nix', uses: 'cachix/install-nix-action@v31' },
@@ -397,7 +400,16 @@ echo "$HOME/.nix-profile/bin" >> $GITHUB_PATH`,
     shell: 'bash',
   },
   {
-    name: 'Warmup devenv',
+    // Phase 1: Warmup Nix shell without running setup tasks
+    // This builds/fetches Nix dependencies without triggering enterShell setup
+    name: 'Warmup devenv (skip setup)',
+    run: 'DEVENV_SKIP_SETUP=1 devenv shell --verbose env',
+    shell: 'bash',
+  },
+  {
+    // Phase 2: Run full setup (pnpm install, genie, ts build)
+    // Now that Nix is warmed up, run the actual setup tasks
+    name: 'Run devenv setup',
     run: 'devenv shell --verbose env',
     shell: 'bash',
   },
@@ -407,10 +419,7 @@ echo "$HOME/.nix-profile/bin" >> $GITHUB_PATH`,
  * Full setup steps for livestore CI jobs (includes checkout).
  * Use livestoreSetupStepsAfterCheckout if you need a custom checkout step.
  */
-export const livestoreSetupSteps = [
-  { uses: 'actions/checkout@v4' },
-  ...livestoreSetupStepsAfterCheckout,
-] as const
+export const livestoreSetupSteps = [{ uses: 'actions/checkout@v4' }, ...livestoreSetupStepsAfterCheckout] as const
 
 /**
  * OTEL configuration step for Grafana Cloud.

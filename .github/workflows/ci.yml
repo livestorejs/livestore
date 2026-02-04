@@ -47,7 +47,10 @@ jobs:
           nix profile install nixpkgs#devenv
           echo "$HOME/.nix-profile/bin" >> $GITHUB_PATH
         shell: bash
-      - name: Warmup devenv
+      - name: Warmup devenv (skip setup)
+        run: DEVENV_SKIP_SETUP=1 devenv shell --verbose env
+        shell: bash
+      - name: Run devenv setup
         run: devenv shell --verbose env
         shell: bash
       - run: 'dt lint:full'
@@ -78,7 +81,10 @@ jobs:
           nix profile install nixpkgs#devenv
           echo "$HOME/.nix-profile/bin" >> $GITHUB_PATH
         shell: bash
-      - name: Warmup devenv
+      - name: Warmup devenv (skip setup)
+        run: DEVENV_SKIP_SETUP=1 devenv shell --verbose env
+        shell: bash
+      - name: Run devenv setup
         run: devenv shell --verbose env
         shell: bash
       - run: 'dt ts:build'
@@ -109,7 +115,10 @@ jobs:
           nix profile install nixpkgs#devenv
           echo "$HOME/.nix-profile/bin" >> $GITHUB_PATH
         shell: bash
-      - name: Warmup devenv
+      - name: Warmup devenv (skip setup)
+        run: DEVENV_SKIP_SETUP=1 devenv shell --verbose env
+        shell: bash
+      - name: Run devenv setup
         run: devenv shell --verbose env
         shell: bash
       - run: 'dt test:unit'
@@ -140,7 +149,10 @@ jobs:
           nix profile install nixpkgs#devenv
           echo "$HOME/.nix-profile/bin" >> $GITHUB_PATH
         shell: bash
-      - name: Warmup devenv
+      - name: Warmup devenv (skip setup)
+        run: DEVENV_SKIP_SETUP=1 devenv shell --verbose env
+        shell: bash
+      - name: Run devenv setup
         run: devenv shell --verbose env
         shell: bash
       - name: Set OTEL_EXPORTER_OTLP_HEADERS environment variable
@@ -222,7 +234,10 @@ jobs:
           nix profile install nixpkgs#devenv
           echo "$HOME/.nix-profile/bin" >> $GITHUB_PATH
         shell: bash
-      - name: Warmup devenv
+      - name: Warmup devenv (skip setup)
+        run: DEVENV_SKIP_SETUP=1 devenv shell --verbose env
+        shell: bash
+      - name: Run devenv setup
         run: devenv shell --verbose env
         shell: bash
       - name: Set OTEL_EXPORTER_OTLP_HEADERS environment variable
@@ -281,7 +296,10 @@ jobs:
           nix profile install nixpkgs#devenv
           echo "$HOME/.nix-profile/bin" >> $GITHUB_PATH
         shell: bash
-      - name: Warmup devenv
+      - name: Warmup devenv (skip setup)
+        run: DEVENV_SKIP_SETUP=1 devenv shell --verbose env
+        shell: bash
+      - name: Run devenv setup
         run: devenv shell --verbose env
         shell: bash
       - name: Set OTEL_EXPORTER_OTLP_HEADERS environment variable
@@ -348,7 +366,10 @@ jobs:
           nix profile install nixpkgs#devenv
           echo "$HOME/.nix-profile/bin" >> $GITHUB_PATH
         shell: bash
-      - name: Warmup devenv
+      - name: Warmup devenv (skip setup)
+        run: DEVENV_SKIP_SETUP=1 devenv shell --verbose env
+        shell: bash
+      - name: Run devenv setup
         run: devenv shell --verbose env
         shell: bash
       - name: Set OTEL_EXPORTER_OTLP_HEADERS environment variable
@@ -391,7 +412,10 @@ jobs:
           nix profile install nixpkgs#devenv
           echo "$HOME/.nix-profile/bin" >> $GITHUB_PATH
         shell: bash
-      - name: Warmup devenv
+      - name: Warmup devenv (skip setup)
+        run: DEVENV_SKIP_SETUP=1 devenv shell --verbose env
+        shell: bash
+      - name: Run devenv setup
         run: devenv shell --verbose env
         shell: bash
       - name: Set OTEL_EXPORTER_OTLP_HEADERS environment variable
@@ -440,7 +464,10 @@ jobs:
           nix profile install nixpkgs#devenv
           echo "$HOME/.nix-profile/bin" >> $GITHUB_PATH
         shell: bash
-      - name: Warmup devenv
+      - name: Warmup devenv (skip setup)
+        run: DEVENV_SKIP_SETUP=1 devenv shell --verbose env
+        shell: bash
+      - name: Run devenv setup
         run: devenv shell --verbose env
         shell: bash
       - name: Configure NPM authentication
@@ -473,7 +500,10 @@ jobs:
           nix profile install nixpkgs#devenv
           echo "$HOME/.nix-profile/bin" >> $GITHUB_PATH
         shell: bash
-      - name: Warmup devenv
+      - name: Warmup devenv (skip setup)
+        run: DEVENV_SKIP_SETUP=1 devenv shell --verbose env
+        shell: bash
+      - name: Run devenv setup
         run: devenv shell --verbose env
         shell: bash
       - name: Build examples
@@ -511,7 +541,10 @@ jobs:
           nix profile install nixpkgs#devenv
           echo "$HOME/.nix-profile/bin" >> $GITHUB_PATH
         shell: bash
-      - name: Warmup devenv
+      - name: Warmup devenv (skip setup)
+        run: DEVENV_SKIP_SETUP=1 devenv shell --verbose env
+        shell: bash
+      - name: Run devenv setup
         run: devenv shell --verbose env
         shell: bash
       - name: Build docs
