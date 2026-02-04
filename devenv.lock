@@ -25,12 +25,12 @@
         ]
       },
       "locked": {
+        "lastModified": 1770200031,
+        "narHash": "sha256-4wfq8kdZdcfKRPhylfrMfu8dZRJ0HyolpaV23E1QjdU=",
         "owner": "overengineeringstudio",
         "repo": "effect-utils",
-        "rev": "9c27bfee47fd8fb3a0c8ec953ad98c22d52be6f4",
-        "type": "github",
-        "narHash": "sha256-f5rmon6rU5k+VRhPxrfpTSc/7kkN8J6tkJJNiOYfJl8=",
-        "lastModified": 1770128701
+        "rev": "45374dea826c5ba059cf1a9bbb5aa343cb192dec",
+        "type": "github"
       },
       "original": {
         "owner": "overengineeringstudio",
@@ -170,12 +170,12 @@
         "nixpkgs": "nixpkgs_2"
       },
       "locked": {
+        "lastModified": 1770036763,
+        "narHash": "sha256-58xNKd+qT7XR4K57yUwIpCXcXVJF2M6F2y6lrT93xWY=",
         "owner": "overengineeringstudio",
         "repo": "overeng-beads-public",
         "rev": "db919d24135f5973f1314a585042c5e76837f19c",
-        "type": "github",
-        "narHash": "sha256-58xNKd+qT7XR4K57yUwIpCXcXVJF2M6F2y6lrT93xWY=",
-        "lastModified": 1770036763
+        "type": "github"
       },
       "original": {
         "owner": "overengineeringstudio",
@@ -192,12 +192,12 @@
       },
       "locked": {
         "dir": "nix/playwright-flake",
+        "lastModified": 1770128701,
+        "narHash": "sha256-f5rmon6rU5k+VRhPxrfpTSc/7kkN8J6tkJJNiOYfJl8=",
         "owner": "overengineeringstudio",
         "repo": "effect-utils",
         "rev": "9c27bfee47fd8fb3a0c8ec953ad98c22d52be6f4",
-        "type": "github",
-        "narHash": "sha256-f5rmon6rU5k+VRhPxrfpTSc/7kkN8J6tkJJNiOYfJl8=",
-        "lastModified": 1770128701
+        "type": "github"
       },
       "original": {
         "dir": "nix/playwright-flake",
