@@ -1,3 +1,4 @@
-import { pnpmWorkspace } from '../../../genie/repo.ts'
+import { pnpmWorkspaceExpo } from '../../../genie/repo.ts'
 
-export default pnpmWorkspace()
+// Expo package - needs React Native hoisting
+export default pnpmWorkspaceExpo('../common', '../utils', '../webmesh')

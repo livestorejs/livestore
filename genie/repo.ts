@@ -233,20 +233,59 @@ export const localPackageDefaults = {
 // =============================================================================
 
 /**
- * Per-package pnpm workspace configuration.
- * Each package includes itself and related packages in its workspace.
- * This enables workspace:* protocol to resolve correctly.
+ * Per-package pnpm workspace configuration with minimal dependencies.
  *
- * Uses effect-utils pnpmWorkspaceYaml for consistent settings (dedupePeerDependents, etc.)
+ * Following effect-utils best practices:
+ * - Each package lists only its actual workspace dependencies (not ../* broad patterns)
+ * - Includes dedupePeerDependents to prevent duplicate dependency resolution
+ * - Manual maintenance: when adding workspace dep to package.json, update this too
  *
- * @param patterns - Glob patterns for workspace packages (default: ['../*'] for sibling packages)
+ * @param patterns - Explicit workspace dependency paths (e.g., '../utils', '../common')
+ *                   Pass no args for standalone packages with no workspace deps
+ *
+ * @example
+ * // Standalone package (no workspace deps)
+ * pnpmWorkspace()
+ *
+ * // Package with specific deps
+ * pnpmWorkspace('../utils', '../common')
  */
-export const pnpmWorkspace = (...patterns: string[]) => {
-  const allPatterns = patterns.length > 0 ? patterns : ['../*']
-  return pnpmWorkspaceYaml({
-    packages: ['.', ...allPatterns],
+export const pnpmWorkspace = (...patterns: string[]) =>
+  pnpmWorkspaceYaml({
+    packages: ['.', ...patterns],
+    dedupePeerDependents: true,
   })
-}
+
+/**
+ * pnpm workspace for React packages.
+ * Adds publicHoistPattern to ensure single React instance across packages.
+ *
+ * Use this for packages that use React (react, react-dom, or react-reconciler).
+ * Prevents "Invalid hook call" errors from multiple React instances.
+ *
+ * @param patterns - Explicit workspace dependency paths
+ */
+export const pnpmWorkspaceReact = (...patterns: string[]) =>
+  pnpmWorkspaceYaml({
+    packages: ['.', ...patterns],
+    dedupePeerDependents: true,
+    publicHoistPattern: ['react', 'react-dom', 'react-reconciler'],
+  })
+
+/**
+ * pnpm workspace for Expo/React Native packages.
+ * Hoists React Native related packages to prevent bundler issues.
+ *
+ * Use this for packages that use Expo or React Native.
+ *
+ * @param patterns - Explicit workspace dependency paths
+ */
+export const pnpmWorkspaceExpo = (...patterns: string[]) =>
+  pnpmWorkspaceYaml({
+    packages: ['.', ...patterns],
+    dedupePeerDependents: true,
+    publicHoistPattern: ['react', 'react-dom', 'react-reconciler', 'react-native', 'expo', 'expo-*'],
+  })
 
 // =============================================================================
 // Effect Peer Dependency Helpers

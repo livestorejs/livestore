@@ -1,3 +1,11 @@
-import { pnpmWorkspace } from '../../../genie/repo.ts'
+import { pnpmWorkspaceReact } from '../../../genie/repo.ts'
 
-export default pnpmWorkspace()
+// React package - needs React hoisting for single instance
+export default pnpmWorkspaceReact(
+  '../common',
+  '../framework-toolkit',
+  '../livestore',
+  '../utils',
+  '../adapter-web',
+  '../utils-dev',
+)

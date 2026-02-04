@@ -1,3 +1,3 @@
 import { pnpmWorkspace } from '../../../genie/repo.ts'
 
-export default pnpmWorkspace()
+export default pnpmWorkspace('../common', '../common-cf', '../utils')

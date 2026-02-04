@@ -1,4 +1,15 @@
 # Generated file - DO NOT EDIT
 # Source: pnpm-workspace.yaml.genie.ts
 
-packages: [., ../*]
+packages:
+  - .
+  - ../common
+  - ../framework-toolkit
+  - ../livestore
+  - ../utils
+  - ../adapter-web
+  - ../utils-dev
+
+dedupePeerDependents: true
+
+publicHoistPattern: [react, react-dom, react-reconciler]

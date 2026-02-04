@@ -1,4 +1,12 @@
 # Generated file - DO NOT EDIT
 # Source: pnpm-workspace.yaml.genie.ts
 
-packages: [., ../*]
+packages:
+  - .
+  - ../common
+  - ../livestore
+  - ../utils
+  - ../adapter-web
+  - ../utils-dev
+
+dedupePeerDependents: true

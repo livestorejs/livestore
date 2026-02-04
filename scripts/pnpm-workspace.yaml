@@ -1,4 +1,15 @@
 # Generated file - DO NOT EDIT
 # Source: pnpm-workspace.yaml.genie.ts
 
-packages: [., ../packages/@livestore/*, ../packages/@local/*, ../docs, ../tests/*]
+packages:
+  - .
+  - ../packages/@livestore/common
+  - ../packages/@livestore/utils
+  - ../packages/@livestore/utils-dev
+  - ../packages/@local/astro-tldraw
+  - ../packages/@local/astro-twoslash-code
+  - ../docs
+  - ../tests/integration
+  - ../tests/sync-provider
+
+dedupePeerDependents: true

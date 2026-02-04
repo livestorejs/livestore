@@ -1,3 +1,9 @@
-import { pnpmWorkspace } from '../../genie/repo.ts'
+import { pnpmWorkspaceReact } from '../../genie/repo.ts'
 
-export default pnpmWorkspace('../*', '../packages/@livestore/*', '../packages/@local/*')
+export default pnpmWorkspaceReact(
+  '../packages/@livestore/adapter-web',
+  '../packages/@livestore/livestore',
+  '../packages/@livestore/react',
+  '../packages/@livestore/utils',
+  '../packages/@livestore/utils-dev',
+)
