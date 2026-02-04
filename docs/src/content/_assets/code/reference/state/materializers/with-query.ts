@@ -16,6 +16,8 @@ const events = {
 export const materializers = State.SQLite.materializers(events, {
   [events.todoCreated.name]: defineMaterializer(events.todoCreated, ({ id, text, completed }, ctx) => {
     const previousIds = ctx.query(todos.select('id'))
-    return todos.insert({ id, text, completed: completed ?? false, previousIds })
+    // ctx.query also supports raw SQL via { query, bindValues }
+    const existingTodos = ctx.query({ query: 'SELECT id FROM todos', bindValues: {} })
+    return todos.insert({ id: `${existingTodos.length}-${id}`, text, completed: completed ?? false, previousIds })
   }),
 })
