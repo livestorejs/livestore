@@ -1302,6 +1302,9 @@ importers:
       '@livestore/common':
         specifier: workspace:*
         version: link:../../packages/@livestore/common
+      '@livestore/common-cf':
+        specifier: workspace:*
+        version: link:../../packages/@livestore/common-cf
       '@livestore/devtools-vite':
         specifier: 0.4.0-dev.22
         version: 0.4.0-dev.22(5041f1ad4e389054b6c547bfa4f64c28)
