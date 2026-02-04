@@ -5,7 +5,7 @@
 - [x] fix [genie] tsconfig.json uses "extends" which is not recommended with Genie.
         Instead, import and spread the base config directly for better composability:
         compilerOptions: { ...baseTsconfigCompilerOptions, ...yourOptions }
-- [ ] adjust ci
+- [x] adjust ci (migrated to dt tasks via mono wrappers in nix/devenv-modules/tasks/local/mono-wrappers.nix)
 - [x] fully migrate from biome to oxlint/oxfmt
 - [x] load genie, megarepo via devenv from effect-utils
 - [x] rethink setup script (e.g. auto install)

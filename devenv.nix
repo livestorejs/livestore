@@ -144,6 +144,8 @@ in
       requiredTasks = [ ];
       optionalTasks = [ "megarepo:generate" "pnpm:install" "genie:run" "ts:build" ];
     })
+    # Local task: mono command wrappers for uniform dt interface
+    ./nix/devenv-modules/tasks/local/mono-wrappers.nix
   ];
 
   packages = [

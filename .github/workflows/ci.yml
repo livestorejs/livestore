@@ -50,7 +50,7 @@ jobs:
       - name: Warmup devenv
         run: devenv shell --verbose env
         shell: bash
-      - run: mono lint
+      - run: 'dt lint:full'
   type-check:
     runs-on: [namespace-profile-linux-x86-64, 'namespace-features:github.run-id=${{ github.run_id }}']
     env:
@@ -81,7 +81,7 @@ jobs:
       - name: Warmup devenv
         run: devenv shell --verbose env
         shell: bash
-      - run: mono ts
+      - run: 'dt ts:build'
   test-unit:
     runs-on: [namespace-profile-linux-x86-64, 'namespace-features:github.run-id=${{ github.run_id }}']
     env:
@@ -112,7 +112,7 @@ jobs:
       - name: Warmup devenv
         run: devenv shell --verbose env
         shell: bash
-      - run: mono test unit
+      - run: 'dt test:unit'
   test-integration-node-sync:
     runs-on: [namespace-profile-linux-x86-64, 'namespace-features:github.run-id=${{ github.run_id }}']
     env:
@@ -155,7 +155,7 @@ jobs:
           echo "VITE_OTEL_EXPORTER_OTLP_ENDPOINT=" >> $GITHUB_ENV
       - name: Run node-sync integration tests
         run: |
-          if mono test integration node-sync; then
+          if dt test:integration:node-sync; then
             exit 0
           else
             echo "::warning::Node-sync integration tests failed (flaky; see https://github.com/livestorejs/livestore/issues/624 for details)"
@@ -239,14 +239,14 @@ jobs:
         if: ${{ matrix.provider != 's2' || env.S2_ACCESS_TOKEN != '' }}
         run: |
           if [[ "${{ matrix.provider }}" == cf-* ]]; then
-            if mono test integration sync-provider --provider ${{ matrix.provider }}; then
+            if dt "test:integration:sync-provider:${{ matrix.provider }}"; then
               exit 0
             else
               echo "::warning::Cloudflare sync-provider tests for ${{ matrix.provider }} failed (flaky; see https://github.com/livestorejs/livestore/issues/625 and upstream https://github.com/cloudflare/workers-sdk/issues/11122)"
               exit 0
             fi
           else
-            mono test integration sync-provider --provider ${{ matrix.provider }}
+            dt "test:integration:sync-provider:${{ matrix.provider }}"
           fi
       - name: Skip S2 sync-provider tests (missing S2_ACCESS_TOKEN)
         if: ${{ matrix.provider == 's2' && env.S2_ACCESS_TOKEN == '' }}
@@ -299,9 +299,9 @@ jobs:
           PLAYWRIGHT_SUITE: ${{ matrix.suite }}
         run: |
           if [ "${{ matrix.suite }}" = "devtools" ]; then
-            mono test integration devtools || echo "::warning::Script failed but continuing"
+            dt test:integration:devtools || echo "::warning::Script failed but continuing"
           else
-            mono test integration ${{ matrix.suite }}
+            dt "test:integration:${{ matrix.suite }}"
           fi
       - uses: actions/upload-artifact@v4
         if: ${{ !cancelled() }}
@@ -362,7 +362,7 @@ jobs:
           # Disable in Vite (otherwise CORS issues)
           echo "VITE_OTEL_EXPORTER_OTLP_ENDPOINT=" >> $GITHUB_ENV
       - name: Run performance tests
-        run: mono test perf
+        run: 'dt test:perf'
         env:
           COMMIT_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
           GRAFANA_ENDPOINT: 'https://livestore.grafana.net'
@@ -408,7 +408,7 @@ jobs:
         working-directory: packages/@livestore/wa-sqlite
         run: 'nix run .#build'
       - name: Run wa-sqlite tests
-        run: devenv shell mono test integration wa-sqlite
+        run: 'devenv shell dt test:integration:wa-sqlite'
         env:
           COMMIT_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
           GRAFANA_ENDPOINT: 'https://livestore.grafana.net'
@@ -479,10 +479,10 @@ jobs:
       - name: Build examples
         run: pnpm --filter 'livestore-example-*' --workspace-concurrency=1 build
       - name: Test examples
-        run: mono examples test
+        run: 'dt examples:test'
       - name: Deploy examples to Cloudflare
         if: github.event.pull_request.head.repo.fork != true
-        run: mono examples deploy
+        run: 'dt examples:deploy'
         env:
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
@@ -515,10 +515,10 @@ jobs:
         run: devenv shell --verbose env
         shell: bash
       - name: Build docs
-        run: mono docs build --api-docs
+        run: 'dt docs:build:api'
       - name: Deploy docs
         if: ${{ github.event_name != 'pull_request' || github.event.pull_request.head.repo.fork != true }}
-        run: mono docs deploy
+        run: 'dt docs:deploy'
         env:
           NETLIFY_AUTH_TOKEN: ${{ secrets.NETLIFY_AUTH_TOKEN }}
   build-example-create:

@@ -56,6 +56,6 @@ scripts/.completions
 # Generated markdown bundle embedded into @livestore/livestore
 packages/@livestore/livestore/docs
 
-# Task context files
-tasks/
+# Task context files (agent work tracking, not part of codebase)
+/tasks/
 .claude/settings.local.json

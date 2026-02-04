@@ -115,15 +115,15 @@ export default githubWorkflow({
 
   jobs: {
     lint: standardCIJob({
-      steps: [...livestoreSetupSteps, { run: 'mono lint' }],
+      steps: [...livestoreSetupSteps, { run: 'dt lint:full' }],
     }),
 
     'type-check': standardCIJob({
-      steps: [...livestoreSetupSteps, { run: 'mono ts' }],
+      steps: [...livestoreSetupSteps, { run: 'dt ts:build' }],
     }),
 
     'test-unit': standardCIJob({
-      steps: [...livestoreSetupSteps, { run: 'mono test unit' }],
+      steps: [...livestoreSetupSteps, { run: 'dt test:unit' }],
     }),
 
     // TODO: Remove flaky test wrapper once node-sync flakiness is resolved
@@ -132,7 +132,7 @@ export default githubWorkflow({
       steps: [
         flakyTestStep(
           'Run node-sync integration tests',
-          'mono test integration node-sync',
+          'dt test:integration:node-sync',
           'https://github.com/livestorejs/livestore/issues/624',
           'Node-sync integration tests failed',
         ),
@@ -194,14 +194,14 @@ fi`,
           name: 'Run sync-provider tests for ${{ matrix.provider }}',
           if: "${{ matrix.provider != 's2' || env.S2_ACCESS_TOKEN != '' }}",
           run: `if [[ "\${{ matrix.provider }}" == cf-* ]]; then
-  if mono test integration sync-provider --provider \${{ matrix.provider }}; then
+  if dt "test:integration:sync-provider:\${{ matrix.provider }}"; then
     exit 0
   else
     echo "::warning::Cloudflare sync-provider tests for \${{ matrix.provider }} failed (flaky; see https://github.com/livestorejs/livestore/issues/625 and upstream https://github.com/cloudflare/workers-sdk/issues/11122)"
     exit 0
   fi
 else
-  mono test integration sync-provider --provider \${{ matrix.provider }}
+  dt "test:integration:sync-provider:\${{ matrix.provider }}"
 fi`,
         },
         {
@@ -229,9 +229,9 @@ fi`,
           env: { PLAYWRIGHT_SUITE: '${{ matrix.suite }}' },
           // TODO: fix flaky devtools test
           run: `if [ "\${{ matrix.suite }}" = "devtools" ]; then
-  mono test integration devtools || echo "::warning::Script failed but continuing"
+  dt test:integration:devtools || echo "::warning::Script failed but continuing"
 else
-  mono test integration \${{ matrix.suite }}
+  dt "test:integration:\${{ matrix.suite }}"
 fi`,
         },
         {
@@ -275,7 +275,7 @@ fi`,
         otelSetupStep,
         {
           name: 'Run performance tests',
-          run: 'mono test perf',
+          run: 'dt test:perf',
           env: {
             COMMIT_SHA: PR_HEAD_SHA,
             GRAFANA_ENDPOINT: 'https://livestore.grafana.net',
@@ -299,7 +299,7 @@ fi`,
         },
         {
           name: 'Run wa-sqlite tests',
-          run: 'devenv shell mono test integration wa-sqlite',
+          run: 'devenv shell dt test:integration:wa-sqlite',
           env: {
             COMMIT_SHA: PR_HEAD_SHA,
             GRAFANA_ENDPOINT: 'https://livestore.grafana.net',
@@ -326,6 +326,7 @@ fi`,
           run: 'echo "//registry.npmjs.org/:_authToken=${NPM_TOKEN}" >> ~/.npmrc',
           env: { NPM_TOKEN: '${{ secrets.NPM_TOKEN }}' },
         },
+        // Note: Using mono directly here because release:snapshot needs --git-sha parameter
         { run: `mono release snapshot --git-sha=${GITHUB_SHA}` },
       ],
     },
@@ -339,11 +340,11 @@ fi`,
           name: 'Build examples',
           run: "pnpm --filter 'livestore-example-*' --workspace-concurrency=1 build",
         },
-        { name: 'Test examples', run: 'mono examples test' },
+        { name: 'Test examples', run: 'dt examples:test' },
         {
           name: 'Deploy examples to Cloudflare',
           if: IS_NOT_FORK,
-          run: 'mono examples deploy',
+          run: 'dt examples:deploy',
           env: {
             CLOUDFLARE_API_TOKEN: '${{ secrets.CLOUDFLARE_API_TOKEN }}',
             CLOUDFLARE_ACCOUNT_ID: '${{ secrets.CLOUDFLARE_ACCOUNT_ID }}',
@@ -367,11 +368,11 @@ fi`,
       defaults: devenvShellDefaults,
       steps: [
         ...livestoreSetupSteps,
-        { name: 'Build docs', run: 'mono docs build --api-docs' },
+        { name: 'Build docs', run: 'dt docs:build:api' },
         {
           name: 'Deploy docs',
           if: `\${{ github.event_name != 'pull_request' || ${IS_NOT_FORK} }}`,
-          run: 'mono docs deploy',
+          run: 'dt docs:deploy',
           env: { NETLIFY_AUTH_TOKEN: '${{ secrets.NETLIFY_AUTH_TOKEN }}' },
         },
       ],
