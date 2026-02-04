@@ -47,7 +47,6 @@
         "threshold": 0
       }
     ],
-    "overeng/named-args": "off",
     "import/no-commonjs": "error",
     "import/no-cycle": "warn",
     "func-style": [
@@ -57,15 +56,13 @@
         "allowArrowFunctions": true
       }
     ],
-    "overeng/exports-first": "off",
-    "overeng/jsdoc-require-exports": "off",
-    "no-unused-vars": "off",
-    "eqeqeq": "off",
     "unicorn/no-array-callback-reference": "off",
     "typescript/no-explicit-any": "off",
     "typescript/no-deprecated": "off",
     "typescript/consistent-type-definitions": "off",
-    "typescript/consistent-type-imports": "warn"
+    "typescript/consistent-type-imports": "warn",
+    "no-unused-vars": "off",
+    "eqeqeq": "off"
   },
   "overrides": [
     {
@@ -77,14 +74,12 @@
     {
       "files": ["**/vitest.config.ts", "**/vite.config.ts", "**/playwright.config.ts", "**/*.genie.ts"],
       "rules": {
-        "func-style": "off",
-        "overeng/jsdoc-require-exports": "off"
+        "func-style": "off"
       }
     },
     {
-      "files": ["**/*.test.ts", "**/*.test.tsx", "**/__tests__/**"],
+      "files": ["**/*.test.ts", "**/*.test.tsx", "**/__tests__/**", "**/tests/**"],
       "rules": {
-        "overeng/named-args": "off",
         "unicorn/no-array-sort": "off",
         "unicorn/consistent-function-scoping": "off",
         "require-yield": "off"
@@ -94,15 +89,6 @@
       "files": ["**/index.ts"],
       "rules": {
         "oxc/no-barrel-file": "off"
-      }
-    },
-    {
-      "files": ["**/tests/**"],
-      "rules": {
-        "overeng/named-args": "off",
-        "unicorn/no-array-sort": "off",
-        "unicorn/consistent-function-scoping": "off",
-        "require-yield": "off"
       }
     },
     {
@@ -120,9 +106,6 @@
         "import/no-unassigned-import": "off",
         "oxc/no-barrel-file": "off",
         "oxc/no-map-spread": "off",
-        "overeng/exports-first": "off",
-        "overeng/jsdoc-require-exports": "off",
-        "overeng/named-args": "off",
         "unicorn/consistent-function-scoping": "off"
       }
     },

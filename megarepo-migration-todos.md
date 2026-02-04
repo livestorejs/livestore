@@ -7,8 +7,8 @@
         compilerOptions: { ...baseTsconfigCompilerOptions, ...yourOptions }
 - [ ] adjust ci
 - [x] fully migrate from biome to oxlint/oxfmt
-- [ ] load genie, megarepo via devenv from effect-utils
+- [x] load genie, megarepo via devenv from effect-utils
 - [x] rethink setup script (e.g. auto install)
 - [ ] think of a way to make megarepo opt in to improve contributor experience (e.g. auto link effect-utils somehow into the repo on checkout)
 - [ ] delete this file (done by user)
-- [ ] use genie for `megarepo.json` generation
+- [x] use genie for `megarepo.json` generation
