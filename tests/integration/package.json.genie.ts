@@ -14,6 +14,7 @@ export default packageJson({
       '@livestore/adapter-node',
       '@livestore/adapter-web',
       '@livestore/common',
+      '@livestore/common-cf',
       '@livestore/devtools-vite',
       '@livestore/effect-playwright',
       '@livestore/livestore',

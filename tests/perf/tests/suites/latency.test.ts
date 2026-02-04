@@ -31,6 +31,7 @@ repeatSuite(
             buffered: true,
             // A durationThreshold of 16 ms is necessary to include more interactions,
             // since the default is 104 ms. The minimum durationThreshold is 16 ms.
+            // @ts-expect-error the type is wrong. `durationThreshold` is a valid property to pass to `observe`.
             durationThreshold: 16,
           })
         })

@@ -1,4 +1,4 @@
-import { catalog, localPackageDefaults, packageJson } from '../genie/repo.ts'
+import { catalog, effectDevDeps, localPackageDefaults, packageJson } from '../genie/repo.ts'
 
 export default packageJson({
   name: '@local/scripts',
@@ -9,6 +9,9 @@ export default packageJson({
     './lint': './src/commands/lint.ts',
   },
   devDependencies: {
+    // Effect packages - needed to avoid TS2742 errors when types are inferred from
+    // workspace dependencies. Scripts must have its own Effect deps, not borrowed from docs.
+    ...effectDevDeps(),
     ...catalog.pick(
       '@livestore/common',
       '@livestore/utils',

@@ -14,6 +14,7 @@
     "@livestore/adapter-node": "workspace:*",
     "@livestore/adapter-web": "workspace:*",
     "@livestore/common": "workspace:*",
+    "@livestore/common-cf": "workspace:*",
     "@livestore/devtools-vite": "0.4.0-dev.22",
     "@livestore/effect-playwright": "workspace:*",
     "@livestore/livestore": "workspace:*",

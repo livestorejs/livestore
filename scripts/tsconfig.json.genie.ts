@@ -14,13 +14,13 @@ export default tsconfigJson({
   },
   include: ['./src', './standalone'],
   exclude: [...packageTsconfigExclude],
+  // Note: We intentionally don't use tsconfig references to @local packages here.
+  // Using references causes TS2742 errors because TypeScript follows the references
+  // and resolves types from the referenced packages' node_modules, leading to
+  // non-portable type paths in inferred declarations.
   references: [
     { path: '../packages/@livestore/utils' },
     { path: '../packages/@livestore/utils-dev' },
-    { path: '../tests/sync-provider' },
     { path: '../packages/@livestore/common' },
-    { path: '../tests/integration' },
-    { path: '../packages/@local/astro-twoslash-code' },
-    { path: '../packages/@local/astro-tldraw' },
   ],
 })

@@ -14,6 +14,7 @@
     "@livestore/utils": "workspace:*"
   },
   "devDependencies": {
+    "@effect/platform": "0.94.2",
     "@effect/platform-node": "0.104.1",
     "@effect/vitest": "0.27.0",
     "@types/node": "25.0.3",

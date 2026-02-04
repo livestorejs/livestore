@@ -12,7 +12,15 @@ export default packageJson({
     ...catalog.pick('@kitschpatrol/tldraw-cli', '@livestore/utils'),
   },
   devDependencies: {
-    ...catalog.pick('@effect/vitest', '@effect/platform-node', '@types/node', 'astro', 'effect', 'vitest'),
+    ...catalog.pick(
+      '@effect/vitest',
+      '@effect/platform',
+      '@effect/platform-node',
+      '@types/node',
+      'astro',
+      'effect',
+      'vitest',
+    ),
   },
   ...localPackageDefaults,
   peerDependencies: {
