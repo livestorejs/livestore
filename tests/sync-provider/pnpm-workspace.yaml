@@ -1,18 +1,6 @@
 # Generated file - DO NOT EDIT
 # Source: pnpm-workspace.yaml.genie.ts
 
-packages:
-  - .
-  - ../packages/@livestore/adapter-cloudflare
-  - ../packages/@livestore/adapter-node
-  - ../packages/@livestore/common
-  - ../packages/@livestore/common-cf
-  - ../packages/@livestore/livestore
-  - ../packages/@livestore/sqlite-wasm
-  - ../packages/@livestore/sync-cf
-  - ../packages/@livestore/sync-electric
-  - ../packages/@livestore/sync-s2
-  - ../packages/@livestore/utils
-  - ../packages/@livestore/utils-dev
+packages: [., ../../packages/@livestore/*, ../../packages/@local/*]
 
 dedupePeerDependents: true

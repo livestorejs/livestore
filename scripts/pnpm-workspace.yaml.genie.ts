@@ -1,16 +1,5 @@
 import { pnpmWorkspace } from '../genie/repo.ts'
 
-// Scripts is at repo root level - explicit workspace dependencies only
-export default pnpmWorkspace(
-  // @livestore packages
-  '../packages/@livestore/common',
-  '../packages/@livestore/utils',
-  '../packages/@livestore/utils-dev',
-  // @local packages
-  '../packages/@local/astro-tldraw',
-  '../packages/@local/astro-twoslash-code',
-  // Root-level packages
-  '../docs',
-  '../tests/integration',
-  '../tests/sync-provider',
-)
+// Scripts workspace - uses glob patterns to include all workspace packages
+// This is the "root" workspace that includes all packages + docs + tests
+export default pnpmWorkspace('../packages/@livestore/*', '../packages/@local/*', '../docs', '../tests/*')
