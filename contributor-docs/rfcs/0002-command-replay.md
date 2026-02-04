@@ -633,7 +633,6 @@ This provides flexibility at the cost of increased complexity. Each command woul
 
 - https://trepo.tuni.fi/bitstream/handle/10024/142251/Kimpim%E4kiJami-Petteri.pdf?sequence=2
 - https://arxiv.org/pdf/2305.04848
-- https://github.com/fraktalio/fmodel
 - https://groups.google.com/g/dddcqrs/c/X5YGVl36RS0
 - https://groups.google.com/g/dddcqrs/c/f0et--D-8zU
 - https://stackoverflow.com/questions/35350780/offline-sync-and-event-sourcing
@@ -644,12 +643,6 @@ This provides flexibility at the cost of increased complexity. Each command woul
 To read:
 - https://discuss.axoniq.io/t/using-axonframework-event-sourcing-for-offline-synchronisation/483/13
 
-Maybe?
-
-- https://groups.google.com/g/dddcqrs/c/uOoSr_uYpSY?pli=1
-- https://groups.google.com/g/dddcqrs/c/f0et--D-8zU
-- https://stackoverflow.com/questions/42506404/synchronize-data-across-multiple-occasionally-connected-clients-using-eventsourc
-- https://stackoverflow.com/questions/35350780/offline-sync-and-event-sourcing
 
 ## Appendix
 
