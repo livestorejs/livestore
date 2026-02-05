@@ -1270,6 +1270,7 @@ declare module '@livestore/wa-sqlite/src/VFS.js' {
   export * from '@livestore/wa-sqlite/src/sqlite-constants.js'
 
   export class Base {
+    constructor(name: string, module: any)
     name: string
     mxPathName: number
     /**

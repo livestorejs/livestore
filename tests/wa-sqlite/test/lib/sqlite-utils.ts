@@ -46,7 +46,6 @@ export const importBytesToDb = (
 
 export const makeInMemoryDb = (sqlite3: WaSqlite.SQLiteAPI) => {
   if (sqlite3.vfs_registered.has('memory-vfs') === false) {
-    // @ts-expect-error TODO fix types
     const vfs = new MemoryVFS('memory-vfs', (sqlite3 as any).module)
 
     // @ts-expect-error TODO fix types

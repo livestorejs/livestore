@@ -10,7 +10,7 @@
     "rewriteRelativeImportExtensions": true,
     "resolveJsonModule": true,
     "esModuleInterop": true,
-    "allowJs": false,
+    "allowJs": true,
     "declaration": true,
     "declarationMap": true,
     "sourceMap": true,

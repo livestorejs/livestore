@@ -106,6 +106,9 @@ importers:
         specifier: 1.9.0
         version: 1.9.0
     devDependencies:
+      '@types/node':
+        specifier: 25.0.3
+        version: 25.0.3
       expo-application:
         specifier: 7.0.7
         version: 7.0.7(expo@54.0.12(@babel/core@7.28.6)(graphql@16.11.0)(react-native@0.81.4(@babel/core@7.28.6)(@types/react@19.2.7)(react@19.2.3))(react@19.2.3))
