@@ -70,7 +70,8 @@
   "devDependencies": {
     "@playwright/test": "1.57.0",
     "@types/hast": "3.0.4",
-    "@types/react-dom": "19.2.3"
+    "@types/react-dom": "19.2.3",
+    "vitest": "3.2.4"
   },
   "$genie": {
     "source": "package.json.genie.ts",

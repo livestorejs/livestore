@@ -68,7 +68,7 @@ export default packageJson({
     'unist-util-visit': '5.0.0',
   },
   devDependencies: {
-    ...catalog.pick('@playwright/test', '@types/react-dom', '@types/hast'),
+    ...catalog.pick('@playwright/test', '@types/react-dom', '@types/hast', 'vitest'),
   },
   scripts: {
     astro: 'astro',
