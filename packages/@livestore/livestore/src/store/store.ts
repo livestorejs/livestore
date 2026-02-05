@@ -897,7 +897,7 @@ export class Store<TSchema extends LiveStoreSchema = LiveStoreSchema.Any, TConte
    *   return
    * }
    *
-   * // Command succeeded locally - events are materialized (optimistic UI)
+   * // Command succeeded locally - events are materialized
    * const guest = store.query(tables.guests.get(guestId))
    * toast.success(guest.status === 'waitlisted' ? 'Waitlisted' : 'Checked in')
    *
