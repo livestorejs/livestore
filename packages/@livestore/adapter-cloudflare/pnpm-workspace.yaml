@@ -3,11 +3,16 @@
 
 packages:
   - .
+  - ../adapter-web
   - ../common
   - ../common-cf
+  - ../devtools-web-common
   - ../livestore
   - ../sqlite-wasm
   - ../sync-cf
   - ../utils
+  - ../utils-dev
+  - ../wa-sqlite
+  - ../webmesh
 
 dedupePeerDependents: true

@@ -1,6 +1,14 @@
 # Generated file - DO NOT EDIT
 # Source: pnpm-workspace.yaml.genie.ts
 
-packages: [., ../common, ../sqlite-wasm, ../utils, ../webmesh]
+packages:
+  - .
+  - ../common
+  - ../common-cf
+  - ../sqlite-wasm
+  - ../utils
+  - ../utils-dev
+  - ../wa-sqlite
+  - ../webmesh
 
 dedupePeerDependents: true

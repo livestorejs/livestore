@@ -1,6 +1,12 @@
 # Generated file - DO NOT EDIT
 # Source: pnpm-workspace.yaml.genie.ts
 
-packages: [., ../common, ../common-cf, ../utils]
+packages:
+  - .
+  - ../common
+  - ../common-cf
+  - ../utils
+  - ../utils-dev
+  - ../webmesh
 
 dedupePeerDependents: true

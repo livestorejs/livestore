@@ -4,9 +4,12 @@
 packages:
   - .
   - ../common
+  - ../common-cf
   - ../devtools-web-common
   - ../sqlite-wasm
   - ../utils
+  - ../utils-dev
+  - ../wa-sqlite
   - ../webmesh
 
 dedupePeerDependents: true

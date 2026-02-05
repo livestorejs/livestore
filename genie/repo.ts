@@ -232,41 +232,114 @@ export const localPackageDefaults = {
 // =============================================================================
 
 /**
- * Per-package pnpm workspace configuration with minimal dependencies.
+ * Direct workspace dependencies for each @livestore package.
+ *
+ * Maps package dirname (e.g., 'common') to its direct workspace dep dirnames.
+ * This is the single source of truth for workspace dependency relationships.
+ * Both `pnpm-workspace.yaml.genie.ts` and this graph should stay in sync
+ * with `package.json.genie.ts` workspace:* dependencies.
+ *
+ * When adding a workspace dependency to a package.json.genie.ts, add it here too.
+ * The `resolveTransitiveDeps` function will automatically include all transitive deps
+ * in the generated pnpm-workspace.yaml files.
+ */
+const workspaceDeps: Record<string, readonly string[]> = {
+  utils: [],
+  'utils-dev': ['utils'],
+  'wa-sqlite': [],
+  'peer-deps': [],
+  webmesh: ['utils', 'utils-dev'],
+  common: ['utils', 'webmesh', 'utils-dev'],
+  'common-cf': ['utils', 'utils-dev'],
+  'effect-playwright': ['utils'],
+  'devtools-web-common': ['common', 'utils', 'webmesh'],
+  'sqlite-wasm': ['common', 'common-cf', 'utils', 'wa-sqlite'],
+  'sync-cf': ['common', 'common-cf', 'utils'],
+  'sync-electric': ['common', 'utils'],
+  livestore: ['common', 'utils', 'adapter-web', 'utils-dev'],
+  'adapter-web': ['common', 'devtools-web-common', 'sqlite-wasm', 'utils', 'webmesh'],
+  'adapter-node': ['common', 'sqlite-wasm', 'utils', 'webmesh'],
+  'adapter-expo': ['common', 'utils', 'webmesh'],
+  'adapter-cloudflare': ['common', 'common-cf', 'livestore', 'sqlite-wasm', 'sync-cf', 'utils'],
+  cli: ['adapter-node', 'common', 'livestore', 'peer-deps', 'utils', 'utils-dev'],
+  'framework-toolkit': ['adapter-web', 'common', 'livestore', 'utils', 'utils-dev'],
+  graphql: ['common', 'livestore', 'utils'],
+  react: ['common', 'framework-toolkit', 'livestore', 'utils', 'adapter-web', 'utils-dev'],
+  solid: ['common', 'framework-toolkit', 'livestore', 'utils', 'adapter-web', 'utils-dev'],
+  svelte: ['common', 'livestore', 'utils', 'adapter-web', 'utils-dev'],
+  'sync-s2': ['common', 'livestore', 'utils'],
+  'devtools-expo': ['adapter-node', 'utils'],
+} as const
+
+/**
+ * Compute the transitive closure of workspace dependencies for a set of direct deps.
+ *
+ * Given direct dependency patterns (e.g., '../common', '../utils'), resolves all
+ * transitive workspace dependencies by following the `workspaceDeps` graph.
+ * This ensures pnpm can resolve `workspace:*` specifiers for all nested deps.
+ *
+ * Only resolves patterns matching `../<name>` (sibling @livestore packages).
+ * Non-matching patterns (e.g., `../../@livestore/*` globs) are passed through as-is.
+ */
+const resolveTransitiveDeps = (patterns: string[]): string[] => {
+  const result = new Set<string>()
+
+  const visit = (dirName: string) => {
+    if (result.has(dirName)) return
+    result.add(dirName)
+    const deps = workspaceDeps[dirName]
+    if (deps) {
+      for (const dep of deps) visit(dep)
+    }
+  }
+
+  const nonResolvable: string[] = []
+  for (const pattern of patterns) {
+    const match = pattern.match(/^\.\.\/([^/]+)$/)
+    if (match && match[1]! in workspaceDeps) {
+      visit(match[1]!)
+    } else {
+      nonResolvable.push(pattern)
+    }
+  }
+
+  return [...nonResolvable, ...[...result].toSorted().map((name) => `../${name}`)]
+}
+
+/**
+ * Per-package pnpm workspace configuration with automatic transitive dependency resolution.
  *
  * Following effect-utils best practices:
- * - Each package lists only its actual workspace dependencies (not ../* broad patterns)
+ * - Each package lists its direct workspace dependencies
+ * - Transitive deps are automatically computed via `workspaceDeps` graph
  * - Includes dedupePeerDependents to prevent duplicate dependency resolution
- * - Manual maintenance: when adding workspace dep to package.json, update this too
  *
- * @param patterns - Explicit workspace dependency paths (e.g., '../utils', '../common')
+ * @param patterns - Direct workspace dependency paths (e.g., '../utils', '../common')
  *                   Pass no args for standalone packages with no workspace deps
  *
  * @example
  * // Standalone package (no workspace deps)
  * pnpmWorkspace()
  *
- * // Package with specific deps
+ * // Package with specific deps (transitive deps resolved automatically)
  * pnpmWorkspace('../utils', '../common')
  */
 export const pnpmWorkspace = (...patterns: string[]) =>
   pnpmWorkspaceYaml({
-    packages: ['.', ...patterns],
+    packages: ['.', ...resolveTransitiveDeps(patterns)],
     dedupePeerDependents: true,
   })
 
 /**
  * pnpm workspace for React packages.
  * Adds publicHoistPattern to ensure single React instance across packages.
+ * Automatically resolves transitive workspace dependencies.
  *
- * Use this for packages that use React (react, react-dom, or react-reconciler).
- * Prevents "Invalid hook call" errors from multiple React instances.
- *
- * @param patterns - Explicit workspace dependency paths
+ * @param patterns - Direct workspace dependency paths
  */
 export const pnpmWorkspaceReact = (...patterns: string[]) =>
   pnpmWorkspaceYaml({
-    packages: ['.', ...patterns],
+    packages: ['.', ...resolveTransitiveDeps(patterns)],
     dedupePeerDependents: true,
     publicHoistPattern: ['react', 'react-dom', 'react-reconciler'],
   })
@@ -274,14 +347,13 @@ export const pnpmWorkspaceReact = (...patterns: string[]) =>
 /**
  * pnpm workspace for Expo/React Native packages.
  * Hoists React Native related packages to prevent bundler issues.
+ * Automatically resolves transitive workspace dependencies.
  *
- * Use this for packages that use Expo or React Native.
- *
- * @param patterns - Explicit workspace dependency paths
+ * @param patterns - Direct workspace dependency paths
  */
 export const pnpmWorkspaceExpo = (...patterns: string[]) =>
   pnpmWorkspaceYaml({
-    packages: ['.', ...patterns],
+    packages: ['.', ...resolveTransitiveDeps(patterns)],
     dedupePeerDependents: true,
     publicHoistPattern: ['react', 'react-dom', 'react-reconciler', 'react-native', 'expo', 'expo-*'],
   })

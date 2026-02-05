@@ -5,8 +5,13 @@ packages:
   - .
   - ../adapter-web
   - ../common
+  - ../common-cf
+  - ../devtools-web-common
   - ../livestore
+  - ../sqlite-wasm
   - ../utils
   - ../utils-dev
+  - ../wa-sqlite
+  - ../webmesh
 
 dedupePeerDependents: true
