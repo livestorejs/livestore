@@ -27,8 +27,9 @@ export default packageJson({
       'vite',
       'vitest',
     ),
-    // Required for vitest config (vite-plugin-solid)
+    // Required for vitest config (vite-plugin-solid) and test setup (@testing-library/jest-dom)
     'vite-plugin-solid': '2.11.10',
+    ...catalog.pick('@testing-library/jest-dom'),
   },
   peerDependencies: {
     'solid-js': '^1.9.10',

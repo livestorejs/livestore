@@ -550,6 +550,9 @@ importers:
       '@solidjs/testing-library':
         specifier: 0.8.10
         version: 0.8.10(solid-js@1.9.10)
+      '@testing-library/jest-dom':
+        specifier: 6.6.3
+        version: 6.6.3
       jsdom:
         specifier: 26.1.0
         version: 26.1.0
