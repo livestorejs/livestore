@@ -68,7 +68,7 @@
     "unist-util-visit": "5.0.0"
   },
   "devDependencies": {
-    "@playwright/test": "1.57.0",
+    "@playwright/test": "1.58.0",
     "@types/hast": "3.0.4",
     "@types/react-dom": "19.2.3",
     "vitest": "3.2.4"

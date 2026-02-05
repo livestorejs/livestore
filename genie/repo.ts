@@ -198,9 +198,20 @@ const livestoreOnlyCatalog = {
   yaml: '2.8.1',
 } as const
 
+/**
+ * Override @playwright/test version to match nix-provided browser revision.
+ * The nix playwright-web-flake provides browsers for 1.58.0 (chromium rev 1208),
+ * but effect-utils catalog still pins 1.57.0 (chromium rev 1200).
+ * defineCatalog doesn't support overrides, so we patch the base catalog object directly.
+ */
+const effectUtilsCatalogPatched = Object.assign(Object.create(Object.getPrototypeOf(effectUtilsCatalog)), {
+  ...effectUtilsCatalog,
+  '@playwright/test': '1.58.0',
+})
+
 /** Composed catalog - effect-utils base + livestore-specific + workspace packages */
 export const catalog = defineCatalog({
-  extends: effectUtilsCatalog,
+  extends: effectUtilsCatalogPatched,
   packages: {
     ...workspaceCatalog,
     ...livestoreOnlyCatalog,

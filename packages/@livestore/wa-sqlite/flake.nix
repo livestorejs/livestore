@@ -1,11 +1,11 @@
 {
   inputs = {
-    workspace.url = "path:../../../repos/effect-utils?dir=nix/workspace-flake";
+    workspace.url = "github:overengineeringstudio/effect-utils";
     nixpkgs.follows = "workspace/nixpkgs";
     flake-utils.url = "github:numtide/flake-utils";
   };
 
-  outputs = { self, nixpkgs, flake-utils }:
+  outputs = { self, nixpkgs, flake-utils, ... }:
     flake-utils.lib.eachDefaultSystem (system:
       let
         pkgs = import nixpkgs { inherit system; };

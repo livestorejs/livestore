@@ -33,7 +33,7 @@
   },
   "devDependencies": {
     "@livestore/devtools-vite": "0.4.0-dev.22",
-    "@playwright/test": "1.57.0",
+    "@playwright/test": "1.58.0",
     "tsx": "^4.20.0"
   },
   "$genie": {

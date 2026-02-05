@@ -18,13 +18,31 @@
         "type": "github"
       }
     },
+    "flake-utils_2": {
+      "inputs": {
+        "systems": "systems_2"
+      },
+      "locked": {
+        "lastModified": 1731533236,
+        "narHash": "sha256-l0KFg5HjrsfsO/JpG+r7fRrqm12kzFHyUHqHCVpMMbI=",
+        "owner": "numtide",
+        "repo": "flake-utils",
+        "rev": "11707dc2f618dd54ca8739b309ec4fc024de578b",
+        "type": "github"
+      },
+      "original": {
+        "owner": "numtide",
+        "repo": "flake-utils",
+        "type": "github"
+      }
+    },
     "nixpkgs": {
       "locked": {
-        "lastModified": 1768564909,
-        "narHash": "sha256-Kell/SpJYVkHWMvnhqJz/8DqQg2b6PguxVWOuadbHCc=",
+        "lastModified": 1769461804,
+        "narHash": "sha256-msG8SU5WsBUfVVa/9RPLaymvi5bI8edTavbIq3vRlhI=",
         "owner": "NixOS",
         "repo": "nixpkgs",
-        "rev": "e4bae1bd10c9c57b2cf517953ab70060a828ee6f",
+        "rev": "bfc1b8a4574108ceef22f02bafcf6611380c100d",
         "type": "github"
       },
       "original": {
@@ -59,21 +77,35 @@
         "type": "github"
       }
     },
-    "workspace": {
-      "inputs": {
-        "nixpkgs": "nixpkgs"
-      },
+    "systems_2": {
       "locked": {
-        "dir": "nix/workspace-flake",
-        "lastModified": 1768897634,
-        "narHash": "sha256-i+DDtFTbX9/XLCz4cOGiiYSVcp4iSz3LId/6nyNoXTI=",
-        "owner": "overengineeringstudio",
-        "repo": "effect-utils",
-        "rev": "901ade0484ca4cab77fb2fa25d0f05ba0de6428d",
+        "lastModified": 1681028828,
+        "narHash": "sha256-Vy1rq5AaRuLzOxct8nz4T6wlgyUR7zLU309k9mBC768=",
+        "owner": "nix-systems",
+        "repo": "default",
+        "rev": "da67096a3b9bf56a91d16901293e51ba5b49a27e",
         "type": "github"
       },
       "original": {
-        "dir": "nix/workspace-flake",
+        "owner": "nix-systems",
+        "repo": "default",
+        "type": "github"
+      }
+    },
+    "workspace": {
+      "inputs": {
+        "flake-utils": "flake-utils_2",
+        "nixpkgs": "nixpkgs"
+      },
+      "locked": {
+        "lastModified": 1769959550,
+        "narHash": "sha256-vbZvov4qUHz025G+SVm5uOuqnwjWkYP9cJTRvTPAsKo=",
+        "owner": "overengineeringstudio",
+        "repo": "effect-utils",
+        "rev": "a54ecb070024128bcc0d356ec448bd02cd0fae26",
+        "type": "github"
+      },
+      "original": {
         "owner": "overengineeringstudio",
         "repo": "effect-utils",
         "type": "github"
