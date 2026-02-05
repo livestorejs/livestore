@@ -68,8 +68,8 @@ type LocalPushQueueItem = [
  *   - Maintains events in ascending order.
  *   - Uses `Deferred` objects to resolve/reject events based on application success.
  * - Processes events from the queue, applying events in batches.
- * - Controlled by a `Latch` to manage execution flow.
- * - The latch closes on pull receipt and re-opens post-pull completion.
+ * - Controlled by a mutex (`Semaphore(1)`) to ensure mutual exclusion between push and pull processing.
+ * - The pull side acquires the mutex before processing and releases it on post-pull completion.
  * - Processes up to `maxBatchSize` events per cycle.
  *
  * Currently we're advancing the state db and eventlog in lockstep, but we could also decouple this in the future
@@ -178,8 +178,8 @@ export const makeLeaderSyncProcessor = ({
     }
 
     const localPushesQueue = yield* BucketQueue.make<LocalPushQueueItem>()
-    const localPushesLatch = yield* Effect.makeLatch(true)
-    const pullLatch = yield* Effect.makeLatch(true)
+    // Ensures mutual exclusion between local push and backend pull processing.
+    const pushPullMutex = yield* Effect.makeSemaphore(1)
 
     /**
      * Additionally to the `syncStateSref` we also need the `pushHeadRef` in order to prevent old/duplicate
@@ -340,9 +340,8 @@ export const makeLeaderSyncProcessor = ({
         })
 
       yield* backgroundApplyLocalPushes({
-        localPushesLatch,
+        pushPullMutex,
         localPushesQueue,
-        pullLatch,
         syncStateSref,
         syncBackendPushQueue,
         schema,
@@ -380,8 +379,7 @@ export const makeLeaderSyncProcessor = ({
             yield* FiberHandle.run(backendPushingFiberHandle, backendPushingEffect)
           }),
         syncStateSref,
-        localPushesLatch,
-        pullLatch,
+        pushPullMutex,
         livePull,
         dbState,
         otelSpan,
@@ -449,9 +447,8 @@ export const makeLeaderSyncProcessor = ({
   })
 
 const backgroundApplyLocalPushes = ({
-  localPushesLatch,
+  pushPullMutex,
   localPushesQueue,
-  pullLatch,
   syncStateSref,
   syncBackendPushQueue,
   schema,
@@ -461,8 +458,7 @@ const backgroundApplyLocalPushes = ({
   localPushBatchSize,
   testing,
 }: {
-  pullLatch: Effect.Latch
-  localPushesLatch: Effect.Latch
+  pushPullMutex: Effect.Semaphore
   localPushesQueue: BucketQueue.BucketQueue<LocalPushQueueItem>
   syncStateSref: SubscriptionRef.SubscriptionRef<SyncState.SyncState | undefined>
   syncBackendPushQueue: BucketQueue.BucketQueue<LiveStoreEvent.Client.EncodedWithMeta>
@@ -483,11 +479,8 @@ const backgroundApplyLocalPushes = ({
 
       const batchItems = yield* BucketQueue.takeBetween(localPushesQueue, 1, localPushBatchSize)
 
-      // Wait for the backend pulling to finish
-      yield* localPushesLatch.await
-
-      // Prevent backend pull processing until this local push is finished
-      yield* pullLatch.close
+      // Waits for backend pulling to finish and prevents backend pull processing until this local push is finished
+      yield* pushPullMutex.take(1)
 
       const syncState = yield* syncStateSref
       if (syncState === undefined) return shouldNeverHappen('Not initialized')
@@ -495,7 +488,7 @@ const backgroundApplyLocalPushes = ({
       const currentRebaseGeneration = syncState.localHead.rebaseGeneration
 
       // Since the rebase generation might have changed since enqueuing, we need to filter out items with older generation
-      // It's important that we filter after we got localPushesLatch, otherwise we might filter with the old generation
+      // It's important that we filter after acquiring the pushPullMutex, otherwise we might filter with the old generation
       const [droppedItems, filteredItems] = ReadonlyArray.partition(
         batchItems,
         ([eventEncoded]) => eventEncoded.seqNum.rebaseGeneration >= currentRebaseGeneration,
@@ -532,7 +525,7 @@ const backgroundApplyLocalPushes = ({
       }
 
       if (filteredItems.length === 0) {
-        yield* pullLatch.open
+        yield* pushPullMutex.release(1)
         continue
       }
 
@@ -602,7 +595,7 @@ const backgroundApplyLocalPushes = ({
           )
 
           // Allow the backend pulling to start
-          yield* pullLatch.open
+          yield* pushPullMutex.release(1)
 
           // In this case we're skipping state update and down/upstream processing
           // We've cleared the local push queue and are now waiting for new local pushes / backend pulls
@@ -643,7 +636,7 @@ const backgroundApplyLocalPushes = ({
       yield* materializeEventsBatch({ batchItems: mergeResult.newEvents, deferreds })
 
       // Allow the backend pulling to start
-      yield* pullLatch.open
+      yield* pushPullMutex.release(1)
     }
   })
 
@@ -702,9 +695,8 @@ const backgroundBackendPulling = ({
   otelSpan,
   dbState,
   syncStateSref,
-  localPushesLatch,
+  pushPullMutex,
   livePull,
-  pullLatch,
   devtoolsLatch,
   initialBlockingSyncContext,
   connectedClientSessionPullQueues,
@@ -717,8 +709,7 @@ const backgroundBackendPulling = ({
   otelSpan: otel.Span | undefined
   syncStateSref: SubscriptionRef.SubscriptionRef<SyncState.SyncState | undefined>
   dbState: SqliteDb
-  localPushesLatch: Effect.Latch
-  pullLatch: Effect.Latch
+  pushPullMutex: Effect.Semaphore
   livePull: boolean
   devtoolsLatch: Effect.Latch | undefined
   initialBlockingSyncContext: InitialBlockingSyncContext
@@ -741,11 +732,8 @@ const backgroundBackendPulling = ({
           yield* devtoolsLatch.await
         }
 
-        // Prevent more local pushes from being processed until this pull is finished
-        yield* localPushesLatch.close
-
-        // Wait for pending local pushes to finish
-        yield* pullLatch.await
+        // Prevent more local pushes from being processed until this pull is finished and waits for pending local pushes to finish
+        yield* pushPullMutex.take(1)
 
         const syncState = yield* syncStateSref
         if (syncState === undefined) return shouldNeverHappen('Not initialized')
@@ -851,7 +839,7 @@ const backgroundBackendPulling = ({
 
         // Allow local pushes to be processed again
         if (pageInfo._tag === 'NoMore') {
-          yield* localPushesLatch.open
+          yield* pushPullMutex.release(1)
         }
       })
 
