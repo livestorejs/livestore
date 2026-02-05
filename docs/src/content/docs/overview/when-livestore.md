@@ -11,7 +11,7 @@ Choosing a data layer for a local-first app is a big decision and should be cons
 - you want to use SQLite for your queries
 - you like [event sourcing](/understanding-livestore/event-sourcing) to model data changes
 - you are working on a new app as LiveStore doesn't yet provide a way to [re-use an existing database](/misc/faq#existing-database)
-- the current [state of the project](/misc/state-of-the-project) aligns with your own timeline and requirements
+- the current [state of the project](/evaluation/state-of-the-project) aligns with your own timeline and requirements
 
 ## Evaluation exercise
 
