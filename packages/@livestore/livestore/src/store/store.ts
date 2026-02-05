@@ -876,7 +876,7 @@ export class Store<TSchema extends LiveStoreSchema = LiveStoreSchema.Any, TConte
   }
   //#endregion commit
 
-  // #region execute
+  //#region execute
   /**
    * Execute a command against the current state.
    *
@@ -999,7 +999,7 @@ export class Store<TSchema extends LiveStoreSchema = LiveStoreSchema.Any, TConte
       }),
     }
   }
-  // #endregion execute
+  //#endregion execute
 
   /**
    * Returns an async iterable of events from the eventlog.
