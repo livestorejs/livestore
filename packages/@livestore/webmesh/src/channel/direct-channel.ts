@@ -61,7 +61,7 @@ export const makeDirectChannel = ({
         innerChannelRef: { current: undefined as WebChannel.WebChannel<any, any> | undefined },
       }
 
-      // #region reconnect-loop
+      //#region reconnect-loop
       yield* Effect.gen(function* () {
         const resultDeferred = yield* Deferred.make<{
           channel: WebChannel.WebChannel<any, any>
@@ -193,7 +193,7 @@ export const makeDirectChannel = ({
         Effect.tapCauseLogPretty,
         Effect.forkScoped,
       )
-      // #endregion reconnect-loop
+      //#endregion reconnect-loop
 
       const parentSpan = yield* Effect.currentSpan.pipe(Effect.orDie)
 
