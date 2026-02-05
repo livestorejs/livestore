@@ -85,25 +85,23 @@ if (store.storageMode === 'in-memory') {
 ```
 
 The `storageMode` property returns:
-
 - `'persisted'`: Data is being persisted to disk (e.g., via OPFS)
 - `'in-memory'`: Data is only stored in memory and will be lost on page refresh
 
 You can also listen for boot status events including warnings using the `onBootStatus` callback in your store options:
 
 ```ts
-const useAppStore = () =>
-  useStore({
-    storeId: 'app',
-    schema,
-    adapter,
-    batchUpdates: ReactDOM.unstable_batchedUpdates,
-    onBootStatus: (status) => {
-      if (status.stage === 'warning') {
-        console.warn(`Storage warning (${status.reason}): ${status.message}`)
-      }
-    },
-  })
+const useAppStore = () => useStore({
+  storeId: 'app',
+  schema,
+  adapter,
+  batchUpdates: ReactDOM.unstable_batchedUpdates,
+  onBootStatus: (status) => {
+    if (status.stage === 'warning') {
+      console.warn(`Storage warning (${status.reason}): ${status.message}`)
+    }
+  },
+})
 ```
 
 ### Resetting local persistence
@@ -120,8 +118,8 @@ If you want to reset persistence manually, you can:
 2. **Use console command** if the above doesn't work due to a Chrome OPFS bug:
 
 ```javascript
-const opfsRoot = await navigator.storage.getDirectory()
-await opfsRoot.remove()
+const opfsRoot = await navigator.storage.getDirectory();
+await opfsRoot.remove();
 ```
 
 Note: Only use this during development while the app is running.

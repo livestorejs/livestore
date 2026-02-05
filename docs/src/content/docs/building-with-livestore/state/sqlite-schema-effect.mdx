@@ -86,17 +86,17 @@ You can specify table names in several ways:
 
 Effect Schema types are automatically mapped to SQLite column types:
 
-| Schema Type                         | SQLite Type           | TypeScript Type  |
-| ----------------------------------- | --------------------- | ---------------- |
-| `Schema.String`                     | `text`                | `string`         |
-| `Schema.Number`                     | `real`                | `number`         |
-| `Schema.Int`                        | `integer`             | `number`         |
-| `Schema.Boolean`                    | `integer`             | `boolean`        |
-| `Schema.Date`                       | `text`                | `Date`           |
-| `Schema.BigInt`                     | `text`                | `bigint`         |
-| Complex types (Struct, Array, etc.) | `text` (JSON encoded) | Decoded type     |
-| `Schema.optional(T)`                | Nullable column       | `T \| undefined` |
-| `Schema.NullOr(T)`                  | Nullable column       | `T \| null`      |
+| Schema Type | SQLite Type | TypeScript Type |
+|-------------|-------------|-----------------|
+| `Schema.String` | `text` | `string` |
+| `Schema.Number` | `real` | `number` |
+| `Schema.Int` | `integer` | `number` |
+| `Schema.Boolean` | `integer` | `boolean` |
+| `Schema.Date` | `text` | `Date` |
+| `Schema.BigInt` | `text` | `bigint` |
+| Complex types (Struct, Array, etc.) | `text` (JSON encoded) | Decoded type |
+| `Schema.optional(T)` | Nullable column | `T \| undefined` |
+| `Schema.NullOr(T)` | Nullable column | `T \| null` |
 
 ## Advanced examples
 
@@ -137,7 +137,6 @@ Effect Schema types are automatically mapped to SQLite column types:
 ## When to Use This Approach
 
 **Use Effect Schema-based tables when:**
-
 - You already have Effect Schema definitions to reuse
 - You prefer Effect Schema's composability and transformations
 - Your schemas are shared across different parts of your application
@@ -145,7 +144,6 @@ Effect Schema types are automatically mapped to SQLite column types:
 - You plan to migrate to Effect Schema v4 when it becomes available
 
 **Consider column-based tables when:**
-
 - You need precise control over SQLite column types
 - You're migrating from existing SQLite schemas
 - You prefer explicit column configuration

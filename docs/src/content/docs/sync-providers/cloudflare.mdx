@@ -83,7 +83,6 @@ Client -> CF.Worker: "WebSocket / HTTP\npush & pull"
 </div>
 
 Key responsibilities:
-
 - **Worker**: Routes sync requests to Durable Objects by `storeId`, handles auth validation
 - **Durable Object**: Manages sync state, handles push/pull operations, maintains WebSocket connections
 - **Storage**: Persists events in DO SQLite (default) or D1 (optional)
@@ -123,7 +122,6 @@ Direct RPC communication between Durable Objects (internal use by `@livestore/ad
 Creates a WebSocket-based sync backend client.
 
 **Options:**
-
 - `url` - WebSocket URL (supports `ws`/`wss` or `http`/`https` protocols)
 - `webSocketFactory?` - Custom WebSocket implementation
 - `ping?` - Ping configuration:
@@ -132,7 +130,6 @@ Creates a WebSocket-based sync backend client.
   - `requestInterval?: Duration` - Ping interval (default: 10 seconds)
 
 **Features:**
-
 - Real-time live pull
 - Automatic reconnection
 - Connection status tracking
@@ -145,7 +142,6 @@ Creates a WebSocket-based sync backend client.
 Creates an HTTP-based sync backend client with polling for live updates.
 
 **Options:**
-
 - `url` - HTTP endpoint URL
 - `headers?` - Additional HTTP headers
 - `livePull?` - Live pull configuration:
@@ -153,7 +149,6 @@ Creates an HTTP-based sync backend client with polling for live updates.
 - `ping?` - Ping configuration (same as WebSocket)
 
 **Features:**
-
 - HTTP request/response based
 - Polling-based live pull
 - Custom headers support
@@ -166,14 +161,12 @@ Creates an HTTP-based sync backend client with polling for live updates.
 Creates a Durable Object RPC-based sync backend (for internal use).
 
 **Options:**
-
 - `syncBackendStub` - Durable Object stub implementing `SyncBackendRpcInterface`
 - `durableObjectContext` - Context for RPC callbacks:
   - `bindingName` - Wrangler binding name for the client DO
   - `durableObjectId` - Client Durable Object ID
 
 **Features:**
-
 - Direct RPC communication
 - Real-time live pull via callbacks
 - Hibernation support
@@ -191,7 +184,6 @@ Handles RPC callback for live pull updates in Durable Objects.
 Creates a sync backend Durable Object class.
 
 **Options:**
-
 - `onPush?` - Callback for push events: `(message, context) => void | Promise<void>`
 - `onPushRes?` - Callback for push responses: `(message) => void | Promise<void>`
 - `onPull?` - Callback for pull requests: `(message, context) => void | Promise<void>`
@@ -209,7 +201,6 @@ Creates a sync backend Durable Object class.
 Creates a complete Cloudflare Worker for the sync backend.
 
 **Options:**
-
 - `syncBackendBinding` - Durable Object binding name defined in `wrangler.toml`
 - `validatePayload?` - Payload validation function: `(payload, context) => void | Promise<void>`
 - `enableCORS?` - Enable CORS headers (default: `false`)
@@ -225,7 +216,6 @@ Creates a complete Cloudflare Worker for the sync backend.
 Handles sync backend HTTP requests in custom workers.
 
 **Options:**
-
 - `request` - The incoming request
 - `searchParams` - Parsed sync request parameters
 - `env` - Worker environment
@@ -288,11 +278,11 @@ LiveStore identifies sync requests purely by search parameters; the request path
 
 Required search parameters:
 
-| Param       | Type               | Required | Description                                                                  |
-| ----------- | ------------------ | -------- | ---------------------------------------------------------------------------- |
-| `storeId`   | `string`           | Yes      | Target LiveStore identifier.                                                 |
-| `transport` | `'ws' \| 'http'`   | Yes      | Transport protocol selector.                                                 |
-| `payload`   | JSON (URI-encoded) | No       | Arbitrary JSON used for auth/tenant routing; validated in `validatePayload`. |
+| Param | Type | Required | Description |
+| --- | --- | --- | --- |
+| `storeId` | `string` | Yes | Target LiveStore identifier. |
+| `transport` | `'ws' \| 'http'` | Yes | Transport protocol selector. |
+| `payload` | JSON (URI-encoded) | No | Arbitrary JSON used for auth/tenant routing; validated in `validatePayload`. |
 
 Examples (any path):
 
@@ -300,14 +290,12 @@ Examples (any path):
 - HTTP: `https://sync.example.com?storeId=abc&transport=http`
 
 Notes:
-
 - For `transport=ws`, if the request is not a WebSocket upgrade, the backend returns `426 Upgrade Required`.
 - `transport='do-rpc'` is internal for Durable Object RPC and not exposed via URL parameters.
 
 ## Data storage
 
 By default, events are stored in the Durable Object’s SQLite with tables following the pattern:
-
 ```
 eventlog_{PERSISTENCE_FORMAT_VERSION}_{storeId}
 ```
@@ -315,7 +303,6 @@ eventlog_{PERSISTENCE_FORMAT_VERSION}_{storeId}
 You can opt into D1 with the same table shape. The persistence format version is automatically managed and incremented when the storage schema changes.
 
 ### Storage engines
-
 - DO SQLite (default)
   - Pros: easiest deploy (no D1), data co-located with the DO, lowest latency
   - Cons: not directly inspectable outside the DO; operational tooling must go through the DO

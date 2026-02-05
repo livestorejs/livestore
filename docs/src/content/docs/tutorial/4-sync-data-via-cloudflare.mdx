@@ -5,14 +5,14 @@ sidebar:
   order: 4
 ---
 
-import { Tabs, TabItem, Code } from '@astrojs/starlight/components'
+import { Tabs, TabItem, Code } from '@astrojs/starlight/components';
 
 In this step, you're going to introduce a [sync](/building-with-livestore/syncing) backend. This sync backend will:
 
 - Have a "live connection" (via WebSockets) to _all_ the clients that are running your app.
 - Propagate events to _all_ other clients whenever a particular client emits an event.
 
-Notice how you'll achieve this by _only_ changing the data layer of your application!
+Notice how you'll achieve this by _only_ changing the data layer of your application! 
 
 You won't need to touch the code that you've already written in `main.tsx` and `App.tsx`—all the syncing is handled by LiveStore under the hood without you needing to worry about it in your application code.
 
@@ -83,7 +83,7 @@ export default {
 
 This code will be deployed as a Durable Object (think of it as a "Cloudflare Worker with WebSocket capabilities and attached storage").
 
-In this tutorial, you won't need to go beyond the following basic boilerplate code for syncing.
+In this tutorial, you won't need to go beyond the following basic boilerplate code for syncing. 
 
 However, in more advanced scenarios, there are ways for you to hook into the connection between your client apps and the sync backend. This could e.g. be useful when your app requires authentication and you need to send along an auth token.
 
@@ -95,7 +95,7 @@ import { makeWorker } from '@livestore/adapter-web/worker'
 
 import { schema } from './schema.ts'
 
-makeWorker({
+makeWorker({ 
   schema,
 +  sync: {
 +    backend: makeWsSync({ url: `${location.origin}/sync` }),
@@ -129,7 +129,7 @@ Here's a quick rundown of the changes:
 
 - `main`: Since you're now introducing a "backend", your app needs to be reconfigured. It now has a dedicated entry point in `./src/sync/client-ws.ts`. When your Worker receives a request, this file's exported handlers are executed. In your case, it points to the WebSocket sync backend implementation.
 - `durable_objects.bindings`: This configures the bindings for your Durable Object. You'll be able to inspect it in the Cloudflare Dashboard by its name `SYNC_BACKEND_DO`.
-- `migrations`: Whenever you introduce a new Durable Object that supports [SQLite storage](https://developers.cloudflare.com/durable-objects/best-practices/access-durable-objects-storage/#create-sqlite-backed-durable-object-class) (or update an existing one), you need to add a migration referencing the new or updated Durable Object class.
+- `migrations`: Whenever you introduce a new Durable Object that supports [SQLite storage](https://developers.cloudflare.com/durable-objects/best-practices/access-durable-objects-storage/#create-sqlite-backed-durable-object-class) (or update an existing one), you need to add a migration referencing the new or updated Durable Object class. 
 
 You're now ready to run and deploy the app:
 
@@ -205,8 +205,8 @@ Uploaded 4 of 4 assets
 Total Upload: 997.21 KiB / gzip: 208.73 KiB
 Worker Startup Time: 47 ms
 Your Worker has access to the following bindings:
-Binding                                  Resource
-env.SYNC_BACKEND_DO (SyncBackendDO)      Durable Object
+Binding                                  Resource            
+env.SYNC_BACKEND_DO (SyncBackendDO)      Durable Object      
 
 Uploaded livestore-todo-app (17.72 sec)
 Deployed livestore-todo-app triggers (9.82 sec)

@@ -6,7 +6,7 @@ description: How to integrate LiveStore with Svelte.
 ---
 
 import SvelteCreateStoreSnippet from '../../_assets/code/reference/framework-integrations/svelte/create-store.svelte?snippet'
-import { getBranchName } from '../../../data/data.ts'
+import { getBranchName } from '../../../data/data.ts';
 
 LiveStore's Svelte bindings expose a single helper, `createStore`, which binds `store.query` into Svelte's reactivity. When you call `store.query` inside markup or `$effect`, query results automatically re-run when LiveStore emits updates, and requests are cancelled on teardown via Svelte's abort signal.
 

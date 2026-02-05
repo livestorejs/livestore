@@ -4,7 +4,7 @@ sidebar:
   order: 21
 ---
 
-import RichTextCrdtSnippet from '../../_assets/code/patterns/rich-text-editing/crdt-link.tsx?snippet'
+import RichTextCrdtSnippet from "../../_assets/code/patterns/rich-text-editing/crdt-link.tsx?snippet";
 
 LiveStore doesn't yet have built-in rich text primitives. It's currently recommended to pair LiveStore with a CRDT library (e.g. [Yjs](https://yjs.dev/), [Automerge](https://automerge.org/), or [Loro](https://loro.dev/)). LiveStore stores a reference (URL/ID) to the CRDT document in its event log. The CRDT library owns the text content and syncs it over its own transport. Both systems sync in parallel. LiveStore handles metadata while the CRDT library handles document bytes.
 

@@ -19,22 +19,22 @@ graph LR
     subgraph Browser
         LS[LiveStore Client]
     end
-
+    
     subgraph "Your Server"
         AP[API Proxy<br/>'/api/electric']
     end
-
+    
     subgraph "Infrastructure"
         ES[Electric Server<br/>':30000']
         PG[(Postgres DB)]
     end
-
+    
     LS -->|"GET (pull)"| AP
     LS -->|"POST (push)"| AP
     AP -->|"Pull requests<br/>(proxied)"| ES
     AP -->|"Push events<br/>(direct write)"| PG
     ES -->|"Listen"| PG
-
+    
     style LS fill:#e1f5fe
     style AP fill:#fff3e0
     style ES fill:#f3e5f5
@@ -42,7 +42,6 @@ graph LR
 ```
 
 The API proxy has dual responsibilities:
-
 - **Push Events**: Writes events directly to Postgres tables (bypasses Electric)
 - **Pull Requests**: Proxies to Electric server for reading events
 - **Authentication**: Implements your custom auth logic
@@ -101,7 +100,6 @@ feedback you have on this use case there.
 
 The API proxy is used to handle pull/push requests between LiveStore and ElectricSQL,
 allowing you to implement custom logic such as:
-
 - Authentication and authorization
 - Rate limiting and quota management
 - Database initialization and migration

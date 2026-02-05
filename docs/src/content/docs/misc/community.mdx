@@ -16,19 +16,18 @@ You can join the Discord server <a href={DISCORD_INVITE_URL}>here</a>.
 You can join future office hour events [here](https://lu.ma/livestore).
 
 {
-officeHours.map((url) => (
-
-<iframe
-width="560"
-height="315"
-src={url}
-title="YouTube video player"
-frameborder="0"
-allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
-allowfullscreen
-style={{ aspectRatio: '16 / 9' }}
-/>
-))
+  officeHours.map((url) => (
+    <iframe
+      width="560"
+      height="315"
+      src={url}
+      title="YouTube video player"
+      frameborder="0"
+      allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+      allowfullscreen
+      style={{ aspectRatio: '16 / 9' }}
+    />
+  ))
 }
 
 ## Conference talks & podcasts

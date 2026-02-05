@@ -23,12 +23,10 @@ Sometimes it can be useful to query your current state when executing a material
 ## Transactional behaviour
 
 A materializer is always executed in a transaction. This transaction applies to:
-
 - All database write operations returned by the materializer.
 - Any `ctx.query` calls made within the materializer, ensuring a consistent view of the data.
 
 Materializers can return:
-
 - A single database write operation.
 - An array of database write operations.
 - `void` (i.e., no return value) if no database modifications are needed.

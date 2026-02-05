@@ -4,7 +4,7 @@ sidebar:
   order: 2
 ---
 
-import { Tabs, TabItem } from '@astrojs/starlight/components'
+import { Tabs, TabItem } from '@astrojs/starlight/components';
 import SchemaSnippet from '../../../_assets/code/reference/state/sqlite-schema/schema.ts?snippet'
 import ClientDocumentBasicSnippet from '../../../_assets/code/reference/state/sqlite-schema/columns/client-document-basic.tsx?snippet'
 import ClientDocumentKvSnippet from '../../../_assets/code/reference/state/sqlite-schema/columns/client-document-kv.tsx?snippet'
@@ -131,7 +131,7 @@ You can also provide a custom schema for a column which is used to automatically
 ### General practices
 
 - It's usually recommend to **not distinguish** between app state vs app data but rather keep all state in LiveStore.
-  - This means you'll rarely use `React.useState()` when using LiveStore
+	- This means you'll rarely use `React.useState()` when using LiveStore
 - In some cases for "fast changing values" it can make sense to keep a version of a state value outside of LiveStore with a reactive setter for React and a debounced setter for LiveStore to avoid excessive LiveStore mutations. Cases where this can make sense can include:
   - Text input / rich text editing
   - Scroll position tracking, resize events, move/drag events

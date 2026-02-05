@@ -6,7 +6,7 @@ sidebar:
   order: 1
 ---
 
-import { Steps, Tabs, TabItem, Code } from '@astrojs/starlight/components'
+import { Steps, Tabs, TabItem, Code } from '@astrojs/starlight/components';
 import { makeCreate, versionNpmSuffix } from '../../../data/data.ts'
 import { MIN_NODE_VERSION } from '@local/shared'
 import viteConfigCode from '../../../../../examples/web-todomvc-sync-cf/vite.config.js?raw'
@@ -32,13 +32,13 @@ export const SNIPPETS = {
 
 {/* We're adjusting the package to use the dev version on the dev branch */}
 export const manualInstallDepsStr = [
-'@livestore/livestore' + versionNpmSuffix,
-'@livestore/wa-sqlite' + versionNpmSuffix,
-'@livestore/adapter-web' + versionNpmSuffix,
-'@livestore/react' + versionNpmSuffix,
-'@livestore/peer-deps' + versionNpmSuffix,
-'@livestore/sync-cf' + versionNpmSuffix,
-'@livestore/devtools-vite' + versionNpmSuffix,
+  '@livestore/livestore' + versionNpmSuffix,
+  '@livestore/wa-sqlite' + versionNpmSuffix,
+  '@livestore/adapter-web' + versionNpmSuffix,
+  '@livestore/react' + versionNpmSuffix,
+  '@livestore/peer-deps' + versionNpmSuffix,
+  '@livestore/sync-cf' + versionNpmSuffix,
+  '@livestore/devtools-vite' + versionNpmSuffix,
 ].join(' ')
 
 ## Prerequisites
@@ -114,27 +114,26 @@ For existing projects, see [Existing project setup](#existing-project-setup).
 
 <Steps>
 
-1.  **Install dependencies**
+1. **Install dependencies**
 
-    <Tabs syncKey="package-manager">
-      <TabItem label="bun">
-        <Code code={'bun install ' + manualInstallDepsStr} lang="sh" />
-      </TabItem>
-      <TabItem label="pnpm">
-        <Code code={'pnpm add ' + manualInstallDepsStr} lang="sh" />
-      </TabItem>
-      <TabItem label="npm">
-        <Code code={'npm install ' + manualInstallDepsStr} lang="sh" />
-      </TabItem>
-    </Tabs>
+   <Tabs syncKey="package-manager">
+     <TabItem label="bun">
+       <Code code={'bun install ' + manualInstallDepsStr} lang="sh" />
+     </TabItem>
+     <TabItem label="pnpm">
+       <Code code={'pnpm add ' + manualInstallDepsStr} lang="sh" />
+     </TabItem>
+     <TabItem label="npm">
+       <Code code={'npm install ' + manualInstallDepsStr} lang="sh" />
+     </TabItem>
+   </Tabs>
 
-2.  **Update Vite config**
+2. **Update Vite config**
 
-    Add the following code to your `vite.config.js` file:
+   Add the following code to your `vite.config.js` file:
 
-          <Code code={viteConfigCode} lang="js" title="vite.config.js" />
-
-    </Steps>
+   <Code code={viteConfigCode} lang="js" title="vite.config.js" />
+</Steps>
 
 ## Define your schema
 

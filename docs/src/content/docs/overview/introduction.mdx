@@ -5,16 +5,16 @@ sidebar:
   order: 0
 ---
 
-import CapabilitiesDiagram from '../../_assets/diagrams/capabilities.tldr?tldraw'
-import SchemaSnippet from '../../_assets/code/reference/overview/introduction/schema.ts?snippet'
-import TodoAppSnippet from '../../_assets/code/reference/overview/introduction/todo-app.tsx?snippet'
-import WorkerSnippet from '../../_assets/code/reference/overview/introduction/worker.ts?snippet'
+import CapabilitiesDiagram from '../../_assets/diagrams/capabilities.tldr?tldraw';
+import SchemaSnippet from '../../_assets/code/reference/overview/introduction/schema.ts?snippet';
+import TodoAppSnippet from '../../_assets/code/reference/overview/introduction/todo-app.tsx?snippet';
+import WorkerSnippet from '../../_assets/code/reference/overview/introduction/worker.ts?snippet';
 
 export const SNIPPETS = {
   schema: SchemaSnippet,
   todoApp: TodoAppSnippet,
   worker: WorkerSnippet,
-}
+};
 
 ## What is LiveStore?
 
@@ -24,7 +24,11 @@ Think of LiveStore as a next-generation state management library (like Zustand o
 
 <CapabilitiesDiagram class="my-8" />
 
-The combination of persisted and distributed state is a giant leap for creating an **amazing user experience** (UX), while also providing a **best-in-class developer experience** (DX). The **immutable eventlog** enables robust testing and tight feedback loops, making it perfect for agentic coding.
+
+
+The combination of persisted and distributed state is a giant leap for creating an **amazing user experience** (UX), while also providing a **best-in-class developer experience** (DX). The **immutable eventlog** enables robust testing and tight feedback loops, making it perfect for agentic coding. 
+
+
 
 <div class="not-content grid grid-cols-1 md:grid-cols-3 gap-4 my-8">
   <div class="rounded-xl border border-gray-700 p-5">
@@ -36,20 +40,14 @@ The combination of persisted and distributed state is a giant leap for creating 
     </ul>
   </div>
 
-<div class="rounded-xl border border-gray-700 p-5">
-  <h3 class="text-base font-medium !mt-0 !mb-2">DX</h3>
-  <ul class="!space-y-2 text-sm list-none p-0 m-0">
-    <li>
-      <strong>Principled</strong>: Event-driven instead of mutable state
-    </li>
-    <li>
-      <strong>Composable & Type-safe</strong>: Fully typed events & queries
-    </li>
-    <li>
-      <strong>Reactive</strong>: Automatic UI updates when data changes
-    </li>
-  </ul>
-</div>
+  <div class="rounded-xl border border-gray-700 p-5">
+    <h3 class="text-base font-medium !mt-0 !mb-2">DX</h3>
+    <ul class="!space-y-2 text-sm list-none p-0 m-0">
+      <li><strong>Principled</strong>: Event-driven instead of mutable state</li>
+      <li><strong>Composable & Type-safe</strong>: Fully typed events & queries</li>
+      <li><strong>Reactive</strong>: Automatic UI updates when data changes</li>
+    </ul>
+  </div>
 
   <div class="rounded-xl border border-gray-700 p-5">
     <h3 class="text-base font-medium !mt-0 !mb-2">AX</h3>
@@ -66,10 +64,12 @@ LiveStore works cross-platform and can be used for building UI apps (web, mobile
 See this talk for more info: [Sync different: Event sourcing in local-first apps](https://www.youtube.com/watch?v=nyPl84BopKc&list=PL4isNRKAwz2MabH6AMhUz1yS3j1DqGdtT).
 
 <details>
-  <summary>Are you an expert? See here for advanced topics.</summary>- [How LiveStore deals with merge
-  conflicts?](/overview/how-livestore-works#conflict-resolution) - Why event-sourcing instead of CRDTs or query-driven
-  sync? - How do schema migrations work? - What are limitations of LiveStore? - How LiveStore is perfect for coding
-  agents.
+<summary>Are you an expert? See here for advanced topics.</summary>
+- [How LiveStore deals with merge conflicts?](/overview/how-livestore-works#conflict-resolution)
+- Why event-sourcing instead of CRDTs or query-driven sync?
+- How do schema migrations work?
+- What are limitations of LiveStore?
+- How LiveStore is perfect for coding agents.
 </details>
 
 ## The core idea: Synced events -> State -> UI
@@ -190,7 +190,7 @@ But why use events at all, rather than directly mutating state?
 - **Events decouple what happened from how it's stored.** Your state shape can evolve independently of your event history. Need a new denormalized table for performance? Just add a materializer—no data migration required.
 - **Events make sync tractable.** Syncing mutable state across devices is hard (which field wins?). Syncing an append-only event log is simpler: you're merging histories, not reconciling conflicting states.
 
-### Benefits of LiveStore's eventlog
+### Benefits of LiveStore's eventlog 
 
 The [eventlog](/building-with-livestore/events/#eventlog) sits the core of LiveStore and gives you several benefits:
 
@@ -201,7 +201,7 @@ The [eventlog](/building-with-livestore/events/#eventlog) sits the core of LiveS
 
 ## How syncing works
 
-LiveStore includes a **sync engine** which handles [syncing](/building-with-livestore/syncing) for you under the hood.
+LiveStore includes a **sync engine** which handles [syncing](/building-with-livestore/syncing) for you under the hood. 
 
 When you can enable syncing, the sync engine distributes your state across various other clients (these can be other browsers, apps, devices, servers—anything that can connect to your store via an [adapter](/overview/how-livestore-works#platform-adapters)).
 

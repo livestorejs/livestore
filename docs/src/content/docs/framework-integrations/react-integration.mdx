@@ -85,9 +85,9 @@ You can have multiple stores within a single React application. This is useful f
 
 Use the [`storeOptions()`](#storeoptionsoptions) helper for type-safe, reusable configurations, and then create multiple instances for the same store configuration by using different `storeId` values:
 
-<IssueStoreOptionsSnippet />
+<IssueStoreOptionsSnippet/>
 
-<IssueViewSnippet />
+<IssueViewSnippet/>
 
 Each store instance is completely isolated with its own data, event log, and synchronization state.
 
@@ -123,7 +123,6 @@ Use `LogLevel.None` to disable logging entirely.
 Helper for defining reusable store options with full type inference. Returns options that can be passed to [`useStore()`](#usestoreoptions) or [`storeRegistry.preload()`](#storeregistrypreloadoptions).
 
 Options:
-
 - `storeId` - Unique identifier for this store instance
 - `schema` - The LiveStore schema
 - `adapter` - The platform adapter
@@ -162,7 +161,6 @@ Commits events to the store. Supports multiple calling patterns:
 - `store.commit(options, txnFn)` - Options with transaction function
 
 Options:
-
 - `skipRefresh` - Skip refreshing reactive queries after commit (advanced)
 
 ### `store.useQuery(queryable)`
@@ -188,7 +186,7 @@ React hook that subscribes to sync status changes. Re-renders the component when
 function SyncIndicator() {
   const store = useStore(storeOptions)
   const status = store.useSyncStatus()
-
+  
   return <span>{status.isSynced ? '✓ Synced' : `Syncing (${status.pendingCount} pending)...`}</span>
 }
 ```
@@ -200,7 +198,6 @@ For the `SyncStatus` type and non-React APIs (`syncStatus()`, `subscribeSyncStat
 Creates a registry that coordinates store loading, caching, and retention.
 
 Config:
-
 - `defaultOptions?` - Default options that are applied to all stores when they are loaded.:
   - `batchUpdates?` - Function for batching React updates
   - `unusedCacheTime?` - Cache time for unused stores
@@ -215,7 +212,6 @@ Config:
 React context provider that makes a [`StoreRegistry`](#new-storeregistryconfig) available to descendant components.
 
 Props:
-
 - `storeRegistry` - The registry instance
 
 ### `useStoreRegistry(override?)`
@@ -253,17 +249,15 @@ import { StoreRegistryProvider } from '@livestore/react'
 import { Suspense, useState } from 'react'
 
 export const Route = createRootRoute({
-  shellComponent: RootShell, // HTML structure only - NO state or providers
-  component: RootComponent, // App shell - StoreRegistryProvider goes HERE
+  shellComponent: RootShell,    // HTML structure only - NO state or providers
+  component: RootComponent,      // App shell - StoreRegistryProvider goes HERE
 })
 
 // HTML document shell - keep this stateless
 function RootShell({ children }: { children: React.ReactNode }) {
   return (
     <html lang="en">
-      <head>
-        <HeadContent />
-      </head>
+      <head><HeadContent /></head>
       <body>
         {children}
         <Scripts />
@@ -301,6 +295,7 @@ Given various Next.js limitations, LiveStore doesn't yet work with Next.js out o
 ### Complete Example
 
 See the <a href={`https://github.com/livestorejs/livestore/tree/${getBranchName()}/examples/web-multi-store`}>Multi-Store example</a> for a complete working application demonstrating various multi-store patterns.
+
 
 ## Technical Notes
 

@@ -6,8 +6,8 @@ sidebar:
   order: 2
 ---
 
-import { getBranchName } from '../../../../data/data.ts'
-import EventlogModelingDiagram from '../../../_assets/diagrams/eventlog-modeling.tldr?tldraw'
+import { getBranchName } from '../../../../data/data.ts';
+import EventlogModelingDiagram from '../../../_assets/diagrams/eventlog-modeling.tldr?tldraw';
 import UserSchemaSnippet from '../../../_assets/code/data-modeling/todo-workspaces/user.schema.ts?snippet'
 import WorkspaceSchemaSnippet from '../../../_assets/code/data-modeling/todo-workspaces/workspace.schema.ts?snippet'
 import WorkspaceStoreOptionsSnippet from '../../../_assets/code/data-modeling/todo-workspaces/workspace.store.ts?snippet'
@@ -127,7 +127,6 @@ We're working on improving this experience. See [#822](https://github.com/livest
 ## Further notes
 
 To make this app more production-ready, we might want to do the following:
-
 - Use a proper auth setup to enforce a trusted user identity
 - Introduce a proper user invite process
 - Introduce access levels (e.g. read-only, read-write)
@@ -138,7 +137,6 @@ To make this app more production-ready, we might want to do the following:
 If each todo item has a lot of data (e.g. think of a GitHub/Linear issue with lots of details), it might make sense to split up each todo item into its own store.
 
 This would create **3 store types** instead of 2:
-
 - **User stores** (one per user) - unchanged
 - **Workspace stores** (one per workspace) - only basic todo metadata
 - **Todo stores** (one per todo item) - rich todo data
