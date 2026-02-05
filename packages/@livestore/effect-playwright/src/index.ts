@@ -1,8 +1,9 @@
 import process from 'node:process'
 
+import * as PW from '@playwright/test'
+
 import { envTruish } from '@livestore/utils'
 import { Context, Effect, Layer, Option, Schema, Stream } from '@livestore/utils/effect'
-import * as PW from '@playwright/test'
 
 export class BrowserContext extends Context.Tag('Playwright.BrowserContext')<
   BrowserContext,

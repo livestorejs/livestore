@@ -1,5 +1,6 @@
 import { resolve } from 'node:path'
 import { fileURLToPath } from 'node:url'
+
 import { z } from 'astro/zod'
 
 const __dirname = fileURLToPath(new URL('.', import.meta.url))

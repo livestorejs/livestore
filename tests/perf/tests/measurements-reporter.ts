@@ -1,5 +1,8 @@
 import os from 'node:os'
 
+import type { FullConfig, Reporter, Suite, TestCase, TestResult } from '@playwright/test/reporter'
+
+import { OtelLiveHttp } from '@livestore/utils-dev/node'
 import {
   Config,
   Data,
@@ -13,8 +16,6 @@ import {
   ReadonlyArray,
   Schema,
 } from '@livestore/utils/effect'
-import { OtelLiveHttp } from '@livestore/utils-dev/node'
-import type { FullConfig, Reporter, Suite, TestCase, TestResult } from '@playwright/test/reporter'
 
 import { printConsoleTable } from './print-console-table.ts'
 

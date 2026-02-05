@@ -17,11 +17,13 @@ This approach allows loading only the threads that the user is actively viewing 
 ### Stores
 
 **Mailbox Store**
+
 - Singleton
 - Manages labels, thread index, and UI state
 - Lifecycle: Loaded on startup, always in memory
 
 **Thread Store**:
+
 - One per email thread
 - Manages a single thread's messages and label associations
 - Lifecycle: Loaded on-demand, garbage collected when inactive
@@ -40,6 +42,7 @@ In our email client, we partition threads into their own stores. However, this c
 Additionally, we need to update some data in the Mailbox store that reflects changes made in individual Thread stores. For example, when a label is applied to a thread, the Mailbox store needs to update its count of threads for that label so that we can display an accurate thread count without loading all Thread stores.
 
 To solve these issues, we maintain **projection tables** in the Mailbox store that mirror Thread data:
+
 - `threadIndex`: Thread metadata for listing/searching
 - `threadLabels`: Thread-label associations for filtering
 - `labels.threadCount`: Cached counts per label

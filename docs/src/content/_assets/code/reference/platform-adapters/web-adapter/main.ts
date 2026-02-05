@@ -2,6 +2,7 @@
 // ---cut---
 import { makePersistedAdapter } from '@livestore/adapter-web'
 import LiveStoreSharedWorker from '@livestore/adapter-web/shared-worker?sharedworker'
+
 import LiveStoreWorker from './livestore.worker.ts?worker'
 
 const adapter = makePersistedAdapter({

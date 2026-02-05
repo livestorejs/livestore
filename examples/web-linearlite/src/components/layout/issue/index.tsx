@@ -1,7 +1,9 @@
 import { ChevronRightIcon } from '@heroicons/react/16/solid'
-import { queryDb } from '@livestore/livestore'
 import { useNavigate, useParams, useRouter } from '@tanstack/react-router'
 import { Button } from 'react-aria-components'
+
+import { queryDb } from '@livestore/livestore'
+
 import { events, tables } from '../../../livestore/schema/index.ts'
 import { useAppStore } from '../../../livestore/store.ts'
 import type { Priority } from '../../../types/priority.ts'

@@ -1,10 +1,11 @@
 import process from 'node:process'
 
 import { cloudflare } from '@cloudflare/vite-plugin'
-import { livestoreDevtoolsPlugin } from '@livestore/devtools-vite'
 import tailwindcss from '@tailwindcss/vite'
 import react from '@vitejs/plugin-react'
 import { defineConfig } from 'vite'
+
+import { livestoreDevtoolsPlugin } from '@livestore/devtools-vite'
 
 export default defineConfig({
   server: {

@@ -1,6 +1,7 @@
 import { CheckIcon } from '@heroicons/react/16/solid'
 import type React from 'react'
 import { Header, Menu, MenuItem, MenuSection, MenuTrigger, Popover, Separator } from 'react-aria-components'
+
 import { priorityOptions } from '../../../data/priority-options.ts'
 import { statusOptions } from '../../../data/status-options.ts'
 import { useFilterState } from '../../../livestore/queries.ts'

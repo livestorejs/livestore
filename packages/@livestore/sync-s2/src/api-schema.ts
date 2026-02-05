@@ -1,5 +1,6 @@
 import { LiveStoreEvent } from '@livestore/common/schema'
 import { Schema } from '@livestore/utils/effect'
+
 import { S2SeqNum } from './types.ts'
 
 export const PullArgs = Schema.Struct({

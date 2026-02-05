@@ -1,4 +1,5 @@
 import type { APIRoute } from 'astro'
+
 import { loadLlmsDocs, replaceLlmsShortPlaceholders } from '../utils/llms.ts'
 import { transformMultiCodeDocument } from '../utils/multi-code-markdown.ts'
 

@@ -1,5 +1,6 @@
 import path from 'node:path'
 import { fileURLToPath, pathToFileURL } from 'node:url'
+
 import { Events, makeSchema, State } from '@livestore/common/schema'
 import type { MockSyncBackend } from '@livestore/common/sync'
 import { EventFactory } from '@livestore/common/testing'

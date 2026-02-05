@@ -1,9 +1,10 @@
+import type * as otel from '@opentelemetry/api'
+
 import { makeInMemoryAdapter } from '@livestore/adapter-web'
 import { provideOtel } from '@livestore/common'
 import { createStore, Events, makeSchema, State } from '@livestore/livestore'
 import { omitUndefineds } from '@livestore/utils'
 import { Effect, Schema } from '@livestore/utils/effect'
-import type * as otel from '@opentelemetry/api'
 
 export type Todo = {
   id: string

@@ -53,14 +53,14 @@ For more details on the registry, and hooks, see the [React integration guide](/
 
 ### Available Options
 
-| Option | Type | Description |
-|--------|------|-------------|
-| `storage.directory` | `string` | Base directory for database files (defaults to `expo-sqlite`'s default directory) |
-| `storage.subDirectory` | `string` | Subdirectory relative to `directory` for organizing databases |
-| `sync` | `SyncOptions` | Sync backend configuration (see [Syncing](/building-with-livestore/syncing)) |
-| `clientId` | `string` | Custom client identifier (defaults to device ID) |
-| `sessionId` | `string` | Session identifier (defaults to `'static'`) |
-| `resetPersistence` | `boolean` | Clear local databases on startup (development only) |
+| Option                 | Type          | Description                                                                       |
+| ---------------------- | ------------- | --------------------------------------------------------------------------------- |
+| `storage.directory`    | `string`      | Base directory for database files (defaults to `expo-sqlite`'s default directory) |
+| `storage.subDirectory` | `string`      | Subdirectory relative to `directory` for organizing databases                     |
+| `sync`                 | `SyncOptions` | Sync backend configuration (see [Syncing](/building-with-livestore/syncing))      |
+| `clientId`             | `string`      | Custom client identifier (defaults to device ID)                                  |
+| `sessionId`            | `string`      | Session identifier (defaults to `'static'`)                                       |
+| `resetPersistence`     | `boolean`     | Clear local databases on startup (development only)                               |
 
 ## Adding a Sync Backend
 
@@ -118,11 +118,13 @@ See the [Devtools reference](/building-with-livestore/devtools) for full documen
 Databases are stored in the device's SQLite directory. The exact path depends on your setup:
 
 **Expo Go:**
+
 ```bash
 open $(find $(xcrun simctl get_app_container booted host.exp.Exponent data) -path "*/Documents/ExponentExperienceData/*livestore*" -print -quit)/SQLite
 ```
 
 **Development builds:**
+
 ```bash
 open $(xcrun simctl get_app_container booted [APP_BUNDLE_ID] data)/Documents/SQLite
 ```

@@ -1,4 +1,5 @@
 import ts from 'typescript'
+
 import rawClientSource from './multi-code-client.ts?raw'
 
 /**

@@ -14,7 +14,6 @@ import { Pressable, StyleSheet, TextInput, useColorScheme, View } from 'react-na
 import { Colors } from '../constants/Colors.ts'
 import { events } from '../livestore/schema.ts'
 import { useAppStore } from '../livestore/store.ts'
-
 import { Modal } from './Modal.tsx'
 import { ThemedText } from './ThemedText.tsx'
 

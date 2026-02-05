@@ -2,11 +2,12 @@ import fs from 'node:fs'
 import path from 'node:path'
 import { fileURLToPath } from 'node:url'
 
+import * as ts from 'typescript'
+import { beforeAll, describe, expect, it } from 'vitest'
+
 import { shouldNeverHappen } from '@livestore/utils'
 import { Effect } from '@livestore/utils/effect'
 import { PlatformNode } from '@livestore/utils/node'
-import * as ts from 'typescript'
-import { beforeAll, describe, expect, it } from 'vitest'
 
 import { resolveProjectPaths } from '../project-paths.ts'
 import { buildSnippetBundle } from '../vite/snippet-graph.ts'
@@ -282,7 +283,7 @@ describe('renderSnippet integration', () => {
     const dataCode = rendered.html?.match(/data-code="([^"]*)"/)?.[1] ?? ''
     const decoded = dataCode.replace(/\u007f/g, '\n')
     // biome-ignore lint/complexity/noUselessEscapeInRegex: readability when matching Expressive Code markup
-    const blankLines = rendered.html?.match(/<div class=\"ec-line\"><div class=\"code\">\n<\/div><\/div>/g) ?? []
+    const blankLines = rendered.html?.match(/<div class="ec-line"><div class="code">\n<\/div><\/div>/g) ?? []
 
     expect(decoded).toContain('\n\nexport const message')
     expect(decoded.endsWith('\n')).toBe(false)

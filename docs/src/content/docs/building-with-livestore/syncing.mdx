@@ -5,7 +5,7 @@ sidebar:
   order: 45
 ---
 
-import SyncingDiagram from '../../_assets/diagrams/syncing.tldr?tldraw';
+import SyncingDiagram from '../../_assets/diagrams/syncing.tldr?tldraw'
 
 ## How it works
 
@@ -18,6 +18,7 @@ The syncing mechanism is similar to how Git works in that regard that it's based
 ## Events
 
 A LiveStore event consists of the following data:
+
 - `seqNum`: event sequence number
 - `parentSeqNum`: parent event sequence number
 - `name`: event name (refers to a event definition in the schema)
@@ -47,7 +48,7 @@ The sync backend acts as the global authority and determines the total order of 
 
 - Each client initially chooses a random `clientId` as its globally unique ID
   - LiveStore uses a 6-char nanoid
-	- In the unlikely event of a collision which is detected by the sync backend the first time a client tries to push, the client chooses a new random `clientId`, patches the local events with the new `clientId`, and tries again.
+  - In the unlikely event of a collision which is detected by the sync backend the first time a client tries to push, the client chooses a new random `clientId`, patches the local events with the new `clientId`, and tries again.
 
 ### Client sessions
 
@@ -128,7 +129,6 @@ Client -> Client: "Client is in sync"
 - Currently LiveStore assumes a 1:1 mapping between an eventlog and a SQLite database.
 - In the future, LiveStore aims to support multiple eventlogs (see [this issue](https://github.com/livestorejs/livestore/issues/255)).
 
-
 ## Backend Reset Detection
 
 When a sync backend is reset (e.g., deleting `.wrangler/state` for Cloudflare, or resetting Postgres), clients that have cached data locally may not know about this reset. LiveStore detects backend resets using a unique `backendId` that is generated when the backend is first created.
@@ -150,7 +150,7 @@ const store = await makeStore({
   sync: {
     backend: yourSyncBackend,
     onBackendIdMismatch: 'reset', // 'reset' | 'shutdown' | 'ignore'
-  }
+  },
 })
 ```
 

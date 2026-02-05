@@ -1,11 +1,12 @@
+import { expect } from 'vitest'
+
 import { type MakeSqliteDb, migrateTable, sql } from '@livestore/common'
 import { State } from '@livestore/common/schema'
 import { loadSqlite3Wasm } from '@livestore/sqlite-wasm/load-wasm'
 import { sqliteDbFactory } from '@livestore/sqlite-wasm/node'
+import { Vitest } from '@livestore/utils-dev/node-vitest'
 import { Effect, Schema } from '@livestore/utils/effect'
 import { PlatformNode } from '@livestore/utils/node'
-import { Vitest } from '@livestore/utils-dev/node-vitest'
-import { expect } from 'vitest'
 
 Vitest.describe('SQLite State', () => {
   Vitest.describe('DB Schema', () => {

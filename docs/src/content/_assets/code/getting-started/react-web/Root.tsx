@@ -1,7 +1,8 @@
-import { StoreRegistry } from '@livestore/livestore'
-import { StoreRegistryProvider } from '@livestore/react'
 import type React from 'react'
 import { Suspense, useState } from 'react'
+
+import { StoreRegistry } from '@livestore/livestore'
+import { StoreRegistryProvider } from '@livestore/react'
 
 export const App: React.FC = () => {
   const [storeRegistry] = useState(() => new StoreRegistry())

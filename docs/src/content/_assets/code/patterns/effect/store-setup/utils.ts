@@ -1,5 +1,7 @@
 import { Atom } from '@effect-atom/atom'
+
 import { queryDb } from '@livestore/livestore'
+
 import { StoreTag } from './atoms.ts'
 import { tables } from './schema.ts'
 

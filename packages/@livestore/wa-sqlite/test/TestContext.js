@@ -1,10 +1,10 @@
-import * as Comlink from 'comlink';
+import * as Comlink from 'comlink'
 
-const TEST_WORKER_URL = './test-worker.js';
-const TEST_WORKER_TERMINATE = true;
+const TEST_WORKER_URL = './test-worker.js'
+const TEST_WORKER_TERMINATE = true
 
-const mapProxyToReleaser = new WeakMap();
-const workerFinalization = new FinalizationRegistry(release => release());
+const mapProxyToReleaser = new WeakMap()
+const workerFinalization = new FinalizationRegistry((release) => release())
 
 /**
  * @typedef TestContextParams
@@ -17,57 +17,61 @@ const workerFinalization = new FinalizationRegistry(release => release());
 const DEFAULT_PARAMS = Object.freeze({
   build: 'default',
   config: 'default',
-  reset: true
-});
+  reset: true,
+})
 
 export class TestContext {
-  #params = structuredClone(DEFAULT_PARAMS);
+  #params = structuredClone(DEFAULT_PARAMS)
 
   /**
-   * @param {TestContextParams} params 
+   * @param {TestContextParams} params
    */
   constructor(params = {}) {
-    Object.assign(this.#params, params);
+    Object.assign(this.#params, params)
   }
 
   async create(extras = {}) {
-    const url = new URL(TEST_WORKER_URL, import.meta.url);
+    const url = new URL(TEST_WORKER_URL, import.meta.url)
     for (const [key, value] of Object.entries(this.#params)) {
-      url.searchParams.set(key, value.toString());
+      url.searchParams.set(key, value.toString())
     }
     for (const [key, value] of Object.entries(extras)) {
-      url.searchParams.set(key, value.toString());
+      url.searchParams.set(key, value.toString())
     }
 
-    const worker = new Worker(url, { type: 'module' });
-    const port = await new Promise(resolve => {
-      worker.addEventListener('message', (event) => {
-        if (event.ports[0]) {
-          return resolve(event.ports[0]);
-        }
-        const e = new Error(event.data.message);
-        throw Object.assign(e, event.data);
-      }, { once: true });
-    });
+    const worker = new Worker(url, { type: 'module' })
+    const port = await new Promise((resolve) => {
+      worker.addEventListener(
+        'message',
+        (event) => {
+          if (event.ports[0]) {
+            return resolve(event.ports[0])
+          }
+          const e = new Error(event.data.message)
+          throw Object.assign(e, event.data)
+        },
+        { once: true },
+      )
+    })
 
-    const proxy = Comlink.wrap(port);
+    const proxy = Comlink.wrap(port)
     if (TEST_WORKER_TERMINATE) {
       function releaser() {
-        worker.terminate();
+        worker.terminate()
       }
-      mapProxyToReleaser.set(proxy, releaser);
-      workerFinalization.register(proxy, releaser);
+      mapProxyToReleaser.set(proxy, releaser)
+      workerFinalization.register(proxy, releaser)
     }
 
-    return proxy;
+    return proxy
   }
 
   async destroy(proxy) {
-    proxy[Comlink.releaseProxy]();
-    const releaser = mapProxyToReleaser.get(proxy);
+    proxy[Comlink.releaseProxy]()
+    const releaser = mapProxyToReleaser.get(proxy)
     if (releaser) {
-      workerFinalization.unregister(releaser);
-      releaser();
+      workerFinalization.unregister(releaser)
+      releaser()
     }
   }
 
@@ -75,22 +79,21 @@ export class TestContext {
   static async supportsJSPI() {
     try {
       const m = new Uint8Array([
-        0, 97, 115, 109, 1, 0, 0, 0, 1, 5, 1, 96, 1, 111, 0, 3, 2, 1, 0, 7, 5, 1,
-        1, 111, 0, 0, 10, 4, 1, 2, 0, 11,
-      ]);
-      const { instance } = await WebAssembly.instantiate(m);
+        0, 97, 115, 109, 1, 0, 0, 0, 1, 5, 1, 96, 1, 111, 0, 3, 2, 1, 0, 7, 5, 1, 1, 111, 0, 0, 10, 4, 1, 2, 0, 11,
+      ])
+      const { instance } = await WebAssembly.instantiate(m)
       // @ts-ignore
       new WebAssembly.Function(
         {
           parameters: [],
-          results: ["externref"],
+          results: ['externref'],
         },
         instance.exports.o,
-        { promising: "first" }
-      );
-      return true;
+        { promising: 'first' },
+      )
+      return true
     } catch (e) {
-      return false;
+      return false
     }
   }
 }

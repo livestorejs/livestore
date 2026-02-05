@@ -1,5 +1,6 @@
 import { readFile } from 'node:fs/promises'
 import path from 'node:path'
+
 import { shouldNeverHappen } from '@livestore/utils'
 
 // In jsdom the browser build of wa-sqlite tries to fetch the wasm; jsdom cannot

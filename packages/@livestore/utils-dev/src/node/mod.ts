@@ -1,15 +1,16 @@
 import { performance } from 'node:perf_hooks'
 
 import * as OtelNodeSdk from '@effect/opentelemetry/NodeSdk'
-import { IS_BUN, isNonEmptyString } from '@livestore/utils'
-import type { Tracer } from '@livestore/utils/effect'
-import { Config, Effect, FiberRef, Layer, LogLevel, OtelTracer } from '@livestore/utils/effect'
-import { OtelLiveDummy } from '@livestore/utils/node'
 import * as otel from '@opentelemetry/api'
 import { OTLPMetricExporter } from '@opentelemetry/exporter-metrics-otlp-http'
 import { OTLPTraceExporter } from '@opentelemetry/exporter-trace-otlp-http'
 import { PeriodicExportingMetricReader } from '@opentelemetry/sdk-metrics'
 import { BatchSpanProcessor } from '@opentelemetry/sdk-trace-base'
+
+import { IS_BUN, isNonEmptyString } from '@livestore/utils'
+import type { Tracer } from '@livestore/utils/effect'
+import { Config, Effect, FiberRef, Layer, LogLevel, OtelTracer } from '@livestore/utils/effect'
+import { OtelLiveDummy } from '@livestore/utils/node'
 
 export { OTLPMetricExporter } from '@opentelemetry/exporter-metrics-otlp-http'
 export { OTLPTraceExporter } from '@opentelemetry/exporter-trace-otlp-http'

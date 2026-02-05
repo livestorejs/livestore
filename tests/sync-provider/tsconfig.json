@@ -41,7 +41,7 @@
     "composite": true,
     "rootDir": "./src",
     "tsBuildInfoFile": "./dist/.tsbuildinfo",
-    "types": ["vitest/globals", "@types/node", "@cloudflare/workers-types"]
+    "types": ["vitest/globals", "@types/node"]
   },
   "include": ["./src"],
   "exclude": ["node_modules", "**/dist", "**/node_modules/.pnpm", "**/*.genie.ts"],

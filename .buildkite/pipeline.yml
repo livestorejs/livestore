@@ -1,30 +1,30 @@
 agents:
-  os: "nixos"
-  nix: "true"
+  os: 'nixos'
+  nix: 'true'
 env:
-  GRAFANA_ENDPOINT: "https://livestore.grafana.net"
-  OTEL_EXPORTER_OTLP_ENDPOINT: "https://otlp-gateway-prod-us-east-2.grafana.net/otlp"
-  VITE_OTEL_EXPORTER_OTLP_ENDPOINT: ""
-  GITHUB_REF_NAME: "${BUILDKITE_BRANCH}"
+  GRAFANA_ENDPOINT: 'https://livestore.grafana.net'
+  OTEL_EXPORTER_OTLP_ENDPOINT: 'https://otlp-gateway-prod-us-east-2.grafana.net/otlp'
+  VITE_OTEL_EXPORTER_OTLP_ENDPOINT: ''
+  GITHUB_REF_NAME: '${BUILDKITE_BRANCH}'
 
 steps:
-  - label: "lint"
+  - label: 'lint'
     env:
-      LIVESTORE_BRANCH_PROTECTION_REQUIRED: "true"
+      LIVESTORE_BRANCH_PROTECTION_REQUIRED: 'true'
     commands:
       - direnv allow .
       - direnv exec . mono lint
 
-  - label: "test:unit"
+  - label: 'test:unit'
     env:
-      LIVESTORE_BRANCH_PROTECTION_REQUIRED: "true"
+      LIVESTORE_BRANCH_PROTECTION_REQUIRED: 'true'
     commands:
       - direnv allow .
       - direnv exec . mono test unit
 
-  - label: "test:integration (node-sync)"
+  - label: 'test:integration (node-sync)'
     env:
-      LIVESTORE_BRANCH_PROTECTION_REQUIRED: "true"
+      LIVESTORE_BRANCH_PROTECTION_REQUIRED: 'true'
     commands:
       - direnv allow .
       - |
@@ -40,9 +40,9 @@ steps:
         fi
       - buildkite-agent artifact upload "tests/integration/tmp/logs/*.log" || true
 
-  - label: "test:integration (sync-provider:{{matrix.provider}})"
+  - label: 'test:integration (sync-provider:{{matrix.provider}})'
     env:
-      LIVESTORE_BRANCH_PROTECTION_REQUIRED: "true"
+      LIVESTORE_BRANCH_PROTECTION_REQUIRED: 'true'
     matrix:
       setup:
         provider:
@@ -77,9 +77,9 @@ steps:
 
         direnv exec . mono test integration sync-provider --provider "{{matrix.provider}}"
 
-  - label: "test:integration (playwright:{{matrix.suite}})"
+  - label: 'test:integration (playwright:{{matrix.suite}})'
     env:
-      LIVESTORE_BRANCH_PROTECTION_REQUIRED: "true"
+      LIVESTORE_BRANCH_PROTECTION_REQUIRED: 'true'
     matrix:
       setup:
         suite:
@@ -107,9 +107,9 @@ steps:
           echo "Skipping Netlify deploy: NETLIFY_AUTH_TOKEN not set"
         fi
 
-  - label: "test:perf"
+  - label: 'test:perf'
     env:
-      LIVESTORE_BRANCH_PROTECTION_REQUIRED: "true"
+      LIVESTORE_BRANCH_PROTECTION_REQUIRED: 'true'
     commands:
       - direnv allow .
       - |
@@ -121,9 +121,9 @@ steps:
 
         direnv exec . mono test perf
 
-  - label: "test:wa-sqlite"
+  - label: 'test:wa-sqlite'
     env:
-      LIVESTORE_BRANCH_PROTECTION_REQUIRED: "true"
+      LIVESTORE_BRANCH_PROTECTION_REQUIRED: 'true'
     commands:
       - direnv allow .
       - |
@@ -138,14 +138,14 @@ steps:
 
   - wait
 
-  - label: "release:snapshot"
+  - label: 'release:snapshot'
     if: build.pull_request.id == null
     commands:
       - direnv allow .
       - direnv exec . bash -lc 'set -euo pipefail; echo "//registry.npmjs.org/:_authToken=${NPM_TOKEN}" >> ~/.npmrc'
       - direnv exec . mono release snapshot --git-sha="${BUILDKITE_COMMIT}"
 
-  - label: "examples:build+test"
+  - label: 'examples:build+test'
     commands:
       - direnv allow .
       - direnv exec . pnpm --filter "livestore-example-*" --workspace-concurrency=1 build
@@ -157,7 +157,7 @@ steps:
           echo "Skipping Cloudflare deploy (PR build or missing CLOUDFLARE credentials)"
         fi
 
-  - label: "docs:build+deploy"
+  - label: 'docs:build+deploy'
     commands:
       - direnv allow .
       - direnv exec . mono docs build --api-docs
@@ -170,7 +170,7 @@ steps:
           echo "Skipping docs deploy: NETLIFY_AUTH_TOKEN not set"
         fi
 
-  - label: "examples:create ({{matrix.app}})"
+  - label: 'examples:create ({{matrix.app}})'
     if: build.pull_request.id == null
     matrix:
       setup:
@@ -179,7 +179,7 @@ steps:
           - web-linearlite
           - expo-linearlite
     env:
-      SNAPSHOT_VERSION: "0.0.0-snapshot-${BUILDKITE_COMMIT}"
+      SNAPSHOT_VERSION: '0.0.0-snapshot-${BUILDKITE_COMMIT}'
     commands:
       - direnv allow .
       - |

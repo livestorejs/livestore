@@ -8,6 +8,7 @@ import {
 import { isDevEnv } from '@livestore/utils'
 import { Chunk, Effect, Option, Order, Schedule, Schema, Stream } from '@livestore/utils/effect'
 import { Opfs, type WebError } from '@livestore/utils/effect/browser'
+
 import type * as WorkerSchema from './worker-schema.ts'
 
 export class PersistedSqliteError extends Schema.TaggedError<PersistedSqliteError>()('PersistedSqliteError', {
@@ -248,7 +249,7 @@ const pruneArchiveDirectory = Effect.fn('@livestore/adapter-web:pruneArchiveDire
     Stream.runCollect,
   )
   const filesToDelete = filesWithMetadata.pipe(
-    Chunk.sort(Order.mapInput(Order.number, (entry: { lastModified: number }) => entry.lastModified)),
+    Chunk.toSorted(Order.mapInput(Order.number, (entry: { lastModified: number }) => entry.lastModified)),
     Chunk.drop(keep),
     Chunk.toReadonlyArray,
   )

@@ -1,6 +1,7 @@
 /// <reference lib="webworker" />
 
 import { Effect, Option, Schema, Stream } from 'effect'
+
 import * as WebError from '../WebError.ts'
 
 /**

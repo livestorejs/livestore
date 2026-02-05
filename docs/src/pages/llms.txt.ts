@@ -1,4 +1,5 @@
 import type { APIRoute } from 'astro'
+
 import { loadLlmsDocs, renderLlmsText } from '../utils/llms.ts'
 
 export const GET: APIRoute = async ({ site }) => {

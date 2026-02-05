@@ -99,10 +99,7 @@ export const livestoreVersionConstraints: VersionConstraint[] = [
  * 2. Peer deps should have semver ranges (^, ~, >=)
  * 3. Version constraints for specific packages (e.g., Tailwind v3 for expo-linearlite)
  */
-export const validateLivestorePackageJson = (
-  packageName: string,
-  deps: DepsToValidate,
-): ValidationIssue[] => {
+export const validateLivestorePackageJson = (packageName: string, deps: DepsToValidate): ValidationIssue[] => {
   const issues: ValidationIssue[] = []
 
   // Rule 1: Peer deps must not use catalog:

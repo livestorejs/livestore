@@ -1,4 +1,5 @@
 import { queryDb, type Store } from '@livestore/livestore'
+
 import { type schema as mailboxSchema, mailboxTables } from '../mailbox/schema.ts'
 import { threadEvents, type schema as threadSchema, threadTables } from './schema.ts'
 

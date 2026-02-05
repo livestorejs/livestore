@@ -6,10 +6,12 @@
  */
 
 import path from 'node:path'
-import { Console, Effect, FileSystem, Schema } from '@livestore/utils/effect'
-import { LivestoreWorkspace } from '@livestore/utils-dev/node'
+
 import semver from 'semver'
 import * as yaml from 'yaml'
+
+import { LivestoreWorkspace } from '@livestore/utils-dev/node'
+import { Console, Effect, FileSystem, Schema } from '@livestore/utils/effect'
 
 /** Represents a single peer dependency violation */
 export interface PeerDepViolation {

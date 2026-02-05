@@ -28,6 +28,7 @@
     "@opentelemetry/api": "1.9.0"
   },
   "devDependencies": {
+    "@types/node": "25.0.3",
     "expo-application": "7.0.7",
     "expo-sqlite": "16.0.8",
     "react-native": "0.81.4"

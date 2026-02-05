@@ -16,6 +16,8 @@
  */
 
 import fs from 'node:fs'
+
+import { cmd, cmdText, LivestoreWorkspace } from '@livestore/utils-dev/node'
 import {
   Console,
   Effect,
@@ -28,7 +30,6 @@ import {
   Schema,
 } from '@livestore/utils/effect'
 import { Cli, PlatformNode } from '@livestore/utils/node'
-import { cmd, cmdText, LivestoreWorkspace } from '@livestore/utils-dev/node'
 
 export class UpdateDepsError extends Schema.TaggedError<UpdateDepsError>()('UpdateDepsError', {
   message: Schema.String,

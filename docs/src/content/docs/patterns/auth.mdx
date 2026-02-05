@@ -3,11 +3,11 @@ title: Auth
 sidebar:
   order: 21
 ---
+
 import PassAuthPayloadSnippet from '../../_assets/code/patterns/auth/pass-auth-payload.ts?snippet'
 import StoreWithAuthSnippet from '../../_assets/code/patterns/auth/store-with-auth.tsx?snippet'
 import KeepPayloadCanonicalSnippet from '../../_assets/code/patterns/auth/keep-payload-canonical.ts?snippet'
 import CookieAuthSnippet from '../../_assets/code/patterns/auth/cookie-auth.ts?snippet'
-
 
 LiveStore doesn't include built-in authentication or authorization support, but you can implement it in your app's logic.
 
@@ -83,6 +83,7 @@ export class SyncBackendDO extends makeDurableObject({
 LiveStore's `clientId` identifies a client instance, while user identity is an application-level concern that must be modeled through your application's events and logic.
 
 ### Key points
+
 - `clientId`: Automatically managed by LiveStore, identifies a client instance
 - User identity: Managed by your application through events and syncPayload
 

@@ -1,6 +1,7 @@
+import * as otel from '@opentelemetry/api'
+
 import { getDurationMsFromSpan } from '@livestore/common'
 import { Equal, Hash } from '@livestore/utils/effect'
-import * as otel from '@opentelemetry/api'
 
 import type { Thunk } from '../reactive.ts'
 import type { RefreshReason } from '../store/store-types.ts'

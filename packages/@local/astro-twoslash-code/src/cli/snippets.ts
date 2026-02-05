@@ -83,7 +83,6 @@ import * as astroExpressiveCodeModuleStatic from 'astro-expressive-code'
  * any code in this module, update this spec first; drift here will guarantee regressions the next
  * time someone tweaks Twoslash or the docs build.
  */
-
 /**
  * CLI entrypoint that keeps docs snippets warm.
  *
@@ -95,9 +94,6 @@ import * as astroExpressiveCodeModuleStatic from 'astro-expressive-code'
  * The pre-rendered output is consumed by Astro at build time so code examples render instantly without running
  * Twoslash in the browser.
  */
-
-import { type Duration, Effect, FileSystem, type PlatformError, Schema, Stream } from '@livestore/utils/effect'
-import { Cli, NodeFileSystemWithWatch } from '@livestore/utils/node'
 import type { ExpressiveCodeBlockOptions } from 'expressive-code'
 import type {
   Element as THastElement,
@@ -107,6 +103,10 @@ import type {
   RootContent as THastRootContent,
 } from 'hast'
 import { toHtml } from 'hast-util-to-html'
+
+import { type Duration, Effect, FileSystem, type PlatformError, Schema, Stream } from '@livestore/utils/effect'
+import { Cli, NodeFileSystemWithWatch } from '@livestore/utils/node'
+
 import type { LineOwnerMarker, LineOwnerMetadata, TwoslashRuntimeOptions } from '../expressive-code.ts'
 import { createExpressiveCodeConfig, normalizeRuntimeOptions } from '../expressive-code.ts'
 import { resolveProjectPaths, type TwoslashProjectPaths } from '../project-paths.ts'
@@ -1089,7 +1089,7 @@ const collectSnippetEntries = (
 
     return Array.from(entries.values()).map(({ entryPath, importers }) => ({
       entryPath,
-      importers: Array.from(importers).sort(),
+      importers: Array.from(importers).toSorted(),
     }))
   })
 

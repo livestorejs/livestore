@@ -1,7 +1,9 @@
+import { unstable_batchedUpdates as batchUpdates } from 'react-native'
+
 import { makePersistedAdapter } from '@livestore/adapter-expo'
 import { useStore } from '@livestore/react'
 import { makeWsSync } from '@livestore/sync-cf/client'
-import { unstable_batchedUpdates as batchUpdates } from 'react-native'
+
 import { events, schema, tables } from './schema.ts'
 
 const syncUrl = 'https://example.org/sync'

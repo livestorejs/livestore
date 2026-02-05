@@ -1,7 +1,9 @@
-import { queryDb } from '@livestore/livestore'
-import { useStore } from '@livestore/react'
 import { Suspense } from 'react'
 import { ErrorBoundary } from 'react-error-boundary'
+
+import { queryDb } from '@livestore/livestore'
+import { useStore } from '@livestore/react'
+
 import { tables } from './issue.schema.ts'
 import { issueStoreOptions } from './issue.store.ts'
 

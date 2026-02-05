@@ -2,6 +2,7 @@ import * as WaSqlite from '@livestore/wa-sqlite'
 import WaSqliteFactory from '@livestore/wa-sqlite/dist/wa-sqlite.node.mjs'
 import { MemoryVFS } from '@livestore/wa-sqlite/src/examples/MemoryVFS.js'
 import * as SqliteConstants from '@livestore/wa-sqlite/src/sqlite-constants.js'
+
 import { type PreparedBindValues, SqliteError } from './lib.ts'
 export { SqliteConstants }
 export { MemoryVFS } from '@livestore/wa-sqlite/src/examples/MemoryVFS.js'

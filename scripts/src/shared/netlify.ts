@@ -2,8 +2,8 @@ import { readFileSync } from 'node:fs'
 import os from 'node:os'
 import { join } from 'node:path'
 
-import { Effect, HttpClient, HttpClientRequest, Schema } from '@livestore/utils/effect'
 import { CurrentWorkingDirectory, cmdText } from '@livestore/utils-dev/node'
+import { Effect, HttpClient, HttpClientRequest, Schema } from '@livestore/utils/effect'
 
 export class NetlifyError extends Schema.TaggedError<NetlifyError>()('NetlifyError', {
   reason: Schema.Literal('auth', 'unknown'),

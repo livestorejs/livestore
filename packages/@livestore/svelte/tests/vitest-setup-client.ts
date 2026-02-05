@@ -1,9 +1,10 @@
 import '@testing-library/jest-dom/vitest'
-
 import { readFile } from 'node:fs/promises'
 import path from 'node:path'
-import { shouldNeverHappen } from '@livestore/utils'
+
 import { vi } from 'vitest'
+
+import { shouldNeverHappen } from '@livestore/utils'
 
 // In jsdom the browser build of wa-sqlite tries to fetch the wasm; jsdom cannot
 // fetch local files, so we serve the compiled wasm from disk via a fetch shim.

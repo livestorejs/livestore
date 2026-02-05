@@ -5,7 +5,7 @@ sidebar:
   order: 6
 ---
 
-import { Tabs, TabItem, Code } from '@astrojs/starlight/components';
+import { Tabs, TabItem, Code } from '@astrojs/starlight/components'
 
 As you saw in the beginning of the tutorial, the state of an application is typically divided into two categories:
 
@@ -187,8 +187,8 @@ On this table, you define:
 
 - A name for this client document.
 - The structure of the client document via `schema`; in your case:
-    - The current state of the `input` text field for adding a new todo.
-    - The `filter` that'll be used to filter the todos according to their `completed` status.
+  - The current state of the `input` text field for adding a new todo.
+  - The `filter` that'll be used to filter the todos according to their `completed` status.
 - Default values for this client document.
 
 Unlike with other application state, you don't need to define custom events and materializers. The only thing you need to do is add the following event to your `events` object:
@@ -262,12 +262,11 @@ The last step in this tutorial is to actually update the list based on which tab
 With all your current knowledge, you could think that the implementation would need to look something like this:
 
 ```tsx title="src/App.tsx"
-const todos$ = queryDb(() => tables.todos.where({
-  completed:
-    filter === 'Completed' ? true
-      : filter === 'Active' ? false
-        : undefined // if `undefined` is passed to `where`, no filtering happens
-}))
+const todos$ = queryDb(() =>
+  tables.todos.where({
+    completed: filter === 'Completed' ? true : filter === 'Active' ? false : undefined, // if `undefined` is passed to `where`, no filtering happens
+  }),
+)
 const todos = store.useQuery(todos$)
 ```
 
@@ -276,16 +275,15 @@ If you try that out though, you'll notice that this works _once_ (when your brow
 That's because the query isn't updated with the new value `filter` value when it changes. Here's how you need to do it instead:
 
 ```tsx title="src/App.tsx"
-const todos$ = queryDb((
+const todos$ = queryDb(
   (get) => {
     const { filter } = get(uiState$)
     return tables.todos.where({
-      completed: filter === 'Completed' ? true
-        : filter === 'Active' ? false
-          : undefined
+      completed: filter === 'Completed' ? true : filter === 'Active' ? false : undefined,
     })
-  }
-), { label: 'todos' })
+  },
+  { label: 'todos' },
+)
 const todos = store.useQuery(todos$)
 ```
 
@@ -298,9 +296,7 @@ import { tables, events, Filter } from './livestore/schema'
 import { useAppStore } from './livestore/store'
 import { queryDb } from '@livestore/livestore'
 
-
 function App() {
-
   const store = useAppStore()
 
   const [{ input, filter }, setUiState, , uiState$] = store.useClientDocument(tables.uiState)
@@ -309,9 +305,7 @@ function App() {
     (get) => {
       const { filter } = get(uiState$)
       return tables.todos.where({
-        completed: filter === 'Completed' ? true
-          : filter === 'Active' ? false
-            : undefined
+        completed: filter === 'Completed' ? true : filter === 'Active' ? false : undefined,
       })
     },
     { label: 'todos' },
@@ -323,23 +317,17 @@ function App() {
 
   const addTodo = () => {
     if (input.trim()) {
-      store.commit(
-        events.todoCreated({ id: Date.now(), text: input }),
-      )
+      store.commit(events.todoCreated({ id: Date.now(), text: input }))
       updatedInput('')
     }
   }
 
   const deleteTodo = (id: number) => {
-    store.commit(
-      events.todoDeleted({ id }),
-    )
+    store.commit(events.todoDeleted({ id }))
   }
 
   const toggleTodo = (id: number, completed: boolean) => {
-    store.commit(
-      completed ? events.todoUncompleted({ id }) : events.todoCompleted({ id })
-    )
+    store.commit(completed ? events.todoUncompleted({ id }) : events.todoCompleted({ id }))
   }
 
   const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
@@ -351,9 +339,7 @@ function App() {
   return (
     <div className="min-h-screen bg-gray-50 flex items-start justify-center p-6">
       <div className="w-full max-w-lg">
-        <h1 className="text-5xl font-bold text-gray-800 text-center mb-12">
-          Todo List
-        </h1>
+        <h1 className="text-5xl font-bold text-gray-800 text-center mb-12">Todo List</h1>
 
         <div className="flex gap-3 mb-8">
           <input
@@ -377,10 +363,9 @@ function App() {
             <button
               key={tab}
               onClick={() => updatedFilter(tab)}
-              className={`px-5 py-2.5 text-sm bg-transparent border-0 -mb-px cursor-pointer outline-none transition-colors ${filter === tab
-                  ? 'text-blue-500 font-semibold'
-                  : 'text-gray-600 hover:text-gray-800'
-                }`}
+              className={`px-5 py-2.5 text-sm bg-transparent border-0 -mb-px cursor-pointer outline-none transition-colors ${
+                filter === tab ? 'text-blue-500 font-semibold' : 'text-gray-600 hover:text-gray-800'
+              }`}
             >
               {tab}
             </button>
@@ -388,11 +373,8 @@ function App() {
         </div>
 
         <div className="space-y-3 min-h-[200px]">
-          {todos.map(todo => (
-            <div
-              key={todo.id}
-              className="flex items-center justify-between bg-white px-4 py-3 rounded shadow-sm"
-            >
+          {todos.map((todo) => (
+            <div key={todo.id} className="flex items-center justify-between bg-white px-4 py-3 rounded shadow-sm">
               <div className="flex items-center gap-3 flex-1">
                 <input
                   type="checkbox"
@@ -414,11 +396,7 @@ function App() {
           ))}
         </div>
 
-        {todos.length === 0 && (
-          <p className="text-center text-gray-400 mt-8">
-            No todos yet. Add one above!
-          </p>
-        )}
+        {todos.length === 0 && <p className="text-center text-gray-400 mt-8">No todos yet. Add one above!</p>}
       </div>
     </div>
   )

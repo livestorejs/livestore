@@ -1,5 +1,6 @@
 import { LanguageModel } from '@effect/ai'
 import { OpenAiClient, OpenAiLanguageModel } from '@effect/ai-openai'
+
 import { AiError, Config, Effect, FetchHttpClient, Layer, Prompt, Schema, Tool } from '@livestore/utils/effect'
 
 // Define the coach tool that analyzes LiveStore usage

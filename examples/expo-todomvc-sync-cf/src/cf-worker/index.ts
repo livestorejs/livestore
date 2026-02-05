@@ -1,4 +1,5 @@
 import { makeDurableObject, makeWorker } from '@livestore/sync-cf/cf-worker'
+
 import { SyncPayload } from '../livestore/schema.ts'
 
 export class SyncBackendDO extends makeDurableObject({

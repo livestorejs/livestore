@@ -1,6 +1,8 @@
+import { createFileRoute } from '@tanstack/react-router'
+
 import { Schema } from '@livestore/livestore'
 import { ApiSchema, makeElectricUrl } from '@livestore/sync-electric'
-import { createFileRoute } from '@tanstack/react-router'
+
 import { SyncPayload } from '../../livestore/schema.ts'
 import { makeDb } from '../../server/db.ts'
 

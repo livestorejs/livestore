@@ -1,4 +1,5 @@
 import { Result, useAtomValue } from '@effect-atom/atom-react'
+
 import { activeUsersAtom } from './queries.ts'
 
 export function UserList() {

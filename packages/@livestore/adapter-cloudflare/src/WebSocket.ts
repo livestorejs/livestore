@@ -28,14 +28,12 @@ export const makeWebSocket = ({
     const socket = yield* Effect.tryPromise({
       try: () =>
         // NOTE: .toString() required due to type mismatch between standard URL and CF's URL types
-        durableObject
-          .fetch(url.toString(), { headers: { Upgrade: 'websocket' } })
-          .then((res: any) => {
-            if (!res.webSocket) {
-              throw new Error('WebSocket upgrade failed')
-            }
-            return res.webSocket as CfTypes.WebSocket
-          }),
+        durableObject.fetch(url.toString(), { headers: { Upgrade: 'websocket' } }).then((res: any) => {
+          if (!res.webSocket) {
+            throw new Error('WebSocket upgrade failed')
+          }
+          return res.webSocket as CfTypes.WebSocket
+        }),
       catch: (cause) => new WebSocket.WebSocketError({ cause }),
     }).pipe(reconnect ? Effect.retry(reconnect) : identity, Effect.withSpan('make-websocket-durable-object'))
 

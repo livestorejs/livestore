@@ -1,6 +1,6 @@
+import { cmd, LivestoreWorkspace } from '@livestore/utils-dev/node'
 import { Effect } from '@livestore/utils/effect'
 import { Cli } from '@livestore/utils/node'
-import { cmd, LivestoreWorkspace } from '@livestore/utils-dev/node'
 /**
  * Since there are many todomvc examples which we want to keep in sync, we're treating the `web-todomvc`
  * example as the source of truth and copy most files from there to the other todomvc examples.

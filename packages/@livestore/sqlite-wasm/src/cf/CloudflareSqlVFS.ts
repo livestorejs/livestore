@@ -1,5 +1,6 @@
 import type { CfTypes } from '@livestore/common-cf'
 import * as VFS from '@livestore/wa-sqlite/src/VFS.js'
+
 import { FacadeVFS } from '../FacadeVFS.ts'
 import { BlockManager } from './BlockManager.ts'
 

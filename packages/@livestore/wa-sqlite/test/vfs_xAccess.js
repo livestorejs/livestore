@@ -1,2 +1,1 @@
-export function vfs_xAccess(context) {
-}
+export function vfs_xAccess(context) {}

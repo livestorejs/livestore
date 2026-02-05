@@ -1,13 +1,15 @@
-import { baseTsconfigCompilerOptions, reactJsx, tsconfigJson } from '../../../../../genie/repo.ts'
+import { baseTsconfigCompilerOptions, domLib, reactJsx, tsconfigJson } from '../../../../../genie/repo.ts'
 
 /**
  * Docs code snippets tsconfig.
  * Used for TypeScript snippets embedded in documentation.
  * Non-composite (noEmit) since these are just for type checking/editor support.
+ * Includes DOM lib since snippets may use browser APIs.
  */
 export default tsconfigJson({
   compilerOptions: {
     ...baseTsconfigCompilerOptions,
+    lib: [...domLib],
     rootDir: './',
     baseUrl: './',
     ...reactJsx,

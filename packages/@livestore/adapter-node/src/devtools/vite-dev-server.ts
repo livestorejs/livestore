@@ -1,11 +1,12 @@
 import path from 'node:path'
 
+import * as Vite from 'vite'
+
 import type { Devtools } from '@livestore/common'
 import { UnknownError } from '@livestore/common'
 import { isReadonlyArray } from '@livestore/utils'
 import { Data, Effect } from '@livestore/utils/effect'
 import { getFreePort } from '@livestore/utils/node'
-import * as Vite from 'vite'
 
 /**
  * Error thrown when @livestore/devtools-vite is not installed.

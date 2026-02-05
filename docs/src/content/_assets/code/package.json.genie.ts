@@ -60,6 +60,9 @@ export default packageJson({
     // Effect (from catalog)
     ...catalog.pick('effect'),
 
+    // Vite (from catalog) - needed for vite/client types
+    ...catalog.pick('vite'),
+
     // Expo (doc-specific, not from catalog)
     expo: '54.0.12',
     'expo-status-bar': '3.0.8',

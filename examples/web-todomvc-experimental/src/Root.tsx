@@ -1,9 +1,11 @@
-import { StoreRegistry } from '@livestore/livestore'
-import { StoreRegistryProvider } from '@livestore/react'
 import { FPSMeter } from '@overengineering/fps-meter'
 import type React from 'react'
 import { Suspense, useState } from 'react'
 import { ErrorBoundary } from 'react-error-boundary'
+
+import { StoreRegistry } from '@livestore/livestore'
+import { StoreRegistryProvider } from '@livestore/react'
+
 import { Footer } from './components/Footer.tsx'
 import { Header } from './components/Header.tsx'
 import { MainSection } from './components/MainSection.tsx'

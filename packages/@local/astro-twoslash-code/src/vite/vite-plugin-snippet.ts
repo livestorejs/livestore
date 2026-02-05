@@ -2,7 +2,9 @@ import crypto from 'node:crypto'
 import fs from 'node:fs'
 import path from 'node:path'
 import { fileURLToPath } from 'node:url'
+
 import { shouldNeverHappen } from '@livestore/utils'
+
 import { createExpressiveCodeConfig, normalizeRuntimeOptions, type TwoslashRuntimeOptions } from '../expressive-code.ts'
 import { formatRebuildInstruction, resolveProjectPaths, type TwoslashProjectPaths } from '../project-paths.ts'
 import { buildSnippetBundle, type SnippetBundle } from './snippet-graph.ts'
@@ -336,7 +338,9 @@ export const createTwoslashSnippetPlugin = (options: TwoslashSnippetPluginOption
         return fingerprintHash
       } catch (cause) {
         const reason = cause instanceof Error ? cause.message : String(cause)
-        throw new Error(`Unable to compute Expressive Code configuration (${reason}). ${rebuildInstruction}`)
+        throw new Error(`Unable to compute Expressive Code configuration (${reason}). ${rebuildInstruction}`, {
+          cause: cause,
+        })
       }
     })()
 

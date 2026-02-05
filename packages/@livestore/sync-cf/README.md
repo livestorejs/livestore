@@ -8,11 +8,11 @@
 
 ## Transports
 
-| Transport           | Connection      | Encoding  | Runtime Env                                 |
-|---------------------|----------------|-----------|---------------------------------------------|
-| WebSocket           | Stateful       | JSON      | Anywhere                                    |
-| HTTP                | Stateless      | JSON      | Anywhere                                    |
-| Durable Object RPC  | Stateful       | MsgPack   | Only available between Durable Objects (DOs) |
+| Transport          | Connection | Encoding | Runtime Env                                  |
+| ------------------ | ---------- | -------- | -------------------------------------------- |
+| WebSocket          | Stateful   | JSON     | Anywhere                                     |
+| HTTP               | Stateless  | JSON     | Anywhere                                     |
+| Durable Object RPC | Stateful   | MsgPack  | Only available between Durable Objects (DOs) |
 
 ### WebSocket
 
@@ -36,7 +36,6 @@
 - Streaming responses are implemented via HTTP streaming
   - Requires `enable_request_signal` compatibility flag to properly support `pull` streaming responses
   - Keeps DO alive for the duration of the stream (which causes CPU billing)
-
 
 ### Durable Object RPC
 

@@ -7,7 +7,7 @@
   "vcs": {
     "enabled": true,
     "clientKind": "git",
-    "useIgnoreFile": true
+    "useIgnoreFile": true,
   },
   "files": {
     "includes": [
@@ -36,14 +36,14 @@
       "!!**/nix/**",
       "!!**/wip/**",
       "!!**/.vite/**",
-      "!!**/patches/**"
+      "!!**/patches/**",
     ],
-    "ignoreUnknown": true
+    "ignoreUnknown": true,
   },
   "formatter": {
     "enabled": true,
     "indentStyle": "space",
-    "lineWidth": 120
+    "lineWidth": 120,
   },
   "assist": { "actions": { "source": { "organizeImports": "on" } } },
   "linter": {
@@ -52,7 +52,7 @@
       "recommended": true,
       "suspicious": {
         "noExplicitAny": "off",
-        "noShadowRestrictedNames": "off"
+        "noShadowRestrictedNames": "off",
       },
       "style": {
         "noUselessElse": "off",
@@ -65,15 +65,15 @@
         "useSelfClosingElements": "error",
         "useSingleVarDeclarator": "error",
         "useNumberNamespace": "error",
-        "noInferrableTypes": "error"
+        "noInferrableTypes": "error",
       },
       "complexity": {
         "useArrowFunction": "error",
         "noBannedTypes": "off",
-        "noUselessTernary": "off"
+        "noUselessTernary": "off",
       },
       "a11y": {
-        "useKeyWithClickEvents": "off"
+        "useKeyWithClickEvents": "off",
       },
       "correctness": {
         "noUnusedImports": "warn",
@@ -81,26 +81,26 @@
         "useExhaustiveDependencies": "error",
         "useHookAtTopLevel": "error",
         "noUnusedLabels": {
-          "level": "warn"
+          "level": "warn",
         },
-        "useYield": "off"
+        "useYield": "off",
       },
-      "nursery": {}
-    }
+      "nursery": {},
+    },
   },
   "javascript": {
     "formatter": {
       "quoteStyle": "single",
-      "semicolons": "asNeeded"
-    }
+      "semicolons": "asNeeded",
+    },
   },
   "css": {
     "parser": {
-      "tailwindDirectives": true
-    }
+      "tailwindDirectives": true,
+    },
   },
   "json": {
-    "formatter": {}
+    "formatter": {},
   },
   "overrides": [
     {
@@ -112,10 +112,10 @@
         "rules": {
           "correctness": {
             "noUnusedVariables": "off",
-            "noUnusedImports": "off"
-          }
-        }
-      }
+            "noUnusedImports": "off",
+          },
+        },
+      },
     },
     {
       // Disable noUnknownAtRules for CSS files that use Tailwind CSS
@@ -125,10 +125,10 @@
       "linter": {
         "rules": {
           "suspicious": {
-            "noUnknownAtRules": "off"
-          }
-        }
-      }
+            "noUnknownAtRules": "off",
+          },
+        },
+      },
     },
     {
       // Disable React hook rules for Solid.js package
@@ -138,10 +138,10 @@
         "rules": {
           "correctness": {
             "useHookAtTopLevel": "off",
-            "useExhaustiveDependencies": "off"
-          }
-        }
-      }
+            "useExhaustiveDependencies": "off",
+          },
+        },
+      },
     },
     {
       // Disable React hook rules for Solid.js documentation snippets
@@ -150,10 +150,10 @@
         "rules": {
           "correctness": {
             "useHookAtTopLevel": "off",
-            "useExhaustiveDependencies": "off"
-          }
-        }
-      }
+            "useExhaustiveDependencies": "off",
+          },
+        },
+      },
     },
     {
       // Disable React hook rules for Solid.js TodoMVC example
@@ -162,10 +162,10 @@
         "rules": {
           "correctness": {
             "useHookAtTopLevel": "off",
-            "useExhaustiveDependencies": "off"
-          }
-        }
-      }
-    }
-  ]
+            "useExhaustiveDependencies": "off",
+          },
+        },
+      },
+    },
+  ],
 }

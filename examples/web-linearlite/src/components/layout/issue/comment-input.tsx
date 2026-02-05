@@ -2,6 +2,7 @@ import { ArrowUpIcon } from '@heroicons/react/20/solid'
 import React from 'react'
 import { useKeyboard } from 'react-aria'
 import { Button } from 'react-aria-components'
+
 import { useFrontendState } from '../../../livestore/queries.ts'
 import { events } from '../../../livestore/schema/index.ts'
 import { useAppStore } from '../../../livestore/store.ts'

@@ -1,4 +1,9 @@
-import { baseTsconfigCompilerOptions, packageTsconfigCompilerOptions, packageTsconfigExclude, tsconfigJson } from '../../../genie/repo.ts'
+import {
+  baseTsconfigCompilerOptions,
+  packageTsconfigCompilerOptions,
+  packageTsconfigExclude,
+  tsconfigJson,
+} from '../../../genie/repo.ts'
 
 export default tsconfigJson({
   compilerOptions: {

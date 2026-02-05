@@ -1,5 +1,6 @@
 import AutoSizer from 'react-virtualized-auto-sizer'
 import { FixedSizeList } from 'react-window'
+
 import { useDebouncedScrollState } from '../../../livestore/queries.ts'
 import { VirtualRow } from './virtual-row.tsx'
 

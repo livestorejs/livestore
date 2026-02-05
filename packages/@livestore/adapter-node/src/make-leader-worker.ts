@@ -1,11 +1,12 @@
 import './thread-polyfill.ts'
-
 import inspector from 'node:inspector'
 
 if (process.execArgv.includes('--inspect')) {
   inspector.open()
   inspector.waitForDebugger()
 }
+
+import type * as otel from '@opentelemetry/api'
 
 import type { SyncOptions } from '@livestore/common'
 import { LogConfig, UnknownError } from '@livestore/common'
@@ -17,7 +18,6 @@ import { loadSqlite3Wasm } from '@livestore/sqlite-wasm/load-wasm'
 import { sqliteDbFactory } from '@livestore/sqlite-wasm/node'
 import { Effect, FetchHttpClient, Layer, OtelTracer, Schema, Stream, WorkerRunner } from '@livestore/utils/effect'
 import { PlatformNode } from '@livestore/utils/node'
-import type * as otel from '@opentelemetry/api'
 
 import type { TestingOverrides } from './leader-thread-shared.ts'
 import { makeLeaderThread } from './leader-thread-shared.ts'

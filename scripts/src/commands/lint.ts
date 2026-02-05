@@ -1,9 +1,11 @@
 import * as fs from 'node:fs'
 import * as os from 'node:os'
 import * as path from 'node:path'
+
+import { CurrentWorkingDirectory, cmd, cmdText, LivestoreWorkspace } from '@livestore/utils-dev/node'
 import { Console, Effect, Schema } from '@livestore/utils/effect'
 import { Cli } from '@livestore/utils/node'
-import { CurrentWorkingDirectory, cmd, cmdText, LivestoreWorkspace } from '@livestore/utils-dev/node'
+
 import { runPeerDepCheck } from '../shared/peer-deps.ts'
 
 export class LintError extends Schema.TaggedError<LintError>()('LintError', {

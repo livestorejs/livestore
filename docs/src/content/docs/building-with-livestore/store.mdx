@@ -60,6 +60,7 @@ Use `makeStoreContext()` to create a typed context that preserves your schema ty
 <MakeStoreContextSnippet />
 
 The factory takes your schema type as a generic parameter and returns a `StoreContext` with:
+
 - `Tag` - Context tag for dependency injection
 - `Layer` - Creates a layer that initializes the store
 - `DeferredTag` - For async initialization patterns
@@ -98,10 +99,10 @@ LiveStore provides APIs to monitor the synchronization status between the client
 
 ```ts
 type SyncStatus = {
-  localHead: string      // e.g., "e5.2" or "e5.2r1"
-  upstreamHead: string   // e.g., "e3"
-  pendingCount: number   // Number of events pending sync
-  isSynced: boolean      // true when pendingCount === 0
+  localHead: string // e.g., "e5.2" or "e5.2r1"
+  upstreamHead: string // e.g., "e3"
+  pendingCount: number // Number of events pending sync
+  isSynced: boolean // true when pendingCount === 0
 }
 ```
 

@@ -1,5 +1,6 @@
-import { Effect, Logger, Schema } from '@livestore/utils/effect'
 import { afterEach, beforeEach, describe, expect, test } from 'vitest'
+
+import { Effect, Logger, Schema } from '@livestore/utils/effect'
 
 import { synced } from './define.ts'
 import {

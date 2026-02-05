@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { createPortal } from 'react-dom'
+
 import MixedbreadLogo from './mixedbread-logo.svg?url'
 import { ResultContent } from './ResultContent.tsx'
 import { useDebounce } from './use-debounce.ts'

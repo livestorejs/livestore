@@ -5,6 +5,7 @@ import { shouldNeverHappen } from '@livestore/utils'
 import { Effect, Runtime, Schedule, type Scope, Stream } from '@livestore/utils/effect'
 import { Opfs, type WebError } from '@livestore/utils/effect/browser'
 import * as VFS from '@livestore/wa-sqlite/src/VFS.js'
+
 import { FacadeVFS } from '../../FacadeVFS.ts'
 
 const SECTOR_SIZE = 4096
@@ -94,7 +95,12 @@ export class AccessHandlePoolVFS extends FacadeVFS {
     directoryPath,
     module,
     runtime,
-  }: { name: string; directoryPath: string; module: any; runtime: Runtime.Runtime<Opfs.Opfs | Scope.Scope> }) {
+  }: {
+    name: string
+    directoryPath: string
+    module: any
+    runtime: Runtime.Runtime<Opfs.Opfs | Scope.Scope>
+  }) {
     super(name, module)
     this.#directoryPath = directoryPath
     this.#runtime = runtime

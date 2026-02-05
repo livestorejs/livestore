@@ -120,7 +120,7 @@ export const debugCatch = <T>(try_: () => T): T => {
     return try_()
   } catch (e: any) {
     // biome-ignore lint/suspicious/noDebugger: debugging
-    debugger
+
     throw e
   }
 }
@@ -175,7 +175,7 @@ export const isReadonlyArray = <I, T>(value: ReadonlyArray<I> | T): value is Rea
 
 export function casesHandled(unexpectedCase: never): never {
   // biome-ignore lint/suspicious/noDebugger: debugging
-  debugger
+
   throw new Error(`A case was not handled for value: ${truncate(objectToString(unexpectedCase), 1000)}`)
 }
 
@@ -190,7 +190,7 @@ export function casesHandled(unexpectedCase: never): never {
 export const assertNever = (failIfFalse: boolean, msg?: string): void => {
   if (failIfFalse === false) {
     // biome-ignore lint/suspicious/noDebugger: debugging
-    debugger
+
     throw new Error(`This should never happen: ${msg}`)
   }
 }
@@ -205,7 +205,7 @@ export const assertNever = (failIfFalse: boolean, msg?: string): void => {
  */
 export const debuggerPipe = <T>(val: T): T => {
   // biome-ignore lint/suspicious/noDebugger: debugging
-  debugger
+
   return val
 }
 
@@ -232,7 +232,7 @@ const truncate = (str: string, length: number): string => {
  */
 export const notYetImplemented = (msg?: string): never => {
   // biome-ignore lint/suspicious/noDebugger: debugging
-  debugger
+
   throw new Error(`Not yet implemented: ${msg}`)
 }
 

@@ -10,7 +10,7 @@ export default packageJson({
     ...catalog.pick('@livestore/common', '@livestore/utils', '@livestore/webmesh', '@opentelemetry/api'),
   },
   devDependencies: {
-    ...catalog.pick('expo-application', 'expo-sqlite', 'react-native'),
+    ...catalog.pick('@types/node', 'expo-application', 'expo-sqlite', 'react-native'),
   },
   peerDependencies: {
     'expo-application': '^7.0.7',

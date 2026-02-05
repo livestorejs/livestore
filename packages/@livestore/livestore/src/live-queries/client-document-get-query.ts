@@ -1,8 +1,10 @@
+import type * as otel from '@opentelemetry/api'
+
 import type { PreparedBindValues } from '@livestore/common'
 import { SessionIdSymbol } from '@livestore/common'
 import { State } from '@livestore/common/schema'
 import { shouldNeverHappen } from '@livestore/utils'
-import type * as otel from '@opentelemetry/api'
+
 import { StoreInternalsSymbol } from '../store/store-types.ts'
 import type { ReactivityGraphContext } from './base-class.ts'
 

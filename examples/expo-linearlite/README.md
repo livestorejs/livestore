@@ -15,6 +15,7 @@ An example app built with [LiveStore](https://livestore.dev/) and [Expo](https:/
    bunx expo prebuild
    ```
 5. Run the app
+
    ```
    # iOS
    bunx expo run:ios

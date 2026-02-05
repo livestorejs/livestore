@@ -1,8 +1,11 @@
 import path from 'node:path'
+
+import { expect } from 'vitest'
+
+import { Vitest } from '@livestore/utils-dev/node-vitest'
 import { Duration, Effect, Layer, Stream } from '@livestore/utils/effect'
 import { PlatformNode } from '@livestore/utils/node'
-import { Vitest } from '@livestore/utils-dev/node-vitest'
-import { expect } from 'vitest'
+
 import { type DockerComposeArgs, DockerComposeService } from './DockerComposeService.ts'
 
 const testTimeout = 30_000

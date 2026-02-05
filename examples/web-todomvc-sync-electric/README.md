@@ -21,10 +21,14 @@ docker compose up -d
 ## Running tests
 
 # Using bun (use 'bun run test', not 'bun test')
+
 bun run test
 
 # Or use bunx to run Playwright directly
+
 bunx playwright test
+
 ```
 
 **Note:** Use `bun run test` instead of `bun test` because Bun's test runner doesn't support Playwright's test API. The `bun run test` command executes the `playwright test` script from package.json.
+```

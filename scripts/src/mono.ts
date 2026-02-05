@@ -1,6 +1,7 @@
+import { cmd, LivestoreWorkspace, OtelLiveHttp } from '@livestore/utils-dev/node'
 import { Effect, FetchHttpClient, Layer, Logger, LogLevel } from '@livestore/utils/effect'
 import { Cli, PlatformNode } from '@livestore/utils/node'
-import { cmd, LivestoreWorkspace, OtelLiveHttp } from '@livestore/utils-dev/node'
+
 import { debugCommand } from './commands/debug.ts'
 import { docsCommand } from './commands/docs.ts'
 import { examplesCommand } from './commands/examples/cli.ts'

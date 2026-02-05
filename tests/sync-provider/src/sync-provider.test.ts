@@ -1,8 +1,12 @@
+import { expect } from 'vitest'
+
 import { BackendIdMismatchError, InvalidPullError, SyncBackend } from '@livestore/common'
 import { EventFactory } from '@livestore/common/testing'
 import type { LiveStoreEvent } from '@livestore/livestore'
 import { EventSequenceNumber, nanoid } from '@livestore/livestore'
 import { events } from '@livestore/livestore/internal/testing-utils'
+import { OtelLiveHttp } from '@livestore/utils-dev/node'
+import { Vitest } from '@livestore/utils-dev/node-vitest'
 import {
   Chunk,
   Duration,
@@ -19,9 +23,7 @@ import {
   Schema,
   Stream,
 } from '@livestore/utils/effect'
-import { OtelLiveHttp } from '@livestore/utils-dev/node'
-import { Vitest } from '@livestore/utils-dev/node-vitest'
-import { expect } from 'vitest'
+
 import { providerKeys, providerRegistry } from './providers/registry.ts'
 import { SyncProviderImpl, type SyncProviderOptions } from './types.ts'
 

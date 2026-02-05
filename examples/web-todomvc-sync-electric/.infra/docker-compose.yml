@@ -1,5 +1,5 @@
 # https://electric-sql.com/docs/guides/installation#using-docker
-name: "livestore-electric"
+name: 'livestore-electric'
 
 services:
   postgres:
@@ -26,6 +26,6 @@ services:
       ELECTRIC_SECRET: change-me-electric-secret
     ports:
       # We'll bind Electric to port 30000 in order to avoid conflicts with the dev server
-      - "30000:3000"
+      - '30000:3000'
     depends_on:
       - postgres

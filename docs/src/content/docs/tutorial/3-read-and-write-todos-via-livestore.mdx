@@ -5,8 +5,8 @@ sidebar:
   order: 3
 ---
 
-import { Tabs, TabItem, Code } from '@astrojs/starlight/components';
-import LivestoreDataFlowDiagram from '../../_assets/diagrams/tutorial-chapter-3-2-livestore-data-flow.tldr?tldraw';
+import { Tabs, TabItem, Code } from '@astrojs/starlight/components'
+import LivestoreDataFlowDiagram from '../../_assets/diagrams/tutorial-chapter-3-2-livestore-data-flow.tldr?tldraw'
 
 Now on to the fun part! In this section, you'll set up LiveStore so that the todos that you're creating will persist and survive page refreshes and dev server reloads.
 
@@ -88,7 +88,7 @@ export const tables = {
       id: State.SQLite.integer({ primaryKey: true }),
       text: State.SQLite.text({ default: '' }),
     },
-  })
+  }),
 }
 
 export const events = {
@@ -112,6 +112,7 @@ export const schema = makeSchema({ events, state })
 ```
 
 Here's a quick summary of the code:
+
 - `tables` contains the definitions of your SQLite table structures. It currently defines a single `todos` table with two columns called `id` and `text`.
 - `events` defines the types of events that your app can emit. It currently defines the `todoCreated` and `todoDeleted` events with an attached `schema` property which defines the shape of the event.
 - `materializers` are the functions that are invoked for each event. In them, you define what should happen when the event gets fired. Right now, the `v1.TodoCreated` event results in an `insert` operation in the database while `v1.TodoDeleted` will remove a row from the database via a `delete` operation.
@@ -213,12 +214,12 @@ createRoot(document.getElementById('root')!).render(<Root />)
 
 :::note[So many "workers" ...]
 There's some ambiguity with the "worker" terminology in this tutorial. In general, there are three different kinds of Workers at play.
+
 - The **LiveStore web worker** (`LiveStoreWorker`); this is the Worker you defined in `livestore.worker.ts`. Technically, this is a _browser_ web worker, i.e. a separate JavaScript thread that runs in the browser, isolated from the main UI thread.
--  The **LiveStore shared web worker** (`LiveStoreSharedWorker`); you just imported it from `@livestore/adapter-web/shared-worker`, also a _browser_ web worker. It's actually more of an _implementation detail_ but currently required to be exposed, so that the setup works with Vite.
+- The **LiveStore shared web worker** (`LiveStoreSharedWorker`); you just imported it from `@livestore/adapter-web/shared-worker`, also a _browser_ web worker. It's actually more of an _implementation detail_ but currently required to be exposed, so that the setup works with Vite.
 - The **Cloudflare Worker** that will automatically sync the data in the background; you'll set this up in the next step.
 
 Note that both the LiveStore web worker and the LiveStore Shared web worker are regular [web workers,](https://www.dhiwise.com/post/web-workers-vs-service-workers-in-javascript#what-are-web-workers-) not [service workers](https://www.dhiwise.com/post/web-workers-vs-service-workers-in-javascript#what-are-service-workers-)!
-
 
 Here's how to think about the workers in the context of browser tabs (or windows):
 

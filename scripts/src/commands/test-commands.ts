@@ -1,9 +1,9 @@
 import fs from 'node:fs'
 import path from 'node:path'
 
+import { cmd, cmdText, LivestoreWorkspace } from '@livestore/utils-dev/node'
 import { Effect, Option } from '@livestore/utils/effect'
 import { Cli } from '@livestore/utils/node'
-import { cmd, cmdText, LivestoreWorkspace } from '@livestore/utils-dev/node'
 import * as integrationTests from '@local/tests-integration/run-tests'
 import * as syncProviderTestsPrepare from '@local/tests-sync-provider/prepare-ci'
 import {
@@ -111,7 +111,7 @@ const discoverPackagesWithTests = (workspaceRoot: string, excludePackages: strin
     console.warn('Warning: Failed to discover packages with tests:', error)
   }
 
-  return results.sort((a, b) => a.path.localeCompare(b.path))
+  return results.toSorted((a, b) => a.path.localeCompare(b.path))
 }
 
 // Helper function to check if a directory contains test files

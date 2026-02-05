@@ -1,5 +1,7 @@
 import { fileURLToPath } from 'node:url'
+
 import { expect, type Page } from '@playwright/test'
+
 import { test } from '../fixtures.ts'
 
 test.describe('Streaming latency', () => {

@@ -1,3 +1,5 @@
+import type * as otel from '@opentelemetry/api'
+
 import { casesHandled, isNotUndefined, LS_DEV, shouldNeverHappen, TRACE_VERBOSE } from '@livestore/utils'
 import type { HttpClient, Runtime, Scope, Tracer } from '@livestore/utils/effect'
 import {
@@ -18,7 +20,7 @@ import {
   Subscribable,
   SubscriptionRef,
 } from '@livestore/utils/effect'
-import type * as otel from '@opentelemetry/api'
+
 import { type MaterializeError, type SqliteDb, UnknownError } from '../adapter-types.ts'
 import { IntentionalShutdownCause } from '../errors.ts'
 import { makeMaterializerHash } from '../materializer-helper.ts'
@@ -586,7 +588,6 @@ const backgroundApplyLocalPushes = ({
           if (LS_DEV && (yield* BucketQueue.size(localPushesQueue)) > 0) {
             console.log('localPushesQueue is not empty', yield* BucketQueue.size(localPushesQueue))
             // biome-ignore lint/suspicious/noDebugger: debugging
-            debugger
           }
 
           const allDeferredsToReject = [

@@ -1,3 +1,5 @@
+import type * as otel from '@opentelemetry/api'
+
 /// <reference lib="dom" />
 import { LS_DEV, shouldNeverHappen, TRACE_VERBOSE } from '@livestore/utils'
 import {
@@ -13,7 +15,6 @@ import {
   Stream,
   Subscribable,
 } from '@livestore/utils/effect'
-import type * as otel from '@opentelemetry/api'
 
 import { type ClientSession, UnknownError } from '../adapter-types.ts'
 import type { MaterializeError } from '../errors.ts'

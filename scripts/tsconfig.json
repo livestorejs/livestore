@@ -11,8 +11,8 @@
     "resolveJsonModule": true,
     "esModuleInterop": true,
     "allowJs": false,
-    "declaration": true,
-    "declarationMap": true,
+    "declaration": false,
+    "declarationMap": false,
     "sourceMap": true,
     "outDir": "dist",
     "strict": true,
@@ -38,7 +38,8 @@
         }
       }
     ],
-    "noEmit": true
+    "noEmit": true,
+    "composite": false
   },
   "include": ["./src", "./standalone"],
   "exclude": ["node_modules", "**/dist", "**/node_modules/.pnpm", "**/*.genie.ts"],

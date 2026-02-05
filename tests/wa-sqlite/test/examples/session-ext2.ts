@@ -1,6 +1,7 @@
 import * as WaSqlite from '@livestore/wa-sqlite'
 import WaSqliteFactory from '@livestore/wa-sqlite/dist/wa-sqlite.node.mjs'
 import { MemoryVFS } from '@livestore/wa-sqlite/src/examples/MemoryVFS.js'
+
 import { makeSynchronousDatabase } from '../lib/lib.ts'
 
 const main = async () => {

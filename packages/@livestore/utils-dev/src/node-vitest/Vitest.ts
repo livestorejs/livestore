@@ -1,5 +1,7 @@
 import * as inspector from 'node:inspector'
+
 import type * as Vitest from '@effect/vitest'
+
 import { IS_CI } from '@livestore/utils'
 import {
   type Cause,
@@ -14,6 +16,7 @@ import {
   type Scope,
 } from '@livestore/utils/effect'
 import { OtelLiveDummy } from '@livestore/utils/node'
+
 import { OtelLiveHttp } from '../node/mod.ts'
 
 export * from '@effect/vitest'

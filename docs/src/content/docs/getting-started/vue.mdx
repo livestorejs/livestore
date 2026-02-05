@@ -6,7 +6,7 @@ sidebar:
   order: 4
 ---
 
-import { Steps, Tabs, TabItem, Code } from '@astrojs/starlight/components';
+import { Steps, Tabs, TabItem, Code } from '@astrojs/starlight/components'
 import { makeTiged, versionNpmSuffix } from '../../../data/data.ts'
 import { MIN_NODE_VERSION } from '@local/shared'
 import SchemaSnippet from '../../_assets/code/getting-started/vue/livestore/schema.ts?snippet'
@@ -18,16 +18,16 @@ import QueriesSnippet from '../../_assets/code/getting-started/vue/queries.vue?s
 
 {/* We're adjusting the package to use the dev version on the dev branch */}
 export const manualInstallDepsStr = [
-  '@livestore/livestore' + versionNpmSuffix,
-  '@livestore/wa-sqlite' + versionNpmSuffix,
-  '@livestore/adapter-web' + versionNpmSuffix,
-  '@livestore/utils' + versionNpmSuffix,
-  '@livestore/peer-deps' + versionNpmSuffix,
-  '@livestore/devtools-vite' + versionNpmSuffix,
-  'slashv/vue-livestore' + versionNpmSuffix,
-  'vue',
-  '@vitejs/plugin-vue',
-  'vite-plugin-vue-devtools',
+'@livestore/livestore' + versionNpmSuffix,
+'@livestore/wa-sqlite' + versionNpmSuffix,
+'@livestore/adapter-web' + versionNpmSuffix,
+'@livestore/utils' + versionNpmSuffix,
+'@livestore/peer-deps' + versionNpmSuffix,
+'@livestore/devtools-vite' + versionNpmSuffix,
+'slashv/vue-livestore' + versionNpmSuffix,
+'vue',
+'@vitejs/plugin-vue',
+'vite-plugin-vue-devtools',
 ].join(' ')
 
 ## Prerequisites

@@ -12,7 +12,7 @@ This tutorial will guide you through the process of building a simple todo app w
 It is focused on building a _minimalistic_ application to gradually introduce the main concepts of LiveStore. That being said, LiveStore itself has been specifically designed for large, complex applications, and shines especially when used in these contexts.
 
 :::note[Goal of this tutorial: Education]
-The goal of the tutorial is to _educate_. It reduces as much noise as possible so you can focus on the parts that actually matter for building an application with LiveStore. 
+The goal of the tutorial is to _educate_. It reduces as much noise as possible so you can focus on the parts that actually matter for building an application with LiveStore.
 
 **If you just want to see LiveStore in action and play around with it, consider setting up the [starter project](/getting-started/react-web/) directly.**
 :::
@@ -34,19 +34,19 @@ While the tutorial is aimed at LiveStore newcomers, it will be helpful to have s
 Here's an overview of the steps you'll take in the tutorial:
 
 1. Set up a starter project with React, Vite & Tailwind
-    - This project will be used as a starting point for the tutorial and already comes with basic functionality for a todo app. 
-    - It uses local React state to manage the todo list. Throughout the tutorial you'll gradually replace the ephemeral, local state with LiveStore persistent storage.
-1. Deploy the application to Cloudflare 
-    - This enables you to observe the evolution in behaviour as you're introducing LiveStore.
+   - This project will be used as a starting point for the tutorial and already comes with basic functionality for a todo app.
+   - It uses local React state to manage the todo list. Throughout the tutorial you'll gradually replace the ephemeral, local state with LiveStore persistent storage.
+1. Deploy the application to Cloudflare
+   - This enables you to observe the evolution in behaviour as you're introducing LiveStore.
 1. Add LiveStore to the project
-    - You'll add LiveStore dependencies to the project and implement persisting the todos so that they survive a page refresh.
+   - You'll add LiveStore dependencies to the project and implement persisting the todos so that they survive a page refresh.
 1. Automatically sync data to Cloudflare
-    - You'll use LiveStore to set up syncing of the todo list data via Cloudflare Workers and Durable Objects in the background. 
-    - Now your todos will not only survive a page refresh, but also automatically sync across browser sessions, and even across devices.
+   - You'll use LiveStore to set up syncing of the todo list data via Cloudflare Workers and Durable Objects in the background.
+   - Now your todos will not only survive a page refresh, but also automatically sync across browser sessions, and even across devices.
 1. Expand the business logic with more LiveStore events
-    - You'll learn how to use LiveStore events to expand the business logic of the todo app.
+   - You'll learn how to use LiveStore events to expand the business logic of the todo app.
 1. Persist UI state
-    - LiveStore can also be used to persist UI state, such as the text from an input field or a filter selection.
+   - LiveStore can also be used to persist UI state, such as the text from an input field or a filter selection.
 
 ## Credits
 

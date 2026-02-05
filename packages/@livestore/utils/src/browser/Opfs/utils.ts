@@ -1,4 +1,5 @@
 import { Effect, Stream } from 'effect'
+
 import { Opfs, OpfsError } from './Opfs.ts'
 
 /**

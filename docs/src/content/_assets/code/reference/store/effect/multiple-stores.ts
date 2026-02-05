@@ -1,6 +1,7 @@
+import { Effect, Layer } from 'effect'
+
 import { makeAdapter } from '@livestore/adapter-node'
 import { Store } from '@livestore/livestore/effect'
-import { Effect, Layer } from 'effect'
 
 import { schema as mainSchema } from './schema.ts'
 

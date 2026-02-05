@@ -1,5 +1,6 @@
 import { useNavigate, useParams } from '@tanstack/react-router'
 import { Button } from 'react-aria-components'
+
 import { events, type Issue } from '../../../livestore/schema/index.ts'
 import { useAppStore } from '../../../livestore/store.ts'
 import type { Priority } from '../../../types/priority.ts'

@@ -1,4 +1,5 @@
 import type { TestDetails } from '@playwright/test'
+
 import { test } from './fixtures.ts'
 
 export const repeatSuite = (

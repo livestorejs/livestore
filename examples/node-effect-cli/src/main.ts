@@ -5,9 +5,9 @@ import { liveStoreVersion } from '@livestore/common'
 import type { LiveStoreSchema } from '@livestore/common/schema'
 import { createStore, queryDb, Schema } from '@livestore/livestore'
 import { makeWsSync } from '@livestore/sync-cf/client'
+import { OtelLiveHttp } from '@livestore/utils-dev/node'
 import { Effect, Layer, Logger, LogLevel, Option, Stream } from '@livestore/utils/effect'
 import { Cli, PlatformNode } from '@livestore/utils/node'
-import { OtelLiveHttp } from '@livestore/utils-dev/node'
 
 const storeIdOption = Cli.Options.text('store-id').pipe(Cli.Options.withDefault('default'))
 const baseDirectoryOption = Cli.Options.text('storage-fs-base-directory').pipe(Cli.Options.withDefault(''))

@@ -20,6 +20,7 @@ export const SNIPPETS = {
 Fractional indexing enables conflict-free list ordering in distributed systems by assigning string-based position values that maintain lexicographic order. This makes it ideal for implementing drag-and-drop reordering in LiveStore applications where multiple clients may reorder items concurrently.
 
 To understand how the algorithm works, see these visual and interactive explanations:
+
 - [CRDT Fractional Indexing](https://madebyevan.com/algos/crdt-fractional-indexing/) by Evan Wallace - Visual explanation of the algorithm
 - [Implementing Fractional Indexing](https://observablehq.com/@dgreensp/implementing-fractional-indexing) by David Greenspan - Interactive notebook walkthrough
 
@@ -57,6 +58,7 @@ Use `generateKeyBetween(a, b)` to generate position values when creating new ite
 <SNIPPETS.createItem />
 
 Key patterns:
+
 - `generateKeyBetween(highest, null)` - Append to end of list
 - `generateKeyBetween(null, lowest)` - Prepend to start of list
 - Use `"a1"` as a simple default for the first item in an empty list
@@ -88,6 +90,7 @@ Since fractional index values maintain lexicographic ordering, you can use simpl
 ## Real-World Example
 
 The [web-linearlite example](https://github.com/livestorejs/livestore/tree/dev/examples/web-linearlite) demonstrates fractional indexing for Kanban board ordering. It shows:
+
 - Schema definition with `kanbanorder` column
 - Creating issues with proper ordering
 - Drag-and-drop reordering across columns
@@ -106,6 +109,7 @@ Insert between a0V and a1: a0n (sorts: a0 < a0V < a0n < a1)
 ```
 
 The algorithm ensures:
+
 - Position strings stay reasonably short
 - No coordination needed between clients
 - Conflicts resolve naturally through lexicographic ordering

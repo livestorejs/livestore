@@ -10,10 +10,14 @@
  */
 import http from 'node:http'
 import path from 'node:path'
+
+import postgres from 'postgres'
+
 import { UnknownError } from '@livestore/common'
 import type { LiveStoreEvent } from '@livestore/livestore'
 import { nanoid, Schema } from '@livestore/livestore'
 import * as ElectricSync from '@livestore/sync-electric'
+import { type DockerComposeError, DockerComposeService } from '@livestore/utils-dev/node'
 import {
   type CommandExecutor,
   Effect,
@@ -26,8 +30,7 @@ import {
   type PlatformError,
 } from '@livestore/utils/effect'
 import { getFreePort, PlatformNode } from '@livestore/utils/node'
-import { type DockerComposeError, DockerComposeService } from '@livestore/utils-dev/node'
-import postgres from 'postgres'
+
 import { SyncProviderImpl, type SyncProviderLayer } from '../types.ts'
 
 // Also support scenarios where Docker is not running locally but via a Docker remote context (@schickling needs this)

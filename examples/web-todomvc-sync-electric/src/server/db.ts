@@ -1,6 +1,7 @@
+import postgres from 'postgres'
+
 import type { LiveStoreEvent } from '@livestore/livestore'
 import { toTableName } from '@livestore/sync-electric'
-import postgres from 'postgres'
 
 export const makeDb = (storeId: string) => {
   const tableName = toTableName(storeId)

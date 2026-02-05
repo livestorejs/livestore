@@ -17,6 +17,7 @@ import {
   Schema,
   Stream,
 } from '@livestore/utils/effect'
+
 import { applyLoggingToCommand } from './cmd-log.ts'
 import * as FileLogger from './FileLogger.ts'
 import { CurrentWorkingDirectory } from './workspace.ts'

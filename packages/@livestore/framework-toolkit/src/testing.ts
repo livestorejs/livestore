@@ -1,3 +1,5 @@
+import type * as otel from '@opentelemetry/api'
+
 import { makeInMemoryAdapter } from '@livestore/adapter-web'
 import { provideOtel, type UnknownError } from '@livestore/common'
 import { Events, makeSchema, State } from '@livestore/common/schema'
@@ -5,7 +7,6 @@ import type { Store } from '@livestore/livestore'
 import { createStore } from '@livestore/livestore'
 import { omitUndefineds } from '@livestore/utils'
 import { Effect, Schema, type Scope } from '@livestore/utils/effect'
-import type * as otel from '@opentelemetry/api'
 
 // ============================================================================
 // Types
@@ -121,10 +122,11 @@ export type CreateTodoMvcStoreOptions = {
  * Creates a TodoMVC store for testing. Framework-specific wrappers should
  * use this function and add their own API bindings.
  */
-export const createTodoMvcStore = ({
-  otelTracer,
-  otelContext,
-}: CreateTodoMvcStoreOptions = {}): Effect.Effect<Store<typeof schema>, UnknownError, Scope.Scope> =>
+export const createTodoMvcStore = ({ otelTracer, otelContext }: CreateTodoMvcStoreOptions = {}): Effect.Effect<
+  Store<typeof schema>,
+  UnknownError,
+  Scope.Scope
+> =>
   Effect.gen(function* () {
     const store: Store<typeof schema> = yield* createStore({
       schema,

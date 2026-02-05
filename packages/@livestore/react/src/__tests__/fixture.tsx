@@ -1,3 +1,5 @@
+import React from 'react'
+
 import type { UnknownError } from '@livestore/common'
 import {
   type AppState,
@@ -11,7 +13,7 @@ import {
 } from '@livestore/framework-toolkit/testing'
 import type { Store } from '@livestore/livestore'
 import { Effect, type Scope } from '@livestore/utils/effect'
-import React from 'react'
+
 import * as LiveStoreReact from '../mod.ts'
 
 // Re-export shared types and schema

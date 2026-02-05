@@ -1,5 +1,6 @@
 import type { CollectionEntry } from 'astro:content'
 import { getCollection } from 'astro:content'
+
 import { docsSidebar, type TSidebarItem } from '../data/sidebar.ts'
 
 /**
@@ -108,7 +109,7 @@ const getDocsForDirectory = (
       // Don't include nested items (they'll be handled by their own autogenerate)
       return !remaining.includes('/')
     })
-    .sort((a, b) => {
+    .toSorted((a, b) => {
       const docA = docBySlug.get(a.slug)
       const docB = docBySlug.get(b.slug)
       const orderA = docA?.data.sidebar?.order ?? 999

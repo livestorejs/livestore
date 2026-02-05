@@ -1,13 +1,15 @@
-/** biome-ignore-all lint/a11y/useValidAriaRole: not needed for testing */
-/** biome-ignore-all lint/a11y/noStaticElementInteractions: not needed for testing */
-import * as LiveStore from '@livestore/livestore'
-import { getAllSimplifiedRootSpans, getSimplifiedRootSpan } from '@livestore/livestore/internal/testing-utils'
-import { Effect, ReadonlyRecord, Schema } from '@livestore/utils/effect'
-import { Vitest } from '@livestore/utils-dev/node-vitest'
 import * as otel from '@opentelemetry/api'
 import { BasicTracerProvider, InMemorySpanExporter, SimpleSpanProcessor } from '@opentelemetry/sdk-trace-base'
 import * as SolidTesting from '@solidjs/testing-library'
 import * as Solid from 'solid-js'
+
+/** biome-ignore-all lint/a11y/useValidAriaRole: not needed for testing */
+/** biome-ignore-all lint/a11y/noStaticElementInteractions: not needed for testing */
+import * as LiveStore from '@livestore/livestore'
+import { getAllSimplifiedRootSpans, getSimplifiedRootSpan } from '@livestore/livestore/internal/testing-utils'
+import { Vitest } from '@livestore/utils-dev/node-vitest'
+import { Effect, ReadonlyRecord, Schema } from '@livestore/utils/effect'
+
 import { events, makeTodoMvcSolid, StoreInternalsSymbol, tables } from './__tests__/fixture.tsx'
 import type * as LiveStoreSolid from './mod.ts'
 

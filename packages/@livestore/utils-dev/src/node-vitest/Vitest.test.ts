@@ -1,4 +1,5 @@
 import { Effect, FastCheck, Schema } from '@livestore/utils/effect'
+
 import * as Vitest from './Vitest.ts'
 
 export class TestError extends Schema.TaggedError<TestError>()('TestError', {

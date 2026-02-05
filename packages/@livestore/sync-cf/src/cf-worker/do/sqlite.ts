@@ -1,5 +1,6 @@
 import { EventSequenceNumber, State } from '@livestore/common/schema'
 import { Schema } from '@livestore/utils/effect'
+
 import { PERSISTENCE_FORMAT_VERSION } from '../shared.ts'
 
 /**

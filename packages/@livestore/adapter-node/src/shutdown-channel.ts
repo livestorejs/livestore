@@ -1,5 +1,6 @@
 import { ShutdownChannel } from '@livestore/common/leader-thread'
 import type { Effect, Scope } from '@livestore/utils/effect'
+
 import { makeBroadcastChannel } from './webchannel.ts'
 
 export const makeShutdownChannel = (

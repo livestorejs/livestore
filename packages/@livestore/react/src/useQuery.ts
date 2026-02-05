@@ -1,3 +1,6 @@
+import type * as otel from '@opentelemetry/api'
+import React from 'react'
+
 import {
   captureStackInfo,
   computeRcRefKey,
@@ -9,8 +12,6 @@ import {
 import type { LiveQuery, Queryable, Store } from '@livestore/livestore'
 import type { LiveQueries } from '@livestore/livestore/internal'
 import { deepEqual, shouldNeverHappen } from '@livestore/utils'
-import type * as otel from '@opentelemetry/api'
-import React from 'react'
 
 import { useRcResource } from './useRcResource.ts'
 import { useStateRefWithReactiveInput } from './utils/useStateRefWithReactiveInput.ts'

@@ -4,13 +4,13 @@ sidebar:
   order: 21
 ---
 
-import AtomsSnippet from '../../_assets/code/patterns/effect/store-setup/atoms.ts?snippet';
-import QueriesSnippet from '../../_assets/code/patterns/effect/store-setup/queries.ts?snippet';
-import UserListSnippet from '../../_assets/code/patterns/effect/store-setup/user-list.tsx?snippet';
-import ServicesSnippet from '../../_assets/code/patterns/effect/store-setup/services.tsx?snippet';
-import OptimisticSnippet from '../../_assets/code/patterns/effect/optimistic-example/optimistic.ts?snippet';
-import DerivedSnippet from '../../_assets/code/patterns/effect/derived-example/derived.ts?snippet';
-import BatchSnippet from '../../_assets/code/patterns/effect/batch-example/batch.ts?snippet';
+import AtomsSnippet from '../../_assets/code/patterns/effect/store-setup/atoms.ts?snippet'
+import QueriesSnippet from '../../_assets/code/patterns/effect/store-setup/queries.ts?snippet'
+import UserListSnippet from '../../_assets/code/patterns/effect/store-setup/user-list.tsx?snippet'
+import ServicesSnippet from '../../_assets/code/patterns/effect/store-setup/services.tsx?snippet'
+import OptimisticSnippet from '../../_assets/code/patterns/effect/optimistic-example/optimistic.ts?snippet'
+import DerivedSnippet from '../../_assets/code/patterns/effect/derived-example/derived.ts?snippet'
+import BatchSnippet from '../../_assets/code/patterns/effect/batch-example/batch.ts?snippet'
 
 export const SNIPPETS = {
   atoms: AtomsSnippet,
@@ -29,6 +29,7 @@ LiveStore itself is built on top of [Effect](https://effect.website) which is a 
 For applications built with Effect, LiveStore provides `makeStoreContext()` - a factory that creates typed store contexts for the Effect layer system. This preserves your schema types through Effect's dependency injection and supports multiple stores.
 
 See the [Store Effect integration](/building-with-livestore/store#effect-integration) section for details on:
+
 - Creating typed store contexts
 - Using stores in Effect services
 - Layer composition patterns
@@ -67,6 +68,7 @@ Create a LiveStore-backed atom store with persistence and worker support using t
 <SNIPPETS.atoms />
 
 The `StoreTag` class provides the following static methods:
+
 - `StoreTag.runtime` - Access to Effect runtime
 - `StoreTag.commit` - Commit events to the store
 - `StoreTag.store` - Access store with Effect
@@ -124,6 +126,7 @@ Perform multiple commits efficiently (commits are synchronous):
 ### Real-World Example
 
 For a comprehensive example of LiveStore with Effect Atom in action, check out [Cheffect](https://github.com/tim-smart/cheffect) - a recipe management application that demonstrates:
+
 - Complete Effect service integration
 - AI-powered recipe extraction using Effect services
 - Complex query patterns with search and filtering

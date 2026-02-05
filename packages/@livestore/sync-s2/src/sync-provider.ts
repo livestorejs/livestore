@@ -47,6 +47,7 @@ import {
   Stream,
   SubscriptionRef,
 } from '@livestore/utils/effect'
+
 import * as ApiSchema from './api-schema.ts'
 import { decodeReadBatch } from './decode.ts'
 import * as HttpClientGenerated from './http-client-generated.ts'

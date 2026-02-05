@@ -1,3 +1,5 @@
+import * as otel from '@opentelemetry/api'
+
 import {
   type Bindable,
   type ClientSession,
@@ -37,7 +39,6 @@ import {
   Stream,
 } from '@livestore/utils/effect'
 import { nanoid } from '@livestore/utils/nanoid'
-import * as otel from '@opentelemetry/api'
 
 import type { LiveQuery, ReactivityGraphContext, SignalDef } from '../live-queries/base-class.ts'
 import { makeReactivityGraph } from '../live-queries/base-class.ts'
@@ -582,7 +583,7 @@ export class Store<TSchema extends LiveStoreSchema = LiveStoreSchema.Any, TConte
         yield* Effect.acquireRelease(
           Effect.sync(() =>
             this.subscribe(query, (result) => emit.single(result), {
-              ...(options ?? {}),
+              ...options,
               otelContext,
             }),
           ),

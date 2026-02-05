@@ -1,6 +1,7 @@
 import path from 'node:path'
-import { Effect, FileSystem, Schema } from '@livestore/utils/effect'
+
 import { cmd, LivestoreWorkspace } from '@livestore/utils-dev/node'
+import { Effect, FileSystem, Schema } from '@livestore/utils/effect'
 
 /**
  * Given the LiveStore monorepo is sometimes embedded in another git repo as a submodule,

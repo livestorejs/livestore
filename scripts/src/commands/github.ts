@@ -1,9 +1,10 @@
 import path from 'node:path'
 
+import YAML from 'yaml'
+
+import { cmd, cmdText, LivestoreWorkspace } from '@livestore/utils-dev/node'
 import { Effect, FileSystem, Schema } from '@livestore/utils/effect'
 import { Cli } from '@livestore/utils/node'
-import { cmd, cmdText, LivestoreWorkspace } from '@livestore/utils-dev/node'
-import YAML from 'yaml'
 
 /**
  * GitHub branch protection and rulesets management.
@@ -49,7 +50,7 @@ const formatMatrixValue = (value: unknown): string => {
 const createCombinationKey = (combo: TMatrixCombination): string => {
   const entries = Object.entries(combo)
     .filter(([key]) => key !== 'name')
-    .sort(([a], [b]) => a.localeCompare(b))
+    .toSorted(([a], [b]) => a.localeCompare(b))
   return entries.map(([key, value]) => `${key}=${formatMatrixValue(value)}`).join('|')
 }
 
@@ -184,7 +185,7 @@ const computeRequiredContextsFromWorkflow = (workflowPath: string) =>
       contexts.add(jobName)
     }
 
-    return Array.from(contexts).sort((a, b) => a.localeCompare(b))
+    return Array.from(contexts).toSorted((a, b) => a.localeCompare(b))
   })
 
 const getCurrentRequiredContexts = (branch: string) =>
@@ -269,8 +270,8 @@ const updateBranchProtectionCommand = Cli.Command.make(
     if (dryRun) {
       const desiredSet = new Set(contexts)
       const existingSet = new Set(existing)
-      const toRemove = existing.filter((context) => !desiredSet.has(context)).sort((a, b) => a.localeCompare(b))
-      const toAdd = contexts.filter((context) => !existingSet.has(context)).sort((a, b) => a.localeCompare(b))
+      const toRemove = existing.filter((context) => !desiredSet.has(context)).toSorted((a, b) => a.localeCompare(b))
+      const toAdd = contexts.filter((context) => !existingSet.has(context)).toSorted((a, b) => a.localeCompare(b))
 
       if (toRemove.length > 0) {
         console.log('Would remove:')

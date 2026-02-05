@@ -1,4 +1,5 @@
 import http from 'node:http'
+
 import { UnknownError } from '@livestore/common'
 import type { LiveStoreEvent } from '@livestore/livestore'
 import * as S2Sync from '@livestore/sync-s2'
@@ -19,6 +20,7 @@ import {
   Stream,
 } from '@livestore/utils/effect'
 import { getFreePort, PlatformNode } from '@livestore/utils/node'
+
 import { SyncProviderImpl, type SyncProviderLayer } from '../types.ts'
 
 /** S2-Lite based sync provider for testing. Uses the open-source s2-lite container. */

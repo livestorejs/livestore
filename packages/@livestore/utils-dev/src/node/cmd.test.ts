@@ -1,10 +1,12 @@
 import fs from 'node:fs'
 import path from 'node:path'
 
+import { expect } from 'vitest'
+
+import { Vitest } from '@livestore/utils-dev/node-vitest'
 import { CommandExecutor, Duration, Effect, Layer } from '@livestore/utils/effect'
 import { PlatformNode } from '@livestore/utils/node'
-import { Vitest } from '@livestore/utils-dev/node-vitest'
-import { expect } from 'vitest'
+
 import { cmd } from './cmd.ts'
 import { CurrentWorkingDirectory } from './workspace.ts'
 

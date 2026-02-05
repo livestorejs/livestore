@@ -4,6 +4,7 @@
  */
 import path from 'node:path'
 import { pathToFileURL } from 'node:url'
+
 import type { SyncBackend } from '@livestore/common'
 import { UnknownError } from '@livestore/common'
 import { isLiveStoreSchema, type LiveStoreSchema } from '@livestore/common/schema'

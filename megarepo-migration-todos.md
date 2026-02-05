@@ -3,8 +3,8 @@
 - [x] test peer repos can consume livestore packages via megarepo setup
 - [x] verify all genie is used consistently across livestore (except for examples)
 - [x] fix [genie] tsconfig.json uses "extends" which is not recommended with Genie.
-        Instead, import and spread the base config directly for better composability:
-        compilerOptions: { ...baseTsconfigCompilerOptions, ...yourOptions }
+      Instead, import and spread the base config directly for better composability:
+      compilerOptions: { ...baseTsconfigCompilerOptions, ...yourOptions }
 - [x] adjust ci (migrated to dt tasks via mono wrappers in nix/devenv-modules/tasks/local/mono-wrappers.nix)
 - [x] fully migrate from biome to oxlint/oxfmt
 - [x] load genie, megarepo via devenv from effect-utils

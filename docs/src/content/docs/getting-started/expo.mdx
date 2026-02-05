@@ -31,13 +31,13 @@ export const SNIPPETS = {
 
 {/* We're adjusting the package to use the dev version on the dev branch */}
 export const manualInstallDepsStr = [
-  '@livestore/devtools-expo' + versionNpmSuffix,
-  '@livestore/adapter-expo' + versionNpmSuffix,
-  '@livestore/livestore' + versionNpmSuffix,
-  '@livestore/react' + versionNpmSuffix,
-  '@livestore/sync-cf/client' + versionNpmSuffix,
-  '@livestore/peer-deps' + versionNpmSuffix,
-  'expo-sqlite',
+'@livestore/devtools-expo' + versionNpmSuffix,
+'@livestore/adapter-expo' + versionNpmSuffix,
+'@livestore/livestore' + versionNpmSuffix,
+'@livestore/react' + versionNpmSuffix,
+'@livestore/sync-cf/client' + versionNpmSuffix,
+'@livestore/peer-deps' + versionNpmSuffix,
+'expo-sqlite',
 ].join(' ')
 
 ### Prerequisites
@@ -76,79 +76,85 @@ For existing projects see [Existing project setup](#existing-project-setup).
 
 2.  **Install dependencies**
 
-    It's strongly recommended to use `bun` or `pnpm` for the simplest and most reliable dependency setup (see [note on package management](/misc/package-management) for more details).
+        It's strongly recommended to use `bun` or `pnpm` for the simplest and most reliable dependency setup (see [note on package management](/misc/package-management) for more details).
 
-    <Tabs syncKey="package-manager">
+        <Tabs syncKey="package-manager">
+
       <TabItem label="bun">
-        ```bash
-        bun install
-        ```
-      </TabItem>
-      <TabItem label="pnpm">
-        ```bash
-        pnpm install --node-linker=hoisted
-        ```
+    ```bash
+    bun install
+    ```
+  </TabItem>
+  <TabItem label="pnpm">
+    ```bash
+    pnpm install --node-linker=hoisted
+    ```
 
-        Make sure to use `--node-linker=hoisted` when installing dependencies in your project or add it to your `.npmrc` file.
-        ```
-        # .npmrc
-        nodeLinker=hoisted
-        ```
+            Make sure to use `--node-linker=hoisted` when installing dependencies in your project or add it to your `.npmrc` file.
+            ```
+            # .npmrc
+            nodeLinker=hoisted
+            ```
 
-        Hopefully Expo will also support non-hoisted setups in the future.
-      </TabItem>
+            Hopefully Expo will also support non-hoisted setups in the future.
+
+          </TabItem>
+
       <TabItem label="npm">
-        ```bash
-        npm install
-        ```
-      </TabItem>
-      <TabItem label="yarn">
-        When using `yarn`, make sure you're using Yarn 4 or higher with the `node-modules` linker.
+    ```bash
+    npm install
+    ```
+  </TabItem>
+  <TabItem label="yarn">
+    When using `yarn`, make sure you're using Yarn 4 or higher with the `node-modules` linker.
 
-        ```bash
-        yarn set version stable
-        yarn config set nodeLinker node-modules
-        yarn install
-        ```
-      </TabItem>
+            ```bash
+            yarn set version stable
+            yarn config set nodeLinker node-modules
+            yarn install
+            ```
+
+          </TabItem>
+
     </Tabs>
 
-    Pro tip: You can use [direnv](https://direnv.net/) to manage environment variables.
+        Pro tip: You can use [direnv](https://direnv.net/) to manage environment variables.
 
 3.  **Run the app**
 
-    <Tabs syncKey="package-manager">
-      <TabItem label="bun">
-        <Code code="bun start" lang="sh" />
-      </TabItem>
-      <TabItem label="pnpm">
-        <Code code="pnpm start" lang="sh" />
-      </TabItem>
-      <TabItem label="npm">
-        <Code code="npm run start" lang="sh" />
-      </TabItem>
-      <TabItem label="yarn">
-        <Code code="yarn start" lang="sh" />
-      </TabItem>
-    </Tabs>
+        <Tabs syncKey="package-manager">
+          <TabItem label="bun">
+            <Code code="bun start" lang="sh" />
+          </TabItem>
+          <TabItem label="pnpm">
+            <Code code="pnpm start" lang="sh" />
+          </TabItem>
+          <TabItem label="npm">
+            <Code code="npm run start" lang="sh" />
+          </TabItem>
+          <TabItem label="yarn">
+            <Code code="yarn start" lang="sh" />
+          </TabItem>
+        </Tabs>
 
-    In a new terminal, start the Cloudflare Worker (for the sync backend):
+        In a new terminal, start the Cloudflare Worker (for the sync backend):
 
-    <Tabs syncKey="package-manager">
-      <TabItem label="bun">
-        <Code code="bun wrangler:dev" lang="sh" />
-      </TabItem>
-      <TabItem label="pnpm">
-        <Code code="pnpm wrangler:dev" lang="sh" />
-      </TabItem>
-      <TabItem label="npm">
-        <Code code="npm run wrangler:dev" lang="sh" />
-      </TabItem>
-      <TabItem label="yarn">
-        <Code code="yarn wrangler:dev" lang="sh" />
-      </TabItem>
-    </Tabs>
-</Steps>
+        <Tabs syncKey="package-manager">
+          <TabItem label="bun">
+            <Code code="bun wrangler:dev" lang="sh" />
+          </TabItem>
+          <TabItem label="pnpm">
+            <Code code="pnpm wrangler:dev" lang="sh" />
+          </TabItem>
+          <TabItem label="npm">
+            <Code code="npm run wrangler:dev" lang="sh" />
+          </TabItem>
+          <TabItem label="yarn">
+            <Code code="yarn wrangler:dev" lang="sh" />
+          </TabItem>
+        </Tabs>
+
+    </Steps>
 
 ### Option B: Existing project setup \{#existing-project-setup\}
 

@@ -1,5 +1,7 @@
-import { useStore } from '@livestore/react'
 import type React from 'react'
+
+import { useStore } from '@livestore/react'
+
 import { useMailboxStore } from '../stores/mailbox/index.ts'
 import { archiveThread, trashThread } from '../stores/thread/commands.ts'
 import { threadStoreOptions } from '../stores/thread/index.ts'

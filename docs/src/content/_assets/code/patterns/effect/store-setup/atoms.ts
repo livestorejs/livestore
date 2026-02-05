@@ -1,8 +1,10 @@
 import { AtomLivestore } from '@effect-atom/atom-livestore'
+import { unstable_batchedUpdates } from 'react-dom'
+
 import { makePersistedAdapter } from '@livestore/adapter-web'
 import LiveStoreSharedWorker from '@livestore/adapter-web/shared-worker?sharedworker'
 import LiveStoreWorker from '@livestore/adapter-web/worker?worker'
-import { unstable_batchedUpdates } from 'react-dom'
+
 import { schema } from './schema.ts'
 
 export { schema } from './schema.ts'

@@ -1,3 +1,5 @@
+import * as SQLite from 'expo-sqlite'
+
 import {
   type MakeSqliteDb,
   type PersistenceInfo,
@@ -9,7 +11,6 @@ import {
 import { EventSequenceNumber } from '@livestore/common/schema'
 import { ensureUint8ArrayBuffer, shouldNeverHappen } from '@livestore/utils'
 import { Effect } from '@livestore/utils/effect'
-import * as SQLite from 'expo-sqlite'
 
 type Metadata = {
   _tag: 'file'

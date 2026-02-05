@@ -3,9 +3,9 @@ title: Examples
 description: Explore LiveStore example applications across different platforms and use cases
 ---
 
-import { Card, CardGrid, LinkCard } from '@astrojs/starlight/components';
-import { webExamples, nodeExamples, expoExamples, cloudflareExamples } from '../../../data/examples.ts';
-import { getBranchName } from '../../../data/data.ts';
+import { Card, CardGrid, LinkCard } from '@astrojs/starlight/components'
+import { webExamples, nodeExamples, expoExamples, cloudflareExamples } from '../../../data/examples.ts'
+import { getBranchName } from '../../../data/data.ts'
 
 # Example Applications
 
@@ -22,17 +22,17 @@ LiveStore supports multiple platform adapters, each optimized for different envi
     description={`Browser-based applications with SQLite WASM, Web Workers, and framework integrations. ${webExamples.length} examples • React, SolidJS, Svelte, Web Components`}
   />
 
-  <LinkCard 
-    title="Node Adapter" 
-    href="/examples/node-adapter/"
-    description={`Server-side applications, CLI tools, and backend services with native SQLite performance. ${nodeExamples.length} examples • Effect, CLI applications`}
-  />
+<LinkCard
+  title="Node Adapter"
+  href="/examples/node-adapter/"
+  description={`Server-side applications, CLI tools, and backend services with native SQLite performance. ${nodeExamples.length} examples • Effect, CLI applications`}
+/>
 
-  <LinkCard 
-    title="Expo Adapter" 
-    href="/examples/expo-adapter/"
-    description={`React Native mobile applications with offline-first architecture and cross-platform sync. ${expoExamples.length} examples • iOS, Android, React Native`}
-  />
+<LinkCard
+  title="Expo Adapter"
+  href="/examples/expo-adapter/"
+  description={`React Native mobile applications with offline-first architecture and cross-platform sync. ${expoExamples.length} examples • iOS, Android, React Native`}
+/>
 
   <LinkCard 
     title="Cloudflare Durable Objects" 
@@ -44,13 +44,14 @@ LiveStore supports multiple platform adapters, each optimized for different envi
 ## Getting started
 
 1. **Choose your platform** from the adapter categories above
-2. **Browse examples** that match your use case and framework preference  
+2. **Browse examples** that match your use case and framework preference
 3. **Clone and run** the examples locally to see LiveStore in action
 4. **Study the source code** to understand patterns and best practices
 
 ## Multi-adapter examples
 
 Some examples demonstrate **cross-platform synchronization** by using multiple adapters:
+
 - **CF Chat** uses both Web and Cloudflare adapters for hybrid client-server architecture
 - **Sync-enabled examples** show how to connect different platforms seamlessly
 
@@ -59,4 +60,5 @@ Some examples demonstrate **cross-platform synchronization** by using multiple a
 LiveStore is a local-first data layer that runs everywhere - from browsers to mobile apps to edge computing. Each adapter provides platform-optimized features while maintaining a consistent API across all environments.
 
 ---
+
 <a href={`https://github.com/livestorejs/livestore/tree/${getBranchName()}/examples`}>View all examples on GitHub →</a>

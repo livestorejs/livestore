@@ -11,7 +11,7 @@ direnv exec . mono update-deps --dry-run
 # 2. Execute updates (Expo constraints applied globally for consistency)
 direnv exec . mono update-deps
 
-# 3. Review changes  
+# 3. Review changes
 git diff package.json packages/*/package.json examples/*/package.json pnpm-lock.yaml
 
 # 4. Update version constants (see below)
@@ -22,7 +22,7 @@ git diff package.json packages/*/package.json examples/*/package.json pnpm-lock.
 ```bash
 # Available options:
 --dry-run         # Preview changes without executing updates
---target          # Update target: latest, minor, patch (default: minor)  
+--target          # Update target: latest, minor, patch (default: minor)
 --validate        # Run validation after updates (default: true)
 
 # Examples:
@@ -41,11 +41,13 @@ After updating dependencies, check if version constants in `packages/@local/shar
 ## PNPM Catalog Management
 
 The catalog is used for:
+
 - ✅ Regular dependencies
-- ✅ Dev dependencies  
+- ✅ Dev dependencies
 - ❌ Peer dependencies (use explicit versions)
 
 ### Adding to Catalog
+
 Add dependencies to the catalog (`pnpm-workspace.yaml`) when used in **3 or more packages** (excluding examples):
 
 ```bash
@@ -56,16 +58,19 @@ grep -r '"package-name"' packages/*/package.json docs/package.json tests/*/packa
 ## Peer Dependencies Policy
 
 Peer dependencies must use **explicit version ranges** instead of catalog references. This ensures:
+
 - Published packages have the correct version ranges
 - Users can install packages without version conflicts
 - Clear visibility of compatibility requirements
 
 ### Guidelines
+
 - Use `^` (caret) for peer dependencies to allow minor updates
 - Keep peer dependencies in sync with catalog versions manually
 - When updating catalog versions, also update corresponding peer dependencies
 
 ### Example
+
 ```json
 // ❌ Don't use catalog for peer deps
 "peerDependencies": {
@@ -79,11 +84,13 @@ Peer dependencies must use **explicit version ranges** instead of catalog refere
 ```
 
 ### Enforcement
+
 The Genie configuration system enforces peer dependency conventions through package.json generation.
 
 ## Expected Warnings
 
 These warnings are normal and can be ignored:
+
 - **npm config warnings:** "Unknown project config dedupe-direct-deps", etc.
 - **Peer dependency warnings:** Generally safe unless causing build failures
 - **Catalog warnings:** "Skip adding to catalog because it already exists"
@@ -124,6 +131,7 @@ After dependency updates, verify these meta-items:
 **Patched dependencies are excluded from automatic updates** to prevent conflicts.
 
 To update patched dependencies manually:
+
 1. Check if the patch is still needed in the new version
 2. If needed, update the patch file for the new version
 3. If not needed, remove from `patchedDependencies` configuration

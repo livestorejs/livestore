@@ -50,7 +50,6 @@ export const shouldNeverHappen = (msg?: string, ...args: any[]): never => {
   console.error(msg, ...args)
   if (isDevEnv()) {
     // biome-ignore lint/suspicious/noDebugger: debugging
-    debugger
   }
 
   throw new Error(`This should never happen: ${msg}`)

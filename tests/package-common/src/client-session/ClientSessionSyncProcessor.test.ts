@@ -1,3 +1,5 @@
+import { expect } from 'vitest'
+
 import { makeAdapter } from '@livestore/adapter-node'
 import type { LockStatus, MockSyncBackend } from '@livestore/common'
 import {
@@ -17,6 +19,7 @@ import type { ShutdownDeferred, Store } from '@livestore/livestore'
 import { createStore, makeShutdownDeferred, StoreInternalsSymbol } from '@livestore/livestore'
 import type { MakeNodeSqliteDb } from '@livestore/sqlite-wasm/node'
 import { makeNoopSpan, omitUndefineds } from '@livestore/utils'
+import { Vitest } from '@livestore/utils-dev/node-vitest'
 import type { OtelTracer } from '@livestore/utils/effect'
 import {
   Context,
@@ -36,8 +39,7 @@ import {
 } from '@livestore/utils/effect'
 import { nanoid } from '@livestore/utils/nanoid'
 import { PlatformNode } from '@livestore/utils/node'
-import { Vitest } from '@livestore/utils-dev/node-vitest'
-import { expect } from 'vitest'
+
 import { events, schema, tables } from '../leader-thread/fixture.ts'
 
 // TODO fix type level - derived events are missing and thus infers to `never` currently

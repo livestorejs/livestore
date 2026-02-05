@@ -1,9 +1,10 @@
-// @ts-check
-import { livestoreDevtoolsPlugin } from '@livestore/devtools-vite'
 import { tanstackStart } from '@tanstack/react-start/plugin/vite'
 import viteReact from '@vitejs/plugin-react'
 import { defineConfig } from 'vite'
 import devtoolsJson from 'vite-plugin-devtools-json'
+
+// @ts-check
+import { livestoreDevtoolsPlugin } from '@livestore/devtools-vite'
 
 // const __dirname = import.meta.dirname
 

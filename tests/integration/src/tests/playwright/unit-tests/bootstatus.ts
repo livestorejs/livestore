@@ -2,6 +2,7 @@ import { makePersistedAdapter } from '@livestore/adapter-web'
 import LiveStoreSharedWorker from '@livestore/adapter-web/shared-worker?sharedworker'
 import type { BootStatus } from '@livestore/common'
 import { Effect, Queue, Schedule, Schema } from '@livestore/utils/effect'
+
 import { ResultBootStatus } from './bridge.ts'
 import LiveStoreWorker from './livestore.worker.ts?worker'
 import { schema } from './schema.ts'

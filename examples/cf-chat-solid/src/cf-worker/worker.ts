@@ -1,9 +1,9 @@
 /// <reference types="@cloudflare/workers-types" />
 
 import '@livestore/adapter-cloudflare/polyfill'
-
 import type { CfTypes } from '@livestore/sync-cf/cf-worker'
 import * as SyncBackend from '@livestore/sync-cf/cf-worker'
+
 import { type Env, storeIdFromRequest } from './shared.ts'
 
 export default {
