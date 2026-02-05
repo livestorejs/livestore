@@ -23,9 +23,7 @@ export default packageJson({
     ),
   },
   devDependencies: {
-    ...catalog.pick('@astrojs/starlight', '@types/hast', '@types/node', 'astro'),
-    // Override vitest to 4.x (effect-utils catalog has 3.x) for import.meta.resolve support on Vite 7
-    vitest: '4.0.16',
+    ...catalog.pick('@astrojs/starlight', '@types/hast', '@types/node', 'astro', 'vitest'),
   },
   ...localPackageDefaults,
   peerDependencies: {

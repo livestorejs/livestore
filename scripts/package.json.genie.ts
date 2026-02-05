@@ -22,9 +22,9 @@ export default packageJson({
       '@local/tests-integration',
       '@local/tests-sync-provider',
       '@types/node',
+      // vitest needed on PATH for test:unit and test:integration commands
+      'vitest',
     ),
-    // Override vitest to 4.x (effect-utils catalog has 3.x) for import.meta.resolve support on Vite 7
-    vitest: '4.0.16',
     '@types/bun': '1.3.5',
     '@types/semver': '^7.7.0',
     knip: '^5.80.0',

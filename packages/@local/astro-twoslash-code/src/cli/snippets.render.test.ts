@@ -1,13 +1,12 @@
 import fs from 'node:fs'
+import { createRequire } from 'node:module'
 import path from 'node:path'
 import { fileURLToPath } from 'node:url'
-
-import * as ts from 'typescript'
-import { beforeAll, describe, expect, it } from 'vitest'
-
 import { shouldNeverHappen } from '@livestore/utils'
 import { Effect } from '@livestore/utils/effect'
 import { PlatformNode } from '@livestore/utils/node'
+import * as ts from 'typescript'
+import { beforeAll, describe, expect, it } from 'vitest'
 
 import { resolveProjectPaths } from '../project-paths.ts'
 import { buildSnippetBundle } from '../vite/snippet-graph.ts'
@@ -40,8 +39,10 @@ let docsRenderer: TRenderer
 let docsPaths: ReturnType<typeof resolveProjectPaths>
 
 beforeAll(async () => {
-  // Resolve twoslash dynamically via expressive-code-twoslash's dependencies
-  const twoslashPath = import.meta.resolve('twoslash', import.meta.resolve('expressive-code-twoslash'))
+  // Resolve twoslash dynamically via expressive-code-twoslash's dependencies.
+  // Uses createRequire instead of import.meta.resolve for vite-node compatibility (vitest 3.x).
+  const require = createRequire(import.meta.url)
+  const twoslashPath = require.resolve('twoslash', { paths: [require.resolve('expressive-code-twoslash')] })
   const module = await import(twoslashPath)
   twoslasher = module.twoslasher as TTwoslasher
 
