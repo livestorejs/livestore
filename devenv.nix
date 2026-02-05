@@ -232,10 +232,11 @@ in
       export PATH="$MONOREPO_ROOT/effect-utils/scripts/bin:$PATH"
     fi
 
-    export PATH="$WORKSPACE_ROOT/scripts/bin:$WORKSPACE_ROOT/node_modules/.bin:$PATH"
+    # In the megarepo pattern there's no root node_modules - use scripts workspace's bin instead
+    export PATH="$WORKSPACE_ROOT/scripts/bin:$WORKSPACE_ROOT/scripts/node_modules/.bin:$PATH"
 
     if [ "$(uname)" = "Darwin" ]; then
-      export PATH="/usr/bin:/bin:$WORKSPACE_ROOT/node_modules/.bin:$PATH"
+      export PATH="/usr/bin:/bin:$PATH"
       unset DEVELOPER_DIR
     fi
 
