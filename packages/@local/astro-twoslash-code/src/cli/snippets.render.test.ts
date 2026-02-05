@@ -2,11 +2,13 @@ import fs from 'node:fs'
 import { createRequire } from 'node:module'
 import path from 'node:path'
 import { fileURLToPath } from 'node:url'
+
+import * as ts from 'typescript'
+import { beforeAll, describe, expect, it } from 'vitest'
+
 import { shouldNeverHappen } from '@livestore/utils'
 import { Effect } from '@livestore/utils/effect'
 import { PlatformNode } from '@livestore/utils/node'
-import * as ts from 'typescript'
-import { beforeAll, describe, expect, it } from 'vitest'
 
 import { resolveProjectPaths } from '../project-paths.ts'
 import { buildSnippetBundle } from '../vite/snippet-graph.ts'
