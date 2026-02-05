@@ -1,6 +1,7 @@
-import { defineConfig } from 'vite'
+// @errors: 2578
 
 import { livestoreDevtoolsPlugin } from '@livestore/devtools-vite'
+import { defineConfig } from 'vite'
 
 export default defineConfig({
   // ...

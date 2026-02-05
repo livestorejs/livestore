@@ -19,5 +19,7 @@ export default oxfmtConfig({
     '**/.pnpm/**',
     '**/.pnpm-store/**',
     'tests/integration/node_modules/**',
+    // Exclude MDX files — oxfmt has idempotency issues with MDX formatting
+    '**/*.mdx',
   ],
 })
