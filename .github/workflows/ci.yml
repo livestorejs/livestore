@@ -477,13 +477,9 @@ jobs:
         run: 'DEVENV_SKIP_SETUP=1 devenv tasks run pnpm:install genie:run ts:build --mode before --verbose'
         shell: bash
       - name: Install examples dependencies
-        working-directory: examples
-        shell: bash
-        run: pnpm install --frozen-lockfile
+        run: pnpm install --frozen-lockfile --dir examples
       - name: Build examples
-        working-directory: examples
-        shell: bash
-        run: pnpm --filter 'livestore-example-*' --workspace-concurrency=1 build
+        run: pnpm --dir examples --filter 'livestore-example-*' --workspace-concurrency=1 build
       - name: Test examples
         run: 'dt examples:test'
       - name: Deploy examples to Cloudflare

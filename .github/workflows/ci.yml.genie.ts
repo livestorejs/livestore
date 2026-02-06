@@ -327,17 +327,13 @@ fi`,
         ...livestoreSetupSteps,
         {
           name: 'Install examples dependencies',
-          'working-directory': 'examples',
-          // Use plain bash since examples directory doesn't have devenv.nix
-          shell: 'bash',
-          run: 'pnpm install --frozen-lockfile',
+          // Run pnpm from root devenv shell, targeting examples workspace
+          run: 'pnpm install --frozen-lockfile --dir examples',
         },
         {
           name: 'Build examples',
-          'working-directory': 'examples',
-          // Use plain bash since examples directory doesn't have devenv.nix
-          shell: 'bash',
-          run: "pnpm --filter 'livestore-example-*' --workspace-concurrency=1 build",
+          // Run pnpm from root devenv shell, targeting examples workspace
+          run: "pnpm --dir examples --filter 'livestore-example-*' --workspace-concurrency=1 build",
         },
         { name: 'Test examples', run: 'dt examples:test' },
         {
