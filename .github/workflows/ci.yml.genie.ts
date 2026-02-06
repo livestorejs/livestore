@@ -326,7 +326,13 @@ fi`,
       steps: [
         ...livestoreSetupSteps,
         {
+          name: 'Install examples dependencies',
+          'working-directory': 'examples',
+          run: 'pnpm install --frozen-lockfile',
+        },
+        {
           name: 'Build examples',
+          'working-directory': 'examples',
           run: "pnpm --filter 'livestore-example-*' --workspace-concurrency=1 build",
         },
         { name: 'Test examples', run: 'dt examples:test' },
