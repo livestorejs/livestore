@@ -1,6 +1,12 @@
 {
   "name": "@livestore/adapter-cloudflare",
   "version": "0.4.0-dev.22",
+  "license": "Apache-2.0",
+  "files": [
+    "dist",
+    "package.json",
+    "src"
+  ],
   "type": "module",
   "sideEffects": [
     "./src/polyfill.ts",
@@ -10,24 +16,6 @@
     ".": "./src/mod.ts",
     "./polyfill": "./src/polyfill.ts"
   },
-  "dependencies": {
-    "@cloudflare/workers-types": "catalog:",
-    "@livestore/common": "workspace:*",
-    "@livestore/common-cf": "workspace:*",
-    "@livestore/livestore": "workspace:*",
-    "@livestore/sqlite-wasm": "workspace:*",
-    "@livestore/sync-cf": "workspace:*",
-    "@livestore/utils": "workspace:*"
-  },
-  "devDependencies": {
-    "wrangler": "catalog:"
-  },
-  "files": [
-    "package.json",
-    "src",
-    "dist"
-  ],
-  "license": "Apache-2.0",
   "publishConfig": {
     "access": "public",
     "exports": {
@@ -37,5 +25,21 @@
   },
   "scripts": {
     "test": "echo No tests yet"
+  },
+  "dependencies": {
+    "@cloudflare/workers-types": "4.20251118.0",
+    "@livestore/common": "workspace:*",
+    "@livestore/common-cf": "workspace:*",
+    "@livestore/livestore": "workspace:*",
+    "@livestore/sqlite-wasm": "workspace:*",
+    "@livestore/sync-cf": "workspace:*",
+    "@livestore/utils": "workspace:*"
+  },
+  "devDependencies": {
+    "wrangler": "4.42.2"
+  },
+  "$genie": {
+    "source": "package.json.genie.ts",
+    "warning": "DO NOT EDIT - changes will be overwritten"
   }
 }

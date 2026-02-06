@@ -1,6 +1,6 @@
 import { LogConfig, OtelLiveDummy, provideOtel, UnknownError } from '@livestore/common'
 import type { LiveStoreSchema } from '@livestore/common/schema'
-import { omitUndefineds } from '@livestore/utils'
+import { IS_BROWSER, omitUndefineds } from '@livestore/utils'
 import {
   Cause,
   Effect,
@@ -28,7 +28,7 @@ import type { OtelOptions } from './store-types.ts'
  *
  * @internal Exported primarily for testing purposes.
  */
-export const DEFAULT_UNUSED_CACHE_TIME = typeof window === 'undefined' ? Number.POSITIVE_INFINITY : 60_000
+export const DEFAULT_UNUSED_CACHE_TIME = IS_BROWSER ? 60_000 : Number.POSITIVE_INFINITY
 
 /**
  * Configuration options for stores managed by a {@link StoreRegistry}.

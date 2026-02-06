@@ -13,7 +13,8 @@ import { events, makeTodoMvcSolid, tables } from './__tests__/fixture.tsx'
 
 describe('environment', () => {
   it('runs on server', () => {
-    expect(typeof window).toBe('undefined')
+    // Use 'window' in globalThis to avoid TypeScript error without DOM lib
+    expect('window' in globalThis).toBe(false)
     expect(isServer).toBe(true)
   })
 })

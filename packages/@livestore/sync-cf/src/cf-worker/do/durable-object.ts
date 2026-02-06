@@ -88,14 +88,14 @@ export const makeDurableObject: MakeDurableObjectClass = (options) => {
 
   const Logging = Logger.consoleWithThread('SyncDo')
 
-  const Observability = options?.otel?.baseUrl
-    ? Otlp.layer({
+  const Observability: Layer.Layer<never, never, never> = options?.otel?.baseUrl
+    ? (Otlp.layer({
         baseUrl: options.otel.baseUrl,
         tracerExportInterval: 50,
         resource: {
           serviceName: options.otel.serviceName ?? 'sync-cf-do',
         },
-      }).pipe(Layer.provide(FetchHttpClient.layer))
+      }).pipe(Layer.provide(FetchHttpClient.layer)) as Layer.Layer<never, never, never>)
     : Layer.empty
 
   return class SyncBackendDOBase extends DurableObjectBase implements SyncBackendRpcInterface {
@@ -143,7 +143,7 @@ export const makeDurableObject: MakeDurableObjectClass = (options) => {
       }
     }
 
-    fetch = async (request: Request): Promise<Response> =>
+    override fetch = async (request: Request): Promise<Response> =>
       Effect.gen(this, function* () {
         const searchParams = matchSyncRequest(request)
         if (searchParams === undefined) {

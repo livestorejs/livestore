@@ -203,9 +203,7 @@ export class ReactiveGraph<
 
   debugRefreshInfos: BoundArray<RefreshDebugInfo<TDebugRefreshReason, TDebugThunkInfo>> = new BoundArray(200)
 
-  private currentDebugRefresh:
-    | { refreshedAtoms: AtomDebugInfo<TDebugThunkInfo>[]; startMs: DOMHighResTimeStamp }
-    | undefined
+  private currentDebugRefresh: { refreshedAtoms: AtomDebugInfo<TDebugThunkInfo>[]; startMs: number } | undefined
 
   private deferredEffects: Map<Effect<TDebugRefreshReason>, Set<TDebugRefreshReason>> = new Map()
 

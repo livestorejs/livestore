@@ -1,5 +1,5 @@
 {
-  "name": "livestore-example-web-todomvc-sync-cf",
+  "name": "livestore-example-cloudflare-todomvc",
   "version": "0.0.0",
   "type": "module",
   "private": true,

@@ -1,52 +1,124 @@
-{ pkgs, lib, inputs, ... }:
+{
+  pkgs,
+  lib,
+  inputs,
+  ...
+}:
 let
-  # Playwright browsers path from the web flake (keeps CI/local in sync)
-  playwrightDriver = inputs.playwright-web-flake.packages.${pkgs.system}.playwright-driver;
+  effectUtils = inputs.effect-utils;
+  taskModules = effectUtils.devenvModules.tasks;
+
+  # Packages managed by pnpm (shared between pnpm and clean modules)
+  # NOTE: Using pnpm temporarily due to bun bugs. Plan to switch back once fixed.
+  # See: effect-utils/context/workarounds/bun-issues.md
+  pnpmPackages = [
+    # packages/@livestore
+    "packages/@livestore/adapter-cloudflare"
+    "packages/@livestore/adapter-expo"
+    "packages/@livestore/adapter-node"
+    "packages/@livestore/adapter-web"
+    "packages/@livestore/cli"
+    "packages/@livestore/common"
+    "packages/@livestore/common-cf"
+    "packages/@livestore/devtools-expo"
+    "packages/@livestore/devtools-web-common"
+    "packages/@livestore/effect-playwright"
+    "packages/@livestore/graphql"
+    "packages/@livestore/livestore"
+    "packages/@livestore/react"
+    "packages/@livestore/solid"
+    "packages/@livestore/sqlite-wasm"
+    "packages/@livestore/svelte"
+    "packages/@livestore/sync-cf"
+    "packages/@livestore/sync-electric"
+    "packages/@livestore/sync-s2"
+    "packages/@livestore/utils"
+    "packages/@livestore/utils-dev"
+    "packages/@livestore/wa-sqlite"
+    "packages/@livestore/webmesh"
+    # packages/@local
+    "packages/@local/astro-tldraw"
+    "packages/@local/astro-twoslash-code"
+    "packages/@local/shared"
+    # tests
+    "tests/integration"
+    "tests/package-common"
+    "tests/perf"
+    "tests/perf-eventlog"
+    "tests/sync-provider"
+    "tests/wa-sqlite"
+    # other
+    "docs"
+    "scripts"
+  ];
 in
 {
-  # JavaScript toolchain with Corepack (pnpm/yarn) enabled
-  languages.javascript = {
-    enable = true;
-    # Pin Corepack to Node 24 so pnpm/yarn shims run on Node 24
-    package = pkgs.nodejs_24;
-    corepack.enable = true;
-  };
+  imports = [
+    # Beads commit correlation for issue tracking
+    (inputs.overeng-beads-public.devenvModules.beads {
+      beadsPrefix = "oep";
+      beadsRepoName = "overeng-beads-public";
+    })
+    # dt command for running devenv tasks
+    effectUtils.devenvModules.dt
+    # Playwright browser drivers and environment setup
+    inputs.playwright.devenvModules.default
+    # Shared task modules from effect-utils
+    taskModules.genie
+    taskModules.megarepo
+    (taskModules.ts { tsconfigFile = "tsconfig.dev.json"; })
+    # NOTE: check module temporarily disabled for debugging
+    # (taskModules.check { hasTests = false; hasLint = false; })
+    (taskModules.clean { packages = pnpmPackages; extraDirs = [ ".astro" ]; })
+    # TODO: Switch to oxlint/oxfmt once we migrate from biome. For now we're using `mono lint`.
+    (taskModules.pnpm { packages = pnpmPackages; })
+    # Setup task (auto-runs in enterShell)
+    (taskModules.setup {
+      tasks = [
+        "megarepo:generate"
+        "pnpm:install"
+        "genie:run"
+        "ts:build"
+      ];
+    })
+  ];
 
-  # Provide Node 24 alongside Corepack
-  packages =
-    [
-      pkgs.nodejs_24
-      pkgs.caddy
-      pkgs.jq
-      pkgs.unzip
-      pkgs.bun
-      pkgs.deno
-    ]
-    # Parcel watcher (pulled in by Biome) dlopens a native addon linked against libstdc++.
-    # Provide the runtime plus nix-ld shim on Linux so commands like `mono lint` don't require manual LD_LIBRARY_PATH.
-    ++ lib.optionals (!pkgs.stdenv.isDarwin) [ pkgs.stdenv.cc.cc.lib pkgs.nix-ld ]
-    ++ lib.optionals pkgs.stdenv.isDarwin [ pkgs.cocoapods ];
+  packages = [
+    pkgs.pnpm
+    pkgs.bun
+    pkgs.nodejs_24
+    pkgs.typescript
+    pkgs.oxlint
+    pkgs.oxfmt
+    # CLIs from effect-utils (Nix-built packages)
+    effectUtils.packages.${pkgs.system}.genie
+    effectUtils.packages.${pkgs.system}.megarepo
+    pkgs.caddy
+    pkgs.jq
+    pkgs.unzip
+    pkgs.deno
+  ]
+  ++ lib.optionals (!pkgs.stdenv.isDarwin) [
+    pkgs.stdenv.cc.cc.lib
+    pkgs.nix-ld
+  ]
+  ++ lib.optionals pkgs.stdenv.isDarwin [ pkgs.cocoapods ];
 
-  # Environment variables
-  env =
+  # Note: PLAYWRIGHT_BROWSERS_PATH is set by inputs.playwright.devenvModules.default
+  env = {
+    PUPPETEER_SKIP_DOWNLOAD = "1";
+  }
+  // lib.optionalAttrs (!pkgs.stdenv.isDarwin) (
+    let
+      ldPath = lib.makeLibraryPath [ pkgs.stdenv.cc.cc.lib ];
+    in
     {
-      PLAYWRIGHT_BROWSERS_PATH = playwrightDriver.browsers;
-      PUPPETEER_SKIP_DOWNLOAD = "1";
+      LD_LIBRARY_PATH = ldPath;
+      NIX_LD_LIBRARY_PATH = ldPath;
     }
-    // lib.optionalAttrs (!pkgs.stdenv.isDarwin) (
-      let
-        ldPath = lib.makeLibraryPath [ pkgs.stdenv.cc.cc.lib ];
-      in
-      {
-        LD_LIBRARY_PATH = ldPath;
-        NIX_LD_LIBRARY_PATH = ldPath;
-      }
-    );
+  );
 
-  # Shell initialization (dynamic values and PATH wiring)
   enterShell = ''
-    # Simpler semantics: WORKSPACE_ROOT is always the current repo root (here)
-    # Keep MONOREPO_ROOT for outer monorepo (if this repo is used as a submodule)
     sp="$(git rev-parse --show-superproject-working-tree 2>/dev/null)";
     export WORKSPACE_ROOT="$PWD"
     export MONOREPO_ROOT="''${MONOREPO_ROOT:-''${sp:-$WORKSPACE_ROOT}}"
@@ -57,15 +129,9 @@ in
     export OTEL_EXPORTER_OTLP_ENDPOINT="''${OTEL_EXPORTER_OTLP_ENDPOINT:-http://localhost:4318}"
     export VITE_OTEL_EXPORTER_OTLP_ENDPOINT="''${VITE_OTEL_EXPORTER_OTLP_ENDPOINT-''${OTEL_EXPORTER_OTLP_ENDPOINT:-http://localhost:4318}}"
 
-    # Keep existing Grafana endpoints if set; else default
     export GRAFANA_ENDPOINT="''${GRAFANA_ENDPOINT:-http://localhost:30003}"
     export VITE_GRAFANA_ENDPOINT="''${VITE_GRAFANA_ENDPOINT:-''${GRAFANA_ENDPOINT}}"
 
-    # Needed until newest corepack version ships in nixpkgs
-    export COREPACK_INTEGRITY_KEYS=0
-
-    # Prefer Playwright-provided Chrome for Puppeteer/tldraw-cli; fall back only if user overrides.
-    # Playwright 1.57+ uses "Google Chrome for Testing" instead of "Chromium"
     if [ -z "''${PUPPETEER_EXECUTABLE_PATH:-}" ]; then
       for candidate in \
         "$PLAYWRIGHT_BROWSERS_PATH"/chromium-*/chrome-linux64/chrome \
@@ -87,10 +153,13 @@ in
     fi
     export PUPPETEER_SKIP_DOWNLOAD="''${PUPPETEER_SKIP_DOWNLOAD:-1}"
 
-    # Add LiveStore CLIs and node bin to PATH
+    # Add effect-utils scripts to PATH (utility helpers beyond packaged CLIs).
+    if [ -d "$MONOREPO_ROOT/effect-utils/scripts/bin" ]; then
+      export PATH="$MONOREPO_ROOT/effect-utils/scripts/bin:$PATH"
+    fi
+
     export PATH="$WORKSPACE_ROOT/scripts/bin:$WORKSPACE_ROOT/node_modules/.bin:$PATH"
 
-    # Expo / iOS quirks
     if [ "$(uname)" = "Darwin" ]; then
       export PATH="/usr/bin:/bin:$WORKSPACE_ROOT/node_modules/.bin:$PATH"
       unset DEVELOPER_DIR
@@ -103,18 +172,12 @@ in
 
     export NODE_OPTIONS="--disable-warning=ExperimentalWarning"
 
-    # Project setup + completions generation
-    if [ -z "''${DEVENV_SKIP_SETUP:-}" ]; then
-      bun run "$WORKSPACE_ROOT/scripts/standalone/setup.ts" || true
-    fi
+    # Setup runs via setup module (taskModules.setup) - auto-wired to enterShell
+
     [ -f "$WORKSPACE_ROOT/scripts/completions.sh" ] && source "$WORKSPACE_ROOT/scripts/completions.sh"
 
-    # Zsh completions: export FPATH with project-local completions prepended
-    # The FPATH env var syncs with zsh's fpath array automatically
     if [ -d "$WORKSPACE_ROOT/scripts/.completions/zsh/site-functions" ]; then
-      # Avoid introducing an empty FPATH entry (e.g. trailing ':') when FPATH is unset/empty.
       export FPATH="$WORKSPACE_ROOT/scripts/.completions/zsh/site-functions''${FPATH:+:''${FPATH}}"
-      # Export a marker so zsh knows to reload compinit
       export LIVESTORE_ZSH_COMPLETIONS="$WORKSPACE_ROOT/scripts/.completions/zsh/site-functions"
     fi
   '';

@@ -1,43 +1,17 @@
 {
   "name": "@livestore/react",
   "version": "0.4.0-dev.22",
+  "license": "Apache-2.0",
+  "files": [
+    "dist",
+    "package.json",
+    "src"
+  ],
   "type": "module",
   "sideEffects": false,
   "exports": {
     ".": "./src/mod.ts",
     "./experimental": "./src/experimental/mod.ts"
-  },
-  "dependencies": {
-    "@livestore/common": "workspace:*",
-    "@livestore/framework-toolkit": "workspace:*",
-    "@livestore/livestore": "workspace:*",
-    "@livestore/utils": "workspace:*",
-    "@opentelemetry/api": "catalog:"
-  },
-  "devDependencies": {
-    "@livestore/adapter-web": "workspace:*",
-    "@livestore/utils-dev": "workspace:*",
-    "@opentelemetry/sdk-trace-base": "catalog:",
-    "@testing-library/dom": "^10.4.1",
-    "@testing-library/react": "^16.3.0",
-    "@types/react": "catalog:",
-    "@types/react-dom": "catalog:",
-    "jsdom": "^26.1.0",
-    "react": "catalog:",
-    "react-dom": "catalog:",
-    "react-window": "^1.8.11",
-    "typescript": "catalog:",
-    "vite": "catalog:",
-    "vitest": "catalog:"
-  },
-  "files": [
-    "package.json",
-    "src",
-    "dist"
-  ],
-  "license": "Apache-2.0",
-  "peerDependencies": {
-    "react": "^19.1.0"
   },
   "publishConfig": {
     "access": "public",
@@ -49,5 +23,35 @@
   "scripts": {
     "build": "tsc",
     "test": "vitest && REACT_STRICT_MODE=1 vitest"
+  },
+  "dependencies": {
+    "@livestore/common": "workspace:*",
+    "@livestore/framework-toolkit": "workspace:*",
+    "@livestore/livestore": "workspace:*",
+    "@livestore/utils": "workspace:*",
+    "@opentelemetry/api": "1.9.0"
+  },
+  "devDependencies": {
+    "@livestore/adapter-web": "workspace:*",
+    "@livestore/utils-dev": "workspace:*",
+    "@opentelemetry/sdk-trace-base": "2.2.0",
+    "@testing-library/dom": "10.4.1",
+    "@testing-library/react": "16.3.1",
+    "@types/react": "19.2.7",
+    "@types/react-dom": "19.2.3",
+    "jsdom": "26.1.0",
+    "react": "19.2.3",
+    "react-dom": "19.2.3",
+    "react-window": "1.8.11",
+    "typescript": "5.9.3",
+    "vite": "7.3.0",
+    "vitest": "3.2.4"
+  },
+  "peerDependencies": {
+    "react": "^19.0.0"
+  },
+  "$genie": {
+    "source": "package.json.genie.ts",
+    "warning": "DO NOT EDIT - changes will be overwritten"
   }
 }

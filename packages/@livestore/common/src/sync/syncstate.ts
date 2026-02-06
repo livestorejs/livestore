@@ -521,6 +521,7 @@ const validatePayload = (payload: typeof Payload.Type) => {
       )
     }
   }
+  return undefined
 }
 
 const validateSyncState = (syncState: SyncState) => {

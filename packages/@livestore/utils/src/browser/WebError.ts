@@ -149,7 +149,7 @@ export class QuotaExceededError extends Schema.TaggedError<QuotaExceededError>()
   },
 ) {
   readonly [TypeId]: TypeId = TypeId
-  get message(): string {
+  override get message(): string {
     return this.cause.message
   }
 }
@@ -176,7 +176,7 @@ export class NoModificationAllowedError extends Schema.TaggedError<NoModificatio
   },
 ) {
   readonly [TypeId]: TypeId = TypeId
-  get message(): string {
+  override get message(): string {
     return this.cause.message
   }
 }
@@ -193,7 +193,7 @@ export class NotFoundError extends Schema.TaggedError<NotFoundError>()('@livesto
   cause: domExceptionWithName('NotFoundError'),
 }) {
   readonly [TypeId]: TypeId = TypeId
-  get message(): string {
+  override get message(): string {
     return this.cause.message
   }
 }
@@ -210,7 +210,7 @@ export class NotAllowedError extends Schema.TaggedError<NotAllowedError>()('@liv
   cause: domExceptionWithName('NotAllowedError'),
 }) {
   readonly [TypeId]: TypeId = TypeId
-  get message(): string {
+  override get message(): string {
     return this.cause.message
   }
 }
@@ -230,7 +230,7 @@ export class TypeMismatchError extends Schema.TaggedError<TypeMismatchError>()(
   },
 ) {
   readonly [TypeId]: TypeId = TypeId
-  get message(): string {
+  override get message(): string {
     return this.cause.message
   }
 }
@@ -250,7 +250,7 @@ export class InvalidStateError extends Schema.TaggedError<InvalidStateError>()(
   },
 ) {
   readonly [TypeId]: TypeId = TypeId
-  get message(): string {
+  override get message(): string {
     return this.cause.message
   }
 }
@@ -267,7 +267,7 @@ export class AbortError extends Schema.TaggedError<AbortError>()('@livestore/uti
   cause: domExceptionWithName('AbortError'),
 }) {
   readonly [TypeId]: TypeId = TypeId
-  get message(): string {
+  override get message(): string {
     return this.cause.message
   }
 }
@@ -287,7 +287,7 @@ export class InvalidModificationError extends Schema.TaggedError<InvalidModifica
   },
 ) {
   readonly [TypeId]: TypeId = TypeId
-  get message(): string {
+  override get message(): string {
     return this.cause.message
   }
 }
@@ -304,7 +304,7 @@ export class SecurityError extends Schema.TaggedError<SecurityError>()('@livesto
   cause: domExceptionWithName('SecurityError'),
 }) {
   readonly [TypeId]: TypeId = TypeId
-  get message(): string {
+  override get message(): string {
     return this.cause.message
   }
 }
@@ -321,7 +321,7 @@ export class DataCloneError extends Schema.TaggedError<DataCloneError>()('@lives
   cause: domExceptionWithName('DataCloneError'),
 }) {
   readonly [TypeId]: TypeId = TypeId
-  get message(): string {
+  override get message(): string {
     return this.cause.message
   }
 }
@@ -372,7 +372,7 @@ export class UnknownError extends Schema.TaggedError<UnknownError>()('@livestore
   cause: Schema.optional(Schema.Defect),
 }) {
   readonly [TypeId]: TypeId = TypeId
-  get message(): string {
+  override get message(): string {
     const messageEnd = Predicate.isUndefined(this.description) ? 'A web error occurred' : this.description
     const moduleMethod =
       Predicate.isString(this.module) && Predicate.isString(this.method) ? `${this.module}.${this.method}` : undefined

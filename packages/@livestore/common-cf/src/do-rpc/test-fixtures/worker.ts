@@ -20,7 +20,7 @@ export interface Env {
 }
 
 export class TestRpcDurableObject extends DurableObject {
-  __DURABLE_OBJECT_BRAND = 'TestRpcDurableObject' as never
+  override __DURABLE_OBJECT_BRAND = 'TestRpcDurableObject' as never
 
   async rpc(payload: unknown): Promise<unknown> {
     const TestRpcsLive = TestRpcs.toLayer({
