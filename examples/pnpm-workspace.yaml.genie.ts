@@ -23,8 +23,11 @@ export default pnpmWorkspaceYaml({
   // "@livestore/solid": "0.4.0-dev.22" to resolve to the local workspace package.
   linkWorkspacePackages: true,
   dedupePeerDependents: true,
-  // Force all TanStack router packages to the same version to avoid runtime errors
-  // from version mismatches (e.g., router.serverSsr?.isSerializationFinished not found)
+  // Pin all TanStack router packages to 1.139.14 to prevent version skew.
+  // Without this, transitive peer deps (e.g. @tanstack/router-devtools-core's
+  // peer dep on @tanstack/router-core@^1.139.14) resolve to a newer version
+  // (1.158.x) which is incompatible with @tanstack/start-server-core@1.139.14,
+  // causing "router.serverSsr?.isSerializationFinished is not a function" at runtime.
   overrides: {
     '@tanstack/router-core': '1.139.14',
     '@tanstack/history': '1.139.0',
