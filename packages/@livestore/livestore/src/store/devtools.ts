@@ -14,23 +14,14 @@ type Unsub = () => void
 type RequestId = string
 type SubMap = Map<RequestId, Unsub>
 
-// TODO refactor: Extract browser-specific scheduling APIs into injectable module (e.g. via adapter)
-// This would allow proper typing without DOM lib and cleaner separation of concerns.
-
-/** Browser APIs that may not exist in all environments (e.g. Node.js) */
-interface BrowserGlobals {
-  requestAnimationFrame?: (cb: () => void) => number
-  cancelAnimationFrame?: (id: number) => void
-  requestIdleCallback?: (cb: () => void, options?: { timeout?: number }) => void
-}
-
-const browserGlobals = globalThis as typeof globalThis & BrowserGlobals
-
 // When running this code in Node.js, we need to use `setTimeout` instead of `requestAnimationFrame`
 const requestNextTick: (cb: () => void) => number =
-  browserGlobals.requestAnimationFrame ?? ((cb) => setTimeout(cb, 1000) as unknown as number)
+  globalThis.requestAnimationFrame === undefined
+    ? (cb: () => void) => setTimeout(cb, 1000) as unknown as number
+    : globalThis.requestAnimationFrame
 
-const cancelTick: (id: number) => void = browserGlobals.cancelAnimationFrame ?? clearTimeout
+const cancelTick: (id: number) => void =
+  globalThis.cancelAnimationFrame === undefined ? (id: number) => clearTimeout(id) : globalThis.cancelAnimationFrame
 
 export const connectDevtoolsToStore = ({
   storeDevtoolsChannel,
@@ -103,7 +94,7 @@ export const connectDevtoolsToStore = ({
 
       handledRequestIds.add(requestId)
 
-      const requestIdleCallback = browserGlobals.requestIdleCallback ?? ((cb: () => void) => cb())
+      const requestIdleCallback = globalThis.requestIdleCallback ?? ((cb: () => void) => cb())
 
       switch (decodedMessage._tag) {
         case 'LSD.ClientSession.ReactivityGraphSubscribe': {
