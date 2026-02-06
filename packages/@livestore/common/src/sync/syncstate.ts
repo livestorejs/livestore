@@ -190,6 +190,7 @@ export const payloadFromMergeResult = (
 const unknownError = (message: string): MergeResultUnknownError => {
   if (LS_DEV) {
     // biome-ignore lint/suspicious/noDebugger: debug
+    debugger
   }
 
   return MergeResultUnknownError.make({ _tag: 'unknown-error', message })

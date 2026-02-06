@@ -302,7 +302,7 @@ Value:`,
             value,
           )
           // biome-ignore lint/suspicious/noDebugger: debug
-
+          debugger
           throw res.left
         } else {
           return res.right
