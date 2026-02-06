@@ -122,11 +122,10 @@ export type CreateTodoMvcStoreOptions = {
  * Creates a TodoMVC store for testing. Framework-specific wrappers should
  * use this function and add their own API bindings.
  */
-export const createTodoMvcStore = ({ otelTracer, otelContext }: CreateTodoMvcStoreOptions = {}): Effect.Effect<
-  Store<typeof schema>,
-  UnknownError,
-  Scope.Scope
-> =>
+export const createTodoMvcStore = ({
+  otelTracer,
+  otelContext,
+}: CreateTodoMvcStoreOptions = {}): Effect.Effect<Store<typeof schema>, UnknownError, Scope.Scope> =>
   Effect.gen(function* () {
     const store: Store<typeof schema> = yield* createStore({
       schema,

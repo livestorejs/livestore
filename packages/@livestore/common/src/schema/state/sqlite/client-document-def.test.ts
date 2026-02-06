@@ -78,8 +78,9 @@ describe('client document table', () => {
     })
 
     test('struct value (partial set=true)', () => {
-      expect(forSchema(Schema.Struct({ a: Schema.String }), { a: 'hello' }, 'id1', { partialSet: true }))
-        .toMatchInlineSnapshot(`
+      expect(
+        forSchema(Schema.Struct({ a: Schema.String }), { a: 'hello' }, 'id1', { partialSet: true }),
+      ).toMatchInlineSnapshot(`
           {
             "bindValues": [
               "id1",
@@ -100,8 +101,9 @@ describe('client document table', () => {
     })
 
     test('struct value (partial set=false)', () => {
-      expect(forSchema(Schema.Struct({ a: Schema.String }), { a: 'hello' }, 'id1', { partialSet: false }))
-        .toMatchInlineSnapshot(`
+      expect(
+        forSchema(Schema.Struct({ a: Schema.String }), { a: 'hello' }, 'id1', { partialSet: false }),
+      ).toMatchInlineSnapshot(`
         {
           "bindValues": [
             "id1",

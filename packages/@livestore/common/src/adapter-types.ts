@@ -144,10 +144,8 @@ export type MigrationHooks = {
 
 export type MigrationHook = (db: SqliteDb) => void | Promise<void> | Effect.Effect<void, unknown>
 
-export interface ClientSessionDevtoolsChannel extends WebChannel.WebChannel<
-  Devtools.ClientSession.MessageToApp,
-  Devtools.ClientSession.MessageFromApp
-> {}
+export interface ClientSessionDevtoolsChannel
+  extends WebChannel.WebChannel<Devtools.ClientSession.MessageToApp, Devtools.ClientSession.MessageFromApp> {}
 
 export type ConnectDevtoolsToStore = (
   storeDevtoolsChannel: ClientSessionDevtoolsChannel,

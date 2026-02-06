@@ -62,7 +62,9 @@ export type EventDef<TName extends string, TType, TEncoded = TType, TDerived ext
    * Callable signature - creates a partial event with decoded arguments.
    * The returned object can be passed directly to `store.commit()`.
    */
-  (args: TType): {
+  (
+    args: TType,
+  ): {
     name: TName
     args: TType
   }

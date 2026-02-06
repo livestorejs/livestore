@@ -138,8 +138,7 @@ export interface CreateStoreOptions<
   TSchema extends LiveStoreSchema,
   TContext = {},
   TSyncPayloadSchema extends Schema.Schema<any> = typeof Schema.JsonValue,
->
-  extends LogConfig.WithLoggerOptions {
+> extends LogConfig.WithLoggerOptions {
   /** The LiveStore schema defining tables, events, and materializers. */
   schema: TSchema
   /** Adapter used for data storage and synchronization. */

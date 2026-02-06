@@ -53,7 +53,9 @@ export interface InMemoryAdapterOptions {
   devtools?: {
     sharedWorker:
       | ((options: { name: string }) => globalThis.SharedWorker)
-      | (new (options: { name: string }) => globalThis.SharedWorker)
+      | (new (options: {
+          name: string
+        }) => globalThis.SharedWorker)
   }
 }
 
