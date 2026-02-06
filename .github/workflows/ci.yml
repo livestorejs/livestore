@@ -3,7 +3,7 @@
 
 name: ci
 
-run-name: ${{ github.event.pull_request.title || format('Push to {0}', github.ref_name) }} (${{ github.event.pull_request.head.sha || github.sha }})
+run-name: "${{ github.event.pull_request.title || format('Push to {0}', github.ref_name) }} (${{ github.event.pull_request.head.sha || github.sha }})"
 
 permissions:
   id-token: write
@@ -15,9 +15,9 @@ on:
   pull_request: {}
 
 env:
-  GITHUB_BRANCH_NAME: ${{ github.head_ref || github.ref_name }}
-  S2_ACCESS_TOKEN: ${{ secrets.S2_ACCESS_TOKEN }}
-  CACHIX_AUTH_TOKEN: ${{ secrets.CACHIX_AUTH_TOKEN }}
+  GITHUB_BRANCH_NAME: '${{ github.head_ref || github.ref_name }}'
+  S2_ACCESS_TOKEN: '${{ secrets.S2_ACCESS_TOKEN }}'
+  CACHIX_AUTH_TOKEN: '${{ secrets.CACHIX_AUTH_TOKEN }}'
 
 jobs:
   lint:
@@ -35,7 +35,7 @@ jobs:
         uses: cachix/cachix-action@v16
         with:
           name: livestore
-          authToken: ${{ env.CACHIX_AUTH_TOKEN }}
+          authToken: '${{ env.CACHIX_AUTH_TOKEN }}'
       - name: Install megarepo CLI
         run: 'nix profile install github:overengineeringstudio/effect-utils#megarepo'
         shell: bash
@@ -66,7 +66,7 @@ jobs:
         uses: cachix/cachix-action@v16
         with:
           name: livestore
-          authToken: ${{ env.CACHIX_AUTH_TOKEN }}
+          authToken: '${{ env.CACHIX_AUTH_TOKEN }}'
       - name: Install megarepo CLI
         run: 'nix profile install github:overengineeringstudio/effect-utils#megarepo'
         shell: bash
@@ -97,7 +97,7 @@ jobs:
         uses: cachix/cachix-action@v16
         with:
           name: livestore
-          authToken: ${{ env.CACHIX_AUTH_TOKEN }}
+          authToken: '${{ env.CACHIX_AUTH_TOKEN }}'
       - name: Install megarepo CLI
         run: 'nix profile install github:overengineeringstudio/effect-utils#megarepo'
         shell: bash
@@ -128,7 +128,7 @@ jobs:
         uses: cachix/cachix-action@v16
         with:
           name: livestore
-          authToken: ${{ env.CACHIX_AUTH_TOKEN }}
+          authToken: '${{ env.CACHIX_AUTH_TOKEN }}'
       - name: Install megarepo CLI
         run: 'nix profile install github:overengineeringstudio/effect-utils#megarepo'
         shell: bash
@@ -146,7 +146,7 @@ jobs:
       - name: Set OTEL_EXPORTER_OTLP_HEADERS environment variable
         env:
           GRAFANA_CLOUD_OTLP_INSTANCE_ID: '1227256'
-          GRAFANA_CLOUD_OTLP_API_KEY: ${{ secrets.GRAFANA_CLOUD_OTLP_API_KEY }}
+          GRAFANA_CLOUD_OTLP_API_KEY: '${{ secrets.GRAFANA_CLOUD_OTLP_API_KEY }}'
         run: |
           echo "OTEL_EXPORTER_OTLP_HEADERS=Authorization=Basic $(echo -n "$GRAFANA_CLOUD_OTLP_INSTANCE_ID:$GRAFANA_CLOUD_OTLP_API_KEY" | base64 -w 0)" >> $GITHUB_ENV
           echo "GRAFANA_ENDPOINT=https://livestore.grafana.net" >> $GITHUB_ENV
@@ -210,7 +210,7 @@ jobs:
         uses: cachix/cachix-action@v16
         with:
           name: livestore
-          authToken: ${{ env.CACHIX_AUTH_TOKEN }}
+          authToken: '${{ env.CACHIX_AUTH_TOKEN }}'
       - name: Install megarepo CLI
         run: 'nix profile install github:overengineeringstudio/effect-utils#megarepo'
         shell: bash
@@ -228,15 +228,15 @@ jobs:
       - name: Set OTEL_EXPORTER_OTLP_HEADERS environment variable
         env:
           GRAFANA_CLOUD_OTLP_INSTANCE_ID: '1227256'
-          GRAFANA_CLOUD_OTLP_API_KEY: ${{ secrets.GRAFANA_CLOUD_OTLP_API_KEY }}
+          GRAFANA_CLOUD_OTLP_API_KEY: '${{ secrets.GRAFANA_CLOUD_OTLP_API_KEY }}'
         run: |
           echo "OTEL_EXPORTER_OTLP_HEADERS=Authorization=Basic $(echo -n "$GRAFANA_CLOUD_OTLP_INSTANCE_ID:$GRAFANA_CLOUD_OTLP_API_KEY" | base64 -w 0)" >> $GITHUB_ENV
           echo "GRAFANA_ENDPOINT=https://livestore.grafana.net" >> $GITHUB_ENV
           echo "OTEL_EXPORTER_OTLP_ENDPOINT=https://otlp-gateway-prod-us-east-2.grafana.net/otlp" >> $GITHUB_ENV
           # Disable in Vite (otherwise CORS issues)
           echo "VITE_OTEL_EXPORTER_OTLP_ENDPOINT=" >> $GITHUB_ENV
-      - name: Run sync-provider tests for ${{ matrix.provider }}
-        if: ${{ matrix.provider != 's2' || env.S2_ACCESS_TOKEN != '' }}
+      - name: 'Run sync-provider tests for ${{ matrix.provider }}'
+        if: "${{ matrix.provider != 's2' || env.S2_ACCESS_TOKEN != '' }}"
         run: |
           if [[ "${{ matrix.provider }}" == cf-* ]]; then
             if dt "test:integration:sync-provider:${{ matrix.provider }}"; then
@@ -249,7 +249,7 @@ jobs:
             dt "test:integration:sync-provider:${{ matrix.provider }}"
           fi
       - name: Skip S2 sync-provider tests (missing S2_ACCESS_TOKEN)
-        if: ${{ matrix.provider == 's2' && env.S2_ACCESS_TOKEN == '' }}
+        if: "${{ matrix.provider == 's2' && env.S2_ACCESS_TOKEN == '' }}"
         run: 'echo "Skipping S2 sync-provider tests: S2_ACCESS_TOKEN not set"'
   test-integration-playwright:
     strategy:
@@ -269,7 +269,7 @@ jobs:
         uses: cachix/cachix-action@v16
         with:
           name: livestore
-          authToken: ${{ env.CACHIX_AUTH_TOKEN }}
+          authToken: '${{ env.CACHIX_AUTH_TOKEN }}'
       - name: Install megarepo CLI
         run: 'nix profile install github:overengineeringstudio/effect-utils#megarepo'
         shell: bash
@@ -287,7 +287,7 @@ jobs:
       - name: Set OTEL_EXPORTER_OTLP_HEADERS environment variable
         env:
           GRAFANA_CLOUD_OTLP_INSTANCE_ID: '1227256'
-          GRAFANA_CLOUD_OTLP_API_KEY: ${{ secrets.GRAFANA_CLOUD_OTLP_API_KEY }}
+          GRAFANA_CLOUD_OTLP_API_KEY: '${{ secrets.GRAFANA_CLOUD_OTLP_API_KEY }}'
         run: |
           echo "OTEL_EXPORTER_OTLP_HEADERS=Authorization=Basic $(echo -n "$GRAFANA_CLOUD_OTLP_INSTANCE_ID:$GRAFANA_CLOUD_OTLP_API_KEY" | base64 -w 0)" >> $GITHUB_ENV
           echo "GRAFANA_ENDPOINT=https://livestore.grafana.net" >> $GITHUB_ENV
@@ -296,7 +296,7 @@ jobs:
           echo "VITE_OTEL_EXPORTER_OTLP_ENDPOINT=" >> $GITHUB_ENV
       - name: Run integration tests
         env:
-          PLAYWRIGHT_SUITE: ${{ matrix.suite }}
+          PLAYWRIGHT_SUITE: '${{ matrix.suite }}'
         run: |
           if [ "${{ matrix.suite }}" = "devtools" ]; then
             dt test:integration:devtools || echo "::warning::Script failed but continuing"
@@ -304,16 +304,16 @@ jobs:
             dt "test:integration:${{ matrix.suite }}"
           fi
       - uses: actions/upload-artifact@v4
-        if: ${{ !cancelled() }}
+        if: '${{ !cancelled() }}'
         with:
-          name: playwright-report-${{ matrix.suite }}
+          name: 'playwright-report-${{ matrix.suite }}'
           path: tests/integration/playwright-report/
           retention-days: 30
       - name: Upload trace
-        if: ${{ !cancelled() }}
+        if: '${{ !cancelled() }}'
         env:
-          NETLIFY_AUTH_TOKEN: ${{ secrets.NETLIFY_AUTH_TOKEN }}
-          PLAYWRIGHT_SUITE: ${{ matrix.suite }}
+          NETLIFY_AUTH_TOKEN: '${{ secrets.NETLIFY_AUTH_TOKEN }}'
+          PLAYWRIGHT_SUITE: '${{ matrix.suite }}'
         run: |
           if [ -n "$NETLIFY_AUTH_TOKEN" ]; then
             bunx netlify-cli deploy --no-build --dir=tests/integration/playwright-report --site livestore-ci --filter @local/tests-integration --alias ${{ matrix.suite }}-$(git rev-parse --short HEAD)
@@ -329,14 +329,14 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v4
         with:
-          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+          ref: '${{ github.event.pull_request.head.sha || github.sha }}'
       - name: Install Nix
         uses: cachix/install-nix-action@v31
       - name: Enable Cachix cache
         uses: cachix/cachix-action@v16
         with:
           name: livestore
-          authToken: ${{ env.CACHIX_AUTH_TOKEN }}
+          authToken: '${{ env.CACHIX_AUTH_TOKEN }}'
       - name: Install megarepo CLI
         run: 'nix profile install github:overengineeringstudio/effect-utils#megarepo'
         shell: bash
@@ -354,7 +354,7 @@ jobs:
       - name: Set OTEL_EXPORTER_OTLP_HEADERS environment variable
         env:
           GRAFANA_CLOUD_OTLP_INSTANCE_ID: '1227256'
-          GRAFANA_CLOUD_OTLP_API_KEY: ${{ secrets.GRAFANA_CLOUD_OTLP_API_KEY }}
+          GRAFANA_CLOUD_OTLP_API_KEY: '${{ secrets.GRAFANA_CLOUD_OTLP_API_KEY }}'
         run: |
           echo "OTEL_EXPORTER_OTLP_HEADERS=Authorization=Basic $(echo -n "$GRAFANA_CLOUD_OTLP_INSTANCE_ID:$GRAFANA_CLOUD_OTLP_API_KEY" | base64 -w 0)" >> $GITHUB_ENV
           echo "GRAFANA_ENDPOINT=https://livestore.grafana.net" >> $GITHUB_ENV
@@ -364,7 +364,7 @@ jobs:
       - name: Run performance tests
         run: 'dt test:perf'
         env:
-          COMMIT_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
+          COMMIT_SHA: '${{ github.event.pull_request.head.sha || github.sha }}'
           GRAFANA_ENDPOINT: 'https://livestore.grafana.net'
           OTEL_EXPORTER_OTLP_ENDPOINT: 'https://otlp-gateway-prod-us-east-2.grafana.net/otlp'
   wa-sqlite-test:
@@ -379,7 +379,7 @@ jobs:
         uses: cachix/cachix-action@v16
         with:
           name: livestore
-          authToken: ${{ env.CACHIX_AUTH_TOKEN }}
+          authToken: '${{ env.CACHIX_AUTH_TOKEN }}'
       - name: Install megarepo CLI
         run: 'nix profile install github:overengineeringstudio/effect-utils#megarepo'
         shell: bash
@@ -397,7 +397,7 @@ jobs:
       - name: Set OTEL_EXPORTER_OTLP_HEADERS environment variable
         env:
           GRAFANA_CLOUD_OTLP_INSTANCE_ID: '1227256'
-          GRAFANA_CLOUD_OTLP_API_KEY: ${{ secrets.GRAFANA_CLOUD_OTLP_API_KEY }}
+          GRAFANA_CLOUD_OTLP_API_KEY: '${{ secrets.GRAFANA_CLOUD_OTLP_API_KEY }}'
         run: |
           echo "OTEL_EXPORTER_OTLP_HEADERS=Authorization=Basic $(echo -n "$GRAFANA_CLOUD_OTLP_INSTANCE_ID:$GRAFANA_CLOUD_OTLP_API_KEY" | base64 -w 0)" >> $GITHUB_ENV
           echo "GRAFANA_ENDPOINT=https://livestore.grafana.net" >> $GITHUB_ENV
@@ -410,7 +410,7 @@ jobs:
       - name: Run wa-sqlite tests
         run: 'devenv shell dt test:integration:wa-sqlite'
         env:
-          COMMIT_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
+          COMMIT_SHA: '${{ github.event.pull_request.head.sha || github.sha }}'
           GRAFANA_ENDPOINT: 'https://livestore.grafana.net'
           OTEL_EXPORTER_OTLP_ENDPOINT: 'https://otlp-gateway-prod-us-east-2.grafana.net/otlp'
   publish-snapshot-version:
@@ -428,7 +428,7 @@ jobs:
         uses: cachix/cachix-action@v16
         with:
           name: livestore
-          authToken: ${{ env.CACHIX_AUTH_TOKEN }}
+          authToken: '${{ env.CACHIX_AUTH_TOKEN }}'
       - name: Install megarepo CLI
         run: 'nix profile install github:overengineeringstudio/effect-utils#megarepo'
         shell: bash
@@ -446,8 +446,8 @@ jobs:
       - name: Configure NPM authentication
         run: 'echo "//registry.npmjs.org/:_authToken=${NPM_TOKEN}" >> ~/.npmrc'
         env:
-          NPM_TOKEN: ${{ secrets.NPM_TOKEN }}
-      - run: mono release snapshot --git-sha=${{ github.sha }}
+          NPM_TOKEN: '${{ secrets.NPM_TOKEN }}'
+      - run: 'mono release snapshot --git-sha=${{ github.sha }}'
   build-and-deploy-examples-src:
     runs-on: [namespace-profile-linux-x86-64, 'namespace-features:github.run-id=${{ github.run_id }}']
     defaults:
@@ -461,7 +461,7 @@ jobs:
         uses: cachix/cachix-action@v16
         with:
           name: livestore
-          authToken: ${{ env.CACHIX_AUTH_TOKEN }}
+          authToken: '${{ env.CACHIX_AUTH_TOKEN }}'
       - name: Install megarepo CLI
         run: 'nix profile install github:overengineeringstudio/effect-utils#megarepo'
         shell: bash
@@ -486,8 +486,8 @@ jobs:
         if: github.event.pull_request.head.repo.fork != true
         run: 'dt examples:deploy'
         env:
-          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
-          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          CLOUDFLARE_API_TOKEN: '${{ secrets.CLOUDFLARE_API_TOKEN }}'
+          CLOUDFLARE_ACCOUNT_ID: '${{ secrets.CLOUDFLARE_ACCOUNT_ID }}'
   build-deploy-docs:
     runs-on: [namespace-profile-linux-x86-64, 'namespace-features:github.run-id=${{ github.run_id }}']
     defaults:
@@ -501,7 +501,7 @@ jobs:
         uses: cachix/cachix-action@v16
         with:
           name: livestore
-          authToken: ${{ env.CACHIX_AUTH_TOKEN }}
+          authToken: '${{ env.CACHIX_AUTH_TOKEN }}'
       - name: Install megarepo CLI
         run: 'nix profile install github:overengineeringstudio/effect-utils#megarepo'
         shell: bash
@@ -519,10 +519,10 @@ jobs:
       - name: Build docs
         run: 'dt docs:build:api'
       - name: Deploy docs
-        if: ${{ github.event_name != 'pull_request' || github.event.pull_request.head.repo.fork != true }}
+        if: "${{ github.event_name != 'pull_request' || github.event.pull_request.head.repo.fork != true }}"
         run: 'dt docs:deploy'
         env:
-          NETLIFY_AUTH_TOKEN: ${{ secrets.NETLIFY_AUTH_TOKEN }}
+          NETLIFY_AUTH_TOKEN: '${{ secrets.NETLIFY_AUTH_TOKEN }}'
   build-example-create:
     if: github.event.pull_request.head.repo.fork != true
     needs: publish-snapshot-version
@@ -531,8 +531,8 @@ jobs:
         app: [web-todomvc, web-linearlite, expo-linearlite]
     runs-on: [namespace-profile-linux-x86-64, 'namespace-features:github.run-id=${{ github.run_id }}']
     env:
-      APP_PATH: examples/${{ matrix.app }}
-      SNAPSHOT_VERSION: 0.0.0-snapshot-${{ github.sha }}
+      APP_PATH: 'examples/${{ matrix.app }}'
+      SNAPSHOT_VERSION: '0.0.0-snapshot-${{ github.sha }}'
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
@@ -542,24 +542,24 @@ jobs:
           standalone: true
           run_install: true
       - name: Get app's workspace dependencies
-        working-directory: ${{ env.APP_PATH }}
+        working-directory: '${{ env.APP_PATH }}'
         run: |
           echo "WORKSPACE_DEPS=$( \
             pnpm list --only-projects --json | \
             jq -r '.[0].dependencies | keys | join(" ")' \
           )" >> $GITHUB_ENV
       - name: Copy example app
-        run: pnpm dlx @livestore/cli@${{ env.SNAPSHOT_VERSION }} create --example ${{ matrix.app }} --ref ${{ github.ref }} ${{ runner.temp }}/${{ env.APP_PATH }}
+        run: 'pnpm dlx @livestore/cli@${{ env.SNAPSHOT_VERSION }} create --example ${{ matrix.app }} --ref ${{ github.ref }} ${{ runner.temp }}/${{ env.APP_PATH }}'
       - name: Increase pnpm fetch retries
         run: pnpm config set fetchRetries 3
       - name: Use snapshot version of workspace dependencies
-        working-directory: ${{ runner.temp }}/${{ env.APP_PATH }}
+        working-directory: '${{ runner.temp }}/${{ env.APP_PATH }}'
         run: |
           pnpm add $(
             for dep in $WORKSPACE_DEPS; do
               echo "$dep@${{ env.SNAPSHOT_VERSION }}"
             done
           )
-      - if: ${{ matrix.app != 'expo-linearlite' }}
-        working-directory: ${{ runner.temp }}/${{ env.APP_PATH }}
+      - if: "${{ matrix.app != 'expo-linearlite' }}"
+        working-directory: '${{ runner.temp }}/${{ env.APP_PATH }}'
         run: pnpm build
