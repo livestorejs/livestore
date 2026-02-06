@@ -151,11 +151,11 @@
     },
     "nixpkgs_2": {
       "locked": {
-        "lastModified": 1769018530,
-        "narHash": "sha256-MJ27Cy2NtBEV5tsK+YraYr2g851f3Fl1LpNHDzDX15c=",
+        "lastModified": 1770197578,
+        "narHash": "sha256-AYqlWrX09+HvGs8zM6ebZ1pwUqjkfpnv8mewYwAo+iM=",
         "owner": "NixOS",
         "repo": "nixpkgs",
-        "rev": "88d3861acdd3d2f0e361767018218e51810df8a1",
+        "rev": "00c21e4c93d963c50d4c0c89bfa84ed6e0694df2",
         "type": "github"
       },
       "original": {
@@ -170,11 +170,11 @@
         "nixpkgs": "nixpkgs_2"
       },
       "locked": {
-        "lastModified": 1770036763,
-        "narHash": "sha256-58xNKd+qT7XR4K57yUwIpCXcXVJF2M6F2y6lrT93xWY=",
+        "lastModified": 1770412971,
+        "narHash": "sha256-iTRK5Put5VuaC+x8ISmots95gpdfd3FSxcBy3IVPx7E=",
         "owner": "overengineeringstudio",
         "repo": "overeng-beads-public",
-        "rev": "db919d24135f5973f1314a585042c5e76837f19c",
+        "rev": "39ae4181295b4d6807d0f89178520fbb10c2aa94",
         "type": "github"
       },
       "original": {
