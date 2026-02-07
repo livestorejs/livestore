@@ -25,11 +25,11 @@
         ]
       },
       "locked": {
-        "lastModified": 1770458462,
-        "narHash": "sha256-gTSrxPeXl1JFLXmEDb26rs+Qf108MQK+JmF1jS98Vxc=",
+        "lastModified": 1770461281,
+        "narHash": "sha256-yKDVGfRePnqhr3lf5lReZCLAZROw7RmktryeBT9tzDU=",
         "owner": "overengineeringstudio",
         "repo": "effect-utils",
-        "rev": "6a2c2778021e06181d8704e68af7cce0d96d527e",
+        "rev": "a541dfb4b979253a3ae1caad493610d2e8cb3fa0",
         "type": "github"
       },
       "original": {
@@ -149,40 +149,6 @@
         "type": "github"
       }
     },
-    "nixpkgs_2": {
-      "locked": {
-        "lastModified": 1770197578,
-        "narHash": "sha256-AYqlWrX09+HvGs8zM6ebZ1pwUqjkfpnv8mewYwAo+iM=",
-        "owner": "NixOS",
-        "repo": "nixpkgs",
-        "rev": "00c21e4c93d963c50d4c0c89bfa84ed6e0694df2",
-        "type": "github"
-      },
-      "original": {
-        "owner": "NixOS",
-        "ref": "nixos-unstable",
-        "repo": "nixpkgs",
-        "type": "github"
-      }
-    },
-    "overeng-beads-public": {
-      "inputs": {
-        "nixpkgs": "nixpkgs_2"
-      },
-      "locked": {
-        "lastModified": 1770412971,
-        "narHash": "sha256-iTRK5Put5VuaC+x8ISmots95gpdfd3FSxcBy3IVPx7E=",
-        "owner": "overengineeringstudio",
-        "repo": "overeng-beads-public",
-        "rev": "39ae4181295b4d6807d0f89178520fbb10c2aa94",
-        "type": "github"
-      },
-      "original": {
-        "owner": "overengineeringstudio",
-        "repo": "overeng-beads-public",
-        "type": "github"
-      }
-    },
     "playwright": {
       "inputs": {
         "nixpkgs": [
@@ -234,7 +200,6 @@
         "effect-utils": "effect-utils",
         "git-hooks": "git-hooks",
         "nixpkgs": "nixpkgs",
-        "overeng-beads-public": "overeng-beads-public",
         "playwright": "playwright"
       }
     },
