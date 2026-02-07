@@ -249,7 +249,7 @@ const pruneArchiveDirectory = Effect.fn('@livestore/adapter-web:pruneArchiveDire
     Stream.runCollect,
   )
   const filesToDelete = filesWithMetadata.pipe(
-    Chunk.sort(Order.mapInput(Order.number, (entry: { lastModified: number }) => entry.lastModified)),
+    Chunk.toSorted(Order.mapInput(Order.number, (entry: { lastModified: number }) => entry.lastModified)),
     Chunk.drop(keep),
     Chunk.toReadonlyArray,
   )
