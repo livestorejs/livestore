@@ -1,4 +1,5 @@
 import { catalog, livestorePackageDefaults, packageJson } from '../../../genie/repo.ts'
+import utilsPkg from '../utils/package.json.genie.ts'
 
 export default packageJson({
   name: '@livestore/livestore',
@@ -10,6 +11,7 @@ export default packageJson({
     './effect': './src/effect/mod.ts',
   },
   dependencies: { ...catalog.pick('@livestore/common', '@livestore/utils', '@opentelemetry/api') },
+  peerDependencies: utilsPkg.data.peerDependencies,
   devDependencies: {
     ...catalog.pick(
       '@livestore/adapter-web',

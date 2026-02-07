@@ -1,4 +1,5 @@
 import { catalog, livestorePackageDefaults, packageJson } from '../../../genie/repo.ts'
+import utilsPkg from '../utils/package.json.genie.ts'
 
 export default packageJson({
   name: '@livestore/react',
@@ -35,6 +36,7 @@ export default packageJson({
     ),
   },
   peerDependencies: {
+    ...utilsPkg.data.peerDependencies,
     react: '^19.0.0',
   },
   publishConfig: {

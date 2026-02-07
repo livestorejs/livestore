@@ -1,4 +1,5 @@
 import { catalog, livestorePackageDefaults, packageJson } from '../../../genie/repo.ts'
+import utilsPkg from '../utils/package.json.genie.ts'
 
 export default packageJson({
   name: '@livestore/devtools-web-common',
@@ -8,6 +9,7 @@ export default packageJson({
     './worker': './src/worker/mod.ts',
   },
   dependencies: { ...catalog.pick('@livestore/common', '@livestore/utils', '@livestore/webmesh') },
+  peerDependencies: utilsPkg.data.peerDependencies,
   publishConfig: {
     access: 'public',
     exports: {

@@ -1,4 +1,6 @@
 import { catalog, livestorePackageDefaults, packageJson } from '../../../genie/repo.ts'
+import adapterNodePkg from '../adapter-node/package.json.genie.ts'
+import utilsPkg from '../utils/package.json.genie.ts'
 
 export default packageJson({
   name: '@livestore/cli',
@@ -26,6 +28,11 @@ export default packageJson({
     ),
   },
   devDependencies: { ...catalog.pick('@livestore/utils-dev', '@types/node', 'typescript', 'vitest') },
+  peerDependencies: {
+    ...utilsPkg.data.peerDependencies,
+    ...catalog.peers('@livestore/devtools-vite'),
+  },
+  peerDependenciesMeta: adapterNodePkg.data.peerDependenciesMeta,
   publishConfig: {
     access: 'public',
     exports: {

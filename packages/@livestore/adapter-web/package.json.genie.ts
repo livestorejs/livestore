@@ -1,4 +1,5 @@
 import { catalog, livestorePackageDefaults, packageJson } from '../../../genie/repo.ts'
+import utilsPkg from '../utils/package.json.genie.ts'
 
 export default packageJson({
   name: '@livestore/adapter-web',
@@ -22,6 +23,7 @@ export default packageJson({
   devDependencies: {
     ...catalog.pick('@types/chrome', '@types/wicg-file-system-access', 'vitest'),
   },
+  peerDependencies: utilsPkg.data.peerDependencies,
   publishConfig: {
     access: 'public',
     exports: {

@@ -1,4 +1,5 @@
 import { catalog, livestorePackageDefaults, packageJson } from '../../../genie/repo.ts'
+import utilsPkg from '../utils/package.json.genie.ts'
 
 export default packageJson({
   name: '@livestore/sync-cf',
@@ -11,6 +12,7 @@ export default packageJson({
   dependencies: {
     ...catalog.pick('@cloudflare/workers-types', '@livestore/common', '@livestore/common-cf', '@livestore/utils'),
   },
+  peerDependencies: utilsPkg.data.peerDependencies,
   files: [...livestorePackageDefaults.files, 'README.md'],
   publishConfig: {
     access: 'public',

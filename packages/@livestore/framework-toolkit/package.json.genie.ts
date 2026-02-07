@@ -1,4 +1,5 @@
 import { catalog, livestorePackageDefaults, packageJson } from '../../../genie/repo.ts'
+import utilsPkg from '../utils/package.json.genie.ts'
 
 export default packageJson({
   name: '@livestore/framework-toolkit',
@@ -19,6 +20,7 @@ export default packageJson({
   devDependencies: {
     ...catalog.pick('@livestore/utils-dev', 'typescript'),
   },
+  peerDependencies: utilsPkg.data.peerDependencies,
   publishConfig: {
     access: 'public',
     exports: {

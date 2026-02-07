@@ -1,4 +1,6 @@
 import { catalog, livestorePackageDefaults, packageJson } from '../../../genie/repo.ts'
+import adapterNodePkg from '../adapter-node/package.json.genie.ts'
+import utilsPkg from '../utils/package.json.genie.ts'
 
 export default packageJson({
   name: '@livestore/devtools-expo',
@@ -8,8 +10,11 @@ export default packageJson({
   dependencies: { ...catalog.pick('@livestore/adapter-node', '@livestore/utils') },
   devDependencies: { ...catalog.pick('@types/node', 'expo', 'vite') },
   peerDependencies: {
+    ...utilsPkg.data.peerDependencies,
+    ...catalog.peers('@livestore/devtools-vite'),
     expo: '^54.0.12',
   },
+  peerDependenciesMeta: adapterNodePkg.data.peerDependenciesMeta,
   files: [...livestorePackageDefaults.files, 'expo-module.config.json', 'webui'],
   publishConfig: {
     access: 'public',

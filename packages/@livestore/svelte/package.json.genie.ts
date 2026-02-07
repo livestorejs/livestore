@@ -1,4 +1,5 @@
 import { catalog, livestorePackageDefaults, packageJson } from '../../../genie/repo.ts'
+import utilsPkg from '../utils/package.json.genie.ts'
 
 export default packageJson({
   name: '@livestore/svelte',
@@ -24,6 +25,7 @@ export default packageJson({
     ),
   },
   peerDependencies: {
+    ...utilsPkg.data.peerDependencies,
     svelte: '^5.31.0',
   },
   keywords: ['svelte'],

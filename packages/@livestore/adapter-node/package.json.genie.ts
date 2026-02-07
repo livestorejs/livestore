@@ -1,4 +1,5 @@
 import { catalog, livestorePackageDefaults, packageJson } from '../../../genie/repo.ts'
+import utilsPkg from '../utils/package.json.genie.ts'
 
 export default packageJson({
   name: '@livestore/adapter-node',
@@ -29,6 +30,7 @@ export default packageJson({
     ),
   },
   peerDependencies: {
+    ...utilsPkg.data.peerDependencies,
     ...catalog.peers('@livestore/devtools-vite'),
   },
   peerDependenciesMeta: {

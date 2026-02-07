@@ -1,4 +1,5 @@
 import { catalog, livestorePackageDefaults, packageJson } from '../../../genie/repo.ts'
+import utilsPkg from '../utils/package.json.genie.ts'
 
 export default packageJson({
   name: '@livestore/sync-s2',
@@ -8,6 +9,7 @@ export default packageJson({
     './s2-proxy-helpers': './src/s2-proxy-helpers.ts',
   },
   dependencies: { ...catalog.pick('@livestore/common', '@livestore/livestore', '@livestore/utils') },
+  peerDependencies: utilsPkg.data.peerDependencies,
   devDependencies: { ...catalog.pick('vitest') },
   publishConfig: {
     access: 'public',

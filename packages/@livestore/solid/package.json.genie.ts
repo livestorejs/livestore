@@ -1,4 +1,5 @@
 import { catalog, livestorePackageDefaults, packageJson } from '../../../genie/repo.ts'
+import utilsPkg from '../utils/package.json.genie.ts'
 
 export default packageJson({
   name: '@livestore/solid',
@@ -32,6 +33,7 @@ export default packageJson({
     ...catalog.pick('@testing-library/jest-dom'),
   },
   peerDependencies: {
+    ...utilsPkg.data.peerDependencies,
     'solid-js': '^1.9.10',
   },
   publishConfig: {
