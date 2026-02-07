@@ -1,5 +1,5 @@
 import { liveStoreStorageFormatVersion } from '@livestore/common'
-import type { LiveStoreSchema } from '@livestore/common/schema'
+import { getStateSchemaHashSuffix, type LiveStoreSchema } from '@livestore/common/schema'
 import {
   decodeAccessHandlePoolFilename,
   HEADER_OFFSET_DATA,
@@ -116,8 +116,7 @@ export const sanitizeOpfsDir = Effect.fn('@livestore/adapter-web:sanitizeOpfsDir
 })
 
 export const getStateDbFileName = (schema: LiveStoreSchema) => {
-  const schemaHashSuffix =
-    schema.state.sqlite.migrations.strategy === 'manual' ? 'fixed' : schema.state.sqlite.hash.toString()
+  const schemaHashSuffix = getStateSchemaHashSuffix(schema)
   return `state${schemaHashSuffix}.db`
 }
 

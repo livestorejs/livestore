@@ -10,7 +10,7 @@ import type { ClientSessionLeaderThreadProxy, MakeSqliteDb, SqliteDb, SyncOption
 import { Devtools, liveStoreStorageFormatVersion, migrateDb, UnknownError } from '@livestore/common'
 import type { DevtoolsOptions, LeaderSqliteDb, LeaderThreadCtx } from '@livestore/common/leader-thread'
 import { configureConnection, makeLeaderThreadLayer } from '@livestore/common/leader-thread'
-import type { LiveStoreSchema } from '@livestore/common/schema'
+import { getStateSchemaHashSuffix, type LiveStoreSchema } from '@livestore/common/schema'
 import type { MakeNodeSqliteDb } from '@livestore/sqlite-wasm/node'
 import type { FileSystem, HttpClient, Layer, Schema, Scope } from '@livestore/utils/effect'
 import { Effect } from '@livestore/utils/effect'
@@ -66,8 +66,7 @@ export const makeLeaderThread = ({
   Effect.gen(function* () {
     const runtime = yield* Effect.runtime<never>()
 
-    const schemaHashSuffix =
-      schema.state.sqlite.migrations.strategy === 'manual' ? 'fixed' : schema.state.sqlite.hash.toString()
+    const schemaHashSuffix = getStateSchemaHashSuffix(schema)
 
     const makeDb = (kind: 'state' | 'eventlog') => {
       if (testing?.makeLeaderThread) {

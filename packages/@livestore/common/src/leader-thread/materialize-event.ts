@@ -173,7 +173,7 @@ export const rollback = ({
 }: {
   dbState: SqliteDb
   dbEventlog: SqliteDb
-  eventNumsToRollback: EventSequenceNumber.Client.Composite[]
+  eventNumsToRollback: ReadonlyArray<EventSequenceNumber.Client.Composite>
 }) =>
   Effect.gen(function* () {
     const rollbackEvents = dbState

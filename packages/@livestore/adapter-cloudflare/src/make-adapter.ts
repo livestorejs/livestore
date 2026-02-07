@@ -14,6 +14,7 @@ import {
   makeLeaderThreadLayer,
   streamEventsWithSyncState,
 } from '@livestore/common/leader-thread'
+import { getStateSchemaHashSuffix } from '@livestore/common/schema'
 import type { CfTypes } from '@livestore/common-cf'
 import { LiveStoreEvent } from '@livestore/livestore'
 import { sqliteDbFactory } from '@livestore/sqlite-wasm/cf'
@@ -54,8 +55,7 @@ export const makeAdapter =
         UnknownError.mapToUnknownError,
       )
 
-      const schemaHashSuffix =
-        schema.state.sqlite.migrations.strategy === 'manual' ? 'fixed' : schema.state.sqlite.hash.toString()
+      const schemaHashSuffix = getStateSchemaHashSuffix(schema)
 
       const stateDbFileName = getStateDbFileName(schemaHashSuffix)
       const eventlogDbFileName = getEventlogDbFileName()

@@ -60,8 +60,13 @@ export const makeState = <TStateInput extends InputState>(inputSchema: TStateInp
     _tag: 'dbSchema',
     tables: [...tables.values()].map((_) => _.sqliteDef.ast),
   })
+  const migrations = inputSchema.migrations ?? { strategy: 'auto' }
 
-  return { sqlite: { tables, migrations: inputSchema.migrations ?? { strategy: 'auto' }, hash }, materializers }
+  return {
+    sqlite: { tables, migrations, hash },
+    backend: { kind: 'sqlite', tables, migrations, hash },
+    materializers,
+  }
 }
 
 export type InputState = {

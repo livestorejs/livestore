@@ -24,13 +24,14 @@ import type { MigrationsReport } from '../defs.ts'
 import type * as Devtools from '../devtools/mod.ts'
 import type { LiveStoreSchema } from '../schema/mod.ts'
 import { EventSequenceNumber, LiveStoreEvent, SystemTables } from '../schema/mod.ts'
+import type { LeaderStateBackend } from '../state-backend/mod.ts'
 import type { InvalidPullError, IsOfflineError, SyncBackend, SyncOptions } from '../sync/sync.ts'
 import { SyncState } from '../sync/syncstate.ts'
 import { sql } from '../util.ts'
 import * as Eventlog from './eventlog.ts'
 import { makeLeaderSyncProcessor } from './LeaderSyncProcessor.ts'
 import { bootDevtools } from './leader-worker-devtools.ts'
-import { makeMaterializeEvent } from './materialize-event.ts'
+import { makeMaterializeEvent, rollback as rollbackSqlite } from './materialize-event.ts'
 import { recreateDb } from './recreate-db.ts'
 import type { ShutdownChannel } from './shutdown-channel.ts'
 import type {
@@ -153,6 +154,10 @@ export const makeLeaderThreadLayer = ({
     })
 
     const materializeEvent = yield* makeMaterializeEvent({ schema, dbState, dbEventlog })
+    const stateBackend: LeaderStateBackend = {
+      materializeEvent,
+      rollback: ({ eventNumsToRollback }) => rollbackSqlite({ dbState, dbEventlog, eventNumsToRollback }),
+    }
 
     // Recreate state database if needed BEFORE creating sync processor
     // This ensures all system tables exist before any queries are made
@@ -207,6 +212,7 @@ export const makeLeaderThreadLayer = ({
       syncBackend,
       syncProcessor,
       materializeEvent,
+      stateBackend,
       extraIncomingMessagesQueue,
       devtools: devtoolsContext,
       networkStatus,

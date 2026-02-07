@@ -35,7 +35,6 @@ import {
 import * as SyncState from '../sync/syncstate.ts'
 import { sql } from '../util.ts'
 import * as Eventlog from './eventlog.ts'
-import { rollback } from './materialize-event.ts'
 import type { ShutdownChannel } from './shutdown-channel.ts'
 import type { InitialBlockingSyncContext, LeaderSyncProcessor } from './types.ts'
 import { LeaderThreadCtx } from './types.ts'
@@ -652,7 +651,7 @@ type MaterializeEventsBatch = (_: {
 // TODO how to handle errors gracefully
 const materializeEventsBatch: MaterializeEventsBatch = ({ batchItems, deferreds }) =>
   Effect.gen(function* () {
-    const { dbState: db, dbEventlog, materializeEvent } = yield* LeaderThreadCtx
+    const { dbState: db, dbEventlog, stateBackend } = yield* LeaderThreadCtx
 
     // NOTE We always start a transaction to ensure consistency between db and eventlog (even for single-item batches)
     db.execute('BEGIN TRANSACTION', undefined) // Start the transaction
@@ -669,7 +668,7 @@ const materializeEventsBatch: MaterializeEventsBatch = ({ batchItems, deferreds 
     )
 
     for (let i = 0; i < batchItems.length; i++) {
-      const { sessionChangeset, hash } = yield* materializeEvent(batchItems[i]!)
+      const { sessionChangeset, hash } = yield* stateBackend.materializeEvent(batchItems[i]!)
       batchItems[i]!.meta.sessionChangeset = sessionChangeset
       batchItems[i]!.meta.materializerHashLeader = hash
 
@@ -717,7 +716,7 @@ const backgroundBackendPulling = ({
   advancePushHead: (eventNum: EventSequenceNumber.Client.Composite) => void
 }) =>
   Effect.gen(function* () {
-    const { syncBackend, dbState: db, dbEventlog, schema } = yield* LeaderThreadCtx
+    const { syncBackend, dbState: db, dbEventlog, schema, stateBackend } = yield* LeaderThreadCtx
 
     if (syncBackend === undefined) return
 
@@ -783,9 +782,7 @@ const backgroundBackendPulling = ({
           yield* restartBackendPushing(globalRebasedPendingEvents)
 
           if (mergeResult.rollbackEvents.length > 0) {
-            yield* rollback({
-              dbState: db,
-              dbEventlog,
+            yield* stateBackend.rollback({
               eventNumsToRollback: mergeResult.rollbackEvents.map((_) => _.seqNum),
             })
           }

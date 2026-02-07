@@ -69,6 +69,13 @@ export interface InternalState {
     /** Compound hash of all table defs etc */
     readonly hash: number
   }
+  /** SQLite-only backend descriptor (Milestone 1) */
+  readonly backend: {
+    readonly kind: 'sqlite'
+    readonly tables: Map<string, TableDef.Any>
+    readonly migrations: MigrationOptions
+    readonly hash: number
+  }
   readonly materializers: Map<string, Materializer>
 }
 
@@ -95,7 +102,7 @@ export const makeSchema = <TInputSchema extends InputSchema>(
   inputSchema: TInputSchema,
 ): FromInputSchema.DeriveSchema<TInputSchema> => {
   const state = inputSchema.state
-  const tables = inputSchema.state.sqlite.tables
+  const tables = inputSchema.state.backend.tables
 
   for (const tableDef of stateSystemTables) {
     tables.set(tableDef.sqliteDef.name, tableDef)

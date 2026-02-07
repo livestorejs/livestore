@@ -15,6 +15,7 @@ import {
   prepareBindValues,
   QueryBuilderAstSymbol,
   replaceSessionIdSymbol,
+  type SessionStateBackend,
   type StorageMode,
   UnknownError,
 } from '@livestore/common'
@@ -207,11 +208,7 @@ export class Store<TSchema extends LiveStoreSchema = LiveStoreSchema.Any, TConte
     const reactivityGraph = makeReactivityGraph()
 
     const syncSpan = otelOptions.tracer.startSpan('LiveStore:sync', {}, otelOptions.rootSpanContext)
-
-    const syncProcessor = makeClientSessionSyncProcessor({
-      schema,
-      clientSession,
-      runtime: effectContext.runtime,
+    const sessionStateBackend: SessionStateBackend = {
       materializeEvent: Effect.fn('client-session-sync-processor:materialize-event')(
         (eventEncoded, { withChangeset, materializerHashLeader }) =>
           // We need to use `Effect.gen` (even though we're using `Effect.fn`) so that we can pass `this` to the function
@@ -303,6 +300,14 @@ export class Store<TSchema extends LiveStoreSchema = LiveStoreSchema.Any, TConte
       rollback: (changeset) => {
         this[StoreInternalsSymbol].sqliteDbWrapper.rollback(changeset)
       },
+    }
+
+    const syncProcessor = makeClientSessionSyncProcessor({
+      schema,
+      clientSession,
+      runtime: effectContext.runtime,
+      materializeEvent: sessionStateBackend.materializeEvent,
+      rollback: sessionStateBackend.rollback,
       refreshTables: (tables) => {
         const tablesToUpdate = [] as [Ref<null, ReactivityGraphContext, RefreshReason>, null][]
         for (const tableName of tables) {
