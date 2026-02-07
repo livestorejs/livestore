@@ -146,7 +146,9 @@ Vitest.describe('adapter-web', { timeout: testTimeout }, () => {
       // Navigate to the test page
       const url = appUrl('/adapter-web/concurrent-boot')
       yield* Effect.promise(() =>
-        page.goto(`${url}?storeId=adapter-web-single-tab-fallback&sessionId=single-tab-test&clientId=single-tab-client`),
+        page.goto(
+          `${url}?storeId=adapter-web-single-tab-fallback&sessionId=single-tab-test&clientId=single-tab-client`,
+        ),
       )
 
       // Verify the adapter boots successfully in single-tab mode

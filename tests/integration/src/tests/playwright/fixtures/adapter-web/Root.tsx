@@ -83,7 +83,7 @@ export const Root: React.FC = () => {
   return (
     <ErrorBoundary fallback={<div data-webtest="error">Error</div>}>
       <Suspense fallback={<div>Loading...</div>}>
-          <StoreRegistryProvider storeRegistry={storeRegistry}>
+        <StoreRegistryProvider storeRegistry={storeRegistry}>
           <AppWithStore adapter={adapter} storeId={storeId} />
         </StoreRegistryProvider>
       </Suspense>
@@ -93,12 +93,12 @@ export const Root: React.FC = () => {
 
 const AppWithStore: React.FC<{ adapter: ReturnType<typeof makePersistedAdapter>; storeId: string }> = memo(
   ({ adapter, storeId }) => {
-  useStore({
-    storeId,
-    schema,
-    adapter,
-    batchUpdates,
-  })
-  return <div>Adapter Web Test App</div>
+    useStore({
+      storeId,
+      schema,
+      adapter,
+      batchUpdates,
+    })
+    return <div>Adapter Web Test App</div>
   },
 )
