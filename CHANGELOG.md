@@ -310,7 +310,7 @@ See the [S2 sync provider docs](https://dev.docs.livestore.dev/reference/syncing
 
 #### Core Runtime & Storage
 
-- **Event log lookup optimization:** Improved event log lookup performance for large unsynced logs, speeding startup time ([#1011](https://github.com/livestorejs/livestore/pull/1011)).
+- **Event log lookup optimization:** Improved event log lookup performance for large unsynced logs, speeding startup time ([#1012](https://github.com/livestorejs/livestore/pull/1012)).
 
 - **Unknown event handling:** Schemas now ship an `unknownEventHandling` configuration so older clients can warn, ignore, fail, or forward telemetry when they see future events while keeping the eventlog intact ([#353](https://github.com/livestorejs/livestore/issues/353)).
 
