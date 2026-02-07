@@ -825,6 +825,23 @@ export class Store<TSchema extends LiveStoreSchema = LiveStoreSchema.Any, TConte
     this.checkShutdown('commit')
 
     const { events, options } = this.getCommitArgs(firstEventOrTxnFnOrOptions, restEvents)
+    const commitBackendIds = new Set<StateBackendId>(
+      events.map(
+        (event) =>
+          this.schema.state.materializersByEventName.get(event.name)?.backendId ?? this.schema.state.defaultBackendId,
+      ),
+    )
+    if (commitBackendIds.size > 1) {
+      throw new UnknownError({
+        cause: 'Commit batch spans multiple state backends.',
+        note: 'A single commit transaction can only contain events from one backend.',
+        payload: {
+          backendIds: Array.from(commitBackendIds),
+          eventNames: events.map((_) => _.name),
+        },
+      })
+    }
+    const commitBackendId = commitBackendIds.values().next().value ?? this.schema.state.defaultBackendId
 
     Effect.gen(this, function* () {
       const commitsSpan = otel.trace.getSpan(this[StoreInternalsSymbol].otel.commitsSpanContext)
@@ -837,24 +854,6 @@ export class Store<TSchema extends LiveStoreSchema = LiveStoreSchema.Any, TConte
       }
 
       if (events.length === 0) return
-
-      const commitBackendIds = new Set(
-        events.map(
-          (event) =>
-            this.schema.state.materializersByEventName.get(event.name)?.backendId ?? this.schema.state.defaultBackendId,
-        ),
-      )
-      if (commitBackendIds.size > 1) {
-        return yield* UnknownError.make({
-          cause: 'Commit batch spans multiple state backends.',
-          note: 'A single commit transaction can only contain events from one backend.',
-          payload: {
-            backendIds: Array.from(commitBackendIds),
-            eventNames: events.map((_) => _.name),
-          },
-        })
-      }
-      const commitBackendId = commitBackendIds.values().next().value ?? this.schema.state.defaultBackendId
 
       const localRuntime = yield* Effect.runtime()
 
