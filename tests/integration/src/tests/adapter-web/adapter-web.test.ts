@@ -63,8 +63,12 @@ Vitest.describe('adapter-web', { timeout: testTimeout }, () => {
       const url = appUrl('/adapter-web/concurrent-boot')
       yield* Effect.promise(() =>
         Promise.all([
-          page1.goto(`${url}?barrier=1&sessionId=a&clientId=A&disableFastPath=1&bootDelayMs=0`),
-          page2.goto(`${url}?barrier=1&sessionId=b&clientId=B&disableFastPath=1&bootDelayMs=60`),
+          page1.goto(
+            `${url}?storeId=adapter-web-two-tabs&barrier=1&sessionId=a&clientId=A&disableFastPath=1&bootDelayMs=0`,
+          ),
+          page2.goto(
+            `${url}?storeId=adapter-web-two-tabs&barrier=1&sessionId=b&clientId=B&disableFastPath=1&bootDelayMs=60`,
+          ),
         ]),
       )
 
@@ -141,7 +145,9 @@ Vitest.describe('adapter-web', { timeout: testTimeout }, () => {
 
       // Navigate to the test page
       const url = appUrl('/adapter-web/concurrent-boot')
-      yield* Effect.promise(() => page.goto(`${url}?sessionId=single-tab-test&clientId=single-tab-client`))
+      yield* Effect.promise(() =>
+        page.goto(`${url}?storeId=adapter-web-single-tab-fallback&sessionId=single-tab-test&clientId=single-tab-client`),
+      )
 
       // Verify the adapter boots successfully in single-tab mode
       const didBoot = yield* Effect.tryPromise({
@@ -213,8 +219,12 @@ Vitest.describe('adapter-web', { timeout: testTimeout }, () => {
       // Boot both tabs
       yield* Effect.promise(() =>
         Promise.all([
-          page1.goto(`${url}?sessionId=tab1&clientId=client1`),
-          page2.goto(`${url}?sessionId=tab2&clientId=client2`),
+          page1.goto(
+            `${url}?storeId=adapter-web-single-tab-independent&sessionId=tab1&clientId=client1&disableFastPath=1`,
+          ),
+          page2.goto(
+            `${url}?storeId=adapter-web-single-tab-independent&sessionId=tab2&clientId=client2&disableFastPath=1`,
+          ),
         ]),
       )
 
