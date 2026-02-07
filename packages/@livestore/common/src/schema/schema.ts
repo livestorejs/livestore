@@ -177,7 +177,7 @@ export const getEventDef = <TSchema extends LiveStoreSchema>(
     return shouldNeverHappen(`No event definition found for \`${eventName}\`.`)
   }
   const materializerRoute = schema.state.materializersByEventName.get(eventName)
-  const materializer = materializerRoute?.materializer ?? schema.state.materializers.get(eventName)
+  const materializer = materializerRoute?.materializer
   if (materializer === undefined) {
     return shouldNeverHappen(`No materializer found for \`${eventName}\`.`)
   }

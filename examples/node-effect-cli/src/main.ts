@@ -55,7 +55,9 @@ const live = Cli.Command.make(
         syncPayload: Option.getOrUndefined(syncPayload),
       })
 
-      const firstTable = schema.state.backend.tables.values().next().value!
+      const firstTable = Array.from(schema.state.backends.values())
+        .flatMap((backend) => Array.from(backend.tables.values()))
+        .at(0)!
 
       const queries$ = queryDb(firstTable.orderBy('id', 'desc').limit(10))
 

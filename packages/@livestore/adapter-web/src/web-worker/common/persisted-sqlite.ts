@@ -162,13 +162,13 @@ export const cleanupOldStateDbFiles: (options: {
   | PersistedSqliteError,
   Opfs.Opfs
 > = Effect.fn('@livestore/adapter-web:cleanupOldStateDbFiles')(function* ({ vfs, currentSchema, opfsDirectory }) {
-  // Only cleanup for auto migration strategy because:
-  // - Auto strategy: Creates new database files per schema change (e.g., state123.db, state456.db)
-  //   which accumulate over time and can exhaust OPFS file pool capacity
-  // - Manual strategy: Always reuses the same database file (statefixed.db) across schema changes,
-  //   so there are never multiple old files to clean up
-  if (currentSchema.state.backend.migrations.strategy === 'manual') {
-    yield* Effect.logDebug('Skipping state db cleanup - manual migration strategy uses fixed filename')
+  // Cleanup is only relevant for backends using auto migration because those
+  // create schema-hashed file names that accumulate across schema changes.
+  const hasAutoMigrationBackend = Array.from(currentSchema.state.backends.values()).some(
+    (backend) => backend.migrations.strategy === 'auto',
+  )
+  if (hasAutoMigrationBackend === false) {
+    yield* Effect.logDebug('Skipping state db cleanup - all backends use manual migration strategy')
     return
   }
 

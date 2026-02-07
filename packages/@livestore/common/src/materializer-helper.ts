@@ -91,7 +91,7 @@ export const makeMaterializerHash =
       // unknown events (no definition/materializer) so we do not introduce noisy
       // warnings while still returning `Option.none()` to disable hash checks.
       const eventDef = schema.eventsDefsMap.get(event.name)
-      const materializer = schema.state.materializers.get(event.name)
+      const materializer = schema.state.materializersByEventName.get(event.name)?.materializer
       if (eventDef === undefined || materializer === undefined) {
         return Option.none()
       }

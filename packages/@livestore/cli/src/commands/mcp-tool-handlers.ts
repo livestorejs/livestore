@@ -135,7 +135,9 @@ export const schema = Schema.create({
       ...(sessionId !== undefined ? { sessionId } : {}),
     }).pipe(Effect.orDie)
     const eventNames = Array.from(store.schema.eventsDefsMap.keys())
-    const tableNames = Array.from(store.schema.state.backend.tables.keys())
+    const tableNames = Array.from(store.schema.state.backends.entries()).flatMap(([backendId, backend]) =>
+      Array.from(backend.tables.keys()).map((tableName) => `${backendId}:${tableName}`),
+    )
 
     return {
       storeId: store.storeId,
