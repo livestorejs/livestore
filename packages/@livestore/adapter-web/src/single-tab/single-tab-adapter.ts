@@ -348,7 +348,8 @@ export const makeSingleTabAdapter =
         return shouldNeverHappen(`Missing sqlite db for default backend "${schema.state.defaultBackendId}".`)
       }
 
-      const numberOfTables = sqliteDb.select<{ count: number }>(`select count(*) as count from sqlite_master`)[0]?.count ?? 0
+      const numberOfTables =
+        sqliteDb.select<{ count: number }>(`select count(*) as count from sqlite_master`)[0]?.count ?? 0
       if (numberOfTables === 0) {
         const defaultSnapshot = initialResult.snapshotsByBackend.get(schema.state.defaultBackendId)
         return yield* UnknownError.make({

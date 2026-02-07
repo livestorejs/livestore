@@ -274,7 +274,9 @@ Vitest.describe('adapter-web', { timeout: testTimeout }, () => {
       yield* Effect.promise(() => page.waitForSelector('text=Adapter Web Multi Backend App'))
       yield* Effect.promise(() => page.waitForFunction(() => window.__lsMultiBackendTest !== undefined))
 
-      const rowsAfterReload = yield* Effect.promise(() => page.evaluate(() => window.__lsMultiBackendTest?.getBItems() ?? []))
+      const rowsAfterReload = yield* Effect.promise(() =>
+        page.evaluate(() => window.__lsMultiBackendTest?.getBItems() ?? []),
+      )
       expect(rowsAfterReload).toEqual([{ id: 'b-1', title: 'Backend B Item' }])
     }).pipe(withTestCtx(test)),
   )

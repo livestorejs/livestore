@@ -88,14 +88,16 @@ Vitest.describe('multi-backend-node-importsnapshot', () => {
       const readStateDbSnapshot = (backendId: 'a' | 'b') =>
         Effect.promise(() =>
           fs.readFile(
-            path.join(sourceStorePath, `${getStateDbBaseName({ schema, backendId })}@${liveStoreStorageFormatVersion}.db`),
+            path.join(
+              sourceStorePath,
+              `${getStateDbBaseName({ schema, backendId })}@${liveStoreStorageFormatVersion}.db`,
+            ),
           ),
         ).pipe(Effect.map((buffer) => new Uint8Array(buffer)))
 
-      const [snapshotA, snapshotB] = yield* Effect.all(
-        [readStateDbSnapshot('a'), readStateDbSnapshot('b')],
-        { concurrency: 'unbounded' },
-      )
+      const [snapshotA, snapshotB] = yield* Effect.all([readStateDbSnapshot('a'), readStateDbSnapshot('b')], {
+        concurrency: 'unbounded',
+      })
 
       const importedAdapter = makeAdapter({
         storage: {

@@ -1,4 +1,4 @@
-import { makeMockSyncBackend, makeMaterializerHash, type MockSyncBackend, type SqliteDb } from '@livestore/common'
+import { type MockSyncBackend, makeMaterializerHash, makeMockSyncBackend, type SqliteDb } from '@livestore/common'
 import { LeaderThreadCtx, makeLeaderThreadLayer } from '@livestore/common/leader-thread'
 import { EventSequenceNumber, Events, LiveStoreEvent, makeSchema, State } from '@livestore/common/schema'
 import { EventFactory } from '@livestore/common/testing'
@@ -155,7 +155,9 @@ Vitest.describe('multi-backend-hash-routing', () => {
 
       const pullItem = yield* Queue.take(pullQueue)
       const pulledEvents = pullItem.payload.newEvents ?? []
-      const pulledEvent = pulledEvents.find((event: LiveStoreEvent.Client.EncodedWithMeta) => event.name === remoteEvent.name)
+      const pulledEvent = pulledEvents.find(
+        (event: LiveStoreEvent.Client.EncodedWithMeta) => event.name === remoteEvent.name,
+      )
       expect(pulledEvent).toBeDefined()
       expect(pulledEvent!.meta.materializerHashLeader._tag).toBe('Some')
       if (hashFromBackendB._tag !== 'Some') {
