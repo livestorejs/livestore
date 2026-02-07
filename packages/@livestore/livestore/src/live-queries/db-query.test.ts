@@ -1,9 +1,11 @@
+import { makeInMemoryAdapter } from '@livestore/adapter-web'
+import { provideOtel } from '@livestore/common'
 import { Effect, ReadonlyRecord, Schema } from '@livestore/utils/effect'
 import { Vitest } from '@livestore/utils-dev/node-vitest'
 import * as otel from '@opentelemetry/api'
 import { BasicTracerProvider, InMemorySpanExporter, SimpleSpanProcessor } from '@opentelemetry/sdk-trace-base'
 import { assert, expect } from 'vitest'
-
+import { createStore, Events, makeSchema, State } from '../mod.ts'
 import * as RG from '../reactive.ts'
 import { StoreInternalsSymbol } from '../store/store-types.ts'
 import { events, makeTodoMvc, type Todo, tables } from '../utils/tests/fixture.ts'
@@ -472,5 +474,88 @@ Vitest.describe('otel', () => {
         }),
       ),
     ),
+  )
+})
+
+Vitest.describe('multi-backend query identity', () => {
+  Vitest.scopedLive('query hash includes backend identity for identical SQL', () =>
+    Effect.gen(function* () {
+      const tablesA = {
+        todos: State.SQLite.table({
+          name: 'todos',
+          columns: {
+            id: State.SQLite.text({ primaryKey: true }),
+            text: State.SQLite.text(),
+          },
+        }),
+      }
+
+      const tablesB = {
+        todos: State.SQLite.table({
+          name: 'todos',
+          columns: {
+            id: State.SQLite.text({ primaryKey: true }),
+            text: State.SQLite.text(),
+          },
+        }),
+      }
+
+      const eventsA = {
+        aTodoCreated: Events.synced({
+          name: 'v1.ATodoCreated',
+          schema: Schema.Struct({ id: Schema.String, text: Schema.String }),
+        }),
+      }
+
+      const eventsB = {
+        bTodoCreated: Events.synced({
+          name: 'v1.BTodoCreated',
+          schema: Schema.Struct({ id: Schema.String, text: Schema.String }),
+        }),
+      }
+
+      const backendA = State.SQLite.makeBackend({
+        id: 'a',
+        tables: tablesA,
+        materializers: State.SQLite.materializers(eventsA, {
+          'v1.ATodoCreated': ({ id, text }) => tablesA.todos.insert({ id, text }),
+        }),
+      })
+
+      const backendB = State.SQLite.makeBackend({
+        id: 'b',
+        tables: tablesB,
+        materializers: State.SQLite.materializers(eventsB, {
+          'v1.BTodoCreated': ({ id, text }) => tablesB.todos.insert({ id, text }),
+        }),
+      })
+
+      const schema = makeSchema({
+        state: State.SQLite.makeMultiState({ backends: [backendA, backendB] }),
+        events: { ...eventsA, ...eventsB },
+      })
+
+      const store = yield* createStore({
+        schema,
+        storeId: 'multi-backend-query-hash-test',
+        adapter: makeInMemoryAdapter(),
+        debug: { instanceId: 'test' },
+      })
+
+      const todosA$ = queryDb(tablesA.todos.orderBy('id', 'asc'))
+      const todosB$ = queryDb(tablesB.todos.orderBy('id', 'asc'))
+
+      expect(todosA$.hash).not.toBe(todosB$.hash)
+      expect(store.query(todosA$)).toEqual([])
+      expect(store.query(todosB$)).toEqual([])
+
+      store.commit(eventsA.aTodoCreated({ id: 'a-1', text: 'A one' }))
+      expect(store.query(todosA$)).toEqual([{ id: 'a-1', text: 'A one' }])
+      expect(store.query(todosB$)).toEqual([])
+
+      store.commit(eventsB.bTodoCreated({ id: 'b-1', text: 'B one' }))
+      expect(store.query(todosA$)).toEqual([{ id: 'a-1', text: 'A one' }])
+      expect(store.query(todosB$)).toEqual([{ id: 'b-1', text: 'B one' }])
+    }).pipe(Effect.scoped, provideOtel({})),
   )
 })

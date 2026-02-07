@@ -155,16 +155,33 @@ const bindValuesToDepKey = (bindValues: Bindable | undefined): DepKey => {
     .join(',')
 }
 
+const backendToDepKey = (backendId: StateBackendId | undefined): DepKey =>
+  backendId === undefined ? [] : [`backend:${backendId}`]
+
+const depKeyToArray = (depKey: DepKey): ReadonlyArray<string | number | undefined | null> =>
+  typeof depKey === 'string' || typeof depKey === 'number' ? [depKey] : depKey
+
 const getQueryStringAndExtraDeps = (
   queryInput: QueryInput<any, any> | ((get: GetAtomResult) => QueryInput<any, any>),
 ): { queryString: string; extraDeps: DepKey } => {
   if (isQueryBuilder(queryInput)) {
     const { query, bindValues } = queryInput.asSql()
-    return { queryString: query, extraDeps: bindValuesToDepKey(bindValues) }
+    const ast = queryInput[QueryBuilderAstSymbol]
+    const backendId = State.SQLite.getTableBackendId(ast.tableDef)
+    return {
+      queryString: query,
+      extraDeps: [...depKeyToArray(bindValuesToDepKey(bindValues)), ...depKeyToArray(backendToDepKey(backendId))],
+    }
   }
 
   if (isQueryInputRaw(queryInput)) {
-    return { queryString: queryInput.query, extraDeps: bindValuesToDepKey(queryInput.bindValues) }
+    return {
+      queryString: queryInput.query,
+      extraDeps: [
+        ...depKeyToArray(bindValuesToDepKey(queryInput.bindValues)),
+        ...depKeyToArray(backendToDepKey(queryInput.backendId)),
+      ],
+    }
   }
 
   if (typeof queryInput === 'function') {
