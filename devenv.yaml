@@ -16,6 +16,3 @@ inputs:
     inputs:
       nixpkgs:
         follows: nixpkgs
-  overeng-beads-public:
-    url: github:overengineeringstudio/overeng-beads-public
-    flake: true
