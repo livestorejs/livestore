@@ -21,5 +21,11 @@ export default oxfmtConfig({
     'tests/integration/node_modules/**',
     // Exclude MDX files — oxfmt has idempotency issues with MDX formatting
     '**/*.mdx',
+    // Phase 1: Skip library source files to avoid biome↔oxfmt formatting flip-flop.
+    // These files are biome-formatted to keep the PR #996 diff minimal.
+    // TODO(oep-lp9): Remove these ignores when completing the oxfmt migration.
+    'packages/@livestore/*/src/**',
+    'packages/@livestore/*/test/**',
+    'tests/**',
   ],
 })

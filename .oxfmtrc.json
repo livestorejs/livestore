@@ -30,6 +30,9 @@
     "**/.pnpm/**",
     "**/.pnpm-store/**",
     "tests/integration/node_modules/**",
-    "**/*.mdx"
+    "**/*.mdx",
+    "packages/@livestore/*/src/**",
+    "packages/@livestore/*/test/**",
+    "tests/**"
   ]
 }
