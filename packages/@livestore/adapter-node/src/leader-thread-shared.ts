@@ -163,9 +163,44 @@ export const makeLeaderThread = ({
       return shouldNeverHappen(`Missing default backend state db "${defaultBackendId}".`)
     }
 
-    if (storage.type === 'in-memory' && storage.importSnapshot !== undefined) {
-      dbState.import(storage.importSnapshot)
-      const _migrationsReport = yield* migrateDbForBackend({ db: dbState, schema, backendId: defaultBackendId })
+    if (storage.type === 'in-memory') {
+      if (storage.importSnapshot !== undefined && storage.importSnapshotsByBackend !== undefined) {
+        return yield* UnknownError.make({
+          cause: 'Cannot set both `importSnapshot` and `importSnapshotsByBackend` for in-memory storage.',
+        })
+      }
+
+      if (backendIds.length > 1 && storage.importSnapshot !== undefined) {
+        return yield* UnknownError.make({
+          cause:
+            'Legacy `importSnapshot` is only supported for single-backend schemas. Use `importSnapshotsByBackend` for multi-backend schemas.',
+          payload: {
+            backendIds,
+            defaultBackendId,
+          },
+        })
+      }
+
+      const snapshotsByBackend =
+        storage.importSnapshotsByBackend !== undefined
+          ? new Map(storage.importSnapshotsByBackend)
+          : storage.importSnapshot !== undefined
+            ? new Map<StateBackendId, Uint8Array<ArrayBuffer>>([[defaultBackendId, storage.importSnapshot]])
+            : undefined
+
+      for (const backendId of backendIds) {
+        const backendDbState = dbStates.get(backendId)
+        if (backendDbState === undefined) {
+          return shouldNeverHappen(`Missing state db for backend "${backendId}".`)
+        }
+
+        const snapshot = snapshotsByBackend?.get(backendId)
+        if (snapshot !== undefined) {
+          backendDbState.import(snapshot)
+        } else {
+          const _migrationsReport = yield* migrateDbForBackend({ db: backendDbState, schema, backendId })
+        }
+      }
     }
 
     const devtoolsOptions = yield* makeDevtoolsOptions({ devtools, dbState, dbEventlog, storeId, clientId })

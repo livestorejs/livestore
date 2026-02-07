@@ -1,22 +1,16 @@
 import path from 'node:path'
+import { fileURLToPath } from 'node:url'
 import { makeAdapter } from '@livestore/adapter-node'
 import { Events, makeSchema, State } from '@livestore/common/schema'
 import { createStore } from '@livestore/livestore'
-import { IS_CI, shouldNeverHappen } from '@livestore/utils'
+import { IS_CI } from '@livestore/utils'
 import { Effect, Schema } from '@livestore/utils/effect'
 import { nanoid } from '@livestore/utils/nanoid'
 import { Vitest } from '@livestore/utils-dev/node-vitest'
 import { expect } from 'vitest'
 
-const TMP_STORE_DIR = path.join(
-  process.env.WORKSPACE_ROOT ?? shouldNeverHappen('WORKSPACE_ROOT is not set'),
-  'tests',
-  'integration',
-  'src',
-  'tests',
-  'node-misc',
-  'tmp',
-)
+const testFileDir = path.dirname(fileURLToPath(import.meta.url))
+const TMP_STORE_DIR = path.resolve(testFileDir, '..', 'tmp')
 
 const withTestCtx = Vitest.makeWithTestCtx({ timeout: IS_CI ? 600_000 : 900_000 })
 

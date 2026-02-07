@@ -20,6 +20,10 @@ export const WorkerArgv = Schema.parseJson(
   }),
 )
 
+export const SnapshotsByBackendWire = Schema.Array(
+  Schema.Tuple(Schema.String, Schema.Uint8Array as any as Schema.Schema<Uint8Array<ArrayBuffer>>),
+)
+
 export const StorageTypeInMemory = Schema.Struct({
   type: Schema.Literal('in-memory'),
   /**
@@ -27,6 +31,7 @@ export const StorageTypeInMemory = Schema.Struct({
    * Should be mostly used for testing.
    */
   importSnapshot: Schema.optional(Schema.Uint8Array as any as Schema.Schema<Uint8Array<ArrayBuffer>>),
+  importSnapshotsByBackend: Schema.optional(SnapshotsByBackendWire),
 })
 
 export type StorageTypeInMemory = typeof StorageTypeInMemory.Type

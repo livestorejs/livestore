@@ -253,8 +253,10 @@ const makeWorkerRunnerInner = ({ schema, sync: syncOptions, syncPayloadSchema }:
 
         // return cachedSnapshot ?? workerCtx.db.export()
 
-        const snapshot = workerCtx.dbState.export()
-        return { snapshot, migrationsReport: workerCtx.initialState.migrationsReport }
+        const snapshotsByBackend = Array.from(workerCtx.dbStates.entries(), ([backendId, dbState]) => {
+          return [backendId, dbState.export()] as const
+        })
+        return { snapshotsByBackend, migrationsReport: workerCtx.initialState.migrationsReport }
       }).pipe(UnknownError.mapToUnknownError, Effect.withSpan('@livestore/adapter-web:worker:GetRecreateSnapshot')),
     PullStream: ({ cursor }) =>
       Effect.gen(function* () {

@@ -184,6 +184,9 @@ export const getEventDef = <TSchema extends LiveStoreSchema>(
   return { eventDef, materializer }
 }
 
+export const resolveBackendIdForEventName = (schema: LiveStoreSchema, eventName: string): StateBackendId =>
+  schema.state.materializersByEventName.get(eventName)?.backendId ?? schema.state.defaultBackendId
+
 const DEFAULT_BACKEND_ID: StateBackendId = 'default'
 
 const normalizeInternalState = (state: InternalState): InternalState => {

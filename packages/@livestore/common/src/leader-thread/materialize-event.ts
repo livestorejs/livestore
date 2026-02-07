@@ -5,7 +5,13 @@ import { MaterializeError, MaterializerHashMismatchError, type SqliteDb } from '
 import { getExecStatementsFromMaterializer, hashMaterializerResults } from '../materializer-helper.ts'
 import { logDeprecationWarnings } from '../schema/EventDef/deprecated.ts'
 import type { LiveStoreSchema } from '../schema/mod.ts'
-import { EventSequenceNumber, resolveEventDef, SystemTables, UNKNOWN_EVENT_SCHEMA_HASH } from '../schema/mod.ts'
+import {
+  EventSequenceNumber,
+  resolveBackendIdForEventName,
+  resolveEventDef,
+  SystemTables,
+  UNKNOWN_EVENT_SCHEMA_HASH,
+} from '../schema/mod.ts'
 import { insertRow } from '../sql-queries/index.ts'
 import { sql } from '../util.ts'
 import { execSql, execSqlPrepared } from './connection.ts'
@@ -76,10 +82,10 @@ export const makeMaterializeEvent = ({
         }
 
         const { eventDef, materializer } = resolution
-        const backendId = schema.state.materializersByEventName.get(eventEncoded.name)?.backendId
-        const dbState = dbStates_.get(backendId ?? schema.state.defaultBackendId)
+        const backendId = resolveBackendIdForEventName(schema, eventEncoded.name)
+        const dbState = dbStates_.get(backendId)
         if (dbState === undefined) {
-          return shouldNeverHappen(`Missing state db for backend "${backendId ?? schema.state.defaultBackendId}".`)
+          return shouldNeverHappen(`Missing state db for backend "${backendId}".`)
         }
 
         // Log deprecation warnings for deprecated events/fields

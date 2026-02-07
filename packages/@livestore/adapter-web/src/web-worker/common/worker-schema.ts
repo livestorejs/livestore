@@ -45,6 +45,8 @@ export type StorageTypeEncoded = typeof StorageType.Encoded
 export const SyncBackendOptions = Schema.Record({ key: Schema.String, value: Schema.JsonValue })
 export type SyncBackendOptions = Record<string, Schema.JsonValue>
 
+export const SnapshotsByBackendWire = Schema.Array(Schema.Tuple(Schema.String, Transferable.Uint8Array))
+
 export class LeaderWorkerOuterInitialMessage extends Schema.TaggedRequest<LeaderWorkerOuterInitialMessage>()(
   'InitialMessage',
   {
@@ -132,7 +134,7 @@ export class LeaderWorkerInnerGetRecreateSnapshot extends Schema.TaggedRequest<L
   {
     payload: {},
     success: Schema.Struct({
-      snapshot: Transferable.Uint8Array as Schema.Schema<Uint8Array<ArrayBuffer>>,
+      snapshotsByBackend: SnapshotsByBackendWire,
       migrationsReport: MigrationsReport,
     }),
     failure: UnknownError,

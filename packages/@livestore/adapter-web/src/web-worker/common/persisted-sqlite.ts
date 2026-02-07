@@ -6,7 +6,7 @@ import {
   type WebDatabaseMetadataOpfs,
 } from '@livestore/sqlite-wasm/browser'
 import { isDevEnv } from '@livestore/utils'
-import { Chunk, Effect, Option, Order, Schedule, Schema, Stream } from '@livestore/utils/effect'
+import { Chunk, Effect, Order, Schedule, Schema, Stream } from '@livestore/utils/effect'
 import { Opfs, type WebError } from '@livestore/utils/effect/browser'
 import type * as WorkerSchema from './worker-schema.ts'
 
@@ -14,6 +14,31 @@ export class PersistedSqliteError extends Schema.TaggedError<PersistedSqliteErro
   message: Schema.String,
   cause: Schema.optional(Schema.Defect),
 }) {}
+
+const readPersistedStateDbFilesFromClientSession = Effect.fn(
+  '@livestore/adapter-web:readPersistedStateDbFilesFromClientSession',
+)(function* ({ storageOptions, storeId }: { storageOptions: WorkerSchema.StorageType; storeId: string }) {
+  const accessHandlePoolDirString = yield* sanitizeOpfsDir(storageOptions.directory, storeId)
+  const accessHandlePoolDirHandle = yield* Opfs.getDirectoryHandleByPath(accessHandlePoolDirString)
+  const handlesStream = yield* Opfs.Opfs.values(accessHandlePoolDirHandle)
+
+  const filesByName = yield* handlesStream.pipe(
+    Stream.filter((handle): handle is FileSystemFileHandle => handle.kind === 'file'),
+    Stream.mapEffect(
+      (fileHandle) =>
+        Effect.gen(function* () {
+          const file = yield* Opfs.Opfs.getFile(fileHandle)
+          const fileName = yield* Effect.promise(() => decodeAccessHandlePoolFilename(file))
+          return [fileName, file] as const
+        }),
+      { concurrency: 'unbounded' },
+    ),
+    Stream.runCollect,
+    Effect.map((entries) => new Map(Chunk.toReadonlyArray(entries))),
+  )
+
+  return { accessHandlePoolDirString, filesByName }
+})
 
 export const readPersistedStateDbFromClientSession: (args: {
   storageOptions: WorkerSchema.StorageType
@@ -33,38 +58,20 @@ export const readPersistedStateDbFromClientSession: (args: {
   Opfs.Opfs
 > = Effect.fn('@livestore/adapter-web:readPersistedStateDbFromClientSession')(
   function* ({ storageOptions, storeId, schema }) {
-    const accessHandlePoolDirString = yield* sanitizeOpfsDir(storageOptions.directory, storeId)
-
-    const accessHandlePoolDirHandle = yield* Opfs.getDirectoryHandleByPath(accessHandlePoolDirString)
+    const { accessHandlePoolDirString, filesByName } = yield* readPersistedStateDbFilesFromClientSession({
+      storageOptions,
+      storeId,
+    })
 
     const stateDbFileName = `/${getStateDbFileName(schema)}`
-
-    const handlesStream = yield* Opfs.Opfs.values(accessHandlePoolDirHandle)
-
-    const stateDbFileOption = yield* handlesStream.pipe(
-      Stream.filter((handle): handle is FileSystemFileHandle => handle.kind === 'file'),
-      Stream.mapEffect(
-        (fileHandle) =>
-          Effect.gen(function* () {
-            const file = yield* Opfs.Opfs.getFile(fileHandle)
-            const fileName = yield* Effect.promise(() => decodeAccessHandlePoolFilename(file))
-            return { file, fileName }
-          }),
-        { concurrency: 'unbounded' },
-      ),
-      Stream.find(({ fileName }) => fileName === stateDbFileName),
-      Stream.runHead,
-    )
-
-    if (Option.isNone(stateDbFileOption)) {
+    const stateDbFile = filesByName.get(stateDbFileName)
+    if (stateDbFile === undefined) {
       return yield* new PersistedSqliteError({
         message: `State database file not found in client session (expected '${stateDbFileName}' in '${accessHandlePoolDirString}')`,
       })
     }
 
-    const stateDbBuffer = yield* Effect.promise(() =>
-      stateDbFileOption.value.file.slice(HEADER_OFFSET_DATA).arrayBuffer(),
-    )
+    const stateDbBuffer = yield* Effect.promise(() => stateDbFile.slice(HEADER_OFFSET_DATA).arrayBuffer())
 
     // Given the access handle pool always eagerly creates files with empty non-header data,
     // we want to return undefined if the file exists but is empty
@@ -81,6 +88,60 @@ export const readPersistedStateDbFromClientSession: (args: {
     label: '@livestore/adapter-web:readPersistedStateDbFromClientSession',
   }),
   Effect.withPerformanceMeasure('@livestore/adapter-web:readPersistedStateDbFromClientSession'),
+)
+
+export const readPersistedStateDbsFromClientSession: (args: {
+  storageOptions: WorkerSchema.StorageType
+  storeId: string
+  schema: LiveStoreSchema
+}) => Effect.Effect<
+  Map<StateBackendId, Uint8Array<ArrayBuffer>>,
+  // All the following errors could actually happen:
+  | PersistedSqliteError
+  | WebError.UnknownError
+  | WebError.TypeError
+  | WebError.NotFoundError
+  | WebError.NotAllowedError
+  | WebError.TypeMismatchError
+  | WebError.SecurityError
+  | Opfs.OpfsError,
+  Opfs.Opfs
+> = Effect.fn('@livestore/adapter-web:readPersistedStateDbsFromClientSession')(
+  function* ({ storageOptions, storeId, schema }) {
+    const { accessHandlePoolDirString, filesByName } = yield* readPersistedStateDbFilesFromClientSession({
+      storageOptions,
+      storeId,
+    })
+
+    const snapshotsByBackend = new Map<StateBackendId, Uint8Array<ArrayBuffer>>()
+
+    for (const backendId of schema.state.backends.keys()) {
+      const stateDbFileName = `/${getStateDbFileName(schema, backendId)}`
+      const stateDbFile = filesByName.get(stateDbFileName)
+
+      if (stateDbFile === undefined) {
+        return yield* new PersistedSqliteError({
+          message: `State database file not found in client session (expected '${stateDbFileName}' in '${accessHandlePoolDirString}')`,
+        })
+      }
+
+      const stateDbBuffer = yield* Effect.promise(() => stateDbFile.slice(HEADER_OFFSET_DATA).arrayBuffer())
+      if (stateDbBuffer.byteLength === 0) {
+        return yield* new PersistedSqliteError({
+          message: `State database file is empty in client session (expected '${stateDbFileName}' in '${accessHandlePoolDirString}')`,
+        })
+      }
+
+      snapshotsByBackend.set(backendId, new Uint8Array(stateDbBuffer))
+    }
+
+    return snapshotsByBackend
+  },
+  Effect.logWarnIfTakesLongerThan({
+    duration: 1000,
+    label: '@livestore/adapter-web:readPersistedStateDbsFromClientSession',
+  }),
+  Effect.withPerformanceMeasure('@livestore/adapter-web:readPersistedStateDbsFromClientSession'),
 )
 
 export const resetPersistedDataFromClientSession = Effect.fn(

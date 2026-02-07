@@ -235,4 +235,47 @@ Vitest.describe('adapter-web', { timeout: testTimeout }, () => {
       // We're just verifying they both boot; cross-tab sync is intentionally disabled
     }).pipe(withTestCtx(test)),
   )
+
+  Vitest.scopedLive('persists non-default backend data across reload', (test) =>
+    Effect.gen(function* () {
+      const port = yield* getFreePort.pipe(Effect.map(String))
+
+      yield* cmd(`vite --config ${viteConfigRel} dev --port ${port}`, {
+        env: {
+          TEST_LIVESTORE_SCHEMA_PATH_JSON: undefined,
+          LSD_DEVTOOLS_LOCAL_PREVIEW: undefined,
+        },
+      }).pipe(Effect.provide(CurrentWorkingDirectory.fromPath(integrationRoot)), Effect.forkScoped)
+
+      const appUrl = (pathname: string) => `http://localhost:${port}${pathname}`
+      const httpClient = yield* HttpClient.HttpClient.pipe(Effect.andThen(HttpClient.filterStatusOk))
+      yield* httpClient.head(appUrl('/')).pipe(
+        Effect.retry(Schedule.exponentialBackoff10Sec),
+        Effect.mapError((error) => new Error('Dev server did not start in time', { cause: error })),
+      )
+
+      const { browserContext } = yield* BrowserContext
+      const page = yield* Effect.promise(() => browserContext.newPage())
+
+      const url = appUrl('/adapter-web/multi-backend-persistence')
+      yield* Effect.promise(() => page.goto(`${url}?reset=1&sessionId=mb-session&clientId=mb-client`))
+      yield* Effect.promise(() => page.waitForSelector('text=Adapter Web Multi Backend App'))
+      yield* Effect.promise(() => page.waitForFunction(() => window.__lsMultiBackendTest !== undefined))
+
+      const firstRows = yield* Effect.promise(() =>
+        page.evaluate(() => {
+          window.__lsMultiBackendTest?.commitBItem('b-1', 'Backend B Item')
+          return window.__lsMultiBackendTest?.getBItems() ?? []
+        }),
+      )
+      expect(firstRows).toEqual([{ id: 'b-1', title: 'Backend B Item' }])
+
+      yield* Effect.promise(() => page.goto(`${url}?sessionId=mb-session&clientId=mb-client`))
+      yield* Effect.promise(() => page.waitForSelector('text=Adapter Web Multi Backend App'))
+      yield* Effect.promise(() => page.waitForFunction(() => window.__lsMultiBackendTest !== undefined))
+
+      const rowsAfterReload = yield* Effect.promise(() => page.evaluate(() => window.__lsMultiBackendTest?.getBItems() ?? []))
+      expect(rowsAfterReload).toEqual([{ id: 'b-1', title: 'Backend B Item' }])
+    }).pipe(withTestCtx(test)),
+  )
 })

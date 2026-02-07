@@ -24,6 +24,7 @@ import type { LiveStoreSchema } from '@livestore/common/schema'
 import {
   EventSequenceNumber,
   LiveStoreEvent,
+  resolveBackendIdForEventName,
   resolveEventDef,
   State,
   type StateBackendId,
@@ -235,7 +236,7 @@ export class Store<TSchema extends LiveStoreSchema = LiveStoreSchema.Any, TConte
     }
 
     const resolveBackendIdForEvent = (eventName: string): StateBackendId =>
-      schema.state.materializersByEventName.get(eventName)?.backendId ?? schema.state.defaultBackendId
+      resolveBackendIdForEventName(schema, eventName)
 
     const syncSpan = otelOptions.tracer.startSpan('LiveStore:sync', {}, otelOptions.rootSpanContext)
     const sessionStateBackend: SessionStateBackend = {
@@ -826,10 +827,7 @@ export class Store<TSchema extends LiveStoreSchema = LiveStoreSchema.Any, TConte
 
     const { events, options } = this.getCommitArgs(firstEventOrTxnFnOrOptions, restEvents)
     const commitBackendIds = new Set<StateBackendId>(
-      events.map(
-        (event) =>
-          this.schema.state.materializersByEventName.get(event.name)?.backendId ?? this.schema.state.defaultBackendId,
-      ),
+      events.map((event) => resolveBackendIdForEventName(this.schema, event.name)),
     )
     if (commitBackendIds.size > 1) {
       throw new UnknownError({

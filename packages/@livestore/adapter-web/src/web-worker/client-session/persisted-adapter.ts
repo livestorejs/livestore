@@ -1,4 +1,4 @@
-import type { Adapter, BootWarningReason, ClientSession, LockStatus } from '@livestore/common'
+import type { Adapter, BootWarningReason, ClientSession, LockStatus, SqliteDb } from '@livestore/common'
 import {
   IntentionalShutdownCause,
   liveStoreVersion,
@@ -34,7 +34,7 @@ import { BrowserWorker, Opfs, WebError, WebLock } from '@livestore/utils/effect/
 import { nanoid } from '@livestore/utils/nanoid'
 import { makeSingleTabAdapter } from '../../single-tab/single-tab-adapter.ts'
 import {
-  readPersistedStateDbFromClientSession,
+  readPersistedStateDbsFromClientSession,
   resetPersistedDataFromClientSession,
 } from '../common/persisted-sqlite.ts'
 import { makeShutdownChannel } from '../common/shutdown-channel.ts'
@@ -235,7 +235,7 @@ export const makePersistedAdapter =
       const dataFromFile =
         options.experimental?.disableFastPath === true || opfsWarning !== undefined
           ? undefined
-          : yield* readPersistedStateDbFromClientSession({ storageOptions, storeId, schema }).pipe(
+          : yield* readPersistedStateDbsFromClientSession({ storageOptions, storeId, schema }).pipe(
               Effect.tapError((error) =>
                 Effect.logDebug('[@livestore/adapter-web:client-session] Could not read persisted state db', error, {
                   storeId,
@@ -443,28 +443,48 @@ export const makePersistedAdapter =
       const initialResult =
         dataFromFile === undefined
           ? yield* runInWorker(new WorkerSchema.LeaderWorkerInnerGetRecreateSnapshot()).pipe(
-              Effect.map(({ snapshot, migrationsReport }) => ({
+              Effect.map(({ snapshotsByBackend, migrationsReport }) => ({
                 _tag: 'from-leader-worker' as const,
-                snapshot,
+                snapshotsByBackend: new Map<StateBackendId, Uint8Array<ArrayBufferLike>>(snapshotsByBackend),
                 migrationsReport,
               })),
             )
-          : { _tag: 'fast-path' as const, snapshot: dataFromFile }
+          : { _tag: 'fast-path' as const, snapshotsByBackend: dataFromFile }
 
       const migrationsReport =
         initialResult._tag === 'from-leader-worker' ? initialResult.migrationsReport : { migrations: [] }
 
       const makeSqliteDb = sqliteDbFactory({ sqlite3 })
-      const sqliteDb = yield* makeSqliteDb({ _tag: 'in-memory' })
+      const sqliteDbs = yield* Effect.gen(function* () {
+        const dbs = new Map<StateBackendId, SqliteDb>()
 
-      sqliteDb.import(initialResult.snapshot)
+        for (const backendId of schema.state.backends.keys()) {
+          const db = yield* makeSqliteDb({ _tag: 'in-memory' })
+          const snapshot = initialResult.snapshotsByBackend.get(backendId)
 
-      const numberOfTables =
-        sqliteDb.select<{ count: number }>(`select count(*) as count from sqlite_master`)[0]?.count ?? 0
+          if (snapshot !== undefined) {
+            db.import(new Uint8Array(snapshot))
+          } else {
+            const _migrationsReport = yield* migrateDbForBackend({ db, schema, backendId })
+          }
+
+          dbs.set(backendId, db)
+        }
+
+        return dbs
+      })
+
+      const sqliteDb = sqliteDbs.get(schema.state.defaultBackendId)
+      if (sqliteDb === undefined) {
+        return shouldNeverHappen(`Missing sqlite db for default backend "${schema.state.defaultBackendId}".`)
+      }
+
+      const numberOfTables = sqliteDb.select<{ count: number }>(`select count(*) as count from sqlite_master`)[0]?.count ?? 0
       if (numberOfTables === 0) {
+        const defaultSnapshot = initialResult.snapshotsByBackend.get(schema.state.defaultBackendId)
         return yield* UnknownError.make({
           cause: `Encountered empty or corrupted database`,
-          payload: { snapshotByteLength: initialResult.snapshot.byteLength, storageOptions: options.storage },
+          payload: { snapshotByteLength: defaultSnapshot?.byteLength ?? 0, storageOptions: options.storage },
         })
       }
 
@@ -488,24 +508,9 @@ export const makePersistedAdapter =
           })
         : EventSequenceNumber.Client.ROOT
 
-      // console.debug('[@livestore/adapter-web:client-session] initialLeaderHead', initialLeaderHead)
-
-      sqliteDb.debug.head = initialLeaderHead
-
-      const sqliteDbs = yield* Effect.gen(function* () {
-        const dbs = new Map<StateBackendId, typeof sqliteDb>([[schema.state.defaultBackendId, sqliteDb]])
-
-        for (const backendId of schema.state.backends.keys()) {
-          if (backendId === schema.state.defaultBackendId) continue
-
-          const backendDb = yield* makeSqliteDb({ _tag: 'in-memory' })
-          const _migrationsReport = yield* migrateDbForBackend({ db: backendDb, schema, backendId })
-          backendDb.debug.head = initialLeaderHead
-          dbs.set(backendId, backendDb)
-        }
-
-        return dbs
-      })
+      for (const db of sqliteDbs.values()) {
+        db.debug.head = initialLeaderHead
+      }
 
       yield* Effect.addFinalizer((ex) =>
         Effect.gen(function* () {

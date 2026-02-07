@@ -4,6 +4,7 @@ import type { SqliteDb } from '../adapter-types.ts'
 import * as EventSequenceNumber from '../schema/EventSequenceNumber/mod.ts'
 import * as LiveStoreEvent from '../schema/LiveStoreEvent/mod.ts'
 import type { LiveStoreSchema } from '../schema/mod.ts'
+import { resolveBackendIdForEventName } from '../schema/mod.ts'
 import {
   EVENTLOG_META_TABLE,
   eventlogMetaTable,
@@ -67,9 +68,8 @@ export const getEventsSince = ({
   return pendingEvents
     .map((eventlogEvent) => {
       const changesetKey = `${eventlogEvent.seqNumGlobal}:${eventlogEvent.seqNumClient}`
-      const backendId = schema.state.materializersByEventName.get(eventlogEvent.name)?.backendId
-      const sessionChangeset =
-        backendId === undefined ? undefined : sessionChangesetMapsByBackend.get(backendId)?.get(changesetKey)
+      const backendId = resolveBackendIdForEventName(schema, eventlogEvent.name)
+      const sessionChangeset = sessionChangesetMapsByBackend.get(backendId)?.get(changesetKey)
       return LiveStoreEvent.Client.EncodedWithMeta.make({
         name: eventlogEvent.name,
         args: eventlogEvent.argsJson,

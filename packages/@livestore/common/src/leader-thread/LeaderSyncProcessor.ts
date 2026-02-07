@@ -23,7 +23,13 @@ import { type MaterializeError, type SqliteDb, UnknownError } from '../adapter-t
 import { IntentionalShutdownCause } from '../errors.ts'
 import { makeMaterializerHash } from '../materializer-helper.ts'
 import type { LiveStoreSchema } from '../schema/mod.ts'
-import { EventSequenceNumber, LiveStoreEvent, resolveEventDef, SystemTables } from '../schema/mod.ts'
+import {
+  EventSequenceNumber,
+  LiveStoreEvent,
+  resolveBackendIdForEventName,
+  resolveEventDef,
+  SystemTables,
+} from '../schema/mod.ts'
 import { EVENTLOG_META_TABLE, SYNC_STATUS_TABLE } from '../schema/state/sqlite/system-tables/eventlog-tables.ts'
 import {
   type InvalidPullError,
@@ -658,7 +664,7 @@ const materializeEventsBatch: MaterializeEventsBatch = ({ batchItems, deferreds 
     if (batchItems.length === 0) return
 
     const getBackendId = (event: LiveStoreEvent.Client.EncodedWithMeta) =>
-      schema.state.materializersByEventName.get(event.name)?.backendId ?? schema.state.defaultBackendId
+      resolveBackendIdForEventName(schema, event.name)
 
     let runStart = 0
 
@@ -746,7 +752,7 @@ const backgroundBackendPulling = ({
   advancePushHead: (eventNum: EventSequenceNumber.Client.Composite) => void
 }) =>
   Effect.gen(function* () {
-    const { syncBackend, dbState, dbEventlog, schema, stateBackends } = yield* LeaderThreadCtx
+    const { syncBackend, dbEventlog, schema, stateBackends } = yield* LeaderThreadCtx
 
     if (syncBackend === undefined) return
 
@@ -814,8 +820,7 @@ const backgroundBackendPulling = ({
           if (mergeResult.rollbackEvents.length > 0) {
             const rollbackSeqNumsByBackend = new Map<string, Array<EventSequenceNumber.Client.Composite>>()
             for (const rollbackEvent of mergeResult.rollbackEvents) {
-              const backendId = schema.state.materializersByEventName.get(rollbackEvent.name)?.backendId
-              if (backendId === undefined) continue
+              const backendId = resolveBackendIdForEventName(schema, rollbackEvent.name)
               if (rollbackSeqNumsByBackend.has(backendId)) {
                 rollbackSeqNumsByBackend.get(backendId)!.push(rollbackEvent.seqNum)
               } else {
@@ -896,7 +901,22 @@ const backgroundBackendPulling = ({
     if (syncState === undefined) return shouldNeverHappen('Not initialized')
     const cursorInfo = yield* Eventlog.getSyncBackendCursorInfo({ remoteHead: syncState.upstreamHead.global })
 
-    const hashMaterializerResult = makeMaterializerHash({ schema, dbState })
+    const hashMaterializersByBackend = new Map<string, ReturnType<typeof makeMaterializerHash>>()
+    const getHashMaterializerForBackend = (backendId: string) => {
+      const cached = hashMaterializersByBackend.get(backendId)
+      if (cached !== undefined) {
+        return cached
+      }
+
+      const backendDbState = dbStates.get(backendId)
+      if (backendDbState === undefined) {
+        return shouldNeverHappen(`Missing state db for backend "${backendId}".`)
+      }
+
+      const hasher = makeMaterializerHash({ schema, dbState: backendDbState })
+      hashMaterializersByBackend.set(backendId, hasher)
+      return hasher
+    }
 
     yield* syncBackend.pull(cursorInfo, { live: livePull }).pipe(
       // TODO only take from queue while connected
@@ -913,15 +933,19 @@ const backgroundBackendPulling = ({
           // TODO remove when there's a better way to handle this in stream above
           yield* SubscriptionRef.waitUntil(syncBackend.isConnected, (isConnected) => isConnected === true)
           yield* onNewPullChunk(
-            batch.map((_) =>
-              LiveStoreEvent.Client.EncodedWithMeta.fromGlobal(_.eventEncoded, {
+            batch.map((_) => {
+              const clientEncoded = LiveStoreEvent.Global.toClientEncoded(_.eventEncoded)
+              const backendId = resolveBackendIdForEventName(schema, clientEncoded.name)
+              const hashMaterializerResult = getHashMaterializerForBackend(backendId)
+
+              return LiveStoreEvent.Client.EncodedWithMeta.fromGlobal(_.eventEncoded, {
                 syncMetadata: _.metadata,
                 // TODO we can't really know the materializer result here yet beyond the first event batch item as we need to materialize it one by one first
                 // This is a bug and needs to be fixed https://github.com/livestorejs/livestore/issues/503#issuecomment-3114533165
-                materializerHashLeader: hashMaterializerResult(LiveStoreEvent.Global.toClientEncoded(_.eventEncoded)),
+                materializerHashLeader: hashMaterializerResult(clientEncoded),
                 materializerHashSession: Option.none(),
-              }),
-            ),
+              })
+            }),
             pageInfo,
           )
           yield* initialBlockingSyncContext.update({ processed: batch.length, pageInfo })
