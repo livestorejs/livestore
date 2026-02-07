@@ -13,6 +13,8 @@ export const LiveStoreSchemaSymbol = Symbol.for('livestore.LiveStoreSchema')
 export type LiveStoreSchemaSymbol = typeof LiveStoreSchemaSymbol
 
 export const UNKNOWN_EVENT_SCHEMA_HASH = -1
+export type StateBackendId = string
+export const isValidStateBackendId = (id: string) => /^[a-zA-Z0-9_-]+$/.test(id)
 
 export interface LiveStoreSchema<
   TDbSchema extends SqliteDsl.DbSchema = SqliteDsl.DbSchema,
@@ -55,22 +57,44 @@ export const isLiveStoreSchema = (value: unknown): value is LiveStoreSchema<any,
   // Core structures used at runtime
   const hasEventsMap = v.eventsDefsMap instanceof Map
   const hasStateBackendTables = v.state?.backend?.tables instanceof Map
+  const hasStateBackends = v.state?.backends instanceof Map || hasStateBackendTables
+  const hasDefaultBackendId = typeof v.state?.defaultBackendId === 'string' || v.state?.defaultBackendId === undefined
   const hasStateMaterializers = v.state?.materializers instanceof Map
+  const hasStateMaterializersByEventName = v.state?.materializersByEventName instanceof Map || hasStateMaterializers
   const hasDevtoolsAlias = typeof v.devtools?.alias === 'string'
 
-  return hasEventsMap && hasStateBackendTables && hasStateMaterializers && hasDevtoolsAlias
+  return (
+    hasEventsMap &&
+    hasStateBackendTables &&
+    hasStateBackends &&
+    hasDefaultBackendId &&
+    hasStateMaterializers &&
+    hasStateMaterializersByEventName &&
+    hasDevtoolsAlias
+  )
 }
 
 // TODO abstract this further away from sqlite/tables
+export type InternalStateBackend = {
+  readonly kind: 'sqlite'
+  readonly tables: Map<string, TableDef.Any>
+  readonly migrations: MigrationOptions
+  readonly hash: number
+}
+
 export interface InternalState {
   /** SQLite-only backend descriptor (Milestone 1) */
-  readonly backend: {
-    readonly kind: 'sqlite'
-    readonly tables: Map<string, TableDef.Any>
-    readonly migrations: MigrationOptions
-    readonly hash: number
-  }
+  readonly backend: InternalStateBackend
+  readonly backends: Map<StateBackendId, InternalStateBackend>
+  readonly defaultBackendId: StateBackendId
   readonly materializers: Map<string, Materializer>
+  readonly materializersByEventName: Map<
+    string,
+    {
+      readonly backendId: StateBackendId
+      readonly materializer: Materializer
+    }
+  >
 }
 
 export interface InputSchema {
@@ -95,11 +119,12 @@ export const makeSchema = <TInputSchema extends InputSchema>(
   /** Note when using the object-notation for tables/events, the object keys are ignored and not used as table/mutation names */
   inputSchema: TInputSchema,
 ): FromInputSchema.DeriveSchema<TInputSchema> => {
-  const state = inputSchema.state
-  const tables = inputSchema.state.backend.tables
+  const state = normalizeInternalState(inputSchema.state)
 
-  for (const tableDef of stateSystemTables) {
-    tables.set(tableDef.sqliteDef.name, tableDef)
+  for (const backend of state.backends.values()) {
+    for (const tableDef of stateSystemTables) {
+      backend.tables.set(tableDef.sqliteDef.name, tableDef)
+    }
   }
 
   const eventsDefsMap = new Map<string, EventDef.AnyWithoutFn>()
@@ -117,9 +142,11 @@ export const makeSchema = <TInputSchema extends InputSchema>(
     }
   }
 
-  for (const tableDef of tables.values()) {
-    if (tableIsClientDocumentTable(tableDef) && eventsDefsMap.has(tableDef.set.name) === false) {
-      eventsDefsMap.set(tableDef.set.name, tableDef.set)
+  for (const backend of state.backends.values()) {
+    for (const tableDef of backend.tables.values()) {
+      if (tableIsClientDocumentTable(tableDef) && eventsDefsMap.has(tableDef.set.name) === false) {
+        eventsDefsMap.set(tableDef.set.name, tableDef.set)
+      }
     }
   }
 
@@ -149,11 +176,81 @@ export const getEventDef = <TSchema extends LiveStoreSchema>(
   if (eventDef === undefined) {
     return shouldNeverHappen(`No event definition found for \`${eventName}\`.`)
   }
-  const materializer = schema.state.materializers.get(eventName)
+  const materializerRoute = schema.state.materializersByEventName.get(eventName)
+  const materializer = materializerRoute?.materializer ?? schema.state.materializers.get(eventName)
   if (materializer === undefined) {
     return shouldNeverHappen(`No materializer found for \`${eventName}\`.`)
   }
   return { eventDef, materializer }
+}
+
+const DEFAULT_BACKEND_ID: StateBackendId = 'default'
+
+const normalizeInternalState = (state: InternalState): InternalState => {
+  const backends =
+    state.backends instanceof Map && state.backends.size > 0
+      ? new Map(state.backends)
+      : new Map([[state.defaultBackendId ?? DEFAULT_BACKEND_ID, state.backend]])
+
+  const defaultBackendId = state.defaultBackendId ?? backends.keys().next().value
+  if (typeof defaultBackendId !== 'string') {
+    return shouldNeverHappen('Internal state must contain at least one backend.')
+  }
+  if (!isValidStateBackendId(defaultBackendId)) {
+    return shouldNeverHappen(`Invalid default backend id: ${defaultBackendId}`)
+  }
+
+  for (const backendId of backends.keys()) {
+    if (!isValidStateBackendId(backendId)) {
+      return shouldNeverHappen(`Invalid backend id: ${backendId}`)
+    }
+  }
+
+  const backend = backends.get(defaultBackendId)
+  if (backend === undefined) {
+    return shouldNeverHappen(`Default backend id "${defaultBackendId}" is missing in state.backends.`)
+  }
+
+  const materializers = state.materializers instanceof Map ? new Map(state.materializers) : new Map()
+  const materializersByEventName = new Map<
+    string,
+    {
+      backendId: StateBackendId
+      materializer: Materializer
+    }
+  >()
+
+  if (state.materializersByEventName instanceof Map) {
+    for (const [eventName, route] of state.materializersByEventName.entries()) {
+      if (!backends.has(route.backendId)) {
+        return shouldNeverHappen(
+          `Materializer route for "${eventName}" references unknown backend id "${route.backendId}".`,
+        )
+      }
+      materializersByEventName.set(eventName, route)
+    }
+  }
+
+  for (const [eventName, materializer] of materializers.entries()) {
+    if (materializersByEventName.has(eventName) === false) {
+      materializersByEventName.set(eventName, { backendId: defaultBackendId, materializer })
+    }
+  }
+
+  for (const [eventName, route] of materializersByEventName.entries()) {
+    if (materializers.has(eventName) === false) {
+      materializers.set(eventName, route.materializer)
+    }
+  }
+
+  return {
+    ...state,
+    backend,
+    backends,
+    defaultBackendId,
+    materializers,
+    materializersByEventName,
+  }
 }
 
 export namespace FromInputSchema {

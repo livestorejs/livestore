@@ -31,10 +31,14 @@ export const makeExecBeforeFirstRun =
     }
 
     const otelContext = otelContext_ ?? store[StoreInternalsSymbol].otel.queriesSpanContext
+    const backendId = State.SQLite.getTableBackendId(table)
+    const sqliteDbWrapper =
+      store[StoreInternalsSymbol].sqliteDbWrappers.get(backendId) ??
+      shouldNeverHappen(`No sqlite db wrapper found for backend "${backendId}".`)
 
     const idVal = id === SessionIdSymbol ? store.sessionId : id!
     const rowExists =
-      store[StoreInternalsSymbol].sqliteDbWrapper.cachedSelect(
+      sqliteDbWrapper.cachedSelect(
         `SELECT 1 FROM '${table.sqliteDef.name}' WHERE id = ?`,
         [idVal] as any as PreparedBindValues,
         { otelContext },

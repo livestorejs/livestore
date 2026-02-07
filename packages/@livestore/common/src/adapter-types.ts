@@ -11,7 +11,7 @@ import {
 import type { ClientSessionLeaderThreadProxy } from './ClientSessionLeaderThreadProxy.ts'
 import type * as Devtools from './devtools/mod.ts'
 import type { IntentionalShutdownCause, MaterializeError, UnknownError } from './errors.ts'
-import type { LiveStoreSchema } from './schema/mod.ts'
+import type { LiveStoreSchema, StateBackendId } from './schema/mod.ts'
 import type { SqliteDb } from './sqlite-types.ts'
 import type { IsOfflineError, SyncError } from './sync/index.ts'
 
@@ -28,6 +28,8 @@ export * from './sqlite-types.ts'
 export interface ClientSession {
   /** SQLite database with synchronous API running in the same thread (usually in-memory) */
   sqliteDb: SqliteDb
+  /** SQLite databases keyed by backend id. Includes `sqliteDb` as the default backend alias. */
+  sqliteDbs: Map<StateBackendId, SqliteDb>
   devtools: { enabled: false } | { enabled: true; pullLatch: Effect.Latch; pushLatch: Effect.Latch }
   clientId: string
   sessionId: string

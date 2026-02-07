@@ -13,7 +13,7 @@ import {
   type UnknownError,
 } from '@livestore/common'
 import type { StreamEventsOptions } from '@livestore/common/leader-thread'
-import type { LiveStoreEvent, LiveStoreSchema } from '@livestore/common/schema'
+import type { LiveStoreEvent, LiveStoreSchema, StateBackendId } from '@livestore/common/schema'
 import type { Effect, Runtime, Schema, Scope } from '@livestore/utils/effect'
 import { Deferred, Predicate } from '@livestore/utils/effect'
 import type * as otel from '@opentelemetry/api'
@@ -113,6 +113,11 @@ export type StoreInternals = {
    * planning, caching, and change tracking used by reads and materializers.
    */
   readonly sqliteDbWrapper: SqliteDbWrapper
+  /**
+   * Wrappers around local SQLite state databases keyed by backend id.
+   * `sqliteDbWrapper` remains as alias for the default backend wrapper.
+   */
+  readonly sqliteDbWrappers: ReadonlyMap<StateBackendId, SqliteDbWrapper>
 
   /**
    * Effect runtime and scope used to fork background fibers for the Store.
@@ -145,7 +150,8 @@ export type StoreInternals = {
    * write to tables. Values are always `null`; equality is intentionally
    * `false` to force recomputation.
    *
-   * Keys are SQLite table names (user tables; some system tables may be
+   * Keys are backend-scoped table keys: `${backendId}:${tableName}`.
+   * Some system tables may be
    * intentionally excluded from refresh).
    */
   readonly tableRefs: Readonly<Record<string, Ref<null, ReactivityGraphContext, RefreshReason>>>

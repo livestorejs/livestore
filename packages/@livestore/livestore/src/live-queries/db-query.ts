@@ -9,6 +9,7 @@ import {
   SessionIdSymbol,
   UnknownError,
 } from '@livestore/common'
+import { State, type StateBackendId } from '@livestore/common/schema'
 import { deepEqual, omitUndefineds, shouldNeverHappen } from '@livestore/utils'
 import { Equal, Hash, Predicate, Schema, TreeFormatter } from '@livestore/utils/effect'
 import * as otel from '@opentelemetry/api'
@@ -17,6 +18,7 @@ import type { Thunk } from '../reactive.ts'
 import { isThunk, NOT_REFRESHED_YET } from '../reactive.ts'
 import type { RefreshReason } from '../store/store-types.ts'
 import { StoreInternalsSymbol } from '../store/store-types.ts'
+import { makeTableKey } from '../store/table-key.ts'
 import { isValidFunctionString } from '../utils/function-string.ts'
 import type { DepKey, GetAtomResult, LiveQueryDef, ReactivityGraph, ReactivityGraphContext } from './base-class.ts'
 import { depsToString, LiveStoreQueryBase, makeGetAtomResult, withRCMap } from './base-class.ts'
@@ -25,6 +27,7 @@ import { makeExecBeforeFirstRun, rowQueryLabel } from './client-document-get-que
 export type QueryInputRaw<TDecoded, TEncoded> = {
   query: string
   schema: Schema.Schema<TDecoded, TEncoded>
+  backendId?: StateBackendId
   bindValues?: Bindable
   /**
    * Can be provided explicitly to slightly speed up initial query performance
@@ -234,11 +237,13 @@ export class LiveStoreDbQuery<TResultSchema, TResult = TResultSchema> extends Li
         const qbRes = qb.asSql()
         const schema = getResultSchema(qb) as Schema.Schema<TResultSchema, ReadonlyArray<any>>
         const ast = qb[QueryBuilderAstSymbol]
+        const backendId = State.SQLite.getTableBackendId(ast.tableDef)
 
         return {
           queryInputRaw: {
             query: qbRes.query,
             schema,
+            backendId,
             bindValues: qbRes.bindValues,
             queriedTables: new Set([ast.tableDef.sqliteDef.name]),
           } satisfies TQueryInputRaw,
@@ -318,7 +323,8 @@ export class LiveStoreDbQuery<TResultSchema, TResult = TResultSchema> extends Li
       }
     }
 
-    const queriedTablesRef: { current: Set<string> | undefined } = { current: undefined }
+    const queriedTableNamesRef: { current: Set<string> | undefined } = { current: undefined }
+    const queriedTableKeysRef: { current: Set<string> | undefined } = { current: undefined }
 
     const makeResultsEqual = (resultSchema: Schema.Schema<any, any>) => {
       // Creating the equivalence function eagerly in outer scope as it might be expensive
@@ -363,9 +369,16 @@ export class LiveStoreDbQuery<TResultSchema, TResult = TResultSchema> extends Li
 
             const sqlString = queryInputResult.query
             const bindValues = queryInputResult.bindValues
+            const backendId = queryInputResult.backendId ?? store.schema.state.defaultBackendId
+            const sqliteDbWrapper =
+              store[StoreInternalsSymbol].sqliteDbWrappers.get(backendId) ??
+              shouldNeverHappen(`No sqlite db wrapper found for backend "${backendId}".`)
 
-            if (queriedTablesRef.current === undefined) {
-              queriedTablesRef.current = store[StoreInternalsSymbol].sqliteDbWrapper.getTablesUsed(sqlString)
+            if (queriedTableNamesRef.current === undefined) {
+              queriedTableNamesRef.current = queryInputResult.queriedTables ?? sqliteDbWrapper.getTablesUsed(sqlString)
+              queriedTableKeysRef.current = new Set(
+                Array.from(queriedTableNamesRef.current).map((tableName) => makeTableKey(backendId, tableName)),
+              )
             }
 
             if (bindValues !== undefined) {
@@ -373,21 +386,21 @@ export class LiveStoreDbQuery<TResultSchema, TResult = TResultSchema> extends Li
             }
 
             // Establish a reactive dependency on the tables used in the query
-            for (const tableName of queriedTablesRef.current) {
+            for (const tableKey of queriedTableKeysRef.current!) {
               const tableRef =
-                store[StoreInternalsSymbol].tableRefs[tableName] ??
-                shouldNeverHappen(`No table ref found for ${tableName}`)
+                store[StoreInternalsSymbol].tableRefs[tableKey] ??
+                shouldNeverHappen(`No table ref found for ${tableKey}`)
               get(tableRef, otelContext, debugRefreshReason)
             }
 
             span.setAttribute('sql.query', sqlString)
             span.updateName(`db:${sqlString.slice(0, 50)}`)
 
-            const rawDbResults = store[StoreInternalsSymbol].sqliteDbWrapper.cachedSelect<any>(
+            const rawDbResults = sqliteDbWrapper.cachedSelect<any>(
               sqlString,
               bindValues ? prepareBindValues(bindValues, sqlString) : undefined,
               {
-                queriedTables: queriedTablesRef.current,
+                queriedTables: queriedTableNamesRef.current,
                 otelContext,
               },
             )

@@ -1,3 +1,4 @@
+import { shouldNeverHappen } from '@livestore/utils'
 import type { Scope, SubscriptionRef } from '@livestore/utils/effect'
 import { Effect, Stream } from '@livestore/utils/effect'
 import * as Webmesh from '@livestore/webmesh'
@@ -11,6 +12,7 @@ import type {
   UnknownError,
 } from './adapter-types.ts'
 import * as Devtools from './devtools/mod.ts'
+import type { StateBackendId } from './schema/mod.ts'
 import { liveStoreVersion } from './version.ts'
 
 declare global {
@@ -27,7 +29,8 @@ export const makeClientSession = <R>({
   lockStatus,
   leaderThread,
   schema,
-  sqliteDb,
+  sqliteDb: sqliteDbLegacy,
+  sqliteDbs,
   shutdown,
   connectWebmeshNode,
   webmeshMode,
@@ -40,7 +43,8 @@ export const makeClientSession = <R>({
   isLeader: boolean
   lockStatus: SubscriptionRef.SubscriptionRef<LockStatus>
   leaderThread: ClientSessionLeaderThreadProxy.ClientSessionLeaderThreadProxy
-  sqliteDb: SqliteDb
+  sqliteDb?: SqliteDb
+  sqliteDbs?: Map<StateBackendId, SqliteDb>
   connectWebmeshNode: (args: {
     webmeshNode: Webmesh.MeshNode
     sessionInfo: Devtools.SessionInfo.SessionInfo
@@ -51,6 +55,22 @@ export const makeClientSession = <R>({
   origin: string | undefined
 }): Effect.Effect<ClientSession, never, Scope.Scope | R> =>
   Effect.gen(function* () {
+    const defaultBackendId = schema.state.defaultBackendId
+    const sqliteDbs_ =
+      sqliteDbs ??
+      (sqliteDbLegacy !== undefined
+        ? new Map<StateBackendId, SqliteDb>([[defaultBackendId, sqliteDbLegacy]])
+        : undefined)
+
+    if (sqliteDbs_ === undefined || sqliteDbs_.size === 0) {
+      return shouldNeverHappen('No sqlite databases provided for client session.')
+    }
+
+    const sqliteDb = sqliteDbs_.get(defaultBackendId)
+    if (sqliteDb === undefined) {
+      return shouldNeverHappen(`Missing sqlite db for default backend "${defaultBackendId}".`)
+    }
+
     const devtools: ClientSession['devtools'] = devtoolsEnabled
       ? { enabled: true, pullLatch: yield* Effect.makeLatch(true), pushLatch: yield* Effect.makeLatch(true) }
       : { enabled: false }
@@ -130,6 +150,7 @@ export const makeClientSession = <R>({
 
     return {
       sqliteDb,
+      sqliteDbs: sqliteDbs_,
       leaderThread,
       devtools,
       lockStatus,

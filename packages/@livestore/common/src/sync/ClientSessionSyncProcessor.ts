@@ -19,7 +19,7 @@ import { type ClientSession, UnknownError } from '../adapter-types.ts'
 import type { MaterializeError } from '../errors.ts'
 import * as EventSequenceNumber from '../schema/EventSequenceNumber/mod.ts'
 import * as LiveStoreEvent from '../schema/LiveStoreEvent/mod.ts'
-import type { LiveStoreSchema } from '../schema/mod.ts'
+import type { LiveStoreSchema, StateBackendId } from '../schema/mod.ts'
 import * as SyncState from './syncstate.ts'
 
 // WORKAROUND: @effect/opentelemetry mis-parses `Span.addEvent(name, attributes)` and treats the attributes object as a
@@ -70,7 +70,7 @@ export const makeClientSessionSyncProcessor = ({
     },
     MaterializeError
   >
-  rollback: (changeset: Uint8Array<ArrayBuffer>) => void
+  rollback: (changeset: Uint8Array<ArrayBuffer>, backendId?: StateBackendId) => void
   refreshTables: (tables: Set<string>) => void
   span: otel.Span
   params: {
@@ -286,7 +286,9 @@ export const makeClientSessionSyncProcessor = ({
             for (let i = mergeResult.rollbackEvents.length - 1; i >= 0; i--) {
               const event = mergeResult.rollbackEvents[i]!
               if (event.meta.sessionChangeset._tag !== 'no-op' && event.meta.sessionChangeset._tag !== 'unset') {
-                rollback(event.meta.sessionChangeset.data)
+                const backendId =
+                  schema.state.materializersByEventName.get(event.name)?.backendId ?? schema.state.defaultBackendId
+                rollback(event.meta.sessionChangeset.data, backendId)
                 event.meta.sessionChangeset = { _tag: 'unset' }
               }
             }

@@ -1,7 +1,7 @@
 import type { Effect, Option } from '@livestore/utils/effect'
 
 import type { MaterializeError, UnknownError } from '../errors.ts'
-import type { EventSequenceNumber, LiveStoreEvent } from '../schema/mod.ts'
+import type { EventSequenceNumber, LiveStoreEvent, StateBackendId } from '../schema/mod.ts'
 
 export type LeaderStateBackend = {
   materializeEvent: (
@@ -36,5 +36,5 @@ export type SessionStateBackend = {
     MaterializeError
   >
 
-  rollback: (changeset: Uint8Array<ArrayBuffer>) => void
+  rollback: (changeset: Uint8Array<ArrayBuffer>, backendId?: StateBackendId) => void
 }
