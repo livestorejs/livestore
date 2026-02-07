@@ -11,9 +11,9 @@
     "overeng-beads-public": {
       "url": "https://github.com/overengineeringstudio/overeng-beads-public",
       "ref": "main",
-      "commit": "120a53d745ff71d7e76a4acec8bf933dae1779fa",
+      "commit": "0651b3a48bd11c367a3b7125a013b73040a00eaa",
       "pinned": false,
-      "lockedAt": "2026-02-07T12:37:44.587Z"
+      "lockedAt": "2026-02-07T14:14:54.691Z"
     }
   }
 }

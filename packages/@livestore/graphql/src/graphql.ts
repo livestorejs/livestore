@@ -241,8 +241,8 @@ export class LiveStoreGraphQLQuery<
         for (const error of res.errors) {
           console.error(error)
         }
-        // biome-ignore lint/suspicious/noDebugger: debug
-
+        // oxlint-disable-next-line eslint(no-debugger) -- intentional breakpoint for GraphQL errors
+        debugger
         shouldNeverHappen(`GraphQL error: ${res.errors.join('\n')}`)
       }
 

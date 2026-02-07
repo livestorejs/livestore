@@ -53,6 +53,9 @@
       "suspicious": {
         "noExplicitAny": "off",
         "noShadowRestrictedNames": "off",
+        // Intentional debugger statements are now suppressed via oxlint comments.
+        // Disable Biome's rule to avoid IDE noise until Biome is fully removed.
+        "noDebugger": "off",
       },
       "style": {
         "noUselessElse": "off",

@@ -189,7 +189,7 @@ export const payloadFromMergeResult = (
 
 const unknownError = (message: string): MergeResultUnknownError => {
   if (LS_DEV) {
-    // biome-ignore lint/suspicious/noDebugger: debug
+    // oxlint-disable-next-line eslint(no-debugger) -- intentional breakpoint for unknown merge errors
     debugger
   }
 

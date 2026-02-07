@@ -27,7 +27,7 @@ const CONFIGS = new Map([
 
 const DISALLOWS_PAGE_SIZE_CHANGE = new Set(['IDBBatchAtomicVFS', 'IDBMirrorVFS', 'OPFSPermutedVFS', 'FLOOR'])
 const NOT_PERSISTENT = new Set(['', 'MemoryVFS', 'MemoryAsyncVFS'])
-const SINGLE_CONNECTION = ['', 'MemoryVFS', 'MemoryAsyncVFS', 'AccessHandlePoolVFS']
+const SINGLE_CONNECTION = new Set(['', 'MemoryVFS', 'MemoryAsyncVFS', 'AccessHandlePoolVFS'])
 
 describe('SQL', function () {
   for (const [config, builds] of CONFIGS) {
@@ -57,7 +57,7 @@ function sqlSpecs(build, config) {
     // These tests require persistent storage.
     sql_0004(context)
   }
-  if (!SINGLE_CONNECTION.includes(config)) {
+  if (!SINGLE_CONNECTION.has(config)) {
     // These tests require multiple connections.
     sql_0005(context)
   }
