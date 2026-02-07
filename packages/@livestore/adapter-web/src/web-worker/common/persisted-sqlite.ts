@@ -162,7 +162,7 @@ export const cleanupOldStateDbFiles: (options: {
   //   which accumulate over time and can exhaust OPFS file pool capacity
   // - Manual strategy: Always reuses the same database file (statefixed.db) across schema changes,
   //   so there are never multiple old files to clean up
-  if (currentSchema.state.sqlite.migrations.strategy === 'manual') {
+  if (currentSchema.state.backend.migrations.strategy === 'manual') {
     yield* Effect.logDebug('Skipping state db cleanup - manual migration strategy uses fixed filename')
     return
   }

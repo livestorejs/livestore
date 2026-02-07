@@ -111,7 +111,7 @@ export const migrateDb = ({
     const tableDefs = [
       // NOTE it's important the `SCHEMA_META_TABLE` comes first since we're writing to it below
       ...stateSystemTables,
-      ...Array.from(schema.state.sqlite.tables.values()).filter((_) => !isStateSystemTable(_.sqliteDef.name)),
+      ...Array.from(schema.state.backend.tables.values()).filter((_) => !isStateSystemTable(_.sqliteDef.name)),
     ]
 
     const tablesToMigrate = new Set<{ tableAst: SqliteAst.Table; schemaHash: number }>()

@@ -54,21 +54,15 @@ export const isLiveStoreSchema = (value: unknown): value is LiveStoreSchema<any,
 
   // Core structures used at runtime
   const hasEventsMap = v.eventsDefsMap instanceof Map
-  const hasStateSqliteTables = v.state?.sqlite?.tables instanceof Map
+  const hasStateBackendTables = v.state?.backend?.tables instanceof Map
   const hasStateMaterializers = v.state?.materializers instanceof Map
   const hasDevtoolsAlias = typeof v.devtools?.alias === 'string'
 
-  return hasEventsMap && hasStateSqliteTables && hasStateMaterializers && hasDevtoolsAlias
+  return hasEventsMap && hasStateBackendTables && hasStateMaterializers && hasDevtoolsAlias
 }
 
 // TODO abstract this further away from sqlite/tables
 export interface InternalState {
-  readonly sqlite: {
-    readonly tables: Map<string, TableDef.Any>
-    readonly migrations: MigrationOptions
-    /** Compound hash of all table defs etc */
-    readonly hash: number
-  }
   /** SQLite-only backend descriptor (Milestone 1) */
   readonly backend: {
     readonly kind: 'sqlite'
@@ -164,7 +158,7 @@ export const getEventDef = <TSchema extends LiveStoreSchema>(
 
 export namespace FromInputSchema {
   export type DeriveSchema<TInputSchema extends InputSchema> = LiveStoreSchema<
-    DbSchemaFromInputSchemaTables<TInputSchema['state']['sqlite']['tables']>,
+    DbSchemaFromInputSchemaTables<TInputSchema['state']['backend']['tables']>,
     EventDefRecordFromInputSchemaEvents<TInputSchema['events']>
   >
 
@@ -173,7 +167,7 @@ export namespace FromInputSchema {
    * - array: we use the table name of each array item (= table definition) as the object key
    * - object: we discard the keys of the input object and use the table name of each object value (= table definition) as the new object key
    */
-  type DbSchemaFromInputSchemaTables<TTables extends InputSchema['state']['sqlite']['tables']> =
+  type DbSchemaFromInputSchemaTables<TTables extends InputSchema['state']['backend']['tables']> =
     TTables extends ReadonlyArray<TableDef>
       ? { [K in TTables[number] as K['sqliteDef']['name']]: K['sqliteDef'] }
       : TTables extends Record<string, TableDef>

@@ -55,7 +55,7 @@ const live = Cli.Command.make(
         syncPayload: Option.getOrUndefined(syncPayload),
       })
 
-      const firstTable = schema.state.sqlite.tables.values().next().value!
+      const firstTable = schema.state.backend.tables.values().next().value!
 
       const queries$ = queryDb(firstTable.orderBy('id', 'desc').limit(10))
 

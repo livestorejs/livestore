@@ -3,6 +3,7 @@
 import { DurableObject } from 'cloudflare:workers'
 import { type ClientDoWithRpcCallback, createStoreDoPromise } from '@livestore/adapter-cloudflare'
 import { liveStoreStorageFormatVersion } from '@livestore/common'
+import { getStateSchemaHashSuffix } from '@livestore/common/schema'
 import type { Store } from '@livestore/livestore'
 import {
   type CfTypes,
@@ -190,8 +191,7 @@ export class TestStoreDo extends DurableObject<Env> implements ClientDoWithRpcCa
   }
 
   private getPersistenceSnapshot(): PersistenceSnapshot {
-    const schemaHashSuffix =
-      schema.state.sqlite.migrations.strategy === 'manual' ? 'fixed' : schema.state.sqlite.hash.toString()
+    const schemaHashSuffix = getStateSchemaHashSuffix(schema)
 
     // The adapter stores SQLite data inside Durable Object persistence using the
     // liveStoreStorageFormatVersion as part of the VFS file path. Looking up

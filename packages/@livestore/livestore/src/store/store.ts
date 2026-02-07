@@ -359,8 +359,8 @@ export class Store<TSchema extends LiveStoreSchema = LiveStoreSchema.Any, TConte
       // NOTE we're excluding the LiveStore schema and events tables as they are not user-facing
       // unless LiveStore is running in the devtools
       __runningInDevtools
-        ? this.schema.state.sqlite.tables.keys()
-        : Array.from(this.schema.state.sqlite.tables.keys()).filter((_) => !SystemTables.isStateSystemTable(_)),
+        ? this.schema.state.backend.tables.keys()
+        : Array.from(this.schema.state.backend.tables.keys()).filter((_) => !SystemTables.isStateSystemTable(_)),
     )
     const existingTableRefs = new Map(
       Array.from(reactivityGraph.atoms.values())

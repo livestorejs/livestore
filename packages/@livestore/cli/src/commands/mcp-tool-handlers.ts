@@ -135,7 +135,7 @@ export const schema = Schema.create({
       ...(sessionId !== undefined ? { sessionId } : {}),
     }).pipe(Effect.orDie)
     const eventNames = Array.from(store.schema.eventsDefsMap.keys())
-    const tableNames = Array.from(store.schema.state.sqlite.tables.keys())
+    const tableNames = Array.from(store.schema.state.backend.tables.keys())
 
     return {
       storeId: store.storeId,
