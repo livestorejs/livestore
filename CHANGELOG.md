@@ -310,6 +310,8 @@ See the [S2 sync provider docs](https://dev.docs.livestore.dev/reference/syncing
 
 #### Core Runtime & Storage
 
+- **Event log lookup optimization:** Improved event log lookup performance for large unsynced logs, speeding startup time ([#1012](https://github.com/livestorejs/livestore/pull/1012)).
+
 - **Unknown event handling:** Schemas now ship an `unknownEventHandling` configuration so older clients can warn, ignore, fail, or forward telemetry when they see future events while keeping the eventlog intact ([#353](https://github.com/livestorejs/livestore/issues/353)).
 
 - **Schema-first tables:** LiveStore now accepts Effect schema definitions as SQLite table inputs, keeping type information and stored schema in the same place. For example:
