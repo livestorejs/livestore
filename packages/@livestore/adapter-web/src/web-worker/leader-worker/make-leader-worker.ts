@@ -9,11 +9,11 @@ import {
   streamEventsWithSyncState,
 } from '@livestore/common/leader-thread'
 import type { LiveStoreSchema } from '@livestore/common/schema'
-import { LiveStoreEvent } from '@livestore/common/schema'
+import { LiveStoreEvent, type StateBackendId } from '@livestore/common/schema'
 import * as WebmeshWorker from '@livestore/devtools-web-common/worker'
 import { sqliteDbFactory } from '@livestore/sqlite-wasm/browser'
 import { loadSqlite3Wasm } from '@livestore/sqlite-wasm/load-wasm'
-import { isDevEnv, LS_DEV } from '@livestore/utils'
+import { isDevEnv, LS_DEV, shouldNeverHappen } from '@livestore/utils'
 import type { HttpClient, Scope, WorkerError } from '@livestore/utils/effect'
 import {
   Effect,
@@ -136,11 +136,11 @@ const makeWorkerRunnerInner = ({ schema, sync: syncOptions, syncPayloadSchema }:
 
         const opfsDirectory = useOpfs ? yield* sanitizeOpfsDir(storageOptions.directory, storeId) : undefined
 
-        const makeOpfsDb = (kind: 'state' | 'eventlog') =>
+        const makeOpfsStateDb = (backendId: StateBackendId) =>
           makeSqliteDb({
             _tag: 'opfs',
             opfsDirectory: opfsDirectory!,
-            fileName: kind === 'state' ? getStateDbFileName(schema) : 'eventlog.db',
+            fileName: getStateDbFileName(schema, backendId),
             configureDb: (db) =>
               configureConnection(db, {
                 //  The persisted databases use the AccessHandlePoolVFS which always uses a single database connection.
@@ -148,6 +148,17 @@ const makeWorkerRunnerInner = ({ schema, sync: syncOptions, syncPayloadSchema }:
                 //  avoid unnecessary system calls and enable the use of the WAL journal mode without the use of shared memory.
                 // TODO bring back exclusive locking mode when `WAL` is working properly
                 // lockingMode: 'EXCLUSIVE',
+                foreignKeys: true,
+              }).pipe(Effect.provide(runtime), Effect.runSync),
+          }).pipe(Effect.acquireRelease((db) => Effect.try(() => db.close()).pipe(Effect.ignoreLogged)))
+
+        const makeOpfsEventlogDb = () =>
+          makeSqliteDb({
+            _tag: 'opfs',
+            opfsDirectory: opfsDirectory!,
+            fileName: 'eventlog.db',
+            configureDb: (db) =>
+              configureConnection(db, {
                 foreignKeys: true,
               }).pipe(Effect.provide(runtime), Effect.runSync),
           }).pipe(Effect.acquireRelease((db) => Effect.try(() => db.close()).pipe(Effect.ignoreLogged)))
@@ -160,9 +171,41 @@ const makeWorkerRunnerInner = ({ schema, sync: syncOptions, syncPayloadSchema }:
           }).pipe(Effect.acquireRelease((db) => Effect.try(() => db.close()).pipe(Effect.ignoreLogged)))
 
         // Use OPFS if available, otherwise fall back to in-memory
-        const [dbState, dbEventlog] = useOpfs
-          ? yield* Effect.all([makeOpfsDb('state'), makeOpfsDb('eventlog')], { concurrency: 2 })
-          : yield* Effect.all([makeInMemoryDb(), makeInMemoryDb()], { concurrency: 2 })
+        const stateBackendIds = Array.from(schema.state.backends.keys())
+
+        const [dbStateEntries, dbEventlog] = useOpfs
+          ? yield* Effect.all(
+              [
+                Effect.forEach(
+                  stateBackendIds,
+                  (backendId) =>
+                    makeOpfsStateDb(backendId).pipe(
+                      Effect.map((db): readonly [StateBackendId, SqliteDb] => [backendId, db]),
+                    ),
+                  { concurrency: 'unbounded' },
+                ),
+                makeOpfsEventlogDb(),
+              ],
+              { concurrency: 2 },
+            )
+          : yield* Effect.all(
+              [
+                Effect.forEach(
+                  stateBackendIds,
+                  (backendId) =>
+                    makeInMemoryDb().pipe(Effect.map((db): readonly [StateBackendId, SqliteDb] => [backendId, db])),
+                  { concurrency: 'unbounded' },
+                ),
+                makeInMemoryDb(),
+              ],
+              { concurrency: 2 },
+            )
+
+        const dbStates = new Map<StateBackendId, SqliteDb>(dbStateEntries)
+        const dbState = dbStates.get(schema.state.defaultBackendId)
+        if (dbState === undefined) {
+          return shouldNeverHappen(`Missing default backend state db "${schema.state.defaultBackendId}".`)
+        }
 
         // Clean up old state database files after successful database creation
         // This prevents OPFS file pool capacity exhaustion from accumulated state db files after schema changes/migrations
@@ -184,6 +227,7 @@ const makeWorkerRunnerInner = ({ schema, sync: syncOptions, syncPayloadSchema }:
           makeSqliteDb,
           syncOptions,
           dbState,
+          dbStates,
           dbEventlog,
           devtoolsOptions,
           shutdownChannel,

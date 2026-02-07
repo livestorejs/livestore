@@ -3,6 +3,7 @@ import { Chunk, Effect, Option, Schema } from '@livestore/utils/effect'
 import type { SqliteDb } from '../adapter-types.ts'
 import * as EventSequenceNumber from '../schema/EventSequenceNumber/mod.ts'
 import * as LiveStoreEvent from '../schema/LiveStoreEvent/mod.ts'
+import type { LiveStoreSchema } from '../schema/mod.ts'
 import {
   EVENTLOG_META_TABLE,
   eventlogMetaTable,
@@ -45,27 +46,30 @@ export const initEventlogDb = (dbEventlog: SqliteDb) =>
  */
 export const getEventsSince = ({
   dbEventlog,
-  dbState,
+  dbStates,
+  schema,
   since,
 }: {
   dbEventlog: SqliteDb
-  dbState: SqliteDb
+  dbStates: Map<string, SqliteDb>
+  schema: LiveStoreSchema
   since: EventSequenceNumber.Client.Composite
 }): ReadonlyArray<LiveStoreEvent.Client.EncodedWithMeta> => {
   const pendingEvents = dbEventlog.select(eventlogMetaTable.where('seqNumGlobal', '>=', since.global))
 
-  const sessionChangesetRowsDecoded = dbState.select(
-    sessionChangesetMetaTable.where('seqNumGlobal', '>=', since.global),
-  )
-
-  // Create a Map for O(1) lookup instead of O(n) find
-  const sessionChangesetMap = new Map(
-    sessionChangesetRowsDecoded.map((row) => [`${row.seqNumGlobal}:${row.seqNumClient}`, row]),
+  const sessionChangesetMapsByBackend = new Map(
+    Array.from(dbStates.entries()).map(([backendId, dbState]) => {
+      const rows = dbState.select(sessionChangesetMetaTable.where('seqNumGlobal', '>=', since.global))
+      return [backendId, new Map(rows.map((row) => [`${row.seqNumGlobal}:${row.seqNumClient}`, row]))] as const
+    }),
   )
 
   return pendingEvents
     .map((eventlogEvent) => {
-      const sessionChangeset = sessionChangesetMap.get(`${eventlogEvent.seqNumGlobal}:${eventlogEvent.seqNumClient}`)
+      const changesetKey = `${eventlogEvent.seqNumGlobal}:${eventlogEvent.seqNumClient}`
+      const backendId = schema.state.materializersByEventName.get(eventlogEvent.name)?.backendId
+      const sessionChangeset =
+        backendId === undefined ? undefined : sessionChangesetMapsByBackend.get(backendId)?.get(changesetKey)
       return LiveStoreEvent.Client.EncodedWithMeta.make({
         name: eventlogEvent.name,
         args: eventlogEvent.argsJson,

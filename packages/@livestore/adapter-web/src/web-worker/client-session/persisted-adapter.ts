@@ -3,6 +3,7 @@ import {
   IntentionalShutdownCause,
   liveStoreVersion,
   makeClientSession,
+  migrateDbForBackend,
   StoreInterrupted,
   sessionChangesetMetaTable,
   UnknownError,
@@ -10,7 +11,7 @@ import {
 // TODO bring back - this currently doesn't work due to https://github.com/vitejs/vite/issues/8427
 // NOTE We're using a non-relative import here for Vite to properly resolve the import during app builds
 // import LiveStoreSharedWorker from '@livestore/adapter-web/internal-shared-worker?sharedworker'
-import { EventSequenceNumber } from '@livestore/common/schema'
+import { EventSequenceNumber, type StateBackendId } from '@livestore/common/schema'
 import { sqliteDbFactory } from '@livestore/sqlite-wasm/browser'
 import { isDevEnv, omitUndefineds, shouldNeverHappen, tryAsFunctionAndNew } from '@livestore/utils'
 import {
@@ -489,6 +490,23 @@ export const makePersistedAdapter =
 
       // console.debug('[@livestore/adapter-web:client-session] initialLeaderHead', initialLeaderHead)
 
+      sqliteDb.debug.head = initialLeaderHead
+
+      const sqliteDbs = yield* Effect.gen(function* () {
+        const dbs = new Map<StateBackendId, typeof sqliteDb>([[schema.state.defaultBackendId, sqliteDb]])
+
+        for (const backendId of schema.state.backends.keys()) {
+          if (backendId === schema.state.defaultBackendId) continue
+
+          const backendDb = yield* makeSqliteDb({ _tag: 'in-memory' })
+          const _migrationsReport = yield* migrateDbForBackend({ db: backendDb, schema, backendId })
+          backendDb.debug.head = initialLeaderHead
+          dbs.set(backendId, backendDb)
+        }
+
+        return dbs
+      })
+
       yield* Effect.addFinalizer((ex) =>
         Effect.gen(function* () {
           if (
@@ -566,7 +584,7 @@ export const makePersistedAdapter =
 
       const clientSession = yield* makeClientSession({
         ...adapterArgs,
-        sqliteDb,
+        sqliteDbs,
         lockStatus,
         clientId,
         sessionId,

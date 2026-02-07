@@ -24,7 +24,7 @@ import type {
   SyncBackend,
   UnknownError,
 } from '../index.ts'
-import { EventSequenceNumber, type LiveStoreEvent, type LiveStoreSchema } from '../schema/mod.ts'
+import { EventSequenceNumber, type LiveStoreEvent, type LiveStoreSchema, type StateBackendId } from '../schema/mod.ts'
 import type { LeaderStateBackend } from '../state-backend/mod.ts'
 import type * as SyncState from '../sync/syncstate.ts'
 import type { ShutdownChannel } from './shutdown-channel.ts'
@@ -91,6 +91,7 @@ export class LeaderThreadCtx extends Context.Tag('LeaderThreadCtx')<
     storeId: string
     clientId: string
     makeSqliteDb: MakeSqliteDb
+    dbStates: Map<StateBackendId, LeaderSqliteDb>
     dbState: LeaderSqliteDb
     dbEventlog: LeaderSqliteDb
     bootStatusQueue: Queue.Queue<BootStatus>
@@ -102,6 +103,7 @@ export class LeaderThreadCtx extends Context.Tag('LeaderThreadCtx')<
     syncBackend: SyncBackend.SyncBackend | undefined
     syncProcessor: LeaderSyncProcessor
     materializeEvent: MaterializeEvent
+    stateBackends: Map<StateBackendId, LeaderStateBackend>
     stateBackend: LeaderStateBackend
     initialState: {
       leaderHead: EventSequenceNumber.Client.Composite

@@ -4,7 +4,8 @@ import {
   Devtools,
   type LockStatus,
   makeClientSession,
-  migrateDb,
+  migrateDbForBackend,
+  type SqliteDb,
   type SyncOptions,
   UnknownError,
 } from '@livestore/common'
@@ -16,13 +17,13 @@ import {
   makeLeaderThreadLayer,
   streamEventsWithSyncState,
 } from '@livestore/common/leader-thread'
-import type { LiveStoreSchema } from '@livestore/common/schema'
-import { LiveStoreEvent } from '@livestore/common/schema'
+import type { LiveStoreSchema, StateBackendId } from '@livestore/common/schema'
+import { type EventSequenceNumber, LiveStoreEvent } from '@livestore/common/schema'
 import * as DevtoolsWeb from '@livestore/devtools-web-common/web-channel'
 import type * as WebmeshWorker from '@livestore/devtools-web-common/worker'
 import type { MakeWebSqliteDb } from '@livestore/sqlite-wasm/browser'
 import { sqliteDbFactory } from '@livestore/sqlite-wasm/browser'
-import { tryAsFunctionAndNew } from '@livestore/utils'
+import { shouldNeverHappen, tryAsFunctionAndNew } from '@livestore/utils'
 import type { Scope } from '@livestore/utils/effect'
 import { Effect, FetchHttpClient, Fiber, Layer, type Schema, SubscriptionRef, Worker } from '@livestore/utils/effect'
 import { BrowserWorker } from '@livestore/utils/effect/browser'
@@ -109,8 +110,7 @@ export const makeInMemoryAdapter =
     Effect.gen(function* () {
       const { schema, shutdown, syncPayloadEncoded, syncPayloadSchema, storeId, devtoolsEnabled } = adapterArgs
       const sqlite3 = yield* Effect.promise(() => loadSqlite3())
-
-      const sqliteDb = yield* sqliteDbFactory({ sqlite3 })({ _tag: 'in-memory' })
+      const makeSqliteDb = sqliteDbFactory({ sqlite3 })
 
       const clientId = options.clientId ?? nanoid(6)
       const sessionId = options.sessionId ?? nanoid(6)
@@ -133,11 +133,11 @@ export const makeInMemoryAdapter =
           )
         : undefined
 
-      const { leaderThread, initialSnapshot } = yield* makeLeaderThread({
+      const { leaderThread, initialSnapshotsByBackend } = yield* makeLeaderThread({
         schema,
         storeId,
         clientId,
-        makeSqliteDb: sqliteDbFactory({ sqlite3 }),
+        makeSqliteDb,
         syncOptions: options.sync,
         syncPayloadEncoded,
         syncPayloadSchema,
@@ -146,13 +146,18 @@ export const makeInMemoryAdapter =
         sharedWorkerFiber,
       })
 
-      sqliteDb.import(initialSnapshot)
+      const sqliteDbs = yield* makeSessionSqliteDbs({
+        makeSqliteDb,
+        schema,
+        initialSnapshotsByBackend,
+        leaderHead: leaderThread.initialState.leaderHead,
+      })
 
       const lockStatus = yield* SubscriptionRef.make<LockStatus>('has-lock')
 
       const clientSession = yield* makeClientSession({
         ...adapterArgs,
-        sqliteDb,
+        sqliteDbs,
         clientId,
         sessionId,
         isLeader: true,
@@ -213,7 +218,7 @@ const makeLeaderThread = ({
   Effect.gen(function* () {
     const runtime = yield* Effect.runtime<never>()
 
-    const makeDb = (_kind: 'state' | 'eventlog') => {
+    const makeDb = () => {
       return makeSqliteDb({
         _tag: 'in-memory',
         configureDb: (db) =>
@@ -223,13 +228,27 @@ const makeLeaderThread = ({
 
     const shutdownChannel = yield* makeShutdownChannel(storeId)
 
-    // Might involve some async work, so we're running them concurrently
-    const [dbState, dbEventlog] = yield* Effect.all([makeDb('state'), makeDb('eventlog')], { concurrency: 2 })
+    const dbStates = yield* Effect.forEach(
+      Array.from(schema.state.backends.keys()),
+      (backendId) => makeDb().pipe(Effect.map((db): readonly [StateBackendId, SqliteDb] => [backendId, db])),
+      { concurrency: 'unbounded' },
+    ).pipe(Effect.map((entries) => new Map<StateBackendId, SqliteDb>(entries)))
+
+    const dbState = dbStates.get(schema.state.defaultBackendId)
+    if (dbState === undefined) {
+      return shouldNeverHappen(`Missing default backend state db "${schema.state.defaultBackendId}".`)
+    }
+
+    const dbEventlog = yield* makeDb()
 
     if (importSnapshot) {
       dbState.import(importSnapshot)
 
-      const _migrationsReport = yield* migrateDb({ db: dbState, schema })
+      const _migrationsReport = yield* migrateDbForBackend({
+        db: dbState,
+        schema,
+        backendId: schema.state.defaultBackendId,
+      })
     }
 
     const devtoolsOptions = yield* makeDevtoolsOptions({
@@ -249,6 +268,7 @@ const makeLeaderThread = ({
         makeSqliteDb,
         syncOptions,
         dbState,
+        dbStates,
         dbEventlog,
         devtoolsOptions,
         shutdownChannel,
@@ -258,7 +278,7 @@ const makeLeaderThread = ({
     )
 
     return yield* Effect.gen(function* () {
-      const { dbState, dbEventlog, syncProcessor, extraIncomingMessagesQueue, initialState, networkStatus } =
+      const { dbState, dbStates, dbEventlog, syncProcessor, extraIncomingMessagesQueue, initialState, networkStatus } =
         yield* LeaderThreadCtx
 
       const initialLeaderHead = Eventlog.getClientHeadFromDb(dbEventlog)
@@ -290,10 +310,43 @@ const makeLeaderThread = ({
         networkStatus,
       })
 
-      const initialSnapshot = dbState.export()
+      const initialSnapshotsByBackend = new Map<StateBackendId, Uint8Array<ArrayBufferLike>>(
+        Array.from(dbStates.entries()).map(([backendId, db]) => [backendId, db.export()]),
+      )
 
-      return { leaderThread, initialSnapshot }
+      return { leaderThread, initialSnapshotsByBackend }
     }).pipe(Effect.provide(layer))
+  })
+
+const makeSessionSqliteDbs = ({
+  makeSqliteDb,
+  schema,
+  initialSnapshotsByBackend,
+  leaderHead,
+}: {
+  makeSqliteDb: MakeWebSqliteDb
+  schema: LiveStoreSchema
+  initialSnapshotsByBackend: Map<StateBackendId, Uint8Array<ArrayBufferLike>>
+  leaderHead: EventSequenceNumber.Client.Composite
+}) =>
+  Effect.gen(function* () {
+    const sqliteDbs = new Map<StateBackendId, SqliteDb>()
+
+    for (const backendId of schema.state.backends.keys()) {
+      const db = yield* makeSqliteDb({ _tag: 'in-memory' })
+      const snapshot = initialSnapshotsByBackend.get(backendId)
+
+      if (snapshot !== undefined) {
+        db.import(new Uint8Array(snapshot))
+      } else {
+        const _migrationsReport = yield* migrateDbForBackend({ db, schema, backendId })
+      }
+
+      db.debug.head = leaderHead
+      sqliteDbs.set(backendId, db)
+    }
+
+    return sqliteDbs
   })
 
 type SharedWorkerFiber = Fiber.Fiber<

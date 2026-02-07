@@ -1,5 +1,5 @@
 import { liveStoreStorageFormatVersion } from '@livestore/common'
-import { getStateSchemaHashSuffix, type LiveStoreSchema } from '@livestore/common/schema'
+import { getStateSchemaHashSuffixForBackend, type LiveStoreSchema, type StateBackendId } from '@livestore/common/schema'
 import {
   decodeAccessHandlePoolFilename,
   HEADER_OFFSET_DATA,
@@ -115,9 +115,14 @@ export const sanitizeOpfsDir = Effect.fn('@livestore/adapter-web:sanitizeOpfsDir
   return `${directory}@${liveStoreStorageFormatVersion}`
 })
 
-export const getStateDbFileName = (schema: LiveStoreSchema) => {
-  const schemaHashSuffix = getStateSchemaHashSuffix(schema)
-  return `state${schemaHashSuffix}.db`
+export const getStateDbFileName = (
+  schema: LiveStoreSchema,
+  backendId: StateBackendId = schema.state.defaultBackendId,
+) => {
+  const schemaHashSuffix = getStateSchemaHashSuffixForBackend(schema, backendId)
+  return backendId === schema.state.defaultBackendId
+    ? `state${schemaHashSuffix}.db`
+    : `state@${backendId}${schemaHashSuffix}.db`
 }
 
 export const MAX_ARCHIVED_STATE_DBS_IN_DEV = 3
@@ -168,12 +173,15 @@ export const cleanupOldStateDbFiles: (options: {
   }
 
   const isDev = isDevEnv()
-  const currentDbFileName = getStateDbFileName(currentSchema)
-  const currentPath = `/${currentDbFileName}`
+  const currentPaths = new Set(
+    Array.from(currentSchema.state.backends.keys()).map(
+      (backendId) => `/${getStateDbFileName(currentSchema, backendId)}`,
+    ),
+  )
 
   const allPaths = yield* Effect.sync(() => vfs.getTrackedFilePaths())
   const oldStateDbPaths = allPaths.filter(
-    (path) => path.startsWith('/state') && path.endsWith('.db') && path !== currentPath,
+    (path) => path.startsWith('/state') && path.endsWith('.db') && currentPaths.has(path) === false,
   )
 
   if (oldStateDbPaths.length === 0) {

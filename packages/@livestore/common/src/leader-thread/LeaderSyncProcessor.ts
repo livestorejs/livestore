@@ -35,6 +35,7 @@ import {
 import * as SyncState from '../sync/syncstate.ts'
 import { sql } from '../util.ts'
 import * as Eventlog from './eventlog.ts'
+import { rollbackEventlogDb } from './materialize-event.ts'
 import type { ShutdownChannel } from './shutdown-channel.ts'
 import type { InitialBlockingSyncContext, LeaderSyncProcessor } from './types.ts'
 import { LeaderThreadCtx } from './types.ts'
@@ -81,7 +82,7 @@ type LocalPushQueueItem = [
  */
 export const makeLeaderSyncProcessor = ({
   schema,
-  dbState,
+  dbStates,
   initialBlockingSyncContext,
   initialSyncState,
   onError,
@@ -92,6 +93,7 @@ export const makeLeaderSyncProcessor = ({
 }: {
   schema: LiveStoreSchema
   dbState: SqliteDb
+  dbStates: Map<string, SqliteDb>
   initialBlockingSyncContext: InitialBlockingSyncContext
   /** Initial sync state rehydrated from the persisted eventlog or initial sync state */
   initialSyncState: SyncState.SyncState
@@ -380,7 +382,7 @@ export const makeLeaderSyncProcessor = ({
         syncStateSref,
         pushPullMutex,
         livePull,
-        dbState,
+        dbStates,
         otelSpan,
         initialBlockingSyncContext,
         devtoolsLatch: ctxRef.current?.devtoolsLatch,
@@ -651,37 +653,65 @@ type MaterializeEventsBatch = (_: {
 // TODO how to handle errors gracefully
 const materializeEventsBatch: MaterializeEventsBatch = ({ batchItems, deferreds }) =>
   Effect.gen(function* () {
-    const { dbState: db, dbEventlog, stateBackend } = yield* LeaderThreadCtx
+    const { dbEventlog, dbStates, schema, stateBackends } = yield* LeaderThreadCtx
 
-    // NOTE We always start a transaction to ensure consistency between db and eventlog (even for single-item batches)
-    db.execute('BEGIN TRANSACTION', undefined) // Start the transaction
-    dbEventlog.execute('BEGIN TRANSACTION', undefined) // Start the transaction
+    if (batchItems.length === 0) return
 
-    yield* Effect.addFinalizer((exit) =>
-      Effect.gen(function* () {
-        if (Exit.isSuccess(exit)) return
+    const getBackendId = (event: LiveStoreEvent.Client.EncodedWithMeta) =>
+      schema.state.materializersByEventName.get(event.name)?.backendId ?? schema.state.defaultBackendId
 
-        // Rollback in case of an error
-        db.execute('ROLLBACK', undefined)
-        dbEventlog.execute('ROLLBACK', undefined)
-      }),
-    )
+    let runStart = 0
 
-    for (let i = 0; i < batchItems.length; i++) {
-      const { sessionChangeset, hash } = yield* stateBackend.materializeEvent(batchItems[i]!)
-      batchItems[i]!.meta.sessionChangeset = sessionChangeset
-      batchItems[i]!.meta.materializerHashLeader = hash
-
-      if (deferreds?.[i] !== undefined) {
-        yield* Deferred.succeed(deferreds[i]!, void 0)
+    while (runStart < batchItems.length) {
+      const runBackendId = getBackendId(batchItems[runStart]!)
+      let runEnd = runStart + 1
+      while (runEnd < batchItems.length && getBackendId(batchItems[runEnd]!) === runBackendId) {
+        runEnd++
       }
-    }
 
-    db.execute('COMMIT', undefined) // Commit the transaction
-    dbEventlog.execute('COMMIT', undefined) // Commit the transaction
+      const dbState = dbStates.get(runBackendId)
+      if (dbState === undefined) {
+        return shouldNeverHappen(`Missing state db for backend "${runBackendId}".`)
+      }
+
+      const stateBackend = stateBackends.get(runBackendId)
+      if (stateBackend === undefined) {
+        return shouldNeverHappen(`Missing state backend for backend "${runBackendId}".`)
+      }
+
+      yield* Effect.gen(function* () {
+        // NOTE We always start a transaction to ensure consistency between backend db and eventlog.
+        dbState.execute('BEGIN TRANSACTION', undefined)
+        dbEventlog.execute('BEGIN TRANSACTION', undefined)
+
+        yield* Effect.addFinalizer((exit) =>
+          Effect.gen(function* () {
+            if (Exit.isSuccess(exit)) return
+
+            // Rollback in case of an error
+            dbState.execute('ROLLBACK', undefined)
+            dbEventlog.execute('ROLLBACK', undefined)
+          }),
+        )
+
+        for (let i = runStart; i < runEnd; i++) {
+          const { sessionChangeset, hash } = yield* stateBackend.materializeEvent(batchItems[i]!)
+          batchItems[i]!.meta.sessionChangeset = sessionChangeset
+          batchItems[i]!.meta.materializerHashLeader = hash
+
+          if (deferreds?.[i] !== undefined) {
+            yield* Deferred.succeed(deferreds[i]!, void 0)
+          }
+        }
+
+        dbState.execute('COMMIT', undefined)
+        dbEventlog.execute('COMMIT', undefined)
+      }).pipe(Effect.scoped)
+
+      runStart = runEnd
+    }
   }).pipe(
     Effect.uninterruptible,
-    Effect.scoped,
     Effect.withSpan('@livestore/common:LeaderSyncProcessor:materializeEventItems', {
       attributes: { batchSize: batchItems.length },
     }),
@@ -692,7 +722,7 @@ const backgroundBackendPulling = ({
   isClientEvent,
   restartBackendPushing,
   otelSpan,
-  dbState,
+  dbStates,
   syncStateSref,
   pushPullMutex,
   livePull,
@@ -707,7 +737,7 @@ const backgroundBackendPulling = ({
   ) => Effect.Effect<void, UnknownError, LeaderThreadCtx | HttpClient.HttpClient>
   otelSpan: otel.Span | undefined
   syncStateSref: SubscriptionRef.SubscriptionRef<SyncState.SyncState | undefined>
-  dbState: SqliteDb
+  dbStates: Map<string, SqliteDb>
   pushPullMutex: Effect.Semaphore
   livePull: boolean
   devtoolsLatch: Effect.Latch | undefined
@@ -716,7 +746,7 @@ const backgroundBackendPulling = ({
   advancePushHead: (eventNum: EventSequenceNumber.Client.Composite) => void
 }) =>
   Effect.gen(function* () {
-    const { syncBackend, dbState: db, dbEventlog, schema, stateBackend } = yield* LeaderThreadCtx
+    const { syncBackend, dbState, dbEventlog, schema, stateBackends } = yield* LeaderThreadCtx
 
     if (syncBackend === undefined) return
 
@@ -782,7 +812,29 @@ const backgroundBackendPulling = ({
           yield* restartBackendPushing(globalRebasedPendingEvents)
 
           if (mergeResult.rollbackEvents.length > 0) {
-            yield* stateBackend.rollback({
+            const rollbackSeqNumsByBackend = new Map<string, Array<EventSequenceNumber.Client.Composite>>()
+            for (const rollbackEvent of mergeResult.rollbackEvents) {
+              const backendId = schema.state.materializersByEventName.get(rollbackEvent.name)?.backendId
+              if (backendId === undefined) continue
+              if (rollbackSeqNumsByBackend.has(backendId)) {
+                rollbackSeqNumsByBackend.get(backendId)!.push(rollbackEvent.seqNum)
+              } else {
+                rollbackSeqNumsByBackend.set(backendId, [rollbackEvent.seqNum])
+              }
+            }
+
+            for (const [backendId, seqNums] of rollbackSeqNumsByBackend.entries()) {
+              const stateBackend = stateBackends.get(backendId)
+              if (stateBackend === undefined) {
+                return shouldNeverHappen(`Missing state backend for backend "${backendId}".`)
+              }
+              yield* stateBackend.rollback({
+                eventNumsToRollback: seqNums,
+              })
+            }
+
+            yield* rollbackEventlogDb({
+              dbEventlog,
               eventNumsToRollback: mergeResult.rollbackEvents.map((_) => _.seqNum),
             })
           }
@@ -826,7 +878,7 @@ const backgroundBackendPulling = ({
         }
 
         // Removes the changeset rows which are no longer needed as we'll never have to rollback beyond this point
-        trimChangesetRows(db, newBackendHead)
+        trimChangesetRows(dbStates, newBackendHead)
 
         advancePushHead(mergeResult.newSyncState.localHead)
 
@@ -972,10 +1024,12 @@ const backgroundBackendPushing = ({
     }
   }).pipe(Effect.interruptible, Effect.withSpan('@livestore/common:LeaderSyncProcessor:backend-pushing'))
 
-const trimChangesetRows = (db: SqliteDb, newHead: EventSequenceNumber.Client.Composite) => {
-  // Since we're using the session changeset rows to query for the current head,
-  // we're keeping at least one row for the current head, and thus are using `<` instead of `<=`
-  db.execute(sql`DELETE FROM ${SystemTables.SESSION_CHANGESET_META_TABLE} WHERE seqNumGlobal < ${newHead.global}`)
+const trimChangesetRows = (dbStates: Map<string, SqliteDb>, newHead: EventSequenceNumber.Client.Composite) => {
+  for (const db of dbStates.values()) {
+    // Since we're using the session changeset rows to query for the current head,
+    // we're keeping at least one row for the current head, and thus are using `<` instead of `<=`
+    db.execute(sql`DELETE FROM ${SystemTables.SESSION_CHANGESET_META_TABLE} WHERE seqNumGlobal < ${newHead.global}`)
+  }
 }
 
 interface PullQueueSet {
@@ -1152,7 +1206,7 @@ const handleBackendIdMismatch = ({
   shutdownChannel: ShutdownChannel
 }) =>
   Effect.gen(function* () {
-    const { dbEventlog, dbState } = yield* LeaderThreadCtx
+    const { dbEventlog, dbStates } = yield* LeaderThreadCtx
 
     if (onBackendIdMismatch === 'reset') {
       yield* Effect.logWarning(
@@ -1161,7 +1215,7 @@ const handleBackendIdMismatch = ({
       )
 
       // Clear local databases so the client can start fresh on next boot
-      yield* clearLocalDatabases({ dbEventlog, dbState })
+      yield* clearLocalDatabases({ dbEventlog, dbStates })
 
       // Send shutdown signal with special reason
       yield* shutdownChannel.send(IntentionalShutdownCause.make({ reason: 'backend-id-mismatch' })).pipe(Effect.orDie)
@@ -1194,17 +1248,19 @@ const handleBackendIdMismatch = ({
  * Clears local databases (eventlog and state) so the client can start fresh on next boot.
  * This is used when the sync backend identity has changed (i.e. backend was reset).
  */
-const clearLocalDatabases = ({ dbEventlog, dbState }: { dbEventlog: SqliteDb; dbState: SqliteDb }) =>
+const clearLocalDatabases = ({ dbEventlog, dbStates }: { dbEventlog: SqliteDb; dbStates: Map<string, SqliteDb> }) =>
   Effect.sync(() => {
     // Clear eventlog tables
     dbEventlog.execute(sql`DELETE FROM ${EVENTLOG_META_TABLE}`)
     dbEventlog.execute(sql`DELETE FROM ${SYNC_STATUS_TABLE}`)
 
-    // Drop all state tables - they'll be recreated on next boot
-    const tables = dbState.select<{ name: string }>(
-      sql`SELECT name FROM sqlite_master WHERE type='table' AND name NOT LIKE 'sqlite_%'`,
-    )
-    for (const { name } of tables) {
-      dbState.execute(`DROP TABLE IF EXISTS "${name}"`)
+    // Drop all state tables in every backend db - they'll be recreated on next boot.
+    for (const dbState of dbStates.values()) {
+      const tables = dbState.select<{ name: string }>(
+        sql`SELECT name FROM sqlite_master WHERE type='table' AND name NOT LIKE 'sqlite_%'`,
+      )
+      for (const { name } of tables) {
+        dbState.execute(`DROP TABLE IF EXISTS "${name}"`)
+      }
     }
   })

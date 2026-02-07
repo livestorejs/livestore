@@ -9,6 +9,8 @@ import {
   type LockStatus,
   liveStoreStorageFormatVersion,
   makeClientSession,
+  migrateDbForBackend,
+  type SqliteDb,
   type SyncOptions,
   UnknownError,
 } from '@livestore/common'
@@ -19,7 +21,13 @@ import {
   makeLeaderThreadLayer,
   streamEventsWithSyncState,
 } from '@livestore/common/leader-thread'
-import { getStateSchemaHashSuffix, LiveStoreEvent, type LiveStoreSchema } from '@livestore/common/schema'
+import {
+  type EventSequenceNumber,
+  getStateSchemaHashSuffixForBackend,
+  LiveStoreEvent,
+  type LiveStoreSchema,
+  type StateBackendId,
+} from '@livestore/common/schema'
 import { shouldNeverHappen } from '@livestore/utils'
 import type { Schema, Scope } from '@livestore/utils/effect'
 import {
@@ -162,7 +170,7 @@ export const makePersistedAdapter =
 
       const devtoolsUrl = devtoolsEnabled ? getDevtoolsUrl().toString() : 'ws://127.0.0.1:4242'
 
-      const { leaderThread, initialSnapshot } = yield* makeLeaderThread({
+      const { leaderThread, initialSnapshotsByBackend } = yield* makeLeaderThread({
         storeId,
         clientId,
         schema,
@@ -176,8 +184,12 @@ export const makePersistedAdapter =
         devtoolsUrl,
       })
 
-      const sqliteDb = yield* makeSqliteDb({ _tag: 'in-memory' })
-      sqliteDb.import(initialSnapshot)
+      const sqliteDbs = yield* makeSessionSqliteDbs({
+        makeSqliteDb,
+        schema,
+        initialSnapshotsByBackend,
+        leaderHead: leaderThread.initialState.leaderHead,
+      })
 
       const clientSession = yield* makeClientSession({
         ...adapterArgs,
@@ -186,7 +198,7 @@ export const makePersistedAdapter =
         isLeader: true,
         sessionId,
         leaderThread,
-        sqliteDb,
+        sqliteDbs,
         webmeshMode: 'proxy',
         connectWebmeshNode: Effect.fnUntraced(function* ({ webmeshNode }) {
           if (devtoolsEnabled) {
@@ -239,13 +251,26 @@ const makeLeaderThread = ({
   devtoolsUrl: string
 }) =>
   Effect.gen(function* () {
-    const { directory, stateDatabaseName, eventlogDatabaseName } = resolveExpoPersistencePaths({
+    const { directory, stateDatabaseNames, eventlogDatabaseName } = resolveExpoPersistencePaths({
       storeId,
       storage,
       schema,
     })
 
-    const dbState = yield* makeSqliteDb({ _tag: 'file', databaseName: stateDatabaseName, directory })
+    const dbStates = yield* Effect.forEach(
+      Array.from(stateDatabaseNames.entries()),
+      ([backendId, databaseName]) =>
+        makeSqliteDb({ _tag: 'file', databaseName, directory }).pipe(
+          Effect.map((db): readonly [StateBackendId, SqliteDb] => [backendId, db]),
+        ),
+      { concurrency: 'unbounded' },
+    ).pipe(Effect.map((entries) => new Map<StateBackendId, SqliteDb>(entries)))
+
+    const dbState = dbStates.get(schema.state.defaultBackendId)
+    if (dbState === undefined) {
+      return shouldNeverHappen(`Missing default backend state db "${schema.state.defaultBackendId}".`)
+    }
+
     const dbEventlog = yield* makeSqliteDb({ _tag: 'file', databaseName: eventlogDatabaseName, directory })
 
     const devtoolsOptions = yield* makeDevtoolsOptions({
@@ -261,6 +286,7 @@ const makeLeaderThread = ({
       makeLeaderThreadLayer({
         clientId,
         dbState,
+        dbStates,
         dbEventlog,
         devtoolsOptions,
         makeSqliteDb,
@@ -277,6 +303,7 @@ const makeLeaderThread = ({
     return yield* Effect.gen(function* () {
       const {
         dbState: db,
+        dbStates,
         dbEventlog,
         syncProcessor,
         extraIncomingMessagesQueue,
@@ -329,10 +356,43 @@ const makeLeaderThread = ({
         networkStatus,
       })
 
-      const initialSnapshot = db.export()
+      const initialSnapshotsByBackend = new Map<StateBackendId, Uint8Array<ArrayBufferLike>>(
+        Array.from(dbStates.entries()).map(([backendId, db]) => [backendId, db.export()]),
+      )
 
-      return { leaderThread, initialSnapshot }
+      return { leaderThread, initialSnapshotsByBackend }
     }).pipe(Effect.provide(layer))
+  })
+
+const makeSessionSqliteDbs = ({
+  makeSqliteDb,
+  schema,
+  initialSnapshotsByBackend,
+  leaderHead,
+}: {
+  makeSqliteDb: MakeExpoSqliteDb
+  schema: LiveStoreSchema
+  initialSnapshotsByBackend: Map<StateBackendId, Uint8Array<ArrayBufferLike>>
+  leaderHead: EventSequenceNumber.Client.Composite
+}) =>
+  Effect.gen(function* () {
+    const sqliteDbs = new Map<StateBackendId, SqliteDb>()
+
+    for (const backendId of schema.state.backends.keys()) {
+      const db = yield* makeSqliteDb({ _tag: 'in-memory' })
+      const snapshot = initialSnapshotsByBackend.get(backendId)
+
+      if (snapshot !== undefined) {
+        db.import(new Uint8Array(snapshot))
+      } else {
+        const _migrationsReport = yield* migrateDbForBackend({ db, schema, backendId })
+      }
+
+      db.debug.head = leaderHead
+      sqliteDbs.set(backendId, db)
+    }
+
+    return sqliteDbs
   })
 
 const resolveExpoPersistencePaths = ({
@@ -350,11 +410,19 @@ const resolveExpoPersistencePaths = ({
 
   const directory = pathJoin(directoryBasePath, subDirectory, storeId)
 
-  const schemaHashSuffix = getStateSchemaHashSuffix(schema)
-  const stateDatabaseName = `livestore-${schemaHashSuffix}@${liveStoreStorageFormatVersion}.db`
+  const stateDatabaseNames = new Map<StateBackendId, string>(
+    Array.from(schema.state.backends.keys()).map((backendId) => {
+      const suffix = getStateSchemaHashSuffixForBackend(schema, backendId)
+      const isDefault = backendId === schema.state.defaultBackendId
+      const databaseName = isDefault
+        ? `livestore-${suffix}@${liveStoreStorageFormatVersion}.db`
+        : `livestore-state@${backendId}${suffix}@${liveStoreStorageFormatVersion}.db`
+      return [backendId, databaseName]
+    }),
+  )
   const eventlogDatabaseName = `livestore-eventlog@${liveStoreStorageFormatVersion}.db`
 
-  return { directory, stateDatabaseName, eventlogDatabaseName }
+  return { directory, stateDatabaseNames, eventlogDatabaseName }
 }
 
 const resetExpoPersistence = ({
@@ -368,13 +436,15 @@ const resetExpoPersistence = ({
 }) =>
   Effect.try({
     try: () => {
-      const { directory, stateDatabaseName, eventlogDatabaseName } = resolveExpoPersistencePaths({
+      const { directory, stateDatabaseNames, eventlogDatabaseName } = resolveExpoPersistencePaths({
         storeId,
         storage,
         schema,
       })
 
-      SQLite.deleteDatabaseSync(stateDatabaseName, directory)
+      for (const stateDatabaseName of stateDatabaseNames.values()) {
+        SQLite.deleteDatabaseSync(stateDatabaseName, directory)
+      }
       SQLite.deleteDatabaseSync(eventlogDatabaseName, directory)
     },
     catch: (cause) =>

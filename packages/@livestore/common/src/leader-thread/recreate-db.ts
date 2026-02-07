@@ -6,13 +6,13 @@ import {
   type BootStatus,
   type MaterializeError,
   type MigrationHooks,
-  migrateDb,
+  migrateDbForBackend,
   rematerializeFromEventlog,
   type SqliteDb,
   type SqliteError,
   UnknownError,
 } from '../index.ts'
-import type { LiveStoreSchema } from '../schema/mod.ts'
+import type { LiveStoreSchema, StateBackendId } from '../schema/mod.ts'
 import { configureConnection } from './connection.ts'
 import type { MaterializeEvent } from './types.ts'
 
@@ -29,8 +29,37 @@ export const recreateDb = ({
   bootStatusQueue: Queue.Queue<BootStatus>
   materializeEvent: MaterializeEvent
 }): Effect.Effect<{ migrationsReport: MigrationsReport }, UnknownError | MaterializeError | SqliteError> =>
+  recreateDbBackend({
+    backendId: schema.state.defaultBackendId,
+    dbState,
+    dbEventlog,
+    schema,
+    bootStatusQueue,
+    materializeEvent,
+  })
+
+export const recreateDbBackend = ({
+  backendId,
+  dbState,
+  dbEventlog,
+  schema,
+  bootStatusQueue,
+  materializeEvent,
+}: {
+  backendId: StateBackendId
+  dbState: SqliteDb
+  dbEventlog: SqliteDb
+  schema: LiveStoreSchema
+  bootStatusQueue: Queue.Queue<BootStatus>
+  materializeEvent: MaterializeEvent
+}): Effect.Effect<{ migrationsReport: MigrationsReport }, UnknownError | MaterializeError | SqliteError> =>
   Effect.gen(function* () {
-    const migrationOptions = schema.state.backend.migrations
+    const migrationOptions = schema.state.backends.get(backendId)?.migrations
+    if (migrationOptions === undefined) {
+      return yield* UnknownError.make({
+        cause: new Error(`Missing state backend "${backendId}" while recreating database.`),
+      })
+    }
     let migrationsReport: MigrationsReport
 
     yield* Effect.addFinalizer(
@@ -50,9 +79,10 @@ export const recreateDb = ({
       Effect.gen(function* () {
         yield* Effect.tryAll(() => hooks?.init?.(tmpDb)).pipe(UnknownError.mapToUnknownError)
 
-        const migrationsReport = yield* migrateDb({
+        const migrationsReport = yield* migrateDbForBackend({
           db: tmpDb,
           schema,
+          backendId,
           onProgress: ({ done, total }) =>
             Queue.offer(bootStatusQueue, { stage: 'migrating', progress: { done, total } }),
         })

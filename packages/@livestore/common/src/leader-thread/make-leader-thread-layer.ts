@@ -23,7 +23,7 @@ import {
 import type { MigrationsReport } from '../defs.ts'
 import type * as Devtools from '../devtools/mod.ts'
 import type { LiveStoreSchema } from '../schema/mod.ts'
-import { EventSequenceNumber, LiveStoreEvent, SystemTables } from '../schema/mod.ts'
+import { EventSequenceNumber, LiveStoreEvent, type StateBackendId, SystemTables } from '../schema/mod.ts'
 import type { LeaderStateBackend } from '../state-backend/mod.ts'
 import type { InvalidPullError, IsOfflineError, SyncBackend, SyncOptions } from '../sync/sync.ts'
 import { SyncState } from '../sync/syncstate.ts'
@@ -31,8 +31,8 @@ import { sql } from '../util.ts'
 import * as Eventlog from './eventlog.ts'
 import { makeLeaderSyncProcessor } from './LeaderSyncProcessor.ts'
 import { bootDevtools } from './leader-worker-devtools.ts'
-import { makeMaterializeEvent, rollback as rollbackSqlite } from './materialize-event.ts'
-import { recreateDb } from './recreate-db.ts'
+import { makeMaterializeEvent, rollbackStateDb } from './materialize-event.ts'
+import { recreateDbBackend } from './recreate-db.ts'
 import type { ShutdownChannel } from './shutdown-channel.ts'
 import type {
   DevtoolsContext,
@@ -52,7 +52,8 @@ export interface MakeLeaderThreadLayerParams {
   schema: LiveStoreSchema
   makeSqliteDb: MakeSqliteDb
   syncOptions: SyncOptions | undefined
-  dbState: LeaderSqliteDb
+  dbState?: LeaderSqliteDb
+  dbStates?: Map<StateBackendId, LeaderSqliteDb>
   dbEventlog: LeaderSqliteDb
   devtoolsOptions: DevtoolsOptions
   shutdownChannel: ShutdownChannel
@@ -80,6 +81,7 @@ export const makeLeaderThreadLayer = ({
   makeSqliteDb,
   syncOptions,
   dbState,
+  dbStates,
   dbEventlog,
   devtoolsOptions,
   shutdownChannel,
@@ -98,10 +100,26 @@ export const makeLeaderThreadLayer = ({
       yield* Queue.offer(bootStatusQueue, bootWarning)
     }
 
+    const dbStates_ =
+      dbStates ??
+      (dbState === undefined
+        ? undefined
+        : new Map<StateBackendId, LeaderSqliteDb>([[schema.state.defaultBackendId, dbState]]))
+    if (dbStates_ === undefined || dbStates_.size === 0) {
+      return shouldNeverHappen('makeLeaderThreadLayer requires at least one state database.')
+    }
+
+    const defaultDbState = dbStates_.get(schema.state.defaultBackendId)
+    if (defaultDbState === undefined) {
+      return shouldNeverHappen(`Missing state db for default backend "${schema.state.defaultBackendId}".`)
+    }
+
     const dbEventlogMissing = !hasEventlogTables(dbEventlog)
 
     // Either happens on initial boot or if schema changes
-    const dbStateMissing = !hasStateTables(dbState)
+    const missingBackendIds = Array.from(dbStates_.entries())
+      .filter(([, db]) => !hasStateTables(db))
+      .map(([backendId]) => backendId)
 
     yield* Eventlog.initEventlogDb(dbEventlog)
 
@@ -153,22 +171,49 @@ export const makeLeaderThreadLayer = ({
       bootStatusQueue,
     })
 
-    const materializeEvent = yield* makeMaterializeEvent({ schema, dbState, dbEventlog })
-    const stateBackend: LeaderStateBackend = {
-      materializeEvent,
-      rollback: ({ eventNumsToRollback }) => rollbackSqlite({ dbState, dbEventlog, eventNumsToRollback }),
+    const materializeEvent = yield* makeMaterializeEvent({ schema, dbStates: dbStates_, dbEventlog })
+    const stateBackends = new Map<StateBackendId, LeaderStateBackend>(
+      Array.from(dbStates_.entries()).map(([backendId, db]) => [
+        backendId,
+        {
+          materializeEvent,
+          rollback: ({ eventNumsToRollback }) => rollbackStateDb({ dbState: db, eventNumsToRollback }),
+        },
+      ]),
+    )
+    const stateBackend = stateBackends.get(schema.state.defaultBackendId)
+    if (stateBackend === undefined) {
+      return shouldNeverHappen(`Missing state backend for default backend "${schema.state.defaultBackendId}".`)
     }
 
-    // Recreate state database if needed BEFORE creating sync processor
+    // Recreate state databases if needed BEFORE creating sync processor
     // This ensures all system tables exist before any queries are made
-    const { migrationsReport } = dbStateMissing
-      ? yield* recreateDb({ dbState, dbEventlog, schema, bootStatusQueue, materializeEvent })
-      : { migrationsReport: { migrations: [] } }
+    const migrationsReports = yield* Effect.forEach(
+      missingBackendIds,
+      (backendId) =>
+        recreateDbBackend({
+          backendId,
+          dbState: dbStates_.get(backendId)!,
+          dbEventlog,
+          schema,
+          bootStatusQueue,
+          materializeEvent,
+        }),
+      { concurrency: 'unbounded' },
+    )
+
+    const migrationsReport =
+      migrationsReports.length === 0
+        ? { migrations: [] }
+        : {
+            migrations: migrationsReports.flatMap((report) => report.migrationsReport.migrations),
+          }
 
     const syncProcessor = yield* makeLeaderSyncProcessor({
       schema,
-      dbState,
-      initialSyncState: getInitialSyncState({ dbEventlog, dbState, dbEventlogMissing }),
+      dbState: defaultDbState,
+      dbStates: dbStates_,
+      initialSyncState: getInitialSyncState({ dbEventlog, dbStates: dbStates_, schema, dbEventlogMissing }),
       initialBlockingSyncContext,
       onError: syncOptions?.onSyncError ?? 'ignore',
       onBackendIdMismatch: syncOptions?.onBackendIdMismatch ?? 'reset',
@@ -203,7 +248,8 @@ export const makeLeaderThreadLayer = ({
       bootStatusQueue,
       storeId,
       clientId,
-      dbState,
+      dbStates: dbStates_,
+      dbState: defaultDbState,
       dbEventlog,
       makeSqliteDb,
       eventSchema: LiveStoreEvent.Client.makeSchema(schema),
@@ -212,6 +258,7 @@ export const makeLeaderThreadLayer = ({
       syncBackend,
       syncProcessor,
       materializeEvent,
+      stateBackends,
       stateBackend,
       extraIncomingMessagesQueue,
       devtools: devtoolsContext,
@@ -264,11 +311,13 @@ const isSubsetOf = (a: Set<string>, b: Set<string>): boolean => {
 
 const getInitialSyncState = ({
   dbEventlog,
-  dbState,
+  dbStates,
+  schema,
   dbEventlogMissing,
 }: {
   dbEventlog: SqliteDb
-  dbState: SqliteDb
+  dbStates: Map<StateBackendId, SqliteDb>
+  schema: LiveStoreSchema
   dbEventlogMissing: boolean
 }) => {
   const initialBackendHead = dbEventlogMissing
@@ -296,7 +345,8 @@ const getInitialSyncState = ({
       ? []
       : Eventlog.getEventsSince({
           dbEventlog,
-          dbState,
+          dbStates,
+          schema,
           since: {
             global: initialBackendHead,
             client: EventSequenceNumber.Client.DEFAULT,

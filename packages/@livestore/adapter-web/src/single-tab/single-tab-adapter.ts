@@ -17,11 +17,12 @@ import type { Adapter, BootWarningReason, ClientSession, LockStatus } from '@liv
 import {
   IntentionalShutdownCause,
   makeClientSession,
+  migrateDbForBackend,
   StoreInterrupted,
   sessionChangesetMetaTable,
   UnknownError,
 } from '@livestore/common'
-import { EventSequenceNumber } from '@livestore/common/schema'
+import { EventSequenceNumber, type StateBackendId } from '@livestore/common/schema'
 import { sqliteDbFactory } from '@livestore/sqlite-wasm/browser'
 import { shouldNeverHappen, tryAsFunctionAndNew } from '@livestore/utils'
 import {
@@ -355,6 +356,23 @@ export const makeSingleTabAdapter =
           })
         : EventSequenceNumber.Client.ROOT
 
+      sqliteDb.debug.head = initialLeaderHead
+
+      const sqliteDbs = yield* Effect.gen(function* () {
+        const dbs = new Map<StateBackendId, typeof sqliteDb>([[schema.state.defaultBackendId, sqliteDb]])
+
+        for (const backendId of schema.state.backends.keys()) {
+          if (backendId === schema.state.defaultBackendId) continue
+
+          const backendDb = yield* makeSqliteDb({ _tag: 'in-memory' })
+          const _migrationsReport = yield* migrateDbForBackend({ db: backendDb, schema, backendId })
+          backendDb.debug.head = initialLeaderHead
+          dbs.set(backendId, backendDb)
+        }
+
+        return dbs
+      })
+
       yield* Effect.addFinalizer((ex) =>
         Effect.gen(function* () {
           if (
@@ -425,7 +443,7 @@ export const makeSingleTabAdapter =
 
       const clientSession = yield* makeClientSession({
         ...adapterArgs,
-        sqliteDb,
+        sqliteDbs,
         lockStatus,
         clientId,
         sessionId,
