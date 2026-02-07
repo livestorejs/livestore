@@ -310,9 +310,8 @@ EOF
             zip
             brotli
             gzip
-          ] ++ (with pkgsUnstable; [
             emscripten
-          ]);
+          ];
         };
       }
     );
