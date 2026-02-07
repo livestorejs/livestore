@@ -1,11 +1,84 @@
 import { Events, makeSchema, Schema, State } from '@livestore/livestore'
 
-type BackendKey = 'a' | 'b'
+const aTables = makeTodoTables()
+const aEvents = {
+  todoCreated: Events.synced({
+    name: 'v1.A.TodoCreated',
+    schema: Schema.Struct({ id: Schema.String, text: Schema.String }),
+  }),
+  todoCompleted: Events.synced({
+    name: 'v1.A.TodoCompleted',
+    schema: Schema.Struct({ id: Schema.String }),
+  }),
+  todoUncompleted: Events.synced({
+    name: 'v1.A.TodoUncompleted',
+    schema: Schema.Struct({ id: Schema.String }),
+  }),
+  todoDeleted: Events.synced({
+    name: 'v1.A.TodoDeleted',
+    schema: Schema.Struct({ id: Schema.String, deletedAt: Schema.Date }),
+  }),
+  todoClearedCompleted: Events.synced({
+    name: 'v1.A.TodoClearedCompleted',
+    schema: Schema.Struct({ deletedAt: Schema.Date }),
+  }),
+}
 
-type EventPrefix = 'A' | 'B'
+const a = {
+  tables: aTables,
+  events: aEvents,
+  backend: State.SQLite.makeBackend({
+    id: 'a',
+    tables: aTables,
+    materializers: State.SQLite.materializers(aEvents, {
+      'v1.A.TodoCreated': ({ id, text }) => aTables.todos.insert({ id, text, completed: false }),
+      'v1.A.TodoCompleted': ({ id }) => aTables.todos.update({ completed: true }).where({ id }),
+      'v1.A.TodoUncompleted': ({ id }) => aTables.todos.update({ completed: false }).where({ id }),
+      'v1.A.TodoDeleted': ({ id, deletedAt }) => aTables.todos.update({ deletedAt }).where({ id }),
+      'v1.A.TodoClearedCompleted': ({ deletedAt }) => aTables.todos.update({ deletedAt }).where({ completed: true }),
+    }),
+  }),
+}
 
-const a = makeTodoBackend({ backendId: 'a', eventNamePrefix: 'A' })
-const b = makeTodoBackend({ backendId: 'b', eventNamePrefix: 'B' })
+const bTables = makeTodoTables()
+const bEvents = {
+  todoCreated: Events.synced({
+    name: 'v1.B.TodoCreated',
+    schema: Schema.Struct({ id: Schema.String, text: Schema.String }),
+  }),
+  todoCompleted: Events.synced({
+    name: 'v1.B.TodoCompleted',
+    schema: Schema.Struct({ id: Schema.String }),
+  }),
+  todoUncompleted: Events.synced({
+    name: 'v1.B.TodoUncompleted',
+    schema: Schema.Struct({ id: Schema.String }),
+  }),
+  todoDeleted: Events.synced({
+    name: 'v1.B.TodoDeleted',
+    schema: Schema.Struct({ id: Schema.String, deletedAt: Schema.Date }),
+  }),
+  todoClearedCompleted: Events.synced({
+    name: 'v1.B.TodoClearedCompleted',
+    schema: Schema.Struct({ deletedAt: Schema.Date }),
+  }),
+}
+
+const b = {
+  tables: bTables,
+  events: bEvents,
+  backend: State.SQLite.makeBackend({
+    id: 'b',
+    tables: bTables,
+    materializers: State.SQLite.materializers(bEvents, {
+      'v1.B.TodoCreated': ({ id, text }) => bTables.todos.insert({ id, text, completed: false }),
+      'v1.B.TodoCompleted': ({ id }) => bTables.todos.update({ completed: true }).where({ id }),
+      'v1.B.TodoUncompleted': ({ id }) => bTables.todos.update({ completed: false }).where({ id }),
+      'v1.B.TodoDeleted': ({ id, deletedAt }) => bTables.todos.update({ deletedAt }).where({ id }),
+      'v1.B.TodoClearedCompleted': ({ deletedAt }) => bTables.todos.update({ deletedAt }).where({ completed: true }),
+    }),
+  }),
+}
 
 export const tables = { a: a.tables, b: b.tables }
 
@@ -17,19 +90,8 @@ export const schema = makeSchema({
   devtools: { alias: 'multi-state-todo' },
 })
 
-function makeTodoBackend<TBackendId extends BackendKey, TPrefix extends EventPrefix>(args: {
-  backendId: TBackendId
-  eventNamePrefix: TPrefix
-}) {
-  const eventNames = {
-    todoCreated: `v1.${args.eventNamePrefix}.TodoCreated`,
-    todoCompleted: `v1.${args.eventNamePrefix}.TodoCompleted`,
-    todoUncompleted: `v1.${args.eventNamePrefix}.TodoUncompleted`,
-    todoDeleted: `v1.${args.eventNamePrefix}.TodoDeleted`,
-    todoClearedCompleted: `v1.${args.eventNamePrefix}.TodoClearedCompleted`,
-  } as const
-
-  const todoTables = {
+function makeTodoTables() {
+  return {
     todos: State.SQLite.table({
       name: 'todos',
       columns: {
@@ -38,46 +100,6 @@ function makeTodoBackend<TBackendId extends BackendKey, TPrefix extends EventPre
         completed: State.SQLite.boolean({ default: false }),
         deletedAt: State.SQLite.integer({ nullable: true, schema: Schema.DateFromNumber }),
       },
-    }),
-  }
-
-  const todoEvents = {
-    todoCreated: Events.synced({
-      name: eventNames.todoCreated,
-      schema: Schema.Struct({ id: Schema.String, text: Schema.String }),
-    }),
-    todoCompleted: Events.synced({
-      name: eventNames.todoCompleted,
-      schema: Schema.Struct({ id: Schema.String }),
-    }),
-    todoUncompleted: Events.synced({
-      name: eventNames.todoUncompleted,
-      schema: Schema.Struct({ id: Schema.String }),
-    }),
-    todoDeleted: Events.synced({
-      name: eventNames.todoDeleted,
-      schema: Schema.Struct({ id: Schema.String, deletedAt: Schema.Date }),
-    }),
-    todoClearedCompleted: Events.synced({
-      name: eventNames.todoClearedCompleted,
-      schema: Schema.Struct({ deletedAt: Schema.Date }),
-    }),
-  }
-
-  return {
-    tables: todoTables,
-    events: todoEvents,
-    backend: State.SQLite.makeBackend({
-      id: args.backendId,
-      tables: todoTables,
-      materializers: State.SQLite.materializers(todoEvents, {
-        [eventNames.todoCreated]: ({ id, text }) => todoTables.todos.insert({ id, text, completed: false }),
-        [eventNames.todoCompleted]: ({ id }) => todoTables.todos.update({ completed: true }).where({ id }),
-        [eventNames.todoUncompleted]: ({ id }) => todoTables.todos.update({ completed: false }).where({ id }),
-        [eventNames.todoDeleted]: ({ id, deletedAt }) => todoTables.todos.update({ deletedAt }).where({ id }),
-        [eventNames.todoClearedCompleted]: ({ deletedAt }) =>
-          todoTables.todos.update({ deletedAt }).where({ completed: true }),
-      }),
     }),
   }
 }
