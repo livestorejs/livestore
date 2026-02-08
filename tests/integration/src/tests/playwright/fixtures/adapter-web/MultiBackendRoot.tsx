@@ -9,8 +9,14 @@ import LiveStoreWorker from './multi-backend.worker.ts?worker'
 import { events, schema, tables } from './multi-backend-schema.ts'
 
 type MultiBackendTestHandle = {
+  commitAItem: (id: string, title: string) => void
+  getAItems: () => ReadonlyArray<{ id: string; title: string }>
+
   commitBItem: (id: string, title: string) => void
   getBItems: () => ReadonlyArray<{ id: string; title: string }>
+
+  waitUntilSynced: (timeoutMs?: number) => Promise<void>
+  shutdown: () => Promise<void>
 }
 
 declare global {
@@ -37,7 +43,7 @@ export const MultiBackendRoot: React.FC = () => {
         resetPersistence: reset,
         sessionId,
         clientId,
-        experimental: { disableFastPath },
+        experimental: { disableFastPath, awaitSharedWorkerTermination: true },
       }),
     [reset, sessionId, clientId, disableFastPath],
   )
@@ -63,10 +69,28 @@ const AppWithStore: React.FC<{ adapter: ReturnType<typeof makePersistedAdapter> 
 
   React.useEffect(() => {
     window.__lsMultiBackendTest = {
+      commitAItem: (id, title) => {
+        store.commit(events.aItemCreated({ id, title }))
+      },
+      getAItems: () => store.query(tables.a.items),
+
       commitBItem: (id, title) => {
         store.commit(events.bItemCreated({ id, title }))
       },
       getBItems: () => store.query(tables.b.items),
+
+      waitUntilSynced: async (timeoutMs = 10_000) => {
+        const startedAt = Date.now()
+        while (Date.now() - startedAt < timeoutMs) {
+          if (store.syncStatus().isSynced) {
+            return
+          }
+          await new Promise((resolve) => setTimeout(resolve, 20))
+        }
+        throw new Error(`Timed out waiting for sync after ${timeoutMs}ms`)
+      },
+
+      shutdown: () => store.shutdownPromise(),
     }
 
     return () => {

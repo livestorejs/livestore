@@ -3,7 +3,6 @@ import {
   IntentionalShutdownCause,
   liveStoreVersion,
   makeClientSession,
-  migrateDbForBackend,
   StoreInterrupted,
   UnknownError,
 } from '@livestore/common'
@@ -40,6 +39,11 @@ import { makeShutdownChannel } from '../common/shutdown-channel.ts'
 import { DedicatedWorkerDisconnectBroadcast, makeWorkerDisconnectChannel } from '../common/worker-disconnect-channel.ts'
 import * as WorkerSchema from '../common/worker-schema.ts'
 import { connectWebmeshNodeClientSession } from './client-session-devtools.ts'
+import {
+  ensureSnapshotsByBackendComplete,
+  getMissingBackendSnapshots,
+  isSnapshotSetComplete,
+} from './snapshot-completeness.ts'
 import { loadSqlite3 } from './sqlite-loader.ts'
 
 /**
@@ -437,10 +441,24 @@ export const makePersistedAdapter =
         Effect.forkScoped,
       )
 
-      // TODO maybe bring back transfering the initially created in-memory db snapshot instead of
-      // re-exporting the db
+      const shouldUseFastPath =
+        dataFromFile !== undefined && isSnapshotSetComplete({ schema, snapshotsByBackend: dataFromFile })
+      if (dataFromFile !== undefined && shouldUseFastPath === false) {
+        const missingBackendIds = getMissingBackendSnapshots({ schema, snapshotsByBackend: dataFromFile })
+        yield* Effect.logWarning(
+          '[@livestore/adapter-web:client-session] Fast-path snapshots incomplete; falling back to worker recreate snapshot',
+          {
+            missingBackendIds,
+            availableBackendIds: Array.from(dataFromFile.keys()),
+            expectedBackendIds: Array.from(schema.state.backends.keys()),
+          },
+        )
+      }
+
+      // TODO maybe bring back transferring the initially created in-memory db snapshot instead of
+      // re-exporting the db.
       const initialResult =
-        dataFromFile === undefined
+        shouldUseFastPath === false
           ? yield* runInWorker(new WorkerSchema.LeaderWorkerInnerGetRecreateSnapshot()).pipe(
               Effect.map(({ snapshotsByBackend, migrationsReport }) => ({
                 _tag: 'from-leader-worker' as const,
@@ -452,6 +470,11 @@ export const makePersistedAdapter =
 
       const migrationsReport =
         initialResult._tag === 'from-leader-worker' ? initialResult.migrationsReport : { migrations: [] }
+      const snapshotsByBackend = yield* ensureSnapshotsByBackendComplete({
+        schema,
+        snapshotsByBackend: initialResult.snapshotsByBackend,
+        sourceTag: initialResult._tag,
+      })
 
       const makeSqliteDb = sqliteDbFactory({ sqlite3 })
       const sqliteDbs = yield* Effect.gen(function* () {
@@ -459,14 +482,19 @@ export const makePersistedAdapter =
 
         for (const backendId of schema.state.backends.keys()) {
           const db = yield* makeSqliteDb({ _tag: 'in-memory' })
-          const snapshot = initialResult.snapshotsByBackend.get(backendId)
-
-          if (snapshot !== undefined) {
-            db.import(new Uint8Array(snapshot))
-          } else {
-            const _migrationsReport = yield* migrateDbForBackend({ db, schema, backendId })
+          const snapshot = snapshotsByBackend.get(backendId)
+          if (snapshot === undefined) {
+            return yield* UnknownError.make({
+              cause: `Missing snapshot for backend "${backendId}" during session boot.`,
+              payload: {
+                sourceTag: initialResult._tag,
+                expectedBackendIds: Array.from(schema.state.backends.keys()),
+                availableBackendIds: Array.from(snapshotsByBackend.keys()),
+              },
+            })
           }
 
+          db.import(new Uint8Array(snapshot))
           dbs.set(backendId, db)
         }
 
@@ -481,7 +509,7 @@ export const makePersistedAdapter =
       const numberOfTables =
         sqliteDb.select<{ count: number }>(`select count(*) as count from sqlite_master`)[0]?.count ?? 0
       if (numberOfTables === 0) {
-        const defaultSnapshot = initialResult.snapshotsByBackend.get(schema.state.defaultBackendId)
+        const defaultSnapshot = snapshotsByBackend.get(schema.state.defaultBackendId)
         return yield* UnknownError.make({
           cause: `Encountered empty or corrupted database`,
           payload: { snapshotByteLength: defaultSnapshot?.byteLength ?? 0, storageOptions: options.storage },
