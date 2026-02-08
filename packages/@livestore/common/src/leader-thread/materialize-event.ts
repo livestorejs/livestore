@@ -87,6 +87,7 @@ export const makeMaterializeEvent = ({
         if (dbState === undefined) {
           return shouldNeverHappen(`Missing state db for backend "${backendId}".`)
         }
+        const stateSystemTables = SystemTables.forStateBackend(schema, backendId)
 
         // Log deprecation warnings for deprecated events/fields
         yield* logDeprecationWarnings(eventDef, eventEncoded.args as Record<string, unknown>)
@@ -137,7 +138,7 @@ export const makeMaterializeEvent = ({
           dbState,
           ...insertRow({
             tableName: SystemTables.SESSION_CHANGESET_META_TABLE,
-            columns: SystemTables.sessionChangesetMetaTable.sqliteDef.columns,
+            columns: stateSystemTables.sessionChangesetMetaTable.sqliteDef.columns,
             values: {
               seqNumGlobal: eventEncoded.seqNum.global,
               seqNumClient: eventEncoded.seqNum.client,

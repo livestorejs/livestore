@@ -148,7 +148,7 @@ export class LeaderWorkerInnerGetRecreateSnapshot extends Schema.TaggedRequest<L
   {
     payload: {},
     success: Schema.Struct({
-      snapshot: Transferable.Uint8Array as Schema.Schema<Uint8Array<ArrayBuffer>>,
+      snapshotsByBackend: SnapshotsByBackendWire,
       migrationsReport: MigrationsReport,
     }),
     failure: UnknownError,

@@ -295,7 +295,7 @@ const hasEventlogTables = (db: SqliteDb) => {
 
 const hasStateTables = (db: SqliteDb) => {
   const tableNames = new Set(db.select<{ name: string }>(sql`select name from sqlite_master`).map((_) => _.name))
-  const stateTables = new Set(SystemTables.stateSystemTables.map((_) => _.sqliteDef.name))
+  const stateTables = new Set(SystemTables.stateSystemTableNames)
   return isSubsetOf(stateTables, tableNames)
 }
 

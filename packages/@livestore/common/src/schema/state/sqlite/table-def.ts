@@ -25,8 +25,6 @@ type TableDefInternals = {
   backendId?: StateBackendId
 }
 
-const DEFAULT_BACKEND_ID: StateBackendId = 'default'
-
 const getOrInitTableDefInternals = (tableDef: TableDefBase): TableDefInternals => {
   const tableDefWithInternals = tableDef as TableDefBase & {
     [TableDefInternalsSymbol]?: TableDefInternals
@@ -56,7 +54,15 @@ export const getTableBackendId = (tableDef: TableDefBase): StateBackendId => {
   const tableDefWithInternals = tableDef as TableDefBase & {
     [TableDefInternalsSymbol]?: TableDefInternals
   }
-  return tableDefWithInternals[TableDefInternalsSymbol]?.backendId ?? DEFAULT_BACKEND_ID
+  const backendId = tableDefWithInternals[TableDefInternalsSymbol]?.backendId
+  if (backendId === undefined) {
+    return shouldNeverHappen(
+      `Table "${tableDef.sqliteDef.ast.name}" is not assigned to a backend. ` +
+        `Register it via State.SQLite.makeBackend(...) (or makeState/makeMultiState) before using QueryBuilder routing.`,
+    )
+  }
+
+  return backendId
 }
 
 export type TableDefBase<

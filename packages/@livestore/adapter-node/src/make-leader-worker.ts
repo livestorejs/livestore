@@ -37,6 +37,12 @@ export type WorkerOptions = {
 
 export const getWorkerArgs = () => Schema.decodeSync(WorkerSchema.WorkerArgv)(process.argv[2]!)
 
+/** @internal */
+export const makeSnapshotsByBackend = (
+  dbStates: LeaderThreadCtx['Type']['dbStates'],
+): typeof WorkerSchema.SnapshotsByBackendWire.Type =>
+  Array.from(dbStates.entries()).map(([backendId, db]) => [backendId, db.export()])
+
 export const makeWorker = (options: WorkerOptions) => {
   makeWorkerEffect(options).pipe(PlatformNode.NodeRuntime.runMain)
 }
@@ -144,8 +150,8 @@ export const makeWorkerEffect = (options: WorkerOptions) => {
         // const cachedSnapshot =
         //   result._tag === 'Recreate' ? yield* Ref.getAndSet(result.snapshotRef, undefined) : undefined
         // return cachedSnapshot ?? workerCtx.db.export()
-        const snapshot = workerCtx.dbState.export()
-        return { snapshot, migrationsReport: workerCtx.initialState.migrationsReport }
+        const snapshotsByBackend = makeSnapshotsByBackend(workerCtx.dbStates)
+        return { snapshotsByBackend, migrationsReport: workerCtx.initialState.migrationsReport }
       }).pipe(UnknownError.mapToUnknownError, Effect.withSpan('@livestore/adapter-node:worker:GetRecreateSnapshot')),
     Shutdown: () =>
       // @effect-diagnostics-next-line unnecessaryEffectGen:off

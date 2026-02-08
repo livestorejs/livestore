@@ -4,7 +4,7 @@ import type { MigrationOptions } from '../adapter-types.ts'
 import type { EventDef, EventDefRecord, Materializer } from './EventDef/mod.ts'
 import { tableIsClientDocumentTable } from './state/sqlite/client-document-def.ts'
 import type { SqliteDsl } from './state/sqlite/db-schema/mod.ts'
-import { stateSystemTables } from './state/sqlite/system-tables/state-tables.ts'
+import { makeStateSystemTables, stateSystemTableNames } from './state/sqlite/system-tables/state-tables.ts'
 import type { TableDef } from './state/sqlite/table-def.ts'
 import type { UnknownEvents } from './unknown-events.ts'
 import { normalizeUnknownEventHandling } from './unknown-events.ts'
@@ -121,7 +121,15 @@ export const makeSchema = <TInputSchema extends InputSchema>(
 ): FromInputSchema.DeriveSchema<TInputSchema> => {
   const state = normalizeInternalState(inputSchema.state)
 
-  for (const backend of state.backends.values()) {
+  for (const [backendId, backend] of state.backends.entries()) {
+    const hasMissingStateSystemTable = (stateSystemTableNames as readonly string[]).some(
+      (tableName) => !backend.tables.has(tableName),
+    )
+    if (!hasMissingStateSystemTable) {
+      continue
+    }
+
+    const { stateSystemTables } = makeStateSystemTables(backendId)
     for (const tableDef of stateSystemTables) {
       backend.tables.set(tableDef.sqliteDef.name, tableDef)
     }
@@ -187,13 +195,16 @@ export const getEventDef = <TSchema extends LiveStoreSchema>(
 export const resolveBackendIdForEventName = (schema: LiveStoreSchema, eventName: string): StateBackendId =>
   schema.state.materializersByEventName.get(eventName)?.backendId ?? schema.state.defaultBackendId
 
-const DEFAULT_BACKEND_ID: StateBackendId = 'default'
-
 const normalizeInternalState = (state: InternalState): InternalState => {
   const backends =
     state.backends instanceof Map && state.backends.size > 0
       ? new Map(state.backends)
-      : new Map([[state.defaultBackendId ?? DEFAULT_BACKEND_ID, state.backend]])
+      : (() => {
+          if (state.defaultBackendId === undefined) {
+            return shouldNeverHappen('Internal state is missing defaultBackendId.')
+          }
+          return new Map([[state.defaultBackendId, state.backend]])
+        })()
 
   const defaultBackendId = state.defaultBackendId ?? backends.keys().next().value
   if (typeof defaultBackendId !== 'string') {

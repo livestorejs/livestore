@@ -19,10 +19,9 @@ import {
   makeClientSession,
   migrateDbForBackend,
   StoreInterrupted,
-  sessionChangesetMetaTable,
   UnknownError,
 } from '@livestore/common'
-import { EventSequenceNumber, type StateBackendId } from '@livestore/common/schema'
+import { EventSequenceNumber, type StateBackendId, SystemTables } from '@livestore/common/schema'
 import { sqliteDbFactory } from '@livestore/sqlite-wasm/browser'
 import { shouldNeverHappen, tryAsFunctionAndNew } from '@livestore/utils'
 import {
@@ -359,8 +358,9 @@ export const makeSingleTabAdapter =
       }
 
       // Restore leader head from SESSION_CHANGESET_META_TABLE
+      const defaultStateSystemTables = SystemTables.forStateBackend(schema, schema.state.defaultBackendId)
       const initialLeaderHeadRes = sqliteDb.select(
-        sessionChangesetMetaTable
+        defaultStateSystemTables.sessionChangesetMetaTable
           .select('seqNumClient', 'seqNumGlobal', 'seqNumRebaseGeneration')
           .orderBy([
             { col: 'seqNumGlobal', direction: 'desc' },

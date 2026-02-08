@@ -4,14 +4,13 @@ import type { SqliteDb } from '../adapter-types.ts'
 import * as EventSequenceNumber from '../schema/EventSequenceNumber/mod.ts'
 import * as LiveStoreEvent from '../schema/LiveStoreEvent/mod.ts'
 import type { LiveStoreSchema } from '../schema/mod.ts'
-import { resolveBackendIdForEventName } from '../schema/mod.ts'
+import { resolveBackendIdForEventName, SystemTables } from '../schema/mod.ts'
 import {
   EVENTLOG_META_TABLE,
   eventlogMetaTable,
   eventlogSystemTables,
   SYNC_STATUS_TABLE,
 } from '../schema/state/sqlite/system-tables/eventlog-tables.ts'
-import { sessionChangesetMetaTable } from '../schema/state/sqlite/system-tables/state-tables.ts'
 import { migrateTable } from '../schema-management/migrations.ts'
 import { insertRow, updateRows } from '../sql-queries/sql-queries.ts'
 import type { PreparedBindValues } from '../util.ts'
@@ -60,7 +59,8 @@ export const getEventsSince = ({
 
   const sessionChangesetMapsByBackend = new Map(
     Array.from(dbStates.entries()).map(([backendId, dbState]) => {
-      const rows = dbState.select(sessionChangesetMetaTable.where('seqNumGlobal', '>=', since.global))
+      const stateSystemTables = SystemTables.forStateBackend(schema, backendId)
+      const rows = dbState.select(stateSystemTables.sessionChangesetMetaTable.where('seqNumGlobal', '>=', since.global))
       return [backendId, new Map(rows.map((row) => [`${row.seqNumGlobal}:${row.seqNumClient}`, row]))] as const
     }),
   )

@@ -280,7 +280,6 @@ const makeAdapterImpl = ({
               shutdown,
               storeId,
               clientId,
-              defaultBackendId: schema.state.defaultBackendId,
               sessionId,
               workerUrl: leaderThreadInput.workerUrl,
               workerExtraArgs: leaderThreadInput.workerExtraArgs,
@@ -325,6 +324,14 @@ const makeAdapterImpl = ({
       Effect.withSpan('@livestore/adapter-node:adapter'),
       Effect.provide(Layer.mergeAll(PlatformNode.NodeFileSystem.layer, FetchHttpClient.layer)),
     )) satisfies Adapter
+
+/** @internal */
+export const makeInitialSnapshotsByBackendFromBootResult = ({
+  snapshotsByBackend,
+}: {
+  snapshotsByBackend: typeof WorkerSchema.SnapshotsByBackendWire.Type
+}): Map<StateBackendId, Uint8Array<ArrayBufferLike>> =>
+  new Map<StateBackendId, Uint8Array<ArrayBufferLike>>(snapshotsByBackend)
 
 const makeSessionSqliteDbs = ({
   makeSqliteDb,
@@ -475,7 +482,6 @@ const makeWorkerLeaderThread = ({
   shutdown,
   storeId,
   clientId,
-  defaultBackendId,
   sessionId,
   workerUrl,
   workerExtraArgs,
@@ -488,7 +494,6 @@ const makeWorkerLeaderThread = ({
   shutdown: (cause: Exit.Exit<IntentionalShutdownCause, UnknownError | SyncError>) => Effect.Effect<void>
   storeId: string
   clientId: string
-  defaultBackendId: StateBackendId
   sessionId: string
   workerUrl: URL
   workerExtraArgs: Schema.JsonValue | undefined
@@ -501,8 +506,20 @@ const makeWorkerLeaderThread = ({
   }
 }) =>
   Effect.gen(function* () {
+    /**
+     * Preserve parent `execArgv` so local dev/test loaders (e.g. TS loaders) still apply in the worker thread.
+     * This is required in workspace setups where package exports point to `.ts` sources.
+     */
+    const workerExecArgv = [...process.execArgv]
+    if (workerExecArgv.includes('--enable-source-maps') === false) {
+      workerExecArgv.push('--enable-source-maps')
+    }
+    if (process.env.DEBUG_WORKER !== undefined && workerExecArgv.some((arg) => arg.startsWith('--inspect')) === false) {
+      workerExecArgv.push('--inspect')
+    }
+
     const nodeWorker = new WT.Worker(workerUrl, {
-      execArgv: process.env.DEBUG_WORKER ? ['--inspect --enable-source-maps'] : ['--enable-source-maps'],
+      execArgv: workerExecArgv,
       argv: [Schema.encodeSync(WorkerSchema.WorkerArgv)({ storeId, clientId, sessionId, extraArgs: workerExtraArgs })],
     })
     const nodeWorkerLayer = yield* Layer.build(PlatformNode.NodeWorker.layer(() => nodeWorker))
@@ -637,6 +654,6 @@ const makeWorkerLeaderThread = ({
 
     return {
       leaderThread,
-      initialSnapshotsByBackend: new Map<StateBackendId, Uint8Array>([[defaultBackendId, bootResult.snapshot]]),
+      initialSnapshotsByBackend: makeInitialSnapshotsByBackendFromBootResult(bootResult),
     }
   })

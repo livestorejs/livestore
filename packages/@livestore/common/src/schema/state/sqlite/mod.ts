@@ -10,7 +10,7 @@ import {
 } from '../../schema.ts'
 import { ClientDocumentTableDefSymbol, tableIsClientDocumentTable } from './client-document-def.ts'
 import { SqliteAst } from './db-schema/mod.ts'
-import { stateSystemTables } from './system-tables/state-tables.ts'
+import { makeStateSystemTables } from './system-tables/state-tables.ts'
 import { setTableBackendId, type TableDef, type TableDefBase } from './table-def.ts'
 
 export * from '../../EventDef/mod.ts'
@@ -49,7 +49,8 @@ export const makeBackend = <TStateInput extends SqliteStateBackendInput>(
     tables.set(sqliteDef.ast.name, tableDef)
   }
 
-  // System tables are added to every backend map so migrations and boot logic stay local to each backend DB.
+  // System tables are unique per backend map so backend-specific metadata stays isolated.
+  const { stateSystemTables } = makeStateSystemTables(inputSchema.id)
   for (const tableDef of stateSystemTables) {
     tables.set(tableDef.sqliteDef.name, tableDef)
   }
