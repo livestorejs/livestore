@@ -70,6 +70,7 @@ export const makeClientSession = <R>({
     if (sqliteDb === undefined) {
       return shouldNeverHappen(`Missing sqlite db for default backend "${defaultBackendId}".`)
     }
+    validateDbStatesForSchema({ schema, dbStates: sqliteDbs_ })
 
     const devtools: ClientSession['devtools'] = devtoolsEnabled
       ? { enabled: true, pullLatch: yield* Effect.makeLatch(true), pushLatch: yield* Effect.makeLatch(true) }
@@ -160,3 +161,32 @@ export const makeClientSession = <R>({
       debugInstanceId,
     } satisfies ClientSession
   }).pipe(Effect.withSpan('@livestore/common:make-client-session'))
+
+const validateDbStatesForSchema = ({
+  schema,
+  dbStates,
+}: {
+  schema: AdapterArgs['schema']
+  dbStates: Map<StateBackendId, SqliteDb>
+}) => {
+  const expectedBackendIds = new Set<StateBackendId>(schema.state.backends.keys())
+  const providedBackendIds = new Set<StateBackendId>(dbStates.keys())
+
+  const missingBackendIds = Array.from(expectedBackendIds).filter((backendId) => !providedBackendIds.has(backendId))
+  const extraBackendIds = Array.from(providedBackendIds).filter((backendId) => !expectedBackendIds.has(backendId))
+
+  if (missingBackendIds.length > 0) {
+    return shouldNeverHappen(
+      `Missing state DB(s) for backend(s): ${missingBackendIds.join(', ')}. ` +
+        `Schema backends: ${Array.from(expectedBackendIds).join(', ')}. ` +
+        `Provided dbStates: ${Array.from(providedBackendIds).join(', ')}.`,
+    )
+  }
+
+  if (extraBackendIds.length > 0) {
+    return shouldNeverHappen(
+      `Provided state DB(s) for unknown backend(s): ${extraBackendIds.join(', ')}. ` +
+        `Schema backends: ${Array.from(expectedBackendIds).join(', ')}.`,
+    )
+  }
+}

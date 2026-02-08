@@ -113,6 +113,7 @@ export const makeLeaderThreadLayer = ({
     if (defaultDbState === undefined) {
       return shouldNeverHappen(`Missing state db for default backend "${schema.state.defaultBackendId}".`)
     }
+    validateDbStatesForSchema({ schema, dbStates: dbStates_ })
 
     const dbEventlogMissing = !hasEventlogTables(dbEventlog)
 
@@ -307,6 +308,35 @@ const isSubsetOf = (a: Set<string>, b: Set<string>): boolean => {
   }
 
   return true
+}
+
+const validateDbStatesForSchema = ({
+  schema,
+  dbStates,
+}: {
+  schema: LiveStoreSchema
+  dbStates: Map<StateBackendId, SqliteDb>
+}) => {
+  const expectedBackendIds = new Set<StateBackendId>(schema.state.backends.keys())
+  const providedBackendIds = new Set<StateBackendId>(dbStates.keys())
+
+  const missingBackendIds = Array.from(expectedBackendIds).filter((backendId) => !providedBackendIds.has(backendId))
+  const extraBackendIds = Array.from(providedBackendIds).filter((backendId) => !expectedBackendIds.has(backendId))
+
+  if (missingBackendIds.length > 0) {
+    return shouldNeverHappen(
+      `Missing state DB(s) for backend(s): ${missingBackendIds.join(', ')}. ` +
+        `Schema backends: ${Array.from(expectedBackendIds).join(', ')}. ` +
+        `Provided dbStates: ${Array.from(providedBackendIds).join(', ')}.`,
+    )
+  }
+
+  if (extraBackendIds.length > 0) {
+    return shouldNeverHappen(
+      `Provided state DB(s) for unknown backend(s): ${extraBackendIds.join(', ')}. ` +
+        `Schema backends: ${Array.from(expectedBackendIds).join(', ')}.`,
+    )
+  }
 }
 
 const getInitialSyncState = ({
