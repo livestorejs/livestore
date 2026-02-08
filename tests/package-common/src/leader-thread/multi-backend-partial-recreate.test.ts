@@ -1,6 +1,14 @@
 import type { SqliteDb } from '@livestore/common'
 import { LeaderThreadCtx, makeLeaderThreadLayer } from '@livestore/common/leader-thread'
-import { EventSequenceNumber, Events, LiveStoreEvent, makeSchema, State, type StateBackendId, SystemTables } from '@livestore/common/schema'
+import {
+  EventSequenceNumber,
+  Events,
+  LiveStoreEvent,
+  makeSchema,
+  State,
+  type StateBackendId,
+  SystemTables,
+} from '@livestore/common/schema'
 import { EventFactory } from '@livestore/common/testing'
 import { loadSqlite3Wasm } from '@livestore/sqlite-wasm/load-wasm'
 import { type MakeNodeSqliteDb, sqliteDbFactory } from '@livestore/sqlite-wasm/node'

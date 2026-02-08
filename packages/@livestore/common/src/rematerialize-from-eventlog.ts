@@ -4,7 +4,13 @@ import { Chunk, Effect, Option, Schema, Stream } from '@livestore/utils/effect'
 import { type SqliteDb, UnknownError } from './adapter-types.ts'
 import type { MaterializeEvent } from './leader-thread/mod.ts'
 import type { EventDef, LiveStoreSchema, StateBackendId } from './schema/mod.ts'
-import { EventSequenceNumber, LiveStoreEvent, resolveBackendIdForEventName, resolveEventDef, SystemTables } from './schema/mod.ts'
+import {
+  EventSequenceNumber,
+  LiveStoreEvent,
+  resolveBackendIdForEventName,
+  resolveEventDef,
+  SystemTables,
+} from './schema/mod.ts'
 import type { PreparedBindValues } from './util.ts'
 import { sql } from './util.ts'
 
