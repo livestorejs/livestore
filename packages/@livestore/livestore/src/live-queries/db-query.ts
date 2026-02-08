@@ -312,7 +312,7 @@ export class LiveStoreDbQuery<TResultSchema, TResult = TResultSchema> extends Li
           label: `${label}:query`,
           meta: { liveStoreThunkType: 'db.query' },
           // NOTE we're not checking the schema here as we assume the query string to always change when the schema might change
-          equal: (a, b) => a.query === b.query && deepEqual(a.bindValues, b.bindValues),
+          equal: (a, b) => a.query === b.query && deepEqual(a.bindValues, b.bindValues) && a.backendId === b.backendId,
         },
       )
 
@@ -342,6 +342,7 @@ export class LiveStoreDbQuery<TResultSchema, TResult = TResultSchema> extends Li
 
     const queriedTableNamesRef: { current: Set<string> | undefined } = { current: undefined }
     const queriedTableKeysRef: { current: Set<string> | undefined } = { current: undefined }
+    const depCacheKeyRef: { current: string | undefined } = { current: undefined }
 
     const makeResultsEqual = (resultSchema: Schema.Schema<any, any>) => {
       // Creating the equivalence function eagerly in outer scope as it might be expensive
@@ -391,7 +392,9 @@ export class LiveStoreDbQuery<TResultSchema, TResult = TResultSchema> extends Li
               store[StoreInternalsSymbol].sqliteDbWrappers.get(backendId) ??
               shouldNeverHappen(`No sqlite db wrapper found for backend "${backendId}".`)
 
-            if (queriedTableNamesRef.current === undefined) {
+            const depCacheKey = `${backendId}:${sqlString}`
+            if (depCacheKeyRef.current !== depCacheKey) {
+              depCacheKeyRef.current = depCacheKey
               queriedTableNamesRef.current = queryInputResult.queriedTables ?? sqliteDbWrapper.getTablesUsed(sqlString)
               queriedTableKeysRef.current = new Set(
                 Array.from(queriedTableNamesRef.current).map((tableName) => makeTableKey(backendId, tableName)),
@@ -413,13 +416,18 @@ export class LiveStoreDbQuery<TResultSchema, TResult = TResultSchema> extends Li
             span.setAttribute('sql.query', sqlString)
             span.updateName(`db:${sqlString.slice(0, 50)}`)
 
+            const cachedSelectOptions: {
+              queriedTables?: ReadonlySet<string>
+              otelContext?: otel.Context
+            } = { otelContext }
+            if (queriedTableNamesRef.current !== undefined) {
+              cachedSelectOptions.queriedTables = queriedTableNamesRef.current
+            }
+
             const rawDbResults = sqliteDbWrapper.cachedSelect<any>(
               sqlString,
               bindValues ? prepareBindValues(bindValues, sqlString) : undefined,
-              {
-                queriedTables: queriedTableNamesRef.current,
-                otelContext,
-              },
+              cachedSelectOptions,
             )
 
             span.setAttribute('sql.rowsCount', rawDbResults.length)
