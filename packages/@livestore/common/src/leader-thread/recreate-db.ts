@@ -103,6 +103,7 @@ export const recreateDbBackend = ({
           // db: initResult.tmpDb,
           dbEventlog,
           schema,
+          backendId,
           materializeEvent,
           onProgress: ({ done, total }) =>
             Queue.offer(bootStatusQueue, { stage: 'rehydrating', progress: { done, total } }),
