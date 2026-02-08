@@ -304,6 +304,7 @@ export const makeSyncBackend =
 
       const pullEndpointHasSameOrigin =
         pullEndpoint.startsWith('/') ||
+        // @ts-ignore TODO(oep-8tc) TS7017: globalThis index access without DOM lib in composite build
         (globalThis.location !== undefined && globalThis.location.origin === new URL(pullEndpoint).origin)
 
       const pingTimeout = options.ping?.requestTimeout ?? 10_000

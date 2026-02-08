@@ -13,17 +13,21 @@ export const downloadBlob = (
 ) => {
   const blob = data instanceof Blob ? data : new Blob([data], { type: mimeType })
 
+  // @ts-ignore TODO(oep-8tc) TS2304: 'window' not available without DOM lib in composite build
   const url = window.URL.createObjectURL(blob)
 
   downloadURL(url, fileName)
 
+  // @ts-ignore TODO(oep-8tc) TS2304: 'window' not available without DOM lib in composite build
   setTimeout(() => window.URL.revokeObjectURL(url), 1000)
 }
 
 export const downloadURL = (data: string, fileName: string) => {
+  // @ts-ignore TODO(oep-8tc) TS2584: 'document' not available without DOM lib in composite build
   const a = document.createElement('a')
   a.href = data
   a.download = fileName
+  // @ts-ignore TODO(oep-8tc) TS2584: 'document' not available without DOM lib in composite build
   document.body.append(a)
   a.style.display = 'none'
   a.click()

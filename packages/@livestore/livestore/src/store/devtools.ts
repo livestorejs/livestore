@@ -16,11 +16,14 @@ type SubMap = Map<RequestId, Unsub>
 
 // When running this code in Node.js, we need to use `setTimeout` instead of `requestAnimationFrame`
 const requestNextTick: (cb: () => void) => number =
+  // @ts-ignore TODO(oep-8tc) TS7017: globalThis index access without DOM lib in composite build
   globalThis.requestAnimationFrame === undefined
     ? (cb: () => void) => setTimeout(cb, 1000) as unknown as number
-    : globalThis.requestAnimationFrame
+    : // @ts-ignore TODO(oep-8tc) TS7017: globalThis index access without DOM lib in composite build
+      globalThis.requestAnimationFrame
 
 const cancelTick: (id: number) => void =
+  // @ts-ignore TODO(oep-8tc) TS7017: globalThis index access without DOM lib in composite build
   globalThis.cancelAnimationFrame === undefined ? (id: number) => clearTimeout(id) : globalThis.cancelAnimationFrame
 
 export const connectDevtoolsToStore = ({
@@ -94,6 +97,7 @@ export const connectDevtoolsToStore = ({
 
       handledRequestIds.add(requestId)
 
+      // @ts-ignore TODO(oep-8tc) TS7017: globalThis index access without DOM lib in composite build
       const requestIdleCallback = globalThis.requestIdleCallback ?? ((cb: () => void) => cb())
 
       switch (decodedMessage._tag) {
