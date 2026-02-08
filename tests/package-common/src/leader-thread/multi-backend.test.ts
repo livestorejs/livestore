@@ -12,7 +12,17 @@ import {
 import { EventFactory } from '@livestore/common/testing'
 import { loadSqlite3Wasm } from '@livestore/sqlite-wasm/load-wasm'
 import { type MakeNodeSqliteDb, sqliteDbFactory } from '@livestore/sqlite-wasm/node'
-import { Context, Cause, Effect, FetchHttpClient, Layer, Option, Queue, Schema, WebChannel } from '@livestore/utils/effect'
+import {
+  Cause,
+  Context,
+  Effect,
+  FetchHttpClient,
+  Layer,
+  Option,
+  Queue,
+  Schema,
+  WebChannel,
+} from '@livestore/utils/effect'
 import { PlatformNode } from '@livestore/utils/node'
 import { Vitest } from '@livestore/utils-dev/node-vitest'
 import { expect } from 'vitest'
@@ -426,8 +436,12 @@ Vitest.describe('multi-backend leader-thread', () => {
         const remoteEvent = eventFactory.bItemCreated.next({ id: 'b-1', title: 'B Item 1' })
         const remoteClientEncoded = LiveStoreEvent.Global.toClientEncoded(remoteEvent)
 
-        const hashFromBackendA = makeMaterializerHash({ schema: hashFixture.schema, dbState: dbStateA })(remoteClientEncoded)
-        const hashFromBackendB = makeMaterializerHash({ schema: hashFixture.schema, dbState: dbStateB })(remoteClientEncoded)
+        const hashFromBackendA = makeMaterializerHash({ schema: hashFixture.schema, dbState: dbStateA })(
+          remoteClientEncoded,
+        )
+        const hashFromBackendB = makeMaterializerHash({ schema: hashFixture.schema, dbState: dbStateB })(
+          remoteClientEncoded,
+        )
         expect(hashFromBackendA._tag).toBe('Some')
         expect(hashFromBackendB._tag).toBe('Some')
         expect(hashFromBackendA).not.toEqual(hashFromBackendB)
@@ -436,7 +450,9 @@ Vitest.describe('multi-backend leader-thread', () => {
 
         const pullItem = yield* Queue.take(pullQueue)
         const pulledEvents = pullItem.payload.newEvents ?? []
-        const pulledEvent = pulledEvents.find((event: LiveStoreEvent.Client.EncodedWithMeta) => event.name === remoteEvent.name)
+        const pulledEvent = pulledEvents.find(
+          (event: LiveStoreEvent.Client.EncodedWithMeta) => event.name === remoteEvent.name,
+        )
         expect(pulledEvent).toBeDefined()
         expect(pulledEvent!.meta.materializerHashLeader._tag).toBe('Some')
         if (hashFromBackendB._tag !== 'Some') {

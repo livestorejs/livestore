@@ -80,7 +80,8 @@ const makeFsAdapter = (clientId: string) =>
     clientId,
   })
 
-const makeFsStore = (clientId: string, storeId = nanoid(10)) => createStore({ adapter: makeFsAdapter(clientId), schema, storeId })
+const makeFsStore = (clientId: string, storeId = nanoid(10)) =>
+  createStore({ adapter: makeFsAdapter(clientId), schema, storeId })
 
 const getStateDbSnapshotPath = (storeId: string, backendId: BackendId) =>
   path.join(TMP_STORE_DIR, storeId, `${getStateDbBaseName({ schema, backendId })}@${liveStoreStorageFormatVersion}.db`)
