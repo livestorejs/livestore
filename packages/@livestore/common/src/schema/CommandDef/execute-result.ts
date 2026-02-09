@@ -110,8 +110,8 @@ export interface CommandConflict {
     /** The command type name. */
     readonly name: string
 
-    /** The command arguments (payload). */
-    readonly payload: unknown
+    /** The command arguments. */
+    readonly args: unknown
   }
 
   /** The error that caused the replay to fail. */

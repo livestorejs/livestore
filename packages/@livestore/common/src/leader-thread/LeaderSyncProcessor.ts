@@ -1280,7 +1280,7 @@ const replayPendingCommands = ({
           command: {
             id: pendingCommand.id,
             name: pendingCommand.name,
-            payload: parsedArgs,
+            args: parsedArgs,
           },
           error: new Error(`Command definition '${pendingCommand.name}' not found in schema`),
           timestamp: Date.now(),
@@ -1329,7 +1329,7 @@ const replayPendingCommands = ({
           command: {
             id: pendingCommand.id,
             name: pendingCommand.name,
-            payload: parsedArgs,
+            args: parsedArgs,
           },
           error: replayResult.error,
           timestamp: Date.now(),
