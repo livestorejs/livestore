@@ -50,6 +50,9 @@
     },
     {
       "path": "../utils"
+    },
+    {
+      "path": "../livestore"
     }
   ]
 }

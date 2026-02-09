@@ -44,5 +44,9 @@
   },
   "include": ["./src"],
   "exclude": ["node_modules", "**/dist", "**/node_modules/.pnpm", "**/*.genie.ts"],
-  "references": []
+  "references": [
+    {
+      "path": "../utils"
+    }
+  ]
 }

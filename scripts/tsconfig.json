@@ -60,9 +60,6 @@
       "path": "../packages/@local/astro-twoslash-code"
     },
     {
-      "path": "../docs"
-    },
-    {
       "path": "../tests/integration"
     },
     {

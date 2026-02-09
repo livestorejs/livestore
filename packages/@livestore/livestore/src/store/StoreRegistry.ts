@@ -29,7 +29,6 @@ import type { Store } from './store.ts'
  *
  * @internal Exported primarily for testing purposes.
  */
-// @ts-ignore TODO(oep-42x) TS2304: 'window' not available without DOM lib in composite build
 export const DEFAULT_UNUSED_CACHE_TIME = typeof window === 'undefined' ? Number.POSITIVE_INFINITY : 60_000
 
 /**

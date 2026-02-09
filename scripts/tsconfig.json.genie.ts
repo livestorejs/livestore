@@ -35,7 +35,6 @@ export default tsconfigJson({
     { path: '../packages/@livestore/common' },
     { path: '../packages/@local/astro-tldraw' },
     { path: '../packages/@local/astro-twoslash-code' },
-    { path: '../docs' },
     { path: '../tests/integration' },
     { path: '../tests/sync-provider' },
   ],
