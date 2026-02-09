@@ -15,5 +15,5 @@ export default tsconfigJson({
   },
   include: ['./src'],
   exclude: [...packageTsconfigExclude],
-  references: [refs.common, refs.utils],
+  references: [refs.common, refs.utils, refs.livestore],
 })

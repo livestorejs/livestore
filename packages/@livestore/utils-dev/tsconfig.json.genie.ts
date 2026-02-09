@@ -2,6 +2,7 @@ import {
   baseTsconfigCompilerOptions,
   packageTsconfigCompilerOptions,
   packageTsconfigExclude,
+  refs,
   tsconfigJson,
 } from '../../../genie/repo.ts'
 
@@ -12,5 +13,5 @@ export default tsconfigJson({
   },
   include: ['./src'],
   exclude: [...packageTsconfigExclude],
-  references: [],
+  references: [refs.utils],
 })
