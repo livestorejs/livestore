@@ -14,8 +14,8 @@
  *   checkInGuest: defineCommand({
  *     name: 'CheckInGuest',
  *     schema: Schema.Struct({ roomId: Schema.String, guestId: Schema.String }),
- *     handler: (cmd, { state }) => {
- *       const room = state.query(tables.rooms.get(cmd.roomId))
+ *     handler: (cmd, ctx) => {
+ *       const room = ctx.query(tables.rooms.get(cmd.roomId))
  *       if (!room) throw new Error("Room not found")
  *       if (room.guestCount >= room.capacity) throw new Error("Room at capacity")
  *       return [events.guestCheckedIn({ roomId: cmd.roomId, guestId: cmd.guestId })]
@@ -63,9 +63,9 @@ export interface DefineCommandOptions<TArgs> {
  *     roomId: Schema.String,
  *     guestId: Schema.String,
  *   }),
- *   handler: (cmd, { state }) => {
- *     const room = state.query(tables.rooms.get(cmd.roomId))
- *     const guestCount = state.query(tables.roomGuests.where({ roomId: cmd.roomId }).count())
+ *   handler: (cmd, ctx) => {
+ *     const room = ctx.query(tables.rooms.get(cmd.roomId))
+ *     const guestCount = ctx.query(tables.roomGuests.where({ roomId: cmd.roomId }).count())
  *
  *     if (!room) {
  *       throw new Error("Room not found")

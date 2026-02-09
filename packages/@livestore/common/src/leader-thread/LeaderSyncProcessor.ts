@@ -1291,24 +1291,22 @@ const replayPendingCommands = ({
         continue
       }
 
-      // Create handler context with state query
+      // Create handler context with query access to current state
       const handlerContext: CommandDef.CommandHandlerContext = {
-        state: {
-          query: <TResult>(query: unknown): TResult => {
-            // Execute the query against the current state db
-            // The query is expected to be a SQL query or query builder
-            if (typeof query === 'string') {
-              const result = dbState.select(query)
-              return result as TResult
-            }
-            // Handle query builders and live query definitions
-            if (query && typeof query === 'object' && 'sql' in query) {
-              const result = dbState.select((query as { sql: string }).sql)
-              return result as TResult
-            }
-            // For other query types, attempt to execute as-is
-            return dbState.select(query as string) as TResult
-          },
+        query: <TResult>(query: unknown): TResult => {
+          // Execute the query against the current state db
+          // The query is expected to be a SQL query or query builder
+          if (typeof query === 'string') {
+            const result = dbState.select(query)
+            return result as TResult
+          }
+          // Handle query builders and live query definitions
+          if (query && typeof query === 'object' && 'sql' in query) {
+            const result = dbState.select((query as { sql: string }).sql)
+            return result as TResult
+          }
+          // For other query types, attempt to execute as-is
+          return dbState.select(query as string) as TResult
         },
       }
 

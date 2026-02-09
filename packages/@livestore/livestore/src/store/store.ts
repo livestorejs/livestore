@@ -924,11 +924,9 @@ export class Store<TSchema extends LiveStoreSchema = LiveStoreSchema.Any, TConte
       }
     }
 
-    // Create handler context with state.query
+    // Create handler context with query access to current state
     const handlerContext = {
-      state: {
-        query: <TResult>(query: Queryable<TResult>): TResult => this.query(query),
-      },
+      query: <TResult>(query: Queryable<TResult>): TResult => this.query(query),
     }
 
     // Execute handler and catch errors

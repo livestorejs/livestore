@@ -6,17 +6,14 @@ import type * as LiveStoreEvent from '../LiveStoreEvent/mod.ts'
  * Context provided to command handlers for validation and state queries.
  */
 export interface CommandHandlerContext {
-  /** State access for validation queries. */
-  readonly state: {
-    /**
-     * Execute a synchronous query against the current state.
-     * Use this to validate command preconditions.
-     *
-     * Accepts query builders, live query definitions, or raw queries.
-     */
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    query: <TResult>(query: any) => TResult
-  }
+  /**
+   * Execute a synchronous query against the current state.
+   * Use this to validate command preconditions.
+   *
+   * Accepts query builders, live query definitions, or raw queries.
+   */
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  readonly query: <TResult>(query: any) => TResult
 }
 
 /**
@@ -27,8 +24,8 @@ export interface CommandHandlerContext {
  *
  * @example
  * ```ts
- * const handler: CommandHandler<{ roomId: string; guestId: string }> = (cmd, { state }) => {
- *   const room = state.query(tables.rooms.get(cmd.roomId))
+ * const handler: CommandHandler<{ roomId: string; guestId: string }> = (cmd, ctx) => {
+ *   const room = ctx.query(tables.rooms.get(cmd.roomId))
  *   if (!room) throw new Error("Room not found")
  *   if (room.guestCount >= room.capacity) throw new Error("Room at capacity")
  *   return [events.guestCheckedIn({ roomId: cmd.roomId, guestId: cmd.guestId })]
@@ -61,8 +58,8 @@ export type CommandHandler<TArgs> = (
  *     roomId: Schema.String,
  *     guestId: Schema.String,
  *   }),
- *   handler: (cmd, { state }) => {
- *     const room = state.query(tables.rooms.get(cmd.roomId))
+ *   handler: (cmd, ctx) => {
+ *     const room = ctx.query(tables.rooms.get(cmd.roomId))
  *     if (!room) throw new Error("Room not found")
  *     return [events.guestCheckedIn({ roomId: cmd.roomId, guestId: cmd.guestId })]
  *   },

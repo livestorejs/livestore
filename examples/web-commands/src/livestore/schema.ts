@@ -59,8 +59,8 @@ export const commands = {
   toggleTodo: defineCommand({
     name: 'ToggleTodo',
     schema: Schema.Struct({ id: Schema.String }),
-    handler: ({ id }, { state }) => {
-      const todo = state.query<typeof tables.todos.Type | undefined>(tables.todos.where({ id }).first())
+    handler: ({ id }, ctx) => {
+      const todo = ctx.query<typeof tables.todos.Type | undefined>(tables.todos.where({ id }).first())
       if (!todo) throw new Error('Todo not found')
       if (todo.deletedAt) throw new Error('Cannot toggle deleted todo')
 
@@ -71,8 +71,8 @@ export const commands = {
   deleteTodo: defineCommand({
     name: 'DeleteTodo',
     schema: Schema.Struct({ id: Schema.String, deletedAt: Schema.Date }),
-    handler: ({ id, deletedAt }, { state }) => {
-      const todo = state.query<typeof tables.todos.Type | undefined>(tables.todos.where({ id }).first())
+    handler: ({ id, deletedAt }, ctx) => {
+      const todo = ctx.query<typeof tables.todos.Type | undefined>(tables.todos.where({ id }).first())
       if (!todo) throw new Error('Todo not found')
       if (todo.deletedAt) throw new Error('Todo already deleted')
 
@@ -83,8 +83,8 @@ export const commands = {
   clearCompleted: defineCommand({
     name: 'ClearCompleted',
     schema: Schema.Struct({ deletedAt: Schema.Date }),
-    handler: ({ deletedAt }, { state }) => {
-      const completedCount = state.query<number>(tables.todos.count().where({ completed: true, deletedAt: null }))
+    handler: ({ deletedAt }, ctx) => {
+      const completedCount = ctx.query<number>(tables.todos.count().where({ completed: true, deletedAt: null }))
       if (completedCount === 0) {
         throw new Error('No completed todos to clear')
       }
