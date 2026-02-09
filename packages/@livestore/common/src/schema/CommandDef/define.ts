@@ -33,20 +33,6 @@ import { nanoid } from '@livestore/utils/nanoid'
 import type { CommandDef, CommandHandler, CommandInstance } from './command-def.ts'
 
 /**
- * Options for defining a command.
- */
-export interface DefineCommandOptions<TArgs> {
-  /** Unique name identifying this command type. */
-  name: string
-
-  /** Effect Schema for validating command arguments. */
-  schema: Schema.Schema<TArgs>
-
-  /** Handler function that validates the command and produces events. */
-  handler: CommandHandler<TArgs>
-}
-
-/**
  * Creates a command definition.
  *
  * Commands encode user intentions that can be re-evaluated during sync.
@@ -93,7 +79,7 @@ export interface DefineCommandOptions<TArgs> {
 export const defineCommand = <TName extends string, TArgs, TEncoded = TArgs>(options: {
   name: TName
   schema: Schema.Schema<TArgs, TEncoded>
-  handler: CommandHandler<TArgs>
+  handler: CommandHandler<{ schema: Schema.Schema<TArgs, TEncoded> }>
 }): CommandDef<TName, TArgs, TEncoded> => {
   const { name, schema, handler } = options
 

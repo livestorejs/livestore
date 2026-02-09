@@ -34,14 +34,18 @@ export interface CommandHandlerContext {
 }
 
 /**
- * Handler function that validates a command and produces events.
+ * Function type for validating a command and producing events.
  *
- * Handlers receive the command arguments and a context with state access.
- * They should validate preconditions and return the events to be committed.
+ * Handlers receive the decoded command arguments and a context with state
+ * access. They should validate preconditions and return the events to be
+ * committed.
+ *
+ * Parameterized by the command definition type so that the arguments are
+ * inferred from the schema, mirroring the {@link import('../EventDef/materializer.ts').Materializer | Materializer} pattern.
  *
  * @example
  * ```ts
- * const handler: CommandHandler<{ roomId: string; guestId: string }> = (cmd, ctx) => {
+ * const handler: CommandHandler<typeof checkInGuest> = (cmd, ctx) => {
  *   const room = ctx.query(tables.rooms.get(cmd.roomId))
  *   if (!room) throw new Error("Room not found")
  *   if (room.guestCount >= room.capacity) throw new Error("Room at capacity")
@@ -49,8 +53,11 @@ export interface CommandHandlerContext {
  * }
  * ```
  */
-export type CommandHandler<TArgs> = (
-  args: TArgs,
+export type CommandHandler<
+  TCommandDef extends { schema: Schema.Schema<any, any> } = CommandDef.AnyWithoutFn,
+> = (
+  /** Decoded command arguments. */
+  args: TCommandDef['schema']['Type'],
   context: CommandHandlerContext,
 ) => ReadonlyArray<LiveStoreEvent.Input.Decoded>
 
@@ -97,7 +104,7 @@ export type CommandDef<TName extends string, TArgs, TEncoded = TArgs> = {
   readonly schema: Schema.Schema<TArgs, TEncoded>
 
   /** Handler function that validates the command and produces events. */
-  readonly handler: CommandHandler<TArgs>
+  readonly handler: CommandHandler<CommandDef<TName, TArgs, TEncoded>>
 
   /**
    * Callable signature - creates a command instance with validated arguments.
