@@ -146,7 +146,7 @@ const runKnipCheck = Effect.gen(function* () {
 
   yield* Effect.addFinalizer(() => Effect.sync(() => fs.unlinkSync(tempConfigPath)))
 
-  yield* cmd(['bun', 'run', 'scripts/node_modules/.bin/knip', '-c', tempConfigPath, '--directory', workspaceRoot]).pipe(
+  yield* cmd(['scripts/node_modules/.bin/knip', '-c', tempConfigPath, '--directory', workspaceRoot]).pipe(
     Effect.provide(CurrentWorkingDirectory.fromPath(workspaceRoot)),
   )
 }).pipe(Effect.scoped, Effect.withSpan('runKnipCheck'))
@@ -195,7 +195,7 @@ export const lintCommand = Cli.Command.make(
     }
 
     // Shell needed for wildcards
-    yield* cmd('bun run madge --circular --no-spinner examples/*/src packages/*/*/src', { shell: true }).pipe(
+    yield* cmd('./scripts/node_modules/.bin/madge --circular --no-spinner examples/*/src packages/*/*/src', { shell: true }).pipe(
       Effect.provide(LivestoreWorkspace.toCwd()),
     )
 
