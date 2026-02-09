@@ -27,7 +27,6 @@ export default packageJson({
     ),
     '@types/bun': '1.3.5',
     '@types/semver': '^7.7.0',
-    knip: '^5.80.0',
     madge: '^8.0.0',
     semver: '^7.7.3',
     yaml: '2.8.1',
