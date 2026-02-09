@@ -24,8 +24,8 @@ export interface ExecuteResultFailed {
  * Result of a successful command execution.
  *
  * Returned when the command handler successfully produces events.
- * The events are materialized locally (optimistic UI) but may still
- * fail during replay after sync reconciliation.
+ * The events are materialized locally but may still fail during replay
+ * during sync reconciliation.
  */
 export interface ExecuteResultPending {
   /** Type discriminator for pending result. */
