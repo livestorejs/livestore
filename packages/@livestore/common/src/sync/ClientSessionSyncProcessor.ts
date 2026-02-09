@@ -101,7 +101,15 @@ export const makeClientSessionSyncProcessor = ({
   }
   // FIXME: https://github.com/livestorejs/livestore/issues/970
   Effect.runCallback(clientSession.leaderThread.syncState.get.pipe(Effect.andThen(leaderState => {
-    syncStateRef.current = leaderState
+    syncStateRef.current = new SyncState.SyncState({
+      localHead: leaderState.localHead,
+      upstreamHead: leaderState.upstreamHead,
+      // following pattern above.
+      // Problem: materialize fails with sql constraint violation - somehow still persisting it to the db while backend is offline.
+      //   then on refresh and every following refresh, something is still stuck here in pending and so beforeunload fails.
+      //   With this empty beforeunload is ok.
+      pending: [],
+    })
   })))
 
   /** Only used for debugging / observability / testing, it's not relied upon for correctness of the sync processor. */
@@ -202,6 +210,7 @@ export const makeClientSessionSyncProcessor = ({
       const onBeforeUnload = (event: BeforeUnloadEvent) => {
         if (syncStateRef.current.pending.length > 0) {
           // Trigger the default browser dialog
+          console.error('client-session-sync-processor still got pending events: ', syncStateRef.current.pending)
           event.preventDefault()
         }
       }
