@@ -957,7 +957,6 @@ export class Store<TSchema extends LiveStoreSchema = LiveStoreSchema.Any, TConte
 
     return {
       _tag: 'pending',
-      commandId: command.id,
       confirmed: Promise.resolve(),
     }
   }

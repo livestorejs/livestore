@@ -31,9 +31,6 @@ export interface ExecuteResultPending {
   /** Type discriminator for pending result. */
   readonly _tag: 'pending'
 
-  /** Unique identifier of the executed command. */
-  readonly commandId: string
-
   /**
    * Promise that resolves when the command's events are confirmed by the sync backend.
    *
