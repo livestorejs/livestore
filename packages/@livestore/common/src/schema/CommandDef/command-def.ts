@@ -1,19 +1,36 @@
 import type { Schema } from '@livestore/utils/effect'
 
 import type * as LiveStoreEvent from '../LiveStoreEvent/mod.ts'
+import type { QueryBuilder } from '../state/sqlite/query-builder/mod.ts'
+
+/**
+ * Function signature for querying current state within a command handler.
+ *
+ * Allows handlers to validate preconditions by reading existing data.
+ * Can be called with a type-safe QueryBuilder or a raw SQL query.
+ *
+ * @example
+ * ```ts
+ * handler: (cmd, ctx) => {
+ *   const room = ctx.query(tables.rooms.get(cmd.roomId))
+ *   if (!room) throw new Error("Room not found")
+ *   return [events.guestCheckedIn({ roomId: cmd.roomId, guestId: cmd.guestId })]
+ * }
+ * ```
+ */
+export type CommandHandlerContextQuery = {
+  /** Query with a type-safe QueryBuilder. */
+  <TResult>(qb: QueryBuilder<TResult, any, any>): TResult
+  /** Query with raw SQL and bind values. */
+  (args: { query: string; bindValues: Record<string, unknown> }): ReadonlyArray<unknown>
+}
 
 /**
  * Context provided to command handlers for validation and state queries.
  */
 export interface CommandHandlerContext {
-  /**
-   * Execute a synchronous query against the current state.
-   * Use this to validate command preconditions.
-   *
-   * Accepts query builders, live query definitions, or raw queries.
-   */
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  readonly query: <TResult>(query: any) => TResult
+  /** Execute a synchronous query against the current state. */
+  readonly query: CommandHandlerContextQuery
 }
 
 /**
