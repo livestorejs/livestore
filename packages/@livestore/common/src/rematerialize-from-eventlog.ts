@@ -3,8 +3,14 @@ import { Chunk, Effect, Option, Schema, Stream } from '@livestore/utils/effect'
 
 import { type SqliteDb, UnknownError } from './adapter-types.ts'
 import type { MaterializeEvent } from './leader-thread/mod.ts'
-import type { EventDef, LiveStoreSchema } from './schema/mod.ts'
-import { EventSequenceNumber, LiveStoreEvent, resolveEventDef, SystemTables } from './schema/mod.ts'
+import type { EventDef, LiveStoreSchema, StateBackendId } from './schema/mod.ts'
+import {
+  EventSequenceNumber,
+  LiveStoreEvent,
+  resolveBackendIdForEventName,
+  resolveEventDef,
+  SystemTables,
+} from './schema/mod.ts'
 import type { PreparedBindValues } from './util.ts'
 import { sql } from './util.ts'
 
@@ -13,12 +19,14 @@ export const rematerializeFromEventlog = ({
   // TODO re-use this db when bringing back the boot in-memory db implementation
   // db,
   schema,
+  backendId,
   onProgress,
   materializeEvent,
 }: {
   dbEventlog: SqliteDb
   // db: SqliteDb
   schema: LiveStoreSchema
+  backendId?: StateBackendId
   onProgress: (_: { done: number; total: number }) => Effect.Effect<void>
   materializeEvent: MaterializeEvent
 }) =>
@@ -31,6 +39,10 @@ export const rematerializeFromEventlog = ({
 
     const processEvent = (row: SystemTables.EventlogMetaRow) =>
       Effect.gen(function* () {
+        if (backendId !== undefined && resolveBackendIdForEventName(schema, row.name) !== backendId) {
+          return
+        }
+
         const args = JSON.parse(row.argsJson)
         const eventEncoded = LiveStoreEvent.Client.EncodedWithMeta.make({
           name: row.name,

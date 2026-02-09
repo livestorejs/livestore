@@ -1,0 +1,34 @@
+{
+  "compilerOptions": {
+    "target": "ES2022",
+    "useDefineForClassFields": true,
+    "lib": ["ES2020", "DOM", "DOM.Iterable"],
+    "module": "ESNext",
+    "skipLibCheck": true,
+    "moduleResolution": "bundler",
+    "types": ["vite/client"],
+    "disableSourceOfProjectReferenceRedirect": true,
+    "allowImportingTsExtensions": true,
+    "rewriteRelativeImportExtensions": true,
+    "verbatimModuleSyntax": true,
+    "resolveJsonModule": true,
+    "isolatedModules": true,
+    "noEmit": true,
+    "jsx": "react-jsx",
+    "strict": true,
+    "strictNullChecks": true,
+    "noUncheckedIndexedAccess": true,
+    "noFallthroughCasesInSwitch": true,
+    "exactOptionalPropertyTypes": false
+  },
+  "include": ["./src"],
+  "exclude": ["node_modules"],
+  "references": [
+    { "path": "../../packages/@livestore/adapter-web" },
+    { "path": "../../packages/@livestore/common" },
+    { "path": "../../packages/@livestore/livestore" },
+    { "path": "../../packages/@livestore/react" },
+    { "path": "../../packages/@livestore/sqlite-wasm" },
+    { "path": "../../packages/@livestore/utils" }
+  ]
+}

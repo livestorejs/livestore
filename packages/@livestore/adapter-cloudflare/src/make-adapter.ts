@@ -4,6 +4,8 @@ import {
   type LockStatus,
   liveStoreStorageFormatVersion,
   makeClientSession,
+  migrateDbForBackend,
+  type SqliteDb,
   type SyncOptions,
   UnknownError,
 } from '@livestore/common'
@@ -14,10 +16,12 @@ import {
   makeLeaderThreadLayer,
   streamEventsWithSyncState,
 } from '@livestore/common/leader-thread'
+import { getStateDbBaseName, type LiveStoreSchema, type StateBackendId } from '@livestore/common/schema'
 import type { CfTypes } from '@livestore/common-cf'
 import { LiveStoreEvent } from '@livestore/livestore'
 import { sqliteDbFactory } from '@livestore/sqlite-wasm/cf'
 import { loadSqlite3Wasm } from '@livestore/sqlite-wasm/load-wasm'
+import { shouldNeverHappen } from '@livestore/utils'
 import { Effect, FetchHttpClient, Layer, Schedule, SubscriptionRef, WebChannel } from '@livestore/utils/effect'
 
 export const makeAdapter =
@@ -50,30 +54,43 @@ export const makeAdapter =
 
       const makeSqliteDb = sqliteDbFactory({ sqlite3 })
 
-      const syncInMemoryDb = yield* makeSqliteDb({ _tag: 'in-memory', storage, configureDb: () => {} }).pipe(
-        UnknownError.mapToUnknownError,
+      const backendIds = Array.from(schema.state.backends.keys())
+      const defaultBackendId = schema.state.defaultBackendId
+      const stateDbFileNames = new Map<StateBackendId, string>(
+        backendIds.map((backendId) => [
+          backendId,
+          `${getStateDbBaseName({ schema, backendId })}@${liveStoreStorageFormatVersion}.db`,
+        ]),
       )
-
-      const schemaHashSuffix =
-        schema.state.sqlite.migrations.strategy === 'manual' ? 'fixed' : schema.state.sqlite.hash.toString()
-
-      const stateDbFileName = getStateDbFileName(schemaHashSuffix)
       const eventlogDbFileName = getEventlogDbFileName()
 
       if (resetPersistence === true) {
         yield* resetDurableObjectPersistence({
           storage,
           storeId,
-          dbFileNames: [stateDbFileName, eventlogDbFileName],
+          dbFileNames: [...stateDbFileNames.values(), eventlogDbFileName],
         })
       }
 
-      const dbState = yield* makeSqliteDb({
-        _tag: 'storage',
-        storage,
-        fileName: stateDbFileName,
-        configureDb: () => {},
-      }).pipe(UnknownError.mapToUnknownError)
+      const dbStates = yield* Effect.forEach(
+        backendIds,
+        (backendId): Effect.Effect<readonly [StateBackendId, SqliteDb], UnknownError> =>
+          makeSqliteDb({
+            _tag: 'storage',
+            storage,
+            fileName: stateDbFileNames.get(backendId) ?? shouldNeverHappen(`Missing file name for ${backendId}`),
+            configureDb: () => {},
+          }).pipe(
+            UnknownError.mapToUnknownError,
+            Effect.map((db): readonly [StateBackendId, SqliteDb] => [backendId, db]),
+          ),
+        { concurrency: 'unbounded' },
+      ).pipe(Effect.map((entries) => new Map<StateBackendId, SqliteDb>(entries)))
+
+      const dbState = dbStates.get(defaultBackendId)
+      if (dbState === undefined) {
+        return shouldNeverHappen(`Missing default backend state db "${defaultBackendId}".`)
+      }
 
       const dbEventlog = yield* makeSqliteDb({
         _tag: 'storage',
@@ -85,7 +102,6 @@ export const makeAdapter =
       const shutdownChannel = yield* WebChannel.noopChannel<any, any>()
 
       // Use Durable Object sync backend if no backend is specified
-
       const layer = yield* Layer.build(
         makeLeaderThreadLayer({
           schema,
@@ -94,6 +110,7 @@ export const makeAdapter =
           makeSqliteDb,
           syncOptions,
           dbState,
+          dbStates,
           dbEventlog,
           devtoolsOptions,
           shutdownChannel,
@@ -102,12 +119,18 @@ export const makeAdapter =
         }),
       )
 
-      const { leaderThread, initialSnapshot } = yield* Effect.gen(function* () {
-        const { dbState, dbEventlog, syncProcessor, extraIncomingMessagesQueue, initialState, networkStatus } =
-          yield* LeaderThreadCtx
+      const { leaderThread, initialSnapshotsByBackend } = yield* Effect.gen(function* () {
+        const {
+          dbState,
+          dbStates,
+          dbEventlog,
+          syncProcessor,
+          extraIncomingMessagesQueue,
+          initialState,
+          networkStatus,
+        } = yield* LeaderThreadCtx
 
         const initialLeaderHead = Eventlog.getClientHeadFromDb(dbEventlog)
-        // const initialLeaderHead = EventSequenceNumber.ROOT
 
         const leaderThread = ClientSessionLeaderThreadProxy.of(
           {
@@ -141,18 +164,26 @@ export const makeAdapter =
           },
         )
 
-        const initialSnapshot = dbState.export()
+        const initialSnapshotsByBackend = new Map<StateBackendId, Uint8Array<ArrayBufferLike>>(
+          Array.from(dbStates.entries()).map(([backendId, db]) => [backendId, db.export()]),
+        )
 
-        return { leaderThread, initialSnapshot }
+        return { leaderThread, initialSnapshotsByBackend }
       }).pipe(Effect.provide(layer))
 
-      syncInMemoryDb.import(initialSnapshot)
+      const sqliteDbs = yield* makeSessionSqliteDbs({
+        makeSqliteDb,
+        storage,
+        schema,
+        initialSnapshotsByBackend,
+        leaderHead: leaderThread.initialState.leaderHead,
+      })
 
       const lockStatus = yield* SubscriptionRef.make<LockStatus>('has-lock')
 
       const clientSession = yield* makeClientSession({
         ...adapterArgs,
-        sqliteDb: syncInMemoryDb,
+        sqliteDbs,
         webmeshMode: 'proxy',
         connectWebmeshNode: Effect.fnUntraced(function* ({ webmeshNode }) {
           if (devtoolsOptions.enabled) {
@@ -176,13 +207,47 @@ export const makeAdapter =
 
       return clientSession
     }).pipe(
+      UnknownError.mapToUnknownError,
       Effect.withSpan('@livestore/adapter-cloudflare:makeAdapter', { attributes: { clientId, sessionId } }),
       Effect.provide(FetchHttpClient.layer),
     )
 
-const getStateDbFileName = (suffix: string) => `state${suffix}@${liveStoreStorageFormatVersion}.db`
-
 const getEventlogDbFileName = () => `eventlog@${liveStoreStorageFormatVersion}.db`
+
+const makeSessionSqliteDbs = ({
+  makeSqliteDb,
+  storage,
+  schema,
+  initialSnapshotsByBackend,
+  leaderHead,
+}: {
+  makeSqliteDb: ReturnType<typeof sqliteDbFactory>
+  storage: CfTypes.DurableObjectStorage
+  schema: LiveStoreSchema
+  initialSnapshotsByBackend: Map<StateBackendId, Uint8Array<ArrayBufferLike>>
+  leaderHead: LiveStoreEvent.Client.EncodedWithMeta['seqNum']
+}): Effect.Effect<Map<StateBackendId, SqliteDb>, UnknownError> =>
+  Effect.gen(function* () {
+    const sqliteDbs = new Map<StateBackendId, SqliteDb>()
+
+    for (const backendId of schema.state.backends.keys()) {
+      const db = yield* makeSqliteDb({ _tag: 'in-memory', storage, configureDb: () => {} }).pipe(
+        UnknownError.mapToUnknownError,
+      )
+      const snapshot = initialSnapshotsByBackend.get(backendId)
+
+      if (snapshot !== undefined) {
+        db.import(new Uint8Array(snapshot))
+      } else {
+        const _migrationsReport = yield* migrateDbForBackend({ db, schema, backendId })
+      }
+
+      db.debug.head = leaderHead
+      sqliteDbs.set(backendId, db)
+    }
+
+    return sqliteDbs
+  })
 
 const resetDurableObjectPersistence = ({
   storage,

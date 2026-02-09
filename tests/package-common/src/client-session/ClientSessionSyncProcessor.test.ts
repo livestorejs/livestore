@@ -360,6 +360,7 @@ Vitest.describe.concurrent('ClientSessionSyncProcessor', () => {
 
       const clientSession: ClientSession = {
         sqliteDb: {} as any,
+        sqliteDbs: new Map([['default', {} as any]]),
         devtools: { enabled: false },
         clientId: 'client-test',
         sessionId: 'session-test',
@@ -511,6 +512,7 @@ Vitest.describe.concurrent('ClientSessionSyncProcessor', () => {
 
       const clientSession = {
         sqliteDb: {} as ClientSession['sqliteDb'],
+        sqliteDbs: new Map([['default', {} as ClientSession['sqliteDb']]]),
         devtools: { enabled: false } as ClientSession['devtools'],
         clientId: 'client-test',
         sessionId: 'session-test',

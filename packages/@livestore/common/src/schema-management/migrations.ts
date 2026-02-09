@@ -29,22 +29,21 @@
  * See system-tables/state-tables.ts and system-tables/eventlog-tables.ts for detailed documentation on each table type.
  */
 
-import { memoizeByStringifyArgs } from '@livestore/utils'
+import { memoizeByStringifyArgs, shouldNeverHappen } from '@livestore/utils'
 import { Effect } from '@livestore/utils/effect'
 
 import type { SqliteDb } from '../adapter-types.ts'
 import type { MigrationsReport, MigrationsReportEntry } from '../defs.ts'
 import type { UnknownError } from '../errors.ts'
-import type { LiveStoreSchema } from '../schema/mod.ts'
+import type { LiveStoreSchema, StateBackendId } from '../schema/mod.ts'
 import { makeColumnSpec } from '../schema/state/sqlite/column-spec.ts'
 import { SqliteAst } from '../schema/state/sqlite/db-schema/mod.ts'
+import * as SystemTables from '../schema/state/sqlite/system-tables/mod.ts'
 import type { SchemaEventDefsMetaRow, SchemaMetaRow } from '../schema/state/sqlite/system-tables/state-tables.ts'
 import {
   isStateSystemTable,
   SCHEMA_EVENT_DEFS_META_TABLE,
   SCHEMA_META_TABLE,
-  schemaEventDefsMetaTable,
-  stateSystemTables,
 } from '../schema/state/sqlite/system-tables/state-tables.ts'
 import { sql } from '../util.ts'
 import type { SchemaManager } from './common.ts'
@@ -53,11 +52,17 @@ import { validateSchema } from './validate-schema.ts'
 
 const getMemoizedTimestamp = memoizeByStringifyArgs(() => new Date().toISOString())
 
-export const makeSchemaManager = (db: SqliteDb): Effect.Effect<SchemaManager> =>
+export const makeSchemaManager = (
+  db: SqliteDb,
+  schema: LiveStoreSchema,
+  backendId: StateBackendId,
+): Effect.Effect<SchemaManager> =>
   Effect.gen(function* () {
+    const stateSystemTables = SystemTables.forStateBackend(schema, backendId)
+
     yield* migrateTable({
       db,
-      tableAst: schemaEventDefsMetaTable.sqliteDef.ast,
+      tableAst: stateSystemTables.schemaEventDefsMetaTable.sqliteDef.ast,
       behaviour: 'create-if-not-exists',
     })
 
@@ -88,8 +93,43 @@ export const migrateDb = ({
   schema: LiveStoreSchema
   onProgress?: (opts: { done: number; total: number }) => Effect.Effect<void>
 }): Effect.Effect<MigrationsReport, UnknownError> =>
+  onProgress === undefined
+    ? migrateDbForBackend({
+        db,
+        schema,
+        backendId: schema.state.defaultBackendId,
+      })
+    : migrateDbForBackend({
+        db,
+        schema,
+        backendId: schema.state.defaultBackendId,
+        onProgress,
+      })
+
+// TODO more graceful DB migration (e.g. backup DB before destructive migrations)
+export const migrateDbForBackend = ({
+  db,
+  schema,
+  backendId,
+  onProgress,
+}: {
+  db: SqliteDb
+  schema: LiveStoreSchema
+  backendId: StateBackendId
+  onProgress?: (opts: { done: number; total: number }) => Effect.Effect<void>
+}): Effect.Effect<MigrationsReport, UnknownError> =>
   Effect.gen(function* () {
-    for (const tableDef of stateSystemTables) {
+    const backend = schema.state.backends.get(backendId)
+    if (backend === undefined) {
+      return shouldNeverHappen(`Missing backend "${backendId}" while migrating database.`)
+    }
+    const stateSystemTables = SystemTables.forStateBackend(schema, backendId)
+
+    for (const tableDef of [
+      stateSystemTables.schemaMetaTable,
+      stateSystemTables.schemaEventDefsMetaTable,
+      stateSystemTables.sessionChangesetMetaTable,
+    ]) {
       yield* migrateTable({
         db,
         tableAst: tableDef.sqliteDef.ast,
@@ -99,7 +139,7 @@ export const migrateDb = ({
 
     // TODO enforce that migrating tables isn't allowed once the store is running
 
-    const schemaManager = yield* makeSchemaManager(db)
+    const schemaManager = yield* makeSchemaManager(db, schema, backendId)
     yield* validateSchema(schema, schemaManager)
 
     const schemaMetaRows = dbSelect<SchemaMetaRow>(db, sql`SELECT * FROM ${SCHEMA_META_TABLE}`)
@@ -110,8 +150,10 @@ export const migrateDb = ({
 
     const tableDefs = [
       // NOTE it's important the `SCHEMA_META_TABLE` comes first since we're writing to it below
-      ...stateSystemTables,
-      ...Array.from(schema.state.sqlite.tables.values()).filter((_) => !isStateSystemTable(_.sqliteDef.name)),
+      stateSystemTables.schemaMetaTable,
+      stateSystemTables.schemaEventDefsMetaTable,
+      stateSystemTables.sessionChangesetMetaTable,
+      ...Array.from(backend.tables.values()).filter((_) => !isStateSystemTable(_.sqliteDef.name)),
     ]
 
     const tablesToMigrate = new Set<{ tableAst: SqliteAst.Table; schemaHash: number }>()
@@ -127,6 +169,7 @@ export const migrateDb = ({
         tablesToMigrate.add({ tableAst, schemaHash })
 
         migrationsReportEntries.push({
+          backendId,
           tableName,
           hashes: { expected: schemaHash, actual: dbSchemaHash },
         })

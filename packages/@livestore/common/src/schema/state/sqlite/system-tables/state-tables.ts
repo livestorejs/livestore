@@ -1,6 +1,7 @@
 import * as EventSequenceNumber from '../../../EventSequenceNumber/mod.ts'
+import type { StateBackendId } from '../../../schema.ts'
 import { SqliteDsl } from '../db-schema/mod.ts'
-import { table } from '../table-def.ts'
+import { setTableBackendId, table } from '../table-def.ts'
 
 /**
  * STATE DATABASE SYSTEM TABLES
@@ -10,60 +11,73 @@ import { table } from '../table-def.ts'
  */
 
 export const SCHEMA_META_TABLE = '__livestore_schema'
+export const SCHEMA_EVENT_DEFS_META_TABLE = '__livestore_schema_event_defs'
+export const SESSION_CHANGESET_META_TABLE = '__livestore_session_changeset'
+
+export const stateSystemTableNames = [
+  SCHEMA_META_TABLE,
+  SCHEMA_EVENT_DEFS_META_TABLE,
+  SESSION_CHANGESET_META_TABLE,
+] as const
 
 /**
  * Tracks schema hashes for user-defined tables to detect schema changes.
  */
-export const schemaMetaTable = table({
-  name: SCHEMA_META_TABLE,
-  columns: {
-    tableName: SqliteDsl.text({ primaryKey: true }),
-    schemaHash: SqliteDsl.integer({ nullable: false }),
-    /** ISO date format */
-    updatedAt: SqliteDsl.text({ nullable: false }),
-  },
-})
+export const makeStateSystemTables = (backendId: StateBackendId) => {
+  const schemaMetaTable = table({
+    name: SCHEMA_META_TABLE,
+    columns: {
+      tableName: SqliteDsl.text({ primaryKey: true }),
+      schemaHash: SqliteDsl.integer({ nullable: false }),
+      /** ISO date format */
+      updatedAt: SqliteDsl.text({ nullable: false }),
+    },
+  })
 
-export type SchemaMetaRow = typeof schemaMetaTable.Type
+  /**
+   * Tracks schema hashes for event definitions to detect event schema changes.
+   */
+  const schemaEventDefsMetaTable = table({
+    name: SCHEMA_EVENT_DEFS_META_TABLE,
+    columns: {
+      eventName: SqliteDsl.text({ primaryKey: true }),
+      schemaHash: SqliteDsl.integer({ nullable: false }),
+      /** ISO date format */
+      updatedAt: SqliteDsl.text({ nullable: false }),
+    },
+  })
 
-export const SCHEMA_EVENT_DEFS_META_TABLE = '__livestore_schema_event_defs'
+  /**
+   * Table which stores SQLite changeset blobs which is used for rolling back
+   * read-model state during rebasing.
+   */
+  const sessionChangesetMetaTable = table({
+    name: SESSION_CHANGESET_META_TABLE,
+    columns: {
+      // TODO bring back primary key
+      seqNumGlobal: SqliteDsl.integer({ schema: EventSequenceNumber.Global.Schema }),
+      seqNumClient: SqliteDsl.integer({ schema: EventSequenceNumber.Client.Schema }),
+      seqNumRebaseGeneration: SqliteDsl.integer({}),
+      changeset: SqliteDsl.blob({ nullable: true }),
+      debug: SqliteDsl.json({ nullable: true }),
+    },
+    indexes: [{ columns: ['seqNumGlobal', 'seqNumClient'], name: 'idx_session_changeset_id' }],
+  })
 
-/**
- * Tracks schema hashes for event definitions to detect event schema changes.
- */
-export const schemaEventDefsMetaTable = table({
-  name: SCHEMA_EVENT_DEFS_META_TABLE,
-  columns: {
-    eventName: SqliteDsl.text({ primaryKey: true }),
-    schemaHash: SqliteDsl.integer({ nullable: false }),
-    /** ISO date format */
-    updatedAt: SqliteDsl.text({ nullable: false }),
-  },
-})
+  setTableBackendId(schemaMetaTable, backendId)
+  setTableBackendId(schemaEventDefsMetaTable, backendId)
+  setTableBackendId(sessionChangesetMetaTable, backendId)
 
-export type SchemaEventDefsMetaRow = typeof schemaEventDefsMetaTable.Type
+  const stateSystemTables = [schemaMetaTable, schemaEventDefsMetaTable, sessionChangesetMetaTable] as const
 
-/**
- * Table which stores SQLite changeset blobs which is used for rolling back
- * read-model state during rebasing.
- */
-export const SESSION_CHANGESET_META_TABLE = '__livestore_session_changeset'
+  return { schemaMetaTable, schemaEventDefsMetaTable, sessionChangesetMetaTable, stateSystemTables }
+}
 
-export const sessionChangesetMetaTable = table({
-  name: SESSION_CHANGESET_META_TABLE,
-  columns: {
-    // TODO bring back primary key
-    seqNumGlobal: SqliteDsl.integer({ schema: EventSequenceNumber.Global.Schema }),
-    seqNumClient: SqliteDsl.integer({ schema: EventSequenceNumber.Client.Schema }),
-    seqNumRebaseGeneration: SqliteDsl.integer({}),
-    changeset: SqliteDsl.blob({ nullable: true }),
-    debug: SqliteDsl.json({ nullable: true }),
-  },
-  indexes: [{ columns: ['seqNumGlobal', 'seqNumClient'], name: 'idx_session_changeset_id' }],
-})
+type StateSystemTables = ReturnType<typeof makeStateSystemTables>
 
-export type SessionChangesetMetaRow = typeof sessionChangesetMetaTable.Type
+export type SchemaMetaRow = StateSystemTables['schemaMetaTable']['Type']
+export type SchemaEventDefsMetaRow = StateSystemTables['schemaEventDefsMetaTable']['Type']
+export type SessionChangesetMetaRow = StateSystemTables['sessionChangesetMetaTable']['Type']
 
-export const stateSystemTables = [schemaMetaTable, schemaEventDefsMetaTable, sessionChangesetMetaTable] as const
-
-export const isStateSystemTable = (tableName: string) => stateSystemTables.some((_) => _.sqliteDef.name === tableName)
+export const isStateSystemTable = (tableName: string) =>
+  (stateSystemTableNames as readonly string[]).includes(tableName)

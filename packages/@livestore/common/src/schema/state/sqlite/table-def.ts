@@ -1,6 +1,7 @@
 import { type Nullable, shouldNeverHappen } from '@livestore/utils'
 import { Option, Schema, SchemaAST, type Types } from '@livestore/utils/effect'
 
+import type { StateBackendId } from '../../schema.ts'
 import { getColumnDefForSchema, schemaFieldsToColumns } from './column-def.ts'
 import { SqliteDsl } from './db-schema/mod.ts'
 import type { QueryBuilder } from './query-builder/mod.ts'
@@ -19,6 +20,50 @@ export type DefaultSqliteTableDefConstrained = SqliteDsl.TableDefinition<string,
 // TODO use to hide table def internals
 export const TableDefInternalsSymbol = Symbol('TableDefInternals')
 export type TableDefInternalsSymbol = typeof TableDefInternalsSymbol
+
+type TableDefInternals = {
+  backendId?: StateBackendId
+}
+
+const getOrInitTableDefInternals = (tableDef: TableDefBase): TableDefInternals => {
+  const tableDefWithInternals = tableDef as TableDefBase & {
+    [TableDefInternalsSymbol]?: TableDefInternals
+  }
+
+  if (tableDefWithInternals[TableDefInternalsSymbol] === undefined) {
+    Object.defineProperty(tableDefWithInternals, TableDefInternalsSymbol, {
+      value: {},
+      enumerable: false,
+      writable: false,
+      configurable: false,
+    })
+  }
+
+  return tableDefWithInternals[TableDefInternalsSymbol]!
+}
+
+export const setTableBackendId = (tableDef: TableDefBase, backendId: StateBackendId): void => {
+  const internals = getOrInitTableDefInternals(tableDef)
+  if (internals.backendId !== undefined && internals.backendId !== backendId) {
+    shouldNeverHappen(`Table "${tableDef.sqliteDef.ast.name}" is already assigned to backend "${internals.backendId}".`)
+  }
+  internals.backendId = backendId
+}
+
+export const getTableBackendId = (tableDef: TableDefBase): StateBackendId => {
+  const tableDefWithInternals = tableDef as TableDefBase & {
+    [TableDefInternalsSymbol]?: TableDefInternals
+  }
+  const backendId = tableDefWithInternals[TableDefInternalsSymbol]?.backendId
+  if (backendId === undefined) {
+    return shouldNeverHappen(
+      `Table "${tableDef.sqliteDef.ast.name}" is not assigned to a backend. ` +
+        `Register it via State.SQLite.makeBackend(...) (or makeState/makeMultiState) before using QueryBuilder routing.`,
+    )
+  }
+
+  return backendId
+}
 
 export type TableDefBase<
   // TODO replace SqliteDef type param with Effect Schema (see below)

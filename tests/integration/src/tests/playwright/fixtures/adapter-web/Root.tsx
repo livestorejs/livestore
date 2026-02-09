@@ -42,6 +42,7 @@ export const Root: React.FC = () => {
   const reset = sp.get('reset') !== null
   const sessionId = sp.get('sessionId') ?? undefined
   const clientId = sp.get('clientId') ?? undefined
+  const storeId = sp.get('storeId') ?? 'adapter-web-test'
   const disableFastPath = sp.get('disableFastPath') !== null
   const bootDelayMs = (() => {
     const v = sp.get('bootDelayMs')
@@ -83,19 +84,21 @@ export const Root: React.FC = () => {
     <ErrorBoundary fallback={<div data-webtest="error">Error</div>}>
       <Suspense fallback={<div>Loading...</div>}>
         <StoreRegistryProvider storeRegistry={storeRegistry}>
-          <AppWithStore adapter={adapter} />
+          <AppWithStore adapter={adapter} storeId={storeId} />
         </StoreRegistryProvider>
       </Suspense>
     </ErrorBoundary>
   )
 }
 
-const AppWithStore: React.FC<{ adapter: ReturnType<typeof makePersistedAdapter> }> = memo(({ adapter }) => {
-  useStore({
-    storeId: 'adapter-web-test',
-    schema,
-    adapter,
-    batchUpdates,
-  })
-  return <div>Adapter Web Test App</div>
-})
+const AppWithStore: React.FC<{ adapter: ReturnType<typeof makePersistedAdapter>; storeId: string }> = memo(
+  ({ adapter, storeId }) => {
+    useStore({
+      storeId,
+      schema,
+      adapter,
+      batchUpdates,
+    })
+    return <div>Adapter Web Test App</div>
+  },
+)

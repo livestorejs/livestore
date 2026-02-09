@@ -8,6 +8,7 @@
     { "path": "./examples/expo-todomvc-sync-cf" },
     { "path": "./examples/expo-linearlite" },
     { "path": "./examples/web-linearlite" },
+    { "path": "./examples/web-multi-state-todo" },
     { "path": "./examples/web-todomvc" },
     { "path": "./examples/web-todomvc-custom-elements" },
     { "path": "./examples/web-todomvc-experimental" },

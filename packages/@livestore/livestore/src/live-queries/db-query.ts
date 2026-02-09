@@ -9,6 +9,7 @@ import {
   SessionIdSymbol,
   UnknownError,
 } from '@livestore/common'
+import { State, type StateBackendId } from '@livestore/common/schema'
 import { deepEqual, omitUndefineds, shouldNeverHappen } from '@livestore/utils'
 import { Equal, Hash, Predicate, Schema, TreeFormatter } from '@livestore/utils/effect'
 import * as otel from '@opentelemetry/api'
@@ -17,6 +18,7 @@ import type { Thunk } from '../reactive.ts'
 import { isThunk, NOT_REFRESHED_YET } from '../reactive.ts'
 import type { RefreshReason } from '../store/store-types.ts'
 import { StoreInternalsSymbol } from '../store/store-types.ts'
+import { makeTableKey } from '../store/table-key.ts'
 import { isValidFunctionString } from '../utils/function-string.ts'
 import type { DepKey, GetAtomResult, LiveQueryDef, ReactivityGraph, ReactivityGraphContext } from './base-class.ts'
 import { depsToString, LiveStoreQueryBase, makeGetAtomResult, withRCMap } from './base-class.ts'
@@ -25,6 +27,7 @@ import { makeExecBeforeFirstRun, rowQueryLabel } from './client-document-get-que
 export type QueryInputRaw<TDecoded, TEncoded> = {
   query: string
   schema: Schema.Schema<TDecoded, TEncoded>
+  backendId?: StateBackendId
   bindValues?: Bindable
   /**
    * Can be provided explicitly to slightly speed up initial query performance
@@ -152,16 +155,33 @@ const bindValuesToDepKey = (bindValues: Bindable | undefined): DepKey => {
     .join(',')
 }
 
+const backendToDepKey = (backendId: StateBackendId | undefined): DepKey =>
+  backendId === undefined ? [] : [`backend:${backendId}`]
+
+const depKeyToArray = (depKey: DepKey): ReadonlyArray<string | number | undefined | null> =>
+  typeof depKey === 'string' || typeof depKey === 'number' ? [depKey] : depKey
+
 const getQueryStringAndExtraDeps = (
   queryInput: QueryInput<any, any> | ((get: GetAtomResult) => QueryInput<any, any>),
 ): { queryString: string; extraDeps: DepKey } => {
   if (isQueryBuilder(queryInput)) {
     const { query, bindValues } = queryInput.asSql()
-    return { queryString: query, extraDeps: bindValuesToDepKey(bindValues) }
+    const ast = queryInput[QueryBuilderAstSymbol]
+    const backendId = State.SQLite.getTableBackendId(ast.tableDef)
+    return {
+      queryString: query,
+      extraDeps: [...depKeyToArray(bindValuesToDepKey(bindValues)), ...depKeyToArray(backendToDepKey(backendId))],
+    }
   }
 
   if (isQueryInputRaw(queryInput)) {
-    return { queryString: queryInput.query, extraDeps: bindValuesToDepKey(queryInput.bindValues) }
+    return {
+      queryString: queryInput.query,
+      extraDeps: [
+        ...depKeyToArray(bindValuesToDepKey(queryInput.bindValues)),
+        ...depKeyToArray(backendToDepKey(queryInput.backendId)),
+      ],
+    }
   }
 
   if (typeof queryInput === 'function') {
@@ -234,11 +254,13 @@ export class LiveStoreDbQuery<TResultSchema, TResult = TResultSchema> extends Li
         const qbRes = qb.asSql()
         const schema = getResultSchema(qb) as Schema.Schema<TResultSchema, ReadonlyArray<any>>
         const ast = qb[QueryBuilderAstSymbol]
+        const backendId = State.SQLite.getTableBackendId(ast.tableDef)
 
         return {
           queryInputRaw: {
             query: qbRes.query,
             schema,
+            backendId,
             bindValues: qbRes.bindValues,
             queriedTables: new Set([ast.tableDef.sqliteDef.name]),
           } satisfies TQueryInputRaw,
@@ -290,7 +312,7 @@ export class LiveStoreDbQuery<TResultSchema, TResult = TResultSchema> extends Li
           label: `${label}:query`,
           meta: { liveStoreThunkType: 'db.query' },
           // NOTE we're not checking the schema here as we assume the query string to always change when the schema might change
-          equal: (a, b) => a.query === b.query && deepEqual(a.bindValues, b.bindValues),
+          equal: (a, b) => a.query === b.query && deepEqual(a.bindValues, b.bindValues) && a.backendId === b.backendId,
         },
       )
 
@@ -318,7 +340,9 @@ export class LiveStoreDbQuery<TResultSchema, TResult = TResultSchema> extends Li
       }
     }
 
-    const queriedTablesRef: { current: Set<string> | undefined } = { current: undefined }
+    const queriedTableNamesRef: { current: Set<string> | undefined } = { current: undefined }
+    const queriedTableKeysRef: { current: Set<string> | undefined } = { current: undefined }
+    const depCacheKeyRef: { current: string | undefined } = { current: undefined }
 
     const makeResultsEqual = (resultSchema: Schema.Schema<any, any>) => {
       // Creating the equivalence function eagerly in outer scope as it might be expensive
@@ -363,9 +387,18 @@ export class LiveStoreDbQuery<TResultSchema, TResult = TResultSchema> extends Li
 
             const sqlString = queryInputResult.query
             const bindValues = queryInputResult.bindValues
+            const backendId = queryInputResult.backendId ?? store.schema.state.defaultBackendId
+            const sqliteDbWrapper =
+              store[StoreInternalsSymbol].sqliteDbWrappers.get(backendId) ??
+              shouldNeverHappen(`No sqlite db wrapper found for backend "${backendId}".`)
 
-            if (queriedTablesRef.current === undefined) {
-              queriedTablesRef.current = store[StoreInternalsSymbol].sqliteDbWrapper.getTablesUsed(sqlString)
+            const depCacheKey = `${backendId}:${sqlString}`
+            if (depCacheKeyRef.current !== depCacheKey) {
+              depCacheKeyRef.current = depCacheKey
+              queriedTableNamesRef.current = queryInputResult.queriedTables ?? sqliteDbWrapper.getTablesUsed(sqlString)
+              queriedTableKeysRef.current = new Set(
+                Array.from(queriedTableNamesRef.current).map((tableName) => makeTableKey(backendId, tableName)),
+              )
             }
 
             if (bindValues !== undefined) {
@@ -373,23 +406,28 @@ export class LiveStoreDbQuery<TResultSchema, TResult = TResultSchema> extends Li
             }
 
             // Establish a reactive dependency on the tables used in the query
-            for (const tableName of queriedTablesRef.current) {
+            for (const tableKey of queriedTableKeysRef.current!) {
               const tableRef =
-                store[StoreInternalsSymbol].tableRefs[tableName] ??
-                shouldNeverHappen(`No table ref found for ${tableName}`)
+                store[StoreInternalsSymbol].tableRefs[tableKey] ??
+                shouldNeverHappen(`No table ref found for ${tableKey}`)
               get(tableRef, otelContext, debugRefreshReason)
             }
 
             span.setAttribute('sql.query', sqlString)
             span.updateName(`db:${sqlString.slice(0, 50)}`)
 
-            const rawDbResults = store[StoreInternalsSymbol].sqliteDbWrapper.cachedSelect<any>(
+            const cachedSelectOptions: {
+              queriedTables?: ReadonlySet<string>
+              otelContext?: otel.Context
+            } = { otelContext }
+            if (queriedTableNamesRef.current !== undefined) {
+              cachedSelectOptions.queriedTables = queriedTableNamesRef.current
+            }
+
+            const rawDbResults = sqliteDbWrapper.cachedSelect<any>(
               sqlString,
               bindValues ? prepareBindValues(bindValues, sqlString) : undefined,
-              {
-                queriedTables: queriedTablesRef.current,
-                otelContext,
-              },
+              cachedSelectOptions,
             )
 
             span.setAttribute('sql.rowsCount', rawDbResults.length)

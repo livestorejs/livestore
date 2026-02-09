@@ -62,6 +62,12 @@ const routes = [
     path: '/adapter-web/concurrent-boot',
     component: React.lazy(() => import('./adapter-web/Root.tsx').then((m) => ({ default: m.Root }))),
   },
+  {
+    path: '/adapter-web/multi-backend-persistence',
+    component: React.lazy(() =>
+      import('./adapter-web/MultiBackendRoot.tsx').then((m) => ({ default: m.MultiBackendRoot })),
+    ),
+  },
 ]
 
 const Home = () => {

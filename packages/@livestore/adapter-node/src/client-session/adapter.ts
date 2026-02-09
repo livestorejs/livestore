@@ -9,13 +9,15 @@ import {
   type LockStatus,
   type MakeSqliteDb,
   makeClientSession,
+  migrateDbForBackend,
+  type SqliteDb,
   type SyncError,
   type SyncOptions,
   UnknownError,
 } from '@livestore/common'
 import { Eventlog, LeaderThreadCtx, streamEventsWithSyncState } from '@livestore/common/leader-thread'
-import type { LiveStoreSchema } from '@livestore/common/schema'
-import { LiveStoreEvent } from '@livestore/common/schema'
+import type { LiveStoreSchema, StateBackendId } from '@livestore/common/schema'
+import { type EventSequenceNumber, LiveStoreEvent } from '@livestore/common/schema'
 import { loadSqlite3Wasm } from '@livestore/sqlite-wasm/load-wasm'
 import { sqliteDbFactory } from '@livestore/sqlite-wasm/node'
 import { omitUndefineds } from '@livestore/utils'
@@ -240,8 +242,6 @@ const makeAdapterImpl = ({
         Effect.forkScoped,
       )
 
-      const syncInMemoryDb = yield* makeSqliteDb({ _tag: 'in-memory' }).pipe(Effect.orDie)
-
       // TODO actually implement this multi-session support
       const lockStatus = yield* SubscriptionRef.make<LockStatus>('has-lock')
 
@@ -260,7 +260,7 @@ const makeAdapterImpl = ({
             }
           : { enabled: false }
 
-      const { leaderThread, initialSnapshot } =
+      const { leaderThread, initialSnapshotsByBackend } =
         leaderThreadInput._tag === 'single-threaded'
           ? yield* makeLocalLeaderThread({
               storeId,
@@ -289,12 +289,16 @@ const makeAdapterImpl = ({
               syncPayloadEncoded,
             })
 
-      syncInMemoryDb.import(initialSnapshot)
-      syncInMemoryDb.debug.head = leaderThread.initialState.leaderHead
+      const sqliteDbs = yield* makeSessionSqliteDbs({
+        makeSqliteDb,
+        schema,
+        initialSnapshotsByBackend,
+        leaderHead: leaderThread.initialState.leaderHead,
+      })
 
       const clientSession = yield* makeClientSession({
         ...adapterArgs,
-        sqliteDb: syncInMemoryDb,
+        sqliteDbs,
         webmeshMode: 'proxy',
         connectWebmeshNode: Effect.fnUntraced(function* ({ webmeshNode }) {
           if (devtoolsOptions.enabled) {
@@ -320,6 +324,45 @@ const makeAdapterImpl = ({
       Effect.withSpan('@livestore/adapter-node:adapter'),
       Effect.provide(Layer.mergeAll(PlatformNode.NodeFileSystem.layer, FetchHttpClient.layer)),
     )) satisfies Adapter
+
+/** @internal */
+export const makeInitialSnapshotsByBackendFromBootResult = ({
+  snapshotsByBackend,
+}: {
+  snapshotsByBackend: typeof WorkerSchema.SnapshotsByBackendWire.Type
+}): Map<StateBackendId, Uint8Array<ArrayBufferLike>> =>
+  new Map<StateBackendId, Uint8Array<ArrayBufferLike>>(snapshotsByBackend)
+
+const makeSessionSqliteDbs = ({
+  makeSqliteDb,
+  schema,
+  initialSnapshotsByBackend,
+  leaderHead,
+}: {
+  makeSqliteDb: MakeSqliteDb
+  schema: LiveStoreSchema
+  initialSnapshotsByBackend: Map<StateBackendId, Uint8Array<ArrayBufferLike>>
+  leaderHead: EventSequenceNumber.Client.Composite
+}) =>
+  Effect.gen(function* () {
+    const sqliteDbs = new Map<StateBackendId, SqliteDb>()
+
+    for (const backendId of schema.state.backends.keys()) {
+      const db = yield* makeSqliteDb({ _tag: 'in-memory' }).pipe(Effect.orDie)
+      const snapshot = initialSnapshotsByBackend.get(backendId)
+
+      if (snapshot !== undefined) {
+        db.import(new Uint8Array(snapshot))
+      } else {
+        const _migrationsReport = yield* migrateDbForBackend({ db, schema, backendId })
+      }
+
+      db.debug.head = leaderHead
+      sqliteDbs.set(backendId, db)
+    }
+
+    return sqliteDbs
+  })
 
 const resetNodePersistence = ({
   storage,
@@ -392,7 +435,7 @@ const makeLocalLeaderThread = ({
     )
 
     return yield* Effect.gen(function* () {
-      const { dbState, dbEventlog, syncProcessor, extraIncomingMessagesQueue, initialState, networkStatus } =
+      const { dbState, dbStates, dbEventlog, syncProcessor, extraIncomingMessagesQueue, initialState, networkStatus } =
         yield* LeaderThreadCtx
 
       const initialLeaderHead = Eventlog.getClientHeadFromDb(dbEventlog)
@@ -427,9 +470,11 @@ const makeLocalLeaderThread = ({
         { ...omitUndefineds({ overrides: testing?.overrides?.clientSession?.leaderThreadProxy }) },
       )
 
-      const initialSnapshot = dbState.export()
+      const initialSnapshotsByBackend = new Map<StateBackendId, Uint8Array>(
+        Array.from(dbStates.entries()).map(([backendId, db]) => [backendId, db.export()]),
+      )
 
-      return { leaderThread, initialSnapshot }
+      return { leaderThread, initialSnapshotsByBackend }
     }).pipe(Effect.provide(layer))
   })
 
@@ -461,8 +506,20 @@ const makeWorkerLeaderThread = ({
   }
 }) =>
   Effect.gen(function* () {
+    /**
+     * Preserve parent `execArgv` so local dev/test loaders (e.g. TS loaders) still apply in the worker thread.
+     * This is required in workspace setups where package exports point to `.ts` sources.
+     */
+    const workerExecArgv = [...process.execArgv]
+    if (workerExecArgv.includes('--enable-source-maps') === false) {
+      workerExecArgv.push('--enable-source-maps')
+    }
+    if (process.env.DEBUG_WORKER !== undefined && workerExecArgv.some((arg) => arg.startsWith('--inspect')) === false) {
+      workerExecArgv.push('--inspect')
+    }
+
     const nodeWorker = new WT.Worker(workerUrl, {
-      execArgv: process.env.DEBUG_WORKER ? ['--inspect --enable-source-maps'] : ['--enable-source-maps'],
+      execArgv: workerExecArgv,
       argv: [Schema.encodeSync(WorkerSchema.WorkerArgv)({ storeId, clientId, sessionId, extraArgs: workerExtraArgs })],
     })
     const nodeWorkerLayer = yield* Layer.build(PlatformNode.NodeWorker.layer(() => nodeWorker))
@@ -595,5 +652,8 @@ const makeWorkerLeaderThread = ({
       },
     )
 
-    return { leaderThread, initialSnapshot: bootResult.snapshot }
+    return {
+      leaderThread,
+      initialSnapshotsByBackend: makeInitialSnapshotsByBackendFromBootResult(bootResult),
+    }
   })

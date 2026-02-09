@@ -115,7 +115,7 @@ export const resolveEventDef = (
       })
       return { _tag: 'unknown', reason: 'event-definition-missing' }
     }
-    const materializer = schema.state.materializers.get(eventName)
+    const materializer = schema.state.materializersByEventName.get(eventName)?.materializer
     if (materializer === undefined) {
       yield* handleUnknownEvent({
         schema,

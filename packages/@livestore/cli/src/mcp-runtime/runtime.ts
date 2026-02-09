@@ -83,15 +83,13 @@ export const status = Effect.gen(function* () {
     }
   }
   const s = opt.value
-  const tableCounts = (Array.from(s.schema.state.sqlite.tables.keys()) as string[])
-    .filter((name) => !SystemTables.isStateSystemTable(name))
-    .reduce(
-      (acc, name) => {
-        acc[name] = s.query(s.schema.state.sqlite.tables.get(name)!.count())
-        return acc
-      },
-      {} as Record<string, number>,
-    )
+  const tableCounts = Object.fromEntries(
+    Array.from(s.schema.state.backends.entries()).flatMap(([backendId, backend]) =>
+      Array.from(backend.tables.values())
+        .filter((tableDef) => !SystemTables.isStateSystemTable(tableDef.sqliteDef.name))
+        .map((tableDef) => [`${backendId}:${tableDef.sqliteDef.name}`, s.query(tableDef.count())]),
+    ),
+  ) as Record<string, number>
 
   return {
     _tag: 'connected' as const,

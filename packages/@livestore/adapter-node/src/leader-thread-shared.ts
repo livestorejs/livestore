@@ -7,11 +7,12 @@ if (process.execArgv.includes('--inspect')) {
 }
 
 import type { ClientSessionLeaderThreadProxy, MakeSqliteDb, SqliteDb, SyncOptions } from '@livestore/common'
-import { Devtools, liveStoreStorageFormatVersion, migrateDb, UnknownError } from '@livestore/common'
+import { Devtools, liveStoreStorageFormatVersion, migrateDbForBackend, UnknownError } from '@livestore/common'
 import type { DevtoolsOptions, LeaderSqliteDb, LeaderThreadCtx } from '@livestore/common/leader-thread'
 import { configureConnection, makeLeaderThreadLayer } from '@livestore/common/leader-thread'
-import type { LiveStoreSchema } from '@livestore/common/schema'
+import { getStateDbBaseName, type LiveStoreSchema, type StateBackendId } from '@livestore/common/schema'
 import type { MakeNodeSqliteDb } from '@livestore/sqlite-wasm/node'
+import { shouldNeverHappen } from '@livestore/utils'
 import type { FileSystem, HttpClient, Layer, Schema, Scope } from '@livestore/utils/effect'
 import { Effect } from '@livestore/utils/effect'
 import * as Webmesh from '@livestore/webmesh'
@@ -28,7 +29,8 @@ export type TestingOverrides = {
   makeLeaderThread?: (makeSqliteDb: MakeSqliteDb) => Effect.Effect<
     {
       dbEventlog: SqliteDb
-      dbState: SqliteDb
+      dbState?: SqliteDb
+      dbStates?: Map<StateBackendId, SqliteDb>
     },
     UnknownError
   >
@@ -66,39 +68,139 @@ export const makeLeaderThread = ({
   Effect.gen(function* () {
     const runtime = yield* Effect.runtime<never>()
 
-    const schemaHashSuffix =
-      schema.state.sqlite.migrations.strategy === 'manual' ? 'fixed' : schema.state.sqlite.hash.toString()
+    const defaultBackendId = schema.state.defaultBackendId
+    const backendIds = Array.from(schema.state.backends.keys())
 
-    const makeDb = (kind: 'state' | 'eventlog') => {
-      if (testing?.makeLeaderThread) {
-        return testing
-          .makeLeaderThread(makeSqliteDb)
-          .pipe(Effect.map(({ dbEventlog, dbState }) => (kind === 'state' ? dbState : dbEventlog)))
+    const makeStateDb = (backendId: StateBackendId): Effect.Effect<SqliteDb, UnknownError, Scope.Scope> => {
+      if (storage.type === 'in-memory') {
+        return makeSqliteDb({
+          _tag: 'in-memory',
+          configureDb: (db) =>
+            configureConnection(db, { foreignKeys: true }).pipe(Effect.provide(runtime), Effect.runSync),
+        }).pipe(
+          Effect.map((db): SqliteDb => db),
+          UnknownError.mapToUnknownError,
+        )
       }
 
-      return storage.type === 'in-memory'
-        ? makeSqliteDb({
-            _tag: 'in-memory',
-            configureDb: (db) =>
-              configureConnection(db, { foreignKeys: true }).pipe(Effect.provide(runtime), Effect.runSync),
-          })
-        : makeSqliteDb({
-            _tag: 'fs',
-            directory: path.join(storage.baseDirectory ?? '', storeId),
-            fileName:
-              kind === 'state' ? getStateDbFileName(schemaHashSuffix) : `eventlog@${liveStoreStorageFormatVersion}.db`,
-            // TODO enable WAL for nodejs
-            configureDb: (db) =>
-              configureConnection(db, { foreignKeys: true }).pipe(Effect.provide(runtime), Effect.runSync),
-          }).pipe(Effect.acquireRelease((db) => Effect.sync(() => db.close())))
+      return makeSqliteDb({
+        _tag: 'fs',
+        directory: path.join(storage.baseDirectory ?? '', storeId),
+        fileName: `${getStateDbBaseName({ schema, backendId })}@${liveStoreStorageFormatVersion}.db`,
+        // TODO enable WAL for nodejs
+        configureDb: (db) =>
+          configureConnection(db, { foreignKeys: true }).pipe(Effect.provide(runtime), Effect.runSync),
+      }).pipe(
+        Effect.acquireRelease((db) => Effect.sync(() => db.close())),
+        Effect.map((db): SqliteDb => db),
+        UnknownError.mapToUnknownError,
+      )
     }
 
-    // Might involve some async work, so we're running them concurrently
-    const [dbState, dbEventlog] = yield* Effect.all([makeDb('state'), makeDb('eventlog')], { concurrency: 2 })
+    const makeEventlogDb = (): Effect.Effect<SqliteDb, UnknownError, Scope.Scope> => {
+      if (storage.type === 'in-memory') {
+        return makeSqliteDb({
+          _tag: 'in-memory',
+          configureDb: (db) =>
+            configureConnection(db, { foreignKeys: true }).pipe(Effect.provide(runtime), Effect.runSync),
+        }).pipe(
+          Effect.map((db): SqliteDb => db),
+          UnknownError.mapToUnknownError,
+        )
+      }
 
-    if (storage.type === 'in-memory' && storage.importSnapshot !== undefined) {
-      dbState.import(storage.importSnapshot)
-      const _migrationsReport = yield* migrateDb({ db: dbState, schema })
+      return makeSqliteDb({
+        _tag: 'fs',
+        directory: path.join(storage.baseDirectory ?? '', storeId),
+        fileName: `eventlog@${liveStoreStorageFormatVersion}.db`,
+        // TODO enable WAL for nodejs
+        configureDb: (db) =>
+          configureConnection(db, { foreignKeys: true }).pipe(Effect.provide(runtime), Effect.runSync),
+      }).pipe(
+        Effect.acquireRelease((db) => Effect.sync(() => db.close())),
+        Effect.map((db): SqliteDb => db),
+        UnknownError.mapToUnknownError,
+      )
+    }
+
+    const { dbEventlog, dbStates } = yield* testing?.makeLeaderThread
+      ? testing.makeLeaderThread(makeSqliteDb).pipe(
+          Effect.map(({ dbEventlog, dbState, dbStates }) => {
+            const dbStates_ =
+              dbStates ??
+              (dbState === undefined ? undefined : new Map<StateBackendId, SqliteDb>([[defaultBackendId, dbState]]))
+
+            if (dbStates_ === undefined || dbStates_.size === 0) {
+              return shouldNeverHappen('Testing override must provide at least one state db.')
+            }
+
+            return { dbEventlog, dbStates: dbStates_ }
+          }),
+        )
+      : Effect.all(
+          [
+            Effect.forEach(
+              backendIds,
+              (backendId): Effect.Effect<readonly [StateBackendId, SqliteDb], UnknownError, Scope.Scope> =>
+                makeStateDb(backendId).pipe(
+                  Effect.map((db): readonly [StateBackendId, SqliteDb] => [backendId, db]),
+                  UnknownError.mapToUnknownError,
+                ),
+              { concurrency: 'unbounded' },
+            ),
+            makeEventlogDb(),
+          ],
+          { concurrency: 2 },
+        ).pipe(
+          Effect.map(([stateDbEntries, dbEventlog]) => ({
+            dbEventlog,
+            dbStates: new Map<StateBackendId, SqliteDb>(stateDbEntries),
+          })),
+        )
+
+    const dbState = dbStates.get(defaultBackendId)
+    if (dbState === undefined) {
+      return shouldNeverHappen(`Missing default backend state db "${defaultBackendId}".`)
+    }
+
+    if (storage.type === 'in-memory') {
+      if (storage.importSnapshot !== undefined && storage.importSnapshotsByBackend !== undefined) {
+        return yield* UnknownError.make({
+          cause: 'Cannot set both `importSnapshot` and `importSnapshotsByBackend` for in-memory storage.',
+        })
+      }
+
+      if (backendIds.length > 1 && storage.importSnapshot !== undefined) {
+        return yield* UnknownError.make({
+          cause:
+            'Legacy `importSnapshot` is only supported for single-backend schemas. Use `importSnapshotsByBackend` for multi-backend schemas.',
+          payload: {
+            backendIds,
+            defaultBackendId,
+          },
+        })
+      }
+
+      const snapshotsByBackend =
+        storage.importSnapshotsByBackend !== undefined
+          ? new Map(storage.importSnapshotsByBackend)
+          : storage.importSnapshot !== undefined
+            ? new Map<StateBackendId, Uint8Array<ArrayBuffer>>([[defaultBackendId, storage.importSnapshot]])
+            : undefined
+
+      for (const backendId of backendIds) {
+        const backendDbState = dbStates.get(backendId)
+        if (backendDbState === undefined) {
+          return shouldNeverHappen(`Missing state db for backend "${backendId}".`)
+        }
+
+        const snapshot = snapshotsByBackend?.get(backendId)
+        if (snapshot !== undefined) {
+          backendDbState.import(snapshot)
+        } else {
+          const _migrationsReport = yield* migrateDbForBackend({ db: backendDbState, schema, backendId })
+        }
+      }
     }
 
     const devtoolsOptions = yield* makeDevtoolsOptions({ devtools, dbState, dbEventlog, storeId, clientId })
@@ -112,6 +214,7 @@ export const makeLeaderThread = ({
       makeSqliteDb,
       syncOptions,
       dbState,
+      dbStates,
       dbEventlog,
       devtoolsOptions,
       shutdownChannel,
@@ -125,8 +228,6 @@ export const makeLeaderThread = ({
       attributes: { storeId, clientId, storage, devtools, syncOptions },
     }),
   )
-
-const getStateDbFileName = (suffix: string) => `state${suffix}@${liveStoreStorageFormatVersion}.db`
 
 const makeDevtoolsOptions = ({
   dbState,

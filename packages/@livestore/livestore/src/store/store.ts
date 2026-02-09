@@ -15,12 +15,21 @@ import {
   prepareBindValues,
   QueryBuilderAstSymbol,
   replaceSessionIdSymbol,
+  type SessionStateBackend,
   type StorageMode,
   UnknownError,
 } from '@livestore/common'
 import type { StreamEventsOptions } from '@livestore/common/leader-thread'
 import type { LiveStoreSchema } from '@livestore/common/schema'
-import { EventSequenceNumber, LiveStoreEvent, resolveEventDef, SystemTables } from '@livestore/common/schema'
+import {
+  EventSequenceNumber,
+  LiveStoreEvent,
+  resolveBackendIdForEventName,
+  resolveEventDef,
+  State,
+  type StateBackendId,
+  SystemTables,
+} from '@livestore/common/schema'
 import { assertNever, isDevEnv, omitUndefineds, shouldNeverHappen } from '@livestore/utils'
 import type { Scope } from '@livestore/utils/effect'
 import {
@@ -59,6 +68,7 @@ import {
   type SyncStatus,
   type Unsubscribe,
 } from './store-types.ts'
+import { makeTableKey, resolveTableKey } from './table-key.ts'
 
 export type SubscribeFn = {
   <TResult>(
@@ -206,12 +216,30 @@ export class Store<TSchema extends LiveStoreSchema = LiveStoreSchema.Any, TConte
 
     const reactivityGraph = makeReactivityGraph()
 
-    const syncSpan = otelOptions.tracer.startSpan('LiveStore:sync', {}, otelOptions.rootSpanContext)
+    const sqliteDbWrappers = new Map(
+      Array.from(clientSession.sqliteDbs.entries()).map(([backendId, db]) => [
+        backendId,
+        new SqliteDbWrapper({ otel: otelOptions, db }),
+      ]),
+    )
+    const sqliteDbWrapper = sqliteDbWrappers.get(schema.state.defaultBackendId)
+    if (sqliteDbWrapper === undefined) {
+      shouldNeverHappen(`Missing sqlite db wrapper for default backend "${schema.state.defaultBackendId}".`)
+    }
 
-    const syncProcessor = makeClientSessionSyncProcessor({
-      schema,
-      clientSession,
-      runtime: effectContext.runtime,
+    const getSqliteDbWrapperForBackend = (backendId: StateBackendId): SqliteDbWrapper => {
+      const wrapper = sqliteDbWrappers.get(backendId)
+      if (wrapper === undefined) {
+        return shouldNeverHappen(`No sqlite db wrapper found for backend "${backendId}".`)
+      }
+      return wrapper
+    }
+
+    const resolveBackendIdForEvent = (eventName: string): StateBackendId =>
+      resolveBackendIdForEventName(schema, eventName)
+
+    const syncSpan = otelOptions.tracer.startSpan('LiveStore:sync', {}, otelOptions.rootSpanContext)
+    const sessionStateBackend: SessionStateBackend = {
       materializeEvent: Effect.fn('client-session-sync-processor:materialize-event')(
         (eventEncoded, { withChangeset, materializerHashLeader }) =>
           // We need to use `Effect.gen` (even though we're using `Effect.fn`) so that we can pass `this` to the function
@@ -232,11 +260,13 @@ export class Store<TSchema extends LiveStoreSchema = LiveStoreSchema.Any, TConte
             }
 
             const { eventDef, materializer } = resolution
+            const backendId = resolveBackendIdForEvent(eventEncoded.name)
+            const sqliteDbWrapperForBackend = getSqliteDbWrapperForBackend(backendId)
 
             const execArgsArr = getExecStatementsFromMaterializer({
               eventDef,
               materializer,
-              dbState: this[StoreInternalsSymbol].sqliteDbWrapper,
+              dbState: sqliteDbWrapperForBackend,
               event: { decoded: undefined, encoded: eventEncoded },
             })
 
@@ -263,10 +293,10 @@ export class Store<TSchema extends LiveStoreSchema = LiveStoreSchema.Any, TConte
               for (const {
                 statementSql,
                 bindValues,
-                writeTables = this[StoreInternalsSymbol].sqliteDbWrapper.getTablesUsed(statementSql),
+                writeTables = sqliteDbWrapperForBackend.getTablesUsed(statementSql),
               } of execArgsArr) {
                 try {
-                  this[StoreInternalsSymbol].sqliteDbWrapper.cachedExecute(statementSql, bindValues, {
+                  sqliteDbWrapperForBackend.cachedExecute(statementSql, bindValues, {
                     otelContext,
                     writeTables,
                   })
@@ -280,10 +310,10 @@ export class Store<TSchema extends LiveStoreSchema = LiveStoreSchema.Any, TConte
 
                 // durationMsTotal += durationMs
                 for (const table of writeTables) {
-                  writeTablesForEvent.add(table)
+                  writeTablesForEvent.add(makeTableKey(backendId, table))
                 }
 
-                this[StoreInternalsSymbol].sqliteDbWrapper.debug.head = eventEncoded.seqNum
+                sqliteDbWrapperForBackend.debug.head = eventEncoded.seqNum
               }
             }
 
@@ -292,7 +322,7 @@ export class Store<TSchema extends LiveStoreSchema = LiveStoreSchema.Any, TConte
               | { _tag: 'no-op' }
               | { _tag: 'unset' } = { _tag: 'unset' }
             if (withChangeset === true) {
-              sessionChangeset = this[StoreInternalsSymbol].sqliteDbWrapper.withChangeset(exec).changeset
+              sessionChangeset = sqliteDbWrapperForBackend.withChangeset(exec).changeset
             } else {
               exec()
             }
@@ -300,13 +330,25 @@ export class Store<TSchema extends LiveStoreSchema = LiveStoreSchema.Any, TConte
             return { writeTables: writeTablesForEvent, sessionChangeset, materializerHash }
           }).pipe(Effect.mapError((cause) => MaterializeError.make({ cause }))),
       ),
-      rollback: (changeset) => {
-        this[StoreInternalsSymbol].sqliteDbWrapper.rollback(changeset)
+      rollback: (changeset, backendId = this.schema.state.defaultBackendId) => {
+        getSqliteDbWrapperForBackend(backendId).rollback(changeset)
       },
+    }
+
+    const syncProcessor = makeClientSessionSyncProcessor({
+      schema,
+      clientSession,
+      runtime: effectContext.runtime,
+      materializeEvent: sessionStateBackend.materializeEvent,
+      rollback: sessionStateBackend.rollback,
       refreshTables: (tables) => {
         const tablesToUpdate = [] as [Ref<null, ReactivityGraphContext, RefreshReason>, null][]
         for (const tableName of tables) {
-          const tableRef = this[StoreInternalsSymbol].tableRefs[tableName]
+          const tableKey = resolveTableKey({
+            tableName,
+            defaultBackendId: this.schema.state.defaultBackendId,
+          })
+          const tableRef = this[StoreInternalsSymbol].tableRefs[tableKey]
           assertNever(tableRef !== undefined, `No table ref found for ${tableName}`)
           tablesToUpdate.push([tableRef!, null])
         }
@@ -349,25 +391,28 @@ export class Store<TSchema extends LiveStoreSchema = LiveStoreSchema.Any, TConte
       queriesSpanContext: otelQueriesSpanContext,
     }
 
-    // Need a set here since `schema.tables` might contain duplicates and some componentStateTables
-    const allTableNames = new Set(
-      // NOTE we're excluding the LiveStore schema and events tables as they are not user-facing
-      // unless LiveStore is running in the devtools
-      __runningInDevtools
-        ? this.schema.state.sqlite.tables.keys()
-        : Array.from(this.schema.state.sqlite.tables.keys()).filter((_) => !SystemTables.isStateSystemTable(_)),
-    )
+    const allTableNames = new Set<string>()
+    for (const [backendId, backend] of this.schema.state.backends.entries()) {
+      for (const tableName of backend.tables.keys()) {
+        // NOTE we're excluding the LiveStore schema and events tables as they are not user-facing
+        // unless LiveStore is running in the devtools
+        if (!__runningInDevtools && SystemTables.isStateSystemTable(tableName)) {
+          continue
+        }
+        allTableNames.add(makeTableKey(backendId, tableName))
+      }
+    }
     const existingTableRefs = new Map(
       Array.from(reactivityGraph.atoms.values())
         .filter((_): _ is Ref<any, any, any> => _._tag === 'ref' && _.label?.startsWith('tableRef:') === true)
         .map((_) => [_.label!.slice('tableRef:'.length), _] as const),
     )
-    for (const tableName of allTableNames) {
-      tableRefs[tableName] =
-        existingTableRefs.get(tableName) ??
+    for (const tableKey of allTableNames) {
+      tableRefs[tableKey] =
+        existingTableRefs.get(tableKey) ??
         reactivityGraph.makeRef(null, {
           equal: () => false,
-          label: `tableRef:${tableName}`,
+          label: `tableRef:${tableKey}`,
           meta: { liveStoreRefType: 'table' },
         })
     }
@@ -392,9 +437,6 @@ export class Store<TSchema extends LiveStoreSchema = LiveStoreSchema.Any, TConte
       yield* syncProcessor.boot
     })
 
-    // Build Sqlite wrapper last to avoid using getters before internals are set
-    const sqliteDbWrapper = new SqliteDbWrapper({ otel: otelOptions, db: clientSession.sqliteDb })
-
     // Initialize internals bag
     this[StoreInternalsSymbol] = {
       eventSchema: LiveStoreEvent.Client.makeSchemaMemo(schema) as Schema.Schema<
@@ -403,6 +445,7 @@ export class Store<TSchema extends LiveStoreSchema = LiveStoreSchema.Any, TConte
       >,
       clientSession,
       sqliteDbWrapper,
+      sqliteDbWrappers,
       effectContext,
       otel: otelObj,
       reactivityGraph,
@@ -624,6 +667,10 @@ export class Store<TSchema extends LiveStoreSchema = LiveStoreSchema.Any, TConte
       return res
     } else if (isQueryBuilder(query)) {
       const ast = query[QueryBuilderAstSymbol]
+      const backendId = State.SQLite.getTableBackendId(ast.tableDef)
+      const sqliteDbWrapper =
+        this[StoreInternalsSymbol].sqliteDbWrappers.get(backendId) ??
+        shouldNeverHappen(`No sqlite db wrapper found for backend "${backendId}".`)
       if (ast._tag === 'RowQuery') {
         makeExecBeforeFirstRun({
           table: ast.tableDef,
@@ -641,14 +688,10 @@ export class Store<TSchema extends LiveStoreSchema = LiveStoreSchema.Any, TConte
         replaceSessionIdSymbol(sqlRes.bindValues, this[StoreInternalsSymbol].clientSession.sessionId)
       }
 
-      const rawRes = this[StoreInternalsSymbol].sqliteDbWrapper.cachedSelect(
-        sqlRes.query,
-        sqlRes.bindValues as any as PreparedBindValues,
-        {
-          ...omitUndefineds({ otelContext: options?.otelContext }),
-          queriedTables: new Set([query[QueryBuilderAstSymbol].tableDef.sqliteDef.name]),
-        },
-      )
+      const rawRes = sqliteDbWrapper.cachedSelect(sqlRes.query, sqlRes.bindValues as any as PreparedBindValues, {
+        ...omitUndefineds({ otelContext: options?.otelContext }),
+        queriedTables: new Set([ast.tableDef.sqliteDef.name]),
+      })
 
       const decodeResult = Schema.decodeEither(schema)(rawRes)
       if (decodeResult._tag === 'Right') {
@@ -783,6 +826,20 @@ export class Store<TSchema extends LiveStoreSchema = LiveStoreSchema.Any, TConte
     this.checkShutdown('commit')
 
     const { events, options } = this.getCommitArgs(firstEventOrTxnFnOrOptions, restEvents)
+    const commitBackendIds = new Set<StateBackendId>(
+      events.map((event) => resolveBackendIdForEventName(this.schema, event.name)),
+    )
+    if (commitBackendIds.size > 1) {
+      throw new UnknownError({
+        cause: 'Commit batch spans multiple state backends.',
+        note: 'A single commit transaction can only contain events from one backend.',
+        payload: {
+          backendIds: Array.from(commitBackendIds),
+          eventNames: events.map((_) => _.name),
+        },
+      })
+    }
+    const commitBackendId = commitBackendIds.values().next().value ?? this.schema.state.defaultBackendId
 
     Effect.gen(this, function* () {
       const commitsSpan = otel.trace.getSpan(this[StoreInternalsSymbol].otel.commitsSpanContext)
@@ -805,7 +862,10 @@ export class Store<TSchema extends LiveStoreSchema = LiveStoreSchema.Any, TConte
           }
 
           if (events.length > 1) {
-            return this[StoreInternalsSymbol].sqliteDbWrapper.txn(runMaterializeEvents)
+            const sqliteDbWrapper =
+              this[StoreInternalsSymbol].sqliteDbWrappers.get(commitBackendId) ??
+              shouldNeverHappen(`No sqlite db wrapper found for backend "${commitBackendId}".`)
+            return sqliteDbWrapper.txn(runMaterializeEvents)
           } else {
             return runMaterializeEvents()
           }
@@ -818,7 +878,11 @@ export class Store<TSchema extends LiveStoreSchema = LiveStoreSchema.Any, TConte
 
       const tablesToUpdate: [Ref<null, ReactivityGraphContext, RefreshReason>, null][] = []
       for (const tableName of writeTables) {
-        const tableRef = this[StoreInternalsSymbol].tableRefs[tableName]
+        const tableKey = resolveTableKey({
+          tableName,
+          defaultBackendId: this.schema.state.defaultBackendId,
+        })
+        const tableRef = this[StoreInternalsSymbol].tableRefs[tableKey]
         assertNever(tableRef !== undefined, `No table ref found for ${tableName}`)
         tablesToUpdate.push([tableRef!, null])
       }

@@ -5,7 +5,13 @@ import { MaterializeError, MaterializerHashMismatchError, type SqliteDb } from '
 import { getExecStatementsFromMaterializer, hashMaterializerResults } from '../materializer-helper.ts'
 import { logDeprecationWarnings } from '../schema/EventDef/deprecated.ts'
 import type { LiveStoreSchema } from '../schema/mod.ts'
-import { EventSequenceNumber, resolveEventDef, SystemTables, UNKNOWN_EVENT_SCHEMA_HASH } from '../schema/mod.ts'
+import {
+  EventSequenceNumber,
+  resolveBackendIdForEventName,
+  resolveEventDef,
+  SystemTables,
+  UNKNOWN_EVENT_SCHEMA_HASH,
+} from '../schema/mod.ts'
 import { insertRow } from '../sql-queries/index.ts'
 import { sql } from '../util.ts'
 import { execSql, execSqlPrepared } from './connection.ts'
@@ -16,13 +22,27 @@ import type { MaterializeEvent } from './types.ts'
 export const makeMaterializeEvent = ({
   schema,
   dbState,
+  dbStates,
   dbEventlog,
 }: {
   schema: LiveStoreSchema
-  dbState: SqliteDb
+  dbState?: SqliteDb
+  dbStates?: Map<string, SqliteDb>
   dbEventlog: SqliteDb
 }): Effect.Effect<MaterializeEvent> =>
   Effect.gen(function* () {
+    const dbStates_ =
+      dbStates ??
+      (dbState === undefined ? undefined : new Map<string, SqliteDb>([[schema.state.defaultBackendId, dbState]]))
+    if (dbStates_ === undefined || dbStates_.size === 0) {
+      return shouldNeverHappen('makeMaterializeEvent requires at least one state db.')
+    }
+
+    const defaultDbState = dbStates_.get(schema.state.defaultBackendId)
+    if (defaultDbState === undefined) {
+      return shouldNeverHappen(`Missing state db for default backend "${schema.state.defaultBackendId}".`)
+    }
+
     const eventDefSchemaHashMap = new Map(
       // TODO Running `Schema.hash` can be a bottleneck for larger schemas. There is an opportunity to run this
       // at build time and lookup the pre-computed hash at runtime.
@@ -53,7 +73,7 @@ export const makeMaterializeEvent = ({
             )
           }
 
-          dbState.debug.head = eventEncoded.seqNum
+          defaultDbState.debug.head = eventEncoded.seqNum
 
           return {
             sessionChangeset: { _tag: 'no-op' as const },
@@ -62,6 +82,12 @@ export const makeMaterializeEvent = ({
         }
 
         const { eventDef, materializer } = resolution
+        const backendId = resolveBackendIdForEventName(schema, eventEncoded.name)
+        const dbState = dbStates_.get(backendId)
+        if (dbState === undefined) {
+          return shouldNeverHappen(`Missing state db for backend "${backendId}".`)
+        }
+        const stateSystemTables = SystemTables.forStateBackend(schema, backendId)
 
         // Log deprecation warnings for deprecated events/fields
         yield* logDeprecationWarnings(eventDef, eventEncoded.args as Record<string, unknown>)
@@ -112,7 +138,7 @@ export const makeMaterializeEvent = ({
           dbState,
           ...insertRow({
             tableName: SystemTables.SESSION_CHANGESET_META_TABLE,
-            columns: SystemTables.sessionChangesetMetaTable.sqliteDef.columns,
+            columns: stateSystemTables.sessionChangesetMetaTable.sqliteDef.columns,
             values: {
               seqNumGlobal: eventEncoded.seqNum.global,
               seqNumClient: eventEncoded.seqNum.client,
@@ -173,9 +199,27 @@ export const rollback = ({
 }: {
   dbState: SqliteDb
   dbEventlog: SqliteDb
-  eventNumsToRollback: EventSequenceNumber.Client.Composite[]
+  eventNumsToRollback: ReadonlyArray<EventSequenceNumber.Client.Composite>
 }) =>
   Effect.gen(function* () {
+    yield* rollbackStateDb({ dbState, eventNumsToRollback })
+    yield* rollbackEventlogDb({ dbEventlog, eventNumsToRollback })
+  }).pipe(
+    Effect.withSpan('@livestore/common:LeaderSyncProcessor:rollback', {
+      attributes: { count: eventNumsToRollback.length },
+    }),
+  )
+
+export const rollbackStateDb = ({
+  dbState,
+  eventNumsToRollback,
+}: {
+  dbState: SqliteDb
+  eventNumsToRollback: ReadonlyArray<EventSequenceNumber.Client.Composite>
+}) =>
+  Effect.gen(function* () {
+    if (eventNumsToRollback.length === 0) return
+
     const rollbackEvents = dbState
       .select<SystemTables.SessionChangesetMetaRow>(
         sql`SELECT * FROM ${SystemTables.SESSION_CHANGESET_META_TABLE} WHERE (seqNumGlobal, seqNumClient) IN (${eventNumsToRollback.map((id) => `(${id.global}, ${id.client})`).join(', ')})`,
@@ -209,15 +253,25 @@ export const rollback = ({
         sql`DELETE FROM ${SystemTables.SESSION_CHANGESET_META_TABLE} WHERE (seqNumGlobal, seqNumClient) IN (${eventNumPairChunk.join(', ')})`,
       )
     }
+  })
 
-    // Delete the eventlog rows
+export const rollbackEventlogDb = ({
+  dbEventlog,
+  eventNumsToRollback,
+}: {
+  dbEventlog: SqliteDb
+  eventNumsToRollback: ReadonlyArray<EventSequenceNumber.Client.Composite>
+}) =>
+  Effect.sync(() => {
+    if (eventNumsToRollback.length === 0) return
+
+    const eventNumPairChunks = ReadonlyArray.chunksOf(100)(
+      eventNumsToRollback.map((seqNum) => `(${seqNum.global}, ${seqNum.client})`),
+    )
+
     for (const eventNumPairChunk of eventNumPairChunks) {
       dbEventlog.execute(
         sql`DELETE FROM ${SystemTables.EVENTLOG_META_TABLE} WHERE (seqNumGlobal, seqNumClient) IN (${eventNumPairChunk.join(', ')})`,
       )
     }
-  }).pipe(
-    Effect.withSpan('@livestore/common:LeaderSyncProcessor:rollback', {
-      attributes: { count: eventNumsToRollback.length },
-    }),
-  )
+  })
