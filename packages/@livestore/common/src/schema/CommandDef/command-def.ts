@@ -148,14 +148,6 @@ export namespace CommandDef {
 }
 
 /**
- * Container holding a Map of command definitions keyed by name.
- * Used internally by LiveStoreSchema.
- */
-export type CommandDefMap = {
-  map: Map<string, CommandDef.Any>
-}
-
-/**
  * Plain object record of command definitions keyed by name.
  * This is the typical shape when defining commands in user code.
  *
