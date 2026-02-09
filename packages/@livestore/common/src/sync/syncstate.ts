@@ -251,7 +251,7 @@ export const merge = ({
       )
     }
 
-    // #region upstream-advance
+    //#region upstream-advance
     case 'upstream-advance': {
       if (payload.newEvents.length === 0) {
         return validateMergeResult(
@@ -374,7 +374,7 @@ export const merge = ({
         )
       }
     }
-    // #endregion
+    //#endregion upstream-advance
 
     // This is the same as what's running in the sync backend
     case 'local-push': {

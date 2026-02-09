@@ -182,7 +182,7 @@ export class Store<TSchema extends LiveStoreSchema = LiveStoreSchema.Any, TConte
    */
   readonly [StoreInternalsSymbol]: StoreInternals
 
-  // #region constructor
+  //#region constructor
   constructor({
     clientSession,
     schema,
@@ -416,7 +416,7 @@ export class Store<TSchema extends LiveStoreSchema = LiveStoreSchema.Any, TConte
     // Initialize stable network status property from client session
     this.networkStatus = clientSession.leaderThread.networkStatus
   }
-  // #endregion constructor
+  //#endregion constructor
 
   /**
    * Current session identifier for this Store instance.
@@ -710,7 +710,7 @@ export class Store<TSchema extends LiveStoreSchema = LiveStoreSchema.Any, TConte
     }
   }
 
-  // #region commit
+  //#region commit
   /**
    * Commit a list of events to the store which will immediately update the local database
    * and sync the events across other clients (similar to a `git commit`).
@@ -858,7 +858,7 @@ export class Store<TSchema extends LiveStoreSchema = LiveStoreSchema.Any, TConte
       Runtime.runSync(this[StoreInternalsSymbol].effectContext.runtime),
     )
   }
-  // #endregion commit
+  //#endregion commit
 
   /**
    * Returns an async iterable of events from the eventlog.
