@@ -88,7 +88,7 @@ export const deployToNetlify = ({
       const explicit = process.env.NETLIFY_SITE_ID
       if (explicit && explicit !== '') return explicit
       // Resolve site name → id for more reliable config resolution
-      const raw = yield* cmdText(['pnpm', '--package=netlify-cli', 'dlx', 'netlify', 'sites:list', '--json'], {
+      const raw = yield* cmdText(['bunx', 'netlify-cli', 'sites:list', '--json'], {
         stderr: 'pipe',
       })
 
