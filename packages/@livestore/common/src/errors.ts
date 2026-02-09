@@ -97,22 +97,3 @@ export class CommandExecutionError extends Schema.TaggedError<CommandExecutionEr
   },
 ) {}
 
-/**
- * Error thrown when a command fails during replay after sync.
- *
- * This occurs when a pending command is replayed against new state
- * (after pulling remote events) and the handler throws an error.
- * The command's original events are rolled back.
- */
-export class CommandReplayError extends Schema.TaggedError<CommandReplayError>()('LiveStore.CommandReplayError', {
-  /** The name of the command that failed. */
-  commandName: Schema.String,
-  /** The unique ID of the command instance. */
-  commandId: Schema.String,
-  /** The number of events the command originally produced. */
-  originalEventCount: Schema.Number,
-  /** The underlying error from the handler. */
-  cause: Schema.Defect,
-  /** Optional additional context. */
-  note: Schema.optional(Schema.String),
-}) {}
