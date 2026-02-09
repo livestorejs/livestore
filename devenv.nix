@@ -7,6 +7,7 @@
 let
   effectUtils = inputs.effect-utils;
   taskModules = effectUtils.devenvModules.tasks;
+  ci = builtins.getEnv "CI" != "";
 
   # Custom oxlint with NAPI bindings for JavaScript plugin support
   oxlintNpm = effectUtils.lib.mkOxlintNpm { inherit pkgs; bun = pkgs.bun; };
@@ -68,7 +69,7 @@ in
     inputs.playwright.devenvModules.default
     # Shared task modules from effect-utils
     taskModules.genie
-    taskModules.megarepo
+    (taskModules.megarepo { syncAll = !ci; })
     (taskModules.ts { tsconfigFile = "tsconfig.dev.json"; })
     (taskModules.check {
       hasTests = false;
@@ -142,7 +143,7 @@ in
     # Setup task (auto-runs in enterShell)
     (taskModules.setup {
       requiredTasks = [ ];
-      optionalTasks = [ "megarepo:generate" "pnpm:install" "genie:run" "ts:build" ];
+      optionalTasks = [ "pnpm:install" "genie:run" "ts:build" ];
     })
     # Local task: mono command wrappers for uniform dt interface
     ./nix/devenv-modules/tasks/local/mono-wrappers.nix
