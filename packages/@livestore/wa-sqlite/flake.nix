@@ -287,6 +287,7 @@ EOF
                 rm -rf ./dist
               fi
               cp -r "$RESULT/dist" ./
+              chmod -R u+w ./dist
               echo "✓ Build complete - dist directory regenerated with session support and FTS5 variant"
             else
               echo "ERROR: No dist directory found in build result"
