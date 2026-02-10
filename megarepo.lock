@@ -4,9 +4,9 @@
     "effect-utils": {
       "url": "https://github.com/overengineeringstudio/effect-utils",
       "ref": "main",
-      "commit": "28d8ab6b5283f45d7cf04eb106735b06cd8c5ecf",
+      "commit": "a02c044f8eb42f46974fb1b535a7a43f885677ca",
       "pinned": false,
-      "lockedAt": "2026-02-09T21:28:44.446Z"
+      "lockedAt": "2026-02-10T09:36:58.477Z"
     },
     "overeng-beads-public": {
       "url": "https://github.com/overengineeringstudio/overeng-beads-public",

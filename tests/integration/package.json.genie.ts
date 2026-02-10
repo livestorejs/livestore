@@ -1,4 +1,4 @@
-import { catalog, localPackageDefaults, packageJson } from '../../genie/repo.ts'
+import { catalog, effectDevDeps, localPackageDefaults, packageJson } from '../../genie/repo.ts'
 
 export default packageJson({
   name: '@local/tests-integration',
@@ -26,7 +26,7 @@ export default packageJson({
     ),
   },
   devDependencies: {
-    ...catalog.pick(
+    ...effectDevDeps(
       '@cloudflare/workers-types',
       '@opentelemetry/api',
       '@opentelemetry/exporter-trace-otlp-http',

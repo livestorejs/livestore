@@ -1,4 +1,4 @@
-import { catalog, localPackageDefaults, packageJson } from '../../genie/repo.ts'
+import { catalog, effectDevDeps, localPackageDefaults, packageJson } from '../../genie/repo.ts'
 
 export default packageJson({
   name: '@local/tests-sync-provider',
@@ -24,7 +24,7 @@ export default packageJson({
     postgres: '3.4.7',
   },
   devDependencies: {
-    ...catalog.pick('@livestore/utils-dev', '@types/node', 'vitest'),
+    ...effectDevDeps('@livestore/devtools-vite', '@livestore/utils-dev', '@types/node', 'vitest'),
   },
   scripts: {
     test: 'vitest run',

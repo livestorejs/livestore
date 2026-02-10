@@ -1,4 +1,4 @@
-import { catalog, localPackageDefaults, packageJson } from '../../genie/repo.ts'
+import { catalog, effectDevDeps, localPackageDefaults, packageJson } from '../../genie/repo.ts'
 
 export default packageJson({
   name: '@local/tests-perf',
@@ -24,6 +24,9 @@ export default packageJson({
       'typescript',
       'vite',
     ),
+  },
+  devDependencies: {
+    ...effectDevDeps(),
   },
   scripts: {
     test: 'NODE_OPTIONS=--disable-warning=ExperimentalWarning playwright test',

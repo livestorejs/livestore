@@ -1,4 +1,4 @@
-import { catalog, localPackageDefaults, packageJson } from '../../genie/repo.ts'
+import { catalog, effectDevDeps, localPackageDefaults, packageJson } from '../../genie/repo.ts'
 
 export default packageJson({
   name: '@local/tests-package-common',
@@ -18,6 +18,6 @@ export default packageJson({
     ),
   },
   devDependencies: {
-    ...catalog.pick('@livestore/utils-dev', 'vitest'),
+    ...effectDevDeps('@livestore/devtools-vite', '@livestore/utils-dev', 'vitest'),
   },
 })

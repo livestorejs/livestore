@@ -1,4 +1,4 @@
-import { catalog, localPackageDefaults, packageJson } from '../../genie/repo.ts'
+import { catalog, effectDevDeps, localPackageDefaults, packageJson } from '../../genie/repo.ts'
 
 export default packageJson({
   name: '@local/tests-perf-streaming-loopback',
@@ -28,7 +28,7 @@ export default packageJson({
     ),
   },
   devDependencies: {
-    ...catalog.pick('@livestore/devtools-vite', '@playwright/test'),
+    ...effectDevDeps('@livestore/devtools-vite', '@playwright/test'),
     tsx: '^4.20.0',
   },
   scripts: {
