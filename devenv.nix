@@ -189,7 +189,8 @@ in
   git-hooks.enable = true;
   git-hooks.hooks.check-quick = {
     enable = true;
-    entry = "${pkgs.bash}/bin/bash -c 'dt check:quick'";
+    # Can't use `dt` here — git hooks run outside the devenv shell where `dt` isn't on $PATH
+    entry = "devenv tasks run check:quick --mode before";
     stages = [ "pre-commit" ];
     always_run = true;
     pass_filenames = false;
