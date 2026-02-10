@@ -195,7 +195,16 @@ const getCurrentRequiredContexts = (branch: string) =>
       { stderr: 'pipe' },
     ).pipe(Effect.provide(LivestoreWorkspace.toCwd()))
 
-    const parsed = JSON.parse(response) as { required_status_checks?: { contexts?: string[] } } | null
+    const BranchProtectionResponse = Schema.parseJson(
+      Schema.NullOr(
+        Schema.Struct({
+          required_status_checks: Schema.optional(
+            Schema.Struct({ contexts: Schema.optional(Schema.Array(Schema.String)) }),
+          ),
+        }),
+      ),
+    )
+    const parsed = yield* Schema.decode(BranchProtectionResponse)(response)
     const current = parsed?.required_status_checks?.contexts ?? []
     return Array.isArray(current) ? current : []
   })
@@ -359,7 +368,16 @@ const getRulesetByName = (name: string) =>
       stderr: 'pipe',
     }).pipe(Effect.provide(LivestoreWorkspace.toCwd()))
 
-    const rulesets = JSON.parse(response) as TExistingRuleset[]
+    const ExistingRulesetSchema = Schema.parseJson(
+      Schema.Array(
+        Schema.Struct({
+          id: Schema.Number,
+          name: Schema.String,
+          enforcement: Schema.String,
+        }),
+      ),
+    )
+    const rulesets = yield* Schema.decode(ExistingRulesetSchema)(response)
     return rulesets.find((r) => r.name === name) ?? null
   })
 
@@ -524,7 +542,8 @@ const showRulesetsCommand = Cli.Command.make(
     }).pipe(Effect.provide(LivestoreWorkspace.toCwd()))
 
     console.log(`\nFull details:`)
-    console.log(JSON.stringify(JSON.parse(details), null, 2))
+    const parsed = yield* Schema.decode(Schema.parseJson(Schema.Unknown))(details)
+    console.dir(parsed, { depth: null })
   }),
 ).pipe(Cli.Command.withDescription('Show current ruleset configuration'))
 

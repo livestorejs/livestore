@@ -11,6 +11,11 @@ export class NetlifyError extends Schema.TaggedError<NetlifyError>()('NetlifyErr
   cause: Schema.optional(Schema.Unknown),
 }) {}
 
+class FileReadError extends Schema.TaggedError<FileReadError>()('FileReadError', {
+  cause: Schema.Defect,
+  path: Schema.String,
+}) {}
+
 const NetlifyDeployResultSchema = Schema.Struct({
   site_id: Schema.String,
   site_name: Schema.String,
@@ -193,7 +198,7 @@ const resolveNetlifyAuthToken = Effect.gen(function* () {
   for (const candidate of configCandidates) {
     const readResult = yield* Effect.try({
       try: () => readFileSync(candidate, 'utf8'),
-      catch: (error) => error as NodeJS.ErrnoException,
+      catch: (error) => new FileReadError({ cause: error, path: candidate }),
     }).pipe(Effect.either)
 
     if (readResult._tag === 'Right') {
@@ -210,7 +215,7 @@ const resolveNetlifyAuthToken = Effect.gen(function* () {
     return yield* new NetlifyError({
       message: `Failed to read Netlify CLI config at ${candidate}`,
       reason: 'auth',
-      cause: readError,
+      cause: readError.cause,
     })
   }
 
@@ -314,11 +319,12 @@ const resolveOsConfigDirectory = (homeDirectory: string): string => {
   return join(homeDirectory, '.config', 'netlify')
 }
 
-const isFileMissingError = (error: unknown): error is NodeJS.ErrnoException => {
-  if (typeof error !== 'object' || error === null) {
+const isFileMissingError = (error: FileReadError): boolean => {
+  const cause = error.cause
+  if (typeof cause !== 'object' || cause === null) {
     return false
   }
 
-  const maybeError = error as NodeJS.ErrnoException
+  const maybeError = cause as NodeJS.ErrnoException
   return maybeError.code === 'ENOENT' || maybeError.code === 'ENOTDIR'
 }

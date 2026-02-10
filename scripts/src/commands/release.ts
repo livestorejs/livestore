@@ -2,10 +2,15 @@ import fs from 'node:fs'
 
 import { shouldNeverHappen } from '@livestore/utils'
 import { CurrentWorkingDirectory, cmd, cmdText } from '@livestore/utils-dev/node'
-import { Effect, FileSystem } from '@livestore/utils/effect'
+import { Effect, FileSystem, Schema } from '@livestore/utils/effect'
 import { Cli } from '@livestore/utils/node'
 
 import { appendGithubSummaryMarkdown, formatMarkdownTable } from '../shared/misc.ts'
+
+class PackageJsonParseError extends Schema.TaggedError<PackageJsonParseError>()('PackageJsonParseError', {
+  message: Schema.String,
+  cause: Schema.Defect,
+}) {}
 
 const toErrorMessage = (cause: unknown) => (cause instanceof Error ? cause.message : String(cause))
 
@@ -34,7 +39,7 @@ const listSnapshotPackages = (cwd: string) =>
         Effect.flatMap((content) =>
           Effect.try({
             try: () => JSON.parse(content) as { name?: unknown; private?: unknown },
-            catch: (cause) => new Error(`Failed to parse ${packageJsonPath}`, { cause }),
+            catch: (cause) => new PackageJsonParseError({ message: `Failed to parse ${packageJsonPath}`, cause }),
           }),
         ),
         Effect.either,
