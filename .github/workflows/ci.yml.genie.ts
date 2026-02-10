@@ -98,7 +98,6 @@ export default githubWorkflow({
 
   env: {
     GITHUB_BRANCH_NAME: '${{ github.head_ref || github.ref_name }}',
-    S2_ACCESS_TOKEN: '${{ secrets.S2_ACCESS_TOKEN }}',
     CACHIX_AUTH_TOKEN: '${{ secrets.CACHIX_AUTH_TOKEN }}',
   },
 
@@ -180,8 +179,22 @@ fi`,
         ...livestoreSetupSteps,
         otelSetupStep,
         {
+          name: 'Start s2-lite container',
+          if: "${{ matrix.provider == 's2' }}",
+          run: `docker run -d --name s2-lite -p 4566:80 ghcr.io/s2-streamstore/s2 lite
+# Wait for s2-lite to be ready
+for i in {1..30}; do
+  if curl -sf http://localhost:4566/ping > /dev/null 2>&1; then
+    echo "s2-lite is ready"
+    break
+  fi
+  echo "Waiting for s2-lite... ($i/30)"
+  sleep 1
+done`,
+          shell: 'bash',
+        },
+        {
           name: 'Run sync-provider tests for ${{ matrix.provider }}',
-          if: "${{ matrix.provider != 's2' || env.S2_ACCESS_TOKEN != '' }}",
           run: `if [[ "\${{ matrix.provider }}" == cf-* ]]; then
   if dt "test:integration:sync-provider:\${{ matrix.provider }}"; then
     exit 0
@@ -192,11 +205,6 @@ fi`,
 else
   dt "test:integration:sync-provider:\${{ matrix.provider }}"
 fi`,
-        },
-        {
-          name: 'Skip S2 sync-provider tests (missing S2_ACCESS_TOKEN)',
-          if: "${{ matrix.provider == 's2' && env.S2_ACCESS_TOKEN == '' }}",
-          run: 'echo "Skipping S2 sync-provider tests: S2_ACCESS_TOKEN not set"',
         },
       ],
     },
