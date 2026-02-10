@@ -5,11 +5,13 @@
   "sideEffects": false,
   "exports": {
     ".": "./src/index.ts",
+    "./ssr": "./src/ssr/index.ts",
     "./worker": "./src/web-worker/leader-worker/make-leader-worker.ts",
     "./worker-vite-dev-polyfill": "./src/web-worker/vite-dev-polyfill.ts",
     "./shared-worker": "./src/web-worker/shared-worker/make-shared-worker.ts"
   },
   "dependencies": {
+    "@livestore/adapter-node": "workspace:*",
     "@livestore/common": "workspace:*",
     "@livestore/devtools-web-common": "workspace:*",
     "@livestore/sqlite-wasm": "workspace:*",
@@ -32,6 +34,7 @@
     "access": "public",
     "exports": {
       ".": "./dist/index.js",
+      "./ssr": "./dist/ssr/index.js",
       "./worker": "./dist/web-worker/leader-worker/make-leader-worker.js",
       "./worker-vite-dev-polyfill": "./dist/web-worker/vite-dev-polyfill.js",
       "./shared-worker": "./dist/web-worker/shared-worker/make-shared-worker.js"
