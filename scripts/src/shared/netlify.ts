@@ -41,6 +41,8 @@ const NetlifyPurgeRequestSchema = Schema.Struct({
   site_slug: Schema.optional(Schema.String),
 })
 
+const NetlifySiteListSchema = Schema.Array(Schema.Struct({ id: Schema.String, name: Schema.String }))
+
 export type Target =
   | {
       _tag: 'prod'
@@ -92,25 +94,7 @@ export const deployToNetlify = ({
     const resolvedSiteArg = yield* Effect.gen(function* () {
       const explicit = process.env.NETLIFY_SITE_ID
       if (explicit && explicit !== '') return explicit
-      // Resolve site name → id for more reliable config resolution
-      const raw = yield* cmdText(['bunx', 'netlify-cli', 'sites:list', '--json'], {
-        stderr: 'pipe',
-      })
-
-      const SiteListSchema = Schema.Array(Schema.Struct({ id: Schema.String, name: Schema.String }))
-
-      const sites = yield* Schema.decode(Schema.parseJson(SiteListSchema))(raw).pipe(
-        Effect.mapError(
-          (cause) =>
-            new NetlifyError({
-              message: 'Failed to parse output from netlify sites:list',
-              reason: 'unknown',
-              cause,
-            }),
-        ),
-      )
-      const match = sites.find((s) => s.name === site)
-      return match ? match.id : site
+      return yield* resolveSiteIdViaApi(site)
     })
 
     yield* Effect.logDebug(`[deploy-to-netlify] Using site argument: ${resolvedSiteArg}`)
@@ -251,6 +235,35 @@ const resolveNetlifyAuthToken = Effect.gen(function* () {
   }
 
   return resolvedToken
+})
+
+/** Resolve a Netlify site name to its site ID via the HTTP API (avoids CLI stdout corruption) */
+const resolveSiteIdViaApi = Effect.fn('resolveSiteIdViaApi')(function* (siteName: string) {
+  const token = yield* resolveNetlifyAuthToken
+  const httpClient = yield* HttpClient.HttpClient
+
+  const sites = yield* httpClient
+    .pipe(HttpClient.filterStatusOk)
+    .execute(
+      HttpClientRequest.get('https://api.netlify.com/api/v1/sites?per_page=100').pipe(
+        HttpClientRequest.setHeader('authorization', `Bearer ${token}`),
+      ),
+    )
+    .pipe(
+      Effect.andThen((res) => res.json),
+      Effect.andThen(Schema.decodeUnknown(NetlifySiteListSchema)),
+      Effect.mapError(
+        (cause) =>
+          new NetlifyError({
+            message: `Failed to resolve Netlify site "${siteName}" via API`,
+            reason: 'unknown',
+            cause,
+          }),
+      ),
+    )
+
+  const match = sites.find((s) => s.name === siteName)
+  return match ? match.id : siteName
 })
 
 export const purgeNetlifyCdn = ({ siteId, siteSlug }: { siteId?: string; siteSlug?: string }) =>
