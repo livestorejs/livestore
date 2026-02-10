@@ -21,6 +21,8 @@ export default oxfmtConfig({
     'tests/integration/node_modules/**',
     // Exclude MDX files — oxfmt has idempotency issues with MDX formatting
     '**/*.mdx',
+    // Exclude Astro-generated type definitions — Astro regenerates these in its own style
+    'docs/.astro/**',
     // Phase 1: Skip library source files to avoid biome↔oxfmt formatting flip-flop.
     // These files are biome-formatted to keep the PR #996 diff minimal.
     // TODO(oep-lp9): Remove these ignores when completing the oxfmt migration.
