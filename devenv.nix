@@ -184,6 +184,8 @@ in
     }
   );
 
+  cachix.pull = [ "livestore" ];
+
   git-hooks.enable = true;
   git-hooks.hooks.check-quick = {
     enable = true;
