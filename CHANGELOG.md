@@ -2,7 +2,7 @@
 
 > NOTE: LiveStore is still in beta and releases can include breaking changes.
 > See
-> [state of the project](https://docs.livestore.dev/evaluating/state-of-the-project/)
+> [state of the project](https://docs.livestore.dev/misc/state-of-the-project/)
 > for more info. LiveStore is following a semver-like release strategy where
 > breaking changes are released in minor versions before the 1.0 release.
 
@@ -310,6 +310,8 @@ LiveStore now ships `@livestore/sync-s2`, a first-party integration with S2—th
 See the [S2 sync provider docs](https://dev.docs.livestore.dev/reference/syncing/sync-provider/s2/) for full deployment guidance and operational notes.
 
 #### Core Runtime & Storage
+
+- **Event log lookup optimization:** Improved event log lookup performance for large unsynced logs, speeding startup time ([#1012](https://github.com/livestorejs/livestore/pull/1012)).
 
 - **Unknown event handling:** Schemas now ship an `unknownEventHandling` configuration so older clients can warn, ignore, fail, or forward telemetry when they see future events while keeping the eventlog intact ([#353](https://github.com/livestorejs/livestore/issues/353)).
 

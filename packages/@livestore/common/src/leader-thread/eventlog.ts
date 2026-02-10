@@ -59,13 +59,14 @@ export const getEventsSince = ({
     sessionChangesetMetaTable.where('seqNumGlobal', '>=', since.global),
   )
 
+  // Create a Map for O(1) lookup instead of O(n) find
+  const sessionChangesetMap = new Map(
+    sessionChangesetRowsDecoded.map((row) => [`${row.seqNumGlobal}:${row.seqNumClient}`, row]),
+  )
+
   return pendingEvents
     .map((eventlogEvent) => {
-      const sessionChangeset = sessionChangesetRowsDecoded.find(
-        (readModelEvent) =>
-          readModelEvent.seqNumGlobal === eventlogEvent.seqNumGlobal &&
-          readModelEvent.seqNumClient === eventlogEvent.seqNumClient,
-      )
+      const sessionChangeset = sessionChangesetMap.get(`${eventlogEvent.seqNumGlobal}:${eventlogEvent.seqNumClient}`)
       return LiveStoreEvent.Client.EncodedWithMeta.make({
         name: eventlogEvent.name,
         args: eventlogEvent.argsJson,
