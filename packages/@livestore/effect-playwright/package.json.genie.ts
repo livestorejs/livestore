@@ -1,4 +1,4 @@
-import { catalog, packageJson } from '../../../genie/repo.ts'
+import { catalog, effectDevDeps, packageJson } from '../../../genie/repo.ts'
 
 export default packageJson({
   name: '@livestore/effect-playwright',
@@ -9,7 +9,7 @@ export default packageJson({
     '.': './src/index.ts',
   },
   dependencies: { ...catalog.pick('@livestore/utils') },
-  devDependencies: { ...catalog.pick('@playwright/test', '@types/node') },
+  devDependencies: { ...effectDevDeps('@playwright/test', '@types/node') },
   peerDependencies: {
     '@playwright/test': '^1.56.0',
   },

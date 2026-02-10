@@ -1,4 +1,5 @@
 import { catalog, packageJson } from '../../../../../genie/repo.ts'
+import utilsPkg from '../../../../../packages/@livestore/utils/package.json.genie.ts'
 
 export default packageJson({
   name: 'docs-code-snippets',
@@ -6,6 +7,10 @@ export default packageJson({
   type: 'module',
   private: true,
   dependencies: {
+    // Upstream peer deps spread into dependencies (leaf node pattern)
+    ...utilsPkg.data.peerDependencies,
+    ...catalog.pick('svelte', 'expo-application', 'expo-sqlite'),
+
     // Automerge (not in catalog - doc-specific)
     '@automerge/automerge': '3.2.0',
     '@automerge/react': '2.5.0',

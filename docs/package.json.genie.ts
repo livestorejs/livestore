@@ -1,4 +1,5 @@
 import { catalog, packageJson } from '../genie/repo.ts'
+import utilsPkg from '../packages/@livestore/utils/package.json.genie.ts'
 
 export default packageJson({
   name: '@local/docs',
@@ -10,6 +11,10 @@ export default packageJson({
     './sidebar': './src/data/sidebar.ts',
   },
   dependencies: {
+    // Upstream peer deps spread into dependencies (leaf node pattern)
+    ...utilsPkg.data.peerDependencies,
+    ...catalog.pick('solid-js', 'expo-application', 'expo-sqlite'),
+
     // @livestore packages via catalog (uses link: protocol)
     ...catalog.pick(
       '@livestore/adapter-cloudflare',

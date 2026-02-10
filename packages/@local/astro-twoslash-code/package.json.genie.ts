@@ -1,4 +1,4 @@
-import { catalog, localPackageDefaults, packageJson } from '../../../genie/repo.ts'
+import { catalog, effectDevDeps, localPackageDefaults, packageJson } from '../../../genie/repo.ts'
 
 export default packageJson({
   name: '@local/astro-twoslash-code',
@@ -23,7 +23,7 @@ export default packageJson({
     ),
   },
   devDependencies: {
-    ...catalog.pick('@astrojs/starlight', '@types/hast', '@types/node', 'astro', 'vitest'),
+    ...effectDevDeps('@astrojs/starlight', '@types/hast', '@types/node', 'astro', 'vitest'),
   },
   ...localPackageDefaults,
   peerDependencies: {

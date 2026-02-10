@@ -1,4 +1,4 @@
-import { catalog, localPackageDefaults, packageJson } from '../../../genie/repo.ts'
+import { catalog, effectDevDeps, localPackageDefaults, packageJson } from '../../../genie/repo.ts'
 
 export default packageJson({
   name: '@local/astro-tldraw',
@@ -12,15 +12,7 @@ export default packageJson({
     ...catalog.pick('@kitschpatrol/tldraw-cli', '@livestore/utils'),
   },
   devDependencies: {
-    ...catalog.pick(
-      '@effect/vitest',
-      '@effect/platform',
-      '@effect/platform-node',
-      '@types/node',
-      'astro',
-      'effect',
-      'vitest',
-    ),
+    ...effectDevDeps('@effect/vitest', '@types/node', 'astro', 'vitest'),
   },
   ...localPackageDefaults,
   peerDependencies: {
