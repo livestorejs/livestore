@@ -18,10 +18,11 @@ remote_images = ["https://gitbucket\\.schickling\\.dev/.*"]
 # Netlify's build phase does. We also anchor publish to the docs app so the CLI
 # resolves paths consistently in monorepos.
 [build]
-# Use the docs/ folder as base so publish/edge paths resolve relative to it
-# base = "."
-publish = "docs/dist"
-edge_functions = "docs/netlify/edge-functions"
+# Paths are relative to this file's directory (docs/).
+# On the genie branch with per-package workspaces, Netlify CLI --filter resolves
+# the package base to docs/ itself, so paths must not include the docs/ prefix.
+publish = "dist"
+edge_functions = "netlify/edge-functions"
 
 # Edge Function configuration. The Edge runtime bundles the file(s) below and
 # attaches them at the CDN layer during the Netlify build phase.
