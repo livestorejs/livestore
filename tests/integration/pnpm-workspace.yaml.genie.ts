@@ -1,5 +1,18 @@
-import { pnpmWorkspaceReact } from '../../genie/repo.ts'
+import { pnpmWorkspaceTestsReact } from '../../genie/repo.ts'
 
-// Test workspace - uses glob patterns to include all workspace packages
-// This avoids manual maintenance of transitive dependency closure
-export default pnpmWorkspaceReact('../../packages/@livestore/*', '../../packages/@local/*')
+export default pnpmWorkspaceTestsReact(
+  [
+    'adapter-cloudflare',
+    'adapter-node',
+    'adapter-web',
+    'common',
+    'common-cf',
+    'effect-playwright',
+    'livestore',
+    'react',
+    'sync-cf',
+    'utils',
+    'utils-dev',
+  ],
+  ['../../packages/@local/shared'],
+)

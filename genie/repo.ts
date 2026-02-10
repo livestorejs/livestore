@@ -282,6 +282,21 @@ const workspaceDeps: Record<string, readonly string[]> = {
   'devtools-expo': ['adapter-node', 'utils'],
 } as const
 
+/** Resolve transitive closure of workspace dependency short names. */
+const resolveTransitivePackageNames = (packageNames: readonly string[]): string[] => {
+  const result = new Set<string>()
+  const visit = (name: string) => {
+    if (result.has(name)) return
+    result.add(name)
+    const deps = workspaceDeps[name]
+    if (deps) for (const dep of deps) visit(dep)
+  }
+  for (const name of packageNames) {
+    if (name in workspaceDeps) visit(name)
+  }
+  return [...result].toSorted()
+}
+
 /**
  * Compute the transitive closure of workspace dependencies for a set of direct deps.
  *
@@ -293,28 +308,18 @@ const workspaceDeps: Record<string, readonly string[]> = {
  * Non-matching patterns (e.g., `../../@livestore/*` globs) are passed through as-is.
  */
 const resolveTransitiveDeps = (patterns: string[]): string[] => {
-  const result = new Set<string>()
-
-  const visit = (dirName: string) => {
-    if (result.has(dirName)) return
-    result.add(dirName)
-    const deps = workspaceDeps[dirName]
-    if (deps) {
-      for (const dep of deps) visit(dep)
-    }
-  }
-
   const nonResolvable: string[] = []
+  const names: string[] = []
   for (const pattern of patterns) {
     const match = pattern.match(/^\.\.\/([^/]+)$/)
     if (match && match[1]! in workspaceDeps) {
-      visit(match[1]!)
+      names.push(match[1]!)
     } else {
       nonResolvable.push(pattern)
     }
   }
 
-  return [...nonResolvable, ...[...result].toSorted().map((name) => `../${name}`)]
+  return [...nonResolvable, ...resolveTransitivePackageNames(names).map((name) => `../${name}`)]
 }
 
 /**
@@ -367,6 +372,42 @@ export const pnpmWorkspaceExpo = (...patterns: string[]) =>
     packages: ['.', ...resolveTransitiveDeps(patterns)],
     dedupePeerDependents: true,
     publicHoistPattern: ['react', 'react-dom', 'react-reconciler', 'react-native', 'expo', 'expo-*'],
+  })
+
+/**
+ * pnpm workspace for test packages at tests/<name>/.
+ * Uses explicit transitive dep resolution instead of globs to avoid
+ * overlapping workspace symlink conflicts between test workspaces.
+ *
+ * @param packageNames - Direct @livestore package short names (e.g., 'common', 'utils')
+ * @param extraPackages - Additional non-@livestore workspace paths
+ */
+export const pnpmWorkspaceTests = (packageNames: readonly string[], extraPackages?: readonly string[]) =>
+  pnpmWorkspaceYaml({
+    packages: [
+      '.',
+      ...resolveTransitivePackageNames(packageNames).map((n) => `../../packages/@livestore/${n}`),
+      ...(extraPackages ?? []),
+    ],
+    dedupePeerDependents: true,
+  })
+
+/**
+ * pnpm workspace for test packages that need React hoisting.
+ * Uses explicit transitive dep resolution instead of globs.
+ *
+ * @param packageNames - Direct @livestore package short names
+ * @param extraPackages - Additional non-@livestore workspace paths
+ */
+export const pnpmWorkspaceTestsReact = (packageNames: readonly string[], extraPackages?: readonly string[]) =>
+  pnpmWorkspaceYaml({
+    packages: [
+      '.',
+      ...resolveTransitivePackageNames(packageNames).map((n) => `../../packages/@livestore/${n}`),
+      ...(extraPackages ?? []),
+    ],
+    dedupePeerDependents: true,
+    publicHoistPattern: ['react', 'react-dom', 'react-reconciler'],
   })
 
 // =============================================================================

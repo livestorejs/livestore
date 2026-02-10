@@ -5,5 +5,6 @@ export default defineProject({
     name: '@livestore/webmesh',
     root: import.meta.dirname,
     include: ['src/**/*.test.ts'],
+    server: { deps: { inline: ['@effect/vitest'] } },
   },
 })

@@ -1,4 +1,9 @@
-import { pnpmWorkspaceReact } from '../../genie/repo.ts'
+import { pnpmWorkspaceTestsReact } from '../../genie/repo.ts'
 
-// Test workspace - uses glob patterns to include all workspace packages
-export default pnpmWorkspaceReact('../../packages/@livestore/*', '../../packages/@local/*')
+export default pnpmWorkspaceTestsReact([
+  'adapter-web',
+  'livestore',
+  'react',
+  'utils',
+  'utils-dev',
+])

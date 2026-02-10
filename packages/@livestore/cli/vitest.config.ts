@@ -20,5 +20,6 @@ export default defineConfig({
     name: '@livestore/cli',
     root: import.meta.dirname,
     include: ['src/**/*.test.ts'],
+    server: { deps: { inline: ['@effect/vitest'] } },
   },
 })

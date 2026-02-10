@@ -1,4 +1,15 @@
-import { pnpmWorkspace } from '../../genie/repo.ts'
+import { pnpmWorkspaceTests } from '../../genie/repo.ts'
 
-// Test workspace - uses glob patterns to include all workspace packages
-export default pnpmWorkspace('../../packages/@livestore/*', '../../packages/@local/*')
+export default pnpmWorkspaceTests([
+  'adapter-cloudflare',
+  'adapter-node',
+  'common',
+  'common-cf',
+  'livestore',
+  'sqlite-wasm',
+  'sync-cf',
+  'sync-electric',
+  'sync-s2',
+  'utils',
+  'utils-dev',
+])

@@ -12,6 +12,7 @@ export default defineConfig({
     clearMocks: true,
     include: ['**/*.svelte.{test,spec}.{js,ts}', '**/*.{test,spec}.{js,ts}'],
     setupFiles: [fileURLToPath(new URL('./vitest-setup-client.ts', import.meta.url))],
+    server: { deps: { inline: ['@effect/vitest'] } },
   },
   plugins: [
     svelte({

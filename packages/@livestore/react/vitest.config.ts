@@ -10,6 +10,7 @@ export default defineConfig({
     setupFiles: ['./test/setup.ts'],
     // Setup DOM globals in Node environment
     globals: true,
+    server: { deps: { inline: ['@effect/vitest'] } },
   },
   esbuild: {
     // TODO remove once `using` keyword supported OOTB with Vite https://github.com/vitejs/vite/issues/15464#issuecomment-1872485703

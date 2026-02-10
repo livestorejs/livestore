@@ -21,6 +21,7 @@ export default defineConfig({
     environment: 'node',
     globals: true,
     include: ['src/**/*.server.test.{ts,tsx}'],
+    server: { deps: { inline: ['@effect/vitest'] } },
   },
   resolve: {
     conditions: ['node'],
