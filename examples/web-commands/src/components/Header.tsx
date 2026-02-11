@@ -5,9 +5,12 @@ import { useAppStore } from '../livestore/store.ts'
 
 export const Header: React.FC = () => {
   const store = useAppStore()
+
   const { newTodoText } = store.useQuery(uiState$)
 
-  const updatedNewTodoText = (text: string) => store.commit(events.uiStateSet({ newTodoText: text }))
+  const updatedNewTodoText = (text: string) => {
+    store.commit(events.uiStateSet({ newTodoText: text }))
+  }
 
   const createTodo = async () => {
     const result = store.execute(commands.createTodo({ id: crypto.randomUUID(), text: newTodoText }))

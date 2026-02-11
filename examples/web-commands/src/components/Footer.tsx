@@ -10,16 +10,16 @@ const incompleteCount$ = queryDb(tables.todos.count().where({ completed: false, 
 
 export const Footer: React.FC = () => {
   const store = useAppStore()
+
   const { filter } = store.useQuery(uiState$)
   const incompleteCount = store.useQuery(incompleteCount$)
-  const setFilter = (filter: (typeof tables.uiState.Value)['filter']) => store.commit(events.uiStateSet({ filter }))
+
+  const setFilter = (filter: (typeof tables.uiState.Value)['filter']) => {
+    store.commit(events.uiStateSet({ filter }))
+  }
 
   const clearCompleted = () => {
-    const result = store.execute(commands.clearCompleted({ deletedAt: new Date() }))
-    if (result._tag === 'failed') {
-      // result.error is NoCompletedTodos | CommandExecutionError — fully typed
-      console.error('Failed to clear completed:', result.error)
-    }
+    store.execute(commands.clearCompleted({ deletedAt: new Date() }))
   }
 
   return (

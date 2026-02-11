@@ -1,5 +1,6 @@
 import { queryDb } from '@livestore/livestore'
-import React from 'react'
+import type React from 'react'
+import { useState } from 'react'
 import { uiState$ } from '../livestore/queries.ts'
 import { commands, tables } from '../livestore/schema.ts'
 import { useAppStore } from '../livestore/store.ts'
@@ -17,8 +18,21 @@ const visibleTodos$ = queryDb(
 
 export const MainSection: React.FC = () => {
   const store = useAppStore()
+
+  const visibleTodos = store.useQuery(visibleTodos$)
+
   // Tracks todo IDs that had a toggle rolled back because the todo was concurrently deleted
-  const [deletedConflicts, setDeletedConflicts] = React.useState<Set<string>>(new Set())
+  const [deletedConflicts, setDeletedConflicts] = useState<Set<string>>(new Set())
+
+  const toggleTodo = async (id: string) => {
+    const result = store.execute(commands.toggleTodo({ id }))
+    if (result._tag === 'failed') return console.error('Failed to toggle todo:', result.error)
+
+    const confirmation = await result.confirmation
+    if (confirmation._tag === 'conflict' && confirmation.error._tag === 'CannotToggleDeletedTodo') {
+      setDeletedConflicts((prev) => new Set(prev).add(id))
+    }
+  }
 
   const dismissConflict = (id: string) => {
     setDeletedConflicts((prev) => {
@@ -33,21 +47,9 @@ export const MainSection: React.FC = () => {
     dismissConflict(id)
   }
 
-  const toggleTodo = async (id: string) => {
-    const result = store.execute(commands.toggleTodo({ id }))
-    if (result._tag === 'failed') return console.error('Failed to toggle todo:', result.error)
-
-    const confirmation = await result.confirmation
-    if (confirmation._tag === 'conflict' && confirmation.error._tag === 'CannotToggleDeletedTodo') {
-      setDeletedConflicts((prev) => new Set(prev).add(id))
-    }
-  }
-
   const deleteTodo = (id: string) => {
     store.execute(commands.deleteTodo({ id, deletedAt: new Date() }))
   }
-
-  const visibleTodos = store.useQuery(visibleTodos$)
 
   return (
     <section className="main">
