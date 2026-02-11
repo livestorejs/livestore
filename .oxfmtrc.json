@@ -32,6 +32,7 @@
     "tests/integration/node_modules/**",
     "**/*.mdx",
     "docs/.astro/**",
+    "docs/.netlify/**",
     "packages/@livestore/*/src/**",
     "packages/@livestore/*/test/**",
     "tests/**"
