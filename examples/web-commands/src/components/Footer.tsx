@@ -19,7 +19,7 @@ export const Footer: React.FC = () => {
   }
 
   const clearCompleted = () => {
-    store.execute(commands.clearCompleted({ deletedAt: new Date() }))
+    store.commit(events.todoClearedCompleted({ deletedAt: new Date() }))
   }
 
   return (

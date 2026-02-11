@@ -47,21 +47,13 @@ export const events = {
   uiStateSet: tables.uiState.set,
 }
 
-// Typed error classes for command validation failures
+// Typed error classes for command validation expected and recoverable errors
 export class TodoTextEmpty extends Schema.TaggedError<TodoTextEmpty>()('TodoTextEmpty', {}) {}
-
-export class TodoNotFound extends Schema.TaggedError<TodoNotFound>()('TodoNotFound', {}) {}
-
-export class TodoAlreadyDeleted extends Schema.TaggedError<TodoAlreadyDeleted>()('TodoAlreadyDeleted', {}) {}
 
 export class CannotToggleDeletedTodo extends Schema.TaggedError<CannotToggleDeletedTodo>()(
   'CannotToggleDeletedTodo',
   {},
 ) {}
-
-export class TodoNotDeleted extends Schema.TaggedError<TodoNotDeleted>()('TodoNotDeleted', {}) {}
-
-export class NoCompletedTodos extends Schema.TaggedError<NoCompletedTodos>()('NoCompletedTodos', {}) {}
 
 export const commands = {
   createTodo: defineCommand({
@@ -69,54 +61,19 @@ export const commands = {
     schema: Schema.Struct({ id: Schema.String, text: Schema.String }),
     handler: ({ id, text }) => {
       const trimmedText = text.trim()
-      if (trimmedText.length === 0) return new TodoTextEmpty()
+      if (trimmedText.length === 0) return new TodoTextEmpty() // Return errors for expected and recoverable errors
       return [events.todoCreated({ id, text: trimmedText }), events.uiStateSet({ newTodoText: '' })]
     },
   }),
-
   toggleTodo: defineCommand({
     name: 'ToggleTodo',
     schema: Schema.Struct({ id: Schema.String }),
     handler: ({ id }, ctx) => {
-      const todo = ctx.query<typeof tables.todos.Type | undefined>(tables.todos.where({ id }).first())
-      if (!todo) return new TodoNotFound()
-      if (todo.deletedAt) return new CannotToggleDeletedTodo()
+      const todo = ctx.query(tables.todos.where({ id }).first())
+      if (!todo) throw new Error('Todo not found') // Throw errors for unexpected and non-recoverable errors
+      if (todo.deletedAt) return new CannotToggleDeletedTodo() // Return errors for expected and recoverable errors
 
       return todo.completed ? events.todoUncompleted({ id }) : events.todoCompleted({ id })
-    },
-  }),
-
-  deleteTodo: defineCommand({
-    name: 'DeleteTodo',
-    schema: Schema.Struct({ id: Schema.String, deletedAt: Schema.Date }),
-    handler: ({ id, deletedAt }, ctx) => {
-      const todo = ctx.query<typeof tables.todos.Type | undefined>(tables.todos.where({ id }).first())
-      if (!todo) return new TodoNotFound()
-      if (todo.deletedAt) return new TodoAlreadyDeleted()
-
-      return events.todoDeleted({ id, deletedAt })
-    },
-  }),
-
-  undeleteTodo: defineCommand({
-    name: 'UndeleteTodo',
-    schema: Schema.Struct({ id: Schema.String }),
-    handler: ({ id }, ctx) => {
-      const todo = ctx.query<typeof tables.todos.Type | undefined>(tables.todos.where({ id }).first())
-      if (!todo) return new TodoNotFound()
-      if (!todo.deletedAt) return new TodoNotDeleted()
-
-      return events.todoUndeleted({ id })
-    },
-  }),
-
-  clearCompleted: defineCommand({
-    name: 'ClearCompleted',
-    schema: Schema.Struct({ deletedAt: Schema.Date }),
-    handler: ({ deletedAt }, ctx) => {
-      const completedCount = ctx.query<number>(tables.todos.count().where({ completed: true, deletedAt: null }))
-      if (completedCount === 0) return new NoCompletedTodos()
-      return events.todoClearedCompleted({ deletedAt })
     },
   }),
 }

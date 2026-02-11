@@ -2,7 +2,7 @@ import { queryDb } from '@livestore/livestore'
 import type React from 'react'
 import { useState } from 'react'
 import { uiState$ } from '../livestore/queries.ts'
-import { commands, tables } from '../livestore/schema.ts'
+import { commands, events, tables } from '../livestore/schema.ts'
 import { useAppStore } from '../livestore/store.ts'
 
 const visibleTodos$ = queryDb(
@@ -43,12 +43,12 @@ export const MainSection: React.FC = () => {
   }
 
   const restoreTodo = (id: string) => {
-    store.execute(commands.undeleteTodo({ id }))
+    store.commit(events.todoUndeleted({ id }))
     dismissConflict(id)
   }
 
   const deleteTodo = (id: string) => {
-    store.execute(commands.deleteTodo({ id, deletedAt: new Date() }))
+    store.commit(events.todoDeleted({ id, deletedAt: new Date() }))
   }
 
   return (
@@ -63,7 +63,7 @@ export const MainSection: React.FC = () => {
               <button type="button" className="destroy" onClick={() => deleteTodo(todo.id)} />
             </div>
             {deletedConflicts.has(todo.id) && (
-              <div className="conflict-message">
+              <div style={{ padding: '0.5rem', textAlign: 'center', fontWeight: 'bolder' }}>
                 <span>
                   You toggled "{todo.text}", but it was deleted by another client. Your change was rolled back.
                 </span>
