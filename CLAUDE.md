@@ -13,7 +13,7 @@ This repository uses [`direnv`](https://direnv.net) for automatic environment se
 
 ## Tooling
 
-- When tools are not directly available in `$PATH`, prefix commands with `direnv exec .` (e.g. `direnv exec . tsc`, `direnv exec . mono lint`)
+- When tools are not directly available in `$PATH`, prefix commands with `direnv exec .` (e.g. `direnv exec . tsc`, `direnv exec . dt lint:full`)
 
 - For depedency management see @contributor-docs/dependency-management.md
 
@@ -21,7 +21,7 @@ This repository uses [`direnv`](https://direnv.net) for automatic environment se
 
 Use the `mono` CLI for common workflows:
 
-- `mono lint` / `mono lint --fix` to run the linting checks
+- `dt lint:full` / `dt lint:full:fix` to run the linting checks
 - `mono test <unit|integration|perf>` to run the tests
   - Some tests can take a while to run.
 - `mono ts [--watch] [--clean]` to build the TypeScript code
@@ -72,7 +72,7 @@ Use the `mono` CLI for common workflows:
 ## Git
 
 - The default branch of this repository is `dev`.
-- Before committing, run `direnv exec . mono lint --fix` to auto-fix most linting errors. Make sure there are no type check/lint errors.
+- Before committing, run `direnv exec . dt lint:full:fix` to auto-fix most linting errors. Make sure there are no type check/lint errors.
 
 ### Branch Naming Conventions
 
@@ -84,7 +84,7 @@ Use the `mono` CLI for common workflows:
 
 - Run the full test suite before pushing: `direnv exec . mono test unit`
 - Ensure TypeScript compilation passes: `direnv exec . mono ts`
-- Use `direnv exec . mono lint --fix` to automatically fix formatting issues
+- Use `direnv exec . dt lint:full:fix` to automatically fix formatting issues
 
 ### Issues
 

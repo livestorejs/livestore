@@ -150,19 +150,48 @@
     };
 
     # =========================================================================
-    # Lint (enhanced - includes checks not in dt lint:check)
+    # Lint (dt-native)
     # =========================================================================
-    # Note: dt lint:check only runs oxfmt + oxlint
-    # mono lint additionally runs: madge, peer deps, md imports check, knip
+
+    "lint:check:madge" = {
+      description = "Check circular dependencies with madge";
+      exec = "./scripts/node_modules/.bin/madge --circular --no-spinner examples/*/src packages/*/*/src";
+      after = [ "pnpm:install" ];
+    };
+
+    "lint:check:md-imports" = {
+      description = "Check markdown files for ESM imports";
+      exec = ''
+        set -euo pipefail
+        matches=$(grep -rl '^import ' docs/src/content/docs --include='*.md' 2>/dev/null || true)
+        violations=$(printf '%s\n' "$matches" | grep -v '^docs/src/content/docs/api/' || true)
+
+        if [ -n "$violations" ]; then
+          echo "Error: Found .md files with import statements. These must be renamed to .mdx:"
+          printf '%s\n' "$violations" | while IFS= read -r path; do
+            [ -n "$path" ] && echo "  - $path"
+          done
+          exit 1
+        fi
+      '';
+    };
 
     "lint:full" = {
-      description = "Run full lint (oxfmt + oxlint + madge + knip + more)";
-      exec = "mono lint";
+      description = "Run full lint checks (lint:check + madge + markdown import guard)";
+      after = [
+        "lint:check"
+        "lint:check:madge"
+        "lint:check:md-imports"
+      ];
     };
 
     "lint:full:fix" = {
-      description = "Run full lint with fixes";
-      exec = "mono lint --fix";
+      description = "Fix lint issues, then run full lint checks";
+      after = [
+        "lint:fix"
+        "lint:check:madge"
+        "lint:check:md-imports"
+      ];
     };
   };
 }

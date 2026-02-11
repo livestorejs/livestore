@@ -10,7 +10,10 @@ let
   ci = builtins.getEnv "CI" != "";
 
   # Custom oxlint with NAPI bindings for JavaScript plugin support
-  oxlintNpm = effectUtils.lib.mkOxlintNpm { inherit pkgs; bun = pkgs.bun; };
+  oxlintNpm = effectUtils.lib.mkOxlintNpm {
+    inherit pkgs;
+    bun = pkgs.bun;
+  };
 
   # Packages managed by pnpm (shared between pnpm and clean modules)
   # NOTE: Using pnpm temporarily due to bun bugs. Plan to switch back once fixed.
@@ -79,7 +82,7 @@ in
       packages = pnpmPackages;
       extraDirs = [ ".astro" ];
     })
-    # TODO: Switch fully to oxlint/oxfmt once we migrate from biome. For now `mono lint` remains primary.
+    # Lint tasks are dt-native via lint-oxc plus local aggregate wrappers.
     (taskModules.lint-oxc {
       lintPaths = [
         "packages"
@@ -143,7 +146,11 @@ in
     # Setup task (auto-runs in enterShell)
     (taskModules.setup {
       requiredTasks = [ ];
-      optionalTasks = [ "pnpm:install" "genie:run" "ts:build" ];
+      optionalTasks = [
+        "pnpm:install"
+        "genie:run"
+        "ts:build"
+      ];
     })
     # Local task: mono command wrappers for uniform dt interface
     ./nix/devenv-modules/tasks/local/mono-wrappers.nix
@@ -190,8 +197,8 @@ in
   # devenv-tasks' glob crate traverses into node_modules for exec_if_modified patterns,
   # hashing ~243k files instead of ~800 source files (~10 min overhead per task).
   # Since oxfmt/oxlint finish in <2s, always running them is faster than broken caching.
-  tasks."lint:check:format".execIfModified = lib.mkForce [];
-  tasks."lint:check:oxlint".execIfModified = lib.mkForce [];
+  tasks."lint:check:format".execIfModified = lib.mkForce [ ];
+  tasks."lint:check:oxlint".execIfModified = lib.mkForce [ ];
 
   git-hooks.enable = true;
   git-hooks.hooks.check-quick = {
@@ -202,7 +209,6 @@ in
     always_run = true;
     pass_filenames = false;
   };
-
 
   # Wire beads:daemon:ensure directly to shell entry
   tasks."devenv:enterShell".after = lib.mkAfter [ "beads:daemon:ensure" ];

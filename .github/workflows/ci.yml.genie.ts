@@ -103,7 +103,7 @@ export default githubWorkflow({
 
   jobs: {
     lint: standardCIJob({
-      steps: [...livestoreSetupSteps, { run: 'dt lint:full' }],
+      steps: [...livestoreSetupSteps, { run: 'dt lint:full megarepo:check' }],
     }),
 
     'type-check': standardCIJob({
