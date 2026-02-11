@@ -1,7 +1,7 @@
 import { queryDb } from '@livestore/livestore'
 import type React from 'react'
 import { uiState$ } from '../livestore/queries.ts'
-import { commands, events, tables } from '../livestore/schema.ts'
+import { events, tables } from '../livestore/schema.ts'
 import { useAppStore } from '../livestore/store.ts'
 
 const incompleteCount$ = queryDb(tables.todos.count().where({ completed: false, deletedAt: null }), {

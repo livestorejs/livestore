@@ -935,7 +935,8 @@ export class Store<TSchema extends LiveStoreSchema = LiveStoreSchema.Any, TConte
     // Normalize: distinguish events array from error value
     const normalized = CommandDef.normalizeHandlerResult(rawResult)
     if (!normalized.ok) {
-      return { _tag: 'failed', error: normalized.error as TError }
+      const error = normalized.error as TError
+      return { _tag: 'failed', error, confirmation: Promise.reject(error) }
     }
 
     const events = normalized.events

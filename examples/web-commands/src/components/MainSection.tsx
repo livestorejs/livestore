@@ -25,10 +25,7 @@ export const MainSection: React.FC = () => {
   const [deletedConflicts, setDeletedConflicts] = useState<Set<string>>(new Set())
 
   const toggleTodo = async (id: string) => {
-    const result = store.execute(commands.toggleTodo({ id }))
-    if (result._tag === 'failed') return console.error('Failed to toggle todo:', result.error)
-
-    const confirmation = await result.confirmation
+    const confirmation = await store.execute(commands.toggleTodo({ id })).confirmation
     if (confirmation._tag === 'conflict' && confirmation.error._tag === 'CannotToggleDeletedTodo') {
       setDeletedConflicts((prev) => new Set(prev).add(id))
     }
