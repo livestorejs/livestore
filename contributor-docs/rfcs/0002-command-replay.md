@@ -239,7 +239,7 @@ export const commands = {
       const guestCount = ctx.query(tables.roomGuests.where({ roomId: cmd.roomId }).count())
       if (guestCount >= room.capacity) return new RoomAtCapacity() // Return for expected, recoverable errors
 
-      return [events.guestCheckedIn({ roomId: cmd.roomId, guestId: cmd.guestId })]
+      return events.guestCheckedIn({ roomId: cmd.roomId, guestId: cmd.guestId })
     },
   }),
 }
@@ -269,37 +269,38 @@ Commands are executed via `store.execute()`, which returns a discriminated union
 
 ```ts
 type ExecuteResult<TError> =
-  | { _tag: 'failed'; error: TError; confirmation: Promise<CommandConfirmation<TError>> }
   | { _tag: 'pending'; confirmation: Promise<CommandConfirmation<TError>> }
+  | { _tag: 'failed'; error: TError; confirmation: Promise<CommandConfirmation<TError>> }
 
 type CommandConfirmation<TError> =
   | { _tag: 'confirmed' }
   | { _tag: 'conflict'; error: TError }
 ```
 
-Both variants expose a `confirmation` promise:
-- **`pending`**: Resolves to a `CommandConfirmation` when the sync backend confirms or a conflict is detected during replay.
-- **`failed`**: Rejects immediately with the error. This allows callers who don't need to handle immediate failures to access `.confirmation` directly.
+`confirmation` is also present in the "pending" variant so that callers who don't need to handle immediate failures can access `.confirmation` directly without needing to check the `_tag` of the result. If the command fails during initial execution, the promise rejects immediately with the error.
 
 **Usage:**
 
 ```ts
 const result = store.execute(commands.checkInGuest({ roomId, guestId }))
 
-// Command succeeded locally — events are materialized (optimistic UI) but pending confirmation
+// Command succeeded locally — events are materialized but pending confirmation
 const guest = store.query(tables.guests.get(guestId))
-toast.success(guest.status === 'waitlisted' ? 'Waitlisted' : 'Checked in')
+console.log('Checked in:', guest)
 
 // Optionally, await server confirmation
-const confirmation = await result.confirmation
-if (confirmation._tag === 'conflict') {
-  toast.error('Check-in rolled back')
-}
+await result.confirmation
+console.log('Check-in confirmed')
+
+// Or, await confirmation directly
+await store.execute(commands.checkInGuest({ roomId, guestId })).confirmation
+console.log('Check-in confirmed')
+
 ```
 
 #### Error Handling
 
-Commands may fail immediately during initial execution or during replay after sync.
+Commands may fail immediately during initial execution or during replay after pulling events from the sync backend.
 
 ##### During Initial Execution
 
@@ -308,9 +309,9 @@ If a command handler returns a typed error, the result is `{ _tag: 'failed' }` w
 ```ts
 const result = store.execute(commands.checkInGuest({ roomId, guestId }))
 
+// result.error is typed with a union of all possible returned errors (RoomAtCapacity, GuestNotFound, etc.)
 if (result._tag === 'failed' && result.error._tag === 'RoomAtCapacity') {
-  toast.error('Room is full')
-  return
+  console.error('Room is full')
 }
 ```
 
@@ -324,18 +325,18 @@ If a command handler returns a typed error during replay (after state changed du
 - **Same event types with different values**: Structural differences like different IDs or timestamps are not conflicts.
 
 > [!TIP]
-> Instead of returning an error, consider returning a different event when a conflict occurs to handle the situation in a domain-native way.
+> Instead of returning an error, consider having the handler produce alternative events that model the new outcome (e.g. `GuestWaitlisted` instead of `GuestCheckedIn`). This lets the system adapt to the changed state automatically.
 
 There are two patterns for handling conflicts:
 
 **Pattern 1: Only handle conflicts (skip immediate failures)**
 
-When you don't need to handle immediate validation failures, await `.confirmation` directly. If the command failed immediately, the promise rejects (and the rejection can be caught or ignored):
+When you don't need to handle immediate validation failures, await `.confirmation` directly. If the command failed immediately, the promise rejects.
 
 ```ts
 const confirmation = await store.execute(commands.checkInGuest({ roomId, guestId })).confirmation
 if (confirmation._tag === 'conflict' && confirmation.error._tag === 'RoomAtCapacity') {
-  toast.error('Check-in rolled back: room reached capacity')
+  console.error('Check-in rolled back: room reached capacity')
 }
 ```
 
@@ -347,27 +348,13 @@ When you need to handle both phases with typed errors:
 const result = store.execute(commands.checkInGuest({ roomId, guestId }))
 
 if (result._tag === 'failed' && result.error._tag === 'RoomAtCapacity') {
-  toast.error('Room is full')
+  console.error('Room is full')
   return
 }
 
 const confirmation = await result.confirmation
 if (confirmation._tag === 'conflict' && confirmation.error._tag === 'RoomAtCapacity') {
-  toast.error('Check-in rolled back: room reached capacity')
-}
-```
-
-**Catch-all conflict handling** via `store.conflicts()`:
-
-```ts
-// Handle all conflicts
-for await (const conflict of store.conflicts()) {
-  toast.error(`Action failed: ${conflict.command.name}`)
-}
-
-// Filter by command name
-for await (const conflict of store.conflicts({ commands: ['CheckInGuest'] })) {
-  handleCriticalConflict(conflict)
+  console.error('Check-in rolled back: room reached capacity')
 }
 ```
 
