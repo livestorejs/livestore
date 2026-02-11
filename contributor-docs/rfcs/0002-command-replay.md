@@ -218,47 +218,26 @@ Both commands passed validation because they read stale state. With atomic execu
 
 ### API
 
-#### Commands
+#### Defining Commands
 
-Similarly to events, commands are defined with a name and schema:
+Commands are defined with a name, schema, and handler using `defineCommand`. The handler validates the command against the current state and produces events:
 
 ```ts
 import { defineCommand, Schema } from '@livestore/livestore'
+
+class RoomNotFound extends Schema.TaggedError<RoomNotFound>()('RoomNotFound', {}) {}
+class RoomAtCapacity extends Schema.TaggedError<RoomAtCapacity>()('RoomAtCapacity', {}) {}
 
 export const commands = {
   checkInGuest: defineCommand({
     name: 'CheckInGuest',
     schema: Schema.Struct({ roomId: Schema.String, guestId: Schema.String }),
-  }),
-  checkOutGuest: defineCommand({
-    name: 'CheckOutGuest',
-    schema: Schema.Struct({ roomId: Schema.String, guestId: Schema.String }),
-  }),
-}
-```
+    handler: (cmd, ctx) => {
+      const room = ctx.query(tables.rooms.get(cmd.roomId))
+      if (!room) throw new Error('Room not found') // Throw for unexpected, non-recoverable errors
 
-#### Command Handlers
-
-Command handlers validate commands against the current state and produce events. They are defined alongside commands:
-
-```ts
-import { defineCommand, Schema } from '@livestore/livestore'
-
-export const commands = {
-  checkInGuest: defineCommand({
-    name: 'CheckInGuest',
-    schema: Schema.Struct({ roomId: Schema.String, guestId: Schema.String }),
-    handler: (cmd, { state }) => {
-      const room = state.query(tables.rooms.get(cmd.roomId))
-      const guestCount = state.query(tables.roomGuests.where({ roomId: cmd.roomId }).count())
-
-      if (!room) {
-        throw new Error("Room not found")
-      }
-
-      if (guestCount >= room.capacity) {
-        throw new Error("Room is at capacity")
-      }
+      const guestCount = ctx.query(tables.roomGuests.where({ roomId: cmd.roomId }).count())
+      if (guestCount >= room.capacity) return new RoomAtCapacity() // Return for expected, recoverable errors
 
       return [events.guestCheckedIn({ roomId: cmd.roomId, guestId: cmd.guestId })]
     },
@@ -266,70 +245,119 @@ export const commands = {
 }
 ```
 
+Handlers distinguish two kinds of errors:
+
+- **Returned errors** (expected, recoverable): The handler returns a typed error value. These flow through the type system end-to-end, so `store.execute()` returns a fully typed `ExecuteResult<TError>`.
+- **Thrown errors** (unexpected, non-recoverable): The handler throws. These propagate as exceptions and are not part of the typed error channel.
+
+Handlers can return a single event, an array of events, or a typed error value:
+
+```ts
+// Single event
+return events.guestCheckedIn({ roomId, guestId })
+
+// Multiple events
+return [events.guestCheckedIn({ roomId, guestId }), events.roomOccupancyChanged({ roomId })]
+
+// Typed error
+return new RoomAtCapacity()
+```
+
 #### Executing Commands
 
 Commands are executed via `store.execute()`, which returns a discriminated union result:
 
 ```ts
-type ExecuteResult =
-  | { _tag: 'failed'; error: Error }
-  | { _tag: 'pending'; confirmed: Promise<void> }
+type ExecuteResult<TError> =
+  | { _tag: 'failed'; error: TError; confirmation: Promise<CommandConfirmation<TError>> }
+  | { _tag: 'pending'; confirmation: Promise<CommandConfirmation<TError>> }
+
+type CommandConfirmation<TError> =
+  | { _tag: 'confirmed' }
+  | { _tag: 'conflict'; error: TError }
 ```
+
+Both variants expose a `confirmation` promise:
+- **`pending`**: Resolves to a `CommandConfirmation` when the sync backend confirms or a conflict is detected during replay.
+- **`failed`**: Rejects immediately with the error. This allows callers who don't need to handle immediate failures to access `.confirmation` directly.
 
 **Usage:**
 
 ```ts
 const result = store.execute(commands.checkInGuest({ roomId, guestId }))
 
-// Command succeeded locally, its events are materialized locally (optimistic UI) but are pending server's confirmation
-// Query state for the outcome
+// Command succeeded locally — events are materialized (optimistic UI) but pending confirmation
 const guest = store.query(tables.guests.get(guestId))
-toast.success(guest.status === 'waitlisted' ? "Waitlisted" : "Checked in")
+toast.success(guest.status === 'waitlisted' ? 'Waitlisted' : 'Checked in')
 
 // Optionally, await server confirmation
-await result.confirmed
+const confirmation = await result.confirmation
+if (confirmation._tag === 'conflict') {
+  toast.error('Check-in rolled back')
+}
 ```
 
 #### Error Handling
 
-Commands may fail immediately during initial execution or during replay.
+Commands may fail immediately during initial execution or during replay after sync.
 
 ##### During Initial Execution
 
-If a command fails immediately during initial execution, the result will be `{ _tag: 'failed', error: Error }`, and the error may be handled contextually:
+If a command handler returns a typed error, the result is `{ _tag: 'failed' }` with a fully typed `error`:
 
 ```ts
 const result = store.execute(commands.checkInGuest({ roomId, guestId }))
 
-if (result._tag === 'failed') {
-  // Immediate failure—command failed validation against current state
-  toast.error(result.error.message)
+if (result._tag === 'failed' && result.error._tag === 'RoomAtCapacity') {
+  toast.error('Room is full')
   return
 }
 ```
 
-##### During Replay
+##### During Replay (Conflicts)
 
-If a command fails (command handler throws an error) during replay, it means a **conflict** has occurred.
+If a command handler returns a typed error during replay (after state changed due to sync), a **conflict** occurs. The command's optimistic events are rolled back.
 
 **What is NOT a conflict:**
 
 - **Different event types produced**: If a handler returns `GuestWaitlisted` instead of `GuestCheckedIn`, that's the handler adapting to the new state—not a conflict.
-- **Same event types with different values**: Structural differences like different IDs or timestamps are not considered conflicts.
+- **Same event types with different values**: Structural differences like different IDs or timestamps are not conflicts.
 
 > [!TIP]
-> Instead of throwing an error, you may want to consider returning a different event when a conflict occurs to handle the situation in a domain-native way.
+> Instead of returning an error, consider returning a different event when a conflict occurs to handle the situation in a domain-native way.
+
+There are two patterns for handling conflicts:
+
+**Pattern 1: Only handle conflicts (skip immediate failures)**
+
+When you don't need to handle immediate validation failures, await `.confirmation` directly. If the command failed immediately, the promise rejects (and the rejection can be caught or ignored):
+
+```ts
+const confirmation = await store.execute(commands.checkInGuest({ roomId, guestId })).confirmation
+if (confirmation._tag === 'conflict' && confirmation.error._tag === 'RoomAtCapacity') {
+  toast.error('Check-in rolled back: room reached capacity')
+}
+```
+
+**Pattern 2: Handle immediate failures and conflicts**
+
+When you need to handle both phases with typed errors:
 
 ```ts
 const result = store.execute(commands.checkInGuest({ roomId, guestId }))
 
-// Catch errors that occur during replay
-result.confirmed.catch((error) => {
-  toast.error("Your check-in was cancelled: " + error.message)
-})
+if (result._tag === 'failed' && result.error._tag === 'RoomAtCapacity') {
+  toast.error('Room is full')
+  return
+}
+
+const confirmation = await result.confirmation
+if (confirmation._tag === 'conflict' && confirmation.error._tag === 'RoomAtCapacity') {
+  toast.error('Check-in rolled back: room reached capacity')
+}
 ```
 
-For catch-all handling of conflicts use `store.conflicts()`:
+**Catch-all conflict handling** via `store.conflicts()`:
 
 ```ts
 // Handle all conflicts
@@ -338,16 +366,8 @@ for await (const conflict of store.conflicts()) {
 }
 
 // Filter by command name
-for await (const conflict of store.conflicts({ commands: ['Payment', 'CheckInGuest'] })) {
+for await (const conflict of store.conflicts({ commands: ['CheckInGuest'] })) {
   handleCriticalConflict(conflict)
-}
-
-type Conflict = {
-  command: {
-    name: string
-    payload: unknown
-  }
-  error: Error
 }
 ```
 
