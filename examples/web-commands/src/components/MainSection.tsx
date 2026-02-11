@@ -17,28 +17,35 @@ const visibleTodos$ = queryDb(
 
 export const MainSection: React.FC = () => {
   const store = useAppStore()
+  // Tracks todo IDs that had a toggle rolled back because the todo was concurrently deleted
+  const [deletedConflicts, setDeletedConflicts] = React.useState<Set<string>>(new Set())
 
-  const toggleTodo = React.useCallback(
-    (id: string) => {
-      const result = store.execute(commands.toggleTodo({ id }))
-      if (result._tag === 'failed') {
-        // result.error is TodoNotFound | CannotToggleDeletedTodo
-        console.error('Failed to toggle todo:', result.error)
-      }
-    },
-    [store],
-  )
+  const dismissConflict = (id: string) => {
+    setDeletedConflicts((prev) => {
+      const next = new Set(prev)
+      next.delete(id)
+      return next
+    })
+  }
 
-  const deleteTodo = React.useCallback(
-    (id: string) => {
-      const result = store.execute(commands.deleteTodo({ id, deletedAt: new Date() }))
-      if (result._tag === 'failed') {
-        // result.error is TodoNotFound | TodoAlreadyDeleted
-        console.error('Failed to delete todo:', result.error)
-      }
-    },
-    [store],
-  )
+  const restoreTodo = (id: string) => {
+    store.execute(commands.undeleteTodo({ id }))
+    dismissConflict(id)
+  }
+
+  const toggleTodo = async (id: string) => {
+    const result = store.execute(commands.toggleTodo({ id }))
+    if (result._tag === 'failed') return console.error('Failed to toggle todo:', result.error)
+
+    const confirmation = await result.confirmation
+    if (confirmation._tag === 'conflict' && confirmation.error._tag === 'CannotToggleDeletedTodo') {
+      setDeletedConflicts((prev) => new Set(prev).add(id))
+    }
+  }
+
+  const deleteTodo = (id: string) => {
+    store.execute(commands.deleteTodo({ id, deletedAt: new Date() }))
+  }
 
   const visibleTodos = store.useQuery(visibleTodos$)
 
@@ -53,6 +60,19 @@ export const MainSection: React.FC = () => {
               <label>{todo.text}</label>
               <button type="button" className="destroy" onClick={() => deleteTodo(todo.id)} />
             </div>
+            {deletedConflicts.has(todo.id) && (
+              <div className="conflict-message">
+                <span>
+                  You toggled "{todo.text}", but it was deleted by another client. Your change was rolled back.
+                </span>
+                <button type="button" onClick={() => restoreTodo(todo.id)}>
+                  Restore
+                </button>
+                <button type="button" onClick={() => dismissConflict(todo.id)}>
+                  Keep deleted
+                </button>
+              </div>
+            )}
           </li>
         ))}
       </ul>

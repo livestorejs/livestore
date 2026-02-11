@@ -36,6 +36,10 @@ export const events = {
     name: 'v1.TodoDeleted',
     schema: Schema.Struct({ id: Schema.String, deletedAt: Schema.Date }),
   }),
+  todoUndeleted: Events.synced({
+    name: 'v1.TodoUndeleted',
+    schema: Schema.Struct({ id: Schema.String }),
+  }),
   todoClearedCompleted: Events.synced({
     name: 'v1.TodoClearedCompleted',
     schema: Schema.Struct({ deletedAt: Schema.Date }),
@@ -54,6 +58,8 @@ export class CannotToggleDeletedTodo extends Schema.TaggedError<CannotToggleDele
   'CannotToggleDeletedTodo',
   {},
 ) {}
+
+export class TodoNotDeleted extends Schema.TaggedError<TodoNotDeleted>()('TodoNotDeleted', {}) {}
 
 export class NoCompletedTodos extends Schema.TaggedError<NoCompletedTodos>()('NoCompletedTodos', {}) {}
 
@@ -92,6 +98,18 @@ export const commands = {
     },
   }),
 
+  undeleteTodo: defineCommand({
+    name: 'UndeleteTodo',
+    schema: Schema.Struct({ id: Schema.String }),
+    handler: ({ id }, ctx) => {
+      const todo = ctx.query<typeof tables.todos.Type | undefined>(tables.todos.where({ id }).first())
+      if (!todo) return new TodoNotFound()
+      if (!todo.deletedAt) return new TodoNotDeleted()
+
+      return events.todoUndeleted({ id })
+    },
+  }),
+
   clearCompleted: defineCommand({
     name: 'ClearCompleted',
     schema: Schema.Struct({ deletedAt: Schema.Date }),
@@ -109,6 +127,7 @@ const materializers = State.SQLite.materializers(events, {
   'v1.TodoCompleted': ({ id }) => tables.todos.update({ completed: true }).where({ id }),
   'v1.TodoUncompleted': ({ id }) => tables.todos.update({ completed: false }).where({ id }),
   'v1.TodoDeleted': ({ id, deletedAt }) => tables.todos.update({ deletedAt }).where({ id }),
+  'v1.TodoUndeleted': ({ id }) => tables.todos.update({ deletedAt: null }).where({ id }),
   'v1.TodoClearedCompleted': ({ deletedAt }) => tables.todos.update({ deletedAt }).where({ completed: true }),
 })
 
