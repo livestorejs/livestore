@@ -186,6 +186,13 @@ in
 
   cachix.pull = [ "livestore" ];
 
+  # TODO(upstream): Remove once https://github.com/cachix/devenv/pull/2423 lands.
+  # devenv-tasks' glob crate traverses into node_modules for exec_if_modified patterns,
+  # hashing ~243k files instead of ~800 source files (~10 min overhead per task).
+  # Since oxfmt/oxlint finish in <2s, always running them is faster than broken caching.
+  tasks."lint:check:format".execIfModified = lib.mkForce [];
+  tasks."lint:check:oxlint".execIfModified = lib.mkForce [];
+
   git-hooks.enable = true;
   git-hooks.hooks.check-quick = {
     enable = true;
