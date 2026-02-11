@@ -24,8 +24,8 @@ import type * as otel from '@opentelemetry/api'
 import { type MaterializeError, type SqliteDb, UnknownError } from '../adapter-types.ts'
 import { IntentionalShutdownCause } from '../errors.ts'
 import { makeMaterializerHash } from '../materializer-helper.ts'
-import type { CommandDef, LiveStoreSchema } from '../schema/mod.ts'
-import { EventSequenceNumber, LiveStoreEvent, resolveEventDef, SystemTables } from '../schema/mod.ts'
+import type { LiveStoreSchema } from '../schema/mod.ts'
+import { CommandDef, EventSequenceNumber, LiveStoreEvent, resolveEventDef, SystemTables } from '../schema/mod.ts'
 import { EVENTLOG_META_TABLE, SYNC_STATUS_TABLE } from '../schema/state/sqlite/system-tables/eventlog-tables.ts'
 import { CommandQueue } from '../sync/CommandQueue.ts'
 import {
@@ -1370,20 +1370,33 @@ const replayPendingCommands = ({
 
 /**
  * Execute a command handler synchronously, catching any errors.
- * Returns a discriminated union indicating success or failure.
+ * Returns a discriminated union indicating success (with events) or failure.
+ *
+ * Supports both return-as-value errors (via `normalizeHandlerResult`) and
+ * legacy throw-based errors (via try/catch safety net).
  */
 const executeCommandHandler = (
   commandDef: CommandDef.CommandDef.AnyWithoutFn,
   args: unknown,
   context: CommandDef.CommandHandlerContext,
-): { success: true } | { success: false; error: Error } => {
+): { success: true; events: ReadonlyArray<unknown> } | { success: false; error: Error } => {
+  let rawResult: CommandDef.CommandHandlerResult<unknown>
   try {
-    commandDef.handler(args, context)
-    return { success: true }
+    rawResult = commandDef.handler(args, context)
   } catch (error) {
     return {
       success: false,
       error: error instanceof Error ? error : new Error(String(error)),
     }
   }
+
+  const normalized = CommandDef.normalizeHandlerResult(rawResult)
+  if (!normalized.ok) {
+    const err = normalized.error
+    return {
+      success: false,
+      error: err instanceof Error ? err : new Error(String(err)),
+    }
+  }
+  return { success: true, events: normalized.events }
 }

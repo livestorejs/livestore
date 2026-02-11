@@ -10,12 +10,13 @@ The original TodoMVC example uses direct event commits:
 store.commit(events.todoCreated({ id, text }))
 ```
 
-This example uses commands with validation:
+This example uses commands with validation and typed errors:
 
 ```typescript
-const result = store.execute(commands.createTodo({ text }))
+const result = store.execute(commands.createTodo({ id, text }))
 if (result._tag === 'failed') {
-  console.error(result.error.message)
+  // result.error is TodoTextEmpty | CommandExecutionError — fully typed
+  console.error('Failed:', result.error)
 }
 ```
 

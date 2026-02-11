@@ -17,7 +17,8 @@ export const Footer: React.FC = () => {
   const clearCompleted = () => {
     const result = store.execute(commands.clearCompleted({ deletedAt: new Date() }))
     if (result._tag === 'failed') {
-      console.error('Failed to clear completed:', result.error.message)
+      // result.error is NoCompletedTodos | CommandExecutionError — fully typed
+      console.error('Failed to clear completed:', result.error)
     }
   }
 

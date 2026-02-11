@@ -7,17 +7,28 @@
  */
 
 /**
+ * Result of confirmation after sync. Always resolves — never rejects.
+ *
+ * Used as the resolution type of {@link ExecuteResultPending.confirmation} so
+ * consumers can pattern-match on success vs conflict without untyped
+ * promise rejections.
+ */
+export type CommandConfirmation<TError = unknown> =
+  | { readonly _tag: 'confirmed' }
+  | { readonly _tag: 'conflict'; readonly error: TError }
+
+/**
  * Result of a failed command execution.
  *
- * Returned when the command handler throws an error during initial execution.
- * The error contains details about why the command failed.
+ * Returned when the command handler returns an error value or when the
+ * runtime catches an unexpected throw during initial execution.
  */
-export interface ExecuteResultFailed {
+export interface ExecuteResultFailed<TError = unknown> {
   /** Type discriminator for failed result. */
   readonly _tag: 'failed'
 
   /** The error that caused the command to fail. */
-  readonly error: Error
+  readonly error: TError
 }
 
 /**
@@ -27,29 +38,30 @@ export interface ExecuteResultFailed {
  * The events are materialized locally but may still fail during replay
  * during sync reconciliation.
  */
-export interface ExecuteResultPending {
+export interface ExecuteResultPending<TError = never> {
   /** Type discriminator for pending result. */
   readonly _tag: 'pending'
 
   /**
    * Promise that resolves when the command's events are confirmed by the sync backend.
    *
-   * The promise will:
-   * - Resolve when events are successfully pushed to the sync backend
-   * - Reject if the command fails during replay (conflict)
+   * The promise always resolves to a {@link CommandConfirmation} — it never rejects.
    *
    * @example
    * ```ts
    * const result = store.execute(commands.checkInGuest({ roomId, guestId }))
    *
    * if (result._tag === 'pending') {
-   *   result.confirmed
-   *     .then(() => toast.success('Check-in confirmed'))
-   *     .catch((error) => toast.error(`Check-in cancelled: ${error.message}`))
+   *   const confirmation = await result.confirmation
+   *   if (confirmation._tag === 'confirmed') {
+   *     toast.success('Check-in confirmed')
+   *   } else {
+   *     toast.error(`Check-in rolled back: ${confirmation.error}`)
+   *   }
    * }
    * ```
    */
-  readonly confirmed: Promise<void>
+  readonly confirmation: Promise<CommandConfirmation<TError>>
 }
 
 /**
@@ -58,25 +70,39 @@ export interface ExecuteResultPending {
  * Commands either fail immediately during validation (`failed`)
  * or succeed with pending confirmation (`pending`).
  *
- * @example
+ * @example Infallible command
  * ```ts
  * const result = store.execute(commands.checkInGuest({ roomId, guestId }))
  *
  * if (result._tag === 'failed') {
- *   // Command failed validation
+ *   // result.error is CommandExecutionError (unexpected throw)
  *   toast.error(result.error.message)
  *   return
  * }
  *
- * // Command succeeded locally - events are materialized (optimistic UI)
+ * // Optimistic UI applied — events are materialized locally
  * const guest = store.query(tables.guests.get(guestId))
  * toast.success(guest.status === 'waitlisted' ? 'Waitlisted' : 'Checked in')
  *
  * // Optionally await server confirmation
- * await result.confirmed
+ * const confirmation = await result.confirmation
+ * if (confirmation._tag === 'conflict') {
+ *   toast.error('Action rolled back')
+ * }
+ * ```
+ *
+ * @example Fallible command with typed error
+ * ```ts
+ * const result = store.execute(commands.createTodo({ id, text }))
+ *
+ * if (result._tag === 'failed') {
+ *   // result.error is TodoTextEmpty | CommandExecutionError — fully typed
+ *   console.error('Failed:', result.error)
+ *   return
+ * }
  * ```
  */
-export type ExecuteResult = ExecuteResultFailed | ExecuteResultPending
+export type ExecuteResult<TError = unknown> = ExecuteResultFailed<TError> | ExecuteResultPending<TError>
 
 /**
  * Conflict that occurred during command replay.

@@ -23,7 +23,7 @@ import {
 import type { StreamEventsOptions } from '@livestore/common/leader-thread'
 import type { LiveStoreSchema } from '@livestore/common/schema'
 import {
-  type CommandDef,
+  CommandDef,
   EventSequenceNumber,
   LiveStoreEvent,
   resolveEventDef,
@@ -892,8 +892,8 @@ export class Store<TSchema extends LiveStoreSchema = LiveStoreSchema.Any, TConte
    * const result = store.execute(commands.checkInGuest({ roomId, guestId }))
    *
    * if (result._tag === 'failed') {
-   *   // Command failed validation
-   *   toast.error(result.error.message)
+   *   // result.error is the typed error returned by the handler
+   *   console.error('Failed:', result.error)
    *   return
    * }
    *
@@ -902,26 +902,26 @@ export class Store<TSchema extends LiveStoreSchema = LiveStoreSchema.Any, TConte
    * toast.success(guest.status === 'waitlisted' ? 'Waitlisted' : 'Checked in')
    *
    * // Optionally await server confirmation
-   * await result.confirmed
+   * const confirmation = await result.confirmation
+   * if (confirmation._tag === 'conflict') {
+   *   toast.error('Action rolled back')
+   * }
    * ```
    */
-  execute = <TName extends string, TArgs>(
-    command: CommandDef.CommandInstance<TName, TArgs>,
-  ): CommandDef.ExecuteResult => {
+  execute = <TName extends string, TArgs, TError>(
+    command: CommandDef.CommandInstance<TName, TArgs, TError>,
+  ): CommandDef.ExecuteResult<TError> => {
     this.checkShutdown('execute')
 
     // Look up command definition from schema
-    const commandDef = this.schema.commandDefsMap.get(command.name) as CommandDef.CommandDef<TName, TArgs> | undefined
+    const commandDef = this.schema.commandDefsMap.get(command.name) as CommandDef.CommandDef.AnyWithoutFn | undefined
     if (!commandDef) {
-      return {
-        _tag: 'failed',
-        error: new CommandExecutionError({
-          commandName: command.name,
-          commandId: command.id,
-          phase: 'validation',
-          cause: `No command definition found for '${command.name}'`,
-        }),
-      }
+      throw new CommandExecutionError({
+        commandName: command.name,
+        commandId: command.id,
+        phase: 'validation',
+        cause: `No command definition found for '${command.name}'`,
+      })
     }
 
     // Create handler context with query access to current state
@@ -929,21 +929,16 @@ export class Store<TSchema extends LiveStoreSchema = LiveStoreSchema.Any, TConte
       query: ((query: any) => this.query(query)) as CommandDef.CommandHandlerContextQuery,
     }
 
-    // Execute handler and catch errors
-    let events: ReadonlyArray<LiveStoreEvent.Input.Decoded>
-    try {
-      events = commandDef.handler(command.args, handlerContext)
-    } catch (error) {
-      return {
-        _tag: 'failed',
-        error: new CommandExecutionError({
-          commandName: command.name,
-          commandId: command.id,
-          phase: 'validation',
-          cause: error,
-        }),
-      }
+    // Execute handler — unexpected throws propagate to the caller
+    const rawResult = commandDef.handler(command.args, handlerContext)
+
+    // Normalize: distinguish events array from error value
+    const normalized = CommandDef.normalizeHandlerResult(rawResult)
+    if (!normalized.ok) {
+      return { _tag: 'failed', error: normalized.error as TError }
     }
+
+    const events = normalized.events
 
     // Commit produced events (uses existing commit path)
     if (events.length > 0) {
@@ -957,7 +952,7 @@ export class Store<TSchema extends LiveStoreSchema = LiveStoreSchema.Any, TConte
 
     return {
       _tag: 'pending',
-      confirmed: Promise.resolve(),
+      confirmation: Promise.resolve({ _tag: 'confirmed' }),
     }
   }
 

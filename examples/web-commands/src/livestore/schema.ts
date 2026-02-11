@@ -43,15 +43,27 @@ export const events = {
   uiStateSet: tables.uiState.set,
 }
 
+// Typed error classes for command validation failures
+export class TodoTextEmpty extends Schema.TaggedError<TodoTextEmpty>()('TodoTextEmpty', {}) {}
+
+export class TodoNotFound extends Schema.TaggedError<TodoNotFound>()('TodoNotFound', {}) {}
+
+export class TodoAlreadyDeleted extends Schema.TaggedError<TodoAlreadyDeleted>()('TodoAlreadyDeleted', {}) {}
+
+export class CannotToggleDeletedTodo extends Schema.TaggedError<CannotToggleDeletedTodo>()(
+  'CannotToggleDeletedTodo',
+  {},
+) {}
+
+export class NoCompletedTodos extends Schema.TaggedError<NoCompletedTodos>()('NoCompletedTodos', {}) {}
+
 export const commands = {
   createTodo: defineCommand({
     name: 'CreateTodo',
     schema: Schema.Struct({ id: Schema.String, text: Schema.String }),
     handler: ({ id, text }) => {
       const trimmedText = text.trim()
-      if (trimmedText.length === 0) {
-        throw new Error('Todo text cannot be empty')
-      }
+      if (trimmedText.length === 0) return new TodoTextEmpty()
       return [events.todoCreated({ id, text: trimmedText }), events.uiStateSet({ newTodoText: '' })]
     },
   }),
@@ -61,8 +73,8 @@ export const commands = {
     schema: Schema.Struct({ id: Schema.String }),
     handler: ({ id }, ctx) => {
       const todo = ctx.query<typeof tables.todos.Type | undefined>(tables.todos.where({ id }).first())
-      if (!todo) throw new Error('Todo not found')
-      if (todo.deletedAt) throw new Error('Cannot toggle deleted todo')
+      if (!todo) return new TodoNotFound()
+      if (todo.deletedAt) return new CannotToggleDeletedTodo()
 
       return [todo.completed ? events.todoUncompleted({ id }) : events.todoCompleted({ id })]
     },
@@ -73,8 +85,8 @@ export const commands = {
     schema: Schema.Struct({ id: Schema.String, deletedAt: Schema.Date }),
     handler: ({ id, deletedAt }, ctx) => {
       const todo = ctx.query<typeof tables.todos.Type | undefined>(tables.todos.where({ id }).first())
-      if (!todo) throw new Error('Todo not found')
-      if (todo.deletedAt) throw new Error('Todo already deleted')
+      if (!todo) return new TodoNotFound()
+      if (todo.deletedAt) return new TodoAlreadyDeleted()
 
       return [events.todoDeleted({ id, deletedAt })]
     },
@@ -85,9 +97,7 @@ export const commands = {
     schema: Schema.Struct({ deletedAt: Schema.Date }),
     handler: ({ deletedAt }, ctx) => {
       const completedCount = ctx.query<number>(tables.todos.count().where({ completed: true, deletedAt: null }))
-      if (completedCount === 0) {
-        throw new Error('No completed todos to clear')
-      }
+      if (completedCount === 0) return new NoCompletedTodos()
       return [events.todoClearedCompleted({ deletedAt })]
     },
   }),

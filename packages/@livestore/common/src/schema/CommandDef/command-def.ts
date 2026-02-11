@@ -13,7 +13,7 @@ import type { QueryBuilder } from '../state/sqlite/query-builder/mod.ts'
  * ```ts
  * handler: (cmd, ctx) => {
  *   const room = ctx.query(tables.rooms.get(cmd.roomId))
- *   if (!room) throw new Error("Room not found")
+ *   if (!room) return new RoomNotFound()
  *   return [events.guestCheckedIn({ roomId: cmd.roomId, guestId: cmd.guestId })]
  * }
  * ```
@@ -34,32 +34,68 @@ export interface CommandHandlerContext {
 }
 
 /**
+ * Result of a command handler invocation.
+ *
+ * Handlers return either an array of events (success) or an error value (failure).
+ * The runtime distinguishes the two via `Array.isArray`.
+ */
+export type CommandHandlerResult<TError> = ReadonlyArray<LiveStoreEvent.Input.Decoded> | TError
+
+/**
+ * Extracts the error type from a handler's full return type by excluding array branches.
+ *
+ * Used by `defineCommand` to compute `TError` from the inferred return type so that
+ * TypeScript doesn't conflate the event-array branch with the error branch during inference.
+ */
+export type ExtractCommandError<TReturn> = Exclude<TReturn, ReadonlyArray<any>>
+
+/**
+ * Distinguishes events (array) from errors (non-array) in a handler result.
+ *
+ * Used by `store.execute()` and `executeCommandHandler` in replay to normalize
+ * handler return values without requiring an Either wrapper in user code.
+ */
+export const normalizeHandlerResult = <TError>(
+  result: CommandHandlerResult<TError>,
+): { ok: true; events: ReadonlyArray<LiveStoreEvent.Input.Decoded> } | { ok: false; error: TError } =>
+  Array.isArray(result) ? { ok: true, events: result } : { ok: false, error: result as TError }
+
+/**
  * Function type for validating a command and producing events.
  *
  * Handlers receive the decoded command arguments and a context with state
  * access. They should validate preconditions and return the events to be
- * committed.
+ * committed, or return an error value for typed failure.
  *
  * Parameterized by the command definition type so that the arguments are
  * inferred from the schema, mirroring the {@link import('../EventDef/materializer.ts').Materializer | Materializer} pattern.
  *
- * @example
+ * @example Infallible handler (returns events only)
  * ```ts
  * const handler: CommandHandler<typeof checkInGuest> = (cmd, ctx) => {
+ *   return [events.guestCheckedIn({ roomId: cmd.roomId, guestId: cmd.guestId })]
+ * }
+ * ```
+ *
+ * @example Fallible handler (may return an error value)
+ * ```ts
+ * class RoomNotFound { readonly _tag = 'RoomNotFound' as const }
+ *
+ * const handler: CommandHandler<typeof checkInGuest, RoomNotFound> = (cmd, ctx) => {
  *   const room = ctx.query(tables.rooms.get(cmd.roomId))
- *   if (!room) throw new Error("Room not found")
- *   if (room.guestCount >= room.capacity) throw new Error("Room at capacity")
+ *   if (!room) return new RoomNotFound()
  *   return [events.guestCheckedIn({ roomId: cmd.roomId, guestId: cmd.guestId })]
  * }
  * ```
  */
 export type CommandHandler<
   TCommandDef extends { schema: Schema.Schema<any, any> } = CommandDef.AnyWithoutFn,
+  TError = never,
 > = (
   /** Decoded command arguments. */
   args: TCommandDef['schema']['Type'],
   context: CommandHandlerContext,
-) => ReadonlyArray<LiveStoreEvent.Input.Decoded>
+) => CommandHandlerResult<TError>
 
 /**
  * Core type representing a command definition in LiveStore.
@@ -71,7 +107,7 @@ export type CommandHandler<
  *
  * CommandDefs are callable - invoking them creates a command instance suitable for `store.execute()`.
  *
- * @example
+ * @example Infallible command (handler always returns events)
  * ```ts
  * import { defineCommand } from '@livestore/livestore'
  * import { Schema } from 'effect'
@@ -83,17 +119,30 @@ export type CommandHandler<
  *     guestId: Schema.String,
  *   }),
  *   handler: (cmd, ctx) => {
+ *     return [events.guestCheckedIn({ roomId: cmd.roomId, guestId: cmd.guestId })]
+ *   },
+ * })
+ * ```
+ *
+ * @example Fallible command (handler may return a typed error)
+ * ```ts
+ * class RoomNotFound { readonly _tag = 'RoomNotFound' as const }
+ *
+ * const checkInGuest = defineCommand({
+ *   name: 'CheckInGuest',
+ *   schema: Schema.Struct({ roomId: Schema.String, guestId: Schema.String }),
+ *   handler: (cmd, ctx) => {
  *     const room = ctx.query(tables.rooms.get(cmd.roomId))
- *     if (!room) throw new Error("Room not found")
+ *     if (!room) return new RoomNotFound()
  *     return [events.guestCheckedIn({ roomId: cmd.roomId, guestId: cmd.guestId })]
  *   },
  * })
  *
- * // Use the CommandDef as a constructor
+ * // result.error is RoomNotFound | CommandExecutionError — fully typed
  * const result = store.execute(checkInGuest({ roomId: 'room-1', guestId: 'guest-1' }))
  * ```
  */
-export type CommandDef<TName extends string, TArgs, TEncoded = TArgs> = {
+export type CommandDef<TName extends string, TArgs, TEncoded = TArgs, TError = never> = {
   /** Type discriminator for CommandDef. */
   readonly _tag: 'CommandDef'
 
@@ -104,22 +153,28 @@ export type CommandDef<TName extends string, TArgs, TEncoded = TArgs> = {
   readonly schema: Schema.Schema<TArgs, TEncoded>
 
   /** Handler function that validates the command and produces events. */
-  readonly handler: CommandHandler<CommandDef<TName, TArgs, TEncoded>>
+  readonly handler: CommandHandler<CommandDef<TName, TArgs, TEncoded, TError>, TError>
 
   /**
    * Callable signature - creates a command instance with validated arguments.
    * The returned object can be passed directly to `store.execute()`.
    */
-  (args: TArgs): CommandInstance<TName, TArgs>
+  (args: TArgs): CommandInstance<TName, TArgs, TError>
 }
+
+/** @internal Symbol used to brand CommandInstance with its error type. */
+export declare const CommandInstanceTypeId: unique symbol
 
 /**
  * A command instance ready to be executed.
  *
  * Created by calling a CommandDef with arguments.
  * Contains the command name, validated arguments, and a unique ID for tracking.
+ *
+ * The error type is carried via a branded field so TypeScript can infer `TError`
+ * when passing the instance to `store.execute()`.
  */
-export interface CommandInstance<TName extends string = string, TArgs = unknown> {
+export interface CommandInstance<TName extends string = string, TArgs = unknown, TError = unknown> {
   /** Type discriminator for CommandInstance. */
   readonly _tag: 'Command'
 
@@ -131,6 +186,9 @@ export interface CommandInstance<TName extends string = string, TArgs = unknown>
 
   /** Unique identifier for this command instance, used for tracking and confirmation. */
   readonly id: string
+
+  /** @internal Branded field carrying the error type for inference. Never set at runtime. */
+  readonly [CommandInstanceTypeId]: TError
 }
 
 export namespace CommandDef {
@@ -138,13 +196,22 @@ export namespace CommandDef {
    * Wildcard type matching any CommandDef regardless of type parameters.
    * Used as a type constraint in generic functions and collections.
    */
-  export type Any = CommandDef<string, any, any>
+  export type Any = CommandDef<string, any, any, any>
 
   /**
    * CommandDef without the callable function signature.
    * Used in contexts where only the metadata (name, schema, handler) is needed.
+   *
+   * The handler is typed as a plain function rather than via {@link CommandHandler}
+   * to avoid contravariance issues when assigning specific `CommandDef`s
+   * (whose `TError` narrows the handler signature) to this wildcard type.
    */
-  export type AnyWithoutFn = Pick<Any, '_tag' | 'name' | 'schema' | 'handler'>
+  export type AnyWithoutFn = {
+    readonly _tag: 'CommandDef'
+    readonly name: string
+    readonly schema: Schema.Schema<any, any>
+    readonly handler: (args: any, context: CommandHandlerContext) => CommandHandlerResult<any>
+  }
 }
 
 /**

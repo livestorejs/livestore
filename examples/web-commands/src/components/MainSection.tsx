@@ -22,7 +22,8 @@ export const MainSection: React.FC = () => {
     (id: string) => {
       const result = store.execute(commands.toggleTodo({ id }))
       if (result._tag === 'failed') {
-        console.error('Failed to toggle todo:', result.error.message)
+        // result.error is TodoNotFound | CannotToggleDeletedTodo
+        console.error('Failed to toggle todo:', result.error)
       }
     },
     [store],
@@ -32,7 +33,8 @@ export const MainSection: React.FC = () => {
     (id: string) => {
       const result = store.execute(commands.deleteTodo({ id, deletedAt: new Date() }))
       if (result._tag === 'failed') {
-        console.error('Failed to delete todo:', result.error.message)
+        // result.error is TodoNotFound | TodoAlreadyDeleted
+        console.error('Failed to delete todo:', result.error)
       }
     },
     [store],

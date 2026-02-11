@@ -96,4 +96,3 @@ export class CommandExecutionError extends Schema.TaggedError<CommandExecutionEr
     note: Schema.optional(Schema.String),
   },
 ) {}
-

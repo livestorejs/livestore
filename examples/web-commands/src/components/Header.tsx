@@ -9,11 +9,18 @@ export const Header: React.FC = () => {
 
   const updatedNewTodoText = (text: string) => store.commit(events.uiStateSet({ newTodoText: text }))
 
-  const createTodo = () => {
+  const createTodo = async () => {
     const result = store.execute(commands.createTodo({ id: crypto.randomUUID(), text: newTodoText }))
     if (result._tag === 'failed') {
-      console.error('Failed to create todo:', result.error.message)
+      // result.error is TodoTextEmpty
+      console.error('Failed to create todo:', result.error)
       return
+    }
+    const confirmation = await result.confirmation
+    if (confirmation._tag === 'confirmed') {
+      console.log('Todo created')
+    } else {
+      console.error('Todo creation rolled back:', confirmation.error)
     }
   }
 
