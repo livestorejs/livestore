@@ -1,7 +1,8 @@
 import path from 'node:path'
+
+import { cmd, cmdText, LivestoreWorkspace } from '@livestore/utils-dev/node'
 import { Effect, FileSystem, Schema } from '@livestore/utils/effect'
 import { Cli } from '@livestore/utils/node'
-import { cmd, cmdText, LivestoreWorkspace } from '@livestore/utils-dev/node'
 
 const OWNER = 'livestorejs'
 const REPO = 'livestore'

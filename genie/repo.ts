@@ -224,7 +224,7 @@ export const catalog = defineCatalog({
 
 /** Common fields for published @livestore packages */
 export const livestorePackageDefaults = {
-  version: '0.4.0-dev.22',
+  version: process.env.LIVESTORE_RELEASE_VERSION ?? '0.4.0-dev.22',
   type: 'module' as const,
   sideEffects: false as const,
   license: 'Apache-2.0' as const,

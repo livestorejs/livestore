@@ -1,10 +1,9 @@
-import fs from 'node:fs'
-
 import { shouldNeverHappen } from '@livestore/utils'
 import { CurrentWorkingDirectory, cmd, cmdText } from '@livestore/utils-dev/node'
 import { Effect, FileSystem, Schema } from '@livestore/utils/effect'
 import { Cli } from '@livestore/utils/node'
 
+import { generate, check } from '../../../repos/effect-utils/packages/@overeng/genie/src/sdk/mod.ts'
 import { appendGithubSummaryMarkdown, formatMarkdownTable } from '../shared/misc.ts'
 
 class PackageJsonParseError extends Schema.TaggedError<PackageJsonParseError>()('PackageJsonParseError', {
@@ -109,50 +108,34 @@ export const releaseSnapshotCommand = Cli.Command.make(
     versionOption: Cli.Options.text('version').pipe(Cli.Options.optional),
   },
   Effect.fn(function* ({ gitShaOption, dryRun, cwd, versionOption }) {
-    const originalVersion = yield* Effect.promise(() =>
-      import('../../../packages/@livestore/common/package.json').then((m: any) => m.version as string),
-    )
-
     const gitSha =
       gitShaOption._tag === 'Some'
         ? gitShaOption.value
         : yield* cmdText('git rev-parse HEAD').pipe(Effect.provide(CurrentWorkingDirectory.fromPath(cwd)))
-    const filterStr = '--filter @livestore/* --filter !@livestore/effect-playwright'
 
     const snapshotVersion = versionOption._tag === 'Some' ? versionOption.value : `0.0.0-snapshot-${gitSha}`
     const snapshotPackages = yield* listSnapshotPackages(cwd)
+    const filterStr = '--filter @livestore/* --filter !@livestore/effect-playwright'
+    const releaseEnv = { LIVESTORE_RELEASE_VERSION: snapshotVersion }
 
-    const versionFilePath = `${cwd}/packages/@livestore/common/src/version.ts`
-    fs.writeFileSync(
-      versionFilePath,
-      fs.readFileSync(versionFilePath, 'utf8').replace(originalVersion, snapshotVersion),
+    /** Regenerate all genie-managed files with snapshot version (writable for pnpm publish) */
+    yield* generate({ cwd, writeable: true, env: releaseEnv })
+
+    /** Rebuild TypeScript so dist/ picks up the snapshot version from package.json */
+    yield* cmd('tsc --build tsconfig.dev.json', { shell: true }).pipe(
+      Effect.provide(CurrentWorkingDirectory.fromPath(cwd)),
     )
-
-    yield* cmd(`pnpm ${filterStr} exec -- pnpm version '${snapshotVersion}' --no-git-tag-version`, {
-      shell: true,
-    }).pipe(Effect.provide(CurrentWorkingDirectory.fromPath(cwd)))
 
     yield* cmd(`pnpm ${filterStr} exec -- pnpm publish --tag=snapshot --no-git-checks ${dryRun ? '--dry-run' : ''}`, {
       shell: true,
     }).pipe(Effect.provide(CurrentWorkingDirectory.fromPath(cwd)))
 
-    // Rollback package.json versions
-    yield* cmd(`pnpm ${filterStr} exec -- pnpm version '${originalVersion}' --no-git-tag-version`, {
-      shell: true,
-    }).pipe(Effect.provide(CurrentWorkingDirectory.fromPath(cwd)))
-
-    // Rollback version.ts
-    fs.writeFileSync(
-      versionFilePath,
-      fs.readFileSync(versionFilePath, 'utf8').replace(snapshotVersion, originalVersion),
-    )
+    /** Restore original dev versions (read-only) and verify files are in sync */
+    yield* generate({ cwd })
+    yield* check({ cwd })
 
     yield* appendGithubSummaryMarkdown({
-      markdown: formatSnapshotSummaryMarkdown({
-        packages: snapshotPackages,
-        snapshotVersion,
-        dryRun,
-      }),
+      markdown: formatSnapshotSummaryMarkdown({ packages: snapshotPackages, snapshotVersion, dryRun }),
       context: 'snapshot release',
     })
   }),
