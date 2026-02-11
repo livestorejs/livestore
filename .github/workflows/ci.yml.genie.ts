@@ -6,6 +6,7 @@ import {
   namespaceRunner,
   otelSetupStep,
 } from '../../genie/repo.ts'
+import { playwrightSuites, syncProviderMatrix } from '../../genie/ci.ts'
 
 // =============================================================================
 // Shared Constants
@@ -35,15 +36,10 @@ const namespaceRunnerConfig = {
   'runs-on': namespaceRunner(GITHUB_RUN_ID),
 }
 
-/** Branch protection marker environment variable */
-const branchProtectionEnv = {
-  LIVESTORE_BRANCH_PROTECTION_REQUIRED: 'true',
-}
-
-/** Standard CI job configuration (namespace runner + devenv shell + branch protection) */
+/** Standard CI job configuration (namespace runner + devenv shell) */
 const standardCIJob = (config: { env?: Record<string, string>; steps: unknown[] }) => ({
   ...namespaceRunnerConfig,
-  env: { ...branchProtectionEnv, ...config.env },
+  env: config.env,
   defaults: devenvShellDefaults,
   steps: config.steps,
 })
@@ -74,10 +70,8 @@ fi`,
 // =============================================================================
 
 /**
- * Jobs tagged with LIVESTORE_BRANCH_PROTECTION_REQUIRED are used by
- * scripts/src/commands/github.ts to keep GitHub's branch protection checks in sync.
- * Run `mono github branch-protection update` to sync (defaults to dev branch).
- * For main branch: `mono github branch-protection update --branch main`
+ * Required status checks are managed by `.github/repo-settings.*.json.genie.ts`.
+ * Keep matrix values aligned with `genie/ci.ts` so rulesets and workflow stay in sync.
  */
 export default githubWorkflow({
   name: 'ci',
@@ -160,20 +154,11 @@ fi`,
       strategy: {
         matrix: {
           provider: [
-            'mock',
-            'electric',
-            's2',
-            'cf-http-d1',
-            'cf-http-do',
-            'cf-ws-d1',
-            'cf-ws-do',
-            'cf-do-rpc-d1',
-            'cf-do-rpc-do',
+            ...syncProviderMatrix,
           ],
         },
       },
       ...namespaceRunnerConfig,
-      env: branchProtectionEnv,
       defaults: devenvShellDefaults,
       steps: [
         ...livestoreSetupSteps,
@@ -212,11 +197,10 @@ fi`,
     'test-integration-playwright': {
       strategy: {
         matrix: {
-          suite: ['misc', 'todomvc', 'devtools'],
+          suite: [...playwrightSuites],
         },
       },
       ...namespaceRunnerConfig,
-      env: branchProtectionEnv,
       defaults: devenvShellDefaults,
       steps: [
         ...livestoreSetupSteps,
@@ -285,7 +269,6 @@ fi`,
     // Prefer a specific runner version for more consistent performance measurements between runs
     'wa-sqlite-test': {
       'runs-on': 'ubuntu-24.04',
-      env: branchProtectionEnv,
       steps: [
         ...livestoreSetupSteps,
         otelSetupStep,

@@ -21,8 +21,6 @@ env:
 jobs:
   lint:
     runs-on: [namespace-profile-linux-x86-64, 'namespace-features:github.run-id=${{ github.run_id }}']
-    env:
-      LIVESTORE_BRANCH_PROTECTION_REQUIRED: 'true'
     defaults:
       run:
         shell: devenv shell bash -- -e {0}
@@ -52,8 +50,6 @@ jobs:
       - run: 'dt lint:full megarepo:check'
   type-check:
     runs-on: [namespace-profile-linux-x86-64, 'namespace-features:github.run-id=${{ github.run_id }}']
-    env:
-      LIVESTORE_BRANCH_PROTECTION_REQUIRED: 'true'
     defaults:
       run:
         shell: devenv shell bash -- -e {0}
@@ -83,8 +79,6 @@ jobs:
       - run: 'dt ts:build'
   test-unit:
     runs-on: [namespace-profile-linux-x86-64, 'namespace-features:github.run-id=${{ github.run_id }}']
-    env:
-      LIVESTORE_BRANCH_PROTECTION_REQUIRED: 'true'
     defaults:
       run:
         shell: devenv shell bash -- -e {0}
@@ -114,8 +108,6 @@ jobs:
       - run: 'dt test:unit'
   test-integration-node-sync:
     runs-on: [namespace-profile-linux-x86-64, 'namespace-features:github.run-id=${{ github.run_id }}']
-    env:
-      LIVESTORE_BRANCH_PROTECTION_REQUIRED: 'true'
     defaults:
       run:
         shell: devenv shell bash -- -e {0}
@@ -196,8 +188,6 @@ jobs:
           - cf-do-rpc-d1
           - cf-do-rpc-do
     runs-on: [namespace-profile-linux-x86-64, 'namespace-features:github.run-id=${{ github.run_id }}']
-    env:
-      LIVESTORE_BRANCH_PROTECTION_REQUIRED: 'true'
     defaults:
       run:
         shell: devenv shell bash -- -e {0}
@@ -265,8 +255,6 @@ jobs:
       matrix:
         suite: [misc, todomvc, devtools]
     runs-on: [namespace-profile-linux-x86-64, 'namespace-features:github.run-id=${{ github.run_id }}']
-    env:
-      LIVESTORE_BRANCH_PROTECTION_REQUIRED: 'true'
     defaults:
       run:
         shell: devenv shell bash -- -e {0}
@@ -378,8 +366,6 @@ jobs:
           OTEL_EXPORTER_OTLP_ENDPOINT: 'https://otlp-gateway-prod-us-east-2.grafana.net/otlp'
   wa-sqlite-test:
     runs-on: ubuntu-24.04
-    env:
-      LIVESTORE_BRANCH_PROTECTION_REQUIRED: 'true'
     steps:
       - uses: actions/checkout@v4
       - name: Install Nix
