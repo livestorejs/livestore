@@ -957,41 +957,6 @@ export class Store<TSchema extends LiveStoreSchema = LiveStoreSchema.Any, TConte
     }
   }
 
-  /**
-   * Returns an async iterable of command conflicts.
-   *
-   * Conflicts occur when a command fails during replay after sync reconciliation.
-   * This happens when the underlying state changes (due to remote events being pulled)
-   * and the command handler throws an error when re-executed against the new state.
-   *
-   * @param options - Optional filter to only receive conflicts for specific commands
-   * @returns AsyncIterable that yields CommandConflict objects
-   *
-   * @example
-   * ```ts
-   * // Handle all conflicts
-   * for await (const conflict of store.conflicts()) {
-   *   toast.error(`Action failed: ${conflict.command.name}`)
-   * }
-   *
-   * // Filter by command name
-   * for await (const conflict of store.conflicts({ commands: ['CheckInGuest', 'Payment'] })) {
-   *   handleCriticalConflict(conflict)
-   * }
-   * ```
-   */
-  conflicts = (_options?: {
-    /** Only include conflicts for these command names */
-    commands?: ReadonlyArray<string>
-  }): AsyncIterable<CommandDef.CommandConflict> => {
-    // TODO: In full implementation, this should return conflicts from the
-    // LeaderSyncProcessor command replay. For now, return an empty async iterable.
-    return {
-      [Symbol.asyncIterator]: () => ({
-        next: async () => ({ done: true as const, value: undefined as never }),
-      }),
-    }
-  }
   //#endregion execute
 
   /**

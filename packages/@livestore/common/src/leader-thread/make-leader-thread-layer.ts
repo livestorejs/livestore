@@ -23,7 +23,7 @@ import {
 } from '../adapter-types.ts'
 import type { MigrationsReport } from '../defs.ts'
 import type * as Devtools from '../devtools/mod.ts'
-import type { CommandDef, LiveStoreSchema } from '../schema/mod.ts'
+import type { LiveStoreSchema } from '../schema/mod.ts'
 import { EventSequenceNumber, LiveStoreEvent, SystemTables } from '../schema/mod.ts'
 import { type CommandQueue, layer as makeCommandQueueLayer } from '../sync/CommandQueue.ts'
 import type { InvalidPullError, IsOfflineError, SyncBackend, SyncOptions } from '../sync/sync.ts'
@@ -192,9 +192,6 @@ export const makeLeaderThreadLayer = ({
 
     // Initialize command infrastructure (uses eventlog DB for persistence across schema changes)
     const commandQueueLayer = makeCommandQueueLayer(dbEventlog)
-    const commandConflictQueue = yield* Queue.unbounded<CommandDef.CommandConflict>().pipe(
-      Effect.acquireRelease(Queue.shutdown),
-    )
 
     const devtoolsContext =
       devtoolsOptions.enabled === true
@@ -224,7 +221,6 @@ export const makeLeaderThreadLayer = ({
       extraIncomingMessagesQueue,
       devtools: devtoolsContext,
       networkStatus,
-      commandConflictQueue,
       // State will be set during `bootLeaderThread`
       initialState: {} as any as LeaderThreadCtx['Type']['initialState'],
     } satisfies typeof LeaderThreadCtx.Service

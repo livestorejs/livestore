@@ -842,9 +842,7 @@ const backgroundBackendPulling = Effect.fn('@livestore/common:LeaderSyncProcesso
 
       // Replay pending commands after rebase to validate them against the new state
         if (mergeResult._tag === 'rebase') {
-          const { commandConflictQueue } = yield* LeaderThreadCtx
           yield* replayPendingCommands({
-            commandConflictQueue,
             schema,
             dbState: db,
             otelSpan,
@@ -1226,6 +1224,13 @@ const clearLocalDatabases = ({ dbEventlog, dbState }: { dbEventlog: SqliteDb; db
     }
   })
 
+/** Conflict info produced during command replay. */
+interface ReplayConflict {
+  readonly command: { readonly id: string; readonly name: string; readonly args: unknown }
+  readonly error: Error
+  readonly timestamp: number
+}
+
 /**
  * Replay pending commands after a rebase to validate them against the new state.
  *
@@ -1239,18 +1244,16 @@ const clearLocalDatabases = ({ dbEventlog, dbState }: { dbEventlog: SqliteDb; db
  *   - `validCommandIds`: IDs of commands that succeeded replay
  */
 const replayPendingCommands = ({
-  commandConflictQueue,
   schema,
   dbState,
   otelSpan,
 }: {
-  commandConflictQueue: Queue.Queue<CommandDef.CommandConflict>
   schema: LiveStoreSchema
   dbState: SqliteDb
   otelSpan: otel.Span | undefined
 }): Effect.Effect<
   {
-    conflicts: ReadonlyArray<CommandDef.CommandConflict>
+    conflicts: ReadonlyArray<ReplayConflict>
     validCommandIds: ReadonlyArray<string>
   },
   never,
@@ -1266,7 +1269,7 @@ const replayPendingCommands = ({
 
     otelSpan?.addEvent('command-replay:start', { commandCount: pendingCommands.length }, undefined)
 
-    const conflicts: CommandDef.CommandConflict[] = []
+    const conflicts: ReplayConflict[] = []
     const validCommandIds: string[] = []
 
     for (const pendingCommand of pendingCommands) {
@@ -1276,7 +1279,7 @@ const replayPendingCommands = ({
 
       if (commandDef === undefined) {
         // Command definition no longer exists in schema - treat as conflict
-        const conflict: CommandDef.CommandConflict = {
+        const conflict: ReplayConflict = {
           command: {
             id: pendingCommand.id,
             name: pendingCommand.name,
@@ -1287,7 +1290,6 @@ const replayPendingCommands = ({
         }
         conflicts.push(conflict)
         yield* commandQueue.fail(pendingCommand.id)
-        yield* Queue.offer(commandConflictQueue, conflict)
         continue
       }
 
@@ -1325,7 +1327,7 @@ const replayPendingCommands = ({
         )
       } else {
         // Command failed during replay - emit conflict
-        const conflict: CommandDef.CommandConflict = {
+        const conflict: ReplayConflict = {
           command: {
             id: pendingCommand.id,
             name: pendingCommand.name,
@@ -1337,7 +1339,6 @@ const replayPendingCommands = ({
 
         conflicts.push(conflict)
         yield* commandQueue.fail(pendingCommand.id)
-        yield* Queue.offer(commandConflictQueue, conflict)
 
         otelSpan?.addEvent(
           'command-replay:failure',

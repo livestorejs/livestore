@@ -24,7 +24,6 @@ import type {
   SyncBackend,
   UnknownError,
 } from '../index.ts'
-import type { CommandDef } from '../schema/mod.ts'
 import { EventSequenceNumber, type LiveStoreEvent, type LiveStoreSchema } from '../schema/mod.ts'
 import type { CommandQueue } from '../sync/CommandQueue.ts'
 import type * as SyncState from '../sync/syncstate.ts'
@@ -114,10 +113,6 @@ export class LeaderThreadCtx extends Context.Tag('LeaderThreadCtx')<
      */
     extraIncomingMessagesQueue: Queue.Queue<Devtools.Leader.MessageToApp>
     networkStatus: Subscribable.Subscribable<SyncBackend.NetworkStatus>
-    /**
-     * Queue for emitting command conflicts when commands fail during replay.
-     */
-    commandConflictQueue: Queue.Queue<CommandDef.CommandConflict>
   }
 >() {}
 
