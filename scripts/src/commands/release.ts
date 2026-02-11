@@ -3,7 +3,6 @@ import { CurrentWorkingDirectory, cmd, cmdText } from '@livestore/utils-dev/node
 import { Effect, FileSystem, Schema } from '@livestore/utils/effect'
 import { Cli } from '@livestore/utils/node'
 
-import { generate, check } from '../../../repos/effect-utils/packages/@overeng/genie/src/sdk/mod.ts'
 import { appendGithubSummaryMarkdown, formatMarkdownTable } from '../shared/misc.ts'
 
 class PackageJsonParseError extends Schema.TaggedError<PackageJsonParseError>()('PackageJsonParseError', {
@@ -111,18 +110,24 @@ export const releaseSnapshotCommand = Cli.Command.make(
     const gitSha =
       gitShaOption._tag === 'Some'
         ? gitShaOption.value
-        : yield* cmdText('git rev-parse HEAD').pipe(Effect.provide(CurrentWorkingDirectory.fromPath(cwd)))
+        : (yield* cmdText('git rev-parse HEAD').pipe(Effect.provide(CurrentWorkingDirectory.fromPath(cwd)))).trim()
 
     const snapshotVersion = versionOption._tag === 'Some' ? versionOption.value : `0.0.0-snapshot-${gitSha}`
     const snapshotPackages = yield* listSnapshotPackages(cwd)
     const filterStr = '--filter @livestore/* --filter !@livestore/effect-playwright'
     const releaseEnv = { LIVESTORE_RELEASE_VERSION: snapshotVersion }
 
-    /** Regenerate all genie-managed files with snapshot version (writable for pnpm publish) */
-    yield* generate({ cwd, writeable: true, env: releaseEnv })
+    /**
+     * Regenerate all genie-managed files with snapshot version (writable for pnpm publish).
+     * TODO: Replace CLI invocations with genie SDK once skipValidation is available
+     * (https://github.com/overengineeringstudio/effect-utils/issues/196)
+     */
+    yield* cmd(`LIVESTORE_RELEASE_VERSION=${snapshotVersion} genie --writeable`, { shell: true }).pipe(
+      Effect.provide(CurrentWorkingDirectory.fromPath(cwd)),
+    )
 
-    /** Rebuild TypeScript so dist/ picks up the snapshot version from package.json */
-    yield* cmd('tsc --build tsconfig.dev.json', { shell: true }).pipe(
+    /** Rebuild TypeScript so dist/ picks up the snapshot version from package.json (emit-only, type checking is separate) */
+    yield* cmd('tsc --build tsconfig.dev.json --noCheck', { shell: true }).pipe(
       Effect.provide(CurrentWorkingDirectory.fromPath(cwd)),
     )
 
@@ -131,8 +136,8 @@ export const releaseSnapshotCommand = Cli.Command.make(
     }).pipe(Effect.provide(CurrentWorkingDirectory.fromPath(cwd)))
 
     /** Restore original dev versions (read-only) and verify files are in sync */
-    yield* generate({ cwd })
-    yield* check({ cwd })
+    yield* cmd('genie', { shell: true }).pipe(Effect.provide(CurrentWorkingDirectory.fromPath(cwd)))
+    yield* cmd('genie --check', { shell: true }).pipe(Effect.provide(CurrentWorkingDirectory.fromPath(cwd)))
 
     yield* appendGithubSummaryMarkdown({
       markdown: formatSnapshotSummaryMarkdown({ packages: snapshotPackages, snapshotVersion, dryRun }),
