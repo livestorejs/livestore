@@ -36,29 +36,41 @@ export interface CommandHandlerContext {
 /**
  * Result of a command handler invocation.
  *
- * Handlers return either an array of events (success) or an error value (failure).
- * The runtime distinguishes the two via `Array.isArray`.
+ * Handlers return either an array of events, a single event, or an error value.
+ * The runtime distinguishes events from errors via `Array.isArray` and duck-typing
+ * (single events have `name` + `args` properties).
  */
-export type CommandHandlerResult<TError> = ReadonlyArray<LiveStoreEvent.Input.Decoded> | TError
+export type CommandHandlerResult<TError> =
+  | ReadonlyArray<LiveStoreEvent.Input.Decoded>
+  | LiveStoreEvent.Input.Decoded
+  | TError
 
 /**
- * Extracts the error type from a handler's full return type by excluding array branches.
+ * Extracts the error type from a handler's full return type by excluding event branches.
  *
  * Used by `defineCommand` to compute `TError` from the inferred return type so that
- * TypeScript doesn't conflate the event-array branch with the error branch during inference.
+ * TypeScript doesn't conflate the event branches with the error branch during inference.
  */
-export type ExtractCommandError<TReturn> = Exclude<TReturn, ReadonlyArray<any>>
+export type ExtractCommandError<TReturn> = Exclude<TReturn, ReadonlyArray<any> | LiveStoreEvent.Input.Decoded>
+
+
+/** Runtime check for the `{ name, args }` shape of a single decoded event. */
+const isEventInput = (value: unknown): value is LiveStoreEvent.Input.Decoded =>
+  typeof value === 'object' && value !== null && 'name' in value && 'args' in value
 
 /**
- * Distinguishes events (array) from errors (non-array) in a handler result.
+ * Distinguishes events (array or single) from errors in a handler result.
  *
  * Used by `store.execute()` and `executeCommandHandler` in replay to normalize
  * handler return values without requiring an Either wrapper in user code.
  */
 export const normalizeHandlerResult = <TError>(
   result: CommandHandlerResult<TError>,
-): { ok: true; events: ReadonlyArray<LiveStoreEvent.Input.Decoded> } | { ok: false; error: TError } =>
-  Array.isArray(result) ? { ok: true, events: result } : { ok: false, error: result as TError }
+): { ok: true; events: ReadonlyArray<LiveStoreEvent.Input.Decoded> } | { ok: false; error: TError } => {
+  if (Array.isArray(result)) return { ok: true, events: result }
+  if (isEventInput(result)) return { ok: true, events: [result] }
+  return { ok: false, error: result as TError }
+}
 
 /**
  * Function type for validating a command and producing events.

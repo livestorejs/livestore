@@ -92,11 +92,11 @@ import type { CommandDef, CommandHandlerContext, CommandInstance, ExtractCommand
  * }
  * ```
  */
-export const defineCommand = <TName extends string, TArgs, TEncoded = TArgs, TReturn = ReadonlyArray<any>>(options: {
+export function defineCommand<TName extends string, TArgs, TEncoded = TArgs, TReturn = ReadonlyArray<any>>(options: {
   name: TName
   schema: Schema.Schema<TArgs, TEncoded>
   handler: (args: Schema.Schema.Type<Schema.Schema<TArgs, TEncoded>>, context: CommandHandlerContext) => TReturn
-}): CommandDef<TName, TArgs, TEncoded, ExtractCommandError<TReturn>> => {
+}): CommandDef<TName, TArgs, TEncoded, ExtractCommandError<TReturn>> {
   type TError = ExtractCommandError<TReturn>
 
   const { name, schema, handler } = options

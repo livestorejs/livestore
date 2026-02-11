@@ -16,12 +16,15 @@ export const Header: React.FC = () => {
       console.error('Failed to create todo:', result.error)
       return
     }
+    console.log('Todo created locally')
+
     const confirmation = await result.confirmation
-    if (confirmation._tag === 'confirmed') {
-      console.log('Todo created')
-    } else {
-      console.error('Todo creation rolled back:', confirmation.error)
+    if (confirmation._tag === 'conflict') {
+      // confirmation.error is TodoTextEmpty
+      console.log('Conflict detected, todo creation rolled back', confirmation.error)
+      return
     }
+    console.log('Todo creation confirmed')
   }
 
   return (

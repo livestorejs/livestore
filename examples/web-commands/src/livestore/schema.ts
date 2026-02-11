@@ -76,7 +76,7 @@ export const commands = {
       if (!todo) return new TodoNotFound()
       if (todo.deletedAt) return new CannotToggleDeletedTodo()
 
-      return [todo.completed ? events.todoUncompleted({ id }) : events.todoCompleted({ id })]
+      return todo.completed ? events.todoUncompleted({ id }) : events.todoCompleted({ id })
     },
   }),
 
@@ -88,7 +88,7 @@ export const commands = {
       if (!todo) return new TodoNotFound()
       if (todo.deletedAt) return new TodoAlreadyDeleted()
 
-      return [events.todoDeleted({ id, deletedAt })]
+      return events.todoDeleted({ id, deletedAt })
     },
   }),
 
@@ -98,7 +98,7 @@ export const commands = {
     handler: ({ deletedAt }, ctx) => {
       const completedCount = ctx.query<number>(tables.todos.count().where({ completed: true, deletedAt: null }))
       if (completedCount === 0) return new NoCompletedTodos()
-      return [events.todoClearedCompleted({ deletedAt })]
+      return events.todoClearedCompleted({ deletedAt })
     },
   }),
 }
