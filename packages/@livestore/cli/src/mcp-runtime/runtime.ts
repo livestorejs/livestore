@@ -2,7 +2,7 @@ import { makeAdapter as makeNodeAdapter } from '@livestore/adapter-node'
 import { UnknownError } from '@livestore/common'
 import { LiveStoreEvent, SystemTables } from '@livestore/common/schema'
 import type { Store } from '@livestore/livestore'
-import { createStorePromise } from '@livestore/livestore'
+import { type BindValues, createStorePromise } from '@livestore/livestore'
 import { Effect, FetchHttpClient, Layer, Option, Schema } from '@livestore/utils/effect'
 import { PlatformNode } from '@livestore/utils/node'
 
@@ -102,7 +102,7 @@ export const status = Effect.gen(function* () {
   }
 }).pipe(Effect.withSpan('mcp-runtime:status'))
 
-export const query = ({ sql, bindValues }: { sql: string; bindValues?: readonly any[] | Record<string, unknown> }) =>
+export const query = ({ sql, bindValues }: { sql: string; bindValues: BindValues | undefined }) =>
   Effect.gen(function* () {
     const opt = yield* getStore
     if (opt._tag === 'None') {
@@ -110,7 +110,7 @@ export const query = ({ sql, bindValues }: { sql: string; bindValues?: readonly 
     }
     const s = opt.value
 
-    const rows = s.query({ query: sql, bindValues: (bindValues as any) ?? [] }) as Array<Record<string, unknown>>
+    const rows = s.query({ query: sql, bindValues: bindValues ?? [] }) as Array<Record<string, unknown>>
     const jsonRows = rows.map((r) => Object.fromEntries(Object.entries(r).map(([k, v]) => [k, v as Schema.JsonValue])))
     return { rows: jsonRows, rowCount: jsonRows.length }
   }).pipe(Effect.withSpan('mcp-runtime:query'))

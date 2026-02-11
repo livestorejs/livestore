@@ -5,8 +5,7 @@ import { type SqliteDb, UnknownError } from './adapter-types.ts'
 import type { MaterializeEvent } from './leader-thread/mod.ts'
 import type { EventDef, LiveStoreSchema } from './schema/mod.ts'
 import { EventSequenceNumber, LiveStoreEvent, resolveEventDef, SystemTables } from './schema/mod.ts'
-import type { PreparedBindValues } from './util.ts'
-import { sql } from './util.ts'
+import { prepareBindValues, sql } from './util.ts'
 
 export const rematerializeFromEventlog = ({
   dbEventlog,
@@ -110,10 +109,9 @@ LIMIT ${CHUNK_SIZE}
           )
         : EventSequenceNumber.Client.ROOT
       const nextItem = Chunk.fromIterable(
-        stmt.select<SystemTables.EventlogMetaRow>({
-          $seqNumGlobal: lastId?.global,
-          $seqNumClient: lastId?.client,
-        } as any as PreparedBindValues),
+        stmt.select<SystemTables.EventlogMetaRow>(
+          prepareBindValues({ seqNumGlobal: lastId.global, seqNumClient: lastId.client }, stmt.sql),
+        ),
       )
       const prevItem = Chunk.isChunk(item) ? item : Chunk.empty()
       return Option.some([prevItem, nextItem])

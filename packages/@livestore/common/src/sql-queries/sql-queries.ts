@@ -2,13 +2,9 @@ import { shouldNeverHappen } from '@livestore/utils'
 import { pipe, ReadonlyArray, Schema, TreeFormatter } from '@livestore/utils/effect'
 
 import type { SqliteDsl } from '../schema/state/sqlite/db-schema/mod.ts'
-import { sql } from '../util.ts'
+import { type BindValues, sql } from '../util.ts'
 import { objectEntries } from './misc.ts'
 import * as ClientTypes from './types.ts'
-
-export type BindValues = {
-  readonly [columnName: string]: any
-}
 
 export const findManyRows = <TColumns extends SqliteDsl.Columns>({
   columns,

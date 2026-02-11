@@ -28,9 +28,7 @@
  */
 
 import type { SingleOrReadonlyArray } from '@livestore/utils'
-
-import type { BindValues } from '../../sql-queries/sql-queries.ts'
-import type { ParamsObject } from '../../util.ts'
+import type { BindValues, ParamsObject } from '../../util.ts'
 import type * as LiveStoreEvent from '../LiveStoreEvent/mod.ts'
 import type { QueryBuilder } from '../state/sqlite/query-builder/mod.ts'
 import type { EventDef } from './event-def.ts'
@@ -41,8 +39,17 @@ import type { EventDefFacts } from './facts.ts'
  *
  * Can be one of:
  * - A QueryBuilder operation (recommended for type safety)
- * - A raw SQL string
+ * - A raw SQL string (executed as-is with no bind values; use the object form
+ *   or QueryBuilder if you need parameters)
  * - An object with SQL, bind values, and optional write table tracking
+ *
+ * @example Using raw SQL with parameters (object form required):
+ * ```ts
+ * 'v1.TodoRenamed': ({ id, text }) => ({
+ *   sql: 'UPDATE todos SET text = :text WHERE id = :id',
+ *   bindValues: { id, text },
+ * })
+ * ```
  */
 export type MaterializerResult =
   | {

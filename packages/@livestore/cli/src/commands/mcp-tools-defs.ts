@@ -1,3 +1,4 @@
+import { SqlBindValueSchema } from '@livestore/common'
 import { Schema, Tool, Toolkit } from '@livestore/utils/effect'
 import { coachTool } from './mcp-coach.ts'
 
@@ -138,12 +139,15 @@ Returns on success:
 }`,
     parameters: {
       sql: Schema.String.annotations({ description: 'The SQL query to execute' }),
-      bindValues: Schema.Union(
-        Schema.Array(Schema.JsonValue),
-        Schema.Record({ key: Schema.String, value: Schema.JsonValue }),
-      ).annotations({
-        description: 'Bind values for the SQL query (array or record). Record keys must not start with $.',
-      }),
+      bindValues: Schema.optional(
+        Schema.Union(
+          Schema.Array(SqlBindValueSchema),
+          Schema.Record({ key: Schema.String, value: SqlBindValueSchema }),
+        ).annotations({
+          description:
+            'Bind values for the SQL query (array or record). Record keys must not start with $. Values must be string, number, or null. Booleans are not supported; use 0/1 instead.',
+        }),
+      ),
     },
     success: Schema.Struct({
       rows: Schema.Array(Schema.Record({ key: Schema.String, value: Schema.JsonValue })),

@@ -2,11 +2,32 @@
 
 import type { Brand } from '@livestore/utils/effect'
 import { Schema } from '@livestore/utils/effect'
+import type { SessionIdSymbol as SessionIdSymbolType } from './adapter-types.ts'
+import { SessionIdSymbol } from './adapter-types.ts'
 
-export type ParamsObject = Record<string, SqlValue>
+/** A primitive value that can be stored in SQLite. */
 export type SqlValue = string | number | Uint8Array<ArrayBuffer> | null
 
-export type Bindable = ReadonlyArray<SqlValue> | ParamsObject
+/**
+ * A value that can be used in SQL bind parameters.
+ *
+ * This includes all SQLite-compatible primitives (`SqlValue`) plus the `SessionIdSymbol`
+ * sentinel, which is replaced with the actual session ID string before execution.
+ */
+export type SqlBindValue = SqlValue | SessionIdSymbolType
+
+/** Record of column names to SQL-compatible values. */
+export type ParamsObject = Record<string, SqlBindValue>
+
+/**
+ * Parameters supplied to LiveStore's query APIs.
+ *
+ * Accepts both SQLite primitives and the `SessionIdSymbol` sentinel.
+ *
+ * These are normalized immediately before execution using `prepareBindValues()`
+ * into `PreparedBindValues` (driver-ready).
+ */
+export type BindValues = ReadonlyArray<SqlBindValue> | Readonly<ParamsObject>
 
 export const SqlValueSchema = Schema.Union(
   Schema.String,
@@ -15,12 +36,28 @@ export const SqlValueSchema = Schema.Union(
   Schema.Null,
 )
 
+/**
+ * Schema for SQL bind values, which includes SQLite primitives plus the
+ * `SessionIdSymbol` sentinel (replaced with actual session ID before execution).
+ */
+export const SqlBindValueSchema = Schema.Union(SqlValueSchema, Schema.UniqueSymbolFromSelf(SessionIdSymbol))
+
+/**
+ * Driver-ready bind parameters sent to `PreparedStatement.execute/select`.
+ *
+ * - Positional arrays are passed through as-is.
+ * - Named-parameter objects are normalized to include `$`-prefixed keys (e.g. `$userId`)
+ *   and may have unused keys removed (some SQLite implementations reject unused named params).
+ *
+ * Values should be produced via `prepareBindValues(...)`
+ * immediately before execution.
+ */
 export const PreparedBindValues = Schema.Union(
   Schema.Array(SqlValueSchema),
   Schema.Record({ key: Schema.String, value: SqlValueSchema }),
 ).pipe(Schema.brand('PreparedBindValues'))
 
-export type PreparedBindValues = Brand.Branded<Bindable, 'PreparedBindValues'>
+export type PreparedBindValues = Brand.Branded<BindValues, 'PreparedBindValues'>
 
 /**
  * This is a tag function for tagged literals.
@@ -39,14 +76,15 @@ export const sql = (template: TemplateStringsArray, ...args: unknown[]): string 
 }
 
 /**
- * Prepare bind values to send to SQLite
- * Add $ to the beginning of keys; which we use as our interpolation syntax
- * We also strip out any params that aren't used in the statement,
- * because rusqlite doesn't allow unused named params
+ * Prepare API-layer bind values for SQLite execution.
+ *
+ * Add `$` prefix to named parameter keys. We also strip out any params that aren't
+ * used in the statement, because rusqlite doesn't allow unused named params.
+ *
  * TODO: Search for unused params via proper parsing, not string search
  * TODO: Also make sure that the SQLite binding limit of 1000 is respected
  */
-export const prepareBindValues = (values: Bindable, statement: string): PreparedBindValues => {
+export const prepareBindValues = (values: BindValues, statement: string): PreparedBindValues => {
   if (Array.isArray(values)) return values as any as PreparedBindValues
 
   const result: ParamsObject = {}

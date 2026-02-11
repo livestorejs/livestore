@@ -3,8 +3,7 @@ import { Effect } from '@livestore/utils/effect'
 
 import type { SqliteDb } from '../adapter-types.ts'
 import { SqliteError } from '../adapter-types.ts'
-import type { BindValues } from '../sql-queries/index.ts'
-import type { PreparedBindValues } from '../util.ts'
+import type { BindValues, PreparedBindValues } from '../util.ts'
 import { prepareBindValues, sql } from '../util.ts'
 
 // TODO

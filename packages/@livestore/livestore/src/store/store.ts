@@ -1,5 +1,5 @@
 import {
-  type Bindable,
+  type BindValues,
   type ClientSession,
   Devtools,
   getExecStatementsFromMaterializer,
@@ -11,7 +11,6 @@ import {
   MaterializeError,
   MaterializerHashMismatchError,
   makeClientSessionSyncProcessor,
-  type PreparedBindValues,
   prepareBindValues,
   QueryBuilderAstSymbol,
   replaceSessionIdSymbol,
@@ -605,7 +604,7 @@ export class Store<TSchema extends LiveStoreSchema = LiveStoreSchema.Any, TConte
    * ```
    */
   query = <TResult>(
-    query: Queryable<TResult> | { query: string; bindValues: Bindable; schema?: Schema.Schema<TResult> },
+    query: Queryable<TResult> | { query: string; bindValues: BindValues; schema?: Schema.Schema<TResult> },
     options?: { otelContext?: otel.Context; debugRefreshReason?: RefreshReason },
   ): TResult => {
     this.checkShutdown('query')
@@ -643,7 +642,7 @@ export class Store<TSchema extends LiveStoreSchema = LiveStoreSchema.Any, TConte
 
       const rawRes = this[StoreInternalsSymbol].sqliteDbWrapper.cachedSelect(
         sqlRes.query,
-        sqlRes.bindValues as any as PreparedBindValues,
+        prepareBindValues(sqlRes.bindValues, sqlRes.query),
         {
           ...omitUndefineds({ otelContext: options?.otelContext }),
           queriedTables: new Set([query[QueryBuilderAstSymbol].tableDef.sqliteDef.name]),

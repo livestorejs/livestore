@@ -1,6 +1,6 @@
 export type { Adapter, ClientSession, PreparedStatement } from '@livestore/common'
 export {
-  type Bindable,
+  type BindValues,
   type BootStatus,
   type DebugInfo,
   IntentionalShutdownCause,

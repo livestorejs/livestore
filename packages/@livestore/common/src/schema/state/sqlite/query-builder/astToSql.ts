@@ -2,7 +2,8 @@ import { shouldNeverHappen } from '@livestore/utils'
 import { Schema, SchemaAST } from '@livestore/utils/effect'
 
 import { SessionIdSymbol } from '../../../../adapter-types.ts'
-import type { SqlValue } from '../../../../util.ts'
+import type { BindValues, SqlBindValue, SqlValue } from '../../../../util.ts'
+import { SqlBindValueSchema } from '../../../../util.ts'
 import type { State } from '../../../mod.ts'
 import type { QueryBuilderAst } from './api.ts'
 
@@ -75,7 +76,7 @@ const quoteIdentifier = (identifier: string): string => `"${identifier.replace(/
 const formatWhereClause = (
   whereConditions: ReadonlyArray<QueryBuilderAst.Where>,
   tableDef: State.SQLite.TableDefBase,
-  bindValues: SqlValue[],
+  bindValues: SqlBindValue[],
 ): string => {
   if (whereConditions.length === 0) return ''
 
@@ -129,13 +130,15 @@ const formatWhereClause = (
           return op === 'IN' ? '0=1' : '1=1'
         }
 
-        const encodedValues = value.map((v) => Schema.encodeSync(colDef.schema)(v)) as SqlValue[]
+        const encodedValues = value.map((v) =>
+          Schema.encodeSync(SqlBindValueSchema)(Schema.encodeSync(colDef.schema)(v)),
+        )
         bindValues.push(...encodedValues)
         const placeholders = encodedValues.map(() => '?').join(', ')
         return `${quotedCol} ${op} (${placeholders})`
       } else {
-        const encodedValue = Schema.encodeSync(colDef.schema)(value)
-        bindValues.push(encodedValue as SqlValue)
+        const encodedValue = Schema.encodeSync(SqlBindValueSchema)(Schema.encodeSync(colDef.schema)(value))
+        bindValues.push(encodedValue)
         return `${quotedCol} ${op} ?`
       }
     })
@@ -149,8 +152,8 @@ const formatReturningClause = (returning?: string[]): string => {
   return ` RETURNING ${returning.map(quoteIdentifier).join(', ')}`
 }
 
-export const astToSql = (ast: QueryBuilderAst): { query: string; bindValues: SqlValue[]; usedTables: Set<string> } => {
-  const bindValues: SqlValue[] = []
+export const astToSql = (ast: QueryBuilderAst): { query: string; bindValues: BindValues; usedTables: Set<string> } => {
+  const bindValues: SqlBindValue[] = []
   const usedTables = new Set<string>([ast.tableDef.sqliteDef.name])
 
   // INSERT query
@@ -162,7 +165,7 @@ export const astToSql = (ast: QueryBuilderAst): { query: string; bindValues: Sql
 
     // Ensure bind values are added in the same order as columns
     columns.forEach((col) => {
-      bindValues.push(encodedValues[col] as SqlValue)
+      bindValues.push(Schema.encodeSync(SqlBindValueSchema)(encodedValues[col]))
     })
 
     let insertVerb = 'INSERT'
@@ -205,8 +208,8 @@ export const astToSql = (ast: QueryBuilderAst): { query: string; bindValues: Sql
               if (colDef === undefined) {
                 throw new Error(`Column ${col} not found`)
               }
-              const encodedValue = Schema.encodeSync(colDef.schema)(value)
-              bindValues.push(encodedValue as SqlValue)
+              const encodedValue = Schema.encodeSync(SqlBindValueSchema)(Schema.encodeSync(colDef.schema)(value))
+              bindValues.push(encodedValue)
             }
           })
 
@@ -241,7 +244,7 @@ export const astToSql = (ast: QueryBuilderAst): { query: string; bindValues: Sql
 
     // Ensure bind values are added in the same order as columns
     setColumns.forEach((col) => {
-      bindValues.push(encodedValues[col] as SqlValue)
+      bindValues.push(Schema.encodeSync(SqlBindValueSchema)(encodedValues[col]))
     })
 
     let query = `UPDATE '${ast.tableDef.sqliteDef.name}' SET ${setColumns
@@ -291,7 +294,7 @@ export const astToSql = (ast: QueryBuilderAst): { query: string; bindValues: Sql
 
     return {
       query: `SELECT * FROM '${ast.tableDef.sqliteDef.name}' WHERE ${quoteIdentifier('id')} = ?`,
-      bindValues: [encodedId as SqlValue],
+      bindValues: [Schema.encodeSync(SqlBindValueSchema)(encodedId)],
       usedTables,
     }
   }

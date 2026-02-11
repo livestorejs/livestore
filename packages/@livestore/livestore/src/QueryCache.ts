@@ -1,4 +1,4 @@
-import type { Bindable } from '@livestore/common'
+import type { BindValues } from '@livestore/common'
 import { BoundMap, BoundSet, SessionIdSymbol } from '@livestore/common'
 
 const SymbolsBase = Symbol('base')
@@ -20,7 +20,7 @@ export default class QueryCache {
   #entries = new BoundMap<CacheKey, any>(cacheSize)
   #dependencies = new Map<TableName, BoundSet<CacheKey>>()
 
-  getKey = (sql: string, bindValues?: Bindable): CacheKey => {
+  getKey = (sql: string, bindValues?: BindValues): CacheKey => {
     if (bindValues == null) {
       return sql as CacheKey
     }

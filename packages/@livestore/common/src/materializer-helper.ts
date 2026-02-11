@@ -1,4 +1,4 @@
-import { isDevEnv, isNil, isReadonlyArray } from '@livestore/utils'
+import { isDevEnv, isReadonlyArray } from '@livestore/utils'
 import { Hash, Option, Schema } from '@livestore/utils/effect'
 
 import type { SqliteDb } from './adapter-types.ts'
@@ -9,8 +9,7 @@ import type { LiveStoreSchema } from './schema/schema.ts'
 import type { QueryBuilder } from './schema/state/sqlite/query-builder/api.ts'
 import { isQueryBuilder } from './schema/state/sqlite/query-builder/api.ts'
 import { getResultSchema } from './schema/state/sqlite/query-builder/impl.ts'
-import type { BindValues } from './sql-queries/sql-queries.ts'
-import type { ParamsObject, PreparedBindValues } from './util.ts'
+import type { BindValues, ParamsObject, PreparedBindValues } from './util.ts'
 import { prepareBindValues } from './util.ts'
 
 export const getExecStatementsFromMaterializer = ({
@@ -38,10 +37,6 @@ export const getExecStatementsFromMaterializer = ({
           args: Schema.decodeUnknownSync(eventDef.schema)(event.encoded!.args),
         }
       : event.decoded
-
-  const eventArgsEncoded = isNil(event.decoded?.args)
-    ? undefined
-    : Schema.encodeUnknownSync(eventDef.schema)(event.decoded!.args)
 
   const query: MaterializerContextQuery = (
     rawQueryOrQueryBuilder:
@@ -73,13 +68,12 @@ export const getExecStatementsFromMaterializer = ({
   )
 
   return statementResults.map((statementRes) => {
-    const statementSql = statementRes.sql
-
-    const bindValues = typeof statementRes === 'string' ? eventArgsEncoded : statementRes.bindValues
-
-    const writeTables = typeof statementRes === 'string' ? undefined : statementRes.writeTables
-
-    return { statementSql, bindValues: prepareBindValues(bindValues ?? {}, statementSql), writeTables }
+    const { sql: statementSql, bindValues, writeTables } = statementRes
+    return {
+      statementSql,
+      bindValues: prepareBindValues(bindValues ?? {}, statementSql),
+      writeTables,
+    }
   })
 }
 
@@ -131,9 +125,9 @@ const fromMaterializerResult = (
   }
   if (isQueryBuilder(materializerResult)) {
     const { query, bindValues, usedTables } = materializerResult.asSql()
-    return [{ sql: query, bindValues: bindValues as BindValues, writeTables: usedTables }]
+    return [{ sql: query, bindValues, writeTables: usedTables }]
   } else if (typeof materializerResult === 'string') {
-    return [{ sql: materializerResult, bindValues: {} as BindValues, writeTables: undefined }]
+    return [{ sql: materializerResult, bindValues: {}, writeTables: undefined }]
   } else {
     return [
       {
