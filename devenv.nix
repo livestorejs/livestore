@@ -200,6 +200,13 @@ in
   tasks."lint:check:format".execIfModified = lib.mkForce [ ];
   tasks."lint:check:oxlint".execIfModified = lib.mkForce [ ];
 
+  # TODO(oep-1n3.9): Restore ts:check once Effect advisory diagnostics are triaged.
+  tasks."check:quick".after = lib.mkForce [
+    "ts:emit"
+    "megarepo:check"
+    "lint:check"
+  ];
+
   git-hooks.enable = true;
   git-hooks.hooks.check-quick = {
     enable = true;

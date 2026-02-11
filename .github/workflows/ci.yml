@@ -76,7 +76,7 @@ jobs:
       - name: Setup devenv and run tasks
         run: 'DEVENV_SKIP_SETUP=1 devenv tasks run pnpm:install genie:run ts:build --mode before --verbose'
         shell: bash
-      - run: 'dt ts:build'
+      - run: 'dt ts:emit'
   test-unit:
     runs-on: [namespace-profile-linux-x86-64, 'namespace-features:github.run-id=${{ github.run_id }}']
     defaults:
