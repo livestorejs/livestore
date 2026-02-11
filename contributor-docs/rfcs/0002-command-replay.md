@@ -225,7 +225,6 @@ Commands are defined with a name, schema, and handler using `defineCommand`. The
 ```ts
 import { defineCommand, Schema } from '@livestore/livestore'
 
-class RoomNotFound extends Schema.TaggedError<RoomNotFound>()('RoomNotFound', {}) {}
 class RoomAtCapacity extends Schema.TaggedError<RoomAtCapacity>()('RoomAtCapacity', {}) {}
 
 export const commands = {
