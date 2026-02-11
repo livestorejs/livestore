@@ -1,3 +1,4 @@
+import { playwrightSuites, syncProviderMatrix } from '../../genie/ci.ts'
 import {
   devenvShellDefaults,
   githubWorkflow,
@@ -6,7 +7,6 @@ import {
   namespaceRunner,
   otelSetupStep,
 } from '../../genie/repo.ts'
-import { playwrightSuites, syncProviderMatrix } from '../../genie/ci.ts'
 
 // =============================================================================
 // Shared Constants
@@ -154,9 +154,7 @@ fi`,
     'test-integration-sync-provider': {
       strategy: {
         matrix: {
-          provider: [
-            ...syncProviderMatrix,
-          ],
+          provider: [...syncProviderMatrix],
         },
       },
       ...namespaceRunnerConfig,

@@ -200,6 +200,13 @@ in
   tasks."lint:check:format".execIfModified = lib.mkForce [ ];
   tasks."lint:check:oxlint".execIfModified = lib.mkForce [ ];
 
+  # TODO(oep-1n3.10): Re-enable genie coverage once non-owned/example paths are handled.
+  tasks."lint:check".after = lib.mkForce [
+    "lint:check:format"
+    "lint:check:oxlint"
+    "lint:check:genie"
+  ];
+
   # TODO(oep-1n3.9): Restore ts:check once Effect advisory diagnostics are triaged.
   tasks."check:quick".after = lib.mkForce [
     "ts:emit"
