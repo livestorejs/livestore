@@ -410,7 +410,7 @@ jobs:
           OTEL_EXPORTER_OTLP_ENDPOINT: 'https://otlp-gateway-prod-us-east-2.grafana.net/otlp'
   publish-snapshot-version:
     if: github.event.pull_request.head.repo.fork != true
-    runs-on: [namespace-profile-linux-x86-64, 'namespace-features:github.run-id=${{ github.run_id }}']
+    runs-on: ubuntu-24.04
     needs: [test-unit, test-integration-node-sync, test-integration-sync-provider, test-integration-playwright]
     defaults:
       run:

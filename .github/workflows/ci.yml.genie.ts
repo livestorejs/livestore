@@ -288,9 +288,14 @@ fi`,
       ],
     },
 
+    /**
+     * Publish job runs on GitHub-hosted runner (not Namespace) because npm OIDC
+     * trusted publishing with --provenance requires sigstore, which only supports
+     * GitHub-hosted runners.
+     */
     'publish-snapshot-version': {
       if: IS_NOT_FORK,
-      ...namespaceRunnerConfig,
+      'runs-on': 'ubuntu-24.04',
       needs: [
         'test-unit',
         'test-integration-node-sync',
@@ -298,11 +303,7 @@ fi`,
         'test-integration-playwright',
       ],
       defaults: devenvShellDefaults,
-      steps: [
-        ...livestoreSetupSteps,
-        // Auth is handled via npm OIDC trusted publisher (requires id-token: write + Namespace federation)
-        { run: `mono release snapshot --git-sha=${GITHUB_SHA}` },
-      ],
+      steps: [...livestoreSetupSteps, { run: `mono release snapshot --git-sha=${GITHUB_SHA}` }],
     },
 
     'build-and-deploy-examples-src': {
