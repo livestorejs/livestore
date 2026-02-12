@@ -512,7 +512,7 @@ jobs:
         run: 'DEVENV_SKIP_SETUP=1 devenv tasks run pnpm:install genie:run ts:build --mode before --verbose'
         shell: bash
       - name: Build docs
-        run: 'dt docs:build:api'
+        run: 'dt --show-output docs:build:api'
       - name: Deploy docs
         if: "${{ github.event_name != 'pull_request' || github.event.pull_request.head.repo.fork != true }}"
         run: 'dt docs:deploy'

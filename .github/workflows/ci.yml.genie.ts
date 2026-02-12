@@ -353,7 +353,7 @@ fi`,
       defaults: devenvShellDefaults,
       steps: [
         ...livestoreSetupSteps,
-        { name: 'Build docs', run: 'dt docs:build:api' },
+        { name: 'Build docs', run: 'dt --show-output docs:build:api' },
         {
           name: 'Deploy docs',
           if: `\${{ github.event_name != 'pull_request' || ${IS_NOT_FORK} }}`,
