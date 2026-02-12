@@ -300,8 +300,21 @@ fi`,
       defaults: devenvShellDefaults,
       steps: [
         ...livestoreSetupSteps,
-        // Note: Using mono directly here because release:snapshot needs --git-sha parameter
-        // NPM auth is handled via OIDC trusted publisher (no token needed)
+        {
+          name: 'Configure npm auth for publish',
+          run: [
+            'echo "npm version: $(npm --version)"',
+            'echo "node version: $(node --version)"',
+            'echo "OIDC URL set: ${ACTIONS_ID_TOKEN_REQUEST_URL:+yes}"',
+            'echo "OIDC token set: ${ACTIONS_ID_TOKEN_REQUEST_TOKEN:+yes}"',
+            // Configure NPM_TOKEN as fallback auth when OIDC is not available
+            'if [ -n "${NPM_TOKEN:-}" ]; then',
+            '  echo "//registry.npmjs.org/:_authToken=${NPM_TOKEN}" > ~/.npmrc',
+            '  echo "Configured npm auth via NPM_TOKEN"',
+            'fi',
+          ].join('\n'),
+          env: { NPM_TOKEN: '${{ secrets.NPM_TOKEN }}' },
+        },
         { run: `mono release snapshot --git-sha=${GITHUB_SHA}` },
       ],
     },
@@ -349,7 +362,67 @@ fi`,
       defaults: devenvShellDefaults,
       steps: [
         ...livestoreSetupSteps,
-        { name: 'Build docs', run: 'dt --show-output docs:build:api' },
+        // TODO(oep-bbd): Restore once root cause is fixed and diagnostics are removed.
+        // { name: 'Build docs', run: 'dt --show-output docs:build:api' },
+        // TODO(oep-bbd): Temporary phase split + hard timeouts for docs CI hang triage.
+        // Remove once root cause is fixed. Bead context: tasks/2026/02/refactor--genie-igor-ci/oep-bbd/problem.md
+        {
+          name: 'Build docs snippets',
+          run: `set -euo pipefail
+mkdir -p tmp/ci-docs
+timeout --signal=TERM --kill-after=2m 20m mono docs snippets build 2>&1 | tee tmp/ci-docs/01-snippets.log`,
+        },
+        // TODO(oep-bbd): Temporary diagnostics step for docs CI hang triage.
+        // Remove once root cause is fixed. Bead context: tasks/2026/02/refactor--genie-igor-ci/oep-bbd/problem.md
+        {
+          name: 'Build docs diagrams',
+          run: `set -euo pipefail
+mkdir -p tmp/ci-docs
+timeout --signal=TERM --kill-after=2m 20m mono docs diagrams build 2>&1 | tee tmp/ci-docs/02-diagrams.log`,
+        },
+        // TODO(oep-bbd): Temporary heartbeat/process logging for Astro build visibility.
+        // Remove once root cause is fixed. Bead context: tasks/2026/02/refactor--genie-igor-ci/oep-bbd/problem.md
+        {
+          name: 'Build Astro docs bundle',
+          run: `set -euo pipefail
+mkdir -p tmp/ci-docs
+(
+  while true; do
+    echo "[docs-heartbeat] $(date -u +%Y-%m-%dT%H:%M:%SZ) astro build still running"
+    pgrep -af 'astro|chromium|chrome_crashpad_handler|node|mono' || true
+    sleep 60
+  done
+) > tmp/ci-docs/03-heartbeat.log 2>&1 &
+HEARTBEAT_PID=$!
+cleanup() {
+  kill "$HEARTBEAT_PID" 2>/dev/null || true
+}
+trap cleanup EXIT
+timeout --signal=TERM --kill-after=2m 20m mono docs build --api-docs --skip-deps 2>&1 | tee tmp/ci-docs/03-astro-build.log`,
+        },
+        // TODO(oep-bbd): Temporary failure-time process dump for docs CI hang triage.
+        // Remove once root cause is fixed. Bead context: tasks/2026/02/refactor--genie-igor-ci/oep-bbd/problem.md
+        {
+          name: 'Collect docs build diagnostics on failure',
+          if: '${{ failure() }}',
+          run: `set -euo pipefail
+mkdir -p tmp/ci-docs
+date -u +%Y-%m-%dT%H:%M:%SZ | tee tmp/ci-docs/failure-timestamp.log
+ps -eo pid,ppid,etime,pcpu,pmem,comm,args > tmp/ci-docs/ps-full.log || true
+pgrep -af 'astro|chromium|chrome_crashpad_handler|node|mono|dt' > tmp/ci-docs/pgrep-build-procs.log || true`,
+        },
+        // TODO(oep-bbd): Temporary artifact upload for docs CI diagnostics.
+        // Remove once root cause is fixed. Bead context: tasks/2026/02/refactor--genie-igor-ci/oep-bbd/problem.md
+        {
+          name: 'Upload docs build logs',
+          if: '${{ always() }}',
+          uses: 'actions/upload-artifact@v4',
+          with: {
+            name: 'docs-build-logs',
+            path: 'tmp/ci-docs/',
+            'retention-days': 14,
+          },
+        },
         {
           name: 'Deploy docs',
           if: `\${{ github.event_name != 'pull_request' || ${IS_NOT_FORK} }}`,
