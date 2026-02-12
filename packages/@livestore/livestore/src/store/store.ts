@@ -937,6 +937,9 @@ export class Store<TSchema extends LiveStoreSchema = LiveStoreSchema.Any, TConte
     const normalized = CommandDef.normalizeHandlerResult(rawResult)
     if (!normalized.ok) {
       const error = normalized.error as TError
+      // TODO: Promise.reject without a .catch() creates an unhandled rejection
+      // when the caller only checks _tag and never accesses .confirmation.
+      // https://github.com/livestorejs/livestore/issues/1016
       return { _tag: 'failed', error, confirmation: Promise.reject(error) }
     }
 
@@ -947,11 +950,10 @@ export class Store<TSchema extends LiveStoreSchema = LiveStoreSchema.Any, TConte
       this.commit(...events)
     }
 
-    // TODO: In full implementation, enqueue command to pending queue
-    // and return a proper confirmation promise that resolves when
-    // events are pushed to sync backend.
-    // For now, we return a promise that resolves immediately.
-
+    // TODO: Enqueue command to pending queue, return a Deferred-backed
+    // confirmation promise that resolves when events are confirmed by the sync
+    // backend or rejects when replay detects a conflict.
+    // https://github.com/livestorejs/livestore/issues/1016
     return {
       _tag: 'pending',
       confirmation: Promise.resolve({ _tag: 'confirmed' }),

@@ -822,7 +822,11 @@ const backgroundBackendPulling = Effect.fn('@livestore/common:LeaderSyncProcesso
         })
 
         if (mergeResult.confirmedEvents.length > 0) {
-          // `mergeResult.confirmedEvents` don't contain the correct sync metadata, so we need to use
+          // TODO: Confirm commands whose produced events are in mergeResult.confirmedEvents
+            // via commandQueue.confirm() and resolve their confirmation Deferreds.
+            // https://github.com/livestorejs/livestore/issues/1016
+
+            // `mergeResult.confirmedEvents` don't contain the correct sync metadata, so we need to use
           // `newEvents` instead which we filter via `mergeResult.confirmedEvents`
           const confirmedNewEvents = newEvents.filter((event) =>
             mergeResult.confirmedEvents.some((confirmedEvent) =>
@@ -841,6 +845,9 @@ const backgroundBackendPulling = Effect.fn('@livestore/common:LeaderSyncProcesso
       yield* materializeEventsBatch({ batchItems: mergeResult.newEvents, deferreds: undefined })
 
       // Replay pending commands after rebase to validate them against the new state
+        // TODO: Use replay result to resolve/reject the confirmation Deferreds
+        // for each command (confirmed for valid, conflict for failed).
+        // https://github.com/livestorejs/livestore/issues/1016
         if (mergeResult._tag === 'rebase') {
           yield* replayPendingCommands({
             schema,
