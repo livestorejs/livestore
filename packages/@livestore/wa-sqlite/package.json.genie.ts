@@ -1,8 +1,8 @@
-import { catalog, packageJson } from '../../../genie/repo.ts'
+import { catalog, livestorePackageDefaults, packageJson } from '../../../genie/repo.ts'
 
 export default packageJson({
   name: '@livestore/wa-sqlite',
-  version: '0.4.0-dev.22',
+  version: livestorePackageDefaults.version,
   type: 'module',
   types: 'src/types/index.d.ts',
   main: 'src/sqlite-api.js',
