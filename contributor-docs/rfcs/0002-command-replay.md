@@ -244,6 +244,11 @@ export const commands = {
 }
 ```
 
+The handler's second argument (`ctx`) provides:
+
+- **`ctx.query`** — synchronous read access to the current state via query builders or raw SQL.
+- **`ctx.phase`** — either `'initial'` (first execution via `store.execute()`) or `'replay'` (re-execution after a sync rebase). Handlers can use this to adapt behaviour, e.g. return alternative events during replay instead of failing (see [During Replay](#during-replay-conflicts)).
+
 Handlers distinguish two kinds of errors:
 
 - **Returned errors** (expected, recoverable): The handler returns a typed error value. These flow through the type system end-to-end, so `store.execute()` returns a fully typed `ExecuteResult<TError>`.
@@ -324,7 +329,18 @@ If a command handler returns a typed error during replay (after state changed du
 - **Same event types with different values**: Structural differences like different IDs or timestamps are not conflicts.
 
 > [!TIP]
-> Instead of returning an error, consider having the handler produce alternative events that model the new outcome (e.g. `GuestWaitlisted` instead of `GuestCheckedIn`). This lets the system adapt to the changed state automatically.
+> Instead of returning an error, consider having the handler produce alternative events that model the new outcome (e.g. `GuestWaitlisted` instead of `GuestCheckedIn`). This lets the system adapt to the changed state automatically. You can use `ctx.phase` to distinguish between initial execution and replay, allowing strict validation during initial execution while adapting gracefully during replay:
+>
+> ```ts
+> handler: (cmd, ctx) => {
+>   const guestCount = ctx.query(tables.roomGuests.where({ roomId: cmd.roomId }).count())
+>   if (guestCount >= room.capacity) {
+>     if (ctx.phase === 'replay') return events.guestWaitlisted({ roomId: cmd.roomId, guestId: cmd.guestId })
+>     return new RoomAtCapacity()
+>   }
+>   return events.guestCheckedIn({ roomId: cmd.roomId, guestId: cmd.guestId })
+> }
+> ```
 
 There are two patterns for handling conflicts:
 
