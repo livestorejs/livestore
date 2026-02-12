@@ -7,19 +7,28 @@ import type { QueryBuilder } from '../state/sqlite/query-builder/mod.ts'
  * Function signature for querying current state within a command handler.
  *
  * Allows handlers to validate preconditions by reading existing data.
- * Can be called with a type-safe QueryBuilder or a raw SQL query.
+ * Can be called with a type-safe query builder or a raw SQL query.
  *
  * @example
  * ```ts
  * handler: (cmd, ctx) => {
+ *   // With query builder
  *   const room = ctx.query(tables.rooms.get(cmd.roomId))
- *   if (!room) return new RoomNotFound()
- *   return [events.guestCheckedIn({ roomId: cmd.roomId, guestId: cmd.guestId })]
+ *   if (!room) throw new Error('Room not found')
+ *
+ *   // With raw SQL
+ *   const guestCount = ctx.query({
+ *     query: 'SELECT COUNT(*) FROM roomGuests WHERE roomId = ?',
+ *     bindValues: [cmd.roomId],
+ *   })
+ *   if (guestCount >= room.capacity) return new RoomAtCapacity()
+ *
+ *   return events.guestCheckedIn({ roomId: cmd.roomId, guestId: cmd.guestId })
  * }
  * ```
  */
 export type CommandHandlerContextQuery = {
-  /** Query with a type-safe QueryBuilder. */
+  /** Query with a type-safe query builder. */
   <TResult>(qb: QueryBuilder<TResult, any, any>): TResult
   /** Query with raw SQL and bind values. */
   (args: { query: string; bindValues: Record<string, unknown> }): ReadonlyArray<unknown>
