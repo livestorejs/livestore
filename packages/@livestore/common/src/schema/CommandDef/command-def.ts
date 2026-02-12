@@ -94,6 +94,7 @@ export type CommandHandlerResult<TError> =
  */
 export type ExtractCommandError<TReturn> = Exclude<TReturn, ReadonlyArray<any> | LiveStoreEvent.Input.Decoded>
 
+// TODO: Replace duck-typing with Symbol TypeId brand (https://github.com/livestorejs/livestore/issues/1015)
 /** Runtime check for the `{ name, args }` shape of a single decoded event. */
 const isEventInput = (value: unknown): value is LiveStoreEvent.Input.Decoded =>
   typeof value === 'object' && value !== null && 'name' in value && 'args' in value
