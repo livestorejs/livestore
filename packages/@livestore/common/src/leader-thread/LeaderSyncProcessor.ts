@@ -1293,8 +1293,9 @@ const replayPendingCommands = ({
         continue
       }
 
-      // Create handler context with query access to current state
+      // Create handler context with query access to current post-rebase state
       const handlerContext: CommandDef.CommandHandlerContext = {
+        phase: 'replay',
         query: <TResult>(query: unknown): TResult => {
           // Execute the query against the current state db
           // The query is expected to be a SQL query or query builder

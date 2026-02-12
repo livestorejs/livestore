@@ -36,10 +36,42 @@ export type CommandHandlerContextQuery = {
 
 /**
  * Context provided to command handlers for validation and state queries.
+ *
+ * Handlers receive this as their second argument. It provides read access to
+ * the current state and indicates **when** the handler is running so handlers
+ * can adapt their behaviour accordingly (e.g. return alternative events during
+ * replay instead of failing with a typed error).
+ *
+ * @example
+ * ```ts
+ * handler: (cmd, ctx) => {
+ *   const room = ctx.query(tables.rooms.get(cmd.roomId))
+ *   const guestCount = ctx.query(tables.roomGuests.where({ roomId: cmd.roomId }).count())
+ *
+ *   if (guestCount >= room.capacity) {
+ *     // During replay, adapt instead of erroring to avoid unnecessary conflicts
+ *     if (ctx.phase === 'replay') return events.guestWaitlisted({ roomId: cmd.roomId, guestId: cmd.guestId })
+ *     return new RoomAtCapacity()
+ *   }
+ *
+ *   return events.guestCheckedIn({ roomId: cmd.roomId, guestId: cmd.guestId })
+ * }
+ * ```
  */
 export interface CommandHandlerContext {
   /** Execute a synchronous query against the current state. */
   readonly query: CommandHandlerContextQuery
+
+  /**
+   * Indicates whether the handler is running during:
+   * - `'initial'` — first execution via `store.execute()`
+   * - `'replay'` — re-execution after a sync rebase changed the underlying state
+   *
+   * Use this to tailor behaviour: e.g. return a typed error during `'initial'` so the
+   * UI can show immediate feedback, but return alternative events during `'replay'`
+   * to avoid unnecessary conflicts.
+   */
+  readonly phase: 'initial' | 'replay'
 }
 
 /**
