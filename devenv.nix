@@ -73,7 +73,12 @@ in
     # Shared task modules from effect-utils
     taskModules.genie
     (taskModules.megarepo { syncAll = !ci; })
-    (taskModules.ts { tsconfigFile = "tsconfig.dev.json"; })
+    (taskModules.ts {
+      tsconfigFile = "tsconfig.dev.json";
+      # TODO(oep-1n3.9): Switch back to patched tsc once Effect diagnostics backlog is addressed.
+      # Using the Nix-provided tsc avoids build-time Effect LS diagnostics while keeping full tsc typechecking.
+      tscBin = "${pkgs.typescript}/bin/tsc";
+    })
     (taskModules.check {
       hasTests = false;
       hasNixCheck = false;
@@ -235,12 +240,7 @@ in
     echo "All config files have .genie.ts sources"
   '';
 
-  # TODO(oep-1n3.9): Restore ts:check once Effect advisory diagnostics are triaged.
-  tasks."check:quick".after = lib.mkForce [
-    "ts:emit"
-    "megarepo:check"
-    "lint:check"
-  ];
+  # NOTE: check:quick is provided by effect-utils taskModules.check.
 
   git-hooks.enable = true;
   git-hooks.hooks.check-quick = {

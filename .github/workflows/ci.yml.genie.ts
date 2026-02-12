@@ -101,8 +101,8 @@ export default githubWorkflow({
     }),
 
     'type-check': standardCIJob({
-      // TODO(oep-1n3.9): Restore ts:build once Effect advisory diagnostics are triaged.
-      steps: [...livestoreSetupSteps, { run: 'dt ts:emit' }],
+      // TODO(oep-1n3.9): Switch back to patched tsc once Effect diagnostics backlog is addressed.
+      steps: [...livestoreSetupSteps, { run: 'dt ts:build' }],
     }),
 
     'test-unit': standardCIJob({
