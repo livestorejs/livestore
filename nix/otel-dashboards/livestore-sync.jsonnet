@@ -4,15 +4,19 @@ local g = import 'g.libsonnet';
 local ls = import 'lib-livestore.libsonnet';
 local at = ls.at;
 
+local syncQuery = '{name=~"' + ls.spans.syncProcessor + '"}';
+
 local y = {
   statsRow: 0,
   stats: 1,
-  recentRow: 5,
-  recent: 6,
-  pushPullRow: 16,
-  pushPull: 17,
-  errorsRow: 27,
-  errors: 28,
+  trendsRow: 5,
+  trends: 6,
+  recentRow: 14,
+  recent: 15,
+  pushPullRow: 25,
+  pushPull: 26,
+  errorsRow: 36,
+  errors: 37,
 };
 
 g.dashboard.new('Livestore Sync')
@@ -28,7 +32,7 @@ g.dashboard.new('Livestore Sync')
   at(
     g.panel.stat.new('Sync operations')
     + g.panel.stat.queryOptions.withTargets([
-      ls.tempoQuery('{name=~"' + ls.spans.syncProcessor + '"}', 'A', 100),
+      ls.tempoQuery(syncQuery, 'A', 100),
     ]),
     0, y.stats, 6, 4,
   ),
@@ -52,12 +56,25 @@ g.dashboard.new('Livestore Sync')
   at(
     g.panel.stat.new('Sync errors')
     + g.panel.stat.queryOptions.withTargets([
-      ls.tempoQuery('{name=~"' + ls.spans.syncProcessor + '" && status.code=error}', 'A', 100),
+      ls.tempoQuery(syncQuery + ' && status=error', 'A', 100),
     ])
     + g.panel.stat.options.withColorMode('value')
     + g.panel.stat.standardOptions.color.withMode('fixed')
     + g.panel.stat.standardOptions.color.withFixedColor('red'),
     18, y.stats, 6, 4,
+  ),
+
+  // Row: Duration trends (regression detection)
+  at(g.panel.row.new('Duration Trends'), 0, y.trendsRow, 24, 1),
+
+  at(
+    ls.durationTrend('Sync processor duration (p50/p95/p99)', syncQuery),
+    0, y.trends, 12, 8,
+  ),
+
+  at(
+    ls.durationTrend('Push/Pull duration', '{name=~"@livestore/common:LeaderSyncProcessor:backend-push.*|@livestore/common:LeaderSyncProcessor:backend-pull.*"}'),
+    12, y.trends, 12, 8,
   ),
 
   // Row: All sync traces
@@ -66,7 +83,7 @@ g.dashboard.new('Livestore Sync')
   at(
     ls.tempoTable(
       'All sync processor traces',
-      '{name=~"' + ls.spans.syncProcessor + '"}',
+      syncQuery,
       'A',
       50,
     ),
@@ -92,7 +109,7 @@ g.dashboard.new('Livestore Sync')
   at(
     ls.tempoTable(
       'Failed sync operations',
-      '{name=~"' + ls.spans.syncProcessor + '" && status.code=error}',
+      syncQuery + ' && status=error',
       'A',
       20,
     ),

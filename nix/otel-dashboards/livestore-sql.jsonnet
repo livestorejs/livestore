@@ -4,15 +4,19 @@ local g = import 'g.libsonnet';
 local ls = import 'lib-livestore.libsonnet';
 local at = ls.at;
 
+local sqlQuery = '{name=~"' + ls.spans.execSql + '"}';
+
 local y = {
   statsRow: 0,
   stats: 1,
-  recentRow: 5,
-  recent: 6,
-  slowRow: 16,
-  slow: 17,
-  errorsRow: 27,
-  errors: 28,
+  trendsRow: 5,
+  trends: 6,
+  recentRow: 14,
+  recent: 15,
+  slowRow: 25,
+  slow: 26,
+  errorsRow: 36,
+  errors: 37,
 };
 
 g.dashboard.new('Livestore SQL')
@@ -28,7 +32,7 @@ g.dashboard.new('Livestore SQL')
   at(
     g.panel.stat.new('SQL operations')
     + g.panel.stat.queryOptions.withTargets([
-      ls.tempoQuery('{name=~"' + ls.spans.execSql + '"}', 'A', 100),
+      ls.tempoQuery(sqlQuery, 'A', 100),
     ]),
     0, y.stats, 6, 4,
   ),
@@ -44,7 +48,7 @@ g.dashboard.new('Livestore SQL')
   at(
     g.panel.stat.new('Slow queries (>100ms)')
     + g.panel.stat.queryOptions.withTargets([
-      ls.tempoQuery('{name=~"' + ls.spans.execSql + '" && duration > 100ms}', 'A', 100),
+      ls.tempoQuery(sqlQuery + ' && duration > 100ms', 'A', 100),
     ])
     + g.panel.stat.options.withColorMode('value')
     + g.panel.stat.standardOptions.color.withMode('fixed')
@@ -55,12 +59,25 @@ g.dashboard.new('Livestore SQL')
   at(
     g.panel.stat.new('SQL errors')
     + g.panel.stat.queryOptions.withTargets([
-      ls.tempoQuery('{name=~"' + ls.spans.execSql + '" && status.code=error}', 'A', 100),
+      ls.tempoQuery(sqlQuery + ' && status=error', 'A', 100),
     ])
     + g.panel.stat.options.withColorMode('value')
     + g.panel.stat.standardOptions.color.withMode('fixed')
     + g.panel.stat.standardOptions.color.withFixedColor('red'),
     18, y.stats, 6, 4,
+  ),
+
+  // Row: Duration trends (regression detection)
+  at(g.panel.row.new('Duration Trends'), 0, y.trendsRow, 24, 1),
+
+  at(
+    ls.durationTrend('SQL duration (p50/p95/p99)', sqlQuery),
+    0, y.trends, 12, 8,
+  ),
+
+  at(
+    ls.rateTrend('SQL throughput', sqlQuery),
+    12, y.trends, 12, 8,
   ),
 
   // Row: Recent SQL traces
@@ -69,7 +86,7 @@ g.dashboard.new('Livestore SQL')
   at(
     ls.tempoTable(
       'All SQL execution traces',
-      '{name=~"' + ls.spans.execSql + '"}',
+      sqlQuery,
       'A',
       50,
     ),
@@ -81,8 +98,8 @@ g.dashboard.new('Livestore SQL')
 
   at(
     ls.tempoTable(
-      'SQL operations exceeding 100ms — these are your performance bottlenecks',
-      '{name=~"' + ls.spans.execSql + '" && duration > 100ms}',
+      'SQL operations exceeding 100ms',
+      sqlQuery + ' && duration > 100ms',
       'A',
       50,
     ),
@@ -95,7 +112,7 @@ g.dashboard.new('Livestore SQL')
   at(
     ls.tempoTable(
       'Failed SQL operations',
-      '{name=~"' + ls.spans.execSql + '" && status.code=error}',
+      sqlQuery + ' && status=error',
       'A',
       20,
     ),

@@ -4,13 +4,17 @@ local g = import 'g.libsonnet';
 local ls = import 'lib-livestore.libsonnet';
 local at = ls.at;
 
+local allSvc = '{resource.service.name=~"' + ls.allServicesRegex + '"}';
+
 local y = {
   statsRow: 0,
   stats: 1,
-  recentRow: 5,
-  recent: 6,
-  errorsRow: 16,
-  errors: 17,
+  trendsRow: 5,
+  trends: 6,
+  recentRow: 14,
+  recent: 15,
+  errorsRow: 25,
+  errors: 26,
 };
 
 g.dashboard.new('Livestore Overview')
@@ -26,7 +30,7 @@ g.dashboard.new('Livestore Overview')
   at(
     g.panel.stat.new('Total traces')
     + g.panel.stat.queryOptions.withTargets([
-      ls.tempoQuery('{resource.service.name=~"' + ls.allServicesRegex + '"}', 'A', 100),
+      ls.tempoQuery(allSvc, 'A', 100),
     ]),
     0, y.stats, 6, 4,
   ),
@@ -34,7 +38,7 @@ g.dashboard.new('Livestore Overview')
   at(
     g.panel.stat.new('Error traces')
     + g.panel.stat.queryOptions.withTargets([
-      ls.tempoQuery('{resource.service.name=~"' + ls.allServicesRegex + '" && status.code=error}', 'A', 100),
+      ls.tempoQuery(allSvc + ' && status=error', 'A', 100),
     ])
     + g.panel.stat.options.withColorMode('value')
     + g.panel.stat.standardOptions.color.withMode('fixed')
@@ -58,13 +62,26 @@ g.dashboard.new('Livestore Overview')
     18, y.stats, 6, 4,
   ),
 
+  // Row: Duration trends (regression detection)
+  at(g.panel.row.new('Duration Trends'), 0, y.trendsRow, 24, 1),
+
+  at(
+    ls.durationTrend('Sync processor duration', '{name=~"' + ls.spans.syncProcessor + '"}'),
+    0, y.trends, 12, 8,
+  ),
+
+  at(
+    ls.durationTrend('Leader thread duration', '{name=~"' + ls.spans.leaderThread + '"}'),
+    12, y.trends, 12, 8,
+  ),
+
   // Row: Recent traces
   at(g.panel.row.new('Recent Traces'), 0, y.recentRow, 24, 1),
 
   at(
     ls.tempoTable(
       'Recent livestore traces (all services)',
-      '{resource.service.name=~"' + ls.allServicesRegex + '"}',
+      allSvc,
       'A',
       50,
     ),
@@ -77,7 +94,7 @@ g.dashboard.new('Livestore Overview')
   at(
     ls.tempoTable(
       'Recent error traces',
-      '{resource.service.name=~"' + ls.allServicesRegex + '" && status.code=error}',
+      allSvc + ' && status=error',
       'A',
       20,
     ),

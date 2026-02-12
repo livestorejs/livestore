@@ -1,18 +1,24 @@
 // Livestore CLI dashboard
 // Traces from the livestore CLI (MCP runtime, import/export, module loading).
+// The CLI runs under the "mono" service name with root span "cli".
 local g = import 'g.libsonnet';
 local ls = import 'lib-livestore.libsonnet';
 local at = ls.at;
 
+// The mono service is the CLI entrypoint
+local monoQuery = '{resource.service.name="' + ls.services.mono + '"}';
+
 local y = {
   statsRow: 0,
   stats: 1,
-  recentRow: 5,
-  recent: 6,
-  mcpRow: 16,
-  mcp: 17,
-  errorsRow: 27,
-  errors: 28,
+  trendsRow: 5,
+  trends: 6,
+  recentRow: 14,
+  recent: 15,
+  mcpRow: 25,
+  mcp: 26,
+  errorsRow: 36,
+  errors: 37,
 };
 
 g.dashboard.new('Livestore CLI')
@@ -28,7 +34,7 @@ g.dashboard.new('Livestore CLI')
   at(
     g.panel.stat.new('CLI traces')
     + g.panel.stat.queryOptions.withTargets([
-      ls.tempoQuery('{resource.service.name="' + ls.services.livestoreCli + '"}', 'A', 100),
+      ls.tempoQuery(monoQuery, 'A', 100),
     ]),
     0, y.stats, 6, 4,
   ),
@@ -52,12 +58,25 @@ g.dashboard.new('Livestore CLI')
   at(
     g.panel.stat.new('CLI errors')
     + g.panel.stat.queryOptions.withTargets([
-      ls.tempoQuery('{resource.service.name="' + ls.services.livestoreCli + '" && status.code=error}', 'A', 100),
+      ls.tempoQuery(monoQuery + ' && status=error', 'A', 100),
     ])
     + g.panel.stat.options.withColorMode('value')
     + g.panel.stat.standardOptions.color.withMode('fixed')
     + g.panel.stat.standardOptions.color.withFixedColor('red'),
     18, y.stats, 6, 4,
+  ),
+
+  // Row: Duration trends (regression detection)
+  at(g.panel.row.new('Duration Trends'), 0, y.trendsRow, 24, 1),
+
+  at(
+    ls.durationTrend('CLI command duration (p50/p95/p99)', monoQuery),
+    0, y.trends, 12, 8,
+  ),
+
+  at(
+    ls.durationTrend('MCP operation duration', '{name=~"mcp-runtime:.*"}'),
+    12, y.trends, 12, 8,
   ),
 
   // Row: Recent CLI traces
@@ -66,7 +85,7 @@ g.dashboard.new('Livestore CLI')
   at(
     ls.tempoTable(
       'Recent CLI operations',
-      '{resource.service.name="' + ls.services.livestoreCli + '"}',
+      monoQuery,
       'A',
       50,
     ),
@@ -92,7 +111,7 @@ g.dashboard.new('Livestore CLI')
   at(
     ls.tempoTable(
       'CLI error traces',
-      '{resource.service.name="' + ls.services.livestoreCli + '" && status.code=error}',
+      monoQuery + ' && status=error',
       'A',
       20,
     ),

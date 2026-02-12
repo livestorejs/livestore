@@ -7,14 +7,16 @@ local at = ls.at;
 local y = {
   statsRow: 0,
   stats: 1,
-  cfRow: 5,
-  cf: 6,
-  electricRow: 16,
-  electric: 17,
-  rpcRow: 27,
-  rpc: 28,
-  errorsRow: 38,
-  errors: 39,
+  trendsRow: 5,
+  trends: 6,
+  cfRow: 14,
+  cf: 15,
+  electricRow: 25,
+  electric: 26,
+  rpcRow: 36,
+  rpc: 37,
+  errorsRow: 47,
+  errors: 48,
 };
 
 g.dashboard.new('Livestore Sync Providers')
@@ -54,12 +56,30 @@ g.dashboard.new('Livestore Sync Providers')
   at(
     g.panel.stat.new('Provider errors')
     + g.panel.stat.queryOptions.withTargets([
-      ls.tempoQuery('{name=~"' + ls.spans.syncCf + '|' + ls.spans.syncElectric + '" && status.code=error}', 'A', 100),
+      ls.tempoQuery('{name=~"' + ls.spans.syncCf + '|' + ls.spans.syncElectric + '" && status=error}', 'A', 100),
     ])
     + g.panel.stat.options.withColorMode('value')
     + g.panel.stat.standardOptions.color.withMode('fixed')
     + g.panel.stat.standardOptions.color.withFixedColor('red'),
     18, y.stats, 6, 4,
+  ),
+
+  // Row: Duration trends (compare providers)
+  at(g.panel.row.new('Duration Trends (Provider Comparison)'), 0, y.trendsRow, 24, 1),
+
+  at(
+    ls.durationTrend('CF DO duration (p50/p95/p99)', '{name=~"@livestore/sync-cf:durable-object:.*"}'),
+    0, y.trends, 8, 8,
+  ),
+
+  at(
+    ls.durationTrend('RPC/HTTP client duration', '{name=~"rpc-sync-client:.*|http-sync-client:.*"}'),
+    8, y.trends, 8, 8,
+  ),
+
+  at(
+    ls.durationTrend('Electric provider duration', '{name=~"' + ls.spans.syncElectric + '"}'),
+    16, y.trends, 8, 8,
   ),
 
   // Row: Cloudflare Durable Object
@@ -107,7 +127,7 @@ g.dashboard.new('Livestore Sync Providers')
   at(
     ls.tempoTable(
       'Failed provider operations',
-      '{name=~"' + ls.spans.syncCf + '|' + ls.spans.syncElectric + '" && status.code=error}',
+      '{name=~"' + ls.spans.syncCf + '|' + ls.spans.syncElectric + '" && status=error}',
       'A',
       20,
     ),

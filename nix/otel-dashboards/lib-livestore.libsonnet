@@ -14,6 +14,26 @@ local lib = import 'lib.libsonnet';
   halfWidth:: lib.halfWidth,
 
   // =========================================================================
+  // Duration trend helpers (p50/p95/p99 for regression detection)
+  // =========================================================================
+
+  // Creates a duration time-series panel with p50/p95/p99 percentile lines.
+  // `baseQuery` should be a TraceQL selector e.g. '{name=~"..."}'
+  durationTrend(title, baseQuery)::
+    lib.durationTimeSeries(title, [
+      lib.tempoMetricsQuery(baseQuery + ' | quantile_over_time(duration, 0.5) by (name)', 'p50'),
+      lib.tempoMetricsQuery(baseQuery + ' | quantile_over_time(duration, 0.95) by (name)', 'p95'),
+      lib.tempoMetricsQuery(baseQuery + ' | quantile_over_time(duration, 0.99) by (name)', 'p99'),
+    ]),
+
+  // Creates a rate time-series panel showing span throughput over time.
+  rateTrend(title, baseQuery)::
+    lib.durationTimeSeries(title, [
+      lib.tempoMetricsQuery(baseQuery + ' | rate() by (name)', 'rate'),
+    ])
+    + { fieldConfig+: { defaults+: { unit: 'ops' } } },
+
+  // =========================================================================
   // Service names
   // =========================================================================
 
@@ -49,13 +69,13 @@ local lib = import 'lib.libsonnet';
     // Adapter-node spans
     adapterNode: '@livestore/adapter-node:.*',
     // CLI spans
-    cli: 'cli:.*|mcp-runtime:.*|module-loader:.*|sync:.*',
+    cli: 'cli|cli:.*|mcp-runtime:.*|module-loader:.*|sync:.*',
     // Sync CF (Cloudflare Durable Object) spans
     syncCf: '@livestore/sync-cf:.*|rpc-sync-client:.*|http-sync-client:.*',
     // Electric sync provider
     syncElectric: 'electric-provider:.*',
     // OPFS browser utilities
-    opfs: '@livestore/utils:Opfs\\..*',
+    opfs: '@livestore/utils:Opfs..*',
     // Store lifecycle
     store: 'createStore.*|LiveStore.*|@livestore/livestore.*',
     // Client session

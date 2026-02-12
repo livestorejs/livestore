@@ -7,14 +7,16 @@ local at = ls.at;
 local y = {
   statsRow: 0,
   stats: 1,
-  adapterRow: 5,
-  adapter: 6,
-  opfsRow: 16,
-  opfs: 17,
-  workerRow: 27,
-  worker: 28,
-  errorsRow: 38,
-  errors: 39,
+  trendsRow: 5,
+  trends: 6,
+  adapterRow: 14,
+  adapter: 15,
+  opfsRow: 25,
+  opfs: 26,
+  workerRow: 36,
+  worker: 37,
+  errorsRow: 47,
+  errors: 48,
 };
 
 g.dashboard.new('Livestore Browser')
@@ -54,12 +56,25 @@ g.dashboard.new('Livestore Browser')
   at(
     g.panel.stat.new('Browser errors')
     + g.panel.stat.queryOptions.withTargets([
-      ls.tempoQuery('{name=~"' + ls.spans.adapterWeb + '|' + ls.spans.opfs + '" && status.code=error}', 'A', 100),
+      ls.tempoQuery('{name=~"' + ls.spans.adapterWeb + '|' + ls.spans.opfs + '" && status=error}', 'A', 100),
     ])
     + g.panel.stat.options.withColorMode('value')
     + g.panel.stat.standardOptions.color.withMode('fixed')
     + g.panel.stat.standardOptions.color.withFixedColor('red'),
     18, y.stats, 6, 4,
+  ),
+
+  // Row: Duration trends
+  at(g.panel.row.new('Duration Trends'), 0, y.trendsRow, 24, 1),
+
+  at(
+    ls.durationTrend('Adapter-web duration (p50/p95/p99)', '{name=~"' + ls.spans.adapterWeb + '"}'),
+    0, y.trends, 12, 8,
+  ),
+
+  at(
+    ls.durationTrend('OPFS duration', '{name=~"' + ls.spans.opfs + '"}'),
+    12, y.trends, 12, 8,
   ),
 
   // Row: Adapter-web traces
@@ -107,7 +122,7 @@ g.dashboard.new('Livestore Browser')
   at(
     ls.tempoTable(
       'Failed browser operations',
-      '{name=~"' + ls.spans.adapterWeb + '|' + ls.spans.opfs + '" && status.code=error}',
+      '{name=~"' + ls.spans.adapterWeb + '|' + ls.spans.opfs + '" && status=error}',
       'A',
       20,
     ),

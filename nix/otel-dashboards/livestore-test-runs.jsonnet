@@ -5,18 +5,21 @@ local ls = import 'lib-livestore.libsonnet';
 local at = ls.at;
 
 local testServicesRegex = 'vitest-runner|playwright|livestore-perf-tests|node-sync-test.*';
+local testQuery = '{resource.service.name=~"' + testServicesRegex + '"}';
 
 local y = {
   statsRow: 0,
   stats: 1,
-  recentRow: 5,
-  recent: 6,
-  playwrightRow: 16,
-  playwright: 17,
-  perfRow: 27,
-  perf: 28,
-  errorsRow: 38,
-  errors: 39,
+  trendsRow: 5,
+  trends: 6,
+  recentRow: 14,
+  recent: 15,
+  playwrightRow: 25,
+  playwright: 26,
+  perfRow: 36,
+  perf: 37,
+  errorsRow: 47,
+  errors: 48,
 };
 
 g.dashboard.new('Livestore Test Runs')
@@ -32,7 +35,7 @@ g.dashboard.new('Livestore Test Runs')
   at(
     g.panel.stat.new('All test traces')
     + g.panel.stat.queryOptions.withTargets([
-      ls.tempoQuery('{resource.service.name=~"' + testServicesRegex + '"}', 'A', 100),
+      ls.tempoQuery(testQuery, 'A', 100),
     ]),
     0, y.stats, 6, 4,
   ),
@@ -56,12 +59,25 @@ g.dashboard.new('Livestore Test Runs')
   at(
     g.panel.stat.new('Test failures')
     + g.panel.stat.queryOptions.withTargets([
-      ls.tempoQuery('{resource.service.name=~"' + testServicesRegex + '" && status.code=error}', 'A', 100),
+      ls.tempoQuery(testQuery + ' && status=error', 'A', 100),
     ])
     + g.panel.stat.options.withColorMode('value')
     + g.panel.stat.standardOptions.color.withMode('fixed')
     + g.panel.stat.standardOptions.color.withFixedColor('red'),
     18, y.stats, 6, 4,
+  ),
+
+  // Row: Duration trends (regression detection)
+  at(g.panel.row.new('Duration Trends'), 0, y.trendsRow, 24, 1),
+
+  at(
+    ls.durationTrend('Vitest run duration (p50/p95/p99)', '{resource.service.name="' + ls.services.vitestRunner + '"}'),
+    0, y.trends, 12, 8,
+  ),
+
+  at(
+    ls.durationTrend('Perf test duration', '{resource.service.name="' + ls.services.perfTests + '"}'),
+    12, y.trends, 12, 8,
   ),
 
   // Row: Recent test traces
@@ -70,7 +86,7 @@ g.dashboard.new('Livestore Test Runs')
   at(
     ls.tempoTable(
       'All recent test traces',
-      '{resource.service.name=~"' + testServicesRegex + '"}',
+      testQuery,
       'A',
       50,
     ),
@@ -109,7 +125,7 @@ g.dashboard.new('Livestore Test Runs')
   at(
     ls.tempoTable(
       'Failed test traces',
-      '{resource.service.name=~"' + testServicesRegex + '" && status.code=error}',
+      testQuery + ' && status=error',
       'A',
       20,
     ),

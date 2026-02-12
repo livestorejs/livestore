@@ -4,17 +4,21 @@ local g = import 'g.libsonnet';
 local ls = import 'lib-livestore.libsonnet';
 local at = ls.at;
 
+local leaderQuery = '{name=~"' + ls.spans.leaderThread + '"}';
+
 local y = {
   statsRow: 0,
   stats: 1,
-  recentRow: 5,
-  recent: 6,
-  eventlogRow: 16,
-  eventlog: 17,
-  materializeRow: 27,
-  materialize: 28,
-  errorsRow: 38,
-  errors: 39,
+  trendsRow: 5,
+  trends: 6,
+  recentRow: 14,
+  recent: 15,
+  eventlogRow: 25,
+  eventlog: 26,
+  materializeRow: 36,
+  materialize: 37,
+  errorsRow: 47,
+  errors: 48,
 };
 
 g.dashboard.new('Livestore Leader Thread')
@@ -30,7 +34,7 @@ g.dashboard.new('Livestore Leader Thread')
   at(
     g.panel.stat.new('Leader thread traces')
     + g.panel.stat.queryOptions.withTargets([
-      ls.tempoQuery('{name=~"' + ls.spans.leaderThread + '"}', 'A', 100),
+      ls.tempoQuery(leaderQuery, 'A', 100),
     ]),
     0, y.stats, 6, 4,
   ),
@@ -54,12 +58,25 @@ g.dashboard.new('Livestore Leader Thread')
   at(
     g.panel.stat.new('Leader errors')
     + g.panel.stat.queryOptions.withTargets([
-      ls.tempoQuery('{name=~"' + ls.spans.leaderThread + '" && status.code=error}', 'A', 100),
+      ls.tempoQuery(leaderQuery + ' && status=error', 'A', 100),
     ])
     + g.panel.stat.options.withColorMode('value')
     + g.panel.stat.standardOptions.color.withMode('fixed')
     + g.panel.stat.standardOptions.color.withFixedColor('red'),
     18, y.stats, 6, 4,
+  ),
+
+  // Row: Duration trends (regression detection)
+  at(g.panel.row.new('Duration Trends'), 0, y.trendsRow, 24, 1),
+
+  at(
+    ls.durationTrend('Leader thread duration (p50/p95/p99)', leaderQuery),
+    0, y.trends, 12, 8,
+  ),
+
+  at(
+    ls.durationTrend('Eventlog duration', '{name=~"' + ls.spans.eventlog + '"}'),
+    12, y.trends, 12, 8,
   ),
 
   // Row: Recent leader thread traces
@@ -68,7 +85,7 @@ g.dashboard.new('Livestore Leader Thread')
   at(
     ls.tempoTable(
       'All leader thread traces',
-      '{name=~"' + ls.spans.leaderThread + '"}',
+      leaderQuery,
       'A',
       50,
     ),
@@ -107,7 +124,7 @@ g.dashboard.new('Livestore Leader Thread')
   at(
     ls.tempoTable(
       'Failed leader thread operations',
-      '{name=~"' + ls.spans.leaderThread + '|' + ls.spans.eventlog + '" && status.code=error}',
+      '{name=~"' + ls.spans.leaderThread + '|' + ls.spans.eventlog + '" && status=error}',
       'A',
       20,
     ),
