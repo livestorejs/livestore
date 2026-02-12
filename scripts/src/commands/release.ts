@@ -133,7 +133,7 @@ export const releaseSnapshotCommand = Cli.Command.make(
 
     /** Use `npm publish` (not pnpm) because pnpm doesn't support OIDC trusted publishing (https://github.com/pnpm/pnpm/issues/9812) */
     const dryRunFlag = dryRun ? '--dry-run' : ''
-    yield* cmd(`pnpm ${filterStr} exec -- npm publish --tag=snapshot --provenance --access=public ${dryRunFlag}`, {
+    yield* cmd(`pnpm ${filterStr} exec -- npm publish --tag=snapshot --access=public ${dryRunFlag}`, {
       shell: true,
     }).pipe(Effect.provide(CurrentWorkingDirectory.fromPath(cwd)))
 
