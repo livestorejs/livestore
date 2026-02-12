@@ -58,7 +58,7 @@ g.dashboard.new('Livestore Leader Thread')
   at(
     g.panel.stat.new('Leader errors')
     + g.panel.stat.queryOptions.withTargets([
-      ls.tempoQuery(leaderQuery + ' && status=error', 'A', 100),
+      ls.tempoQuery(leaderQuery + ' && status.code=error', 'A', 100),
     ])
     + g.panel.stat.options.withColorMode('value')
     + g.panel.stat.standardOptions.color.withMode('fixed')
@@ -124,7 +124,7 @@ g.dashboard.new('Livestore Leader Thread')
   at(
     ls.tempoTable(
       'Failed leader thread operations',
-      '{name=~"' + ls.spans.leaderThread + '|' + ls.spans.eventlog + '" && status=error}',
+      '{name=~"' + ls.spans.leaderThread + '|' + ls.spans.eventlog + '" && status.code=error}',
       'A',
       20,
     ),

@@ -56,7 +56,7 @@ g.dashboard.new('Livestore Sync')
   at(
     g.panel.stat.new('Sync errors')
     + g.panel.stat.queryOptions.withTargets([
-      ls.tempoQuery(syncQuery + ' && status=error', 'A', 100),
+      ls.tempoQuery(syncQuery + ' && status.code=error', 'A', 100),
     ])
     + g.panel.stat.options.withColorMode('value')
     + g.panel.stat.standardOptions.color.withMode('fixed')
@@ -109,7 +109,7 @@ g.dashboard.new('Livestore Sync')
   at(
     ls.tempoTable(
       'Failed sync operations',
-      syncQuery + ' && status=error',
+      syncQuery + ' && status.code=error',
       'A',
       20,
     ),

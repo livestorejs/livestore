@@ -38,7 +38,7 @@ g.dashboard.new('Livestore Overview')
   at(
     g.panel.stat.new('Error traces')
     + g.panel.stat.queryOptions.withTargets([
-      ls.tempoQuery(allSvc + ' && status=error', 'A', 100),
+      ls.tempoQuery(allSvc + ' && status.code=error', 'A', 100),
     ])
     + g.panel.stat.options.withColorMode('value')
     + g.panel.stat.standardOptions.color.withMode('fixed')
@@ -94,7 +94,7 @@ g.dashboard.new('Livestore Overview')
   at(
     ls.tempoTable(
       'Recent error traces',
-      allSvc + ' && status=error',
+      allSvc + ' && status.code=error',
       'A',
       20,
     ),

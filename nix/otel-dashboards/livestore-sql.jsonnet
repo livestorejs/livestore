@@ -59,7 +59,7 @@ g.dashboard.new('Livestore SQL')
   at(
     g.panel.stat.new('SQL errors')
     + g.panel.stat.queryOptions.withTargets([
-      ls.tempoQuery(sqlQuery + ' && status=error', 'A', 100),
+      ls.tempoQuery(sqlQuery + ' && status.code=error', 'A', 100),
     ])
     + g.panel.stat.options.withColorMode('value')
     + g.panel.stat.standardOptions.color.withMode('fixed')
@@ -112,7 +112,7 @@ g.dashboard.new('Livestore SQL')
   at(
     ls.tempoTable(
       'Failed SQL operations',
-      sqlQuery + ' && status=error',
+      sqlQuery + ' && status.code=error',
       'A',
       20,
     ),

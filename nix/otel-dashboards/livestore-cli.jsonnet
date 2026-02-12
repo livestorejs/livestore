@@ -58,7 +58,7 @@ g.dashboard.new('Livestore CLI')
   at(
     g.panel.stat.new('CLI errors')
     + g.panel.stat.queryOptions.withTargets([
-      ls.tempoQuery(monoQuery + ' && status=error', 'A', 100),
+      ls.tempoQuery(monoQuery + ' && status.code=error', 'A', 100),
     ])
     + g.panel.stat.options.withColorMode('value')
     + g.panel.stat.standardOptions.color.withMode('fixed')
@@ -111,7 +111,7 @@ g.dashboard.new('Livestore CLI')
   at(
     ls.tempoTable(
       'CLI error traces',
-      monoQuery + ' && status=error',
+      monoQuery + ' && status.code=error',
       'A',
       20,
     ),

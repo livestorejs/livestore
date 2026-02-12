@@ -56,7 +56,7 @@ g.dashboard.new('Livestore Sync Providers')
   at(
     g.panel.stat.new('Provider errors')
     + g.panel.stat.queryOptions.withTargets([
-      ls.tempoQuery('{name=~"' + ls.spans.syncCf + '|' + ls.spans.syncElectric + '" && status=error}', 'A', 100),
+      ls.tempoQuery('{name=~"' + ls.spans.syncCf + '|' + ls.spans.syncElectric + '" && status.code=error}', 'A', 100),
     ])
     + g.panel.stat.options.withColorMode('value')
     + g.panel.stat.standardOptions.color.withMode('fixed')
@@ -127,7 +127,7 @@ g.dashboard.new('Livestore Sync Providers')
   at(
     ls.tempoTable(
       'Failed provider operations',
-      '{name=~"' + ls.spans.syncCf + '|' + ls.spans.syncElectric + '" && status=error}',
+      '{name=~"' + ls.spans.syncCf + '|' + ls.spans.syncElectric + '" && status.code=error}',
       'A',
       20,
     ),

@@ -15,6 +15,22 @@ let
     bun = pkgs.bun;
   };
 
+  # Pre-compiled Grafana dashboards for livestore OTEL traces
+  livestoreDashboards = effectUtils.lib.buildOtelDashboards {
+    inherit pkgs;
+    src = ./nix/otel-dashboards;
+    dashboardNames = [
+      "livestore-overview"
+      "livestore-cli"
+      "livestore-sync"
+      "livestore-test-runs"
+      "livestore-leader-thread"
+      "livestore-sync-providers"
+      "livestore-browser"
+      "livestore-sql"
+    ];
+  };
+
   # Packages managed by pnpm (shared between pnpm and clean modules)
   # NOTE: Using pnpm temporarily due to bun bugs. Plan to switch back once fixed.
   # See: effect-utils/context/workarounds/bun-issues.md
@@ -68,6 +84,13 @@ in
     })
     # dt command for running devenv tasks
     effectUtils.devenvModules.dt
+    # OTEL observability stack with livestore-specific dashboards
+    (effectUtils.devenvModules.otel {
+      extraDashboards = [{
+        name = "livestore";
+        path = livestoreDashboards;
+      }];
+    })
     # Playwright browser drivers and environment setup
     inputs.playwright.devenvModules.default
     # Shared task modules from effect-utils
@@ -231,10 +254,12 @@ in
     export DEV_SSL_KEY="$WORKSPACE_ROOT/certs/key.pem"
     export DEV_SSL_CERT="$WORKSPACE_ROOT/certs/cert.pem"
 
+    # OTEL_EXPORTER_OTLP_ENDPOINT is set by the otel module's env; fall back for non-otel setups
     export OTEL_EXPORTER_OTLP_ENDPOINT="''${OTEL_EXPORTER_OTLP_ENDPOINT:-http://localhost:4318}"
-    export VITE_OTEL_EXPORTER_OTLP_ENDPOINT="''${VITE_OTEL_EXPORTER_OTLP_ENDPOINT-''${OTEL_EXPORTER_OTLP_ENDPOINT:-http://localhost:4318}}"
+    export VITE_OTEL_EXPORTER_OTLP_ENDPOINT="''${VITE_OTEL_EXPORTER_OTLP_ENDPOINT-''${OTEL_EXPORTER_OTLP_ENDPOINT}}"
 
-    export GRAFANA_ENDPOINT="''${GRAFANA_ENDPOINT:-http://localhost:30003}"
+    # OTEL_GRAFANA_URL is set by the otel module's env; GRAFANA_ENDPOINT aliases it for Vite
+    export GRAFANA_ENDPOINT="''${GRAFANA_ENDPOINT:-''${OTEL_GRAFANA_URL:-http://localhost:30003}}"
     export VITE_GRAFANA_ENDPOINT="''${VITE_GRAFANA_ENDPOINT:-''${GRAFANA_ENDPOINT}}"
 
     if [ -z "''${PUPPETEER_EXECUTABLE_PATH:-}" ]; then

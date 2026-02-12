@@ -56,7 +56,7 @@ g.dashboard.new('Livestore Browser')
   at(
     g.panel.stat.new('Browser errors')
     + g.panel.stat.queryOptions.withTargets([
-      ls.tempoQuery('{name=~"' + ls.spans.adapterWeb + '|' + ls.spans.opfs + '" && status=error}', 'A', 100),
+      ls.tempoQuery('{name=~"' + ls.spans.adapterWeb + '|' + ls.spans.opfs + '" && status.code=error}', 'A', 100),
     ])
     + g.panel.stat.options.withColorMode('value')
     + g.panel.stat.standardOptions.color.withMode('fixed')
@@ -122,7 +122,7 @@ g.dashboard.new('Livestore Browser')
   at(
     ls.tempoTable(
       'Failed browser operations',
-      '{name=~"' + ls.spans.adapterWeb + '|' + ls.spans.opfs + '" && status=error}',
+      '{name=~"' + ls.spans.adapterWeb + '|' + ls.spans.opfs + '" && status.code=error}',
       'A',
       20,
     ),

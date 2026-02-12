@@ -3,11 +3,11 @@
     "devenv": {
       "locked": {
         "dir": "src/modules",
-        "lastModified": 1770744655,
-        "narHash": "sha256-n8U5fggqvdAUJ6Ydd7uEG1aEsZBuRgUJnA++dtsmpYQ=",
+        "lastModified": 1770894856,
+        "narHash": "sha256-ihnUq9is5/JGvyFySAvA900XQ5QerwnJh/r4BNJ2IyY=",
         "owner": "cachix",
         "repo": "devenv",
-        "rev": "d8bd7b74d0604227220074ac0bc934c4efb2b8fb",
+        "rev": "ef99a1f35bb87d3694996e4d2a6bfcc83fd9a98b",
         "type": "github"
       },
       "original": {
@@ -25,11 +25,11 @@
         ]
       },
       "locked": {
-        "lastModified": 1770891978,
-        "narHash": "sha256-cWG7NkfkFkFZnfpW+sGNtUov4RjG091eOkm2TksADJM=",
+        "lastModified": 1770935642,
+        "narHash": "sha256-hBmdDqdaSMO6EwaXKowi4NG0lz8FqfuYNlsFj3cXQls=",
         "owner": "overengineeringstudio",
         "repo": "effect-utils",
-        "rev": "7b9d97a1cd32c360e5ad6434bf1a211581a39646",
+        "rev": "50d31df8c2bbbacf3934fd5c3dcf05e1c475fdc7",
         "type": "github"
       },
       "original": {

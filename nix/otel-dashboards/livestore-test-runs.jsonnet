@@ -59,7 +59,7 @@ g.dashboard.new('Livestore Test Runs')
   at(
     g.panel.stat.new('Test failures')
     + g.panel.stat.queryOptions.withTargets([
-      ls.tempoQuery(testQuery + ' && status=error', 'A', 100),
+      ls.tempoQuery(testQuery + ' && status.code=error', 'A', 100),
     ])
     + g.panel.stat.options.withColorMode('value')
     + g.panel.stat.standardOptions.color.withMode('fixed')
@@ -125,7 +125,7 @@ g.dashboard.new('Livestore Test Runs')
   at(
     ls.tempoTable(
       'Failed test traces',
-      testQuery + ' && status=error',
+      testQuery + ' && status.code=error',
       'A',
       20,
     ),
