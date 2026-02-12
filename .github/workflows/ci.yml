@@ -438,18 +438,6 @@ jobs:
       - name: Setup devenv and run tasks
         run: 'DEVENV_SKIP_SETUP=1 devenv tasks run pnpm:install genie:run ts:build --mode before --verbose'
         shell: bash
-      - name: Configure npm auth for publish
-        run: |
-          echo "npm version: $(npm --version)"
-          echo "node version: $(node --version)"
-          echo "OIDC URL set: ${ACTIONS_ID_TOKEN_REQUEST_URL:+yes}"
-          echo "OIDC token set: ${ACTIONS_ID_TOKEN_REQUEST_TOKEN:+yes}"
-          if [ -n "${NPM_TOKEN:-}" ]; then
-            echo "//registry.npmjs.org/:_authToken=${NPM_TOKEN}" > ~/.npmrc
-            echo "Configured npm auth via NPM_TOKEN"
-          fi
-        env:
-          NPM_TOKEN: '${{ secrets.NPM_TOKEN }}'
       - run: 'mono release snapshot --git-sha=${{ github.sha }}'
   build-and-deploy-examples-src:
     runs-on: [namespace-profile-linux-x86-64, 'namespace-features:github.run-id=${{ github.run_id }}']

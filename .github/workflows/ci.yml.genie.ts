@@ -300,21 +300,7 @@ fi`,
       defaults: devenvShellDefaults,
       steps: [
         ...livestoreSetupSteps,
-        {
-          name: 'Configure npm auth for publish',
-          run: [
-            'echo "npm version: $(npm --version)"',
-            'echo "node version: $(node --version)"',
-            'echo "OIDC URL set: ${ACTIONS_ID_TOKEN_REQUEST_URL:+yes}"',
-            'echo "OIDC token set: ${ACTIONS_ID_TOKEN_REQUEST_TOKEN:+yes}"',
-            // Configure NPM_TOKEN as fallback auth when OIDC is not available
-            'if [ -n "${NPM_TOKEN:-}" ]; then',
-            '  echo "//registry.npmjs.org/:_authToken=${NPM_TOKEN}" > ~/.npmrc',
-            '  echo "Configured npm auth via NPM_TOKEN"',
-            'fi',
-          ].join('\n'),
-          env: { NPM_TOKEN: '${{ secrets.NPM_TOKEN }}' },
-        },
+        // Auth is handled via npm OIDC trusted publisher (requires id-token: write + Namespace federation)
         { run: `mono release snapshot --git-sha=${GITHUB_SHA}` },
       ],
     },
