@@ -45,7 +45,7 @@ export interface CommandHandlerContext {
 /**
  * Result of a command handler invocation.
  *
- * Handlers return either an array of events, a single event, or an error value.
+ * Handlers return either a single event, an array of events, or an error.
  * The runtime distinguishes events from errors via `Array.isArray` and duck-typing
  * (single events have `name` + `args` properties).
  */
