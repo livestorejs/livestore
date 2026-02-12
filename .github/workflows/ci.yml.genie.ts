@@ -300,12 +300,8 @@ fi`,
       defaults: devenvShellDefaults,
       steps: [
         ...livestoreSetupSteps,
-        {
-          name: 'Configure NPM authentication',
-          run: 'echo "//registry.npmjs.org/:_authToken=${NPM_TOKEN}" >> ~/.npmrc',
-          env: { NPM_TOKEN: '${{ secrets.NPM_TOKEN }}' },
-        },
         // Note: Using mono directly here because release:snapshot needs --git-sha parameter
+        // NPM auth is handled via OIDC trusted publisher (no token needed)
         { run: `mono release snapshot --git-sha=${GITHUB_SHA}` },
       ],
     },

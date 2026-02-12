@@ -5,6 +5,10 @@
     "svelte"
   ],
   "license": "Apache-2.0",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/livestorejs/livestore.git"
+  },
   "files": [
     "dist",
     "package.json",

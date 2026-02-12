@@ -229,6 +229,7 @@ export const livestorePackageDefaults = {
   sideEffects: false as const,
   license: 'Apache-2.0' as const,
   files: ['dist', 'package.json', 'src'],
+  repository: { type: 'git', url: 'git+https://github.com/livestorejs/livestore.git' },
 }
 
 /** Common fields for private @local packages (internal tooling) */

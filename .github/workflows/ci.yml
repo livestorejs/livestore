@@ -438,10 +438,6 @@ jobs:
       - name: Setup devenv and run tasks
         run: 'DEVENV_SKIP_SETUP=1 devenv tasks run pnpm:install genie:run ts:build --mode before --verbose'
         shell: bash
-      - name: Configure NPM authentication
-        run: 'echo "//registry.npmjs.org/:_authToken=${NPM_TOKEN}" >> ~/.npmrc'
-        env:
-          NPM_TOKEN: '${{ secrets.NPM_TOKEN }}'
       - run: 'mono release snapshot --git-sha=${{ github.sha }}'
   build-and-deploy-examples-src:
     runs-on: [namespace-profile-linux-x86-64, 'namespace-features:github.run-id=${{ github.run_id }}']

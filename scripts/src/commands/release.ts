@@ -131,7 +131,8 @@ export const releaseSnapshotCommand = Cli.Command.make(
       Effect.provide(CurrentWorkingDirectory.fromPath(cwd)),
     )
 
-    yield* cmd(`pnpm ${filterStr} exec -- pnpm publish --tag=snapshot --no-git-checks ${dryRun ? '--dry-run' : ''}`, {
+    const dryRunFlag = dryRun ? '--dry-run' : ''
+    yield* cmd(`pnpm ${filterStr} exec -- pnpm publish --tag=snapshot --no-git-checks --provenance ${dryRunFlag}`, {
       shell: true,
     }).pipe(Effect.provide(CurrentWorkingDirectory.fromPath(cwd)))
 

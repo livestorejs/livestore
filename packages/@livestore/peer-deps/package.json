@@ -3,6 +3,10 @@
   "version": "0.4.0-dev.22",
   "description": "This is a convenience package that can be installed to satisfy peer dependencies of Livestore packages.",
   "license": "Apache-2.0",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/livestorejs/livestore.git"
+  },
   "files": [
     "package.json"
   ],
