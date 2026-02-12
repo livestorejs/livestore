@@ -842,6 +842,102 @@ export function Factory(Module) {
       return stmts;
   };
 
+  /**
+   * Iterate over SQL statements one at a time (synchronous generator version).
+   * 
+   * This is similar to upstream wa-sqlite's async generator pattern, but uses
+   * a synchronous generator to avoid async overhead. Unlike statements(), this
+   * prepares each statement lazily as you iterate, which allows later statements
+   * to depend on earlier ones (e.g., CREATE TABLE then INSERT INTO that table).
+   * 
+   * @param {number} db - Database handle
+   * @param {string} sql - SQL string containing one or more statements
+   * @param {Object} options - Options object
+   * @param {boolean} options.unscoped - If true, caller is responsible for finalizing statements
+   * @param {number} options.flags - Flags to pass to sqlite3_prepare_v3
+   * @returns {Generator<number>} Generator that yields statement handles
+   * 
+   * @example
+   * for (const stmt of sqlite3._iterStatements(db, sql, { unscoped: true })) {
+   *   sqlite3.step(stmt);
+   *   sqlite3.finalize(stmt);
+   * }
+   * 
+   * @private This is an internal API that may change without notice
+   */
+  sqlite3._iterStatements = function*(db, sql, options = {}) {
+    verifyDatabase(db);
+
+    const prepare = Module.cwrap(
+      'sqlite3_prepare_v3',
+      'number',
+      ['number', 'number', 'number', 'number', 'number', 'number'],
+      { async: false });
+
+    // Encode SQL string to UTF-8.
+    const utf8 = textEncoder.encode(sql);
+
+    // Copy encoded string to WebAssembly memory. The SQLite docs say
+    // zero-termination is a minor optimization so add room for that.
+    // Also add space for the statement handle and SQL tail pointer.
+    const allocSize = utf8.byteLength - (utf8.byteLength % 4) + 12;
+    const pzHead = Module._sqlite3_malloc(allocSize);
+    const pzEnd = pzHead + utf8.byteLength + 1;
+    Module.HEAPU8.set(utf8, pzHead);
+    Module.HEAPU8[pzEnd - 1] = 0;
+
+    // Use extra space for the statement handle and SQL tail pointer.
+    const pStmt = pzHead + allocSize - 8;
+    const pzTail = pzHead + allocSize - 4;
+
+    const onFinally = [];
+    try {
+      // Encode is already done above, add cleanup
+      onFinally.push(() => Module._sqlite3_free(pzHead));
+
+      // Ensure that statement handles are not leaked.
+      let stmt;
+      function maybeFinalize() {
+        if (stmt && !options.unscoped) {
+          sqlite3.finalize(stmt);
+        }
+        stmt = 0;
+      }
+      onFinally.push(maybeFinalize);
+      
+      // Loop over statements, preparing and yielding one at a time.
+      Module.setValue(pzTail, pzHead, '*');
+      do {
+        // Reclaim resources for the previous iteration.
+        maybeFinalize();
+
+        // Call sqlite3_prepare_v3() for the next statement.
+        const zTail = Module.getValue(pzTail, '*');
+        const rc = prepare(
+          db,
+          zTail,
+          pzEnd - zTail,
+          options.flags || 0,
+          pStmt,
+          pzTail);
+
+        if (rc !== SQLite.SQLITE_OK) {
+          check('sqlite3_prepare_v3', rc, db);
+        }
+        
+        stmt = Module.getValue(pStmt, '*');
+        if (stmt) {
+          mapStmtToDB.set(stmt, db);
+          yield stmt;
+        }
+      } while (stmt);
+    } finally {
+      while (onFinally.length) {
+        onFinally.pop()();
+      }
+    }
+  };
+
   sqlite3.step = (function() {
     const fname = 'sqlite3_step';
     const f = Module.cwrap(fname, ...decl('n:n'), { async });

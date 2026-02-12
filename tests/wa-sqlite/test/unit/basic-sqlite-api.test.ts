@@ -161,4 +161,25 @@ describe('Basic SQLite Synchronous API', () => {
 
     expect(rowsChanged).toBe(2)
   })
+
+  it('should execute multiple statements in a single SQL string with multiStatementWithSchemaChanges option', () => {
+    // Execute multiple statements where the first creates a table and the second uses it
+    // This requires multiStatementWithSchemaChanges: true to prepare statements one at a time
+    syncDb.execute(
+      `
+      CREATE TABLE numbers (id INTEGER PRIMARY KEY, value INTEGER);
+      INSERT INTO numbers (value) VALUES (42);
+      INSERT INTO numbers (value) VALUES (100);
+    `,
+      undefined,
+      { multiStatementWithSchemaChanges: true },
+    )
+
+    // Query the table to verify all statements were executed
+    const numbers = syncDb.select<{ id: number; value: number }>('SELECT * FROM numbers ORDER BY id')
+
+    expect(numbers).toHaveLength(2)
+    expect(numbers[0]).toEqual({ id: 1, value: 42 })
+    expect(numbers[1]).toEqual({ id: 2, value: 100 })
+  })
 })
