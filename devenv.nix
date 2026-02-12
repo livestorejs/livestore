@@ -200,12 +200,40 @@ in
   tasks."lint:check:format".execIfModified = lib.mkForce [ ];
   tasks."lint:check:oxlint".execIfModified = lib.mkForce [ ];
 
-  # TODO(oep-1n3.10): Re-enable genie coverage once non-owned/example paths are handled.
-  tasks."lint:check".after = lib.mkForce [
-    "lint:check:format"
-    "lint:check:oxlint"
-    "lint:check:genie"
-  ];
+  # TODO(oep-1n3.10): Revisit coverage exclusions and re-enable for wa-sqlite.
+  # We intentionally keep packages/@livestore/wa-sqlite unmanaged by Genie.
+  tasks."lint:check:genie:coverage".exec = lib.mkForce ''
+    set -euo pipefail
+
+    # Keep scan dirs aligned with lint-oxc genieCoverageDirs.
+    scan_dirs="packages tests docs scripts"
+
+    files=$(
+      {
+        git ls-files -- $scan_dirs
+        git ls-files --others --exclude-standard -- $scan_dirs
+      } | sort -u | while IFS= read -r f; do
+        case "$f" in
+          package.json|tsconfig.json|*/package.json|*/tsconfig.json) echo "$f" ;;
+        esac
+      done
+    )
+
+    missing=$(echo "$files" | while IFS= read -r f; do
+      [ -z "$f" ] && continue
+      case "$f" in
+        packages/@livestore/wa-sqlite/*) continue ;;
+      esac
+      [ -f "$f.genie.ts" ] || echo "$f"
+    done | sort)
+
+    if [ -n "$missing" ]; then
+      echo "Missing .genie.ts sources for:"
+      echo "$missing"
+      exit 1
+    fi
+    echo "All config files have .genie.ts sources"
+  '';
 
   # TODO(oep-1n3.9): Restore ts:check once Effect advisory diagnostics are triaged.
   tasks."check:quick".after = lib.mkForce [
