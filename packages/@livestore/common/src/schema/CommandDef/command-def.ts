@@ -118,27 +118,6 @@ export const normalizeHandlerResult = <TError>(
  * Handlers receive the decoded command arguments and a context with state
  * access. They should validate preconditions and return the events to be
  * committed, or return an error value for typed failure.
- *
- * Parameterized by the command definition type so that the arguments are
- * inferred from the schema, mirroring the {@link import('../EventDef/materializer.ts').Materializer | Materializer} pattern.
- *
- * @example Infallible handler (returns events only)
- * ```ts
- * const handler: CommandHandler<typeof checkInGuest> = (cmd, ctx) => {
- *   return [events.guestCheckedIn({ roomId: cmd.roomId, guestId: cmd.guestId })]
- * }
- * ```
- *
- * @example Fallible handler (may return an error value)
- * ```ts
- * class RoomNotFound { readonly _tag = 'RoomNotFound' as const }
- *
- * const handler: CommandHandler<typeof checkInGuest, RoomNotFound> = (cmd, ctx) => {
- *   const room = ctx.query(tables.rooms.get(cmd.roomId))
- *   if (!room) return new RoomNotFound()
- *   return [events.guestCheckedIn({ roomId: cmd.roomId, guestId: cmd.guestId })]
- * }
- * ```
  */
 export type CommandHandler<
   TCommandDef extends { schema: Schema.Schema<any, any> } = CommandDef.AnyWithoutFn,
@@ -158,41 +137,6 @@ export type CommandHandler<
  * - A handler function that validates and produces events
  *
  * CommandDefs are callable - invoking them creates a command instance suitable for `store.execute()`.
- *
- * @example Infallible command (handler always returns events)
- * ```ts
- * import { defineCommand } from '@livestore/livestore'
- * import { Schema } from 'effect'
- *
- * const checkInGuest = defineCommand({
- *   name: 'CheckInGuest',
- *   schema: Schema.Struct({
- *     roomId: Schema.String,
- *     guestId: Schema.String,
- *   }),
- *   handler: (cmd, ctx) => {
- *     return [events.guestCheckedIn({ roomId: cmd.roomId, guestId: cmd.guestId })]
- *   },
- * })
- * ```
- *
- * @example Fallible command (handler may return a typed error)
- * ```ts
- * class RoomNotFound { readonly _tag = 'RoomNotFound' as const }
- *
- * const checkInGuest = defineCommand({
- *   name: 'CheckInGuest',
- *   schema: Schema.Struct({ roomId: Schema.String, guestId: Schema.String }),
- *   handler: (cmd, ctx) => {
- *     const room = ctx.query(tables.rooms.get(cmd.roomId))
- *     if (!room) return new RoomNotFound()
- *     return [events.guestCheckedIn({ roomId: cmd.roomId, guestId: cmd.guestId })]
- *   },
- * })
- *
- * // result.error is RoomNotFound | CommandExecutionError — fully typed
- * const result = store.execute(checkInGuest({ roomId: 'room-1', guestId: 'guest-1' }))
- * ```
  */
 export type CommandDef<TName extends string, TArgs, TEncoded = TArgs, TError = never> = {
   /** Type discriminator for CommandDef. */
