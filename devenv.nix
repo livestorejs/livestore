@@ -76,6 +76,7 @@ in
     (taskModules.ts {
       tsconfigFile = "tsconfig.dev.json";
       # TODO(oep-1n3.9): Switch back to patched tsc once Effect diagnostics backlog is addressed.
+      # TODO(oep-1n3.15): Prefer patched tsc + disable Effect diagnostics in tsc output (IDE-only).
       # Using the Nix-provided tsc avoids build-time Effect LS diagnostics while keeping full tsc typechecking.
       tscBin = "${pkgs.typescript}/bin/tsc";
     })
@@ -145,6 +146,9 @@ in
         "docs"
         "scripts"
       ];
+      # TODO(oep-1n3.10): Keep wa-sqlite unmanaged by Genie for now.
+      # Effect-utils now supports exclusions for the coverage check.
+      genieCoverageExcludes = [ "packages/@livestore/wa-sqlite/" ];
       tsconfig = "tsconfig.dev.json";
     })
     (taskModules.pnpm { packages = pnpmPackages; })
@@ -204,41 +208,6 @@ in
   # Since oxfmt/oxlint finish in <2s, always running them is faster than broken caching.
   tasks."lint:check:format".execIfModified = lib.mkForce [ ];
   tasks."lint:check:oxlint".execIfModified = lib.mkForce [ ];
-
-  # TODO(oep-1n3.10): Revisit coverage exclusions and re-enable for wa-sqlite.
-  # We intentionally keep packages/@livestore/wa-sqlite unmanaged by Genie.
-  tasks."lint:check:genie:coverage".exec = lib.mkForce ''
-    set -euo pipefail
-
-    # Keep scan dirs aligned with lint-oxc genieCoverageDirs.
-    scan_dirs="packages tests docs scripts"
-
-    files=$(
-      {
-        git ls-files -- $scan_dirs
-        git ls-files --others --exclude-standard -- $scan_dirs
-      } | sort -u | while IFS= read -r f; do
-        case "$f" in
-          package.json|tsconfig.json|*/package.json|*/tsconfig.json) echo "$f" ;;
-        esac
-      done
-    )
-
-    missing=$(echo "$files" | while IFS= read -r f; do
-      [ -z "$f" ] && continue
-      case "$f" in
-        packages/@livestore/wa-sqlite/*) continue ;;
-      esac
-      [ -f "$f.genie.ts" ] || echo "$f"
-    done | sort)
-
-    if [ -n "$missing" ]; then
-      echo "Missing .genie.ts sources for:"
-      echo "$missing"
-      exit 1
-    fi
-    echo "All config files have .genie.ts sources"
-  '';
 
   # NOTE: check:quick is provided by effect-utils taskModules.check.
 
