@@ -114,8 +114,6 @@ export const releaseSnapshotCommand = Cli.Command.make(
 
     const snapshotVersion = versionOption._tag === 'Some' ? versionOption.value : `0.0.0-snapshot-${gitSha}`
     const snapshotPackages = yield* listSnapshotPackages(cwd)
-    const filterStr = '--filter @livestore/* --filter !@livestore/effect-playwright'
-    const releaseEnv = { LIVESTORE_RELEASE_VERSION: snapshotVersion }
 
     /**
      * Regenerate all genie-managed files with snapshot version (writable for pnpm publish).
@@ -132,14 +130,39 @@ export const releaseSnapshotCommand = Cli.Command.make(
     )
 
     /**
-     * Use `npm publish` (not pnpm) because pnpm doesn't support OIDC trusted publishing (https://github.com/pnpm/pnpm/issues/9812).
-     * Serialize with --workspace-concurrency=1 to avoid OIDC token exchange race conditions.
+     * Publish each package individually with Effect-level error handling.
+     * Uses npm (not pnpm) because pnpm doesn't support OIDC trusted publishing (https://github.com/pnpm/pnpm/issues/9812).
+     * Serialized (concurrency: 1) to avoid OIDC token exchange race conditions.
+     * Pre-checks npm registry to skip already-published versions (idempotent reruns).
      */
     const dryRunFlag = dryRun ? '--dry-run' : ''
-    yield* cmd(
-      `pnpm ${filterStr} --workspace-concurrency=1 exec -- npm publish --tag=snapshot --provenance --access=public ${dryRunFlag}`,
-      { shell: true },
-    ).pipe(Effect.provide(CurrentWorkingDirectory.fromPath(cwd)))
+    yield* Effect.forEach(
+      snapshotPackages,
+      (pkg) =>
+        Effect.gen(function* () {
+          const pkgDir = `${cwd}/packages/${pkg}`
+
+          /** Check if this version is already on the registry (handles idempotent reruns) */
+          const alreadyPublished = yield* cmdText(`npm view ${pkg}@${snapshotVersion} version`, {
+            stderr: 'pipe',
+          }).pipe(
+            Effect.provide(CurrentWorkingDirectory.fromPath(pkgDir)),
+            Effect.as(true),
+            Effect.catchAll(() => Effect.succeed(false)),
+          )
+
+          if (alreadyPublished) {
+            yield* Effect.log(`${pkg}@${snapshotVersion} already published, skipping`)
+            return
+          }
+
+          yield* cmd(`npm publish --tag=snapshot --provenance --access=public ${dryRunFlag}`, { shell: true }).pipe(
+            Effect.provide(CurrentWorkingDirectory.fromPath(pkgDir)),
+          )
+          yield* Effect.log(`Published ${pkg}@${snapshotVersion}`)
+        }).pipe(Effect.withSpan('publish-package', { attributes: { pkg } })),
+      { concurrency: 1 },
+    )
 
     /** Restore original dev versions (read-only) and verify files are in sync */
     yield* cmd('genie', { shell: true }).pipe(Effect.provide(CurrentWorkingDirectory.fromPath(cwd)))
