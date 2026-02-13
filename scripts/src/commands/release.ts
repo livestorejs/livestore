@@ -131,11 +131,15 @@ export const releaseSnapshotCommand = Cli.Command.make(
       Effect.provide(CurrentWorkingDirectory.fromPath(cwd)),
     )
 
-    /** Use `npm publish` (not pnpm) because pnpm doesn't support OIDC trusted publishing (https://github.com/pnpm/pnpm/issues/9812) */
+    /**
+     * Use `npm publish` (not pnpm) because pnpm doesn't support OIDC trusted publishing (https://github.com/pnpm/pnpm/issues/9812).
+     * Serialize with --workspace-concurrency=1 to avoid OIDC token exchange race conditions.
+     */
     const dryRunFlag = dryRun ? '--dry-run' : ''
-    yield* cmd(`pnpm ${filterStr} exec -- npm publish --tag=snapshot --provenance --access=public ${dryRunFlag}`, {
-      shell: true,
-    }).pipe(Effect.provide(CurrentWorkingDirectory.fromPath(cwd)))
+    yield* cmd(
+      `pnpm ${filterStr} --workspace-concurrency=1 exec -- npm publish --tag=snapshot --provenance --access=public ${dryRunFlag}`,
+      { shell: true },
+    ).pipe(Effect.provide(CurrentWorkingDirectory.fromPath(cwd)))
 
     /** Restore original dev versions (read-only) and verify files are in sync */
     yield* cmd('genie', { shell: true }).pipe(Effect.provide(CurrentWorkingDirectory.fromPath(cwd)))
