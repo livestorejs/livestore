@@ -86,10 +86,12 @@ in
     effectUtils.devenvModules.dt
     # OTEL observability stack with livestore-specific dashboards
     (effectUtils.devenvModules.otel {
-      extraDashboards = [{
-        name = "livestore";
-        path = livestoreDashboards;
-      }];
+      extraDashboards = [
+        {
+          name = "livestore";
+          path = livestoreDashboards;
+        }
+      ];
     })
     # Playwright browser drivers and environment setup
     inputs.playwright.devenvModules.default
@@ -245,22 +247,7 @@ in
   };
 
   # Wire beads:daemon:ensure directly to shell entry
-  tasks."devenv:git-hooks:install".after = lib.mkForce [ "setup:pre:hooks" ];
   tasks."devenv:enterShell".after = lib.mkAfter [ "beads:daemon:ensure" ];
-  tasks."setup:pre:hooks" = {
-    description = "Normalize git core.hooksPath before any task setup that may install hooks";
-    exec = ''
-      if command -v git >/dev/null 2>&1; then
-        hooksPath="$(git config --global --get core.hooksPath 2>/dev/null || true)"
-        if [ -n "''${hooksPath:-}" ] \
-          && [ "''${hooksPath#/nix/store/}" != "''${hooksPath}" ] \
-          && [ "''${hooksPath##*/}" = "git-hooks" ]; then
-          git config --global --unset-all core.hooksPath
-        fi
-        unset hooksPath
-      fi
-    '';
-  };
   enterShell = ''
     sp="$(git rev-parse --show-superproject-working-tree 2>/dev/null)";
     export WORKSPACE_ROOT="$PWD"
