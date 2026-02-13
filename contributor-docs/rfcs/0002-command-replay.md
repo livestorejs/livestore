@@ -121,11 +121,11 @@ Any solution must satisfy these requirements:
 
 ## Proposed Solution
 
-The solution introduces [**commands**](#command) as first-class citizens in LiveStore. Instead of committing events directly, the app executes commands through a [**command handler**](#command-handler). Commands encode intentions that can be re-evaluated; command handlers validate them against the current state and produce events.
+The solution introduces [**commands**](#command) as first-class citizens in LiveStore. Instead of committing events directly, the app can perform state changes with commands: declarative intentions that a [**command handler**](#command-handler) validates against the current state to produce events.
 
-The key insight is that commands are replayable. When the underlying state changes (due to sync), the client can replay the same command against the new state, potentially producing different events, rejecting the command, or succeeding as before. This preserves correctness while still enabling optimistic UI.
+Because commands pair the original input (intent) with an executable handler that validates against the current state, they are replayable. When pulled events change the underlying state, the client re-executes each pending command's handler against the new state. A replayed command may produce different events, produce no events (rejection), or succeed exactly as before. In every case, the resulting events are consistent with the state they were validated against.
 
-Commands live entirely on the client—the sync backend continues to sync events, not commands. This keeps the sync backend simple (just event processing) while giving clients the ability to re-validate their pending changes against newly-pulled state.
+Commands live entirely on the client. The sync backend continues to exchange events, not commands. This preserves the backend's simplicity (it only needs to process and order events) while giving clients the ability to re-validate pending changes whenever the confirmed state advances.
 
 ### Architecture
 
