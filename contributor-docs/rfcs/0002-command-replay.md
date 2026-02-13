@@ -45,7 +45,7 @@ A client must have pulled the latest remote events before being able to push eve
 
 ## Problem
 
-> **Problem Statement**: Rebasing re-parents events without re-checking whether the conditions that justified their creation still hold, resulting in potentially invalid states
+> **Problem Statement**: Rebasing re-parents events without re-checking whether the conditions that justified their creation still hold, resulting in potentially invalid states.
 
 When a client produces an event, it does so based on the current local state. The event represents a valid state transition *given that specific context*. For example, a `MoneyWithdrawn($100)` event is only committed if the balance contains sufficient funds.
 
