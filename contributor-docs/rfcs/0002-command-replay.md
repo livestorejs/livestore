@@ -45,34 +45,34 @@ A client must have pulled the latest remote events before being able to push eve
 
 ## Problem
 
-> **Problem Statement**: Rebasing re-parents events without re-checking whether the conditions that justified their creation still hold, resulting in potentially invalid states.
+> **Problem Statement**: Rebasing re-parents events without re-validating whether the assumptions that justified their creation still hold, resulting in potentially invalid states.
 
-When a client produces an event, it does so based on the current local state. The event represents a valid state transition *given that specific context*. For example, a `MoneyWithdrawn($100)` event is only committed if the balance contains sufficient funds.
+When a client commits an event, it does so based on its current local state (the state DB). This event represents a valid state transition *given that specific context*. For example, a `MoneyWithdrawn($100)` event is only committed if the balance contains sufficient funds.
 
 Rebasing changes the **base state** against which an event will be applied. An event that was valid in Context A may be invalid, nonsensical, or catastrophically wrong in Context B.
 
-Rebase is only safe when at least one of these holds:
-- The operation is **context-free** (commutative/CRDT-like)
-- The event carries explicit **preconditions** that can be checked against the new state
-- We accept that some "events" will become invalid and must be **rejected or compensated**
+Event rebasing gives us convergence without correctness.
 
-Without one of these, rebase gives you convergence without correctness.
+### What Happens When an Event Becomes Invalid During Rebasing?
 
-### Current Behavior
+The outcome depends on whether we have invariant validation in place:
 
-When a rebased event becomes invalid against the new base state, LiveStore has no mechanism to handle it gracefully. Whether constraints are enforced through SQLite (e.g., `FOREIGN KEY`, `UNIQUE`, `CHECK`) or manually in materializers, the outcome is the same: the materializer throws an error (`LiveStore.MaterializeError`) and the store **shuts down**.
+**Without validation**: The invalid event is silently materialized into the state DB. No error is raised; the **corruption** goes unnoticed. The state DB now contains data that no valid sequence of user actions could have produced (e.g., orphaned references, violated invariants, impossible counts) and subsequent events continue to build on this broken foundation.
 
-If we try to refresh the page, the store fails to boot with an error like `During boot the backend head (6) should never be greater than the local head (5)`. The only recovery is to clear local storage, losing all non-pushed data.
+**With validation**: Whether enforced with SQLite constraints (e.g., `FOREIGN KEY`, `UNIQUE`, `CHECK`, `NOT NULL`...) or with explicit validation within materializers (e.g., `if (guestCount >= 2) throw new Error('Room at capacity')`), the outcome is the same: the materializer throws an error (`LiveStore.MaterializeError`) and the store **shuts down**. Refreshing the page fails with an error like `During boot the backend head (6) should never be greater than the local head (5)`. The only recovery is to clear local storage, losing all non-pushed data.
 
-### Why This Matters
+Neither outcome is acceptable: silent corruption erodes data integrity, while a hard crash erodes availability.
+
+### Why This Matters?
 
 Invariant violations have compounding consequences:
 
-- **Corrupted state**: The state DB ends up in configurations that no valid sequence of operations could produce—foreign key violations, impossible counts, orphaned records.
-- **Cascading corruption**: Invalid events cause further invalid events. A comment on a deleted task gets liked; the like references an orphaned comment.
-- **Audit trail pollution**: The eventlog contains events valid only in contexts that no longer exist. Replaying produces different states than clients experienced.
-- **Difficult recovery**: Append-only logs can't simply delete bad events. Remediation requires compensating events or manual intervention.
-- **Eroded trust**: Users see actions succeed locally, then discover after sync that reality changed. The offline-first promise breaks down.
+- **Corrupted state**: Without invariant validation, invalid events are materialized without any error. The state DB drifts into configurations that no valid sequence of user actions could produce with no signal that anything went wrong.
+- **Cascading corruption**: Invalid events cause further invalid events. A guest is checked into a room already at capacity; a room service order is placed for that guest, and a minibar charge is added to their stay. Each event compounds the original violation.
+- **Difficult recovery**: Once invalid events are materialized and subsequent events build on the resulting state, determining which events are still valid and which need correction becomes increasingly difficult.
+- **Audit trail pollution**: The eventlog contains events that were valid in contexts that no longer exist after rebase. Re-materializing produces different states than clients actually experienced. For domains where "what did you know and when" is legally or operationally significant (healthcare, finance, compliance), this can be a serious issue.
+- **Eroded trust**: Users see actions succeed locally, then discover after sync that their work was silently invalidated. The gap between what the user experienced and what the system reflects undermines confidence in offline-first behavior.
+- **Hard crash with data loss**: With invariant validation, the store crashes and cannot be restarted. The only recovery is to clear local storage, losing all non-pushed data.
 
 ### Concrete Scenarios
 
@@ -111,20 +111,21 @@ Invariant violations have compounding consequences:
 
 ## Requirements
 
-Any solution must satisfy these constraints:
+Any solution must satisfy these requirements:
 
-- Clients must be able to perform changes while offline (optimistic UI).
-- Clients can enforce invariants locally based on their view of the event log.
-- The state DB must remain strongly consistent with the eventlog within a client session; appending events and updating the state DB must be atomic.
-  - This is required because we use the state DB as the aggregate's state.
+- Clients must be able to perform changes while offline, whether authoritative or speculative. 
+- Clients must be able to enforce invariants locally based on their view of the event log.
+- Invariant validation must be flexible to support the full range of app-specific use cases.
+- Invariant violations must be able to get resolved gracefully, either automatically or with user intervention.
+- Resolution mechanisms should allow for application-specific logic to handle complex scenarios.
 
 ## Proposed Solution
 
 The solution introduces [**commands**](#command) as first-class citizens in LiveStore. Instead of committing events directly, the app executes commands through a [**command handler**](#command-handler). Commands encode intentions that can be re-evaluated; command handlers validate them against the current state and produce events.
 
-The key insight is that commands are re-executable. When the underlying state changes (due to sync), the client can re-evaluate the same command against the new state, potentially producing different events, rejecting the command, or succeeding as before. This preserves correctness while still enabling optimistic UI.
+The key insight is that commands are replayable. When the underlying state changes (due to sync), the client can replay the same command against the new state, potentially producing different events, rejecting the command, or succeeding as before. This preserves correctness while still enabling optimistic UI.
 
-Commands live entirely on the client—the sync backend continues to sync events, not commands. This keeps the sync backend simple (just event processing) while giving clients the ability to re-validate their pending work against newly-pulled state.
+Commands live entirely on the client—the sync backend continues to sync events, not commands. This keeps the sync backend simple (just event processing) while giving clients the ability to re-validate their pending changes against newly-pulled state.
 
 ### Architecture
 
@@ -247,7 +248,7 @@ export const commands = {
 The handler's second argument (`ctx`) provides:
 
 - **`ctx.query`** — synchronous read access to the current state via query builders or raw SQL.
-- **`ctx.phase`** — either `'initial'` (first execution via `store.execute()`) or `'replay'` (re-execution after a sync rebase). Handlers can use this to adapt behaviour, e.g. return alternative events during replay instead of failing (see [During Replay](#during-replay-conflicts)).
+- **`ctx.phase`** — either `'initial'` (first execution via `store.execute()`) or `'replay'` (re-execution during reconciliation). Handlers can use this to adapt behaviour, e.g. return alternative events during replay instead of failing (see [During Replay](#during-replay-conflicts)).
 
 Handlers distinguish two kinds of errors:
 
@@ -377,7 +378,7 @@ if (confirmation._tag === 'conflict' && confirmation.error._tag === 'RoomAtCapac
 
 #### Duplicated Constraint Logic
 
-Command handlers must re-implement checks that databases traditionally enforce declaratively (FOREIGN KEY, UNIQUE, CHECK). This increases boilerplate and risks divergence between handler validation and schema definitions.
+Command handlers must re-implement validation that databases traditionally enforce declaratively (`FOREIGN KEY`, `UNIQUE`, `CHECK`). This increases boilerplate and risks divergence between handler validation and schema definitions.
 
 This duplication exists because DB constraints currently can only reject—they cannot:
 
@@ -388,11 +389,11 @@ This duplication exists because DB constraints currently can only reject—they 
 
 ##### Potential Mitigations
 
-**Schema introspection.** The framework could introspect table definitions (foreign keys, unique constraints, check constraints) and auto-generate basic validation checks in handlers, leaving developers to write only complex business rules.
+**Schema introspection.** The framework could introspect table definitions (foreign keys, unique constraints, check constraints) and auto-generate basic validation in handlers, leaving developers to write only complex validation logic.
 
 **Constraints as safety net.** DB constraints remain in place but serve as a backstop for handler bugs rather than primary validation. Commands handle the common cases with rich, typed errors. If a constraint fires unexpectedly (handler bug, schema drift), the system logs an error for developers rather than relying on constraints for business logic.
 
-**Graceful constraint failure recovery.** Instead of shutting down when a constraint fails during rebase, the system could mark the event as "conflicted" and continue processing. This approach preserves the event for audit purposes, avoids catastrophic store failure, and allows app-specific resolution. However, it shares limitations with Alternative A: constraints are coarse-grained (can't distinguish "task deleted" from "task never existed") and conflict handlers still require domain logic. It works best as a fallback behind command validation—catching handler bugs rather than serving as the primary validation mechanism.
+**Graceful constraint failure recovery.** Instead of shutting down when a constraint fails during reconciliation, the system could mark the event as "conflicted" and continue processing. This approach preserves the event for audit purposes, avoids catastrophic store failure, and allows app-specific resolution. However, it shares limitations with Alternative A: constraints are coarse-grained (can't distinguish "task deleted" from "task never existed") and conflict handlers still require domain logic. It works best as a fallback behind command validation—catching handler bugs rather than serving as the primary validation mechanism.
 
 #### Offline Work May Change on Sync
 
@@ -407,7 +408,7 @@ Since commands execute only on the client, invariants can only be enforced based
 This means certain invariants cannot be enforced through commands alone:
 
 - **Global uniqueness**: Is this username taken by another user? The client only sees its own data.
-- **Cross-aggregate constraints**: Does this booking conflict with another user's reservation?
+- **Cross-aggregate invariants**: Does this booking conflict with another user's reservation?
 - **Server-authoritative permissions**: Did the user's role change on the server?
 
 However, server-side validation can be achieved within this model using a **Request/Response Events** pattern or **Compensating Events**:
@@ -427,16 +428,16 @@ Pending events may be discarded during reconciliation and replaced with the even
 
 ## Alternatives Considered
 
-### Alternative A: Invariant Assertions in Materializers
+### Alternative A: Invariant Validation in Materializers
 
-In this approach, materializers would include assertion logic that validates events against the current state before or during materialization. When an assertion fails (e.g., during rebase), the materializer would take a configured action rather than crashing.
+In this approach, materializers would include validation logic that checks events against the current state before or during materialization. When validation fails (e.g., during rebase), the materializer would take a configured action rather than crashing.
 
 ```typescript
 State.SQLite.materializers(events, {
   'v1.CommentCreated': ({ taskId, commentId, text }, state) => {
     const task = state.query(tables.tasks.where({ id: taskId }).first())
     if (!task) {
-      // Assertion failed - task doesn't exist
+      // Validation failed - task doesn't exist
       return MaterializeResult.skip({ reason: 'Task not found', taskId })
     }
     return tables.comments.insert({ id: commentId, taskId, text })
@@ -469,11 +470,11 @@ type MaterializeResult =
 
 2. **Doesn't prevent log pollution.** Invalid events still get appended to the eventlog. The "fix" happens only at the read side. Replaying the log on a new client or rebuilding projections will encounter the same invalid events.
 
-3. **Materializers become validators.** Materializers are supposed to be simple projectors—pure functions that transform events into state changes. Adding validation logic bloats them with business rules that should live elsewhere (command handlers/deciders).
+3. **Materializers become validators.** Materializers are supposed to be simple projectors—pure functions that transform events into state changes. Adding validation logic bloats them with invariant logic that should live elsewhere (command handlers/deciders).
 
-4. **Duplicate validation.** You'd need validation both when committing events (to catch local errors) and in materializers (to catch rebase errors). This duplication is error-prone and increases maintenance burden.
+4. **Duplicate validation.** You'd need validation both when committing events (to catch local errors) and in materializers (to catch reconciliation errors). This duplication is error-prone and increases maintenance burden.
 
-5. **Ambiguous failure semantics.** When a materializer assertion fails, what does it mean? A bug in the materializer? An invalid event? A temporary state issue? The system can't distinguish between these cases, making debugging difficult.
+5. **Ambiguous failure semantics.** When materializer validation fails, what does it mean? A bug in the materializer? An invalid event? A temporary state issue? The system can't distinguish between these cases, making debugging difficult.
 
 6. **No re-evaluation opportunity.** Unlike commands, events don't carry enough information to re-evaluate the original intent. If `CommentCreated` fails because the task was deleted, what should happen? Skip the comment? Create the task? The event itself doesn't encode what the user wanted—only what action was taken given a specific (now outdated) context.
 
@@ -576,9 +577,9 @@ In this approach, commands are pushed to the server instead of events. The serve
 
 **Choose when:**
 
-- **Server-side invariants are required**: Permissions, global uniqueness across users, rate limits, cross-aggregate constraints
+- **Server-side invariants are required**: Permissions, global uniqueness across users, rate limits, cross-aggregate invariants
 - **You don't trust the client**: Server has final authority over what events are produced
-- **Regulatory requirements for server validation**: Some domains require server-side verification of all state changes
+- **Regulatory requirements for server validation**: Some domains require server-side validation of all state changes
 
 **Trade-offs:**
 
@@ -637,9 +638,9 @@ This provides flexibility at the cost of increased complexity. Each command woul
 - Should we introduce a causation ID?
 - What happens when the write-side projection (state DB) errors?
 - Should there be client-only commands?
-  - **Likely no, at least not in the first version.** The primary benefit of commands is re-validation during sync and reconciliation. Client-only commands skip the sync cycle entirely, so that value proposition doesn't apply. For client-only state mutations, a simple function that validates and calls `store.commit(clientDocTable.set(...))` achieves the same outcome with less ceremony. The potential benefits (devtools visibility, middleware reuse, uniform programming model) don't justify the added API surface until there's demonstrated demand. The existing `clientDocument` API already handles the common case of local UI state.
+  - **Likely no, at least not in the first version.** The primary benefit of commands is re-validation of invariants during reconciliation. Client-only commands skip the sync cycle entirely, so that value proposition doesn't apply. For client-only state mutations, a simple function that validates and calls `store.commit(clientDocTable.set(...))` achieves the same outcome with less ceremony. The potential benefits (devtools visibility, middleware reuse, uniform programming model) don't justify the added API surface until there's demonstrated demand. The existing `clientDocument` API already handles the common case of local UI state.
 - Should we still allow store to commit events directly?
-  - **No.** Commands should be the only path for producing events. Routing all synced state changes through handlers encourages validation checks (most events reference entities that may not exist after rebase) and supports evolution—when invariants are added later, the command path is already in place.
+  - **No.** Commands should be the only path for producing events. Routing all synced state changes through handlers encourages validation (most events reference entities that may not exist after reconciliation) and supports evolution—when invariants are added later, the command path is already in place.
 - Should we support server-side command execution (Alternative E) as a built-in option?
   - This would allow apps to opt into server authority for specific commands while keeping local execution as the default. The infrastructure cost is significant (server must run command handlers, sync protocol changes), so this may be better as a future enhancement once there's demonstrated demand.
 
@@ -708,15 +709,11 @@ An orchestration component that receives a command, loads the current state, inv
 
 #### Event Decider
 
-Event deciders are responsible for handling commands, determining which events to generate by encapsulating business rules and state, and applying those rules to the current state. They contain no side effects or infrastructure concerns. They ensure that commands result in valid and consistent state transitions.
-
-#### Business Rules
-
-Business rules are specific guidelines or constraints that dictate how data can be created, stored, and modified within a system. These rules are essential for ensuring that all changes to the system's state are valid and consistent with the domain logic. In an event-sourced system, business rules are applied to ensure that only valid state changes occur.
+Event deciders are responsible for handling commands, determining which events to generate by encapsulating invariants and state, and applying them to the current state. They contain no side effects or infrastructure concerns. They ensure that commands result in valid and consistent state transitions.
 
 #### Invariant
 
-Invariants are conditions that must always hold true for the system to be considered in a valid state. They are critical for maintaining the integrity of an event-sourced system.
+A property that must always hold true for the system to be considered in a valid state (e.g., "a room's guest count never exceeds its capacity"). Invariants dictate how data can be created, stored, and modified, and are critical for maintaining the integrity of an event-sourced system.
 
 ### B. Similar Technologies
 
