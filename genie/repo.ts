@@ -499,7 +499,17 @@ export const devenvShellDefaults = {
  * via `devenv tasks run`.
  */
 export const livestoreSetupStepsAfterCheckout = [
-  { name: 'Install Nix', uses: 'cachix/install-nix-action@v31' },
+  {
+    name: 'Install Nix',
+    uses: 'cachix/install-nix-action@v31',
+    with: {
+      // Ensure cache.nixos.org is available as a fallback substituter.
+      // Without this, low-level store paths can fail with "path is not valid"
+      // when a runner cache is stale or incomplete.
+      extra_nix_config:
+        'extra-substituters = https://cache.nixos.org\nextra-trusted-public-keys = cache.nixos.org-1:6NCHdD59X431o0gWypbMrAURkbJ16ZPMQFGspcDShjY=',
+    },
+  },
   {
     name: 'Enable Cachix cache',
     uses: 'cachix/cachix-action@v16',
@@ -507,7 +517,8 @@ export const livestoreSetupStepsAfterCheckout = [
   },
   {
     name: 'Install megarepo CLI',
-    run: 'nix profile install github:overengineeringstudio/effect-utils#megarepo',
+    // Install from devenv.lock pinned effect-utils revision to avoid version drift.
+    run: `nix profile install github:overengineeringstudio/effect-utils/$(jq -r '.nodes["effect-utils"].locked.rev' devenv.lock)#megarepo`,
     shell: 'bash',
   },
   {
@@ -517,17 +528,16 @@ export const livestoreSetupStepsAfterCheckout = [
   },
   {
     name: 'Install devenv',
-    // Add nix profile to PATH for subsequent steps that use devenv shell
-    run: `nix profile install nixpkgs#devenv
+    // Install devenv from devenv.lock to match local/devshell behavior.
+    run: `nix profile install github:cachix/devenv/$(jq -r ".nodes.devenv.locked.rev" devenv.lock)
 echo "$HOME/.nix-profile/bin" >> $GITHUB_PATH`,
     shell: 'bash',
   },
   {
-    // Warmup Nix shell and run setup tasks explicitly
-    // DEVENV_SKIP_SETUP=1 prevents enterShell from running nested devenv processes
-    // which fail in GitHub Actions due to temp script file access issues
-    name: 'Setup devenv and run tasks',
-    run: `DEVENV_SKIP_SETUP=1 devenv tasks run pnpm:install genie:run ts:build --mode before --verbose`,
+    name: 'Repair Nix store',
+    // Namespace runners may have stale/invalid paths in their bundled nix store cache.
+    // This removes invalid DB entries so nix re-fetches paths from substituters on demand.
+    run: 'nix-store --verify --repair 2>&1 | tail -5 || true',
     shell: 'bash',
   },
 ] as const

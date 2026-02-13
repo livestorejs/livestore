@@ -17,6 +17,8 @@ on:
 env:
   GITHUB_BRANCH_NAME: '${{ github.head_ref || github.ref_name }}'
   CACHIX_AUTH_TOKEN: '${{ secrets.CACHIX_AUTH_TOKEN }}'
+  FORCE_SETUP: '1'
+  CI: 'true'
 
 jobs:
   lint:
@@ -28,24 +30,28 @@ jobs:
       - uses: actions/checkout@v4
       - name: Install Nix
         uses: cachix/install-nix-action@v31
+        with:
+          extra_nix_config: |
+            extra-substituters = https://cache.nixos.org
+            extra-trusted-public-keys = cache.nixos.org-1:6NCHdD59X431o0gWypbMrAURkbJ16ZPMQFGspcDShjY=
       - name: Enable Cachix cache
         uses: cachix/cachix-action@v16
         with:
           name: livestore
           authToken: '${{ env.CACHIX_AUTH_TOKEN }}'
       - name: Install megarepo CLI
-        run: 'nix profile install github:overengineeringstudio/effect-utils#megarepo'
+        run: 'nix profile install github:overengineeringstudio/effect-utils/$(jq -r ''.nodes["effect-utils"].locked.rev'' devenv.lock)#megarepo'
         shell: bash
       - name: Sync megarepo dependencies
         run: mr sync --frozen --verbose
         shell: bash
       - name: Install devenv
         run: |
-          nix profile install nixpkgs#devenv
+          nix profile install github:cachix/devenv/$(jq -r ".nodes.devenv.locked.rev" devenv.lock)
           echo "$HOME/.nix-profile/bin" >> $GITHUB_PATH
         shell: bash
-      - name: Setup devenv and run tasks
-        run: 'DEVENV_SKIP_SETUP=1 devenv tasks run pnpm:install genie:run ts:build --mode before --verbose'
+      - name: Repair Nix store
+        run: nix-store --verify --repair 2>&1 | tail -5 || true
         shell: bash
       - run: 'dt lint:full megarepo:check'
   type-check:
@@ -57,24 +63,28 @@ jobs:
       - uses: actions/checkout@v4
       - name: Install Nix
         uses: cachix/install-nix-action@v31
+        with:
+          extra_nix_config: |
+            extra-substituters = https://cache.nixos.org
+            extra-trusted-public-keys = cache.nixos.org-1:6NCHdD59X431o0gWypbMrAURkbJ16ZPMQFGspcDShjY=
       - name: Enable Cachix cache
         uses: cachix/cachix-action@v16
         with:
           name: livestore
           authToken: '${{ env.CACHIX_AUTH_TOKEN }}'
       - name: Install megarepo CLI
-        run: 'nix profile install github:overengineeringstudio/effect-utils#megarepo'
+        run: 'nix profile install github:overengineeringstudio/effect-utils/$(jq -r ''.nodes["effect-utils"].locked.rev'' devenv.lock)#megarepo'
         shell: bash
       - name: Sync megarepo dependencies
         run: mr sync --frozen --verbose
         shell: bash
       - name: Install devenv
         run: |
-          nix profile install nixpkgs#devenv
+          nix profile install github:cachix/devenv/$(jq -r ".nodes.devenv.locked.rev" devenv.lock)
           echo "$HOME/.nix-profile/bin" >> $GITHUB_PATH
         shell: bash
-      - name: Setup devenv and run tasks
-        run: 'DEVENV_SKIP_SETUP=1 devenv tasks run pnpm:install genie:run ts:build --mode before --verbose'
+      - name: Repair Nix store
+        run: nix-store --verify --repair 2>&1 | tail -5 || true
         shell: bash
       - run: 'dt ts:build'
   test-unit:
@@ -86,24 +96,28 @@ jobs:
       - uses: actions/checkout@v4
       - name: Install Nix
         uses: cachix/install-nix-action@v31
+        with:
+          extra_nix_config: |
+            extra-substituters = https://cache.nixos.org
+            extra-trusted-public-keys = cache.nixos.org-1:6NCHdD59X431o0gWypbMrAURkbJ16ZPMQFGspcDShjY=
       - name: Enable Cachix cache
         uses: cachix/cachix-action@v16
         with:
           name: livestore
           authToken: '${{ env.CACHIX_AUTH_TOKEN }}'
       - name: Install megarepo CLI
-        run: 'nix profile install github:overengineeringstudio/effect-utils#megarepo'
+        run: 'nix profile install github:overengineeringstudio/effect-utils/$(jq -r ''.nodes["effect-utils"].locked.rev'' devenv.lock)#megarepo'
         shell: bash
       - name: Sync megarepo dependencies
         run: mr sync --frozen --verbose
         shell: bash
       - name: Install devenv
         run: |
-          nix profile install nixpkgs#devenv
+          nix profile install github:cachix/devenv/$(jq -r ".nodes.devenv.locked.rev" devenv.lock)
           echo "$HOME/.nix-profile/bin" >> $GITHUB_PATH
         shell: bash
-      - name: Setup devenv and run tasks
-        run: 'DEVENV_SKIP_SETUP=1 devenv tasks run pnpm:install genie:run ts:build --mode before --verbose'
+      - name: Repair Nix store
+        run: nix-store --verify --repair 2>&1 | tail -5 || true
         shell: bash
       - run: 'dt test:unit'
   test-integration-node-sync:
@@ -115,24 +129,28 @@ jobs:
       - uses: actions/checkout@v4
       - name: Install Nix
         uses: cachix/install-nix-action@v31
+        with:
+          extra_nix_config: |
+            extra-substituters = https://cache.nixos.org
+            extra-trusted-public-keys = cache.nixos.org-1:6NCHdD59X431o0gWypbMrAURkbJ16ZPMQFGspcDShjY=
       - name: Enable Cachix cache
         uses: cachix/cachix-action@v16
         with:
           name: livestore
           authToken: '${{ env.CACHIX_AUTH_TOKEN }}'
       - name: Install megarepo CLI
-        run: 'nix profile install github:overengineeringstudio/effect-utils#megarepo'
+        run: 'nix profile install github:overengineeringstudio/effect-utils/$(jq -r ''.nodes["effect-utils"].locked.rev'' devenv.lock)#megarepo'
         shell: bash
       - name: Sync megarepo dependencies
         run: mr sync --frozen --verbose
         shell: bash
       - name: Install devenv
         run: |
-          nix profile install nixpkgs#devenv
+          nix profile install github:cachix/devenv/$(jq -r ".nodes.devenv.locked.rev" devenv.lock)
           echo "$HOME/.nix-profile/bin" >> $GITHUB_PATH
         shell: bash
-      - name: Setup devenv and run tasks
-        run: 'DEVENV_SKIP_SETUP=1 devenv tasks run pnpm:install genie:run ts:build --mode before --verbose'
+      - name: Repair Nix store
+        run: nix-store --verify --repair 2>&1 | tail -5 || true
         shell: bash
       - name: Set OTEL_EXPORTER_OTLP_HEADERS environment variable
         env:
@@ -195,24 +213,28 @@ jobs:
       - uses: actions/checkout@v4
       - name: Install Nix
         uses: cachix/install-nix-action@v31
+        with:
+          extra_nix_config: |
+            extra-substituters = https://cache.nixos.org
+            extra-trusted-public-keys = cache.nixos.org-1:6NCHdD59X431o0gWypbMrAURkbJ16ZPMQFGspcDShjY=
       - name: Enable Cachix cache
         uses: cachix/cachix-action@v16
         with:
           name: livestore
           authToken: '${{ env.CACHIX_AUTH_TOKEN }}'
       - name: Install megarepo CLI
-        run: 'nix profile install github:overengineeringstudio/effect-utils#megarepo'
+        run: 'nix profile install github:overengineeringstudio/effect-utils/$(jq -r ''.nodes["effect-utils"].locked.rev'' devenv.lock)#megarepo'
         shell: bash
       - name: Sync megarepo dependencies
         run: mr sync --frozen --verbose
         shell: bash
       - name: Install devenv
         run: |
-          nix profile install nixpkgs#devenv
+          nix profile install github:cachix/devenv/$(jq -r ".nodes.devenv.locked.rev" devenv.lock)
           echo "$HOME/.nix-profile/bin" >> $GITHUB_PATH
         shell: bash
-      - name: Setup devenv and run tasks
-        run: 'DEVENV_SKIP_SETUP=1 devenv tasks run pnpm:install genie:run ts:build --mode before --verbose'
+      - name: Repair Nix store
+        run: nix-store --verify --repair 2>&1 | tail -5 || true
         shell: bash
       - name: Set OTEL_EXPORTER_OTLP_HEADERS environment variable
         env:
@@ -262,24 +284,28 @@ jobs:
       - uses: actions/checkout@v4
       - name: Install Nix
         uses: cachix/install-nix-action@v31
+        with:
+          extra_nix_config: |
+            extra-substituters = https://cache.nixos.org
+            extra-trusted-public-keys = cache.nixos.org-1:6NCHdD59X431o0gWypbMrAURkbJ16ZPMQFGspcDShjY=
       - name: Enable Cachix cache
         uses: cachix/cachix-action@v16
         with:
           name: livestore
           authToken: '${{ env.CACHIX_AUTH_TOKEN }}'
       - name: Install megarepo CLI
-        run: 'nix profile install github:overengineeringstudio/effect-utils#megarepo'
+        run: 'nix profile install github:overengineeringstudio/effect-utils/$(jq -r ''.nodes["effect-utils"].locked.rev'' devenv.lock)#megarepo'
         shell: bash
       - name: Sync megarepo dependencies
         run: mr sync --frozen --verbose
         shell: bash
       - name: Install devenv
         run: |
-          nix profile install nixpkgs#devenv
+          nix profile install github:cachix/devenv/$(jq -r ".nodes.devenv.locked.rev" devenv.lock)
           echo "$HOME/.nix-profile/bin" >> $GITHUB_PATH
         shell: bash
-      - name: Setup devenv and run tasks
-        run: 'DEVENV_SKIP_SETUP=1 devenv tasks run pnpm:install genie:run ts:build --mode before --verbose'
+      - name: Repair Nix store
+        run: nix-store --verify --repair 2>&1 | tail -5 || true
         shell: bash
       - name: Set OTEL_EXPORTER_OTLP_HEADERS environment variable
         env:
@@ -329,24 +355,28 @@ jobs:
           ref: '${{ github.event.pull_request.head.sha || github.sha }}'
       - name: Install Nix
         uses: cachix/install-nix-action@v31
+        with:
+          extra_nix_config: |
+            extra-substituters = https://cache.nixos.org
+            extra-trusted-public-keys = cache.nixos.org-1:6NCHdD59X431o0gWypbMrAURkbJ16ZPMQFGspcDShjY=
       - name: Enable Cachix cache
         uses: cachix/cachix-action@v16
         with:
           name: livestore
           authToken: '${{ env.CACHIX_AUTH_TOKEN }}'
       - name: Install megarepo CLI
-        run: 'nix profile install github:overengineeringstudio/effect-utils#megarepo'
+        run: 'nix profile install github:overengineeringstudio/effect-utils/$(jq -r ''.nodes["effect-utils"].locked.rev'' devenv.lock)#megarepo'
         shell: bash
       - name: Sync megarepo dependencies
         run: mr sync --frozen --verbose
         shell: bash
       - name: Install devenv
         run: |
-          nix profile install nixpkgs#devenv
+          nix profile install github:cachix/devenv/$(jq -r ".nodes.devenv.locked.rev" devenv.lock)
           echo "$HOME/.nix-profile/bin" >> $GITHUB_PATH
         shell: bash
-      - name: Setup devenv and run tasks
-        run: 'DEVENV_SKIP_SETUP=1 devenv tasks run pnpm:install genie:run ts:build --mode before --verbose'
+      - name: Repair Nix store
+        run: nix-store --verify --repair 2>&1 | tail -5 || true
         shell: bash
       - name: Set OTEL_EXPORTER_OTLP_HEADERS environment variable
         env:
@@ -370,24 +400,28 @@ jobs:
       - uses: actions/checkout@v4
       - name: Install Nix
         uses: cachix/install-nix-action@v31
+        with:
+          extra_nix_config: |
+            extra-substituters = https://cache.nixos.org
+            extra-trusted-public-keys = cache.nixos.org-1:6NCHdD59X431o0gWypbMrAURkbJ16ZPMQFGspcDShjY=
       - name: Enable Cachix cache
         uses: cachix/cachix-action@v16
         with:
           name: livestore
           authToken: '${{ env.CACHIX_AUTH_TOKEN }}'
       - name: Install megarepo CLI
-        run: 'nix profile install github:overengineeringstudio/effect-utils#megarepo'
+        run: 'nix profile install github:overengineeringstudio/effect-utils/$(jq -r ''.nodes["effect-utils"].locked.rev'' devenv.lock)#megarepo'
         shell: bash
       - name: Sync megarepo dependencies
         run: mr sync --frozen --verbose
         shell: bash
       - name: Install devenv
         run: |
-          nix profile install nixpkgs#devenv
+          nix profile install github:cachix/devenv/$(jq -r ".nodes.devenv.locked.rev" devenv.lock)
           echo "$HOME/.nix-profile/bin" >> $GITHUB_PATH
         shell: bash
-      - name: Setup devenv and run tasks
-        run: 'DEVENV_SKIP_SETUP=1 devenv tasks run pnpm:install genie:run ts:build --mode before --verbose'
+      - name: Repair Nix store
+        run: nix-store --verify --repair 2>&1 | tail -5 || true
         shell: bash
       - name: Set OTEL_EXPORTER_OTLP_HEADERS environment variable
         env:
@@ -419,24 +453,28 @@ jobs:
       - uses: actions/checkout@v4
       - name: Install Nix
         uses: cachix/install-nix-action@v31
+        with:
+          extra_nix_config: |
+            extra-substituters = https://cache.nixos.org
+            extra-trusted-public-keys = cache.nixos.org-1:6NCHdD59X431o0gWypbMrAURkbJ16ZPMQFGspcDShjY=
       - name: Enable Cachix cache
         uses: cachix/cachix-action@v16
         with:
           name: livestore
           authToken: '${{ env.CACHIX_AUTH_TOKEN }}'
       - name: Install megarepo CLI
-        run: 'nix profile install github:overengineeringstudio/effect-utils#megarepo'
+        run: 'nix profile install github:overengineeringstudio/effect-utils/$(jq -r ''.nodes["effect-utils"].locked.rev'' devenv.lock)#megarepo'
         shell: bash
       - name: Sync megarepo dependencies
         run: mr sync --frozen --verbose
         shell: bash
       - name: Install devenv
         run: |
-          nix profile install nixpkgs#devenv
+          nix profile install github:cachix/devenv/$(jq -r ".nodes.devenv.locked.rev" devenv.lock)
           echo "$HOME/.nix-profile/bin" >> $GITHUB_PATH
         shell: bash
-      - name: Setup devenv and run tasks
-        run: 'DEVENV_SKIP_SETUP=1 devenv tasks run pnpm:install genie:run ts:build --mode before --verbose'
+      - name: Repair Nix store
+        run: nix-store --verify --repair 2>&1 | tail -5 || true
         shell: bash
       - run: 'mono release snapshot --git-sha=${{ github.sha }}'
   build-and-deploy-examples-src:
@@ -448,24 +486,28 @@ jobs:
       - uses: actions/checkout@v4
       - name: Install Nix
         uses: cachix/install-nix-action@v31
+        with:
+          extra_nix_config: |
+            extra-substituters = https://cache.nixos.org
+            extra-trusted-public-keys = cache.nixos.org-1:6NCHdD59X431o0gWypbMrAURkbJ16ZPMQFGspcDShjY=
       - name: Enable Cachix cache
         uses: cachix/cachix-action@v16
         with:
           name: livestore
           authToken: '${{ env.CACHIX_AUTH_TOKEN }}'
       - name: Install megarepo CLI
-        run: 'nix profile install github:overengineeringstudio/effect-utils#megarepo'
+        run: 'nix profile install github:overengineeringstudio/effect-utils/$(jq -r ''.nodes["effect-utils"].locked.rev'' devenv.lock)#megarepo'
         shell: bash
       - name: Sync megarepo dependencies
         run: mr sync --frozen --verbose
         shell: bash
       - name: Install devenv
         run: |
-          nix profile install nixpkgs#devenv
+          nix profile install github:cachix/devenv/$(jq -r ".nodes.devenv.locked.rev" devenv.lock)
           echo "$HOME/.nix-profile/bin" >> $GITHUB_PATH
         shell: bash
-      - name: Setup devenv and run tasks
-        run: 'DEVENV_SKIP_SETUP=1 devenv tasks run pnpm:install genie:run ts:build --mode before --verbose'
+      - name: Repair Nix store
+        run: nix-store --verify --repair 2>&1 | tail -5 || true
         shell: bash
       - name: Install examples dependencies
         run: pnpm install --frozen-lockfile --dir examples
@@ -488,24 +530,28 @@ jobs:
       - uses: actions/checkout@v4
       - name: Install Nix
         uses: cachix/install-nix-action@v31
+        with:
+          extra_nix_config: |
+            extra-substituters = https://cache.nixos.org
+            extra-trusted-public-keys = cache.nixos.org-1:6NCHdD59X431o0gWypbMrAURkbJ16ZPMQFGspcDShjY=
       - name: Enable Cachix cache
         uses: cachix/cachix-action@v16
         with:
           name: livestore
           authToken: '${{ env.CACHIX_AUTH_TOKEN }}'
       - name: Install megarepo CLI
-        run: 'nix profile install github:overengineeringstudio/effect-utils#megarepo'
+        run: 'nix profile install github:overengineeringstudio/effect-utils/$(jq -r ''.nodes["effect-utils"].locked.rev'' devenv.lock)#megarepo'
         shell: bash
       - name: Sync megarepo dependencies
         run: mr sync --frozen --verbose
         shell: bash
       - name: Install devenv
         run: |
-          nix profile install nixpkgs#devenv
+          nix profile install github:cachix/devenv/$(jq -r ".nodes.devenv.locked.rev" devenv.lock)
           echo "$HOME/.nix-profile/bin" >> $GITHUB_PATH
         shell: bash
-      - name: Setup devenv and run tasks
-        run: 'DEVENV_SKIP_SETUP=1 devenv tasks run pnpm:install genie:run ts:build --mode before --verbose'
+      - name: Repair Nix store
+        run: nix-store --verify --repair 2>&1 | tail -5 || true
         shell: bash
       - name: Build docs snippets
         run: |
