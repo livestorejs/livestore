@@ -47,7 +47,7 @@ jobs:
         shell: bash
       - name: Install devenv
         run: |
-          nix profile install github:cachix/devenv/$(jq -r ".nodes.devenv.locked.rev" devenv.lock)
+          nix profile install nixpkgs#devenv
           echo "$HOME/.nix-profile/bin" >> $GITHUB_PATH
         shell: bash
       - name: Repair Nix store
@@ -80,7 +80,7 @@ jobs:
         shell: bash
       - name: Install devenv
         run: |
-          nix profile install github:cachix/devenv/$(jq -r ".nodes.devenv.locked.rev" devenv.lock)
+          nix profile install nixpkgs#devenv
           echo "$HOME/.nix-profile/bin" >> $GITHUB_PATH
         shell: bash
       - name: Repair Nix store
@@ -113,7 +113,7 @@ jobs:
         shell: bash
       - name: Install devenv
         run: |
-          nix profile install github:cachix/devenv/$(jq -r ".nodes.devenv.locked.rev" devenv.lock)
+          nix profile install nixpkgs#devenv
           echo "$HOME/.nix-profile/bin" >> $GITHUB_PATH
         shell: bash
       - name: Repair Nix store
@@ -146,7 +146,7 @@ jobs:
         shell: bash
       - name: Install devenv
         run: |
-          nix profile install github:cachix/devenv/$(jq -r ".nodes.devenv.locked.rev" devenv.lock)
+          nix profile install nixpkgs#devenv
           echo "$HOME/.nix-profile/bin" >> $GITHUB_PATH
         shell: bash
       - name: Repair Nix store
@@ -230,7 +230,7 @@ jobs:
         shell: bash
       - name: Install devenv
         run: |
-          nix profile install github:cachix/devenv/$(jq -r ".nodes.devenv.locked.rev" devenv.lock)
+          nix profile install nixpkgs#devenv
           echo "$HOME/.nix-profile/bin" >> $GITHUB_PATH
         shell: bash
       - name: Repair Nix store
@@ -301,7 +301,7 @@ jobs:
         shell: bash
       - name: Install devenv
         run: |
-          nix profile install github:cachix/devenv/$(jq -r ".nodes.devenv.locked.rev" devenv.lock)
+          nix profile install nixpkgs#devenv
           echo "$HOME/.nix-profile/bin" >> $GITHUB_PATH
         shell: bash
       - name: Repair Nix store
@@ -372,7 +372,7 @@ jobs:
         shell: bash
       - name: Install devenv
         run: |
-          nix profile install github:cachix/devenv/$(jq -r ".nodes.devenv.locked.rev" devenv.lock)
+          nix profile install nixpkgs#devenv
           echo "$HOME/.nix-profile/bin" >> $GITHUB_PATH
         shell: bash
       - name: Repair Nix store
@@ -417,7 +417,7 @@ jobs:
         shell: bash
       - name: Install devenv
         run: |
-          nix profile install github:cachix/devenv/$(jq -r ".nodes.devenv.locked.rev" devenv.lock)
+          nix profile install nixpkgs#devenv
           echo "$HOME/.nix-profile/bin" >> $GITHUB_PATH
         shell: bash
       - name: Repair Nix store
@@ -470,7 +470,7 @@ jobs:
         shell: bash
       - name: Install devenv
         run: |
-          nix profile install github:cachix/devenv/$(jq -r ".nodes.devenv.locked.rev" devenv.lock)
+          nix profile install nixpkgs#devenv
           echo "$HOME/.nix-profile/bin" >> $GITHUB_PATH
         shell: bash
       - name: Repair Nix store
@@ -503,7 +503,7 @@ jobs:
         shell: bash
       - name: Install devenv
         run: |
-          nix profile install github:cachix/devenv/$(jq -r ".nodes.devenv.locked.rev" devenv.lock)
+          nix profile install nixpkgs#devenv
           echo "$HOME/.nix-profile/bin" >> $GITHUB_PATH
         shell: bash
       - name: Repair Nix store
@@ -547,7 +547,7 @@ jobs:
         shell: bash
       - name: Install devenv
         run: |
-          nix profile install github:cachix/devenv/$(jq -r ".nodes.devenv.locked.rev" devenv.lock)
+          nix profile install nixpkgs#devenv
           echo "$HOME/.nix-profile/bin" >> $GITHUB_PATH
         shell: bash
       - name: Repair Nix store
