@@ -153,17 +153,17 @@ Commands live entirely on the client. The sync backend continues to exchange eve
 └───────────────────────────────────────────────────────────────────────┘
 ```
 
-| Component              | Description                                                    |
-|------------------------|----------------------------------------------------------------|
-| Command                | User intention executed by the client command handler          |
-| Command Handler        | Validates commands against current state and produces events   |
-| Pending Commands Queue | Commands awaiting confirmation; replayed during reconciliation |
-| Pending Events         | Events produced locally, not yet pushed to the sync backend    |
-| Confirmed Events       | Events that have been pushed to the sync backend               |
-| Materializer(s)        | Processes events to update State                               |
-| State                  | Queryable projection used by the UI and command handlers       |
-| Push                   | Client pushes pending events to the sync backend               |
-| Pull                   | Client receives confirmed events from the sync backend         |
+| Component              | Description                                                                                  |
+|------------------------|----------------------------------------------------------------------------------------------|
+| Command                | User intention executed by the command handler                                               |
+| Command Handler        | Validates commands against current state and produces events                                 |
+| Pending Commands Queue | Commands for which events are still pending confirmation; replayed during reconciliation     |
+| Pending Events         | Events produced locally, not yet pushed and confirmed by the sync backend                    |
+| Confirmed Events       | Events that have confirmed by the sync backend                                               |
+| Materializer(s)        | Processes events to update State                                                             |
+| State                  | Queryable projection consumed by the UI for presentation and command handlers for validation |
+| Push                   | Client pushes pending events to the sync backend                                             |
+| Pull                   | Client pulls confirmed events from the sync backend                                          |
 
 ### Sync Model
 
