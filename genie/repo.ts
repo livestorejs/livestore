@@ -528,9 +528,10 @@ export const livestoreSetupStepsAfterCheckout = [
   },
   {
     name: 'Install devenv',
-    // Pinned to devenv.lock; currently set to a known-good revision to avoid
-    // upstream cachix test flakiness observed on newer main revisions in CI.
-    run: `nix profile install github:cachix/devenv/$(jq -r ".nodes.devenv.locked.rev" devenv.lock)
+    // TODO(oep-bbd.1): Switch back to pinned devenv.lock revision once upstream cachix test flake
+    // (Daemon.NarinfoQuery.Batching) is fixed in the install path used by CI.
+    // nix profile install github:cachix/devenv/$(jq -r ".nodes.devenv.locked.rev" devenv.lock)
+    run: `nix profile install nixpkgs#devenv
 echo "$HOME/.nix-profile/bin" >> $GITHUB_PATH`,
     shell: 'bash',
   },
