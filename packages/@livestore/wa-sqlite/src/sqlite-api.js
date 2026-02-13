@@ -1146,34 +1146,30 @@ export function Factory(Module) {
   sqlite3.changeset_apply = (function() {
     const fname = 'sqlite3changeset_apply';
     const f = Module.cwrap(fname, ...decl('nnnnnn:n'));
+
+    // https://sqlite.org/session/c_changeset_abort.html
+    const SQLITE_CHANGESET_REPLACE = 1;
+
+    // Lazily register the conflict handler as a WASM function pointer via
+    // addFunction. Deferred to first call so that environments which disallow
+    // dynamic WebAssembly compilation (e.g. Cloudflare Workers) don't crash
+    // during Factory() init when changeset_apply is never used.
+    let onConflictPtr = null;
+
     return function(db, changesetData, options) {
-      /*
-        int sqlite3changeset_apply(
-          sqlite3 *db,                    Apply change to "main" db of this handle
-          int nChangeset,                 Size of changeset in bytes 
-          void *pChangeset,               Changeset blob
-          int(*xFilter)(
-            void *pCtx,                   Copy of sixth arg to _apply() 
-            const char *zTab              Table name 
-          ),
-          int(*xConflict)(
-            void *pCtx,                   Copy of sixth arg to _apply() 
-            int eConflict,                DATA, MISSING, CONFLICT, CONSTRAINT 
-            sqlite3_changeset_iter *p     Handle describing change and conflict
-          ),
-          void *pCtx                      First argument passed to xConflict
+      if (onConflictPtr === null) {
+        // C signature: int xConflict(void *pCtx, int eConflict, sqlite3_changeset_iter *p)
+        // 'iiii' = returns i32, takes (i32, i32, i32)
+        onConflictPtr = Module.addFunction(
+          (_pCtx, _eConflict, _pIter) => SQLITE_CHANGESET_REPLACE,
+          'iiii'
         );
-      */
+      }
+
       const inPtr = Module._sqlite3_malloc(changesetData.length);
       Module.HEAPU8.subarray(inPtr).set(changesetData);
 
-      // https://sqlite.org/session/c_changeset_abort.html
-      const SQLITE_CHANGESET_REPLACE = 1
-      const onConflict = () => {
-        return SQLITE_CHANGESET_REPLACE;
-      }
-
-      const result = f(db, changesetData.length, inPtr, null, onConflict, null);
+      const result = f(db, changesetData.length, inPtr, null, onConflictPtr, null);
 
       Module._sqlite3_free(inPtr);
 
