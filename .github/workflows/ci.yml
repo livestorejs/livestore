@@ -119,6 +119,9 @@ jobs:
       - name: Repair Nix store
         run: nix-store --verify --repair 2>&1 | tail -5 || true
         shell: bash
+      - name: Preflight workspace bootstrap
+        run: 'DEVENV_SKIP_SETUP=1 devenv tasks run pnpm:install genie:run ts:build --mode before --verbose'
+        shell: bash
       - run: 'dt test:unit'
   test-integration-node-sync:
     runs-on: [namespace-profile-linux-x86-64, 'namespace-features:github.run-id=${{ github.run_id }}']
@@ -236,6 +239,9 @@ jobs:
       - name: Repair Nix store
         run: nix-store --verify --repair 2>&1 | tail -5 || true
         shell: bash
+      - name: Preflight workspace bootstrap
+        run: 'DEVENV_SKIP_SETUP=1 devenv tasks run pnpm:install genie:run ts:build --mode before --verbose'
+        shell: bash
       - name: Set OTEL_EXPORTER_OTLP_HEADERS environment variable
         env:
           GRAFANA_CLOUD_OTLP_INSTANCE_ID: '1227256'
@@ -306,6 +312,9 @@ jobs:
         shell: bash
       - name: Repair Nix store
         run: nix-store --verify --repair 2>&1 | tail -5 || true
+        shell: bash
+      - name: Preflight workspace bootstrap
+        run: 'DEVENV_SKIP_SETUP=1 devenv tasks run pnpm:install genie:run ts:build --mode before --verbose'
         shell: bash
       - name: Set OTEL_EXPORTER_OTLP_HEADERS environment variable
         env:
@@ -378,6 +387,9 @@ jobs:
       - name: Repair Nix store
         run: nix-store --verify --repair 2>&1 | tail -5 || true
         shell: bash
+      - name: Preflight workspace bootstrap
+        run: 'DEVENV_SKIP_SETUP=1 devenv tasks run pnpm:install genie:run ts:build --mode before --verbose'
+        shell: bash
       - name: Set OTEL_EXPORTER_OTLP_HEADERS environment variable
         env:
           GRAFANA_CLOUD_OTLP_INSTANCE_ID: '1227256'
@@ -422,6 +434,9 @@ jobs:
         shell: bash
       - name: Repair Nix store
         run: nix-store --verify --repair 2>&1 | tail -5 || true
+        shell: bash
+      - name: Preflight workspace bootstrap
+        run: 'DEVENV_SKIP_SETUP=1 devenv tasks run pnpm:install genie:run ts:build --mode before --verbose'
         shell: bash
       - name: Set OTEL_EXPORTER_OTLP_HEADERS environment variable
         env:
@@ -509,6 +524,9 @@ jobs:
       - name: Repair Nix store
         run: nix-store --verify --repair 2>&1 | tail -5 || true
         shell: bash
+      - name: Preflight workspace bootstrap
+        run: 'DEVENV_SKIP_SETUP=1 devenv tasks run pnpm:install genie:run ts:build --mode before --verbose'
+        shell: bash
       - name: Install examples dependencies
         run: pnpm install --frozen-lockfile --dir examples
       - name: Build examples
@@ -552,6 +570,9 @@ jobs:
         shell: bash
       - name: Repair Nix store
         run: nix-store --verify --repair 2>&1 | tail -5 || true
+        shell: bash
+      - name: Preflight workspace bootstrap
+        run: 'DEVENV_SKIP_SETUP=1 devenv tasks run pnpm:install genie:run ts:build --mode before --verbose'
         shell: bash
       - name: Build docs snippets
         run: |

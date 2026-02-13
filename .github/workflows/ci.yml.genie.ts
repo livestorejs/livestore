@@ -65,6 +65,16 @@ else
 fi`,
 })
 
+/**
+ * Deterministic preflight for jobs that need generated artifacts/build state.
+ * Uses DEVENV_SKIP_SETUP to avoid nested setup recursion.
+ */
+const deterministicPreflightStep = {
+  name: 'Preflight workspace bootstrap',
+  run: 'DEVENV_SKIP_SETUP=1 devenv tasks run pnpm:install genie:run ts:build --mode before --verbose',
+  shell: 'bash',
+}
+
 // =============================================================================
 // Workflow Definition
 // =============================================================================
@@ -108,7 +118,7 @@ export default githubWorkflow({
     }),
 
     'test-unit': standardCIJob({
-      steps: [...livestoreSetupSteps, { run: 'dt test:unit' }],
+      steps: [...livestoreSetupSteps, deterministicPreflightStep, { run: 'dt test:unit' }],
     }),
 
     // TODO: Remove flaky test wrapper once node-sync flakiness is resolved
@@ -163,6 +173,7 @@ fi`,
       defaults: devenvShellDefaults,
       steps: [
         ...livestoreSetupSteps,
+        deterministicPreflightStep,
         otelSetupStep,
         {
           name: 'Start s2-lite container',
@@ -205,6 +216,7 @@ fi`,
       defaults: devenvShellDefaults,
       steps: [
         ...livestoreSetupSteps,
+        deterministicPreflightStep,
         otelSetupStep,
         {
           name: 'Run integration tests',
@@ -254,6 +266,7 @@ fi`,
           with: { ref: PR_HEAD_SHA },
         },
         ...livestoreSetupStepsAfterCheckout,
+        deterministicPreflightStep,
         otelSetupStep,
         {
           name: 'Run performance tests',
@@ -272,6 +285,7 @@ fi`,
       'runs-on': 'ubuntu-24.04',
       steps: [
         ...livestoreSetupSteps,
+        deterministicPreflightStep,
         otelSetupStep,
         {
           name: 'Build wa-sqlite',
@@ -313,6 +327,7 @@ fi`,
       defaults: devenvShellDefaults,
       steps: [
         ...livestoreSetupSteps,
+        deterministicPreflightStep,
         {
           name: 'Install examples dependencies',
           // Run pnpm from root devenv shell, targeting examples workspace
@@ -351,6 +366,7 @@ fi`,
       defaults: devenvShellDefaults,
       steps: [
         ...livestoreSetupSteps,
+        deterministicPreflightStep,
         // TODO(oep-bbd): Restore once root cause is fixed and diagnostics are removed.
         // { name: 'Build docs', run: 'dt --show-output docs:build:api' },
         // TODO(oep-bbd): Temporary phase split + hard timeouts for docs CI hang triage.
