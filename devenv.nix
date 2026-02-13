@@ -258,8 +258,9 @@ in
     export OTEL_EXPORTER_OTLP_ENDPOINT="''${OTEL_EXPORTER_OTLP_ENDPOINT:-http://localhost:4318}"
     export VITE_OTEL_EXPORTER_OTLP_ENDPOINT="''${VITE_OTEL_EXPORTER_OTLP_ENDPOINT-''${OTEL_EXPORTER_OTLP_ENDPOINT}}"
 
-    # OTEL_GRAFANA_URL is set by the otel module's env; GRAFANA_ENDPOINT aliases it for Vite
-    export GRAFANA_ENDPOINT="''${GRAFANA_ENDPOINT:-''${OTEL_GRAFANA_URL:-http://localhost:30003}}"
+    # OTEL_GRAFANA_URL may not be set in system mode; default to system Grafana port
+    export OTEL_GRAFANA_URL="''${OTEL_GRAFANA_URL:-http://localhost:30003}"
+    export GRAFANA_ENDPOINT="''${GRAFANA_ENDPOINT:-''${OTEL_GRAFANA_URL}}"
     export VITE_GRAFANA_ENDPOINT="''${VITE_GRAFANA_ENDPOINT:-''${GRAFANA_ENDPOINT}}"
 
     if [ -z "''${PUPPETEER_EXECUTABLE_PATH:-}" ]; then
