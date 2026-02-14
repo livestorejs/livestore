@@ -4,18 +4,11 @@
 
 This repository uses [`devenv`](https://devenv.sh) for development environment management. Run `devenv shell` to enter the development environment.
 
-## Zellij (mandatory when working in a zellij session)
-
-- Always check if you are in a zellij session by checking if `$ZELLIJ` is set to any non-empty value.
-- Keeping the active tab name accurate is required for every agent session when a zellij session is open; run `zellij action rename-tab "<new-name>"` as soon as you start the task and whenever the focus changes.
-- Tab names must stay short, descriptive, and in kebab-case (< 30 characters, abbreviations allowed).
-- Describe the current problem/goal and keep names unambiguous within the session; avoid repeating the session name.
-
 ## Tooling
 
 - If tools aren't directly in `$PATH`, enter the dev environment first with `devenv shell`.
 
-- For depedency management see @contributor-docs/dependency-management.md
+- For dependency management see ./contributor-docs/dependency-management.md
 
 ### `mono` CLI
 
@@ -94,4 +87,4 @@ Checklist:
 ## Documentation / Examples
 
 - It's critical that the documentation and examples are up to date and accurate. When changing code, make sure to update the documentation and examples.
-- For code snippets make sure to follow @contributor-docs/docs/snippets.md
+- For code snippets make sure to follow ./contributor-docs/docs/snippets.md
