@@ -81,7 +81,7 @@ export const makeSyncBackend = ({
   Effect.gen(function* () {
     const { syncBackendConstructor, syncPayload } = yield* loadModuleConfig({ configPath })
 
-    const syncBackend = yield* (syncBackendConstructor as SyncBackend.SyncBackendConstructor)({
+    const syncBackend = yield* (syncBackendConstructor)({
       storeId,
       clientId,
       /** syncPayload is validated against syncPayloadSchema by loadModuleConfig */
@@ -123,8 +123,8 @@ export const makeSyncBackend = ({
     return syncBackend
   })
 
-const releaseSyncBackend = (syncBackend: SyncBackend.SyncBackend): Effect.Effect<void, never> => {
-  const maybeDisconnect = (syncBackend as { disconnect?: Effect.Effect<void, never> }).disconnect
+const releaseSyncBackend = (syncBackend: SyncBackend.SyncBackend): Effect.Effect<void> => {
+  const maybeDisconnect = (syncBackend as { disconnect?: Effect.Effect<void> }).disconnect
   const releaseEffect = maybeDisconnect ?? SubscriptionRef.set(syncBackend.isConnected, false)
   return releaseEffect.pipe(Effect.orElse(() => Effect.void))
 }
@@ -168,7 +168,7 @@ export const pullEventsFromSyncBackend = ({
             (cause) =>
               new ExportError({
                 cause,
-                note: `Failed to pull events from sync backend: ${cause}`,
+                note: `Failed to pull events from sync backend: ${String(cause)}`,
               }),
           ),
         )
@@ -228,8 +228,8 @@ export const validateExportData = ({
       Effect.mapError(
         (cause) =>
           new ImportError({
-            cause: new Error(`Invalid export file format: ${cause}`),
-            note: `Invalid export file format: ${cause}`,
+              cause: new Error(`Invalid export file format: ${String(cause)}`),
+              note: `Invalid export file format: ${String(cause)}`,
           }),
       ),
     )
@@ -262,7 +262,7 @@ export const pushEventsToSyncBackend = ({
   data: unknown
   force: boolean
   dryRun: boolean
-  onProgress?: (pushed: number, total: number) => Effect.Effect<void, never>
+  onProgress?: (pushed: number, total: number) => Effect.Effect<void>
 }): Effect.Effect<
   ImportResult,
   ImportError | UnknownError | ConnectionError,
@@ -276,8 +276,8 @@ export const pushEventsToSyncBackend = ({
           Effect.mapError(
             (cause) =>
               new ImportError({
-                cause: new Error(`Invalid export file format: ${cause}`),
-                note: `Invalid export file format: ${cause}`,
+              cause: new Error(`Invalid export file format: ${String(cause)}`),
+              note: `Invalid export file format: ${String(cause)}`,
               }),
           ),
         )
@@ -307,7 +307,7 @@ export const pushEventsToSyncBackend = ({
             (cause) =>
               new ImportError({
                 cause,
-                note: `Failed to check existing events: ${cause}`,
+                note: `Failed to check existing events: ${String(cause)}`,
               }),
           ),
         )
@@ -338,7 +338,7 @@ export const pushEventsToSyncBackend = ({
               (cause) =>
                 new ImportError({
                   cause,
-                  note: `Failed to push events at position ${i}: ${cause}`,
+                  note: `Failed to push events at position ${i}: ${String(cause)}`,
                 }),
             ),
           )

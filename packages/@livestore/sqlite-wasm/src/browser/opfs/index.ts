@@ -22,7 +22,7 @@ export const makeOpfsDb = ({
     const pathSegment = safePath.length === 0 ? '' : `-${safePath}`
     const vfsName = `opfs${pathSegment}`
 
-    if (sqlite3.vfs_registered.has(vfsName) === false) {
+    if (!sqlite3.vfs_registered.has(vfsName)) {
       const vfs = yield* AccessHandlePoolVFS.create(vfsName, directory, (sqlite3 as any).module)
 
       sqlite3.vfs_register(vfs, false)

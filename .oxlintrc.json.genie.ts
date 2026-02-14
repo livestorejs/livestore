@@ -96,33 +96,32 @@ const phase2Rules = {
   // TODO(oep-1n3.7): 4 violations — empty files
   'unicorn/no-empty-file': 'off',
 
-  // TODO(oep-1n3.8): Temporary churn guard - re-enable after targeted cleanup
-  // 626 violations across non-generated code paths
-  'typescript/no-unsafe-type-assertion': 'off',
+  // TODO(oep-1n3.8): Re-enable explicit boolean checks after cleanup
   // 115 violations, mostly stylistic boolean comparisons
-  'typescript/no-unnecessary-boolean-literal-compare': 'off',
+  'typescript/no-unsafe-type-assertion': 'warn',
+  'typescript/no-unnecessary-boolean-literal-compare': 'warn',
   // 79 violations, mostly generic verbosity
-  'typescript/no-unnecessary-type-arguments': 'off',
+  'typescript/no-unnecessary-type-arguments': 'warn',
   // 72 violations, concentrated in generated clients and broad union types
-  'typescript/no-duplicate-type-constituents': 'off',
+  'typescript/no-duplicate-type-constituents': 'warn',
   // 57 violations, assertion cleanup churn
-  'typescript/no-unnecessary-type-assertion': 'off',
+  'typescript/no-unnecessary-type-assertion': 'warn',
   // 42 violations, noisy with Effect error/rendering types
-  'typescript/restrict-template-expressions': 'off',
+  'typescript/restrict-template-expressions': 'warn',
 
   // TODO(oep-1n3.9): Temporary quick-check unblocking - re-enable after async audit
   // 78 violations concentrated in wa-sqlite and test surfaces
   'typescript/no-floating-promises': 'off',
 
-  // TODO(oep-1n3.8): Temporary churn guard - re-enable with targeted cleanups
+  // TODO(oep-1n3.8a): Re-enable low-risk style hygiene rules first
   // 16 violations, mostly logging/debug stringification quality
-  'typescript/no-base-to-string': 'off',
+  'typescript/no-base-to-string': 'warn',
   // 11 violations, low-risk type hygiene noise
-  'typescript/no-redundant-type-constituents': 'off',
+  'typescript/no-redundant-type-constituents': 'warn',
   // 4 violations, mostly template readability nits
-  'typescript/no-unnecessary-template-expression': 'off',
+  'typescript/no-unnecessary-template-expression': 'warn',
   // 4 violations, mostly Effect wrappers around void-returning APIs
-  'typescript/no-meaningless-void-operator': 'off',
+  'typescript/no-meaningless-void-operator': 'warn',
 
   // TODO(oep-1n3.9): Temporary unblock for correctness-sensitive rules
   // Re-enable after targeted async/this-binding/prototype-safety fixes.
@@ -243,8 +242,5 @@ export default oxlintConfig({
     ...baseOxlintIgnorePatterns,
     'tests/integration/node_modules/**',
     'docs/src/plugins/**',
-    // TODO(oep-1n3.8): Re-enable after snippet/example tsconfig cleanup
-    'docs/src/content/_assets/code/**',
-    'packages/@local/astro-twoslash-code/example/src/content/_assets/code/**',
   ],
 })

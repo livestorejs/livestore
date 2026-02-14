@@ -39,7 +39,7 @@ export interface WranglerReadinessOptions {
   /** Max time for the HTTP connectivity check after wrangler reports ready. */
   connectTimeout?: Duration.DurationInput
   /** Retry policy for startup attempts (applies when startupTimeout elapses or wrangler throws). */
-  retrySchedule?: Schedule.Schedule<unknown, unknown, never>
+  retrySchedule?: Schedule.Schedule
 }
 
 export interface StartWranglerDevServerArgs {
@@ -130,7 +130,7 @@ export class WranglerDevServerService extends Effect.Service<WranglerDevServerSe
       yield* Effect.addFinalizer(
         Effect.fn(
           function* (exit) {
-            if (exit._tag === 'Failure' && Cause.isInterruptedOnly(exit.cause) === false) {
+            if (exit._tag === 'Failure' && ! Cause.isInterruptedOnly(exit.cause)) {
               yield* Effect.logError('Closing wrangler dev server on failure', exit.cause)
             }
 

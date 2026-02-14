@@ -88,7 +88,7 @@ const createLineOwnerPlugin = (): ExpressiveCodePlugin =>
         lineMetadataByBlock.set(codeBlock, resolved)
       },
       postprocessRenderedLine: ({ codeBlock, lineIndex, renderData }) => {
-        const entries = lineMetadataByBlock.get(codeBlock as ExpressiveCodeBlock)
+        const entries = lineMetadataByBlock.get(codeBlock)
         if (!entries) {
           return
         }

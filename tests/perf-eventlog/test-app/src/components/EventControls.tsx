@@ -66,7 +66,7 @@ const NOUNS = [
 
 const COLORS = ['amber', 'burgundy', 'cerulean', 'denim', 'emerald', 'fuchsia', 'golden', 'hazel', 'indigo', 'jade']
 
-const randomFrom = (items: readonly string[], seed: number) => items[seed % items.length]!
+const randomFrom = (items: readonly string[], seed: number) => items[seed % items.length]
 
 export const DEFAULT_EVENT_BATCH_SIZE = 1000
 const DEFAULT_TOTAL_EVENTS = 1000

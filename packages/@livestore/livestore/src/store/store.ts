@@ -24,7 +24,7 @@ import {
 import type { StreamEventsOptions } from '@livestore/common/leader-thread'
 import type { LiveStoreSchema } from '@livestore/common/schema'
 import { EventSequenceNumber, LiveStoreEvent, resolveEventDef, SystemTables } from '@livestore/common/schema'
-import { assertNever, isDevEnv, omitUndefineds, shouldNeverHappen } from '@livestore/utils'
+import { assertNever, isDevEnv, objectToString, omitUndefineds, shouldNeverHappen } from '@livestore/utils'
 import type { Scope } from '@livestore/utils/effect'
 import {
   Cause,
@@ -293,7 +293,7 @@ export class Store<TSchema extends LiveStoreSchema = LiveStoreSchema.Any, TConte
               | { _tag: 'sessionChangeset'; data: Uint8Array<ArrayBuffer>; debug: any }
               | { _tag: 'no-op' }
               | { _tag: 'unset' } = { _tag: 'unset' }
-            if (withChangeset === true) {
+            if (withChangeset) {
               sessionChangeset = this[StoreInternalsSymbol].sqliteDbWrapper.withChangeset(exec).changeset
             } else {
               exec()
@@ -498,7 +498,7 @@ export class Store<TSchema extends LiveStoreSchema = LiveStoreSchema.Any, TConte
           : query._tag === 'def' || query._tag === 'signal-def'
             ? query.make(this[StoreInternalsSymbol].reactivityGraph.context!)
             : {
-                value: query as LiveQuery<TResult>,
+                value: query,
                 deref: () => {},
               }
         const query$ = queryRcRef.value
@@ -656,14 +656,14 @@ export class Store<TSchema extends LiveStoreSchema = LiveStoreSchema.Any, TConte
       if (decodeResult._tag === 'Right') {
         return decodeResult.right
       } else {
-        return shouldNeverHappen(
-          `Failed to decode query result with for schema:`,
-          schema.toString(),
-          'raw result:',
-          rawRes,
-          'decode error:',
-          decodeResult.left,
-        )
+          return shouldNeverHappen(
+            'Failed to decode query result with for schema:',
+            objectToString(schema),
+            'raw result:',
+            rawRes,
+            'decode error:',
+            decodeResult.left,
+          )
       }
     } else if (query._tag === 'def') {
       const query$ = query.make(this[StoreInternalsSymbol].reactivityGraph.context!)
@@ -1150,11 +1150,14 @@ export class Store<TSchema extends LiveStoreSchema = LiveStoreSchema.Any, TConte
       Effect.gen(this, function* () {
         const session = yield* this[StoreInternalsSymbol].syncProcessor.syncState
         yield* Effect.log(
-          `Session sync state: ${session.localHead} (upstream: ${session.upstreamHead})`,
+          `Session sync state: ${objectToString(session.localHead)} (upstream: ${objectToString(session.upstreamHead)})`,
           session.toJSON(),
         )
         const leader = yield* this[StoreInternalsSymbol].clientSession.leaderThread.syncState
-        yield* Effect.log(`Leader sync state: ${leader.localHead} (upstream: ${leader.upstreamHead})`, leader.toJSON())
+        yield* Effect.log(
+          `Leader sync state: ${objectToString(leader.localHead)} (upstream: ${objectToString(leader.upstreamHead)})`,
+          leader.toJSON(),
+        )
       }).pipe(this.runEffectFork)
     },
 

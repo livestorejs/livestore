@@ -155,7 +155,7 @@ const trimInfoForHasing = (obj: Table | Column | Index | ForeignKey | DbSchema):
       }
     }
     default: {
-      throw new Error(`Unreachable: ${obj}`)
+      throw new Error(`Unreachable: ${String(obj)}`)
     }
   }
 }

@@ -179,7 +179,7 @@ export const synced = <TName extends string, TType, TEncoded = TType>(
   args: {
     name: TName
     schema: Schema.Schema<TType, TEncoded>
-  } & Omit<DefineEventOptions<TType, false>, 'derived' | 'clientOnly'>,
+  } & Omit<DefineEventOptions<TType>, 'derived' | 'clientOnly'>,
 ): EventDef<TName, TType, TEncoded> => defineEvent({ ...args, clientOnly: false })
 
 /**
@@ -213,5 +213,5 @@ export const clientOnly = <TName extends string, TType, TEncoded = TType>(
   args: {
     name: TName
     schema: Schema.Schema<TType, TEncoded>
-  } & Omit<DefineEventOptions<TType, false>, 'derived' | 'clientOnly'>,
+  } & Omit<DefineEventOptions<TType>, 'derived' | 'clientOnly'>,
 ): EventDef<TName, TType, TEncoded> => defineEvent({ ...args, clientOnly: true })

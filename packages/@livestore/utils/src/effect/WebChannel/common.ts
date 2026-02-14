@@ -61,8 +61,8 @@ export const mapSchema = <MsgListen, MsgSend, MsgListenEncoded, MsgSendEncoded>(
 export const listenToDebugPing =
   (channelName: string) =>
   <MsgListen>(
-    stream: Stream.Stream<Either.Either<MsgListen, ParseResult.ParseError>, never>,
-  ): Stream.Stream<Either.Either<MsgListen, ParseResult.ParseError>, never> =>
+    stream: Stream.Stream<Either.Either<MsgListen, ParseResult.ParseError>>,
+  ): Stream.Stream<Either.Either<MsgListen, ParseResult.ParseError>> =>
     stream.pipe(
       Stream.filterEffect(
         Effect.fn(function* (msg) {

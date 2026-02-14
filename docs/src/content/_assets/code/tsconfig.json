@@ -39,7 +39,6 @@
       }
     ],
     "rootDir": "./",
-    "baseUrl": "./",
     "jsx": "react-jsx",
     "types": ["vite/client", "node", "@cloudflare/workers-types"],
     "noEmit": true,

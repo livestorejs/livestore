@@ -1,4 +1,4 @@
-import { omitUndefineds } from '@livestore/utils'
+import { objectToString, omitUndefineds } from '@livestore/utils'
 import {
   Command,
   type CommandExecutor,
@@ -273,10 +273,10 @@ export class DockerComposeService extends Effect.Service<DockerComposeService>()
         }).pipe(Effect.withSpan('downDockerCompose'))
 
       // Register cleanup finalizer to ensure containers are removed when scope closes
-      yield* Effect.addFinalizer(() =>
+          yield* Effect.addFinalizer(() =>
         down({ volumes: true, removeOrphans: true }).pipe(
           Effect.tap(() => Effect.log(`Docker Compose cleanup completed for project ${projectName}`)),
-          Effect.catchAll((error) => Effect.log(`Docker Compose cleanup failed for project ${projectName}: ${error}`)),
+          Effect.catchAll((error) => Effect.log('Docker Compose cleanup failed for project', projectName, objectToString(error))),
         ),
       )
 

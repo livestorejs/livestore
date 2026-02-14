@@ -172,7 +172,7 @@ const makePinger = Effect.fnUntraced(function* <A, E, R>(
   pingSchedule: Schedule.Schedule<unknown> = Schedule.spaced(10000).pipe(Schedule.addDelay(() => 5000)),
 ) {
   // CHANGED: add manual ping deferreds
-  const manualPingDeferreds = new Set<Deferred.Deferred<void, never>>()
+  const manualPingDeferreds = new Set<Deferred.Deferred<void>>()
 
   let recievedPong = true
   const latch = Effect.unsafeMakeLatch()
@@ -203,7 +203,7 @@ const makePinger = Effect.fnUntraced(function* <A, E, R>(
 
   // CHANGED: add manual ping
   const ping = Effect.gen(function* () {
-    const deferred = yield* Deferred.make<void, never>()
+    const deferred = yield* Deferred.make<void>()
     manualPingDeferreds.add(deferred)
     yield* deferred
     manualPingDeferreds.delete(deferred)

@@ -9,7 +9,7 @@ import { astToSql } from './astToSql.ts'
 export const makeQueryBuilder = <TResult, TTableDef extends TableDefBase>(
   tableDef: TTableDef,
   ast: QueryBuilderAst = emptyAst(tableDef),
-): QueryBuilder<TResult, TTableDef, never> => {
+): QueryBuilder<TResult, TTableDef> => {
   const api = {
     select() {
       assertSelectQueryBuilderAst(ast)

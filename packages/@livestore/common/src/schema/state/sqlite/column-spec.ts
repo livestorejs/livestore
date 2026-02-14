@@ -19,7 +19,7 @@ export const makeColumnSpec = (tableAst: SqliteAst.Table) => {
   // is only valid on a single column declared as INTEGER PRIMARY KEY (column-level).
   const columnDefStrs = tableAst.columns.map((column) =>
     toSqliteColumnSpec(column, {
-      inlinePrimaryKey: hasSinglePk && column === pkColumn && column.primaryKey === true,
+      inlinePrimaryKey: hasSinglePk && column === pkColumn &&  column.primaryKey,
     }),
   )
 
@@ -37,10 +37,10 @@ const toSqliteColumnSpec = (column: SqliteAst.Column, opts: { inlinePrimaryKey: 
   const columnTypeStr = column.type._tag
   // When PRIMARY KEY is declared inline, NOT NULL is implied and should not be emitted,
   // and AUTOINCREMENT must immediately follow PRIMARY KEY within the same constraint.
-  const nullableStr = opts.inlinePrimaryKey ? '' : column.nullable === false ? 'not null' : ''
+  const nullableStr = opts.inlinePrimaryKey ? '' : ! column.nullable ? 'not null' : ''
 
   // Only include AUTOINCREMENT when it's valid: single-column INTEGER PRIMARY KEY
-  const includeAutoIncrement = opts.inlinePrimaryKey && column.type._tag === 'integer' && column.autoIncrement === true
+  const includeAutoIncrement = opts.inlinePrimaryKey && column.type._tag === 'integer' &&  column.autoIncrement
 
   const pkStr = opts.inlinePrimaryKey ? 'primary key' : ''
   const autoIncrementStr = includeAutoIncrement ? 'autoincrement' : ''

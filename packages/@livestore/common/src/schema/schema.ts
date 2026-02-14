@@ -117,7 +117,7 @@ export const makeSchema = <TInputSchema extends InputSchema>(
   }
 
   for (const tableDef of tables.values()) {
-    if (tableIsClientDocumentTable(tableDef) && eventsDefsMap.has(tableDef.set.name) === false) {
+    if (tableIsClientDocumentTable(tableDef) && ! eventsDefsMap.has(tableDef.set.name)) {
       eventsDefsMap.set(tableDef.set.name, tableDef.set)
     }
   }

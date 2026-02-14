@@ -52,7 +52,7 @@ export const loadModuleConfig = ({
         }),
     })
 
-    const schema = (mod as any)?.schema
+    const schema = (mod)?.schema
     if (!isLiveStoreSchema(schema)) {
       return yield* UnknownError.make({
         cause: `Module at ${abs} must export a valid LiveStore 'schema'`,
@@ -60,7 +60,7 @@ export const loadModuleConfig = ({
       })
     }
 
-    const syncBackendConstructor = (mod as any)?.syncBackend
+    const syncBackendConstructor = (mod)?.syncBackend
     if (typeof syncBackendConstructor !== 'function') {
       return yield* UnknownError.make({
         cause: `Module at ${abs} must export a 'syncBackend' constructor`,
@@ -68,7 +68,7 @@ export const loadModuleConfig = ({
       })
     }
 
-    const syncPayloadSchemaExport = (mod as any)?.syncPayloadSchema
+    const syncPayloadSchemaExport = (mod)?.syncPayloadSchema
     const syncPayloadSchema =
       syncPayloadSchemaExport === undefined
         ? Schema.JsonValue
@@ -78,7 +78,7 @@ export const loadModuleConfig = ({
               `Exported 'syncPayloadSchema' from ${abs} must be an Effect Schema (received ${typeof syncPayloadSchemaExport}).`,
             )
 
-    const syncPayloadExport = (mod as any)?.syncPayload
+    const syncPayloadExport = (mod)?.syncPayload
     const syncPayload = yield* (
       syncPayloadExport === undefined
         ? Effect.succeed<unknown>(undefined)

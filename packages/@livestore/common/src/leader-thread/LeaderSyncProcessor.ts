@@ -291,7 +291,7 @@ export const makeLeaderSyncProcessor = ({
           // Don't sync client-local events
           .filter((eventEncoded) => {
             const eventDef = schema.eventsDefsMap.get(eventEncoded.name)
-            return eventDef === undefined ? true : eventDef.options.clientOnly === false
+            return eventDef === undefined ? true : ! eventDef.options.clientOnly
           })
 
         if (globalPendingEvents.length > 0) {
@@ -630,7 +630,7 @@ const backgroundApplyLocalPushes = ({
       // Don't sync client-local events
       const filteredBatch = mergeResult.newEvents.filter((eventEncoded) => {
         const eventDef = schema.eventsDefsMap.get(eventEncoded.name)
-        return eventDef === undefined ? true : eventDef.options.clientOnly === false
+        return eventDef === undefined ? true : ! eventDef.options.clientOnly
       })
 
       yield* BucketQueue.offerAll(syncBackendPushQueue, filteredBatch)
@@ -780,7 +780,7 @@ const backgroundBackendPulling = ({
 
           const globalRebasedPendingEvents = mergeResult.newSyncState.pending.filter((event) => {
             const eventDef = schema.eventsDefsMap.get(event.name)
-            return eventDef === undefined ? true : eventDef.options.clientOnly === false
+            return eventDef === undefined ? true : ! eventDef.options.clientOnly
           })
           yield* restartBackendPushing(globalRebasedPendingEvents)
 
@@ -809,7 +809,7 @@ const backgroundBackendPulling = ({
           // Ensure push fiber is active after advance by restarting with current pending (non-client) events
           const globalPendingEvents = mergeResult.newSyncState.pending.filter((event) => {
             const eventDef = schema.eventsDefsMap.get(event.name)
-            return eventDef === undefined ? true : eventDef.options.clientOnly === false
+            return eventDef === undefined ? true : ! eventDef.options.clientOnly
           })
           yield* restartBackendPushing(globalPendingEvents)
 
@@ -864,7 +864,7 @@ const backgroundBackendPulling = ({
           // NOTE we only want to take process events when the sync backend is connected
           // (e.g. needed for simulating being offline)
           // TODO remove when there's a better way to handle this in stream above
-          yield* SubscriptionRef.waitUntil(syncBackend.isConnected, (isConnected) => isConnected === true)
+          yield* SubscriptionRef.waitUntil(syncBackend.isConnected, (isConnected) =>  isConnected)
           yield* onNewPullChunk(
             batch.map((_) =>
               LiveStoreEvent.Client.EncodedWithMeta.fromGlobal(_.eventEncoded, {
@@ -904,11 +904,11 @@ const backgroundBackendPushing = ({
     if (syncBackend === undefined) return
 
     while (true) {
-      yield* SubscriptionRef.waitUntil(syncBackend.isConnected, (isConnected) => isConnected === true)
+      yield* SubscriptionRef.waitUntil(syncBackend.isConnected, (isConnected) =>  isConnected)
 
       const queueItems = yield* BucketQueue.takeBetween(syncBackendPushQueue, 1, backendPushBatchSize)
 
-      yield* SubscriptionRef.waitUntil(syncBackend.isConnected, (isConnected) => isConnected === true)
+      yield* SubscriptionRef.waitUntil(syncBackend.isConnected, (isConnected) =>  isConnected)
 
       if (devtoolsLatch !== undefined) {
         yield* devtoolsLatch.await

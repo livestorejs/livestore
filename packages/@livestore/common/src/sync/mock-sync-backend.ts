@@ -126,7 +126,7 @@ export const makeMockSyncBackend = (
       // TODO consider making offline state actively error pull/push.
       // Currently, offline only reflects in `isConnected`, while operations still succeed,
       // mirroring how some real providers behave during transient disconnects.
-      return SyncBackend.of<Schema.JsonValue>({
+      return SyncBackend.of({
         isConnected: syncIsConnectedRef,
         connect: SubscriptionRef.set(syncIsConnectedRef, true),
         ping: Effect.void,

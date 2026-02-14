@@ -111,7 +111,7 @@ const makeNodeFsDb = ({
     // NOTE to keep the filePath short, we use the directory name in the vfs name
     // If this is becoming a problem, we can use a hashed version of the directory name
     const vfsName = `node-fs-${directory}`
-    if (sqlite3.vfs_registered.has(vfsName) === false) {
+    if (!sqlite3.vfs_registered.has(vfsName)) {
       // TODO refactor with Effect FileSystem instead of using `node:fs` directly inside of NodeFS
       const nodeFsVfs = new NodeFS(vfsName, (sqlite3 as any).module, directory)
       // @ts-expect-error TODO fix types

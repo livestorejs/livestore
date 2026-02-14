@@ -20,7 +20,7 @@ const main = async () => {
   const module = await WaSqliteFactory()
   const sqlite3 = WaSqlite.Factory(module)
 
-  if (sqlite3.vfs_registered.has('memory-vfs') === false) {
+  if (!sqlite3.vfs_registered.has('memory-vfs')) {
     const vfs = new MemoryVFS('memory-vfs', (sqlite3 as any).module)
 
     // @ts-expect-error TODO fix types

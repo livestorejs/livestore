@@ -14,7 +14,7 @@ title: Snippet Watch Test
 import code from "${relativeSnippetPath}?snippet"
 
 \`\`\`twoslash
-${'${'}code${'}'}
+\${code}
 \`\`\`
 `
 

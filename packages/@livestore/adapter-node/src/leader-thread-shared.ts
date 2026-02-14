@@ -64,7 +64,7 @@ export const makeLeaderThread = ({
   Scope.Scope
 > =>
   Effect.gen(function* () {
-    const runtime = yield* Effect.runtime<never>()
+    const runtime = yield* Effect.runtime()
 
     const schemaHashSuffix =
       schema.state.sqlite.migrations.strategy === 'manual' ? 'fixed' : schema.state.sqlite.hash.toString()
@@ -142,7 +142,7 @@ const makeDevtoolsOptions = ({
   devtools: WorkerSchema.LeaderWorkerInnerInitialMessage['devtools']
 }): Effect.Effect<DevtoolsOptions, UnknownError, Scope.Scope> =>
   Effect.gen(function* () {
-    if (devtools.enabled === false) {
+    if (!devtools.enabled) {
       return {
         enabled: false,
       }
@@ -155,7 +155,7 @@ const makeDevtoolsOptions = ({
         const { startDevtoolsServer } = yield* Effect.promise(() => import('./devtools/devtools-server.ts'))
 
         // TODO instead of failing when the port is already in use, we should try to use that WS server instead of starting a new one
-        if (devtools.useExistingDevtoolsServer === false) {
+        if (!devtools.useExistingDevtoolsServer) {
           yield* startDevtoolsServer({
             schemaPath: devtools.schemaPath,
             clientSessionInfo: Devtools.SessionInfo.SessionInfo.make({

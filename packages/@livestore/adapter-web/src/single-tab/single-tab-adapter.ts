@@ -360,9 +360,12 @@ export const makeSingleTabAdapter =
         Effect.gen(function* () {
           if (
             Exit.isFailure(ex) &&
-            Exit.isInterrupted(ex) === false &&
-            Schema.is(IntentionalShutdownCause)(Cause.squash(ex.cause)) === false &&
-            Schema.is(StoreInterrupted)(Cause.squash(ex.cause)) === false
+            !
+            Exit.isInterrupted(ex) &&
+            !
+            Schema.is(IntentionalShutdownCause)(Cause.squash(ex.cause)) &&
+            !
+            Schema.is(StoreInterrupted)(Cause.squash(ex.cause))
           ) {
             yield* Effect.logError('[@livestore/adapter-web:single-tab] client-session shutdown', ex.cause)
           } else {
@@ -459,7 +462,7 @@ const getPersistedId = (key: string, storageType: 'session' | 'local') => {
         ? sessionStorage
         : storageType === 'local'
           ? localStorage
-          : shouldNeverHappen(`[@livestore/adapter-web] Invalid storage type: ${storageType}`)
+          : shouldNeverHappen(`[@livestore/adapter-web] Invalid storage type: ${String(storageType)}`)
 
   if (storage === undefined) {
     return makeId()

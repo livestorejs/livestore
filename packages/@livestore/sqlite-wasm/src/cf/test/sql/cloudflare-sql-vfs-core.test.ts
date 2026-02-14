@@ -155,7 +155,7 @@ describe('CloudflareSqlVFS - Core Functionality', () => {
         },
         raw: function* () {
           for (const item of data) {
-            yield Object.values(item) as CfTypes.SqlStorageValue[]
+            yield Object.values(item)
           }
         },
         columnNames: Object.keys(data[0] || {}),

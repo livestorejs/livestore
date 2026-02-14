@@ -12,7 +12,7 @@ const isServerRuntime = String(import.meta.env?.SSR) === 'true' || typeof window
 
 let sqlite3Promise: ReturnType<typeof loadSqlite3Wasm> | undefined
 
-if (isServerRuntime === false) {
+if (!isServerRuntime) {
   sqlite3Promise = loadSqlite3Wasm()
 }
 

@@ -324,7 +324,7 @@ export default class MeasurementsReporter implements Reporter {
       if (!result[path]) {
         result[path] = {}
       }
-      result[path]![testTitle] = trackedMetric
+      result[path][testTitle] = trackedMetric
     }
 
     return result

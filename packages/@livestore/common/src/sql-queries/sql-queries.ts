@@ -246,7 +246,7 @@ export const createTable = ({
     .filter(([_, columnDef]) => columnDef.primaryKey)
     .map(([columnName, _]) => columnName)
   const columnDefStrs = Object.entries(table.columns).map(([columnName, columnDef]) => {
-    const nullModifier = columnDef.nullable === true ? '' : 'NOT NULL'
+    const nullModifier =  columnDef.nullable ? '' : 'NOT NULL'
     const defaultModifier = (() => {
       if (columnDef.default._tag === 'None') return ''
       const defaultValue = columnDef.default.value
@@ -284,7 +284,7 @@ export const makeBindValues = <TColumns extends SqliteDsl.Columns, TKeys extends
     ReadonlyArray.map(([columnName, columnDef]) => [
       columnName,
       (value: any) => {
-        if (columnDef.nullable === true && (value === null || value === undefined)) return null
+        if (columnDef.nullable && (value === null || value === undefined)) return null
         const res = Schema.encodeEither(columnDef.schema)(value)
         if (res._tag === 'Left') {
           const parseErrorStr = TreeFormatter.formatErrorSync(res.left)

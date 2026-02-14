@@ -141,7 +141,7 @@ export default {
         headers: { 'Content-Type': 'text/plain' },
       })
     } catch (error) {
-      return new Response(`Error: ${error}`, { status: 500 })
+      return new Response(`Error: ${String(error)}`, { status: 500 })
     }
   },
 }

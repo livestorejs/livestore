@@ -70,7 +70,7 @@ export const formatQueryError = (
   cause: Error,
   label: string,
   stackInfo: StackInfo,
-  framework: 'react' | 'solid' | 'svelte' | string,
+  framework: string,
 ): Error => {
   return new Error(
     `\
@@ -103,7 +103,7 @@ export const runInitialQuery = <TResult>(
   query$: LiveQuery<TResult>,
   otelContext: otel.Context,
   stackInfo: StackInfo,
-  framework: 'react' | 'solid' | 'svelte' | string,
+  framework: string,
 ): TResult => {
   try {
     return query$.run({

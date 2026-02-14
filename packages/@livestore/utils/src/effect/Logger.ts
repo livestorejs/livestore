@@ -35,7 +35,7 @@ export const consoleLogger = (threadName: string) =>
     const annotationsObj = Object.fromEntries(HashMap.entries(annotations))
 
     const messages = Array.isArray(message) ? message : [message]
-    if (Cause.isEmpty(cause) === false) {
+    if (!Cause.isEmpty(cause)) {
       messages.push(Cause.pretty(cause, { renderErrorCause: true }))
     }
 

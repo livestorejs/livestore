@@ -9,7 +9,7 @@ import { shouldNeverHappen } from '@livestore/utils'
  * @throws If the table is not a client document table
  */
 export const validateTableOptions = (table: State.SQLite.TableDef<any, any>): void => {
-  if (State.SQLite.tableIsClientDocumentTable(table) === false) {
+  if (!State.SQLite.tableIsClientDocumentTable(table)) {
     shouldNeverHappen(
       `useClientDocument called on table "${table.sqliteDef.name}" which is not a client document table`,
     )

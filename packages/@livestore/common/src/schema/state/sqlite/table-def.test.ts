@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest'
 
 import { Schema } from '@livestore/utils/effect'
+import { objectToString } from '@livestore/utils'
 
 import { State } from '../../mod.ts'
 
@@ -81,11 +82,11 @@ describe('table function overloads', () => {
     expect(todosTable.sqliteDef.columns).toHaveProperty('optionalComplex')
 
     expect(todosTable.sqliteDef.columns.optionalBoolean.nullable).toBe(true)
-    expect(todosTable.sqliteDef.columns.optionalBoolean.schema.toString()).toBe('(number <-> boolean) | null')
+    expect(objectToString(todosTable.sqliteDef.columns.optionalBoolean.schema)).toBe('(number <-> boolean) | null')
     expect((todosTable.rowSchema as any).fields.optionalBoolean.toString()).toBe('(number <-> boolean) | null')
 
     expect(todosTable.sqliteDef.columns.optionalComplex.nullable).toBe(true)
-    expect(todosTable.sqliteDef.columns.optionalComplex.schema.toString()).toBe(
+    expect(objectToString(todosTable.sqliteDef.columns.optionalComplex.schema)).toBe(
       '(parseJson <-> { readonly color: string } | undefined) | null',
     )
     expect((todosTable.rowSchema as any).fields.optionalComplex.toString()).toBe(
@@ -329,7 +330,7 @@ describe('table function overloads', () => {
 
     expect(shapes.sqliteDef.columns.kind.columnType).toBe('text')
 
-    const kindSchema = shapes.sqliteDef.columns.kind.schema.toString()
+    const kindSchema = objectToString(shapes.sqliteDef.columns.kind.schema)
     expect(kindSchema).toContain('"circle" | "square"')
 
     expect(() =>

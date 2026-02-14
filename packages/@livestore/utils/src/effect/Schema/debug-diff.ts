@@ -20,7 +20,7 @@ export const debugDiff =
 
 const debugDiffImpl = (ast: SchemaAST.AST, a: any, b: any, path: string, bag: DiffItem[]) => {
   const eq = Schema.equivalence({ ast } as any)
-  if (eq(a, b) === false) {
+  if (!eq(a, b)) {
     // bag.push({ path, a, b, ast })
 
     if (SchemaAST.isUnion(ast)) {
@@ -50,7 +50,7 @@ const debugDiffImpl = (ast: SchemaAST.AST, a: any, b: any, path: string, bag: Di
 const isTaggedUnion = (ast: SchemaAST.AST): boolean => {
   if (SchemaAST.isUnion(ast)) {
     return ast.types.every((type) => {
-      if (SchemaAST.isTypeLiteral(type) === false) return false
+      if (!SchemaAST.isTypeLiteral(type)) return false
       const props = SchemaAST.getPropertySignatures(type)
       return props.some((prop) => prop.name.toString() === '_tag')
     })

@@ -131,7 +131,7 @@ export const makeRpcClient = (threadName: string) => {
 
       const client = yield* RpcClient.make(LoggerRpcs).pipe(Effect.provide(ProtocolLive))
 
-      const runtime = yield* Effect.runtime<never>()
+      const runtime = yield* Effect.runtime()
 
       return Logger.make((args) => {
         const formattedMessage = prettyLogger.log(args)

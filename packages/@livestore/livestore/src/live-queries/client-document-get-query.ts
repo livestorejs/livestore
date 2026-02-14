@@ -26,7 +26,7 @@ export const makeExecBeforeFirstRun =
     otelContext: otel.Context | undefined
   }) =>
   ({ store }: ReactivityGraphContext) => {
-    if (State.SQLite.tableIsClientDocumentTable(table) === false) {
+    if (!State.SQLite.tableIsClientDocumentTable(table)) {
       return shouldNeverHappen(
         `Cannot insert row for table "${table.sqliteDef.name}" which does not have 'deriveEvents: true' set`,
       )

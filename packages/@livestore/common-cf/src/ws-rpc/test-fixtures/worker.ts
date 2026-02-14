@@ -91,7 +91,7 @@ export default {
 
       return serverDO.fetch(request)
     } catch (error) {
-      return new Response(`Error: ${error}`, { status: 500 })
+      return new Response(`Error: ${String(error)}`, { status: 500 })
     }
   },
 }

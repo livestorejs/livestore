@@ -83,7 +83,7 @@ export const status = Effect.gen(function* () {
     }
   }
   const s = opt.value
-  const tableCounts = (Array.from(s.schema.state.sqlite.tables.keys()) as string[])
+  const tableCounts = (Array.from(s.schema.state.sqlite.tables.keys()))
     .filter((name) => !SystemTables.isStateSystemTable(name))
     .reduce(
       (acc, name) => {
@@ -110,7 +110,7 @@ export const query = ({ sql, bindValues }: { sql: string; bindValues?: readonly 
     }
     const s = opt.value
 
-    const rows = s.query({ query: sql, bindValues: (bindValues as any) ?? [] }) as Array<Record<string, unknown>>
+    const rows = s.query({ query: sql, bindValues: (bindValues as any) ?? [] })
     const jsonRows = rows.map((r) => Object.fromEntries(Object.entries(r).map(([k, v]) => [k, v as Schema.JsonValue])))
     return { rows: jsonRows, rowCount: jsonRows.length }
   }).pipe(Effect.withSpan('mcp-runtime:query'))

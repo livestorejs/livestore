@@ -223,7 +223,7 @@ const makeAdapterImpl = ({
 
       const shutdownChannel = yield* makeShutdownChannel(storeId)
 
-      if (resetPersistence === true) {
+      if (resetPersistence) {
         yield* shutdownChannel
           .send(IntentionalShutdownCause.make({ reason: 'adapter-reset' }))
           .pipe(UnknownError.mapToUnknownError)
@@ -341,7 +341,7 @@ const resetNodePersistence = ({
 
     const directoryExists = yield* fs.exists(directory).pipe(UnknownError.mapToUnknownError)
 
-    if (directoryExists === false) {
+    if (!directoryExists) {
       return
     }
 
@@ -506,7 +506,7 @@ const makeWorkerLeaderThread = ({
               : cause,
         ),
         Effect.catchAllDefect((cause) => new UnknownError({ cause })),
-      ) as any
+      )
 
     const runInWorkerStream = <TReq extends typeof WorkerSchema.LeaderWorkerInnerRequest.Type>(
       req: TReq,

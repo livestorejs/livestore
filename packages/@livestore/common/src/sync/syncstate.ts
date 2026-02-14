@@ -325,7 +325,7 @@ export const merge = ({
             if (!newEvent) {
               return true
             }
-            return isEqualEvent(pendingEvent, newEvent) === false
+            return ! isEqualEvent(pendingEvent, newEvent)
           },
         )
 
@@ -392,7 +392,8 @@ export const merge = ({
 
       const newEventsFirst = payload.newEvents.at(0)!
       const invalidEventSequenceNumber =
-        EventSequenceNumber.Client.isGreaterThan(newEventsFirst.seqNum, syncState.localHead) === false
+        !
+        EventSequenceNumber.Client.isGreaterThan(newEventsFirst.seqNum, syncState.localHead)
 
       if (invalidEventSequenceNumber) {
         const expectedMinimumId = EventSequenceNumber.Client.nextPair({
@@ -555,7 +556,7 @@ const validateSyncState = (syncState: SyncState) => {
       }
     } else {
       // Otherwise, the parentSeqNum must be the same as the previous event's id
-      if (EventSequenceNumber.Client.isEqual(nextEvent.parentSeqNum, event.seqNum) === false) {
+      if (!EventSequenceNumber.Client.isEqual(nextEvent.parentSeqNum, event.seqNum)) {
         shouldNeverHappen('Events must be linked in a continuous chain via the parentSeqNum', syncState.pending, {
           event,
           nextEvent,
@@ -582,10 +583,11 @@ const validateMergeResult = (mergeResult: typeof MergeResult.Type) => {
 
   // Ensure new local head is greater than or equal to the previous local head
   if (
+    !
     EventSequenceNumber.Client.isGreaterThanOrEqual(
       mergeResult.newSyncState.localHead,
       mergeResult.mergeContext.syncState.localHead,
-    ) === false
+    )
   ) {
     shouldNeverHappen('New local head must be greater than or equal to the previous local head', {
       localHead: mergeResult.newSyncState.localHead,
@@ -595,10 +597,11 @@ const validateMergeResult = (mergeResult: typeof MergeResult.Type) => {
 
   // Ensure new upstream head is greater than or equal to the previous upstream head
   if (
+    !
     EventSequenceNumber.Client.isGreaterThanOrEqual(
       mergeResult.newSyncState.upstreamHead,
       mergeResult.mergeContext.syncState.upstreamHead,
-    ) === false
+    )
   ) {
     shouldNeverHappen('New upstream head must be greater than or equal to the previous upstream head', {
       upstreamHead: mergeResult.newSyncState.upstreamHead,

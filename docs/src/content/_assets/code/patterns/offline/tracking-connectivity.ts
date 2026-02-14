@@ -7,7 +7,7 @@ declare const store: Store
 // ---cut---
 
 const status = await store.networkStatus.pipe(Effect.runPromise)
-if (status.isConnected === false) {
+if (!status.isConnected) {
   console.warn('Sync backend offline since', new Date(status.timestampMs))
 }
 

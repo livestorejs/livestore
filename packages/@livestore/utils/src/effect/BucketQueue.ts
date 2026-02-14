@@ -15,7 +15,7 @@ export const takeBetween = <A>(
   bucket: BucketQueue<A>,
   min: number,
   max: number,
-): STM.STM<ReadonlyArray<A>, never, never> =>
+): STM.STM<ReadonlyArray<A>> =>
   STM.gen(function* () {
     const bucketValue = yield* TRef.get(bucket)
     if (bucketValue.length < min) {

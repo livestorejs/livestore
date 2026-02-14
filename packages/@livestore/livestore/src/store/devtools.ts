@@ -174,7 +174,7 @@ export const connectDevtoolsToStore = ({
               buffer.length = 0
             }
 
-            if (hasStopped === false) {
+            if (!hasStopped) {
               tickHandle = requestNextTick(tick)
             }
           }

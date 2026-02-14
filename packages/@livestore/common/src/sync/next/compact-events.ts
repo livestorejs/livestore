@@ -22,7 +22,7 @@ export const compactEvents = (inputDag: HistoryDag): { dag: HistoryDag; compacte
   orderedEventSequenceNumberStrs.pop()
 
   for (const eventNumStr of orderedEventSequenceNumberStrs) {
-    if (dag.hasNode(eventNumStr) === false) {
+    if (!dag.hasNode(eventNumStr)) {
       continue
     }
 
@@ -42,7 +42,7 @@ export const compactEvents = (inputDag: HistoryDag): { dag: HistoryDag; compacte
         // )
 
         for (const subDagInHistory of subDagsInHistory.subDags) {
-          if (dagDependsOnDag(subDag, subDagInHistory, dag) === false) {
+          if (!dagDependsOnDag(subDag, subDagInHistory, dag)) {
             dropFromDag(dag, subDagInHistory)
           }
         }
@@ -51,9 +51,10 @@ export const compactEvents = (inputDag: HistoryDag): { dag: HistoryDag; compacte
         // We can retry to also remove those.
         // Implementation: retry if outsideDependencies overlap with deleted sub dags
         if (
+          !
           subDagsInHistory.allOutsideDependencies.some((outsideDependencies) =>
             outsideDependencies.every((dep) => subDagsInHistory.subDags.some((subDag) => subDag.hasNode(dep))),
-          ) === false
+          )
         ) {
           shouldRetry = false
         }
@@ -78,7 +79,7 @@ function* makeSubDagsForEvent(inputDag: HistoryDag, eventNumStr: string): Genera
 
     for (const [currentEventSequenceNumberStr, edgeTargetIdStrs] of currentIterationEls) {
       const node = inputDag.getNodeAttributes(currentEventSequenceNumberStr)
-      if (subDag.hasNode(currentEventSequenceNumberStr) === false) {
+      if (!subDag.hasNode(currentEventSequenceNumberStr)) {
         subDag.addNode(currentEventSequenceNumberStr, { ...node })
       }
       for (const edgeTargetIdStr of edgeTargetIdStrs) {
@@ -155,7 +156,7 @@ const outsideDependenciesForDag = (subDag: HistoryDag, inputDag: HistoryDag) => 
     for (const edgeEntry of inputDag.outboundEdgeEntries(nodeIdStr)) {
       if (edgeEntry.attributes.type === 'facts') {
         const depEventSequenceNumberStr = edgeEntry.target
-        if (subDag.hasNode(depEventSequenceNumberStr) === false) {
+        if (!subDag.hasNode(depEventSequenceNumberStr)) {
           outsideDependencies.push(depEventSequenceNumberStr)
         }
       }
@@ -195,7 +196,7 @@ const dagReplacesDag = (dagA: HistoryDag, dagB: HistoryDag): boolean => {
     const nodeA = nodeEntriesA[i]!
     const nodeB = nodeEntriesB[i]!
 
-    if (replacesFacts(nodeA.factsGroup, nodeB.factsGroup) === false) {
+    if (!replacesFacts(nodeA.factsGroup, nodeB.factsGroup)) {
       return false
     }
   }

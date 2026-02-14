@@ -214,12 +214,12 @@ export const docsCommand = Cli.Command.make('docs').pipe(
           yield* Effect.log('Snippets and diagrams built successfully')
         }
 
-        if (!skipDeps) {
-          yield* runDocsDiagramsWatchNoInitialBuild.pipe(
-            Effect.catchAllCause((cause) => Effect.logWarning(`Diagrams watch stopped: ${cause}`)),
-            Effect.forkScoped,
-          )
-        }
+    if (!skipDeps) {
+      yield* runDocsDiagramsWatchNoInitialBuild.pipe(
+        Effect.catchAllCause((cause) => Effect.logWarning('Diagrams watch stopped', cause)),
+        Effect.forkScoped,
+      )
+    }
 
         /* Run Astro dev server */
         yield* cmd(['pnpm', 'astro', 'dev', open ? '--open' : undefined], {
@@ -387,7 +387,7 @@ export const docsCommand = Cli.Command.make('docs').pipe(
                 : undefined
 
           const prod =
-            prodOption._tag === 'Some' && prodOption.value === true // TODO clean up when Effect CLI boolean flag is fixed
+            prodOption._tag === 'Some' && prodOption.value // TODO clean up when Effect CLI boolean flag is fixed
               ? prodOption.value
               : isPr
                 ? false
@@ -406,7 +406,7 @@ export const docsCommand = Cli.Command.make('docs').pipe(
           yield* Effect.log(`Deploying to "${site}" ${prod ? 'in prod' : deployAliasLabel}`)
 
           // Split mode: build first only when requested via --build
-          const shouldBuild = buildOption._tag === 'Some' && buildOption.value === true
+          const shouldBuild = buildOption._tag === 'Some' && buildOption.value
           if (shouldBuild) {
             yield* docsBuildCommand.handler({ apiDocs: true, clean: false, skipDeps: false })
           }

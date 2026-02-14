@@ -26,7 +26,7 @@ const shouldSkipSnippetAutoBuildAndWatch = () => process.env.LS_SKIP_SNIPPET_AUT
 export const createAstroTwoslashCodeIntegration = (options: AstroTwoslashCodeOptions = {}): AstroIntegration => {
   const autoBuild = options.autoBuild ?? true
   let resolvedBuildOptions: BuildSnippetsOptions | undefined
-  let watchFiber: Fiber.RuntimeFiber<void, never> | null = null
+  let watchFiber: Fiber.RuntimeFiber<void> | null = null
 
   const runSnippetBuild = () => {
     if (!resolvedBuildOptions) {

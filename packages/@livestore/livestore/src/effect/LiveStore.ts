@@ -138,7 +138,7 @@ export type StoreTagClass<TSchema extends LiveStoreSchema, TStoreId extends stri
   >
 
   /** Layer that provides the Deferred tag */
-  readonly DeferredLayer: Layer.Layer<DeferredContextId<TStoreId>, never, never>
+  readonly DeferredLayer: Layer.Layer<DeferredContextId<TStoreId>>
 
   /** Layer that waits for Deferred and provides the running store */
   readonly fromDeferred: Layer.Layer<StoreTagClass<TSchema, TStoreId>, UnknownError, DeferredContextId<TStoreId>>
@@ -338,7 +338,7 @@ export interface StoreContext<TSchema extends LiveStoreSchema, TStoreId extends 
   readonly Layer: <TContext = {}>(
     props: Omit<LiveStoreContextProps<TSchema, TContext>, 'storeId'>,
   ) => Layer.Layer<StoreContextId<TSchema, TStoreId>, UnknownError | Cause.TimeoutException, OtelTracer.OtelTracer>
-  readonly DeferredLayer: Layer.Layer<DeferredContextId<TStoreId>, never, never>
+  readonly DeferredLayer: Layer.Layer<DeferredContextId<TStoreId>>
   readonly fromDeferred: Layer.Layer<StoreContextId<TSchema, TStoreId>, UnknownError, DeferredContextId<TStoreId>>
 }
 

@@ -49,8 +49,8 @@ if (isDevEnv()) {
     opfs: Opfs.debugUtils,
     blobUrl: (buffer: Uint8Array<ArrayBuffer>) =>
       URL.createObjectURL(new Blob([buffer], { type: 'application/octet-stream' })),
-    runSync: (effect: Effect.Effect<any, any, never>) => Effect.runSync(effect),
-    runFork: (effect: Effect.Effect<any, any, never>) => Effect.runFork(effect),
+    runSync: (effect: Effect.Effect<any, any>) => Effect.runSync(effect),
+    runFork: (effect: Effect.Effect<any, any>) => Effect.runFork(effect),
   }
 }
 
@@ -119,7 +119,7 @@ const makeWorkerRunnerInner = ({ schema, sync: syncOptions, syncPayloadSchema }:
       Effect.gen(function* () {
         const sqlite3 = yield* Effect.promise(() => loadSqlite3Wasm())
         const makeSqliteDb = sqliteDbFactory({ sqlite3 })
-        const runtime = yield* Effect.runtime<never>()
+        const runtime = yield* Effect.runtime()
 
         // Check OPFS availability and determine storage mode
         const opfsCheck = yield* checkOpfsAvailability
@@ -307,7 +307,7 @@ const makeDevtoolsOptions = ({
   dbEventlog: SqliteDb
 }): Effect.Effect<DevtoolsOptions, UnknownError, Scope.Scope | WebmeshWorker.CacheService> =>
   Effect.gen(function* () {
-    if (devtoolsEnabled === false) {
+    if (!devtoolsEnabled) {
       return { enabled: false }
     }
 

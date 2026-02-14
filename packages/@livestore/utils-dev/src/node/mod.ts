@@ -41,7 +41,7 @@ export const OtelLiveHttp = ({
   rootSpanAttributes?: Record<string, unknown>
   skipLogUrl?: boolean
   traceNodeBootstrap?: boolean
-} = {}): Layer.Layer<OtelTracer.OtelTracer | Tracer.ParentSpan, never, never> =>
+} = {}): Layer.Layer<OtelTracer.OtelTracer | Tracer.ParentSpan> =>
   Effect.gen(function* () {
     const configRes = yield* Config.all({
       exporterUrl: Config.string('OTEL_EXPORTER_OTLP_ENDPOINT').pipe(

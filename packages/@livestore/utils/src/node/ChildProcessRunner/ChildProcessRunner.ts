@@ -90,7 +90,7 @@ const platformRunnerImpl = Runner.PlatformRunner.of({
             Deferred.unsafeDone(closeLatch, Exit.die(exit.cause))
           }
         }
-        port.on('message', (message: Runner.BackingRunner.Message<I> | any) => {
+         port.on('message', (message: Runner.BackingRunner.Message<I>) => {
           // console.log('message', message)
 
           // Handle parent death detection setup messages

@@ -204,7 +204,7 @@ const createStreamingResponse = <Rpcs extends Rpc.Any, LE>(
       }),
     })
 
-    let stream: Stream.Stream<any, any, never>
+    let stream: Stream.Stream<any, any>
     if (Effect.isEffect(handlerResult)) {
       // If handler returns Effect<Stream>, we need to run it to get the stream
       stream = yield* handlerResult

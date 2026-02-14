@@ -294,7 +294,7 @@ export const makePersistedAdapter =
 
       // Ideally we can come up with a simpler implementation that doesn't require this
       const waitForSharedWorkerInitialized = yield* Deferred.make<void>()
-      if (gotLocky === false) {
+      if (!gotLocky) {
         // Don't need to wait if we're not the leader
         yield* Deferred.succeed(waitForSharedWorkerInitialized, undefined)
       }
@@ -356,7 +356,7 @@ export const makePersistedAdapter =
       }).pipe(Effect.withSpan('@livestore/adapter-web:client-session:lock'))
 
       // TODO take/give up lock when tab becomes active/passive
-      if (gotLocky === false) {
+      if (!gotLocky) {
         yield* Effect.logDebug(
           `[@livestore/adapter-web:client-session] ⏳ Waiting for lock '${LIVESTORE_TAB_LOCK}' (sessionId: ${sessionId})`,
         )
@@ -494,9 +494,12 @@ export const makePersistedAdapter =
         Effect.gen(function* () {
           if (
             Exit.isFailure(ex) &&
-            Exit.isInterrupted(ex) === false &&
-            Schema.is(IntentionalShutdownCause)(Cause.squash(ex.cause)) === false &&
-            Schema.is(StoreInterrupted)(Cause.squash(ex.cause)) === false
+            !
+            Exit.isInterrupted(ex) &&
+            !
+            Schema.is(IntentionalShutdownCause)(Cause.squash(ex.cause)) &&
+            !
+            Schema.is(StoreInterrupted)(Cause.squash(ex.cause))
           ) {
             yield* Effect.logError('[@livestore/adapter-web:client-session] client-session shutdown', ex.cause)
           } else {
@@ -602,7 +605,7 @@ const getPersistedId = (key: string, storageType: 'session' | 'local') => {
         ? sessionStorage
         : storageType === 'local'
           ? localStorage
-          : shouldNeverHappen(`[@livestore/adapter-web] Invalid storage type: ${storageType}`)
+          : shouldNeverHappen(`[@livestore/adapter-web] Invalid storage type: ${String(storageType)}`)
 
   // in case of a worker, we need the id of the parent window, to keep the id consistent
   // we also need to handle the case where there are multiple workers being spawned by the same window

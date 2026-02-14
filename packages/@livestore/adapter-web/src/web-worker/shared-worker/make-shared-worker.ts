@@ -43,8 +43,8 @@ if (isDevEnv()) {
   globalThis.__debugLiveStoreUtils = {
     blobUrl: (buffer: Uint8Array<ArrayBuffer>) =>
       URL.createObjectURL(new Blob([buffer], { type: 'application/octet-stream' })),
-    runSync: (effect: Effect.Effect<any, any, never>) => Effect.runSync(effect),
-    runFork: (effect: Effect.Effect<any, any, never>) => Effect.runFork(effect),
+    runSync: (effect: Effect.Effect<any, any>) => Effect.runSync(effect),
+    runFork: (effect: Effect.Effect<any, any>) => Effect.runFork(effect),
   }
 }
 

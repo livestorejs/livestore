@@ -273,8 +273,8 @@ export abstract class LiveStoreQueryBase<TResult> implements LiveQuery<TResult> 
  */
 export type GetAtomResult = <T>(
   atom: RG.Atom<T, any, RefreshReason> | LiveQueryDef<T> | LiveQuery<T> | ISignal<T> | SignalDef<T>,
-  otelContext?: otel.Context | undefined,
-  debugRefreshReason?: RefreshReason | undefined,
+  otelContext?: otel.Context  ,
+  debugRefreshReason?: RefreshReason  ,
 ) => T
 
 export type DependencyQueriesRef = Set<RcRef<LiveQuery.Any | ISignal<any>>>

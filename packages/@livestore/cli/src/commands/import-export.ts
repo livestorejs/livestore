@@ -47,7 +47,7 @@ const exportEvents = ({
         (cause) =>
           new SyncOps.ExportError({
             cause,
-            note: `Failed to write export file: ${cause}`,
+            note: `Failed to write export file: ${String(cause)}`,
           }),
       ),
     )
@@ -86,7 +86,7 @@ const importEvents = ({
         (cause) =>
           new SyncOps.ImportError({
             cause,
-            note: `Failed to check file existence: ${cause}`,
+            note: `Failed to check file existence: ${String(cause)}`,
           }),
       ),
     )
@@ -104,7 +104,7 @@ const importEvents = ({
         (cause) =>
           new SyncOps.ImportError({
             cause,
-            note: `Failed to read import file: ${cause}`,
+            note: `Failed to read import file: ${String(cause)}`,
           }),
       ),
     )

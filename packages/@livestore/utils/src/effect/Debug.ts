@@ -209,7 +209,7 @@ function ensureScopePatched(scope: ScopeImpl, allocationFiber: Fiber.RuntimeFibe
   if (patchScopeClose) {
     const oldClose = (scope as any).close
     ;(scope as any).close = function (...args: any[]) {
-      return oldClose.apply(this as any, args).pipe(
+      return oldClose.apply(this, args).pipe(
         Effect.withSpan(`scope.${id}.closeRunFinalizers`),
         Effect.ensuring(
           Effect.sync(() => {
@@ -351,7 +351,7 @@ function filterGraphKeepAncestors<N, E>(
   })
 }
 
-function renderSpanNode(graph: Graph.Graph<GraphNodeInfo, void, 'directed'>, nodeId: number): string[] {
+function renderSpanNode(graph: Graph.Graph<GraphNodeInfo, void>, nodeId: number): string[] {
   const node = Graph.getNode(graph, nodeId)
   if (Option.isNone(node)) return []
   const info = node.value

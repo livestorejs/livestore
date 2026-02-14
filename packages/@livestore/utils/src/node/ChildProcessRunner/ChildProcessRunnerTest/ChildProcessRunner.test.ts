@@ -124,7 +124,7 @@ describe('ChildProcessRunner', { timeout: 10_000 }, () => {
           workerPid = result.pid
 
           // Verify the worker is running
-          assert.strictEqual(isProcessRunning(workerPid!), true, 'Worker process should be running')
+          assert.strictEqual(isProcessRunning(workerPid), true, 'Worker process should be running')
         } finally {
           // Abruptly close the scope (simulating test abortion)
           yield* Scope.close(scope, Exit.void)

@@ -61,7 +61,7 @@ export class TestStoreDo extends DurableObject<Env> implements ClientDoWithRpcCa
 
     if (url.pathname === '/store/todos') {
       if (request.method === 'POST') {
-        const payload = (await request.json()) as { id?: string; title: string }
+        const payload = (await request.json())
         const id = payload.id ?? crypto.randomUUID()
         const store = await this.ensureStore({ storeId, resetPersistence: false })
 
@@ -131,7 +131,7 @@ export class TestStoreDo extends DurableObject<Env> implements ClientDoWithRpcCa
   }): Promise<Store<typeof schema>> {
     // If the caller requested a reset (or we're handling a different store ID),
     // make sure to dispose the previous store instance so we can boot with a clean slate.
-    const shouldRecreate = resetPersistence === true || this.cachedStore === undefined || this.cachedStoreId !== storeId
+    const shouldRecreate =  resetPersistence || this.cachedStore === undefined || this.cachedStoreId !== storeId
 
     if (shouldRecreate) {
       if (this.cachedStore !== undefined) {

@@ -9,7 +9,7 @@ const calculateColumnWidths = (headers: string[], rows: string[][]): number[] =>
   headers.map((header, columnIndex) => {
     const maxContentWidth = Math.max(
       header.length,
-      ...rows.map((row) => (row[columnIndex] ? row[columnIndex]!.toString().length : 0)),
+      ...rows.map((row) => (row[columnIndex] ? row[columnIndex].toString().length : 0)),
     )
     return maxContentWidth + 2 // Add padding
   })

@@ -41,7 +41,7 @@ export const extractStackInfoFromStackTrace = (stackTrace: string): StackInfo =>
     // console.debug(name, filePath)
 
     // NOTE No idea where this `Module.` comes from - possibly a Vite thing?
-    if ((name.startsWith('use') || name.startsWith('Module.use')) && name.endsWith('QueryRef') === false) {
+    if ((name.startsWith('use') || name.startsWith('Module.use')) && ! name.endsWith('QueryRef')) {
       hasReachedStart = true
       // console.debug('hasReachedStart. adding one more frame.')
 

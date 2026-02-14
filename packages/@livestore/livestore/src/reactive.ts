@@ -33,8 +33,8 @@ export type NOT_REFRESHED_YET = typeof NOT_REFRESHED_YET
 
 export type GetAtom = <T>(
   atom: Atom<T, any, any>,
-  otelContext?: otel.Context | undefined,
-  debugRefreshReason?: TODO | undefined,
+  otelContext?: otel.Context  ,
+  debugRefreshReason?: TODO  ,
 ) => T
 
 export type Ref<T, TContext, TDebugRefreshReason extends DebugRefreshReason> = {
@@ -48,7 +48,7 @@ export type Ref<T, TContext, TDebugRefreshReason extends DebugRefreshReason> = {
   super: Set<Thunk<any, TContext, TDebugRefreshReason> | Effect<TDebugRefreshReason>>
   label?: string | undefined
   /** Container for meta information (e.g. the LiveStore Store) */
-  meta?: any | undefined
+  meta?: unknown
   equal: (a: T, b: T) => boolean
   refreshes: number
 }
@@ -64,7 +64,7 @@ export type Thunk<TResult, TContext, TDebugRefreshReason extends DebugRefreshRea
   super: Set<Thunk<any, TContext, TDebugRefreshReason> | Effect<TDebugRefreshReason>>
   label?: string | undefined
   /** Container for meta information (e.g. the LiveStore Store) */
-  meta?: any | undefined
+  meta?: unknown
   equal: (a: TResult, b: TResult) => boolean
   recomputations: number
 
@@ -79,7 +79,7 @@ export type Effect<TDebugRefreshReason extends DebugRefreshReason> = {
   _tag: 'effect'
   id: string
   isDestroyed: boolean
-  doEffect: (otelContext?: otel.Context | undefined, debugRefreshReason?: TDebugRefreshReason | undefined) => void
+  doEffect: (otelContext?: otel.Context  , debugRefreshReason?: TDebugRefreshReason  ) => void
   sub: Set<Atom<any, TODO, TODO>>
   label?: string | undefined
   invocations: number
@@ -252,7 +252,7 @@ export class ReactiveGraph<
           meta?: any
           equal?: (a: T, b: T) => boolean
         }
-      | undefined,
+       ,
   ): Thunk<T, TContext, TDebugRefreshReason> {
     const thunk: Thunk<T, TContext, TDebugRefreshReason> = {
       _tag: 'thunk',
@@ -291,7 +291,7 @@ export class ReactiveGraph<
             debugRefreshReason,
           )
 
-          const resultChanged = thunk.equal(thunk.previousResult as T, result) === false
+          const resultChanged = ! thunk.equal(thunk.previousResult as T, result)
 
           const debugInfoForAtom = {
             atom: serializeAtom(thunk, false),
@@ -384,7 +384,7 @@ export class ReactiveGraph<
       otelContext: otel.Context | undefined,
       debugRefreshReason: DebugRefreshReason | undefined,
     ) => void,
-    options?: { label?: string } | undefined,
+    options?: { label?: string }  ,
   ): Effect<TDebugRefreshReason> {
     const effect: Effect<TDebugRefreshReason> = {
       _tag: 'effect',
@@ -428,7 +428,7 @@ export class ReactiveGraph<
           debugRefreshReason?: TDebugRefreshReason
           otelContext?: otel.Context
         }
-      | undefined,
+       ,
   ) {
     this.setRefs([[ref, val]], options)
   }
@@ -441,7 +441,7 @@ export class ReactiveGraph<
           debugRefreshReason?: TDebugRefreshReason
           otelContext?: otel.Context
         }
-      | undefined,
+       ,
   ) {
     const effectsToRefresh = new Set<Effect<TDebugRefreshReason>>()
     for (const [ref, val] of refs) {
@@ -453,7 +453,7 @@ export class ReactiveGraph<
 
     if (options?.skipRefresh) {
       for (const effect of effectsToRefresh) {
-        if (this.deferredEffects.has(effect) === false) {
+        if (!this.deferredEffects.has(effect)) {
           this.deferredEffects.set(effect, new Set())
         }
 

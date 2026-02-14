@@ -73,7 +73,7 @@ export const validateFacts = ({
   const currentSnapshot = new Map(initialSnapshot)
 
   for (const [index, factGroup] of factGroups.entries()) {
-    if (isSubSetMapByValue(factGroup.depRequire, currentSnapshot) === false) {
+    if (!isSubSetMapByValue(factGroup.depRequire, currentSnapshot)) {
       const existing = new Map()
       const required = new Map()
 

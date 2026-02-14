@@ -162,7 +162,7 @@ export class SqliteDbWrapper implements SqliteDb {
 
   cachedExecute(
     queryStr: string,
-    bindValues?: PreparedBindValues | undefined,
+    bindValues?: PreparedBindValues  ,
     options?: {
       hasNoEffects?: boolean
       otelContext?: otel.Context
@@ -231,7 +231,7 @@ export class SqliteDbWrapper implements SqliteDb {
 
   cachedSelect<T = any>(
     queryStr: string,
-    bindValues?: PreparedBindValues | undefined,
+    bindValues?: PreparedBindValues  ,
     options?: {
       queriedTables?: ReadonlySet<string>
       skipCache?: boolean
@@ -252,7 +252,7 @@ export class SqliteDbWrapper implements SqliteDb {
 
           const key = this.resultCache.getKey(queryStr, bindValues)
           const cachedResult = this.resultCache.get(key)
-          if (skipCache === false && cachedResult !== undefined) {
+          if (!skipCache && cachedResult !== undefined) {
             span.setAttribute('sql.rowsCount', cachedResult.length)
             span.setAttribute('sql.cached', true)
             span.end()

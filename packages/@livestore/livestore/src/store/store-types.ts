@@ -47,7 +47,7 @@ export type LiveStoreContext<TSchema extends LiveStoreSchema = LiveStoreSchema.A
   | LiveStoreContextRunning<TSchema>
   | {
       stage: 'error'
-      error: UnknownError | unknown
+      error: unknown
     }
   | {
       stage: 'shutdown'

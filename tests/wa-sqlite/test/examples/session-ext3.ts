@@ -20,7 +20,7 @@ const main = async () => {
   const module = await WaSqliteFactory()
   const sqlite3 = WaSqlite.Factory(module)
 
-  if (sqlite3.vfs_registered.has('memory-vfs') === false) {
+  if (!sqlite3.vfs_registered.has('memory-vfs')) {
     const vfs = new MemoryVFS('memory-vfs', (sqlite3 as any).module)
 
     // @ts-expect-error TODO fix types
@@ -67,7 +67,7 @@ const main = async () => {
 
   const inverted = sqlite3.changeset_invert(changeset!)
   console.log('inverted', inverted)
-  const inverted2 = sqlite3.changeset_invert(inverted!)
+  const inverted2 = sqlite3.changeset_invert(inverted)
   console.log('inverted2', inverted2)
 
   console.log('res1', syncDb.select('SELECT * FROM app'))
