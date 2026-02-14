@@ -533,10 +533,18 @@ echo "$HOME/.nix-profile/bin" >> $GITHUB_PATH`,
     shell: 'bash',
   },
   {
-    name: 'Repair Nix store',
+    name: 'Validate Nix store',
     // Namespace runners may have stale/invalid paths in their bundled nix store cache.
-    // This removes invalid DB entries so nix re-fetches paths from substituters on demand.
-    run: 'nix-store --verify --repair 2>&1 | tail -5 || true',
+    // A cheap `devenv version` probe catches corruption before real work starts;
+    // the expensive `--verify --repair` only runs when actually needed.
+    // See https://github.com/namespacelabs/nscloud-setup/issues/8
+    run: `if devenv version > /dev/null 2>&1; then
+  echo "Nix store OK"
+else
+  echo "::warning::Nix store validation failed, running repair..."
+  nix-store --verify --repair 2>&1 | tail -20
+  devenv version
+fi`,
     shell: 'bash',
   },
 ] as const

@@ -50,8 +50,15 @@ jobs:
           nix profile install github:cachix/devenv/$(jq -r ".nodes.devenv.locked.rev" devenv.lock)
           echo "$HOME/.nix-profile/bin" >> $GITHUB_PATH
         shell: bash
-      - name: Repair Nix store
-        run: nix-store --verify --repair 2>&1 | tail -5 || true
+      - name: Validate Nix store
+        run: |
+          if devenv version > /dev/null 2>&1; then
+            echo "Nix store OK"
+          else
+            echo "::warning::Nix store validation failed, running repair..."
+            nix-store --verify --repair 2>&1 | tail -20
+            devenv version
+          fi
         shell: bash
       - run: 'dt lint:full megarepo:check'
   type-check:
@@ -83,8 +90,15 @@ jobs:
           nix profile install github:cachix/devenv/$(jq -r ".nodes.devenv.locked.rev" devenv.lock)
           echo "$HOME/.nix-profile/bin" >> $GITHUB_PATH
         shell: bash
-      - name: Repair Nix store
-        run: nix-store --verify --repair 2>&1 | tail -5 || true
+      - name: Validate Nix store
+        run: |
+          if devenv version > /dev/null 2>&1; then
+            echo "Nix store OK"
+          else
+            echo "::warning::Nix store validation failed, running repair..."
+            nix-store --verify --repair 2>&1 | tail -20
+            devenv version
+          fi
         shell: bash
       - run: 'dt ts:build'
   test-unit:
@@ -116,8 +130,15 @@ jobs:
           nix profile install github:cachix/devenv/$(jq -r ".nodes.devenv.locked.rev" devenv.lock)
           echo "$HOME/.nix-profile/bin" >> $GITHUB_PATH
         shell: bash
-      - name: Repair Nix store
-        run: nix-store --verify --repair 2>&1 | tail -5 || true
+      - name: Validate Nix store
+        run: |
+          if devenv version > /dev/null 2>&1; then
+            echo "Nix store OK"
+          else
+            echo "::warning::Nix store validation failed, running repair..."
+            nix-store --verify --repair 2>&1 | tail -20
+            devenv version
+          fi
         shell: bash
       - name: Preflight workspace bootstrap
         run: 'DEVENV_SKIP_SETUP=1 devenv tasks run pnpm:install genie:run ts:build --mode before --verbose'
@@ -152,8 +173,15 @@ jobs:
           nix profile install github:cachix/devenv/$(jq -r ".nodes.devenv.locked.rev" devenv.lock)
           echo "$HOME/.nix-profile/bin" >> $GITHUB_PATH
         shell: bash
-      - name: Repair Nix store
-        run: nix-store --verify --repair 2>&1 | tail -5 || true
+      - name: Validate Nix store
+        run: |
+          if devenv version > /dev/null 2>&1; then
+            echo "Nix store OK"
+          else
+            echo "::warning::Nix store validation failed, running repair..."
+            nix-store --verify --repair 2>&1 | tail -20
+            devenv version
+          fi
         shell: bash
       - name: Set OTEL_EXPORTER_OTLP_HEADERS environment variable
         env:
@@ -236,8 +264,15 @@ jobs:
           nix profile install github:cachix/devenv/$(jq -r ".nodes.devenv.locked.rev" devenv.lock)
           echo "$HOME/.nix-profile/bin" >> $GITHUB_PATH
         shell: bash
-      - name: Repair Nix store
-        run: nix-store --verify --repair 2>&1 | tail -5 || true
+      - name: Validate Nix store
+        run: |
+          if devenv version > /dev/null 2>&1; then
+            echo "Nix store OK"
+          else
+            echo "::warning::Nix store validation failed, running repair..."
+            nix-store --verify --repair 2>&1 | tail -20
+            devenv version
+          fi
         shell: bash
       - name: Preflight workspace bootstrap
         run: 'DEVENV_SKIP_SETUP=1 devenv tasks run pnpm:install genie:run ts:build --mode before --verbose'
@@ -310,8 +345,15 @@ jobs:
           nix profile install github:cachix/devenv/$(jq -r ".nodes.devenv.locked.rev" devenv.lock)
           echo "$HOME/.nix-profile/bin" >> $GITHUB_PATH
         shell: bash
-      - name: Repair Nix store
-        run: nix-store --verify --repair 2>&1 | tail -5 || true
+      - name: Validate Nix store
+        run: |
+          if devenv version > /dev/null 2>&1; then
+            echo "Nix store OK"
+          else
+            echo "::warning::Nix store validation failed, running repair..."
+            nix-store --verify --repair 2>&1 | tail -20
+            devenv version
+          fi
         shell: bash
       - name: Preflight workspace bootstrap
         run: 'DEVENV_SKIP_SETUP=1 devenv tasks run pnpm:install genie:run ts:build --mode before --verbose'
@@ -384,8 +426,15 @@ jobs:
           nix profile install github:cachix/devenv/$(jq -r ".nodes.devenv.locked.rev" devenv.lock)
           echo "$HOME/.nix-profile/bin" >> $GITHUB_PATH
         shell: bash
-      - name: Repair Nix store
-        run: nix-store --verify --repair 2>&1 | tail -5 || true
+      - name: Validate Nix store
+        run: |
+          if devenv version > /dev/null 2>&1; then
+            echo "Nix store OK"
+          else
+            echo "::warning::Nix store validation failed, running repair..."
+            nix-store --verify --repair 2>&1 | tail -20
+            devenv version
+          fi
         shell: bash
       - name: Preflight workspace bootstrap
         run: 'DEVENV_SKIP_SETUP=1 devenv tasks run pnpm:install genie:run ts:build --mode before --verbose'
@@ -432,8 +481,15 @@ jobs:
           nix profile install github:cachix/devenv/$(jq -r ".nodes.devenv.locked.rev" devenv.lock)
           echo "$HOME/.nix-profile/bin" >> $GITHUB_PATH
         shell: bash
-      - name: Repair Nix store
-        run: nix-store --verify --repair 2>&1 | tail -5 || true
+      - name: Validate Nix store
+        run: |
+          if devenv version > /dev/null 2>&1; then
+            echo "Nix store OK"
+          else
+            echo "::warning::Nix store validation failed, running repair..."
+            nix-store --verify --repair 2>&1 | tail -20
+            devenv version
+          fi
         shell: bash
       - name: Preflight workspace bootstrap
         run: 'DEVENV_SKIP_SETUP=1 devenv tasks run pnpm:install genie:run ts:build --mode before --verbose'
@@ -488,8 +544,15 @@ jobs:
           nix profile install github:cachix/devenv/$(jq -r ".nodes.devenv.locked.rev" devenv.lock)
           echo "$HOME/.nix-profile/bin" >> $GITHUB_PATH
         shell: bash
-      - name: Repair Nix store
-        run: nix-store --verify --repair 2>&1 | tail -5 || true
+      - name: Validate Nix store
+        run: |
+          if devenv version > /dev/null 2>&1; then
+            echo "Nix store OK"
+          else
+            echo "::warning::Nix store validation failed, running repair..."
+            nix-store --verify --repair 2>&1 | tail -20
+            devenv version
+          fi
         shell: bash
       - run: 'mono release snapshot --git-sha=${{ github.sha }}'
   build-and-deploy-examples-src:
@@ -521,8 +584,15 @@ jobs:
           nix profile install github:cachix/devenv/$(jq -r ".nodes.devenv.locked.rev" devenv.lock)
           echo "$HOME/.nix-profile/bin" >> $GITHUB_PATH
         shell: bash
-      - name: Repair Nix store
-        run: nix-store --verify --repair 2>&1 | tail -5 || true
+      - name: Validate Nix store
+        run: |
+          if devenv version > /dev/null 2>&1; then
+            echo "Nix store OK"
+          else
+            echo "::warning::Nix store validation failed, running repair..."
+            nix-store --verify --repair 2>&1 | tail -20
+            devenv version
+          fi
         shell: bash
       - name: Preflight workspace bootstrap
         run: 'DEVENV_SKIP_SETUP=1 devenv tasks run pnpm:install genie:run ts:build --mode before --verbose'
@@ -568,8 +638,15 @@ jobs:
           nix profile install github:cachix/devenv/$(jq -r ".nodes.devenv.locked.rev" devenv.lock)
           echo "$HOME/.nix-profile/bin" >> $GITHUB_PATH
         shell: bash
-      - name: Repair Nix store
-        run: nix-store --verify --repair 2>&1 | tail -5 || true
+      - name: Validate Nix store
+        run: |
+          if devenv version > /dev/null 2>&1; then
+            echo "Nix store OK"
+          else
+            echo "::warning::Nix store validation failed, running repair..."
+            nix-store --verify --repair 2>&1 | tail -20
+            devenv version
+          fi
         shell: bash
       - name: Preflight workspace bootstrap
         run: 'DEVENV_SKIP_SETUP=1 devenv tasks run pnpm:install genie:run ts:build --mode before --verbose'
