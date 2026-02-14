@@ -234,9 +234,5 @@ export default oxlintConfig({
   categories: baseOxlintCategories,
   rules: livestoreOxlintRules,
   overrides: livestoreOxlintOverrides,
-  ignorePatterns: [
-    ...baseOxlintIgnorePatterns,
-    'tests/integration/node_modules/**',
-    'docs/src/plugins/**',
-  ],
+  ignorePatterns: [...baseOxlintIgnorePatterns, 'tests/integration/node_modules/**', 'docs/src/plugins/**'],
 })

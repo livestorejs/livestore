@@ -91,7 +91,7 @@ Vitest.describe('adapter-cloudflare', { timeout: testTimeout }, () => {
             throw new Error(`failed to read persistence metadata: ${response.status}`)
           }
 
-          const body = (await response.json())
+          const body = (await response.json()) as { persistence: PersistenceSnapshot }
 
           return body.persistence
         })
@@ -162,7 +162,7 @@ Vitest.describe('adapter-cloudflare', { timeout: testTimeout }, () => {
             throw new Error(`failed to reset store: ${response.status}`)
           }
 
-          return response.json()
+          return response.json() as Promise<{ persistence: PersistenceSnapshot; resetSnapshot: ResetPersistenceSnapshot | null }>
         })
 
       const getPersistenceSnapshot = () =>
@@ -173,7 +173,7 @@ Vitest.describe('adapter-cloudflare', { timeout: testTimeout }, () => {
             throw new Error(`failed to read persistence metadata: ${response.status}`)
           }
 
-          const body = (await response.json())
+          const body = (await response.json()) as { persistence: PersistenceSnapshot }
 
           return body.persistence
         })

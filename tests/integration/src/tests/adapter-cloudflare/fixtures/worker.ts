@@ -61,7 +61,7 @@ export class TestStoreDo extends DurableObject<Env> implements ClientDoWithRpcCa
 
     if (url.pathname === '/store/todos') {
       if (request.method === 'POST') {
-        const payload = (await request.json())
+        const payload = (await request.json()) as { id?: string; title: string }
         const id = payload.id ?? crypto.randomUUID()
         const store = await this.ensureStore({ storeId, resetPersistence: false })
 

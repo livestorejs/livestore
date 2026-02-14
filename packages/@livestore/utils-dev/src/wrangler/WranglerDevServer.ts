@@ -39,7 +39,7 @@ export interface WranglerReadinessOptions {
   /** Max time for the HTTP connectivity check after wrangler reports ready. */
   connectTimeout?: Duration.DurationInput
   /** Retry policy for startup attempts (applies when startupTimeout elapses or wrangler throws). */
-  retrySchedule?: Schedule.Schedule
+  retrySchedule?: Schedule.Schedule<unknown>
 }
 
 export interface StartWranglerDevServerArgs {
