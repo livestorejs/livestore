@@ -2,7 +2,7 @@
 
 ## Setup
 
-This repository uses [`direnv`](https://direnv.net) for automatic environment setup. Run `direnv allow` once, then direnv automatically runs the setup script which installs dependencies and builds TypeScript.
+This repository uses [`devenv`](https://devenv.sh) for development environment management. Run `devenv shell` to enter the development environment.
 
 ## Zellij (mandatory when working in a zellij session)
 
@@ -13,7 +13,7 @@ This repository uses [`direnv`](https://direnv.net) for automatic environment se
 
 ## Tooling
 
-- When tools are not directly available in `$PATH`, prefix commands with `direnv exec .` (e.g. `direnv exec . tsc`, `direnv exec . dt lint:full`)
+- If tools aren't directly in `$PATH`, enter the dev environment first with `devenv shell`.
 
 - For depedency management see @contributor-docs/dependency-management.md
 
@@ -69,10 +69,18 @@ Use the `mono` CLI for common workflows:
 - Execute the plan step by step.
 - Continue as far as possible. If ambiguities remain, note all questions at the end and group them together.
 
+## Task Management (Beads)
+
+This repo uses [beads](../overeng-beads-public) for task tracking via the megarepo setup.
+
+- Create an **epic** for larger work items and correlate it with the PR
+- Create **follow-up beads** (or a follow-up epic for larger scope) for out-of-scope work discovered during implementation
+- Run `bd sync` in the overeng-beads-public repo before pushing to keep beads in sync with git
+
 ## Git
 
 - The default branch of this repository is `dev`.
-- Before committing, run `direnv exec . dt lint:full:fix` to auto-fix most linting errors. Make sure there are no type check/lint errors.
+- Before committing, run `dt lint:full:fix` to auto-fix most linting errors. Make sure there are no type check/lint errors.
 
 ### Branch Naming Conventions
 
@@ -82,9 +90,9 @@ Use the `mono` CLI for common workflows:
 
 ### Development Workflow
 
-- Run the full test suite before pushing: `direnv exec . mono test unit`
-- Ensure TypeScript compilation passes: `direnv exec . mono ts`
-- Use `direnv exec . dt lint:full:fix` to automatically fix formatting issues
+- Run the full test suite before pushing: `dt test:run`
+- Ensure TypeScript compilation passes: `dt ts:check`
+- Use `dt lint:full:fix` to automatically fix formatting issues
 
 ### Issues
 
