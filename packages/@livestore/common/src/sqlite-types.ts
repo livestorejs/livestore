@@ -18,12 +18,12 @@ export interface SqliteDb<TReq = any, TMetadata extends TReq = TReq> {
   prepare(queryStr: string): PreparedStatement
   execute(
     queryStr: string,
-    bindValues?: PreparedBindValues | undefined,
+    bindValues?: PreparedBindValues  ,
     options?: { onRowsChanged?: (rowsChanged: number) => void },
   ): void
   execute(queryBuilder: QueryBuilder.Any, options?: { onRowsChanged?: (rowsChanged: number) => void }): void
 
-  select<T>(queryStr: string, bindValues?: PreparedBindValues | undefined): ReadonlyArray<T>
+  select<T>(queryStr: string, bindValues?: PreparedBindValues  ): ReadonlyArray<T>
   select<T>(queryBuilder: QueryBuilder<T, any, any>): T
 
   export(): Uint8Array<ArrayBuffer>

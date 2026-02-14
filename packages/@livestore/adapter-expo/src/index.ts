@@ -119,7 +119,7 @@ export const makePersistedAdapter =
   (options: MakeDbOptions = {}): Adapter =>
   (adapterArgs) =>
     Effect.gen(function* () {
-      if (IS_NEW_ARCH === false) {
+      if (!IS_NEW_ARCH) {
         return yield* UnknownError.make({
           cause: new Error(
             'The LiveStore Expo adapter requires the new React Native architecture (aka Fabric). See https://docs.expo.dev/guides/new-architecture',
@@ -144,7 +144,7 @@ export const makePersistedAdapter =
 
       const shutdownChannel = yield* makeShutdownChannel(storeId)
 
-      if (resetPersistence === true) {
+      if (resetPersistence) {
         yield* shutdownChannel.send(IntentionalShutdownCause.make({ reason: 'adapter-reset' }))
 
         yield* resetExpoPersistence({ storeId, storage, schema })
@@ -405,7 +405,7 @@ const makeDevtoolsOptions = ({
   clientId: string
 }): Effect.Effect<DevtoolsOptions, UnknownError, Scope.Scope> =>
   Effect.sync(() => {
-    if (devtoolsEnabled === false) {
+    if (!devtoolsEnabled) {
       return {
         enabled: false,
       }

@@ -66,7 +66,7 @@ const fetchExamples = (ref: string) =>
         (error) =>
           new NetworkError({
             cause: error,
-            message: `Failed to fetch examples from GitHub: ${error}`,
+            message: `Failed to fetch examples from GitHub: ${String(error)}`,
           }),
       ),
     )
@@ -78,7 +78,7 @@ const fetchExamples = (ref: string) =>
         (error) =>
           new NetworkError({
             cause: error,
-            message: `Failed to parse GitHub API response: ${error}`,
+            message: `Failed to parse GitHub API response: ${String(error)}`,
           }),
       ),
     )
@@ -130,7 +130,7 @@ const downloadExample = (exampleName: string, ref: string, destinationPath: stri
         (error) =>
           new NetworkError({
             cause: error,
-            message: `Failed to download tarball: ${error}`,
+            message: `Failed to download tarball: ${String(error)}`,
           }),
       ),
     )
@@ -155,7 +155,7 @@ const downloadExample = (exampleName: string, ref: string, destinationPath: stri
         (error) =>
           new NetworkError({
             cause: error,
-            message: `Failed to extract tarball: ${error}`,
+            message: `Failed to extract tarball: ${String(error)}`,
           }),
       ),
     )
@@ -191,7 +191,7 @@ const downloadExample = (exampleName: string, ref: string, destinationPath: stri
         (error) =>
           new NetworkError({
             cause: error,
-            message: `Failed to copy example files: ${error}`,
+            message: `Failed to copy example files: ${String(error)}`,
           }),
       ),
     )

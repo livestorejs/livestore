@@ -122,7 +122,7 @@ export const prepareMultiCodeData = (props: MultiCodeProps): PreparedMultiCode =
         acc[filename] = {
           filename,
           content: typeof value.content === 'string' ? value.content : '',
-          isMain: value.isMain === true,
+          isMain: value.isMain,
           hash,
         }
         return acc

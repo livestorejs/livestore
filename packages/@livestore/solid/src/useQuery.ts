@@ -81,7 +81,7 @@ export const useQueryRef = <TQueryable extends Queryable<any>>(
           // NOTE: we return a reference to the result object within LiveStore;
           // this implies that app code must not mutate the results, or else
           // there may be weird reactivity bugs.
-          if (deepEqual(newValue, valueRef()) === false) {
+          if (!deepEqual(newValue, valueRef())) {
             setValueRef(newValue)
           }
         },

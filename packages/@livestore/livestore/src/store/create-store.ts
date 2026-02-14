@@ -389,7 +389,7 @@ export const createStore = <
         effectContext: { lifetimeScope, runtime },
         // TODO find a better way to detect if we're running LiveStore in the LiveStore devtools
         // But for now this is a good enough approximation with little downsides
-        __runningInDevtools: getDevtoolsEnabled(disableDevtools) === false,
+        __runningInDevtools: ! getDevtoolsEnabled(disableDevtools),
         confirmUnsavedChanges,
         // NOTE during boot we're not yet executing events in a batched context
         // but only set the provided `batchUpdates` function after boot

@@ -16,7 +16,7 @@ export const isDefaultThunk = (value: unknown): value is ColumnDefaultThunk<unkn
 export type ColumnDefaultValue<T> = T | null | ColumnDefaultThunk<T | null> | SqlDefaultValue
 
 export const resolveColumnDefault = <T>(value: ColumnDefaultValue<T>): T | null | SqlDefaultValue =>
-  isDefaultThunk(value) ? (value as ColumnDefaultThunk<T | null>)() : value
+  isDefaultThunk(value) ? (value)() : value
 
 export type ColumnDefinition<TEncoded, TDecoded> = {
   readonly columnType: FieldColumnType
@@ -102,7 +102,7 @@ const makeColDef =
   (def?: ColumnDefinitionInput) => {
     const nullable = def?.nullable ?? false
     const schemaWithoutNull: Schema.Schema<any> = def?.schema ?? defaultSchemaForColumnType(columnType)
-    const schema = nullable === true ? Schema.NullOr(schemaWithoutNull) : schemaWithoutNull
+    const schema =  nullable ? Schema.NullOr(schemaWithoutNull) : schemaWithoutNull
     const default_ = def?.default === undefined || def.default === NoDefault ? Option.none() : Option.some(def.default)
 
     return {
@@ -201,7 +201,7 @@ type MakeSpecializedColDefFn = {
 const makeSpecializedColDef: MakeSpecializedColDefFn = (columnType, opts) => (def?: ColumnDefinitionInput) => {
   const nullable = def?.nullable ?? false
   const schemaWithoutNull = opts._tag === 'baseSchemaFn' ? opts.baseSchemaFn(def?.schema as any) : opts.baseSchema
-  const schema = nullable === true ? Schema.NullOr(schemaWithoutNull) : schemaWithoutNull
+  const schema =  nullable ? Schema.NullOr(schemaWithoutNull) : schemaWithoutNull
   const default_ = def?.default === undefined || def.default === NoDefault ? Option.none() : Option.some(def.default)
 
   return {

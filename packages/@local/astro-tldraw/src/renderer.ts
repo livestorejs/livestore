@@ -126,7 +126,7 @@ const renderSvgWithTheme = (
             }),
           duration: Duration.millis(RENDER_TIMEOUT_MS),
         }),
-      ) as Effect.Effect<Array<string | Buffer>, RenderTimeoutError | RenderInvocationError>
+      )
 
       let attempt = 1
       // retry loop with capped attempts and delay

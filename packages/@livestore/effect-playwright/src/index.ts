@@ -217,13 +217,16 @@ export const pageConsole = ({
               )
             } else if (
               message.type === 'error' &&
+              !
               message.message.includes(
                 'Failed to load resource: the server responded with a status of 404 (Not Found)',
-              ) === false &&
+              ) &&
+              !
               message.message.includes(
                 'Failed to load resource: the server responded with a status of 504 (Outdated Optimize Dep)',
-              ) === false &&
-              message.message.includes('All fibers interrupted without errors') === false
+              ) &&
+              !
+              message.message.includes('All fibers interrupted without errors')
             ) {
               if (errorGroupRef.current === undefined) {
                 emit.fail(new SiteError({ label, messages: [message] }))

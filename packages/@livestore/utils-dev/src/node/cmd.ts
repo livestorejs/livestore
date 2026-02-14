@@ -43,7 +43,7 @@ export const cmd: (
         /** Optional number of archived logs to retain; defaults to 50 */
         logRetention?: number
       }
-    | undefined,
+     ,
 ) => Effect.Effect<
   CommandExecutor.ExitCode,
   PlatformError.PlatformError | CmdError,
@@ -52,8 +52,8 @@ export const cmd: (
   const cwd = yield* CurrentWorkingDirectory
 
   const asArray = Array.isArray(commandInput)
-  const parts = asArray ? (commandInput as (string | undefined)[]).filter(isNotUndefined) : undefined
-  const [command, ...args] = asArray ? (parts as string[]) : (commandInput as string).split(' ')
+  const parts = asArray ? (commandInput).filter(isNotUndefined) : undefined
+  const [command, ...args] = asArray ? (parts as string[]) : (commandInput).split(' ')
 
   const debugEnvStr = Object.entries(options?.env ?? {})
     .map(([key, value]) => `${key}='${value}' `)
@@ -71,7 +71,7 @@ export const cmd: (
   const useShell = (options?.shell ? true : false) || needsShell
 
   const commandDebugStr =
-    debugEnvStr + (Array.isArray(finalInput) ? (finalInput as string[]).join(' ') : (finalInput as string))
+    debugEnvStr + (Array.isArray(finalInput) ? (finalInput).join(' ') : (finalInput))
   const subshellStr = useShell ? ' (in subshell)' : ''
 
   yield* Effect.logDebug(`Running '${commandDebugStr}' in '${cwd}'${subshellStr}`)
@@ -297,8 +297,8 @@ const buildCommand = (input: string | string[], useShell: boolean) => {
 type TLineTerminator = 'newline' | 'carriage-return' | 'none'
 
 type TStreamHandler = {
-  readonly onChunk: (chunk: string) => Effect.Effect<void, never>
-  readonly flush: () => Effect.Effect<void, never>
+  readonly onChunk: (chunk: string) => Effect.Effect<void>
+  readonly flush: () => Effect.Effect<void>
 }
 
 const makeStreamHandler = ({
@@ -308,7 +308,7 @@ const makeStreamHandler = ({
 }: {
   readonly channel: 'stdout' | 'stderr'
   readonly mirrorTarget?: NodeJS.WriteStream
-  readonly appendLog: (args: { channel: 'stdout' | 'stderr'; content: string }) => Effect.Effect<void, never>
+  readonly appendLog: (args: { channel: 'stdout' | 'stderr'; content: string }) => Effect.Effect<void>
 }): TStreamHandler => {
   let buffer = ''
 
@@ -325,7 +325,7 @@ const makeStreamHandler = ({
       appendLog,
     })
 
-  const consumeBuffer = (): Effect.Effect<void, never> => {
+  const consumeBuffer = (): Effect.Effect<void> => {
     if (buffer.length === 0) return Effect.void
 
     const lastChar = buffer[buffer.length - 1]
@@ -389,7 +389,7 @@ const emitSegment = ({
   readonly content: string
   readonly terminator: TLineTerminator
   readonly mirrorTarget?: NodeJS.WriteStream
-  readonly appendLog: (args: { channel: 'stdout' | 'stderr'; content: string }) => Effect.Effect<void, never>
+  readonly appendLog: (args: { channel: 'stdout' | 'stderr'; content: string }) => Effect.Effect<void>
 }) =>
   Effect.gen(function* () {
     if (mirrorTarget) {

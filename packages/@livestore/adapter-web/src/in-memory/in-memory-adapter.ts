@@ -164,7 +164,7 @@ export const makeInMemoryAdapter =
         origin: globalThis.location?.origin,
         connectWebmeshNode: ({ sessionInfo, webmeshNode }) =>
           Effect.gen(function* () {
-            if (sharedWorkerFiber === undefined || devtoolsEnabled === false) {
+            if (sharedWorkerFiber === undefined || ! devtoolsEnabled) {
               return
             }
 
@@ -211,7 +211,7 @@ const makeLeaderThread = ({
   sharedWorkerFiber,
 }: MakeLeaderThreadArgs) =>
   Effect.gen(function* () {
-    const runtime = yield* Effect.runtime<never>()
+    const runtime = yield* Effect.runtime()
 
     const makeDb = (_kind: 'state' | 'eventlog') => {
       return makeSqliteDb({
@@ -317,7 +317,7 @@ const makeDevtoolsOptions = ({
   clientId: string
 }): Effect.Effect<DevtoolsOptions, UnknownError, Scope.Scope> =>
   Effect.gen(function* () {
-    if (devtoolsEnabled === false || sharedWorkerFiber === undefined) {
+    if (!devtoolsEnabled || sharedWorkerFiber === undefined) {
       return { enabled: false }
     }
 

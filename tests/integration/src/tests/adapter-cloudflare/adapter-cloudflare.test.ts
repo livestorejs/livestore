@@ -69,7 +69,7 @@ Vitest.describe('adapter-cloudflare', { timeout: testTimeout }, () => {
             throw new Error(`failed to create todo: ${response.status}`)
           }
 
-          return response.json() as Promise<{ id: string }>
+          return response.json()
         })
 
       const listTodos = () =>
@@ -80,7 +80,7 @@ Vitest.describe('adapter-cloudflare', { timeout: testTimeout }, () => {
             throw new Error(`failed to list todos: ${response.status}`)
           }
 
-          return response.json() as Promise<ReadonlyArray<{ id: string; title: string }>>
+          return response.json()
         })
 
       const getPersistenceSnapshot = () =>
@@ -91,7 +91,7 @@ Vitest.describe('adapter-cloudflare', { timeout: testTimeout }, () => {
             throw new Error(`failed to read persistence metadata: ${response.status}`)
           }
 
-          const body = (await response.json()) as { persistence: PersistenceSnapshot }
+          const body = (await response.json())
 
           return body.persistence
         })
@@ -140,7 +140,7 @@ Vitest.describe('adapter-cloudflare', { timeout: testTimeout }, () => {
             throw new Error(`failed to create todo: ${response.status}`)
           }
 
-          return response.json() as Promise<{ id: string }>
+          return response.json()
         })
 
       const listTodos = () =>
@@ -151,7 +151,7 @@ Vitest.describe('adapter-cloudflare', { timeout: testTimeout }, () => {
             throw new Error(`failed to list todos: ${response.status}`)
           }
 
-          return response.json() as Promise<ReadonlyArray<{ id: string; title: string }>>
+          return response.json()
         })
 
       const resetStore = () =>
@@ -162,11 +162,7 @@ Vitest.describe('adapter-cloudflare', { timeout: testTimeout }, () => {
             throw new Error(`failed to reset store: ${response.status}`)
           }
 
-          return response.json() as Promise<{
-            todos: ReadonlyArray<{ id: string; title: string }>
-            persistence: PersistenceSnapshot
-            resetSnapshot: ResetPersistenceSnapshot | null
-          }>
+          return response.json()
         })
 
       const getPersistenceSnapshot = () =>
@@ -177,7 +173,7 @@ Vitest.describe('adapter-cloudflare', { timeout: testTimeout }, () => {
             throw new Error(`failed to read persistence metadata: ${response.status}`)
           }
 
-          const body = (await response.json()) as { persistence: PersistenceSnapshot }
+          const body = (await response.json())
 
           return body.persistence
         })

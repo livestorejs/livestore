@@ -22,7 +22,7 @@ export const downloadChromeExtension = ({ version, targetDir }: { version?: stri
     const fs = yield* FileSystem.FileSystem
 
     // Check if target directory already exists and prompt for deletion
-    if ((yield* fs.exists(targetDir)) === true) {
+    if ((yield* fs.exists(targetDir))) {
       yield* Effect.logInfo(`Target directory ${targetDir} already exists`)
 
       if (yield* Cli.Prompt.confirm({ message: `Delete existing directory ${targetDir}?` })) {

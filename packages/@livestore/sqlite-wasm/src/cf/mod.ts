@@ -115,7 +115,7 @@ const makeCloudflareFsDb = ({
     // NOTE to keep the filePath short, we use the directory name in the vfs name
     // If this is becoming a problem, we can use a hashed version of the directory name
     const vfsName = `cf-do-sqlite-${fileName}`
-    if (sqlite3.vfs_registered.has(vfsName) === false) {
+    if (!sqlite3.vfs_registered.has(vfsName)) {
       // TODO refactor with Effect FileSystem instead of using `node:fs` directly inside of CloudflareWorkerVFS
       // const nodeFsVfs = new CloudflareWorkerVFS(vfsName, storage, (sqlite3 as any).module)
       const nodeFsVfs = new CloudflareSqlVFS(vfsName, storage.sql, (sqlite3 as any).module)

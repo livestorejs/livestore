@@ -73,7 +73,7 @@ export type AbortCallback = () => void
 export const runWithErrorLog = <E, A>(self: Effect.Effect<A, E>) => {
   const fiber = Effect.runFork(self)
   fiber.addObserver((ex) => {
-    if (ex._tag === 'Failure' && Cause.isInterruptedOnly(ex.cause) === false) {
+    if (ex._tag === 'Failure' && ! Cause.isInterruptedOnly(ex.cause)) {
       console.error(Cause.pretty(ex.cause))
     }
   })

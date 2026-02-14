@@ -283,7 +283,7 @@ export const deriveEventAndMaterializer = ({
 
     // Override the full value if it's not an object or no partial set is allowed
     const schemaProps = Schema.getResolvedPropertySignatures(valueSchema)
-    if (schemaProps.length === 0 || partialSet === false) {
+    if (schemaProps.length === 0 || ! partialSet) {
       const valueColJsonSchema = Schema.parseJson(valueSchema)
       const encodedInsertValue = Schema.encodeSyncDebug(valueColJsonSchema)(value ?? defaultValue)
       const encodedUpdateValue = Schema.encodeSyncDebug(valueColJsonSchema)(value)
@@ -342,7 +342,8 @@ export const tableIsClientDocumentTable = <TTableDef extends TableDefBase>(
 ): tableDef is TTableDef & {
   options: { isClientDocumentTable: true }
 } & ClientDocumentTableDef.Trait<TTableDef['sqliteDef']['name'], any, any, any> =>
-  tableDef.options.isClientDocumentTable === true
+  
+  tableDef.options.isClientDocumentTable
 
 const makeGetQueryBuilder = <TTableDef extends ClientDocumentTableDef<any, any, any, any>>(
   getTableDef: () => TTableDef,

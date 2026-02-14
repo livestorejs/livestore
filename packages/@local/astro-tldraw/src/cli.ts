@@ -216,7 +216,7 @@ export type WatchDiagramsRebuildInfo = {
 type NormalizedWatchOptions = {
   debounce: Duration.DurationInput
   initialBuild: boolean
-  onRebuild: (info: WatchDiagramsRebuildInfo) => Effect.Effect<void, never>
+  onRebuild: (info: WatchDiagramsRebuildInfo) => Effect.Effect<void>
 }
 
 export type WatchDiagramsOptions = BuildDiagramsOptions & {
@@ -227,7 +227,7 @@ export type WatchDiagramsOptions = BuildDiagramsOptions & {
    * Useful to disable when the caller already ran `buildDiagrams` and only wants incremental rebuilds.
    */
   initialBuild?: boolean
-  onRebuild?: (info: WatchDiagramsRebuildInfo) => Effect.Effect<void, never>
+  onRebuild?: (info: WatchDiagramsRebuildInfo) => Effect.Effect<void>
 }
 
 const toPosix = (value: string): string => value.replace(/\\/g, '/')
@@ -355,7 +355,7 @@ const watchDiagramsInternal = (
   })
 
 /** Watch diagrams directory for changes and rebuild on modifications */
-export const watchDiagrams = (options: WatchDiagramsOptions): Effect.Effect<void, never> => {
+export const watchDiagrams = (options: WatchDiagramsOptions): Effect.Effect<void> => {
   const { debounce, initialBuild, onRebuild, ...baseOptions } = options
   const normalizedWatch = normalizeWatchOptions({
     ...(debounce !== undefined ? { debounce } : {}),

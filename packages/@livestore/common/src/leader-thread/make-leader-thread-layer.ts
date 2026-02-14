@@ -328,7 +328,7 @@ const makeInitialBlockingSyncContext = ({
       blockingDeferred,
       update: ({ processed, pageInfo }) =>
         Effect.gen(function* () {
-          if (ctx.isDone === true) return
+          if (ctx.isDone) return
 
           if (ctx.total === -1 && pageInfo._tag === 'MoreKnown') {
             ctx.total = pageInfo.remaining + processed
@@ -401,7 +401,8 @@ export const makeNetworkStatusSubscribable = ({
   Effect.gen(function* () {
     const initialIsConnected = syncBackend !== undefined ? yield* SubscriptionRef.get(syncBackend.isConnected) : false
     const initialLatchClosed =
-      devtoolsContext.enabled === true
+      
+      devtoolsContext.enabled
         ? (yield* SubscriptionRef.get(devtoolsContext.syncBackendLatchState)).latchClosed
         : false
 
@@ -430,7 +431,7 @@ export const makeNetworkStatusSubscribable = ({
       )
     }
 
-    if (devtoolsContext.enabled === true) {
+    if (devtoolsContext.enabled) {
       yield* devtoolsContext.syncBackendLatchState.changes.pipe(
         Stream.tap(({ latchClosed }) => updateNetworkStatus({ latchClosed })),
         Stream.runDrain,

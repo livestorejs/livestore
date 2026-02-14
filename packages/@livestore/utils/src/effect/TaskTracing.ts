@@ -8,7 +8,7 @@ import * as Tracer from 'effect/Tracer'
 export const withAsyncTaggingTracing =
   (makeTrace: (name: string) => { run: (fn: any) => any }) =>
   <A, E, R>(eff: Effect.Effect<A, E, R>) => {
-    if (Predicate.hasProperty(console, 'createTask') === false) {
+    if (!Predicate.hasProperty(console, 'createTask')) {
       return eff
     }
 

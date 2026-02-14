@@ -81,9 +81,10 @@ const makeTabPair = (url: string, tabName: string, adapter: AdapterKind, options
     const sep = url.includes('?') ? '&' : '?'
     yield* Effect.tryPromise(() => page.goto(`${url}${sep}sessionId=${tabName}&clientId=${tabName}&adapter=${adapter}`))
 
+    const openPages = browserContext.pages().map((_) => _.url())
     const devtools =
       browserContext.pages().filter(isUnused).find(isDevtools) ??
-      shouldNeverHappen(`No devtools page found. Current pages: ${browserContext.pages().map((_) => _.url())}`)
+      shouldNeverHappen('No devtools page found. Current pages:', openPages)
 
     const devtoolsConsoleFiber = yield* Playwright.handlePageConsole({
       page: devtools,
@@ -175,7 +176,7 @@ const getExtensionPath = Effect.gen(function* () {
   }
 
   const defaultExtensionPath = LIVESTORE_DEVTOOLS_CHROME_DIST_PATH
-  if ((yield* fs.exists(defaultExtensionPath)) === false) {
+  if (!(yield* fs.exists(defaultExtensionPath))) {
     yield* Effect.logInfo(`Downloading Chrome extension to ${defaultExtensionPath}`)
     yield* downloadChromeExtension({ targetDir: defaultExtensionPath })
   }
@@ -184,7 +185,7 @@ const getExtensionPath = Effect.gen(function* () {
   Effect.tap((path) =>
     Effect.gen(function* () {
       const fs = yield* FileSystem.FileSystem
-      if ((yield* fs.exists(path)) === false) {
+      if (!(yield* fs.exists(path))) {
         return yield* new TestError({ message: `Chrome extension not found at ${path}` })
       }
     }),

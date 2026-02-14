@@ -7,7 +7,7 @@ import { getDurationMsFromSpan } from '@livestore/common'
 import type { RefreshReason, SqliteDbWrapper, Store } from '@livestore/livestore'
 import { StoreInternalsSymbol } from '@livestore/livestore'
 import { LiveQueries, ReactiveGraph } from '@livestore/livestore/internal'
-import { omitUndefineds, shouldNeverHappen } from '@livestore/utils'
+import { objectToString, omitUndefineds, shouldNeverHappen } from '@livestore/utils'
 import { Equal, Hash, Predicate, Schema, TreeFormatter } from '@livestore/utils/effect'
 
 export type BaseGraphQLContext = {
@@ -137,14 +137,14 @@ export class LiveStoreGraphQLQuery<
               const parseResult = Schema.decodeEither(map as Schema.Schema<TResultMapped, TResult>)(res)
               if (parseResult._tag === 'Left') {
                 console.error(`Error parsing GraphQL query result: ${TreeFormatter.formatErrorSync(parseResult.left)}`)
-                return shouldNeverHappen(`Error parsing SQL query result: ${parseResult.left}`)
+                return shouldNeverHappen(`Error parsing SQL query result: ${String(parseResult.left)}`)
               } else {
-                return parseResult.right as TResultMapped
+                return parseResult.right
               }
             }
           : typeof map === 'function'
             ? map
-            : shouldNeverHappen(`Invalid map function ${map}`)
+          : shouldNeverHappen(`Invalid map function ${objectToString(map)}`)
 
     // TODO don't even create a thunk if variables are static
     let variableValues$OrvariableValues:
@@ -276,13 +276,13 @@ export class LiveStoreGraphQLQuery<
 }
 
 const unpackStoreContext = (store: Store): { schema: graphql.GraphQLSchema; context: BaseGraphQLContext } => {
-  if (Predicate.hasProperty(store.context, 'graphql') === false) {
+  if (!Predicate.hasProperty(store.context, 'graphql')) {
     return shouldNeverHappen('Store context does not contain graphql context')
   }
-  if (Predicate.hasProperty(store.context.graphql, 'schema') === false) {
+  if (!Predicate.hasProperty(store.context.graphql, 'schema')) {
     return shouldNeverHappen('Store context does not contain graphql.schema')
   }
-  if (Predicate.hasProperty(store.context.graphql, 'context') === false) {
+  if (!Predicate.hasProperty(store.context.graphql, 'context')) {
     return shouldNeverHappen('Store context does not contain graphql.context')
   }
   const schema = store.context.graphql.schema as graphql.GraphQLSchema

@@ -18,6 +18,7 @@
 import fs from 'node:fs'
 
 import { cmd, cmdText, LivestoreWorkspace } from '@livestore/utils-dev/node'
+import { objectToString } from '@livestore/utils'
 import {
   Console,
   Effect,
@@ -116,11 +117,13 @@ const discoverUpdates = (target: string) =>
       const ncuCommand = `bunx npm-check-updates --deep --jsonUpgraded --packageManager pnpm${target !== 'latest' ? ` --target ${target}` : ''}`
       const ncuOutput = yield* cmdText(ncuCommand).pipe(
         Effect.provide(LivestoreWorkspace.toCwd()),
-        Effect.catchAll((error) => new UpdateDepsError({ message: `Failed to run npm-check-updates: ${error}` })),
+        Effect.catchAll((error) =>
+          new UpdateDepsError({ message: `Failed to run npm-check-updates: ${objectToString(error)}` }),
+        ),
       )
 
       const validated = yield* Schema.decodeUnknown(Schema.parseJson(NCUOutput))(ncuOutput).pipe(
-        Effect.mapError((error) => new UpdateDepsError({ message: `Failed to parse NCU output: ${error}` })),
+        Effect.mapError((error) => new UpdateDepsError({ message: `Failed to parse NCU output: ${objectToString(error)}` })),
       )
 
       const totalUpdates = Object.values(validated).reduce((sum, updates) => sum + Object.keys(updates).length, 0)
@@ -142,7 +145,9 @@ const fetchExpoConstraints = () =>
       const expoVersion = yield* cmdText('pnpm view expo version').pipe(
         Effect.provide(LivestoreWorkspace.toCwd()),
         Effect.map((version) => version.trim().replace(/(\d+\.\d+)\.\d+/, '$1.0')),
-        Effect.catchAll((error) => new UpdateDepsError({ message: `Failed to get Expo version: ${error}` })),
+        Effect.catchAll((error) =>
+          new UpdateDepsError({ message: `Failed to get Expo version: ${objectToString(error)}` }),
+        ),
       )
 
       yield* Console.log(`Using Expo SDK: ${expoVersion}`)
@@ -151,7 +156,7 @@ const fetchExpoConstraints = () =>
       const apiUrl = `https://api.expo.dev/v2/sdks/${expoVersion}/native-modules`
       const apiResponse = yield* HttpClient.get(apiUrl).pipe(
         Effect.andThen(HttpClientResponse.schemaBodyJson(ExpoApiResponse)),
-        Effect.mapError((error) => new UpdateDepsError({ message: `Failed to fetch Expo constraints: ${error}` })),
+        Effect.mapError((error) => new UpdateDepsError({ message: `Failed to fetch Expo constraints: ${objectToString(error)}` })),
       )
 
       // Transform to package -> version mapping
@@ -372,7 +377,9 @@ export const updateDepsCommand = Cli.Command.make(
       for (const exampleDir of expoExamples) {
         yield* cmd('expo install --check').pipe(
           Effect.provide(LivestoreWorkspace.toCwd(exampleDir)),
-          Effect.catchAll((error) => Console.warn(`Expo check failed for ${exampleDir}: ${error}`)),
+          Effect.catchAll((error) =>
+            Console.warn('Expo check failed for', exampleDir, objectToString(error)),
+          ),
         )
       }
     }

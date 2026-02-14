@@ -7,7 +7,7 @@ export default defineConfig({
       hot: false,
       solid: { generate: 'ssr' },
       ssr: true,
-    }) as Plugin,
+    }),
   ],
   test: {
     root: import.meta.dirname,

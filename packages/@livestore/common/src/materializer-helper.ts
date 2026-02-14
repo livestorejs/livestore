@@ -34,14 +34,14 @@ export const getExecStatementsFromMaterializer = ({
   const eventDecoded =
     event.decoded === undefined
       ? {
-          ...event.encoded!,
-          args: Schema.decodeUnknownSync(eventDef.schema)(event.encoded!.args),
+          ...event.encoded,
+          args: Schema.decodeUnknownSync(eventDef.schema)(event.encoded.args),
         }
       : event.decoded
 
   const eventArgsEncoded = isNil(event.decoded?.args)
     ? undefined
-    : Schema.encodeUnknownSync(eventDef.schema)(event.decoded!.args)
+    : Schema.encodeUnknownSync(eventDef.schema)(event.decoded.args)
 
   const query: MaterializerContextQuery = (
     rawQueryOrQueryBuilder:

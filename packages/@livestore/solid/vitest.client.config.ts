@@ -6,7 +6,7 @@ export default defineConfig({
     solidPlugin({
       hot: false,
       solid: { generate: 'dom' },
-    }) as Plugin,
+    }),
   ],
   test: {
     root: import.meta.dirname,

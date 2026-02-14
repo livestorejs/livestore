@@ -30,7 +30,7 @@ export async function GET(request: Request) {
   const res = await fetch(pullUrl, { headers })
 
   // For live pulls (SSE), proxy the response
-  if (args.live === true) {
+  if (args.live) {
     if (!res.ok) {
       return S2Helpers.sseKeepAliveResponse()
     }

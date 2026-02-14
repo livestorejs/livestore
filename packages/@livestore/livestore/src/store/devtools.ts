@@ -173,7 +173,7 @@ export const connectDevtoolsToStore = Effect.fn('LSD.devtools.connectStoreToDevt
               buffer.length = 0
             }
 
-            if (hasStopped === false) {
+            if (!hasStopped) {
               tickHandle = requestNextTick(tick)
             }
           }

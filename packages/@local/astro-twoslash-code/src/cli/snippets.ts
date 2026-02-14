@@ -562,7 +562,7 @@ const collectDiagnostics = (node: THastElement): string[] => {
   const walk = (current: THastElementContent | THastRootContent | undefined) => {
     if (!isElementNode(current)) return
 
-    const element = current as THastElement
+    const element = current
     const classList = toClassList(element.properties?.className)
     if (classList.includes('twoslash-error-box-content-message')) {
       const message = extractText(element).trim()
@@ -702,7 +702,7 @@ const extractLineOwnershipAttributes = (line: THastElement): LineOwnershipAttrib
     if (!isElementNode(child)) {
       continue
     }
-    const element = child as THastElement
+    const element = child
     const childProps = (element.properties ?? {}) as Record<string, unknown>
     const childOwnerRaw = typeof childProps['data-ls-owner'] === 'string' ? childProps['data-ls-owner'].trim() : null
     const childMarkerRaw = typeof childProps['data-ls-marker'] === 'string' ? childProps['data-ls-marker'].trim() : null
@@ -734,11 +734,11 @@ const trimRenderedAst = (root: THastElement, focusVirtualPath: string, assembled
     if (!isElementNode(child)) {
       continue
     }
-    if ((child as THastElement).tagName !== 'div') {
+    if (child.tagName !== 'div') {
       continue
     }
 
-    const lineElement = child as THastElement
+    const lineElement = child
     const { wrapper, owner, marker } = extractLineOwnershipAttributes(lineElement)
 
     if (marker !== null) {
@@ -807,7 +807,7 @@ const trimRenderedAst = (root: THastElement, focusVirtualPath: string, assembled
       ? (figure as THastParent).children.find((child) => {
           if (!isElementNode(child)) return false
           if (child.tagName !== 'div') return false
-          return toClassList((child as THastElement).properties?.className).includes('copy')
+          return toClassList(child.properties?.className).includes('copy')
         })
       : null
 
@@ -896,7 +896,7 @@ const restoreFocusSpecifiers = (root: THastElement, rewrites: TVirtualFileRecord
       return
     }
     if (isElementNode(node)) {
-      const element = node as THastElement
+      const element = node
       if (Array.isArray(element.children)) {
         for (const child of element.children) {
           walk(child as THastElementContent | THastRootContent)
@@ -1267,7 +1267,7 @@ const loadPreviousManifest = (
   fs: FileSystem.FileSystem,
   paths: TwoslashProjectPaths,
   expectedConfigHash: string,
-): Effect.Effect<TPreviousManifest | null, never> =>
+): Effect.Effect<TPreviousManifest | null> =>
   Effect.gen(function* () {
     const manifestExistsResult = yield* fs.exists(paths.manifestPath).pipe(Effect.either)
     if (manifestExistsResult._tag === 'Left') {
@@ -1276,7 +1276,7 @@ const loadPreviousManifest = (
       )
       return null
     }
-    if (manifestExistsResult.right === false) {
+    if (!manifestExistsResult.right) {
       return null
     }
 
@@ -1328,7 +1328,7 @@ type ResolvedBuildOptions = {
 
 type NormalizedWatchOptions = {
   debounce: Duration.DurationInput
-  onRebuild: (info: WatchSnippetsRebuildInfo) => Effect.Effect<void, never>
+  onRebuild: (info: WatchSnippetsRebuildInfo) => Effect.Effect<void>
 }
 
 const DEFAULT_WATCH_DEBOUNCE: Duration.DurationInput = '150 millis'
@@ -1351,7 +1351,7 @@ export type WatchSnippetsRebuildInfo = {
 
 export type WatchSnippetsOptions = BuildSnippetsOptions & {
   debounce?: Duration.DurationInput
-  onRebuild?: (info: WatchSnippetsRebuildInfo) => Effect.Effect<void, never>
+  onRebuild?: (info: WatchSnippetsRebuildInfo) => Effect.Effect<void>
 }
 
 const resolveOptions = (options: BuildSnippetsOptions = {}): ResolvedBuildOptions => {
@@ -1399,7 +1399,7 @@ const summarizeWatchEvent = (
   }
 
   const extension = path.extname(absolutePath).toLowerCase()
-  if (scope === 'source' && extension.length > 0 && !SUPPORTED_SOURCE_EXTENSIONS.has(extension as typeof extension)) {
+  if (scope === 'source' && extension.length > 0 && !SUPPORTED_SOURCE_EXTENSIONS.has(extension)) {
     return null
   }
 

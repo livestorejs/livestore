@@ -14,7 +14,7 @@ export type TCmdLoggingOptions = {
  * Prepares logging directories, archives previous canonical log and prunes archives.
  * Returns the canonical current log path if logging is enabled, otherwise undefined.
  */
-export const prepareCmdLogging: (options: TCmdLoggingOptions) => Effect.Effect<string | undefined, never, never> =
+export const prepareCmdLogging: (options: TCmdLoggingOptions) => Effect.Effect<string | undefined> =
   Effect.fn('cmd.logging.prepare')(function* ({
     logDir,
     logFileName = 'dev.log',
@@ -71,16 +71,16 @@ export const prepareCmdLogging: (options: TCmdLoggingOptions) => Effect.Effect<s
 export const applyLoggingToCommand: (
   commandInput: string | (string | undefined)[],
   options: TCmdLoggingOptions,
-) => Effect.Effect<{ input: string | string[]; subshell: boolean; logPath?: string }, never, never> = Effect.fn(
+) => Effect.Effect<{ input: string | string[]; subshell: boolean; logPath?: string }> = Effect.fn(
   'cmd.logging.apply',
 )(function* (commandInput, options) {
   const asArray = Array.isArray(commandInput)
-  const parts = asArray ? (commandInput as (string | undefined)[]).filter(isNotUndefined) : undefined
+  const parts = asArray ? (commandInput).filter(isNotUndefined) : undefined
 
   const logPath = yield* prepareCmdLogging(options)
 
   return {
-    input: asArray ? ((parts as string[]) ?? []) : (commandInput as string),
+    input: asArray ? ((parts as string[]) ?? []) : (commandInput),
     subshell: false,
     ...(logPath ? { logPath } : {}),
   }

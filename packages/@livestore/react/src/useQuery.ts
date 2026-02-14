@@ -93,7 +93,7 @@ export const useQueryRef = <TQueryable extends Queryable<any>>(
     () => {},
   )
 
-  const query$ = queryRcRef.value as LiveQuery<TResult>
+  const query$ = queryRcRef.value
 
   React.useDebugValue(`LiveStore:useQuery:${query$.id}:${query$.label}`)
 
@@ -119,7 +119,7 @@ export const useQueryRef = <TQueryable extends Queryable<any>>(
         // NOTE: we return a reference to the result object within LiveStore;
         // this implies that app code must not mutate the results, or else
         // there may be weird reactivity bugs.
-        if (deepEqual(newValue, valueRef.current) === false) {
+        if (!deepEqual(newValue, valueRef.current)) {
           setValue(newValue)
         }
       },

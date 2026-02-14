@@ -21,7 +21,7 @@ const isDevtoolsViteNotInstalledError = (
 export const bootDevtools = Effect.fn('@livestore/common:leader-thread:devtools:boot')(function* (
   options: DevtoolsOptions,
 ) {
-  if (options.enabled === false) {
+  if (!options.enabled) {
     return
   }
 
@@ -209,10 +209,10 @@ const listenToDevtools = ({
                 if (tableNames.has(SystemTables.EVENTLOG_META_TABLE)) {
                   databaseKind = 'eventlog'
                   yield* SubscriptionRef.set(shutdownStateSubRef, 'shutting-down')
-                  yield* Effect.try(() => void dbEventlog.import(data))
+                  yield* Effect.try(() =>  dbEventlog.import(data))
 
                   if (batchId === undefined) {
-                    yield* Effect.try(() => void dbState.destroy())
+                    yield* Effect.try(() =>  dbState.destroy())
                   }
                 } else if (
                   tableNames.has(SystemTables.SCHEMA_META_TABLE) &&
@@ -220,10 +220,10 @@ const listenToDevtools = ({
                 ) {
                   databaseKind = 'state'
                   yield* SubscriptionRef.set(shutdownStateSubRef, 'shutting-down')
-                  yield* Effect.try(() => void dbState.import(data))
+                  yield* Effect.try(() =>  dbState.import(data))
 
                   if (batchId === undefined) {
-                    yield* Effect.try(() => void dbEventlog.destroy())
+                    yield* Effect.try(() =>  dbEventlog.destroy())
                   }
                 } else {
                   return yield* Effect.fail({ _tag: 'unsupported-database' } as const)
@@ -446,9 +446,9 @@ const listenToDevtools = ({
             case 'LSD.Leader.SetSyncLatch.Request': {
               const { closeLatch } = decodedEvent
 
-              if (devtools.enabled === false) return
+              if (!devtools.enabled) return
 
-              if (closeLatch === true) {
+              if (closeLatch) {
                 yield* devtools.syncBackendLatch.close
               } else {
                 yield* devtools.syncBackendLatch.open

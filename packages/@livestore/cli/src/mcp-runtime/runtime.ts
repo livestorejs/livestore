@@ -83,7 +83,7 @@ export const status = Effect.gen(function* () {
     }
   }
   const s = opt.value
-  const tableCounts = (Array.from(s.schema.state.sqlite.tables.keys()) as string[])
+  const tableCounts = (Array.from(s.schema.state.sqlite.tables.keys()))
     .filter((name) => !SystemTables.isStateSystemTable(name))
     .reduce(
       (acc, name) => {

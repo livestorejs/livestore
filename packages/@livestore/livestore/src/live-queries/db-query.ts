@@ -11,7 +11,7 @@ import {
   SessionIdSymbol,
   UnknownError,
 } from '@livestore/common'
-import { deepEqual, omitUndefineds, shouldNeverHappen } from '@livestore/utils'
+import { deepEqual, objectToString, omitUndefineds, shouldNeverHappen } from '@livestore/utils'
 import { Equal, Hash, Predicate, Schema, TreeFormatter } from '@livestore/utils/effect'
 
 import type { Thunk } from '../reactive.ts'
@@ -113,7 +113,7 @@ export const queryDb: {
   }
 
   if (hash.trim() === '') {
-    return shouldNeverHappen(`Invalid query hash for query: ${queryInput}`)
+      return shouldNeverHappen('Invalid query hash for query:', objectToString(queryInput))
   }
 
   const label = options?.label ?? queryString
@@ -169,7 +169,7 @@ const getQueryStringAndExtraDeps = (
     return { queryString: queryInput.toString(), extraDeps: [] }
   }
 
-  return shouldNeverHappen(`Invalid query input: ${queryInput}`)
+  return shouldNeverHappen(`Invalid query input: ${String(queryInput)}`)
 }
 
 /* An object encapsulating a reactive SQL query */
@@ -384,7 +384,7 @@ export class LiveStoreDbQuery<TResultSchema, TResult = TResultSchema> extends Li
             span.setAttribute('sql.query', sqlString)
             span.updateName(`db:${sqlString.slice(0, 50)}`)
 
-            const rawDbResults = store[StoreInternalsSymbol].sqliteDbWrapper.cachedSelect<any>(
+            const rawDbResults = store[StoreInternalsSymbol].sqliteDbWrapper.cachedSelect(
               sqlString,
               bindValues ? prepareBindValues(bindValues, sqlString) : undefined,
               {

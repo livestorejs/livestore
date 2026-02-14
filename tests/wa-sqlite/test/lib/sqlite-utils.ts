@@ -32,7 +32,7 @@ export const importBytesToDb = (
   const FREE_ON_CLOSE = 1
   const RESIZEABLE = 2
 
-  if (readOnly === true) {
+  if (readOnly) {
     sqlite3.deserialize(db, 'main', bytes, bytes.length, bytes.length, FREE_ON_CLOSE | RESIZEABLE)
   } else {
     const tmpDb = makeInMemoryDb(sqlite3)
@@ -45,7 +45,7 @@ export const importBytesToDb = (
 }
 
 export const makeInMemoryDb = (sqlite3: WaSqlite.SQLiteAPI) => {
-  if (sqlite3.vfs_registered.has('memory-vfs') === false) {
+  if (!sqlite3.vfs_registered.has('memory-vfs')) {
     const vfs = new MemoryVFS('memory-vfs', (sqlite3 as any).module)
 
     // @ts-expect-error TODO fix types
@@ -118,7 +118,7 @@ export const prepare = (sqlite3: WaSqlite.SQLiteAPI, dbPointer: number, queryStr
     execute: (bindValues: any, options: any) => {
       for (const stmt of stmts) {
         if (bindValues !== undefined && Object.keys(bindValues).length > 0) {
-          sqlite3.bind_collection(stmt, bindValues as any)
+          sqlite3.bind_collection(stmt, bindValues)
         }
 
         try {

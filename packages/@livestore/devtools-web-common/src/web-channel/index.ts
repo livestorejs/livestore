@@ -77,7 +77,7 @@ export const connectViaWorker = ({
   Effect.gen(function* () {
     const mc = new MessageChannel()
 
-    const isConnected = yield* Deferred.make<boolean, never>()
+    const isConnected = yield* Deferred.make<boolean>()
 
     if (LS_DEV) {
       yield* Effect.addFinalizerLog(

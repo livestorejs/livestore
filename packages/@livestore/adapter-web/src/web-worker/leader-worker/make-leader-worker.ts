@@ -119,7 +119,7 @@ const makeWorkerRunnerInner = ({ schema, sync: syncOptions, syncPayloadSchema }:
       Effect.gen(function* () {
         const sqlite3 = yield* Effect.promise(() => loadSqlite3Wasm())
         const makeSqliteDb = sqliteDbFactory({ sqlite3 })
-        const runtime = yield* Effect.runtime<never>()
+        const runtime = yield* Effect.runtime()
 
         // Check OPFS availability and determine storage mode
         const opfsCheck = yield* checkOpfsAvailability
@@ -302,7 +302,7 @@ const makeDevtoolsOptions = ({
   dbEventlog: SqliteDb
 }): Effect.Effect<DevtoolsOptions, UnknownError, Scope.Scope | WebmeshWorker.CacheService> =>
   Effect.gen(function* () {
-    if (devtoolsEnabled === false) {
+    if (!devtoolsEnabled) {
       return { enabled: false }
     }
 
