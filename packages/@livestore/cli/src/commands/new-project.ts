@@ -73,6 +73,7 @@ const fetchExamples = (ref: string) =>
 
     const responseText = yield* response.text
 
+    // @effect-diagnostics-next-line preferSchemaOverJson:off
     const examples = yield* Schema.decodeUnknown(GitHubContentsResponseSchema)(JSON.parse(responseText)).pipe(
       Effect.catchAll(
         (error) =>

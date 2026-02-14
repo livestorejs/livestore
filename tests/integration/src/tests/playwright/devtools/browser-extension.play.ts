@@ -127,7 +127,7 @@ const getLiveStoreDevtoolsFrame = (devtools: PW.Page, label: string) =>
   })
 
 const runTest =
-  (eff: Effect.Effect<void, unknown, Playwright.BrowserContext>) =>
+  <E>(eff: Effect.Effect<void, E, Playwright.BrowserContext>) =>
   (
     {}: PW.PlaywrightTestArgs & PW.PlaywrightTestOptions & PW.PlaywrightWorkerArgs & PW.PlaywrightWorkerOptions,
     testInfo: PW.TestInfo,
@@ -139,6 +139,7 @@ const runTest =
     )
 
     return Effect.gen(function* () {
+      // @effect-diagnostics-next-line preferSchemaOverJson:off
       const parentSpanContext = JSON.parse(process.env.SPAN_CONTEXT_JSON ?? '{}') as otel.SpanContext
       const parentSpan = OtelTracer.makeExternalSpan({
         traceId: parentSpanContext.traceId,

@@ -35,6 +35,7 @@ const writeInitialProject = (fs: FileSystem.FileSystem, projectRoot: string): Ef
     yield* fs
       .writeFileString(
         tsconfigPath,
+        // @effect-diagnostics-next-line preferSchemaOverJson:off
         `${JSON.stringify(
           {
             compilerOptions: {

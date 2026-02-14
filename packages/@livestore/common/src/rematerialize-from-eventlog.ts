@@ -8,7 +8,7 @@ import { EventSequenceNumber, LiveStoreEvent, resolveEventDef, SystemTables } fr
 import type { PreparedBindValues } from './util.ts'
 import { sql } from './util.ts'
 
-export const rematerializeFromEventlog = ({
+export const rematerializeFromEventlog = Effect.fn('@livestore/common:rematerializeFromEventlog')(function* ({
   dbEventlog,
   // TODO re-use this db when bringing back the boot in-memory db implementation
   // db,
@@ -21,69 +21,70 @@ export const rematerializeFromEventlog = ({
   schema: LiveStoreSchema
   onProgress: (_: { done: number; total: number }) => Effect.Effect<void>
   materializeEvent: MaterializeEvent
-}) =>
-  Effect.gen(function* () {
+}) {
     const eventsCount = dbEventlog.select<{ count: number }>(
       `SELECT COUNT(*) AS count FROM ${SystemTables.EVENTLOG_META_TABLE}`,
     )[0]!.count
 
     const hashEventDef = memoizeByRef((event: EventDef.AnyWithoutFn) => Schema.hash(event.schema))
 
-    const processEvent = (row: SystemTables.EventlogMetaRow) =>
-      Effect.gen(function* () {
-        const args = JSON.parse(row.argsJson)
-        const eventEncoded = LiveStoreEvent.Client.EncodedWithMeta.make({
-          name: row.name,
-          args,
-          seqNum: {
-            global: row.seqNumGlobal,
-            client: row.seqNumClient,
-            rebaseGeneration: row.seqNumRebaseGeneration,
-          },
-          parentSeqNum: {
-            global: row.parentSeqNumGlobal,
-            client: row.parentSeqNumClient,
-            rebaseGeneration: row.parentSeqNumRebaseGeneration,
-          },
-          clientId: row.clientId,
-          sessionId: row.sessionId,
-        })
+    const processEvent = Effect.fn(`@livestore/common:rematerializeFromEventlog:processEvent`)(function* (
+      row: SystemTables.EventlogMetaRow,
+    ) {
+      // @effect-diagnostics-next-line preferSchemaOverJson:off
+      const args = JSON.parse(row.argsJson)
+      const eventEncoded = LiveStoreEvent.Client.EncodedWithMeta.make({
+        name: row.name,
+        args,
+        seqNum: {
+          global: row.seqNumGlobal,
+          client: row.seqNumClient,
+          rebaseGeneration: row.seqNumRebaseGeneration,
+        },
+        parentSeqNum: {
+          global: row.parentSeqNumGlobal,
+          client: row.parentSeqNumClient,
+          rebaseGeneration: row.parentSeqNumRebaseGeneration,
+        },
+        clientId: row.clientId,
+        sessionId: row.sessionId,
+      })
 
-        const resolution = yield* resolveEventDef(schema, {
-          operation: '@livestore/common:rematerializeFromEventlog:processEvent',
-          event: eventEncoded,
-        }).pipe(UnknownError.mapToUnknownError)
+      const resolution = yield* resolveEventDef(schema, {
+        operation: '@livestore/common:rematerializeFromEventlog:processEvent',
+        event: eventEncoded,
+      }).pipe(UnknownError.mapToUnknownError)
 
-        if (resolution._tag === 'unknown') {
-          // Old snapshots can contain newer events. Skip until the runtime has
-          // been updated; the event stays in the log for future replays.
-          return
-        }
+      if (resolution._tag === 'unknown') {
+        // Old snapshots can contain newer events. Skip until the runtime has
+        // been updated; the event stays in the log for future replays.
+        return
+      }
 
-        const { eventDef } = resolution
+      const { eventDef } = resolution
 
-        if (hashEventDef(eventDef) !== row.schemaHash) {
-          yield* Effect.logWarning(
-            `Schema hash mismatch for event definition ${row.name}. Trying to materialize event anyway.`,
-          )
-        }
+      if (hashEventDef(eventDef) !== row.schemaHash) {
+        yield* Effect.logWarning(
+          `Schema hash mismatch for event definition ${row.name}. Trying to materialize event anyway.`,
+        )
+      }
 
-        // Checking whether the schema has changed in an incompatible way
-        yield* Schema.decodeUnknown(eventDef.schema)(args).pipe(
-          Effect.mapError((cause) =>
-            UnknownError.make({
-              cause,
-              note: `\
+      // Checking whether the schema has changed in an incompatible way
+      yield* Schema.decodeUnknown(eventDef.schema)(args).pipe(
+        Effect.mapError((cause) =>
+          UnknownError.make({
+            cause,
+            note: `\
 There was an error during rematerializing from the eventlog while decoding
 the persisted event args for event definition "${row.name}".
 This likely means the schema has changed in an incompatible way.
 `,
-            }),
-          ),
-        )
+          }),
+        ),
+      )
 
-        yield* materializeEvent(eventEncoded, { skipEventlog: true })
-      }).pipe(Effect.withSpan(`@livestore/common:rematerializeFromEventlog:processEvent`))
+      yield* materializeEvent(eventEncoded, { skipEventlog: true })
+    })
 
     const CHUNK_SIZE = 100
 
@@ -129,7 +130,4 @@ LIMIT ${CHUNK_SIZE}
       ),
       Stream.runDrain,
     )
-  }).pipe(
-    Effect.withPerformanceMeasure('@livestore/common:rematerializeFromEventlog'),
-    Effect.withSpan('@livestore/common:rematerializeFromEventlog'),
-  )
+}, Effect.withPerformanceMeasure('@livestore/common:rematerializeFromEventlog'))

@@ -153,41 +153,40 @@ export const makeWsSync =
             Stream.withSpan('pull'),
           ),
 
-        push: (batch) =>
-          Effect.gen(function* () {
-            if (batch.length === 0) return
+        push: Effect.fn('push')(function* (batch) {
+          if (batch.length === 0) return
 
-            const encodePayload = (batch: ReadonlyArray<LiveStoreEvent.Global.Encoded>) => ({
+          const encodePayload = (batch: ReadonlyArray<LiveStoreEvent.Global.Encoded>) => ({
+            storeId,
+            payload,
+            batch,
+            backendId: backendIdHelper.get(),
+          })
+
+          const chunksChunk = yield* Chunk.fromIterable(batch).pipe(
+            splitChunkBySize({
+              maxItems: MAX_PUSH_EVENTS_PER_REQUEST,
+              maxBytes: MAX_WS_MESSAGE_BYTES,
+              encode: encodePayload,
+            }),
+            Effect.mapError((cause) => new InvalidPushError({ cause: new UnknownError({ cause }) })),
+          )
+
+          for (const sub of chunksChunk) {
+            yield* rpcClient.SyncWsRpc.Push({
               storeId,
               payload,
-              batch,
+              batch: Chunk.toReadonlyArray(sub),
               backendId: backendIdHelper.get(),
-            })
-
-            const chunksChunk = yield* Chunk.fromIterable(batch).pipe(
-              splitChunkBySize({
-                maxItems: MAX_PUSH_EVENTS_PER_REQUEST,
-                maxBytes: MAX_WS_MESSAGE_BYTES,
-                encode: encodePayload,
-              }),
-              Effect.mapError((cause) => new InvalidPushError({ cause: new UnknownError({ cause }) })),
+            }).pipe(
+              Effect.mapError((cause) =>
+                cause._tag === 'InvalidPushError'
+                  ? cause
+                  : new InvalidPushError({ cause: new UnknownError({ cause }) }),
+              ),
             )
-
-            for (const sub of chunksChunk) {
-              yield* rpcClient.SyncWsRpc.Push({
-                storeId,
-                payload,
-                batch: Chunk.toReadonlyArray(sub),
-                backendId: backendIdHelper.get(),
-              }).pipe(
-                Effect.mapError((cause) =>
-                  cause._tag === 'InvalidPushError'
-                    ? cause
-                    : new InvalidPushError({ cause: new UnknownError({ cause }) }),
-                ),
-              )
-            }
-          }).pipe(Effect.withSpan('push')),
+          }
+        }),
         ping,
         metadata: {
           name: '@livestore/cf-sync',

@@ -144,6 +144,7 @@ export const createTldrawPlugin = (options: TldrawPluginOptions = {}): MinimalVi
             generatedAt: cached.generatedAt,
           }
 
+          // @effect-diagnostics-next-line preferSchemaOverJson:off
           const serializedPayload = JSON.stringify(payload)
 
           return {

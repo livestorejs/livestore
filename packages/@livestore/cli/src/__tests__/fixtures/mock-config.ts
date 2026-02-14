@@ -8,6 +8,11 @@ import { Effect, FileSystem, type Mailbox, Schema } from '@livestore/utils/effec
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url))
 
+class DynamicImportError extends Schema.TaggedError<DynamicImportError>()('DynamicImportError', {
+  cause: Schema.Defect,
+  path: Schema.String,
+}) {}
+
 // Use package-local temp directory for test config files to ensure proper module resolution
 const tmpDir = path.join(__dirname, '.tmp-test-configs')
 
@@ -84,7 +89,7 @@ export const useMockConfig = Effect.acquireRelease(
 
     const mod = (yield* Effect.tryPromise({
       try: () => import(pathToFileURL(tempPath).href),
-      catch: (cause) => (cause instanceof Error ? cause : new Error(String(cause))),
+      catch: (cause) => new DynamicImportError({ cause, path: tempPath }),
     })) as {
       mockBackend: MockSyncBackend
       connectionEvents: Mailbox.Mailbox<'connect' | 'disconnect'>

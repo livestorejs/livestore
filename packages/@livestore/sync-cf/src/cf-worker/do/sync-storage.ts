@@ -121,6 +121,7 @@ export const makeStorage = (
             return Option.none()
           }
 
+          // @effect-diagnostics-next-line preferSchemaOverJson:off
           const encodedSize = textEncoder.encode(JSON.stringify(rawEvents)).byteLength
 
           if (encodedSize > D1_TARGET_RESPONSE_BYTES && state.limit > D1_MIN_PAGE_SIZE) {

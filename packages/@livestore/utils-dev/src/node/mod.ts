@@ -158,6 +158,7 @@ export const getTracingBackendUrl = (span: otel.Span) =>
     const grafanaEndpoint = endpoint.value
     const searchParams = new URLSearchParams({
       orgId: '1',
+      // @effect-diagnostics-next-line preferSchemaOverJson:off
       left: JSON.stringify({
         datasource: 'tempo',
         queries: [{ query: traceId, queryType: 'traceql', refId: 'A' }],

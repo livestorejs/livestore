@@ -141,7 +141,7 @@ export const makePush =
 
             // NOTE we're also sending the pullRes chunk to the pushing ws client as confirmation
             for (const conn of connectedClients) {
-              const attachment = Schema.decodeSync(WebSocketAttachmentSchema)(conn.deserializeAttachment())
+              const attachment = yield* Schema.decode(WebSocketAttachmentSchema)(conn.deserializeAttachment())
 
               // We're doing something a bit "advanced" here as we're directly emitting Effect RPC-compatible
               // response messsages on the Effect RPC-managed websocket connection to the WS client.
@@ -152,6 +152,7 @@ export const makePush =
                   requestId,
                   values: [encoded],
                 }
+                // @effect-diagnostics-next-line preferSchemaOverJson:off
                 conn.send(JSON.stringify(res))
               }
             }

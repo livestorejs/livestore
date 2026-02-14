@@ -149,6 +149,7 @@ export const makeClientSessionSyncProcessor = ({
         acc[event.name] = (acc[event.name] ?? 0) + 1
         return acc
       }, {}),
+      // @effect-diagnostics-next-line preferSchemaOverJson:off
       ...(TRACE_VERBOSE && { mergeResult: JSON.stringify(mergeResult) }),
     })
 
@@ -255,9 +256,11 @@ export const makeClientSessionSyncProcessor = ({
               'merge:pull:rebase',
               {
                 payloadTag: payload._tag,
+                // @effect-diagnostics-next-line preferSchemaOverJson:off
                 payload: TRACE_VERBOSE ? JSON.stringify(payload) : undefined,
                 newEventsCount: mergeResult.newEvents.length,
                 rollbackCount: mergeResult.rollbackEvents.length,
+                // @effect-diagnostics-next-line preferSchemaOverJson:off
                 res: TRACE_VERBOSE ? JSON.stringify(mergeResult) : undefined,
               },
               undefined,
@@ -304,8 +307,10 @@ export const makeClientSessionSyncProcessor = ({
               'merge:pull:advance',
               {
                 payloadTag: payload._tag,
+                // @effect-diagnostics-next-line preferSchemaOverJson:off
                 payload: TRACE_VERBOSE ? JSON.stringify(payload) : undefined,
                 newEventsCount: mergeResult.newEvents.length,
+                // @effect-diagnostics-next-line preferSchemaOverJson:off
                 res: TRACE_VERBOSE ? JSON.stringify(mergeResult) : undefined,
               },
               undefined,

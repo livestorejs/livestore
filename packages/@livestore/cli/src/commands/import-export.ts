@@ -42,6 +42,7 @@ const exportEvents = ({
     const fs = yield* FileSystem.FileSystem
     const absOutputPath = path.isAbsolute(outputPath) ? outputPath : path.resolve(process.cwd(), outputPath)
 
+    // @effect-diagnostics-next-line preferSchemaOverJson:off
     yield* fs.writeFileString(absOutputPath, JSON.stringify(result.data, null, 2)).pipe(
       Effect.mapError(
         (cause) =>
@@ -110,6 +111,7 @@ const importEvents = ({
     )
 
     const parsedContent = yield* Effect.try({
+      // @effect-diagnostics-next-line preferSchemaOverJson:off
       try: () => JSON.parse(fileContent),
       catch: (error) =>
         new SyncOps.ImportError({

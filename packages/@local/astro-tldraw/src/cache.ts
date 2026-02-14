@@ -105,6 +105,7 @@ export const saveManifest = (
         .makeDirectory(path.dirname(manifestPath), { recursive: true })
         .pipe(Effect.mapError((cause) => new FileSystemError({ path: manifestPath, operation: 'mkdir', cause })))
 
+      // @effect-diagnostics-next-line preferSchemaOverJson:off
       yield* fs
         .writeFileString(manifestPath, JSON.stringify(manifest, null, 2))
         .pipe(
@@ -159,6 +160,7 @@ export const saveDiagramToCache = (
       }
 
       /* Write to disk */
+      // @effect-diagnostics-next-line preferSchemaOverJson:off
       yield* fs
         .writeFileString(fullArtifactPath, JSON.stringify(cachedDiagram, null, 2))
         .pipe(
@@ -200,6 +202,7 @@ export const loadCachedDiagram = (
 
       yield* Effect.annotateCurrentSpan({ entryFile: entry.entryFile, artifactPath: entry.artifactPath })
 
+      // @effect-diagnostics-next-line preferSchemaOverJson:off
       return JSON.parse(content) as CachedDiagram
     }),
   )

@@ -166,7 +166,7 @@ export const makeWebSocketEdge = ({
         Effect.gen(function* () {
           yield* isConnectedLatch.await
           const payload = yield* Schema.encode(schema.send)(message)
-          yield* sendToSocket(Schema.encodeSync(MessageMsgPack)({ _tag: 'WSEdgePayload', payload, from }))
+          yield* sendToSocket(yield* Schema.encode(MessageMsgPack)({ _tag: 'WSEdgePayload', payload, from }))
         }).pipe(Effect.orDie)
 
       const listen = Stream.fromQueue(listenQueue).pipe(

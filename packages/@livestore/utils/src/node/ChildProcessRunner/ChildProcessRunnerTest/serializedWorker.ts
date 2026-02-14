@@ -33,19 +33,18 @@ const WorkerLive = Runner.layerSerialized(WorkerMessage, {
   //       return req.name
   //     }),
   //   ),
-  GetSpan: (_) =>
-    Effect.gen(function* () {
-      const span = yield* Effect.currentSpan.pipe(Effect.orDie)
-      return {
+  GetSpan: Effect.fn('GetSpan')(function* (_) {
+    const span = yield* Effect.currentSpan.pipe(Effect.orDie)
+    return {
+      traceId: span.traceId,
+      spanId: span.spanId,
+      name: span.name,
+      parent: Option.map(span.parent, (span) => ({
         traceId: span.traceId,
         spanId: span.spanId,
-        name: span.name,
-        parent: Option.map(span.parent, (span) => ({
-          traceId: span.traceId,
-          spanId: span.spanId,
-        })),
-      }
-    }).pipe(Effect.withSpan('GetSpan')),
+      })),
+    }
+  }),
   RunnerInterrupt: () => Effect.interrupt,
   StartStubbornWorker: ({ blockDuration }) =>
     Effect.gen(function* () {

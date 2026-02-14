@@ -100,8 +100,8 @@ export const makeDoRpcSync =
           Stream.withSpan('rpc-sync-client:pull'),
         )
 
-      const push: SyncBackend.SyncBackend<{ createdAt: string }>['push'] = (batch) =>
-        Effect.gen(function* () {
+      const push: SyncBackend.SyncBackend<{ createdAt: string }>['push'] = Effect.fn('rpc-sync-client:push')(
+        function* (batch) {
           if (batch.length === 0) {
             return
           }
@@ -124,12 +124,11 @@ export const makeDoRpcSync =
             const chunkArray = Chunk.toReadonlyArray(chunk)
             yield* rpcClient.SyncDoRpc.Push({ batch: chunkArray, storeId, backendId })
           }
-        }).pipe(
-          Effect.mapError((cause) =>
-            cause._tag === 'InvalidPushError' ? cause : InvalidPushError.make({ cause: new UnknownError({ cause }) }),
-          ),
-          Effect.withSpan('rpc-sync-client:push'),
-        )
+        },
+        Effect.mapError((cause) =>
+          cause._tag === 'InvalidPushError' ? cause : InvalidPushError.make({ cause: new UnknownError({ cause }) }),
+        ),
+      )
 
       const ping: SyncBackend.SyncBackend<{ createdAt: string }>['ping'] = rpcClient.SyncDoRpc.Ping({
         storeId,

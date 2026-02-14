@@ -1486,6 +1486,7 @@ const buildSnippetsInternal = ({ paths, runtimeOptions }: ResolvedBuildOptions) 
           }
         })
 
+        // @effect-diagnostics-next-line preferSchemaOverJson:off
         const bundleHash = hashString(
           JSON.stringify({
             files: filesWithHash.map((file) => ({
@@ -1568,6 +1569,7 @@ const buildSnippetsInternal = ({ paths, runtimeOptions }: ResolvedBuildOptions) 
           ),
         )
 
+        // @effect-diagnostics-next-line preferSchemaOverJson:off
         yield* fs.writeFileString(artifactPath, `${JSON.stringify(artifact, null, 2)}\n`).pipe(
           Effect.mapError(
             (cause) =>
@@ -1604,6 +1606,7 @@ const buildSnippetsInternal = ({ paths, runtimeOptions }: ResolvedBuildOptions) 
       entries: artifactEntries,
     }
 
+    // @effect-diagnostics-next-line preferSchemaOverJson:off
     yield* fs
       .writeFileString(path.join(paths.cacheRoot, 'manifest.json'), `${JSON.stringify(manifest, null, 2)}\n`)
       .pipe(

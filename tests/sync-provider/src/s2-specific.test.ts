@@ -168,6 +168,7 @@ Vitest.describe('S2-specific', { timeout: 60000 }, () => {
         parentSeqNum: EventSequenceNumber.Global.make(1),
       })
 
+      // @effect-diagnostics-next-line preferSchemaOverJson:off
       yield* providerSpecific.appendRaw(storeId, [JSON.stringify(ev1), JSON.stringify(ev2)])
 
       // Non-live pull should yield the 2 events
