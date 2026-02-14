@@ -5,6 +5,7 @@ import {
   InvalidPushError,
   type LeaderAheadError,
   type MockSyncBackend,
+  type MockSyncBackendOptions,
   makeMockSyncBackend,
   ServerAheadError,
   type SyncBackend,
@@ -58,6 +59,8 @@ const withTestCtx = (
     /** Warning: Setting `livePull` to `false` will lead to some less explored scenarios (e.g. only pulls once on boot) */
     syncOptions?: Partial<SyncOptions>
     captureShutdown?: boolean
+    mockBackendOptions?: MockSyncBackendOptions
+    seedMockBackend?: (mockBackend: MockSyncBackend) => Effect.Effect<void>
     mockBackendOverride?: (mock: MockSyncBackend) => SyncBackend.SyncBackendConstructor
   } = {},
 ) =>
@@ -98,6 +101,62 @@ Vitest.describe.concurrent('LeaderSyncProcessor', { timeout: 60000 }, () => {
 
       yield* testContext.mockSyncBackend.pushedEvents.pipe(Stream.take(2), Stream.runDrain)
     }).pipe(withTestCtx()(test)),
+  )
+
+  Vitest.scopedLive('non-live paginated pull does not stall local pushes', (test) =>
+    Effect.gen(function* () {
+      const leaderThreadCtx = yield* LeaderThreadCtx
+      const testContext = yield* TestContext
+
+      const pulledStateOption = yield* leaderThreadCtx.syncProcessor.syncState.changes.pipe(
+        Stream.filter((state) => state.localHead.global === 3),
+        Stream.take(1),
+        Stream.runHead,
+        Effect.timeout('5 seconds'),
+      )
+
+      expect(pulledStateOption._tag).toBe('Some')
+      if (pulledStateOption._tag !== 'Some') {
+        return
+      }
+
+      const syncState = yield* leaderThreadCtx.syncProcessor.syncState.get
+      const nextPair = EventSequenceNumber.Client.nextPair({
+        seqNum: syncState.localHead,
+        isClient: false,
+      })
+
+      const localEvent = LiveStoreEvent.Client.EncodedWithMeta.make({
+        ...LiveStoreEvent.Global.toClientEncoded(
+          testContext.eventFactory.todoCreated.next({ id: 'local-after-pull', text: 'local', completed: false }),
+        ),
+        seqNum: nextPair.seqNum,
+        parentSeqNum: nextPair.parentSeqNum,
+      })
+
+      yield* leaderThreadCtx.syncProcessor.push([localEvent], { waitForProcessing: true })
+
+      yield* testContext.mockSyncBackend.pushedEvents.pipe(Stream.take(1), Stream.runDrain, Effect.timeout(5000))
+
+      const rows = leaderThreadCtx.dbState.select<{ id: string }>(tables.todos.asSql().query)
+      expect(rows.map((row) => row.id).toSorted()).toEqual(['backend-1', 'backend-2', 'backend-3', 'local-after-pull'])
+    }).pipe(
+      withTestCtx({
+        syncOptions: { livePull: false, onSyncError: 'ignore' },
+        mockBackendOptions: { nonLiveChunkSize: 1 },
+        seedMockBackend: (mockBackend) => {
+          const backendFactory = makeEventFactory({
+            client: EventFactory.clientIdentity('mock-backend', 'static-session-id'),
+          })
+
+          return mockBackend.advance(
+            backendFactory.todoCreated.next({ id: 'backend-1', text: 'b1', completed: false }),
+            backendFactory.todoCreated.next({ id: 'backend-2', text: 'b2', completed: false }),
+            backendFactory.todoCreated.next({ id: 'backend-3', text: 'b3', completed: false }),
+          )
+        },
+      })(test),
+    ),
   )
 
   Vitest.scopedLive('local push old-gen items fail promptly with LeaderAheadError', (test) =>
@@ -641,6 +700,8 @@ const LeaderThreadCtxLive = ({
   params,
   syncOptions,
   captureShutdown,
+  mockBackendOptions,
+  seedMockBackend,
   mockBackendOverride,
 }: {
   syncProcessor?: NonNullable<MakeLeaderThreadLayerParams['testing']>['syncProcessor']
@@ -648,10 +709,16 @@ const LeaderThreadCtxLive = ({
   /** Optional overrides for sync options (e.g. custom backend, livePull flag) */
   syncOptions?: Partial<SyncOptions>
   captureShutdown?: boolean
+  mockBackendOptions?: MockSyncBackendOptions
+  seedMockBackend?: (mockBackend: MockSyncBackend) => Effect.Effect<void>
   mockBackendOverride?: (mock: MockSyncBackend) => SyncBackend.SyncBackendConstructor
 }) =>
   Effect.gen(function* () {
-    const mockSyncBackend = yield* makeMockSyncBackend()
+    const mockSyncBackend = yield* makeMockSyncBackend(mockBackendOptions)
+
+    if (seedMockBackend !== undefined) {
+      yield* seedMockBackend(mockSyncBackend)
+    }
 
     const sqlite3 = yield* Effect.promise(() => loadSqlite3Wasm()).pipe(
       Effect.withSpan('@livestore/adapter-node:leader-thread:loadSqlite3Wasm'),
