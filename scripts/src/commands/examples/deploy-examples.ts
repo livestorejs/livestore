@@ -1,10 +1,10 @@
 import process from 'node:process'
 
-import { Effect, FileSystem, Layer, Logger, LogLevel, Option, Schema } from '@livestore/utils/effect'
-
-import { Cli, PlatformNode } from '@livestore/utils/node'
 import { cmd, cmdText, LivestoreWorkspace } from '@livestore/utils-dev/node'
+import { Effect, FileSystem, Layer, Logger, LogLevel, Option, Schema } from '@livestore/utils/effect'
+import { Cli, PlatformNode } from '@livestore/utils/node'
 
+import { cloudflareExamples } from '../../shared/cloudflare-manifest.ts'
 import {
   buildCloudflareWorker,
   type CloudflareEnvironmentKind,
@@ -16,7 +16,6 @@ import {
   resolveWorkerName,
   resolveWorkersSubdomain,
 } from '../../shared/cloudflare.ts'
-import { cloudflareExamples } from '../../shared/cloudflare-manifest.ts'
 import { appendGithubSummaryMarkdown, formatMarkdownTable } from '../../shared/misc.ts'
 
 export class ScriptError extends Schema.TaggedError<ScriptError>()('ScriptError', {

@@ -1,8 +1,10 @@
-import { StoreRegistry } from '@livestore/livestore'
-import { StoreRegistryProvider } from '@livestore/react'
 import { Suspense, useEffect, useState } from 'react'
 import { unstable_batchedUpdates as batchUpdates } from 'react-dom'
 import { ErrorBoundary } from 'react-error-boundary'
+
+import { StoreRegistry } from '@livestore/livestore'
+import { StoreRegistryProvider } from '@livestore/react'
+
 import { AppLayout } from './components/AppLayout.tsx'
 import { mailboxStoreId } from './stores/mailbox/index.ts'
 

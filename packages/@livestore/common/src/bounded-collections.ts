@@ -116,6 +116,6 @@ export class BoundArray<V> {
   }
 
   sort = (fn?: (a: V, b: V) => number) => {
-    return this.#array.sort(fn)
+    return this.#array.toSorted(fn)
   }
 }

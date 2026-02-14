@@ -2,6 +2,7 @@ import { ArrowsUpDownIcon, BarsArrowDownIcon, BarsArrowUpIcon } from '@heroicons
 import React from 'react'
 import { useKeyboard } from 'react-aria'
 import { Button, Header, Menu, MenuItem, MenuSection, MenuTrigger, Popover } from 'react-aria-components'
+
 import { type SortingDirection, type SortingOption, sortingOptions } from '../../../data/sorting-options.ts'
 import { useFilterState } from '../../../livestore/queries.ts'
 import { Shortcut } from '../../common/shortcut.tsx'

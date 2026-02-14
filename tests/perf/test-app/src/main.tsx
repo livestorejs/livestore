@@ -1,9 +1,10 @@
+import React, { StrictMode, Suspense, useState } from 'react'
+import { createRoot } from 'react-dom/client'
+
 /** biome-ignore-all lint/nursery: testing */
 /** biome-ignore-all lint/correctness/useUniqueElementIds: it's ok for testing */
 import { StoreRegistry } from '@livestore/livestore'
 import { StoreRegistryProvider } from '@livestore/react'
-import React, { StrictMode, Suspense, useState } from 'react'
-import { createRoot } from 'react-dom/client'
 
 import { allItems$, uiState$ } from './queries.ts'
 import { events, type Item, type Items } from './schema.ts'

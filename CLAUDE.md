@@ -2,7 +2,7 @@
 
 ## Setup
 
-This repository uses [`direnv`](https://direnv.net) for automatic environment setup. Run `direnv allow` once, then direnv automatically runs the setup script which installs dependencies and builds TypeScript.
+This repository uses [`devenv`](https://devenv.sh) for development environment management. Run `devenv shell` to enter the development environment.
 
 ## Zellij (mandatory when working in a zellij session)
 
@@ -13,14 +13,15 @@ This repository uses [`direnv`](https://direnv.net) for automatic environment se
 
 ## Tooling
 
-- When tools are not directly available in `$PATH`, prefix commands with `direnv exec .` (e.g. `direnv exec . tsc`, `direnv exec . mono lint`)
+- If tools aren't directly in `$PATH`, enter the dev environment first with `devenv shell`.
 
 - For depedency management see @contributor-docs/dependency-management.md
 
 ### `mono` CLI
 
 Use the `mono` CLI for common workflows:
-- `mono lint` / `mono lint --fix` to run the linting checks
+
+- `dt lint:full` / `dt lint:full:fix` to run the linting checks
 - `mono test <unit|integration|perf>` to run the tests
   - Some tests can take a while to run.
 - `mono ts [--watch] [--clean]` to build the TypeScript code
@@ -40,34 +41,18 @@ Use the `mono` CLI for common workflows:
 - Keep exported members at the top of the file and move unexported helpers to the bottom.
 - Never add `paths` to `tsconfig.json`. Prefer using `package.json#exports` instead.
 
-## Task-based Approach
+## Task Management (Beads)
 
-### 0. Tasks
-- Operate on a task basis. Store all intermediate context in markdown files inside `tasks/{year}/{month}/{branch-name}/{task-id}/` folders.
-- Use semantic task ID slugs.
+This repo uses [beads](../overeng-beads-public) for task tracking via the megarepo setup.
 
-### 1. Research
-- Identify existing patterns in the codebase.
-- Search external resources if relevant.
-- Begin by asking follow-up questions to set the research direction. Avoid trivial questions that you can look up yourself. Already do some preliminary research first to only ask questions that are ambiguous or strategically important.
-- Document findings in the `research.md` file.
-- When working on a bug/problem, create a separate `problem.md` to document the problem with a detailed description of the problem, the expected behavior, and the actual behavior including clear reproduction steps and evidence (e.g. logs, screenshots, CLI output, etc.).
-
-### 2. Planning
-- Review `research.md` in `tasks/<task-id>`.
-- Based on the research, create a plan for implementing the user request. Reuse existing patterns, components, and code wherever possible.
-- If needed, ask clarifying questions to the user to better understand the scope of the task.
-- Write a comprehensive plan in `plan.md`. This plan should include all the context required for an engineer to implement the feature.
-
-### 3. Implementation
-- Read `plan.md` and create a to-do list with all required items.
-- Execute the plan step by step.
-- Continue as far as possible. If ambiguities remain, note all questions at the end and group them together.
+- Create an **epic** for larger work items and correlate it with the PR
+- Create **follow-up beads** (or a follow-up epic for larger scope) for out-of-scope work discovered during implementation
+- Run `bd sync` in the overeng-beads-public repo before pushing to keep beads in sync with git
 
 ## Git
 
 - The default branch of this repository is `dev`.
-- Before committing, run `direnv exec . mono lint --fix` to auto-fix most linting errors. Make sure there are no type check/lint errors.
+- Before committing, run `dt lint:full:fix` to auto-fix most linting errors. Make sure there are no type check/lint errors.
 
 ### Branch Naming Conventions
 
@@ -77,9 +62,9 @@ Use the `mono` CLI for common workflows:
 
 ### Development Workflow
 
-- Run the full test suite before pushing: `direnv exec . mono test unit`
-- Ensure TypeScript compilation passes: `direnv exec . mono ts`
-- Use `direnv exec . mono lint --fix` to automatically fix formatting issues
+- Run the full test suite before pushing: `dt test:run`
+- Ensure TypeScript compilation passes: `dt ts:check`
+- Use `dt lint:full:fix` to automatically fix formatting issues
 
 ### Issues
 
@@ -91,6 +76,7 @@ Use the `mono` CLI for common workflows:
 Describe the pull request in terms of the problem it addresses and the approach it takes—avoid titles like "update tests" that hide the intent. A good title should hint at both the underlying issue and the chosen fix, e.g. `Fix backlog replay flake by stabilizing event helper`. Frame the story around the impact to downstream data consumers or workflows rather than generic "user-facing" language.
 
 Checklist:
+
 - State the problem, solution, and validation steps in the PR body using the template sections.
 - Mention any trade-offs or follow-up work the reviewer should know about.
 - Research relevant issues and link them to the PR.

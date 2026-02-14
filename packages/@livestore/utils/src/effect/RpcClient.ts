@@ -6,6 +6,7 @@ import { Protocol } from '@effect/rpc/RpcClient'
 import { constPing, type FromServerEncoded } from '@effect/rpc/RpcMessage'
 import { Cause, Deferred, Effect, Layer, Option, Schedule, type Scope } from 'effect'
 import { constVoid, identity } from 'effect/Function'
+
 import * as SubscriptionRef from './SubscriptionRef.ts'
 
 // This is based on `makeProtocolSocket` / `layerProtocolSocket` from `@effect/rpc` in order to:

@@ -1,6 +1,8 @@
 import path from 'node:path'
-import { livestoreDevtoolsPlugin } from '@livestore/devtools-vite'
+
 import { defineConfig } from 'vite'
+
+import { livestoreDevtoolsPlugin } from '@livestore/devtools-vite'
 
 export default defineConfig({
   root: import.meta.dirname,

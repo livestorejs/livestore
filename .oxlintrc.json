@@ -1,0 +1,169 @@
+{
+  "$schema": "https://raw.githubusercontent.com/oxc-project/oxc/main/npm/oxlint/configuration_schema.json",
+  "plugins": ["import", "typescript", "unicorn", "oxc", "react", "react-perf"],
+  "ignorePatterns": [
+    "**/node_modules/**",
+    "**/.pnpm/**",
+    "**/.pnpm-store/**",
+    "**/dist/**",
+    "**/build/**",
+    "**/out/**",
+    "**/.wrangler/**",
+    "**/.vercel/**",
+    "**/.netlify/**",
+    "**/.astro/**",
+    "**/.nitro/**",
+    "**/.tanstack/**",
+    "**/.direnv/**",
+    "**/tmp/**",
+    "**/playwright-report/**",
+    "**/test-results/**",
+    "**/nix/**",
+    "**/wip/**",
+    "**/.vite/**",
+    "**/patches/**",
+    "**/.cache/**",
+    "**/.turbo/**",
+    "tests/integration/node_modules/**",
+    "docs/src/plugins/**",
+    "docs/src/content/_assets/code/**",
+    "packages/@local/astro-twoslash-code/example/src/content/_assets/code/**"
+  ],
+  "categories": {
+    "correctness": "error",
+    "suspicious": "warn",
+    "pedantic": "off",
+    "perf": "warn",
+    "style": "off",
+    "restriction": "off"
+  },
+  "rules": {
+    "import/no-commonjs": "error",
+    "typescript/consistent-type-imports": "warn",
+    "unicorn/no-array-callback-reference": "off",
+    "typescript/no-explicit-any": "off",
+    "typescript/no-deprecated": "off",
+    "typescript/consistent-type-definitions": "off",
+    "no-unused-vars": "off",
+    "eqeqeq": "off",
+    "func-style": "off",
+    "oxc/no-barrel-file": "off",
+    "import/default": "off",
+    "import/no-cycle": "off",
+    "import/no-dynamic-require": "off",
+    "import/no-unassigned-import": "off",
+    "import/namespace": "off",
+    "import/no-named-as-default": "off",
+    "react/react-in-jsx-scope": "off",
+    "react/style-prop-object": "off",
+    "react-hooks/exhaustive-deps": "off",
+    "react-perf/jsx-no-new-function-as-prop": "off",
+    "react-perf/jsx-no-new-object-as-prop": "off",
+    "react-perf/jsx-no-jsx-as-prop": "off",
+    "react-perf/jsx-no-new-array-as-prop": "off",
+    "block-scoped-var": "off",
+    "no-await-in-loop": "off",
+    "no-unused-expressions": "off",
+    "require-yield": "off",
+    "unicorn/require-post-message-target-origin": "off",
+    "unicorn/prefer-add-event-listener": "off",
+    "unicorn/no-empty-file": "off",
+    "typescript/no-unsafe-type-assertion": "off",
+    "typescript/no-unnecessary-boolean-literal-compare": "off",
+    "typescript/no-unnecessary-type-arguments": "off",
+    "typescript/no-duplicate-type-constituents": "off",
+    "typescript/no-unnecessary-type-assertion": "off",
+    "typescript/restrict-template-expressions": "off",
+    "typescript/no-floating-promises": "off",
+    "typescript/no-base-to-string": "off",
+    "typescript/no-redundant-type-constituents": "off",
+    "typescript/no-unnecessary-template-expression": "off",
+    "typescript/no-meaningless-void-operator": "off",
+    "typescript/unbound-method": "off",
+    "typescript/no-misused-spread": "off",
+    "typescript/no-for-in-array": "off",
+    "no-extraneous-class": "off",
+    "triple-slash-reference": "off",
+    "no-new": "off",
+    "no-empty-pattern": "off",
+    "no-useless-catch": "off",
+    "no-unused-private-class-members": "off",
+    "no-unassigned-vars": "off",
+    "no-unneeded-ternary": "off",
+    "no-unexpected-multiline": "off",
+    "no-extend-native": "off",
+    "oxc/only-used-in-recursion": "off",
+    "oxc/const-comparisons": "off",
+    "oxc/no-map-spread": "off",
+    "oxc/no-accumulating-spread": "off",
+    "constructor-super": "off",
+    "react/jsx-key": "off",
+    "unicorn/consistent-function-scoping": "off",
+    "unicorn/no-new-array": "off",
+    "import/named": "off",
+    "import/export": "off"
+  },
+  "overrides": [
+    {
+      "files": ["**/*.cjs", "**/*.cts", "**/*.js"],
+      "rules": {
+        "import/no-commonjs": "off"
+      }
+    },
+    {
+      "files": ["**/docs/src/content/_assets/code/**"],
+      "rules": {
+        "import/no-commonjs": "off"
+      }
+    },
+    {
+      "files": ["**/vitest.config.ts", "**/vite.config.ts", "**/playwright.config.ts", "**/*.genie.ts"],
+      "rules": {
+        "func-style": "off"
+      }
+    },
+    {
+      "files": ["**/*.test.ts", "**/*.test.tsx", "**/__tests__/**", "**/tests/**"],
+      "rules": {
+        "unicorn/no-array-sort": "off",
+        "unicorn/consistent-function-scoping": "off",
+        "require-yield": "off"
+      }
+    },
+    {
+      "files": ["**/*.d.ts"],
+      "rules": {
+        "typescript/consistent-type-imports": "off"
+      }
+    },
+    {
+      "files": ["**/*.gen.*", "**/.astro/**", "**/routeTree.gen.ts"],
+      "rules": {
+        "func-style": "off",
+        "import/no-commonjs": "off",
+        "import/no-named-as-default": "off",
+        "import/no-unassigned-import": "off",
+        "oxc/no-barrel-file": "off",
+        "oxc/no-map-spread": "off",
+        "unicorn/consistent-function-scoping": "off"
+      }
+    },
+    {
+      "files": ["**/wa-sqlite/**"],
+      "rules": {
+        "func-style": "off",
+        "import/no-commonjs": "off",
+        "typescript/await-thenable": "off",
+        "unicorn/no-new-array": "off",
+        "unicorn/no-array-sort": "off",
+        "unicorn/consistent-function-scoping": "off"
+      }
+    },
+    {
+      "files": ["**/*.svelte"],
+      "rules": {
+        "import/no-unassigned-import": "off"
+      }
+    }
+  ]
+}

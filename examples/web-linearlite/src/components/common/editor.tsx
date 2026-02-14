@@ -7,6 +7,7 @@ import { EditorContent, type Extensions, useEditor } from '@tiptap/react'
 import { BubbleMenu } from '@tiptap/react/menus'
 import { StarterKit } from '@tiptap/starter-kit'
 import { useEffect, useRef } from 'react'
+
 // import { Markdown } from 'tiptap-markdown' // Temporarily disabled for Tiptap v3 compatibility
 import EditorMenu from './editor-menu.tsx'
 

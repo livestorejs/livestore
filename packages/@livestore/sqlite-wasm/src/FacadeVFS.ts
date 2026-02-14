@@ -18,9 +18,6 @@ export class FacadeVFS extends VFS.Base {
    * @param {string} name
    * @param {object} module
    */
-  constructor(name, module) {
-    super(name, module)
-  }
 
   /**
    * Override to indicate which methods are asynchronous.

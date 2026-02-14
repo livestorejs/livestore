@@ -1,8 +1,10 @@
 /// <reference types="vitest/globals" />
 
+import { beforeEach, describe, expect, it } from 'vitest'
+
 import type { CfTypes } from '@livestore/common-cf'
 import * as VFS from '@livestore/wa-sqlite/src/VFS.js'
-import { beforeEach, describe, expect, it } from 'vitest'
+
 import { CloudflareSqlVFS } from '../../mod.ts'
 
 describe('CloudflareSqlVFS - Core Functionality', () => {
@@ -80,8 +82,8 @@ describe('CloudflareSqlVFS - Core Functionality', () => {
             const blocks = mockDatabase.get(`blocks:${filePath}`) || []
 
             if (normalizedQuery.includes('AND BLOCK_ID IN')) {
-              const requestedBlockIds = bindings.slice(1)
-              const matchingBlocks = blocks.filter((b: any) => requestedBlockIds.includes(b.block_id))
+              const requestedBlockIds = new Set(bindings.slice(1))
+              const matchingBlocks = blocks.filter((b: any) => requestedBlockIds.has(b.block_id))
               return createMockCursor(matchingBlocks as any)
             }
 

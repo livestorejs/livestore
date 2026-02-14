@@ -1,0 +1,17 @@
+# Generated file - DO NOT EDIT
+# Source: pnpm-workspace.yaml.genie.ts
+
+packages:
+  - .
+  - ../adapter-web
+  - ../common
+  - ../common-cf
+  - ../devtools-web-common
+  - ../livestore
+  - ../sqlite-wasm
+  - ../utils
+  - ../utils-dev
+  - ../wa-sqlite
+  - ../webmesh
+
+dedupePeerDependents: true

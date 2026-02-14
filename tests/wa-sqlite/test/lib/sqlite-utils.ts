@@ -2,6 +2,7 @@ import * as WaSqlite from '@livestore/wa-sqlite'
 import WaSqliteFactory from '@livestore/wa-sqlite/dist/wa-sqlite.node.mjs'
 import { MemoryVFS } from '@livestore/wa-sqlite/src/examples/MemoryVFS.js'
 import * as SqliteConstants from '@livestore/wa-sqlite/src/sqlite-constants.js'
+
 import { type PreparedBindValues, SqliteError } from './lib.ts'
 export { SqliteConstants }
 export { MemoryVFS } from '@livestore/wa-sqlite/src/examples/MemoryVFS.js'
@@ -45,7 +46,6 @@ export const importBytesToDb = (
 
 export const makeInMemoryDb = (sqlite3: WaSqlite.SQLiteAPI) => {
   if (sqlite3.vfs_registered.has('memory-vfs') === false) {
-    // @ts-expect-error TODO fix types
     const vfs = new MemoryVFS('memory-vfs', (sqlite3 as any).module)
 
     // @ts-expect-error TODO fix types

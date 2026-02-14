@@ -1,7 +1,9 @@
+import React from 'react'
+
 import type { LiveStoreSchema } from '@livestore/common/schema'
 import type { RegistryStoreOptions, Store, SyncStatus } from '@livestore/livestore'
 import type { Schema } from '@livestore/utils/effect'
-import React from 'react'
+
 import { useStoreRegistry } from './StoreRegistryContext.tsx'
 import { useClientDocument } from './useClientDocument.ts'
 import { useQuery } from './useQuery.ts'

@@ -1,8 +1,9 @@
 import path from 'node:path'
 
+import { describe, expect, it } from 'vitest'
+
 import { Effect, FileSystem, Queue } from '@livestore/utils/effect'
 import { PlatformNode } from '@livestore/utils/node'
-import { describe, expect, it } from 'vitest'
 
 import { type WatchSnippetsRebuildInfo, watchSnippets } from './snippets.ts'
 

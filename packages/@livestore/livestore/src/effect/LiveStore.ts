@@ -3,10 +3,11 @@ import type { LiveStoreEvent, LiveStoreSchema } from '@livestore/common/schema'
 import { omitUndefineds } from '@livestore/utils'
 import type { Cause, OtelTracer, Scope } from '@livestore/utils/effect'
 import { Context, Deferred, Duration, Effect, Layer, pipe } from '@livestore/utils/effect'
+
 import type { LiveStoreContextProps } from '../store/create-store.ts'
 import { createStore, DeferredStoreContext, LiveStoreContextRunning } from '../store/create-store.ts'
-import type { Store as StoreClass } from '../store/store.ts'
 import type { LiveStoreContextRunning as LiveStoreContextRunningType, Queryable } from '../store/store-types.ts'
+import type { Store as StoreClass } from '../store/store.ts'
 
 export const makeLiveStoreContext = <TSchema extends LiveStoreSchema, TContext = {}>({
   schema,

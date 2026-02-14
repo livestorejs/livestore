@@ -7,6 +7,7 @@ Concise notation for describing event sequences in Livestore.
 ### Event Sequence Numbers
 
 Events use integer sequence numbers and are denoted as `e0`, `e1`, `e2`, etc. These correspond to the `EventSequenceNumber` type (see `packages/@livestore/common/src/schema/EventSequenceNumber.ts`) which contains:
+
 - **global**: Globally unique integer sequence number
 - **client**: Client-local event counter (default: 0)
 - **rebaseGeneration**: Increments when client rebases (default: 0)
@@ -20,12 +21,14 @@ Events use integer sequence numbers and are denoted as `e0`, `e1`, `e2`, etc. Th
 The base format `e{global}[.{client}][r{rebaseGeneration}]` is implemented by `EventSequenceNumber.toString()` and `EventSequenceNumber.fromString()`.
 
 Core examples:
+
 - `e0` - Global event 0
 - `e3'` - Unconfirmed event 3
 - `e5.1` - Client-local event (global: 5, client: 1)
 - `e3r1` - Event with rebase generation 1
 
 Extended examples:
+
 - `A:e3'` - Client A's unconfirmed e3
 - `e3{userCreated}` - Event with context hint
 - `B:e5'/e3'` - Client B's e5' that was originally e3'
@@ -43,6 +46,7 @@ e5 → e5.1 → e5.2 → e5.3 → e6
 ## Common Patterns
 
 ### Sequential Events
+
 ```
 e1 → e2 → e3
 ```
@@ -54,11 +58,13 @@ The arrow notation (`→`) shows chronological order, with parent relationships 
 ### Unconfirmed Events
 
 Events that haven't been confirmed by the sync backend are denoted with a single quote:
+
 - `e3'` - Unconfirmed event (pending confirmation from sync backend)
 
 ### Notation for Client-Specific Unconfirmed Events
 
 When multiple clients create unconfirmed events independently, we use prefix notation to distinguish them:
+
 - `A:e3'` - Client A's unconfirmed e3
 - `B:e3'` - Client B's unconfirmed e3
 
@@ -100,6 +106,7 @@ Sync Backend:  e1 → e2 → e3 → e4 → e5 → e6 → e7
 ```
 
 Notes:
+
 - Each client independently numbers their unconfirmed events starting from e3'
 - The prefix `A:` or `B:` clarifies which client created each unconfirmed event
 - The sync backend assigns the final authoritative sequence numbers
@@ -131,6 +138,7 @@ Client B rebased: e1 → e2 → e3 → e4 → B:e5'{user.456}/e3' → B:e6'{post
 ```
 
 Context hint formats:
+
 - `{eventName}` - Event name: `e2{userCreated}`
 - `{entity.eventName}` - Entity and event: `e3'{user.updated}`
 - `{entity.id}` - Specific entity: `e4'{user.123}`

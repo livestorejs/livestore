@@ -1,9 +1,22 @@
 {
   "name": "@livestore/sqlite-wasm",
   "version": "0.4.0-dev.22",
+  "license": "Apache-2.0",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/livestorejs/livestore.git"
+  },
+  "files": [
+    "dist",
+    "package.json",
+    "src"
+  ],
   "type": "module",
+  "sideEffects": false,
   "exports": {
     ".": "./src/index.ts",
+    "./browser": "./src/browser/mod.ts",
+    "./cf": "./src/cf/mod.ts",
     "./load-wasm": {
       "workerd": "./src/load-wasm/mod.workerd.ts",
       "browser": "./src/load-wasm/mod.browser.ts",
@@ -11,30 +24,8 @@
       "node": "./src/load-wasm/mod.node.ts",
       "default": "./src/load-wasm/mod.browser.ts"
     },
-    "./node": "./src/node/mod.ts",
-    "./cf": "./src/cf/mod.ts",
-    "./browser": "./src/browser/mod.ts"
+    "./node": "./src/node/mod.ts"
   },
-  "dependencies": {
-    "@cloudflare/workers-types": "catalog:",
-    "@livestore/common": "workspace:*",
-    "@livestore/common-cf": "workspace:*",
-    "@livestore/utils": "workspace:*",
-    "@livestore/wa-sqlite": "workspace:*"
-  },
-  "devDependencies": {
-    "@types/chrome": "catalog:",
-    "@types/node": "catalog:",
-    "@types/wicg-file-system-access": "^2023.10.6",
-    "vitest": "catalog:",
-    "wrangler": "catalog:"
-  },
-  "files": [
-    "package.json",
-    "src",
-    "dist"
-  ],
-  "license": "Apache-2.0",
   "publishConfig": {
     "access": "public",
     "exports": {
@@ -68,5 +59,42 @@
     "test": "vitest",
     "test:ui": "vitest --ui",
     "test:watch": "vitest --watch"
+  },
+  "dependencies": {
+    "@cloudflare/workers-types": "4.20251118.0",
+    "@livestore/common": "workspace:*",
+    "@livestore/common-cf": "workspace:*",
+    "@livestore/utils": "workspace:*",
+    "@livestore/wa-sqlite": "workspace:*"
+  },
+  "devDependencies": {
+    "@types/chrome": "0.1.4",
+    "@types/node": "25.0.3",
+    "@types/wicg-file-system-access": "2023.10.6",
+    "vitest": "3.2.4",
+    "wrangler": "4.42.2"
+  },
+  "peerDependencies": {
+    "@effect/ai": "^0.33.2",
+    "@effect/cli": "^0.73.1",
+    "@effect/cluster": "^0.56.1",
+    "@effect/experimental": "^0.58.0",
+    "@effect/opentelemetry": "^0.61.0",
+    "@effect/platform": "^0.94.2",
+    "@effect/platform-browser": "^0.73.0",
+    "@effect/platform-bun": "^0.86.0",
+    "@effect/platform-node": "^0.104.1",
+    "@effect/printer": "^0.47.0",
+    "@effect/printer-ansi": "^0.47.0",
+    "@effect/rpc": "^0.73.0",
+    "@effect/sql": "^0.49.0",
+    "@effect/typeclass": "^0.38.0",
+    "@opentelemetry/api": "^1.9.0",
+    "@opentelemetry/resources": "^2.2.0",
+    "effect": "^3.19.15"
+  },
+  "$genie": {
+    "source": "package.json.genie.ts",
+    "warning": "DO NOT EDIT - changes will be overwritten"
   }
 }

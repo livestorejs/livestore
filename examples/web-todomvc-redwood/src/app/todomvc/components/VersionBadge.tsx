@@ -1,7 +1,8 @@
 'use client'
 
-import { liveStoreVersion } from '@livestore/livestore'
 import { useEffect } from 'react'
+
+import { liveStoreVersion } from '@livestore/livestore'
 
 export const VersionBadge = () => {
   useEffect(() => {

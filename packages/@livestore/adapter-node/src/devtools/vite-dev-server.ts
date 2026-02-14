@@ -1,11 +1,12 @@
 import path from 'node:path'
 
+import * as Vite from 'vite'
+
 import type { Devtools } from '@livestore/common'
 import { UnknownError } from '@livestore/common'
 import { isReadonlyArray } from '@livestore/utils'
 import { Data, Effect } from '@livestore/utils/effect'
 import { getFreePort } from '@livestore/utils/node'
-import * as Vite from 'vite'
 
 /**
  * Error thrown when @livestore/devtools-vite is not installed.
@@ -14,7 +15,7 @@ import * as Vite from 'vite'
 export class DevtoolsViteNotInstalledError extends Data.TaggedError('DevtoolsViteNotInstalledError')<{
   readonly cause: unknown
 }> {
-  get message(): string {
+  override get message(): string {
     return (
       `@livestore/devtools-vite is required for devtools but not installed. ` +
       `Install it with: pnpm add @livestore/devtools-vite@<version>. ` +

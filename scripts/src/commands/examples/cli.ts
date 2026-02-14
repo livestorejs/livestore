@@ -1,9 +1,10 @@
 import fs from 'node:fs'
 
 import { shouldNeverHappen } from '@livestore/utils'
+import { cmd, LivestoreWorkspace } from '@livestore/utils-dev/node'
 import { Effect, Option } from '@livestore/utils/effect'
 import { Cli } from '@livestore/utils/node'
-import { cmd, LivestoreWorkspace } from '@livestore/utils-dev/node'
+
 import { copyTodomvcSrc } from './copy-examples.ts'
 import {
   command as deployExamplesCommand,
@@ -32,7 +33,7 @@ const exampleChoices = (() => {
           return false
         }
       })
-      .sort((a, b) => a.localeCompare(b))
+      .toSorted((a, b) => a.localeCompare(b))
   } catch {
     return []
   }

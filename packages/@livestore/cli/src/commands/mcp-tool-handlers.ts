@@ -1,5 +1,6 @@
 import { Effect, FetchHttpClient, Layer, type Toolkit } from '@livestore/utils/effect'
 import { PlatformNode } from '@livestore/utils/node'
+
 import { blogSchemaContent } from '../mcp-content/schemas/blog.ts'
 import { ecommerceSchemaContent } from '../mcp-content/schemas/ecommerce.ts'
 import { socialSchemaContent } from '../mcp-content/schemas/social.ts'

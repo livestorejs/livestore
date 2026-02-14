@@ -1,5 +1,6 @@
-import { Schema } from '@livestore/utils/effect'
 import { describe, expect, it } from 'vitest'
+
+import { Schema } from '@livestore/utils/effect'
 
 import { State } from '../../../mod.ts'
 import type { QueryBuilder } from './api.ts'

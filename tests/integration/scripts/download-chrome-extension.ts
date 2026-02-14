@@ -1,8 +1,9 @@
 import path from 'node:path'
+
 import { UnknownError } from '@livestore/common'
+import { CurrentWorkingDirectory, cmd } from '@livestore/utils-dev/node'
 import { Effect, FileSystem, HttpClient, HttpClientResponse, Schema } from '@livestore/utils/effect'
 import { Cli } from '@livestore/utils/node'
-import { CurrentWorkingDirectory, cmd } from '@livestore/utils-dev/node'
 
 /** Download the latest Chrome extension from LiveStore GitHub releases */
 export const downloadChromeExtension = ({ version, targetDir }: { version?: string; targetDir: string }) =>

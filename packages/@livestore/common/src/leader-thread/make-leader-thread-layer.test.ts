@@ -1,5 +1,5 @@
-import { Effect, Stream, SubscriptionRef } from '@livestore/utils/effect'
 import { Vitest } from '@livestore/utils-dev/node-vitest'
+import { Effect, Stream, SubscriptionRef } from '@livestore/utils/effect'
 
 import { makeMockSyncBackend } from '../sync/mock-sync-backend.ts'
 import type { SyncBackend } from '../sync/sync.ts'

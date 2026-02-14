@@ -1,5 +1,6 @@
 import type { Schema } from '@livestore/utils/effect'
 import { dual, Option, SchemaAST } from '@livestore/utils/effect'
+
 import type { SqliteDsl } from './db-schema/mod.ts'
 
 export const PrimaryKeyId = Symbol.for('livestore/state/sqlite/annotations/primary-key')

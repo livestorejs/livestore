@@ -3,6 +3,7 @@
 import { liveStoreVersion } from '@livestore/common'
 import { Console, Effect, FetchHttpClient, Layer, Logger, LogLevel } from '@livestore/utils/effect'
 import { Cli, PlatformNode } from '@livestore/utils/node'
+
 import { command } from './cli.ts'
 
 const cli = Cli.Command.run(command, {

@@ -1,10 +1,10 @@
 import 'todomvc-app-css/index.css'
-
-import { StoreRegistry } from '@livestore/livestore'
-import { StoreRegistryProvider } from '@livestore/react'
 import type React from 'react'
 import { Suspense, useState } from 'react'
 import { ErrorBoundary } from 'react-error-boundary'
+
+import { StoreRegistry } from '@livestore/livestore'
+import { StoreRegistryProvider } from '@livestore/react'
 
 import { Footer } from './components/Footer.tsx'
 import { Header } from './components/Header.tsx'

@@ -1,8 +1,10 @@
 import os from 'node:os'
+
 import starlight from '@astrojs/starlight'
-import { createAstroTwoslashCodeIntegration } from '@local/astro-twoslash-code/integration'
 import tailwindcss from '@tailwindcss/vite'
 import { defineConfig } from 'astro/config'
+
+import { createAstroTwoslashCodeIntegration } from '@local/astro-twoslash-code/integration'
 
 export default defineConfig({
   integrations: [

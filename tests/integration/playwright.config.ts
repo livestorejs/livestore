@@ -1,8 +1,9 @@
 import process from 'node:process'
 
-import { envTruish } from '@livestore/utils'
 import type { PlaywrightTestConfig } from '@playwright/test'
 import { devices } from '@playwright/test'
+
+import { envTruish } from '@livestore/utils'
 
 /**
  * Ensure Playwright tests are run via the mono CLI (or VS Code extension) to guarantee proper environment setup.

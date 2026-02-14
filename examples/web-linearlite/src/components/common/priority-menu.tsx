@@ -2,6 +2,7 @@ import { CheckIcon } from '@heroicons/react/16/solid'
 import React from 'react'
 import { useKeyboard } from 'react-aria'
 import { Button, Menu, MenuItem, MenuTrigger, Popover } from 'react-aria-components'
+
 import { priorityOptions } from '../../data/priority-options.ts'
 import type { Priority } from '../../types/priority.ts'
 import { Icon, type IconName } from '../icons/index.tsx'

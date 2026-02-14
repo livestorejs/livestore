@@ -1,6 +1,8 @@
-import { queryDb } from '@livestore/livestore'
 import type React from 'react'
 import { NavLink } from 'react-router-dom'
+
+import { queryDb } from '@livestore/livestore'
+
 import { uiState$ } from '../livestore/queries.ts'
 import { events, tables } from '../livestore/schema.ts'
 import { useAppStore } from '../livestore/store.ts'

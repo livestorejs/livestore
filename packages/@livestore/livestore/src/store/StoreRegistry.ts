@@ -16,9 +16,10 @@ import {
   type Schema,
   type Scope,
 } from '@livestore/utils/effect'
+
 import { type CreateStoreOptions, createStore } from './create-store.ts'
-import type { Store } from './store.ts'
 import type { OtelOptions } from './store-types.ts'
+import type { Store } from './store.ts'
 
 /**
  * Default time to keep unused stores in cache.

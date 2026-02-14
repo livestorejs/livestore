@@ -1,7 +1,9 @@
 import path from 'node:path'
+
 import type { UnknownError } from '@livestore/common'
 import { Console, Effect, FileSystem, type HttpClient, type Scope } from '@livestore/utils/effect'
 import { Cli } from '@livestore/utils/node'
+
 import * as SyncOps from '../sync-operations.ts'
 
 const LARGE_EVENT_WARNING_THRESHOLD = 100_000

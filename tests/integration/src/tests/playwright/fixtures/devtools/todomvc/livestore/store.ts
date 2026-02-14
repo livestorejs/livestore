@@ -1,8 +1,10 @@
+import { unstable_batchedUpdates as batchUpdates } from 'react-dom'
+
 import { makeInMemoryAdapter, makePersistedAdapter } from '@livestore/adapter-web'
 import LiveStoreSharedWorker from '@livestore/adapter-web/shared-worker?sharedworker'
 import { useStore } from '@livestore/react'
 import { omitUndefineds } from '@livestore/utils'
-import { unstable_batchedUpdates as batchUpdates } from 'react-dom'
+
 import { makeTracer } from '../otel.ts'
 import LiveStoreWorker from './livestore.worker.ts?worker'
 import { schema } from './schema.ts'

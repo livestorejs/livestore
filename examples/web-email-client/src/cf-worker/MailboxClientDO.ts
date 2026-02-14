@@ -1,8 +1,10 @@
 import { DurableObject } from 'cloudflare:workers'
+
 import { type ClientDoWithRpcCallback, createStoreDoPromise } from '@livestore/adapter-cloudflare'
 import { nanoid, type Store } from '@livestore/livestore'
 import type * as SyncBackend from '@livestore/sync-cf/cf-worker'
 import { handleSyncUpdateRpc } from '@livestore/sync-cf/client'
+
 import { mailboxEvents, schema as mailboxSchema, mailboxTables } from '../stores/mailbox/schema.ts'
 import { seedMailbox } from '../stores/mailbox/seed.ts'
 import type { Env } from './shared.ts'

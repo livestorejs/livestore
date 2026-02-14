@@ -1,3 +1,5 @@
+import type * as otel from '@opentelemetry/api'
+
 import {
   BoundArray,
   BoundMap,
@@ -15,7 +17,6 @@ import {
   sql,
 } from '@livestore/common'
 import { isDevEnv, LS_DEV } from '@livestore/utils'
-import type * as otel from '@opentelemetry/api'
 
 import QueryCache from './QueryCache.ts'
 
@@ -215,7 +216,7 @@ export class SqliteDbWrapper implements SqliteDb {
           span.recordException(cause)
           span.end()
           if (LS_DEV) {
-            // biome-ignore lint/suspicious/noDebugger: debug
+            // oxlint-disable-next-line eslint(no-debugger) -- intentional breakpoint for SQL errors during development
             debugger
           }
           throw new SqliteError({ cause, query: { bindValues: bindValues ?? {}, sql: queryStr } })

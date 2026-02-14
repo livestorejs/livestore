@@ -1,31 +1,55 @@
 {
   "name": "@local/tests-perf",
   "version": "0.0.0",
+  "private": true,
   "type": "module",
+  "scripts": {
+    "test": "NODE_OPTIONS=--disable-warning=ExperimentalWarning playwright test",
+    "test-app": "vite build test-app && vite preview test-app",
+    "test-app:dev": "vite test-app",
+    "test:profiler": "PERF_PROFILER=1 pnpm test"
+  },
   "dependencies": {
     "@livestore/adapter-web": "workspace:*",
     "@livestore/livestore": "workspace:*",
     "@livestore/react": "workspace:*",
     "@livestore/utils": "workspace:*",
     "@livestore/utils-dev": "workspace:*",
-    "@opentelemetry/exporter-trace-otlp-http": "catalog:",
-    "@opentelemetry/resources": "catalog:",
-    "@opentelemetry/sdk-trace-base": "catalog:",
-    "@opentelemetry/sdk-trace-web": "catalog:",
-    "@playwright/test": "catalog:",
-    "@types/node": "catalog:",
-    "@types/react": "catalog:",
-    "@types/react-dom": "catalog:",
-    "@vitejs/plugin-react": "catalog:",
-    "react": "catalog:",
-    "react-dom": "catalog:",
-    "typescript": "catalog:",
-    "vite": "catalog:"
+    "@opentelemetry/exporter-trace-otlp-http": "0.208.0",
+    "@opentelemetry/resources": "2.2.0",
+    "@opentelemetry/sdk-trace-base": "2.2.0",
+    "@opentelemetry/sdk-trace-web": "2.2.0",
+    "@playwright/test": "1.58.0",
+    "@types/node": "25.0.3",
+    "@types/react": "19.2.7",
+    "@types/react-dom": "19.2.3",
+    "@vitejs/plugin-react": "5.1.2",
+    "react": "19.2.3",
+    "react-dom": "19.2.3",
+    "typescript": "5.9.3",
+    "vite": "7.3.0"
   },
-  "scripts": {
-    "test": "NODE_OPTIONS=--disable-warning=ExperimentalWarning playwright test",
-    "test-app": "vite build test-app && vite preview test-app",
-    "test-app:dev": "vite test-app",
-    "test:profiler": "PERF_PROFILER=1 pnpm test"
+  "devDependencies": {
+    "@effect/ai": "0.33.2",
+    "@effect/cli": "0.73.1",
+    "@effect/cluster": "0.56.1",
+    "@effect/experimental": "0.58.0",
+    "@effect/opentelemetry": "0.61.0",
+    "@effect/platform": "0.94.2",
+    "@effect/platform-browser": "0.73.0",
+    "@effect/platform-bun": "0.86.0",
+    "@effect/platform-node": "0.104.1",
+    "@effect/printer": "0.47.0",
+    "@effect/printer-ansi": "0.47.0",
+    "@effect/rpc": "0.73.0",
+    "@effect/sql": "0.49.0",
+    "@effect/typeclass": "0.38.0",
+    "@opentelemetry/api": "1.9.0",
+    "@opentelemetry/resources": "2.2.0",
+    "effect": "3.19.15"
+  },
+  "$genie": {
+    "source": "package.json.genie.ts",
+    "warning": "DO NOT EDIT - changes will be overwritten"
   }
 }

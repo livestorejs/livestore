@@ -1,6 +1,6 @@
-import { MXBAI_API_KEY, MXBAI_VECTOR_STORE_ID } from 'astro:env/server'
 import Mixedbread from '@mixedbread/sdk'
 import type { APIRoute } from 'astro'
+import { MXBAI_API_KEY, MXBAI_VECTOR_STORE_ID } from 'astro:env/server'
 import Slugger from 'github-slugger'
 import removeMd from 'remove-markdown'
 
@@ -91,8 +91,8 @@ export const GET: APIRoute = async ({ url }) => {
 
     response.data.forEach((item, index) => {
       const metadata = {
-        ...(item.metadata ?? {}),
-        ...(item.generated_metadata ?? {}),
+        ...item.metadata,
+        ...item.generated_metadata,
       } as SearchMetadata
 
       const url = filePathToHref(metadata?.file_path || '')

@@ -7,5 +7,6 @@ export default defineConfig({
     testTimeout: 30_000, // Increased timeout for large database operations
     include: ['test/unit/**/*.test.ts'],
     setupFiles: ['test/setup/database-setup.ts'],
+    server: { deps: { inline: ['@effect/vitest'] } },
   },
 })

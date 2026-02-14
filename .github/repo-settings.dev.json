@@ -1,0 +1,96 @@
+{
+  "name": "dev-branch-rules",
+  "enforcement": "active",
+  "target": "branch",
+  "conditions": {
+    "ref_name": {
+      "include": ["refs/heads/dev"],
+      "exclude": []
+    }
+  },
+  "rules": [
+    {
+      "type": "pull_request",
+      "parameters": {
+        "required_approving_review_count": 1,
+        "dismiss_stale_reviews_on_push": false,
+        "require_code_owner_review": false,
+        "require_last_push_approval": false,
+        "required_review_thread_resolution": true
+      }
+    },
+    {
+      "type": "required_status_checks",
+      "parameters": {
+        "strict_required_status_checks_policy": true,
+        "do_not_enforce_on_create": false,
+        "required_status_checks": [
+          {
+            "context": "lint"
+          },
+          {
+            "context": "type-check"
+          },
+          {
+            "context": "test-unit"
+          },
+          {
+            "context": "test-integration-node-sync"
+          },
+          {
+            "context": "test-integration-sync-provider (mock)"
+          },
+          {
+            "context": "test-integration-sync-provider (electric)"
+          },
+          {
+            "context": "test-integration-sync-provider (s2)"
+          },
+          {
+            "context": "test-integration-sync-provider (cf-http-d1)"
+          },
+          {
+            "context": "test-integration-sync-provider (cf-http-do)"
+          },
+          {
+            "context": "test-integration-sync-provider (cf-ws-d1)"
+          },
+          {
+            "context": "test-integration-sync-provider (cf-ws-do)"
+          },
+          {
+            "context": "test-integration-sync-provider (cf-do-rpc-d1)"
+          },
+          {
+            "context": "test-integration-sync-provider (cf-do-rpc-do)"
+          },
+          {
+            "context": "test-integration-playwright (misc)"
+          },
+          {
+            "context": "test-integration-playwright (todomvc)"
+          },
+          {
+            "context": "test-integration-playwright (devtools)"
+          },
+          {
+            "context": "wa-sqlite-test"
+          }
+        ]
+      }
+    },
+    {
+      "type": "non_fast_forward"
+    },
+    {
+      "type": "deletion"
+    }
+  ],
+  "bypass_actors": [
+    {
+      "actor_id": 5,
+      "actor_type": "RepositoryRole",
+      "bypass_mode": "always"
+    }
+  ]
+}

@@ -2,7 +2,6 @@
 import fs from 'node:fs'
 import os from 'node:os'
 import path from 'node:path'
-
 import * as Playwright from '@livestore/effect-playwright'
 import { shouldNeverHappen } from '@livestore/utils'
 import {
@@ -16,14 +15,13 @@ import {
   OtelTracer,
   Schema,
 } from '@livestore/utils/effect'
-
 import { PlatformNode } from '@livestore/utils/node'
-
 import { OtelLiveHttp } from '@livestore/utils-dev/node'
 import { LIVESTORE_DEVTOOLS_CHROME_DIST_PATH } from '@local/shared'
 import type * as otel from '@opentelemetry/api'
 import type * as PW from '@playwright/test'
 import { expect, test } from '@playwright/test'
+
 import { downloadChromeExtension } from '../../../../scripts/download-chrome-extension.ts'
 import { checkDevtoolsState, checkVersionMismatchOverlay } from './shared.ts'
 
@@ -200,7 +198,7 @@ const PWLive = ({ extensionPath }: { extensionPath: string }) =>
     return Playwright.browserContextLayer({
       persistentContextPath,
       extensionPath,
-      launchOptions: { devtools: true },
+      launchOptions: { args: ['--auto-open-devtools-for-tabs'] },
     })
   }).pipe(Layer.unwrapEffect)
 

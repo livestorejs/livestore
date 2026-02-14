@@ -1,5 +1,7 @@
-import type { SyncState } from '@livestore/livestore'
 import React, { useState } from 'react'
+
+import type { SyncState } from '@livestore/livestore'
+
 import { useReactionPickerClickOutside } from './hooks.ts'
 import { useAppStore } from './livestore/store.ts'
 

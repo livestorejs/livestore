@@ -1,4 +1,5 @@
 import { Atom } from '@effect-atom/atom'
+
 import { pendingTodosAtom, todosQueryUnsafeAtom } from '../store-setup/utils.ts'
 
 // Combine real and pending todos for optimistic UI

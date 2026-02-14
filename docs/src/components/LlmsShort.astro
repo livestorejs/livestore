@@ -42,7 +42,7 @@ const getDocsForDirectory = (directory: string): TLlmsEntry[] => {
       const remaining = entry.slug.slice(prefix.length)
       return !remaining.includes('/')
     })
-    .sort((a, b) => {
+    .toSorted((a, b) => {
       const docA = docBySlug.get(a.slug)
       const docB = docBySlug.get(b.slug)
       const orderA = docA?.data.sidebar?.order ?? 999

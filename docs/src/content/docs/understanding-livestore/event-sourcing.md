@@ -19,10 +19,10 @@ sidebar:
   - Flexible
     - You can easily evolve the read model based on your query patterns as your app requirements change over time
   - Flexible merge conflicts resolution
-	- Automatic migrations of the read model (i.e. app database)
+  - Automatic migrations of the read model (i.e. app database)
     - Write model can also be evolved (e.g. via versioned mutations and optionally mapping old mutations to new ones)
   - History of all state changes is captured (e.g. for auditing and debugging)
-	- Foundation for syncing
+  - Foundation for syncing
 - Downsides
   - Slightly more boilerplate to manually define mutations
   - Need to be careful so eventlog doesn't grow too much

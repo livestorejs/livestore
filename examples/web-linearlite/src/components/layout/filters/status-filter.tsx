@@ -1,5 +1,6 @@
 import { XMarkIcon } from '@heroicons/react/16/solid'
 import { Button } from 'react-aria-components'
+
 import { statusOptions } from '../../../data/status-options.ts'
 import { useFilterState } from '../../../livestore/queries.ts'
 import type { Status } from '../../../types/status.ts'

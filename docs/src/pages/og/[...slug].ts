@@ -1,7 +1,7 @@
 // https://hideoo.dev/notes/starlight-og-images/
 
-import { getCollection } from 'astro:content'
 import { OGImageRoute } from 'astro-og-canvas'
+import { getCollection } from 'astro:content'
 
 const ogEnabled = process.env.LS_SKIP_OG_IMAGES !== '1'
 

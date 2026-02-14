@@ -9,6 +9,7 @@ import {
   type Stream,
   type SubscriptionRef,
 } from '@livestore/utils/effect'
+
 import type { UnknownError } from '../adapter-types.ts'
 import type * as LiveStoreEvent from '../schema/LiveStoreEvent/mod.ts'
 import type { EventSequenceNumber } from '../schema/mod.ts'

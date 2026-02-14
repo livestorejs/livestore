@@ -1,6 +1,8 @@
 import * as http from 'node:http'
+
 import { layer as ParcelWatcherLayer } from '@effect/platform-node/NodeFileSystem/ParcelWatcher'
 import { Effect, Layer } from 'effect'
+
 import { OtelTracer, UnknownError } from '../effect/mod.ts'
 import { makeNoopTracer } from '../NoopTracer.ts'
 

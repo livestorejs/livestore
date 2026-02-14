@@ -49,7 +49,7 @@ export const envTruish = (env: string | undefined) =>
 export const shouldNeverHappen = (msg?: string, ...args: any[]): never => {
   console.error(msg, ...args)
   if (isDevEnv()) {
-    // biome-ignore lint/suspicious/noDebugger: debugging
+    // oxlint-disable-next-line eslint(no-debugger) -- intentional breakpoint for impossible states during development
     debugger
   }
 

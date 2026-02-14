@@ -19,6 +19,7 @@ import {
   UrlParams,
 } from '@livestore/utils/effect'
 import type { WebSocket } from '@livestore/utils/effect/browser'
+
 import { MAX_PUSH_EVENTS_PER_REQUEST, MAX_WS_MESSAGE_BYTES } from '../../common/constants.ts'
 import { SearchParamsSchema } from '../../common/mod.ts'
 import type { SyncMetadata } from '../../common/sync-message-types.ts'

@@ -1,5 +1,6 @@
-import type { Store, SyncStatus } from '@livestore/livestore'
 import React from 'react'
+
+import type { Store, SyncStatus } from '@livestore/livestore'
 
 /**
  * React hook that subscribes to sync status changes.

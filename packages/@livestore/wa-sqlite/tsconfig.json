@@ -1,12 +1,47 @@
+// Generated file - DO NOT EDIT
+// Source: tsconfig.json.genie.ts
 {
-  "extends": "../../../tsconfig.base.json",
   "compilerOptions": {
-    "rootDir": "src",
-    "outDir": "tmp/dist",
-    "tsBuildInfoFile": "./tmp/dist/.tsbuildinfo",
+    "target": "ES2024",
+    "lib": ["ES2024"],
+    "module": "NodeNext",
+    "moduleResolution": "NodeNext",
+    "allowImportingTsExtensions": true,
+    "rewriteRelativeImportExtensions": true,
+    "resolveJsonModule": true,
+    "esModuleInterop": true,
+    "allowJs": false,
     "declaration": true,
-    "declarationMap": true
+    "declarationMap": true,
+    "sourceMap": true,
+    "outDir": "./.tsc-out",
+    "strict": true,
+    "noUncheckedIndexedAccess": true,
+    "exactOptionalPropertyTypes": true,
+    "noImplicitReturns": true,
+    "noFallthroughCasesInSwitch": true,
+    "noImplicitOverride": true,
+    "isolatedModules": true,
+    "verbatimModuleSyntax": true,
+    "skipLibCheck": true,
+    "forceConsistentCasingInFileNames": true,
+    "plugins": [
+      {
+        "name": "@effect/language-service",
+        "reportSuggestionsAsWarningsInTsc": true,
+        "pipeableMinArgCount": 2,
+        "diagnosticSeverity": {
+          "missedPipeableOpportunity": "suggestion",
+          "schemaUnionOfLiterals": "warning",
+          "anyUnknownInErrorContext": "warning",
+          "preferSchemaOverJson": "warning"
+        }
+      }
+    ],
+    "composite": true,
+    "rootDir": "./src",
+    "tsBuildInfoFile": "./.tsc-out/.tsbuildinfo"
   },
   "include": ["src/**/*"],
-  "exclude": ["node_modules", "dist"]
+  "exclude": ["node_modules", "**/dist", "**/node_modules/.pnpm", "**/*.genie.ts"]
 }

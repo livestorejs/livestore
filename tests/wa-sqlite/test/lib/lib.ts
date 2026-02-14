@@ -30,7 +30,11 @@ export class SqliteError extends Error {
     query,
     code,
     cause,
-  }: { query: { sql: string; bindValues: PreparedBindValues }; code: number; cause: any }) {
+  }: {
+    query: { sql: string; bindValues: PreparedBindValues }
+    code: number
+    cause: any
+  }) {
     super(`SQL error: ${query.sql} (code: ${code}, cause: ${String(cause)})`)
   }
 }

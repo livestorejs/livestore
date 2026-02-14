@@ -1,8 +1,10 @@
 import { fileURLToPath } from 'node:url'
 
+import type { AstroIntegration } from 'astro'
+
 import { Effect } from '@livestore/utils/effect'
 import { PlatformNode } from '@livestore/utils/node'
-import type { AstroIntegration } from 'astro'
+
 import { type BuildDiagramsOptions, buildDiagrams } from './cli.ts'
 import { createTldrawPlugin } from './vite-plugin.ts'
 

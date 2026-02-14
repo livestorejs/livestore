@@ -1,5 +1,7 @@
-import { queryDb } from '@livestore/livestore'
 import { createEffect, createSignal, onCleanup } from 'solid-js'
+
+import { queryDb } from '@livestore/livestore'
+
 import { events, tables } from './livestore/schema.ts'
 import { useAppStore } from './livestore/store.ts'
 import { playIncomingSound, playSentSound } from './sounds.ts'

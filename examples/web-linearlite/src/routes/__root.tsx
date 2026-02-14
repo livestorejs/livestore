@@ -1,9 +1,10 @@
 import '../app/init-theme.ts'
+import { createRootRouteWithContext, HeadContent, Outlet, Scripts } from '@tanstack/react-router'
+import React, { type ReactNode, Suspense } from 'react'
 
 import type { StoreRegistry } from '@livestore/livestore'
 import { StoreRegistryProvider } from '@livestore/react'
-import { createRootRouteWithContext, HeadContent, Outlet, Scripts } from '@tanstack/react-router'
-import React, { type ReactNode, Suspense } from 'react'
+
 import { MenuContext, NewIssueModalContext } from '../app/contexts.ts'
 import stylesheetUrl from '../app/style.css?url'
 import { Icon } from '../components/icons/index.tsx'

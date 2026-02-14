@@ -6,5 +6,3 @@ declare global {
     main: boolean
   }
 }
-
-export {}

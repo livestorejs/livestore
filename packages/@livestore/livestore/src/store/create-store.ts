@@ -1,3 +1,5 @@
+import * as otel from '@opentelemetry/api'
+
 import {
   type Adapter,
   type BootStatus,
@@ -32,16 +34,15 @@ import {
   TaskTracing,
 } from '@livestore/utils/effect'
 import { nanoid } from '@livestore/utils/nanoid'
-import * as otel from '@opentelemetry/api'
 
 import { connectDevtoolsToStore } from './devtools.ts'
-import { STORE_DEFAULT_PARAMS, Store } from './store.ts'
 import type {
   LiveStoreContextRunning as LiveStoreContextRunning_,
   OtelOptions,
   ShutdownDeferred,
 } from './store-types.ts'
 import { StoreInternalsSymbol } from './store-types.ts'
+import { STORE_DEFAULT_PARAMS, Store } from './store.ts'
 
 declare global {
   /** Store instances for console debugging */

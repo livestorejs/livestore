@@ -1,6 +1,30 @@
+// Generated file - DO NOT EDIT
+// Source: tsconfig.json.genie.ts
 {
-  "extends": "../../../../tsconfig.base.json",
   "compilerOptions": {
+    "target": "ES2024",
+    "lib": ["ES2023"],
+    "allowImportingTsExtensions": true,
+    "rewriteRelativeImportExtensions": true,
+    "resolveJsonModule": true,
+    "esModuleInterop": true,
+    "allowJs": false,
+    "strict": true,
+    "noUncheckedIndexedAccess": true,
+    "exactOptionalPropertyTypes": true,
+    "noImplicitReturns": true,
+    "noFallthroughCasesInSwitch": true,
+    "noImplicitOverride": true,
+    "isolatedModules": true,
+    "verbatimModuleSyntax": true,
+    "skipLibCheck": true,
+    "forceConsistentCasingInFileNames": true,
+    "module": "NodeNext",
+    "moduleResolution": "NodeNext",
+    "declaration": true,
+    "declarationMap": true,
+    "sourceMap": true,
+    "outDir": "./dist",
     "types": ["node", "@astrojs/astro-types"],
     "jsx": "preserve",
     "jsxImportSource": "astro"

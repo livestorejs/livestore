@@ -12,6 +12,7 @@ import {
   Subscribable,
   SubscriptionRef,
 } from '@livestore/utils/effect'
+
 import {
   type BootStatus,
   type MakeSqliteDb,
@@ -28,8 +29,8 @@ import type { InvalidPullError, IsOfflineError, SyncBackend, SyncOptions } from 
 import { SyncState } from '../sync/syncstate.ts'
 import { sql } from '../util.ts'
 import * as Eventlog from './eventlog.ts'
-import { makeLeaderSyncProcessor } from './LeaderSyncProcessor.ts'
 import { bootDevtools } from './leader-worker-devtools.ts'
+import { makeLeaderSyncProcessor } from './LeaderSyncProcessor.ts'
 import { makeMaterializeEvent } from './materialize-event.ts'
 import { recreateDb } from './recreate-db.ts'
 import type { ShutdownChannel } from './shutdown-channel.ts'

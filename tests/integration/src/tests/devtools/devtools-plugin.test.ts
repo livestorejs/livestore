@@ -12,9 +12,11 @@
 import fs from 'node:fs'
 import type { AddressInfo } from 'node:net'
 import path from 'node:path'
-import { livestoreDevtoolsPlugin } from '@livestore/devtools-vite'
+
 import { type ConfigEnv, createServer, type ViteDevServer } from 'vite'
 import { describe, expect, it } from 'vitest'
+
+import { livestoreDevtoolsPlugin } from '@livestore/devtools-vite'
 
 const makeEnv = (): ConfigEnv => ({ command: 'serve', mode: 'development' })
 const fixtureRoot = path.resolve(import.meta.dirname, 'fixtures', 'repro-731')

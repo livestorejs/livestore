@@ -1,7 +1,9 @@
+import { expect } from 'vitest'
+
+import { Vitest } from '@livestore/utils-dev/node-vitest'
 import { Effect, FetchHttpClient, Layer } from '@livestore/utils/effect'
 import { getFreePort, PlatformNode } from '@livestore/utils/node'
-import { Vitest } from '@livestore/utils-dev/node-vitest'
-import { expect } from 'vitest'
+
 import {
   type StartWranglerDevServerArgs,
   WranglerDevServerError,

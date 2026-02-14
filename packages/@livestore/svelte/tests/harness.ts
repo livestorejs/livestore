@@ -1,6 +1,7 @@
-import type { LiveStoreSchema, Queryable, Store } from '@livestore/livestore'
 import { render, waitFor } from '@testing-library/svelte'
 import * as vitest from 'vitest'
+
+import type { LiveStoreSchema, Queryable, Store } from '@livestore/livestore'
 
 import Harness from './__fixtures__/Harness.svelte'
 

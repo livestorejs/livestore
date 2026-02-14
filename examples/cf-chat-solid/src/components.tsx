@@ -1,5 +1,7 @@
-import type { SyncState } from '@livestore/livestore'
 import { type Accessor, createEffect, createSignal, For, onCleanup, Show } from 'solid-js'
+
+import type { SyncState } from '@livestore/livestore'
+
 import { useReactionPickerClickOutside } from './hooks.ts'
 import { useAppStore } from './livestore/store.ts'
 

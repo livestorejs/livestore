@@ -1,6 +1,7 @@
 /// <reference types="@cloudflare/workers-types" />
 
 import { DurableObject } from 'cloudflare:workers'
+
 import { layerProtocolDurableObject, toDurableObjectHandler } from '@livestore/common-cf'
 import {
   Effect,
@@ -13,6 +14,7 @@ import {
   Schedule,
   Stream,
 } from '@livestore/utils/effect'
+
 import { TestRpcs } from './rpc-schema.ts'
 
 export interface Env {
@@ -20,7 +22,7 @@ export interface Env {
 }
 
 export class TestRpcDurableObject extends DurableObject {
-  __DURABLE_OBJECT_BRAND = 'TestRpcDurableObject' as never
+  override __DURABLE_OBJECT_BRAND = 'TestRpcDurableObject' as never
 
   async rpc(payload: unknown): Promise<unknown> {
     const TestRpcsLive = TestRpcs.toLayer({

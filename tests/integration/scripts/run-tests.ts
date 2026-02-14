@@ -1,11 +1,12 @@
 import path from 'node:path'
 
 import { UnknownError } from '@livestore/common'
+import { type CmdError, CurrentWorkingDirectory, cmd } from '@livestore/utils-dev/node'
 import type { CommandExecutor, Option, PlatformError } from '@livestore/utils/effect'
 import { Effect, FetchHttpClient, Layer, Logger, LogLevel, OtelTracer } from '@livestore/utils/effect'
 import { Cli, getFreePort, PlatformNode } from '@livestore/utils/node'
-import { type CmdError, CurrentWorkingDirectory, cmd } from '@livestore/utils-dev/node'
 import { LIVESTORE_DEVTOOLS_CHROME_DIST_PATH } from '@local/shared'
+
 import { downloadChromeExtension } from './download-chrome-extension.ts'
 
 const cwd = path.resolve(import.meta.dirname, '..')
@@ -31,7 +32,7 @@ const viteDevServer = ({
       ? '4444'
       : yield* getFreePort.pipe(Effect.map(String), UnknownError.mapToUnknownError)
 
-    yield* cmd(`vite --config src/tests/playwright/fixtures/vite.config.ts dev --port ${devPort}`, {
+    yield* cmd(`./node_modules/.bin/vite --config src/tests/playwright/fixtures/vite.config.ts dev --port ${devPort}`, {
       env: {
         // Relative to vite config
         TEST_LIVESTORE_SCHEMA_PATH_JSON: JSON.stringify('./devtools/todomvc/livestore/schema.ts'),
@@ -71,7 +72,7 @@ export const miscTest: Cli.Command.Command<
             FORCE_PLAYWRIGHT_VIA_CLI: '1',
             PLAYWRIGHT_SUITE: 'misc',
             LIVESTORE_PLAYWRIGHT_DEV_SERVER_PORT: devPort,
-            DEV_SERVER_COMMAND: `vite --config src/tests/playwright/fixtures/vite.config.ts dev --port ${devPort}`,
+            DEV_SERVER_COMMAND: `./node_modules/.bin/vite --config src/tests/playwright/fixtures/vite.config.ts dev --port ${devPort}`,
             PLAYWRIGHT_HEADLESS: mode === 'headless' ? '1' : '0',
             PLAYWRIGHT_UI: mode === 'ui' ? '1' : '0',
           },

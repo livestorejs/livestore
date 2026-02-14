@@ -16,7 +16,7 @@ export const compactEvents = (inputDag: HistoryDag): { dag: HistoryDag; compacte
   const dag = inputDag.copy()
   const compactedEventCount = 0
 
-  const orderedEventSequenceNumberStrs = dag.topologicalNodeIds().reverse()
+  const orderedEventSequenceNumberStrs = dag.topologicalNodeIds().toReversed()
 
   // drop root
   orderedEventSequenceNumberStrs.pop()

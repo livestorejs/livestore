@@ -1,5 +1,6 @@
 import { shouldNeverHappen } from '@livestore/utils'
 import { Hash, Schema } from '@livestore/utils/effect'
+
 import * as ApiSchema from './api-schema.ts'
 
 /**

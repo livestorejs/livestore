@@ -1,4 +1,5 @@
 import { Schema, Tool, Toolkit } from '@livestore/utils/effect'
+
 import { coachTool } from './mcp-coach.ts'
 
 export const livestoreToolkit = Toolkit.make(

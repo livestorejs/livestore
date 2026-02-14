@@ -1,6 +1,7 @@
-import { nanoid } from '@livestore/livestore'
 import React from 'react'
 import { Keyboard, Pressable, StyleSheet, Text, TextInput, TouchableWithoutFeedback, View } from 'react-native'
+
+import { nanoid } from '@livestore/livestore'
 
 import { uiState$ } from '../livestore/queries.ts'
 import { events } from '../livestore/schema.ts'

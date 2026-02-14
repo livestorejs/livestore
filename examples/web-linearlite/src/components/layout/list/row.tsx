@@ -1,6 +1,7 @@
 import { useNavigate, useParams } from '@tanstack/react-router'
 import type { CSSProperties } from 'react'
 import { memo } from 'react'
+
 import { events } from '../../../livestore/schema/index.ts'
 import { useAppStore } from '../../../livestore/store.ts'
 import type { Issue } from '../../../types/issue.ts'

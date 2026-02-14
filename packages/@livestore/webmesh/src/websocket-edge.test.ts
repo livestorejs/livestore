@@ -4,9 +4,10 @@
  * These tests verify basic WebSocket edge functionality.
  */
 
-import { Effect, Either, Schema, WebChannel } from '@livestore/utils/effect'
-import { Vitest } from '@livestore/utils-dev/node-vitest'
 import { expect } from 'vitest'
+
+import { Vitest } from '@livestore/utils-dev/node-vitest'
+import { Effect, Either, Schema, WebChannel } from '@livestore/utils/effect'
 
 import * as MeshSchema from './mesh-schema.ts'
 import { MessageMsgPack, WSEdgeInit, WSEdgePayload } from './websocket-edge.ts'

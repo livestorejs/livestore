@@ -7,8 +7,8 @@ import { nanoid } from '@livestore/utils/nanoid'
 
 import { NOT_REFRESHED_YET } from '../reactive.ts'
 import { emptyDebugInfo as makeEmptyDebugInfo } from '../SqliteDbWrapper.ts'
-import type { Store } from './store.ts'
 import { StoreInternalsSymbol } from './store-types.ts'
+import type { Store } from './store.ts'
 
 type Unsub = () => void
 type RequestId = string

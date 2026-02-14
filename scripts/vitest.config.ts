@@ -4,5 +4,6 @@ export default defineConfig({
   test: {
     include: ['src/**/*.test.ts'],
     environment: 'node',
+    server: { deps: { inline: ['@effect/vitest'] } },
   },
 })
