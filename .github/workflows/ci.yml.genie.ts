@@ -457,7 +457,7 @@ pgrep -af 'astro|chromium|chrome_crashpad_handler|node|mono|dt' > tmp/ci-docs/pg
           // to simulate a simple, user-facing setup.
           name: 'Install dependencies',
           uses: 'pnpm/action-setup@v4',
-          with: { standalone: true, run_install: true },
+          with: { version: 'latest', standalone: true, run_install: true },
         },
         {
           name: "Get app's workspace dependencies",
