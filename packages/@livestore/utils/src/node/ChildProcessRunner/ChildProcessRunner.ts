@@ -17,6 +17,19 @@ import * as Scope from 'effect/Scope'
 let parentDeathDetectionEnabled = false
 let parentDeathTimer: NodeJS.Timeout | null = null
 
+type SetupParentDeathDetectionMessage = ['setup-parent-death-detection', { parentPid: number }]
+type RunnerMessage<I> = Runner.BackingRunner.Message<I> | SetupParentDeathDetectionMessage
+
+const isSetupParentDeathDetectionMessage = (
+  message: unknown,
+): message is SetupParentDeathDetectionMessage =>
+  Array.isArray(message) &&
+  message[0] === 'setup-parent-death-detection' &&
+  typeof message[1] === 'object' &&
+  message[1] !== null &&
+  'parentPid' in message[1] &&
+  typeof (message[1] as { parentPid: unknown }).parentPid === 'number'
+
 const stopParentDeathMonitoring = () => {
   parentDeathDetectionEnabled = false
   if (parentDeathTimer) {
@@ -90,11 +103,11 @@ const platformRunnerImpl = Runner.PlatformRunner.of({
             Deferred.unsafeDone(closeLatch, Exit.die(exit.cause))
           }
         }
-         port.on('message', (message: Runner.BackingRunner.Message<I>) => {
+         port.on('message', (message: RunnerMessage<I>) => {
           // console.log('message', message)
 
           // Handle parent death detection setup messages
-          if (Array.isArray(message) && message[0] === 'setup-parent-death-detection' && message[1]?.parentPid) {
+          if (isSetupParentDeathDetectionMessage(message)) {
             const parentPid = message[1].parentPid
             // console.log(`[Worker ${process.pid}] Setting up parent death detection for parent ${parentPid}`)
             setupParentDeathMonitoring(parentPid)
