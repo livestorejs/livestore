@@ -4,6 +4,7 @@ export default packageJson({
   name: '@livestore/wa-sqlite',
   version: livestorePackageDefaults.version,
   type: 'module',
+  repository: livestorePackageDefaults.repository,
   types: 'src/types/index.d.ts',
   main: 'src/sqlite-api.js',
   exports: {
