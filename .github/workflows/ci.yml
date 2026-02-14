@@ -711,19 +711,13 @@ jobs:
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
-      - name: Install dependencies
+      - name: Setup pnpm
         uses: pnpm/action-setup@v4
         with:
           version: latest
           standalone: true
-          run_install: true
-      - name: Get app's workspace dependencies
-        working-directory: '${{ env.APP_PATH }}'
-        run: |
-          echo "WORKSPACE_DEPS=$( \
-            pnpm list --only-projects --json | \
-            jq -r '.[0].dependencies | keys | join(" ")' \
-          )" >> $GITHUB_ENV
+      - name: Get app's @livestore dependencies
+        run: 'echo "WORKSPACE_DEPS=$(jq -r ''[(.dependencies // {}), (.devDependencies // {}) | to_entries[] | select(.key | startswith("@livestore/")) | .key] | join(" ")'' ${{ env.APP_PATH }}/package.json)" >> $GITHUB_ENV'
       - name: Copy example app
         run: 'pnpm dlx @livestore/cli@${{ env.SNAPSHOT_VERSION }} create --example ${{ matrix.app }} --ref ${{ github.ref }} ${{ runner.temp }}/${{ env.APP_PATH }}'
       - name: Increase pnpm fetch retries

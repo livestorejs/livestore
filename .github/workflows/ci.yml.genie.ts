@@ -455,17 +455,13 @@ pgrep -af 'astro|chromium|chrome_crashpad_handler|node|mono|dt' > tmp/ci-docs/pg
         {
           // We're only using pnpm instead of the ./.github/actions/setup-env action
           // to simulate a simple, user-facing setup.
-          name: 'Install dependencies',
+          name: 'Setup pnpm',
           uses: 'pnpm/action-setup@v4',
-          with: { version: 'latest', standalone: true, run_install: true },
+          with: { version: 'latest', standalone: true },
         },
         {
-          name: "Get app's workspace dependencies",
-          'working-directory': '${{ env.APP_PATH }}',
-          run: `echo "WORKSPACE_DEPS=$( \\
-  pnpm list --only-projects --json | \\
-  jq -r '.[0].dependencies | keys | join(" ")' \\
-)" >> $GITHUB_ENV`,
+          name: "Get app's @livestore dependencies",
+          run: `echo "WORKSPACE_DEPS=$(jq -r '[(.dependencies // {}), (.devDependencies // {}) | to_entries[] | select(.key | startswith("@livestore/")) | .key] | join(" ")' \${{ env.APP_PATH }}/package.json)" >> $GITHUB_ENV`,
         },
         {
           /**
