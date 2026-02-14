@@ -16,6 +16,7 @@ import {
   Queue,
   ReadonlyArray,
   Schedule,
+  Schema,
   Stream,
   Subscribable,
   SubscriptionRef,
@@ -46,6 +47,9 @@ import { LeaderThreadCtx } from './types.ts'
 // time input, causing `TypeError: {} is not iterable` at runtime.
 // Upstream: https://github.com/Effect-TS/effect/pull/5929
 // TODO: simplify back to the 2-arg overload once the upstream fix is released and adopted.
+
+/** Serialize value to JSON string for trace attributes */
+const jsonStringify = Schema.encodeSync(Schema.parseJson())
 
 type LocalPushQueueItem = [
   event: LiveStoreEvent.Client.EncodedWithMeta,
@@ -546,8 +550,7 @@ const backgroundApplyLocalPushes = ({
             `push:unknown-error`,
             {
               batchSize: newEvents.length,
-              // @effect-diagnostics-next-line preferSchemaOverJson:off
-              newEvents: TRACE_VERBOSE ? JSON.stringify(newEvents) : undefined,
+              newEvents: TRACE_VERBOSE ? jsonStringify(newEvents) : undefined,
             },
             undefined,
           )
@@ -561,8 +564,7 @@ const backgroundApplyLocalPushes = ({
             `push:reject`,
             {
               batchSize: newEvents.length,
-              // @effect-diagnostics-next-line preferSchemaOverJson:off
-              mergeResult: TRACE_VERBOSE ? JSON.stringify(mergeResult) : undefined,
+              mergeResult: TRACE_VERBOSE ? jsonStringify(mergeResult) : undefined,
             },
             undefined,
           )
@@ -624,8 +626,7 @@ const backgroundApplyLocalPushes = ({
         `push:advance`,
         {
           batchSize: newEvents.length,
-          // @effect-diagnostics-next-line preferSchemaOverJson:off
-          mergeResult: TRACE_VERBOSE ? JSON.stringify(mergeResult) : undefined,
+          mergeResult: TRACE_VERBOSE ? jsonStringify(mergeResult) : undefined,
         },
         undefined,
       )
@@ -757,8 +758,7 @@ const backgroundBackendPulling = Effect.fn('@livestore/common:LeaderSyncProcesso
             `pull:unknown-error`,
             {
               newEventsCount: newEvents.length,
-              // @effect-diagnostics-next-line preferSchemaOverJson:off
-              newEvents: TRACE_VERBOSE ? JSON.stringify(newEvents) : undefined,
+              newEvents: TRACE_VERBOSE ? jsonStringify(newEvents) : undefined,
             },
             undefined,
           )
@@ -774,11 +774,9 @@ const backgroundBackendPulling = Effect.fn('@livestore/common:LeaderSyncProcesso
             `pull:rebase[${mergeResult.newSyncState.localHead.rebaseGeneration}]`,
             {
               newEventsCount: newEvents.length,
-              // @effect-diagnostics-next-line preferSchemaOverJson:off
-              newEvents: TRACE_VERBOSE ? JSON.stringify(newEvents) : undefined,
+              newEvents: TRACE_VERBOSE ? jsonStringify(newEvents) : undefined,
               rollbackCount: mergeResult.rollbackEvents.length,
-              // @effect-diagnostics-next-line preferSchemaOverJson:off
-              mergeResult: TRACE_VERBOSE ? JSON.stringify(mergeResult) : undefined,
+              mergeResult: TRACE_VERBOSE ? jsonStringify(mergeResult) : undefined,
             },
             undefined,
           )
@@ -806,8 +804,7 @@ const backgroundBackendPulling = Effect.fn('@livestore/common:LeaderSyncProcesso
             `pull:advance`,
             {
               newEventsCount: newEvents.length,
-              // @effect-diagnostics-next-line preferSchemaOverJson:off
-              mergeResult: TRACE_VERBOSE ? JSON.stringify(mergeResult) : undefined,
+              mergeResult: TRACE_VERBOSE ? jsonStringify(mergeResult) : undefined,
             },
             undefined,
           )
@@ -923,8 +920,7 @@ const backgroundBackendPushing = Effect.fn('@livestore/common:LeaderSyncProcesso
       'backend-push',
       {
         batchSize: queueItems.length,
-        // @effect-diagnostics-next-line preferSchemaOverJson:off
-        batch: TRACE_VERBOSE ? JSON.stringify(queueItems) : undefined,
+        batch: TRACE_VERBOSE ? jsonStringify(queueItems) : undefined,
       },
       undefined,
     )

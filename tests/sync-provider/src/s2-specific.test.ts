@@ -11,6 +11,7 @@ import {
   Logger,
   LogLevel,
   Option,
+  Schema,
   Stream,
 } from '@livestore/utils/effect'
 
@@ -168,8 +169,8 @@ Vitest.describe('S2-specific', { timeout: 60000 }, () => {
         parentSeqNum: EventSequenceNumber.Global.make(1),
       })
 
-      // @effect-diagnostics-next-line preferSchemaOverJson:off
-      yield* providerSpecific.appendRaw(storeId, [JSON.stringify(ev1), JSON.stringify(ev2)])
+      const jsonEncode = Schema.encode(Schema.parseJson())
+      yield* providerSpecific.appendRaw(storeId, [yield* jsonEncode(ev1), yield* jsonEncode(ev2)])
 
       // Non-live pull should yield the 2 events
       const results = yield* syncBackend.pull(Option.none()).pipe(Stream.runCollectReadonlyArray)

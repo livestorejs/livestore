@@ -87,7 +87,6 @@ export const toDurableObjectHandler =
 
         // For streaming RPCs with only one request, return ReadableStream directly
         if (isStream && requests.length === 1) {
-          // @effect-diagnostics-next-line anyUnknownInErrorContext:off
           return yield* createStreamingResponse(rpc, entry, request, parser, options.layer)
         }
 
@@ -102,7 +101,7 @@ export const toDurableObjectHandler =
 
           let value: any
           if (Effect.isEffect(handlerResult)) {
-            // @effect-diagnostics-next-line anyUnknownInErrorContext:off
+            // @effect-diagnostics-next-line anyUnknownInErrorContext:off -- `Rpc.Handler.handler` returns `Effect<any, any>` due to dynamic dispatch
             value = yield* handlerResult
           } else {
             value = handlerResult
@@ -195,7 +194,7 @@ const createStreamingResponse = <Rpcs extends Rpc.Any, LE>(
   request: any,
   parser: ReturnType<typeof RpcSerialization.msgPack.unsafeMake>,
   layer: Layer.Layer<Rpc.ToHandler<Rpcs> | Rpc.Middleware<Rpcs>, LE>,
-): Effect.Effect<CfTypes.ReadableStream, any, Scope.Scope> =>
+): Effect.Effect<CfTypes.ReadableStream, never, Scope.Scope> =>
   Effect.gen(function* () {
     // Execute the handler to get the stream
     const handlerResult = entry.handler(request.payload, {
@@ -205,15 +204,10 @@ const createStreamingResponse = <Rpcs extends Rpc.Any, LE>(
       }),
     })
 
-    let stream: Stream.Stream<any, any, never>
-    if (Effect.isEffect(handlerResult)) {
-      // If handler returns Effect<Stream>, we need to run it to get the stream
-      // @effect-diagnostics-next-line anyUnknownInErrorContext:off
-      stream = yield* handlerResult
-    } else {
-      // Direct stream
-      stream = handlerResult
-    }
+    // @effect-diagnostics-next-line anyUnknownInErrorContext:off -- `Rpc.Handler.handler` returns `Effect<any, any>` due to dynamic dispatch; orDie converts the error to a defect handled by the downstream catchAllCause
+    const stream: Stream.Stream<any, any, never> = Effect.isEffect(handlerResult)
+      ? yield* Effect.orDie(handlerResult)
+      : handlerResult
 
     // Get the stream schemas for proper chunk-level encoding
     const streamSchemas = RpcSchema.getStreamSchemas((rpc as any).successSchema.ast)

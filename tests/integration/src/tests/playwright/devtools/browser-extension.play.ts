@@ -139,8 +139,7 @@ const runTest =
     )
 
     return Effect.gen(function* () {
-      // @effect-diagnostics-next-line preferSchemaOverJson:off
-      const parentSpanContext = JSON.parse(process.env.SPAN_CONTEXT_JSON ?? '{}') as otel.SpanContext
+      const parentSpanContext = (yield* Schema.decodeUnknown(Schema.parseJson())(process.env.SPAN_CONTEXT_JSON ?? '{}')) as otel.SpanContext
       const parentSpan = OtelTracer.makeExternalSpan({
         traceId: parentSpanContext.traceId,
         spanId: parentSpanContext.spanId,

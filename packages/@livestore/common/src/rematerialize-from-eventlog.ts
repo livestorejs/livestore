@@ -8,6 +8,9 @@ import { EventSequenceNumber, LiveStoreEvent, resolveEventDef, SystemTables } fr
 import type { PreparedBindValues } from './util.ts'
 import { sql } from './util.ts'
 
+/** Parse JSON string to unknown value */
+const jsonParse = Schema.decodeUnknownSync(Schema.parseJson())
+
 export const rematerializeFromEventlog = Effect.fn('@livestore/common:rematerializeFromEventlog')(function* ({
   dbEventlog,
   // TODO re-use this db when bringing back the boot in-memory db implementation
@@ -31,8 +34,7 @@ export const rematerializeFromEventlog = Effect.fn('@livestore/common:rematerial
     const processEvent = Effect.fn(`@livestore/common:rematerializeFromEventlog:processEvent`)(function* (
       row: SystemTables.EventlogMetaRow,
     ) {
-      // @effect-diagnostics-next-line preferSchemaOverJson:off
-      const args = JSON.parse(row.argsJson)
+      const args = jsonParse(row.argsJson)
       const eventEncoded = LiveStoreEvent.Client.EncodedWithMeta.make({
         name: row.name,
         args,

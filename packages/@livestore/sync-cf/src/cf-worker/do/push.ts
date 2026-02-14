@@ -21,6 +21,7 @@ import {
 import { DoCtx } from './layer.ts'
 
 const encodePullResponse = Schema.encodeSync(SyncMessage.PullResponse)
+const jsonStringify = Schema.encodeSync(Schema.parseJson())
 type PullBatchItem = SyncMessage.PullResponse['batch'][number]
 
 export const makePush =
@@ -152,8 +153,7 @@ export const makePush =
                   requestId,
                   values: [encoded],
                 }
-                // @effect-diagnostics-next-line preferSchemaOverJson:off
-                conn.send(JSON.stringify(res))
+                conn.send(jsonStringify(res))
               }
             }
           }

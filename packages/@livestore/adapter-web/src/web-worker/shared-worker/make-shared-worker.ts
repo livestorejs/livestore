@@ -48,7 +48,7 @@ if (isDevEnv()) {
   }
 }
 
-// @effect-diagnostics-next-line anyUnknownInErrorContext:off
+// @effect-diagnostics-next-line anyUnknownInErrorContext:off -- `SerializedRunner.Handlers` uses `any` in the R channel, propagating as `unknown` in `HandlersContext`
 const makeWorkerRunner = Effect.gen(function* () {
   const leaderWorkerContextSubRef = yield* SubscriptionRef.make<
     | {
@@ -177,7 +177,7 @@ const makeWorkerRunner = Effect.gen(function* () {
   const invariantsRef = yield* Ref.make<Invariants | undefined>(undefined)
   const sameInvariants = Schema.equivalence(InvariantsSchema)
 
-  // @effect-diagnostics-next-line anyUnknownInErrorContext:off
+  // @effect-diagnostics-next-line anyUnknownInErrorContext:off -- `SerializedRunner.Handlers` uses `any` in the R channel
   return WorkerRunner.layerSerialized(WorkerSchema.SharedWorkerRequest, {
     // Whenever the client session leader changes (and thus creates a new leader thread), the new client session leader
     // sends a new MessagePort to the shared worker which proxies messages to the new leader thread.
@@ -277,7 +277,7 @@ export const makeWorker = (options?: LogConfig.WithLoggerOptions): void => {
     WebmeshWorker.CacheService.layer({ nodeName: DevtoolsWeb.makeNodeName.sharedWorker({ storeId }) }),
   )
 
-  // @effect-diagnostics-next-line anyUnknownInErrorContext:off
+  // @effect-diagnostics-next-line anyUnknownInErrorContext:off -- propagated from `makeWorkerRunner`
   makeWorkerRunner.pipe(
     Layer.provide(BrowserWorkerRunner.layer),
     // WorkerRunner.launch,
@@ -288,7 +288,7 @@ export const makeWorker = (options?: LogConfig.WithLoggerOptions): void => {
     Effect.provide(runtimeLayer),
     LS_DEV ? TaskTracing.withAsyncTaggingTracing((name) => (console as any).createTask(name)) : identity,
     // TODO remove type-cast (currently needed to silence a tsc bug)
-    // @effect-diagnostics-next-line anyUnknownInErrorContext:off
+    // @effect-diagnostics-next-line anyUnknownInErrorContext:off -- TSC bug workaround; the cast uses `any` as an intermediate
     (_) => _ as any as Effect.Effect<void, never>,
     LogConfig.withLoggerConfig(options, { threadName: self.name }),
     Effect.runFork,

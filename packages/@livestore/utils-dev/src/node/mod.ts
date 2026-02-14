@@ -9,7 +9,7 @@ import { BatchSpanProcessor } from '@opentelemetry/sdk-trace-base'
 
 import { IS_BUN, isNonEmptyString } from '@livestore/utils'
 import type { Tracer } from '@livestore/utils/effect'
-import { Config, Effect, FiberRef, Layer, LogLevel, OtelTracer } from '@livestore/utils/effect'
+import { Config, Effect, FiberRef, Layer, LogLevel, OtelTracer, Schema } from '@livestore/utils/effect'
 import { OtelLiveDummy } from '@livestore/utils/node'
 
 export { OTLPMetricExporter } from '@opentelemetry/exporter-metrics-otlp-http'
@@ -156,14 +156,14 @@ export const getTracingBackendUrl = (span: otel.Span) =>
     // Grafana + Tempo
 
     const grafanaEndpoint = endpoint.value
+    const left = yield* Schema.encode(Schema.parseJson())({
+      datasource: 'tempo',
+      queries: [{ query: traceId, queryType: 'traceql', refId: 'A' }],
+      range: { from: 'now-1h', to: 'now' },
+    }).pipe(Effect.orDie)
     const searchParams = new URLSearchParams({
       orgId: '1',
-      // @effect-diagnostics-next-line preferSchemaOverJson:off
-      left: JSON.stringify({
-        datasource: 'tempo',
-        queries: [{ query: traceId, queryType: 'traceql', refId: 'A' }],
-        range: { from: 'now-1h', to: 'now' },
-      }),
+      left,
     })
 
     // TODO make dynamic via env var
