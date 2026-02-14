@@ -460,8 +460,10 @@ pgrep -af 'astro|chromium|chrome_crashpad_handler|node|mono|dt' > tmp/ci-docs/pg
           with: { version: 'latest', standalone: true },
         },
         {
-          name: "Get app's @livestore dependencies",
-          run: `echo "WORKSPACE_DEPS=$(jq -r '[(.dependencies // {}), (.devDependencies // {}) | to_entries[] | select(.key | startswith("@livestore/")) | .key] | join(" ")' \${{ env.APP_PATH }}/package.json)" >> $GITHUB_ENV`,
+          /** Only include @livestore/* deps that exist in this workspace (excludes externally-published packages like devtools-vite) */
+          name: "Get app's workspace @livestore dependencies",
+          run: `DEPS=$(jq -r '[(.dependencies // {}), (.devDependencies // {}) | to_entries[] | select(.key | startswith("@livestore/")) | .key] | .[]' \${{ env.APP_PATH }}/package.json | while read dep; do dir="packages/@livestore/\${dep#@livestore/}"; [ -d "$dir" ] && echo "$dep"; done | tr '\\n' ' ')
+echo "WORKSPACE_DEPS=$DEPS" >> $GITHUB_ENV`,
         },
         {
           /**

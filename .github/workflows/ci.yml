@@ -716,8 +716,10 @@ jobs:
         with:
           version: latest
           standalone: true
-      - name: Get app's @livestore dependencies
-        run: 'echo "WORKSPACE_DEPS=$(jq -r ''[(.dependencies // {}), (.devDependencies // {}) | to_entries[] | select(.key | startswith("@livestore/")) | .key] | join(" ")'' ${{ env.APP_PATH }}/package.json)" >> $GITHUB_ENV'
+      - name: Get app's workspace @livestore dependencies
+        run: |
+          DEPS=$(jq -r '[(.dependencies // {}), (.devDependencies // {}) | to_entries[] | select(.key | startswith("@livestore/")) | .key] | .[]' ${{ env.APP_PATH }}/package.json | while read dep; do dir="packages/@livestore/${dep#@livestore/}"; [ -d "$dir" ] && echo "$dep"; done | tr '\n' ' ')
+          echo "WORKSPACE_DEPS=$DEPS" >> $GITHUB_ENV
       - name: Copy example app
         run: 'pnpm dlx @livestore/cli@${{ env.SNAPSHOT_VERSION }} create --example ${{ matrix.app }} --ref ${{ github.ref }} ${{ runner.temp }}/${{ env.APP_PATH }}'
       - name: Increase pnpm fetch retries
