@@ -103,8 +103,6 @@ const phase2Rules = {
   'typescript/no-floating-promises': 'off',
 
   // TODO(oep-1n3.8): Temporary churn guard - re-enable with targeted cleanups
-  // 16 violations, mostly logging/debug stringification quality
-  'typescript/no-base-to-string': 'off',
   // 11 violations, low-risk type hygiene noise
   'typescript/no-redundant-type-constituents': 'off',
   // 4 violations, mostly Effect wrappers around void-returning APIs

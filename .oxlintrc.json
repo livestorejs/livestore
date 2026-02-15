@@ -72,7 +72,6 @@
     "typescript/no-unnecessary-type-assertion": "off",
     "typescript/restrict-template-expressions": "off",
     "typescript/no-floating-promises": "off",
-    "typescript/no-base-to-string": "off",
     "typescript/no-redundant-type-constituents": "off",
     "typescript/no-meaningless-void-operator": "off",
     "typescript/unbound-method": "off",
