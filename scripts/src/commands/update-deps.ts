@@ -200,18 +200,18 @@ const applyExpoConstraints = (
 
         for (const [pkg, ncuVersion] of Object.entries(packageUpdates)) {
           // Skip dependencies in deny list
-          if (DEPENDENCY_DENY_LIST.includes(pkg as any)) {
+          if (DEPENDENCY_DENY_LIST.includes(pkg as any) === true) {
             excludedByDenyList++
             continue
           }
 
           // Skip patched dependencies
-          if (patchedDeps.includes(pkg)) {
+          if (patchedDeps.includes(pkg) === true) {
             excludedByPatches++
             continue
           }
 
-          if (expoConstraints[pkg]) {
+          if (expoConstraints[pkg] !== undefined) {
             // Use Expo constraint version instead of NCU version
             finalUpdates[pkg] = expoConstraints[pkg]
             constrainedByExpo++
@@ -249,9 +249,9 @@ const executeUpdates = (filteredUpdates: Record<string, Record<string, string>>,
           .map(([pkg, version]) => `${pkg}@${version}`)
           .join(' ')
 
-        yield* Console.log(`${dryRun ? '[DRY RUN] ' : ''}Updating ${packageJsonPath}: ${packages}`)
+        yield* Console.log(`${dryRun !== undefined ? '[DRY RUN] ' : ''}Updating ${packageJsonPath}: ${packages}`)
 
-        if (!dryRun) {
+        if (dryRun == null) {
           const updateResult = yield* Effect.gen(function* () {
             // Read current package.json
             const content = yield* Effect.try({
@@ -265,13 +265,13 @@ const executeUpdates = (filteredUpdates: Record<string, Record<string, string>>,
 
             // Update dependencies in all sections
             for (const [pkg, version] of Object.entries(updates)) {
-              if (packageJson.dependencies?.[pkg]) {
+              if (packageJson.dependencies?.[pkg] !== undefined) {
                 packageJson.dependencies[pkg] = version
               }
-              if (packageJson.devDependencies?.[pkg]) {
+              if (packageJson.devDependencies?.[pkg] !== undefined) {
                 packageJson.devDependencies[pkg] = version
               }
-              if (packageJson.peerDependencies?.[pkg]) {
+              if (packageJson.peerDependencies?.[pkg] !== undefined) {
                 packageJson.peerDependencies[pkg] = version
               }
             }
@@ -301,7 +301,7 @@ const executeUpdates = (filteredUpdates: Record<string, Record<string, string>>,
       }
 
       // After all files updated, run pnpm install once to update lockfile
-      if (!dryRun && Object.keys(filteredUpdates).length > 0) {
+      if (dryRun == null && Object.keys(filteredUpdates).length > 0) {
         yield* Console.log('Running pnpm install to update lockfile...')
         yield* cmd('pnpm install --fix-lockfile').pipe(Effect.provide(LivestoreWorkspace.toCwd()))
       }
@@ -332,7 +332,7 @@ export const updateDepsCommand = Cli.Command.make(
 
     // Validate target option
     const validTargets = ['latest', 'minor', 'patch']
-    if (!validTargets.includes(target)) {
+    if (validTargets.includes(target) === false) {
       return yield* new UpdateDepsError({
         message: `Invalid target: ${target}. Must be one of: ${validTargets.join(', ')}`,
       })
@@ -368,7 +368,7 @@ export const updateDepsCommand = Cli.Command.make(
     }
 
     // Step 6: Validation (if not dry run and validate enabled)
-    if (!dryRun && validate) {
+    if (dryRun == null && validate !== undefined) {
       yield* Console.log('\n🔍 Running validation...')
 
       // Check Expo examples
@@ -390,7 +390,7 @@ export const updateDepsCommand = Cli.Command.make(
   }),
 )
 
-if (import.meta.main) {
+if (import.meta.main !== undefined) {
   const cli = Cli.Command.run(updateDepsCommand, {
     name: 'update-deps',
     version: '1.0.0',

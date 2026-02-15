@@ -91,7 +91,7 @@ export const toString = (seqNum: Composite) => {
  * For full notation documentation, see: contributor-docs/events-notation.md
  */
 export const fromString = (str: string): Composite => {
-  if (!str.startsWith('e')) {
+  if (str.startsWith('e') === false) {
     throw new Error('Invalid event sequence number string: must start with "e"')
   }
 
@@ -111,18 +111,18 @@ export const fromString = (str: string): Composite => {
   const parts = withoutRebase.split('.')
 
   // Validate that parts contain only digits (and possibly empty for client)
-  if (parts[0] === '' || !/^\d+$/.test(parts[0]!)) {
+  if (parts[0] === '' || /^\d+$/.test(parts[0]!) === false) {
     throw new Error('Invalid event sequence number string: invalid number format')
   }
 
-  if (parts.length > 1 && parts[1] !== undefined && (parts[1] === '' || !/^\d+$/.test(parts[1]))) {
+  if (parts.length > 1 && parts[1] !== undefined && (parts[1] === '' || /^\d+$/.test(parts[1]) === false)) {
     throw new Error('Invalid event sequence number string: invalid number format')
   }
 
   const global = Number.parseInt(parts[0]!, 10)
   const client = parts.length > 1 && parts[1] !== undefined ? Number.parseInt(parts[1], 10) : 0
 
-  if (Number.isNaN(global) || Number.isNaN(client) || Number.isNaN(rebaseGeneration)) {
+  if (Number.isNaN(global) === true || Number.isNaN(client) === true || Number.isNaN(rebaseGeneration) === true) {
     throw new TypeError('Invalid event sequence number string: invalid number format')
   }
 
@@ -187,7 +187,7 @@ const CompositeSchema = S.Struct({
  * If rebaseGeneration is omitted, defaults to REBASE_GENERATION_DEFAULT (0).
  */
 const makeComposite = (seqNum: CompositeInput): Composite => {
-  return S.is(CompositeSchema)(seqNum)
+  return S.is(CompositeSchema)(seqNum) === true
     ? seqNum
     : S.decodeSync(CompositeSchema)({
         ...seqNum,
@@ -234,7 +234,7 @@ export const nextPair = ({
   isClient: boolean
   rebaseGeneration?: number
 }): CompositePair => {
-  if (isClient) {
+  if (isClient === true) {
     return {
       seqNum: {
         global: seqNum.global,

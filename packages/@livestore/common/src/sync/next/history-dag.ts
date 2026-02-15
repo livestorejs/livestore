@@ -9,7 +9,7 @@ export const historyDagFromNodes = (dagNodes: HistoryDagNode[], options?: { skip
       initialSnapshot: new Map<string, any>(),
     })
 
-    if (!validationResult.success) {
+    if (validationResult.success === false) {
       throw new Error(
         `Event ${dagNodes[validationResult.index]!.name} requires facts that have not been set yet.\nRequires: ${factsToString(validationResult.requiredFacts)}\nFacts Snapshot: ${factsToString(validationResult.currentSnapshot)}`,
       )
@@ -43,12 +43,12 @@ export const historyDagFromNodes = (dagNodes: HistoryDagNode[], options?: { skip
 
         while (currentSeqNumStr !== EventSequenceNumber.Client.toString(rootParentNum)) {
           const parentEdge = dag.inEdges(currentSeqNumStr).find((e) => dag.getEdgeAttribute(e, 'type') === 'parent')
-          if (!parentEdge) return null
+          if (parentEdge == null) return null
 
           const parentSeqNumStr = dag.source(parentEdge)
           const parentNode = dag.getNodeAttributes(parentSeqNumStr)
 
-          if (parentNode.factsGroup.modifySet.has(factKey) || parentNode.factsGroup.modifyUnset.has(factKey)) {
+          if (parentNode.factsGroup.modifySet.has(factKey) === true || parentNode.factsGroup.modifyUnset.has(factKey) === true) {
             return parentNode
           }
 
@@ -58,7 +58,7 @@ export const historyDagFromNodes = (dagNodes: HistoryDagNode[], options?: { skip
         return null
       })()
 
-      if (depNode) {
+      if (depNode !== undefined) {
         const depNodeIdStr = EventSequenceNumber.Client.toString(depNode.seqNum)
         const nodeIdStr = EventSequenceNumber.Client.toString(node.seqNum)
         if (dag.edges(depNodeIdStr, nodeIdStr).filter((e) => dag.getEdgeAttributes(e).type === 'facts').length === 0) {

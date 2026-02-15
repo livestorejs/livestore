@@ -338,7 +338,7 @@ export const createStore = <
             ),
           )
 
-          if (shutdownDeferred) {
+          if (shutdownDeferred !== undefined) {
             yield* Deferred.done(shutdownDeferred, exit)
           }
 
@@ -370,7 +370,7 @@ export const createStore = <
         syncPayloadEncoded,
       }).pipe(Effect.withPerformanceMeasure('livestore:makeAdapter'), Effect.withSpan('createStore:makeAdapter'))
 
-      if (LS_DEV && clientSession.leaderThread.initialState.migrationsReport.migrations.length > 0) {
+      if (LS_DEV === true && clientSession.leaderThread.initialState.migrationsReport.migrations.length > 0) {
         yield* Effect.logDebug(
           '[@livestore/livestore:createStore] migrationsReport',
           ...clientSession.leaderThread.initialState.migrationsReport.migrations.map((m) =>
@@ -440,7 +440,7 @@ export const createStore = <
     }).pipe(
       Effect.withSpan('createStore', { attributes: { debugInstanceId, storeId } }),
       Effect.annotateLogs({ debugInstanceId, storeId }),
-      LS_DEV ? TaskTracing.withAsyncTaggingTracing((name) => (console as any).createTask(name)) : identity,
+      LS_DEV === true ? TaskTracing.withAsyncTaggingTracing((name) => (console as any).createTask(name)) : identity,
       Scope.extend(lifetimeScope),
     )
   })
@@ -449,7 +449,7 @@ const validateStoreId = (storeId: string) =>
   Effect.gen(function* () {
     const validChars = /^[a-zA-Z0-9_-]+$/
 
-    if (!validChars.test(storeId)) {
+    if (validChars.test(storeId) === false) {
       return yield* UnknownError.make({
         cause: `Invalid storeId: ${storeId}. Only alphanumeric characters, underscores, and hyphens are allowed.`,
         payload: { storeId },

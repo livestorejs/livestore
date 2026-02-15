@@ -21,7 +21,7 @@ export const decodeAccessHandlePoolFilename = async (file: File): Promise<string
   // Delete files not expected to be present.
   const dataView = new DataView(corpus.buffer, corpus.byteOffset)
   const flags = dataView.getUint32(HEADER_OFFSET_FLAGS)
-  if (corpus[0] && (flags & VFS.SQLITE_OPEN_DELETEONCLOSE || (flags & PERSISTENT_FILE_TYPES) === 0)) {
+  if (corpus[0] !== undefined && ((flags & VFS.SQLITE_OPEN_DELETEONCLOSE) !== 0 || (flags & PERSISTENT_FILE_TYPES) === 0)) {
     console.warn(`Remove file with unexpected flags ${flags.toString(16)}`)
     return ''
   }
@@ -32,7 +32,7 @@ export const decodeAccessHandlePoolFilename = async (file: File): Promise<string
 
   // Verify the digest.
   const computedDigest = computeDigest(corpus)
-  if (fileDigest.every((value, i) => value === computedDigest[i])) {
+  if (fileDigest.every((value, i) => value === computedDigest[i]) === true) {
     // Good digest. Decode the null-terminated path string.
     const pathBytes = corpus.indexOf(0)
     if (pathBytes === 0) {
@@ -48,7 +48,7 @@ export const decodeAccessHandlePoolFilename = async (file: File): Promise<string
 }
 
 const computeDigest = (corpus: Uint8Array): Uint32Array => {
-  if (!corpus[0]) {
+  if (corpus[0] == null) {
     // Optimization for deleted file.
     return new Uint32Array([0xfe_cc_5f_80, 0xac_ce_c0_37])
   }

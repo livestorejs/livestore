@@ -134,7 +134,7 @@ describe('ChildProcessRunner', { timeout: 10_000 }, () => {
         yield* Effect.sleep('1 second')
 
         // This should pass but will initially fail due to zombie process issue
-        if (workerPid) {
+        if (workerPid !== undefined) {
           assert.strictEqual(
             isProcessRunning(workerPid),
             false,
@@ -193,7 +193,7 @@ describe('ChildProcessRunner', { timeout: 10_000 }, () => {
         yield* Effect.sleep('2 seconds')
 
         // This test should initially fail - child process will still be running
-        if (workerPid) {
+        if (workerPid !== undefined) {
           assert.strictEqual(
             isProcessRunning(workerPid),
             false,
@@ -278,7 +278,7 @@ describe('ChildProcessRunner', { timeout: 10_000 }, () => {
           yield* worker.executeEffect(new StartStubbornWorker({ blockDuration: 60_000 }))
 
           // Verify process is running
-          if (childPid) {
+          if (childPid !== undefined) {
             assert.strictEqual(isProcessRunning(childPid), true, 'Child process should be running')
           }
 
@@ -297,7 +297,7 @@ describe('ChildProcessRunner', { timeout: 10_000 }, () => {
         yield* Effect.sleep('3 seconds')
 
         // This test should initially fail - demonstrating the zombie process issue
-        if (childPid) {
+        if (childPid !== undefined) {
           assert.strictEqual(
             isProcessRunning(childPid),
             false,

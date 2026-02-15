@@ -25,7 +25,7 @@ const tsCommand = Cli.Command.make(
     ),
   },
   Effect.fn(function* ({ watch, clean, noCheck }) {
-    if (clean) {
+    if (clean !== undefined) {
       yield* cmd('tsc --build tsconfig.dev.json --clean').pipe(Effect.provide(LivestoreWorkspace.toCwd()))
     }
 
@@ -62,7 +62,7 @@ const command = Cli.Command.make('mono').pipe(
   ]),
 )
 
-if (import.meta.main) {
+if (import.meta.main !== undefined) {
   // 'CLI for managing the Livestore monorepo',
   const cli = Cli.Command.run(command, {
     name: 'mono',

@@ -52,7 +52,7 @@ Vitest.describe('ElectricSQL specific error handling', { timeout: 60000 }, () =>
   })
 
   Vitest.afterAll(async () => {
-    if (runtime) {
+    if (runtime !== undefined) {
       await runtime.dispose()
     }
   })

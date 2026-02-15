@@ -65,7 +65,7 @@ export const computed = <TResult>(
     deps?: DepKey
   },
 ): LiveQueryDef<TResult> => {
-  const hash = options?.deps ? depsToString(options.deps) : fn.toString()
+  const hash = options?.deps !== undefined ? depsToString(options.deps) : fn.toString()
   if (isValidFunctionString(hash)._tag === 'invalid') {
     throw new Error(`On Expo/React Native, computed queries must provide a \`deps\` option`)
   }

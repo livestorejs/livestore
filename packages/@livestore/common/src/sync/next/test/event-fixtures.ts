@@ -45,7 +45,7 @@ export const events = {
     // {
     facts: ({ id }, currentFacts) =>
       // TODO enable an API along the lines of `map.has(key, value)`
-      currentFacts.has(facts.todoExists(id)) && currentFacts.get(facts.todoIsWriteable(id, true)[0]) === false
+      currentFacts.has(facts.todoExists(id)) === true && currentFacts.get(facts.todoIsWriteable(id, true)[0]) === false
         ? { require: [facts.todoExists(id), facts.todoIsWriteable(id, true)] }
         : { modify: { set: [facts.todoExists(id), facts.todoIsWriteable(id, true), facts.todoTextUpdated(id)] } },
   }),

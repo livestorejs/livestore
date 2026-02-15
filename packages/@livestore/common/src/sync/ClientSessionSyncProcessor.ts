@@ -198,7 +198,7 @@ export const makeClientSessionSyncProcessor = ({
   }
 
   const boot: ClientSessionSyncProcessor['boot'] = Effect.gen(function* () {
-    if (confirmUnsavedChanges && typeof window !== 'undefined' && typeof window.addEventListener === 'function') {
+    if (confirmUnsavedChanges !== undefined && typeof window !== 'undefined' && typeof window.addEventListener === 'function') {
       const onBeforeUnload = (event: BeforeUnloadEvent) => {
         if (syncStateRef.current.pending.length > 0) {
           // Trigger the default browser dialog
@@ -234,7 +234,7 @@ export const makeClientSessionSyncProcessor = ({
         Effect.gen(function* () {
           // yield* Effect.logDebug('ClientSessionSyncProcessor:pull', payload)
 
-          if (clientSession.devtools.enabled) {
+          if (clientSession.devtools.enabled === true) {
             yield* clientSession.devtools.pullLatch.await
           }
 
@@ -268,18 +268,18 @@ export const makeClientSessionSyncProcessor = ({
 
             debugInfo.rebaseCount++
 
-            if (SIMULATION_ENABLED) yield* simSleep('pull', '1_before_leader_push_fiber_interrupt')
+            if (SIMULATION_ENABLED === true) yield* simSleep('pull', '1_before_leader_push_fiber_interrupt')
 
             yield* FiberHandle.clear(leaderPushingFiberHandle)
 
-            if (SIMULATION_ENABLED) yield* simSleep('pull', '2_before_leader_push_queue_clear')
+            if (SIMULATION_ENABLED === true) yield* simSleep('pull', '2_before_leader_push_queue_clear')
 
             // Reset the leader push queue since we're rebasing and will push again
             yield* BucketQueue.clear(leaderPushQueue)
 
-            if (SIMULATION_ENABLED) yield* simSleep('pull', '3_before_rebase_rollback')
+            if (SIMULATION_ENABLED === true) yield* simSleep('pull', '3_before_rebase_rollback')
 
-            if (LS_DEV) {
+            if (LS_DEV === true) {
               yield* Effect.logDebug(
                 'merge:pull:rebase: rollback',
                 mergeResult.rollbackEvents.length,
@@ -295,11 +295,11 @@ export const makeClientSessionSyncProcessor = ({
               }
             }
 
-            if (SIMULATION_ENABLED) yield* simSleep('pull', '4_before_leader_push_queue_offer')
+            if (SIMULATION_ENABLED === true) yield* simSleep('pull', '4_before_leader_push_queue_offer')
 
             yield* BucketQueue.offerAll(leaderPushQueue, mergeResult.newSyncState.pending)
 
-            if (SIMULATION_ENABLED) yield* simSleep('pull', '5_before_leader_push_fiber_run')
+            if (SIMULATION_ENABLED === true) yield* simSleep('pull', '5_before_leader_push_fiber_run')
 
             yield* FiberHandle.run(leaderPushingFiberHandle, backgroundLeaderPushing)
           } else {

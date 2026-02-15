@@ -30,7 +30,7 @@ export interface SearchResult {
 const filePathToHref = (filePath: string): string => {
   // Extract the path after /src/content/docs/
   const match = filePath.match(/\/src\/content\/docs\/(.+)$/)
-  if (!match || !match[1]) return '/'
+  if (match == null || match[1] == null) return '/'
   let href = match[1]
   href = href.replace(/\.(md|mdx)$/, '')
   href = href.replace(/\/index$/, '')
@@ -40,14 +40,14 @@ const filePathToHref = (filePath: string): string => {
 const extractHeadingTitle = (text: string): string => {
   const trimmedText = text.trim()
 
-  if (!trimmedText.startsWith('#')) {
+  if (trimmedText.startsWith('#') === false) {
     return ''
   }
 
   const lines = trimmedText.split('\n')
   const firstLine = lines[0]?.trim()
 
-  if (firstLine) {
+  if (firstLine !== undefined) {
     // Use remove-markdown to convert to plain text
     const plainText = removeMd(firstLine, {
       useImgAltText: false,
@@ -60,7 +60,7 @@ const extractHeadingTitle = (text: string): string => {
 }
 
 export const GET: APIRoute = async ({ url }) => {
-  if (!MXBAI_API_KEY || !MXBAI_VECTOR_STORE_ID) {
+  if (MXBAI_API_KEY == null || MXBAI_VECTOR_STORE_ID == null) {
     return new Response(JSON.stringify({ error: 'Mixedbread Search is not configured' }), {
       status: 500,
       headers: { 'Content-Type': 'application/json' },
@@ -69,7 +69,7 @@ export const GET: APIRoute = async ({ url }) => {
 
   const query = url.searchParams.get('query')!
 
-  if (!query) {
+  if (query == null) {
     return new Response(JSON.stringify({ error: 'Query parameter is required' }), {
       status: 400,
       headers: { 'Content-Type': 'application/json' },
@@ -99,7 +99,7 @@ export const GET: APIRoute = async ({ url }) => {
       const title = metadata?.title || 'Untitled'
       const description = metadata?.description || ''
 
-      if (!seenFiles.has(url)) {
+      if (seenFiles.has(url) === false) {
         seenFiles.add(url)
         results.push({
           id: `${item.file_id}-${index}-page`,
@@ -112,7 +112,7 @@ export const GET: APIRoute = async ({ url }) => {
 
       const headingTitle = item.type === 'text' ? extractHeadingTitle(item.text) : undefined
 
-      if (headingTitle && item.type === 'text') {
+      if (headingTitle !== undefined && item.type === 'text') {
         slugger.reset()
         results.push({
           id: `${item.file_id}-${index}-heading`,

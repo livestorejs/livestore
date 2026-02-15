@@ -79,7 +79,7 @@ export const connectViaWorker = ({
 
     const isConnected = yield* Deferred.make<boolean>()
 
-    if (LS_DEV) {
+    if (LS_DEV === true) {
       yield* Effect.addFinalizerLog(
         `@livestore/devtools-web-common: closing message channel ${node.nodeName} → ${target}`,
       )
@@ -101,7 +101,7 @@ export const connectViaWorker = ({
 
     yield* node.addEdge({ target, edgeChannel: sharedWorkerConnection, replaceIfExists: true })
 
-    if (LS_DEV) {
+    if (LS_DEV === true) {
       yield* Effect.logDebug(`@livestore/devtools-web-common: initiated connection: ${node.nodeName} → ${target}`)
     }
   }).pipe(UnknownError.mapToUnknownError)

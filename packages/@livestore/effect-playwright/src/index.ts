@@ -63,7 +63,7 @@ export const browserContext = ({
           ...launchOptions,
           headless: false, // Using `--headless` flag below instead
           args: [
-            headless ? `--headless=new` : '', // Headless mode https://playwright.dev/docs/chrome-extensions#headless-mode
+            headless !== undefined ? `--headless=new` : '', // Headless mode https://playwright.dev/docs/chrome-extensions#headless-mode
             `--disable-extensions-except=${extensionPath}`,
             `--load-extension=${extensionPath}`,
           ],
@@ -125,13 +125,13 @@ const parsePlaywrightConsoleMessage = async (
 ): Promise<Option.Option<typeof ConsoleMessage.Type>> => {
   const msgType = message.type() as PlaywrightConsoleMessageType
   const msg = message.text()
-  const args_ = shouldEvaluateArgs
+  const args_ = shouldEvaluateArgs === true
     ? await Promise.all(
         message.args().map(async (argHandle) => {
           const isDisposable = await argHandle
             .evaluate((arg) => arg instanceof MessagePort || arg instanceof Uint8Array || arg instanceof ArrayBuffer)
             .catch((e) => `<Error in serialization: ${e.message}>`)
-          return isDisposable
+          return isDisposable === true
             ? '<Disposable>'
             : await argHandle.jsonValue().catch((e) => `<Error in serialization: ${e.message}>`)
         }),
@@ -199,13 +199,13 @@ export const pageConsole = ({
         const errorGroupRef = ref<{ errorMessages: (typeof ConsoleMessage.Type)[] } | undefined>(undefined)
         const onConsole = async (pwConsoleMessage: PW.ConsoleMessage) => {
           const parsed = await parsePlaywrightConsoleMessage(pwConsoleMessage, shouldEvaluateArgs)
-          if (Option.isSome(parsed)) {
+          if (Option.isSome(parsed) === true) {
             const message = parsed.value
 
             // TODO nested groups
             if (
               (message.type === 'group' || message.type === 'groupCollapsed') &&
-              message.message.includes('%cERROR%c')
+              message.message.includes('%cERROR%c') === true
             ) {
               errorGroupRef.current = { errorMessages: [message] }
             } else if (message.type === 'groupEnd' && errorGroupRef.current !== undefined) {
@@ -217,16 +217,13 @@ export const pageConsole = ({
               )
             } else if (
               message.type === 'error' &&
-              !
               message.message.includes(
                 'Failed to load resource: the server responded with a status of 404 (Not Found)',
-              ) &&
-              !
+              ) === false &&
               message.message.includes(
                 'Failed to load resource: the server responded with a status of 504 (Outdated Optimize Dep)',
-              ) &&
-              !
-              message.message.includes('All fibers interrupted without errors')
+              ) === false &&
+              message.message.includes('All fibers interrupted without errors') === false
             ) {
               if (errorGroupRef.current === undefined) {
                 emit.fail(new SiteError({ label, messages: [message] }))

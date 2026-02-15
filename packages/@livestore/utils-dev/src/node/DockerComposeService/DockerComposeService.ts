@@ -133,7 +133,7 @@ export class DockerComposeService extends Effect.Service<DockerComposeService>()
         // Build start command
         const startArgs = ['docker', 'compose', ...baseComposeArgs, 'up']
         if (detached) startArgs.push('-d')
-        if (serviceName) startArgs.push(serviceName)
+        if (serviceName !== undefined) startArgs.push(serviceName)
 
         const command = yield* Command.make(startArgs[0]!, ...startArgs.slice(1)).pipe(
           Command.workingDirectory(cwd),
@@ -167,7 +167,7 @@ export class DockerComposeService extends Effect.Service<DockerComposeService>()
         )
 
         // Perform health check if requested
-        if (healthCheck) {
+        if (healthCheck !== undefined) {
           yield* performHealthCheck(healthCheck).pipe(Effect.provide(commandExecutorContext))
         }
 
@@ -177,7 +177,7 @@ export class DockerComposeService extends Effect.Service<DockerComposeService>()
       const stop = Effect.gen(function* () {
         yield* Effect.log(`Stopping Docker Compose services in ${cwd}`)
 
-        const stopCommand = serviceName
+        const stopCommand = serviceName !== undefined
           ? Command.make('docker', 'compose', ...baseComposeArgs, 'stop', serviceName)
           : Command.make('docker', 'compose', ...baseComposeArgs, 'stop')
 
@@ -205,10 +205,10 @@ export class DockerComposeService extends Effect.Service<DockerComposeService>()
           const { follow = false, tail, since } = options
 
           const logsArgs = ['docker', 'compose', ...baseComposeArgs, 'logs']
-          if (follow) logsArgs.push('-f')
-          if (tail) logsArgs.push('--tail', tail.toString())
-          if (since) logsArgs.push('--since', since)
-          if (serviceName) logsArgs.push(serviceName)
+          if (follow !== undefined) logsArgs.push('-f')
+          if (tail !== undefined) logsArgs.push('--tail', tail.toString())
+          if (since !== undefined) logsArgs.push('--since', since)
+          if (serviceName !== undefined) logsArgs.push(serviceName)
 
           const command = yield* Command.make(logsArgs[0]!, ...logsArgs.slice(1)).pipe(
             Command.workingDirectory(cwd),
@@ -246,7 +246,7 @@ export class DockerComposeService extends Effect.Service<DockerComposeService>()
         const downArgs = ['docker', 'compose', ...baseComposeArgs, 'down']
         if (options?.volumes) downArgs.push('-v')
         if (options?.removeOrphans) downArgs.push('--remove-orphans')
-        if (serviceName) downArgs.push(serviceName)
+        if (serviceName !== undefined) downArgs.push(serviceName)
 
         yield* Command.make(downArgs[0]!, ...downArgs.slice(1)).pipe(
           Command.workingDirectory(cwd),
@@ -332,7 +332,7 @@ export const startDockerComposeServicesScoped = (
 
     // Start the services
     yield* dockerCompose.start({
-      ...omitUndefineds({ healthCheck: args.healthCheck ? args.healthCheck : undefined }),
+      ...omitUndefineds({ healthCheck: args.healthCheck !== undefined ? args.healthCheck : undefined }),
     })
 
     // Add cleanup finalizer to the current scope

@@ -65,7 +65,7 @@ Vitest.describe('adapter-cloudflare', { timeout: testTimeout }, () => {
             body: JSON.stringify({ id, title }),
           })
 
-          if (!response.ok) {
+          if (response.ok == null) {
             throw new Error(`failed to create todo: ${response.status}`)
           }
 
@@ -76,7 +76,7 @@ Vitest.describe('adapter-cloudflare', { timeout: testTimeout }, () => {
         Effect.tryPromise(async () => {
           const response = await fetch(todosUrl)
 
-          if (!response.ok) {
+          if (response.ok == null) {
             throw new Error(`failed to list todos: ${response.status}`)
           }
 
@@ -87,7 +87,7 @@ Vitest.describe('adapter-cloudflare', { timeout: testTimeout }, () => {
         Effect.tryPromise(async () => {
           const response = await fetch(persistenceUrl)
 
-          if (!response.ok) {
+          if (response.ok == null) {
             throw new Error(`failed to read persistence metadata: ${response.status}`)
           }
 
@@ -136,7 +136,7 @@ Vitest.describe('adapter-cloudflare', { timeout: testTimeout }, () => {
             body: JSON.stringify({ id, title }),
           })
 
-          if (!response.ok) {
+          if (response.ok == null) {
             throw new Error(`failed to create todo: ${response.status}`)
           }
 
@@ -147,7 +147,7 @@ Vitest.describe('adapter-cloudflare', { timeout: testTimeout }, () => {
         Effect.tryPromise(async () => {
           const response = await fetch(todosUrl)
 
-          if (!response.ok) {
+          if (response.ok == null) {
             throw new Error(`failed to list todos: ${response.status}`)
           }
 
@@ -158,7 +158,7 @@ Vitest.describe('adapter-cloudflare', { timeout: testTimeout }, () => {
         Effect.tryPromise(async () => {
           const response = await fetch(resetUrl, { method: 'POST' })
 
-          if (!response.ok) {
+          if (response.ok == null) {
             throw new Error(`failed to reset store: ${response.status}`)
           }
 
@@ -169,7 +169,7 @@ Vitest.describe('adapter-cloudflare', { timeout: testTimeout }, () => {
         Effect.tryPromise(async () => {
           const response = await fetch(persistenceUrl)
 
-          if (!response.ok) {
+          if (response.ok == null) {
             throw new Error(`failed to read persistence metadata: ${response.status}`)
           }
 

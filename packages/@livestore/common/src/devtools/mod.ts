@@ -42,7 +42,7 @@ export const makeChannelName = {
    * publishers can pass `undefined` to use the legacy global channel name.
    */
   sessionInfo: ({ origin }: { origin: string | undefined }) =>
-    origin ? `session-info::${encodeURIComponent(origin)}` : `session-info`,
+    origin !== undefined ? `session-info::${encodeURIComponent(origin)}` : `session-info`,
   devtoolsClientSession: ({ storeId, clientId, sessionId }: { storeId: string; clientId: string; sessionId: string }) =>
     `devtools-channel(client-session-${storeId}-${clientId}-${sessionId})`,
   devtoolsClientLeader: ({ storeId, clientId, sessionId }: { storeId: string; clientId: string; sessionId: string }) =>

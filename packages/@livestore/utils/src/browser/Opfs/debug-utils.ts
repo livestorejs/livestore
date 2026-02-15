@@ -111,8 +111,8 @@ const logAsciiNode: (
 ) => Effect.Effect<void> = (node, options) =>
   Effect.gen(function* () {
     const label = formatLabel(node.metadata)
-    const branch = options.isRoot ? '' : `${options.prefix}${options.isLast ? '└── ' : '├── '}`
-    const nextPrefix = options.isRoot ? '' : `${options.prefix}${options.isLast ? '    ' : '│   '}`
+    const branch = options.isRoot === true ? '' : `${options.prefix}${options.isLast === true ? '└── ' : '├── '}`
+    const nextPrefix = options.isRoot === true ? '' : `${options.prefix}${options.isLast === true ? '    ' : '│   '}`
 
     console.log(`${branch}${label}`)
 

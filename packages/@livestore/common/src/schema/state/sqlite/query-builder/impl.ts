@@ -44,7 +44,7 @@ export const makeQueryBuilder = <TResult, TTableDef extends TableDefBase>(
         const newOps = Object.entries(params)
           .filter(([, value]) => value !== undefined)
           .map<QueryBuilderAst.Where>(([col, value]) =>
-            Predicate.hasProperty(value, 'op') && Predicate.hasProperty(value, 'value')
+            Predicate.hasProperty(value, 'op') === true && Predicate.hasProperty(value, 'value') === true
               ? ({ col, op: value.op, value: value.value } as any)
               : { col, op: '=', value },
           )
@@ -116,7 +116,7 @@ export const makeQueryBuilder = <TResult, TTableDef extends TableDefBase>(
       return makeQueryBuilder(tableDef, { ...ast, offset: Option.some(offset) })
     },
     count: () => {
-      if (isRowQuery(ast) || ast._tag === 'InsertQuery' || ast._tag === 'UpdateQuery' || ast._tag === 'DeleteQuery')
+      if (isRowQuery(ast) === true || ast._tag === 'InsertQuery' || ast._tag === 'UpdateQuery' || ast._tag === 'DeleteQuery')
         return invalidQueryBuilder()
 
       return makeQueryBuilder(tableDef, {
@@ -185,7 +185,7 @@ export const makeQueryBuilder = <TResult, TTableDef extends TableDefBase>(
       action: 'ignore' | 'replace' | 'update',
       updateValues?: Record<string, unknown>,
     ) => {
-      const targets = Array.isArray(targetOrTargets) ? targetOrTargets : [targetOrTargets]
+      const targets = Array.isArray(targetOrTargets) === true ? targetOrTargets : [targetOrTargets]
 
       assertInsertQueryBuilderAst(ast)
 
@@ -298,7 +298,7 @@ const assertWriteQueryBuilderAst: (ast: QueryBuilderAst) => asserts ast is Query
 const isRowQuery = (ast: QueryBuilderAst): ast is QueryBuilderAst.RowQuery => ast._tag === 'RowQuery'
 
 export const invalidQueryBuilder = (msg?: string) => {
-  return shouldNeverHappen(`Invalid query builder${msg ? `: ${msg}` : ''}`)
+  return shouldNeverHappen(`Invalid query builder${msg !== undefined ? `: ${msg}` : ''}`)
 }
 
 export const getResultSchema = (qb: QueryBuilder<any, any, any>): Schema.Schema<any> => {
@@ -328,7 +328,7 @@ export const getResultSchema = (qb: QueryBuilder<any, any, any>): Schema.Schema<
     case 'UpdateQuery':
     case 'DeleteQuery': {
       // For write operations with RETURNING clause, we need to return the appropriate schema
-      if (queryAst.returning && queryAst.returning.length > 0) {
+      if (queryAst.returning !== undefined && queryAst.returning.length > 0) {
         // Create a schema for the returned columns
         return queryAst.tableDef.rowSchema.pipe(Schema.pick(...queryAst.returning), Schema.Array)
       }

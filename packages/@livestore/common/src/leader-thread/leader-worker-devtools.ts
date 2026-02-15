@@ -132,7 +132,7 @@ const listenToDevtools = ({
       loadDatabaseBatchTracker.set(batchId, entry)
       const finished = entry.has('state') && entry.has('eventlog')
 
-      if (finished) {
+      if (finished !== undefined) {
         loadDatabaseBatchTracker.delete(batchId)
       }
 
@@ -158,7 +158,7 @@ const listenToDevtools = ({
           // So far I could only observe this problem with webmesh proxy channels (e.g. for Expo)
           // Proof: https://share.cleanshot.com/V9G87B0B
           // Also see `store/devtools.ts` for same problem
-          if (handledRequestIds.has(requestId)) {
+          if (handledRequestIds.has(requestId) === true) {
             // yield* Effect.logWarning(`Duplicate message`, decodedEvent)
             return
           }
@@ -206,7 +206,7 @@ const listenToDevtools = ({
 
                 let databaseKind: LoadDatabaseKind | undefined
 
-                if (tableNames.has(SystemTables.EVENTLOG_META_TABLE)) {
+                if (tableNames.has(SystemTables.EVENTLOG_META_TABLE) === true) {
                   databaseKind = 'eventlog'
                   yield* SubscriptionRef.set(shutdownStateSubRef, 'shutting-down')
                   yield* Effect.try(() =>  dbEventlog.import(data))
@@ -215,8 +215,8 @@ const listenToDevtools = ({
                     yield* Effect.try(() =>  dbState.destroy())
                   }
                 } else if (
-                  tableNames.has(SystemTables.SCHEMA_META_TABLE) &&
-                  tableNames.has(SystemTables.SCHEMA_EVENT_DEFS_META_TABLE)
+                  tableNames.has(SystemTables.SCHEMA_META_TABLE) === true &&
+                  tableNames.has(SystemTables.SCHEMA_EVENT_DEFS_META_TABLE) === true
                 ) {
                   databaseKind = 'state'
                   yield* SubscriptionRef.set(shutdownStateSubRef, 'shutting-down')
@@ -239,7 +239,7 @@ const listenToDevtools = ({
 
                 yield* sendMessage(Devtools.Leader.LoadDatabaseFile.Success.make({ ...reqPayload }))
 
-                if (shouldShutdown) {
+                if (shouldShutdown === true) {
                   yield* shutdownChannel.send(IntentionalShutdownCause.make({ reason: 'devtools-import' }))
                 }
               })
@@ -381,7 +381,7 @@ const listenToDevtools = ({
 
                 yield* Stream.zipLatest(
                   syncBackend.isConnected.changes,
-                  devtools.enabled ? devtools.syncBackendLatchState.changes : Stream.make({ latchClosed: false }),
+                  devtools.enabled === true ? devtools.syncBackendLatchState.changes : Stream.make({ latchClosed: false }),
                 ).pipe(
                   Stream.tap(([isConnected, { latchClosed }]) =>
                     sendMessage(
@@ -446,9 +446,9 @@ const listenToDevtools = ({
             case 'LSD.Leader.SetSyncLatch.Request': {
               const { closeLatch } = decodedEvent
 
-              if (!devtools.enabled) return
+              if (devtools.enabled === false) return
 
-              if (closeLatch) {
+              if (closeLatch !== undefined) {
                 yield* devtools.syncBackendLatch.close
               } else {
                 yield* devtools.syncBackendLatch.open

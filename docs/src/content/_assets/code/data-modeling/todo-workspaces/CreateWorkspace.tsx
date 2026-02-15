@@ -12,7 +12,7 @@ export function CreateWorkspace() {
 
   const createStore = (formData: FormData) => {
     const name = formData.get('name') as string
-    if (!name.trim()) return
+    if (name.trim() === '') return
 
     const workspaceId = nanoid()
 

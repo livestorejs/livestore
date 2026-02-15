@@ -178,7 +178,7 @@ export const migrateTable = ({
       dbExecute(db, createIndexFromDefinition(tableName, index))
     }
 
-    if (!skipMetaTable) {
+    if (skipMetaTable == null) {
       const updatedAt = getMemoizedTimestamp()
 
       dbExecute(
@@ -200,7 +200,7 @@ export const migrateTable = ({
   )
 
 const createIndexFromDefinition = (tableName: string, index: SqliteAst.Index) => {
-  const uniqueStr = index.unique ? 'UNIQUE' : ''
+  const uniqueStr = index.unique !== undefined ? 'UNIQUE' : ''
   return sql`create ${uniqueStr} index if not exists "${index.name}" on "${tableName}" (${index.columns
     .map((col) => `"${col}"`)
     .join(', ')})`

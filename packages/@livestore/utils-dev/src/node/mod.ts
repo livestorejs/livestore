@@ -47,10 +47,10 @@ export const OtelLiveHttp = ({
       exporterUrl: Config.string('OTEL_EXPORTER_OTLP_ENDPOINT').pipe(
         Config.validate({ message: 'OTEL_EXPORTER_OTLP_ENDPOINT must be set', validation: isNonEmptyString }),
       ),
-      serviceName: serviceName
+      serviceName: serviceName !== undefined
         ? Config.succeed(serviceName)
         : Config.string('OTEL_SERVICE_NAME').pipe(Config.withDefault('livestore-utils-dev')),
-      rootSpanName: rootSpanName
+      rootSpanName: rootSpanName !== undefined
         ? Config.succeed(rootSpanName)
         : Config.string('OTEL_ROOT_SPAN_NAME').pipe(Config.withDefault('RootSpan')),
     }).pipe(Effect.option)
@@ -92,13 +92,13 @@ export const OtelLiveHttp = ({
 
     const RootSpanLive = Layer.span(config.rootSpanName, {
       attributes: { config, ...rootSpanAttributes },
-      onEnd: skipLogUrl ? undefined : (span: any) => logTraceUiUrlForSpan()(span.span),
+      onEnd: skipLogUrl !== undefined ? undefined : (span: any) => logTraceUiUrlForSpan()(span.span),
       parent: parentSpan,
     })
 
     const layer = yield* Layer.memoize(RootSpanLive.pipe(Layer.provideMerge(OtelLive)))
 
-    if (traceNodeBootstrap && !IS_BUN) {
+    if (traceNodeBootstrap !== undefined && IS_BUN == null) {
       /**
        * Create a span representing the Node.js bootstrap duration.
        * Note: Skipped in Bun since performance.nodeTiming is not properly supported.
@@ -137,7 +137,7 @@ export const logTraceUiUrlForSpan = (printMsg?: (url: string) => string) => (spa
       if (url === undefined) {
         return Effect.logWarning('No tracing backend url found')
       } else {
-        if (printMsg) {
+        if (printMsg !== undefined) {
           return Effect.log(printMsg(url))
         } else {
           return Effect.log(`Trace URL: ${url}`)
@@ -190,14 +190,14 @@ const computeBootstrapTiming = () => {
   const nodeTiming = performance.nodeTiming
 
   // Absolute start time in ms since epoch.
-  const startAbs = IS_BUN
+  const startAbs = IS_BUN !== undefined
     ? typeof nodeTiming.nodeStart === 'number'
       ? nodeTiming.nodeStart
       : performance.timeOrigin
     : performance.timeOrigin + nodeTiming.nodeStart
 
   // Absolute end time.
-  const endAbs = IS_BUN
+  const endAbs = IS_BUN !== undefined
     ? (() => {
         const { loopStart, bootstrapComplete } = nodeTiming
         if (typeof loopStart === 'number' && loopStart > 0) return startAbs + loopStart
@@ -207,7 +207,7 @@ const computeBootstrapTiming = () => {
     : startAbs + nodeTiming.duration
 
   // Duration attribute value for the span.
-  const durationAttr = IS_BUN
+  const durationAttr = IS_BUN !== undefined
     ? (() => {
         const { loopStart } = nodeTiming
         return typeof loopStart === 'number' && loopStart > 0 ? loopStart : 0

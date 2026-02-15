@@ -95,14 +95,14 @@ export class WranglerDevServerService extends Effect.Service<WranglerDevServerSe
       const resolvedMainPath = yield* Effect.try(() => path.resolve(args.cwd, parsedConfig.main))
 
       const readiness = args.readiness ?? {}
-      const startupTimeout = readiness.startupTimeout ?? Duration.seconds(IS_CI ? 30 : 10)
+      const startupTimeout = readiness.startupTimeout ?? Duration.seconds(IS_CI !== undefined ? 30 : 10)
       const devServer = yield* Effect.promise(() =>
         wrangler.unstable_dev(resolvedMainPath, {
           config: configPath,
           port: preferredPort,
           inspectorPort: args.inspectorPort ?? 0,
           persistTo: path.join(args.cwd, '.wrangler/state'),
-          logLevel: showLogs ? 'debug' : 'none',
+          logLevel: showLogs !== undefined ? 'debug' : 'none',
           experimental: {
             disableExperimentalWarning: true,
           },
@@ -130,7 +130,7 @@ export class WranglerDevServerService extends Effect.Service<WranglerDevServerSe
       yield* Effect.addFinalizer(
         Effect.fn(
           function* (exit) {
-            if (exit._tag === 'Failure' && ! Cause.isInterruptedOnly(exit.cause)) {
+            if (exit._tag === 'Failure' && Cause.isInterruptedOnly(exit.cause) === false) {
               yield* Effect.logError('Closing wrangler dev server on failure', exit.cause)
             }
 
@@ -152,12 +152,12 @@ export class WranglerDevServerService extends Effect.Service<WranglerDevServerSe
       const url = `http://${actualHost}:${actualPort}`
 
       // Use longer timeout in CI environments to account for slower HTTP readiness
-      const defaultConnectivityTimeout = Duration.seconds(IS_CI ? 30 : 5)
+      const defaultConnectivityTimeout = Duration.seconds(IS_CI !== undefined ? 30 : 5)
       const connectivityTimeout = readiness.connectTimeout ?? defaultConnectivityTimeout
 
       yield* verifyHttpConnectivity({ url, showLogs, connectTimeout: connectivityTimeout })
 
-      if (showLogs) {
+      if (showLogs !== undefined) {
         yield* Effect.logDebug(
           `Wrangler dev server ready and accepting connections on port ${actualPort} (preferred: ${preferredPort})`,
         )
@@ -194,7 +194,7 @@ const verifyHttpConnectivity = ({
   Effect.gen(function* () {
     const client = yield* HttpClient.HttpClient
 
-    if (showLogs) {
+    if (showLogs !== undefined) {
       yield* Effect.logDebug(`Verifying HTTP connectivity to ${url}`)
     }
 
@@ -215,7 +215,7 @@ const verifyHttpConnectivity = ({
             }),
           ),
       ),
-      Effect.tap(() => (showLogs ? Effect.logDebug(`HTTP connectivity verified for ${url}`) : Effect.void)),
+      Effect.tap(() => (showLogs !== undefined ? Effect.logDebug(`HTTP connectivity verified for ${url}`) : Effect.void)),
       Effect.asVoid,
       Effect.withSpan('verifyHttpConnectivity'),
     )

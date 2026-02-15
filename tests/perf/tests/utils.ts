@@ -15,7 +15,7 @@ export const repeatSuite = (
   }
 
   test.describe(suiteName, suiteDetails, () => {
-    if (shouldRecordPerfProfile) {
+    if (shouldRecordPerfProfile === true) {
       console.warn(`Skipping repetitions for suite "${suiteName}" due to performance profiling.`)
       test.describe('Performance Profiling', suiteCallback)
       return

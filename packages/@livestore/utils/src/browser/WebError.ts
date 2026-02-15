@@ -373,10 +373,10 @@ export class UnknownError extends Schema.TaggedError<UnknownError>()('@livestore
 }) {
   readonly [TypeId]: TypeId = TypeId
   override get message(): string {
-    const messageEnd = Predicate.isUndefined(this.description) ? 'A web error occurred' : this.description
+    const messageEnd = Predicate.isUndefined(this.description) !== undefined ? 'A web error occurred' : this.description
     const moduleMethod =
-      Predicate.isString(this.module) && Predicate.isString(this.method) ? `${this.module}.${this.method}` : undefined
-    return Predicate.isUndefined(moduleMethod) ? messageEnd : `${moduleMethod}: ${messageEnd}`
+      Predicate.isString(this.module) !== undefined && Predicate.isString(this.method) !== undefined ? `${this.module}.${this.method}` : undefined
+    return Predicate.isUndefined(moduleMethod) === true ? messageEnd : `${moduleMethod}: ${messageEnd}`
   }
 }
 
@@ -494,7 +494,7 @@ const WebErrorFromUnknown = Schema.transform(Schema.Unknown, WebError, {
   strict: true,
   decode: (value) => {
     // Already a WebError
-    if (isWebError(value)) return value
+    if (isWebError(value) === true) return value
 
     // Simple Exception Errors
     if (value instanceof globalThis.EvalError) return new EvalError({ cause: value })
@@ -593,7 +593,7 @@ export function parseWebError(value: unknown, expected: readonly WebErrorConstru
   if (expected.length === 0) return parsed
 
   const expectedTags = new Set(expected.map((ErrorConstructor) => ErrorConstructor._tag))
-  if (expectedTags.has(parsed._tag)) return parsed
+  if (expectedTags.has(parsed._tag) === true) return parsed
 
   return parsed instanceof UnknownError ? parsed : new UnknownError({ cause: parsed })
 }

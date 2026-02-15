@@ -20,7 +20,7 @@ export const prepareCmdLogging: (options: TCmdLoggingOptions) => Effect.Effect<s
     logFileName = 'dev.log',
     logRetention = 50,
   }: TCmdLoggingOptions) {
-    if (!logDir || logDir === '') return undefined as string | undefined
+    if (logDir == null || logDir === '') return undefined as string | undefined
 
     const logsDir = logDir
     const archiveDir = path.join(logsDir, 'archive')
@@ -30,7 +30,7 @@ export const prepareCmdLogging: (options: TCmdLoggingOptions) => Effect.Effect<s
     yield* Effect.sync(() => fs.mkdirSync(archiveDir, { recursive: true }))
 
     // Archive previous log if present
-    if (fs.existsSync(currentLogPath)) {
+    if (fs.existsSync(currentLogPath) === true) {
       const safeIso = new Date().toISOString().replaceAll(':', '-')
       const archivedBase = `${path.parse(logFileName).name}-${safeIso}.log`
       const archivedLog = path.join(archiveDir, archivedBase)
@@ -75,13 +75,13 @@ export const applyLoggingToCommand: (
   'cmd.logging.apply',
 )(function* (commandInput, options) {
   const asArray = Array.isArray(commandInput)
-  const parts = asArray ? (commandInput).filter(isNotUndefined) : undefined
+  const parts = asArray !== undefined ? (commandInput).filter(isNotUndefined) : undefined
 
   const logPath = yield* prepareCmdLogging(options)
 
   return {
-    input: asArray ? ((parts as string[]) ?? []) : (commandInput),
+    input: asArray !== undefined ? ((parts as string[]) ?? []) : (commandInput),
     subshell: false,
-    ...(logPath ? { logPath } : {}),
+    ...(logPath !== undefined ? { logPath } : {}),
   }
 })

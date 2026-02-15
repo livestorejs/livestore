@@ -112,7 +112,7 @@ export const makeSyncBackend =
       }
 
       // No need to connect if the pull endpoint has the same origin as the current page
-      const connect: SyncBackend.SyncBackend<SyncMetadata>['connect'] = pullEndpointHasSameOrigin
+      const connect: SyncBackend.SyncBackend<SyncMetadata>['connect'] = pullEndpointHasSameOrigin !== undefined
         ? Effect.void
         : ping.pipe(UnknownError.mapToUnknownError)
 
@@ -203,7 +203,7 @@ export const makeSyncBackend =
           lastItem.pipe(
             Option.flatMap((item) => {
               const lastBatchItem = item.batch.at(-1)
-              if (!lastBatchItem) return Option.none()
+              if (lastBatchItem == null) return Option.none()
               return Option.some({
                 eventSequenceNumber: lastBatchItem.eventEncoded.seqNum,
                 metadata: lastBatchItem.metadata,
@@ -227,7 +227,7 @@ export const makeSyncBackend =
               } as SyncBackend.PullResItem<SyncMetadata>),
             )
 
-          const stream = isFirst ? sseStream(false) : sseStream(true)
+          const stream = isFirst === true ? sseStream(false) : sseStream(true)
 
           return stream.pipe(
             // Reconnect from last item if stream
@@ -241,7 +241,7 @@ export const makeSyncBackend =
       return SyncBackend.of({
         connect,
         pull: (cursor, options) => {
-          if (options?.live) {
+          if (options?.live !== undefined) {
             return ssePull(cursor)
           } else {
             return runPullSse(cursor, false).pipe(

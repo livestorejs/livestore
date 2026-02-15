@@ -677,7 +677,7 @@ export const make = (
     )
   const withResponse: <A, E>(
     f: (response: HttpClientResponse.HttpClientResponse) => Effect.Effect<A, E>,
-  ) => (request: HttpClientRequest.HttpClientRequest) => Effect.Effect<any, any> = options.transformClient
+  ) => (request: HttpClientRequest.HttpClientRequest) => Effect.Effect<any, any> = options.transformClient !== undefined
     ? (f) => (request) =>
         Effect.flatMap(
           Effect.flatMap(options.transformClient!(httpClient), (client) => client.execute(request)),

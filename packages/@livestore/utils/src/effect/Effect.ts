@@ -64,9 +64,9 @@ export const tryAll = <Res>(
     : Effect.Effect<Res, UnknownException> =>
   Effect.try(() => fn()).pipe(
     Effect.andThen((fnRes) =>
-      Effect.isEffect(fnRes)
+      Effect.isEffect(fnRes) === true
         ? (fnRes as any as Effect.Effect<any>)
-        : isPromise(fnRes)
+        : isPromise(fnRes) === true
           ? Effect.promise(() => fnRes)
           : Effect.succeed(fnRes),
     ),
@@ -89,7 +89,7 @@ export const logBefore =
 export const tapCauseLogPretty = <R, E, A>(eff: Effect.Effect<A, E, R>): Effect.Effect<A, E, R> =>
   Effect.tapErrorCause(eff, (cause) =>
     Effect.gen(function* () {
-      if (Cause.isInterruptedOnly(cause)) {
+      if (Cause.isInterruptedOnly(cause) === true) {
         // console.log('interrupted', Cause.pretty(err), err)
         return
       }
@@ -169,14 +169,14 @@ export const logWarnIfTakesLongerThan =
 
             yield* Fiber.interrupt(timeoutFiber)
 
-            if (tookLongerThanTimer) {
+            if (tookLongerThanTimer !== undefined) {
               yield* Effect.logWarning(`${label}: Interrupted after ${end - start}ms`)
             }
           }),
         ),
       )
 
-      if (tookLongerThanTimer) {
+      if (tookLongerThanTimer !== undefined) {
         const end = Date.now()
         yield* Effect.logWarning(`${label}: Actual duration: ${end - start}ms`)
       }

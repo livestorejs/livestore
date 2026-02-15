@@ -43,7 +43,7 @@ export const makeMaterializeEvent = ({
           // Unknown events still enter the eventlog so newer clients can replay
           // them once they learn the schema. We skip materialization to keep the
           // local state consistent with the knowledge of the current client.
-          if (!skipEventlog) {
+          if (skipEventlog == null) {
             yield* Eventlog.insertIntoEventlog(
               eventEncoded,
               dbEventlog,
@@ -73,7 +73,7 @@ export const makeMaterializeEvent = ({
           event: { decoded: undefined, encoded: eventEncoded },
         })
 
-        const materializerHash = isDevEnv() ? Option.some(hashMaterializerResults(execArgsArr)) : Option.none()
+        const materializerHash = isDevEnv() === true ? Option.some(hashMaterializerResults(execArgsArr)) : Option.none()
 
         if (
           materializerHash._tag === 'Some' &&
@@ -119,7 +119,7 @@ export const makeMaterializeEvent = ({
               seqNumRebaseGeneration: eventEncoded.seqNum.rebaseGeneration,
               // NOTE the changeset will be empty (i.e. null) for no-op events
               changeset: changeset ?? null,
-              debug: LS_DEV ? execArgsArr : null,
+              debug: LS_DEV === true ? execArgsArr : null,
             },
           }),
         )
@@ -127,7 +127,7 @@ export const makeMaterializeEvent = ({
         // console.groupEnd()
 
         // write to eventlog
-        if (!skipEventlog) {
+        if (skipEventlog == null) {
           const eventName = eventEncoded.name
           const eventDefSchemaHash =
             eventDefSchemaHashMap.get(eventName) ?? shouldNeverHappen(`Unknown event definition: ${eventName}`)
@@ -144,11 +144,11 @@ export const makeMaterializeEvent = ({
         }
 
         return {
-          sessionChangeset: changeset
+          sessionChangeset: changeset !== undefined
             ? {
                 _tag: 'sessionChangeset' as const,
                 data: changeset,
-                debug: LS_DEV ? execArgsArr : null,
+                debug: LS_DEV === true ? execArgsArr : null,
               }
             : { _tag: 'no-op' as const },
           hash: materializerHash,

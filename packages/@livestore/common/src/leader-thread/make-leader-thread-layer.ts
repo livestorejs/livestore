@@ -157,7 +157,7 @@ export const makeLeaderThreadLayer = ({
 
     // Recreate state database if needed BEFORE creating sync processor
     // This ensures all system tables exist before any queries are made
-    const { migrationsReport } = dbStateMissing
+    const { migrationsReport } = dbStateMissing !== undefined
       ? yield* recreateDb({ dbState, dbEventlog, schema, bootStatusQueue, materializeEvent })
       : { migrationsReport: { migrations: [] } }
 
@@ -184,7 +184,7 @@ export const makeLeaderThreadLayer = ({
       Effect.acquireRelease(Queue.shutdown),
     )
 
-    const devtoolsContext = devtoolsOptions.enabled
+    const devtoolsContext = devtoolsOptions.enabled === true
       ? {
           enabled: true as const,
           syncBackendLatch: yield* Effect.makeLatch(true),
@@ -249,7 +249,7 @@ const hasStateTables = (db: SqliteDb) => {
 
 const isSubsetOf = (a: Set<string>, b: Set<string>): boolean => {
   for (const item of a) {
-    if (!b.has(item)) {
+    if (b.has(item) === false) {
       return false
     }
   }
@@ -266,11 +266,11 @@ const getInitialSyncState = ({
   dbState: SqliteDb
   dbEventlogMissing: boolean
 }) => {
-  const initialBackendHead = dbEventlogMissing
+  const initialBackendHead = dbEventlogMissing !== undefined
     ? EventSequenceNumber.Client.ROOT.global
     : Eventlog.getBackendHeadFromDb(dbEventlog)
 
-  const initialLocalHead = dbEventlogMissing
+  const initialLocalHead = dbEventlogMissing !== undefined
     ? EventSequenceNumber.Client.ROOT
     : Eventlog.getClientHeadFromDb(dbEventlog)
 
@@ -287,7 +287,7 @@ const getInitialSyncState = ({
       client: EventSequenceNumber.Client.DEFAULT,
       rebaseGeneration: EventSequenceNumber.Client.REBASE_GENERATION_DEFAULT,
     },
-    pending: dbEventlogMissing
+    pending: dbEventlogMissing !== undefined
       ? []
       : Eventlog.getEventsSince({
           dbEventlog,
@@ -328,7 +328,7 @@ const makeInitialBlockingSyncContext = ({
       blockingDeferred,
       update: ({ processed, pageInfo }) =>
         Effect.gen(function* () {
-          if (ctx.isDone) return
+          if (ctx.isDone === true) return
 
           if (ctx.total === -1 && pageInfo._tag === 'MoreKnown') {
             ctx.total = pageInfo.remaining + processed
@@ -402,7 +402,7 @@ export const makeNetworkStatusSubscribable = ({
     const initialIsConnected = syncBackend !== undefined ? yield* SubscriptionRef.get(syncBackend.isConnected) : false
     const initialLatchClosed =
       
-      devtoolsContext.enabled
+      devtoolsContext.enabled === true
         ? (yield* SubscriptionRef.get(devtoolsContext.syncBackendLatchState)).latchClosed
         : false
 
@@ -431,7 +431,7 @@ export const makeNetworkStatusSubscribable = ({
       )
     }
 
-    if (devtoolsContext.enabled) {
+    if (devtoolsContext.enabled === true) {
       yield* devtoolsContext.syncBackendLatchState.changes.pipe(
         Stream.tap(({ latchClosed }) => updateNetworkStatus({ latchClosed })),
         Stream.runDrain,

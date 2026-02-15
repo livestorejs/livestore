@@ -1,5 +1,5 @@
 document.getElementById('run').addEventListener('click', async function (event) {
-  const button = /** @type {HTMLButtonElement} */ (event.target)
+  const button = /** @type {HTMLButtonElement} */ (event.target !== undefined)
   button.disabled = true
 
   // @ts-ignore

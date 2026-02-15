@@ -1,7 +1,7 @@
 import inspector from 'node:inspector'
 import path from 'node:path'
 
-if (process.execArgv.includes('--inspect')) {
+if (process.execArgv.includes('--inspect') === true) {
   inspector.open()
   inspector.waitForDebugger()
 }
@@ -70,7 +70,7 @@ export const makeLeaderThread = ({
       schema.state.sqlite.migrations.strategy === 'manual' ? 'fixed' : schema.state.sqlite.hash.toString()
 
     const makeDb = (kind: 'state' | 'eventlog') => {
-      if (testing?.makeLeaderThread) {
+      if (testing?.makeLeaderThread !== undefined) {
         return testing
           .makeLeaderThread(makeSqliteDb)
           .pipe(Effect.map(({ dbEventlog, dbState }) => (kind === 'state' ? dbState : dbEventlog)))
@@ -142,7 +142,7 @@ const makeDevtoolsOptions = ({
   devtools: WorkerSchema.LeaderWorkerInnerInitialMessage['devtools']
 }): Effect.Effect<DevtoolsOptions, UnknownError, Scope.Scope> =>
   Effect.gen(function* () {
-    if (!devtools.enabled) {
+    if (devtools.enabled === false) {
       return {
         enabled: false,
       }
@@ -155,7 +155,7 @@ const makeDevtoolsOptions = ({
         const { startDevtoolsServer } = yield* Effect.promise(() => import('./devtools/devtools-server.ts'))
 
         // TODO instead of failing when the port is already in use, we should try to use that WS server instead of starting a new one
-        if (!devtools.useExistingDevtoolsServer) {
+        if (devtools.useExistingDevtoolsServer == null) {
           yield* startDevtoolsServer({
             schemaPath: devtools.schemaPath,
             clientSessionInfo: Devtools.SessionInfo.SessionInfo.make({

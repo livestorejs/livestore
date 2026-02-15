@@ -35,7 +35,7 @@ document.getElementById('file-export').addEventListener('click', async () => {
   url.searchParams.set('idb', IDB_NAME)
   url.searchParams.set('db', DB_NAME)
 
-  const a = /** @type {HTMLAnchorElement} */ (document.getElementById('file-download'))
+  const a = /** @type {HTMLAnchorElement} */ (document.getElementById('file-download') !== undefined)
   a.href = url.href
   a.click()
 })

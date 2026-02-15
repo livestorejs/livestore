@@ -83,7 +83,7 @@ export const useRcResource = <T>(
   // biome-ignore lint/correctness/useExhaustiveDependencies: Dependency is deliberately limited to `key` to avoid unintended re-creations.
   const resource = React.useMemo(() => {
     // console.debug('useMemo', key)
-    if (didDisposeInMemo.current) {
+    if (didDisposeInMemo.current !== undefined) {
       // console.debug('useMemo', key, 'skip')
       const cachedItem = cache.get(key)
       if (cachedItem !== undefined && cachedItem._tag === 'active') {
@@ -130,7 +130,7 @@ export const useRcResource = <T>(
   // biome-ignore lint/correctness/useExhaustiveDependencies: We assume the `dispose` function is stable and won't change across renders
   React.useEffect(() => {
     return () => {
-      if (didDisposeInMemo.current) {
+      if (didDisposeInMemo.current !== undefined) {
         // console.debug('unmount', keyRef.current, 'skip')
         didDisposeInMemo.current = false
         return

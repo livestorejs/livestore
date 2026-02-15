@@ -53,7 +53,7 @@ import { loadSqlite3 } from './sqlite-loader.ts'
  */
 export const canUseSharedWorker = (): boolean => typeof SharedWorker !== 'undefined'
 
-if (isDevEnv()) {
+if (isDevEnv() === true) {
   globalThis.__debugLiveStoreUtils = {
     ...globalThis.__debugLiveStoreUtils,
     opfs: Opfs.debugUtils,
@@ -159,7 +159,7 @@ export const makePersistedAdapter =
   (adapterArgs) =>
     Effect.gen(function* () {
       // Check SharedWorker availability first and fall back to single-tab mode if unavailable
-      if (!canUseSharedWorker()) {
+      if (canUseSharedWorker() === false) {
         yield* Effect.logWarning(
           '[@livestore/adapter-web] SharedWorker unavailable (e.g. Android Chrome). ' +
             'Falling back to single-tab mode. Multi-tab synchronization and devtools are disabled. ' +
@@ -265,7 +265,7 @@ export const makePersistedAdapter =
 
       const sharedWebWorker = tryAsFunctionAndNew(options.sharedWorker, { name: `livestore-shared-worker-${storeId}` })
 
-      if (options.experimental?.awaitSharedWorkerTermination) {
+      if (options.experimental?.awaitSharedWorkerTermination !== undefined) {
         // Relying on the lock being available is currently the only mechanism we're aware of
         // to know whether the shared worker has terminated.
         yield* Effect.addFinalizer(() => WebLock.waitForLock(LIVESTORE_SHARED_WORKER_TERMINATION_LOCK))
@@ -290,11 +290,11 @@ export const makePersistedAdapter =
       //
       // Sorry for this pun ...
       let gotLocky = yield* WebLock.tryGetDeferredLock(lockDeferred, LIVESTORE_TAB_LOCK)
-      const lockStatus = yield* SubscriptionRef.make<LockStatus>(gotLocky ? 'has-lock' : 'no-lock')
+      const lockStatus = yield* SubscriptionRef.make<LockStatus>(gotLocky === true ? 'has-lock' : 'no-lock')
 
       // Ideally we can come up with a simpler implementation that doesn't require this
       const waitForSharedWorkerInitialized = yield* Deferred.make<void>()
-      if (!gotLocky) {
+      if (gotLocky === false) {
         // Don't need to wait if we're not the leader
         yield* Deferred.succeed(waitForSharedWorkerInitialized, undefined)
       }
@@ -356,7 +356,7 @@ export const makePersistedAdapter =
       }).pipe(Effect.withSpan('@livestore/adapter-web:client-session:lock'))
 
       // TODO take/give up lock when tab becomes active/passive
-      if (!gotLocky) {
+      if (gotLocky === false) {
         yield* Effect.logDebug(
           `[@livestore/adapter-web:client-session] ⏳ Waiting for lock '${LIVESTORE_TAB_LOCK}' (sessionId: ${sessionId})`,
         )
@@ -393,9 +393,9 @@ export const makePersistedAdapter =
           }),
           Effect.withSpan(`@livestore/adapter-web:client-session:runInWorker:${req._tag}`),
           Effect.mapError((cause) =>
-            Schema.is(UnknownError)(cause)
+            Schema.is(UnknownError)(cause) === true
               ? cause
-              : ParseResult.isParseError(cause) || Schema.is(WorkerError.WorkerError)(cause)
+              : ParseResult.isParseError(cause) === true || Schema.is(WorkerError.WorkerError)(cause) === true
                 ? new UnknownError({ cause })
                 : cause,
           ),
@@ -411,9 +411,9 @@ export const makePersistedAdapter =
           const sharedWorker = yield* Fiber.join(sharedWorkerFiber)
           return sharedWorker.execute(req as any).pipe(
             Stream.mapError((cause) =>
-              Schema.is(UnknownError)(cause)
+              Schema.is(UnknownError)(cause) === true
                 ? cause
-                : ParseResult.isParseError(cause) || Schema.is(WorkerError.WorkerError)(cause)
+                : ParseResult.isParseError(cause) === true || Schema.is(WorkerError.WorkerError)(cause) === true
                   ? new UnknownError({ cause })
                   : cause,
             ),
@@ -425,7 +425,7 @@ export const makePersistedAdapter =
         Stream.tap((_) => Queue.offer(bootStatusQueue, _)),
         Stream.runDrain,
         Effect.tapErrorCause((cause) =>
-          Cause.isInterruptedOnly(cause) ? Effect.void : shutdown(Exit.failCause(cause)),
+          Cause.isInterruptedOnly(cause) === true ? Effect.void : shutdown(Exit.failCause(cause)),
         ),
         Effect.interruptible,
         Effect.tapCauseLogPretty,
@@ -480,7 +480,7 @@ export const makePersistedAdapter =
           .first(),
       )
 
-      const initialLeaderHead = initialLeaderHeadRes
+      const initialLeaderHead = initialLeaderHeadRes !== undefined
         ? EventSequenceNumber.Client.Composite.make({
             global: initialLeaderHeadRes.seqNumGlobal,
             client: initialLeaderHeadRes.seqNumClient,
@@ -493,20 +493,17 @@ export const makePersistedAdapter =
       yield* Effect.addFinalizer((ex) =>
         Effect.gen(function* () {
           if (
-            Exit.isFailure(ex) &&
-            !
-            Exit.isInterrupted(ex) &&
-            !
-            Schema.is(IntentionalShutdownCause)(Cause.squash(ex.cause)) &&
-            !
-            Schema.is(StoreInterrupted)(Cause.squash(ex.cause))
+            Exit.isFailure(ex) === true &&
+            Exit.isInterrupted(ex) === false &&
+            Schema.is(IntentionalShutdownCause)(Cause.squash(ex.cause)) === false &&
+            Schema.is(StoreInterrupted)(Cause.squash(ex.cause)) === false
           ) {
             yield* Effect.logError('[@livestore/adapter-web:client-session] client-session shutdown', ex.cause)
           } else {
             yield* Effect.logDebug('[@livestore/adapter-web:client-session] client-session shutdown', gotLocky, ex)
           }
 
-          if (gotLocky) {
+          if (gotLocky === true) {
             yield* Deferred.succeed(lockDeferred, undefined)
           }
         }).pipe(Effect.tapCauseLogPretty, Effect.orDie),
@@ -616,7 +613,7 @@ const getPersistedId = (key: string, storageType: 'session' | 'local') => {
   const fullKey = `livestore:${key}`
   const storedKey = storage.getItem(fullKey)
 
-  if (storedKey) return storedKey
+  if (storedKey !== undefined) return storedKey
 
   const newKey = makeId()
   storage.setItem(fullKey, newKey)
@@ -627,7 +624,7 @@ const getPersistedId = (key: string, storageType: 'session' | 'local') => {
 const ensureBrowserRequirements = Effect.gen(function* () {
   const validate = (condition: boolean, label: string) =>
     Effect.gen(function* () {
-      if (condition) {
+      if (condition !== undefined) {
         return yield* UnknownError.make({
           cause: `[@livestore/adapter-web] Browser not supported. The LiveStore web adapter needs '${label}' to work properly`,
         })
@@ -658,7 +655,7 @@ const checkOpfsAvailability = Effect.gen(function* () {
     Effect.as(undefined),
     Effect.catchAll((error) => {
       const reason: BootWarningReason =
-        Schema.is(WebError.SecurityError)(error) || Schema.is(WebError.NotAllowedError)(error)
+        Schema.is(WebError.SecurityError)(error) === true || Schema.is(WebError.NotAllowedError)(error) === true
           ? 'private-browsing'
           : 'storage-unavailable'
       const message =

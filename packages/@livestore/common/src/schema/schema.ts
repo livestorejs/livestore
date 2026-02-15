@@ -103,13 +103,13 @@ export const makeSchema = <TInputSchema extends InputSchema>(
 
   const eventsDefsMap = new Map<string, EventDef.AnyWithoutFn>()
 
-  if (isReadonlyArray(inputSchema.events)) {
+  if (isReadonlyArray(inputSchema.events) !== undefined) {
     for (const eventDef of inputSchema.events) {
       eventsDefsMap.set(eventDef.name, eventDef)
     }
   } else {
     for (const eventDef of Object.values(inputSchema.events ?? {})) {
-      if (eventsDefsMap.has(eventDef.name)) {
+      if (eventsDefsMap.has(eventDef.name) === true) {
         shouldNeverHappen(`Duplicate event name: ${eventDef.name}. Please use unique names for events.`)
       }
       eventsDefsMap.set(eventDef.name, eventDef)
@@ -117,7 +117,7 @@ export const makeSchema = <TInputSchema extends InputSchema>(
   }
 
   for (const tableDef of tables.values()) {
-    if (tableIsClientDocumentTable(tableDef) && ! eventsDefsMap.has(tableDef.set.name)) {
+    if (tableIsClientDocumentTable(tableDef) === true && eventsDefsMap.has(tableDef.set.name) === false) {
       eventsDefsMap.set(tableDef.set.name, tableDef.set)
     }
   }

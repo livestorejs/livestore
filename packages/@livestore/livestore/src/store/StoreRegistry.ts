@@ -181,7 +181,7 @@ export class StoreRegistry {
    * ```
    */
   constructor(config: StoreRegistryConfig = {}) {
-    if (config.runtime) {
+    if (config.runtime !== undefined) {
       this.#runtime = config.runtime
     } else {
       const ownedRuntime = ManagedRuntime.make(Layer.mergeAll(Layer.scope, OtelLiveDummy))
@@ -265,16 +265,16 @@ export class StoreRegistry {
   ): Store<TSchema, TContext> | Promise<Store<TSchema, TContext>> => {
     const exit = this.getOrLoad(options).pipe(Effect.scoped, Runtime.runSyncExit(this.#runtime))
 
-    if (Exit.isSuccess(exit)) return exit.value
+    if (Exit.isSuccess(exit) === true) return exit.value
 
     // Check if the failure is due to async work
     const defect = Cause.dieOption(exit.cause)
-    if (defect._tag === 'Some' && Runtime.isAsyncFiberException(defect.value)) {
+    if (defect._tag === 'Some' && Runtime.isAsyncFiberException(defect.value) !== undefined) {
       const { storeId } = options
 
       // Return cached promise if one exists (ensures concurrent calls get the same Promise reference)
       const cached = this.#loadingPromises.get(storeId)
-      if (cached) return cached as Promise<Store<TSchema, TContext>>
+      if (cached !== undefined) return cached as Promise<Store<TSchema, TContext>>
 
       // Create and cache the promise
       const fiber = defect.value.fiber as Fiber.RuntimeFiber<Store<TSchema, TContext>>

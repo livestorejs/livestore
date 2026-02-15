@@ -127,15 +127,15 @@ export const defineEvent = <TName extends string, TType, TEncoded = TType, TDeri
   Object.defineProperty(makePartialEvent, 'options', {
     value: {
       clientOnly: options?.clientOnly ?? false,
-      facts: options?.facts
+      facts: options?.facts !== undefined
         ? (args, currentFacts) => {
             const res = options.facts!(args, currentFacts)
             return {
               modify: {
-                set: res.modify?.set ? new Set(res.modify.set) : new Set(),
-                unset: res.modify?.unset ? new Set(res.modify.unset) : new Set(),
+                set: res.modify?.set !== undefined ? new Set(res.modify.set) : new Set(),
+                unset: res.modify?.unset !== undefined ? new Set(res.modify.unset) : new Set(),
               },
-              require: res.require ? new Set(res.require) : new Set(),
+              require: res.require !== undefined ? new Set(res.require) : new Set(),
             }
           }
         : undefined,

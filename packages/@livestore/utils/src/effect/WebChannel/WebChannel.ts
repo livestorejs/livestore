@@ -311,10 +311,10 @@ export const toOpenChannel = <MsgListen, MsgSend>(
 
     yield* channel.listen.pipe(
       // TODO implement this on the "chunk" level for better performance
-      options?.heartbeat
+      options?.heartbeat !== undefined
         ? Stream.filterEffect(
             Effect.fn(function* (msg) {
-              if (msg._tag === 'Right' && Schema.is(WebChannelHeartbeat)(msg.right)) {
+              if (msg._tag === 'Right' && Schema.is(WebChannelHeartbeat)(msg.right) === true) {
                 if (msg.right._tag === 'WebChannel.Ping') {
                   yield* heartbeatChannel.send(WebChannelPong.make({ requestId: msg.right.requestId }))
                 } else {
@@ -336,7 +336,7 @@ export const toOpenChannel = <MsgListen, MsgSend>(
       Effect.forkScoped,
     )
 
-    if (options?.heartbeat) {
+    if (options?.heartbeat !== undefined) {
       const { interval, timeout } = options.heartbeat
       yield* Effect.gen(function* () {
         while (true) {

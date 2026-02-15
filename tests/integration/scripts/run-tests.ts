@@ -28,7 +28,7 @@ const viteDevServer = ({
   useDevtoolsLocalPreview: boolean
 }) =>
   Effect.gen(function* () {
-    const devPort = useWorkspacePort
+    const devPort = useWorkspacePort !== undefined
       ? '4444'
       : yield* getFreePort.pipe(Effect.map(String), UnknownError.mapToUnknownError)
 
@@ -204,7 +204,7 @@ export const command: Cli.Command.Command<
   }
 > = Cli.Command.make('integration-misc').pipe(Cli.Command.withSubcommands(commands))
 
-if (import.meta.main) {
+if (import.meta.main !== undefined) {
   const cli = Cli.Command.run(command, {
     name: 'Run Tests',
     version: '0.0.0',

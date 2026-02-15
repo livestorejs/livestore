@@ -48,10 +48,10 @@ export const toDurableObjectHandler =
 
       // Handle potential nested array from client serialization
       let requests: RpcMessage.FromClient<Rpcs>[]
-      if (Array.isArray(decoded) && decoded.length === 1 && Array.isArray(decoded[0])) {
+      if (Array.isArray(decoded) === true && decoded.length === 1 && Array.isArray(decoded[0]) === true) {
         // Double-wrapped array [[{...}]] -> [{...}]
         requests = decoded[0]
-      } else if (Array.isArray(decoded)) {
+      } else if (Array.isArray(decoded) === true) {
         // Single array [{...}]
         requests = decoded
       } else {
@@ -73,7 +73,7 @@ export const toDurableObjectHandler =
         const rpc = group.requests.get(request.tag)! as unknown as Rpc.AnyWithProps
         const entry = context.unsafeMap.get(rpc.key) as Rpc.Handler<Rpcs['_tag']>
 
-        if (!rpc || !entry) {
+        if (rpc == null || entry == null) {
           responses.push({
             _tag: 'Exit',
             requestId: request.id,
@@ -86,7 +86,7 @@ export const toDurableObjectHandler =
         const isStream = RpcSchema.isStreamSchema((rpc as any).successSchema)
 
         // For streaming RPCs with only one request, return ReadableStream directly
-        if (isStream && requests.length === 1) {
+        if (isStream === true && requests.length === 1) {
           return yield* createStreamingResponse(rpc, entry, request, parser, options.layer)
         }
 
@@ -111,7 +111,7 @@ export const toDurableObjectHandler =
           const exitSchema = Rpc.exitSchema(rpc as any) as Schema.Schema<any>
 
           let encodedExit: any
-          if (exitSchema) {
+          if (exitSchema !== undefined) {
             // Use schema encoding for proper serialization
             const rawExit = Exit.succeed(value)
             encodedExit = yield* Schema.encodeUnknown(exitSchema)(rawExit)
@@ -132,7 +132,7 @@ export const toDurableObjectHandler =
 
             return Effect.gen(function* () {
               let encodedExit: any
-              if (exitSchema) {
+              if (exitSchema !== undefined) {
                 // Use schema encoding for proper serialization
                 const rawExit = Exit.failCause(cause)
                 encodedExit = yield* Schema.encodeUnknown(exitSchema)(rawExit)
@@ -211,7 +211,7 @@ const createStreamingResponse = <Rpcs extends Rpc.Any, LE>(
 
     // Get the stream schemas for proper chunk-level encoding
     const streamSchemas = RpcSchema.getStreamSchemas((rpc as any).successSchema.ast)
-    const chunkEncoder = Option.isSome(streamSchemas)
+    const chunkEncoder = Option.isSome(streamSchemas) === true
       ? Schema.encodeUnknown(Schema.Array(streamSchemas.value.success as Schema.Schema<any>))
       : Schema.encodeUnknown(Schema.Array(Schema.Any as Schema.Schema<any>))
 

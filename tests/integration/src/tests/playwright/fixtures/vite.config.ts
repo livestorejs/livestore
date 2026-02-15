@@ -26,7 +26,7 @@ export default defineConfig({
     ],
   },
   plugins: [
-    TEST_LIVESTORE_SCHEMA_PATH_JSON
+    TEST_LIVESTORE_SCHEMA_PATH_JSON !== undefined
       ? livestoreDevtoolsPlugin({ schemaPath: JSON.parse(TEST_LIVESTORE_SCHEMA_PATH_JSON) })
       : undefined,
   ],

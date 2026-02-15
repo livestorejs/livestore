@@ -32,14 +32,14 @@ const isSetupParentDeathDetectionMessage = (
 
 const stopParentDeathMonitoring = () => {
   parentDeathDetectionEnabled = false
-  if (parentDeathTimer) {
+  if (parentDeathTimer !== undefined) {
     clearTimeout(parentDeathTimer)
     parentDeathTimer = null
   }
 }
 
 const setupParentDeathMonitoring = (parentPid: number) => {
-  if (parentDeathDetectionEnabled) return
+  if (parentDeathDetectionEnabled === true) return
   parentDeathDetectionEnabled = true
 
   let consecutiveFailures = 0
@@ -47,7 +47,7 @@ const setupParentDeathMonitoring = (parentPid: number) => {
 
   // Check if parent is still alive every 2 seconds (more conservative)
   const checkParentAlive = () => {
-    if (!parentDeathDetectionEnabled) return
+    if (parentDeathDetectionEnabled === false) return
     try {
       // Send signal 0 to check if process exists (doesn't actually send signal)
       process.kill(parentPid, 0)
@@ -77,7 +77,7 @@ const platformRunnerImpl = Runner.PlatformRunner.of({
   [Runner.PlatformRunnerTypeId]: Runner.PlatformRunnerTypeId,
   start<I, O>(closeLatch: typeof CloseLatch.Service) {
     return Effect.gen(function* () {
-      if (!process.send) {
+      if (process.send == null) {
         return yield* new WorkerError({ reason: 'spawn', cause: new Error('not in a child process') })
       }
       const port = {
@@ -98,7 +98,7 @@ const platformRunnerImpl = Runner.PlatformRunner.of({
         const fiberSet = yield* FiberSet.make<any, WorkerError | E>()
         const runFork = Runtime.runFork(runtime)
         const onExit = (exit: Exit.Exit<any, E>) => {
-          if (exit._tag === 'Failure' && !Cause.isInterruptedOnly(exit.cause)) {
+          if (exit._tag === 'Failure' && Cause.isInterruptedOnly(exit.cause) === false) {
             // Deferred.unsafeDone(closeLatch, Exit.die(Cause.squash(exit.cause)))
             Deferred.unsafeDone(closeLatch, Exit.die(exit.cause))
           }
@@ -107,7 +107,7 @@ const platformRunnerImpl = Runner.PlatformRunner.of({
           // console.log('message', message)
 
           // Handle parent death detection setup messages
-          if (isSetupParentDeathDetectionMessage(message)) {
+          if (isSetupParentDeathDetectionMessage(message) === true) {
             const parentPid = message[1].parentPid
             // console.log(`[Worker ${process.pid}] Setting up parent death detection for parent ${parentPid}`)
             setupParentDeathMonitoring(parentPid)
@@ -115,10 +115,10 @@ const platformRunnerImpl = Runner.PlatformRunner.of({
           }
 
           // Handle normal Effect worker messages
-          if (Array.isArray(message) && typeof message[0] === 'number') {
+          if (Array.isArray(message) === true && typeof message[0] === 'number') {
             if (message[0] === 0) {
               const result = handler(0, message[1])
-              if (Effect.isEffect(result)) {
+              if (Effect.isEffect(result) === true) {
                 const fiber = runFork(result)
                 fiber.addObserver(onExit)
                 FiberSet.unsafeAdd(fiberSet, fiber)

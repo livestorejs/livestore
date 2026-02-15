@@ -32,7 +32,7 @@ const ogRoute = OGImageRoute({
 
 export const prerender = ogEnabled
 
-export const getStaticPaths = ogEnabled ? ogRoute.getStaticPaths : () => []
+export const getStaticPaths = ogEnabled === true ? ogRoute.getStaticPaths : () => []
 
 let generationQueue: Promise<void> = Promise.resolve()
 
@@ -46,6 +46,6 @@ const enqueue = <T>(task: () => Promise<T>): Promise<T> => {
   return run
 }
 
-export const GET: typeof ogRoute.GET = ogEnabled
+export const GET: typeof ogRoute.GET = ogEnabled === true
   ? async (context) => enqueue(async () => ogRoute.GET(context))
   : async () => new Response('OG image generation disabled', { status: 204 })

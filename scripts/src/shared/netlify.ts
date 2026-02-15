@@ -84,7 +84,7 @@ export const deployToNetlify = ({
     const cwd = yield* CurrentWorkingDirectory
     const netlifyStatus = yield* cmdText(['bunx', 'netlify-cli', 'status'], { stderr: 'pipe' })
 
-    if (netlifyStatus.includes(NOT_LOGGED_IN_TO_NETLIFY_ERROR_MESSAGE)) {
+    if (netlifyStatus.includes(NOT_LOGGED_IN_TO_NETLIFY_ERROR_MESSAGE) === true) {
       return yield* new NetlifyError({ message: 'Not logged in to Netlify', reason: 'auth' })
     }
 
@@ -94,7 +94,7 @@ export const deployToNetlify = ({
 
     const resolvedSiteArg = yield* Effect.gen(function* () {
       const explicit = process.env.NETLIFY_SITE_ID
-      if (explicit && explicit !== '') return explicit
+      if (explicit !== undefined && explicit !== '') return explicit
       return yield* resolveSiteIdViaApi(site)
     })
 
@@ -107,14 +107,14 @@ export const deployToNetlify = ({
       'netlify',
       'deploy',
       // In debug mode, omit --json so we get full build logs in stdout/stderr
-      debugEnabled ? undefined : '--json',
-      debugEnabled ? '--debug' : undefined,
+      debugEnabled === true ? undefined : '--json',
+      debugEnabled === true ? '--debug' : undefined,
       '--filter',
       '@local/docs',
       // Split flow default: do not run Netlify build; rely on netlify.toml publish
       '--no-build',
       `--site=${resolvedSiteArg}`,
-      message ? `--message=${message}` : undefined,
+      message !== undefined ? `--message=${message}` : undefined,
       target._tag === 'prod' ? '--prod' : target._tag === 'alias' ? `--alias=${target.alias}` : undefined,
     ].filter(isNotUndefined)
 
@@ -134,7 +134,7 @@ export const deployToNetlify = ({
           ),
           (p) =>
             p.isRunning.pipe(
-              Effect.flatMap((running) => (running ? p.kill().pipe(Effect.catchAll(() => Effect.void)) : Effect.void)),
+              Effect.flatMap((running) => (running === true ? p.kill().pipe(Effect.catchAll(() => Effect.void)) : Effect.void)),
               Effect.ignore,
             ),
         )
@@ -194,7 +194,7 @@ const resolveNetlifyAuthToken = Effect.gen(function* () {
   }
 
   const homeDirectory = os.homedir()
-  if (!homeDirectory) {
+  if (homeDirectory == null) {
     return yield* new NetlifyError({
       message: 'Unable to determine home directory for Netlify auth token lookup',
       reason: 'auth',
@@ -219,7 +219,7 @@ const resolveNetlifyAuthToken = Effect.gen(function* () {
     }
 
     const readError = readResult.left
-    if (isFileMissingError(readError)) {
+    if (isFileMissingError(readError) === true) {
       continue
     }
 
@@ -230,7 +230,7 @@ const resolveNetlifyAuthToken = Effect.gen(function* () {
     })
   }
 
-  if (!configContent || !configPath) {
+  if (configContent == null || configPath == null) {
     return yield* new NetlifyError({
       message: `Netlify auth token not found. Checked: ${configCandidates.join(', ')}. Run 'bunx netlify-cli login' or set NETLIFY_AUTH_TOKEN.`,
       reason: 'auth',
@@ -248,13 +248,13 @@ const resolveNetlifyAuthToken = Effect.gen(function* () {
     ),
   )
 
-  const resolvedToken = config.users
+  const resolvedToken = config.users !== undefined
     ? Object.values(config.users)
         .map((user) => user.auth?.token)
         .find((candidate): candidate is string => typeof candidate === 'string' && candidate.length > 0)
     : undefined
 
-  if (!resolvedToken) {
+  if (resolvedToken == null) {
     return yield* new NetlifyError({
       message: `Netlify auth token not found in ${configPath}. Run 'bunx netlify-cli login' or set NETLIFY_AUTH_TOKEN.`,
       reason: 'auth',
@@ -290,12 +290,12 @@ const resolveSiteIdViaApi = Effect.fn('resolveSiteIdViaApi')(function* (siteName
     )
 
   const match = sites.find((s) => s.name === siteName)
-  return match ? match.id : siteName
+  return match !== undefined ? match.id : siteName
 })
 
 export const purgeNetlifyCdn = ({ siteId, siteSlug }: { siteId?: string; siteSlug?: string }) =>
   Effect.gen(function* () {
-    if (!siteId && !siteSlug) {
+    if (siteId == null && siteSlug == null) {
       return yield* new NetlifyError({
         message: 'A site identifier is required to purge the Netlify CDN cache',
         reason: 'unknown',
@@ -341,7 +341,7 @@ const determineNetlifyConfigCandidates = (homeDirectory: string): readonly strin
 const resolveOsConfigDirectory = (homeDirectory: string): string => {
   if (process.platform === 'win32') {
     const appData = process.env.APPDATA
-    if (appData && appData !== '') {
+    if (appData !== undefined && appData !== '') {
       return join(appData, 'netlify')
     }
     return join(homeDirectory, 'AppData', 'Roaming', 'netlify')
@@ -352,7 +352,7 @@ const resolveOsConfigDirectory = (homeDirectory: string): string => {
   }
 
   const xdgConfigHome = process.env.XDG_CONFIG_HOME
-  if (xdgConfigHome && xdgConfigHome !== '') {
+  if (xdgConfigHome !== undefined && xdgConfigHome !== '') {
     return join(xdgConfigHome, 'netlify')
   }
 

@@ -35,12 +35,12 @@ const vitestConfigPattern = /^vitest.*\.config\.(ts|js)$/
 const findVitestConfigs = (pkgPath: string): string[] => {
   const configs: string[] = []
   for (const file of fs.readdirSync(pkgPath)) {
-    if (vitestConfigPattern.test(file)) configs.push(path.join(pkgPath, file))
+    if (vitestConfigPattern.test(file) === true) configs.push(path.join(pkgPath, file))
   }
   const testsDir = path.join(pkgPath, 'tests')
-  if (fs.existsSync(testsDir) && fs.statSync(testsDir).isDirectory()) {
+  if (fs.existsSync(testsDir) === true && fs.statSync(testsDir).isDirectory() === true) {
     for (const file of fs.readdirSync(testsDir)) {
-      if (vitestConfigPattern.test(file)) configs.push(path.join(testsDir, file))
+      if (vitestConfigPattern.test(file) === true) configs.push(path.join(testsDir, file))
     }
   }
   return configs
@@ -63,18 +63,18 @@ const discoverPackagesWithTests = (workspaceRoot: string, excludePackages: strin
   try {
     // Check packages/@livestore/* directories
     const liveStoreDir = path.join(packagesDir, '@livestore')
-    if (fs.existsSync(liveStoreDir)) {
+    if (fs.existsSync(liveStoreDir) === true) {
       const liveStorePackages = fs.readdirSync(liveStoreDir)
       for (const pkg of liveStorePackages) {
         const pkgPath = path.join(liveStoreDir, pkg)
         const relativePath = `packages/@livestore/${pkg}`
 
-        if (excludePackages.includes(relativePath)) continue
+        if (excludePackages.includes(relativePath) === true) continue
 
-        if (fs.statSync(pkgPath).isDirectory()) {
+        if (fs.statSync(pkgPath).isDirectory() === true) {
           // Check if package has test files
           const hasTests = hasTestFiles(pkgPath)
-          if (hasTests) {
+          if (hasTests === true) {
             addPackage(pkgPath, relativePath)
           }
         }
@@ -83,17 +83,17 @@ const discoverPackagesWithTests = (workspaceRoot: string, excludePackages: strin
 
     // Check packages/@local/* directories
     const localDir = path.join(packagesDir, '@local')
-    if (fs.existsSync(localDir)) {
+    if (fs.existsSync(localDir) === true) {
       const localPackages = fs.readdirSync(localDir)
       for (const pkg of localPackages) {
         const pkgPath = path.join(localDir, pkg)
         const relativePath = `packages/@local/${pkg}`
 
-        if (excludePackages.includes(relativePath)) continue
+        if (excludePackages.includes(relativePath) === true) continue
 
-        if (fs.statSync(pkgPath).isDirectory()) {
+        if (fs.statSync(pkgPath).isDirectory() === true) {
           const hasTests = hasTestFiles(pkgPath)
-          if (hasTests) {
+          if (hasTests === true) {
             addPackage(pkgPath, relativePath)
           }
         }
@@ -101,9 +101,9 @@ const discoverPackagesWithTests = (workspaceRoot: string, excludePackages: strin
     }
 
     // Also check tests/package-common if not excluded
-    if (!excludePackages.includes('tests/package-common')) {
+    if (excludePackages.includes('tests/package-common') === false) {
       const packageCommonPath = path.join(workspaceRoot, 'tests/package-common')
-      if (fs.existsSync(packageCommonPath) && hasTestFiles(packageCommonPath)) {
+      if (fs.existsSync(packageCommonPath) === true && hasTestFiles(packageCommonPath) === true) {
         addPackage(packageCommonPath, 'tests/package-common')
       }
     }
@@ -124,12 +124,12 @@ const hasTestFiles = (dirPath: string): boolean => {
         const entryPath = path.join(dir, entry)
         const stat = fs.statSync(entryPath)
 
-        if (stat.isFile() && (entry.endsWith('.test.ts') || entry.endsWith('.test.tsx'))) {
+        if (stat.isFile() === true && (entry.endsWith('.test.ts') === true || entry.endsWith('.test.tsx') === true)) {
           return true
         }
 
-        if (stat.isDirectory() && entry !== 'node_modules' && entry !== 'dist') {
-          if (findTestFiles(entryPath)) {
+        if (stat.isDirectory() === true && entry !== 'node_modules' && entry !== 'dist') {
+          if (findTestFiles(entryPath) !== undefined) {
             return true
           }
         }
@@ -161,8 +161,8 @@ export const testUnitCommand = Cli.Command.make(
   Effect.fn(function* ({ filter }) {
     const workspaceRoot = yield* LivestoreWorkspace
 
-    if (Option.isSome(filter)) {
-      const target = path.isAbsolute(filter.value) ? filter.value : path.join(workspaceRoot, filter.value)
+    if (Option.isSome(filter) === true) {
+      const target = path.isAbsolute(filter.value) !== undefined ? filter.value : path.join(workspaceRoot, filter.value)
       const configs = findVitestConfigs(target)
       if (configs.length > 0) {
         yield* Effect.forEach(
@@ -183,7 +183,7 @@ export const testUnitCommand = Cli.Command.make(
     const allPackagesWithTests = discoverPackagesWithTests(workspaceRoot, sequentialPackages)
 
     // Some tests seem to be flaky on CI when running in parallel with the other packages, so we run them separately
-    if (isGithubAction) {
+    if (isGithubAction === true) {
       process.env.CI = '1'
 
       const vitestPathsToRunSequentially = sequentialPackages.map((pkg) => `${workspaceRoot}/${pkg}`)
@@ -202,7 +202,7 @@ export const testUnitCommand = Cli.Command.make(
           Effect.forEach(
             allPackagesWithTests,
             (target) => {
-              const args = target.config
+              const args = target.config !== undefined
                 ? ['vitest', 'run', '--config', target.config]
                 : ['vitest', 'run', `${workspaceRoot}/${target.path}`]
               return cmd(args).pipe(Effect.provide(LivestoreWorkspace.toCwd()))
@@ -217,7 +217,7 @@ export const testUnitCommand = Cli.Command.make(
       yield* Effect.forEach(
         [...sequentialTargets, ...allPackagesWithTests],
         (target) => {
-          const args = target.config
+          const args = target.config !== undefined
             ? ['vitest', 'run', '--config', target.config]
             : ['vitest', 'run', `${workspaceRoot}/${target.path}`]
           const label = target.config ?? target.path
@@ -268,7 +268,7 @@ export const syncProviderTest = Cli.Command.make(
     yield* syncProviderTestsPrepare.prepareCi
 
     const args: string[] = ['vitest', 'run']
-    if (Option.isSome(provider)) {
+    if (Option.isSome(provider) === true) {
       const suite = providerRegistry[provider.value].name
       // Vitest may render the provider name wrapped in quotes in the full test title.
       // Use a forgiving pattern that matches with or without surrounding quotes.
@@ -330,7 +330,7 @@ export const testCommand = Cli.Command.make(
   Effect.fn(function* () {
     yield* testUnitCommand.handler({ filter: Option.none() })
     yield* testIntegrationAllCommand.handler({
-      concurrency: isGithubAction ? 'sequential' : 'parallel',
+      concurrency: isGithubAction === true ? 'sequential' : 'parallel',
       localDevtoolsPreview: false,
     })
     yield* waSqliteTest.handler({})

@@ -39,7 +39,7 @@ export const getExecStatementsFromMaterializer = ({
         }
       : event.decoded
 
-  const eventArgsEncoded = isNil(event.decoded?.args)
+  const eventArgsEncoded = isNil(event.decoded?.args) !== undefined
     ? undefined
     : Schema.encodeUnknownSync(eventDef.schema)(event.decoded.args)
 
@@ -51,7 +51,7 @@ export const getExecStatementsFromMaterializer = ({
         }
       | QueryBuilder.Any,
   ) => {
-    if (isQueryBuilder(rawQueryOrQueryBuilder)) {
+    if (isQueryBuilder(rawQueryOrQueryBuilder) === true) {
       const { query, bindValues } = rawQueryOrQueryBuilder.asSql()
       const rawResults = dbState.select(query, prepareBindValues(bindValues, query))
       const resultSchema = getResultSchema(rawQueryOrQueryBuilder)
@@ -86,7 +86,7 @@ export const getExecStatementsFromMaterializer = ({
 export const makeMaterializerHash =
   ({ schema, dbState }: { schema: LiveStoreSchema; dbState: SqliteDb }) =>
   (event: LiveStoreEvent.Client.Encoded): Option.Option<number> => {
-    if (isDevEnv()) {
+    if (isDevEnv() === true) {
       // Hashing is only needed during dev-mode diagnostics. Skip work entirely for
       // unknown events (no definition/materializer) so we do not introduce noisy
       // warnings while still returning `Option.none()` to disable hash checks.
@@ -126,10 +126,10 @@ const fromMaterializerResult = (
   bindValues: BindValues
   writeTables: ReadonlySet<string> | undefined
 }> => {
-  if (isReadonlyArray(materializerResult)) {
+  if (isReadonlyArray(materializerResult) === true) {
     return materializerResult.flatMap(fromMaterializerResult)
   }
-  if (isQueryBuilder(materializerResult)) {
+  if (isQueryBuilder(materializerResult) === true) {
     const { query, bindValues, usedTables } = materializerResult.asSql()
     return [{ sql: query, bindValues: bindValues as BindValues, writeTables: usedTables }]
   } else if (typeof materializerResult === 'string') {
@@ -155,7 +155,7 @@ export const replaceSessionIdSymbol = (
 }
 
 const deepReplaceValue = <S, R>(input: any, searchValue: S, replaceValue: R): void => {
-  if (Array.isArray(input)) {
+  if (Array.isArray(input) === true) {
     for (const i in input) {
       if (input[i] === searchValue) {
         input[i] = replaceValue

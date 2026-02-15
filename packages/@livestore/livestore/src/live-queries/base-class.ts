@@ -299,7 +299,7 @@ export const makeGetAtomResult = (
     }
 
     // Signal case
-    if (atom._tag === 'signal' && Predicate.hasProperty(atom, 'ref')) {
+    if (atom._tag === 'signal' && Predicate.hasProperty(atom, 'ref') === true) {
       return get(atom.ref, otelContext, debugRefreshReason)
     }
 
@@ -316,7 +316,7 @@ export const withRCMap = <T extends LiveQuery.Any | ISignal<any>>(
 ): ((ctx: ReactivityGraphContext, otelContext?: otel.Context) => RcRef<T>) => {
   return (ctx, otelContext) => {
     let item = ctx.defRcMap.get(id)
-    if (item) {
+    if (item !== undefined) {
       item.rc++
       return item as RcRef<T>
     }

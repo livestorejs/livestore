@@ -19,11 +19,11 @@ import type { NormalizedQueryable } from './types.ts'
  * @throws If the input is not a valid Queryable
  */
 export const normalizeQueryable = <TResult>(queryable: Queryable<TResult>): NormalizedQueryable<TResult> => {
-  if (!isQueryable(queryable)) {
+  if (isQueryable(queryable) === false) {
     return shouldNeverHappen('Expected a Queryable value')
   }
 
-  if (isQueryBuilder(queryable)) {
+  if (isQueryBuilder(queryable) === true) {
     return { _tag: 'definition', def: queryDb(queryable) }
   }
 

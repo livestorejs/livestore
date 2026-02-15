@@ -306,4 +306,4 @@ const makeStore = async (): Promise<Store<typeof schema>> =>
 const makeAllTodosQuery = () => queryDb(todos, { label: 'all-todos' })
 
 const makeTodosByCompletedQuery = (completed: boolean) =>
-  queryDb(todos.where({ completed }), { label: completed ? 'completed-true' : 'completed-false' })
+  queryDb(todos.where({ completed }), { label: completed === true ? 'completed-true' : 'completed-false' })

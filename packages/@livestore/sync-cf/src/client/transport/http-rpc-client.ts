@@ -135,7 +135,7 @@ export const makeHttpSync =
           payload,
           cursor: mapCursor(cursor),
         }).pipe(
-          options?.live
+          options?.live !== undefined
             ? // Phase 2: Simulate `live` pull by polling for new events
               Stream.concatWithLastElement((lastElement) => {
                 const initialPhase2Cursor = lastElement.pipe(

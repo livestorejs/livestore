@@ -90,7 +90,7 @@ export const makeDurableObject: MakeDurableObjectClass = (options) => {
 
   const Logging = Logger.consoleWithThread('SyncDo')
 
-  const Observability: Layer.Layer<never> = options?.otel?.baseUrl
+  const Observability: Layer.Layer<never> = options?.otel?.baseUrl !== undefined
     ? (Otlp.layer({
         baseUrl: options.otel.baseUrl,
         tracerExportInterval: 50,
@@ -109,7 +109,7 @@ export const makeDurableObject: MakeDurableObjectClass = (options) => {
       const WebSocketRpcServerLive = makeRpcServer({ doSelf: this, doOptions: options })
 
       // This registers the `webSocketMessage` and `webSocketClose` handlers
-      if (enabledTransports.has('ws')) {
+      if (enabledTransports.has('ws') === true) {
         setupDurableObjectWebSocketRpc({
           doSelf: this,
           rpcLayer: WebSocketRpcServerLive,
@@ -154,7 +154,7 @@ export const makeDurableObject: MakeDurableObjectClass = (options) => {
 
         const { storeId, payload, transport } = searchParams
 
-        if (!enabledTransports.has(transport)) {
+        if (enabledTransports.has(transport) === false) {
           throw new Error(`Transport ${transport} is not enabled (based on \`options.enabledTransports\`)`)
         }
 
@@ -212,7 +212,7 @@ export const makeDurableObject: MakeDurableObjectClass = (options) => {
      * Handles DO <-> DO RPC calls
      */
     async rpc(payload: Uint8Array<ArrayBuffer>): Promise<Uint8Array<ArrayBuffer> | CfTypes.ReadableStream> {
-      if (!enabledTransports.has('do-rpc')) {
+      if (enabledTransports.has('do-rpc') === false) {
         throw new Error('Do RPC transport is not enabled (based on `options.enabledTransports`)')
       }
 

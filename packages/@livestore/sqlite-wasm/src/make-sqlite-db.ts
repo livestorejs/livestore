@@ -54,7 +54,7 @@ export const makeSqliteDb = <
               try {
                 sqlite3.step(stmt)
               } finally {
-                if (options?.onRowsChanged) {
+                if (options?.onRowsChanged !== undefined) {
                   options.onRowsChanged(sqlite3.changes(dbPointer))
                 }
 
@@ -110,7 +110,7 @@ export const makeSqliteDb = <
           },
           finalize: () => {
             // Avoid double finalization which leads to a crash
-            if (isFinalized) {
+            if (isFinalized === true) {
               return
             }
 
@@ -152,7 +152,7 @@ export const makeSqliteDb = <
       metadata.deleteDb()
     },
     close: () => {
-      if (isClosed) {
+      if (isClosed === true) {
         return
       }
 

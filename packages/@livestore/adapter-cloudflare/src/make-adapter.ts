@@ -60,7 +60,7 @@ export const makeAdapter =
       const stateDbFileName = getStateDbFileName(schemaHashSuffix)
       const eventlogDbFileName = getEventlogDbFileName()
 
-      if (resetPersistence) {
+      if (resetPersistence === true) {
         yield* resetDurableObjectPersistence({
           storage,
           storeId,
@@ -155,7 +155,7 @@ export const makeAdapter =
         sqliteDb: syncInMemoryDb,
         webmeshMode: 'proxy',
         connectWebmeshNode: Effect.fnUntraced(function* ({ webmeshNode }) {
-          if (devtoolsOptions.enabled) {
+          if (devtoolsOptions.enabled === true) {
             console.log('connectWebmeshNode', { webmeshNode })
             //   yield* Webmesh.connectViaWebSocket({
             //     node: webmeshNode,
@@ -216,7 +216,7 @@ const safeSqlExec = (storage: CfTypes.DurableObjectStorage, query: string, bindi
   try {
     storage.sql.exec(query, binding)
   } catch (error) {
-    if (isMissingVfsTableError(error)) {
+    if (isMissingVfsTableError(error) === true) {
       return
     }
 

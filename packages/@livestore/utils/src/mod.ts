@@ -130,7 +130,7 @@ export const debugCatch = <T>(try_: () => T): T => {
  * Mutates the input value.
  */
 export const recRemoveUndefinedValues = (val: any): void => {
-  if (Array.isArray(val)) {
+  if (Array.isArray(val) === true) {
     val.forEach(recRemoveUndefinedValues)
   } else if (typeof val === 'object') {
     Object.keys(val).forEach((key) => {
@@ -188,7 +188,7 @@ export const casesHandled = (unexpectedCase: never): never => {
  * ```
  */
 export const assertNever = (failIfFalse: boolean, msg?: string): void => {
-  if (!failIfFalse) {
+  if (failIfFalse == null) {
     // oxlint-disable-next-line eslint(no-debugger) -- intentional breakpoint for impossible states
     debugger
     throw new Error(`This should never happen: ${msg}`)
@@ -303,7 +303,7 @@ export const throttle = (fn: () => void, ms: number) => {
   let shouldCallAgain = false
 
   const timeoutFunc = () => {
-    if (shouldCallAgain) {
+    if (shouldCallAgain === true) {
       fn()
       shouldCallAgain = false
       setTimeout(timeoutFunc, ms)
@@ -313,7 +313,7 @@ export const throttle = (fn: () => void, ms: number) => {
   }
 
   return () => {
-    if (shouldWait) {
+    if (shouldWait === true) {
       shouldCallAgain = true
       return
     }
@@ -374,7 +374,7 @@ export const memoizeByStringifyArgs = <T extends (...args: any[]) => any>(fn: T)
 
   return ((...args: any[]) => {
     const key = JSON.stringify(args)
-    if (cache.has(key)) {
+    if (cache.has(key) === true) {
       return cache.get(key)
     }
 
@@ -400,7 +400,7 @@ export const memoizeByRef = <T extends (arg: any) => any>(fn: T): T => {
   const cache = new Map<Parameters<T>[0], ReturnType<T>>()
 
   return ((arg: any) => {
-    if (cache.has(arg)) {
+    if (cache.has(arg) === true) {
       return cache.get(arg)
     }
 

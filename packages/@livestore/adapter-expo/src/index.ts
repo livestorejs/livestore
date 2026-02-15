@@ -119,7 +119,7 @@ export const makePersistedAdapter =
   (options: MakeDbOptions = {}): Adapter =>
   (adapterArgs) =>
     Effect.gen(function* () {
-      if (!IS_NEW_ARCH) {
+      if (IS_NEW_ARCH === false) {
         return yield* UnknownError.make({
           cause: new Error(
             'The LiveStore Expo adapter requires the new React Native architecture (aka Fabric). See https://docs.expo.dev/guides/new-architecture',
@@ -144,7 +144,7 @@ export const makePersistedAdapter =
 
       const shutdownChannel = yield* makeShutdownChannel(storeId)
 
-      if (resetPersistence) {
+      if (resetPersistence === true) {
         yield* shutdownChannel.send(IntentionalShutdownCause.make({ reason: 'adapter-reset' }))
 
         yield* resetExpoPersistence({ storeId, storage, schema })
@@ -161,7 +161,7 @@ export const makePersistedAdapter =
         Effect.forkScoped,
       )
 
-      const devtoolsUrl = devtoolsEnabled ? getDevtoolsUrl().toString() : 'ws://127.0.0.1:4242'
+      const devtoolsUrl = devtoolsEnabled === true ? getDevtoolsUrl().toString() : 'ws://127.0.0.1:4242'
 
       const { leaderThread, initialSnapshot } = yield* makeLeaderThread({
         storeId,
@@ -190,7 +190,7 @@ export const makePersistedAdapter =
         sqliteDb,
         webmeshMode: 'proxy',
         connectWebmeshNode: Effect.fnUntraced(function* ({ webmeshNode }) {
-          if (devtoolsEnabled) {
+          if (devtoolsEnabled === true) {
             yield* Webmesh.connectViaWebSocket({
               node: webmeshNode,
               url: devtoolsUrl,
@@ -345,7 +345,7 @@ const resolveExpoPersistencePaths = ({
   schema: LiveStoreSchema
   storage: { directory?: string; subDirectory?: string } | undefined
 }) => {
-  const subDirectory = storage?.subDirectory ? `${storage.subDirectory.replace(/\/$/, '')}/` : ''
+  const subDirectory = storage?.subDirectory !== undefined ? `${storage.subDirectory.replace(/\/$/, '')}/` : ''
   const pathJoin = (...paths: string[]) => paths.join('/').replaceAll(/\/+/g, '/')
   const directoryBasePath = storage?.directory ?? SQLite.defaultDatabaseDirectory
 
@@ -405,7 +405,7 @@ const makeDevtoolsOptions = ({
   clientId: string
 }): Effect.Effect<DevtoolsOptions, UnknownError, Scope.Scope> =>
   Effect.sync(() => {
-    if (!devtoolsEnabled) {
+    if (devtoolsEnabled === false) {
       return {
         enabled: false,
       }

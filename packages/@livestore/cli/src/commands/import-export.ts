@@ -43,7 +43,7 @@ const exportEvents = ({
     }
 
     const fs = yield* FileSystem.FileSystem
-    const absOutputPath = path.isAbsolute(outputPath) ? outputPath : path.resolve(process.cwd(), outputPath)
+    const absOutputPath = path.isAbsolute(outputPath) === true ? outputPath : path.resolve(process.cwd(), outputPath)
 
     yield* fs.writeFileString(absOutputPath, jsonStringifyPretty(result.data)).pipe(
       Effect.mapError(
@@ -82,7 +82,7 @@ const importEvents = ({
 > =>
   Effect.gen(function* () {
     const fs = yield* FileSystem.FileSystem
-    const absInputPath = path.isAbsolute(inputPath) ? inputPath : path.resolve(process.cwd(), inputPath)
+    const absInputPath = path.isAbsolute(inputPath) === true ? inputPath : path.resolve(process.cwd(), inputPath)
 
     const exists = yield* fs.exists(absInputPath).pipe(
       Effect.mapError(
@@ -93,7 +93,7 @@ const importEvents = ({
           }),
       ),
     )
-    if (!exists) {
+    if (exists === false) {
       return yield* new SyncOps.ImportError({
         cause: new Error(`File not found: ${absInputPath}`),
         note: `Import file does not exist at ${absInputPath}`,
@@ -124,8 +124,8 @@ const importEvents = ({
     /** Validate export file format before proceeding */
     const validation = yield* SyncOps.validateExportData({ data: parsedContent, targetStoreId: storeId })
 
-    if (validation.storeIdMismatch) {
-      if (!force) {
+    if (validation.storeIdMismatch !== undefined) {
+      if (force == null) {
         return yield* new SyncOps.ImportError({
           cause: new Error(`Store ID mismatch: file has '${validation.sourceStoreId}', expected '${storeId}'`),
           note: `The export file was created for a different store. Use --force to import anyway.`,
@@ -143,7 +143,7 @@ const importEvents = ({
       )
     }
 
-    if (dryRun) {
+    if (dryRun !== undefined) {
       yield* Console.log(`Dry run - validating import file...`)
       yield* Console.log(`Dry run complete. ${validation.eventCount} events would be imported.`)
       return
@@ -260,8 +260,8 @@ export const importCommand = Cli.Command.make(
     yield* Console.log(`   Config: ${config}`)
     yield* Console.log(`   Store ID: ${storeId}`)
     yield* Console.log(`   Input: ${input}`)
-    if (force) yield* Console.log(`   Force: enabled`)
-    if (dryRun) yield* Console.log(`   Dry run: enabled`)
+    if (force !== undefined) yield* Console.log(`   Force: enabled`)
+    if (dryRun !== undefined) yield* Console.log(`   Dry run: enabled`)
     yield* Console.log('')
 
     yield* importEvents({

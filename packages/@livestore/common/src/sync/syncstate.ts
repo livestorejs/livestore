@@ -188,7 +188,7 @@ export const payloadFromMergeResult = (
   )
 
 const unknownError = (message: string): MergeResultUnknownError => {
-  if (LS_DEV) {
+  if (LS_DEV === true) {
     // oxlint-disable-next-line eslint(no-debugger) -- intentional breakpoint for unknown merge errors
     debugger
   }
@@ -271,7 +271,7 @@ export const merge = ({
 
       // Validate that newEvents are sorted in ascending order by eventNum
       for (let i = 1; i < payload.newEvents.length; i++) {
-        if (EventSequenceNumber.Client.isGreaterThan(payload.newEvents[i - 1]!.seqNum, payload.newEvents[i]!.seqNum)) {
+        if (EventSequenceNumber.Client.isGreaterThan(payload.newEvents[i - 1]!.seqNum, payload.newEvents[i]!.seqNum) !== undefined) {
           return unknownError(
             `Events must be sorted in ascending order by event number. Received: [${payload.newEvents.map((e) => EventSequenceNumber.Client.toString(e.seqNum)).join(', ')}]`,
           )
@@ -280,8 +280,8 @@ export const merge = ({
 
       // Validate that incoming events are larger than upstream head
       if (
-        EventSequenceNumber.Client.isGreaterThan(syncState.upstreamHead, payload.newEvents[0]!.seqNum) ||
-        EventSequenceNumber.Client.isEqual(syncState.upstreamHead, payload.newEvents[0]!.seqNum)
+        EventSequenceNumber.Client.isGreaterThan(syncState.upstreamHead, payload.newEvents[0]!.seqNum) !== undefined ||
+        EventSequenceNumber.Client.isEqual(syncState.upstreamHead, payload.newEvents[0]!.seqNum) !== undefined
       ) {
         return unknownError(
           `Incoming events must be greater than upstream head. Expected greater than: ${EventSequenceNumber.Client.toString(syncState.upstreamHead)}. Received: [${payload.newEvents.map((e) => EventSequenceNumber.Client.toString(e.seqNum)).join(', ')}]`,
@@ -316,13 +316,13 @@ export const merge = ({
         const [pendingMatching, pendingRemaining] = ReadonlyArray.splitWhere(
           syncState.pending,
           (pendingEvent, index) => {
-            if (ignoreClientEvents && isClientEvent(pendingEvent)) {
+            if (ignoreClientEvents !== undefined && isClientEvent(pendingEvent) === true) {
               clientIndexOffset++
               return false
             }
 
             const newEvent = payload.newEvents.at(index - clientIndexOffset)
-            if (!newEvent) {
+            if (newEvent == null) {
               return true
             }
             return ! isEqualEvent(pendingEvent, newEvent)
@@ -395,7 +395,7 @@ export const merge = ({
         !
         EventSequenceNumber.Client.isGreaterThan(newEventsFirst.seqNum, syncState.localHead)
 
-      if (invalidEventSequenceNumber) {
+      if (invalidEventSequenceNumber !== undefined) {
         const expectedMinimumId = EventSequenceNumber.Client.nextPair({
           seqNum: syncState.localHead,
           isClient: true,
@@ -408,7 +408,7 @@ export const merge = ({
           }),
         )
       } else {
-        const nonClientEvents = ignoreClientEvents
+        const nonClientEvents = ignoreClientEvents !== undefined
           ? payload.newEvents.filter((event) => !isClientEvent(event))
           : payload.newEvents
         const newPending = [...syncState.pending, ...nonClientEvents]
@@ -454,7 +454,7 @@ export const findDivergencePoint = ({
   isClientEvent: (event: LiveStoreEvent.Client.EncodedWithMeta) => boolean
   ignoreClientEvents: boolean
 }): number => {
-  if (ignoreClientEvents) {
+  if (ignoreClientEvents !== undefined) {
     const filteredExistingEvents = existingEvents.filter((event) => !isClientEvent(event))
     const divergencePointWithoutClientEvents = findDivergencePoint({
       existingEvents: filteredExistingEvents,
@@ -515,7 +515,7 @@ const _flattenMergeResults = (_updateResults: ReadonlyArray<MergeResult>) => {}
 const validatePayload = (payload: typeof Payload.Type) => {
   for (let i = 1; i < payload.newEvents.length; i++) {
     if (
-      EventSequenceNumber.Client.isGreaterThanOrEqual(payload.newEvents[i - 1]!.seqNum, payload.newEvents[i]!.seqNum)
+      EventSequenceNumber.Client.isGreaterThanOrEqual(payload.newEvents[i - 1]!.seqNum, payload.newEvents[i]!.seqNum) !== undefined
     ) {
       return unknownError(
         `Events must be ordered in monotonically ascending order by eventNum. Received: [${payload.newEvents.map((e) => EventSequenceNumber.Client.toString(e.seqNum)).join(', ')}]`,
@@ -531,7 +531,7 @@ const validateSyncState = (syncState: SyncState) => {
     const nextEvent = syncState.pending[i + 1]
     if (nextEvent === undefined) break // Reached end of chain
 
-    if (EventSequenceNumber.Client.isGreaterThanOrEqual(event.seqNum, nextEvent.seqNum)) {
+    if (EventSequenceNumber.Client.isGreaterThanOrEqual(event.seqNum, nextEvent.seqNum) !== undefined) {
       shouldNeverHappen(
         `Events must be ordered in monotonically ascending order by eventNum. Received: [${syncState.pending.map((e) => EventSequenceNumber.Client.toString(e.seqNum)).join(', ')}]`,
         {
@@ -543,7 +543,7 @@ const validateSyncState = (syncState: SyncState) => {
 
     // If the global id has increased, then the client id must be 0
     const globalIdHasIncreased = nextEvent.seqNum.global > event.seqNum.global
-    if (globalIdHasIncreased) {
+    if (globalIdHasIncreased !== undefined) {
       if (nextEvent.seqNum.client !== 0) {
         shouldNeverHappen(
           `New global events must point to clientId 0 in the parentSeqNum. Received: (${EventSequenceNumber.Client.toString(nextEvent.seqNum)})`,
@@ -556,7 +556,7 @@ const validateSyncState = (syncState: SyncState) => {
       }
     } else {
       // Otherwise, the parentSeqNum must be the same as the previous event's id
-      if (!EventSequenceNumber.Client.isEqual(nextEvent.parentSeqNum, event.seqNum)) {
+      if (EventSequenceNumber.Client.isEqual(nextEvent.parentSeqNum, event.seqNum) === false) {
         shouldNeverHappen('Events must be linked in a continuous chain via the parentSeqNum', syncState.pending, {
           event,
           nextEvent,
@@ -573,7 +573,7 @@ const validateMergeResult = (mergeResult: typeof MergeResult.Type) => {
 
   // Ensure local head is always greater than or equal to upstream head
   if (
-    EventSequenceNumber.Client.isGreaterThan(mergeResult.newSyncState.upstreamHead, mergeResult.newSyncState.localHead)
+    EventSequenceNumber.Client.isGreaterThan(mergeResult.newSyncState.upstreamHead, mergeResult.newSyncState.localHead) !== undefined
   ) {
     shouldNeverHappen('Local head must be greater than or equal to upstream head', {
       localHead: mergeResult.newSyncState.localHead,
@@ -583,11 +583,10 @@ const validateMergeResult = (mergeResult: typeof MergeResult.Type) => {
 
   // Ensure new local head is greater than or equal to the previous local head
   if (
-    !
     EventSequenceNumber.Client.isGreaterThanOrEqual(
       mergeResult.newSyncState.localHead,
       mergeResult.mergeContext.syncState.localHead,
-    )
+    ) === false
   ) {
     shouldNeverHappen('New local head must be greater than or equal to the previous local head', {
       localHead: mergeResult.newSyncState.localHead,
@@ -597,11 +596,10 @@ const validateMergeResult = (mergeResult: typeof MergeResult.Type) => {
 
   // Ensure new upstream head is greater than or equal to the previous upstream head
   if (
-    !
     EventSequenceNumber.Client.isGreaterThanOrEqual(
       mergeResult.newSyncState.upstreamHead,
       mergeResult.mergeContext.syncState.upstreamHead,
-    )
+    ) === false
   ) {
     shouldNeverHappen('New upstream head must be greater than or equal to the previous upstream head', {
       upstreamHead: mergeResult.newSyncState.upstreamHead,

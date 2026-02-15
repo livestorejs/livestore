@@ -24,7 +24,7 @@ export const hash = (schema: Schema.Schema<any>) => {
 }
 
 const resolveStructAst = (ast: SchemaAST.AST): SchemaAST.AST => {
-  if (SchemaAST.isTransformation(ast)) {
+  if (SchemaAST.isTransformation(ast) === true) {
     return resolveStructAst(ast.from)
   }
 

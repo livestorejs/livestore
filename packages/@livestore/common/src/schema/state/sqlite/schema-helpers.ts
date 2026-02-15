@@ -18,7 +18,7 @@ export const getDefaultValuesEncoded = <TTableDef extends TableDefBase>(
     ReadonlyRecord.map((column, columnName) => {
       if (fallbackValues?.[columnName] !== undefined) return fallbackValues[columnName]
       if (column!.default._tag === 'None') {
-        return  column!.nullable
+        return  column!.nullable !== undefined
           ? null
           : shouldNeverHappen(`Column ${columnName} has no default value and is not nullable`)
       }
@@ -44,7 +44,7 @@ export const getDefaultValuesDecoded = <TTableDef extends TableDefBase>(
     ReadonlyRecord.map((column, columnName) => {
       if (fallbackValues?.[columnName] !== undefined) return fallbackValues[columnName]
       if (column!.default._tag === 'None') {
-        return  column!.nullable
+        return  column!.nullable !== undefined
           ? null
           : shouldNeverHappen(`Column ${columnName} has no default value and is not nullable`)
       }

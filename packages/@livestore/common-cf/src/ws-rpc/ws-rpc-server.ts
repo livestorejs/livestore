@@ -155,7 +155,7 @@ export const setupDurableObjectWebSocketRpc = ({
 
   const launchServer = (ws: CfTypes.WebSocket) =>
     Effect.gen(function* () {
-      if (serverCtxMap.has(ws)) {
+      if (serverCtxMap.has(ws) === true) {
         return serverCtxMap.get(ws)!
       }
 
@@ -213,7 +213,7 @@ export const setupDurableObjectWebSocketRpc = ({
   const webSocketClose: CfTypes.DurableObject['webSocketClose'] = async (ws, _code, _reason, _wasClean) => {
     const ctx = serverCtxMap.get(ws)
     // console.log('webSocketClose', ctx, ws)
-    if (ctx) {
+    if (ctx !== undefined) {
       await Scope.close(ctx.scope, Exit.void).pipe(Effect.runPromise)
       serverCtxMap.delete(ws)
     }
@@ -304,7 +304,7 @@ const makeSocketProtocol = ({ incomingQueue, ws, onMessage }: WsRpcServerArgs) =
               while: () => i < decoded.length,
               body: () => {
                 const request = decoded[i++]!
-                if (onMessage) {
+                if (onMessage !== undefined) {
                   onMessage(request, ws)
                 }
                 return writeRequest(id, request)

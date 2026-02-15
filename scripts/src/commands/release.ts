@@ -19,7 +19,7 @@ const listSnapshotPackages = (cwd: string) =>
     const packages: string[] = []
 
     const baseExists = yield* fsEffect.exists(baseDir)
-    if (!baseExists) {
+    if (baseExists === false) {
       yield* Effect.logWarning(`Snapshot packages directory not found at ${baseDir}`)
       return packages
     }
@@ -31,7 +31,7 @@ const listSnapshotPackages = (cwd: string) =>
 
       const packageJsonPath = `${baseDir}/${entry}/package.json`
       const hasPackageJson = yield* fsEffect.exists(packageJsonPath)
-      if (!hasPackageJson) continue
+      if (hasPackageJson === false) continue
 
       const pkgResult = yield* fsEffect.readFileString(packageJsonPath).pipe(
         Effect.flatMap((content) =>
@@ -54,7 +54,7 @@ const listSnapshotPackages = (cwd: string) =>
 
       const pkgJson = pkgResult.right
       const name = typeof pkgJson.name === 'string' ? pkgJson.name : undefined
-      if (!name) {
+      if (name == null) {
         yield* Effect.logWarning(`Skipping ${packageJsonPath} while preparing snapshot summary: missing package name`)
         continue
       }
@@ -90,7 +90,7 @@ const formatSnapshotSummaryMarkdown = ({
   formatMarkdownTable({
     title: 'Snapshot release',
     headers: ['Package', 'Version', 'Tag', 'Mode'],
-    rows: packages.map((pkg) => [pkg, snapshotVersion, 'snapshot', dryRun ? 'dry-run' : 'published']),
+    rows: packages.map((pkg) => [pkg, snapshotVersion, 'snapshot', dryRun !== undefined ? 'dry-run' : 'published']),
     emptyMessage: '_No packages matched the snapshot filter._',
   })
 
@@ -134,7 +134,7 @@ export const releaseSnapshotCommand = Cli.Command.make(
      * pnpm publish resolves workspace:* → concrete versions automatically,
      * then delegates to the system npm binary for OIDC trusted publishing.
      */
-    const dryRunFlag = dryRun ? '--dry-run' : ''
+    const dryRunFlag = dryRun !== undefined ? '--dry-run' : ''
     for (const pkg of snapshotPackages) {
       const pkgDir = `${cwd}/packages/${pkg}`
       const cwdLayer = CurrentWorkingDirectory.fromPath(pkgDir)
@@ -149,7 +149,7 @@ export const releaseSnapshotCommand = Cli.Command.make(
         Effect.catchTag('CmdError', () => Effect.succeed(false)),
       )
 
-      if (alreadyPublished) {
+      if (alreadyPublished !== undefined) {
         yield* Effect.log(`${pkg}@${snapshotVersion} already published, skipping`)
         continue
       }

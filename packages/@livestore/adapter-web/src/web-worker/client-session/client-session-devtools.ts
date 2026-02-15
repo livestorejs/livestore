@@ -17,7 +17,7 @@ export const logDevtoolsUrl = Effect.fn('@livestore/adapter-web:client-session:d
   storeId: string
   clientId: string
   sessionId: string
-}) {
+) {
   if (isDevEnv()) {
     const devtoolsPath = globalThis.LIVESTORE_DEVTOOLS_PATH ?? `/_livestore`
     const devtoolsBaseUrl = `${location.origin}${devtoolsPath}`
@@ -61,7 +61,7 @@ export const connectWebmeshNodeClientSession = Effect.fn(function* ({
   devtoolsEnabled: boolean
   schema: LiveStoreSchema
 }) {
-  if (devtoolsEnabled) {
+  if (devtoolsEnabled === true) {
     const { clientId, sessionId, storeId } = sessionInfo
     yield* logDevtoolsUrl({ clientId, sessionId, schema, storeId })
 

@@ -83,7 +83,7 @@ export default {
   async fetch(request: Request, env: Env): Promise<Response> {
     try {
       const upgradeHeader = request.headers.get('Upgrade')
-      if (!upgradeHeader || upgradeHeader !== 'websocket') {
+      if (upgradeHeader == null || upgradeHeader !== 'websocket') {
         return new Response('Durable Object expected Upgrade: websocket', { status: 426 })
       }
 

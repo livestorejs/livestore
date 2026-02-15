@@ -50,7 +50,7 @@ export const queryGraphQL = <
   } = {},
 ): LiveQueries.LiveQueryDef<TResultMapped> => {
   const documentName = graphql.getOperationAST(document)?.name?.value
-  const hash = options.deps
+  const hash = options.deps !== undefined
     ? LiveQueries.depsToString(options.deps)
     : (documentName ?? shouldNeverHappen('No document name found and no deps provided'))
   const label = options.label ?? documentName ?? 'graphql'
@@ -132,7 +132,7 @@ export class LiveStoreGraphQLQuery<
     this.mapResult =
       map === undefined
         ? (res: TResult) => res as any as TResultMapped
-        : Schema.isSchema(map)
+        : Schema.isSchema(map) === true
           ? (res: TResult) => {
               const parseResult = Schema.decodeEither(map as Schema.Schema<TResultMapped, TResult>)(res)
               if (parseResult._tag === 'Left') {
@@ -169,7 +169,7 @@ export class LiveStoreGraphQLQuery<
     this.results$ = this.reactivityGraph.makeThunk<TResultMapped>(
       (get, setDebugInfo, ctx, otelContext, debugRefreshReason) => {
         const { store, otelTracer, rootOtelContext } = ctx
-        const variableValues = ReactiveGraph.isThunk(variableValues$OrvariableValues)
+        const variableValues = ReactiveGraph.isThunk(variableValues$OrvariableValues) === true
           ? (get(variableValues$OrvariableValues, otelContext, debugRefreshReason) as TVariableValues)
           : (variableValues$OrvariableValues as TVariableValues)
         const { result, queriedTables, durationMs } = this.queryOnce({
@@ -233,7 +233,7 @@ export class LiveStoreGraphQLQuery<
 
       // TODO track number of nested SQL queries via Otel + debug info
 
-      if (res.errors) {
+      if (res.errors !== undefined) {
         span.setStatus({ code: otel.SpanStatusCode.ERROR, message: 'GraphQL error' })
         span.setAttribute('graphql.error', res.errors.join('\n'))
         span.setAttribute('graphql.error-detail', JSON.stringify(res.errors))
@@ -276,13 +276,13 @@ export class LiveStoreGraphQLQuery<
 }
 
 const unpackStoreContext = (store: Store): { schema: graphql.GraphQLSchema; context: BaseGraphQLContext } => {
-  if (!Predicate.hasProperty(store.context, 'graphql')) {
+  if (Predicate.hasProperty(store.context, 'graphql') === false) {
     return shouldNeverHappen('Store context does not contain graphql context')
   }
-  if (!Predicate.hasProperty(store.context.graphql, 'schema')) {
+  if (Predicate.hasProperty(store.context.graphql, 'schema') === false) {
     return shouldNeverHappen('Store context does not contain graphql.schema')
   }
-  if (!Predicate.hasProperty(store.context.graphql, 'context')) {
+  if (Predicate.hasProperty(store.context.graphql, 'context') === false) {
     return shouldNeverHappen('Store context does not contain graphql.context')
   }
   const schema = store.context.graphql.schema as graphql.GraphQLSchema

@@ -29,7 +29,7 @@ export const createAstroTwoslashCodeIntegration = (options: AstroTwoslashCodeOpt
   let watchFiber: Fiber.RuntimeFiber<void> | null = null
 
   const runSnippetBuild = () => {
-    if (!resolvedBuildOptions) {
+    if (resolvedBuildOptions == null) {
       return Promise.resolve()
     }
 
@@ -67,18 +67,18 @@ export const createAstroTwoslashCodeIntegration = (options: AstroTwoslashCodeOpt
         })
       },
       'astro:server:start': async (_context: ServerStartContext) => {
-        if (!autoBuild || shouldSkipSnippetAutoBuildAndWatch()) {
+        if (autoBuild == null || shouldSkipSnippetAutoBuildAndWatch() === true) {
           return
         }
 
         await runSnippetBuild()
 
-        if (resolvedBuildOptions && watchFiber === null) {
+        if (resolvedBuildOptions !== undefined && watchFiber === null) {
           watchFiber = Effect.runFork(watchSnippets(resolvedBuildOptions))
         }
       },
       'astro:build:start': async (_context: BuildStartContext) => {
-        if (!autoBuild || shouldSkipSnippetAutoBuildAndWatch()) {
+        if (autoBuild == null || shouldSkipSnippetAutoBuildAndWatch() === true) {
           return
         }
 

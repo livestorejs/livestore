@@ -59,7 +59,7 @@ const snippetManifestCache = new Map<string, SnippetManifestCacheEntry>()
 const isRecord = (value: unknown): value is Record<string, unknown> => typeof value === 'object' && value !== null
 
 const isSnippetManifestEntry = (value: unknown): value is SnippetManifestEntry => {
-  if (!isRecord(value)) return false
+  if (isRecord(value) === false) return false
   const { entryFile, artifactPath } = value
   const hasEntryFile = entryFile === undefined || typeof entryFile === 'string'
   const hasArtifactPath = artifactPath === undefined || typeof artifactPath === 'string'
@@ -68,30 +68,30 @@ const isSnippetManifestEntry = (value: unknown): value is SnippetManifestEntry =
 
 const parseSnippetManifest = (source: string): SnippetManifest => {
   const parsed = JSON.parse(source) as unknown
-  if (!isRecord(parsed)) {
+  if (isRecord(parsed) === false) {
     return { entries: [] }
   }
 
   const rawEntries = parsed.entries
-  const entries = Array.isArray(rawEntries) ? rawEntries.filter(isSnippetManifestEntry) : []
+  const entries = Array.isArray(rawEntries) === true ? rawEntries.filter(isSnippetManifestEntry) : []
 
   return { entries }
 }
 
 const parseSnippetArtifact = (source: string): SnippetArtifact | null => {
   const parsed = JSON.parse(source) as unknown
-  if (!isRecord(parsed)) {
+  if (isRecord(parsed) === false) {
     return null
   }
 
   const filesRaw = parsed.files
-  if (!isRecord(filesRaw)) {
+  if (isRecord(filesRaw) === false) {
     return null
   }
 
   const files: Record<string, SnippetArtifactFile> = {}
   for (const [key, value] of Object.entries(filesRaw)) {
-    if (!isRecord(value)) continue
+    if (isRecord(value) === false) continue
     const { content } = value
     if (typeof content !== 'string') continue
     files[key] = { content }
@@ -101,7 +101,7 @@ const parseSnippetArtifact = (source: string): SnippetArtifact | null => {
     return null
   }
 
-  const fileOrder = Array.isArray(parsed.fileOrder)
+  const fileOrder = Array.isArray(parsed.fileOrder) === true
     ? parsed.fileOrder.filter((item): item is string => typeof item === 'string')
     : undefined
 
@@ -110,13 +110,13 @@ const parseSnippetArtifact = (source: string): SnippetArtifact | null => {
 
 const loadSnippetManifest = async (paths: Paths): Promise<SnippetManifestCacheEntry> => {
   const cached = snippetManifestCache.get(paths.snippetManifestPath)
-  if (cached) return cached
+  if (cached !== undefined) return cached
 
   const source = await fs.readFile(paths.snippetManifestPath, 'utf-8')
   const manifest = parseSnippetManifest(source)
   const entries = new Map<string, SnippetManifestEntry>()
   for (const entry of manifest.entries) {
-    if (entry.entryFile) {
+    if (entry.entryFile !== undefined) {
       entries.set(entry.entryFile, entry)
     }
   }
@@ -128,14 +128,14 @@ const loadSnippetManifest = async (paths: Paths): Promise<SnippetManifestCacheEn
 
 const normalizeSourceForFence = (source: string): string => {
   const normalized = source.replace(/\r\n/g, '\n')
-  return normalized.endsWith('\n') ? normalized.slice(0, -1) : normalized
+  return normalized.endsWith('\n') === true ? normalized.slice(0, -1) : normalized
 }
 
 const renderFilesToMarkdown = (files: ReadonlyArray<SnippetFile>): string => {
   const sections = files.map((file, index) => {
     const headingLevel = index === 0 ? '##' : '###'
     const heading = `${headingLevel} \`${file.filename}\``
-    const fenceToken = file.source.includes('```') ? '````' : '```'
+    const fenceToken = file.source.includes('```') === true ? '````' : '```'
     const infoParts: string[] = []
     if (file.language.length > 0) {
       infoParts.push(file.language)
@@ -180,25 +180,25 @@ const guessLanguageFromFilename = (filename: string): string => {
 
 const resolveSnippetEntryPath = (specifier: string, docDir: string, paths: Paths): string | null => {
   const [rawPath] = specifier.split('?')
-  if (!rawPath) return null
+  if (rawPath == null) return null
 
   const absolutePath = path.resolve(docDir, rawPath)
   const relativeToRoot = path.relative(paths.snippetRoot, absolutePath).replace(/\\/g, '/')
-  if (relativeToRoot.startsWith('..')) return null
+  if (relativeToRoot.startsWith('..') === true) return null
   return relativeToRoot
 }
 
 const loadSnippetFiles = async (entryFile: string | null, paths: Paths): Promise<ReadonlyArray<SnippetFile>> => {
-  if (!entryFile) return []
+  if (entryFile == null) return []
   const manifest = await loadSnippetManifest(paths)
   const metadata = manifest.byEntry.get(entryFile)
-  if (!metadata?.artifactPath) {
+  if (metadata?.artifactPath == null) {
     return []
   }
 
   const artefactSource = await fs.readFile(path.join(paths.snippetCacheRoot, metadata.artifactPath), 'utf-8')
   const artefact = parseSnippetArtifact(artefactSource)
-  if (!artefact) {
+  if (artefact == null) {
     return []
   }
 
@@ -207,7 +207,7 @@ const loadSnippetFiles = async (entryFile: string | null, paths: Paths): Promise
 
   for (const filename of order) {
     const record = artefact.files[filename]
-    if (!record) continue
+    if (record == null) continue
     files.push({ filename, language: guessLanguageFromFilename(filename), source: record.content })
   }
 
@@ -215,8 +215,8 @@ const loadSnippetFiles = async (entryFile: string | null, paths: Paths): Promise
 }
 
 const replaceComponentWithMarkdown = (body: string, identifier: string, markdown: string | undefined): string => {
-  if (!markdown) return body ?? ''
-  if (!body) return ''
+  if (markdown == null) return body ?? ''
+  if (body == null) return ''
 
   const escaped = escapeForRegex(identifier)
   const blockPattern = new RegExp(String.raw`\n?[\t ]*<${escaped}(?:\s[^>]*)?>[\s\S]*?</${escaped}>\s*`, 'g')
@@ -270,9 +270,9 @@ const extractSnippetNamespaceMappings = (
   const objectSource = body.slice(braceStart + 1, endIndex)
   const propertyPattern = /([A-Za-z0-9_$]+)\s*:\s*([A-Za-z0-9_$]+)/g
   let match = propertyPattern.exec(objectSource)
-  while (match) {
+  while (match !== undefined) {
     const [, property, identifier] = match
-    if (property && identifier) {
+    if (property !== undefined && identifier !== undefined) {
       namespaceMap.set(property, identifier)
     }
     match = propertyPattern.exec(objectSource)
@@ -281,7 +281,7 @@ const extractSnippetNamespaceMappings = (
   let removalEnd = endIndex + 1
   while (removalEnd < body.length) {
     const char = body[removalEnd]
-    if (char === undefined || !/[\s;]/.test(char)) break
+    if (char === undefined || /[\s;]/.test(char) === false) break
     removalEnd += 1
   }
 
@@ -294,7 +294,7 @@ export const transformMultiCodeDocument = async (input: TransformInput): Promise
   const { id, collection, body, debug = false, docsRoot } = input
   const paths = resolvePaths(docsRoot)
   const docCollection = collection ?? 'docs'
-  const normalizedDocPath = docCollection && id.startsWith(`${docCollection}/`) ? id : `${docCollection}/${id}`
+  const normalizedDocPath = docCollection !== undefined && id.startsWith(`${docCollection}/`) === true ? id : `${docCollection}/${id}`
   const docDir = path.dirname(path.join(paths.contentRoot, normalizedDocPath))
 
   const snippetImports = new Map<string, string>()
@@ -312,7 +312,7 @@ export const transformMultiCodeDocument = async (input: TransformInput): Promise
     const entryPath = resolveSnippetEntryPath(specifier, docDir, paths)
     const files = await loadSnippetFiles(entryPath, paths)
 
-    if (debug) {
+    if (debug !== undefined) {
       // eslint-disable-next-line no-console
       console.debug('[llm-markdown] transform', {
         id,
@@ -332,7 +332,7 @@ export const transformMultiCodeDocument = async (input: TransformInput): Promise
 
   for (const [property, identifier] of namespaceMap.entries()) {
     const markdown = markdownByIdentifier.get(identifier)
-    if (!markdown) continue
+    if (markdown == null) continue
     workingBody = replaceComponentWithMarkdown(workingBody, `SNIPPETS.${property}`, markdown)
   }
 

@@ -39,7 +39,7 @@ navigator.locks.request(
   async () => new Promise(() => {}),
 )
 
-if (isDevEnv()) {
+if (isDevEnv() === true) {
   globalThis.__debugLiveStoreUtils = {
     blobUrl: (buffer: Uint8Array<ArrayBuffer>) =>
       URL.createObjectURL(new Blob([buffer], { type: 'application/octet-stream' })),
@@ -86,9 +86,9 @@ const makeWorkerRunner = Effect.gen(function* () {
         duration: 500,
       }),
       Effect.mapError((cause) =>
-        Schema.is(UnknownError)(cause)
+        Schema.is(UnknownError)(cause) === true
           ? cause
-          : ParseResult.isParseError(cause) || Schema.is(WorkerError.WorkerError)(cause)
+          : ParseResult.isParseError(cause) === true || Schema.is(WorkerError.WorkerError)(cause) === true
             ? new UnknownError({ cause })
             : cause,
       ),
@@ -193,7 +193,7 @@ const makeWorkerRunner = Effect.gen(function* () {
         }
         const prev = yield* Ref.get(invariantsRef)
         // Early return on mismatch to keep happy path linear
-        if (prev !== undefined && !sameInvariants(prev, invariants)) {
+        if (prev !== undefined && sameInvariants(prev, invariants) === false) {
           const diff = Schema.debugDiff(InvariantsSchema)(prev, invariants)
           return yield* new UnknownError({
             cause: 'Store invariants changed across leader transitions',
@@ -286,7 +286,7 @@ export const makeWorker = (options?: LogConfig.WithLoggerOptions): void => {
     Effect.tapCauseLogPretty,
     Effect.annotateLogs({ thread: self.name }),
     Effect.provide(runtimeLayer),
-    LS_DEV ? TaskTracing.withAsyncTaggingTracing((name) => (console as any).createTask(name)) : identity,
+    LS_DEV === true ? TaskTracing.withAsyncTaggingTracing((name) => (console as any).createTask(name)) : identity,
     // TODO remove type-cast (currently needed to silence a tsc bug)
     // @effect-diagnostics-next-line anyUnknownInErrorContext:off -- TSC bug workaround; the cast uses `any` as an intermediate
     (_) => _ as any as Effect.Effect<void, never>,

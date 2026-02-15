@@ -68,7 +68,7 @@ describe(CONFIG, function () {
 
     let integrity = ''
     await sqlite3.exec(db, 'PRAGMA integrity_check', (row, columns) => {
-      integrity = /** @type {string} */ (row[0])
+      integrity = /** @type {string} */ (row[0] !== undefined)
     })
     expect(integrity).toBe('ok')
 

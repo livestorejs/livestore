@@ -75,13 +75,13 @@ export class HistoryDag {
   }) {
     this.graph = graph
     this.options = { ...defaultOptions, ...options }
-    this.idToIndex = idToIndex ? new Map(idToIndex) : new Map()
-    this.indexToId = indexToId ? new Map(indexToId) : new Map()
+    this.idToIndex = idToIndex !== undefined ? new Map(idToIndex) : new Map()
+    this.indexToId = indexToId !== undefined ? new Map(indexToId) : new Map()
   }
 
   static create(options?: Partial<HistoryDagOptions>): HistoryDag {
     const graph = Graph.beginMutation(Graph.directed<HistoryDagNode, HistoryDagEdgeAttributes>())
-    return options ? new HistoryDag({ graph, options }) : new HistoryDag({ graph })
+    return options !== undefined ? new HistoryDag({ graph, options }) : new HistoryDag({ graph })
   }
 
   copy(): HistoryDag {
@@ -108,7 +108,7 @@ export class HistoryDag {
   }
 
   addNode(id: string, attributes: HistoryDagNode): void {
-    if (this.idToIndex.has(id)) {
+    if (this.idToIndex.has(id) === true) {
       shouldNeverHappen(`HistoryDag node ${id} already exists`)
     }
 
@@ -145,7 +145,7 @@ export class HistoryDag {
   }
 
   addEdge(sourceId: string, targetId: string, attributes: HistoryDagEdgeAttributes): Graph.EdgeIndex {
-    if (!this.options.allowSelfLoops && sourceId === targetId) {
+    if (this.options.allowSelfLoops == null && sourceId === targetId) {
       return shouldNeverHappen('HistoryDag self-loops are disabled')
     }
 
@@ -184,7 +184,7 @@ export class HistoryDag {
       return []
     }
     const incoming = this.graph.reverseAdjacency.get(index)
-    return incoming ? [...incoming] : []
+    return incoming !== undefined ? [...incoming] : []
   }
 
   outboundEdgeEntries(id: string): Array<HistoryDagEdgeEntry> {

@@ -11,10 +11,6 @@ import { oxlintConfig } from './repos/effect-utils/packages/@overeng/genie/src/r
  * This introduces oxlint (replacing Biome) with a deliberately permissive rule set
  * to avoid massive code churn during the initial migration. Rules are disabled with
  * TODO references to the follow-up epic oep-1n3 for incremental re-enablement.
- *
- * Unlike effect-utils, we don't use the custom overeng oxlint plugin (which requires
- * a custom-built oxlint binary). We use the standard npm oxlint package instead.
- * Therefore, we exclude all `overeng/*` rules that are present in baseOxlintRules.
  */
 
 // ── Active rules ────────────────────────────────────────────────────────────
@@ -24,6 +20,8 @@ const activeRules = {
   'import/no-commonjs': 'error',
   // Enforce proper type-only imports
   'typescript/consistent-type-imports': 'warn',
+  // Enforce explicit boolean comparisons in condition positions
+  'overeng/explicit-boolean-compare': 'warn',
 } as const
 
 // ── Permanently disabled (incompatible with Effect / livestore patterns) ────
@@ -89,7 +87,8 @@ const phase2Rules = {
   // TODO(oep-1n3.8): Re-enable explicit boolean checks after cleanup
   // 115 violations, mostly stylistic boolean comparisons
   'typescript/no-unsafe-type-assertion': 'warn',
-  'typescript/no-unnecessary-boolean-literal-compare': 'warn',
+  // Inverse of overeng/explicit-boolean-compare — must stay off
+  'typescript/no-unnecessary-boolean-literal-compare': 'off',
   // 79 violations, mostly generic verbosity
   'typescript/no-unnecessary-type-arguments': 'warn',
   // 72 violations, concentrated in generated clients and broad union types
@@ -219,6 +218,7 @@ const livestoreOxlintOverrides = [
       'unicorn/no-new-array': 'off',
       'unicorn/no-array-sort': 'off',
       'unicorn/consistent-function-scoping': 'off',
+      'overeng/explicit-boolean-compare': 'off',
     },
   },
 

@@ -11,11 +11,11 @@ import type { QueryBuilderAst } from './api.ts'
  * Returns the element schema, or undefined if not a JSON array transformation.
  */
 const extractArrayElementFromTransformation = (ast: SchemaAST.AST): Schema.Schema.Any | undefined => {
-  if (!SchemaAST.isTransformation(ast)) return undefined
+  if (SchemaAST.isTransformation(ast) === false) return undefined
 
   const toAst = ast.to
   // Check if the "to" side is a TupleType (Effect's internal representation of Array)
-  if (!SchemaAST.isTupleType(toAst)) return undefined
+  if (SchemaAST.isTupleType(toAst) === false) return undefined
 
   // For Schema.Array, rest contains { type: AST } elements - get the first one's type
   const restElement = toAst.rest[0]
@@ -34,13 +34,13 @@ const getJsonArrayElementSchema = (colSchema: Schema.Schema.Any): Schema.Schema.
 
   // Case 1: Direct transformation (non-nullable JSON array)
   // Schema.parseJson(Schema.Array(ElementSchema)) creates a Transformation AST
-  if (SchemaAST.isTransformation(ast)) {
+  if (SchemaAST.isTransformation(ast) === true) {
     return extractArrayElementFromTransformation(ast)
   }
 
   // Case 2: Nullable JSON array - Schema.NullOr wraps the parseJson in a Union
   // Structure: Union([Transformation (JSON array), Literal (null)])
-  if (SchemaAST.isUnion(ast)) {
+  if (SchemaAST.isUnion(ast) === true) {
     for (const member of ast.types) {
       const result = extractArrayElementFromTransformation(member)
       if (result !== undefined) return result
@@ -63,7 +63,7 @@ const encodeJsonArrayElementValue = (elementSchema: Schema.Schema.Any, value: un
     return JSON.stringify(encoded)
   }
   if (typeof encoded === 'boolean') {
-    return encoded ? 1 : 0
+    return encoded !== undefined ? 1 : 0
   }
 
   return encoded
@@ -118,9 +118,9 @@ const formatWhereClause = (
       // Handle array values for IN/NOT IN operators
       const isArray = op === 'IN' || op === 'NOT IN'
 
-      if (isArray) {
+      if (isArray === true) {
         // Verify value is an array
-        if (!Array.isArray(value)) {
+        if (Array.isArray(value) === false) {
           return shouldNeverHappen(`Expected array value for ${op} operator but got`, value)
         }
 
@@ -145,7 +145,7 @@ const formatWhereClause = (
 }
 
 const formatReturningClause = (returning?: string[]): string => {
-  if (!returning || returning.length === 0) return ''
+  if (returning == null || returning.length === 0) return ''
   return ` RETURNING ${returning.map(quoteIdentifier).join(', ')}`
 }
 
@@ -169,7 +169,7 @@ export const astToSql = (ast: QueryBuilderAst): { query: string; bindValues: Sql
     let conflictClause = '' // Store the ON CONFLICT clause separately
 
     // Handle ON CONFLICT clause
-    if (ast.onConflict) {
+    if (ast.onConflict !== undefined) {
       // Handle REPLACE specifically as it changes the INSERT verb
       if (ast.onConflict.action._tag === 'replace') {
         insertVerb = 'INSERT OR REPLACE'
@@ -249,7 +249,7 @@ export const astToSql = (ast: QueryBuilderAst): { query: string; bindValues: Sql
       .join(', ')}`
 
     const whereClause = formatWhereClause(ast.where, ast.tableDef, bindValues)
-    if (whereClause) query += ` ${whereClause}`
+    if (whereClause !== undefined) query += ` ${whereClause}`
 
     query += formatReturningClause(ast.returning)
     return { query, bindValues, usedTables }
@@ -260,7 +260,7 @@ export const astToSql = (ast: QueryBuilderAst): { query: string; bindValues: Sql
     let query = `DELETE FROM '${ast.tableDef.sqliteDef.name}'`
 
     const whereClause = formatWhereClause(ast.where, ast.tableDef, bindValues)
-    if (whereClause) query += ` ${whereClause}`
+    if (whereClause !== undefined) query += ` ${whereClause}`
 
     query += formatReturningClause(ast.returning)
     return { query, bindValues, usedTables }

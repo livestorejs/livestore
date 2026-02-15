@@ -13,7 +13,7 @@ import { WebTracerProvider } from '@opentelemetry/sdk-trace-web'
 export const makeTracer = (serviceName: string) => {
   const url = import.meta.env.VITE_OTEL_EXPORTER_OTLP_ENDPOINT
   const provider = new WebTracerProvider({
-    spanProcessors: url ? [new SimpleSpanProcessor(new OTLPTraceExporter({ url: `${url}/v1/traces` }))] : [],
+    spanProcessors: url !== undefined ? [new SimpleSpanProcessor(new OTLPTraceExporter({ url: `${url}/v1/traces` }))] : [],
     resource: resourceFromAttributes({ 'service.name': serviceName }),
   })
 

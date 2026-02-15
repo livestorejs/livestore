@@ -91,7 +91,7 @@ export const LeaderReqResMessage = <
     ...fields.success,
   }).annotations({ identifier: `${tag}.Response.Success` })
 
-  const Error = fields.error
+  const Error = fields.error !== undefined
     ? Schema.TaggedStruct(`${tag}.Response.Error`, {
         requestId,
         liveStoreVersion,

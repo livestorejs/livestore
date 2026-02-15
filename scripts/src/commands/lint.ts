@@ -73,7 +73,7 @@ export const lintCommand = Cli.Command.make(
   { fix: Cli.Options.boolean('fix').pipe(Cli.Options.withDefault(false)) },
   Effect.fn(function* ({ fix }) {
     // Run oxfmt and oxlint (format + lint)
-    if (fix) {
+    if (fix !== undefined) {
       yield* runFormatFix
       yield* runLintFix
     } else {
@@ -88,7 +88,7 @@ export const lintCommand = Cli.Command.make(
 
     // Check peer dependencies (warn-only for now, doesn't fail the build)
     const peerDepsOk = yield* runPeerDepCheck
-    if (!peerDepsOk) {
+    if (peerDepsOk == null) {
       yield* Console.warn('Peer dependency check found violations (see above)')
     }
 

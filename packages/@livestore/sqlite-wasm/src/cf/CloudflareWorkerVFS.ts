@@ -107,7 +107,7 @@ export class CloudflareWorkerVFS extends FacadeVFS {
       }
     }
 
-    if (oldestKey) {
+    if (oldestKey !== undefined) {
       this.#chunkCache.delete(oldestKey)
     }
   }
@@ -115,7 +115,7 @@ export class CloudflareWorkerVFS extends FacadeVFS {
   #getCachedChunk(path: string, chunkIndex: number): Uint8Array | undefined {
     const key = this.#getCacheKey(path, chunkIndex)
     const entry = this.#chunkCache.get(key)
-    if (entry) {
+    if (entry !== undefined) {
       entry.lastAccessed = Date.now()
       return entry.data
     }
@@ -143,7 +143,7 @@ export class CloudflareWorkerVFS extends FacadeVFS {
     const key = `write:${path}`
 
     // Cancel any pending write for this path
-    if (this.#writePromises.has(key)) {
+    if (this.#writePromises.has(key) === true) {
       this.#pendingWrites.delete(key)
     }
 
@@ -164,10 +164,10 @@ export class CloudflareWorkerVFS extends FacadeVFS {
 
   async #loadMetadata(path: string): Promise<FileMetadata | undefined> {
     const cached = this.#metadataCache.get(path)
-    if (cached) return cached
+    if (cached !== undefined) return cached
 
     const metadata = await this.#storage.get<FileMetadata>(this.#getMetadataKey(path))
-    if (metadata) {
+    if (metadata !== undefined) {
       this.#metadataCache.set(path, metadata)
     }
     return metadata
@@ -183,10 +183,10 @@ export class CloudflareWorkerVFS extends FacadeVFS {
 
   async #loadChunk(path: string, chunkIndex: number): Promise<Uint8Array | undefined> {
     const cached = this.#getCachedChunk(path, chunkIndex)
-    if (cached) return cached
+    if (cached !== undefined) return cached
 
     const chunk = await this.#storage.get<Uint8Array>(this.#getChunkKey(path, chunkIndex))
-    if (chunk) {
+    if (chunk !== undefined) {
       this.#setCachedChunk(path, chunkIndex, chunk)
     }
     return chunk
@@ -199,7 +199,7 @@ export class CloudflareWorkerVFS extends FacadeVFS {
 
   async #deleteFile(path: string): Promise<void> {
     const metadata = await this.#loadMetadata(path)
-    if (!metadata) return
+    if (metadata == null) return
 
     // Delete all chunks and metadata atomically
     const keysToDelete = [this.#getMetadataKey(path)]
@@ -223,10 +223,10 @@ export class CloudflareWorkerVFS extends FacadeVFS {
 
   override jOpen(zName: string, fileId: number, flags: number, pOutFlags: DataView): number {
     try {
-      const path = zName ? this.#getPath(zName) : Math.random().toString(36)
+      const path = zName !== undefined ? this.#getPath(zName) : Math.random().toString(36)
       const metadata = this.#metadataCache.get(path)
 
-      if (!metadata && flags & VFS.SQLITE_OPEN_CREATE) {
+      if (metadata == null && (flags & VFS.SQLITE_OPEN_CREATE) !== 0) {
         // Create new file
         if (this.#activeFiles.size >= this.#maxFiles) {
           throw new Error('cannot create file: capacity exceeded')
@@ -247,7 +247,7 @@ export class CloudflareWorkerVFS extends FacadeVFS {
         this.#scheduleWrite(path, () => this.#saveMetadata(path, newMetadata))
       }
 
-      if (!this.#metadataCache.has(path)) {
+      if (this.#metadataCache.has(path) === false) {
         throw new Error('file not found')
       }
 
@@ -268,9 +268,9 @@ export class CloudflareWorkerVFS extends FacadeVFS {
 
   override jClose(fileId: number): number {
     const handle = this.#openFiles.get(fileId)
-    if (handle) {
+    if (handle !== undefined) {
       this.#openFiles.delete(fileId)
-      if (handle.flags & VFS.SQLITE_OPEN_DELETEONCLOSE) {
+      if ((handle.flags & VFS.SQLITE_OPEN_DELETEONCLOSE) !== 0) {
         // Schedule async delete
         this.#scheduleWrite(handle.path, () => this.#deleteFile(handle.path))
       }
@@ -281,7 +281,7 @@ export class CloudflareWorkerVFS extends FacadeVFS {
   override jRead(fileId: number, pData: Uint8Array, iOffset: number): number {
     try {
       const handle = this.#openFiles.get(fileId)
-      if (!handle) return VFS.SQLITE_IOERR
+      if (handle == null) return VFS.SQLITE_IOERR
 
       const fileSize = handle.metadata.size
       const requestedBytes = pData.byteLength
@@ -304,7 +304,7 @@ export class CloudflareWorkerVFS extends FacadeVFS {
 
       for (let chunkIndex = startChunk; chunkIndex <= endChunk; chunkIndex++) {
         const chunk = this.#getCachedChunk(handle.path, chunkIndex)
-        if (!chunk) {
+        if (chunk == null) {
           // Cache miss - this is a problem for synchronous operation
           // We should have preloaded chunks during initialization
           console.warn(`Cache miss for chunk ${chunkIndex} of ${handle.path}`)
@@ -342,7 +342,7 @@ export class CloudflareWorkerVFS extends FacadeVFS {
   override jWrite(fileId: number, pData: Uint8Array, iOffset: number): number {
     try {
       const handle = this.#openFiles.get(fileId)
-      if (!handle) return VFS.SQLITE_IOERR
+      if (handle == null) return VFS.SQLITE_IOERR
 
       const bytesToWrite = pData.byteLength
       const startChunk = Math.floor(iOffset / CHUNK_SIZE)
@@ -357,7 +357,7 @@ export class CloudflareWorkerVFS extends FacadeVFS {
         const writeEnd = Math.min(CHUNK_SIZE, iOffset + bytesToWrite - chunkOffset)
 
         let chunk = this.#getCachedChunk(handle.path, chunkIndex)
-        if (!chunk) {
+        if (chunk == null) {
           // Create new chunk
           chunk = new Uint8Array(CHUNK_SIZE)
         } else {
@@ -403,7 +403,7 @@ export class CloudflareWorkerVFS extends FacadeVFS {
   override jTruncate(fileId: number, iSize: number): number {
     try {
       const handle = this.#openFiles.get(fileId)
-      if (!handle) return VFS.SQLITE_IOERR
+      if (handle == null) return VFS.SQLITE_IOERR
 
       // const oldSize = handle.metadata.size
       const newChunkCount = Math.ceil(iSize / CHUNK_SIZE)
@@ -436,7 +436,7 @@ export class CloudflareWorkerVFS extends FacadeVFS {
 
         if (lastChunkSize < CHUNK_SIZE) {
           const lastChunk = this.#getCachedChunk(handle.path, lastChunkIndex)
-          if (lastChunk) {
+          if (lastChunk !== undefined) {
             const truncatedChunk = new Uint8Array(CHUNK_SIZE)
             truncatedChunk.set(lastChunk.subarray(0, lastChunkSize))
             this.#setCachedChunk(handle.path, lastChunkIndex, truncatedChunk)
@@ -458,7 +458,7 @@ export class CloudflareWorkerVFS extends FacadeVFS {
   override jSync(fileId: number, _flags: number): number {
     try {
       const handle = this.#openFiles.get(fileId)
-      if (!handle) return VFS.SQLITE_IOERR
+      if (handle == null) return VFS.SQLITE_IOERR
 
       // Force sync all pending writes for this file
       // Note: DurableObjectStorage operations are already synchronous
@@ -473,7 +473,7 @@ export class CloudflareWorkerVFS extends FacadeVFS {
   override jFileSize(fileId: number, pSize64: DataView): number {
     try {
       const handle = this.#openFiles.get(fileId)
-      if (!handle) return VFS.SQLITE_IOERR
+      if (handle == null) return VFS.SQLITE_IOERR
 
       pSize64.setBigInt64(0, BigInt(handle.metadata.size), true)
       return VFS.SQLITE_OK
@@ -495,7 +495,7 @@ export class CloudflareWorkerVFS extends FacadeVFS {
     try {
       const path = this.#getPath(zName)
       const exists = this.#activeFiles.has(path)
-      pResOut.setInt32(0, exists ? 1 : 0, true)
+      pResOut.setInt32(0, exists === true ? 1 : 0, true)
       return VFS.SQLITE_OK
     } catch (e: any) {
       console.error('jAccess error:', e.message)
@@ -527,7 +527,7 @@ export class CloudflareWorkerVFS extends FacadeVFS {
   }
 
   async isReady() {
-    if (!this.#initialized) {
+    if (this.#initialized === false) {
       await this.#initializeStorage()
       this.#initialized = true
     }
@@ -537,7 +537,7 @@ export class CloudflareWorkerVFS extends FacadeVFS {
   async #initializeStorage() {
     // Load list of existing files
     const fileList = await this.#storage.get<string[]>('index:files')
-    if (fileList) {
+    if (fileList !== undefined) {
       for (const path of fileList) {
         this.#activeFiles.add(path)
         // Preload metadata for all files
@@ -558,8 +558,8 @@ export class CloudflareWorkerVFS extends FacadeVFS {
     for (const path of this.#activeFiles) {
       const metadata = this.#metadataCache.get(path)
       if (
-        metadata &&
-        (metadata.flags & VFS.SQLITE_OPEN_DELETEONCLOSE || (metadata.flags & PERSISTENT_FILE_TYPES) === 0)
+        metadata !== undefined &&
+        ((metadata.flags & VFS.SQLITE_OPEN_DELETEONCLOSE) !== 0 || (metadata.flags & PERSISTENT_FILE_TYPES) === 0)
       ) {
         console.warn(`Cleaning up temporary file: ${path}`)
         await this.#deleteFile(path)
@@ -616,13 +616,13 @@ export class CloudflareWorkerVFS extends FacadeVFS {
    */
   async #preloadChunks(path: string, startChunk: number, count = 3) {
     const metadata = this.#metadataCache.get(path)
-    if (!metadata) return
+    if (metadata == null) return
 
     const endChunk = Math.min(startChunk + count, metadata.chunkCount)
     const promises: Promise<void>[] = []
 
     for (let i = startChunk; i < endChunk; i++) {
-      if (!this.#getCachedChunk(path, i)) {
+      if (this.#getCachedChunk(path, i) == null) {
         promises.push(this.#loadChunk(path, i).then(() => {}))
       }
     }

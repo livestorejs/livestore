@@ -244,7 +244,7 @@ export default class MeasurementsReporter implements Reporter {
             )
 
             const isCi = yield* Config.boolean('CI').pipe(Config.withDefault(false))
-            if (isCi) {
+            if (isCi === true) {
               const commitSha = yield* Config.string('COMMIT_SHA')
               const refName = yield* Config.string('GITHUB_REF_NAME')
               metric = metric.pipe(
@@ -306,7 +306,7 @@ export default class MeasurementsReporter implements Reporter {
       if (Object.keys(trackedMetricsInGroup).length === 0) continue
 
       const firstTrackedMetric = Object.values(trackedMetricsInGroup)[0]
-      if (!firstTrackedMetric) continue
+      if (firstTrackedMetric == null) continue
 
       const testSuiteTitle = firstTrackedMetric.meta.testSuiteTitle
 
@@ -321,7 +321,7 @@ export default class MeasurementsReporter implements Reporter {
     for (const [testTitle, trackedMetric] of Object.entries(this.metricsByTestTitle)) {
       const path = trackedMetric.meta.testSuiteTitlePath
 
-      if (!result[path]) {
+      if (result[path] == null) {
         result[path] = {}
       }
       result[path][testTitle] = trackedMetric
@@ -356,7 +356,7 @@ export default class MeasurementsReporter implements Reporter {
     const displayUnit = measurementUnitToDisplayUnit[unit]
     const formatValue = unitFormatters[unit]
 
-    if (hasSingleMeasurementPerTestTitle) {
+    if (hasSingleMeasurementPerTestTitle === true) {
       const headers = [testSuiteTitle, `Measurement`]
       const rows = Object.entries(metricStatesResult).map(([testTitle, state]) => {
         return [testTitle, `${formatValue(state.sum)} ${displayUnit}`]

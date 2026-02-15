@@ -25,7 +25,7 @@ export const createAstroTldrawIntegration = (options: AstroTldrawOptions = {}): 
   let resolvedBuildOptions: BuildDiagramsOptions | undefined
 
   const runDiagramBuild = () =>
-    resolvedBuildOptions
+    resolvedBuildOptions !== undefined
       ? Effect.runPromise(buildDiagrams(resolvedBuildOptions).pipe(Effect.provide(PlatformNode.NodeFileSystem.layer)))
       : Promise.resolve()
 
@@ -56,14 +56,14 @@ export const createAstroTldrawIntegration = (options: AstroTldrawOptions = {}): 
         })
       },
       'astro:server:start': async (_context: ServerStartContext) => {
-        if (!autoBuild || shouldSkipAutoBuild()) {
+        if (autoBuild == null || shouldSkipAutoBuild() === true) {
           return
         }
 
         await runDiagramBuild()
       },
       'astro:build:start': async (_context: BuildStartContext) => {
-        if (!autoBuild || shouldSkipAutoBuild()) {
+        if (autoBuild == null || shouldSkipAutoBuild() === true) {
           return
         }
 

@@ -103,7 +103,7 @@ export const makeSyncBackend = ({
     yield* syncBackend.ping.pipe(
       Effect.timeout(CONNECTION_TIMEOUT_MS),
       Effect.catchAll((cause) => {
-        if (Cause.isTimeoutException(cause)) {
+        if (Cause.isTimeoutException(cause) === true) {
           return Effect.fail(
             new ConnectionError({
               cause,
@@ -282,14 +282,14 @@ export const pushEventsToSyncBackend = ({
           ),
         )
 
-        if (exportData.storeId !== storeId && !force) {
+        if (exportData.storeId !== storeId && force == null) {
           return yield* new ImportError({
             cause: new Error(`Store ID mismatch: file has '${exportData.storeId}', expected '${storeId}'`),
             note: `The export file was created for a different store. Use force option to import anyway.`,
           })
         }
 
-        if (dryRun) {
+        if (dryRun !== undefined) {
           return {
             storeId,
             eventCount: exportData.events.length,
@@ -312,7 +312,7 @@ export const pushEventsToSyncBackend = ({
           ),
         )
 
-        if (Option.isSome(existingBatchOption)) {
+        if (Option.isSome(existingBatchOption) === true) {
           const existingBatch = existingBatchOption.value
           const estimatedCount =
             existingBatch.pageInfo._tag === 'MoreKnown'
@@ -344,7 +344,7 @@ export const pushEventsToSyncBackend = ({
           )
 
           pushed += batch.length
-          if (onProgress) {
+          if (onProgress !== undefined) {
             yield* onProgress(pushed, total)
           }
         }

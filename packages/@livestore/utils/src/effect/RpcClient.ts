@@ -120,8 +120,8 @@ export const makeProtocolSocketWithIsConnected = (options: {
 
             const error = Cause.failureOption(cause)
             if (
-              options?.retryTransientErrors &&
-              Option.isSome(error) &&
+              options?.retryTransientErrors !== undefined &&
+              Option.isSome(error) === true &&
               (error.value.reason === 'Open' || error.value.reason === 'OpenTimeout')
             ) {
               return
@@ -138,7 +138,7 @@ export const makeProtocolSocketWithIsConnected = (options: {
           }),
         ),
         // CHANGED: make configurable via schedule
-        options?.retryTransientErrors ? Effect.retry(options.retryTransientErrors) : identity,
+        options?.retryTransientErrors !== undefined ? Effect.retry(options.retryTransientErrors) : identity,
         Effect.annotateLogs({
           module: 'RpcClient',
           method: 'makeProtocolSocket',
@@ -189,7 +189,7 @@ const makePinger = Effect.fnUntraced(function* <A, E, R>(
   }
   yield* Effect.suspend(() => {
     // Starting new ping
-    if (!recievedPong) return latch.open
+    if (recievedPong == null) return latch.open
     recievedPong = false
     return writePing
   }).pipe(

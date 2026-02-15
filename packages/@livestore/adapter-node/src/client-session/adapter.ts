@@ -223,7 +223,7 @@ const makeAdapterImpl = ({
 
       const shutdownChannel = yield* makeShutdownChannel(storeId)
 
-      if (resetPersistence) {
+      if (resetPersistence === true) {
         yield* shutdownChannel
           .send(IntentionalShutdownCause.make({ reason: 'adapter-reset' }))
           .pipe(UnknownError.mapToUnknownError)
@@ -248,7 +248,7 @@ const makeAdapterImpl = ({
       const lockStatus = yield* SubscriptionRef.make<LockStatus>('has-lock')
 
       const devtoolsOptions: WorkerSchema.LeaderWorkerInnerInitialMessage['devtools'] =
-        devtoolsEnabled && devtoolsOptionsInput !== undefined
+        devtoolsEnabled === true && devtoolsOptionsInput !== undefined
           ? {
               enabled: true,
               schemaPath:
@@ -299,7 +299,7 @@ const makeAdapterImpl = ({
         sqliteDb: syncInMemoryDb,
         webmeshMode: 'proxy',
         connectWebmeshNode: Effect.fnUntraced(function* ({ webmeshNode }) {
-          if (devtoolsOptions.enabled) {
+          if (devtoolsOptions.enabled === true) {
             yield* Webmesh.connectViaWebSocket({
               node: webmeshNode,
               url: `ws://${devtoolsOptions.host}:${devtoolsOptions.port}`,
@@ -341,7 +341,7 @@ const resetNodePersistence = ({
 
     const directoryExists = yield* fs.exists(directory).pipe(UnknownError.mapToUnknownError)
 
-    if (!directoryExists) {
+    if (directoryExists === false) {
       return
     }
 
@@ -464,7 +464,7 @@ const makeWorkerLeaderThread = ({
 }) =>
   Effect.gen(function* () {
     const nodeWorker = new WT.Worker(workerUrl, {
-      execArgv: process.env.DEBUG_WORKER ? ['--inspect --enable-source-maps'] : ['--enable-source-maps'],
+      execArgv: process.env.DEBUG_WORKER !== undefined ? ['--inspect --enable-source-maps'] : ['--enable-source-maps'],
       argv: [yield* Schema.encode(WorkerSchema.WorkerArgv)({ storeId, clientId, sessionId, extraArgs: workerExtraArgs }).pipe(Effect.orDie)],
     })
     const nodeWorkerLayer = yield* Layer.build(PlatformNode.NodeWorker.layer(() => nodeWorker))
@@ -499,9 +499,9 @@ const makeWorkerLeaderThread = ({
         }),
         Effect.withSpan(`@livestore/adapter-node:client-session:runInWorker:${req._tag}`),
         Effect.mapError((cause) =>
-          Schema.is(UnknownError)(cause)
+          Schema.is(UnknownError)(cause) === true
             ? cause
-            : ParseResult.isParseError(cause) || Schema.is(WorkerError.WorkerError)(cause)
+            : ParseResult.isParseError(cause) === true || Schema.is(WorkerError.WorkerError)(cause) === true
               ? new UnknownError({ cause })
               : cause,
         ),
@@ -515,9 +515,9 @@ const makeWorkerLeaderThread = ({
       : never =>
       worker.execute(req as any).pipe(
         Stream.mapError((cause) =>
-          Schema.is(UnknownError)(cause)
+          Schema.is(UnknownError)(cause) === true
             ? cause
-            : ParseResult.isParseError(cause) || Schema.is(WorkerError.WorkerError)(cause)
+            : ParseResult.isParseError(cause) === true || Schema.is(WorkerError.WorkerError)(cause) === true
               ? new UnknownError({ cause })
               : cause,
         ),
@@ -527,7 +527,7 @@ const makeWorkerLeaderThread = ({
     const bootStatusFiber = yield* runInWorkerStream(new WorkerSchema.LeaderWorkerInnerBootStatusStream()).pipe(
       Stream.tap((bootStatus) => Queue.offer(bootStatusQueue, bootStatus)),
       Stream.runDrain,
-      Effect.tapErrorCause((cause) => (Cause.isInterruptedOnly(cause) ? Effect.void : shutdown(Exit.failCause(cause)))),
+      Effect.tapErrorCause((cause) => (Cause.isInterruptedOnly(cause) === true ? Effect.void : shutdown(Exit.failCause(cause)))),
       Effect.interruptible,
       Effect.tapCauseLogPretty,
       Effect.forkScoped,

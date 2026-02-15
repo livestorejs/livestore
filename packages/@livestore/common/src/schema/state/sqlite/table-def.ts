@@ -215,7 +215,7 @@ export function table<
     tableName = args.name
     const columnOrColumns = args.columns
     columns = (
-      SqliteDsl.isColumnDefinition(columnOrColumns) ? { value: columnOrColumns } : columnOrColumns
+      SqliteDsl.isColumnDefinition(columnOrColumns) === true ? { value: columnOrColumns } : columnOrColumns
     )
     additionalIndexes = []
   } else if ('schema' in args) {

@@ -33,11 +33,11 @@ export type LoggerDefaults = {
  * Resolve the logger layer to provide to the Effect runtime.
  */
 export const resolveLoggerLayer = (config?: WithLoggerOptions, defaults?: LoggerDefaults): Layer.Layer<never> => {
-  if (config?.logger) return config.logger
-  if (defaults?.defaultLogger) return defaults.defaultLogger
+  if (config?.logger !== undefined) return config.logger
+  if (defaults?.defaultLogger !== undefined) return defaults.defaultLogger
   const threadName = defaults?.threadName ?? 'livestore'
   const mode = defaults?.mode
-  return Logger.prettyWithThread(threadName, mode ? { mode } : {})
+  return Logger.prettyWithThread(threadName, mode !== undefined ? { mode } : {})
 }
 
 /**
@@ -46,7 +46,7 @@ export const resolveLoggerLayer = (config?: WithLoggerOptions, defaults?: Logger
 export const resolveLogLevel = (config?: WithLoggerOptions, defaults?: LoggerDefaults): LogLevel.LogLevel => {
   if (config?.logLevel !== undefined) return config.logLevel
   if (defaults?.defaultLogLevel !== undefined) return defaults.defaultLogLevel
-  return isDevEnv() ? LogLevel.Debug : LogLevel.Info
+  return isDevEnv() === true ? LogLevel.Debug : LogLevel.Info
 }
 
 /**

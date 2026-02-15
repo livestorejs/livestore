@@ -31,7 +31,7 @@ export type DbSchemaFromInputSchema<TSchemaInput extends DbSchemaInput> =
 export const makeDbSchema = <TDbSchemaInput extends DbSchemaInput>(
   schema: TDbSchemaInput,
 ): DbSchemaFromInputSchema<TDbSchemaInput> => {
-  return Array.isArray(schema) ? Object.fromEntries(schema.map((_) => [_.name, _])) : (schema as any)
+  return Array.isArray(schema) === true ? Object.fromEntries(schema.map((_) => [_.name, _])) : (schema as any)
 }
 
 export const table = <TTableName extends string, TColumns extends Columns, TIndexes extends Index[]>(
@@ -77,7 +77,7 @@ export const insertStructSchemaForTable = <TTableDefinition extends TableDefinit
       tableDef.ast.columns.map((column) => [
         column.name,
         
-        column.nullable || column.default._tag === 'Some' ? Schema.optional(column.schema) : column.schema,
+        column.nullable !== undefined || column.default._tag === 'Some' ? Schema.optional(column.schema) : column.schema,
       ]),
     ),
   ).annotations({

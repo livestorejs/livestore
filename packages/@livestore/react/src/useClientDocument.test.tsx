@@ -128,7 +128,7 @@ Vitest.describe('useClientDocument', () => {
           <div>
             <TasksList setTaskId={setCurrentTaskId} />
             <div role="current-id">Current Task Id: {state.currentTaskId ?? '-'}</div>
-            {state.currentTaskId ? <TaskDetails id={state.currentTaskId} /> : <div>Click on a task to see details</div>}
+            {state.currentTaskId !== undefined ? <TaskDetails id={state.currentTaskId} /> : <div>Click on a task to see details</div>}
           </div>
         )
       }
@@ -274,7 +274,7 @@ Vitest.describe('useClientDocument', () => {
         spanProcessors: [new SimpleSpanProcessor(exporter)],
       })
 
-      const otelTracer = provider.getTracer(`testing-${strictMode ? 'strict' : 'non-strict'}`)
+      const otelTracer = provider.getTracer(`testing-${strictMode !== undefined ? 'strict' : 'non-strict'}`)
 
       const span = otelTracer.startSpan('test-root')
       const otelContext = otel.trace.setSpan(otel.context.active(), span)
@@ -324,7 +324,7 @@ Vitest.describe('useClientDocument', () => {
             const stackInfo = JSON.parse(val as string) as LiveStore.StackInfo
             // stackInfo.frames.shift() // Removes `renderHook.wrapper` from the stack
             stackInfo.frames.forEach((_) => {
-              if (_.name.includes('renderHook.wrapper')) {
+              if (_.name.includes('renderHook.wrapper') === true) {
                 _.name = 'renderHook.wrapper'
               }
               _.filePath = '__REPLACED_FOR_SNAPSHOT__'

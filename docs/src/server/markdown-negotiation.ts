@@ -12,7 +12,7 @@ export const isAssetPath = (pathname: string): boolean =>
   /\.[A-Za-z0-9]+$/.test(pathname)
 
 export const parseAcceptHeader = (value: string | null): MediaRange[] => {
-  if (!value) return []
+  if (value == null) return []
   const parts = value.split(',')
   const ranges: MediaRange[] = []
   parts.forEach((part, index) => {
@@ -23,7 +23,7 @@ export const parseAcceptHeader = (value: string | null): MediaRange[] => {
     if (typePart === undefined || typePart.length === 0) return
 
     const [rawType, rawSubtype] = typePart.split('/')
-    if (!rawType || !rawSubtype) return
+    if (rawType == null || rawSubtype == null) return
 
     const type = rawType.trim()
     const subtype = rawSubtype.trim()
@@ -34,7 +34,7 @@ export const parseAcceptHeader = (value: string | null): MediaRange[] => {
       const [key, rawValue] = param.split('=').map((segment) => segment.trim())
       if (key !== undefined && rawValue !== undefined && key.toLowerCase() === 'q') {
         const parsed = Number.parseFloat(rawValue)
-        if (!Number.isNaN(parsed)) {
+        if (Number.isNaN(parsed) === false) {
           q = parsed
         }
       }
@@ -87,7 +87,7 @@ export const scoreForMediaType = (
 }
 
 export const preferredMarkdown = (accept: string | null): boolean => {
-  if (!accept) {
+  if (accept == null) {
     return true
   }
 
@@ -97,7 +97,7 @@ export const preferredMarkdown = (accept: string | null): boolean => {
   }
 
   const explicitlyAllowsHtml = ranges.some((range) => range.q > 0 && range.type === 'text' && range.subtype === 'html')
-  if (explicitlyAllowsHtml) {
+  if (explicitlyAllowsHtml !== undefined) {
     return false
   }
 
@@ -108,7 +108,7 @@ export const preferredMarkdown = (accept: string | null): boolean => {
   return markdownQuality.q > 0 || altMarkdownQuality.q > 0 || appMarkdownQuality.q > 0
 }
 
-const ensureTrailingSlash = (pathname: string): string => (pathname.endsWith('/') ? pathname : `${pathname}/`)
+const ensureTrailingSlash = (pathname: string): string => (pathname.endsWith('/') === true ? pathname : `${pathname}/`)
 
 export const buildMarkdownUrl = (url: URL): string => {
   const pathname = ensureTrailingSlash(url.pathname)
@@ -123,7 +123,7 @@ export const buildMarkdownRelativePath = (url: URL): string => {
 
 export const appendVary = (response: Response, headerValue: string): void => {
   const vary = response.headers.get('Vary')
-  if (!vary) {
+  if (vary == null) {
     response.headers.set('Vary', headerValue)
     return
   }

@@ -261,10 +261,10 @@ export class ReactiveGraph<
       isDirty: true,
       isDestroyed: false,
       computeResult: (otelContext, debugRefreshReason) => {
-        if (thunk.isDirty) {
+        if (thunk.isDirty === true) {
           const neededCurrentRefresh = this.currentDebugRefresh === undefined
           let localDebugRefresh: { refreshedAtoms: any[]; startMs: number } | undefined
-          if (neededCurrentRefresh) {
+          if (neededCurrentRefresh === true) {
             // Use local variable to prevent corruption from nested computations
             localDebugRefresh = { refreshedAtoms: [], startMs: performance.now() }
             this.currentDebugRefresh = localDebugRefresh
@@ -301,7 +301,7 @@ export class ReactiveGraph<
 
           // Use currentDebugRefresh if available (could be from parent or local)
           const debugRefresh = localDebugRefresh ?? this.currentDebugRefresh
-          if (debugRefresh) {
+          if (debugRefresh !== undefined) {
             debugRefresh.refreshedAtoms.push(debugInfoForAtom)
           }
 
@@ -309,7 +309,7 @@ export class ReactiveGraph<
           thunk.previousResult = result
           thunk.recomputations++
 
-          if (neededCurrentRefresh && localDebugRefresh) {
+          if (neededCurrentRefresh === true && localDebugRefresh !== undefined) {
             // Use local reference which can't be corrupted by nested calls
             const refreshedAtoms = localDebugRefresh.refreshedAtoms
             const durationMs = performance.now() - localDebugRefresh.startMs
@@ -451,9 +451,9 @@ export class ReactiveGraph<
       markSuperCompDirtyRec(ref, effectsToRefresh)
     }
 
-    if (options?.skipRefresh) {
+    if (options?.skipRefresh !== undefined) {
       for (const effect of effectsToRefresh) {
-        if (!this.deferredEffects.has(effect)) {
+        if (this.deferredEffects.has(effect) === false) {
           this.deferredEffects.set(effect, new Set())
         }
 
@@ -597,11 +597,11 @@ const compute = <T>(
   debugRefreshReason: DebugRefreshReason | undefined,
 ): T => {
   // const __getResult = atom._tag === 'thunk' ? atom.__getResult.toString() : ''
-  if (atom.isDestroyed) {
+  if (atom.isDestroyed === true) {
     shouldNeverHappen(`LiveStore Error: Attempted to compute destroyed ${atom._tag} (${atom.id}): ${atom.label ?? ''}`)
   }
 
-  if (atom.isDirty) {
+  if (atom.isDirty === true) {
     // console.log('atom is dirty', atom.id, atom.label ?? '', atom._tag, __getResult)
     const result = atom.computeResult(otelContext, debugRefreshReason)
     atom.isDirty = false
@@ -640,7 +640,7 @@ const serializeAtom = (atom: Atom<any, unknown, any>, includeResult: boolean): S
     super_.push(a.id)
   }
 
-  const previousResult: EncodedOption<string> = includeResult
+  const previousResult: EncodedOption<string> = includeResult !== undefined
     ? encodedOptionSome(
         atom.previousResult === NOT_REFRESHED_YET ? '"SYMBOL_NOT_REFRESHED_YET"' : JSON.stringify(atom.previousResult),
       )
