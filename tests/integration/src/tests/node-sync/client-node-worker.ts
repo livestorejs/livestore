@@ -124,7 +124,7 @@ runner.pipe(
   WorkerRunner.launch,
   // TODO this parent span is currently missing in the trace
   Effect.withSpan(`@livestore/adapter-node-sync:run-worker-${clientId}`),
-  Effect.provide(IS_CI !== undefined ? OtelLiveDummy : OtelLiveHttp({ serviceName, skipLogUrl: true })),
+  Effect.provide(IS_CI === true ? OtelLiveDummy : OtelLiveHttp({ serviceName, skipLogUrl: true })),
   Effect.scoped,
   Effect.tapCauseLogPretty,
   Effect.annotateLogs({ thread: serviceName, clientId }),

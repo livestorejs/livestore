@@ -17,7 +17,7 @@ const useBarrierStart = () => {
   React.useEffect(() => {
     const sp = new URLSearchParams(window.location.search)
     const barrier = sp.get('barrier') !== null
-    if (barrier == null) {
+    if (barrier === false) {
       setStarted(true)
       return
     }
@@ -54,7 +54,7 @@ export const Root: React.FC = () => {
 
   const [canBoot, setCanBoot] = React.useState(false)
   React.useEffect(() => {
-    if (started == null) return
+    if (started === false) return
     const t = setTimeout(() => setCanBoot(true), bootDelayMs)
     return () => clearTimeout(t)
   }, [started, bootDelayMs])
@@ -75,7 +75,7 @@ export const Root: React.FC = () => {
     [canBoot, reset, sessionId, clientId, disableFastPath],
   )
 
-  if (started == null) {
+  if (started === false) {
     return <div>Waiting for barrier…</div>
   }
 

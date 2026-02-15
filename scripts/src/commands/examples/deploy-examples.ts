@@ -298,7 +298,7 @@ export const command = Cli.Command.make(
 
     const workersSubdomain = yield* resolveWorkersSubdomain
     console.log(
-      `Deploying${prod !== undefined ? ' (to prod)' : ''}: ${filteredExamples.map((example) => example.slug).join(', ')} using ${workersSubdomain}.workers.dev`,
+      `Deploying${prod === true ? ' (to prod)' : ''}: ${filteredExamples.map((example) => example.slug).join(', ')} using ${workersSubdomain}.workers.dev`,
     )
 
     const results = yield* Effect.forEach(

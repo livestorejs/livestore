@@ -96,14 +96,14 @@ const platformWorkerImpl = Worker.makePlatform<ChildProcess.ChildProcess>()({
             Effect.catchAllCause(() =>
               Effect.sync(() => {
                 // Enhanced cleanup with escalating signals
-                if (childProcess.killed == null) {
+                if (childProcess.killed === false) {
                   try {
                     // First try SIGTERM
                     childProcess.kill('SIGTERM')
 
                     // If still running after a short delay, use SIGKILL
                     setTimeout(() => {
-                      if (childProcess.killed == null) {
+                      if (childProcess.killed === false) {
                         childProcess.kill('SIGKILL')
                       }
                     }, 1000)

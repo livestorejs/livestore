@@ -12,7 +12,7 @@ const argv = getWorkerArgs()
 const syncUrl = (argv.extraArgs as { syncUrl: string }).syncUrl
 
 const layer = Layer.mergeAll(
-  IS_CI !== undefined
+  IS_CI === true
     ? OtelLiveDummy
     : OtelLiveHttp({ serviceName: `node-sync-test:livestore-leader-${argv.clientId}`, skipLogUrl: true }),
   makeFileLogger(`livestore-worker-${argv.clientId}`),

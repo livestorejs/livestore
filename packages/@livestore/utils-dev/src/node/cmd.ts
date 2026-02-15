@@ -68,7 +68,7 @@ export const cmd: (
 
   const stdoutMode = options?.stdout ?? 'inherit'
   const stderrMode = options?.stderr ?? 'inherit'
-  const useShell = (options?.shell !== undefined ? true : false) || needsShell
+  const useShell = (options?.shell === true ? true : false) || needsShell
 
   const commandDebugStr =
     debugEnvStr + (Array.isArray(finalInput) === true ? (finalInput).join(' ') : (finalInput))
@@ -130,7 +130,7 @@ export const cmdText: (
       .join('')
 
     const commandDebugStr = debugEnvStr + [command, ...args].join(' ')
-    const subshellStr = options?.runInShell !== undefined ? ' (in subshell)' : ''
+    const subshellStr = options?.runInShell === true ? ' (in subshell)' : ''
 
     yield* Effect.logDebug(`Running '${commandDebugStr}' in '${cwd}'${subshellStr}`)
     yield* Effect.annotateCurrentSpan({ 'span.label': commandDebugStr, command, cwd })
@@ -139,7 +139,7 @@ export const cmdText: (
       // inherit = Stream stderr to process.stderr, pipe = Stream stderr to process.stdout
       Command.stderr(options?.stderr ?? 'inherit'),
       Command.workingDirectory(cwd),
-      options?.runInShell !== undefined ? Command.runInShell(true) : identity,
+      options?.runInShell === true ? Command.runInShell(true) : identity,
       Command.env(options?.env ?? {}),
       Command.string,
     )
