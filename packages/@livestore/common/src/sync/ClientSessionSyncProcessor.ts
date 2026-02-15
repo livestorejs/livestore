@@ -198,7 +198,7 @@ export const makeClientSessionSyncProcessor = ({
   }
 
   const boot: ClientSessionSyncProcessor['boot'] = Effect.gen(function* () {
-    if (confirmUnsavedChanges !== undefined && typeof window !== 'undefined' && typeof window.addEventListener === 'function') {
+    if (confirmUnsavedChanges === true && typeof window !== 'undefined' && typeof window.addEventListener === 'function') {
       const onBeforeUnload = (event: BeforeUnloadEvent) => {
         if (syncStateRef.current.pending.length > 0) {
           // Trigger the default browser dialog
