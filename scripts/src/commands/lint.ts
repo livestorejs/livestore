@@ -74,7 +74,7 @@ export const lintCommand = Cli.Command.make(
   { fix: Cli.Options.boolean('fix').pipe(Cli.Options.withDefault(false)) },
   Effect.fn(function* ({ fix }) {
     // Run oxfmt and oxlint (format + lint)
-    if (fix !== undefined) {
+    if (fix === true) {
       yield* runFormatFix
       yield* runLintFix
     } else {

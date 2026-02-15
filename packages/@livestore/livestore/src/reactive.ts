@@ -640,7 +640,7 @@ const serializeAtom = (atom: Atom<any, unknown, any>, includeResult: boolean): S
     super_.push(a.id)
   }
 
-  const previousResult: EncodedOption<string> = includeResult !== undefined
+  const previousResult: EncodedOption<string> = includeResult === true
     ? encodedOptionSome(
         atom.previousResult === NOT_REFRESHED_YET ? '"SYMBOL_NOT_REFRESHED_YET"' : JSON.stringify(atom.previousResult),
       )

@@ -10,7 +10,7 @@ export const isDevEnv = () => {
   }
 
   // @ts-expect-error Only exists in Expo / RN
-  if (globalThis?.__DEV__ !== undefined) {
+  if (globalThis?.__DEV__ === true) {
     return true
   }
 

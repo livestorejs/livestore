@@ -129,7 +129,7 @@ const hasTestFiles = (dirPath: string): boolean => {
         }
 
         if (stat.isDirectory() === true && entry !== 'node_modules' && entry !== 'dist') {
-          if (findTestFiles(entryPath) !== undefined) {
+          if (findTestFiles(entryPath) === true) {
             return true
           }
         }
