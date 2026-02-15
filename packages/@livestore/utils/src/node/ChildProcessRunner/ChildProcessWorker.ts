@@ -15,7 +15,7 @@ const childProcesses = new Set<ChildProcess.ChildProcess>()
 const forceCleanupChildren = (signal: NodeJS.Signals = 'SIGKILL') => {
   for (const child of childProcesses) {
     try {
-      if (child.killed == null) {
+      if (child.killed === false) {
         child.kill(signal)
       }
     } catch {
@@ -29,7 +29,7 @@ const forceCleanupChildren = (signal: NodeJS.Signals = 'SIGKILL') => {
 let signalHandlersInstalled = false
 
 const installSignalHandlers = () => {
-  if (signalHandlersInstalled !== undefined) return
+  if (signalHandlersInstalled === true) return
   signalHandlersInstalled = true
 
   // Use 'beforeExit' instead of signal handlers since tests may interfere with signals

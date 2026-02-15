@@ -72,7 +72,7 @@ export const cmd: (
 
   const commandDebugStr =
     debugEnvStr + (Array.isArray(finalInput) === true ? (finalInput).join(' ') : (finalInput))
-  const subshellStr = useShell !== undefined ? ' (in subshell)' : ''
+  const subshellStr = useShell === true ? ' (in subshell)' : ''
 
   yield* Effect.logDebug(`Running '${commandDebugStr}' in '${cwd}'${subshellStr}`)
   yield* Effect.annotateCurrentSpan({
@@ -168,7 +168,7 @@ const runWithoutLogging = ({ commandInput, cwd, env, stdoutMode, stderrMode, use
     Command.stdout(stdoutMode),
     Command.stderr(stderrMode),
     Command.workingDirectory(cwd),
-    useShell !== undefined ? Command.runInShell(true) : identity,
+    useShell === true ? Command.runInShell(true) : identity,
     Command.env(env),
     Command.exitCode,
   )
@@ -227,7 +227,7 @@ const runWithLogging = ({
         Command.stdout('pipe'),
         Command.stderr('pipe'),
         Command.workingDirectory(cwd),
-        useShell !== undefined ? Command.runInShell(true) : identity,
+        useShell === true ? Command.runInShell(true) : identity,
         Command.env(envWithColor),
       )
 
@@ -286,7 +286,7 @@ const buildCommand = (input: string | string[], useShell: boolean) => {
     return Command.make(c!, ...a)
   }
 
-  if (useShell !== undefined) {
+  if (useShell === true) {
     return Command.make(input)
   }
 

@@ -572,7 +572,7 @@ export const makeMeshNode = <TName extends MeshNodeName>(
     // TODO also provide a way to allow for reconnects
     let listenAlreadyStarted = false
     const listenForChannel: MeshNode['listenForChannel'] = Stream.suspend(() => {
-      if (listenAlreadyStarted !== undefined) {
+      if (listenAlreadyStarted === true) {
         return shouldNeverHappen('listenForChannel already started')
       }
       listenAlreadyStarted = true
