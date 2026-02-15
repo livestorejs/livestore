@@ -150,7 +150,7 @@ export type TableOptions = {
 export function table<
   TName extends string,
   TColumns extends SqliteDsl.Columns | SqliteDsl.ColumnDefinition.Any,
-  const TOptionsInput extends TableOptionsInput = TableOptionsInput,
+  const TOptionsInput extends TableOptionsInput,
 >(
   args: {
     name: TName
@@ -162,27 +162,20 @@ export function table<
 export function table<
   TName extends string,
   TSchema extends Schema.Schema.AnyNoContext,
-  const TOptionsInput extends TableOptionsInput = TableOptionsInput,
+  const TOptionsInput extends TableOptionsInput,
 >(
   args: {
     name: TName
     schema: TSchema
   } & Partial<TOptionsInput>,
-): TableDef<
-  SqliteTableDefForSchemaInput<TName, Schema.Schema.Type<TSchema>, Schema.Schema.Encoded<TSchema>, TSchema>
->
+): TableDef<SqliteTableDefForSchemaInput<TName, Schema.Schema.Type<TSchema>, Schema.Schema.Encoded<TSchema>, TSchema>>
 
 // Overload 3: With schema and no name (uses schema annotations)
-export function table<
-  TSchema extends Schema.Schema.AnyNoContext,
-  const TOptionsInput extends TableOptionsInput = TableOptionsInput,
->(
+export function table<TSchema extends Schema.Schema.AnyNoContext, const TOptionsInput extends TableOptionsInput>(
   args: {
     schema: TSchema
   } & Partial<TOptionsInput>,
-): TableDef<
-  SqliteTableDefForSchemaInput<string, Schema.Schema.Type<TSchema>, Schema.Schema.Encoded<TSchema>, TSchema>
->
+): TableDef<SqliteTableDefForSchemaInput<string, Schema.Schema.Type<TSchema>, Schema.Schema.Encoded<TSchema>, TSchema>>
 
 // Implementation
 export function table<
@@ -214,9 +207,7 @@ export function table<
   if ('columns' in args) {
     tableName = args.name
     const columnOrColumns = args.columns
-    columns = (
-      SqliteDsl.isColumnDefinition(columnOrColumns) === true ? { value: columnOrColumns } : columnOrColumns
-    )
+    columns = SqliteDsl.isColumnDefinition(columnOrColumns) === true ? { value: columnOrColumns } : columnOrColumns
     additionalIndexes = []
   } else if ('schema' in args) {
     const result = schemaFieldsToColumns(Schema.getResolvedPropertySignatures(args.schema))
