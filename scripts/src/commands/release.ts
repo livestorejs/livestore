@@ -149,7 +149,7 @@ export const releaseSnapshotCommand = Cli.Command.make(
         Effect.catchTag('CmdError', () => Effect.succeed(false)),
       )
 
-      if (alreadyPublished !== undefined) {
+      if (alreadyPublished === true) {
         yield* Effect.log(`${pkg}@${snapshotVersion} already published, skipping`)
         continue
       }

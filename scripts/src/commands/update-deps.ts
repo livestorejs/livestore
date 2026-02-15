@@ -249,9 +249,9 @@ const executeUpdates = (filteredUpdates: Record<string, Record<string, string>>,
           .map(([pkg, version]) => `${pkg}@${version}`)
           .join(' ')
 
-        yield* Console.log(`${dryRun !== undefined ? '[DRY RUN] ' : ''}Updating ${packageJsonPath}: ${packages}`)
+        yield* Console.log(`${dryRun === true ? '[DRY RUN] ' : ''}Updating ${packageJsonPath}: ${packages}`)
 
-        if (dryRun == null) {
+        if (dryRun === false) {
           const updateResult = yield* Effect.gen(function* () {
             // Read current package.json
             const content = yield* Effect.try({

@@ -194,7 +194,7 @@ const determineDeploymentKind = ({
 }): CloudflareEnvironmentKind => {
   const normalizedBranch = branchName.toLowerCase()
 
-  if (prod !== undefined || normalizedBranch === 'main') {
+  if (prod === true || normalizedBranch === 'main') {
     return 'prod'
   }
 

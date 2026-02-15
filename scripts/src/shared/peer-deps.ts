@@ -156,13 +156,13 @@ export const checkPeerDependencies = Effect.gen(function* () {
 
       for (const resolvedVersion of resolvedSet) {
         bestResolvedVersion = resolvedVersion
-        if (semver.satisfies(resolvedVersion, requiredRange, { loose: true }) !== undefined) {
+        if (semver.satisfies(resolvedVersion, requiredRange, { loose: true }) === true) {
           satisfied = true
           break
         }
       }
 
-      if (satisfied == null && bestResolvedVersion !== undefined) {
+      if (satisfied === false && bestResolvedVersion !== undefined) {
         violations.push({
           package: parsed.name,
           packageVersion: parsed.version,
