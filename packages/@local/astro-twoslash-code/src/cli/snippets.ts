@@ -1276,7 +1276,7 @@ const loadPreviousManifest = (
       )
       return null
     }
-    if (manifestExistsResult.right == null) {
+    if (manifestExistsResult.right === false) {
       return null
     }
 

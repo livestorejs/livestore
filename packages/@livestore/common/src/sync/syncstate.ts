@@ -395,7 +395,7 @@ export const merge = ({
         !
         EventSequenceNumber.Client.isGreaterThan(newEventsFirst.seqNum, syncState.localHead)
 
-      if (invalidEventSequenceNumber !== undefined) {
+      if (invalidEventSequenceNumber) {
         const expectedMinimumId = EventSequenceNumber.Client.nextPair({
           seqNum: syncState.localHead,
           isClient: true,

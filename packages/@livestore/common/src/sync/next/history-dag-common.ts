@@ -145,7 +145,7 @@ export class HistoryDag {
   }
 
   addEdge(sourceId: string, targetId: string, attributes: HistoryDagEdgeAttributes): Graph.EdgeIndex {
-    if (this.options.allowSelfLoops == null && sourceId === targetId) {
+    if (this.options.allowSelfLoops === false && sourceId === targetId) {
       return shouldNeverHappen('HistoryDag self-loops are disabled')
     }
 

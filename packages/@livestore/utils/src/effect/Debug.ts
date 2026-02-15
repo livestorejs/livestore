@@ -69,7 +69,7 @@ const addNode = (span: Tracer.AnySpan) => {
   const [mutableGraph, nodeId] = ensureSpan(span.traceId, span.spanId)
   Graph.updateNode(mutableGraph, nodeId, (previousInfo) => {
     const [latestInfo, upgraded] = sortSpan(previousInfo.span, span)
-    if (upgraded !== undefined && latestInfo._tag === 'Span' && Option.isSome(latestInfo.parent) !== undefined) {
+    if (upgraded === true && latestInfo._tag === 'Span' && Option.isSome(latestInfo.parent) === true) {
       const parentNodeId = addNode(latestInfo.parent.value)
       Graph.addEdge(mutableGraph, parentNodeId, nodeId, undefined)
     }
@@ -206,7 +206,7 @@ const ensureScopePatched = (scope: ScopeImpl, allocationFiber: Fiber.RuntimeFibe
   if (scope.state._tag === 'Closed') return
   if (knownScopes.has(scope) === true) return
   const id = lastScopeId++
-  if (patchScopeClose !== undefined) {
+  if (patchScopeClose === true) {
     const oldClose = (scope as any).close
     ;(scope as any).close = function (...args: any[]) {
       return oldClose.apply(this, args).pipe(
@@ -333,7 +333,7 @@ const filterGraphKeepAncestors = <N, E>(
     if (Option.isNone(node) === true) continue
 
     const matchesPredicate = predicate(node.value, nodeId)
-    if (matchesPredicate !== undefined) {
+    if (matchesPredicate === true) {
       shouldInclude.add(nodeId)
     } else {
       const children = Graph.neighborsDirected(graph, nodeId, 'outgoing')
@@ -415,7 +415,7 @@ export const logDebug = (options: LogDebugOptions = {}) => {
   lines = [...lines, 'Active Fibers:']
   for (const fiber of knownFibers) {
     const interruptible = RuntimeFlags.interruptible((fiber as any).currentRuntimeFlags)
-    lines = [...lines, `- #${fiber.id().id}${interruptible == null ? ' [uninterruptible]' : ''}`]
+    lines = [...lines, `- #${fiber.id().id}${interruptible === false ? ' [uninterruptible]' : ''}`]
   }
   if (knownFibers.size === 0) {
     lines = [...lines, '- No active effect fibers']

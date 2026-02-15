@@ -131,7 +131,7 @@ const findSubDagsInHistory = (
         allOutsideDependencies.push(outsideDependencies)
       }
 
-      if (outsideDependencies.length === 0 && dagReplacesDag(subDag, targetSubDag) !== undefined) {
+      if (outsideDependencies.length === 0 && dagReplacesDag(subDag, targetSubDag) === true) {
         subDags.push(subDag)
       } else {
         break

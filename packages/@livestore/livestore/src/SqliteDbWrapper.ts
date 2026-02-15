@@ -252,7 +252,7 @@ export class SqliteDbWrapper implements SqliteDb {
 
           const key = this.resultCache.getKey(queryStr, bindValues)
           const cachedResult = this.resultCache.get(key)
-          if (skipCache == null && cachedResult !== undefined) {
+          if (skipCache === false && cachedResult !== undefined) {
             span.setAttribute('sql.rowsCount', cachedResult.length)
             span.setAttribute('sql.cached', true)
             span.end()
