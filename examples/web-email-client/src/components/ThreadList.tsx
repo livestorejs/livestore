@@ -40,17 +40,6 @@ export const ThreadList: React.FC = () => {
         .filter((t): t is NonNullable<typeof t> => t !== undefined)
     : undefined
 
-  if (!threadsForSelectedLabel || threadsForSelectedLabel.length === 0) {
-    return (
-      <div className="grid place-items-center h-full">
-        <p className="text-gray-500">
-          No threads in{' '}
-          <span className="font-medium text-gray-700 capitalize">{selectedLabel.name.toLocaleLowerCase()}</span>
-        </p>
-      </div>
-    )
-  }
-
   const selectThread = useCallback(
     (threadId: string) => {
       setUiState({ selectedThreadId: threadId })
@@ -84,6 +73,17 @@ export const ThreadList: React.FC = () => {
     },
     [selectThread],
   )
+
+  if (!threadsForSelectedLabel || threadsForSelectedLabel.length === 0) {
+    return (
+      <div className="grid place-items-center h-full">
+        <p className="text-gray-500">
+          No threads in{' '}
+          <span className="font-medium text-gray-700 capitalize">{selectedLabel.name.toLocaleLowerCase()}</span>
+        </p>
+      </div>
+    )
+  }
 
   return (
     <div className="divide-y h-full bg-white divide-gray-100">
