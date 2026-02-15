@@ -11,7 +11,7 @@ export const officeHours = [
 ]
 
 export const getBranchName = () =>
-  isNonEmptyString(process.env.GITHUB_BRANCH_NAME) !== undefined
+  isNonEmptyString(process.env.GITHUB_BRANCH_NAME)
     ? process.env.GITHUB_BRANCH_NAME
     : execSync('git rev-parse --abbrev-ref HEAD').toString().trim()
 

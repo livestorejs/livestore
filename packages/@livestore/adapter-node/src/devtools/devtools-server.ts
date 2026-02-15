@@ -106,7 +106,7 @@ export const startDevtoolsServer = ({
       } else {
         if (req.url === '/' || req.url === '') {
           return HttpServerResponse.redirect('/_livestore/node')
-        } else if (shouldRouteToVite(req.url) !== undefined) {
+        } else if (shouldRouteToVite(req.url)) {
           // Here we're delegating to the Vite middleware
 
           // TODO replace this once @effect/platform-node supports Node HTTP middlewares

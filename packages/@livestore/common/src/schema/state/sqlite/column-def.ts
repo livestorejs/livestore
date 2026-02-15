@@ -96,7 +96,7 @@ export const schemaFieldsToColumns = (
 
     // Validate primary key + nullable
     const column = columns[prop.name]
-    if (column?.primaryKey !== undefined && column.nullable !== undefined) {
+    if (column?.primaryKey && column.nullable) {
       throw new Error('Primary key columns cannot be nullable')
     }
 
@@ -235,7 +235,7 @@ const getLiteralColumnDefinition = (
       const useIntegerColumn =
         literalValues.length > 1 && literalValues.every((value) => typeof value === 'number' && Number.isInteger(value))
 
-      return useIntegerColumn !== undefined ? SqliteDsl.integer({ schema, nullable }) : SqliteDsl.real({ schema, nullable })
+      return useIntegerColumn ? SqliteDsl.integer({ schema, nullable }) : SqliteDsl.real({ schema, nullable })
     }
     case 'boolean':
       return SqliteDsl.boolean({ nullable })

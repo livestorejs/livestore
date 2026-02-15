@@ -214,7 +214,7 @@ export const makeLeaderSyncProcessor = ({
 
         const waitForProcessing = options?.waitForProcessing ?? false
 
-        if (waitForProcessing !== undefined) {
+        if (waitForProcessing) {
           const deferreds = yield* Effect.forEach(newEvents, () => Deferred.make<void, LeaderAheadError>())
 
           const items = newEvents.map((eventEncoded, i) => [eventEncoded, deferreds[i]] as LocalPushQueueItem)
@@ -230,7 +230,7 @@ export const makeLeaderSyncProcessor = ({
         Effect.withSpan('@livestore/common:LeaderSyncProcessor:push', {
           attributes: {
             batchSize: newEvents.length,
-            batch: TRACE_VERBOSE !== undefined ? newEvents : undefined,
+            batch: TRACE_VERBOSE ? newEvents : undefined,
           },
           links: ctxRef.current?.span !== undefined ? [{ _tag: 'SpanLink', span: ctxRef.current.span, attributes: {} }] : undefined,
         }),
@@ -1126,7 +1126,7 @@ const validatePushBatch = (
     // monotonic from B’s perspective, but we must reject and force B to rebase locally
     // so the leader never regresses.
     for (let i = 1; i < batch.length; i++) {
-      if (EventSequenceNumber.Client.isGreaterThanOrEqual(batch[i - 1]!.seqNum, batch[i]!.seqNum) !== undefined) {
+      if (EventSequenceNumber.Client.isGreaterThanOrEqual(batch[i - 1]!.seqNum, batch[i]!.seqNum)) {
         return yield* LeaderAheadError.make({
           minimumExpectedNum: batch[i - 1]!.seqNum,
           providedNum: batch[i]!.seqNum,
@@ -1135,7 +1135,7 @@ const validatePushBatch = (
     }
 
     // Make sure smallest sequence number is > pushHead
-    if (EventSequenceNumber.Client.isGreaterThanOrEqual(pushHead, batch[0]!.seqNum) !== undefined) {
+    if (EventSequenceNumber.Client.isGreaterThanOrEqual(pushHead, batch[0]!.seqNum)) {
       return yield* LeaderAheadError.make({
         minimumExpectedNum: pushHead,
         providedNum: batch[0]!.seqNum,

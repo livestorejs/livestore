@@ -74,9 +74,9 @@ export const makeDoRpcSync =
             })),
           ),
           storeId,
-          rpcContext: options?.live !== undefined ? { callerContext: durableObjectContext } : undefined,
+          rpcContext: options?.live ? { callerContext: durableObjectContext } : undefined,
         }).pipe(
-          options?.live !== undefined
+          options?.live
             ? Stream.concatWithLastElement((res) =>
                 Effect.gen(function* () {
                   if (res._tag === 'None')

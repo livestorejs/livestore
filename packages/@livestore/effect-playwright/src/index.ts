@@ -63,7 +63,7 @@ export const browserContext = ({
           ...launchOptions,
           headless: false, // Using `--headless` flag below instead
           args: [
-            headless !== undefined ? `--headless=new` : '', // Headless mode https://playwright.dev/docs/chrome-extensions#headless-mode
+            headless ? `--headless=new` : '', // Headless mode https://playwright.dev/docs/chrome-extensions#headless-mode
             `--disable-extensions-except=${extensionPath}`,
             `--load-extension=${extensionPath}`,
           ],

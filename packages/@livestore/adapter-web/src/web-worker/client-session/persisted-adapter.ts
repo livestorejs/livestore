@@ -265,7 +265,7 @@ export const makePersistedAdapter =
 
       const sharedWebWorker = tryAsFunctionAndNew(options.sharedWorker, { name: `livestore-shared-worker-${storeId}` })
 
-      if (options.experimental?.awaitSharedWorkerTermination !== undefined) {
+      if (options.experimental?.awaitSharedWorkerTermination) {
         // Relying on the lock being available is currently the only mechanism we're aware of
         // to know whether the shared worker has terminated.
         yield* Effect.addFinalizer(() => WebLock.waitForLock(LIVESTORE_SHARED_WORKER_TERMINATION_LOCK))
@@ -613,7 +613,7 @@ const getPersistedId = (key: string, storageType: 'session' | 'local') => {
   const fullKey = `livestore:${key}`
   const storedKey = storage.getItem(fullKey)
 
-  if (storedKey !== undefined) return storedKey
+  if (storedKey !== null) return storedKey
 
   const newKey = makeId()
   storage.setItem(fullKey, newKey)
@@ -624,7 +624,7 @@ const getPersistedId = (key: string, storageType: 'session' | 'local') => {
 const ensureBrowserRequirements = Effect.gen(function* () {
   const validate = (condition: boolean, label: string) =>
     Effect.gen(function* () {
-      if (condition !== undefined) {
+      if (condition) {
         return yield* UnknownError.make({
           cause: `[@livestore/adapter-web] Browser not supported. The LiveStore web adapter needs '${label}' to work properly`,
         })

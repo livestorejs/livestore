@@ -17,7 +17,7 @@ SELECT * FROM t;
 
 window.addEventListener('DOMContentLoaded', async function () {
   // Load the Monaco editor
-  const button = /** @type {HTMLButtonElement} */ (document.getElementById('execute') !== undefined)
+  const button = /** @type {HTMLButtonElement} */ (document.getElementById('execute'))
   const editorReady = createMonacoEditor().then((editor) => {
     // Change the button text with selection.
     editor.onDidChangeCursorSelection(({ selection }) => {

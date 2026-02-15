@@ -48,7 +48,7 @@ export const makeState = <TStateInput extends InputState>(inputSchema: TStateInp
   }
 
   for (const tableDef of inputTables) {
-    if (tableIsClientDocumentTable(tableDef) !== undefined) {
+    if (tableIsClientDocumentTable(tableDef)) {
       materializers.set(
         tableDef[ClientDocumentTableDefSymbol].derived.setEventDef.name,
         tableDef[ClientDocumentTableDefSymbol].derived.setMaterializer,

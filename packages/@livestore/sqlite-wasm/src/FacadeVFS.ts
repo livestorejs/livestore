@@ -471,9 +471,9 @@ export class FacadeVFS extends VFS.Base {
       let pName = zName
       let state = 1
       const charCodes = []
-      while (state !== undefined) {
+      while (state) {
         const charCode = this._module.HEAPU8[pName++]
-        if (charCode !== undefined) {
+        if (charCode) {
           charCodes.push(charCode)
         } else {
           if (this._module.HEAPU8[pName] == null) state = null
@@ -501,7 +501,7 @@ export class FacadeVFS extends VFS.Base {
       }
       return new TextDecoder().decode(new Uint8Array(charCodes))
     }
-    return zName !== undefined ? this._module.UTF8ToString(zName) : null
+    return zName ? this._module.UTF8ToString(zName) : null
   }
 }
 // Emscripten "legalizes" 64-bit integer arguments by passing them as

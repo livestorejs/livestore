@@ -282,14 +282,14 @@ export const pushEventsToSyncBackend = ({
           ),
         )
 
-        if (exportData.storeId !== storeId && force == null) {
+        if (exportData.storeId !== storeId && !force) {
           return yield* new ImportError({
             cause: new Error(`Store ID mismatch: file has '${exportData.storeId}', expected '${storeId}'`),
             note: `The export file was created for a different store. Use force option to import anyway.`,
           })
         }
 
-        if (dryRun !== undefined) {
+        if (dryRun) {
           return {
             storeId,
             eventCount: exportData.events.length,

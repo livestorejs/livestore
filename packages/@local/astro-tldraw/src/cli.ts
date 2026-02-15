@@ -90,7 +90,7 @@ export const buildDiagrams = (
       const paths = resolveCachePaths(projectRoot)
       const fs = yield* FileSystem.FileSystem
 
-      if (verbose !== undefined) {
+      if (verbose) {
         yield* Effect.log('Building tldraw diagrams...')
         yield* Effect.log(`  Diagrams root: ${paths.diagramsRoot}`)
         yield* Effect.log(`  Cache root: ${paths.cacheRoot}`)
@@ -100,7 +100,7 @@ export const buildDiagrams = (
       const diagramFiles = yield* discoverDiagramFiles(paths.diagramsRoot)
 
       if (diagramFiles.length === 0) {
-        if (verbose !== undefined) {
+        if (verbose) {
           yield* Effect.log('  No .tldr files found')
         }
         /* Still save an empty manifest */
@@ -108,7 +108,7 @@ export const buildDiagrams = (
         return
       }
 
-      if (verbose !== undefined) {
+      if (verbose) {
         yield* Effect.log(`  Found ${diagramFiles.length} diagram(s)`)
       }
 
@@ -134,14 +134,14 @@ export const buildDiagrams = (
           const existingEntry = getCacheEntry(manifest, entryFile)
 
           if (isCacheValid(existingEntry, sourceHash) === true) {
-            if (verbose !== undefined) {
+            if (verbose) {
               yield* Effect.log(`  ✓ ${entryFile} (cached)`)
             }
             skippedCount++
             continue
           }
 
-          if (verbose !== undefined) {
+          if (verbose) {
             yield* Effect.log(`  ⟳ ${entryFile} (rendering...)`)
           }
 
@@ -172,7 +172,7 @@ export const buildDiagrams = (
           /* Update manifest */
           updatedManifest = updateManifestEntry(updatedManifest, entry)
 
-          if (verbose !== undefined) {
+          if (verbose) {
             yield* Effect.log(`    ✓ ${entryFile}`)
           }
           renderedCount++
@@ -181,7 +181,7 @@ export const buildDiagrams = (
         /* Save updated manifest */
         yield* saveManifest(paths.manifestPath, updatedManifest)
 
-        if (verbose !== undefined) {
+        if (verbose) {
           yield* Effect.log(`\n  Summary:`)
           yield* Effect.log(`    Rendered: ${renderedCount}`)
           yield* Effect.log(`    Cached: ${skippedCount}`)
@@ -247,7 +247,7 @@ const summarizeWatchEvent = (paths: TldrawCachePaths, event: FileSystem.WatchEve
   const absolutePath = path.resolve(path.isAbsolute(rawPath) === true ? rawPath : path.join(rootAbsolute, rawPath))
 
   /* Ignore events inside cache directory */
-  if (isWithinDirectory(absolutePath, paths.cacheRoot) !== undefined) {
+  if (isWithinDirectory(absolutePath, paths.cacheRoot)) {
     return null
   }
 
@@ -310,7 +310,7 @@ const watchDiagramsInternal = (
     const runRebuild = (reason: WatchDiagramsRebuildInfo['reason'], event: WatchEventSummary | null) =>
       Effect.gen(function* () {
         const startedAt = Date.now()
-        if (event !== undefined) {
+        if (event !== null) {
           yield* Effect.log(`Diagrams watch: ${event.kind.toLowerCase()} at ${event.relativePath}, rebuilding...`)
         } else {
           yield* Effect.log('Diagrams watch: running initial build')
@@ -322,7 +322,7 @@ const watchDiagramsInternal = (
         if (result._tag === 'Left') {
           const error = result.left
           yield* Effect.logError(
-            `Diagrams watch: build failed${event !== undefined ? ` (trigger: ${event.relativePath})` : ''}: ${error.message}`,
+            `Diagrams watch: build failed${event !== null ? ` (trigger: ${event.relativePath})` : ''}: ${error.message}`,
           )
           yield* notify({ reason, event, renderedCount: -1, durationMs })
           return
@@ -333,7 +333,7 @@ const watchDiagramsInternal = (
       })
 
     /* Initial build */
-    if (watchOptions.initialBuild !== undefined) {
+    if (watchOptions.initialBuild) {
       yield* runRebuild('initial', null)
     }
 

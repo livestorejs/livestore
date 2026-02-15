@@ -39,7 +39,7 @@ export const makeTodoMvcReact: (opts?: MakeTodoMvcReactOptions) => Effect.Effect
       let val = 0
 
       const inc = () => {
-        val += strictMode !== undefined ? 0.5 : 1
+        val += strictMode ? 0.5 : 1
       }
 
       return {
@@ -54,7 +54,7 @@ export const makeTodoMvcReact: (opts?: MakeTodoMvcReactOptions) => Effect.Effect
 
     const storeWithReactApi = LiveStoreReact.withReactApi(store)
 
-    const MaybeStrictMode = strictMode !== undefined ? React.StrictMode : React.Fragment
+    const MaybeStrictMode = strictMode ? React.StrictMode : React.Fragment
 
     const wrapper = ({ children }: any) => <MaybeStrictMode>{children}</MaybeStrictMode>
 

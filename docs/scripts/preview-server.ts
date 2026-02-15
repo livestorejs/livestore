@@ -144,7 +144,7 @@ const createStaticResponse = async (
 
   const file = Bun.file(absolutePath)
   const headers = new Headers()
-  if (file.type !== undefined) {
+  if (file.type) {
     headers.set('Content-Type', file.type)
   }
 
@@ -176,7 +176,7 @@ const startServer = async (): Promise<void> => {
         }
 
         const url = new URL(request.url)
-        if (isAssetPath(url.pathname) === false && preferredMarkdown(request.headers.get('Accept')) !== undefined) {
+        if (isAssetPath(url.pathname) === false && preferredMarkdown(request.headers.get('Accept'))) {
           const markdownResponse = await createMarkdownResponse(distDir, url, isHeadRequest)
           if (markdownResponse !== undefined) {
             return markdownResponse

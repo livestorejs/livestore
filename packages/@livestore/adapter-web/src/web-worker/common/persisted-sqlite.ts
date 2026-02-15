@@ -202,7 +202,7 @@ export const cleanupOldStateDbFiles: (options: {
       const supportsCreateWritable =
         typeof FileSystemFileHandle !== 'undefined' && 'createWritable' in FileSystemFileHandle.prototype
 
-      if (supportsCreateWritable !== undefined) {
+      if (supportsCreateWritable) {
         yield* Opfs.writeFile(archivePath, archiveData)
       } else {
         yield* Opfs.syncWriteFile(archivePath, archiveData)

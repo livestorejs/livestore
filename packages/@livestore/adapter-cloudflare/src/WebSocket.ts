@@ -37,7 +37,7 @@ export const makeWebSocket = ({
             return res.webSocket as CfTypes.WebSocket
           }),
       catch: (cause) => new WebSocket.WebSocketError({ cause }),
-    }).pipe(reconnect !== undefined ? Effect.retry(reconnect) : identity, Effect.withSpan('make-websocket-durable-object'))
+    }).pipe(reconnect ? Effect.retry(reconnect) : identity, Effect.withSpan('make-websocket-durable-object'))
 
     socket.accept()
 

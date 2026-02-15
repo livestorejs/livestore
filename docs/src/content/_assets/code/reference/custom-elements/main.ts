@@ -32,7 +32,7 @@ class TodoListElement extends HTMLElement {
     this.list.style.margin = '16px 0 0'
 
     this.input.addEventListener('keydown', (event) => {
-      if (event.key === 'Enter' && this.input.value.trim() !== undefined) {
+      if (event.key === 'Enter' && this.input.value.trim()) {
         store.commit(events.todoCreated({ id: crypto.randomUUID(), text: this.input.value.trim() }))
         this.input.value = ''
       }

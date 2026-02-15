@@ -32,7 +32,7 @@ export class NodeFS extends FacadeVFS {
 
   override jOpen(zName: string | null, fileId: number, flags: number, pOutFlags: DataView): number {
     try {
-      const pathname = zName !== undefined ? path.resolve(this.directory, zName) : Math.random().toString(36).slice(2)
+      const pathname = zName ? path.resolve(this.directory, zName) : Math.random().toString(36).slice(2)
       const file: NodeFsFile = { pathname, flags, fileHandle: null }
       this.mapIdToFile.set(fileId, file)
 
@@ -41,11 +41,11 @@ export class NodeFS extends FacadeVFS {
 
       // Convert SQLite flags to Node.js flags
       let fsFlags = 'r'
-      if (create !== undefined && readwrite !== undefined) {
+      if (create && readwrite) {
         // Check if file exists first
         const exists = fs.existsSync(pathname)
         fsFlags = exists === true ? 'r+' : 'w+' // Use r+ for existing files, w+ only for new files
-      } else if (readwrite !== undefined) {
+      } else if (readwrite) {
         fsFlags = 'r+' // Open file for reading and writing
       }
 

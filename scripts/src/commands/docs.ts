@@ -387,7 +387,7 @@ export const docsCommand = Cli.Command.make('docs').pipe(
                 : undefined
 
           const prod =
-            prodOption._tag === 'Some' && prodOption.value !== undefined // TODO clean up when Effect CLI boolean flag is fixed
+            prodOption._tag === 'Some' && prodOption.value === true // TODO clean up when Effect CLI boolean flag is fixed
               ? prodOption.value
               : isPr === true
                 ? false
@@ -406,7 +406,7 @@ export const docsCommand = Cli.Command.make('docs').pipe(
           yield* Effect.log(`Deploying to "${site}" ${prod !== undefined ? 'in prod' : deployAliasLabel}`)
 
           // Split mode: build first only when requested via --build
-          const shouldBuild = buildOption._tag === 'Some' && buildOption.value
+          const shouldBuild = buildOption._tag === 'Some' && buildOption.value === true
           if (shouldBuild === true) {
             yield* docsBuildCommand.handler({ apiDocs: true, clean: false, skipDeps: false })
           }

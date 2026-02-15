@@ -30,8 +30,8 @@ export async function GET(request: Request) {
   const res = await fetch(pullUrl, { headers })
 
   // For live pulls (SSE), proxy the response
-  if (args.live !== undefined) {
-    if (res.ok == null) {
+  if (args.live === true) {
+    if (!res.ok) {
       return S2Helpers.sseKeepAliveResponse()
     }
     return new Response(res.body, {
@@ -41,7 +41,7 @@ export async function GET(request: Request) {
   }
 
   // For regular pulls
-  if (res.ok == null) {
+  if (!res.ok) {
     return S2Helpers.emptyBatchResponse()
   }
 
@@ -75,7 +75,7 @@ export async function POST(request: Request) {
       body: pushRequest.body,
     })
 
-    if (res.ok == null) {
+    if (!res.ok) {
       return S2Helpers.errorResponse('Push failed', 500)
     }
   }

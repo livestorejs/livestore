@@ -287,11 +287,11 @@ const classifySnippetLine = (line: string): SnippetLineKind => {
     return { _tag: 'cut' }
   }
   const startMatch = line.match(/^\s*\/\/ __LS_FILE_START__:[^\s]+\s*/)
-  if (startMatch !== undefined) {
+  if (startMatch !== null) {
     return { _tag: 'start', remainder: line.slice(startMatch[0].length) }
   }
   const endMatch = line.match(/^\s*\/\/ __LS_FILE_END__:[^\s]+\s*/)
-  if (endMatch !== undefined) {
+  if (endMatch !== null) {
     return { _tag: 'end', remainder: line.slice(endMatch[0].length) }
   }
   return { _tag: 'code', content: line }
@@ -655,7 +655,7 @@ const isSentinelText = (text: string): boolean => {
 const removeSentinelNodes = (current: THastElementContent | THastRootContent | null | undefined): void => {
   if (current == null) return
   if (current.type === 'text') {
-    if (isSentinelText(current.value ?? '') !== undefined) {
+    if (isSentinelText(current.value ?? '')) {
       current.value = ''
     }
     return
@@ -675,7 +675,7 @@ const removeSentinelNodes = (current: THastElementContent | THastRootContent | n
       retained.push(child as THastElementContent)
       continue
     }
-    if (child.type === 'text' && isSentinelText(child.value ?? '') !== undefined) {
+    if (child.type === 'text' && isSentinelText(child.value ?? '')) {
       continue
     }
     removeSentinelNodes(child as THastElementContent)
@@ -689,7 +689,7 @@ const extractLineOwnershipAttributes = (line: THastElement): LineOwnershipAttrib
   const ownerRaw = typeof properties['data-ls-owner'] === 'string' ? properties['data-ls-owner'].trim() : null
   const markerRaw = typeof properties['data-ls-marker'] === 'string' ? properties['data-ls-marker'].trim() : null
   const marker = markerRaw === 'start' || markerRaw === 'end' ? (markerRaw as LineOwnerMarker) : null
-  const owner = ownerRaw !== undefined && ownerRaw.length > 0 ? ownerRaw : null
+  const owner = ownerRaw != null && ownerRaw.length > 0 ? ownerRaw : null
   if (owner !== null || marker !== null || ownerRaw === '') {
     return { wrapper: line, owner, marker }
   }
@@ -708,7 +708,7 @@ const extractLineOwnershipAttributes = (line: THastElement): LineOwnershipAttrib
     const childMarkerRaw = typeof childProps['data-ls-marker'] === 'string' ? childProps['data-ls-marker'].trim() : null
     const childMarker =
       childMarkerRaw === 'start' || childMarkerRaw === 'end' ? (childMarkerRaw as LineOwnerMarker) : null
-    const childOwner = childOwnerRaw !== undefined && childOwnerRaw.length > 0 ? childOwnerRaw : null
+    const childOwner = childOwnerRaw != null && childOwnerRaw.length > 0 ? childOwnerRaw : null
     if (childOwner !== null || childMarker !== null || childOwnerRaw === '') {
       return { wrapper: element, owner: childOwner, marker: childMarker }
     }
@@ -763,7 +763,7 @@ const trimRenderedAst = (root: THastElement, focusVirtualPath: string, assembled
       continue
     }
 
-    if (wrapper !== undefined) {
+    if (wrapper !== null) {
       const wrapperProperties = (wrapper.properties ?? {}) as Record<string, unknown>
       delete wrapperProperties['data-ls-owner']
       delete wrapperProperties['data-ls-marker']
@@ -798,12 +798,12 @@ const trimRenderedAst = (root: THastElement, focusVirtualPath: string, assembled
   code.children = filtered
 
   const figcaption = findChildByTag(figure, 'figcaption')
-  if (figure !== undefined && Array.isArray((figure as THastParent).children) === true && figcaption !== undefined) {
+  if (figure !== null && Array.isArray((figure as THastParent).children) === true && figcaption !== null) {
     ;(figure as THastParent).children = (figure as THastParent).children.filter((child) => child !== figcaption)
   }
 
   const copyElement =
-    figure !== undefined && Array.isArray((figure as THastParent).children) === true
+    figure !== null && Array.isArray((figure as THastParent).children) === true
       ? (figure as THastParent).children.find((child) => {
           if (isElementNode(child) === false) return false
           if (child.tagName !== 'div') return false
@@ -811,7 +811,7 @@ const trimRenderedAst = (root: THastElement, focusVirtualPath: string, assembled
         })
       : null
 
-  if (copyElement !== undefined && isElementNode(copyElement) === true && Array.isArray((copyElement as THastParent).children) === true) {
+  if (copyElement !== null && isElementNode(copyElement) === true && Array.isArray((copyElement as THastParent).children) === true) {
     for (const node of (copyElement as THastParent).children) {
       if (isElementNode(node) === false) continue
       if (node.tagName !== 'button') continue
@@ -837,15 +837,15 @@ const trimRenderedAst = (root: THastElement, focusVirtualPath: string, assembled
     }
   }
 
-  if (figure !== undefined && Array.isArray((figure as THastParent).children) === true) {
+  if (figure !== null && Array.isArray((figure as THastParent).children) === true) {
     const retainedChildren: Array<THastElementContent> = []
 
     // Sentinel nodes were already cleaned from individual lines before setting code.children
     // So we can safely add the pre element without further cleaning
-    if (pre !== undefined) {
+    if (pre !== null) {
       retainedChildren.push(pre as unknown as THastElementContent)
     }
-    if (copyElement !== undefined && isElementNode(copyElement) === true) {
+    if (copyElement !== null && isElementNode(copyElement) === true) {
       removeSentinelNodes(copyElement as unknown as THastElementContent)
       retainedChildren.push(copyElement as THastElementContent)
     }
@@ -1660,7 +1660,7 @@ const watchSnippetsInternal = (
     const runRebuild = (reason: WatchSnippetsRebuildInfo['reason'], event: WatchEventSummary | null) =>
       Effect.gen(function* () {
         const startedAt = Date.now()
-        if (event !== undefined) {
+        if (event !== null) {
           yield* Effect.log(
             `Snippets watch: ${event.scope} ${event.kind.toLowerCase()} at ${event.relativePath}, rebuilding...`,
           )
@@ -1674,7 +1674,7 @@ const watchSnippetsInternal = (
         if (result._tag === 'Left') {
           const error = result.left
           yield* Effect.logError(
-            `Snippets watch: build failed${event !== undefined ? ` (trigger: ${event.relativePath})` : ''}: ${error.message}`,
+            `Snippets watch: build failed${event !== null ? ` (trigger: ${event.relativePath})` : ''}: ${error.message}`,
           )
           yield* notify({ reason, event, renderedCount: -1, durationMs })
           return

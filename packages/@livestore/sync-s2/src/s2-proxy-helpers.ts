@@ -60,7 +60,7 @@ export const getStreamRecordsUrl = (
   /** wait - How long to wait for new records before returning. See: https://docs.s2.dev/api#wait */
   if (params.wait !== undefined) searchParams.append('wait', params.wait.toString())
 
-  return searchParams.toString() !== undefined ? `${base}?${searchParams}` : base
+  return searchParams.toString() ? `${base}?${searchParams}` : base
 }
 
 // Header helpers
@@ -130,7 +130,7 @@ export const buildPullRequest = ({
   // cursor points to last processed record, seq_num needs to be the next record
   const seq_num = args.s2SeqNum === 'from-start' ? 0 : args.s2SeqNum + 1
 
-  if (args.live !== undefined) {
+  if (args.live === true) {
     const url = getStreamRecordsUrl(config, streamName, { seq_num, clamp: true })
     return { url, headers: getSSEHeaders(config) }
   } else {

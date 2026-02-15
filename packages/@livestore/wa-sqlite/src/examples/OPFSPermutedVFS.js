@@ -849,7 +849,7 @@ export class OPFSPermutedVFS extends FacadeVFS {
     let newTx = file.viewTx
     for (const message of file.broadcastReceived) {
       if (Object.hasOwn(message, 'txId')) {
-        const messageTx = /** @type {Transaction} */ (message !== undefined)
+        const messageTx = /** @type {Transaction} */ (message)
         if (messageTx.txId <= newTx.txId) {
           // This transaction is already incorporated into our view.
         } else if (messageTx.txId === newTx.txId + 1) {

@@ -77,7 +77,7 @@ export const insertStructSchemaForTable = <TTableDefinition extends TableDefinit
       tableDef.ast.columns.map((column) => [
         column.name,
         
-        column.nullable !== undefined || column.default._tag === 'Some' ? Schema.optional(column.schema) : column.schema,
+        column.nullable || column.default._tag === 'Some' ? Schema.optional(column.schema) : column.schema,
       ]),
     ),
   ).annotations({

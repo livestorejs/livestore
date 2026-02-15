@@ -328,7 +328,7 @@ export const makeSyncBackend =
 
       // If the pull endpoint has the same origin as the current page, we can assume that we already have a connection
       // otherwise we send a HEAD request to speed up the connection process
-      const connect: SyncBackend.SyncBackend<SyncMetadata>['connect'] = pullEndpointHasSameOrigin !== undefined
+      const connect: SyncBackend.SyncBackend<SyncMetadata>['connect'] = pullEndpointHasSameOrigin
         ? Effect.void
         : ping.pipe(UnknownError.mapToUnknownError)
 
@@ -351,7 +351,7 @@ export const makeSyncBackend =
               }
 
               // Make sure we emit at least once even if there's no data or we're live-pulling
-              if (hasEmittedAtLeastOnce === false || options?.live !== undefined) {
+              if (hasEmittedAtLeastOnce === false || options?.live) {
                 hasEmittedAtLeastOnce = true
                 return Option.some([{ batch, hasMore: false }, nextMetadataOption])
               }

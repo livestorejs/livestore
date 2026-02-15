@@ -31,7 +31,7 @@ export default async function handler(request: Request, context: Context): Promi
     return response
   }
 
-  if (isAssetPath(url.pathname) !== undefined) {
+  if (isAssetPath(url.pathname)) {
     return forwardWithVary()
   }
 
@@ -46,7 +46,7 @@ export default async function handler(request: Request, context: Context): Promi
   })
 
   const markdownResponse = await fetch(markdownRequest)
-  if (markdownResponse.ok == null) {
+  if (!markdownResponse.ok) {
     return forwardWithVary()
   }
 

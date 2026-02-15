@@ -42,14 +42,14 @@ export const handleDragDrop = (draggedTaskId: number, targetTaskId: number, drop
       tables.task
         .select('order')
         .where({
-          order: { op: before !== undefined ? '>' : '<', value: targetOrder },
+          order: { op: before ? '>' : '<', value: targetOrder },
         })
-        .orderBy('order', before !== undefined ? 'asc' : 'desc')
+        .orderBy('order', before ? 'asc' : 'desc')
         .limit(1),
     )[0] ?? null
 
   // Generate new order between target and nearest
-  const newOrder = generateKeyBetween(before !== undefined ? targetOrder : nearestOrder, before !== undefined ? nearestOrder : targetOrder)
+  const newOrder = generateKeyBetween(before ? targetOrder : nearestOrder, before ? nearestOrder : targetOrder)
 
   // Commit the update
   store.commit(events.updateTaskOrder({ id: draggedTaskId, order: newOrder }))

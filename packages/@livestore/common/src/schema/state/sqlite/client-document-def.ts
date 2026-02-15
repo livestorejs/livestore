@@ -95,7 +95,7 @@ export const clientDocument = <
   Object.defineProperty(setEventDef, 'schema', {
     value: Schema.Struct({
       id: Schema.String,
-      value: options.partialSet !== undefined ? Schema.partial(valueSchema) : valueSchema,
+      value: options.partialSet ? Schema.partial(valueSchema) : valueSchema,
     }).annotations({ title: `${name}Set:Args` }),
   })
   Object.defineProperty(setEventDef, 'options', {
@@ -177,7 +177,7 @@ export const createOptimisticEventSchema = ({
   defaultValue: any
   partialSet: boolean
 }) => {
-  const targetSchema = partialSet !== undefined ? Schema.partial(valueSchema) : valueSchema
+  const targetSchema = partialSet ? Schema.partial(valueSchema) : valueSchema
   // The transform decode must yield values in the target schema's ENCODED shape.
   // This keeps JSON columns consistent when Encoded != Type (e.g. Option).
   const encodeTarget = Schema.encodeSync(targetSchema)
@@ -197,11 +197,11 @@ export const createOptimisticEventSchema = ({
 
           // Handle null/undefined/non-object cases
           if (typeof eventValue !== 'object' || eventValue === null) {
-            console.warn(`Client document: Non-object event value, using ${partialSet !== undefined ? 'empty partial' : 'defaults'}`)
-            return encodeTarget(partialSet !== undefined ? {} : defaultValue)
+            console.warn(`Client document: Non-object event value, using ${partialSet ? 'empty partial' : 'defaults'}`)
+            return encodeTarget(partialSet ? {} : defaultValue)
           }
 
-          if (partialSet !== undefined) {
+          if (partialSet) {
             // For partial sets: only preserve fields that exist in new schema
             const partialResult: Record<string, unknown> = {}
             let hasValidFields = false

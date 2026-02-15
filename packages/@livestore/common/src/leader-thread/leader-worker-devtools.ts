@@ -132,7 +132,7 @@ const listenToDevtools = ({
       loadDatabaseBatchTracker.set(batchId, entry)
       const finished = entry.has('state') && entry.has('eventlog')
 
-      if (finished !== undefined) {
+      if (finished) {
         loadDatabaseBatchTracker.delete(batchId)
       }
 
@@ -448,7 +448,7 @@ const listenToDevtools = ({
 
               if (devtools.enabled === false) return
 
-              if (closeLatch !== undefined) {
+              if (closeLatch) {
                 yield* devtools.syncBackendLatch.close
               } else {
                 yield* devtools.syncBackendLatch.open

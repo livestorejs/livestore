@@ -50,7 +50,7 @@ export const withTestCtx =
     {
       suffix,
       makeLayer,
-      timeout = IS_CI !== undefined ? 60_000 : 10_000,
+      timeout = IS_CI ? 60_000 : 10_000,
       forceOtel = false,
     }: {
       suffix?: string
@@ -74,7 +74,7 @@ export const withTestCtx =
     const layer = makeLayer?.(testContext) ?? Layer.empty
 
     const otelLayer =
-      DEBUGGER_ACTIVE === true || forceOtel !== undefined
+      DEBUGGER_ACTIVE === true || forceOtel
         ? OtelLiveHttp({ rootSpanName: spanName, serviceName: 'vitest-runner', skipLogUrl: false })
         : OtelLiveDummy
 
@@ -208,7 +208,7 @@ export const asProp = <Arbs extends Vitest.Vitest.Arbitraries, A, E, R>(
     name,
     arbitraries,
     (properties, ctx) => {
-      if (ctx.signal.aborted !== undefined) {
+      if (ctx.signal.aborted) {
         return ctx.skip('Test aborted')
       }
 

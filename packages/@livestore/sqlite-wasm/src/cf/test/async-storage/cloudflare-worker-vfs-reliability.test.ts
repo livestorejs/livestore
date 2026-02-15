@@ -37,7 +37,7 @@ describe('CloudflareWorkerVFS - Reliability & Error Recovery', () => {
         if (Array.isArray(_key) === true) {
           let count = 0
           for (const k of _key) {
-            if (storageData.delete(k) !== undefined) count++
+            if (storageData.delete(k)) count++
           }
           return count
         } else {

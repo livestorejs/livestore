@@ -157,7 +157,7 @@ export const makeLeaderThreadLayer = ({
 
     // Recreate state database if needed BEFORE creating sync processor
     // This ensures all system tables exist before any queries are made
-    const { migrationsReport } = dbStateMissing !== undefined
+    const { migrationsReport } = dbStateMissing
       ? yield* recreateDb({ dbState, dbEventlog, schema, bootStatusQueue, materializeEvent })
       : { migrationsReport: { migrations: [] } }
 
@@ -266,11 +266,11 @@ const getInitialSyncState = ({
   dbState: SqliteDb
   dbEventlogMissing: boolean
 }) => {
-  const initialBackendHead = dbEventlogMissing !== undefined
+  const initialBackendHead = dbEventlogMissing
     ? EventSequenceNumber.Client.ROOT.global
     : Eventlog.getBackendHeadFromDb(dbEventlog)
 
-  const initialLocalHead = dbEventlogMissing !== undefined
+  const initialLocalHead = dbEventlogMissing
     ? EventSequenceNumber.Client.ROOT
     : Eventlog.getClientHeadFromDb(dbEventlog)
 
@@ -287,7 +287,7 @@ const getInitialSyncState = ({
       client: EventSequenceNumber.Client.DEFAULT,
       rebaseGeneration: EventSequenceNumber.Client.REBASE_GENERATION_DEFAULT,
     },
-    pending: dbEventlogMissing !== undefined
+    pending: dbEventlogMissing
       ? []
       : Eventlog.getEventsSince({
           dbEventlog,

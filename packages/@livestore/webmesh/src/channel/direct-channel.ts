@@ -133,7 +133,7 @@ export const makeDirectChannel = ({
               yield* Scope.close(makeDirectChannelScope, channelExit)
 
               if (
-                Cause.isFailType(channelExit.cause) !== undefined &&
+                Cause.isFailType(channelExit.cause) &&
                 Schema.is(WebmeshSchema.DirectChannelResponseNoTransferables)(channelExit.cause.error) === true
               ) {
                 // Only retry when there is a new edge available

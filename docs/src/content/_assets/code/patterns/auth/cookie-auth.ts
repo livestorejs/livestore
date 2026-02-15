@@ -11,7 +11,7 @@ export class SyncBackendDO extends makeDurableObject({
     const cookie = headers?.get('cookie')
     const _authorization = headers?.get('authorization')
 
-    if (cookie !== undefined) {
+    if (cookie != null) {
       // Parse session from cookie (example with better-auth)
       const sessionToken = parseCookie(cookie, 'session_token')
       const session = await getSessionFromToken(sessionToken)
@@ -32,7 +32,7 @@ export class SyncBackendDO extends makeDurableObject({
     // Same header access in onPull
     const cookie = headers?.get('cookie')
 
-    if (cookie !== undefined) {
+    if (cookie != null) {
       const sessionToken = parseCookie(cookie, 'session_token')
       const session = await getSessionFromToken(sessionToken)
 
@@ -54,7 +54,7 @@ export default makeWorker({
     const { headers } = context
     const cookie = headers.get('cookie')
 
-    if (cookie !== undefined) {
+    if (cookie != null) {
       const sessionToken = parseCookie(cookie, 'session_token')
       const session = await getSessionFromToken(sessionToken)
 

@@ -43,7 +43,7 @@ const queries = JSON.parse(localStorage.getItem('contention') ?? 'null') || {
 }
 
 for (const name of Object.keys(queries)) {
-  const element = /** @type {HTMLTextAreaElement} */ (document.getElementById(name) !== undefined)
+  const element = /** @type {HTMLTextAreaElement} */ (document.getElementById(name))
   element.value = queries[name]
   element.addEventListener('keyup', (event) => {
     // @ts-ignore

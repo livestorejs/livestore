@@ -103,7 +103,7 @@ export const makeSchema = <TInputSchema extends InputSchema>(
 
   const eventsDefsMap = new Map<string, EventDef.AnyWithoutFn>()
 
-  if (isReadonlyArray(inputSchema.events) !== undefined) {
+  if (isReadonlyArray(inputSchema.events)) {
     for (const eventDef of inputSchema.events) {
       eventsDefsMap.set(eventDef.name, eventDef)
     }

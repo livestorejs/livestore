@@ -102,7 +102,7 @@ const makeColDef =
   (def?: ColumnDefinitionInput) => {
     const nullable = def?.nullable ?? false
     const schemaWithoutNull: Schema.Schema<any> = def?.schema ?? defaultSchemaForColumnType(columnType)
-    const schema =  nullable !== undefined ? Schema.NullOr(schemaWithoutNull) : schemaWithoutNull
+    const schema =  nullable ? Schema.NullOr(schemaWithoutNull) : schemaWithoutNull
     const default_ = def?.default === undefined || def.default === NoDefault ? Option.none() : Option.some(def.default)
 
     return {
@@ -201,7 +201,7 @@ type MakeSpecializedColDefFn = {
 const makeSpecializedColDef: MakeSpecializedColDefFn = (columnType, opts) => (def?: ColumnDefinitionInput) => {
   const nullable = def?.nullable ?? false
   const schemaWithoutNull = opts._tag === 'baseSchemaFn' ? opts.baseSchemaFn(def?.schema as any) : opts.baseSchema
-  const schema =  nullable !== undefined ? Schema.NullOr(schemaWithoutNull) : schemaWithoutNull
+  const schema =  nullable ? Schema.NullOr(schemaWithoutNull) : schemaWithoutNull
   const default_ = def?.default === undefined || def.default === NoDefault ? Option.none() : Option.some(def.default)
 
   return {

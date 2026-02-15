@@ -112,7 +112,7 @@ export const makeSyncBackend =
       }
 
       // No need to connect if the pull endpoint has the same origin as the current page
-      const connect: SyncBackend.SyncBackend<SyncMetadata>['connect'] = pullEndpointHasSameOrigin !== undefined
+      const connect: SyncBackend.SyncBackend<SyncMetadata>['connect'] = pullEndpointHasSameOrigin
         ? Effect.void
         : ping.pipe(UnknownError.mapToUnknownError)
 
@@ -241,7 +241,7 @@ export const makeSyncBackend =
       return SyncBackend.of({
         connect,
         pull: (cursor, options) => {
-          if (options?.live !== undefined) {
+          if (options?.live) {
             return ssePull(cursor)
           } else {
             return runPullSse(cursor, false).pipe(

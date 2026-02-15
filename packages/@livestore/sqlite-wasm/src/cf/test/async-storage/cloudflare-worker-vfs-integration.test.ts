@@ -52,7 +52,7 @@ describe('CloudflareWorkerVFS - Integration Tests', () => {
           storageOperations.push(`delete-batch: ${_key.length} keys`)
           let count = 0
           for (const k of _key) {
-            if (storageData.delete(k) !== undefined) count++
+            if (storageData.delete(k)) count++
           }
           return count
         } else {
