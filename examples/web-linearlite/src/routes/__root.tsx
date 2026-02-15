@@ -1,9 +1,9 @@
 import '../app/init-theme.ts'
-import { createRootRouteWithContext, HeadContent, Outlet, Scripts } from '@tanstack/react-router'
-import React, { type ReactNode, Suspense } from 'react'
 
 import type { StoreRegistry } from '@livestore/livestore'
 import { StoreRegistryProvider } from '@livestore/react'
+import { createRootRouteWithContext, HeadContent, Outlet, Scripts } from '@tanstack/react-router'
+import React, { type ReactNode, Suspense } from 'react'
 
 import { MenuContext, NewIssueModalContext } from '../app/contexts.ts'
 import stylesheetUrl from '../app/style.css?url'
@@ -47,7 +47,7 @@ const RootComponent = () => {
   )
 }
 
-function Loading() {
+const Loading = () => {
   return (
     <div
       className="fixed inset-0 bg-white dark:bg-neutral-900 flex flex-col items-center justify-center gap-4 text-sm"

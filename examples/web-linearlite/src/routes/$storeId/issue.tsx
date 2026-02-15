@@ -1,6 +1,5 @@
-import { createFileRoute } from '@tanstack/react-router'
-
 import { shouldNeverHappen } from '@livestore/utils'
+import { createFileRoute } from '@tanstack/react-router'
 
 import { Issue } from '../../components/layout/issue/index.tsx'
 
@@ -8,7 +7,7 @@ export const Route = createFileRoute('/$storeId/issue')({
   component: IssueRoute,
 })
 
-function IssueRoute() {
+const IssueRoute = () => {
   const search = Route.useSearch() as Record<string, unknown>
   const issueIdValue = search.issueId
 

@@ -35,7 +35,7 @@ export type MutableSpanGraphInfo = {
 
 const graphByTraceId = new Map<string, MutableSpanGraphInfo>()
 
-function ensureSpan(traceId: string, spanId: string): [MutableSpanGraph, number] {
+const ensureSpan = (traceId: string, spanId: string): [MutableSpanGraph, number] => {
   let info = graphByTraceId.get(traceId)
   if (info === undefined) {
     info = {
@@ -56,16 +56,16 @@ function ensureSpan(traceId: string, spanId: string): [MutableSpanGraph, number]
   return [info.graph, nodeId]
 }
 
-function sortSpan(
+const sortSpan = (
   prev: Tracer.AnySpan,
   next: Tracer.AnySpan,
-): [info: Tracer.AnySpan, isUpgrade: boolean, timingUpdated: boolean] {
+): [info: Tracer.AnySpan, isUpgrade: boolean, timingUpdated: boolean] => {
   if (prev._tag === 'ExternalSpan' && next._tag === 'Span') return [next, true, true]
   if (prev._tag === 'Span' && next._tag === 'Span' && next.status._tag === 'Ended') return [next, false, true]
   return [prev, false, false]
 }
 
-function addNode(span: Tracer.AnySpan) {
+const addNode = (span: Tracer.AnySpan) => {
   const [mutableGraph, nodeId] = ensureSpan(span.traceId, span.spanId)
   Graph.updateNode(mutableGraph, nodeId, (previousInfo) => {
     const [latestInfo, upgraded] = sortSpan(previousInfo.span, span)
@@ -78,14 +78,14 @@ function addNode(span: Tracer.AnySpan) {
   return nodeId
 }
 
-function addEvent(traceId: string, spanId: string, event: SpanEvent) {
+const addEvent = (traceId: string, spanId: string, event: SpanEvent) => {
   const [mutableGraph, nodeId] = ensureSpan(traceId, spanId)
   Graph.updateNode(mutableGraph, nodeId, (previousInfo) => {
     return { ...previousInfo, events: [...previousInfo.events, event] }
   })
   return nodeId
 }
-function addNodeExit(traceId: string, spanId: string, exit: Exit.Exit<any, any>) {
+const addNodeExit = (traceId: string, spanId: string, exit: Exit.Exit<any, any>) => {
   const [mutableGraph, nodeId] = ensureSpan(traceId, spanId)
   Graph.updateNode(mutableGraph, nodeId, (previousInfo) => {
     const isInterruptedOnly = exit._tag === 'Failure' && Cause.isInterruptedOnly(exit.cause)
@@ -97,11 +97,11 @@ function addNodeExit(traceId: string, spanId: string, exit: Exit.Exit<any, any>)
   return nodeId
 }
 
-function createPropertyInterceptor<T extends object, K extends keyof T>(
+const createPropertyInterceptor = <T extends object, K extends keyof T>(
   obj: T,
   property: K,
   interceptor: (value: T[K]) => void,
-): void {
+): void => {
   const descriptor = Object.getOwnPropertyDescriptor(obj, property)
 
   const previousSetter = descriptor?.set
@@ -151,7 +151,7 @@ type GlobalWithFiberCurrent = {
 }
 
 const patchedTracer = new WeakSet<Tracer.Tracer>()
-function ensureTracerPatched(currentTracer: Tracer.Tracer) {
+const ensureTracerPatched = (currentTracer: Tracer.Tracer) => {
   if (patchedTracer.has(currentTracer)) {
     return
   }
@@ -202,7 +202,7 @@ const knownScopes = new Map<
   { id: number; allocationFiber: Fiber.RuntimeFiber<any, any> | undefined; allocationSpan: Tracer.AnySpan | undefined }
 >()
 let lastScopeId = 0
-function ensureScopePatched(scope: ScopeImpl, allocationFiber: Fiber.RuntimeFiber<any, any> | undefined) {
+const ensureScopePatched = (scope: ScopeImpl, allocationFiber: Fiber.RuntimeFiber<any, any> | undefined) => {
   if (scope.state._tag === 'Closed') return
   if (knownScopes.has(scope)) return
   const id = lastScopeId++
@@ -231,7 +231,7 @@ const cleanupScopes = () => {
 }
 
 const knownFibers = new Set<Fiber.RuntimeFiber<any, any>>()
-function ensureFiberPatched(fiber: Fiber.RuntimeFiber<any, any>) {
+const ensureFiberPatched = (fiber: Fiber.RuntimeFiber<any, any>) => {
   // patch tracer
   ensureTracerPatched(fiber.currentTracer)
   // patch scope
@@ -250,7 +250,7 @@ let patchScopeClose = false
 let onFiberResumed: undefined | ((fiber: Fiber.RuntimeFiber<any, any>) => void)
 let onFiberSuspended: undefined | ((fiber: Fiber.RuntimeFiber<any, any>) => void)
 let onFiberCompleted: undefined | ((fiber: Fiber.RuntimeFiber<any, any>, exit: Exit.Exit<any, any>) => void)
-export function attachSlowDebugInstrumentation(options: {
+export const attachSlowDebugInstrumentation = (options: {
   /** If set to true, the scope prototype will be patched to attach a span to visualize pending scope closing */
   readonly patchScopeClose?: boolean
   /** An optional callback that will be called when any fiber resumes performing a run loop */
@@ -259,7 +259,7 @@ export function attachSlowDebugInstrumentation(options: {
   readonly onFiberSuspended?: (fiber: Fiber.RuntimeFiber<any, any>) => void
   /** An optional callback that will be called when any fiber completes with a exit */
   readonly onFiberCompleted?: (fiber: Fiber.RuntimeFiber<any, any>, exit: Exit.Exit<any, any>) => void
-}) {
+}): void => {
   const _globalThis = globalThis as any as GlobalWithFiberCurrent
   if (_globalThis['effect/DevtoolsHook']) {
     return console.error(
@@ -292,7 +292,7 @@ export function attachSlowDebugInstrumentation(options: {
   }
 }
 
-function formatDuration(startTime: bigint, endTime: bigint | undefined): string {
+const formatDuration = (startTime: bigint, endTime: bigint | undefined): string => {
   if (endTime === undefined) return '[running]'
   const durationMs = Number(endTime - startTime) / 1000000 // Convert nanoseconds to milliseconds
   if (durationMs < 1000) return `${durationMs.toFixed(0)}ms`
@@ -300,12 +300,12 @@ function formatDuration(startTime: bigint, endTime: bigint | undefined): string 
   return `${(durationMs / 60000).toFixed(2)}m`
 }
 
-function getSpanName(span: Tracer.AnySpan): string {
+const getSpanName = (span: Tracer.AnySpan): string => {
   if (span._tag === 'ExternalSpan') return `[external] ${span.spanId}`
   return span.name
 }
 
-function getSpanStatus(info: GraphNodeInfo): string {
+const getSpanStatus = (info: GraphNodeInfo): string => {
   if (info.span._tag === 'ExternalSpan') return '?'
   if (info.exitTag === 'Success') return '✓'
   if (info.exitTag === 'Failure') return '✗'
@@ -313,16 +313,16 @@ function getSpanStatus(info: GraphNodeInfo): string {
   return '⋮'
 }
 
-function getSpanDuration(span: Tracer.AnySpan): string {
+const getSpanDuration = (span: Tracer.AnySpan): string => {
   if (span._tag === 'ExternalSpan') return ''
   const endTime = span.status._tag === 'Ended' ? span.status.endTime : undefined
   return formatDuration(span.status.startTime, endTime)
 }
 
-function filterGraphKeepAncestors<N, E>(
+const filterGraphKeepAncestors = <N, E>(
   graph: Graph.Graph<N, E>,
   predicate: (nodeData: N, nodeId: number) => boolean,
-): Graph.Graph<N, E> {
+): Graph.Graph<N, E> => {
   // Find all root nodes (nodes with no incoming edges)
   const rootNodes = Array.from(Graph.indices(Graph.externals(graph, { direction: 'incoming' })))
   const shouldInclude = new Set<number>()
@@ -351,7 +351,7 @@ function filterGraphKeepAncestors<N, E>(
   })
 }
 
-function renderSpanNode(graph: Graph.Graph<GraphNodeInfo, void, 'directed'>, nodeId: number): string[] {
+const renderSpanNode = (graph: Graph.Graph<GraphNodeInfo, void, 'directed'>, nodeId: number): string[] => {
   const node = Graph.getNode(graph, nodeId)
   if (Option.isNone(node)) return []
   const info = node.value
@@ -371,11 +371,11 @@ function renderSpanNode(graph: Graph.Graph<GraphNodeInfo, void, 'directed'>, nod
   return [` ${status} ${name}${durationStr}${runningOnFibers}`]
 }
 
-function renderTree<N, E, T extends Graph.Kind>(
+const renderTree = <N, E, T extends Graph.Kind>(
   graph: Graph.Graph<N, E, T>,
   nodeIds: Array<number>,
   renderNode: (graph: Graph.Graph<N, E, T>, nodeId: number) => string[],
-): string[] {
+): string[] => {
   let lines: string[] = []
   for (let childIndex = 0; childIndex < nodeIds.length; childIndex++) {
     const isLastChild = childIndex === nodeIds.length - 1

@@ -519,20 +519,20 @@ const expectEventArraysEqual = (
   })
 }
 
-function expectAdvance(
+const expectAdvance: (
   result: typeof SyncState.MergeResult.Type,
-): asserts result is typeof SyncState.MergeResultAdvance.Type {
+) => asserts result is typeof SyncState.MergeResultAdvance.Type = (result) => {
   expect(result._tag).toBe('advance')
 }
 
-function expectRebase(
+const expectRebase: (
   result: typeof SyncState.MergeResult.Type,
-): asserts result is typeof SyncState.MergeResultRebase.Type {
+) => asserts result is typeof SyncState.MergeResultRebase.Type = (result) => {
   expect(result._tag, `Expected rebase, got ${result}`).toBe('rebase')
 }
 
-function expectReject(
+const expectReject: (
   result: typeof SyncState.MergeResult.Type,
-): asserts result is typeof SyncState.MergeResultReject.Type {
+) => asserts result is typeof SyncState.MergeResultReject.Type = (result) => {
   expect(result._tag).toBe('reject')
 }

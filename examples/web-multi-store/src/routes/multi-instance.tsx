@@ -1,10 +1,9 @@
-import { ErrorFallback } from '@/components/ErrorFallback.tsx'
-import { IssueView } from '@/components/IssueView.tsx'
+import { StoreRegistryProvider } from '@livestore/react'
 import { createFileRoute } from '@tanstack/react-router'
 import { Suspense } from 'react'
 import { ErrorBoundary } from 'react-error-boundary'
-
-import { StoreRegistryProvider } from '@livestore/react'
+import { ErrorFallback } from '@/components/ErrorFallback.tsx'
+import { IssueView } from '@/components/IssueView.tsx'
 
 const issueIds = ['issue-1', 'issue-2', 'issue-3'] as const
 
@@ -19,7 +18,7 @@ export const Route = createFileRoute('/multi-instance')({
   component: MultiInstanceRoute,
 })
 
-function MultiInstanceRoute() {
+const MultiInstanceRoute = () => {
   const { storeRegistry } = Route.useRouteContext()
 
   return (

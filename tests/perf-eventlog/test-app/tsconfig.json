@@ -32,7 +32,7 @@
           "reportSuggestionsAsWarningsInTsc": true,
           "pipeableMinArgCount": 2,
           "diagnosticSeverity": {
-            "missedPipeableOpportunity": "suggestion",
+            "missedPipeableOpportunity": "warning",
             "schemaUnionOfLiterals": "warning",
             "anyUnknownInErrorContext": "warning",
             "preferSchemaOverJson": "warning"

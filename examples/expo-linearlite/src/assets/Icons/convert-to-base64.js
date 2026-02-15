@@ -1,7 +1,7 @@
 const fs = require('node:fs')
 const path = require('node:path')
 
-function imageToBase64(filePath) {
+const imageToBase64 = (filePath) => {
   const image = fs.readFileSync(filePath)
   return Buffer.from(image).toString('base64')
 }

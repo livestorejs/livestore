@@ -506,6 +506,4 @@ export class FacadeVFS extends VFS.Base {
 }
 // Emscripten "legalizes" 64-bit integer arguments by passing them as
 // two 32-bit signed integers.
-function delegalize(lo32, hi32) {
-  return hi32 * 0x1_00_00_00_00 + lo32 + (lo32 < 0 ? 2 ** 32 : 0)
-}
+const delegalize = (lo32, hi32) => hi32 * 0x1_00_00_00_00 + lo32 + (lo32 < 0 ? 2 ** 32 : 0)

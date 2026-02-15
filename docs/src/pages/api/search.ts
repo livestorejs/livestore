@@ -27,7 +27,7 @@ export interface SearchResult {
   url: string
 }
 
-function filePathToHref(filePath: string): string {
+const filePathToHref = (filePath: string): string => {
   // Extract the path after /src/content/docs/
   const match = filePath.match(/\/src\/content\/docs\/(.+)$/)
   if (!match || !match[1]) return '/'
@@ -37,7 +37,7 @@ function filePathToHref(filePath: string): string {
   return `/${href}`
 }
 
-function extractHeadingTitle(text: string): string {
+const extractHeadingTitle = (text: string): string => {
   const trimmedText = text.trim()
 
   if (!trimmedText.startsWith('#')) {

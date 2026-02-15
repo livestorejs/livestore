@@ -3,13 +3,13 @@ import { queryDb, type Store } from '@livestore/livestore'
 import { type schema as mailboxSchema, mailboxTables } from '../mailbox/schema.ts'
 import { threadEvents, type schema as threadSchema, threadTables } from './schema.ts'
 
-export function applyUserLabelToThread(
+export const applyUserLabelToThread = (
   threadStore: Store<typeof threadSchema>,
   params: {
     threadId: string
     labelId: string
   },
-): void {
+): void => {
   try {
     threadStore.commit(
       threadEvents.threadLabelApplied({
@@ -23,13 +23,13 @@ export function applyUserLabelToThread(
   }
 }
 
-export function removeUserLabelFromThread(
+export const removeUserLabelFromThread = (
   threadStore: Store<typeof threadSchema>,
   params: {
     threadId: string
     labelId: string
   },
-): void {
+): void => {
   try {
     threadStore.commit(
       threadEvents.threadLabelRemoved({
@@ -43,13 +43,13 @@ export function removeUserLabelFromThread(
   }
 }
 
-export function archiveThread(
+export const archiveThread = (
   threadStore: Store<typeof threadSchema>,
   mailboxStore: Store<typeof mailboxSchema>,
   params: {
     threadId: string
   },
-): void {
+): void => {
   // Query necessary data
   const systemLabels = mailboxStore.query(queryDb(mailboxTables.labels.where({ type: 'system' })))
   const threadLabels = threadStore.query(queryDb(threadTables.threadLabels.where({})))
@@ -82,13 +82,13 @@ export function archiveThread(
   }
 }
 
-export function trashThread(
+export const trashThread = (
   threadStore: Store<typeof threadSchema>,
   mailboxStore: Store<typeof mailboxSchema>,
   params: {
     threadId: string
   },
-): void {
+): void => {
   // Query necessary data
   const systemLabels = mailboxStore.query(queryDb(mailboxTables.labels.where({ type: 'system' })))
   const threadLabels = threadStore.query(queryDb(threadTables.threadLabels.where({})))
