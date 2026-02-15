@@ -48,7 +48,7 @@ Vitest.describe('SQLite State', () => {
         const rawResult = db.select(sql`select * from test`)
         expect(rawResult).toEqual([{ id: 1, json: null }])
 
-        const result = Schema.decodeUnknownSync(testTable.rowSchema.pipe(Schema.Array, Schema.headOrElse()))(rawResult)
+        const result = yield* Schema.decodeUnknown(testTable.rowSchema.pipe(Schema.Array, Schema.headOrElse()))(rawResult)
 
         expect(result).toEqual({ id: 1, json: null })
       }, Effect.provide(PlatformNode.NodeFileSystem.layer)),
@@ -73,7 +73,7 @@ Vitest.describe('SQLite State', () => {
         const rawResult = db.select(sql`select * from test`)
         expect(rawResult).toEqual([{ id: 1, json: '"null"' }])
 
-        const result = Schema.decodeUnknownSync(testTable.rowSchema.pipe(Schema.Array, Schema.headOrElse()))(rawResult)
+        const result = yield* Schema.decodeUnknown(testTable.rowSchema.pipe(Schema.Array, Schema.headOrElse()))(rawResult)
 
         expect(result).toEqual({ id: 1, json: 'null' })
       }, Effect.provide(PlatformNode.NodeFileSystem.layer)),

@@ -24,13 +24,13 @@ export const make = <TStaticData, Ctx>(
   close: Effect.Effect<void> = Effect.dieMessage('close not implemented'),
 ): ServiceContext<Ctx, TStaticData> => {
   return {
-    provide: (self) => Effect.provide(runtime)(self),
-    runWithErrorLog: <E, A>(self: Effect.Effect<A, E, Ctx>) => runWithErrorLog(Effect.provide(runtime)(self)),
-    runSync: <E, A>(self: Effect.Effect<A, E, Ctx>) => Effect.runSync(Effect.provide(runtime)(self)),
+    provide: (self) => self.pipe(Effect.provide(runtime)),
+    runWithErrorLog: <E, A>(self: Effect.Effect<A, E, Ctx>) => runWithErrorLog(self.pipe(Effect.provide(runtime))),
+    runSync: <E, A>(self: Effect.Effect<A, E, Ctx>) => Effect.runSync(self.pipe(Effect.provide(runtime))),
     runPromiseWithErrorLog: <E, A>(self: Effect.Effect<A, E, Ctx>) =>
-      runPromiseWithErrorLog(Effect.provide(runtime)(self)),
-    runPromiseExit: <E, A>(self: Effect.Effect<A, E, Ctx>) => Effect.runPromiseExit(Effect.provide(runtime)(self)),
-    runPromise: <E, A>(self: Effect.Effect<A, E, Ctx>) => Effect.runPromise(Effect.provide(runtime)(self)),
+      runPromiseWithErrorLog(self.pipe(Effect.provide(runtime))),
+    runPromiseExit: <E, A>(self: Effect.Effect<A, E, Ctx>) => Effect.runPromiseExit(self.pipe(Effect.provide(runtime))),
+    runPromise: <E, A>(self: Effect.Effect<A, E, Ctx>) => Effect.runPromise(self.pipe(Effect.provide(runtime))),
     withRuntime: (fn) => fn(runtime),
     close: close,
     closePromise: () => Effect.runPromise(close),

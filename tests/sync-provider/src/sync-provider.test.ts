@@ -665,7 +665,11 @@ Vitest.describe.each(providerLayers)('$name sync provider', { timeout: 60000 }, 
       expect((originalError.cause as BackendIdMismatchError).received).toBe('received-backend-id-456')
 
       // Simulate what happens during RPC: encode to JSON and decode back
-      const encoded = JSON.parse(JSON.stringify(originalError))
+      const str = yield* Schema.encode(Schema.parseJson())(originalError)
+      const encoded = (yield* Schema.decodeUnknown(Schema.parseJson())(str)) as {
+        _tag: string
+        cause: { _tag: string; expected: string; received: string }
+      }
 
       // The encoded form should preserve the structure (this was broken before the fix)
       expect(encoded._tag).toBe('InvalidPullError')

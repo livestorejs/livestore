@@ -23,7 +23,7 @@ const requestNextTick: (cb: () => void) => number =
 const cancelTick: (id: number) => void =
   globalThis.cancelAnimationFrame === undefined ? (id: number) => clearTimeout(id) : globalThis.cancelAnimationFrame
 
-export const connectDevtoolsToStore = ({
+export const connectDevtoolsToStore = Effect.fn('LSD.devtools.connectStoreToDevtools')(function* ({
   storeDevtoolsChannel,
   store,
 }: {
@@ -32,8 +32,7 @@ export const connectDevtoolsToStore = ({
     Devtools.ClientSession.MessageFromApp
   >
   store: Store
-}) =>
-  Effect.gen(function* () {
+}) {
     const reactivityGraphSubcriptions: SubMap = new Map()
     const liveQueriesSubscriptions: SubMap = new Map()
     const debugInfoHistorySubscriptions: SubMap = new Map()
@@ -347,4 +346,4 @@ export const connectDevtoolsToStore = ({
       Stream.runDrain,
       Effect.withSpan('LSD.devtools.onMessage'),
     )
-  }).pipe(UnknownError.mapToUnknownError, Effect.withSpan('LSD.devtools.connectStoreToDevtools'))
+}, UnknownError.mapToUnknownError)

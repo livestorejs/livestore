@@ -108,11 +108,10 @@ const runner = WorkerRunner.layerSerialized(WorkerSchema.Request, {
       const query$ = queryDb(tables.todo.orderBy('id', 'desc'))
       return store.subscribeStream(query$)
     }).pipe(Stream.unwrap, Stream.withSpan('@livestore/adapter-node-sync:test:stream-todos')),
-  OnShutdown: () =>
-    Effect.gen(function* () {
-      const { shutdownDeferred } = yield* WorkerContext
-      yield* shutdownDeferred.pipe(Effect.catchTag('LiveStore.StoreInterrupted', () => Effect.void))
-    }).pipe(Effect.withSpan('@livestore/adapter-node-sync:test:on-shutdown')),
+  OnShutdown: Effect.fn('@livestore/adapter-node-sync:test:on-shutdown')(function* () {
+    const { shutdownDeferred } = yield* WorkerContext
+    yield* shutdownDeferred.pipe(Effect.catchTag('LiveStore.StoreInterrupted', () => Effect.void))
+  }),
 })
 
 const clientId = process.argv[2]!

@@ -28,6 +28,9 @@ import * as SyncState from './syncstate.ts'
 // Upstream: https://github.com/Effect-TS/effect/pull/5929
 // TODO: simplify back to the 2-arg overload once the upstream fix is released and adopted.
 
+/** Serialize value to JSON string for trace attributes */
+const jsonStringify = Schema.encodeSync(Schema.parseJson())
+
 /**
  * Rebase behaviour:
  * - We continously pull events from the leader and apply them to the local store.
@@ -149,7 +152,7 @@ export const makeClientSessionSyncProcessor = ({
         acc[event.name] = (acc[event.name] ?? 0) + 1
         return acc
       }, {}),
-      ...(TRACE_VERBOSE && { mergeResult: JSON.stringify(mergeResult) }),
+      ...(TRACE_VERBOSE && { mergeResult: jsonStringify(mergeResult) }),
     })
 
     if (mergeResult._tag === 'unknown-error') {
@@ -255,10 +258,10 @@ export const makeClientSessionSyncProcessor = ({
               'merge:pull:rebase',
               {
                 payloadTag: payload._tag,
-                payload: TRACE_VERBOSE ? JSON.stringify(payload) : undefined,
+                payload: TRACE_VERBOSE ? jsonStringify(payload) : undefined,
                 newEventsCount: mergeResult.newEvents.length,
                 rollbackCount: mergeResult.rollbackEvents.length,
-                res: TRACE_VERBOSE ? JSON.stringify(mergeResult) : undefined,
+                res: TRACE_VERBOSE ? jsonStringify(mergeResult) : undefined,
               },
               undefined,
             )
@@ -304,9 +307,9 @@ export const makeClientSessionSyncProcessor = ({
               'merge:pull:advance',
               {
                 payloadTag: payload._tag,
-                payload: TRACE_VERBOSE ? JSON.stringify(payload) : undefined,
+                payload: TRACE_VERBOSE ? jsonStringify(payload) : undefined,
                 newEventsCount: mergeResult.newEvents.length,
-                res: TRACE_VERBOSE ? JSON.stringify(mergeResult) : undefined,
+                res: TRACE_VERBOSE ? jsonStringify(mergeResult) : undefined,
               },
               undefined,
             )

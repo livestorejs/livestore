@@ -8,6 +8,8 @@ import { PlatformNode } from '@livestore/utils/node'
 import { getCacheEntry, loadCachedDiagram, loadManifest, resolveCachePaths, type TldrawCachePaths } from './cache.ts'
 import { getSvgDimensions } from './renderer.ts'
 
+const jsonStringify = Schema.encodeSync(Schema.parseJson())
+
 type MinimalVitePlugin = {
   name: string
   enforce?: 'pre' | 'post'
@@ -144,7 +146,7 @@ export const createTldrawPlugin = (options: TldrawPluginOptions = {}): MinimalVi
             generatedAt: cached.generatedAt,
           }
 
-          const serializedPayload = JSON.stringify(payload)
+          const serializedPayload = jsonStringify(payload)
 
           return {
             code: createComponentModuleSource(serializedPayload, diagramComponentSpecifier),

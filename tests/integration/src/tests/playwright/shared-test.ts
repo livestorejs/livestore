@@ -14,7 +14,7 @@ import { Deferred, Duration, Effect, Fiber, Layer, Logger, Schema } from '@lives
 const runAndGetExitTimeoutMs = Duration.minutes(2)
 
 export const runTest =
-  (eff: Effect.Effect<void, unknown, Playwright.BrowserContext>) =>
+  <E>(eff: Effect.Effect<void, E, Playwright.BrowserContext>) =>
   (
     {}: PW.PlaywrightTestArgs & PW.PlaywrightTestOptions & PW.PlaywrightWorkerArgs & PW.PlaywrightWorkerOptions,
     testInfo: PW.TestInfo,

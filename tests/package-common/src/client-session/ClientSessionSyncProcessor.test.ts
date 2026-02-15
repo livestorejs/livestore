@@ -218,12 +218,11 @@ Vitest.describe.concurrent('ClientSessionSyncProcessor', () => {
       })
 
       const eventSchema = LiveStoreEvent.Input.makeSchema(schema) as TODO as Schema.Schema<LiveStoreEvent.Input.Encoded>
-      const encode = Schema.encodeSync(eventSchema)
 
       yield* Queue.offer(
         pullQueue,
         LiveStoreEvent.Client.EncodedWithMeta.make({
-          ...encode(events.todoCreated({ id: `id_0`, text: '', completed: false })),
+          ...(yield* Schema.encode(eventSchema)(events.todoCreated({ id: `id_0`, text: '', completed: false }))),
           seqNum: EventSequenceNumber.Client.Composite.make({ global: 1, client: 0 }),
           parentSeqNum: EventSequenceNumber.Client.ROOT,
           clientId: 'other-client',
@@ -449,11 +448,10 @@ Vitest.describe.concurrent('ClientSessionSyncProcessor', () => {
       })
 
       const eventSchema = LiveStoreEvent.Input.makeSchema(schema)
-      const encode = Schema.encodeSync(eventSchema)
 
       // Create an event that comes from the leader with a specific hash that won't match the client-side materializer's computed hash.
       const eventFromLeader = LiveStoreEvent.Client.EncodedWithMeta.make({
-        ...encode(events.todoCreated({ id: 'test-id', text: 'from-leader', completed: false })),
+        ...(yield* Schema.encode(eventSchema)(events.todoCreated({ id: 'test-id', text: 'from-leader', completed: false }))),
         seqNum: EventSequenceNumber.Client.Composite.make({ global: 0, client: 1 }),
         parentSeqNum: EventSequenceNumber.Client.ROOT,
         clientId: 'this-client',

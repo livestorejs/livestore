@@ -7,6 +7,7 @@
 import { Effect, Stream } from 'effect'
 import prettyBytes from 'pretty-bytes'
 
+import type * as WebError from '../WebError.ts'
 import { Opfs } from './Opfs.ts'
 import { getDirectoryHandleByPath, getMetadata, remove } from './utils.ts'
 
@@ -34,10 +35,10 @@ const ROOT_NAME = '/'
 const buildTree = Effect.fn('@livestore/utils:Opfs.buildTree')(function* () {
   const rootHandle = yield* Opfs.getRootDirectoryHandle
 
-  const collectDirectory: (
+  const collectDirectory = (
     handle: FileSystemDirectoryHandle,
     pathSegments: ReadonlyArray<string>,
-  ) => Effect.Effect<OpfsTreeNode, unknown, Opfs> = (handle, pathSegments) =>
+  ): Effect.Effect<OpfsTreeNode, WebError.WebError, Opfs> =>
     Effect.gen(function* () {
       const handlesStream = yield* Opfs.values(handle)
       const handles = yield* handlesStream.pipe(

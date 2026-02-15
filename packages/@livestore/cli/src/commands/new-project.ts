@@ -73,7 +73,7 @@ const fetchExamples = (ref: string) =>
 
     const responseText = yield* response.text
 
-    const examples = yield* Schema.decodeUnknown(GitHubContentsResponseSchema)(JSON.parse(responseText)).pipe(
+    const examples = yield* Schema.decodeUnknown(Schema.parseJson(GitHubContentsResponseSchema))(responseText).pipe(
       Effect.catchAll(
         (error) =>
           new NetworkError({

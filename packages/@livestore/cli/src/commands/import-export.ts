@@ -1,10 +1,13 @@
 import path from 'node:path'
 
 import type { UnknownError } from '@livestore/common'
-import { Console, Effect, FileSystem, type HttpClient, type Scope } from '@livestore/utils/effect'
+import { Console, Effect, FileSystem, type HttpClient, Schema, type Scope } from '@livestore/utils/effect'
 import { Cli } from '@livestore/utils/node'
 
 import * as SyncOps from '../sync-operations.ts'
+
+const jsonStringifyPretty = Schema.encodeSync(Schema.parseJson({ space: 2 }))
+const jsonParse = Schema.decodeUnknownSync(Schema.parseJson())
 
 const LARGE_EVENT_WARNING_THRESHOLD = 100_000
 
@@ -42,7 +45,7 @@ const exportEvents = ({
     const fs = yield* FileSystem.FileSystem
     const absOutputPath = path.isAbsolute(outputPath) ? outputPath : path.resolve(process.cwd(), outputPath)
 
-    yield* fs.writeFileString(absOutputPath, JSON.stringify(result.data, null, 2)).pipe(
+    yield* fs.writeFileString(absOutputPath, jsonStringifyPretty(result.data)).pipe(
       Effect.mapError(
         (cause) =>
           new SyncOps.ExportError({
@@ -110,7 +113,7 @@ const importEvents = ({
     )
 
     const parsedContent = yield* Effect.try({
-      try: () => JSON.parse(fileContent),
+      try: () => jsonParse(fileContent),
       catch: (error) =>
         new SyncOps.ImportError({
           cause: new Error(`Failed to parse JSON: ${error instanceof Error ? error.message : String(error)}`),

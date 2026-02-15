@@ -101,6 +101,7 @@ export const toDurableObjectHandler =
 
           let value: any
           if (Effect.isEffect(handlerResult)) {
+            // @effect-diagnostics-next-line anyUnknownInErrorContext:off -- `Rpc.Handler.handler` returns `Effect<any, any>` due to dynamic dispatch
             value = yield* handlerResult
           } else {
             value = handlerResult
@@ -157,7 +158,7 @@ export const toDurableObjectHandler =
     }).pipe(Effect.provide(options.layer), Effect.scoped, Effect.orDie)
 
 /** Out-of-band RPC stream response emission back to the caller DO */
-export const emitStreamResponse = ({
+export const emitStreamResponse = Effect.fn('do-rpc/emitStreamResponse')(function* ({
   callerContext,
   env,
   requestId,
@@ -167,22 +168,21 @@ export const emitStreamResponse = ({
   callerContext: { bindingName: string; durableObjectId: string }
   requestId: string
   values: NonEmptyArray<any>
-}) =>
-  Effect.gen(function* () {
-    const clientDoNamespace = env[callerContext.bindingName] as
-      | CfTypes.DurableObjectNamespace<ClientDoWithRpcCallback>
-      | undefined
+}) {
+  const clientDoNamespace = env[callerContext.bindingName] as
+    | CfTypes.DurableObjectNamespace<ClientDoWithRpcCallback>
+    | undefined
 
-    if (clientDoNamespace === undefined) {
-      throw new Error(`Client DO namespace not found: ${callerContext.bindingName}`)
-    }
+  if (clientDoNamespace === undefined) {
+    throw new Error(`Client DO namespace not found: ${callerContext.bindingName}`)
+  }
 
-    const clientDo = clientDoNamespace.get(clientDoNamespace.idFromString(callerContext.durableObjectId))
+  const clientDo = clientDoNamespace.get(clientDoNamespace.idFromString(callerContext.durableObjectId))
 
-    const res: RpcMessage.ResponseChunkEncoded = { _tag: 'Chunk', requestId, values }
+  const res: RpcMessage.ResponseChunkEncoded = { _tag: 'Chunk', requestId, values }
 
-    yield* Effect.tryPromise(() => clientDo.syncUpdateRpc(res))
-  }).pipe(Effect.withSpan('do-rpc/emitStreamResponse'))
+  yield* Effect.tryPromise(() => clientDo.syncUpdateRpc(res))
+})
 
 /**
  * Creates a ReadableStream response for streaming RPCs.
@@ -194,7 +194,7 @@ const createStreamingResponse = <Rpcs extends Rpc.Any, LE>(
   request: any,
   parser: ReturnType<typeof RpcSerialization.msgPack.unsafeMake>,
   layer: Layer.Layer<Rpc.ToHandler<Rpcs> | Rpc.Middleware<Rpcs>, LE>,
-): Effect.Effect<CfTypes.ReadableStream, any, Scope.Scope> =>
+): Effect.Effect<CfTypes.ReadableStream, never, Scope.Scope> =>
   Effect.gen(function* () {
     // Execute the handler to get the stream
     const handlerResult = entry.handler(request.payload, {
@@ -204,14 +204,10 @@ const createStreamingResponse = <Rpcs extends Rpc.Any, LE>(
       }),
     })
 
-    let stream: Stream.Stream<any, any, never>
-    if (Effect.isEffect(handlerResult)) {
-      // If handler returns Effect<Stream>, we need to run it to get the stream
-      stream = yield* handlerResult
-    } else {
-      // Direct stream
-      stream = handlerResult
-    }
+    // @effect-diagnostics-next-line anyUnknownInErrorContext:off -- `Rpc.Handler.handler` returns `Effect<any, any>` due to dynamic dispatch; orDie converts the error to a defect handled by the downstream catchAllCause
+    const stream: Stream.Stream<any, any, never> = Effect.isEffect(handlerResult)
+      ? yield* Effect.orDie(handlerResult)
+      : handlerResult
 
     // Get the stream schemas for proper chunk-level encoding
     const streamSchemas = RpcSchema.getStreamSchemas((rpc as any).successSchema.ast)

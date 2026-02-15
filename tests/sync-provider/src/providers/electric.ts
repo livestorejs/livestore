@@ -19,6 +19,7 @@ import { nanoid, Schema } from '@livestore/livestore'
 import * as ElectricSync from '@livestore/sync-electric'
 import { type DockerComposeError, DockerComposeService } from '@livestore/utils-dev/node'
 import {
+  type Cause,
   type CommandExecutor,
   Effect,
   HttpClient,
@@ -52,8 +53,8 @@ export const prepare: Effect.Effect<
 export const getProviderSpecific = (provider: SyncProviderImpl['Type']) =>
   provider.providerSpecific as {
     getDbForTesting: (storeId: string) => {
-      migrate: Effect.Effect<void, unknown>
-      disconnect: Effect.Effect<void, unknown>
+      migrate: Effect.Effect<void, Cause.UnknownException>
+      disconnect: Effect.Effect<void, Cause.UnknownException>
       sql: any
       tableName: string
     }

@@ -49,8 +49,8 @@ if (isDevEnv()) {
     opfs: Opfs.debugUtils,
     blobUrl: (buffer: Uint8Array<ArrayBuffer>) =>
       URL.createObjectURL(new Blob([buffer], { type: 'application/octet-stream' })),
-    runSync: (effect: Effect.Effect<any, any, never>) => Effect.runSync(effect),
-    runFork: (effect: Effect.Effect<any, any, never>) => Effect.runFork(effect),
+    runSync: <A, E>(effect: Effect.Effect<A, E>) => Effect.runSync(effect),
+    runFork: <A, E>(effect: Effect.Effect<A, E>) => Effect.runFork(effect),
   }
 }
 
@@ -200,19 +200,18 @@ const makeWorkerRunnerInner = ({ schema, sync: syncOptions, syncPayloadSchema }:
         Effect.annotateSpans({ debugInstanceId }),
         Layer.unwrapScoped,
       ),
-    GetRecreateSnapshot: () =>
-      Effect.gen(function* () {
-        const workerCtx = yield* LeaderThreadCtx
+    GetRecreateSnapshot: Effect.fn('@livestore/adapter-web:worker:GetRecreateSnapshot')(function* () {
+      const workerCtx = yield* LeaderThreadCtx
 
-        // NOTE we can only return the cached snapshot once as it's transferred (i.e. disposed), so we need to set it to undefined
-        // const cachedSnapshot =
-        //   result._tag === 'Recreate' ? yield* Ref.getAndSet(result.snapshotRef, undefined) : undefined
+      // NOTE we can only return the cached snapshot once as it's transferred (i.e. disposed), so we need to set it to undefined
+      // const cachedSnapshot =
+      //   result._tag === 'Recreate' ? yield* Ref.getAndSet(result.snapshotRef, undefined) : undefined
 
-        // return cachedSnapshot ?? workerCtx.db.export()
+      // return cachedSnapshot ?? workerCtx.db.export()
 
-        const snapshot = workerCtx.dbState.export()
-        return { snapshot, migrationsReport: workerCtx.initialState.migrationsReport }
-      }).pipe(UnknownError.mapToUnknownError, Effect.withSpan('@livestore/adapter-web:worker:GetRecreateSnapshot')),
+      const snapshot = workerCtx.dbState.export()
+      return { snapshot, migrationsReport: workerCtx.initialState.migrationsReport }
+    }, UnknownError.mapToUnknownError),
     PullStream: ({ cursor }) =>
       Effect.gen(function* () {
         const { syncProcessor } = yield* LeaderThreadCtx // <- syncState comes from here
@@ -256,39 +255,35 @@ const makeWorkerRunnerInner = ({ schema, sync: syncOptions, syncPayloadSchema }:
       ),
     BootStatusStream: () =>
       Effect.andThen(LeaderThreadCtx, (_) => Stream.fromQueue(_.bootStatusQueue)).pipe(Stream.unwrap),
-    GetLeaderHead: () =>
-      Effect.gen(function* () {
-        const workerCtx = yield* LeaderThreadCtx
-        return Eventlog.getClientHeadFromDb(workerCtx.dbEventlog)
-      }).pipe(UnknownError.mapToUnknownError, Effect.withSpan('@livestore/adapter-web:worker:GetLeaderHead')),
-    GetLeaderSyncState: () =>
-      Effect.gen(function* () {
-        const workerCtx = yield* LeaderThreadCtx
-        return yield* workerCtx.syncProcessor.syncState
-      }).pipe(UnknownError.mapToUnknownError, Effect.withSpan('@livestore/adapter-web:worker:GetLeaderSyncState')),
+    GetLeaderHead: Effect.fn('@livestore/adapter-web:worker:GetLeaderHead')(function* () {
+      const workerCtx = yield* LeaderThreadCtx
+      return Eventlog.getClientHeadFromDb(workerCtx.dbEventlog)
+    }, UnknownError.mapToUnknownError),
+    GetLeaderSyncState: Effect.fn('@livestore/adapter-web:worker:GetLeaderSyncState')(function* () {
+      const workerCtx = yield* LeaderThreadCtx
+      return yield* workerCtx.syncProcessor.syncState
+    }, UnknownError.mapToUnknownError),
     SyncStateStream: () =>
       Effect.gen(function* () {
         const workerCtx = yield* LeaderThreadCtx
         return workerCtx.syncProcessor.syncState.changes
       }).pipe(Stream.unwrapScoped),
-    GetNetworkStatus: () =>
-      Effect.gen(function* () {
-        const workerCtx = yield* LeaderThreadCtx
-        return yield* workerCtx.networkStatus
-      }).pipe(UnknownError.mapToUnknownError, Effect.withSpan('@livestore/adapter-web:worker:GetNetworkStatus')),
+    GetNetworkStatus: Effect.fn('@livestore/adapter-web:worker:GetNetworkStatus')(function* () {
+      const workerCtx = yield* LeaderThreadCtx
+      return yield* workerCtx.networkStatus
+    }, UnknownError.mapToUnknownError),
     NetworkStatusStream: () =>
       Effect.gen(function* () {
         const workerCtx = yield* LeaderThreadCtx
         return workerCtx.networkStatus.changes
       }).pipe(Stream.unwrapScoped),
-    Shutdown: () =>
-      Effect.gen(function* () {
-        yield* Effect.logDebug('[@livestore/adapter-web:worker] Shutdown')
+    Shutdown: Effect.fn('@livestore/adapter-web:worker:Shutdown')(function* () {
+      yield* Effect.logDebug('[@livestore/adapter-web:worker] Shutdown')
 
-        // Buy some time for Otel to flush
-        // TODO find a cleaner way to do this
-        yield* Effect.sleep(300)
-      }).pipe(UnknownError.mapToUnknownError, Effect.withSpan('@livestore/adapter-web:worker:Shutdown')),
+      // Buy some time for Otel to flush
+      // TODO find a cleaner way to do this
+      yield* Effect.sleep(300)
+    }, UnknownError.mapToUnknownError),
     ExtraDevtoolsMessage: ({ message }) =>
       Effect.andThen(LeaderThreadCtx, (_) => _.extraIncomingMessagesQueue.offer(message)).pipe(
         UnknownError.mapToUnknownError,

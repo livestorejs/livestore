@@ -3,7 +3,7 @@ import path from 'node:path'
 import { UnknownError } from '@livestore/common'
 import { type CmdError, CurrentWorkingDirectory, cmd } from '@livestore/utils-dev/node'
 import type { CommandExecutor, Option, PlatformError } from '@livestore/utils/effect'
-import { Effect, FetchHttpClient, Layer, Logger, LogLevel, OtelTracer } from '@livestore/utils/effect'
+import { Effect, FetchHttpClient, Layer, Logger, LogLevel, OtelTracer, Schema } from '@livestore/utils/effect'
 import { Cli, getFreePort, PlatformNode } from '@livestore/utils/node'
 import { LIVESTORE_DEVTOOLS_CHROME_DIST_PATH } from '@local/shared'
 
@@ -35,7 +35,7 @@ const viteDevServer = ({
     yield* cmd(`./node_modules/.bin/vite --config src/tests/playwright/fixtures/vite.config.ts dev --port ${devPort}`, {
       env: {
         // Relative to vite config
-        TEST_LIVESTORE_SCHEMA_PATH_JSON: JSON.stringify('./devtools/todomvc/livestore/schema.ts'),
+        TEST_LIVESTORE_SCHEMA_PATH_JSON: yield* Schema.encode(Schema.parseJson())('./devtools/todomvc/livestore/schema.ts').pipe(Effect.orDie),
         LSD_DEVTOOLS_LOCAL_PREVIEW: useDevtoolsLocalPreview ? '1' : undefined,
       },
     }).pipe(Effect.provide(CurrentWorkingDirectory.fromPath(cwd)), Effect.forkScoped)

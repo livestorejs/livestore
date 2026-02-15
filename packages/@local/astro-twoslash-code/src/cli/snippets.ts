@@ -113,6 +113,9 @@ import { resolveProjectPaths, type TwoslashProjectPaths } from '../project-paths
 import type { SnippetBundle } from '../vite/snippet-graph.ts'
 import { buildSnippetBundle, __internal as snippetGraphInternal } from '../vite/snippet-graph.ts'
 
+const jsonStringify = Schema.encodeSync(Schema.parseJson())
+const jsonStringifyPretty = Schema.encodeSync(Schema.parseJson({ space: 2 }))
+
 type THastRendererResult = {
   renderedGroupAst: THastElement
   styles: Set<string>
@@ -1487,7 +1490,7 @@ const buildSnippetsInternal = ({ paths, runtimeOptions }: ResolvedBuildOptions) 
         })
 
         const bundleHash = hashString(
-          JSON.stringify({
+          jsonStringify({
             files: filesWithHash.map((file) => ({
               filename: file.filename,
               hash: file.hash,
@@ -1568,7 +1571,7 @@ const buildSnippetsInternal = ({ paths, runtimeOptions }: ResolvedBuildOptions) 
           ),
         )
 
-        yield* fs.writeFileString(artifactPath, `${JSON.stringify(artifact, null, 2)}\n`).pipe(
+        yield* fs.writeFileString(artifactPath, `${jsonStringifyPretty(artifact)}\n`).pipe(
           Effect.mapError(
             (cause) =>
               new SnippetBuildError({
@@ -1604,17 +1607,15 @@ const buildSnippetsInternal = ({ paths, runtimeOptions }: ResolvedBuildOptions) 
       entries: artifactEntries,
     }
 
-    yield* fs
-      .writeFileString(path.join(paths.cacheRoot, 'manifest.json'), `${JSON.stringify(manifest, null, 2)}\n`)
-      .pipe(
-        Effect.mapError(
-          (cause) =>
-            new SnippetBuildError({
-              message: 'Unable to write snippets manifest',
-              cause,
-            }),
-        ),
-      )
+    yield* fs.writeFileString(path.join(paths.cacheRoot, 'manifest.json'), `${jsonStringifyPretty(manifest)}\n`).pipe(
+      Effect.mapError(
+        (cause) =>
+          new SnippetBuildError({
+            message: 'Unable to write snippets manifest',
+            cause,
+          }),
+      ),
+    )
 
     const cacheHits = snippetEntries.length - renderedCount
     yield* Effect.log(`Rendered ${renderedCount} snippet bundles (${cacheHits} cache hits)`)
