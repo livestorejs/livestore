@@ -37,7 +37,7 @@ CREATE INDEX IF NOT EXISTS idx_vfs_blocks_range ON vfs_blocks(file_path, block_i
 CREATE INDEX IF NOT EXISTS idx_vfs_files_modified ON vfs_files(modified_at);
 
 -- Trigger to update modified_at timestamp when file size changes
-CREATE TRIGGER IF NOT EXISTS trg_vfs_files_update_modified 
+CREATE TRIGGER IF NOT EXISTS trg_vfs_files_update_modified
   AFTER UPDATE OF file_size ON vfs_files
   BEGIN
     UPDATE vfs_files SET modified_at = unixepoch() WHERE file_path = NEW.file_path;
@@ -45,7 +45,7 @@ CREATE TRIGGER IF NOT EXISTS trg_vfs_files_update_modified
 
 -- View for file statistics (useful for debugging and monitoring)
 CREATE VIEW IF NOT EXISTS vfs_file_stats AS
-SELECT 
+SELECT
   f.file_path,
   f.file_size,
   f.flags,

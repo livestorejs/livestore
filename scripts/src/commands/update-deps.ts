@@ -9,13 +9,15 @@
  * 2. **Expo constraints**: Fetches constraints from Expo API (113+ managed packages)
  * 3. **Global application**: Applies Expo constraints to ALL packages for consistency
  * 4. **Direct updates**: Modifies package.json files directly, then runs `pnpm install --fix-lockfile`
- * 5. **Validation**: Runs `syncpack` and `expo install --check` automatically
+ * 5. **Validation**: Runs `expo install --check` automatically
  *
  * Benefits: Ensures consistent versions across the entire monorepo, preventing
  * type conflicts and bundle bloat from multiple versions of the same package.
  */
 
 import fs from 'node:fs'
+
+import { cmd, cmdText, LivestoreWorkspace } from '@livestore/utils-dev/node'
 import {
   Console,
   Effect,
@@ -28,7 +30,6 @@ import {
   Schema,
 } from '@livestore/utils/effect'
 import { Cli, PlatformNode } from '@livestore/utils/node'
-import { cmd, cmdText, LivestoreWorkspace } from '@livestore/utils-dev/node'
 
 export class UpdateDepsError extends Schema.TaggedError<UpdateDepsError>()('UpdateDepsError', {
   message: Schema.String,
@@ -52,6 +53,21 @@ const NCUOutput = Schema.Record({ key: Schema.String, value: PackageFileUpdates 
 const ExpoConstraints = Schema.Record({ key: Schema.String, value: Schema.String })
 
 const PatchedDependencies = Schema.Record({ key: Schema.String, value: Schema.String })
+
+const DepsRecord = Schema.optional(Schema.mutable(Schema.Record({ key: Schema.String, value: Schema.String })))
+
+const WorkspacePackageJson = Schema.Struct(
+  { dependencies: DepsRecord, devDependencies: DepsRecord, peerDependencies: DepsRecord },
+  Schema.Record({ key: Schema.String, value: Schema.Unknown }),
+)
+
+const RootPackageJson = Schema.Struct({
+  pnpm: Schema.optional(
+    Schema.Struct({
+      patchedDependencies: Schema.optional(PatchedDependencies),
+    }),
+  ),
+})
 
 // Schema for Expo API response
 const ExpoApiItem = Schema.Struct({
@@ -81,13 +97,11 @@ const readPatchedDependencies = () =>
         catch: () => new UpdateDepsError({ message: 'Failed to read root package.json' }),
       })
 
-      const packageJson = yield* Effect.try({
-        try: () => JSON.parse(packageJsonContent),
-        catch: () => new UpdateDepsError({ message: 'Failed to parse root package.json' }),
-      })
+      const packageJson = yield* Schema.decodeUnknown(Schema.parseJson(RootPackageJson))(packageJsonContent).pipe(
+        Effect.mapError(() => new UpdateDepsError({ message: 'Failed to parse root package.json' })),
+      )
 
-      const patchedDeps = packageJson?.pnpm?.patchedDependencies ?? {}
-      const validated = yield* Schema.decodeUnknown(PatchedDependencies)(patchedDeps)
+      const validated = packageJson.pnpm?.patchedDependencies ?? {}
 
       // Extract just package names from package@version format
       return Object.keys(validated).map((packageWithVersion) => packageWithVersion.split('@')[0]!)
@@ -236,10 +250,9 @@ const executeUpdates = (filteredUpdates: Record<string, Record<string, string>>,
               catch: () => new UpdateDepsError({ message: `Failed to read ${packageJsonPath}` }),
             })
 
-            const packageJson = yield* Effect.try({
-              try: () => JSON.parse(content),
-              catch: () => new UpdateDepsError({ message: `Failed to parse ${packageJsonPath}` }),
-            })
+            const packageJson = yield* Schema.decodeUnknown(Schema.parseJson(WorkspacePackageJson))(content).pipe(
+              Effect.mapError(() => new UpdateDepsError({ message: `Failed to parse ${packageJsonPath}` })),
+            )
 
             // Update dependencies in all sections
             for (const [pkg, version] of Object.entries(updates)) {
@@ -348,16 +361,6 @@ export const updateDepsCommand = Cli.Command.make(
     // Step 6: Validation (if not dry run and validate enabled)
     if (!dryRun && validate) {
       yield* Console.log('\n🔍 Running validation...')
-
-      yield* cmd('syncpack lint').pipe(
-        Effect.provide(LivestoreWorkspace.toCwd()),
-        Effect.catchAll((error) => Console.warn(`Syncpack validation failed: ${error}`)),
-      )
-
-      yield* cmd('syncpack fix-mismatches').pipe(
-        Effect.provide(LivestoreWorkspace.toCwd()),
-        Effect.catchAll((error) => Console.warn(`Syncpack fix failed: ${error}`)),
-      )
 
       // Check Expo examples
       const expoExamples = yield* cmdText('find examples -name "expo" -type d -o -name "*expo*" -type d').pipe(

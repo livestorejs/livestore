@@ -4,6 +4,7 @@ import type { BootStatus } from '@livestore/common'
 import { liveStoreStorageFormatVersion, UnknownError } from '@livestore/common'
 import { Chunk, Effect, Layer, Logger, LogLevel, Queue, Schedule, Schema, Stream } from '@livestore/utils/effect'
 import { Opfs } from '@livestore/utils/effect/browser'
+
 import { ResultMultipleMigrations } from '../bridge.ts'
 import LiveStoreWorker from '../livestore.worker.ts?worker'
 import { schema } from '../schema.ts'

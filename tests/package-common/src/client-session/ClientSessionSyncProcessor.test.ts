@@ -1,3 +1,5 @@
+import { expect } from 'vitest'
+
 import { makeAdapter } from '@livestore/adapter-node'
 import type { LockStatus, MockSyncBackend } from '@livestore/common'
 import {
@@ -17,6 +19,7 @@ import type { ShutdownDeferred, Store } from '@livestore/livestore'
 import { createStore, makeShutdownDeferred, StoreInternalsSymbol } from '@livestore/livestore'
 import type { MakeNodeSqliteDb } from '@livestore/sqlite-wasm/node'
 import { makeNoopSpan, omitUndefineds } from '@livestore/utils'
+import { Vitest } from '@livestore/utils-dev/node-vitest'
 import type { OtelTracer } from '@livestore/utils/effect'
 import {
   Context,
@@ -36,8 +39,7 @@ import {
 } from '@livestore/utils/effect'
 import { nanoid } from '@livestore/utils/nanoid'
 import { PlatformNode } from '@livestore/utils/node'
-import { Vitest } from '@livestore/utils-dev/node-vitest'
-import { expect } from 'vitest'
+
 import { events, schema, tables } from '../leader-thread/fixture.ts'
 
 // TODO fix type level - derived events are missing and thus infers to `never` currently
@@ -216,12 +218,11 @@ Vitest.describe.concurrent('ClientSessionSyncProcessor', () => {
       })
 
       const eventSchema = LiveStoreEvent.Input.makeSchema(schema) as TODO as Schema.Schema<LiveStoreEvent.Input.Encoded>
-      const encode = Schema.encodeSync(eventSchema)
 
       yield* Queue.offer(
         pullQueue,
         LiveStoreEvent.Client.EncodedWithMeta.make({
-          ...encode(events.todoCreated({ id: `id_0`, text: '', completed: false })),
+          ...(yield* Schema.encode(eventSchema)(events.todoCreated({ id: `id_0`, text: '', completed: false }))),
           seqNum: EventSequenceNumber.Client.Composite.make({ global: 1, client: 0 }),
           parentSeqNum: EventSequenceNumber.Client.ROOT,
           clientId: 'other-client',
@@ -447,11 +448,10 @@ Vitest.describe.concurrent('ClientSessionSyncProcessor', () => {
       })
 
       const eventSchema = LiveStoreEvent.Input.makeSchema(schema)
-      const encode = Schema.encodeSync(eventSchema)
 
       // Create an event that comes from the leader with a specific hash that won't match the client-side materializer's computed hash.
       const eventFromLeader = LiveStoreEvent.Client.EncodedWithMeta.make({
-        ...encode(events.todoCreated({ id: 'test-id', text: 'from-leader', completed: false })),
+        ...(yield* Schema.encode(eventSchema)(events.todoCreated({ id: 'test-id', text: 'from-leader', completed: false }))),
         seqNum: EventSequenceNumber.Client.Composite.make({ global: 0, client: 1 }),
         parentSeqNum: EventSequenceNumber.Client.ROOT,
         clientId: 'this-client',

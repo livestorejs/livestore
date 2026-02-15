@@ -1,5 +1,6 @@
 import * as os from 'node:os'
 import * as nodePath from 'node:path'
+
 import { sluggify } from '@livestore/utils'
 import {
   Command,
@@ -72,7 +73,7 @@ const fetchExamples = (ref: string) =>
 
     const responseText = yield* response.text
 
-    const examples = yield* Schema.decodeUnknown(GitHubContentsResponseSchema)(JSON.parse(responseText)).pipe(
+    const examples = yield* Schema.decodeUnknown(Schema.parseJson(GitHubContentsResponseSchema))(responseText).pipe(
       Effect.catchAll(
         (error) =>
           new NetworkError({
@@ -85,7 +86,7 @@ const fetchExamples = (ref: string) =>
     const exampleNames = examples
       .filter((item) => item.type === 'dir')
       .map((item) => item.name)
-      .sort()
+      .toSorted()
 
     yield* Effect.log(`Found ${exampleNames.length} examples: ${exampleNames.join(', ')}`)
 

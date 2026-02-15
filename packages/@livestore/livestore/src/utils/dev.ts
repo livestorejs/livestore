@@ -33,8 +33,8 @@ export const downloadURL = (data: string, fileName: string) => {
 export const exposeDebugUtils = () => {
   globalThis.__debugLiveStoreUtils = {
     downloadBlob,
-    runSync: (effect: Effect.Effect<any, any, never>) => Effect.runSync(effect),
-    runFork: (effect: Effect.Effect<any, any, never>) => Effect.runFork(effect),
+    runSync: <A, E>(effect: Effect.Effect<A, E>) => Effect.runSync(effect),
+    runFork: <A, E>(effect: Effect.Effect<A, E>) => Effect.runFork(effect),
     dumpDb: (db: SqliteDb) => {
       const tables = db.select<{ name: string }>(`SELECT name FROM sqlite_master WHERE type='table'`)
       for (const table of tables) {

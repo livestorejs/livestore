@@ -1,9 +1,10 @@
 import { getWorkerArgs, makeWorkerEffect } from '@livestore/adapter-node/worker'
 import { makeWsSync } from '@livestore/sync-cf/client'
 import { IS_CI } from '@livestore/utils'
+import { OtelLiveHttp } from '@livestore/utils-dev/node'
 import { Effect, Layer } from '@livestore/utils/effect'
 import { OtelLiveDummy, PlatformNode } from '@livestore/utils/node'
-import { OtelLiveHttp } from '@livestore/utils-dev/node'
+
 import { makeFileLogger } from './fixtures/file-logger.ts'
 import { schema } from './schema.ts'
 

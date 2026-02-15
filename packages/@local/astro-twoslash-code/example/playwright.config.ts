@@ -1,6 +1,7 @@
+import { defineConfig } from '@playwright/test'
+
 import { Effect } from '@livestore/utils/effect'
 import { getFreePort } from '@livestore/utils/node'
-import { defineConfig } from '@playwright/test'
 
 // Playwright loads this config multiple times (runner + each worker). We stash the
 // randomly chosen port in an env var so workers reuse the same dev server.

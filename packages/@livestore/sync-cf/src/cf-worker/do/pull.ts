@@ -1,6 +1,7 @@
 import { BackendIdMismatchError, InvalidPullError, SyncBackend, UnknownError } from '@livestore/common'
 import { splitChunkBySize } from '@livestore/common/sync'
 import { Chunk, Effect, Option, Schema, Stream } from '@livestore/utils/effect'
+
 import { MAX_PULL_EVENTS_PER_MESSAGE, MAX_WS_MESSAGE_BYTES } from '../../common/constants.ts'
 import { SyncMessage } from '../../common/mod.ts'
 import type { ForwardedHeaders } from '../shared.ts'
@@ -30,7 +31,7 @@ export const makeEndingPullStream = ({
     const { doOptions, backendId, storeId, storage } = yield* DoCtx
 
     if (doOptions?.onPull) {
-      yield* Effect.tryAll(() => doOptions!.onPull!(req, { storeId, payload, headers })).pipe(
+      yield* Effect.tryAll(() => doOptions.onPull!(req, { storeId, payload, headers })).pipe(
         UnknownError.mapToUnknownError,
       )
     }

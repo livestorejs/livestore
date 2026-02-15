@@ -277,19 +277,19 @@ const emptyAst = (tableDef: TableDefBase): QueryBuilderAst.SelectQuery => ({
 
 // Helper functions
 
-function assertSelectQueryBuilderAst(ast: QueryBuilderAst): asserts ast is QueryBuilderAst.SelectQuery {
+const assertSelectQueryBuilderAst: (ast: QueryBuilderAst) => asserts ast is QueryBuilderAst.SelectQuery = (ast) => {
   if (ast._tag !== 'SelectQuery') {
     return shouldNeverHappen(`Expected SelectQuery but got ${ast._tag}`)
   }
 }
 
-function assertInsertQueryBuilderAst(ast: QueryBuilderAst): asserts ast is QueryBuilderAst.InsertQuery {
+const assertInsertQueryBuilderAst: (ast: QueryBuilderAst) => asserts ast is QueryBuilderAst.InsertQuery = (ast) => {
   if (ast._tag !== 'InsertQuery') {
     return shouldNeverHappen(`Expected InsertQuery but got ${ast._tag}`)
   }
 }
 
-function assertWriteQueryBuilderAst(ast: QueryBuilderAst): asserts ast is QueryBuilderAst.WriteQuery {
+const assertWriteQueryBuilderAst: (ast: QueryBuilderAst) => asserts ast is QueryBuilderAst.WriteQuery = (ast) => {
   if (ast._tag !== 'InsertQuery' && ast._tag !== 'UpdateQuery' && ast._tag !== 'DeleteQuery') {
     return shouldNeverHappen(`Expected WriteQuery but got ${ast._tag}`)
   }

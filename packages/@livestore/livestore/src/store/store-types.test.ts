@@ -1,7 +1,9 @@
+import { describe, expect, it } from 'vitest'
+
 import type { QueryBuilder } from '@livestore/common'
 import { QueryBuilderTypeId } from '@livestore/common'
 import { Schema } from '@livestore/utils/effect'
-import { describe, expect, it } from 'vitest'
+
 import { TypeId } from '../live-queries/base-class.ts'
 import { queryDb, signal } from '../live-queries/mod.ts'
 import { isQueryable } from './store-types.ts'

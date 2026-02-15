@@ -1,14 +1,15 @@
-/** biome-ignore-all lint/a11y: test */
-import * as LiveStore from '@livestore/livestore'
-import { queryDb, StoreInternalsSymbol, signal } from '@livestore/livestore'
-import { RG } from '@livestore/livestore/internal/testing-utils'
-import { Effect, Schema } from '@livestore/utils/effect'
-import { Vitest } from '@livestore/utils-dev/node-vitest'
 import * as ReactTesting from '@testing-library/react'
 import React from 'react'
 // @ts-expect-error no types
 import * as ReactWindow from 'react-window'
 import { expect } from 'vitest'
+
+/** biome-ignore-all lint/a11y: test */
+import * as LiveStore from '@livestore/livestore'
+import { queryDb, StoreInternalsSymbol, signal } from '@livestore/livestore'
+import { RG } from '@livestore/livestore/internal/testing-utils'
+import { Vitest } from '@livestore/utils-dev/node-vitest'
+import { Effect, Schema } from '@livestore/utils/effect'
 
 import { events, makeTodoMvcReact, tables } from './__tests__/fixture.tsx'
 import { __resetUseRcResourceCache } from './useRcResource.ts'
@@ -156,7 +157,7 @@ Vitest.describe.each([{ strictMode: true }, { strictMode: false }] as const)(
               width={100}
               itemSize={10}
               itemCount={numItems}
-              itemData={Array.from({ length: numItems }, (_, i) => i).reverse()}
+              itemData={Array.from({ length: numItems }, (_, i) => i).toReversed()}
             >
               {ListItem}
             </ReactWindow.FixedSizeList>

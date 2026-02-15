@@ -2,6 +2,13 @@ import { extractStackInfoFromStackTrace, type StackInfo } from '@livestore/lives
 
 export type { StackInfo } from '@livestore/livestore'
 
+// V8-specific extension not in standard TypeScript types
+declare global {
+  interface ErrorConstructor {
+    stackTraceLimit: number
+  }
+}
+
 /**
  * The original stack trace limit before any modifications.
  * Used to restore the limit after extracting stack info.

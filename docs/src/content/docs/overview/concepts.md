@@ -81,4 +81,3 @@ LiveStore is designed to be pluggable in various ways:
 - User identity must be modeled within your application domain through events and application logic
 - The `clientId` identifies a client instance, not a user
 - Multiple clients can represent the same user (e.g., different browsers or devices)
-

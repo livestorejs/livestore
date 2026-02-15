@@ -1,6 +1,6 @@
-import { MXBAI_API_KEY, MXBAI_VECTOR_STORE_ID } from 'astro:env/server'
 import Mixedbread from '@mixedbread/sdk'
 import type { APIRoute } from 'astro'
+import { MXBAI_API_KEY, MXBAI_VECTOR_STORE_ID } from 'astro:env/server'
 import Slugger from 'github-slugger'
 import removeMd from 'remove-markdown'
 
@@ -27,7 +27,7 @@ export interface SearchResult {
   url: string
 }
 
-function filePathToHref(filePath: string): string {
+const filePathToHref = (filePath: string): string => {
   // Extract the path after /src/content/docs/
   const match = filePath.match(/\/src\/content\/docs\/(.+)$/)
   if (!match || !match[1]) return '/'
@@ -37,7 +37,7 @@ function filePathToHref(filePath: string): string {
   return `/${href}`
 }
 
-function extractHeadingTitle(text: string): string {
+const extractHeadingTitle = (text: string): string => {
   const trimmedText = text.trim()
 
   if (!trimmedText.startsWith('#')) {
@@ -91,8 +91,8 @@ export const GET: APIRoute = async ({ url }) => {
 
     response.data.forEach((item, index) => {
       const metadata = {
-        ...(item.metadata ?? {}),
-        ...(item.generated_metadata ?? {}),
+        ...item.metadata,
+        ...item.generated_metadata,
       } as SearchMetadata
 
       const url = filePathToHref(metadata?.file_path || '')

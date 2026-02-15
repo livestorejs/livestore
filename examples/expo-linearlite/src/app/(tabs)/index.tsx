@@ -1,13 +1,13 @@
-import { queryDb, Schema, sql } from '@livestore/livestore'
 import * as Haptics from 'expo-haptics'
 import { useCallback, useMemo } from 'react'
 import { FlatList, Pressable, StyleSheet, useColorScheme, View } from 'react-native'
+
+import { queryDb, Schema, sql } from '@livestore/livestore'
 
 import { IssueItem } from '../../components/IssueItem.tsx'
 import { ThemedText } from '../../components/ThemedText.tsx'
 import { useUser } from '../../hooks/useUser.ts'
 import { uiState$ } from '../../livestore/queries.ts'
-
 import { events, tables } from '../../livestore/schema.ts'
 import { useAppStore } from '../../livestore/store.ts'
 

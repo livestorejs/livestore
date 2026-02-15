@@ -102,31 +102,34 @@ export const status = Effect.gen(function* () {
   }
 }).pipe(Effect.withSpan('mcp-runtime:status'))
 
-export const query = ({ sql, bindValues }: { sql: string; bindValues?: readonly any[] | Record<string, unknown> }) =>
-  Effect.gen(function* () {
-    const opt = yield* getStore
-    if (opt._tag === 'None') {
-      return yield* Effect.dieMessage('LiveStore not connected. Call livestore_instance_connect first.')
-    }
-    const s = opt.value
+export const query = Effect.fn('mcp-runtime:query')(function* ({
+  sql,
+  bindValues,
+}: { sql: string; bindValues?: readonly any[] | Record<string, unknown> }) {
+  const opt = yield* getStore
+  if (opt._tag === 'None') {
+    return yield* Effect.dieMessage('LiveStore not connected. Call livestore_instance_connect first.')
+  }
+  const s = opt.value
 
-    const rows = s.query({ query: sql, bindValues: (bindValues as any) ?? [] }) as Array<Record<string, unknown>>
-    const jsonRows = rows.map((r) => Object.fromEntries(Object.entries(r).map(([k, v]) => [k, v as Schema.JsonValue])))
-    return { rows: jsonRows, rowCount: jsonRows.length }
-  }).pipe(Effect.withSpan('mcp-runtime:query'))
+  const rows = s.query({ query: sql, bindValues: (bindValues as any) ?? [] }) as Array<Record<string, unknown>>
+  const jsonRows = rows.map((r) => Object.fromEntries(Object.entries(r).map(([k, v]) => [k, v as Schema.JsonValue])))
+  return { rows: jsonRows, rowCount: jsonRows.length }
+})
 
-export const commit = ({ events }: { events: ReadonlyArray<{ name: string; args: Schema.JsonValue }> }) =>
-  Effect.gen(function* () {
-    const opt = yield* getStore
-    if (opt._tag === 'None') {
-      return yield* Effect.dieMessage('LiveStore not connected. Call livestore_instance_connect first.')
-    }
-    const s = opt.value
-    const InputEventSchema = LiveStoreEvent.Input.makeSchema(s.schema) as Schema.Schema<any>
-    const decoded = events.map((e) => Schema.decodeSync(InputEventSchema)(e))
-    s.commit(...decoded)
-    return { committed: decoded.length }
-  }).pipe(Effect.withSpan('mcp-runtime:commit'))
+export const commit = Effect.fn('mcp-runtime:commit')(function* ({
+  events,
+}: { events: ReadonlyArray<{ name: string; args: Schema.JsonValue }> }) {
+  const opt = yield* getStore
+  if (opt._tag === 'None') {
+    return yield* Effect.dieMessage('LiveStore not connected. Call livestore_instance_connect first.')
+  }
+  const s = opt.value
+  const InputEventSchema = LiveStoreEvent.Input.makeSchema(s.schema) as Schema.Schema<any>
+  const decoded = events.map((e) => Schema.decodeSync(InputEventSchema)(e))
+  s.commit(...decoded)
+  return { committed: decoded.length }
+})
 
 export const disconnect = Effect.promise(async () => {
   if (store) {

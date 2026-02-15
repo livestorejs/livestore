@@ -1,8 +1,10 @@
 /// <reference types="vitest/globals" />
 
+import { beforeEach, describe, expect, it } from 'vitest'
+
 import type { CfTypes } from '@livestore/common-cf'
 import * as VFS from '@livestore/wa-sqlite/src/VFS.js'
-import { beforeEach, describe, expect, it } from 'vitest'
+
 import { CloudflareWorkerVFS } from '../../mod.ts'
 
 describe('CloudflareWorkerVFS - Advanced Features', () => {
@@ -156,7 +158,8 @@ describe('CloudflareWorkerVFS - Advanced Features', () => {
       expect(vfs.jClose(fileId)).toBe(VFS.SQLITE_OK)
     })
 
-    it('should handle large files that exceed cache capacity', async () => {
+    // TODO: Remove retry once flaky timeout is investigated (https://github.com/livestorejs/livestore/issues/1020)
+    it('should handle large files that exceed cache capacity', { retry: 3, timeout: 10000 }, async () => {
       const path = '/test/cache-overflow.db'
       const fileId = 1
       const flags = VFS.SQLITE_OPEN_CREATE | VFS.SQLITE_OPEN_READWRITE

@@ -1,11 +1,11 @@
-import { chromeLauncher } from '@web/test-runner';
-import { jasmineTestRunnerConfig } from 'web-test-runner-jasmine';
+import { chromeLauncher } from '@web/test-runner'
+import { jasmineTestRunnerConfig } from 'web-test-runner-jasmine'
 
 export default /** @type {import("@web/test-runner").TestRunnerConfig} */ ({
   ...jasmineTestRunnerConfig(),
   testFramework: {
     config: {
-      defaultTimeoutInterval: 5 * 60 * 1000
+      defaultTimeoutInterval: 5 * 60 * 1000,
     },
   },
   browserLogs: true,
@@ -17,12 +17,8 @@ export default /** @type {import("@web/test-runner").TestRunnerConfig} */ ({
   browsers: [
     chromeLauncher({
       launchOptions: {
-        args: [
-          '--flag-switches-begin',
-          '--enable-features=WebAssemblyExperimentalJSPI',
-          '--flag-switches-end'
-        ],
+        args: ['--flag-switches-begin', '--enable-features=WebAssemblyExperimentalJSPI', '--flag-switches-end'],
       },
     }),
   ],
-});
+})

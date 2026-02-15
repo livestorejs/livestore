@@ -1,4 +1,5 @@
 import { Schema } from '@livestore/utils/effect'
+
 import { type SqliteAst, SqliteDsl } from './db-schema/mod.ts'
 
 /**

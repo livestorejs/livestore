@@ -1,7 +1,9 @@
+import { unstable_batchedUpdates as batchUpdates } from 'react-native'
+
 import { makePersistedAdapter } from '@livestore/adapter-expo'
 import { nanoid } from '@livestore/livestore'
 import { useStore } from '@livestore/react'
-import { unstable_batchedUpdates as batchUpdates } from 'react-native'
+
 import { events, schema, tables } from './schema.ts'
 
 const adapter = makePersistedAdapter({})

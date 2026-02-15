@@ -64,4 +64,3 @@ We currently lean towards option 1 because it requires the least protocol surfac
 ## Backwards Compatibility
 
 - Breaking change: `store.commit` now returns a receipt object. Update docs/examples accordingly.
-

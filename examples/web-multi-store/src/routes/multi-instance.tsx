@@ -18,7 +18,7 @@ export const Route = createFileRoute('/multi-instance')({
   component: MultiInstanceRoute,
 })
 
-function MultiInstanceRoute() {
+const MultiInstanceRoute = () => {
   const { storeRegistry } = Route.useRouteContext()
 
   return (

@@ -5,6 +5,7 @@ import type { CfTypes } from '@livestore/common-cf'
 import { Effect } from '@livestore/utils/effect'
 import type * as WaSqlite from '@livestore/wa-sqlite'
 import type { MemoryVFS } from '@livestore/wa-sqlite/src/examples/MemoryVFS.js'
+
 import { makeInMemoryDb } from '../in-memory-vfs.ts'
 import { makeSqliteDb } from '../make-sqlite-db.ts'
 import { CloudflareSqlVFS } from './CloudflareSqlVFS.ts'

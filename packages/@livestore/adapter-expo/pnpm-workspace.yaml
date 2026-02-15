@@ -1,0 +1,14 @@
+# Generated file - DO NOT EDIT
+# Source: pnpm-workspace.yaml.genie.ts
+
+packages: [., ../common, ../utils, ../utils-dev, ../webmesh]
+
+dedupePeerDependents: true
+
+publicHoistPattern:
+  - react
+  - react-dom
+  - react-reconciler
+  - react-native
+  - expo
+  - expo-*

@@ -8,8 +8,8 @@ import type {
   SqliteDbSession,
 } from '@livestore/common'
 import { SqliteDbHelper, SqliteError } from '@livestore/common'
-import { EventSequenceNumber } from '@livestore/common/schema'
 import type { CfTypes } from '@livestore/common-cf'
+import { EventSequenceNumber } from '@livestore/common/schema'
 import { Effect } from '@livestore/utils/effect'
 
 // Simplified prepared statement implementation using only public API

@@ -50,5 +50,6 @@ export default defineConfig({
       path.join(rootDir, 'docs/vitest.config.ts'),
       path.join(rootDir, 'scripts'),
     ],
+    server: { deps: { inline: ['@effect/vitest'] } },
   },
 })

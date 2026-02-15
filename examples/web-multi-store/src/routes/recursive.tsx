@@ -17,7 +17,7 @@ export const Route = createFileRoute('/recursive')({
   component: RecursiveRoute,
 })
 
-function RecursiveRoute() {
+const RecursiveRoute = () => {
   const { storeRegistry } = Route.useRouteContext()
 
   return (

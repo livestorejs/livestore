@@ -6,10 +6,12 @@
  */
 
 import path from 'node:path'
-import { Console, Effect, FileSystem, Schema } from '@livestore/utils/effect'
-import { LivestoreWorkspace } from '@livestore/utils-dev/node'
+
 import semver from 'semver'
 import * as yaml from 'yaml'
+
+import { LivestoreWorkspace } from '@livestore/utils-dev/node'
+import { Console, Effect, FileSystem, Schema } from '@livestore/utils/effect'
 
 /** Represents a single peer dependency violation */
 export interface PeerDepViolation {
@@ -77,6 +79,13 @@ export const checkPeerDependencies = Effect.gen(function* () {
   const fs = yield* FileSystem.FileSystem
   const workspaceRoot = yield* LivestoreWorkspace
   const lockfilePath = path.join(workspaceRoot, 'pnpm-lock.yaml')
+
+  // Per-package workspaces don't have a root lockfile — skip check gracefully
+  const exists = yield* fs.exists(lockfilePath)
+  if (!exists) {
+    yield* Console.warn('Skipping peer dep check: no root pnpm-lock.yaml (per-package workspaces)')
+    return [] as PeerDepViolation[]
+  }
 
   // Read and parse the lockfile
   const lockfileContent = yield* fs

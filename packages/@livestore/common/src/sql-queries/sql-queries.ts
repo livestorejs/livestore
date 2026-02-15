@@ -301,7 +301,7 @@ Error: ${parseErrorStr}
 Value:`,
             value,
           )
-          // biome-ignore lint/suspicious/noDebugger: debug
+          // oxlint-disable-next-line eslint(no-debugger) -- intentional breakpoint for SQL decode errors
           debugger
           throw res.left
         } else {

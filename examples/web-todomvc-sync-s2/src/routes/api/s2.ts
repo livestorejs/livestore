@@ -1,8 +1,9 @@
+import { createFileRoute } from '@tanstack/react-router'
+
 import { Schema } from '@livestore/livestore'
 import * as S2 from '@livestore/sync-s2'
 import * as S2Helpers from '@livestore/sync-s2/s2-proxy-helpers'
 import { Config, Effect, Option } from '@livestore/utils/effect'
-import { createFileRoute } from '@tanstack/react-router'
 
 const {
   token: s2Token,

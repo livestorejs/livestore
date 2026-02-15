@@ -1,8 +1,9 @@
 import path from 'node:path'
 
+import { FileSystem } from '@effect/platform'
+import { NodeFileSystem } from '@effect/platform-node'
 import * as Vitest from '@effect/vitest'
-import { Effect, FileSystem, Queue } from '@livestore/utils/effect'
-import { PlatformNode } from '@livestore/utils/node'
+import { Effect, Queue } from 'effect'
 
 import { resolveCachePaths } from './cache.ts'
 import { __internal, type WatchDiagramsRebuildInfo, watchDiagrams } from './cli.ts'
@@ -82,7 +83,7 @@ Vitest.describe('watchDiagrams', () => {
       const initial = yield* Queue.take(rebuildEvents).pipe(Effect.timeout('5 seconds'), Effect.orDie)
       Vitest.expect(initial.reason).toBe('initial')
       Vitest.expect(initial.event).toBeNull()
-    }, Effect.provide(PlatformNode.NodeFileSystem.layer)),
+    }, Effect.provide(NodeFileSystem.layer)),
     { timeout: 10000 },
   )
 
@@ -119,7 +120,7 @@ Vitest.describe('watchDiagrams', () => {
       const shouldBeNone = yield* Queue.take(rebuildEvents).pipe(Effect.timeout('500 millis'), Effect.option)
 
       Vitest.expect(shouldBeNone._tag).toBe('None')
-    }, Effect.provide(PlatformNode.NodeFileSystem.layer)),
+    }, Effect.provide(NodeFileSystem.layer)),
     { timeout: 10000 },
   )
 
@@ -163,7 +164,7 @@ Vitest.describe('watchDiagrams', () => {
       const update = maybeUpdate.value
       Vitest.expect(update.reason).toBe('watch')
       Vitest.expect(update.event?.relativePath).toBe('new-diagram.tldr')
-    }, Effect.provide(PlatformNode.NodeFileSystem.layer)),
+    }, Effect.provide(NodeFileSystem.layer)),
     { timeout: 10000 },
   )
 })

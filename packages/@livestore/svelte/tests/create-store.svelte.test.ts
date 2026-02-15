@@ -1,12 +1,13 @@
+import * as svelteTestingLibrary from '@testing-library/svelte'
+import * as svelte from 'svelte'
+import * as vitest from 'vitest'
+import { describe, it } from 'vitest'
+
 import { makeInMemoryAdapter } from '@livestore/adapter-web'
 import { Events, makeSchema, State } from '@livestore/common/schema'
 import type { Store } from '@livestore/livestore'
 import { queryDb, signal } from '@livestore/livestore'
 import { Schema } from '@livestore/utils/effect'
-import * as svelteTestingLibrary from '@testing-library/svelte'
-import * as svelte from 'svelte'
-import * as vitest from 'vitest'
-import { describe, it } from 'vitest'
 
 import { createStore } from '../src/create-store.svelte.ts'
 import Harness from './__fixtures__/Harness.svelte'

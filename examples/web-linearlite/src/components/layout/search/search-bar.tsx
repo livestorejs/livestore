@@ -2,6 +2,7 @@ import { MagnifyingGlassIcon } from '@heroicons/react/16/solid'
 import { XMarkIcon } from '@heroicons/react/20/solid'
 import { useKeyboard } from 'react-aria'
 import { Button, Input } from 'react-aria-components'
+
 import { useFilterState } from '../../../livestore/queries.ts'
 import { MenuButton } from '../../common/menu-button.tsx'
 

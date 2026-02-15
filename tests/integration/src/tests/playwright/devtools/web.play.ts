@@ -3,13 +3,14 @@ import fs from 'node:fs'
 import os from 'node:os'
 import path from 'node:path'
 
-import * as Playwright from '@livestore/effect-playwright'
-import type { Scope } from '@livestore/utils/effect'
-import { Effect, Fiber, Layer, Logger, OtelTracer, Schema, Tracer } from '@livestore/utils/effect'
-import { OtelLiveHttp } from '@livestore/utils-dev/node'
 import type * as otel from '@opentelemetry/api'
 import type * as PW from '@playwright/test'
 import { test } from '@playwright/test'
+
+import * as Playwright from '@livestore/effect-playwright'
+import { OtelLiveHttp } from '@livestore/utils-dev/node'
+import type { Scope } from '@livestore/utils/effect'
+import { Effect, Fiber, Layer, Logger, OtelTracer, Schema, Tracer } from '@livestore/utils/effect'
 
 import { checkDevtoolsState, checkVersionMismatchOverlay } from './shared.ts'
 
@@ -115,7 +116,7 @@ const PWLive = Effect.gen(function* () {
 }).pipe(Layer.unwrapEffect)
 
 const runTest =
-  (eff: Effect.Effect<void, unknown, Playwright.BrowserContext | Scope.Scope>) =>
+  <E>(eff: Effect.Effect<void, E, Playwright.BrowserContext | Scope.Scope>) =>
   (
     {}: PW.PlaywrightTestArgs & PW.PlaywrightTestOptions & PW.PlaywrightWorkerArgs & PW.PlaywrightWorkerOptions,
     testInfo: PW.TestInfo,
@@ -310,17 +311,16 @@ const runTest =
   }
 })
 
-const shutdownTab = (tab: PW.Page) =>
-  Effect.gen(function* () {
-    // yield* Playwright.withPage(() => tab.pause())
-    yield* Effect.sleep(1000)
-    yield* Playwright.withPage(() => tab.evaluate('console.log(window.__debugLiveStore)'))
-    yield* Playwright.withPage(() => tab.evaluate('window.__debugLiveStore.default.shutdown()'), {
-      label: 'shutdown',
-    }).pipe(Effect.timeout(1000))
+const shutdownTab = Effect.fn('shutdown-tab')(function* (tab: PW.Page) {
+  // yield* Playwright.withPage(() => tab.pause())
+  yield* Effect.sleep(1000)
+  yield* Playwright.withPage(() => tab.evaluate('console.log(window.__debugLiveStore)'))
+  yield* Playwright.withPage(() => tab.evaluate('window.__debugLiveStore.default.shutdown()'), {
+    label: 'shutdown',
+  }).pipe(Effect.timeout(1000))
 
-    yield* Playwright.withPage(() => tab.getByText('LiveStore Shutdown').waitFor())
-  }).pipe(Effect.withSpan('shutdown-tab'))
+  yield* Playwright.withPage(() => tab.getByText('LiveStore Shutdown').waitFor())
+})
 
 test(
   'version mismatch overlay',

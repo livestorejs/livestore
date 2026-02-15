@@ -1,5 +1,6 @@
-import { queryDb } from '@livestore/livestore'
 import type { Component } from 'solid-js'
+
+import { queryDb } from '@livestore/livestore'
 
 import { uiState$ } from '../livestore/queries.ts'
 import { events, tables } from '../livestore/schema.ts'

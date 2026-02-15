@@ -1,4 +1,3 @@
-import { queryDb } from '@livestore/livestore'
 import { generateKeyBetween } from 'fractional-indexing'
 import React from 'react'
 import {
@@ -13,6 +12,9 @@ import {
   Virtualizer,
 } from 'react-aria-components'
 import AutoSizer from 'react-virtualized-auto-sizer'
+
+import { queryDb } from '@livestore/livestore'
+
 import type { StatusDetails } from '../../../data/status-options.ts'
 import { filterState$, useDebouncedScrollState, useFilterState } from '../../../livestore/queries.ts'
 import { events, tables } from '../../../livestore/schema/index.ts'

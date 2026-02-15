@@ -1,3 +1,5 @@
+import type * as otel from '@opentelemetry/api'
+
 /// <reference lib="dom" />
 import { LS_DEV, shouldNeverHappen, TRACE_VERBOSE } from '@livestore/utils'
 import {
@@ -13,7 +15,6 @@ import {
   Stream,
   Subscribable,
 } from '@livestore/utils/effect'
-import type * as otel from '@opentelemetry/api'
 
 import { type ClientSession, UnknownError } from '../adapter-types.ts'
 import type { MaterializeError } from '../errors.ts'
@@ -26,6 +27,9 @@ import * as SyncState from './syncstate.ts'
 // time input, causing `TypeError: {} is not iterable` at runtime.
 // Upstream: https://github.com/Effect-TS/effect/pull/5929
 // TODO: simplify back to the 2-arg overload once the upstream fix is released and adopted.
+
+/** Serialize value to JSON string for trace attributes */
+const jsonStringify = Schema.encodeSync(Schema.parseJson())
 
 /**
  * Rebase behaviour:
@@ -148,7 +152,7 @@ export const makeClientSessionSyncProcessor = ({
         acc[event.name] = (acc[event.name] ?? 0) + 1
         return acc
       }, {}),
-      ...(TRACE_VERBOSE && { mergeResult: JSON.stringify(mergeResult) }),
+      ...(TRACE_VERBOSE && { mergeResult: jsonStringify(mergeResult) }),
     })
 
     if (mergeResult._tag === 'unknown-error') {
@@ -254,10 +258,10 @@ export const makeClientSessionSyncProcessor = ({
               'merge:pull:rebase',
               {
                 payloadTag: payload._tag,
-                payload: TRACE_VERBOSE ? JSON.stringify(payload) : undefined,
+                payload: TRACE_VERBOSE ? jsonStringify(payload) : undefined,
                 newEventsCount: mergeResult.newEvents.length,
                 rollbackCount: mergeResult.rollbackEvents.length,
-                res: TRACE_VERBOSE ? JSON.stringify(mergeResult) : undefined,
+                res: TRACE_VERBOSE ? jsonStringify(mergeResult) : undefined,
               },
               undefined,
             )
@@ -303,9 +307,9 @@ export const makeClientSessionSyncProcessor = ({
               'merge:pull:advance',
               {
                 payloadTag: payload._tag,
-                payload: TRACE_VERBOSE ? JSON.stringify(payload) : undefined,
+                payload: TRACE_VERBOSE ? jsonStringify(payload) : undefined,
                 newEventsCount: mergeResult.newEvents.length,
-                res: TRACE_VERBOSE ? JSON.stringify(mergeResult) : undefined,
+                res: TRACE_VERBOSE ? jsonStringify(mergeResult) : undefined,
               },
               undefined,
             )

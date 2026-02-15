@@ -1,6 +1,7 @@
 import { PlusIcon } from '@heroicons/react/16/solid'
 import React from 'react'
 import { Button, Input } from 'react-aria-components'
+
 import { seed } from '../../../livestore/seed.ts'
 import { useAppStore } from '../../../livestore/store.ts'
 

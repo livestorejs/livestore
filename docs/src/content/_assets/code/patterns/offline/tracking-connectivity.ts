@@ -1,5 +1,6 @@
-import type { Store } from '@livestore/livestore'
 import { Effect, Stream } from 'effect'
+
+import type { Store } from '@livestore/livestore'
 
 declare const store: Store
 

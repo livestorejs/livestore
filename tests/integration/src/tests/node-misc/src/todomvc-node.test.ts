@@ -1,11 +1,14 @@
 import path from 'node:path'
+
+import { expect } from 'vitest'
+
 import { makeAdapter } from '@livestore/adapter-node'
 import { createStore, StoreInternalsSymbol } from '@livestore/livestore'
 import { IS_CI, shouldNeverHappen } from '@livestore/utils'
+import { Vitest } from '@livestore/utils-dev/node-vitest'
 import { Effect } from '@livestore/utils/effect'
 import { nanoid } from '@livestore/utils/nanoid'
-import { Vitest } from '@livestore/utils-dev/node-vitest'
-import { expect } from 'vitest'
+
 // Reuse the same schema from node-sync tests
 import { events, schema, tables } from '../../node-sync/schema.ts'
 

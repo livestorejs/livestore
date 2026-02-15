@@ -1,8 +1,9 @@
 import { fileURLToPath } from 'node:url'
 
+import type { AstroIntegration } from 'astro'
+
 import { Effect, Fiber } from '@livestore/utils/effect'
 import { PlatformNode } from '@livestore/utils/node'
-import type { AstroIntegration } from 'astro'
 
 import { type BuildSnippetsOptions, buildSnippets, watchSnippets } from '../cli/snippets.ts'
 import type { TwoslashRuntimeOptions } from '../expressive-code.ts'
@@ -48,7 +49,7 @@ export const createAstroTwoslashCodeIntegration = (options: AstroTwoslashCodeOpt
         resolvedBuildOptions = {
           projectRoot,
           ...(options.runtime !== undefined ? { runtime: options.runtime } : {}),
-          ...(options.buildOptions ?? {}),
+          ...options.buildOptions,
         }
 
         const pluginOptions = {

@@ -1,5 +1,6 @@
 import { Effect, Option, Stream } from 'effect'
 import { describe, expect, it } from 'vitest'
+
 import { concatWithLastElement, runCollectReadonlyArray } from './Stream.ts'
 
 describe('concatWithLastElement', () => {

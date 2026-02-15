@@ -1,0 +1,26 @@
+# Generated file - DO NOT EDIT
+# Source: pnpm-workspace.yaml.genie.ts
+
+packages:
+  - .
+  - ../../packages/@livestore/adapter-cloudflare
+  - ../../packages/@livestore/adapter-node
+  - ../../packages/@livestore/adapter-web
+  - ../../packages/@livestore/common
+  - ../../packages/@livestore/common-cf
+  - ../../packages/@livestore/devtools-web-common
+  - ../../packages/@livestore/effect-playwright
+  - ../../packages/@livestore/framework-toolkit
+  - ../../packages/@livestore/livestore
+  - ../../packages/@livestore/react
+  - ../../packages/@livestore/sqlite-wasm
+  - ../../packages/@livestore/sync-cf
+  - ../../packages/@livestore/utils
+  - ../../packages/@livestore/utils-dev
+  - ../../packages/@livestore/wa-sqlite
+  - ../../packages/@livestore/webmesh
+  - ../../packages/@local/shared
+
+dedupePeerDependents: true
+
+publicHoistPattern: [react, react-dom, react-reconciler]

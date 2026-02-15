@@ -1,5 +1,6 @@
 /** biome-ignore-all lint/a11y: testing */
 import type React from 'react'
+
 import { uiState$ } from '../livestore/queries.ts'
 import { events } from '../livestore/schema.ts'
 import { useAppStore } from '../livestore/store.ts'

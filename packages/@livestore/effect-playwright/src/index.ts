@@ -1,5 +1,4 @@
 import process from 'node:process'
-
 import { envTruish } from '@livestore/utils'
 import { Context, Effect, Layer, Option, Schema, Stream } from '@livestore/utils/effect'
 import * as PW from '@playwright/test'
@@ -53,7 +52,7 @@ export const browserContext = ({
         PW.chromium.launchPersistentContext(persistentContextPath, {
           ...launchOptions,
           headless,
-          devtools: true,
+          args: [...(launchOptions?.args ?? []), '--auto-open-devtools-for-tabs'],
         }),
       )
     } else {

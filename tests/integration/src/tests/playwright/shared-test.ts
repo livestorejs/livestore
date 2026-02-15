@@ -4,16 +4,17 @@ import os from 'node:os'
 import path from 'node:path'
 import process from 'node:process'
 
+import type * as PW from '@playwright/test'
+
 import type { UnknownError } from '@livestore/common'
 import * as Playwright from '@livestore/effect-playwright'
 import { Deferred, Duration, Effect, Fiber, Layer, Logger, Schema } from '@livestore/utils/effect'
-import type * as PW from '@playwright/test'
 
 // Allow for slowest observed misc test (schema-migration performs 22 OPFS migrations).
 const runAndGetExitTimeoutMs = Duration.minutes(2)
 
 export const runTest =
-  (eff: Effect.Effect<void, unknown, Playwright.BrowserContext>) =>
+  <E>(eff: Effect.Effect<void, E, Playwright.BrowserContext>) =>
   (
     {}: PW.PlaywrightTestArgs & PW.PlaywrightTestOptions & PW.PlaywrightWorkerArgs & PW.PlaywrightWorkerOptions,
     testInfo: PW.TestInfo,

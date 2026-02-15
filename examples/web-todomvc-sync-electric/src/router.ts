@@ -1,6 +1,8 @@
-import { StoreRegistry } from '@livestore/livestore'
 import { createRouter } from '@tanstack/react-router'
 import { unstable_batchedUpdates as batchUpdates } from 'react-dom'
+
+import { StoreRegistry } from '@livestore/livestore'
+
 import { routeTree } from './routeTree.gen.ts'
 
 export const getRouter = () => {

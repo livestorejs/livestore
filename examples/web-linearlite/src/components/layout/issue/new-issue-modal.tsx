@@ -1,6 +1,7 @@
 import { generateKeyBetween } from 'fractional-indexing'
 import React from 'react'
 import { Button } from 'react-aria-components'
+
 import { NewIssueModalContext } from '../../../app/contexts.ts'
 import { highestIssueId$, useFrontendState } from '../../../livestore/queries.ts'
 import { events, tables } from '../../../livestore/schema/index.ts'

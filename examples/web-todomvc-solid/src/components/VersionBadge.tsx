@@ -1,5 +1,6 @@
-import { liveStoreVersion } from '@livestore/livestore'
 import { type Component, onMount } from 'solid-js'
+
+import { liveStoreVersion } from '@livestore/livestore'
 
 export const VersionBadge: Component = () => {
   onMount(() => {

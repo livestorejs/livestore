@@ -1,5 +1,4 @@
 import '../../polyfill.ts'
-
 import { Tabs, useRouter } from 'expo-router'
 import { HouseIcon, InboxIcon, SearchIcon, SettingsIcon, SlidersHorizontal, SquarePen } from 'lucide-react-native'
 import { Pressable } from 'react-native'

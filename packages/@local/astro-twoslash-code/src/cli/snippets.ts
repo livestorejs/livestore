@@ -83,7 +83,6 @@ import * as astroExpressiveCodeModuleStatic from 'astro-expressive-code'
  * any code in this module, update this spec first; drift here will guarantee regressions the next
  * time someone tweaks Twoslash or the docs build.
  */
-
 /**
  * CLI entrypoint that keeps docs snippets warm.
  *
@@ -95,9 +94,6 @@ import * as astroExpressiveCodeModuleStatic from 'astro-expressive-code'
  * The pre-rendered output is consumed by Astro at build time so code examples render instantly without running
  * Twoslash in the browser.
  */
-
-import { type Duration, Effect, FileSystem, type PlatformError, Schema, Stream } from '@livestore/utils/effect'
-import { Cli, NodeFileSystemWithWatch } from '@livestore/utils/node'
 import type { ExpressiveCodeBlockOptions } from 'expressive-code'
 import type {
   Element as THastElement,
@@ -107,11 +103,18 @@ import type {
   RootContent as THastRootContent,
 } from 'hast'
 import { toHtml } from 'hast-util-to-html'
+
+import { type Duration, Effect, FileSystem, type PlatformError, Schema, Stream } from '@livestore/utils/effect'
+import { Cli, NodeFileSystemWithWatch } from '@livestore/utils/node'
+
 import type { LineOwnerMarker, LineOwnerMetadata, TwoslashRuntimeOptions } from '../expressive-code.ts'
 import { createExpressiveCodeConfig, normalizeRuntimeOptions } from '../expressive-code.ts'
 import { resolveProjectPaths, type TwoslashProjectPaths } from '../project-paths.ts'
 import type { SnippetBundle } from '../vite/snippet-graph.ts'
 import { buildSnippetBundle, __internal as snippetGraphInternal } from '../vite/snippet-graph.ts'
+
+const jsonStringify = Schema.encodeSync(Schema.parseJson())
+const jsonStringifyPretty = Schema.encodeSync(Schema.parseJson({ space: 2 }))
 
 type THastRendererResult = {
   renderedGroupAst: THastElement
@@ -1089,7 +1092,7 @@ const collectSnippetEntries = (
 
     return Array.from(entries.values()).map(({ entryPath, importers }) => ({
       entryPath,
-      importers: Array.from(importers).sort(),
+      importers: Array.from(importers).toSorted(),
     }))
   })
 
@@ -1487,7 +1490,7 @@ const buildSnippetsInternal = ({ paths, runtimeOptions }: ResolvedBuildOptions) 
         })
 
         const bundleHash = hashString(
-          JSON.stringify({
+          jsonStringify({
             files: filesWithHash.map((file) => ({
               filename: file.filename,
               hash: file.hash,
@@ -1568,7 +1571,7 @@ const buildSnippetsInternal = ({ paths, runtimeOptions }: ResolvedBuildOptions) 
           ),
         )
 
-        yield* fs.writeFileString(artifactPath, `${JSON.stringify(artifact, null, 2)}\n`).pipe(
+        yield* fs.writeFileString(artifactPath, `${jsonStringifyPretty(artifact)}\n`).pipe(
           Effect.mapError(
             (cause) =>
               new SnippetBuildError({
@@ -1604,17 +1607,15 @@ const buildSnippetsInternal = ({ paths, runtimeOptions }: ResolvedBuildOptions) 
       entries: artifactEntries,
     }
 
-    yield* fs
-      .writeFileString(path.join(paths.cacheRoot, 'manifest.json'), `${JSON.stringify(manifest, null, 2)}\n`)
-      .pipe(
-        Effect.mapError(
-          (cause) =>
-            new SnippetBuildError({
-              message: 'Unable to write snippets manifest',
-              cause,
-            }),
-        ),
-      )
+    yield* fs.writeFileString(path.join(paths.cacheRoot, 'manifest.json'), `${jsonStringifyPretty(manifest)}\n`).pipe(
+      Effect.mapError(
+        (cause) =>
+          new SnippetBuildError({
+            message: 'Unable to write snippets manifest',
+            cause,
+          }),
+      ),
+    )
 
     const cacheHits = snippetEntries.length - renderedCount
     yield* Effect.log(`Rendered ${renderedCount} snippet bundles (${cacheHits} cache hits)`)

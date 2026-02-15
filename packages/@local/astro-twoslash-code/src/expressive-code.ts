@@ -157,7 +157,7 @@ const stableStringify = (value: unknown): string => {
   if (valueType === 'object') {
     const entries = Object.entries(value as Record<string, unknown>)
       .filter(([, entryValue]) => entryValue !== undefined)
-      .sort(([a], [b]) => (a < b ? -1 : a > b ? 1 : 0))
+      .toSorted(([a], [b]) => (a < b ? -1 : a > b ? 1 : 0))
 
     return `{${entries.map(([key, entryValue]) => `${JSON.stringify(key)}:${stableStringify(entryValue)}`).join(',')}}`
   }
@@ -226,7 +226,7 @@ const mergeCompilerOptions = (
 ): ts.CompilerOptions => {
   const merged: ts.CompilerOptions = {
     ...base,
-    ...(override ?? {}),
+    ...override,
     noEmit: true,
   }
   return merged

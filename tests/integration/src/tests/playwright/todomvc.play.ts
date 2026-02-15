@@ -1,6 +1,7 @@
+import { test } from '@playwright/test'
+
 import * as Playwright from '@livestore/effect-playwright'
 import { Effect, Fiber } from '@livestore/utils/effect'
-import { test } from '@playwright/test'
 
 import { runTest } from './shared-test.ts'
 

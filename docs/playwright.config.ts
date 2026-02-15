@@ -1,8 +1,10 @@
 import { dirname } from 'node:path'
 import { fileURLToPath } from 'node:url'
+
+import { defineConfig } from '@playwright/test'
+
 import { Effect } from '@livestore/utils/effect'
 import { getFreePort } from '@livestore/utils/node'
-import { defineConfig } from '@playwright/test'
 
 const docsRoot = dirname(fileURLToPath(import.meta.url))
 

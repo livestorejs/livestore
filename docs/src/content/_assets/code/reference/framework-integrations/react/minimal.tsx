@@ -1,8 +1,10 @@
+import { useState } from 'react'
+import { unstable_batchedUpdates as batchUpdates } from 'react-dom'
+
 import { makeInMemoryAdapter } from '@livestore/adapter-web'
 import { queryDb, StoreRegistry, storeOptions } from '@livestore/livestore'
 import { StoreRegistryProvider, useStore } from '@livestore/react'
-import { useState } from 'react'
-import { unstable_batchedUpdates as batchUpdates } from 'react-dom'
+
 import { schema, tables } from './issue.schema.ts'
 
 const issueStoreOptions = (issueId: string) =>

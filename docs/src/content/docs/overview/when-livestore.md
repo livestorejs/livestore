@@ -6,7 +6,8 @@ sidebar:
 description: Considerations when deciding to use LiveStore.
 ---
 
-Choosing a data layer for a local-first app is a big decision and should be considered carefully.  On a high level, LiveStore can be a good fit if ...
+Choosing a data layer for a local-first app is a big decision and should be considered carefully. On a high level, LiveStore can be a good fit if ...
+
 - you are looking for a principled data layer that works across platforms
 - you want to use SQLite for your queries
 - you like [event sourcing](/understanding-livestore/event-sourcing) to model data changes
@@ -42,7 +43,7 @@ From this you might want to derive the following state (modeled as SQLite tables
 ## Great use cases for LiveStore
 
 - High-performance desktop/web/mobile apps
-  - e.g. productivity apps like 
+  - e.g. productivity apps like
 - AI agents
 - Apps that need ...
   - solid offline support
@@ -80,7 +81,8 @@ From this you might want to derive the following state (modeled as SQLite tables
 ### Syncing
 
 LiveStore's syncing system is designed for small/medium-level concurrency scenarios (e.g. 10s / low 100s of users collaborating on the same thing for a given eventlog).
-  - Collaboration on multiple different eventlogs concurrently is supported and should be used to "scale horizontally".
+
+- Collaboration on multiple different eventlogs concurrently is supported and should be used to "scale horizontally".
 
 ### Other considerations
 

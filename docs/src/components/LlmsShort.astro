@@ -42,7 +42,7 @@ const getDocsForDirectory = (directory: string): TLlmsEntry[] => {
       const remaining = entry.slug.slice(prefix.length)
       return !remaining.includes('/')
     })
-    .sort((a, b) => {
+    .toSorted((a, b) => {
       const docA = docBySlug.get(a.slug)
       const docB = docBySlug.get(b.slug)
       const orderA = docA?.data.sidebar?.order ?? 999
@@ -59,10 +59,10 @@ type TProcessedItem<T extends { _tag: string }> =
  * Groups consecutive link items together into batches, preserving order.
  * This ensures all links at the same level are rendered in a single <ul>.
  */
-function processItems<T extends { _tag: string }>(
+const processItems = <T extends { _tag: string }>(
   items: readonly T[],
   getEntry: (item: T) => TLlmsEntry | undefined,
-): TProcessedItem<T>[] {
+): TProcessedItem<T>[] => {
   const result: TProcessedItem<T>[] = []
   let currentBatch: TLlmsEntry[] = []
 

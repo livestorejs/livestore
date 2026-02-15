@@ -1,5 +1,6 @@
 import { makeInMemoryAdapter } from '@livestore/adapter-web'
 import { storeOptions } from '@livestore/livestore'
+
 import { schema } from './issue.schema.ts'
 
 // Define reusable store configuration with storeOptions()

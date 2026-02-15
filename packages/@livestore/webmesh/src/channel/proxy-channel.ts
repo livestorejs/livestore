@@ -160,7 +160,7 @@ export const makeProxyChannel = ({
       )
 
       const getCombinedChannelId = (otherSideChannelIdCandidate: string) =>
-        [channelIdCandidate, otherSideChannelIdCandidate].sort().join('_')
+        [channelIdCandidate, otherSideChannelIdCandidate].toSorted().join('_')
 
       const earlyPayloadBuffer = yield* Queue.unbounded<typeof MeshSchema.ProxyChannelPayload.Type>().pipe(
         Effect.acquireRelease(Queue.shutdown),

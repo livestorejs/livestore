@@ -10,7 +10,7 @@ export const Route = createFileRoute('/independent')({
   component: IndependentDemoRoute,
 })
 
-function IndependentDemoRoute() {
+const IndependentDemoRoute = () => {
   const { storeRegistry } = Route.useRouteContext()
 
   return (

@@ -1,5 +1,5 @@
 import { defineConfig } from 'vitest/config'
 
 export default defineConfig({
-  test: {},
+  test: { server: { deps: { inline: ['@effect/vitest'] } } },
 })

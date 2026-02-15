@@ -1,8 +1,10 @@
+import React from 'react'
+
 import { Devtools, liveStoreVersion } from '@livestore/common'
 import { StoreInternalsSymbol } from '@livestore/livestore'
 import { Effect, Stream } from '@livestore/utils/effect'
 import { nanoid } from '@livestore/utils/nanoid'
-import React from 'react'
+
 import { events, tables } from '../livestore/schema.ts'
 import { useAppStore } from '../livestore/store.ts'
 

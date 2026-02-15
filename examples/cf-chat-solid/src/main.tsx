@@ -1,8 +1,8 @@
 import './index.css'
-
-import { StoreRegistry, StoreRegistryProvider } from '@livestore/solid'
 import { ErrorBoundary, Suspense } from 'solid-js'
 import { render } from 'solid-js/web'
+
+import { StoreRegistry, StoreRegistryProvider } from '@livestore/solid'
 
 import App from './App.tsx'
 

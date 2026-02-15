@@ -1,3 +1,5 @@
+import type * as otel from '@opentelemetry/api'
+
 import {
   type ClientSession,
   type ClientSessionSyncProcessor,
@@ -16,7 +18,7 @@ import type { StreamEventsOptions } from '@livestore/common/leader-thread'
 import type { LiveStoreEvent, LiveStoreSchema } from '@livestore/common/schema'
 import type { Effect, Runtime, Schema, Scope } from '@livestore/utils/effect'
 import { Deferred, Predicate } from '@livestore/utils/effect'
-import type * as otel from '@opentelemetry/api'
+
 import type {
   LiveQuery,
   LiveQueryDef,

@@ -1,4 +1,5 @@
 import { randomUUID } from 'node:crypto'
+
 import { defineMaterializer, Events, nanoid, Schema, State, type Store } from '@livestore/livestore'
 
 import { todos } from './example.ts'

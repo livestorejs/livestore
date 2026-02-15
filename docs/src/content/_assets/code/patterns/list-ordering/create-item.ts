@@ -1,5 +1,6 @@
-import type { Store } from '@livestore/livestore'
 import { generateKeyBetween } from 'fractional-indexing'
+
+import type { Store } from '@livestore/livestore'
 
 import { events } from './events.ts'
 import { tables } from './schema.ts'

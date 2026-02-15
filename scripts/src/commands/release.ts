@@ -1,11 +1,14 @@
-import fs from 'node:fs'
-
 import { shouldNeverHappen } from '@livestore/utils'
-import { Effect, FileSystem } from '@livestore/utils/effect'
-import { Cli } from '@livestore/utils/node'
 import { CurrentWorkingDirectory, cmd, cmdText } from '@livestore/utils-dev/node'
+import { Effect, FileSystem, Schema } from '@livestore/utils/effect'
+import { Cli } from '@livestore/utils/node'
 
 import { appendGithubSummaryMarkdown, formatMarkdownTable } from '../shared/misc.ts'
+
+class PackageJsonParseError extends Schema.TaggedError<PackageJsonParseError>()('PackageJsonParseError', {
+  message: Schema.String,
+  cause: Schema.Defect,
+}) {}
 
 const toErrorMessage = (cause: unknown) => (cause instanceof Error ? cause.message : String(cause))
 
@@ -34,7 +37,7 @@ const listSnapshotPackages = (cwd: string) =>
         Effect.flatMap((content) =>
           Effect.try({
             try: () => JSON.parse(content) as { name?: unknown; private?: unknown },
-            catch: (cause) => new Error(`Failed to parse ${packageJsonPath}`, { cause }),
+            catch: (cause) => new PackageJsonParseError({ message: `Failed to parse ${packageJsonPath}`, cause }),
           }),
         ),
         Effect.either,
@@ -104,50 +107,65 @@ export const releaseSnapshotCommand = Cli.Command.make(
     versionOption: Cli.Options.text('version').pipe(Cli.Options.optional),
   },
   Effect.fn(function* ({ gitShaOption, dryRun, cwd, versionOption }) {
-    const originalVersion = yield* Effect.promise(() =>
-      import('../../../packages/@livestore/common/package.json').then((m: any) => m.version as string),
-    )
-
     const gitSha =
       gitShaOption._tag === 'Some'
         ? gitShaOption.value
-        : yield* cmdText('git rev-parse HEAD').pipe(Effect.provide(CurrentWorkingDirectory.fromPath(cwd)))
-    const filterStr = '--filter @livestore/* --filter !@livestore/effect-playwright'
+        : (yield* cmdText('git rev-parse HEAD').pipe(Effect.provide(CurrentWorkingDirectory.fromPath(cwd)))).trim()
 
     const snapshotVersion = versionOption._tag === 'Some' ? versionOption.value : `0.0.0-snapshot-${gitSha}`
     const snapshotPackages = yield* listSnapshotPackages(cwd)
 
-    const versionFilePath = `${cwd}/packages/@livestore/common/src/version.ts`
-    fs.writeFileSync(
-      versionFilePath,
-      fs.readFileSync(versionFilePath, 'utf8').replace(originalVersion, snapshotVersion),
+    /**
+     * Regenerate all genie-managed files with snapshot version (writable for pnpm publish).
+     * TODO: Replace CLI invocations with genie SDK once skipValidation is available
+     * (https://github.com/overengineeringstudio/effect-utils/issues/196)
+     */
+    yield* cmd(`LIVESTORE_RELEASE_VERSION=${snapshotVersion} genie --writeable`, { shell: true }).pipe(
+      Effect.provide(CurrentWorkingDirectory.fromPath(cwd)),
     )
 
-    yield* cmd(`pnpm ${filterStr} exec -- pnpm version '${snapshotVersion}' --no-git-tag-version`, {
-      shell: true,
-    }).pipe(Effect.provide(CurrentWorkingDirectory.fromPath(cwd)))
-
-    yield* cmd(`pnpm ${filterStr} exec -- pnpm publish --tag=snapshot --no-git-checks ${dryRun ? '--dry-run' : ''}`, {
-      shell: true,
-    }).pipe(Effect.provide(CurrentWorkingDirectory.fromPath(cwd)))
-
-    // Rollback package.json versions
-    yield* cmd(`pnpm ${filterStr} exec -- pnpm version '${originalVersion}' --no-git-tag-version`, {
-      shell: true,
-    }).pipe(Effect.provide(CurrentWorkingDirectory.fromPath(cwd)))
-
-    // Rollback version.ts
-    fs.writeFileSync(
-      versionFilePath,
-      fs.readFileSync(versionFilePath, 'utf8').replace(snapshotVersion, originalVersion),
+    /** Rebuild TypeScript so dist/ picks up the snapshot version from package.json (emit-only, type checking is separate) */
+    yield* cmd('tsc --build tsconfig.dev.json --noCheck', { shell: true }).pipe(
+      Effect.provide(CurrentWorkingDirectory.fromPath(cwd)),
     )
+
+    /**
+     * Publish each package sequentially via pnpm publish.
+     * pnpm publish resolves workspace:* → concrete versions automatically,
+     * then delegates to the system npm binary for OIDC trusted publishing.
+     */
+    const dryRunFlag = dryRun ? '--dry-run' : ''
+    for (const pkg of snapshotPackages) {
+      const pkgDir = `${cwd}/packages/${pkg}`
+      const cwdLayer = CurrentWorkingDirectory.fromPath(pkgDir)
+
+      /** Pre-check: skip if already published (idempotent reruns). Uses cmd() which validates exit codes. */
+      const alreadyPublished = yield* cmd(`npm view ${pkg}@${snapshotVersion} version`, {
+        stdout: 'pipe',
+        stderr: 'pipe',
+      }).pipe(
+        Effect.provide(cwdLayer),
+        Effect.as(true),
+        Effect.catchTag('CmdError', () => Effect.succeed(false)),
+      )
+
+      if (alreadyPublished) {
+        yield* Effect.log(`${pkg}@${snapshotVersion} already published, skipping`)
+        continue
+      }
+
+      yield* cmd(`pnpm publish --tag=snapshot --provenance --access=public --no-git-checks ${dryRunFlag}`, {
+        shell: true,
+      }).pipe(Effect.provide(cwdLayer))
+      yield* Effect.log(`Published ${pkg}@${snapshotVersion}`)
+    }
+
+    /** Restore original dev versions (read-only) and verify files are in sync */
+    yield* cmd('genie', { shell: true }).pipe(Effect.provide(CurrentWorkingDirectory.fromPath(cwd)))
+    yield* cmd('genie --check', { shell: true }).pipe(Effect.provide(CurrentWorkingDirectory.fromPath(cwd)))
 
     yield* appendGithubSummaryMarkdown({
-      markdown: formatSnapshotSummaryMarkdown({
-        packages: snapshotPackages,
-        snapshotVersion,
-        dryRun,
-      }),
+      markdown: formatSnapshotSummaryMarkdown({ packages: snapshotPackages, snapshotVersion, dryRun }),
       context: 'snapshot release',
     })
   }),

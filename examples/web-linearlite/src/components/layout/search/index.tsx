@@ -1,4 +1,5 @@
 import { queryDb } from '@livestore/livestore'
+
 import { filterState$, useFilterState } from '../../../livestore/queries.ts'
 import { tables } from '../../../livestore/schema/index.ts'
 import { useAppStore } from '../../../livestore/store.ts'

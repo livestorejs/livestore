@@ -1,3 +1,5 @@
+import * as otel from '@opentelemetry/api'
+
 import {
   type Bindable,
   type ClientSession,
@@ -16,6 +18,7 @@ import {
   QueryBuilderAstSymbol,
   replaceSessionIdSymbol,
   type StorageMode,
+  type SyncState,
   UnknownError,
 } from '@livestore/common'
 import type { StreamEventsOptions } from '@livestore/common/leader-thread'
@@ -36,7 +39,6 @@ import {
   Stream,
 } from '@livestore/utils/effect'
 import { nanoid } from '@livestore/utils/nanoid'
-import * as otel from '@opentelemetry/api'
 
 import type { LiveQuery, ReactivityGraphContext, SignalDef } from '../live-queries/base-class.ts'
 import { makeReactivityGraph } from '../live-queries/base-class.ts'
@@ -581,7 +583,7 @@ export class Store<TSchema extends LiveStoreSchema = LiveStoreSchema.Any, TConte
         yield* Effect.acquireRelease(
           Effect.sync(() =>
             this.subscribe(query, (result) => emit.single(result), {
-              ...(options ?? {}),
+              ...options,
               otelContext,
             }),
           ),
@@ -1136,7 +1138,8 @@ export class Store<TSchema extends LiveStoreSchema = LiveStoreSchema.Any, TConte
         .pipe(this.runEffectFork)
     },
 
-    syncStates: () =>
+    // NOTE: Explicit return type needed to avoid TS2742 (inferred type references internal path)
+    syncStates: (): Promise<{ session: SyncState.SyncState; leader: SyncState.SyncState }> =>
       Effect.gen(this, function* () {
         const session = yield* this[StoreInternalsSymbol].syncProcessor.syncState
         const leader = yield* this[StoreInternalsSymbol].clientSession.leaderThread.syncState

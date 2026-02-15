@@ -41,6 +41,7 @@ import {
 } from '@livestore/utils/effect'
 import { BrowserWorker, Opfs, WebError } from '@livestore/utils/effect/browser'
 import { nanoid } from '@livestore/utils/nanoid'
+
 import { loadSqlite3 } from '../web-worker/client-session/sqlite-loader.ts'
 import {
   readPersistedStateDbFromClientSession,

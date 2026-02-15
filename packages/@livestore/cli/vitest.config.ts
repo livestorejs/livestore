@@ -1,4 +1,5 @@
 import path from 'node:path'
+
 import { defineConfig } from 'vitest/config'
 
 export default defineConfig({
@@ -19,5 +20,6 @@ export default defineConfig({
     name: '@livestore/cli',
     root: import.meta.dirname,
     include: ['src/**/*.test.ts'],
+    server: { deps: { inline: ['@effect/vitest'] } },
   },
 })

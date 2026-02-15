@@ -1,5 +1,6 @@
 import type { CfTypes } from '@livestore/common-cf'
 import * as VFS from '@livestore/wa-sqlite/src/VFS.js'
+
 import { FacadeVFS } from '../FacadeVFS.ts'
 import { BlockManager } from './BlockManager.ts'
 
@@ -168,7 +169,7 @@ export class CloudflareSqlVFS extends FacadeVFS {
 
   // VFS Interface Implementation
 
-  jOpen(path: string, fileId: number, flags: number, pOutFlags: DataView): number {
+  override jOpen(path: string, fileId: number, flags: number, pOutFlags: DataView): number {
     try {
       if (this.#openFiles.size >= this.#maxFiles) {
         return VFS.SQLITE_CANTOPEN
@@ -221,12 +222,12 @@ export class CloudflareSqlVFS extends FacadeVFS {
     }
   }
 
-  jClose(fileId: number): number {
+  override jClose(fileId: number): number {
     this.#openFiles.delete(fileId)
     return VFS.SQLITE_OK
   }
 
-  jRead(fileId: number, buffer: Uint8Array, offset: number): number {
+  override jRead(fileId: number, buffer: Uint8Array, offset: number): number {
     try {
       const handle = this.#openFiles.get(fileId)
       if (!handle) {
@@ -250,7 +251,7 @@ export class CloudflareSqlVFS extends FacadeVFS {
     }
   }
 
-  jWrite(fileId: number, data: Uint8Array, offset: number): number {
+  override jWrite(fileId: number, data: Uint8Array, offset: number): number {
     try {
       const handle = this.#openFiles.get(fileId)
       if (!handle) {
@@ -298,7 +299,7 @@ export class CloudflareSqlVFS extends FacadeVFS {
     }
   }
 
-  jTruncate(fileId: number, size: number): number {
+  override jTruncate(fileId: number, size: number): number {
     try {
       const handle = this.#openFiles.get(fileId)
       if (!handle) {
@@ -337,7 +338,7 @@ export class CloudflareSqlVFS extends FacadeVFS {
     }
   }
 
-  jSync(fileId: number, _flags: number): number {
+  override jSync(fileId: number, _flags: number): number {
     // SQL storage provides immediate durability, so sync is effectively a no-op
     const handle = this.#openFiles.get(fileId)
     if (!handle) {
@@ -346,7 +347,7 @@ export class CloudflareSqlVFS extends FacadeVFS {
     return VFS.SQLITE_OK
   }
 
-  jFileSize(fileId: number, pSize64: DataView): number {
+  override jFileSize(fileId: number, pSize64: DataView): number {
     try {
       const handle = this.#openFiles.get(fileId)
       if (!handle) {
@@ -361,7 +362,7 @@ export class CloudflareSqlVFS extends FacadeVFS {
     }
   }
 
-  jDelete(path: string, _syncDir: number): number {
+  override jDelete(path: string, _syncDir: number): number {
     try {
       this.#sql.exec('DELETE FROM vfs_files WHERE file_path = ?', path)
       return VFS.SQLITE_OK
@@ -371,7 +372,7 @@ export class CloudflareSqlVFS extends FacadeVFS {
     }
   }
 
-  jAccess(path: string, _flags: number, pResOut: DataView): number {
+  override jAccess(path: string, _flags: number, pResOut: DataView): number {
     try {
       const metadata = this.#getFileMetadata(path)
       pResOut.setInt32(0, metadata ? 1 : 0, true)
@@ -382,11 +383,11 @@ export class CloudflareSqlVFS extends FacadeVFS {
     }
   }
 
-  jSectorSize(_fileId: number): number {
+  override jSectorSize(_fileId: number): number {
     return SECTOR_SIZE
   }
 
-  jDeviceCharacteristics(_fileId: number): number {
+  override jDeviceCharacteristics(_fileId: number): number {
     return VFS.SQLITE_IOCAP_UNDELETABLE_WHEN_OPEN
   }
 

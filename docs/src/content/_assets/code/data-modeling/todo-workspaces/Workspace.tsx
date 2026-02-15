@@ -1,5 +1,6 @@
 import { queryDb } from '@livestore/livestore'
 import { useStore } from '@livestore/react'
+
 import { userTables } from './user.schema.ts'
 import { useCurrentUserStore } from './user.store.ts'
 import { workspaceEvents, workspaceTables } from './workspace.schema.ts'

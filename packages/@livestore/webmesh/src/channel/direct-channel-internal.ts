@@ -260,7 +260,7 @@ export const makeDirectChannelInternal = ({
               channelStateRef.current = { _tag: 'loser:WaitingForResponse', otherSourceId: packet.sourceId }
             }
 
-            break
+            return
           }
           case 'DirectChannelResponseSuccess': {
             if (channelState._tag !== 'loser:WaitingForResponse') {

@@ -1,5 +1,11 @@
 body {
-  font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  font-family:
+    system-ui,
+    -apple-system,
+    BlinkMacSystemFont,
+    'Segoe UI',
+    Roboto,
+    sans-serif;
   max-width: 75rem; /* 1200px */
   margin: 0 auto;
   padding: 1.25rem; /* 20px */

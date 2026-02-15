@@ -1,5 +1,8 @@
+import { expect } from 'vitest'
+
 import { EventSequenceNumber, LiveStoreEvent, nanoid } from '@livestore/livestore'
 import { events } from '@livestore/livestore/internal/testing-utils'
+import { Vitest } from '@livestore/utils-dev/node-vitest'
 import {
   Effect,
   FetchHttpClient,
@@ -8,10 +11,10 @@ import {
   Logger,
   LogLevel,
   Option,
+  Schema,
   Stream,
 } from '@livestore/utils/effect'
-import { Vitest } from '@livestore/utils-dev/node-vitest'
-import { expect } from 'vitest'
+
 import * as S2Provider from './providers/s2.ts'
 import { SyncProviderImpl } from './types.ts'
 
@@ -166,7 +169,8 @@ Vitest.describe('S2-specific', { timeout: 60000 }, () => {
         parentSeqNum: EventSequenceNumber.Global.make(1),
       })
 
-      yield* providerSpecific.appendRaw(storeId, [JSON.stringify(ev1), JSON.stringify(ev2)])
+      const jsonEncode = Schema.encode(Schema.parseJson())
+      yield* providerSpecific.appendRaw(storeId, [yield* jsonEncode(ev1), yield* jsonEncode(ev2)])
 
       // Non-live pull should yield the 2 events
       const results = yield* syncBackend.pull(Option.none()).pipe(Stream.runCollectReadonlyArray)

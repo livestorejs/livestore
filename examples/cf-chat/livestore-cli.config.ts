@@ -1,4 +1,5 @@
 import { makeWsSync } from '@livestore/sync-cf/client'
+
 import { SyncPayload } from './src/livestore/schema.ts'
 
 export { schema } from './src/livestore/schema.ts'

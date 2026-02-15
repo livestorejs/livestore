@@ -1,8 +1,12 @@
+import { expect } from 'vitest'
+
 import { SyncBackend } from '@livestore/common'
 import { EventFactory } from '@livestore/common/testing'
 import { nanoid } from '@livestore/livestore'
 import { events } from '@livestore/livestore/internal/testing-utils'
 import type * as ElectricSync from '@livestore/sync-electric'
+import { OtelLiveHttp } from '@livestore/utils-dev/node'
+import { Vitest } from '@livestore/utils-dev/node-vitest'
 import {
   Effect,
   FetchHttpClient,
@@ -15,9 +19,6 @@ import {
   Option,
   Stream,
 } from '@livestore/utils/effect'
-import { OtelLiveHttp } from '@livestore/utils-dev/node'
-import { Vitest } from '@livestore/utils-dev/node-vitest'
-import { expect } from 'vitest'
 
 import * as ElectricProvider from './providers/electric.ts'
 import { SyncProviderImpl } from './types.ts'

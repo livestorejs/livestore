@@ -1,4 +1,5 @@
 import { notYetImplemented } from '@livestore/utils'
+
 import type {
   EventDefFactInput,
   EventDefFacts,

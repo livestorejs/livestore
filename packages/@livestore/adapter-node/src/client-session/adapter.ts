@@ -1,6 +1,8 @@
 import { hostname } from 'node:os'
 import path from 'node:path'
+import type { URL } from 'node:url'
 import * as WT from 'node:worker_threads'
+
 import {
   type Adapter,
   type BootStatus,
@@ -463,7 +465,7 @@ const makeWorkerLeaderThread = ({
   Effect.gen(function* () {
     const nodeWorker = new WT.Worker(workerUrl, {
       execArgv: process.env.DEBUG_WORKER ? ['--inspect --enable-source-maps'] : ['--enable-source-maps'],
-      argv: [Schema.encodeSync(WorkerSchema.WorkerArgv)({ storeId, clientId, sessionId, extraArgs: workerExtraArgs })],
+      argv: [yield* Schema.encode(WorkerSchema.WorkerArgv)({ storeId, clientId, sessionId, extraArgs: workerExtraArgs }).pipe(Effect.orDie)],
     })
     const nodeWorkerLayer = yield* Layer.build(PlatformNode.NodeWorker.layer(() => nodeWorker))
 

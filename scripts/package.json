@@ -1,14 +1,28 @@
 {
   "name": "@local/scripts",
   "version": "0.0.0",
-  "type": "module",
   "private": true,
+  "type": "module",
   "exports": {
-    "./release": "./src/commands/release.ts",
     "./docs-export": "./src/commands/docs-export.ts",
-    "./lint": "./src/commands/lint.ts"
+    "./lint": "./src/commands/lint.ts",
+    "./release": "./src/commands/release.ts"
   },
   "devDependencies": {
+    "@effect/ai": "0.33.2",
+    "@effect/cli": "0.73.1",
+    "@effect/cluster": "0.56.1",
+    "@effect/experimental": "0.58.0",
+    "@effect/opentelemetry": "0.61.0",
+    "@effect/platform": "0.94.2",
+    "@effect/platform-browser": "0.73.0",
+    "@effect/platform-bun": "0.86.0",
+    "@effect/platform-node": "0.104.1",
+    "@effect/printer": "0.47.0",
+    "@effect/printer-ansi": "0.47.0",
+    "@effect/rpc": "0.73.0",
+    "@effect/sql": "0.49.0",
+    "@effect/typeclass": "0.38.0",
     "@livestore/common": "workspace:*",
     "@livestore/utils": "workspace:*",
     "@livestore/utils-dev": "workspace:*",
@@ -17,11 +31,19 @@
     "@local/docs": "workspace:*",
     "@local/tests-integration": "workspace:*",
     "@local/tests-sync-provider": "workspace:*",
-    "@types/bun": "catalog:",
-    "@types/node": "catalog:",
+    "@opentelemetry/api": "1.9.0",
+    "@opentelemetry/resources": "2.2.0",
+    "@types/bun": "1.3.5",
+    "@types/node": "25.0.3",
     "@types/semver": "^7.7.0",
-    "knip": "^5.80.0",
+    "effect": "3.19.15",
+    "madge": "^8.0.0",
     "semver": "^7.7.3",
-    "yaml": "^2.8.1"
+    "vitest": "3.2.4",
+    "yaml": "2.8.1"
+  },
+  "$genie": {
+    "source": "package.json.genie.ts",
+    "warning": "DO NOT EDIT - changes will be overwritten"
   }
 }

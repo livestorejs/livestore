@@ -1,5 +1,7 @@
-import { EventSequenceNumber } from '@livestore/common/schema'
 import React from 'react'
+
+import { EventSequenceNumber } from '@livestore/common/schema'
+
 import { useAppStore } from '../livestore/store.ts'
 
 const MAX_EVENT_ITEMS = 500

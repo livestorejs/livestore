@@ -1,4 +1,5 @@
 import { type Effect, Schema } from '@livestore/utils/effect'
+
 import type { SqliteError, UnknownError } from './errors.ts'
 import type { EventSequenceNumber } from './schema/mod.ts'
 import type { QueryBuilder } from './schema/state/sqlite/query-builder/api.ts'

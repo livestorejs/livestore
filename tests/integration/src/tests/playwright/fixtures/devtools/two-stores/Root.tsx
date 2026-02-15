@@ -1,9 +1,10 @@
+import { Suspense, useState } from 'react'
+import { unstable_batchedUpdates as batchedUpdates } from 'react-dom'
+
 import { makeInMemoryAdapter, makePersistedAdapter } from '@livestore/adapter-web'
 import LiveStoreSharedWorker from '@livestore/adapter-web/shared-worker?sharedworker'
 import { StoreRegistry } from '@livestore/livestore'
 import { StoreRegistryProvider, useStore } from '@livestore/react'
-import { Suspense, useState } from 'react'
-import { unstable_batchedUpdates as batchedUpdates } from 'react-dom'
 
 import LiveStoreWorkerNotes from './livestore-notes.worker.ts?worker'
 import LiveStoreWorkerTodos from './livestore-todos.worker.ts?worker'

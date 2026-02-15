@@ -2,6 +2,7 @@ import { makePersistedAdapter } from '@livestore/adapter-web'
 import sharedWorker from '@livestore/adapter-web/shared-worker?sharedworker'
 import { storeOptions } from '@livestore/livestore'
 import { useStore } from '@livestore/react'
+
 import { schema } from './schema.ts'
 import worker from './worker.ts?worker'
 

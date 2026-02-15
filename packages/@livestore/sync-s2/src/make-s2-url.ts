@@ -1,5 +1,6 @@
 import { shouldNeverHappen } from '@livestore/utils'
 import { Schema } from '@livestore/utils/effect'
+
 import * as ApiSchema from './api-schema.ts'
 
 export const makeS2StreamName = (storeId: string) => storeId.replace(/[^a-zA-Z0-9_-]/g, '-').slice(0, 100)

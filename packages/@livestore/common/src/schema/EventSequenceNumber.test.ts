@@ -1,5 +1,6 @@
-import { Vitest } from '@livestore/utils-dev/node-vitest'
 import { expect } from 'vitest'
+
+import { Vitest } from '@livestore/utils-dev/node-vitest'
 
 import { EventSequenceNumber } from './mod.ts'
 

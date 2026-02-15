@@ -1,8 +1,8 @@
 import { createHash } from 'node:crypto'
 import process from 'node:process'
 
-import { Config, Effect, Schema } from '@livestore/utils/effect'
 import { cmd, cmdText, LivestoreWorkspace } from '@livestore/utils-dev/node'
+import { Config, Effect, Schema } from '@livestore/utils/effect'
 
 import { type CloudflareDomain, type CloudflareExample, cloudflareExamplesBySlug } from './cloudflare-manifest.ts'
 

@@ -21,10 +21,11 @@
 //   is maintained eagerly as edges are added and removed.)
 // - At every thunk we check value equality with the previous value and cutoff propagation if possible.
 
+import type * as otel from '@opentelemetry/api'
+
 import { BoundArray } from '@livestore/common'
 import { deepEqual, omitUndefineds, shouldNeverHappen } from '@livestore/utils'
 import type { Types } from '@livestore/utils/effect'
-import type * as otel from '@opentelemetry/api'
 // import { getDurationMsFromSpan } from './otel.ts'
 
 export const NOT_REFRESHED_YET = Symbol.for('NOT_REFRESHED_YET')
@@ -203,9 +204,7 @@ export class ReactiveGraph<
 
   debugRefreshInfos: BoundArray<RefreshDebugInfo<TDebugRefreshReason, TDebugThunkInfo>> = new BoundArray(200)
 
-  private currentDebugRefresh:
-    | { refreshedAtoms: AtomDebugInfo<TDebugThunkInfo>[]; startMs: DOMHighResTimeStamp }
-    | undefined
+  private currentDebugRefresh: { refreshedAtoms: AtomDebugInfo<TDebugThunkInfo>[]; startMs: number } | undefined
 
   private deferredEffects: Map<Effect<TDebugRefreshReason>, Set<TDebugRefreshReason>> = new Map()
 

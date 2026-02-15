@@ -6,6 +6,7 @@ description: How to run side-effects for LiveStore events
 TODO: Document how to safely run side-effects as response to LiveStore events.
 
 Notes for writing those docs:
+
 - Scenarios:
   - Run side-effect in each client session
   - Run side-effect only once per client (i.e. use a lock between client sessions)

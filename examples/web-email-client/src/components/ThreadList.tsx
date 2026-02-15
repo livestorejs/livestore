@@ -1,6 +1,8 @@
+import type React from 'react'
+
 import { queryDb } from '@livestore/livestore'
 import { useStoreRegistry } from '@livestore/react'
-import type React from 'react'
+
 import { useMailboxStore } from '../stores/mailbox/index.ts'
 import { mailboxTables } from '../stores/mailbox/schema.ts'
 import { threadStoreOptions } from '../stores/thread/index.ts'

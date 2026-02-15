@@ -3,6 +3,7 @@ import path from 'node:path'
 
 import { type Duration, Effect, FileSystem, type PlatformError, Schema, Stream } from '@livestore/utils/effect'
 import { NodeFileSystemWithWatch } from '@livestore/utils/node'
+
 import {
   FileSystemError,
   getCacheEntry,

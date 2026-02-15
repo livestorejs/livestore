@@ -1,3 +1,5 @@
+import { expect } from 'vitest'
+
 import { sql } from '@livestore/common'
 import { Eventlog, makeMaterializeEvent } from '@livestore/common/leader-thread'
 import type { UnknownEvents } from '@livestore/common/schema'
@@ -11,10 +13,9 @@ import {
 } from '@livestore/common/schema'
 import { loadSqlite3Wasm } from '@livestore/sqlite-wasm/load-wasm'
 import { sqliteDbFactory } from '@livestore/sqlite-wasm/node'
+import { Vitest } from '@livestore/utils-dev/node-vitest'
 import { Effect, Option, Schema } from '@livestore/utils/effect'
 import { PlatformNode } from '@livestore/utils/node'
-import { Vitest } from '@livestore/utils-dev/node-vitest'
-import { expect } from 'vitest'
 
 // Verifies the behaviour of LiveStore's unknown-event handling strategies across
 // materialization paths, ensuring events are either skipped, logged, or cause

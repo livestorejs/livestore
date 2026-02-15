@@ -1,7 +1,8 @@
-import { queryDb, Schema, sql } from '@livestore/livestore'
 import { Stack, useGlobalSearchParams, useRouter } from 'expo-router'
 import { Undo2Icon } from 'lucide-react-native'
 import { Image, Pressable, SafeAreaView, ScrollView, StyleSheet, Text, useColorScheme, View } from 'react-native'
+
+import { queryDb, Schema, sql } from '@livestore/livestore'
 
 import { IssueDetailsBottomTab } from '../components/IssueDetailsBottomTab.tsx'
 import { IssueStatusIcon, PriorityIcon } from '../components/IssueItem.tsx'

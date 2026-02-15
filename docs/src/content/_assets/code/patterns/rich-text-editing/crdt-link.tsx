@@ -1,5 +1,6 @@
 import type { AutomergeUrl } from '@automerge/react'
 import { updateText, useDocument } from '@automerge/react'
+
 import { Events, Schema, State, type Store } from '@livestore/livestore'
 
 declare const store: Store

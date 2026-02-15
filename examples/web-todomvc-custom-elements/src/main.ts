@@ -185,7 +185,7 @@ class TodoList extends HTMLElement {
   #todos: ReadonlyArray<Todo> = []
 
   connectedCallback() {
-    const input = this.shadowRoot!.querySelector('input')!
+    const input = this.shadowRoot.querySelector('input')!
 
     // NOTE: can we get an AsyncIterator for newValues as well?
     // TODO unsubscribe
@@ -214,7 +214,7 @@ class TodoList extends HTMLElement {
 
 customElements.define('todo-list', TodoList)
 
-export function parseTemplate(source: string) {
+export const parseTemplate = (source: string) => {
   const el = document.createElement('template')
   el.innerHTML = source
 

@@ -1,12 +1,16 @@
 {
   "name": "@local/shared",
   "version": "0.0.0",
-  "type": "module",
   "private": true,
+  "type": "module",
   "exports": {
     ".": "./src/index.ts"
   },
   "devDependencies": {
-    "@types/node": "catalog:"
+    "@types/node": "25.0.3"
+  },
+  "$genie": {
+    "source": "package.json.genie.ts",
+    "warning": "DO NOT EDIT - changes will be overwritten"
   }
 }

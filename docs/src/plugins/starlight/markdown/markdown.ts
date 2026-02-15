@@ -11,9 +11,10 @@
  * the contextual menu imports it directly before our Vite aliases apply.
  */
 
+import type { APIContext } from 'astro'
 import type { CollectionEntry } from 'astro:content'
 import { getCollection, getEntry } from 'astro:content'
-import type { APIContext } from 'astro'
+
 import { replaceLlmsShortPlaceholders } from '../../../utils/llms.ts'
 import { transformMultiCodeDocument } from '../../../utils/multi-code-markdown.ts'
 

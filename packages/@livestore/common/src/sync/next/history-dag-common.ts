@@ -1,5 +1,6 @@
 import { shouldNeverHappen } from '@livestore/utils'
 import { Graph } from '@livestore/utils/effect'
+
 import type { EventDefFactsGroup } from '../../schema/EventDef/mod.ts'
 import * as EventSequenceNumber from '../../schema/EventSequenceNumber/mod.ts'
 

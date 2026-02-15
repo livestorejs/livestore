@@ -1,5 +1,6 @@
 import { Atom } from '@effect-atom/atom'
 import { Result } from '@effect-atom/atom-react'
+
 import { todosQueryAtom } from '../store-setup/utils.ts'
 
 // Derive statistics from todos

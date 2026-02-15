@@ -1,5 +1,7 @@
-import { Schema } from '@livestore/utils/effect'
 import { describe, expect, it } from 'vitest'
+
+import { Schema } from '@livestore/utils/effect'
+
 import { State } from '../../mod.ts'
 
 describe('table function overloads', () => {

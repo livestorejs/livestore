@@ -11,6 +11,7 @@
 > For v0.4.0 features, see the development documentation at [dev.docs.livestore.dev](https://dev.docs.livestore.dev) which includes the latest documentation.
 
 > **Installing v0.4.0 dev release:** Use the `dev` tag to install the latest development version. Make sure all LiveStore packages use the same version:
+>
 > ```bash
 > pnpm add @livestore/livestore@dev @livestore/adapter-web@dev @livestore/wa-sqlite@dev @livestore/react@dev
 > # Or for Cloudflare
@@ -35,7 +36,7 @@
   await store.shutdown()
 
   // After (Effect API)
-  yield* store.shutdown()
+  yield * store.shutdown()
 
   // Or use the Promise helper
   await store.shutdownPromise()
@@ -47,18 +48,18 @@
 
   ```typescript
   // Before: threw an error when no rows matched
-  const user = table.query.first()  // throws
+  const user = table.query.first() // throws
 
   // After: returns undefined when no rows match
-  const user = table.query.first()  // returns undefined
+  const user = table.query.first() // returns undefined
 
   // To preserve old behaviour
-  const strictUser = table.query.first({ behaviour: "error" })
+  const strictUser = table.query.first({ behaviour: 'error' })
 
   // Or provide a fallback value
   const fallbackUser = table.query.first({
-    behaviour: "fallback",
-    fallback: () => ({ id: "default", name: "Guest" })
+    behaviour: 'fallback',
+    fallback: () => ({ id: 'default', name: 'Guest' }),
   })
   ```
 
@@ -119,7 +120,7 @@
 - **Restructured `LiveStoreEvent` and `EventSequenceNumber` APIs:** Types are now organized into symmetric `Global`, `Client`, and `Input` namespaces that clarify the distinction between sync backend format, client format, and events without sequence numbers (#855):
 
   | Old Name                                        | New Name                                        |
-  |-------------------------------------------------|-------------------------------------------------|
+  | ----------------------------------------------- | ----------------------------------------------- |
   | `LiveStoreEvent.AnyEncodedGlobal`               | `LiveStoreEvent.Global.Encoded`                 |
   | `LiveStoreEvent.AnyEncoded`                     | `LiveStoreEvent.Client.Encoded`                 |
   | `LiveStoreEvent.AnyDecoded`                     | `LiveStoreEvent.Client.Decoded`                 |
@@ -169,11 +170,10 @@
 - **React integration API:** The multi-store API is now the primary React integration, replacing `<LiveStoreProvider>` and the old `useStore()`. The new API uses `StoreRegistry`, `<StoreRegistryProvider>`, and `useStore()` with store options. See the [React integration docs](https://dev.docs.livestore.dev/reference/framework-integrations/react-integration/) for full details (#841).
 
   | Before                                           | After                                                                   |
-  |--------------------------------------------------|-------------------------------------------------------------------------|
+  | ------------------------------------------------ | ----------------------------------------------------------------------- |
   | `<LiveStoreProvider schema={...} adapter={...}>` | `<StoreRegistryProvider storeRegistry={...}>` + `storeOptions({ ... })` |
   | `const { store } = useStore()`                   | `const store = useStore({ ... })`                                       |
   | `useQuery(query$)`                               | `store.useQuery(query$)`                                                |
- 
 
   ```tsx
   // Before
@@ -195,12 +195,13 @@
   import { StoreRegistry } from '@livestore/livestore'
   import { StoreRegistryProvider, useStore } from '@livestore/react'
 
-  const useAppStore = () => useStore({
-    storeId: 'app-root',
-    schema,
-    adapter,
-    batchUpdates,
-  })
+  const useAppStore = () =>
+    useStore({
+      storeId: 'app-root',
+      schema,
+      adapter,
+      batchUpdates,
+    })
 
   const App = () => {
     const [storeRegistry] = useState(() => new StoreRegistry())
@@ -257,7 +258,7 @@
     token: 'unused',
     accountBase: 'http://localhost:4566/v1',
     basinBase: 'http://localhost:4566/v1',
-    lite: true,  // Adds S2-Basin header for s2-lite routing
+    lite: true, // Adds S2-Basin header for s2-lite routing
   }
   ```
 
@@ -321,24 +322,25 @@ See the [S2 sync provider docs](https://dev.docs.livestore.dev/reference/syncing
   const Recipe = Schema.Struct({
     id: Schema.String.pipe(State.SQLite.withPrimaryKey),
     name: Schema.String,
-    createdAt: Schema.String.pipe(State.SQLite.withDefault(() => "CURRENT_TIMESTAMP"))
+    createdAt: Schema.String.pipe(State.SQLite.withDefault(() => 'CURRENT_TIMESTAMP')),
   })
 
   // Create table with automatic column inference
   const recipes = State.SQLite.table({
-    name: "recipes",
-    schema: Recipe
+    name: 'recipes',
+    schema: Recipe,
   })
   ```
 
   This keeps the schema as a single source of truth, enforces types at compile time, and removes duplicate column definitions.
+
 - **Materializer hash checks:** Development builds compute hashes for materializer output and raise `LiveStore.MaterializerHashMismatchError` when handlers diverge, catching non-pure implementations before they reach production.
 
   ```typescript
   // This triggers warnings in development
   const materializers = State.SQLite.materializers(events, {
     todoCreated: (payload) => {
-      const id = nanoid()        // Non-pure: different ID each call
+      const id = nanoid() // Non-pure: different ID each call
       const timestamp = Date.now() // Non-pure: uses external state
 
       return todos.insert({
@@ -464,9 +466,11 @@ See the [S2 sync provider docs](https://dev.docs.livestore.dev/reference/syncing
 - **TypeScript-validated snippets:** Most examples are now type checked through the Twoslash pipeline enabling in-docs intellisense (#715).
 
 #### Experimental features
+
 - LiveStore CLI for project scaffolding (experimental preview, not production-ready)
 
 #### Updated (peer) dependencies
+
 - Effect updated to 3.17.14
 - React updated to 19.1.1
 - Vite updated to 7.1.7
@@ -477,15 +481,18 @@ See the [S2 sync provider docs](https://dev.docs.livestore.dev/reference/syncing
 > Updates in this section are primarily relevant to maintainers and contributors. They cover infrastructure, tooling, and other non-user-facing work that supports the release.
 
 #### Core Runtime
+
 - Encapsulated Store internals behind `StoreInternalsSymbol` (moved `boot`, `syncProcessor`, `effectContext`, `tableRefs`, `otel`, `sqliteDbWrapper`, `clientSession`, `activeQueries`, `reactivityGraph`, `isShutdown`), reducing public surface and clarifying API boundaries ([#814](https://github.com/livestorejs/livestore/issues/814)).
 
 #### Testing Infrastructure
+
 - Comprehensive sync provider test suite with property-based testing (#386)
 - Node.js sync test infrastructure with Wrangler dev server integration (#594)
 - Parallel CI test execution reducing test time significantly (#523)
 - Cloudflare sync provider tests run against both storage engines (D1 and DO SQLite) using separate wrangler configs.
 
 #### Development Tooling
+
 - Migration from ESLint to Biome for improved performance (#447)
 - Automated dependency management with Renovate
 - Pre-commit hooks via Husky (#522)
@@ -503,6 +510,7 @@ The wa-sqlite WebAssembly SQLite implementation has been integrated directly int
 - Reduced external dependency risks and improved build reproducibility
 
 Key changes:
+
 - Integrated wa-sqlite as git subtree, replacing external npm dependency (#582)
 - Ported build scripts and test infrastructure to LiveStore monorepo (#572)
 - Updated to SQLite 3.50.4 with LiveStore-optimized configuration (#581)
@@ -515,6 +523,7 @@ This integration lays the foundation for future SQLite optimizations specific to
 For remaining v0.4.0 work and known issues, see the [v0.4.0 milestone on GitHub](https://github.com/livestorejs/livestore/milestone/8).
 
 Open issues:
+
 - Other tabs lag behind noticeably when committing large batches of events (#304)
 - Vite DevTools consistently loses app connection (#331)
 - Sync state memory leak: Unbounded pending events accumulation when no sync backend is used (#360)
@@ -548,10 +557,11 @@ Open issues:
 
 - New: `@livestore/adapter-expo` now supports syncing (requires Expo 53 or
   later):
+
   ```ts
   const adapter = makePersistedAdapter({
     sync: { backend: makeWsSync({ url: `https://...` }) },
-  });
+  })
   ```
 
 - New: Solid integration `@livestore/solid` (experimental)
@@ -573,7 +583,6 @@ Open issues:
     across other clients
 
 - Breaking: Adjusted schema API
-
   - The new API aims to separate the schema into state and events
   - Mutations are now split up into event definitions and materializer functions
 
@@ -581,100 +590,102 @@ Open issues:
 
   ```ts
   // mutations.ts
-  import { defineMutation, Schema } from "@livestore/livestore";
+  import { defineMutation, Schema } from '@livestore/livestore'
 
   // Mutations are now split up into event definitions and materializer functions
   export const todoCreated = defineMutation(
-    "todoCreated",
+    'todoCreated',
     Schema.Struct({
       id: DbSchema.text(),
       text: DbSchema.text(),
     }),
     sql`INSERT INTO todos (id, text) VALUES (${id}, ${text})`,
-  );
+  )
 
   // schema.ts
-  import { DbSchema, makeSchema } from "@livestore/livestore";
-  import * as mutations from "./mutations.js";
+  import { DbSchema, makeSchema } from '@livestore/livestore'
+  import * as mutations from './mutations.js'
 
-  const todos = DbSchema.table("todos", {
+  const todos = DbSchema.table('todos', {
     id: DbSchema.text({ primaryKey: true }),
     text: DbSchema.text(),
-  });
+  })
 
-  const uiState = DbSchema.table("uiState", {
-    id: DbSchema.text({ primaryKey: true }),
-    newTodoText: DbSchema.text(),
-    filter: DbSchema.text({}),
-  }, {
-    derivedMutations: { clientOnly: true },
-  });
+  const uiState = DbSchema.table(
+    'uiState',
+    {
+      id: DbSchema.text({ primaryKey: true }),
+      newTodoText: DbSchema.text(),
+      filter: DbSchema.text({}),
+    },
+    {
+      derivedMutations: { clientOnly: true },
+    },
+  )
 
-  const tables = { todos, uiState };
-  const schema = makeSchema({ tables, mutations });
+  const tables = { todos, uiState }
+  const schema = makeSchema({ tables, mutations })
   ```
 
   After:
 
   ```ts
   // events.ts
-  import { Events, Schema } from "@livestore/livestore";
+  import { Events, Schema } from '@livestore/livestore'
 
   export const todoCreated = Events.synced({
-    name: "todoCreated",
+    name: 'todoCreated',
     schema: Schema.Struct({ id: Schema.String, text: Schema.String }),
-  });
+  })
 
   // schema.ts
-  import { makeSchema, Schema, State } from "@livestore/livestore";
-  import * as events from "./events.js";
+  import { makeSchema, Schema, State } from '@livestore/livestore'
+  import * as events from './events.js'
 
   const todos = State.SQLite.table({
-    name: "todos",
+    name: 'todos',
     columns: {
       id: State.SQLite.text({ primaryKey: true }),
       text: State.SQLite.text(),
     },
-  });
+  })
 
   // tables with `deriveMutations` are now called `clientDocuments`
   const uiState = State.SQLite.clientDocument({
-    name: "uiState",
+    name: 'uiState',
     schema: Schema.Struct({
       newTodoText: Schema.String,
       filter: Schema.String,
     }),
-  });
+  })
 
-  const tables = { todos, uiState };
+  const tables = { todos, uiState }
 
   // Materalizers let you materialize events into the state
   const materializers = State.SQLite.materializers(events, {
-    "v1.TodoCreated": ({ id, text }) => todos.insert({ id, text }),
-  });
+    'v1.TodoCreated': ({ id, text }) => todos.insert({ id, text }),
+  })
 
   // Currently SQLite is the only supported state implementation but there might be more in the future (e.g. pure in-memory JS, DuckDB, ...)
-  const state = State.SQLite.makeState({ tables, materializers });
+  const state = State.SQLite.makeState({ tables, materializers })
 
   // Schema is now more clearly separated into state and events
-  const schema = makeSchema({ state, events });
+  const schema = makeSchema({ state, events })
   ```
 
 - Breaking `@livestore/react`: Removed `useScopedQuery` in favour of `useQuery`.
   Migration example:
+
   ```ts
   // before
-  const query$ = useScopedQuery(
-    () => queryDb(tables.issues.query.where({ id: issueId }).first()),
-    ["issue", issueId],
-  );
+  const query$ = useScopedQuery(() => queryDb(tables.issues.query.where({ id: issueId }).first()), ['issue', issueId])
 
   // after
   const query$ = useQuery(
     queryDb(tables.issues.query.where({ id: issueId }).first(), {
       deps: `issue-${issueId}`,
     }),
-  );
+  )
   ```
 
 - Breaking `@livestore/adapter-web`: Renamed `makeAdapter` to
@@ -706,12 +717,13 @@ Open issues:
 ### Notable improvements & fixes
 
 - Added support for write queries in the query builder
+
   ```ts
-  table.query.insert({ id: "123", name: "Alice" });
-  table.query.insert({ id: "123", name: "Alice" }).onConflict("id", "ignore");
-  table.query.insert({ id: "123", name: "Alice" }).returning("id");
-  table.query.update({ name: "Bob" }).where({ id: "123" });
-  table.query.delete().where({ id: "123" });
+  table.query.insert({ id: '123', name: 'Alice' })
+  table.query.insert({ id: '123', name: 'Alice' }).onConflict('id', 'ignore')
+  table.query.insert({ id: '123', name: 'Alice' }).returning('id')
+  table.query.update({ name: 'Bob' }).where({ id: '123' })
+  table.query.delete().where({ id: '123' })
   ```
 
 - Introduced `@livestore/peer-deps` package to simplify dependency management
@@ -875,35 +887,36 @@ Open issues:
 - Added query builder API
 
   ```ts
-  const table = DbSchema.table("myTable", {
+  const table = DbSchema.table('myTable', {
     id: DbSchema.text({ primaryKey: true }),
     name: DbSchema.text(),
-  });
+  })
 
-  table.query.select("name");
-  table.query.where("name", "==", "Alice");
-  table.query.where({ name: "Alice" });
-  table.query.orderBy("name", "desc").offset(10).limit(10);
-  table.query.count().where("name", "like", "%Ali%");
-  table.get("123", { insertValues: { name: "Bob" } });
+  table.query.select('name')
+  table.query.where('name', '==', 'Alice')
+  table.query.where({ name: 'Alice' })
+  table.query.orderBy('name', 'desc').offset(10).limit(10)
+  table.query.count().where('name', 'like', '%Ali%')
+  table.get('123', { insertValues: { name: 'Bob' } })
   ```
 
 - Breaking: Renamed `querySQL` to `queryDb` and adjusted the signature to allow
   both the new query builder API and raw SQL queries:
+
   ```ts
   // before
   const query$ = querySQL(sql`select * from myTable where name = 'Alice'`, {
     schema: Schema.Array(table.schema),
-  });
+  })
 
   // after (raw SQL)
   const query$ = queryDb({
     query: sql`select * from myTable where name = 'Alice'`,
     schema: Schema.Array(table.schema),
-  });
+  })
 
   // or with the query builder API
-  const query$ = queryDb(table.query.select("name").where({ name: "Alice" }));
+  const query$ = queryDb(table.query.select('name').where({ name: 'Alice' }))
   ```
 
 - Breaking: Replaced `rowQuery()` with `table.get()` (as part of the new query
@@ -928,6 +941,7 @@ Open issues:
 
 - Breaking: Changed `schema.key` to `storeId`
   [#175](https://github.com/livestorejs/livestore/issues/175)
+
   ```ts
   // before
   const schema = makeSchema({ tables, mutations, key: 'my-app-id' })
@@ -954,18 +968,16 @@ Open issues:
 
 - Breaking: Adjusted `boot` signature when creating a store to now pass in a
   `Store` instead of a helper database object
+
   ```tsx
   <LiveStoreProvider
     schema={schema}
-    boot={(store) =>
-      store.mutate(
-        mutations.todoCreated({ id: nanoid(), text: "Make coffee" }),
-      )}
+    boot={(store) => store.mutate(mutations.todoCreated({ id: nanoid(), text: 'Make coffee' }))}
     adapter={adapter}
     batchUpdates={batchUpdates}
   >
     // ...
-  </LiveStoreProvider>;
+  </LiveStoreProvider>
   ```
 
 - Prepared the foundations for the upcoming
@@ -990,15 +1002,15 @@ Open issues:
 
   ```ts
   const adapter = makePersistedAdapter({
-    storage: { type: "opfs" },
+    storage: { type: 'opfs' },
     worker: LiveStoreWorker,
     sharedWorker: LiveStoreSharedWorker,
     syncBackend: {
-      type: "cf",
+      type: 'cf',
       url: import.meta.env.VITE_LIVESTORE_SYNC_URL,
       roomId: `todomvc_${appId}`,
     },
-  });
+  })
   ```
 
 ### Expo adapter
@@ -1027,16 +1039,16 @@ Open issues:
   - Add the following to your `vite.config.ts`:
 
     ```ts
-    import { livestoreDevtoolsPlugin } from "@livestore/devtools-vite";
+    import { livestoreDevtoolsPlugin } from '@livestore/devtools-vite'
 
     export default defineConfig({
       // ...
       plugins: [
         // ...
-        livestoreDevtoolsPlugin({ schemaPath: "./src/db/schema/index.ts" }),
+        livestoreDevtoolsPlugin({ schemaPath: './src/db/schema/index.ts' }),
         // ...
       ],
-    });
+    })
     ```
 
 ### Misc

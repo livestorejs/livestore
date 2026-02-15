@@ -1,3 +1,5 @@
+import type * as otel from '@opentelemetry/api'
+
 import { makeInMemoryAdapter } from '@livestore/adapter-web'
 import { provideOtel, type UnknownError } from '@livestore/common'
 import { Events, makeSchema, State } from '@livestore/common/schema'
@@ -5,7 +7,6 @@ import type { Store } from '@livestore/livestore'
 import { createStore } from '@livestore/livestore'
 import { omitUndefineds } from '@livestore/utils'
 import { Effect, Schema, type Scope } from '@livestore/utils/effect'
-import type * as otel from '@opentelemetry/api'
 
 // ============================================================================
 // Types

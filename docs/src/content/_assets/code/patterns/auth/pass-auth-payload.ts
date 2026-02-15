@@ -1,5 +1,6 @@
-import { makeDurableObject, makeWorker } from '@livestore/sync-cf/cf-worker'
 import * as jose from 'jose'
+
+import { makeDurableObject, makeWorker } from '@livestore/sync-cf/cf-worker'
 
 const JWT_SECRET = 'a-string-secret-at-least-256-bits-long'
 
@@ -47,6 +48,7 @@ async function getUserFromToken(token: string): Promise<jose.JWTPayload | undefi
     return payload
   } catch (error) {
     console.log('⚠️ Error verifying token', error)
+    return undefined
   }
 }
 

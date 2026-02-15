@@ -19,6 +19,7 @@ import {
   SubscriptionRef,
   UrlParams,
 } from '@livestore/utils/effect'
+
 import { MAX_HTTP_REQUEST_BYTES, MAX_PUSH_EVENTS_PER_REQUEST } from '../../common/constants.ts'
 import { SyncHttpRpc } from '../../common/http-rpc-schema.ts'
 import { SearchParamsSchema } from '../../common/mod.ts'
@@ -174,8 +175,8 @@ export const makeHttpSync =
 
       const pushSemaphore = yield* Effect.makeSemaphore(1)
 
-      const push: SyncBackend.SyncBackend<SyncMetadata>['push'] = (batch) =>
-        Effect.gen(function* () {
+      const push: SyncBackend.SyncBackend<SyncMetadata>['push'] = Effect.fn('http-sync-client:push')(
+        function* (batch) {
           if (batch.length === 0) {
             return
           }
@@ -199,13 +200,12 @@ export const makeHttpSync =
             const chunkArray = Chunk.toReadonlyArray(chunk)
             yield* rpcClient.SyncHttpRpc.Push({ storeId, payload, batch: chunkArray, backendId })
           }
-        }).pipe(
-          pushSemaphore.withPermits(1),
-          Effect.mapError((cause) =>
-            cause._tag === 'InvalidPushError' ? cause : new InvalidPushError({ cause: new UnknownError({ cause }) }),
-          ),
-          Effect.withSpan('http-sync-client:push'),
-        )
+        },
+        pushSemaphore.withPermits(1),
+        Effect.mapError((cause) =>
+          cause._tag === 'InvalidPushError' ? cause : new InvalidPushError({ cause: new UnknownError({ cause }) }),
+        ),
+      )
 
       return SyncBackend.of({
         connect,

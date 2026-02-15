@@ -38,6 +38,7 @@ Several product scenarios require **multiple independent store instances**:
 #### 1. Multi-Tenant/Workspace/Organization Applications
 
 Many apps allow users to belong to multiple isolated workspaces, organizations, or tenants. Each workspace represents a completely independent data domain. For example:
+
 - Slack: Each workspace has independent data that shouldn't be mixed
 - Notion: Each workspace has different pages, databases, and permissions
 - Linear: Each organization has separate projects and issues
@@ -45,6 +46,7 @@ Many apps allow users to belong to multiple isolated workspaces, organizations, 
 #### 2. Partial Data Synchronization
 
 Many applications need to selectively synchronize subsets of data rather than syncing an entire monolithic dataset. This is critical for:
+
 - Storage Limits: Browsers have [limited storage](https://developer.mozilla.org/en-US/docs/Web/API/Storage_API/Storage_quotas_and_eviction_criteria)
 - Memory Limits: A browser tab can only hold so much data in memory
 - Bandwidth Optimization: Don't sync data the user isn't viewing
@@ -75,6 +77,7 @@ function App() {
 ```
 
 **Issues:**
+
 - Can't control which provider's store `useStore()` returns
 - Provider nesting becomes deeply nested and unmanageable
 - No centralized lifecycle management
@@ -90,6 +93,7 @@ const issueStore2 = await createStorePromise({ ... })
 ```
 
 **Issues:**
+
 - No automatic cleanup (memory leaks)
 - Loses React integration (Suspense, Error Boundaries)
 - Manual ref-counting and disposal logic
@@ -151,7 +155,7 @@ The multi-store architecture introduces three key concepts:
 ### API
 
 | API                       | Purpose                                   | Example                                                        |
-|:--------------------------|:------------------------------------------|:---------------------------------------------------------------|
+| :------------------------ | :---------------------------------------- | :------------------------------------------------------------- |
 | `storeOptions()`          | Define re-usable store options            | `storeOptions({ storeId: 'workspace-root', schema, adapter })` |
 | `new StoreRegistry()`     | Create store registry instance            | `new StoreRegistry({ defaultOptions: { ... } })`               |
 | `<StoreRegistryProvider>` | StoreRegistry provider                    | `<StoreRegistryProvider storeRegistry={storeRegistry}>`        |
@@ -166,9 +170,7 @@ Helper to define re-usable store option that can be later be passed to `useStore
 **Signature:**
 
 ```ts
-function storeOptions<TSchema extends LiveStoreSchema>(
-  options: StoreOptions<TSchema>
-): StoreOptions<TSchema>
+function storeOptions<TSchema extends LiveStoreSchema>(options: StoreOptions<TSchema>): StoreOptions<TSchema>
 ```
 
 **Example (Singleton Store):**
@@ -254,7 +256,6 @@ import { StoreRegistry } from '@livestore/livestore'
 import { StoreRegistryProvider } from '@livestore/react'
 import { unstable_batchedUpdates as batchUpdates } from 'react-dom'
 
-
 export default function App({ children }: { children: React.ReactNode }) {
   const [storeRegistry] = useState(() => new StoreRegistry())
 
@@ -269,9 +270,7 @@ Suspense-focused hook that returns a loaded store or triggers Suspense while the
 **Signature:**
 
 ```ts
-function useStore<TSchema extends LiveStoreSchema>(
-  options: StoreOptions<TSchema>
-): Store<TSchema> & ReactApi
+function useStore<TSchema extends LiveStoreSchema>(options: StoreOptions<TSchema>): Store<TSchema> & ReactApi
 ```
 
 **Example:**
@@ -285,7 +284,7 @@ import { issueTables } from '@/stores/issue/schema.ts'
 export function IssuePanel({ issueId }: { issueId: string }) {
   const issueStore = useStore(issueStoreOptions(issueId))
   const [issue] = issueStore.useQuery(queryDb(issueTables.issue.select().limit(1)))
-  
+
   return <h2>{issue.title}</h2>
 }
 ```
@@ -301,12 +300,15 @@ function useStoreRegistry(override?: StoreRegistry): StoreRegistry
 ```
 
 **Parameters:**
+
 - `override`: Optional custom registry (useful for testing)
 
 **Returns:**
+
 - The current `StoreRegistry` from context (or the override)
 
 **Throws:**
+
 - Error if called outside `<StoreRegistryProvider>` and no override provided
 
 #### `storeRegistry.preload()`
@@ -316,9 +318,7 @@ Preloads a store instance without suspending the component. It silently discards
 **Signature:**
 
 ```ts
-type PreloadStore = <TSchema extends LiveStoreSchema>(
-  options: StoreOptions<TSchema>
-) => Promise<void>
+type PreloadStore = <TSchema extends LiveStoreSchema>(options: StoreOptions<TSchema>) => Promise<void>
 ```
 
 **Behavior:**
@@ -343,11 +343,7 @@ function IssueLink({ issueId }: { issueId: string }) {
   }
 
   return (
-    <a
-      href={`/issues/${issueId}`}
-      onMouseEnter={preload}
-      onFocus={preload}
-    >
+    <a href={`/issues/${issueId}`} onMouseEnter={preload} onFocus={preload}>
       View Issue
     </a>
   )
@@ -370,7 +366,7 @@ function WorkspaceView() {
   const workspaceStore = useStore(workspaceStoreOptions)
   const [workspace] = workspaceStore.useQuery(workspaceQuery)
   const storeRegisty = useStoreRegistry()
-  
+
   const mostRecentIssueIds = workspace.recentIssueIds.slice(0, 20)
 
   // Preload most recent issues' stores
@@ -392,41 +388,28 @@ The `storeId` is critical for cache key generation. Follow these guidelines:
 
 ```tsx
 // Namespace with store type
-`issue-${issueId}`
-`workspace-${workspaceId}`
-`user-current`
-
+;`issue-${issueId}``workspace-${workspaceId}``user-current`
 // Multi-part keys (deterministic order)
-`project-${projectId}-issue-${issueId}`
-`org-${orgId}-workspace-${workspaceId}`
-
+`project-${projectId}-issue-${issueId}``org-${orgId}-workspace-${workspaceId}`
 // Singleton stores
-`workspace-root`
-`app-settings`
-
+`workspace-root``app-settings`
 // Scoped to context
-`chat-${conversationId}`
-`canvas-${documentId}-layer-${layerId}`
+`chat-${conversationId}``canvas-${documentId}-layer-${layerId}`
 ```
 
 **❌ Anti-Patterns:**
 
 ```tsx
 // ❌ No namespace (collision risk)
-issueId  // What if issueId === workspaceId?
-
+issueId // What if issueId === workspaceId?
 // ❌ Non-deterministic
-`${Math.random()}`
-`${Date.now()}`
-
+`${Math.random()}``${Date.now()}`
 // ❌ Overly long (impacts telemetry, storage keys)
 `${longUrl}-${manyParams}-${evenMore}...`
-
 // ❌ Special characters needing escaping
-`user-email-${email}`  // email might contain : or /
-
+`user-email-${email}` // email might contain : or /
 // ❌ User input without sanitization
-`search-${userQuery}`  // Injection risk
+`search-${userQuery}` // Injection risk
 ```
 
 **Guidelines:**
@@ -440,14 +423,13 @@ issueId  // What if issueId === workspaceId?
 
 **Decision Matrix:**
 
-| Scenario       | Pattern               | Example                     |
-|:---------------|:----------------------|:----------------------------|
-| Single entity  | `type-id`             | `issue-abc123`              |
-| Multi-part key | `type-id1-id2`        | `project-p1-issue-i1`       |
-| Singleton      | `type-singleton`      | `workspace-root`            |
-| User-scoped    | `user-userId-type-id` | `user-u1-settings`          |
-| Tenant-scoped  | `org-orgId-type-id`   | `org-acme-workspace`        |
-
+| Scenario       | Pattern               | Example               |
+| :------------- | :-------------------- | :-------------------- |
+| Single entity  | `type-id`             | `issue-abc123`        |
+| Multi-part key | `type-id1-id2`        | `project-p1-issue-i1` |
+| Singleton      | `type-singleton`      | `workspace-root`      |
+| User-scoped    | `user-userId-type-id` | `user-u1-settings`    |
+| Tenant-scoped  | `org-orgId-type-id`   | `org-acme-workspace`  |
 
 ### Store Lifecycle and Disposal
 
@@ -518,10 +500,10 @@ If multiple subscribers specify different `unusedCacheTime` values, the longest 
 
 ```tsx
 // Component A
-useStore({...issueStoreOptions('issue-1'), unusedCacheTime: 30_000 }) // 30s
+useStore({ ...issueStoreOptions('issue-1'), unusedCacheTime: 30_000 }) // 30s
 
 // Component B
-useStore({...issueStoreOptions('issue-1'), unusedCacheTime: 120_000 }) // 120s
+useStore({ ...issueStoreOptions('issue-1'), unusedCacheTime: 120_000 }) // 120s
 
 // When both unmount, disposal timer will be 120s (longest)
 ```
@@ -543,11 +525,7 @@ const storeRegistry = new StoreRegistry() // Bad: shared across requests
 // ✅ Instantiate per request
 export default function App({ children }) {
   const [storeRegistry] = useState(() => new StoreRegistry()) // Good: new instance per request
-  return (
-    <StoreRegistryProvider storeRegistry={storeRegistry}>
-      {children}
-    </StoreRegistryProvider>
-  )
+  return <StoreRegistryProvider storeRegistry={storeRegistry}>{children}</StoreRegistryProvider>
 }
 ```
 
@@ -556,11 +534,8 @@ export default function App({ children }) {
 On the server, the default `unusedCacheTime` is promoted to `Number.POSITIVE_INFINITY` to prevent premature disposal during HTML generation.
 
 ```ts
-const DEFAULT_UNUSED_CACHE_TIME = typeof window === 'undefined'
-  ? Number.POSITIVE_INFINITY
-  : 60_000
+const DEFAULT_UNUSED_CACHE_TIME = typeof window === 'undefined' ? Number.POSITIVE_INFINITY : 60_000
 ```
-
 
 See [Default `unusedCacheTime` of 60 Seconds (Browser) / Infinity (SSR)](#default-unusedcachetime-of-60-seconds-browser--infinity-ssr).
 
@@ -595,6 +570,7 @@ This section documents key design choices and their rationale. **Feedback and al
 ### Introduce Registry for Multi-Store Support
 
 **Alternatives Considered:**
+
 1. **Registry pattern** (chosen)
 2. **Context-per-store pattern**
 3. **Hook-based pattern** (no central management)
@@ -604,18 +580,16 @@ This section documents key design choices and their rationale. **Feedback and al
 **Rationale:**
 
 **Option 1: Registry Pattern (✅ Chosen)**
+
 ```tsx
 export default function App({ children }) {
   const [storeRegistry] = useState(() => new StoreRegistry()) // Good: new instance per request
-  return (
-    <StoreRegistryProvider storeRegistry={storeRegistry}>
-      {children}
-    </StoreRegistryProvider>
-  )
+  return <StoreRegistryProvider storeRegistry={storeRegistry}>{children}</StoreRegistryProvider>
 }
 ```
 
 **Pros:**
+
 - Centralized lifecycle management (GC, ref-counting, caching)
 - Framework-agnostic core (reusable in Node.js, tests, CLI)
 - Clear ownership model (one place manages all stores)
@@ -624,10 +598,12 @@ export default function App({ children }) {
 - Familiar pattern (similar to TanStack Query's QueryClient)
 
 **Cons:**
+
 - Additional abstraction layer
 - Slightly more API surface
 
 **Option 2: Context-per-Store**
+
 ```tsx
 <WorkspaceStoreProvider storeId="ws-1">
   <IssueStoreProvider storeId="issue-1">
@@ -637,9 +613,11 @@ export default function App({ children }) {
 ```
 
 **Pros:**
+
 - No custom registry abstraction
 
 **Cons:**
+
 - Deep nesting with many stores
 - No central point for GC or preloading
 - Difficult to manage lifecycle across stores
@@ -648,16 +626,19 @@ export default function App({ children }) {
 - Context pollution (one context per store type)
 
 **Option 3: Hook-Based**
+
 ```tsx
 const store = useStore({ storeId: 'issue-1', schema, adapter })
 // Each hook manages its own lifecycle
 ```
 
 **Pros:**
+
 - Simple API
 - No providers needed
 
 **Cons:**
+
 - No centralized GC (every hook manages its own cache)
 - Difficult to share store instances across components
 - No preloading capability
@@ -665,6 +646,7 @@ const store = useStore({ storeId: 'issue-1', schema, adapter })
 ### Automatic Disposal with `unusedCacheTime`
 
 **Alternatives Considered:**
+
 1. **Manual disposal**: User calls `store.destroy()` explicitly
 2. **React lifecycle**: Dispose when provider unmounts
 3. **Ref-counting + timed disposal**: Dispose after N seconds of inactivity (chosen)
@@ -672,11 +654,13 @@ const store = useStore({ storeId: 'issue-1', schema, adapter })
 **Chosen:** Ref-counting + timed disposal (option 3)
 
 **Rationale:**
+
 - Balances memory efficiency with performance (avoid reload thrashing)
 - Familiar pattern (similar to TanStack Query, RTK Query)
 - Allows late-arriving components to reuse cached stores
 
 **Trade-offs:**
+
 - ✅ Automatic memory management
 - ✅ Handles rapid mount/unmount gracefully
 - ⚠️ Disposal timing is approximate (setTimeout delays)
@@ -685,6 +669,7 @@ const store = useStore({ storeId: 'issue-1', schema, adapter })
 ### Longest `unusedCacheTime` Wins When Multiple Subscribers
 
 **Alternatives Considered:**
+
 1. **First subscriber's unusedCacheTime**
 2. **Last subscriber's unusedCacheTime**
 3. **Shortest unusedCacheTime** (most aggressive)
@@ -693,16 +678,19 @@ const store = useStore({ storeId: 'issue-1', schema, adapter })
 **Chosen:** Longest unusedCacheTime (option 4)
 
 **Rationale:**
+
 - Conservative approach (avoids surprise evictions)
 - Late-arriving subscribers can extend lifetime
 - Prevents short-lived subscriber from prematurely dropping store used by long-lived subscriber
 
 **Trade-offs:**
+
 - ⚠️ Potentially keeps stores in memory longer than some subscribers expect
 
 ### Default `unusedCacheTime` of 60 Seconds (Browser) / Infinity (SSR)
 
 **Alternatives Considered:**
+
 1. **30 seconds** (aggressive eviction)
 2. **60 seconds** (chosen for browser)
 3. **5 minutes** (longer retention, like TanStack Query)
@@ -711,6 +699,7 @@ const store = useStore({ storeId: 'issue-1', schema, adapter })
 **Chosen:** 60 seconds in browser, Infinity during SSR
 
 **Rationale:**
+
 - **60 seconds in browser** balances memory efficiency with user experience:
   - Long enough to avoid thrashing on quick navigation (back/forward)
   - Short enough to prevent excessive memory usage in long-running sessions
@@ -718,6 +707,7 @@ const store = useStore({ storeId: 'issue-1', schema, adapter })
 - **Infinity during SSR** prevents premature disposal during HTML generation
 
 **Comparison with Other Libraries:**
+
 - **TanStack Query**: `gcTime: 5 minutes` (cache time for query data)
 - **RTK Query**: `keepUnusedDataFor: 60 seconds` (cache time for query data)
 
@@ -743,18 +733,18 @@ We have a two-layer configuration cascade for configuring store options:
 We still need to validate which knobs belong where (e.g., should `batchUpdates` ever vary at call-site?). We also need clearer merge semantics for nested objects like `otelOptions`.
 
 | Configuration           | Type               | Registry | Call-Site | Merging Strategy    |
-|:------------------------|:-------------------|:---------|:----------|:--------------------|
-| `unusedCacheTime`       | number             | ✅        | ✅         | Call-site overrides |
-| `batchUpdates`          | function           | ✅        | ❌         | -                   |
-| `syncPayload`           | object (data)      | ❓        | ❓         | ❓                   |
-| `otelOptions`           | object (instances) | ❓        | ❓         | ❓                   |
-| `disableDevtools`       | boolean            | ✅        | ✅         | Call-site overrides |
-| `confirmUnsavedChanges` | boolean            | ✅        | ✅         | Call-site overrides |
-| `debug`                 | object (data)      | ✅        | ✅         | Deep merge          |
-| `boot`                  | function           | ❌        | ✅         | -                   |
-| `schema`                | object             | ❌        | ✅         | -                   |
-| `adapter`               | object (instance)  | ❌        | ✅         | -                   |
-| `signal`                | object (instance)  | ❌        | ✅         | -                   |
+| :---------------------- | :----------------- | :------- | :-------- | :------------------ |
+| `unusedCacheTime`       | number             | ✅       | ✅        | Call-site overrides |
+| `batchUpdates`          | function           | ✅       | ❌        | -                   |
+| `syncPayload`           | object (data)      | ❓       | ❓        | ❓                  |
+| `otelOptions`           | object (instances) | ❓       | ❓        | ❓                  |
+| `disableDevtools`       | boolean            | ✅       | ✅        | Call-site overrides |
+| `confirmUnsavedChanges` | boolean            | ✅       | ✅        | Call-site overrides |
+| `debug`                 | object (data)      | ✅       | ✅        | Deep merge          |
+| `boot`                  | function           | ❌       | ✅        | -                   |
+| `schema`                | object             | ❌       | ✅        | -                   |
+| `adapter`               | object (instance)  | ❌       | ✅        | -                   |
+| `signal`                | object (instance)  | ❌       | ✅        | -                   |
 
 ### 3. How are `clientId` and `sessionId` Managed in Multi-Store?
 
@@ -814,77 +804,58 @@ src/
 ### B. Type Definitions
 
 ```ts
-declare function storeOptions<TSchema extends LiveStoreSchema>(
-  options: StoreOptions<TSchema>
-): StoreOptions<TSchema>;
-
+declare function storeOptions<TSchema extends LiveStoreSchema>(options: StoreOptions<TSchema>): StoreOptions<TSchema>
 
 type StoreRegistryOptions = {
-  readonly defaultOptions?: Readonly<Partial<StoreOptions>>;
-};
+  readonly defaultOptions?: Readonly<Partial<StoreOptions>>
+}
 
 declare class StoreRegistry {
-  constructor(options?: StoreRegistryOptions);
-  
-  preload<TSchema extends LiveStoreSchema>(
-    options: StoreOptions<TSchema>
-  ): Promise<void>;
-  
-  clear(): Promise<void>;
+  constructor(options?: StoreRegistryOptions)
+
+  preload<TSchema extends LiveStoreSchema>(options: StoreOptions<TSchema>): Promise<void>
+
+  clear(): Promise<void>
 }
 
 type StoreRegistryProviderProps = {
-  readonly storeRegistry: StoreRegistry;
-  readonly children: React.ReactNode;
-};
+  readonly storeRegistry: StoreRegistry
+  readonly children: React.ReactNode
+}
 
-declare function StoreRegistryProvider(
-  props: StoreRegistryProviderProps
-): React.ReactElement;
+declare function StoreRegistryProvider(props: StoreRegistryProviderProps): React.ReactElement
 
-declare function useStoreRegistry(override?: StoreRegistry): StoreRegistry;
+declare function useStoreRegistry(override?: StoreRegistry): StoreRegistry
 
-declare function useStore<TSchema extends LiveStoreSchema>(
-  options: StoreOptions<TSchema>
-): Store<TSchema> & ReactApi
+declare function useStore<TSchema extends LiveStoreSchema>(options: StoreOptions<TSchema>): Store<TSchema> & ReactApi
 ```
 
 ### C. Complete Usage Example
 
 ```tsx
-import { useState, useMemo, Suspense } from "react";
-import { unstable_batchedUpdates as batchUpdates } from "react-dom";
-import { StoreRegistry, storeOptions } from "@livestore/livestore";
-import {
-  StoreRegistryProvider,
-  useStoreRegistry,
-  useStore,
-} from "@livestore/react";
+import { useState, useMemo, Suspense } from 'react'
+import { unstable_batchedUpdates as batchUpdates } from 'react-dom'
+import { StoreRegistry, storeOptions } from '@livestore/livestore'
+import { StoreRegistryProvider, useStoreRegistry, useStore } from '@livestore/react'
 import {
   workspaceSchema,
   workspaceAdapter,
   workspaceEvents,
   selectWorkspaceQuery,
   selectWorkspaceIssueIdsQuery,
-} from "./workspace";
-import {
-  issueSchema,
-  issueAdapter,
-  issueEvents,
-  selectIssueQuery,
-} from "./issue";
-
+} from './workspace'
+import { issueSchema, issueAdapter, issueEvents, selectIssueQuery } from './issue'
 
 // Workspace store (singleton)
 export const workspaceStoreOptions = storeOptions({
-  storeId: "workspace-root",
+  storeId: 'workspace-root',
   schema: workspaceSchema,
   adapter: workspaceAdapter,
   unusedCacheTime: Number.POSITIVE_INFINITY, // Disable automatic disposal
   boot: (store) => {
     // Callback triggered when the store is first loaded
   },
-});
+})
 
 // Issue store (multi-instance)
 export const issueStoreOptions = (issueId: string) =>
@@ -896,7 +867,7 @@ export const issueStoreOptions = (issueId: string) =>
     boot: (issueStore) => {
       // Callback triggered when the store is first loaded
     },
-  });
+  })
 
 function App({ children }: { children: React.ReactNode }) {
   const [storeRegistry] = useState(
@@ -904,56 +875,46 @@ function App({ children }: { children: React.ReactNode }) {
       new StoreRegistry({
         defaultOptions: {
           batchUpdates,
-          syncPayload: { authToken: "insecure-token-change-me" },
+          syncPayload: { authToken: 'insecure-token-change-me' },
         },
       }),
-  );
+  )
 
-  return (
-    <StoreRegistryProvider storeRegistry={storeRegistry}>
-      {children}
-    </StoreRegistryProvider>
-  );
+  return <StoreRegistryProvider storeRegistry={storeRegistry}>{children}</StoreRegistryProvider>
 }
 
 type RouterLoaderContext = {
-  storeRegistry: StoreRegistry;
-};
+  storeRegistry: StoreRegistry
+}
 
 export async function RouteLoader({ context }: { context: RouterLoaderContext }) {
-  context.storeRegistry.preload(workspaceStoreOptions);
+  context.storeRegistry.preload(workspaceStoreOptions)
 }
 
 export default function Route() {
-  const workspaceStore = useStore(workspaceStoreOptions); // Suspends
-  const [workspace] = workspaceStore.useQuery(selectWorkspaceQuery);
-  const issueIds = workspaceStore.useQuery(selectWorkspaceIssueIdsQuery(workspace.id));
+  const workspaceStore = useStore(workspaceStoreOptions) // Suspends
+  const [workspace] = workspaceStore.useQuery(selectWorkspaceQuery)
+  const issueIds = workspaceStore.useQuery(selectWorkspaceIssueIdsQuery(workspace.id))
 
   const createIssue = () => {
-    workspaceStore.commit(
-      workspaceEvents.issueCreated({ title: `Issue ${issueIds.length + 1}` }),
-    );
-  };
+    workspaceStore.commit(workspaceEvents.issueCreated({ title: `Issue ${issueIds.length + 1}` }))
+  }
 
-  const [selectedIssueId, setSelectedIssueId] = useState<string>();
+  const [selectedIssueId, setSelectedIssueId] = useState<string>()
 
-  const storeRegistry = useStoreRegistry();
+  const storeRegistry = useStoreRegistry()
   const preloadIssue = (issueId: string) =>
     storeRegistry.preload({
       ...issueStoreOptions(issueId),
       unusedCacheTime: 5 * 1000,
-    });
+    })
 
   return (
     <>
       <h1>{workspace.name}</h1>
       <button onClick={createIssue}>Create Issue</button>
       {issueIds.map((id) => (
-        <button
-          key={id}
-          onMouseEnter={() => preloadIssue(id)}
-          onClick={() => setSelectedIssueId(id)}
-        >
+        <button key={id} onMouseEnter={() => preloadIssue(id)} onClick={() => setSelectedIssueId(id)}>
           Select issue {id}
         </button>
       ))}
@@ -963,30 +924,30 @@ export default function Route() {
         </Suspense>
       )}
     </>
-  );
+  )
 }
 
 function IssuePanel({ issueId }: { issueId: string }) {
   const issueStore = useStore({
     ...issueStoreOptions(issueId),
     unusedCacheTime: 5 * 1000, // Override unusedCacheTime
-  }); // Suspends
-  const [issue] = issueStore.useQuery(selectIssueQuery(issueId));
+  }) // Suspends
+  const [issue] = issueStore.useQuery(selectIssueQuery(issueId))
 
   const toggleStatus = () => {
     issueStore.commit(
       issueEvents.issueStatusChanged({
         id: issue.id,
-        status: issue.status === "done" ? "todo" : "done",
+        status: issue.status === 'done' ? 'todo' : 'done',
       }),
-    );
-  };
+    )
+  }
 
   return (
     <>
       <button onClick={toggleStatus}>Toggle status</button>
       <p>{issue.status}</p>
     </>
-  );
+  )
 }
 ```

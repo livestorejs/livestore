@@ -5,9 +5,10 @@ import {
   SyncBackend,
   UnknownError,
 } from '@livestore/common'
-import { splitChunkBySize } from '@livestore/common/sync'
 import { type CfTypes, emitStreamResponse } from '@livestore/common-cf'
+import { splitChunkBySize } from '@livestore/common/sync'
 import { Chunk, Effect, Option, type RpcMessage, Schema } from '@livestore/utils/effect'
+
 import { MAX_PUSH_EVENTS_PER_REQUEST, MAX_WS_MESSAGE_BYTES } from '../../common/constants.ts'
 import { SyncMessage } from '../../common/mod.ts'
 import {
@@ -20,6 +21,7 @@ import {
 import { DoCtx } from './layer.ts'
 
 const encodePullResponse = Schema.encodeSync(SyncMessage.PullResponse)
+const jsonStringify = Schema.encodeSync(Schema.parseJson())
 type PullBatchItem = SyncMessage.PullResponse['batch'][number]
 
 export const makePush =
@@ -140,7 +142,7 @@ export const makePush =
 
             // NOTE we're also sending the pullRes chunk to the pushing ws client as confirmation
             for (const conn of connectedClients) {
-              const attachment = Schema.decodeSync(WebSocketAttachmentSchema)(conn.deserializeAttachment())
+              const attachment = yield* Schema.decode(WebSocketAttachmentSchema)(conn.deserializeAttachment())
 
               // We're doing something a bit "advanced" here as we're directly emitting Effect RPC-compatible
               // response messsages on the Effect RPC-managed websocket connection to the WS client.
@@ -151,7 +153,7 @@ export const makePush =
                   requestId,
                   values: [encoded],
                 }
-                conn.send(JSON.stringify(res))
+                conn.send(jsonStringify(res))
               }
             }
           }

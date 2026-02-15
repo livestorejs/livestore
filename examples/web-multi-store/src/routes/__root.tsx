@@ -30,7 +30,7 @@ const tabs = [
   { to: '/recursive', label: 'Recursive' },
 ] as const
 
-function RootComponent() {
+const RootComponent = () => {
   return (
     <RootDocument>
       <main>
@@ -55,7 +55,7 @@ function RootComponent() {
   )
 }
 
-function RootDocument({ children }: Readonly<{ children: ReactNode }>) {
+const RootDocument = ({ children }: Readonly<{ children: ReactNode }>) => {
   return (
     <html lang="en">
       <head>

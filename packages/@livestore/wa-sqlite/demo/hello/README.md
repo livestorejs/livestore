@@ -1,4 +1,5 @@
 # hello demo
+
 This is a simpler demo program that may be easier to read for those
 who want to see how set up and query the database.
 
@@ -11,9 +12,9 @@ the IDBBatchAtomicVFS filesystem. Modify the imports at the top of
 the script to try other combinations. Note that not all combinations
 are valid:
 
-* As of May 2024, the JSPI build works only on recent Chromium browsers
-behind an experiment flag.
-* As of May 2024, OPFSPermutedVFS works only on recent Chromium browsers
-as it requires FileSystemSyncAccessHandle "readwrite-unsafe" locking.
-* Some VFS classes work only with an asynchronous build (Asyncify or JSPI).
-* OPFS VFS classes work only within a Worker.
+- As of May 2024, the JSPI build works only on recent Chromium browsers
+  behind an experiment flag.
+- As of May 2024, OPFSPermutedVFS works only on recent Chromium browsers
+  as it requires FileSystemSyncAccessHandle "readwrite-unsafe" locking.
+- Some VFS classes work only with an asynchronous build (Asyncify or JSPI).
+- OPFS VFS classes work only within a Worker.

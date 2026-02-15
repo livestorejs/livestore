@@ -1,6 +1,7 @@
-import { makeSchema, State } from '@livestore/livestore'
 /** Import via Vite alias to reproduce issue #938 */
 import { formatDate } from '@/utils'
+
+import { makeSchema, State } from '@livestore/livestore'
 
 // Use the import to ensure it's not tree-shaken
 const _unused = formatDate

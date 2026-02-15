@@ -1,13 +1,14 @@
 import type { TypedDocumentNode as DocumentNode } from '@graphql-typed-document-node/core'
+import * as otel from '@opentelemetry/api'
+import type { GraphQLSchema } from 'graphql'
+import * as graphql from 'graphql'
+
 import { getDurationMsFromSpan } from '@livestore/common'
 import type { RefreshReason, SqliteDbWrapper, Store } from '@livestore/livestore'
 import { StoreInternalsSymbol } from '@livestore/livestore'
 import { LiveQueries, ReactiveGraph } from '@livestore/livestore/internal'
 import { omitUndefineds, shouldNeverHappen } from '@livestore/utils'
 import { Equal, Hash, Predicate, Schema, TreeFormatter } from '@livestore/utils/effect'
-import * as otel from '@opentelemetry/api'
-import type { GraphQLSchema } from 'graphql'
-import * as graphql from 'graphql'
 
 export type BaseGraphQLContext = {
   queriedTables: Set<string>
@@ -240,7 +241,7 @@ export class LiveStoreGraphQLQuery<
         for (const error of res.errors) {
           console.error(error)
         }
-        // biome-ignore lint/suspicious/noDebugger: debug
+        // oxlint-disable-next-line eslint(no-debugger) -- intentional breakpoint for GraphQL errors
         debugger
         shouldNeverHappen(`GraphQL error: ${res.errors.join('\n')}`)
       }

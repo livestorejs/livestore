@@ -1,8 +1,10 @@
+import { useParams } from '@tanstack/react-router'
+import { unstable_batchedUpdates as batchUpdates } from 'react-dom'
+
 import { makePersistedAdapter } from '@livestore/adapter-web'
 import LiveStoreSharedWorker from '@livestore/adapter-web/shared-worker?sharedworker'
 import { useStore } from '@livestore/react'
-import { useParams } from '@tanstack/react-router'
-import { unstable_batchedUpdates as batchUpdates } from 'react-dom'
+
 import { SyncPayload, schema } from './schema/index.ts'
 import LiveStoreWorker from './worker.ts?worker'
 

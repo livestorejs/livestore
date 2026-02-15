@@ -1,6 +1,8 @@
+import tanstackHandler from '@tanstack/react-start/server-entry'
+
 import * as SyncBackend from '@livestore/sync-cf/cf-worker'
 import type { CfTypes } from '@livestore/sync-cf/common'
-import tanstackHandler from '@tanstack/react-start/server-entry'
+
 import { SyncPayload } from './livestore/schema/index.ts'
 
 export class SyncBackendDO extends SyncBackend.makeDurableObject({

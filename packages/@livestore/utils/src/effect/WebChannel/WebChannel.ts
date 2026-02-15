@@ -191,7 +191,7 @@ export const messagePortChannelWithAck: <MsgListen, MsgSend, MsgListenEncoded, M
                 yield* Deferred.succeed(requestAckMap.get(msg.right.reqId)!, void 0)
               } else if (msg.right._tag === 'ChannelRequest') {
                 debugInfo.listenTotal++
-                port.postMessage(Schema.encodeSync(ChannelMessage)({ _tag: 'ChannelRequestAck', reqId: msg.right.id }))
+                port.postMessage(yield* Schema.encode(ChannelMessage)({ _tag: 'ChannelRequestAck', reqId: msg.right.id }))
               }
             }
           }),

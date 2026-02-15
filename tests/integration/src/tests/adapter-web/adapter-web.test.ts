@@ -1,11 +1,13 @@
 import path from 'node:path'
 import { fileURLToPath } from 'node:url'
+
+import { expect } from 'vitest'
+
 import { BrowserContext, browserContextLayer } from '@livestore/effect-playwright'
-import { Duration, Effect, FetchHttpClient, HttpClient, Layer, Schedule } from '@livestore/utils/effect'
-import { getFreePort, PlatformNode } from '@livestore/utils/node'
 import { CurrentWorkingDirectory, cmd } from '@livestore/utils-dev/node'
 import { Vitest } from '@livestore/utils-dev/node-vitest'
-import { expect } from 'vitest'
+import { Duration, Effect, FetchHttpClient, HttpClient, Layer, Schedule } from '@livestore/utils/effect'
+import { getFreePort, PlatformNode } from '@livestore/utils/node'
 
 const testDir = path.dirname(fileURLToPath(import.meta.url))
 const integrationRoot = path.resolve(testDir, '../../..')
@@ -39,7 +41,7 @@ Vitest.describe('adapter-web', { timeout: testTimeout }, () => {
       const port = yield* getFreePort.pipe(Effect.map(String))
 
       // Start a Vite dev server for the React fixtures without devtools plugin
-      yield* cmd(`vite --config ${viteConfigRel} dev --port ${port}`, {
+      yield* cmd(`./node_modules/.bin/vite --config ${viteConfigRel} dev --port ${port}`, {
         env: {
           TEST_LIVESTORE_SCHEMA_PATH_JSON: undefined, // ensure devtools plugin is disabled
           LSD_DEVTOOLS_LOCAL_PREVIEW: undefined,
@@ -111,7 +113,7 @@ Vitest.describe('adapter-web', { timeout: testTimeout }, () => {
       const port = yield* getFreePort.pipe(Effect.map(String))
 
       // Start a Vite dev server for the React fixtures
-      yield* cmd(`vite --config ${viteConfigRel} dev --port ${port}`, {
+      yield* cmd(`./node_modules/.bin/vite --config ${viteConfigRel} dev --port ${port}`, {
         env: {
           TEST_LIVESTORE_SCHEMA_PATH_JSON: undefined,
           LSD_DEVTOOLS_LOCAL_PREVIEW: undefined,
@@ -174,7 +176,7 @@ Vitest.describe('adapter-web', { timeout: testTimeout }, () => {
     Effect.gen(function* () {
       const port = yield* getFreePort.pipe(Effect.map(String))
 
-      yield* cmd(`vite --config ${viteConfigRel} dev --port ${port}`, {
+      yield* cmd(`./node_modules/.bin/vite --config ${viteConfigRel} dev --port ${port}`, {
         env: {
           TEST_LIVESTORE_SCHEMA_PATH_JSON: undefined,
           LSD_DEVTOOLS_LOCAL_PREVIEW: undefined,

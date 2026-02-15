@@ -1,5 +1,7 @@
-import type { SQLiteAPI } from '@livestore/wa-sqlite'
 import { afterEach, beforeEach, describe, expect, it } from 'vitest'
+
+import type { SQLiteAPI } from '@livestore/wa-sqlite'
+
 import { makeSynchronousDatabase } from '../lib/lib.ts'
 import { loadSqlite3Wasm, makeInMemoryDb } from '../lib/sqlite-utils.ts'
 

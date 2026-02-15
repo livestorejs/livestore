@@ -26,6 +26,6 @@ services:
       ELECTRIC_SECRET: change-me-electric-secret
     ports:
       # We'll bind Electric to port ${ELECTRIC_PORT} in order to avoid conflicts
-      - "${ELECTRIC_PORT:-3000}:3000"
+      - '${ELECTRIC_PORT:-3000}:3000'
     depends_on:
       - postgres

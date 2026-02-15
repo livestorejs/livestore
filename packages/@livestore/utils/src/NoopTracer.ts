@@ -1,10 +1,11 @@
 /** biome-ignore-all lint/complexity/noArguments: using arguments is fine here */
 
-import { cuid } from '@livestore/utils/cuid'
 import type * as otel from '@opentelemetry/api'
 
+import { cuid } from '@livestore/utils/cuid'
+
 export const makeNoopSpan = () => {
-  const performanceStartTime: DOMHighResTimeStamp = performance.now()
+  const performanceStartTime = performance.now()
 
   const span = {
     _performanceStartTime: performanceStartTime,
@@ -16,7 +17,7 @@ export const makeNoopSpan = () => {
     updateName: () => null,
     recordException: () => null,
     end: () => {
-      const endTime: DOMHighResTimeStamp = performance.now()
+      const endTime = performance.now()
       const duration = endTime - performanceStartTime
       const durationSecs = duration / 1000
       const durationRestNs = (duration % 1000) * 1_000_000

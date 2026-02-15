@@ -5,10 +5,11 @@ import { ErrorBoundary } from 'react-error-boundary'
 import { ErrorFallback } from '@/components/ErrorFallback.tsx'
 import { issueStoreOptions } from '@/stores/issue/index.ts'
 import { workspaceStoreOptions } from '@/stores/workspace/index.ts'
+
 import { workspaceEvents, workspaceTables } from '../stores/workspace/schema.ts'
 import { IssueView } from './IssueView.tsx'
 
-export function WorkspaceView() {
+export const WorkspaceView = () => {
   const workspaceStore = useStore(workspaceStoreOptions)
 
   const [workspace] = workspaceStore.useQuery(queryDb(workspaceTables.workspaces.select().limit(1)))

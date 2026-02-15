@@ -31,6 +31,7 @@ import {
 } from '@livestore/utils/effect'
 import { BrowserWorker, Opfs, WebError, WebLock } from '@livestore/utils/effect/browser'
 import { nanoid } from '@livestore/utils/nanoid'
+
 import { makeSingleTabAdapter } from '../../single-tab/single-tab-adapter.ts'
 import {
   readPersistedStateDbFromClientSession,

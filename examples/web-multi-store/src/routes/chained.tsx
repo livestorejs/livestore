@@ -9,7 +9,7 @@ export const Route = createFileRoute('/chained')({
   component: ChainedDemoRoute,
 })
 
-function ChainedDemoRoute() {
+const ChainedDemoRoute = () => {
   const { storeRegistry } = Route.useRouteContext()
 
   return (

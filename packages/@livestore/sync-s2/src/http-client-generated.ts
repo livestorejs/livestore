@@ -697,6 +697,7 @@ export const make = (
   return {
     httpClient,
     listAccessTokens: (options) =>
+      // @effect-diagnostics-next-line anyUnknownInErrorContext:off
       HttpClientRequest.get(`/access-tokens`).pipe(
         HttpClientRequest.setUrlParams({
           prefix: options?.prefix as any,
@@ -713,6 +714,7 @@ export const make = (
         ),
       ),
     issueAccessToken: (options) =>
+      // @effect-diagnostics-next-line anyUnknownInErrorContext:off
       HttpClientRequest.post(`/access-tokens`).pipe(
         HttpClientRequest.bodyUnsafeJson(options),
         withResponse(
@@ -726,6 +728,7 @@ export const make = (
         ),
       ),
     revokeAccessToken: (id) =>
+      // @effect-diagnostics-next-line anyUnknownInErrorContext:off
       HttpClientRequest.del(`/access-tokens/${id}`).pipe(
         withResponse(
           HttpClientResponse.matchStatus({
@@ -737,6 +740,7 @@ export const make = (
         ),
       ),
     listBasins: (options) =>
+      // @effect-diagnostics-next-line anyUnknownInErrorContext:off
       HttpClientRequest.get(`/basins`).pipe(
         HttpClientRequest.setUrlParams({
           prefix: options?.prefix as any,
@@ -753,6 +757,7 @@ export const make = (
         ),
       ),
     createBasin: (options) =>
+      // @effect-diagnostics-next-line anyUnknownInErrorContext:off
       HttpClientRequest.post(`/basins`).pipe(
         HttpClientRequest.bodyUnsafeJson(options),
         withResponse(
@@ -768,6 +773,7 @@ export const make = (
         ),
       ),
     getBasinConfig: (basin) =>
+      // @effect-diagnostics-next-line anyUnknownInErrorContext:off
       HttpClientRequest.get(`/basins/${basin}`).pipe(
         withResponse(
           HttpClientResponse.matchStatus({
@@ -780,6 +786,7 @@ export const make = (
         ),
       ),
     createOrReconfigureBasin: (basin, options) =>
+      // @effect-diagnostics-next-line anyUnknownInErrorContext:off
       HttpClientRequest.put(`/basins/${basin}`).pipe(
         HttpClientRequest.setHeaders({ 's2-request-token': options.params?.['s2-request-token'] ?? undefined }),
         HttpClientRequest.bodyUnsafeJson(options.payload),
@@ -794,6 +801,7 @@ export const make = (
         ),
       ),
     deleteBasin: (basin) =>
+      // @effect-diagnostics-next-line anyUnknownInErrorContext:off
       HttpClientRequest.del(`/basins/${basin}`).pipe(
         withResponse(
           HttpClientResponse.matchStatus({
@@ -807,6 +815,7 @@ export const make = (
         ),
       ),
     reconfigureBasin: (basin, options) =>
+      // @effect-diagnostics-next-line anyUnknownInErrorContext:off
       HttpClientRequest.patch(`/basins/${basin}`).pipe(
         HttpClientRequest.bodyUnsafeJson(options),
         withResponse(
@@ -820,6 +829,7 @@ export const make = (
         ),
       ),
     accountMetrics: (options) =>
+      // @effect-diagnostics-next-line anyUnknownInErrorContext:off
       HttpClientRequest.get(`/metrics`).pipe(
         HttpClientRequest.setUrlParams({
           set: options?.set as any,
@@ -837,6 +847,7 @@ export const make = (
         ),
       ),
     basinMetrics: (basin, options) =>
+      // @effect-diagnostics-next-line anyUnknownInErrorContext:off
       HttpClientRequest.get(`/metrics/${basin}`).pipe(
         HttpClientRequest.setUrlParams({
           set: options?.set as any,
@@ -854,6 +865,7 @@ export const make = (
         ),
       ),
     streamMetrics: (basin, stream, options) =>
+      // @effect-diagnostics-next-line anyUnknownInErrorContext:off
       HttpClientRequest.get(`/metrics/${basin}/${stream}`).pipe(
         HttpClientRequest.setUrlParams({
           set: options?.set as any,
@@ -871,6 +883,7 @@ export const make = (
         ),
       ),
     listStreams: (options) =>
+      // @effect-diagnostics-next-line anyUnknownInErrorContext:off
       HttpClientRequest.get(`/streams`).pipe(
         HttpClientRequest.setUrlParams({
           prefix: options?.prefix as any,
@@ -888,6 +901,7 @@ export const make = (
         ),
       ),
     createStream: (options) =>
+      // @effect-diagnostics-next-line anyUnknownInErrorContext:off
       HttpClientRequest.post(`/streams`).pipe(
         HttpClientRequest.bodyUnsafeJson(options),
         withResponse(
@@ -902,6 +916,7 @@ export const make = (
         ),
       ),
     getStreamConfig: (stream) =>
+      // @effect-diagnostics-next-line anyUnknownInErrorContext:off
       HttpClientRequest.get(`/streams/${stream}`).pipe(
         withResponse(
           HttpClientResponse.matchStatus({
@@ -915,6 +930,7 @@ export const make = (
         ),
       ),
     createOrReconfigureStream: (stream, options) =>
+      // @effect-diagnostics-next-line anyUnknownInErrorContext:off
       HttpClientRequest.put(`/streams/${stream}`).pipe(
         HttpClientRequest.setHeaders({ 's2-request-token': options.params?.['s2-request-token'] ?? undefined }),
         HttpClientRequest.bodyUnsafeJson(options.payload),
@@ -931,6 +947,7 @@ export const make = (
         ),
       ),
     deleteStream: (stream) =>
+      // @effect-diagnostics-next-line anyUnknownInErrorContext:off
       HttpClientRequest.del(`/streams/${stream}`).pipe(
         withResponse(
           HttpClientResponse.matchStatus({
@@ -943,6 +960,7 @@ export const make = (
         ),
       ),
     reconfigureStream: (stream, options) =>
+      // @effect-diagnostics-next-line anyUnknownInErrorContext:off
       HttpClientRequest.patch(`/streams/${stream}`).pipe(
         HttpClientRequest.bodyUnsafeJson(options),
         withResponse(
@@ -957,6 +975,7 @@ export const make = (
         ),
       ),
     read: (stream, options) =>
+      // @effect-diagnostics-next-line anyUnknownInErrorContext:off
       HttpClientRequest.get(`/streams/${stream}/records`).pipe(
         HttpClientRequest.setUrlParams({
           seq_num: options?.seq_num as any,
@@ -982,6 +1001,7 @@ export const make = (
         ),
       ),
     append: (stream, options) =>
+      // @effect-diagnostics-next-line anyUnknownInErrorContext:off
       HttpClientRequest.post(`/streams/${stream}/records`).pipe(
         HttpClientRequest.setHeaders({ 's2-format': options.params?.['s2-format'] ?? undefined }),
         HttpClientRequest.bodyUnsafeJson(options.payload),
@@ -999,6 +1019,7 @@ export const make = (
         ),
       ),
     checkTail: (stream) =>
+      // @effect-diagnostics-next-line anyUnknownInErrorContext:off
       HttpClientRequest.get(`/streams/${stream}/records/tail`).pipe(
         withResponse(
           HttpClientResponse.matchStatus({

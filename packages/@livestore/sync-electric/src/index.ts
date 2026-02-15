@@ -368,22 +368,21 @@ export const makeSyncBackend =
           )
         },
 
-        push: (batch) =>
-          Effect.gen(function* () {
-            const resp = yield* HttpClientRequest.schemaBodyJson(ApiSchema.PushPayload)(
-              HttpClientRequest.post(pushEndpoint),
-              ApiSchema.PushPayload.make({ storeId, batch }),
-            ).pipe(
-              Effect.andThen(httpClient.pipe(HttpClient.filterStatusOk).execute),
-              Effect.andThen(HttpClientResponse.schemaBodyJson(Schema.Struct({ success: Schema.Boolean }))),
-              Effect.scoped,
-              Effect.mapError((cause) => InvalidPushError.make({ cause: UnknownError.make({ cause }) })),
-            )
+        push: Effect.fn('electric-provider:push')(function* (batch) {
+          const resp = yield* HttpClientRequest.schemaBodyJson(ApiSchema.PushPayload)(
+            HttpClientRequest.post(pushEndpoint),
+            ApiSchema.PushPayload.make({ storeId, batch }),
+          ).pipe(
+            Effect.andThen(httpClient.pipe(HttpClient.filterStatusOk).execute),
+            Effect.andThen(HttpClientResponse.schemaBodyJson(Schema.Struct({ success: Schema.Boolean }))),
+            Effect.scoped,
+            Effect.mapError((cause) => InvalidPushError.make({ cause: UnknownError.make({ cause }) })),
+          )
 
-            if (!resp.success) {
-              return yield* InvalidPushError.make({ cause: new UnknownError({ cause: new Error('Push failed') }) })
-            }
-          }).pipe(Effect.withSpan('electric-provider:push')),
+          if (!resp.success) {
+            return yield* InvalidPushError.make({ cause: new UnknownError({ cause: new Error('Push failed') }) })
+          }
+        }),
         ping,
         isConnected,
         metadata: {

@@ -1,4 +1,5 @@
 import { Schema } from '@livestore/utils/effect'
+
 import { UnknownError } from '../errors.ts'
 import { EventSequenceNumber } from '../schema/mod.ts'
 

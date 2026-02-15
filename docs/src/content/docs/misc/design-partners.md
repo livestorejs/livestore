@@ -5,6 +5,7 @@ sidebar:
 ---
 
 LiveStore is looking for design partners with the following aims:
+
 - For your company:
   - Architectural guidance and internal training
   - Priority support

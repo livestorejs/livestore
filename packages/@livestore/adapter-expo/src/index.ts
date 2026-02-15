@@ -1,4 +1,7 @@
 import './polyfill.ts'
+import * as ExpoApplication from 'expo-application'
+import * as SQLite from 'expo-sqlite'
+import * as RN from 'react-native'
 
 import {
   type Adapter,
@@ -35,9 +38,6 @@ import {
   SubscriptionRef,
 } from '@livestore/utils/effect'
 import * as Webmesh from '@livestore/webmesh'
-import * as ExpoApplication from 'expo-application'
-import * as SQLite from 'expo-sqlite'
-import * as RN from 'react-native'
 
 import type { MakeExpoSqliteDb } from './make-sqlite-db.ts'
 import { makeSqliteDb } from './make-sqlite-db.ts'

@@ -5,6 +5,7 @@ import { shouldNeverHappen } from '@livestore/utils'
 import { Effect, Runtime, Schedule, type Scope, Stream } from '@livestore/utils/effect'
 import { Opfs, type WebError } from '@livestore/utils/effect/browser'
 import * as VFS from '@livestore/wa-sqlite/src/VFS.js'
+
 import { FacadeVFS } from '../../FacadeVFS.ts'
 
 const SECTOR_SIZE = 4096
@@ -94,7 +95,12 @@ export class AccessHandlePoolVFS extends FacadeVFS {
     directoryPath,
     module,
     runtime,
-  }: { name: string; directoryPath: string; module: any; runtime: Runtime.Runtime<Opfs.Opfs | Scope.Scope> }) {
+  }: {
+    name: string
+    directoryPath: string
+    module: any
+    runtime: Runtime.Runtime<Opfs.Opfs | Scope.Scope>
+  }) {
     super(name, module)
     this.#directoryPath = directoryPath
     this.#runtime = runtime
@@ -163,7 +169,7 @@ export class AccessHandlePoolVFS extends FacadeVFS {
     }),
   )
 
-  jOpen(zName: string, fileId: number, flags: number, pOutFlags: DataView): number {
+  override jOpen(zName: string, fileId: number, flags: number, pOutFlags: DataView): number {
     return Effect.gen(this, function* () {
       // First try to open a path that already exists in the file system.
       const path = zName ? this.#getPath(zName) : Math.random().toString(36)
@@ -196,7 +202,7 @@ export class AccessHandlePoolVFS extends FacadeVFS {
     )
   }
 
-  jClose(fileId: number): number {
+  override jClose(fileId: number): number {
     return Effect.gen(this, function* () {
       const file = this.#mapIdToFile.get(fileId)
       if (file) {
@@ -214,7 +220,7 @@ export class AccessHandlePoolVFS extends FacadeVFS {
     )
   }
 
-  jRead(fileId: number, pData: Uint8Array<ArrayBuffer>, iOffset: number): number {
+  override jRead(fileId: number, pData: Uint8Array<ArrayBuffer>, iOffset: number): number {
     return Effect.gen(this, function* () {
       const file = this.#mapIdToFile.get(fileId)!
       const nBytes = yield* Opfs.Opfs.syncRead(file.accessHandle, pData.subarray(), {
@@ -232,7 +238,7 @@ export class AccessHandlePoolVFS extends FacadeVFS {
     )
   }
 
-  jWrite(fileId: number, pData: Uint8Array<ArrayBuffer>, iOffset: number): number {
+  override jWrite(fileId: number, pData: Uint8Array<ArrayBuffer>, iOffset: number): number {
     return Effect.gen(this, function* () {
       const file = this.#mapIdToFile.get(fileId)!
       const nBytes = yield* Opfs.Opfs.syncWrite(file.accessHandle, pData.subarray(), {
@@ -249,7 +255,7 @@ export class AccessHandlePoolVFS extends FacadeVFS {
     )
   }
 
-  jTruncate(fileId: number, iSize: number): number {
+  override jTruncate(fileId: number, iSize: number): number {
     return Effect.gen(this, function* () {
       const file = this.#mapIdToFile.get(fileId)!
       yield* Opfs.Opfs.syncTruncate(file.accessHandle, HEADER_OFFSET_DATA + iSize)
@@ -261,7 +267,7 @@ export class AccessHandlePoolVFS extends FacadeVFS {
     )
   }
 
-  jSync(fileId: number, _flags: number): number {
+  override jSync(fileId: number, _flags: number): number {
     return Effect.gen(this, function* () {
       const file = this.#mapIdToFile.get(fileId)!
       yield* Opfs.Opfs.syncFlush(file.accessHandle)
@@ -273,7 +279,7 @@ export class AccessHandlePoolVFS extends FacadeVFS {
     )
   }
 
-  jFileSize(fileId: number, pSize64: DataView): number {
+  override jFileSize(fileId: number, pSize64: DataView): number {
     return Effect.gen(this, function* () {
       const file = this.#mapIdToFile.get(fileId)!
       const opfsFileSize = yield* Opfs.Opfs.syncGetSize(file.accessHandle)
@@ -287,15 +293,15 @@ export class AccessHandlePoolVFS extends FacadeVFS {
     )
   }
 
-  jSectorSize(_fileId: number): number {
+  override jSectorSize(_fileId: number): number {
     return SECTOR_SIZE
   }
 
-  jDeviceCharacteristics(_fileId: number): number {
+  override jDeviceCharacteristics(_fileId: number): number {
     return VFS.SQLITE_IOCAP_UNDELETABLE_WHEN_OPEN
   }
 
-  jAccess(zName: string, _flags: number, pResOut: DataView): number {
+  override jAccess(zName: string, _flags: number, pResOut: DataView): number {
     return Effect.gen(this, function* () {
       const path = this.#getPath(zName)
       pResOut.setInt32(0, this.#mapPathToAccessHandle.has(path) ? 1 : 0, true)
@@ -307,7 +313,7 @@ export class AccessHandlePoolVFS extends FacadeVFS {
     )
   }
 
-  jDelete(zName: string, _syncDir: number): number {
+  override jDelete(zName: string, _syncDir: number): number {
     return Effect.gen(this, function* () {
       const path = this.#getPath(zName)
       yield* this.#deletePath(path)
@@ -401,6 +407,7 @@ export class AccessHandlePoolVFS extends FacadeVFS {
             this.#mapAccessHandleToName.delete(accessHandle)
             this.#availableAccessHandles.delete(accessHandle)
             ++nRemoved
+            return nRemoved
           }),
         { discard: true },
       )

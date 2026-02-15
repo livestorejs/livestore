@@ -1,5 +1,6 @@
 import type { CfTypes } from '@livestore/common-cf'
 import * as VFS from '@livestore/wa-sqlite/src/VFS.js'
+
 import { FacadeVFS } from '../FacadeVFS.ts'
 
 const SECTOR_SIZE = 4096
@@ -220,7 +221,7 @@ export class CloudflareWorkerVFS extends FacadeVFS {
     await this.#updateFileIndex()
   }
 
-  jOpen(zName: string, fileId: number, flags: number, pOutFlags: DataView): number {
+  override jOpen(zName: string, fileId: number, flags: number, pOutFlags: DataView): number {
     try {
       const path = zName ? this.#getPath(zName) : Math.random().toString(36)
       const metadata = this.#metadataCache.get(path)
@@ -265,7 +266,7 @@ export class CloudflareWorkerVFS extends FacadeVFS {
     }
   }
 
-  jClose(fileId: number): number {
+  override jClose(fileId: number): number {
     const handle = this.#openFiles.get(fileId)
     if (handle) {
       this.#openFiles.delete(fileId)
@@ -277,7 +278,7 @@ export class CloudflareWorkerVFS extends FacadeVFS {
     return VFS.SQLITE_OK
   }
 
-  jRead(fileId: number, pData: Uint8Array, iOffset: number): number {
+  override jRead(fileId: number, pData: Uint8Array, iOffset: number): number {
     try {
       const handle = this.#openFiles.get(fileId)
       if (!handle) return VFS.SQLITE_IOERR
@@ -338,7 +339,7 @@ export class CloudflareWorkerVFS extends FacadeVFS {
     }
   }
 
-  jWrite(fileId: number, pData: Uint8Array, iOffset: number): number {
+  override jWrite(fileId: number, pData: Uint8Array, iOffset: number): number {
     try {
       const handle = this.#openFiles.get(fileId)
       if (!handle) return VFS.SQLITE_IOERR
@@ -399,7 +400,7 @@ export class CloudflareWorkerVFS extends FacadeVFS {
     }
   }
 
-  jTruncate(fileId: number, iSize: number): number {
+  override jTruncate(fileId: number, iSize: number): number {
     try {
       const handle = this.#openFiles.get(fileId)
       if (!handle) return VFS.SQLITE_IOERR
@@ -454,7 +455,7 @@ export class CloudflareWorkerVFS extends FacadeVFS {
     }
   }
 
-  jSync(fileId: number, _flags: number): number {
+  override jSync(fileId: number, _flags: number): number {
     try {
       const handle = this.#openFiles.get(fileId)
       if (!handle) return VFS.SQLITE_IOERR
@@ -469,7 +470,7 @@ export class CloudflareWorkerVFS extends FacadeVFS {
     }
   }
 
-  jFileSize(fileId: number, pSize64: DataView): number {
+  override jFileSize(fileId: number, pSize64: DataView): number {
     try {
       const handle = this.#openFiles.get(fileId)
       if (!handle) return VFS.SQLITE_IOERR
@@ -482,15 +483,15 @@ export class CloudflareWorkerVFS extends FacadeVFS {
     }
   }
 
-  jSectorSize(_fileId: number): number {
+  override jSectorSize(_fileId: number): number {
     return SECTOR_SIZE
   }
 
-  jDeviceCharacteristics(_fileId: number): number {
+  override jDeviceCharacteristics(_fileId: number): number {
     return VFS.SQLITE_IOCAP_UNDELETABLE_WHEN_OPEN
   }
 
-  jAccess(zName: string, _flags: number, pResOut: DataView): number {
+  override jAccess(zName: string, _flags: number, pResOut: DataView): number {
     try {
       const path = this.#getPath(zName)
       const exists = this.#activeFiles.has(path)
@@ -502,7 +503,7 @@ export class CloudflareWorkerVFS extends FacadeVFS {
     }
   }
 
-  jDelete(zName: string, _syncDir: number): number {
+  override jDelete(zName: string, _syncDir: number): number {
     try {
       const path = this.#getPath(zName)
 

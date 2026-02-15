@@ -2,7 +2,7 @@
   "exclude": [".yarn", "dist", "debug"],
   "compilerOptions": {
     "checkJs": true,
-    "target":"ESNext",
+    "target": "ESNext",
     "module": "ESNext",
     "moduleResolution": "Node",
     "lib": ["DOM", "ESNext", "WebWorker"]

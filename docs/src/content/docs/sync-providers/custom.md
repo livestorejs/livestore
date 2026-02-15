@@ -25,15 +25,17 @@ const makeMySyncBackend = (args: { /* ... */ }) => {
     },
     push: (batch) => {
       // ...
-    }
+    },
   }
 }
 
 // my-app.ts
 const adapter = makeAdapter({
   sync: {
-    backend: makeMySyncBackend({ /* ... */ })
-  }
+    backend: makeMySyncBackend({
+      /* ... */
+    }),
+  },
 })
 ```
 
@@ -49,20 +51,20 @@ Ideally this implementation considers the following:
 
 Implement the actual sync backend protocol (running in the server). At minimum this sync backend needs to do the following:
 
-  - For client `push` requests:
-    - Validate the batch of events
-      - Ensure the batch sequence numbers are in ascending order and larger than the sync backend head
-      - Further validation checks (e.g. schema-aware payload validation)
-    - Persist the events in the event store (implying a new sync backend head equal to the sequence number of the pushed last event)
-    - Return a success response
-    - It's important that the server only processes one push request at a time to ensure a total ordering of events.
+- For client `push` requests:
+  - Validate the batch of events
+    - Ensure the batch sequence numbers are in ascending order and larger than the sync backend head
+    - Further validation checks (e.g. schema-aware payload validation)
+  - Persist the events in the event store (implying a new sync backend head equal to the sequence number of the pushed last event)
+  - Return a success response
+  - It's important that the server only processes one push request at a time to ensure a total ordering of events.
 
-  - For client `pull` requests:
-    - Validate the cursor
-    - Query the events from the database
-    - Return the events to the client
-    - This can be done in a batch or streamed to the client
-    - `pull` requests can be handled in parallel by the server
+- For client `pull` requests:
+  - Validate the cursor
+  - Query the events from the database
+  - Return the events to the client
+  - This can be done in a batch or streamed to the client
+  - `pull` requests can be handled in parallel by the server
 
 ## General recommendations
 

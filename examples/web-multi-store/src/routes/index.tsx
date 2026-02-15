@@ -14,7 +14,7 @@ export const Route = createFileRoute('/')({
   component: SingleRoute,
 })
 
-function SingleRoute() {
+const SingleRoute = () => {
   const { storeRegistry } = Route.useRouteContext()
 
   return (
@@ -34,7 +34,7 @@ function SingleRoute() {
   )
 }
 
-function Workspace() {
+const Workspace = () => {
   const workspaceStore = useStore(workspaceStoreOptions)
   const [workspace] = workspaceStore.useQuery(queryDb(workspaceTables.workspaces.select().limit(1)))
   const issues = workspaceStore.useQuery(

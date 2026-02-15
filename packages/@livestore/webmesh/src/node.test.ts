@@ -1,7 +1,8 @@
-import { IS_CI, omitUndefineds } from '@livestore/utils'
-import { Chunk, Deferred, Effect, Exit, Schema, Scope, Stream, WebChannel } from '@livestore/utils/effect'
-import { Vitest } from '@livestore/utils-dev/node-vitest'
 import { expect } from 'vitest'
+
+import { IS_CI, omitUndefineds } from '@livestore/utils'
+import { Vitest } from '@livestore/utils-dev/node-vitest'
+import { Chunk, Deferred, Effect, Exit, Schema, Scope, Stream, WebChannel } from '@livestore/utils/effect'
 
 import { Packet } from './mesh-schema.ts'
 import type { MeshNode } from './node.ts'

@@ -1,5 +1,6 @@
-import { Events, makeSchema, Schema, State } from '@livestore/livestore'
 import { Option } from 'effect'
+
+import { Events, makeSchema, Schema, State } from '@livestore/livestore'
 
 // Define event payloads
 export const events = {

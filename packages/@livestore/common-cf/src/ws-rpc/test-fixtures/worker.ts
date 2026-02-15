@@ -1,7 +1,9 @@
 /// <reference types="@cloudflare/workers-types" />
 
 import { DurableObject } from 'cloudflare:workers'
+
 import { Effect, Layer, Option, RpcServer, Schedule, Stream } from '@livestore/utils/effect'
+
 import type * as CfTypes from '../../cf-types.ts'
 import { setupDurableObjectWebSocketRpc } from '../ws-rpc-server.ts'
 import { TestRpcs } from './rpc-schema.ts'
@@ -11,7 +13,7 @@ export interface Env {
 }
 
 export class TestRpcDurableObject extends DurableObject<Env, unknown> {
-  __DURABLE_OBJECT_BRAND = 'TestRpcDurableObject' as never
+  override __DURABLE_OBJECT_BRAND = 'TestRpcDurableObject' as never
 
   constructor(state: DurableObjectState, env: Env) {
     super(state, env)
@@ -59,7 +61,7 @@ export class TestRpcDurableObject extends DurableObject<Env, unknown> {
     })
   }
 
-  async fetch(request: Request): Promise<Response> {
+  override async fetch(request: Request): Promise<Response> {
     const upgradeHeader = request.headers.get('Upgrade')
     if (upgradeHeader === undefined || upgradeHeader !== 'websocket') {
       return new Response('Durable Object expected Upgrade: websocket', { status: 426 })

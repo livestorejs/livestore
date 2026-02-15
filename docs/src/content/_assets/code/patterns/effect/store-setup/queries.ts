@@ -1,6 +1,8 @@
 import { Atom } from '@effect-atom/atom'
-import { queryDb, sql } from '@livestore/livestore'
 import { Schema } from 'effect'
+
+import { queryDb, sql } from '@livestore/livestore'
+
 import { StoreTag } from './atoms.ts'
 
 // User schema for type safety

@@ -11,13 +11,14 @@ import { Schema } from '@livestore/utils/effect'
 import * as SolidTesting from '@solidjs/testing-library'
 import * as Solid from 'solid-js'
 import { describe, expect, it } from 'vitest'
+
 import { events, schema, tables } from './__tests__/fixture.tsx'
 import { StoreRegistryProvider } from './StoreRegistryContext.tsx'
 import { useStore } from './useStore.ts'
 
-function createSuspenseCount(id: string) {
+const createSuspenseCount = (id: string) => {
   let count = 0
-  function Comp(props: Solid.ParentProps) {
+  const Comp = (props: Solid.ParentProps) => {
     return (
       <Solid.Suspense
         fallback={
