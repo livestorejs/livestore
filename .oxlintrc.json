@@ -46,6 +46,7 @@
     "typescript/consistent-type-definitions": "off",
     "no-unused-vars": "off",
     "eqeqeq": "off",
+    "react/react-in-jsx-scope": "off",
     "func-style": "error",
     "oxc/no-barrel-file": "off",
     "import/default": "off",
@@ -54,9 +55,6 @@
     "import/no-unassigned-import": "off",
     "import/namespace": "off",
     "import/no-named-as-default": "off",
-    "react/react-in-jsx-scope": "off",
-    "react/style-prop-object": "off",
-    "react-hooks/exhaustive-deps": "off",
     "react-perf/jsx-no-new-function-as-prop": "off",
     "react-perf/jsx-no-new-object-as-prop": "off",
     "react-perf/jsx-no-jsx-as-prop": "off",
@@ -146,6 +144,12 @@
         "oxc/no-barrel-file": "off",
         "oxc/no-map-spread": "off",
         "unicorn/consistent-function-scoping": "off"
+      }
+    },
+    {
+      "files": ["packages/@livestore/react/src/useRcResource.ts"],
+      "rules": {
+        "react-hooks/exhaustive-deps": "off"
       }
     },
     {

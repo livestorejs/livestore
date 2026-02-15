@@ -1,9 +1,8 @@
+import { StoreRegistry } from '@livestore/livestore'
+import { StoreRegistryProvider } from '@livestore/react'
 import { StatusBar } from 'expo-status-bar'
 import { Suspense, useState } from 'react'
 import { StyleSheet, Text, View } from 'react-native'
-
-import { StoreRegistry } from '@livestore/livestore'
-import { StoreRegistryProvider } from '@livestore/react'
 
 import { Filters } from './components/Filters.tsx'
 import { ListTodos } from './components/ListTodos.tsx'
@@ -20,7 +19,7 @@ export const Root = () => {
           <InnerApp />
         </StoreRegistryProvider>
       </Suspense>
-      <StatusBar style="auto" />
+      <StatusBar />
     </View>
   )
 }

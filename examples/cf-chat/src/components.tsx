@@ -1,6 +1,5 @@
-import React, { useState } from 'react'
-
 import type { SyncState } from '@livestore/livestore'
+import React, { useState } from 'react'
 
 import { useReactionPickerClickOutside } from './hooks.ts'
 import { useAppStore } from './livestore/store.ts'
@@ -197,13 +196,12 @@ export const MessagesContainer: React.FC<MessagesContainerProps> = ({
     return el.scrollTop + el.clientHeight >= el.scrollHeight - threshold
   }, [])
 
-  // biome-ignore lint/correctness/useExhaustiveDependencies: Need to trigger on new messages only
   React.useEffect(() => {
     const shouldScroll = isAtBottom()
     if (shouldScroll) {
       messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' })
     }
-  }, [messages.length])
+  }, [isAtBottom, messages.length, messagesEndRef])
 
   const isSameDay = (a: Date, b: Date) =>
     a.getFullYear() === b.getFullYear() && a.getMonth() === b.getMonth() && a.getDate() === b.getDate()
