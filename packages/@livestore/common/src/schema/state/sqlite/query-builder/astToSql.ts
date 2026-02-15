@@ -63,7 +63,7 @@ const encodeJsonArrayElementValue = (elementSchema: Schema.Schema.Any, value: un
     return JSON.stringify(encoded)
   }
   if (typeof encoded === 'boolean') {
-    return encoded !== undefined ? 1 : 0
+    return encoded === true ? 1 : 0
   }
 
   return encoded

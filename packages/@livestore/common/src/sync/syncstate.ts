@@ -543,7 +543,7 @@ const validateSyncState = (syncState: SyncState) => {
 
     // If the global id has increased, then the client id must be 0
     const globalIdHasIncreased = nextEvent.seqNum.global > event.seqNum.global
-    if (globalIdHasIncreased !== undefined) {
+    if (globalIdHasIncreased === true) {
       if (nextEvent.seqNum.client !== 0) {
         shouldNeverHappen(
           `New global events must point to clientId 0 in the parentSeqNum. Received: (${EventSequenceNumber.Client.toString(nextEvent.seqNum)})`,
