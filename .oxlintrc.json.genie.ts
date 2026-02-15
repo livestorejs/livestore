@@ -109,8 +109,6 @@ const phase2Rules = {
   'typescript/no-base-to-string': 'off',
   // 11 violations, low-risk type hygiene noise
   'typescript/no-redundant-type-constituents': 'off',
-  // 4 violations, mostly template readability nits
-  'typescript/no-unnecessary-template-expression': 'off',
   // 4 violations, mostly Effect wrappers around void-returning APIs
   'typescript/no-meaningless-void-operator': 'off',
 
