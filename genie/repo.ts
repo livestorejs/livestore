@@ -476,22 +476,25 @@ export const solidJsx = { jsx: 'preserve' as const, jsxImportSource: 'solid-js' 
 
 export { githubWorkflow } from '../repos/effect-utils/packages/@overeng/genie/src/runtime/mod.ts'
 
-/**
- * Namespace runner configuration for livestore CI.
- * Uses run ID-based labels for runner affinity to prevent queue jumping.
- */
-export const namespaceRunner = (runId: string) =>
-  ['namespace-profile-linux-x86-64', `namespace-features:github.run-id=${runId}`] as const
+import {
+  namespaceRunner as namespaceRunnerBase,
+  devenvShellDefaults,
+  installNixStep,
+  cachixStep,
+  installMegarepoStep,
+  syncMegarepoStep,
+  installDevenvFromLockStep,
+  checkoutStep,
+} from '../repos/effect-utils/genie/ci-workflow.ts'
 
-/** Standard devenv shell for CI jobs */
-export const devenvShellDefaults = {
-  run: { shell: 'devenv shell bash -- -e {0}' },
-} as const
+export { devenvShellDefaults }
+
+export const namespaceRunner = (runId: string) =>
+  namespaceRunnerBase('namespace-profile-linux-x86-64', runId)
 
 /**
  * Setup steps for livestore CI jobs (without checkout).
- * Installs Nix, enables Cachix caching, syncs megarepo dependencies, and warms up devenv.
- * Use this when you need a custom checkout step (e.g., with specific ref).
+ * Uses shared step atoms from effect-utils/genie/ci-workflow.ts.
  *
  * Note: We use DEVENV_SKIP_SETUP=1 to prevent enterShell from running setup
  * tasks via nested devenv processes (which fail in GitHub Actions due to
@@ -499,39 +502,14 @@ export const devenvShellDefaults = {
  * via `devenv tasks run`.
  */
 export const livestoreSetupStepsAfterCheckout = [
-  {
-    name: 'Install Nix',
-    uses: 'cachix/install-nix-action@v31',
-    with: {
-      // Ensure cache.nixos.org is available as a fallback substituter.
-      // Without this, low-level store paths can fail with "path is not valid"
-      // when a runner cache is stale or incomplete.
-      extra_nix_config:
-        'extra-substituters = https://cache.nixos.org\nextra-trusted-public-keys = cache.nixos.org-1:6NCHdD59X431o0gWypbMrAURkbJ16ZPMQFGspcDShjY=',
-    },
-  },
-  {
-    name: 'Enable Cachix cache',
-    uses: 'cachix/cachix-action@v16',
-    with: { name: 'livestore', authToken: '${{ env.CACHIX_AUTH_TOKEN }}' },
-  },
-  {
-    name: 'Install megarepo CLI',
-    // Install from devenv.lock pinned effect-utils revision to avoid version drift.
-    run: `nix profile install github:overengineeringstudio/effect-utils/$(jq -r '.nodes["effect-utils"].locked.rev' devenv.lock)#megarepo`,
-    shell: 'bash',
-  },
-  {
-    name: 'Sync megarepo dependencies',
-    run: 'mr sync --frozen --verbose',
-    shell: 'bash',
-  },
-  {
-    name: 'Install devenv',
-    run: `nix profile install github:cachix/devenv/$(jq -r ".nodes.devenv.locked.rev" devenv.lock)
-echo "$HOME/.nix-profile/bin" >> $GITHUB_PATH`,
-    shell: 'bash',
-  },
+  installNixStep({
+    extraConf:
+      'extra-substituters = https://cache.nixos.org\nextra-trusted-public-keys = cache.nixos.org-1:6NCHdD59X431o0gWypbMrAURkbJ16ZPMQFGspcDShjY=',
+  }),
+  cachixStep({ name: 'livestore', authToken: '${{ env.CACHIX_AUTH_TOKEN }}' }),
+  installMegarepoStep,
+  syncMegarepoStep(),
+  installDevenvFromLockStep,
   {
     name: 'Validate Nix store',
     // Namespace runners may have stale/invalid paths in their bundled nix store cache.
@@ -553,7 +531,7 @@ fi`,
  * Full setup steps for livestore CI jobs (includes checkout).
  * Use livestoreSetupStepsAfterCheckout if you need a custom checkout step.
  */
-export const livestoreSetupSteps = [{ uses: 'actions/checkout@v4' }, ...livestoreSetupStepsAfterCheckout] as const
+export const livestoreSetupSteps = [checkoutStep(), ...livestoreSetupStepsAfterCheckout] as const
 
 /**
  * OTEL configuration step for Grafana Cloud.
