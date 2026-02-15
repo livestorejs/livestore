@@ -1,14 +1,13 @@
-import { ErrorFallback } from '@/components/ErrorFallback.tsx'
-import { issueStoreOptions } from '@/stores/issue/index.ts'
-import { Suspense } from 'react'
-import { ErrorBoundary } from 'react-error-boundary'
-
 import { queryDb } from '@livestore/livestore'
 import { useStore } from '@livestore/react'
+import { Suspense } from 'react'
+import { ErrorBoundary } from 'react-error-boundary'
+import { ErrorFallback } from '@/components/ErrorFallback.tsx'
+import { issueStoreOptions } from '@/stores/issue/index.ts'
 
 import { issueEvents, issueTables } from '../stores/issue/schema.ts'
 
-export function IssueView({ issueId }: { issueId: string }) {
+export const IssueView = ({ issueId }: { issueId: string }) => {
   const issueStore = useStore(issueStoreOptions(issueId)) // Will suspend component if the store is not yet loaded
   const [issue] = issueStore.useQuery(queryDb(issueTables.issue.select().limit(1)))
 

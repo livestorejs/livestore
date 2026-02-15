@@ -1,12 +1,11 @@
-import { ErrorFallback } from '@/components/ErrorFallback.tsx'
-import { workspaceStoreOptions } from '@/stores/workspace/index.ts'
-import { workspaceEvents, workspaceTables } from '@/stores/workspace/schema.ts'
+import { queryDb } from '@livestore/livestore'
+import { StoreRegistryProvider, useStore } from '@livestore/react'
 import { createFileRoute } from '@tanstack/react-router'
 import { Suspense } from 'react'
 import { ErrorBoundary } from 'react-error-boundary'
-
-import { queryDb } from '@livestore/livestore'
-import { StoreRegistryProvider, useStore } from '@livestore/react'
+import { ErrorFallback } from '@/components/ErrorFallback.tsx'
+import { workspaceStoreOptions } from '@/stores/workspace/index.ts'
+import { workspaceEvents, workspaceTables } from '@/stores/workspace/schema.ts'
 
 export const Route = createFileRoute('/')({
   loader: ({ context }) => {
@@ -15,7 +14,7 @@ export const Route = createFileRoute('/')({
   component: SingleRoute,
 })
 
-function SingleRoute() {
+const SingleRoute = () => {
   const { storeRegistry } = Route.useRouteContext()
 
   return (
@@ -35,7 +34,7 @@ function SingleRoute() {
   )
 }
 
-function Workspace() {
+const Workspace = () => {
   const workspaceStore = useStore(workspaceStoreOptions)
   const [workspace] = workspaceStore.useQuery(queryDb(workspaceTables.workspaces.select().limit(1)))
   const issues = workspaceStore.useQuery(

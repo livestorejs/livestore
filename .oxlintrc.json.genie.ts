@@ -46,8 +46,7 @@ const permanentlyDisabledRules = {
 // ── TODO(oep-1n3): Phase 2 — re-enable after codebase-wide fixes ───────────
 
 const phase2Rules = {
-  // TODO(oep-1n3.1): 93 violations — migrate function declarations to arrow expressions
-  'func-style': 'off',
+  'func-style': 'error',
   // TODO(oep-1n3.6): 18 violations — eliminate barrel files in favor of mod.ts
   'oxc/no-barrel-file': 'off',
 

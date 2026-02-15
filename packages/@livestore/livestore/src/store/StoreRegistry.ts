@@ -18,8 +18,8 @@ import {
 } from '@livestore/utils/effect'
 
 import { type CreateStoreOptions, createStore } from './create-store.ts'
-import type { OtelOptions } from './store-types.ts'
 import type { Store } from './store.ts'
+import type { OtelOptions } from './store-types.ts'
 
 /**
  * Default time to keep unused stores in cache.
@@ -406,12 +406,10 @@ export class StoreRegistry {
  * });
  * ```
  */
-export function storeOptions<
+export const storeOptions = <
   TSchema extends LiveStoreSchema,
   TContext = {},
   TSyncPayloadSchema extends Schema.Schema<any> = typeof Schema.JsonValue,
 >(
   options: RegistryStoreOptions<TSchema, TContext, TSyncPayloadSchema>,
-): RegistryStoreOptions<TSchema, TContext, TSyncPayloadSchema> {
-  return options
-}
+): RegistryStoreOptions<TSchema, TContext, TSyncPayloadSchema> => options

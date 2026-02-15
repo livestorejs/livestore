@@ -46,7 +46,7 @@
     "typescript/consistent-type-definitions": "off",
     "no-unused-vars": "off",
     "eqeqeq": "off",
-    "func-style": "off",
+    "func-style": "error",
     "oxc/no-barrel-file": "off",
     "import/default": "off",
     "import/no-cycle": "off",

@@ -64,7 +64,7 @@ export const compactEvents = (inputDag: HistoryDag): { dag: HistoryDag; compacte
   return { dag, compactedEventCount }
 }
 
-function* makeSubDagsForEvent(inputDag: HistoryDag, eventNumStr: string): Generator<HistoryDag> {
+const makeSubDagsForEvent = function* (inputDag: HistoryDag, eventNumStr: string): Generator<HistoryDag> {
   /** Map from eventNumStr to array of eventNumStrs that are dependencies */
   let nextIterationEls: Map<string, string[]> = new Map([[eventNumStr, []]])
   let previousDag: HistoryDag | undefined

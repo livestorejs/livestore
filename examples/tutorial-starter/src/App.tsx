@@ -5,7 +5,7 @@ interface Todo {
   text: string
 }
 
-function App() {
+const App = () => {
   const [todos, setTodos] = useState<Todo[]>([])
   const [input, setInput] = useState('')
 

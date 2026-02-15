@@ -214,7 +214,7 @@ class TodoList extends HTMLElement {
 
 customElements.define('todo-list', TodoList)
 
-export function parseTemplate(source: string) {
+export const parseTemplate = (source: string) => {
   const el = document.createElement('template')
   el.innerHTML = source
 

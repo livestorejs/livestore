@@ -1,8 +1,7 @@
-import stylesheetUrl from '@/styles.css?url'
+import type { StoreRegistry } from '@livestore/livestore'
 import { createRootRouteWithContext, HeadContent, Link, Outlet, Scripts } from '@tanstack/react-router'
 import type { ReactNode } from 'react'
-
-import type { StoreRegistry } from '@livestore/livestore'
+import stylesheetUrl from '@/styles.css?url'
 
 type RouterContext = {
   storeRegistry: StoreRegistry
@@ -31,7 +30,7 @@ const tabs = [
   { to: '/recursive', label: 'Recursive' },
 ] as const
 
-function RootComponent() {
+const RootComponent = () => {
   return (
     <RootDocument>
       <main>
@@ -56,7 +55,7 @@ function RootComponent() {
   )
 }
 
-function RootDocument({ children }: Readonly<{ children: ReactNode }>) {
+const RootDocument = ({ children }: Readonly<{ children: ReactNode }>) => {
   return (
     <html lang="en">
       <head>

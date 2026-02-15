@@ -1,9 +1,8 @@
 /// <reference types="vitest/globals" />
 
-import { beforeEach, describe, expect, it } from 'vitest'
-
 import type { CfTypes } from '@livestore/common-cf'
 import * as VFS from '@livestore/wa-sqlite/src/VFS.js'
+import { beforeEach, describe, expect, it } from 'vitest'
 
 import { CloudflareSqlVFS } from '../../mod.ts'
 
@@ -134,9 +133,9 @@ describe('CloudflareSqlVFS - Core Functionality', () => {
       Statement: {} as any,
     } as CfTypes.SqlStorage
 
-    function createMockCursor<T extends Record<string, CfTypes.SqlStorageValue>>(
+    const createMockCursor = <T extends Record<string, CfTypes.SqlStorageValue>>(
       data: T[],
-    ): CfTypes.SqlStorageCursor<T> {
+    ): CfTypes.SqlStorageCursor<T> => {
       let index = 0
 
       return {

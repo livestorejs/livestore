@@ -173,7 +173,7 @@ export const isReadonlyArray = <I, T>(value: ReadonlyArray<I> | T): value is Rea
  * union have been accounted for.
  */
 
-export function casesHandled(unexpectedCase: never): never {
+export const casesHandled = (unexpectedCase: never): never => {
   // oxlint-disable-next-line eslint(no-debugger) -- intentional breakpoint for unhandled cases
   debugger
   throw new Error(`A case was not handled for value: ${truncate(objectToString(unexpectedCase), 1000)}`)

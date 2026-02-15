@@ -61,9 +61,9 @@ export const when: {
  * @returns A function that can be called to conditionally execute based on the truthiness of all accessor values,
  *          returning their results as an array or undefined if any are not truthy.
  */
-export function every<TAccessors extends Array<AccessorMaybe<any>>>(
+export const every = <TAccessors extends Array<AccessorMaybe<any>>>(
   ...accessors: TAccessors
-): () => InferNonNullableTuple<TAccessors> | undefined {
+): (() => InferNonNullableTuple<TAccessors> | undefined) => {
   return () => {
     const values = new Array(accessors.length) as InferNonNullableTuple<TAccessors>
     for (let i = 0; i < accessors.length; i++) {
