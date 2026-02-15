@@ -91,8 +91,6 @@ const phase2Rules = {
   'typescript/no-unsafe-type-assertion': 'off',
   // 115 violations, mostly stylistic boolean comparisons
   'typescript/no-unnecessary-boolean-literal-compare': 'off',
-  // 79 violations, mostly generic verbosity
-  'typescript/no-unnecessary-type-arguments': 'off',
   // 72 violations, concentrated in generated clients and broad union types
   'typescript/no-duplicate-type-constituents': 'off',
   // 57 violations, assertion cleanup churn
