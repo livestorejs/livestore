@@ -4,7 +4,7 @@
 export const deepEqual = <T>(a: T, b: T): boolean => {
   if (a === b) return true
 
-  if (a !== undefined && b !== undefined && typeof a === 'object' && typeof b === 'object') {
+  if (a != null && b != null && typeof a === 'object' && typeof b === 'object') {
     if (a.constructor !== b.constructor) return false
 
     let length: number

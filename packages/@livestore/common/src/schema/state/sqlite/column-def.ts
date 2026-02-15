@@ -184,11 +184,11 @@ const getColumnForSchema = (schema: Schema.Schema.AnyNoContext, nullable = false
   }
 
   const literalColumn = getLiteralColumnDefinition(encodedAst, coreSchema, nullable, coreAst)
-  if (literalColumn !== undefined) return literalColumn
+  if (literalColumn !== null) return literalColumn
 
   // Fallback to checking the original AST in case the encoded schema differs
   const coreLiteralColumn = getLiteralColumnDefinition(coreAst, coreSchema, nullable, coreAst)
-  if (coreLiteralColumn !== undefined) return coreLiteralColumn
+  if (coreLiteralColumn !== null) return coreLiteralColumn
 
   // Everything else needs JSON encoding
   return SqliteDsl.json({ schema: coreSchema, nullable })

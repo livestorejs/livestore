@@ -128,7 +128,7 @@ Vitest.describe('useClientDocument', () => {
           <div>
             <TasksList setTaskId={setCurrentTaskId} />
             <div role="current-id">Current Task Id: {state.currentTaskId ?? '-'}</div>
-            {state.currentTaskId !== undefined ? <TaskDetails id={state.currentTaskId} /> : <div>Click on a task to see details</div>}
+            {state.currentTaskId !== null ? <TaskDetails id={state.currentTaskId} /> : <div>Click on a task to see details</div>}
           </div>
         )
       }

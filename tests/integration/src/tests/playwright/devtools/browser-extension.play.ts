@@ -408,7 +408,7 @@ const PWLive = ({ extensionPath }: { extensionPath: string }) =>
             const cur = new URL(u)
             const base = new URL('/_livestore/browser-extension/', cur.origin)
             const tabId = cur.searchParams.get('tabId')
-            if (tabId !== undefined) base.searchParams.set('tabId', tabId)
+            if (tabId !== null) base.searchParams.set('tabId', tabId)
             return base.toString()
           }
           await tabLocalhost.liveStoreDevtools.goto(toIndexUrl(tabLocalhost.liveStoreDevtools.url()))

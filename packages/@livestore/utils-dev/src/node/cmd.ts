@@ -52,8 +52,8 @@ export const cmd: (
   const cwd = yield* CurrentWorkingDirectory
 
   const asArray = Array.isArray(commandInput)
-  const parts = asArray !== undefined ? (commandInput).filter(isNotUndefined) : undefined
-  const [command, ...args] = asArray !== undefined ? (parts as string[]) : (commandInput).split(' ')
+  const parts = asArray ? (commandInput as (string | undefined)[]).filter(isNotUndefined) : undefined
+  const [command, ...args] = asArray ? (parts as string[]) : (commandInput as string).split(' ')
 
   const debugEnvStr = Object.entries(options?.env ?? {})
     .map(([key, value]) => `${key}='${value}' `)

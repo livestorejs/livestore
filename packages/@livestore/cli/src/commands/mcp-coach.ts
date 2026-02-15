@@ -114,7 +114,7 @@ Format your response as constructive feedback that helps developers improve thei
         .slice(0, 5)
 
       const scoreMatch = feedback.match(/(?:score|rating|quality).*?(\d+(?:\.\d+)?)/i)
-      const score = scoreMatch !== undefined ? Number.parseFloat(scoreMatch[1] ?? '0') : undefined
+      const score = scoreMatch !== null ? Number.parseFloat(scoreMatch[1] ?? '0') : undefined
 
       return {
         feedback,

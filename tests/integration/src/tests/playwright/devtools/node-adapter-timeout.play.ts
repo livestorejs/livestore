@@ -35,7 +35,7 @@ const getAvailablePort = (): Promise<number> => {
     const server = createServer()
     server.listen(0, () => {
       const address = server.address()
-      if (address !== undefined && typeof address === 'object') {
+      if (address !== null && typeof address === 'object') {
         const port = address.port
         server.close(() => resolve(port))
       } else {

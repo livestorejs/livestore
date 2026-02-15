@@ -58,7 +58,7 @@ export const historyDagFromNodes = (dagNodes: HistoryDagNode[], options?: { skip
         return null
       })()
 
-      if (depNode !== undefined) {
+      if (depNode !== null) {
         const depNodeIdStr = EventSequenceNumber.Client.toString(depNode.seqNum)
         const nodeIdStr = EventSequenceNumber.Client.toString(node.seqNum)
         if (dag.edges(depNodeIdStr, nodeIdStr).filter((e) => dag.getEdgeAttributes(e).type === 'facts').length === 0) {

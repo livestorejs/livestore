@@ -270,7 +270,7 @@ const extractSnippetNamespaceMappings = (
   const objectSource = body.slice(braceStart + 1, endIndex)
   const propertyPattern = /([A-Za-z0-9_$]+)\s*:\s*([A-Za-z0-9_$]+)/g
   let match = propertyPattern.exec(objectSource)
-  while (match !== undefined) {
+  while (match !== null) {
     const [, property, identifier] = match
     if (property !== undefined && identifier !== undefined) {
       namespaceMap.set(property, identifier)

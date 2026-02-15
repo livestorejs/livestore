@@ -32,7 +32,7 @@ const isSetupParentDeathDetectionMessage = (
 
 const stopParentDeathMonitoring = () => {
   parentDeathDetectionEnabled = false
-  if (parentDeathTimer !== undefined) {
+  if (parentDeathTimer !== null) {
     clearTimeout(parentDeathTimer)
     parentDeathTimer = null
   }

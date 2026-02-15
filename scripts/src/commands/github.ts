@@ -120,12 +120,12 @@ const syncRulesetsCommand = Cli.Command.make(
     if (dryRun !== undefined) {
       console.log(`Ruleset file: ${getRulesetFilePath(branch)}`)
       console.log(`Ruleset name: ${body.name}`)
-      console.log(`Existing: ${existing !== undefined ? `yes (id: ${existing.id})` : 'no'}`)
-      console.log(`Action: ${existing !== undefined ? 'update' : 'create'}`)
+      console.log(`Existing: ${existing !== null ? `yes (id: ${existing.id})` : 'no'}`)
+      console.log(`Action: ${existing !== null ? 'update' : 'create'}`)
       return
     }
 
-    if (existing !== undefined) {
+    if (existing !== null) {
       yield* updateRuleset(existing.id, body)
       console.log(`Updated ruleset '${body.name}' (id: ${existing.id}) on ${OWNER}/${REPO}`)
     } else {

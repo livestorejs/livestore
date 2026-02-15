@@ -164,7 +164,7 @@ export const prepareMultiCodeData = (props: MultiCodeProps): PreparedMultiCode =
   })
 
   const renderedMap = new Map<string, RenderedSnippet>()
-  if (isRecord(code?.rendered) !== undefined && Array.isArray(code.rendered) === false) {
+  if (isRecord(code?.rendered) && Array.isArray(code.rendered) === false) {
     for (const [key, value] of Object.entries(code.rendered)) {
       if (isRecord(value) === false) continue
       const filename = normalizeFilename(key)

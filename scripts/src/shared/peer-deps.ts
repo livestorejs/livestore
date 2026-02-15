@@ -38,13 +38,13 @@ export class PeerDepCheckError extends Schema.TaggedError<PeerDepCheckError>()('
 const parsePackageSpec = (spec: string): { name: string; version: string } | undefined => {
   // Handle scoped packages (@scope/name@version)
   const scopedMatch = spec.match(/^(@[^@]+)@([^@(]+)/)
-  if (scopedMatch !== undefined) {
+  if (scopedMatch !== null) {
     return { name: scopedMatch[1]!, version: scopedMatch[2]! }
   }
 
   // Handle regular packages (name@version)
   const regularMatch = spec.match(/^([^@]+)@([^@(]+)/)
-  if (regularMatch !== undefined) {
+  if (regularMatch !== null) {
     return { name: regularMatch[1]!, version: regularMatch[2]! }
   }
 

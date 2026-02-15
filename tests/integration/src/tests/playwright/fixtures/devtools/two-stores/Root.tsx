@@ -21,15 +21,15 @@ const adapterTodos =
   adapterKind === 'inmemory'
     ? makeInMemoryAdapter({
         devtools: { sharedWorker: LiveStoreSharedWorker },
-        ...(clientId !== undefined ? { clientId } : {}),
-        ...(sessionId !== undefined ? { sessionId } : {}),
+        ...(clientId !== null ? { clientId } : {}),
+        ...(sessionId !== null ? { sessionId } : {}),
       })
     : makePersistedAdapter({
         storage: { type: 'opfs', directory: 'todos' },
         sharedWorker: LiveStoreSharedWorker,
         worker: LiveStoreWorkerTodos,
-        ...(clientId !== undefined ? { clientId } : {}),
-        ...(sessionId !== undefined ? { sessionId } : {}),
+        ...(clientId !== null ? { clientId } : {}),
+        ...(sessionId !== null ? { sessionId } : {}),
       })
 
 const Todos = () => {
@@ -50,15 +50,15 @@ const adapterNotes =
   adapterKind === 'inmemory'
     ? makeInMemoryAdapter({
         devtools: { sharedWorker: LiveStoreSharedWorker },
-        ...(clientId !== undefined ? { clientId } : {}),
-        ...(sessionId !== undefined ? { sessionId } : {}),
+        ...(clientId !== null ? { clientId } : {}),
+        ...(sessionId !== null ? { sessionId } : {}),
       })
     : makePersistedAdapter({
         storage: { type: 'opfs', directory: 'notes' },
         sharedWorker: LiveStoreSharedWorker,
         worker: LiveStoreWorkerNotes,
-        ...(clientId !== undefined ? { clientId } : {}),
-        ...(sessionId !== undefined ? { sessionId } : {}),
+        ...(clientId !== null ? { clientId } : {}),
+        ...(sessionId !== null ? { sessionId } : {}),
       })
 
 const Notes = () => {

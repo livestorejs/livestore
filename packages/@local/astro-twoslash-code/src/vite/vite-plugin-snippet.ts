@@ -320,7 +320,7 @@ export const createTwoslashSnippetPlugin = (options: TwoslashSnippetPluginOption
   let expectedConfigHash: string | null = null
 
   const loadManifest = (): ManifestCache => {
-    if (manifestCache !== undefined) return manifestCache
+    if (manifestCache !== null) return manifestCache
 
     if (fs.existsSync(paths.manifestPath) === false) {
       throw new Error(`Missing snippet manifest at ${paths.manifestPath}. ${rebuildInstruction}`)
