@@ -127,8 +127,8 @@ type GeneratorState = {
 }
 
 type SnapshotPayload = {
-  state: ArrayBuffer | Uint8Array<ArrayBuffer>
-  eventlog: ArrayBuffer | Uint8Array<ArrayBuffer>
+  state: ArrayBuffer | Uint8Array
+  eventlog: ArrayBuffer | Uint8Array
 }
 
 type StoreInstance = ReturnType<typeof useAppStore>
@@ -153,7 +153,7 @@ const loadSnapshots = async (store: StoreInstance, { state, eventlog }: Snapshot
   const clientId = clientSession.clientId
   const batchId = `perf-${makeRunId()}`
 
-  const send = (data: Uint8Array<ArrayBuffer>) =>
+  const send = (data: Uint8Array) =>
     clientSession.leaderThread
       .sendDevtoolsMessage(
         Devtools.Leader.LoadDatabaseFile.Request.make({

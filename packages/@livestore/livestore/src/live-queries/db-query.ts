@@ -1,5 +1,3 @@
-import * as otel from '@opentelemetry/api'
-
 import type { Bindable, QueryBuilder } from '@livestore/common'
 import {
   getDurationMsFromSpan,
@@ -13,6 +11,7 @@ import {
 } from '@livestore/common'
 import { deepEqual, omitUndefineds, shouldNeverHappen } from '@livestore/utils'
 import { Equal, Hash, Predicate, Schema, TreeFormatter } from '@livestore/utils/effect'
+import * as otel from '@opentelemetry/api'
 
 import type { Thunk } from '../reactive.ts'
 import { isThunk, NOT_REFRESHED_YET } from '../reactive.ts'
@@ -384,7 +383,7 @@ export class LiveStoreDbQuery<TResultSchema, TResult = TResultSchema> extends Li
             span.setAttribute('sql.query', sqlString)
             span.updateName(`db:${sqlString.slice(0, 50)}`)
 
-            const rawDbResults = store[StoreInternalsSymbol].sqliteDbWrapper.cachedSelect<any>(
+            const rawDbResults = store[StoreInternalsSymbol].sqliteDbWrapper.cachedSelect(
               sqlString,
               bindValues ? prepareBindValues(bindValues, sqlString) : undefined,
               {
