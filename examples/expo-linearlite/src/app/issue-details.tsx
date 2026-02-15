@@ -154,8 +154,8 @@ const IssueDetailsScreen = () => {
   )
   const titleStyle = useMemo(() => StyleSheet.compose(styles.title, isDark ? styles.titleDark : undefined), [isDark])
 
-  const handleRestoreIssue = useCallback(() => store.commit(events.issueRestored({ id: issue.id })), [issue.id, store])
-  const handleEditIssue = useCallback(() => router.push(`/edit-issue?issueId=${issue.id}`), [issue.id, router])
+  const handleRestoreIssue = useCallback(() => store.commit(events.issueRestored({ id: issueId })), [issueId, store])
+  const handleEditIssue = useCallback(() => router.push(`/edit-issue?issueId=${issueId}`), [issueId, router])
 
   const screenOptions = useMemo(
     () => ({

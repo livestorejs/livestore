@@ -99,6 +99,19 @@ const HomeScreen = () => {
   const appSettings = store.useQuery(uiState$)
   const colorScheme = useColorScheme()
   const isDark = colorScheme === 'dark'
+
+  // Memoize selected settings
+  const { selectedHomeTab, assignedTabGrouping, assignedTabOrdering, createdTabGrouping, createdTabOrdering } = useMemo(
+    () => ({
+      selectedHomeTab: appSettings.selectedHomeTab,
+      assignedTabGrouping: appSettings.assignedTabGrouping,
+      assignedTabOrdering: appSettings.assignedTabOrdering,
+      createdTabGrouping: appSettings.createdTabGrouping,
+      createdTabOrdering: appSettings.createdTabOrdering,
+    }),
+    [appSettings],
+  )
+
   const assignedTabButtonStyle = useMemo(
     () =>
       StyleSheet.compose(
@@ -118,18 +131,6 @@ const HomeScreen = () => {
   const headerContainerStyle = useMemo(
     () => StyleSheet.compose(styles.headerContainer, isDark ? styles.headerContainerDark : undefined),
     [isDark],
-  )
-
-  // Memoize selected settings
-  const { selectedHomeTab, assignedTabGrouping, assignedTabOrdering, createdTabGrouping, createdTabOrdering } = useMemo(
-    () => ({
-      selectedHomeTab: appSettings.selectedHomeTab,
-      assignedTabGrouping: appSettings.assignedTabGrouping,
-      assignedTabOrdering: appSettings.assignedTabOrdering,
-      createdTabGrouping: appSettings.createdTabGrouping,
-      createdTabOrdering: appSettings.createdTabOrdering,
-    }),
-    [appSettings],
   )
 
   // Memoize display settings separately

@@ -36,11 +36,6 @@ export const IssueDetailsBottomTab = ({ issueId }: IssueDetailsBottomTabProps) =
   const closeModal = React.useCallback(() => setVisible(false), [])
   const openModal = React.useCallback(() => setVisible(true), [])
   const handleGoBack = React.useCallback(() => router.back(), [router])
-  const modalItemStyle = React.useCallback(
-    ({ pressed }: { pressed: boolean }) =>
-      StyleSheet.compose(styles.modalItem, pressed ? styles.modalItemPressed : undefined),
-    [styles.modalItem, styles.modalItemPressed],
-  )
 
   const IconSize = 22
   const IconStrokeWidth = 2.5
@@ -85,6 +80,12 @@ export const IssueDetailsBottomTab = ({ issueId }: IssueDetailsBottomTabProps) =
       fontSize: 14,
     },
   })
+
+  const modalItemStyle = React.useCallback(
+    ({ pressed }: { pressed: boolean }) =>
+      StyleSheet.compose(styles.modalItem, pressed ? styles.modalItemPressed : undefined),
+    [styles.modalItem, styles.modalItemPressed],
+  )
 
   return (
     <>
