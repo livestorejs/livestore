@@ -17,7 +17,7 @@ export const msAsTimeString = (ms: number) => {
   const remainingSeconds = (seconds % 60).toString().padStart(2, '0')
   const remainingMinutes = hours > 0 ? (minutes % 60).toString().padStart(2, '0') : minutes % 60
 
-  const timeString = [hours > 0 ? `${hours}:` : '', `${remainingMinutes}:`, `${remainingSeconds}`]
+  const timeString = [hours > 0 ? `${hours}:` : '', `${remainingMinutes}:`, remainingSeconds]
     .filter((val) => val !== '')
     .join('')
 

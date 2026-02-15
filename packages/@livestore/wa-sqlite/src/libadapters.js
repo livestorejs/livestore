@@ -77,7 +77,7 @@ const adapters = {
 
 function injectMethod(signature, isAsync) {
   const method = `${signature}${isAsync ? '_async' : ''}`
-  adapters[`${method}`] = isAsync
+  adapters[method] = isAsync
     ? // @ts-ignore
       function (...args) {
         return adapters_support(true, ...args)
