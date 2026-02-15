@@ -50,8 +50,6 @@ export const UserLabelPicker: React.FC<UserLabelPickerProps> = ({ threadId }) =>
     [isLabelApplied, threadId, threadStore],
   )
 
-  if (userLabels.length === 0) return null // No user labels to show
-
   const toggleDropdown = useCallback(() => {
     setIsOpen((open) => !open)
   }, [])
@@ -74,6 +72,8 @@ export const UserLabelPicker: React.FC<UserLabelPickerProps> = ({ threadId }) =>
     () => new Map(userLabels.map((label) => [label.id, { backgroundColor: label.color ?? undefined }])),
     [userLabels],
   )
+
+  if (userLabels.length === 0) return null // No user labels to show
 
   return (
     <div className="relative">
