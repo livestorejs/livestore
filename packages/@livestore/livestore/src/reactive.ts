@@ -451,7 +451,7 @@ export class ReactiveGraph<
       markSuperCompDirtyRec(ref, effectsToRefresh)
     }
 
-    if (options?.skipRefresh !== undefined) {
+    if (options?.skipRefresh === true) {
       for (const effect of effectsToRefresh) {
         if (this.deferredEffects.has(effect) === false) {
           this.deferredEffects.set(effect, new Set())

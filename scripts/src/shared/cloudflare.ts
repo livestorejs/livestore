@@ -216,7 +216,7 @@ export const deployCloudflareWorker = ({
       'bunx',
       'wrangler',
       'deploy',
-      dryRun !== undefined ? '--dry-run' : undefined,
+      dryRun === true ? '--dry-run' : undefined,
       '--config',
       `dist/${example.buildOutputDir}/wrangler.json`,
       '--name',
