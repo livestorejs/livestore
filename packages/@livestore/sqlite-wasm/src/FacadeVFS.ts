@@ -426,17 +426,17 @@ export class FacadeVFS extends VFS.Base {
         }
         if (prop === getter) {
           return (byteOffset, littleEndian) => {
-            if (littleEndian === false) throw new Error('must be little endian')
+            if (!littleEndian) throw new Error('must be little endian')
             return dataView[prop](byteOffset, littleEndian)
           }
         }
         if (prop === setter) {
           return (byteOffset, value, littleEndian) => {
-            if (littleEndian === false) throw new Error('must be little endian')
+            if (!littleEndian) throw new Error('must be little endian')
             return dataView[prop](byteOffset, value, littleEndian)
           }
         }
-        if (typeof prop === 'string' && /^(get)|(set)/.test(prop) === true) {
+        if (typeof prop === 'string' && /^(get)|(set)/.test(prop)) {
           throw new Error('invalid type')
         }
         const result = dataView[prop]
@@ -464,7 +464,7 @@ export class FacadeVFS extends VFS.Base {
   }
 
   #decodeFilename(zName, flags) {
-    if ((flags & VFS.SQLITE_OPEN_URI) !== 0) {
+    if (flags & VFS.SQLITE_OPEN_URI) {
       // The first null-terminated string is the URI path. Subsequent
       // strings are query parameter keys and values.
       // https://www.sqlite.org/c3ref/open.html#urifilenamesinsqlite3open
@@ -476,7 +476,7 @@ export class FacadeVFS extends VFS.Base {
         if (charCode) {
           charCodes.push(charCode)
         } else {
-          if (this._module.HEAPU8[pName] == null) state = null
+          if (!this._module.HEAPU8[pName]) state = null
           switch (state) {
             case 1: {
               // path
