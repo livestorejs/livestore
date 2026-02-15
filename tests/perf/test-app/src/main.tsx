@@ -1,10 +1,9 @@
-import React, { StrictMode, Suspense, useState } from 'react'
-import { createRoot } from 'react-dom/client'
-
 /** biome-ignore-all lint/nursery: testing */
 /** biome-ignore-all lint/correctness/useUniqueElementIds: it's ok for testing */
 import { StoreRegistry } from '@livestore/livestore'
 import { StoreRegistryProvider } from '@livestore/react'
+import React, { StrictMode, Suspense, useState } from 'react'
+import { createRoot } from 'react-dom/client'
 
 import { allItems$, uiState$ } from './queries.ts'
 import { events, type Item, type Items } from './schema.ts'
@@ -56,6 +55,10 @@ const N = [
 
 const random = (max: number) => Math.round(Math.random() * 1000) % max
 
+const selectedRowStyle = { backgroundColor: 'lightblue' } as const
+const defaultRowStyle = { backgroundColor: 'white' } as const
+const suspenseFallback = <p>Loading...</p>
+
 let nextId = 1
 const generateRandomItems = (count: number): Items => {
   const items: Items = Array.from({ length: count })
@@ -74,26 +77,24 @@ const ItemRow = React.memo(({ item }: { item: Item }) => {
   const store = useAppStore()
   const { selected } = store.useQuery(uiState$)
   const isSelected = selected === item.id
+  const rowStyle = isSelected ? selectedRowStyle : defaultRowStyle
+  const handleSelect = React.useCallback(() => {
+    store.commit(events.uiStateSet({ selected: item.id }))
+  }, [store, item.id])
+  const handleRemove = React.useCallback(() => {
+    store.commit(events.itemDeleted({ id: item.id }))
+  }, [store, item.id])
+
   return (
-    <tr style={{ backgroundColor: isSelected ? 'lightblue' : 'white' }}>
+    <tr style={rowStyle}>
       <td>{item.id}</td>
       <td>
-        <Button
-          id={`select-${item.id}`}
-          onClick={() => {
-            store.commit(events.uiStateSet({ selected: item.id }))
-          }}
-        >
+        <Button id={`select-${item.id}`} onClick={handleSelect}>
           {item.label}
         </Button>
       </td>
       <td>
-        <Button
-          id={`remove-${item.id}`}
-          onClick={() => {
-            store.commit(events.itemDeleted({ id: item.id }))
-          }}
-        >
+        <Button id={`remove-${item.id}`} onClick={handleRemove}>
           {RemoveIcon}
         </Button>
       </td>
@@ -118,51 +119,43 @@ const Button = React.memo(
 
 const Main = () => {
   const store = useAppStore()
+
+  const handleCreate1k = React.useCallback(() => {
+    // We commit a single event instead of one per item to better represent user intention. The user didn't press a button 1000 times for each item; they pressed it once to create 1000 items.
+    // We need to include the items in the event payload rather than generating them in the materializer. Otherwise, the materializer wouldn't be deterministic.
+    store.commit(events.thousandItemsCreated(generateRandomItems(1000)))
+  }, [store])
+  const handleCreate10k = React.useCallback(() => {
+    store.commit(events.tenThousandItemsCreated(generateRandomItems(10_000)))
+  }, [store])
+  const handleAppend1k = React.useCallback(() => {
+    store.commit(events.thousandItemsAppended(generateRandomItems(1000)))
+  }, [store])
+  const handleUpdateEvery10th = React.useCallback(() => {
+    store.commit(events.everyTenthItemUpdated())
+  }, [store])
+  const handleClear = React.useCallback(() => {
+    store.commit(events.allItemsDeleted())
+  }, [store])
+
   return (
     <div>
       <div>
         <h1>React + LiveStore</h1>
         <div>
-          <Button
-            id="create1k"
-            onClick={() => {
-              // We commit a single event instead of one per item to better represent user intention. The user didn't press a button 1000 times for each item; they pressed it once to create 1000 items.
-              // We need to include the items in the event payload rather than generating them in the materializer. Otherwise, the materializer wouldn't be deterministic.
-              store.commit(events.thousandItemsCreated(generateRandomItems(1000)))
-            }}
-          >
+          <Button id="create1k" onClick={handleCreate1k}>
             Create 1,000 items
           </Button>
-          <Button
-            id="create10k"
-            onClick={() => {
-              store.commit(events.tenThousandItemsCreated(generateRandomItems(10_000)))
-            }}
-          >
+          <Button id="create10k" onClick={handleCreate10k}>
             Create 10,000 items
           </Button>
-          <Button
-            id="append1k"
-            onClick={() => {
-              store.commit(events.thousandItemsAppended(generateRandomItems(1000)))
-            }}
-          >
+          <Button id="append1k" onClick={handleAppend1k}>
             Append 1,000 items
           </Button>
-          <Button
-            id="updateEvery10th"
-            onClick={() => {
-              store.commit(events.everyTenthItemUpdated())
-            }}
-          >
+          <Button id="updateEvery10th" onClick={handleUpdateEvery10th}>
             Update every 10th items
           </Button>
-          <Button
-            id="clear"
-            onClick={() => {
-              store.commit(events.allItemsDeleted())
-            }}
-          >
+          <Button id="clear" onClick={handleClear}>
             Clear
           </Button>
         </div>
@@ -180,7 +173,7 @@ const App = () => {
   const [storeRegistry] = useState(() => new StoreRegistry())
 
   return (
-    <Suspense fallback={<p>Loading...</p>}>
+    <Suspense fallback={suspenseFallback}>
       <StoreRegistryProvider storeRegistry={storeRegistry}>
         <Main />
       </StoreRegistryProvider>

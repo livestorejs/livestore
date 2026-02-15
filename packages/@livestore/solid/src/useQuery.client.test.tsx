@@ -1,15 +1,30 @@
-import * as SolidTesting from '@solidjs/testing-library'
-import * as Solid from 'solid-js'
-import { expect } from 'vitest'
-
 /** biome-ignore-all lint/a11y: test */
 import * as LiveStore from '@livestore/livestore'
 import { queryDb, signal } from '@livestore/livestore'
 import { RG } from '@livestore/livestore/internal/testing-utils'
-import { Vitest } from '@livestore/utils-dev/node-vitest'
 import { Effect, Schema } from '@livestore/utils/effect'
+import { Vitest } from '@livestore/utils-dev/node-vitest'
+import * as SolidTesting from '@solidjs/testing-library'
+import * as Solid from 'solid-js'
+import { expect } from 'vitest'
 
 import { events, makeTodoMvcSolid, StoreInternalsSymbol, tables } from './__tests__/fixture.tsx'
+
+const makeVirtualContainerStyle = (containerHeight: number) => {
+  return { height: `${containerHeight}px`, overflow: 'auto' } as const
+}
+
+const makeVirtualContentStyle = (itemCount: number, itemHeight: number) => {
+  return { height: `${itemCount * itemHeight}px`, position: 'relative' } as const
+}
+
+const makeVirtualItemStyle = (index: number, itemHeight: number) => {
+  return {
+    position: 'absolute',
+    top: `${index * itemHeight}px`,
+    height: `${itemHeight}px`,
+  } as const
+}
 
 Vitest.describe('useQuery', () => {
   Vitest.afterEach(() => {
@@ -175,34 +190,27 @@ Vitest.describe('useQuery', () => {
         const containerHeight = 100
         const itemHeight = 10
         const visibleCount = Math.ceil(containerHeight / itemHeight)
+        const containerStyle = makeVirtualContainerStyle(containerHeight)
+        const contentStyle = Solid.createMemo(() => makeVirtualContentStyle(itemData().length, itemHeight))
 
         return (
-          <div style={{ height: `${containerHeight}px`, overflow: 'auto' }}>
-            <div style={{ height: `${itemData().length * itemHeight}px`, position: 'relative' }}>
+          <div style={containerStyle}>
+            <div style={contentStyle()}>
               <Solid.For each={itemData().slice(0, visibleCount + 1)}>
-                {(id, index) => (
-                  <VirtualListItem
-                    id={id}
-                    index={index()}
-                    style={{
-                      position: 'absolute',
-                      top: `${index() * itemHeight}px`,
-                      height: `${itemHeight}px`,
-                    }}
-                  />
-                )}
+                {(id, index) => <VirtualListItem id={id} index={index()} itemHeight={itemHeight} />}
               </Solid.For>
             </div>
           </div>
         )
       }
 
-      const VirtualListItem = (props: { id: number; index: number; style: any }) => {
+      const VirtualListItem = (props: { id: number; index: number; itemHeight: number }) => {
         const res = store.useQuery(() =>
           LiveStore.computed(() => props.id, { label: `VirtualListItem.${props.id}`, deps: props.id }),
         )
+        const style = makeVirtualItemStyle(props.index, props.itemHeight)
         return (
-          <div role="listitem" style={props.style}>
+          <div role="listitem" style={style}>
             {res()}
           </div>
         )

@@ -1,7 +1,7 @@
-import type React from 'react'
-
 import { queryDb } from '@livestore/livestore'
 import { useStoreRegistry } from '@livestore/react'
+import type React from 'react'
+import { useCallback } from 'react'
 
 import { useMailboxStore } from '../stores/mailbox/index.ts'
 import { mailboxTables } from '../stores/mailbox/schema.ts'
@@ -40,6 +40,40 @@ export const ThreadList: React.FC = () => {
         .filter((t): t is NonNullable<typeof t> => t !== undefined)
     : undefined
 
+  const selectThread = useCallback(
+    (threadId: string) => {
+      setUiState({ selectedThreadId: threadId })
+    },
+    [setUiState],
+  )
+
+  const preloadThreadStore = useCallback(
+    (threadId: string) => {
+      void storeRegistry.preload(threadStoreOptions(threadId))
+    },
+    [storeRegistry],
+  )
+
+  const handlePreloadThreadStore = useCallback(
+    (e: React.MouseEvent<HTMLButtonElement> | React.FocusEvent<HTMLButtonElement>) => {
+      const threadId = e.currentTarget.dataset.threadId
+      if (threadId !== undefined) {
+        preloadThreadStore(threadId)
+      }
+    },
+    [preloadThreadStore],
+  )
+
+  const handleSelectThread = useCallback(
+    (e: React.MouseEvent<HTMLButtonElement>) => {
+      const threadId = e.currentTarget.dataset.threadId
+      if (threadId !== undefined) {
+        selectThread(threadId)
+      }
+    },
+    [selectThread],
+  )
+
   if (!threadsForSelectedLabel || threadsForSelectedLabel.length === 0) {
     return (
       <div className="grid place-items-center h-full">
@@ -51,14 +85,6 @@ export const ThreadList: React.FC = () => {
     )
   }
 
-  const selectThread = (threadId: string) => {
-    setUiState({ selectedThreadId: threadId })
-  }
-
-  const preloadThreadStore = (threadId: string) => {
-    void storeRegistry.preload(threadStoreOptions(threadId))
-  }
-
   return (
     <div className="divide-y h-full bg-white divide-gray-100">
       {threadsForSelectedLabel.map((thread) => {
@@ -67,9 +93,10 @@ export const ThreadList: React.FC = () => {
         return (
           <button
             key={thread.id}
-            onMouseEnter={() => preloadThreadStore(thread.id)}
-            onFocus={() => preloadThreadStore(thread.id)}
-            onClick={() => selectThread(thread.id)}
+            data-thread-id={thread.id}
+            onMouseEnter={handlePreloadThreadStore}
+            onFocus={handlePreloadThreadStore}
+            onClick={handleSelectThread}
             type="button"
             className="w-full text-left px-6 py-4 hover:bg-gray-50 border-l-2 border-transparent hover:border-gray-400"
           >

@@ -8,6 +8,14 @@ import type { Priority } from '../../types/priority.ts'
 import { Icon, type IconName } from '../icons/index.tsx'
 import { Shortcut } from './shortcut.tsx'
 
+const shortcutKeysByPriorityName = Object.fromEntries(
+  priorityOptions.map(({ name, shortcut }) => [name, [shortcut]]),
+) as Record<string, readonly string[]>
+
+const priorityByName = Object.fromEntries(
+  priorityOptions.map(({ name }, priorityOption) => [name, priorityOption]),
+) as Record<string, number>
+
 export const PriorityMenu = ({
   priority,
   onPriorityChange,
@@ -18,6 +26,17 @@ export const PriorityMenu = ({
   showLabel?: boolean
 }) => {
   const [isOpen, setIsOpen] = React.useState(false)
+  const handleAction = React.useCallback(
+    (key: React.Key) => {
+      if (typeof key === 'string') {
+        const priorityOption = priorityByName[key]
+        if (priorityOption !== undefined) {
+          onPriorityChange(priorityOption as Priority)
+        }
+      }
+    },
+    [onPriorityChange],
+  )
 
   const { keyboardProps } = useKeyboard({
     onKeyDown: (e) => {
@@ -51,17 +70,16 @@ export const PriorityMenu = ({
         offset={0}
         className="w-48 ml-1 p-2 bg-white rounded-lg shadow-md border border-neutral-200 dark:bg-neutral-800 dark:border-neutral-700 text-sm leading-none"
       >
-        <Menu className="focus:outline-none" {...keyboardProps}>
-          {priorityOptions.map(({ name, icon, style, shortcut }, priorityOption) => (
+        <Menu className="focus:outline-none" {...keyboardProps} onAction={handleAction}>
+          {priorityOptions.map(({ name, icon, style }, priorityOption) => (
             <MenuItem
               key={name}
-              onAction={() => onPriorityChange(priorityOption as Priority)}
               className="p-2 rounded-md hover:bg-neutral-100 dark:hover:bg-neutral-700 focus:outline-none focus:bg-neutral-100 dark:focus:bg-neutral-700 cursor-pointer flex items-center gap-2"
             >
               <Icon name={icon as IconName} className={`size-3.5 ${style}`} />
               <span>{name}</span>
               {priorityOption === priority && <CheckIcon className="size-4 absolute right-9" />}
-              <Shortcut keys={[shortcut]} className="absolute right-3" />
+              <Shortcut keys={shortcutKeysByPriorityName[name]} className="absolute right-3" />
             </MenuItem>
           ))}
         </Menu>

@@ -8,6 +8,15 @@ import type { Status } from '../../types/status.ts'
 import { Icon, type IconName } from '../icons/index.tsx'
 import { Shortcut } from './shortcut.tsx'
 
+const shortcutKeysByStatusName = Object.fromEntries(
+  statusOptions.map(({ name, shortcut }) => [name, [shortcut]]),
+) as Record<string, readonly string[]>
+
+const statusByName = Object.fromEntries(statusOptions.map(({ name }, statusOption) => [name, statusOption])) as Record<
+  string,
+  number
+>
+
 export const StatusMenu = ({
   status,
   onStatusChange,
@@ -18,6 +27,17 @@ export const StatusMenu = ({
   showLabel?: boolean
 }) => {
   const [isOpen, setIsOpen] = React.useState(false)
+  const handleAction = React.useCallback(
+    (key: React.Key) => {
+      if (typeof key === 'string') {
+        const statusOption = statusByName[key]
+        if (statusOption !== undefined) {
+          onStatusChange(statusOption as Status)
+        }
+      }
+    },
+    [onStatusChange],
+  )
 
   const { keyboardProps } = useKeyboard({
     onKeyDown: (e) => {
@@ -48,17 +68,16 @@ export const StatusMenu = ({
         offset={0}
         className="w-48 ml-1 p-2 bg-white dark:bg-neutral-800 rounded-lg shadow-md border border-neutral-200 dark:border-neutral-700 text-sm leading-none"
       >
-        <Menu className="focus:outline-none" {...keyboardProps}>
-          {statusOptions.map(({ name, icon, style, shortcut }, statusOption) => (
+        <Menu className="focus:outline-none" {...keyboardProps} onAction={handleAction}>
+          {statusOptions.map(({ name, icon, style }, statusOption) => (
             <MenuItem
               key={name}
-              onAction={() => onStatusChange(statusOption as Status)}
               className="p-2 rounded-md hover:bg-neutral-100 dark:hover:bg-neutral-700 focus:outline-none focus:bg-neutral-100 dark:focus:bg-neutral-700 cursor-pointer flex items-center gap-2"
             >
               <Icon name={icon as IconName} className={`size-3.5 ${style}`} />
               <span>{name}</span>
               {statusOption === status && <CheckIcon className="size-4 absolute right-9" />}
-              <Shortcut keys={[shortcut]} className="absolute right-3" />
+              <Shortcut keys={shortcutKeysByStatusName[name]} className="absolute right-3" />
             </MenuItem>
           ))}
         </Menu>

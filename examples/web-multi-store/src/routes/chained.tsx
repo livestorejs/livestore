@@ -9,6 +9,8 @@ export const Route = createFileRoute('/chained')({
   component: ChainedDemoRoute,
 })
 
+const loadingWorkspaceStoreFallback = <div className="loading">Loading workspace store...</div>
+
 const ChainedDemoRoute = () => {
   const { storeRegistry } = Route.useRouteContext()
 
@@ -23,7 +25,7 @@ const ChainedDemoRoute = () => {
 
       <StoreRegistryProvider storeRegistry={storeRegistry}>
         <ErrorBoundary FallbackComponent={ErrorFallback}>
-          <Suspense fallback={<div className="loading">Loading workspace store...</div>}>
+          <Suspense fallback={loadingWorkspaceStoreFallback}>
             <WorkspaceView />
           </Suspense>
         </ErrorBoundary>

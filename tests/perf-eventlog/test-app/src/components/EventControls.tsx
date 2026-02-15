@@ -1,9 +1,8 @@
-import React from 'react'
-
 import { Devtools, liveStoreVersion } from '@livestore/common'
 import { StoreInternalsSymbol } from '@livestore/livestore'
 import { Effect, Stream } from '@livestore/utils/effect'
 import { nanoid } from '@livestore/utils/nanoid'
+import React from 'react'
 
 import { events, tables } from '../livestore/schema.ts'
 import { useAppStore } from '../livestore/store.ts'
@@ -74,6 +73,33 @@ const DEFAULT_EVENTS_PER_SECOND = 500
 const EVENT_RATE_MIN = 1
 const EVENT_BATCH_SIZE_MIN = 1
 const GENERATOR_INTERVAL_MS = 100
+
+const syncStatusContainerStyle = {
+  fontSize: '0.9rem',
+  display: 'flex',
+  gap: '0.75rem',
+  marginBottom: '0.75rem',
+} as const
+const fixedWidth10RemStyle = { width: '10rem' } as const
+const controlsRowStyle = { display: 'flex', flexWrap: 'wrap', gap: '0.75rem', alignItems: 'end' } as const
+const controlsRowWithTopMarginStyle = {
+  display: 'flex',
+  flexWrap: 'wrap',
+  gap: '0.75rem',
+  marginTop: '1rem',
+  alignItems: 'end',
+} as const
+const verticalLabelStyle = { display: 'flex', flexDirection: 'column', fontSize: '0.9rem' } as const
+const compactInputStyle = { width: '8rem' } as const
+const buttonRowStyle = { display: 'flex', gap: '0.5rem', marginTop: '1rem', flexWrap: 'wrap' } as const
+const sectionTopSpacingStyle = { marginTop: '1.5rem', paddingTop: '1rem', borderTop: '1px solid #ddd' } as const
+const headingStyle = { fontSize: '1rem', marginBottom: '0.5rem' } as const
+const helperTextStyle = { fontSize: '0.85rem', marginBottom: '0.75rem' } as const
+const fileRowStyle = { display: 'flex', flexWrap: 'wrap', gap: '0.75rem', alignItems: 'end' } as const
+const fileLabelStyle = { display: 'flex', flexDirection: 'column', fontSize: '0.85rem' } as const
+const successTextStyle = { color: 'green', marginTop: '0.5rem' } as const
+const errorTextStyle = { color: 'red', marginTop: '0.5rem' } as const
+const lastErrorStyle = { color: 'red', marginTop: '0.75rem' } as const
 
 const makeRunId = () =>
   typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function'
@@ -181,32 +207,35 @@ export const EventControls: React.FC<EventControlsProps> = ({
   const sessionIdRef = React.useRef<string>(makeRunId())
   const idCounterRef = React.useRef<number>(1)
 
-  const createTodoEvent = () => {
+  const createTodoEvent = React.useCallback(() => {
     const index = idCounterRef.current++
     const id = crypto.randomUUID()
     const text = generateTodoText(index)
     return events.todoCreated({ id, text })
-  }
+  }, [])
 
-  const commitEvents = (items: ReadonlyArray<ReturnType<typeof events.todoCreated>>) => {
-    if (items.length === 0) return
-    store.commit(...items)
-  }
+  const commitEvents = React.useCallback(
+    (items: ReadonlyArray<ReturnType<typeof events.todoCreated>>) => {
+      if (items.length === 0) return
+      store.commit(...items)
+    },
+    [store],
+  )
 
-  const createSingleEvent = () => {
+  const createSingleEvent = React.useCallback(() => {
     commitEvents([createTodoEvent()])
-  }
+  }, [commitEvents, createTodoEvent])
 
-  const stopGenerator = () => {
+  const stopGenerator = React.useCallback(() => {
     const ref = generatorRef.current
     if (ref.timerId !== null) {
       window.clearInterval(ref.timerId)
     }
     generatorRef.current = makeGeneratorState()
     setIsGenerating(false)
-  }
+  }, [])
 
-  const runGeneratorTick = () => {
+  const runGeneratorTick = React.useCallback(() => {
     const ref = generatorRef.current
     if (ref.remaining <= 0) {
       stopGenerator()
@@ -223,9 +252,9 @@ export const EventControls: React.FC<EventControlsProps> = ({
     if (ref.remaining <= 0) {
       stopGenerator()
     }
-  }
+  }, [stopGenerator, createTodoEvent, commitEvents])
 
-  const startGenerator = () => {
+  const startGenerator = React.useCallback(() => {
     if (generatorRef.current.timerId !== null) {
       return
     }
@@ -245,15 +274,18 @@ export const EventControls: React.FC<EventControlsProps> = ({
 
     setIsGenerating(true)
     setLastError(null)
-  }
+  }, [requestedTotalEvents, requestedEventsPerSecond, runGeneratorTick])
 
-  const seedEvents = (count: number) => {
-    if (count <= 0) return
-    const eventsToCommit = Array.from({ length: count }, () => createTodoEvent())
-    commitEvents(eventsToCommit)
-  }
+  const seedEvents = React.useCallback(
+    (count: number) => {
+      if (count <= 0) return
+      const eventsToCommit = Array.from({ length: count }, () => createTodoEvent())
+      commitEvents(eventsToCommit)
+    },
+    [commitEvents, createTodoEvent],
+  )
 
-  const handleResetHarness = () => {
+  const handleResetHarness = React.useCallback(() => {
     stopGenerator()
     setRequestedTotalEvents(DEFAULT_TOTAL_EVENTS)
     setRequestedEventsPerSecond(DEFAULT_EVENTS_PER_SECOND)
@@ -264,9 +296,9 @@ export const EventControls: React.FC<EventControlsProps> = ({
     onEventUntilChange(undefined)
     // Use the same reset mechanism as devtools - triggers clean shutdown and page reload
     store._dev.hardReset('all-data')
-  }
+  }, [stopGenerator, onEventBatchSizeChange, onEventUntilChange, store])
 
-  const handleLoadSnapshotFiles = async () => {
+  const handleLoadSnapshotFiles = React.useCallback(async () => {
     if (stateSnapshot === null || eventlogSnapshot === null) {
       setSnapshotStatus('error')
       setSnapshotError('Select both state and eventlog files before loading.')
@@ -293,7 +325,7 @@ export const EventControls: React.FC<EventControlsProps> = ({
       setSnapshotStatus('error')
       setSnapshotError(error instanceof Error ? error.message : 'Unknown error while loading snapshots.')
     }
-  }
+  }, [stateSnapshot, eventlogSnapshot, store])
 
   React.useEffect(() => {
     const harness = {
@@ -341,42 +373,100 @@ export const EventControls: React.FC<EventControlsProps> = ({
   const sanitizedRate = sanitizeRate(requestedEventsPerSecond)
   const sanitizedBatchSize = Math.max(EVENT_BATCH_SIZE_MIN, Math.floor(eventBatchSize))
 
+  const handleTotalEventsChange = React.useCallback((event: React.ChangeEvent<HTMLInputElement>) => {
+    setRequestedTotalEvents(Number.parseInt(event.target.value, 10) || 0)
+  }, [])
+
+  const handleRateChange = React.useCallback((event: React.ChangeEvent<HTMLInputElement>) => {
+    setRequestedEventsPerSecond(Math.max(EVENT_RATE_MIN, Number.parseInt(event.target.value, 10) || EVENT_RATE_MIN))
+  }, [])
+
+  const handleCreateSingleEvent = React.useCallback(() => {
+    createSingleEvent()
+  }, [createSingleEvent])
+
+  const handleSeed500 = React.useCallback(() => {
+    seedEvents(500)
+  }, [seedEvents])
+
+  const handleSeed1k = React.useCallback(() => {
+    seedEvents(1_000)
+  }, [seedEvents])
+
+  const handleSeed10k = React.useCallback(() => {
+    seedEvents(10_000)
+  }, [seedEvents])
+
+  const handleSeed100k = React.useCallback(() => {
+    seedEvents(100_000)
+  }, [seedEvents])
+
+  const handleToggleEvents = React.useCallback(() => {
+    onEventsVisibleChange(!eventsVisible)
+  }, [onEventsVisibleChange, eventsVisible])
+
+  const handleBatchSizeChange = React.useCallback(
+    (event: React.ChangeEvent<HTMLInputElement>) => {
+      const next = Number.parseInt(event.target.value, 10)
+      onEventBatchSizeChange(Number.isFinite(next) ? Math.max(EVENT_BATCH_SIZE_MIN, next) : EVENT_BATCH_SIZE_MIN)
+    },
+    [onEventBatchSizeChange],
+  )
+
+  const handleUntilChange = React.useCallback(
+    (event: React.ChangeEvent<HTMLInputElement>) => {
+      const raw = event.target.value.trim()
+      if (raw === '') {
+        onEventUntilChange(undefined)
+        return
+      }
+
+      const next = Number.parseInt(raw, 10)
+      onEventUntilChange(Number.isFinite(next) && next >= 0 ? next : undefined)
+    },
+    [onEventUntilChange],
+  )
+
+  const handleStateSnapshotChange = React.useCallback((event: React.ChangeEvent<HTMLInputElement>) => {
+    setStateSnapshot(event.target.files?.[0] ?? null)
+  }, [])
+
+  const handleEventlogSnapshotChange = React.useCallback((event: React.ChangeEvent<HTMLInputElement>) => {
+    setEventlogSnapshot(event.target.files?.[0] ?? null)
+  }, [])
+
   return (
     <section>
-      <div style={{ fontSize: '0.9rem', display: 'flex', gap: '0.75rem', marginBottom: '0.75rem' }}>
-        <div style={{ width: '10rem' }} data-testid="syncstate">
+      <div style={syncStatusContainerStyle}>
+        <div style={fixedWidth10RemStyle} data-testid="syncstate">
           {todoCount === syncHead.upstream ? 'Synced' : 'Syncing...'}
         </div>
-        <div style={{ width: '10rem' }}>
+        <div style={fixedWidth10RemStyle}>
           Todo count: {typeof todoCount === 'number' ? todoCount.toLocaleString() : String(todoCount ?? '')}
         </div>
-        <div style={{ width: '10rem' }}>Upstream head: {syncHead.upstream}</div>
+        <div style={fixedWidth10RemStyle}>Upstream head: {syncHead.upstream}</div>
       </div>
-      <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.75rem', alignItems: 'end' }}>
-        <label style={{ display: 'flex', flexDirection: 'column', fontSize: '0.9rem' }}>
+      <div style={controlsRowStyle}>
+        <label style={verticalLabelStyle}>
           Number of events
           <input
             type="number"
             min={0}
             value={sanitizedTotalEvents}
             data-testid="config-total"
-            onChange={(event) => setRequestedTotalEvents(Number.parseInt(event.target.value, 10) || 0)}
-            style={{ width: '8rem' }}
+            onChange={handleTotalEventsChange}
+            style={compactInputStyle}
           />
         </label>
-        <label style={{ display: 'flex', flexDirection: 'column', fontSize: '0.9rem' }}>
+        <label style={verticalLabelStyle}>
           Events per second
           <input
             type="number"
             min={EVENT_RATE_MIN}
             value={sanitizedRate}
             data-testid="config-rate"
-            onChange={(event) =>
-              setRequestedEventsPerSecond(
-                Math.max(EVENT_RATE_MIN, Number.parseInt(event.target.value, 10) || EVENT_RATE_MIN),
-              )
-            }
-            style={{ width: '8rem' }}
+            onChange={handleRateChange}
+            style={compactInputStyle}
           />
         </label>
         <button type="button" data-testid="start-generator" onClick={startGenerator} disabled={isGenerating}>
@@ -386,47 +476,42 @@ export const EventControls: React.FC<EventControlsProps> = ({
           Stop timed generation
         </button>
       </div>
-      <div style={{ display: 'flex', gap: '0.5rem', marginTop: '1rem', flexWrap: 'wrap' }}>
-        <button type="button" data-testid="create-single-event" onClick={() => createSingleEvent()}>
+      <div style={buttonRowStyle}>
+        <button type="button" data-testid="create-single-event" onClick={handleCreateSingleEvent}>
           Create event
         </button>
-        <button type="button" data-testid="seed-500" onClick={() => seedEvents(500)}>
+        <button type="button" data-testid="seed-500" onClick={handleSeed500}>
           Seed 500
         </button>
-        <button type="button" data-testid="seed-1k" onClick={() => seedEvents(1_000)}>
+        <button type="button" data-testid="seed-1k" onClick={handleSeed1k}>
           Seed 1,000
         </button>
-        <button type="button" data-testid="seed-10k" onClick={() => seedEvents(10_000)}>
+        <button type="button" data-testid="seed-10k" onClick={handleSeed10k}>
           Seed 10,000
         </button>
-        <button type="button" data-testid="seed-100k" onClick={() => seedEvents(100_000)}>
+        <button type="button" data-testid="seed-100k" onClick={handleSeed100k}>
           Seed 100,000
         </button>
       </div>
-      <div style={{ display: 'flex', gap: '0.75rem', marginTop: '1rem', alignItems: 'end' }}>
-        <button type="button" data-testid="toggle-events" onClick={() => onEventsVisibleChange(!eventsVisible)}>
+      <div style={controlsRowWithTopMarginStyle}>
+        <button type="button" data-testid="toggle-events" onClick={handleToggleEvents}>
           {eventsVisible ? 'Hide events stream' : 'Show events stream'}
         </button>
         <button type="button" data-testid="reset-harness" onClick={handleResetHarness} disabled={isGenerating}>
           Reset harness
         </button>
-        <label style={{ display: 'flex', flexDirection: 'column', fontSize: '0.9rem' }}>
+        <label style={verticalLabelStyle}>
           Stream batch size
           <input
             type="number"
             min={EVENT_BATCH_SIZE_MIN}
             value={sanitizedBatchSize}
             data-testid="config-batch"
-            onChange={(event) => {
-              const next = Number.parseInt(event.target.value, 10)
-              onEventBatchSizeChange(
-                Number.isFinite(next) ? Math.max(EVENT_BATCH_SIZE_MIN, next) : EVENT_BATCH_SIZE_MIN,
-              )
-            }}
-            style={{ width: '8rem' }}
+            onChange={handleBatchSizeChange}
+            style={compactInputStyle}
           />
         </label>
-        <label style={{ display: 'flex', flexDirection: 'column', fontSize: '0.9rem' }}>
+        <label style={verticalLabelStyle}>
           Stream until (global seq)
           <input
             type="number"
@@ -434,42 +519,29 @@ export const EventControls: React.FC<EventControlsProps> = ({
             value={eventUntil ?? ''}
             placeholder="∞"
             data-testid="config-until"
-            onChange={(event) => {
-              const raw = event.target.value.trim()
-              if (raw === '') {
-                onEventUntilChange(undefined)
-              } else {
-                const next = Number.parseInt(raw, 10)
-                onEventUntilChange(Number.isFinite(next) && next >= 0 ? next : undefined)
-              }
-            }}
-            style={{ width: '8rem' }}
+            onChange={handleUntilChange}
+            style={compactInputStyle}
           />
         </label>
       </div>
-      <section style={{ marginTop: '1.5rem', paddingTop: '1rem', borderTop: '1px solid #ddd' }}>
-        <h2 style={{ fontSize: '1rem', marginBottom: '0.5rem' }}>Load snapshots</h2>
-        <p style={{ fontSize: '0.85rem', marginBottom: '0.75rem' }}>
+      <section style={sectionTopSpacingStyle}>
+        <h2 style={headingStyle}>Load snapshots</h2>
+        <p style={helperTextStyle}>
           Select matching state and eventlog SQLite snapshots exported from LiveStore Devtools to instantly load large
           datasets.
         </p>
-        <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.75rem', alignItems: 'end' }}>
-          <label style={{ display: 'flex', flexDirection: 'column', fontSize: '0.85rem' }}>
+        <div style={fileRowStyle}>
+          <label style={fileLabelStyle}>
             State DB
-            <input
-              type="file"
-              accept=".db"
-              data-testid="snapshot-state-input"
-              onChange={(event) => setStateSnapshot(event.target.files?.[0] ?? null)}
-            />
+            <input type="file" accept=".db" data-testid="snapshot-state-input" onChange={handleStateSnapshotChange} />
           </label>
-          <label style={{ display: 'flex', flexDirection: 'column', fontSize: '0.85rem' }}>
+          <label style={fileLabelStyle}>
             Eventlog DB
             <input
               type="file"
               accept=".db"
               data-testid="snapshot-eventlog-input"
-              onChange={(event) => setEventlogSnapshot(event.target.files?.[0] ?? null)}
+              onChange={handleEventlogSnapshotChange}
             />
           </label>
           <button
@@ -482,18 +554,18 @@ export const EventControls: React.FC<EventControlsProps> = ({
           </button>
         </div>
         {snapshotStatus === 'success' && (
-          <p style={{ color: 'green', marginTop: '0.5rem' }} data-testid="snapshot-load-status">
+          <p style={successTextStyle} data-testid="snapshot-load-status">
             Snapshots loaded. Harness will restart automatically.
           </p>
         )}
         {snapshotStatus === 'error' && snapshotError && (
-          <p style={{ color: 'red', marginTop: '0.5rem' }} data-testid="snapshot-load-error">
+          <p style={errorTextStyle} data-testid="snapshot-load-error">
             {snapshotError}
           </p>
         )}
       </section>
       {lastError && (
-        <p style={{ color: 'red', marginTop: '0.75rem' }} data-testid="event-error">
+        <p style={lastErrorStyle} data-testid="event-error">
           {lastError}
         </p>
       )}

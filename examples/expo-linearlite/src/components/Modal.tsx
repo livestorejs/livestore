@@ -1,5 +1,6 @@
 import { XIcon } from 'lucide-react-native'
 import type React from 'react'
+import { useMemo } from 'react'
 import { Pressable, Modal as RNModal, StyleSheet, useColorScheme, View } from 'react-native'
 
 import { Colors } from '../constants/Colors.ts'
@@ -12,10 +13,15 @@ interface CustomModalProps {
 
 export const Modal = ({ visible, onClose, children }: CustomModalProps) => {
   const theme = useColorScheme()
+  const themedModalContainerStyle = useMemo(
+    () => StyleSheet.compose(styles.modalContainer, { backgroundColor: Colors[theme!].background }),
+    [theme],
+  )
+
   return (
     <RNModal transparent={true} animationType="slide" visible={visible} onRequestClose={onClose}>
-      <Pressable style={{ flex: 1 }} onPress={onClose} />
-      <View style={[styles.modalContainer, { backgroundColor: Colors[theme!].background }]}>
+      <Pressable style={styles.backdrop} onPress={onClose} />
+      <View style={themedModalContainerStyle}>
         <Pressable style={styles.closeButton} onPress={onClose}>
           <XIcon color="gray" />
         </Pressable>
@@ -26,6 +32,9 @@ export const Modal = ({ visible, onClose, children }: CustomModalProps) => {
 }
 
 const styles = StyleSheet.create({
+  backdrop: {
+    flex: 1,
+  },
   modalContainer: {
     position: 'absolute',
     bottom: 0,

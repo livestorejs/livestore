@@ -1,7 +1,7 @@
-import type React from 'react'
-
 import { queryDb } from '@livestore/livestore'
 import { useStore } from '@livestore/react'
+import type React from 'react'
+import { useMemo } from 'react'
 
 import { useMailboxStore } from '../stores/mailbox/index.ts'
 import { mailboxTables } from '../stores/mailbox/schema.ts'
@@ -38,6 +38,19 @@ export const ThreadView: React.FC<ThreadViewProps> = ({ threadId }) => {
 
   const isLabelApplied = (labelId: string) => threadLabels.some((tl) => tl.labelId === labelId)
   const threadUserLabels = userLabels.filter((l) => isLabelApplied(l.id))
+  const threadUserLabelStyles = useMemo(
+    () =>
+      new Map(
+        threadUserLabels.map((label) => [
+          label.id,
+          {
+            backgroundColor: label.color ? `${label.color}20` : undefined,
+            color: label.color ?? undefined,
+          },
+        ]),
+      ),
+    [threadUserLabels],
+  )
   const participants = JSON.parse(thread.participants) as string[]
 
   return (
@@ -55,10 +68,7 @@ export const ThreadView: React.FC<ThreadViewProps> = ({ threadId }) => {
                   <span
                     key={label.id}
                     className="inline-flex items-center px-2 py-1 rounded text-xs"
-                    style={{
-                      backgroundColor: label.color ? `${label.color}20` : undefined,
-                      color: label.color ?? undefined,
-                    }}
+                    style={threadUserLabelStyles.get(label.id)}
                   >
                     {label.name}
                   </span>

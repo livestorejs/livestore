@@ -1,4 +1,5 @@
 import { XMarkIcon } from '@heroicons/react/16/solid'
+import { useCallback } from 'react'
 import { Button } from 'react-aria-components'
 
 import { priorityOptions } from '../../../data/priority-options.ts'
@@ -9,6 +10,7 @@ import { FilterMenu } from './filter-menu.tsx'
 
 export const PriorityFilter = () => {
   const [filterState, setFilterState] = useFilterState()
+  const handleClear = useCallback(() => setFilterState({ priority: null }), [setFilterState])
   if (!filterState.priority) return null
 
   return (
@@ -35,7 +37,7 @@ export const PriorityFilter = () => {
         </Button>
       </FilterMenu>
       <Button
-        onPress={() => setFilterState({ priority: null })}
+        onPress={handleClear}
         className="h-full flex items-center px-1 group hover:bg-neutral-50 dark:hover:bg-neutral-800 focus:outline-none focus:bg-neutral-100 dark:focus:bg-neutral-800 border-l border-neutral-200 dark:border-neutral-700"
       >
         <XMarkIcon className="size-4 group-hover:text-neutral-700 dark:group-hover:text-neutral-200" />

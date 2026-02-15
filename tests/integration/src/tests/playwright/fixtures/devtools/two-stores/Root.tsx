@@ -1,15 +1,16 @@
-import { Suspense, useState } from 'react'
-import { unstable_batchedUpdates as batchedUpdates } from 'react-dom'
-
 import { makeInMemoryAdapter, makePersistedAdapter } from '@livestore/adapter-web'
 import LiveStoreSharedWorker from '@livestore/adapter-web/shared-worker?sharedworker'
 import { StoreRegistry } from '@livestore/livestore'
 import { StoreRegistryProvider, useStore } from '@livestore/react'
+import { Suspense, useState } from 'react'
+import { unstable_batchedUpdates as batchedUpdates } from 'react-dom'
 
 import LiveStoreWorkerNotes from './livestore-notes.worker.ts?worker'
 import LiveStoreWorkerTodos from './livestore-todos.worker.ts?worker'
 import { schema as schemaNotes } from './schema-notes.ts'
 import { schema as schemaTodos } from './schema-todos.ts'
+
+const SuspenseFallback = <div>Loading...</div>
 
 const sp = new URLSearchParams(window.location.search)
 const adapterKind = (sp.get('adapter') ?? 'persisted') as 'persisted' | 'inmemory'
@@ -77,7 +78,7 @@ const Notes = () => {
 export const Root = () => {
   const [storeRegistry] = useState(() => new StoreRegistry())
   return (
-    <Suspense fallback={<div>Loading...</div>}>
+    <Suspense fallback={SuspenseFallback}>
       <StoreRegistryProvider storeRegistry={storeRegistry}>
         <Todos />
         <Notes />

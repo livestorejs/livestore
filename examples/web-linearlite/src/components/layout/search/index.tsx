@@ -16,6 +16,8 @@ const filteredIssueIds$ = queryDb(
   { label: 'List.visibleIssueIds' },
 )
 
+const emptyIssueIds: readonly number[] = []
+
 export const Search = () => {
   const store = useAppStore()
   const filteredIssueIds = store.useQuery(filteredIssueIds$)
@@ -24,7 +26,7 @@ export const Search = () => {
   return (
     <>
       <Filters filteredCount={filterState.query ? filteredIssueIds.length : 0} search />
-      <FilteredList filteredIssueIds={filterState.query ? filteredIssueIds : []} />
+      <FilteredList filteredIssueIds={filterState.query ? filteredIssueIds : emptyIssueIds} />
     </>
   )
 }

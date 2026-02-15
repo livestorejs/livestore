@@ -1,8 +1,8 @@
 import { ChevronRightIcon } from '@heroicons/react/16/solid'
-import { useNavigate, useParams, useRouter } from '@tanstack/react-router'
-import { Button } from 'react-aria-components'
-
 import { queryDb } from '@livestore/livestore'
+import { useNavigate, useParams, useRouter } from '@tanstack/react-router'
+import React from 'react'
+import { Button } from 'react-aria-components'
 
 import { events, tables } from '../../../livestore/schema/index.ts'
 import { useAppStore } from '../../../livestore/store.ts'
@@ -26,29 +26,40 @@ export const Issue = ({ issueId }: { issueId: number }) => {
   const router = useRouter()
   const store = useAppStore()
   const { storeId } = useParams({ from: '/$storeId' })
+  const params = React.useMemo(() => ({ storeId }), [storeId])
+  const search = React.useCallback((prev: Record<string, unknown>) => ({ ...prev, issueId: undefined }), [])
   const issue = store.useQuery(
     queryDb(tables.issue.where({ id: issueId }).first({ behaviour: 'error' }), { deps: [issueId] }),
   )
 
-  const close = () => {
+  const close = React.useCallback(() => {
     if (window.history.length > 2) {
       router.history.back()
     } else {
-      navigate({ to: '/$storeId', params: { storeId }, search: (prev) => ({ ...prev, issueId: undefined }) })
+      navigate({ to: '/$storeId', params, search })
     }
-  }
+  }, [navigate, params, router.history, search])
 
-  const handleChangeStatus = (status: Status) => {
-    store.commit(events.updateIssueStatus({ id: issue.id, status, modified: new Date() }))
-  }
+  const handleChangeStatus = React.useCallback(
+    (status: Status) => {
+      store.commit(events.updateIssueStatus({ id: issue.id, status, modified: new Date() }))
+    },
+    [issue.id, store],
+  )
 
-  const handleChangePriority = (priority: Priority) => {
-    store.commit(events.updateIssuePriority({ id: issue.id, priority, modified: new Date() }))
-  }
+  const handleChangePriority = React.useCallback(
+    (priority: Priority) => {
+      store.commit(events.updateIssuePriority({ id: issue.id, priority, modified: new Date() }))
+    },
+    [issue.id, store],
+  )
 
-  const handleChangeDescription = (body: string) => {
-    store.commit(events.updateDescription({ id: issue.id, body }))
-  }
+  const handleChangeDescription = React.useCallback(
+    (body: string) => {
+      store.commit(events.updateDescription({ id: issue.id, body }))
+    },
+    [issue.id, store],
+  )
 
   const description = store.useQuery(
     queryDb(

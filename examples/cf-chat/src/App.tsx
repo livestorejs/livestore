@@ -1,13 +1,11 @@
 /// <reference types="vite/client" />
 
-import React, { Suspense, useRef, useState } from 'react'
-import { ErrorBoundary } from 'react-error-boundary'
-
 import { StoreRegistry } from '@livestore/livestore'
 import { StoreRegistryProvider } from '@livestore/react'
-
-import { ChatHeader, MessageInput, MessagesContainer, UserSidebar } from './components.tsx'
+import React, { Suspense, useCallback, useMemo, useRef, useState } from 'react'
+import { ErrorBoundary } from 'react-error-boundary'
 import { VersionBadge } from './components/VersionBadge.tsx'
+import { ChatHeader, MessageInput, MessagesContainer, UserSidebar } from './components.tsx'
 import { useChat } from './hooks.ts'
 import { events, tables } from './livestore/schema.ts'
 import { useAppStore } from './livestore/store.ts'
@@ -61,13 +59,16 @@ export const ChatComponent = () => {
   )
 }
 
+const chatErrorFallback = <div>Something went wrong</div>
+const chatLoadingFallback = <div>Loading...</div>
+
 // App component with LiveStore provider - exported as ChatApp for main.tsx
 export const ChatApp = () => {
   const [storeRegistry] = useState(() => new StoreRegistry())
 
   return (
-    <ErrorBoundary fallback={<div>Something went wrong</div>}>
-      <Suspense fallback={<div>Loading...</div>}>
+    <ErrorBoundary fallback={chatErrorFallback}>
+      <Suspense fallback={chatLoadingFallback}>
         <StoreRegistryProvider storeRegistry={storeRegistry}>
           <UserNameWrapper>
             <ChatComponent />
@@ -86,7 +87,7 @@ const UserNameWrapper: React.FC<React.PropsWithChildren> = ({ children }) => {
   const [uiState, setUiState] = store.useClientDocument(tables.uiState)
   const newUserId = useRef(crypto.randomUUID())
 
-  const joinChat = () => {
+  const joinChat = useCallback(() => {
     if (!uiState.userContext?.username) return
     const avatar = pickAvatar(uiState.userContext.avatarEmoji, uiState.userContext.avatarColor)
     store.commit(
@@ -107,7 +108,54 @@ const UserNameWrapper: React.FC<React.PropsWithChildren> = ({ children }) => {
         avatarColor: avatar.color,
       },
     })
-  }
+  }, [setUiState, store, uiState.userContext])
+
+  const handleUsernameChange = useCallback(
+    (e: React.ChangeEvent<HTMLInputElement>) => {
+      setUiState({
+        userContext: {
+          username: e.target.value,
+          userId: newUserId.current,
+          hasJoined: false,
+          avatarEmoji: uiState.userContext?.avatarEmoji,
+          avatarColor: uiState.userContext?.avatarColor,
+        },
+      })
+    },
+    [setUiState, uiState.userContext?.avatarColor, uiState.userContext?.avatarEmoji],
+  )
+
+  const handleUsernameKeyDown = useCallback(
+    (e: React.KeyboardEvent<HTMLInputElement>) => {
+      if (e.key === 'Enter') {
+        joinChat()
+      }
+    },
+    [joinChat],
+  )
+
+  const avatarPickerValue = useMemo(
+    () => ({
+      emoji: uiState.userContext?.avatarEmoji,
+      color: uiState.userContext?.avatarColor,
+    }),
+    [uiState.userContext?.avatarColor, uiState.userContext?.avatarEmoji],
+  )
+
+  const handleAvatarChange = useCallback(
+    (val: { emoji: string; color: string }) => {
+      setUiState({
+        userContext: {
+          username: uiState.userContext?.username ?? '',
+          userId: newUserId.current,
+          hasJoined: false,
+          avatarEmoji: val.emoji,
+          avatarColor: val.color,
+        },
+      })
+    },
+    [setUiState, uiState.userContext?.username],
+  )
 
   if (uiState.userContext === undefined || !uiState.userContext.hasJoined) {
     return (
@@ -120,39 +168,13 @@ const UserNameWrapper: React.FC<React.PropsWithChildren> = ({ children }) => {
               data-testid="username"
               type="text"
               value={uiState.userContext?.username || ''}
-              onChange={(e) =>
-                setUiState({
-                  userContext: {
-                    username: e.target.value,
-                    userId: newUserId.current,
-                    hasJoined: false,
-                    avatarEmoji: uiState.userContext?.avatarEmoji,
-                    avatarColor: uiState.userContext?.avatarColor,
-                  },
-                })
-              }
+              onChange={handleUsernameChange}
               placeholder="Your username..."
               className="w-full px-4 py-2 lg:px-5 lg:py-3 border border-gray-600 bg-gray-700 text-gray-100 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent text-base lg:text-lg"
-              onKeyDown={(e) => e.key === 'Enter' && joinChat()}
+              onKeyDown={handleUsernameKeyDown}
             />
             <div className="flex items-center gap-3">
-              <AvatarPicker
-                value={{
-                  emoji: uiState.userContext?.avatarEmoji,
-                  color: uiState.userContext?.avatarColor,
-                }}
-                onChange={(val) =>
-                  setUiState({
-                    userContext: {
-                      username: uiState.userContext?.username ?? '',
-                      userId: newUserId.current,
-                      hasJoined: false,
-                      avatarEmoji: val.emoji,
-                      avatarColor: val.color,
-                    },
-                  })
-                }
-              />
+              <AvatarPicker value={avatarPickerValue} onChange={handleAvatarChange} />
             </div>
             <button
               type="button"
@@ -189,6 +211,8 @@ const avatarOptions: { emoji: string; color: string }[] = [
   { emoji: '🐸', color: '#84cc16' }, // lime
 ]
 
+const avatarOptionStyles = avatarOptions.map((option) => ({ backgroundColor: option.color }))
+
 const pickAvatar = (existingEmoji?: string, existingColor?: string) => {
   if (existingEmoji !== undefined && existingColor !== undefined) return { emoji: existingEmoji, color: existingColor }
   const idx = Math.floor(Math.random() * avatarOptions.length)
@@ -218,6 +242,20 @@ const AvatarPicker = ({
 
   const selectedIndex = controlledIndex ?? internalIndex
 
+  const handleAvatarOptionClick = React.useCallback(
+    (e: React.MouseEvent<HTMLButtonElement>) => {
+      const index = Number(e.currentTarget.dataset.avatarIndex)
+      const option = avatarOptions[index]
+      if (option === undefined) return
+      if (isControlled) {
+        onChange({ emoji: option.emoji, color: option.color })
+      } else {
+        setInternalIndex(index)
+      }
+    },
+    [isControlled, onChange],
+  )
+
   React.useEffect(() => {
     if (!isControlled) {
       const opt = avatarOptions[selectedIndex]
@@ -231,19 +269,14 @@ const AvatarPicker = ({
         <button
           key={`${opt.emoji}-${opt.color}`}
           type="button"
-          onClick={() => {
-            if (isControlled) {
-              onChange({ emoji: opt.emoji, color: opt.color })
-            } else {
-              setInternalIndex(idx)
-            }
-          }}
+          data-avatar-index={idx}
+          onClick={handleAvatarOptionClick}
           className={`w-12 h-12 md:w-14 md:h-14 rounded-full flex items-center justify-center text-xl md:text-2xl border transition-all duration-150 ${
             selectedIndex === idx
               ? 'ring-2 md:ring-3 ring-blue-400 shadow-lg opacity-100 scale-105 border-transparent'
               : 'opacity-70 hover:opacity-100 hover:scale-105 border-transparent'
           }`}
-          style={{ backgroundColor: opt.color }}
+          style={avatarOptionStyles[idx]}
           aria-label={`Choose avatar ${opt.emoji}`}
         >
           <span>{opt.emoji}</span>

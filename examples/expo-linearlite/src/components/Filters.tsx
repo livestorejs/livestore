@@ -1,4 +1,4 @@
-import type React from 'react'
+import { useCallback } from 'react'
 import { Pressable, StyleSheet, Text, View } from 'react-native'
 
 import { uiState$ } from '../livestore/queries.ts'
@@ -6,21 +6,24 @@ import { events } from '../livestore/schema.ts'
 import { useAppStore } from '../livestore/store.ts'
 import type { Filter } from '../types.ts'
 
-export const Filters: React.FC = () => {
+export const Filters = () => {
   const store = useAppStore()
   const { filter } = store.useQuery(uiState$)
 
-  const setFilter = (newFilter: Filter) => store.commit(events.uiStateSet({ filter: newFilter }))
+  const setFilter = useCallback((newFilter: Filter) => store.commit(events.uiStateSet({ filter: newFilter })), [store])
+  const setAllFilter = useCallback(() => setFilter('all'), [setFilter])
+  const setActiveFilter = useCallback(() => setFilter('active'), [setFilter])
+  const setCompletedFilter = useCallback(() => setFilter('completed'), [setFilter])
 
   return (
     <View style={styles.container}>
-      <Tag isActive={filter === 'all'} onPress={() => setFilter('all')}>
+      <Tag isActive={filter === 'all'} onPress={setAllFilter}>
         All
       </Tag>
-      <Tag isActive={filter === 'active'} onPress={() => setFilter('active')}>
+      <Tag isActive={filter === 'active'} onPress={setActiveFilter}>
         Active
       </Tag>
-      <Tag isActive={filter === 'completed'} onPress={() => setFilter('completed')}>
+      <Tag isActive={filter === 'completed'} onPress={setCompletedFilter}>
         Completed
       </Tag>
     </View>
@@ -36,9 +39,12 @@ const Tag = ({
   onPress: () => void
   children: React.ReactNode
 }) => {
+  const tagStyle = StyleSheet.compose(styles.tag, isActive ? styles.tagActive : undefined)
+  const tagTextStyle = StyleSheet.compose(styles.tagText, isActive ? styles.tagTextActive : undefined)
+
   return (
-    <Pressable style={[styles.tag, isActive && styles.tagActive]} hitSlop={4} onPress={onPress}>
-      <Text style={[styles.tagText, isActive && styles.tagTextActive]}>{children}</Text>
+    <Pressable style={tagStyle} hitSlop={4} onPress={onPress}>
+      <Text style={tagTextStyle}>{children}</Text>
     </Pressable>
   )
 }

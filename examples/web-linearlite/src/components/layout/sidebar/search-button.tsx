@@ -8,16 +8,18 @@ import { useFilterState } from '../../../livestore/queries.ts'
 export const SearchButton = () => {
   const [, setFilterState] = useFilterState()
   const { setShowMenu } = React.useContext(MenuContext)!
+  const search = React.useCallback((prev: Record<string, unknown>) => ({ ...prev, issueId: undefined }), [])
+  const handleClick = React.useCallback(() => {
+    setFilterState({ query: null })
+    setShowMenu(false)
+  }, [setFilterState, setShowMenu])
 
   return (
     <Link
       to="/search"
-      search={(prev) => ({ ...prev, issueId: undefined })}
+      search={search}
       aria-label="Open search page"
-      onClick={() => {
-        setFilterState({ query: null })
-        setShowMenu(false)
-      }}
+      onClick={handleClick}
       className="rounded-lg size-8 flex items-center justify-center hover:bg-neutral-100 dark:hover:bg-neutral-800 focus:outline-none focus:bg-neutral-100 dark:focus:bg-neutral-800"
     >
       <MagnifyingGlassIcon className="size-4" />

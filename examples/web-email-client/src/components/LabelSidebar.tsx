@@ -1,6 +1,6 @@
-import type React from 'react'
-
 import { queryDb } from '@livestore/livestore'
+import type React from 'react'
+import { useCallback, useMemo } from 'react'
 
 import { useMailboxStore } from '../stores/mailbox/index.ts'
 import { mailboxTables } from '../stores/mailbox/schema.ts'
@@ -22,9 +22,32 @@ export const LabelSidebar: React.FC = () => {
   const [uiState, setUiState] = mailboxStore.useClientDocument(mailboxTables.uiState)
   const labels = mailboxStore.useQuery(labelsQuery)
 
-  const selectLabel = (labelId: string) => {
-    setUiState({ selectedLabelId: labelId, selectedThreadId: null })
-  }
+  const selectLabel = useCallback(
+    (labelId: string) => {
+      setUiState({ selectedLabelId: labelId, selectedThreadId: null })
+    },
+    [setUiState],
+  )
+
+  const handleSelectLabel = useCallback(
+    (e: React.MouseEvent<HTMLButtonElement>) => {
+      const labelId = e.currentTarget.dataset.labelId
+      if (labelId !== undefined) {
+        selectLabel(labelId)
+      }
+    },
+    [selectLabel],
+  )
+
+  const labelColorStyles = useMemo(
+    () =>
+      new Map(
+        labels
+          .filter((label) => label.color !== null)
+          .map((label) => [label.id, { backgroundColor: label.color }] as const),
+      ),
+    [labels],
+  )
 
   return (
     <nav className="p-4 space-y-1">
@@ -35,12 +58,13 @@ export const LabelSidebar: React.FC = () => {
           <button
             key={label.id}
             type="button"
-            onClick={() => selectLabel(label.id)}
+            data-label-id={label.id}
+            onClick={handleSelectLabel}
             className={`w-full text-left px-3 py-2 rounded text-sm font-medium flex items-center text-gray-700 justify-between ${isActive ? 'bg-gray-200' : ' hover:bg-gray-100'}`}
           >
             <div className="flex items-center gap-2">
               <div className="w-3 flex-shrink-0">
-                {label.color && <div className="w-3 h-3 rounded-full" style={{ backgroundColor: label.color }} />}
+                {label.color && <div className="w-3 h-3 rounded-full" style={labelColorStyles.get(label.id)} />}
               </div>
               <span className="capitalize">{label.name.toLocaleLowerCase()}</span>
             </div>

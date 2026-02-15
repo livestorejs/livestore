@@ -65,14 +65,10 @@ const phase2Rules = {
   // TODO(oep-1n3.5): 2 violations — named-as-default false positives
   'import/no-named-as-default': 'off',
 
-  // TODO(oep-1n3.3): 276 violations — inline functions as JSX props
-  'react-perf/jsx-no-new-function-as-prop': 'off',
-  // TODO(oep-1n3.3): 136 violations — inline objects as JSX props
-  'react-perf/jsx-no-new-object-as-prop': 'off',
-  // TODO(oep-1n3.3): 58 violations — JSX elements as props
-  'react-perf/jsx-no-jsx-as-prop': 'off',
-  // TODO(oep-1n3.3): 24 violations — inline arrays as JSX props
-  'react-perf/jsx-no-new-array-as-prop': 'off',
+  'react-perf/jsx-no-new-function-as-prop': 'error',
+  'react-perf/jsx-no-new-object-as-prop': 'error',
+  'react-perf/jsx-no-jsx-as-prop': 'error',
+  'react-perf/jsx-no-new-array-as-prop': 'error',
 
   // TODO(oep-1n3.4): 447 violations — false positives in Effect generators
   'block-scoped-var': 'off',

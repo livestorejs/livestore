@@ -1,5 +1,6 @@
 import { MagnifyingGlassIcon } from '@heroicons/react/16/solid'
 import { XMarkIcon } from '@heroicons/react/20/solid'
+import React from 'react'
 import { useKeyboard } from 'react-aria'
 import { Button, Input } from 'react-aria-components'
 
@@ -8,6 +9,11 @@ import { MenuButton } from '../../common/menu-button.tsx'
 
 export const SearchBar = () => {
   const [filterState, setFilterState] = useFilterState()
+  const handleChange = React.useCallback(
+    (e: React.ChangeEvent<HTMLInputElement>) => setFilterState({ query: e.target.value }),
+    [setFilterState],
+  )
+  const handleClear = React.useCallback(() => setFilterState({ query: null }), [setFilterState])
 
   const { keyboardProps } = useKeyboard({
     onKeyDown: (e) => {
@@ -25,13 +31,13 @@ export const SearchBar = () => {
         className="input w-full border-none pl-2 lg:pl-3 bg-transparent focus:outline-none focus:ring-0 placholder:text-neutral-400 dark:placeholder:text-neutral-500 dark:text-neutral-200 text-neutral-800 text-sm"
         value={filterState.query ?? ''}
         placeholder="Search issues..."
-        onChange={(e) => setFilterState({ query: e.target.value })}
+        onChange={handleChange}
         {...keyboardProps}
       />
       {filterState.query && (
         <Button
           aria-label="Clear search query"
-          onPress={() => setFilterState({ query: null })}
+          onPress={handleClear}
           className="absolute right-2 size-8 rounded-lg hover:bg-neutral-100 focus:bg-neutral-100 flex items-center justify-center"
         >
           <XMarkIcon className="size-5" />

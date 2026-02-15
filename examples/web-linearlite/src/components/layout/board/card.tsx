@@ -1,4 +1,5 @@
 import { useNavigate, useParams } from '@tanstack/react-router'
+import { type KeyboardEvent, useCallback, useMemo } from 'react'
 import { Button } from 'react-aria-components'
 
 import { events, type Issue } from '../../../livestore/schema/index.ts'
@@ -14,12 +15,36 @@ export const Card = ({ issue, className }: { issue: Issue; className?: string })
   const navigate = useNavigate()
   const store = useAppStore()
   const { storeId } = useParams({ from: '/$storeId' })
+  const params = useMemo(() => ({ storeId }), [storeId])
+  const search = useCallback((prev: Record<string, unknown>) => ({ ...prev, issueId: issue.id.toString() }), [issue.id])
 
-  const handleChangeStatus = (status: Status) =>
-    store.commit(events.updateIssueStatus({ id: issue.id, status, modified: new Date() }))
+  const handleChangeStatus = useCallback(
+    (status: Status) => store.commit(events.updateIssueStatus({ id: issue.id, status, modified: new Date() })),
+    [issue.id, store],
+  )
 
-  const handleChangePriority = (priority: Priority) =>
-    store.commit(events.updateIssuePriority({ id: issue.id, priority, modified: new Date() }))
+  const handleChangePriority = useCallback(
+    (priority: Priority) => store.commit(events.updateIssuePriority({ id: issue.id, priority, modified: new Date() })),
+    [issue.id, store],
+  )
+
+  const openIssue = useCallback(() => {
+    navigate({
+      to: '/$storeId/issue',
+      params,
+      search,
+    })
+  }, [navigate, params, search])
+
+  const handleKeyDown = useCallback(
+    (e: KeyboardEvent<HTMLDivElement>) => {
+      if (e.key === 'Enter' || e.key === ' ') {
+        e.preventDefault()
+        openIssue()
+      }
+    },
+    [openIssue],
+  )
 
   return (
     // biome-ignore lint/a11y/useSemanticElements: complex layout with multiple interactive elements
@@ -27,23 +52,8 @@ export const Card = ({ issue, className }: { issue: Issue; className?: string })
       role="button"
       tabIndex={0}
       className={`p-2 text-sm bg-white dark:bg-neutral-900 rounded-md shadow-sm dark:shadow-none border border-transparent dark:border-neutral-700/50 cursor-pointer h-full ${className ?? ''}`}
-      onClick={() =>
-        navigate({
-          to: '/$storeId/issue',
-          params: { storeId },
-          search: (prev) => ({ ...prev, issueId: issue.id.toString() }),
-        })
-      }
-      onKeyDown={(e) => {
-        if (e.key === 'Enter' || e.key === ' ') {
-          e.preventDefault()
-          navigate({
-            to: '/$storeId/issue',
-            params: { storeId },
-            search: (prev) => ({ ...prev, issueId: issue.id.toString() }),
-          })
-        }
-      }}
+      onClick={openIssue}
+      onKeyDown={handleKeyDown}
     >
       <Button slot="drag" className="size-0 absolute left-0 top-0" />
       <div className="flex items-center justify-between pl-2 pt-1 pr-1 mb-0.5">

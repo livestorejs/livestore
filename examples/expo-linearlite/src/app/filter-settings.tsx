@@ -1,5 +1,6 @@
 import SegmentedControl from '@react-native-segmented-control/segmented-control'
 import { Stack } from 'expo-router'
+import { useCallback, useMemo } from 'react'
 import { ScrollView, StyleSheet, useColorScheme, View } from 'react-native'
 
 import { RowPropertySwitch } from '../components/RowPropertySwitch.tsx'
@@ -11,7 +12,8 @@ import { useAppStore } from '../livestore/store.ts'
 const tabGroupingOptions = ['NoGrouping', 'Assignee', 'Priority', 'Status']
 const tabOrderingOptions = ['Priority', 'Last Updated', 'Last Created']
 // const completedIssuesOptions = ['None', 'Past Week', 'Past Month', 'Past Year']
-const rowProperties = ['Assignee', 'Status', 'Priority']
+const rowProperties = ['Assignee', 'Status', 'Priority'] as const
+type RowProperty = (typeof rowProperties)[number]
 
 const FilterSettingsScreen = () => {
   const colorScheme = useColorScheme()
@@ -37,46 +39,95 @@ const FilterSettingsScreen = () => {
     setUiState,
   ] = store.useClientDocument(tables.uiState)
 
-  const styles = StyleSheet.create({
-    container: {
-      flex: 1,
-      paddingHorizontal: 16,
-      paddingVertical: 24,
-      backgroundColor: isDark ? darkSecondary : 'white',
+  const containerStyle = useMemo(
+    () => StyleSheet.compose(styles.container, isDark ? styles.containerDark : styles.containerLight),
+    [isDark],
+  )
+  const selectedGrouping = selectedHomeTab === 'assigned' ? assignedTabGrouping : createdTabGrouping
+  const selectedOrdering = selectedHomeTab === 'assigned' ? assignedTabOrdering : createdTabOrdering
+  const screenOptions = useMemo(
+    () => ({
+      headerTitle: `Filter settings for "${selectedHomeTab}" tab`,
+      freezeOnBlur: false,
+    }),
+    [selectedHomeTab],
+  )
+
+  const onGroupingChange = useCallback(
+    (value: { nativeEvent: { value: string } }) => {
+      const nextValue = value.nativeEvent.value.toLowerCase()
+      if (selectedHomeTab === 'assigned') {
+        setUiState({ assignedTabGrouping: nextValue })
+        return
+      }
+      setUiState({ createdTabGrouping: nextValue })
     },
-    section: {
-      marginBottom: 32,
+    [selectedHomeTab, setUiState],
+  )
+
+  const onOrderingChange = useCallback(
+    (value: { nativeEvent: { value: string } }) => {
+      const nextValue = value.nativeEvent.value.toLowerCase()
+      if (selectedHomeTab === 'assigned') {
+        setUiState({ assignedTabOrdering: nextValue })
+        return
+      }
+      setUiState({ createdTabOrdering: nextValue })
     },
-    sectionTitle: {
-      marginBottom: 12,
-    },
-    rowPropertiesContainer: {
-      flexDirection: 'row',
-      gap: 12,
-    },
-  })
+    [selectedHomeTab, setUiState],
+  )
+
+  const toggleAssignee = useCallback(() => {
+    const currentValue = selectedHomeTab === 'assigned' ? assignedTabShowAssignee : createdTabShowAssignee
+    setUiState({ [`${selectedHomeTab}TabShowAssignee`]: !currentValue })
+  }, [assignedTabShowAssignee, createdTabShowAssignee, selectedHomeTab, setUiState])
+
+  const toggleStatus = useCallback(() => {
+    const currentValue = selectedHomeTab === 'assigned' ? assignedTabShowStatus : createdTabShowStatus
+    setUiState({ [`${selectedHomeTab}TabShowStatus`]: !currentValue })
+  }, [assignedTabShowStatus, createdTabShowStatus, selectedHomeTab, setUiState])
+
+  const togglePriority = useCallback(() => {
+    const currentValue = selectedHomeTab === 'assigned' ? assignedTabShowPriority : createdTabShowPriority
+    setUiState({ [`${selectedHomeTab}TabShowPriority`]: !currentValue })
+  }, [assignedTabShowPriority, createdTabShowPriority, selectedHomeTab, setUiState])
+
+  const rowPropertyStates = useMemo(
+    () => ({
+      Assignee: selectedHomeTab === 'assigned' ? assignedTabShowAssignee : createdTabShowAssignee,
+      Status: selectedHomeTab === 'assigned' ? assignedTabShowStatus : createdTabShowStatus,
+      Priority: selectedHomeTab === 'assigned' ? assignedTabShowPriority : createdTabShowPriority,
+    }),
+    [
+      assignedTabShowAssignee,
+      assignedTabShowPriority,
+      assignedTabShowStatus,
+      createdTabShowAssignee,
+      createdTabShowPriority,
+      createdTabShowStatus,
+      selectedHomeTab,
+    ],
+  )
+
+  const rowPropertyHandlers = useMemo<Record<RowProperty, () => void>>(
+    () => ({
+      Assignee: toggleAssignee,
+      Status: toggleStatus,
+      Priority: togglePriority,
+    }),
+    [toggleAssignee, togglePriority, toggleStatus],
+  )
 
   return (
-    <ScrollView style={styles.container}>
-      <Stack.Screen
-        options={{
-          headerTitle: `Filter settings for "${selectedHomeTab}" tab`,
-          freezeOnBlur: false,
-        }}
-      />
+    <ScrollView style={containerStyle}>
+      <Stack.Screen options={screenOptions} />
 
       <View style={styles.section}>
         <ThemedText style={styles.sectionTitle}>Grouping</ThemedText>
         <SegmentedControl
           values={tabGroupingOptions}
-          selectedIndex={tabGroupingOptions.indexOf(
-            selectedHomeTab === 'assigned' ? assignedTabGrouping : createdTabGrouping,
-          )}
-          onChange={(value) =>
-            selectedHomeTab === 'assigned'
-              ? setUiState({ assignedTabGrouping: value.nativeEvent.value.toLowerCase() })
-              : setUiState({ createdTabGrouping: value.nativeEvent.value.toLowerCase() })
-          }
+          selectedIndex={tabGroupingOptions.indexOf(selectedGrouping)}
+          onChange={onGroupingChange}
         />
       </View>
 
@@ -84,14 +135,8 @@ const FilterSettingsScreen = () => {
         <ThemedText style={styles.sectionTitle}>Ordering</ThemedText>
         <SegmentedControl
           values={tabOrderingOptions}
-          selectedIndex={tabOrderingOptions.indexOf(
-            selectedHomeTab === 'assigned' ? assignedTabOrdering : createdTabOrdering,
-          )}
-          onChange={(value) =>
-            selectedHomeTab === 'assigned'
-              ? setUiState({ assignedTabOrdering: value.nativeEvent.value.toLowerCase() })
-              : setUiState({ createdTabOrdering: value.nativeEvent.value.toLowerCase() })
-          }
+          selectedIndex={tabOrderingOptions.indexOf(selectedOrdering)}
+          onChange={onOrderingChange}
         />
       </View>
       <View>
@@ -100,39 +145,9 @@ const FilterSettingsScreen = () => {
           {rowProperties.map((property) => (
             <RowPropertySwitch
               key={property}
-              onPress={() => {
-                const settingKey = `${selectedHomeTab}TabShow${property}`
-                const currentValue =
-                  selectedHomeTab === 'assigned'
-                    ? property === 'Assignee'
-                      ? assignedTabShowAssignee
-                      : property === 'Status'
-                        ? assignedTabShowStatus
-                        : assignedTabShowPriority
-                    : property === 'Assignee'
-                      ? createdTabShowAssignee
-                      : property === 'Status'
-                        ? createdTabShowStatus
-                        : createdTabShowPriority
-
-                setUiState({
-                  [settingKey]: !currentValue,
-                })
-              }}
+              onPress={rowPropertyHandlers[property]}
               label={property}
-              isSelected={
-                selectedHomeTab === 'assigned'
-                  ? property === 'Assignee'
-                    ? assignedTabShowAssignee
-                    : property === 'Status'
-                      ? assignedTabShowStatus
-                      : assignedTabShowPriority
-                  : property === 'Assignee'
-                    ? createdTabShowAssignee
-                    : property === 'Status'
-                      ? createdTabShowStatus
-                      : createdTabShowPriority
-              }
+              isSelected={rowPropertyStates[property]}
             />
           ))}
         </View>
@@ -142,3 +157,27 @@ const FilterSettingsScreen = () => {
 }
 
 export default FilterSettingsScreen
+
+const styles = StyleSheet.create({
+  container: {
+    flex: 1,
+    paddingHorizontal: 16,
+    paddingVertical: 24,
+  },
+  containerDark: {
+    backgroundColor: darkSecondary,
+  },
+  containerLight: {
+    backgroundColor: 'white',
+  },
+  section: {
+    marginBottom: 32,
+  },
+  sectionTitle: {
+    marginBottom: 12,
+  },
+  rowPropertiesContainer: {
+    flexDirection: 'row',
+    gap: 12,
+  },
+})

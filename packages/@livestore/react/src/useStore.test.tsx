@@ -1,7 +1,3 @@
-import { act, type RenderHookResult, type RenderResult, render, renderHook, waitFor } from '@testing-library/react'
-import * as React from 'react'
-import { describe, expect, it } from 'vitest'
-
 import { makeInMemoryAdapter } from '@livestore/adapter-web'
 import {
   type RegistryStoreOptions,
@@ -11,6 +7,9 @@ import {
   storeOptions,
 } from '@livestore/livestore'
 import { shouldNeverHappen } from '@livestore/utils'
+import { act, type RenderHookResult, type RenderResult, render, renderHook, waitFor } from '@testing-library/react'
+import * as React from 'react'
+import { describe, expect, it } from 'vitest'
 
 import { schema } from './__tests__/fixture.tsx'
 import { StoreRegistryProvider } from './StoreRegistryContext.tsx'
@@ -46,7 +45,7 @@ describe('experimental useStore', () => {
     await act(async () => {
       view = render(
         <StoreRegistryProvider storeRegistry={storeRegistry}>
-          <React.Suspense fallback={<div data-testid="fallback" />}>
+          <React.Suspense fallback={makeSuspenseFallback()}>
             <StoreConsumer options={options} />
           </React.Suspense>
         </StoreRegistryProvider>,
@@ -64,10 +63,9 @@ describe('experimental useStore', () => {
   it('does not re-suspend on subsequent renders when store is already loaded', async () => {
     const storeRegistry = new StoreRegistry()
     const options = testStoreOptions()
-
     const Wrapper = ({ opts }: { opts: RegistryStoreOptions<typeof schema> }) => (
       <StoreRegistryProvider storeRegistry={storeRegistry}>
-        <React.Suspense fallback={<div data-testid="fallback" />}>
+        <React.Suspense fallback={makeSuspenseFallback()}>
           <StoreConsumer options={opts} />
         </React.Suspense>
       </StoreRegistryProvider>
@@ -84,8 +82,9 @@ describe('experimental useStore', () => {
     expect(renderedView.getByTestId('ready')).toBeDefined()
 
     // Rerender with new options object (but same storeId)
+    const rerenderOptions = cloneStoreOptions(options)
     await act(async () => {
-      renderedView.rerender(<Wrapper opts={{ ...options }} />)
+      renderedView.rerender(<Wrapper opts={rerenderOptions} />)
     })
 
     // Should not show fallback
@@ -179,7 +178,6 @@ describe('experimental useStore', () => {
   it.skip('should load store with unusedCacheTime set to 0', async () => {
     const storeRegistry = new StoreRegistry({ defaultOptions: { unusedCacheTime: 0 } })
     const options = testStoreOptions({ unusedCacheTime: 0 })
-
     const StoreConsumerWithVerification = ({ opts }: { opts: RegistryStoreOptions<typeof schema> }) => {
       const store = useStore(opts)
       // Verify store is usable - access internals to confirm it's not disposed
@@ -191,7 +189,7 @@ describe('experimental useStore', () => {
     await act(async () => {
       view = render(
         <StoreRegistryProvider storeRegistry={storeRegistry}>
-          <React.Suspense fallback={<div data-testid="fallback" />}>
+          <React.Suspense fallback={makeSuspenseFallback()}>
             <StoreConsumerWithVerification opts={options} />
           </React.Suspense>
         </StoreRegistryProvider>,
@@ -218,6 +216,12 @@ describe('experimental useStore', () => {
 const StoreConsumer = ({ options }: { options: RegistryStoreOptions<any> }) => {
   useStore(options)
   return <div data-testid="ready" />
+}
+
+const makeSuspenseFallback = () => React.createElement('div', { 'data-testid': 'fallback' })
+
+const cloneStoreOptions = <TOptions extends object>(options: TOptions): TOptions => {
+  return { ...options }
 }
 
 const makeProvider =

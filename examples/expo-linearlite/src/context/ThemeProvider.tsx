@@ -3,6 +3,30 @@ import { Platform, StatusBar, useColorScheme } from 'react-native'
 
 import { darkBackground, darkText, magicBlue, mercuryWhite, nordicGray } from '../constants/Colors.ts'
 
+const darkThemeValue = {
+  ...DarkTheme,
+  colors: {
+    ...DarkTheme.colors,
+    primary: mercuryWhite,
+    card: darkBackground,
+    notification: magicBlue,
+    background: darkBackground,
+    text: darkText,
+  },
+}
+
+const lightThemeValue = {
+  ...DefaultTheme,
+  colors: {
+    ...DefaultTheme.colors,
+    primary: nordicGray,
+    background: 'white',
+    card: 'white',
+    notification: magicBlue,
+    text: nordicGray,
+  },
+}
+
 export const ThemeProvider = ({ children }: { children: React.ReactNode }) => {
   const isDarkMode = useColorScheme() === 'dark'
   const androidStatusBarStyle = isDarkMode ? 'light-content' : 'dark-content'
@@ -10,33 +34,7 @@ export const ThemeProvider = ({ children }: { children: React.ReactNode }) => {
   const statusBarStyle = isIos ? 'default' : androidStatusBarStyle
 
   return (
-    <NavigationThemeProvider
-      value={
-        isDarkMode
-          ? {
-              ...DarkTheme,
-              colors: {
-                ...DarkTheme.colors,
-                primary: mercuryWhite,
-                card: darkBackground,
-                notification: magicBlue,
-                background: darkBackground,
-                text: darkText,
-              },
-            }
-          : {
-              ...DefaultTheme,
-              colors: {
-                ...DefaultTheme.colors,
-                primary: nordicGray,
-                background: 'white',
-                card: 'white',
-                notification: magicBlue,
-                text: nordicGray,
-              },
-            }
-      }
-    >
+    <NavigationThemeProvider value={isDarkMode ? darkThemeValue : lightThemeValue}>
       {children}
       <StatusBar barStyle={statusBarStyle} />
     </NavigationThemeProvider>

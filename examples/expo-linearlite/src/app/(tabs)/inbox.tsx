@@ -1,9 +1,8 @@
+import { queryDb } from '@livestore/livestore'
 import { Stack } from 'expo-router'
 import React from 'react'
 import type { ViewStyle } from 'react-native'
 import { ActivityIndicator, Button, ScrollView, StyleSheet, useColorScheme, View } from 'react-native'
-
-import { queryDb } from '@livestore/livestore'
 
 import { ThemedText } from '../../components/ThemedText.tsx'
 import { useUser } from '../../hooks/useUser.ts'
@@ -20,6 +19,7 @@ import {
 
 const COMMENTS_PER_ISSUE = 10
 const users$ = queryDb(tables.users.select(), { label: 'inbox-users' })
+const controlCenterScreenOptions = { headerTitle: 'Control Center' }
 
 const InboxScreen = () => {
   const user = useUser()
@@ -42,77 +42,225 @@ const InboxScreen = () => {
 
   const users = store.useQuery(users$)
 
-  const generateRandomData = async (numUsers: number, numIssuesPerUser: number) => {
-    const startTime = performance.now()
+  const generateRandomData = React.useCallback(
+    async (numUsers: number, numIssuesPerUser: number) => {
+      const startTime = performance.now()
 
-    // Calculate estimated totals
-    const totalIssues = numUsers * numIssuesPerUser
-    const estimatedComments = totalIssues * (COMMENTS_PER_ISSUE / 2) // Average
-    const estimatedReactions = estimatedComments * 1.5 // Average 1.5 reactions per comment
-    const totalItems = numUsers + totalIssues + estimatedComments + estimatedReactions
+      // Calculate estimated totals
+      const totalIssues = numUsers * numIssuesPerUser
+      const estimatedComments = totalIssues * (COMMENTS_PER_ISSUE / 2) // Average
+      const estimatedReactions = estimatedComments * 1.5 // Average 1.5 reactions per comment
+      const totalItems = numUsers + totalIssues + estimatedComments + estimatedReactions
 
-    const totalObjects = Math.round(totalItems)
+      const totalObjects = Math.round(totalItems)
 
-    setLoadingMessage({
-      operation: 'Generating Random Data',
-      items: [
-        { label: 'Users', count: numUsers },
-        { label: 'Issues', count: totalIssues },
-        { label: `Comments (avg ${COMMENTS_PER_ISSUE / 2} per issue)`, count: Math.round(estimatedComments) },
-        { label: 'Reactions (avg 1.5 per comment)', count: Math.round(estimatedReactions) },
-        { label: 'Total Objects', count: totalObjects },
-      ],
-      progress: { current: 0, total: totalIssues },
-      phase: 'Generating data...',
-    })
-    setIsLoading(true)
-    try {
-      // Use setTimeout to ensure the loading indicator renders before heavy computation
-      await new Promise((resolve) => setTimeout(resolve, 0))
+      setLoadingMessage({
+        operation: 'Generating Random Data',
+        items: [
+          { label: 'Users', count: numUsers },
+          { label: 'Issues', count: totalIssues },
+          { label: `Comments (avg ${COMMENTS_PER_ISSUE / 2} per issue)`, count: Math.round(estimatedComments) },
+          { label: 'Reactions (avg 1.5 per comment)', count: Math.round(estimatedReactions) },
+          { label: 'Total Objects', count: totalObjects },
+        ],
+        progress: { current: 0, total: totalIssues },
+        phase: 'Generating data...',
+      })
+      setIsLoading(true)
+      try {
+        // Use setTimeout to ensure the loading indicator renders before heavy computation
+        await new Promise((resolve) => setTimeout(resolve, 0))
 
-      const generationStart = performance.now()
-      console.log('🏗️ Starting data generation at', `${generationStart.toFixed(0)}ms`)
+        const generationStart = performance.now()
+        console.log('🏗️ Starting data generation at', `${generationStart.toFixed(0)}ms`)
 
-      const users: User[] = []
-      const issues: Issue[] = []
-      const comments: Comment[] = []
-      const reactions: Reaction[] = []
+        const users: User[] = []
+        const issues: Issue[] = []
+        const comments: Comment[] = []
+        const reactions: Reaction[] = []
 
-      const BATCH_SIZE = 5 // Yield every 5 issues
-      let issuesCreated = 0
+        const BATCH_SIZE = 5 // Yield every 5 issues
+        let issuesCreated = 0
 
-      // Generate users in batches
-      for (let i = 0; i < numUsers; i++) {
-        const user = createRandomUser()
-        users.push(user)
+        // Generate users in batches
+        for (let i = 0; i < numUsers; i++) {
+          const user = createRandomUser()
+          users.push(user)
 
-        // Generate issues for each user
-        for (let j = 0; j < numIssuesPerUser; j++) {
+          // Generate issues for each user
+          for (let j = 0; j < numIssuesPerUser; j++) {
+            const issue = createRandomIssue(user.id)
+            issues.push(issue)
+            issuesCreated++
+
+            // Generate comments for each issue
+            const numComments = Math.floor(Math.random() * COMMENTS_PER_ISSUE + 1)
+            for (let k = 0; k < numComments; k++) {
+              const comment = createRandomComment(issue.id, user.id)
+              comments.push(comment)
+
+              // Generate reactions for each comment
+              const numReactions = Math.floor(Math.random() * 3)
+              for (let l = 0; l < numReactions; l++) {
+                const reaction = createRandomReaction(issue.id, user.id, comment.id)
+                reactions.push(reaction)
+              }
+            }
+
+            // Yield control back to UI every BATCH_SIZE issues
+            if (issuesCreated % BATCH_SIZE === 0 || issuesCreated === totalIssues) {
+              setLoadingMessage((prev) =>
+                prev
+                  ? {
+                      ...prev,
+                      progress: { current: issuesCreated, total: totalIssues },
+                      phase: 'Generating data...',
+                    }
+                  : null,
+              )
+              await new Promise((resolve) => setTimeout(resolve, 0))
+            }
+          }
+        }
+
+        const generationTime = performance.now() - generationStart
+        console.log(
+          '✅ Generation finished in',
+          `${generationTime.toFixed(0)}ms`,
+          '| Created',
+          users.length,
+          'users,',
+          issues.length,
+          'issues,',
+          comments.length,
+          'comments,',
+          reactions.length,
+          'reactions',
+        )
+
+        // Update to show we're committing
+        const actualTotal = users.length + issues.length + comments.length + reactions.length
+        setLoadingMessage((prev) =>
+          prev
+            ? {
+                ...prev,
+                phase: `Saving ${actualTotal.toLocaleString()} objects to database...`,
+                progress: undefined, // Hide progress bar during commit
+              }
+            : null,
+        )
+        await new Promise((resolve) => setTimeout(resolve, 0))
+
+        // Commit all data in a SINGLE transaction to avoid multiple React re-renders
+        const commitStart = performance.now()
+        console.log('⏱️ Starting commit of', actualTotal, 'items at', `${commitStart.toFixed(0)}ms`)
+
+        store.commit(
+          ...users.map((user) => events.userCreated(user)),
+          ...issues.map((issue) => events.issueCreated(issue)),
+          ...comments.map((comment) => events.commentCreated(comment)),
+          ...reactions.map((reaction) => events.reactionCreated(reaction)),
+        )
+
+        const commitTime = performance.now() - commitStart
+        console.log('✅ Commit finished in', `${commitTime.toFixed(0)}ms`)
+        console.log('⏱️ Yielding for React updates at', `${(performance.now() - startTime).toFixed(0)}ms`)
+
+        // Create breakdown for display (even though we committed as one batch)
+        const breakdown: { label: string; count: number; time: number }[] = [
+          { label: 'Users', count: users.length, time: 0 },
+          { label: 'Issues', count: issues.length, time: 0 },
+          { label: 'Comments', count: comments.length, time: 0 },
+          { label: 'Reactions', count: reactions.length, time: 0 },
+        ]
+
+        // Yield to let React process store updates and measure the overhead
+        await new Promise((resolve) => setTimeout(resolve, 0))
+
+        const totalTime = performance.now() - startTime
+        console.log(
+          '🏁 Total time:',
+          `${totalTime.toFixed(0)}ms`,
+          '| React overhead:',
+          `${(totalTime - commitTime - generationTime).toFixed(0)}ms`,
+        )
+
+        // Show timing results
+        setTimingResults({
+          operation: 'Random Data Generation',
+          generationTime,
+          commitTime,
+          breakdown,
+          totalItems: actualTotal,
+          totalTime,
+        })
+      } finally {
+        setIsLoading(false)
+        setLoadingMessage(null)
+      }
+    },
+    [store],
+  )
+
+  const generateIssuesForCurrentUser = React.useCallback(
+    async (numberOfIssues: number) => {
+      const startTime = performance.now()
+
+      // Calculate estimated totals
+      const estimatedComments = numberOfIssues * (COMMENTS_PER_ISSUE / 2) // Average
+      const estimatedReactions = estimatedComments * 1.5 // Average 1.5 reactions per comment
+      const totalItems = numberOfIssues + estimatedComments + estimatedReactions
+
+      const totalObjects = Math.round(totalItems)
+
+      setLoadingMessage({
+        operation: `Generating Issues for ${user.name}`,
+        items: [
+          { label: 'Issues', count: numberOfIssues },
+          { label: `Comments (avg ${COMMENTS_PER_ISSUE / 2} per issue)`, count: Math.round(estimatedComments) },
+          { label: 'Reactions (avg 1.5 per comment)', count: Math.round(estimatedReactions) },
+          { label: 'Total Objects', count: totalObjects },
+        ],
+        progress: { current: 0, total: numberOfIssues },
+        phase: 'Generating data...',
+      })
+      setIsLoading(true)
+      try {
+        // Use setTimeout to ensure the loading indicator renders before heavy computation
+        await new Promise((resolve) => setTimeout(resolve, 0))
+
+        const generationStart = performance.now()
+
+        const issues: Issue[] = []
+        const comments: Comment[] = []
+        const reactions: Reaction[] = []
+
+        const BATCH_SIZE = 5 // Yield every 5 issues
+
+        for (let i = 0; i < numberOfIssues; i++) {
           const issue = createRandomIssue(user.id)
           issues.push(issue)
-          issuesCreated++
 
-          // Generate comments for each issue
+          // Generate comments using users
           const numComments = Math.floor(Math.random() * COMMENTS_PER_ISSUE + 1)
-          for (let k = 0; k < numComments; k++) {
-            const comment = createRandomComment(issue.id, user.id)
+          for (let j = 0; j < numComments; j++) {
+            const comment = createRandomComment(issue.id, randomValueFromArray(users).id)
             comments.push(comment)
 
-            // Generate reactions for each comment
-            const numReactions = Math.floor(Math.random() * 3)
-            for (let l = 0; l < numReactions; l++) {
-              const reaction = createRandomReaction(issue.id, user.id, comment.id)
+            const numReactions = Math.floor(Math.random() * 2)
+            for (let k = 0; k < numReactions; k++) {
+              const reaction = createRandomReaction(issue.id, randomValueFromArray(users).id, comment.id)
               reactions.push(reaction)
             }
           }
 
           // Yield control back to UI every BATCH_SIZE issues
-          if (issuesCreated % BATCH_SIZE === 0 || issuesCreated === totalIssues) {
+          if ((i + 1) % BATCH_SIZE === 0 || i === numberOfIssues - 1) {
             setLoadingMessage((prev) =>
               prev
                 ? {
                     ...prev,
-                    progress: { current: issuesCreated, total: totalIssues },
+                    progress: { current: i + 1, total: numberOfIssues },
                     phase: 'Generating data...',
                   }
                 : null,
@@ -120,205 +268,63 @@ const InboxScreen = () => {
             await new Promise((resolve) => setTimeout(resolve, 0))
           }
         }
+
+        const generationTime = performance.now() - generationStart
+
+        // Update to show we're committing
+        const actualTotal = issues.length + comments.length + reactions.length
+        setLoadingMessage((prev) =>
+          prev
+            ? {
+                ...prev,
+                phase: `Saving ${actualTotal.toLocaleString()} objects to database...`,
+                progress: undefined, // Hide progress bar during commit
+              }
+            : null,
+        )
+        await new Promise((resolve) => setTimeout(resolve, 0))
+
+        // Commit all data in a SINGLE transaction to avoid multiple React re-renders
+        const commitStart = performance.now()
+
+        store.commit(
+          ...issues.map((issue) => events.issueCreated(issue)),
+          ...comments.map((comment) => events.commentCreated(comment)),
+          ...reactions.map((reaction) => events.reactionCreated(reaction)),
+        )
+
+        const commitTime = performance.now() - commitStart
+
+        // Create breakdown for display (even though we committed as one batch)
+        const breakdown: { label: string; count: number; time: number }[] = [
+          { label: 'Issues', count: issues.length, time: 0 },
+          { label: 'Comments', count: comments.length, time: 0 },
+          { label: 'Reactions', count: reactions.length, time: 0 },
+        ]
+
+        // Yield to let React process store updates and measure the overhead
+        await new Promise((resolve) => setTimeout(resolve, 0))
+
+        const totalTime = performance.now() - startTime
+
+        // Show timing results
+        setTimingResults({
+          operation: `Issues for ${user.name}`,
+          generationTime,
+          commitTime,
+          breakdown,
+          totalItems: actualTotal,
+          totalTime,
+        })
+      } finally {
+        setIsLoading(false)
+        setLoadingMessage(null)
       }
+    },
+    [store, user.id, user.name, users],
+  )
 
-      const generationTime = performance.now() - generationStart
-      console.log(
-        '✅ Generation finished in',
-        `${generationTime.toFixed(0)}ms`,
-        '| Created',
-        users.length,
-        'users,',
-        issues.length,
-        'issues,',
-        comments.length,
-        'comments,',
-        reactions.length,
-        'reactions',
-      )
-
-      // Update to show we're committing
-      const actualTotal = users.length + issues.length + comments.length + reactions.length
-      setLoadingMessage((prev) =>
-        prev
-          ? {
-              ...prev,
-              phase: `Saving ${actualTotal.toLocaleString()} objects to database...`,
-              progress: undefined, // Hide progress bar during commit
-            }
-          : null,
-      )
-      await new Promise((resolve) => setTimeout(resolve, 0))
-
-      // Commit all data in a SINGLE transaction to avoid multiple React re-renders
-      const commitStart = performance.now()
-      console.log('⏱️ Starting commit of', actualTotal, 'items at', `${commitStart.toFixed(0)}ms`)
-
-      store.commit(
-        ...users.map((user) => events.userCreated(user)),
-        ...issues.map((issue) => events.issueCreated(issue)),
-        ...comments.map((comment) => events.commentCreated(comment)),
-        ...reactions.map((reaction) => events.reactionCreated(reaction)),
-      )
-
-      const commitTime = performance.now() - commitStart
-      console.log('✅ Commit finished in', `${commitTime.toFixed(0)}ms`)
-      console.log('⏱️ Yielding for React updates at', `${(performance.now() - startTime).toFixed(0)}ms`)
-
-      // Create breakdown for display (even though we committed as one batch)
-      const breakdown: { label: string; count: number; time: number }[] = [
-        { label: 'Users', count: users.length, time: 0 },
-        { label: 'Issues', count: issues.length, time: 0 },
-        { label: 'Comments', count: comments.length, time: 0 },
-        { label: 'Reactions', count: reactions.length, time: 0 },
-      ]
-
-      // Yield to let React process store updates and measure the overhead
-      await new Promise((resolve) => setTimeout(resolve, 0))
-
-      const totalTime = performance.now() - startTime
-      console.log(
-        '🏁 Total time:',
-        `${totalTime.toFixed(0)}ms`,
-        '| React overhead:',
-        `${(totalTime - commitTime - generationTime).toFixed(0)}ms`,
-      )
-
-      // Show timing results
-      setTimingResults({
-        operation: 'Random Data Generation',
-        generationTime,
-        commitTime,
-        breakdown,
-        totalItems: actualTotal,
-        totalTime,
-      })
-    } finally {
-      setIsLoading(false)
-      setLoadingMessage(null)
-    }
-  }
-
-  const generateIssuesForCurrentUser = async (numberOfIssues: number) => {
-    const startTime = performance.now()
-
-    // Calculate estimated totals
-    const estimatedComments = numberOfIssues * (COMMENTS_PER_ISSUE / 2) // Average
-    const estimatedReactions = estimatedComments * 1.5 // Average 1.5 reactions per comment
-    const totalItems = numberOfIssues + estimatedComments + estimatedReactions
-
-    const totalObjects = Math.round(totalItems)
-
-    setLoadingMessage({
-      operation: `Generating Issues for ${user.name}`,
-      items: [
-        { label: 'Issues', count: numberOfIssues },
-        { label: `Comments (avg ${COMMENTS_PER_ISSUE / 2} per issue)`, count: Math.round(estimatedComments) },
-        { label: 'Reactions (avg 1.5 per comment)', count: Math.round(estimatedReactions) },
-        { label: 'Total Objects', count: totalObjects },
-      ],
-      progress: { current: 0, total: numberOfIssues },
-      phase: 'Generating data...',
-    })
-    setIsLoading(true)
-    try {
-      // Use setTimeout to ensure the loading indicator renders before heavy computation
-      await new Promise((resolve) => setTimeout(resolve, 0))
-
-      const generationStart = performance.now()
-
-      const issues: Issue[] = []
-      const comments: Comment[] = []
-      const reactions: Reaction[] = []
-
-      const BATCH_SIZE = 5 // Yield every 5 issues
-
-      for (let i = 0; i < numberOfIssues; i++) {
-        const issue = createRandomIssue(user.id)
-        issues.push(issue)
-
-        // Generate comments using users
-        const numComments = Math.floor(Math.random() * COMMENTS_PER_ISSUE + 1)
-        for (let j = 0; j < numComments; j++) {
-          const comment = createRandomComment(issue.id, randomValueFromArray(users).id)
-          comments.push(comment)
-
-          const numReactions = Math.floor(Math.random() * 2)
-          for (let k = 0; k < numReactions; k++) {
-            const reaction = createRandomReaction(issue.id, randomValueFromArray(users).id, comment.id)
-            reactions.push(reaction)
-          }
-        }
-
-        // Yield control back to UI every BATCH_SIZE issues
-        if ((i + 1) % BATCH_SIZE === 0 || i === numberOfIssues - 1) {
-          setLoadingMessage((prev) =>
-            prev
-              ? {
-                  ...prev,
-                  progress: { current: i + 1, total: numberOfIssues },
-                  phase: 'Generating data...',
-                }
-              : null,
-          )
-          await new Promise((resolve) => setTimeout(resolve, 0))
-        }
-      }
-
-      const generationTime = performance.now() - generationStart
-
-      // Update to show we're committing
-      const actualTotal = issues.length + comments.length + reactions.length
-      setLoadingMessage((prev) =>
-        prev
-          ? {
-              ...prev,
-              phase: `Saving ${actualTotal.toLocaleString()} objects to database...`,
-              progress: undefined, // Hide progress bar during commit
-            }
-          : null,
-      )
-      await new Promise((resolve) => setTimeout(resolve, 0))
-
-      // Commit all data in a SINGLE transaction to avoid multiple React re-renders
-      const commitStart = performance.now()
-
-      store.commit(
-        ...issues.map((issue) => events.issueCreated(issue)),
-        ...comments.map((comment) => events.commentCreated(comment)),
-        ...reactions.map((reaction) => events.reactionCreated(reaction)),
-      )
-
-      const commitTime = performance.now() - commitStart
-
-      // Create breakdown for display (even though we committed as one batch)
-      const breakdown: { label: string; count: number; time: number }[] = [
-        { label: 'Issues', count: issues.length, time: 0 },
-        { label: 'Comments', count: comments.length, time: 0 },
-        { label: 'Reactions', count: reactions.length, time: 0 },
-      ]
-
-      // Yield to let React process store updates and measure the overhead
-      await new Promise((resolve) => setTimeout(resolve, 0))
-
-      const totalTime = performance.now() - startTime
-
-      // Show timing results
-      setTimingResults({
-        operation: `Issues for ${user.name}`,
-        generationTime,
-        commitTime,
-        breakdown,
-        totalItems: actualTotal,
-        totalTime,
-      })
-    } finally {
-      setIsLoading(false)
-      setLoadingMessage(null)
-    }
-  }
-
-  const reset = async () => {
+  const reset = React.useCallback(async () => {
     setLoadingMessage({
       operation: 'Clearing All Data',
       items: [{ label: 'Removing all issues, comments, and reactions', count: 0 }],
@@ -332,7 +338,7 @@ const InboxScreen = () => {
       setIsLoading(false)
       setLoadingMessage(null)
     }
-  }
+  }, [store])
 
   const issuesCount$ = queryDb(tables.issues.count().where({ deletedAt: null }))
   const issuesDeletedCount$ = queryDb(tables.issues.count().where({ deletedAt: { op: '!=', value: null } }))
@@ -343,10 +349,24 @@ const InboxScreen = () => {
   const sectionStyle = StyleSheet.compose<ViewStyle, any, any>(styles.section, {
     boxShadow: isDarkMode ? '0px 0px 10px 0px rgba(255, 255, 255, 0.1)' : '0px 0px 10px 0px rgba(0, 0, 0, 0.1)',
   })
+  const handleQuickDemo = React.useCallback(() => generateRandomData(5, 10), [generateRandomData])
+  const handleGenerateCurrentUser = React.useCallback(
+    () => generateIssuesForCurrentUser(50),
+    [generateIssuesForCurrentUser],
+  )
+  const handleLargeDataset = React.useCallback(() => generateRandomData(50, 10), [generateRandomData])
+  const closeTimingResults = React.useCallback(() => setTimingResults(null), [])
+  const progressFillStyle = React.useMemo(() => {
+    if (!loadingMessage?.progress) {
+      return undefined
+    }
+
+    return { width: `${(loadingMessage.progress.current / loadingMessage.progress.total) * 100}%` }
+  }, [loadingMessage?.progress])
 
   return (
     <>
-      <Stack.Screen options={{ headerTitle: 'Control Center' }} />
+      <Stack.Screen options={controlCenterScreenOptions} />
       <ScrollView style={styles.container}>
         <View style={sectionStyle}>
           <ThemedText type="subtitle">Stats</ThemedText>
@@ -364,21 +384,13 @@ const InboxScreen = () => {
             various users.
           </ThemedText>
           <View style={styles.buttonGroup}>
-            <Button
-              title="Quick Demo: 5 users, 10 issues"
-              onPress={() => generateRandomData(5, 10)}
-              disabled={isLoading}
-            />
+            <Button title="Quick Demo: 5 users, 10 issues" onPress={handleQuickDemo} disabled={isLoading} />
             <Button
               title={`Generate 50 issues for ${user.name}`}
-              onPress={() => generateIssuesForCurrentUser(50)}
+              onPress={handleGenerateCurrentUser}
               disabled={isLoading}
             />
-            <Button
-              title="Large Dataset: 50 users, 10 issues"
-              onPress={() => generateRandomData(50, 10)}
-              disabled={isLoading}
-            />
+            <Button title="Large Dataset: 50 users, 10 issues" onPress={handleLargeDataset} disabled={isLoading} />
           </View>
         </View>
 
@@ -428,14 +440,7 @@ const InboxScreen = () => {
                   Progress: {loadingMessage.progress.current} / {loadingMessage.progress.total}
                 </ThemedText>
                 <View style={styles.progressBar}>
-                  <View
-                    style={[
-                      styles.progressFill,
-                      {
-                        width: `${(loadingMessage.progress.current / loadingMessage.progress.total) * 100}%`,
-                      },
-                    ]}
-                  />
+                  <View style={StyleSheet.compose(styles.progressFill, progressFillStyle)} />
                 </View>
               </View>
             )}
@@ -512,7 +517,7 @@ const InboxScreen = () => {
               ))}
             </View>
 
-            <Button title="Done" onPress={() => setTimingResults(null)} />
+            <Button title="Done" onPress={closeTimingResults} />
           </View>
         </View>
       )}

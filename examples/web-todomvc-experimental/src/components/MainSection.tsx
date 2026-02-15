@@ -1,8 +1,7 @@
-import React from 'react'
-
 import type { Store } from '@livestore/livestore'
 import { queryDb } from '@livestore/livestore'
 import { LiveList } from '@livestore/react'
+import React from 'react'
 
 import { uiState$ } from '../livestore/queries.ts'
 import { events, tables } from '../livestore/schema.ts'
@@ -66,24 +65,30 @@ const Item = ({
 
   React.useEffect(() => setState('mounted'), [])
   const isZero = parentHasMounted && (state === 'initial' || state === 'deleting')
+  const itemStyle = React.useMemo(
+    () => ({ opacity: isZero ? 0 : 1, height: isZero ? 0 : 58, transition: 'all 0.2s ease-in-out' }),
+    [isZero],
+  )
+
+  const handleTransitionEnd = React.useCallback(() => {
+    // NOTE to avoid triggering a delete twice, we need to check if the todo has been deleted via the ref
+    // Since using the `setState` doesn't seem to happen "quickly enough"
+    if (state === 'deleting' && todo.deletedAt === null && !isDeletedRef.current) {
+      store.commit(events.todoDeleted({ id: todo.id, deletedAt: new Date() }))
+      isDeletedRef.current = true
+    }
+  }, [state, store, todo.deletedAt, todo.id])
+
+  const handleToggle = React.useCallback(() => toggleTodo(todo), [todo, toggleTodo])
+  const handleDelete = React.useCallback(() => setState('deleting'), [])
 
   return (
-    <li
-      style={{ opacity: isZero ? 0 : 1, height: isZero ? 0 : 58, transition: 'all 0.2s ease-in-out' }}
-      onTransitionEnd={() => {
-        // NOTE to avoid triggering a delete twice, we need to check if the todo has been deleted via the ref
-        // Since using the `setState` doesn't seem to happen "quickly enough"
-        if (state === 'deleting' && todo.deletedAt === null && !isDeletedRef.current) {
-          store.commit(events.todoDeleted({ id: todo.id, deletedAt: new Date() }))
-          isDeletedRef.current = true
-        }
-      }}
-    >
+    <li style={itemStyle} onTransitionEnd={handleTransitionEnd}>
       <div className="view">
-        <input type="checkbox" className="toggle" checked={todo.completed} onChange={() => toggleTodo(todo)} />
+        <input type="checkbox" className="toggle" checked={todo.completed} onChange={handleToggle} />
         {/** biome-ignore lint/a11y/noLabelWithoutControl: otherwise breaks TODO MVC CSS 🙈 */}
         <label>{todo.text}</label>
-        <button type="button" className="destroy" onClick={() => setState('deleting')} />
+        <button type="button" className="destroy" onClick={handleDelete} />
       </div>
     </li>
   )

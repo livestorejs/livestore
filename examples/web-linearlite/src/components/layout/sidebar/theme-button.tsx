@@ -8,22 +8,39 @@ import { type Theme, themeOptions } from '../../../data/theme-options.ts'
 import { useFrontendState } from '../../../livestore/queries.ts'
 import { Shortcut } from '../../common/shortcut.tsx'
 
+const shortcutKeysByThemeId = Object.fromEntries(themeOptions.map(({ id, shortcut }) => [id, [shortcut]])) as Record<
+  Theme,
+  readonly string[]
+>
+
 export const ThemeButton = () => {
   const [theme, setTheme] = React.useState<Theme | undefined>(undefined)
   const [isOpen, setIsOpen] = React.useState(false)
   const [frontendState, setFrontendState] = useFrontendState()
 
-  const selectTheme = (theme: Theme) => {
-    setTheme(theme)
-    setFrontendState({ theme })
-    if (theme === 'system') localStorage.removeItem('theme')
-    else localStorage.theme = theme
-    document.documentElement.classList.toggle(
-      'dark',
-      localStorage.theme === 'dark' ||
-        (!('theme' in localStorage) && window.matchMedia('(prefers-color-scheme: dark)').matches),
-    )
-  }
+  const selectTheme = React.useCallback(
+    (theme: Theme) => {
+      setTheme(theme)
+      setFrontendState({ theme })
+      if (theme === 'system') localStorage.removeItem('theme')
+      else localStorage.theme = theme
+      document.documentElement.classList.toggle(
+        'dark',
+        localStorage.theme === 'dark' ||
+          (!('theme' in localStorage) && window.matchMedia('(prefers-color-scheme: dark)').matches),
+      )
+    },
+    [setFrontendState],
+  )
+
+  const handleSelectTheme = React.useCallback(
+    (key: React.Key) => {
+      if (typeof key === 'string') {
+        selectTheme(key as Theme)
+      }
+    },
+    [selectTheme],
+  )
 
   const { keyboardProps } = useKeyboard({
     onKeyDown: (e) => {
@@ -57,12 +74,11 @@ export const ThemeButton = () => {
         <MoonIcon className="size-4 hidden dark:block" />
       </Button>
       <Popover className="bg-white dark:bg-neutral-800 w-40 rounded-lg shadow-md border border-neutral-200 dark:border-neutral-700 text-sm leading-none">
-        <Menu className="p-2 focus:outline-none" {...keyboardProps}>
+        <Menu className="p-2 focus:outline-none" {...keyboardProps} onAction={handleSelectTheme}>
           {themeOptions.map(({ id, label, shortcut }) => {
             return (
               <MenuItem
                 key={id}
-                onAction={() => selectTheme(id)}
                 className="group/item p-2 rounded-md flex items-center gap-2 hover:bg-neutral-100 dark:hover:bg-neutral-700 focus:outline-none focus:bg-neutral-100 dark:focus:bg-neutral-700 cursor-pointer"
               >
                 {id === 'light' && <SunIcon className="size-3.5" />}
@@ -70,7 +86,7 @@ export const ThemeButton = () => {
                 {id === 'system' && <ComputerDesktopIcon className="size-3.5" />}
                 <span>{label}</span>
                 {id === theme && <CheckIcon className="size-4 absolute right-9" />}
-                <Shortcut keys={[shortcut]} className="absolute right-3" />
+                <Shortcut keys={shortcutKeysByThemeId[id]} className="absolute right-3" />
               </MenuItem>
             )
           })}

@@ -18,6 +18,8 @@ export const Route = createFileRoute('/multi-instance')({
   component: MultiInstanceRoute,
 })
 
+const loadingAllIssueStoresFallback = <div className="loading">Loading all issue stores...</div>
+
 const MultiInstanceRoute = () => {
   const { storeRegistry } = Route.useRouteContext()
 
@@ -33,7 +35,7 @@ const MultiInstanceRoute = () => {
       <div>
         <StoreRegistryProvider storeRegistry={storeRegistry}>
           <ErrorBoundary FallbackComponent={ErrorFallback}>
-            <Suspense fallback={<div className="loading">Loading all issue stores...</div>}>
+            <Suspense fallback={loadingAllIssueStoresFallback}>
               {issueIds.map((id) => (
                 <IssueView key={id} issueId={id} />
               ))}

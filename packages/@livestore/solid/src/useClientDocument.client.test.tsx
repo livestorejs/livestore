@@ -1,14 +1,13 @@
-import * as otel from '@opentelemetry/api'
-import { BasicTracerProvider, InMemorySpanExporter, SimpleSpanProcessor } from '@opentelemetry/sdk-trace-base'
-import * as SolidTesting from '@solidjs/testing-library'
-import * as Solid from 'solid-js'
-
 /** biome-ignore-all lint/a11y/useValidAriaRole: not needed for testing */
 /** biome-ignore-all lint/a11y/noStaticElementInteractions: not needed for testing */
 import * as LiveStore from '@livestore/livestore'
 import { getAllSimplifiedRootSpans, getSimplifiedRootSpan } from '@livestore/livestore/internal/testing-utils'
-import { Vitest } from '@livestore/utils-dev/node-vitest'
 import { Effect, ReadonlyRecord, Schema } from '@livestore/utils/effect'
+import { Vitest } from '@livestore/utils-dev/node-vitest'
+import * as otel from '@opentelemetry/api'
+import { BasicTracerProvider, InMemorySpanExporter, SimpleSpanProcessor } from '@opentelemetry/sdk-trace-base'
+import * as SolidTesting from '@solidjs/testing-library'
+import * as Solid from 'solid-js'
 
 import { events, makeTodoMvcSolid, StoreInternalsSymbol, tables } from './__tests__/fixture.tsx'
 import type * as LiveStoreSolid from './mod.ts'
@@ -110,23 +109,21 @@ Vitest.describe('useClientDocument', () => {
 
         return (
           <div>
-            <TasksList setTaskId={(taskId) => setState({ currentTaskId: taskId })} />
+            <TasksList />
             <div role={'current-id' as any}>Current Task Id: {state().currentTaskId ?? '-'}</div>
-            <Solid.Show when={state().currentTaskId} fallback={<div>Click on a task to see details</div>}>
+            <Solid.Show when={state().currentTaskId} fallback={'Click on a task to see details'}>
               {(id: Solid.Accessor<string>) => <TaskDetails id={id()} />}
             </Solid.Show>
           </div>
         )
       }
 
-      const TasksList = (props: { setTaskId: (_: string) => void }) => {
+      const TasksList = () => {
         const allTodos = store.useQuery(() => allTodos$)
 
         return (
           <div>
-            <Solid.For each={allTodos()}>
-              {(todo) => <div onClick={() => props.setTaskId(todo.id)}>{todo.id}</div>}
-            </Solid.For>
+            <Solid.For each={allTodos()}>{(todo) => <div>{todo.id}</div>}</Solid.For>
           </div>
         )
       }

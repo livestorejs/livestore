@@ -1,4 +1,5 @@
 import { PlusIcon } from '@heroicons/react/16/solid'
+import type { ChangeEvent } from 'react'
 import React from 'react'
 import { Button, Input } from 'react-aria-components'
 
@@ -9,10 +10,12 @@ export const SeedInput = ({ className }: { className?: string }) => {
   const [count, setCount] = React.useState(50)
   const store = useAppStore()
 
-  const onClick = () => {
+  const onClick = React.useCallback(() => {
     if (count === 0) return
     seed(store, count)
-  }
+  }, [count, store])
+
+  const handleChange = React.useCallback((e: ChangeEvent<HTMLInputElement>) => setCount(Number(e.target.value)), [])
 
   return (
     <div className={`lg:h-full flex items-center gap-px ${className}`}>
@@ -22,7 +25,7 @@ export const SeedInput = ({ className }: { className?: string }) => {
         autoComplete="off"
         type="number"
         value={count}
-        onChange={(e) => setCount(Number(e.target.value))}
+        onChange={handleChange}
         className="h-6 px-1.5 border-none rounded-l text-xs bg-neutral-800 placeholder:text-neutral-500 text-neutral-300 w-12 focus:outline-none focus:ring-0 focus:border-none hover:bg-neutral-700 focus:bg-neutral-700"
       />
       <Button

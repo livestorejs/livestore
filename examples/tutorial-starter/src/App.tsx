@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useCallback, useState } from 'react'
 
 interface Todo {
   id: number
@@ -9,7 +9,7 @@ const App = () => {
   const [todos, setTodos] = useState<Todo[]>([])
   const [input, setInput] = useState('')
 
-  const addTodo = () => {
+  const addTodo = useCallback(() => {
     if (input.trim()) {
       const newTodo: Todo = {
         id: Date.now(),
@@ -18,17 +18,37 @@ const App = () => {
       setTodos([...todos, newTodo])
       setInput('')
     }
-  }
+  }, [input, todos])
 
-  const deleteTodo = (id: number) => {
-    setTodos(todos.filter((todo) => todo.id !== id))
-  }
+  const deleteTodo = useCallback(
+    (id: number) => {
+      setTodos(todos.filter((todo) => todo.id !== id))
+    },
+    [todos],
+  )
 
-  const handleKeyDown = (e: React.KeyboardEvent) => {
-    if (e.key === 'Enter') {
-      addTodo()
-    }
-  }
+  const handleKeyDown = useCallback(
+    (e: React.KeyboardEvent) => {
+      if (e.key === 'Enter') {
+        addTodo()
+      }
+    },
+    [addTodo],
+  )
+
+  const handleInputChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
+    setInput(e.target.value)
+  }, [])
+
+  const handleDeleteTodo = useCallback(
+    (e: React.MouseEvent<HTMLButtonElement>) => {
+      const id = Number(e.currentTarget.dataset.todoId)
+      if (!Number.isNaN(id)) {
+        deleteTodo(id)
+      }
+    },
+    [deleteTodo],
+  )
 
   return (
     <div className="min-h-screen bg-gray-50 flex items-center justify-center p-6">
@@ -39,7 +59,7 @@ const App = () => {
           <input
             type="text"
             value={input}
-            onChange={(e) => setInput(e.target.value)}
+            onChange={handleInputChange}
             onKeyDown={handleKeyDown}
             placeholder="Enter a todo..."
             className="flex-1 px-4 py-2 text-sm border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
@@ -59,7 +79,8 @@ const App = () => {
               <span className="text-gray-700">{todo.text}</span>
               <button
                 type="button"
-                onClick={() => deleteTodo(todo.id)}
+                data-todo-id={todo.id}
+                onClick={handleDeleteTodo}
                 className="px-4 py-1 text-sm font-medium text-white bg-red-500 rounded hover:bg-red-600 focus:outline-none focus:ring-2 focus:ring-red-500 focus:ring-offset-2 transition-colors"
               >
                 Delete

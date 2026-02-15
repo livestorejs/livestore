@@ -1,6 +1,5 @@
-import { type Accessor, createEffect, createSignal, For, onCleanup, Show } from 'solid-js'
-
 import type { SyncState } from '@livestore/livestore'
+import { type Accessor, createEffect, createMemo, createSignal, For, onCleanup, Show } from 'solid-js'
 
 import { useReactionPickerClickOutside } from './hooks.ts'
 import { useAppStore } from './livestore/store.ts'
@@ -84,10 +83,23 @@ const UserListItem = (props: { testId: string; name: string; emoji?: string; col
   </div>
 )
 
+const avatarCircleStyleCache = new Map<string, { 'background-color': string }>()
+
+const getAvatarCircleStyle = (color?: string) => {
+  const backgroundColor = color ?? '#e5e7eb'
+  const cachedStyle = avatarCircleStyleCache.get(backgroundColor)
+  if (cachedStyle !== undefined) {
+    return cachedStyle
+  }
+  const style = { 'background-color': backgroundColor }
+  avatarCircleStyleCache.set(backgroundColor, style)
+  return style
+}
+
 const AvatarCircle = (props: { emoji?: string; color?: string }) => (
   <div
     class="w-9 h-9 rounded-full flex items-center justify-center text-base"
-    style={{ 'background-color': props.color ?? '#e5e7eb' }}
+    style={getAvatarCircleStyle(props.color)}
   >
     <span>{props.emoji ?? '🙂'}</span>
   </div>
@@ -123,35 +135,44 @@ interface MessageInputProps {
   sendMessage: () => void
 }
 
-export const MessageInput = (props: MessageInputProps) => (
-  <div class="flex items-center gap-2 md:gap-3 lg:gap-4">
-    <div class="flex-1 flex items-center bg-gray-800 border border-gray-700 rounded-full px-3 md:px-4 py-1.5 md:py-2 shadow-sm">
-      <input
-        data-testid="message-input"
-        type="text"
-        value={props.currentMessage()}
-        onInput={(e) => props.setCurrentMessage(e.currentTarget.value)}
-        placeholder="iMessage..."
-        class="flex-1 bg-transparent outline-none text-gray-100 placeholder-gray-500 text-base lg:text-lg"
-        onKeyDown={(e) => e.key === 'Enter' && props.sendMessage()}
-      />
+export const MessageInput = (props: MessageInputProps) => {
+  const handleInput = createMemo(
+    () => (e: InputEvent & { currentTarget: HTMLInputElement }) => props.setCurrentMessage(e.currentTarget.value),
+  )
+  const handleKeyDown = createMemo(
+    () => (e: KeyboardEvent & { currentTarget: HTMLInputElement }) => e.key === 'Enter' && props.sendMessage(),
+  )
+
+  return (
+    <div class="flex items-center gap-2 md:gap-3 lg:gap-4">
+      <div class="flex-1 flex items-center bg-gray-800 border border-gray-700 rounded-full px-3 md:px-4 py-1.5 md:py-2 shadow-sm">
+        <input
+          data-testid="message-input"
+          type="text"
+          value={props.currentMessage()}
+          onInput={handleInput()}
+          placeholder="iMessage..."
+          class="flex-1 bg-transparent outline-none text-gray-100 placeholder-gray-500 text-base lg:text-lg"
+          onKeyDown={handleKeyDown()}
+        />
+      </div>
+      <button
+        type="button"
+        data-testid="send-message"
+        onClick={props.sendMessage}
+        disabled={!props.currentMessage().trim()}
+        class={`px-4 py-2 md:px-5 md:py-2.5 rounded-full font-medium transition-colors text-base lg:text-lg ${
+          props.currentMessage().trim()
+            ? 'bg-blue-500 hover:bg-blue-600 text-white cursor-pointer'
+            : 'bg-gray-300 text-gray-500 cursor-not-allowed'
+        }`}
+        title="Send"
+      >
+        Send
+      </button>
     </div>
-    <button
-      type="button"
-      data-testid="send-message"
-      onClick={props.sendMessage}
-      disabled={!props.currentMessage().trim()}
-      class={`px-4 py-2 md:px-5 md:py-2.5 rounded-full font-medium transition-colors text-base lg:text-lg ${
-        props.currentMessage().trim()
-          ? 'bg-blue-500 hover:bg-blue-600 text-white cursor-pointer'
-          : 'bg-gray-300 text-gray-500 cursor-not-allowed'
-      }`}
-      title="Send"
-    >
-      Send
-    </button>
-  </div>
-)
+  )
+}
 
 interface MessagesContainerProps {
   messages: Accessor<readonly Message[] | undefined>
@@ -180,6 +201,36 @@ export const MessagesContainer = (props: MessagesContainerProps) => {
   }
 
   let messagesEndEl: HTMLDivElement | undefined
+
+  const handleRemoveReaction = createMemo(() => (e: MouseEvent & { currentTarget: HTMLButtonElement }) => {
+    const reactionId = e.currentTarget.dataset.reactionId
+    const reactionUserId = e.currentTarget.dataset.reactionUserId
+    if (reactionId && reactionUserId === props.userContext()?.userId) {
+      props.removeReaction(reactionId)
+    }
+  })
+
+  const handleToggleReactionPicker = createMemo(() => (e: MouseEvent & { currentTarget: HTMLButtonElement }) => {
+    e.stopPropagation()
+    const messageId = e.currentTarget.dataset.messageId
+    if (messageId) {
+      props.toggleReactionPicker(messageId)
+    }
+  })
+
+  const handleAddReaction = createMemo(() => (e: MouseEvent & { currentTarget: HTMLButtonElement }) => {
+    const messageId = e.currentTarget.dataset.messageId
+    const emoji = e.currentTarget.dataset.emoji
+    if (messageId && emoji) {
+      props.addReaction(messageId, emoji)
+    }
+  })
+
+  createEffect(() => {
+    if (messagesEndEl) {
+      props.messagesEndRef(messagesEndEl)
+    }
+  })
 
   // Scroll on new messages
   createEffect(() => {
@@ -288,11 +339,9 @@ export const MessagesContainer = (props: MessagesContainerProps) => {
                             <button
                               type="button"
                               data-testid={`reaction-${reaction.id}`}
-                              onClick={() => {
-                                if (reaction.userId === props.userContext()?.userId) {
-                                  props.removeReaction(reaction.id)
-                                }
-                              }}
+                              data-reaction-id={reaction.id}
+                              data-reaction-user-id={reaction.userId}
+                              onClick={handleRemoveReaction()}
                               class={`px-1.5 py-0.5 text-xs rounded-full ${
                                 reaction.userId === props.userContext()?.userId
                                   ? 'hover:bg-gray-700 cursor-pointer'
@@ -311,10 +360,8 @@ export const MessagesContainer = (props: MessagesContainerProps) => {
                         <button
                           type="button"
                           data-testid={`add-reaction-${message.id}`}
-                          onClick={(e) => {
-                            e.stopPropagation()
-                            props.toggleReactionPicker(message.id)
-                          }}
+                          data-message-id={message.id}
+                          onClick={handleToggleReactionPicker()}
                           class="px-1.5 py-0.5 text-xs rounded-full cursor-pointer text-slate-300 hover:bg-slate-800 transition-colors"
                           title="Add reaction"
                         >
@@ -337,7 +384,9 @@ export const MessagesContainer = (props: MessagesContainerProps) => {
                               <button
                                 type="button"
                                 data-testid={`emoji-${emoji}`}
-                                onClick={() => props.addReaction(message.id, emoji)}
+                                data-message-id={message.id}
+                                data-emoji={emoji}
+                                onClick={handleAddReaction()}
                                 class="bg-transparent border-none p-1 rounded cursor-pointer text-base hover:bg-slate-800 transition-colors text-slate-100"
                               >
                                 {emoji}
@@ -364,12 +413,7 @@ export const MessagesContainer = (props: MessagesContainerProps) => {
           )
         }}
       </For>
-      <div
-        ref={(el) => {
-          messagesEndEl = el
-          props.messagesEndRef(el)
-        }}
-      />
+      <div ref={messagesEndEl} />
     </div>
   )
 }

@@ -9,12 +9,14 @@ import { ListTodos } from './components/ListTodos.tsx'
 import { Meta } from './components/Meta.tsx'
 import { NewTodo } from './components/NewTodo.tsx'
 
+const loadingFallback = <Text>Loading LiveStore...</Text>
+
 export const Root = () => {
   const [storeRegistry] = useState(() => new StoreRegistry())
 
   return (
     <View style={styles.container}>
-      <Suspense fallback={<Text>Loading LiveStore...</Text>}>
+      <Suspense fallback={loadingFallback}>
         <StoreRegistryProvider storeRegistry={storeRegistry}>
           <InnerApp />
         </StoreRegistryProvider>

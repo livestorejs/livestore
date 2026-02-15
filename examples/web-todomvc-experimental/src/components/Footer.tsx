@@ -1,6 +1,5 @@
-import type React from 'react'
-
 import { queryDb } from '@livestore/livestore'
+import { useCallback } from 'react'
 
 import { uiState$ } from '../livestore/queries.ts'
 import { events, tables } from '../livestore/schema.ts'
@@ -11,12 +10,19 @@ const incompleteCount$ = queryDb(tables.todos.count().where({ completed: false, 
   label: 'incompleteCount',
 })
 
-export const Footer: React.FC = () => {
+export const Footer = () => {
   const store = useAppStore()
   const { filter } = store.useQuery(uiState$)
   const incompleteCount = store.useQuery(incompleteCount$)
 
-  const setFilter = (filter: Filter) => store.commit(events.uiStateSet({ filter }))
+  const setFilter = useCallback((filter: Filter) => store.commit(events.uiStateSet({ filter })), [store])
+  const handleAllClick = useCallback(() => setFilter('all'), [setFilter])
+  const handleActiveClick = useCallback(() => setFilter('active'), [setFilter])
+  const handleCompletedClick = useCallback(() => setFilter('completed'), [setFilter])
+  const handleClearCompleted = useCallback(
+    () => store.commit(events.todoClearedCompleted({ deletedAt: new Date() })),
+    [store],
+  )
 
   return (
     <footer className="footer">
@@ -24,28 +30,24 @@ export const Footer: React.FC = () => {
       <ul className="filters">
         <li>
           {/* biome-ignore lint/a11y/useValidAnchor: TodoMVC standard convention for filter buttons */}
-          <a href="#/" className={filter === 'all' ? 'selected' : ''} onClick={() => setFilter('all')}>
+          <a href="#/" className={filter === 'all' ? 'selected' : ''} onClick={handleAllClick}>
             All
           </a>
         </li>
         <li>
           {/* biome-ignore lint/a11y/useValidAnchor: TodoMVC standard convention for filter buttons */}
-          <a href="#/" className={filter === 'active' ? 'selected' : ''} onClick={() => setFilter('active')}>
+          <a href="#/" className={filter === 'active' ? 'selected' : ''} onClick={handleActiveClick}>
             Active
           </a>
         </li>
         <li>
           {/* biome-ignore lint/a11y/useValidAnchor: TodoMVC standard convention for filter buttons */}
-          <a href="#/" className={filter === 'completed' ? 'selected' : ''} onClick={() => setFilter('completed')}>
+          <a href="#/" className={filter === 'completed' ? 'selected' : ''} onClick={handleCompletedClick}>
             Completed
           </a>
         </li>
       </ul>
-      <button
-        type="button"
-        className="clear-completed"
-        onClick={() => store.commit(events.todoClearedCompleted({ deletedAt: new Date() }))}
-      >
+      <button type="button" className="clear-completed" onClick={handleClearCompleted}>
         Clear completed
       </button>
     </footer>

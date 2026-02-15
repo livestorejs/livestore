@@ -1,3 +1,28 @@
-import { autoReviewWorkflow } from '../../repos/effect-utils/genie/auto-review.ts'
+import { githubWorkflow } from '../../genie/repo.ts'
 
-export default autoReviewWorkflow()
+export default githubWorkflow({
+  name: 'Auto-request review',
+  on: {
+    pull_request: {
+      types: ['opened', 'ready_for_review'],
+    },
+  },
+  permissions: {
+    'pull-requests': 'write',
+  },
+  jobs: {
+    'request-review': {
+      if: "github.event.pull_request.user.login == 'schickling-assistant' && github.event.pull_request.draft == false",
+      'runs-on': 'ubuntu-latest',
+      steps: [
+        {
+          name: 'Request review from schickling',
+          env: {
+            GH_TOKEN: '${{ secrets.GITHUB_TOKEN }}',
+          },
+          run: 'gh pr edit ${{ github.event.pull_request.number }} --repo ${{ github.repository }} --add-reviewer schickling',
+        },
+      ],
+    },
+  },
+})

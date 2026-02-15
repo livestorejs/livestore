@@ -1,10 +1,9 @@
+import { StoreRegistry } from '@livestore/livestore'
+import { StoreRegistryProvider } from '@livestore/react'
 import { FPSMeter } from '@overengineering/fps-meter'
 import type React from 'react'
 import { Suspense, useEffect, useState } from 'react'
 import { createBrowserRouter, Outlet, RouterProvider } from 'react-router-dom'
-
-import { StoreRegistry } from '@livestore/livestore'
-import { StoreRegistryProvider } from '@livestore/react'
 
 import { Footer } from './components/Footer.tsx'
 import { Header } from './components/Header.tsx'
@@ -15,6 +14,9 @@ import { events, type tables } from './livestore/schema.ts'
 import { useAppStore } from './livestore/store.ts'
 
 type Filter = (typeof tables.uiState.Value)['filter']
+
+const suspenseFallback = <div>Loading app...</div>
+const fpsContainerStyle = { top: 0, right: 0, position: 'absolute', background: '#333' } as const
 
 const AppBody: React.FC = () => (
   <section className="todoapp">
@@ -28,9 +30,9 @@ const Layout: React.FC = () => {
   const [storeRegistry] = useState(() => new StoreRegistry())
 
   return (
-    <Suspense fallback={<div>Loading app...</div>}>
+    <Suspense fallback={suspenseFallback}>
       <StoreRegistryProvider storeRegistry={storeRegistry}>
-        <div style={{ top: 0, right: 0, position: 'absolute', background: '#333' }}>
+        <div style={fpsContainerStyle}>
           <FPSMeter height={40} />
         </div>
         <Outlet />
@@ -53,14 +55,18 @@ const FilteredTodos: React.FC<{ filter: Filter }> = ({ filter }) => {
   return <AppBody />
 }
 
+const AllFilteredTodos: React.FC = () => <FilteredTodos filter="all" />
+const ActiveFilteredTodos: React.FC = () => <FilteredTodos filter="active" />
+const CompletedFilteredTodos: React.FC = () => <FilteredTodos filter="completed" />
+
 const router = createBrowserRouter([
   {
     path: '/',
-    element: <Layout />,
+    Component: Layout,
     children: [
-      { index: true, element: <FilteredTodos filter="all" /> },
-      { path: 'active', element: <FilteredTodos filter="active" /> },
-      { path: 'completed', element: <FilteredTodos filter="completed" /> },
+      { index: true, Component: AllFilteredTodos },
+      { path: 'active', Component: ActiveFilteredTodos },
+      { path: 'completed', Component: CompletedFilteredTodos },
     ],
   },
 ])

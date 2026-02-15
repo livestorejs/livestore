@@ -1,6 +1,6 @@
 import { queryDb } from '@livestore/livestore'
 import { useStore, useStoreRegistry } from '@livestore/react'
-import { Suspense, useState } from 'react'
+import { Suspense, useCallback, useState } from 'react'
 import { ErrorBoundary } from 'react-error-boundary'
 import { ErrorFallback } from '@/components/ErrorFallback.tsx'
 import { issueStoreOptions } from '@/stores/issue/index.ts'
@@ -8,6 +8,10 @@ import { workspaceStoreOptions } from '@/stores/workspace/index.ts'
 
 import { workspaceEvents, workspaceTables } from '../stores/workspace/schema.ts'
 import { IssueView } from './IssueView.tsx'
+
+const loadingIssueStoresFallback = <div className="loading">Loading issue stores...</div>
+const loadingIssueStoreFallback = <div className="loading">Loading issue store...</div>
+const issuesContainerStyle = { display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '2rem' } as const
 
 export const WorkspaceView = () => {
   const workspaceStore = useStore(workspaceStoreOptions)
@@ -19,23 +23,37 @@ export const WorkspaceView = () => {
     ),
   )
 
-  const addIssue = () =>
-    workspaceStore.commit(
-      workspaceEvents.issueCreated({
-        id: Date.now().toString(),
-        workspaceId: workspace.id,
-        title: `Issue ${issueIds.length + 1}`,
-        createdAt: new Date(),
-      }),
-    )
+  const addIssue = useCallback(
+    () =>
+      workspaceStore.commit(
+        workspaceEvents.issueCreated({
+          id: Date.now().toString(),
+          workspaceId: workspace.id,
+          title: `Issue ${issueIds.length + 1}`,
+          createdAt: new Date(),
+        }),
+      ),
+    [issueIds.length, workspace.id, workspaceStore],
+  )
 
   const [isPreloadedIssueShown, setIsPreloadedIssueShown] = useState(false)
   const storeRegistry = useStoreRegistry()
-  const preloadIssue = (issueId: string) =>
-    storeRegistry.preload({
-      ...issueStoreOptions(issueId),
-      unusedCacheTime: 10_000,
-    })
+  const preloadIssue = useCallback(
+    (issueId: string) =>
+      storeRegistry.preload({
+        ...issueStoreOptions(issueId),
+        unusedCacheTime: 10_000,
+      }),
+    [storeRegistry],
+  )
+
+  const handlePreloadIssue = useCallback(() => {
+    preloadIssue('preloaded-issue')
+  }, [preloadIssue])
+
+  const handleShowPreloadedIssue = useCallback(() => {
+    setIsPreloadedIssueShown(true)
+  }, [])
 
   return (
     <div>
@@ -46,7 +64,7 @@ export const WorkspaceView = () => {
         <dt>Store ID:</dt>
         <dd>{workspaceStore.storeId}</dd>
       </dl>
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '2rem' }}>
+      <div style={issuesContainerStyle}>
         <div>
           <h4>Recent Issues ({issueIds.length})</h4>
           <p>
@@ -56,7 +74,7 @@ export const WorkspaceView = () => {
           </p>
           <ul>
             <ErrorBoundary FallbackComponent={ErrorFallback}>
-              <Suspense fallback={<div className="loading">Loading issue stores...</div>}>
+              <Suspense fallback={loadingIssueStoresFallback}>
                 {issueIds.map((id) => (
                   <IssueView key={id} issueId={id} />
                 ))}
@@ -71,17 +89,13 @@ export const WorkspaceView = () => {
           <div>
             {!isPreloadedIssueShown ? (
               <p>
-                <button
-                  type="button"
-                  onMouseEnter={() => preloadIssue('preloaded-issue')}
-                  onClick={() => setIsPreloadedIssueShown(true)}
-                >
+                <button type="button" onMouseEnter={handlePreloadIssue} onClick={handleShowPreloadedIssue}>
                   Show
                 </button>
               </p>
             ) : (
               <ErrorBoundary FallbackComponent={ErrorFallback}>
-                <Suspense fallback={<div className="loading">Loading issue store...</div>}>
+                <Suspense fallback={loadingIssueStoreFallback}>
                   <IssueView issueId="preloaded-issue" />
                 </Suspense>
               </ErrorBoundary>
