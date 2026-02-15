@@ -65,29 +65,29 @@ Vitest.describe('adapter-cloudflare', { timeout: testTimeout }, () => {
             body: JSON.stringify({ id, title }),
           })
 
-          if (response.ok == null) {
+          if (!response.ok) {
             throw new Error(`failed to create todo: ${response.status}`)
           }
 
-          return response.json()
+          return response.json() as Promise<{ id: string }>
         })
 
       const listTodos = () =>
         Effect.tryPromise(async () => {
           const response = await fetch(todosUrl)
 
-          if (response.ok == null) {
+          if (!response.ok) {
             throw new Error(`failed to list todos: ${response.status}`)
           }
 
-          return response.json()
+          return response.json() as Promise<ReadonlyArray<{ id: string; title: string }>>
         })
 
       const getPersistenceSnapshot = () =>
         Effect.tryPromise(async () => {
           const response = await fetch(persistenceUrl)
 
-          if (response.ok == null) {
+          if (!response.ok) {
             throw new Error(`failed to read persistence metadata: ${response.status}`)
           }
 
@@ -136,40 +136,44 @@ Vitest.describe('adapter-cloudflare', { timeout: testTimeout }, () => {
             body: JSON.stringify({ id, title }),
           })
 
-          if (response.ok == null) {
+          if (!response.ok) {
             throw new Error(`failed to create todo: ${response.status}`)
           }
 
-          return response.json()
+          return response.json() as Promise<{ id: string }>
         })
 
       const listTodos = () =>
         Effect.tryPromise(async () => {
           const response = await fetch(todosUrl)
 
-          if (response.ok == null) {
+          if (!response.ok) {
             throw new Error(`failed to list todos: ${response.status}`)
           }
 
-          return response.json()
+          return response.json() as Promise<ReadonlyArray<{ id: string; title: string }>>
         })
 
       const resetStore = () =>
         Effect.tryPromise(async () => {
           const response = await fetch(resetUrl, { method: 'POST' })
 
-          if (response.ok == null) {
+          if (!response.ok) {
             throw new Error(`failed to reset store: ${response.status}`)
           }
 
-          return response.json() as Promise<{ persistence: PersistenceSnapshot; resetSnapshot: ResetPersistenceSnapshot | null }>
+          return response.json() as Promise<{
+            todos: ReadonlyArray<{ id: string; title: string }>
+            persistence: PersistenceSnapshot
+            resetSnapshot: ResetPersistenceSnapshot | null
+          }>
         })
 
       const getPersistenceSnapshot = () =>
         Effect.tryPromise(async () => {
           const response = await fetch(persistenceUrl)
 
-          if (response.ok == null) {
+          if (!response.ok) {
             throw new Error(`failed to read persistence metadata: ${response.status}`)
           }
 
