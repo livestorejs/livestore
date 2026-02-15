@@ -1,4 +1,4 @@
-import type { Component } from 'solid-js'
+import { type Component, createMemo } from 'solid-js'
 
 import { uiState$ } from '../livestore/queries.ts'
 import { events } from '../livestore/schema.ts'
@@ -19,6 +19,14 @@ export const Header: Component = () => {
     }
   }
 
+  const handleInput = createMemo(
+    () => (event: InputEvent & { currentTarget: HTMLInputElement }) => updateNewTodoText(event.currentTarget.value),
+  )
+
+  const handleKeyDown = createMemo(
+    () => (event: KeyboardEvent & { currentTarget: HTMLInputElement }) => event.key === 'Enter' && createTodo(),
+  )
+
   return (
     <header class="header">
       <h1>TodoMVC</h1>
@@ -27,12 +35,8 @@ export const Header: Component = () => {
         placeholder="What needs to be done?"
         autofocus={true}
         value={uiState()?.newTodoText ?? ''}
-        onInput={(e) => updateNewTodoText(e.currentTarget.value)}
-        onKeyDown={(e) => {
-          if (e.key === 'Enter') {
-            createTodo()
-          }
-        }}
+        onInput={handleInput()}
+        onKeyDown={handleKeyDown()}
       />
     </header>
   )

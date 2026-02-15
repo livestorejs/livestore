@@ -1,19 +1,20 @@
+import type { StoreRegistry } from '@livestore/livestore'
+import { StoreRegistryProvider } from '@livestore/react'
 import { createRootRouteWithContext, HeadContent, Outlet, Scripts } from '@tanstack/react-router'
 import type * as React from 'react'
 import { Suspense } from 'react'
 import stylesheetUrl from 'todomvc-app-css/index.css?url'
 
-import type { StoreRegistry } from '@livestore/livestore'
-import { StoreRegistryProvider } from '@livestore/react'
-
 import { VersionBadge } from '../components/VersionBadge.tsx'
+
+const suspenseFallback = <div>Loading...</div>
 
 const RootComponent = () => {
   const { storeRegistry } = Route.useRouteContext()
 
   return (
     <RootDocument>
-      <Suspense fallback={<div>Loading...</div>}>
+      <Suspense fallback={suspenseFallback}>
         <StoreRegistryProvider storeRegistry={storeRegistry}>
           <Outlet />
           <VersionBadge />

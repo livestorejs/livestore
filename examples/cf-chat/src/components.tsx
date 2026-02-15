@@ -1,5 +1,5 @@
 import type { SyncState } from '@livestore/livestore'
-import React, { useState } from 'react'
+import React, { useCallback, useState } from 'react'
 
 import { useReactionPickerClickOutside } from './hooks.ts'
 import { useAppStore } from './livestore/store.ts'
@@ -90,11 +90,21 @@ const UserListItem = ({
   </div>
 )
 
+const avatarCircleStyleCache = new Map<string, { backgroundColor: string }>()
+
+const getAvatarCircleStyle = (color?: string) => {
+  const backgroundColor = color ?? '#e5e7eb'
+  const cachedStyle = avatarCircleStyleCache.get(backgroundColor)
+  if (cachedStyle !== undefined) {
+    return cachedStyle
+  }
+  const style = { backgroundColor }
+  avatarCircleStyleCache.set(backgroundColor, style)
+  return style
+}
+
 const AvatarCircle = ({ emoji, color }: { emoji?: string; color?: string }) => (
-  <div
-    className="w-9 h-9 rounded-full flex items-center justify-center text-base"
-    style={{ backgroundColor: color ?? '#e5e7eb' }}
-  >
+  <div className="w-9 h-9 rounded-full flex items-center justify-center text-base" style={getAvatarCircleStyle(color)}>
     <span>{emoji ?? '🙂'}</span>
   </div>
 )
@@ -129,35 +139,47 @@ interface MessageInputProps {
   sendMessage: () => void
 }
 
-export const MessageInput: React.FC<MessageInputProps> = ({ currentMessage, setCurrentMessage, sendMessage }) => (
-  <div className="flex items-center gap-2 md:gap-3 lg:gap-4">
-    <div className="flex-1 flex items-center bg-gray-800 border border-gray-700 rounded-full px-3 md:px-4 py-1.5 md:py-2 shadow-sm">
-      <input
-        data-testid="message-input"
-        type="text"
-        value={currentMessage}
-        onChange={(e) => setCurrentMessage(e.target.value)}
-        placeholder="iMessage..."
-        className="flex-1 bg-transparent outline-none text-gray-100 placeholder-gray-500 text-base lg:text-lg"
-        onKeyDown={(e) => e.key === 'Enter' && sendMessage()}
-      />
+export const MessageInput: React.FC<MessageInputProps> = ({ currentMessage, setCurrentMessage, sendMessage }) => {
+  const handleMessageChange = useCallback(
+    (e: React.ChangeEvent<HTMLInputElement>) => setCurrentMessage(e.target.value),
+    [setCurrentMessage],
+  )
+
+  const handleMessageKeyDown = useCallback(
+    (e: React.KeyboardEvent<HTMLInputElement>) => e.key === 'Enter' && sendMessage(),
+    [sendMessage],
+  )
+
+  return (
+    <div className="flex items-center gap-2 md:gap-3 lg:gap-4">
+      <div className="flex-1 flex items-center bg-gray-800 border border-gray-700 rounded-full px-3 md:px-4 py-1.5 md:py-2 shadow-sm">
+        <input
+          data-testid="message-input"
+          type="text"
+          value={currentMessage}
+          onChange={handleMessageChange}
+          placeholder="iMessage..."
+          className="flex-1 bg-transparent outline-none text-gray-100 placeholder-gray-500 text-base lg:text-lg"
+          onKeyDown={handleMessageKeyDown}
+        />
+      </div>
+      <button
+        type="button"
+        data-testid="send-message"
+        onClick={sendMessage}
+        disabled={!currentMessage.trim()}
+        className={`px-4 py-2 md:px-5 md:py-2.5 rounded-full font-medium transition-colors text-base lg:text-lg ${
+          currentMessage.trim()
+            ? 'bg-blue-500 hover:bg-blue-600 text-white cursor-pointer'
+            : 'bg-gray-300 text-gray-500 cursor-not-allowed'
+        }`}
+        title="Send"
+      >
+        Send
+      </button>
     </div>
-    <button
-      type="button"
-      data-testid="send-message"
-      onClick={sendMessage}
-      disabled={!currentMessage.trim()}
-      className={`px-4 py-2 md:px-5 md:py-2.5 rounded-full font-medium transition-colors text-base lg:text-lg ${
-        currentMessage.trim()
-          ? 'bg-blue-500 hover:bg-blue-600 text-white cursor-pointer'
-          : 'bg-gray-300 text-gray-500 cursor-not-allowed'
-      }`}
-      title="Send"
-    >
-      Send
-    </button>
-  </div>
-)
+  )
+}
 
 interface MessagesContainerProps {
   messages: readonly Message[]
@@ -214,6 +236,39 @@ export const MessagesContainer: React.FC<MessagesContainerProps> = ({
     if (isSameDay(d, yesterday)) return 'Yesterday'
     return d.toLocaleDateString()
   }
+
+  const handleRemoveReaction = useCallback(
+    (e: React.MouseEvent<HTMLButtonElement>) => {
+      const userId = e.currentTarget.dataset.reactionUserId
+      const reactionId = e.currentTarget.dataset.reactionId
+      if (userId === userContext.userId && reactionId !== undefined) {
+        removeReaction(reactionId)
+      }
+    },
+    [removeReaction, userContext.userId],
+  )
+
+  const handleToggleReactionPicker = useCallback(
+    (e: React.MouseEvent<HTMLButtonElement>) => {
+      e.stopPropagation()
+      const messageId = e.currentTarget.dataset.messageId
+      if (messageId !== undefined) {
+        toggleReactionPicker(messageId)
+      }
+    },
+    [toggleReactionPicker],
+  )
+
+  const handleAddReaction = useCallback(
+    (e: React.MouseEvent<HTMLButtonElement>) => {
+      const messageId = e.currentTarget.dataset.messageId
+      const emoji = e.currentTarget.dataset.emoji
+      if (messageId !== undefined && emoji !== undefined) {
+        addReaction(messageId, emoji)
+      }
+    },
+    [addReaction],
+  )
 
   return (
     <div
@@ -297,11 +352,9 @@ export const MessagesContainer: React.FC<MessagesContainerProps> = ({
                           type="button"
                           key={reaction.id}
                           data-testid={`reaction-${reaction.id}`}
-                          onClick={() => {
-                            if (reaction.userId === userContext.userId) {
-                              removeReaction(reaction.id)
-                            }
-                          }}
+                          data-reaction-id={reaction.id}
+                          data-reaction-user-id={reaction.userId}
+                          onClick={handleRemoveReaction}
                           className={`px-1.5 py-0.5 text-xs rounded-full ${
                             reaction.userId === userContext.userId
                               ? 'hover:bg-gray-700 cursor-pointer'
@@ -319,10 +372,8 @@ export const MessagesContainer: React.FC<MessagesContainerProps> = ({
                       <button
                         type="button"
                         data-testid={`add-reaction-${message.id}`}
-                        onClick={(e) => {
-                          e.stopPropagation()
-                          toggleReactionPicker(message.id)
-                        }}
+                        data-message-id={message.id}
+                        onClick={handleToggleReactionPicker}
                         className="px-1.5 py-0.5 text-xs rounded-full cursor-pointer text-slate-300 hover:bg-slate-800 transition-colors"
                         title="Add reaction"
                       >
@@ -345,7 +396,9 @@ export const MessagesContainer: React.FC<MessagesContainerProps> = ({
                             key={emoji}
                             type="button"
                             data-testid={`emoji-${emoji}`}
-                            onClick={() => addReaction(message.id, emoji)}
+                            data-message-id={message.id}
+                            data-emoji={emoji}
+                            onClick={handleAddReaction}
                             className="bg-transparent border-none p-1 rounded cursor-pointer text-base hover:bg-slate-800 transition-colors text-slate-100"
                           >
                             {emoji}

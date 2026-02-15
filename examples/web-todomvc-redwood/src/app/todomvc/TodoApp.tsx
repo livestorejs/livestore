@@ -1,17 +1,20 @@
 'use client'
 
 import 'todomvc-app-css/index.css'
-import { FPSMeter } from '@overengineering/fps-meter'
-import type React from 'react'
-import { Suspense, useState } from 'react'
 
 import { StoreRegistry } from '@livestore/livestore'
 import { StoreRegistryProvider } from '@livestore/react'
+import { FPSMeter } from '@overengineering/fps-meter'
+import type React from 'react'
+import { Suspense, useState } from 'react'
 
 import { Footer } from './components/Footer.tsx'
 import { Header } from './components/Header.tsx'
 import { MainSection } from './components/MainSection.tsx'
 import { VersionBadge } from './components/VersionBadge.tsx'
+
+const suspenseFallback = <div>Loading LiveStore...</div>
+const fpsContainerStyle = { top: 0, right: 0, position: 'absolute', background: '#333' } as const
 
 const AppBody: React.FC = () => (
   <section className="todoapp">
@@ -25,9 +28,9 @@ export const TodoApp: React.FC = () => {
   const [storeRegistry] = useState(() => new StoreRegistry())
 
   return (
-    <Suspense fallback={<div>Loading LiveStore...</div>}>
+    <Suspense fallback={suspenseFallback}>
       <StoreRegistryProvider storeRegistry={storeRegistry}>
-        <div style={{ top: 0, right: 0, position: 'absolute', background: '#333' }}>
+        <div style={fpsContainerStyle}>
           <FPSMeter height={40} />
         </div>
         <AppBody />

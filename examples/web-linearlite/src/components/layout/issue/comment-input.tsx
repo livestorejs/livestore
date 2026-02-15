@@ -22,7 +22,7 @@ export const CommentInput = ({ issueId, className }: { issueId: number; classNam
     },
   })
 
-  const submitComment = () => {
+  const submitComment = React.useCallback(() => {
     if (!commentDraft) return
     store.commit(
       events.createComment({
@@ -34,19 +34,16 @@ export const CommentInput = ({ issueId, className }: { issueId: number; classNam
       }),
     )
     setCommentDraft('')
-  }
+  }, [commentDraft, frontendState.user, issueId, store])
+
+  const handleChange = React.useCallback((value: string) => setCommentDraft(value), [])
 
   return (
     <div
       className={`bg-white dark:bg-neutral-800 pb-4 rounded-lg shadow dark:shadow-none border border-transparent dark:border-neutral-700/50 ${className}`}
       {...keyboardProps}
     >
-      <Editor
-        className="px-4 py-1"
-        value={commentDraft}
-        onChange={(value) => setCommentDraft(value)}
-        placeholder="Leave a comment..."
-      />
+      <Editor className="px-4 py-1" value={commentDraft} onChange={handleChange} placeholder="Leave a comment..." />
       {/* TODO add tooltip for submit shortcut */}
       <Button
         aria-label="Submit comment"

@@ -30,6 +30,8 @@ const tabs = [
   { to: '/recursive', label: 'Recursive' },
 ] as const
 
+const activeTabProps = { className: 'active' } as const
+
 const RootComponent = () => {
   return (
     <RootDocument>
@@ -41,7 +43,7 @@ const RootComponent = () => {
 
         <nav>
           {tabs.map((tab) => (
-            <Link key={tab.to} to={tab.to} activeProps={{ className: 'active' }}>
+            <Link key={tab.to} to={tab.to} activeProps={activeTabProps}>
               {tab.label}
             </Link>
           ))}

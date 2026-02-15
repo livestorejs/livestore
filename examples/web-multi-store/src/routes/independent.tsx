@@ -10,6 +10,9 @@ export const Route = createFileRoute('/independent')({
   component: IndependentDemoRoute,
 })
 
+const loadingWorkspaceFallback = <div className="loading">Loading workspace...</div>
+const loadingIssueFallback = <div className="loading">Loading issue...</div>
+
 const IndependentDemoRoute = () => {
   const { storeRegistry } = Route.useRouteContext()
 
@@ -25,13 +28,13 @@ const IndependentDemoRoute = () => {
       <div>
         <StoreRegistryProvider storeRegistry={storeRegistry}>
           <ErrorBoundary FallbackComponent={ErrorFallback}>
-            <Suspense fallback={<div className="loading">Loading workspace...</div>}>
+            <Suspense fallback={loadingWorkspaceFallback}>
               <WorkspaceView />
             </Suspense>
           </ErrorBoundary>
 
           <ErrorBoundary FallbackComponent={ErrorFallback}>
-            <Suspense fallback={<div className="loading">Loading issue...</div>}>
+            <Suspense fallback={loadingIssueFallback}>
               <IssueView issueId="root-issue" />
             </Suspense>
           </ErrorBoundary>

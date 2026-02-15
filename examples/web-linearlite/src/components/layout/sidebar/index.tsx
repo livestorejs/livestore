@@ -10,25 +10,29 @@ import { NewIssueButton } from './new-issue-button.tsx'
 import { SearchButton } from './search-button.tsx'
 import { ThemeButton } from './theme-button.tsx'
 
+const navItems = [
+  {
+    title: 'List view',
+    icon: Bars4Icon,
+    to: '/$storeId',
+  },
+  {
+    title: 'Board view',
+    icon: ViewColumnsIcon,
+    to: '/$storeId/board',
+  },
+] as const
+
 export const Sidebar = ({ className }: { className?: string }) => {
   const [, setFilterState] = useFilterState()
   const { setShowMenu } = React.useContext(MenuContext)!
   const { storeId } = useParams({ from: '/$storeId' })
-
-  const navItems = [
-    {
-      title: 'List view',
-      icon: Bars4Icon,
-      to: '/$storeId',
-      onClick: () => setFilterState({ status: null }),
-    },
-    {
-      title: 'Board view',
-      icon: ViewColumnsIcon,
-      to: '/$storeId/board',
-      onClick: () => setFilterState({ status: null }),
-    },
-  ]
+  const params = React.useMemo(() => ({ storeId }), [storeId])
+  const search = React.useCallback((prev: Record<string, unknown>) => ({ ...prev, issueId: undefined }), [])
+  const handleNavigate = React.useCallback(() => {
+    setFilterState({ status: null })
+    setShowMenu(false)
+  }, [setFilterState, setShowMenu])
 
   return (
     <aside
@@ -46,16 +50,13 @@ export const Sidebar = ({ className }: { className?: string }) => {
           Issues
         </h2>
         <nav className="text-sm leading-none space-y-px">
-          {navItems.map(({ title, icon: Icon, to, onClick }) => (
+          {navItems.map(({ title, icon: Icon, to }) => (
             <Link
               key={to}
               to={to}
-              params={{ storeId }}
-              search={(prev) => ({ ...prev, issueId: undefined })}
-              onClick={() => {
-                onClick()
-                setShowMenu(false)
-              }}
+              params={params}
+              search={search}
+              onClick={handleNavigate}
               className="flex items-center gap-2 px-2 h-8 rounded-md focus:outline-none dark:hover:bg-neutral-800 dark:focus:bg-neutral-800 hover:bg-neutral-100 focus:bg-neutral-100"
             >
               <Icon className="size-4" />

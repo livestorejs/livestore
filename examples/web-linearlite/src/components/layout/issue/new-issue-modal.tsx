@@ -22,14 +22,14 @@ export const NewIssueModal = () => {
   const [priority, setPriority] = React.useState<Priority>(0)
   const store = useAppStore()
 
-  const closeModal = () => {
+  const closeModal = React.useCallback(() => {
     setTitle('')
     setDescription('')
     setPriority(0)
     setNewIssueModalStatus(false)
-  }
+  }, [setNewIssueModalStatus])
 
-  const createIssue = () => {
+  const createIssue = React.useCallback(() => {
     if (!title) return
     const date = new Date()
     // TODO make this "merge safe"
@@ -56,7 +56,7 @@ export const NewIssueModal = () => {
       }),
     )
     closeModal()
-  }
+  }, [closeModal, frontendState.user, newIssueModalStatus, priority, store, title, description])
 
   return (
     <Modal show={newIssueModalStatus !== false} setShow={closeModal}>

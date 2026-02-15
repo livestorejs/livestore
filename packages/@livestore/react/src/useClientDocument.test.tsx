@@ -1,16 +1,15 @@
-import * as otel from '@opentelemetry/api'
-import { BasicTracerProvider, InMemorySpanExporter, SimpleSpanProcessor } from '@opentelemetry/sdk-trace-base'
-import * as ReactTesting from '@testing-library/react'
-import type React from 'react'
-import { beforeEach, expect, it } from 'vitest'
-
 /** biome-ignore-all lint/a11y/useValidAriaRole: not needed for testing */
 /** biome-ignore-all lint/a11y/noStaticElementInteractions: not needed for testing */
 import * as LiveStore from '@livestore/livestore'
 import { StoreInternalsSymbol } from '@livestore/livestore'
 import { getAllSimplifiedRootSpans, getSimplifiedRootSpan } from '@livestore/livestore/internal/testing-utils'
-import { Vitest } from '@livestore/utils-dev/node-vitest'
 import { Effect, ReadonlyRecord, Schema } from '@livestore/utils/effect'
+import { Vitest } from '@livestore/utils-dev/node-vitest'
+import * as otel from '@opentelemetry/api'
+import { BasicTracerProvider, InMemorySpanExporter, SimpleSpanProcessor } from '@opentelemetry/sdk-trace-base'
+import * as ReactTesting from '@testing-library/react'
+import * as React from 'react'
+import { beforeEach, expect, it } from 'vitest'
 
 import { events, makeTodoMvcReact, tables } from './__tests__/fixture.tsx'
 import type * as LiveStoreReact from './mod.ts'
@@ -121,12 +120,13 @@ Vitest.describe('useClientDocument', () => {
         renderCount.inc()
 
         const [state, setState] = store.useClientDocument(tables.AppRouterSchema, 'singleton')
+        const setCurrentTaskId = React.useCallback((taskId: string) => setState({ currentTaskId: taskId }), [setState])
 
         globalSetState = setState
 
         return (
           <div>
-            <TasksList setTaskId={(taskId) => setState({ currentTaskId: taskId })} />
+            <TasksList setTaskId={setCurrentTaskId} />
             <div role="current-id">Current Task Id: {state.currentTaskId ?? '-'}</div>
             {state.currentTaskId ? <TaskDetails id={state.currentTaskId} /> : <div>Click on a task to see details</div>}
           </div>
@@ -135,11 +135,20 @@ Vitest.describe('useClientDocument', () => {
 
       const TasksList: React.FC<{ setTaskId: (_: string) => void }> = ({ setTaskId }) => {
         const allTodos = store.useQuery(allTodos$)
+        const handleTaskClick = React.useCallback(
+          (event: React.MouseEvent<HTMLDivElement>) => {
+            const taskId = event.currentTarget.dataset.taskId
+            if (taskId !== undefined) {
+              setTaskId(taskId)
+            }
+          },
+          [setTaskId],
+        )
 
         return (
           <div>
             {allTodos.map((_) => (
-              <div key={_.id} onClick={() => setTaskId(_.id)}>
+              <div key={_.id} data-task-id={_.id} onClick={handleTaskClick}>
                 {_.id}
               </div>
             ))}

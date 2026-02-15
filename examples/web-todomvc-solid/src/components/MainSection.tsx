@@ -1,6 +1,5 @@
-import { type Component, For } from 'solid-js'
-
 import { queryDb } from '@livestore/livestore'
+import { type Component, createMemo, For } from 'solid-js'
 
 import { uiState$ } from '../livestore/queries.ts'
 import { events, tables } from '../livestore/schema.ts'
@@ -25,6 +24,21 @@ export const MainSection: Component = () => {
     store()?.commit(completed ? events.todoUncompleted({ id }) : events.todoCompleted({ id }))
   }
 
+  const handleToggleChange = createMemo(() => (event: Event & { currentTarget: HTMLInputElement }) => {
+    const id = event.currentTarget.dataset.todoId
+    if (!id) return
+    const todo = visibleTodos()?.find((item) => item.id === id)
+    if (todo) {
+      toggleTodo(todo)
+    }
+  })
+
+  const handleDeleteClick = createMemo(() => (event: MouseEvent & { currentTarget: HTMLButtonElement }) => {
+    const id = event.currentTarget.dataset.todoId
+    if (!id) return
+    store()?.commit(events.todoDeleted({ id, deletedAt: new Date() }))
+  })
+
   return (
     <section class="main">
       <ul class="todo-list">
@@ -32,14 +46,16 @@ export const MainSection: Component = () => {
           {(todo) => (
             <li>
               <div class="view">
-                <input type="checkbox" class="toggle" checked={todo.completed} onChange={() => toggleTodo(todo)} />
+                <input
+                  type="checkbox"
+                  class="toggle"
+                  checked={todo.completed}
+                  data-todo-id={todo.id}
+                  onChange={handleToggleChange()}
+                />
                 {/* biome-ignore lint/a11y/noLabelWithoutControl: otherwise breaks TODO MVC CSS */}
                 <label>{todo.text}</label>
-                <button
-                  type="button"
-                  class="destroy"
-                  onClick={() => store()?.commit(events.todoDeleted({ id: todo.id, deletedAt: new Date() }))}
-                />
+                <button type="button" class="destroy" data-todo-id={todo.id} onClick={handleDeleteClick()} />
               </div>
             </li>
           )}

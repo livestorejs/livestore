@@ -1,9 +1,8 @@
 /// <reference types="vite/client" />
 
-import { createEffect, createSignal, type JSX, onMount, Show } from 'solid-js'
-
-import { ChatHeader, MessageInput, MessagesContainer, UserSidebar } from './components.tsx'
+import { createEffect, createMemo, createSignal, type JSX, onMount } from 'solid-js'
 import { VersionBadge } from './components/VersionBadge.tsx'
+import { ChatHeader, MessageInput, MessagesContainer, UserSidebar } from './components.tsx'
 import { useChat } from './hooks.ts'
 import { events, tables } from './livestore/schema.ts'
 import { useAppStore } from './livestore/store.ts'
@@ -12,6 +11,9 @@ import { useAppStore } from './livestore/store.ts'
 export const ChatComponent = () => {
   const store = useAppStore()
   const chatHook = useChat()
+  const setMessagesEndRef = createMemo(() => (el: HTMLDivElement) => {
+    chatHook.messagesEndRef = el
+  })
 
   onMount(() => {
     const s = store()
@@ -43,9 +45,7 @@ export const ChatComponent = () => {
 
         <MessagesContainer
           messages={chatHook.messages}
-          messagesEndRef={(el) => {
-            chatHook.messagesEndRef = el
-          }}
+          messagesEndRef={setMessagesEndRef()}
           userContext={chatHook.userContext}
           getReactionsForMessage={chatHook.getReactionsForMessage}
           getReadReceiptsForMessage={chatHook.getReadReceiptsForMessage}
@@ -85,7 +85,7 @@ const UserNameWrapper = (props: { children: JSX.Element }) => {
   const [uiState, setUiState] = store.useClientDocument(tables.uiState)
   const newUserId = crypto.randomUUID()
 
-  const joinChat = () => {
+  const joinChat = createMemo(() => () => {
     const ctx = uiState()?.userContext
     if (!ctx?.username) return
     const avatar = pickAvatar(ctx.avatarEmoji, ctx.avatarColor)
@@ -107,75 +107,79 @@ const UserNameWrapper = (props: { children: JSX.Element }) => {
         avatarColor: avatar.color,
       },
     })
-  }
+  })
 
-  return (
-    <Show
-      when={uiState()?.userContext?.hasJoined}
-      fallback={
-        <div class="min-h-screen bg-gray-900 flex items-center justify-center p-4 transition-colors">
-          <div class="bg-gray-800 rounded-lg shadow-lg p-6 lg:p-8 w-full max-w-md lg:max-w-lg">
-            <h1 class="text-2xl lg:text-3xl font-bold text-gray-100 mb-2 lg:mb-4">💬 LiveChat</h1>
-            <p class="text-gray-400 mb-6 lg:mb-8 lg:text-lg">Enter your username to join the chat:</p>
-            <div class="space-y-4">
-              <input
-                data-testid="username"
-                type="text"
-                value={uiState()?.userContext?.username || ''}
-                onInput={(e) =>
-                  setUiState({
-                    userContext: {
-                      username: e.currentTarget.value,
-                      userId: newUserId,
-                      hasJoined: false,
-                      avatarEmoji: uiState()?.userContext?.avatarEmoji,
-                      avatarColor: uiState()?.userContext?.avatarColor,
-                    },
-                  })
-                }
-                placeholder="Your username..."
-                class="w-full px-4 py-2 lg:px-5 lg:py-3 border border-gray-600 bg-gray-700 text-gray-100 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent text-base lg:text-lg"
-                onKeyDown={(e) => e.key === 'Enter' && joinChat()}
-              />
-              <div class="flex items-center gap-3">
-                <AvatarPicker
-                  value={{
-                    emoji: uiState()?.userContext?.avatarEmoji,
-                    color: uiState()?.userContext?.avatarColor,
-                  }}
-                  onChange={(val) =>
-                    setUiState({
-                      userContext: {
-                        username: uiState()?.userContext?.username ?? '',
-                        userId: newUserId,
-                        hasJoined: false,
-                        avatarEmoji: val.emoji,
-                        avatarColor: val.color,
-                      },
-                    })
-                  }
-                />
-              </div>
-              <button
-                type="button"
-                data-testid="join-chat"
-                onClick={joinChat}
-                disabled={!uiState()?.userContext?.username}
-                class={`w-full py-2 px-4 lg:py-3 lg:px-5 rounded-lg font-medium transition-colors text-base lg:text-lg ${
-                  uiState()?.userContext?.username
-                    ? 'bg-blue-500 hover:bg-blue-600 text-white cursor-pointer'
-                    : 'bg-gray-300 text-gray-500 cursor-not-allowed'
-                }`}
-              >
-                Join Chat
-              </button>
-            </div>
+  const handleUsernameInput = createMemo(
+    () => (e: InputEvent & { currentTarget: HTMLInputElement }) =>
+      setUiState({
+        userContext: {
+          username: e.currentTarget.value,
+          userId: newUserId,
+          hasJoined: false,
+          avatarEmoji: uiState()?.userContext?.avatarEmoji,
+          avatarColor: uiState()?.userContext?.avatarColor,
+        },
+      }),
+  )
+
+  const handleUsernameKeyDown = createMemo(
+    () => (e: KeyboardEvent & { currentTarget: HTMLInputElement }) => e.key === 'Enter' && joinChat()(),
+  )
+
+  const avatarPickerValue = createMemo(() => ({
+    emoji: uiState()?.userContext?.avatarEmoji,
+    color: uiState()?.userContext?.avatarColor,
+  }))
+
+  const handleAvatarChange = createMemo(
+    () => (val: { emoji: string; color: string }) =>
+      setUiState({
+        userContext: {
+          username: uiState()?.userContext?.username ?? '',
+          userId: newUserId,
+          hasJoined: false,
+          avatarEmoji: val.emoji,
+          avatarColor: val.color,
+        },
+      }),
+  )
+
+  return uiState()?.userContext?.hasJoined ? (
+    props.children
+  ) : (
+    <div class="min-h-screen bg-gray-900 flex items-center justify-center p-4 transition-colors">
+      <div class="bg-gray-800 rounded-lg shadow-lg p-6 lg:p-8 w-full max-w-md lg:max-w-lg">
+        <h1 class="text-2xl lg:text-3xl font-bold text-gray-100 mb-2 lg:mb-4">💬 LiveChat</h1>
+        <p class="text-gray-400 mb-6 lg:mb-8 lg:text-lg">Enter your username to join the chat:</p>
+        <div class="space-y-4">
+          <input
+            data-testid="username"
+            type="text"
+            value={uiState()?.userContext?.username || ''}
+            onInput={handleUsernameInput()}
+            placeholder="Your username..."
+            class="w-full px-4 py-2 lg:px-5 lg:py-3 border border-gray-600 bg-gray-700 text-gray-100 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent text-base lg:text-lg"
+            onKeyDown={handleUsernameKeyDown()}
+          />
+          <div class="flex items-center gap-3">
+            <AvatarPicker value={avatarPickerValue()} onChange={handleAvatarChange()} />
           </div>
+          <button
+            type="button"
+            data-testid="join-chat"
+            onClick={joinChat()}
+            disabled={!uiState()?.userContext?.username}
+            class={`w-full py-2 px-4 lg:py-3 lg:px-5 rounded-lg font-medium transition-colors text-base lg:text-lg ${
+              uiState()?.userContext?.username
+                ? 'bg-blue-500 hover:bg-blue-600 text-white cursor-pointer'
+                : 'bg-gray-300 text-gray-500 cursor-not-allowed'
+            }`}
+          >
+            Join Chat
+          </button>
         </div>
-      }
-    >
-      {props.children}
-    </Show>
+      </div>
+    </div>
   )
 }
 
@@ -191,6 +195,8 @@ const avatarOptions: { emoji: string; color: string }[] = [
   { emoji: '🐧', color: '#06b6d4' }, // cyan
   { emoji: '🐸', color: '#84cc16' }, // lime
 ]
+
+const avatarOptionStyles = avatarOptions.map((option) => ({ 'background-color': option.color }))
 
 const pickAvatar = (existingEmoji?: string, existingColor?: string) => {
   if (existingEmoji !== undefined && existingColor !== undefined) return { emoji: existingEmoji, color: existingColor }
@@ -215,6 +221,16 @@ const AvatarPicker = (props: {
   }
 
   const selectedIndex = () => controlledIndex() ?? internalIndex()
+  const handleAvatarOptionClick = createMemo(() => (e: MouseEvent & { currentTarget: HTMLButtonElement }) => {
+    const index = Number(e.currentTarget.dataset.avatarIndex)
+    const option = avatarOptions[index]
+    if (option === undefined) return
+    if (isControlled()) {
+      props.onChange({ emoji: option.emoji, color: option.color })
+    } else {
+      setInternalIndex(index)
+    }
+  })
 
   createEffect(() => {
     if (!isControlled()) {
@@ -228,19 +244,14 @@ const AvatarPicker = (props: {
       {avatarOptions.map((opt, idx) => (
         <button
           type="button"
-          onClick={() => {
-            if (isControlled()) {
-              props.onChange({ emoji: opt.emoji, color: opt.color })
-            } else {
-              setInternalIndex(idx)
-            }
-          }}
+          data-avatar-index={idx}
+          onClick={handleAvatarOptionClick()}
           class={`w-12 h-12 md:w-14 md:h-14 rounded-full flex items-center justify-center text-xl md:text-2xl border transition-all duration-150 ${
             selectedIndex() === idx
               ? 'ring-2 md:ring-3 ring-blue-400 shadow-lg opacity-100 scale-105 border-transparent'
               : 'opacity-70 hover:opacity-100 hover:scale-105 border-transparent'
           }`}
-          style={{ 'background-color': opt.color }}
+          style={avatarOptionStyles[idx]}
           aria-label={`Choose avatar ${opt.emoji}`}
         >
           <span>{opt.emoji}</span>

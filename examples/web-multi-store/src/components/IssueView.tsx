@@ -1,23 +1,28 @@
 import { queryDb } from '@livestore/livestore'
 import { useStore } from '@livestore/react'
-import { Suspense } from 'react'
+import { Suspense, useCallback } from 'react'
 import { ErrorBoundary } from 'react-error-boundary'
 import { ErrorFallback } from '@/components/ErrorFallback.tsx'
 import { issueStoreOptions } from '@/stores/issue/index.ts'
 
 import { issueEvents, issueTables } from '../stores/issue/schema.ts'
 
+const loadingSubIssuesFallback = <div className="loading">Loading sub-issues...</div>
+
 export const IssueView = ({ issueId }: { issueId: string }) => {
   const issueStore = useStore(issueStoreOptions(issueId)) // Will suspend component if the store is not yet loaded
   const [issue] = issueStore.useQuery(queryDb(issueTables.issue.select().limit(1)))
 
-  const toggleStatus = () =>
-    issueStore.commit(
-      issueEvents.issueStatusChanged({
-        id: issue.id,
-        status: issue.status === 'done' ? 'todo' : 'done',
-      }),
-    )
+  const toggleStatus = useCallback(
+    () =>
+      issueStore.commit(
+        issueEvents.issueStatusChanged({
+          id: issue.id,
+          status: issue.status === 'done' ? 'todo' : 'done',
+        }),
+      ),
+    [issue.id, issue.status, issueStore],
+  )
 
   return (
     <div>
@@ -38,7 +43,7 @@ export const IssueView = ({ issueId }: { issueId: string }) => {
 
       {issue.childIssueIds.length > 0 && (
         <ErrorBoundary FallbackComponent={ErrorFallback}>
-          <Suspense fallback={<div className="loading">Loading sub-issues...</div>}>
+          <Suspense fallback={loadingSubIssuesFallback}>
             <ul>
               {issue.childIssueIds.map((id) => (
                 <li key={id}>

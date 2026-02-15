@@ -1,7 +1,7 @@
-import { Stack, useLocalSearchParams, useRouter } from 'expo-router'
-import { Image, Pressable, ScrollView, StyleSheet, TextInput, View } from 'react-native'
-
 import { queryDb } from '@livestore/livestore'
+import { Stack, useLocalSearchParams, useRouter } from 'expo-router'
+import { useCallback, useMemo } from 'react'
+import { Image, Pressable, ScrollView, StyleSheet, TextInput, View } from 'react-native'
 
 import { IssueStatusIcon, PriorityIcon } from '../components/IssueItem.tsx'
 import { ThemedText } from '../components/ThemedText.tsx'
@@ -30,13 +30,47 @@ const EditIssueScreen = () => {
     }),
   )
 
-  const handleGoBack = () => {
+  const handleGoBack = useCallback(() => {
     if (router.canGoBack()) {
       router.back()
     } else {
       router.replace('/(tabs)')
     }
-  }
+  }, [router])
+
+  const screenOptions = useMemo(
+    () => ({
+      headerTitle: `Issue-${issue.id.slice(0, 4)}`,
+      headerLeft: () => (
+        <Pressable onPress={handleGoBack}>
+          <ThemedText>Back</ThemedText>
+        </Pressable>
+      ),
+      headerRight: () => (
+        <Pressable onPress={handleGoBack}>
+          <ThemedText>Done</ThemedText>
+        </Pressable>
+      ),
+      freezeOnBlur: false,
+    }),
+    [handleGoBack, issue.id],
+  )
+
+  const handleTitleChange = useCallback(
+    (text: string) => store.commit(events.issueTitleUpdated({ id: issue.id, title: text, updatedAt: new Date() })),
+    [issue.id, store],
+  )
+  const handleDescriptionChange = useCallback(
+    (text: string) =>
+      store.commit(events.issueDescriptionUpdated({ id: issue.id, description: text, updatedAt: new Date() })),
+    [issue.id, store],
+  )
+  const titleInputStyle = useMemo(() => StyleSheet.compose(styles.titleInput, { color: textColor }), [textColor])
+  const descriptionInputStyle = useMemo(
+    () => StyleSheet.compose(styles.descriptionInput, { color: textColor }),
+    [textColor],
+  )
+  const assigneeImageSource = useMemo(() => ({ uri: assignee.photoUrl! }), [assignee.photoUrl])
 
   if (!issueId) {
     return <ThemedText>Issue not found</ThemedText>
@@ -44,33 +78,10 @@ const EditIssueScreen = () => {
 
   return (
     <>
-      <Stack.Screen
-        options={{
-          headerTitle: `Issue-${issue.id.slice(0, 4)}`,
-          headerLeft: () => (
-            <Pressable onPress={handleGoBack}>
-              <ThemedText>Back</ThemedText>
-            </Pressable>
-          ),
-          headerRight: () => (
-            <Pressable onPress={handleGoBack}>
-              <ThemedText>Done</ThemedText>
-            </Pressable>
-          ),
-          freezeOnBlur: false,
-        }}
-      />
+      <Stack.Screen options={screenOptions} />
       <ScrollView style={styles.container}>
         <View style={styles.contentContainer}>
-          <TextInput
-            style={[styles.titleInput, { color: textColor }]}
-            value={issue.title}
-            multiline
-            autoFocus
-            onChangeText={(text: string) =>
-              store.commit(events.issueTitleUpdated({ id: issue.id, title: text, updatedAt: new Date() }))
-            }
-          />
+          <TextInput style={titleInputStyle} value={issue.title} multiline autoFocus onChangeText={handleTitleChange} />
 
           <View style={styles.metadataContainer}>
             <View style={styles.metadataItem}>
@@ -84,19 +95,17 @@ const EditIssueScreen = () => {
             </View>
 
             <View style={styles.metadataItem}>
-              <Image source={{ uri: assignee.photoUrl! }} style={styles.avatar} />
+              <Image source={assigneeImageSource} style={styles.avatar} />
               <ThemedText style={styles.metadataText}>{assignee.name}</ThemedText>
             </View>
           </View>
 
           <TextInput
-            style={[styles.descriptionInput, { color: textColor }]}
+            style={descriptionInputStyle}
             value={issue.description!}
             placeholder="Description..."
             multiline
-            onChangeText={(text: string) =>
-              store.commit(events.issueDescriptionUpdated({ id: issue.id, description: text, updatedAt: new Date() }))
-            }
+            onChangeText={handleDescriptionChange}
           />
         </View>
       </ScrollView>

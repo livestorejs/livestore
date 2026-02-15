@@ -16,25 +16,27 @@ import { events, schema, tables } from './__tests__/fixture.tsx'
 import { StoreRegistryProvider } from './StoreRegistryContext.tsx'
 import { useStore } from './useStore.ts'
 
-const createSuspenseCount = (id: string) => {
-  let count = 0
-  const Comp = (props: Solid.ParentProps) => {
-    return (
-      <Solid.Suspense
-        fallback={
-          <div
-            data-testid={id}
-            ref={() => {
-              count++
-            }}
-          />
-        }
-      >
-        {props.children}
-      </Solid.Suspense>
-    )
+const suspenseCountById = new Map<string, number>()
+
+const suspenseFallbackRef = (el: HTMLDivElement) => {
+  const id = el.dataset.suspenseId
+  if (id !== undefined) {
+    suspenseCountById.set(id, (suspenseCountById.get(id) ?? 0) + 1)
   }
-  return Object.assign(Comp, { count: () => count, id })
+}
+
+const makeSuspenseFallback = (id: string) => {
+  return <div data-testid={id} data-suspense-id={id} ref={suspenseFallbackRef} />
+}
+
+const createSuspenseCount = (id: string) => {
+  suspenseCountById.set(id, 0)
+  const Comp = (props: Solid.ParentProps) => {
+    const fallback = makeSuspenseFallback(id)
+
+    return <Solid.Suspense fallback={fallback}>{props.children}</Solid.Suspense>
+  }
+  return Object.assign(Comp, { count: () => suspenseCountById.get(id) ?? 0, id })
 }
 
 describe('useStore', () => {

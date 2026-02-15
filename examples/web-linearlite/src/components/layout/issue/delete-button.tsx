@@ -17,7 +17,7 @@ export const DeleteButton = ({
   const store = useAppStore()
   const [confirm, setConfirm] = React.useState(false)
 
-  const onClick = () => {
+  const onClick = React.useCallback(() => {
     if (confirm) {
       const deleted = new Date()
       store.commit(
@@ -32,7 +32,7 @@ export const DeleteButton = ({
     setTimeout(() => {
       setConfirm(false)
     }, 2000)
-  }
+  }, [close, confirm, issueId, store])
 
   return (
     <Button

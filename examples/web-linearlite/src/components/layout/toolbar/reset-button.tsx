@@ -5,7 +5,7 @@ import { Button } from 'react-aria-components'
 export const ResetButton = ({ className }: { className?: string }) => {
   const [confirm, setConfirm] = React.useState(false)
 
-  const onClick = () => {
+  const onClick = React.useCallback(() => {
     if (confirm) {
       window.location.href = '/?reset'
       return
@@ -14,7 +14,7 @@ export const ResetButton = ({ className }: { className?: string }) => {
     setTimeout(() => {
       setConfirm(false)
     }, 2000)
-  }
+  }, [confirm])
 
   return (
     <div className={`lg:h-full flex items-center ${className}`}>

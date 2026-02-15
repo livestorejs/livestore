@@ -1,5 +1,5 @@
 import { MaterialIcons } from '@expo/vector-icons'
-import type React from 'react'
+import { useCallback } from 'react'
 import { StyleSheet, Text, TouchableOpacity, View } from 'react-native'
 
 import type { tables } from '../livestore/schema.ts'
@@ -7,20 +7,21 @@ import { events } from '../livestore/schema.ts'
 import { useAppStore } from '../livestore/store.ts'
 import { Checkbox } from './Checkbox.tsx'
 
-export const Todo: React.FC<typeof tables.todos.Type> = ({ id, text, completed }) => {
+export const Todo = ({ id, text, completed }: typeof tables.todos.Type) => {
   const store = useAppStore()
 
-  const handleDeleteTodo = () => store.commit(events.todoDeleted({ id, deletedAt: new Date() }))
+  const handleDeleteTodo = useCallback(
+    () => store.commit(events.todoDeleted({ id, deletedAt: new Date() })),
+    [id, store],
+  )
+  const textStyle = StyleSheet.compose(styles.text, completed ? styles.textCompleted : undefined)
 
   return (
     <View style={styles.container}>
-      <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+      <View style={styles.row}>
         <Checkbox id={id} isCompleted={completed} />
-        <View style={{ flex: 1 }}>
-          <Text
-            selectable
-            style={completed ? [styles.text, { textDecorationLine: 'line-through', color: '#73737330' }] : styles.text}
-          >
+        <View style={styles.textContainer}>
+          <Text selectable style={textStyle}>
             {text}
           </Text>
         </View>
@@ -43,6 +44,17 @@ const styles = StyleSheet.create({
     fontSize: 15,
     fontWeight: '500',
     color: '#737373',
+  },
+  textCompleted: {
+    textDecorationLine: 'line-through',
+    color: '#73737330',
+  },
+  row: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  textContainer: {
+    flex: 1,
   },
   time: {
     fontSize: 13,

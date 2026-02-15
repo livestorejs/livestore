@@ -29,10 +29,18 @@ export const IssueDetailsBottomTab = ({ issueId }: IssueDetailsBottomTabProps) =
 
   const [visible, setVisible] = React.useState(false)
 
-  const handleDelete = () => {
+  const handleDelete = React.useCallback(() => {
     store.commit(events.issueDeleted({ id: issueId, deletedAt: new Date() }))
     setVisible(false)
-  }
+  }, [issueId, store])
+  const closeModal = React.useCallback(() => setVisible(false), [])
+  const openModal = React.useCallback(() => setVisible(true), [])
+  const handleGoBack = React.useCallback(() => router.back(), [router])
+  const modalItemStyle = React.useCallback(
+    ({ pressed }: { pressed: boolean }) =>
+      StyleSheet.compose(styles.modalItem, pressed ? styles.modalItemPressed : undefined),
+    [styles.modalItem, styles.modalItemPressed],
+  )
 
   const IconSize = 22
   const IconStrokeWidth = 2.5
@@ -80,16 +88,13 @@ export const IssueDetailsBottomTab = ({ issueId }: IssueDetailsBottomTabProps) =
 
   return (
     <>
-      <Modal onClose={() => setVisible(false)} visible={visible}>
+      <Modal onClose={closeModal} visible={visible}>
         <View style={styles.modalContent}>
-          <Pressable style={({ pressed }) => [styles.modalItem, pressed && styles.modalItemPressed]}>
+          <Pressable style={modalItemStyle}>
             <PencilIcon color={Colors[theme!].text} size={14} />
             <ThemedText style={styles.smallText}>Edit issue</ThemedText>
           </Pressable>
-          <Pressable
-            onPress={handleDelete}
-            style={({ pressed }) => [styles.modalItem, pressed && styles.modalItemPressed]}
-          >
+          <Pressable onPress={handleDelete} style={modalItemStyle}>
             <Trash2Icon color={'red'} size={14} />
             <ThemedText style={styles.deleteText}>Delete issue</ThemedText>
           </Pressable>
@@ -97,13 +102,13 @@ export const IssueDetailsBottomTab = ({ issueId }: IssueDetailsBottomTabProps) =
       </Modal>
       <TextInput placeholder="Comment" style={styles.commentInput} />
       <View style={styles.bottomTabContainer}>
-        <Pressable onPress={() => router.back()} style={styles.iconButton}>
+        <Pressable onPress={handleGoBack} style={styles.iconButton}>
           <MoveLeftIcon color={Colors[theme!].tint} size={IconSize} strokeWidth={IconStrokeWidth} />
         </Pressable>
         <LinkIcon color={Colors[theme!].tint} size={IconSize} strokeWidth={IconStrokeWidth} />
         <ShareIcon color={Colors[theme!].tint} size={IconSize} strokeWidth={IconStrokeWidth} />
         <Clock3Icon color={Colors[theme!].tint} size={IconSize} strokeWidth={IconStrokeWidth} />
-        <Pressable onPress={() => setVisible(true)} style={styles.iconButton}>
+        <Pressable onPress={openModal} style={styles.iconButton}>
           <EllipsisIcon color={Colors[theme!].tint} size={IconSize} strokeWidth={IconStrokeWidth} />
         </Pressable>
       </View>

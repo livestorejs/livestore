@@ -17,6 +17,8 @@ export const Route = createFileRoute('/recursive')({
   component: RecursiveRoute,
 })
 
+const loadingAllRecursiveIssueStoresFallback = <div className="loading">Loading all issue stores...</div>
+
 const RecursiveRoute = () => {
   const { storeRegistry } = Route.useRouteContext()
 
@@ -31,7 +33,7 @@ const RecursiveRoute = () => {
 
       <StoreRegistryProvider storeRegistry={storeRegistry}>
         <ErrorBoundary FallbackComponent={ErrorFallback}>
-          <Suspense fallback={<div className="loading">Loading all issue stores...</div>}>
+          <Suspense fallback={loadingAllRecursiveIssueStoresFallback}>
             <IssueView issueId="root-issue" />
           </Suspense>
         </ErrorBoundary>

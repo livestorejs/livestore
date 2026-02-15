@@ -1,4 +1,5 @@
 import { XMarkIcon } from '@heroicons/react/16/solid'
+import { useCallback } from 'react'
 import { Button } from 'react-aria-components'
 
 import { statusOptions } from '../../../data/status-options.ts'
@@ -9,6 +10,7 @@ import { FilterMenu } from './filter-menu.tsx'
 
 export const StatusFilter = () => {
   const [filterState, setFilterState] = useFilterState()
+  const handleClear = useCallback(() => setFilterState({ status: null }), [setFilterState])
   if (!filterState.status) return null
 
   return (
@@ -37,7 +39,7 @@ export const StatusFilter = () => {
         </Button>
       </FilterMenu>
       <Button
-        onPress={() => setFilterState({ status: null })}
+        onPress={handleClear}
         className="h-full flex items-center px-1 group hover:bg-neutral-50 dark:hover:bg-neutral-800 focus:outline-none focus:bg-neutral-100 dark:focus:bg-neutral-800 border-l border-neutral-200 dark:border-neutral-700"
       >
         <XMarkIcon className="size-4 group-hover:text-neutral-700 dark:group-hover:text-neutral-200" />

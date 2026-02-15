@@ -1,8 +1,10 @@
+const errorMessageStyle = { whiteSpace: 'pre-wrap' } as const
+
 export const ErrorFallback = ({ error, resetErrorBoundary }: { error: Error; resetErrorBoundary: () => void }) => {
   return (
     <div className="error">
       <h3>Something went wrong:</h3>
-      <pre style={{ whiteSpace: 'pre-wrap' }}>{error.message}</pre>
+      <pre style={errorMessageStyle}>{error.message}</pre>
       <button type="button" onClick={resetErrorBoundary}>
         Try again
       </button>

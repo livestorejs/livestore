@@ -1,8 +1,7 @@
-import { Stack, useRouter } from 'expo-router'
-import { Fragment } from 'react'
-import { Pressable, StyleSheet, Text, TextInput, useColorScheme, View } from 'react-native'
-
 import { nanoid } from '@livestore/livestore'
+import { Stack, useRouter } from 'expo-router'
+import { Fragment, useCallback, useMemo } from 'react'
+import { Pressable, StyleSheet, Text, TextInput, useColorScheme, View } from 'react-native'
 
 import { useUser } from '../../hooks/useUser.ts'
 import { uiState$ } from '../../livestore/queries.ts'
@@ -18,7 +17,7 @@ const NewIssueScreen = () => {
   const colorScheme = useColorScheme()
   const isDark = colorScheme === 'dark'
 
-  const handleCreateIssue = () => {
+  const handleCreateIssue = useCallback(() => {
     if (!newIssueText) return
 
     const id = nanoid()
@@ -38,38 +37,56 @@ const NewIssueScreen = () => {
       events.uiStateSet({ newIssueText: '', newIssueDescription: '' }),
     )
     router.push(`/issue-details?issueId=${id}`)
-  }
+  }, [newIssueDescription, newIssueText, router, store, user.id])
+
+  const handleBack = useCallback(() => router.back(), [router])
+  const handleNewIssueTextChange = useCallback(
+    (text: string) => store.commit(events.uiStateSet({ newIssueText: text })),
+    [store],
+  )
+  const handleNewIssueDescriptionChange = useCallback(
+    (text: string) => store.commit(events.uiStateSet({ newIssueDescription: text })),
+    [store],
+  )
+  const titleInputStyle = useMemo(
+    () => StyleSheet.compose(styles.titleInput, isDark ? styles.darkText : undefined),
+    [isDark],
+  )
+  const descriptionInputStyle = useMemo(() => (isDark ? styles.darkText : undefined), [isDark])
+
+  const screenOptions = useMemo(
+    () => ({
+      title: 'New Issue',
+      headerRight: () => (
+        <Pressable onPress={handleCreateIssue}>
+          <Text style={styles.actionButton}>Create</Text>
+        </Pressable>
+      ),
+      headerLeft: () => (
+        <Pressable onPress={handleBack}>
+          <Text style={styles.actionButton}>Cancel</Text>
+        </Pressable>
+      ),
+      freezeOnBlur: false,
+    }),
+    [handleBack, handleCreateIssue],
+  )
 
   return (
     <Fragment>
-      <Stack.Screen
-        options={{
-          title: 'New Issue',
-          headerRight: () => (
-            <Pressable onPress={handleCreateIssue}>
-              <Text style={styles.actionButton}>Create</Text>
-            </Pressable>
-          ),
-          headerLeft: () => (
-            <Pressable onPress={() => router.back()}>
-              <Text style={styles.actionButton}>Cancel</Text>
-            </Pressable>
-          ),
-          freezeOnBlur: false,
-        }}
-      />
+      <Stack.Screen options={screenOptions} />
       <View style={styles.container}>
         <TextInput
           value={newIssueText}
-          style={[styles.titleInput, isDark && styles.darkText]}
-          onChangeText={(text: string) => store.commit(events.uiStateSet({ newIssueText: text }))}
+          style={titleInputStyle}
+          onChangeText={handleNewIssueTextChange}
           placeholder="Issue title"
           placeholderTextColor={isDark ? '#a1a1aa' : '#71717a'}
         />
         <TextInput
           value={newIssueDescription}
-          onChangeText={(text: string) => store.commit(events.uiStateSet({ newIssueDescription: text }))}
-          style={isDark ? styles.darkText : null}
+          onChangeText={handleNewIssueDescriptionChange}
+          style={descriptionInputStyle}
           placeholder="Description..."
           placeholderTextColor={isDark ? '#a1a1aa' : '#71717a'}
           multiline

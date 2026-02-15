@@ -1,7 +1,7 @@
 import { queryDb } from '@livestore/livestore'
 import { StoreRegistryProvider, useStore } from '@livestore/react'
 import { createFileRoute } from '@tanstack/react-router'
-import { Suspense } from 'react'
+import { Suspense, useCallback } from 'react'
 import { ErrorBoundary } from 'react-error-boundary'
 import { ErrorFallback } from '@/components/ErrorFallback.tsx'
 import { workspaceStoreOptions } from '@/stores/workspace/index.ts'
@@ -14,6 +14,8 @@ export const Route = createFileRoute('/')({
   component: SingleRoute,
 })
 
+const loadingStoreFallback = <div className="loading">Loading store…</div>
+
 const SingleRoute = () => {
   const { storeRegistry } = Route.useRouteContext()
 
@@ -25,7 +27,7 @@ const SingleRoute = () => {
 
       <StoreRegistryProvider storeRegistry={storeRegistry}>
         <ErrorBoundary FallbackComponent={ErrorFallback}>
-          <Suspense fallback={<div className="loading">Loading store…</div>}>
+          <Suspense fallback={loadingStoreFallback}>
             <Workspace />
           </Suspense>
         </ErrorBoundary>
@@ -41,7 +43,7 @@ const Workspace = () => {
     queryDb(workspaceTables.issues.where({ workspaceId: workspace.id }).orderBy('createdAt', 'desc')),
   )
 
-  const addIssue = () => {
+  const addIssue = useCallback(() => {
     workspaceStore.commit(
       workspaceEvents.issueCreated({
         id: Date.now().toString(),
@@ -50,7 +52,7 @@ const Workspace = () => {
         createdAt: new Date(),
       }),
     )
-  }
+  }, [issues.length, workspace.id, workspaceStore])
 
   return (
     <div>

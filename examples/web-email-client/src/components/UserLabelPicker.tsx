@@ -1,8 +1,7 @@
-import type React from 'react'
-import { useState } from 'react'
-
 import { queryDb } from '@livestore/livestore'
 import { useStore } from '@livestore/react'
+import type React from 'react'
+import { useCallback, useMemo, useState } from 'react'
 
 import { useMailboxStore } from '../stores/mailbox/index.ts'
 import { mailboxTables } from '../stores/mailbox/schema.ts'
@@ -34,24 +33,53 @@ export const UserLabelPicker: React.FC<UserLabelPickerProps> = ({ threadId }) =>
 
   const [isOpen, setIsOpen] = useState(false)
 
-  const isLabelApplied = (labelId: string) => threadLabels.some((tl) => tl.labelId === labelId)
+  const isLabelApplied = useCallback(
+    (labelId: string) => threadLabels.some((tl) => tl.labelId === labelId),
+    [threadLabels],
+  )
   const threadUserLabels = userLabels.filter((l) => isLabelApplied(l.id))
 
-  const toggleUserLabel = (labelId: string) => {
-    if (isLabelApplied(labelId)) {
-      removeUserLabelFromThread(threadStore, { threadId, labelId })
-    } else {
-      applyUserLabelToThread(threadStore, { threadId, labelId })
-    }
-  }
+  const toggleUserLabel = useCallback(
+    (labelId: string) => {
+      if (isLabelApplied(labelId)) {
+        removeUserLabelFromThread(threadStore, { threadId, labelId })
+      } else {
+        applyUserLabelToThread(threadStore, { threadId, labelId })
+      }
+    },
+    [isLabelApplied, threadId, threadStore],
+  )
 
   if (userLabels.length === 0) return null // No user labels to show
+
+  const toggleDropdown = useCallback(() => {
+    setIsOpen((open) => !open)
+  }, [])
+
+  const closeDropdown = useCallback(() => {
+    setIsOpen(false)
+  }, [])
+
+  const handleToggleUserLabel = useCallback(
+    (e: React.MouseEvent<HTMLButtonElement>) => {
+      const labelId = e.currentTarget.dataset.labelId
+      if (labelId !== undefined) {
+        toggleUserLabel(labelId)
+      }
+    },
+    [toggleUserLabel],
+  )
+
+  const labelDotStyles = useMemo(
+    () => new Map(userLabels.map((label) => [label.id, { backgroundColor: label.color ?? undefined }])),
+    [userLabels],
+  )
 
   return (
     <div className="relative">
       {/* Trigger Button */}
       <button
-        onClick={() => setIsOpen(!isOpen)}
+        onClick={toggleDropdown}
         type="button"
         className="px-2 py-1 text-sm text-gray-600 hover:text-black border rounded"
         title="Apply labels"
@@ -66,7 +94,7 @@ export const UserLabelPicker: React.FC<UserLabelPickerProps> = ({ threadId }) =>
           <button
             type="button"
             className="fixed inset-0 z-10 bg-transparent border-none cursor-default"
-            onClick={() => setIsOpen(false)}
+            onClick={closeDropdown}
             aria-label="Close dropdown"
           />
 
@@ -76,12 +104,13 @@ export const UserLabelPicker: React.FC<UserLabelPickerProps> = ({ threadId }) =>
               return (
                 <button
                   key={label.id}
-                  onClick={() => toggleUserLabel(label.id)}
+                  data-label-id={label.id}
+                  onClick={handleToggleUserLabel}
                   type="button"
                   className="w-full text-left rounded px-3 py-2 text-sm text-gray-600 hover:bg-gray-50 flex items-center justify-between"
                 >
                   <div className="flex items-center">
-                    <div className="w-3 h-3 rounded-full mr-2" style={{ backgroundColor: label.color ?? undefined }} />
+                    <div className="w-3 h-3 rounded-full mr-2" style={labelDotStyles.get(label.id)} />
                     <span className="capitalize">{label.name}</span>
                   </div>
 

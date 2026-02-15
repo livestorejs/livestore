@@ -1,7 +1,7 @@
 import { Image } from 'expo-image'
 import type { LinkProps } from 'expo-router'
 import { Link } from 'expo-router'
-import { memo } from 'react'
+import { memo, useMemo } from 'react'
 import { Pressable, Image as RNImage, StyleSheet, useColorScheme, View } from 'react-native'
 
 import { iconBase64 } from '../assets/Icons/iconBase64.ts'
@@ -25,13 +25,15 @@ export const IssueItem = memo(
   ({ issue, showAssignee = true, showStatus = true, showPriority = true }: IssueItemProps) => {
     const linkHref = `/issue-details?issueId=${issue.id}`
     const isDarkMode = useColorScheme() === 'dark'
+    const pressableStyle = useMemo(
+      () => StyleSheet.compose(styles.pressable, isDarkMode ? styles.pressableDark : styles.pressableLight),
+      [isDarkMode],
+    )
+    const rippleConfig = useMemo(() => ({ color: isDarkMode ? '#333' : '#eee' }), [isDarkMode])
 
     return (
       <Link href={linkHref as LinkProps['href']} asChild>
-        <Pressable
-          style={[styles.pressable, { backgroundColor: isDarkMode ? '#27272a' : '#fafafa' }]}
-          android_ripple={{ color: isDarkMode ? '#333' : '#eee' }}
-        >
+        <Pressable style={pressableStyle} android_ripple={rippleConfig}>
           <View style={styles.container}>
             <View style={styles.leftContainer}>
               {showPriority && <PriorityIcon priority={issue.priority as Priority} />}
@@ -63,6 +65,12 @@ const styles = StyleSheet.create({
     padding: 8,
     paddingHorizontal: 12,
   },
+  pressableDark: {
+    backgroundColor: '#27272a',
+  },
+  pressableLight: {
+    backgroundColor: '#fafafa',
+  },
   container: {
     width: '100%',
     paddingHorizontal: 12,
@@ -88,162 +96,60 @@ const styles = StyleSheet.create({
     height: 20,
     borderRadius: 10,
   },
+  icon: {
+    width: 16,
+    height: 16,
+  },
 })
 
 IssueItem.displayName = 'IssueItem'
 
 export const PriorityIcon = memo(({ priority }: { priority: Priority }) => {
   const isDarkMode = useColorScheme() === 'dark'
-  switch (priority) {
-    case 'none': {
-      const iconNoPriority = isDarkMode ? iconBase64.no_priority_dark : iconBase64.no_priority
-      return (
-        <RNImage
-          source={{
-            uri: `data:image/png;base64,${iconNoPriority}`,
-            cache: 'force-cache',
-          }}
-          style={{ width: 16, height: 16 }}
-        />
-      )
+  const iconSource = useMemo(() => {
+    const iconByPriority: Record<Priority, string> = {
+      none: isDarkMode ? iconBase64.no_priority_dark : iconBase64.no_priority,
+      low: isDarkMode ? iconBase64.lowDark : iconBase64.low,
+      medium: isDarkMode ? iconBase64.mediumDark : iconBase64.medium,
+      high: isDarkMode ? iconBase64.highDark : iconBase64.high,
+      urgent: isDarkMode ? iconBase64.urgentDark : iconBase64.urgent,
     }
-    case 'low': {
-      const iconLow = isDarkMode ? iconBase64.lowDark : iconBase64.low
-      return (
-        <RNImage
-          source={{
-            uri: `data:image/png;base64,${iconLow}`,
-            cache: 'force-cache',
-          }}
-          style={{ width: 16, height: 16 }}
-        />
-      )
-    }
-    case 'medium': {
-      const iconMedium = isDarkMode ? iconBase64.mediumDark : iconBase64.medium
-      return (
-        <RNImage
-          source={{
-            uri: `data:image/png;base64,${iconMedium}`,
-            cache: 'force-cache',
-          }}
-          style={{ width: 16, height: 16 }}
-        />
-      )
-    }
-    case 'high': {
-      const iconHigh = isDarkMode ? iconBase64.highDark : iconBase64.high
-      return (
-        <RNImage
-          source={{
-            uri: `data:image/png;base64,${iconHigh}`,
-            cache: 'force-cache',
-          }}
-          style={{ width: 16, height: 16 }}
-        />
-      )
-    }
-    case 'urgent': {
-      const iconUrgent = isDarkMode ? iconBase64.urgentDark : iconBase64.urgent
-      return (
-        <RNImage
-          source={{
-            uri: `data:image/png;base64,${iconUrgent}`,
-            cache: 'force-cache',
-          }}
-          style={{ width: 16, height: 16 }}
-        />
-      )
-    }
-    default: {
-      return null
-    }
+
+    return toBase64ImageSource(iconByPriority[priority])
+  }, [isDarkMode, priority])
+
+  if (!iconSource) {
+    return null
   }
+
+  return <RNImage source={iconSource} style={styles.icon} />
 })
 
 export const IssueStatusIcon = memo(({ status }: { status: Status }) => {
-  switch (status) {
-    case 'done': {
-      return (
-        <RNImage
-          source={{
-            uri: `data:image/png;base64,${iconBase64.done}`,
-            cache: 'force-cache',
-          }}
-          style={{ width: 16, height: 16 }}
-        />
-      )
+  const iconSource = useMemo(() => {
+    const iconByStatus: Record<Status, string> = {
+      done: iconBase64.done,
+      in_progress: iconBase64.in_progress,
+      in_review: iconBase64.in_review,
+      todo: iconBase64.todo,
+      backlog: iconBase64.backlog,
+      canceled: iconBase64.canceled,
+      auto_closed: iconBase64.canceled,
+      wont_fix: iconBase64.canceled,
+      triage: iconBase64.triage,
     }
-    case 'in_progress': {
-      return (
-        <RNImage
-          source={{
-            uri: `data:image/png;base64,${iconBase64.in_progress}`,
-            cache: 'force-cache',
-          }}
-          style={{ width: 16, height: 16 }}
-        />
-      )
-    }
-    case 'in_review': {
-      return (
-        <RNImage
-          source={{
-            uri: `data:image/png;base64,${iconBase64.in_review}`,
-            cache: 'force-cache',
-          }}
-          style={{ width: 16, height: 16 }}
-        />
-      )
-    }
-    case 'todo': {
-      return (
-        <RNImage
-          source={{
-            uri: `data:image/png;base64,${iconBase64.todo}`,
-            cache: 'force-cache',
-          }}
-          style={{ width: 16, height: 16 }}
-        />
-      )
-    }
-    case 'backlog': {
-      return (
-        <RNImage
-          source={{
-            uri: `data:image/png;base64,${iconBase64.backlog}`,
-            cache: 'force-cache',
-          }}
-          style={{ width: 16, height: 16 }}
-        />
-      )
-    }
-    case 'canceled':
-    case 'auto_closed':
-    case 'wont_fix': {
-      return (
-        <RNImage
-          source={{
-            uri: `data:image/png;base64,${iconBase64.canceled}`,
-            cache: 'force-cache',
-          }}
-          style={{ width: 16, height: 16 }}
-        />
-      )
-    }
-    case 'triage': {
-      return (
-        <RNImage
-          source={{
-            uri: `data:image/png;base64,${iconBase64.triage}`,
-            cache: 'force-cache',
-          }}
-          style={{ width: 16, height: 16 }}
-        />
-      )
-    }
-    default: {
-      return null
-    }
+
+    return toBase64ImageSource(iconByStatus[status])
+  }, [status])
+
+  if (!iconSource) {
+    return null
   }
+
+  return <RNImage source={iconSource} style={styles.icon} />
+})
+
+const toBase64ImageSource = (icon: string) => ({
+  uri: `data:image/png;base64,${icon}`,
+  cache: 'force-cache' as const,
 })

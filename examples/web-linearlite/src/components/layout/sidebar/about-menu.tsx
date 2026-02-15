@@ -7,6 +7,7 @@ import { AboutModal } from './about-modal.tsx'
 
 export const AboutMenu = () => {
   const [showAboutModal, setShowAboutModal] = React.useState(false)
+  const handleShowAboutModal = React.useCallback(() => setShowAboutModal(true), [])
 
   return (
     <>
@@ -24,7 +25,7 @@ export const AboutMenu = () => {
             <MenuSection key="linearlite" className="p-2">
               <Header className="p-2 text-2xs uppercase font-medium tracking-wide text-neutral-400">LinearLite</Header>
               <MenuItem
-                onAction={() => setShowAboutModal(true)}
+                onAction={handleShowAboutModal}
                 className="p-2 rounded-md hover:bg-neutral-100 focus:outline-none focus:bg-neutral-100 dark:hover:bg-neutral-700 dark:focus:bg-neutral-700 cursor-pointer"
               >
                 About

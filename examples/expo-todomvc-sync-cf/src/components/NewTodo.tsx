@@ -1,7 +1,7 @@
-import React from 'react'
-import { Keyboard, Pressable, StyleSheet, Text, TextInput, TouchableWithoutFeedback, View } from 'react-native'
-
 import { nanoid } from '@livestore/livestore'
+import { useCallback, useRef } from 'react'
+import type { NativeSyntheticEvent, TextInputKeyPressEventData } from 'react-native'
+import { Keyboard, Pressable, StyleSheet, Text, TextInput, TouchableWithoutFeedback, View } from 'react-native'
 
 import { uiState$ } from '../livestore/queries.ts'
 import { events } from '../livestore/schema.ts'
@@ -11,36 +11,43 @@ export const NewTodo: React.FC = () => {
   const store = useAppStore()
   const { newTodoText } = store.useQuery(uiState$)
 
-  const updatedNewTodoText = (text: string) => store.commit(events.uiStateSet({ newTodoText: text }))
-  const todoCreated = () =>
-    store.commit(events.todoCreated({ id: nanoid(), text: newTodoText }), events.uiStateSet({ newTodoText: '' }))
-  const addRandom50 = () => {
+  const updatedNewTodoText = useCallback(
+    (text: string) => store.commit(events.uiStateSet({ newTodoText: text })),
+    [store],
+  )
+  const todoCreated = useCallback(
+    () => store.commit(events.todoCreated({ id: nanoid(), text: newTodoText }), events.uiStateSet({ newTodoText: '' })),
+    [newTodoText, store],
+  )
+  const addRandom50 = useCallback(() => {
     const todos = Array.from({ length: 50 }, (_, i) => ({ id: nanoid(), text: `Todo ${i}` }))
     store.commit(...todos.map((todo) => events.todoCreated(todo)))
-  }
-  const reset = () => store.commit(events.todoClearedCompleted({ deletedAt: new Date() }))
+  }, [store])
+  const reset = useCallback(() => store.commit(events.todoClearedCompleted({ deletedAt: new Date() })), [store])
 
-  const inputRef = React.useRef<TextInput>(null)
+  const inputRef = useRef<TextInput>(null)
+  const dismissKeyboard = useCallback(() => {
+    Keyboard.dismiss()
+    inputRef.current?.blur()
+  }, [])
+  const handleInputKeyPress = useCallback(
+    (e: NativeSyntheticEvent<TextInputKeyPressEventData>) => {
+      if (e.nativeEvent.key === 'Escape' || e.nativeEvent.key === 'Tab') {
+        dismissKeyboard()
+      }
+    },
+    [dismissKeyboard],
+  )
 
   return (
-    <TouchableWithoutFeedback
-      onPress={() => {
-        Keyboard.dismiss()
-        inputRef.current?.blur()
-      }}
-    >
+    <TouchableWithoutFeedback onPress={dismissKeyboard}>
       <View style={styles.container}>
         <TextInput
           ref={inputRef}
           style={styles.input}
           value={newTodoText}
           onChangeText={updatedNewTodoText}
-          onKeyPress={(e) => {
-            if (e.nativeEvent.key === 'Escape' || e.nativeEvent.key === 'Tab') {
-              Keyboard.dismiss()
-              inputRef.current?.blur()
-            }
-          }}
+          onKeyPress={handleInputKeyPress}
           onSubmitEditing={todoCreated}
         />
         <Pressable onPress={todoCreated}>
