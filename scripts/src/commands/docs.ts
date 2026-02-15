@@ -167,7 +167,7 @@ const docsBuildCommand = Cli.Command.make(
     // Always clean up .netlify folder as it can cause issues with the build
     yield* cmd('rm -rf .netlify').pipe(Effect.provide(LivestoreWorkspace.toCwd('docs')))
 
-    if (skipDeps == null) {
+    if (skipDeps === false) {
       yield* Effect.log('Building snippets and diagrams...')
       yield* Effect.all([buildSnippets({ projectRoot: docsPath }), runDocsDiagramsBuild], {
         concurrency: 'unbounded',
@@ -206,7 +206,7 @@ export const docsCommand = Cli.Command.make('docs').pipe(
         ),
       },
       Effect.fn(function* ({ open, skipDeps }) {
-        if (skipDeps == null) {
+        if (skipDeps === false) {
           yield* Effect.log('Building snippets and diagrams...')
           yield* Effect.all([buildSnippets({ projectRoot: docsPath }), runDocsDiagramsBuild], {
             concurrency: 'unbounded',
@@ -214,7 +214,7 @@ export const docsCommand = Cli.Command.make('docs').pipe(
           yield* Effect.log('Snippets and diagrams built successfully')
         }
 
-        if (skipDeps == null) {
+        if (skipDeps === false) {
           yield* runDocsDiagramsWatchNoInitialBuild.pipe(
             Effect.catchAllCause((cause) => Effect.logWarning('Diagrams watch stopped', cause)),
             Effect.forkScoped,

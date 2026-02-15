@@ -84,7 +84,7 @@ const phase2Rules = {
   // TODO(oep-1n3.7): 4 violations — empty files
   'unicorn/no-empty-file': 'off',
 
-  // TODO(.main-z79.2): ~567 violations; enable --type-aware in CI once resolved
+  // TODO(oep-3632.1): ~567 violations; enable --type-aware in CI once resolved
   'typescript/no-unsafe-type-assertion': 'warn',
   // Inverse of overeng/explicit-boolean-compare — must stay off
   'typescript/no-unnecessary-boolean-literal-compare': 'off',

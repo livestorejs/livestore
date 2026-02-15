@@ -390,7 +390,7 @@ export const updateDepsCommand = Cli.Command.make(
   }),
 )
 
-if (import.meta.main !== undefined) {
+if (import.meta.main === true) {
   const cli = Cli.Command.run(updateDepsCommand, {
     name: 'update-deps',
     version: '1.0.0',

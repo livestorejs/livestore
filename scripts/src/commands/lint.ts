@@ -57,7 +57,7 @@ const runFormatFix = cmd(['oxfmt', '.', ...oxfmtExcludePatterns]).pipe(
 )
 
 /** Run oxlint check (uses .oxlintrc.json) */
-// TODO(.main-z79.2) enable --type-aware once remaining no-unsafe-type-assertion violations are addressed (~567 remaining)
+// TODO(oep-3632.1) enable --type-aware once remaining no-unsafe-type-assertion violations are addressed (~567 remaining)
 const runLintCheck = cmd(['oxlint', '--import-plugin', '--deny-warnings']).pipe(
   Effect.provide(LivestoreWorkspace.toCwd()),
   Effect.withSpan('lintCheck'),
