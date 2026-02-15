@@ -110,8 +110,7 @@
     {
       "files": ["**/docs/src/content/_assets/code/**"],
       "rules": {
-        "import/no-commonjs": "off",
-        "typescript/no-unsafe-type-assertion": "off"
+        "import/no-commonjs": "off"
       }
     },
     {
@@ -158,17 +157,10 @@
         "func-style": "off",
         "import/no-commonjs": "off",
         "typescript/await-thenable": "off",
-        "typescript/no-unsafe-type-assertion": "off",
         "unicorn/no-new-array": "off",
         "unicorn/no-array-sort": "off",
         "unicorn/consistent-function-scoping": "off",
         "overeng/explicit-boolean-compare": "off"
-      }
-    },
-    {
-      "files": ["**/http-client-generated.ts"],
-      "rules": {
-        "typescript/no-unsafe-type-assertion": "off"
       }
     },
     {
