@@ -105,8 +105,6 @@ const phase2Rules = {
   // TODO(oep-1n3.8): Temporary churn guard - re-enable with targeted cleanups
   // 11 violations, low-risk type hygiene noise
   'typescript/no-redundant-type-constituents': 'off',
-  // 4 violations, mostly Effect wrappers around void-returning APIs
-  'typescript/no-meaningless-void-operator': 'off',
 
   // TODO(oep-1n3.9): Temporary unblock for correctness-sensitive rules
   // Re-enable after targeted async/this-binding/prototype-safety fixes.
