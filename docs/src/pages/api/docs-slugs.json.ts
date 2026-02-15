@@ -22,7 +22,7 @@ const toSlug = (id: string, slug: string | undefined): string => {
 }
 
 export async function GET() {
-  if (import.meta.env.DEV == null) {
+  if (import.meta.env.DEV === false) {
     return new Response('Not found', { status: 404 })
   }
 
