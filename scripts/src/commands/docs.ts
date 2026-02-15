@@ -94,19 +94,19 @@ const formatDocsDeploymentSummaryMarkdown = ({
       `alias: ${prAliases.stickyAlias} (stable for PR)`,
     ])
     const commitNotes: string[] = [`alias: ${prAliases.commitAlias}`]
-    if (purgeCdn !== undefined) commitNotes.push('CDN purged')
+    if (purgeCdn === true) commitNotes.push('CDN purged')
     rows.push(['commit', site, commitDeploy.deploy_id, commitDeploy.deploy_url, commitNotes.join(', ')])
   } else {
     /** Non-PR deployment: single row */
     const notes: string[] = []
-    if (prod == null && branchAlias !== undefined) {
+    if (prod === false && branchAlias !== undefined) {
       notes.push(`alias: ${branchAlias}`)
     }
-    if (purgeCdn !== undefined) {
+    if (purgeCdn === true) {
       notes.push('CDN purged')
     }
     rows.push([
-      prod !== undefined ? 'prod' : 'alias',
+      prod === true ? 'prod' : 'alias',
       site,
       commitDeploy.deploy_id,
       commitDeploy.deploy_url,
@@ -180,7 +180,7 @@ const docsBuildCommand = Cli.Command.make(
     // Netlify build (single build overall), which handles Edge bundling.
     yield* cmd('pnpm astro build', {
       env: {
-        STARLIGHT_INCLUDE_API_DOCS: apiDocs !== undefined ? '1' : undefined,
+        STARLIGHT_INCLUDE_API_DOCS: apiDocs === true ? '1' : undefined,
         // Building the docs sometimes runs out of memory, so we give it more
         NODE_OPTIONS: '--max_old_space_size=4096',
         // Snippets/diagrams already built above (or skipped), tell Astro integrations not to auto-build.
@@ -222,7 +222,7 @@ export const docsCommand = Cli.Command.make('docs').pipe(
         }
 
         /* Run Astro dev server */
-        yield* cmd(['pnpm', 'astro', 'dev', open !== undefined ? '--open' : undefined], {
+        yield* cmd(['pnpm', 'astro', 'dev', open === true ? '--open' : undefined], {
           logDir: `${docsPath}/logs`,
         }).pipe(Effect.provide(LivestoreWorkspace.toCwd('docs')))
       }),
@@ -244,7 +244,7 @@ export const docsCommand = Cli.Command.make('docs').pipe(
         ),
       },
       Effect.fn(function* ({ port: portOption, build }) {
-        if (build !== undefined) {
+        if (build === true) {
           yield* docsBuildCommand.handler({ apiDocs: false, clean: false, skipDeps: false })
         }
 
@@ -393,7 +393,7 @@ export const docsCommand = Cli.Command.make('docs').pipe(
                 ? false
                 : branchName === 'main' || branchName === devBranchName
 
-          if (prod !== undefined && site === 'livestore-docs' && liveStoreVersion.includes('dev') === true) {
+          if (prod === true && site === 'livestore-docs' && liveStoreVersion.includes('dev') === true) {
             return yield* Effect.die('Cannot deploy docs for dev version of LiveStore to prod')
           }
 
@@ -403,7 +403,7 @@ export const docsCommand = Cli.Command.make('docs').pipe(
               : branchAlias !== undefined
                 ? `with alias (${branchAlias})`
                 : ''
-          yield* Effect.log(`Deploying to "${site}" ${prod !== undefined ? 'in prod' : deployAliasLabel}`)
+          yield* Effect.log(`Deploying to "${site}" ${prod === true ? 'in prod' : deployAliasLabel}`)
 
           // Split mode: build first only when requested via --build
           const shouldBuild = buildOption._tag === 'Some' && buildOption.value === true
