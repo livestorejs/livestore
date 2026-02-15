@@ -110,7 +110,7 @@ export const streamEventsWithSyncState = ({
              * since === until : Prevent empty query
              * since > until : Incorrectly inverted interval
              */
-            if (options.until && EventSequenceNumber.Client.isGreaterThanOrEqual(cursor, options.until)) {
+            if (options.until !== undefined && EventSequenceNumber.Client.isGreaterThanOrEqual(cursor, options.until)) {
               return [Chunk.empty(), Option.none()]
             }
 

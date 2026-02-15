@@ -26,10 +26,10 @@ const shouldSkipSnippetAutoBuildAndWatch = () => process.env.LS_SKIP_SNIPPET_AUT
 export const createAstroTwoslashCodeIntegration = (options: AstroTwoslashCodeOptions = {}): AstroIntegration => {
   const autoBuild = options.autoBuild ?? true
   let resolvedBuildOptions: BuildSnippetsOptions | undefined
-  let watchFiber: Fiber.RuntimeFiber<void, never> | null = null
+  let watchFiber: Fiber.RuntimeFiber<void> | null = null
 
   const runSnippetBuild = () => {
-    if (!resolvedBuildOptions) {
+    if (resolvedBuildOptions == null) {
       return Promise.resolve()
     }
 
@@ -67,18 +67,18 @@ export const createAstroTwoslashCodeIntegration = (options: AstroTwoslashCodeOpt
         })
       },
       'astro:server:start': async (_context: ServerStartContext) => {
-        if (!autoBuild || shouldSkipSnippetAutoBuildAndWatch()) {
+        if (autoBuild === false || shouldSkipSnippetAutoBuildAndWatch() === true) {
           return
         }
 
         await runSnippetBuild()
 
-        if (resolvedBuildOptions && watchFiber === null) {
+        if (resolvedBuildOptions !== undefined && watchFiber === null) {
           watchFiber = Effect.runFork(watchSnippets(resolvedBuildOptions))
         }
       },
       'astro:build:start': async (_context: BuildStartContext) => {
-        if (!autoBuild || shouldSkipSnippetAutoBuildAndWatch()) {
+        if (autoBuild === false || shouldSkipSnippetAutoBuildAndWatch() === true) {
           return
         }
 

@@ -12,7 +12,7 @@ export default async function handler(request: Request, context: Context): Promi
   const method = request.method.toUpperCase()
   const isHeadRequest = method === 'HEAD'
 
-  if (method !== 'GET' && !isHeadRequest) {
+  if (method !== 'GET' && isHeadRequest === false) {
     return context.next()
   }
 
@@ -35,7 +35,7 @@ export default async function handler(request: Request, context: Context): Promi
     return forwardWithVary()
   }
 
-  if (!preferredMarkdown(request.headers.get('Accept'))) {
+  if (preferredMarkdown(request.headers.get('Accept')) === false) {
     return forwardWithVary()
   }
 
@@ -52,7 +52,7 @@ export default async function handler(request: Request, context: Context): Promi
 
   const headers = new Headers(markdownResponse.headers)
   headers.set('Content-Type', 'text/markdown; charset=utf-8')
-  const response = isHeadRequest
+  const response = isHeadRequest === true
     ? new Response(null, { status: markdownResponse.status, headers })
     : new Response(markdownResponse.body, { status: markdownResponse.status, headers })
   appendVary(response, 'Accept')

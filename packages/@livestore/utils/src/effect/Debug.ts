@@ -69,7 +69,7 @@ const addNode = (span: Tracer.AnySpan) => {
   const [mutableGraph, nodeId] = ensureSpan(span.traceId, span.spanId)
   Graph.updateNode(mutableGraph, nodeId, (previousInfo) => {
     const [latestInfo, upgraded] = sortSpan(previousInfo.span, span)
-    if (upgraded && latestInfo._tag === 'Span' && Option.isSome(latestInfo.parent)) {
+    if (upgraded === true && latestInfo._tag === 'Span' && Option.isSome(latestInfo.parent) === true) {
       const parentNodeId = addNode(latestInfo.parent.value)
       Graph.addEdge(mutableGraph, parentNodeId, nodeId, undefined)
     }
@@ -91,7 +91,7 @@ const addNodeExit = (traceId: string, spanId: string, exit: Exit.Exit<any, any>)
     const isInterruptedOnly = exit._tag === 'Failure' && Cause.isInterruptedOnly(exit.cause)
     return {
       ...previousInfo,
-      exitTag: isInterruptedOnly ? ('Interrupted' as const) : exit._tag,
+      exitTag: isInterruptedOnly === true ? ('Interrupted' as const) : exit._tag,
     }
   })
   return nodeId
@@ -109,19 +109,19 @@ const createPropertyInterceptor = <T extends object, K extends keyof T>(
   let currentValue: T[K]
   const previousGetter = descriptor?.get
 
-  if (!previousGetter) {
+  if (previousGetter == null) {
     currentValue = obj[property]
   }
 
   Object.defineProperty(obj, property, {
     get(): T[K] {
-      if (previousGetter) {
+      if (previousGetter !== undefined) {
         return previousGetter.call(obj)
       }
       return currentValue
     },
     set(value: T[K]) {
-      if (previousSetter) {
+      if (previousSetter !== undefined) {
         previousSetter.call(obj, value)
       } else {
         currentValue = value
@@ -151,8 +151,8 @@ type GlobalWithFiberCurrent = {
 }
 
 const patchedTracer = new WeakSet<Tracer.Tracer>()
-const ensureTracerPatched = (currentTracer: Tracer.Tracer) => {
-  if (patchedTracer.has(currentTracer)) {
+function ensureTracerPatched(currentTracer: Tracer.Tracer) {
+  if (patchedTracer.has(currentTracer) === true) {
     return
   }
   patchedTracer.add(currentTracer)
@@ -181,6 +181,7 @@ const ensureTracerPatched = (currentTracer: Tracer.Tracer) => {
   currentTracer.context = function (f, fiber, ...args) {
     const context = oldContext.apply(this, [f, fiber, ...args])
     ensureFiberPatched(fiber)
+    // oxlint-disable-next-line typescript-eslint(no-unsafe-type-assertion) -- Effect Tracer.context return type is opaque; patching requires cast
     return context as any
   }
 }
@@ -204,12 +205,14 @@ const knownScopes = new Map<
 let lastScopeId = 0
 const ensureScopePatched = (scope: ScopeImpl, allocationFiber: Fiber.RuntimeFiber<any, any> | undefined) => {
   if (scope.state._tag === 'Closed') return
-  if (knownScopes.has(scope)) return
+  if (knownScopes.has(scope) === true) return
   const id = lastScopeId++
-  if (patchScopeClose) {
+  if (patchScopeClose === true) {
+    // oxlint-disable-next-line typescript-eslint(no-unsafe-type-assertion) -- patching Scope.close; ScopeImpl is an internal interface not exported by Effect
     const oldClose = (scope as any).close
+    // oxlint-disable-next-line typescript-eslint(no-unsafe-type-assertion) -- patching Scope.close; ScopeImpl is an internal interface not exported by Effect
     ;(scope as any).close = function (...args: any[]) {
-      return oldClose.apply(this as any, args).pipe(
+      return oldClose.apply(this, args).pipe(
         Effect.withSpan(`scope.${id}.closeRunFinalizers`),
         Effect.ensuring(
           Effect.sync(() => {
@@ -236,9 +239,10 @@ const ensureFiberPatched = (fiber: Fiber.RuntimeFiber<any, any>) => {
   ensureTracerPatched(fiber.currentTracer)
   // patch scope
   const currentScope = Context.getOrElse(fiber.currentContext, Scope.Scope, () => undefined)
-  if (currentScope) ensureScopePatched(currentScope as any as ScopeImpl, undefined)
+  // oxlint-disable-next-line typescript-eslint(no-unsafe-type-assertion) -- casting Scope to ScopeImpl; internal Effect type not publicly exported
+  if (currentScope !== undefined) ensureScopePatched(currentScope as any as ScopeImpl, undefined)
   // patch fiber
-  if (knownFibers.has(fiber)) return
+  if (knownFibers.has(fiber) === true) return
   knownFibers.add(fiber)
   fiber.addObserver((exit) => {
     knownFibers.delete(fiber)
@@ -260,8 +264,9 @@ export const attachSlowDebugInstrumentation = (options: {
   /** An optional callback that will be called when any fiber completes with a exit */
   readonly onFiberCompleted?: (fiber: Fiber.RuntimeFiber<any, any>, exit: Exit.Exit<any, any>) => void
 }): void => {
+  // oxlint-disable-next-line typescript-eslint(no-unsafe-type-assertion) -- accessing Effect's global fiber tracking via well-known symbol keys
   const _globalThis = globalThis as any as GlobalWithFiberCurrent
-  if (_globalThis['effect/DevtoolsHook']) {
+  if (_globalThis['effect/DevtoolsHook'] !== undefined) {
     return console.error(
       'attachDebugInstrumentation has already been called! To show the tree, call attachDebugInstrumentation() in the root/main file of your program to ensure it is loaded as soon as possible.',
     )
@@ -271,10 +276,11 @@ export const attachSlowDebugInstrumentation = (options: {
   onFiberSuspended = options.onFiberSuspended
   onFiberCompleted = options.onFiberCompleted
   let lastFiber: undefined | Fiber.RuntimeFiber<any, any>
+  // oxlint-disable-next-line typescript-eslint(no-unsafe-type-assertion) -- accessing Effect's global fiber tracking via well-known symbol keys
   createPropertyInterceptor(globalThis as any as GlobalWithFiberCurrent, 'effect/FiberCurrent', (value) => {
-    if (value && knownFibers.has(value)) onFiberResumed?.(value)
-    if (value) ensureFiberPatched(value)
-    if (!value && lastFiber && knownFibers.has(lastFiber)) onFiberSuspended?.(lastFiber)
+    if (value !== undefined && knownFibers.has(value) === true) onFiberResumed?.(value)
+    if (value !== undefined) ensureFiberPatched(value)
+    if (value == null && lastFiber !== undefined && knownFibers.has(lastFiber) === true) onFiberSuspended?.(lastFiber)
     lastFiber = value
   })
   _globalThis['effect/DevtoolsHook'] = {
@@ -282,6 +288,7 @@ export const attachSlowDebugInstrumentation = (options: {
       console.log('onEvent', event)
       switch (event._tag) {
         case 'ScopeAllocated':
+          // oxlint-disable-next-line typescript-eslint(no-unsafe-type-assertion) -- casting Scope to ScopeImpl; internal Effect type not publicly exported
           ensureScopePatched(event.scope as any as ScopeImpl, _globalThis['effect/FiberCurrent'])
           break
         case 'FiberAllocated':
@@ -330,35 +337,35 @@ const filterGraphKeepAncestors = <N, E>(
   // Use postorder DFS to evaluate children before parents
   for (const nodeId of Graph.indices(Graph.dfsPostOrder(graph, { start: rootNodes, direction: 'outgoing' }))) {
     const node = Graph.getNode(graph, nodeId)
-    if (Option.isNone(node)) continue
+    if (Option.isNone(node) === true) continue
 
     const matchesPredicate = predicate(node.value, nodeId)
-    if (matchesPredicate) {
+    if (matchesPredicate === true) {
       shouldInclude.add(nodeId)
     } else {
       const children = Graph.neighborsDirected(graph, nodeId, 'outgoing')
       const hasMatchingChildren = children.some((childId) => shouldInclude.has(childId))
-      if (hasMatchingChildren) shouldInclude.add(nodeId)
+      if (hasMatchingChildren === true) shouldInclude.add(nodeId)
     }
   }
 
   // Create a filtered copy of the graph
   return Graph.mutate(graph, (mutable) => {
     for (const [nodeId] of mutable.nodes) {
-      if (shouldInclude.has(nodeId)) continue
+      if (shouldInclude.has(nodeId) === true) continue
       Graph.removeNode(mutable, nodeId)
     }
   })
 }
 
-const renderSpanNode = (graph: Graph.Graph<GraphNodeInfo, void, 'directed'>, nodeId: number): string[] => {
+function renderSpanNode(graph: Graph.Graph<GraphNodeInfo, void, 'directed'>, nodeId: number): string[] {
   const node = Graph.getNode(graph, nodeId)
-  if (Option.isNone(node)) return []
+  if (Option.isNone(node) === true) return []
   const info = node.value
   const status = getSpanStatus(info)
   const name = getSpanName(info.span)
   const duration = getSpanDuration(info.span)
-  const durationStr = duration ? ` ${duration}` : ''
+  const durationStr = duration !== undefined ? ` ${duration}` : ''
 
   const fiberIds = Array.from(knownFibers)
     .filter(
@@ -386,9 +393,9 @@ const renderTree = <N, E, T extends Graph.Kind>(
       ...lines,
       ...childLines.map((l, lineIndex) => {
         if (lineIndex === 0) {
-          return (isLastChild ? ' └─' : ' ├─') + l
+          return (isLastChild === true ? ' └─' : ' ├─') + l
         }
-        return (isLastChild ? '  ' : ' │') + l
+        return (isLastChild === true ? '  ' : ' │') + l
       }),
     ]
   }
@@ -402,8 +409,9 @@ export interface LogDebugOptions {
 }
 
 export const logDebug = (options: LogDebugOptions = {}) => {
+  // oxlint-disable-next-line typescript-eslint(no-unsafe-type-assertion) -- accessing Effect's global fiber tracking via well-known symbol keys
   const _globalThis = globalThis as any as GlobalWithFiberCurrent
-  if (!_globalThis['effect/DevtoolsHook']) {
+  if (_globalThis['effect/DevtoolsHook'] == null) {
     return console.error(
       'attachDebugInstrumentation has not been called! To show the tree, call attachDebugInstrumentation() in the root/main file of your program to ensure it is loaded as soon as possible.',
     )
@@ -414,8 +422,9 @@ export const logDebug = (options: LogDebugOptions = {}) => {
   // fibers
   lines = [...lines, 'Active Fibers:']
   for (const fiber of knownFibers) {
+    // oxlint-disable-next-line typescript-eslint(no-unsafe-type-assertion) -- accessing fiber.currentRuntimeFlags; internal Effect runtime property
     const interruptible = RuntimeFlags.interruptible((fiber as any).currentRuntimeFlags)
-    lines = [...lines, `- #${fiber.id().id}${!interruptible ? ' [uninterruptible]' : ''}`]
+    lines = [...lines, `- #${fiber.id().id}${interruptible === false ? ' [uninterruptible]' : ''}`]
   }
   if (knownFibers.size === 0) {
     lines = [...lines, '- No active effect fibers']
@@ -425,7 +434,7 @@ export const logDebug = (options: LogDebugOptions = {}) => {
   // spans
   for (const [traceId, info] of graphByTraceId) {
     const graph = Graph.endMutation(info.graph)
-    const filteredGraph = options.regex
+    const filteredGraph = options.regex !== undefined
       ? filterGraphKeepAncestors(graph, (nodeData, _nodeId) => {
           const name = getSpanName(nodeData.span)
           return options.regex!.test(name)
@@ -445,8 +454,8 @@ export const logDebug = (options: LogDebugOptions = {}) => {
       .map((fiber) => `#${fiber.id().id}`)
       .join(', ')
     const usedByFibers = fiberIds.length > 0 ? ` [used by: ${fiberIds}]` : ''
-    const allocationFiber = info.allocationFiber ? ` [allocated in fiber #${info.allocationFiber.id().id}]` : ''
-    const allocationSpan = info.allocationSpan ? ` [allocated in span: ${getSpanName(info.allocationSpan)}]` : ''
+    const allocationFiber = info.allocationFiber !== undefined ? ` [allocated in fiber #${info.allocationFiber.id().id}]` : ''
+    const allocationSpan = info.allocationSpan !== undefined ? ` [allocated in span: ${getSpanName(info.allocationSpan)}]` : ''
     lines = [...lines, `- #${info.id}${usedByFibers}${allocationFiber}${allocationSpan}`]
   }
   if (knownScopes.size === 0) {

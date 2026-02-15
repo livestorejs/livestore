@@ -314,7 +314,7 @@ Vitest.describe.each(providerLayers)('$name sync provider', { timeout: 60000 }, 
           expect(stats.totalEvents).toBe(scenario.eventCount)
           expect(stats.nonEmptyBatches).toBeGreaterThan(0)
 
-          if (scenario.variant === 'manySmall' && name.toLowerCase().includes('cloudflare')) {
+          if (scenario.variant === 'manySmall' && name.toLowerCase().includes('cloudflare') === true) {
             expect(stats.nonEmptyBatches).toBeGreaterThan(1)
           }
         }).pipe(
@@ -353,7 +353,7 @@ Vitest.describe.each(providerLayers)('$name sync provider', { timeout: 60000 }, 
           expect(stats.totalEvents).toBe(scenario.eventCount)
           expect(stats.nonEmptyBatches).toBeGreaterThan(0)
 
-          if (scenario.variant === 'manySmall' && name.toLowerCase().includes('cloudflare')) {
+          if (scenario.variant === 'manySmall' && name.toLowerCase().includes('cloudflare') === true) {
             expect(stats.nonEmptyBatches).toBeGreaterThan(1)
           }
         }).pipe(
@@ -623,8 +623,8 @@ Vitest.describe.each(providerLayers)('$name sync provider', { timeout: 60000 }, 
         // Verify first event after cursor has higher sequence number
         if (
           eventsFromMiddle.length > 0 &&
-          middleEvent.eventEncoded.seqNum &&
-          eventsFromMiddle[0]?.eventEncoded.seqNum
+          middleEvent.eventEncoded.seqNum !== undefined &&
+          eventsFromMiddle[0]?.eventEncoded.seqNum !== undefined
         ) {
           const firstAfterCursor = eventsFromMiddle[0]
           const firstSeqNum = firstAfterCursor.eventEncoded.seqNum

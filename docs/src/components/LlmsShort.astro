@@ -32,13 +32,13 @@ for (const doc of docs) {
 }
 
 const getDocsForDirectory = (directory: string): TLlmsEntry[] => {
-  const normalizedDirectory = directory.endsWith('/') ? directory.slice(0, -1) : directory
+  const normalizedDirectory = directory.endsWith('/') === true ? directory.slice(0, -1) : directory
   const prefix = `${normalizedDirectory}/`
 
   return entries
     .filter((entry) => {
       if (entry.slug === normalizedDirectory) return true
-      if (!entry.slug.startsWith(prefix)) return false
+      if (entry.slug.startsWith(prefix) === false) return false
       const remaining = entry.slug.slice(prefix.length)
       return !remaining.includes('/')
     })
@@ -69,7 +69,7 @@ const processItems = <T extends { _tag: string }>(
   for (const item of items) {
     if (item._tag === 'link') {
       const entry = getEntry(item)
-      if (entry) {
+      if (entry !== undefined) {
         currentBatch.push(entry)
       }
     } else {

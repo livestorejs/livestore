@@ -11,10 +11,6 @@ import { oxlintConfig } from './repos/effect-utils/packages/@overeng/genie/src/r
  * This introduces oxlint (replacing Biome) with a deliberately permissive rule set
  * to avoid massive code churn during the initial migration. Rules are disabled with
  * TODO references to the follow-up epic oep-1n3 for incremental re-enablement.
- *
- * Unlike effect-utils, we don't use the custom overeng oxlint plugin (which requires
- * a custom-built oxlint binary). We use the standard npm oxlint package instead.
- * Therefore, we exclude all `overeng/*` rules that are present in baseOxlintRules.
  */
 
 // ── Active rules ────────────────────────────────────────────────────────────
@@ -24,6 +20,8 @@ const activeRules = {
   'import/no-commonjs': 'error',
   // Enforce proper type-only imports
   'typescript/consistent-type-imports': 'warn',
+  // Enforce explicit boolean comparisons in condition positions
+  'overeng/explicit-boolean-compare': 'warn',
 } as const
 
 // ── Permanently disabled (incompatible with Effect / livestore patterns) ────
@@ -86,33 +84,32 @@ const phase2Rules = {
   // TODO(oep-1n3.7): 4 violations — empty files
   'unicorn/no-empty-file': 'off',
 
-  // TODO(oep-1n3.8): Temporary churn guard - re-enable after targeted cleanup
-  // 626 violations across non-generated code paths
-  'typescript/no-unsafe-type-assertion': 'off',
-  // 115 violations, mostly stylistic boolean comparisons
+  // TODO(oep-3632.1): ~567 violations; enable --type-aware in CI once resolved
+  'typescript/no-unsafe-type-assertion': 'warn',
+  // Inverse of overeng/explicit-boolean-compare — must stay off
   'typescript/no-unnecessary-boolean-literal-compare': 'off',
   // 79 violations, mostly generic verbosity
-  'typescript/no-unnecessary-type-arguments': 'off',
+  'typescript/no-unnecessary-type-arguments': 'warn',
   // 72 violations, concentrated in generated clients and broad union types
-  'typescript/no-duplicate-type-constituents': 'off',
+  'typescript/no-duplicate-type-constituents': 'warn',
   // 57 violations, assertion cleanup churn
-  'typescript/no-unnecessary-type-assertion': 'off',
+  'typescript/no-unnecessary-type-assertion': 'warn',
   // 42 violations, noisy with Effect error/rendering types
-  'typescript/restrict-template-expressions': 'off',
+  'typescript/restrict-template-expressions': 'warn',
 
   // TODO(oep-1n3.9): Temporary quick-check unblocking - re-enable after async audit
   // 78 violations concentrated in wa-sqlite and test surfaces
   'typescript/no-floating-promises': 'off',
 
-  // TODO(oep-1n3.8): Temporary churn guard - re-enable with targeted cleanups
+  // TODO(oep-1n3.8a): Re-enable low-risk style hygiene rules first
   // 16 violations, mostly logging/debug stringification quality
-  'typescript/no-base-to-string': 'off',
+  'typescript/no-base-to-string': 'warn',
   // 11 violations, low-risk type hygiene noise
-  'typescript/no-redundant-type-constituents': 'off',
+  'typescript/no-redundant-type-constituents': 'warn',
   // 4 violations, mostly template readability nits
-  'typescript/no-unnecessary-template-expression': 'off',
+  'typescript/no-unnecessary-template-expression': 'warn',
   // 4 violations, mostly Effect wrappers around void-returning APIs
-  'typescript/no-meaningless-void-operator': 'off',
+  'typescript/no-meaningless-void-operator': 'warn',
 
   // TODO(oep-1n3.9): Temporary unblock for correctness-sensitive rules
   // Re-enable after targeted async/this-binding/prototype-safety fixes.
@@ -220,6 +217,7 @@ const livestoreOxlintOverrides = [
       'unicorn/no-new-array': 'off',
       'unicorn/no-array-sort': 'off',
       'unicorn/consistent-function-scoping': 'off',
+      'overeng/explicit-boolean-compare': 'off',
     },
   },
 
@@ -235,12 +233,5 @@ export default oxlintConfig({
   categories: baseOxlintCategories,
   rules: livestoreOxlintRules,
   overrides: livestoreOxlintOverrides,
-  ignorePatterns: [
-    ...baseOxlintIgnorePatterns,
-    'tests/integration/node_modules/**',
-    'docs/src/plugins/**',
-    // TODO(oep-1n3.8): Re-enable after snippet/example tsconfig cleanup
-    'docs/src/content/_assets/code/**',
-    'packages/@local/astro-twoslash-code/example/src/content/_assets/code/**',
-  ],
+  ignorePatterns: [...baseOxlintIgnorePatterns, 'tests/integration/node_modules/**', 'docs/src/plugins/**'],
 })

@@ -174,7 +174,7 @@ export class AccessHandlePoolVFS extends FacadeVFS {
       // First try to open a path that already exists in the file system.
       const path = zName ? this.#getPath(zName) : Math.random().toString(36)
       let accessHandle = this.#mapPathToAccessHandle.get(path)
-      if (!accessHandle && flags & VFS.SQLITE_OPEN_CREATE) {
+      if (accessHandle == null && (flags & VFS.SQLITE_OPEN_CREATE) !== 0) {
         // File not found so try to create it.
         if (this.getSize() < this.getCapacity()) {
           // Choose an unassociated OPFS file from the pool.
@@ -186,7 +186,7 @@ export class AccessHandlePoolVFS extends FacadeVFS {
           return yield* Effect.dieMessage('cannot create file')
         }
       }
-      if (!accessHandle) return yield* Effect.dieMessage('file not found')
+      if (accessHandle == null) return yield* Effect.dieMessage('file not found')
 
       // Subsequent methods are only passed the fileId, so make sure we have
       // a way to get the file resources.
@@ -205,10 +205,10 @@ export class AccessHandlePoolVFS extends FacadeVFS {
   override jClose(fileId: number): number {
     return Effect.gen(this, function* () {
       const file = this.#mapIdToFile.get(fileId)
-      if (file) {
+      if (file !== undefined) {
         yield* Opfs.Opfs.syncFlush(file.accessHandle)
         this.#mapIdToFile.delete(fileId)
-        if (file.flags & VFS.SQLITE_OPEN_DELETEONCLOSE) {
+        if ((file.flags & VFS.SQLITE_OPEN_DELETEONCLOSE) !== 0) {
           yield* this.#deletePath(file.path)
         }
       }
@@ -304,7 +304,7 @@ export class AccessHandlePoolVFS extends FacadeVFS {
   override jAccess(zName: string, _flags: number, pResOut: DataView): number {
     return Effect.gen(this, function* () {
       const path = this.#getPath(zName)
-      pResOut.setInt32(0, this.#mapPathToAccessHandle.has(path) ? 1 : 0, true)
+      pResOut.setInt32(0, this.#mapPathToAccessHandle.has(path) === true ? 1 : 0, true)
       return VFS.SQLITE_OK
     }).pipe(
       Effect.tapCauseLogPretty,
@@ -331,7 +331,7 @@ export class AccessHandlePoolVFS extends FacadeVFS {
 
   async isReady() {
     return Effect.gen(this, function* () {
-      if (!this.#directoryHandle) {
+      if (this.#directoryHandle == null) {
         // All files are stored in a single directory.
         this.#directoryHandle = yield* Opfs.getDirectoryHandleByPath(this.#directoryPath, { create: true })
 
@@ -436,7 +436,7 @@ export class AccessHandlePoolVFS extends FacadeVFS {
         Stream.runForEach(({ opfsFileName, accessHandle, path }) =>
           Effect.gen(this, function* () {
             this.#mapAccessHandleToName.set(accessHandle, opfsFileName)
-            if (path) {
+            if (path !== undefined) {
               this.#mapPathToAccessHandle.set(path, accessHandle)
             } else {
               this.#availableAccessHandles.add(accessHandle)
@@ -474,7 +474,7 @@ export class AccessHandlePoolVFS extends FacadeVFS {
       // Delete files not expected to be present.
       const dataView = new DataView(corpus.buffer, corpus.byteOffset)
       const flags = dataView.getUint32(HEADER_OFFSET_FLAGS)
-      if (corpus[0] && (flags & VFS.SQLITE_OPEN_DELETEONCLOSE || (flags & PERSISTENT_FILE_TYPES) === 0)) {
+      if (corpus[0] && ((flags & VFS.SQLITE_OPEN_DELETEONCLOSE) !== 0 || (flags & PERSISTENT_FILE_TYPES) === 0)) {
         yield* Effect.logWarning(`Remove file with unexpected flags ${flags.toString(16)}`)
         yield* this.#setAssociatedPath(accessHandle, '', 0)
         return ''
@@ -485,7 +485,7 @@ export class AccessHandlePoolVFS extends FacadeVFS {
 
       // Verify the digest.
       const computedDigest = this.#computeDigest(corpus)
-      if (fileDigest.every((value, i) => value === computedDigest[i])) {
+      if (fileDigest.every((value, i) => value === computedDigest[i]) === true) {
         // Good digest. Decode the null-terminated path string.
         const pathBytes = corpus.indexOf(0)
         if (pathBytes === 0) {
@@ -527,7 +527,7 @@ export class AccessHandlePoolVFS extends FacadeVFS {
       yield* Opfs.Opfs.syncWrite(accessHandle, digest, { at: HEADER_OFFSET_DIGEST })
       yield* Opfs.Opfs.syncFlush(accessHandle)
 
-      if (path) {
+      if (path !== undefined) {
         this.#mapPathToAccessHandle.set(path, accessHandle)
         this.#availableAccessHandles.delete(accessHandle)
       } else {
@@ -579,7 +579,7 @@ export class AccessHandlePoolVFS extends FacadeVFS {
   #deletePath = Effect.fn((path: string) =>
     Effect.gen(this, function* () {
       const accessHandle = this.#mapPathToAccessHandle.get(path)
-      if (accessHandle) {
+      if (accessHandle !== undefined) {
         // Un-associate the SQLite path from the OPFS file.
         this.#mapPathToAccessHandle.delete(path)
         yield* this.#setAssociatedPath(accessHandle, '', 0)

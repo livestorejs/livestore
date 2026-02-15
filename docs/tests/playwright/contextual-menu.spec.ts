@@ -63,7 +63,7 @@ test.describe('docs contextual menu', () => {
 
       const success = await test.step(`validate contextual menu for ${slug}`, async () => {
         const response = await page.goto(normalizePath(slug))
-        if (!response || response.status() >= 400) {
+        if (response == null || response.status() >= 400) {
           return false
         }
 
@@ -108,7 +108,7 @@ test.describe('docs contextual menu', () => {
         return true
       })
 
-      if (success) {
+      if (success === true) {
         validated += 1
       }
     }

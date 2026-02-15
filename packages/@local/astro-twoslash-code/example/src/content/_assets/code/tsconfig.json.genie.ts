@@ -7,7 +7,6 @@ export default tsconfigJson({
     module: 'ESNext',
     moduleResolution: 'Bundler',
     rootDir: './',
-    baseUrl: './',
     jsx: 'react-jsx',
     types: ['node'],
     noEmit: true,

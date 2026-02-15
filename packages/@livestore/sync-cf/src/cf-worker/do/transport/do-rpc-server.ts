@@ -40,7 +40,7 @@ export const createDoRpcHandler = (
           const { rpcSubscriptions } = yield* DoCtx
 
           // TODO rename `req.rpcContext` to something more appropriate
-          if (req.rpcContext) {
+          if (req.rpcContext !== undefined) {
             rpcSubscriptions.set(req.storeId, {
               storeId: req.storeId,
               payload: req.payload,

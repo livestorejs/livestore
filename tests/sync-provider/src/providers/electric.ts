@@ -159,7 +159,7 @@ const makeRouter = ({ electricPort, postgresPort }: { electricPort: number; post
         //   )
         // }
 
-        if (needsInit) {
+        if (needsInit === true) {
           const db = makeDb({ storeId, postgresPort })
           yield* db.migrate
           yield* db.disconnect

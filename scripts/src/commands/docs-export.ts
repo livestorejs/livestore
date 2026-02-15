@@ -69,7 +69,7 @@ export const exportMarkdownCommand = Cli.Command.make(
         yield* writeDoc(outputDir, doc, final)
       }
 
-      if (includeLlms) {
+      if (includeLlms === true) {
         const fs = yield* FileSystem.FileSystem
         const llmsList = renderLlmsListHierarchical({ docs: llmsDocs, site: null })
         const llmsBody = `# LiveStore Documentation for LLMs
@@ -128,7 +128,7 @@ const collectMarkdownEntries = (
     const files: string[] = []
 
     for (const entry of entries) {
-      if (entry.startsWith('_')) continue
+      if (entry.startsWith('_') === true) continue
       const absolute = path.join(dir, entry)
       const metadata = yield* fs.stat(absolute)
 
@@ -138,7 +138,7 @@ const collectMarkdownEntries = (
         continue
       }
 
-      if (metadata.type === 'File' && /\.(md|mdx)$/iu.test(entry)) {
+      if (metadata.type === 'File' && /\.(md|mdx)$/iu.test(entry) === true) {
         files.push(absolute)
       }
     }
@@ -154,7 +154,7 @@ const parseFrontmatter = (
   readonly sidebarOrder: number | undefined
   readonly body: string
 } => {
-  if (!source.startsWith('---')) {
+  if (source.startsWith('---') === false) {
     return { title: undefined, description: undefined, sidebarOrder: undefined, body: source }
   }
 
@@ -177,7 +177,7 @@ const parseFrontmatter = (
       const indent = line.match(/^\s*/u)?.[0].length ?? 0
       const trimmed = line.trim()
 
-      if (trimmed.startsWith('sidebar:')) {
+      if (trimmed.startsWith('sidebar:') === true) {
         sidebarIndent = indent
         continue
       }
@@ -190,9 +190,9 @@ const parseFrontmatter = (
         continue
       }
 
-      if (trimmed.startsWith('order:')) {
+      if (trimmed.startsWith('order:') === true) {
         const value = Number.parseInt(trimmed.slice('order:'.length).trim(), 10)
-        return Number.isNaN(value) ? undefined : value
+        return Number.isNaN(value) === true ? undefined : value
       }
     }
 
@@ -200,7 +200,7 @@ const parseFrontmatter = (
   })()
 
   const clean = (value: string | undefined) => {
-    if (!value) return undefined
+    if (value == null) return undefined
     const trimmed = value.trim()
     const unquoted = trimmed.replace(/^['"]|['"]$/g, '')
     return unquoted
@@ -222,7 +222,7 @@ const parseFrontmatter = (
 const toSlug = (absolutePath: string, contentRoot: string): string => {
   const relative = path.relative(contentRoot, absolutePath).replace(/\\/g, '/')
   const withoutExt = relative.replace(/\.(md|mdx)$/iu, '')
-  if (withoutExt.endsWith('/index')) {
+  if (withoutExt.endsWith('/index') === true) {
     return withoutExt.replace(/\/index$/u, '')
   }
   if (withoutExt === 'index') return ''
@@ -301,7 +301,7 @@ const getDocsForDirectory = (
   entries: ReadonlyArray<TLlmsEntry>,
   docs: ReadonlyArray<TLlmsDoc>,
 ): ReadonlyArray<TLlmsEntry> => {
-  const normalizedDirectory = directory.endsWith('/') ? directory.slice(0, -1) : directory
+  const normalizedDirectory = directory.endsWith('/') === true ? directory.slice(0, -1) : directory
   const prefix = `${normalizedDirectory}/`
 
   // Create a map from slug to original doc for order info
@@ -314,7 +314,7 @@ const getDocsForDirectory = (
     .filter((entry) => {
       if (entry.slug === normalizedDirectory) return true
       // Match docs in this directory but not nested subdirectories
-      if (!entry.slug.startsWith(prefix)) return false
+      if (entry.slug.startsWith(prefix) === false) return false
       const remaining = entry.slug.slice(prefix.length)
       // Don't include nested items (they'll be handled by their own autogenerate)
       return !remaining.includes('/')
@@ -351,7 +351,7 @@ const renderSidebarItems = (items: ReadonlyArray<TSidebarItem>, ctx: TRenderCont
     switch (item._tag) {
       case 'link': {
         const entry = ctx.docsMap.get(item.slug)
-        if (entry) {
+        if (entry !== undefined) {
           lines.push(renderDocLink(entry))
         }
         break
@@ -428,7 +428,7 @@ const replaceLlmsShortPlaceholders = ({
   readonly docs: ReadonlyArray<TLlmsDoc>
   readonly site: URL | string | null
 }): string => {
-  if (!markdown.includes('<LlmsShort')) {
+  if (markdown.includes('<LlmsShort') === false) {
     return markdown
   }
   const docsSection = renderLlmsListHierarchical({ docs, site }).trimEnd()
@@ -449,7 +449,7 @@ const assertSnippetManifest = (docsRoot: string) =>
       path.join(docsRoot, 'docs', 'node_modules', '.astro-twoslash-code', 'manifest.json'),
     ]
     for (const candidate of candidates) {
-      if (yield* fs.exists(candidate)) {
+      if ((yield* fs.exists(candidate)) === true) {
         return
       }
     }

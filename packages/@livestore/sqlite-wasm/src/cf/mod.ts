@@ -122,7 +122,7 @@ const makeCloudflareFsDb = ({
 
       // Initialize the VFS schema before registering it
       const isReady = yield* Effect.promise(() => nodeFsVfs.isReady())
-      if (!isReady) {
+      if (isReady === false) {
         throw new Error(`Failed to initialize CloudflareSqlVFS for ${vfsName}`)
       }
 

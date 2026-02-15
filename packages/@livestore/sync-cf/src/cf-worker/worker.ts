@@ -208,7 +208,7 @@ export const handleSyncRequest = <
         }
 
         const result = yield* Effect.promise(async () =>
-          validatePayload(decodedEither.right as TSyncPayload, { storeId, headers: requestHeaders }),
+          validatePayload(decodedEither.right, { storeId, headers: requestHeaders }),
         ).pipe(UnknownError.mapToUnknownError, Effect.either)
 
         if (result._tag === 'Left') {

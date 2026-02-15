@@ -29,7 +29,7 @@ export const getFreePort: Effect.Effect<number, UnknownError> = Effect.async<num
   server.listen(0, () => {
     const address = server.address()
 
-    if (address && typeof address === 'object') {
+    if (address !== null && typeof address === 'object') {
       const port = address.port
       server.close(() => cb(Effect.succeed(port)))
     } else {

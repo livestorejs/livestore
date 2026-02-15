@@ -19,10 +19,10 @@ export function Workspace({ workspaceId }: { workspaceId: string }) {
   const todos = workspaceStore.useQuery(queryDb(workspaceTables.todos.select()))
 
   // Workspace not in user's list → truly doesn't exist
-  if (!knownWorkspace) return <div>Workspace not found</div>
+  if (knownWorkspace == null) return <div>Workspace not found</div>
 
   // Workspace is in user's list but not yet initialized → loading state
-  if (!workspace) return <div>Loading workspace...</div>
+  if (workspace == null) return <div>Loading workspace...</div>
 
   const addTodo = (text: string) => {
     workspaceStore.commit(
@@ -43,7 +43,7 @@ export function Workspace({ workspaceId }: { workspaceId: string }) {
       <ul>
         {todos.map((todo) => (
           <li key={todo.todoId}>
-            {todo.text} {todo.completed ? '✓' : ''}
+            {todo.text} {todo.completed === true ? '✓' : ''}
           </li>
         ))}
       </ul>

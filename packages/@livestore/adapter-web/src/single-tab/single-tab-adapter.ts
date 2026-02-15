@@ -262,9 +262,9 @@ export const makeSingleTabAdapter =
           }),
           Effect.withSpan(`@livestore/adapter-web:single-tab:runInWorker:${req._tag}`),
           Effect.mapError((cause) =>
-            Schema.is(UnknownError)(cause)
+            Schema.is(UnknownError)(cause) === true
               ? cause
-              : ParseResult.isParseError(cause) || Schema.is(WorkerError.WorkerError)(cause)
+              : ParseResult.isParseError(cause) === true || Schema.is(WorkerError.WorkerError)(cause) === true
                 ? new UnknownError({ cause })
                 : cause,
           ),
@@ -280,9 +280,9 @@ export const makeSingleTabAdapter =
           const innerWorker = yield* Fiber.join(innerWorkerFiber)
           return innerWorker.execute(req as any).pipe(
             Stream.mapError((cause) =>
-              Schema.is(UnknownError)(cause)
+              Schema.is(UnknownError)(cause) === true
                 ? cause
-                : ParseResult.isParseError(cause) || Schema.is(WorkerError.WorkerError)(cause)
+                : ParseResult.isParseError(cause) === true || Schema.is(WorkerError.WorkerError)(cause) === true
                   ? new UnknownError({ cause })
                   : cause,
             ),
@@ -295,7 +295,7 @@ export const makeSingleTabAdapter =
         Stream.tap((_) => Queue.offer(bootStatusQueue, _)),
         Stream.runDrain,
         Effect.tapErrorCause((cause) =>
-          Cause.isInterruptedOnly(cause) ? Effect.void : shutdown(Exit.failCause(cause)),
+          Cause.isInterruptedOnly(cause) === true ? Effect.void : shutdown(Exit.failCause(cause)),
         ),
         Effect.interruptible,
         Effect.tapCauseLogPretty,
@@ -348,7 +348,7 @@ export const makeSingleTabAdapter =
           .first(),
       )
 
-      const initialLeaderHead = initialLeaderHeadRes
+      const initialLeaderHead = initialLeaderHeadRes !== undefined
         ? EventSequenceNumber.Client.Composite.make({
             global: initialLeaderHeadRes.seqNumGlobal,
             client: initialLeaderHeadRes.seqNumClient,
@@ -359,7 +359,7 @@ export const makeSingleTabAdapter =
       yield* Effect.addFinalizer((ex) =>
         Effect.gen(function* () {
           if (
-            Exit.isFailure(ex) &&
+            Exit.isFailure(ex) === true &&
             Exit.isInterrupted(ex) === false &&
             Schema.is(IntentionalShutdownCause)(Cause.squash(ex.cause)) === false &&
             Schema.is(StoreInterrupted)(Cause.squash(ex.cause)) === false
@@ -459,7 +459,7 @@ const getPersistedId = (key: string, storageType: 'session' | 'local') => {
         ? sessionStorage
         : storageType === 'local'
           ? localStorage
-          : shouldNeverHappen(`[@livestore/adapter-web] Invalid storage type: ${storageType}`)
+          : shouldNeverHappen(`[@livestore/adapter-web] Invalid storage type: ${String(storageType)}`)
 
   if (storage === undefined) {
     return makeId()
@@ -468,7 +468,7 @@ const getPersistedId = (key: string, storageType: 'session' | 'local') => {
   const fullKey = `livestore:${key}`
   const storedKey = storage.getItem(fullKey)
 
-  if (storedKey) return storedKey
+  if (storedKey !== null) return storedKey
 
   const newKey = makeId()
   storage.setItem(fullKey, newKey)
@@ -505,7 +505,7 @@ const checkOpfsAvailability = Effect.gen(function* () {
     Effect.as(undefined),
     Effect.catchAll((error) => {
       const reason: BootWarningReason =
-        Schema.is(WebError.SecurityError)(error) || Schema.is(WebError.NotAllowedError)(error)
+        Schema.is(WebError.SecurityError)(error) === true || Schema.is(WebError.NotAllowedError)(error) === true
           ? 'private-browsing'
           : 'storage-unavailable'
       const message =

@@ -677,7 +677,7 @@ export const make = (
     )
   const withResponse: <A, E>(
     f: (response: HttpClientResponse.HttpClientResponse) => Effect.Effect<A, E>,
-  ) => (request: HttpClientRequest.HttpClientRequest) => Effect.Effect<any, any> = options.transformClient
+  ) => (request: HttpClientRequest.HttpClientRequest) => Effect.Effect<any, any> = options.transformClient !== undefined
     ? (f) => (request) =>
         Effect.flatMap(
           Effect.flatMap(options.transformClient!(httpClient), (client) => client.execute(request)),
@@ -1042,13 +1042,13 @@ export interface Client {
    * List access tokens.
    */
   readonly listAccessTokens: (
-    options?: typeof ListAccessTokensParams.Encoded | undefined,
+    options?: typeof ListAccessTokensParams.Encoded  ,
   ) => Effect.Effect<
     typeof ListAccessTokensResponse.Type,
     | HttpClientError.HttpClientError
     | ParseResult.ParseError
     | ClientError<'ErrorResponse', typeof ErrorResponse.Type>
-    | ClientError<'ErrorResponse', typeof ErrorResponse.Type>
+     
   >
   /**
    * Issue a new access token.
@@ -1060,8 +1060,8 @@ export interface Client {
     | HttpClientError.HttpClientError
     | ParseResult.ParseError
     | ClientError<'ErrorResponse', typeof ErrorResponse.Type>
-    | ClientError<'ErrorResponse', typeof ErrorResponse.Type>
-    | ClientError<'ErrorResponse', typeof ErrorResponse.Type>
+     
+     
   >
   /**
    * Revoke an access token.
@@ -1073,19 +1073,19 @@ export interface Client {
     | HttpClientError.HttpClientError
     | ParseResult.ParseError
     | ClientError<'ErrorResponse', typeof ErrorResponse.Type>
-    | ClientError<'ErrorResponse', typeof ErrorResponse.Type>
+     
   >
   /**
    * List basins.
    */
   readonly listBasins: (
-    options?: typeof ListBasinsParams.Encoded | undefined,
+    options?: typeof ListBasinsParams.Encoded  ,
   ) => Effect.Effect<
     typeof ListBasinsResponse.Type,
     | HttpClientError.HttpClientError
     | ParseResult.ParseError
     | ClientError<'ErrorResponse', typeof ErrorResponse.Type>
-    | ClientError<'ErrorResponse', typeof ErrorResponse.Type>
+     
   >
   /**
    * Create a basin.
@@ -1093,13 +1093,13 @@ export interface Client {
   readonly createBasin: (
     options: typeof CreateBasinRequest.Encoded,
   ) => Effect.Effect<
-    typeof BasinInfo.Type | typeof BasinInfo.Type,
+    typeof BasinInfo.Type  ,
     | HttpClientError.HttpClientError
     | ParseResult.ParseError
     | ClientError<'ErrorResponse', typeof ErrorResponse.Type>
-    | ClientError<'ErrorResponse', typeof ErrorResponse.Type>
-    | ClientError<'ErrorResponse', typeof ErrorResponse.Type>
-    | ClientError<'ErrorResponse', typeof ErrorResponse.Type>
+     
+     
+     
   >
   /**
    * Get basin configuration.
@@ -1111,8 +1111,8 @@ export interface Client {
     | HttpClientError.HttpClientError
     | ParseResult.ParseError
     | ClientError<'ErrorResponse', typeof ErrorResponse.Type>
-    | ClientError<'ErrorResponse', typeof ErrorResponse.Type>
-    | ClientError<'ErrorResponse', typeof ErrorResponse.Type>
+     
+     
   >
   /**
    * Create or reconfigure a basin.
@@ -1124,7 +1124,7 @@ export interface Client {
       readonly payload: typeof CreateOrReconfigureBasinRequest.Encoded
     },
   ) => Effect.Effect<
-    typeof BasinInfo.Type | typeof BasinInfo.Type,
+    typeof BasinInfo.Type  ,
     HttpClientError.HttpClientError | ParseResult.ParseError | ClientError<'ErrorResponse', typeof ErrorResponse.Type>
   >
   /**
@@ -1137,9 +1137,9 @@ export interface Client {
     | HttpClientError.HttpClientError
     | ParseResult.ParseError
     | ClientError<'ErrorResponse', typeof ErrorResponse.Type>
-    | ClientError<'ErrorResponse', typeof ErrorResponse.Type>
-    | ClientError<'ErrorResponse', typeof ErrorResponse.Type>
-    | ClientError<'ErrorResponse', typeof ErrorResponse.Type>
+     
+     
+     
   >
   /**
    * Reconfigure a basin.
@@ -1152,8 +1152,8 @@ export interface Client {
     | HttpClientError.HttpClientError
     | ParseResult.ParseError
     | ClientError<'ErrorResponse', typeof ErrorResponse.Type>
-    | ClientError<'ErrorResponse', typeof ErrorResponse.Type>
-    | ClientError<'ErrorResponse', typeof ErrorResponse.Type>
+     
+     
   >
   /**
    * Account-level metrics.
@@ -1165,7 +1165,7 @@ export interface Client {
     | HttpClientError.HttpClientError
     | ParseResult.ParseError
     | ClientError<'ErrorResponse', typeof ErrorResponse.Type>
-    | ClientError<'ErrorResponse', typeof ErrorResponse.Type>
+     
   >
   /**
    * Basin-level metrics.
@@ -1178,7 +1178,7 @@ export interface Client {
     | HttpClientError.HttpClientError
     | ParseResult.ParseError
     | ClientError<'ErrorResponse', typeof ErrorResponse.Type>
-    | ClientError<'ErrorResponse', typeof ErrorResponse.Type>
+     
   >
   /**
    * Stream-level metrics.
@@ -1192,20 +1192,20 @@ export interface Client {
     | HttpClientError.HttpClientError
     | ParseResult.ParseError
     | ClientError<'ErrorResponse', typeof ErrorResponse.Type>
-    | ClientError<'ErrorResponse', typeof ErrorResponse.Type>
+     
   >
   /**
    * List streams.
    */
   readonly listStreams: (
-    options?: typeof ListStreamsParams.Encoded | undefined,
+    options?: typeof ListStreamsParams.Encoded  ,
   ) => Effect.Effect<
     typeof ListStreamsResponse.Type,
     | HttpClientError.HttpClientError
     | ParseResult.ParseError
     | ClientError<'ErrorResponse', typeof ErrorResponse.Type>
-    | ClientError<'ErrorResponse', typeof ErrorResponse.Type>
-    | ClientError<'ErrorResponse', typeof ErrorResponse.Type>
+     
+     
   >
   /**
    * Create a stream.
@@ -1217,9 +1217,9 @@ export interface Client {
     | HttpClientError.HttpClientError
     | ParseResult.ParseError
     | ClientError<'ErrorResponse', typeof ErrorResponse.Type>
-    | ClientError<'ErrorResponse', typeof ErrorResponse.Type>
-    | ClientError<'ErrorResponse', typeof ErrorResponse.Type>
-    | ClientError<'ErrorResponse', typeof ErrorResponse.Type>
+     
+     
+     
   >
   /**
    * Get stream configuration.
@@ -1231,9 +1231,9 @@ export interface Client {
     | HttpClientError.HttpClientError
     | ParseResult.ParseError
     | ClientError<'ErrorResponse', typeof ErrorResponse.Type>
-    | ClientError<'ErrorResponse', typeof ErrorResponse.Type>
-    | ClientError<'ErrorResponse', typeof ErrorResponse.Type>
-    | ClientError<'ErrorResponse', typeof ErrorResponse.Type>
+     
+     
+     
   >
   /**
    * Create or reconfigure a stream.
@@ -1249,9 +1249,9 @@ export interface Client {
     | HttpClientError.HttpClientError
     | ParseResult.ParseError
     | ClientError<'ErrorResponse', typeof ErrorResponse.Type>
-    | ClientError<'ErrorResponse', typeof ErrorResponse.Type>
-    | ClientError<'ErrorResponse', typeof ErrorResponse.Type>
-    | ClientError<'ErrorResponse', typeof ErrorResponse.Type>
+     
+     
+     
   >
   /**
    * Delete a stream.
@@ -1263,8 +1263,8 @@ export interface Client {
     | HttpClientError.HttpClientError
     | ParseResult.ParseError
     | ClientError<'ErrorResponse', typeof ErrorResponse.Type>
-    | ClientError<'ErrorResponse', typeof ErrorResponse.Type>
-    | ClientError<'ErrorResponse', typeof ErrorResponse.Type>
+     
+     
   >
   /**
    * Reconfigure a stream.
@@ -1277,26 +1277,26 @@ export interface Client {
     | HttpClientError.HttpClientError
     | ParseResult.ParseError
     | ClientError<'ErrorResponse', typeof ErrorResponse.Type>
-    | ClientError<'ErrorResponse', typeof ErrorResponse.Type>
-    | ClientError<'ErrorResponse', typeof ErrorResponse.Type>
-    | ClientError<'ErrorResponse', typeof ErrorResponse.Type>
+     
+     
+     
   >
   /**
    * Read records.
    */
   readonly read: (
     stream: string,
-    options?: typeof ReadParams.Encoded | undefined,
+    options?: typeof ReadParams.Encoded  ,
   ) => Effect.Effect<
     typeof ReadBatch.Type,
     | HttpClientError.HttpClientError
     | ParseResult.ParseError
     | ClientError<'ErrorResponse', typeof ErrorResponse.Type>
-    | ClientError<'ErrorResponse', typeof ErrorResponse.Type>
-    | ClientError<'ErrorResponse', typeof ErrorResponse.Type>
-    | ClientError<'ErrorResponse', typeof ErrorResponse.Type>
+     
+     
+     
     | ClientError<'TailResponse', typeof TailResponse.Type>
-    | ClientError<'ErrorResponse', typeof ErrorResponse.Type>
+     
   >
   /**
    * Append records.
@@ -1312,11 +1312,11 @@ export interface Client {
     | HttpClientError.HttpClientError
     | ParseResult.ParseError
     | ClientError<'ErrorResponse', typeof ErrorResponse.Type>
-    | ClientError<'ErrorResponse', typeof ErrorResponse.Type>
-    | ClientError<'ErrorResponse', typeof ErrorResponse.Type>
-    | ClientError<'ErrorResponse', typeof ErrorResponse.Type>
+     
+     
+     
     | ClientError<'AppendConditionFailed', typeof AppendConditionFailed.Type>
-    | ClientError<'ErrorResponse', typeof ErrorResponse.Type>
+     
   >
   /**
    * Check the tail.
@@ -1328,10 +1328,10 @@ export interface Client {
     | HttpClientError.HttpClientError
     | ParseResult.ParseError
     | ClientError<'ErrorResponse', typeof ErrorResponse.Type>
-    | ClientError<'ErrorResponse', typeof ErrorResponse.Type>
-    | ClientError<'ErrorResponse', typeof ErrorResponse.Type>
-    | ClientError<'ErrorResponse', typeof ErrorResponse.Type>
-    | ClientError<'ErrorResponse', typeof ErrorResponse.Type>
+     
+     
+     
+     
   >
 }
 

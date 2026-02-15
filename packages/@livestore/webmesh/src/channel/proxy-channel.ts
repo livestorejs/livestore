@@ -107,7 +107,7 @@ export const makeProxyChannel = ({
         _tag: 'Established'
         listenSchema: Schema.Schema<any, any>
         listenQueue: Queue.Queue<any>
-        ackMap: Map<string, Deferred.Deferred<void, never>>
+        ackMap: Map<string, Deferred.Deferred<void>>
         combinedChannelId: string
       }
 
@@ -381,7 +381,7 @@ export const makeProxyChannel = ({
 
       yield* Effect.spanEvent(`Connecting`)
 
-      const ackMap = new Map<string, Deferred.Deferred<void, never>>()
+      const ackMap = new Map<string, Deferred.Deferred<void>>()
 
       // check if already established via incoming `ProxyChannelRequest` from other side
       // which indicates we already have a edge to the target node
@@ -426,7 +426,7 @@ export const makeProxyChannel = ({
 
             const innerSend = Effect.gen(function* () {
               // Note we're re-creating new packets every time otherwise they will be skipped because of `handledIds`
-              const ack = yield* Deferred.make<void, never>()
+              const ack = yield* Deferred.make<void>()
               const packet = MeshSchema.ProxyChannelPayload.make({
                 channelName,
                 payload,

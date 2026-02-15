@@ -113,7 +113,7 @@ export const docsSidebar: ReadonlyArray<TSidebarItem> = [
 const toStarlightItem = (item: TSidebarItem): unknown => {
   switch (item._tag) {
     case 'link':
-      return item.label ? { label: item.label, link: item.slug } : item.slug
+      return item.label !== undefined ? { label: item.label, link: item.slug } : item.slug
     case 'autoGroup':
       return {
         label: item.label,

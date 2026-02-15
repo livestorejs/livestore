@@ -54,7 +54,7 @@ function Editor({ noteCrdtUrl }: { noteCrdtUrl: string }) {
 
 export function RichTextNoteEditor({ noteId }: { noteId: string }) {
   const noteCrdtUrl = getNoteCrdtRef(noteId)
-  if (!noteCrdtUrl) return null
+  if (noteCrdtUrl == null) return null
 
   return <Editor noteCrdtUrl={noteCrdtUrl} />
 }

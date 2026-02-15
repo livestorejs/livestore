@@ -49,7 +49,7 @@ export const makePush =
         return SyncMessage.PushAck.make({})
       }
 
-      if (options?.onPush) {
+      if (options?.onPush !== undefined) {
         yield* Effect.tryAll(() => options.onPush!(pushRequest, { storeId, payload, headers })).pipe(
           UnknownError.mapToUnknownError,
         )
@@ -136,7 +136,7 @@ export const makePush =
         if (connectedClients.length > 0) {
           for (const { response, encoded } of responses) {
             // Only calling once for now.
-            if (options?.onPullRes) {
+            if (options?.onPullRes !== undefined) {
               yield* Effect.tryAll(() => options.onPullRes!(response)).pipe(UnknownError.mapToUnknownError)
             }
 
@@ -190,7 +190,7 @@ export const makePush =
     }).pipe(
       Effect.tap(
         Effect.fn(function* (message) {
-          if (options?.onPushRes) {
+          if (options?.onPushRes !== undefined) {
             yield* Effect.tryAll(() => options.onPushRes!(message)).pipe(UnknownError.mapToUnknownError)
           }
         }),

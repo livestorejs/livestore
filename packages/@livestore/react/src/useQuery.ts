@@ -93,7 +93,7 @@ export const useQueryRef = <TQueryable extends Queryable<any>>(
     () => {},
   )
 
-  const query$ = queryRcRef.value as LiveQuery<TResult>
+  const query$ = queryRcRef.value
 
   React.useDebugValue(`LiveStore:useQuery:${query$.id}:${query$.label}`)
 

@@ -113,7 +113,7 @@ export const useClientDocument: UseClientDocument = <TTableDef extends State.SQL
     queryDb(
       resolve(table).get(
         id(),
-        options?.default
+        options?.default !== undefined
           ? {
               default: options.default,
             }

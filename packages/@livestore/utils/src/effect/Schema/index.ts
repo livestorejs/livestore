@@ -24,7 +24,7 @@ export const hash = (schema: Schema.Schema<any>) => {
 }
 
 const resolveStructAst = (ast: SchemaAST.AST): SchemaAST.AST => {
-  if (SchemaAST.isTransformation(ast)) {
+  if (SchemaAST.isTransformation(ast) === true) {
     return resolveStructAst(ast.from)
   }
 
@@ -42,8 +42,8 @@ export const getResolvedPropertySignatures = (
 type TransferableObject = ArrayBuffer | MessagePort
 
 export const encodeWithTransferables =
-  <A, I, R>(schema: Schema.Schema<A, I, R>, options?: ParseOptions | undefined) =>
-  (a: A, overrideOptions?: ParseOptions | undefined): Effect.Effect<[I, TransferableObject[]], ParseError, R> =>
+  <A, I, R>(schema: Schema.Schema<A, I, R>, options?: ParseOptions  ) =>
+  (a: A, overrideOptions?: ParseOptions  ): Effect.Effect<[I, TransferableObject[]], ParseError, R> =>
     Effect.gen(function* () {
       const collector = yield* Transferable.makeCollector
 
@@ -55,7 +55,7 @@ export const encodeWithTransferables =
     })
 
 export const decodeSyncDebug: <A, I>(
-  schema: Schema.Schema<A, I, never>,
+  schema: Schema.Schema<A, I>,
   options?: SchemaAST.ParseOptions,
 ) => (i: I, overrideOptions?: SchemaAST.ParseOptions) => A = (schema, options) => (input, overrideOptions) => {
   const res = Schema.decodeEither(schema, options)(input, overrideOptions)
@@ -67,7 +67,7 @@ export const decodeSyncDebug: <A, I>(
 }
 
 export const encodeSyncDebug: <A, I>(
-  schema: Schema.Schema<A, I, never>,
+  schema: Schema.Schema<A, I>,
   options?: SchemaAST.ParseOptions,
 ) => (a: A, overrideOptions?: SchemaAST.ParseOptions) => I = (schema, options) => (input, overrideOptions) => {
   const res = Schema.encodeEither(schema, options)(input, overrideOptions)

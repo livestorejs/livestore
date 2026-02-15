@@ -20,7 +20,7 @@ export default {
       })
     }
 
-    if (url.pathname.endsWith('/client-do')) {
+    if (url.pathname.endsWith('/client-do') === true) {
       const storeId = storeIdFromRequest(request)
       const id = env.CLIENT_DO.idFromName(storeId)
       return env.CLIENT_DO.get(id).fetch(request)

@@ -121,7 +121,7 @@ export const chunkEventsForS2 = (events: ReadonlyArray<LiveStoreEvent.Global.Enc
 
     return mapPreparedChunks(chunks)
   } catch (error) {
-    if (error && typeof error === 'object' && (error as any)._tag === 'OversizeChunkItemError') {
+    if (error !== undefined && typeof error === 'object' && (error as any)._tag === 'OversizeChunkItemError') {
       const oversize = error as { size: number; maxBytes: number; _tag: string }
       throw new S2LimitExceededError({
         limitType: 'record-metered-bytes',

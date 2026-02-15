@@ -13,12 +13,12 @@ export const getDefaultValuesEncoded = <TTableDef extends TableDefBase>(
     ReadonlyRecord.filter((col, key) => {
       if (fallbackValues?.[key] !== undefined) return true
       if (key === 'id') return false
-      return col!.default._tag === 'None' || SqliteDsl.isSqlDefaultValue(col!.default.value) === false
+      return col!.default._tag === 'None' || ! SqliteDsl.isSqlDefaultValue(col!.default.value)
     }),
     ReadonlyRecord.map((column, columnName) => {
       if (fallbackValues?.[columnName] !== undefined) return fallbackValues[columnName]
       if (column!.default._tag === 'None') {
-        return column!.nullable === true
+        return  column!.nullable
           ? null
           : shouldNeverHappen(`Column ${columnName} has no default value and is not nullable`)
       }
@@ -39,12 +39,12 @@ export const getDefaultValuesDecoded = <TTableDef extends TableDefBase>(
     ReadonlyRecord.filter((col, key) => {
       if (fallbackValues?.[key] !== undefined) return true
       if (key === 'id') return false
-      return col!.default._tag === 'None' || SqliteDsl.isSqlDefaultValue(col!.default.value) === false
+      return col!.default._tag === 'None' || ! SqliteDsl.isSqlDefaultValue(col!.default.value)
     }),
     ReadonlyRecord.map((column, columnName) => {
       if (fallbackValues?.[columnName] !== undefined) return fallbackValues[columnName]
       if (column!.default._tag === 'None') {
-        return column!.nullable === true
+        return  column!.nullable
           ? null
           : shouldNeverHappen(`Column ${columnName} has no default value and is not nullable`)
       }

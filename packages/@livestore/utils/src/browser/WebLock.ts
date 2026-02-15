@@ -18,13 +18,13 @@ export const withLock =
 
       const exit = yield* Effect.tryPromise<Exit.Exit<A, E>, E | E2>({
         try: (signal) => {
-          if (signal.aborted) return 'aborted' as never
+          if (signal.aborted === true) return 'aborted' as never
 
           // NOTE The 'signal' and 'ifAvailable' options cannot be used together.
           const requestOptions = options?.ifAvailable === true ? options : { ...options, signal }
           return navigator.locks.request(lockName, requestOptions, async (lock) => {
             if (lock === null) {
-              if (onTaken) {
+              if (onTaken !== undefined) {
                 const exit = await Runtime.runPromiseExit(runtime)(onTaken)
                 if (exit._tag === 'Failure') {
                   return exit

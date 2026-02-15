@@ -115,13 +115,13 @@ export const makeInMemoryAdapter =
       const clientId = options.clientId ?? nanoid(6)
       const sessionId = options.sessionId ?? nanoid(6)
 
-      const sharedWebWorker = options.devtools?.sharedWorker
+      const sharedWebWorker = options.devtools?.sharedWorker !== undefined
         ? tryAsFunctionAndNew(options.devtools.sharedWorker, {
             name: `livestore-shared-worker-${storeId}`,
           })
         : undefined
 
-      const sharedWorkerFiber = sharedWebWorker
+      const sharedWorkerFiber = sharedWebWorker !== undefined
         ? yield* Worker.makePoolSerialized<typeof WebmeshWorker.Schema.Request.Type>({
             size: 1,
             concurrency: 100,
@@ -211,7 +211,7 @@ const makeLeaderThread = ({
   sharedWorkerFiber,
 }: MakeLeaderThreadArgs) =>
   Effect.gen(function* () {
-    const runtime = yield* Effect.runtime<never>()
+    const runtime = yield* Effect.runtime()
 
     const makeDb = (_kind: 'state' | 'eventlog') => {
       return makeSqliteDb({
@@ -226,7 +226,7 @@ const makeLeaderThread = ({
     // Might involve some async work, so we're running them concurrently
     const [dbState, dbEventlog] = yield* Effect.all([makeDb('state'), makeDb('eventlog')], { concurrency: 2 })
 
-    if (importSnapshot) {
+    if (importSnapshot !== undefined) {
       dbState.import(importSnapshot)
 
       const _migrationsReport = yield* migrateDb({ db: dbState, schema })

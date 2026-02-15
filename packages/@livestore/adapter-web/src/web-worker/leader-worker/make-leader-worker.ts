@@ -44,7 +44,7 @@ export type WorkerOptions = {
   }
 } & LogConfig.WithLoggerOptions
 
-if (isDevEnv()) {
+if (isDevEnv() === true) {
   globalThis.__debugLiveStoreUtils = {
     opfs: Opfs.debugUtils,
     blobUrl: (buffer: Uint8Array<ArrayBuffer>) =>
@@ -59,7 +59,7 @@ export const makeWorker = (options: WorkerOptions) => {
 }
 
 export const makeWorkerEffect = (options: WorkerOptions) => {
-  const TracingLive = options.otelOptions?.tracer
+  const TracingLive = options.otelOptions?.tracer !== undefined
     ? Layer.unwrapEffect(Effect.map(OtelTracer.make, Layer.setTracer)).pipe(
         Layer.provideMerge(Layer.succeed(OtelTracer.OtelTracer, options.otelOptions.tracer)),
       )
@@ -74,7 +74,7 @@ export const makeWorkerEffect = (options: WorkerOptions) => {
     Effect.tapCauseLogPretty,
     Effect.annotateLogs({ thread: self.name }),
     Effect.provide(runtimeLayer),
-    LS_DEV ? TaskTracing.withAsyncTaggingTracing((name) => (console as any).createTask(name)) : identity,
+    LS_DEV === true ? TaskTracing.withAsyncTaggingTracing((name) => (console as any).createTask(name)) : identity,
     // We're using this custom scheduler to improve op batching behaviour and reduce the overhead
     // of the Effect fiber runtime given we have different tradeoffs on a worker thread.
     // Despite the "message channel" name, is has nothing to do with the `incomingRequestsPort` above.
@@ -119,7 +119,7 @@ const makeWorkerRunnerInner = ({ schema, sync: syncOptions, syncPayloadSchema }:
       Effect.gen(function* () {
         const sqlite3 = yield* Effect.promise(() => loadSqlite3Wasm())
         const makeSqliteDb = sqliteDbFactory({ sqlite3 })
-        const runtime = yield* Effect.runtime<never>()
+        const runtime = yield* Effect.runtime()
 
         // Check OPFS availability and determine storage mode
         const opfsCheck = yield* checkOpfsAvailability
@@ -127,7 +127,7 @@ const makeWorkerRunnerInner = ({ schema, sync: syncOptions, syncPayloadSchema }:
 
         // Track boot warning to emit later
         let bootWarning: BootStatus | undefined
-        if (!useOpfs) {
+        if (useOpfs === false) {
           yield* Effect.logWarning(
             '[@livestore/adapter-web:worker] OPFS unavailable, using in-memory storage',
             opfsCheck,
@@ -135,7 +135,7 @@ const makeWorkerRunnerInner = ({ schema, sync: syncOptions, syncPayloadSchema }:
           bootWarning = { stage: 'warning', ...opfsCheck }
         }
 
-        const opfsDirectory = useOpfs ? yield* sanitizeOpfsDir(storageOptions.directory, storeId) : undefined
+        const opfsDirectory = useOpfs === true ? yield* sanitizeOpfsDir(storageOptions.directory, storeId) : undefined
 
         const makeOpfsDb = (kind: 'state' | 'eventlog') =>
           makeSqliteDb({
@@ -161,7 +161,7 @@ const makeWorkerRunnerInner = ({ schema, sync: syncOptions, syncPayloadSchema }:
           }).pipe(Effect.acquireRelease((db) => Effect.try(() => db.close()).pipe(Effect.ignoreLogged)))
 
         // Use OPFS if available, otherwise fall back to in-memory
-        const [dbState, dbEventlog] = useOpfs
+        const [dbState, dbEventlog] = useOpfs === true
           ? yield* Effect.all([makeOpfsDb('state'), makeOpfsDb('eventlog')], { concurrency: 2 })
           : yield* Effect.all([makeInMemoryDb(), makeInMemoryDb()], { concurrency: 2 })
 
@@ -335,7 +335,7 @@ const checkOpfsAvailability = Effect.gen(function* () {
     Effect.as(undefined),
     Effect.catchAll((error) => {
       const reason: BootWarningReason =
-        Schema.is(WebError.SecurityError)(error) || Schema.is(WebError.NotAllowedError)(error)
+        Schema.is(WebError.SecurityError)(error) === true || Schema.is(WebError.NotAllowedError)(error) === true
           ? 'private-browsing'
           : 'storage-unavailable'
       const message =

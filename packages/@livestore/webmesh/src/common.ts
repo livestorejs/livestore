@@ -31,7 +31,7 @@ export class EdgeAlreadyExistsError extends Schema.TaggedError<EdgeAlreadyExists
 export const packetAsOtelAttributes = (packet: typeof Packet.Type) => ({
   packetId: packet.id,
   'span.label':
-    packet.id + (Predicate.hasProperty(packet, 'reqId') && packet.reqId !== undefined ? ` for ${packet.reqId}` : ''),
+    packet.id + (Predicate.hasProperty(packet, 'reqId') === true && packet.reqId !== undefined ? ` for ${packet.reqId}` : ''),
   ...omitUndefineds({
     packet:
       packet._tag !== 'DirectChannelResponseSuccess' && packet._tag !== 'ProxyChannelPayload' ? packet : undefined,

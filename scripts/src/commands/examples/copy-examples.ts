@@ -31,11 +31,11 @@ export const copyTodomvcSrc = Cli.Command.make(
 
       yield* copy('livestore/')
 
-      if (['web-todomvc-solid', 'web-todomvc-experimental', 'web-todomvc-custom-elements'].includes(example)) {
+      if (['web-todomvc-solid', 'web-todomvc-experimental', 'web-todomvc-custom-elements'].includes(example) === true) {
         yield* copy('livestore.worker.ts')
       }
 
-      if (['web-todomvc-sync-cf', 'web-todomvc-sync-electric'].includes(example)) {
+      if (['web-todomvc-sync-cf', 'web-todomvc-sync-electric'].includes(example) === true) {
         yield* copy('components/')
       }
     }

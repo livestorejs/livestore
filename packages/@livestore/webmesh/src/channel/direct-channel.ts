@@ -134,7 +134,7 @@ export const makeDirectChannel = ({
 
               if (
                 Cause.isFailType(channelExit.cause) &&
-                Schema.is(WebmeshSchema.DirectChannelResponseNoTransferables)(channelExit.cause.error)
+                Schema.is(WebmeshSchema.DirectChannelResponseNoTransferables)(channelExit.cause.error) === true
               ) {
                 // Only retry when there is a new edge available
                 yield* waitForNewEdgeFiber.pipe(Effect.exit)

@@ -17,7 +17,7 @@ const crossOriginIsolationHeaders = {
 export default defineConfig({
   root: rootDir,
   server: {
-    port: process.env.PORT ? Number(process.env.PORT) : 46001,
+    port: process.env.PORT !== undefined ? Number(process.env.PORT) : 46001,
     fs: { strict: false },
     headers: crossOriginIsolationHeaders,
   },

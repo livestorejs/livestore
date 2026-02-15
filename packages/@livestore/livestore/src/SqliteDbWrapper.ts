@@ -104,7 +104,7 @@ export class SqliteDbWrapper implements SqliteDb {
       throw e
     }
 
-    if (!errored) {
+    if (errored === false) {
       this.execute(sql`commit;`)
     }
 
@@ -123,7 +123,7 @@ export class SqliteDbWrapper implements SqliteDb {
 
     return {
       result,
-      changeset: changeset ? { _tag: 'sessionChangeset', data: changeset, debug: null } : { _tag: 'no-op' },
+      changeset: changeset !== undefined ? { _tag: 'sessionChangeset', data: changeset, debug: null } : { _tag: 'no-op' },
     }
   }
 
@@ -141,7 +141,7 @@ export class SqliteDbWrapper implements SqliteDb {
     }
 
     const cached = this.tablesUsedCache.get(query)
-    if (cached) {
+    if (cached !== undefined) {
       return cached
     }
     const stmt = this.tablesUsedStmt
@@ -162,7 +162,7 @@ export class SqliteDbWrapper implements SqliteDb {
 
   cachedExecute(
     queryStr: string,
-    bindValues?: PreparedBindValues | undefined,
+    bindValues?: PreparedBindValues  ,
     options?: {
       hasNoEffects?: boolean
       otelContext?: otel.Context
@@ -187,7 +187,7 @@ export class SqliteDbWrapper implements SqliteDb {
 
           stmt.execute(bindValues)
 
-          if (options?.hasNoEffects !== true && !this.resultCache.ignoreQuery(queryStr)) {
+          if (options?.hasNoEffects !== true && this.resultCache.ignoreQuery(queryStr) === false) {
             // TODO use write tables instead
             // check what queries actually end up here.
             this.resultCache.invalidate(options?.writeTables ?? this.getTablesUsed(queryStr))
@@ -200,7 +200,7 @@ export class SqliteDbWrapper implements SqliteDb {
           this.debugInfo.queryFrameDuration += durationMs
           this.debugInfo.queryFrameCount++
 
-          if (durationMs > 5 && isDevEnv()) {
+          if (durationMs > 5 && isDevEnv() === true) {
             this.debugInfo.slowQueries.push({
               queryStr,
               bindValues,
@@ -215,7 +215,7 @@ export class SqliteDbWrapper implements SqliteDb {
         } catch (cause: any) {
           span.recordException(cause)
           span.end()
-          if (LS_DEV) {
+          if (LS_DEV === true) {
             // oxlint-disable-next-line eslint(no-debugger) -- intentional breakpoint for SQL errors during development
             debugger
           }
@@ -231,7 +231,7 @@ export class SqliteDbWrapper implements SqliteDb {
 
   cachedSelect<T = any>(
     queryStr: string,
-    bindValues?: PreparedBindValues | undefined,
+    bindValues?: PreparedBindValues  ,
     options?: {
       queriedTables?: ReadonlySet<string>
       skipCache?: boolean
@@ -281,7 +281,7 @@ export class SqliteDbWrapper implements SqliteDb {
           this.debugInfo.queryFrameCount++
 
           // TODO also enable in non-dev mode
-          if (durationMs > 5 && isDevEnv()) {
+          if (durationMs > 5 && isDevEnv() === true) {
             this.debugInfo.slowQueries.push({
               queryStr,
               bindValues,

@@ -22,7 +22,7 @@ export * from './column-spec.ts'
 export * from './table-def.ts'
 
 export const makeState = <TStateInput extends InputState>(inputSchema: TStateInput): InternalState => {
-  const inputTables: ReadonlyArray<TableDef> = Array.isArray(inputSchema.tables)
+  const inputTables: ReadonlyArray<TableDef> = Array.isArray(inputSchema.tables) === true
     ? inputSchema.tables
     : Object.values(inputSchema.tables)
 
@@ -31,7 +31,7 @@ export const makeState = <TStateInput extends InputState>(inputSchema: TStateInp
   for (const tableDef of inputTables) {
     const sqliteDef = tableDef.sqliteDef
     // TODO validate tables (e.g. index names are unique)
-    if (tables.has(sqliteDef.ast.name)) {
+    if (tables.has(sqliteDef.ast.name) === true) {
       shouldNeverHappen(`Duplicate table name: ${sqliteDef.ast.name}. Please use unique names for tables.`)
     }
     tables.set(sqliteDef.ast.name, tableDef)

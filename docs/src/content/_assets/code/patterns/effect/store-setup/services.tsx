@@ -22,7 +22,7 @@ export const useCommit = () => useAtomSet(StoreTag.commit)
 export const createItemAtom = StoreTag.runtime.fn<string>()((itemName, get) => {
   return Effect.sync(() => {
     const store = get(StoreTag.storeUnsafe)
-    if (store) {
+    if (store !== undefined) {
       store.commit(
         events.itemCreated({
           id: crypto.randomUUID(),

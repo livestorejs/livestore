@@ -17,7 +17,7 @@ export namespace UnknownEvents {
   export type Callback = (
     context: UnknownEventContext,
     error: UnknownEventError,
-  ) => Effect.SyncOrPromiseOrEffect<void, unknown, never>
+  ) => Effect.SyncOrPromiseOrEffect<void, unknown>
 
   export type HandlingConfig =
     | { readonly strategy: 'warn' }

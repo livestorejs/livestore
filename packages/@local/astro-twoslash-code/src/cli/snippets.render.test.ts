@@ -63,7 +63,7 @@ const runExampleBuild = () =>
 
 const loadCompilerOptions = () => {
   const configSource = ts.readConfigFile(tsconfigPath, ts.sys.readFile)
-  if (configSource.error) {
+  if (configSource.error !== undefined) {
     const message = ts.flattenDiagnosticMessageText(configSource.error.messageText, '\n')
     throw new Error(`Unable to read test fixture tsconfig: ${message}`)
   }
@@ -262,7 +262,7 @@ describe('renderSnippet integration', () => {
     const entryFilePath = path.join(examplePaths.snippetAssetsRoot, 'main.ts')
     const bundle = buildSnippetBundle({ entryFilePath, baseDir: examplePaths.snippetAssetsRoot })
     const mainRecord = bundle.files[bundle.mainFileRelativePath]
-    if (!mainRecord) {
+    if (mainRecord == null) {
       throw new Error(`Missing main file record for ${bundle.mainFileRelativePath}`)
     }
 

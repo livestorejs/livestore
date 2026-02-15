@@ -18,7 +18,7 @@ const { lightSvg, darkSvg, metadata } = diagram
 /* Extract dimensions for container */
 const width = metadata?.width
 const height = metadata?.height
-const aspectRatio = width && height ? `${width} / ${height}` : undefined
+const aspectRatio = width !== undefined && height !== undefined ? `${width} / ${height}` : undefined
 ---
 
 <div

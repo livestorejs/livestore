@@ -32,7 +32,7 @@ const port = 5252
 const branch = getBranchName()
 
 // Netlify preview domain (see https://docs.netlify.com/configure-builds/environment-variables/#build-metadata)
-const domain = process.env.DEPLOY_PRIME_URL
+const domain = process.env.DEPLOY_PRIME_URL !== undefined
   ? new URL(process.env.DEPLOY_PRIME_URL).hostname
   : process.env.NODE_ENV === 'production'
     ? branch === 'main'
@@ -288,7 +288,7 @@ export default defineConfig({
           // Didn't yet take the time to investigate/fix the root cause https://share.cleanshot.com/88lpCkCl
           errorOnRelativeLinks: false,
         }),
-        ...(process.env.STARLIGHT_INCLUDE_API_DOCS
+        ...(process.env.STARLIGHT_INCLUDE_API_DOCS !== undefined
           ? [
               starlightTypeDoc({
                 entryPoints: ['../packages/@livestore/livestore/src/mod.ts'],

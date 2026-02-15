@@ -9,21 +9,21 @@ export class UnknownError extends Schema.TaggedError<UnknownError>()('LiveStore.
 }) {
   static mapToUnknownError = <A, E, R>(effect: Effect.Effect<A, E, R>) =>
     effect.pipe(
-      Effect.mapError((cause) => (Schema.is(UnknownError)(cause) ? cause : new UnknownError({ cause }))),
+      Effect.mapError((cause) => (Schema.is(UnknownError)(cause) === true ? cause : new UnknownError({ cause }))),
       Effect.catchAllDefect((cause) => new UnknownError({ cause })),
     )
 
   static mapToUnknownErrorLayer = <A, E, R>(layer: Layer.Layer<A, E, R>) =>
     layer.pipe(
       Layer.catchAllCause((cause) =>
-        Cause.isFailType(cause) && Schema.is(UnknownError)(cause.error)
+        Cause.isFailType(cause) === true && Schema.is(UnknownError)(cause.error) === true
           ? Layer.fail(cause.error)
           : Layer.fail(new UnknownError({ cause: cause })),
       ),
     )
 
   static mapToUnknownErrorStream = <A, E, R>(stream: Stream.Stream<A, E, R>) =>
-    stream.pipe(Stream.mapError((cause) => (Schema.is(UnknownError)(cause) ? cause : new UnknownError({ cause }))))
+    stream.pipe(Stream.mapError((cause) => (Schema.is(UnknownError)(cause) === true ? cause : new UnknownError({ cause }))))
 }
 
 export class MaterializerHashMismatchError extends Schema.TaggedError<MaterializerHashMismatchError>()(

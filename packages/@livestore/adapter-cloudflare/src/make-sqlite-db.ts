@@ -24,7 +24,7 @@ class CloudflarePreparedStatement implements PreparedStatement {
 
   execute = (bindValues?: PreparedBindValues, options?: { onRowsChanged?: (count: number) => void }) => {
     try {
-      const cursor = this.sqlStorage.exec(this.sql, ...(bindValues ? Object.values(bindValues) : []))
+      const cursor = this.sqlStorage.exec(this.sql, ...(bindValues !== undefined ? Object.values(bindValues) : []))
 
       // Count affected rows by iterating through cursor
       let changedCount = 0
@@ -32,7 +32,7 @@ class CloudflarePreparedStatement implements PreparedStatement {
         changedCount++
       }
 
-      if (options?.onRowsChanged) {
+      if (options?.onRowsChanged !== undefined) {
         options.onRowsChanged(changedCount)
       }
     } catch (e) {
@@ -48,7 +48,7 @@ class CloudflarePreparedStatement implements PreparedStatement {
     try {
       const cursor = this.sqlStorage.exec<Record<string, CfTypes.SqlStorageValue>>(
         this.sql,
-        ...(bindValues ? Object.values(bindValues) : []),
+        ...(bindValues !== undefined ? Object.values(bindValues) : []),
       )
       const results: T[] = []
 
@@ -195,7 +195,7 @@ export const makeSqliteDb_ = <
       })
     },
     close: () => {
-      if (isClosed) {
+      if (isClosed === true) {
         return
       }
 

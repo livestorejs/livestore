@@ -17,13 +17,13 @@ const useBarrierStart = () => {
   React.useEffect(() => {
     const sp = new URLSearchParams(window.location.search)
     const barrier = sp.get('barrier') !== null
-    if (!barrier) {
+    if (barrier === false) {
       setStarted(true)
       return
     }
     const bc = new BroadcastChannel('ls-webtest')
     const onMsg = (ev: MessageEvent) => {
-      if (ev.data && ev.data.type === 'go') {
+      if (ev.data !== undefined && ev.data.type === 'go') {
         setStarted(true)
       }
     }
@@ -54,14 +54,14 @@ export const Root: React.FC = () => {
 
   const [canBoot, setCanBoot] = React.useState(false)
   React.useEffect(() => {
-    if (!started) return
+    if (started === false) return
     const t = setTimeout(() => setCanBoot(true), bootDelayMs)
     return () => clearTimeout(t)
   }, [started, bootDelayMs])
 
   const adapter = React.useMemo(
     () =>
-      canBoot
+      canBoot === true
         ? makePersistedAdapter({
             storage: { type: 'opfs' },
             worker: LiveStoreWorker,
@@ -75,7 +75,7 @@ export const Root: React.FC = () => {
     [canBoot, reset, sessionId, clientId, disableFastPath],
   )
 
-  if (!started) {
+  if (started === false) {
     return <div>Waiting for barrier…</div>
   }
 

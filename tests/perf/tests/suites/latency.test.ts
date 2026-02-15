@@ -24,7 +24,7 @@ repeatSuite(
             const clickEntries = entries.filter((entry) => entry.name === 'click')
             // The last click entry is the one we are interested in
             const lastClickEntry = clickEntries.at(-1)
-            if (!lastClickEntry) throw new Error('No click entry found')
+            if (lastClickEntry == null) throw new Error('No click entry found')
             resolve(lastClickEntry.duration) // Duration is provided rounded to the nearest 8 ms for privacy reasons
           }).observe({
             type: 'event',

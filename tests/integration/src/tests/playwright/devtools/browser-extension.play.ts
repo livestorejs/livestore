@@ -63,7 +63,7 @@ const makeTabPair = (url: string, tabName: string, adapter: AdapterKind, options
         .find((p) => p.url() === 'about:blank') ?? (yield* newPage)
 
     // Inject version override before page loads (for version mismatch testing)
-    if (options?.appVersionOverride) {
+    if (options?.appVersionOverride !== undefined) {
       yield* Effect.tryPromise(() =>
         page.addInitScript(`globalThis.__LIVESTORE_VERSION_OVERRIDE__ = '${options.appVersionOverride}';`),
       )
@@ -78,12 +78,13 @@ const makeTabPair = (url: string, tabName: string, adapter: AdapterKind, options
 
     usedPages.add(page)
 
-    const sep = url.includes('?') ? '&' : '?'
+    const sep = url.includes('?') === true ? '&' : '?'
     yield* Effect.tryPromise(() => page.goto(`${url}${sep}sessionId=${tabName}&clientId=${tabName}&adapter=${adapter}`))
 
+    const openPages = browserContext.pages().map((_) => _.url())
     const devtools =
       browserContext.pages().filter(isUnused).find(isDevtools) ??
-      shouldNeverHappen(`No devtools page found. Current pages: ${browserContext.pages().map((_) => _.url())}`)
+      shouldNeverHappen('No devtools page found. Current pages:', openPages)
 
     const devtoolsConsoleFiber = yield* Playwright.handlePageConsole({
       page: devtools,
@@ -114,7 +115,7 @@ const getLiveStoreDevtoolsFrame = (devtools: PW.Page, label: string) =>
 
       const liveStoreDevtoolsPromise = new Promise<PW.Frame>((resolve) => {
         devtools.on('framenavigated', (frame) => {
-          if (frame.url().includes('_livestore/browser-extension')) {
+          if (frame.url().includes('_livestore/browser-extension') === true) {
             resolve(frame)
           }
         })
@@ -169,7 +170,7 @@ const getExtensionPath = Effect.gen(function* () {
   const fs = yield* FileSystem.FileSystem
 
   const extensionPathFromEnv = process.env.LIVESTORE_DEVTOOLS_CHROME_DIST_PATH
-  if (extensionPathFromEnv) {
+  if (extensionPathFromEnv !== undefined) {
     yield* Effect.logInfo(`Using extension path from env LIVESTORE_DEVTOOLS_CHROME_DIST_PATH: ${extensionPathFromEnv}`)
     return extensionPathFromEnv
   }
@@ -346,7 +347,7 @@ const PWLive = ({ extensionPath }: { extensionPath: string }) =>
             expect: { leader: true, alreadyLoaded: false, tables },
           })
         }).pipe(
-          process.env.CI
+          process.env.CI !== undefined
             ? identity
             : Effect.tapErrorTag('UnknownException', () => Effect.promise(() => tab1.page.pause())),
           Effect.raceFirst(
@@ -370,7 +371,7 @@ const PWLive = ({ extensionPath }: { extensionPath: string }) =>
     runTest(
       Effect.gen(function* () {
         const port = process.env.LIVESTORE_PLAYWRIGHT_DEV_SERVER_PORT
-        if (!port) {
+        if (port == null) {
           return yield* new TestError({ message: 'LIVESTORE_PLAYWRIGHT_DEV_SERVER_PORT not set' })
         }
 
@@ -407,7 +408,7 @@ const PWLive = ({ extensionPath }: { extensionPath: string }) =>
             const cur = new URL(u)
             const base = new URL('/_livestore/browser-extension/', cur.origin)
             const tabId = cur.searchParams.get('tabId')
-            if (tabId) base.searchParams.set('tabId', tabId)
+            if (tabId !== null) base.searchParams.set('tabId', tabId)
             return base.toString()
           }
           await tabLocalhost.liveStoreDevtools.goto(toIndexUrl(tabLocalhost.liveStoreDevtools.url()))

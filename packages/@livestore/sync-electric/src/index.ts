@@ -275,7 +275,7 @@ export const makeSyncBackend =
 
           // Check for delete/update operations and throw descriptive error
           const invalidOperations = ReadonlyArray.filterMap(allItems, (item) =>
-            Schema.is(ResponseItemInvalid)(item) ? Option.some(item.headers.operation) : Option.none(),
+            Schema.is(ResponseItemInvalid)(item) === true ? Option.some(item.headers.operation) : Option.none(),
           )
 
           if (invalidOperations.length > 0) {
@@ -288,7 +288,7 @@ export const makeSyncBackend =
 
           const items = allItems.filter(Schema.is(ResponseItemInsert)).map((item) => ({
             metadata: Option.some({ offset: nextHandle.offset, handle: nextHandle.handle }),
-            eventEncoded: item.value as LiveStoreEvent.Global.Encoded,
+            eventEncoded: item.value,
           }))
 
           yield* Effect.annotateCurrentSpan({ itemsCount: items.length, nextHandle })
@@ -340,7 +340,7 @@ export const makeSyncBackend =
           return Stream.unfoldEffect(cursor.pipe(Option.flatMap((_) => _.metadata)), (metadataOption) =>
             Effect.gen(function* () {
               const result = yield* runPull(metadataOption, { live: options?.live ?? false })
-              if (Option.isNone(result)) return Option.none()
+              if (Option.isNone(result) === true) return Option.none()
 
               const [batch, nextMetadataOption] = result.value
 
@@ -362,7 +362,7 @@ export const makeSyncBackend =
           ).pipe(
             Stream.map(({ batch, hasMore }) => ({
               batch,
-              pageInfo: hasMore ? SyncBackend.pageInfoMoreUnknown : SyncBackend.pageInfoNoMore,
+              pageInfo: hasMore === true ? SyncBackend.pageInfoMoreUnknown : SyncBackend.pageInfoNoMore,
             })),
             Stream.withSpan('electric-provider:pull'),
           )

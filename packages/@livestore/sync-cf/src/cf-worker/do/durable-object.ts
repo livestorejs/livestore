@@ -36,7 +36,7 @@ declare class Response extends CfDeclare.Response {}
 declare class WebSocketPair extends CfDeclare.WebSocketPair {}
 declare class WebSocketRequestResponsePair extends CfDeclare.WebSocketRequestResponsePair {}
 
-const DurableObjectBase = DurableObject<Env> as any as new (
+const DurableObjectBase = DurableObject as any as new (
   state: CfTypes.DurableObjectState,
   env: Env,
 ) => CfTypes.DurableObject & { ctx: CfTypes.DurableObjectState; env: Env }
@@ -90,14 +90,14 @@ export const makeDurableObject: MakeDurableObjectClass = (options) => {
 
   const Logging = Logger.consoleWithThread('SyncDo')
 
-  const Observability: Layer.Layer<never, never, never> = options?.otel?.baseUrl
+  const Observability: Layer.Layer<never> = options?.otel?.baseUrl !== undefined
     ? (Otlp.layer({
         baseUrl: options.otel.baseUrl,
         tracerExportInterval: 50,
         resource: {
           serviceName: options.otel.serviceName ?? 'sync-cf-do',
         },
-      }).pipe(Layer.provide(FetchHttpClient.layer)) as Layer.Layer<never, never, never>)
+      }).pipe(Layer.provide(FetchHttpClient.layer)) as Layer.Layer<never>)
     : Layer.empty
 
   return class SyncBackendDOBase extends DurableObjectBase implements SyncBackendRpcInterface {
@@ -109,7 +109,7 @@ export const makeDurableObject: MakeDurableObjectClass = (options) => {
       const WebSocketRpcServerLive = makeRpcServer({ doSelf: this, doOptions: options })
 
       // This registers the `webSocketMessage` and `webSocketClose` handlers
-      if (enabledTransports.has('ws')) {
+      if (enabledTransports.has('ws') === true) {
         setupDurableObjectWebSocketRpc({
           doSelf: this,
           rpcLayer: WebSocketRpcServerLive,

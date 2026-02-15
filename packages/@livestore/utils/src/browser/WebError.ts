@@ -494,7 +494,7 @@ const WebErrorFromUnknown = Schema.transform(Schema.Unknown, WebError, {
   strict: true,
   decode: (value) => {
     // Already a WebError
-    if (isWebError(value)) return value
+    if (isWebError(value) === true) return value
 
     // Simple Exception Errors
     if (value instanceof globalThis.EvalError) return new EvalError({ cause: value })
@@ -593,7 +593,7 @@ export function parseWebError(value: unknown, expected: readonly WebErrorConstru
   if (expected.length === 0) return parsed
 
   const expectedTags = new Set(expected.map((ErrorConstructor) => ErrorConstructor._tag))
-  if (expectedTags.has(parsed._tag)) return parsed
+  if (expectedTags.has(parsed._tag) === true) return parsed
 
   return parsed instanceof UnknownError ? parsed : new UnknownError({ cause: parsed })
 }

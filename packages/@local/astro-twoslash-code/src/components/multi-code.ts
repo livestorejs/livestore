@@ -76,7 +76,7 @@ const normalizeFilename = (name: string): string => name.replace(/^[./]+/, '').r
 
 const guessLanguage = (filename: string, fallback?: string): string => {
   const extension = filename.split('.').pop()?.toLowerCase()
-  if (!extension) return fallback ?? 'ts'
+  if (extension == null) return fallback ?? 'ts'
   if (extension === 'ts' || extension === 'cts' || extension === 'mts') return 'ts'
   if (extension === 'tsx') return 'tsx'
   if (extension === 'js' || extension === 'cjs' || extension === 'mjs') return 'js'
@@ -96,7 +96,7 @@ const guessLanguage = (filename: string, fallback?: string): string => {
 const normalizeGlobals = (globals: SnippetBundle['globals']): SnippetGlobals => ({
   baseStyles: typeof globals?.baseStyles === 'string' && globals.baseStyles.length > 0 ? globals.baseStyles : null,
   themeStyles: typeof globals?.themeStyles === 'string' && globals.themeStyles.length > 0 ? globals.themeStyles : null,
-  jsModules: Array.isArray(globals?.jsModules)
+  jsModules: Array.isArray(globals?.jsModules) === true
     ? globals.jsModules.filter((module): module is string => typeof module === 'string' && module.length > 0)
     : [],
 })
@@ -111,9 +111,9 @@ export const prepareMultiCodeData = (props: MultiCodeProps): PreparedMultiCode =
   const isRecord = (value: unknown): value is Record<string, unknown> => typeof value === 'object' && value !== null
 
   const normalizedFilesMap = (() => {
-    if (isRecord(code?.files) && !Array.isArray(code?.files)) {
+    if (isRecord(code?.files) === true && Array.isArray(code?.files) === false) {
       return Object.entries(code.files).reduce<Record<string, RawSnippetFile>>((acc, [key, value]) => {
-        if (!isRecord(value)) return acc
+        if (isRecord(value) === false) return acc
         const filename = normalizeFilename(key)
         const hash = value.hash
         if (typeof hash !== 'string' || hash.length === 0) {
@@ -122,16 +122,16 @@ export const prepareMultiCodeData = (props: MultiCodeProps): PreparedMultiCode =
         acc[filename] = {
           filename,
           content: typeof value.content === 'string' ? value.content : '',
-          isMain: value.isMain === true,
+          isMain: value.isMain,
           hash,
         }
         return acc
       }, {})
     }
 
-    if (Array.isArray(code?.files)) {
+    if (Array.isArray(code?.files) === true) {
       return code.files.reduce<Record<string, RawSnippetFile>>((acc, entry) => {
-        if (!entry) return acc
+        if (entry == null) return acc
         const filename = normalizeFilename(entry.filename ?? 'snippet.ts')
         const hash = (entry as { hash?: string }).hash
         if (typeof hash !== 'string' || hash.length === 0) {
@@ -151,47 +151,47 @@ export const prepareMultiCodeData = (props: MultiCodeProps): PreparedMultiCode =
   })()
 
   const fileOrder =
-    Array.isArray(code?.fileOrder) && code.fileOrder.length > 0
+    Array.isArray(code?.fileOrder) === true && code.fileOrder.length > 0
       ? code.fileOrder.map((filename) => normalizeFilename(filename))
       : Object.keys(normalizedFilesMap)
 
   const fileEntries: RawSnippetFile[] = fileOrder.map((filename) => {
     const record = normalizedFilesMap[filename]
-    if (!record) {
+    if (record == null) {
       throw new Error(`Missing snippet metadata for '${filename}'.`)
     }
     return record
   })
 
   const renderedMap = new Map<string, RenderedSnippet>()
-  if (isRecord(code?.rendered) && !Array.isArray(code.rendered)) {
+  if (isRecord(code?.rendered) && Array.isArray(code.rendered) === false) {
     for (const [key, value] of Object.entries(code.rendered)) {
-      if (!isRecord(value)) continue
+      if (isRecord(value) === false) continue
       const filename = normalizeFilename(key)
       renderedMap.set(filename, {
         filename,
         html: typeof value.html === 'string' ? value.html : null,
         language: typeof value.language === 'string' ? value.language : 'ts',
         meta: typeof value.meta === 'string' && value.meta.length > 0 ? value.meta : activeMeta,
-        diagnostics: Array.isArray(value.diagnostics)
+        diagnostics: Array.isArray(value.diagnostics) === true
           ? value.diagnostics.filter((item): item is string => typeof item === 'string')
           : [],
-        styles: Array.isArray(value.styles)
+        styles: Array.isArray(value.styles) === true
           ? value.styles.filter((item): item is string => typeof item === 'string')
           : [],
       })
     }
-  } else if (Array.isArray(code?.rendered)) {
+  } else if (Array.isArray(code?.rendered) === true) {
     for (const entry of code.rendered) {
-      if (!entry) continue
+      if (entry == null) continue
       const filename = normalizeFilename(entry.filename ?? 'snippet.ts')
       renderedMap.set(filename, {
         filename,
         html: entry.html ?? null,
         language: entry.language,
         meta: entry.meta ?? activeMeta,
-        diagnostics: Array.isArray(entry.diagnostics) ? entry.diagnostics : [],
-        styles: Array.isArray(entry.styles) ? entry.styles : [],
+        diagnostics: Array.isArray(entry.diagnostics) === true ? entry.diagnostics : [],
+        styles: Array.isArray(entry.styles) === true ? entry.styles : [],
       })
     }
   }
@@ -204,11 +204,11 @@ export const prepareMultiCodeData = (props: MultiCodeProps): PreparedMultiCode =
   if (typeof code?.mainFilename === 'string' && code.mainFilename.length > 0) {
     preferredMain = normalizeFilename(code.mainFilename)
   }
-  if (!preferredMain) {
+  if (preferredMain == null) {
     const flagged = fileEntries.find((file) => file.isMain)
-    if (flagged) preferredMain = flagged.filename
+    if (flagged !== undefined) preferredMain = flagged.filename
   }
-  if (!preferredMain) {
+  if (preferredMain == null) {
     preferredMain = fileEntries[0]!.filename
   }
 
@@ -219,7 +219,7 @@ export const prepareMultiCodeData = (props: MultiCodeProps): PreparedMultiCode =
       updated.unshift(updated.splice(currentIndex, 1)[0]!)
       return updated
     }
-    if (currentIndex === -1 && preferredMain) {
+    if (currentIndex === -1 && preferredMain !== undefined) {
       throw new Error(`Main snippet file '${preferredMain}' is missing from metadata.`)
     }
     return fileEntries
@@ -258,7 +258,7 @@ export const prepareMultiCodeData = (props: MultiCodeProps): PreparedMultiCode =
   const containerClass = ['ls-multi-code', className].filter(Boolean).join(' ')
   const firstPanel = panels[0]
   let baseSlug = 'snippet'
-  if (firstPanel?.baseName) {
+  if (firstPanel?.baseName !== undefined) {
     const slug = firstPanel.baseName.replace(/[^a-z0-9-]+/gi, '-').toLowerCase()
     baseSlug = slug.length > 0 ? slug : 'snippet'
   }
@@ -270,6 +270,6 @@ export const prepareMultiCodeData = (props: MultiCodeProps): PreparedMultiCode =
     containerClass,
     baseId,
     globals: normalizeGlobals(code?.globals ?? null),
-    ...(locale ? { locale } : {}),
+    ...(locale !== undefined ? { locale } : {}),
   }
 }

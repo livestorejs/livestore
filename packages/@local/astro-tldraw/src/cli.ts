@@ -58,7 +58,7 @@ const discoverDiagramFiles = (
 
             if (info.type === 'Directory') {
               yield* walk(fullPath)
-            } else if (info.type === 'File' && entry.endsWith('.tldr')) {
+            } else if (info.type === 'File' && entry.endsWith('.tldr') === true) {
               results.push(fullPath)
             }
           }
@@ -68,7 +68,7 @@ const discoverDiagramFiles = (
         .exists(diagramsRoot)
         .pipe(Effect.mapError((cause) => new DiagramDiscoveryError({ path: diagramsRoot, cause })))
 
-      if (!rootExists) {
+      if (rootExists === false) {
         return []
       }
 
@@ -133,7 +133,7 @@ export const buildDiagrams = (
           const { hash: sourceHash } = yield* readTldrawFile(diagramPath)
           const existingEntry = getCacheEntry(manifest, entryFile)
 
-          if (isCacheValid(existingEntry, sourceHash)) {
+          if (isCacheValid(existingEntry, sourceHash) === true) {
             if (verbose) {
               yield* Effect.log(`  ✓ ${entryFile} (cached)`)
             }
@@ -216,7 +216,7 @@ export type WatchDiagramsRebuildInfo = {
 type NormalizedWatchOptions = {
   debounce: Duration.DurationInput
   initialBuild: boolean
-  onRebuild: (info: WatchDiagramsRebuildInfo) => Effect.Effect<void, never>
+  onRebuild: (info: WatchDiagramsRebuildInfo) => Effect.Effect<void>
 }
 
 export type WatchDiagramsOptions = BuildDiagramsOptions & {
@@ -227,7 +227,7 @@ export type WatchDiagramsOptions = BuildDiagramsOptions & {
    * Useful to disable when the caller already ran `buildDiagrams` and only wants incremental rebuilds.
    */
   initialBuild?: boolean
-  onRebuild?: (info: WatchDiagramsRebuildInfo) => Effect.Effect<void, never>
+  onRebuild?: (info: WatchDiagramsRebuildInfo) => Effect.Effect<void>
 }
 
 const toPosix = (value: string): string => value.replace(/\\/g, '/')
@@ -244,7 +244,7 @@ const isWithinDirectory = (candidate: string, directory: string): boolean => {
 const summarizeWatchEvent = (paths: TldrawCachePaths, event: FileSystem.WatchEvent): WatchEventSummary | null => {
   const rootAbsolute = path.resolve(paths.diagramsRoot)
   const rawPath = event.path
-  const absolutePath = path.resolve(path.isAbsolute(rawPath) ? rawPath : path.join(rootAbsolute, rawPath))
+  const absolutePath = path.resolve(path.isAbsolute(rawPath) === true ? rawPath : path.join(rootAbsolute, rawPath))
 
   /* Ignore events inside cache directory */
   if (isWithinDirectory(absolutePath, paths.cacheRoot)) {
@@ -252,12 +252,12 @@ const summarizeWatchEvent = (paths: TldrawCachePaths, event: FileSystem.WatchEve
   }
 
   /* Ignore events outside diagrams root */
-  if (!isWithinDirectory(absolutePath, rootAbsolute)) {
+  if (isWithinDirectory(absolutePath, rootAbsolute) === false) {
     return null
   }
 
   /* Only watch .tldr files */
-  if (!absolutePath.endsWith('.tldr')) {
+  if (absolutePath.endsWith('.tldr') === false) {
     return null
   }
 
@@ -300,7 +300,7 @@ const watchDiagramsInternal = (
 
     const diagramsRootExists = yield* fs.exists(paths.diagramsRoot).pipe(Effect.catchAll(() => Effect.succeed(false)))
 
-    if (!diagramsRootExists) {
+    if (diagramsRootExists === false) {
       yield* Effect.logWarning(`Diagrams watch: diagrams root does not exist at ${paths.diagramsRoot}`)
       return yield* Effect.never
     }
@@ -310,7 +310,7 @@ const watchDiagramsInternal = (
     const runRebuild = (reason: WatchDiagramsRebuildInfo['reason'], event: WatchEventSummary | null) =>
       Effect.gen(function* () {
         const startedAt = Date.now()
-        if (event) {
+        if (event !== null) {
           yield* Effect.log(`Diagrams watch: ${event.kind.toLowerCase()} at ${event.relativePath}, rebuilding...`)
         } else {
           yield* Effect.log('Diagrams watch: running initial build')
@@ -322,7 +322,7 @@ const watchDiagramsInternal = (
         if (result._tag === 'Left') {
           const error = result.left
           yield* Effect.logError(
-            `Diagrams watch: build failed${event ? ` (trigger: ${event.relativePath})` : ''}: ${error.message}`,
+            `Diagrams watch: build failed${event !== null ? ` (trigger: ${event.relativePath})` : ''}: ${error.message}`,
           )
           yield* notify({ reason, event, renderedCount: -1, durationMs })
           return
@@ -355,7 +355,7 @@ const watchDiagramsInternal = (
   })
 
 /** Watch diagrams directory for changes and rebuild on modifications */
-export const watchDiagrams = (options: WatchDiagramsOptions): Effect.Effect<void, never> => {
+export const watchDiagrams = (options: WatchDiagramsOptions): Effect.Effect<void> => {
   const { debounce, initialBuild, onRebuild, ...baseOptions } = options
   const normalizedWatch = normalizeWatchOptions({
     ...(debounce !== undefined ? { debounce } : {}),
