@@ -41,6 +41,8 @@ const permanentlyDisabledRules = {
   'no-unused-vars': 'off',
   // Not enforced in livestore
   eqeqeq: 'off',
+  // Legacy rule; React 17+ automatic JSX runtime doesn't require React in scope
+  'react/react-in-jsx-scope': 'off',
 } as const
 
 // ── TODO(oep-1n3): Phase 2 — re-enable after codebase-wide fixes ───────────
@@ -62,13 +64,6 @@ const phase2Rules = {
   'import/namespace': 'off',
   // TODO(oep-1n3.5): 2 violations — named-as-default false positives
   'import/no-named-as-default': 'off',
-
-  // TODO(oep-1n3.2): 1028 violations — not needed with modern JSX transform (React 17+)
-  'react/react-in-jsx-scope': 'off',
-  // TODO(oep-1n3.2): 2 violations — style prop object type checking
-  'react/style-prop-object': 'off',
-  // TODO(oep-1n3.2): 4 violations — needs React-specific context for Effect patterns
-  'react-hooks/exhaustive-deps': 'off',
 
   // TODO(oep-1n3.3): 276 violations — inline functions as JSX props
   'react-perf/jsx-no-new-function-as-prop': 'off',
@@ -210,6 +205,12 @@ const livestoreOxlintOverrides = [
       'oxc/no-map-spread': 'off',
       'unicorn/consistent-function-scoping': 'off',
     },
+  },
+
+  // Deliberate resource lifecycle semantics in useRcResource rely on key-only invalidation
+  {
+    files: ['packages/@livestore/react/src/useRcResource.ts'],
+    rules: { 'react-hooks/exhaustive-deps': 'off' },
   },
 
   // wa-sqlite is a fork with its own style
