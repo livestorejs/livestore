@@ -61,7 +61,7 @@ export const printQrTerminal = (text: string, options?: PrintQrTerminalOptions):
     const col = x - margin
     if (row < 0 || col < 0 || row >= size || col >= size) return false
     const bit = qr.isDark(row, col)
-    return invert !== undefined ? !bit : bit
+    return invert === true ? !bit : bit
   }
 
   const lines: string[] = []

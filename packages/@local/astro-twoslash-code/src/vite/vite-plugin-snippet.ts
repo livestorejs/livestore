@@ -148,7 +148,7 @@ const parseSnippetMode = (rawQuery: string): 'component' | 'raw' | null => {
     }
   }
 
-  return rawSeen !== undefined ? 'raw' : null
+  return rawSeen === true ? 'raw' : null
 }
 
 const collectSnippetFiles = (

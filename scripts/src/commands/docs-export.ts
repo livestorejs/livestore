@@ -69,7 +69,7 @@ export const exportMarkdownCommand = Cli.Command.make(
         yield* writeDoc(outputDir, doc, final)
       }
 
-      if (includeLlms !== undefined) {
+      if (includeLlms === true) {
         const fs = yield* FileSystem.FileSystem
         const llmsList = renderLlmsListHierarchical({ docs: llmsDocs, site: null })
         const llmsBody = `# LiveStore Documentation for LLMs
