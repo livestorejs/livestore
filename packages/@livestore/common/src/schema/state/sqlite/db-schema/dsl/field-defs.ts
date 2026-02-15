@@ -241,7 +241,7 @@ export const boolean: SpecializedColDefFn<'integer', false, boolean> = makeSpeci
   _tag: 'baseSchema',
   baseSchema: Schema.transform(Schema.Number, Schema.Boolean, {
     decode: (_) => _ === 1,
-    encode: (_) => (_ !== undefined ? 1 : 0),
+    encode: (_) => (_ === true ? 1 : 0),
   }),
 })
 

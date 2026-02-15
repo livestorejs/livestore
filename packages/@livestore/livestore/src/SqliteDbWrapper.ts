@@ -104,7 +104,7 @@ export class SqliteDbWrapper implements SqliteDb {
       throw e
     }
 
-    if (errored == null) {
+    if (errored === false) {
       this.execute(sql`commit;`)
     }
 

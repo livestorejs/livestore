@@ -139,7 +139,7 @@ export const makeMockSyncBackend = (
               }),
             ),
           ).pipe(
-            Stream.flatMap(() => (pullOptions?.live !== undefined ? pullLive : pullNonLive(cursor))),
+            Stream.flatMap(() => (pullOptions?.live === true ? pullLive : pullNonLive(cursor))),
             Stream.withSpan('MockSyncBackend:pull', { parent: span }),
           ),
         push: (batch) =>

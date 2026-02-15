@@ -130,7 +130,7 @@ export const useRcResource = <T>(
   // biome-ignore lint/correctness/useExhaustiveDependencies: We assume the `dispose` function is stable and won't change across renders
   React.useEffect(() => {
     return () => {
-      if (didDisposeInMemo.current !== undefined) {
+      if (didDisposeInMemo.current === true) {
         // console.debug('unmount', keyRef.current, 'skip')
         didDisposeInMemo.current = false
         return
