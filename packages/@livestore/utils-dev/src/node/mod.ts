@@ -92,13 +92,13 @@ export const OtelLiveHttp = ({
 
     const RootSpanLive = Layer.span(config.rootSpanName, {
       attributes: { config, ...rootSpanAttributes },
-      onEnd: skipLogUrl !== undefined ? undefined : (span: any) => logTraceUiUrlForSpan()(span.span),
+      onEnd: skipLogUrl === true ? undefined : (span: any) => logTraceUiUrlForSpan()(span.span),
       parent: parentSpan,
     })
 
     const layer = yield* Layer.memoize(RootSpanLive.pipe(Layer.provideMerge(OtelLive)))
 
-    if (traceNodeBootstrap !== undefined && IS_BUN == null) {
+    if (traceNodeBootstrap === true && IS_BUN === false) {
       /**
        * Create a span representing the Node.js bootstrap duration.
        * Note: Skipped in Bun since performance.nodeTiming is not properly supported.
