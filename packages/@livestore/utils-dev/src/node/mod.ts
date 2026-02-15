@@ -190,14 +190,14 @@ const computeBootstrapTiming = () => {
   const nodeTiming = performance.nodeTiming
 
   // Absolute start time in ms since epoch.
-  const startAbs = IS_BUN !== undefined
+  const startAbs = IS_BUN === true
     ? typeof nodeTiming.nodeStart === 'number'
       ? nodeTiming.nodeStart
       : performance.timeOrigin
     : performance.timeOrigin + nodeTiming.nodeStart
 
   // Absolute end time.
-  const endAbs = IS_BUN !== undefined
+  const endAbs = IS_BUN === true
     ? (() => {
         const { loopStart, bootstrapComplete } = nodeTiming
         if (typeof loopStart === 'number' && loopStart > 0) return startAbs + loopStart
@@ -207,7 +207,7 @@ const computeBootstrapTiming = () => {
     : startAbs + nodeTiming.duration
 
   // Duration attribute value for the span.
-  const durationAttr = IS_BUN !== undefined
+  const durationAttr = IS_BUN === true
     ? (() => {
         const { loopStart } = nodeTiming
         return typeof loopStart === 'number' && loopStart > 0 ? loopStart : 0

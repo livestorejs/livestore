@@ -169,14 +169,15 @@ export const logWarnIfTakesLongerThan =
 
             yield* Fiber.interrupt(timeoutFiber)
 
-            if (tookLongerThanTimer !== undefined) {
+            if (tookLongerThanTimer === true) {
               yield* Effect.logWarning(`${label}: Interrupted after ${end - start}ms`)
             }
           }),
         ),
       )
 
-      if (tookLongerThanTimer !== undefined) {
+      // eslint-disable-next-line overeng/explicit-boolean-compare -- mutated in forked fiber; TS can't see the mutation
+      if (tookLongerThanTimer) {
         const end = Date.now()
         yield* Effect.logWarning(`${label}: Actual duration: ${end - start}ms`)
       }

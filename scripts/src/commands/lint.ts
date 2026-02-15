@@ -89,7 +89,7 @@ export const lintCommand = Cli.Command.make(
 
     // Check peer dependencies (warn-only for now, doesn't fail the build)
     const peerDepsOk = yield* runPeerDepCheck
-    if (peerDepsOk == null) {
+    if (peerDepsOk === false) {
       yield* Console.warn('Peer dependency check found violations (see above)')
     }
 
