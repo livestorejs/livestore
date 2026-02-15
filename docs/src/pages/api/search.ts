@@ -60,7 +60,7 @@ const extractHeadingTitle = (text: string): string => {
 }
 
 export const GET: APIRoute = async ({ url }) => {
-  if (MXBAI_API_KEY == null || MXBAI_VECTOR_STORE_ID == null) {
+  if (!MXBAI_API_KEY || !MXBAI_VECTOR_STORE_ID) {
     return new Response(JSON.stringify({ error: 'Mixedbread Search is not configured' }), {
       status: 500,
       headers: { 'Content-Type': 'application/json' },
@@ -69,7 +69,7 @@ export const GET: APIRoute = async ({ url }) => {
 
   const query = url.searchParams.get('query')!
 
-  if (query == null) {
+  if (!query) {
     return new Response(JSON.stringify({ error: 'Query parameter is required' }), {
       status: 400,
       headers: { 'Content-Type': 'application/json' },
