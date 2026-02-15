@@ -134,7 +134,7 @@ export const releaseSnapshotCommand = Cli.Command.make(
      * pnpm publish resolves workspace:* → concrete versions automatically,
      * then delegates to the system npm binary for OIDC trusted publishing.
      */
-    const dryRunFlag = dryRun !== undefined ? '--dry-run' : ''
+    const dryRunFlag = dryRun === true ? '--dry-run' : ''
     for (const pkg of snapshotPackages) {
       const pkgDir = `${cwd}/packages/${pkg}`
       const cwdLayer = CurrentWorkingDirectory.fromPath(pkgDir)

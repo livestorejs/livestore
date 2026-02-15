@@ -162,7 +162,7 @@ export const testUnitCommand = Cli.Command.make(
     const workspaceRoot = yield* LivestoreWorkspace
 
     if (Option.isSome(filter) === true) {
-      const target = path.isAbsolute(filter.value) !== undefined ? filter.value : path.join(workspaceRoot, filter.value)
+      const target = path.isAbsolute(filter.value) === true ? filter.value : path.join(workspaceRoot, filter.value)
       const configs = findVitestConfigs(target)
       if (configs.length > 0) {
         yield* Effect.forEach(

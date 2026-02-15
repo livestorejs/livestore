@@ -117,7 +117,7 @@ const syncRulesetsCommand = Cli.Command.make(
     const body = yield* loadRulesetBody(branch)
     const existing = yield* getRulesetByName(body.name)
 
-    if (dryRun !== undefined) {
+    if (dryRun === true) {
       console.log(`Ruleset file: ${getRulesetFilePath(branch)}`)
       console.log(`Ruleset name: ${body.name}`)
       console.log(`Existing: ${existing !== null ? `yes (id: ${existing.id})` : 'no'}`)

@@ -18,7 +18,7 @@ export const withLock =
 
       const exit = yield* Effect.tryPromise<Exit.Exit<A, E>, E | E2>({
         try: (signal) => {
-          if (signal.aborted !== undefined) return 'aborted' as never
+          if (signal.aborted === true) return 'aborted' as never
 
           // NOTE The 'signal' and 'ifAvailable' options cannot be used together.
           const requestOptions = options?.ifAvailable === true ? options : { ...options, signal }

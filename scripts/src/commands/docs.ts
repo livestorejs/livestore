@@ -437,7 +437,7 @@ export const docsCommand = Cli.Command.make('docs').pipe(
               /** Non-PR deploy: single deploy with prod or branch alias */
               const deploy: NetlifyDeploySummary = yield* deployToNetlify({
                 site,
-                target: prod !== undefined ? { _tag: 'prod' } : { _tag: 'alias', alias: branchAlias! },
+                target: prod === true ? { _tag: 'prod' } : { _tag: 'alias', alias: branchAlias! },
                 message: buildMessage(contextLabelFor(prod, branchAlias ?? '')),
               }).pipe(docsWorkspaceCwd)
 
