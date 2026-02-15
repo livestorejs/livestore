@@ -6,6 +6,7 @@ export type SqlDefaultValue = {
 }
 
 export const isSqlDefaultValue = (value: unknown): value is SqlDefaultValue => {
+  // oxlint-disable-next-line typescript-eslint(no-unsafe-type-assertion) -- type guard property access after structural check
   return typeof value === 'object' && value !== null && 'sql' in value && typeof (value as any).sql === 'string'
 }
 
@@ -40,6 +41,7 @@ export const isColumnDefinition = (value: unknown): value is ColumnDefinition.An
     typeof value === 'object' &&
     value !== null &&
     'columnType' in value &&
+    // oxlint-disable-next-line typescript-eslint(no-unsafe-type-assertion) -- type guard narrowing; columnType checked to be in valid set
     validColumnTypes.includes(value.columnType as any)
   )
 }
@@ -105,6 +107,7 @@ const makeColDef =
     const schema =  nullable ? Schema.NullOr(schemaWithoutNull) : schemaWithoutNull
     const default_ = def?.default === undefined || def.default === NoDefault ? Option.none() : Option.some(def.default)
 
+    // oxlint-disable-next-line typescript-eslint(no-unsafe-type-assertion) -- column factory return type uses complex conditional generics; consumer type safety enforced by ColDefFn signature
     return {
       columnType,
       schema,
@@ -200,10 +203,12 @@ type MakeSpecializedColDefFn = {
 
 const makeSpecializedColDef: MakeSpecializedColDefFn = (columnType, opts) => (def?: ColumnDefinitionInput) => {
   const nullable = def?.nullable ?? false
+  // oxlint-disable-next-line typescript-eslint(no-unsafe-type-assertion) -- schema type variance; custom schema compatibility checked at call site
   const schemaWithoutNull = opts._tag === 'baseSchemaFn' ? opts.baseSchemaFn(def?.schema as any) : opts.baseSchema
   const schema =  nullable ? Schema.NullOr(schemaWithoutNull) : schemaWithoutNull
   const default_ = def?.default === undefined || def.default === NoDefault ? Option.none() : Option.some(def.default)
 
+  // oxlint-disable-next-line typescript-eslint(no-unsafe-type-assertion) -- specialized column factory return type uses complex conditional generics; consumer type safety enforced by SpecializedColDefFn signature
   return {
     columnType,
     schema,
@@ -259,15 +264,19 @@ export const defaultSchemaForColumnType = <TColumnType extends FieldColumnType>(
 
   switch (columnType) {
     case 'text': {
+      // oxlint-disable-next-line typescript-eslint(no-unsafe-type-assertion) -- switch-based type narrowing for column type to schema mapping; each case is correct for its branch
       return Schema.String as any as Schema.Schema<T>
     }
     case 'integer': {
+      // oxlint-disable-next-line typescript-eslint(no-unsafe-type-assertion) -- switch-based type narrowing for column type to schema mapping; each case is correct for its branch
       return Schema.Number as any as Schema.Schema<T>
     }
     case 'real': {
+      // oxlint-disable-next-line typescript-eslint(no-unsafe-type-assertion) -- switch-based type narrowing for column type to schema mapping; each case is correct for its branch
       return Schema.Number as any as Schema.Schema<T>
     }
     case 'blob': {
+      // oxlint-disable-next-line typescript-eslint(no-unsafe-type-assertion) -- switch-based type narrowing for column type to schema mapping; each case is correct for its branch
       return Schema.Uint8ArrayFromSelf as any as Schema.Schema<T>
     }
     default: {

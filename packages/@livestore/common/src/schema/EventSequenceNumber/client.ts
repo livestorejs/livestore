@@ -28,7 +28,7 @@ export const make = ClientBrand
  * const defaultSeq = EventSequenceNumber.Client.DEFAULT // 0
  * ```
  */
-export const DEFAULT = 0 as any as Type
+export const DEFAULT = make(0)
 
 /** Default rebase generation (0). Increments each time the client rebases unconfirmed events. */
 export const REBASE_GENERATION_DEFAULT = 0
@@ -127,8 +127,8 @@ export const fromString = (str: string): Composite => {
   }
 
   return {
-    global: global as any as Global,
-    client: client as any as Type,
+    global: makeGlobal(global),
+    client: make(client),
     rebaseGeneration,
   }
 }
@@ -238,7 +238,7 @@ export const nextPair = ({
     return {
       seqNum: {
         global: seqNum.global,
-        client: (seqNum.client + 1) as any as Type,
+        client: make(seqNum.client + 1),
         rebaseGeneration: rebaseGeneration ?? seqNum.rebaseGeneration,
       },
       parentSeqNum: seqNum,
@@ -247,7 +247,7 @@ export const nextPair = ({
 
   return {
     seqNum: {
-      global: (seqNum.global + 1) as any as Global,
+      global: makeGlobal(seqNum.global + 1),
       client: DEFAULT,
       rebaseGeneration: rebaseGeneration ?? seqNum.rebaseGeneration,
     },

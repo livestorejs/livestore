@@ -18,6 +18,7 @@ export const makeQueryBuilder = <TResult, TTableDef extends TableDefBase>(
 
       // Pluck if there's only one column selected
       if (params.length === 1) {
+        // oxlint-disable-next-line typescript-eslint(no-unsafe-type-assertion) -- arguments-based overload dispatch requires manual narrowing
         const [col] = params as any as [string]
         return makeQueryBuilder(tableDef, {
           ...ast,
@@ -26,8 +27,10 @@ export const makeQueryBuilder = <TResult, TTableDef extends TableDefBase>(
         })
       }
 
+      // oxlint-disable-next-line typescript-eslint(no-unsafe-type-assertion) -- arguments-based overload dispatch requires manual narrowing
       const columns = params as unknown as ReadonlyArray<string>
 
+      // oxlint-disable-next-line typescript-eslint(no-unsafe-type-assertion) -- query builder return type depends on AST state; consumer type safety enforced by api.ts
       return makeQueryBuilder(tableDef, {
         ...ast,
         resultSchemaSingle:
@@ -45,6 +48,7 @@ export const makeQueryBuilder = <TResult, TTableDef extends TableDefBase>(
           .filter(([, value]) => value !== undefined)
           .map<QueryBuilderAst.Where>(([col, value]) =>
             Predicate.hasProperty(value, 'op') === true && Predicate.hasProperty(value, 'value') === true
+              // oxlint-disable-next-line typescript-eslint(no-unsafe-type-assertion) -- where clause construction; shape validated at runtime
               ? ({ col, op: value.op, value: value.value } as any)
               : { col, op: '=', value },
           )
@@ -54,6 +58,7 @@ export const makeQueryBuilder = <TResult, TTableDef extends TableDefBase>(
           case 'SelectQuery':
           case 'UpdateQuery':
           case 'DeleteQuery': {
+            // oxlint-disable-next-line typescript-eslint(no-unsafe-type-assertion) -- query builder return type depends on AST state; consumer type safety enforced by api.ts
             return makeQueryBuilder(tableDef, {
               ...ast,
               where: [...ast.where, ...newOps],
@@ -74,6 +79,7 @@ export const makeQueryBuilder = <TResult, TTableDef extends TableDefBase>(
         case 'SelectQuery':
         case 'UpdateQuery':
         case 'DeleteQuery': {
+          // oxlint-disable-next-line typescript-eslint(no-unsafe-type-assertion) -- query builder return type depends on AST state; consumer type safety enforced by api.ts
           return makeQueryBuilder(tableDef, {
             ...ast,
             where: [...ast.where, { col, op, value }],
@@ -91,6 +97,7 @@ export const makeQueryBuilder = <TResult, TTableDef extends TableDefBase>(
       if (arguments.length === 0 || arguments.length > 2) return invalidQueryBuilder()
 
       if (arguments.length === 1) {
+        // oxlint-disable-next-line typescript-eslint(no-unsafe-type-assertion) -- arguments-based overload dispatch requires manual narrowing
         const params = arguments[0] as QueryBuilder.OrderByParams<TTableDef>
         return makeQueryBuilder(tableDef, {
           ...ast,
@@ -98,8 +105,10 @@ export const makeQueryBuilder = <TResult, TTableDef extends TableDefBase>(
         })
       }
 
+      // oxlint-disable-next-line typescript-eslint(no-unsafe-type-assertion) -- arguments-based overload dispatch requires manual narrowing
       const [col, direction] = arguments as any as [keyof TTableDef['sqliteDef']['columns'] & string, 'asc' | 'desc']
 
+      // oxlint-disable-next-line typescript-eslint(no-unsafe-type-assertion) -- query builder return type depends on AST state; consumer type safety enforced by api.ts
       return makeQueryBuilder(tableDef, {
         ...ast,
         orderBy: [...ast.orderBy, { col, direction }],
@@ -171,6 +180,7 @@ export const makeQueryBuilder = <TResult, TTableDef extends TableDefBase>(
     insert: (values) => {
       const filteredValues = Object.fromEntries(Object.entries(values).filter(([, value]) => value !== undefined))
 
+      // oxlint-disable-next-line typescript-eslint(no-unsafe-type-assertion) -- query builder return type depends on AST state; consumer type safety enforced by api.ts
       return makeQueryBuilder(tableDef, {
         _tag: 'InsertQuery',
         tableDef,
@@ -199,6 +209,7 @@ export const makeQueryBuilder = <TResult, TTableDef extends TableDefBase>(
         Match.exhaustive,
       )
 
+      // oxlint-disable-next-line typescript-eslint(no-unsafe-type-assertion) -- query builder return type depends on AST state; consumer type safety enforced by api.ts
       return makeQueryBuilder(tableDef, {
         ...ast,
         onConflict,
@@ -208,6 +219,7 @@ export const makeQueryBuilder = <TResult, TTableDef extends TableDefBase>(
     returning: (...columns) => {
       assertWriteQueryBuilderAst(ast)
 
+      // oxlint-disable-next-line typescript-eslint(no-unsafe-type-assertion) -- query builder return type depends on AST state; consumer type safety enforced by api.ts
       return makeQueryBuilder(tableDef, {
         ...ast,
         returning: columns,
@@ -221,6 +233,7 @@ export const makeQueryBuilder = <TResult, TTableDef extends TableDefBase>(
       // Preserve where clauses if coming from a SelectQuery
       const whereClause = ast._tag === 'SelectQuery' ? ast.where : []
 
+      // oxlint-disable-next-line typescript-eslint(no-unsafe-type-assertion) -- query builder return type depends on AST state; consumer type safety enforced by api.ts
       return makeQueryBuilder(tableDef, {
         _tag: 'UpdateQuery',
         tableDef,
@@ -235,6 +248,7 @@ export const makeQueryBuilder = <TResult, TTableDef extends TableDefBase>(
       // Preserve where clauses if coming from a SelectQuery
       const whereClause = ast._tag === 'SelectQuery' ? ast.where : []
 
+      // oxlint-disable-next-line typescript-eslint(no-unsafe-type-assertion) -- query builder return type depends on AST state; consumer type safety enforced by api.ts
       return makeQueryBuilder(tableDef, {
         _tag: 'DeleteQuery',
         tableDef,
@@ -248,6 +262,7 @@ export const makeQueryBuilder = <TResult, TTableDef extends TableDefBase>(
   return {
     [QueryBuilderTypeId]: QueryBuilderTypeId,
     [QueryBuilderAstSymbol]: ast,
+    // oxlint-disable-next-line typescript-eslint(no-unsafe-type-assertion) -- phantom type field for generic inference only
     ResultType: 'only-for-type-inference' as TResult,
     asSql: () => astToSql(ast),
     toString: () => {

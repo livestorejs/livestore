@@ -181,6 +181,7 @@ function ensureTracerPatched(currentTracer: Tracer.Tracer) {
   currentTracer.context = function (f, fiber, ...args) {
     const context = oldContext.apply(this, [f, fiber, ...args])
     ensureFiberPatched(fiber)
+    // oxlint-disable-next-line typescript-eslint(no-unsafe-type-assertion) -- Effect Tracer.context return type is opaque; patching requires cast
     return context as any
   }
 }
@@ -207,7 +208,9 @@ const ensureScopePatched = (scope: ScopeImpl, allocationFiber: Fiber.RuntimeFibe
   if (knownScopes.has(scope) === true) return
   const id = lastScopeId++
   if (patchScopeClose === true) {
+    // oxlint-disable-next-line typescript-eslint(no-unsafe-type-assertion) -- patching Scope.close; ScopeImpl is an internal interface not exported by Effect
     const oldClose = (scope as any).close
+    // oxlint-disable-next-line typescript-eslint(no-unsafe-type-assertion) -- patching Scope.close; ScopeImpl is an internal interface not exported by Effect
     ;(scope as any).close = function (...args: any[]) {
       return oldClose.apply(this, args).pipe(
         Effect.withSpan(`scope.${id}.closeRunFinalizers`),
@@ -236,6 +239,7 @@ const ensureFiberPatched = (fiber: Fiber.RuntimeFiber<any, any>) => {
   ensureTracerPatched(fiber.currentTracer)
   // patch scope
   const currentScope = Context.getOrElse(fiber.currentContext, Scope.Scope, () => undefined)
+  // oxlint-disable-next-line typescript-eslint(no-unsafe-type-assertion) -- casting Scope to ScopeImpl; internal Effect type not publicly exported
   if (currentScope !== undefined) ensureScopePatched(currentScope as any as ScopeImpl, undefined)
   // patch fiber
   if (knownFibers.has(fiber) === true) return
@@ -260,6 +264,7 @@ export const attachSlowDebugInstrumentation = (options: {
   /** An optional callback that will be called when any fiber completes with a exit */
   readonly onFiberCompleted?: (fiber: Fiber.RuntimeFiber<any, any>, exit: Exit.Exit<any, any>) => void
 }): void => {
+  // oxlint-disable-next-line typescript-eslint(no-unsafe-type-assertion) -- accessing Effect's global fiber tracking via well-known symbol keys
   const _globalThis = globalThis as any as GlobalWithFiberCurrent
   if (_globalThis['effect/DevtoolsHook'] !== undefined) {
     return console.error(
@@ -271,6 +276,7 @@ export const attachSlowDebugInstrumentation = (options: {
   onFiberSuspended = options.onFiberSuspended
   onFiberCompleted = options.onFiberCompleted
   let lastFiber: undefined | Fiber.RuntimeFiber<any, any>
+  // oxlint-disable-next-line typescript-eslint(no-unsafe-type-assertion) -- accessing Effect's global fiber tracking via well-known symbol keys
   createPropertyInterceptor(globalThis as any as GlobalWithFiberCurrent, 'effect/FiberCurrent', (value) => {
     if (value !== undefined && knownFibers.has(value) === true) onFiberResumed?.(value)
     if (value !== undefined) ensureFiberPatched(value)
@@ -282,6 +288,7 @@ export const attachSlowDebugInstrumentation = (options: {
       console.log('onEvent', event)
       switch (event._tag) {
         case 'ScopeAllocated':
+          // oxlint-disable-next-line typescript-eslint(no-unsafe-type-assertion) -- casting Scope to ScopeImpl; internal Effect type not publicly exported
           ensureScopePatched(event.scope as any as ScopeImpl, _globalThis['effect/FiberCurrent'])
           break
         case 'FiberAllocated':
@@ -402,6 +409,7 @@ export interface LogDebugOptions {
 }
 
 export const logDebug = (options: LogDebugOptions = {}) => {
+  // oxlint-disable-next-line typescript-eslint(no-unsafe-type-assertion) -- accessing Effect's global fiber tracking via well-known symbol keys
   const _globalThis = globalThis as any as GlobalWithFiberCurrent
   if (_globalThis['effect/DevtoolsHook'] == null) {
     return console.error(
@@ -414,6 +422,7 @@ export const logDebug = (options: LogDebugOptions = {}) => {
   // fibers
   lines = [...lines, 'Active Fibers:']
   for (const fiber of knownFibers) {
+    // oxlint-disable-next-line typescript-eslint(no-unsafe-type-assertion) -- accessing fiber.currentRuntimeFlags; internal Effect runtime property
     const interruptible = RuntimeFlags.interruptible((fiber as any).currentRuntimeFlags)
     lines = [...lines, `- #${fiber.id().id}${interruptible === false ? ' [uninterruptible]' : ''}`]
   }

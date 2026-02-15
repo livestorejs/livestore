@@ -51,7 +51,7 @@ export const ThreadView: React.FC<ThreadViewProps> = ({ threadId }) => {
       ),
     [threadUserLabels],
   )
-  const participants = JSON.parse(thread.participants) as string[]
+  const participants: string[] = JSON.parse(thread.participants)
 
   return (
     <div className="h-full flex flex-col">

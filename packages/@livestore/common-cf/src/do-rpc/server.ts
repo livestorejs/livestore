@@ -70,7 +70,9 @@ export const toDurableObjectHandler =
         }
 
         // Find the RPC handler
+        // oxlint-disable-next-line typescript-eslint(no-unsafe-type-assertion) -- RpcGroup.requests map returns Rpc.Any; narrowing to AnyWithProps for property access
         const rpc = group.requests.get(request.tag)! as unknown as Rpc.AnyWithProps
+        // oxlint-disable-next-line typescript-eslint(no-unsafe-type-assertion) -- context.unsafeMap dynamic lookup; type safety ensured by RpcGroup registration
         const entry = context.unsafeMap.get(rpc.key) as Rpc.Handler<Rpcs['_tag']>
 
         if (rpc == null || entry == null) {
@@ -83,6 +85,7 @@ export const toDurableObjectHandler =
         }
 
         // Check if this is a streaming RPC
+        // oxlint-disable-next-line typescript-eslint(no-unsafe-type-assertion) -- Rpc.Handler doesn't expose successSchema publicly; see https://github.com/Effect-TS/effect/issues/6064
         const isStream = RpcSchema.isStreamSchema((rpc as any).successSchema)
 
         // For streaming RPCs with only one request, return ReadableStream directly
@@ -108,6 +111,7 @@ export const toDurableObjectHandler =
           }
 
           // Get the exit schema for this RPC
+          // oxlint-disable-next-line typescript-eslint(no-unsafe-type-assertion) -- Rpc.exitSchema requires AnyWithProps; type narrowing already done above
           const exitSchema = Rpc.exitSchema(rpc as any) as Schema.Schema<any>
 
           let encodedExit: any
@@ -128,6 +132,7 @@ export const toDurableObjectHandler =
         }).pipe(
           Effect.catchAllCause((cause) => {
             // Get the exit schema for this RPC
+            // oxlint-disable-next-line typescript-eslint(no-unsafe-type-assertion) -- Rpc.exitSchema requires AnyWithProps; type narrowing already done above
             const exitSchema = Rpc.exitSchema(rpc as any) as Schema.Schema<any>
 
             return Effect.gen(function* () {
@@ -153,6 +158,7 @@ export const toDurableObjectHandler =
         responses.push(result)
       }
 
+      // oxlint-disable-next-line typescript-eslint(no-unsafe-type-assertion) -- msgPack parser.encode returns unknown; cast to expected wire format
       const encoded = parser.encode(responses) as Uint8Array<ArrayBuffer>
       return encoded
     }).pipe(Effect.provide(options.layer), Effect.scoped, Effect.orDie)
@@ -169,6 +175,7 @@ export const emitStreamResponse = Effect.fn('do-rpc/emitStreamResponse')(functio
   requestId: string
   values: NonEmptyArray<any>
 }) {
+  // oxlint-disable-next-line typescript-eslint(no-unsafe-type-assertion) -- CF worker env bindings are typed as Record<string, any>; narrowing to known DO namespace
   const clientDoNamespace = env[callerContext.bindingName] as
     | CfTypes.DurableObjectNamespace<ClientDoWithRpcCallback>
     | undefined
@@ -210,9 +217,12 @@ const createStreamingResponse = <Rpcs extends Rpc.Any, LE>(
       : handlerResult
 
     // Get the stream schemas for proper chunk-level encoding
+    // oxlint-disable-next-line typescript-eslint(no-unsafe-type-assertion) -- Rpc.Handler doesn't expose successSchema publicly; see https://github.com/Effect-TS/effect/issues/6064
     const streamSchemas = RpcSchema.getStreamSchemas((rpc as any).successSchema.ast)
     const chunkEncoder = Option.isSome(streamSchemas) === true
+      // oxlint-disable-next-line typescript-eslint(no-unsafe-type-assertion) -- stream schema success type is inferred as unknown; cast needed for encodeUnknown
       ? Schema.encodeUnknown(Schema.Array(streamSchemas.value.success as Schema.Schema<any>))
+      // oxlint-disable-next-line typescript-eslint(no-unsafe-type-assertion) -- Schema.Any needs explicit cast for Schema.Array compatibility
       : Schema.encodeUnknown(Schema.Array(Schema.Any as Schema.Schema<any>))
 
     // Convert stream to ReadableStream
@@ -235,6 +245,7 @@ const createStreamingResponse = <Rpcs extends Rpc.Any, LE>(
                 values: encodedValues,
               }
 
+              // oxlint-disable-next-line typescript-eslint(no-unsafe-type-assertion) -- msgPack parser.encode returns unknown; cast to expected wire format
               const serialized = parser.encode([chunkMessage]) as Uint8Array<ArrayBuffer>
               controller.enqueue(serialized)
             }),
@@ -242,6 +253,7 @@ const createStreamingResponse = <Rpcs extends Rpc.Any, LE>(
 
           // Send final exit message with proper schema encoding
           const rawExit = Exit.void
+          // oxlint-disable-next-line typescript-eslint(no-unsafe-type-assertion) -- Rpc.exitSchema requires AnyWithProps; type narrowing already done above
           const exitSchema = Rpc.exitSchema(rpc as any) as Schema.Schema<any>
           const encodedExit = yield* Schema.encodeUnknown(exitSchema)(rawExit)
 
@@ -251,6 +263,7 @@ const createStreamingResponse = <Rpcs extends Rpc.Any, LE>(
             exit: encodedExit,
           }
 
+          // oxlint-disable-next-line typescript-eslint(no-unsafe-type-assertion) -- msgPack parser.encode returns unknown; cast to expected wire format
           const exitSerialized = parser.encode([exitMessage]) as Uint8Array<ArrayBuffer>
           controller.enqueue(exitSerialized)
           controller.close()
@@ -259,6 +272,7 @@ const createStreamingResponse = <Rpcs extends Rpc.Any, LE>(
             Effect.gen(function* () {
               // Send error exit with proper schema encoding
               const rawExit = Exit.failCause(cause)
+              // oxlint-disable-next-line typescript-eslint(no-unsafe-type-assertion) -- Rpc.exitSchema requires AnyWithProps; type narrowing already done above
               const exitSchema = Rpc.exitSchema(rpc as any) as Schema.Schema<any>
               const encodedExit = yield* Schema.encodeUnknown(exitSchema)(rawExit)
 
@@ -268,6 +282,7 @@ const createStreamingResponse = <Rpcs extends Rpc.Any, LE>(
                 exit: encodedExit,
               }
 
+              // oxlint-disable-next-line typescript-eslint(no-unsafe-type-assertion) -- msgPack parser.encode returns unknown; cast to expected wire format
               const exitSerialized = parser.encode([exitMessage]) as Uint8Array<ArrayBuffer>
               controller.enqueue(exitSerialized)
               controller.close()
@@ -278,6 +293,7 @@ const createStreamingResponse = <Rpcs extends Rpc.Any, LE>(
         // Run the stream processing
         runStream.pipe(Effect.provide(layer), Effect.scoped, Effect.tapCauseLogPretty, Effect.runPromise)
       },
+    // oxlint-disable-next-line typescript-eslint(no-unsafe-type-assertion) -- bridging standard Web API ReadableStream to Cloudflare Worker ReadableStream type
     }) as any as CfTypes.ReadableStream
 
     // yield* Effect.addFinalizer(() => Effect.promise(() => readableStream.cancel()))

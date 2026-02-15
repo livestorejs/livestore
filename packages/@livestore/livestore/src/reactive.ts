@@ -92,7 +92,7 @@ export type Node<T, TContext, TDebugRefreshReason extends DebugRefreshReason> =
 export const isThunk = <T, TContext, TDebugRefreshReason extends DebugRefreshReason>(
   obj: unknown,
 ): obj is Thunk<T, TContext, TDebugRefreshReason> => {
-  return typeof obj === 'object' && obj !== null && '_tag' in obj && (obj as any)._tag === 'thunk'
+  return typeof obj === 'object' && obj !== null && '_tag' in obj && (obj as { _tag: unknown })._tag === 'thunk'
 }
 
 export type DebugThunkInfo<T extends string = string> = {
