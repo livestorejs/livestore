@@ -62,7 +62,7 @@ const command = Cli.Command.make('mono').pipe(
   ]),
 )
 
-if (import.meta.main !== undefined) {
+if (import.meta.main) {
   // 'CLI for managing the Livestore monorepo',
   const cli = Cli.Command.run(command, {
     name: 'mono',

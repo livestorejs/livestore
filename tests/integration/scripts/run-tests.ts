@@ -204,7 +204,7 @@ export const command: Cli.Command.Command<
   }
 > = Cli.Command.make('integration-misc').pipe(Cli.Command.withSubcommands(commands))
 
-if (import.meta.main !== undefined) {
+if (import.meta.main) {
   const cli = Cli.Command.run(command, {
     name: 'Run Tests',
     version: '0.0.0',
