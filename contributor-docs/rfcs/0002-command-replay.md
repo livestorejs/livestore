@@ -169,42 +169,39 @@ Commands live entirely on the client. The sync backend continues to exchange eve
 
 The revised sync model introduces command replay alongside event rebasing:
 
-1. **Client Execution**: When the user triggers an action, the client executes the command against local state. If validation passes, pending events are committed and materialized to the state DB atomically. The command is queued for potential replay.
-
+1. **Local Execution**: When the user triggers an action, the client executes the command against the local state. If validation passes, pending events are committed and materialized to the state DB atomically. The command is queued for potential replay.
 2. **Pull Events**: Client pulls newly confirmed events from the sync backend.
-
 3. **Reconciliation**: When the client pulls confirmed events but still has pending events in its log:
    - Roll back all pending events and their associated state changes
    - Materialize pulled confirmed events to advance to the confirmed state
    - Replay each pending command against the new state
-   - Commands may now produce different events (context changed), no events (rejected), or the same events as before
-
+   - Commands may now produce different events (context changed), an error (conflict), or the same events as before
 4. **Push Events**: Once reconciliation is complete, the client pushes its pending events to the sync backend.
-
-5. **Dequeue**: After events are successfully pushed, the corresponding commands are removed from the pending queue.
+5. **Dequeue**: After events are successfully pushed and confirmed, the corresponding commands are removed from the pending queue.
 
 ### Pending Commands Queue
 
-The pending commands queue holds commands that have been executed locally but whose resulting events have not yet been pushed to the sync backend. It is persisted to durable storage to survive app restarts, crashes, or browser refreshes.
+The pending commands queue holds commands that have been executed locally but whose resulting events have not yet been pushed and confirmed by the sync backend. It is persisted to durable storage to survive app restarts, crashes, or browser refreshes.
 
 **Queue lifecycle:**
 
 1. **Enqueue**: When a command executes successfully on the client (producing pending events), it's appended to the queue.
-2. **Replay**: During reconciliation (when new confirmed events arrive), pending commands are replayed against the updated state.
+2. **Replay**: During reconciliation (when new confirmed events are pulled), pending commands are replayed against the updated state.
 3. **Push**: After reconciliation, events are pushed to the sync backend.
-4. **Dequeue**: A command is removed from the queue only after its events are successfully pushed to the sync backend.
+4. **Dequeue**: A command is removed from the queue only after its events are successfully pushed and confirmed by the sync backend.
 
 ### Atomicity of Command Execution
 
 Command execution is atomic. When a command handler runs:
 
 1. Read current state
-2. Validate against the state DB (and/or external services) and produce event(s)
-3. Append events to log + materialize to state DB
+2. Validate against the state and produce event(s)
+3. Append events to log
+4. Materialize events to state
 
-All three steps happen as a single atomic operation. Without this, the state could change between validation and commit—meaning events get applied to a different state than the one they were validated against.
+All four steps happen as a single atomic operation. Without this, the state could change between validation and commit—meaning events get applied to a different state than the one they were validated against.
 
-**Example:** A room has capacity for 2 guests and currently has 1. Two commands arrive concurrently:
+**Example:** A room has capacity for 2 guests and currently has 1. Two commands are executed concurrently on the same client:
 - Command A: Check in Guest-A
 - Command B: Check in Guest-B
 
@@ -215,7 +212,7 @@ If materialization runs async (not atomic with event commit):
 4. Handler B commits `GuestCheckedIn(Guest-B)` to event log
 5. Materializer processes both events → 3 guests ❌
 
-Both commands passed validation because they read stale state. With atomic execution (commit + materialize together), Handler B would see 2 guests and reject the command.
+Both commands passed validation because they read stale state. With atomic execution, Handler B would see 2 guests and reject the command.
 
 ### API
 
@@ -247,15 +244,15 @@ export const commands = {
 
 The handler's second argument (`ctx`) provides:
 
-- **`ctx.query`** — synchronous read access to the current state via query builders or raw SQL.
-- **`ctx.phase`** — either `'initial'` (first execution via `store.execute()`) or `'replay'` (re-execution during reconciliation). Handlers can use this to adapt behaviour, e.g. return alternative events during replay instead of failing (see [During Replay](#during-replay-conflicts)).
+- **`ctx.query`**: Synchronous read access to the current state via query builder or raw SQL.
+- **`ctx.phase`**: Either `'initial'` (first execution via `store.execute()`) or `'replay'` (re-execution during reconciliation). Handlers can use this to adapt behavior, e.g. return alternative events during replay instead of failing (see [During Replay](#during-replay-conflicts)).
 
 Handlers distinguish two kinds of errors:
 
-- **Returned errors** (expected, recoverable): The handler returns a typed error value. These flow through the type system end-to-end, so `store.execute()` returns a fully typed `ExecuteResult<TError>`.
-- **Thrown errors** (unexpected, non-recoverable): The handler throws. These propagate as exceptions and are not part of the typed error channel.
+- **Returned errors** (expected, recoverable): The handler returns a typed error value. These can be pattern-matched and individually handled at command execution call sites.
+- **Thrown errors** (unexpected, non-recoverable): The handler throws. These propagate as exceptions and are not expected to be individually handled.
 
-Handlers can return a single event, an array of events, or a typed error value:
+Handlers can return a single event, an array of events, or errors:
 
 ```ts
 // Single event
@@ -264,25 +261,15 @@ return events.guestCheckedIn({ roomId, guestId })
 // Multiple events
 return [events.guestCheckedIn({ roomId, guestId }), events.roomOccupancyChanged({ roomId })]
 
-// Typed error
+// Error
 return new RoomAtCapacity()
 ```
+
+Command handlers must return either events or errors. If no event is returned, a `NoEventProduced` error is thrown.
 
 #### Executing Commands
 
 Commands are executed via `store.execute()`, which returns a discriminated union result:
-
-```ts
-type ExecuteResult<TError> =
-  | { _tag: 'pending'; confirmation: Promise<CommandConfirmation<TError>> }
-  | { _tag: 'failed'; error: TError; confirmation: Promise<CommandConfirmation<TError>> }
-
-type CommandConfirmation<TError> =
-  | { _tag: 'confirmed' }
-  | { _tag: 'conflict'; error: TError }
-```
-
-`confirmation` is also present in the "pending" variant so that callers who don't need to handle immediate failures can access `.confirmation` directly without needing to check the `_tag` of the result. If the command fails during initial execution, the promise rejects immediately with the error.
 
 **Usage:**
 
@@ -300,8 +287,22 @@ console.log('Check-in confirmed')
 // Or, await confirmation directly
 await store.execute(commands.checkInGuest({ roomId, guestId })).confirmation
 console.log('Check-in confirmed')
-
 ```
+
+**Type Definitions:**
+
+```ts
+type ExecuteResult<TError> =
+  | { _tag: 'pending'; confirmation: Promise<CommandConfirmation<TError>> }
+  | { _tag: 'failed'; error: TError; confirmation: Promise<CommandConfirmation<TError>> }
+
+type CommandConfirmation<TError> =
+  | { _tag: 'confirmed' }
+  | { _tag: 'conflict'; error: TError }
+```
+
+> [!NOTE]
+> The `confirmation` is also present in the `ExecuteResult`'s pending variant. This allows callers who do not need to handle immediate failures to access `.confirmation` directly, without checking the result's `_tag`. In such scenarios, if the command handler returns an error during initial execution, it is considered unexpected, and the promise rejects immediately with that error.
 
 #### Error Handling
 
@@ -309,20 +310,30 @@ Commands may fail immediately during initial execution or during replay after pu
 
 ##### During Initial Execution
 
-If a command handler returns a typed error, the result is `{ _tag: 'failed' }` with a fully typed `error`:
+If a command handler returns an error, the result is `{ _tag: 'failed' }` with a fully typed `error`:
 
 ```ts
 const result = store.execute(commands.checkInGuest({ roomId, guestId }))
 
-// result.error is typed with a union of all possible returned errors (RoomAtCapacity, GuestNotFound, etc.)
-if (result._tag === 'failed' && result.error._tag === 'RoomAtCapacity') {
-  console.error('Room is full')
+if (result._tag === 'failed') {
+  // result.error is typed with a union of all possible returned errors (RoomAtCapacity, GuestNotFound, etc.)
+  switch (result.error._tag) {
+    case 'RoomAtCapacity':
+      console.error('Room is full:', result.error)
+      break
+    case 'GuestNotFound':
+      console.error('Guest not found:', result.error)
+      break
+    default:
+      console.error('Could not check in guest:', result.error)
+      break
+  }
 }
 ```
 
 ##### During Replay (Conflicts)
 
-If a command handler returns a typed error during replay (after state changed due to sync), a **conflict** occurs. The command's optimistic events are rolled back.
+If a command handler returns an error during replay, a **conflict** occurs, and the events produced by the same handler during initial execution are rolled back.
 
 **What is NOT a conflict:**
 
@@ -347,22 +358,21 @@ There are two patterns for handling conflicts:
 
 **Pattern 1: Only handle conflicts (skip immediate failures)**
 
-When you don't need to handle immediate validation failures, await `.confirmation` directly. If the command failed immediately, the promise rejects.
+When you don't need to handle immediate validation failures, await `.confirmation` directly. If the command fails immediately, the `confirmation` promise gets rejected.
 
 ```ts
 const confirmation = await store.execute(commands.checkInGuest({ roomId, guestId })).confirmation
 if (confirmation._tag === 'conflict' && confirmation.error._tag === 'RoomAtCapacity') {
-  console.error('Check-in rolled back: room reached capacity')
+  console.error('Check-in rolled back: room is full')
 }
 ```
 
 **Pattern 2: Handle immediate failures and conflicts**
 
-When you need to handle both phases with typed errors:
+When you need to handle both phases:
 
 ```ts
 const result = store.execute(commands.checkInGuest({ roomId, guestId }))
-
 if (result._tag === 'failed' && result.error._tag === 'RoomAtCapacity') {
   console.error('Room is full')
   return
@@ -370,7 +380,7 @@ if (result._tag === 'failed' && result.error._tag === 'RoomAtCapacity') {
 
 const confirmation = await result.confirmation
 if (confirmation._tag === 'conflict' && confirmation.error._tag === 'RoomAtCapacity') {
-  console.error('Check-in rolled back: room reached capacity')
+  console.error('Check-in rolled back: room is full')
 }
 ```
 
@@ -385,7 +395,7 @@ This duplication exists because DB constraints currently can only reject—they 
 - **Compensate:** When a guest check-in exceeds capacity, a handler can emit `GuestWaitlisted`. A constraint just fails.
 - **Suggest alternatives:** When a username is taken, a handler can propose `username_2`. A constraint just fails.
 - **Degrade gracefully:** When a comment references a deleted task, a handler can relocate it to an orphaned-comments bucket. A constraint just fails.
-- **Provide rich context:** A handler returns `TaskNotFound({ taskId, lastKnownTitle: "Buy groceries" })`. A constraint returns `SQLITE_CONSTRAINT_FOREIGNKEY`.
+- **Provide rich context:** A handler returns `TaskNotFound({ taskId, lastKnownTitle: "Buy groceries" })`. A constraint returns a generic `SQLITE_CONSTRAINT` error.
 
 ##### Potential Mitigations
 
@@ -393,13 +403,11 @@ This duplication exists because DB constraints currently can only reject—they 
 
 **Constraints as safety net.** DB constraints remain in place but serve as a backstop for handler bugs rather than primary validation. Commands handle the common cases with rich, typed errors. If a constraint fires unexpectedly (handler bug, schema drift), the system logs an error for developers rather than relying on constraints for business logic.
 
-**Graceful constraint failure recovery.** Instead of shutting down when a constraint fails during reconciliation, the system could mark the event as "conflicted" and continue processing. This approach preserves the event for audit purposes, avoids catastrophic store failure, and allows app-specific resolution. However, it shares limitations with Alternative A: constraints are coarse-grained (can't distinguish "task deleted" from "task never existed") and conflict handlers still require domain logic. It works best as a fallback behind command validation—catching handler bugs rather than serving as the primary validation mechanism.
-
 #### Offline Work May Change on Sync
 
 When a client reconnects and pulls remote events, pending commands are replayed against the new state. Commands may produce different events, fewer events, or be rejected entirely. While the client retains authority over validation, the context against which commands are validated changes.
 
-When commands are rejected during replay, cascading failures are common: if C1 fails, C2 (issued based on C1's optimistic result) will likely also fail. Explaining these delayed rejections to users is challenging—they may have moved on, and the context that made the action make sense may no longer be obvious.
+When commands are rejected during replay, cascading failures can occur: if C1 fails, C2 (issued based on C1's result) will likely also fail. Exposing these delayed rejections to users may be challenging—they may have moved on, and the context that made the action make sense may no longer be obvious.
 
 #### Server Validation Requires Explicit Coordination
 
@@ -411,8 +419,6 @@ This means certain invariants cannot be enforced through commands alone:
 - **Cross-aggregate invariants**: Does this booking conflict with another user's reservation?
 - **Server-authoritative permissions**: Did the user's role change on the server?
 
-However, server-side validation can be achieved within this model using a **Request/Response Events** pattern or **Compensating Events**:
-
 ##### Potential Mitigations
 
 **Request/Response Events**: Instead of producing final events directly, commands produce "request" events. A server-side client listens for such events, validates them against some server-side state, and emits "accepted" or "rejected" response events.
@@ -420,11 +426,11 @@ However, server-side validation can be achieved within this model using a **Requ
 **Compensating Events**: A server-side client can listen for events and run checks that may produce compensating events to correct for violations.
 
 > [!NOTE]
-> In the future, we may want to support native **Server-Side Command Execution**. See [Alternative E: Server-Side Command Execution](#alternative-e-server-side-command-execution).
+> In the future, we may want to add support for **Server-Side Command Execution**. See [Alternative E: Server-Side Command Execution](#alternative-e-server-side-command-execution).
 
 #### Limited Auditability
 
-Pending events may be discarded during reconciliation and replaced with the events produced by replayed commands. This means the eventlog reflects the final validated state, not necessarily what the client originally produced before sync. For domains where "what did you know and when" is legally or operationally significant (healthcare, finance, compliance), a client-authoritative model (see Alternative D) may be more appropriate.
+Pending events may be discarded during reconciliation and replaced with the events produced by replayed commands. This means the eventlog reflects the final validated state, not necessarily what the client originally produced before sync. For domains where "what did you know and when" is legally or operationally significant (healthcare, finance, compliance), a client-authoritative model (see [Alternative D: Client-Authoritative Events](#alternative-d-client-authoritative-events)) may be more appropriate.
 
 ## Alternatives Considered
 
