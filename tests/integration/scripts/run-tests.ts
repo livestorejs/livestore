@@ -28,7 +28,7 @@ const viteDevServer = ({
   useDevtoolsLocalPreview: boolean
 }) =>
   Effect.gen(function* () {
-    const devPort = useWorkspacePort !== undefined
+    const devPort = useWorkspacePort === true
       ? '4444'
       : yield* getFreePort.pipe(Effect.map(String), UnknownError.mapToUnknownError)
 

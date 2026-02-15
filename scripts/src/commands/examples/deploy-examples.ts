@@ -96,7 +96,7 @@ export const runExampleTests = (examples: ReadonlyArray<string>, options: { skip
       const hasPackageJson = yield* fs.exists(packageJsonPath)
 
       if (hasPackageJson === false) {
-        if (skipMissing !== undefined) {
+        if (skipMissing === true) {
           yield* Effect.logWarning(`Skipping ${example}: package.json not found`)
           continue
         }
@@ -107,7 +107,7 @@ export const runExampleTests = (examples: ReadonlyArray<string>, options: { skip
       const decoded = yield* parseExamplePackageJson(packageJsonContent).pipe(Effect.either)
 
       if (decoded._tag === 'Left') {
-        if (skipMissing !== undefined) {
+        if (skipMissing === true) {
           yield* Effect.logWarning(`Skipping ${example}: unable to decode package.json`)
           continue
         }
@@ -116,7 +116,7 @@ export const runExampleTests = (examples: ReadonlyArray<string>, options: { skip
 
       const packageJson = decoded.right
       if (typeof packageJson.scripts?.test !== 'string') {
-        if (skipMissing !== undefined) {
+        if (skipMissing === true) {
           yield* Effect.logWarning(`Skipping ${example}: no test script defined`)
           continue
         }
@@ -334,7 +334,7 @@ export const command = Cli.Command.make(
   }),
 )
 
-if (import.meta.main !== undefined) {
+if (import.meta.main === true) {
   const cli = Cli.Command.run(command, {
     name: 'Deploy Examples',
     version: '0.0.0',

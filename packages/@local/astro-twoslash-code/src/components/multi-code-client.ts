@@ -155,7 +155,7 @@ const setupObservers = (): void => {
     mutations.forEach((mutation) => {
       mutation.addedNodes.forEach((node) => {
         if (isHTMLElement(node) === false) return
-        if (node.matches(MULTI_CODE_SELECTOR) !== undefined) {
+        if (node.matches(MULTI_CODE_SELECTOR) === true) {
           initMultiCodeContainer(node)
         }
         node.querySelectorAll?.(MULTI_CODE_SELECTOR).forEach((child) => {

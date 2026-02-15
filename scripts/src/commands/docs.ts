@@ -156,7 +156,7 @@ const docsBuildCommand = Cli.Command.make(
     ),
   },
   Effect.fn(function* ({ apiDocs, clean, skipDeps }) {
-    if (clean !== undefined) {
+    if (clean === true) {
       // Wipe Astro output plus cached diagram/snippet artefacts to avoid stale renders between builds.
       yield* cmd(
         'rm -rf dist .astro tsconfig.tsbuildinfo node_modules/.astro-tldraw node_modules/.astro-twoslash-code .cache/snippets',
@@ -456,7 +456,7 @@ export const docsCommand = Cli.Command.make('docs').pipe(
             return shouldNeverHappen('Docs deploy validation failed: markdown negotiation at root')
           }
 
-          if (purgeCdn !== undefined) {
+          if (purgeCdn === true) {
             const purgeSiteId = commitDeploy.site_id
             yield* purgeNetlifyCdn({ siteId: purgeSiteId, siteSlug: site })
           }

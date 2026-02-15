@@ -111,7 +111,7 @@ export const prepareMultiCodeData = (props: MultiCodeProps): PreparedMultiCode =
   const isRecord = (value: unknown): value is Record<string, unknown> => typeof value === 'object' && value !== null
 
   const normalizedFilesMap = (() => {
-    if (isRecord(code?.files) !== undefined && Array.isArray(code?.files) === false) {
+    if (isRecord(code?.files) === true && Array.isArray(code?.files) === false) {
       return Object.entries(code.files).reduce<Record<string, RawSnippetFile>>((acc, [key, value]) => {
         if (isRecord(value) === false) return acc
         const filename = normalizeFilename(key)

@@ -50,7 +50,7 @@ const createLineOwnerPlugin = (): ExpressiveCodePlugin =>
           while (pointer < metadata.length) {
             const candidate = metadata[pointer]!
             pointer += 1
-            if (predicate(candidate) !== undefined) {
+            if (predicate(candidate) === true) {
               return candidate
             }
           }
