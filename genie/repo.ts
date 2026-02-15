@@ -484,6 +484,7 @@ import {
   installMegarepoStep,
   syncMegarepoStep,
   installDevenvFromLockStep,
+  validateNixStoreStep,
   checkoutStep,
 } from '../repos/effect-utils/genie/ci-workflow.ts'
 
@@ -510,21 +511,7 @@ export const livestoreSetupStepsAfterCheckout = [
   installMegarepoStep,
   syncMegarepoStep(),
   installDevenvFromLockStep,
-  {
-    name: 'Validate Nix store',
-    // Namespace runners may have stale/invalid paths in their bundled nix store cache.
-    // A cheap `devenv version` probe catches corruption before real work starts;
-    // the expensive `--verify --repair` only runs when actually needed.
-    // See https://github.com/namespacelabs/nscloud-setup/issues/8
-    run: `if devenv version > /dev/null 2>&1; then
-  echo "Nix store OK"
-else
-  echo "::warning::Nix store validation failed, running repair..."
-  nix-store --verify --repair 2>&1 | tail -20
-  devenv version
-fi`,
-    shell: 'bash',
-  },
+  validateNixStoreStep,
 ] as const
 
 /**
