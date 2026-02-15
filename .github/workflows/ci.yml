@@ -29,9 +29,11 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - name: Install Nix
-        uses: cachix/install-nix-action@v31
+        uses: DeterminateSystems/determinate-nix-action@v3
         with:
-          extra_nix_config: |
+          extra-conf: |-
+            extra-substituters = https://devenv.cachix.org
+            extra-trusted-public-keys = devenv.cachix.org-1:w1cLUi8dv3hnoSPGAuibQv+f9TZLr6cv/Hm9XgU50cw=
             extra-substituters = https://cache.nixos.org
             extra-trusted-public-keys = cache.nixos.org-1:6NCHdD59X431o0gWypbMrAURkbJ16ZPMQFGspcDShjY=
       - name: Enable Cachix cache
@@ -40,15 +42,13 @@ jobs:
           name: livestore
           authToken: '${{ env.CACHIX_AUTH_TOKEN }}'
       - name: Install megarepo CLI
-        run: 'nix profile install github:overengineeringstudio/effect-utils/$(jq -r ''.nodes["effect-utils"].locked.rev'' devenv.lock)#megarepo'
+        run: 'nix profile install github:overengineeringstudio/effect-utils#megarepo'
         shell: bash
       - name: Sync megarepo dependencies
-        run: mr sync --frozen --verbose
+        run: mr sync --frozen
         shell: bash
       - name: Install devenv
-        run: |
-          nix profile install github:cachix/devenv/$(jq -r ".nodes.devenv.locked.rev" devenv.lock)
-          echo "$HOME/.nix-profile/bin" >> $GITHUB_PATH
+        run: 'nix profile install github:cachix/devenv/$(jq -r ".nodes.devenv.locked.rev" devenv.lock)'
         shell: bash
       - name: Validate Nix store
         run: |
@@ -69,9 +69,11 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - name: Install Nix
-        uses: cachix/install-nix-action@v31
+        uses: DeterminateSystems/determinate-nix-action@v3
         with:
-          extra_nix_config: |
+          extra-conf: |-
+            extra-substituters = https://devenv.cachix.org
+            extra-trusted-public-keys = devenv.cachix.org-1:w1cLUi8dv3hnoSPGAuibQv+f9TZLr6cv/Hm9XgU50cw=
             extra-substituters = https://cache.nixos.org
             extra-trusted-public-keys = cache.nixos.org-1:6NCHdD59X431o0gWypbMrAURkbJ16ZPMQFGspcDShjY=
       - name: Enable Cachix cache
@@ -80,15 +82,13 @@ jobs:
           name: livestore
           authToken: '${{ env.CACHIX_AUTH_TOKEN }}'
       - name: Install megarepo CLI
-        run: 'nix profile install github:overengineeringstudio/effect-utils/$(jq -r ''.nodes["effect-utils"].locked.rev'' devenv.lock)#megarepo'
+        run: 'nix profile install github:overengineeringstudio/effect-utils#megarepo'
         shell: bash
       - name: Sync megarepo dependencies
-        run: mr sync --frozen --verbose
+        run: mr sync --frozen
         shell: bash
       - name: Install devenv
-        run: |
-          nix profile install github:cachix/devenv/$(jq -r ".nodes.devenv.locked.rev" devenv.lock)
-          echo "$HOME/.nix-profile/bin" >> $GITHUB_PATH
+        run: 'nix profile install github:cachix/devenv/$(jq -r ".nodes.devenv.locked.rev" devenv.lock)'
         shell: bash
       - name: Validate Nix store
         run: |
@@ -109,9 +109,11 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - name: Install Nix
-        uses: cachix/install-nix-action@v31
+        uses: DeterminateSystems/determinate-nix-action@v3
         with:
-          extra_nix_config: |
+          extra-conf: |-
+            extra-substituters = https://devenv.cachix.org
+            extra-trusted-public-keys = devenv.cachix.org-1:w1cLUi8dv3hnoSPGAuibQv+f9TZLr6cv/Hm9XgU50cw=
             extra-substituters = https://cache.nixos.org
             extra-trusted-public-keys = cache.nixos.org-1:6NCHdD59X431o0gWypbMrAURkbJ16ZPMQFGspcDShjY=
       - name: Enable Cachix cache
@@ -120,15 +122,13 @@ jobs:
           name: livestore
           authToken: '${{ env.CACHIX_AUTH_TOKEN }}'
       - name: Install megarepo CLI
-        run: 'nix profile install github:overengineeringstudio/effect-utils/$(jq -r ''.nodes["effect-utils"].locked.rev'' devenv.lock)#megarepo'
+        run: 'nix profile install github:overengineeringstudio/effect-utils#megarepo'
         shell: bash
       - name: Sync megarepo dependencies
-        run: mr sync --frozen --verbose
+        run: mr sync --frozen
         shell: bash
       - name: Install devenv
-        run: |
-          nix profile install github:cachix/devenv/$(jq -r ".nodes.devenv.locked.rev" devenv.lock)
-          echo "$HOME/.nix-profile/bin" >> $GITHUB_PATH
+        run: 'nix profile install github:cachix/devenv/$(jq -r ".nodes.devenv.locked.rev" devenv.lock)'
         shell: bash
       - name: Validate Nix store
         run: |
@@ -152,9 +152,11 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - name: Install Nix
-        uses: cachix/install-nix-action@v31
+        uses: DeterminateSystems/determinate-nix-action@v3
         with:
-          extra_nix_config: |
+          extra-conf: |-
+            extra-substituters = https://devenv.cachix.org
+            extra-trusted-public-keys = devenv.cachix.org-1:w1cLUi8dv3hnoSPGAuibQv+f9TZLr6cv/Hm9XgU50cw=
             extra-substituters = https://cache.nixos.org
             extra-trusted-public-keys = cache.nixos.org-1:6NCHdD59X431o0gWypbMrAURkbJ16ZPMQFGspcDShjY=
       - name: Enable Cachix cache
@@ -163,15 +165,13 @@ jobs:
           name: livestore
           authToken: '${{ env.CACHIX_AUTH_TOKEN }}'
       - name: Install megarepo CLI
-        run: 'nix profile install github:overengineeringstudio/effect-utils/$(jq -r ''.nodes["effect-utils"].locked.rev'' devenv.lock)#megarepo'
+        run: 'nix profile install github:overengineeringstudio/effect-utils#megarepo'
         shell: bash
       - name: Sync megarepo dependencies
-        run: mr sync --frozen --verbose
+        run: mr sync --frozen
         shell: bash
       - name: Install devenv
-        run: |
-          nix profile install github:cachix/devenv/$(jq -r ".nodes.devenv.locked.rev" devenv.lock)
-          echo "$HOME/.nix-profile/bin" >> $GITHUB_PATH
+        run: 'nix profile install github:cachix/devenv/$(jq -r ".nodes.devenv.locked.rev" devenv.lock)'
         shell: bash
       - name: Validate Nix store
         run: |
@@ -243,9 +243,11 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - name: Install Nix
-        uses: cachix/install-nix-action@v31
+        uses: DeterminateSystems/determinate-nix-action@v3
         with:
-          extra_nix_config: |
+          extra-conf: |-
+            extra-substituters = https://devenv.cachix.org
+            extra-trusted-public-keys = devenv.cachix.org-1:w1cLUi8dv3hnoSPGAuibQv+f9TZLr6cv/Hm9XgU50cw=
             extra-substituters = https://cache.nixos.org
             extra-trusted-public-keys = cache.nixos.org-1:6NCHdD59X431o0gWypbMrAURkbJ16ZPMQFGspcDShjY=
       - name: Enable Cachix cache
@@ -254,15 +256,13 @@ jobs:
           name: livestore
           authToken: '${{ env.CACHIX_AUTH_TOKEN }}'
       - name: Install megarepo CLI
-        run: 'nix profile install github:overengineeringstudio/effect-utils/$(jq -r ''.nodes["effect-utils"].locked.rev'' devenv.lock)#megarepo'
+        run: 'nix profile install github:overengineeringstudio/effect-utils#megarepo'
         shell: bash
       - name: Sync megarepo dependencies
-        run: mr sync --frozen --verbose
+        run: mr sync --frozen
         shell: bash
       - name: Install devenv
-        run: |
-          nix profile install github:cachix/devenv/$(jq -r ".nodes.devenv.locked.rev" devenv.lock)
-          echo "$HOME/.nix-profile/bin" >> $GITHUB_PATH
+        run: 'nix profile install github:cachix/devenv/$(jq -r ".nodes.devenv.locked.rev" devenv.lock)'
         shell: bash
       - name: Validate Nix store
         run: |
@@ -324,9 +324,11 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - name: Install Nix
-        uses: cachix/install-nix-action@v31
+        uses: DeterminateSystems/determinate-nix-action@v3
         with:
-          extra_nix_config: |
+          extra-conf: |-
+            extra-substituters = https://devenv.cachix.org
+            extra-trusted-public-keys = devenv.cachix.org-1:w1cLUi8dv3hnoSPGAuibQv+f9TZLr6cv/Hm9XgU50cw=
             extra-substituters = https://cache.nixos.org
             extra-trusted-public-keys = cache.nixos.org-1:6NCHdD59X431o0gWypbMrAURkbJ16ZPMQFGspcDShjY=
       - name: Enable Cachix cache
@@ -335,15 +337,13 @@ jobs:
           name: livestore
           authToken: '${{ env.CACHIX_AUTH_TOKEN }}'
       - name: Install megarepo CLI
-        run: 'nix profile install github:overengineeringstudio/effect-utils/$(jq -r ''.nodes["effect-utils"].locked.rev'' devenv.lock)#megarepo'
+        run: 'nix profile install github:overengineeringstudio/effect-utils#megarepo'
         shell: bash
       - name: Sync megarepo dependencies
-        run: mr sync --frozen --verbose
+        run: mr sync --frozen
         shell: bash
       - name: Install devenv
-        run: |
-          nix profile install github:cachix/devenv/$(jq -r ".nodes.devenv.locked.rev" devenv.lock)
-          echo "$HOME/.nix-profile/bin" >> $GITHUB_PATH
+        run: 'nix profile install github:cachix/devenv/$(jq -r ".nodes.devenv.locked.rev" devenv.lock)'
         shell: bash
       - name: Validate Nix store
         run: |
@@ -405,9 +405,11 @@ jobs:
         with:
           ref: '${{ github.event.pull_request.head.sha || github.sha }}'
       - name: Install Nix
-        uses: cachix/install-nix-action@v31
+        uses: DeterminateSystems/determinate-nix-action@v3
         with:
-          extra_nix_config: |
+          extra-conf: |-
+            extra-substituters = https://devenv.cachix.org
+            extra-trusted-public-keys = devenv.cachix.org-1:w1cLUi8dv3hnoSPGAuibQv+f9TZLr6cv/Hm9XgU50cw=
             extra-substituters = https://cache.nixos.org
             extra-trusted-public-keys = cache.nixos.org-1:6NCHdD59X431o0gWypbMrAURkbJ16ZPMQFGspcDShjY=
       - name: Enable Cachix cache
@@ -416,15 +418,13 @@ jobs:
           name: livestore
           authToken: '${{ env.CACHIX_AUTH_TOKEN }}'
       - name: Install megarepo CLI
-        run: 'nix profile install github:overengineeringstudio/effect-utils/$(jq -r ''.nodes["effect-utils"].locked.rev'' devenv.lock)#megarepo'
+        run: 'nix profile install github:overengineeringstudio/effect-utils#megarepo'
         shell: bash
       - name: Sync megarepo dependencies
-        run: mr sync --frozen --verbose
+        run: mr sync --frozen
         shell: bash
       - name: Install devenv
-        run: |
-          nix profile install github:cachix/devenv/$(jq -r ".nodes.devenv.locked.rev" devenv.lock)
-          echo "$HOME/.nix-profile/bin" >> $GITHUB_PATH
+        run: 'nix profile install github:cachix/devenv/$(jq -r ".nodes.devenv.locked.rev" devenv.lock)'
         shell: bash
       - name: Validate Nix store
         run: |
@@ -460,9 +460,11 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - name: Install Nix
-        uses: cachix/install-nix-action@v31
+        uses: DeterminateSystems/determinate-nix-action@v3
         with:
-          extra_nix_config: |
+          extra-conf: |-
+            extra-substituters = https://devenv.cachix.org
+            extra-trusted-public-keys = devenv.cachix.org-1:w1cLUi8dv3hnoSPGAuibQv+f9TZLr6cv/Hm9XgU50cw=
             extra-substituters = https://cache.nixos.org
             extra-trusted-public-keys = cache.nixos.org-1:6NCHdD59X431o0gWypbMrAURkbJ16ZPMQFGspcDShjY=
       - name: Enable Cachix cache
@@ -471,15 +473,13 @@ jobs:
           name: livestore
           authToken: '${{ env.CACHIX_AUTH_TOKEN }}'
       - name: Install megarepo CLI
-        run: 'nix profile install github:overengineeringstudio/effect-utils/$(jq -r ''.nodes["effect-utils"].locked.rev'' devenv.lock)#megarepo'
+        run: 'nix profile install github:overengineeringstudio/effect-utils#megarepo'
         shell: bash
       - name: Sync megarepo dependencies
-        run: mr sync --frozen --verbose
+        run: mr sync --frozen
         shell: bash
       - name: Install devenv
-        run: |
-          nix profile install github:cachix/devenv/$(jq -r ".nodes.devenv.locked.rev" devenv.lock)
-          echo "$HOME/.nix-profile/bin" >> $GITHUB_PATH
+        run: 'nix profile install github:cachix/devenv/$(jq -r ".nodes.devenv.locked.rev" devenv.lock)'
         shell: bash
       - name: Validate Nix store
         run: |
@@ -523,9 +523,11 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - name: Install Nix
-        uses: cachix/install-nix-action@v31
+        uses: DeterminateSystems/determinate-nix-action@v3
         with:
-          extra_nix_config: |
+          extra-conf: |-
+            extra-substituters = https://devenv.cachix.org
+            extra-trusted-public-keys = devenv.cachix.org-1:w1cLUi8dv3hnoSPGAuibQv+f9TZLr6cv/Hm9XgU50cw=
             extra-substituters = https://cache.nixos.org
             extra-trusted-public-keys = cache.nixos.org-1:6NCHdD59X431o0gWypbMrAURkbJ16ZPMQFGspcDShjY=
       - name: Enable Cachix cache
@@ -534,15 +536,13 @@ jobs:
           name: livestore
           authToken: '${{ env.CACHIX_AUTH_TOKEN }}'
       - name: Install megarepo CLI
-        run: 'nix profile install github:overengineeringstudio/effect-utils/$(jq -r ''.nodes["effect-utils"].locked.rev'' devenv.lock)#megarepo'
+        run: 'nix profile install github:overengineeringstudio/effect-utils#megarepo'
         shell: bash
       - name: Sync megarepo dependencies
-        run: mr sync --frozen --verbose
+        run: mr sync --frozen
         shell: bash
       - name: Install devenv
-        run: |
-          nix profile install github:cachix/devenv/$(jq -r ".nodes.devenv.locked.rev" devenv.lock)
-          echo "$HOME/.nix-profile/bin" >> $GITHUB_PATH
+        run: 'nix profile install github:cachix/devenv/$(jq -r ".nodes.devenv.locked.rev" devenv.lock)'
         shell: bash
       - name: Validate Nix store
         run: |
@@ -563,9 +563,11 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - name: Install Nix
-        uses: cachix/install-nix-action@v31
+        uses: DeterminateSystems/determinate-nix-action@v3
         with:
-          extra_nix_config: |
+          extra-conf: |-
+            extra-substituters = https://devenv.cachix.org
+            extra-trusted-public-keys = devenv.cachix.org-1:w1cLUi8dv3hnoSPGAuibQv+f9TZLr6cv/Hm9XgU50cw=
             extra-substituters = https://cache.nixos.org
             extra-trusted-public-keys = cache.nixos.org-1:6NCHdD59X431o0gWypbMrAURkbJ16ZPMQFGspcDShjY=
       - name: Enable Cachix cache
@@ -574,15 +576,13 @@ jobs:
           name: livestore
           authToken: '${{ env.CACHIX_AUTH_TOKEN }}'
       - name: Install megarepo CLI
-        run: 'nix profile install github:overengineeringstudio/effect-utils/$(jq -r ''.nodes["effect-utils"].locked.rev'' devenv.lock)#megarepo'
+        run: 'nix profile install github:overengineeringstudio/effect-utils#megarepo'
         shell: bash
       - name: Sync megarepo dependencies
-        run: mr sync --frozen --verbose
+        run: mr sync --frozen
         shell: bash
       - name: Install devenv
-        run: |
-          nix profile install github:cachix/devenv/$(jq -r ".nodes.devenv.locked.rev" devenv.lock)
-          echo "$HOME/.nix-profile/bin" >> $GITHUB_PATH
+        run: 'nix profile install github:cachix/devenv/$(jq -r ".nodes.devenv.locked.rev" devenv.lock)'
         shell: bash
       - name: Validate Nix store
         run: |
@@ -617,9 +617,11 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - name: Install Nix
-        uses: cachix/install-nix-action@v31
+        uses: DeterminateSystems/determinate-nix-action@v3
         with:
-          extra_nix_config: |
+          extra-conf: |-
+            extra-substituters = https://devenv.cachix.org
+            extra-trusted-public-keys = devenv.cachix.org-1:w1cLUi8dv3hnoSPGAuibQv+f9TZLr6cv/Hm9XgU50cw=
             extra-substituters = https://cache.nixos.org
             extra-trusted-public-keys = cache.nixos.org-1:6NCHdD59X431o0gWypbMrAURkbJ16ZPMQFGspcDShjY=
       - name: Enable Cachix cache
@@ -628,15 +630,13 @@ jobs:
           name: livestore
           authToken: '${{ env.CACHIX_AUTH_TOKEN }}'
       - name: Install megarepo CLI
-        run: 'nix profile install github:overengineeringstudio/effect-utils/$(jq -r ''.nodes["effect-utils"].locked.rev'' devenv.lock)#megarepo'
+        run: 'nix profile install github:overengineeringstudio/effect-utils#megarepo'
         shell: bash
       - name: Sync megarepo dependencies
-        run: mr sync --frozen --verbose
+        run: mr sync --frozen
         shell: bash
       - name: Install devenv
-        run: |
-          nix profile install github:cachix/devenv/$(jq -r ".nodes.devenv.locked.rev" devenv.lock)
-          echo "$HOME/.nix-profile/bin" >> $GITHUB_PATH
+        run: 'nix profile install github:cachix/devenv/$(jq -r ".nodes.devenv.locked.rev" devenv.lock)'
         shell: bash
       - name: Validate Nix store
         run: |
