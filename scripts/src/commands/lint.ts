@@ -57,6 +57,7 @@ const runFormatFix = cmd(['oxfmt', '.', ...oxfmtExcludePatterns]).pipe(
 )
 
 /** Run oxlint check (uses .oxlintrc.json) */
+// TODO(oep-3632.1) enable --type-aware once remaining no-unsafe-type-assertion violations are addressed (~567 remaining)
 const runLintCheck = cmd(['oxlint', '--import-plugin', '--deny-warnings']).pipe(
   Effect.provide(LivestoreWorkspace.toCwd()),
   Effect.withSpan('lintCheck'),
@@ -73,7 +74,7 @@ export const lintCommand = Cli.Command.make(
   { fix: Cli.Options.boolean('fix').pipe(Cli.Options.withDefault(false)) },
   Effect.fn(function* ({ fix }) {
     // Run oxfmt and oxlint (format + lint)
-    if (fix) {
+    if (fix === true) {
       yield* runFormatFix
       yield* runLintFix
     } else {
@@ -88,7 +89,7 @@ export const lintCommand = Cli.Command.make(
 
     // Check peer dependencies (warn-only for now, doesn't fail the build)
     const peerDepsOk = yield* runPeerDepCheck
-    if (!peerDepsOk) {
+    if (peerDepsOk === false) {
       yield* Console.warn('Peer dependency check found violations (see above)')
     }
 

@@ -51,7 +51,7 @@ export const appendGithubSummaryMarkdown = ({ markdown, context }: { markdown: s
   Effect.gen(function* () {
     const summaryPath = process.env.GITHUB_STEP_SUMMARY
 
-    if (!summaryPath || summaryPath.trim() === '') {
+    if (summaryPath == null || summaryPath.trim() === '') {
       yield* Effect.logDebug(`GITHUB_STEP_SUMMARY not set; skipping ${context} summary emission`)
       return
     }

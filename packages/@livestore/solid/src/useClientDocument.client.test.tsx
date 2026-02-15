@@ -279,7 +279,7 @@ Vitest.describe('useClientDocument', () => {
             const stackInfo = JSON.parse(val as string) as LiveStore.StackInfo
             // stackInfo.frames.shift() // Removes `renderHook.wrapper` from the stack
             stackInfo.frames.forEach((_) => {
-              if (_.name.includes('renderHook.wrapper')) {
+              if (_.name.includes('renderHook.wrapper') === true) {
                 _.name = 'renderHook.wrapper'
               }
               _.filePath = '__REPLACED_FOR_SNAPSHOT__'

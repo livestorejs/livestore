@@ -2,6 +2,7 @@ import { expect } from 'vitest'
 
 import { nanoid } from '@livestore/livestore'
 import { OtelLiveHttp } from '@livestore/utils-dev/node'
+import { objectToString } from '@livestore/utils'
 import { Vitest } from '@livestore/utils-dev/node-vitest'
 import {
   Effect,
@@ -72,7 +73,10 @@ Vitest.describe.each(cloudflareHttpProviders)('$name HTTP response headers', { t
         transport: 'http',
       })
 
-      const req = HttpClientRequest.post(`${baseUrl}?${searchParams.toString()}`).pipe(
+      const baseUrlString = typeof baseUrl === 'string' ? baseUrl : objectToString(baseUrl)
+      const requestUrl = new URL(baseUrlString)
+      requestUrl.search = searchParams.toString()
+      const req = HttpClientRequest.post(requestUrl.href).pipe(
         HttpClientRequest.setHeader('content-type', 'application/json'),
         HttpClientRequest.setHeader('x-livestore-store-id', `test-store-${name}-${test.task.name}-${testId}`),
         HttpClientRequest.bodyUnsafeJson({

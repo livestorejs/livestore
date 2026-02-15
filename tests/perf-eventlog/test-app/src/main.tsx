@@ -49,4 +49,4 @@ const LiveStoreRoot = () => {
   )
 }
 
-createRoot(document.getElementById('root')!).render(<LiveStoreRoot />)
+createRoot(document.getElementById('root')).render(<LiveStoreRoot />)

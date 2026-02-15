@@ -17,7 +17,7 @@ export default makeWorker({
     }
 
     // Validate user has access to store
-    if (!hasStoreAccess((payload as any).userId as string, storeId)) {
+    if (hasStoreAccess((payload as any).userId as string, storeId) === false) {
       throw new Error('Unauthorized access to store')
     }
   },

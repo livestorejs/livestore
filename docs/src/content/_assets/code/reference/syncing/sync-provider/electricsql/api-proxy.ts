@@ -27,7 +27,7 @@ export async function GET(request: Request) {
   // }
 
   // Initialize database tables if needed
-  if (needsInit) {
+  if (needsInit === true) {
     const db = makeDb(storeId)
     await db.migrate()
     await db.disconnect()

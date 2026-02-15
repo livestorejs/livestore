@@ -87,7 +87,7 @@ export const connectDevtoolsToStore = Effect.fn('LSD.devtools.connectStoreToDevt
       // So far I could only observe this problem with webmesh proxy channels (e.g. for Expo)
       // Proof: https://share.cleanshot.com/V9G87B0B
       // Also see `leader-worker-devtools.ts` for same problem
-      if (handledRequestIds.has(requestId)) {
+      if (handledRequestIds.has(requestId) === true) {
         return
       }
 

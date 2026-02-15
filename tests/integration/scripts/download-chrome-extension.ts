@@ -25,7 +25,7 @@ export const downloadChromeExtension = ({ version, targetDir }: { version?: stri
     if ((yield* fs.exists(targetDir)) === true) {
       yield* Effect.logInfo(`Target directory ${targetDir} already exists`)
 
-      if (yield* Cli.Prompt.confirm({ message: `Delete existing directory ${targetDir}?` })) {
+      if ((yield* Cli.Prompt.confirm({ message: `Delete existing directory ${targetDir}?` })) === true) {
         yield* fs.remove(targetDir, { recursive: true })
       } else {
         return yield* Effect.die('Aborting...')
@@ -35,7 +35,7 @@ export const downloadChromeExtension = ({ version, targetDir }: { version?: stri
     // Create target directory
     yield* fs.makeDirectory(targetDir, { recursive: true })
 
-    const releaseEndpoint = version ? `tags/${version}` : 'latest'
+    const releaseEndpoint = version !== undefined ? `tags/${version}` : 'latest'
     const releaseUrl = `https://api.github.com/repos/livestorejs/livestore/releases/${releaseEndpoint}`
 
     const releaseResponse = yield* HttpClient.get(releaseUrl).pipe(

@@ -19,13 +19,13 @@ export default makeWorker({
     const { storeId } = context
     const { authToken } = payload
 
-    if (!authToken) {
+    if (authToken == null) {
       throw new Error('No auth token provided')
     }
 
     const user = await getUserFromToken(authToken)
 
-    if (!user) {
+    if (user == null) {
       throw new Error('Invalid auth token')
     } else {
       // User is authenticated!
@@ -33,7 +33,7 @@ export default makeWorker({
     }
 
     // Check if token is expired
-    if (payload.exp && payload.exp < Date.now() / 1000) {
+    if (payload.exp !== undefined && payload.exp < Date.now() / 1000) {
       throw new Error('Token expired')
     }
 

@@ -641,7 +641,7 @@ interface SQLiteAPI {
    * @param context context pointer
    * @param value
    */
-  result(context: number, value: (SQLiteCompatibleType | number[]) | null): void
+  result(context: number, value: (  number[]) | null): void
 
   /**
    * Set the result of a function or vtable column

@@ -66,7 +66,7 @@ const fetchExamples = (ref: string) =>
         (error) =>
           new NetworkError({
             cause: error,
-            message: `Failed to fetch examples from GitHub: ${error}`,
+            message: `Failed to fetch examples from GitHub: ${String(error)}`,
           }),
       ),
     )
@@ -78,7 +78,7 @@ const fetchExamples = (ref: string) =>
         (error) =>
           new NetworkError({
             cause: error,
-            message: `Failed to parse GitHub API response: ${error}`,
+            message: `Failed to parse GitHub API response: ${String(error)}`,
           }),
       ),
     )
@@ -130,7 +130,7 @@ const downloadExample = (exampleName: string, ref: string, destinationPath: stri
         (error) =>
           new NetworkError({
             cause: error,
-            message: `Failed to download tarball: ${error}`,
+            message: `Failed to download tarball: ${String(error)}`,
           }),
       ),
     )
@@ -155,7 +155,7 @@ const downloadExample = (exampleName: string, ref: string, destinationPath: stri
         (error) =>
           new NetworkError({
             cause: error,
-            message: `Failed to extract tarball: ${error}`,
+            message: `Failed to extract tarball: ${String(error)}`,
           }),
       ),
     )
@@ -176,7 +176,7 @@ const downloadExample = (exampleName: string, ref: string, destinationPath: stri
     // Check if the example exists
     const exampleExists = yield* fs.exists(exampleSourcePath)
 
-    if (!exampleExists) {
+    if (exampleExists === false) {
       return yield* new ExampleNotFoundError({
         exampleName,
         availableExamples: [],
@@ -191,7 +191,7 @@ const downloadExample = (exampleName: string, ref: string, destinationPath: stri
         (error) =>
           new NetworkError({
             cause: error,
-            message: `Failed to copy example files: ${error}`,
+            message: `Failed to copy example files: ${String(error)}`,
           }),
       ),
     )
@@ -250,10 +250,10 @@ export const createCommand = Cli.Command.make(
     }
 
     // Select example (from CLI option or interactive prompt)
-    const selectedExample = Option.isSome(example) ? example.value : yield* selectExample(examples)
+    const selectedExample = Option.isSome(example) === true ? example.value : yield* selectExample(examples)
 
     // Validate selected example exists
-    if (!examples.includes(selectedExample)) {
+    if (examples.includes(selectedExample) === false) {
       yield* Console.log(`❌ Example "${selectedExample}" not found`)
       yield* Console.log(`Available examples: ${examples.join(', ')}`)
       return yield* new ExampleNotFoundError({
@@ -264,7 +264,7 @@ export const createCommand = Cli.Command.make(
     }
 
     // Determine destination path
-    const destinationPath = Option.isSome(path) ? nodePath.resolve(path.value) : nodePath.resolve(selectedExample)
+    const destinationPath = Option.isSome(path) === true ? nodePath.resolve(path.value) : nodePath.resolve(selectedExample)
 
     // Download and extract the example
     yield* downloadExample(selectedExample, ref, destinationPath)

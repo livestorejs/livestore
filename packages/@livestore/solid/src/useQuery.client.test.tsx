@@ -277,7 +277,7 @@ Vitest.describe('useQuery', () => {
 
       const { result } = SolidTesting.renderHook(
         () => {
-          const query$ = Solid.createMemo(() => (useNum() ? num$ : str$))
+          const query$ = Solid.createMemo(() => (useNum() !== undefined ? num$ : str$))
           return store.useQuery(query$)
         },
         { wrapper },

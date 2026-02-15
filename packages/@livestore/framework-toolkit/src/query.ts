@@ -19,11 +19,11 @@ import type { NormalizedQueryable } from './types.ts'
  * @throws If the input is not a valid Queryable
  */
 export const normalizeQueryable = <TResult>(queryable: Queryable<TResult>): NormalizedQueryable<TResult> => {
-  if (!isQueryable(queryable)) {
+  if (isQueryable(queryable) === false) {
     return shouldNeverHappen('Expected a Queryable value')
   }
 
-  if (isQueryBuilder(queryable)) {
+  if (isQueryBuilder(queryable) === true) {
     return { _tag: 'definition', def: queryDb(queryable) }
   }
 
@@ -70,7 +70,7 @@ export const formatQueryError = (
   cause: Error,
   label: string,
   stackInfo: StackInfo,
-  framework: 'react' | 'solid' | 'svelte' | string,
+  framework: string,
 ): Error => {
   return new Error(
     `\
@@ -103,7 +103,7 @@ export const runInitialQuery = <TResult>(
   query$: LiveQuery<TResult>,
   otelContext: otel.Context,
   stackInfo: StackInfo,
-  framework: 'react' | 'solid' | 'svelte' | string,
+  framework: string,
 ): TResult => {
   try {
     return query$.run({

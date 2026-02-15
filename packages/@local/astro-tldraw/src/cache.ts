@@ -122,7 +122,7 @@ export const getCacheEntry = (manifest: DiagramManifest, entryFile: string): Dia
 
 /** Check if cached diagram is still valid */
 export const isCacheValid = (entry: DiagramCacheEntry | undefined, currentSourceHash: string): boolean => {
-  if (!entry) return false
+  if (entry == null) return false
   return entry.sourceHash === currentSourceHash
 }
 

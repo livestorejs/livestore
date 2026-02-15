@@ -131,9 +131,9 @@ export class TestStoreDo extends DurableObject<Env> implements ClientDoWithRpcCa
   }): Promise<Store<typeof schema>> {
     // If the caller requested a reset (or we're handling a different store ID),
     // make sure to dispose the previous store instance so we can boot with a clean slate.
-    const shouldRecreate = resetPersistence === true || this.cachedStore === undefined || this.cachedStoreId !== storeId
+    const shouldRecreate =  resetPersistence || this.cachedStore === undefined || this.cachedStoreId !== storeId
 
-    if (shouldRecreate) {
+    if (shouldRecreate === true) {
       if (this.cachedStore !== undefined) {
         await this.cachedStore.shutdownPromise()
       }
@@ -151,7 +151,7 @@ export class TestStoreDo extends DurableObject<Env> implements ClientDoWithRpcCa
 
       let snapshotDuringReset: ResetPersistenceSnapshot | undefined
 
-      if (resetPersistence) {
+      if (resetPersistence === true) {
         const storage = this.ctx.storage
         const originalTransactionSync = storage.transactionSync
         const invokeOriginalTransactionSync = <T>(callback: () => T): T =>
@@ -247,7 +247,7 @@ export default {
 
     const url = new URL(request.url)
 
-    if (url.pathname.startsWith('/store')) {
+    if (url.pathname.startsWith('/store') === true) {
       const storeId = url.searchParams.get('storeId')
       if (storeId === null) {
         return new Response('storeId is required', { status: 400 })

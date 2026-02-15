@@ -50,7 +50,7 @@ export function TodoApp() {
       </button>
       {todos.map((todo) => (
         <button key={todo.id} type="button" onClick={() => completeTodo(todo.id)}>
-          {todo.completed ? '✓' : '○'} {todo.text}
+          {todo.completed === true ? '✓' : '○'} {todo.text}
         </button>
       ))}
     </div>

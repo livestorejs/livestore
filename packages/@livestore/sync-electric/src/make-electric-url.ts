@@ -76,7 +76,7 @@ export const makeElectricUrl = ({
   } else {
     searchParams.set('offset', args.handle.value.offset)
     searchParams.set('handle', args.handle.value.handle)
-    searchParams.set('live', args.live ? 'true' : 'false')
+    searchParams.set('live', args.live === true ? 'true' : 'false')
   }
 
   const payload = args.payload

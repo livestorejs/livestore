@@ -9,13 +9,13 @@ import { getFreePort } from '@livestore/utils/node'
 const docsRoot = dirname(fileURLToPath(import.meta.url))
 
 const envPort = process.env.LIVESTORE_DOCS_E2E_PORT
-const resolvedPort = envPort ? Number.parseInt(envPort, 10) : await getFreePort.pipe(Effect.runPromise)
+const resolvedPort = envPort !== undefined ? Number.parseInt(envPort, 10) : await getFreePort.pipe(Effect.runPromise)
 
-if (!Number.isFinite(resolvedPort)) {
+if (Number.isFinite(resolvedPort) === false) {
   throw new Error('Failed to resolve port for docs Playwright tests')
 }
 
-if (!envPort) {
+if (envPort == null) {
   process.env.LIVESTORE_DOCS_E2E_PORT = String(resolvedPort)
 }
 

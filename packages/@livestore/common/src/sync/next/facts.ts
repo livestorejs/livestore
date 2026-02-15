@@ -130,7 +130,7 @@ const isSubSetMapByValue = (setA: EventDefFacts, setB: EventDefFacts) => {
 /** Check if setA is a subset of setB */
 const isSubSetMapByKey = (setA: EventDefFacts, setB: EventDefFacts) => {
   for (const [key, _value] of setA) {
-    if (!setB.has(key)) {
+    if (setB.has(key) === false) {
       return false
     }
   }
@@ -168,7 +168,7 @@ export const factsToString = (facts: EventDefFacts) => {
 
 export const factsIntersect = (setA: EventDefFacts, setB: EventDefFacts): boolean => {
   for (const [key, _value] of setA) {
-    if (setB.has(key)) {
+    if (setB.has(key) === true) {
       return true
     }
   }
@@ -216,9 +216,9 @@ export const getFactsGroupForEventArgs = ({
     return map
   }
   const facts = {
-    modifySet: factsRes?.modify.set ? iterableToMap(factsRes.modify.set) : new Map(),
-    modifyUnset: factsRes?.modify.unset ? iterableToMap(factsRes.modify.unset) : new Map(),
-    depRequire: factsRes?.require ? iterableToMap(factsRes.require) : new Map(),
+    modifySet: factsRes?.modify.set !== undefined ? iterableToMap(factsRes.modify.set) : new Map(),
+    modifyUnset: factsRes?.modify.unset !== undefined ? iterableToMap(factsRes.modify.unset) : new Map(),
+    depRequire: factsRes?.require !== undefined ? iterableToMap(factsRes.require) : new Map(),
     depRead,
   }
 

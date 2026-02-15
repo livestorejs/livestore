@@ -18,7 +18,7 @@ import { log } from 'effect/Console'
 import { dual, type LazyArg } from 'effect/Function'
 import type { Predicate, Refinement } from 'effect/Predicate'
 
-import { isPromise } from '../mod.ts'
+import { isPromise, objectToString } from '../mod.ts'
 import { UnknownError } from './Error.ts'
 
 export * from 'effect/Effect'
@@ -57,16 +57,16 @@ export type SyncOrPromiseOrEffect<TResult, TError = never, TContext = never> =
 
 export const tryAll = <Res>(
   fn: () => Res,
-): Res extends Effect.Effect<infer A, infer E, never>
-  ? Effect.Effect<A, E | UnknownException, never>
+): Res extends Effect.Effect<infer A, infer E>
+  ? Effect.Effect<A, E | UnknownException>
   : Res extends Promise<infer A>
-    ? Effect.Effect<A, UnknownException, never>
-    : Effect.Effect<Res, UnknownException, never> =>
+    ? Effect.Effect<A, UnknownException>
+    : Effect.Effect<Res, UnknownException> =>
   Effect.try(() => fn()).pipe(
     Effect.andThen((fnRes) =>
-      Effect.isEffect(fnRes)
+      Effect.isEffect(fnRes) === true
         ? (fnRes as any as Effect.Effect<any>)
-        : isPromise(fnRes)
+        : isPromise(fnRes) === true
           ? Effect.promise(() => fnRes)
           : Effect.succeed(fnRes),
     ),
@@ -89,7 +89,7 @@ export const logBefore =
 export const tapCauseLogPretty = <R, E, A>(eff: Effect.Effect<A, E, R>): Effect.Effect<A, E, R> =>
   Effect.tapErrorCause(eff, (cause) =>
     Effect.gen(function* () {
-      if (Cause.isInterruptedOnly(cause)) {
+      if (Cause.isInterruptedOnly(cause) === true) {
         // console.log('interrupted', Cause.pretty(err), err)
         return
       }
@@ -124,11 +124,11 @@ export const ignoreIf: {
 export const eventListener = <TEvent = unknown>(
   target: Stream.EventListener<TEvent>,
   type: string,
-  handler: (event: TEvent) => Effect.Effect<void, never, never>,
+  handler: (event: TEvent) => Effect.Effect<void>,
   options?: { once?: boolean },
 ) =>
   Effect.gen(function* () {
-    const runtime = yield* Effect.runtime<never>()
+    const runtime = yield* Effect.runtime()
 
     const handlerFn = (event: TEvent) => handler(event).pipe(Effect.provide(runtime), Effect.runFork)
 
@@ -146,7 +146,7 @@ export const logWarnIfTakesLongerThan =
   ({ label, duration }: { label: string; duration: Duration.DurationInput }) =>
   <R, E, A>(eff: Effect.Effect<A, E, R>): Effect.Effect<A, E, R> =>
     Effect.gen(function* () {
-      const runtime = yield* Effect.runtime<never>()
+      const runtime = yield* Effect.runtime()
 
       let tookLongerThanTimer = false
 
@@ -154,7 +154,7 @@ export const logWarnIfTakesLongerThan =
         Effect.tap(() => {
           tookLongerThanTimer = true
           // TODO include span info
-          return Effect.logWarning(`${label}: Took longer than ${duration}ms`)
+          return Effect.logWarning(`${label}: Took longer than ${objectToString(duration)}ms`)
         }),
         Effect.provide(runtime),
         Effect.runFork,
@@ -169,13 +169,14 @@ export const logWarnIfTakesLongerThan =
 
             yield* Fiber.interrupt(timeoutFiber)
 
-            if (tookLongerThanTimer) {
+            if (tookLongerThanTimer === true) {
               yield* Effect.logWarning(`${label}: Interrupted after ${end - start}ms`)
             }
           }),
         ),
       )
 
+      // eslint-disable-next-line overeng/explicit-boolean-compare -- mutated in forked fiber; TS can't see the mutation
       if (tookLongerThanTimer) {
         const end = Date.now()
         yield* Effect.logWarning(`${label}: Actual duration: ${end - start}ms`)

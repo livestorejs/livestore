@@ -179,7 +179,7 @@ export const cursorFromPullResItem = <TSyncMetadata = Schema.JsonValue>(
   metadata: Option.Option<TSyncMetadata>
 }> => {
   const lastEvent = item.batch.at(-1)
-  if (!lastEvent) {
+  if (lastEvent == null) {
     return Option.none()
   }
   return Option.some({ eventSequenceNumber: lastEvent.eventEncoded.seqNum, metadata: lastEvent.metadata })

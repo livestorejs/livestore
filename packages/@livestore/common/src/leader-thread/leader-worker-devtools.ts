@@ -21,7 +21,7 @@ const isDevtoolsViteNotInstalledError = (
 export const bootDevtools = Effect.fn('@livestore/common:leader-thread:devtools:boot')(function* (
   options: DevtoolsOptions,
 ) {
-  if (options.enabled === false) {
+  if (!options.enabled) {
     return
   }
 
@@ -158,7 +158,7 @@ const listenToDevtools = ({
           // So far I could only observe this problem with webmesh proxy channels (e.g. for Expo)
           // Proof: https://share.cleanshot.com/V9G87B0B
           // Also see `store/devtools.ts` for same problem
-          if (handledRequestIds.has(requestId)) {
+          if (handledRequestIds.has(requestId) === true) {
             // yield* Effect.logWarning(`Duplicate message`, decodedEvent)
             return
           }
@@ -206,24 +206,24 @@ const listenToDevtools = ({
 
                 let databaseKind: LoadDatabaseKind | undefined
 
-                if (tableNames.has(SystemTables.EVENTLOG_META_TABLE)) {
+                if (tableNames.has(SystemTables.EVENTLOG_META_TABLE) === true) {
                   databaseKind = 'eventlog'
                   yield* SubscriptionRef.set(shutdownStateSubRef, 'shutting-down')
-                  yield* Effect.try(() => void dbEventlog.import(data))
+                  yield* Effect.try(() =>  dbEventlog.import(data))
 
                   if (batchId === undefined) {
-                    yield* Effect.try(() => void dbState.destroy())
+                    yield* Effect.try(() =>  dbState.destroy())
                   }
                 } else if (
-                  tableNames.has(SystemTables.SCHEMA_META_TABLE) &&
-                  tableNames.has(SystemTables.SCHEMA_EVENT_DEFS_META_TABLE)
+                  tableNames.has(SystemTables.SCHEMA_META_TABLE) === true &&
+                  tableNames.has(SystemTables.SCHEMA_EVENT_DEFS_META_TABLE) === true
                 ) {
                   databaseKind = 'state'
                   yield* SubscriptionRef.set(shutdownStateSubRef, 'shutting-down')
-                  yield* Effect.try(() => void dbState.import(data))
+                  yield* Effect.try(() =>  dbState.import(data))
 
                   if (batchId === undefined) {
-                    yield* Effect.try(() => void dbEventlog.destroy())
+                    yield* Effect.try(() =>  dbEventlog.destroy())
                   }
                 } else {
                   return yield* Effect.fail({ _tag: 'unsupported-database' } as const)
@@ -239,7 +239,7 @@ const listenToDevtools = ({
 
                 yield* sendMessage(Devtools.Leader.LoadDatabaseFile.Success.make({ ...reqPayload }))
 
-                if (shouldShutdown) {
+                if (shouldShutdown === true) {
                   yield* shutdownChannel.send(IntentionalShutdownCause.make({ reason: 'devtools-import' }))
                 }
               })
@@ -381,7 +381,7 @@ const listenToDevtools = ({
 
                 yield* Stream.zipLatest(
                   syncBackend.isConnected.changes,
-                  devtools.enabled ? devtools.syncBackendLatchState.changes : Stream.make({ latchClosed: false }),
+                  devtools.enabled === true ? devtools.syncBackendLatchState.changes : Stream.make({ latchClosed: false }),
                 ).pipe(
                   Stream.tap(([isConnected, { latchClosed }]) =>
                     sendMessage(
@@ -448,7 +448,7 @@ const listenToDevtools = ({
 
               if (devtools.enabled === false) return
 
-              if (closeLatch === true) {
+              if (closeLatch) {
                 yield* devtools.syncBackendLatch.close
               } else {
                 yield* devtools.syncBackendLatch.open

@@ -19,7 +19,7 @@ describe('CloudflareWorkerVFS - Integration Tests', () => {
 
     mockStorage = {
       get: (async (_key: string | string[]) => {
-        if (Array.isArray(_key)) {
+        if (Array.isArray(_key) === true) {
           storageOperations.push(`get-batch: ${_key.length} keys`)
           const result = new Map()
           for (const k of _key) {
@@ -48,7 +48,7 @@ describe('CloudflareWorkerVFS - Integration Tests', () => {
       },
 
       delete: (async (_key: string | string[]) => {
-        if (Array.isArray(_key)) {
+        if (Array.isArray(_key) === true) {
           storageOperations.push(`delete-batch: ${_key.length} keys`)
           let count = 0
           for (const k of _key) {

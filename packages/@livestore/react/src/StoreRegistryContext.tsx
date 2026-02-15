@@ -60,11 +60,11 @@ export const StoreRegistryProvider = ({ storeRegistry, children }: StoreRegistry
  * ```
  */
 export const useStoreRegistry = (override?: StoreRegistry) => {
-  if (override) return override
+  if (override !== undefined) return override
 
   const storeRegistry = React.use(StoreRegistryContext)
 
-  if (!storeRegistry) throw new Error('useStoreRegistry() must be used within <StoreRegistryProvider>')
+  if (storeRegistry == null) throw new Error('useStoreRegistry() must be used within <StoreRegistryProvider>')
 
   return storeRegistry
 }

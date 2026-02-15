@@ -17,12 +17,12 @@ const ensureAuthorized = (payload: unknown): AuthorizedSession => {
   }
 
   const { authToken, userId } = payload as SyncPayload
-  if (!authToken) {
+  if (authToken == null) {
     throw new Error('Missing auth token')
   }
 
   const claims = verifyJwt(authToken)
-  if (!claims.sub) {
+  if (claims.sub == null) {
     throw new Error('Token missing subject claim')
   }
 

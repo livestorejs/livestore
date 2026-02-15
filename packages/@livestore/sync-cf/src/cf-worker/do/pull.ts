@@ -30,7 +30,7 @@ export const makeEndingPullStream = ({
   Effect.gen(function* () {
     const { doOptions, backendId, storeId, storage } = yield* DoCtx
 
-    if (doOptions?.onPull) {
+    if (doOptions?.onPull !== undefined) {
       yield* Effect.tryAll(() => doOptions.onPull!(req, { storeId, payload, headers })).pipe(
         UnknownError.mapToUnknownError,
       )
@@ -70,7 +70,7 @@ export const makeEndingPullStream = ({
       }),
       Stream.tap(
         Effect.fn(function* (res) {
-          if (doOptions?.onPullRes) {
+          if (doOptions?.onPullRes !== undefined) {
             yield* Effect.tryAll(() => doOptions.onPullRes!(res)).pipe(UnknownError.mapToUnknownError)
           }
         }),

@@ -201,7 +201,7 @@ Vitest.describe('webmesh node', { timeout: testTimeout }, () => {
             yield* Effect.promise(() => nodeX.debug.requestTopology(100))
           }).pipe(
             Vitest.withTestCtx(test, {
-              suffix: `delayX=${delayX} delayY=${delayY} connectDelay=${connectDelay} channelType=${channelType} nodeNames=${nodeNames}`,
+              suffix: `delayX=${delayX} delayY=${delayY} connectDelay=${connectDelay} channelType=${channelType} nodeNames=${nodeNames.join(',')}`,
             }),
           ),
         // { fastCheck: { numRuns: 20 } },
@@ -233,7 +233,7 @@ Vitest.describe('webmesh node', { timeout: testTimeout }, () => {
             yield* connectNodes(nodeA, nodeB)
 
             const waitForBToBeOffline =
-              waitForOfflineDelay === undefined ? undefined : yield* Deferred.make<void, never>()
+              waitForOfflineDelay === undefined ? undefined : yield* Deferred.make<void>()
 
             const nodeACode = Effect.gen(function* () {
               const channelAToB = yield* createChannel(nodeA, 'B', { mode })
@@ -393,7 +393,7 @@ Vitest.describe('webmesh node', { timeout: testTimeout }, () => {
             yield* Effect.all([nodeXCode, nodeYCode], { concurrency: 'unbounded' })
           }).pipe(
             Vitest.withTestCtx(test, {
-              suffix: `channelType=${channelType} nodeNames=${nodeNames}`,
+            suffix: `channelType=${channelType} nodeNames=${nodeNames.join(',')}`,
             }),
           ),
         { fastCheck: { numRuns: 10 } },
@@ -1209,7 +1209,7 @@ Vitest.describe('webmesh node', { timeout: testTimeout }, () => {
             const nodeB = yield* makeMeshNode('B')
             const nodeC = yield* makeMeshNode('C')
 
-            const mode = channelType.includes('proxy') ? 'proxy' : 'direct'
+            const mode = channelType.includes('proxy') === true ? 'proxy' : 'direct'
             const connect = channelType === 'direct' ? connectNodesViaMessageChannel : connectNodesViaBroadcastChannel
             yield* connect(nodeA, nodeB).pipe(maybeDelay(delayConnectAB, 'delayConnectAB'))
             yield* connect(nodeB, nodeC).pipe(maybeDelay(delayConnectBC, 'delayConnectBC'))

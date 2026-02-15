@@ -31,7 +31,7 @@ export const makeWebSocket = ({
         durableObject
           .fetch(url.toString(), { headers: { Upgrade: 'websocket' } })
           .then((res: any) => {
-            if (!res.webSocket) {
+            if (res.webSocket == null) {
               throw new Error('WebSocket upgrade failed')
             }
             return res.webSocket as CfTypes.WebSocket
@@ -58,7 +58,7 @@ export const makeWebSocket = ({
       Effect.fn(function* (exit) {
         yield* Effect.try({
           try: () => {
-            if (Exit.isFailure(exit)) {
+            if (Exit.isFailure(exit) === true) {
               socket.close(3000)
             } else {
               socket.close(1000)

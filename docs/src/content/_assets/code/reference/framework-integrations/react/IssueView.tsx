@@ -15,7 +15,7 @@ export function IssueView({ issueId }: { issueId: string }) {
   // Query data from the store
   const [issue] = issueStore.useQuery(queryDb(tables.issue.select().where({ id: issueId })))
 
-  if (!issue) return <div>Issue not found</div>
+  if (issue == null) return <div>Issue not found</div>
 
   return (
     <div>

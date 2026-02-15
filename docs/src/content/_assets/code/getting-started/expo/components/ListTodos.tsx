@@ -11,7 +11,7 @@ export const ListTodos: FC = () => {
 
   const toggleTodo = useCallback(
     ({ id, completed }: typeof tables.todos.Type) => {
-      store.commit(completed ? events.todoUncompleted({ id }) : events.todoCompleted({ id }))
+      store.commit(completed === true ? events.todoUncompleted({ id }) : events.todoCompleted({ id }))
     },
     [store],
   )
@@ -33,9 +33,9 @@ export const ListTodos: FC = () => {
             }}
           >
             <Text style={{ fontSize: 16, fontWeight: '600' }}>{todo.text}</Text>
-            <Text>{todo.completed ? 'Completed' : 'Pending'}</Text>
+            <Text>{todo.completed === true ? 'Completed' : 'Pending'}</Text>
             <View style={{ flexDirection: 'row', gap: 12 }}>
-              <Button title={todo.completed ? 'Mark pending' : 'Mark done'} onPress={() => toggleTodo(todo)} />
+              <Button title={todo.completed === true ? 'Mark pending' : 'Mark done'} onPress={() => toggleTodo(todo)} />
               <Button
                 title="Delete"
                 onPress={() => store.commit(events.todoDeleted({ id: todo.id, deletedAt: new Date() }))}

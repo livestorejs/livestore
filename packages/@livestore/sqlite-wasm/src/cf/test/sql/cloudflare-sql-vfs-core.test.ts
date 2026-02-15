@@ -28,18 +28,18 @@ describe('CloudflareSqlVFS - Core Functionality', () => {
         const normalizedQuery = query.trim().toUpperCase()
 
         if (
-          normalizedQuery.includes('CREATE TABLE') ||
-          normalizedQuery.includes('CREATE INDEX') ||
-          normalizedQuery.includes('CREATE TRIGGER')
+          normalizedQuery.includes('CREATE TABLE') === true ||
+          normalizedQuery.includes('CREATE INDEX') === true ||
+          normalizedQuery.includes('CREATE TRIGGER') === true
         ) {
           // Handle schema creation
           return createMockCursor([] as any)
         }
 
-        if (normalizedQuery.startsWith('INSERT OR REPLACE INTO VFS_BLOCKS')) {
+        if (normalizedQuery.startsWith('INSERT OR REPLACE INTO VFS_BLOCKS') === true) {
           const [filePath, blockId, blockData] = bindings
           const key = `blocks:${filePath}`
-          if (!mockDatabase.has(key)) {
+          if (mockDatabase.has(key) === false) {
             mockDatabase.set(key, [])
           }
           const blocks = mockDatabase.get(key)!
@@ -54,7 +54,7 @@ describe('CloudflareSqlVFS - Core Functionality', () => {
           return createMockCursor([] as any)
         }
 
-        if (normalizedQuery.startsWith('INSERT INTO VFS_FILES')) {
+        if (normalizedQuery.startsWith('INSERT INTO VFS_FILES') === true) {
           const [filePath, fileSize, flags, createdAt, modifiedAt] = bindings
           mockDatabase.set(`file:${filePath}`, {
             file_path: filePath as string,
@@ -66,21 +66,21 @@ describe('CloudflareSqlVFS - Core Functionality', () => {
           return createMockCursor([] as any)
         }
 
-        if (normalizedQuery.startsWith('SELECT') && normalizedQuery.includes('FROM VFS_FILES')) {
-          if (normalizedQuery.includes('WHERE FILE_PATH = ?')) {
+        if (normalizedQuery.startsWith('SELECT') === true && normalizedQuery.includes('FROM VFS_FILES') === true) {
+          if (normalizedQuery.includes('WHERE FILE_PATH = ?') === true) {
             const [filePath] = bindings
             const fileData = mockDatabase.get(`file:${filePath}`)
-            return createMockCursor(fileData ? [fileData] : ([] as any))
+            return createMockCursor(fileData !== undefined ? [fileData] : ([] as any))
           }
           return createMockCursor([] as any)
         }
 
-        if (normalizedQuery.startsWith('SELECT') && normalizedQuery.includes('FROM VFS_BLOCKS')) {
-          if (normalizedQuery.includes('WHERE FILE_PATH = ?')) {
+        if (normalizedQuery.startsWith('SELECT') === true && normalizedQuery.includes('FROM VFS_BLOCKS') === true) {
+          if (normalizedQuery.includes('WHERE FILE_PATH = ?') === true) {
             const filePath = bindings[0]
             const blocks = mockDatabase.get(`blocks:${filePath}`) || []
 
-            if (normalizedQuery.includes('AND BLOCK_ID IN')) {
+            if (normalizedQuery.includes('AND BLOCK_ID IN') === true) {
               const requestedBlockIds = new Set(bindings.slice(1))
               const matchingBlocks = blocks.filter((b: any) => requestedBlockIds.has(b.block_id))
               return createMockCursor(matchingBlocks as any)
@@ -91,11 +91,11 @@ describe('CloudflareSqlVFS - Core Functionality', () => {
           return createMockCursor([] as any)
         }
 
-        if (normalizedQuery.startsWith('UPDATE VFS_FILES')) {
-          if (normalizedQuery.includes('SET FILE_SIZE = ?')) {
+        if (normalizedQuery.startsWith('UPDATE VFS_FILES') === true) {
+          if (normalizedQuery.includes('SET FILE_SIZE = ?') === true) {
             const [newSize, filePath] = bindings
             const fileData = mockDatabase.get(`file:${filePath}`) as any
-            if (fileData) {
+            if (fileData !== undefined) {
               fileData.file_size = newSize as number
               fileData.modified_at = Math.floor(Date.now() / 1000)
             }
@@ -103,17 +103,17 @@ describe('CloudflareSqlVFS - Core Functionality', () => {
           return createMockCursor([] as any)
         }
 
-        if (normalizedQuery.startsWith('DELETE FROM VFS_BLOCKS')) {
+        if (normalizedQuery.startsWith('DELETE FROM VFS_BLOCKS') === true) {
           const [filePath, minBlockId] = bindings
           const blocks = mockDatabase.get(`blocks:${filePath}`)
-          if (blocks) {
+          if (blocks !== undefined) {
             const filteredBlocks = blocks.filter((b: any) => b.block_id < minBlockId)
             mockDatabase.set(`blocks:${filePath}`, filteredBlocks)
           }
           return createMockCursor([] as any)
         }
 
-        if (normalizedQuery.startsWith('DELETE FROM VFS_FILES')) {
+        if (normalizedQuery.startsWith('DELETE FROM VFS_FILES') === true) {
           const [filePath] = bindings
           mockDatabase.delete(`file:${filePath}`)
           mockDatabase.delete(`blocks:${filePath}`)
@@ -154,7 +154,7 @@ describe('CloudflareSqlVFS - Core Functionality', () => {
         },
         raw: function* () {
           for (const item of data) {
-            yield Object.values(item) as CfTypes.SqlStorageValue[]
+            yield Object.values(item)
           }
         },
         columnNames: Object.keys(data[0] || {}),

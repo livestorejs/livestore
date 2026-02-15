@@ -7,7 +7,7 @@ import { cuid } from '@livestore/utils/cuid'
 export const makeNoopSpan = () => {
   const performanceStartTime = performance.now()
 
-  const span = {
+  const spanImpl = {
     _performanceStartTime: performanceStartTime,
     setAttribute: () => null,
     setAttributes: () => null,
@@ -21,7 +21,7 @@ export const makeNoopSpan = () => {
       const duration = endTime - performanceStartTime
       const durationSecs = duration / 1000
       const durationRestNs = (duration % 1000) * 1_000_000
-      ;(span as any)._duration = [durationSecs, durationRestNs]
+      spanImpl._duration = [durationSecs, durationRestNs] as [number, number]
     },
     spanContext: () => {
       return {
@@ -29,13 +29,15 @@ export const makeNoopSpan = () => {
         spanId: `livestore-noop-span-id${cuid()}`,
       }
     },
-    _duration: [0, 0],
-  } as unknown as otel.Span
+    _duration: [0, 0] as [number, number],
+  }
 
-  return span
+  // oxlint-disable-next-line typescript-eslint(no-unsafe-type-assertion) -- noop otel.Span implementation; only implements the subset needed by LiveStore
+  return spanImpl as unknown as otel.Span
 }
 
 export const makeNoopTracer = () => {
+  // oxlint-disable-next-line typescript-eslint(no-unsafe-type-assertion) -- noop otel.Tracer implementation; only implements the subset needed by LiveStore
   return new NoopTracer() as unknown as otel.Tracer
 }
 
@@ -67,13 +69,19 @@ export class NoopTracer {
     if (arguments.length < 2) {
       return
     } else if (arguments.length === 2) {
+      // oxlint-disable-next-line typescript-eslint(no-unsafe-type-assertion) -- arguments-based overload dispatch: with 2 args, arg2 is the callback
       fn = arg2 as F
     } else if (arguments.length === 3) {
+      // oxlint-disable-next-line typescript-eslint(no-unsafe-type-assertion) -- arguments-based overload dispatch: with 3 args, arg2 is SpanOptions
       _opts = arg2 as otel.SpanOptions | undefined
+      // oxlint-disable-next-line typescript-eslint(no-unsafe-type-assertion) -- arguments-based overload dispatch: with 3 args, arg3 is the callback
       fn = arg3 as F
     } else {
+      // oxlint-disable-next-line typescript-eslint(no-unsafe-type-assertion) -- arguments-based overload dispatch: with 4 args, arg2 is SpanOptions
       _opts = arg2 as otel.SpanOptions | undefined
+      // oxlint-disable-next-line typescript-eslint(no-unsafe-type-assertion) -- arguments-based overload dispatch: with 4 args, arg3 is Context
       _ctx = arg3 as otel.Context | undefined
+      // oxlint-disable-next-line typescript-eslint(no-unsafe-type-assertion) -- arguments-based overload dispatch: with 4 args, arg4 is the callback
       fn = arg4 as F
     }
 

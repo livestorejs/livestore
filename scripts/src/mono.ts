@@ -25,7 +25,7 @@ const tsCommand = Cli.Command.make(
     ),
   },
   Effect.fn(function* ({ watch, clean, noCheck }) {
-    if (clean) {
+    if (clean === true) {
       yield* cmd('tsc --build tsconfig.dev.json --clean').pipe(Effect.provide(LivestoreWorkspace.toCwd()))
     }
 

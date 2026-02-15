@@ -30,7 +30,7 @@ export const CreateConnection = ({ from, port }: typeof SharedWorkerSchema.Creat
 
       yield* node.addEdge({ target: from, edgeChannel: messagePortChannel, replaceIfExists: true })
 
-      if (LS_DEV) {
+      if (LS_DEV === true) {
         yield* Effect.logDebug(`@livestore/devtools-web-common: accepted edge: ${node.nodeName} ← ${from}`)
       }
 

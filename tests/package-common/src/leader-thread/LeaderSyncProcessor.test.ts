@@ -658,9 +658,9 @@ const LeaderThreadCtxLive = ({
       Effect.withSpan('@livestore/adapter-node:leader-thread:loadSqlite3Wasm'),
     )
 
-    const makeSqliteDb = (yield* sqliteDbFactory({ sqlite3 })) as MakeNodeSqliteDb
+    const makeSqliteDb = (yield* sqliteDbFactory({ sqlite3 }))
 
-    const shutdownProxy = captureShutdown ? yield* WebChannel.queueChannelProxy({ schema: Shutdown.All }) : undefined
+    const shutdownProxy = captureShutdown !== undefined ? yield* WebChannel.queueChannelProxy({ schema: Shutdown.All }) : undefined
 
     const leaderContextLayer = makeLeaderThreadLayer({
       schema,

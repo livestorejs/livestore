@@ -35,7 +35,7 @@ const createLineOwnerPlugin = (): ExpressiveCodePlugin =>
     hooks: {
       preprocessCode: ({ codeBlock }) => {
         const metadata = codeBlock.props.lsLineOwners
-        if (!metadata || metadata.length === 0) {
+        if (metadata == null || metadata.length === 0) {
           return
         }
 
@@ -50,7 +50,7 @@ const createLineOwnerPlugin = (): ExpressiveCodePlugin =>
           while (pointer < metadata.length) {
             const candidate = metadata[pointer]!
             pointer += 1
-            if (predicate(candidate)) {
+            if (predicate(candidate) === true) {
               return candidate
             }
           }
@@ -60,19 +60,19 @@ const createLineOwnerPlugin = (): ExpressiveCodePlugin =>
         for (const line of lines) {
           const trimmed = line.text.trim()
 
-          if (trimmed.startsWith('// @filename:')) {
+          if (trimmed.startsWith('// @filename:') === true) {
             takeNextMatching((entry) => entry.owner === null && entry.marker === null)
             resolved.push(null)
             continue
           }
 
-          if (trimmed.startsWith('// __LS_FILE_START__')) {
+          if (trimmed.startsWith('// __LS_FILE_START__') === true) {
             const entry = takeNextMatching((candidate) => candidate.marker === 'start')
             resolved.push(entry)
             continue
           }
 
-          if (trimmed.startsWith('// __LS_FILE_END__')) {
+          if (trimmed.startsWith('// __LS_FILE_END__') === true) {
             const entry = takeNextMatching((candidate) => candidate.marker === 'end')
             resolved.push(entry)
             continue
@@ -88,8 +88,8 @@ const createLineOwnerPlugin = (): ExpressiveCodePlugin =>
         lineMetadataByBlock.set(codeBlock, resolved)
       },
       postprocessRenderedLine: ({ codeBlock, lineIndex, renderData }) => {
-        const entries = lineMetadataByBlock.get(codeBlock as ExpressiveCodeBlock)
-        if (!entries) {
+        const entries = lineMetadataByBlock.get(codeBlock)
+        if (entries == null) {
           return
         }
 
@@ -97,7 +97,7 @@ const createLineOwnerPlugin = (): ExpressiveCodePlugin =>
         const lineAst = renderData.lineAst
         const properties = (lineAst.properties ?? {}) as Record<string, unknown>
 
-        if (!metadata) {
+        if (metadata == null) {
           delete properties['data-ls-owner']
           delete properties['data-ls-marker']
           if (Object.keys(properties).length === 0) {
@@ -151,7 +151,7 @@ const stableStringify = (value: unknown): string => {
   if (valueType === 'undefined') {
     return '"__undefined__"'
   }
-  if (Array.isArray(value)) {
+  if (Array.isArray(value) === true) {
     return `[${value.map((entry) => stableStringify(entry)).join(',')}]`
   }
   if (valueType === 'object') {
@@ -185,26 +185,26 @@ const resolveTsconfigPath = (paths: TwoslashProjectPaths, overridePath: string |
   if (overridePath === undefined) {
     return path.join(paths.snippetAssetsRoot, 'tsconfig.json')
   }
-  if (path.isAbsolute(overridePath)) {
+  if (path.isAbsolute(overridePath) === true) {
     return overridePath
   }
   return path.resolve(paths.projectRoot, overridePath)
 }
 
 const ensureSnippetWorkspace = (snippetRoot: string): void => {
-  if (!fs.existsSync(snippetRoot)) {
+  if (fs.existsSync(snippetRoot) === false) {
     throw new Error(`Unable to locate snippet workspace at ${snippetRoot}`)
   }
 }
 
 const parseSnippetTsconfig = (tsconfigPath: string): { source: string; options: ts.CompilerOptions } => {
-  if (!fs.existsSync(tsconfigPath)) {
+  if (fs.existsSync(tsconfigPath) === false) {
     throw new Error(`Snippet tsconfig not found at ${tsconfigPath}`)
   }
 
   const source = fs.readFileSync(tsconfigPath, 'utf8')
   const configFile = ts.readConfigFile(tsconfigPath, ts.sys.readFile)
-  if (configFile.error) {
+  if (configFile.error !== undefined) {
     const message = ts.flattenDiagnosticMessageText(configFile.error.messageText, '\n')
     throw new Error(`Unable to read ${tsconfigPath}: ${message}`)
   }

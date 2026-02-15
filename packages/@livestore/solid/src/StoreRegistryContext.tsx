@@ -60,11 +60,11 @@ export const StoreRegistryProvider = (props: StoreRegistryProviderProps): Solid.
  * ```
  */
 export const useStoreRegistry = (override?: StoreRegistry): StoreRegistry => {
-  if (override) return override
+  if (override !== undefined) return override
 
   const storeRegistry = Solid.useContext(StoreRegistryContext)
 
-  if (!storeRegistry) throw new Error('useStoreRegistry() must be used within <StoreRegistryProvider>')
+  if (storeRegistry == null) throw new Error('useStoreRegistry() must be used within <StoreRegistryProvider>')
 
   return storeRegistry
 }

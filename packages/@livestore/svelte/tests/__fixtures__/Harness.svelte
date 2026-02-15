@@ -43,13 +43,13 @@ import { createStore } from '../../src/create-store.svelte.ts'
   if (mode === 'query') {
     const liveStore = store ?? shouldNeverHappen('store is required for query mode')
 
-    if (onRegisterSetter) {
+    if (onRegisterSetter !== undefined) {
       onRegisterSetter((next: Queryable<unknown>) => {
         currentQuery = next
       })
     }
 
-    if (onRegisterDepSetter) {
+    if (onRegisterDepSetter !== undefined) {
       onRegisterDepSetter((next: unknown) => {
         effectDepState = next
       })
@@ -62,7 +62,7 @@ import { createStore } from '../../src/create-store.svelte.ts'
       onSnapshot(liveStore.query(activeQuery))
     })
   } else if (mode === 'createStore') {
-    if (!options) {
+    if (options == null) {
       shouldNeverHappen('options are required for createStore mode')
     } else {
       $effect(() => {

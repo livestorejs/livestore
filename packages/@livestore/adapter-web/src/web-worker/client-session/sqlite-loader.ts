@@ -16,4 +16,4 @@ if (isServerRuntime === false) {
   sqlite3Promise = loadSqlite3Wasm()
 }
 
-export const loadSqlite3 = () => (isServerRuntime ? loadSqlite3Wasm() : (sqlite3Promise ?? loadSqlite3Wasm()))
+export const loadSqlite3 = () => (isServerRuntime === true ? loadSqlite3Wasm() : (sqlite3Promise ?? loadSqlite3Wasm()))

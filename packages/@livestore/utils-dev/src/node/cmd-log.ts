@@ -14,13 +14,13 @@ export type TCmdLoggingOptions = {
  * Prepares logging directories, archives previous canonical log and prunes archives.
  * Returns the canonical current log path if logging is enabled, otherwise undefined.
  */
-export const prepareCmdLogging: (options: TCmdLoggingOptions) => Effect.Effect<string | undefined, never, never> =
+export const prepareCmdLogging: (options: TCmdLoggingOptions) => Effect.Effect<string | undefined> =
   Effect.fn('cmd.logging.prepare')(function* ({
     logDir,
     logFileName = 'dev.log',
     logRetention = 50,
   }: TCmdLoggingOptions) {
-    if (!logDir || logDir === '') return undefined as string | undefined
+    if (logDir == null || logDir === '') return undefined as string | undefined
 
     const logsDir = logDir
     const archiveDir = path.join(logsDir, 'archive')
@@ -30,7 +30,7 @@ export const prepareCmdLogging: (options: TCmdLoggingOptions) => Effect.Effect<s
     yield* Effect.sync(() => fs.mkdirSync(archiveDir, { recursive: true }))
 
     // Archive previous log if present
-    if (fs.existsSync(currentLogPath)) {
+    if (fs.existsSync(currentLogPath) === true) {
       const safeIso = new Date().toISOString().replaceAll(':', '-')
       const archivedBase = `${path.parse(logFileName).name}-${safeIso}.log`
       const archivedLog = path.join(archiveDir, archivedBase)
@@ -71,7 +71,7 @@ export const prepareCmdLogging: (options: TCmdLoggingOptions) => Effect.Effect<s
 export const applyLoggingToCommand: (
   commandInput: string | (string | undefined)[],
   options: TCmdLoggingOptions,
-) => Effect.Effect<{ input: string | string[]; subshell: boolean; logPath?: string }, never, never> = Effect.fn(
+) => Effect.Effect<{ input: string | string[]; subshell: boolean; logPath?: string }> = Effect.fn(
   'cmd.logging.apply',
 )(function* (commandInput, options) {
   const asArray = Array.isArray(commandInput)
@@ -82,6 +82,6 @@ export const applyLoggingToCommand: (
   return {
     input: asArray ? ((parts as string[]) ?? []) : (commandInput as string),
     subshell: false,
-    ...(logPath ? { logPath } : {}),
+    ...(logPath !== undefined ? { logPath } : {}),
   }
 })

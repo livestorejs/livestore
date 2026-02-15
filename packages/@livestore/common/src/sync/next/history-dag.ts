@@ -43,12 +43,12 @@ export const historyDagFromNodes = (dagNodes: HistoryDagNode[], options?: { skip
 
         while (currentSeqNumStr !== EventSequenceNumber.Client.toString(rootParentNum)) {
           const parentEdge = dag.inEdges(currentSeqNumStr).find((e) => dag.getEdgeAttribute(e, 'type') === 'parent')
-          if (!parentEdge) return null
+          if (parentEdge == null) return null
 
           const parentSeqNumStr = dag.source(parentEdge)
           const parentNode = dag.getNodeAttributes(parentSeqNumStr)
 
-          if (parentNode.factsGroup.modifySet.has(factKey) || parentNode.factsGroup.modifyUnset.has(factKey)) {
+          if (parentNode.factsGroup.modifySet.has(factKey) === true || parentNode.factsGroup.modifyUnset.has(factKey) === true) {
             return parentNode
           }
 
@@ -58,7 +58,7 @@ export const historyDagFromNodes = (dagNodes: HistoryDagNode[], options?: { skip
         return null
       })()
 
-      if (depNode) {
+      if (depNode !== null) {
         const depNodeIdStr = EventSequenceNumber.Client.toString(depNode.seqNum)
         const nodeIdStr = EventSequenceNumber.Client.toString(node.seqNum)
         if (dag.edges(depNodeIdStr, nodeIdStr).filter((e) => dag.getEdgeAttributes(e).type === 'facts').length === 0) {

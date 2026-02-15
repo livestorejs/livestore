@@ -1,6 +1,7 @@
 import { assert, describe, expect, it } from 'vitest'
 
 import { Schema } from '@livestore/utils/effect'
+import { objectToString } from '@livestore/utils'
 
 import * as State from '../mod.ts'
 import { withAutoIncrement, withColumnType, withDefault, withPrimaryKey, withUnique } from './column-annotations.ts'
@@ -300,7 +301,7 @@ describe('getColumnDefForSchema', () => {
     it('should handle Uint8Array as blob column', () => {
       const columnDef = State.SQLite.getColumnDefForSchema(Schema.Uint8Array)
       expect(columnDef.columnType).toBe('blob')
-      expect(columnDef.schema.toString()).toBe('Uint8ArrayFromSelf')
+      expect(objectToString(columnDef.schema)).toBe('Uint8ArrayFromSelf')
     })
   })
 
@@ -357,8 +358,8 @@ describe('getColumnDefForSchema', () => {
 
       expect(table.sqliteDef.columns.active.nullable).toBe(true)
       expect(table.sqliteDef.columns.active.columnType).toBe('integer')
-      expect(table.sqliteDef.columns.active.schema.toString()).toBe('(number <-> boolean) | null')
-      expect((table.rowSchema as any).fields.active.toString()).toBe('(number <-> boolean) | null')
+      expect(objectToString(table.sqliteDef.columns.active.schema)).toBe('(number <-> boolean) | null')
+      expect(String((table.rowSchema as any).fields.active)).toBe('(number <-> boolean) | null')
     })
 
     it('should handle optional complex types with JSON encoding', () => {
@@ -407,8 +408,8 @@ describe('getColumnDefForSchema', () => {
       const table = State.SQLite.table({ name: 'timers', schema })
 
       expect(table.sqliteDef.columns.status.columnType).toBe('text')
-      expect(table.sqliteDef.columns.status.schema.toString()).toBe('"idle" | "running" | "stopped"')
-      expect((table.rowSchema as any).fields.status.toString()).toBe('"idle" | "running" | "stopped"')
+      expect(objectToString(table.sqliteDef.columns.status.schema)).toBe('"idle" | "running" | "stopped"')
+      expect(String((table.rowSchema as any).fields.status)).toBe('"idle" | "running" | "stopped"')
     })
 
     it('should handle Schema.NullOr with complex types', () => {

@@ -229,7 +229,7 @@ const makeProvider =
   ({ children }: { children: React.ReactNode }) => {
     let content = <StoreRegistryProvider storeRegistry={storeRegistry}>{children}</StoreRegistryProvider>
 
-    if (suspense) {
+    if (suspense !== undefined) {
       content = <React.Suspense fallback={null}>{content}</React.Suspense>
     }
 

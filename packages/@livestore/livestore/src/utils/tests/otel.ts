@@ -20,8 +20,8 @@ const buildSimplifiedRootSpans = (
 
   spansMap.forEach((nestedSpan) => {
     const parentId = nestedSpan.span.parentSpanContext?.spanId
-    const parentSpan = parentId ? spansMap.get(parentId) : undefined
-    if (parentSpan) {
+    const parentSpan = parentId !== undefined ? spansMap.get(parentId) : undefined
+    if (parentSpan !== undefined) {
       parentSpan.children.push(nestedSpan)
     }
   })
@@ -56,7 +56,7 @@ export const getSimplifiedRootSpan = (
 ): SimplifiedNestedSpan => {
   const results = buildSimplifiedRootSpans(exporter, rootSpanName, mapAttributes)
   const firstResult = results[0]
-  if (!firstResult) throw new Error(`Could not find the root span named '${rootSpanName}'.`)
+  if (firstResult == null) throw new Error(`Could not find the root span named '${rootSpanName}'.`)
   return firstResult
 }
 
@@ -78,7 +78,7 @@ const omitEmpty = (obj: any) => {
   for (const key in obj) {
     if (
       obj[key] !== undefined &&
-      !(Array.isArray(obj[key]) && obj[key].length === 0) &&
+      !(Array.isArray(obj[key]) === true && obj[key].length === 0) &&
       Object.keys(obj[key]).length > 0
     ) {
       result[key] = obj[key]
@@ -120,7 +120,7 @@ export const toTraceFile = (spans: ReadableSpan[]) => {
                   typeof value === 'string'
                     ? { stringValue: value }
                     : typeof value === 'number'
-                      ? Number.isInteger(value)
+                      ? Number.isInteger(value) === true
                         ? { intValue: value }
                         : { doubleValue: value }
                       : typeof value === 'boolean'

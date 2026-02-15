@@ -23,7 +23,7 @@ export const MainSection: React.FC = () => {
 
   const toggleTodo = React.useCallback(
     ({ id, completed }: typeof tables.todos.Type) =>
-      store.commit(completed ? events.todoUncompleted({ id }) : events.todoCompleted({ id })),
+      store.commit(completed === true ? events.todoUncompleted({ id }) : events.todoCompleted({ id })),
     [store],
   )
 

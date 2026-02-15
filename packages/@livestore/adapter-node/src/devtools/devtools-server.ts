@@ -49,11 +49,11 @@ export const startDevtoolsServer = ({
   Effect.gen(function* () {
     const viteMiddleware = yield* makeViteMiddleware({
       mode: { _tag: 'node', url: `http://${host}:${port}` },
-      schemaPath: isReadonlyArray(schemaPath)
+      schemaPath: isReadonlyArray(schemaPath) === true
         ? schemaPath.map((schemaPath) => path.resolve(process.cwd(), schemaPath))
         : path.resolve(process.cwd(), schemaPath),
       viteConfig: (viteConfig) => {
-        if (LS_DEV) {
+        if (LS_DEV === true) {
           viteConfig.server ??= {}
           viteConfig.server.fs ??= {}
           viteConfig.server.fs.strict = false
@@ -73,7 +73,7 @@ export const startDevtoolsServer = ({
     const handler = Effect.gen(function* () {
       const req = yield* HttpServerRequest.HttpServerRequest
 
-      if (Headers.has(req.headers, 'upgrade')) {
+      if (Headers.has(req.headers, 'upgrade') === true) {
         // yield* Effect.logDebug(`WS Relay ${relayNodeName}: WS upgrade request ${req.url}`)
 
         const socket = yield* req.upgrade
@@ -91,7 +91,7 @@ export const startDevtoolsServer = ({
               .addEdge({ target: from, edgeChannel: webChannel, replaceIfExists: true })
               .pipe(Effect.acquireRelease(() => node.removeEdge(from).pipe(Effect.orDie)))
 
-            if (LS_DEV) {
+            if (LS_DEV === true) {
               yield* Effect.log(`WS Relay ${relayNodeName}: added edge from '${from}'`)
               yield* Effect.addFinalizerLog(`WS Relay ${relayNodeName}: removed edge from '${from}'`)
             }
@@ -124,7 +124,7 @@ export const startDevtoolsServer = ({
       return HttpServerResponse.text('Not found')
     }).pipe(Effect.tapCauseLogPretty, Effect.interruptible)
 
-    const sessionSuffix = clientSessionInfo
+    const sessionSuffix = clientSessionInfo !== undefined
       ? `/${clientSessionInfo.storeId}/${clientSessionInfo.clientId}/${clientSessionInfo.sessionId}/${clientSessionInfo.schemaAlias}`
       : '?autoconnect'
 

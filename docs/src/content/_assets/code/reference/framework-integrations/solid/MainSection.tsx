@@ -12,7 +12,7 @@ export const MainSection: Component = () => {
   const todoItems = () => todos() ?? ([] as (typeof tables.todos.Type)[])
 
   const toggleTodo = ({ id, completed }: typeof tables.todos.Type) =>
-    store()?.commit(completed ? events.todoUncompleted({ id }) : events.todoCompleted({ id }))
+    store()?.commit(completed === true ? events.todoUncompleted({ id }) : events.todoCompleted({ id }))
 
   const deleteTodo = (id: string) => store()?.commit(events.todoDeleted({ id, deletedAt: new Date() }))
 

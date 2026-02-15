@@ -11,7 +11,6 @@ export default tsconfigJson({
     ...baseTsconfigCompilerOptions,
     lib: [...domLib],
     rootDir: './',
-    baseUrl: './',
     ...reactJsx,
     types: ['vite/client', 'node', '@cloudflare/workers-types'],
     noEmit: true,

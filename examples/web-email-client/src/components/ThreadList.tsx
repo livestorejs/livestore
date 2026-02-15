@@ -88,7 +88,7 @@ export const ThreadList: React.FC = () => {
   return (
     <div className="divide-y h-full bg-white divide-gray-100">
       {threadsForSelectedLabel.map((thread) => {
-        const participants = JSON.parse(thread.participants) as string[]
+        const participants: string[] = JSON.parse(thread.participants)
 
         return (
           <button

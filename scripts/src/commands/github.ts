@@ -117,15 +117,15 @@ const syncRulesetsCommand = Cli.Command.make(
     const body = yield* loadRulesetBody(branch)
     const existing = yield* getRulesetByName(body.name)
 
-    if (dryRun) {
+    if (dryRun === true) {
       console.log(`Ruleset file: ${getRulesetFilePath(branch)}`)
       console.log(`Ruleset name: ${body.name}`)
-      console.log(`Existing: ${existing ? `yes (id: ${existing.id})` : 'no'}`)
-      console.log(`Action: ${existing ? 'update' : 'create'}`)
+      console.log(`Existing: ${existing !== null ? `yes (id: ${existing.id})` : 'no'}`)
+      console.log(`Action: ${existing !== null ? 'update' : 'create'}`)
       return
     }
 
-    if (existing) {
+    if (existing !== null) {
       yield* updateRuleset(existing.id, body)
       console.log(`Updated ruleset '${body.name}' (id: ${existing.id}) on ${OWNER}/${REPO}`)
     } else {
@@ -149,7 +149,7 @@ const showRulesetsCommand = Cli.Command.make(
     const body = yield* loadRulesetBody(branch)
     const existing = yield* getRulesetByName(body.name)
 
-    if (!existing) {
+    if (existing == null) {
       console.log(`No ruleset found with name '${body.name}'`)
       console.log(`Run 'mono github rulesets sync --branch ${branch}' to create one.`)
       return

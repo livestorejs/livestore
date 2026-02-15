@@ -104,9 +104,9 @@ LIMIT ${CHUNK_SIZE}
       SystemTables.EventlogMetaRow
     >({ _tag: 'Initial' }, (item) => {
       // End stream if no more rows
-      if (Chunk.isChunk(item) && item.length === 0) return Option.none()
+      if (Chunk.isChunk(item) === true && item.length === 0) return Option.none()
 
-      const lastId = Chunk.isChunk(item)
+      const lastId = Chunk.isChunk(item) === true
         ? Chunk.last(item).pipe(
             Option.map((_) => ({ global: _.seqNumGlobal, client: _.seqNumClient })),
             Option.getOrElse(() => EventSequenceNumber.Client.ROOT),
@@ -118,7 +118,7 @@ LIMIT ${CHUNK_SIZE}
           $seqNumClient: lastId?.client,
         } as any as PreparedBindValues),
       )
-      const prevItem = Chunk.isChunk(item) ? item : Chunk.empty()
+      const prevItem = Chunk.isChunk(item) === true ? item : Chunk.empty()
       return Option.some([prevItem, nextItem])
     }).pipe(
       Stream.bufferChunks({ capacity: 2 }),

@@ -23,7 +23,7 @@ export const provideOtel =
     ) as any as Layer.Layer<OtelTracer.OtelTracer>
 
     return effect.pipe(
-      parentSpanContext
+      parentSpanContext !== undefined
         ? Effect.withParentSpan(OtelTracer.makeExternalSpan(otel.trace.getSpanContext(parentSpanContext)!))
         : identity,
       Effect.provide(TracingLive),

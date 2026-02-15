@@ -58,10 +58,10 @@ export const EventsList: React.FC<EventsListProps> = ({ batchSize, until }) => {
 
     const run = async () => {
       try {
-        while (!cancelled) {
+        while (cancelled === false) {
           const { value, done } = await iterator.next()
-          if (done || cancelled) break
-          if (!value) continue
+          if (done === true || cancelled === true) break
+          if (value == null) continue
 
           const seqNumGlobal = typeof value.seqNum?.global === 'number' ? value.seqNum.global : null
           const seqNumClient = typeof value.seqNum?.client === 'number' ? value.seqNum.client : null
@@ -129,8 +129,8 @@ export const SimpleEventsStream: React.FC<EventsListProps> = ({ batchSize, until
           batchSize: preferredBatchSize,
           ...(until !== undefined && { until: EventSequenceNumber.Client.fromString(`e${until}`) }),
         })) {
-          if (cancelled) break
-          if (!event) continue
+          if (cancelled === true) break
+          if (event == null) continue
           setStreamedCount((prev) => prev + 1)
         }
       } catch (error) {

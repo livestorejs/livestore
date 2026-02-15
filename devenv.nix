@@ -9,10 +9,11 @@ let
   taskModules = effectUtils.devenvModules.tasks;
   ci = builtins.getEnv "CI" != "";
 
-  # Custom oxlint with NAPI bindings for JavaScript plugin support
+  # Custom oxlint with NAPI bindings + @overeng/oxc-config JS plugin
   oxlintNpm = effectUtils.lib.mkOxlintNpm {
     inherit pkgs;
     bun = pkgs.bun;
+    src = inputs.effect-utils;
   };
 
   # Pre-compiled Grafana dashboards for livestore OTEL traces
@@ -115,6 +116,7 @@ in
     })
     # Lint tasks are dt-native via lint-oxc plus local aggregate wrappers.
     (taskModules.lint-oxc {
+      jsPlugins = lib.optionals (oxlintNpm.pluginPath != null) [ oxlintNpm.pluginPath ];
       lintPaths = [
         "packages"
         "tests"

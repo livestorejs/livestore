@@ -20,7 +20,7 @@ export function PreloadedIssue({ issueId }: { issueId: string }) {
 
   return (
     <div>
-      {!showIssue ? (
+      {showIssue == null ? (
         <button type="button" onMouseEnter={handleMouseEnter} onClick={() => setShowIssue(true)}>
           Show Issue
         </button>

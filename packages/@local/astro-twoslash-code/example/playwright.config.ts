@@ -6,13 +6,13 @@ import { getFreePort } from '@livestore/utils/node'
 // Playwright loads this config multiple times (runner + each worker). We stash the
 // randomly chosen port in an env var so workers reuse the same dev server.
 const envPort = process.env.ASTRO_TWOSLASH_E2E_PORT
-const resolvedPort = envPort ? Number.parseInt(envPort, 10) : await getFreePort.pipe(Effect.runPromise)
+const resolvedPort = envPort !== undefined ? Number.parseInt(envPort, 10) : await getFreePort.pipe(Effect.runPromise)
 
-if (!Number.isFinite(resolvedPort)) {
+if (Number.isFinite(resolvedPort) === false) {
   throw new Error('Failed to resolve port for Astro Twoslash Playwright tests')
 }
 
-if (!envPort) {
+if (envPort == null) {
   process.env.ASTRO_TWOSLASH_E2E_PORT = String(resolvedPort)
 }
 

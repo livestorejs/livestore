@@ -51,7 +51,7 @@ let shouldRenderThemeStyles = Boolean(globalThemeStyles)
 let jsModulesToRender = globalJsModules
 
 const localsRecord = (Astro as unknown as { locals?: Record<string, unknown> }).locals
-if (localsRecord) {
+if (localsRecord !== undefined) {
   const registryKey = '__lsTwoslashGlobals'
   if (localsRecord[registryKey] === undefined) {
     localsRecord[registryKey] = {
@@ -62,16 +62,16 @@ if (localsRecord) {
   }
   const registry = localsRecord[registryKey] as TwoslashGlobalsRegistry
 
-  if (globalBaseStyles) {
-    if (registry.base.has(globalBaseStyles)) {
+  if (globalBaseStyles !== undefined) {
+    if (registry.base.has(globalBaseStyles) === true) {
       shouldRenderBaseStyles = false
     } else {
       registry.base.add(globalBaseStyles)
     }
   }
 
-  if (globalThemeStyles) {
-    if (registry.theme.has(globalThemeStyles)) {
+  if (globalThemeStyles !== undefined) {
+    if (registry.theme.has(globalThemeStyles) === true) {
       shouldRenderThemeStyles = false
     } else {
       registry.theme.add(globalThemeStyles)
@@ -80,7 +80,7 @@ if (localsRecord) {
 
   if (globalJsModules.length > 0) {
     jsModulesToRender = globalJsModules.filter((moduleCode) => {
-      if (registry.modules.has(moduleCode)) {
+      if (registry.modules.has(moduleCode) === true) {
         return false
       }
       registry.modules.add(moduleCode)
@@ -95,7 +95,7 @@ if (localsRecord) {
   }
 }
 
-if (shouldRenderClientScript) {
+if (shouldRenderClientScript === true) {
   clientModuleSource = await loadMultiCodeClientModule()
 }
 ---

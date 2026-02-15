@@ -22,7 +22,7 @@ const TMP_STORE_DIR = path.join(
   'tmp',
 )
 
-const withTestCtx = Vitest.makeWithTestCtx({ timeout: IS_CI ? 600_000 : 900_000 })
+const withTestCtx = Vitest.makeWithTestCtx({ timeout: IS_CI === true ? 600_000 : 900_000 })
 
 Vitest.describe('todomvc-node', () => {
   Vitest.scopedLive('should push pending events to the leader after reboot', (test) =>

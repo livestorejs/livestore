@@ -5,7 +5,7 @@ export default makeWorker({
   validatePayload: (payload, { storeId }) => {
     // Simple token-based guard at connection time
     const hasAuthToken = typeof payload === 'object' && payload !== null && 'authToken' in payload
-    if (!hasAuthToken) {
+    if (hasAuthToken === false) {
       throw new Error('Missing auth token')
     }
     if ((payload as any).authToken !== 'insecure-token-change-me') {

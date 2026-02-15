@@ -16,10 +16,11 @@ export class BoundMap<K, V> {
     this.#map.set(key, value)
     // console.log(this.#map.size, this.#sizeLimit);
     if (this.#map.size > this.#sizeLimit) {
-      const firstKey = this.#map.keys().next().value as K
+      const firstKey = this.#map.keys().next().value
+      if (firstKey === undefined) return
       const deletedValue = this.#map.get(firstKey)!
       this.#map.delete(firstKey)
-      if (this.onEvict) {
+      if (this.onEvict !== undefined) {
         this.onEvict(firstKey, deletedValue)
       }
     }
@@ -47,7 +48,7 @@ export class BoundSet<V> {
   }
 
   #onEvict = (v: V) => {
-    if (this.onEvict) {
+    if (this.onEvict !== undefined) {
       this.onEvict(v)
     }
   }
@@ -85,7 +86,7 @@ export class BoundArray<V> {
     this.#array.push(v)
     if (this.#array.length > this.sizeLimit) {
       const first = this.#array.shift()
-      if (first && this.onEvict) {
+      if (first !== undefined && this.onEvict !== undefined) {
         this.onEvict(first)
       }
     }

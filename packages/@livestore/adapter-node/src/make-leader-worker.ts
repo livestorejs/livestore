@@ -1,7 +1,7 @@
 import './thread-polyfill.ts'
 import inspector from 'node:inspector'
 
-if (process.execArgv.includes('--inspect')) {
+if (process.execArgv.includes('--inspect') === true) {
   inspector.open()
   inspector.waitForDebugger()
 }
@@ -42,7 +42,7 @@ export const makeWorker = (options: WorkerOptions) => {
 }
 
 export const makeWorkerEffect = (options: WorkerOptions) => {
-  const TracingLive = options.otelOptions?.tracer
+  const TracingLive = options.otelOptions?.tracer !== undefined
     ? Layer.unwrapEffect(Effect.map(OtelTracer.make, Layer.setTracer)).pipe(
         Layer.provideMerge(Layer.succeed(OtelTracer.OtelTracer, options.otelOptions.tracer)),
       )

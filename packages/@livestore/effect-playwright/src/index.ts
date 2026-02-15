@@ -125,13 +125,13 @@ const parsePlaywrightConsoleMessage = async (
 ): Promise<Option.Option<typeof ConsoleMessage.Type>> => {
   const msgType = message.type() as PlaywrightConsoleMessageType
   const msg = message.text()
-  const args_ = shouldEvaluateArgs
+  const args_ = shouldEvaluateArgs === true
     ? await Promise.all(
         message.args().map(async (argHandle) => {
           const isDisposable = await argHandle
             .evaluate((arg) => arg instanceof MessagePort || arg instanceof Uint8Array || arg instanceof ArrayBuffer)
             .catch((e) => `<Error in serialization: ${e.message}>`)
-          return isDisposable
+          return isDisposable === true
             ? '<Disposable>'
             : await argHandle.jsonValue().catch((e) => `<Error in serialization: ${e.message}>`)
         }),
@@ -199,13 +199,13 @@ export const pageConsole = ({
         const errorGroupRef = ref<{ errorMessages: (typeof ConsoleMessage.Type)[] } | undefined>(undefined)
         const onConsole = async (pwConsoleMessage: PW.ConsoleMessage) => {
           const parsed = await parsePlaywrightConsoleMessage(pwConsoleMessage, shouldEvaluateArgs)
-          if (Option.isSome(parsed)) {
+          if (Option.isSome(parsed) === true) {
             const message = parsed.value
 
             // TODO nested groups
             if (
               (message.type === 'group' || message.type === 'groupCollapsed') &&
-              message.message.includes('%cERROR%c')
+              message.message.includes('%cERROR%c') === true
             ) {
               errorGroupRef.current = { errorMessages: [message] }
             } else if (message.type === 'groupEnd' && errorGroupRef.current !== undefined) {

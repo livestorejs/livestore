@@ -102,17 +102,17 @@ const formatLabel = ({ name, kind, size, lastModified }: OpfsEntryMetadata) => {
   return label
 }
 
-const logAsciiTree = (node: OpfsTreeNode): Effect.Effect<void, never, never> =>
+const logAsciiTree = (node: OpfsTreeNode): Effect.Effect<void> =>
   logAsciiNode(node, { prefix: '', isLast: true, isRoot: true })
 
 const logAsciiNode: (
   node: OpfsTreeNode,
   options: { readonly prefix: string; readonly isLast: boolean; readonly isRoot?: boolean },
-) => Effect.Effect<void, never, never> = (node, options) =>
+) => Effect.Effect<void> = (node, options) =>
   Effect.gen(function* () {
     const label = formatLabel(node.metadata)
-    const branch = options.isRoot ? '' : `${options.prefix}${options.isLast ? '└── ' : '├── '}`
-    const nextPrefix = options.isRoot ? '' : `${options.prefix}${options.isLast ? '    ' : '│   '}`
+    const branch = options.isRoot === true ? '' : `${options.prefix}${options.isLast === true ? '└── ' : '├── '}`
+    const nextPrefix = options.isRoot === true ? '' : `${options.prefix}${options.isLast === true ? '    ' : '│   '}`
 
     console.log(`${branch}${label}`)
 

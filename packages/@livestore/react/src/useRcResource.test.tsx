@@ -9,7 +9,7 @@ describe.each([{ strictMode: true }, { strictMode: false }])('useRcResource (str
     __resetUseRcResourceCache()
   })
 
-  const wrapper = strictMode ? React.StrictMode : React.Fragment
+  const wrapper = strictMode === true ? React.StrictMode : React.Fragment
 
   it('should create a stateful entity using make and call cleanup on unmount', () => {
     const makeSpy = vi.fn(() => Symbol('statefulResource'))

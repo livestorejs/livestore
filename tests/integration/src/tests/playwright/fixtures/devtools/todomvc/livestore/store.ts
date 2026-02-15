@@ -15,7 +15,7 @@ const sessionId = searchParams.get('sessionId')
 const clientId = searchParams.get('clientId')
 const adapterKind = (searchParams.get('adapter') ?? 'persisted') as 'persisted' | 'inmemory'
 
-if (resetPersistence) {
+if (resetPersistence === true) {
   searchParams.delete('reset')
   window.history.replaceState(null, '', `${window.location.pathname}?${searchParams.toString()}`)
 }

@@ -61,7 +61,7 @@ export const printQrTerminal = (text: string, options?: PrintQrTerminalOptions):
     const col = x - margin
     if (row < 0 || col < 0 || row >= size || col >= size) return false
     const bit = qr.isDark(row, col)
-    return invert ? !bit : bit
+    return invert === true ? !bit : bit
   }
 
   const lines: string[] = []
@@ -87,8 +87,8 @@ export const printQrTerminal = (text: string, options?: PrintQrTerminalOptions):
     let currentStyle = ''
     const setStyle = (style: string) => {
       if (style !== currentStyle) {
-        if (currentStyle) row += RESET
-        if (style) row += style
+        if (currentStyle !== undefined) row += RESET
+        if (style !== undefined) row += style
         currentStyle = style
       }
     }
@@ -97,26 +97,26 @@ export const printQrTerminal = (text: string, options?: PrintQrTerminalOptions):
       const top = isDarkAt(x, y)
       const bottom = isDarkAt(x, y + 1)
 
-      if (useAnsi) {
+      if (useAnsi === true) {
         // Represent two stacked modules with a single `▀` character.
         // Foreground corresponds to the top pixel; background to the bottom pixel.
         // Always paint both halves to enforce a white quiet zone even on dark terminals.
-        const fg = top ? FG_BLACK : FG_WHITE
-        const bg = bottom ? BG_BLACK : BG_WHITE
+        const fg = top === true ? FG_BLACK : FG_WHITE
+        const bg = bottom === true ? BG_BLACK : BG_WHITE
         setStyle(fg + bg)
         row += '▀'
       } else {
         // No ANSI: approximate using block characters.
         let ch = ' '
-        if (top && bottom) ch = '█'
-        else if (top && !bottom) ch = '▀'
-        else if (!top && bottom) ch = '▄'
+        if (top === true && bottom === true) ch = '█'
+        else if (top === true && bottom === false) ch = '▀'
+        else if (top === false && bottom === true) ch = '▄'
         row += ch
       }
     }
 
-    if (useAnsi) {
-      if (currentStyle) row += RESET
+    if (useAnsi === true) {
+      if (currentStyle !== undefined) row += RESET
     }
     lines.push(row)
   }

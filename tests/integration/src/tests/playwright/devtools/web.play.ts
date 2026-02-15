@@ -58,7 +58,7 @@ const makeTabPair = (url: string, tabName: string, adapter: AdapterKind, options
     })
 
     // Inject version override before page loads (for version mismatch testing)
-    if (options?.appVersionOverride) {
+    if (options?.appVersionOverride !== undefined) {
       yield* Effect.tryPromise(() =>
         page.addInitScript(`globalThis.__LIVESTORE_VERSION_OVERRIDE__ = '${options.appVersionOverride}';`),
       )
@@ -79,7 +79,7 @@ const makeTabPair = (url: string, tabName: string, adapter: AdapterKind, options
     )
 
     // Skip OTel span linking when testing version mismatch (app may not initialize properly)
-    if (!options?.appVersionOverride) {
+    if (options?.appVersionOverride == null) {
       const rootSpanContext = yield* Effect.tryPromise(() =>
         page
           .waitForFunction('window.__debugLiveStore?.default !== undefined')

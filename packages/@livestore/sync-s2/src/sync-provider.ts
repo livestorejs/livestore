@@ -203,7 +203,7 @@ export const makeSyncBackend =
           lastItem.pipe(
             Option.flatMap((item) => {
               const lastBatchItem = item.batch.at(-1)
-              if (!lastBatchItem) return Option.none()
+              if (lastBatchItem == null) return Option.none()
               return Option.some({
                 eventSequenceNumber: lastBatchItem.eventEncoded.seqNum,
                 metadata: lastBatchItem.metadata,
@@ -227,7 +227,7 @@ export const makeSyncBackend =
               } as SyncBackend.PullResItem<SyncMetadata>),
             )
 
-          const stream = isFirst ? sseStream(false) : sseStream(true)
+          const stream = isFirst === true ? sseStream(false) : sseStream(true)
 
           return stream.pipe(
             // Reconnect from last item if stream

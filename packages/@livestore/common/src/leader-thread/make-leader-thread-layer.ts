@@ -184,7 +184,7 @@ export const makeLeaderThreadLayer = ({
       Effect.acquireRelease(Queue.shutdown),
     )
 
-    const devtoolsContext = devtoolsOptions.enabled
+    const devtoolsContext = devtoolsOptions.enabled === true
       ? {
           enabled: true as const,
           syncBackendLatch: yield* Effect.makeLatch(true),
@@ -249,7 +249,7 @@ const hasStateTables = (db: SqliteDb) => {
 
 const isSubsetOf = (a: Set<string>, b: Set<string>): boolean => {
   for (const item of a) {
-    if (!b.has(item)) {
+    if (b.has(item) === false) {
       return false
     }
   }
@@ -401,6 +401,7 @@ export const makeNetworkStatusSubscribable = ({
   Effect.gen(function* () {
     const initialIsConnected = syncBackend !== undefined ? yield* SubscriptionRef.get(syncBackend.isConnected) : false
     const initialLatchClosed =
+      
       devtoolsContext.enabled === true
         ? (yield* SubscriptionRef.get(devtoolsContext.syncBackendLatchState)).latchClosed
         : false

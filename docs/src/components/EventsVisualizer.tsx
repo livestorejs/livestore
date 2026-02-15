@@ -64,7 +64,7 @@ const clientLabelClassMap: Record<string, string[]> = {
 }
 
 const getClientLabelClasses = (label: string | undefined): string[] => {
-  if (!label) {
+  if (label == null) {
     return []
   }
 
@@ -74,7 +74,7 @@ const getClientLabelClasses = (label: string | undefined): string[] => {
   }
 
   const mappedClasses = clientLabelClassMap[normalizedLabel]
-  if (mappedClasses) {
+  if (mappedClasses !== undefined) {
     return mappedClasses
   }
 
@@ -84,17 +84,17 @@ const getClientLabelClasses = (label: string | undefined): string[] => {
 const buildEventClassNames = (event: ParsedEvent): string => {
   const classes = [...baseEventClassList]
 
-  if (event.isUnconfirmed) {
+  if (event.isUnconfirmed === true) {
     classes.push('border-dashed', 'opacity-80')
   } else {
     classes.push('border-solid')
   }
 
-  if (event.clientLabel) {
+  if (event.clientLabel !== undefined) {
     classes.push(...getClientLabelClasses(event.clientLabel))
   }
 
-  if (event.parseError) {
+  if (event.parseError !== undefined) {
     classes.push('bg-red-600', 'text-white')
   }
 
@@ -102,7 +102,7 @@ const buildEventClassNames = (event: ParsedEvent): string => {
 }
 
 const renderBaseNotation = (event: ParsedEvent): string => {
-  if (Number.isNaN(event.globalSequenceNumber)) {
+  if (Number.isNaN(event.globalSequenceNumber) === true) {
     return event.segmentNotation || event.fullNotation
   }
 
@@ -116,7 +116,7 @@ const renderBaseNotation = (event: ParsedEvent): string => {
     notation += `r${event.rebaseGeneration}`
   }
 
-  if (event.isUnconfirmed) {
+  if (event.isUnconfirmed === true) {
     notation += "'"
   }
 
@@ -130,7 +130,7 @@ const parseEventSegment = (segment: string): ParsedEvent => {
   const contextSegments: string[] = []
 
   const contextMatch = workingSegment.match(/\{([^}]*)\}$/)
-  if (contextMatch && contextMatch[1] !== undefined) {
+  if (contextMatch !== undefined && contextMatch[1] !== undefined) {
     const contextValue = contextMatch[1]
     context = contextValue
     if (contextValue.length > 0) {
@@ -140,14 +140,14 @@ const parseEventSegment = (segment: string): ParsedEvent => {
   }
 
   let isUnconfirmed = false
-  if (workingSegment.endsWith("'")) {
+  if (workingSegment.endsWith("'") === true) {
     isUnconfirmed = true
     workingSegment = workingSegment.slice(0, -1)
   }
 
   let rebaseGeneration: number | undefined
   const rebaseMatch = workingSegment.match(/r(\d+)$/)
-  if (rebaseMatch && rebaseMatch[1] !== undefined) {
+  if (rebaseMatch !== undefined && rebaseMatch[1] !== undefined) {
     rebaseGeneration = Number.parseInt(rebaseMatch[1], 10)
     workingSegment = workingSegment.slice(0, workingSegment.length - rebaseMatch[0].length)
   }
@@ -165,7 +165,7 @@ const parseEventSegment = (segment: string): ParsedEvent => {
   let globalSequenceNumber = Number.NaN
   let clientSequenceNumber: number | undefined
 
-  if (!eventMatch || eventMatch[1] === undefined) {
+  if (eventMatch == null || eventMatch[1] === undefined) {
     parseError = `Unable to parse event sequence from "${trimmedSegment}".`
   } else {
     const globalDigits = eventMatch[1]
@@ -287,7 +287,7 @@ const Event: FC<EventProps> = ({ event }) => {
             </>
           )}
           <div className="font-semibold">Confirmed:</div>
-          <div>{event.isUnconfirmed ? 'No' : 'Yes'}</div>
+          <div>{event.isUnconfirmed === true ? 'No' : 'Yes'}</div>
           {event.originChain.length > 0 && (
             <>
               <div className="font-semibold">Origin chain:</div>

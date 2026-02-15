@@ -161,7 +161,7 @@ export const makePersistedAdapter =
         Effect.forkScoped,
       )
 
-      const devtoolsUrl = devtoolsEnabled ? getDevtoolsUrl().toString() : 'ws://127.0.0.1:4242'
+      const devtoolsUrl = devtoolsEnabled === true ? getDevtoolsUrl().toString() : 'ws://127.0.0.1:4242'
 
       const { leaderThread, initialSnapshot } = yield* makeLeaderThread({
         storeId,
@@ -190,7 +190,7 @@ export const makePersistedAdapter =
         sqliteDb,
         webmeshMode: 'proxy',
         connectWebmeshNode: Effect.fnUntraced(function* ({ webmeshNode }) {
-          if (devtoolsEnabled) {
+          if (devtoolsEnabled === true) {
             yield* Webmesh.connectViaWebSocket({
               node: webmeshNode,
               url: devtoolsUrl,
@@ -345,7 +345,7 @@ const resolveExpoPersistencePaths = ({
   schema: LiveStoreSchema
   storage: { directory?: string; subDirectory?: string } | undefined
 }) => {
-  const subDirectory = storage?.subDirectory ? `${storage.subDirectory.replace(/\/$/, '')}/` : ''
+  const subDirectory = storage?.subDirectory !== undefined ? `${storage.subDirectory.replace(/\/$/, '')}/` : ''
   const pathJoin = (...paths: string[]) => paths.join('/').replaceAll(/\/+/g, '/')
   const directoryBasePath = storage?.directory ?? SQLite.defaultDatabaseDirectory
 

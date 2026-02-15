@@ -40,7 +40,7 @@ export const toolHandlers: LivestoreToolHandlers = livestoreToolkit.of({
         explanation = 'E-commerce schema with products, categories, orders, and inventory'
         break
       case 'custom': {
-        if (!customDescription) {
+        if (customDescription == null) {
           schemaCode = `// Custom schema requested but no description provided
 import { Schema } from '@livestore/livestore'
 
@@ -59,11 +59,11 @@ export const schema = Schema.create({
         }
 
         // Generate a basic custom schema based on description
-        const tableName = customDescription.toLowerCase().includes('user')
+        const tableName = customDescription.toLowerCase().includes('user') === true
           ? 'users'
-          : customDescription.toLowerCase().includes('product')
+          : customDescription.toLowerCase().includes('product') === true
             ? 'products'
-            : customDescription.toLowerCase().includes('post')
+            : customDescription.toLowerCase().includes('post') === true
               ? 'posts'
               : 'items'
 

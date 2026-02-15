@@ -43,14 +43,14 @@ const exportEvents = ({
     }
 
     const fs = yield* FileSystem.FileSystem
-    const absOutputPath = path.isAbsolute(outputPath) ? outputPath : path.resolve(process.cwd(), outputPath)
+    const absOutputPath = path.isAbsolute(outputPath) === true ? outputPath : path.resolve(process.cwd(), outputPath)
 
     yield* fs.writeFileString(absOutputPath, jsonStringifyPretty(result.data)).pipe(
       Effect.mapError(
         (cause) =>
           new SyncOps.ExportError({
             cause,
-            note: `Failed to write export file: ${cause}`,
+            note: `Failed to write export file: ${String(cause)}`,
           }),
       ),
     )
@@ -82,18 +82,18 @@ const importEvents = ({
 > =>
   Effect.gen(function* () {
     const fs = yield* FileSystem.FileSystem
-    const absInputPath = path.isAbsolute(inputPath) ? inputPath : path.resolve(process.cwd(), inputPath)
+    const absInputPath = path.isAbsolute(inputPath) === true ? inputPath : path.resolve(process.cwd(), inputPath)
 
     const exists = yield* fs.exists(absInputPath).pipe(
       Effect.mapError(
         (cause) =>
           new SyncOps.ImportError({
             cause,
-            note: `Failed to check file existence: ${cause}`,
+            note: `Failed to check file existence: ${String(cause)}`,
           }),
       ),
     )
-    if (!exists) {
+    if (exists === false) {
       return yield* new SyncOps.ImportError({
         cause: new Error(`File not found: ${absInputPath}`),
         note: `Import file does not exist at ${absInputPath}`,
@@ -107,7 +107,7 @@ const importEvents = ({
         (cause) =>
           new SyncOps.ImportError({
             cause,
-            note: `Failed to read import file: ${cause}`,
+            note: `Failed to read import file: ${String(cause)}`,
           }),
       ),
     )

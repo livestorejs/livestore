@@ -108,20 +108,26 @@ export const clientDocument = <
     TEncoded,
     ClientDocumentTableOptions<TType>
   > = {
+    // oxlint-disable-next-line typescript-eslint(no-unsafe-type-assertion) -- dynamic table def composition; type safety ensured by ClientDocumentTableDef.Trait
     get: makeGetQueryBuilder(() => clientDocumentTableDef) as any,
+    // oxlint-disable-next-line typescript-eslint(no-unsafe-type-assertion) -- dynamic table def composition; type safety ensured by SetEventDefLike signature
     set: setEventDef as any,
+    // oxlint-disable-next-line typescript-eslint(no-unsafe-type-assertion) -- phantom type field for generic inference only
     Value: 'only-for-type-inference' as any,
     default: options.default,
     valueSchema,
     [ClientDocumentTableDefSymbol]: {
       derived: {
+        // oxlint-disable-next-line typescript-eslint(no-unsafe-type-assertion) -- dynamic event def composition; type checked at usage sites
         setEventDef: derivedSetEventDef as any,
+        // oxlint-disable-next-line typescript-eslint(no-unsafe-type-assertion) -- dynamic materializer composition; type checked at usage sites
         setMaterializer: derivedSetMaterializer as any,
       },
       options,
     },
   }
 
+  // oxlint-disable-next-line typescript-eslint(no-unsafe-type-assertion) -- composing tableDef + clientDocumentTableDefTrait into final type; validated by satisfies above
   const clientDocumentTableDef = {
     ...tableDef,
     ...clientDocumentTableDefTrait,
@@ -141,11 +147,14 @@ export const mergeDefaultValues = <T>(defaultValues: T, explicitDefaultValues: T
   }
 
   // Get all unique keys from both objects
+  // oxlint-disable-next-line typescript-eslint(no-unsafe-type-assertion) -- Object.keys requires indexable type; T is constrained to object by preceding typeof checks
   const allKeys = new Set([...Object.keys(defaultValues as any), ...Object.keys(explicitDefaultValues as any)])
 
   return Array.from(allKeys).reduce((acc, key) => {
+    // oxlint-disable-next-line typescript-eslint(no-unsafe-type-assertion) -- dynamic key access on generic object; keys validated from Object.keys above
     acc[key] = (explicitDefaultValues as any)[key] ?? (defaultValues as any)[key]
     return acc
+    // oxlint-disable-next-line typescript-eslint(no-unsafe-type-assertion) -- reduce accumulator type; result type is T
   }, {} as any)
 }
 
@@ -214,7 +223,7 @@ export const createOptimisticEventSchema = ({
               // Drop fields that don't exist in new schema
             }
 
-            if (hasValidFields) {
+            if (hasValidFields === true) {
               try {
                 const decoded = Schema.decodeUnknownSync(targetSchema)(partialResult)
                 return encodeTarget(decoded)
@@ -342,7 +351,8 @@ export const tableIsClientDocumentTable = <TTableDef extends TableDefBase>(
 ): tableDef is TTableDef & {
   options: { isClientDocumentTable: true }
 } & ClientDocumentTableDef.Trait<TTableDef['sqliteDef']['name'], any, any, any> =>
-  tableDef.options.isClientDocumentTable === true
+  
+  tableDef.options.isClientDocumentTable
 
 const makeGetQueryBuilder = <TTableDef extends ClientDocumentTableDef<any, any, any, any>>(
   getTableDef: () => TTableDef,
@@ -366,11 +376,14 @@ const makeGetQueryBuilder = <TTableDef extends ClientDocumentTableDef<any, any, 
     return {
       [QueryBuilderTypeId]: QueryBuilderTypeId,
       [QueryBuilderAstSymbol]: ast,
+      // oxlint-disable-next-line typescript-eslint(no-unsafe-type-assertion) -- phantom type field for generic inference only
       ResultType: 'only-for-type-inference' as any,
       asSql: () => ({ query, bindValues: [id] }),
       toString: () => query.toString(),
+      // oxlint-disable-next-line typescript-eslint(no-unsafe-type-assertion) -- spreading empty object to satisfy QueryBuilder interface requirements
       ...({} as any), // Needed for type cast
     }
+    // oxlint-disable-next-line typescript-eslint(no-unsafe-type-assertion) -- makeGetQueryBuilder return type uses complex conditional generics
   }) as any
 }
 

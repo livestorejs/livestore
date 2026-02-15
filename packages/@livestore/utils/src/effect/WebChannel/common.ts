@@ -54,19 +54,19 @@ export type OutputSchema<MsgListen, MsgSend, MsgListenEncoded, MsgSendEncoded> =
 export const mapSchema = <MsgListen, MsgSend, MsgListenEncoded, MsgSendEncoded>(
   schema: InputSchema<MsgListen, MsgSend, MsgListenEncoded, MsgSendEncoded>,
 ): OutputSchema<MsgListen, MsgSend, MsgListenEncoded, MsgSendEncoded> =>
-  Predicate.hasProperty(schema, 'send') && Predicate.hasProperty(schema, 'listen')
+  Predicate.hasProperty(schema, 'send') === true && Predicate.hasProperty(schema, 'listen') === true
     ? (schemaWithWebChannelMessages(schema) as any)
     : (schemaWithWebChannelMessages({ send: schema, listen: schema }) as any)
 
 export const listenToDebugPing =
   (channelName: string) =>
   <MsgListen>(
-    stream: Stream.Stream<Either.Either<MsgListen, ParseResult.ParseError>, never>,
-  ): Stream.Stream<Either.Either<MsgListen, ParseResult.ParseError>, never> =>
+    stream: Stream.Stream<Either.Either<MsgListen, ParseResult.ParseError>>,
+  ): Stream.Stream<Either.Either<MsgListen, ParseResult.ParseError>> =>
     stream.pipe(
       Stream.filterEffect(
         Effect.fn(function* (msg) {
-          if (msg._tag === 'Right' && Schema.is(DebugPingMessage)(msg.right)) {
+          if (msg._tag === 'Right' && Schema.is(DebugPingMessage)(msg.right) === true) {
             yield* Effect.logDebug(`WebChannel:ping [${channelName}] ${msg.right.message}`, msg.right.payload)
             return false
           }

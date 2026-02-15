@@ -17,6 +17,7 @@
 
 import fs from 'node:fs'
 
+import { objectToString } from '@livestore/utils'
 import { cmd, cmdText, LivestoreWorkspace } from '@livestore/utils-dev/node'
 import {
   Console,
@@ -116,11 +117,15 @@ const discoverUpdates = (target: string) =>
       const ncuCommand = `bunx npm-check-updates --deep --jsonUpgraded --packageManager pnpm${target !== 'latest' ? ` --target ${target}` : ''}`
       const ncuOutput = yield* cmdText(ncuCommand).pipe(
         Effect.provide(LivestoreWorkspace.toCwd()),
-        Effect.catchAll((error) => new UpdateDepsError({ message: `Failed to run npm-check-updates: ${error}` })),
+        Effect.catchAll(
+          (error) => new UpdateDepsError({ message: `Failed to run npm-check-updates: ${objectToString(error)}` }),
+        ),
       )
 
       const validated = yield* Schema.decodeUnknown(Schema.parseJson(NCUOutput))(ncuOutput).pipe(
-        Effect.mapError((error) => new UpdateDepsError({ message: `Failed to parse NCU output: ${error}` })),
+        Effect.mapError(
+          (error) => new UpdateDepsError({ message: `Failed to parse NCU output: ${objectToString(error)}` }),
+        ),
       )
 
       const totalUpdates = Object.values(validated).reduce((sum, updates) => sum + Object.keys(updates).length, 0)
@@ -142,7 +147,9 @@ const fetchExpoConstraints = () =>
       const expoVersion = yield* cmdText('pnpm view expo version').pipe(
         Effect.provide(LivestoreWorkspace.toCwd()),
         Effect.map((version) => version.trim().replace(/(\d+\.\d+)\.\d+/, '$1.0')),
-        Effect.catchAll((error) => new UpdateDepsError({ message: `Failed to get Expo version: ${error}` })),
+        Effect.catchAll(
+          (error) => new UpdateDepsError({ message: `Failed to get Expo version: ${objectToString(error)}` }),
+        ),
       )
 
       yield* Console.log(`Using Expo SDK: ${expoVersion}`)
@@ -151,7 +158,9 @@ const fetchExpoConstraints = () =>
       const apiUrl = `https://api.expo.dev/v2/sdks/${expoVersion}/native-modules`
       const apiResponse = yield* HttpClient.get(apiUrl).pipe(
         Effect.andThen(HttpClientResponse.schemaBodyJson(ExpoApiResponse)),
-        Effect.mapError((error) => new UpdateDepsError({ message: `Failed to fetch Expo constraints: ${error}` })),
+        Effect.mapError(
+          (error) => new UpdateDepsError({ message: `Failed to fetch Expo constraints: ${objectToString(error)}` }),
+        ),
       )
 
       // Transform to package -> version mapping
@@ -191,18 +200,18 @@ const applyExpoConstraints = (
 
         for (const [pkg, ncuVersion] of Object.entries(packageUpdates)) {
           // Skip dependencies in deny list
-          if (DEPENDENCY_DENY_LIST.includes(pkg as any)) {
+          if (DEPENDENCY_DENY_LIST.includes(pkg as any) === true) {
             excludedByDenyList++
             continue
           }
 
           // Skip patched dependencies
-          if (patchedDeps.includes(pkg)) {
+          if (patchedDeps.includes(pkg) === true) {
             excludedByPatches++
             continue
           }
 
-          if (expoConstraints[pkg]) {
+          if (expoConstraints[pkg] !== undefined) {
             // Use Expo constraint version instead of NCU version
             finalUpdates[pkg] = expoConstraints[pkg]
             constrainedByExpo++
@@ -240,9 +249,9 @@ const executeUpdates = (filteredUpdates: Record<string, Record<string, string>>,
           .map(([pkg, version]) => `${pkg}@${version}`)
           .join(' ')
 
-        yield* Console.log(`${dryRun ? '[DRY RUN] ' : ''}Updating ${packageJsonPath}: ${packages}`)
+        yield* Console.log(`${dryRun === true ? '[DRY RUN] ' : ''}Updating ${packageJsonPath}: ${packages}`)
 
-        if (!dryRun) {
+        if (dryRun === false) {
           const updateResult = yield* Effect.gen(function* () {
             // Read current package.json
             const content = yield* Effect.try({
@@ -256,13 +265,13 @@ const executeUpdates = (filteredUpdates: Record<string, Record<string, string>>,
 
             // Update dependencies in all sections
             for (const [pkg, version] of Object.entries(updates)) {
-              if (packageJson.dependencies?.[pkg]) {
+              if (packageJson.dependencies?.[pkg] !== undefined) {
                 packageJson.dependencies[pkg] = version
               }
-              if (packageJson.devDependencies?.[pkg]) {
+              if (packageJson.devDependencies?.[pkg] !== undefined) {
                 packageJson.devDependencies[pkg] = version
               }
-              if (packageJson.peerDependencies?.[pkg]) {
+              if (packageJson.peerDependencies?.[pkg] !== undefined) {
                 packageJson.peerDependencies[pkg] = version
               }
             }
@@ -292,7 +301,7 @@ const executeUpdates = (filteredUpdates: Record<string, Record<string, string>>,
       }
 
       // After all files updated, run pnpm install once to update lockfile
-      if (!dryRun && Object.keys(filteredUpdates).length > 0) {
+      if (dryRun == null && Object.keys(filteredUpdates).length > 0) {
         yield* Console.log('Running pnpm install to update lockfile...')
         yield* cmd('pnpm install --fix-lockfile').pipe(Effect.provide(LivestoreWorkspace.toCwd()))
       }
@@ -323,7 +332,7 @@ export const updateDepsCommand = Cli.Command.make(
 
     // Validate target option
     const validTargets = ['latest', 'minor', 'patch']
-    if (!validTargets.includes(target)) {
+    if (validTargets.includes(target) === false) {
       return yield* new UpdateDepsError({
         message: `Invalid target: ${target}. Must be one of: ${validTargets.join(', ')}`,
       })
@@ -359,7 +368,7 @@ export const updateDepsCommand = Cli.Command.make(
     }
 
     // Step 6: Validation (if not dry run and validate enabled)
-    if (!dryRun && validate) {
+    if (dryRun == null && validate !== undefined) {
       yield* Console.log('\n🔍 Running validation...')
 
       // Check Expo examples
@@ -372,7 +381,7 @@ export const updateDepsCommand = Cli.Command.make(
       for (const exampleDir of expoExamples) {
         yield* cmd('expo install --check').pipe(
           Effect.provide(LivestoreWorkspace.toCwd(exampleDir)),
-          Effect.catchAll((error) => Console.warn(`Expo check failed for ${exampleDir}: ${error}`)),
+          Effect.catchAll((error) => Console.warn('Expo check failed for', exampleDir, objectToString(error))),
         )
       }
     }
@@ -381,7 +390,7 @@ export const updateDepsCommand = Cli.Command.make(
   }),
 )
 
-if (import.meta.main) {
+if (import.meta.main === true) {
   const cli = Cli.Command.run(updateDepsCommand, {
     name: 'update-deps',
     version: '1.0.0',

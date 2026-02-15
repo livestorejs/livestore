@@ -7,7 +7,7 @@ export default defineConfig({
   forbidOnly: !!process.env.CI,
   workers: 1,
   reportSlowTests: null,
-  reporter: [process.env.CI ? ['dot'] : ['line']],
+  reporter: [process.env.CI !== undefined ? ['dot'] : ['line']],
   use: { baseURL: 'http://localhost:46001' },
   projects: [
     {

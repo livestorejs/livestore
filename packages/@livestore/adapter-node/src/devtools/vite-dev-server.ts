@@ -59,13 +59,13 @@ export const makeViteMiddleware = (
           port: hmrPort,
         },
         // Relaxing fs access for monorepo setup
-        fs: { strict: process.env.LS_DEV ? false : true },
+        fs: { strict: process.env.LS_DEV !== undefined ? false : true },
       },
       appType: 'spa',
       base: '/_livestore/',
       plugins: [
         livestoreDevtoolsPlugin({
-          schemaPath: isReadonlyArray(options.schemaPath)
+          schemaPath: isReadonlyArray(options.schemaPath) === true
             ? options.schemaPath.map((schemaPath) => path.resolve(cwd, schemaPath))
             : path.resolve(cwd, options.schemaPath),
           mode: options.mode,

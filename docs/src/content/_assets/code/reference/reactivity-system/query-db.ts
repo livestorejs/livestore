@@ -12,7 +12,7 @@ const todos$ = queryDb(tables.todos.orderBy('createdAt', 'desc'), { label: 'todo
   const todos$ = queryDb(
     (get) => {
       const { showCompleted } = get(uiState$)
-      return tables.todos.where(showCompleted ? { completed: true } : {})
+      return tables.todos.where(showCompleted === true ? { completed: true } : {})
     },
     { label: 'todos$' },
   )
