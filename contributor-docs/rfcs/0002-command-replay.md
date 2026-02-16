@@ -678,6 +678,7 @@ store.execute(commands.checkInGuest({ roomId: 'Room-1', guestId: 'Guest-A' }))
 - [@antl3x](https://github.com/antl3x)
 - [@rubywwwilde](https://github.com/rubywwwilde)
 - [@bohdanbirdie](https://github.com/bohdanbirdie)
+- [@slashv](https://github.com/slashv)
 
 ## References
 
