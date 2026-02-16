@@ -6,7 +6,13 @@ import LiveStoreSharedWorker from '@livestore/adapter-web/shared-worker?sharedwo
 import { createStorePromise, liveStoreVersion, queryDb } from '@livestore/livestore'
 
 import LiveStoreWorker from './livestore.worker.ts?worker'
-import { events, SyncPayload, schema, type Todo, tables } from './schema.ts'
+import { events, SyncPayload, schema, tables } from './schema.ts'
+
+type TodoItemData = {
+  id: string
+  text: string
+  completed: boolean
+}
 
 // These are here to try to get editors to highlight strings correctly 😔
 export const html = (strings: TemplateStringsArray, ...values: unknown[]) =>
@@ -65,7 +71,7 @@ const updatedNewTodoText = (text: string) => store.commit(events.uiStateSet({ ne
 const todoCreated = (text: string) =>
   store.commit(events.todoCreated({ id: crypto.randomUUID(), text }), events.uiStateSet({ newTodoText: '' }))
 
-const toggleTodo = (todo: Todo) => {
+const toggleTodo = (todo: TodoItemData) => {
   if (todo.completed) {
     store.commit(events.todoUncompleted({ id: todo.id }))
   } else {
@@ -73,7 +79,7 @@ const toggleTodo = (todo: Todo) => {
   }
 }
 
-const todoDeleted = (todo: Todo) => store.commit(events.todoDeleted({ id: todo.id, deletedAt: new Date() }))
+const todoDeleted = (todo: TodoItemData) => store.commit(events.todoDeleted({ id: todo.id, deletedAt: new Date() }))
 
 const TodoItemTemplate = html`
   <link rel="stylesheet" href="/src/index.css" />
@@ -91,7 +97,7 @@ const TodoItemTemplate = html`
 `
 
 class TodoItem extends HTMLElement {
-  #todo: Todo | null
+  #todo: TodoItemData | null
 
   constructor() {
     super()
@@ -118,12 +124,12 @@ class TodoItem extends HTMLElement {
     }
   }
 
-  set todo(t: Todo | null) {
+  set todo(t: TodoItemData | null) {
     this.#todo = t
     this.updateTemplate()
   }
 
-  get todo(): Todo | null {
+  get todo(): TodoItemData | null {
     return this.#todo
   }
 

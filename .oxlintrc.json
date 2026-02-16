@@ -168,12 +168,6 @@
       "rules": {
         "import/no-unassigned-import": "off"
       }
-    },
-    {
-      "files": ["examples/**"],
-      "rules": {
-        "typescript/no-redundant-type-constituents": "off"
-      }
     }
   ]
 }

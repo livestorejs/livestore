@@ -229,10 +229,6 @@ const livestoreOxlintOverrides = [
 
   // Examples currently trigger type-aware "error type as any" findings for schema-derived aliases.
   // Keep this rule enforced for packages/apps while we track example-level type cleanup separately.
-  {
-    files: ['examples/**'],
-    rules: { 'typescript/no-redundant-type-constituents': 'off' },
-  },
 ] as const
 
 export default oxlintConfig({

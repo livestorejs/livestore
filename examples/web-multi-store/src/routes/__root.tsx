@@ -1,7 +1,7 @@
 import type { StoreRegistry } from '@livestore/livestore'
 import { createRootRouteWithContext, HeadContent, Link, Outlet, Scripts } from '@tanstack/react-router'
 import type { ReactNode } from 'react'
-import stylesheetUrl from '@/styles.css?url'
+import stylesheetUrl from '../styles.css?url'
 
 type RouterContext = {
   storeRegistry: StoreRegistry

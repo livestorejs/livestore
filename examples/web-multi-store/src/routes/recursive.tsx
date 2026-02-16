@@ -2,8 +2,8 @@ import { StoreRegistryProvider } from '@livestore/react'
 import { createFileRoute } from '@tanstack/react-router'
 import { Suspense } from 'react'
 import { ErrorBoundary } from 'react-error-boundary'
-import { ErrorFallback } from '@/components/ErrorFallback.tsx'
-import { IssueView } from '@/components/IssueView.tsx'
+import { ErrorFallback } from '../components/ErrorFallback.tsx'
+import { IssueView } from '../components/IssueView.tsx'
 
 export const Route = createFileRoute('/recursive')({
   ssr: false,

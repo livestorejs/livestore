@@ -3,9 +3,9 @@ import { StoreRegistryProvider, useStore } from '@livestore/react'
 import { createFileRoute } from '@tanstack/react-router'
 import { Suspense, useCallback } from 'react'
 import { ErrorBoundary } from 'react-error-boundary'
-import { ErrorFallback } from '@/components/ErrorFallback.tsx'
-import { workspaceStoreOptions } from '@/stores/workspace/index.ts'
-import { workspaceEvents, workspaceTables } from '@/stores/workspace/schema.ts'
+import { ErrorFallback } from '../components/ErrorFallback.tsx'
+import { workspaceStoreOptions } from '../stores/workspace/index.ts'
+import { workspaceEvents, workspaceTables } from '../stores/workspace/schema.ts'
 
 export const Route = createFileRoute('/')({
   loader: ({ context }) => {
