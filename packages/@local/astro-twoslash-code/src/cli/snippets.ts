@@ -574,7 +574,7 @@ const collectDiagnostics = (node: THastElement): string[] => {
 
     if (Array.isArray(element.children)) {
       for (const child of element.children) {
-        walk(child as THastElementContent | THastRootContent)
+        walk(child)
       }
     }
   }
@@ -900,7 +900,7 @@ const restoreFocusSpecifiers = (root: THastElement, rewrites: TVirtualFileRecord
       const element = node
       if (Array.isArray(element.children)) {
         for (const child of element.children) {
-          walk(child as THastElementContent | THastRootContent)
+          walk(child)
         }
       }
     }

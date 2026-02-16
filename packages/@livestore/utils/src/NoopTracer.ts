@@ -73,14 +73,14 @@ export class NoopTracer {
       fn = arg2 as F
     } else if (arguments.length === 3) {
       // oxlint-disable-next-line typescript-eslint(no-unsafe-type-assertion) -- arguments-based overload dispatch: with 3 args, arg2 is SpanOptions
-      _opts = arg2 as otel.SpanOptions | undefined
+      _opts = arg2
       // oxlint-disable-next-line typescript-eslint(no-unsafe-type-assertion) -- arguments-based overload dispatch: with 3 args, arg3 is the callback
       fn = arg3 as F
     } else {
       // oxlint-disable-next-line typescript-eslint(no-unsafe-type-assertion) -- arguments-based overload dispatch: with 4 args, arg2 is SpanOptions
-      _opts = arg2 as otel.SpanOptions | undefined
+      _opts = arg2
       // oxlint-disable-next-line typescript-eslint(no-unsafe-type-assertion) -- arguments-based overload dispatch: with 4 args, arg3 is Context
-      _ctx = arg3 as otel.Context | undefined
+      _ctx = arg3
       // oxlint-disable-next-line typescript-eslint(no-unsafe-type-assertion) -- arguments-based overload dispatch: with 4 args, arg4 is the callback
       fn = arg4 as F
     }

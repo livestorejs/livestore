@@ -332,7 +332,7 @@ export class LiveStoreDbQuery<TResultSchema, TResult = TResultSchema> extends Li
     const resultsEqual =
       map === undefined
         ? schemaRef.current === undefined
-          ? (a: TResult, b: TResult) => makeResultsEqual(schemaRef.current!)(a, b)
+          ? (a: TResult, b: TResult) => makeResultsEqual(schemaRef.current)(a, b)
           : makeResultsEqual(schemaRef.current)
         : undefined
 
@@ -394,7 +394,7 @@ export class LiveStoreDbQuery<TResultSchema, TResult = TResultSchema> extends Li
 
             span.setAttribute('sql.rowsCount', rawDbResults.length)
 
-            const parsedResult = Schema.decodeEither(schemaRef.current!)(rawDbResults)
+            const parsedResult = Schema.decodeEither(schemaRef.current)(rawDbResults)
 
             if (parsedResult._tag === 'Left') {
               const parseErrorStr = TreeFormatter.formatErrorSync(parsedResult.left)

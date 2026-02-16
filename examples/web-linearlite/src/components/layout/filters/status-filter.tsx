@@ -24,14 +24,14 @@ export const StatusFilter = () => {
           {filterState.status.map((status) => (
             <div key={status} className="h-4 -ml-3 p-px rounded-full bg-white dark:bg-neutral-900">
               <Icon
-                name={statusOptions[status as Status]!.icon as IconName}
+                name={statusOptions[status as Status]!.icon}
                 className={`h-full ${statusOptions[status as Status]!.style}`}
               />
             </div>
           ))}
           {filterState.status.length === 1 ? (
             <span className="font-medium text-neutral-600 dark:text-neutral-200">
-              {statusOptions[filterState.status[0] as Status]!.name}
+              {statusOptions[filterState.status[0]]!.name}
             </span>
           ) : (
             <span>{filterState.status.length} statuses</span>

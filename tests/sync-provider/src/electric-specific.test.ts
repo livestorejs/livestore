@@ -108,7 +108,7 @@ Vitest.describe('ElectricSQL specific error handling', { timeout: 60000 }, () =>
         )
 
       expect(pullResult._tag).toBe('InvalidPullError')
-      const cause = pullResult.cause as any
+      const cause = pullResult.cause
       expect(cause._tag).toBe('InvalidOperationError')
       expect(cause.operation).toBe('delete')
       expect(cause.message).toContain("ElectricSQL 'delete' event received")
@@ -151,7 +151,7 @@ Vitest.describe('ElectricSQL specific error handling', { timeout: 60000 }, () =>
         .pipe(Stream.runDrain, Effect.flip)
 
       expect(pullResult._tag).toBe('InvalidPullError')
-      const cause = pullResult.cause as any
+      const cause = pullResult.cause
       expect(cause._tag).toBe('InvalidOperationError')
       expect(cause.operation).toBe('update')
       expect(cause.message).toContain("ElectricSQL 'update' event received")

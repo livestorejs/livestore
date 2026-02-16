@@ -45,7 +45,7 @@ describe('livestoreDevtoolsPlugin (real Vite server)', () => {
       logLevel: 'error',
       clearScreen: false,
       server: { port: 0, host: '127.0.0.1' },
-    })) as ViteDevServerWithOptimizeDeps
+    }))
     const capturedLogs: string[] = []
     const loggerAny = server.config.logger as any
     const wrapLog = (method: 'warn' | 'error') => {

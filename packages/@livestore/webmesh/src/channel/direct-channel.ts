@@ -227,7 +227,7 @@ export const makeDirectChannel = ({
       } satisfies WebChannel.WebChannel<any, any>
 
       return {
-        webChannel: webChannel as WebChannel.WebChannel<any, any>,
+        webChannel: webChannel,
         initialEdgeDeferred,
       }
     }),

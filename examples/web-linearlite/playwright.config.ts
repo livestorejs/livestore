@@ -13,7 +13,7 @@ if (!process.env.PLAYWRIGHT_PORT && !process.env.PORT) {
 }
 const port = process.env.PORT
   ? Number.parseInt(process.env.PORT, 10)
-  : Number.parseInt(process.env.PLAYWRIGHT_PORT!, 10)
+  : Number.parseInt(process.env.PLAYWRIGHT_PORT, 10)
 
 const config: PlaywrightTestConfig = {
   // Only start web server if BASE_URL is not provided
