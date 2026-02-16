@@ -405,9 +405,14 @@ This duplication exists because DB constraints currently can only reject—they 
 
 #### Offline Work May Change on Sync
 
-When a client reconnects and pulls remote events, pending commands are replayed against the new state. Commands may produce different events, fewer events, or be rejected entirely. While the client retains authority over validation, the context against which commands are validated changes.
+Actions performed offline are speculative until confirmed. When a client reconnects and pulls remote events, pending commands are replayed against the updated state. Because the underlying state may have changed, a replayed command can produce different events, fewer events, or be rejected entirely. The user saw one outcome locally, but after sync the outcome may silently become something else—or be undone altogether.
 
-When commands are rejected during replay, cascading failures can occur: if C1 fails, C2 (issued based on C1's result) will likely also fail. Exposing these delayed rejections to users may be challenging—they may have moved on, and the context that made the action make sense may no longer be obvious.
+This creates two compounding challenges:
+
+- **Cascading failures**: Commands are often causally dependent. If command C1 is rejected during replay, C2—issued based on C1's result—will likely also fail, potentially unraveling an entire chain of offline work.
+- **Delayed, context-free rejections**: By the time sync happens, the user may have moved on. The state that made an action make sense no longer exists, making it difficult to present a meaningful explanation of what changed and why.
+
+For domains where offline decisions must be **binding and preserved as historical facts** (e.g., healthcare prescriptions, field equipment reports, financial transactions), this trade-off may be unacceptable. In such cases, [Alternative D: Client-Authoritative Events](#alternative-d-client-authoritative-events) offers a model where events are never discarded during sync and conflicts are resolved through compensating events instead.
 
 #### Server Validation Requires Explicit Coordination
 
@@ -507,7 +512,7 @@ This would at least detect violations, though resolution is still complex.
 
 Events carry explicit preconditions that describe the state assumptions under which they were generated.
 
-### Alternative D: Client-Side Authoritative Events
+### Alternative D: Client-Authoritative Events
 
 In this approach, clients generate authoritative events that are immediately committed to the event log. These events aren't ever discarded, even if they later conflict with events from other clients. Instead, compensating events are generated to resolve conflicts.
 
