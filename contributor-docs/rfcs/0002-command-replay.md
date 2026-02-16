@@ -243,7 +243,7 @@ export const commands = {
 The handler's second argument (`ctx`) provides:
 
 - **`ctx.query`**: Synchronous read access to the current state via query builder or raw SQL.
-- **`ctx.phase`**: Either `'initial'` (first execution via `store.execute()`) or `'replay'` (re-execution during reconciliation). Handlers can use this to adapt behavior, e.g. return alternative events during replay instead of failing (see [During Replay](#during-replay-conflicts)).
+- **`ctx.phase`**: A tagged union with `_tag` either `'initial'` (first execution via `store.execute()`) or `'replay'` (re-execution during reconciliation). Handlers can use this to adapt behavior, e.g. return alternative events during replay instead of failing (see [During Replay](#during-replay-conflicts)).
 
 Handlers distinguish two kinds of errors:
 
@@ -345,7 +345,7 @@ If a command handler returns an error during replay, a **conflict** occurs, and 
 > handler: ({ roomId, guestId }, ctx) => {
 >   const guestCount = ctx.query(tables.roomGuests.where({ roomId }).count())
 >   if (guestCount >= room.capacity) {
->     if (ctx.phase === 'replay') return events.guestWaitlisted({ roomId, guestId })
+>     if (ctx.phase._tag === 'replay') return events.guestWaitlisted({ roomId, guestId })
 >     return new RoomAtCapacity()
 >   }
 >   return events.guestCheckedIn({ roomId, guestId })
