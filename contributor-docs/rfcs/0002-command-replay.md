@@ -675,11 +675,11 @@ store.execute(commands.checkInGuest({ roomId: 'Room-1', guestId: 'Guest-A' }))
 
 ## Acknowledgments
 
-- @imagio (Discord)
-- @tatemz (GitHub)
-- @antl3x (GitHub)
-- @rubywwwilde (Discord)
-- @bohdanbirdie (GitHub)
+- [@evelant](https://github.com/evelant)
+- [@tatemz](https://github.com/tatemz)
+- [@antl3x](https://github.com/antl3x)
+- [@rubywwwilde](https://github.com/rubywwwilde)
+- [@bohdanbirdie](https://github.com/bohdanbirdie)
 
 ## References
 
