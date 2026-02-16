@@ -94,7 +94,7 @@ const main = async () => {
   }
 
   for (const groupId of groupIds) {
-    sqlite3.session_delete(sessions[groupId]!)
+    sqlite3.session_delete(sessions[groupId])
   }
 
   sqlite3.close(db)

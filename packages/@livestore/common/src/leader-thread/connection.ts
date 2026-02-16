@@ -73,7 +73,7 @@ export const execSql = (sqliteDb: SqliteDb, sql: string, bind: BindValues) => {
   return Effect.try({
     try: () => sqliteDb.execute(sql, bindValues),
     catch: (cause) =>
-      new SqliteError({ cause, query: { bindValues, sql }, code: (cause as WaSqlite.SQLiteError).code }),
+      new SqliteError({ cause, query: { bindValues, sql }, code: (cause).code }),
   }).pipe(
     Effect.asVoid,
     // Effect.logDuration(`@livestore/common:execSql:${sql}`),
@@ -97,7 +97,7 @@ export const execSqlPrepared = (sqliteDb: SqliteDb, sql: string, bindValues: Pre
   return Effect.try({
     try: () => sqliteDb.execute(sql, bindValues),
     catch: (cause) =>
-      new SqliteError({ cause, query: { bindValues, sql }, code: (cause as WaSqlite.SQLiteError).code }),
+      new SqliteError({ cause, query: { bindValues, sql }, code: (cause).code }),
   }).pipe(
     Effect.asVoid,
     // Effect.logDuration(`@livestore/common:execSqlPrepared:${sql}`),

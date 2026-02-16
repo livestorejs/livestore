@@ -255,7 +255,7 @@ export const makeSingleTabAdapter =
         ? Effect.Effect<A, UnknownError | E, R>
         : never =>
         Fiber.join(innerWorkerFiber).pipe(
-          Effect.flatMap((worker) => worker.executeEffect(req) as any),
+          Effect.flatMap((worker) => worker.executeEffect(req)),
           Effect.logWarnIfTakesLongerThan({
             label: `@livestore/adapter-web:single-tab:runInWorker:${req._tag}`,
             duration: 2000,

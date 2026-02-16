@@ -232,7 +232,7 @@ const makeWorkerRunnerInner = ({ schema, sync: syncOptions, syncPayloadSchema }:
     StreamEvents: (options) =>
       LeaderThreadCtx.pipe(
         Effect.map(({ dbEventlog, syncProcessor }) => {
-          const { _tag: _ignored, ...payload } = options as any
+          const { _tag: _ignored, ...payload } = options
           const streamOptions = payload as StreamEventsOptions
           return streamEventsWithSyncState({
             dbEventlog,

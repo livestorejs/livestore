@@ -24,7 +24,7 @@ export const SortMenu = ({ type }: { type?: 'status' | 'priority' }) => {
       else
         setFilterState({
           orderBy: sortingOption,
-          orderDirection: sortingOptions[sortingOption as SortingOption].defaultDirection as SortingDirection,
+          orderDirection: sortingOptions[sortingOption].defaultDirection as SortingDirection,
         })
     },
     [filterState.orderBy, filterState.orderDirection, setFilterState],

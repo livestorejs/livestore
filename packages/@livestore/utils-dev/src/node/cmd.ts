@@ -132,7 +132,7 @@ export const cmdText: (
     yield* Effect.logDebug(`Running '${commandDebugStr}' in '${cwd}'${subshellStr}`)
     yield* Effect.annotateCurrentSpan({ 'span.label': commandDebugStr, command, cwd })
 
-    return yield* Command.make(command!, ...args).pipe(
+    return yield* Command.make(command, ...args).pipe(
       // inherit = Stream stderr to process.stderr, pipe = Stream stderr to process.stdout
       Command.stderr(options?.stderr ?? 'inherit'),
       Command.workingDirectory(cwd),

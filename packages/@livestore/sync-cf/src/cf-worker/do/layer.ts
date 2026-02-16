@@ -76,7 +76,7 @@ export class DoCtx extends Effect.Service<DoCtx>()('DoCtx', {
 
       const storageRow = doSelf.ctx.storage.sql
         .exec(`SELECT * FROM "${contextTable.sqliteDef.name}" WHERE storeId = ?`, storeId)
-        .toArray()[0] as typeof contextTable.rowSchema.Type | undefined
+        .toArray()[0]
 
       const currentHeadRef = { current: storageRow?.currentHead ?? EventSequenceNumber.Client.ROOT.global }
 

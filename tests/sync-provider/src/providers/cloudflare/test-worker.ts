@@ -96,7 +96,7 @@ export class TestClientDo extends DurableObjectBase implements ClientDoWithRpcCa
       Pull: (args) =>
         Effect.gen(function* () {
           const syncBackend = yield* getSyncBackend(args)
-          return syncBackend.pull(args.cursor as any, { live: args.live })
+          return syncBackend.pull(args.cursor, { live: args.live })
         }).pipe(
           Stream.unwrap,
           Stream.map((msg) => ({ ...msg, backendId: 'TODO' })),

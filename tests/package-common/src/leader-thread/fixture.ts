@@ -22,7 +22,7 @@ const appConfig = State.SQLite.clientDocument({
   default: { value: { fontSize: 16, theme: 'light' } },
 })
 
-const appConfigTable = appConfig as typeof appConfig & State.SQLite.ClientDocumentTableDef<any, any, any, any>
+const appConfigTable = appConfig
 
 export const appConfigSetEvent = appConfigTable[State.SQLite.ClientDocumentTableDefSymbol].derived.setEventDef
 

@@ -24,7 +24,7 @@ export const provideOtel =
 
     return effect.pipe(
       parentSpanContext !== undefined
-        ? Effect.withParentSpan(OtelTracer.makeExternalSpan(otel.trace.getSpanContext(parentSpanContext)!))
+        ? Effect.withParentSpan(OtelTracer.makeExternalSpan(otel.trace.getSpanContext(parentSpanContext)))
         : identity,
       Effect.provide(TracingLive),
     )

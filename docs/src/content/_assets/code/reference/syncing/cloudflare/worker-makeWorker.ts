@@ -8,7 +8,7 @@ export default makeWorker({
     if (!hasAuthToken) {
       throw new Error('Missing auth token')
     }
-    if ((payload as any).authToken !== 'insecure-token-change-me') {
+    if ((payload).authToken !== 'insecure-token-change-me') {
       throw new Error('Invalid auth token')
     }
     console.log(`Validated connection for store: ${storeId}`)

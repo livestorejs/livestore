@@ -14,12 +14,12 @@ export const makeBroadcastChannel = <Msg, MsgEncoded>({
     Effect.gen(function* () {
       if (globalThis.BroadcastChannel === undefined) {
         yield* Effect.logWarning('BroadcastChannel is not supported in this environment. Using a NoopChannel instead.')
-        return (yield* WebChannel.noopChannel()) as any as WebChannel.WebChannel<Msg, Msg>
+        return (yield* WebChannel.noopChannel()) as WebChannel.WebChannel<Msg, Msg>
       }
 
       // NOTE we're using `globalThis.BroadcastChannel` here because `BroadcastChannel`
       // from `node:worker_threads` is not yet stable in Deno
-      const channel = new globalThis.BroadcastChannel(channelName) as any as NodeBroadcastChannel
+      const channel = new globalThis.BroadcastChannel(channelName) as NodeBroadcastChannel
 
       yield* Effect.addFinalizer(() => Effect.try(() => channel.close()).pipe(Effect.ignoreLogged))
 

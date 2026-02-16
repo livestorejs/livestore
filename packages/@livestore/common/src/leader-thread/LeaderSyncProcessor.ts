@@ -675,12 +675,12 @@ const materializeEventsBatch: MaterializeEventsBatch = ({ batchItems, deferreds 
     )
 
     for (let i = 0; i < batchItems.length; i++) {
-      const { sessionChangeset, hash } = yield* materializeEvent(batchItems[i]!)
+      const { sessionChangeset, hash } = yield* materializeEvent(batchItems[i])
       batchItems[i]!.meta.sessionChangeset = sessionChangeset
       batchItems[i]!.meta.materializerHashLeader = hash
 
       if (deferreds?.[i] !== undefined) {
-        yield* Deferred.succeed(deferreds[i]!, void 0)
+        yield* Deferred.succeed(deferreds[i], void 0)
       }
     }
 

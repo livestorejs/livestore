@@ -48,7 +48,7 @@ export const makeSqliteDb = <
           execute: (bindValues, options) => {
             for (const stmt of stmts) {
               if (bindValues !== undefined && Object.keys(bindValues).length > 0) {
-                sqlite3.bind_collection(stmt, bindValues as any)
+                sqlite3.bind_collection(stmt, bindValues)
               }
 
               try {

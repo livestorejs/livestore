@@ -95,7 +95,7 @@ const main = async () => {
     const session = sqlite3.session_create(db, 'main')
     sqlite3.session_attach(session, null)
     syncDb.execute(stmt.statementSql, stmt.bindValues)
-    changesets.push(sqlite3.session_changeset(session).changeset!)
+    changesets.push(sqlite3.session_changeset(session).changeset)
   }
 
   console.log('app', syncDb.select('SELECT * FROM app'))
