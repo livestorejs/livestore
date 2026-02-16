@@ -89,7 +89,7 @@ const getDocsForDirectory = (
   entries: ReadonlyArray<TLlmsEntry>,
   docs: ReadonlyArray<TLlmsDoc>,
 ): ReadonlyArray<TLlmsEntry> => {
-  const normalizedDirectory = directory.endsWith('/') === true ? directory.slice(0, -1) : directory
+  const normalizedDirectory =  directory.endsWith('/') ? directory.slice(0, -1) : directory
   const prefix = `${normalizedDirectory}/`
 
   // Create a map from slug to original doc for order info
@@ -104,7 +104,7 @@ const getDocsForDirectory = (
       if (entry.slug === normalizedDirectory) return true
 
       // Match docs in this directory but not nested subdirectories
-      if (entry.slug.startsWith(prefix) === false) return false
+      if (!entry.slug.startsWith(prefix)) return false
       const remaining = entry.slug.slice(prefix.length)
       // Don't include nested items (they'll be handled by their own autogenerate)
       return !remaining.includes('/')
@@ -217,7 +217,7 @@ ${docsSection}
 const LLMS_SHORT_PATTERN = /<LlmsShort[^>]*\/>/g
 
 export const replaceLlmsShortPlaceholders = ({ markdown, docs, site }: TReplaceOptions): string => {
-  if (markdown.includes('<LlmsShort') === false) {
+  if (!markdown.includes('<LlmsShort')) {
     return markdown
   }
 

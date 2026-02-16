@@ -50,7 +50,7 @@ const createLineOwnerPlugin = (): ExpressiveCodePlugin =>
           while (pointer < metadata.length) {
             const candidate = metadata[pointer]!
             pointer += 1
-            if (predicate(candidate) === true) {
+            if (predicate(candidate)) {
               return candidate
             }
           }
@@ -151,7 +151,7 @@ const stableStringify = (value: unknown): string => {
   if (valueType === 'undefined') {
     return '"__undefined__"'
   }
-  if (Array.isArray(value) === true) {
+  if (Array.isArray(value)) {
     return `[${value.map((entry) => stableStringify(entry)).join(',')}]`
   }
   if (valueType === 'object') {

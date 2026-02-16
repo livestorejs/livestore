@@ -160,7 +160,7 @@ const getQueryStringAndExtraDeps = (
     return { queryString: query, extraDeps: bindValuesToDepKey(bindValues) }
   }
 
-  if (isQueryInputRaw(queryInput) === true) {
+  if (isQueryInputRaw(queryInput)) {
     return { queryString: queryInput.query, extraDeps: bindValuesToDepKey(queryInput.bindValues) }
   }
 
@@ -357,7 +357,7 @@ export class LiveStoreDbQuery<TResultSchema, TResult = TResultSchema> extends Li
               execBeforeFirstRunRef.current = undefined
             }
 
-            const queryInputResult = isThunk(queryInputRaw$OrQueryInputRaw) === true
+            const queryInputResult =  isThunk(queryInputRaw$OrQueryInputRaw)
               ? (get(queryInputRaw$OrQueryInputRaw, otelContext, debugRefreshReason) as TQueryInputRaw)
               : (queryInputRaw$OrQueryInputRaw as TQueryInputRaw)
 

@@ -70,7 +70,8 @@ export const readExampleSlugs = Effect.fn('deploy-examples/readExampleSlugs')(fu
 })
 
 export const ensureExampleExists = (example: string, available: readonly string[]) =>
-  available.includes(example) === true
+  
+  available.includes(example)
     ? Effect.succeed(example)
     : new ScriptError({
         message: `Unknown example "${example}". Available examples: ${available.length > 0 ? available.join(', ') : 'none'}`,
@@ -96,7 +97,7 @@ export const runExampleTests = (examples: ReadonlyArray<string>, options: { skip
       const hasPackageJson = yield* fs.exists(packageJsonPath)
 
       if (hasPackageJson === false) {
-        if (skipMissing === true) {
+        if (skipMissing) {
           yield* Effect.logWarning(`Skipping ${example}: package.json not found`)
           continue
         }
@@ -107,7 +108,7 @@ export const runExampleTests = (examples: ReadonlyArray<string>, options: { skip
       const decoded = yield* parseExamplePackageJson(packageJsonContent).pipe(Effect.either)
 
       if (decoded._tag === 'Left') {
-        if (skipMissing === true) {
+        if (skipMissing) {
           yield* Effect.logWarning(`Skipping ${example}: unable to decode package.json`)
           continue
         }
@@ -116,7 +117,7 @@ export const runExampleTests = (examples: ReadonlyArray<string>, options: { skip
 
       const packageJson = decoded.right
       if (typeof packageJson.scripts?.test !== 'string') {
-        if (skipMissing === true) {
+        if (skipMissing) {
           yield* Effect.logWarning(`Skipping ${example}: no test script defined`)
           continue
         }
@@ -194,7 +195,7 @@ const determineDeploymentKind = ({
 }): CloudflareEnvironmentKind => {
   const normalizedBranch = branchName.toLowerCase()
 
-  if (prod === true || normalizedBranch === 'main') {
+  if (prod || normalizedBranch === 'main') {
     return 'prod'
   }
 

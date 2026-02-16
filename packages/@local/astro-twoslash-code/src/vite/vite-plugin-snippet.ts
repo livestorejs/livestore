@@ -148,7 +148,7 @@ const parseSnippetMode = (rawQuery: string): 'component' | 'raw' | null => {
     }
   }
 
-  return rawSeen === true ? 'raw' : null
+  return  rawSeen ? 'raw' : null
 }
 
 const collectSnippetFiles = (
@@ -162,9 +162,9 @@ const collectSnippetFiles = (
   const files: Record<string, TwoslashSnippetFile> = {}
   const validationHashes: Record<string, string> = {}
 
-  if (isRecord(filesField) === true && Array.isArray(filesField) === false) {
+  if (isRecord(filesField) && ! Array.isArray(filesField)) {
     for (const [rawFilename, rawValue] of Object.entries(filesField)) {
-      if (isRecord(rawValue) === false) continue
+      if (!isRecord(rawValue)) continue
       const filename = rawFilename.replace(/\\/g, '/').trim()
       if (filename.length === 0) continue
 
@@ -189,9 +189,9 @@ const collectSnippetFiles = (
 
       files[filename] = snippetFile
     }
-  } else if (Array.isArray(filesField) === true) {
+  } else if (Array.isArray(filesField)) {
     for (const entry of filesField) {
-      if (isRecord(entry) === false) continue
+      if (!isRecord(entry)) continue
       const filenameValue = typeof entry.filename === 'string' ? entry.filename.replace(/\\/g, '/').trim() : ''
       if (filenameValue.length === 0) continue
 
@@ -219,7 +219,7 @@ const collectSnippetFiles = (
   }
 
   let fileOrder: string[] = []
-  if (Array.isArray(orderField) === true) {
+  if (Array.isArray(orderField)) {
     fileOrder = orderField
       .map((value) => (typeof value === 'string' ? value.replace(/\\/g, '/').trim() : ''))
       .filter((value) => value.length > 0)
@@ -238,16 +238,16 @@ const collectRenderedEntries = (renderedField: unknown): Record<string, Twoslash
     rendered[filename] = entry
   }
 
-  if (isRecord(renderedField) === true && Array.isArray(renderedField) === false) {
+  if (isRecord(renderedField) && ! Array.isArray(renderedField)) {
     for (const [rawFilename, rawValue] of Object.entries(renderedField)) {
-      if (isRecord(rawValue) === false) continue
+      if (!isRecord(rawValue)) continue
       const filename = rawFilename.replace(/\\/g, '/').trim()
       if (filename.length === 0) continue
 
-      const diagnostics = Array.isArray(rawValue.diagnostics) === true
+      const diagnostics =  Array.isArray(rawValue.diagnostics)
         ? rawValue.diagnostics.filter((value): value is string => typeof value === 'string')
         : []
-      const styles = Array.isArray(rawValue.styles) === true
+      const styles =  Array.isArray(rawValue.styles)
         ? rawValue.styles.filter((value): value is string => typeof value === 'string')
         : []
 
@@ -262,19 +262,19 @@ const collectRenderedEntries = (renderedField: unknown): Record<string, Twoslash
     return rendered
   }
 
-  if (Array.isArray(renderedField) === false) {
+  if (!Array.isArray(renderedField)) {
     return rendered
   }
 
   for (const entry of renderedField) {
-    if (isRecord(entry) === false) continue
+    if (!isRecord(entry)) continue
     const filenameValue = typeof entry.filename === 'string' ? entry.filename.replace(/\\/g, '/').trim() : ''
     if (filenameValue.length === 0) continue
 
-    const diagnostics = Array.isArray(entry.diagnostics) === true
+    const diagnostics =  Array.isArray(entry.diagnostics)
       ? entry.diagnostics.filter((value): value is string => typeof value === 'string')
       : []
-    const styles = Array.isArray(entry.styles) === true
+    const styles =  Array.isArray(entry.styles)
       ? entry.styles.filter((value): value is string => typeof value === 'string')
       : []
 
@@ -390,7 +390,7 @@ export const createTwoslashSnippetPlugin = (options: TwoslashSnippetPluginOption
       const manifestGlobals: TwoslashSnippetGlobals = {
         baseStyles: typeof manifest.raw.baseStyles === 'string' ? manifest.raw.baseStyles : '',
         themeStyles: typeof manifest.raw.themeStyles === 'string' ? manifest.raw.themeStyles : '',
-        jsModules: Array.isArray(manifest.raw.jsModules) === true
+        jsModules:  Array.isArray(manifest.raw.jsModules)
           ? manifest.raw.jsModules.filter((entry): entry is string => typeof entry === 'string' && entry.length > 0)
           : [],
       }
@@ -406,7 +406,7 @@ export const createTwoslashSnippetPlugin = (options: TwoslashSnippetPluginOption
       }
 
       const artefactData = JSON.parse(fs.readFileSync(artefactPath, 'utf-8')) as unknown
-      if (isRecord(artefactData) === false) {
+      if (!isRecord(artefactData)) {
         throw new Error(`Invalid snippet artefact for ${entryRelative}. ${rebuildInstruction}`)
       }
       const artefactRecord = artefactData as {

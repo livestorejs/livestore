@@ -9,7 +9,7 @@ export const historyDagFromNodes = (dagNodes: HistoryDagNode[], options?: { skip
       initialSnapshot: new Map<string, any>(),
     })
 
-    if (validationResult.success === false) {
+    if (!validationResult.success) {
       throw new Error(
         `Event ${dagNodes[validationResult.index]!.name} requires facts that have not been set yet.\nRequires: ${factsToString(validationResult.requiredFacts)}\nFacts Snapshot: ${factsToString(validationResult.currentSnapshot)}`,
       )
@@ -48,7 +48,7 @@ export const historyDagFromNodes = (dagNodes: HistoryDagNode[], options?: { skip
           const parentSeqNumStr = dag.source(parentEdge)
           const parentNode = dag.getNodeAttributes(parentSeqNumStr)
 
-          if (parentNode.factsGroup.modifySet.has(factKey) === true || parentNode.factsGroup.modifyUnset.has(factKey) === true) {
+          if (parentNode.factsGroup.modifySet.has(factKey) ||  parentNode.factsGroup.modifyUnset.has(factKey)) {
             return parentNode
           }
 

@@ -33,7 +33,7 @@ export const GET: APIRoute = async ({ site }) => {
   const dedupedSections = (() => {
     const seen = new Set<string>()
     return sections.replace(/(##+ `[^`]+`\n\n```[^\n]* filename="([^"]+)"[\s\S]*?```)/g, (_match, block, filename) => {
-      if (seen.has(filename) === true) {
+      if (seen.has(filename)) {
         return ''
       }
       seen.add(filename)

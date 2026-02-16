@@ -35,12 +35,12 @@ const vitestConfigPattern = /^vitest.*\.config\.(ts|js)$/
 const findVitestConfigs = (pkgPath: string): string[] => {
   const configs: string[] = []
   for (const file of fs.readdirSync(pkgPath)) {
-    if (vitestConfigPattern.test(file) === true) configs.push(path.join(pkgPath, file))
+    if (vitestConfigPattern.test(file)) configs.push(path.join(pkgPath, file))
   }
   const testsDir = path.join(pkgPath, 'tests')
   if (fs.existsSync(testsDir) === true && fs.statSync(testsDir).isDirectory() === true) {
     for (const file of fs.readdirSync(testsDir)) {
-      if (vitestConfigPattern.test(file) === true) configs.push(path.join(testsDir, file))
+      if (vitestConfigPattern.test(file)) configs.push(path.join(testsDir, file))
     }
   }
   return configs
@@ -69,12 +69,12 @@ const discoverPackagesWithTests = (workspaceRoot: string, excludePackages: strin
         const pkgPath = path.join(liveStoreDir, pkg)
         const relativePath = `packages/@livestore/${pkg}`
 
-        if (excludePackages.includes(relativePath) === true) continue
+        if (excludePackages.includes(relativePath)) continue
 
         if (fs.statSync(pkgPath).isDirectory() === true) {
           // Check if package has test files
           const hasTests = hasTestFiles(pkgPath)
-          if (hasTests === true) {
+          if (hasTests) {
             addPackage(pkgPath, relativePath)
           }
         }
@@ -89,11 +89,11 @@ const discoverPackagesWithTests = (workspaceRoot: string, excludePackages: strin
         const pkgPath = path.join(localDir, pkg)
         const relativePath = `packages/@local/${pkg}`
 
-        if (excludePackages.includes(relativePath) === true) continue
+        if (excludePackages.includes(relativePath)) continue
 
         if (fs.statSync(pkgPath).isDirectory() === true) {
           const hasTests = hasTestFiles(pkgPath)
-          if (hasTests === true) {
+          if (hasTests) {
             addPackage(pkgPath, relativePath)
           }
         }
@@ -101,9 +101,9 @@ const discoverPackagesWithTests = (workspaceRoot: string, excludePackages: strin
     }
 
     // Also check tests/package-common if not excluded
-    if (excludePackages.includes('tests/package-common') === false) {
+    if (!excludePackages.includes('tests/package-common')) {
       const packageCommonPath = path.join(workspaceRoot, 'tests/package-common')
-      if (fs.existsSync(packageCommonPath) === true && hasTestFiles(packageCommonPath) === true) {
+      if (fs.existsSync(packageCommonPath) === true &&  hasTestFiles(packageCommonPath)) {
         addPackage(packageCommonPath, 'tests/package-common')
       }
     }
@@ -129,7 +129,7 @@ const hasTestFiles = (dirPath: string): boolean => {
         }
 
         if (stat.isDirectory() === true && entry !== 'node_modules' && entry !== 'dist') {
-          if (findTestFiles(entryPath) === true) {
+          if (findTestFiles(entryPath)) {
             return true
           }
         }
@@ -183,7 +183,7 @@ export const testUnitCommand = Cli.Command.make(
     const allPackagesWithTests = discoverPackagesWithTests(workspaceRoot, sequentialPackages)
 
     // Some tests seem to be flaky on CI when running in parallel with the other packages, so we run them separately
-    if (isGithubAction === true) {
+    if (isGithubAction) {
       process.env.CI = '1'
 
       const vitestPathsToRunSequentially = sequentialPackages.map((pkg) => `${workspaceRoot}/${pkg}`)
@@ -330,7 +330,7 @@ export const testCommand = Cli.Command.make(
   Effect.fn(function* () {
     yield* testUnitCommand.handler({ filter: Option.none() })
     yield* testIntegrationAllCommand.handler({
-      concurrency: isGithubAction === true ? 'sequential' : 'parallel',
+      concurrency:  isGithubAction ? 'sequential' : 'parallel',
       localDevtoolsPreview: false,
     })
     yield* waSqliteTest.handler({})

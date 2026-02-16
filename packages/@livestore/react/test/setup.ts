@@ -21,7 +21,7 @@ global.Element = dom.window.Element
 // Add other DOM globals, skipping ones that cause conflicts
 const skipProperties = new Set(['navigator'])
 Object.keys(dom.window).forEach((property) => {
-  if (typeof (global as any)[property] === 'undefined' && skipProperties.has(property) === false) {
+  if (typeof (global as any)[property] === 'undefined' && ! skipProperties.has(property)) {
     try {
       ;(global as any)[property] = (dom.window as any)[property]
     } catch {

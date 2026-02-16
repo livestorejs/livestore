@@ -178,7 +178,8 @@ export const makeMeshNode = <TName extends MeshNodeName>(
         (packet._tag === 'DirectChannelRequest' &&
           (edgeChannels.size === 0 || // Either if direct edge does not support transferables ...
             edgeChannels.get(packet.target)?.channel.supportsTransferables === false)) || // ... or if no forward-edges support transferables
-        [...edgeChannels.values()].some((c) =>  c.channel.supportsTransferables) === false
+        ! // ... or if no forward-edges support transferables
+        [...edgeChannels.values()].some((c) =>  c.channel.supportsTransferables)
       ) {
         return WebmeshSchema.DirectChannelResponseNoTransferables.make({
           reqId: packet.id,
@@ -295,7 +296,7 @@ export const makeMeshNode = <TName extends MeshNodeName>(
         }
 
         // We have a direct edge to the target node
-        if (edgeChannels.has(packet.target) === true) {
+        if (edgeChannels.has(packet.target)) {
           const edgeChannel = edgeChannels.get(packet.target)!.channel
           const hops = packet.source === nodeName ? [] : [...packet.hops, nodeName]
           yield* Effect.annotateCurrentSpan({ hasDirectEdge: true })
@@ -354,8 +355,8 @@ export const makeMeshNode = <TName extends MeshNodeName>(
 
     const addEdge: MeshNode['addEdge'] = ({ target: targetNodeName, edgeChannel, replaceIfExists = false }) =>
       Effect.gen(function* () {
-        if (edgeChannels.has(targetNodeName) === true) {
-          if (replaceIfExists === true) {
+        if (edgeChannels.has(targetNodeName)) {
+          if (replaceIfExists) {
             yield* removeEdge(targetNodeName).pipe(Effect.orDie)
           } else {
             return yield* new EdgeAlreadyExistsError({ target: targetNodeName })
@@ -386,7 +387,7 @@ export const makeMeshNode = <TName extends MeshNodeName>(
                   if (packet.target === nodeName) {
                     const channelKey = `target:${packet.source}, channelName:${packet.channelName}` satisfies ChannelKey
 
-                    if (channelMap.has(channelKey) === false) {
+                    if (!channelMap.has(channelKey)) {
                       const channelQueue = yield* Queue.unbounded<MessageQueueItem | ProxyQueueItem>().pipe(
                         Effect.acquireRelease(Queue.shutdown),
                       )
@@ -461,7 +462,7 @@ export const makeMeshNode = <TName extends MeshNodeName>(
 
     const removeEdge: MeshNode['removeEdge'] = (targetNodeName) =>
       Effect.gen(function* () {
-        if (edgeChannels.has(targetNodeName) === false) {
+        if (!edgeChannels.has(targetNodeName)) {
           return yield* new Cause.NoSuchElementException(`No edge found for ${targetNodeName}`)
         }
 
@@ -489,7 +490,7 @@ export const makeMeshNode = <TName extends MeshNodeName>(
         const schema = WebChannel.mapSchema(inputSchema)
         const channelKey = `target:${target}, channelName:${channelName}` satisfies ChannelKey
 
-        if (channelMap.has(channelKey) === true) {
+        if (channelMap.has(channelKey)) {
           const existingChannel = channelMap.get(channelKey)!.debugInfo?.channel
           if (existingChannel !== undefined) {
             if (closeExisting) {
@@ -501,7 +502,7 @@ export const makeMeshNode = <TName extends MeshNodeName>(
           }
         }
 
-        if (channelMap.has(channelKey) === false) {
+        if (!channelMap.has(channelKey)) {
           const channelQueue = yield* Queue.unbounded<MessageQueueItem | ProxyQueueItem>().pipe(
             Effect.acquireRelease(Queue.shutdown),
           )
@@ -572,7 +573,7 @@ export const makeMeshNode = <TName extends MeshNodeName>(
     // TODO also provide a way to allow for reconnects
     let listenAlreadyStarted = false
     const listenForChannel: MeshNode['listenForChannel'] = Stream.suspend(() => {
-      if (listenAlreadyStarted === true) {
+      if (listenAlreadyStarted) {
         return shouldNeverHappen('listenForChannel already started')
       }
       listenAlreadyStarted = true
@@ -584,7 +585,7 @@ export const makeMeshNode = <TName extends MeshNodeName>(
       return Stream.fromQueue(channelRequestsQueue).pipe(
         Stream.filter((res) => {
           const hashed = hash(res)
-          if (seen.has(hashed) === true) {
+          if (seen.has(hashed)) {
             return false
           }
           seen.add(hashed)
@@ -596,7 +597,7 @@ export const makeMeshNode = <TName extends MeshNodeName>(
     const makeBroadcastChannel: MeshNode['makeBroadcastChannel'] = ({ channelName, schema }) =>
       Effect.scopeWithCloseable((scope) =>
         Effect.gen(function* () {
-          if (broadcastChannelListenQueueMap.has(channelName) === true) {
+          if (broadcastChannelListenQueueMap.has(channelName)) {
             return shouldNeverHappen(
               `Broadcast channel ${channelName} already exists`,
               broadcastChannelListenQueueMap.get(channelName),

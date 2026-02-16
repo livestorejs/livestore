@@ -90,7 +90,7 @@ const formatSnapshotSummaryMarkdown = ({
   formatMarkdownTable({
     title: 'Snapshot release',
     headers: ['Package', 'Version', 'Tag', 'Mode'],
-    rows: packages.map((pkg) => [pkg, snapshotVersion, 'snapshot', dryRun === true ? 'dry-run' : 'published']),
+    rows: packages.map((pkg) => [pkg, snapshotVersion, 'snapshot',  dryRun ? 'dry-run' : 'published']),
     emptyMessage: '_No packages matched the snapshot filter._',
   })
 

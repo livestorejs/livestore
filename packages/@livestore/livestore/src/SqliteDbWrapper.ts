@@ -104,7 +104,7 @@ export class SqliteDbWrapper implements SqliteDb {
       throw e
     }
 
-    if (errored === false) {
+    if (!errored) {
       this.execute(sql`commit;`)
     }
 
@@ -187,7 +187,7 @@ export class SqliteDbWrapper implements SqliteDb {
 
           stmt.execute(bindValues)
 
-          if (options?.hasNoEffects !== true && this.resultCache.ignoreQuery(queryStr) === false) {
+          if (options?.hasNoEffects !== true && ! this.resultCache.ignoreQuery(queryStr)) {
             // TODO use write tables instead
             // check what queries actually end up here.
             this.resultCache.invalidate(options?.writeTables ?? this.getTablesUsed(queryStr))
@@ -252,7 +252,7 @@ export class SqliteDbWrapper implements SqliteDb {
 
           const key = this.resultCache.getKey(queryStr, bindValues)
           const cachedResult = this.resultCache.get(key)
-          if (skipCache === false && cachedResult !== undefined) {
+          if (!skipCache && cachedResult !== undefined) {
             span.setAttribute('sql.rowsCount', cachedResult.length)
             span.setAttribute('sql.cached', true)
             span.end()

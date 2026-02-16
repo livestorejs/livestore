@@ -485,7 +485,7 @@ export class AccessHandlePoolVFS extends FacadeVFS {
 
       // Verify the digest.
       const computedDigest = this.#computeDigest(corpus)
-      if (fileDigest.every((value, i) => value === computedDigest[i]) === true) {
+      if (fileDigest.every((value, i) => value === computedDigest[i])) {
         // Good digest. Decode the null-terminated path string.
         const pathBytes = corpus.indexOf(0)
         if (pathBytes === 0) {

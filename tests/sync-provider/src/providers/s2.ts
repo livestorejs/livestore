@@ -169,7 +169,7 @@ const makeRouter = ({
         const args = S2Sync.decodePullArgsFromSearchParams(new URL(request.url, 'http://localhost').searchParams)
 
         const stream = S2Sync.makeS2StreamName(args.storeId)
-        if (createdStreams.has(stream) === false) {
+        if (!createdStreams.has(stream)) {
           yield* basinClient
             .createStream({ stream })
             .pipe(
@@ -179,7 +179,7 @@ const makeRouter = ({
           createdStreams.add(stream)
         }
 
-        if ((args.payload as any)?.testCloseOnce === true && closedOnceStreams.has(stream) === false) {
+        if ((args.payload as any)?.testCloseOnce === true && ! closedOnceStreams.has(stream)) {
           closedOnceStreams.add(stream)
           const sseLines = ['event: ping', 'data: {}', '']
           return yield* HttpServerResponse.stream(Stream.fromIterable(sseLines).pipe(Stream.encodeText), {
@@ -212,7 +212,7 @@ const makeRouter = ({
         const parsed = yield* Schema.decodeUnknown(S2Sync.ApiSchema.PushPayload)(body)
 
         const streamName = S2Sync.makeS2StreamName(parsed.storeId)
-        if (createdStreams.has(streamName) === false) {
+        if (!createdStreams.has(streamName)) {
           yield* basinClient.createStream({ stream: streamName }).pipe(
             Effect.catchIf(
               (_) => _._tag === 'ErrorResponse' && _.cause.code === 'stream_already_exists',
@@ -253,7 +253,7 @@ const makeRouter = ({
         const request = yield* HttpServerRequest.HttpServerRequest
         const body = (yield* request.json) as { storeId: string; bodies: string[] }
         const stream = S2Sync.makeS2StreamName(body.storeId)
-        if (createdStreams.has(stream) === false) {
+        if (!createdStreams.has(stream)) {
           yield* basinClient.createStream({ stream }).pipe(
             Effect.catchIf(
               (_) => _._tag === 'ErrorResponse' && _.cause.code === 'stream_already_exists',

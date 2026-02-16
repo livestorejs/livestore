@@ -223,7 +223,7 @@ export const createOptimisticEventSchema = ({
               // Drop fields that don't exist in new schema
             }
 
-            if (hasValidFields === true) {
+            if (hasValidFields) {
               try {
                 const decoded = Schema.decodeUnknownSync(targetSchema)(partialResult)
                 return encodeTarget(decoded)
@@ -292,7 +292,7 @@ export const deriveEventAndMaterializer = ({
 
     // Override the full value if it's not an object or no partial set is allowed
     const schemaProps = Schema.getResolvedPropertySignatures(valueSchema)
-    if (schemaProps.length === 0 || partialSet === false) {
+    if (schemaProps.length === 0 || ! partialSet) {
       const valueColJsonSchema = Schema.parseJson(valueSchema)
       const encodedInsertValue = Schema.encodeSyncDebug(valueColJsonSchema)(value ?? defaultValue)
       const encodedUpdateValue = Schema.encodeSyncDebug(valueColJsonSchema)(value)

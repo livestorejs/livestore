@@ -143,7 +143,7 @@ describe('a trivial graph', () => {
       expect(numberOfEffectRuns).toBe(0)
       const effect = graph.makeEffect((get) => {
         // establish a dependency on thunk c and mutate an outside value
-        expect(get(c)).toBe(aHasChanged === true ? 3 : 4)
+        expect(get(c)).toBe(aHasChanged ? 3 : 4)
         numberOfEffectRuns++
       })
 

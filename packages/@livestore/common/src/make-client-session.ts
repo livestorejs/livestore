@@ -51,11 +51,11 @@ export const makeClientSession = <R>({
   origin: string | undefined
 }): Effect.Effect<ClientSession, never, Scope.Scope | R> =>
   Effect.gen(function* () {
-    const devtools: ClientSession['devtools'] = devtoolsEnabled === true
+    const devtools: ClientSession['devtools'] =  devtoolsEnabled
       ? { enabled: true, pullLatch: yield* Effect.makeLatch(true), pushLatch: yield* Effect.makeLatch(true) }
       : { enabled: false }
 
-    if (devtoolsEnabled === true) {
+    if (devtoolsEnabled) {
       yield* Effect.gen(function* () {
         const webmeshNode = yield* Webmesh.makeMeshNode(
           Devtools.makeNodeName.client.session({ storeId, clientId, sessionId }),

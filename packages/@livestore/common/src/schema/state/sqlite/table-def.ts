@@ -207,7 +207,7 @@ export function table<
   if ('columns' in args) {
     tableName = args.name
     const columnOrColumns = args.columns
-    columns = SqliteDsl.isColumnDefinition(columnOrColumns) === true ? { value: columnOrColumns } : columnOrColumns
+    columns =  SqliteDsl.isColumnDefinition(columnOrColumns) ? { value: columnOrColumns } : columnOrColumns
     additionalIndexes = []
   } else if ('schema' in args) {
     const result = schemaFieldsToColumns(Schema.getResolvedPropertySignatures(args.schema))

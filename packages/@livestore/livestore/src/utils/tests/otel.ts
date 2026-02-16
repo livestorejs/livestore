@@ -78,7 +78,7 @@ const omitEmpty = (obj: any) => {
   for (const key in obj) {
     if (
       obj[key] !== undefined &&
-      !(Array.isArray(obj[key]) === true && obj[key].length === 0) &&
+      !(Array.isArray(obj[key]) && obj[key].length === 0) &&
       Object.keys(obj[key]).length > 0
     ) {
       result[key] = obj[key]
@@ -120,7 +120,7 @@ export const toTraceFile = (spans: ReadableSpan[]) => {
                   typeof value === 'string'
                     ? { stringValue: value }
                     : typeof value === 'number'
-                      ? Number.isInteger(value) === true
+                      ?  Number.isInteger(value)
                         ? { intValue: value }
                         : { doubleValue: value }
                       : typeof value === 'boolean'

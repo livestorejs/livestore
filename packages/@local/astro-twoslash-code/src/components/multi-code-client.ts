@@ -25,7 +25,7 @@ const parseDiagnostics = (panel: HTMLElement): Diagnostics => {
   if (!(raw instanceof HTMLScriptElement)) return []
   try {
     const parsed = JSON.parse(raw.textContent ?? '[]')
-    return Array.isArray(parsed) === true ? parsed : []
+    return  Array.isArray(parsed) ? parsed : []
   } catch {
     return []
   }
@@ -45,7 +45,7 @@ const initMultiCodeContainer = (container: HTMLElement): void => {
   const updateDiagnostics = (index: number) => {
     if (diagnosticsOutlet == null) return
     const panel = panels[index]
-    if (isHTMLElement(panel) === false) {
+    if (!isHTMLElement(panel)) {
       diagnosticsOutlet.hidden = true
       diagnosticsOutlet.textContent = ''
       diagnosticsOutlet.removeAttribute('title')
@@ -74,10 +74,10 @@ const initMultiCodeContainer = (container: HTMLElement): void => {
   const setActive = (index: number, focus = false) => {
     tabs.forEach((tab, tabIndex) => {
       const isActive = tabIndex === index
-      tab.setAttribute('aria-selected', isActive === true ? 'true' : 'false')
-      tab.tabIndex = isActive === true ? 0 : -1
+      tab.setAttribute('aria-selected',  isActive ? 'true' : 'false')
+      tab.tabIndex =  isActive ? 0 : -1
       tab.classList.toggle('ls-multi-code__tab--active', isActive)
-      if (isActive === true) {
+      if (isActive) {
         tab.dataset[ACTIVE_KEY] = ''
         if (focus !== undefined && typeof tab.focus === 'function') tab.focus({ preventScroll: true })
       } else {
@@ -89,7 +89,7 @@ const initMultiCodeContainer = (container: HTMLElement): void => {
       const isActive = panelIndex === index
       panel.toggleAttribute('hidden', !isActive)
       panel.classList.toggle('ls-multi-code__panel--active', isActive)
-      if (isActive === true) {
+      if (isActive) {
         panel.dataset[ACTIVE_KEY] = ''
       } else {
         delete panel.dataset[ACTIVE_KEY]
@@ -154,8 +154,8 @@ const setupObservers = (): void => {
   const observer = new MutationObserver((mutations) => {
     mutations.forEach((mutation) => {
       mutation.addedNodes.forEach((node) => {
-        if (isHTMLElement(node) === false) return
-        if (node.matches(MULTI_CODE_SELECTOR) === true) {
+        if (!isHTMLElement(node)) return
+        if (node.matches(MULTI_CODE_SELECTOR)) {
           initMultiCodeContainer(node)
         }
         node.querySelectorAll?.(MULTI_CODE_SELECTOR).forEach((child) => {

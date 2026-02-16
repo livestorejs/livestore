@@ -84,7 +84,7 @@ const getClientLabelClasses = (label: string | undefined): string[] => {
 const buildEventClassNames = (event: ParsedEvent): string => {
   const classes = [...baseEventClassList]
 
-  if (event.isUnconfirmed === true) {
+  if (event.isUnconfirmed) {
     classes.push('border-dashed', 'opacity-80')
   } else {
     classes.push('border-solid')
@@ -102,7 +102,7 @@ const buildEventClassNames = (event: ParsedEvent): string => {
 }
 
 const renderBaseNotation = (event: ParsedEvent): string => {
-  if (Number.isNaN(event.globalSequenceNumber) === true) {
+  if (Number.isNaN(event.globalSequenceNumber)) {
     return event.segmentNotation || event.fullNotation
   }
 
@@ -116,7 +116,7 @@ const renderBaseNotation = (event: ParsedEvent): string => {
     notation += `r${event.rebaseGeneration}`
   }
 
-  if (event.isUnconfirmed === true) {
+  if (event.isUnconfirmed) {
     notation += "'"
   }
 
@@ -140,7 +140,7 @@ const parseEventSegment = (segment: string): ParsedEvent => {
   }
 
   let isUnconfirmed = false
-  if (workingSegment.endsWith("'") === true) {
+  if (workingSegment.endsWith("'")) {
     isUnconfirmed = true
     workingSegment = workingSegment.slice(0, -1)
   }

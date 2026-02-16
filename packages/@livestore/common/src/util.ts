@@ -47,11 +47,11 @@ export const sql = (template: TemplateStringsArray, ...args: unknown[]): string 
  * TODO: Also make sure that the SQLite binding limit of 1000 is respected
  */
 export const prepareBindValues = (values: Bindable, statement: string): PreparedBindValues => {
-  if (Array.isArray(values) === true) return values as any as PreparedBindValues
+  if (Array.isArray(values)) return values as any as PreparedBindValues
 
   const result: ParamsObject = {}
   for (const [key, value] of Object.entries(values)) {
-    if (statement.includes(key) === true) {
+    if (statement.includes(key)) {
       result[`$${key}`] = value
     }
   }

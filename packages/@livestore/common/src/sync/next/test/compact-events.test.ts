@@ -20,7 +20,7 @@ const customStringify = (value: any): string => {
   if (type === 'number' || type === 'boolean') {
     return String(value)
   }
-  if (Array.isArray(value) === true) {
+  if (Array.isArray(value)) {
     const elements = value.map((el) => customStringify(el))
     return `[${elements.join(', ')}]`
   }

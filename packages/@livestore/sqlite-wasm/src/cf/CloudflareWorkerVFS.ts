@@ -143,7 +143,7 @@ export class CloudflareWorkerVFS extends FacadeVFS {
     const key = `write:${path}`
 
     // Cancel any pending write for this path
-    if (this.#writePromises.has(key) === true) {
+    if (this.#writePromises.has(key)) {
       this.#pendingWrites.delete(key)
     }
 
@@ -247,7 +247,7 @@ export class CloudflareWorkerVFS extends FacadeVFS {
         this.#scheduleWrite(path, () => this.#saveMetadata(path, newMetadata))
       }
 
-      if (this.#metadataCache.has(path) === false) {
+      if (!this.#metadataCache.has(path)) {
         throw new Error('file not found')
       }
 
@@ -495,7 +495,7 @@ export class CloudflareWorkerVFS extends FacadeVFS {
     try {
       const path = this.#getPath(zName)
       const exists = this.#activeFiles.has(path)
-      pResOut.setInt32(0, exists === true ? 1 : 0, true)
+      pResOut.setInt32(0,  exists ? 1 : 0, true)
       return VFS.SQLITE_OK
     } catch (e: any) {
       console.error('jAccess error:', e.message)
@@ -527,7 +527,7 @@ export class CloudflareWorkerVFS extends FacadeVFS {
   }
 
   async isReady() {
-    if (this.#initialized === false) {
+    if (!this.#initialized) {
       await this.#initializeStorage()
       this.#initialized = true
     }

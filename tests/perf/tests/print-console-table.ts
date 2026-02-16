@@ -20,7 +20,7 @@ const printTableHeader = (headers: string[], columnWidths: number[], firstColumn
   const headerRow = headers
     .map((header, i) => {
       // First column left-aligned if specified, others right-aligned
-      return i === 0 && firstColumnLeftAligned === true
+      return i === 0 &&  firstColumnLeftAligned
         ? header.padEnd(columnWidths[i]!)
         : header.padStart(columnWidths[i]! - 1).padEnd(columnWidths[i]!)
     })
@@ -35,7 +35,7 @@ const printTableRows = (rows: string[][], columnWidths: number[], firstColumnLef
     const formattedRow = row
       .map((cell, i) => {
         // First column left-aligned if specified, others right-aligned
-        return i === 0 && firstColumnLeftAligned === true
+        return i === 0 &&  firstColumnLeftAligned
           ? cell.toString().padEnd(columnWidths[i]!)
           : cell
               .toString()

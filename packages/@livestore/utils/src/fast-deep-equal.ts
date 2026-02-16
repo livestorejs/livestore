@@ -10,30 +10,30 @@ export const deepEqual = <T>(a: T, b: T): boolean => {
     let length: number
     let i: any
     let keys: any
-    if (Array.isArray(a) === true) {
+    if (Array.isArray(a)) {
       length = a.length
       // @ts-expect-error ...
       if (length !== b.length) return false
       for (i = length; i-- !== 0; )
         // @ts-expect-error ...
-        if (deepEqual(a[i], b[i]) === false) return false
+        if (!deepEqual(a[i], b[i])) return false
       return true
     }
 
     if (a instanceof Map && b instanceof Map) {
       if (a.size !== b.size) return false
-      for (i of a.entries()) if (b.has(i[0]) === false) return false
-      for (i of a.entries()) if (deepEqual(i[1], b.get(i[0])) === false) return false
+      for (i of a.entries()) if (!b.has(i[0])) return false
+      for (i of a.entries()) if (!deepEqual(i[1], b.get(i[0]))) return false
       return true
     }
 
     if (a instanceof Set && b instanceof Set) {
       if (a.size !== b.size) return false
-      for (i of a.entries()) if (b.has(i[0]) === false) return false
+      for (i of a.entries()) if (!b.has(i[0])) return false
       return true
     }
 
-    if (ArrayBuffer.isView(a) === true && ArrayBuffer.isView(b) === true) {
+    if (ArrayBuffer.isView(a) &&  ArrayBuffer.isView(b)) {
       // @ts-expect-error ...
       length = a.length
       // @ts-expect-error ...
@@ -53,13 +53,13 @@ export const deepEqual = <T>(a: T, b: T): boolean => {
     length = keys.length
     if (length !== Object.keys(b).length) return false
 
-    for (i = length; i-- !== 0; ) if (Object.hasOwn(b, keys[i]) === false) return false
+    for (i = length; i-- !== 0; ) if (!Object.hasOwn(b, keys[i])) return false
 
     for (i = length; i-- !== 0; ) {
       const key = keys[i]
 
       // @ts-expect-error ...
-      if (deepEqual(a[key], b[key]) === false) return false
+      if (!deepEqual(a[key], b[key])) return false
     }
 
     return true

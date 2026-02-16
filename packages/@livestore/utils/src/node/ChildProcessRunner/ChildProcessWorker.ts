@@ -29,7 +29,7 @@ const forceCleanupChildren = (signal: NodeJS.Signals = 'SIGKILL') => {
 let signalHandlersInstalled = false
 
 const installSignalHandlers = () => {
-  if (signalHandlersInstalled === true) return
+  if (signalHandlersInstalled) return
   signalHandlersInstalled = true
 
   // Use 'beforeExit' instead of signal handlers since tests may interfere with signals

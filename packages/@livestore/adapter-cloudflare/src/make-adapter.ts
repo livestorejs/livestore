@@ -60,7 +60,7 @@ export const makeAdapter =
       const stateDbFileName = getStateDbFileName(schemaHashSuffix)
       const eventlogDbFileName = getEventlogDbFileName()
 
-      if (resetPersistence === true) {
+      if (resetPersistence) {
         yield* resetDurableObjectPersistence({
           storage,
           storeId,
@@ -216,7 +216,7 @@ const safeSqlExec = (storage: CfTypes.DurableObjectStorage, query: string, bindi
   try {
     storage.sql.exec(query, binding)
   } catch (error) {
-    if (isMissingVfsTableError(error) === true) {
+    if (isMissingVfsTableError(error)) {
       return
     }
 

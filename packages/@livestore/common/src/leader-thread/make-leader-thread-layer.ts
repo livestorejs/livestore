@@ -184,7 +184,7 @@ export const makeLeaderThreadLayer = ({
       Effect.acquireRelease(Queue.shutdown),
     )
 
-    const devtoolsContext = devtoolsOptions.enabled === true
+    const devtoolsContext =  devtoolsOptions.enabled
       ? {
           enabled: true as const,
           syncBackendLatch: yield* Effect.makeLatch(true),
@@ -249,7 +249,7 @@ const hasStateTables = (db: SqliteDb) => {
 
 const isSubsetOf = (a: Set<string>, b: Set<string>): boolean => {
   for (const item of a) {
-    if (b.has(item) === false) {
+    if (!b.has(item)) {
       return false
     }
   }
@@ -328,7 +328,7 @@ const makeInitialBlockingSyncContext = ({
       blockingDeferred,
       update: ({ processed, pageInfo }) =>
         Effect.gen(function* () {
-          if (ctx.isDone === true) return
+          if (ctx.isDone) return
 
           if (ctx.total === -1 && pageInfo._tag === 'MoreKnown') {
             ctx.total = pageInfo.remaining + processed
@@ -402,7 +402,9 @@ export const makeNetworkStatusSubscribable = ({
     const initialIsConnected = syncBackend !== undefined ? yield* SubscriptionRef.get(syncBackend.isConnected) : false
     const initialLatchClosed =
       
-      devtoolsContext.enabled === true
+      
+      
+      devtoolsContext.enabled
         ? (yield* SubscriptionRef.get(devtoolsContext.syncBackendLatchState)).latchClosed
         : false
 
@@ -431,7 +433,7 @@ export const makeNetworkStatusSubscribable = ({
       )
     }
 
-    if (devtoolsContext.enabled === true) {
+    if (devtoolsContext.enabled) {
       yield* devtoolsContext.syncBackendLatchState.changes.pipe(
         Stream.tap(({ latchClosed }) => updateNetworkStatus({ latchClosed })),
         Stream.runDrain,

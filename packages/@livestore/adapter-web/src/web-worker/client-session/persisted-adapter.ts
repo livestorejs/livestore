@@ -159,7 +159,7 @@ export const makePersistedAdapter =
   (adapterArgs) =>
     Effect.gen(function* () {
       // Check SharedWorker availability first and fall back to single-tab mode if unavailable
-      if (canUseSharedWorker() === false) {
+      if (!canUseSharedWorker()) {
         yield* Effect.logWarning(
           '[@livestore/adapter-web] SharedWorker unavailable (e.g. Android Chrome). ' +
             'Falling back to single-tab mode. Multi-tab synchronization and devtools are disabled. ' +

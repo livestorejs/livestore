@@ -110,7 +110,7 @@ export const checkPeerDependencies = Effect.gen(function* () {
   for (const snapshotKey of Object.keys(snapshots)) {
     const parsed = parsePackageSpec(snapshotKey)
     if (parsed !== undefined) {
-      if (resolvedVersions.has(parsed.name) === false) {
+      if (!resolvedVersions.has(parsed.name)) {
         resolvedVersions.set(parsed.name, new Set())
       }
       resolvedVersions.get(parsed.name)!.add(parsed.version)
@@ -121,7 +121,7 @@ export const checkPeerDependencies = Effect.gen(function* () {
   for (const packageKey of Object.keys(packages)) {
     const parsed = parsePackageSpec(packageKey)
     if (parsed !== undefined) {
-      if (resolvedVersions.has(parsed.name) === false) {
+      if (!resolvedVersions.has(parsed.name)) {
         resolvedVersions.set(parsed.name, new Set())
       }
       resolvedVersions.get(parsed.name)!.add(parsed.version)
@@ -137,10 +137,10 @@ export const checkPeerDependencies = Effect.gen(function* () {
 
     for (const [peerDep, requiredRange] of Object.entries(packageData.peerDependencies)) {
       const ignoreKey = `${parsed.name}->${peerDep}`
-      if (ignoredPeerViolations.has(ignoreKey) === true) continue
+      if (ignoredPeerViolations.has(ignoreKey)) continue
 
       const isOptional = packageData.peerDependenciesMeta?.[peerDep]?.optional === true
-      if (isOptional === true) continue
+      if (isOptional) continue
 
       const resolvedSet = resolvedVersions.get(peerDep)
 
@@ -162,7 +162,7 @@ export const checkPeerDependencies = Effect.gen(function* () {
         }
       }
 
-      if (satisfied === false && bestResolvedVersion !== undefined) {
+      if (!satisfied && bestResolvedVersion !== undefined) {
         violations.push({
           package: parsed.name,
           packageVersion: parsed.version,
@@ -197,7 +197,7 @@ export const runPeerDepCheck = Effect.gen(function* () {
   const byPeerDep = new Map<string, PeerDepViolation[]>()
   for (const v of violations) {
     const key = v.peerDep
-    if (byPeerDep.has(key) === false) {
+    if (!byPeerDep.has(key)) {
       byPeerDep.set(key, [])
     }
     byPeerDep.get(key)!.push(v)

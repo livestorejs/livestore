@@ -67,7 +67,7 @@ export const createAstroTwoslashCodeIntegration = (options: AstroTwoslashCodeOpt
         })
       },
       'astro:server:start': async (_context: ServerStartContext) => {
-        if (autoBuild === false || shouldSkipSnippetAutoBuildAndWatch() === true) {
+        if (!autoBuild ||  shouldSkipSnippetAutoBuildAndWatch()) {
           return
         }
 
@@ -78,7 +78,7 @@ export const createAstroTwoslashCodeIntegration = (options: AstroTwoslashCodeOpt
         }
       },
       'astro:build:start': async (_context: BuildStartContext) => {
-        if (autoBuild === false || shouldSkipSnippetAutoBuildAndWatch() === true) {
+        if (!autoBuild ||  shouldSkipSnippetAutoBuildAndWatch()) {
           return
         }
 

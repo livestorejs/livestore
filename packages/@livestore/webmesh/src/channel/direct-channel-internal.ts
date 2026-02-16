@@ -207,7 +207,7 @@ export const makeDirectChannelInternal = ({
 
             const isWinner = nodeName > target
 
-            if (isWinner === true) {
+            if (isWinner) {
               span?.addEvent(`winner side: creating direct channel and sending response`)
               const mc = new MessageChannel()
 
