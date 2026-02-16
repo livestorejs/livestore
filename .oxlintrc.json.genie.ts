@@ -226,9 +226,6 @@ const livestoreOxlintOverrides = [
     files: ['**/*.svelte'],
     rules: { 'import/no-unassigned-import': 'off' },
   },
-
-  // Examples currently trigger type-aware "error type as any" findings for schema-derived aliases.
-  // Keep this rule enforced for packages/apps while we track example-level type cleanup separately.
 ] as const
 
 export default oxlintConfig({
