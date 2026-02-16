@@ -700,7 +700,7 @@ An immutable fact about something that has happened in the past. Events can be c
 
 #### Aggregate
 
-A consistency boundary — a single transactional unit that enforces business invariants, accepts commands, and emits events. It state is rebuilt by replaying its event stream.
+A consistency boundary — a single transactional unit that enforces business invariants, accepts commands, and emits events. Its state is rebuilt by replaying its event stream.
 
 #### Event Stream
 
