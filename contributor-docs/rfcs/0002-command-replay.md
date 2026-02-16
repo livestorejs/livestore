@@ -649,17 +649,6 @@ Introducing server-side command execution to solve problem 1 would also change h
 
 ### Alternative F: Hybrid Approach
 
-This approach combines elements of local commands and server-side command execution. Clients can choose per-command whether to:
-
-1. **Execute locally and push events** (default, as in the proposed solution) - for invariants that can be validated with local data
-2. **Push commands to server for execution** (as in Alternative E) - for invariants requiring server authority
-
-This provides flexibility at the cost of increased complexity. Each command would need to declare whether it requires server-side execution, and the sync infrastructure must handle both flows.
-
-**Choose when:**
-
-- Most operations can be validated locally, but some require server authority
-- You want to minimize server complexity for the common case while supporting server-side validation where needed
 
 ## Acknowledgments
 
