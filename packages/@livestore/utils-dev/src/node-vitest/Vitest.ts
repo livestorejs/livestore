@@ -34,7 +34,7 @@ export const makeWithTestCtx: <ROut = never, E1 = never, RIn = never>(
   | Exclude<RIn, OtelTracer.OtelTracer | Scope.Scope>
   // Exclude dependencies provided by `withTestCtx` **and** dependencies produced
   // by the layer from the effect dependencies
-   
+  | Exclude<R, ROut | OtelTracer.OtelTracer | Scope.Scope>
 > = (ctxParams) => (testContext: Vitest.TestContext) => withTestCtx(testContext, ctxParams)
 
 export type WithTestCtxParams<ROut, E1, RIn> = {
@@ -68,7 +68,7 @@ export const withTestCtx =
     | Exclude<RIn, OtelTracer.OtelTracer | Scope.Scope>
     // Exclude dependencies provided internally **and** dependencies produced by the
     // provided layer from the effect dependencies
-     
+    | Exclude<R, ROut | OtelTracer.OtelTracer | Scope.Scope>
   > => {
     const spanName = `${testContext.task.suite?.name}:${testContext.task.name}${suffix !== undefined ? `:${suffix}` : ''}`
     const layer = makeLayer?.(testContext) ?? Layer.empty
