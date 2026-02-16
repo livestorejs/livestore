@@ -649,6 +649,29 @@ Introducing server-side command execution to solve problem 1 would also change h
 
 ### Alternative F: Hybrid Approach
 
+Instead of choosing a single consistency model for all state changes, this approach lets developers choose **per-action** between two modes:
+
+- **`store.commit(event)`** — Client-authoritative. The event is an immutable fact that is never discarded, reordered, or replaced during sync. If the event violates an invariant after sync, conflicts are resolved forward through compensating events—never by rewriting history. This gives [Alternative D](#alternative-d-client-authoritative-events) semantics for individual events.
+
+- **`store.execute(command)`** — Server-authoritative. The client executes the command handler locally for optimistic UI, producing provisional events. The command is then sent to the server, which re-executes the handler against its authoritative state and produces the definitive events. The client replaces its provisional events with the server's authoritative result. This gives [Alternative E](#alternative-e-server-side-command-execution) semantics for individual commands.
+
+This gives developers fine-grained control: actions where offline decisions must be binding and preserved as historical facts (medical prescriptions, field reports, financial transactions) use `store.commit()`, while actions where correctness depends on global state the client cannot see (room bookings, seat assignments, unique username claims) use `store.execute()`.
+
+**Example:**
+
+```ts
+// Client-authoritative: prescribed medication is an immutable clinical fact
+store.commit(events.medicationPrescribed({ patientId, medication: 'Aspirin', dosage: '100mg' }))
+
+// Server-authoritative: room check-in is validated by the server against global state
+store.execute(commands.checkInGuest({ roomId: 'Room-1', guestId: 'Guest-A' }))
+```
+
+#### Why It Was Rejected
+
+1. **Combines the complexity of two rejected alternatives.** This approach layers [Alternative D](#alternative-d-client-authoritative-events)'s causal ordering and compensating-event model on top of [Alternative E](#alternative-e-server-side-command-execution)'s server-side command execution. Each model carries substantial complexity on its own (vector clocks, causal delivery, server-side handler execution, provisional/authoritative event reconciliation). Combining them multiplies the implementation and conceptual burden without solving a problem that neither model addresses individually.
+
+2. **Complex reconciliation with interleaved models.** The reconciliation process must merge two concurrent tracks—immutable committed events re-applied unconditionally and server-authoritative events replacing provisional ones—into a single consistent eventlog and state. Edge cases arise when a committed event depends on state that a server-authoritative command changed (or vice versa), or when the two tracks produce conflicting state changes. The interleaving of two different consistency models during reconciliation is a significant source of complexity and potential bugs.
 
 ## Acknowledgments
 
