@@ -157,7 +157,7 @@ Commands live entirely on the client. The sync backend continues to exchange eve
 | Command Handler        | Validates commands against current state and produces events                                 |
 | Pending Commands Queue | Commands for which events are still pending confirmation; replayed during reconciliation     |
 | Pending Events         | Events produced locally, not yet pushed and confirmed by the sync backend                    |
-| Confirmed Events       | Events that have confirmed by the sync backend                                               |
+| Confirmed Events       | Events that have been confirmed by the sync backend                                          |
 | Materializer(s)        | Processes events to update State                                                             |
 | State                  | Queryable projection consumed by the UI for presentation and command handlers for validation |
 | Push                   | Client pushes pending events to the sync backend                                             |
