@@ -71,7 +71,7 @@ fi`,
  */
 const deterministicPreflightStep = {
   name: 'Preflight workspace bootstrap',
-  run: 'DEVENV_SKIP_SETUP=1 devenv tasks run pnpm:install genie:run ts:build --mode before --verbose',
+  run: 'DEVENV_SKIP_SETUP=1 devenv tasks run pnpm:install genie:run ts:build --mode before --verbose --no-tui',
   shell: 'bash',
 }
 

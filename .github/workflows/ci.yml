@@ -141,7 +141,7 @@ jobs:
           fi
         shell: bash
       - name: Preflight workspace bootstrap
-        run: 'DEVENV_SKIP_SETUP=1 devenv tasks run pnpm:install genie:run ts:build --mode before --verbose'
+        run: 'DEVENV_SKIP_SETUP=1 devenv tasks run pnpm:install genie:run ts:build --mode before --verbose --no-tui'
         shell: bash
       - run: 'dt test:unit'
   test-integration-node-sync:
@@ -275,7 +275,7 @@ jobs:
           fi
         shell: bash
       - name: Preflight workspace bootstrap
-        run: 'DEVENV_SKIP_SETUP=1 devenv tasks run pnpm:install genie:run ts:build --mode before --verbose'
+        run: 'DEVENV_SKIP_SETUP=1 devenv tasks run pnpm:install genie:run ts:build --mode before --verbose --no-tui'
         shell: bash
       - name: Set OTEL_EXPORTER_OTLP_HEADERS environment variable
         env:
@@ -356,7 +356,7 @@ jobs:
           fi
         shell: bash
       - name: Preflight workspace bootstrap
-        run: 'DEVENV_SKIP_SETUP=1 devenv tasks run pnpm:install genie:run ts:build --mode before --verbose'
+        run: 'DEVENV_SKIP_SETUP=1 devenv tasks run pnpm:install genie:run ts:build --mode before --verbose --no-tui'
         shell: bash
       - name: Set OTEL_EXPORTER_OTLP_HEADERS environment variable
         env:
@@ -437,7 +437,7 @@ jobs:
           fi
         shell: bash
       - name: Preflight workspace bootstrap
-        run: 'DEVENV_SKIP_SETUP=1 devenv tasks run pnpm:install genie:run ts:build --mode before --verbose'
+        run: 'DEVENV_SKIP_SETUP=1 devenv tasks run pnpm:install genie:run ts:build --mode before --verbose --no-tui'
         shell: bash
       - name: Set OTEL_EXPORTER_OTLP_HEADERS environment variable
         env:
@@ -492,7 +492,7 @@ jobs:
           fi
         shell: bash
       - name: Preflight workspace bootstrap
-        run: 'DEVENV_SKIP_SETUP=1 devenv tasks run pnpm:install genie:run ts:build --mode before --verbose'
+        run: 'DEVENV_SKIP_SETUP=1 devenv tasks run pnpm:install genie:run ts:build --mode before --verbose --no-tui'
         shell: bash
       - name: Set OTEL_EXPORTER_OTLP_HEADERS environment variable
         env:
@@ -595,7 +595,7 @@ jobs:
           fi
         shell: bash
       - name: Preflight workspace bootstrap
-        run: 'DEVENV_SKIP_SETUP=1 devenv tasks run pnpm:install genie:run ts:build --mode before --verbose'
+        run: 'DEVENV_SKIP_SETUP=1 devenv tasks run pnpm:install genie:run ts:build --mode before --verbose --no-tui'
         shell: bash
       - name: Install examples dependencies
         run: pnpm install --frozen-lockfile --dir examples
@@ -649,7 +649,7 @@ jobs:
           fi
         shell: bash
       - name: Preflight workspace bootstrap
-        run: 'DEVENV_SKIP_SETUP=1 devenv tasks run pnpm:install genie:run ts:build --mode before --verbose'
+        run: 'DEVENV_SKIP_SETUP=1 devenv tasks run pnpm:install genie:run ts:build --mode before --verbose --no-tui'
         shell: bash
       - name: Build docs snippets
         run: |
