@@ -68,6 +68,8 @@ fi`,
 /**
  * Deterministic preflight for jobs that need generated artifacts/build state.
  * Uses DEVENV_SKIP_SETUP to avoid nested setup recursion.
+ *
+ * TODO: Drop `--no-tui` once devenv auto-disables TUI in CI (https://github.com/cachix/devenv/issues/2504)
  */
 const deterministicPreflightStep = {
   name: 'Preflight workspace bootstrap',
