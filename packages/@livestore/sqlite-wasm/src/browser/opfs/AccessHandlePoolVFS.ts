@@ -527,7 +527,7 @@ export class AccessHandlePoolVFS extends FacadeVFS {
       yield* Opfs.Opfs.syncWrite(accessHandle, digest, { at: HEADER_OFFSET_DIGEST })
       yield* Opfs.Opfs.syncFlush(accessHandle)
 
-      if (path !== undefined) {
+      if (path !== '') {
         this.#mapPathToAccessHandle.set(path, accessHandle)
         this.#availableAccessHandles.delete(accessHandle)
       } else {
