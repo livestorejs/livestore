@@ -927,7 +927,7 @@ export class Store<TSchema extends LiveStoreSchema = LiveStoreSchema.Any, TConte
     // Create handler context with query access to current state
     const handlerContext: CommandDef.CommandHandlerContext = {
       query: ((query: any) => this.query(query)) as CommandDef.CommandHandlerContextQuery,
-      phase: 'initial',
+      phase: { _tag: 'initial' },
     }
 
     // Execute handler — unexpected throws propagate to the caller

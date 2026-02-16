@@ -35,6 +35,14 @@ export type CommandHandlerContextQuery = {
 }
 
 /**
+ * Discriminated union indicating the execution phase of a command handler.
+ *
+ * - `'initial'` — first execution via `store.execute()`
+ * - `'replay'` — re-execution after a sync rebase changed the underlying state
+ */
+export type CommandHandlerPhase = { readonly _tag: 'initial' } | { readonly _tag: 'replay' }
+
+/**
  * Context provided to command handlers for validation and state queries.
  *
  * Handlers receive this as their second argument. It provides read access to
@@ -50,7 +58,7 @@ export type CommandHandlerContextQuery = {
  *
  *   if (guestCount >= room.capacity) {
  *     // During replay, adapt instead of erroring to avoid unnecessary conflicts
- *     if (ctx.phase === 'replay') return events.guestWaitlisted({ roomId: cmd.roomId, guestId: cmd.guestId })
+ *     if (ctx.phase._tag === 'replay') return events.guestWaitlisted({ roomId: cmd.roomId, guestId: cmd.guestId })
  *     return new RoomAtCapacity()
  *   }
  *
@@ -71,7 +79,7 @@ export interface CommandHandlerContext {
    * UI can show immediate feedback, but return alternative events during `'replay'`
    * to avoid unnecessary conflicts.
    */
-  readonly phase: 'initial' | 'replay'
+  readonly phase: CommandHandlerPhase
 }
 
 /**
