@@ -661,18 +661,6 @@ This provides flexibility at the cost of increased complexity. Each command woul
 - Most operations can be validated locally, but some require server authority
 - You want to minimize server complexity for the common case while supporting server-side validation where needed
 
-## Open Questions
-
-- How should the initial state (before any commands have been executed) be handled?
-- Should each event stream be stored in the same log or in separate logs?
-- Should we introduce a correlation ID?
-- Should we introduce a causation ID?
-- What happens when the write-side projection (state DB) errors?
-- Should there be client-only commands?
-  - **Likely no, at least not in the first version.** The primary benefit of commands is re-validation of invariants during reconciliation. Client-only commands skip the sync cycle entirely, so that value proposition doesn't apply. For client-only state mutations, a simple function that validates and calls `store.commit(clientDocTable.set(...))` achieves the same outcome with less ceremony. The potential benefits (devtools visibility, middleware reuse, uniform programming model) don't justify the added API surface until there's demonstrated demand. The existing `clientDocument` API already handles the common case of local UI state.
-- Should we support server-side command execution (Alternative E) as a built-in option?
-  - This would allow apps to opt into server authority for specific commands while keeping local execution as the default. The infrastructure cost is significant (server must run command handlers, sync protocol changes), so this may be better as a future enhancement once there's demonstrated demand.
-
 ## Acknowledgments
 
 - @imagio (Discord)
