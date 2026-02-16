@@ -229,14 +229,14 @@ export const commands = {
   checkInGuest: defineCommand({
     name: 'CheckInGuest',
     schema: Schema.Struct({ roomId: Schema.String, guestId: Schema.String }),
-    handler: (cmd, ctx) => {
-      const room = ctx.query(tables.rooms.get(cmd.roomId))
+    handler: ({ roomId, guestId }, ctx) => {
+      const room = ctx.query(tables.rooms.get(roomId))
       if (!room) throw new Error('Room not found') // Throw for unexpected, non-recoverable errors
 
-      const guestCount = ctx.query(tables.roomGuests.where({ roomId: cmd.roomId }).count())
+      const guestCount = ctx.query(tables.roomGuests.where({ roomId }).count())
       if (guestCount >= room.capacity) return new RoomAtCapacity() // Return for expected, recoverable errors
 
-      return events.guestCheckedIn({ roomId: cmd.roomId, guestId: cmd.guestId })
+      return events.guestCheckedIn({ roomId, guestId })
     },
   }),
 }
@@ -344,13 +344,13 @@ If a command handler returns an error during replay, a **conflict** occurs, and 
 > Instead of returning an error, consider having the handler produce alternative events that model the new outcome (e.g. `GuestWaitlisted` instead of `GuestCheckedIn`). This lets the system adapt to the changed state automatically. You can use `ctx.phase` to distinguish between initial execution and replay, allowing strict validation during initial execution while adapting gracefully during replay:
 >
 > ```ts
-> handler: (cmd, ctx) => {
->   const guestCount = ctx.query(tables.roomGuests.where({ roomId: cmd.roomId }).count())
+> handler: ({ roomId, guestId }, ctx) => {
+>   const guestCount = ctx.query(tables.roomGuests.where({ roomId }).count())
 >   if (guestCount >= room.capacity) {
->     if (ctx.phase === 'replay') return events.guestWaitlisted({ roomId: cmd.roomId, guestId: cmd.guestId })
+>     if (ctx.phase === 'replay') return events.guestWaitlisted({ roomId, guestId })
 >     return new RoomAtCapacity()
 >   }
->   return events.guestCheckedIn({ roomId: cmd.roomId, guestId: cmd.guestId })
+>   return events.guestCheckedIn({ roomId, guestId })
 > }
 > ```
 
