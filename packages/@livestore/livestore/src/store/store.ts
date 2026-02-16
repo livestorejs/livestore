@@ -1,5 +1,3 @@
-import * as otel from '@opentelemetry/api'
-
 import {
   type Bindable,
   type ClientSession,
@@ -39,6 +37,7 @@ import {
   Stream,
 } from '@livestore/utils/effect'
 import { nanoid } from '@livestore/utils/nanoid'
+import * as otel from '@opentelemetry/api'
 
 import type { LiveQuery, ReactivityGraphContext, SignalDef } from '../live-queries/base-class.ts'
 import { makeReactivityGraph } from '../live-queries/base-class.ts'
@@ -242,7 +241,8 @@ export class Store<TSchema extends LiveStoreSchema = LiveStoreSchema.Any, TConte
               event: { decoded: undefined, encoded: eventEncoded },
             })
 
-            const materializerHash = isDevEnv() === true ? Option.some(hashMaterializerResults(execArgsArr)) : Option.none()
+            const materializerHash =
+              isDevEnv() === true ? Option.some(hashMaterializerResults(execArgsArr)) : Option.none()
 
             // Hash mismatch detection only occurs during the pull path (when receiving events from the leader).
             // During push path (local commits), materializerHashLeader is always Option.none(), so this condition
@@ -369,7 +369,7 @@ export class Store<TSchema extends LiveStoreSchema = LiveStoreSchema.Any, TConte
         existingTableRefs.get(tableName) ??
         reactivityGraph.makeRef(null, {
           equal: () => false,
-          label: `tableRef:${tableName}`,
+          label: `tableRef:${String(tableName)}`,
           meta: { liveStoreRefType: 'table' },
         })
     }
@@ -488,19 +488,25 @@ export class Store<TSchema extends LiveStoreSchema = LiveStoreSchema.Any, TConte
 
     return this[StoreInternalsSymbol].otel.tracer.startActiveSpan(
       `LiveStore.subscribe`,
-      { attributes: { label: options?.label, queryLabel: isQueryBuilder(query) === true ? query.toString() : query.label } },
+      {
+        attributes: {
+          label: options?.label,
+          queryLabel: isQueryBuilder(query) === true ? query.toString() : query.label,
+        },
+      },
       options?.otelContext ?? this[StoreInternalsSymbol].otel.queriesSpanContext,
       (span) => {
         const otelContext = otel.trace.setSpan(otel.context.active(), span)
 
-        const queryRcRef = isQueryBuilder(query) === true
-          ? queryDb(query).make(this[StoreInternalsSymbol].reactivityGraph.context!)
-          : query._tag === 'def' || query._tag === 'signal-def'
-            ? query.make(this[StoreInternalsSymbol].reactivityGraph.context!)
-            : {
-                value: query,
-                deref: () => {},
-              }
+        const queryRcRef =
+          isQueryBuilder(query) === true
+            ? queryDb(query).make(this[StoreInternalsSymbol].reactivityGraph.context!)
+            : query._tag === 'def' || query._tag === 'signal-def'
+              ? query.make(this[StoreInternalsSymbol].reactivityGraph.context!)
+              : {
+                  value: query,
+                  deref: () => {},
+                }
         const query$ = queryRcRef.value
 
         const label = `subscribe:${options?.label}`
@@ -578,7 +584,8 @@ export class Store<TSchema extends LiveStoreSchema = LiveStoreSchema.Any, TConte
         const otelSpan = yield* OtelTracer.currentOtelSpan.pipe(
           Effect.catchTag('NoSuchElementException', () => Effect.succeed(undefined)),
         )
-        const otelContext = otelSpan !== undefined ? otel.trace.setSpan(otel.context.active(), otelSpan) : otel.context.active()
+        const otelContext =
+          otelSpan !== undefined ? otel.trace.setSpan(otel.context.active(), otelSpan) : otel.context.active()
 
         yield* Effect.acquireRelease(
           Effect.sync(() =>
@@ -656,14 +663,14 @@ export class Store<TSchema extends LiveStoreSchema = LiveStoreSchema.Any, TConte
       if (decodeResult._tag === 'Right') {
         return decodeResult.right
       } else {
-          return shouldNeverHappen(
-            'Failed to decode query result with for schema:',
-            objectToString(schema),
-            'raw result:',
-            rawRes,
-            'decode error:',
-            decodeResult.left,
-          )
+        return shouldNeverHappen(
+          'Failed to decode query result with for schema:',
+          objectToString(schema),
+          'raw result:',
+          rawRes,
+          'decode error:',
+          decodeResult.left,
+        )
       }
     } else if (query._tag === 'def') {
       const query$ = query.make(this[StoreInternalsSymbol].reactivityGraph.context!)
@@ -1077,7 +1084,11 @@ export class Store<TSchema extends LiveStoreSchema = LiveStoreSchema.Any, TConte
     this.checkShutdown('shutdownPromise')
 
     this[StoreInternalsSymbol].isShutdown = true
-    await this.shutdown(cause !== undefined ? Cause.fail(cause) : undefined).pipe(this.runEffectFork, Fiber.join, Effect.runPromise)
+    await this.shutdown(cause !== undefined ? Cause.fail(cause) : undefined).pipe(
+      this.runEffectFork,
+      Fiber.join,
+      Effect.runPromise,
+    )
   }
 
   /**

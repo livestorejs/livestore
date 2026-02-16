@@ -27,23 +27,21 @@ const SUCCESS_EXIT_CODE: CommandExecutor.ExitCode = 0 as CommandExecutor.ExitCod
 
 export const cmd: (
   commandInput: string | (string | undefined)[],
-  options?:
-    | {
-        stderr?: 'inherit' | 'pipe'
-        stdout?: 'inherit' | 'pipe'
-        shell?: boolean
-        env?: Record<string, string | undefined>
-        /**
-         * When provided, streams command output to terminal AND to a canonical log file (`${logDir}/dev.log`) in this directory.
-         * Also archives the previous run to `${logDir}/archive/dev-<ISO>.log` and keeps only the latest 50 archives.
-         */
-        logDir?: string
-        /** Optional basename for the canonical log file; defaults to 'dev.log' */
-        logFileName?: string
-        /** Optional number of archived logs to retain; defaults to 50 */
-        logRetention?: number
-      }
-     ,
+  options?: {
+    stderr?: 'inherit' | 'pipe'
+    stdout?: 'inherit' | 'pipe'
+    shell?: boolean
+    env?: Record<string, string | undefined>
+    /**
+     * When provided, streams command output to terminal AND to a canonical log file (`${logDir}/dev.log`) in this directory.
+     * Also archives the previous run to `${logDir}/archive/dev-<ISO>.log` and keeps only the latest 50 archives.
+     */
+    logDir?: string
+    /** Optional basename for the canonical log file; defaults to 'dev.log' */
+    logFileName?: string
+    /** Optional number of archived logs to retain; defaults to 50 */
+    logRetention?: number
+  },
 ) => Effect.Effect<
   CommandExecutor.ExitCode,
   PlatformError.PlatformError | CmdError,
@@ -56,7 +54,7 @@ export const cmd: (
   const [command, ...args] = asArray ? (parts as string[]) : (commandInput as string).split(' ')
 
   const debugEnvStr = Object.entries(options?.env ?? {})
-    .map(([key, value]) => `${key}='${value}' `)
+    .map(([key, value]) => `${key}='${String(value)}' `)
     .join('')
 
   const loggingOpts = {
@@ -70,8 +68,7 @@ export const cmd: (
   const stderrMode = options?.stderr ?? 'inherit'
   const useShell = (options?.shell === true ? true : false) || needsShell
 
-  const commandDebugStr =
-    debugEnvStr + (Array.isArray(finalInput) ? (finalInput).join(' ') : (finalInput))
+  const commandDebugStr = debugEnvStr + (Array.isArray(finalInput) ? finalInput.join(' ') : finalInput)
   const subshellStr = useShell === true ? ' (in subshell)' : ''
 
   yield* Effect.logDebug(`Running '${commandDebugStr}' in '${cwd}'${subshellStr}`)
@@ -122,11 +119,11 @@ export const cmdText: (
 ) => Effect.Effect<string, PlatformError.PlatformError, CommandExecutor.CommandExecutor | CurrentWorkingDirectory> =
   Effect.fn('cmdText')(function* (commandInput, options) {
     const cwd = yield* CurrentWorkingDirectory
-    const [command, ...args] =  Array.isArray(commandInput)
+    const [command, ...args] = Array.isArray(commandInput)
       ? commandInput.filter(isNotUndefined)
       : commandInput.split(' ')
     const debugEnvStr = Object.entries(options?.env ?? {})
-      .map(([key, value]) => `${key}='${value}' `)
+      .map(([key, value]) => `${key}='${String(value)}' `)
       .join('')
 
     const commandDebugStr = debugEnvStr + [command, ...args].join(' ')
@@ -168,7 +165,7 @@ const runWithoutLogging = ({ commandInput, cwd, env, stdoutMode, stderrMode, use
     Command.stdout(stdoutMode),
     Command.stderr(stderrMode),
     Command.workingDirectory(cwd),
-    
+
     useShell ? Command.runInShell(true) : identity,
     Command.env(env),
     Command.exitCode,
@@ -228,7 +225,7 @@ const runWithLogging = ({
         Command.stdout('pipe'),
         Command.stderr('pipe'),
         Command.workingDirectory(cwd),
-        
+
         useShell ? Command.runInShell(true) : identity,
         Command.env(envWithColor),
       )
@@ -236,7 +233,9 @@ const runWithLogging = ({
       // Acquire/start the command and make sure we kill it on interruption.
       const runningProcess = yield* Effect.acquireRelease(command.pipe(Command.start), (proc) =>
         proc.isRunning.pipe(
-          Effect.flatMap((running) => (running === true ? proc.kill().pipe(Effect.catchAll(() => Effect.void)) : Effect.void)),
+          Effect.flatMap((running) =>
+            running === true ? proc.kill().pipe(Effect.catchAll(() => Effect.void)) : Effect.void,
+          ),
           Effect.ignore,
         ),
       )
