@@ -172,7 +172,7 @@ export class MergeResult extends Schema.Union(
 ) {}
 
 export const payloadFromMergeResult = (
-  mergeResult: typeof MergeResultAdvance.Type | typeof MergeResultRebase.Type,
+  mergeResult: typeof MergeResultAdvance.Type  ,
 ): typeof PayloadUpstream.Type =>
   Match.value(mergeResult).pipe(
     Match.tag('advance', (result) => ({

@@ -33,7 +33,7 @@ export const WebChannelPong = Schema.TaggedStruct('WebChannel.Pong', {
 
 export const WebChannelHeartbeat = Schema.Union(WebChannelPing, WebChannelPong)
 
-type WebChannelMessages = typeof DebugPingMessage.Type | typeof WebChannelPing.Type | typeof WebChannelPong.Type
+type WebChannelMessages = typeof DebugPingMessage.Type    
 
 export const schemaWithWebChannelMessages = <MsgListen, MsgSend>(
   schema: OutputSchema<MsgListen, MsgSend, any, any>,
