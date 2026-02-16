@@ -25,7 +25,7 @@ jobs:
     runs-on: [namespace-profile-linux-x86-64, 'namespace-features:github.run-id=${{ github.run_id }}']
     defaults:
       run:
-        shell: devenv shell bash -- -e {0}
+        shell: devenv shell --no-tui bash -- -e {0}
     steps:
       - uses: actions/checkout@v4
       - name: Install Nix
@@ -65,7 +65,7 @@ jobs:
     runs-on: [namespace-profile-linux-x86-64, 'namespace-features:github.run-id=${{ github.run_id }}']
     defaults:
       run:
-        shell: devenv shell bash -- -e {0}
+        shell: devenv shell --no-tui bash -- -e {0}
     steps:
       - uses: actions/checkout@v4
       - name: Install Nix
@@ -105,7 +105,7 @@ jobs:
     runs-on: [namespace-profile-linux-x86-64, 'namespace-features:github.run-id=${{ github.run_id }}']
     defaults:
       run:
-        shell: devenv shell bash -- -e {0}
+        shell: devenv shell --no-tui bash -- -e {0}
     steps:
       - uses: actions/checkout@v4
       - name: Install Nix
@@ -148,7 +148,7 @@ jobs:
     runs-on: [namespace-profile-linux-x86-64, 'namespace-features:github.run-id=${{ github.run_id }}']
     defaults:
       run:
-        shell: devenv shell bash -- -e {0}
+        shell: devenv shell --no-tui bash -- -e {0}
     steps:
       - uses: actions/checkout@v4
       - name: Install Nix
@@ -239,7 +239,7 @@ jobs:
     runs-on: [namespace-profile-linux-x86-64, 'namespace-features:github.run-id=${{ github.run_id }}']
     defaults:
       run:
-        shell: devenv shell bash -- -e {0}
+        shell: devenv shell --no-tui bash -- -e {0}
     steps:
       - uses: actions/checkout@v4
       - name: Install Nix
@@ -320,7 +320,7 @@ jobs:
     runs-on: [namespace-profile-linux-x86-64, 'namespace-features:github.run-id=${{ github.run_id }}']
     defaults:
       run:
-        shell: devenv shell bash -- -e {0}
+        shell: devenv shell --no-tui bash -- -e {0}
     steps:
       - uses: actions/checkout@v4
       - name: Install Nix
@@ -398,7 +398,7 @@ jobs:
     runs-on: [namespace-profile-linux-x86-64, 'namespace-features:github.run-id=${{ github.run_id }}']
     defaults:
       run:
-        shell: devenv shell bash -- -e {0}
+        shell: devenv shell --no-tui bash -- -e {0}
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
@@ -508,7 +508,7 @@ jobs:
         working-directory: packages/@livestore/wa-sqlite
         run: 'nix run .#build'
       - name: Run wa-sqlite tests
-        run: 'devenv shell dt test:integration:wa-sqlite'
+        run: 'devenv shell --no-tui dt test:integration:wa-sqlite'
         env:
           COMMIT_SHA: '${{ github.event.pull_request.head.sha || github.sha }}'
           GRAFANA_ENDPOINT: 'https://livestore.grafana.net'
@@ -519,7 +519,7 @@ jobs:
     needs: [test-unit, test-integration-node-sync, test-integration-sync-provider, test-integration-playwright]
     defaults:
       run:
-        shell: devenv shell bash -- -e {0}
+        shell: devenv shell --no-tui bash -- -e {0}
     steps:
       - uses: actions/checkout@v4
       - name: Install Nix
@@ -559,7 +559,7 @@ jobs:
     runs-on: [namespace-profile-linux-x86-64, 'namespace-features:github.run-id=${{ github.run_id }}']
     defaults:
       run:
-        shell: devenv shell bash -- -e {0}
+        shell: devenv shell --no-tui bash -- -e {0}
     steps:
       - uses: actions/checkout@v4
       - name: Install Nix
@@ -613,7 +613,7 @@ jobs:
     runs-on: [namespace-profile-linux-x86-64, 'namespace-features:github.run-id=${{ github.run_id }}']
     defaults:
       run:
-        shell: devenv shell bash -- -e {0}
+        shell: devenv shell --no-tui bash -- -e {0}
     steps:
       - uses: actions/checkout@v4
       - name: Install Nix

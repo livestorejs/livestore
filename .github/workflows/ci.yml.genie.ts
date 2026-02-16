@@ -296,7 +296,7 @@ fi`,
         },
         {
           name: 'Run wa-sqlite tests',
-          run: 'devenv shell dt test:integration:wa-sqlite',
+          run: 'devenv shell --no-tui dt test:integration:wa-sqlite',
           env: {
             COMMIT_SHA: PR_HEAD_SHA,
             GRAFANA_ENDPOINT: 'https://livestore.grafana.net',
