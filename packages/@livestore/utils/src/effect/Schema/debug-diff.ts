@@ -24,7 +24,7 @@ const debugDiffImpl = (ast: SchemaAST.AST, a: any, b: any, path: string, bag: Di
     // bag.push({ path, a, b, ast })
 
     if (SchemaAST.isUnion(ast) === true) {
-      if (isTaggedUnion(ast)) {
+      if (isTaggedUnion(ast) === true) {
         bag.push({ path, a, b, ast })
         return
       } else {

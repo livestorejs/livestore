@@ -99,7 +99,7 @@ export const createTldrawPlugin = (options: TldrawPluginOptions = {}): MinimalVi
       }
 
       /* Check if this is a .tldr?tldraw import */
-      if (!filepath.endsWith('.tldr') || ! rawQuery.includes(TLDRAW_QUERY)) {
+      if (filepath.endsWith('.tldr') === false || rawQuery.includes(TLDRAW_QUERY) === false) {
         return null
       }
 

@@ -33,7 +33,7 @@ const parseArgs = (argv: string[]): PreviewOptions => {
       }
       continue
     }
-    if (arg.startsWith('--port=')) {
+    if (arg.startsWith('--port=') === true) {
       port = Number.parseInt(arg.split('=')[1] ?? '', 10)
       continue
     }
@@ -43,12 +43,12 @@ const parseArgs = (argv: string[]): PreviewOptions => {
       index += 1
       continue
     }
-    if (arg.startsWith('--host=')) {
+    if (arg.startsWith('--host=') === true) {
       host = arg.split('=')[1]
     }
   }
 
-  return { port:  Number.isNaN(port ?? Number.NaN) ? undefined : port, host }
+  return { port: Number.isNaN(port ?? Number.NaN) === true ? undefined : port, host }
 }
 
 const ensureWithinDist = (distDir: string, relativePath: string): string | undefined => {
@@ -87,11 +87,11 @@ const resolveStaticRelative = async (distDir: string, pathname: string): Promise
     candidates.add('index.html')
   } else {
     candidates.add(stripped)
-    if (stripped.endsWith('/')) {
+    if (stripped.endsWith('/') === true) {
       candidates.add(`${stripped}index.html`)
     } else {
       const withIndex = `${stripped}/index.html`
-      const withHtml =  stripped.endsWith('.html') ? stripped : `${stripped}.html`
+      const withHtml = stripped.endsWith('.html') === true ? stripped : `${stripped}.html`
       candidates.add(withIndex)
       candidates.add(withHtml)
     }
@@ -99,7 +99,7 @@ const resolveStaticRelative = async (distDir: string, pathname: string): Promise
 
   for (const candidate of candidates) {
     const absolutePath = ensureWithinDist(distDir, candidate)
-    if (absolutePath !== undefined &&  (await fileExists(absolutePath))) {
+    if (absolutePath !== undefined && (await fileExists(absolutePath)) === true) {
       return candidate
     }
   }
@@ -116,7 +116,7 @@ const createMarkdownResponse = async (
   if (absolutePath === undefined) {
     return undefined
   }
-  if (!(await fileExists(absolutePath))) {
+  if ((await fileExists(absolutePath)) === false) {
     return undefined
   }
 
@@ -124,7 +124,7 @@ const createMarkdownResponse = async (
     'Content-Type': 'text/markdown; charset=utf-8',
     Vary: 'Accept',
   })
-  return  isHeadRequest
+  return isHeadRequest === true
     ? new Response(null, { status: 200, headers })
     : new Response(Bun.file(absolutePath), { status: 200, headers })
 }
@@ -138,7 +138,7 @@ const createStaticResponse = async (
   if (absolutePath === undefined) {
     return undefined
   }
-  if (!(await fileExists(absolutePath))) {
+  if ((await fileExists(absolutePath)) === false) {
     return undefined
   }
 
@@ -148,7 +148,7 @@ const createStaticResponse = async (
     headers.set('Content-Type', file.type)
   }
 
-  return  isHeadRequest ? new Response(null, { status: 200, headers }) : new Response(file, { status: 200, headers })
+  return isHeadRequest === true ? new Response(null, { status: 200, headers }) : new Response(file, { status: 200, headers })
 }
 
 const docsRoot = fileURLToPath(new URL('..', import.meta.url))
@@ -156,7 +156,7 @@ const docsRoot = fileURLToPath(new URL('..', import.meta.url))
 const startServer = async (): Promise<void> => {
   const args = parseArgs(Bun.argv.slice(2))
   const distDir = join(docsRoot, 'dist')
-  if (!(await directoryExists(distDir))) {
+  if ((await directoryExists(distDir)) === false) {
     console.error('Docs dist folder not found. Run `mono docs build` first or pass `--build` to the preview command.')
     process.exit(1)
   }
@@ -171,12 +171,12 @@ const startServer = async (): Promise<void> => {
       try {
         const method = request.method.toUpperCase()
         const isHeadRequest = method === 'HEAD'
-        if (method !== 'GET' && ! isHeadRequest) {
+        if (method !== 'GET' && isHeadRequest === false) {
           return new Response('Method Not Allowed', { status: 405 })
         }
 
         const url = new URL(request.url)
-        if (!isAssetPath(url.pathname) && preferredMarkdown(request.headers.get('Accept'))) {
+        if (isAssetPath(url.pathname) === false && preferredMarkdown(request.headers.get('Accept'))) {
           const markdownResponse = await createMarkdownResponse(distDir, url, isHeadRequest)
           if (markdownResponse !== undefined) {
             return markdownResponse

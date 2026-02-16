@@ -107,7 +107,7 @@ export const sanitizeOpfsDir = Effect.fn('@livestore/adapter-web:sanitizeOpfsDir
     return `livestore-${storeId}@${liveStoreStorageFormatVersion}`
   }
 
-  if (directory.includes('/')) {
+  if (directory.includes('/') === true) {
     return yield* new PersistedSqliteError({
       message: `Nested directories are not yet supported ('${directory}')`,
     })

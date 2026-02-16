@@ -13,19 +13,19 @@ export const detectBrowserName: () => DetectedBrowser = () => {
 
   // TODO: also parse out version
 
-  if (isOpera) {
+  if (isOpera === true) {
     return 'Opera'
   }
-  if (isChrome) {
+  if (isChrome === true) {
     return 'Chrome'
   }
-  if (isSafari) {
+  if (isSafari === true) {
     return 'Safari'
   }
-  if (isFirefox) {
+  if (isFirefox === true) {
     return 'Firefox'
   }
-  if (isEdge) {
+  if (isEdge === true) {
     return 'Edge'
   }
   return 'Browser'

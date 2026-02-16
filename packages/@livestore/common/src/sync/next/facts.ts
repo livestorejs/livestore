@@ -73,7 +73,7 @@ export const validateFacts = ({
   const currentSnapshot = new Map(initialSnapshot)
 
   for (const [index, factGroup] of factGroups.entries()) {
-    if (!isSubSetMapByValue(factGroup.depRequire, currentSnapshot)) {
+    if (isSubSetMapByValue(factGroup.depRequire, currentSnapshot) === false) {
       const existing = new Map()
       const required = new Map()
 
@@ -130,7 +130,7 @@ const isSubSetMapByValue = (setA: EventDefFacts, setB: EventDefFacts) => {
 /** Check if setA is a subset of setB */
 const isSubSetMapByKey = (setA: EventDefFacts, setB: EventDefFacts) => {
   for (const [key, _value] of setA) {
-    if (!setB.has(key)) {
+    if (setB.has(key) === false) {
       return false
     }
   }
@@ -168,7 +168,7 @@ export const factsToString = (facts: EventDefFacts) => {
 
 export const factsIntersect = (setA: EventDefFacts, setB: EventDefFacts): boolean => {
   for (const [key, _value] of setA) {
-    if (setB.has(key)) {
+    if (setB.has(key) === true) {
       return true
     }
   }

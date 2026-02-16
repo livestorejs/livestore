@@ -8,7 +8,7 @@ export class SyncBackendDO extends makeDurableObject({
     console.log(`Push to store ${storeId}:`, message.batch)
 
     // Custom business logic
-    if (hasUserId(payload)) {
+    if (hasUserId(payload) === true) {
       await Promise.resolve()
     }
   },

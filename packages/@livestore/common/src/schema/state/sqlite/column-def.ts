@@ -76,7 +76,7 @@ export const schemaFieldsToColumns = (
     // Warn about lossy conversion for fields with both null and undefined
     if (prop.isOptional === true) {
       const { hasNull, hasUndefined } = checkNullUndefined(fieldSchema.ast)
-      if (hasNull &&  hasUndefined) {
+      if (hasNull === true && hasUndefined === true) {
         console.warn(`Field '${prop.name}' has both null and undefined - treating | undefined as | null`)
       }
     }
@@ -179,7 +179,7 @@ const getColumnForSchema = (schema: Schema.Schema.AnyNoContext, nullable = false
     return SqliteDsl.real({ schema: coreSchema, nullable })
   }
 
-  if (isUint8ArraySchema(coreAst) ||  isUint8ArraySchema(encodedAst)) {
+  if (isUint8ArraySchema(coreAst) === true || isUint8ArraySchema(encodedAst) === true) {
     return SqliteDsl.blob({ schema: Schema.Uint8ArrayFromSelf as Schema.Schema<Uint8Array<ArrayBuffer>>, nullable })
   }
 

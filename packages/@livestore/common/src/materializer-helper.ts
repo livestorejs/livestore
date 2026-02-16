@@ -51,7 +51,7 @@ export const getExecStatementsFromMaterializer = ({
         }
       | QueryBuilder.Any,
   ) => {
-    if (isQueryBuilder(rawQueryOrQueryBuilder)) {
+    if (isQueryBuilder(rawQueryOrQueryBuilder) === true) {
       const { query, bindValues } = rawQueryOrQueryBuilder.asSql()
       const rawResults = dbState.select(query, prepareBindValues(bindValues, query))
       const resultSchema = getResultSchema(rawQueryOrQueryBuilder)
@@ -129,7 +129,7 @@ const fromMaterializerResult = (
   if (isReadonlyArray(materializerResult) === true) {
     return materializerResult.flatMap(fromMaterializerResult)
   }
-  if (isQueryBuilder(materializerResult)) {
+  if (isQueryBuilder(materializerResult) === true) {
     const { query, bindValues, usedTables } = materializerResult.asSql()
     return [{ sql: query, bindValues: bindValues as BindValues, writeTables: usedTables }]
   } else if (typeof materializerResult === 'string') {
@@ -155,7 +155,7 @@ export const replaceSessionIdSymbol = (
 }
 
 const deepReplaceValue = <S, R>(input: any, searchValue: S, replaceValue: R): void => {
-  if (Array.isArray(input)) {
+  if (Array.isArray(input) === true) {
     for (const i in input) {
       if (input[i] === searchValue) {
         input[i] = replaceValue

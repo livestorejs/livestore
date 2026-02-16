@@ -280,10 +280,8 @@ export const merge = ({
 
       // Validate that incoming events are larger than upstream head
       if (
-        
-        EventSequenceNumber.Client.isGreaterThan(syncState.upstreamHead, payload.newEvents[0]!.seqNum) ||
-        
-        EventSequenceNumber.Client.isEqual(syncState.upstreamHead, payload.newEvents[0]!.seqNum)
+        EventSequenceNumber.Client.isGreaterThan(syncState.upstreamHead, payload.newEvents[0]!.seqNum) === true ||
+        EventSequenceNumber.Client.isEqual(syncState.upstreamHead, payload.newEvents[0]!.seqNum) === true
       ) {
         return unknownError(
           `Incoming events must be greater than upstream head. Expected greater than: ${EventSequenceNumber.Client.toString(syncState.upstreamHead)}. Received: [${payload.newEvents.map((e) => EventSequenceNumber.Client.toString(e.seqNum)).join(', ')}]`,
@@ -318,7 +316,7 @@ export const merge = ({
         const [pendingMatching, pendingRemaining] = ReadonlyArray.splitWhere(
           syncState.pending,
           (pendingEvent, index) => {
-            if (ignoreClientEvents &&  isClientEvent(pendingEvent)) {
+            if (ignoreClientEvents && isClientEvent(pendingEvent) === true) {
               clientIndexOffset++
               return false
             }
@@ -545,7 +543,7 @@ const validateSyncState = (syncState: SyncState) => {
 
     // If the global id has increased, then the client id must be 0
     const globalIdHasIncreased = nextEvent.seqNum.global > event.seqNum.global
-    if (globalIdHasIncreased) {
+    if (globalIdHasIncreased === true) {
       if (nextEvent.seqNum.client !== 0) {
         shouldNeverHappen(
           `New global events must point to clientId 0 in the parentSeqNum. Received: (${EventSequenceNumber.Client.toString(nextEvent.seqNum)})`,
@@ -558,7 +556,7 @@ const validateSyncState = (syncState: SyncState) => {
       }
     } else {
       // Otherwise, the parentSeqNum must be the same as the previous event's id
-      if (!EventSequenceNumber.Client.isEqual(nextEvent.parentSeqNum, event.seqNum)) {
+      if (EventSequenceNumber.Client.isEqual(nextEvent.parentSeqNum, event.seqNum) === false) {
         shouldNeverHappen('Events must be linked in a continuous chain via the parentSeqNum', syncState.pending, {
           event,
           nextEvent,
@@ -585,11 +583,10 @@ const validateMergeResult = (mergeResult: typeof MergeResult.Type) => {
 
   // Ensure new local head is greater than or equal to the previous local head
   if (
-    !
     EventSequenceNumber.Client.isGreaterThanOrEqual(
       mergeResult.newSyncState.localHead,
       mergeResult.mergeContext.syncState.localHead,
-    )
+    ) === false
   ) {
     shouldNeverHappen('New local head must be greater than or equal to the previous local head', {
       localHead: mergeResult.newSyncState.localHead,
@@ -599,11 +596,10 @@ const validateMergeResult = (mergeResult: typeof MergeResult.Type) => {
 
   // Ensure new upstream head is greater than or equal to the previous upstream head
   if (
-    !
     EventSequenceNumber.Client.isGreaterThanOrEqual(
       mergeResult.newSyncState.upstreamHead,
       mergeResult.mergeContext.syncState.upstreamHead,
-    )
+    ) === false
   ) {
     shouldNeverHappen('New upstream head must be greater than or equal to the previous upstream head', {
       upstreamHead: mergeResult.newSyncState.upstreamHead,

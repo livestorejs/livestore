@@ -178,7 +178,7 @@ export const migrateTable = ({
       dbExecute(db, createIndexFromDefinition(tableName, index))
     }
 
-    if (!skipMetaTable) {
+    if (skipMetaTable !== true) {
       const updatedAt = getMemoizedTimestamp()
 
       dbExecute(

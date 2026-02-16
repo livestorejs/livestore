@@ -449,7 +449,7 @@ const validateStoreId = (storeId: string) =>
   Effect.gen(function* () {
     const validChars = /^[a-zA-Z0-9_-]+$/
 
-    if (!validChars.test(storeId)) {
+    if (validChars.test(storeId) === false) {
       return yield* UnknownError.make({
         cause: `Invalid storeId: ${storeId}. Only alphanumeric characters, underscores, and hyphens are allowed.`,
         payload: { storeId },

@@ -56,14 +56,14 @@ export const createAstroTldrawIntegration = (options: AstroTldrawOptions = {}): 
         })
       },
       'astro:server:start': async (_context: ServerStartContext) => {
-        if (!autoBuild ||  shouldSkipAutoBuild()) {
+        if (autoBuild === false || shouldSkipAutoBuild() === true) {
           return
         }
 
         await runDiagramBuild()
       },
       'astro:build:start': async (_context: BuildStartContext) => {
-        if (!autoBuild ||  shouldSkipAutoBuild()) {
+        if (autoBuild === false || shouldSkipAutoBuild() === true) {
           return
         }
 

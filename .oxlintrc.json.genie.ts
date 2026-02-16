@@ -86,8 +86,8 @@ const phase2Rules = {
 
   // TODO(oep-3632.1): ~567 violations; enable --type-aware in CI once resolved
   'typescript/no-unsafe-type-assertion': 'warn',
-  // Inverse of overeng/explicit-boolean-compare — tracked in oep-1n3.8 cleanup
-  'typescript/no-unnecessary-boolean-literal-compare': 'warn',
+  // Inverse of overeng/explicit-boolean-compare — must stay off
+  'typescript/no-unnecessary-boolean-literal-compare': 'off',
   // 79 violations, mostly generic verbosity
   'typescript/no-unnecessary-type-arguments': 'warn',
   // 72 violations, concentrated in generated clients and broad union types

@@ -107,11 +107,8 @@ export const deployToNetlify = ({
       'netlify',
       'deploy',
       // In debug mode, omit --json so we get full build logs in stdout/stderr
-      
-      // In debug mode, omit --json so we get full build logs in stdout/stderr
-      debugEnabled ? undefined : '--json',
-      
-      debugEnabled ? '--debug' : undefined,
+      debugEnabled === true ? undefined : '--json',
+      debugEnabled === true ? '--debug' : undefined,
       '--filter',
       '@local/docs',
       // Split flow default: do not run Netlify build; rely on netlify.toml publish
@@ -222,7 +219,7 @@ const resolveNetlifyAuthToken = Effect.gen(function* () {
     }
 
     const readError = readResult.left
-    if (isFileMissingError(readError)) {
+    if (isFileMissingError(readError) === true) {
       continue
     }
 

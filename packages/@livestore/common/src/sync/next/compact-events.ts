@@ -22,14 +22,14 @@ export const compactEvents = (inputDag: HistoryDag): { dag: HistoryDag; compacte
   orderedEventSequenceNumberStrs.pop()
 
   for (const eventNumStr of orderedEventSequenceNumberStrs) {
-    if (!dag.hasNode(eventNumStr)) {
+    if (dag.hasNode(eventNumStr) === false) {
       continue
     }
 
     const subDagsForEvent = Array.from(makeSubDagsForEvent(dag, eventNumStr))
     for (const subDag of subDagsForEvent) {
       let shouldRetry = true
-      while (shouldRetry) {
+      while (shouldRetry === true) {
         const subDagsInHistory = findSubDagsInHistory(dag, subDag, eventNumStr)
 
         // console.debug(
@@ -42,7 +42,7 @@ export const compactEvents = (inputDag: HistoryDag): { dag: HistoryDag; compacte
         // )
 
         for (const subDagInHistory of subDagsInHistory.subDags) {
-          if (!dagDependsOnDag(subDag, subDagInHistory, dag)) {
+          if (dagDependsOnDag(subDag, subDagInHistory, dag) === false) {
             dropFromDag(dag, subDagInHistory)
           }
         }
@@ -51,10 +51,9 @@ export const compactEvents = (inputDag: HistoryDag): { dag: HistoryDag; compacte
         // We can retry to also remove those.
         // Implementation: retry if outsideDependencies overlap with deleted sub dags
         if (
-          !
           subDagsInHistory.allOutsideDependencies.some((outsideDependencies) =>
             outsideDependencies.every((dep) => subDagsInHistory.subDags.some((subDag) => subDag.hasNode(dep))),
-          )
+          ) === false
         ) {
           shouldRetry = false
         }
@@ -79,7 +78,7 @@ const makeSubDagsForEvent = function* (inputDag: HistoryDag, eventNumStr: string
 
     for (const [currentEventSequenceNumberStr, edgeTargetIdStrs] of currentIterationEls) {
       const node = inputDag.getNodeAttributes(currentEventSequenceNumberStr)
-      if (!subDag.hasNode(currentEventSequenceNumberStr)) {
+      if (subDag.hasNode(currentEventSequenceNumberStr) === false) {
         subDag.addNode(currentEventSequenceNumberStr, { ...node })
       }
       for (const edgeTargetIdStr of edgeTargetIdStrs) {
@@ -132,7 +131,7 @@ const findSubDagsInHistory = (
         allOutsideDependencies.push(outsideDependencies)
       }
 
-      if (outsideDependencies.length === 0 &&  dagReplacesDag(subDag, targetSubDag)) {
+      if (outsideDependencies.length === 0 && dagReplacesDag(subDag, targetSubDag) === true) {
         subDags.push(subDag)
       } else {
         break
@@ -156,7 +155,7 @@ const outsideDependenciesForDag = (subDag: HistoryDag, inputDag: HistoryDag) => 
     for (const edgeEntry of inputDag.outboundEdgeEntries(nodeIdStr)) {
       if (edgeEntry.attributes.type === 'facts') {
         const depEventSequenceNumberStr = edgeEntry.target
-        if (!subDag.hasNode(depEventSequenceNumberStr)) {
+        if (subDag.hasNode(depEventSequenceNumberStr) === false) {
           outsideDependencies.push(depEventSequenceNumberStr)
         }
       }
@@ -172,7 +171,7 @@ const dagDependsOnDag = (dagA: HistoryDag, dagB: HistoryDag, inputDag: HistoryDa
     for (const edgeEntryA of inputDag.inboundEdgeEntries(nodeAIdStr)) {
       if (edgeEntryA.attributes.type === 'facts') {
         const depNodeIdStr = edgeEntryA.target
-        if (dagB.hasNode(depNodeIdStr)) {
+        if (dagB.hasNode(depNodeIdStr) === true) {
           return true
         }
       }
@@ -196,7 +195,7 @@ const dagReplacesDag = (dagA: HistoryDag, dagB: HistoryDag): boolean => {
     const nodeA = nodeEntriesA[i]!
     const nodeB = nodeEntriesB[i]!
 
-    if (!replacesFacts(nodeA.factsGroup, nodeB.factsGroup)) {
+    if (replacesFacts(nodeA.factsGroup, nodeB.factsGroup) === false) {
       return false
     }
   }

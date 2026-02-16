@@ -112,7 +112,7 @@ test('surfaces TypeScript diagnostics inside the toolbar', async ({ page }) => {
     }
     try {
       const parsed = JSON.parse(script.textContent ?? '[]')
-      return  Array.isArray(parsed) ? parsed : []
+      return Array.isArray(parsed) === true ? parsed : []
     } catch {
       return []
     }

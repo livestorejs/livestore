@@ -143,7 +143,7 @@ export const logDeprecationWarnings = (
 
     // Check for event-level deprecation
     const eventDeprecation = eventDef.options.deprecated
-    if (eventDeprecation !== undefined && ! warnedDeprecatedEvents.has(eventName)) {
+    if (eventDeprecation !== undefined && warnedDeprecatedEvents.has(eventName) === false) {
       warnedDeprecatedEvents.add(eventName)
       yield* Effect.logWarning('@livestore/schema:deprecated-event', {
         event: eventName,
@@ -155,7 +155,7 @@ export const logDeprecationWarnings = (
     const deprecatedFields = findDeprecatedFieldsWithValues(eventDef.schema, args)
     for (const { field, reason } of deprecatedFields) {
       const key = `${eventName}:${field}`
-      if (!warnedDeprecatedFields.has(key)) {
+      if (warnedDeprecatedFields.has(key) === false) {
         warnedDeprecatedFields.add(key)
         yield* Effect.logWarning('@livestore/schema:deprecated-field', {
           event: eventName,

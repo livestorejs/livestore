@@ -96,7 +96,7 @@ const guessLanguage = (filename: string, fallback?: string): string => {
 const normalizeGlobals = (globals: SnippetBundle['globals']): SnippetGlobals => ({
   baseStyles: typeof globals?.baseStyles === 'string' && globals.baseStyles.length > 0 ? globals.baseStyles : null,
   themeStyles: typeof globals?.themeStyles === 'string' && globals.themeStyles.length > 0 ? globals.themeStyles : null,
-  jsModules:  Array.isArray(globals?.jsModules)
+  jsModules: Array.isArray(globals?.jsModules) === true
     ? globals.jsModules.filter((module): module is string => typeof module === 'string' && module.length > 0)
     : [],
 })
@@ -111,9 +111,9 @@ export const prepareMultiCodeData = (props: MultiCodeProps): PreparedMultiCode =
   const isRecord = (value: unknown): value is Record<string, unknown> => typeof value === 'object' && value !== null
 
   const normalizedFilesMap = (() => {
-    if (isRecord(code?.files) && ! Array.isArray(code?.files)) {
+    if (isRecord(code?.files) === true && Array.isArray(code?.files) === false) {
       return Object.entries(code.files).reduce<Record<string, RawSnippetFile>>((acc, [key, value]) => {
-        if (!isRecord(value)) return acc
+        if (isRecord(value) === false) return acc
         const filename = normalizeFilename(key)
         const hash = value.hash
         if (typeof hash !== 'string' || hash.length === 0) {
@@ -129,7 +129,7 @@ export const prepareMultiCodeData = (props: MultiCodeProps): PreparedMultiCode =
       }, {})
     }
 
-    if (Array.isArray(code?.files)) {
+    if (Array.isArray(code?.files) === true) {
       return code.files.reduce<Record<string, RawSnippetFile>>((acc, entry) => {
         if (entry == null) return acc
         const filename = normalizeFilename(entry.filename ?? 'snippet.ts')
@@ -151,8 +151,7 @@ export const prepareMultiCodeData = (props: MultiCodeProps): PreparedMultiCode =
   })()
 
   const fileOrder =
-    
-    Array.isArray(code?.fileOrder) && code.fileOrder.length > 0
+    Array.isArray(code?.fileOrder) === true && code.fileOrder.length > 0
       ? code.fileOrder.map((filename) => normalizeFilename(filename))
       : Object.keys(normalizedFilesMap)
 
@@ -165,24 +164,24 @@ export const prepareMultiCodeData = (props: MultiCodeProps): PreparedMultiCode =
   })
 
   const renderedMap = new Map<string, RenderedSnippet>()
-  if (isRecord(code?.rendered) && ! Array.isArray(code.rendered)) {
+  if (isRecord(code?.rendered) && Array.isArray(code.rendered) === false) {
     for (const [key, value] of Object.entries(code.rendered)) {
-      if (!isRecord(value)) continue
+      if (isRecord(value) === false) continue
       const filename = normalizeFilename(key)
       renderedMap.set(filename, {
         filename,
         html: typeof value.html === 'string' ? value.html : null,
         language: typeof value.language === 'string' ? value.language : 'ts',
         meta: typeof value.meta === 'string' && value.meta.length > 0 ? value.meta : activeMeta,
-        diagnostics:  Array.isArray(value.diagnostics)
+        diagnostics: Array.isArray(value.diagnostics) === true
           ? value.diagnostics.filter((item): item is string => typeof item === 'string')
           : [],
-        styles:  Array.isArray(value.styles)
+        styles: Array.isArray(value.styles) === true
           ? value.styles.filter((item): item is string => typeof item === 'string')
           : [],
       })
     }
-  } else if (Array.isArray(code?.rendered)) {
+  } else if (Array.isArray(code?.rendered) === true) {
     for (const entry of code.rendered) {
       if (entry == null) continue
       const filename = normalizeFilename(entry.filename ?? 'snippet.ts')
@@ -191,8 +190,8 @@ export const prepareMultiCodeData = (props: MultiCodeProps): PreparedMultiCode =
         html: entry.html ?? null,
         language: entry.language,
         meta: entry.meta ?? activeMeta,
-        diagnostics:  Array.isArray(entry.diagnostics) ? entry.diagnostics : [],
-        styles:  Array.isArray(entry.styles) ? entry.styles : [],
+        diagnostics: Array.isArray(entry.diagnostics) === true ? entry.diagnostics : [],
+        styles: Array.isArray(entry.styles) === true ? entry.styles : [],
       })
     }
   }

@@ -74,23 +74,20 @@ export const withTestCtx =
     const layer = makeLayer?.(testContext) ?? Layer.empty
 
     const otelLayer =
-      
-      DEBUGGER_ACTIVE || forceOtel
+      DEBUGGER_ACTIVE === true || forceOtel
         ? OtelLiveHttp({ rootSpanName: spanName, serviceName: 'vitest-runner', skipLogUrl: false })
         : OtelLiveDummy
 
     const combinedLayer = layer.pipe(Layer.provideMerge(otelLayer))
 
     return self.pipe(
-      
-      DEBUGGER_ACTIVE
+      DEBUGGER_ACTIVE === true
         ? identity
         : Effect.logWarnIfTakesLongerThan({
             duration: Duration.toMillis(timeout) * 0.8,
             label: `${spanName} approaching timeout (timeout: ${Duration.format(timeout)})`,
           }),
-      
-      DEBUGGER_ACTIVE ? identity : Effect.timeout(timeout),
+      DEBUGGER_ACTIVE === true ? identity : Effect.timeout(timeout),
       Effect.provide(combinedLayer),
       Effect.scoped, // We need to scope the effect manually here because otherwise the span is not closed
       Effect.annotateLogs({ suffix }),
@@ -218,11 +215,11 @@ export const asProp = <Arbs extends Vitest.Vitest.Arbitraries, A, E, R>(
       totalExecutions++
       const isInShrinkingPhase = runIndex >= numRuns
 
-      if (isInShrinkingPhase) {
+      if (isInShrinkingPhase === true) {
         shrinkAttempts++
       }
 
-      const enhancedContext: EnhancedTestContext =  isInShrinkingPhase
+      const enhancedContext: EnhancedTestContext = isInShrinkingPhase === true
         ? {
             _tag: 'shrinking',
             numRuns,

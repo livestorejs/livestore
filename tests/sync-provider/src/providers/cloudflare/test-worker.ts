@@ -72,7 +72,7 @@ export class TestClientDo extends DurableObjectBase implements ClientDoWithRpcCa
     const getSyncBackend = ({ clientId, storeId, payload }: { clientId: string; storeId: string; payload: any }) =>
       Effect.gen(this, function* () {
         const key = JSON.stringify({ clientId, storeId, payload })
-        if (syncBackendMap.has(key)) {
+        if (syncBackendMap.has(key) === true) {
           return syncBackendMap.get(key)!
         }
 

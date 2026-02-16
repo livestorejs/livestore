@@ -133,7 +133,7 @@ export class TestStoreDo extends DurableObject<Env> implements ClientDoWithRpcCa
     // make sure to dispose the previous store instance so we can boot with a clean slate.
     const shouldRecreate =  resetPersistence || this.cachedStore === undefined || this.cachedStoreId !== storeId
 
-    if (shouldRecreate) {
+    if (shouldRecreate === true) {
       if (this.cachedStore !== undefined) {
         await this.cachedStore.shutdownPromise()
       }
@@ -151,7 +151,7 @@ export class TestStoreDo extends DurableObject<Env> implements ClientDoWithRpcCa
 
       let snapshotDuringReset: ResetPersistenceSnapshot | undefined
 
-      if (resetPersistence) {
+      if (resetPersistence === true) {
         const storage = this.ctx.storage
         const originalTransactionSync = storage.transactionSync
         const invokeOriginalTransactionSync = <T>(callback: () => T): T =>

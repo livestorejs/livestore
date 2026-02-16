@@ -14,7 +14,7 @@ const wasmBinary = await readFile(wasmPath)
 const originalFetch = globalThis.fetch.bind(globalThis)
 
 const customFetch = async (input: RequestInfo | URL, init?: RequestInit) => {
-  if (typeof input === 'string' &&  input.includes('wa-sqlite') &&  input.endsWith('.wasm')) {
+  if (typeof input === 'string' && input.includes('wa-sqlite') === true && input.endsWith('.wasm') === true) {
     return new Response(wasmBinary, {
       status: 200,
       headers: { 'Content-Type': 'application/wasm' },

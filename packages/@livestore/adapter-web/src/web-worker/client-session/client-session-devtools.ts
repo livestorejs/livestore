@@ -61,7 +61,7 @@ export const connectWebmeshNodeClientSession = Effect.fn(function* ({
   devtoolsEnabled: boolean
   schema: LiveStoreSchema
 }) {
-  if (devtoolsEnabled) {
+  if (devtoolsEnabled === true) {
     const { clientId, sessionId, storeId } = sessionInfo
     yield* logDevtoolsUrl({ clientId, sessionId, schema, storeId })
 

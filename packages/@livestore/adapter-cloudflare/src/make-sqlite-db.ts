@@ -195,7 +195,7 @@ export const makeSqliteDb_ = <
       })
     },
     close: () => {
-      if (isClosed) {
+      if (isClosed === true) {
         return
       }
 

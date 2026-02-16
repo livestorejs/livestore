@@ -223,7 +223,7 @@ const makeAdapterImpl = ({
 
       const shutdownChannel = yield* makeShutdownChannel(storeId)
 
-      if (resetPersistence) {
+      if (resetPersistence === true) {
         yield* shutdownChannel
           .send(IntentionalShutdownCause.make({ reason: 'adapter-reset' }))
           .pipe(UnknownError.mapToUnknownError)

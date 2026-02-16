@@ -110,7 +110,7 @@ export class HistoryDag {
   }
 
   addNode(id: string, attributes: HistoryDagNode): void {
-    if (this.idToIndex.has(id)) {
+    if (this.idToIndex.has(id) === true) {
       shouldNeverHappen(`HistoryDag node ${id} already exists`)
     }
 
@@ -147,7 +147,7 @@ export class HistoryDag {
   }
 
   addEdge(sourceId: string, targetId: string, attributes: HistoryDagEdgeAttributes): Graph.EdgeIndex {
-    if (!this.options.allowSelfLoops && sourceId === targetId) {
+    if (this.options.allowSelfLoops === false && sourceId === targetId) {
       return shouldNeverHappen('HistoryDag self-loops are disabled')
     }
 

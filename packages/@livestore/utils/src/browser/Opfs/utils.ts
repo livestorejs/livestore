@@ -31,7 +31,7 @@ const parsePathSegments = (path: string) =>
     }
 
     for (const segment of segments) {
-      if (DISALLOWED_SEGMENTS.has(segment)) {
+      if (DISALLOWED_SEGMENTS.has(segment) === true) {
         return yield* new OpfsError({
           message: `Invalid OPFS path '${path}': segment '${segment}' is not supported`,
         })
@@ -93,8 +93,7 @@ const ensureDirectoryPath = (segments: ReadonlyArray<string>, options: { readonl
       currentDirHandle = yield* Opfs.getDirectoryHandle(
         currentDirHandle,
         segment,
-        
-        shouldCreate ? { create: true } : undefined,
+        shouldCreate === true ? { create: true } : undefined,
       )
     }
 
@@ -112,7 +111,7 @@ export const getDirectoryHandleByPath = Effect.fn('@livestore/utils:Opfs.getDire
   path: string,
   options?: FileSystemGetDirectoryOptions,
 ) {
-  if (isRootPath(path)) return yield* Opfs.getRootDirectoryHandle
+  if (isRootPath(path) === true) return yield* Opfs.getRootDirectoryHandle
 
   const pathSegments = yield* parsePathSegments(path)
   return yield* traverseDirectoryPath(pathSegments, options)
@@ -130,7 +129,7 @@ export const remove = Effect.fn('@livestore/utils:Opfs.remove')(function* (
 ) {
   const recursive = options?.recursive ?? false
 
-  if (isRootPath(path)) {
+  if (isRootPath(path) === true) {
     const rootHandle = yield* Opfs.getRootDirectoryHandle
     const handlesStream = yield* Opfs.values(rootHandle)
     yield* handlesStream.pipe(
@@ -153,7 +152,7 @@ export const remove = Effect.fn('@livestore/utils:Opfs.remove')(function* (
  * @returns `true` if the path resolves to a file or directory, otherwise `false`.
  */
 export const exists = Effect.fn('@livestore/utils:Opfs.exists')(function* (path: string) {
-  if (isRootPath(path)) return true
+  if (isRootPath(path) === true) return true
 
   const pathSegments = yield* parsePathSegments(path)
   const { parentSegments, leafSegment: targetName } = splitPathSegments(pathSegments)
@@ -183,7 +182,7 @@ export const makeDirectory = Effect.fn('@livestore/utils:Opfs.makeDirectory')(fu
 ) {
   const recursive = options?.recursive ?? false
 
-  if (isRootPath(path)) return
+  if (isRootPath(path) === true) return
 
   const pathSegments = yield* parsePathSegments(path)
 
@@ -217,7 +216,7 @@ export const getMetadata = Effect.fn('@livestore/utils:Opfs.getMetadata')(functi
  * - Only available in Safari 26 or higher (as of Dec 2025, not yet widely available).
  */
 export const writeFile = Effect.fn('@livestore/utils:Opfs.writeFile')(function* (path: string, data: Uint8Array) {
-  if (isRootPath(path)) {
+  if (isRootPath(path) === true) {
     return yield* new OpfsError({
       message: `Invalid OPFS path '${path}': cannot write file directly to the OPFS root`,
     })
@@ -254,7 +253,7 @@ export const syncWriteFile = Effect.fn('@livestore/utils:Opfs.syncWriteFile')(fu
   path: string,
   data: Uint8Array,
 ) {
-  if (isRootPath(path)) {
+  if (isRootPath(path) === true) {
     return yield* new OpfsError({
       message: `Invalid OPFS path '${path}': cannot write file directly to the OPFS root`,
     })

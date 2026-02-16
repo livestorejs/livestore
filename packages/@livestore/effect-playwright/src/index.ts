@@ -125,7 +125,7 @@ const parsePlaywrightConsoleMessage = async (
 ): Promise<Option.Option<typeof ConsoleMessage.Type>> => {
   const msgType = message.type() as PlaywrightConsoleMessageType
   const msg = message.text()
-  const args_ =  shouldEvaluateArgs
+  const args_ = shouldEvaluateArgs === true
     ? await Promise.all(
         message.args().map(async (argHandle) => {
           const isDisposable = await argHandle

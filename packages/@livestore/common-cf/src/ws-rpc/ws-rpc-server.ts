@@ -155,7 +155,7 @@ export const setupDurableObjectWebSocketRpc = ({
 
   const launchServer = (ws: CfTypes.WebSocket) =>
     Effect.gen(function* () {
-      if (serverCtxMap.has(ws)) {
+      if (serverCtxMap.has(ws) === true) {
         return serverCtxMap.get(ws)!
       }
 

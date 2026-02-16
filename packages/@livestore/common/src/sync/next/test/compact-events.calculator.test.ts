@@ -34,7 +34,7 @@ const eventDefs = {
     schema: Schema.Struct({ value: Schema.Number }),
     facts: ({ value }, currentFacts) => ({
       modify: {
-        set: value === 0 ||  currentFacts.has(facts.multiplyByZero) ? [facts.multiplyByZero] : [],
+        set: value === 0 || currentFacts.has(facts.multiplyByZero) === true ? [facts.multiplyByZero] : [],
         unset: value === 0 ? [] : [facts.multiplyByZero],
       },
     }),
