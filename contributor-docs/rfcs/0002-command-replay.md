@@ -441,55 +441,37 @@ Pending events may be discarded during reconciliation and replaced with the even
 
 ### Alternative A: Invariant Validation in Materializers
 
-In this approach, materializers would include validation logic that checks events against the current state before or during materialization. When validation fails (e.g., during rebase), the materializer would take a configured action rather than crashing.
+Instead of introducing commands, keep the current direct-event-commit model but make materializers responsible for detecting and handling invariant violations. When a materializer encounters an event that would violate an invariant (e.g., checking in a guest to a room already at capacity), it would detect the violation and take corrective action—skipping the event, applying compensating state, or flagging it for review.
 
-```typescript
+```ts
 State.SQLite.materializers(events, {
-  'v1.CommentCreated': ({ taskId, commentId, text }, state) => {
-    const task = state.query(tables.tasks.where({ id: taskId }).first())
-    if (!task) {
-      // Validation failed - task doesn't exist
-      return MaterializeResult.skip({ reason: 'Task not found', taskId })
-    }
-    return tables.comments.insert({ id: commentId, taskId, text })
-  },
-
-  'v1.GuestCheckedIn': ({ roomId, guestId }, state) => {
-    const guestCount = state.query(tables.roomGuests.where({ roomId }).count())
-    const room = state.query(tables.rooms.where({ id: roomId }).first())
-    if (!room || guestCount >= room.capacity) {
-      return MaterializeResult.skip({ reason: 'Room at capacity or not found' })
+  'v1.GuestCheckedIn': ({ roomId, guestId }, ctx) => {
+    const guestCount = ctx.query(tables.roomGuests.where({ roomId }).count())
+    const room = ctx.query(tables.rooms.get(roomId))
+    if (guestCount >= room.capacity) {
+      // Option 1: Skip — don't apply the event's state change
+      return []
+      // Option 2: Compensate — apply alternative state instead
+      return tables.waitlist.insert({ roomId, guestId })
+      // Option 3: Flag — apply and mark as conflicted
+      return tables.roomGuests.insert({ roomId, guestId, status: 'conflicted' })
     }
     return tables.roomGuests.insert({ roomId, guestId })
   },
 })
 ```
 
-The `MaterializeResult` could support different actions:
+#### Why It Was Rejected
 
-```typescript
-type MaterializeResult =
-  | { action: 'apply', statements: SQL[] }
-  | { action: 'skip', reason: string, metadata?: Record<string, unknown> }
-  | { action: 'compensate', events: Event[] }  // Emit compensating events
-  | { action: 'conflict', resolution: 'manual' | 'auto' }
-```
+1. **Materializers lack the original intent.** A materializer only sees the event, not the user's intention. Without the intent, it cannot make an informed decision about what to do when an invariant is violated. Should the guest be waitlisted? Should the check-in be silently dropped? Should a different room be tried? Only the original command carries enough context to answer these questions. For instance, a guest may have wanted to only book a room if it has wheelchair accessibility. The `GuestCheckedIn` event doesn't carry this information, making it difficult for the materializer to make an informed decision.
 
-#### Why This Was Rejected
+2. **The invalid event remains in the log.** Regardless of how the materializer handles the violation, the original event stays in the eventlog. If the materializer skips a `GuestCheckedIn` event, the log still claims the guest was checked in. Re-materializing from scratch reproduces the same violation, requiring every materializer to carry the same defensive logic. Projections that lack this logic (e.g., an analytics projection counting check-ins) will process the invalid event and diverge from the state DB.
 
-1. **Events are facts, not requests.** Once an event is appended to the log, it represents something that happened. Silently skipping events during materialization creates a divergence between what the eventlog says happened and what the state DB reflects. The eventlog becomes an unreliable audit trail.
+3. **Duplicate validation.** You'd need to write validation both before committing events (to catch immediate execution errors) and within materializers (to catch reconciliation errors). This duplication is error-prone and increases the maintenance burden.
 
-2. **Doesn't prevent log pollution.** Invalid events still get appended to the eventlog. The "fix" happens only at the read side. Replaying the log on a new client or rebuilding projections will encounter the same invalid events.
+4. **Compensating state without compensating events.** When a materializer applies alternative state (e.g., inserting a waitlist entry instead of a room assignment), that outcome is not modeled as an event. It exists only as a state-level side effect invisible to the eventlog. Other projections, downstream consumers, and audit trails have no record that the guest was waitlisted rather than checked in. In the proposed solution, the command handler produces a `GuestWaitlisted` event that is visible throughout the system.
 
-3. **Materializers become validators.** Materializers are supposed to be simple projectors—pure functions that transform events into state changes. Adding validation logic bloats them with invariant logic that should live elsewhere (command handlers/deciders).
-
-4. **Duplicate validation.** You'd need validation both when committing events (to catch local errors) and in materializers (to catch reconciliation errors). This duplication is error-prone and increases maintenance burden.
-
-5. **Ambiguous failure semantics.** When materializer validation fails, what does it mean? A bug in the materializer? An invalid event? A temporary state issue? The system can't distinguish between these cases, making debugging difficult.
-
-6. **No re-evaluation opportunity.** Unlike commands, events don't carry enough information to re-evaluate the original intent. If `CommentCreated` fails because the task was deleted, what should happen? Skip the comment? Create the task? The event itself doesn't encode what the user wanted—only what action was taken given a specific (now outdated) context.
-
-7. **Cascading complexity.** If event E1 is skipped, subsequent events (E2, E3) that depended on E1's side effects may also fail or produce nonsensical results. Tracking and handling these cascades within materializers becomes unwieldy.
+5. **Conflates projection and validation concerns.** Materializers are [projectors](#projector)—they build read-optimized state from events. Adding invariant enforcement interleaves validation logic with projection logic, making materializers harder to reason about, test, and maintain. Each materializer must independently decide how to handle every possible violation, leading to scattered and potentially inconsistent enforcement.
 
 This approach treats the symptom (materialization failures) rather than the cause (events committed against stale state). The Commands solution addresses the root issue by ensuring that state-dependent operations are always validated against current state before events are produced.
 
