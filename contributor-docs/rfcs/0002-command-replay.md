@@ -386,7 +386,7 @@ if (confirmation._tag === 'conflict' && confirmation.error._tag === 'RoomAtCapac
 
 ### Trade-offs
 
-#### Duplicated Constraint Logic
+#### 1. Duplicated Constraint Logic
 
 Command handlers must re-implement validation that databases traditionally enforce declaratively (`FOREIGN KEY`, `UNIQUE`, `CHECK`). This increases boilerplate and risks divergence between handler validation and schema definitions.
 
@@ -403,7 +403,7 @@ This duplication exists because DB constraints currently can only reject—they 
 
 **Constraints as safety net.** DB constraints remain in place but serve as a backstop for handler bugs rather than primary validation. Commands handle the common cases with rich, typed errors. If a constraint fires unexpectedly (handler bug, schema drift), the system logs an error for developers rather than relying on constraints for business logic.
 
-#### Offline Work May Change on Sync
+#### 2. Offline Work May Change on Sync
 
 Actions performed offline are speculative until confirmed. When a client reconnects and pulls remote events, pending commands are replayed against the updated state. Because the underlying state may have changed, a replayed command can produce different events, fewer events, or be rejected entirely. The user saw one outcome locally, but after sync the outcome may silently become something else—or be undone altogether.
 
@@ -414,7 +414,7 @@ This creates two compounding challenges:
 
 For domains where offline decisions must be **binding and preserved as historical facts** (e.g., healthcare prescriptions, field equipment reports, financial transactions), this trade-off may be unacceptable. In such cases, [Alternative D: Client-Authoritative Events](#alternative-d-client-authoritative-events) offers a model where events are never discarded during sync and conflicts are resolved through compensating events instead.
 
-#### Server Validation Requires Explicit Coordination
+#### 3. Server Validation Requires Explicit Coordination
 
 Since commands execute only on the client, invariants can only be enforced based on locally-available data. The sync backend cannot directly validate or reject commands—it simply processes events.
 
@@ -433,7 +433,7 @@ This means certain invariants cannot be enforced through commands alone:
 > [!NOTE]
 > In the future, we may want to add support for **Server-Side Command Execution**. See [Alternative E: Server-Side Command Execution](#alternative-e-server-side-command-execution).
 
-#### Limited Auditability
+#### 4. Limited Auditability
 
 Pending events may be discarded during reconciliation and replaced with the events produced by replayed commands. This means the eventlog reflects the final validated state, not necessarily what the client originally produced before sync. For domains where "what did you know and when" is legally or operationally significant (healthcare, finance, compliance), a client-authoritative model (see [Alternative D: Client-Authoritative Events](#alternative-d-client-authoritative-events)) may be more appropriate.
 
