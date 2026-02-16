@@ -730,11 +730,7 @@ An explicit instruction from the user or external systems that requests a change
 
 #### Command Handler
 
-An orchestration component that receives a command, loads the current state, invokes the decider, commit event(s). It deals with concerns like authorization, idempotency, concurrency, and cross-stream checks. It has side effects and interacts with external systems.
-
-#### Event Decider
-
-Event deciders are responsible for handling commands, determining which events to generate by encapsulating invariants and state, and applying them to the current state. They contain no side effects or infrastructure concerns. They ensure that commands result in valid and consistent state transitions.
+A component that receives a command, loads the current state, validates against invariants, and determines which events to produce. It encapsulates the rules that ensure commands result in valid and consistent state transitions.
 
 #### Invariant
 
