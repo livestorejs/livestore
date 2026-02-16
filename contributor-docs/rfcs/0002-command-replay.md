@@ -589,7 +589,9 @@ In this approach, every event a client produces is treated as an **immutable his
 
 ### Alternative E: Server-Side Command Execution
 
-In this approach, commands are pushed to the server instead of events. The server executes each command against its authoritative state, producing events that become the source of truth. Clients still execute commands locally for optimistic UI, but their provisional events are replaced by whatever the server produces.
+The proposed solution executes commands exclusively on the client. The sync backend never sees commands—it only receives, orders, and distributes events. This keeps the backend simple but means server-side invariants can only be enforced against locally-available data (see [Trade-off 3](#3-server-validation-requires-explicit-coordination)), or by layering event-level workarounds—Request/Response Events and Compensating Events—on top of client-only execution. Server-side command execution addresses the same gap more directly by making the server a command executor, not just an event store.
+
+Instead of pushing events, the client pushes pending commands to the server. The server re-executes each command's handler against its authoritative state—which includes data from all clients—and produces authoritative events. The client still runs the same handler locally for optimistic UI, but treats its local events as provisional until the server confirms or replaces them.
 
 **Architecture:**
 
@@ -619,52 +621,31 @@ In this approach, commands are pushed to the server instead of events. The serve
 
 **Sync flow:**
 
-1. Client executes command locally → produces provisional events (optimistic UI)
-2. Client pushes commands (not events) to server
-3. Server executes each command against authoritative state → produces authoritative events or rejects
-4. Client pulls authoritative events
-5. Client discards provisional events and replays pending commands against new state
+1. **Local execution**: Client executes the command handler locally against its state, producing provisional events for optimistic UI. The command is queued.
+2. **Push commands**: Client pushes pending commands (not events) to the server.
+3. **Server execution**: The server executes each command's handler against its authoritative state. Because the server sees data from all clients, it can enforce invariants the client cannot—global uniqueness, cross-user conflicts, server-authoritative permissions. The handler may produce the same events as the client, different events, or reject the command entirely.
+4. **Pull authoritative events**: Client pulls the events the server produced.
+5. **Reconciliation**: Client discards its provisional events for the confirmed commands and materializes the server's authoritative events. Any remaining pending commands (not yet processed by the server) are replayed against the updated state, producing new provisional events.
+6. **Dequeue**: Confirmed commands are removed from the pending queue.
 
-**Choose when:**
+**Differs from the proposed solution in one key aspect:** in the proposed solution, clients push events and the server never re-validates them—if a client says `GuestCheckedIn`, the server accepts it. With server-side execution, the server re-runs the handler and decides independently what events to produce. This means the server can reject a check-in that the client optimistically accepted, or produce different events (e.g., `GuestWaitlisted`) based on state the client didn't have.
 
-- **Server-side invariants are required**: Permissions, global uniqueness across users, rate limits, cross-aggregate invariants
-- **You don't trust the client**: Server has final authority over what events are produced
-- **Regulatory requirements for server validation**: Some domains require server-side validation of all state changes
+**Use cases:**
 
-**Trade-offs:**
+- **Global uniqueness**: A username must be unique across all users. The client can't know if another user just claimed the same name—only the server has the full picture.
+- **Cross-aggregate invariants**: A booking must not conflict with another user's reservation in a different store.
+- **Server-authoritative permissions**: A user's role or access level may have changed on the server since the client last synced.
+- **Domain-aware rate limiting and quotas**: Enforcing API rate limits or resource quotas requires centralized state.
+- **Regulatory requirements**: Some domains require that all state changes are validated server-side before being accepted.
 
-- **More server-centric**: Clients make requests, not decisions—nothing is real until the server confirms
-- **Increased server complexity**: Server must run command handlers, not just store events
-- **Higher latency for confirmation**: Offline work remains uncertain longer
-- **Command determinism**: Handlers should ideally produce the same events given the same state, or accept that server may produce different results
+#### Why It Was Rejected
 
-**Implementation notes:**
+This alternative conflates two distinct problems into a single solution:
 
-Handlers can require server-only services via Effect's dependency injection:
+1. **Invariant violations during rebase** — the problem this RFC addresses. The proposed solution (client-side command replay) already solves it.
+2. **Server-side validation** — enforcing invariants that require server authority (global uniqueness, cross-user conflicts, permissions). This is a separate problem that LiveStore already handles through server-side clients that listen for request events and emit response or compensating events (see [Trade-off 3](#3-server-validation-requires-explicit-coordination)).
 
-```ts
-// Server provides real implementations
-const ServerServicesLayer = Layer.mergeAll(
-  Layer.succeed(PermissionsService, {
-    hasPermission: (perm) => userPermissions.includes(perm),
-    userId: authenticatedUserId,
-  }),
-  Layer.succeed(RateLimitService, {
-    checkLimit: (userId) => checkRateLimitDatabase(userId),
-  }),
-)
-
-// Client provides permissive stubs (for optimistic execution)
-const ClientServicesLayer = Layer.mergeAll(
-  Layer.succeed(PermissionsService, {
-    hasPermission: () => true,  // Optimistically assume authorized
-    userId: localUserId,
-  }),
-  Layer.succeed(RateLimitService, {
-    checkLimit: () => Effect.succeed({ allowed: true }),
-  }),
-)
-```
+Introducing server-side command execution to solve problem 1 would also change how problem 2 is handled—replacing the current event-level approach with a fundamentally different execution model. It is better to solve one problem at a time: ship client-side command replay, gather feedback from real usage, and revisit server-side command execution later if the existing approach to server-side validation proves insufficient.
 
 ### Alternative F: Hybrid Approach
 
