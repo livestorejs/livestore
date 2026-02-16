@@ -37,7 +37,7 @@ export const NewIssueModal = () => {
     const highestKanbanOrder = store.query(
       tables.issue
         .select('kanbanorder')
-        .where({ status: newIssueModalStatus === false ? 0 : (newIssueModalStatus) })
+        .where({ status: newIssueModalStatus === false ? 0 : (newIssueModalStatus as Status) })
         .orderBy('kanbanorder', 'desc')
         .first({ behaviour: 'fallback', fallback: () => 'a1' }),
     )
@@ -47,7 +47,7 @@ export const NewIssueModal = () => {
         id: highestIssueId + 1,
         title,
         priority,
-        status: newIssueModalStatus,
+        status: newIssueModalStatus as Status,
         modified: date,
         created: date,
         creator: frontendState.user,
@@ -73,7 +73,7 @@ export const NewIssueModal = () => {
         <div className="mt-2 flex gap-px w-full">
           <StatusMenu
             showLabel
-            status={newIssueModalStatus === false ? 0 : (newIssueModalStatus)}
+            status={newIssueModalStatus === false ? 0 : (newIssueModalStatus as Status)}
             onStatusChange={setNewIssueModalStatus}
           />
           <PriorityMenu showLabel priority={priority} onPriorityChange={setPriority} />

@@ -170,7 +170,7 @@ const downloadExample = (exampleName: string, ref: string, destinationPath: stri
       })
     }
 
-    const repoDir = nodePath.join(extractDir, extractedDirs[0])
+    const repoDir = nodePath.join(extractDir, extractedDirs[0]!)
     const exampleSourcePath = nodePath.join(repoDir, 'examples', exampleName)
 
     // Check if the example exists

@@ -35,7 +35,7 @@ export type WorkerOptions = {
   testing?: TestingOverrides
 } & LogConfig.WithLoggerOptions
 
-export const getWorkerArgs = () => Schema.decodeSync(WorkerSchema.WorkerArgv)(process.argv[2])
+export const getWorkerArgs = () => Schema.decodeSync(WorkerSchema.WorkerArgv)(process.argv[2]!)
 
 export const makeWorker = (options: WorkerOptions) => {
   makeWorkerEffect(options).pipe(PlatformNode.NodeRuntime.runMain)

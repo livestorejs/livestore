@@ -158,7 +158,7 @@ export const createQueryResource = <TResult>(
 
   const queryRcRef =
     normalized._tag === 'definition'
-      ? normalized.def.make(store[StoreInternalsSymbol].reactivityGraph.context, otelContext)
+      ? normalized.def.make(store[StoreInternalsSymbol].reactivityGraph.context!, otelContext)
       : ({
           value: normalized.query$,
           deref: () => {},

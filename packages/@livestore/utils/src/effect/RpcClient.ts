@@ -38,7 +38,7 @@ export const makeProtocolSocketWithIsConnected = (options: {
       const write = yield* socket.writer
       const parser = serialization.unsafeMake()
 
-      const pinger = yield* makePinger(write(parser.encode(constPing)), options?.pingSchedule)
+      const pinger = yield* makePinger(write(parser.encode(constPing)!), options?.pingSchedule)
 
       yield* Effect.suspend(() => {
         // We rely on the heartbeat watchdog while streaming arbitrarily long payloads.
@@ -163,7 +163,7 @@ export const makeProtocolSocketWithIsConnected = (options: {
     }),
   )
 
-export const SocketPinger = Effect.map(RpcClient.Protocol, (protocol) => (protocol).pinger as SocketPinger)
+export const SocketPinger = Effect.map(RpcClient.Protocol, (protocol) => (protocol as any).pinger as SocketPinger)
 
 export type SocketPinger = Effect.Effect.Success<ReturnType<typeof makePinger>>
 

@@ -492,7 +492,7 @@ const makeWorkerLeaderThread = ({
     ): TReq extends Schema.WithResult<infer A, infer _I, infer _E, infer _EI, infer R>
       ? Effect.Effect<A, UnknownError, R>
       : never =>
-      (worker.executeEffect(req)).pipe(
+      (worker.executeEffect(req) as any).pipe(
         Effect.logWarnIfTakesLongerThan({
           label: `@livestore/adapter-node:client-session:runInWorker:${req._tag}`,
           duration: 2000,
@@ -522,7 +522,7 @@ const makeWorkerLeaderThread = ({
               : cause,
         ),
         Stream.withSpan(`@livestore/adapter-node:client-session:runInWorkerStream:${req._tag}`),
-      )
+      ) as any
 
     const bootStatusFiber = yield* runInWorkerStream(new WorkerSchema.LeaderWorkerInnerBootStatusStream()).pipe(
       Stream.tap((bootStatus) => Queue.offer(bootStatusQueue, bootStatus)),

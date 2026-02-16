@@ -49,7 +49,7 @@ export const useQueryRef = <TQueryable extends Queryable<any>>(
   type TResult = Queryable.Result<TQueryable>
 
   const normalized = Solid.createMemo<NormalizedQueryable<TResult>>(() =>
-    normalizeQueryable(resolve(queryable)),
+    normalizeQueryable(resolve(queryable) as Queryable<TResult>),
   )
 
   const rcRefKey = Solid.createMemo(() => computeRcRefKey(options.store, normalized()))

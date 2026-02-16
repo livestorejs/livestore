@@ -116,7 +116,7 @@ Vitest.describe.concurrent('LeaderSyncProcessor', { timeout: 60000 }, () => {
       })
 
       const staleSeq = EventSequenceNumber.Client.Composite.make({
-        global: (syncStateBefore.localHead.global + 1),
+        global: (syncStateBefore.localHead.global + 1) as any,
         client: EventSequenceNumber.Client.DEFAULT,
         rebaseGeneration: syncStateBefore.localHead.rebaseGeneration - 1,
       })

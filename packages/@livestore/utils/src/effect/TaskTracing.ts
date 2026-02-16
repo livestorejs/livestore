@@ -18,7 +18,7 @@ export const withAsyncTaggingTracing =
         span: (name, ...args) => {
           const span = oldTracer.span(name, ...args)
           const trace = makeTrace(name)
-          ;(span).runInTask = (f: any) => trace.run(f)
+          ;(span as any).runInTask = (f: any) => trace.run(f)
           return span
         },
         context: (f, fiber) => {

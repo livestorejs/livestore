@@ -383,7 +383,7 @@ export const makePersistedAdapter =
         Fiber.join(sharedWorkerFiber).pipe(
           // NOTE we need to wait for the shared worker to be initialized before we can send requests to it
           Effect.tap(() => waitForSharedWorkerInitialized),
-          Effect.flatMap((worker) => worker.executeEffect(req)),
+          Effect.flatMap((worker) => worker.executeEffect(req) as any),
           // NOTE we want to treat worker requests as atomic and therefore not allow them to be interrupted
           // Interruption usually only happens during leader re-election or store shutdown
           // Effect.uninterruptible,
