@@ -749,7 +749,7 @@ A property that must always hold true for the system to be considered in a valid
 - [Synchrotron](https://github.com/evelant/synchrotron)
 - [Akka](https://doc.akka.io/libraries/akka-core/current/typed/replicated-eventsourcing.html)
 - [Eventuate (by RBMH)](https://rbmhtechnology.github.io/eventuate/)
-- [Logux](https://logux.io/)
+- [Logux](https://logux.org/)
 
 ### C. Relevant Community Discussions
 
