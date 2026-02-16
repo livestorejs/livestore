@@ -1,7 +1,7 @@
-import { describe, expect, it } from 'vitest'
+import { objectToString } from '@livestore/utils'
 
 import { Schema } from '@livestore/utils/effect'
-import { objectToString } from '@livestore/utils'
+import { describe, expect, it } from 'vitest'
 
 import { State } from '../../mod.ts'
 
@@ -92,6 +92,22 @@ describe('table function overloads', () => {
     expect((todosTable.rowSchema as any).fields.optionalComplex.toString()).toBe(
       '(parseJson <-> { readonly color: string } | undefined) | null',
     )
+  })
+
+  it('should allow explicit first two generic arguments without options generic', () => {
+    const columns = {
+      id: State.SQLite.text({ primaryKey: true }),
+      text: State.SQLite.text({ default: '' }),
+    }
+
+    const todosTable = State.SQLite.table<'todos', typeof columns>({
+      name: 'todos',
+      columns,
+    })
+
+    expect(todosTable.sqliteDef.name).toBe('todos')
+    expect(todosTable.sqliteDef.columns).toHaveProperty('id')
+    expect(todosTable.sqliteDef.columns).toHaveProperty('text')
   })
 
   it('should work with schema parameter', () => {

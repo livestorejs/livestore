@@ -150,7 +150,7 @@ export type TableOptions = {
 export function table<
   TName extends string,
   TColumns extends SqliteDsl.Columns | SqliteDsl.ColumnDefinition.Any,
-  const TOptionsInput extends TableOptionsInput,
+  const TOptionsInput extends TableOptionsInput = TableOptionsInput,
 >(
   args: {
     name: TName
@@ -162,7 +162,7 @@ export function table<
 export function table<
   TName extends string,
   TSchema extends Schema.Schema.AnyNoContext,
-  const TOptionsInput extends TableOptionsInput,
+  const TOptionsInput extends TableOptionsInput = TableOptionsInput,
 >(
   args: {
     name: TName
@@ -171,7 +171,10 @@ export function table<
 ): TableDef<SqliteTableDefForSchemaInput<TName, Schema.Schema.Type<TSchema>, Schema.Schema.Encoded<TSchema>, TSchema>>
 
 // Overload 3: With schema and no name (uses schema annotations)
-export function table<TSchema extends Schema.Schema.AnyNoContext, const TOptionsInput extends TableOptionsInput>(
+export function table<
+  TSchema extends Schema.Schema.AnyNoContext,
+  const TOptionsInput extends TableOptionsInput = TableOptionsInput,
+>(
   args: {
     schema: TSchema
   } & Partial<TOptionsInput>,
