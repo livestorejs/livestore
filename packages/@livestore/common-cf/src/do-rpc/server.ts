@@ -48,10 +48,10 @@ export const toDurableObjectHandler =
 
       // Handle potential nested array from client serialization
       let requests: RpcMessage.FromClient<Rpcs>[]
-      if (Array.isArray(decoded) === true && decoded.length === 1 && Array.isArray(decoded[0]) === true) {
+      if (Array.isArray(decoded) && decoded.length === 1 &&  Array.isArray(decoded[0])) {
         // Double-wrapped array [[{...}]] -> [{...}]
         requests = decoded[0]
-      } else if (Array.isArray(decoded) === true) {
+      } else if (Array.isArray(decoded)) {
         // Single array [{...}]
         requests = decoded
       } else {

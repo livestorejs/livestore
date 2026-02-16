@@ -200,13 +200,13 @@ const applyExpoConstraints = (
 
         for (const [pkg, ncuVersion] of Object.entries(packageUpdates)) {
           // Skip dependencies in deny list
-          if (DEPENDENCY_DENY_LIST.includes(pkg as any) === true) {
+          if (DEPENDENCY_DENY_LIST.includes(pkg as any)) {
             excludedByDenyList++
             continue
           }
 
           // Skip patched dependencies
-          if (patchedDeps.includes(pkg) === true) {
+          if (patchedDeps.includes(pkg)) {
             excludedByPatches++
             continue
           }
@@ -249,9 +249,9 @@ const executeUpdates = (filteredUpdates: Record<string, Record<string, string>>,
           .map(([pkg, version]) => `${pkg}@${version}`)
           .join(' ')
 
-        yield* Console.log(`${dryRun === true ? '[DRY RUN] ' : ''}Updating ${packageJsonPath}: ${packages}`)
+        yield* Console.log(`${dryRun ? '[DRY RUN] ' : ''}Updating ${packageJsonPath}: ${packages}`)
 
-        if (dryRun === false) {
+        if (!dryRun) {
           const updateResult = yield* Effect.gen(function* () {
             // Read current package.json
             const content = yield* Effect.try({
@@ -332,7 +332,7 @@ export const updateDepsCommand = Cli.Command.make(
 
     // Validate target option
     const validTargets = ['latest', 'minor', 'patch']
-    if (validTargets.includes(target) === false) {
+    if (!validTargets.includes(target)) {
       return yield* new UpdateDepsError({
         message: `Invalid target: ${target}. Must be one of: ${validTargets.join(', ')}`,
       })

@@ -227,7 +227,7 @@ export const makeSyncBackend =
               } as SyncBackend.PullResItem<SyncMetadata>),
             )
 
-          const stream = isFirst === true ? sseStream(false) : sseStream(true)
+          const stream =  isFirst ? sseStream(false) : sseStream(true)
 
           return stream.pipe(
             // Reconnect from last item if stream

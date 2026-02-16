@@ -20,13 +20,13 @@ export const test = base.extend<{
   forEachTest: [
     async ({ page, browser }, use, testInfo) => {
       const shouldRecordPerfProfile = process.env.PERF_PROFILER === '1'
-      if (shouldRecordPerfProfile === true) {
+      if (shouldRecordPerfProfile) {
         await browser.startTracing(page, { path: testInfo.outputPath('perf-profile.json') })
       }
 
       await use(undefined)
 
-      if (shouldRecordPerfProfile === true) {
+      if (shouldRecordPerfProfile) {
         await browser.stopTracing()
       }
     },
@@ -36,7 +36,7 @@ export const test = base.extend<{
   cpuProfiler: async ({ page }, use, testInfo) => {
     const shouldProfile = process.env.CPU_PROFILER === '1'
 
-    if (shouldProfile === false) {
+    if (!shouldProfile) {
       // Provide a no-op profiler when CPU profiling is disabled
       const noopProfiler: CPUProfiler = {
         start: async () => {},
@@ -53,7 +53,7 @@ export const test = base.extend<{
 
     const profiler: CPUProfiler = {
       start: async (label?: string) => {
-        if (profilingActive === true) {
+        if (profilingActive) {
           throw new Error('CPU profiling is already active')
         }
 
@@ -68,7 +68,7 @@ export const test = base.extend<{
       },
 
       stop: async (name: string) => {
-        if (profilingActive === false || cdpSession == null) {
+        if (!profilingActive || cdpSession == null) {
           throw new Error('CPU profiling is not active')
         }
 
@@ -92,7 +92,7 @@ export const test = base.extend<{
     await use(profiler)
 
     // Cleanup: stop profiling if still active
-    if (profilingActive === true && cdpSession !== undefined) {
+    if (profilingActive && cdpSession !== undefined) {
       try {
         await cdpSession.send('Profiler.stop')
       } catch {

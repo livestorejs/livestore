@@ -8,7 +8,7 @@ export const test = base.extend<{ forEachTest: void }>({
   forEachTest: [
     async ({ page, browser }, use, testInfo) => {
       // This code runs before every test.
-      if (shouldRecordPerfProfile === true) {
+      if (shouldRecordPerfProfile) {
         await browser.startTracing(page, { path: testInfo.outputPath('perf-profile.json') })
       }
 
@@ -16,7 +16,7 @@ export const test = base.extend<{ forEachTest: void }>({
       await use()
 
       // This code runs after every test.
-      if (shouldRecordPerfProfile === true) {
+      if (shouldRecordPerfProfile) {
         await browser.stopTracing()
       }
     },

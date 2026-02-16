@@ -158,7 +158,7 @@ const listenToDevtools = ({
           // So far I could only observe this problem with webmesh proxy channels (e.g. for Expo)
           // Proof: https://share.cleanshot.com/V9G87B0B
           // Also see `store/devtools.ts` for same problem
-          if (handledRequestIds.has(requestId) === true) {
+          if (handledRequestIds.has(requestId)) {
             // yield* Effect.logWarning(`Duplicate message`, decodedEvent)
             return
           }
@@ -239,7 +239,7 @@ const listenToDevtools = ({
 
                 yield* sendMessage(Devtools.Leader.LoadDatabaseFile.Success.make({ ...reqPayload }))
 
-                if (shouldShutdown === true) {
+                if (shouldShutdown) {
                   yield* shutdownChannel.send(IntentionalShutdownCause.make({ reason: 'devtools-import' }))
                 }
               })

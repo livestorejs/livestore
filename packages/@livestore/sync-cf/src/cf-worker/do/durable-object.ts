@@ -109,7 +109,7 @@ export const makeDurableObject: MakeDurableObjectClass = (options) => {
       const WebSocketRpcServerLive = makeRpcServer({ doSelf: this, doOptions: options })
 
       // This registers the `webSocketMessage` and `webSocketClose` handlers
-      if (enabledTransports.has('ws') === true) {
+      if (enabledTransports.has('ws')) {
         setupDurableObjectWebSocketRpc({
           doSelf: this,
           rpcLayer: WebSocketRpcServerLive,
@@ -154,7 +154,7 @@ export const makeDurableObject: MakeDurableObjectClass = (options) => {
 
         const { storeId, payload, transport } = searchParams
 
-        if (enabledTransports.has(transport) === false) {
+        if (!enabledTransports.has(transport)) {
           throw new Error(`Transport ${transport} is not enabled (based on \`options.enabledTransports\`)`)
         }
 
@@ -212,7 +212,7 @@ export const makeDurableObject: MakeDurableObjectClass = (options) => {
      * Handles DO <-> DO RPC calls
      */
     async rpc(payload: Uint8Array<ArrayBuffer>): Promise<Uint8Array<ArrayBuffer> | CfTypes.ReadableStream> {
-      if (enabledTransports.has('do-rpc') === false) {
+      if (!enabledTransports.has('do-rpc')) {
         throw new Error('Do RPC transport is not enabled (based on `options.enabledTransports`)')
       }
 

@@ -82,7 +82,7 @@ export const slug = () => {
 
 export const isCuid = (stringToCheck: string) => {
   if (typeof stringToCheck !== 'string') return false
-  if (stringToCheck.startsWith('c') === true) return true
+  if (stringToCheck.startsWith('c')) return true
   return false
 }
 

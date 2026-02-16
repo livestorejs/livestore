@@ -36,10 +36,10 @@ const processReadableStream = (
 
         // Handle array of messages - we get [[message]] from server
         let messages: any[]
-        if (Array.isArray(decoded) === true && decoded.length === 1 && Array.isArray(decoded[0]) === true) {
+        if (Array.isArray(decoded) && decoded.length === 1 &&  Array.isArray(decoded[0])) {
           // Double-wrapped array [[message]] -> [message]
           messages = decoded[0]
-        } else if (Array.isArray(decoded) === true) {
+        } else if (Array.isArray(decoded)) {
           // Single array [message]
           messages = decoded
         } else {
@@ -131,10 +131,10 @@ const makeProtocolDurableObject = ({
 
           // Handle potential nested array from server serialization
           let responseArray: any[]
-          if (Array.isArray(decoded) === true && decoded.length === 1 && Array.isArray(decoded[0]) === true) {
+          if (Array.isArray(decoded) && decoded.length === 1 &&  Array.isArray(decoded[0])) {
             // Double-wrapped array [[Exit]] -> [Exit]
             responseArray = decoded[0]
-          } else if (Array.isArray(decoded) === true) {
+          } else if (Array.isArray(decoded)) {
             // Single array [Exit]
             responseArray = decoded
           } else {

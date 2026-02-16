@@ -35,7 +35,7 @@ export const isUint8ArrayBuffer = (array: Uint8Array): array is Uint8Array<Array
  * Safer alternative to type assertions.
  */
 export const toUint8ArrayBuffer = (array: Uint8Array): Uint8Array<ArrayBuffer> => {
-  if (isUint8ArrayBuffer(array) === true) {
+  if (isUint8ArrayBuffer(array)) {
     return array
   }
   // Copy to ensure ArrayBuffer backing

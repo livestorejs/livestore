@@ -91,7 +91,7 @@ export const toString = (seqNum: Composite) => {
  * For full notation documentation, see: contributor-docs/events-notation.md
  */
 export const fromString = (str: string): Composite => {
-  if (str.startsWith('e') === false) {
+  if (!str.startsWith('e')) {
     throw new Error('Invalid event sequence number string: must start with "e"')
   }
 
@@ -111,18 +111,18 @@ export const fromString = (str: string): Composite => {
   const parts = withoutRebase.split('.')
 
   // Validate that parts contain only digits (and possibly empty for client)
-  if (parts[0] === '' || /^\d+$/.test(parts[0]!) === false) {
+  if (parts[0] === '' || ! /^\d+$/.test(parts[0]!)) {
     throw new Error('Invalid event sequence number string: invalid number format')
   }
 
-  if (parts.length > 1 && parts[1] !== undefined && (parts[1] === '' || /^\d+$/.test(parts[1]) === false)) {
+  if (parts.length > 1 && parts[1] !== undefined && (parts[1] === '' || ! /^\d+$/.test(parts[1]))) {
     throw new Error('Invalid event sequence number string: invalid number format')
   }
 
   const global = Number.parseInt(parts[0]!, 10)
   const client = parts.length > 1 && parts[1] !== undefined ? Number.parseInt(parts[1], 10) : 0
 
-  if (Number.isNaN(global) === true || Number.isNaN(client) === true || Number.isNaN(rebaseGeneration) === true) {
+  if (Number.isNaN(global) ||  Number.isNaN(client) ||  Number.isNaN(rebaseGeneration)) {
     throw new TypeError('Invalid event sequence number string: invalid number format')
   }
 
@@ -234,7 +234,7 @@ export const nextPair = ({
   isClient: boolean
   rebaseGeneration?: number
 }): CompositePair => {
-  if (isClient === true) {
+  if (isClient) {
     return {
       seqNum: {
         global: seqNum.global,

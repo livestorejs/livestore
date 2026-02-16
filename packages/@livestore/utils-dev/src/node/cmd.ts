@@ -71,7 +71,7 @@ export const cmd: (
   const useShell = (options?.shell === true ? true : false) || needsShell
 
   const commandDebugStr =
-    debugEnvStr + (Array.isArray(finalInput) === true ? (finalInput).join(' ') : (finalInput))
+    debugEnvStr + (Array.isArray(finalInput) ? (finalInput).join(' ') : (finalInput))
   const subshellStr = useShell === true ? ' (in subshell)' : ''
 
   yield* Effect.logDebug(`Running '${commandDebugStr}' in '${cwd}'${subshellStr}`)
@@ -122,7 +122,7 @@ export const cmdText: (
 ) => Effect.Effect<string, PlatformError.PlatformError, CommandExecutor.CommandExecutor | CurrentWorkingDirectory> =
   Effect.fn('cmdText')(function* (commandInput, options) {
     const cwd = yield* CurrentWorkingDirectory
-    const [command, ...args] = Array.isArray(commandInput) === true
+    const [command, ...args] =  Array.isArray(commandInput)
       ? commandInput.filter(isNotUndefined)
       : commandInput.split(' ')
     const debugEnvStr = Object.entries(options?.env ?? {})
@@ -168,7 +168,8 @@ const runWithoutLogging = ({ commandInput, cwd, env, stdoutMode, stderrMode, use
     Command.stdout(stdoutMode),
     Command.stderr(stderrMode),
     Command.workingDirectory(cwd),
-    useShell === true ? Command.runInShell(true) : identity,
+    
+    useShell ? Command.runInShell(true) : identity,
     Command.env(env),
     Command.exitCode,
   )
@@ -227,7 +228,8 @@ const runWithLogging = ({
         Command.stdout('pipe'),
         Command.stderr('pipe'),
         Command.workingDirectory(cwd),
-        useShell === true ? Command.runInShell(true) : identity,
+        
+        useShell ? Command.runInShell(true) : identity,
         Command.env(envWithColor),
       )
 
@@ -281,12 +283,12 @@ const runWithLogging = ({
   )
 
 const buildCommand = (input: string | string[], useShell: boolean) => {
-  if (Array.isArray(input) === true) {
+  if (Array.isArray(input)) {
     const [c, ...a] = input
     return Command.make(c!, ...a)
   }
 
-  if (useShell === true) {
+  if (useShell) {
     return Command.make(input)
   }
 

@@ -224,7 +224,7 @@ Vitest.describe.each([{ strictMode: true }, { strictMode: false }] as const)(
         const { result, rerender } = ReactTesting.renderHook(
           (useNum: boolean) => {
             renderCount.inc()
-            const query$ = React.useMemo(() => (useNum === true ? num$ : str$), [useNum])
+            const query$ = React.useMemo(() => (useNum ? num$ : str$), [useNum])
             return store.useQuery(query$)
           },
           { wrapper, initialProps: false },

@@ -80,7 +80,7 @@ export const insertRowPrepared = <TColumns extends SqliteDsl.Columns>({
   const keysStr = keys.join(', ')
   const valuesStr = keys.map((key) => `$${key}`).join(', ')
 
-  return sql`INSERT ${options.orReplace === true ? 'OR REPLACE ' : ''}INTO ${tableName} (${keysStr}) VALUES (${valuesStr})`
+  return sql`INSERT ${options.orReplace ? 'OR REPLACE ' : ''}INTO ${tableName} (${keysStr}) VALUES (${valuesStr})`
 }
 
 export const insertRows = <TColumns extends SqliteDsl.Columns>({
@@ -134,7 +134,7 @@ export const insertOrIgnoreRow = <TColumns extends SqliteDsl.Columns>({
     .join(', ')
 
   const bindValues = makeBindValues({ columns, values })
-  const returningStmt = returnRow === true ? 'RETURNING *' : ''
+  const returningStmt =  returnRow ? 'RETURNING *' : ''
 
   return [sql`INSERT OR IGNORE INTO ${tableName} (${keysStr}) VALUES (${valuesStr}) ${returningStmt}`, bindValues]
 }
@@ -349,7 +349,7 @@ const buildWhereSql = <TColumns extends SqliteDsl.Columns>({
   const getWhereOp = (columnName: string, value: ClientTypes.WhereValueForDecoded<any>) => {
     if (value === null) {
       return `IS NULL`
-    } else if (typeof value === 'object' && typeof value.op === 'string' && ClientTypes.isValidWhereOp(value.op) === true) {
+    } else if (typeof value === 'object' && typeof value.op === 'string' &&  ClientTypes.isValidWhereOp(value.op)) {
       return `${value.op} $where_${columnName}`
     } else if (typeof value === 'object' && typeof value.op === 'string' && value.op === 'in') {
       return `in (${value.val.map((_: any, i: number) => `$where_${columnName}_${i}`).join(', ')})`

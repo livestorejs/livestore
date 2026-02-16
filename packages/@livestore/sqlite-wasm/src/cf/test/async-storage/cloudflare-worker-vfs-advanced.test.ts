@@ -17,7 +17,7 @@ describe('CloudflareWorkerVFS - Advanced Features', () => {
 
     mockStorage = {
       get: (async (_key: string | string[]) => {
-        if (Array.isArray(_key) === true) {
+        if (Array.isArray(_key)) {
           return new Map()
         }
         return storageData.get(_key)
@@ -34,7 +34,7 @@ describe('CloudflareWorkerVFS - Advanced Features', () => {
       },
 
       delete: (async (_key: string | string[]) => {
-        if (Array.isArray(_key) === true) {
+        if (Array.isArray(_key)) {
           let count = 0
           for (const k of _key) {
             if (storageData.delete(k)) count++

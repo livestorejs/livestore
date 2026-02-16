@@ -110,7 +110,7 @@ export const makeSqliteDb = <
           },
           finalize: () => {
             // Avoid double finalization which leads to a crash
-            if (isFinalized === true) {
+            if (isFinalized) {
               return
             }
 
@@ -152,7 +152,7 @@ export const makeSqliteDb = <
       metadata.deleteDb()
     },
     close: () => {
-      if (isClosed === true) {
+      if (isClosed) {
         return
       }
 

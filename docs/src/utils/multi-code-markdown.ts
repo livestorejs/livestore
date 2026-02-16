@@ -59,7 +59,7 @@ const snippetManifestCache = new Map<string, SnippetManifestCacheEntry>()
 const isRecord = (value: unknown): value is Record<string, unknown> => typeof value === 'object' && value !== null
 
 const isSnippetManifestEntry = (value: unknown): value is SnippetManifestEntry => {
-  if (isRecord(value) === false) return false
+  if (!isRecord(value)) return false
   const { entryFile, artifactPath } = value
   const hasEntryFile = entryFile === undefined || typeof entryFile === 'string'
   const hasArtifactPath = artifactPath === undefined || typeof artifactPath === 'string'
@@ -68,30 +68,30 @@ const isSnippetManifestEntry = (value: unknown): value is SnippetManifestEntry =
 
 const parseSnippetManifest = (source: string): SnippetManifest => {
   const parsed = JSON.parse(source) as unknown
-  if (isRecord(parsed) === false) {
+  if (!isRecord(parsed)) {
     return { entries: [] }
   }
 
   const rawEntries = parsed.entries
-  const entries = Array.isArray(rawEntries) === true ? rawEntries.filter(isSnippetManifestEntry) : []
+  const entries =  Array.isArray(rawEntries) ? rawEntries.filter(isSnippetManifestEntry) : []
 
   return { entries }
 }
 
 const parseSnippetArtifact = (source: string): SnippetArtifact | null => {
   const parsed = JSON.parse(source) as unknown
-  if (isRecord(parsed) === false) {
+  if (!isRecord(parsed)) {
     return null
   }
 
   const filesRaw = parsed.files
-  if (isRecord(filesRaw) === false) {
+  if (!isRecord(filesRaw)) {
     return null
   }
 
   const files: Record<string, SnippetArtifactFile> = {}
   for (const [key, value] of Object.entries(filesRaw)) {
-    if (isRecord(value) === false) continue
+    if (!isRecord(value)) continue
     const { content } = value
     if (typeof content !== 'string') continue
     files[key] = { content }
@@ -101,7 +101,7 @@ const parseSnippetArtifact = (source: string): SnippetArtifact | null => {
     return null
   }
 
-  const fileOrder = Array.isArray(parsed.fileOrder) === true
+  const fileOrder =  Array.isArray(parsed.fileOrder)
     ? parsed.fileOrder.filter((item): item is string => typeof item === 'string')
     : undefined
 
@@ -128,14 +128,14 @@ const loadSnippetManifest = async (paths: Paths): Promise<SnippetManifestCacheEn
 
 const normalizeSourceForFence = (source: string): string => {
   const normalized = source.replace(/\r\n/g, '\n')
-  return normalized.endsWith('\n') === true ? normalized.slice(0, -1) : normalized
+  return  normalized.endsWith('\n') ? normalized.slice(0, -1) : normalized
 }
 
 const renderFilesToMarkdown = (files: ReadonlyArray<SnippetFile>): string => {
   const sections = files.map((file, index) => {
     const headingLevel = index === 0 ? '##' : '###'
     const heading = `${headingLevel} \`${file.filename}\``
-    const fenceToken = file.source.includes('```') === true ? '````' : '```'
+    const fenceToken =  file.source.includes('```') ? '````' : '```'
     const infoParts: string[] = []
     if (file.language.length > 0) {
       infoParts.push(file.language)
@@ -281,7 +281,7 @@ const extractSnippetNamespaceMappings = (
   let removalEnd = endIndex + 1
   while (removalEnd < body.length) {
     const char = body[removalEnd]
-    if (char === undefined || /[\s;]/.test(char) === false) break
+    if (char === undefined || ! /[\s;]/.test(char)) break
     removalEnd += 1
   }
 
@@ -294,7 +294,7 @@ export const transformMultiCodeDocument = async (input: TransformInput): Promise
   const { id, collection, body, debug = false, docsRoot } = input
   const paths = resolvePaths(docsRoot)
   const docCollection = collection ?? 'docs'
-  const normalizedDocPath = docCollection !== undefined && id.startsWith(`${docCollection}/`) === true ? id : `${docCollection}/${id}`
+  const normalizedDocPath = docCollection !== undefined &&  id.startsWith(`${docCollection}/`) ? id : `${docCollection}/${id}`
   const docDir = path.dirname(path.join(paths.contentRoot, normalizedDocPath))
 
   const snippetImports = new Map<string, string>()

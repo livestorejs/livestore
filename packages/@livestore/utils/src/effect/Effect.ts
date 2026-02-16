@@ -66,7 +66,7 @@ export const tryAll = <Res>(
     Effect.andThen((fnRes) =>
       Effect.isEffect(fnRes) === true
         ? (fnRes as any as Effect.Effect<any>)
-        : isPromise(fnRes) === true
+        :  isPromise(fnRes)
           ? Effect.promise(() => fnRes)
           : Effect.succeed(fnRes),
     ),
@@ -169,7 +169,7 @@ export const logWarnIfTakesLongerThan =
 
             yield* Fiber.interrupt(timeoutFiber)
 
-            if (tookLongerThanTimer === true) {
+            if (tookLongerThanTimer) {
               yield* Effect.logWarning(`${label}: Interrupted after ${end - start}ms`)
             }
           }),

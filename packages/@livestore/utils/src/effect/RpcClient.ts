@@ -189,7 +189,7 @@ const makePinger = Effect.fnUntraced(function* <A, E, R>(
   }
   yield* Effect.suspend(() => {
     // Starting new ping
-    if (recievedPong === false) return latch.open
+    if (!recievedPong) return latch.open
     recievedPong = false
     return writePing
   }).pipe(

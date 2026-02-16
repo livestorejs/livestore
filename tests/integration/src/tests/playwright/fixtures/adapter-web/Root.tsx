@@ -17,7 +17,7 @@ const useBarrierStart = () => {
   React.useEffect(() => {
     const sp = new URLSearchParams(window.location.search)
     const barrier = sp.get('barrier') !== null
-    if (barrier === false) {
+    if (!barrier) {
       setStarted(true)
       return
     }

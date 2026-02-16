@@ -79,7 +79,7 @@ export class CloudflareSqlVFS extends FacadeVFS {
    * Initialize the VFS by setting up SQL schema
    */
   async isReady(): Promise<boolean> {
-    if (this.#initialized === true) {
+    if (this.#initialized) {
       return true
     }
 

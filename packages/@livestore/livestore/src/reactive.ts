@@ -261,10 +261,10 @@ export class ReactiveGraph<
       isDirty: true,
       isDestroyed: false,
       computeResult: (otelContext, debugRefreshReason) => {
-        if (thunk.isDirty === true) {
+        if (thunk.isDirty) {
           const neededCurrentRefresh = this.currentDebugRefresh === undefined
           let localDebugRefresh: { refreshedAtoms: any[]; startMs: number } | undefined
-          if (neededCurrentRefresh === true) {
+          if (neededCurrentRefresh) {
             // Use local variable to prevent corruption from nested computations
             localDebugRefresh = { refreshedAtoms: [], startMs: performance.now() }
             this.currentDebugRefresh = localDebugRefresh
@@ -309,7 +309,7 @@ export class ReactiveGraph<
           thunk.previousResult = result
           thunk.recomputations++
 
-          if (neededCurrentRefresh === true && localDebugRefresh !== undefined) {
+          if (neededCurrentRefresh && localDebugRefresh !== undefined) {
             // Use local reference which can't be corrupted by nested calls
             const refreshedAtoms = localDebugRefresh.refreshedAtoms
             const durationMs = performance.now() - localDebugRefresh.startMs
@@ -453,7 +453,7 @@ export class ReactiveGraph<
 
     if (options?.skipRefresh === true) {
       for (const effect of effectsToRefresh) {
-        if (this.deferredEffects.has(effect) === false) {
+        if (!this.deferredEffects.has(effect)) {
           this.deferredEffects.set(effect, new Set())
         }
 
@@ -597,11 +597,11 @@ const compute = <T>(
   debugRefreshReason: DebugRefreshReason | undefined,
 ): T => {
   // const __getResult = atom._tag === 'thunk' ? atom.__getResult.toString() : ''
-  if (atom.isDestroyed === true) {
+  if (atom.isDestroyed) {
     shouldNeverHappen(`LiveStore Error: Attempted to compute destroyed ${atom._tag} (${atom.id}): ${atom.label ?? ''}`)
   }
 
-  if (atom.isDirty === true) {
+  if (atom.isDirty) {
     // console.log('atom is dirty', atom.id, atom.label ?? '', atom._tag, __getResult)
     const result = atom.computeResult(otelContext, debugRefreshReason)
     atom.isDirty = false
@@ -640,7 +640,7 @@ const serializeAtom = (atom: Atom<any, unknown, any>, includeResult: boolean): S
     super_.push(a.id)
   }
 
-  const previousResult: EncodedOption<string> = includeResult === true
+  const previousResult: EncodedOption<string> =  includeResult
     ? encodedOptionSome(
         atom.previousResult === NOT_REFRESHED_YET ? '"SYMBOL_NOT_REFRESHED_YET"' : JSON.stringify(atom.previousResult),
       )

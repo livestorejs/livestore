@@ -224,7 +224,7 @@ export const insertIntoEventlog = (
           [eventEncoded.parentSeqNum.global, eventEncoded.parentSeqNum.client] as any as PreparedBindValues,
         )[0]!.count === 1
 
-      if (parentEventExists === false) {
+      if (!parentEventExists) {
         shouldNeverHappen(
           `Parent event ${eventEncoded.parentSeqNum.global},${eventEncoded.parentSeqNum.client} does not exist in eventlog`,
         )

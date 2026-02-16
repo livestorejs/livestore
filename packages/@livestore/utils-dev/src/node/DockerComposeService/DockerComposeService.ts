@@ -205,7 +205,7 @@ export class DockerComposeService extends Effect.Service<DockerComposeService>()
           const { follow = false, tail, since } = options
 
           const logsArgs = ['docker', 'compose', ...baseComposeArgs, 'logs']
-          if (follow === true) logsArgs.push('-f')
+          if (follow) logsArgs.push('-f')
           if (tail !== undefined) logsArgs.push('--tail', tail.toString())
           if (since !== undefined) logsArgs.push('--since', since)
           if (serviceName !== undefined) logsArgs.push(serviceName)

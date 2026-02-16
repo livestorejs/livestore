@@ -31,7 +31,7 @@ export type RebaseOutput = {
 export type RebaseFn = (input: RebaseInput) => RebaseOutput
 
 export const defaultRebaseFn: RebaseFn = ({ pendingLocalEvents }) => {
-  if (pendingLocalEvents.some((_) => _.conflictType === 'missing-requirement') === true) {
+  if (pendingLocalEvents.some((_) => _.conflictType === 'missing-requirement')) {
     throw new Error('missing-requirement conflicts must be resolved before rebasing')
   }
 
