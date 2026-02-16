@@ -412,7 +412,7 @@ This creates two compounding challenges:
 - **Cascading failures**: Commands are often causally dependent. If command C1 is rejected during replay, C2—issued based on C1's result—will likely also fail, potentially unraveling an entire chain of offline work.
 - **Delayed, context-free rejections**: By the time sync happens, the user may have moved on. The state that made an action make sense no longer exists, making it difficult to present a meaningful explanation of what changed and why.
 
-For domains where offline decisions must be **binding and preserved as historical facts** (e.g., healthcare prescriptions, field equipment reports, financial transactions), this trade-off may be unacceptable. In such cases, [Alternative D: Client-Authoritative Events](#alternative-d-client-authoritative-events) offers a model where events are never discarded during sync and conflicts are resolved through compensating events instead.
+For domains where offline decisions must be **binding and preserved as historical facts** (e.g., healthcare prescriptions, field equipment reports, financial transactions), this trade-off may be unacceptable. In such cases, [Alternative E: Client-Authoritative Events](#alternative-e-client-authoritative-events) offers a model where events are never discarded during sync and conflicts are resolved through compensating events instead.
 
 #### 3. Server Validation Requires Explicit Coordination
 
@@ -431,11 +431,11 @@ This means certain invariants cannot be enforced through commands alone:
 **Compensating Events**: A server-side client can listen for events and run checks that may produce compensating events to correct for violations.
 
 > [!NOTE]
-> In the future, we may want to add support for **Server-Side Command Execution**. See [Alternative E: Server-Side Command Execution](#alternative-e-server-side-command-execution).
+> In the future, we may want to add support for **Server-Side Command Execution**. See [Alternative D: Server-Side Command Execution](#alternative-d-server-side-command-execution).
 
 #### 4. Trade-off: Limited Auditability
 
-Pending events may be discarded during reconciliation and replaced with the events produced by replayed commands. This means the eventlog reflects the final validated state, not necessarily what the client originally produced before sync. For domains where "what did you know and when" is legally or operationally significant (healthcare, finance, compliance), a client-authoritative model (see [Alternative D: Client-Authoritative Events](#alternative-d-client-authoritative-events)) may be more appropriate.
+Pending events may be discarded during reconciliation and replaced with the events produced by replayed commands. This means the eventlog reflects the final validated state, not necessarily what the client originally produced before sync. For domains where "what did you know and when" is legally or operationally significant (healthcare, finance, compliance), a client-authoritative model (see [Alternative E: Client-Authoritative Events](#alternative-e-client-authoritative-events)) may be more appropriate.
 
 ## Alternatives Considered
 
@@ -569,25 +569,7 @@ During rebase, the system checks each pending event's `require` entries against 
 
 4. **Per-event-type boilerplate.** Every event type must declare its own fact interactions, even when multiple events share the same invariant. If several event types all reference a task, each must independently `require: [facts.todoExists(taskId)]`. The proposed solution consolidates invariant logic per command, and a single command can produce any combination of events with shared validation.
 
-### Alternative D: Client-Authoritative Events
-
-In this approach, every event a client produces is treated as an **immutable historical fact**—never discarded, reordered, or replaced during sync. Instead of rebasing onto a single total order, each client maintains its own local event log and replicates events asynchronously using **causal ordering**: causally related events maintain the same order everywhere, while concurrent events (produced independently) may differ in order across clients. Causality is tracked via vector clocks. Conflicts—which arise exclusively from concurrent events—are resolved *forward* by appending **compensating events** rather than by rewriting history.
-
-**Example:** A doctor prescribes medication A offline while another prescribes medication B that has a known interaction with medication A. With command replay, one prescription event may be discarded during reconciliation—erasing a clinical decision. With client-authoritative events, both `MedicationPrescribed` events are always preserved. The system detects the interaction and appends a `DrugInteractionDetected` event, triggering review while preserving the full audit trail.
-
-#### Why It Was Rejected
-
-1. **Fundamentally different sync architecture.** The sync backend can no longer be a simple totally-ordered log. It must support vector clocks, causal delivery guarantees, and stability calculations—a wholesale replacement of LiveStore's rebase model rather than an extension of it.
-
-2. **Conflict resolution burden.** Every pair of concurrent event types that can conflict requires an explicit resolution strategy. CRDTs handle some data types automatically, but arbitrary business rules (capacity limits, referential integrity) still need custom logic. With command replay, the handler's existing validation naturally adapts to new state during reconciliation—no separate conflict resolution layer is needed.
-
-3. **No single linear history.** Concurrent events may appear in different orders at different clients. This means applications may need to handle multiple possible histories for the same event stream, complicating materialization and query logic.
-
-4. **Bi-temporal query complexity.** Every read path must account for two time dimensions and decide which temporal view to present (state at a point in OccurredAt time vs. current state with all corrections applied).
-
-5. **Scope mismatch.** Most LiveStore applications need convergent state, not a complete causal history. Client-authoritative events are the right model for domains where offline decisions must be preserved as historical facts (healthcare, finance, compliance, field operations), but they impose significant infrastructure and application complexity that is unnecessary for the common case. For domains that need this model, it remains a valid future direction.
-
-### Alternative E: Server-Side Command Execution
+### Alternative D: Server-Side Command Execution
 
 The proposed solution executes commands exclusively on the client. The sync backend never sees commands—it only receives, orders, and distributes events. This keeps the backend simple but means server-side invariants can only be enforced against locally-available data (see [Trade-off 3](#3-server-validation-requires-explicit-coordination)), or by layering event-level workarounds—Request/Response Events and Compensating Events—on top of client-only execution. Server-side command execution addresses the same gap more directly by making the server a command executor, not just an event store.
 
@@ -647,13 +629,31 @@ This alternative conflates two distinct problems into a single solution:
 
 Introducing server-side command execution to solve problem 1 would also change how problem 2 is handled—replacing the current event-level approach with a fundamentally different execution model. It is better to solve one problem at a time: ship client-side command replay, gather feedback from real usage, and revisit server-side command execution later if the existing approach to server-side validation proves insufficient.
 
+### Alternative E: Client-Authoritative Events
+
+In this approach, every event a client produces is treated as an **immutable historical fact**—never discarded, reordered, or replaced during sync. Instead of rebasing onto a single total order, each client maintains its own local event log and replicates events asynchronously using **causal ordering**: causally related events maintain the same order everywhere, while concurrent events (produced independently) may differ in order across clients. Causality is tracked via vector clocks. Conflicts—which arise exclusively from concurrent events—are resolved *forward* by appending **compensating events** rather than by rewriting history.
+
+**Example:** A doctor prescribes medication A offline while another prescribes medication B that has a known interaction with medication A. With command replay, one prescription event may be discarded during reconciliation—erasing a clinical decision. With client-authoritative events, both `MedicationPrescribed` events are always preserved. The system detects the interaction and appends a `DrugInteractionDetected` event, triggering review while preserving the full audit trail.
+
+#### Why It Was Rejected
+
+1. **Fundamentally different sync architecture.** The sync backend can no longer be a simple totally-ordered log. It must support vector clocks, causal delivery guarantees, and stability calculations—a wholesale replacement of LiveStore's rebase model rather than an extension of it.
+
+2. **Conflict resolution burden.** Every pair of concurrent event types that can conflict requires an explicit resolution strategy. CRDTs handle some data types automatically, but arbitrary business rules (capacity limits, referential integrity) still need custom logic. With command replay, the handler's existing validation naturally adapts to new state during reconciliation—no separate conflict resolution layer is needed.
+
+3. **No single linear history.** Concurrent events may appear in different orders at different clients. This means applications may need to handle multiple possible histories for the same event stream, complicating materialization and query logic.
+
+4. **Bi-temporal query complexity.** Every read path must account for two time dimensions and decide which temporal view to present (state at a point in OccurredAt time vs. current state with all corrections applied).
+
+5. **Scope mismatch.** Most LiveStore applications need convergent state, not a complete causal history. Client-authoritative events are the right model for domains where offline decisions must be preserved as historical facts (healthcare, finance, compliance, field operations), but they impose significant infrastructure and application complexity that is unnecessary for the common case. For domains that need this model, it remains a valid future direction.
+
 ### Alternative F: Hybrid Approach
 
 Instead of choosing a single consistency model for all state changes, this approach lets developers choose **per-action** between two modes:
 
-- **`store.commit(event)`** — Client-authoritative. The event is an immutable fact that is never discarded, reordered, or replaced during sync. If the event violates an invariant after sync, conflicts are resolved forward through compensating events—never by rewriting history. This gives [Alternative D](#alternative-d-client-authoritative-events) semantics for individual events.
+- **`store.commit(event)`** — Client-authoritative. The event is an immutable fact that is never discarded, reordered, or replaced during sync. If the event violates an invariant after sync, conflicts are resolved forward through compensating events—never by rewriting history. This gives [Alternative E](#alternative-e-client-authoritative-events) semantics for individual events.
 
-- **`store.execute(command)`** — Server-authoritative. The client executes the command handler locally for optimistic UI, producing provisional events. The command is then sent to the server, which re-executes the handler against its authoritative state and produces the definitive events. The client replaces its provisional events with the server's authoritative result. This gives [Alternative E](#alternative-e-server-side-command-execution) semantics for individual commands.
+- **`store.execute(command)`** — Server-authoritative. The client executes the command handler locally for optimistic UI, producing provisional events. The command is then sent to the server, which re-executes the handler against its authoritative state and produces the definitive events. The client replaces its provisional events with the server's authoritative result. This gives [Alternative D](#alternative-d-server-side-command-execution) semantics for individual commands.
 
 This gives developers fine-grained control: actions where offline decisions must be binding and preserved as historical facts (medical prescriptions, field reports, financial transactions) use `store.commit()`, while actions where correctness depends on global state the client cannot see (room bookings, seat assignments, unique username claims) use `store.execute()`.
 
@@ -669,7 +669,7 @@ store.execute(commands.checkInGuest({ roomId: 'Room-1', guestId: 'Guest-A' }))
 
 #### Why It Was Rejected
 
-1. **Combines the complexity of two rejected alternatives.** This approach layers [Alternative D](#alternative-d-client-authoritative-events)'s causal ordering and compensating-event model on top of [Alternative E](#alternative-e-server-side-command-execution)'s server-side command execution. Each model carries substantial complexity on its own (vector clocks, causal delivery, server-side handler execution, provisional/authoritative event reconciliation). Combining them multiplies the implementation and conceptual burden without solving a problem that neither model addresses individually.
+1. **Combines the complexity of two rejected alternatives.** This approach layers [Alternative E](#alternative-e-client-authoritative-events)'s causal ordering and compensating-event model on top of [Alternative D](#alternative-d-server-side-command-execution)'s server-side command execution. Each model carries substantial complexity on its own (vector clocks, causal delivery, server-side handler execution, provisional/authoritative event reconciliation). Combining them multiplies the implementation and conceptual burden without solving a problem that neither model addresses individually.
 
 2. **Complex reconciliation with interleaved models.** The reconciliation process must merge two concurrent tracks—immutable committed events re-applied unconditionally and server-authoritative events replacing provisional ones—into a single consistent eventlog and state. Edge cases arise when a committed event depends on state that a server-authoritative command changed (or vice versa), or when the two tracks produce conflicting state changes. The interleaving of two different consistency models during reconciliation is a significant source of complexity and potential bugs.
 
