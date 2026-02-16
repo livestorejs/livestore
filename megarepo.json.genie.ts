@@ -5,5 +5,7 @@ export default megarepoJson({
   members: {
     'effect-utils': 'overengineeringstudio/effect-utils',
     'overeng-beads-public': 'overengineeringstudio/overeng-beads-public',
+    /** Reference only — not a build dependency */
+    effect: 'effect-ts/effect',
   },
 })

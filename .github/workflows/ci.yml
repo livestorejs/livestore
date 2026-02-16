@@ -31,7 +31,7 @@ jobs:
       - name: Install Nix
         uses: DeterminateSystems/determinate-nix-action@v3
         with:
-          extra-conf: |-
+          extra-conf: |
             extra-substituters = https://devenv.cachix.org
             extra-trusted-public-keys = devenv.cachix.org-1:w1cLUi8dv3hnoSPGAuibQv+f9TZLr6cv/Hm9XgU50cw=
             extra-substituters = https://cache.nixos.org
@@ -71,7 +71,7 @@ jobs:
       - name: Install Nix
         uses: DeterminateSystems/determinate-nix-action@v3
         with:
-          extra-conf: |-
+          extra-conf: |
             extra-substituters = https://devenv.cachix.org
             extra-trusted-public-keys = devenv.cachix.org-1:w1cLUi8dv3hnoSPGAuibQv+f9TZLr6cv/Hm9XgU50cw=
             extra-substituters = https://cache.nixos.org
@@ -111,7 +111,7 @@ jobs:
       - name: Install Nix
         uses: DeterminateSystems/determinate-nix-action@v3
         with:
-          extra-conf: |-
+          extra-conf: |
             extra-substituters = https://devenv.cachix.org
             extra-trusted-public-keys = devenv.cachix.org-1:w1cLUi8dv3hnoSPGAuibQv+f9TZLr6cv/Hm9XgU50cw=
             extra-substituters = https://cache.nixos.org
@@ -154,7 +154,7 @@ jobs:
       - name: Install Nix
         uses: DeterminateSystems/determinate-nix-action@v3
         with:
-          extra-conf: |-
+          extra-conf: |
             extra-substituters = https://devenv.cachix.org
             extra-trusted-public-keys = devenv.cachix.org-1:w1cLUi8dv3hnoSPGAuibQv+f9TZLr6cv/Hm9XgU50cw=
             extra-substituters = https://cache.nixos.org
@@ -245,7 +245,7 @@ jobs:
       - name: Install Nix
         uses: DeterminateSystems/determinate-nix-action@v3
         with:
-          extra-conf: |-
+          extra-conf: |
             extra-substituters = https://devenv.cachix.org
             extra-trusted-public-keys = devenv.cachix.org-1:w1cLUi8dv3hnoSPGAuibQv+f9TZLr6cv/Hm9XgU50cw=
             extra-substituters = https://cache.nixos.org
@@ -326,7 +326,7 @@ jobs:
       - name: Install Nix
         uses: DeterminateSystems/determinate-nix-action@v3
         with:
-          extra-conf: |-
+          extra-conf: |
             extra-substituters = https://devenv.cachix.org
             extra-trusted-public-keys = devenv.cachix.org-1:w1cLUi8dv3hnoSPGAuibQv+f9TZLr6cv/Hm9XgU50cw=
             extra-substituters = https://cache.nixos.org
@@ -407,7 +407,7 @@ jobs:
       - name: Install Nix
         uses: DeterminateSystems/determinate-nix-action@v3
         with:
-          extra-conf: |-
+          extra-conf: |
             extra-substituters = https://devenv.cachix.org
             extra-trusted-public-keys = devenv.cachix.org-1:w1cLUi8dv3hnoSPGAuibQv+f9TZLr6cv/Hm9XgU50cw=
             extra-substituters = https://cache.nixos.org
@@ -462,7 +462,7 @@ jobs:
       - name: Install Nix
         uses: DeterminateSystems/determinate-nix-action@v3
         with:
-          extra-conf: |-
+          extra-conf: |
             extra-substituters = https://devenv.cachix.org
             extra-trusted-public-keys = devenv.cachix.org-1:w1cLUi8dv3hnoSPGAuibQv+f9TZLr6cv/Hm9XgU50cw=
             extra-substituters = https://cache.nixos.org
@@ -525,7 +525,7 @@ jobs:
       - name: Install Nix
         uses: DeterminateSystems/determinate-nix-action@v3
         with:
-          extra-conf: |-
+          extra-conf: |
             extra-substituters = https://devenv.cachix.org
             extra-trusted-public-keys = devenv.cachix.org-1:w1cLUi8dv3hnoSPGAuibQv+f9TZLr6cv/Hm9XgU50cw=
             extra-substituters = https://cache.nixos.org
@@ -565,7 +565,7 @@ jobs:
       - name: Install Nix
         uses: DeterminateSystems/determinate-nix-action@v3
         with:
-          extra-conf: |-
+          extra-conf: |
             extra-substituters = https://devenv.cachix.org
             extra-trusted-public-keys = devenv.cachix.org-1:w1cLUi8dv3hnoSPGAuibQv+f9TZLr6cv/Hm9XgU50cw=
             extra-substituters = https://cache.nixos.org
@@ -619,7 +619,7 @@ jobs:
       - name: Install Nix
         uses: DeterminateSystems/determinate-nix-action@v3
         with:
-          extra-conf: |-
+          extra-conf: |
             extra-substituters = https://devenv.cachix.org
             extra-trusted-public-keys = devenv.cachix.org-1:w1cLUi8dv3hnoSPGAuibQv+f9TZLr6cv/Hm9XgU50cw=
             extra-substituters = https://cache.nixos.org
