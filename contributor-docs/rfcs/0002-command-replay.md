@@ -341,7 +341,7 @@ If a command handler returns an error during replay, a **conflict** occurs, and 
 - **Same event types with different values**: Structural differences like different IDs or timestamps are not conflicts.
 
 > [!TIP]
-> Instead of returning an error, consider having the handler produce alternative events that model the new outcome (e.g. `GuestWaitlisted` instead of `GuestCheckedIn`). This lets the system adapt to the changed state automatically. You can use `ctx.phase` to distinguish between initial execution and replay, allowing strict validation during initial execution while adapting gracefully during replay:
+> Instead of returning an error (raising a conflict) during replay, consider having the handler produce alternative events that model the new outcome (e.g. `GuestWaitlisted` instead of `GuestCheckedIn`). This lets the system adapt to the changed state automatically. You can use `ctx.phase` to distinguish between initial execution and replay, allowing strict validation during initial execution while adapting gracefully during replay:
 >
 > ```ts
 > handler: ({ roomId, guestId }, ctx) => {
