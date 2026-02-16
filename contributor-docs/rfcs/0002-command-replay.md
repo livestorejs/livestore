@@ -386,7 +386,7 @@ if (confirmation._tag === 'conflict' && confirmation.error._tag === 'RoomAtCapac
 
 ### Trade-offs
 
-#### 1. Duplicated Constraint Logic
+#### 1. Trade-off: Duplicated Constraint Logic
 
 Command handlers must re-implement validation that databases traditionally enforce declaratively (`FOREIGN KEY`, `UNIQUE`, `CHECK`). This increases boilerplate and risks divergence between handler validation and schema definitions.
 
@@ -403,7 +403,7 @@ This duplication exists because DB constraints currently can only reject—they 
 
 **Constraints as safety net.** DB constraints remain in place but serve as a backstop for handler bugs rather than primary validation. Commands handle the common cases with rich, typed errors. If a constraint fires unexpectedly (handler bug, schema drift), the system logs an error for developers rather than relying on constraints for business logic.
 
-#### 2. Offline Work May Change on Sync
+#### 2. Trade-off: Offline Work May Change on Sync
 
 Actions performed offline are speculative until confirmed. When a client reconnects and pulls remote events, pending commands are replayed against the updated state. Because the underlying state may have changed, a replayed command can produce different events, fewer events, or be rejected entirely. The user saw one outcome locally, but after sync the outcome may silently become something else—or be undone altogether.
 
@@ -433,7 +433,7 @@ This means certain invariants cannot be enforced through commands alone:
 > [!NOTE]
 > In the future, we may want to add support for **Server-Side Command Execution**. See [Alternative E: Server-Side Command Execution](#alternative-e-server-side-command-execution).
 
-#### 4. Limited Auditability
+#### 4. Trade-off: Limited Auditability
 
 Pending events may be discarded during reconciliation and replaced with the events produced by replayed commands. This means the eventlog reflects the final validated state, not necessarily what the client originally produced before sync. For domains where "what did you know and when" is legally or operationally significant (healthcare, finance, compliance), a client-authoritative model (see [Alternative D: Client-Authoritative Events](#alternative-d-client-authoritative-events)) may be more appropriate.
 
@@ -571,7 +571,7 @@ During rebase, the system checks each pending event's `require` entries against 
 
 ### Alternative D: Client-Authoritative Events
 
-In this approach, clients generate authoritative events that are immediately committed to the event log. These events aren't ever discarded, even if they later conflict with events from other clients. Instead, compensating events are generated to resolve conflicts.
+In this approach, clients generate authoritative events that are immediately committed to the event log. These events aren't ever discarded or re-ordered, even if they later conflict with events from other clients. Instead, compensating events are generated to resolve conflicts.
 
 Good use case: imagine a hospital where a doctor prescribes a medication. The doctor records the prescription as a `MedicationPrescribed` event in their computer. Later on, the app syncs with the server and sees that the medication does not interact well with another medication previously prescribed to the patient by another doctor. 
 
