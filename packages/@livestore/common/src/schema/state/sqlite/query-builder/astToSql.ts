@@ -63,7 +63,7 @@ const encodeJsonArrayElementValue = (elementSchema: Schema.Schema.Any, value: un
     return JSON.stringify(encoded)
   }
   if (typeof encoded === 'boolean') {
-    return  encoded ? 1 : 0
+    return encoded === true ? 1 : 0
   }
 
   return encoded
@@ -118,9 +118,9 @@ const formatWhereClause = (
       // Handle array values for IN/NOT IN operators
       const isArray = op === 'IN' || op === 'NOT IN'
 
-      if (isArray) {
+      if (isArray === true) {
         // Verify value is an array
-        if (!Array.isArray(value)) {
+        if (Array.isArray(value) === false) {
           return shouldNeverHappen(`Expected array value for ${op} operator but got`, value)
         }
 

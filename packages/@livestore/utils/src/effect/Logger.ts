@@ -23,8 +23,7 @@ export const consoleLogger = (threadName: string) =>
     const consoleFn =
       logLevel === LogLevel.Debug
         ? // Cloudflare Workers doesn't support console.debug 🤷
-           // Cloudflare Workers doesn't support console.debug 🤷
-          isCloudflareWorker
+          isCloudflareWorker === true
           ? console.log
           : console.debug
         : logLevel === LogLevel.Info
@@ -35,7 +34,7 @@ export const consoleLogger = (threadName: string) =>
 
     const annotationsObj = Object.fromEntries(HashMap.entries(annotations))
 
-    const messages =  Array.isArray(message) ? message : [message]
+    const messages = Array.isArray(message) === true ? message : [message]
     if (Cause.isEmpty(cause) === false) {
       messages.push(Cause.pretty(cause, { renderErrorCause: true }))
     }

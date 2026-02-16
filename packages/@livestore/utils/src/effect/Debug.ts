@@ -69,7 +69,7 @@ const addNode = (span: Tracer.AnySpan) => {
   const [mutableGraph, nodeId] = ensureSpan(span.traceId, span.spanId)
   Graph.updateNode(mutableGraph, nodeId, (previousInfo) => {
     const [latestInfo, upgraded] = sortSpan(previousInfo.span, span)
-    if (upgraded && latestInfo._tag === 'Span' && Option.isSome(latestInfo.parent) === true) {
+    if (upgraded === true && latestInfo._tag === 'Span' && Option.isSome(latestInfo.parent) === true) {
       const parentNodeId = addNode(latestInfo.parent.value)
       Graph.addEdge(mutableGraph, parentNodeId, nodeId, undefined)
     }
@@ -152,7 +152,7 @@ type GlobalWithFiberCurrent = {
 
 const patchedTracer = new WeakSet<Tracer.Tracer>()
 function ensureTracerPatched(currentTracer: Tracer.Tracer) {
-  if (patchedTracer.has(currentTracer)) {
+  if (patchedTracer.has(currentTracer) === true) {
     return
   }
   patchedTracer.add(currentTracer)
@@ -205,9 +205,9 @@ const knownScopes = new Map<
 let lastScopeId = 0
 const ensureScopePatched = (scope: ScopeImpl, allocationFiber: Fiber.RuntimeFiber<any, any> | undefined) => {
   if (scope.state._tag === 'Closed') return
-  if (knownScopes.has(scope)) return
+  if (knownScopes.has(scope) === true) return
   const id = lastScopeId++
-  if (patchScopeClose) {
+  if (patchScopeClose === true) {
     // oxlint-disable-next-line typescript-eslint(no-unsafe-type-assertion) -- patching Scope.close; ScopeImpl is an internal interface not exported by Effect
     const oldClose = (scope as any).close
     // oxlint-disable-next-line typescript-eslint(no-unsafe-type-assertion) -- patching Scope.close; ScopeImpl is an internal interface not exported by Effect
@@ -242,7 +242,7 @@ const ensureFiberPatched = (fiber: Fiber.RuntimeFiber<any, any>) => {
   // oxlint-disable-next-line typescript-eslint(no-unsafe-type-assertion) -- casting Scope to ScopeImpl; internal Effect type not publicly exported
   if (currentScope !== undefined) ensureScopePatched(currentScope as any as ScopeImpl, undefined)
   // patch fiber
-  if (knownFibers.has(fiber)) return
+  if (knownFibers.has(fiber) === true) return
   knownFibers.add(fiber)
   fiber.addObserver((exit) => {
     knownFibers.delete(fiber)
@@ -278,9 +278,9 @@ export const attachSlowDebugInstrumentation = (options: {
   let lastFiber: undefined | Fiber.RuntimeFiber<any, any>
   // oxlint-disable-next-line typescript-eslint(no-unsafe-type-assertion) -- accessing Effect's global fiber tracking via well-known symbol keys
   createPropertyInterceptor(globalThis as any as GlobalWithFiberCurrent, 'effect/FiberCurrent', (value) => {
-    if (value !== undefined &&  knownFibers.has(value)) onFiberResumed?.(value)
+    if (value !== undefined && knownFibers.has(value) === true) onFiberResumed?.(value)
     if (value !== undefined) ensureFiberPatched(value)
-    if (value == null && lastFiber !== undefined &&  knownFibers.has(lastFiber)) onFiberSuspended?.(lastFiber)
+    if (value == null && lastFiber !== undefined && knownFibers.has(lastFiber) === true) onFiberSuspended?.(lastFiber)
     lastFiber = value
   })
   _globalThis['effect/DevtoolsHook'] = {
@@ -340,7 +340,7 @@ const filterGraphKeepAncestors = <N, E>(
     if (Option.isNone(node) === true) continue
 
     const matchesPredicate = predicate(node.value, nodeId)
-    if (matchesPredicate) {
+    if (matchesPredicate === true) {
       shouldInclude.add(nodeId)
     } else {
       const children = Graph.neighborsDirected(graph, nodeId, 'outgoing')
@@ -352,7 +352,7 @@ const filterGraphKeepAncestors = <N, E>(
   // Create a filtered copy of the graph
   return Graph.mutate(graph, (mutable) => {
     for (const [nodeId] of mutable.nodes) {
-      if (shouldInclude.has(nodeId)) continue
+      if (shouldInclude.has(nodeId) === true) continue
       Graph.removeNode(mutable, nodeId)
     }
   })
@@ -393,9 +393,9 @@ const renderTree = <N, E, T extends Graph.Kind>(
       ...lines,
       ...childLines.map((l, lineIndex) => {
         if (lineIndex === 0) {
-          return (isLastChild ? ' └─' : ' ├─') + l
+          return (isLastChild === true ? ' └─' : ' ├─') + l
         }
-        return (isLastChild ? '  ' : ' │') + l
+        return (isLastChild === true ? '  ' : ' │') + l
       }),
     ]
   }

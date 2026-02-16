@@ -220,7 +220,7 @@ const assembleSnippet = (
       })
       insertStartSentinel()
       pushLines(focusLines, file.content, owner, (line) => {
-        if (isCutMarkerLine(line)) {
+        if (isCutMarkerLine(line) === true) {
           insertStartSentinel()
         }
       })
@@ -247,7 +247,7 @@ const assembleSnippet = (
     })
     insertSupportStartSentinel()
     pushLines(supportLines, file.content, owner, (line) => {
-      if (isCutMarkerLine(line)) {
+      if (isCutMarkerLine(line) === true) {
         insertSupportStartSentinel()
       }
     })
@@ -266,7 +266,7 @@ const assembleSnippet = (
 
   const code = lines.map((line) => line.content).join('\n')
   return {
-    code:  code.endsWith('\n') ? code : `${code}\n`,
+    code: code.endsWith('\n') === true ? code : `${code}\n`,
     lines,
   }
 }
@@ -280,10 +280,10 @@ type SnippetLineKind =
 
 const classifySnippetLine = (line: string): SnippetLineKind => {
   const trimmed = line.trimStart()
-  if (trimmed.startsWith('// @filename:')) {
+  if (trimmed.startsWith('// @filename:') === true) {
     return { _tag: 'filename' }
   }
-  if (trimmed.startsWith('// ---cut---') ||  trimmed.startsWith('// __LS_CUT__')) {
+  if (trimmed.startsWith('// ---cut---') === true || trimmed.startsWith('// __LS_CUT__') === true) {
     return { _tag: 'cut' }
   }
   const startMatch = line.match(/^\s*\/\/ __LS_FILE_START__:[^\s]+\s*/)
@@ -319,8 +319,7 @@ const canonicalizeDisplayPath = (relativePath: string, fallback: string): string
 }
 
 const canonicalizeVirtualPath = (displayPath: string): string =>
-  
-  displayPath.startsWith('.') ? displayPath : `./${displayPath}`
+  displayPath.startsWith('.') === true ? displayPath : `./${displayPath}`
 
 type TVirtualFileRecord = SnippetBundle['files'][number] & {
   virtualPath: string
@@ -366,7 +365,7 @@ const replaceRelativeSpecifier = (source: string, from: string, to: string): str
 
   let rewritten = source
   for (const [needle, replacement] of patterns) {
-    if (rewritten.includes(needle)) {
+    if (rewritten.includes(needle) === true) {
       rewritten = rewritten.replaceAll(needle, replacement)
     }
   }
@@ -396,7 +395,7 @@ const normalizeRelativeSpecifiers = (
   const rewrites: Mutable<TVirtualFileRecord['relativeImports']> = []
 
   for (const specifier of snippetGraphInternal.extractRelativeImports(content)) {
-    if (!specifier.startsWith('./') && ! specifier.startsWith('../')) continue
+    if (specifier.startsWith('./') === false && specifier.startsWith('../') === false) continue
     const { pathPart, suffix } = splitImportSpecifier(specifier)
     const fromDir = path.posix.dirname(fileRelativePath)
     const resolved = path.posix.normalize(path.posix.join(fromDir, pathPart))
@@ -504,7 +503,7 @@ const remapVirtualPathsForFocus = (files: TVirtualFileRecord[], focusFilename: s
     return {
       ...file,
       virtualPath: file.canonicalVirtualPath,
-      content:  isFocus ? file.focusTwoslashContent : file.canonicalContent,
+      content: isFocus === true ? file.focusTwoslashContent : file.canonicalContent,
     }
   })
 }
@@ -525,7 +524,7 @@ const extractText = (node: THastElementContent | THastRootContent | null | undef
   if (node.type === 'comment') {
     return ''
   }
-  if (Array.isArray((node as THastParent).children)) {
+  if (Array.isArray((node as THastParent).children) === true) {
     return (node as THastParent).children
       .map((child) => extractText(child as THastElementContent | THastRootContent))
       .join('')
@@ -540,7 +539,7 @@ const extractText = (node: THastElementContent | THastRootContent | null | undef
 const findChildByTag = (parent: THastParent | null | undefined, tagName: string): THastElement | null => {
   if (parent?.children == null) return null
   for (const child of parent.children) {
-    if (isElementNode(child) && child.tagName === tagName) {
+    if (isElementNode(child) === true && child.tagName === tagName) {
       return child
     }
   }
@@ -548,7 +547,7 @@ const findChildByTag = (parent: THastParent | null | undefined, tagName: string)
 }
 
 const toClassList = (value: unknown): string[] => {
-  if (Array.isArray(value)) {
+  if (Array.isArray(value) === true) {
     return value.flatMap((item) => toClassList(item))
   }
   if (typeof value === 'string') {
@@ -561,18 +560,18 @@ const collectDiagnostics = (node: THastElement): string[] => {
   const diagnostics: string[] = []
 
   const walk = (current: THastElementContent | THastRootContent | undefined) => {
-    if (!isElementNode(current)) return
+    if (isElementNode(current) === false) return
 
     const element = current
     const classList = toClassList(element.properties?.className)
-    if (classList.includes('twoslash-error-box-content-message')) {
+    if (classList.includes('twoslash-error-box-content-message') === true) {
       const message = extractText(element).trim()
       if (message.length > 0) {
         diagnostics.push(message)
       }
     }
 
-    if (Array.isArray(element.children)) {
+    if (Array.isArray(element.children) === true) {
       for (const child of element.children) {
         walk(child as THastElementContent | THastRootContent)
       }
@@ -646,7 +645,7 @@ type LineOwnershipAttributes = {
 }
 
 const isSentinelText = (text: string): boolean => {
-  if (text.includes('__LS_FILE_START__') ||  text.includes('__LS_FILE_END__')) {
+  if (text.includes('__LS_FILE_START__') === true || text.includes('__LS_FILE_END__') === true) {
     return true
   }
   const classified = classifySnippetLine(text)
@@ -661,15 +660,15 @@ const removeSentinelNodes = (current: THastElementContent | THastRootContent | n
     }
     return
   }
-  if (!isElementNode(current)) return
+  if (isElementNode(current) === false) return
 
   const element = current as THastElement & THastParent
-  if (!Array.isArray(element.children)) return
+  if (Array.isArray(element.children) === false) return
 
   const retained: Array<THastElementContent> = []
   for (const child of element.children) {
-    if (isElementNode(child)) {
-      if (isSentinelText(extractText(child))) {
+    if (isElementNode(child) === true) {
+      if (isSentinelText(extractText(child)) === true) {
         continue
       }
       removeSentinelNodes(child as THastElementContent)
@@ -695,12 +694,12 @@ const extractLineOwnershipAttributes = (line: THastElement): LineOwnershipAttrib
     return { wrapper: line, owner, marker }
   }
 
-  if (!Array.isArray((line as THastParent).children)) {
+  if (Array.isArray((line as THastParent).children) === false) {
     return { wrapper: null, owner: null, marker: null }
   }
 
   for (const child of (line as THastParent).children) {
-    if (!isElementNode(child)) {
+    if (isElementNode(child) === false) {
       continue
     }
     const element = child
@@ -722,7 +721,7 @@ const trimRenderedAst = (root: THastElement, focusVirtualPath: string, assembled
   const figure = findChildByTag(root as THastParent, 'figure')
   const pre = findChildByTag(figure, 'pre')
   const code = findChildByTag(pre, 'code')
-  if (code == null || ! Array.isArray(code.children)) return root
+  if (code == null || Array.isArray(code.children) === false) return root
 
   const canonicalFocus = extractCanonicalOwner(focusVirtualPath)
   if (canonicalFocus === null) {
@@ -732,7 +731,7 @@ const trimRenderedAst = (root: THastElement, focusVirtualPath: string, assembled
   const filtered: THastElement[] = []
 
   for (const child of code.children) {
-    if (!isElementNode(child)) {
+    if (isElementNode(child) === false) {
       continue
     }
     if (child.tagName !== 'div') {
@@ -757,10 +756,10 @@ const trimRenderedAst = (root: THastElement, focusVirtualPath: string, assembled
 
     const textContent = extractText(lineElement)
     const trimmedText = textContent.trim()
-    if (trimmedText.startsWith('// @filename:')) {
+    if (trimmedText.startsWith('// @filename:') === true) {
       continue
     }
-    if (isCutMarkerLine(trimmedText)) {
+    if (isCutMarkerLine(trimmedText) === true) {
       continue
     }
 
@@ -799,22 +798,22 @@ const trimRenderedAst = (root: THastElement, focusVirtualPath: string, assembled
   code.children = filtered
 
   const figcaption = findChildByTag(figure, 'figcaption')
-  if (figure !== null &&  Array.isArray((figure as THastParent).children) && figcaption !== null) {
+  if (figure !== null && Array.isArray((figure as THastParent).children) === true && figcaption !== null) {
     ;(figure as THastParent).children = (figure as THastParent).children.filter((child) => child !== figcaption)
   }
 
   const copyElement =
-    figure !== null &&  Array.isArray((figure as THastParent).children)
+    figure !== null && Array.isArray((figure as THastParent).children) === true
       ? (figure as THastParent).children.find((child) => {
-          if (!isElementNode(child)) return false
+          if (isElementNode(child) === false) return false
           if (child.tagName !== 'div') return false
           return toClassList(child.properties?.className).includes('copy')
         })
       : null
 
-  if (copyElement !== null &&  isElementNode(copyElement) &&  Array.isArray((copyElement as THastParent).children)) {
+  if (copyElement !== null && isElementNode(copyElement) === true && Array.isArray((copyElement as THastParent).children) === true) {
     for (const node of (copyElement as THastParent).children) {
-      if (!isElementNode(node)) continue
+      if (isElementNode(node) === false) continue
       if (node.tagName !== 'button') continue
       const properties = node.properties ?? {}
       const trimmedSource = assembled.lines
@@ -825,7 +824,7 @@ const trimRenderedAst = (root: THastElement, focusVirtualPath: string, assembled
             return false
           }
           const trimmed = line.content.trimStart()
-          if (isCutMarkerLine(trimmed)) {
+          if (isCutMarkerLine(trimmed) === true) {
             return false
           }
           return true
@@ -838,7 +837,7 @@ const trimRenderedAst = (root: THastElement, focusVirtualPath: string, assembled
     }
   }
 
-  if (figure !== null &&  Array.isArray((figure as THastParent).children)) {
+  if (figure !== null && Array.isArray((figure as THastParent).children) === true) {
     const retainedChildren: Array<THastElementContent> = []
 
     // Sentinel nodes were already cleaned from individual lines before setting code.children
@@ -846,7 +845,7 @@ const trimRenderedAst = (root: THastElement, focusVirtualPath: string, assembled
     if (pre !== null) {
       retainedChildren.push(pre as unknown as THastElementContent)
     }
-    if (copyElement !== null &&  isElementNode(copyElement)) {
+    if (copyElement !== null && isElementNode(copyElement) === true) {
       removeSentinelNodes(copyElement as unknown as THastElementContent)
       retainedChildren.push(copyElement as THastElementContent)
     }
@@ -879,7 +878,7 @@ const restoreFocusSpecifiers = (root: THastElement, rewrites: TVirtualFileRecord
     }
     let current = value
     for (const rewrite of replacements) {
-      if (current.includes(rewrite.canonical)) {
+      if (current.includes(rewrite.canonical) === true) {
         current = current.split(rewrite.canonical).join(rewrite.raw)
       }
     }
@@ -896,9 +895,9 @@ const restoreFocusSpecifiers = (root: THastElement, rewrites: TVirtualFileRecord
       }
       return
     }
-    if (isElementNode(node)) {
+    if (isElementNode(node) === true) {
       const element = node
-      if (Array.isArray(element.children)) {
+      if (Array.isArray(element.children) === true) {
         for (const child of element.children) {
           walk(child as THastElementContent | THastRootContent)
         }
@@ -925,8 +924,7 @@ const sanitizeRenderedHtml = (html: string): string => {
  */
 const patchJsModules = (modules: readonly string[]): string[] =>
   modules.map((moduleCode) =>
-    
-    moduleCode.includes('function setupTooltip')
+    moduleCode.includes('function setupTooltip') === true
       ? (() => {
           let patched = moduleCode
           // Anchor the tooltip in `document.body` so a single container handles
@@ -934,34 +932,34 @@ const patchJsModules = (modules: readonly string[]): string[] =>
           // coordinates below to account for window scroll offset so placement stays
           // consistent even when the page is scrolled far past the snippet.
           const anchorPattern = 's.closest(".expressive-code")'
-          if (patched.includes(anchorPattern)) {
+          if (patched.includes(anchorPattern) === true) {
             patched = patched.split(anchorPattern).join('document.body')
           }
-          if (!patched.includes('if(!s)return;')) {
+          if (patched.includes('if(!s)return;') === false) {
             patched = patched.replace(
               'let s=e.querySelector(".twoslash-popup-container"),',
               'let s=e.querySelector(".twoslash-popup-container");if(!s)return;let ',
             )
           }
-          if (!patched.includes('let a=!1,r,u=0;')) {
+          if (patched.includes('let a=!1,r,u=0;') === false) {
             patched = patched.replace('let a=!1,r;', 'let a=!1,r,u=0;')
           }
-          if (!patched.includes('return void requestAnimationFrame(n);')) {
+          if (patched.includes('return void requestAnimationFrame(n);') === false) {
             patched = patched.replace(
               'function n(){clearTimeout(r),t.appendChild(s),',
               'function n(){clearTimeout(r);const c=e.getBoundingClientRect();if(c.width===0&&c.height===0){if(u<5){u+=1;return void requestAnimationFrame(n);}return;}u=0;t.appendChild(s),',
             )
           }
-          if (patched.includes('t.appendChild(s),t.appendChild(s),')) {
+          if (patched.includes('t.appendChild(s),t.appendChild(s),') === true) {
             patched = patched.replace('t.appendChild(s),t.appendChild(s),', 't.appendChild(s),')
           }
-          if (!patched.includes('s.style.visibility="hidden",new Promise')) {
+          if (patched.includes('s.style.visibility="hidden",new Promise') === false) {
             patched = patched.replace(
               't.appendChild(s),new Promise',
               't.appendChild(s),s.style.position="absolute",s.style.display="block",s.style.visibility="hidden",new Promise',
             )
           }
-          if (!patched.includes('s.style.visibility="visible",s.setAttribute')) {
+          if (patched.includes('s.style.visibility="visible",s.setAttribute') === false) {
             patched = patched.replace(
               // biome-ignore lint/suspicious/noTemplateCurlyInString: it's ok
               'Object.assign(s.style,{display:"block",left:`${o?20:e}px`,top:t+"px"})',
@@ -969,7 +967,7 @@ const patchJsModules = (modules: readonly string[]): string[] =>
               'Object.assign(s.style,{left:`${o?20:e}px`,top:t+"px"}),s.style.visibility="visible"',
             )
           }
-          if (!patched.includes('s.style.display="none",s.style.visibility="hidden"')) {
+          if (patched.includes('s.style.display="none",s.style.visibility="hidden"') === false) {
             patched = patched.replace('s.style.display="none"', 's.style.display="none",s.style.visibility="hidden"')
           }
           return patched
@@ -990,7 +988,7 @@ const collectSourceFiles = (
     const files: string[] = []
 
     for (const name of entries) {
-      if (EXCLUDED_DIRECTORIES.has(name)) continue
+      if (EXCLUDED_DIRECTORIES.has(name) === true) continue
       if (name.startsWith('.') === true) {
         if (!(name === '.gitignore' || name === '.eslintrc' || name === '.prettierrc')) continue
       }
@@ -1006,7 +1004,7 @@ const collectSourceFiles = (
 
       if (info.type !== 'File') continue
 
-      if (!SUPPORTED_SOURCE_EXTENSIONS.has(path.extname(name))) continue
+      if (SUPPORTED_SOURCE_EXTENSIONS.has(path.extname(name)) === false) continue
       files.push(fullPath)
     }
 
@@ -1057,7 +1055,7 @@ const collectSnippetEntries = (
           continue
         }
         const [rawPath] = specifier.split('?')
-        if (rawPath == null || !(rawPath.startsWith('./') ||  rawPath.startsWith('../'))) {
+        if (rawPath == null || !(rawPath.startsWith('./') === true || rawPath.startsWith('../') === true)) {
           match = SNIPPET_IMPORT_REGEX.exec(source)
           continue
         }
@@ -1392,16 +1390,16 @@ const summarizeWatchEvent = (
   const rawPath = event.path
   const absolutePath = path.resolve(path.isAbsolute(rawPath) === true ? rawPath : path.join(rootAbsolute, rawPath))
 
-  if (scope === 'snippet' &&  isWithinDirectory(absolutePath, cacheRoot)) {
+  if (scope === 'snippet' && isWithinDirectory(absolutePath, cacheRoot) === true) {
     return null
   }
 
-  if (!isWithinDirectory(absolutePath, rootAbsolute)) {
+  if (isWithinDirectory(absolutePath, rootAbsolute) === false) {
     return null
   }
 
   const extension = path.extname(absolutePath).toLowerCase()
-  if (scope === 'source' && extension.length > 0 && ! SUPPORTED_SOURCE_EXTENSIONS.has(extension)) {
+  if (scope === 'source' && extension.length > 0 && SUPPORTED_SOURCE_EXTENSIONS.has(extension) === false) {
     return null
   }
 
@@ -1457,7 +1455,7 @@ const buildSnippetsInternal = ({ paths, runtimeOptions }: ResolvedBuildOptions) 
           baseDir: paths.snippetAssetsRoot,
         })
 
-        if (!isWithinDirectory(bundle.entryFilePath, paths.snippetAssetsRoot)) {
+        if (isWithinDirectory(bundle.entryFilePath, paths.snippetAssetsRoot) === false) {
           return yield* new SnippetBuildError({
             message: `Snippet entry ${bundle.entryFilePath} is outside the snippet root (${paths.snippetAssetsRoot}). Copy the file into the docs snippet assets and import it from there.`,
             entry: entry.entryPath,
@@ -1465,7 +1463,7 @@ const buildSnippetsInternal = ({ paths, runtimeOptions }: ResolvedBuildOptions) 
         }
 
         for (const file of Object.values(bundle.files)) {
-          if (!isWithinDirectory(file.absolutePath, paths.snippetAssetsRoot)) {
+          if (isWithinDirectory(file.absolutePath, paths.snippetAssetsRoot) === false) {
             return yield* new SnippetBuildError({
               message: `Snippet file ${file.absolutePath} is outside the snippet root (${paths.snippetAssetsRoot}). Move or copy it under the snippet assets directory.`,
               entry: entry.entryPath,
@@ -1557,7 +1555,7 @@ const buildSnippetsInternal = ({ paths, runtimeOptions }: ResolvedBuildOptions) 
         }
 
         const artifactPath = path.resolve(paths.cacheRoot, `${bundle.mainFileRelativePath}.json`)
-        if (!isWithinDirectory(artifactPath, paths.cacheRoot)) {
+        if (isWithinDirectory(artifactPath, paths.cacheRoot) === false) {
           return yield* new SnippetBuildError({
             message: `Resolved artefact path escapes cache root: ${artifactPath}`,
             entry: entry.entryPath,

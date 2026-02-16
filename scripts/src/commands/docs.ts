@@ -94,20 +94,19 @@ const formatDocsDeploymentSummaryMarkdown = ({
       `alias: ${prAliases.stickyAlias} (stable for PR)`,
     ])
     const commitNotes: string[] = [`alias: ${prAliases.commitAlias}`]
-    if (purgeCdn) commitNotes.push('CDN purged')
+    if (purgeCdn === true) commitNotes.push('CDN purged')
     rows.push(['commit', site, commitDeploy.deploy_id, commitDeploy.deploy_url, commitNotes.join(', ')])
   } else {
     /** Non-PR deployment: single row */
     const notes: string[] = []
-    if (!prod && branchAlias !== undefined) {
+    if (prod === false && branchAlias !== undefined) {
       notes.push(`alias: ${branchAlias}`)
     }
-    if (purgeCdn) {
+    if (purgeCdn === true) {
       notes.push('CDN purged')
     }
     rows.push([
-      
-      prod ? 'prod' : 'alias',
+      prod === true ? 'prod' : 'alias',
       site,
       commitDeploy.deploy_id,
       commitDeploy.deploy_url,
@@ -275,7 +274,7 @@ export const docsCommand = Cli.Command.make('docs').pipe(
           '--no-open',
         ]
 
-        if (requestedPort !== undefined && ! Number.isNaN(requestedPort)) {
+        if (requestedPort !== undefined && Number.isNaN(requestedPort) === false) {
           netlifyArgs.push('--port', String(requestedPort))
         }
 
@@ -307,7 +306,7 @@ export const docsCommand = Cli.Command.make('docs').pipe(
       Effect.fn(
         function* ({ prod: prodOption, alias: aliasOption, site: siteOption, purgeCdn, build: buildOption }) {
           const branchName = yield* Effect.gen(function* () {
-            if (isGithubAction) {
+            if (isGithubAction === true) {
               const branchFromEnv = process.env.GITHUB_HEAD_REF ?? process.env.GITHUB_REF_NAME
               if (branchFromEnv !== undefined && branchFromEnv !== '') {
                 return branchFromEnv
@@ -358,7 +357,7 @@ export const docsCommand = Cli.Command.make('docs').pipe(
           const prUrl = prNumber !== undefined ? `https://github.com/${repo}/pull/${prNumber}` : undefined
           const runUrl = runId !== undefined ? `https://github.com/${repo}/actions/runs/${runId}` : undefined
 
-          const contextLabelFor = (isProd: boolean, a: string) => (isProd ? 'prod' : `alias:${a}`)
+          const contextLabelFor = (isProd: boolean, a: string) => (isProd === true ? 'prod' : `alias:${a}`)
           const buildMessage = (ctx: string) =>
             [
               'docs deploy',
@@ -376,8 +375,7 @@ export const docsCommand = Cli.Command.make('docs').pipe(
            * For non-PRs: use the explicit alias option or derive from branch name
            */
           const prAliases: PrDeployAliases | undefined =
-            
-            isPr && prNumber !== undefined && aliasOption._tag === 'None'
+            isPr === true && prNumber !== undefined && aliasOption._tag === 'None'
               ? { stickyAlias: `pr-${prNumber}`, commitAlias: `pr-${prNumber}-${shortSha}` }
               : undefined
 
@@ -391,7 +389,7 @@ export const docsCommand = Cli.Command.make('docs').pipe(
           const prod =
             prodOption._tag === 'Some' && prodOption.value === true // TODO clean up when Effect CLI boolean flag is fixed
               ? prodOption.value
-              :  isPr
+              : isPr === true
                 ? false
                 : branchName === 'main' || branchName === devBranchName
 
@@ -409,7 +407,7 @@ export const docsCommand = Cli.Command.make('docs').pipe(
 
           // Split mode: build first only when requested via --build
           const shouldBuild = buildOption._tag === 'Some' && buildOption.value === true
-          if (shouldBuild) {
+          if (shouldBuild === true) {
             yield* docsBuildCommand.handler({ apiDocs: true, clean: false, skipDeps: false })
           }
 

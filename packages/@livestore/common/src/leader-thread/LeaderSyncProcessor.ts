@@ -1083,7 +1083,7 @@ const makePullQueueSet = Effect.gen(function* () {
   const offer: PullQueueSet['offer'] = (item) =>
     Effect.gen(function* () {
       const seqNumStr = EventSequenceNumber.Client.toString(item.leaderHead)
-      if (cachedPayloads.has(seqNumStr)) {
+      if (cachedPayloads.has(seqNumStr) === true) {
         cachedPayloads.get(seqNumStr)!.push(item.payload)
       } else {
         cachedPayloads.set(seqNumStr, [item.payload])

@@ -38,14 +38,14 @@ const BoundArraySchemaFromSelf = <A, I, R>(
     [item],
     {
       decode: (item) => (input, parseOptions, ast) => {
-        if (isBoundArrayLike(input)) {
+        if (isBoundArrayLike(input) === true) {
           const elements = ParseResult.decodeUnknown(Schema.Array(item))([...input], parseOptions)
           return ParseResult.map(elements, (as): BoundArray<A> => BoundArray.make(getSizeLimit(input), as))
         }
         return ParseResult.fail(new ParseResult.Type(ast, input))
       },
       encode: (item) => (input, parseOptions, ast) => {
-        if (isBoundArrayLike(input)) {
+        if (isBoundArrayLike(input) === true) {
           const items = [...input]
           const elements = ParseResult.encodeUnknown(Schema.Array(item))(items, parseOptions)
           return ParseResult.map(elements, (is): BoundArray<I> => BoundArray.make(getSizeLimit(input), is))
@@ -63,7 +63,7 @@ const BoundArraySchemaFromSelf = <A, I, R>(
           if (a === b) {
             return true
           }
-          if (!isBoundArrayLike(a) || ! isBoundArrayLike(b)) {
+          if (isBoundArrayLike(a) === false || isBoundArrayLike(b) === false) {
             return false
           }
           if (getSizeLimit(a) !== getSizeLimit(b) || a.length !== b.length) {

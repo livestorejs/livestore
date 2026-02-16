@@ -39,7 +39,7 @@ const stopParentDeathMonitoring = () => {
 }
 
 const setupParentDeathMonitoring = (parentPid: number) => {
-  if (parentDeathDetectionEnabled) return
+  if (parentDeathDetectionEnabled === true) return
   parentDeathDetectionEnabled = true
 
   let consecutiveFailures = 0
@@ -47,7 +47,7 @@ const setupParentDeathMonitoring = (parentPid: number) => {
 
   // Check if parent is still alive every 2 seconds (more conservative)
   const checkParentAlive = () => {
-    if (!parentDeathDetectionEnabled) return
+    if (parentDeathDetectionEnabled === false) return
     try {
       // Send signal 0 to check if process exists (doesn't actually send signal)
       process.kill(parentPid, 0)
@@ -107,7 +107,7 @@ const platformRunnerImpl = Runner.PlatformRunner.of({
           // console.log('message', message)
 
           // Handle parent death detection setup messages
-          if (isSetupParentDeathDetectionMessage(message)) {
+          if (isSetupParentDeathDetectionMessage(message) === true) {
             const parentPid = message[1].parentPid
             // console.log(`[Worker ${process.pid}] Setting up parent death detection for parent ${parentPid}`)
             setupParentDeathMonitoring(parentPid)
@@ -115,7 +115,7 @@ const platformRunnerImpl = Runner.PlatformRunner.of({
           }
 
           // Handle normal Effect worker messages
-          if (Array.isArray(message) && typeof message[0] === 'number') {
+          if (Array.isArray(message) === true && typeof message[0] === 'number') {
             if (message[0] === 0) {
               const result = handler(0, message[1])
               if (Effect.isEffect(result) === true) {

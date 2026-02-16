@@ -125,7 +125,7 @@ export const makeQueryBuilder = <TResult, TTableDef extends TableDefBase>(
       return makeQueryBuilder(tableDef, { ...ast, offset: Option.some(offset) })
     },
     count: () => {
-      if (isRowQuery(ast) || ast._tag === 'InsertQuery' || ast._tag === 'UpdateQuery' || ast._tag === 'DeleteQuery')
+      if (isRowQuery(ast) === true || ast._tag === 'InsertQuery' || ast._tag === 'UpdateQuery' || ast._tag === 'DeleteQuery')
         return invalidQueryBuilder()
 
       return makeQueryBuilder(tableDef, {
@@ -195,7 +195,7 @@ export const makeQueryBuilder = <TResult, TTableDef extends TableDefBase>(
       action: 'ignore' | 'replace' | 'update',
       updateValues?: Record<string, unknown>,
     ) => {
-      const targets =  Array.isArray(targetOrTargets) ? targetOrTargets : [targetOrTargets]
+      const targets = Array.isArray(targetOrTargets) === true ? targetOrTargets : [targetOrTargets]
 
       assertInsertQueryBuilderAst(ast)
 

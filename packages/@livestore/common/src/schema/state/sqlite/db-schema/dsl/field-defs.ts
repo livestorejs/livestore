@@ -17,8 +17,7 @@ export const isDefaultThunk = (value: unknown): value is ColumnDefaultThunk<unkn
 export type ColumnDefaultValue<T> = T | null | ColumnDefaultThunk<T | null> | SqlDefaultValue
 
 export const resolveColumnDefault = <T>(value: ColumnDefaultValue<T>): T | null | SqlDefaultValue =>
-  
-  isDefaultThunk(value) ? (value)() : value
+  isDefaultThunk(value) === true ? (value)() : value
 
 export type ColumnDefinition<TEncoded, TDecoded> = {
   readonly columnType: FieldColumnType

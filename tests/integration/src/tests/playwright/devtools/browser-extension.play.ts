@@ -78,7 +78,7 @@ const makeTabPair = (url: string, tabName: string, adapter: AdapterKind, options
 
     usedPages.add(page)
 
-    const sep =  url.includes('?') ? '&' : '?'
+    const sep = url.includes('?') === true ? '&' : '?'
     yield* Effect.tryPromise(() => page.goto(`${url}${sep}sessionId=${tabName}&clientId=${tabName}&adapter=${adapter}`))
 
     const openPages = browserContext.pages().map((_) => _.url())

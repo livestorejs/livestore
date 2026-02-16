@@ -34,7 +34,7 @@ export const parseAcceptHeader = (value: string | null): MediaRange[] => {
       const [key, rawValue] = param.split('=').map((segment) => segment.trim())
       if (key !== undefined && rawValue !== undefined && key.toLowerCase() === 'q') {
         const parsed = Number.parseFloat(rawValue)
-        if (!Number.isNaN(parsed)) {
+        if (Number.isNaN(parsed) === false) {
           q = parsed
         }
       }
@@ -108,7 +108,7 @@ export const preferredMarkdown = (accept: string | null): boolean => {
   return markdownQuality.q > 0 || altMarkdownQuality.q > 0 || appMarkdownQuality.q > 0
 }
 
-const ensureTrailingSlash = (pathname: string): string => (pathname.endsWith('/') ? pathname : `${pathname}/`)
+const ensureTrailingSlash = (pathname: string): string => (pathname.endsWith('/') === true ? pathname : `${pathname}/`)
 
 export const buildMarkdownUrl = (url: URL): string => {
   const pathname = ensureTrailingSlash(url.pathname)

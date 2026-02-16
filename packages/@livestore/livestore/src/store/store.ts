@@ -441,7 +441,7 @@ export class Store<TSchema extends LiveStoreSchema = LiveStoreSchema.Any, TConte
   }
 
   private checkShutdown = (operation: string): void => {
-    if (this[StoreInternalsSymbol].isShutdown) {
+    if (this[StoreInternalsSymbol].isShutdown === true) {
       throw new UnknownError({
         cause: `Store has been shut down (while performing "${operation}").`,
         note: `You cannot perform this operation after the store has been shut down.`,

@@ -356,7 +356,7 @@ export default class MeasurementsReporter implements Reporter {
     const displayUnit = measurementUnitToDisplayUnit[unit]
     const formatValue = unitFormatters[unit]
 
-    if (hasSingleMeasurementPerTestTitle) {
+    if (hasSingleMeasurementPerTestTitle === true) {
       const headers = [testSuiteTitle, `Measurement`]
       const rows = Object.entries(metricStatesResult).map(([testTitle, state]) => {
         return [testTitle, `${formatValue(state.sum)} ${displayUnit}`]

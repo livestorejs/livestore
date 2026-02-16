@@ -127,7 +127,7 @@ const makeWorkerRunnerInner = ({ schema, sync: syncOptions, syncPayloadSchema }:
 
         // Track boot warning to emit later
         let bootWarning: BootStatus | undefined
-        if (!useOpfs) {
+        if (useOpfs === false) {
           yield* Effect.logWarning(
             '[@livestore/adapter-web:worker] OPFS unavailable, using in-memory storage',
             opfsCheck,
@@ -135,7 +135,7 @@ const makeWorkerRunnerInner = ({ schema, sync: syncOptions, syncPayloadSchema }:
           bootWarning = { stage: 'warning', ...opfsCheck }
         }
 
-        const opfsDirectory =  useOpfs ? yield* sanitizeOpfsDir(storageOptions.directory, storeId) : undefined
+        const opfsDirectory = useOpfs === true ? yield* sanitizeOpfsDir(storageOptions.directory, storeId) : undefined
 
         const makeOpfsDb = (kind: 'state' | 'eventlog') =>
           makeSqliteDb({
@@ -161,7 +161,7 @@ const makeWorkerRunnerInner = ({ schema, sync: syncOptions, syncPayloadSchema }:
           }).pipe(Effect.acquireRelease((db) => Effect.try(() => db.close()).pipe(Effect.ignoreLogged)))
 
         // Use OPFS if available, otherwise fall back to in-memory
-        const [dbState, dbEventlog] =  useOpfs
+        const [dbState, dbEventlog] = useOpfs === true
           ? yield* Effect.all([makeOpfsDb('state'), makeOpfsDb('eventlog')], { concurrency: 2 })
           : yield* Effect.all([makeInMemoryDb(), makeInMemoryDb()], { concurrency: 2 })
 
@@ -302,7 +302,7 @@ const makeDevtoolsOptions = ({
   dbEventlog: SqliteDb
 }): Effect.Effect<DevtoolsOptions, UnknownError, Scope.Scope | WebmeshWorker.CacheService> =>
   Effect.gen(function* () {
-    if (!devtoolsEnabled) {
+    if (devtoolsEnabled === false) {
       return { enabled: false }
     }
 

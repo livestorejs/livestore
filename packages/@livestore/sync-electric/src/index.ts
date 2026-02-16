@@ -351,7 +351,7 @@ export const makeSyncBackend =
               }
 
               // Make sure we emit at least once even if there's no data or we're live-pulling
-              if (!hasEmittedAtLeastOnce || options?.live) {
+              if (hasEmittedAtLeastOnce === false || options?.live) {
                 hasEmittedAtLeastOnce = true
                 return Option.some([{ batch, hasMore: false }, nextMetadataOption])
               }

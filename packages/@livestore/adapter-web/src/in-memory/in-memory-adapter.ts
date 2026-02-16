@@ -317,7 +317,7 @@ const makeDevtoolsOptions = ({
   clientId: string
 }): Effect.Effect<DevtoolsOptions, UnknownError, Scope.Scope> =>
   Effect.gen(function* () {
-    if (!devtoolsEnabled || sharedWorkerFiber === undefined) {
+    if (devtoolsEnabled === false || sharedWorkerFiber === undefined) {
       return { enabled: false }
     }
 

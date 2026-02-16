@@ -29,8 +29,7 @@ export interface S2Config {
 export const isLiteMode = (config: S2Config): boolean => config.lite === true
 
 const getBasinHeader = (config: S2Config): Record<string, string> =>
-  
-  isLiteMode(config) ? { 's2-basin': config.basin } : {}
+  isLiteMode(config) === true ? { 's2-basin': config.basin } : {}
 
 // URL construction helpers
 export const getBasinUrl = (config: S2Config, path: string): string => {

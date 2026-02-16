@@ -133,7 +133,7 @@ export const buildDiagrams = (
           const { hash: sourceHash } = yield* readTldrawFile(diagramPath)
           const existingEntry = getCacheEntry(manifest, entryFile)
 
-          if (isCacheValid(existingEntry, sourceHash)) {
+          if (isCacheValid(existingEntry, sourceHash) === true) {
             if (verbose) {
               yield* Effect.log(`  ✓ ${entryFile} (cached)`)
             }
@@ -252,7 +252,7 @@ const summarizeWatchEvent = (paths: TldrawCachePaths, event: FileSystem.WatchEve
   }
 
   /* Ignore events outside diagrams root */
-  if (!isWithinDirectory(absolutePath, rootAbsolute)) {
+  if (isWithinDirectory(absolutePath, rootAbsolute) === false) {
     return null
   }
 

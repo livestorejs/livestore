@@ -68,7 +68,7 @@ export const cmd: (
   const stderrMode = options?.stderr ?? 'inherit'
   const useShell = (options?.shell === true ? true : false) || needsShell
 
-  const commandDebugStr = debugEnvStr + (Array.isArray(finalInput) ? finalInput.join(' ') : finalInput)
+  const commandDebugStr = debugEnvStr + (Array.isArray(finalInput) === true ? finalInput.join(' ') : finalInput)
   const subshellStr = useShell === true ? ' (in subshell)' : ''
 
   yield* Effect.logDebug(`Running '${commandDebugStr}' in '${cwd}'${subshellStr}`)
@@ -119,9 +119,8 @@ export const cmdText: (
 ) => Effect.Effect<string, PlatformError.PlatformError, CommandExecutor.CommandExecutor | CurrentWorkingDirectory> =
   Effect.fn('cmdText')(function* (commandInput, options) {
     const cwd = yield* CurrentWorkingDirectory
-    const [command, ...args] = Array.isArray(commandInput)
-      ? commandInput.filter(isNotUndefined)
-      : commandInput.split(' ')
+    const [command, ...args] =
+      Array.isArray(commandInput) === true ? commandInput.filter(isNotUndefined) : commandInput.split(' ')
     const debugEnvStr = Object.entries(options?.env ?? {})
       .map(([key, value]) => `${key}='${String(value)}' `)
       .join('')
@@ -165,8 +164,7 @@ const runWithoutLogging = ({ commandInput, cwd, env, stdoutMode, stderrMode, use
     Command.stdout(stdoutMode),
     Command.stderr(stderrMode),
     Command.workingDirectory(cwd),
-
-    useShell ? Command.runInShell(true) : identity,
+    useShell === true ? Command.runInShell(true) : identity,
     Command.env(env),
     Command.exitCode,
   )
@@ -225,8 +223,7 @@ const runWithLogging = ({
         Command.stdout('pipe'),
         Command.stderr('pipe'),
         Command.workingDirectory(cwd),
-
-        useShell ? Command.runInShell(true) : identity,
+        useShell === true ? Command.runInShell(true) : identity,
         Command.env(envWithColor),
       )
 
@@ -282,12 +279,12 @@ const runWithLogging = ({
   )
 
 const buildCommand = (input: string | string[], useShell: boolean) => {
-  if (Array.isArray(input)) {
+  if (Array.isArray(input) === true) {
     const [c, ...a] = input
     return Command.make(c!, ...a)
   }
 
-  if (useShell) {
+  if (useShell === true) {
     return Command.make(input)
   }
 

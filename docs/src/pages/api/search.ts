@@ -40,7 +40,7 @@ const filePathToHref = (filePath: string): string => {
 const extractHeadingTitle = (text: string): string => {
   const trimmedText = text.trim()
 
-  if (!trimmedText.startsWith('#')) {
+  if (trimmedText.startsWith('#') === false) {
     return ''
   }
 
@@ -99,7 +99,7 @@ export const GET: APIRoute = async ({ url }) => {
       const title = metadata?.title || 'Untitled'
       const description = metadata?.description || ''
 
-      if (!seenFiles.has(url)) {
+      if (seenFiles.has(url) === false) {
         seenFiles.add(url)
         results.push({
           id: `${item.file_id}-${index}-page`,

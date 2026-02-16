@@ -69,7 +69,7 @@ export const splitChunkBySize =
         current.push(item)
         const exceedsLimit = current.length > maxItems || computeSize(current) > maxBytes
 
-        if (exceedsLimit) {
+        if (exceedsLimit === true) {
           // remove the item we just added and emit the previous chunk if it exists
           const last = current.pop()!
           flushCurrent()
@@ -77,7 +77,7 @@ export const splitChunkBySize =
           if (last !== undefined) {
             current = [last]
             const singleItemTooLarge = computeSize(current) > maxBytes
-            if (singleItemTooLarge || current.length > maxItems) {
+            if (singleItemTooLarge === true || current.length > maxItems) {
               return yield* new OversizeChunkItemError({ size: computeSize([last]), maxBytes })
             }
           }
