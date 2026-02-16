@@ -17,7 +17,7 @@ In event sourcing vocabulary, a store can be thought as an [**aggregate**](#aggr
 
 ### 1. Events as the record of changes
 
-Instead of mutating the state DB directly, the user commits events to the store:
+Instead of mutating the state DB directly, the user commits [events](#event) to the store:
 ```ts
 store.commit(events.todoCreated({ id: 'todo-1', text: 'Buy groceries' }))
 store.commit(events.todoCompleted({ id: 'todo-1' }))
@@ -55,7 +55,7 @@ Event rebasing gives us convergence without correctness.
 
 ### What Happens When an Event Becomes Invalid During Rebasing?
 
-The outcome depends on whether we have invariant validation in place:
+The outcome depends on whether we have [invariant](#invariant) validation in place:
 
 **Without validation**: The invalid event is silently materialized into the state DB. No error is raised; the **corruption** goes unnoticed. The state DB now contains data that no valid sequence of user actions could have produced (e.g., orphaned references, violated invariants, impossible counts) and subsequent events continue to build on this broken foundation.
 
