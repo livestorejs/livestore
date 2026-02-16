@@ -14,7 +14,7 @@ export const FilterMenu = ({ type, children }: { type?: 'status' | 'priority'; c
 
   const toggleFilter = React.useCallback(
     ({ type, value }: { type: 'status'; value: Status } | { type: 'priority'; value: Priority }) => {
-      let filters: (Status  )[] | undefined = [...(filterState[type] ?? [])]
+      let filters: (Status | Priority)[] | undefined = [...(filterState[type] ?? [])]
       if (filters.includes(value)) filters.splice(filters.indexOf(value), 1)
       else filters.push(value)
       if (!filters.length) filters = undefined
