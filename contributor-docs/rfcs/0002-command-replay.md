@@ -1,7 +1,5 @@
 # Command Replay
 
-[TODO: Write a short summary]
-
 ## Context
 
 In LiveStore, a **store** combines an [eventlog](https://dev.docs.livestore.dev/building-with-livestore/events/#eventlog) and a [state DB](https://dev.docs.livestore.dev/overview/concepts/#overview) that are kept **strongly consistent** with each other within a single client session.
