@@ -571,39 +571,21 @@ During rebase, the system checks each pending event's `require` entries against 
 
 ### Alternative D: Client-Authoritative Events
 
-In this approach, clients generate authoritative events that are immediately committed to the event log. These events aren't ever discarded or re-ordered, even if they later conflict with events from other clients. Instead, compensating events are generated to resolve conflicts.
+In this approach, every event a client produces is treated as an **immutable historical fact**—never discarded, reordered, or replaced during sync. Instead of rebasing onto a single total order, each client maintains its own local event log and replicates events asynchronously using **causal ordering**: causally related events maintain the same order everywhere, while concurrent events (produced independently) may differ in order across clients. Causality is tracked via vector clocks. Conflicts—which arise exclusively from concurrent events—are resolved *forward* by appending **compensating events** rather than by rewriting history.
 
-Good use case: imagine a hospital where a doctor prescribes a medication. The doctor records the prescription as a `MedicationPrescribed` event in their computer. Later on, the app syncs with the server and sees that the medication does not interact well with another medication previously prescribed to the patient by another doctor. 
+**Example:** A doctor prescribes medication A offline while another prescribes medication B that has a known interaction with medication A. With command replay, one prescription event may be discarded during reconciliation—erasing a clinical decision. With client-authoritative events, both `MedicationPrescribed` events are always preserved. The system detects the interaction and appends a `DrugInteractionDetected` event, triggering review while preserving the full audit trail.
 
-We don't want to lose the information that the medication was prescribed. This is a real event that must be maintained. Rebase doesn't work because in this alternative.
+#### Why It Was Rejected
 
-Another scenario:
+1. **Fundamentally different sync architecture.** The sync backend can no longer be a simple totally-ordered log. It must support vector clocks, causal delivery guarantees, and stability calculations—a wholesale replacement of LiveStore's rebase model rather than an extension of it.
 
-**10:15am (offline):** Camera operator notices sensor overheating, marks camera C-07 as defective.
-→ Emits `EquipmentDefectReported { camera: "C-07", reason: "sensor_overheating", reportedBy: "Jake" }`
+2. **Conflict resolution burden.** Every pair of concurrent event types that can conflict requires an explicit resolution strategy. CRDTs handle some data types automatically, but arbitrary business rules (capacity limits, referential integrity) still need custom logic. With command replay, the handler's existing validation naturally adapts to new state during reconciliation—no separate conflict resolution layer is needed.
 
-**11:30am (offline, different unit):** 2nd unit requests C-07 for a pickup shot, unaware of defect.
-→ Emits `EquipmentRequested { camera: "C-07", requestedBy: "2nd-unit" }`
+3. **No single linear history.** Concurrent events may appear in different orders at different clients. This means applications may need to handle multiple possible histories for the same event stream, complicating materialization and query logic.
 
-**14:00pm:** Both units sync.
+4. **Bi-temporal query complexity.** Every read path must account for two time dimensions and decide which temporal view to present (state at a point in OccurredAt time vs. current state with all corrections applied).
 
-With Solution A, the system preserves that Jake's defect report *occurred* before the request, and crucially, that 2nd unit *didn't know* about the defect when they requested it. With Solution B, you lose the decision context—you can't prove Jake caught the defect before anyone else used the camera, which matters enormously if footage shot on a "defective" camera becomes a $200k insurance dispute.
-
-Choose when:
-
-1. **Regulatory/compliance requirements** - Healthcare, finance, legal. "Prove what you knew when you made that decision"
-2. **Extended offline periods** - Field workers gone for days. Their decisions must be binding, not requests
-3. **Audit trails are core product value** - The history is the product (accounting, supply chain tracking)
-4. **Multi-authority scenarios** - Multiple parties who each have legitimate decision-making power that shouldn't require central approval
-5. **"What-if" analysis matters** - Need to replay history from different perspectives
-
-Trade-offs:
-
-- **Storage multiplication:** Each client stores RecordedAt for every event. N clients × M events metadata
-- **Query complexity:** Every query needs two time dimensions. UI must decide which "view" to show
-- **Conflict resolution burden:** Concurrent modifications need explicit handling (CRDTs, dynamic ownership, manual resolution)
-- **Sync complexity:** Version vectors, version matrices, stability calculations
-- **UX uncertainty:** User sees their action succeed locally, but state might change after sync when conflicts resolve
+5. **Scope mismatch.** Most LiveStore applications need convergent state, not a complete causal history. Client-authoritative events are the right model for domains where offline decisions must be preserved as historical facts (healthcare, finance, compliance, field operations), but they impose significant infrastructure and application complexity that is unnecessary for the common case. For domains that need this model, it remains a valid future direction.
 
 ### Alternative E: Server-Side Command Execution
 
