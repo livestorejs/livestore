@@ -37,7 +37,7 @@ export const withLock =
             return Runtime.runPromiseExit(runtime)(eff)
           }) as unknown as Promise<Exit.Exit<A, E>>
         },
-        catch: (err) => err as E,
+        catch: (err) => err as any as E,
       })
 
       if (exit._tag === 'Failure') {

@@ -289,7 +289,7 @@ export const makeWorker = (options?: LogConfig.WithLoggerOptions): void => {
     LS_DEV === true ? TaskTracing.withAsyncTaggingTracing((name) => (console as any).createTask(name)) : identity,
     // TODO remove type-cast (currently needed to silence a tsc bug)
     // @effect-diagnostics-next-line anyUnknownInErrorContext:off -- TSC bug workaround; the cast uses `any` as an intermediate
-    (_) => _ as Effect.Effect<void, never>,
+    (_) => _ as any as Effect.Effect<void, never>,
     LogConfig.withLoggerConfig(options, { threadName: self.name }),
     Effect.runFork,
   )

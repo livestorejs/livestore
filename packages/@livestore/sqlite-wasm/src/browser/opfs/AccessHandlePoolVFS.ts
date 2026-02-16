@@ -179,7 +179,7 @@ export class AccessHandlePoolVFS extends FacadeVFS {
         if (this.getSize() < this.getCapacity()) {
           // Choose an unassociated OPFS file from the pool.
           ;[accessHandle] = this.#availableAccessHandles.keys()
-          yield* this.#setAssociatedPath(accessHandle, path, flags)
+          yield* this.#setAssociatedPath(accessHandle!, path, flags)
         } else {
           // Out of unassociated files. This can be fixed by calling
           // addCapacity() from the application.
@@ -375,7 +375,7 @@ export class AccessHandlePoolVFS extends FacadeVFS {
     Effect.repeatN(
       Effect.gen(this, function* () {
         const name = Math.random().toString(36).replace('0.', '')
-        const accessHandle = yield* Opfs.Opfs.getFileHandle(this.#directoryHandle, name, { create: true }).pipe(
+        const accessHandle = yield* Opfs.Opfs.getFileHandle(this.#directoryHandle!, name, { create: true }).pipe(
           Effect.andThen((handle) => Opfs.Opfs.createSyncAccessHandle(handle)),
           Effect.retry(Schedule.exponentialBackoff10Sec),
         )
@@ -403,7 +403,7 @@ export class AccessHandlePoolVFS extends FacadeVFS {
 
             const name = this.#mapAccessHandleToName.get(accessHandle)!
             accessHandle.close()
-            yield* Opfs.Opfs.removeEntry(this.#directoryHandle, name)
+            yield* Opfs.Opfs.removeEntry(this.#directoryHandle!, name)
             this.#mapAccessHandleToName.delete(accessHandle)
             this.#availableAccessHandles.delete(accessHandle)
             ++nRemoved
@@ -417,7 +417,7 @@ export class AccessHandlePoolVFS extends FacadeVFS {
 
   #acquireAccessHandles = Effect.fn(() =>
     Effect.gen(this, function* () {
-      const handlesStream = yield* Opfs.Opfs.values(this.#directoryHandle)
+      const handlesStream = yield* Opfs.Opfs.values(this.#directoryHandle!)
 
       yield* handlesStream.pipe(
         Stream.filter((handle): handle is FileSystemFileHandle => handle.kind === 'file'),

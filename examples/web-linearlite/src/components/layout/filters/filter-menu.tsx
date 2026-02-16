@@ -58,7 +58,7 @@ export const FilterMenu = ({ type, children }: { type?: 'status' | 'priority'; c
                     >
                       {active && <CheckIcon className="size-4 text-white" />}
                     </div>
-                    <Icon name={icon} className={`size-3.5 ${style}`} />
+                    <Icon name={icon as IconName} className={`size-3.5 ${style}`} />
                     <span>{name}</span>
                   </MenuItem>
                 )
@@ -81,7 +81,7 @@ export const FilterMenu = ({ type, children }: { type?: 'status' | 'priority'; c
                     >
                       {active && <CheckIcon className="size-4 text-white" />}
                     </div>
-                    <Icon name={icon} className={`size-3.5 ${style}`} />
+                    <Icon name={icon as IconName} className={`size-3.5 ${style}`} />
                     <span>{name}</span>
                   </MenuItem>
                 )

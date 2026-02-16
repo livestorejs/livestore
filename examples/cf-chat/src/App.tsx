@@ -234,7 +234,7 @@ const AvatarPicker = ({
 
   const controlledIndex = (() => {
     if (isControlled) {
-      const idx = avatarOptions.findIndex((o) => o.emoji === value.emoji && o.color === value.color)
+      const idx = avatarOptions.findIndex((o) => o.emoji === value!.emoji && o.color === value!.color)
       if (idx !== -1) return idx
     }
     return undefined

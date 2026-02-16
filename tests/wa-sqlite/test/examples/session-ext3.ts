@@ -65,7 +65,7 @@ const main = async () => {
   sqlite3.session_delete(session)
   console.log('changeset', changeset)
 
-  const inverted = sqlite3.changeset_invert(changeset)
+  const inverted = sqlite3.changeset_invert(changeset!)
   console.log('inverted', inverted)
   const inverted2 = sqlite3.changeset_invert(inverted)
   console.log('inverted2', inverted2)

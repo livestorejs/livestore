@@ -286,7 +286,7 @@ const makeSocketProtocol = ({ incomingQueue, ws, onMessage }: WsRpcServerArgs) =
         }
         return Effect.orDie(writeRaw(encoded))
       } catch (cause) {
-        return Effect.orDie(writeRaw(parser.encode(RpcMessage.ResponseDefectEncoded(cause))))
+        return Effect.orDie(writeRaw(parser.encode(RpcMessage.ResponseDefectEncoded(cause))!))
       }
     }
 
@@ -312,7 +312,7 @@ const makeSocketProtocol = ({ incomingQueue, ws, onMessage }: WsRpcServerArgs) =
               step: constVoid,
             })
           } catch (cause) {
-            return Effect.orDie(writeRaw(parser.encode(RpcMessage.ResponseDefectEncoded(cause))))
+            return Effect.orDie(writeRaw(parser.encode(RpcMessage.ResponseDefectEncoded(cause))!))
           }
         }),
         Stream.runDrain,
