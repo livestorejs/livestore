@@ -75,12 +75,12 @@ export const applyLoggingToCommand: (
   'cmd.logging.apply',
 )(function* (commandInput, options) {
   const asArray = Array.isArray(commandInput)
-  const parts = asArray ? (commandInput as (string | undefined)[]).filter(isNotUndefined) : undefined
+  const parts = asArray ? (commandInput).filter(isNotUndefined) : undefined
 
   const logPath = yield* prepareCmdLogging(options)
 
   return {
-    input: asArray ? ((parts as string[]) ?? []) : (commandInput as string),
+    input: asArray ? ((parts as string[]) ?? []) : (commandInput),
     subshell: false,
     ...(logPath !== undefined ? { logPath } : {}),
   }

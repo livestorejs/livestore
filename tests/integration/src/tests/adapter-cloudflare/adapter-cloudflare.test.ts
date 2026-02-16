@@ -1,12 +1,10 @@
 import path from 'node:path'
 import { fileURLToPath } from 'node:url'
-
-import { expect } from 'vitest'
-
-import { Vitest } from '@livestore/utils-dev/node-vitest'
 import { Duration, Effect, FetchHttpClient, Layer } from '@livestore/utils/effect'
 import { nanoid } from '@livestore/utils/nanoid'
 import { PlatformNode } from '@livestore/utils/node'
+import { Vitest } from '@livestore/utils-dev/node-vitest'
+import { expect } from 'vitest'
 
 const testDir = path.dirname(fileURLToPath(import.meta.url))
 const fixturesDir = path.join(testDir, 'fixtures')
@@ -69,7 +67,7 @@ Vitest.describe('adapter-cloudflare', { timeout: testTimeout }, () => {
             throw new Error(`failed to create todo: ${response.status}`)
           }
 
-          return response.json() as Promise<{ id: string }>
+          return response.json<{ id: string }>()
         })
 
       const listTodos = () =>
@@ -80,7 +78,7 @@ Vitest.describe('adapter-cloudflare', { timeout: testTimeout }, () => {
             throw new Error(`failed to list todos: ${response.status}`)
           }
 
-          return response.json() as Promise<ReadonlyArray<{ id: string; title: string }>>
+          return response.json<ReadonlyArray<{ id: string; title: string }>>()
         })
 
       const getPersistenceSnapshot = () =>
@@ -91,7 +89,7 @@ Vitest.describe('adapter-cloudflare', { timeout: testTimeout }, () => {
             throw new Error(`failed to read persistence metadata: ${response.status}`)
           }
 
-          const body = (await response.json()) as { persistence: PersistenceSnapshot }
+          const body = await response.json<{ persistence: PersistenceSnapshot }>()
 
           return body.persistence
         })
@@ -140,7 +138,7 @@ Vitest.describe('adapter-cloudflare', { timeout: testTimeout }, () => {
             throw new Error(`failed to create todo: ${response.status}`)
           }
 
-          return response.json() as Promise<{ id: string }>
+          return response.json<{ id: string }>()
         })
 
       const listTodos = () =>
@@ -151,7 +149,7 @@ Vitest.describe('adapter-cloudflare', { timeout: testTimeout }, () => {
             throw new Error(`failed to list todos: ${response.status}`)
           }
 
-          return response.json() as Promise<ReadonlyArray<{ id: string; title: string }>>
+          return response.json<ReadonlyArray<{ id: string; title: string }>>()
         })
 
       const resetStore = () =>
@@ -162,11 +160,11 @@ Vitest.describe('adapter-cloudflare', { timeout: testTimeout }, () => {
             throw new Error(`failed to reset store: ${response.status}`)
           }
 
-          return response.json() as Promise<{
+          return response.json<{
             todos: ReadonlyArray<{ id: string; title: string }>
             persistence: PersistenceSnapshot
             resetSnapshot: ResetPersistenceSnapshot | null
-          }>
+          }>()
         })
 
       const getPersistenceSnapshot = () =>
@@ -177,7 +175,7 @@ Vitest.describe('adapter-cloudflare', { timeout: testTimeout }, () => {
             throw new Error(`failed to read persistence metadata: ${response.status}`)
           }
 
-          const body = (await response.json()) as { persistence: PersistenceSnapshot }
+          const body = await response.json<{ persistence: PersistenceSnapshot }>()
 
           return body.persistence
         })

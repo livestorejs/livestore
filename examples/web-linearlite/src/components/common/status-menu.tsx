@@ -5,7 +5,7 @@ import { Button, Menu, MenuItem, MenuTrigger, Popover } from 'react-aria-compone
 
 import { statusOptions } from '../../data/status-options.ts'
 import type { Status } from '../../types/status.ts'
-import { Icon, type IconName } from '../icons/index.tsx'
+import { Icon } from '../icons/index.tsx'
 import { Shortcut } from './shortcut.tsx'
 
 const shortcutKeysByStatusName = Object.fromEntries(
@@ -61,7 +61,7 @@ export const StatusMenu = ({
         aria-label="Select status"
         className="group h-8 min-w-8 rounded-lg flex gap-1.5 px-2 items-center justify-center hover:bg-neutral-100 dark:hover:bg-neutral-800 focus:outline-none focus:bg-neutral-100 dark:focus:bg-neutral-800"
       >
-        <Icon name={statusOptions[status]!.icon as IconName} className={`size-3.5 ${statusOptions[status]!.style}`} />
+        <Icon name={statusOptions[status]!.icon} className={`size-3.5 ${statusOptions[status]!.style}`} />
         {showLabel && <span>{statusOptions[status]!.name}</span>}
       </Button>
       <Popover
@@ -74,7 +74,7 @@ export const StatusMenu = ({
               key={name}
               className="p-2 rounded-md hover:bg-neutral-100 dark:hover:bg-neutral-700 focus:outline-none focus:bg-neutral-100 dark:focus:bg-neutral-700 cursor-pointer flex items-center gap-2"
             >
-              <Icon name={icon as IconName} className={`size-3.5 ${style}`} />
+              <Icon name={icon} className={`size-3.5 ${style}`} />
               <span>{name}</span>
               {statusOption === status && <CheckIcon className="size-4 absolute right-9" />}
               <Shortcut keys={shortcutKeysByStatusName[name]} className="absolute right-3" />

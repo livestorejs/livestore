@@ -83,7 +83,7 @@ export const status = Effect.gen(function* () {
     }
   }
   const s = opt.value
-  const tableCounts = (Array.from(s.schema.state.sqlite.tables.keys()))
+  const tableCounts = Array.from(s.schema.state.sqlite.tables.keys())
     .filter((name) => !SystemTables.isStateSystemTable(name))
     .reduce(
       (acc, name) => {
@@ -105,21 +105,26 @@ export const status = Effect.gen(function* () {
 export const query = Effect.fn('mcp-runtime:query')(function* ({
   sql,
   bindValues,
-}: { sql: string; bindValues?: readonly any[] | Record<string, unknown> }) {
+}: {
+  sql: string
+  bindValues?: readonly any[] | Record<string, unknown>
+}) {
   const opt = yield* getStore
   if (opt._tag === 'None') {
     return yield* Effect.dieMessage('LiveStore not connected. Call livestore_instance_connect first.')
   }
   const s = opt.value
 
-  const rows = s.query({ query: sql, bindValues: (bindValues as any) ?? [] }) as Array<Record<string, unknown>>
+  const rows = s.query<Array<Record<string, unknown>>>({ query: sql, bindValues: (bindValues as any) ?? [] })
   const jsonRows = rows.map((r) => Object.fromEntries(Object.entries(r).map(([k, v]) => [k, v as Schema.JsonValue])))
   return { rows: jsonRows, rowCount: jsonRows.length }
 })
 
 export const commit = Effect.fn('mcp-runtime:commit')(function* ({
   events,
-}: { events: ReadonlyArray<{ name: string; args: Schema.JsonValue }> }) {
+}: {
+  events: ReadonlyArray<{ name: string; args: Schema.JsonValue }>
+}) {
   const opt = yield* getStore
   if (opt._tag === 'None') {
     return yield* Effect.dieMessage('LiveStore not connected. Call livestore_instance_connect first.')
