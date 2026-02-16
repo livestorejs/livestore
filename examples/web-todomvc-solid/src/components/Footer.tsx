@@ -17,8 +17,8 @@ export const Footer: Component = () => {
   const setFilter = (filter: (typeof tables.uiState.Value)['filter']) => store()?.commit(events.uiStateSet({ filter }))
 
   const handleFilterClick = createMemo(() => (event: MouseEvent & { currentTarget: HTMLAnchorElement }) => {
-    const nextFilter = event.currentTarget.dataset.filter as (typeof tables.uiState.Value)['filter'] | undefined
-    if (nextFilter) {
+    const nextFilter = event.currentTarget.dataset.filter
+    if (nextFilter === 'all' || nextFilter === 'active' || nextFilter === 'completed') {
       setFilter(nextFilter)
     }
   })

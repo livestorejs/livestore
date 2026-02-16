@@ -2,11 +2,10 @@ import { queryDb } from '@livestore/livestore'
 import { useStore, useStoreRegistry } from '@livestore/react'
 import { Suspense, useCallback, useState } from 'react'
 import { ErrorBoundary } from 'react-error-boundary'
-import { ErrorFallback } from '@/components/ErrorFallback.tsx'
-import { issueStoreOptions } from '@/stores/issue/index.ts'
-import { workspaceStoreOptions } from '@/stores/workspace/index.ts'
-
+import { issueStoreOptions } from '../stores/issue/index.ts'
+import { workspaceStoreOptions } from '../stores/workspace/index.ts'
 import { workspaceEvents, workspaceTables } from '../stores/workspace/schema.ts'
+import { ErrorFallback } from './ErrorFallback.tsx'
 import { IssueView } from './IssueView.tsx'
 
 const loadingIssueStoresFallback = <div className="loading">Loading issue stores...</div>

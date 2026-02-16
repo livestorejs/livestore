@@ -5,7 +5,7 @@ import { Button } from 'react-aria-components'
 import { statusOptions } from '../../../data/status-options.ts'
 import { useFilterState } from '../../../livestore/queries.ts'
 import type { Status } from '../../../types/status.ts'
-import { Icon, type IconName } from '../../icons/index.tsx'
+import { Icon } from '../../icons/index.tsx'
 import { FilterMenu } from './filter-menu.tsx'
 
 export const StatusFilter = () => {
@@ -24,14 +24,14 @@ export const StatusFilter = () => {
           {filterState.status.map((status) => (
             <div key={status} className="h-4 -ml-3 p-px rounded-full bg-white dark:bg-neutral-900">
               <Icon
-                name={statusOptions[status as Status]!.icon as IconName}
+                name={statusOptions[status as Status]!.icon}
                 className={`h-full ${statusOptions[status as Status]!.style}`}
               />
             </div>
           ))}
           {filterState.status.length === 1 ? (
             <span className="font-medium text-neutral-600 dark:text-neutral-200">
-              {statusOptions[filterState.status[0] as Status]!.name}
+              {statusOptions[filterState.status[0]]!.name}
             </span>
           ) : (
             <span>{filterState.status.length} statuses</span>

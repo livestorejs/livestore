@@ -89,13 +89,13 @@ const phase2Rules = {
   // Inverse of overeng/explicit-boolean-compare — must stay off
   'typescript/no-unnecessary-boolean-literal-compare': 'off',
   // 79 violations, mostly generic verbosity
-  'typescript/no-unnecessary-type-arguments': 'warn',
+  'typescript/no-unnecessary-type-arguments': 'error',
   // 72 violations, concentrated in generated clients and broad union types
-  'typescript/no-duplicate-type-constituents': 'warn',
+  'typescript/no-duplicate-type-constituents': 'error',
   // 57 violations, assertion cleanup churn
-  'typescript/no-unnecessary-type-assertion': 'warn',
+  'typescript/no-unnecessary-type-assertion': 'error',
   // 42 violations, noisy with Effect error/rendering types
-  'typescript/restrict-template-expressions': 'warn',
+  'typescript/restrict-template-expressions': 'error',
 
   // TODO(oep-1n3.9): Temporary quick-check unblocking - re-enable after async audit
   // 78 violations concentrated in wa-sqlite and test surfaces
@@ -103,13 +103,13 @@ const phase2Rules = {
 
   // TODO(oep-1n3.8a): Re-enable low-risk style hygiene rules first
   // 16 violations, mostly logging/debug stringification quality
-  'typescript/no-base-to-string': 'warn',
+  'typescript/no-base-to-string': 'error',
   // 11 violations, low-risk type hygiene noise
-  'typescript/no-redundant-type-constituents': 'warn',
+  'typescript/no-redundant-type-constituents': 'error',
   // 4 violations, mostly template readability nits
-  'typescript/no-unnecessary-template-expression': 'warn',
+  'typescript/no-unnecessary-template-expression': 'error',
   // 4 violations, mostly Effect wrappers around void-returning APIs
-  'typescript/no-meaningless-void-operator': 'warn',
+  'typescript/no-meaningless-void-operator': 'error',
 
   // TODO(oep-1n3.9): Temporary unblock for correctness-sensitive rules
   // Re-enable after targeted async/this-binding/prototype-safety fixes.

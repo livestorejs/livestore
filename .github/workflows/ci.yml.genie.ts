@@ -254,9 +254,9 @@ fi`,
       ],
     },
 
-    // Prefer a specific runner version for more consistent performance measurements between runs
+    // Run on namespace runners to align CI environment with the rest of the test matrix.
     'perf-test': {
-      'runs-on': 'ubuntu-24.04',
+      ...namespaceRunnerConfig,
       defaults: devenvShellDefaults,
       steps: [
         {
@@ -280,9 +280,9 @@ fi`,
       ],
     },
 
-    // Prefer a specific runner version for more consistent performance measurements between runs
+    // Run on namespace runners to align CI environment with the rest of the test matrix.
     'wa-sqlite-test': {
-      'runs-on': 'ubuntu-24.04',
+      ...namespaceRunnerConfig,
       steps: [
         ...livestoreSetupSteps,
         deterministicPreflightStep,

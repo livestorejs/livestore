@@ -358,7 +358,7 @@ const filterGraphKeepAncestors = <N, E>(
   })
 }
 
-function renderSpanNode(graph: Graph.Graph<GraphNodeInfo, void, 'directed'>, nodeId: number): string[] {
+function renderSpanNode(graph: Graph.Graph<GraphNodeInfo, void>, nodeId: number): string[] {
   const node = Graph.getNode(graph, nodeId)
   if (Option.isNone(node) === true) return []
   const info = node.value

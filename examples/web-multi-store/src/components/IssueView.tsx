@@ -2,10 +2,9 @@ import { queryDb } from '@livestore/livestore'
 import { useStore } from '@livestore/react'
 import { Suspense, useCallback } from 'react'
 import { ErrorBoundary } from 'react-error-boundary'
-import { ErrorFallback } from '@/components/ErrorFallback.tsx'
-import { issueStoreOptions } from '@/stores/issue/index.ts'
-
+import { issueStoreOptions } from '../stores/issue/index.ts'
 import { issueEvents, issueTables } from '../stores/issue/schema.ts'
+import { ErrorFallback } from './ErrorFallback.tsx'
 
 const loadingSubIssuesFallback = <div className="loading">Loading sub-issues...</div>
 

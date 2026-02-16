@@ -5,7 +5,7 @@ import { Button } from 'react-aria-components'
 import { priorityOptions } from '../../../data/priority-options.ts'
 import { useFilterState } from '../../../livestore/queries.ts'
 import type { Priority } from '../../../types/priority.ts'
-import { Icon, type IconName } from '../../icons/index.tsx'
+import { Icon } from '../../icons/index.tsx'
 import { FilterMenu } from './filter-menu.tsx'
 
 export const PriorityFilter = () => {
@@ -24,11 +24,11 @@ export const PriorityFilter = () => {
           {filterState.priority.length === 1 ? (
             <>
               <Icon
-                name={priorityOptions[filterState.priority[0] as Priority]!.icon as IconName}
-                className={`h-3.5 ${priorityOptions[filterState.priority[0] as Priority]!.style}`}
+                name={priorityOptions[filterState.priority[0]]!.icon}
+                className={`h-3.5 ${priorityOptions[filterState.priority[0]]!.style}`}
               />
               <span className="font-medium text-neutral-600 dark:text-neutral-200">
-                {priorityOptions[filterState.priority[0] as Priority]!.name}
+                {priorityOptions[filterState.priority[0]]!.name}
               </span>
             </>
           ) : (

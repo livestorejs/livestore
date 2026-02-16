@@ -313,8 +313,8 @@ const resolveTransitiveDeps = (patterns: string[]): string[] => {
   const names: string[] = []
   for (const pattern of patterns) {
     const match = pattern.match(/^\.\.\/([^/]+)$/)
-    if (match && match[1]! in workspaceDeps) {
-      names.push(match[1]!)
+    if (match && match[1] in workspaceDeps) {
+      names.push(match[1])
     } else {
       nonResolvable.push(pattern)
     }

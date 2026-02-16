@@ -18,7 +18,6 @@
 import fs from 'node:fs'
 
 import { objectToString } from '@livestore/utils'
-import { cmd, cmdText, LivestoreWorkspace } from '@livestore/utils-dev/node'
 import {
   Console,
   Effect,
@@ -31,6 +30,7 @@ import {
   Schema,
 } from '@livestore/utils/effect'
 import { Cli, PlatformNode } from '@livestore/utils/node'
+import { cmd, cmdText, LivestoreWorkspace } from '@livestore/utils-dev/node'
 
 export class UpdateDepsError extends Schema.TaggedError<UpdateDepsError>()('UpdateDepsError', {
   message: Schema.String,
@@ -131,7 +131,7 @@ const discoverUpdates = (target: string) =>
       const totalUpdates = Object.values(validated).reduce((sum, updates) => sum + Object.keys(updates).length, 0)
 
       yield* Console.log(
-        `Found ${totalUpdates} packages that can be updated across ${Object.keys(validated).length} package.json files`,
+        `Found ${String(totalUpdates)} packages that can be updated across ${String(Object.keys(validated).length)} package.json files`,
       )
 
       return validated

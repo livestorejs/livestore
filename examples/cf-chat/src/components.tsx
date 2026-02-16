@@ -344,9 +344,7 @@ export const MessagesContainer: React.FC<MessagesContainerProps> = ({
 
                   {/* Reactions overlay */}
                   {messageReactions.length > 0 && (
-                    <div
-                      className={`absolute -top-6 ${'right-0.5'} flex gap-1 bg-slate-900 border border-slate-700 rounded-full px-1 py-0.5 shadow-sm`}
-                    >
+                    <div className="absolute -top-6 right-0.5 flex gap-1 bg-slate-900 border border-slate-700 rounded-full px-1 py-0.5 shadow-sm">
                       {messageReactions.map((reaction) => (
                         <button
                           type="button"

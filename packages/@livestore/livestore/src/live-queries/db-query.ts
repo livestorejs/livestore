@@ -1,5 +1,3 @@
-import * as otel from '@opentelemetry/api'
-
 import type { Bindable, QueryBuilder } from '@livestore/common'
 import {
   getDurationMsFromSpan,
@@ -13,6 +11,7 @@ import {
 } from '@livestore/common'
 import { deepEqual, objectToString, omitUndefineds, shouldNeverHappen } from '@livestore/utils'
 import { Equal, Hash, Predicate, Schema, TreeFormatter } from '@livestore/utils/effect'
+import * as otel from '@opentelemetry/api'
 
 import type { Thunk } from '../reactive.ts'
 import { isThunk, NOT_REFRESHED_YET } from '../reactive.ts'

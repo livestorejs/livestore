@@ -1,9 +1,7 @@
 import path from 'node:path'
-
-import { describe, expect, it } from 'vitest'
-
 import { Effect, FileSystem, Queue, Schema } from '@livestore/utils/effect'
 import { PlatformNode } from '@livestore/utils/node'
+import { describe, expect, it } from 'vitest'
 
 import { type WatchSnippetsRebuildInfo, watchSnippets } from './snippets.ts'
 
@@ -46,7 +44,7 @@ const writeInitialProject = (fs: FileSystem.FileSystem, projectRoot: string): Ef
       include: ['./**/*'],
       exclude: ['./node_modules'],
     }).pipe(Effect.orDie)
-    yield* fs.writeFileString(tsconfigPath, `${tsconfigJson}\n`).pipe(Effect.orDie)
+    yield* fs.writeFileString(tsconfigPath, tsconfigJson + '\n').pipe(Effect.orDie)
   })
 
 describe('watchSnippets', () => {

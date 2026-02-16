@@ -55,7 +55,7 @@ export const ThreadList: React.FC = () => {
   )
 
   const handlePreloadThreadStore = useCallback(
-    (e: React.MouseEvent<HTMLButtonElement> | React.FocusEvent<HTMLButtonElement>) => {
+    (e: { currentTarget: HTMLButtonElement }) => {
       const threadId = e.currentTarget.dataset.threadId
       if (threadId !== undefined) {
         preloadThreadStore(threadId)
