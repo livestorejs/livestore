@@ -692,10 +692,6 @@ store.execute(commands.checkInGuest({ roomId: 'Room-1', guestId: 'Guest-A' }))
 - https://www.youtube.com/watch?v=avi-TZI9t2I
 - https://www.youtube.com/watch?v=72W_VvFRqc0
 
-To read:
-- https://discuss.axoniq.io/t/using-axonframework-event-sourcing-for-offline-synchronisation/483/13
-
-
 ## Appendix
 
 ### A. Glossary
