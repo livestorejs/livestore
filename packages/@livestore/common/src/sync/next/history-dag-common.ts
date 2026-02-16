@@ -104,7 +104,9 @@ export class HistoryDag {
   topologicalNodeIds(): Array<string> {
     const walker = Graph.topo(this.graph)
     const indices = Array.from(Graph.indices(walker))
-    return indices.map((index) => this.indexToId.get(index) ?? shouldNeverHappen(`Missing node id for index ${index}`))
+    return indices.map(
+      (index) => this.indexToId.get(index) ?? shouldNeverHappen(`Missing node id for index ${String(index)}`),
+    )
   }
 
   addNode(id: string, attributes: HistoryDagNode): void {
