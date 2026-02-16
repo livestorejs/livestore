@@ -395,7 +395,7 @@ jobs:
             echo "Skipping Netlify deploy: NETLIFY_AUTH_TOKEN not set"
           fi
   perf-test:
-    runs-on: ubuntu-24.04
+    runs-on: [namespace-profile-linux-x86-64, 'namespace-features:github.run-id=${{ github.run_id }}']
     defaults:
       run:
         shell: devenv shell bash -- -e {0}
@@ -456,7 +456,7 @@ jobs:
           GRAFANA_ENDPOINT: 'https://livestore.grafana.net'
           OTEL_EXPORTER_OTLP_ENDPOINT: 'https://otlp-gateway-prod-us-east-2.grafana.net/otlp'
   wa-sqlite-test:
-    runs-on: ubuntu-24.04
+    runs-on: [namespace-profile-linux-x86-64, 'namespace-features:github.run-id=${{ github.run_id }}']
     steps:
       - uses: actions/checkout@v4
       - name: Install Nix
