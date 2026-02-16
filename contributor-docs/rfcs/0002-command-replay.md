@@ -515,7 +515,59 @@ This is closer to the root cause than [Alternative A](#alternative-a-invariant-v
 
 ### Alternative C: Preconditions as Event Metadata
 
-Events carry explicit preconditions that describe the state assumptions under which they were generated.
+Instead of introducing commands, augment events with declarative **preconditions**—assertions about the state that must hold for an event to be valid. Preconditions are attached as metadata in the event definition. During rebase, the system evaluates each pending event's preconditions against the current state. If any precondition fails, the event is dropped.
+
+LiveStore already has an experimental [`facts` system](../../packages/@livestore/common/src/schema/EventDef/facts.ts) that partially models this idea. Facts are key-value pairs that events can `set`, `unset`, or `require`, allowing the system to understand event relationships for ordering, compaction, and conflict detection:
+
+```ts
+const facts = defineFacts({
+  todoExists: (id: string) => [`todo:${id}`, true] as const,
+  seatAvailable: (seatId: string) => [`seat:${seatId}:available`, true] as const,
+  roomGuestCount: (roomId: string, count: number) => [`room:${roomId}:guests`, count] as const,
+})
+
+const todoCreated = Events.synced({
+  name: 'v1.TodoCreated',
+  schema: Schema.Struct({ id: Schema.String, text: Schema.String }),
+  facts: ({ id }) => ({
+    modify: { set: [facts.todoExists(id)], unset: [] },
+    require: [],
+  }),
+})
+
+const commentCreated = Events.synced({
+  name: 'v1.CommentCreated',
+  schema: Schema.Struct({ taskId: Schema.String, text: Schema.String }),
+  facts: ({ taskId }) => ({
+    modify: { set: [], unset: [] },
+    require: [facts.todoExists(taskId)], // Fails during rebase if todo was deleted
+  }),
+})
+
+const guestCheckedIn = Events.synced({
+  name: 'v1.GuestCheckedIn',
+  schema: Schema.Struct({ roomId: Schema.String, guestId: Schema.String }),
+  facts: ({ roomId }, currentFacts) => {
+    const currentCount = currentFacts.get(`room:${roomId}:guests`) ?? 0
+    return {
+      modify: { set: [facts.roomGuestCount(roomId, currentCount + 1)], unset: [] },
+      require: [facts.roomGuestCount(roomId, currentCount)], // Fails if count changed
+    }
+  },
+})
+```
+
+During rebase, the system checks each pending event's `require` entries against the facts snapshot built from confirmed events. If any required fact doesn't match, the event is dropped from the pending set.
+
+#### Why It Was Rejected
+
+1. **Preconditions can only reject, not adapt.** When a precondition fails, the only option is to drop the event. The system cannot produce a `GuestWaitlisted` event instead of `GuestCheckedIn`, suggest an alternative seat, or relocate a comment to an orphaned-comments bucket. In the proposed solution, command handlers can inspect the new state and produce contextually appropriate alternative events during replay.
+
+2. **Limited expressiveness.** The facts system operates on a flat key-value map, not the full state DB. Complex invariants—multi-table joins, aggregate queries, conditional business rules—cannot be expressed as simple fact requirements. Either the facts system grows into a full query engine (reimplementing much of what a command handler already does), or it remains too limited to express real-world invariants. For instance, "a guest can only check in if the room exists, is not under maintenance, has capacity, and the guest hasn't already checked in elsewhere" requires multiple coordinated facts that are difficult to keep consistent.
+
+3. **Facts must mirror state, creating a parallel data model.** Every piece of state that an event depends on must be explicitly modeled as a fact and kept in sync with the actual state DB. The `roomGuestCount` fact must always match the real count in the `room_guests` table. This creates a shadow data model that must be maintained alongside the state DB, with divergence between the two being a source of bugs. The proposed solution validates directly against the state DB—the single source of truth.
+
+4. **Per-event-type boilerplate.** Every event type must declare its own fact interactions, even when multiple events share the same invariant. If several event types all reference a task, each must independently `require: [facts.todoExists(taskId)]`. The proposed solution consolidates invariant logic per command, and a single command can produce any combination of events with shared validation.
 
 ### Alternative D: Client-Authoritative Events
 
