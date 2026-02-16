@@ -694,7 +694,7 @@ jobs:
           path: tmp/ci-docs/
           retention-days: 14
       - name: Deploy docs
-        if: "${{ github.event_name != 'pull_request' || github.event.pull_request.head.repo.fork != true }}"
+        if: "${{ success() && (github.event_name != 'pull_request' || github.event.pull_request.head.repo.fork != true) }}"
         run: 'dt docs:deploy'
         env:
           NETLIFY_AUTH_TOKEN: '${{ secrets.NETLIFY_AUTH_TOKEN }}'
