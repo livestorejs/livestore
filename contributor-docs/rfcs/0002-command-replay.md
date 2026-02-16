@@ -477,18 +477,41 @@ This approach treats the symptom (materialization failures) rather than the caus
 
 ### Alternative B: Validation Hooks During Rebase
 
-```typescript
-interface RebaseValidator {
-  // Called for each local event before it's re-parented
-  validate(event: Event, newParentState: State): ValidationResult;
-}
+Instead of introducing commands, keep direct event commits but add user-defined validation hooks that run during the rebase step. Before each pending event is re-applied onto the new confirmed state, a hook inspects the event against the current state and decides whether to allow it, skip it, or replace it with alternative events.
 
-type ValidationResult = 
-  | { valid: true }
-  | { valid: false, reason: string, suggestedAction: 'drop' | 'conflict' | 'transform' }
+```ts
+const rebaseHooks = defineRebaseHooks(events, {
+  'v1.GuestCheckedIn': ({ roomId, guestId }, ctx) => {
+    const guestCount = ctx.query(tables.roomGuests.where({ roomId }).count())
+    const room = ctx.query(tables.rooms.get(roomId))
+    if (guestCount >= room.capacity) {
+      // Option 1: Drop the event
+      return skip()
+      // Option 2: Replace with alternative event(s)
+      return replace(events.guestWaitlisted({ roomId, guestId }))
+    }
+    return allow()
+  },
+
+  'v1.CommentCreated': ({ taskId, commentId, text }, ctx) => {
+    const task = ctx.query(tables.tasks.get(taskId))
+    if (!task) return skip()
+    return allow()
+  },
+})
 ```
 
-This would at least detect violations, though resolution is still complex.
+#### Why It Was Rejected
+
+This is closer to the root cause than [Alternative A](#alternative-a-invariant-validation-in-materializers) because validation runs during rebase rather than during general materialization, and hooks can produce replacement events rather than only compensating state. However, it still falls short:
+
+1. **Hooks lack the original intent.** Like materializers, hooks only see the event, not the user's intention that produced it. A `GuestCheckedIn` event tells the hook *what* happened but not *why*—whether the user specifically wanted that room, would accept any available room, or should be waitlisted. Without the intent, hook logic must guess at the appropriate resolution. In the proposed solution, the command handler has access to the full command payload and can make informed decisions about alternatives.
+
+2. **Duplicate validation.** Events are validated once at creation time (before commit) and again during rebase (in hooks). These two validation paths must stay in sync—if you add a new invariant to one but forget the other, violations slip through. The proposed solution consolidates validation into a single command handler that runs in both phases.
+
+3. **No structured feedback to the user.** Hooks run during the internal rebase process. There's no typed API for the application to learn that an event was skipped or replaced. The user's action silently disappears or changes without notification. We can't add a `confirmation` promise to `store.commit()`'s result because it would be nonsensical when the hooks would result in different events.
+
+4. **Per-event-type boilerplate.** Every event type that could be affected by rebase needs its own hook, even when multiple events share the same invariant (e.g., several event types that all reference a task). The proposed solution consolidates invariant logic per command, and a single command can produce any combination of events.
 
 ### Alternative C: Preconditions as Event Metadata
 
