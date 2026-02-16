@@ -7,14 +7,14 @@ import { statusOptions } from '../../../data/status-options.ts'
 import { useFilterState } from '../../../livestore/queries.ts'
 import type { Priority } from '../../../types/priority.ts'
 import type { Status } from '../../../types/status.ts'
-import { Icon, type IconName } from '../../icons/index.tsx'
+import { Icon } from '../../icons/index.tsx'
 
 export const FilterMenu = ({ type, children }: { type?: 'status' | 'priority'; children?: React.ReactNode }) => {
   const [filterState, setFilterState] = useFilterState()
 
   const toggleFilter = React.useCallback(
     ({ type, value }: { type: 'status'; value: Status } | { type: 'priority'; value: Priority }) => {
-      let filters: (Status | Priority)[] | undefined = [...(filterState[type] ?? [])]
+      let filters: Status[] | undefined = [...(filterState[type] ?? [])]
       if (filters.includes(value)) filters.splice(filters.indexOf(value), 1)
       else filters.push(value)
       if (!filters.length) filters = undefined
@@ -58,7 +58,7 @@ export const FilterMenu = ({ type, children }: { type?: 'status' | 'priority'; c
                     >
                       {active && <CheckIcon className="size-4 text-white" />}
                     </div>
-                    <Icon name={icon as IconName} className={`size-3.5 ${style}`} />
+                    <Icon name={icon} className={`size-3.5 ${style}`} />
                     <span>{name}</span>
                   </MenuItem>
                 )
@@ -81,7 +81,7 @@ export const FilterMenu = ({ type, children }: { type?: 'status' | 'priority'; c
                     >
                       {active && <CheckIcon className="size-4 text-white" />}
                     </div>
-                    <Icon name={icon as IconName} className={`size-3.5 ${style}`} />
+                    <Icon name={icon} className={`size-3.5 ${style}`} />
                     <span>{name}</span>
                   </MenuItem>
                 )
