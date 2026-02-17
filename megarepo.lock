@@ -3,10 +3,10 @@
   "members": {
     "effect-utils": {
       "url": "https://github.com/overengineeringstudio/effect-utils",
-      "ref": "main",
-      "commit": "73cb08ab2bc6afe80e35f8ca646c8103d937c74e",
-      "pinned": false,
-      "lockedAt": "2026-02-15T16:45:00.000Z"
+      "ref": "schickling/devenv-tui-ci-todo",
+      "commit": "ec0af5527f5987bb695690cbbd3b8f0493069b29",
+      "pinned": true,
+      "lockedAt": "2026-02-16T19:22:03.238Z"
     },
     "overeng-beads-public": {
       "url": "https://github.com/overengineeringstudio/overeng-beads-public",
