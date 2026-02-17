@@ -134,6 +134,6 @@ export type CommandHandler<
   TError = never,
 > = (
   /** Decoded command arguments. */
-  args: TCommandDef['schema']['Type'],
+  commandArgs: TCommandDef['schema']['Type'],
   context: CommandHandlerContext,
 ) => CommandHandlerResult<TError>

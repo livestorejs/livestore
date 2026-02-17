@@ -2,8 +2,13 @@ import { shouldNeverHappen } from '@livestore/utils'
 import { Schema } from '@livestore/utils/effect'
 import { nanoid } from '@livestore/utils/nanoid'
 
-import type { CommandHandler, CommandHandlerContext, CommandHandlerResult, ExtractCommandError } from './command-handler.ts'
-import { makeCommandInstance, type CommandInstance } from './command-instance.ts'
+import type {
+  CommandHandler,
+  CommandHandlerContext,
+  CommandHandlerResult,
+  ExtractCommandError,
+} from './command-handler.ts'
+import { type CommandInstance, makeCommandInstance } from './command-instance.ts'
 
 /**
  * Core type representing a command definition in LiveStore.
@@ -80,19 +85,19 @@ export type CommandDefRecord = {
 export function defineCommand<TName extends string, TArgs, TEncoded = TArgs, TReturn = ReadonlyArray<any>>(options: {
   name: TName
   schema: Schema.Schema<TArgs, TEncoded>
-  handler: (args: Schema.Schema.Type<Schema.Schema<TArgs, TEncoded>>, context: CommandHandlerContext) => TReturn
+  handler: (commandArgs: Schema.Schema.Type<Schema.Schema<TArgs, TEncoded>>, context: CommandHandlerContext) => TReturn
 }): CommandDef<TName, TArgs, TEncoded, ExtractCommandError<TReturn>> {
   type TError = ExtractCommandError<TReturn>
 
   const { name, schema, handler } = options
 
-  const makeCommand = (args: TArgs) => {
-    const validation = Schema.validateEither(schema)(args)
+  const makeCommand = (commandArgs: TArgs) => {
+    const validation = Schema.validateEither(schema)(commandArgs)
     if (validation._tag === 'Left') {
       shouldNeverHappen(`Invalid command args for command '${name}':`, validation.left.message, '\n')
     }
 
-    return makeCommandInstance<TName, TArgs, TError>({ name, args, id: nanoid() })
+    return makeCommandInstance<TName, TArgs, TError>({ name, args: commandArgs, id: nanoid() })
   }
 
   // Attach metadata to function
