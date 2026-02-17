@@ -12,7 +12,8 @@ inputs:
       nixpkgs:
         follows: nixpkgs
   effect-utils:
-    url: github:overengineeringstudio/effect-utils
+    # TODO: Switch back to main once dt TUI fix is merged (https://github.com/cachix/devenv/issues/2504)
+    url: github:overengineeringstudio/effect-utils/schickling/devenv-tui-ci-todo
     inputs:
       nixpkgs:
         follows: nixpkgs
