@@ -6,7 +6,7 @@ import type { QueryBuilder } from '../state/sqlite/query-builder/mod.ts'
 /**
  * Function signature for querying current state within a command handler.
  *
- * Allows handlers to validate preconditions by reading existing data.
+ * Allows handlers to validate invariants by reading existing data.
  * Can be called with a type-safe query builder or a raw SQL query.
  *
  * @example
@@ -83,7 +83,7 @@ export interface CommandHandlerContext {
 }
 
 /**
- * Result of a command handler invocation.
+ * Result of a command handler execution.
  *
  * Handlers return either a single event, an array of events, or an error.
  * The runtime distinguishes events from errors via `Array.isArray` and duck-typing
@@ -122,11 +122,11 @@ export const normalizeHandlerResult = <TError>(
 }
 
 /**
- * Function type for validating a command and producing events.
+ * Function type for validating a command and producing event(s) or error.
  *
  * Handlers receive the decoded command arguments and a context with state
- * access. They should validate preconditions and return the events to be
- * committed, or return an error value for typed failure.
+ * access. They should validate invariants and return the events to be
+ * committed, or return an error for expected and recoverable failures.
  */
 export type CommandHandler<
   TCommandDef extends { schema: Schema.Schema<any, any> } = CommandDef.AnyWithoutFn,
@@ -143,7 +143,7 @@ export type CommandHandler<
  * A CommandDef defines the structure and behavior of a command type, including:
  * - A unique name identifying the command type
  * - A schema for validating command arguments
- * - A handler function that validates and produces events
+ * - A handler function that validates invariants and produces event(s) or error
  *
  * CommandDefs are callable - invoking them creates a command instance suitable for `store.execute()`.
  */
@@ -157,7 +157,7 @@ export type CommandDef<TName extends string, TArgs, TEncoded = TArgs, TError = n
   /** Effect Schema used for validating command arguments. */
   readonly schema: Schema.Schema<TArgs, TEncoded>
 
-  /** Handler function that validates the command and produces events. */
+  /** Handler function that validates invariants and produces event(s) or error. */
   readonly handler: CommandHandler<CommandDef<TName, TArgs, TEncoded, TError>, TError>
 
   /**
