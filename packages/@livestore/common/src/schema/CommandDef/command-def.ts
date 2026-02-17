@@ -72,12 +72,12 @@ export interface CommandHandlerContext {
 
   /**
    * Indicates whether the handler is running during:
-   * - `'initial'` — first execution via `store.execute()`
-   * - `'replay'` — re-execution after a sync rebase changed the underlying state
+   * - `'initial'` — initial immediate execution via `store.execute()`
+   * - `'replay'` — re-execution after pulling new events
    *
-   * Use this to tailor behaviour: e.g. return a typed error during `'initial'` so the
+   * Use this to tailor behavior: e.g. return an error during `'initial'` so the
    * UI can show immediate feedback, but return alternative events during `'replay'`
-   * to avoid unnecessary conflicts.
+   * to handle conflicts gracefully within your domain logic.
    */
   readonly phase: CommandHandlerExecutionPhase
 }
