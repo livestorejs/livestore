@@ -19,14 +19,13 @@ env:
   CACHIX_AUTH_TOKEN: '${{ secrets.CACHIX_AUTH_TOKEN }}'
   FORCE_SETUP: '1'
   CI: 'true'
-  DEVENV_TUI: 'false'
 
 jobs:
   lint:
     runs-on: [namespace-profile-linux-x86-64, 'namespace-features:github.run-id=${{ github.run_id }}']
     defaults:
       run:
-        shell: devenv shell bash -- -e {0}
+        shell: devenv shell --no-tui bash -- -e {0}
     steps:
       - uses: actions/checkout@v4
       - name: Install Nix
@@ -66,7 +65,7 @@ jobs:
     runs-on: [namespace-profile-linux-x86-64, 'namespace-features:github.run-id=${{ github.run_id }}']
     defaults:
       run:
-        shell: devenv shell bash -- -e {0}
+        shell: devenv shell --no-tui bash -- -e {0}
     steps:
       - uses: actions/checkout@v4
       - name: Install Nix
@@ -106,7 +105,7 @@ jobs:
     runs-on: [namespace-profile-linux-x86-64, 'namespace-features:github.run-id=${{ github.run_id }}']
     defaults:
       run:
-        shell: devenv shell bash -- -e {0}
+        shell: devenv shell --no-tui bash -- -e {0}
     steps:
       - uses: actions/checkout@v4
       - name: Install Nix
@@ -142,14 +141,14 @@ jobs:
           fi
         shell: bash
       - name: Preflight workspace bootstrap
-        run: 'DEVENV_SKIP_SETUP=1 devenv tasks run pnpm:install genie:run ts:build --mode before --verbose'
+        run: 'DEVENV_SKIP_SETUP=1 devenv tasks run pnpm:install genie:run ts:build --mode before --verbose --no-tui'
         shell: bash
       - run: 'dt test:unit'
   test-integration-node-sync:
     runs-on: [namespace-profile-linux-x86-64, 'namespace-features:github.run-id=${{ github.run_id }}']
     defaults:
       run:
-        shell: devenv shell bash -- -e {0}
+        shell: devenv shell --no-tui bash -- -e {0}
     steps:
       - uses: actions/checkout@v4
       - name: Install Nix
@@ -240,7 +239,7 @@ jobs:
     runs-on: [namespace-profile-linux-x86-64, 'namespace-features:github.run-id=${{ github.run_id }}']
     defaults:
       run:
-        shell: devenv shell bash -- -e {0}
+        shell: devenv shell --no-tui bash -- -e {0}
     steps:
       - uses: actions/checkout@v4
       - name: Install Nix
@@ -276,7 +275,7 @@ jobs:
           fi
         shell: bash
       - name: Preflight workspace bootstrap
-        run: 'DEVENV_SKIP_SETUP=1 devenv tasks run pnpm:install genie:run ts:build --mode before --verbose'
+        run: 'DEVENV_SKIP_SETUP=1 devenv tasks run pnpm:install genie:run ts:build --mode before --verbose --no-tui'
         shell: bash
       - name: Set OTEL_EXPORTER_OTLP_HEADERS environment variable
         env:
@@ -321,7 +320,7 @@ jobs:
     runs-on: [namespace-profile-linux-x86-64, 'namespace-features:github.run-id=${{ github.run_id }}']
     defaults:
       run:
-        shell: devenv shell bash -- -e {0}
+        shell: devenv shell --no-tui bash -- -e {0}
     steps:
       - uses: actions/checkout@v4
       - name: Install Nix
@@ -357,7 +356,7 @@ jobs:
           fi
         shell: bash
       - name: Preflight workspace bootstrap
-        run: 'DEVENV_SKIP_SETUP=1 devenv tasks run pnpm:install genie:run ts:build --mode before --verbose'
+        run: 'DEVENV_SKIP_SETUP=1 devenv tasks run pnpm:install genie:run ts:build --mode before --verbose --no-tui'
         shell: bash
       - name: Set OTEL_EXPORTER_OTLP_HEADERS environment variable
         env:
@@ -399,7 +398,7 @@ jobs:
     runs-on: [namespace-profile-linux-x86-64, 'namespace-features:github.run-id=${{ github.run_id }}']
     defaults:
       run:
-        shell: devenv shell bash -- -e {0}
+        shell: devenv shell --no-tui bash -- -e {0}
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
@@ -438,7 +437,7 @@ jobs:
           fi
         shell: bash
       - name: Preflight workspace bootstrap
-        run: 'DEVENV_SKIP_SETUP=1 devenv tasks run pnpm:install genie:run ts:build --mode before --verbose'
+        run: 'DEVENV_SKIP_SETUP=1 devenv tasks run pnpm:install genie:run ts:build --mode before --verbose --no-tui'
         shell: bash
       - name: Set OTEL_EXPORTER_OTLP_HEADERS environment variable
         env:
@@ -493,7 +492,7 @@ jobs:
           fi
         shell: bash
       - name: Preflight workspace bootstrap
-        run: 'DEVENV_SKIP_SETUP=1 devenv tasks run pnpm:install genie:run ts:build --mode before --verbose'
+        run: 'DEVENV_SKIP_SETUP=1 devenv tasks run pnpm:install genie:run ts:build --mode before --verbose --no-tui'
         shell: bash
       - name: Set OTEL_EXPORTER_OTLP_HEADERS environment variable
         env:
@@ -509,7 +508,7 @@ jobs:
         working-directory: packages/@livestore/wa-sqlite
         run: 'nix run .#build'
       - name: Run wa-sqlite tests
-        run: 'devenv shell dt test:integration:wa-sqlite'
+        run: 'devenv shell --no-tui dt test:integration:wa-sqlite'
         env:
           COMMIT_SHA: '${{ github.event.pull_request.head.sha || github.sha }}'
           GRAFANA_ENDPOINT: 'https://livestore.grafana.net'
@@ -520,7 +519,7 @@ jobs:
     needs: [test-unit, test-integration-node-sync, test-integration-sync-provider, test-integration-playwright]
     defaults:
       run:
-        shell: devenv shell bash -- -e {0}
+        shell: devenv shell --no-tui bash -- -e {0}
     steps:
       - uses: actions/checkout@v4
       - name: Install Nix
@@ -560,7 +559,7 @@ jobs:
     runs-on: [namespace-profile-linux-x86-64, 'namespace-features:github.run-id=${{ github.run_id }}']
     defaults:
       run:
-        shell: devenv shell bash -- -e {0}
+        shell: devenv shell --no-tui bash -- -e {0}
     steps:
       - uses: actions/checkout@v4
       - name: Install Nix
@@ -596,7 +595,7 @@ jobs:
           fi
         shell: bash
       - name: Preflight workspace bootstrap
-        run: 'DEVENV_SKIP_SETUP=1 devenv tasks run pnpm:install genie:run ts:build --mode before --verbose'
+        run: 'DEVENV_SKIP_SETUP=1 devenv tasks run pnpm:install genie:run ts:build --mode before --verbose --no-tui'
         shell: bash
       - name: Install examples dependencies
         run: pnpm install --frozen-lockfile --dir examples
@@ -614,7 +613,7 @@ jobs:
     runs-on: [namespace-profile-linux-x86-64, 'namespace-features:github.run-id=${{ github.run_id }}']
     defaults:
       run:
-        shell: devenv shell bash -- -e {0}
+        shell: devenv shell --no-tui bash -- -e {0}
     steps:
       - uses: actions/checkout@v4
       - name: Install Nix
@@ -650,7 +649,7 @@ jobs:
           fi
         shell: bash
       - name: Preflight workspace bootstrap
-        run: 'DEVENV_SKIP_SETUP=1 devenv tasks run pnpm:install genie:run ts:build --mode before --verbose'
+        run: 'DEVENV_SKIP_SETUP=1 devenv tasks run pnpm:install genie:run ts:build --mode before --verbose --no-tui'
         shell: bash
       - name: Build docs snippets
         run: |

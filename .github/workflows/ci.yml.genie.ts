@@ -68,10 +68,12 @@ fi`,
 /**
  * Deterministic preflight for jobs that need generated artifacts/build state.
  * Uses DEVENV_SKIP_SETUP to avoid nested setup recursion.
+ *
+ * TODO: Drop `--no-tui` once devenv auto-disables TUI in CI (https://github.com/cachix/devenv/issues/2504)
  */
 const deterministicPreflightStep = {
   name: 'Preflight workspace bootstrap',
-  run: 'DEVENV_SKIP_SETUP=1 devenv tasks run pnpm:install genie:run ts:build --mode before --verbose',
+  run: 'DEVENV_SKIP_SETUP=1 devenv tasks run pnpm:install genie:run ts:build --mode before --verbose --no-tui',
   shell: 'bash',
 }
 
@@ -105,8 +107,6 @@ export default githubWorkflow({
     CACHIX_AUTH_TOKEN: '${{ secrets.CACHIX_AUTH_TOKEN }}',
     FORCE_SETUP: '1',
     CI: 'true',
-    /** TODO: Drop once devenv auto-disables TUI in CI (https://github.com/cachix/devenv/issues/2504) */
-    DEVENV_TUI: 'false',
   },
 
   jobs: {
@@ -296,7 +296,7 @@ fi`,
         },
         {
           name: 'Run wa-sqlite tests',
-          run: 'devenv shell dt test:integration:wa-sqlite',
+          run: 'devenv shell --no-tui dt test:integration:wa-sqlite',
           env: {
             COMMIT_SHA: PR_HEAD_SHA,
             GRAFANA_ENDPOINT: 'https://livestore.grafana.net',
