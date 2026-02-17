@@ -19,6 +19,8 @@ overrides:
 
 importers:
 
+  .: {}
+
   ../packages/@livestore/adapter-cloudflare:
     dependencies:
       '@cloudflare/workers-types':
