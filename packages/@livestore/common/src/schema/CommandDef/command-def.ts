@@ -37,8 +37,8 @@ export type CommandHandlerContextQuery = {
 /**
  * Discriminated union indicating the execution phase of a command handler.
  *
- * - `'initial'` — first execution via `store.execute()`
- * - `'replay'` — re-execution after a sync rebase changed the underlying state
+ * - `'initial'` — initial immediate execution via `store.execute()`
+ * - `'replay'` — re-execution after pulling new events
  */
 export type CommandHandlerExecutionPhase = { readonly _tag: 'initial' } | { readonly _tag: 'replay' }
 
