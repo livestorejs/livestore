@@ -10,23 +10,25 @@
  * Result of confirmation after sync.
  *
  * Used as the resolution type of {@link ExecuteResultPending.confirmation} so
- * consumers can pattern-match on success vs conflict.
+ * consumers can pattern-match on confirmed vs. conflict:
+ *
+ * - `confirmed`: Command's event(s) were pushed and confirmed by the sync backend
+ * - `conflict`: Command's handler returned an error during command replay
  */
 export type CommandConfirmation<TError = unknown> =
   | { readonly _tag: 'confirmed' }
   | { readonly _tag: 'conflict'; readonly error: TError }
 
 /**
- * Result of a failed command execution.
+ * Result of a failed command immediate execution.
  *
- * Returned when the command handler returns an error value or when the
- * runtime catches an unexpected throw during initial execution.
+ * Returned when the command handler returns an error during initial execution.
  */
 export interface ExecuteResultFailed<TError = unknown> {
-  /** Type discriminator for failed result. */
+  /** Type discriminator for a failed result. */
   readonly _tag: 'failed'
 
-  /** The error that caused the command to fail. */
+  /** The error returned by the command handler. */
   readonly error: TError
 
   /**
@@ -34,7 +36,10 @@ export interface ExecuteResultFailed<TError = unknown> {
    *
    * Allows callers who don't need to handle immediate failures to
    * access `.confirmation` directly without narrowing `_tag` first.
-   * The rejection signals that no events were produced.
+   *
+   * It rejects when the command handler returns an error during initial
+   * execution since awaiting `.confirmation` directly implies we aren't expecting
+   * immediate failures.
    */
   readonly confirmation: Promise<CommandConfirmation<TError>>
 }
@@ -51,8 +56,11 @@ export interface ExecuteResultPending<TError = never> {
   readonly _tag: 'pending'
 
   /**
-   * Promise that resolves when the command's events are confirmed by the sync backend,
-   * or rejects for unexpected (thrown) errors.
+   * Promise that resolves when the command's event(s) are confirmed by the sync backend
+   * or an error is returned by the command handler during command replay.
+   *
+   * Rejects when the command handler throws (unexpected and non-recoverable) an error
+   * during command replay.
    *
    * @example Await confirmation directly (ignores immediate failures)
    * ```ts
@@ -67,7 +75,7 @@ export interface ExecuteResultPending<TError = never> {
    * const result = store.execute(commands.createTodo({ id, text }))
    *
    * if (result._tag === 'failed' && result.error._tag === 'TodoTextEmpty') {
-   *   setError('Todo text cannot be empty.')
+   *   toast.error('Todo text cannot be empty.')
    *   return
    * }
    *
