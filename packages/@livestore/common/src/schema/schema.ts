@@ -87,10 +87,6 @@ export interface InternalState {
 export interface InputSchema {
   readonly events: ReadonlyArray<EventDef.AnyWithoutFn> | Record<string, EventDef.AnyWithoutFn>
   readonly state: InternalState
-  /**
-   * Command definitions for this schema.
-   * Commands encode user intentions that can be re-evaluated during sync reconciliation.
-   */
   readonly commands?: ReadonlyArray<CommandDef.AnyWithoutFn> | Record<string, CommandDef.AnyWithoutFn>
   readonly devtools?: {
     /**
