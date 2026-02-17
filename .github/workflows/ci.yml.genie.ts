@@ -105,6 +105,8 @@ export default githubWorkflow({
     CACHIX_AUTH_TOKEN: '${{ secrets.CACHIX_AUTH_TOKEN }}',
     FORCE_SETUP: '1',
     CI: 'true',
+    /** TODO: Drop once devenv auto-disables TUI in CI (https://github.com/cachix/devenv/issues/2504) */
+    DEVENV_TUI: 'false',
   },
 
   jobs: {
@@ -430,7 +432,7 @@ pgrep -af 'astro|chromium|chrome_crashpad_handler|node|mono|dt' > tmp/ci-docs/pg
         },
         {
           name: 'Deploy docs',
-          if: `\${{ github.event_name != 'pull_request' || ${IS_NOT_FORK} }}`,
+          if: `\${{ success() && (github.event_name != 'pull_request' || ${IS_NOT_FORK}) }}`,
           run: 'dt docs:deploy',
           env: { NETLIFY_AUTH_TOKEN: '${{ secrets.NETLIFY_AUTH_TOKEN }}' },
         },
