@@ -121,7 +121,7 @@ export const makeSchema = <TInputSchema extends InputSchema>(
       eventsDefsMap.set(eventDef.name, eventDef)
     }
   } else {
-    for (const eventDef of Object.values(inputSchema.events ?? {})) {
+    for (const eventDef of Object.values(inputSchema.events)) {
       if (eventsDefsMap.has(eventDef.name) === true) {
         shouldNeverHappen(`Duplicate event name: ${eventDef.name}. Please use unique names for events.`)
       }
@@ -147,7 +147,7 @@ export const makeSchema = <TInputSchema extends InputSchema>(
         commandDefsMap.set(commandDef.name, commandDef)
       }
     } else {
-      for (const commandDef of Object.values(inputSchema.commands ?? {})) {
+      for (const commandDef of Object.values(inputSchema.commands)) {
         if (commandDefsMap.has(commandDef.name)) {
           shouldNeverHappen(`Duplicate command name: ${commandDef.name}. Please use unique names for commands.`)
         }
