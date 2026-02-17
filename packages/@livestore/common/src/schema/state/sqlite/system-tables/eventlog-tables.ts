@@ -7,7 +7,7 @@ import { table } from '../table-def.ts'
 /**
  * EVENTLOG DATABASE SYSTEM TABLES
  *
- * ⚠️  CRITICAL: NEVER modify eventlog schemas without bumping `liveStoreStorageFormatVersion`!
+ * ⚠️CRITICAL: NEVER modify eventlog schemas without bumping `liveStoreStorageFormatVersion`!
  * Eventlog is the source of truth - schema changes cause permanent data loss.
  *
  * TODO: Implement proper eventlog versioning system to prevent accidental data loss
@@ -64,25 +64,22 @@ export type SyncStatusRow = typeof syncStatusTable.Type
 export const PENDING_COMMANDS_TABLE = '__livestore_pending_commands'
 
 /**
- * Stores pending commands awaiting confirmation.
+ * Stores pending commands awaiting confirmation of their resulting events.
  *
- * Commands are inserted when executed locally and deleted when confirmed or failed.
+ * Commands are inserted when executed locally and deleted when their resulting events are confirmed or when they fail.
  * If a row exists, the command is pending.
  */
 export const pendingCommandsTable = table({
   name: PENDING_COMMANDS_TABLE,
   columns: {
-    /** Unique identifier for the command instance (nanoid). */
+    /** Unique identifier for the command instance. */
     id: SqliteDsl.text({ primaryKey: true }),
 
-    /** The command type name (e.g., 'CheckInGuest'). */
+    /** The command type’s name (e.g., 'CheckInGuest'). */
     name: SqliteDsl.text({ nullable: false }),
 
-    /** Serialized command arguments (JSON). */
+    /** Serialized command arguments. */
     args: SqliteDsl.json({ nullable: false }),
-
-    /** ISO timestamp when the command was enqueued. */
-    createdAt: SqliteDsl.text({ nullable: false }),
 
     /**
      * Array of event sequence numbers produced by this command.
@@ -91,7 +88,6 @@ export const pendingCommandsTable = table({
      */
     producedEventSeqNums: SqliteDsl.json({ nullable: true }),
   },
-  indexes: [{ columns: ['createdAt'], name: 'idx_pending_commands_created' }],
 })
 
 export type PendingCommandRow = typeof pendingCommandsTable.Type

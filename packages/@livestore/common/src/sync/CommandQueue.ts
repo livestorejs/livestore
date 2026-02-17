@@ -116,13 +116,12 @@ export const layer = (db: SqliteDb): Layer.Layer<CommandQueue> =>
             }))
 
             db.execute(
-              sql`INSERT OR IGNORE INTO ${PENDING_COMMANDS_TABLE} (id, name, args, createdAt, producedEventSeqNums)
-                  VALUES ($id, $name, $args, $createdAt, $producedEventSeqNums)`,
+              sql`INSERT OR IGNORE INTO ${PENDING_COMMANDS_TABLE} (id, name, args, producedEventSeqNums)
+                  VALUES ($id, $name, $args, $producedEventSeqNums)`,
               {
                 $id: command.id,
                 $name: command.name,
                 $args: JSON.stringify(command.args),
-                $createdAt: new Date().toISOString(),
                 $producedEventSeqNums: JSON.stringify(serializedSeqNums),
               } as any,
             )
@@ -139,9 +138,9 @@ export const layer = (db: SqliteDb): Layer.Layer<CommandQueue> =>
         Effect.try({
           try: () =>
             db.select<PendingCommandRow>(
-              sql`SELECT id, name, args, createdAt, producedEventSeqNums
+              sql`SELECT id, name, args, producedEventSeqNums
                   FROM ${PENDING_COMMANDS_TABLE}
-                  ORDER BY createdAt ASC`,
+                  ORDER BY rowid ASC`,
             ),
           catch: (cause) =>
             new CommandQueueError({
