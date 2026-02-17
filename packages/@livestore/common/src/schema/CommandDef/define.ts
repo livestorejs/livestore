@@ -1,44 +1,3 @@
-/**
- * Command Definition Functions
- *
- * This module provides functions for creating command definitions in LiveStore.
- * Commands represent user intentions that can be validated against current state
- * and re-evaluated during sync reconciliation.
- *
- * @example
- * ```ts
- * import { defineCommand, Schema } from '@livestore/livestore'
- *
- * // Infallible command — handler always returns events
- * export const commands = {
- *   checkInGuest: defineCommand({
- *     name: 'CheckInGuest',
- *     schema: Schema.Struct({ roomId: Schema.String, guestId: Schema.String }),
- *     handler: ({ roomId, guestId }, ctx) => {
- *       return [events.guestCheckedIn({ roomId, guestId })]
- *     },
- *   }),
- * }
- * ```
- *
- * @example
- * ```ts
- * // Fallible command — handler may return a typed error value
- * class RoomNotFound { readonly _tag = 'RoomNotFound' as const }
- *
- * const checkInGuest = defineCommand({
- *   name: 'CheckInGuest',
- *   schema: Schema.Struct({ roomId: Schema.String, guestId: Schema.String }),
- *   handler: ({ roomId, guestId }, ctx) => {
- *     const room = ctx.query(tables.rooms.get(roomId))
- *     if (!room) return new RoomNotFound()
- *     return [events.guestCheckedIn({ roomId, guestId })]
- *   },
- * })
- * ```
- * @module
- */
-
 import { shouldNeverHappen } from '@livestore/utils'
 import { Schema } from '@livestore/utils/effect'
 import { nanoid } from '@livestore/utils/nanoid'
@@ -48,49 +7,9 @@ import type { CommandDef, CommandHandlerContext, CommandInstance, ExtractCommand
 /**
  * Creates a command definition.
  *
- * Commands encode user intentions that can be re-evaluated during sync.
- * The handler validates the command against current state and produces events,
- * or returns an error value for typed failure handling.
- *
- * @example Infallible command
- * ```ts
- * import { defineCommand } from '@livestore/livestore'
- * import { Schema } from 'effect'
- *
- * const checkInGuest = defineCommand({
- *   name: 'CheckInGuest',
- *   schema: Schema.Struct({
- *     roomId: Schema.String,
- *     guestId: Schema.String,
- *   }),
- *   handler: ({ roomId, guestId }, ctx) => {
- *     return [events.guestCheckedIn({ roomId, guestId })]
- *   },
- * })
- *
- * const result = store.execute(checkInGuest({ roomId: 'room-1', guestId: 'guest-1' }))
- * ```
- *
- * @example Fallible command with typed error
- * ```ts
- * class RoomNotFound { readonly _tag = 'RoomNotFound' as const }
- *
- * const checkInGuest = defineCommand({
- *   name: 'CheckInGuest',
- *   schema: Schema.Struct({ roomId: Schema.String, guestId: Schema.String }),
- *   handler: ({ roomId, guestId }, ctx) => {
- *     const room = ctx.query(tables.rooms.get(roomId))
- *     if (!room) return new RoomNotFound()
- *     return [events.guestCheckedIn({ roomId, guestId })]
- *   },
- * })
- *
- * const result = store.execute(checkInGuest({ roomId: 'room-1', guestId: 'guest-1' }))
- * if (result._tag === 'failed') {
- *   // result.error is RoomNotFound | CommandExecutionError — fully typed
- *   console.error(result.error)
- * }
- * ```
+ * Commands encode user intentions that can be re-evaluated during reconciliation.
+ * The handler validates the command against the current state, and returns event(s)
+ * or an error for expected and recoverable failures.
  */
 export function defineCommand<TName extends string, TArgs, TEncoded = TArgs, TReturn = ReadonlyArray<any>>(options: {
   name: TName
@@ -107,7 +26,6 @@ export function defineCommand<TName extends string, TArgs, TEncoded = TArgs, TRe
       shouldNeverHappen(`Invalid command args for command '${name}':`, validation.left.message, '\n')
     }
 
-    // The CommandInstanceTypeId field is a compile-time brand only — not set at runtime.
     return {
       _tag: 'Command',
       name,
