@@ -25,16 +25,15 @@
         ]
       },
       "locked": {
-        "lastModified": 1771317416,
-        "narHash": "sha256-m3oX0MKbNEh9AO0yS5qXa2YFS5cRpH4d7xoCNvctgmU=",
+        "lastModified": 1771319491,
+        "narHash": "sha256-ikAK5kYuOY5FVVr0IeAV/McbY/tp6oI13gmA47k1h9s=",
         "owner": "overengineeringstudio",
         "repo": "effect-utils",
-        "rev": "6a482427e5875310916967d8aaacbc68a75319fe",
+        "rev": "cb50755c5f470233c79169601f5dcec3b86a8cc4",
         "type": "github"
       },
       "original": {
         "owner": "overengineeringstudio",
-        "ref": "schickling/devenv-tui-ci-todo",
         "repo": "effect-utils",
         "type": "github"
       }
