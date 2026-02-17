@@ -47,8 +47,8 @@ export type CommandHandlerExecutionPhase = { readonly _tag: 'initial' } | { read
  *
  * Handlers receive this as their second argument. It provides read access to
  * the current state and indicates **when** the handler is running so handlers
- * can adapt their behaviour accordingly (e.g. return alternative events during
- * replay instead of failing with a typed error).
+ * can adapt their behavior accordingly (e.g. return alternative events during
+ * replay instead of returning an error).
  *
  * @example
  * ```ts
