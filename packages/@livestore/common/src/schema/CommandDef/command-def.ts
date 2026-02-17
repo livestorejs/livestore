@@ -11,19 +11,19 @@ import type { QueryBuilder } from '../state/sqlite/query-builder/mod.ts'
  *
  * @example
  * ```ts
- * handler: (cmd, ctx) => {
+ * handler: ({ roomId, guestId }, ctx) => {
  *   // With query builder
- *   const room = ctx.query(tables.rooms.get(cmd.roomId))
+ *   const room = ctx.query(tables.rooms.get(roomId))
  *   if (!room) throw new Error('Room not found')
  *
  *   // With raw SQL
  *   const guestCount = ctx.query({
  *     query: 'SELECT COUNT(*) FROM roomGuests WHERE roomId = ?',
- *     bindValues: [cmd.roomId],
+ *     bindValues: [roomId],
  *   })
  *   if (guestCount >= room.capacity) return new RoomAtCapacity()
  *
- *   return events.guestCheckedIn({ roomId: cmd.roomId, guestId: cmd.guestId })
+ *   return events.guestCheckedIn({ roomId, guestId })
  * }
  * ```
  */
@@ -52,17 +52,17 @@ export type CommandHandlerExecutionPhase = { readonly _tag: 'initial' } | { read
  *
  * @example
  * ```ts
- * handler: (cmd, ctx) => {
- *   const room = ctx.query(tables.rooms.get(cmd.roomId))
- *   const guestCount = ctx.query(tables.roomGuests.where({ roomId: cmd.roomId }).count())
+ * handler: ({ roomId, guestId }, ctx) => {
+ *   const room = ctx.query(tables.rooms.get(roomId))
+ *   const guestCount = ctx.query(tables.roomGuests.where({ roomId }).count())
  *
  *   if (guestCount >= room.capacity) {
  *     // During replay, adapt instead of erroring to avoid unnecessary conflicts
- *     if (ctx.phase._tag === 'replay') return events.guestWaitlisted({ roomId: cmd.roomId, guestId: cmd.guestId })
+ *     if (ctx.phase._tag === 'replay') return events.guestWaitlisted({ roomId, guestId })
  *     return new RoomAtCapacity()
  *   }
  *
- *   return events.guestCheckedIn({ roomId: cmd.roomId, guestId: cmd.guestId })
+ *   return events.guestCheckedIn({ roomId, guestId })
  * }
  * ```
  */

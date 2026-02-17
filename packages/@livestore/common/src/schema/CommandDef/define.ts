@@ -14,8 +14,8 @@
  *   checkInGuest: defineCommand({
  *     name: 'CheckInGuest',
  *     schema: Schema.Struct({ roomId: Schema.String, guestId: Schema.String }),
- *     handler: (cmd, ctx) => {
- *       return [events.guestCheckedIn({ roomId: cmd.roomId, guestId: cmd.guestId })]
+ *     handler: ({ roomId, guestId }, ctx) => {
+ *       return [events.guestCheckedIn({ roomId, guestId })]
  *     },
  *   }),
  * }
@@ -29,10 +29,10 @@
  * const checkInGuest = defineCommand({
  *   name: 'CheckInGuest',
  *   schema: Schema.Struct({ roomId: Schema.String, guestId: Schema.String }),
- *   handler: (cmd, ctx) => {
- *     const room = ctx.query(tables.rooms.get(cmd.roomId))
+ *   handler: ({ roomId, guestId }, ctx) => {
+ *     const room = ctx.query(tables.rooms.get(roomId))
  *     if (!room) return new RoomNotFound()
- *     return [events.guestCheckedIn({ roomId: cmd.roomId, guestId: cmd.guestId })]
+ *     return [events.guestCheckedIn({ roomId, guestId })]
  *   },
  * })
  * ```
@@ -63,8 +63,8 @@ import type { CommandDef, CommandHandlerContext, CommandInstance, ExtractCommand
  *     roomId: Schema.String,
  *     guestId: Schema.String,
  *   }),
- *   handler: (cmd, ctx) => {
- *     return [events.guestCheckedIn({ roomId: cmd.roomId, guestId: cmd.guestId })]
+ *   handler: ({ roomId, guestId }, ctx) => {
+ *     return [events.guestCheckedIn({ roomId, guestId })]
  *   },
  * })
  *
@@ -78,10 +78,10 @@ import type { CommandDef, CommandHandlerContext, CommandInstance, ExtractCommand
  * const checkInGuest = defineCommand({
  *   name: 'CheckInGuest',
  *   schema: Schema.Struct({ roomId: Schema.String, guestId: Schema.String }),
- *   handler: (cmd, ctx) => {
- *     const room = ctx.query(tables.rooms.get(cmd.roomId))
+ *   handler: ({ roomId, guestId }, ctx) => {
+ *     const room = ctx.query(tables.rooms.get(roomId))
  *     if (!room) return new RoomNotFound()
- *     return [events.guestCheckedIn({ roomId: cmd.roomId, guestId: cmd.guestId })]
+ *     return [events.guestCheckedIn({ roomId, guestId })]
  *   },
  * })
  *
