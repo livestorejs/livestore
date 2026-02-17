@@ -114,20 +114,7 @@ export const makeSchema = <TInputSchema extends InputSchema>(
     tables.set(tableDef.sqliteDef.name, tableDef)
   }
 
-  const eventsDefsMap = new Map<string, EventDef.AnyWithoutFn>()
-
-  if (isReadonlyArray(inputSchema.events) === true) {
-    for (const eventDef of inputSchema.events) {
-      eventsDefsMap.set(eventDef.name, eventDef)
-    }
-  } else {
-    for (const eventDef of Object.values(inputSchema.events)) {
-      if (eventsDefsMap.has(eventDef.name) === true) {
-        shouldNeverHappen(`Duplicate event name: ${eventDef.name}. Please use unique names for events.`)
-      }
-      eventsDefsMap.set(eventDef.name, eventDef)
-    }
-  }
+  const eventsDefsMap = toNamedMap(inputSchema.events, 'event')
 
   for (const tableDef of tables.values()) {
     if (tableIsClientDocumentTable(tableDef) === true && !eventsDefsMap.has(tableDef.set.name)) {
@@ -135,26 +122,9 @@ export const makeSchema = <TInputSchema extends InputSchema>(
     }
   }
 
-  // Process commands
-  const commandDefsMap = new Map<string, CommandDef.AnyWithoutFn>()
-
-  if (inputSchema.commands) {
-    if (isReadonlyArray(inputSchema.commands)) {
-      for (const commandDef of inputSchema.commands) {
-        if (commandDefsMap.has(commandDef.name)) {
-          shouldNeverHappen(`Duplicate command name: ${commandDef.name}. Please use unique names for commands.`)
-        }
-        commandDefsMap.set(commandDef.name, commandDef)
-      }
-    } else {
-      for (const commandDef of Object.values(inputSchema.commands)) {
-        if (commandDefsMap.has(commandDef.name)) {
-          shouldNeverHappen(`Duplicate command name: ${commandDef.name}. Please use unique names for commands.`)
-        }
-        commandDefsMap.set(commandDef.name, commandDef)
-      }
-    }
-  }
+  const commandDefsMap = inputSchema.commands
+    ? toNamedMap(inputSchema.commands, 'command')
+    : new Map<string, CommandDef.AnyWithoutFn>()
 
   const unknownEventHandling = normalizeUnknownEventHandling(inputSchema.unknownEventHandling)
 
@@ -223,4 +193,20 @@ export namespace FromInputSchema {
       : TCommands extends { [name: string]: CommandDef.Any }
         ? { [K in keyof TCommands as TCommands[K]['name']]: TCommands[K] }
         : CommandDefRecord
+}
+
+/** Converts an array-or-record of named items into a Map, checking for duplicate names. */
+const toNamedMap = <T extends { readonly name: string }>(
+  input: ReadonlyArray<T> | Record<string, T>,
+  label: string,
+): Map<string, T> => {
+  const map = new Map<string, T>()
+  const items = isReadonlyArray(input) ? input : Object.values(input)
+  for (const item of items) {
+    if (map.has(item.name)) {
+      shouldNeverHappen(`Duplicate ${label} name: ${item.name}. Please use unique names for ${label}s.`)
+    }
+    map.set(item.name, item)
+  }
+  return map
 }
