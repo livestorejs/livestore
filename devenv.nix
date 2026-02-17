@@ -73,6 +73,7 @@ let
     "tests/wa-sqlite"
     # other
     "docs"
+    "examples"
     "scripts"
   ];
 in
