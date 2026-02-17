@@ -22,6 +22,7 @@ export const eventlogMetaTable = table({
   name: EVENTLOG_META_TABLE,
   columns: {
     // TODO Adjust modeling so a global event never needs a client id component
+    // TODO(#1016): Add a commandId column to correlate events with their originating command
     seqNumGlobal: SqliteDsl.integer({ primaryKey: true, schema: EventSequenceNumber.Global.Schema }),
     seqNumClient: SqliteDsl.integer({ primaryKey: true, schema: EventSequenceNumber.Client.Schema }),
     seqNumRebaseGeneration: SqliteDsl.integer({ primaryKey: true }),
@@ -80,13 +81,6 @@ export const pendingCommandsTable = table({
 
     /** Serialized command arguments. */
     args: SqliteDsl.json({ nullable: false }),
-
-    /**
-     * Array of event sequence numbers produced by this command.
-     * Used to correlate events with their originating command.
-     * Format: Array of { global: number, client: number, rebaseGeneration: number }
-     */
-    producedEventSeqNums: SqliteDsl.json({ nullable: true }),
   },
 })
 

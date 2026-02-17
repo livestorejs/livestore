@@ -10,21 +10,11 @@
 import { Context, Effect, Layer, Schema } from '@livestore/utils/effect'
 
 import type { SqliteDb } from '../adapter-types.ts'
-import type * as EventSequenceNumber from '../schema/EventSequenceNumber/mod.ts'
 import { PENDING_COMMANDS_TABLE, type PendingCommandRow } from '../schema/state/sqlite/system-tables/eventlog-tables.ts'
 import { sql } from '../util.ts'
 
 // Re-export PendingCommandRow for consumers
 export type { PendingCommandRow }
-
-/**
- * Serialized event sequence number for storage.
- */
-export interface SerializedSeqNum {
-  global: number
-  client: number
-  rebaseGeneration: number
-}
 
 /**
  * Input for enqueuing a command.
@@ -36,8 +26,6 @@ export interface EnqueueCommandInput {
   readonly name: string
   /** Command arguments (will be JSON serialized). */
   readonly args: unknown
-  /** Sequence numbers of events produced by this command. */
-  readonly producedEventSeqNums: ReadonlyArray<EventSequenceNumber.Client.Composite>
 }
 
 /**
@@ -66,7 +54,6 @@ export class CommandQueue extends Context.Tag('@livestore/common/CommandQueue')<
 
     /**
      * Get all pending commands in creation order.
-     * Returns commands as stored (JSON strings for args/seqNums).
      */
     readonly getPending: () => Effect.Effect<ReadonlyArray<PendingCommandRow>, CommandQueueError>
 
@@ -109,20 +96,13 @@ export const layer = (db: SqliteDb): Layer.Layer<CommandQueue> =>
       enqueue: (command) =>
         Effect.try({
           try: () => {
-            const serializedSeqNums: SerializedSeqNum[] = command.producedEventSeqNums.map((seqNum) => ({
-              global: seqNum.global,
-              client: seqNum.client,
-              rebaseGeneration: seqNum.rebaseGeneration,
-            }))
-
             db.execute(
-              sql`INSERT OR IGNORE INTO ${PENDING_COMMANDS_TABLE} (id, name, args, producedEventSeqNums)
-                  VALUES ($id, $name, $args, $producedEventSeqNums)`,
+              sql`INSERT OR IGNORE INTO ${PENDING_COMMANDS_TABLE} (id, name, args)
+                  VALUES ($id, $name, $args)`,
               {
                 $id: command.id,
                 $name: command.name,
                 $args: JSON.stringify(command.args),
-                $producedEventSeqNums: JSON.stringify(serializedSeqNums),
               } as any,
             )
           },
@@ -138,7 +118,7 @@ export const layer = (db: SqliteDb): Layer.Layer<CommandQueue> =>
         Effect.try({
           try: () =>
             db.select<PendingCommandRow>(
-              sql`SELECT id, name, args, producedEventSeqNums
+              sql`SELECT id, name, args
                   FROM ${PENDING_COMMANDS_TABLE}
                   ORDER BY rowid ASC`,
             ),
