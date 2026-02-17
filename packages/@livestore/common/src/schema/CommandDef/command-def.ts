@@ -40,7 +40,7 @@ export type CommandHandlerContextQuery = {
  * - `'initial'` — first execution via `store.execute()`
  * - `'replay'` — re-execution after a sync rebase changed the underlying state
  */
-export type CommandHandlerPhase = { readonly _tag: 'initial' } | { readonly _tag: 'replay' }
+export type CommandHandlerExecutionPhase = { readonly _tag: 'initial' } | { readonly _tag: 'replay' }
 
 /**
  * Context provided to command handlers for validation and state queries.
@@ -79,7 +79,7 @@ export interface CommandHandlerContext {
    * UI can show immediate feedback, but return alternative events during `'replay'`
    * to avoid unnecessary conflicts.
    */
-  readonly phase: CommandHandlerPhase
+  readonly phase: CommandHandlerExecutionPhase
 }
 
 /**
