@@ -1,6 +1,6 @@
 import { shouldNeverHappen } from '@livestore/utils'
 import { CurrentWorkingDirectory, cmd, cmdText } from '@livestore/utils-dev/node'
-import { Effect, FileSystem, Schema } from '@livestore/utils/effect'
+import { Effect, FileSystem, Schedule, Schema } from '@livestore/utils/effect'
 import { Cli } from '@livestore/utils/node'
 
 import { appendGithubSummaryMarkdown, formatMarkdownTable } from '../shared/misc.ts'
@@ -158,6 +158,23 @@ export const releaseSnapshotCommand = Cli.Command.make(
         shell: true,
       }).pipe(Effect.provide(cwdLayer))
       yield* Effect.log(`Published ${pkg}@${snapshotVersion}`)
+    }
+
+    /**
+     * Verify all published packages are installable from the registry.
+     * npm publish returns 200 before the package is globally available due to
+     * CouchDB replication + Fastly CDN cache propagation (up to ~5 minutes).
+     * See https://github.com/livestorejs/livestore/issues/1039
+     */
+    if (dryRun === false) {
+      yield* Effect.log('Verifying snapshot packages are available on the registry...')
+      for (const pkg of snapshotPackages) {
+        yield* cmd(`npm view ${pkg}@${snapshotVersion} version`, { stdout: 'pipe', stderr: 'pipe' }).pipe(
+          Effect.provide(CurrentWorkingDirectory.fromPath(cwd)),
+          Effect.retry(Schedule.spaced('5 seconds').pipe(Schedule.intersect(Schedule.recurs(60)))),
+        )
+        yield* Effect.log(`Verified ${pkg}@${snapshotVersion}`)
+      }
     }
 
     /** Restore original dev versions (read-only) and verify files are in sync */

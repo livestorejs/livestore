@@ -481,13 +481,6 @@ echo "WORKSPACE_DEPS=$DEPS" >> $GITHUB_ENV`,
           run: `pnpm dlx @livestore/cli@\${{ env.SNAPSHOT_VERSION }} create --example \${{ matrix.app }} --ref ${GITHUB_REF} \${{ runner.temp }}/\${{ env.APP_PATH }}`,
         },
         {
-          // Sometimes the snapshot version is not available immediately after publishing
-          // due to network propagation delays. We increase the fetch retries to mitigate this.
-          // See https://pnpm.io/settings#fetchretries
-          name: 'Increase pnpm fetch retries',
-          run: 'pnpm config set fetchRetries 3',
-        },
-        {
           name: 'Use snapshot version of workspace dependencies',
           'working-directory': '${{ runner.temp }}/${{ env.APP_PATH }}',
           run: `pnpm add $(
