@@ -1,6 +1,5 @@
 import { shouldNeverHappen } from '@livestore/utils'
 import { Schema } from '@livestore/utils/effect'
-import { nanoid } from '@livestore/utils/nanoid'
 
 import type {
   CommandHandler,
@@ -97,7 +96,7 @@ export function defineCommand<TName extends string, TArgs, TEncoded = TArgs, TRe
       shouldNeverHappen(`Invalid command args for command '${name}':`, validation.left.message, '\n')
     }
 
-    return makeCommandInstance<TName, TArgs, TError>({ name, args: commandArgs, id: nanoid() })
+    return makeCommandInstance<TName, TArgs, TError>({ name, args: commandArgs })
   }
 
   // Attach metadata to function

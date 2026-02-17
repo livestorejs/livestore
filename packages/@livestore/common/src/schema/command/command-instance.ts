@@ -1,4 +1,5 @@
 import { identity, Predicate, type Types } from '@livestore/utils/effect'
+import { nanoid } from '@livestore/utils/nanoid'
 
 /**
  * Runtime brand for {@link CommandInstance}, following the TypeId String Literal Pattern.
@@ -60,14 +61,12 @@ export const isCommandInstance = (u: unknown): u is CommandInstance => Predicate
 export const makeCommandInstance = <TName extends string, TArgs, TError>({
   name,
   args,
-  id,
 }: {
   name: TName
   args: TArgs
-  id: string
 }): CommandInstance<TName, TArgs, TError> => ({
   [TypeId]: { _TError: identity },
+  id: `cmd_${nanoid()}`,
   name,
   args,
-  id,
 })
