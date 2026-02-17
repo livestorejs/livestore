@@ -21,11 +21,16 @@ import {
   UnknownError,
 } from '@livestore/common'
 import type { StreamEventsOptions } from '@livestore/common/leader-thread'
-import type { LiveStoreSchema } from '@livestore/common/schema'
 import {
-  CommandDef,
+  type CommandDef,
+  type CommandHandlerContext,
+  type CommandHandlerContextQuery,
+  type CommandInstance,
   EventSequenceNumber,
+  type ExecuteResult,
   LiveStoreEvent,
+  type LiveStoreSchema,
+  normalizeHandlerResult,
   resolveEventDef,
   SystemTables,
 } from '@livestore/common/schema'
@@ -909,12 +914,12 @@ export class Store<TSchema extends LiveStoreSchema = LiveStoreSchema.Any, TConte
    * ```
    */
   execute = <TName extends string, TArgs, TError>(
-    command: CommandDef.CommandInstance<TName, TArgs, TError>,
-  ): CommandDef.ExecuteResult<TError> => {
+    command: CommandInstance<TName, TArgs, TError>,
+  ): ExecuteResult<TError> => {
     this.checkShutdown('execute')
 
     // Look up command definition from schema
-    const commandDef = this.schema.commandDefsMap.get(command.name) as CommandDef.CommandDef.AnyWithoutFn | undefined
+    const commandDef = this.schema.commandDefsMap.get(command.name) as CommandDef.AnyWithoutFn | undefined
     if (!commandDef) {
       throw new CommandExecutionError({
         commandName: command.name,
@@ -925,8 +930,8 @@ export class Store<TSchema extends LiveStoreSchema = LiveStoreSchema.Any, TConte
     }
 
     // Create handler context with query access to current state
-    const handlerContext: CommandDef.CommandHandlerContext = {
-      query: ((query: any) => this.query(query)) as CommandDef.CommandHandlerContextQuery,
+    const handlerContext: CommandHandlerContext = {
+      query: ((query: any) => this.query(query)) as CommandHandlerContextQuery,
       phase: { _tag: 'initial' },
     }
 
@@ -934,7 +939,7 @@ export class Store<TSchema extends LiveStoreSchema = LiveStoreSchema.Any, TConte
     const rawResult = commandDef.handler(command.args, handlerContext)
 
     // Normalize: distinguish events array from error value
-    const normalized = CommandDef.normalizeHandlerResult(rawResult)
+    const normalized = normalizeHandlerResult(rawResult)
     if (!normalized.ok) {
       const error = normalized.error as TError
       // TODO: Promise.reject without a .catch() creates an unhandled rejection

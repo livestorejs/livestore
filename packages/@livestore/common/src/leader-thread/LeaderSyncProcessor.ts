@@ -24,8 +24,7 @@ import type * as otel from '@opentelemetry/api'
 import { type MaterializeError, type SqliteDb, UnknownError } from '../adapter-types.ts'
 import { IntentionalShutdownCause } from '../errors.ts'
 import { makeMaterializerHash } from '../materializer-helper.ts'
-import type { LiveStoreSchema } from '../schema/mod.ts'
-import { CommandDef, EventSequenceNumber, LiveStoreEvent, resolveEventDef, SystemTables } from '../schema/mod.ts'
+import { type LiveStoreSchema, normalizeHandlerResult, type CommandDef, type CommandHandlerContext, type CommandHandlerResult, EventSequenceNumber, LiveStoreEvent, resolveEventDef, SystemTables } from '../schema/mod.ts'
 import { EVENTLOG_META_TABLE, SYNC_STATUS_TABLE } from '../schema/state/sqlite/system-tables/eventlog-tables.ts'
 import { CommandQueue } from '../sync/CommandQueue.ts'
 import {
@@ -1301,7 +1300,7 @@ const replayPendingCommands = ({
       }
 
       // Create handler context with query access to current post-rebase state
-      const handlerContext: CommandDef.CommandHandlerContext = {
+      const handlerContext: CommandHandlerContext = {
         phase: { _tag: 'replay' },
         query: <TResult>(query: unknown): TResult => {
           // Execute the query against the current state db
@@ -1385,11 +1384,11 @@ const replayPendingCommands = ({
  * legacy throw-based errors (via try/catch safety net).
  */
 const executeCommandHandler = (
-  commandDef: CommandDef.CommandDef.AnyWithoutFn,
+  commandDef: CommandDef.AnyWithoutFn,
   args: unknown,
-  context: CommandDef.CommandHandlerContext,
+  context: CommandHandlerContext,
 ): { success: true; events: ReadonlyArray<unknown> } | { success: false; error: Error } => {
-  let rawResult: CommandDef.CommandHandlerResult<unknown>
+  let rawResult: CommandHandlerResult<unknown>
   try {
     rawResult = commandDef.handler(args, context)
   } catch (error) {
@@ -1399,7 +1398,7 @@ const executeCommandHandler = (
     }
   }
 
-  const normalized = CommandDef.normalizeHandlerResult(rawResult)
+  const normalized = normalizeHandlerResult(rawResult)
   if (!normalized.ok) {
     const err = normalized.error
     return {
