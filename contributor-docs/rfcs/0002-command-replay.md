@@ -300,11 +300,11 @@ type CommandConfirmation<TError> =
 ```
 
 > [!NOTE]
-> The `confirmation` is also present in the `ExecuteResult`'s pending variant. This allows callers who do not need to handle immediate failures to access `.confirmation` directly, without checking the result's `_tag`. In such scenarios, if the command handler returns an error during initial execution, it is considered unexpected, and the promise rejects immediately with that error.
+> The `confirmation` is also present in the `ExecuteResult`'s pending variant. This allows callers who do not need to handle initial execution failures to access `.confirmation` directly, without checking the result's `_tag`. In such scenarios, if the command handler returns an error during initial execution, it is considered unexpected, and the promise rejects immediately with that error.
 
 #### Error Handling
 
-Commands may fail immediately during initial execution or during replay after pulling events from the sync backend.
+Commands may fail during initial execution or during replay after pulling events from the sync backend.
 
 ##### During Initial Execution
 
@@ -354,9 +354,9 @@ If a command handler returns an error during replay, a **conflict** occurs, and 
 
 There are two patterns for handling conflicts:
 
-**Pattern 1: Only handle conflicts (skip immediate failures)**
+**Pattern 1: Only handle conflicts (skip initial execution failures)**
 
-When you don't need to handle immediate validation failures, await `.confirmation` directly. If the command fails immediately, the `confirmation` promise gets rejected.
+When you don't need to handle initial execution failures, await `.confirmation` directly. If the command fails during initial execution, the `confirmation` promise rejects.
 
 ```ts
 const confirmation = await store.execute(commands.checkInGuest({ roomId, guestId })).confirmation
@@ -365,7 +365,7 @@ if (confirmation._tag === 'conflict' && confirmation.error._tag === 'RoomAtCapac
 }
 ```
 
-**Pattern 2: Handle immediate failures and conflicts**
+**Pattern 2: Handle initial execution failures and conflicts**
 
 When you need to handle both phases:
 
