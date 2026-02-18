@@ -3,7 +3,7 @@ import { Context, Effect, Layer, Schema } from '@livestore/utils/effect'
 import type { SqliteDb } from '../adapter-types.ts'
 import { type CommandInstance, CommandInstanceSchema, restoreCommandInstance } from '../schema/command/command-instance.ts'
 import { PENDING_COMMANDS_TABLE } from '../schema/state/sqlite/system-tables/eventlog-tables.ts'
-import { sql } from '../util.ts'
+import { prepareBindValues, sql } from '../util.ts'
 
 /** Schema for the SQL row format of a pending command. */
 const CommandInstanceSqlRow = Schema.Struct({
@@ -73,15 +73,9 @@ export const make = (db: SqliteDb): CommandJournal['Type'] => ({
     Effect.try({
       try: () => {
         const encoded = encodeCommandInstanceSql(command)
-        db.execute(
-          sql`INSERT OR IGNORE INTO ${PENDING_COMMANDS_TABLE} (id, name, args)
-              VALUES ($id, $name, $args)`,
-          {
-            $id: encoded.id,
-            $name: encoded.name,
-            $args: encoded.args,
-          } as any,
-        )
+        const stmt = sql`INSERT OR IGNORE INTO ${PENDING_COMMANDS_TABLE} (id, name, args)
+            VALUES ($id, $name, $args)`
+        db.execute(stmt, prepareBindValues({ id: encoded.id, name: encoded.name, args: encoded.args }, stmt))
       },
       catch: (cause) =>
         new CommandJournalError({
@@ -107,15 +101,9 @@ export const make = (db: SqliteDb): CommandJournal['Type'] => ({
         if (commandIds.length === 0) return
 
         const placeholders = commandIds.map((_, i) => `$id${i}`).join(', ')
-        const bindValues = commandIds.reduce(
-          (acc, id, i) => {
-            acc[`$id${i}`] = id
-            return acc
-          },
-          {} as Record<string, string>,
-        )
-
-        db.execute(sql`DELETE FROM ${PENDING_COMMANDS_TABLE} WHERE id IN (${placeholders})`, bindValues as any)
+        const stmt = sql`DELETE FROM ${PENDING_COMMANDS_TABLE} WHERE id IN (${placeholders})`
+        const bind = Object.fromEntries(commandIds.map((id, i) => [`id${i}`, id]))
+        db.execute(stmt, prepareBindValues(bind, stmt))
       },
       catch: (cause) =>
         new CommandJournalError({
