@@ -20,7 +20,7 @@ export type CommandConfirmation<TError = unknown> =
   | { readonly _tag: 'conflict'; readonly error: TError }
 
 /**
- * Result of a failed command immediate execution.
+ * Result of a failed initial command execution.
  *
  * Returned when the command handler returns an error during initial execution.
  */
@@ -34,12 +34,12 @@ export interface ExecuteResultFailed<TError = unknown> {
   /**
    * Promise that rejects with the error.
    *
-   * Allows callers who don't need to handle immediate failures to
+   * Allows callers who don't need to handle initial execution failures to
    * access `.confirmation` directly without narrowing `_tag` first.
    *
    * It rejects when the command handler returns an error during initial
    * execution since awaiting `.confirmation` directly implies we aren't expecting
-   * immediate failures.
+   * initial execution failures.
    */
   readonly confirmation: Promise<CommandConfirmation<TError>>
 }
@@ -62,7 +62,7 @@ export interface ExecuteResultPending<TError = never> {
    * Rejects when the command handler throws (unexpected and non-recoverable) an error
    * during command replay.
    *
-   * @example Await confirmation directly (ignores immediate failures)
+   * @example Await confirmation directly (skips initial execution failures)
    * ```ts
    * const confirmation = await store.execute(commands.toggleTodo({ id })).confirmation
    * if (confirmation._tag === 'conflict') {
@@ -70,7 +70,7 @@ export interface ExecuteResultPending<TError = never> {
    * }
    * ```
    *
-   * @example Handle immediate failures first, then await confirmation
+   * @example Handle initial execution failures first, then await confirmation
    * ```ts
    * const result = store.execute(commands.createTodo({ id, text }))
    *
@@ -93,14 +93,14 @@ export interface ExecuteResultPending<TError = never> {
 /**
  * Result of a command execution.
  *
- * Commands either fail immediately during validation (`failed`)
+ * Commands either fail during initial execution (`failed`)
  * or succeed with pending confirmation (`pending`).
  *
  * Both variants expose a `confirmation` promise:
  * - `pending`: resolves to {@link CommandConfirmation} when sync completes
- * - `failed`: rejects immediately with the error (for callers who skip immediate failure handling)
+ * - `failed`: rejects with the error (for callers who skip initial execution failure handling)
  *
- * @example Only handle conflicts (skip immediate failures)
+ * @example Only handle conflicts (skip initial execution failures)
  * ```ts
  * const confirmation = await store.execute(commands.toggleTodo({ id })).confirmation
  * if (confirmation._tag === 'conflict') {
@@ -108,7 +108,7 @@ export interface ExecuteResultPending<TError = never> {
  * }
  * ```
  *
- * @example Handle immediate failures and conflicts
+ * @example Handle initial execution failures and conflicts
  * ```ts
  * const result = store.execute(commands.createTodo({ id, text }))
  *

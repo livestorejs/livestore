@@ -38,7 +38,7 @@ export type CommandHandlerContextQuery = {
 /**
  * Discriminated union indicating the execution phase of a command handler.
  *
- * - `'initial'` — initial immediate execution via `store.execute()`
+ * - `'initial'` — initial and immediate execution via `store.execute()`
  * - `'replay'` — re-execution after pulling new events
  */
 export type CommandHandlerExecutionPhase = { readonly _tag: 'initial' } | { readonly _tag: 'replay' }
@@ -73,11 +73,11 @@ export interface CommandHandlerContext {
 
   /**
    * Indicates whether the handler is running during:
-   * - `'initial'` — initial immediate execution via `store.execute()`
+   * - `'initial'` — initial and immediate execution via `store.execute()`
    * - `'replay'` — re-execution after pulling new events
    *
    * Use this to tailor behavior: e.g. return an error during `'initial'` so the
-   * UI can show immediate feedback, but return alternative events during `'replay'`
+   * UI can show immediate feedback to the user, but return alternative events during `'replay'`
    * to handle conflicts gracefully within your domain logic.
    */
   readonly phase: CommandHandlerExecutionPhase
