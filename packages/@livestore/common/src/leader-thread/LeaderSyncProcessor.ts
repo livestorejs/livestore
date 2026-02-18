@@ -26,7 +26,7 @@ import { IntentionalShutdownCause } from '../errors.ts'
 import { makeMaterializerHash } from '../materializer-helper.ts'
 import { type LiveStoreSchema, normalizeHandlerResult, type CommandDef, type CommandHandlerContext, type CommandHandlerResult, EventSequenceNumber, LiveStoreEvent, resolveEventDef, SystemTables } from '../schema/mod.ts'
 import { EVENTLOG_META_TABLE, SYNC_STATUS_TABLE } from '../schema/state/sqlite/system-tables/eventlog-tables.ts'
-import { CommandQueue } from '../sync/CommandQueue.ts'
+import { CommandJournal } from '../sync/CommandJournal.ts'
 import {
   type InvalidPullError,
   type InvalidPushError,
@@ -822,7 +822,7 @@ const backgroundBackendPulling = Effect.fn('@livestore/common:LeaderSyncProcesso
 
         if (mergeResult.confirmedEvents.length > 0) {
           // TODO: Confirm commands whose produced events are in mergeResult.confirmedEvents
-            // via commandQueue.confirm() and resolve their confirmation Deferreds.
+            // via commandJournal.remove() and resolve their confirmation Deferreds.
             // https://github.com/livestorejs/livestore/issues/1016
 
             // `mergeResult.confirmedEvents` don't contain the correct sync metadata, so we need to use
@@ -1263,11 +1263,11 @@ const replayPendingCommands = ({
     validCommandIds: ReadonlyArray<string>
   },
   never,
-  CommandQueue
+  CommandJournal
 > =>
   Effect.gen(function* () {
-    const commandQueue = yield* CommandQueue
-    const pendingCommands = yield* commandQueue.getPending()
+    const commandJournal = yield* CommandJournal
+    const pendingCommands = yield* commandJournal.entries
 
     if (pendingCommands.length === 0) {
       return { conflicts: [], validCommandIds: [] }
@@ -1280,8 +1280,6 @@ const replayPendingCommands = ({
 
     for (const pendingCommand of pendingCommands) {
       const commandDef = schema.commandDefsMap.get(pendingCommand.name)
-      // args is stored as a JSON string in SQLite
-      const parsedArgs: unknown = JSON.parse(pendingCommand.args as string)
 
       if (commandDef === undefined) {
         // Command definition no longer exists in schema - treat as conflict
@@ -1289,13 +1287,13 @@ const replayPendingCommands = ({
           command: {
             id: pendingCommand.id,
             name: pendingCommand.name,
-            args: parsedArgs,
+            args: pendingCommand.args,
           },
           error: new Error(`Command definition '${pendingCommand.name}' not found in schema`),
           timestamp: Date.now(),
         }
         conflicts.push(conflict)
-        yield* commandQueue.fail(pendingCommand.id)
+        yield* commandJournal.remove([pendingCommand.id])
         continue
       }
 
@@ -1321,7 +1319,7 @@ const replayPendingCommands = ({
 
       // Execute the handler to validate the command against the new state
       // We use a synchronous try-catch here since handlers are synchronous
-      const replayResult = executeCommandHandler(commandDef, parsedArgs, handlerContext)
+      const replayResult = executeCommandHandler(commandDef, pendingCommand.args, handlerContext)
 
       if (replayResult.success) {
         // Command executed successfully - it's still valid
@@ -1338,14 +1336,14 @@ const replayPendingCommands = ({
           command: {
             id: pendingCommand.id,
             name: pendingCommand.name,
-            args: parsedArgs,
+            args: pendingCommand.args,
           },
           error: replayResult.error,
           timestamp: Date.now(),
         }
 
         conflicts.push(conflict)
-        yield* commandQueue.fail(pendingCommand.id)
+        yield* commandJournal.remove([pendingCommand.id])
 
         otelSpan?.addEvent(
           'command-replay:failure',
@@ -1371,7 +1369,7 @@ const replayPendingCommands = ({
 
     return { conflicts, validCommandIds }
   }).pipe(
-    // CommandQueueError is effectively fatal (SQLite failure), convert to defect
+    // CommandJournalError is effectively fatal (SQLite failure), convert to defect
     Effect.orDie,
     Effect.withSpan('@livestore/common:LeaderSyncProcessor:replayPendingCommands'),
   )

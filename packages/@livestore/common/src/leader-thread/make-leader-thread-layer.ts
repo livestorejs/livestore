@@ -25,7 +25,7 @@ import type { MigrationsReport } from '../defs.ts'
 import type * as Devtools from '../devtools/mod.ts'
 import type { LiveStoreSchema } from '../schema/mod.ts'
 import { EventSequenceNumber, LiveStoreEvent, SystemTables } from '../schema/mod.ts'
-import { type CommandQueue, layer as makeCommandQueueLayer } from '../sync/CommandQueue.ts'
+import { type CommandJournal, layer as makeCommandJournalLayer } from '../sync/CommandJournal.ts'
 import type { InvalidPullError, IsOfflineError, SyncBackend, SyncOptions } from '../sync/sync.ts'
 import { SyncState } from '../sync/syncstate.ts'
 import { sql } from '../util.ts'
@@ -88,7 +88,7 @@ export const makeLeaderThreadLayer = ({
   params,
   testing,
 }: MakeLeaderThreadLayerParams): Layer.Layer<
-  LeaderThreadCtx | CommandQueue,
+  LeaderThreadCtx | CommandJournal,
   UnknownError,
   Scope.Scope | HttpClient.HttpClient
 > =>
@@ -191,7 +191,7 @@ export const makeLeaderThreadLayer = ({
     )
 
     // Initialize command infrastructure (uses eventlog DB for persistence across schema changes)
-    const commandQueueLayer = makeCommandQueueLayer(dbEventlog)
+    const commandJournalLayer = makeCommandJournalLayer(dbEventlog)
 
     const devtoolsContext =
       devtoolsOptions.enabled === true
@@ -229,7 +229,7 @@ export const makeLeaderThreadLayer = ({
     globalThis.__leaderThreadCtx = ctx
 
     const leaderThreadCtxLayer = Layer.succeed(LeaderThreadCtx, ctx)
-    const combinedLayer = Layer.merge(leaderThreadCtxLayer, commandQueueLayer)
+    const combinedLayer = Layer.merge(leaderThreadCtxLayer, commandJournalLayer)
 
     ctx.initialState = yield* bootLeaderThread({
       migrationsReport,
@@ -373,7 +373,7 @@ const bootLeaderThread = ({
 }): Effect.Effect<
   LeaderThreadCtx['Type']['initialState'],
   UnknownError | SqliteError | IsOfflineError | InvalidPullError | MaterializerHashMismatchError,
-  LeaderThreadCtx | Scope.Scope | HttpClient.HttpClient | CommandQueue
+  LeaderThreadCtx | Scope.Scope | HttpClient.HttpClient | CommandJournal
 > =>
   Effect.gen(function* () {
     const { bootStatusQueue, syncProcessor } = yield* LeaderThreadCtx

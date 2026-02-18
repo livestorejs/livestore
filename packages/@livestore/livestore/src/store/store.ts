@@ -919,7 +919,7 @@ export class Store<TSchema extends LiveStoreSchema = LiveStoreSchema.Any, TConte
     this.checkShutdown('execute')
 
     // Look up command definition from schema
-    const commandDef = this.schema.commandDefsMap.get(command.name) as CommandDef.AnyWithoutFn | undefined
+    const commandDef = this.schema.commandDefsMap.get(command.name)
     if (!commandDef) {
       throw new CommandExecutionError({
         commandName: command.name,

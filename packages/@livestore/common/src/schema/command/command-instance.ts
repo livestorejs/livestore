@@ -1,4 +1,4 @@
-import { identity, Predicate, type Types } from '@livestore/utils/effect'
+import { identity, Predicate, Schema, type Types } from '@livestore/utils/effect'
 import { nanoid } from '@livestore/utils/nanoid'
 
 /**
@@ -56,6 +56,16 @@ export interface CommandInstance<TName extends string = string, TArgs = unknown,
 
 /** Runtime type guard for {@link CommandInstance}. */
 export const isCommandInstance = (u: unknown): u is CommandInstance => Predicate.hasProperty(u, TypeId)
+
+/** Restores a {@link CommandInstance} from persisted fields (e.g. journal row). */
+export const restoreCommandInstance = (fields: { id: string; name: string; args: unknown }): CommandInstance => ({
+  [TypeId]: { _TError: identity },
+  ...fields,
+})
+
+/** Schema for {@link CommandInstance} (runtime validation disabled — trusts internal callers). */
+export const CommandInstanceSchema: Schema.Schema<CommandInstance, CommandInstance> =
+  Schema.declare(isCommandInstance)
 
 /** Creates a branded {@link CommandInstance}. */
 export const makeCommandInstance = <TName extends string, TArgs, TError>({
