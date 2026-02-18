@@ -2,10 +2,10 @@ import { Context, Effect, Layer, Schema } from '@livestore/utils/effect'
 
 import type { SqliteDb } from '../adapter-types.ts'
 import { type CommandInstance, CommandInstanceSchema } from '../schema/command/command-instance.ts'
-import { PENDING_COMMANDS_TABLE } from '../schema/state/sqlite/system-tables/eventlog-tables.ts'
+import { COMMAND_JOURNAL_TABLE } from '../schema/state/sqlite/system-tables/eventlog-tables.ts'
 import { prepareBindValues, sql } from '../util.ts'
 
-/** Schema for the SQL row format of a pending command. */
+/** Schema for the SQL row format of a command journal entry. */
 const CommandInstanceSqlRow = Schema.Struct({
   id: Schema.String,
   name: Schema.String,
@@ -66,7 +66,7 @@ export const make = (db: SqliteDb): CommandJournal['Type'] => ({
     Effect.try({
       try: () => {
         const encoded = encodeCommandInstanceSql(command)
-        const stmt = sql`INSERT OR IGNORE INTO ${PENDING_COMMANDS_TABLE} (id, name, args)
+        const stmt = sql`INSERT OR IGNORE INTO ${COMMAND_JOURNAL_TABLE} (id, name, args)
             VALUES ($id, $name, $args)`
         db.execute(stmt, prepareBindValues({ id: encoded.id, name: encoded.name, args: encoded.args }, stmt))
       },
@@ -80,7 +80,7 @@ export const make = (db: SqliteDb): CommandJournal['Type'] => ({
   entries: Effect.try(() =>
     db.select(
       sql`SELECT id, name, args
-          FROM ${PENDING_COMMANDS_TABLE}
+          FROM ${COMMAND_JOURNAL_TABLE}
           ORDER BY rowid ASC`,
     ),
   ).pipe(
@@ -94,7 +94,7 @@ export const make = (db: SqliteDb): CommandJournal['Type'] => ({
         if (commandIds.length === 0) return
 
         const placeholders = commandIds.map((_, i) => `$id${i}`).join(', ')
-        const stmt = sql`DELETE FROM ${PENDING_COMMANDS_TABLE} WHERE id IN (${placeholders})`
+        const stmt = sql`DELETE FROM ${COMMAND_JOURNAL_TABLE} WHERE id IN (${placeholders})`
         const bind = Object.fromEntries(commandIds.map((id, i) => [`id${i}`, id]))
         db.execute(stmt, prepareBindValues(bind, stmt))
       },
@@ -107,7 +107,7 @@ export const make = (db: SqliteDb): CommandJournal['Type'] => ({
 
   destroy: Effect.try({
     try: () => {
-      db.execute(sql`DELETE FROM ${PENDING_COMMANDS_TABLE}`)
+      db.execute(sql`DELETE FROM ${COMMAND_JOURNAL_TABLE}`)
     },
     catch: (cause) =>
       new CommandJournalError({

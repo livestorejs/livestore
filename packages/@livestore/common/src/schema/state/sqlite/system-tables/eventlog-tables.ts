@@ -62,16 +62,16 @@ export const syncStatusTable = table({
 
 export type SyncStatusRow = typeof syncStatusTable.Type
 
-export const PENDING_COMMANDS_TABLE = '__livestore_pending_commands'
+export const COMMAND_JOURNAL_TABLE = '__livestore_command_journal'
 
 /**
- * Stores pending commands awaiting confirmation of their resulting events.
+ * Append-only journal that records locally-executed commands for later replay.
  *
- * Commands are inserted when executed locally and deleted when their resulting events are confirmed or when they fail.
- * If a row exists, the command is pending.
+ * Commands are journaled after successful initial execution and removed when their resulting events are confirmed
+ * or when the command fails during replay. If a row exists, the command is pending.
  */
-export const pendingCommandsTable = table({
-  name: PENDING_COMMANDS_TABLE,
+export const commandJournalTable = table({
+  name: COMMAND_JOURNAL_TABLE,
   columns: {
     /** Unique identifier for the command instance. */
     id: SqliteDsl.text({ primaryKey: true }),
@@ -84,6 +84,6 @@ export const pendingCommandsTable = table({
   },
 })
 
-export type PendingCommandRow = typeof pendingCommandsTable.Type
+export type CommandJournalRow = typeof commandJournalTable.Type
 
-export const eventlogSystemTables = [eventlogMetaTable, syncStatusTable, pendingCommandsTable] as const
+export const eventlogSystemTables = [eventlogMetaTable, syncStatusTable, commandJournalTable] as const
