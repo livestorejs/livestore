@@ -31,7 +31,7 @@ export interface EnqueueCommandInput {
 /**
  * Tagged error for CommandQueue operations.
  */
-export class CommandQueueError extends Schema.TaggedError<CommandQueueError>()('CommandQueueError', {
+export class CommandQueueError extends Schema.TaggedError<CommandQueueError>()('@livestore/common/CommandQueueError', {
   message: Schema.String,
   operation: Schema.String,
   cause: Schema.optional(Schema.Defect),
