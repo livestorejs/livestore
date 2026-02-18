@@ -9,22 +9,20 @@ import { sql } from '../util.ts'
 const CommandInstanceSqlRow = Schema.Struct({
   id: Schema.String,
   name: Schema.String,
-  args: Schema.String,
+  args: Schema.parseJson(),
 })
 
-type CommandInstanceSqlRow = typeof CommandInstanceSqlRow.Type
-
-/** Transform: SQL row <-> CommandInstance (mirrors SqlEventJournal's EntrySql pattern). */
+/** Transform: SQL row <-> CommandInstance */
 const CommandInstanceSql = Schema.transform(
   CommandInstanceSqlRow,
   CommandInstanceSchema,
   {
-    decode: ({ id, name, args }) => restoreCommandInstance({ id, name, args: JSON.parse(args) }),
-    encode: ({ id, name, args }) => ({ id, name, args: JSON.stringify(args) }),
+    decode: restoreCommandInstance,
+    encode: ({ id, name, args }) => ({ id, name, args }),
   },
 )
 
-const decodeCommandInstanceSqlArray = Schema.decodeSync(Schema.Array(CommandInstanceSql))
+const decodeCommandInstanceSqlArray = Schema.decodeUnknown(Schema.Array(CommandInstanceSql))
 const encodeCommandInstanceSql = Schema.encodeSync(CommandInstanceSql)
 
 /**
@@ -61,7 +59,7 @@ export class CommandJournalError extends Schema.TaggedError<CommandJournalError>
   '@livestore/common/CommandJournalError',
   {
     method: Schema.String,
-    cause: Schema.optional(Schema.Defect),
+    cause: Schema.Defect,
   },
 ) {}
 
@@ -92,21 +90,16 @@ export const make = (db: SqliteDb): CommandJournal['Type'] => ({
         }),
     }),
 
-  entries: Effect.try({
-    try: () =>
-      decodeCommandInstanceSqlArray(
-        db.select<CommandInstanceSqlRow>(
-          sql`SELECT id, name, args
-              FROM ${PENDING_COMMANDS_TABLE}
-              ORDER BY rowid ASC`,
-        ),
-      ),
-    catch: (cause) =>
-      new CommandJournalError({
-        method: 'entries',
-        cause,
-      }),
-  }),
+  entries: Effect.try(() =>
+    db.select(
+      sql`SELECT id, name, args
+          FROM ${PENDING_COMMANDS_TABLE}
+          ORDER BY rowid ASC`,
+    ),
+  ).pipe(
+    Effect.flatMap(decodeCommandInstanceSqlArray),
+    Effect.mapError((cause) => new CommandJournalError({ method: 'entries', cause })),
+  ),
 
   remove: (commandIds) =>
     Effect.try({
@@ -138,18 +131,6 @@ export const make = (db: SqliteDb): CommandJournal['Type'] => ({
     catch: (cause) =>
       new CommandJournalError({
         method: 'destroy',
-        cause,
-      }),
-  }),
-
-  size: Effect.try({
-    try: () => {
-      const result = db.select<{ count: number }>(sql`SELECT COUNT(*) as count FROM ${PENDING_COMMANDS_TABLE}`)
-      return result[0]?.count ?? 0
-    },
-    catch: (cause) =>
-      new CommandJournalError({
-        method: 'size',
         cause,
       }),
   }),
