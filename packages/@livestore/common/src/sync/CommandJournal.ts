@@ -1,7 +1,7 @@
 import { Context, Effect, Layer, Schema } from '@livestore/utils/effect'
 
 import type { SqliteDb } from '../adapter-types.ts'
-import { type CommandInstance, CommandInstanceSchema, restoreCommandInstance } from '../schema/command/command-instance.ts'
+import { type CommandInstance, CommandInstanceSchema } from '../schema/command/command-instance.ts'
 import { PENDING_COMMANDS_TABLE } from '../schema/state/sqlite/system-tables/eventlog-tables.ts'
 import { prepareBindValues, sql } from '../util.ts'
 
@@ -12,15 +12,8 @@ const CommandInstanceSqlRow = Schema.Struct({
   args: Schema.parseJson(),
 })
 
-/** Transform: SQL row <-> CommandInstance */
-const CommandInstanceSql = Schema.transform(
-  CommandInstanceSqlRow,
-  CommandInstanceSchema,
-  {
-    decode: restoreCommandInstance,
-    encode: ({ id, name, args }) => ({ id, name, args }),
-  },
-)
+/** Composed schema: SQL row string → parsed fields → branded CommandInstance */
+const CommandInstanceSql = Schema.compose(CommandInstanceSqlRow, CommandInstanceSchema)
 
 const decodeCommandInstanceSqlArray = Schema.decodeUnknown(Schema.Array(CommandInstanceSql))
 const encodeCommandInstanceSql = Schema.encodeSync(CommandInstanceSql)
