@@ -121,7 +121,7 @@ Any solution must satisfy these requirements:
 
 The solution introduces [**commands**](#command) as first-class citizens in LiveStore. Instead of committing events directly, the app can perform state changes with commands: declarative intentions that a [**command handler**](#command-handler) validates against the current state to produce events.
 
-Because commands pair the original input (intent) with an executable handler that validates against the current state, they are replayable. When pulled events change the underlying state, the client re-executes each pending command's handler against the new state. A replayed command may produce different events, produce no events (rejection), or succeed exactly as before. In every case, the resulting events are consistent with the state they were validated against.
+Because commands pair the original input (intent) with an executable handler that validates against the current state, they are replayable. When pulled events change the underlying state, the client re-executes each command's handler against the new state. A replayed command may produce different events, produce no events (rejection), or succeed exactly as before. In every case, the resulting events are consistent with the state they were validated against.
 
 Commands live entirely on the client. The sync backend continues to exchange events, not commands. This preserves the backend's simplicity (it only needs to process and order events) while giving clients the ability to re-validate pending changes whenever the confirmed state advances.
 
@@ -396,7 +396,7 @@ This duplication exists because DB constraints currently can only reject—they 
 
 #### 2. Trade-off: Offline Work May Change on Sync
 
-Actions performed offline are speculative until confirmed. When a client reconnects and pulls remote events, pending commands are replayed against the updated state. Because the underlying state may have changed, a replayed command can produce different events, fewer events, or be rejected entirely. The user saw one outcome locally, but after sync the outcome may silently become something else—or be undone altogether.
+Actions performed offline are speculative until confirmed. When a client reconnects and pulls remote events, commands are replayed against the updated state. Because the underlying state may have changed, a replayed command can produce different events, fewer events, or be rejected entirely. The user saw one outcome locally, but after sync the outcome may silently become something else—or be undone altogether.
 
 This creates two compounding challenges:
 
