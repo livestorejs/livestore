@@ -99,6 +99,10 @@ export const releaseSnapshotCommand = Cli.Command.make(
   {
     gitShaOption: Cli.Options.text('git-sha').pipe(Cli.Options.optional),
     dryRun: Cli.Options.boolean('dry-run').pipe(Cli.Options.withDefault(false)),
+    yes: Cli.Options.boolean('yes').pipe(
+      Cli.Options.withDefault(false),
+      Cli.Options.withDescription('Skip interactive confirmation prompt'),
+    ),
     cwd: Cli.Options.text('cwd').pipe(
       Cli.Options.withDefault(
         process.env.WORKSPACE_ROOT ?? shouldNeverHappen(`WORKSPACE_ROOT is not set. Make sure to run 'direnv allow'`),
@@ -107,7 +111,7 @@ export const releaseSnapshotCommand = Cli.Command.make(
     versionOption: Cli.Options.text('version').pipe(Cli.Options.optional),
     tscBin: Cli.Options.text('tsc-bin').pipe(Cli.Options.optional),
   },
-  Effect.fn(function* ({ gitShaOption, dryRun, cwd, versionOption, tscBin: tscBinOption }) {
+  Effect.fn(function* ({ gitShaOption, dryRun, yes, cwd, versionOption, tscBin: tscBinOption }) {
     const gitSha =
       gitShaOption._tag === 'Some'
         ? gitShaOption.value
@@ -115,6 +119,20 @@ export const releaseSnapshotCommand = Cli.Command.make(
 
     const snapshotVersion = versionOption._tag === 'Some' ? versionOption.value : `0.0.0-snapshot-${gitSha}`
     const snapshotPackages = yield* listSnapshotPackages(cwd)
+
+    /** Confirm before proceeding unless --yes is passed or CI is detected. */
+    const isCI = process.env.CI === 'true' || process.env.CI === '1'
+    const skipConfirmation = yes || isCI
+    if (skipConfirmation === false) {
+      yield* Effect.log(
+        `About to publish ${snapshotPackages.length} package(s) as ${snapshotVersion}${dryRun ? ' (dry-run)' : ''}`,
+      )
+      const confirmed = yield* Cli.Prompt.confirm({ message: 'Proceed with snapshot release?' })
+      if (confirmed === false) {
+        yield* Effect.log('Snapshot release aborted by user')
+        return
+      }
+    }
 
     /**
      * Regenerate all genie-managed files with snapshot version (writable for pnpm publish).
@@ -136,7 +154,6 @@ export const releaseSnapshotCommand = Cli.Command.make(
      * pnpm publish resolves workspace:* → concrete versions automatically,
      * then delegates to the system npm binary for OIDC trusted publishing.
      */
-    const isCI = process.env.CI === 'true' || process.env.CI === '1'
     for (const pkg of snapshotPackages) {
       const pkgDir = `${cwd}/packages/${pkg}`
       const cwdLayer = CurrentWorkingDirectory.fromPath(pkgDir)

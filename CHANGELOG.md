@@ -499,6 +499,7 @@ See the [S2 sync provider docs](https://dev.docs.livestore.dev/reference/syncing
 - Comprehensive dependency update script (#516)
 - Add GitHub issue templates to improve issue quality (#602)
 - Reworked the documentation tooling so maintainers continuously publish token-efficient, TypeScript-backed snippets that stay reliable for coding agents (#715)
+- **Snapshot release confirmation prompt:** The `mono release snapshot` command now prompts for confirmation before publishing. Pass `--yes` to skip the prompt in scripts and CI. The prompt is also auto-skipped when `CI` is set (#1049).
 
 #### wa-sqlite Integration
 

@@ -143,7 +143,7 @@ steps:
     commands:
       - direnv allow .
       - direnv exec . bash -lc 'set -euo pipefail; echo "//registry.npmjs.org/:_authToken=${NPM_TOKEN}" >> ~/.npmrc'
-      - direnv exec . mono release snapshot --git-sha="${BUILDKITE_COMMIT}"
+      - direnv exec . mono release snapshot --git-sha="${BUILDKITE_COMMIT}" --yes
 
   - label: 'examples:build+test'
     commands:

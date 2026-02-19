@@ -319,7 +319,7 @@ fi`,
         'test-integration-playwright',
       ],
       defaults: devenvShellDefaults,
-      steps: [...livestoreSetupSteps, { run: `mono release snapshot --git-sha=${GITHUB_SHA}` }],
+      steps: [...livestoreSetupSteps, { run: `mono release snapshot --git-sha=${GITHUB_SHA} --yes` }],
     },
 
     'build-and-deploy-examples-src': {
