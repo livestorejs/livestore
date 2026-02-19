@@ -49,6 +49,7 @@ import { rollback } from './materialize-event.ts'
 import type { ShutdownChannel } from './shutdown-channel.ts'
 import type { InitialBlockingSyncContext, LeaderSyncProcessor } from './types.ts'
 import { LeaderThreadCtx } from './types.ts'
+import { isQueryBuilder } from '../schema/state/sqlite/query-builder/api.ts'
 
 // WORKAROUND: @effect/opentelemetry mis-parses `Span.addEvent(name, attributes)` and treats the attributes object as a
 // time input, causing `TypeError: {} is not iterable` at runtime.
@@ -1241,7 +1242,7 @@ const clearLocalDatabases = ({ dbEventlog, dbState }: { dbEventlog: SqliteDb; db
 /** Conflict info produced during command replay. */
 interface ReplayConflict {
   readonly command: { readonly id: string; readonly name: string; readonly args: unknown }
-  readonly error: Error
+  readonly error: unknown
   readonly timestamp: number
 }
 
@@ -1309,10 +1310,15 @@ const replayPendingCommands = ({
       const handlerContext: CommandHandlerContext = {
         phase: { _tag: 'replay' },
         query: <TResult>(query: unknown): TResult => {
+          if (isQueryBuilder(query) === true) {
+            return dbState.select(query as never) as TResult
+          }
+
           if (typeof query === 'object' && query !== null && 'query' in query && 'bindValues' in query) {
             const { query: sqlQuery, bindValues } = query as { query: string; bindValues: Bindable }
             return dbState.select(sqlQuery, prepareBindValues(bindValues, sqlQuery)) as TResult
           }
+
           return dbState.select(query as never) as TResult
         },
       }
@@ -1332,14 +1338,7 @@ const replayPendingCommands = ({
         )
       } else {
         // Command failed during replay - emit conflict
-        const replayError =
-          replayResult._tag === 'error'
-            ? replayResult.error instanceof Error
-              ? replayResult.error
-              : new Error(String(replayResult.error))
-            : replayResult.cause instanceof Error
-              ? replayResult.cause
-              : new Error(String(replayResult.cause))
+        const replayError = replayResult._tag === 'error' ? replayResult.error : replayResult.cause
         const conflict: ReplayConflict = {
           command: {
             id: pendingCommand.id,
@@ -1358,7 +1357,7 @@ const replayPendingCommands = ({
           {
             commandId: pendingCommand.id,
             commandName: pendingCommand.name,
-            error: replayError.message,
+            error: replayError instanceof Error ? replayError.message : String(replayError),
           },
           undefined,
         )
