@@ -4,9 +4,9 @@
     "effect-utils": {
       "url": "https://github.com/overengineeringstudio/effect-utils",
       "ref": "schickling/ci-no-nested-devenv",
-      "commit": "2a99b56d4c534655058db3613b0f2e995ccf4805",
+      "commit": "c9ceaab0d96192051f5be1eb617355ce65f08ff1",
       "pinned": false,
-      "lockedAt": "2026-02-19T18:38:10.000Z"
+      "lockedAt": "2026-02-19T21:13:07.000Z"
     },
     "overeng-beads-public": {
       "url": "https://github.com/overengineeringstudio/overeng-beads-public",
