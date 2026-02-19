@@ -1,6 +1,6 @@
 import { playwrightSuites, syncProviderMatrix } from '../../genie/ci.ts'
 import {
-  devenvShellDefaults,
+  bashShellDefaults,
   githubWorkflow,
   livestoreSetupSteps,
   livestoreSetupStepsAfterCheckout,
@@ -40,7 +40,7 @@ const namespaceRunnerConfig = {
 const standardCIJob = (config: { env?: Record<string, string>; steps: unknown[] }) => ({
   ...namespaceRunnerConfig,
   env: config.env,
-  defaults: devenvShellDefaults,
+  defaults: bashShellDefaults,
   steps: config.steps,
 })
 
@@ -170,7 +170,7 @@ fi`,
         },
       },
       ...namespaceRunnerConfig,
-      defaults: devenvShellDefaults,
+      defaults: bashShellDefaults,
       steps: [
         ...livestoreSetupSteps,
         deterministicPreflightStep,
@@ -213,7 +213,7 @@ fi`,
         },
       },
       ...namespaceRunnerConfig,
-      defaults: devenvShellDefaults,
+      defaults: bashShellDefaults,
       steps: [
         ...livestoreSetupSteps,
         deterministicPreflightStep,
@@ -257,7 +257,7 @@ fi`,
     // Run on namespace runners to align CI environment with the rest of the test matrix.
     'perf-test': {
       ...namespaceRunnerConfig,
-      defaults: devenvShellDefaults,
+      defaults: bashShellDefaults,
       steps: [
         {
           // See https://github.com/orgs/community/discussions/26325
@@ -318,13 +318,13 @@ fi`,
         'test-integration-sync-provider',
         'test-integration-playwright',
       ],
-      defaults: devenvShellDefaults,
+      defaults: bashShellDefaults,
       steps: [...livestoreSetupSteps, { run: `mono release snapshot --git-sha=${GITHUB_SHA} --yes` }],
     },
 
     'build-and-deploy-examples-src': {
       ...namespaceRunnerConfig,
-      defaults: devenvShellDefaults,
+      defaults: bashShellDefaults,
       steps: [
         ...livestoreSetupSteps,
         deterministicPreflightStep,
@@ -363,7 +363,7 @@ fi`,
      */
     'build-deploy-docs': {
       ...namespaceRunnerConfig,
-      defaults: devenvShellDefaults,
+      defaults: bashShellDefaults,
       steps: [
         ...livestoreSetupSteps,
         deterministicPreflightStep,

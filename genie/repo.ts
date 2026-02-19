@@ -478,7 +478,7 @@ export { githubWorkflow } from '../repos/effect-utils/packages/@overeng/genie/sr
 
 import {
   namespaceRunner as namespaceRunnerBase,
-  devenvShellDefaults,
+  bashShellDefaults,
   installNixStep,
   cachixStep,
   installMegarepoStep,
@@ -488,7 +488,7 @@ import {
   checkoutStep,
 } from '../repos/effect-utils/genie/ci-workflow.ts'
 
-export { devenvShellDefaults }
+export { bashShellDefaults }
 
 export const namespaceRunner = (runId: string) =>
   namespaceRunnerBase('namespace-profile-linux-x86-64', runId)
