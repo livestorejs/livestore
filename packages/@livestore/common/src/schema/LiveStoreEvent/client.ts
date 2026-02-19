@@ -50,10 +50,10 @@ export const Encoded = Schema.Struct({
 }).annotations({ title: 'LiveStoreEvent.Client.Encoded' })
 
 /** Event with composite sequence numbers and decoded (native TypeScript) args. */
-export type Decoded = ForEventDef.Decoded<EventDef.Any>
+export type Decoded = Omit<ForEventDef.Decoded<EventDef.Any>, 'commandId'> & { commandId?: string | undefined }
 
 /** Event with composite sequence numbers and encoded (serialized) args. */
-export type Encoded = ForEventDef.Encoded<EventDef.Any>
+export type Encoded = Omit<ForEventDef.Encoded<EventDef.Any>, 'commandId'> & { commandId?: string | undefined }
 
 /** Union of all client event types for a given schema (type-safe event discrimination). */
 export type ForSchema<TSchema extends LiveStoreSchema> = {

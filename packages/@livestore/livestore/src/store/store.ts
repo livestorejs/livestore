@@ -204,7 +204,7 @@ export class Store<TSchema extends LiveStoreSchema = LiveStoreSchema.Any, TConte
       syncState.pending
         .map((event) =>
           typeof event === 'object' && event !== null && 'commandId' in event
-            ? (event as { commandId?: string | undefined }).commandId
+            ? (event as { commandId?: string }).commandId
             : undefined,
         )
         .filter((commandId): commandId is string => typeof commandId === 'string'),
