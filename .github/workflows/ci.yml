@@ -19,7 +19,6 @@ env:
   CACHIX_AUTH_TOKEN: '${{ secrets.CACHIX_AUTH_TOKEN }}'
   FORCE_SETUP: '1'
   CI: 'true'
-  DEVENV_TUI: 'false'
 
 jobs:
   lint:
