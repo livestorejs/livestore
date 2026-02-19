@@ -105,8 +105,6 @@ export default githubWorkflow({
     CACHIX_AUTH_TOKEN: '${{ secrets.CACHIX_AUTH_TOKEN }}',
     FORCE_SETUP: '1',
     CI: 'true',
-    /** TODO: Drop once devenv auto-disables TUI in CI (https://github.com/cachix/devenv/issues/2504) */
-    DEVENV_TUI: 'false',
   },
 
   jobs: {
