@@ -105,8 +105,9 @@ export const releaseSnapshotCommand = Cli.Command.make(
       ),
     ),
     versionOption: Cli.Options.text('version').pipe(Cli.Options.optional),
+    tscBin: Cli.Options.text('tsc-bin').pipe(Cli.Options.optional),
   },
-  Effect.fn(function* ({ gitShaOption, dryRun, cwd, versionOption }) {
+  Effect.fn(function* ({ gitShaOption, dryRun, cwd, versionOption, tscBin: tscBinOption }) {
     const gitSha =
       gitShaOption._tag === 'Some'
         ? gitShaOption.value
@@ -125,7 +126,8 @@ export const releaseSnapshotCommand = Cli.Command.make(
     )
 
     /** Rebuild TypeScript so dist/ picks up the snapshot version from package.json (emit-only, type checking is separate) */
-    yield* cmd('tsc --build tsconfig.dev.json --noCheck', { shell: true }).pipe(
+    const tsc = tscBinOption._tag === 'Some' ? tscBinOption.value : 'tsc'
+    yield* cmd(`${tsc} --build tsconfig.dev.json --noCheck`, { shell: true }).pipe(
       Effect.provide(CurrentWorkingDirectory.fromPath(cwd)),
     )
 
@@ -134,7 +136,7 @@ export const releaseSnapshotCommand = Cli.Command.make(
      * pnpm publish resolves workspace:* → concrete versions automatically,
      * then delegates to the system npm binary for OIDC trusted publishing.
      */
-    const dryRunFlag = dryRun === true ? '--dry-run' : ''
+    const isCI = process.env.CI === 'true' || process.env.CI === '1'
     for (const pkg of snapshotPackages) {
       const pkgDir = `${cwd}/packages/${pkg}`
       const cwdLayer = CurrentWorkingDirectory.fromPath(pkgDir)
@@ -154,9 +156,10 @@ export const releaseSnapshotCommand = Cli.Command.make(
         continue
       }
 
-      yield* cmd(`pnpm publish --tag=snapshot --provenance --access=public --no-git-checks ${dryRunFlag}`, {
-        shell: true,
-      }).pipe(Effect.provide(cwdLayer))
+      const publishArgs = ['pnpm', 'publish', '--tag=snapshot', '--access=public', '--no-git-checks']
+      if (isCI === true) publishArgs.push('--provenance')
+      if (dryRun === true) publishArgs.push('--dry-run')
+      yield* cmd(publishArgs.join(' '), { shell: true }).pipe(Effect.provide(cwdLayer))
       yield* Effect.log(`Published ${pkg}@${snapshotVersion}`)
     }
 
