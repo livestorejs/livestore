@@ -25,17 +25,17 @@
         ]
       },
       "locked": {
-        "lastModified": 1771540263,
-        "narHash": "sha256-0D5oBHuqpcOylPXAOA3Ayud3IItH1mcE5K6V7xUMHyo=",
+        "lastModified": 1771542573,
+        "narHash": "sha256-kiStrEzoQGNBqy9xzAhFqQ7cicSHEtyGlX9yBdWVkuQ=",
         "owner": "overengineeringstudio",
         "repo": "effect-utils",
-        "rev": "95c417e09464b1df325aa62d4ea89cbad56865ff",
+        "rev": "ddbaac2a94c578c29ed4b1c1a54d4461c713c8de",
         "type": "github"
       },
       "original": {
         "owner": "overengineeringstudio",
         "repo": "effect-utils",
-        "rev": "95c417e09464b1df325aa62d4ea89cbad56865ff",
+        "rev": "ddbaac2a94c578c29ed4b1c1a54d4461c713c8de",
         "type": "github"
       }
     },
