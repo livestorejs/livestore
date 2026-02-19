@@ -89,7 +89,7 @@ export class CommandExecutionError extends Schema.TaggedError<CommandExecutionEr
     /** The unique ID of the command instance. */
     commandId: Schema.String,
     /** The phase where the error occurred. */
-    phase: Schema.Literal('validation', 'replay'),
+    phase: Schema.Literal('initial', 'replay'),
     /** The underlying error. */
     cause: Schema.Defect,
     /** Optional additional context. */
