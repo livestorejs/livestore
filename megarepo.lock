@@ -3,10 +3,10 @@
   "members": {
     "effect-utils": {
       "url": "https://github.com/overengineeringstudio/effect-utils",
-      "ref": "main",
-      "commit": "cd7b0dc3a1747888c85290e255de53b227faeccb",
+      "ref": "schickling/ci-no-nested-devenv",
+      "commit": "2a99b56d4c534655058db3613b0f2e995ccf4805",
       "pinned": false,
-      "lockedAt": "2026-02-17T15:07:21.787Z"
+      "lockedAt": "2026-02-19T18:38:10.000Z"
     },
     "overeng-beads-public": {
       "url": "https://github.com/overengineeringstudio/overeng-beads-public",

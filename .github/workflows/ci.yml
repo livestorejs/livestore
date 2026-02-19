@@ -25,7 +25,7 @@ jobs:
     runs-on: [namespace-profile-linux-x86-64, 'namespace-features:github.run-id=${{ github.run_id }}']
     defaults:
       run:
-        shell: devenv shell bash -- -e {0}
+        shell: bash
     steps:
       - uses: actions/checkout@v4
       - name: Install Nix
@@ -34,6 +34,7 @@ jobs:
           extra-conf: |
             extra-substituters = https://devenv.cachix.org
             extra-trusted-public-keys = devenv.cachix.org-1:w1cLUi8dv3hnoSPGAuibQv+f9TZLr6cv/Hm9XgU50cw=
+            access-tokens = github.com=${{ github.token }}
             extra-substituters = https://cache.nixos.org
             extra-trusted-public-keys = cache.nixos.org-1:6NCHdD59X431o0gWypbMrAURkbJ16ZPMQFGspcDShjY=
       - name: Enable Cachix cache
@@ -47,8 +48,8 @@ jobs:
       - name: Sync megarepo dependencies
         run: mr sync --frozen
         shell: bash
-      - name: Install devenv
-        run: 'nix profile install github:cachix/devenv/$(jq -r ".nodes.devenv.locked.rev" devenv.lock)'
+      - name: Install devenv if needed
+        run: 'command -v devenv > /dev/null || nix profile install "github:cachix/devenv/$(jq -r .nodes.devenv.locked.rev devenv.lock)"'
         shell: bash
       - name: Validate Nix store
         run: |
@@ -60,12 +61,12 @@ jobs:
             devenv version
           fi
         shell: bash
-      - run: 'dt lint:full megarepo:check'
+      - run: 'devenv tasks run lint:full megarepo:check --mode before'
   type-check:
     runs-on: [namespace-profile-linux-x86-64, 'namespace-features:github.run-id=${{ github.run_id }}']
     defaults:
       run:
-        shell: devenv shell bash -- -e {0}
+        shell: bash
     steps:
       - uses: actions/checkout@v4
       - name: Install Nix
@@ -74,6 +75,7 @@ jobs:
           extra-conf: |
             extra-substituters = https://devenv.cachix.org
             extra-trusted-public-keys = devenv.cachix.org-1:w1cLUi8dv3hnoSPGAuibQv+f9TZLr6cv/Hm9XgU50cw=
+            access-tokens = github.com=${{ github.token }}
             extra-substituters = https://cache.nixos.org
             extra-trusted-public-keys = cache.nixos.org-1:6NCHdD59X431o0gWypbMrAURkbJ16ZPMQFGspcDShjY=
       - name: Enable Cachix cache
@@ -87,8 +89,8 @@ jobs:
       - name: Sync megarepo dependencies
         run: mr sync --frozen
         shell: bash
-      - name: Install devenv
-        run: 'nix profile install github:cachix/devenv/$(jq -r ".nodes.devenv.locked.rev" devenv.lock)'
+      - name: Install devenv if needed
+        run: 'command -v devenv > /dev/null || nix profile install "github:cachix/devenv/$(jq -r .nodes.devenv.locked.rev devenv.lock)"'
         shell: bash
       - name: Validate Nix store
         run: |
@@ -100,12 +102,12 @@ jobs:
             devenv version
           fi
         shell: bash
-      - run: 'dt ts:build'
+      - run: 'devenv tasks run ts:build --mode before'
   test-unit:
     runs-on: [namespace-profile-linux-x86-64, 'namespace-features:github.run-id=${{ github.run_id }}']
     defaults:
       run:
-        shell: devenv shell bash -- -e {0}
+        shell: bash
     steps:
       - uses: actions/checkout@v4
       - name: Install Nix
@@ -114,6 +116,7 @@ jobs:
           extra-conf: |
             extra-substituters = https://devenv.cachix.org
             extra-trusted-public-keys = devenv.cachix.org-1:w1cLUi8dv3hnoSPGAuibQv+f9TZLr6cv/Hm9XgU50cw=
+            access-tokens = github.com=${{ github.token }}
             extra-substituters = https://cache.nixos.org
             extra-trusted-public-keys = cache.nixos.org-1:6NCHdD59X431o0gWypbMrAURkbJ16ZPMQFGspcDShjY=
       - name: Enable Cachix cache
@@ -127,8 +130,8 @@ jobs:
       - name: Sync megarepo dependencies
         run: mr sync --frozen
         shell: bash
-      - name: Install devenv
-        run: 'nix profile install github:cachix/devenv/$(jq -r ".nodes.devenv.locked.rev" devenv.lock)'
+      - name: Install devenv if needed
+        run: 'command -v devenv > /dev/null || nix profile install "github:cachix/devenv/$(jq -r .nodes.devenv.locked.rev devenv.lock)"'
         shell: bash
       - name: Validate Nix store
         run: |
@@ -143,12 +146,12 @@ jobs:
       - name: Preflight workspace bootstrap
         run: 'DEVENV_SKIP_SETUP=1 devenv tasks run pnpm:install genie:run ts:build --mode before --verbose'
         shell: bash
-      - run: 'dt test:unit'
+      - run: 'devenv tasks run test:unit --mode before'
   test-integration-node-sync:
     runs-on: [namespace-profile-linux-x86-64, 'namespace-features:github.run-id=${{ github.run_id }}']
     defaults:
       run:
-        shell: devenv shell bash -- -e {0}
+        shell: bash
     steps:
       - uses: actions/checkout@v4
       - name: Install Nix
@@ -157,6 +160,7 @@ jobs:
           extra-conf: |
             extra-substituters = https://devenv.cachix.org
             extra-trusted-public-keys = devenv.cachix.org-1:w1cLUi8dv3hnoSPGAuibQv+f9TZLr6cv/Hm9XgU50cw=
+            access-tokens = github.com=${{ github.token }}
             extra-substituters = https://cache.nixos.org
             extra-trusted-public-keys = cache.nixos.org-1:6NCHdD59X431o0gWypbMrAURkbJ16ZPMQFGspcDShjY=
       - name: Enable Cachix cache
@@ -170,8 +174,8 @@ jobs:
       - name: Sync megarepo dependencies
         run: mr sync --frozen
         shell: bash
-      - name: Install devenv
-        run: 'nix profile install github:cachix/devenv/$(jq -r ".nodes.devenv.locked.rev" devenv.lock)'
+      - name: Install devenv if needed
+        run: 'command -v devenv > /dev/null || nix profile install "github:cachix/devenv/$(jq -r .nodes.devenv.locked.rev devenv.lock)"'
         shell: bash
       - name: Validate Nix store
         run: |
@@ -195,7 +199,7 @@ jobs:
           echo "VITE_OTEL_EXPORTER_OTLP_ENDPOINT=" >> $GITHUB_ENV
       - name: Run node-sync integration tests
         run: |
-          if dt test:integration:node-sync; then
+          if devenv tasks run test:integration:node-sync --mode before; then
             exit 0
           else
             echo "::warning::Node-sync integration tests failed (flaky; see https://github.com/livestorejs/livestore/issues/624 for details)"
@@ -239,7 +243,7 @@ jobs:
     runs-on: [namespace-profile-linux-x86-64, 'namespace-features:github.run-id=${{ github.run_id }}']
     defaults:
       run:
-        shell: devenv shell bash -- -e {0}
+        shell: bash
     steps:
       - uses: actions/checkout@v4
       - name: Install Nix
@@ -248,6 +252,7 @@ jobs:
           extra-conf: |
             extra-substituters = https://devenv.cachix.org
             extra-trusted-public-keys = devenv.cachix.org-1:w1cLUi8dv3hnoSPGAuibQv+f9TZLr6cv/Hm9XgU50cw=
+            access-tokens = github.com=${{ github.token }}
             extra-substituters = https://cache.nixos.org
             extra-trusted-public-keys = cache.nixos.org-1:6NCHdD59X431o0gWypbMrAURkbJ16ZPMQFGspcDShjY=
       - name: Enable Cachix cache
@@ -261,8 +266,8 @@ jobs:
       - name: Sync megarepo dependencies
         run: mr sync --frozen
         shell: bash
-      - name: Install devenv
-        run: 'nix profile install github:cachix/devenv/$(jq -r ".nodes.devenv.locked.rev" devenv.lock)'
+      - name: Install devenv if needed
+        run: 'command -v devenv > /dev/null || nix profile install "github:cachix/devenv/$(jq -r .nodes.devenv.locked.rev devenv.lock)"'
         shell: bash
       - name: Validate Nix store
         run: |
@@ -304,14 +309,14 @@ jobs:
       - name: 'Run sync-provider tests for ${{ matrix.provider }}'
         run: |
           if [[ "${{ matrix.provider }}" == cf-* ]]; then
-            if dt "test:integration:sync-provider:${{ matrix.provider }}"; then
+            if devenv tasks run test:integration:sync-provider:${{ matrix.provider }} --mode before; then
               exit 0
             else
               echo "::warning::Cloudflare sync-provider tests for ${{ matrix.provider }} failed (flaky; see https://github.com/livestorejs/livestore/issues/625 and upstream https://github.com/cloudflare/workers-sdk/issues/11122)"
               exit 0
             fi
           else
-            dt "test:integration:sync-provider:${{ matrix.provider }}"
+            devenv tasks run test:integration:sync-provider:${{ matrix.provider }} --mode before
           fi
   test-integration-playwright:
     strategy:
@@ -320,7 +325,7 @@ jobs:
     runs-on: [namespace-profile-linux-x86-64, 'namespace-features:github.run-id=${{ github.run_id }}']
     defaults:
       run:
-        shell: devenv shell bash -- -e {0}
+        shell: bash
     steps:
       - uses: actions/checkout@v4
       - name: Install Nix
@@ -329,6 +334,7 @@ jobs:
           extra-conf: |
             extra-substituters = https://devenv.cachix.org
             extra-trusted-public-keys = devenv.cachix.org-1:w1cLUi8dv3hnoSPGAuibQv+f9TZLr6cv/Hm9XgU50cw=
+            access-tokens = github.com=${{ github.token }}
             extra-substituters = https://cache.nixos.org
             extra-trusted-public-keys = cache.nixos.org-1:6NCHdD59X431o0gWypbMrAURkbJ16ZPMQFGspcDShjY=
       - name: Enable Cachix cache
@@ -342,8 +348,8 @@ jobs:
       - name: Sync megarepo dependencies
         run: mr sync --frozen
         shell: bash
-      - name: Install devenv
-        run: 'nix profile install github:cachix/devenv/$(jq -r ".nodes.devenv.locked.rev" devenv.lock)'
+      - name: Install devenv if needed
+        run: 'command -v devenv > /dev/null || nix profile install "github:cachix/devenv/$(jq -r .nodes.devenv.locked.rev devenv.lock)"'
         shell: bash
       - name: Validate Nix store
         run: |
@@ -373,9 +379,9 @@ jobs:
           PLAYWRIGHT_SUITE: '${{ matrix.suite }}'
         run: |
           if [ "${{ matrix.suite }}" = "devtools" ]; then
-            dt test:integration:devtools || echo "::warning::Script failed but continuing"
+            devenv tasks run test:integration:devtools --mode before || echo "::warning::Script failed but continuing"
           else
-            dt "test:integration:${{ matrix.suite }}"
+            devenv tasks run test:integration:${{ matrix.suite }} --mode before
           fi
       - uses: actions/upload-artifact@v4
         if: '${{ !cancelled() }}'
@@ -398,7 +404,7 @@ jobs:
     runs-on: [namespace-profile-linux-x86-64, 'namespace-features:github.run-id=${{ github.run_id }}']
     defaults:
       run:
-        shell: devenv shell bash -- -e {0}
+        shell: bash
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
@@ -410,6 +416,7 @@ jobs:
           extra-conf: |
             extra-substituters = https://devenv.cachix.org
             extra-trusted-public-keys = devenv.cachix.org-1:w1cLUi8dv3hnoSPGAuibQv+f9TZLr6cv/Hm9XgU50cw=
+            access-tokens = github.com=${{ github.token }}
             extra-substituters = https://cache.nixos.org
             extra-trusted-public-keys = cache.nixos.org-1:6NCHdD59X431o0gWypbMrAURkbJ16ZPMQFGspcDShjY=
       - name: Enable Cachix cache
@@ -423,8 +430,8 @@ jobs:
       - name: Sync megarepo dependencies
         run: mr sync --frozen
         shell: bash
-      - name: Install devenv
-        run: 'nix profile install github:cachix/devenv/$(jq -r ".nodes.devenv.locked.rev" devenv.lock)'
+      - name: Install devenv if needed
+        run: 'command -v devenv > /dev/null || nix profile install "github:cachix/devenv/$(jq -r .nodes.devenv.locked.rev devenv.lock)"'
         shell: bash
       - name: Validate Nix store
         run: |
@@ -450,7 +457,7 @@ jobs:
           # Disable in Vite (otherwise CORS issues)
           echo "VITE_OTEL_EXPORTER_OTLP_ENDPOINT=" >> $GITHUB_ENV
       - name: Run performance tests
-        run: 'dt test:perf'
+        run: 'devenv tasks run test:perf --mode before'
         env:
           COMMIT_SHA: '${{ github.event.pull_request.head.sha || github.sha }}'
           GRAFANA_ENDPOINT: 'https://livestore.grafana.net'
@@ -465,6 +472,7 @@ jobs:
           extra-conf: |
             extra-substituters = https://devenv.cachix.org
             extra-trusted-public-keys = devenv.cachix.org-1:w1cLUi8dv3hnoSPGAuibQv+f9TZLr6cv/Hm9XgU50cw=
+            access-tokens = github.com=${{ github.token }}
             extra-substituters = https://cache.nixos.org
             extra-trusted-public-keys = cache.nixos.org-1:6NCHdD59X431o0gWypbMrAURkbJ16ZPMQFGspcDShjY=
       - name: Enable Cachix cache
@@ -478,8 +486,8 @@ jobs:
       - name: Sync megarepo dependencies
         run: mr sync --frozen
         shell: bash
-      - name: Install devenv
-        run: 'nix profile install github:cachix/devenv/$(jq -r ".nodes.devenv.locked.rev" devenv.lock)'
+      - name: Install devenv if needed
+        run: 'command -v devenv > /dev/null || nix profile install "github:cachix/devenv/$(jq -r .nodes.devenv.locked.rev devenv.lock)"'
         shell: bash
       - name: Validate Nix store
         run: |
@@ -508,7 +516,7 @@ jobs:
         working-directory: packages/@livestore/wa-sqlite
         run: 'nix run .#build'
       - name: Run wa-sqlite tests
-        run: 'devenv shell dt test:integration:wa-sqlite'
+        run: 'devenv tasks run test:integration:wa-sqlite --mode before'
         env:
           COMMIT_SHA: '${{ github.event.pull_request.head.sha || github.sha }}'
           GRAFANA_ENDPOINT: 'https://livestore.grafana.net'
@@ -519,7 +527,7 @@ jobs:
     needs: [test-unit, test-integration-node-sync, test-integration-sync-provider, test-integration-playwright]
     defaults:
       run:
-        shell: devenv shell bash -- -e {0}
+        shell: bash
     steps:
       - uses: actions/checkout@v4
       - name: Install Nix
@@ -528,6 +536,7 @@ jobs:
           extra-conf: |
             extra-substituters = https://devenv.cachix.org
             extra-trusted-public-keys = devenv.cachix.org-1:w1cLUi8dv3hnoSPGAuibQv+f9TZLr6cv/Hm9XgU50cw=
+            access-tokens = github.com=${{ github.token }}
             extra-substituters = https://cache.nixos.org
             extra-trusted-public-keys = cache.nixos.org-1:6NCHdD59X431o0gWypbMrAURkbJ16ZPMQFGspcDShjY=
       - name: Enable Cachix cache
@@ -541,8 +550,8 @@ jobs:
       - name: Sync megarepo dependencies
         run: mr sync --frozen
         shell: bash
-      - name: Install devenv
-        run: 'nix profile install github:cachix/devenv/$(jq -r ".nodes.devenv.locked.rev" devenv.lock)'
+      - name: Install devenv if needed
+        run: 'command -v devenv > /dev/null || nix profile install "github:cachix/devenv/$(jq -r .nodes.devenv.locked.rev devenv.lock)"'
         shell: bash
       - name: Validate Nix store
         run: |
@@ -554,12 +563,12 @@ jobs:
             devenv version
           fi
         shell: bash
-      - run: 'mono release snapshot --git-sha=${{ github.sha }} --yes'
+      - run: 'devenv shell -- mono release snapshot --git-sha=${{ github.sha }} --yes'
   build-and-deploy-examples-src:
     runs-on: [namespace-profile-linux-x86-64, 'namespace-features:github.run-id=${{ github.run_id }}']
     defaults:
       run:
-        shell: devenv shell bash -- -e {0}
+        shell: bash
     steps:
       - uses: actions/checkout@v4
       - name: Install Nix
@@ -568,6 +577,7 @@ jobs:
           extra-conf: |
             extra-substituters = https://devenv.cachix.org
             extra-trusted-public-keys = devenv.cachix.org-1:w1cLUi8dv3hnoSPGAuibQv+f9TZLr6cv/Hm9XgU50cw=
+            access-tokens = github.com=${{ github.token }}
             extra-substituters = https://cache.nixos.org
             extra-trusted-public-keys = cache.nixos.org-1:6NCHdD59X431o0gWypbMrAURkbJ16ZPMQFGspcDShjY=
       - name: Enable Cachix cache
@@ -581,8 +591,8 @@ jobs:
       - name: Sync megarepo dependencies
         run: mr sync --frozen
         shell: bash
-      - name: Install devenv
-        run: 'nix profile install github:cachix/devenv/$(jq -r ".nodes.devenv.locked.rev" devenv.lock)'
+      - name: Install devenv if needed
+        run: 'command -v devenv > /dev/null || nix profile install "github:cachix/devenv/$(jq -r .nodes.devenv.locked.rev devenv.lock)"'
         shell: bash
       - name: Validate Nix store
         run: |
@@ -602,10 +612,10 @@ jobs:
       - name: Build examples
         run: pnpm --dir examples --filter 'livestore-example-*' --workspace-concurrency=1 build
       - name: Test examples
-        run: 'dt examples:test'
+        run: 'devenv tasks run examples:test --mode before'
       - name: Deploy examples to Cloudflare
         if: github.event.pull_request.head.repo.fork != true
-        run: 'dt examples:deploy'
+        run: 'devenv tasks run examples:deploy --mode before'
         env:
           CLOUDFLARE_API_TOKEN: '${{ secrets.CLOUDFLARE_API_TOKEN }}'
           CLOUDFLARE_ACCOUNT_ID: '${{ secrets.CLOUDFLARE_ACCOUNT_ID }}'
@@ -613,7 +623,7 @@ jobs:
     runs-on: [namespace-profile-linux-x86-64, 'namespace-features:github.run-id=${{ github.run_id }}']
     defaults:
       run:
-        shell: devenv shell bash -- -e {0}
+        shell: bash
     steps:
       - uses: actions/checkout@v4
       - name: Install Nix
@@ -622,6 +632,7 @@ jobs:
           extra-conf: |
             extra-substituters = https://devenv.cachix.org
             extra-trusted-public-keys = devenv.cachix.org-1:w1cLUi8dv3hnoSPGAuibQv+f9TZLr6cv/Hm9XgU50cw=
+            access-tokens = github.com=${{ github.token }}
             extra-substituters = https://cache.nixos.org
             extra-trusted-public-keys = cache.nixos.org-1:6NCHdD59X431o0gWypbMrAURkbJ16ZPMQFGspcDShjY=
       - name: Enable Cachix cache
@@ -635,8 +646,8 @@ jobs:
       - name: Sync megarepo dependencies
         run: mr sync --frozen
         shell: bash
-      - name: Install devenv
-        run: 'nix profile install github:cachix/devenv/$(jq -r ".nodes.devenv.locked.rev" devenv.lock)'
+      - name: Install devenv if needed
+        run: 'command -v devenv > /dev/null || nix profile install "github:cachix/devenv/$(jq -r .nodes.devenv.locked.rev devenv.lock)"'
         shell: bash
       - name: Validate Nix store
         run: |
@@ -655,12 +666,12 @@ jobs:
         run: |
           set -euo pipefail
           mkdir -p tmp/ci-docs
-          timeout --signal=TERM --kill-after=2m 20m mono docs snippets build 2>&1 | tee tmp/ci-docs/01-snippets.log
+          timeout --signal=TERM --kill-after=2m 20m devenv shell -- mono docs snippets build 2>&1 | tee tmp/ci-docs/01-snippets.log
       - name: Build docs diagrams
         run: |
           set -euo pipefail
           mkdir -p tmp/ci-docs
-          timeout --signal=TERM --kill-after=2m 20m mono docs diagrams build 2>&1 | tee tmp/ci-docs/02-diagrams.log
+          timeout --signal=TERM --kill-after=2m 20m devenv shell -- mono docs diagrams build 2>&1 | tee tmp/ci-docs/02-diagrams.log
       - name: Build Astro docs bundle
         run: |
           set -euo pipefail
@@ -677,7 +688,7 @@ jobs:
             kill "$HEARTBEAT_PID" 2>/dev/null || true
           }
           trap cleanup EXIT
-          timeout --signal=TERM --kill-after=2m 20m mono docs build --api-docs --skip-deps 2>&1 | tee tmp/ci-docs/03-astro-build.log
+          timeout --signal=TERM --kill-after=2m 20m devenv shell -- mono docs build --api-docs --skip-deps 2>&1 | tee tmp/ci-docs/03-astro-build.log
       - name: Collect docs build diagnostics on failure
         if: '${{ failure() }}'
         run: |
@@ -695,7 +706,7 @@ jobs:
           retention-days: 14
       - name: Deploy docs
         if: "${{ success() && (github.event_name != 'pull_request' || github.event.pull_request.head.repo.fork != true) }}"
-        run: 'dt docs:deploy'
+        run: 'devenv tasks run docs:deploy --mode before'
         env:
           NETLIFY_AUTH_TOKEN: '${{ secrets.NETLIFY_AUTH_TOKEN }}'
   build-example-create:
@@ -722,8 +733,6 @@ jobs:
           echo "WORKSPACE_DEPS=$DEPS" >> $GITHUB_ENV
       - name: Copy example app
         run: 'pnpm dlx @livestore/cli@${{ env.SNAPSHOT_VERSION }} create --example ${{ matrix.app }} --ref ${{ github.ref }} ${{ runner.temp }}/${{ env.APP_PATH }}'
-      - name: Increase pnpm fetch retries
-        run: pnpm config set fetchRetries 3
       - name: Use snapshot version of workspace dependencies
         working-directory: '${{ runner.temp }}/${{ env.APP_PATH }}'
         run: |
