@@ -130,7 +130,7 @@ export const makeClientSessionSyncProcessor = ({
         Schema.encodeUnknownSync(eventSchema)({
           name,
           args,
-          ...(commandId !== undefined ? { commandId } : {}),
+          commandId,
           ...nextNumPair,
           clientId: clientSession.clientId,
           sessionId: clientSession.sessionId,
