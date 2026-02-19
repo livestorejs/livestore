@@ -22,7 +22,6 @@ export const eventlogMetaTable = table({
   name: EVENTLOG_META_TABLE,
   columns: {
     // TODO Adjust modeling so a global event never needs a client id component
-    // TODO(#1016): Add a commandId column to correlate events with their originating command
     seqNumGlobal: SqliteDsl.integer({ primaryKey: true, schema: EventSequenceNumber.Global.Schema }),
     seqNumClient: SqliteDsl.integer({ primaryKey: true, schema: EventSequenceNumber.Client.Schema }),
     seqNumRebaseGeneration: SqliteDsl.integer({ primaryKey: true }),
@@ -32,6 +31,8 @@ export const eventlogMetaTable = table({
     /** Event definition name */
     name: SqliteDsl.text({}),
     argsJson: SqliteDsl.text({ schema: Schema.parseJson(Schema.Any) }),
+    /** Optional command id when event originated from `store.execute()` */
+    commandId: SqliteDsl.text({ nullable: true }),
     clientId: SqliteDsl.text({}),
     sessionId: SqliteDsl.text({}),
     schemaHash: SqliteDsl.integer({}),

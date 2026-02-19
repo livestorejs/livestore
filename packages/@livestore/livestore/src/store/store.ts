@@ -195,6 +195,29 @@ export class Store<TSchema extends LiveStoreSchema = LiveStoreSchema.Any, TConte
    */
   readonly [StoreInternalsSymbol]: StoreInternals
 
+  private settleCommandConfirmations = (syncState: { pending: ReadonlyArray<unknown> }) => {
+    if (this[StoreInternalsSymbol].pendingCommandConfirmations.size === 0) {
+      return
+    }
+
+    const pendingCommandIds = new Set(
+      syncState.pending
+        .map((event) =>
+          typeof event === 'object' && event !== null && 'commandId' in event
+            ? (event as { commandId?: string | undefined }).commandId
+            : undefined,
+        )
+        .filter((commandId): commandId is string => typeof commandId === 'string'),
+    )
+
+    for (const [commandId, handlers] of this[StoreInternalsSymbol].pendingCommandConfirmations.entries()) {
+      if (pendingCommandIds.has(commandId) === false) {
+        handlers.resolve({ _tag: 'confirmed' })
+        this[StoreInternalsSymbol].pendingCommandConfirmations.delete(commandId)
+      }
+    }
+  }
+
   //#region constructor
   constructor({
     clientSession,
@@ -389,6 +412,14 @@ export class Store<TSchema extends LiveStoreSchema = LiveStoreSchema.Any, TConte
     const boot = Effect.gen(this, function* () {
       yield* Effect.addFinalizer(() =>
         Effect.sync(() => {
+          for (const handlers of this[StoreInternalsSymbol].pendingCommandConfirmations.values()) {
+            handlers.resolve({
+              _tag: 'conflict',
+              error: new Error('Store shutdown before command confirmation'),
+            })
+          }
+          this[StoreInternalsSymbol].pendingCommandConfirmations.clear()
+
           // Remove all table refs from the reactivity graph
           for (const tableRef of Object.values(tableRefs)) {
             for (const superComp of tableRef.super) {
@@ -404,6 +435,13 @@ export class Store<TSchema extends LiveStoreSchema = LiveStoreSchema.Any, TConte
       )
 
       yield* syncProcessor.boot
+
+      yield* syncProcessor.syncState.changes.pipe(
+        Stream.tap((syncState) => Effect.sync(() => this.settleCommandConfirmations(syncState))),
+        Stream.runDrain,
+        Effect.interruptible,
+        Effect.forkScoped,
+      )
     })
 
     // Build Sqlite wrapper last to avoid using getters before internals are set
@@ -423,6 +461,7 @@ export class Store<TSchema extends LiveStoreSchema = LiveStoreSchema.Any, TConte
       tableRefs,
       activeQueries,
       syncProcessor,
+      pendingCommandConfirmations: new Map(),
       boot,
       isShutdown: false,
     }
@@ -962,7 +1001,7 @@ export class Store<TSchema extends LiveStoreSchema = LiveStoreSchema.Any, TConte
       return { _tag: 'failed', error, confirmation }
     }
 
-    const events = execution.events
+    const events = execution.events.map((event) => ({ ...event, commandId: command.id }))
     if (events.length === 0) {
       throw new CommandExecutionError({
         commandName: command.name,
@@ -977,13 +1016,19 @@ export class Store<TSchema extends LiveStoreSchema = LiveStoreSchema.Any, TConte
     // Commit produced events (uses existing commit path)
     this.commit(...events)
 
-    // TODO: Enqueue command to pending queue, return a Deferred-backed
-    // confirmation promise that resolves when events are confirmed by the sync
-    // backend or rejects when replay detects a conflict.
-    // https://github.com/livestorejs/livestore/issues/1016
+    const confirmation = new Promise<{ readonly _tag: 'confirmed' } | { readonly _tag: 'conflict'; readonly error: TError }>(
+      (resolve) => {
+        this[StoreInternalsSymbol].pendingCommandConfirmations.set(command.id, {
+          resolve: resolve as (value: { _tag: 'confirmed' } | { _tag: 'conflict'; error: unknown }) => void,
+        })
+      },
+    )
+
+    this.settleCommandConfirmations(this[StoreInternalsSymbol].syncProcessor.syncState.pipe(Effect.runSync))
+
     return {
       _tag: 'pending',
-      confirmation: Promise.resolve({ _tag: 'confirmed' }),
+      confirmation,
     }
   }
 

@@ -11,6 +11,7 @@ import type * as Global from './global.ts'
 export const Decoded = Schema.Struct({
   name: Schema.String,
   args: Schema.Any,
+  commandId: Schema.optional(Schema.String),
   seqNum: EventSequenceNumber.Client.Composite,
   parentSeqNum: EventSequenceNumber.Client.Composite,
   clientId: Schema.String,
@@ -41,6 +42,7 @@ export const Decoded = Schema.Struct({
 export const Encoded = Schema.Struct({
   name: Schema.String,
   args: Schema.Any,
+  commandId: Schema.optional(Schema.String),
   seqNum: EventSequenceNumber.Client.Composite,
   parentSeqNum: EventSequenceNumber.Client.Composite,
   clientId: Schema.String,
@@ -67,6 +69,7 @@ export type ForSchema<TSchema extends LiveStoreSchema> = {
 export class EncodedWithMeta extends Schema.Class<EncodedWithMeta>('LiveStoreEvent.Client.EncodedWithMeta')({
   name: Schema.String,
   args: Schema.Any,
+  commandId: Schema.optional(Schema.String),
   seqNum: EventSequenceNumber.Client.Composite,
   parentSeqNum: EventSequenceNumber.Client.Composite,
   clientId: Schema.String,
@@ -209,6 +212,7 @@ export const makeSchema = <TSchema extends LiveStoreSchema>(
       Schema.Struct({
         name: Schema.Literal(def.name),
         args: def.schema,
+        commandId: Schema.optional(Schema.String),
         seqNum: EventSequenceNumber.Client.Composite,
         parentSeqNum: EventSequenceNumber.Client.Composite,
         clientId: Schema.String,

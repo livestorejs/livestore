@@ -165,6 +165,17 @@ export type StoreInternals = {
   readonly syncProcessor: ClientSessionSyncProcessor
 
   /**
+   * In-flight command confirmations keyed by command id.
+   * Entries are resolved when command events leave `syncState.pending`.
+   */
+  readonly pendingCommandConfirmations: Map<
+    string,
+    {
+      resolve: (confirmation: { _tag: 'confirmed' } | { _tag: 'conflict'; error: unknown }) => void
+    }
+  >
+
+  /**
    * Starts background fibers for sync and observation. Must be run exactly
    * once per Store instance. Scoped; installs finalizers to end spans and
    * detach reactive refs.

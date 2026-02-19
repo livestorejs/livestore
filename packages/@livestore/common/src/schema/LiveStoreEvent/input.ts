@@ -15,6 +15,7 @@ import type * as ForEventDef from './for-event-def.ts'
 export const Encoded = Schema.Struct({
   name: Schema.String,
   args: Schema.Any,
+  commandId: Schema.optional(Schema.String),
 }).annotations({ title: 'LiveStoreEvent.Input.Encoded' })
 
 /** Event without sequence numbers, with decoded (native TypeScript) args. */
@@ -58,6 +59,7 @@ export const makeSchema = <TSchema extends LiveStoreSchema>(schema: TSchema): Fo
       Schema.Struct({
         name: Schema.Literal(def.name),
         args: def.schema,
+        commandId: Schema.optional(Schema.String),
       }),
     ),
   ).annotations({ title: 'LiveStoreEvent.Input' }) as any
