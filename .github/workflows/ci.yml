@@ -554,7 +554,7 @@ jobs:
             devenv version
           fi
         shell: bash
-      - run: 'mono release snapshot --git-sha=${{ github.sha }}'
+      - run: 'mono release snapshot --git-sha=${{ github.sha }} --yes'
   build-and-deploy-examples-src:
     runs-on: [namespace-profile-linux-x86-64, 'namespace-features:github.run-id=${{ github.run_id }}']
     defaults:
