@@ -30,7 +30,7 @@ import {
   type ExecuteResult,
   LiveStoreEvent,
   type LiveStoreSchema,
-  normalizeHandlerResult,
+  executeCommandHandler,
   resolveEventDef,
   SystemTables,
 } from '@livestore/common/schema'
@@ -943,22 +943,18 @@ export class Store<TSchema extends LiveStoreSchema = LiveStoreSchema.Any, TConte
       phase: { _tag: 'initial' },
     }
 
-    let rawResult: ReturnType<typeof commandDef.handler>
-    try {
-      rawResult = commandDef.handler(command.args, handlerContext)
-    } catch (cause) {
+    const execution = executeCommandHandler(commandDef.handler, command.args, handlerContext)
+    if (execution._tag === 'threw') {
       throw new CommandExecutionError({
         commandName: command.name,
         commandId: command.id,
         phase: 'initial',
-        cause,
+        cause: execution.cause,
       })
     }
 
-    // Normalize: distinguish events array from error value
-    const normalized = normalizeHandlerResult(rawResult)
-    if (!normalized.ok) {
-      const error = normalized.error as TError
+    if (execution._tag === 'error') {
+      const error = execution.error as TError
       const confirmation = Promise.reject(error)
       // Mark as handled to avoid unhandled-rejection warnings when callers branch on `_tag`
       // and intentionally skip awaiting `.confirmation` for failed initial execution.
@@ -966,7 +962,7 @@ export class Store<TSchema extends LiveStoreSchema = LiveStoreSchema.Any, TConte
       return { _tag: 'failed', error, confirmation }
     }
 
-    const events = normalized.events
+    const events = execution.events
     if (events.length === 0) {
       throw new CommandExecutionError({
         commandName: command.name,

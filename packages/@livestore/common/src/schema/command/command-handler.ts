@@ -2,6 +2,7 @@ import type { Schema } from '@livestore/utils/effect'
 
 import type * as LiveStoreEvent from '../LiveStoreEvent/mod.ts'
 import type { QueryBuilder } from '../state/sqlite/query-builder/mod.ts'
+import type { Bindable } from '../../util.ts'
 import type { CommandDef } from './command-def.ts'
 
 /**
@@ -32,7 +33,7 @@ export type CommandHandlerContextQuery = {
   /** Query with a type-safe query builder. */
   <TResult>(qb: QueryBuilder<TResult, any, any>): TResult
   /** Query with raw SQL and bind values. */
-  (args: { query: string; bindValues: Record<string, unknown> }): ReadonlyArray<unknown>
+  (args: { query: string; bindValues: Bindable }): ReadonlyArray<unknown>
 }
 
 /**
@@ -120,6 +121,43 @@ export const normalizeHandlerResult = <TError>(
   if (Array.isArray(result)) return { ok: true, events: result }
   if (isEventInput(result)) return { ok: true, events: [result] }
   return { ok: false, error: result as TError }
+}
+
+/**
+ * Full outcome of a command handler invocation, including thrown errors.
+ *
+ * This helper keeps execution semantics consistent between initial execution
+ * (`store.execute`) and replay (`LeaderSyncProcessor`).
+ */
+export type CommandHandlerExecutionResult<TError> =
+  | { readonly _tag: 'ok'; readonly events: ReadonlyArray<LiveStoreEvent.Input.Decoded> }
+  | { readonly _tag: 'error'; readonly error: TError }
+  | { readonly _tag: 'threw'; readonly cause: unknown }
+
+/**
+ * Execute a command handler and classify the outcome.
+ *
+ * - Returned event(s) => `{ _tag: 'ok' }`
+ * - Returned recoverable error => `{ _tag: 'error' }`
+ * - Thrown unexpected error => `{ _tag: 'threw' }`
+ */
+export const executeCommandHandler = <TError>(
+  handler: (commandArgs: unknown, context: CommandHandlerContext) => CommandHandlerResult<TError>,
+  commandArgs: unknown,
+  context: CommandHandlerContext,
+): CommandHandlerExecutionResult<TError> => {
+  let rawResult: CommandHandlerResult<TError>
+  try {
+    rawResult = handler(commandArgs, context)
+  } catch (cause) {
+    return { _tag: 'threw', cause }
+  }
+
+  const normalized = normalizeHandlerResult(rawResult)
+  if (!normalized.ok) {
+    return { _tag: 'error', error: normalized.error }
+  }
+  return { _tag: 'ok', events: normalized.events }
 }
 
 /**

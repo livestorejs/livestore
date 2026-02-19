@@ -24,7 +24,15 @@ import type * as otel from '@opentelemetry/api'
 import { type MaterializeError, type SqliteDb, UnknownError } from '../adapter-types.ts'
 import { IntentionalShutdownCause } from '../errors.ts'
 import { makeMaterializerHash } from '../materializer-helper.ts'
-import { type LiveStoreSchema, normalizeHandlerResult, type CommandDef, type CommandHandlerContext, type CommandHandlerResult, EventSequenceNumber, LiveStoreEvent, resolveEventDef, SystemTables } from '../schema/mod.ts'
+import {
+  type CommandHandlerContext,
+  executeCommandHandler,
+  EventSequenceNumber,
+  LiveStoreEvent,
+  resolveEventDef,
+  SystemTables,
+  type LiveStoreSchema,
+} from '../schema/mod.ts'
 import { EVENTLOG_META_TABLE, SYNC_STATUS_TABLE } from '../schema/state/sqlite/system-tables/eventlog-tables.ts'
 import { CommandJournal } from '../sync/CommandJournal.ts'
 import {
@@ -35,7 +43,7 @@ import {
   type SyncBackend,
 } from '../sync/sync.ts'
 import * as SyncState from '../sync/syncstate.ts'
-import { sql } from '../util.ts'
+import { type Bindable, prepareBindValues, sql } from '../util.ts'
 import * as Eventlog from './eventlog.ts'
 import { rollback } from './materialize-event.ts'
 import type { ShutdownChannel } from './shutdown-channel.ts'
@@ -1301,27 +1309,19 @@ const replayPendingCommands = ({
       const handlerContext: CommandHandlerContext = {
         phase: { _tag: 'replay' },
         query: <TResult>(query: unknown): TResult => {
-          // Execute the query against the current state db
-          // The query is expected to be a SQL query or query builder
-          if (typeof query === 'string') {
-            const result = dbState.select(query)
-            return result as TResult
+          if (typeof query === 'object' && query !== null && 'query' in query && 'bindValues' in query) {
+            const { query: sqlQuery, bindValues } = query as { query: string; bindValues: Bindable }
+            return dbState.select(sqlQuery, prepareBindValues(bindValues, sqlQuery)) as TResult
           }
-          // Handle query builders and live query definitions
-          if (query && typeof query === 'object' && 'sql' in query) {
-            const result = dbState.select((query as { sql: string }).sql)
-            return result as TResult
-          }
-          // For other query types, attempt to execute as-is
-          return dbState.select(query as string) as TResult
+          return dbState.select(query as never) as TResult
         },
       }
 
       // Execute the handler to validate the command against the new state
       // We use a synchronous try-catch here since handlers are synchronous
-      const replayResult = executeCommandHandler(commandDef, pendingCommand.args, handlerContext)
+      const replayResult = executeCommandHandler(commandDef.handler, pendingCommand.args, handlerContext)
 
-      if (replayResult.success) {
+      if (replayResult._tag === 'ok') {
         // Command executed successfully - it's still valid
         validCommandIds.push(pendingCommand.id)
 
@@ -1332,13 +1332,21 @@ const replayPendingCommands = ({
         )
       } else {
         // Command failed during replay - emit conflict
+        const replayError =
+          replayResult._tag === 'error'
+            ? replayResult.error instanceof Error
+              ? replayResult.error
+              : new Error(String(replayResult.error))
+            : replayResult.cause instanceof Error
+              ? replayResult.cause
+              : new Error(String(replayResult.cause))
         const conflict: ReplayConflict = {
           command: {
             id: pendingCommand.id,
             name: pendingCommand.name,
             args: pendingCommand.args,
           },
-          error: replayResult.error,
+          error: replayError,
           timestamp: Date.now(),
         }
 
@@ -1350,7 +1358,7 @@ const replayPendingCommands = ({
           {
             commandId: pendingCommand.id,
             commandName: pendingCommand.name,
-            error: replayResult.error.message,
+            error: replayError.message,
           },
           undefined,
         )
@@ -1373,36 +1381,3 @@ const replayPendingCommands = ({
     Effect.orDie,
     Effect.withSpan('@livestore/common:LeaderSyncProcessor:replayPendingCommands'),
   )
-
-/**
- * Execute a command handler synchronously, catching any errors.
- * Returns a discriminated union indicating success (with events) or failure.
- *
- * Supports both return-as-value errors (via `normalizeHandlerResult`) and
- * legacy throw-based errors (via try/catch safety net).
- */
-const executeCommandHandler = (
-  commandDef: CommandDef.AnyWithoutFn,
-  args: unknown,
-  context: CommandHandlerContext,
-): { success: true; events: ReadonlyArray<unknown> } | { success: false; error: Error } => {
-  let rawResult: CommandHandlerResult<unknown>
-  try {
-    rawResult = commandDef.handler(args, context)
-  } catch (error) {
-    return {
-      success: false,
-      error: error instanceof Error ? error : new Error(String(error)),
-    }
-  }
-
-  const normalized = normalizeHandlerResult(rawResult)
-  if (!normalized.ok) {
-    const err = normalized.error
-    return {
-      success: false,
-      error: err instanceof Error ? err : new Error(String(err)),
-    }
-  }
-  return { success: true, events: normalized.events }
-}
