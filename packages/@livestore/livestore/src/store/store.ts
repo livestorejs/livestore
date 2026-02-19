@@ -886,30 +886,38 @@ export class Store<TSchema extends LiveStoreSchema = LiveStoreSchema.Any, TConte
    * Execute a command against the current state.
    *
    * Commands encode user intentions that can be validated against the current state
-   * and re-evaluated during sync reconciliation. The handler produces events that
-   * are committed atomically.
+   * and re-evaluated during sync.
    *
-   * @param command - The command instance to execute (created by calling a CommandDef)
-   * @returns An ExecuteResult indicating success or failure
+   * @param command - The command instance to execute (created by calling a {@link CommandDef})
+   * @returns An {@link ExecuteResult} indicating a failure or pending confirmation
    *
    * @example
    * ```ts
    * const result = store.execute(commands.checkInGuest({ roomId, guestId }))
    *
    * if (result._tag === 'failed') {
-   *   // result.error is the typed error returned by the handler
-   *   console.error('Failed:', result.error)
+   *   switch (result.error._tag) {
+   *       case 'RoomAtCapacity':
+   *          console.error('Room is full:', result.error)
+   *          break
+   *       case 'GuestNotFound':
+   *          console.error('Guest not found:', result.error)
+   *          break
+   *       default:
+   *          console.error('Could not check in guest:', result.error)
+   *          break
+   *    }
    *   return
    * }
    *
-   * // Command succeeded locally - events are materialized
+   * // Command succeeded initial execution - events are materialized but pending confirmation
    * const guest = store.query(tables.guests.get(guestId))
-   * toast.success(guest.status === 'waitlisted' ? 'Waitlisted' : 'Checked in')
+   * console.log('Checked in:', guest)
    *
    * // Optionally await server confirmation
    * const confirmation = await result.confirmation
-   * if (confirmation._tag === 'conflict') {
-   *   toast.error('Action rolled back')
+   * if (confirmation._tag === 'conflict' && confirmation.error._tag === 'RoomAtCapacity') {
+   *   console.error('Check-in rolled back: room is full')
    * }
    * ```
    */
@@ -924,7 +932,7 @@ export class Store<TSchema extends LiveStoreSchema = LiveStoreSchema.Any, TConte
       throw new CommandExecutionError({
         commandName: command.name,
         commandId: command.id,
-        phase: 'validation',
+        phase: 'initial',
         cause: `No command definition found for '${command.name}'`,
       })
     }
@@ -935,25 +943,43 @@ export class Store<TSchema extends LiveStoreSchema = LiveStoreSchema.Any, TConte
       phase: { _tag: 'initial' },
     }
 
-    // Execute handler — unexpected throws propagate to the caller
-    const rawResult = commandDef.handler(command.args, handlerContext)
+    let rawResult: ReturnType<typeof commandDef.handler>
+    try {
+      rawResult = commandDef.handler(command.args, handlerContext)
+    } catch (cause) {
+      throw new CommandExecutionError({
+        commandName: command.name,
+        commandId: command.id,
+        phase: 'initial',
+        cause,
+      })
+    }
 
     // Normalize: distinguish events array from error value
     const normalized = normalizeHandlerResult(rawResult)
     if (!normalized.ok) {
       const error = normalized.error as TError
-      // TODO: Promise.reject without a .catch() creates an unhandled rejection
-      // when the caller only checks _tag and never accesses .confirmation.
-      // https://github.com/livestorejs/livestore/issues/1016
-      return { _tag: 'failed', error, confirmation: Promise.reject(error) }
+      const confirmation = Promise.reject(error)
+      // Mark as handled to avoid unhandled-rejection warnings when callers branch on `_tag`
+      // and intentionally skip awaiting `.confirmation` for failed initial execution.
+      void confirmation.catch(() => {})
+      return { _tag: 'failed', error, confirmation }
     }
 
     const events = normalized.events
+    if (events.length === 0) {
+      throw new CommandExecutionError({
+        commandName: command.name,
+        commandId: command.id,
+        phase: 'initial',
+        cause: new Error(`Command '${command.name}' produced no events`),
+        note:
+          'Command handlers must return one event, an array with at least one event, or a recoverable error value.',
+      })
+    }
 
     // Commit produced events (uses existing commit path)
-    if (events.length > 0) {
-      this.commit(...events)
-    }
+    this.commit(...events)
 
     // TODO: Enqueue command to pending queue, return a Deferred-backed
     // confirmation promise that resolves when events are confirmed by the sync
