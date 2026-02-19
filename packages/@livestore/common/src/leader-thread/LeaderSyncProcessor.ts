@@ -59,6 +59,24 @@ import { isQueryBuilder } from '../schema/state/sqlite/query-builder/api.ts'
 /** Serialize value to JSON string for trace attributes */
 const jsonStringify = Schema.encodeSync(Schema.parseJson())
 
+/** Convert unknown replay errors into transport-safe JSON values for sync payloads. */
+const toJsonValue = (value: unknown): Schema.JsonValue => {
+  if (value instanceof Error) {
+    return {
+      name: value.name,
+      message: value.message,
+      stack: value.stack ?? null,
+    }
+  }
+
+  try {
+    const encoded = JSON.parse(JSON.stringify(value))
+    return (encoded ?? null) as Schema.JsonValue
+  } catch {
+    return String(value)
+  }
+}
+
 type LocalPushQueueItem = [
   event: LiveStoreEvent.Client.EncodedWithMeta,
   deferred: Deferred.Deferred<void, LeaderAheadError> | undefined,
@@ -803,16 +821,12 @@ const backgroundBackendPulling = Effect.fn('@livestore/common:LeaderSyncProcesso
           })
         }
 
-        yield* connectedClientSessionPullQueues.offer({
-          payload: SyncState.payloadFromMergeResult(mergeResult),
-          leaderHead: mergeResult.newSyncState.localHead,
-        })
-      } else {
-        otelSpan?.addEvent(
-          `pull:advance`,
-          {
-            newEventsCount: newEvents.length,
-            mergeResult: TRACE_VERBOSE === true ? jsonStringify(mergeResult) : undefined,
+        } else {
+          otelSpan?.addEvent(
+            `pull:advance`,
+            {
+              newEventsCount: newEvents.length,
+              mergeResult: TRACE_VERBOSE === true ? jsonStringify(mergeResult) : undefined,
           },
           undefined,
         )
@@ -853,14 +867,25 @@ const backgroundBackendPulling = Effect.fn('@livestore/common:LeaderSyncProcesso
       yield* materializeEventsBatch({ batchItems: mergeResult.newEvents, deferreds: undefined })
 
       // Replay pending commands after rebase to validate them against the new state
-        // TODO: Use replay result to resolve/reject the confirmation Deferreds
-        // for each command (confirmed for valid, conflict for failed).
-        // https://github.com/livestorejs/livestore/issues/1016
+        let replayConflicts: ReadonlyArray<typeof SyncState.CommandConflict.Type> = []
         if (mergeResult._tag === 'rebase') {
-          yield* replayPendingCommands({
+          const replayResult = yield* replayPendingCommands({
             schema,
             dbState: db,
             otelSpan,
+          })
+
+          replayConflicts = replayResult.conflicts.map((conflict) => ({
+            commandId: conflict.command.id,
+            error: toJsonValue(conflict.error),
+          }))
+
+          yield* connectedClientSessionPullQueues.offer({
+            payload: {
+              ...SyncState.payloadFromMergeResult(mergeResult),
+              commandConflicts: replayConflicts,
+            },
+            leaderHead: mergeResult.newSyncState.localHead,
           })
         }
 
@@ -1062,6 +1087,7 @@ const makePullQueueSet = Effect.gen(function* () {
                 newEvents: ReadonlyArray.dropWhile(payload.newEvents, (eventEncoded) =>
                   EventSequenceNumber.Client.isGreaterThanOrEqual(cursor, eventEncoded.seqNum),
                 ),
+                commandConflicts: payload.commandConflicts,
               },
             }
           } else {
@@ -1115,8 +1141,12 @@ const makePullQueueSet = Effect.gen(function* () {
 
       // console.debug(`offering to ${set.size} queues`, item.leaderHead, JSON.stringify(item.payload, null, 2))
 
-      // Short-circuit if the payload is an empty upstream advance
-      if (item.payload._tag === 'upstream-advance' && item.payload.newEvents.length === 0) {
+      // Short-circuit if the payload is an empty upstream advance without conflict info.
+      if (
+        item.payload._tag === 'upstream-advance' &&
+        item.payload.newEvents.length === 0 &&
+        item.payload.commandConflicts.length === 0
+      ) {
         return
       }
 

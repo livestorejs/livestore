@@ -218,6 +218,16 @@ export class Store<TSchema extends LiveStoreSchema = LiveStoreSchema.Any, TConte
     }
   }
 
+  private settleCommandConflict = (conflict: { commandId: string; error: unknown }) => {
+    const handlers = this[StoreInternalsSymbol].pendingCommandConfirmations.get(conflict.commandId)
+    if (handlers === undefined) {
+      return
+    }
+
+    handlers.resolve({ _tag: 'conflict', error: conflict.error })
+    this[StoreInternalsSymbol].pendingCommandConfirmations.delete(conflict.commandId)
+  }
+
   //#region constructor
   constructor({
     clientSession,
@@ -438,6 +448,13 @@ export class Store<TSchema extends LiveStoreSchema = LiveStoreSchema.Any, TConte
 
       yield* syncProcessor.syncState.changes.pipe(
         Stream.tap((syncState) => Effect.sync(() => this.settleCommandConfirmations(syncState))),
+        Stream.runDrain,
+        Effect.interruptible,
+        Effect.forkScoped,
+      )
+
+      yield* syncProcessor.commandConflicts.pipe(
+        Stream.tap((conflict) => Effect.sync(() => this.settleCommandConflict(conflict))),
         Stream.runDrain,
         Effect.interruptible,
         Effect.forkScoped,

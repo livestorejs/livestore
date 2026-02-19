@@ -105,6 +105,7 @@ export const makeClientSessionSyncProcessor = ({
 
   /** Only used for debugging / observability / testing, it's not relied upon for correctness of the sync processor. */
   const syncStateUpdateQueue = Queue.unbounded<SyncState.SyncState>().pipe(Effect.runSync)
+  const commandConflictQueue = Queue.unbounded<typeof SyncState.CommandConflict.Type>().pipe(Effect.runSync)
   const isClientEvent = (eventEncoded: LiveStoreEvent.Client.EncodedWithMeta) =>
     schema.eventsDefsMap.get(eventEncoded.name)?.options.clientOnly ?? false
 
@@ -242,6 +243,10 @@ export const makeClientSessionSyncProcessor = ({
             yield* clientSession.devtools.pullLatch.await
           }
 
+          if (payload.commandConflicts.length > 0) {
+            yield* Queue.offerAll(commandConflictQueue, payload.commandConflicts)
+          }
+
           const mergeResult = SyncState.merge({
             syncState: syncStateRef.current,
             payload,
@@ -374,6 +379,7 @@ export const makeClientSessionSyncProcessor = ({
       }),
       changes: Stream.fromQueue(syncStateUpdateQueue),
     }),
+    commandConflicts: Stream.fromQueue(commandConflictQueue),
     debug: {
       print: () =>
         Effect.gen(function* () {
@@ -401,6 +407,8 @@ export interface ClientSessionSyncProcessor {
    * Only used for debugging / observability.
    */
   syncState: Subscribable.Subscribable<SyncState.SyncState>
+  /** Replay conflicts received from the leader. */
+  commandConflicts: Stream.Stream<typeof SyncState.CommandConflict.Type>
   debug: {
     print: () => void
     debugInfo: () => {
