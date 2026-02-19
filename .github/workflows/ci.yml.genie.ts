@@ -246,11 +246,7 @@ fi`,
             NETLIFY_AUTH_TOKEN: '${{ secrets.NETLIFY_AUTH_TOKEN }}',
             PLAYWRIGHT_SUITE: '${{ matrix.suite }}',
           },
-          run: `if [ -n "$NETLIFY_AUTH_TOKEN" ]; then
-  bunx netlify-cli deploy --no-build --dir=tests/integration/playwright-report --site livestore-ci --filter @local/tests-integration --alias \${{ matrix.suite }}-$(git rev-parse --short HEAD)
-else
-  echo "Skipping Netlify deploy: NETLIFY_AUTH_TOKEN not set"
-fi`,
+          run: runDevenvTasksBefore('ci:playwright:upload-trace'),
         },
       ],
     },
@@ -331,13 +327,11 @@ fi`,
         deterministicPreflightStep,
         {
           name: 'Install examples dependencies',
-          // Run pnpm from root devenv shell, targeting examples workspace
-          run: 'pnpm install --frozen-lockfile --dir examples',
+          run: runDevenvTasksBefore('examples:install'),
         },
         {
           name: 'Build examples',
-          // Run pnpm from root devenv shell, targeting examples workspace
-          run: "pnpm --dir examples --filter 'livestore-example-*' --workspace-concurrency=1 build",
+          run: runDevenvTasksBefore('examples:build'),
         },
         { name: 'Test examples', run: runDevenvTasksBefore('examples:test') },
         {

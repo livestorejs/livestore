@@ -394,12 +394,7 @@ jobs:
         env:
           NETLIFY_AUTH_TOKEN: '${{ secrets.NETLIFY_AUTH_TOKEN }}'
           PLAYWRIGHT_SUITE: '${{ matrix.suite }}'
-        run: |
-          if [ -n "$NETLIFY_AUTH_TOKEN" ]; then
-            bunx netlify-cli deploy --no-build --dir=tests/integration/playwright-report --site livestore-ci --filter @local/tests-integration --alias ${{ matrix.suite }}-$(git rev-parse --short HEAD)
-          else
-            echo "Skipping Netlify deploy: NETLIFY_AUTH_TOKEN not set"
-          fi
+        run: 'devenv tasks run ci:playwright:upload-trace --mode before'
   perf-test:
     runs-on: [namespace-profile-linux-x86-64, 'namespace-features:github.run-id=${{ github.run_id }}']
     defaults:
@@ -608,9 +603,9 @@ jobs:
         run: 'DEVENV_SKIP_SETUP=1 devenv tasks run pnpm:install genie:run ts:build --mode before --verbose'
         shell: bash
       - name: Install examples dependencies
-        run: pnpm install --frozen-lockfile --dir examples
+        run: 'devenv tasks run examples:install --mode before'
       - name: Build examples
-        run: pnpm --dir examples --filter 'livestore-example-*' --workspace-concurrency=1 build
+        run: 'devenv tasks run examples:build --mode before'
       - name: Test examples
         run: 'devenv tasks run examples:test --mode before'
       - name: Deploy examples to Cloudflare

@@ -51,6 +51,17 @@
       exec = "mono test integration node-sync";
     };
 
+    "ci:playwright:upload-trace" = {
+      description = "Upload Playwright trace to Netlify in CI";
+      exec = ''
+        if [ -n "''${NETLIFY_AUTH_TOKEN:-}" ]; then
+          bunx netlify-cli deploy --no-build --dir=tests/integration/playwright-report --site livestore-ci --filter @local/tests-integration --alias "''${PLAYWRIGHT_SUITE:-unknown}-$(git rev-parse --short HEAD)"
+        else
+          echo "Skipping Netlify deploy: NETLIFY_AUTH_TOKEN not set"
+        fi
+      '';
+    };
+
     # Sync provider tests (individual providers for CI matrix)
     "test:integration:sync-provider" = {
       description = "Run all sync provider tests";
@@ -138,6 +149,16 @@
     "examples:deploy" = {
       description = "Deploy examples to Cloudflare";
       exec = "mono examples deploy";
+    };
+
+    "examples:install" = {
+      description = "Install examples dependencies";
+      exec = "pnpm install --frozen-lockfile --dir examples";
+    };
+
+    "examples:build" = {
+      description = "Build examples";
+      exec = "pnpm --dir examples --filter 'livestore-example-*' --workspace-concurrency=1 build";
     };
 
     # =========================================================================
