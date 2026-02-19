@@ -11,7 +11,7 @@ export const liveStoreVersion: string = (globalThis as any).__LIVESTORE_VERSION_
 /**
  * CRITICAL: Increment this version whenever you modify client-side EVENTLOG table schemas.
  *
- * Used to generate database file names (e.g., `eventlog@6.db`, `state@6.db`) across all client adapters.
+ * Used to generate database file names (e.g., `eventlog@7.db`, `state@7.db`) across all client adapters.
  *
  * Bump required when:
  * - Modifying eventlog system tables (eventlogMetaTable, syncStatusTable) in schema/state/sqlite/system-tables/eventlog-tables.ts
@@ -25,4 +25,4 @@ export const liveStoreVersion: string = (globalThis as any).__LIVESTORE_VERSION_
  *
  * Impact: Version changes trigger a "soft reset" - old data becomes inaccessible but remains on disk.
  */
-export const liveStoreStorageFormatVersion = 6
+export const liveStoreStorageFormatVersion = 7

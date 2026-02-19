@@ -30,12 +30,6 @@ export const initEventlogDb = (dbEventlog: SqliteDb) =>
       })
     }
 
-    // Backward-compatible eventlog schema upgrade: old databases may not have `commandId`.
-    const eventlogColumns = dbEventlog.select<{ name: string }>(sql`PRAGMA table_info(${EVENTLOG_META_TABLE})`)
-    if (eventlogColumns.some((column) => column.name === 'commandId') === false) {
-      dbEventlog.execute(sql`ALTER TABLE ${EVENTLOG_META_TABLE} ADD COLUMN commandId TEXT`)
-    }
-
     // Create sync status row if it doesn't exist
     yield* execSql(
       dbEventlog,
