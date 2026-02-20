@@ -1,8 +1,9 @@
-import { StoreRegistry } from '@livestore/livestore'
-import { StoreRegistryProvider } from '@livestore/react'
 import { StatusBar } from 'expo-status-bar'
 import { type FC, Suspense, useState } from 'react'
 import { SafeAreaView, Text, View } from 'react-native'
+
+import { StoreRegistry } from '@livestore/livestore'
+import { StoreRegistryProvider } from '@livestore/react'
 
 import { ListTodos } from './components/ListTodos.tsx'
 import { NewTodo } from './components/NewTodo.tsx'
