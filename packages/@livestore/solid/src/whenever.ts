@@ -11,6 +11,9 @@ type InferNonNullableTuple<TAccessors extends Array<AccessorMaybe<any>>> = {
   [TKey in keyof TAccessors]: InferNonNullable<TAccessors[TKey]>
 }
 
+const hasTruthyValue = <TValue>(value: TValue): value is NonNullable<TValue> =>
+  value !== undefined && value !== null && value !== false && value !== 0 && value !== ''
+
 /**
  * Checks if the accessor's value is truthy and executes a callback with that value.
  * @param accessor - The value or function returning a value to check for truthiness
@@ -24,11 +27,7 @@ const check = <TValue, TResult, TFallbackResult = undefined>(
   fallback?: () => TFallbackResult,
 ): TResult | TFallbackResult | undefined => {
   const value = resolve(accessor)
-  return value !== undefined && value !== null && value !== false && value !== 0 && value !== ''
-    ? callback(value as NonNullable<TValue>)
-    : fallback !== undefined
-      ? fallback()
-      : undefined
+  return hasTruthyValue(value) ? callback(value) : fallback !== undefined ? fallback() : undefined
 }
 
 /**
