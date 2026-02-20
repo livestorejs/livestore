@@ -146,6 +146,12 @@
       }
     },
     {
+      "files": ["packages/@livestore/sync-s2/src/http-client-generated.ts"],
+      "rules": {
+        "typescript/no-unsafe-type-assertion": "off"
+      }
+    },
+    {
       "files": ["packages/@livestore/react/src/useRcResource.ts"],
       "rules": {
         "react-hooks/exhaustive-deps": "off"

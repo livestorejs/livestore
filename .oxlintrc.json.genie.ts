@@ -200,6 +200,12 @@ const livestoreOxlintOverrides = [
     },
   },
 
+  // Generated from forked openapi-gen; assertions are generator output
+  {
+    files: ['packages/@livestore/sync-s2/src/http-client-generated.ts'],
+    rules: { 'typescript/no-unsafe-type-assertion': 'off' },
+  },
+
   // Deliberate resource lifecycle semantics in useRcResource rely on key-only invalidation
   {
     files: ['packages/@livestore/react/src/useRcResource.ts'],
