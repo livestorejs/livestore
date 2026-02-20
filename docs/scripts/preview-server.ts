@@ -144,11 +144,13 @@ const createStaticResponse = async (
 
   const file = Bun.file(absolutePath)
   const headers = new Headers()
-  if (file.type) {
+  if (file.type.length > 0) {
     headers.set('Content-Type', file.type)
   }
 
-  return isHeadRequest === true ? new Response(null, { status: 200, headers }) : new Response(file, { status: 200, headers })
+  return isHeadRequest === true
+    ? new Response(null, { status: 200, headers })
+    : new Response(file, { status: 200, headers })
 }
 
 const docsRoot = fileURLToPath(new URL('..', import.meta.url))
@@ -176,7 +178,7 @@ const startServer = async (): Promise<void> => {
         }
 
         const url = new URL(request.url)
-        if (isAssetPath(url.pathname) === false && preferredMarkdown(request.headers.get('Accept'))) {
+        if (isAssetPath(url.pathname) === false && preferredMarkdown(request.headers.get('Accept')) === true) {
           const markdownResponse = await createMarkdownResponse(distDir, url, isHeadRequest)
           if (markdownResponse !== undefined) {
             return markdownResponse

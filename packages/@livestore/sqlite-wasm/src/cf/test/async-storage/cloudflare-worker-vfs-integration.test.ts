@@ -1,9 +1,8 @@
 /// <reference types="vitest/globals" />
 
-import { beforeEach, describe, expect, it } from 'vitest'
-
 import type { CfTypes } from '@livestore/common-cf'
 import * as VFS from '@livestore/wa-sqlite/src/VFS.js'
+import { beforeEach, describe, expect, it } from 'vitest'
 
 import { CloudflareWorkerVFS } from '../../mod.ts'
 
@@ -52,7 +51,7 @@ describe('CloudflareWorkerVFS - Integration Tests', () => {
           storageOperations.push(`delete-batch: ${_key.length} keys`)
           let count = 0
           for (const k of _key) {
-            if (storageData.delete(k)) count++
+            if (storageData.delete(k) === true) count++
           }
           return count
         } else {

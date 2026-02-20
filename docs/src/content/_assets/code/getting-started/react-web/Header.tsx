@@ -1,4 +1,5 @@
 import type React from 'react'
+import { useCallback } from 'react'
 
 import { queryDb } from '@livestore/livestore'
 
@@ -11,13 +12,35 @@ export const Header: React.FC = () => {
   const store = useAppStore()
   const { newTodoText } = store.useQuery(uiState$)
 
-  const updateNewTodoText = (text: string) => store.commit(events.uiStateSet({ newTodoText: text }))
+  const updateNewTodoText = useCallback(
+    (text: string) => {
+      store.commit(events.uiStateSet({ newTodoText: text }))
+    },
+    [store],
+  )
 
-  const createTodo = () =>
+  const createTodo = useCallback(() => {
     store.commit(
       events.todoCreated({ id: crypto.randomUUID(), text: newTodoText }),
       events.uiStateSet({ newTodoText: '' }),
     )
+  }, [newTodoText, store])
+
+  const handleChange = useCallback(
+    (event: React.ChangeEvent<HTMLInputElement>) => {
+      updateNewTodoText(event.target.value)
+    },
+    [updateNewTodoText],
+  )
+
+  const handleKeyDown = useCallback(
+    (event: React.KeyboardEvent<HTMLInputElement>) => {
+      if (event.key === 'Enter') {
+        createTodo()
+      }
+    },
+    [createTodo],
+  )
 
   return (
     <header className="header">
@@ -26,12 +49,8 @@ export const Header: React.FC = () => {
         className="new-todo"
         placeholder="What needs to be done?"
         value={newTodoText}
-        onChange={(e) => updateNewTodoText(e.target.value)}
-        onKeyDown={(e) => {
-          if (e.key === 'Enter') {
-            createTodo()
-          }
-        }}
+        onChange={handleChange}
+        onKeyDown={handleKeyDown}
       />
     </header>
   )

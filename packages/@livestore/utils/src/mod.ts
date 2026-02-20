@@ -188,7 +188,7 @@ export const casesHandled = (unexpectedCase: never): never => {
  * ```
  */
 export const assertNever = (failIfFalse: boolean, msg?: string): void => {
-  if (!failIfFalse) {
+  if (failIfFalse === false) {
     // oxlint-disable-next-line eslint(no-debugger) -- intentional breakpoint for impossible states
     debugger
     throw new Error(`This should never happen: ${msg}`)

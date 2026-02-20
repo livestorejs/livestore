@@ -121,7 +121,7 @@ export const prettyLoggerTty = (options: {
   readonly formatDate: (date: Date) => string
   readonly onLog?: (str: string) => void
 }) => {
-  const color = options.colors ? withColor : withColorNoop
+  const color = options.colors === true ? withColor : withColorNoop
   return Logger.make<unknown, string>(({ annotations, cause, date, fiberId, logLevel, message: message_, spans }) => {
     let str = ''
 

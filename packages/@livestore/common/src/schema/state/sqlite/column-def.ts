@@ -30,9 +30,10 @@ export const getColumnDefForSchema = (
   const isNullable = forceNullable || hasNull(ast) || hasUndefined(ast)
 
   // Get base column definition with nullable flag
-  const baseColumn = Option.isSome(columnType) === true
-    ? getColumnForType(columnType.value, isNullable)
-    : getColumnForSchema(schema, isNullable)
+  const baseColumn =
+    Option.isSome(columnType) === true
+      ? getColumnForType(columnType.value, isNullable)
+      : getColumnForSchema(schema, isNullable)
 
   // Apply annotations
   const primaryKey = getAnnotation<boolean>(PrimaryKeyId).pipe(Option.getOrElse(() => false))
@@ -96,7 +97,7 @@ export const schemaFieldsToColumns = (
 
     // Validate primary key + nullable
     const column = columns[prop.name]
-    if (column?.primaryKey && column.nullable) {
+    if (column?.primaryKey === true && column.nullable === true) {
       throw new Error('Primary key columns cannot be nullable')
     }
 
@@ -235,7 +236,7 @@ const getLiteralColumnDefinition = (
       const useIntegerColumn =
         literalValues.length > 1 && literalValues.every((value) => typeof value === 'number' && Number.isInteger(value))
 
-      return useIntegerColumn ? SqliteDsl.integer({ schema, nullable }) : SqliteDsl.real({ schema, nullable })
+      return useIntegerColumn === true ? SqliteDsl.integer({ schema, nullable }) : SqliteDsl.real({ schema, nullable })
     }
     case 'boolean':
       return SqliteDsl.boolean({ nullable })
@@ -249,7 +250,11 @@ const getLiteralColumnDefinition = (
 const extractLiteralValues = (ast: SchemaAST.AST): ReadonlyArray<SchemaAST.LiteralValue> | null => {
   if (SchemaAST.isLiteral(ast) === true) return [ast.literal]
 
-  if (SchemaAST.isUnion(ast) === true && ast.types.length > 0 && ast.types.every((type) => SchemaAST.isLiteral(type)) === true) {
+  if (
+    SchemaAST.isUnion(ast) === true &&
+    ast.types.length > 0 &&
+    ast.types.every((type) => SchemaAST.isLiteral(type)) === true
+  ) {
     return ast.types.map((type) => (type as SchemaAST.Literal).literal)
   }
 

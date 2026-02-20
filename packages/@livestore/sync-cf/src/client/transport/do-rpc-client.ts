@@ -1,6 +1,6 @@
 import { InvalidPullError, InvalidPushError, SyncBackend, UnknownError } from '@livestore/common'
-import { type CfTypes, layerProtocolDurableObject } from '@livestore/common-cf'
 import { splitChunkBySize } from '@livestore/common/sync'
+import { type CfTypes, layerProtocolDurableObject } from '@livestore/common-cf'
 import { omit, shouldNeverHappen } from '@livestore/utils'
 import {
   Chunk,
@@ -74,9 +74,9 @@ export const makeDoRpcSync =
             })),
           ),
           storeId,
-          rpcContext: options?.live ? { callerContext: durableObjectContext } : undefined,
+          rpcContext: options?.live === true ? { callerContext: durableObjectContext } : undefined,
         }).pipe(
-          options?.live
+          options?.live === true
             ? Stream.concatWithLastElement((res) =>
                 Effect.gen(function* () {
                   if (res._tag === 'None')

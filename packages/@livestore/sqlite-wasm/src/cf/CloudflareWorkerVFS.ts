@@ -107,7 +107,7 @@ export class CloudflareWorkerVFS extends FacadeVFS {
       }
     }
 
-    if (oldestKey) {
+    if (oldestKey.length > 0) {
       this.#chunkCache.delete(oldestKey)
     }
   }
@@ -223,7 +223,7 @@ export class CloudflareWorkerVFS extends FacadeVFS {
 
   override jOpen(zName: string, fileId: number, flags: number, pOutFlags: DataView): number {
     try {
-      const path = zName ? this.#getPath(zName) : Math.random().toString(36)
+      const path = zName !== null ? this.#getPath(zName) : Math.random().toString(36)
       const metadata = this.#metadataCache.get(path)
 
       if (metadata == null && (flags & VFS.SQLITE_OPEN_CREATE) !== 0) {

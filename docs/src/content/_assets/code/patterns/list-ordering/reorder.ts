@@ -1,6 +1,5 @@
-import { generateKeyBetween } from 'fractional-indexing'
-
 import type { Store } from '@livestore/livestore'
+import { generateKeyBetween } from 'fractional-indexing'
 
 import { events } from './events.ts'
 import { tables } from './schema.ts'
@@ -42,14 +41,17 @@ export const handleDragDrop = (draggedTaskId: number, targetTaskId: number, drop
       tables.task
         .select('order')
         .where({
-          order: { op: before ? '>' : '<', value: targetOrder },
+          order: { op: before === true ? '>' : '<', value: targetOrder },
         })
-        .orderBy('order', before ? 'asc' : 'desc')
+        .orderBy('order', before === true ? 'asc' : 'desc')
         .limit(1),
     )[0] ?? null
 
   // Generate new order between target and nearest
-  const newOrder = generateKeyBetween(before ? targetOrder : nearestOrder, before ? nearestOrder : targetOrder)
+  const newOrder = generateKeyBetween(
+    before === true ? targetOrder : nearestOrder,
+    before === true ? nearestOrder : targetOrder,
+  )
 
   // Commit the update
   store.commit(events.updateTaskOrder({ id: draggedTaskId, order: newOrder }))
