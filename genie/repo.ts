@@ -14,8 +14,14 @@
  * maintained to reflect what a real user project would look like.
  */
 
+import { readFileSync } from 'node:fs'
+import { join } from 'node:path'
+import { fileURLToPath } from 'node:url'
+
 import {
   defineCatalog,
+  type GenieOutput,
+  type PackageJsonData,
   packageJson,
   tsconfigJson,
   oxlintConfig,
@@ -28,12 +34,100 @@ export { tsconfigJson, packageJson, oxlintConfig, oxfmtConfig, pnpmWorkspaceYaml
 import {
   catalog as effectUtilsCatalog,
   baseTsconfigCompilerOptions,
+  computeRelativePath,
+  createWorkspaceDepsResolver,
   packageTsconfigCompilerOptions as effectUtilsPackageTsconfigCompilerOptions,
   domLib,
   reactJsx,
 } from '../repos/effect-utils/genie/external.ts'
+import * as effectUtilsExternal from '../repos/effect-utils/genie/external.ts'
 
 export { baseTsconfigCompilerOptions, domLib, reactJsx }
+
+type MegarepoWorkspaceRoot = {
+  id: string
+  prefix: string
+  path: string
+}
+
+type CreateMegarepoWorkspaceDepsResolverArgs = {
+  roots: readonly MegarepoWorkspaceRoot[]
+  internalPrefixes?: readonly string[]
+  excludedPackages?: readonly string[]
+  packageRootOverrides?: Readonly<Record<string, string>>
+}
+
+type WorkspaceDepsResolverArgs = {
+  pkg: GenieOutput<PackageJsonData>
+  deps: readonly GenieOutput<PackageJsonData>[]
+  location: string
+  extraPackages?: readonly string[]
+}
+
+type WorkspaceDepsResolver = (args: WorkspaceDepsResolverArgs) => string[]
+
+const createMegarepoWorkspaceDepsResolverFallback = (
+  config: CreateMegarepoWorkspaceDepsResolverArgs,
+): WorkspaceDepsResolver => {
+  const excludedPackages = new Set(config.excludedPackages ?? [])
+  const excludedPrefix = '__excluded_workspace_package__/'
+  const uniquePrefixes = [
+    ...new Set([...(config.internalPrefixes ?? []), ...config.roots.map((root) => root.prefix)]),
+  ].toSorted((a, b) => a.localeCompare(b))
+
+  const resolveWorkspacePath = (packageName: string, fromLocation: string): string => {
+    if (excludedPackages.has(packageName) === true) {
+      return `${excludedPrefix}${packageName}`
+    }
+
+    const matchingRoots = config.roots.filter((root) => packageName.startsWith(root.prefix) === true)
+    if (matchingRoots.length === 0) {
+      throw new Error(
+        `No workspace root configured for package '${packageName}'. Known prefixes: ${uniquePrefixes.join(', ')}`,
+      )
+    }
+
+    const candidateRootIds = matchingRoots.map((root) => root.id).toSorted((a, b) => a.localeCompare(b))
+    const overrideRootId = config.packageRootOverrides?.[packageName]
+
+    if (matchingRoots.length > 1 && overrideRootId === undefined) {
+      throw new Error(
+        `Ambiguous workspace root for package '${packageName}'. Candidates: ${candidateRootIds.join(', ')}. Configure packageRootOverrides for this package.`,
+      )
+    }
+
+    const selectedRoot =
+      overrideRootId !== undefined ? matchingRoots.find((root) => root.id === overrideRootId) : matchingRoots[0]
+
+    if (selectedRoot === undefined) {
+      throw new Error(
+        `Invalid workspace root override for package '${packageName}': '${overrideRootId}'. Allowed roots: ${candidateRootIds.join(', ')}`,
+      )
+    }
+
+    const suffix = packageName.slice(selectedRoot.prefix.length)
+    const targetPath =
+      selectedRoot.path.endsWith('/') === true ? `${selectedRoot.path}${suffix}` : `${selectedRoot.path}/${suffix}`
+    return computeRelativePath({ from: fromLocation, to: targetPath })
+  }
+
+  const resolveDeps = createWorkspaceDepsResolver({
+    prefixes: uniquePrefixes,
+    resolveWorkspacePath,
+  })
+
+  return (args: WorkspaceDepsResolverArgs) =>
+    resolveDeps(args).filter((workspacePath) => workspacePath.startsWith(excludedPrefix) === false)
+}
+
+const createMegarepoWorkspaceDepsResolverFromExternal = (
+  effectUtilsExternal as {
+    createMegarepoWorkspaceDepsResolver?: (config: CreateMegarepoWorkspaceDepsResolverArgs) => WorkspaceDepsResolver
+  }
+).createMegarepoWorkspaceDepsResolver
+
+const createMegarepoWorkspaceDepsResolver =
+  createMegarepoWorkspaceDepsResolverFromExternal ?? createMegarepoWorkspaceDepsResolverFallback
 
 /**
  * Package tsconfig compiler options for livestore.
@@ -243,93 +337,185 @@ export const localPackageDefaults = {
 // pnpm Workspace Configuration
 // =============================================================================
 
-/**
- * Direct workspace dependencies for each @livestore package.
- *
- * Maps package dirname (e.g., 'common') to its direct workspace dep dirnames.
- * This is the single source of truth for workspace dependency relationships.
- * Both `pnpm-workspace.yaml.genie.ts` and this graph should stay in sync
- * with `package.json.genie.ts` workspace:* dependencies.
- *
- * When adding a workspace dependency to a package.json.genie.ts, add it here too.
- * The `resolveTransitiveDeps` function will automatically include all transitive deps
- * in the generated pnpm-workspace.yaml files.
- */
-const workspaceDeps: Record<string, readonly string[]> = {
-  utils: [],
-  'utils-dev': ['utils'],
-  'wa-sqlite': [],
-  'peer-deps': [],
-  webmesh: ['utils', 'utils-dev'],
-  common: ['utils', 'webmesh', 'utils-dev'],
-  'common-cf': ['utils', 'utils-dev'],
-  'effect-playwright': ['utils'],
-  'devtools-web-common': ['common', 'utils', 'webmesh'],
-  'sqlite-wasm': ['common', 'common-cf', 'utils', 'wa-sqlite'],
-  'sync-cf': ['common', 'common-cf', 'utils'],
-  'sync-electric': ['common', 'utils'],
-  livestore: ['common', 'utils', 'adapter-web', 'utils-dev'],
-  'adapter-web': ['common', 'devtools-web-common', 'sqlite-wasm', 'utils', 'webmesh'],
-  'adapter-node': ['common', 'sqlite-wasm', 'utils', 'webmesh'],
-  'adapter-expo': ['common', 'utils', 'webmesh'],
-  'adapter-cloudflare': ['common', 'common-cf', 'livestore', 'sqlite-wasm', 'sync-cf', 'utils'],
-  cli: ['adapter-node', 'common', 'livestore', 'peer-deps', 'utils', 'utils-dev'],
-  'framework-toolkit': ['adapter-web', 'common', 'livestore', 'utils', 'utils-dev'],
-  graphql: ['common', 'livestore', 'utils'],
-  react: ['common', 'framework-toolkit', 'livestore', 'utils', 'adapter-web', 'utils-dev'],
-  solid: ['common', 'framework-toolkit', 'livestore', 'utils', 'adapter-web', 'utils-dev'],
-  svelte: ['common', 'livestore', 'utils', 'adapter-web', 'utils-dev'],
-  'sync-s2': ['common', 'livestore', 'utils'],
-  'devtools-expo': ['adapter-node', 'utils'],
-} as const
+type PackageJsonGenie = GenieOutput<PackageJsonData>
 
-/** Resolve transitive closure of workspace dependency short names. */
-const resolveTransitivePackageNames = (packageNames: readonly string[]): string[] => {
-  const result = new Set<string>()
-  const visit = (name: string) => {
-    if (result.has(name)) return
-    result.add(name)
-    const deps = workspaceDeps[name]
-    if (deps) for (const dep of deps) visit(dep)
-  }
-  for (const name of packageNames) {
-    if (name in workspaceDeps) visit(name)
-  }
-  return [...result].toSorted()
+type WorkspaceRootConfig = {
+  id: string
+  prefix: string
+  path: string
 }
 
-/**
- * Compute the transitive closure of workspace dependencies for a set of direct deps.
- *
- * Given direct dependency patterns (e.g., '../common', '../utils'), resolves all
- * transitive workspace dependencies by following the `workspaceDeps` graph.
- * This ensures pnpm can resolve `workspace:*` specifiers for all nested deps.
- *
- * Only resolves patterns matching `../<name>` (sibling @livestore packages).
- * Non-matching patterns (e.g., `../../@livestore/*` globs) are passed through as-is.
- */
-const resolveTransitiveDeps = (patterns: string[]): string[] => {
-  const nonResolvable: string[] = []
-  const names: string[] = []
-  for (const pattern of patterns) {
-    const match = pattern.match(/^\.\.\/([^/]+)$/)
-    if (match && match[1] in workspaceDeps) {
-      names.push(match[1])
-    } else {
-      nonResolvable.push(pattern)
+type WorkspacePackageName = keyof typeof workspaceCatalog
+
+const workspacePackageNames = Object.keys(workspaceCatalog) as WorkspacePackageName[]
+
+const workspaceRoots = [
+  {
+    id: 'livestore-packages',
+    prefix: '@livestore/',
+    path: 'packages/@livestore/',
+  },
+  {
+    id: 'local-packages',
+    prefix: '@local/',
+    path: 'packages/@local/',
+  },
+  {
+    id: 'local-docs',
+    prefix: '@local/docs',
+    path: 'docs',
+  },
+  {
+    id: 'local-scripts',
+    prefix: '@local/scripts',
+    path: 'scripts',
+  },
+  {
+    id: 'local-tests',
+    prefix: '@local/tests-',
+    path: 'tests/',
+  },
+] as const satisfies readonly WorkspaceRootConfig[]
+
+const workspaceRootOverrides = Object.fromEntries(
+  workspacePackageNames
+    .filter((name) => name === '@local/docs' || name === '@local/scripts' || name.startsWith('@local/tests-'))
+    .map((name) =>
+      name === '@local/docs'
+        ? [name, 'local-docs']
+        : name === '@local/scripts'
+          ? [name, 'local-scripts']
+          : [name, 'local-tests'],
+    ),
+) as Record<string, string>
+
+const repoRootPath = fileURLToPath(new URL('..', import.meta.url))
+
+const resolvePackageDirectory = (packageName: WorkspacePackageName): string => {
+  const matchingRoots = workspaceRoots.filter((root) => packageName.startsWith(root.prefix))
+  const selectedRoot =
+    matchingRoots.length === 1
+      ? matchingRoots[0]
+      : matchingRoots.find((root) => root.id === workspaceRootOverrides[packageName])
+
+  if (selectedRoot === undefined) {
+    throw new Error(`Unable to resolve workspace root for '${packageName}'`)
+  }
+
+  const suffix = packageName.slice(selectedRoot.prefix.length)
+  return selectedRoot.path.endsWith('/') === true ? `${selectedRoot.path}${suffix}` : `${selectedRoot.path}/${suffix}`
+}
+
+const readWorkspacePackageJson = (packageName: WorkspacePackageName): PackageJsonData => {
+  const packageJsonPath = join(repoRootPath, resolvePackageDirectory(packageName), 'package.json')
+  return JSON.parse(readFileSync(packageJsonPath, 'utf8')) as PackageJsonData
+}
+
+const isWorkspacePackageName = (name: string): name is WorkspacePackageName => name in workspaceCatalog
+
+const collectWorkspaceDependencies = (pkg: PackageJsonData): WorkspacePackageName[] => {
+  const names = new Set<WorkspacePackageName>()
+  const addDeps = (deps?: Record<string, string>) => {
+    if (deps === undefined) return
+    for (const name of Object.keys(deps)) {
+      if (isWorkspacePackageName(name)) {
+        names.add(name)
+      }
     }
   }
 
-  return [...nonResolvable, ...resolveTransitivePackageNames(names).map((name) => `../${name}`)]
+  addDeps(pkg.dependencies)
+  addDeps(pkg.devDependencies)
+  addDeps(pkg.peerDependencies)
+
+  return [...names].toSorted((a, b) => a.localeCompare(b))
+}
+
+const workspaceDependencyCache = new Map<WorkspacePackageName, readonly WorkspacePackageName[]>()
+
+const getWorkspaceDependencies = (packageName: WorkspacePackageName): readonly WorkspacePackageName[] => {
+  const cached = workspaceDependencyCache.get(packageName)
+  if (cached !== undefined) return cached
+
+  const dependencies = collectWorkspaceDependencies(readWorkspacePackageJson(packageName))
+  workspaceDependencyCache.set(packageName, dependencies)
+  return dependencies
+}
+
+const resolveTransitiveWorkspacePackageNames = (
+  packageNames: readonly WorkspacePackageName[],
+): WorkspacePackageName[] => {
+  const resolved = new Set<WorkspacePackageName>()
+
+  const visit = (name: WorkspacePackageName) => {
+    if (resolved.has(name)) return
+    resolved.add(name)
+
+    for (const dep of getWorkspaceDependencies(name)) {
+      visit(dep)
+    }
+  }
+
+  for (const name of packageNames) {
+    visit(name)
+  }
+
+  return [...resolved].toSorted((a, b) => a.localeCompare(b))
+}
+
+const workspacePathResolver = createMegarepoWorkspaceDepsResolver({
+  roots: workspaceRoots,
+  packageRootOverrides: workspaceRootOverrides,
+})
+
+const resolveWorkspacePaths = ({
+  packageNames,
+  location,
+}: {
+  packageNames: readonly WorkspacePackageName[]
+  location: string
+}): string[] => {
+  if (packageNames.length === 0) return []
+
+  const pkg = packageJson({
+    name: '@local/workspace-path-resolver',
+    dependencies: Object.fromEntries(packageNames.map((name) => [name, 'workspace:*'])),
+  })
+
+  return workspacePathResolver({ pkg, deps: [], location })
+}
+
+const resolveLivestoreWorkspacePatterns = ({
+  patterns,
+  location,
+}: {
+  patterns: string[]
+  location: string
+}): string[] => {
+  const directWorkspacePackages: WorkspacePackageName[] = []
+  const passthroughPatterns: string[] = []
+
+  for (const pattern of patterns) {
+    const match = pattern.match(/^\.\.\/([^/]+)$/)
+    if (match === null) {
+      passthroughPatterns.push(pattern)
+      continue
+    }
+
+    const packageName = `@livestore/${match[1]}`
+    if (isWorkspacePackageName(packageName)) {
+      directWorkspacePackages.push(packageName)
+    } else {
+      passthroughPatterns.push(pattern)
+    }
+  }
+
+  const transitivePackageNames = resolveTransitiveWorkspacePackageNames(directWorkspacePackages)
+  return [...passthroughPatterns, ...resolveWorkspacePaths({ packageNames: transitivePackageNames, location })]
 }
 
 /**
- * Per-package pnpm workspace configuration with automatic transitive dependency resolution.
- *
- * Following effect-utils best practices:
- * - Each package lists its direct workspace dependencies
- * - Transitive deps are automatically computed via `workspaceDeps` graph
- * - Includes dedupePeerDependents to prevent duplicate dependency resolution
+ * Per-package pnpm workspace configuration with dependency-graph based resolution.
  *
  * @param patterns - Direct workspace dependency paths (e.g., '../utils', '../common')
  *                   Pass no args for standalone packages with no workspace deps
@@ -338,25 +524,36 @@ const resolveTransitiveDeps = (patterns: string[]): string[] => {
  * // Standalone package (no workspace deps)
  * pnpmWorkspace()
  *
- * // Package with specific deps (transitive deps resolved automatically)
+ * // Package with specific deps (transitive deps resolved from package.json graph)
  * pnpmWorkspace('../utils', '../common')
  */
 export const pnpmWorkspace = (...patterns: string[]) =>
   pnpmWorkspaceYaml({
-    packages: ['.', ...resolveTransitiveDeps(patterns)],
+    packages: [
+      '.',
+      ...resolveLivestoreWorkspacePatterns({
+        patterns,
+        location: 'packages/@livestore/__workspace__',
+      }),
+    ],
     dedupePeerDependents: true,
   })
 
 /**
  * pnpm workspace for React packages.
  * Adds publicHoistPattern to ensure single React instance across packages.
- * Automatically resolves transitive workspace dependencies.
  *
  * @param patterns - Direct workspace dependency paths
  */
 export const pnpmWorkspaceReact = (...patterns: string[]) =>
   pnpmWorkspaceYaml({
-    packages: ['.', ...resolveTransitiveDeps(patterns)],
+    packages: [
+      '.',
+      ...resolveLivestoreWorkspacePatterns({
+        patterns,
+        location: 'packages/@livestore/__workspace__',
+      }),
+    ],
     dedupePeerDependents: true,
     publicHoistPattern: ['react', 'react-dom', 'react-reconciler'],
   })
@@ -364,20 +561,25 @@ export const pnpmWorkspaceReact = (...patterns: string[]) =>
 /**
  * pnpm workspace for Expo/React Native packages.
  * Hoists React Native related packages to prevent bundler issues.
- * Automatically resolves transitive workspace dependencies.
  *
  * @param patterns - Direct workspace dependency paths
  */
 export const pnpmWorkspaceExpo = (...patterns: string[]) =>
   pnpmWorkspaceYaml({
-    packages: ['.', ...resolveTransitiveDeps(patterns)],
+    packages: [
+      '.',
+      ...resolveLivestoreWorkspacePatterns({
+        patterns,
+        location: 'packages/@livestore/__workspace__',
+      }),
+    ],
     dedupePeerDependents: true,
     publicHoistPattern: ['react', 'react-dom', 'react-reconciler', 'react-native', 'expo', 'expo-*'],
   })
 
 /**
  * pnpm workspace for test packages at tests/<name>/.
- * Uses explicit transitive dep resolution instead of globs to avoid
+ * Uses package.json dependency traversal instead of globs to avoid
  * overlapping workspace symlink conflicts between test workspaces.
  *
  * @param packageNames - Direct @livestore package short names (e.g., 'common', 'utils')
@@ -387,7 +589,14 @@ export const pnpmWorkspaceTests = (packageNames: readonly string[], extraPackage
   pnpmWorkspaceYaml({
     packages: [
       '.',
-      ...resolveTransitivePackageNames(packageNames).map((n) => `../../packages/@livestore/${n}`),
+      ...resolveWorkspacePaths({
+        packageNames: resolveTransitiveWorkspacePackageNames(
+          packageNames
+            .map((name) => `@livestore/${name}`)
+            .filter((name): name is WorkspacePackageName => isWorkspacePackageName(name)),
+        ),
+        location: 'tests/__workspace__',
+      }),
       ...(extraPackages ?? []),
     ],
     dedupePeerDependents: true,
@@ -395,7 +604,7 @@ export const pnpmWorkspaceTests = (packageNames: readonly string[], extraPackage
 
 /**
  * pnpm workspace for test packages that need React hoisting.
- * Uses explicit transitive dep resolution instead of globs.
+ * Uses package.json dependency traversal instead of globs.
  *
  * @param packageNames - Direct @livestore package short names
  * @param extraPackages - Additional non-@livestore workspace paths
@@ -404,7 +613,14 @@ export const pnpmWorkspaceTestsReact = (packageNames: readonly string[], extraPa
   pnpmWorkspaceYaml({
     packages: [
       '.',
-      ...resolveTransitivePackageNames(packageNames).map((n) => `../../packages/@livestore/${n}`),
+      ...resolveWorkspacePaths({
+        packageNames: resolveTransitiveWorkspacePackageNames(
+          packageNames
+            .map((name) => `@livestore/${name}`)
+            .filter((name): name is WorkspacePackageName => isWorkspacePackageName(name)),
+        ),
+        location: 'tests/__workspace__',
+      }),
       ...(extraPackages ?? []),
     ],
     dedupePeerDependents: true,
@@ -495,8 +711,7 @@ export const devenvShellDefaults = {
 export { bashShellDefaults }
 export { runDevenvTasksBefore }
 
-export const namespaceRunner = (runId: string) =>
-  namespaceRunnerBase('namespace-profile-linux-x86-64', runId)
+export const namespaceRunner = (runId: string) => namespaceRunnerBase('namespace-profile-linux-x86-64', runId)
 
 /**
  * Setup steps for livestore CI jobs (without checkout).
