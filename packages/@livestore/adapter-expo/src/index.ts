@@ -1,4 +1,7 @@
 import './polyfill.ts'
+import * as ExpoApplication from 'expo-application'
+import * as SQLite from 'expo-sqlite'
+import * as RN from 'react-native'
 
 import {
   type Adapter,
@@ -35,9 +38,6 @@ import {
   SubscriptionRef,
 } from '@livestore/utils/effect'
 import * as Webmesh from '@livestore/webmesh'
-import * as ExpoApplication from 'expo-application'
-import * as SQLite from 'expo-sqlite'
-import * as RN from 'react-native'
 
 import type { MakeExpoSqliteDb } from './make-sqlite-db.ts'
 import { makeSqliteDb } from './make-sqlite-db.ts'
@@ -76,9 +76,9 @@ export type MakeDbOptions = {
 // Rely on Fabric/TurboModules feature detection instead of RN$Bridgeless.
 const IS_NEW_ARCH =
   // Fabric global – set when the new renderer is enabled
-  Boolean(Reflect.get(globalThis, 'nativeFabricUIManager')) ||
+  Boolean((globalThis as any).nativeFabricUIManager) ||
   // TurboModule proxy – indicates new arch TurboModules
-  Boolean(Reflect.get(globalThis, '__turboModuleProxy'))
+  Boolean((globalThis as any).__turboModuleProxy)
 
 /**
  * Creates a persisted LiveStore adapter for Expo/React Native applications.
@@ -456,14 +456,7 @@ const getDevtoolsUrl = () => {
   const port = url.port
 
   const getDevServer = require('react-native/Libraries/Core/Devtools/getDevServer').default
-  const devServerConfig = getDevServer()
-  const devServerUrlCandidate = Reflect.get(devServerConfig, 'url')
-
-  if (typeof devServerUrlCandidate !== 'string') {
-    return shouldNeverHappen('getDevtoolsUrl: expected dev server url to be a string')
-  }
-
-  const devServer = devServerUrlCandidate.replace(/\/?$/, '')
+  const devServer = getDevServer().url.replace(/\/?$/, '') as string
 
   const devServerUrl = new URL(devServer)
 

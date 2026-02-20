@@ -1,3 +1,5 @@
+import * as SQLite from 'expo-sqlite'
+
 import {
   type MakeSqliteDb,
   type PersistenceInfo,
@@ -9,10 +11,9 @@ import {
 import { EventSequenceNumber } from '@livestore/common/schema'
 import { ensureUint8ArrayBuffer, shouldNeverHappen } from '@livestore/utils'
 import { Effect } from '@livestore/utils/effect'
-import * as SQLite from 'expo-sqlite'
 
 type Metadata = {
-  _tag: ExpoDatabaseInput['_tag']
+  _tag: 'file'
   dbPointer: number
   persistenceInfo: PersistenceInfo
   input: ExpoDatabaseInput
@@ -39,12 +40,12 @@ export const makeSqliteDb: MakeExpoSqliteDb = (input: ExpoDatabaseInput) =>
       return makeSqliteDb_({
         db,
         metadata: {
-          _tag: 'in-memory',
+          _tag: 'file',
           dbPointer: 0,
           persistenceInfo: { fileName: ':memory:' },
           input,
         },
-      })
+      }) as any
     }
 
     if (input._tag === 'file') {
@@ -58,7 +59,7 @@ export const makeSqliteDb: MakeExpoSqliteDb = (input: ExpoDatabaseInput) =>
           persistenceInfo: { fileName: `${input.directory}/${input.databaseName}` },
           input,
         },
-      })
+      }) as any
     }
   })
 
@@ -84,14 +85,14 @@ const makeSqliteDb_ = <TMetadata extends Metadata>({
         const stmt = {
           execute: (bindValues) => {
             // console.log('execute', queryStr, bindValues)
-            const res = dbStmt.executeSync(bindValues ?? [])
+            const res = dbStmt.executeSync(bindValues ?? ([] as any))
             res.resetSync()
             return () => res.changes
           },
           select: (bindValues) => {
-            const res = dbStmt.executeSync(bindValues ?? [])
+            const res = dbStmt.executeSync(bindValues ?? ([] as any))
             try {
-              return res.getAllSync()
+              return res.getAllSync() as any
             } finally {
               res.resetSync()
             }
@@ -112,7 +113,7 @@ const makeSqliteDb_ = <TMetadata extends Metadata>({
     execute: SqliteDbHelper.makeExecute((queryStr, bindValues) => {
       const stmt = db.prepareSync(queryStr)
       try {
-        const res = stmt.executeSync(bindValues ?? [])
+        const res = stmt.executeSync(bindValues ?? ([] as any))
         return () => res.changes
       } finally {
         stmt.finalizeSync()
@@ -123,7 +124,7 @@ const makeSqliteDb_ = <TMetadata extends Metadata>({
       const stmt = sqliteDb.prepare(queryStr)
       const res = stmt.select(bindValues)
       stmt.finalize()
-      return res
+      return res as any
     }),
     destroy: () => {
       sqliteDb.close()
