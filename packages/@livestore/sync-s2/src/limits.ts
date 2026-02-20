@@ -1,5 +1,5 @@
 import type { LiveStoreEvent } from '@livestore/common/schema'
-import { splitChunkBySize } from '@livestore/common/sync'
+import { OversizeChunkItemError, splitChunkBySize } from '@livestore/common/sync'
 import { Chunk, Effect, Schema } from '@livestore/utils/effect'
 
 const textEncoder = new TextEncoder()
@@ -121,12 +121,11 @@ export const chunkEventsForS2 = (events: ReadonlyArray<LiveStoreEvent.Global.Enc
 
     return mapPreparedChunks(chunks)
   } catch (error) {
-    if (error !== undefined && typeof error === 'object' && (error as any)._tag === 'OversizeChunkItemError') {
-      const oversize = error as { size: number; maxBytes: number; _tag: string }
+    if (error instanceof OversizeChunkItemError) {
       throw new S2LimitExceededError({
         limitType: 'record-metered-bytes',
-        max: oversize.maxBytes,
-        actual: oversize.size,
+        max: error.maxBytes,
+        actual: error.size,
       })
     }
 

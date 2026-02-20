@@ -1,6 +1,5 @@
+import { EventSequenceNumber, type LiveStoreEvent } from '@livestore/common/schema'
 import { describe, expect, it } from 'vitest'
-
-import type { EventSequenceNumber, LiveStoreEvent } from '@livestore/common/schema'
 
 import {
   chunkEventsForS2,
@@ -15,8 +14,8 @@ const encoder = new TextEncoder()
 const makeEvent = (payloadLength: number, index = 0): LiveStoreEvent.Global.Encoded => ({
   name: `event-${index}`,
   args: { payload: 'x'.repeat(payloadLength) },
-  seqNum: index as EventSequenceNumber.Global.Type,
-  parentSeqNum: index as EventSequenceNumber.Global.Type,
+  seqNum: EventSequenceNumber.Global.make(index),
+  parentSeqNum: EventSequenceNumber.Global.make(index),
   clientId: 'client',
   sessionId: 'session',
 })
