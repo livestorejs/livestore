@@ -25,17 +25,16 @@
         ]
       },
       "locked": {
-        "lastModified": 1771542573,
+        "lastModified": 1771542890,
         "narHash": "sha256-kiStrEzoQGNBqy9xzAhFqQ7cicSHEtyGlX9yBdWVkuQ=",
         "owner": "overengineeringstudio",
         "repo": "effect-utils",
-        "rev": "ddbaac2a94c578c29ed4b1c1a54d4461c713c8de",
+        "rev": "9f0587aae67daf311612c09dd89216957224b194",
         "type": "github"
       },
       "original": {
         "owner": "overengineeringstudio",
         "repo": "effect-utils",
-        "rev": "ddbaac2a94c578c29ed4b1c1a54d4461c713c8de",
         "type": "github"
       }
     },
