@@ -1,9 +1,7 @@
-import type { AutomergeUrl } from '@automerge/react'
 import { updateText, useDocument } from '@automerge/react'
+import { Events, Schema, State, type Store } from '@livestore/livestore'
 import type { ChangeEvent } from 'react'
 import { useCallback } from 'react'
-
-import { Events, Schema, State, type Store } from '@livestore/livestore'
 
 declare const store: Store
 
@@ -39,8 +37,7 @@ export const getNoteCrdtRef = (noteId: string): string | undefined => {
 }
 
 const Editor = ({ noteCrdtUrl }: { noteCrdtUrl: string }) => {
-  const docUrl = noteCrdtUrl as AutomergeUrl
-  const [doc, changeDoc] = useDocument<NoteDoc>(docUrl, { suspense: true })
+  const [doc, changeDoc] = useDocument<NoteDoc>(noteCrdtUrl, { suspense: true })
 
   const handleChange = useCallback(
     (event: ChangeEvent<HTMLTextAreaElement>) => {
