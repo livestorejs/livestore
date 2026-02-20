@@ -128,7 +128,11 @@ Vitest.describe('useClientDocument', () => {
           <div>
             <TasksList setTaskId={setCurrentTaskId} />
             <div role="current-id">Current Task Id: {state.currentTaskId ?? '-'}</div>
-            {state.currentTaskId !== null ? <TaskDetails id={state.currentTaskId} /> : <div>Click on a task to see details</div>}
+            {state.currentTaskId !== null ? (
+              <TaskDetails id={state.currentTaskId} />
+            ) : (
+              <div>Click on a task to see details</div>
+            )}
           </div>
         )
       }
@@ -321,13 +325,21 @@ Vitest.describe('useClientDocument', () => {
           if (key === 'code.stacktrace') {
             return '<STACKTRACE>'
           } else if (key === 'firstStackInfo') {
-            const stackInfo = JSON.parse(val as string) as LiveStore.StackInfo
+            if (typeof val !== 'string') return val
+            const stackInfo = JSON.parse(val)
+            if (typeof stackInfo !== 'object' || stackInfo === null) return val
+            const frames = Reflect.get(stackInfo, 'frames')
+            if (Array.isArray(frames) === false) return val
+
             // stackInfo.frames.shift() // Removes `renderHook.wrapper` from the stack
-            stackInfo.frames.forEach((_) => {
-              if (_.name.includes('renderHook.wrapper') === true) {
-                _.name = 'renderHook.wrapper'
+            frames.forEach((frame) => {
+              if (typeof frame !== 'object' || frame === null) return
+
+              const name = Reflect.get(frame, 'name')
+              if (typeof name === 'string' && name.includes('renderHook.wrapper') === true) {
+                Reflect.set(frame, 'name', 'renderHook.wrapper')
               }
-              _.filePath = '__REPLACED_FOR_SNAPSHOT__'
+              Reflect.set(frame, 'filePath', '__REPLACED_FOR_SNAPSHOT__')
             })
             return JSON.stringify(stackInfo)
           }

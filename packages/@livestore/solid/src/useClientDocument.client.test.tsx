@@ -110,7 +110,7 @@ Vitest.describe('useClientDocument', () => {
         return (
           <div>
             <TasksList />
-            <div role={'current-id' as any}>Current Task Id: {state().currentTaskId ?? '-'}</div>
+            <div data-testid="current-id">Current Task Id: {state().currentTaskId ?? '-'}</div>
             <Solid.Show when={state().currentTaskId} fallback={'Click on a task to see details'}>
               {(id: Solid.Accessor<string>) => <TaskDetails id={id()} />}
             </Solid.Show>
@@ -133,22 +133,22 @@ Vitest.describe('useClientDocument', () => {
           LiveStore.queryDb(tables.todos.where({ id: props.id }).first(), { deps: props.id }),
         )
 
-        return <div role={'content' as any}>{JSON.stringify(todo())}</div>
+        return <div data-testid="content">{JSON.stringify(todo())}</div>
       }
 
-      const { getByRole } = SolidTesting.render(() => <AppRouter />, { wrapper })
+      const { getByTestId } = SolidTesting.render(() => <AppRouter />, { wrapper })
 
       store.commit(events.todoCreated({ id: 't1', text: 'buy milk', completed: false }))
 
-      Vitest.expect(getByRole('current-id').innerHTML).toMatchInlineSnapshot('"Current Task Id: -"')
+      Vitest.expect(getByTestId('current-id').innerHTML).toMatchInlineSnapshot('"Current Task Id: -"')
 
       globalSetState!({ currentTaskId: 't1' })
 
-      Vitest.expect(getByRole('content').innerHTML).toMatchInlineSnapshot(
+      Vitest.expect(getByTestId('content').innerHTML).toMatchInlineSnapshot(
         `"{"id":"t1","text":"buy milk","completed":false}"`,
       )
 
-      Vitest.expect(getByRole('current-id').innerHTML).toMatchInlineSnapshot('"Current Task Id: t1"')
+      Vitest.expect(getByTestId('current-id').innerHTML).toMatchInlineSnapshot('"Current Task Id: t1"')
 
       store.commit(
         events.todoCreated({ id: 't2', text: 'buy eggs', completed: false }),
@@ -156,7 +156,7 @@ Vitest.describe('useClientDocument', () => {
         events.todoCreated({ id: 't3', text: 'buy bread', completed: false }),
       )
 
-      Vitest.expect(getByRole('current-id').innerHTML).toMatchInlineSnapshot('"Current Task Id: t2"')
+      Vitest.expect(getByTestId('current-id').innerHTML).toMatchInlineSnapshot('"Current Task Id: t2"')
     }),
   )
 
@@ -276,13 +276,21 @@ Vitest.describe('useClientDocument', () => {
           if (key === 'code.stacktrace') {
             return '<STACKTRACE>'
           } else if (key === 'firstStackInfo') {
-            const stackInfo = JSON.parse(val as string) as LiveStore.StackInfo
+            if (typeof val !== 'string') return val
+            const stackInfo = JSON.parse(val)
+            if (typeof stackInfo !== 'object' || stackInfo === null) return val
+            const frames = Reflect.get(stackInfo, 'frames')
+            if (Array.isArray(frames) === false) return val
+
             // stackInfo.frames.shift() // Removes `renderHook.wrapper` from the stack
-            stackInfo.frames.forEach((_) => {
-              if (_.name.includes('renderHook.wrapper') === true) {
-                _.name = 'renderHook.wrapper'
+            frames.forEach((frame) => {
+              if (typeof frame !== 'object' || frame === null) return
+
+              const name = Reflect.get(frame, 'name')
+              if (typeof name === 'string' && name.includes('renderHook.wrapper') === true) {
+                Reflect.set(frame, 'name', 'renderHook.wrapper')
               }
-              _.filePath = '__REPLACED_FOR_SNAPSHOT__'
+              Reflect.set(frame, 'filePath', '__REPLACED_FOR_SNAPSHOT__')
             })
             return JSON.stringify(stackInfo)
           }
