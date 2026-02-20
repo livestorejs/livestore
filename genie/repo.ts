@@ -34,100 +34,14 @@ export { tsconfigJson, packageJson, oxlintConfig, oxfmtConfig, pnpmWorkspaceYaml
 import {
   catalog as effectUtilsCatalog,
   baseTsconfigCompilerOptions,
-  computeRelativePath,
-  createWorkspaceDepsResolver,
+  createMegarepoWorkspaceDepsResolver,
+  type MegarepoWorkspaceRoot,
   packageTsconfigCompilerOptions as effectUtilsPackageTsconfigCompilerOptions,
   domLib,
   reactJsx,
 } from '../repos/effect-utils/genie/external.ts'
-import * as effectUtilsExternal from '../repos/effect-utils/genie/external.ts'
 
 export { baseTsconfigCompilerOptions, domLib, reactJsx }
-
-type MegarepoWorkspaceRoot = {
-  id: string
-  prefix: string
-  path: string
-}
-
-type CreateMegarepoWorkspaceDepsResolverArgs = {
-  roots: readonly MegarepoWorkspaceRoot[]
-  internalPrefixes?: readonly string[]
-  excludedPackages?: readonly string[]
-  packageRootOverrides?: Readonly<Record<string, string>>
-}
-
-type WorkspaceDepsResolverArgs = {
-  pkg: GenieOutput<PackageJsonData>
-  deps: readonly GenieOutput<PackageJsonData>[]
-  location: string
-  extraPackages?: readonly string[]
-}
-
-type WorkspaceDepsResolver = (args: WorkspaceDepsResolverArgs) => string[]
-
-const createMegarepoWorkspaceDepsResolverFallback = (
-  config: CreateMegarepoWorkspaceDepsResolverArgs,
-): WorkspaceDepsResolver => {
-  const excludedPackages = new Set(config.excludedPackages ?? [])
-  const excludedPrefix = '__excluded_workspace_package__/'
-  const uniquePrefixes = [
-    ...new Set([...(config.internalPrefixes ?? []), ...config.roots.map((root) => root.prefix)]),
-  ].toSorted((a, b) => a.localeCompare(b))
-
-  const resolveWorkspacePath = (packageName: string, fromLocation: string): string => {
-    if (excludedPackages.has(packageName) === true) {
-      return `${excludedPrefix}${packageName}`
-    }
-
-    const matchingRoots = config.roots.filter((root) => packageName.startsWith(root.prefix) === true)
-    if (matchingRoots.length === 0) {
-      throw new Error(
-        `No workspace root configured for package '${packageName}'. Known prefixes: ${uniquePrefixes.join(', ')}`,
-      )
-    }
-
-    const candidateRootIds = matchingRoots.map((root) => root.id).toSorted((a, b) => a.localeCompare(b))
-    const overrideRootId = config.packageRootOverrides?.[packageName]
-
-    if (matchingRoots.length > 1 && overrideRootId === undefined) {
-      throw new Error(
-        `Ambiguous workspace root for package '${packageName}'. Candidates: ${candidateRootIds.join(', ')}. Configure packageRootOverrides for this package.`,
-      )
-    }
-
-    const selectedRoot =
-      overrideRootId !== undefined ? matchingRoots.find((root) => root.id === overrideRootId) : matchingRoots[0]
-
-    if (selectedRoot === undefined) {
-      throw new Error(
-        `Invalid workspace root override for package '${packageName}': '${overrideRootId}'. Allowed roots: ${candidateRootIds.join(', ')}`,
-      )
-    }
-
-    const suffix = packageName.slice(selectedRoot.prefix.length)
-    const targetPath =
-      selectedRoot.path.endsWith('/') === true ? `${selectedRoot.path}${suffix}` : `${selectedRoot.path}/${suffix}`
-    return computeRelativePath({ from: fromLocation, to: targetPath })
-  }
-
-  const resolveDeps = createWorkspaceDepsResolver({
-    prefixes: uniquePrefixes,
-    resolveWorkspacePath,
-  })
-
-  return (args: WorkspaceDepsResolverArgs) =>
-    resolveDeps(args).filter((workspacePath) => workspacePath.startsWith(excludedPrefix) === false)
-}
-
-const createMegarepoWorkspaceDepsResolverFromExternal = (
-  effectUtilsExternal as {
-    createMegarepoWorkspaceDepsResolver?: (config: CreateMegarepoWorkspaceDepsResolverArgs) => WorkspaceDepsResolver
-  }
-).createMegarepoWorkspaceDepsResolver
-
-const createMegarepoWorkspaceDepsResolver =
-  createMegarepoWorkspaceDepsResolverFromExternal ?? createMegarepoWorkspaceDepsResolverFallback
 
 /**
  * Package tsconfig compiler options for livestore.
