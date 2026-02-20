@@ -202,7 +202,7 @@ const livestoreOxlintOverrides = [
 
   // Generated from forked openapi-gen; assertions are generator output
   {
-    files: ['packages/@livestore/sync-s2/src/http-client-generated.ts'],
+    files: ['**/packages/@livestore/sync-s2/src/http-client-generated.ts'],
     rules: { 'typescript/no-unsafe-type-assertion': 'off' },
   },
 
