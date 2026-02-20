@@ -477,6 +477,7 @@ export const solidJsx = { jsx: 'preserve' as const, jsxImportSource: 'solid-js' 
 export { githubWorkflow } from '../repos/effect-utils/packages/@overeng/genie/src/runtime/mod.ts'
 
 import {
+  bashShellDefaults,
   namespaceRunner as namespaceRunnerBase,
   runDevenvTasksBefore,
   installNixStep,
@@ -491,6 +492,7 @@ import {
 export const devenvShellDefaults = {
   run: { shell: 'devenv shell bash -- -e {0}' },
 } as const
+export { bashShellDefaults }
 export { runDevenvTasksBefore }
 
 export const namespaceRunner = (runId: string) =>

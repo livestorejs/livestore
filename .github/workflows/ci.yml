@@ -25,7 +25,7 @@ jobs:
     runs-on: [namespace-profile-linux-x86-64, 'namespace-features:github.run-id=${{ github.run_id }}']
     defaults:
       run:
-        shell: devenv shell bash -- -e {0}
+        shell: bash
     steps:
       - uses: actions/checkout@v4
       - name: Install Nix
@@ -66,7 +66,7 @@ jobs:
     runs-on: [namespace-profile-linux-x86-64, 'namespace-features:github.run-id=${{ github.run_id }}']
     defaults:
       run:
-        shell: devenv shell bash -- -e {0}
+        shell: bash
     steps:
       - uses: actions/checkout@v4
       - name: Install Nix
@@ -107,7 +107,7 @@ jobs:
     runs-on: [namespace-profile-linux-x86-64, 'namespace-features:github.run-id=${{ github.run_id }}']
     defaults:
       run:
-        shell: devenv shell bash -- -e {0}
+        shell: bash
     steps:
       - uses: actions/checkout@v4
       - name: Install Nix
@@ -148,7 +148,7 @@ jobs:
     runs-on: [namespace-profile-linux-x86-64, 'namespace-features:github.run-id=${{ github.run_id }}']
     defaults:
       run:
-        shell: devenv shell bash -- -e {0}
+        shell: bash
     steps:
       - uses: actions/checkout@v4
       - name: Install Nix
@@ -234,7 +234,7 @@ jobs:
     runs-on: [namespace-profile-linux-x86-64, 'namespace-features:github.run-id=${{ github.run_id }}']
     defaults:
       run:
-        shell: devenv shell bash -- -e {0}
+        shell: bash
     steps:
       - uses: actions/checkout@v4
       - name: Install Nix
@@ -305,7 +305,7 @@ jobs:
     runs-on: [namespace-profile-linux-x86-64, 'namespace-features:github.run-id=${{ github.run_id }}']
     defaults:
       run:
-        shell: devenv shell bash -- -e {0}
+        shell: bash
     steps:
       - uses: actions/checkout@v4
       - name: Install Nix
@@ -368,7 +368,7 @@ jobs:
           PLAYWRIGHT_SUITE: '${{ matrix.suite }}'
         run: |
           if [ -n "$NETLIFY_AUTH_TOKEN" ]; then
-            bunx netlify-cli deploy --no-build --dir=tests/integration/playwright-report --site livestore-ci --filter @local/tests-integration --alias ${{ matrix.suite }}-$(git rev-parse --short HEAD)
+            devenv shell --no-tui bash -- -e "bunx netlify-cli deploy --no-build --dir=tests/integration/playwright-report --site livestore-ci --filter @local/tests-integration --alias ${{ matrix.suite }}-$(git rev-parse --short HEAD)"
           else
             echo "Skipping Netlify deploy: NETLIFY_AUTH_TOKEN not set"
           fi
@@ -376,7 +376,7 @@ jobs:
     runs-on: [namespace-profile-linux-x86-64, 'namespace-features:github.run-id=${{ github.run_id }}']
     defaults:
       run:
-        shell: devenv shell bash -- -e {0}
+        shell: bash
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
@@ -435,7 +435,7 @@ jobs:
     runs-on: [namespace-profile-linux-x86-64, 'namespace-features:github.run-id=${{ github.run_id }}']
     defaults:
       run:
-        shell: devenv shell bash -- -e {0}
+        shell: bash
     steps:
       - uses: actions/checkout@v4
       - name: Install Nix
@@ -495,7 +495,7 @@ jobs:
     needs: [test-unit, test-integration-node-sync, test-integration-sync-provider, test-integration-playwright]
     defaults:
       run:
-        shell: devenv shell bash -- -e {0}
+        shell: bash
     steps:
       - uses: actions/checkout@v4
       - name: Install Nix
@@ -538,7 +538,7 @@ jobs:
     runs-on: [namespace-profile-linux-x86-64, 'namespace-features:github.run-id=${{ github.run_id }}']
     defaults:
       run:
-        shell: devenv shell bash -- -e {0}
+        shell: bash
     steps:
       - uses: actions/checkout@v4
       - name: Install Nix
@@ -590,7 +590,7 @@ jobs:
     runs-on: [namespace-profile-linux-x86-64, 'namespace-features:github.run-id=${{ github.run_id }}']
     defaults:
       run:
-        shell: devenv shell bash -- -e {0}
+        shell: bash
     steps:
       - uses: actions/checkout@v4
       - name: Install Nix

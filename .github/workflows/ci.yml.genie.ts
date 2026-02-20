@@ -1,6 +1,6 @@
 import { playwrightSuites, syncProviderMatrix } from '../../genie/ci.ts'
 import {
-  devenvShellDefaults,
+  bashShellDefaults,
   githubWorkflow,
   livestoreSetupSteps,
   livestoreSetupStepsAfterCheckout,
@@ -37,11 +37,11 @@ const namespaceRunnerConfig = {
   'runs-on': namespaceRunner(GITHUB_RUN_ID),
 }
 
-/** Standard CI job configuration (namespace runner + devenv shell) */
+/** Standard CI job configuration (namespace runner + bash shell) */
 const standardCIJob = (config: { env?: Record<string, string>; steps: unknown[] }) => ({
   ...namespaceRunnerConfig,
   env: config.env,
-  defaults: devenvShellDefaults,
+  defaults: bashShellDefaults,
   steps: config.steps,
 })
 
@@ -145,7 +145,7 @@ fi`,
         },
       },
       ...namespaceRunnerConfig,
-      defaults: devenvShellDefaults,
+      defaults: bashShellDefaults,
       steps: [
         ...livestoreSetupSteps,
         otelSetupStep,
@@ -179,7 +179,7 @@ done`,
         },
       },
       ...namespaceRunnerConfig,
-      defaults: devenvShellDefaults,
+      defaults: bashShellDefaults,
       steps: [
         ...livestoreSetupSteps,
         otelSetupStep,
@@ -206,7 +206,7 @@ done`,
             PLAYWRIGHT_SUITE: '${{ matrix.suite }}',
           },
           run: `if [ -n "$NETLIFY_AUTH_TOKEN" ]; then
-  bunx netlify-cli deploy --no-build --dir=tests/integration/playwright-report --site livestore-ci --filter @local/tests-integration --alias \${{ matrix.suite }}-$(git rev-parse --short HEAD)
+  devenv shell --no-tui bash -- -e "bunx netlify-cli deploy --no-build --dir=tests/integration/playwright-report --site livestore-ci --filter @local/tests-integration --alias \${{ matrix.suite }}-$(git rev-parse --short HEAD)"
 else
   echo "Skipping Netlify deploy: NETLIFY_AUTH_TOKEN not set"
 fi`,
@@ -217,7 +217,7 @@ fi`,
     // Run on namespace runners to align CI environment with the rest of the test matrix.
     'perf-test': {
       ...namespaceRunnerConfig,
-      defaults: devenvShellDefaults,
+      defaults: bashShellDefaults,
       steps: [
         {
           // See https://github.com/orgs/community/discussions/26325
@@ -242,7 +242,7 @@ fi`,
     // Run on namespace runners to align CI environment with the rest of the test matrix.
     'wa-sqlite-test': {
       ...namespaceRunnerConfig,
-      defaults: devenvShellDefaults,
+      defaults: bashShellDefaults,
       steps: [
         ...livestoreSetupSteps,
         otelSetupStep,
@@ -273,7 +273,7 @@ fi`,
         'test-integration-sync-provider',
         'test-integration-playwright',
       ],
-      defaults: devenvShellDefaults,
+      defaults: bashShellDefaults,
       steps: [
         ...livestoreSetupSteps,
         { run: runDevenvTasksBefore('release:snapshot:git-sha'), env: { GIT_SHA: GITHUB_SHA } },
@@ -282,7 +282,7 @@ fi`,
 
     'build-and-deploy-examples-src': {
       ...namespaceRunnerConfig,
-      defaults: devenvShellDefaults,
+      defaults: bashShellDefaults,
       steps: [
         ...livestoreSetupSteps,
         {
@@ -318,7 +318,7 @@ fi`,
      */
     'build-deploy-docs': {
       ...namespaceRunnerConfig,
-      defaults: devenvShellDefaults,
+      defaults: bashShellDefaults,
       steps: [
         ...livestoreSetupSteps,
         // TODO(oep-bbd): Restore once root cause is fixed and diagnostics are removed.
