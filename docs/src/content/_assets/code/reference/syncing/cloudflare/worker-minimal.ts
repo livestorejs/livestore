@@ -18,6 +18,6 @@ export default {
     }
 
     // Custom routes, assets, etc.
-    return new Response('Not found', { status: 404 }) as unknown as CfTypes.Response
+    return new Response('Not found', { status: 404 })
   },
 } satisfies CFWorker<Env>

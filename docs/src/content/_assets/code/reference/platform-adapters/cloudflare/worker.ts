@@ -26,6 +26,6 @@ export default {
       return env.CLIENT_DO.get(id).fetch(request)
     }
 
-    return new Response('Not found', { status: 404 }) as unknown as CfTypes.Response
+    return new Response('Not found', { status: 404 })
   },
 } satisfies SyncBackend.CFWorker<Env>

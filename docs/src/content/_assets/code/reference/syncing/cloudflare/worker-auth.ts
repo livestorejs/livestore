@@ -9,15 +9,18 @@ export class SyncBackendDO extends makeDurableObject({
 
 const hasStoreAccess = (_userId: string, _storeId: string): boolean => true
 
+const hasUserId = (payload: unknown): payload is { userId: string } =>
+  typeof payload === 'object' && payload !== null && typeof Reflect.get(payload, 'userId') === 'string'
+
 export default makeWorker({
   syncBackendBinding: 'SYNC_BACKEND_DO',
   validatePayload: (payload, { storeId }) => {
-    if (!(typeof payload === 'object' && payload !== null && 'userId' in payload)) {
+    if (hasUserId(payload) === false) {
       throw new Error('User ID required')
     }
 
     // Validate user has access to store
-    if (hasStoreAccess((payload as any).userId as string, storeId) === false) {
+    if (hasStoreAccess(payload.userId, storeId) === false) {
       throw new Error('Unauthorized access to store')
     }
   },

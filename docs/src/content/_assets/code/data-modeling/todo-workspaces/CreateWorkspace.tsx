@@ -1,7 +1,6 @@
+import { nanoid } from '@livestore/livestore'
 import { useNavigate } from '@tanstack/react-router'
 import { useCallback } from 'react'
-
-import { nanoid } from '@livestore/livestore'
 
 import { userEvents } from './user.schema.ts'
 import { useCurrentUserStore } from './user.store.ts'
@@ -13,7 +12,8 @@ export const CreateWorkspace = () => {
 
   const createStore = useCallback(
     (formData: FormData) => {
-      const name = formData.get('name') as string
+      const name = formData.get('name')
+      if (typeof name !== 'string') return
       if (name.trim() === '') return
 
       const workspaceId = nanoid()
