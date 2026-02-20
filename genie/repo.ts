@@ -499,11 +499,6 @@ export const namespaceRunner = (runId: string) =>
 /**
  * Setup steps for livestore CI jobs (without checkout).
  * Uses shared step atoms from effect-utils/genie/ci-workflow.ts.
- *
- * Note: We use DEVENV_SKIP_SETUP=1 to prevent enterShell from running setup
- * tasks via nested devenv processes (which fail in GitHub Actions due to
- * temp script file access issues). Instead, setup tasks are run explicitly
- * via `devenv tasks run`.
  */
 export const livestoreSetupStepsAfterCheckout = [
   installNixStep({

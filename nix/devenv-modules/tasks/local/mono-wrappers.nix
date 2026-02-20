@@ -12,26 +12,24 @@
 {
   tasks = {
     # =========================================================================
-    # Setup
-    # =========================================================================
-
-    "setup:preflight" = {
-      description = "Run deterministic CI preflight bootstrap";
-      exec = "DEVENV_SKIP_SETUP=1 devenv tasks run pnpm:install genie:run ts:build --mode before --verbose";
-    };
-
-    # =========================================================================
     # Testing
     # =========================================================================
+
+    # CI bootstrap for heavy jobs:
+    # keep setup strict via task dependencies instead of a separate preflight step.
+    # TODO: simplify once nested devenv task failures are fixed upstream:
+    # https://github.com/cachix/devenv/issues/2512
 
     "test:unit" = {
       description = "Run unit tests";
       exec = "mono test unit";
+      after = [ "setup:strict" ];
     };
 
     "test:perf" = {
       description = "Run performance tests";
       exec = "mono test perf";
+      after = [ "setup:strict" ];
     };
 
     # Integration test suites
@@ -143,6 +141,7 @@
 
         mono test integration sync-provider --provider "$provider"
       '';
+      after = [ "setup:strict" ];
     };
 
     "test:integration:playwright:suite" = {
@@ -163,12 +162,14 @@
 
         mono test integration "$suite"
       '';
+      after = [ "setup:strict" ];
     };
 
     "test:integration:wa-sqlite:build" = {
       description = "Build wa-sqlite integration test target";
       cwd = "packages/@livestore/wa-sqlite";
       exec = "nix run .#build";
+      after = [ "setup:strict" ];
     };
 
     # =========================================================================
@@ -202,6 +203,7 @@
         mkdir -p tmp/ci-docs
         timeout --signal=TERM --kill-after=2m 20m mono docs snippets build 2>&1 | tee tmp/ci-docs/01-snippets.log
       '';
+      after = [ "setup:strict" ];
     };
 
     "docs:build:phase:diagrams" = {
@@ -262,6 +264,7 @@
     "examples:install" = {
       description = "Install examples workspace dependencies";
       exec = "pnpm install --frozen-lockfile --dir examples";
+      after = [ "setup:strict" ];
     };
 
     "examples:build:src" = {

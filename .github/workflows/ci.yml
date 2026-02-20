@@ -143,8 +143,6 @@ jobs:
             devenv version
           fi
         shell: bash
-      - name: Preflight workspace bootstrap
-        run: 'devenv tasks run setup:preflight --mode before'
       - run: 'devenv tasks run test:unit --mode before'
   test-integration-node-sync:
     runs-on: [namespace-profile-linux-x86-64, 'namespace-features:github.run-id=${{ github.run_id }}']
@@ -272,8 +270,6 @@ jobs:
             devenv version
           fi
         shell: bash
-      - name: Preflight workspace bootstrap
-        run: 'devenv tasks run setup:preflight --mode before'
       - name: Set OTEL_EXPORTER_OTLP_HEADERS environment variable
         env:
           GRAFANA_CLOUD_OTLP_INSTANCE_ID: '1227256'
@@ -345,8 +341,6 @@ jobs:
             devenv version
           fi
         shell: bash
-      - name: Preflight workspace bootstrap
-        run: 'devenv tasks run setup:preflight --mode before'
       - name: Set OTEL_EXPORTER_OTLP_HEADERS environment variable
         env:
           GRAFANA_CLOUD_OTLP_INSTANCE_ID: '1227256'
@@ -421,8 +415,6 @@ jobs:
             devenv version
           fi
         shell: bash
-      - name: Preflight workspace bootstrap
-        run: 'devenv tasks run setup:preflight --mode before'
       - name: Set OTEL_EXPORTER_OTLP_HEADERS environment variable
         env:
           GRAFANA_CLOUD_OTLP_INSTANCE_ID: '1227256'
@@ -479,8 +471,6 @@ jobs:
             devenv version
           fi
         shell: bash
-      - name: Preflight workspace bootstrap
-        run: 'devenv tasks run setup:preflight --mode before'
       - name: Set OTEL_EXPORTER_OTLP_HEADERS environment variable
         env:
           GRAFANA_CLOUD_OTLP_INSTANCE_ID: '1227256'
@@ -584,8 +574,6 @@ jobs:
             devenv version
           fi
         shell: bash
-      - name: Preflight workspace bootstrap
-        run: 'devenv tasks run setup:preflight --mode before'
       - name: Install examples dependencies
         run: 'devenv tasks run examples:install --mode before'
       - name: Build examples
@@ -638,8 +626,6 @@ jobs:
             devenv version
           fi
         shell: bash
-      - name: Preflight workspace bootstrap
-        run: 'devenv tasks run setup:preflight --mode before'
       - name: Build docs snippets
         run: 'devenv tasks run docs:build:phase:snippets --mode before'
       - name: Build docs diagrams

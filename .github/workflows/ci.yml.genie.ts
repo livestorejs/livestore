@@ -52,15 +52,6 @@ const otelCIJob = (config: { env?: Record<string, string>; steps: unknown[] }) =
     steps: [...livestoreSetupSteps, otelSetupStep, ...config.steps],
   })
 
-/**
- * Deterministic preflight for jobs that need generated artifacts/build state.
- * Uses DEVENV_SKIP_SETUP to avoid nested setup recursion.
- */
-const deterministicPreflightStep = {
-  name: 'Preflight workspace bootstrap',
-  run: runDevenvTasksBefore('setup:preflight'),
-}
-
 // =============================================================================
 // Workflow Definition
 // =============================================================================
@@ -104,7 +95,7 @@ export default githubWorkflow({
     }),
 
     'test-unit': standardCIJob({
-      steps: [...livestoreSetupSteps, deterministicPreflightStep, { run: runDevenvTasksBefore('test:unit') }],
+      steps: [...livestoreSetupSteps, { run: runDevenvTasksBefore('test:unit') }],
     }),
 
     // TODO: Remove flaky test wrapper once node-sync flakiness is resolved
@@ -157,7 +148,6 @@ fi`,
       defaults: devenvShellDefaults,
       steps: [
         ...livestoreSetupSteps,
-        deterministicPreflightStep,
         otelSetupStep,
         {
           name: 'Start s2-lite container',
@@ -192,7 +182,6 @@ done`,
       defaults: devenvShellDefaults,
       steps: [
         ...livestoreSetupSteps,
-        deterministicPreflightStep,
         otelSetupStep,
         {
           name: 'Run integration tests',
@@ -237,7 +226,6 @@ fi`,
           with: { ref: PR_HEAD_SHA },
         },
         ...livestoreSetupStepsAfterCheckout,
-        deterministicPreflightStep,
         otelSetupStep,
         {
           name: 'Run performance tests',
@@ -257,7 +245,6 @@ fi`,
       defaults: devenvShellDefaults,
       steps: [
         ...livestoreSetupSteps,
-        deterministicPreflightStep,
         otelSetupStep,
         { name: 'Build wa-sqlite', run: runDevenvTasksBefore('test:integration:wa-sqlite:build') },
         {
@@ -298,7 +285,6 @@ fi`,
       defaults: devenvShellDefaults,
       steps: [
         ...livestoreSetupSteps,
-        deterministicPreflightStep,
         {
           name: 'Install examples dependencies',
           run: runDevenvTasksBefore('examples:install'),
@@ -335,7 +321,6 @@ fi`,
       defaults: devenvShellDefaults,
       steps: [
         ...livestoreSetupSteps,
-        deterministicPreflightStep,
         // TODO(oep-bbd): Restore once root cause is fixed and diagnostics are removed.
         // { name: 'Build docs', run: runDevenvTasksBefore('docs:build:api') },
         // TODO(oep-bbd): Temporary phase split + hard timeouts for docs CI hang triage.
