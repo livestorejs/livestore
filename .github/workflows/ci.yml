@@ -48,17 +48,14 @@ jobs:
       - name: Sync megarepo dependencies
         run: mr sync --frozen
         shell: bash
-      - name: Install devenv if needed
-        run: 'command -v devenv > /dev/null || nix profile install "github:cachix/devenv/$(jq -r .nodes.devenv.locked.rev devenv.lock)"'
-        shell: bash
       - name: Validate Nix store
         run: |
-          if devenv version > /dev/null 2>&1; then
+          if nix shell "github:cachix/devenv/$(jq -r .nodes.devenv.locked.rev devenv.lock)" --accept-flake-config -c devenv version > /dev/null 2>&1; then
             echo "Nix store OK"
           else
             echo "::warning::Nix store validation failed, running repair..."
             nix-store --verify --repair 2>&1 | tail -20
-            devenv version
+            nix shell "github:cachix/devenv/$(jq -r .nodes.devenv.locked.rev devenv.lock)" --accept-flake-config -c devenv version
           fi
         shell: bash
       - run: 'devenv tasks run lint:full:with-megarepo-check --mode before'
@@ -89,17 +86,14 @@ jobs:
       - name: Sync megarepo dependencies
         run: mr sync --frozen
         shell: bash
-      - name: Install devenv if needed
-        run: 'command -v devenv > /dev/null || nix profile install "github:cachix/devenv/$(jq -r .nodes.devenv.locked.rev devenv.lock)"'
-        shell: bash
       - name: Validate Nix store
         run: |
-          if devenv version > /dev/null 2>&1; then
+          if nix shell "github:cachix/devenv/$(jq -r .nodes.devenv.locked.rev devenv.lock)" --accept-flake-config -c devenv version > /dev/null 2>&1; then
             echo "Nix store OK"
           else
             echo "::warning::Nix store validation failed, running repair..."
             nix-store --verify --repair 2>&1 | tail -20
-            devenv version
+            nix shell "github:cachix/devenv/$(jq -r .nodes.devenv.locked.rev devenv.lock)" --accept-flake-config -c devenv version
           fi
         shell: bash
       - run: 'devenv tasks run ts:build --mode before'
@@ -130,17 +124,14 @@ jobs:
       - name: Sync megarepo dependencies
         run: mr sync --frozen
         shell: bash
-      - name: Install devenv if needed
-        run: 'command -v devenv > /dev/null || nix profile install "github:cachix/devenv/$(jq -r .nodes.devenv.locked.rev devenv.lock)"'
-        shell: bash
       - name: Validate Nix store
         run: |
-          if devenv version > /dev/null 2>&1; then
+          if nix shell "github:cachix/devenv/$(jq -r .nodes.devenv.locked.rev devenv.lock)" --accept-flake-config -c devenv version > /dev/null 2>&1; then
             echo "Nix store OK"
           else
             echo "::warning::Nix store validation failed, running repair..."
             nix-store --verify --repair 2>&1 | tail -20
-            devenv version
+            nix shell "github:cachix/devenv/$(jq -r .nodes.devenv.locked.rev devenv.lock)" --accept-flake-config -c devenv version
           fi
         shell: bash
       - run: 'devenv tasks run test:unit --mode before'
@@ -171,17 +162,14 @@ jobs:
       - name: Sync megarepo dependencies
         run: mr sync --frozen
         shell: bash
-      - name: Install devenv if needed
-        run: 'command -v devenv > /dev/null || nix profile install "github:cachix/devenv/$(jq -r .nodes.devenv.locked.rev devenv.lock)"'
-        shell: bash
       - name: Validate Nix store
         run: |
-          if devenv version > /dev/null 2>&1; then
+          if nix shell "github:cachix/devenv/$(jq -r .nodes.devenv.locked.rev devenv.lock)" --accept-flake-config -c devenv version > /dev/null 2>&1; then
             echo "Nix store OK"
           else
             echo "::warning::Nix store validation failed, running repair..."
             nix-store --verify --repair 2>&1 | tail -20
-            devenv version
+            nix shell "github:cachix/devenv/$(jq -r .nodes.devenv.locked.rev devenv.lock)" --accept-flake-config -c devenv version
           fi
         shell: bash
       - name: Set OTEL_EXPORTER_OTLP_HEADERS environment variable
@@ -257,17 +245,14 @@ jobs:
       - name: Sync megarepo dependencies
         run: mr sync --frozen
         shell: bash
-      - name: Install devenv if needed
-        run: 'command -v devenv > /dev/null || nix profile install "github:cachix/devenv/$(jq -r .nodes.devenv.locked.rev devenv.lock)"'
-        shell: bash
       - name: Validate Nix store
         run: |
-          if devenv version > /dev/null 2>&1; then
+          if nix shell "github:cachix/devenv/$(jq -r .nodes.devenv.locked.rev devenv.lock)" --accept-flake-config -c devenv version > /dev/null 2>&1; then
             echo "Nix store OK"
           else
             echo "::warning::Nix store validation failed, running repair..."
             nix-store --verify --repair 2>&1 | tail -20
-            devenv version
+            nix shell "github:cachix/devenv/$(jq -r .nodes.devenv.locked.rev devenv.lock)" --accept-flake-config -c devenv version
           fi
         shell: bash
       - name: Set OTEL_EXPORTER_OTLP_HEADERS environment variable
@@ -328,17 +313,14 @@ jobs:
       - name: Sync megarepo dependencies
         run: mr sync --frozen
         shell: bash
-      - name: Install devenv if needed
-        run: 'command -v devenv > /dev/null || nix profile install "github:cachix/devenv/$(jq -r .nodes.devenv.locked.rev devenv.lock)"'
-        shell: bash
       - name: Validate Nix store
         run: |
-          if devenv version > /dev/null 2>&1; then
+          if nix shell "github:cachix/devenv/$(jq -r .nodes.devenv.locked.rev devenv.lock)" --accept-flake-config -c devenv version > /dev/null 2>&1; then
             echo "Nix store OK"
           else
             echo "::warning::Nix store validation failed, running repair..."
             nix-store --verify --repair 2>&1 | tail -20
-            devenv version
+            nix shell "github:cachix/devenv/$(jq -r .nodes.devenv.locked.rev devenv.lock)" --accept-flake-config -c devenv version
           fi
         shell: bash
       - name: Set OTEL_EXPORTER_OTLP_HEADERS environment variable
@@ -397,17 +379,14 @@ jobs:
       - name: Sync megarepo dependencies
         run: mr sync --frozen
         shell: bash
-      - name: Install devenv if needed
-        run: 'command -v devenv > /dev/null || nix profile install "github:cachix/devenv/$(jq -r .nodes.devenv.locked.rev devenv.lock)"'
-        shell: bash
       - name: Validate Nix store
         run: |
-          if devenv version > /dev/null 2>&1; then
+          if nix shell "github:cachix/devenv/$(jq -r .nodes.devenv.locked.rev devenv.lock)" --accept-flake-config -c devenv version > /dev/null 2>&1; then
             echo "Nix store OK"
           else
             echo "::warning::Nix store validation failed, running repair..."
             nix-store --verify --repair 2>&1 | tail -20
-            devenv version
+            nix shell "github:cachix/devenv/$(jq -r .nodes.devenv.locked.rev devenv.lock)" --accept-flake-config -c devenv version
           fi
         shell: bash
       - name: Set OTEL_EXPORTER_OTLP_HEADERS environment variable
@@ -453,17 +432,14 @@ jobs:
       - name: Sync megarepo dependencies
         run: mr sync --frozen
         shell: bash
-      - name: Install devenv if needed
-        run: 'command -v devenv > /dev/null || nix profile install "github:cachix/devenv/$(jq -r .nodes.devenv.locked.rev devenv.lock)"'
-        shell: bash
       - name: Validate Nix store
         run: |
-          if devenv version > /dev/null 2>&1; then
+          if nix shell "github:cachix/devenv/$(jq -r .nodes.devenv.locked.rev devenv.lock)" --accept-flake-config -c devenv version > /dev/null 2>&1; then
             echo "Nix store OK"
           else
             echo "::warning::Nix store validation failed, running repair..."
             nix-store --verify --repair 2>&1 | tail -20
-            devenv version
+            nix shell "github:cachix/devenv/$(jq -r .nodes.devenv.locked.rev devenv.lock)" --accept-flake-config -c devenv version
           fi
         shell: bash
       - name: Set OTEL_EXPORTER_OTLP_HEADERS environment variable
@@ -479,7 +455,7 @@ jobs:
       - name: Build wa-sqlite
         run: 'devenv tasks run test:integration:wa-sqlite:build --mode before'
       - name: Run wa-sqlite tests
-        run: 'devenv tasks run test:integration:wa-sqlite --mode before'
+        run: 'nix shell "github:cachix/devenv/$(jq -r .nodes.devenv.locked.rev devenv.lock)" --accept-flake-config -c devenv shell dt test:integration:wa-sqlite'
         env:
           COMMIT_SHA: '${{ github.event.pull_request.head.sha || github.sha }}'
           GRAFANA_ENDPOINT: 'https://livestore.grafana.net'
@@ -513,17 +489,14 @@ jobs:
       - name: Sync megarepo dependencies
         run: mr sync --frozen
         shell: bash
-      - name: Install devenv if needed
-        run: 'command -v devenv > /dev/null || nix profile install "github:cachix/devenv/$(jq -r .nodes.devenv.locked.rev devenv.lock)"'
-        shell: bash
       - name: Validate Nix store
         run: |
-          if devenv version > /dev/null 2>&1; then
+          if nix shell "github:cachix/devenv/$(jq -r .nodes.devenv.locked.rev devenv.lock)" --accept-flake-config -c devenv version > /dev/null 2>&1; then
             echo "Nix store OK"
           else
             echo "::warning::Nix store validation failed, running repair..."
             nix-store --verify --repair 2>&1 | tail -20
-            devenv version
+            nix shell "github:cachix/devenv/$(jq -r .nodes.devenv.locked.rev devenv.lock)" --accept-flake-config -c devenv version
           fi
         shell: bash
       - run: 'devenv tasks run release:snapshot:git-sha --mode before'
@@ -556,17 +529,14 @@ jobs:
       - name: Sync megarepo dependencies
         run: mr sync --frozen
         shell: bash
-      - name: Install devenv if needed
-        run: 'command -v devenv > /dev/null || nix profile install "github:cachix/devenv/$(jq -r .nodes.devenv.locked.rev devenv.lock)"'
-        shell: bash
       - name: Validate Nix store
         run: |
-          if devenv version > /dev/null 2>&1; then
+          if nix shell "github:cachix/devenv/$(jq -r .nodes.devenv.locked.rev devenv.lock)" --accept-flake-config -c devenv version > /dev/null 2>&1; then
             echo "Nix store OK"
           else
             echo "::warning::Nix store validation failed, running repair..."
             nix-store --verify --repair 2>&1 | tail -20
-            devenv version
+            nix shell "github:cachix/devenv/$(jq -r .nodes.devenv.locked.rev devenv.lock)" --accept-flake-config -c devenv version
           fi
         shell: bash
       - name: Install examples dependencies
@@ -608,17 +578,14 @@ jobs:
       - name: Sync megarepo dependencies
         run: mr sync --frozen
         shell: bash
-      - name: Install devenv if needed
-        run: 'command -v devenv > /dev/null || nix profile install "github:cachix/devenv/$(jq -r .nodes.devenv.locked.rev devenv.lock)"'
-        shell: bash
       - name: Validate Nix store
         run: |
-          if devenv version > /dev/null 2>&1; then
+          if nix shell "github:cachix/devenv/$(jq -r .nodes.devenv.locked.rev devenv.lock)" --accept-flake-config -c devenv version > /dev/null 2>&1; then
             echo "Nix store OK"
           else
             echo "::warning::Nix store validation failed, running repair..."
             nix-store --verify --repair 2>&1 | tail -20
-            devenv version
+            nix shell "github:cachix/devenv/$(jq -r .nodes.devenv.locked.rev devenv.lock)" --accept-flake-config -c devenv version
           fi
         shell: bash
       - name: Build docs snippets

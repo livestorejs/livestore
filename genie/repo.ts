@@ -614,13 +614,16 @@ import {
   cachixStep,
   installMegarepoStep,
   syncMegarepoStep,
-  installDevenvFromLockStep,
-  validateNixStoreStep,
   checkoutStep,
 } from '../repos/effect-utils/genie/ci-workflow.ts'
 
+export const pinnedDevenvCommand =
+  'nix shell "github:cachix/devenv/$(jq -r .nodes.devenv.locked.rev devenv.lock)" --accept-flake-config -c devenv'
+
 export const devenvShellDefaults = {
-  run: { shell: 'devenv shell bash -- -e {0}' },
+  run: {
+    shell: `${pinnedDevenvCommand} shell bash -- -e {0}`,
+  },
 } as const
 export { bashShellDefaults }
 export { runDevenvTasksBefore }
@@ -639,8 +642,17 @@ export const livestoreSetupStepsAfterCheckout = [
   cachixStep({ name: 'livestore', authToken: '${{ env.CACHIX_AUTH_TOKEN }}' }),
   installMegarepoStep,
   syncMegarepoStep(),
-  installDevenvFromLockStep,
-  validateNixStoreStep,
+  {
+    name: 'Validate Nix store',
+    run: `if ${pinnedDevenvCommand} version > /dev/null 2>&1; then
+  echo "Nix store OK"
+else
+  echo "::warning::Nix store validation failed, running repair..."
+  nix-store --verify --repair 2>&1 | tail -20
+  ${pinnedDevenvCommand} version
+fi`,
+    shell: 'bash',
+  },
 ] as const
 
 /**

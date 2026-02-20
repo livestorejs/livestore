@@ -7,6 +7,7 @@ import {
   namespaceRunner,
   otelSetupStep,
   runDevenvTasksBefore,
+  pinnedDevenvCommand,
 } from '../../genie/repo.ts'
 
 // =============================================================================
@@ -245,7 +246,7 @@ done`,
         { name: 'Build wa-sqlite', run: runDevenvTasksBefore('test:integration:wa-sqlite:build') },
         {
           name: 'Run wa-sqlite tests',
-          run: runDevenvTasksBefore('test:integration:wa-sqlite'),
+          run: `${pinnedDevenvCommand} shell dt test:integration:wa-sqlite`,
           env: {
             COMMIT_SHA: PR_HEAD_SHA,
             GRAFANA_ENDPOINT: 'https://livestore.grafana.net',
