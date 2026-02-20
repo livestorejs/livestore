@@ -205,11 +205,7 @@ done`,
             NETLIFY_AUTH_TOKEN: '${{ secrets.NETLIFY_AUTH_TOKEN }}',
             PLAYWRIGHT_SUITE: '${{ matrix.suite }}',
           },
-          run: `if [ -n "$NETLIFY_AUTH_TOKEN" ]; then
-  devenv shell --no-tui bash -- -e "bunx netlify-cli deploy --no-build --dir=tests/integration/playwright-report --site livestore-ci --filter @local/tests-integration --alias \${{ matrix.suite }}-$(git rev-parse --short HEAD)"
-else
-  echo "Skipping Netlify deploy: NETLIFY_AUTH_TOKEN not set"
-fi`,
+          run: runDevenvTasksBefore('test:integration:playwright:upload-trace'),
         },
       ],
     },

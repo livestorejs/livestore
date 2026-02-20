@@ -165,6 +165,26 @@
       after = [ "setup:strict" ];
     };
 
+    "test:integration:playwright:upload-trace" = {
+      description = "Upload Playwright report to Netlify for PLAYWRIGHT_SUITE";
+      exec = ''
+        set -euo pipefail
+        suite="''${PLAYWRIGHT_SUITE:-}"
+
+        if [ -z "$suite" ]; then
+          echo "Error: PLAYWRIGHT_SUITE is required"
+          exit 1
+        fi
+
+        if [ -n "''${NETLIFY_AUTH_TOKEN:-}" ]; then
+          bunx netlify-cli deploy --no-build --dir=tests/integration/playwright-report --site livestore-ci --filter @local/tests-integration --alias "$suite-$(git rev-parse --short HEAD)"
+        else
+          echo "Skipping Netlify deploy: NETLIFY_AUTH_TOKEN not set"
+        fi
+      '';
+      after = [ "setup:strict" ];
+    };
+
     "test:integration:wa-sqlite:build" = {
       description = "Build wa-sqlite integration test target";
       cwd = "packages/@livestore/wa-sqlite";

@@ -92,6 +92,19 @@ export const runExampleTests = (examples: ReadonlyArray<string>, options: { skip
     const fs = yield* FileSystem.FileSystem
 
     for (const example of examples) {
+      const isDirectory = yield* fs.stat(`${examplesDir}/${example}`).pipe(
+        Effect.map((stat) => stat.type === 'Directory'),
+        Effect.catchAll(() => Effect.succeed(false)),
+      )
+
+      if (isDirectory === false) {
+        if (skipMissing === true) {
+          yield* Effect.logWarning(`Skipping ${example}: not a directory`)
+          continue
+        }
+        return yield* new ScriptError({ message: `Cannot run tests for ${example}: not a directory` })
+      }
+
       const packageJsonPath = `${examplesDir}/${example}/package.json`
       const hasPackageJson = yield* fs.exists(packageJsonPath)
 
