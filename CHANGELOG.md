@@ -26,7 +26,6 @@
 - **Cloudflare sync provider storage:** Default storage is now Durable Object (DO) SQLite, with an explicit option to use D1 via a named binding. Examples and docs updated to the DO‑by‑default posture (see issue #266, #693).
 - **MCP support:** LiveStore now ships a CLI with a first-class MCP server so automation flows can connect to instances, query data, and commit events using the bundled tools (#705).
 - **React multi-store API:** The multi-store API is now the primary React integration, replacing `<LiveStoreProvider>` with `<StoreRegistryProvider>` and `useStore()` with store options. The new API supports multiple stores, preloading, and caching out of the box. See the [React integration docs](https://dev.docs.livestore.dev/reference/framework-integrations/react-integration/) (#841).
-- **Workspace generation resolver:** `pnpm-workspace.yaml` generation now derives transitive workspace dependencies from package manifests with explicit megarepo root policy/overrides instead of a hand-maintained dependency graph.
 
 ### Breaking Changes
 
