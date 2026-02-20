@@ -1,6 +1,7 @@
+import { MXBAI_API_KEY, MXBAI_VECTOR_STORE_ID } from 'astro:env/server'
 import Mixedbread from '@mixedbread/sdk'
 import type { APIRoute } from 'astro'
-import { MXBAI_API_KEY, MXBAI_VECTOR_STORE_ID } from 'astro:env/server'
+import { Schema } from 'effect'
 import Slugger from 'github-slugger'
 import removeMd from 'remove-markdown'
 
@@ -17,6 +18,18 @@ interface SearchMetadata {
   description?: string
   path?: string
   file_path?: string
+}
+
+const SearchMetadataSchema = Schema.Struct({
+  title: Schema.optional(Schema.String),
+  description: Schema.optional(Schema.String),
+  path: Schema.optional(Schema.String),
+  file_path: Schema.optional(Schema.String),
+})
+
+const decodeSearchMetadata = (value: unknown): SearchMetadata => {
+  const decoded = Schema.decodeUnknownEither(SearchMetadataSchema)(value)
+  return decoded._tag === 'Right' ? decoded.right : {}
 }
 
 export interface SearchResult {
@@ -90,10 +103,10 @@ export const GET: APIRoute = async ({ url }) => {
     const results: SearchResult[] = []
 
     response.data.forEach((item, index) => {
-      const metadata = {
+      const metadata = decodeSearchMetadata({
         ...item.metadata,
         ...item.generated_metadata,
-      } as SearchMetadata
+      })
 
       const url = filePathToHref(metadata?.file_path ?? '')
       const title = metadata?.title || 'Untitled'

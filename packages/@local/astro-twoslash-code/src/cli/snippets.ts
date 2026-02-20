@@ -1,6 +1,7 @@
 import crypto from 'node:crypto'
 import path from 'node:path'
-
+import { type Duration, Effect, FileSystem, type PlatformError, Schema, Stream } from '@livestore/utils/effect'
+import { Cli, NodeFileSystemWithWatch } from '@livestore/utils/node'
 import * as astroExpressiveCodeModuleStatic from 'astro-expressive-code'
 /**
  * Astro-Twoslash-Code snippets virtual-filesystem specification
@@ -103,9 +104,6 @@ import type {
   RootContent as THastRootContent,
 } from 'hast'
 import { toHtml } from 'hast-util-to-html'
-
-import { type Duration, Effect, FileSystem, type PlatformError, Schema, Stream } from '@livestore/utils/effect'
-import { Cli, NodeFileSystemWithWatch } from '@livestore/utils/node'
 
 import type { LineOwnerMarker, LineOwnerMetadata, TwoslashRuntimeOptions } from '../expressive-code.ts'
 import { createExpressiveCodeConfig, normalizeRuntimeOptions } from '../expressive-code.ts'
@@ -1173,6 +1171,33 @@ type TSnippetManifest = {
   }[]
 }
 
+const SnippetManifestSchema = Schema.Struct({
+  version: Schema.Literal(1),
+  generatedAt: Schema.String,
+  configHash: Schema.String,
+  baseStyles: Schema.String,
+  themeStyles: Schema.String,
+  jsModules: Schema.Array(Schema.String),
+  entries: Schema.Array(
+    Schema.Struct({
+      entryFile: Schema.String,
+      mainFilename: Schema.String,
+      artifactPath: Schema.String,
+      bundleHash: Schema.String,
+    }),
+  ),
+})
+
+const RenderFailureSchema = Schema.Struct({
+  message: Schema.optional(Schema.String),
+  cause: Schema.optional(Schema.Unknown),
+})
+
+const RenderFailureNestedSchema = Schema.Struct({
+  recommendation: Schema.optional(Schema.String),
+  message: Schema.optional(Schema.String),
+})
+
 type TManifestEntry = {
   entryFile: string
   mainFilename: string
@@ -1225,9 +1250,18 @@ const renderSnippet = (
       try {
         renderResult = await renderer.ec.render(renderOptions)
       } catch (cause) {
-        const failure = cause as { message?: string; cause?: unknown }
-        const nested = failure?.cause as { recommendation?: string; message?: string } | undefined
-        const detail = nested?.recommendation ?? nested?.message ?? failure?.message ?? null
+        const failure = Schema.decodeUnknownEither(RenderFailureSchema)(cause)
+        const nested =
+          failure._tag === 'Right'
+            ? Schema.decodeUnknownEither(RenderFailureNestedSchema)(failure.right.cause)
+            : undefined
+
+        const detail =
+          nested?._tag === 'Right'
+            ? (nested.right.recommendation ?? nested.right.message ?? failure.right?.message ?? null)
+            : failure._tag === 'Right'
+              ? failure.right.message
+              : null
         const message =
           detail != null && detail.length > 0
             ? `Twoslash rendering failed for ${focusFilename}: ${detail}`
@@ -1293,14 +1327,19 @@ const loadPreviousManifest = (
     }
 
     const manifestSource = manifestSourceResult.right
-    const parsedEither = yield* Effect.try(() => JSON.parse(manifestSource) as TSnippetManifest).pipe(Effect.either)
+    const parsedEither = yield* Effect.try(() => JSON.parse(manifestSource)).pipe(Effect.either)
     if (parsedEither._tag === 'Left') {
       yield* Effect.logWarning(
         `Unable to parse existing snippet manifest at ${paths.manifestPath}: ${String(parsedEither.left)}`,
       )
       return null
     }
-    const parsed = parsedEither.right
+    const parsedManifest = Schema.decodeUnknownEither(SnippetManifestSchema)(parsedEither.right)
+    if (parsedManifest._tag === 'Left') {
+      yield* Effect.logWarning(`Existing snippet manifest at ${paths.manifestPath} is invalid and will be ignored`)
+      return null
+    }
+    const parsed = parsedManifest.right
 
     if (parsed.version !== 1 || parsed.configHash !== expectedConfigHash) {
       return null

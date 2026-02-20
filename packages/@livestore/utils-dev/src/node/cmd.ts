@@ -22,8 +22,7 @@ import { applyLoggingToCommand } from './cmd-log.ts'
 import * as FileLogger from './FileLogger.ts'
 import { CurrentWorkingDirectory } from './workspace.ts'
 
-// Branded zero value so we can compare exit codes without touching internals.
-const SUCCESS_EXIT_CODE: CommandExecutor.ExitCode = 0 as CommandExecutor.ExitCode
+const isSuccessExitCode = (exitCode: CommandExecutor.ExitCode) => Number(exitCode) === 0
 
 export const cmd: (
   commandInput: string | (string | undefined)[],
@@ -50,8 +49,7 @@ export const cmd: (
   const cwd = yield* CurrentWorkingDirectory
 
   const asArray = Array.isArray(commandInput)
-  const parts = asArray === true ? commandInput.filter(isNotUndefined) : undefined
-  const [command, ...args] = asArray === true ? (parts as string[]) : commandInput.split(' ')
+  const [command, ...args] = asArray === true ? commandInput.filter(isNotUndefined) : commandInput.split(' ')
 
   const debugEnvStr = Object.entries(options?.env ?? {})
     .map(([key, value]) => `${key}='${String(value)}' `)
@@ -96,7 +94,7 @@ export const cmd: (
       })
     : runWithoutLogging(baseArgs)
 
-  if (exitCode !== SUCCESS_EXIT_CODE) {
+  if (isSuccessExitCode(exitCode) === false) {
     return yield* CmdError.make({
       command: command!,
       args,

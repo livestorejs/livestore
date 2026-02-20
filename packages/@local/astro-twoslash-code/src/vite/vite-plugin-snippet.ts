@@ -4,6 +4,7 @@ import path from 'node:path'
 import { fileURLToPath } from 'node:url'
 
 import { shouldNeverHappen } from '@livestore/utils'
+import { Schema } from '@livestore/utils/effect'
 
 import { createExpressiveCodeConfig, normalizeRuntimeOptions, type TwoslashRuntimeOptions } from '../expressive-code.ts'
 import { formatRebuildInstruction, resolveProjectPaths, type TwoslashProjectPaths } from '../project-paths.ts'
@@ -28,6 +29,20 @@ interface ManifestRaw {
   jsModules?: string[]
   configHash?: string
 }
+
+const ManifestEntrySchema = Schema.Struct({
+  entryFile: Schema.String,
+  artifactPath: Schema.String,
+  bundleHash: Schema.String,
+})
+
+const ManifestRawSchema = Schema.Struct({
+  entries: Schema.optional(Schema.Array(ManifestEntrySchema)),
+  baseStyles: Schema.optional(Schema.String),
+  themeStyles: Schema.optional(Schema.String),
+  jsModules: Schema.optional(Schema.Array(Schema.String)),
+  configHash: Schema.optional(Schema.String),
+})
 
 interface ManifestCache {
   raw: ManifestRaw
@@ -330,7 +345,12 @@ export const createTwoslashSnippetPlugin = (options: TwoslashSnippetPluginOption
       throw new Error(`Missing snippet manifest at ${paths.manifestPath}. ${rebuildInstruction}`)
     }
 
-    const raw = JSON.parse(fs.readFileSync(paths.manifestPath, 'utf-8')) as ManifestRaw
+    const rawUnknown = JSON.parse(fs.readFileSync(paths.manifestPath, 'utf-8'))
+    const rawDecode = Schema.decodeUnknownEither(ManifestRawSchema)(rawUnknown)
+    if (rawDecode._tag === 'Left') {
+      throw new Error(`Invalid snippet manifest at ${paths.manifestPath}. ${rebuildInstruction}`)
+    }
+    const raw: ManifestRaw = rawDecode.right
     const manifestConfigHash = typeof raw.configHash === 'string' ? raw.configHash : null
     const expectedHash = (() => {
       if (expectedConfigHash !== null) {

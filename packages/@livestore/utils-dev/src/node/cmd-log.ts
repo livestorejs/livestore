@@ -17,7 +17,7 @@ export type TCmdLoggingOptions = {
 export const prepareCmdLogging: (options: TCmdLoggingOptions) => Effect.Effect<string | undefined> = Effect.fn(
   'cmd.logging.prepare',
 )(function* ({ logDir, logFileName = 'dev.log', logRetention = 50 }: TCmdLoggingOptions) {
-  if (logDir == null || logDir === '') return undefined as string | undefined
+  if (logDir == null || logDir === '') return undefined
 
   const logsDir = logDir
   const archiveDir = path.join(logsDir, 'archive')
@@ -76,7 +76,7 @@ export const applyLoggingToCommand: (
     const logPath = yield* prepareCmdLogging(options)
 
     return {
-      input: asArray === true ? ((parts as string[]) ?? []) : commandInput,
+      input: asArray === true ? (parts ?? []) : commandInput,
       subshell: false,
       ...(logPath !== undefined ? { logPath } : {}),
     }
