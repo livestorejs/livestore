@@ -16,7 +16,7 @@ type AlarmInfo = {
 }
 
 export class LiveStoreClientDO extends DurableObject<Env> implements ClientDoWithRpcCallback {
-  override __DURABLE_OBJECT_BRAND: never = undefined as never
+  override __DURABLE_OBJECT_BRAND!: never
 
   private storeId: string | undefined
   private cachedStore: Store<typeof schema> | undefined
