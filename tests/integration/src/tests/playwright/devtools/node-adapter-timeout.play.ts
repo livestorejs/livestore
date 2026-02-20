@@ -35,7 +35,7 @@ const getAvailablePort = (): Promise<number> => {
     const server = createServer()
     server.listen(0, () => {
       const address = server.address()
-      if (address && typeof address === 'object') {
+      if (address !== null && address !== undefined && typeof address === 'object') {
         const port = address.port
         server.close(() => resolve(port))
       } else {
@@ -72,7 +72,7 @@ const startNodeApp = async (): Promise<void> => {
       const output = data.toString()
       console.log('[node-app stdout]', output)
 
-      if (output.includes('DEVTOOLS_READY') && !started) {
+      if (output.includes('DEVTOOLS_READY') === true && started === false) {
         started = true
         // Give the Vite devtools server more time to fully start
         // Vite needs to warm up before it can serve requests
@@ -85,21 +85,21 @@ const startNodeApp = async (): Promise<void> => {
     })
 
     nodeProcess.on('error', (err) => {
-      if (!started) {
+      if (started === false) {
         reject(err)
       }
     })
 
     nodeProcess.on('close', (code) => {
       console.log(`Node app exited with code ${code}`)
-      if (!started && code !== 0) {
+      if (started === false && code !== 0) {
         reject(new Error(`Node app exited with code ${code}`))
       }
     })
 
     // Timeout for app startup
     setTimeout(() => {
-      if (!started) {
+      if (started === false) {
         reject(new Error('Node app did not start within timeout'))
       }
     }, 30_000)
@@ -110,7 +110,7 @@ const startNodeApp = async (): Promise<void> => {
  * Stop the Node.js fixture app.
  */
 const stopNodeApp = (): void => {
-  if (nodeProcess && !nodeProcess.killed) {
+  if (nodeProcess !== undefined && nodeProcess.killed === false) {
     console.log('Stopping Node app...')
     nodeProcess.kill('SIGTERM')
     nodeProcess = undefined
@@ -138,17 +138,17 @@ test.describe('Node adapter devtools timeout', () => {
       const text = msg.text()
       // Log all messages related to debugging the timeout issue
       if (
-        text.includes('proxy-channel') ||
-        text.includes('LOADING LOCAL SOURCE') ||
-        text.includes('webmesh') ||
-        text.includes('runPingPong') ||
-        text.includes('devtools-api') ||
-        text.includes('mesh-node') ||
-        text.includes('ProxyChannel') ||
-        text.includes('Pong') ||
-        text.includes('Ping') ||
-        text.includes('recv') ||
-        text.includes('listenQueue')
+        text.includes('proxy-channel') === true ||
+        text.includes('LOADING LOCAL SOURCE') === true ||
+        text.includes('webmesh') === true ||
+        text.includes('runPingPong') === true ||
+        text.includes('devtools-api') === true ||
+        text.includes('mesh-node') === true ||
+        text.includes('ProxyChannel') === true ||
+        text.includes('Pong') === true ||
+        text.includes('Ping') === true ||
+        text.includes('recv') === true ||
+        text.includes('listenQueue') === true
       ) {
         console.log(`[browser console] ${text}`)
       }
@@ -159,7 +159,7 @@ test.describe('Node adapter devtools timeout', () => {
 
     // Retry navigation a few times in case Vite is still warming up
     let navigationSuccess = false
-    for (let attempt = 0; attempt < 3 && !navigationSuccess; attempt++) {
+    for (let attempt = 0; attempt < 3 && navigationSuccess === false; attempt++) {
       try {
         await page.goto(devtoolsUrl, { timeout: 15_000 })
         navigationSuccess = true
@@ -169,7 +169,7 @@ test.describe('Node adapter devtools timeout', () => {
       }
     }
 
-    if (!navigationSuccess) {
+    if (navigationSuccess === false) {
       throw new Error('Failed to navigate to devtools after 3 attempts')
     }
 
@@ -188,7 +188,7 @@ test.describe('Node adapter devtools timeout', () => {
       .locator('a')
       .filter({ hasText: /test-store/ })
       .first()
-    if (await sessionLink.isVisible({ timeout: 1000 }).catch(() => false)) {
+    if ((await sessionLink.isVisible({ timeout: 1000 }).catch(() => false)) === true) {
       await sessionLink.click()
       console.log('Clicked on session link')
     } else {
@@ -214,7 +214,7 @@ test.describe('Node adapter devtools timeout', () => {
     const connectionLostVisible = await page.locator('text=Connection to app lost').isVisible()
     const reloadButtonVisible = await page.locator('button:has-text("Reload")').isVisible()
 
-    if (connectionLostVisible || reloadButtonVisible) {
+    if (connectionLostVisible === true || reloadButtonVisible === true) {
       // This is the bug - the connection should NOT be lost
       console.error('BUG REPRODUCED: Connection to app was lost after 30 seconds')
 
@@ -253,7 +253,7 @@ test.describe('Node adapter devtools timeout', () => {
 
     // Retry navigation a few times in case Vite is still warming up
     let navigationSuccess = false
-    for (let attempt = 0; attempt < 3 && !navigationSuccess; attempt++) {
+    for (let attempt = 0; attempt < 3 && navigationSuccess === false; attempt++) {
       try {
         await page.goto(devtoolsUrl, { timeout: 15_000 })
         navigationSuccess = true
@@ -263,7 +263,7 @@ test.describe('Node adapter devtools timeout', () => {
       }
     }
 
-    if (!navigationSuccess) {
+    if (navigationSuccess === false) {
       throw new Error('Failed to navigate to devtools after 3 attempts')
     }
 
@@ -279,7 +279,7 @@ test.describe('Node adapter devtools timeout', () => {
       .locator('a')
       .filter({ hasText: /test-store/ })
       .first()
-    if (await sessionLink.isVisible({ timeout: 1000 }).catch(() => false)) {
+    if ((await sessionLink.isVisible({ timeout: 1000 }).catch(() => false)) === true) {
       await sessionLink.click()
     }
 

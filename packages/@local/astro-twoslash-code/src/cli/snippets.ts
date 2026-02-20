@@ -655,7 +655,7 @@ const isSentinelText = (text: string): boolean => {
 const removeSentinelNodes = (current: THastElementContent | THastRootContent | null | undefined): void => {
   if (current == null) return
   if (current.type === 'text') {
-    if (isSentinelText(current.value ?? '')) {
+    if (isSentinelText(current.value ?? '') === true) {
       current.value = ''
     }
     return
@@ -675,7 +675,7 @@ const removeSentinelNodes = (current: THastElementContent | THastRootContent | n
       retained.push(child as THastElementContent)
       continue
     }
-    if (child.type === 'text' && isSentinelText(child.value ?? '')) {
+    if (child.type === 'text' && isSentinelText(child.value ?? '') === true) {
       continue
     }
     removeSentinelNodes(child as THastElementContent)
@@ -811,7 +811,11 @@ const trimRenderedAst = (root: THastElement, focusVirtualPath: string, assembled
         })
       : null
 
-  if (copyElement !== null && isElementNode(copyElement) === true && Array.isArray((copyElement as THastParent).children) === true) {
+  if (
+    copyElement !== null &&
+    isElementNode(copyElement) === true &&
+    Array.isArray((copyElement as THastParent).children) === true
+  ) {
     for (const node of (copyElement as THastParent).children) {
       if (isElementNode(node) === false) continue
       if (node.tagName !== 'button') continue

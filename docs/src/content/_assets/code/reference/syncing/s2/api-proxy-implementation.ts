@@ -9,12 +9,12 @@ const s2Config: S2Helpers.S2Config = {
 }
 
 // HEAD /api/s2 - Health check/ping
-export async function HEAD() {
+export const HEAD = async () => {
   return new Response(null, { status: 200 })
 }
 
 // GET /api/s2 - Pull events
-export async function GET(request: Request) {
+export const GET = async (request: Request) => {
   const url = new URL(request.url)
   const args = S2.decodePullArgsFromSearchParams(url.searchParams)
   const streamName = S2.makeS2StreamName(args.storeId)
@@ -31,7 +31,7 @@ export async function GET(request: Request) {
 
   // For live pulls (SSE), proxy the response
   if (args.live === true) {
-    if (!res.ok) {
+    if (res.ok === false) {
       return S2Helpers.sseKeepAliveResponse()
     }
     return new Response(res.body, {
@@ -41,7 +41,7 @@ export async function GET(request: Request) {
   }
 
   // For regular pulls
-  if (!res.ok) {
+  if (res.ok === false) {
     return S2Helpers.emptyBatchResponse()
   }
 
@@ -52,7 +52,7 @@ export async function GET(request: Request) {
 }
 
 // POST /api/s2 - Push events
-export async function POST(request: Request) {
+export const POST = async (request: Request) => {
   const requestBody = await request.json()
   const parsed = Schema.decodeUnknownSync(S2.ApiSchema.PushPayload)(requestBody)
   const streamName = S2.makeS2StreamName(parsed.storeId)
@@ -75,7 +75,7 @@ export async function POST(request: Request) {
       body: pushRequest.body,
     })
 
-    if (!res.ok) {
+    if (res.ok === false) {
       return S2Helpers.errorResponse('Push failed', 500)
     }
   }

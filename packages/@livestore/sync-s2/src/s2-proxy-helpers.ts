@@ -60,7 +60,7 @@ export const getStreamRecordsUrl = (
   /** wait - How long to wait for new records before returning. See: https://docs.s2.dev/api#wait */
   if (params.wait !== undefined) searchParams.append('wait', params.wait.toString())
 
-  return searchParams.toString() ? `${base}?${searchParams}` : base
+  return searchParams.toString().length > 0 ? `${base}?${searchParams}` : base
 }
 
 // Header helpers

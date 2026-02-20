@@ -9,6 +9,7 @@ const schema = {} as LiveStoreSchema
 const storeId = 'demo-store'
 const user = { jwt: 'user-token' }
 const adapter = makeInMemoryAdapter()
+const loadingFallback = <div>Loading...</div>
 
 // ---cut---
 const useAppStore = () =>
@@ -25,7 +26,7 @@ const useAppStore = () =>
 export const App = () => {
   const [storeRegistry] = useState(() => new StoreRegistry())
   return (
-    <Suspense fallback={<div>Loading...</div>}>
+    <Suspense fallback={loadingFallback}>
       <StoreRegistryProvider storeRegistry={storeRegistry}>
         <AppContent />
       </StoreRegistryProvider>

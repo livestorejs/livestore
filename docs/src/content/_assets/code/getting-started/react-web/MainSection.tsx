@@ -22,8 +22,29 @@ export const MainSection: React.FC = () => {
   const store = useAppStore()
 
   const toggleTodo = React.useCallback(
-    ({ id, completed }: typeof tables.todos.Type) =>
-      store.commit(completed === true ? events.todoUncompleted({ id }) : events.todoCompleted({ id })),
+    (id: string, completed: boolean) => {
+      store.commit(completed === true ? events.todoUncompleted({ id }) : events.todoCompleted({ id }))
+    },
+    [store],
+  )
+
+  const handleToggleChange = React.useCallback(
+    (event: React.ChangeEvent<HTMLInputElement>) => {
+      const { todoId, completed } = event.currentTarget.dataset
+      if (todoId !== undefined && completed !== undefined) {
+        toggleTodo(todoId, completed === 'true')
+      }
+    },
+    [toggleTodo],
+  )
+
+  const handleDeleteTodo = React.useCallback(
+    (event: React.MouseEvent<HTMLButtonElement>) => {
+      const id = event.currentTarget.dataset.todoId
+      if (id !== undefined) {
+        store.commit(events.todoDeleted({ id, deletedAt: new Date() }))
+      }
+    },
     [store],
   )
 
@@ -40,14 +61,12 @@ export const MainSection: React.FC = () => {
                 className="toggle"
                 id={`todo-${todo.id}`}
                 checked={todo.completed}
-                onChange={() => toggleTodo(todo)}
+                data-todo-id={todo.id}
+                data-completed={String(todo.completed)}
+                onChange={handleToggleChange}
               />
               <label htmlFor={`todo-${todo.id}`}>{todo.text}</label>
-              <button
-                type="button"
-                className="destroy"
-                onClick={() => store.commit(events.todoDeleted({ id: todo.id, deletedAt: new Date() }))}
-              />
+              <button type="button" className="destroy" data-todo-id={todo.id} onClick={handleDeleteTodo} />
             </div>
           </li>
         ))}

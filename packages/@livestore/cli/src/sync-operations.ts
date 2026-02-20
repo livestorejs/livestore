@@ -81,7 +81,7 @@ export const makeSyncBackend = ({
   Effect.gen(function* () {
     const { syncBackendConstructor, syncPayload } = yield* loadModuleConfig({ configPath })
 
-    const syncBackend = yield* (syncBackendConstructor)({
+    const syncBackend = yield* syncBackendConstructor({
       storeId,
       clientId,
       /** syncPayload is validated against syncPayloadSchema by loadModuleConfig */
@@ -228,8 +228,8 @@ export const validateExportData = ({
       Effect.mapError(
         (cause) =>
           new ImportError({
-              cause: new Error(`Invalid export file format: ${String(cause)}`),
-              note: `Invalid export file format: ${String(cause)}`,
+            cause: new Error(`Invalid export file format: ${String(cause)}`),
+            note: `Invalid export file format: ${String(cause)}`,
           }),
       ),
     )
@@ -276,20 +276,20 @@ export const pushEventsToSyncBackend = ({
           Effect.mapError(
             (cause) =>
               new ImportError({
-              cause: new Error(`Invalid export file format: ${String(cause)}`),
-              note: `Invalid export file format: ${String(cause)}`,
+                cause: new Error(`Invalid export file format: ${String(cause)}`),
+                note: `Invalid export file format: ${String(cause)}`,
               }),
           ),
         )
 
-        if (exportData.storeId !== storeId && !force) {
+        if (exportData.storeId !== storeId && force === false) {
           return yield* new ImportError({
             cause: new Error(`Store ID mismatch: file has '${exportData.storeId}', expected '${storeId}'`),
             note: `The export file was created for a different store. Use force option to import anyway.`,
           })
         }
 
-        if (dryRun) {
+        if (dryRun === true) {
           return {
             storeId,
             eventCount: exportData.events.length,

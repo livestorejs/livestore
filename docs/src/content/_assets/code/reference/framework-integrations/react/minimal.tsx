@@ -14,7 +14,7 @@ const issueStoreOptions = (issueId: string) =>
     adapter: makeInMemoryAdapter(),
   })
 
-export function App() {
+export const App = () => {
   const [storeRegistry] = useState(() => new StoreRegistry({ defaultOptions: { batchUpdates } }))
   return (
     <StoreRegistryProvider storeRegistry={storeRegistry}>
@@ -23,7 +23,7 @@ export function App() {
   )
 }
 
-function IssueView() {
+const IssueView = () => {
   const store = useStore(issueStoreOptions('abc123'))
   const [issue] = store.useQuery(queryDb(tables.issue.select()))
   return <div>{issue?.title}</div>

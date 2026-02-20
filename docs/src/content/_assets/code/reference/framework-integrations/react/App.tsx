@@ -5,12 +5,15 @@ import { ErrorBoundary } from 'react-error-boundary'
 import { StoreRegistry } from '@livestore/livestore'
 import { StoreRegistryProvider } from '@livestore/react'
 
-export function App({ children }: { children: ReactNode }) {
+const appErrorFallback = <div>Something went wrong</div>
+const appLoadingFallback = <div>Loading LiveStore...</div>
+
+export const App = ({ children }: { children: ReactNode }) => {
   const [storeRegistry] = useState(() => new StoreRegistry({ defaultOptions: { batchUpdates } }))
 
   return (
-    <ErrorBoundary fallback={<div>Something went wrong</div>}>
-      <Suspense fallback={<div>Loading LiveStore...</div>}>
+    <ErrorBoundary fallback={appErrorFallback}>
+      <Suspense fallback={appLoadingFallback}>
         <StoreRegistryProvider storeRegistry={storeRegistry}>{children}</StoreRegistryProvider>
       </Suspense>
     </ErrorBoundary>

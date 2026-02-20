@@ -348,13 +348,14 @@ export const makeSingleTabAdapter =
           .first(),
       )
 
-      const initialLeaderHead = initialLeaderHeadRes !== undefined
-        ? EventSequenceNumber.Client.Composite.make({
-            global: initialLeaderHeadRes.seqNumGlobal,
-            client: initialLeaderHeadRes.seqNumClient,
-            rebaseGeneration: initialLeaderHeadRes.seqNumRebaseGeneration,
-          })
-        : EventSequenceNumber.Client.ROOT
+      const initialLeaderHead =
+        initialLeaderHeadRes !== undefined
+          ? EventSequenceNumber.Client.Composite.make({
+              global: initialLeaderHeadRes.seqNumGlobal,
+              client: initialLeaderHeadRes.seqNumClient,
+              rebaseGeneration: initialLeaderHeadRes.seqNumRebaseGeneration,
+            })
+          : EventSequenceNumber.Client.ROOT
 
       yield* Effect.addFinalizer((ex) =>
         Effect.gen(function* () {
@@ -479,7 +480,7 @@ const getPersistedId = (key: string, storageType: 'session' | 'local') => {
 const ensureBrowserRequirements = Effect.gen(function* () {
   const validate = (condition: boolean, label: string) =>
     Effect.gen(function* () {
-      if (condition) {
+      if (condition === true) {
         return yield* UnknownError.make({
           cause: `[@livestore/adapter-web] Browser not supported. The LiveStore web adapter needs '${label}' to work properly`,
         })

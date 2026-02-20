@@ -47,9 +47,10 @@ const examplesTestCommand = Cli.Command.make(
   Effect.fn(function* ({ example }) {
     // Reuse the deploy helpers so local workflows and CI keep the same validation rules.
     const availableExamples = yield* readExampleSlugs()
-    const targets = Option.isSome(example) === true
-      ? [yield* ensureExampleExists(example.value, availableExamples)]
-      : availableExamples
+    const targets =
+      Option.isSome(example) === true
+        ? [yield* ensureExampleExists(example.value, availableExamples)]
+        : availableExamples
 
     if (targets.length === 0) {
       yield* Effect.logWarning('No examples found in the examples directory')

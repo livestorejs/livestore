@@ -132,7 +132,7 @@ export class DockerComposeService extends Effect.Service<DockerComposeService>()
 
         // Build start command
         const startArgs = ['docker', 'compose', ...baseComposeArgs, 'up']
-        if (detached) startArgs.push('-d')
+        if (detached === true) startArgs.push('-d')
         if (serviceName !== undefined) startArgs.push(serviceName)
 
         const command = yield* Command.make(startArgs[0]!, ...startArgs.slice(1)).pipe(
@@ -177,9 +177,10 @@ export class DockerComposeService extends Effect.Service<DockerComposeService>()
       const stop = Effect.gen(function* () {
         yield* Effect.log(`Stopping Docker Compose services in ${cwd}`)
 
-        const stopCommand = serviceName !== undefined
-          ? Command.make('docker', 'compose', ...baseComposeArgs, 'stop', serviceName)
-          : Command.make('docker', 'compose', ...baseComposeArgs, 'stop')
+        const stopCommand =
+          serviceName !== undefined
+            ? Command.make('docker', 'compose', ...baseComposeArgs, 'stop', serviceName)
+            : Command.make('docker', 'compose', ...baseComposeArgs, 'stop')
 
         yield* stopCommand.pipe(
           Command.workingDirectory(cwd),
@@ -244,8 +245,8 @@ export class DockerComposeService extends Effect.Service<DockerComposeService>()
         yield* Effect.log(`Tearing down Docker Compose services in ${cwd}`)
 
         const downArgs = ['docker', 'compose', ...baseComposeArgs, 'down']
-        if (options?.volumes) downArgs.push('-v')
-        if (options?.removeOrphans) downArgs.push('--remove-orphans')
+        if (options?.volumes === true) downArgs.push('-v')
+        if (options?.removeOrphans === true) downArgs.push('--remove-orphans')
         if (serviceName !== undefined) downArgs.push(serviceName)
 
         yield* Command.make(downArgs[0]!, ...downArgs.slice(1)).pipe(
@@ -269,10 +270,12 @@ export class DockerComposeService extends Effect.Service<DockerComposeService>()
       })
 
       // Register cleanup finalizer to ensure containers are removed when scope closes
-          yield* Effect.addFinalizer(() =>
+      yield* Effect.addFinalizer(() =>
         down({ volumes: true, removeOrphans: true }).pipe(
           Effect.tap(() => Effect.log(`Docker Compose cleanup completed for project ${projectName}`)),
-          Effect.catchAll((error) => Effect.log('Docker Compose cleanup failed for project', projectName, objectToString(error))),
+          Effect.catchAll((error) =>
+            Effect.log('Docker Compose cleanup failed for project', projectName, objectToString(error)),
+          ),
         ),
       )
 

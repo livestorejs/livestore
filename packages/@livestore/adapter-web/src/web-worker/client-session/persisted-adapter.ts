@@ -265,7 +265,7 @@ export const makePersistedAdapter =
 
       const sharedWebWorker = tryAsFunctionAndNew(options.sharedWorker, { name: `livestore-shared-worker-${storeId}` })
 
-      if (options.experimental?.awaitSharedWorkerTermination) {
+      if (options.experimental?.awaitSharedWorkerTermination === true) {
         // Relying on the lock being available is currently the only mechanism we're aware of
         // to know whether the shared worker has terminated.
         yield* Effect.addFinalizer(() => WebLock.waitForLock(LIVESTORE_SHARED_WORKER_TERMINATION_LOCK))
@@ -480,13 +480,14 @@ export const makePersistedAdapter =
           .first(),
       )
 
-      const initialLeaderHead = initialLeaderHeadRes !== undefined
-        ? EventSequenceNumber.Client.Composite.make({
-            global: initialLeaderHeadRes.seqNumGlobal,
-            client: initialLeaderHeadRes.seqNumClient,
-            rebaseGeneration: initialLeaderHeadRes.seqNumRebaseGeneration,
-          })
-        : EventSequenceNumber.Client.ROOT
+      const initialLeaderHead =
+        initialLeaderHeadRes !== undefined
+          ? EventSequenceNumber.Client.Composite.make({
+              global: initialLeaderHeadRes.seqNumGlobal,
+              client: initialLeaderHeadRes.seqNumClient,
+              rebaseGeneration: initialLeaderHeadRes.seqNumRebaseGeneration,
+            })
+          : EventSequenceNumber.Client.ROOT
 
       // console.debug('[@livestore/adapter-web:client-session] initialLeaderHead', initialLeaderHead)
 
@@ -624,7 +625,7 @@ const getPersistedId = (key: string, storageType: 'session' | 'local') => {
 const ensureBrowserRequirements = Effect.gen(function* () {
   const validate = (condition: boolean, label: string) =>
     Effect.gen(function* () {
-      if (condition) {
+      if (condition === true) {
         return yield* UnknownError.make({
           cause: `[@livestore/adapter-web] Browser not supported. The LiveStore web adapter needs '${label}' to work properly`,
         })

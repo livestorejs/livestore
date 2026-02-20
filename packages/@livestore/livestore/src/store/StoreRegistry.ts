@@ -269,7 +269,7 @@ export class StoreRegistry {
 
     // Check if the failure is due to async work
     const defect = Cause.dieOption(exit.cause)
-    if (defect._tag === 'Some' && Runtime.isAsyncFiberException(defect.value)) {
+    if (defect._tag === 'Some' && Runtime.isAsyncFiberException(defect.value) === true) {
       const { storeId } = options
 
       // Return cached promise if one exists (ensures concurrent calls get the same Promise reference)

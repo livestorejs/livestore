@@ -103,7 +103,7 @@ export const toDurableObjectHandler =
           })
 
           let value: any
-          if (Effect.isEffect(handlerResult)) {
+          if (Effect.isEffect(handlerResult) === true) {
             // @effect-diagnostics-next-line anyUnknownInErrorContext:off -- `Rpc.Handler.handler` returns `Effect<any, any>` due to dynamic dispatch
             value = yield* handlerResult
           } else {
@@ -212,7 +212,7 @@ const createStreamingResponse = <Rpcs extends Rpc.Any, LE>(
     })
 
     // @effect-diagnostics-next-line anyUnknownInErrorContext:off -- `Rpc.Handler.handler` returns `Effect<any, any>` due to dynamic dispatch; orDie converts the error to a defect handled by the downstream catchAllCause
-    const stream: Stream.Stream<any, any> = Effect.isEffect(handlerResult)
+    const stream: Stream.Stream<any, any> = Effect.isEffect(handlerResult) === true
       ? yield* Effect.orDie(handlerResult)
       : handlerResult
 

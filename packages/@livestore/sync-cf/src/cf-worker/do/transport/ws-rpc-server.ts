@@ -15,7 +15,7 @@ export const makeRpcServer = ({ doSelf, doOptions }: Omit<DoCtxInput, 'from'>) =
         const headers = yield* getForwardedHeaders
         return makeEndingPullStream({ req, payload: req.payload, headers }).pipe(
           // Needed to keep the stream alive on the client side for phase 2 (i.e. not send the `Exit` stream RPC message)
-          req.live ? Stream.concat(Stream.never) : identity,
+          req.live === true ? Stream.concat(Stream.never) : identity,
           Stream.provideLayer(DoCtx.Default({ doSelf, doOptions, from: { storeId: req.storeId } })),
           Stream.mapError((cause) =>
             cause._tag === 'InvalidPullError' ? cause : InvalidPullError.make({ cause: new UnknownError({ cause }) }),

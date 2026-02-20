@@ -144,7 +144,7 @@ export const makeWsSync =
             Stream.tap((res) => backendIdHelper.lazySet(res.backendId)),
             Stream.map((res) => omit(res, ['backendId'])),
             Stream.mapError((cause) =>
-              cause._tag === 'RpcClientError' && Socket.isSocketError(cause.cause)
+              cause._tag === 'RpcClientError' && Socket.isSocketError(cause.cause) === true
                 ? new IsOfflineError({ cause: cause.cause })
                 : cause._tag === 'InvalidPullError'
                   ? cause

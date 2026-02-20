@@ -426,17 +426,17 @@ export class FacadeVFS extends VFS.Base {
         }
         if (prop === getter) {
           return (byteOffset, littleEndian) => {
-            if (!littleEndian) throw new Error('must be little endian')
+            if (littleEndian !== true) throw new Error('must be little endian')
             return dataView[prop](byteOffset, littleEndian)
           }
         }
         if (prop === setter) {
           return (byteOffset, value, littleEndian) => {
-            if (!littleEndian) throw new Error('must be little endian')
+            if (littleEndian !== true) throw new Error('must be little endian')
             return dataView[prop](byteOffset, value, littleEndian)
           }
         }
-        if (typeof prop === 'string' && /^(get)|(set)/.test(prop)) {
+        if (typeof prop === 'string' && /^(get)|(set)/.test(prop) === true) {
           throw new Error('invalid type')
         }
         const result = dataView[prop]
@@ -464,19 +464,19 @@ export class FacadeVFS extends VFS.Base {
   }
 
   #decodeFilename(zName, flags) {
-    if (flags & VFS.SQLITE_OPEN_URI) {
+    if ((flags & VFS.SQLITE_OPEN_URI) !== 0) {
       // The first null-terminated string is the URI path. Subsequent
       // strings are query parameter keys and values.
       // https://www.sqlite.org/c3ref/open.html#urifilenamesinsqlite3open
       let pName = zName
       let state = 1
       const charCodes = []
-      while (state) {
+      while (state !== null) {
         const charCode = this._module.HEAPU8[pName++]
-        if (charCode) {
+        if (charCode !== 0) {
           charCodes.push(charCode)
         } else {
-          if (!this._module.HEAPU8[pName]) state = null
+          if (this._module.HEAPU8[pName] === 0) state = null
           switch (state) {
             case 1: {
               // path
@@ -501,7 +501,7 @@ export class FacadeVFS extends VFS.Base {
       }
       return new TextDecoder().decode(new Uint8Array(charCodes))
     }
-    return zName ? this._module.UTF8ToString(zName) : null
+    return zName !== null ? this._module.UTF8ToString(zName) : null
   }
 }
 // Emscripten "legalizes" 64-bit integer arguments by passing them as

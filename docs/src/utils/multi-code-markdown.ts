@@ -101,9 +101,10 @@ const parseSnippetArtifact = (source: string): SnippetArtifact | null => {
     return null
   }
 
-  const fileOrder = Array.isArray(parsed.fileOrder) === true
-    ? parsed.fileOrder.filter((item): item is string => typeof item === 'string')
-    : undefined
+  const fileOrder =
+    Array.isArray(parsed.fileOrder) === true
+      ? parsed.fileOrder.filter((item): item is string => typeof item === 'string')
+      : undefined
 
   return fileOrder !== undefined ? { files, fileOrder } : { files }
 }
@@ -294,7 +295,8 @@ export const transformMultiCodeDocument = async (input: TransformInput): Promise
   const { id, collection, body, debug = false, docsRoot } = input
   const paths = resolvePaths(docsRoot)
   const docCollection = collection ?? 'docs'
-  const normalizedDocPath = docCollection !== undefined && id.startsWith(`${docCollection}/`) === true ? id : `${docCollection}/${id}`
+  const normalizedDocPath =
+    docCollection !== undefined && id.startsWith(`${docCollection}/`) === true ? id : `${docCollection}/${id}`
   const docDir = path.dirname(path.join(paths.contentRoot, normalizedDocPath))
 
   const snippetImports = new Map<string, string>()

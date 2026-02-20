@@ -22,9 +22,8 @@ export * from './column-spec.ts'
 export * from './table-def.ts'
 
 export const makeState = <TStateInput extends InputState>(inputSchema: TStateInput): InternalState => {
-  const inputTables: ReadonlyArray<TableDef> = Array.isArray(inputSchema.tables) === true
-    ? inputSchema.tables
-    : Object.values(inputSchema.tables)
+  const inputTables: ReadonlyArray<TableDef> =
+    Array.isArray(inputSchema.tables) === true ? inputSchema.tables : Object.values(inputSchema.tables)
 
   const tables = new Map<string, TableDef.Any>()
 
@@ -48,7 +47,7 @@ export const makeState = <TStateInput extends InputState>(inputSchema: TStateInp
   }
 
   for (const tableDef of inputTables) {
-    if (tableIsClientDocumentTable(tableDef)) {
+    if (tableIsClientDocumentTable(tableDef) === true) {
       materializers.set(
         tableDef[ClientDocumentTableDefSymbol].derived.setEventDef.name,
         tableDef[ClientDocumentTableDefSymbol].derived.setMaterializer,

@@ -1,3 +1,5 @@
+import type React from 'react'
+import { useCallback } from 'react'
 import { unstable_batchedUpdates as batchUpdates } from 'react-dom'
 
 // TodoApp.tsx
@@ -22,34 +24,54 @@ const visibleTodos$ = queryDb(() => tables.todos, {
   label: 'visibleTodos',
 })
 
-export function TodoApp() {
+export const TodoApp = () => {
   const store = useAppStore()
 
   // Reactively updates when todos change in the DB
   const todos = store.useQuery(visibleTodos$)
 
-  const addTodo = (text: string) => {
-    // Commit an event to the store
-    store.commit(
-      events.todoCreated({
-        id: crypto.randomUUID(),
-        text,
-      }),
-    )
-  }
+  const addTodo = useCallback(
+    (text: string) => {
+      // Commit an event to the store
+      store.commit(
+        events.todoCreated({
+          id: crypto.randomUUID(),
+          text,
+        }),
+      )
+    },
+    [store],
+  )
 
-  const completeTodo = (id: string) => {
-    // Commit an event to the store
-    store.commit(events.todoCompleted({ id }))
-  }
+  const completeTodo = useCallback(
+    (id: string) => {
+      // Commit an event to the store
+      store.commit(events.todoCompleted({ id }))
+    },
+    [store],
+  )
+
+  const handleAddTodo = useCallback(() => {
+    addTodo('New todo')
+  }, [addTodo])
+
+  const handleCompleteTodo = useCallback(
+    (event: React.MouseEvent<HTMLButtonElement>) => {
+      const id = event.currentTarget.dataset.todoId
+      if (id !== undefined) {
+        completeTodo(id)
+      }
+    },
+    [completeTodo],
+  )
 
   return (
     <div>
-      <button type="button" onClick={() => addTodo('New todo')}>
+      <button type="button" onClick={handleAddTodo}>
         Add
       </button>
       {todos.map((todo) => (
-        <button key={todo.id} type="button" onClick={() => completeTodo(todo.id)}>
+        <button key={todo.id} type="button" data-todo-id={todo.id} onClick={handleCompleteTodo}>
           {todo.completed === true ? '✓' : '○'} {todo.text}
         </button>
       ))}

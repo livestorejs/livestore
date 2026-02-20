@@ -8,6 +8,8 @@ import { StoreRegistryProvider, useStore } from '@livestore/react'
 import { schema, tables } from './schema.ts'
 
 const adapter = makePersistedAdapter()
+const safeAreaStyle = { flex: 1 }
+const loadingFallback = <Text>Loading...</Text>
 
 const useAppStore = () =>
   useStore({
@@ -20,8 +22,8 @@ const useAppStore = () =>
 export const App = () => {
   const [storeRegistry] = useState(() => new StoreRegistry())
   return (
-    <SafeAreaView style={{ flex: 1 }}>
-      <Suspense fallback={<Text>Loading...</Text>}>
+    <SafeAreaView style={safeAreaStyle}>
+      <Suspense fallback={loadingFallback}>
         <StoreRegistryProvider storeRegistry={storeRegistry}>
           <TodoList />
         </StoreRegistryProvider>

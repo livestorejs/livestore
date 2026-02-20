@@ -72,9 +72,10 @@ const createComponentModuleSource = (serializedPayload: string, componentSpecifi
   ].join('\n')
 
 export const createTldrawPlugin = (options: TldrawPluginOptions = {}): MinimalVitePlugin => {
-  let paths: TldrawCachePaths = options.projectRoot !== undefined
-    ? resolveCachePaths(options.projectRoot)
-    : shouldNeverHappen('projectRoot is not set')
+  let paths: TldrawCachePaths =
+    options.projectRoot !== undefined
+      ? resolveCachePaths(options.projectRoot)
+      : shouldNeverHappen('projectRoot is not set')
   let rebuildInstruction = formatRebuildInstruction()
 
   return {

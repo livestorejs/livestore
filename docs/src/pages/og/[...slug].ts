@@ -46,6 +46,7 @@ const enqueue = <T>(task: () => Promise<T>): Promise<T> => {
   return run
 }
 
-export const GET: typeof ogRoute.GET = ogEnabled === true
-  ? async (context) => enqueue(async () => ogRoute.GET(context))
-  : async () => new Response('OG image generation disabled', { status: 204 })
+export const GET: typeof ogRoute.GET =
+  ogEnabled === true
+    ? async (context) => enqueue(async () => ogRoute.GET(context))
+    : async () => new Response('OG image generation disabled', { status: 204 })

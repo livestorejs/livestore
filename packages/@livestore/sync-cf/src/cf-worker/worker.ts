@@ -82,15 +82,16 @@ export const makeWorker = <
     fetch: async (request, env, _ctx) => {
       const url = new URL(request.url)
 
-      const corsHeaders: CfTypes.HeadersInit = options.enableCORS
-        ? {
-            'Access-Control-Allow-Origin': '*',
-            'Access-Control-Allow-Methods': 'GET, POST, OPTIONS',
-            'Access-Control-Allow-Headers': request.headers.get('Access-Control-Request-Headers') ?? '*',
-          }
-        : {}
+      const corsHeaders: CfTypes.HeadersInit =
+        options.enableCORS === true
+          ? {
+              'Access-Control-Allow-Origin': '*',
+              'Access-Control-Allow-Methods': 'GET, POST, OPTIONS',
+              'Access-Control-Allow-Headers': request.headers.get('Access-Control-Request-Headers') ?? '*',
+            }
+          : {}
 
-      if (request.method === 'OPTIONS' && options.enableCORS) {
+      if (request.method === 'OPTIONS' && options.enableCORS === true) {
         return new Response(null, {
           status: 204,
           headers: corsHeaders,
