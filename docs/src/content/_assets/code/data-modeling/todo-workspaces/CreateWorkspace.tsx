@@ -1,12 +1,11 @@
-import { useNavigate } from '@tanstack/react-router'
-
 import { nanoid } from '@livestore/livestore'
+import { useNavigate } from '@tanstack/react-router'
 
 import { userEvents } from './user.schema.ts'
 import { useCurrentUserStore } from './user.store.ts'
 
 // Component for creating a new workspace
-export function CreateWorkspace() {
+export const CreateWorkspace = () => {
   const userStore = useCurrentUserStore()
   const navigate = useNavigate()
 

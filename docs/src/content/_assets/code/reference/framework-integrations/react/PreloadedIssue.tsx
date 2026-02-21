@@ -1,12 +1,10 @@
+import { useStoreRegistry } from '@livestore/react'
 import { Suspense, useState } from 'react'
 import { ErrorBoundary } from 'react-error-boundary'
-
-import { useStoreRegistry } from '@livestore/react'
-
-import { issueStoreOptions } from './issue.store.ts'
 import { IssueView } from './IssueView.tsx'
+import { issueStoreOptions } from './issue.store.ts'
 
-export function PreloadedIssue({ issueId }: { issueId: string }) {
+export const PreloadedIssue = ({ issueId }: { issueId: string }) => {
   const [showIssue, setShowIssue] = useState(false)
   const storeRegistry = useStoreRegistry()
 

@@ -35,7 +35,7 @@ export const createItemAtom = StoreTag.runtime.fn<string>()((itemName, get) => {
 })
 
 // Use in a React component
-export function CreateItemButton() {
+export const CreateItemButton = () => {
   const createItem = useAtomSet(createItemAtom)
 
   const handleClick = () => {

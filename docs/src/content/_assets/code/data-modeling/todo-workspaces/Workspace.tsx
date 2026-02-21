@@ -7,7 +7,7 @@ import { workspaceEvents, workspaceTables } from './workspace.schema.ts'
 import { workspaceStoreOptions } from './workspace.store.ts'
 
 // Component that accesses a specific workspace store
-export function Workspace({ workspaceId }: { workspaceId: string }) {
+export const Workspace = ({ workspaceId }: { workspaceId: string }) => {
   const userStore = useCurrentUserStore()
   const workspaceStore = useStore(workspaceStoreOptions(workspaceId))
 

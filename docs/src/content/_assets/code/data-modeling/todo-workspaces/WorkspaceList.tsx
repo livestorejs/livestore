@@ -1,13 +1,12 @@
+import { queryDb } from '@livestore/livestore'
 import { Suspense } from 'react'
 import { ErrorBoundary } from 'react-error-boundary'
-
-import { queryDb } from '@livestore/livestore'
 
 import { userTables } from './user.schema.ts'
 import { useCurrentUserStore } from './user.store.ts'
 import { Workspace } from './Workspace.tsx'
 
-export function WorkspaceList() {
+export const WorkspaceList = () => {
   const userStore = useCurrentUserStore()
 
   // Query all workspaces this user belongs to
