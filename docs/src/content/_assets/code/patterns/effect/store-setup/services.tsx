@@ -1,5 +1,6 @@
 import { useAtomSet } from '@effect-atom/atom-react'
 import { Context, Effect } from 'effect'
+import { useCallback } from 'react'
 
 import { StoreTag } from './atoms.ts'
 import { events } from './schema.ts'
@@ -38,9 +39,9 @@ export const createItemAtom = StoreTag.runtime.fn<string>()((itemName, get) => {
 export const CreateItemButton = () => {
   const createItem = useAtomSet(createItemAtom)
 
-  const handleClick = () => {
+  const handleClick = useCallback(() => {
     createItem('New Item')
-  }
+  }, [createItem])
 
   return (
     <button type="button" onClick={handleClick}>
