@@ -457,7 +457,7 @@ export const makeMeshNode = <TName extends MeshNodeName>(
         Effect.withSpan(`addEdge:${nodeName}→${targetNodeName}`, {
           attributes: { supportsTransferables: edgeChannel.supportsTransferables },
         }),
-      ) as any // any-cast needed for error/never overload
+      )
 
     const removeEdge: MeshNode['removeEdge'] = (targetNodeName) =>
       Effect.gen(function* () {
@@ -508,7 +508,11 @@ export const makeMeshNode = <TName extends MeshNodeName>(
           channelMap.set(channelKey, { queue: channelQueue, debugInfo: undefined })
         }
 
-        const channelQueue = channelMap.get(channelKey)!.queue as Queue.Queue<any>
+        const channelQueueEntry = channelMap.get(channelKey)
+        if (channelQueueEntry === undefined) {
+          return shouldNeverHappen(`Channel ${channelKey} not found while creating it`)
+        }
+        const channelQueue = channelQueueEntry.queue
 
         yield* Effect.addFinalizer(() => Effect.sync(() => channelMap.delete(channelKey)))
 
@@ -685,9 +689,15 @@ export const makeMeshNode = <TName extends MeshNodeName>(
           const msg = (via: string) =>
             WebChannel.DebugPingMessage.make({ message: `ping from ${nodeName} via ${via}`, payload })
 
+          const sendDebugPing = (channel: WebChannel.WebChannel<any, any>, via: string) =>
+            Effect.gen(function* () {
+              const encoded = yield* Schema.encodeUnknown(channel.schema.send)(msg(via))
+              yield* channel.send(encoded)
+            })
+
           for (const [channelName, con] of edgeChannels) {
             yield* Effect.logDebug(`sending ping via edge ${channelName}`)
-            yield* con.channel.send(msg(`edge ${channelName}`) as any)
+            yield* sendDebugPing(con.channel, `edge ${channelName}`)
           }
 
           for (const [channelKey, channel] of channelMap) {
@@ -697,7 +707,7 @@ export const makeMeshNode = <TName extends MeshNodeName>(
             }
             // if (channel.debugInfo === undefined) continue
             yield* Effect.logDebug(`sending ping via channel ${channelKey}`)
-            yield* channel.debugInfo.channel.send(msg(`channel ${channelKey}`) as any)
+            yield* sendDebugPing(channel.debugInfo.channel, `channel ${channelKey}`)
           }
         }).pipe(Effect.provide(runtime), Effect.tapCauseLogPretty, Effect.runFork)
       },

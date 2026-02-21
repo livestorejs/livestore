@@ -206,6 +206,22 @@ const livestoreOxlintOverrides = [
     rules: { 'typescript/no-unsafe-type-assertion': 'off' },
   },
 
+  // AST-heavy twoslash rendering internals use structured HAST casts; keep narrow scope
+  {
+    files: [
+      '**/packages/@local/astro-twoslash-code/src/cli/snippets.ts',
+      '**/packages/@local/astro-twoslash-code/src/expressive-code.ts',
+      '**/packages/@local/astro-twoslash-code/src/components/multi-code-client.ts',
+    ],
+    rules: { 'typescript/no-unsafe-type-assertion': 'off' },
+  },
+
+  // sqlite-wasm test harnesses intentionally model untyped runtime shims
+  {
+    files: ['**/packages/@livestore/sqlite-wasm/src/**/test/**'],
+    rules: { 'typescript/no-unsafe-type-assertion': 'off' },
+  },
+
   // Deliberate resource lifecycle semantics in useRcResource rely on key-only invalidation
   {
     files: ['packages/@livestore/react/src/useRcResource.ts'],

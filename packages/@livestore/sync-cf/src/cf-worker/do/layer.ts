@@ -1,6 +1,6 @@
 import { UnknownError } from '@livestore/common'
-import type { CfTypes } from '@livestore/common-cf'
 import { EventSequenceNumber, State } from '@livestore/common/schema'
+import type { CfTypes } from '@livestore/common-cf'
 import { shouldNeverHappen } from '@livestore/utils'
 import { Effect, Predicate } from '@livestore/utils/effect'
 import { nanoid } from '@livestore/utils/nanoid'
@@ -20,11 +20,34 @@ export interface DoCtxInput {
   from: CfTypes.Request | { storeId: string }
 }
 
+type DoCtxCache = {
+  storeId: string
+  backendId: string
+  currentHeadRef: { current: EventSequenceNumber.Global.Type }
+  updateCurrentHead: (currentHead: EventSequenceNumber.Global.Type) => void
+  storage: ReturnType<typeof makeStorage>
+  doOptions: MakeDurableObjectClassOptions | undefined
+  env: Env
+  ctx: CfTypes.DurableObjectState
+  rpcSubscriptions: Map<string, RpcSubscription>
+}
+
+const isD1Database = (value: unknown): value is CfTypes.D1Database =>
+  Predicate.hasProperty(value, 'exec') && typeof value.exec === 'function'
+
+const isDoCtxCache = (value: unknown): value is DoCtxCache =>
+  Predicate.hasProperty(value, 'storeId') &&
+  typeof value.storeId === 'string' &&
+  Predicate.hasProperty(value, 'backendId') &&
+  typeof value.backendId === 'string' &&
+  Predicate.hasProperty(value, 'currentHeadRef')
+
 export class DoCtx extends Effect.Service<DoCtx>()('DoCtx', {
   effect: Effect.fn(
     function* ({ doSelf, doOptions, from }: DoCtxInput) {
-      if ((doSelf as any)[CacheSymbol] !== undefined) {
-        return (doSelf as any)[CacheSymbol] as never
+      const cached = Reflect.get(doSelf, CacheSymbol)
+      if (isDoCtxCache(cached) === true) {
+        return cached
       }
 
       const getStoreId = (from: CfTypes.Request | { storeId: string }) => {
@@ -42,11 +65,11 @@ export class DoCtx extends Effect.Service<DoCtx>()('DoCtx', {
       const makeEngine = Effect.gen(function* () {
         const opt = doOptions?.storage
         if (opt?._tag === 'd1') {
-          const db = (doSelf.env as any)[opt.binding]
-          if (db == null) {
+          const dbCandidate = Reflect.get(doSelf.env, opt.binding)
+          if (isD1Database(dbCandidate) === false) {
             return yield* UnknownError.make({ cause: new Error(`D1 binding '${opt.binding}' not found on env`) })
           }
-          return { _tag: 'd1' as const, db }
+          return { _tag: 'd1' as const, db: dbCandidate }
         } else if (opt?._tag === 'do-sqlite' || opt === undefined) {
           return { _tag: 'do-sqlite' as const }
         } else return shouldNeverHappen(`Invalid storage engine`, opt)
@@ -74,9 +97,11 @@ export class DoCtx extends Effect.Service<DoCtx>()('DoCtx', {
         doSelf.ctx.storage.sql.exec(`CREATE TABLE IF NOT EXISTS "${contextTable.sqliteDef.name}" (${colSpec}) strict`)
       }
 
-      const storageRow = doSelf.ctx.storage.sql
+      const storageRowCandidate = doSelf.ctx.storage.sql
         .exec(`SELECT * FROM "${contextTable.sqliteDef.name}" WHERE storeId = ?`, storeId)
-        .toArray()[0] as typeof contextTable.rowSchema.Type | undefined
+        .toArray()[0]
+      const storageRowDecoded = Schema.decodeUnknownEither(contextTable.rowSchema)(storageRowCandidate)
+      const storageRow = storageRowDecoded._tag === 'Right' ? storageRowDecoded.right : undefined
 
       const currentHeadRef = { current: storageRow?.currentHead ?? EventSequenceNumber.Client.ROOT.global }
 
@@ -96,8 +121,10 @@ export class DoCtx extends Effect.Service<DoCtx>()('DoCtx', {
         currentHeadRef.current = currentHead
 
         // I still don't know why we need to re-assign this ref to the `doSelf` object but somehow this seems to be needed 😵‍💫
-        // @ts-expect-error
-        doSelf[CacheSymbol].currentHeadRef = { current: currentHead }
+        const maybeCached = Reflect.get(doSelf, CacheSymbol)
+        if (isDoCtxCache(maybeCached) === true) {
+          maybeCached.currentHeadRef = { current: currentHead }
+        }
       }
 
       const rpcSubscriptions = new Map<string, RpcSubscription>()
@@ -114,7 +141,7 @@ export class DoCtx extends Effect.Service<DoCtx>()('DoCtx', {
         rpcSubscriptions,
       }
 
-      ;(doSelf as any)[CacheSymbol] = storageCache
+      Reflect.set(doSelf, CacheSymbol, storageCache)
 
       // Set initial current head to root
       if (storageRow === undefined) {

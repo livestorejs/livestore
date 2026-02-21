@@ -12,8 +12,8 @@ export interface Env {
   TEST_RPC_DO: DurableObjectNamespace<TestRpcDurableObject>
 }
 
-export class TestRpcDurableObject extends DurableObject<Env, unknown> {
-  override __DURABLE_OBJECT_BRAND = 'TestRpcDurableObject' as never
+export class TestRpcDurableObject extends DurableObject<Env, unknown> implements CfTypes.DurableObject {
+  declare override __DURABLE_OBJECT_BRAND: never
 
   constructor(state: DurableObjectState, env: Env) {
     super(state, env)
@@ -55,7 +55,7 @@ export class TestRpcDurableObject extends DurableObject<Env, unknown> {
     const ServerLive = RpcServer.layer(TestRpcs).pipe(Layer.provide(handlersLayer))
 
     setupDurableObjectWebSocketRpc({
-      doSelf: this as unknown as CfTypes.DurableObject,
+      doSelf: this,
       rpcLayer: ServerLive,
       webSocketMode: 'hibernate',
     })

@@ -52,7 +52,7 @@ export const loadModuleConfig = ({
         }),
     })
 
-    const schema = (mod)?.schema
+    const schema = mod?.schema
     if (isLiveStoreSchema(schema) === false) {
       return yield* UnknownError.make({
         cause: `Module at ${abs} must export a valid LiveStore 'schema'`,
@@ -60,7 +60,7 @@ export const loadModuleConfig = ({
       })
     }
 
-    const syncBackendConstructor = (mod)?.syncBackend
+    const syncBackendConstructor = mod?.syncBackend
     if (typeof syncBackendConstructor !== 'function') {
       return yield* UnknownError.make({
         cause: `Module at ${abs} must export a 'syncBackend' constructor`,
@@ -68,21 +68,29 @@ export const loadModuleConfig = ({
       })
     }
 
-    const syncPayloadSchemaExport = (mod)?.syncPayloadSchema
+    const syncPayloadSchemaExport = mod?.syncPayloadSchema
     const syncPayloadSchema =
       syncPayloadSchemaExport === undefined
         ? Schema.JsonValue
         : Schema.isSchema(syncPayloadSchemaExport) === true
-          ? (syncPayloadSchemaExport as Schema.Schema<any>)
+          ? syncPayloadSchemaExport
           : shouldNeverHappen(
               `Exported 'syncPayloadSchema' from ${abs} must be an Effect Schema (received ${typeof syncPayloadSchemaExport}).`,
             )
 
-    const syncPayloadExport = (mod)?.syncPayload
+    const syncPayloadExport = mod?.syncPayload
     const syncPayload = yield* (
       syncPayloadExport === undefined
-        ? Effect.succeed<unknown>(undefined)
-        : Schema.decodeUnknown(syncPayloadSchema)(syncPayloadExport)
+        ? Effect.succeed<Schema.JsonValue | undefined>(undefined)
+        : Schema.decodeUnknown(syncPayloadSchema)(syncPayloadExport).pipe(
+            Effect.flatMap((decoded) =>
+              Schema.is(Schema.JsonValue)(decoded) === true
+                ? Effect.succeed(decoded)
+                : UnknownError.make({
+                    cause: `Exported 'syncPayload' from ${abs} does not conform to Schema.JsonValue`,
+                  }),
+            ),
+          )
     ).pipe(UnknownError.mapToUnknownError)
 
     return {

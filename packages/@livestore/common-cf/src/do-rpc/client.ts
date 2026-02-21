@@ -1,3 +1,4 @@
+import { shouldNeverHappen } from '@livestore/utils'
 import {
   Effect,
   Fiber,
@@ -10,6 +11,12 @@ import {
 } from '@livestore/utils/effect'
 
 import type * as CfTypes from '../cf-types.ts'
+
+const ensureUint8Array = (value: unknown): Uint8Array => {
+  if (value instanceof Uint8Array) return value
+  if (value instanceof ArrayBuffer) return new Uint8Array(value)
+  return shouldNeverHappen('Expected binary Uint8Array payload from Durable Object RPC')
+}
 
 /**
  * Processes a ReadableStream response from streaming RPCs.
@@ -32,7 +39,7 @@ const processReadableStream = (
         }
 
         // Decode the chunk
-        const decoded = parser.decode(value as Uint8Array)
+        const decoded = parser.decode(ensureUint8Array(value))
 
         // Handle array of messages - we get [[message]] from server
         let messages: any[]
@@ -71,9 +78,8 @@ interface MakeDoRpcProtocolArgs {
  * Creates a Protocol layer that uses Cloudflare Durable Object RPC calls.
  * This enables direct RPC communication with Durable Objects using Cloudflare's native RPC.
  */
-export const layerProtocolDurableObject = (
-  args: MakeDoRpcProtocolArgs,
-): Layer.Layer<RpcClient.Protocol> => Layer.scoped(RpcClient.Protocol, makeProtocolDurableObject(args))
+export const layerProtocolDurableObject = (args: MakeDoRpcProtocolArgs): Layer.Layer<RpcClient.Protocol> =>
+  Layer.scoped(RpcClient.Protocol, makeProtocolDurableObject(args))
 
 /**
  * Implementation of the RPC Protocol interface using Cloudflare Durable Object RPC calls.
@@ -89,7 +95,7 @@ const makeProtocolDurableObject = ({
       // const fiberMap = new Map<string, Fiber.RuntimeFiber<void, never>>()
       const fiberMap = yield* FiberMap.make<string, void, never>()
 
-  const send = (message: RpcMessage.FromClientEncoded): Effect.Effect<void> => {
+      const send = (message: RpcMessage.FromClientEncoded): Effect.Effect<void> => {
         if (message._tag !== 'Request') {
           if (message._tag === 'Interrupt') {
             return Effect.gen(function* () {
@@ -102,18 +108,14 @@ const makeProtocolDurableObject = ({
         }
 
         // Wrap single Request in array to match server expected format
-        const serializedPayload = parser.encode([message]) as Uint8Array
+        const serializedPayload = ensureUint8Array(parser.encode([message]))
 
         return Effect.gen(function* () {
           const serializedResponse = yield* Effect.tryPromise(() => callRpc(serializedPayload)).pipe(Effect.orDie) // Convert errors to defects to match never error type
 
           // Handle ReadableStream for streaming responses
           if (serializedResponse instanceof ReadableStream) {
-            const fiber = yield* processReadableStream(
-              serializedResponse as CfTypes.ReadableStream,
-              parser,
-              writeResponse,
-            ).pipe(
+            const fiber = yield* processReadableStream(serializedResponse, parser, writeResponse).pipe(
               // Effect.tapCauseLogPretty,
               Effect.fork,
             )
@@ -127,7 +129,7 @@ const makeProtocolDurableObject = ({
           }
 
           // Handle regular Uint8Array responses
-          const decoded = parser.decode(serializedResponse as Uint8Array)
+          const decoded = parser.decode(ensureUint8Array(serializedResponse))
 
           // Handle potential nested array from server serialization
           let responseArray: any[]
