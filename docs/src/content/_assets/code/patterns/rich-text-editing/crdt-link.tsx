@@ -1,7 +1,8 @@
 import type { AutomergeUrl } from '@automerge/react'
 import { updateText, useDocument } from '@automerge/react'
-
 import { Events, Schema, State, type Store } from '@livestore/livestore'
+import type { ChangeEventHandler } from 'react'
+import { useCallback } from 'react'
 
 declare const store: Store
 
@@ -40,16 +41,16 @@ const Editor = ({ noteCrdtUrl }: { noteCrdtUrl: string }) => {
   const docUrl = noteCrdtUrl as AutomergeUrl
   const [doc, changeDoc] = useDocument<NoteDoc>(docUrl, { suspense: true })
 
-  return (
-    <textarea
-      value={doc?.body ?? ''}
-      onChange={(event) =>
-        changeDoc((draft: NoteDoc) => {
-          updateText(draft, ['body'], event.target.value)
-        })
-      }
-    />
+  const handleChange: ChangeEventHandler<HTMLTextAreaElement> = useCallback(
+    (event) => {
+      changeDoc((draft: NoteDoc) => {
+        updateText(draft, ['body'], event.target.value)
+      })
+    },
+    [changeDoc],
   )
+
+  return <textarea value={doc?.body ?? ''} onChange={handleChange} />
 }
 
 export const RichTextNoteEditor = ({ noteId }: { noteId: string }) => {

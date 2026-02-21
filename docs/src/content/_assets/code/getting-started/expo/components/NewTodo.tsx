@@ -1,4 +1,4 @@
-import type { FC } from 'react'
+import { type FC, useCallback } from 'react'
 import { Button, TextInput, View } from 'react-native'
 
 import { uiState$ } from '../livestore/queries.ts'
@@ -9,20 +9,26 @@ export const NewTodo: FC = () => {
   const store = useAppStore()
   const { newTodoText } = store.useQuery(uiState$)
 
-  const updateText = (text: string) => store.commit(events.uiStateSet({ newTodoText: text }))
-  const createTodo = () =>
+  const updateText = useCallback(
+    (text: string) => {
+      store.commit(events.uiStateSet({ newTodoText: text }))
+    },
+    [store],
+  )
+  const createTodo = useCallback(() => {
     store.commit(
       events.todoCreated({ id: crypto.randomUUID(), text: newTodoText }),
       events.uiStateSet({ newTodoText: '' }),
     )
+  }, [newTodoText, store])
 
-  const addSampleTodos = () => {
+  const addSampleTodos = useCallback(() => {
     const todos = Array.from({ length: 5 }, (_, index) => ({
       id: crypto.randomUUID(),
       text: `Todo ${index + 1}`,
     }))
     store.commit(...todos.map((todo) => events.todoCreated(todo)))
-  }
+  }, [store])
 
   return (
     <View style={{ gap: 12 }}>

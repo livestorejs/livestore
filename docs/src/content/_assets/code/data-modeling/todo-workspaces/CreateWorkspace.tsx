@@ -1,5 +1,6 @@
 import { nanoid } from '@livestore/livestore'
 import { useNavigate } from '@tanstack/react-router'
+import { useCallback } from 'react'
 
 import { userEvents } from './user.schema.ts'
 import { useCurrentUserStore } from './user.store.ts'
@@ -9,16 +10,19 @@ export const CreateWorkspace = () => {
   const userStore = useCurrentUserStore()
   const navigate = useNavigate()
 
-  const createStore = (formData: FormData) => {
-    const name = formData.get('name') as string
-    if (name.trim() === '') return
+  const createStore = useCallback(
+    (formData: FormData) => {
+      const name = formData.get('name') as string
+      if (name.trim() === '') return
 
-    const workspaceId = nanoid()
+      const workspaceId = nanoid()
 
-    userStore.commit(userEvents.workspaceCreated({ workspaceId, name }))
+      userStore.commit(userEvents.workspaceCreated({ workspaceId, name }))
 
-    navigate({ to: '/workspace/$workspaceId', params: { workspaceId } })
-  }
+      navigate({ to: '/workspace/$workspaceId', params: { workspaceId } })
+    },
+    [navigate, userStore],
+  )
 
   return (
     <form action={createStore}>
