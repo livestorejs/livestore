@@ -222,6 +222,18 @@ const livestoreOxlintOverrides = [
     rules: { 'typescript/no-unsafe-type-assertion': 'off' },
   },
 
+  // TODO(#1057): Re-enable after replacing test assertions with safe helpers/guards.
+  {
+    files: [
+      '**/tests/integration/**',
+      '**/tests/sync-provider/**',
+      '**/tests/package-common/**',
+      '**/tests/wa-sqlite/**',
+      '**/packages/@local/astro-twoslash-code/src/cli/snippets.render.test.ts',
+    ],
+    rules: { 'typescript/no-unsafe-type-assertion': 'off' },
+  },
+
   // Deliberate resource lifecycle semantics in useRcResource rely on key-only invalidation
   {
     files: ['packages/@livestore/react/src/useRcResource.ts'],
