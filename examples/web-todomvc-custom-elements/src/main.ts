@@ -14,6 +14,18 @@ type TodoItemData = {
   completed: boolean
 }
 
+export const parseTemplate = (source: string) => {
+  const el = document.createElement('template')
+  el.innerHTML = source
+
+  return {
+    source,
+    cloneNode() {
+      return el.content.cloneNode(true)
+    },
+  }
+}
+
 // These are here to try to get editors to highlight strings correctly 😔
 export const html = (strings: TemplateStringsArray, ...values: unknown[]) =>
   parseTemplate(String.raw({ raw: strings }, ...values))
@@ -219,15 +231,3 @@ class TodoList extends HTMLElement {
 }
 
 customElements.define('todo-list', TodoList)
-
-export const parseTemplate = (source: string) => {
-  const el = document.createElement('template')
-  el.innerHTML = source
-
-  return {
-    source,
-    cloneNode() {
-      return el.content.cloneNode(true)
-    },
-  }
-}
