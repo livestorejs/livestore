@@ -234,6 +234,40 @@ const livestoreOxlintOverrides = [
     rules: { 'typescript/no-unsafe-type-assertion': 'off' },
   },
 
+  // TODO(#1057): Re-enable after non-core tooling/docs cleanup.
+  {
+    files: ['**/scripts/**', '**/packages/@livestore/utils-dev/**', '**/packages/@local/astro-tldraw/**'],
+    rules: { 'typescript/no-unsafe-type-assertion': 'off' },
+  },
+
+  // TODO(#1057): Re-enable after core/runtime assertion cleanup across remaining clusters.
+  {
+    files: [
+      '**/packages/@livestore/common/**',
+      '**/packages/@livestore/livestore/**',
+      '**/packages/@livestore/utils/**',
+      '**/packages/@livestore/adapter-web/**',
+      '**/packages/@livestore/adapter-node/**',
+      '**/packages/@livestore/sqlite-wasm/**',
+      '**/packages/@livestore/sync-cf/**',
+      '**/packages/@livestore/adapter-expo/**',
+      '**/packages/@livestore/adapter-cloudflare/**',
+      '**/packages/@livestore/graphql/**',
+      '**/packages/@livestore/react/**',
+      '**/packages/@livestore/wa-sqlite/**',
+      '**/packages/@livestore/svelte/**',
+      '**/packages/@livestore/devtools-expo/**',
+      '**/packages/@livestore/solid/**',
+      '**/packages/@livestore/cli/**',
+      '**/packages/@livestore/effect-playwright/**',
+      '**/packages/@livestore/framework-toolkit/**',
+      '**/packages/@local/astro-twoslash-code/**',
+      '**/tests/perf-eventlog/**',
+      '**/docs/**',
+    ],
+    rules: { 'typescript/no-unsafe-type-assertion': 'off' },
+  },
+
   // Deliberate resource lifecycle semantics in useRcResource rely on key-only invalidation
   {
     files: ['packages/@livestore/react/src/useRcResource.ts'],
