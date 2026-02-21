@@ -184,7 +184,8 @@ export const cleanupOldStateDbFiles: (options: {
   }
 
   const absoluteArchiveDirName = `${opfsDirectory}/${ARCHIVE_DIR_NAME}`
-  if (isDev === true && (yield* Opfs.exists(absoluteArchiveDirName)) === false) yield* Opfs.makeDirectory(absoluteArchiveDirName)
+  if (isDev === true && (yield* Opfs.exists(absoluteArchiveDirName)) === false)
+    yield* Opfs.makeDirectory(absoluteArchiveDirName)
 
   for (const path of oldStateDbPaths) {
     const fileName = path.startsWith('/') === true ? path.slice(1) : path
@@ -202,7 +203,7 @@ export const cleanupOldStateDbFiles: (options: {
       const supportsCreateWritable =
         typeof FileSystemFileHandle !== 'undefined' && 'createWritable' in FileSystemFileHandle.prototype
 
-      if (supportsCreateWritable) {
+      if (supportsCreateWritable === true) {
         yield* Opfs.writeFile(archivePath, archiveData)
       } else {
         yield* Opfs.syncWriteFile(archivePath, archiveData)

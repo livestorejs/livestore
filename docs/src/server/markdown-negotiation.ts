@@ -97,7 +97,7 @@ export const preferredMarkdown = (accept: string | null): boolean => {
   }
 
   const explicitlyAllowsHtml = ranges.some((range) => range.q > 0 && range.type === 'text' && range.subtype === 'html')
-  if (explicitlyAllowsHtml) {
+  if (explicitlyAllowsHtml === true) {
     return false
   }
 
