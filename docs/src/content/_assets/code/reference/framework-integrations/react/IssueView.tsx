@@ -1,13 +1,12 @@
-import { Suspense } from 'react'
-import { ErrorBoundary } from 'react-error-boundary'
-
 import { queryDb } from '@livestore/livestore'
 import { useStore } from '@livestore/react'
+import { Suspense } from 'react'
+import { ErrorBoundary } from 'react-error-boundary'
 
 import { tables } from './issue.schema.ts'
 import { issueStoreOptions } from './issue.store.ts'
 
-export function IssueView({ issueId }: { issueId: string }) {
+export const IssueView = ({ issueId }: { issueId: string }) => {
   // useStore() suspends the component until the store is loaded
   // If the same store was already loaded, it returns immediately
   const issueStore = useStore(issueStoreOptions(issueId))
@@ -26,7 +25,7 @@ export function IssueView({ issueId }: { issueId: string }) {
 }
 
 // Wrap with Suspense and ErrorBoundary for loading and error states
-export function IssueViewWithSuspense({ issueId }: { issueId: string }) {
+export const IssueViewWithSuspense = ({ issueId }: { issueId: string }) => {
   return (
     <ErrorBoundary fallback={<div>Error loading issue</div>}>
       <Suspense fallback={<div>Loading issue...</div>}>
