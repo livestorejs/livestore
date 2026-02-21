@@ -271,7 +271,10 @@ export const merge = ({
 
       // Validate that newEvents are sorted in ascending order by eventNum
       for (let i = 1; i < payload.newEvents.length; i++) {
-        if (EventSequenceNumber.Client.isGreaterThan(payload.newEvents[i - 1]!.seqNum, payload.newEvents[i]!.seqNum)) {
+        if (
+          EventSequenceNumber.Client.isGreaterThan(payload.newEvents[i - 1]!.seqNum, payload.newEvents[i]!.seqNum) ===
+          true
+        ) {
           return unknownError(
             `Events must be sorted in ascending order by event number. Received: [${payload.newEvents.map((e) => EventSequenceNumber.Client.toString(e.seqNum)).join(', ')}]`,
           )
@@ -316,7 +319,7 @@ export const merge = ({
         const [pendingMatching, pendingRemaining] = ReadonlyArray.splitWhere(
           syncState.pending,
           (pendingEvent, index) => {
-            if (ignoreClientEvents && isClientEvent(pendingEvent) === true) {
+            if (ignoreClientEvents === true && isClientEvent(pendingEvent) === true) {
               clientIndexOffset++
               return false
             }
@@ -325,7 +328,7 @@ export const merge = ({
             if (newEvent == null) {
               return true
             }
-            return ! isEqualEvent(pendingEvent, newEvent)
+            return !isEqualEvent(pendingEvent, newEvent)
           },
         )
 
@@ -391,11 +394,12 @@ export const merge = ({
       }
 
       const newEventsFirst = payload.newEvents.at(0)!
-      const invalidEventSequenceNumber =
-        !
-        EventSequenceNumber.Client.isGreaterThan(newEventsFirst.seqNum, syncState.localHead)
+      const invalidEventSequenceNumber = !EventSequenceNumber.Client.isGreaterThan(
+        newEventsFirst.seqNum,
+        syncState.localHead,
+      )
 
-      if (invalidEventSequenceNumber) {
+      if (invalidEventSequenceNumber === true) {
         const expectedMinimumId = EventSequenceNumber.Client.nextPair({
           seqNum: syncState.localHead,
           isClient: true,
@@ -408,9 +412,8 @@ export const merge = ({
           }),
         )
       } else {
-        const nonClientEvents = ignoreClientEvents
-          ? payload.newEvents.filter((event) => !isClientEvent(event))
-          : payload.newEvents
+        const nonClientEvents =
+          ignoreClientEvents === true ? payload.newEvents.filter((event) => !isClientEvent(event)) : payload.newEvents
         const newPending = [...syncState.pending, ...nonClientEvents]
         const newLocalHead =
           newPending.at(-1)?.seqNum ?? EventSequenceNumber.Client.max(syncState.localHead, syncState.upstreamHead)
@@ -454,7 +457,7 @@ export const findDivergencePoint = ({
   isClientEvent: (event: LiveStoreEvent.Client.EncodedWithMeta) => boolean
   ignoreClientEvents: boolean
 }): number => {
-  if (ignoreClientEvents) {
+  if (ignoreClientEvents === true) {
     const filteredExistingEvents = existingEvents.filter((event) => !isClientEvent(event))
     const divergencePointWithoutClientEvents = findDivergencePoint({
       existingEvents: filteredExistingEvents,
@@ -476,7 +479,7 @@ export const findDivergencePoint = ({
   return existingEvents.findIndex((existingEvent, index) => {
     const incomingEvent = incomingEvents[index]
     // return !incomingEvent || !isEqualEvent(existingEvent, incomingEvent)
-    return incomingEvent && !isEqualEvent(existingEvent, incomingEvent)
+    return incomingEvent !== undefined && isEqualEvent(existingEvent, incomingEvent) === false
   })
 }
 
@@ -515,7 +518,10 @@ const _flattenMergeResults = (_updateResults: ReadonlyArray<MergeResult>) => {}
 const validatePayload = (payload: typeof Payload.Type) => {
   for (let i = 1; i < payload.newEvents.length; i++) {
     if (
-      EventSequenceNumber.Client.isGreaterThanOrEqual(payload.newEvents[i - 1]!.seqNum, payload.newEvents[i]!.seqNum)
+      EventSequenceNumber.Client.isGreaterThanOrEqual(
+        payload.newEvents[i - 1]!.seqNum,
+        payload.newEvents[i]!.seqNum,
+      ) === true
     ) {
       return unknownError(
         `Events must be ordered in monotonically ascending order by eventNum. Received: [${payload.newEvents.map((e) => EventSequenceNumber.Client.toString(e.seqNum)).join(', ')}]`,
@@ -531,7 +537,7 @@ const validateSyncState = (syncState: SyncState) => {
     const nextEvent = syncState.pending[i + 1]
     if (nextEvent === undefined) break // Reached end of chain
 
-    if (EventSequenceNumber.Client.isGreaterThanOrEqual(event.seqNum, nextEvent.seqNum)) {
+    if (EventSequenceNumber.Client.isGreaterThanOrEqual(event.seqNum, nextEvent.seqNum) === true) {
       shouldNeverHappen(
         `Events must be ordered in monotonically ascending order by eventNum. Received: [${syncState.pending.map((e) => EventSequenceNumber.Client.toString(e.seqNum)).join(', ')}]`,
         {
@@ -573,7 +579,10 @@ const validateMergeResult = (mergeResult: typeof MergeResult.Type) => {
 
   // Ensure local head is always greater than or equal to upstream head
   if (
-    EventSequenceNumber.Client.isGreaterThan(mergeResult.newSyncState.upstreamHead, mergeResult.newSyncState.localHead)
+    EventSequenceNumber.Client.isGreaterThan(
+      mergeResult.newSyncState.upstreamHead,
+      mergeResult.newSyncState.localHead,
+    ) === true
   ) {
     shouldNeverHappen('Local head must be greater than or equal to upstream head', {
       localHead: mergeResult.newSyncState.localHead,

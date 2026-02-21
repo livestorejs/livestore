@@ -103,7 +103,7 @@ export const toDurableObjectHandler =
           })
 
           let value: any
-          if (Effect.isEffect(handlerResult)) {
+          if (Effect.isEffect(handlerResult) === true) {
             // @effect-diagnostics-next-line anyUnknownInErrorContext:off -- `Rpc.Handler.handler` returns `Effect<any, any>` due to dynamic dispatch
             value = yield* handlerResult
           } else {
@@ -212,18 +212,18 @@ const createStreamingResponse = <Rpcs extends Rpc.Any, LE>(
     })
 
     // @effect-diagnostics-next-line anyUnknownInErrorContext:off -- `Rpc.Handler.handler` returns `Effect<any, any>` due to dynamic dispatch; orDie converts the error to a defect handled by the downstream catchAllCause
-    const stream: Stream.Stream<any, any> = Effect.isEffect(handlerResult)
-      ? yield* Effect.orDie(handlerResult)
-      : handlerResult
+    const stream: Stream.Stream<any, any> =
+      Effect.isEffect(handlerResult) === true ? yield* Effect.orDie(handlerResult) : handlerResult
 
     // Get the stream schemas for proper chunk-level encoding
     // oxlint-disable-next-line typescript-eslint(no-unsafe-type-assertion) -- Rpc.Handler doesn't expose successSchema publicly; see https://github.com/Effect-TS/effect/issues/6064
     const streamSchemas = RpcSchema.getStreamSchemas((rpc as any).successSchema.ast)
-    const chunkEncoder = Option.isSome(streamSchemas) === true
-      // oxlint-disable-next-line typescript-eslint(no-unsafe-type-assertion) -- stream schema success type is inferred as unknown; cast needed for encodeUnknown
-      ? Schema.encodeUnknown(Schema.Array(streamSchemas.value.success as Schema.Schema<any>))
-      // oxlint-disable-next-line typescript-eslint(no-unsafe-type-assertion) -- Schema.Any needs explicit cast for Schema.Array compatibility
-      : Schema.encodeUnknown(Schema.Array(Schema.Any as Schema.Schema<any>))
+    const chunkEncoder =
+      Option.isSome(streamSchemas) === true
+        ? // oxlint-disable-next-line typescript-eslint(no-unsafe-type-assertion) -- stream schema success type is inferred as unknown; cast needed for encodeUnknown
+          Schema.encodeUnknown(Schema.Array(streamSchemas.value.success as Schema.Schema<any>))
+        : // oxlint-disable-next-line typescript-eslint(no-unsafe-type-assertion) -- Schema.Any needs explicit cast for Schema.Array compatibility
+          Schema.encodeUnknown(Schema.Array(Schema.Any as Schema.Schema<any>))
 
     // Convert stream to ReadableStream
     const readableStream = new ReadableStream({
@@ -293,7 +293,7 @@ const createStreamingResponse = <Rpcs extends Rpc.Any, LE>(
         // Run the stream processing
         runStream.pipe(Effect.provide(layer), Effect.scoped, Effect.tapCauseLogPretty, Effect.runPromise)
       },
-    // oxlint-disable-next-line typescript-eslint(no-unsafe-type-assertion) -- bridging standard Web API ReadableStream to Cloudflare Worker ReadableStream type
+      // oxlint-disable-next-line typescript-eslint(no-unsafe-type-assertion) -- bridging standard Web API ReadableStream to Cloudflare Worker ReadableStream type
     }) as any as CfTypes.ReadableStream
 
     // yield* Effect.addFinalizer(() => Effect.promise(() => readableStream.cancel()))

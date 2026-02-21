@@ -1,5 +1,3 @@
-import React from 'react'
-
 import type { UnknownError } from '@livestore/common'
 import {
   type AppState,
@@ -13,6 +11,7 @@ import {
 } from '@livestore/framework-toolkit/testing'
 import type { Store } from '@livestore/livestore'
 import { Effect, type Scope } from '@livestore/utils/effect'
+import React from 'react'
 
 import * as LiveStoreReact from '../mod.ts'
 
@@ -39,7 +38,7 @@ export const makeTodoMvcReact: (opts?: MakeTodoMvcReactOptions) => Effect.Effect
       let val = 0
 
       const inc = () => {
-        val += strictMode ? 0.5 : 1
+        val += strictMode === true ? 0.5 : 1
       }
 
       return {
@@ -54,7 +53,7 @@ export const makeTodoMvcReact: (opts?: MakeTodoMvcReactOptions) => Effect.Effect
 
     const storeWithReactApi = LiveStoreReact.withReactApi(store)
 
-    const MaybeStrictMode = strictMode ? React.StrictMode : React.Fragment
+    const MaybeStrictMode = strictMode === true ? React.StrictMode : React.Fragment
 
     const wrapper = ({ children }: any) => <MaybeStrictMode>{children}</MaybeStrictMode>
 

@@ -31,7 +31,7 @@ export default async function handler(request: Request, context: Context): Promi
     return response
   }
 
-  if (isAssetPath(url.pathname)) {
+  if (isAssetPath(url.pathname) === true) {
     return forwardWithVary()
   }
 
@@ -46,15 +46,16 @@ export default async function handler(request: Request, context: Context): Promi
   })
 
   const markdownResponse = await fetch(markdownRequest)
-  if (!markdownResponse.ok) {
+  if (markdownResponse.ok === false) {
     return forwardWithVary()
   }
 
   const headers = new Headers(markdownResponse.headers)
   headers.set('Content-Type', 'text/markdown; charset=utf-8')
-  const response = isHeadRequest === true
-    ? new Response(null, { status: markdownResponse.status, headers })
-    : new Response(markdownResponse.body, { status: markdownResponse.status, headers })
+  const response =
+    isHeadRequest === true
+      ? new Response(null, { status: markdownResponse.status, headers })
+      : new Response(markdownResponse.body, { status: markdownResponse.status, headers })
   appendVary(response, 'Accept')
   return response
 }
