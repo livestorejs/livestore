@@ -168,6 +168,18 @@
       }
     },
     {
+      "files": [
+        "**/tests/integration/**",
+        "**/tests/sync-provider/**",
+        "**/tests/package-common/**",
+        "**/tests/wa-sqlite/**",
+        "**/packages/@local/astro-twoslash-code/src/cli/snippets.render.test.ts"
+      ],
+      "rules": {
+        "typescript/no-unsafe-type-assertion": "off"
+      }
+    },
+    {
       "files": ["packages/@livestore/react/src/useRcResource.ts"],
       "rules": {
         "react-hooks/exhaustive-deps": "off"
