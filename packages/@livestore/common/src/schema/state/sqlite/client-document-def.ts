@@ -95,7 +95,7 @@ export const clientDocument = <
   Object.defineProperty(setEventDef, 'schema', {
     value: Schema.Struct({
       id: Schema.String,
-      value: options.partialSet ? Schema.partial(valueSchema) : valueSchema,
+      value: options.partialSet === true ? Schema.partial(valueSchema) : valueSchema,
     }).annotations({ title: `${name}Set:Args` }),
   })
   Object.defineProperty(setEventDef, 'options', {
@@ -186,7 +186,7 @@ export const createOptimisticEventSchema = ({
   defaultValue: any
   partialSet: boolean
 }) => {
-  const targetSchema = partialSet ? Schema.partial(valueSchema) : valueSchema
+  const targetSchema = partialSet === true ? Schema.partial(valueSchema) : valueSchema
   // The transform decode must yield values in the target schema's ENCODED shape.
   // This keeps JSON columns consistent when Encoded != Type (e.g. Option).
   const encodeTarget = Schema.encodeSync(targetSchema)
@@ -206,11 +206,13 @@ export const createOptimisticEventSchema = ({
 
           // Handle null/undefined/non-object cases
           if (typeof eventValue !== 'object' || eventValue === null) {
-            console.warn(`Client document: Non-object event value, using ${partialSet ? 'empty partial' : 'defaults'}`)
-            return encodeTarget(partialSet ? {} : defaultValue)
+            console.warn(
+              `Client document: Non-object event value, using ${partialSet === true ? 'empty partial' : 'defaults'}`,
+            )
+            return encodeTarget(partialSet === true ? {} : defaultValue)
           }
 
-          if (partialSet) {
+          if (partialSet === true) {
             // For partial sets: only preserve fields that exist in new schema
             const partialResult: Record<string, unknown> = {}
             let hasValidFields = false
@@ -351,8 +353,7 @@ export const tableIsClientDocumentTable = <TTableDef extends TableDefBase>(
 ): tableDef is TTableDef & {
   options: { isClientDocumentTable: true }
 } & ClientDocumentTableDef.Trait<TTableDef['sqliteDef']['name'], any, any, any> =>
-  
-  tableDef.options.isClientDocumentTable
+  tableDef.options.isClientDocumentTable === true
 
 const makeGetQueryBuilder = <TTableDef extends ClientDocumentTableDef<any, any, any, any>>(
   getTableDef: () => TTableDef,

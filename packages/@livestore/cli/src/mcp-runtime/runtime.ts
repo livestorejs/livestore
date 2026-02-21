@@ -30,7 +30,7 @@ export const init = ({
   sessionId?: string
 }): Effect.Effect<Store<any>, UnknownError> =>
   Effect.gen(function* () {
-    if (!storeId || typeof storeId !== 'string') {
+    if (storeId === '' || typeof storeId !== 'string') {
       return yield* UnknownError.make({ cause: new Error('Invalid storeId: expected a non-empty string') })
     }
 
@@ -39,8 +39,8 @@ export const init = ({
     // Build Node adapter internally
     const adapter = makeNodeAdapter({
       storage: { type: 'in-memory' },
-      ...(clientId ? { clientId } : {}),
-      ...(sessionId ? { sessionId } : {}),
+      ...(clientId !== undefined && clientId !== '' ? { clientId } : {}),
+      ...(sessionId !== undefined && sessionId !== '' ? { sessionId } : {}),
       sync: {
         backend: syncBackendConstructor,
         initialSyncOptions: { _tag: 'Blocking', timeout: 5000 },
@@ -61,7 +61,7 @@ export const init = ({
     )
 
     // Replace existing store if any
-    if (store) {
+    if (store !== undefined) {
       yield* Effect.promise(async () => {
         try {
           await store!.shutdownPromise()
@@ -137,7 +137,7 @@ export const commit = Effect.fn('mcp-runtime:commit')(function* ({
 })
 
 export const disconnect = Effect.promise(async () => {
-  if (store) {
+  if (store !== undefined) {
     try {
       await store.shutdownPromise()
     } catch {}

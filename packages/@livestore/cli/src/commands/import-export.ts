@@ -124,8 +124,8 @@ const importEvents = ({
     /** Validate export file format before proceeding */
     const validation = yield* SyncOps.validateExportData({ data: parsedContent, targetStoreId: storeId })
 
-    if (validation.storeIdMismatch) {
-      if (!force) {
+    if (validation.storeIdMismatch === true) {
+      if (force !== true) {
         return yield* new SyncOps.ImportError({
           cause: new Error(`Store ID mismatch: file has '${validation.sourceStoreId}', expected '${storeId}'`),
           note: `The export file was created for a different store. Use --force to import anyway.`,
@@ -143,7 +143,7 @@ const importEvents = ({
       )
     }
 
-    if (dryRun) {
+    if (dryRun === true) {
       yield* Console.log(`Dry run - validating import file...`)
       yield* Console.log(`Dry run complete. ${validation.eventCount} events would be imported.`)
       return
@@ -260,8 +260,8 @@ export const importCommand = Cli.Command.make(
     yield* Console.log(`   Config: ${config}`)
     yield* Console.log(`   Store ID: ${storeId}`)
     yield* Console.log(`   Input: ${input}`)
-    if (force) yield* Console.log(`   Force: enabled`)
-    if (dryRun) yield* Console.log(`   Dry run: enabled`)
+    if (force === true) yield* Console.log(`   Force: enabled`)
+    if (dryRun === true) yield* Console.log(`   Dry run: enabled`)
     yield* Console.log('')
 
     yield* importEvents({

@@ -293,7 +293,7 @@ export class Store<TSchema extends LiveStoreSchema = LiveStoreSchema.Any, TConte
               | { _tag: 'sessionChangeset'; data: Uint8Array<ArrayBuffer>; debug: any }
               | { _tag: 'no-op' }
               | { _tag: 'unset' } = { _tag: 'unset' }
-            if (withChangeset) {
+            if (withChangeset === true) {
               sessionChangeset = this[StoreInternalsSymbol].sqliteDbWrapper.withChangeset(exec).changeset
             } else {
               exec()
@@ -355,7 +355,7 @@ export class Store<TSchema extends LiveStoreSchema = LiveStoreSchema.Any, TConte
     const allTableNames = new Set(
       // NOTE we're excluding the LiveStore schema and events tables as they are not user-facing
       // unless LiveStore is running in the devtools
-      __runningInDevtools
+      __runningInDevtools === true
         ? this.schema.state.sqlite.tables.keys()
         : Array.from(this.schema.state.sqlite.tables.keys()).filter((_) => !SystemTables.isStateSystemTable(_)),
     )
@@ -514,7 +514,7 @@ export class Store<TSchema extends LiveStoreSchema = LiveStoreSchema.Any, TConte
         const effect = this[StoreInternalsSymbol].reactivityGraph.makeEffect(
           (get, _otelContext, debugRefreshReason) => {
             const result = get(query$.results$, otelContext, debugRefreshReason)
-            if (suppressCallback) {
+            if (suppressCallback === true) {
               return
             }
             onUpdate(result)
@@ -537,7 +537,7 @@ export class Store<TSchema extends LiveStoreSchema = LiveStoreSchema.Any, TConte
         this[StoreInternalsSymbol].activeQueries.add(query$ as LiveQuery<TResult>)
 
         if (query$.isDestroyed === false) {
-          if (suppressCallback) {
+          if (suppressCallback === true) {
             // We still run once to register dependencies in the reactive graph, but suppress the initial callback so the
             // caller truly skips the first emission; subsequent runs (after commits) will call the callback.
             runInitialEffect()

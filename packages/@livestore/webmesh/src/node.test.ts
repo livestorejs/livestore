@@ -1,8 +1,7 @@
-import { expect } from 'vitest'
-
 import { IS_CI, omitUndefineds } from '@livestore/utils'
-import { Vitest } from '@livestore/utils-dev/node-vitest'
 import { Chunk, Deferred, Effect, Exit, Schema, Scope, Stream, WebChannel } from '@livestore/utils/effect'
+import { Vitest } from '@livestore/utils-dev/node-vitest'
+import { expect } from 'vitest'
 
 import { Packet } from './mesh-schema.ts'
 import type { MeshNode } from './node.ts'
@@ -86,8 +85,8 @@ const maybeDelay =
       ? effect
       : Effect.sleep(delay).pipe(Effect.withSpan(`${label}:delay(${delay})`), Effect.andThen(effect))
 
-const testTimeout = IS_CI ? 30_000 : 1000
-const propTestTimeout = IS_CI ? 60_000 : 20_000
+const testTimeout = IS_CI === true ? 30_000 : 1000
+const propTestTimeout = IS_CI === true ? 60_000 : 20_000
 
 // TODO also make work without `Vitest.scopedLive` (i.e. with `Vitest.scoped`)
 // probably requires controlling the clocks
@@ -232,8 +231,7 @@ Vitest.describe('webmesh node', { timeout: testTimeout }, () => {
             // TODO also optionally delay the edge
             yield* connectNodes(nodeA, nodeB)
 
-            const waitForBToBeOffline =
-              waitForOfflineDelay === undefined ? undefined : yield* Deferred.make<void>()
+            const waitForBToBeOffline = waitForOfflineDelay === undefined ? undefined : yield* Deferred.make<void>()
 
             const nodeACode = Effect.gen(function* () {
               const channelAToB = yield* createChannel(nodeA, 'B', { mode })
@@ -393,7 +391,7 @@ Vitest.describe('webmesh node', { timeout: testTimeout }, () => {
             yield* Effect.all([nodeXCode, nodeYCode], { concurrency: 'unbounded' })
           }).pipe(
             Vitest.withTestCtx(test, {
-            suffix: `channelType=${channelType} nodeNames=${nodeNames.join(',')}`,
+              suffix: `channelType=${channelType} nodeNames=${nodeNames.join(',')}`,
             }),
           ),
         { fastCheck: { numRuns: 10 } },

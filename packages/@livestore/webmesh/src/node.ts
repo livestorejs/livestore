@@ -492,7 +492,7 @@ export const makeMeshNode = <TName extends MeshNodeName>(
         if (channelMap.has(channelKey) === true) {
           const existingChannel = channelMap.get(channelKey)!.debugInfo?.channel
           if (existingChannel !== undefined) {
-            if (closeExisting) {
+            if (closeExisting === true) {
               yield* existingChannel.shutdown
               channelMap.delete(channelKey)
             } else {

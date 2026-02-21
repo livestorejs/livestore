@@ -26,11 +26,12 @@ export interface Example {
 }
 
 export const getExampleDemoLinks = (example: Example) => {
-  const url = IS_MAIN_BRANCH ? (example.demoUrl ?? example.devDemoUrl) : (example.devDemoUrl ?? example.demoUrl)
+  const url =
+    IS_MAIN_BRANCH === true ? (example.demoUrl ?? example.devDemoUrl) : (example.devDemoUrl ?? example.demoUrl)
 
   return {
     url,
-    label: IS_MAIN_BRANCH ? 'Try Demo →' : 'Try Dev Demo →',
+    label: IS_MAIN_BRANCH === true ? 'Try Demo →' : 'Try Dev Demo →',
   }
 }
 

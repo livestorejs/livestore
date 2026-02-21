@@ -110,7 +110,10 @@ export const streamEventsWithSyncState = ({
              * since === until : Prevent empty query
              * since > until : Incorrectly inverted interval
              */
-            if (options.until !== undefined && EventSequenceNumber.Client.isGreaterThanOrEqual(cursor, options.until)) {
+            if (
+              options.until !== undefined &&
+              EventSequenceNumber.Client.isGreaterThanOrEqual(cursor, options.until) === true
+            ) {
               return [Chunk.empty(), Option.none()]
             }
 
@@ -145,9 +148,10 @@ export const streamEventsWithSyncState = ({
              * nextHead: The latest head from headQueue
              */
             const waitForHead = EventSequenceNumber.Client.isGreaterThanOrEqual(cursor, head)
-            const maybeHead = waitForHead
-              ? yield* Queue.take(headQueue).pipe(Effect.map(Option.some))
-              : yield* Queue.poll(headQueue)
+            const maybeHead =
+              waitForHead === true
+                ? yield* Queue.take(headQueue).pipe(Effect.map(Option.some))
+                : yield* Queue.poll(headQueue)
             const nextHead = Option.getOrElse(maybeHead, () => head)
             const hardStop = options.until?.global ?? Number.POSITIVE_INFINITY
             const target = EventSequenceNumber.Client.Composite.make({
@@ -182,7 +186,7 @@ export const streamEventsWithSyncState = ({
             const nextState: Option.Option<{
               cursor: EventSequenceNumber.Client.Composite
               head: EventSequenceNumber.Client.Composite
-            }> = reachedUntil ? Option.none() : Option.some({ cursor: target, head: nextHead })
+            }> = reachedUntil === true ? Option.none() : Option.some({ cursor: target, head: nextHead })
 
             const spanAttributes = {
               'livestore.streamEvents.cursor.global': cursor.global,

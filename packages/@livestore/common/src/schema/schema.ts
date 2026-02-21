@@ -58,7 +58,12 @@ export const isLiveStoreSchema = (value: unknown): value is LiveStoreSchema<any,
   const hasStateMaterializers = v.state?.materializers instanceof Map
   const hasDevtoolsAlias = typeof v.devtools?.alias === 'string'
 
-  return hasEventsMap && hasStateSqliteTables && hasStateMaterializers && hasDevtoolsAlias
+  return (
+    hasEventsMap === true &&
+    hasStateSqliteTables === true &&
+    hasStateMaterializers === true &&
+    hasDevtoolsAlias === true
+  )
 }
 
 // TODO abstract this further away from sqlite/tables
@@ -103,7 +108,7 @@ export const makeSchema = <TInputSchema extends InputSchema>(
 
   const eventsDefsMap = new Map<string, EventDef.AnyWithoutFn>()
 
-  if (isReadonlyArray(inputSchema.events)) {
+  if (isReadonlyArray(inputSchema.events) === true) {
     for (const eventDef of inputSchema.events) {
       eventsDefsMap.set(eventDef.name, eventDef)
     }
