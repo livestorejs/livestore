@@ -1,5 +1,6 @@
 import { queryDb } from '@livestore/livestore'
 import { useStore } from '@livestore/react'
+import { useCallback } from 'react'
 
 import { userTables } from './user.schema.ts'
 import { useCurrentUserStore } from './user.store.ts'
@@ -24,14 +25,19 @@ export const Workspace = ({ workspaceId }: { workspaceId: string }) => {
   // Workspace is in user's list but not yet initialized → loading state
   if (workspace == null) return <div>Loading workspace...</div>
 
-  const addTodo = (text: string) => {
-    workspaceStore.commit(
-      workspaceEvents.todoAdded({
-        todoId: `todo-${Date.now()}`,
-        text,
-      }),
-    )
-  }
+  const addTodo = useCallback(
+    (text: string) => {
+      workspaceStore.commit(
+        workspaceEvents.todoAdded({
+          todoId: `todo-${Date.now()}`,
+          text,
+        }),
+      )
+    },
+    [workspaceStore],
+  )
+
+  const addNewTodo = useCallback(() => addTodo('New todo'), [addTodo])
 
   return (
     <div>
@@ -48,7 +54,7 @@ export const Workspace = ({ workspaceId }: { workspaceId: string }) => {
         ))}
       </ul>
 
-      <button type="button" onClick={() => addTodo('New todo')}>
+      <button type="button" onClick={addNewTodo}>
         Add Todo
       </button>
     </div>

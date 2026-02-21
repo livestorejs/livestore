@@ -23,9 +23,9 @@ export const MainSection: Component = () => {
           {(todo: typeof tables.todos.Type) => (
             <li>
               <div class="view">
-                <input type="checkbox" class="toggle" checked={todo.completed} onChange={() => toggleTodo(todo)} />
+                <input type="checkbox" class="toggle" checked={todo.completed} onChange={[toggleTodo, todo]} />
                 <label>{todo.text}</label>
-                <button type="button" class="destroy" onClick={() => deleteTodo(todo.id)} />
+                <button type="button" class="destroy" onClick={[deleteTodo, todo.id]} />
               </div>
             </li>
           )}
