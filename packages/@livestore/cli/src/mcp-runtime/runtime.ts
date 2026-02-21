@@ -115,8 +115,16 @@ export const query = Effect.fn('mcp-runtime:query')(function* ({
   }
   const s = opt.value
 
-  const rows = s.query<Array<Record<string, unknown>>>({ query: sql, bindValues: (bindValues as any) ?? [] })
-  const jsonRows = rows.map((r) => Object.fromEntries(Object.entries(r).map(([k, v]) => [k, v as Schema.JsonValue])))
+  const resolvedBindValues = bindValues ?? []
+  const rows = s.query<Array<Record<string, unknown>>>({ query: sql, bindValues: resolvedBindValues })
+  const jsonRows = rows.map((r) =>
+    Object.fromEntries(
+      Object.entries(r).map(([k, v]) => {
+        const decoded = Schema.decodeUnknownEither(Schema.JsonValue)(v)
+        return [k, decoded._tag === 'Right' ? decoded.right : String(v)]
+      }),
+    ),
+  )
   return { rows: jsonRows, rowCount: jsonRows.length }
 })
 
@@ -130,8 +138,8 @@ export const commit = Effect.fn('mcp-runtime:commit')(function* ({
     return yield* Effect.dieMessage('LiveStore not connected. Call livestore_instance_connect first.')
   }
   const s = opt.value
-  const InputEventSchema = LiveStoreEvent.Input.makeSchema(s.schema) as Schema.Schema<any>
-  const decoded = events.map((e) => Schema.decodeSync(InputEventSchema)(e))
+  const inputEventSchema = LiveStoreEvent.Input.makeSchema(s.schema)
+  const decoded = events.map((e) => Schema.decodeSync(inputEventSchema)(e))
   s.commit(...decoded)
   return { committed: decoded.length }
 })

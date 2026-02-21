@@ -22,9 +22,13 @@ export interface Env {
 }
 
 export class TestRpcDurableObject extends DurableObject {
-  override __DURABLE_OBJECT_BRAND = 'TestRpcDurableObject' as never
+  declare override __DURABLE_OBJECT_BRAND: never
 
   async rpc(payload: unknown): Promise<unknown> {
+    if (payload instanceof Uint8Array === false) {
+      throw new TypeError('Expected Uint8Array payload')
+    }
+
     const TestRpcsLive = TestRpcs.toLayer({
       Ping: ({ message }) => Effect.succeed({ response: `Pong: ${message}` }),
       Echo: ({ text }) => Effect.succeed({ echo: `Echo: ${text}` }),
@@ -62,9 +66,10 @@ export class TestRpcDurableObject extends DurableObject {
       StreamBugScenarioDoClient: () => Effect.die('never called'),
     })
 
-    const result = await toDurableObjectHandler(TestRpcs, { layer: TestRpcsLive })(
-      payload as Uint8Array<ArrayBuffer>,
-    ).pipe(Effect.tapCauseLogPretty, Effect.runPromise)
+    const result = await toDurableObjectHandler(TestRpcs, { layer: TestRpcsLive })(payload).pipe(
+      Effect.tapCauseLogPretty,
+      Effect.runPromise,
+    )
 
     return result
   }

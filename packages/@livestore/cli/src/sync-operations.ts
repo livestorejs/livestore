@@ -85,7 +85,7 @@ export const makeSyncBackend = ({
       storeId,
       clientId,
       /** syncPayload is validated against syncPayloadSchema by loadModuleConfig */
-      payload: syncPayload as Schema.JsonValue | undefined,
+      payload: syncPayload,
     }).pipe(Effect.provide(KeyValueStore.layerMemory), UnknownError.mapToUnknownError)
 
     /** Connect to the sync backend */
@@ -124,7 +124,8 @@ export const makeSyncBackend = ({
   })
 
 const releaseSyncBackend = (syncBackend: SyncBackend.SyncBackend): Effect.Effect<void> => {
-  const maybeDisconnect = (syncBackend as { disconnect?: Effect.Effect<void> }).disconnect
+  const disconnectCandidate = Reflect.get(syncBackend, 'disconnect')
+  const maybeDisconnect = Effect.isEffect(disconnectCandidate) === true ? disconnectCandidate : undefined
   const releaseEffect = maybeDisconnect ?? SubscriptionRef.set(syncBackend.isConnected, false)
   return releaseEffect.pipe(Effect.orElse(() => Effect.void))
 }

@@ -152,6 +152,22 @@
       }
     },
     {
+      "files": [
+        "**/packages/@local/astro-twoslash-code/src/cli/snippets.ts",
+        "**/packages/@local/astro-twoslash-code/src/expressive-code.ts",
+        "**/packages/@local/astro-twoslash-code/src/components/multi-code-client.ts"
+      ],
+      "rules": {
+        "typescript/no-unsafe-type-assertion": "off"
+      }
+    },
+    {
+      "files": ["**/packages/@livestore/sqlite-wasm/src/**/test/**"],
+      "rules": {
+        "typescript/no-unsafe-type-assertion": "off"
+      }
+    },
+    {
       "files": ["packages/@livestore/react/src/useRcResource.ts"],
       "rules": {
         "react-hooks/exhaustive-deps": "off"

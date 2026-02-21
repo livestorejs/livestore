@@ -90,7 +90,8 @@ export const makeProxyChannel = ({
         key: TKey,
         key2: keyof ProxyChannelSimulationParams[TKey],
       ) => {
-        const delay = (simulation[key]?.[key2] ?? 0) as number
+        const delayCandidate = simulation[key]?.[key2]
+        const delay = typeof delayCandidate === 'number' ? delayCandidate : 0
         return delay > 0 ? Effect.sleep(delay) : Effect.void
       }
       type ProxiedChannelState =
@@ -131,11 +132,12 @@ export const makeProxyChannel = ({
       const channelSpan = yield* Effect.currentSpan.pipe(Effect.orDie)
 
       const connectedStateRef = yield* SubscriptionRef.make<ProxiedChannelStateEstablished | false>(false)
+      const isEstablishedState = (
+        state: ProxiedChannelStateEstablished | false,
+      ): state is ProxiedChannelStateEstablished => state !== false
 
       const waitForEstablished = Effect.gen(function* () {
-        const state = yield* SubscriptionRef.waitUntil(connectedStateRef, (state) => state !== false)
-
-        return state as ProxiedChannelStateEstablished
+        return yield* SubscriptionRef.waitUntil(connectedStateRef, isEstablishedState)
       })
 
       const setStateToEstablished = (channelId: string) =>
@@ -419,10 +421,7 @@ export const makeProxyChannel = ({
           debugInfo.totalSends++
 
           const trySend = Effect.gen(function* () {
-            const { combinedChannelId } = (yield* SubscriptionRef.waitUntil(
-              connectedStateRef,
-              (channel) => channel !== false,
-            )) as ProxiedChannelStateEstablished
+            const { combinedChannelId } = yield* SubscriptionRef.waitUntil(connectedStateRef, isEstablishedState)
 
             const innerSend = Effect.gen(function* () {
               // Note we're re-creating new packets every time otherwise they will be skipped because of `handledIds`

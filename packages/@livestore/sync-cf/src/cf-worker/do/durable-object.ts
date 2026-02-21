@@ -36,10 +36,16 @@ declare class Response extends CfDeclare.Response {}
 declare class WebSocketPair extends CfDeclare.WebSocketPair {}
 declare class WebSocketRequestResponsePair extends CfDeclare.WebSocketRequestResponsePair {}
 
-const DurableObjectBase = DurableObject as any as new (
-  state: CfTypes.DurableObjectState,
-  env: Env,
-) => CfTypes.DurableObject & { ctx: CfTypes.DurableObjectState; env: Env }
+class DurableObjectBase extends DurableObject {
+  declare override ctx: CfTypes.DurableObjectState
+  declare override env: Env
+
+  constructor(state: CfTypes.DurableObjectState, env: Env) {
+    super(state, env)
+    this.ctx = state
+    this.env = env
+  }
+}
 
 // Type aliases needed to avoid TS bug https://github.com/microsoft/TypeScript/issues/55021
 export type DoState = CfTypes.DurableObjectState
@@ -90,18 +96,19 @@ export const makeDurableObject: MakeDurableObjectClass = (options) => {
 
   const Logging = Logger.consoleWithThread('SyncDo')
 
-  const Observability: Layer.Layer<never> = options?.otel?.baseUrl !== undefined
-    ? (Otlp.layer({
-        baseUrl: options.otel.baseUrl,
-        tracerExportInterval: 50,
-        resource: {
-          serviceName: options.otel.serviceName ?? 'sync-cf-do',
-        },
-      }).pipe(Layer.provide(FetchHttpClient.layer)) as Layer.Layer<never>)
-    : Layer.empty
+  const Observability =
+    options?.otel?.baseUrl !== undefined
+      ? Otlp.layer({
+          baseUrl: options.otel.baseUrl,
+          tracerExportInterval: 50,
+          resource: {
+            serviceName: options.otel.serviceName ?? 'sync-cf-do',
+          },
+        }).pipe(Layer.provide(FetchHttpClient.layer))
+      : Layer.empty
 
   return class SyncBackendDOBase extends DurableObjectBase implements SyncBackendRpcInterface {
-    __DURABLE_OBJECT_BRAND = 'SyncBackendDOBase' as never
+    declare override __DURABLE_OBJECT_BRAND: never
 
     constructor(ctx: CfTypes.DurableObjectState, env: Env) {
       super(ctx, env)

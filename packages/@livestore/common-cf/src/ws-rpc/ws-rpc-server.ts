@@ -34,6 +34,12 @@ import {
 
 import type * as CfTypes from '../cf-types.ts'
 
+const toIncomingData = (message: string | ArrayBuffer): string | Uint8Array =>
+  typeof message === 'string' ? message : new Uint8Array(message)
+
+const isFromClientEncoded = (value: unknown): value is RpcMessage.FromClientEncoded =>
+  typeof value === 'object' && value !== null && '_tag' in value && typeof value._tag === 'string'
+
 /**
  * Context service providing access to the current WebSocket.
  * This is useful for reading WebSocket attachment data (e.g., forwarded headers)
@@ -183,7 +189,7 @@ export const setupDurableObjectWebSocketRpc = ({
         scope,
         onMessage: (message: string | ArrayBuffer) =>
           incomingQueue
-            .offer(message as Uint8Array | string)
+            .offer(toIncomingData(message))
             .pipe(
               Effect.asVoid,
               Effect.withSpan('ws-rpc-server/onMessage', { root: true }),
@@ -297,13 +303,15 @@ const makeSocketProtocol = ({ incomingQueue, ws, onMessage }: WsRpcServerArgs) =
       const startProcessing = Mailbox.toStream(incomingQueue).pipe(
         Stream.tap((data) => {
           try {
-            const decoded = parser.decode(data) as ReadonlyArray<RpcMessage.FromClientEncoded>
-            if (decoded.length === 0) return Effect.void
+            const decoded = parser.decode(data)
+            const decodedArray = Array.isArray(decoded) === true ? decoded : [decoded]
+            const requests = decodedArray.filter(isFromClientEncoded)
+            if (requests.length === 0) return Effect.void
             let i = 0
             return Effect.whileLoop({
-              while: () => i < decoded.length,
+              while: () => i < requests.length,
               body: () => {
-                const request = decoded[i++]!
+                const request = requests[i++]!
                 if (onMessage !== undefined) {
                   onMessage(request, ws)
                 }
