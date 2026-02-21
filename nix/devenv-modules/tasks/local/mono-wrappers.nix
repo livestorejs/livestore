@@ -67,6 +67,7 @@
         echo "::warning::Node-sync integration tests failed (flaky; see https://github.com/livestorejs/livestore/issues/624 for details)"
         exit 0
       '';
+      after = [ "setup:strict" ];
     };
 
     # Sync provider tests (individual providers for CI matrix)
@@ -312,6 +313,7 @@
         fi
         mono release snapshot --git-sha="$GIT_SHA"
       '';
+      after = [ "setup:strict" ];
     };
 
     # =========================================================================
