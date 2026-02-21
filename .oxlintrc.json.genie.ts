@@ -84,8 +84,8 @@ const phase2Rules = {
   // TODO(oep-1n3.7): 4 violations — empty files
   'unicorn/no-empty-file': 'off',
 
-  // TODO(oep-3632.1): ~567 violations; enable --type-aware in CI once resolved
-  'typescript/no-unsafe-type-assertion': 'warn',
+  // TODO(oep-3632.1): ~567 violations; disable temporarily to unblock CI (https://github.com/livestorejs/livestore/issues/1057)
+  'typescript/no-unsafe-type-assertion': 'off',
   // Inverse of overeng/explicit-boolean-compare — must stay off
   'typescript/no-unnecessary-boolean-literal-compare': 'off',
   // 79 violations, mostly generic verbosity

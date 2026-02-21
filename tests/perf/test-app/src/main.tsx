@@ -77,7 +77,7 @@ const ItemRow = React.memo(({ item }: { item: Item }) => {
   const store = useAppStore()
   const { selected } = store.useQuery(uiState$)
   const isSelected = selected === item.id
-  const rowStyle = isSelected ? selectedRowStyle : defaultRowStyle
+  const rowStyle = isSelected === true ? selectedRowStyle : defaultRowStyle
   const handleSelect = React.useCallback(() => {
     store.commit(events.uiStateSet({ selected: item.id }))
   }, [store, item.id])
