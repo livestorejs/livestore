@@ -60,7 +60,7 @@ export const readExampleSlugs = Effect.fn('deploy-examples/readExampleSlugs')(fu
       Effect.catchAll(() => Effect.succeed(false)),
     )
 
-    if (info !== undefined) {
+    if (info === true) {
       directories.push(entry)
     }
   }
