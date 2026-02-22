@@ -172,7 +172,8 @@ export class AccessHandlePoolVFS extends FacadeVFS {
   override jOpen(zName: string, fileId: number, flags: number, pOutFlags: DataView): number {
     return Effect.gen(this, function* () {
       // First try to open a path that already exists in the file system.
-      const path = zName !== '' ? this.#getPath(zName) : Math.random().toString(36)
+      const name = zName as unknown
+      const path = typeof name === 'string' && name !== '' ? this.#getPath(name) : Math.random().toString(36)
       let accessHandle = this.#mapPathToAccessHandle.get(path)
       if (accessHandle == null && (flags & VFS.SQLITE_OPEN_CREATE) !== 0) {
         // File not found so try to create it.
