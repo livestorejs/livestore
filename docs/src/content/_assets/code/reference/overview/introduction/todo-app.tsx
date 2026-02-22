@@ -1,9 +1,10 @@
+import { useCallback } from 'react'
+import { unstable_batchedUpdates as batchUpdates } from 'react-dom'
+
 // TodoApp.tsx
 import { makeInMemoryAdapter } from '@livestore/adapter-web'
 import { queryDb } from '@livestore/livestore'
 import { useStore } from '@livestore/react'
-import { useCallback } from 'react'
-import { unstable_batchedUpdates as batchUpdates } from 'react-dom'
 
 import { events, schema, tables } from './schema.ts'
 

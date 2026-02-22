@@ -1,5 +1,6 @@
-import { queryDb } from '@livestore/livestore'
 import React from 'react'
+
+import { queryDb } from '@livestore/livestore'
 
 import { events, tables } from './livestore/schema.ts'
 import { useAppStore } from './store.ts'

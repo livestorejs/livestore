@@ -1,6 +1,7 @@
-import { nanoid } from '@livestore/livestore'
 import { useNavigate } from '@tanstack/react-router'
 import { useCallback } from 'react'
+
+import { nanoid } from '@livestore/livestore'
 
 import { userEvents } from './user.schema.ts'
 import { useCurrentUserStore } from './user.store.ts'

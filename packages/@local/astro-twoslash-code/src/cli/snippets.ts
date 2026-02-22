@@ -1,7 +1,6 @@
 import crypto from 'node:crypto'
 import path from 'node:path'
-import { type Duration, Effect, FileSystem, type PlatformError, Schema, Stream } from '@livestore/utils/effect'
-import { Cli, NodeFileSystemWithWatch } from '@livestore/utils/node'
+
 import * as astroExpressiveCodeModuleStatic from 'astro-expressive-code'
 /**
  * Astro-Twoslash-Code snippets virtual-filesystem specification
@@ -104,6 +103,9 @@ import type {
   RootContent as THastRootContent,
 } from 'hast'
 import { toHtml } from 'hast-util-to-html'
+
+import { type Duration, Effect, FileSystem, type PlatformError, Schema, Stream } from '@livestore/utils/effect'
+import { Cli, NodeFileSystemWithWatch } from '@livestore/utils/node'
 
 import type { LineOwnerMarker, LineOwnerMetadata, TwoslashRuntimeOptions } from '../expressive-code.ts'
 import { createExpressiveCodeConfig, normalizeRuntimeOptions } from '../expressive-code.ts'
