@@ -134,7 +134,9 @@ export const deployToNetlify = ({
           ),
           (p) =>
             p.isRunning.pipe(
-              Effect.flatMap((running) => (running === true ? p.kill().pipe(Effect.catchAll(() => Effect.void)) : Effect.void)),
+              Effect.flatMap((running) =>
+                running === true ? p.kill().pipe(Effect.catchAll(() => Effect.void)) : Effect.void,
+              ),
               Effect.ignore,
             ),
         )
@@ -248,11 +250,12 @@ const resolveNetlifyAuthToken = Effect.gen(function* () {
     ),
   )
 
-  const resolvedToken = config.users !== undefined
-    ? Object.values(config.users)
-        .map((user) => user.auth?.token)
-        .find((candidate): candidate is string => typeof candidate === 'string' && candidate.length > 0)
-    : undefined
+  const resolvedToken =
+    config.users !== undefined
+      ? Object.values(config.users)
+          .map((user) => user.auth?.token)
+          .find((candidate): candidate is string => typeof candidate === 'string' && candidate.length > 0)
+      : undefined
 
   if (resolvedToken == null) {
     return yield* new NetlifyError({

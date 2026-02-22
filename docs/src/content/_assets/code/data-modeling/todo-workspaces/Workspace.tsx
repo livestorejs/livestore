@@ -1,6 +1,7 @@
+import { useCallback } from 'react'
+
 import { queryDb } from '@livestore/livestore'
 import { useStore } from '@livestore/react'
-import { useCallback } from 'react'
 
 import { userTables } from './user.schema.ts'
 import { useCurrentUserStore } from './user.store.ts'

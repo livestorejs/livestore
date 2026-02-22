@@ -1,6 +1,6 @@
-import { MXBAI_API_KEY, MXBAI_VECTOR_STORE_ID } from 'astro:env/server'
 import Mixedbread from '@mixedbread/sdk'
 import type { APIRoute } from 'astro'
+import { MXBAI_API_KEY, MXBAI_VECTOR_STORE_ID } from 'astro:env/server'
 import Slugger from 'github-slugger'
 import removeMd from 'remove-markdown'
 

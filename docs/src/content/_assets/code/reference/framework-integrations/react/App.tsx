@@ -1,8 +1,9 @@
-import { StoreRegistry } from '@livestore/livestore'
-import { StoreRegistryProvider } from '@livestore/react'
 import { type ReactNode, Suspense, useState } from 'react'
 import { unstable_batchedUpdates as batchUpdates } from 'react-dom'
 import { ErrorBoundary } from 'react-error-boundary'
+
+import { StoreRegistry } from '@livestore/livestore'
+import { StoreRegistryProvider } from '@livestore/react'
 
 const appErrorFallback = <div>Something went wrong</div>
 const appLoadingFallback = <div>Loading LiveStore...</div>
