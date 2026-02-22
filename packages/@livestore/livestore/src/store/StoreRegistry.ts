@@ -269,26 +269,30 @@ export class StoreRegistry {
 
     // Check if the failure is due to async work
     const defect = Cause.dieOption(exit.cause)
-    // oxlint-disable-next-line overeng(explicit-boolean-compare)
-    if (defect._tag === 'Some' && Runtime.isAsyncFiberException(defect.value)) {
-      const { storeId } = options
-
-      // Return cached promise if one exists (ensures concurrent calls get the same Promise reference)
-      const cached = this.#loadingPromises.get(storeId)
-      if (cached !== undefined) return cached as Promise<Store<TSchema, TContext>>
-
-      // Create and cache the promise
-      const fiber = defect.value.fiber as Fiber.RuntimeFiber<Store<TSchema, TContext>>
-      const promise = Fiber.join(fiber)
-        .pipe(Runtime.runPromise(this.#runtime))
-        .finally(() => this.#loadingPromises.delete(storeId))
-
-      this.#loadingPromises.set(storeId, promise)
-      return promise
+    if (defect._tag !== 'Some') {
+      // Handle synchronous failure
+      throw Cause.squash(exit.cause)
     }
 
-    // Handle synchronous failure
-    throw Cause.squash(exit.cause)
+    if (Runtime.isAsyncFiberException(defect.value) === false) {
+      // Handle synchronous failure
+      throw Cause.squash(exit.cause)
+    }
+
+    const { storeId } = options
+
+    // Return cached promise if one exists (ensures concurrent calls get the same Promise reference)
+    const cached = this.#loadingPromises.get(storeId)
+    if (cached !== undefined) return cached as Promise<Store<TSchema, TContext>>
+
+    // Create and cache the promise
+    const fiber = defect.value.fiber as Fiber.RuntimeFiber<Store<TSchema, TContext>>
+    const promise = Fiber.join(fiber)
+      .pipe(Runtime.runPromise(this.#runtime))
+      .finally(() => this.#loadingPromises.delete(storeId))
+
+    this.#loadingPromises.set(storeId, promise)
+    return promise
   }
 
   /**
