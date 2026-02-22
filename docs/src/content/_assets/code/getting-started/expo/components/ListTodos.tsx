@@ -5,6 +5,18 @@ import { visibleTodos$ } from '../livestore/queries.ts'
 import { events, type tables } from '../livestore/schema.ts'
 import { useAppStore } from '../livestore/store.ts'
 
+const listContainerStyle = { flex: 1, gap: 16 }
+const listContentContainerStyle = { gap: 12 }
+const todoContainerStyle = {
+  borderRadius: 12,
+  borderColor: '#d4d4d8',
+  borderWidth: 1,
+  padding: 16,
+  gap: 8,
+}
+const todoTitleStyle = { fontSize: 16, fontWeight: '600' }
+const todoActionRowStyle = { flexDirection: 'row', gap: 12 }
+
 export const ListTodos: FC = () => {
   const store = useAppStore()
   const todos = store.useQuery(visibleTodos$)
@@ -21,8 +33,8 @@ export const ListTodos: FC = () => {
   }, [store])
 
   return (
-    <View style={{ flex: 1, gap: 16 }}>
-      <ScrollView contentContainerStyle={{ gap: 12 }}>
+    <View style={listContainerStyle}>
+      <ScrollView contentContainerStyle={listContentContainerStyle}>
         {todos.map((todo) => (
           <TodoItem key={todo.id} todo={todo} onToggle={toggleTodo} />
         ))}
@@ -43,18 +55,10 @@ const TodoItem: FC<{
   }, [store, todo.id])
 
   return (
-    <View
-      style={{
-        borderRadius: 12,
-        borderColor: '#d4d4d8',
-        borderWidth: 1,
-        padding: 16,
-        gap: 8,
-      }}
-    >
-      <Text style={{ fontSize: 16, fontWeight: '600' }}>{todo.text}</Text>
+    <View style={todoContainerStyle}>
+      <Text style={todoTitleStyle}>{todo.text}</Text>
       <Text>{todo.completed === true ? 'Completed' : 'Pending'}</Text>
-      <View style={{ flexDirection: 'row', gap: 12 }}>
+      <View style={todoActionRowStyle}>
         <Button title={todo.completed === true ? 'Mark pending' : 'Mark done'} onPress={onTogglePress} />
         <Button title="Delete" onPress={onDeletePress} />
       </View>
