@@ -5,6 +5,8 @@ import { uiState$ } from '../livestore/queries.ts'
 import { events } from '../livestore/schema.ts'
 import { useAppStore } from '../livestore/store.ts'
 
+const formContainerStyle = { gap: 12 }
+
 export const NewTodo: FC = () => {
   const store = useAppStore()
   const { newTodoText } = store.useQuery(uiState$)
@@ -31,7 +33,7 @@ export const NewTodo: FC = () => {
   }, [store])
 
   return (
-    <View style={{ gap: 12 }}>
+    <View style={formContainerStyle}>
       <TextInput value={newTodoText} onChangeText={updateText} placeholder="What needs to be done?" />
       <Button title="Add todo" onPress={createTodo} />
       <Button title="Add sample todos" onPress={addSampleTodos} />

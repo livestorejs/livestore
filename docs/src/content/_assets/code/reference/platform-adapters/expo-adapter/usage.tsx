@@ -8,6 +8,7 @@ import { schema, tables } from './schema.ts'
 
 const adapter = makePersistedAdapter()
 const suspenseFallback = <Text>Loading...</Text>
+const safeAreaStyle = { flex: 1 }
 
 const useAppStore = () =>
   useStore({
@@ -20,7 +21,7 @@ const useAppStore = () =>
 export const App = () => {
   const [storeRegistry] = useState(() => new StoreRegistry())
   return (
-    <SafeAreaView style={{ flex: 1 }}>
+    <SafeAreaView style={safeAreaStyle}>
       <Suspense fallback={suspenseFallback}>
         <StoreRegistryProvider storeRegistry={storeRegistry}>
           <TodoList />
