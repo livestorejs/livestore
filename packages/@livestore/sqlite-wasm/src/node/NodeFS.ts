@@ -32,7 +32,8 @@ export class NodeFS extends FacadeVFS {
 
   override jOpen(zName: string | null, fileId: number, flags: number, pOutFlags: DataView): number {
     try {
-      const pathname = zName !== null ? path.resolve(this.directory, zName) : Math.random().toString(36).slice(2)
+      const pathname =
+        zName !== null && zName !== '' ? path.resolve(this.directory, zName) : Math.random().toString(36).slice(2)
       const file: NodeFsFile = { pathname, flags, fileHandle: null }
       this.mapIdToFile.set(fileId, file)
 
