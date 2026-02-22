@@ -6,6 +6,9 @@ import { ErrorBoundary } from 'react-error-boundary'
 import { tables } from './issue.schema.ts'
 import { issueStoreOptions } from './issue.store.ts'
 
+const issueErrorFallback = <div>Error loading issue</div>
+const issueLoadingFallback = <div>Loading issue...</div>
+
 export const IssueView = ({ issueId }: { issueId: string }) => {
   // useStore() suspends the component until the store is loaded
   // If the same store was already loaded, it returns immediately
@@ -27,8 +30,8 @@ export const IssueView = ({ issueId }: { issueId: string }) => {
 // Wrap with Suspense and ErrorBoundary for loading and error states
 export const IssueViewWithSuspense = ({ issueId }: { issueId: string }) => {
   return (
-    <ErrorBoundary fallback={<div>Error loading issue</div>}>
-      <Suspense fallback={<div>Loading issue...</div>}>
+    <ErrorBoundary fallback={issueErrorFallback}>
+      <Suspense fallback={issueLoadingFallback}>
         <IssueView issueId={issueId} />
       </Suspense>
     </ErrorBoundary>

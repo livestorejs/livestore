@@ -1,13 +1,13 @@
-import { Suspense, useState } from 'react'
-import { unstable_batchedUpdates as batchUpdates, SafeAreaView, Text } from 'react-native'
-
 import { makePersistedAdapter } from '@livestore/adapter-expo'
 import { queryDb, StoreRegistry } from '@livestore/livestore'
 import { StoreRegistryProvider, useStore } from '@livestore/react'
+import { Suspense, useState } from 'react'
+import { unstable_batchedUpdates as batchUpdates, SafeAreaView, Text } from 'react-native'
 
 import { schema, tables } from './schema.ts'
 
 const adapter = makePersistedAdapter()
+const suspenseFallback = <Text>Loading...</Text>
 
 const useAppStore = () =>
   useStore({
@@ -21,7 +21,7 @@ export const App = () => {
   const [storeRegistry] = useState(() => new StoreRegistry())
   return (
     <SafeAreaView style={{ flex: 1 }}>
-      <Suspense fallback={<Text>Loading...</Text>}>
+      <Suspense fallback={suspenseFallback}>
         <StoreRegistryProvider storeRegistry={storeRegistry}>
           <TodoList />
         </StoreRegistryProvider>
