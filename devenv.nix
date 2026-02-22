@@ -79,7 +79,7 @@ let
 in
 {
   imports = [
-    # Beads integration: daemon, sync task, commit correlation hook
+    # Beads integration
     (taskModules.beads {
       beadsPrefix = "oep";
       beadsRepoName = "overeng-beads-public";
@@ -249,8 +249,7 @@ in
     pass_filenames = false;
   };
 
-  # Wire beads:daemon:ensure directly to shell entry
-  tasks."devenv:enterShell".after = lib.mkAfter [ "beads:daemon:ensure" ];
+  tasks."devenv:enterShell".after = lib.mkAfter [ "beads:ensure" ];
   enterShell = ''
     sp="$(git rev-parse --show-superproject-working-tree 2>/dev/null)";
     export WORKSPACE_ROOT="$PWD"
