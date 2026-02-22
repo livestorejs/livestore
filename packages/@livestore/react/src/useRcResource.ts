@@ -83,7 +83,7 @@ export const useRcResource = <T>(
   // biome-ignore lint/correctness/useExhaustiveDependencies: Dependency is deliberately limited to `key` to avoid unintended re-creations.
   const resource = React.useMemo(() => {
     // console.debug('useMemo', key)
-    if (didDisposeInMemo.current !== undefined) {
+    if (didDisposeInMemo.current === true) {
       // console.debug('useMemo', key, 'skip')
       const cachedItem = cache.get(key)
       if (cachedItem !== undefined && cachedItem._tag === 'active') {

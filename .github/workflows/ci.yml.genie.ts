@@ -1,11 +1,12 @@
 import { playwrightSuites, syncProviderMatrix } from '../../genie/ci.ts'
 import {
-  devenvShellDefaults,
+  bashShellDefaults,
   githubWorkflow,
   livestoreSetupSteps,
   livestoreSetupStepsAfterCheckout,
   namespaceRunner,
   otelSetupStep,
+  runDevenvTasksBefore,
 } from '../../genie/repo.ts'
 
 // =============================================================================
@@ -36,11 +37,11 @@ const namespaceRunnerConfig = {
   'runs-on': namespaceRunner(GITHUB_RUN_ID),
 }
 
-/** Standard CI job configuration (namespace runner + devenv shell) */
+/** Standard CI job configuration (namespace runner + bash shell) */
 const standardCIJob = (config: { env?: Record<string, string>; steps: unknown[] }) => ({
   ...namespaceRunnerConfig,
   env: config.env,
-  defaults: devenvShellDefaults,
+  defaults: bashShellDefaults,
   steps: config.steps,
 })
 
@@ -50,30 +51,6 @@ const otelCIJob = (config: { env?: Record<string, string>; steps: unknown[] }) =
     ...config,
     steps: [...livestoreSetupSteps, otelSetupStep, ...config.steps],
   })
-
-/**
- * Flaky test wrapper that warns but doesn't fail.
- * TODO: Remove these once the underlying flakiness is resolved.
- */
-const flakyTestStep = (name: string, command: string, issueUrl: string, warningMessage: string) => ({
-  name,
-  run: `if ${command}; then
-  exit 0
-else
-  echo "::warning::${warningMessage} (flaky; see ${issueUrl} for details)"
-  exit 0
-fi`,
-})
-
-/**
- * Deterministic preflight for jobs that need generated artifacts/build state.
- * Uses DEVENV_SKIP_SETUP to avoid nested setup recursion.
- */
-const deterministicPreflightStep = {
-  name: 'Preflight workspace bootstrap',
-  run: 'DEVENV_SKIP_SETUP=1 devenv tasks run pnpm:install genie:run ts:build --mode before --verbose',
-  shell: 'bash',
-}
 
 // =============================================================================
 // Workflow Definition
@@ -109,28 +86,26 @@ export default githubWorkflow({
 
   jobs: {
     lint: standardCIJob({
-      steps: [...livestoreSetupSteps, { run: 'dt lint:full megarepo:check' }],
+      steps: [...livestoreSetupSteps, { run: runDevenvTasksBefore('lint:full:with-megarepo-check') }],
     }),
 
     'type-check': standardCIJob({
       // TODO(oep-1n3.9): Switch back to patched tsc once Effect diagnostics backlog is addressed.
-      steps: [...livestoreSetupSteps, { run: 'dt ts:build' }],
+      steps: [...livestoreSetupSteps, { run: runDevenvTasksBefore('ts:build') }],
     }),
 
     'test-unit': standardCIJob({
-      steps: [...livestoreSetupSteps, deterministicPreflightStep, { run: 'dt test:unit' }],
+      steps: [...livestoreSetupSteps, { run: runDevenvTasksBefore('test:unit') }],
     }),
 
     // TODO: Remove flaky test wrapper once node-sync flakiness is resolved
     // https://github.com/livestorejs/livestore/issues/624
     'test-integration-node-sync': otelCIJob({
       steps: [
-        flakyTestStep(
-          'Run node-sync integration tests',
-          'dt test:integration:node-sync',
-          'https://github.com/livestorejs/livestore/issues/624',
-          'Node-sync integration tests failed',
-        ),
+        {
+          name: 'Run node-sync integration tests',
+          run: runDevenvTasksBefore('test:integration:node-sync:allow-flaky'),
+        },
         {
           name: 'Display node-sync logs',
           if: 'always()',
@@ -170,10 +145,9 @@ fi`,
         },
       },
       ...namespaceRunnerConfig,
-      defaults: devenvShellDefaults,
+      defaults: bashShellDefaults,
       steps: [
         ...livestoreSetupSteps,
-        deterministicPreflightStep,
         otelSetupStep,
         {
           name: 'Start s2-lite container',
@@ -192,16 +166,8 @@ done`,
         },
         {
           name: 'Run sync-provider tests for ${{ matrix.provider }}',
-          run: `if [[ "\${{ matrix.provider }}" == cf-* ]]; then
-  if dt "test:integration:sync-provider:\${{ matrix.provider }}"; then
-    exit 0
-  else
-    echo "::warning::Cloudflare sync-provider tests for \${{ matrix.provider }} failed (flaky; see https://github.com/livestorejs/livestore/issues/625 and upstream https://github.com/cloudflare/workers-sdk/issues/11122)"
-    exit 0
-  fi
-else
-  dt "test:integration:sync-provider:\${{ matrix.provider }}"
-fi`,
+          run: runDevenvTasksBefore('test:integration:sync-provider:matrix'),
+          env: { TEST_SYNC_PROVIDER: '${{ matrix.provider }}' },
         },
       ],
     },
@@ -213,20 +179,14 @@ fi`,
         },
       },
       ...namespaceRunnerConfig,
-      defaults: devenvShellDefaults,
+      defaults: bashShellDefaults,
       steps: [
         ...livestoreSetupSteps,
-        deterministicPreflightStep,
         otelSetupStep,
         {
           name: 'Run integration tests',
           env: { PLAYWRIGHT_SUITE: '${{ matrix.suite }}' },
-          // TODO: fix flaky devtools test
-          run: `if [ "\${{ matrix.suite }}" = "devtools" ]; then
-  dt test:integration:devtools || echo "::warning::Script failed but continuing"
-else
-  dt "test:integration:\${{ matrix.suite }}"
-fi`,
+          run: runDevenvTasksBefore('test:integration:playwright:suite'),
         },
         {
           uses: 'actions/upload-artifact@v4',
@@ -245,11 +205,7 @@ fi`,
             NETLIFY_AUTH_TOKEN: '${{ secrets.NETLIFY_AUTH_TOKEN }}',
             PLAYWRIGHT_SUITE: '${{ matrix.suite }}',
           },
-          run: `if [ -n "$NETLIFY_AUTH_TOKEN" ]; then
-  bunx netlify-cli deploy --no-build --dir=tests/integration/playwright-report --site livestore-ci --filter @local/tests-integration --alias \${{ matrix.suite }}-$(git rev-parse --short HEAD)
-else
-  echo "Skipping Netlify deploy: NETLIFY_AUTH_TOKEN not set"
-fi`,
+          run: runDevenvTasksBefore('test:integration:playwright:upload-trace'),
         },
       ],
     },
@@ -257,7 +213,7 @@ fi`,
     // Run on namespace runners to align CI environment with the rest of the test matrix.
     'perf-test': {
       ...namespaceRunnerConfig,
-      defaults: devenvShellDefaults,
+      defaults: bashShellDefaults,
       steps: [
         {
           // See https://github.com/orgs/community/discussions/26325
@@ -266,11 +222,10 @@ fi`,
           with: { ref: PR_HEAD_SHA },
         },
         ...livestoreSetupStepsAfterCheckout,
-        deterministicPreflightStep,
         otelSetupStep,
         {
           name: 'Run performance tests',
-          run: 'dt test:perf',
+          run: runDevenvTasksBefore('test:perf'),
           env: {
             COMMIT_SHA: PR_HEAD_SHA,
             GRAFANA_ENDPOINT: 'https://livestore.grafana.net',
@@ -283,18 +238,14 @@ fi`,
     // Run on namespace runners to align CI environment with the rest of the test matrix.
     'wa-sqlite-test': {
       ...namespaceRunnerConfig,
+      defaults: bashShellDefaults,
       steps: [
         ...livestoreSetupSteps,
-        deterministicPreflightStep,
         otelSetupStep,
-        {
-          name: 'Build wa-sqlite',
-          'working-directory': 'packages/@livestore/wa-sqlite',
-          run: 'nix run .#build',
-        },
+        { name: 'Build wa-sqlite', run: runDevenvTasksBefore('test:integration:wa-sqlite:build') },
         {
           name: 'Run wa-sqlite tests',
-          run: 'devenv shell dt test:integration:wa-sqlite',
+          run: runDevenvTasksBefore('test:integration:wa-sqlite'),
           env: {
             COMMIT_SHA: PR_HEAD_SHA,
             GRAFANA_ENDPOINT: 'https://livestore.grafana.net',
@@ -318,31 +269,31 @@ fi`,
         'test-integration-sync-provider',
         'test-integration-playwright',
       ],
-      defaults: devenvShellDefaults,
-      steps: [...livestoreSetupSteps, { run: `mono release snapshot --git-sha=${GITHUB_SHA} --yes` }],
+      defaults: bashShellDefaults,
+      steps: [
+        ...livestoreSetupSteps,
+        { run: runDevenvTasksBefore('release:snapshot:git-sha'), env: { GIT_SHA: GITHUB_SHA } },
+      ],
     },
 
     'build-and-deploy-examples-src': {
       ...namespaceRunnerConfig,
-      defaults: devenvShellDefaults,
+      defaults: bashShellDefaults,
       steps: [
         ...livestoreSetupSteps,
-        deterministicPreflightStep,
         {
           name: 'Install examples dependencies',
-          // Run pnpm from root devenv shell, targeting examples workspace
-          run: 'pnpm install --frozen-lockfile --dir examples',
+          run: runDevenvTasksBefore('examples:install'),
         },
         {
           name: 'Build examples',
-          // Run pnpm from root devenv shell, targeting examples workspace
-          run: "pnpm --dir examples --filter 'livestore-example-*' --workspace-concurrency=1 build",
+          run: runDevenvTasksBefore('examples:build:src'),
         },
-        { name: 'Test examples', run: 'dt examples:test' },
+        { name: 'Test examples', run: runDevenvTasksBefore('examples:test') },
         {
           name: 'Deploy examples to Cloudflare',
           if: IS_NOT_FORK,
-          run: 'dt examples:deploy',
+          run: runDevenvTasksBefore('examples:deploy'),
           env: {
             CLOUDFLARE_API_TOKEN: '${{ secrets.CLOUDFLARE_API_TOKEN }}',
             CLOUDFLARE_ACCOUNT_ID: '${{ secrets.CLOUDFLARE_ACCOUNT_ID }}',
@@ -363,58 +314,35 @@ fi`,
      */
     'build-deploy-docs': {
       ...namespaceRunnerConfig,
-      defaults: devenvShellDefaults,
+      defaults: bashShellDefaults,
       steps: [
         ...livestoreSetupSteps,
-        deterministicPreflightStep,
         // TODO(oep-bbd): Restore once root cause is fixed and diagnostics are removed.
-        // { name: 'Build docs', run: 'dt --show-output docs:build:api' },
+        // { name: 'Build docs', run: runDevenvTasksBefore('docs:build:api') },
         // TODO(oep-bbd): Temporary phase split + hard timeouts for docs CI hang triage.
         // Remove once root cause is fixed. Bead context: tasks/2026/02/refactor--genie-igor-ci/oep-bbd/problem.md
         {
           name: 'Build docs snippets',
-          run: `set -euo pipefail
-mkdir -p tmp/ci-docs
-timeout --signal=TERM --kill-after=2m 20m mono docs snippets build 2>&1 | tee tmp/ci-docs/01-snippets.log`,
+          run: runDevenvTasksBefore('docs:build:phase:snippets'),
         },
         // TODO(oep-bbd): Temporary diagnostics step for docs CI hang triage.
         // Remove once root cause is fixed. Bead context: tasks/2026/02/refactor--genie-igor-ci/oep-bbd/problem.md
         {
           name: 'Build docs diagrams',
-          run: `set -euo pipefail
-mkdir -p tmp/ci-docs
-timeout --signal=TERM --kill-after=2m 20m mono docs diagrams build 2>&1 | tee tmp/ci-docs/02-diagrams.log`,
+          run: runDevenvTasksBefore('docs:build:phase:diagrams'),
         },
         // TODO(oep-bbd): Temporary heartbeat/process logging for Astro build visibility.
         // Remove once root cause is fixed. Bead context: tasks/2026/02/refactor--genie-igor-ci/oep-bbd/problem.md
         {
           name: 'Build Astro docs bundle',
-          run: `set -euo pipefail
-mkdir -p tmp/ci-docs
-(
-  while true; do
-    echo "[docs-heartbeat] $(date -u +%Y-%m-%dT%H:%M:%SZ) astro build still running"
-    pgrep -af 'astro|chromium|chrome_crashpad_handler|node|mono' || true
-    sleep 60
-  done
-) > tmp/ci-docs/03-heartbeat.log 2>&1 &
-HEARTBEAT_PID=$!
-cleanup() {
-  kill "$HEARTBEAT_PID" 2>/dev/null || true
-}
-trap cleanup EXIT
-timeout --signal=TERM --kill-after=2m 20m mono docs build --api-docs --skip-deps 2>&1 | tee tmp/ci-docs/03-astro-build.log`,
+          run: runDevenvTasksBefore('docs:build:phase:astro'),
         },
         // TODO(oep-bbd): Temporary failure-time process dump for docs CI hang triage.
         // Remove once root cause is fixed. Bead context: tasks/2026/02/refactor--genie-igor-ci/oep-bbd/problem.md
         {
           name: 'Collect docs build diagnostics on failure',
           if: '${{ failure() }}',
-          run: `set -euo pipefail
-mkdir -p tmp/ci-docs
-date -u +%Y-%m-%dT%H:%M:%SZ | tee tmp/ci-docs/failure-timestamp.log
-ps -eo pid,ppid,etime,pcpu,pmem,comm,args > tmp/ci-docs/ps-full.log || true
-pgrep -af 'astro|chromium|chrome_crashpad_handler|node|mono|dt' > tmp/ci-docs/pgrep-build-procs.log || true`,
+          run: runDevenvTasksBefore('docs:build:diagnostics'),
         },
         // TODO(oep-bbd): Temporary artifact upload for docs CI diagnostics.
         // Remove once root cause is fixed. Bead context: tasks/2026/02/refactor--genie-igor-ci/oep-bbd/problem.md
@@ -431,7 +359,7 @@ pgrep -af 'astro|chromium|chrome_crashpad_handler|node|mono|dt' > tmp/ci-docs/pg
         {
           name: 'Deploy docs',
           if: `\${{ success() && (github.event_name != 'pull_request' || ${IS_NOT_FORK}) }}`,
-          run: 'dt docs:deploy',
+          run: runDevenvTasksBefore('docs:deploy'),
           env: { NETLIFY_AUTH_TOKEN: '${{ secrets.NETLIFY_AUTH_TOKEN }}' },
         },
       ],

@@ -1,6 +1,6 @@
 /// <reference types="vite/client" />
 
-import { createEffect, createMemo, createSignal, type JSX, onMount } from 'solid-js'
+import { createEffect, createMemo, createSignal, type JSX, onMount, Show } from 'solid-js'
 import { VersionBadge } from './components/VersionBadge.tsx'
 import { ChatHeader, MessageInput, MessagesContainer, UserSidebar } from './components.tsx'
 import { useChat } from './hooks.ts'
@@ -144,42 +144,47 @@ const UserNameWrapper = (props: { children: JSX.Element }) => {
       }),
   )
 
-  return uiState()?.userContext?.hasJoined ? (
-    props.children
-  ) : (
-    <div class="min-h-screen bg-gray-900 flex items-center justify-center p-4 transition-colors">
-      <div class="bg-gray-800 rounded-lg shadow-lg p-6 lg:p-8 w-full max-w-md lg:max-w-lg">
-        <h1 class="text-2xl lg:text-3xl font-bold text-gray-100 mb-2 lg:mb-4">💬 LiveChat</h1>
-        <p class="text-gray-400 mb-6 lg:mb-8 lg:text-lg">Enter your username to join the chat:</p>
-        <div class="space-y-4">
-          <input
-            data-testid="username"
-            type="text"
-            value={uiState()?.userContext?.username || ''}
-            onInput={handleUsernameInput()}
-            placeholder="Your username..."
-            class="w-full px-4 py-2 lg:px-5 lg:py-3 border border-gray-600 bg-gray-700 text-gray-100 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent text-base lg:text-lg"
-            onKeyDown={handleUsernameKeyDown()}
-          />
-          <div class="flex items-center gap-3">
-            <AvatarPicker value={avatarPickerValue()} onChange={handleAvatarChange()} />
+  return (
+    <Show
+      when={uiState()?.userContext?.hasJoined}
+      fallback={
+        <div class="min-h-screen bg-gray-900 flex items-center justify-center p-4 transition-colors">
+          <div class="bg-gray-800 rounded-lg shadow-lg p-6 lg:p-8 w-full max-w-md lg:max-w-lg">
+            <h1 class="text-2xl lg:text-3xl font-bold text-gray-100 mb-2 lg:mb-4">💬 LiveChat</h1>
+            <p class="text-gray-400 mb-6 lg:mb-8 lg:text-lg">Enter your username to join the chat:</p>
+            <div class="space-y-4">
+              <input
+                data-testid="username"
+                type="text"
+                value={uiState()?.userContext?.username || ''}
+                onInput={handleUsernameInput()}
+                placeholder="Your username..."
+                class="w-full px-4 py-2 lg:px-5 lg:py-3 border border-gray-600 bg-gray-700 text-gray-100 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent text-base lg:text-lg"
+                onKeyDown={handleUsernameKeyDown()}
+              />
+              <div class="flex items-center gap-3">
+                <AvatarPicker value={avatarPickerValue()} onChange={handleAvatarChange()} />
+              </div>
+              <button
+                type="button"
+                data-testid="join-chat"
+                onClick={joinChat()}
+                disabled={!uiState()?.userContext?.username}
+                class={`w-full py-2 px-4 lg:py-3 lg:px-5 rounded-lg font-medium transition-colors text-base lg:text-lg ${
+                  uiState()?.userContext?.username
+                    ? 'bg-blue-500 hover:bg-blue-600 text-white cursor-pointer'
+                    : 'bg-gray-300 text-gray-500 cursor-not-allowed'
+                }`}
+              >
+                Join Chat
+              </button>
+            </div>
           </div>
-          <button
-            type="button"
-            data-testid="join-chat"
-            onClick={joinChat()}
-            disabled={!uiState()?.userContext?.username}
-            class={`w-full py-2 px-4 lg:py-3 lg:px-5 rounded-lg font-medium transition-colors text-base lg:text-lg ${
-              uiState()?.userContext?.username
-                ? 'bg-blue-500 hover:bg-blue-600 text-white cursor-pointer'
-                : 'bg-gray-300 text-gray-500 cursor-not-allowed'
-            }`}
-          >
-            Join Chat
-          </button>
         </div>
-      </div>
-    </div>
+      }
+    >
+      {props.children}
+    </Show>
   )
 }
 

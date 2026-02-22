@@ -436,7 +436,7 @@ export class AccessHandlePoolVFS extends FacadeVFS {
         Stream.runForEach(({ opfsFileName, accessHandle, path }) =>
           Effect.gen(this, function* () {
             this.#mapAccessHandleToName.set(accessHandle, opfsFileName)
-            if (path !== undefined) {
+            if (path !== '') {
               this.#mapPathToAccessHandle.set(path, accessHandle)
             } else {
               this.#availableAccessHandles.add(accessHandle)
