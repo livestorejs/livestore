@@ -53,12 +53,13 @@ jobs:
         shell: bash
       - name: Validate Nix store
         run: |
-          if devenv version > /dev/null 2>&1; then
+          if devenv shell -- true > /dev/null 2>&1; then
             echo "Nix store OK"
           else
-            echo "::warning::Nix store validation failed, running repair..."
-            nix-store --verify --repair 2>&1 | tail -20
-            devenv version
+            echo "::warning::Nix store validation failed, repairing..."
+            nix-store --verify --check-contents --repair 2>&1 | tail -20
+            rm -rf ~/.cache/nix/eval-cache-*
+            devenv shell -- true
           fi
         shell: bash
       - run: 'devenv tasks run lint:full:with-megarepo-check --mode before'
@@ -94,12 +95,13 @@ jobs:
         shell: bash
       - name: Validate Nix store
         run: |
-          if devenv version > /dev/null 2>&1; then
+          if devenv shell -- true > /dev/null 2>&1; then
             echo "Nix store OK"
           else
-            echo "::warning::Nix store validation failed, running repair..."
-            nix-store --verify --repair 2>&1 | tail -20
-            devenv version
+            echo "::warning::Nix store validation failed, repairing..."
+            nix-store --verify --check-contents --repair 2>&1 | tail -20
+            rm -rf ~/.cache/nix/eval-cache-*
+            devenv shell -- true
           fi
         shell: bash
       - run: 'devenv tasks run ts:build --mode before'
@@ -135,12 +137,13 @@ jobs:
         shell: bash
       - name: Validate Nix store
         run: |
-          if devenv version > /dev/null 2>&1; then
+          if devenv shell -- true > /dev/null 2>&1; then
             echo "Nix store OK"
           else
-            echo "::warning::Nix store validation failed, running repair..."
-            nix-store --verify --repair 2>&1 | tail -20
-            devenv version
+            echo "::warning::Nix store validation failed, repairing..."
+            nix-store --verify --check-contents --repair 2>&1 | tail -20
+            rm -rf ~/.cache/nix/eval-cache-*
+            devenv shell -- true
           fi
         shell: bash
       - run: 'devenv tasks run test:unit --mode before'
@@ -176,12 +179,13 @@ jobs:
         shell: bash
       - name: Validate Nix store
         run: |
-          if devenv version > /dev/null 2>&1; then
+          if devenv shell -- true > /dev/null 2>&1; then
             echo "Nix store OK"
           else
-            echo "::warning::Nix store validation failed, running repair..."
-            nix-store --verify --repair 2>&1 | tail -20
-            devenv version
+            echo "::warning::Nix store validation failed, repairing..."
+            nix-store --verify --check-contents --repair 2>&1 | tail -20
+            rm -rf ~/.cache/nix/eval-cache-*
+            devenv shell -- true
           fi
         shell: bash
       - name: Set OTEL_EXPORTER_OTLP_HEADERS environment variable
@@ -262,12 +266,13 @@ jobs:
         shell: bash
       - name: Validate Nix store
         run: |
-          if devenv version > /dev/null 2>&1; then
+          if devenv shell -- true > /dev/null 2>&1; then
             echo "Nix store OK"
           else
-            echo "::warning::Nix store validation failed, running repair..."
-            nix-store --verify --repair 2>&1 | tail -20
-            devenv version
+            echo "::warning::Nix store validation failed, repairing..."
+            nix-store --verify --check-contents --repair 2>&1 | tail -20
+            rm -rf ~/.cache/nix/eval-cache-*
+            devenv shell -- true
           fi
         shell: bash
       - name: Set OTEL_EXPORTER_OTLP_HEADERS environment variable
@@ -333,12 +338,13 @@ jobs:
         shell: bash
       - name: Validate Nix store
         run: |
-          if devenv version > /dev/null 2>&1; then
+          if devenv shell -- true > /dev/null 2>&1; then
             echo "Nix store OK"
           else
-            echo "::warning::Nix store validation failed, running repair..."
-            nix-store --verify --repair 2>&1 | tail -20
-            devenv version
+            echo "::warning::Nix store validation failed, repairing..."
+            nix-store --verify --check-contents --repair 2>&1 | tail -20
+            rm -rf ~/.cache/nix/eval-cache-*
+            devenv shell -- true
           fi
         shell: bash
       - name: Set OTEL_EXPORTER_OTLP_HEADERS environment variable
@@ -402,12 +408,13 @@ jobs:
         shell: bash
       - name: Validate Nix store
         run: |
-          if devenv version > /dev/null 2>&1; then
+          if devenv shell -- true > /dev/null 2>&1; then
             echo "Nix store OK"
           else
-            echo "::warning::Nix store validation failed, running repair..."
-            nix-store --verify --repair 2>&1 | tail -20
-            devenv version
+            echo "::warning::Nix store validation failed, repairing..."
+            nix-store --verify --check-contents --repair 2>&1 | tail -20
+            rm -rf ~/.cache/nix/eval-cache-*
+            devenv shell -- true
           fi
         shell: bash
       - name: Set OTEL_EXPORTER_OTLP_HEADERS environment variable
@@ -458,12 +465,13 @@ jobs:
         shell: bash
       - name: Validate Nix store
         run: |
-          if devenv version > /dev/null 2>&1; then
+          if devenv shell -- true > /dev/null 2>&1; then
             echo "Nix store OK"
           else
-            echo "::warning::Nix store validation failed, running repair..."
-            nix-store --verify --repair 2>&1 | tail -20
-            devenv version
+            echo "::warning::Nix store validation failed, repairing..."
+            nix-store --verify --check-contents --repair 2>&1 | tail -20
+            rm -rf ~/.cache/nix/eval-cache-*
+            devenv shell -- true
           fi
         shell: bash
       - name: Set OTEL_EXPORTER_OTLP_HEADERS environment variable
@@ -518,12 +526,13 @@ jobs:
         shell: bash
       - name: Validate Nix store
         run: |
-          if devenv version > /dev/null 2>&1; then
+          if devenv shell -- true > /dev/null 2>&1; then
             echo "Nix store OK"
           else
-            echo "::warning::Nix store validation failed, running repair..."
-            nix-store --verify --repair 2>&1 | tail -20
-            devenv version
+            echo "::warning::Nix store validation failed, repairing..."
+            nix-store --verify --check-contents --repair 2>&1 | tail -20
+            rm -rf ~/.cache/nix/eval-cache-*
+            devenv shell -- true
           fi
         shell: bash
       - run: 'devenv tasks run release:snapshot:git-sha --mode before'
@@ -561,12 +570,13 @@ jobs:
         shell: bash
       - name: Validate Nix store
         run: |
-          if devenv version > /dev/null 2>&1; then
+          if devenv shell -- true > /dev/null 2>&1; then
             echo "Nix store OK"
           else
-            echo "::warning::Nix store validation failed, running repair..."
-            nix-store --verify --repair 2>&1 | tail -20
-            devenv version
+            echo "::warning::Nix store validation failed, repairing..."
+            nix-store --verify --check-contents --repair 2>&1 | tail -20
+            rm -rf ~/.cache/nix/eval-cache-*
+            devenv shell -- true
           fi
         shell: bash
       - name: Install examples dependencies
@@ -613,12 +623,13 @@ jobs:
         shell: bash
       - name: Validate Nix store
         run: |
-          if devenv version > /dev/null 2>&1; then
+          if devenv shell -- true > /dev/null 2>&1; then
             echo "Nix store OK"
           else
-            echo "::warning::Nix store validation failed, running repair..."
-            nix-store --verify --repair 2>&1 | tail -20
-            devenv version
+            echo "::warning::Nix store validation failed, repairing..."
+            nix-store --verify --check-contents --repair 2>&1 | tail -20
+            rm -rf ~/.cache/nix/eval-cache-*
+            devenv shell -- true
           fi
         shell: bash
       - name: Build docs snippets
