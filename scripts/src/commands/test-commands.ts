@@ -202,9 +202,10 @@ export const testUnitCommand = Cli.Command.make(
           Effect.forEach(
             allPackagesWithTests,
             (target) => {
-              const args = target.config !== undefined
-                ? ['vitest', 'run', '--config', target.config]
-                : ['vitest', 'run', `${workspaceRoot}/${target.path}`]
+              const args =
+                target.config !== undefined
+                  ? ['vitest', 'run', '--config', target.config]
+                  : ['vitest', 'run', `${workspaceRoot}/${target.path}`]
               return cmd(args).pipe(Effect.provide(LivestoreWorkspace.toCwd()))
             },
             { concurrency: 'unbounded' },
@@ -217,9 +218,10 @@ export const testUnitCommand = Cli.Command.make(
       yield* Effect.forEach(
         [...sequentialTargets, ...allPackagesWithTests],
         (target) => {
-          const args = target.config !== undefined
-            ? ['vitest', 'run', '--config', target.config]
-            : ['vitest', 'run', `${workspaceRoot}/${target.path}`]
+          const args =
+            target.config !== undefined
+              ? ['vitest', 'run', '--config', target.config]
+              : ['vitest', 'run', `${workspaceRoot}/${target.path}`]
           const label = target.config ?? target.path
           // TODO use this https://x.com/luxdav/status/1942532247833436656
           return cmdText(args.join(' '), { stderr: 'pipe' }).pipe(

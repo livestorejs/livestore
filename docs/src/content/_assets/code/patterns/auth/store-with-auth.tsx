@@ -1,8 +1,9 @@
+import { Suspense, useState } from 'react'
+import { unstable_batchedUpdates as batchUpdates } from 'react-dom'
+
 import { makeInMemoryAdapter } from '@livestore/adapter-web'
 import { type LiveStoreSchema, StoreRegistry } from '@livestore/livestore'
 import { StoreRegistryProvider, useStore } from '@livestore/react'
-import { Suspense, useState } from 'react'
-import { unstable_batchedUpdates as batchUpdates } from 'react-dom'
 
 const schema = {} as LiveStoreSchema
 const storeId = 'demo-store'

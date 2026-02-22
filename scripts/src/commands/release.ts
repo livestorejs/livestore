@@ -1,7 +1,7 @@
 import { shouldNeverHappen } from '@livestore/utils'
+import { CurrentWorkingDirectory, cmd, cmdText } from '@livestore/utils-dev/node'
 import { Effect, FileSystem, Schedule, Schema } from '@livestore/utils/effect'
 import { Cli } from '@livestore/utils/node'
-import { CurrentWorkingDirectory, cmd, cmdText } from '@livestore/utils-dev/node'
 
 import { appendGithubSummaryMarkdown, formatMarkdownTable } from '../shared/misc.ts'
 

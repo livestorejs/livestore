@@ -1,9 +1,10 @@
-import { makeInMemoryAdapter } from '@livestore/adapter-web'
-import { StoreRegistry } from '@livestore/livestore'
-import { StoreRegistryProvider, useStore } from '@livestore/react'
 import type { FC } from 'react'
 import { Suspense, useState } from 'react'
 import { unstable_batchedUpdates as batchUpdates } from 'react-dom'
+
+import { makeInMemoryAdapter } from '@livestore/adapter-web'
+import { StoreRegistry } from '@livestore/livestore'
+import { StoreRegistryProvider, useStore } from '@livestore/react'
 
 import { tracer } from './otel.ts'
 import { schema } from './schema.ts'
