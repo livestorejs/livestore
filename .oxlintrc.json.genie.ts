@@ -141,7 +141,7 @@ const phase2Rules = {
   'import/export': 'off',
 } as const
 
-const livestoreOxlintRules = {
+export const livestoreOxlintRules = {
   ...activeRules,
   ...permanentlyDisabledRules,
   ...phase2Rules,
@@ -151,7 +151,7 @@ const livestoreOxlintRules = {
  * LiveStore-specific overrides (without overeng rules).
  * Based on effect-utils overrides but excluding overeng/* rules.
  */
-const livestoreOxlintOverrides = [
+export const livestoreOxlintOverrides = [
   // CommonJS files legitimately use require/module.exports
   {
     files: ['**/*.cjs', '**/*.cts', '**/*.js'],
@@ -228,10 +228,18 @@ const livestoreOxlintOverrides = [
   },
 ] as const
 
+export const livestoreOxlintPlugins = [...baseOxlintPlugins, 'react', 'react-perf'] as const
+export const livestoreOxlintCategories = baseOxlintCategories
+export const livestoreOxlintIgnorePatterns = [
+  ...baseOxlintIgnorePatterns,
+  'tests/integration/node_modules/**',
+  'docs/src/plugins/**',
+] as const
+
 export default oxlintConfig({
-  plugins: [...baseOxlintPlugins, 'react', 'react-perf'],
-  categories: baseOxlintCategories,
+  plugins: livestoreOxlintPlugins,
+  categories: livestoreOxlintCategories,
   rules: livestoreOxlintRules,
   overrides: livestoreOxlintOverrides,
-  ignorePatterns: [...baseOxlintIgnorePatterns, 'tests/integration/node_modules/**', 'docs/src/plugins/**'],
+  ignorePatterns: livestoreOxlintIgnorePatterns,
 })
