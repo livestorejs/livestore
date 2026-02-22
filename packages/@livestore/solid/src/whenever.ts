@@ -24,7 +24,7 @@ const check = <TValue, TResult, TFallbackResult = undefined>(
   fallback?: () => TFallbackResult,
 ): TResult | TFallbackResult | undefined => {
   const value = resolve(accessor)
-  return value !== undefined && value !== null && value !== false && value !== 0 && value !== ''
+  return Boolean(value) === true
     ? callback(value as NonNullable<TValue>)
     : fallback !== undefined
       ? fallback()
