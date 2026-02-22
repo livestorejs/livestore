@@ -249,8 +249,8 @@ in
     pass_filenames = false;
   };
 
-  # Wire beads:daemon:ensure directly to shell entry
-  tasks."devenv:enterShell".after = lib.mkAfter [ "beads:daemon:ensure" ];
+  # Wire beads:ensure directly to shell entry
+  tasks."devenv:enterShell".after = lib.mkAfter [ "beads:ensure" ];
   enterShell = ''
     sp="$(git rev-parse --show-superproject-working-tree 2>/dev/null)";
     export WORKSPACE_ROOT="$PWD"
