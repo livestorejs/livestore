@@ -90,7 +90,7 @@ export const buildDiagrams = (
       const paths = resolveCachePaths(projectRoot)
       const fs = yield* FileSystem.FileSystem
 
-      if (verbose) {
+      if (verbose === true) {
         yield* Effect.log('Building tldraw diagrams...')
         yield* Effect.log(`  Diagrams root: ${paths.diagramsRoot}`)
         yield* Effect.log(`  Cache root: ${paths.cacheRoot}`)
@@ -100,7 +100,7 @@ export const buildDiagrams = (
       const diagramFiles = yield* discoverDiagramFiles(paths.diagramsRoot)
 
       if (diagramFiles.length === 0) {
-        if (verbose) {
+        if (verbose === true) {
           yield* Effect.log('  No .tldr files found')
         }
         /* Still save an empty manifest */
@@ -108,7 +108,7 @@ export const buildDiagrams = (
         return
       }
 
-      if (verbose) {
+      if (verbose === true) {
         yield* Effect.log(`  Found ${diagramFiles.length} diagram(s)`)
       }
 
@@ -134,14 +134,14 @@ export const buildDiagrams = (
           const existingEntry = getCacheEntry(manifest, entryFile)
 
           if (isCacheValid(existingEntry, sourceHash) === true) {
-            if (verbose) {
+            if (verbose === true) {
               yield* Effect.log(`  ✓ ${entryFile} (cached)`)
             }
             skippedCount++
             continue
           }
 
-          if (verbose) {
+          if (verbose === true) {
             yield* Effect.log(`  ⟳ ${entryFile} (rendering...)`)
           }
 
@@ -172,7 +172,7 @@ export const buildDiagrams = (
           /* Update manifest */
           updatedManifest = updateManifestEntry(updatedManifest, entry)
 
-          if (verbose) {
+          if (verbose === true) {
             yield* Effect.log(`    ✓ ${entryFile}`)
           }
           renderedCount++
@@ -181,7 +181,7 @@ export const buildDiagrams = (
         /* Save updated manifest */
         yield* saveManifest(paths.manifestPath, updatedManifest)
 
-        if (verbose) {
+        if (verbose === true) {
           yield* Effect.log(`\n  Summary:`)
           yield* Effect.log(`    Rendered: ${renderedCount}`)
           yield* Effect.log(`    Cached: ${skippedCount}`)
@@ -247,7 +247,7 @@ const summarizeWatchEvent = (paths: TldrawCachePaths, event: FileSystem.WatchEve
   const absolutePath = path.resolve(path.isAbsolute(rawPath) === true ? rawPath : path.join(rootAbsolute, rawPath))
 
   /* Ignore events inside cache directory */
-  if (isWithinDirectory(absolutePath, paths.cacheRoot)) {
+  if (isWithinDirectory(absolutePath, paths.cacheRoot) === true) {
     return null
   }
 
@@ -333,7 +333,7 @@ const watchDiagramsInternal = (
       })
 
     /* Initial build */
-    if (watchOptions.initialBuild) {
+    if (watchOptions.initialBuild === true) {
       yield* runRebuild('initial', null)
     }
 

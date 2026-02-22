@@ -7,7 +7,10 @@ import { userTables } from './user.schema.ts'
 import { useCurrentUserStore } from './user.store.ts'
 import { Workspace } from './Workspace.tsx'
 
-export function WorkspaceList() {
+const workspaceListErrorFallback = <div>Error loading workspaces</div>
+const workspaceListLoadingFallback = <div>Loading workspaces...</div>
+
+export const WorkspaceList = () => {
   const userStore = useCurrentUserStore()
 
   // Query all workspaces this user belongs to
@@ -19,8 +22,8 @@ export function WorkspaceList() {
       {workspaces.length === 0 ? (
         <p>No workspaces yet</p>
       ) : (
-        <ErrorBoundary fallback={<div>Error loading workspaces</div>}>
-          <Suspense fallback={<div>Loading workspaces...</div>}>
+        <ErrorBoundary fallback={workspaceListErrorFallback}>
+          <Suspense fallback={workspaceListLoadingFallback}>
             <ul>
               {workspaces.map((w) => (
                 <li key={w.workspaceId}>

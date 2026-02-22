@@ -17,7 +17,7 @@ export const isDefaultThunk = (value: unknown): value is ColumnDefaultThunk<unkn
 export type ColumnDefaultValue<T> = T | null | ColumnDefaultThunk<T | null> | SqlDefaultValue
 
 export const resolveColumnDefault = <T>(value: ColumnDefaultValue<T>): T | null | SqlDefaultValue =>
-  isDefaultThunk(value) === true ? (value)() : value
+  isDefaultThunk(value) === true ? value() : value
 
 export type ColumnDefinition<TEncoded, TDecoded> = {
   readonly columnType: FieldColumnType
@@ -104,7 +104,7 @@ const makeColDef =
   (def?: ColumnDefinitionInput) => {
     const nullable = def?.nullable ?? false
     const schemaWithoutNull: Schema.Schema<any> = def?.schema ?? defaultSchemaForColumnType(columnType)
-    const schema =  nullable ? Schema.NullOr(schemaWithoutNull) : schemaWithoutNull
+    const schema = nullable === true ? Schema.NullOr(schemaWithoutNull) : schemaWithoutNull
     const default_ = def?.default === undefined || def.default === NoDefault ? Option.none() : Option.some(def.default)
 
     // oxlint-disable-next-line typescript-eslint(no-unsafe-type-assertion) -- column factory return type uses complex conditional generics; consumer type safety enforced by ColDefFn signature
@@ -205,7 +205,7 @@ const makeSpecializedColDef: MakeSpecializedColDefFn = (columnType, opts) => (de
   const nullable = def?.nullable ?? false
   // oxlint-disable-next-line typescript-eslint(no-unsafe-type-assertion) -- schema type variance; custom schema compatibility checked at call site
   const schemaWithoutNull = opts._tag === 'baseSchemaFn' ? opts.baseSchemaFn(def?.schema as any) : opts.baseSchema
-  const schema =  nullable ? Schema.NullOr(schemaWithoutNull) : schemaWithoutNull
+  const schema = nullable === true ? Schema.NullOr(schemaWithoutNull) : schemaWithoutNull
   const default_ = def?.default === undefined || def.default === NoDefault ? Option.none() : Option.some(def.default)
 
   // oxlint-disable-next-line typescript-eslint(no-unsafe-type-assertion) -- specialized column factory return type uses complex conditional generics; consumer type safety enforced by SpecializedColDefFn signature

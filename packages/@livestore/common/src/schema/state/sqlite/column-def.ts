@@ -27,12 +27,13 @@ export const getColumnDefForSchema = (
   const columnType = SchemaAST.getAnnotation<SqliteDsl.FieldColumnType>(ColumnType)(ast)
 
   // Check if schema has null (e.g., Schema.NullOr) or undefined or if it's forced nullable (optional field)
-  const isNullable = forceNullable || hasNull(ast) || hasUndefined(ast)
+  const isNullable = forceNullable === true || hasNull(ast) === true || hasUndefined(ast) === true
 
   // Get base column definition with nullable flag
-  const baseColumn = Option.isSome(columnType) === true
-    ? getColumnForType(columnType.value, isNullable)
-    : getColumnForSchema(schema, isNullable)
+  const baseColumn =
+    Option.isSome(columnType) === true
+      ? getColumnForType(columnType.value, isNullable)
+      : getColumnForSchema(schema, isNullable)
 
   // Apply annotations
   const primaryKey = getAnnotation<boolean>(PrimaryKeyId).pipe(Option.getOrElse(() => false))
@@ -41,9 +42,9 @@ export const getColumnDefForSchema = (
 
   return {
     ...baseColumn,
-    ...(primaryKey && { primaryKey: true }),
-    ...(autoIncrement && { autoIncrement: true }),
-    ...(Option.isSome(defaultValue) && { default: Option.some(defaultValue.value) }),
+    ...(primaryKey === true ? { primaryKey: true } : {}),
+    ...(autoIncrement === true ? { autoIncrement: true } : {}),
+    ...(Option.isSome(defaultValue) === true ? { default: Option.some(defaultValue.value) } : {}),
   }
 }
 
@@ -82,7 +83,7 @@ export const schemaFieldsToColumns = (
     }
 
     // Get column definition - pass nullable flag for optional fields
-    const columnDef = getColumnDefForSchema(fieldSchema, prop, prop.isOptional)
+    const columnDef = getColumnDefForSchema(fieldSchema, prop, prop.isOptional === true)
 
     // Check for primary key and unique annotations
     const hasPrimaryKey = hasPropertyAnnotation<boolean>(prop, PrimaryKeyId).pipe(Option.getOrElse(() => false))
@@ -91,12 +92,12 @@ export const schemaFieldsToColumns = (
     // Build final column
     columns[prop.name] = {
       ...columnDef,
-      ...(hasPrimaryKey && { primaryKey: true }),
+      ...(hasPrimaryKey === true ? { primaryKey: true } : {}),
     }
 
     // Validate primary key + nullable
     const column = columns[prop.name]
-    if (column?.primaryKey && column.nullable) {
+    if (column?.primaryKey === true && column.nullable === true) {
       throw new Error('Primary key columns cannot be nullable')
     }
 
@@ -235,7 +236,7 @@ const getLiteralColumnDefinition = (
       const useIntegerColumn =
         literalValues.length > 1 && literalValues.every((value) => typeof value === 'number' && Number.isInteger(value))
 
-      return useIntegerColumn ? SqliteDsl.integer({ schema, nullable }) : SqliteDsl.real({ schema, nullable })
+      return useIntegerColumn === true ? SqliteDsl.integer({ schema, nullable }) : SqliteDsl.real({ schema, nullable })
     }
     case 'boolean':
       return SqliteDsl.boolean({ nullable })
@@ -249,7 +250,11 @@ const getLiteralColumnDefinition = (
 const extractLiteralValues = (ast: SchemaAST.AST): ReadonlyArray<SchemaAST.LiteralValue> | null => {
   if (SchemaAST.isLiteral(ast) === true) return [ast.literal]
 
-  if (SchemaAST.isUnion(ast) === true && ast.types.length > 0 && ast.types.every((type) => SchemaAST.isLiteral(type)) === true) {
+  if (
+    SchemaAST.isUnion(ast) === true &&
+    ast.types.length > 0 &&
+    ast.types.every((type) => SchemaAST.isLiteral(type)) === true
+  ) {
     return ast.types.map((type) => (type as SchemaAST.Literal).literal)
   }
 

@@ -49,9 +49,10 @@ export const startDevtoolsServer = ({
   Effect.gen(function* () {
     const viteMiddleware = yield* makeViteMiddleware({
       mode: { _tag: 'node', url: `http://${host}:${port}` },
-      schemaPath: isReadonlyArray(schemaPath) === true
-        ? schemaPath.map((schemaPath) => path.resolve(process.cwd(), schemaPath))
-        : path.resolve(process.cwd(), schemaPath),
+      schemaPath:
+        isReadonlyArray(schemaPath) === true
+          ? schemaPath.map((schemaPath) => path.resolve(process.cwd(), schemaPath))
+          : path.resolve(process.cwd(), schemaPath),
       viteConfig: (viteConfig) => {
         if (LS_DEV === true) {
           viteConfig.server ??= {}
@@ -106,7 +107,7 @@ export const startDevtoolsServer = ({
       } else {
         if (req.url === '/' || req.url === '') {
           return HttpServerResponse.redirect('/_livestore/node')
-        } else if (shouldRouteToVite(req.url)) {
+        } else if (shouldRouteToVite(req.url) === true) {
           // Here we're delegating to the Vite middleware
 
           // TODO replace this once @effect/platform-node supports Node HTTP middlewares
@@ -124,9 +125,10 @@ export const startDevtoolsServer = ({
       return HttpServerResponse.text('Not found')
     }).pipe(Effect.tapCauseLogPretty, Effect.interruptible)
 
-    const sessionSuffix = clientSessionInfo !== undefined
-      ? `/${clientSessionInfo.storeId}/${clientSessionInfo.clientId}/${clientSessionInfo.sessionId}/${clientSessionInfo.schemaAlias}`
-      : '?autoconnect'
+    const sessionSuffix =
+      clientSessionInfo !== undefined
+        ? `/${clientSessionInfo.storeId}/${clientSessionInfo.clientId}/${clientSessionInfo.sessionId}/${clientSessionInfo.schemaAlias}`
+        : '?autoconnect'
 
     // Use `localhost` instead of `0.0.0.0` as it doesn't have the `navigator.locks` web adapter limitation (https://share.cleanshot.com/nHBnmk6S)
     const maybeLocalhost = host === '0.0.0.0' ? 'localhost' : host

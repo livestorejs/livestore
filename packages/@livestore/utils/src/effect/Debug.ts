@@ -151,7 +151,7 @@ type GlobalWithFiberCurrent = {
 }
 
 const patchedTracer = new WeakSet<Tracer.Tracer>()
-function ensureTracerPatched(currentTracer: Tracer.Tracer) {
+const ensureTracerPatched = (currentTracer: Tracer.Tracer) => {
   if (patchedTracer.has(currentTracer) === true) {
     return
   }
@@ -358,7 +358,7 @@ const filterGraphKeepAncestors = <N, E>(
   })
 }
 
-function renderSpanNode(graph: Graph.Graph<GraphNodeInfo, void>, nodeId: number): string[] {
+const renderSpanNode = (graph: Graph.Graph<GraphNodeInfo, void>, nodeId: number): string[] => {
   const node = Graph.getNode(graph, nodeId)
   if (Option.isNone(node) === true) return []
   const info = node.value
@@ -434,12 +434,13 @@ export const logDebug = (options: LogDebugOptions = {}) => {
   // spans
   for (const [traceId, info] of graphByTraceId) {
     const graph = Graph.endMutation(info.graph)
-    const filteredGraph = options.regex !== undefined
-      ? filterGraphKeepAncestors(graph, (nodeData, _nodeId) => {
-          const name = getSpanName(nodeData.span)
-          return options.regex!.test(name)
-        })
-      : graph
+    const filteredGraph =
+      options.regex !== undefined
+        ? filterGraphKeepAncestors(graph, (nodeData, _nodeId) => {
+            const name = getSpanName(nodeData.span)
+            return options.regex!.test(name)
+          })
+        : graph
     const filteredRootNodes = Array.from(Graph.indices(Graph.externals(filteredGraph, { direction: 'incoming' })))
 
     lines = [...lines, `Spans Trace ${traceId}:`, ...renderTree(filteredGraph, filteredRootNodes, renderSpanNode)]
@@ -454,8 +455,10 @@ export const logDebug = (options: LogDebugOptions = {}) => {
       .map((fiber) => `#${fiber.id().id}`)
       .join(', ')
     const usedByFibers = fiberIds.length > 0 ? ` [used by: ${fiberIds}]` : ''
-    const allocationFiber = info.allocationFiber !== undefined ? ` [allocated in fiber #${info.allocationFiber.id().id}]` : ''
-    const allocationSpan = info.allocationSpan !== undefined ? ` [allocated in span: ${getSpanName(info.allocationSpan)}]` : ''
+    const allocationFiber =
+      info.allocationFiber !== undefined ? ` [allocated in fiber #${info.allocationFiber.id().id}]` : ''
+    const allocationSpan =
+      info.allocationSpan !== undefined ? ` [allocated in span: ${getSpanName(info.allocationSpan)}]` : ''
     lines = [...lines, `- #${info.id}${usedByFibers}${allocationFiber}${allocationSpan}`]
   }
   if (knownScopes.size === 0) {

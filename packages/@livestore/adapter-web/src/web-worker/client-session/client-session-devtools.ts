@@ -18,22 +18,22 @@ export const logDevtoolsUrl = Effect.fn('@livestore/adapter-web:client-session:d
   clientId: string
   sessionId: string
 }) {
-  if (isDevEnv()) {
+  if (isDevEnv() === true) {
     const devtoolsPath = globalThis.LIVESTORE_DEVTOOLS_PATH ?? `/_livestore`
     const devtoolsBaseUrl = `${location.origin}${devtoolsPath}`
 
     // Check whether devtools are available and then log the URL
     const response = yield* Effect.promise(() => fetch(devtoolsBaseUrl))
-    if (response.ok) {
+    if (response.ok === true) {
       const text = yield* Effect.promise(() => response.text())
-      if (text.includes('<meta name="livestore-devtools" content="true" />')) {
+      if (text.includes('<meta name="livestore-devtools" content="true" />') === true) {
         const url = `${devtoolsBaseUrl}/web/${storeId}/${clientId}/${sessionId}/${schema.devtools.alias}`
         yield* Effect.log(`[@livestore/adapter-web] Devtools ready on ${url}`)
       }
 
       // Check for DevTools Chrome extension presence via iframe container the extension injects
       const hasExt = document.querySelector('[id^="livestore-devtools-iframe-"]') !== null
-      if (!hasExt) {
+      if (hasExt === false) {
         const g = globalThis as { __livestoreDevtoolsChromeNoticeShown?: boolean }
         if (g.__livestoreDevtoolsChromeNoticeShown !== true) {
           g.__livestoreDevtoolsChromeNoticeShown = true

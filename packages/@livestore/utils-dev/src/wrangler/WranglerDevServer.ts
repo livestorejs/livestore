@@ -1,11 +1,10 @@
 import * as path from 'node:path'
 
 import * as Toml from '@iarna/toml'
-import * as wrangler from 'wrangler'
-
 import { IS_CI } from '@livestore/utils'
 import { Cause, Duration, Effect, FileSystem, HttpClient, Schedule, Schema } from '@livestore/utils/effect'
 import { getFreePort } from '@livestore/utils/node'
+import * as wrangler from 'wrangler'
 
 /**
  * Error type for WranglerDevServer operations
@@ -95,14 +94,14 @@ export class WranglerDevServerService extends Effect.Service<WranglerDevServerSe
       const resolvedMainPath = yield* Effect.try(() => path.resolve(args.cwd, parsedConfig.main))
 
       const readiness = args.readiness ?? {}
-      const startupTimeout = readiness.startupTimeout ?? Duration.seconds(IS_CI ? 30 : 10)
+      const startupTimeout = readiness.startupTimeout ?? Duration.seconds(IS_CI === true ? 30 : 10)
       const devServer = yield* Effect.promise(() =>
         wrangler.unstable_dev(resolvedMainPath, {
           config: configPath,
           port: preferredPort,
           inspectorPort: args.inspectorPort ?? 0,
           persistTo: path.join(args.cwd, '.wrangler/state'),
-          logLevel: showLogs ? 'debug' : 'none',
+          logLevel: showLogs === true ? 'debug' : 'none',
           experimental: {
             disableExperimentalWarning: true,
           },
@@ -152,12 +151,12 @@ export class WranglerDevServerService extends Effect.Service<WranglerDevServerSe
       const url = `http://${actualHost}:${actualPort}`
 
       // Use longer timeout in CI environments to account for slower HTTP readiness
-      const defaultConnectivityTimeout = Duration.seconds(IS_CI ? 30 : 5)
+      const defaultConnectivityTimeout = Duration.seconds(IS_CI === true ? 30 : 5)
       const connectivityTimeout = readiness.connectTimeout ?? defaultConnectivityTimeout
 
       yield* verifyHttpConnectivity({ url, showLogs, connectTimeout: connectivityTimeout })
 
-      if (showLogs) {
+      if (showLogs === true) {
         yield* Effect.logDebug(
           `Wrangler dev server ready and accepting connections on port ${actualPort} (preferred: ${preferredPort})`,
         )
@@ -194,7 +193,7 @@ const verifyHttpConnectivity = ({
   Effect.gen(function* () {
     const client = yield* HttpClient.HttpClient
 
-    if (showLogs) {
+    if (showLogs === true) {
       yield* Effect.logDebug(`Verifying HTTP connectivity to ${url}`)
     }
 
@@ -215,7 +214,7 @@ const verifyHttpConnectivity = ({
             }),
           ),
       ),
-      Effect.tap(() => (showLogs ? Effect.logDebug(`HTTP connectivity verified for ${url}`) : Effect.void)),
+      Effect.tap(() => (showLogs === true ? Effect.logDebug(`HTTP connectivity verified for ${url}`) : Effect.void)),
       Effect.asVoid,
       Effect.withSpan('verifyHttpConnectivity'),
     )

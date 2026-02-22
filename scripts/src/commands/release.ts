@@ -125,7 +125,7 @@ export const releaseSnapshotCommand = Cli.Command.make(
     const skipConfirmation = yes || isCI
     if (skipConfirmation === false) {
       yield* Effect.log(
-        `About to publish ${snapshotPackages.length} package(s) as ${snapshotVersion}${dryRun ? ' (dry-run)' : ''}`,
+        `About to publish ${snapshotPackages.length} package(s) as ${snapshotVersion}${dryRun === true ? ' (dry-run)' : ''}`,
       )
       const confirmed = yield* Cli.Prompt.confirm({ message: 'Proceed with snapshot release?' })
       if (confirmed === false) {
