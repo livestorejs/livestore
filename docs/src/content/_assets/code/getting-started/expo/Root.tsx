@@ -1,3 +1,4 @@
+/* oxlint-disable react/style-prop-object */
 import { StoreRegistry } from '@livestore/livestore'
 import { StoreRegistryProvider } from '@livestore/react'
 import { StatusBar } from 'expo-status-bar'
