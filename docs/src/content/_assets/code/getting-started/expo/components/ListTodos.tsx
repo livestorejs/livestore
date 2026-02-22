@@ -1,21 +1,22 @@
 import { type FC, useCallback } from 'react'
+import type { TextStyle, ViewStyle } from 'react-native'
 import { Button, ScrollView, Text, View } from 'react-native'
 
 import { visibleTodos$ } from '../livestore/queries.ts'
 import { events, type tables } from '../livestore/schema.ts'
 import { useAppStore } from '../livestore/store.ts'
 
-const listContainerStyle = { flex: 1, gap: 16 }
-const listContentContainerStyle = { gap: 12 }
+const listContainerStyle = { flex: 1, gap: 16 } satisfies ViewStyle
+const listContentContainerStyle = { gap: 12 } satisfies ViewStyle
 const todoContainerStyle = {
   borderRadius: 12,
   borderColor: '#d4d4d8',
   borderWidth: 1,
   padding: 16,
   gap: 8,
-}
-const todoTitleStyle = { fontSize: 16, fontWeight: '600' }
-const todoActionRowStyle = { flexDirection: 'row', gap: 12 }
+} satisfies ViewStyle
+const todoTitleStyle = { fontSize: 16, fontWeight: '600' } satisfies TextStyle
+const todoActionRowStyle = { flexDirection: 'row', gap: 12 } satisfies ViewStyle
 
 export const ListTodos: FC = () => {
   const store = useAppStore()
