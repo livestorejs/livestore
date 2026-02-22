@@ -26,7 +26,9 @@ export const MainSection: React.FC = () => {
       if (todoId == null) return
 
       store.commit(
-        event.currentTarget.checked ? events.todoCompleted({ id: todoId }) : events.todoUncompleted({ id: todoId }),
+        event.currentTarget.checked === true
+          ? events.todoCompleted({ id: todoId })
+          : events.todoUncompleted({ id: todoId }),
       )
     },
     [store],
