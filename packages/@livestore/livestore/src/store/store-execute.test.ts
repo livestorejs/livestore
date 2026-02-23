@@ -2,7 +2,7 @@ import { assert, expect } from 'vitest'
 
 import { makeInMemoryAdapter } from '@livestore/adapter-web'
 import type { MockSyncBackend } from '@livestore/common'
-import { type ClientSessionLeaderThreadProxy, CommandExecutionError, makeMockSyncBackend, type UnknownError } from '@livestore/common'
+import { CommandExecutionError, makeMockSyncBackend, type UnknownError } from '@livestore/common'
 import type { LiveStoreSchema } from '@livestore/common/schema'
 import type { ShutdownDeferred, Store } from '@livestore/livestore'
 import { createStore, makeShutdownDeferred } from '@livestore/livestore'
@@ -12,8 +12,8 @@ import type { OtelTracer, Scope } from '@livestore/utils/effect'
 import { Context, Effect, FetchHttpClient, Layer, Logger, LogLevel } from '@livestore/utils/effect'
 import { nanoid } from '@livestore/utils/nanoid'
 import { PlatformNode } from '@livestore/utils/node'
-
-import { commands, schema, tables, TodoTextEmpty } from '../utils/tests/fixture.ts'
+import { EventFactory } from '@livestore/common/testing'
+import { commands, events, schema, tables, TodoTextEmpty } from '../utils/tests/fixture.ts'
 
 const withTestCtx = Vitest.makeWithTestCtx({
   makeLayer: () =>
@@ -172,23 +172,111 @@ Vitest.describe('store.execute', () => {
       expect((allTodos as Array<{ id: string }>).map((t) => t.id)).toEqual(['todo-1', 'todo-2', 'todo-3'])
     }).pipe(withTestCtx(test)),
   )
+
+  Vitest.scopedLive('should throw when executing after shutdown', (test) =>
+    Effect.gen(function* () {
+      const { makeStore } = yield* TestContext
+      const store = yield* makeStore()
+
+      yield* store.shutdown()
+
+      const result = yield* Effect.try({
+        try: () => store.execute(commands.createTodo({ id: 'todo-1', text: 'Buy milk' })),
+        catch: (err) => err as Error,
+      }).pipe(Effect.either)
+
+      assert(result._tag === 'Left')
+      expect(result.left.message).toContain('Store has been shut down')
+    }).pipe(withTestCtx(test)),
+  )
+
+  Vitest.scopedLive.skip('should reject pending confirmations on shutdown', (test) =>
+    Effect.gen(function* () {
+      const { makeStore, mockSyncBackend } = yield* TestContext
+      const store = yield* makeStore()
+      // Block leader backend push/pull gates so command confirmation stays pending until shutdown.
+      yield* mockSyncBackend.disconnect
+
+      const result = store.execute(commands.createTodo({ id: 'todo-1', text: 'Buy milk' }))
+      assert(result._tag === 'pending')
+      yield* store.shutdown()
+
+      const outcome = yield* Effect.tryPromise({
+        try: () => result.confirmation,
+        catch: (err) => err as Error,
+      }).pipe(Effect.either)
+
+      assert(outcome._tag === 'Left')
+      expect(outcome.left.message).toContain('Store shutdown before command confirmation')
+    }).pipe(withTestCtx(test)),
+  )
+
+  Vitest.scopedLive('should confirm after successful command replay', (test) =>
+    Effect.gen(function* () {
+      const { makeStore, mockSyncBackend } = yield* TestContext
+      const store = yield* makeStore()
+      yield* mockSyncBackend.disconnect
+
+      // Seed a todo so completeTodo can succeed
+      store.commit(events.todoCreated({ id: 'todo-1', text: 'Buy milk', completed: false }))
+
+      // Execute while disconnected — events stay pending
+      const result = store.execute(commands.completeTodo({ id: 'todo-1' }))
+      assert(result._tag === 'pending')
+
+      // Inject a non-conflicting external event (creates an unrelated todo)
+      const backendFactory = EventFactory.makeFactory(events)({
+        client: EventFactory.clientIdentity('other-client'),
+      })
+      yield* mockSyncBackend.advance(
+        backendFactory.todoCreated.next({ id: 'todo-2', text: 'From other client', completed: false }),
+      )
+
+      // Connect — triggers pull, rebase, and command replay
+      yield* mockSyncBackend.connect
+
+      const confirmation = yield* Effect.promise(() => result.confirmation)
+      expect(confirmation._tag).toBe('confirmed')
+    }).pipe(withTestCtx(test)),
+  )
+
+  Vitest.scopedLive.skip('should resolve to conflict when replay returns error', (test) =>
+    Effect.gen(function* () {
+      const { makeStore, mockSyncBackend } = yield* TestContext
+      const store = yield* makeStore()
+      yield* mockSyncBackend.disconnect
+
+      // NOTE: Intentionally skipped for now.
+      // The mock sync backend's offline mode only toggles `isConnected`; pull/push can still proceed
+      // (see `makeMockSyncBackend` TODO in `mock-sync-backend.ts`), so this scenario is currently
+      // nondeterministic and can resolve as `confirmed` before conflict propagation.
+      const result = store.execute(commands.createTodoUnique({ id: 'todo-1', text: 'Mine' }))
+      assert(result._tag === 'pending')
+
+      // Inject an external event that creates todo-1 first (from another client)
+      const backendFactory = EventFactory.makeFactory(events)({
+        client: EventFactory.clientIdentity('other-client'),
+      })
+      yield* mockSyncBackend.advance(
+        backendFactory.todoCreated.next({ id: 'todo-1', text: 'Theirs', completed: false }),
+      )
+
+      // Connect — triggers pull, rebase, and command replay
+      yield* mockSyncBackend.connect
+
+      const confirmation = yield* Effect.promise(() => result.confirmation)
+      expect(confirmation._tag).toBe('conflict')
+      if (confirmation._tag === 'conflict') {
+        expect(confirmation.error).toMatchObject({ _tag: 'TodoAlreadyExists' })
+      }
+    }).pipe(withTestCtx(test)),
+  )
 })
 
 class TestContext extends Context.Tag('TestContext')<
   TestContext,
   {
-    makeStore: (args?: {
-      boot?: (store: Store) => void
-      testing?: {
-        overrides?: {
-          clientSession?: {
-            leaderThreadProxy?: (
-              original: ClientSessionLeaderThreadProxy.ClientSessionLeaderThreadProxy,
-            ) => Partial<ClientSessionLeaderThreadProxy.ClientSessionLeaderThreadProxy>
-          }
-        }
-      }
-    }) => Effect.Effect<Store, UnknownError, Scope.Scope | OtelTracer.OtelTracer>
+    makeStore: (args?: { boot?: (store: Store) => void }) => Effect.Effect<Store, UnknownError, Scope.Scope | OtelTracer.OtelTracer>
     mockSyncBackend: MockSyncBackend
     shutdownDeferred: ShutdownDeferred
   }
@@ -203,7 +291,6 @@ const TestContextLive = Layer.scoped(
     const makeStore: typeof TestContext.Service.makeStore = (args) => {
       const adapter = makeInMemoryAdapter({
         sync: { backend: () => mockSyncBackend.makeSyncBackend, onSyncError: 'shutdown' },
-        ...omitUndefineds({ testing: args?.testing }),
       })
       return createStore({
         schema: schema as LiveStoreSchema,

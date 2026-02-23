@@ -423,7 +423,7 @@ export class Store<TSchema extends LiveStoreSchema = LiveStoreSchema.Any, TConte
       yield* Effect.addFinalizer(() =>
         Effect.sync(() => {
           for (const handlers of this[StoreInternalsSymbol].pendingCommandConfirmations.values()) {
-            handlers.reject(new Error('Store shutdown before command confirmation'))
+            handlers.reject(new UnknownError({ cause: 'Store shutdown before command confirmation' }))
           }
           this[StoreInternalsSymbol].pendingCommandConfirmations.clear()
 

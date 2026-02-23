@@ -64,6 +64,7 @@ const materializers = State.SQLite.materializers(events, {
 export const state = State.SQLite.makeState({ tables, materializers })
 
 export class TodoTextEmpty extends Schema.TaggedError<TodoTextEmpty>()('TodoTextEmpty', {}) {}
+export class TodoAlreadyExists extends Schema.TaggedError<TodoAlreadyExists>()('TodoAlreadyExists', {}) {}
 
 export const commands = {
   createTodo: defineCommand({
@@ -82,6 +83,15 @@ export const commands = {
       const todo = ctx.query(tables.todos.where({ id }).first())
       if (!todo) throw new Error('Todo not found')
       return events.todoCompleted({ id })
+    },
+  }),
+  createTodoUnique: defineCommand({
+    name: 'CreateTodoUnique',
+    schema: Schema.Struct({ id: Schema.String, text: Schema.String }),
+    handler: ({ id, text }, ctx) => {
+      const existing = ctx.query(tables.todos.where({ id }).first())
+      if (existing) return new TodoAlreadyExists()
+      return events.todoCreated({ id, text, completed: false })
     },
   }),
   emptyCommand: defineCommand({
