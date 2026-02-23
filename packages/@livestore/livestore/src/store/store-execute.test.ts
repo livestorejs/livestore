@@ -1,4 +1,4 @@
-import { expect } from 'vitest'
+import { assert, expect } from 'vitest'
 
 import { makeInMemoryAdapter } from '@livestore/adapter-web'
 import type { MockSyncBackend } from '@livestore/common'
@@ -36,9 +36,9 @@ Vitest.describe('store.execute', () => {
       expect(result._tag).toBe('pending')
 
       const todo = store.query(tables.todos.where({ id: 'todo-1' }).first())
-      expect(todo).toBeDefined()
-      expect(todo!.text).toBe('Buy milk')
-      expect(todo!.completed).toBe(false)
+      assert(todo !== undefined)
+      expect(todo.text).toBe('Buy milk')
+      expect(todo.completed).toBe(false)
     }).pipe(withTestCtx(test)),
   )
 
@@ -49,8 +49,7 @@ Vitest.describe('store.execute', () => {
 
       const result = store.execute(commands.createTodo({ id: 'todo-1', text: '   ' }))
 
-      expect(result._tag).toBe('failed')
-      if (result._tag !== 'failed') return
+      assert(result._tag === 'failed')
       expect(result.error).toBeInstanceOf(TodoTextEmpty)
       expect(result.error._tag).toBe('TodoTextEmpty')
 
@@ -72,9 +71,7 @@ Vitest.describe('store.execute', () => {
         catch: (err) => err as CommandExecutionError,
       }).pipe(Effect.either)
 
-      expect(result._tag).toBe('Left')
-      if (result._tag !== 'Left') return;
-
+      assert(result._tag === 'Left')
       expect(result.left).toBeInstanceOf(CommandExecutionError)
       expect(result.left.command.name).toBe('NonExistent')
       expect(result.left.reason).toBe('CommandNotFound')
@@ -92,9 +89,7 @@ Vitest.describe('store.execute', () => {
         catch: (err) => err as CommandExecutionError,
       }).pipe(Effect.either)
 
-      expect(result._tag).toBe('Left')
-      if (result._tag !== 'Left') return;
-
+      assert(result._tag === 'Left')
       expect(result.left).toBeInstanceOf(CommandExecutionError)
       expect(result.left.command.name).toBe('EmptyCommand')
       expect(result.left.reason).toBe('NoEventProduced')
@@ -112,16 +107,14 @@ Vitest.describe('store.execute', () => {
         catch: (err) => err as CommandExecutionError,
       }).pipe(Effect.either)
 
-      expect(result._tag).toBe('Left')
-      if (result._tag !== 'Left') return;
-
+      assert(result._tag === 'Left')
       expect(result.left).toBeInstanceOf(CommandExecutionError)
       expect(result.left._tag).toBe('LiveStore.CommandExecutionError')
       expect(result.left.command.name).toBe('CompleteTodo')
       expect(result.left.reason).toBe('CommandHandlerThrew')
       expect(result.left.phase).toBe('initial')
-      expect(result.left.cause).toBeInstanceOf(Error)
-      expect((result.left.cause as Error).message).toBe('Todo not found')
+      assert.instanceOf(result.left.cause, Error)
+      expect(result.left.cause.message).toBe('Todo not found')
     }).pipe(withTestCtx(test)),
   )
 
@@ -131,18 +124,14 @@ Vitest.describe('store.execute', () => {
       const store = yield* makeStore()
 
       const result = store.execute(commands.createTodo({ id: 'todo-1', text: '   ' }))
-      expect(result._tag).toBe('failed')
-      if (result._tag !== 'failed') return;
-
+      assert(result._tag === 'failed')
 
       const outcome = yield* Effect.tryPromise({
         try: () => result.confirmation,
         catch: (err) => err as TodoTextEmpty,
       }).pipe(Effect.either)
 
-      expect(outcome._tag).toBe('Left')
-      if (outcome._tag !== 'Left') return;
-
+      assert(outcome._tag === 'Left')
       expect(outcome.left).toBeInstanceOf(TodoTextEmpty)
     }).pipe(withTestCtx(test)),
   )
@@ -154,8 +143,7 @@ Vitest.describe('store.execute', () => {
       yield* mockSyncBackend.connect
 
       const result = store.execute(commands.createTodo({ id: 'todo-1', text: 'Buy milk' }))
-      expect(result._tag).toBe('pending')
-      if (result._tag !== 'pending') return;
+      assert(result._tag === 'pending')
 
       const confirmation = yield* Effect.promise(() => result.confirmation)
       expect(confirmation._tag).toBe('confirmed')
