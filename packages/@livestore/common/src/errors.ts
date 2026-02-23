@@ -76,23 +76,28 @@ export class MaterializeError extends Schema.TaggedError<MaterializeError>()('Li
 }) {}
 
 /**
- * Error thrown when a command fails during initial execution.
+ * Error thrown when a command fails during execution.
  *
- * This occurs when the command handler throws an error while validating
- * the command against the current state.
+ * This is an unexpected, non-recoverable error — distinct from handler-returned
+ * errors which are typed and recoverable via `ExecuteResult`.
  */
 export class CommandExecutionError extends Schema.TaggedError<CommandExecutionError>()(
   'LiveStore.CommandExecutionError',
   {
-    /** The name of the command that failed. */
-    commandName: Schema.String,
-    /** The unique ID of the command instance. */
-    commandId: Schema.String,
+    /** The command that failed. */
+    command: Schema.Struct({ name: Schema.String, id: Schema.String }),
+    /** Why the command failed. */
+    reason: Schema.Literal('CommandNotFound', 'CommandHandlerThrew', 'NoEventProduced'),
     /** The phase where the error occurred. */
     phase: Schema.Literal('initial', 'replay'),
-    /** The underlying error. */
-    cause: Schema.Defect,
+    /** The underlying error, if any. */
+    cause: Schema.optional(Schema.Defect),
     /** Optional additional context. */
-    note: Schema.optional(Schema.String),
+    description: Schema.optional(Schema.String),
   },
-) {}
+) {
+  get message(): string {
+    const base = `${this.reason}: ${this.command.name} (${this.command.id})`
+    return this.description ? `${base}: ${this.description}` : base
+  }
+}

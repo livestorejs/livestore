@@ -986,10 +986,9 @@ export class Store<TSchema extends LiveStoreSchema = LiveStoreSchema.Any, TConte
     const commandDef = this.schema.commandDefsMap.get(command.name)
     if (!commandDef) {
       throw new CommandExecutionError({
-        commandName: command.name,
-        commandId: command.id,
+        command: { name: command.name, id: command.id },
+        reason: 'CommandNotFound',
         phase: 'initial',
-        cause: `No command definition found for '${command.name}'`,
       })
     }
 
@@ -1020,8 +1019,8 @@ export class Store<TSchema extends LiveStoreSchema = LiveStoreSchema.Any, TConte
     const execution = executeCommandHandler<TError>(commandDef.handler, command.args, handlerContext)
     if (execution._tag === 'threw') {
       throw new CommandExecutionError({
-        commandName: command.name,
-        commandId: command.id,
+        command: { name: command.name, id: command.id },
+        reason: 'CommandHandlerThrew',
         phase: 'initial',
         cause: execution.cause,
       })
@@ -1039,11 +1038,10 @@ export class Store<TSchema extends LiveStoreSchema = LiveStoreSchema.Any, TConte
     const events = execution.events.map((event) => ({ ...event, commandId: command.id }))
     if (events.length === 0) {
       throw new CommandExecutionError({
-        commandName: command.name,
-        commandId: command.id,
+        command: { name: command.name, id: command.id },
+        reason: 'NoEventProduced',
         phase: 'initial',
-        cause: new Error(`Command '${command.name}' produced no events`),
-        note:
+        description:
           'Command handlers must return one event, an array with at least one event, or a recoverable error value.',
       })
     }
