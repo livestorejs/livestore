@@ -195,20 +195,32 @@ export class Store<TSchema extends LiveStoreSchema = LiveStoreSchema.Any, TConte
    */
   readonly [StoreInternalsSymbol]: StoreInternals
 
-  private settleCommandConfirmations = (syncState: { pending: ReadonlyArray<unknown> }) => {
+  /**
+   * Settle command confirmations by checking both the leader and client session sync states.
+   * A command is only confirmed when its commandId is absent from BOTH pending arrays.
+   * This dual-check guards against races between the client session push and leader processing.
+   */
+  private settleCommandConfirmations = (
+    leaderSyncState: { pending: ReadonlyArray<unknown> },
+    sessionSyncState: { pending: ReadonlyArray<unknown> },
+  ) => {
     if (this[StoreInternalsSymbol].pendingCommandConfirmations.size === 0) {
       return
     }
 
-    const pendingCommandIds = new Set(
-      syncState.pending
+    const extractCommandIds = (pending: ReadonlyArray<unknown>) =>
+      pending
         .map((event) =>
           typeof event === 'object' && event !== null && 'commandId' in event
             ? (event as { commandId?: string | undefined }).commandId
             : undefined,
         )
-        .filter((commandId): commandId is string => typeof commandId === 'string'),
-    )
+        .filter((commandId): commandId is string => typeof commandId === 'string')
+
+    const pendingCommandIds = new Set([
+      ...extractCommandIds(leaderSyncState.pending),
+      ...extractCommandIds(sessionSyncState.pending),
+    ])
 
     for (const [commandId, handlers] of this[StoreInternalsSymbol].pendingCommandConfirmations.entries()) {
       if (pendingCommandIds.has(commandId) === false) {
@@ -443,9 +455,23 @@ export class Store<TSchema extends LiveStoreSchema = LiveStoreSchema.Any, TConte
 
       yield* syncProcessor.boot
 
-      yield* syncProcessor.syncState.changes.pipe(
-        Stream.tap((syncState) => Effect.sync(() => this.settleCommandConfirmations(syncState))),
+      // Settle command confirmations when either the leader's or client session's sync state changes.
+      // Both sync states must be checked: the client session's pending empties on leader acknowledgment,
+      // while the leader's pending empties on sync backend confirmation. A command is only confirmed
+      // when its commandId is absent from BOTH pending arrays.
+      const settleFromBothStates = Effect.gen(this, function* () {
+        const leaderState = yield* this[StoreInternalsSymbol].clientSession.leaderThread.syncState
+        const sessionState = yield* this[StoreInternalsSymbol].syncProcessor.syncState
+        this.settleCommandConfirmations(leaderState, sessionState)
+      })
+
+      yield* Stream.merge(
+        this[StoreInternalsSymbol].clientSession.leaderThread.syncState.changes.pipe(Stream.map(() => undefined as void)),
+        syncProcessor.syncState.changes.pipe(Stream.map(() => undefined as void)),
+      ).pipe(
+        Stream.tap(() => settleFromBothStates),
         Stream.runDrain,
+        Effect.orDie,
         Effect.interruptible,
         Effect.forkScoped,
       )
@@ -1054,8 +1080,14 @@ export class Store<TSchema extends LiveStoreSchema = LiveStoreSchema.Any, TConte
         })
       },
     )
+    // Mark as handled to avoid unhandled-rejection warnings when the store shuts down
+    // before callers await `.confirmation` (e.g. fire-and-forget command execution).
+    void confirmation.catch(() => {})
 
-    this.settleCommandConfirmations(this[StoreInternalsSymbol].syncProcessor.syncState.pipe(Effect.runSync))
+    this.settleCommandConfirmations(
+      this[StoreInternalsSymbol].clientSession.leaderThread.syncState.pipe(Effect.runSync),
+      this[StoreInternalsSymbol].syncProcessor.syncState.pipe(Effect.runSync),
+    )
 
     return {
       _tag: 'pending',

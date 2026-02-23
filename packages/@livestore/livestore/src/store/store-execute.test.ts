@@ -190,7 +190,7 @@ Vitest.describe('store.execute', () => {
     }).pipe(withTestCtx(test)),
   )
 
-  Vitest.scopedLive.skip('should reject pending confirmations on shutdown', (test) =>
+  Vitest.scopedLive('should reject pending confirmations on shutdown', (test) =>
     Effect.gen(function* () {
       const { makeStore, mockSyncBackend } = yield* TestContext
       const store = yield* makeStore()
