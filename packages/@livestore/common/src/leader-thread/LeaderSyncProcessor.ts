@@ -46,9 +46,9 @@ import { rollback } from './materialize-event.ts'
 import type { ShutdownChannel } from './shutdown-channel.ts'
 import type { InitialBlockingSyncContext, LeaderSyncProcessor } from './types.ts'
 import { LeaderThreadCtx } from './types.ts'
-import { CommandJournal } from "./CommandJournal.ts";
-import { isQueryBuilder, type QueryBuilder } from "../schema/state/sqlite/query-builder/mod.ts";
-import { getResultSchema } from "../schema/state/sqlite/query-builder/impl.ts";
+import { CommandJournal } from './CommandJournal.ts'
+import { isQueryBuilder, type QueryBuilder } from '../schema/state/sqlite/query-builder/mod.ts'
+import { getResultSchema } from '../schema/state/sqlite/query-builder/impl.ts'
 
 // WORKAROUND: @effect/opentelemetry mis-parses `Span.addEvent(name, attributes)` and treats the attributes object as a
 // time input, causing `TypeError: {} is not iterable` at runtime.
