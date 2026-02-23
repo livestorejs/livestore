@@ -31,7 +31,7 @@ import {
   type LiveStoreSchema,
   executeCommandHandler,
   resolveEventDef,
-  SystemTables, type MaterializerContextQuery,
+  SystemTables,
 } from '@livestore/common/schema'
 import { assertNever, isDevEnv, objectToString, omitUndefineds, shouldNeverHappen } from '@livestore/utils'
 import type { Scope } from '@livestore/utils/effect'
