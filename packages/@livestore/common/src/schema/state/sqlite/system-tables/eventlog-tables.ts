@@ -7,7 +7,7 @@ import { table } from '../table-def.ts'
 /**
  * EVENTLOG DATABASE SYSTEM TABLES
  *
- * ⚠️CRITICAL: NEVER modify eventlog schemas without bumping `liveStoreStorageFormatVersion`!
+ * ⚠️ CRITICAL: NEVER modify eventlog schemas without bumping `liveStoreStorageFormatVersion`!
  * Eventlog is the source of truth - schema changes cause permanent data loss.
  *
  * TODO: Implement proper eventlog versioning system to prevent accidental data loss
