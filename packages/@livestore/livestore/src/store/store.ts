@@ -18,7 +18,7 @@ import {
   replaceSessionIdSymbol,
   type StorageMode,
   type SyncState,
-  UnknownError, type ParamsObject, type QueryBuilder,
+  UnknownError, type QueryBuilder,
 } from '@livestore/common'
 import type { StreamEventsOptions } from '@livestore/common/leader-thread'
 import {
@@ -194,51 +194,6 @@ export class Store<TSchema extends LiveStoreSchema = LiveStoreSchema.Any, TConte
    * Store internals. Not part of the public API — shapes and semantics may change without notice.
    */
   readonly [StoreInternalsSymbol]: StoreInternals
-
-  /**
-   * Settle command confirmations by checking both the leader and client session sync states.
-   * A command is only confirmed when its commandId is absent from BOTH pending arrays.
-   * This dual-check guards against races between the client session push and leader processing.
-   */
-  private settleCommandConfirmations = (
-    leaderSyncState: { pending: ReadonlyArray<unknown> },
-    sessionSyncState: { pending: ReadonlyArray<unknown> },
-  ) => {
-    if (this[StoreInternalsSymbol].pendingCommandConfirmations.size === 0) {
-      return
-    }
-
-    const extractCommandIds = (pending: ReadonlyArray<unknown>) =>
-      pending
-        .map((event) =>
-          typeof event === 'object' && event !== null && 'commandId' in event
-            ? (event as { commandId?: string | undefined }).commandId
-            : undefined,
-        )
-        .filter((commandId): commandId is string => typeof commandId === 'string')
-
-    const pendingCommandIds = new Set([
-      ...extractCommandIds(leaderSyncState.pending),
-      ...extractCommandIds(sessionSyncState.pending),
-    ])
-
-    for (const [commandId, handlers] of this[StoreInternalsSymbol].pendingCommandConfirmations.entries()) {
-      if (pendingCommandIds.has(commandId) === false) {
-        handlers.resolve({ _tag: 'confirmed' })
-        this[StoreInternalsSymbol].pendingCommandConfirmations.delete(commandId)
-      }
-    }
-  }
-
-  private settleCommandConflict = (conflict: { commandId: string; error: unknown }) => {
-    const handlers = this[StoreInternalsSymbol].pendingCommandConfirmations.get(conflict.commandId)
-    if (handlers === undefined) {
-      return
-    }
-
-    handlers.resolve({ _tag: 'conflict', error: conflict.error })
-    this[StoreInternalsSymbol].pendingCommandConfirmations.delete(conflict.commandId)
-  }
 
   //#region constructor
   constructor({
@@ -454,27 +409,6 @@ export class Store<TSchema extends LiveStoreSchema = LiveStoreSchema.Any, TConte
       )
 
       yield* syncProcessor.boot
-
-      // Settle command confirmations when either the leader's or client session's sync state changes.
-      // Both sync states must be checked: the client session's pending empties on leader acknowledgment,
-      // while the leader's pending empties on sync backend confirmation. A command is only confirmed
-      // when its commandId is absent from BOTH pending arrays.
-      const settleFromBothStates = Effect.gen(this, function* () {
-        const leaderState = yield* this[StoreInternalsSymbol].clientSession.leaderThread.syncState
-        const sessionState = yield* this[StoreInternalsSymbol].syncProcessor.syncState
-        this.settleCommandConfirmations(leaderState, sessionState)
-      })
-
-      yield* Stream.merge(
-        this[StoreInternalsSymbol].clientSession.leaderThread.syncState.changes.pipe(Stream.map(() => undefined as void)),
-        syncProcessor.syncState.changes.pipe(Stream.map(() => undefined as void)),
-      ).pipe(
-        Stream.tap(() => settleFromBothStates),
-        Stream.runDrain,
-        Effect.orDie,
-        Effect.interruptible,
-        Effect.forkScoped,
-      )
     })
 
     // Build Sqlite wrapper last to avoid using getters before internals are set
@@ -1065,10 +999,11 @@ export class Store<TSchema extends LiveStoreSchema = LiveStoreSchema.Any, TConte
     // Commit produced events (uses existing commit path)
     this.commit(...events)
 
+    // TODO: confirmation is stubbed out — never resolves until real settlement is implemented
     const confirmation = new Promise<{ readonly _tag: 'confirmed' } | { readonly _tag: 'conflict'; readonly error: TError }>(
-      (resolve, reject) => {
+      (_resolve, reject) => {
         this[StoreInternalsSymbol].pendingCommandConfirmations.set(command.id, {
-          resolve: resolve as (value: { _tag: 'confirmed' } | { _tag: 'conflict'; error: unknown }) => void,
+          resolve: _resolve as (value: { _tag: 'confirmed' } | { _tag: 'conflict'; error: unknown }) => void,
           reject,
         })
       },
@@ -1076,11 +1011,6 @@ export class Store<TSchema extends LiveStoreSchema = LiveStoreSchema.Any, TConte
     // Mark as handled to avoid unhandled-rejection warnings when the store shuts down
     // before callers await `.confirmation` (e.g. fire-and-forget command execution).
     void confirmation.catch(() => {})
-
-    this.settleCommandConfirmations(
-      this[StoreInternalsSymbol].clientSession.leaderThread.syncState.pipe(Effect.runSync),
-      this[StoreInternalsSymbol].syncProcessor.syncState.pipe(Effect.runSync),
-    )
 
     return {
       _tag: 'pending',

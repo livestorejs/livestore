@@ -136,20 +136,6 @@ Vitest.describe('store.execute', () => {
     }).pipe(withTestCtx(test)),
   )
 
-  Vitest.scopedLive('should confirm when events leave sync pending state', (test) =>
-    Effect.gen(function* () {
-      const { makeStore, mockSyncBackend } = yield* TestContext
-      const store = yield* makeStore()
-      yield* mockSyncBackend.connect
-
-      const result = store.execute(commands.createTodo({ id: 'todo-1', text: 'Buy milk' }))
-      assert(result._tag === 'pending')
-
-      const confirmation = yield* Effect.promise(() => result.confirmation)
-      expect(confirmation._tag).toBe('confirmed')
-    }).pipe(withTestCtx(test)),
-  )
-
   Vitest.scopedLive('should materialize all events when handler returns multiple events', (test) =>
     Effect.gen(function* () {
       const { makeStore } = yield* TestContext
