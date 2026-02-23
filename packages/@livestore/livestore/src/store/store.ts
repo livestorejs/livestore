@@ -1017,7 +1017,7 @@ export class Store<TSchema extends LiveStoreSchema = LiveStoreSchema.Any, TConte
       phase: { _tag: 'initial' },
     }
 
-    const execution = executeCommandHandler(commandDef.handler, command.args, handlerContext)
+    const execution = executeCommandHandler<TError>(commandDef.handler, command.args, handlerContext)
     if (execution._tag === 'threw') {
       throw new CommandExecutionError({
         commandName: command.name,
@@ -1028,7 +1028,7 @@ export class Store<TSchema extends LiveStoreSchema = LiveStoreSchema.Any, TConte
     }
 
     if (execution._tag === 'error') {
-      const error = execution.error as TError
+      const error = execution.error
       const confirmation = Promise.reject(error)
       // Mark as handled to avoid unhandled-rejection warnings when callers branch on `_tag`
       // and intentionally skip awaiting `.confirmation` for failed initial execution.
