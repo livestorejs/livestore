@@ -475,13 +475,6 @@ export class Store<TSchema extends LiveStoreSchema = LiveStoreSchema.Any, TConte
         Effect.interruptible,
         Effect.forkScoped,
       )
-
-      yield* syncProcessor.commandConflicts.pipe(
-        Stream.tap((conflict) => Effect.sync(() => this.settleCommandConflict(conflict))),
-        Stream.runDrain,
-        Effect.interruptible,
-        Effect.forkScoped,
-      )
     })
 
     // Build Sqlite wrapper last to avoid using getters before internals are set
@@ -1094,7 +1087,6 @@ export class Store<TSchema extends LiveStoreSchema = LiveStoreSchema.Any, TConte
       confirmation,
     }
   }
-
   //#endregion execute
 
   /**

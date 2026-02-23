@@ -21,20 +21,17 @@ import {
 } from '@livestore/utils/effect'
 import type * as otel from '@opentelemetry/api'
 
-import { type MaterializeError, type SqliteDb, UnknownError } from '../adapter-types.ts'
+import { CommandExecutionError, type MaterializeError, type SqliteDb, UnknownError } from '../adapter-types.ts'
 import { IntentionalShutdownCause } from '../errors.ts'
 import { makeMaterializerHash } from '../materializer-helper.ts'
 import {
   type CommandHandlerContext,
-  executeCommandHandler,
-  EventSequenceNumber,
-  LiveStoreEvent,
-  resolveEventDef,
-  SystemTables,
-  type LiveStoreSchema, type CommandHandlerContextQuery,
+  type CommandHandlerContextQuery,
+  type CommandInstance, executeCommandHandler,
+  type LiveStoreSchema
 } from '../schema/mod.ts'
+import { EventSequenceNumber, LiveStoreEvent, resolveEventDef, SystemTables } from '../schema/mod.ts'
 import { EVENTLOG_META_TABLE, SYNC_STATUS_TABLE } from '../schema/state/sqlite/system-tables/eventlog-tables.ts'
-import { CommandJournal } from './CommandJournal.ts'
 import {
   type InvalidPullError,
   type InvalidPushError,
@@ -49,7 +46,9 @@ import { rollback } from './materialize-event.ts'
 import type { ShutdownChannel } from './shutdown-channel.ts'
 import type { InitialBlockingSyncContext, LeaderSyncProcessor } from './types.ts'
 import { LeaderThreadCtx } from './types.ts'
-import { getResultSchema, isQueryBuilder, type QueryBuilder } from '../schema/state/sqlite/query-builder/mod.ts'
+import { CommandJournal } from "./CommandJournal.ts";
+import { isQueryBuilder, type QueryBuilder } from "../schema/state/sqlite/query-builder/mod.ts";
+import { getResultSchema } from "../schema/state/sqlite/query-builder/impl.ts";
 
 // WORKAROUND: @effect/opentelemetry mis-parses `Span.addEvent(name, attributes)` and treats the attributes object as a
 // time input, causing `TypeError: {} is not iterable` at runtime.
@@ -58,24 +57,6 @@ import { getResultSchema, isQueryBuilder, type QueryBuilder } from '../schema/st
 
 /** Serialize value to JSON string for trace attributes */
 const jsonStringify = Schema.encodeSync(Schema.parseJson())
-
-/** Convert unknown replay errors into transport-safe JSON values for sync payloads. */
-const toJsonValue = (value: unknown): Schema.JsonValue => {
-  if (value instanceof Error) {
-    return {
-      name: value.name,
-      message: value.message,
-      stack: value.stack ?? null,
-    }
-  }
-
-  try {
-    const encoded = JSON.parse(JSON.stringify(value))
-    return (encoded ?? null) as Schema.JsonValue
-  } catch {
-    return String(value)
-  }
-}
 
 type LocalPushQueueItem = [
   event: LiveStoreEvent.Client.EncodedWithMeta,
@@ -821,6 +802,10 @@ const backgroundBackendPulling = Effect.fn('@livestore/common:LeaderSyncProcesso
           })
         }
 
+          yield* connectedClientSessionPullQueues.offer({
+            payload: SyncState.payloadFromMergeResult(mergeResult),
+            leaderHead: mergeResult.newSyncState.localHead,
+          })
         } else {
           otelSpan?.addEvent(
             `pull:advance`,
@@ -844,11 +829,7 @@ const backgroundBackendPulling = Effect.fn('@livestore/common:LeaderSyncProcesso
         })
 
         if (mergeResult.confirmedEvents.length > 0) {
-          // TODO: Confirm commands whose produced events are in mergeResult.confirmedEvents
-            // via commandJournal.remove() and resolve their confirmation Deferreds.
-            // https://github.com/livestorejs/livestore/issues/1016
-
-            // `mergeResult.confirmedEvents` don't contain the correct sync metadata, so we need to use
+          // `mergeResult.confirmedEvents` don't contain the correct sync metadata, so we need to use
           // `newEvents` instead which we filter via `mergeResult.confirmedEvents`
           const confirmedNewEvents = newEvents.filter((event) =>
             mergeResult.confirmedEvents.some((confirmedEvent) =>
@@ -866,30 +847,7 @@ const backgroundBackendPulling = Effect.fn('@livestore/common:LeaderSyncProcesso
 
       yield* materializeEventsBatch({ batchItems: mergeResult.newEvents, deferreds: undefined })
 
-      // Replay pending commands after rebase to validate them against the new state
-        let replayConflicts: ReadonlyArray<typeof SyncState.CommandConflict.Type> = []
-        if (mergeResult._tag === 'rebase') {
-          const replayResult = yield* replayPendingCommands({
-            schema,
-            dbState: db,
-            otelSpan,
-          })
-
-          replayConflicts = replayResult.conflicts.map((conflict) => ({
-            commandId: conflict.command.id,
-            error: toJsonValue(conflict.error),
-          }))
-
-          yield* connectedClientSessionPullQueues.offer({
-            payload: {
-              ...SyncState.payloadFromMergeResult(mergeResult),
-              commandConflicts: replayConflicts,
-            },
-            leaderHead: mergeResult.newSyncState.localHead,
-          })
-        }
-
-        yield* SubscriptionRef.set(syncStateSref, mergeResult.newSyncState)
+      yield* SubscriptionRef.set(syncStateSref, mergeResult.newSyncState)
 
       // Allow local pushes to be processed again
       if (pageInfo._tag === 'NoMore') {
@@ -1087,7 +1045,6 @@ const makePullQueueSet = Effect.gen(function* () {
                 newEvents: ReadonlyArray.dropWhile(payload.newEvents, (eventEncoded) =>
                   EventSequenceNumber.Client.isGreaterThanOrEqual(cursor, eventEncoded.seqNum),
                 ),
-                commandConflicts: payload.commandConflicts,
               },
             }
           } else {
@@ -1141,12 +1098,8 @@ const makePullQueueSet = Effect.gen(function* () {
 
       // console.debug(`offering to ${set.size} queues`, item.leaderHead, JSON.stringify(item.payload, null, 2))
 
-      // Short-circuit if the payload is an empty upstream advance without conflict info.
-      if (
-        item.payload._tag === 'upstream-advance' &&
-        item.payload.newEvents.length === 0 &&
-        item.payload.commandConflicts.length === 0
-      ) {
+      // Short-circuit if the payload is an empty upstream advance
+      if (item.payload._tag === 'upstream-advance' && item.payload.newEvents.length === 0) {
         return
       }
 
@@ -1269,152 +1222,90 @@ const clearLocalDatabases = ({ dbEventlog, dbState }: { dbEventlog: SqliteDb; db
     }
   })
 
+/** Replay a command against the current (post-rebase) state DB. */
+const replayCommand = Effect.fn('@livestore/common:LeaderSyncProcessor:replayCommand')(function* ({
+  command,
+  schema,
+  dbState,
+}: {
+  command: CommandInstance,
+  schema: LiveStoreSchema
+  dbState: SqliteDb
+}): Effect.fn.Return<
+  ReadonlyArray<LiveStoreEvent.Input.Decoded>,
+  ReplayConflict,
+  CommandJournal | Scope.Scope
+> {
+  const commandJournal = yield* CommandJournal
+  yield* Effect.addFinalizer(() => commandJournal.remove([command.id]).pipe(Effect.orDie))
+
+  // Look up command definition from schema
+  const commandDef = schema.commandDefsMap.get(command.name)
+  if (commandDef === undefined) {
+    return yield* Effect.die(new CommandExecutionError({
+      command: { name: command.name, id: command.id },
+      phase: 'replay',
+      reason: 'CommandNotFound',
+      description: `Command definition "${command.name}" not found in schema`,
+    }))
+  }
+
+  const query: CommandHandlerContextQuery = (
+    rawQueryOrQueryBuilder:
+      | {
+      query: string
+      bindValues: Bindable
+    }
+      | QueryBuilder.Any,
+  ) => {
+    if (isQueryBuilder(rawQueryOrQueryBuilder) === true) {
+      const { query, bindValues } = rawQueryOrQueryBuilder.asSql()
+      const rawResults = dbState.select(query, prepareBindValues(bindValues, query))
+      const resultSchema = getResultSchema(rawQueryOrQueryBuilder)
+      return Schema.decodeSync(resultSchema)(rawResults)
+    } else {
+      const { query, bindValues } = rawQueryOrQueryBuilder
+      return dbState.select(query, prepareBindValues(bindValues, query))
+    }
+  }
+  const handlerContext: CommandHandlerContext = { phase: { _tag: 'replay' }, query }
+
+  const replayResult = executeCommandHandler(commandDef.handler, command.args, handlerContext)
+
+  if (replayResult._tag === 'ok') {
+    const events = replayResult.events.map((event) => ({ ...event, commandId: command.id }))
+    if (events.length === 0) {
+      return yield* Effect.die( new CommandExecutionError({
+        command: { name: command.name, id: command.id },
+        phase: 'replay',
+        reason: 'NoEventProduced',
+        description:
+          'Command handlers must return one event, an array with at least one event, or a recoverable error value.',
+      }))
+    }
+    return events
+  } else if (replayResult._tag === 'error') {
+    const conflict: ReplayConflict = {
+      command,
+      error: replayResult.error,
+      timestamp: Date.now(),
+    }
+    return yield* Effect.fail(conflict)
+  } else if (replayResult._tag === 'threw') {
+    return yield* Effect.die(new CommandExecutionError({
+      command: { id: command.id, name: command.name},
+      phase: 'replay',
+      reason: 'CommandHandlerThrew',
+      cause: replayResult.cause,
+    }))
+  } else {
+    return shouldNeverHappen('Unexpected replay result', replayResult)
+  }
+})
+
 /** Conflict info produced during command replay. */
 interface ReplayConflict {
-  readonly command: { readonly id: string; readonly name: string; readonly args: unknown }
+  readonly command: CommandInstance
   readonly error: unknown
   readonly timestamp: number
 }
-
-/**
- * Replay pending commands after a rebase to validate them against the new state.
- *
- * When a rebase occurs, the local state has changed due to incoming remote events.
- * Commands that were executed against the old state need to be re-validated against
- * the new state. If a command's preconditions are no longer met, it fails and a
- * conflict is emitted.
- *
- * @returns Object containing:
- *   - `conflicts`: Commands that failed during replay
- *   - `validCommandIds`: IDs of commands that succeeded replay
- */
-const replayPendingCommands = ({
-  schema,
-  dbState,
-  otelSpan,
-}: {
-  schema: LiveStoreSchema
-  dbState: SqliteDb
-  otelSpan: otel.Span | undefined
-}): Effect.Effect<
-  {
-    conflicts: ReadonlyArray<ReplayConflict>
-    validCommandIds: ReadonlyArray<string>
-  },
-  never,
-  CommandJournal
-> =>
-  Effect.gen(function* () {
-    const commandJournal = yield* CommandJournal
-    const pendingCommands = yield* commandJournal.entries
-
-    if (pendingCommands.length === 0) {
-      return { conflicts: [], validCommandIds: [] }
-    }
-
-    otelSpan?.addEvent('command-replay:start', { commandCount: pendingCommands.length }, undefined)
-
-    const conflicts: ReplayConflict[] = []
-    const validCommandIds: string[] = []
-
-    for (const pendingCommand of pendingCommands) {
-      const commandDef = schema.commandDefsMap.get(pendingCommand.name)
-
-      if (commandDef === undefined) {
-        // Command definition no longer exists in schema - treat as conflict
-        const conflict: ReplayConflict = {
-          command: {
-            id: pendingCommand.id,
-            name: pendingCommand.name,
-            args: pendingCommand.args,
-          },
-          error: new Error(`Command definition '${pendingCommand.name}' not found in schema`),
-          timestamp: Date.now(),
-        }
-        conflicts.push(conflict)
-        yield* commandJournal.remove([pendingCommand.id])
-        continue
-      }
-
-      // Query access to current post-rebase state
-      const query: CommandHandlerContextQuery = (
-        rawQueryOrQueryBuilder:
-          | {
-          query: string
-          bindValues: Bindable
-        }
-          | QueryBuilder.Any,
-      ) => {
-        if (isQueryBuilder(rawQueryOrQueryBuilder) === true) {
-          const { query, bindValues } = rawQueryOrQueryBuilder.asSql()
-          const rawResults = dbState.select(query, prepareBindValues(bindValues, query))
-          const resultSchema = getResultSchema(rawQueryOrQueryBuilder)
-          return Schema.decodeSync(resultSchema)(rawResults)
-        } else {
-          const { query, bindValues } = rawQueryOrQueryBuilder
-          return dbState.select(query, prepareBindValues(bindValues, query))
-        }
-      }
-
-      const handlerContext: CommandHandlerContext = {
-        phase: { _tag: 'replay' },
-        query,
-      }
-
-      // Execute the handler to validate the command against the new state
-      // We use a synchronous try-catch here since handlers are synchronous
-      const replayResult = executeCommandHandler(commandDef.handler, pendingCommand.args, handlerContext)
-
-      if (replayResult._tag === 'ok') {
-        // Command executed successfully - it's still valid
-        validCommandIds.push(pendingCommand.id)
-
-        otelSpan?.addEvent(
-          'command-replay:success',
-          { commandId: pendingCommand.id, commandName: pendingCommand.name },
-          undefined,
-        )
-      } else {
-        // Command failed during replay - emit conflict
-        const replayError = replayResult._tag === 'error' ? replayResult.error : replayResult.cause
-        const conflict: ReplayConflict = {
-          command: {
-            id: pendingCommand.id,
-            name: pendingCommand.name,
-            args: pendingCommand.args,
-          },
-          error: replayError,
-          timestamp: Date.now(),
-        }
-
-        conflicts.push(conflict)
-        yield* commandJournal.remove([pendingCommand.id])
-
-        otelSpan?.addEvent(
-          'command-replay:failure',
-          {
-            commandId: pendingCommand.id,
-            commandName: pendingCommand.name,
-            error: replayError instanceof Error ? replayError.message : String(replayError),
-          },
-          undefined,
-        )
-      }
-    }
-
-    otelSpan?.addEvent(
-      'command-replay:complete',
-      {
-        totalCommands: pendingCommands.length,
-        validCount: validCommandIds.length,
-        conflictCount: conflicts.length,
-      },
-      undefined,
-    )
-
-    return { conflicts, validCommandIds }
-  }).pipe(
-    // CommandJournalError is effectively fatal (SQLite failure), convert to defect
-    Effect.orDie,
-    Effect.withSpan('@livestore/common:LeaderSyncProcessor:replayPendingCommands'),
-  )

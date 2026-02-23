@@ -86,10 +86,10 @@ export class CommandExecutionError extends Schema.TaggedError<CommandExecutionEr
   'LiveStore.CommandExecutionError', {
     /** The command that failed. */
     command: Schema.Struct({ name: Schema.String, id: Schema.String }),
-    /** Why the command failed. */
-    reason: Schema.Literal('CommandNotFound', 'CommandHandlerThrew', 'NoEventProduced'),
     /** The execution phase when the error occurred. */
     phase: Schema.Literal('initial', 'replay'),
+    /** Why the command failed. */
+    reason: Schema.Literal('CommandNotFound', 'CommandHandlerThrew', 'NoEventProduced'),
     /** Optional additional context. */
     description: Schema.optional(Schema.String),
     /** The underlying error, if any. */

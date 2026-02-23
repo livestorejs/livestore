@@ -55,27 +55,15 @@ export class SyncState extends Schema.Class<SyncState>('SyncState')({
   })
 }
 
-/**
- * This payload propagates a rebase from the upstream node
- */
-export class CommandConflict extends Schema.Struct({
-  commandId: Schema.String,
-  error: Schema.JsonValue,
-}) {}
-
 export class PayloadUpstreamRebase extends Schema.TaggedStruct('upstream-rebase', {
   /** Events which need to be rolled back */
   rollbackEvents: Schema.Array(LiveStoreEvent.Client.EncodedWithMeta),
   /** Events which need to be applied after the rollback (already rebased by the upstream node) */
   newEvents: Schema.Array(LiveStoreEvent.Client.EncodedWithMeta),
-  /** Replay conflicts for commands that failed against the rebased state. */
-  commandConflicts: Schema.optionalWith(Schema.Array(CommandConflict), { default: () => [] }),
 }) {}
 
 export class PayloadUpstreamAdvance extends Schema.TaggedStruct('upstream-advance', {
   newEvents: Schema.Array(LiveStoreEvent.Client.EncodedWithMeta),
-  /** Empty in normal advance; included for shape consistency. */
-  commandConflicts: Schema.optionalWith(Schema.Array(CommandConflict), { default: () => [] }),
 }) {}
 
 export class PayloadLocalPush extends Schema.TaggedStruct('local-push', {
@@ -187,13 +175,11 @@ export const payloadFromMergeResult = (
     Match.tag('advance', (result) => ({
       _tag: 'upstream-advance' as const,
       newEvents: result.newEvents,
-      commandConflicts: [],
     })),
     Match.tag('rebase', (result) => ({
       _tag: 'upstream-rebase' as const,
       newEvents: result.newEvents,
       rollbackEvents: result.rollbackEvents,
-      commandConflicts: [],
     })),
     Match.exhaustive,
   )
@@ -282,7 +268,9 @@ export const merge = ({
 
       // Validate that newEvents are sorted in ascending order by eventNum
       for (let i = 1; i < payload.newEvents.length; i++) {
-        if (EventSequenceNumber.Client.isGreaterThan(payload.newEvents[i - 1]!.seqNum, payload.newEvents[i]!.seqNum) === true
+        if (
+          EventSequenceNumber.Client.isGreaterThan(payload.newEvents[i - 1]!.seqNum, payload.newEvents[i]!.seqNum) ===
+          true
         ) {
           return unknownError(
             `Events must be sorted in ascending order by event number. Received: [${payload.newEvents.map((e) => EventSequenceNumber.Client.toString(e.seqNum)).join(', ')}]`,

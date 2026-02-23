@@ -211,7 +211,7 @@ Vitest.describe('store.execute', () => {
     }).pipe(withTestCtx(test)),
   )
 
-  Vitest.scopedLive('should confirm after successful command replay', (test) =>
+  Vitest.scopedLive.skip('should confirm after successful command replay', (test) =>
     Effect.gen(function* () {
       const { makeStore, mockSyncBackend } = yield* TestContext
       const store = yield* makeStore()
@@ -246,10 +246,6 @@ Vitest.describe('store.execute', () => {
       const store = yield* makeStore()
       yield* mockSyncBackend.disconnect
 
-      // NOTE: Intentionally skipped for now.
-      // The mock sync backend's offline mode only toggles `isConnected`; pull/push can still proceed
-      // (see `makeMockSyncBackend` TODO in `mock-sync-backend.ts`), so this scenario is currently
-      // nondeterministic and can resolve as `confirmed` before conflict propagation.
       const result = store.execute(commands.createTodoUnique({ id: 'todo-1', text: 'Mine' }))
       assert(result._tag === 'pending')
 
