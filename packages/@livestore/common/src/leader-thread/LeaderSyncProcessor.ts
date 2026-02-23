@@ -31,7 +31,7 @@ import {
   type LiveStoreSchema
 } from '../schema/mod.ts'
 import { EventSequenceNumber, LiveStoreEvent, resolveEventDef, SystemTables } from '../schema/mod.ts'
-import { EVENTLOG_META_TABLE, SYNC_STATUS_TABLE } from '../schema/state/sqlite/system-tables/eventlog-tables.ts'
+import { COMMAND_JOURNAL_TABLE, EVENTLOG_META_TABLE, SYNC_STATUS_TABLE } from '../schema/state/sqlite/system-tables/eventlog-tables.ts'
 import {
   type InvalidPullError,
   type InvalidPushError,
@@ -1212,6 +1212,7 @@ const clearLocalDatabases = ({ dbEventlog, dbState }: { dbEventlog: SqliteDb; db
     // Clear eventlog tables
     dbEventlog.execute(sql`DELETE FROM ${EVENTLOG_META_TABLE}`)
     dbEventlog.execute(sql`DELETE FROM ${SYNC_STATUS_TABLE}`)
+    dbEventlog.execute(sql`DELETE FROM ${COMMAND_JOURNAL_TABLE}`)
 
     // Drop all state tables - they'll be recreated on next boot
     const tables = dbState.select<{ name: string }>(
@@ -1234,10 +1235,9 @@ const replayCommand = Effect.fn('@livestore/common:LeaderSyncProcessor:replayCom
 }): Effect.fn.Return<
   ReadonlyArray<LiveStoreEvent.Input.Decoded>,
   ReplayConflict,
-  CommandJournal | Scope.Scope
+  CommandJournal
 > {
   const commandJournal = yield* CommandJournal
-  yield* Effect.addFinalizer(() => commandJournal.remove([command.id]).pipe(Effect.orDie))
 
   // Look up command definition from schema
   const commandDef = schema.commandDefsMap.get(command.name)
@@ -1285,6 +1285,9 @@ const replayCommand = Effect.fn('@livestore/common:LeaderSyncProcessor:replayCom
     }
     return events
   } else if (replayResult._tag === 'error') {
+    // Command's previous events are rolled back on conflict — remove from journal since
+    // there are no pending events left to confirm.
+    yield* commandJournal.remove([command.id]).pipe(Effect.orDie)
     const conflict: ReplayConflict = {
       command,
       error: replayResult.error,
@@ -1292,6 +1295,8 @@ const replayCommand = Effect.fn('@livestore/common:LeaderSyncProcessor:replayCom
     }
     return yield* Effect.fail(conflict)
   } else if (replayResult._tag === 'threw') {
+    // Handler threw unexpectedly — remove from journal since retrying won't help.
+    yield* commandJournal.remove([command.id]).pipe(Effect.orDie)
     return yield* Effect.die(new CommandExecutionError({
       command: { id: command.id, name: command.name},
       phase: 'replay',
