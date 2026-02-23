@@ -802,16 +802,16 @@ const backgroundBackendPulling = Effect.fn('@livestore/common:LeaderSyncProcesso
           })
         }
 
-          yield* connectedClientSessionPullQueues.offer({
-            payload: SyncState.payloadFromMergeResult(mergeResult),
-            leaderHead: mergeResult.newSyncState.localHead,
-          })
-        } else {
-          otelSpan?.addEvent(
-            `pull:advance`,
-            {
-              newEventsCount: newEvents.length,
-              mergeResult: TRACE_VERBOSE === true ? jsonStringify(mergeResult) : undefined,
+        yield* connectedClientSessionPullQueues.offer({
+          payload: SyncState.payloadFromMergeResult(mergeResult),
+          leaderHead: mergeResult.newSyncState.localHead,
+        })
+      } else {
+        otelSpan?.addEvent(
+          `pull:advance`,
+          {
+            newEventsCount: newEvents.length,
+            mergeResult: TRACE_VERBOSE === true ? jsonStringify(mergeResult) : undefined,
           },
           undefined,
         )
