@@ -80,7 +80,7 @@ export class MaterializeError extends Schema.TaggedError<MaterializeError>()('Li
  *
  * @remarks
  * This is an unexpected, non-recoverable error; distinct
- * from handler-returned errors which are typed and recoverable.
+ * from command-handler-returned errors which are expected and recoverable.
  */
 export class CommandExecutionError extends Schema.TaggedError<CommandExecutionError>('@livestore/common/CommandExecutionError')(
   'LiveStore.CommandExecutionError', {
