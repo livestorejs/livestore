@@ -1,6 +1,7 @@
-import { Cause, Effect, Layer, Schema, Stream } from '@livestore/utils/effect'
+import { Cause, Effect, Layer, Predicate, Schema, Stream } from '@livestore/utils/effect'
 
 import * as LiveStoreEvent from './schema/LiveStoreEvent/mod.ts'
+import { TypeId } from "@effect/ai/AiError";
 
 export class UnknownError extends Schema.TaggedError<UnknownError>()('LiveStore.UnknownError', {
   cause: Schema.Defect,
@@ -78,25 +79,24 @@ export class MaterializeError extends Schema.TaggedError<MaterializeError>()('Li
 /**
  * Error thrown when a command fails during execution.
  *
- * This is an unexpected, non-recoverable error — distinct from handler-returned
- * errors which are typed and recoverable via `ExecuteResult`.
+ * @remarks
+ * This is an unexpected, non-recoverable error; distinct
+ * from handler-returned errors which are typed and recoverable.
  */
-export class CommandExecutionError extends Schema.TaggedError<CommandExecutionError>()(
-  'LiveStore.CommandExecutionError',
-  {
+export class CommandExecutionError extends Schema.TaggedError<CommandExecutionError>('@livestore/common/CommandExecutionError')(
+  'LiveStore.CommandExecutionError', {
     /** The command that failed. */
     command: Schema.Struct({ name: Schema.String, id: Schema.String }),
     /** Why the command failed. */
     reason: Schema.Literal('CommandNotFound', 'CommandHandlerThrew', 'NoEventProduced'),
-    /** The phase where the error occurred. */
+    /** The execution phase when the error occurred. */
     phase: Schema.Literal('initial', 'replay'),
-    /** The underlying error, if any. */
-    cause: Schema.optional(Schema.Defect),
     /** Optional additional context. */
     description: Schema.optional(Schema.String),
-  },
-) {
-  get message(): string {
+    /** The underlying error, if any. */
+    cause: Schema.optional(Schema.Defect),
+  }) {
+  override get message(): string {
     const base = `${this.reason}: ${this.command.name} (${this.command.id})`
     return this.description ? `${base}: ${this.description}` : base
   }
