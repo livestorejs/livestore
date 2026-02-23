@@ -942,6 +942,8 @@ export class Store<TSchema extends LiveStoreSchema = LiveStoreSchema.Any, TConte
       })
     }
 
+    // TODO: Command execution should be transactional with event append
+    // See https://github.com/livestorejs/livestore/issues/1065
     const query: CommandHandlerContextQuery = (
       rawQueryOrQueryBuilder:
         | {

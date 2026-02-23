@@ -1250,6 +1250,8 @@ const replayCommand = Effect.fn('@livestore/common:LeaderSyncProcessor:replayCom
     }))
   }
 
+  // TODO: replay should be transactional with event append
+  // See https://github.com/livestorejs/livestore/issues/1065
   const query: CommandHandlerContextQuery = (
     rawQueryOrQueryBuilder:
       | {
