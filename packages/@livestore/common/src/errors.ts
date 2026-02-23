@@ -1,7 +1,6 @@
-import { Cause, Effect, Layer, Predicate, Schema, Stream } from '@livestore/utils/effect'
+import { Cause, Effect, Layer, Schema, Stream } from '@livestore/utils/effect'
 
 import * as LiveStoreEvent from './schema/LiveStoreEvent/mod.ts'
-import { TypeId } from "@effect/ai/AiError";
 
 export class UnknownError extends Schema.TaggedError<UnknownError>()('LiveStore.UnknownError', {
   cause: Schema.Defect,
