@@ -2,7 +2,7 @@ import type * as otel from '@opentelemetry/api'
 
 import { makeInMemoryAdapter } from '@livestore/adapter-web'
 import { provideOtel } from '@livestore/common'
-import { createStore, Events, makeSchema, State } from '@livestore/livestore'
+import { createStore, defineCommand, Events, makeSchema, State } from '@livestore/livestore'
 import { omitUndefineds } from '@livestore/utils'
 import { Effect, Schema } from '@livestore/utils/effect'
 
@@ -62,7 +62,44 @@ const materializers = State.SQLite.materializers(events, {
 })
 
 export const state = State.SQLite.makeState({ tables, materializers })
-export const schema = makeSchema({ state, events })
+
+export class TodoTextEmpty extends Schema.TaggedError<TodoTextEmpty>()('TodoTextEmpty', {}) {}
+
+export const commands = {
+  createTodo: defineCommand({
+    name: 'CreateTodo',
+    schema: Schema.Struct({ id: Schema.String, text: Schema.String }),
+    handler: ({ id, text }) => {
+      const trimmedText = text.trim()
+      if (trimmedText.length === 0) return new TodoTextEmpty()
+      return events.todoCreated({ id, text: trimmedText, completed: false })
+    },
+  }),
+  completeTodo: defineCommand({
+    name: 'CompleteTodo',
+    schema: Schema.Struct({ id: Schema.String }),
+    handler: ({ id }, ctx) => {
+      const todo = ctx.query(tables.todos.where({ id }).first())
+      if (!todo) throw new Error('Todo not found')
+      return events.todoCompleted({ id })
+    },
+  }),
+  emptyCommand: defineCommand({
+    name: 'EmptyCommand',
+    schema: Schema.Struct({}),
+    handler: () => [] as const,
+  }),
+  multiEventCommand: defineCommand({
+    name: 'MultiEvent',
+    schema: Schema.Struct({
+      todos: Schema.Array(Schema.Struct({ id: Schema.String, text: Schema.String })),
+    }),
+    handler: ({ todos }) =>
+      todos.map(({ id, text }) => events.todoCreated({ id, text, completed: false })),
+  }),
+}
+
+export const schema = makeSchema({ state, events, commands })
 
 export const makeTodoMvc = ({
   otelTracer,
