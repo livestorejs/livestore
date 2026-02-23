@@ -55,6 +55,9 @@ export class SyncState extends Schema.Class<SyncState>('SyncState')({
   })
 }
 
+/**
+ * This payload propagates a rebase from the upstream node
+ */
 export class PayloadUpstreamRebase extends Schema.TaggedStruct('upstream-rebase', {
   /** Events which need to be rolled back */
   rollbackEvents: Schema.Array(LiveStoreEvent.Client.EncodedWithMeta),
