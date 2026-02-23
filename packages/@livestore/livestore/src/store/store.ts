@@ -18,7 +18,7 @@ import {
   replaceSessionIdSymbol,
   type StorageMode,
   type SyncState,
-  UnknownError,
+  UnknownError, type ParamsObject, type QueryBuilder,
 } from '@livestore/common'
 import type { StreamEventsOptions } from '@livestore/common/leader-thread'
 import {
@@ -31,7 +31,7 @@ import {
   type LiveStoreSchema,
   executeCommandHandler,
   resolveEventDef,
-  SystemTables,
+  SystemTables, type MaterializerContextQuery,
 } from '@livestore/common/schema'
 import { assertNever, isDevEnv, objectToString, omitUndefineds, shouldNeverHappen } from '@livestore/utils'
 import type { Scope } from '@livestore/utils/effect'
@@ -993,9 +993,27 @@ export class Store<TSchema extends LiveStoreSchema = LiveStoreSchema.Any, TConte
       })
     }
 
-    // Create handler context with query access to current state
+    const query: CommandHandlerContextQuery = (
+      rawQueryOrQueryBuilder:
+        | {
+        query: string
+        bindValues: Bindable
+      }
+        | QueryBuilder.Any,
+    ) => {
+      if (isQueryBuilder(rawQueryOrQueryBuilder) === true) {
+        const { query, bindValues } = rawQueryOrQueryBuilder.asSql()
+        const rawResults = this[StoreInternalsSymbol].sqliteDbWrapper.select(query, prepareBindValues(bindValues, query))
+        const resultSchema = getResultSchema(rawQueryOrQueryBuilder)
+        return Schema.decodeSync(resultSchema)(rawResults)
+      } else {
+        const { query, bindValues } = rawQueryOrQueryBuilder
+        return this[StoreInternalsSymbol].sqliteDbWrapper.select(query, prepareBindValues(bindValues, query))
+      }
+    }
+
     const handlerContext: CommandHandlerContext = {
-      query: ((query: any) => this.query(query)) as CommandHandlerContextQuery,
+      query,
       phase: { _tag: 'initial' },
     }
 
