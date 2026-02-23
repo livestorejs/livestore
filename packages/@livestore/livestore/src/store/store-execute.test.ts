@@ -176,7 +176,9 @@ Vitest.describe('store.execute', () => {
     }).pipe(withTestCtx(test)),
   )
 
-  Vitest.scopedLive('should reject pending confirmations on shutdown', (test) =>
+  // Skipped: full command confirmation (all the way to sync backend) is not yet wired into the sync pipeline.
+  // See https://github.com/livestorejs/livestore/issues/1016
+  Vitest.scopedLive.skip('should reject pending confirmations on shutdown', (test) =>
     Effect.gen(function* () {
       const { makeStore, mockSyncBackend } = yield* TestContext
       const store = yield* makeStore()

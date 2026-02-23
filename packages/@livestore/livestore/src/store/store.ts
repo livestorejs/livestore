@@ -409,6 +409,28 @@ export class Store<TSchema extends LiveStoreSchema = LiveStoreSchema.Any, TConte
       )
 
       yield* syncProcessor.boot
+
+      // Settle command confirmations when their events leave the session's pending array
+      // (i.e., after the leader acknowledges them via advance).
+      // TODO: This doesn't yet handle replay/conflict detection after sync backend confirmation.
+      // See https://github.com/livestorejs/livestore/issues/1016
+      yield* syncProcessor.syncState.changes.pipe(
+        Stream.tap((syncState) =>
+          Effect.sync(() => {
+            if (this[StoreInternalsSymbol].pendingCommandConfirmations.size === 0) return
+
+            for (const [commandId, handlers] of this[StoreInternalsSymbol].pendingCommandConfirmations) {
+              if (!syncState.pending.some((e) => e.commandId === commandId)) {
+                handlers.resolve({ _tag: 'confirmed' })
+                this[StoreInternalsSymbol].pendingCommandConfirmations.delete(commandId)
+              }
+            }
+          }),
+        ),
+        Stream.runDrain,
+        Effect.interruptible,
+        Effect.forkScoped,
+      )
     })
 
     // Build Sqlite wrapper last to avoid using getters before internals are set
@@ -1001,7 +1023,8 @@ export class Store<TSchema extends LiveStoreSchema = LiveStoreSchema.Any, TConte
     // Commit produced events (uses existing commit path)
     this.commit(...events)
 
-    // TODO: confirmation is stubbed out — never resolves until real settlement is implemented.
+    // TODO: Confirmation settles when the command's events are pushed to the leader (leave session pending),
+    // but doesn't yet handle replay/conflict detection after sync backend confirmation.
     // See https://github.com/livestorejs/livestore/issues/1016
     const confirmation = new Promise<{ readonly _tag: 'confirmed' } | { readonly _tag: 'conflict'; readonly error: TError }>(
       (_resolve, reject) => {
