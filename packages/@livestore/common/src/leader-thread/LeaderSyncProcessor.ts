@@ -31,7 +31,7 @@ import {
   LiveStoreEvent,
   resolveEventDef,
   SystemTables,
-  type LiveStoreSchema,
+  type LiveStoreSchema, type CommandHandlerContextQuery,
 } from '../schema/mod.ts'
 import { EVENTLOG_META_TABLE, SYNC_STATUS_TABLE } from '../schema/state/sqlite/system-tables/eventlog-tables.ts'
 import { CommandJournal } from './CommandJournal.ts'
@@ -49,7 +49,7 @@ import { rollback } from './materialize-event.ts'
 import type { ShutdownChannel } from './shutdown-channel.ts'
 import type { InitialBlockingSyncContext, LeaderSyncProcessor } from './types.ts'
 import { LeaderThreadCtx } from './types.ts'
-import { isQueryBuilder } from '../schema/state/sqlite/query-builder/api.ts'
+import { getResultSchema, isQueryBuilder, type QueryBuilder } from '../schema/state/sqlite/query-builder/mod.ts'
 
 // WORKAROUND: @effect/opentelemetry mis-parses `Span.addEvent(name, attributes)` and treats the attributes object as a
 // time input, causing `TypeError: {} is not iterable` at runtime.
@@ -1336,21 +1336,29 @@ const replayPendingCommands = ({
         continue
       }
 
-      // Create handler context with query access to current post-rebase state
+      // Query access to current post-rebase state
+      const query: CommandHandlerContextQuery = (
+        rawQueryOrQueryBuilder:
+          | {
+          query: string
+          bindValues: Bindable
+        }
+          | QueryBuilder.Any,
+      ) => {
+        if (isQueryBuilder(rawQueryOrQueryBuilder) === true) {
+          const { query, bindValues } = rawQueryOrQueryBuilder.asSql()
+          const rawResults = dbState.select(query, prepareBindValues(bindValues, query))
+          const resultSchema = getResultSchema(rawQueryOrQueryBuilder)
+          return Schema.decodeSync(resultSchema)(rawResults)
+        } else {
+          const { query, bindValues } = rawQueryOrQueryBuilder
+          return dbState.select(query, prepareBindValues(bindValues, query))
+        }
+      }
+
       const handlerContext: CommandHandlerContext = {
         phase: { _tag: 'replay' },
-        query: <TResult>(query: unknown): TResult => {
-          if (isQueryBuilder(query) === true) {
-            return dbState.select(query as never) as TResult
-          }
-
-          if (typeof query === 'object' && query !== null && 'query' in query && 'bindValues' in query) {
-            const { query: sqlQuery, bindValues } = query as { query: string; bindValues: Bindable }
-            return dbState.select(sqlQuery, prepareBindValues(bindValues, sqlQuery)) as TResult
-          }
-
-          return dbState.select(query as never) as TResult
-        },
+        query,
       }
 
       // Execute the handler to validate the command against the new state
