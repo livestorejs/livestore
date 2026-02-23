@@ -423,10 +423,7 @@ export class Store<TSchema extends LiveStoreSchema = LiveStoreSchema.Any, TConte
       yield* Effect.addFinalizer(() =>
         Effect.sync(() => {
           for (const handlers of this[StoreInternalsSymbol].pendingCommandConfirmations.values()) {
-            handlers.resolve({
-              _tag: 'conflict',
-              error: new Error('Store shutdown before command confirmation'),
-            })
+            handlers.reject(new Error('Store shutdown before command confirmation'))
           }
           this[StoreInternalsSymbol].pendingCommandConfirmations.clear()
 
@@ -1050,9 +1047,10 @@ export class Store<TSchema extends LiveStoreSchema = LiveStoreSchema.Any, TConte
     this.commit(...events)
 
     const confirmation = new Promise<{ readonly _tag: 'confirmed' } | { readonly _tag: 'conflict'; readonly error: TError }>(
-      (resolve) => {
+      (resolve, reject) => {
         this[StoreInternalsSymbol].pendingCommandConfirmations.set(command.id, {
           resolve: resolve as (value: { _tag: 'confirmed' } | { _tag: 'conflict'; error: unknown }) => void,
+          reject,
         })
       },
     )

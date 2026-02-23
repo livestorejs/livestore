@@ -294,6 +294,7 @@ export type StoreInternals = {
     string,
     {
       resolve: (confirmation: { _tag: 'confirmed' } | { _tag: 'conflict'; error: unknown }) => void
+      reject: (error: unknown) => void
     }
   >
 
