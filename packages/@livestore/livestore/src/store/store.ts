@@ -1001,7 +1001,8 @@ export class Store<TSchema extends LiveStoreSchema = LiveStoreSchema.Any, TConte
     // Commit produced events (uses existing commit path)
     this.commit(...events)
 
-    // TODO: confirmation is stubbed out — never resolves until real settlement is implemented
+    // TODO: confirmation is stubbed out — never resolves until real settlement is implemented.
+    // See https://github.com/livestorejs/livestore/issues/1016
     const confirmation = new Promise<{ readonly _tag: 'confirmed' } | { readonly _tag: 'conflict'; readonly error: TError }>(
       (_resolve, reject) => {
         this[StoreInternalsSymbol].pendingCommandConfirmations.set(command.id, {

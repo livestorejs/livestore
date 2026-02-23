@@ -197,6 +197,8 @@ Vitest.describe('store.execute', () => {
     }).pipe(withTestCtx(test)),
   )
 
+  // Skipped: command replay is not yet wired into the sync pipeline.
+  // See https://github.com/livestorejs/livestore/issues/1016
   Vitest.scopedLive.skip('should confirm after successful command replay', (test) =>
     Effect.gen(function* () {
       const { makeStore, mockSyncBackend } = yield* TestContext
@@ -226,6 +228,8 @@ Vitest.describe('store.execute', () => {
     }).pipe(withTestCtx(test)),
   )
 
+  // Skipped: command replay is not yet wired into the sync pipeline.
+  // See https://github.com/livestorejs/livestore/issues/1016
   Vitest.scopedLive.skip('should resolve to conflict when replay returns error', (test) =>
     Effect.gen(function* () {
       const { makeStore, mockSyncBackend } = yield* TestContext

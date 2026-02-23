@@ -1223,7 +1223,10 @@ const clearLocalDatabases = ({ dbEventlog, dbState }: { dbEventlog: SqliteDb; db
     }
   })
 
-/** Replay a command against the current (post-rebase) state DB. */
+/**
+ * Replay a command against the current (post-rebase) state DB.
+ * Not yet wired into the sync pipeline. See https://github.com/livestorejs/livestore/issues/1016
+ */
 const replayCommand = Effect.fn('@livestore/common:LeaderSyncProcessor:replayCommand')(function* ({
   command,
   schema,
