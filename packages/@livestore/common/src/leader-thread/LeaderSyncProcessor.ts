@@ -34,7 +34,7 @@ import {
   type LiveStoreSchema,
 } from '../schema/mod.ts'
 import { EVENTLOG_META_TABLE, SYNC_STATUS_TABLE } from '../schema/state/sqlite/system-tables/eventlog-tables.ts'
-import { CommandJournal } from '../sync/CommandJournal.ts'
+import { CommandJournal } from './CommandJournal.ts'
 import {
   type InvalidPullError,
   type InvalidPushError,
