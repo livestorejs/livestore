@@ -117,26 +117,12 @@ export const materializers = State.SQLite.materializers(threadEvents, {
 
 const state = State.SQLite.makeState({ tables: threadTables, materializers })
 
-// Typed errors for command handlers. These serve as no-op signals — callers can ignore
-// the result, but during replay the errors tell the reconciliation mechanism to roll back
-// redundant events (e.g. when a remote client already applied the same label).
 export class LabelAlreadyApplied extends Schema.TaggedError<LabelAlreadyApplied>()('LabelAlreadyApplied', {}) {}
-export class LabelNotApplied extends Schema.TaggedError<LabelNotApplied>()('LabelNotApplied', {}) {}
-export class AlreadyAtTargetLabel extends Schema.TaggedError<AlreadyAtTargetLabel>()('AlreadyAtTargetLabel', {}) {}
-export class NoSystemLabelApplied extends Schema.TaggedError<NoSystemLabelApplied>()('NoSystemLabelApplied', {}) {}
+export class LabelNotOnThread extends Schema.TaggedError<LabelNotOnThread>()('LabelNotOnThread', {}) {}
 
 export const commands = {
-  /**
-   * Applies a user label to a thread. Idempotent — no-ops if already applied.
-   *
-   * Must only be called with user label IDs, never system labels. System label changes
-   * must go through `moveThreadToSystemLabel` to preserve the "exactly one system label"
-   * invariant. This is enforced by the application layer (the UI only exposes user labels
-   * through this command), not by the handler itself — the Thread store doesn't own
-   * the concept of label types (that's a Mailbox store concern).
-   */
-  applyUserLabel: defineCommand({
-    name: 'ApplyUserLabel',
+  applyLabel: defineCommand({
+    name: 'ApplyLabel',
     schema: Schema.Struct({
       threadId: Schema.String,
       labelId: Schema.String,
@@ -149,14 +135,8 @@ export const commands = {
     },
   }),
 
-  /**
-   * Removes a user label from a thread. Idempotent — no-ops if not applied.
-   *
-   * Same constraint as `applyUserLabel`: must only be called with user label IDs.
-   * System label removal is handled exclusively by `moveThreadToSystemLabel`.
-   */
-  removeUserLabel: defineCommand({
-    name: 'RemoveUserLabel',
+  removeLabel: defineCommand({
+    name: 'RemoveLabel',
     schema: Schema.Struct({
       threadId: Schema.String,
       labelId: Schema.String,
@@ -164,38 +144,30 @@ export const commands = {
     }),
     handler: ({ threadId, labelId, removedAt }, ctx) => {
       const existing = ctx.query(threadTables.threadLabels.where({ threadId, labelId }).first())
-      if (!existing) return new LabelNotApplied()
+      if (!existing) return new LabelNotOnThread()
       return threadEvents.threadLabelRemoved({ threadId, labelId, removedAt })
     },
   }),
 
-  /**
-   * Atomically swaps a thread's current system label for a target (e.g. archive, trash).
-   *
-   * Enforces the invariant: a thread must have exactly one system label at all times.
-   *
-   * `systemLabelIds` is reference data from the Mailbox store (which owns label definitions).
-   * The handler needs it to identify which of the thread's labels is the current system label.
-   * During replay, it re-queries the thread's labels so it correctly finds the current system
-   * label even if a remote client moved the thread to a different one in the meantime.
-   */
-  moveThreadToSystemLabel: defineCommand({
-    name: 'MoveThreadToSystemLabel',
+  replaceLabel: defineCommand({
+    name: 'ReplaceLabel',
     schema: Schema.Struct({
       threadId: Schema.String,
+      currentLabelId: Schema.String,
       targetLabelId: Schema.String,
-      systemLabelIds: Schema.Array(Schema.String),
-      movedAt: Schema.Date, // Passed in rather than generated, so replayed commands preserve the original timestamp
+      replacedAt: Schema.Date, // Passed in rather than generated, so replayed commands preserve the original timestamp
     }),
-    handler: ({ threadId, targetLabelId, systemLabelIds, movedAt }, ctx) => {
+    handler: ({ threadId, currentLabelId, targetLabelId, replacedAt }, ctx) => {
       const threadLabels = ctx.query(threadTables.threadLabels.where({ threadId }))
-      const currentSystemLabel = threadLabels.find((tl) => systemLabelIds.includes(tl.labelId))
-      if (!currentSystemLabel) return new NoSystemLabelApplied()
-      if (currentSystemLabel.labelId === targetLabelId) return new AlreadyAtTargetLabel()
+
+      const currentLabel = threadLabels.find((tl) => tl.labelId === currentLabelId)
+      if (!currentLabel) return new LabelNotOnThread()
+
+      if (currentLabel.labelId === targetLabelId) return new LabelAlreadyApplied()
 
       return [
-        threadEvents.threadLabelRemoved({ threadId, labelId: currentSystemLabel.labelId, removedAt: movedAt }),
-        threadEvents.threadLabelApplied({ threadId, labelId: targetLabelId, appliedAt: movedAt }),
+        threadEvents.threadLabelRemoved({ threadId, labelId: currentLabel.labelId, removedAt: replacedAt }),
+        threadEvents.threadLabelApplied({ threadId, labelId: targetLabelId, appliedAt: replacedAt }),
       ]
     },
   }),

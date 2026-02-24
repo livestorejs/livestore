@@ -1,11 +1,10 @@
 import { queryDb } from '@livestore/livestore'
 import { useStore } from '@livestore/react'
 import type React from 'react'
-import { useCallback } from 'react'
 
-import { useMailboxStore } from '../stores/mailbox/index.ts'
+import { useMailboxStore } from '../stores/mailbox'
 import { mailboxTables } from '../stores/mailbox/schema.ts'
-import { threadStoreOptions } from '../stores/thread/index.ts'
+import { threadStoreOptions } from '../stores/thread'
 import { commands } from '../stores/thread/schema.ts'
 import { UserLabelPicker } from './UserLabelPicker.tsx'
 
@@ -27,38 +26,27 @@ export const ThreadActions: React.FC<ThreadActionsProps> = ({ threadId }) => {
   const threadStore = useStore(threadStoreOptions(threadId))
   const systemLabels = mailboxStore.useQuery(systemLabelsQuery)
 
-  const handleArchive = useCallback(() => {
-    const archiveLabel = systemLabels.find((l) => l.name === 'ARCHIVE')
-    if (!archiveLabel) throw new Error('ARCHIVE label not found')
+  const moveToSystemLabel = async (labelName: string) => {
+    const label = systemLabels.find((l) => l.name === labelName)
+    if (!label) throw new Error(`${labelName} label not found`)
 
-    threadStore.execute(
-      commands.moveThreadToSystemLabel({
+    const confirmation = await threadStore.execute(
+      commands.replaceLabel({
         threadId,
-        targetLabelId: archiveLabel.id,
-        systemLabelIds: systemLabels.map((l) => l.id),
-        movedAt: new Date(),
+        currentLabelId: label.id,
+        targetLabelId: label.id,
+        replacedAt: new Date(),
       }),
-    )
-  }, [systemLabels, threadId, threadStore])
-
-  const handleTrash = useCallback(() => {
-    const trashLabel = systemLabels.find((l) => l.name === 'TRASH')
-    if (!trashLabel) throw new Error('TRASH label not found')
-
-    threadStore.execute(
-      commands.moveThreadToSystemLabel({
-        threadId,
-        targetLabelId: trashLabel.id,
-        systemLabelIds: systemLabels.map((l) => l.id),
-        movedAt: new Date(),
-      }),
-    )
-  }, [systemLabels, threadId, threadStore])
+    ).confirmation
+    if (confirmation._tag === 'conflict' && confirmation.error._tag === 'LabelNotOnThread') {
+      // TODO
+    }
+  }
 
   return (
     <div className="flex items-center space-x-2">
       <button
-        onClick={handleArchive}
+        onClick={() => moveToSystemLabel('ARCHIVE')}
         type="button"
         className="px-2 py-1 text-sm text-gray-600 hover:text-green-600 border rounded"
         title="Archive thread"
@@ -67,7 +55,7 @@ export const ThreadActions: React.FC<ThreadActionsProps> = ({ threadId }) => {
       </button>
 
       <button
-        onClick={handleTrash}
+        onClick={() => moveToSystemLabel('TRASH')}
         type="button"
         className="px-2 py-1 text-sm text-gray-600 hover:text-red-600 border rounded"
         title="Move to trash"
