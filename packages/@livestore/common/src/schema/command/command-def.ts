@@ -77,9 +77,33 @@ export type CommandDefRecord = {
 /**
  * Creates a command definition.
  *
- * Commands encode user intentions that can be re-evaluated during reconciliation.
+ * Commands encode user intentions that can be re-evaluated during sync (command replay).
  * The handler validates the command against the current state, and returns event(s)
  * or an error for expected and recoverable failures.
+ *
+ * @param options.name - Unique name identifying the command type.
+ * @param options.schema - An {@link Schema.Schema} for validating command arguments.
+ * @param options.handler - Function that validates invariants against the current state and
+ *   returns event(s) or a recoverable error. See {@link CommandHandler}.
+ * @returns A callable {@link CommandDef} — invoke it with arguments to create a
+ *   {@link CommandInstance} suitable for {@link Store.execute}.
+ *
+ * @example
+ * ```ts
+ * import { defineCommand, Schema } from '@livestore/livestore'
+ *
+ * class RoomAtCapacity extends Schema.TaggedError<RoomAtCapacity>()('RoomAtCapacity', {}) {}
+ *
+ * const checkInGuest = defineCommand({
+ *   name: 'CheckInGuest',
+ *   schema: Schema.Struct({ roomId: Schema.String, guestId: Schema.String }),
+ *   handler: ({ roomId, guestId }, ctx) => {
+ *     const guestCount = ctx.query(tables.roomGuests.where({ roomId }).count())
+ *     if (guestCount >= 2) return new RoomAtCapacity()
+ *     return events.guestCheckedIn({ roomId, guestId })
+ *   },
+ * })
+ * ```
  */
 export const defineCommand = <TName extends string, TArgs, TEncoded = TArgs, TReturn = ReadonlyArray<any>>(options: {
   name: TName

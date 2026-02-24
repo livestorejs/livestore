@@ -20,7 +20,7 @@ const TypeId = '@livestore/common/CommandInstance'
 /**
  * A command instance ready to be executed.
  *
- * Created by calling a CommandDef with arguments.
+ * Created by calling a {@link CommandDef} with arguments.
  * Contains the command name, validated arguments, and a unique ID for tracking.
  *
  * The error type is carried via a branded field so TypeScript can infer `TError`
@@ -67,7 +67,12 @@ export const CommandInstanceSchema = Schema.transform(
   },
 )
 
-/** Creates a branded {@link CommandInstance}. */
+/**
+ * Creates a branded {@link CommandInstance}.
+ *
+ * @param options - The command's name and validated arguments.
+ * @returns A new {@link CommandInstance} with a unique `cmd_`-prefixed ID.
+ */
 export const makeCommandInstance = <TName extends string, TArgs, TError>({
   name,
   args,

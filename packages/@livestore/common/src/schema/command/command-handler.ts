@@ -19,11 +19,11 @@ import type { CommandDef } from './command-def.ts'
  *   if (!room) throw new Error('Room not found')
  *
  *   // With raw SQL
- *   const guestCount = ctx.query({
- *     query: 'SELECT COUNT(*) FROM roomGuests WHERE roomId = ?',
+ *   const [row] = ctx.query({
+ *     query: 'SELECT COUNT(*) as count FROM roomGuests WHERE roomId = ?',
  *     bindValues: [roomId],
  *   })
- *   if (guestCount >= room.capacity) return new RoomAtCapacity()
+ *   if ((row as { count: number }).count >= room.capacity) return new RoomAtCapacity()
  *
  *   return events.guestCheckedIn({ roomId, guestId })
  * }
@@ -41,16 +41,17 @@ export type CommandHandlerContextQuery = {
  *
  * - `'initial'` — initial and immediate execution via `store.execute()`
  * - `'replay'` — re-execution after pulling new events
+ *
+ * @see {@link CommandHandlerContext.phase}
  */
 export type CommandHandlerExecutionPhase = { readonly _tag: 'initial' } | { readonly _tag: 'replay' }
 
 /**
  * Context provided to command handlers for validation and state queries.
  *
- * Handlers receive this as their second argument. It provides read access to
- * the current state and indicates **when** the handler is running so handlers
- * can adapt their behavior accordingly (e.g. return alternative events during
- * replay instead of returning an error).
+ * Provides read access to the current state and indicates **when** the handler
+ * is running so handlers can adapt their behavior accordingly (e.g., return
+ * alternative events during replay instead of returning an error).
  *
  * @example
  * ```ts
@@ -112,8 +113,8 @@ const isEventInput = (value: unknown): value is LiveStoreEvent.Input.Decoded =>
 /**
  * Distinguishes events (array or single) from errors in a handler result.
  *
- * Used by `store.execute()` and `executeCommandHandler` in replay to normalize
- * handler return values without requiring an Either wrapper in user code.
+ * Used by {@link executeCommandHandler} to normalize handler return values
+ * without requiring an Either wrapper in user code.
  */
 export const normalizeHandlerResult = <TError>(
   result: CommandHandlerResult<TError>,
@@ -163,9 +164,20 @@ export const executeCommandHandler = <TError>(
 /**
  * Function type for validating a command and producing event(s) or error.
  *
- * Handlers receive the decoded command arguments and a context with state
+ * Handlers receive the decoded command arguments and a {@link CommandHandlerContext} with state
  * access. They should validate invariants and return the events to be
  * committed, or return an error for expected and recoverable failures.
+ * Thrown errors are treated as unexpected and non-recoverable.
+ *
+ * @example
+ * ```ts
+ * const handler: CommandHandler = ({ roomId, guestId }, ctx) => {
+ *   const room = ctx.query(tables.rooms.get(roomId))
+ *   if (!room) throw new Error('Room not found')
+ *   if (room.guestCount >= room.capacity) return new RoomAtCapacity()
+ *   return events.guestCheckedIn({ roomId, guestId })
+ * }
+ * ```
  */
 export type CommandHandler<
   TCommandDef extends { schema: Schema.Schema<any, any> } = CommandDef.AnyWithoutFn,

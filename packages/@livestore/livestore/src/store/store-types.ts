@@ -85,8 +85,21 @@ export type LiveStoreContextRunning<TSchema extends LiveStoreSchema = LiveStoreS
  * Used as the resolution type of {@link ExecuteResultPending.confirmation} so
  * consumers can pattern-match on confirmed vs. conflict:
  *
- * - `confirmed`: Command's event(s) were pushed and confirmed by the sync backend
- * - `conflict`: Command's handler returned an error during command replay
+ * - `'confirmed'`: Command's event(s) were pushed and confirmed by the sync backend
+ * - `'conflict'`: Command's handler returned an error during command replay
+ *
+ * @example
+ * ```ts
+ * const confirmation = await result.confirmation
+ * switch (confirmation._tag) {
+ *   case 'confirmed':
+ *     console.log('Command confirmed by sync backend')
+ *     break
+ *   case 'conflict':
+ *     console.error('Conflict:', confirmation.error)
+ *     break
+ * }
+ * ```
  */
 export type CommandConfirmation<TError = unknown> =
   | { readonly _tag: 'confirmed' }

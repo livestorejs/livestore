@@ -39,7 +39,9 @@ export class CommandJournal extends Context.Tag('@livestore/common/CommandJourna
 
     /**
      * Remove commands from the journal by ID.
-     * Used for both confirmation (corresponding events confirmed) and replay failure
+     *
+     * Used for both confirmation (corresponding events confirmed) and replay failure.
+     * Non-existent IDs are silently ignored.
      */
     readonly remove: (commandIds: ReadonlyArray<string>) => Effect.Effect<void, CommandJournalError>
 
@@ -48,6 +50,11 @@ export class CommandJournal extends Context.Tag('@livestore/common/CommandJourna
   }
 >() {}
 
+/**
+ * Error raised when a {@link CommandJournal} operation fails.
+ *
+ * Wraps the underlying SQLite or decoding error with the journal method that triggered it.
+ */
 export class CommandJournalError extends Schema.TaggedError<CommandJournalError>()(
   '@livestore/common/CommandJournalError',
   {

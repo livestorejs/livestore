@@ -30,6 +30,7 @@ export interface LiveStoreSchema<
 
   readonly state: InternalState
   readonly eventsDefsMap: Map<string, EventDef.AnyWithoutFn>
+  /** Runtime map of command definitions keyed by command name. Used by {@link Store.execute} to look up handlers. */
   readonly commandDefsMap: Map<string, CommandDef.AnyWithoutFn>
   readonly unknownEventHandling: UnknownEvents.HandlingConfig
   readonly devtools: {
@@ -87,6 +88,14 @@ export interface InternalState {
 export interface InputSchema {
   readonly events: ReadonlyArray<EventDef.AnyWithoutFn> | Record<string, EventDef.AnyWithoutFn>
   readonly state: InternalState
+  /**
+   * Optional record or array of command definitions.
+   *
+   * When provided, commands can be executed via {@link Store.execute} and will be replayed
+   * during sync reconciliation to re-validate pending changes.
+   *
+   * @see {@link CommandDef}
+   */
   readonly commands?: ReadonlyArray<CommandDef.AnyWithoutFn> | Record<string, CommandDef.AnyWithoutFn>
   readonly devtools?: {
     /**
