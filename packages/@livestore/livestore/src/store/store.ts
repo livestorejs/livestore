@@ -64,6 +64,7 @@ import {
   type RefreshReason,
   type StoreCommitOptions,
   type StoreConstructorParams,
+  type StoreExecuteOptions,
   type ExecuteResult,
   type StoreEventsOptions,
   type StoreInternals,
@@ -952,6 +953,7 @@ export class Store<TSchema extends LiveStoreSchema = LiveStoreSchema.Any, TConte
    */
   execute = <TName extends string, TArgs, TError>(
     command: CommandInstance<TName, TArgs, TError>,
+    options?: StoreExecuteOptions,
   ): ExecuteResult<TError> => {
     this.checkShutdown('execute')
 
@@ -1034,7 +1036,16 @@ export class Store<TSchema extends LiveStoreSchema = LiveStoreSchema.Any, TConte
 
             return Effect.sync(() => {
               const eventsWithCommandId = r.events.map((event) => ({ ...event, commandId: command.id }))
-              this.commit(...eventsWithCommandId)
+              if (options !== undefined) {
+                const commitOptions: StoreCommitOptions = {
+                  ...(options.label !== undefined && { label: options.label }),
+                  ...(options.skipRefresh !== undefined && { skipRefresh: options.skipRefresh }),
+                  ...(options.otelContext !== undefined && { otelContext: options.otelContext }),
+                }
+                this.commit(commitOptions, ...eventsWithCommandId)
+              } else {
+                this.commit(...eventsWithCommandId)
+              }
 
               // TODO: Confirmation settles when the command's events are pushed to the leader (leave session pending),
               // but doesn't yet handle replay/conflict detection after sync backend confirmation.
@@ -1062,11 +1073,15 @@ export class Store<TSchema extends LiveStoreSchema = LiveStoreSchema.Any, TConte
         attributes: {
           'livestore.commandName': command.name,
           'livestore.commandId': command.id,
+          ...(options?.label && { 'livestore.executeLabel': options.label }),
         },
         links: [
+          // Span link to LiveStore:commits
           OtelTracer.makeSpanLink({
             context: otel.trace.getSpanContext(this[StoreInternalsSymbol].otel.commitsSpanContext)!,
           }),
+          // User-provided span links
+          ...(options?.spanLinks?.map(OtelTracer.makeSpanLink) ?? []),
         ],
       }),
       Effect.exit,

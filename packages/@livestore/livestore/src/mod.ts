@@ -58,6 +58,7 @@ export {
   type ExecuteResult,
   type ExecuteResultFailed,
   type ExecuteResultPending,
+  type StoreExecuteOptions,
   type ShutdownDeferred,
   type StoreInternals,
   StoreInternalsSymbol,

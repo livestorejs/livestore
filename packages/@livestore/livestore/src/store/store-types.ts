@@ -397,6 +397,20 @@ export type StoreCommitOptions = {
   otelContext?: otel.Context
 }
 
+export type StoreExecuteOptions = {
+  /** Human-readable label for tracing and debugging, added as an OpenTelemetry span attribute. */
+  label?: string
+  /**
+   * When `true`, defers reactive query refresh after the command's events are committed.
+   * Call {@link Store.manualRefresh} afterwards to flush updates in a single pass.
+   */
+  skipRefresh?: boolean
+  /** Additional OpenTelemetry span links attached to the `LiveStore:execute` span. */
+  spanLinks?: otel.Link[]
+  /** Custom OpenTelemetry context to propagate into the underlying commit. */
+  otelContext?: otel.Context
+}
+
 /**
  * filter: Narrowed to the store's event types
  * includeClientOnly: Omitted from public API until supported
