@@ -421,7 +421,7 @@ export class Store<TSchema extends LiveStoreSchema = LiveStoreSchema.Any, TConte
             if (this[StoreInternalsSymbol].pendingCommandConfirmations.size === 0) return
 
             for (const [commandId, handlers] of this[StoreInternalsSymbol].pendingCommandConfirmations) {
-              if (!syncState.pending.some((e) => e.commandId === commandId)) {
+              if (syncState.pending.some((e) => e.commandId === commandId) === false) {
                 handlers.resolve({ _tag: 'confirmed' })
                 this[StoreInternalsSymbol].pendingCommandConfirmations.delete(commandId)
               }

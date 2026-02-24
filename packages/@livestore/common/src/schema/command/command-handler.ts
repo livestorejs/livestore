@@ -118,8 +118,8 @@ const isEventInput = (value: unknown): value is LiveStoreEvent.Input.Decoded =>
 export const normalizeHandlerResult = <TError>(
   result: CommandHandlerResult<TError>,
 ): { ok: true; events: ReadonlyArray<LiveStoreEvent.Input.Decoded> } | { ok: false; error: TError } => {
-  if (Array.isArray(result)) return { ok: true, events: result }
-  if (isEventInput(result)) return { ok: true, events: [result] }
+  if (Array.isArray(result) === true) return { ok: true, events: result }
+  if (isEventInput(result) === true) return { ok: true, events: [result] }
   return { ok: false, error: result as TError }
 }
 

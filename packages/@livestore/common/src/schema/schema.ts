@@ -117,7 +117,7 @@ export const makeSchema = <TInputSchema extends InputSchema>(
   const eventsDefsMap = toNamedMap(inputSchema.events, 'event')
 
   for (const tableDef of tables.values()) {
-    if (tableIsClientDocumentTable(tableDef) === true && !eventsDefsMap.has(tableDef.set.name)) {
+    if (tableIsClientDocumentTable(tableDef) === true && eventsDefsMap.has(tableDef.set.name) === false) {
       eventsDefsMap.set(tableDef.set.name, tableDef.set)
     }
   }
@@ -201,9 +201,9 @@ const toNamedMap = <T extends { readonly name: string }>(
   label: string,
 ): Map<string, T> => {
   const map = new Map<string, T>()
-  const items = isReadonlyArray(input) ? input : Object.values(input)
+  const items = isReadonlyArray(input) === true ? input : Object.values(input)
   for (const item of items) {
-    if (map.has(item.name)) {
+    if (map.has(item.name) === true) {
       shouldNeverHappen(`Duplicate ${label} name: ${item.name}. Please use unique names for ${label}s.`)
     }
     map.set(item.name, item)
