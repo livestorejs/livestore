@@ -46,7 +46,7 @@ exports[`useClientDocument > otel > should update the data based on component ke
       "_name": "LiveStore:sync",
     },
     {
-      "_name": "LiveStore:commits",
+      "_name": "LiveStore:mutations",
     },
     {
       "_name": "LiveStore:queries",
@@ -65,6 +65,45 @@ exports[`useClientDocument > otel > should update the data based on component ke
                 "sql.query": "SELECT 1 FROM 'UserInfo' WHERE id = ?",
                 "sql.rowsCount": 0,
               },
+            },
+            {
+              "_name": "LiveStore:commit",
+              "attributes": {
+                "livestore.commitLabel": "UserInfo.set:u1",
+                "livestore.eventTags": "[
+  "UserInfoSet"
+]",
+                "livestore.eventsCount": 1,
+              },
+              "children": [
+                {
+                  "_name": "client-session-sync-processor:push",
+                  "attributes": {
+                    "batchSize": 1,
+                    "eventCounts": "{
+  "UserInfoSet": 1
+}",
+                    "mergeResultTag": "advance",
+                  },
+                  "children": [
+                    {
+                      "_name": "client-session-sync-processor:materialize-event",
+                      "children": [
+                        {
+                          "_name": "livestore.in-memory-db:execute",
+                          "attributes": {
+                            "sql.query": "
+      INSERT INTO 'UserInfo' (id, value)
+      VALUES (?, ?)
+      ON CONFLICT (id) DO UPDATE SET value = json_set(json_set(value, ?, json(?)), ?, json(?))
+    ",
+                          },
+                        },
+                      ],
+                    },
+                  ],
+                },
+              ],
             },
             {
               "_name": "db:SELECT * FROM 'UserInfo' WHERE id = ?",
@@ -309,7 +348,7 @@ exports[`useClientDocument > otel > should update the data based on component ke
       "_name": "LiveStore:sync",
     },
     {
-      "_name": "LiveStore:commits",
+      "_name": "LiveStore:mutations",
     },
     {
       "_name": "LiveStore:queries",
@@ -328,6 +367,45 @@ exports[`useClientDocument > otel > should update the data based on component ke
                 "sql.query": "SELECT 1 FROM 'UserInfo' WHERE id = ?",
                 "sql.rowsCount": 0,
               },
+            },
+            {
+              "_name": "LiveStore:commit",
+              "attributes": {
+                "livestore.commitLabel": "UserInfo.set:u1",
+                "livestore.eventTags": "[
+  "UserInfoSet"
+]",
+                "livestore.eventsCount": 1,
+              },
+              "children": [
+                {
+                  "_name": "client-session-sync-processor:push",
+                  "attributes": {
+                    "batchSize": 1,
+                    "eventCounts": "{
+  "UserInfoSet": 1
+}",
+                    "mergeResultTag": "advance",
+                  },
+                  "children": [
+                    {
+                      "_name": "client-session-sync-processor:materialize-event",
+                      "children": [
+                        {
+                          "_name": "livestore.in-memory-db:execute",
+                          "attributes": {
+                            "sql.query": "
+      INSERT INTO 'UserInfo' (id, value)
+      VALUES (?, ?)
+      ON CONFLICT (id) DO UPDATE SET value = json_set(json_set(value, ?, json(?)), ?, json(?))
+    ",
+                          },
+                        },
+                      ],
+                    },
+                  ],
+                },
+              ],
             },
             {
               "_name": "db:SELECT * FROM 'UserInfo' WHERE id = ?",

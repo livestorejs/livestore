@@ -344,8 +344,8 @@ export class Store<TSchema extends LiveStoreSchema = LiveStoreSchema.Any, TConte
     const tableRefs: { [key: string]: Ref<null, ReactivityGraphContext, RefreshReason> } = {}
     const activeQueries = new ReferenceCountedSet<LiveQuery<any>>()
 
-    const commitsSpan = otelOptions.tracer.startSpan('LiveStore:commits', {}, otelOptions.rootSpanContext)
-    const otelMuationsSpanContext = otel.trace.setSpan(otel.context.active(), commitsSpan)
+    const mutationsSpan = otelOptions.tracer.startSpan('LiveStore:mutations', {}, otelOptions.rootSpanContext)
+    const mutationsSpanContext = otel.trace.setSpan(otel.context.active(), mutationsSpan)
 
     const queriesSpan = otelOptions.tracer.startSpan('LiveStore:queries', {}, otelOptions.rootSpanContext)
     const otelQueriesSpanContext = otel.trace.setSpan(otel.context.active(), queriesSpan)
@@ -361,7 +361,7 @@ export class Store<TSchema extends LiveStoreSchema = LiveStoreSchema.Any, TConte
     const otelObj: StoreOtel = {
       tracer: otelOptions.tracer,
       rootSpanContext: otelOptions.rootSpanContext,
-      commitsSpanContext: otelMuationsSpanContext,
+      mutationsSpanContext: mutationsSpanContext,
       queriesSpanContext: otelQueriesSpanContext,
     }
 
@@ -405,7 +405,7 @@ export class Store<TSchema extends LiveStoreSchema = LiveStoreSchema.Any, TConte
 
           // End the otel spans
           syncSpan.end()
-          commitsSpan.end()
+          mutationsSpan.end()
           queriesSpan.end()
         }),
       )
@@ -835,11 +835,15 @@ export class Store<TSchema extends LiveStoreSchema = LiveStoreSchema.Any, TConte
 
     const { events, options } = this.getCommitArgs(firstEventOrTxnFnOrOptions, restEvents)
 
+    const parentSpanContext = options?.otelContext
+      ? otel.trace.getSpanContext(options.otelContext)
+      : undefined
+
     Effect.gen(this, function* () {
-      const commitsSpan = otel.trace.getSpan(this[StoreInternalsSymbol].otel.commitsSpanContext)
-      commitsSpan?.addEvent('commit')
+      const mutationsSpan = otel.trace.getSpan(this[StoreInternalsSymbol].otel.mutationsSpanContext)
+      mutationsSpan?.addEvent('commit')
       const currentSpan = yield* OtelTracer.currentOtelSpan.pipe(Effect.orDie)
-      commitsSpan?.addLink({ context: currentSpan.spanContext() })
+      mutationsSpan?.addLink({ context: currentSpan.spanContext() })
 
       for (const event of events) {
         replaceSessionIdSymbol(event.args, this[StoreInternalsSymbol].clientSession.sessionId)
@@ -889,16 +893,20 @@ export class Store<TSchema extends LiveStoreSchema = LiveStoreSchema.Any, TConte
       })
     }).pipe(
       Effect.withSpan('LiveStore:commit', {
-        root: true,
+        // When otelContext carries a parent span (e.g. from execute), the commit span becomes
+        // a child of that span. Otherwise it's a root span with its own trace.
+        ...(parentSpanContext
+          ? { parent: OtelTracer.makeExternalSpan(parentSpanContext) }
+          : { root: true }),
         attributes: {
           'livestore.eventsCount': events.length,
           'livestore.eventTags': events.map((_) => _.name),
           ...(options?.label && { 'livestore.commitLabel': options.label }),
         },
         links: [
-          // Span link to LiveStore:commits
+          // Span link to LiveStore:mutations
           OtelTracer.makeSpanLink({
-            context: otel.trace.getSpanContext(this[StoreInternalsSymbol].otel.commitsSpanContext)!,
+            context: otel.trace.getSpanContext(this[StoreInternalsSymbol].otel.mutationsSpanContext)!,
           }),
           // User-provided span links
           ...(options?.spanLinks?.map(OtelTracer.makeSpanLink) ?? []),
@@ -957,7 +965,17 @@ export class Store<TSchema extends LiveStoreSchema = LiveStoreSchema.Any, TConte
   ): ExecuteResult<TError> => {
     this.checkShutdown('execute')
 
+    const parentSpanContext = options?.otelContext
+      ? otel.trace.getSpanContext(options.otelContext)
+      : undefined
+
     const exit = Effect.gen(this, function* () {
+      // Reverse link: attach execute span to the mutations collector span
+      const mutationsSpan = otel.trace.getSpan(this[StoreInternalsSymbol].otel.mutationsSpanContext)
+      mutationsSpan?.addEvent('execute')
+      const currentSpan = yield* OtelTracer.currentOtelSpan.pipe(Effect.orDie)
+      mutationsSpan?.addLink({ context: currentSpan.spanContext() })
+
       // Look up command definition from schema
       const commandDef = this.schema.commandDefsMap.get(command.name)
       if (!commandDef) {
@@ -1036,16 +1054,14 @@ export class Store<TSchema extends LiveStoreSchema = LiveStoreSchema.Any, TConte
 
             return Effect.sync(() => {
               const eventsWithCommandId = r.events.map((event) => ({ ...event, commandId: command.id }))
-              if (options !== undefined) {
-                const commitOptions: StoreCommitOptions = {
-                  ...(options.label !== undefined && { label: options.label }),
-                  ...(options.skipRefresh !== undefined && { skipRefresh: options.skipRefresh }),
-                  ...(options.otelContext !== undefined && { otelContext: options.otelContext }),
-                }
-                this.commit(commitOptions, ...eventsWithCommandId)
-              } else {
-                this.commit(...eventsWithCommandId)
+              // Pass the execute span's otel context so the commit span becomes a child
+              const executeOtelContext = otel.trace.setSpan(otel.context.active(), currentSpan)
+              const commitOptions: StoreCommitOptions = {
+                otelContext: executeOtelContext,
+                ...(options?.label !== undefined && { label: options.label }),
+                ...(options?.skipRefresh !== undefined && { skipRefresh: options.skipRefresh }),
               }
+              this.commit(commitOptions, ...eventsWithCommandId)
 
               // TODO: Confirmation settles when the command's events are pushed to the leader (leave session pending),
               // but doesn't yet handle replay/conflict detection after sync backend confirmation.
@@ -1069,16 +1085,20 @@ export class Store<TSchema extends LiveStoreSchema = LiveStoreSchema.Any, TConte
       )
     }).pipe(
       Effect.withSpan('LiveStore:execute', {
-        root: true,
+        // When otelContext carries a parent span, the execute span becomes a child
+        // of that span. Otherwise it's a root span with its own trace.
+        ...(parentSpanContext
+          ? { parent: OtelTracer.makeExternalSpan(parentSpanContext) }
+          : { root: true }),
         attributes: {
           'livestore.commandName': command.name,
           'livestore.commandId': command.id,
           ...(options?.label && { 'livestore.executeLabel': options.label }),
         },
         links: [
-          // Span link to LiveStore:commits
+          // Span link to LiveStore:mutations
           OtelTracer.makeSpanLink({
-            context: otel.trace.getSpanContext(this[StoreInternalsSymbol].otel.commitsSpanContext)!,
+            context: otel.trace.getSpanContext(this[StoreInternalsSymbol].otel.mutationsSpanContext)!,
           }),
           // User-provided span links
           ...(options?.spanLinks?.map(OtelTracer.makeSpanLink) ?? []),
@@ -1291,7 +1311,7 @@ export class Store<TSchema extends LiveStoreSchema = LiveStoreSchema.Any, TConte
     this[StoreInternalsSymbol].otel.tracer.startActiveSpan(
       'LiveStore:manualRefresh',
       { attributes: { 'livestore.manualRefreshLabel': label } },
-      this[StoreInternalsSymbol].otel.commitsSpanContext,
+      this[StoreInternalsSymbol].otel.mutationsSpanContext,
       (span) => {
         const otelContext = otel.trace.setSpan(otel.context.active(), span)
         this[StoreInternalsSymbol].reactivityGraph.runDeferredEffects({ otelContext })

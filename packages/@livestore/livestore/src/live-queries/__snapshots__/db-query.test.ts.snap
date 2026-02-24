@@ -39,7 +39,7 @@ exports[`otel > QueryBuilder subscription - async iterator 1`] = `
       "_name": "LiveStore:sync",
     },
     {
-      "_name": "LiveStore:commits",
+      "_name": "LiveStore:mutations",
     },
     {
       "_name": "LiveStore:queries",
@@ -126,7 +126,7 @@ exports[`otel > QueryBuilder subscription - async iterator with skipInitialRun 1
       "_name": "LiveStore:sync",
     },
     {
-      "_name": "LiveStore:commits",
+      "_name": "LiveStore:mutations",
     },
     {
       "_name": "LiveStore:queries",
@@ -213,7 +213,7 @@ exports[`otel > QueryBuilder subscription - basic functionality 1`] = `
       "_name": "LiveStore:sync",
     },
     {
-      "_name": "LiveStore:commits",
+      "_name": "LiveStore:mutations",
     },
     {
       "_name": "LiveStore:queries",
@@ -346,7 +346,7 @@ exports[`otel > QueryBuilder subscription - direct table subscription 1`] = `
       "_name": "LiveStore:sync",
     },
     {
-      "_name": "LiveStore:commits",
+      "_name": "LiveStore:mutations",
     },
     {
       "_name": "LiveStore:queries",
@@ -479,7 +479,7 @@ exports[`otel > QueryBuilder subscription - skipInitialRun 1`] = `
       "_name": "LiveStore:sync",
     },
     {
-      "_name": "LiveStore:commits",
+      "_name": "LiveStore:mutations",
     },
     {
       "_name": "LiveStore:queries",
@@ -619,7 +619,7 @@ exports[`otel > QueryBuilder subscription - unsubscribe functionality 1`] = `
       "_name": "LiveStore:sync",
     },
     {
-      "_name": "LiveStore:commits",
+      "_name": "LiveStore:mutations",
     },
     {
       "_name": "LiveStore:queries",
@@ -812,7 +812,7 @@ exports[`otel > otel 3`] = `
       "_name": "LiveStore:sync",
     },
     {
-      "_name": "LiveStore:commits",
+      "_name": "LiveStore:mutations",
     },
     {
       "_name": "LiveStore:queries",
@@ -1107,7 +1107,7 @@ exports[`otel > with thunks 7`] = `
       "_name": "LiveStore:sync",
     },
     {
-      "_name": "LiveStore:commits",
+      "_name": "LiveStore:mutations",
     },
     {
       "_name": "LiveStore:queries",
@@ -1236,7 +1236,7 @@ exports[`otel > with thunks with query builder and without labels 3`] = `
       "_name": "LiveStore:sync",
     },
     {
-      "_name": "LiveStore:commits",
+      "_name": "LiveStore:mutations",
     },
     {
       "_name": "LiveStore:queries",

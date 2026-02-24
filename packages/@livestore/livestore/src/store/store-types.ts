@@ -386,7 +386,7 @@ export type QueryDebugInfo = {
 export type StoreOtel = {
   tracer: otel.Tracer
   rootSpanContext: otel.Context
-  commitsSpanContext: otel.Context
+  mutationsSpanContext: otel.Context
   queriesSpanContext: otel.Context
 }
 
@@ -407,7 +407,10 @@ export type StoreExecuteOptions = {
   skipRefresh?: boolean
   /** Additional OpenTelemetry span links attached to the `LiveStore:execute` span. */
   spanLinks?: otel.Link[]
-  /** Custom OpenTelemetry context to propagate into the underlying commit. */
+  /**
+   * When provided, the `LiveStore:execute` span becomes a child of the span in this context
+   * instead of a root span. The context is also forwarded to the underlying commit.
+   */
   otelContext?: otel.Context
 }
 
