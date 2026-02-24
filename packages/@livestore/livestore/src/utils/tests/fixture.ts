@@ -123,6 +123,22 @@ export const commands = {
       return events.todoCreated({ id, text: `${text} (count: ${count})`, completed: false })
     },
   }),
+  /** Handler that throws a string value instead of an Error instance. */
+  throwsString: defineCommand({
+    name: 'ThrowsString',
+    schema: Schema.Struct({}),
+    handler: () => {
+      throw 'something went wrong'
+    },
+  }),
+  /** Handler that throws a plain object instead of an Error instance. */
+  throwsPlainObject: defineCommand({
+    name: 'ThrowsPlainObject',
+    schema: Schema.Struct({}),
+    handler: () => {
+      throw { code: 42, detail: 'unexpected' }
+    },
+  }),
 }
 
 export const schema = makeSchema({ state, events, commands })
