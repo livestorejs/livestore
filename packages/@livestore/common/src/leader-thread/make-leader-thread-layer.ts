@@ -235,7 +235,7 @@ export const makeLeaderThreadLayer = ({
       migrationsReport,
       initialBlockingSyncContext,
       devtoolsOptions,
-    }).pipe(Effect.provide(combinedLayer))
+    }).pipe(Effect.provide(leaderThreadCtxLayer))
 
     return combinedLayer
   }).pipe(
@@ -373,7 +373,7 @@ const bootLeaderThread = ({
 }): Effect.Effect<
   LeaderThreadCtx['Type']['initialState'],
   UnknownError | SqliteError | IsOfflineError | InvalidPullError | MaterializerHashMismatchError,
-  LeaderThreadCtx | Scope.Scope | HttpClient.HttpClient | CommandJournal
+  LeaderThreadCtx | Scope.Scope | HttpClient.HttpClient
 > =>
   Effect.gen(function* () {
     const { bootStatusQueue, syncProcessor } = yield* LeaderThreadCtx

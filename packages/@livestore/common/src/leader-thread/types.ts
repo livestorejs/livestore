@@ -25,7 +25,6 @@ import type {
   UnknownError,
 } from '../index.ts'
 import { EventSequenceNumber, type LiveStoreEvent, type LiveStoreSchema } from '../schema/mod.ts'
-import type { CommandJournal } from './CommandJournal.ts'
 import type * as SyncState from '../sync/syncstate.ts'
 import type { ShutdownChannel } from './shutdown-channel.ts'
 
@@ -217,7 +216,7 @@ export interface LeaderSyncProcessor {
   boot: Effect.Effect<
     { initialLeaderHead: EventSequenceNumber.Client.Composite },
     UnknownError,
-    LeaderThreadCtx | Scope.Scope | HttpClient.HttpClient | CommandJournal
+    LeaderThreadCtx | Scope.Scope | HttpClient.HttpClient
   >
   syncState: Subscribable.Subscribable<SyncState.SyncState>
 }
