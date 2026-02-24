@@ -1,15 +1,19 @@
+import { queryDb } from '@livestore/livestore'
 import { useStore } from '@livestore/react'
 import type React from 'react'
 import { useCallback } from 'react'
 
 import { useMailboxStore } from '../stores/mailbox/index.ts'
-import { archiveThread, trashThread } from '../stores/thread/commands.ts'
+import { mailboxTables } from '../stores/mailbox/schema.ts'
 import { threadStoreOptions } from '../stores/thread/index.ts'
+import { commands } from '../stores/thread/schema.ts'
 import { UserLabelPicker } from './UserLabelPicker.tsx'
 
 type ThreadActionsProps = {
   threadId: string
 }
+
+const systemLabelsQuery = queryDb(mailboxTables.labels.where({ type: 'system' }), { label: 'systemLabels' })
 
 /**
  * Thread-level action buttons
@@ -21,14 +25,35 @@ type ThreadActionsProps = {
 export const ThreadActions: React.FC<ThreadActionsProps> = ({ threadId }) => {
   const mailboxStore = useMailboxStore()
   const threadStore = useStore(threadStoreOptions(threadId))
+  const systemLabels = mailboxStore.useQuery(systemLabelsQuery)
 
   const handleArchive = useCallback(() => {
-    archiveThread(threadStore, mailboxStore, { threadId })
-  }, [mailboxStore, threadId, threadStore])
+    const archiveLabel = systemLabels.find((l) => l.name === 'ARCHIVE')
+    if (!archiveLabel) throw new Error('ARCHIVE label not found')
+
+    threadStore.execute(
+      commands.moveThreadToSystemLabel({
+        threadId,
+        targetLabelId: archiveLabel.id,
+        systemLabelIds: systemLabels.map((l) => l.id),
+        movedAt: new Date(),
+      }),
+    )
+  }, [systemLabels, threadId, threadStore])
 
   const handleTrash = useCallback(() => {
-    trashThread(threadStore, mailboxStore, { threadId })
-  }, [mailboxStore, threadId, threadStore])
+    const trashLabel = systemLabels.find((l) => l.name === 'TRASH')
+    if (!trashLabel) throw new Error('TRASH label not found')
+
+    threadStore.execute(
+      commands.moveThreadToSystemLabel({
+        threadId,
+        targetLabelId: trashLabel.id,
+        systemLabelIds: systemLabels.map((l) => l.id),
+        movedAt: new Date(),
+      }),
+    )
+  }, [systemLabels, threadId, threadStore])
 
   return (
     <div className="flex items-center space-x-2">

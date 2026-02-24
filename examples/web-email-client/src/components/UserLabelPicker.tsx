@@ -5,9 +5,8 @@ import { useCallback, useMemo, useState } from 'react'
 
 import { useMailboxStore } from '../stores/mailbox/index.ts'
 import { mailboxTables } from '../stores/mailbox/schema.ts'
-import { applyUserLabelToThread, removeUserLabelFromThread } from '../stores/thread/commands.ts'
 import { threadStoreOptions } from '../stores/thread/index.ts'
-import { threadTables } from '../stores/thread/schema.ts'
+import { commands, threadTables } from '../stores/thread/schema.ts'
 
 type UserLabelPickerProps = {
   threadId: string
@@ -42,9 +41,9 @@ export const UserLabelPicker: React.FC<UserLabelPickerProps> = ({ threadId }) =>
   const toggleUserLabel = useCallback(
     (labelId: string) => {
       if (isLabelApplied(labelId)) {
-        removeUserLabelFromThread(threadStore, { threadId, labelId })
+        threadStore.execute(commands.removeUserLabel({ threadId, labelId, removedAt: new Date() }))
       } else {
-        applyUserLabelToThread(threadStore, { threadId, labelId })
+        threadStore.execute(commands.applyUserLabel({ threadId, labelId, appliedAt: new Date() }))
       }
     },
     [isLabelApplied, threadId, threadStore],
