@@ -46,6 +46,7 @@ import {
   Runtime,
   Schema,
   Stream,
+  Match
 } from '@livestore/utils/effect'
 import { nanoid } from '@livestore/utils/nanoid'
 import * as otel from '@opentelemetry/api'
@@ -954,94 +955,127 @@ export class Store<TSchema extends LiveStoreSchema = LiveStoreSchema.Any, TConte
   ): ExecuteResult<TError> => {
     this.checkShutdown('execute')
 
-    // Look up command definition from schema
-    const commandDef = this.schema.commandDefsMap.get(command.name)
-    if (!commandDef) {
-      throw new CommandExecutionError({
-        command: { name: command.name, id: command.id },
-        reason: 'CommandNotFound',
-        phase: 'initial',
-      })
-    }
-
-    // TODO: Command execution should be transactional with event append
-    // See https://github.com/livestorejs/livestore/issues/1065
-    const query: CommandHandlerContextQuery = (
-      rawQueryOrQueryBuilder:
-        | {
-        query: string
-        bindValues: Bindable
+    const exit = Effect.gen(this, function* () {
+      // Look up command definition from schema
+      const commandDef = this.schema.commandDefsMap.get(command.name)
+      if (!commandDef) {
+        return yield* Effect.die(
+          new CommandExecutionError({
+            command: { name: command.name, id: command.id },
+            reason: 'CommandNotFound',
+            phase: 'initial',
+          }),
+        )
       }
-        | QueryBuilder.Any,
-    ) => {
-      if (isQueryBuilder(rawQueryOrQueryBuilder) === true) {
-        const { query, bindValues } = rawQueryOrQueryBuilder.asSql()
-        const rawResults = this[StoreInternalsSymbol].sqliteDbWrapper.select(query, prepareBindValues(bindValues, query))
-        const resultSchema = getResultSchema(rawQueryOrQueryBuilder)
-        return Schema.decodeSync(resultSchema)(rawResults)
-      } else {
-        const { query, bindValues } = rawQueryOrQueryBuilder
-        return this[StoreInternalsSymbol].sqliteDbWrapper.select(query, prepareBindValues(bindValues, query))
+
+      // TODO: Command execution should be transactional with event append
+      // See https://github.com/livestorejs/livestore/issues/1065
+      const query: CommandHandlerContextQuery = (
+        rawQueryOrQueryBuilder:
+          | {
+            query: string
+            bindValues: Bindable
+          }
+          | QueryBuilder.Any,
+      ) => {
+        if (isQueryBuilder(rawQueryOrQueryBuilder) === true) {
+          const { query, bindValues } = rawQueryOrQueryBuilder.asSql()
+          const rawResults = this[StoreInternalsSymbol].sqliteDbWrapper.select(
+            query,
+            prepareBindValues(bindValues, query),
+          )
+          const resultSchema = getResultSchema(rawQueryOrQueryBuilder)
+          return Schema.decodeSync(resultSchema)(rawResults)
+        } else {
+          const { query, bindValues } = rawQueryOrQueryBuilder
+          return this[StoreInternalsSymbol].sqliteDbWrapper.select(query, prepareBindValues(bindValues, query))
+        }
       }
-    }
 
-    const handlerContext: CommandHandlerContext = {
-      query,
-      phase: { _tag: 'initial' },
-    }
+      const handlerContext: CommandHandlerContext = {
+        query,
+        phase: { _tag: 'initial' },
+      }
 
-    const execution = executeCommandHandler<TError>(commandDef.handler, command.args, handlerContext)
-    if (execution._tag === 'threw') {
-      throw new CommandExecutionError({
-        command: { name: command.name, id: command.id },
-        reason: 'CommandHandlerThrew',
-        phase: 'initial',
-        cause: execution.cause,
-      })
-    }
+      const executionResult = executeCommandHandler<TError>(commandDef.handler, command.args, handlerContext)
 
-    if (execution._tag === 'error') {
-      const error = execution.error
-      const confirmation = Promise.reject(error)
-      // Mark as handled to avoid unhandled-rejection warnings when callers branch on `_tag`
-      // and intentionally skip awaiting `.confirmation` for failed initial execution.
-      void confirmation.catch(() => {})
-      return { _tag: 'failed', error, confirmation }
-    }
+      return yield* Match.value(executionResult).pipe(
+        Match.tagsExhaustive({
+          threw: (r) =>
+            Effect.die(
+              new CommandExecutionError({
+                command: { name: command.name, id: command.id },
+                reason: 'CommandHandlerThrew',
+                phase: 'initial',
+                cause: r.cause,
+              }),
+            ),
 
-    const events = execution.events.map((event) => ({ ...event, commandId: command.id }))
-    if (events.length === 0) {
-      throw new CommandExecutionError({
-        command: { name: command.name, id: command.id },
-        reason: 'NoEventProduced',
-        phase: 'initial',
-        description:
-          'Command handlers must return one event, an array with at least one event, or a recoverable error value.',
-      })
-    }
+          error: (r) => {
+            const confirmation = Promise.reject(r.error)
+            // Mark as handled to avoid unhandled-rejection warnings when callers branch on `_tag`
+            // and intentionally skip awaiting `.confirmation` for failed initial execution.
+            void confirmation.catch(() => {})
+            return Effect.succeed({ _tag: 'failed' as const, error: r.error, confirmation })
+          },
 
-    // Commit produced events (uses existing commit path)
-    this.commit(...events)
+          ok: (r) => {
+            if (r.events.length === 0) {
+              return Effect.die(
+                new CommandExecutionError({
+                  command: { name: command.name, id: command.id },
+                  reason: 'NoEventProduced',
+                  phase: 'initial',
+                  description:
+                    'Command handlers must return one event, an array with at least one event, or a recoverable error value.',
+                }),
+              )
+            }
 
-    // TODO: Confirmation settles when the command's events are pushed to the leader (leave session pending),
-    // but doesn't yet handle replay/conflict detection after sync backend confirmation.
-    // See https://github.com/livestorejs/livestore/issues/1016
-    const confirmation = new Promise<{ readonly _tag: 'confirmed' } | { readonly _tag: 'conflict'; readonly error: TError }>(
-      (_resolve, reject) => {
-        this[StoreInternalsSymbol].pendingCommandConfirmations.set(command.id, {
-          resolve: _resolve as (value: { _tag: 'confirmed' } | { _tag: 'conflict'; error: unknown }) => void,
-          reject,
-        })
-      },
+            return Effect.sync(() => {
+              const eventsWithCommandId = r.events.map((event) => ({ ...event, commandId: command.id }))
+              this.commit(...eventsWithCommandId)
+
+              // TODO: Confirmation settles when the command's events are pushed to the leader (leave session pending),
+              // but doesn't yet handle replay/conflict detection after sync backend confirmation.
+              // See https://github.com/livestorejs/livestore/issues/1016
+              const confirmation = new Promise<
+                { readonly _tag: 'confirmed' } | { readonly _tag: 'conflict'; readonly error: TError }
+              >((_resolve, reject) => {
+                this[StoreInternalsSymbol].pendingCommandConfirmations.set(command.id, {
+                  resolve: _resolve as (value: { _tag: 'confirmed' } | { _tag: 'conflict'; error: unknown }) => void,
+                  reject,
+                })
+              })
+              // Mark as handled to avoid unhandled-rejection warnings when the store shuts down
+              // before callers await `.confirmation` (e.g. fire-and-forget command execution).
+              void confirmation.catch(() => {})
+
+              return { _tag: 'pending' as const, confirmation }
+            })
+          },
+        }),
+      )
+    }).pipe(
+      Effect.withSpan('LiveStore:execute', {
+        root: true,
+        attributes: {
+          'livestore.commandName': command.name,
+          'livestore.commandId': command.id,
+        },
+        links: [
+          OtelTracer.makeSpanLink({
+            context: otel.trace.getSpanContext(this[StoreInternalsSymbol].otel.commitsSpanContext)!,
+          }),
+        ],
+      }),
+      Effect.exit,
+      Runtime.runSync(this[StoreInternalsSymbol].effectContext.runtime),
     )
-    // Mark as handled to avoid unhandled-rejection warnings when the store shuts down
-    // before callers await `.confirmation` (e.g. fire-and-forget command execution).
-    void confirmation.catch(() => {})
 
-    return {
-      _tag: 'pending',
-      confirmation,
-    }
+    if (exit._tag === 'Success') return exit.value
+
+    throw Cause.squash(exit.cause)
   }
   //#endregion execute
 
