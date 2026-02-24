@@ -71,4 +71,23 @@ describe('executeCommandHandler', () => {
       cause,
     })
   })
+
+  it('passes "replay" phase to handler context', () => {
+    const replayContext = {
+      query: () => [],
+      phase: { _tag: 'replay' as const },
+    }
+
+    let receivedPhase: { _tag: string } | undefined
+    executeCommandHandler(
+      (_args, ctx) => {
+        receivedPhase = ctx.phase
+        return { name: 'TodoCreated', args: { id: 'todo-1' } }
+      },
+      {},
+      replayContext,
+    )
+
+    expect(receivedPhase).toEqual({ _tag: 'replay' })
+  })
 })

@@ -292,6 +292,71 @@ Vitest.describe('store.execute', () => {
       }
     }).pipe(withTestCtx(test)),
   )
+
+  // Skipped: command replay is not yet wired into the sync pipeline.
+  // The capturePhase handler embeds ctx.phase._tag into the todo text — during replay it should be 'replay'.
+  // See https://github.com/livestorejs/livestore/issues/1016
+  Vitest.scopedLive.skip('should pass ctx.phase with _tag "replay" during command replay', (test) =>
+    Effect.gen(function* () {
+      const { makeStore, mockSyncBackend } = yield* TestContext
+      const store = yield* makeStore()
+      yield* mockSyncBackend.disconnect
+
+      // Execute while disconnected — events stay pending
+      const result = store.execute(commands.capturePhase({ id: 'todo-1' }))
+      assert(result._tag === 'pending')
+
+      // Verify initial phase
+      const todoBefore = store.query(tables.todos.where({ id: 'todo-1' }).first())
+      assert(todoBefore !== undefined)
+      expect(todoBefore.text).toBe('initial')
+
+      // Inject an external event to trigger rebase and command replay
+      const backendFactory = EventFactory.makeFactory(events)({
+        client: EventFactory.clientIdentity('other-client'),
+      })
+      yield* mockSyncBackend.advance(
+        backendFactory.todoCreated.next({ id: 'todo-2', text: 'From other client', completed: false }),
+      )
+
+      // Connect — triggers pull, rebase, and command replay
+      yield* mockSyncBackend.connect
+
+      // After replay, the handler should have re-executed with phase 'replay'
+      const todoAfter = store.query(tables.todos.where({ id: 'todo-1' }).first())
+      assert(todoAfter !== undefined)
+      expect(todoAfter.text).toBe('replay')
+    }).pipe(withTestCtx(test)),
+  )
+
+  // Skipped: command execution atomicity is not yet implemented.
+  // Two concurrent commands that both check capacity should not both pass when only one slot remains.
+  // See https://github.com/livestorejs/livestore/issues/1065
+  Vitest.scopedLive.skip('should serialize concurrent command executions to preserve invariants', (test) =>
+    Effect.gen(function* () {
+      const { makeStore } = yield* TestContext
+      const store = yield* makeStore()
+
+      // Seed a todo to establish baseline count
+      store.commit(events.todoCreated({ id: 'seed-1', text: 'Existing', completed: false }))
+
+      // Execute two commands concurrently that both read the same count
+      const resultA = store.execute(commands.countTodosRawSql({ id: 'todo-a', text: 'A' }))
+      const resultB = store.execute(commands.countTodosRawSql({ id: 'todo-b', text: 'B' }))
+
+      expect(resultA._tag).toBe('pending')
+      expect(resultB._tag).toBe('pending')
+
+      // With atomicity, command B should see the state *after* command A's events are materialized.
+      // A reads count=1, B should read count=2 (A's todo is materialized before B runs).
+      const todoA = store.query(tables.todos.where({ id: 'todo-a' }).first())
+      const todoB = store.query(tables.todos.where({ id: 'todo-b' }).first())
+      assert(todoA !== undefined)
+      assert(todoB !== undefined)
+      expect(todoA.text).toBe('A (count: 1)')
+      expect(todoB.text).toBe('B (count: 2)')
+    }).pipe(withTestCtx(test)),
+  )
 })
 
 class TestContext extends Context.Tag('TestContext')<
