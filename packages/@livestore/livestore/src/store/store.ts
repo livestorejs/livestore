@@ -835,7 +835,7 @@ export class Store<TSchema extends LiveStoreSchema = LiveStoreSchema.Any, TConte
 
     const { events, options } = this.getCommitArgs(firstEventOrTxnFnOrOptions, restEvents)
 
-    const parentSpanContext = options?.otelContext
+    const parentSpanContext = options?.otelContext !== undefined
       ? otel.trace.getSpanContext(options.otelContext)
       : undefined
 
@@ -895,7 +895,7 @@ export class Store<TSchema extends LiveStoreSchema = LiveStoreSchema.Any, TConte
       Effect.withSpan('LiveStore:commit', {
         // When otelContext carries a parent span (e.g. from execute), the commit span becomes
         // a child of that span. Otherwise it's a root span with its own trace.
-        ...(parentSpanContext
+        ...(parentSpanContext !== undefined
           ? { parent: OtelTracer.makeExternalSpan(parentSpanContext) }
           : { root: true }),
         attributes: {
@@ -965,7 +965,7 @@ export class Store<TSchema extends LiveStoreSchema = LiveStoreSchema.Any, TConte
   ): ExecuteResult<TError> => {
     this.checkShutdown('execute')
 
-    const parentSpanContext = options?.otelContext
+    const parentSpanContext = options?.otelContext !== undefined
       ? otel.trace.getSpanContext(options.otelContext)
       : undefined
 
@@ -978,7 +978,7 @@ export class Store<TSchema extends LiveStoreSchema = LiveStoreSchema.Any, TConte
 
       // Look up command definition from schema
       const commandDef = this.schema.commandDefsMap.get(command.name)
-      if (!commandDef) {
+      if (commandDef === undefined) {
         return yield* Effect.die(
           new CommandExecutionError({
             command: { name: command.name, id: command.id },
@@ -1087,7 +1087,7 @@ export class Store<TSchema extends LiveStoreSchema = LiveStoreSchema.Any, TConte
       Effect.withSpan('LiveStore:execute', {
         // When otelContext carries a parent span, the execute span becomes a child
         // of that span. Otherwise it's a root span with its own trace.
-        ...(parentSpanContext
+        ...(parentSpanContext !== undefined
           ? { parent: OtelTracer.makeExternalSpan(parentSpanContext) }
           : { root: true }),
         attributes: {

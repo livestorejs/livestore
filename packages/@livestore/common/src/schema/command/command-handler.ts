@@ -154,7 +154,7 @@ export const executeCommandHandler = <TError>(
   }
 
   const normalized = normalizeHandlerResult(rawResult)
-  if (!normalized.ok) {
+  if (normalized.ok === false) {
     return { _tag: 'error', error: normalized.error }
   }
   return { _tag: 'ok', events: normalized.events }

@@ -122,7 +122,7 @@ export const makeSchema = <TInputSchema extends InputSchema>(
     }
   }
 
-  const commandDefsMap = inputSchema.commands
+  const commandDefsMap = inputSchema.commands !== undefined
     ? toNamedMap(inputSchema.commands, 'command')
     : new Map<string, CommandDef.AnyWithoutFn>()
 

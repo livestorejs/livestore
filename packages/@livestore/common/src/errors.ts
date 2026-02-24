@@ -97,6 +97,6 @@ export class CommandExecutionError extends Schema.TaggedError<CommandExecutionEr
   }) {
   override get message(): string {
     const base = `${this.reason}: ${this.command.name} (${this.command.id})`
-    return this.description ? `${base}: ${this.description}` : base
+    return this.description !== undefined ? `${base}: ${this.description}` : base
   }
 }
