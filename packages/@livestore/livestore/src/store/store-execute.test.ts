@@ -176,6 +176,39 @@ Vitest.describe('store.execute', () => {
     }).pipe(withTestCtx(test)),
   )
 
+  Vitest.scopedLive('should pass ctx.phase with _tag "initial" during store.execute', (test) =>
+    Effect.gen(function* () {
+      const { makeStore } = yield* TestContext
+      const store = yield* makeStore()
+
+      const result = store.execute(commands.capturePhase({ id: 'todo-1' }))
+      expect(result._tag).toBe('pending')
+
+      // The capturePhase handler embeds ctx.phase._tag into the todo text
+      const todo = store.query(tables.todos.where({ id: 'todo-1' }).first())
+      assert(todo !== undefined)
+      expect(todo.text).toBe('initial')
+    }).pipe(withTestCtx(test)),
+  )
+
+  Vitest.scopedLive('should support `ctx.query` with raw SQL in handler', (test) =>
+    Effect.gen(function* () {
+      const { makeStore } = yield* TestContext
+      const store = yield* makeStore()
+
+      // Seed two todos so the raw SQL count returns 2
+      store.commit(events.todoCreated({ id: 'seed-1', text: 'First', completed: false }))
+      store.commit(events.todoCreated({ id: 'seed-2', text: 'Second', completed: false }))
+
+      const result = store.execute(commands.countTodosRawSql({ id: 'todo-3', text: 'After' }))
+      expect(result._tag).toBe('pending')
+
+      const todo = store.query(tables.todos.where({ id: 'todo-3' }).first())
+      assert(todo !== undefined)
+      expect(todo.text).toBe('After (count: 2)')
+    }).pipe(withTestCtx(test)),
+  )
+
   // Skipped: full command confirmation (all the way to sync backend) is not yet wired into the sync pipeline.
   // See https://github.com/livestorejs/livestore/issues/1016
   Vitest.scopedLive.skip('should reject pending confirmations on shutdown', (test) =>

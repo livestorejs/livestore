@@ -107,6 +107,22 @@ export const commands = {
     handler: ({ todos }) =>
       todos.map(({ id, text }) => events.todoCreated({ id, text, completed: false })),
   }),
+  /** Embeds `ctx.phase._tag` into the todo text so tests can verify the execution phase. */
+  capturePhase: defineCommand({
+    name: 'CapturePhase',
+    schema: Schema.Struct({ id: Schema.String }),
+    handler: ({ id }, ctx) => events.todoCreated({ id, text: ctx.phase._tag, completed: false }),
+  }),
+  /** Uses raw SQL via `ctx.query` to count existing todos and embeds the count in the todo text. */
+  countTodosRawSql: defineCommand({
+    name: 'CountTodosRawSql',
+    schema: Schema.Struct({ id: Schema.String, text: Schema.String }),
+    handler: ({ id, text }, ctx) => {
+      const rows = ctx.query({ query: 'SELECT COUNT(*) as cnt FROM todos', bindValues: {} }) as Array<{ cnt: number }>
+      const count = rows[0]?.cnt ?? 0
+      return events.todoCreated({ id, text: `${text} (count: ${count})`, completed: false })
+    },
+  }),
 }
 
 export const schema = makeSchema({ state, events, commands })
