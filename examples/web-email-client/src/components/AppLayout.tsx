@@ -10,8 +10,6 @@ import { ThreadList } from './ThreadList.tsx'
 import { ThreadView } from './ThreadView.tsx'
 
 const labelsQuery = queryDb(mailboxTables.labels.where({}), { label: 'labels' })
-const threadErrorFallback = <ThreadError />
-const threadLoadingFallback = <ThreadLoading />
 
 export const AppLayout: React.FC = () => {
   const mailboxStore = useMailboxStore()
@@ -39,8 +37,8 @@ export const AppLayout: React.FC = () => {
         {/* Main Content */}
         <main className="flex-1 overflow-hidden">
           {uiState.selectedThreadId ? (
-            <ErrorBoundary fallback={threadErrorFallback}>
-              <Suspense fallback={threadLoadingFallback}>
+            <ErrorBoundary fallback={<ThreadError />}>
+              <Suspense fallback={<ThreadLoading />}>
                 <ThreadView threadId={uiState.selectedThreadId} />
               </Suspense>
             </ErrorBoundary>
