@@ -1,6 +1,6 @@
 # Web Email Client Example
 
-An email client using multi-store architecture to demonstrate partial sync and cross-store sync.
+An email client using multi-store architecture to demonstrate partial sync, cross-store sync, and command replay.
 
 ## Partial Synchronization
 
@@ -27,6 +27,31 @@ This approach allows loading only the threads that the user is actively viewing 
 - One per email thread
 - Manages a single thread's messages and label associations
 - Lifecycle: Loaded on-demand, garbage collected when inactive
+- Commands: `ApplyLabel`, `RemoveLabel`, `ReplaceLabel`
+
+## Commands and Conflict Handling
+
+The Thread store uses [commands](../../contributor-docs/rfcs/0002-command-replay.md) (`defineCommand` + `store.execute()`) instead of committing events directly. Commands encode domain invariants and are replayed during sync reconciliation.
+
+### Thread Label Commands
+
+- **`ApplyLabel`**: Applies a label to a thread. Returns `LabelAlreadyApplied` if the label is already present, preventing duplicate rows.
+- **`RemoveLabel`**: Removes a label from a thread. Returns `LabelNotOnThread` if the label isn't present, preventing a no-op event from being committed.
+- **`ReplaceLabel`**: Atomically swaps one label for another by removing the current label and applying the target. Used for system label transitions (e.g., moving a thread from INBOX to ARCHIVE). This enforces the invariant that a thread always has exactly one system label.
+
+### Why Commands?
+
+When events arrive from other clients during sync, LiveStore replays commands against the updated state. A command handler may then:
+
+- **Produce the same events**: The local change is compatible — no conflict.
+- **Produce different events**: The local change adapts to the new state (e.g., the current label changed, so the remove targets a different label).
+- **Return an error**: The local change conflicts with the new state — the command's events are rolled back.
+
+For example, if two clients both try to archive a thread at the same time, the second client's `ReplaceLabel` command will replay against state where the thread is already archived. The handler finds that `currentLabelId` (INBOX) is no longer on the thread, returns `LabelNotOnThread`, and rolls back.
+
+### Conflict UI
+
+When `ReplaceLabel` returns a conflict, `ThreadActions` shows a banner letting the user retry the operation or dismiss it, rather than silently losing the action.
 
 ## Cross-Store Synchronization
 
@@ -81,8 +106,10 @@ These projections are **eventually consistent** copies that we synchronize via c
 │  │  • v1.LabelCreated        │            │  • v1.MessageAdded        │  │
 │  │  • v1.ThreadAdded         │            │  • v1.ThreadLabelApplied  │  │
 │  │  • v1.ThreadLabelApplied  │            │  • v1.ThreadLabelRemoved  │  │
-│  │  • v1.ThreadLabelRemoved  │            │                           │  │
-│  │  • v1.UiStateSet          │            │                           │  │
+│  │  • v1.ThreadLabelRemoved  │            │  Commands:                │  │
+│  │  • v1.UiStateSet          │            │  • ApplyLabel             │  │
+│  │                           │            │  • RemoveLabel            │  │
+│  │                           │            │  • ReplaceLabel           │  │
 │  └─────────────┬─────────────┘            └─────────────┬─────────────┘  │
 │                │                                        │                │
 │                │ Sync                                   │ Sync           │
