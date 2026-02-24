@@ -41,8 +41,7 @@ export const LabelSidebar: React.FC = () => {
               const labelId = e.currentTarget.dataset.labelId
               if (labelId === undefined) throw new Error('No label ID found')
               setUiState({ selectedLabelId: labelId, selectedThreadId: null })
-            }
-            }
+            }}
             className={`w-full text-left px-3 py-2 rounded text-sm font-medium flex items-center text-gray-700 justify-between ${isActive ? 'bg-gray-200' : ' hover:bg-gray-100'}`}
           >
             <div className="flex items-center gap-2">
