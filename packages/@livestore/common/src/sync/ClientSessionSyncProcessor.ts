@@ -115,7 +115,7 @@ export const makeClientSessionSyncProcessor = ({
     // TODO validate batch
 
     let baseEventSequenceNumber = syncStateRef.current.localHead
-    const encodedEventDefs = batch.map(({ name, args, commandId }) => {
+    const encodedEventDefs = batch.map(({ name, args }) => {
       const eventDef = schema.eventsDefsMap.get(name)
       if (eventDef === undefined) {
         return shouldNeverHappen(`No event definition found for \`${name}\`.`)
@@ -130,7 +130,6 @@ export const makeClientSessionSyncProcessor = ({
         Schema.encodeUnknownSync(eventSchema)({
           name,
           args,
-          commandId,
           ...nextNumPair,
           clientId: clientSession.clientId,
           sessionId: clientSession.sessionId,

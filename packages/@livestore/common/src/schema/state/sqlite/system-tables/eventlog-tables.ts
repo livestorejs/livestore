@@ -31,8 +31,6 @@ export const eventlogMetaTable = table({
     /** Event definition name */
     name: SqliteDsl.text({}),
     argsJson: SqliteDsl.text({ schema: Schema.parseJson(Schema.Any) }),
-    /** Optional command id when event originated from `store.execute()` */
-    commandId: SqliteDsl.text({ nullable: true }),
     clientId: SqliteDsl.text({}),
     sessionId: SqliteDsl.text({}),
     schemaHash: SqliteDsl.integer({}),

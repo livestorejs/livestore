@@ -911,6 +911,7 @@ export class Store<TSchema extends LiveStoreSchema = LiveStoreSchema.Any, TConte
    *
    * @experimental Commands API is under active development. Initial execution works, but
    * command replay, conflict detection, and sync confirmation are not yet implemented.
+   * The `confirmation` promise never resolves — it only rejects on store shutdown.
    *
    * @param command - The command instance to execute (created by calling a {@link CommandDef})
    * @returns An {@link ExecuteResult} — either {@link ExecuteResultFailed} or {@link ExecuteResultPending}
@@ -1048,7 +1049,6 @@ export class Store<TSchema extends LiveStoreSchema = LiveStoreSchema.Any, TConte
             }
 
             return Effect.sync(() => {
-              const eventsWithCommandId = r.events.map((event) => ({ ...event, commandId: command.id }))
               // Pass the execute span's otel context so the commit span becomes a child
               const executeOtelContext = otel.trace.setSpan(otel.context.active(), currentSpan)
               const commitOptions: StoreCommitOptions = {
@@ -1056,7 +1056,7 @@ export class Store<TSchema extends LiveStoreSchema = LiveStoreSchema.Any, TConte
                 ...(options?.label !== undefined && { label: options.label }),
                 ...(options?.skipRefresh !== undefined && { skipRefresh: options.skipRefresh }),
               }
-              this.commit(commitOptions, ...eventsWithCommandId)
+              this.commit(commitOptions, ...r.events)
 
               // TODO: Confirmation settles when the command's events are pushed to the leader (leave session pending),
               // but doesn't yet handle replay/conflict detection after sync backend confirmation.

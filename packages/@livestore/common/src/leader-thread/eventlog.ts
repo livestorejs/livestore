@@ -70,7 +70,6 @@ export const getEventsSince = ({
       return LiveStoreEvent.Client.EncodedWithMeta.make({
         name: eventlogEvent.name,
         args: eventlogEvent.argsJson,
-        ...(eventlogEvent.commandId !== null ? { commandId: eventlogEvent.commandId } : {}),
         seqNum: {
           global: eventlogEvent.seqNumGlobal,
           client: eventlogEvent.seqNumClient,
@@ -160,7 +159,6 @@ export const getEventsFromEventlog = ({
         return LiveStoreEvent.Client.Encoded.make({
           name: eventlogEvent.name,
           args: eventlogEvent.argsJson,
-          ...(eventlogEvent.commandId !== null ? { commandId: eventlogEvent.commandId } : {}),
           seqNum: {
             global: eventlogEvent.seqNumGlobal,
             client: eventlogEvent.seqNumClient,
@@ -248,7 +246,6 @@ export const insertIntoEventlog = (
           parentSeqNumRebaseGeneration: eventEncoded.parentSeqNum.rebaseGeneration,
           name: eventEncoded.name,
           argsJson: eventEncoded.args ?? {},
-          commandId: eventEncoded.commandId ?? null,
           clientId,
           sessionId,
           schemaHash: eventDefSchemaHash,

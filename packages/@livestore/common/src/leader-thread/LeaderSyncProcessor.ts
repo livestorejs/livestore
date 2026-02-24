@@ -1278,7 +1278,7 @@ const replayCommand = Effect.fn('@livestore/common:LeaderSyncProcessor:replayCom
   const replayResult = executeCommandHandler(commandDef.handler, command.args, handlerContext)
 
   if (replayResult._tag === 'ok') {
-    const events = replayResult.events.map((event) => ({ ...event, commandId: command.id }))
+    const events = replayResult.events
     if (events.length === 0) {
       return yield* Effect.die( new CommandExecutionError({
         command: { name: command.name, id: command.id },
