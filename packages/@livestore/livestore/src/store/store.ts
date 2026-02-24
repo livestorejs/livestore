@@ -89,6 +89,11 @@ if (isDevEnv() === true) {
 }
 
 /**
+ * Flag to save whether we've warned about experimental commands.
+ */
+let hasWarnedExperimentalCommands = false
+
+/**
  * Default parameters for the Store. Also used in `create-store.ts`
  */
 export const STORE_DEFAULT_PARAMS = {
@@ -904,6 +909,9 @@ export class Store<TSchema extends LiveStoreSchema = LiveStoreSchema.Any, TConte
    * Commands encode user intentions that can be validated against the current state
    * and re-evaluated during sync.
    *
+   * @experimental Commands API is under active development. Initial execution works, but
+   * command replay, conflict detection, and sync confirmation are not yet implemented.
+   *
    * @param command - The command instance to execute (created by calling a {@link CommandDef})
    * @returns An {@link ExecuteResult} — either {@link ExecuteResultFailed} or {@link ExecuteResultPending}
    *
@@ -942,6 +950,15 @@ export class Store<TSchema extends LiveStoreSchema = LiveStoreSchema.Any, TConte
     options?: StoreExecuteOptions,
   ): ExecuteResult<TError> => {
     this.checkShutdown('execute')
+
+    if (hasWarnedExperimentalCommands === false) {
+      hasWarnedExperimentalCommands = true
+      console.warn(
+        '[LiveStore] Commands API is experimental. Initial execution works, but command replay, ' +
+          'conflict detection, and sync confirmation are not yet implemented. ' +
+          'See https://github.com/livestorejs/livestore/issues/717',
+      )
+    }
 
     const parentSpanContext = options?.otelContext !== undefined
       ? otel.trace.getSpanContext(options.otelContext)

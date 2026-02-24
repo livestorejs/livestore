@@ -88,6 +88,9 @@ export type LiveStoreContextRunning<TSchema extends LiveStoreSchema = LiveStoreS
  * - `'confirmed'`: Command's event(s) were pushed and confirmed by the sync backend
  * - `'conflict'`: Command's handler returned an error during command replay
  *
+ * @experimental Commands API is under active development. Initial execution works, but
+ * command replay, conflict detection, and sync confirmation are not yet implemented.
+ *
  * @example
  * ```ts
  * const confirmation = await result.confirmation
@@ -109,6 +112,8 @@ export type CommandConfirmation<TError = unknown> =
  * Result of a failed initial command execution.
  *
  * Returned when the command handler returns an error during initial execution.
+ *
+ * @experimental Commands API is under active development.
  */
 export interface ExecuteResultFailed<TError = unknown> {
   /** Type discriminator for a failed result. */
@@ -136,6 +141,8 @@ export interface ExecuteResultFailed<TError = unknown> {
  * Returned when the command handler successfully produces events.
  * The events are materialized locally but may still fail during replay
  * during sync reconciliation.
+ *
+ * @experimental Commands API is under active development.
  */
 export interface ExecuteResultPending<TError = never> {
   /** Type discriminator for pending result. */
@@ -147,6 +154,9 @@ export interface ExecuteResultPending<TError = never> {
    *
    * Rejects when the command handler throws (unexpected and non-recoverable) an error
    * during command replay.
+   *
+   * @experimental Commands API is under active development. The promise will never
+   * resolve to `'conflict'` or `'confirmed'` in this version.
    *
    * @example Await confirmation directly (skips initial execution failures)
    * ```ts
@@ -185,6 +195,9 @@ export interface ExecuteResultPending<TError = never> {
  * Both variants expose a `confirmation` promise:
  * - `pending`: resolves to {@link CommandConfirmation} when sync completes
  * - `failed`: rejects with the error (for callers who skip initial execution failure handling)
+ *
+ * @experimental Commands API is under active development. Initial execution works, but
+ * command replay, conflict detection, and sync confirmation are not yet implemented.
  *
  * @example Only handle conflicts (skip initial execution failures)
  * ```ts
@@ -410,6 +423,9 @@ export type StoreCommitOptions = {
   otelContext?: otel.Context
 }
 
+/**
+ * @experimental Commands API is under active development.
+ */
 export type StoreExecuteOptions = {
   /** Human-readable label for tracing and debugging, added as an OpenTelemetry span attribute. */
   label?: string
