@@ -80,8 +80,7 @@ export const commands = {
     name: 'CompleteTodo',
     schema: Schema.Struct({ id: Schema.String }),
     handler: ({ id }, ctx) => {
-      const todo = ctx.query(tables.todos.where({ id }).first())
-      if (todo === null) throw new Error('Todo not found')
+      ctx.query(tables.todos.where({ id }).first({ behaviour: 'error' }))
       return events.todoCompleted({ id })
     },
   }),
@@ -90,7 +89,7 @@ export const commands = {
     schema: Schema.Struct({ id: Schema.String, text: Schema.String }),
     handler: ({ id, text }, ctx) => {
       const existing = ctx.query(tables.todos.where({ id }).first())
-      if (existing !== null) return new TodoAlreadyExists()
+      if (existing !== undefined) return new TodoAlreadyExists()
       return events.todoCreated({ id, text, completed: false })
     },
   }),

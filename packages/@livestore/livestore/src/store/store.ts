@@ -411,28 +411,6 @@ export class Store<TSchema extends LiveStoreSchema = LiveStoreSchema.Any, TConte
       )
 
       yield* syncProcessor.boot
-
-      // Settle command confirmations when their events leave the session's pending array
-      // (i.e., after the leader acknowledges them via advance).
-      // TODO: This doesn't yet handle replay/conflict detection after sync backend confirmation.
-      // See https://github.com/livestorejs/livestore/issues/1016
-      yield* syncProcessor.syncState.changes.pipe(
-        Stream.tap((syncState) =>
-          Effect.sync(() => {
-            if (this[StoreInternalsSymbol].pendingCommandConfirmations.size === 0) return
-
-            for (const [commandId, handlers] of this[StoreInternalsSymbol].pendingCommandConfirmations) {
-              if (syncState.pending.some((e) => e.commandId === commandId) === false) {
-                handlers.resolve({ _tag: 'confirmed' })
-                this[StoreInternalsSymbol].pendingCommandConfirmations.delete(commandId)
-              }
-            }
-          }),
-        ),
-        Stream.runDrain,
-        Effect.interruptible,
-        Effect.forkScoped,
-      )
     })
 
     // Build Sqlite wrapper last to avoid using getters before internals are set
@@ -927,7 +905,7 @@ export class Store<TSchema extends LiveStoreSchema = LiveStoreSchema.Any, TConte
    * and re-evaluated during sync.
    *
    * @param command - The command instance to execute (created by calling a {@link CommandDef})
-   * @returns An {@link ExecuteResult} indicating a failure or pending confirmation
+   * @returns An {@link ExecuteResult} — either {@link ExecuteResultFailed} or {@link ExecuteResultPending}
    *
    * @example
    * ```ts

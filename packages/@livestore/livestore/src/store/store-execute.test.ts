@@ -156,7 +156,7 @@ Vitest.describe('store.execute', () => {
         expect(result.left.reason).toBe('CommandHandlerThrew')
         expect(result.left.phase).toBe('initial')
         assert.instanceOf(result.left.cause, Error)
-        expect(result.left.cause.message).toBe('Todo not found')
+        expect(result.left.cause.message).toContain('Unable to retrieve the first element of an empty array')
       }).pipe(withTestCtx(test)),
     )
 
