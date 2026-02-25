@@ -6,7 +6,7 @@ import { useState } from 'react'
 import { useMailboxStore } from '../stores/mailbox'
 import { mailboxTables } from '../stores/mailbox/schema.ts'
 import { threadStoreOptions } from '../stores/thread'
-import { commands, threadTables } from '../stores/thread/schema.ts'
+import { threadCommands, threadTables } from '../stores/thread/schema.ts'
 import { UserLabelPicker } from './UserLabelPicker.tsx'
 
 type ThreadActionsProps = {
@@ -32,6 +32,10 @@ export const ThreadActions: React.FC<ThreadActionsProps> = ({ threadId }) => {
 
   const currentSystemLabel = threadLabels.find((tl) => systemLabels.some((sl) => sl.id === tl.labelId))
 
+  function isSystemLabelApplied(labelName: string) {
+    return !!systemLabels.find((l) => l.name === labelName && threadLabels.some((tl) => tl.labelId === l.id))
+  }
+
   const moveToSystemLabel = async (targetLabelName: string) => {
     const targetLabel = systemLabels.find((l) => l.name === targetLabelName)
     if (!targetLabel) throw new Error(`${targetLabelName} label not found`)
@@ -40,7 +44,7 @@ export const ThreadActions: React.FC<ThreadActionsProps> = ({ threadId }) => {
     setConflictedTargetLabelName(undefined)
 
     const confirmation = await threadStore.execute(
-      commands.replaceLabel({
+      threadCommands.replaceLabel({
         threadId,
         currentLabelId: currentSystemLabel.labelId,
         targetLabelId: targetLabel.id,
@@ -59,8 +63,9 @@ export const ThreadActions: React.FC<ThreadActionsProps> = ({ threadId }) => {
         <button
           onClick={() => moveToSystemLabel('ARCHIVE')}
           type="button"
-          className="px-2 py-1 text-sm text-gray-600 hover:text-green-600 border rounded"
+          className="px-2 py-1 text-sm text-gray-600 hover:text-green-600 border rounded disabled:opacity-50"
           title="Archive thread"
+          disabled={isSystemLabelApplied('ARCHIVE') === true}
         >
           Archive
         </button>
@@ -68,8 +73,9 @@ export const ThreadActions: React.FC<ThreadActionsProps> = ({ threadId }) => {
         <button
           onClick={() => moveToSystemLabel('TRASH')}
           type="button"
-          className="px-2 py-1 text-sm text-gray-600 hover:text-red-600 border rounded"
+          className="px-2 py-1 text-sm text-gray-600 hover:text-red-600 border rounded disabled:opacity-50"
           title="Move to trash"
+          disabled={isSystemLabelApplied('TRASH') === true}
         >
           Trash
         </button>

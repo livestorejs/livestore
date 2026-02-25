@@ -120,7 +120,7 @@ const state = State.SQLite.makeState({ tables: threadTables, materializers })
 export class LabelAlreadyApplied extends Schema.TaggedError<LabelAlreadyApplied>()('LabelAlreadyApplied', {}) {}
 export class LabelNotOnThread extends Schema.TaggedError<LabelNotOnThread>()('LabelNotOnThread', {}) {}
 
-export const commands = {
+export const threadCommands = {
   applyLabel: defineCommand({
     name: 'ApplyLabel',
     schema: Schema.Struct({
@@ -173,4 +173,4 @@ export const commands = {
   }),
 }
 
-export const schema = makeSchema({ events: threadEvents, state, commands, devtools: { alias: 'thread' } })
+export const schema = makeSchema({ events: threadEvents, state, commands: threadCommands, devtools: { alias: 'thread' } })
