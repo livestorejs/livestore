@@ -1,8 +1,8 @@
 import { DurableObject } from 'cloudflare:workers'
 
 import { type ClientDoWithRpcCallback, createStoreDoPromise } from '@livestore/adapter-cloudflare'
-import { nanoid } from '@livestore/livestore'
-import type * as SyncBackend from '@livestore/sync-cf/cf-worker'
+import { nanoid, type Store } from '@livestore/livestore'
+import type { CfTypes } from '@livestore/sync-cf/cf-worker'
 import { handleSyncUpdateRpc } from '@livestore/sync-cf/client'
 
 import { schema as threadSchema, threadTables } from '../stores/thread/schema.ts'
@@ -11,7 +11,8 @@ import type { Env } from './shared.ts'
 
 // Scoped by storeId
 export class ThreadClientDO extends DurableObject<Env> implements ClientDoWithRpcCallback {
-  private store!: Awaited<ReturnType<typeof createStoreDoPromise>>
+  __DURABLE_OBJECT_BRAND = 'thread-client-do' as never
+  private store!: Store<typeof threadSchema>
   private hasStore = false
   private threadLabelsSubscription: (() => void) | undefined
   private threadSubscription: (() => void) | undefined
@@ -33,7 +34,7 @@ export class ThreadClientDO extends DurableObject<Env> implements ClientDoWithRp
       clientId: 'thread-client-do',
       sessionId: nanoid(),
       durableObject: {
-        ctx: this.ctx as SyncBackend.CfTypes.DurableObjectState,
+        ctx: this.ctx as CfTypes.DurableObjectState,
         env: this.env,
         bindingName: 'THREAD_CLIENT_DO',
       },
