@@ -3,7 +3,7 @@
 import '@livestore/adapter-cloudflare/polyfill'
 import * as SyncBackend from '@livestore/sync-cf/cf-worker'
 
-import type { CrossStoreEvent, Env } from './shared.ts'
+import type { CrossStoreEventEncoded, Env } from './shared.ts'
 
 export default {
   fetch: async (request, env, ctx) => {
@@ -37,88 +37,22 @@ export default {
   },
 
   // Queue consumer handler for cross-store events
-  async queue(batch: MessageBatch, env: Env, ctx: ExecutionContext): Promise<void> {
+  async queue(batch, env: Env, ctx) {
     console.log(`[QueueConsumer] Processing ${batch.messages.length} cross-store events`)
-
-    const threadsToAdd: Array<{ id: string; subject: string; participants: string[]; createdAt: Date }> = []
-    const labelsToApply: Array<{ threadId: string; labelId: string; appliedAt: Date }> = []
-    const labelsToRemove: Array<{ threadId: string; labelId: string; removedAt: Date }> = []
-
-    for (const message of batch.messages) {
-      try {
-        const { name, data } = message.body as CrossStoreEvent
-
-        if (name === 'v1.ThreadLabelApplied') {
-          labelsToApply.push({
-            threadId: data.threadId,
-            labelId: data.labelId,
-            appliedAt: new Date(data.appliedAt),
-          })
-          console.log(`[QueueConsumer] v1.ThreadLabelApplied: thread=${data.threadId}, label=${data.labelId}`)
-        } else if (name === 'v1.ThreadLabelRemoved') {
-          labelsToRemove.push({
-            threadId: data.threadId,
-            labelId: data.labelId,
-            removedAt: new Date(data.removedAt),
-          })
-          console.log(`[QueueConsumer] v1.ThreadLabelRemoved: thread=${data.threadId}, label=${data.labelId}`)
-        } else if (name === 'v1.ThreadCreated') {
-          // Convert date string back to Date object (Cloudflare Queues serializes Dates to ISO strings)
-          threadsToAdd.push({
-            ...data,
-            createdAt: new Date(data.createdAt),
-          })
-          console.log(`[QueueConsumer] v1.ThreadCreated: thread=${data.id}, subject="${data.subject}"`)
-        }
-
-        message.ack()
-      } catch (error) {
-        console.error('[QueueConsumer] Failed to process message:', error, message.body)
-      }
-    }
 
     const mailboxStub = env.MAILBOX_CLIENT_DO.getByName('mailbox-root')
 
-    // Apply thread labels (materializer automatically updates count)
-    for (const label of labelsToApply) {
-      ctx.waitUntil(
-        mailboxStub
-          .applyThreadLabel(label)
-          .then(() => {
-            console.log(`[QueueConsumer] Applied label ${label.labelId} to thread ${label.threadId}`)
-          })
-          .catch((error) => {
-            console.error(`[QueueConsumer] Failed to apply label:`, error)
-          }),
-      )
-    }
+    for (const message of batch.messages) {
+      const event = message.body as CrossStoreEventEncoded
+      console.log(`[QueueConsumer] ${event.name}`)
 
-    // Remove thread labels (materializer automatically updates count)
-    for (const label of labelsToRemove) {
       ctx.waitUntil(
-        mailboxStub
-          .removeThreadLabel(label)
-          .then(() => {
-            console.log(`[QueueConsumer] Removed label ${label.labelId} from thread ${label.threadId}`)
-          })
-          .catch((error) => {
-            console.error(`[QueueConsumer] Failed to remove label:`, error)
-          }),
+        mailboxStub.handleCrossStoreEvent(event).catch((error) => {
+          console.error(`[QueueConsumer] Failed to handle ${event.name}:`, error)
+        }),
       )
-    }
 
-    // Add threads to Mailbox
-    for (const thread of threadsToAdd) {
-      ctx.waitUntil(
-        mailboxStub
-          .addThread(thread)
-          .then(() => {
-            console.log(`[QueueConsumer] Added thread ${thread.id} to Mailbox`)
-          })
-          .catch((error) => {
-            console.error(`[QueueConsumer] Failed to add thread:`, error)
-          }),
-      )
+      message.ack()
     }
   },
 } satisfies SyncBackend.CfTypes.ExportedHandler<Env>

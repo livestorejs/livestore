@@ -7,7 +7,7 @@ import { handleSyncUpdateRpc } from '@livestore/sync-cf/client'
 
 import { schema as threadSchema, threadTables } from '../stores/thread/schema.ts'
 import { seedThread } from '../stores/thread/seed.ts'
-import type { Env } from './shared.ts'
+import { encodeThreadEvent, type Env, type ThreadCrossStoreEvent } from './shared.ts'
 
 // Scoped by storeId
 export class ThreadClientDO extends DurableObject<Env> implements ClientDoWithRpcCallback {
@@ -60,54 +60,11 @@ export class ThreadClientDO extends DurableObject<Env> implements ClientDoWithRp
         filter: ['v1.ThreadCreated', 'v1.ThreadLabelApplied', 'v1.ThreadLabelRemoved'],
       })
 
-      for await (const event of eventStream) {
-        try {
-          switch (event.name) {
-            case 'v1.ThreadCreated': {
-              await this.env.CROSS_STORE_EVENTS_QUEUE.send({
-                name: 'v1.ThreadCreated',
-                data: {
-                  id: event.args.id,
-                  subject: event.args.subject,
-                  participants: [...event.args.participants],
-                  createdAt: event.args.createdAt,
-                },
-              })
-              console.log(`📤 Published v1.ThreadCreated: thread=${event.args.id}`)
-              break
-            }
-            case 'v1.ThreadLabelApplied': {
-              await this.env.CROSS_STORE_EVENTS_QUEUE.send({
-                name: 'v1.ThreadLabelApplied',
-                data: {
-                  threadId: event.args.threadId,
-                  labelId: event.args.labelId,
-                  appliedAt: event.args.appliedAt,
-                },
-              })
-              console.log(
-                `📤 Published v1.ThreadLabelApplied: thread=${event.args.threadId}, label=${event.args.labelId}`,
-              )
-              break
-            }
-            case 'v1.ThreadLabelRemoved': {
-              await this.env.CROSS_STORE_EVENTS_QUEUE.send({
-                name: 'v1.ThreadLabelRemoved',
-                data: {
-                  threadId: event.args.threadId,
-                  labelId: event.args.labelId,
-                  removedAt: event.args.removedAt,
-                },
-              })
-              console.log(
-                `📤 Published v1.ThreadLabelRemoved: thread=${event.args.threadId}, label=${event.args.labelId}`,
-              )
-              break
-            }
-          }
-        } catch (error) {
-          console.error('[ThreadClientDO] Failed to publish cross-store event:', error)
-        }
+      for await (const threadEvent of eventStream) {
+        // The filter above narrows at runtime but doesn't narrow the type of `threadEvent`
+        const crossStoreEvent = encodeThreadEvent(threadEvent as ThreadCrossStoreEvent)
+        await this.env.CROSS_STORE_EVENTS_QUEUE.send(crossStoreEvent)
+        console.log(`📤 Published ${crossStoreEvent.name} cross-store event`)
       }
     }
 
