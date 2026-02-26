@@ -38,7 +38,9 @@ export const UserLabelPicker: React.FC<UserLabelPickerProps> = ({ threadId }) =>
     labels.map((label) => [label.id, { backgroundColor: label.color ?? undefined }]),
   )
 
-  const toggleLabel = (labelId: string) => {
+  const toggleLabelAction = (formData: FormData) => {
+    const labelId = formData.get('labelId')
+    if (typeof labelId !== 'string') throw new Error('LabelId is not a string')
     if (isLabelApplied(labelId)) {
       threadStore.execute(threadCommands.removeLabel({ threadId, labelId, removedAt: new Date() }))
     } else {
@@ -72,30 +74,24 @@ export const UserLabelPicker: React.FC<UserLabelPickerProps> = ({ threadId }) =>
           />
 
           {/* Dropdown Menu */}
-          <div className="absolute right-0 mt-1 w-48 bg-white rounded shadow border z-20">
-            {labels.map((label) => {
-              return (
-                <button
-                  key={label.id}
-                  data-label-id={label.id}
-                  onClick={(e) => {
-                    const labelId = e.currentTarget.dataset.labelId
-                    if (labelId === undefined) throw new Error('No label ID found')
-                    toggleLabel(labelId)
-                  }}
-                  type="button"
-                  className="w-full text-left rounded px-3 py-2 text-sm text-gray-600 hover:bg-gray-50 flex items-center justify-between"
-                >
-                  <div className="flex items-center">
-                    <div className="w-3 h-3 rounded-full mr-2" style={labelDotStyles.get(label.id)} />
-                    <span className="capitalize">{label.name}</span>
-                  </div>
+          <form action={toggleLabelAction} className="absolute right-0 mt-1 w-48 bg-white rounded shadow border z-20">
+            {labels.map((label) => (
+              <button
+                key={label.id}
+                type="submit"
+                name="labelId"
+                value={label.id}
+                className="w-full text-left rounded px-3 py-2 text-sm text-gray-600 hover:bg-gray-50 flex items-center justify-between"
+              >
+                <div className="flex items-center">
+                  <div className="w-3 h-3 rounded-full mr-2" style={labelDotStyles.get(label.id)} />
+                  <span className="capitalize">{label.name}</span>
+                </div>
 
-                  {isLabelApplied(label.id) && <span className="text-xs font-bold">✓</span>}
-                </button>
-              )
-            })}
-          </div>
+                {isLabelApplied(label.id) && <span className="text-xs font-bold">✓</span>}
+              </button>
+            ))}
+          </form>
         </>
       )}
     </div>
