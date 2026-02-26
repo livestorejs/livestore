@@ -83,6 +83,10 @@ These projections are **eventually consistent** copies that we synchronize via c
 > [!NOTE]
 > This currently needs to be implemented manually as LiveStore doesn't yet provide primitives for cross-store communication.
 
+## Known Limitations
+
+- **`useQuery` doesn't support Suspense** ([#822](https://github.com/livestorejs/livestore/issues/822)): `useStore()` suspends while the store initializes, but `useQuery()` does not suspend while waiting for sync data to arrive. This means there's a brief window after the store resolves where queries can return empty results. Components that depend on synced data need manual null checks as a workaround until suspense-compatible query hooks are available. This is particularly noticeable in the cross-store architecture: clicking a thread creates its Thread store on-demand, and the store resolves before the sync backend has delivered the thread data seeded by `ThreadClientDO`. The `ThreadView` component works around this with a null guard that shows a loading state until the data arrives.
+
 ## Architecture Diagram
 
 ```

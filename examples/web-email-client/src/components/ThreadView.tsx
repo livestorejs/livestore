@@ -6,6 +6,7 @@ import { useMailboxStore } from '../stores/mailbox'
 import { mailboxTables } from '../stores/mailbox/schema.ts'
 import { threadStoreOptions } from '../stores/thread'
 import { threadTables } from '../stores/thread/schema.ts'
+import { ThreadLoading } from './AppLayout.tsx'
 import { Message } from './Message.tsx'
 import { ThreadActions } from './ThreadActions.tsx'
 
@@ -34,6 +35,11 @@ export const ThreadView: React.FC<ThreadViewProps> = ({ threadId }) => {
   const [thread] = threadStore.useQuery(threadQuery)
   const messages = threadStore.useQuery(messagesQuery)
   const threadLabels = threadStore.useQuery(threadLabelsQuery)
+
+  // Workaround: useQuery doesn't support Suspense yet, so the thread table can be empty
+  // while sync data is still in flight. Guard against undefined to avoid a runtime crash.
+  // See https://github.com/livestorejs/livestore/issues/822
+  if (!thread) return <ThreadLoading />
 
   const isLabelApplied = (labelId: string) => threadLabels.some((tl) => tl.labelId === labelId)
   const threadUserLabels = userLabels.filter((l) => isLabelApplied(l.id))

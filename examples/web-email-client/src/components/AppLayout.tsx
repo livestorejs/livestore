@@ -63,7 +63,7 @@ const ThreadError: React.FC = () => (
   </div>
 )
 
-const ThreadLoading: React.FC = () => (
+export const ThreadLoading: React.FC = () => (
   <div className="grid place-items-center h-full">
     <p className="text-gray-500">Loading thread...</p>
   </div>
