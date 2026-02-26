@@ -952,21 +952,21 @@ export class Store<TSchema extends LiveStoreSchema = LiveStoreSchema.Any, TConte
   ): ExecuteResult<TError> => {
     this.checkShutdown('execute')
 
-    if (hasWarnedExperimentalCommands === false) {
-      hasWarnedExperimentalCommands = true
-      console.warn(
-        '[LiveStore] Commands API is experimental. Initial execution works, but command replay, ' +
-          'conflict detection, and sync confirmation are not yet implemented. ' +
-          'See https://github.com/livestorejs/livestore/issues/717',
-      )
-    }
-
     const parentSpanContext = options?.otelContext !== undefined
       ? otel.trace.getSpanContext(options.otelContext)
       : undefined
 
     const exit = Effect.gen(this, function* () {
-      // Reverse link: attach execute span to the mutations collector span
+      if (hasWarnedExperimentalCommands === false) {
+        yield* Effect.logWarning(
+          '[LiveStore] Commands API is experimental. Initial execution works, but command replay, ' +
+            'conflict detection, and sync confirmation are not yet implemented. ' +
+            'See https://github.com/livestorejs/livestore/issues/717',
+        )
+        yield* Effect.sync(() => { hasWarnedExperimentalCommands = true })
+      }
+
+     // Reverse link: attach execute span to the mutations collector span
       const mutationsSpan = otel.trace.getSpan(this[StoreInternalsSymbol].otel.mutationsSpanContext)
       mutationsSpan?.addEvent('execute')
       const currentSpan = yield* OtelTracer.currentOtelSpan.pipe(Effect.orDie)
