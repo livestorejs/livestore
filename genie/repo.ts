@@ -505,13 +505,19 @@ export const installDevenvFromLockStep = {
 
 export const validateNixStoreStep = {
   name: 'Validate Nix store',
-  run: `if ${pinnedDevenvCmd} shell -- true > /dev/null 2>&1; then
+  run: `if [ -n "${'${NIX_CONFIG:-}'}" ]; then
+  NIX_CONFIG_WITH_UNRESTRICTED_EVAL="$NIX_CONFIG"$'\n''restrict-eval = false'
+else
+  NIX_CONFIG_WITH_UNRESTRICTED_EVAL='restrict-eval = false'
+fi
+
+if NIX_CONFIG="$NIX_CONFIG_WITH_UNRESTRICTED_EVAL" ${pinnedDevenvCmd} info > /dev/null 2>&1; then
   echo "Nix store OK"
 else
   echo "::warning::Nix store validation failed, repairing..."
   nix-store --verify --check-contents --repair 2>&1 | tail -20
   rm -rf ~/.cache/nix/eval-cache-*
-  ${pinnedDevenvCmd} shell -- true
+  NIX_CONFIG="$NIX_CONFIG_WITH_UNRESTRICTED_EVAL" ${pinnedDevenvCmd} info > /dev/null
 fi`,
   shell: 'bash',
 } as const
