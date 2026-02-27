@@ -25,8 +25,8 @@
         ]
       },
       "locked": {
-        "lastModified": 1772201410,
-        "narHash": "sha256-Gvu3EF07uX2TtvtP9f3ntifinZcTwDrLjsmcvBaTkE0=",
+        "lastModified": 1772203541,
+        "narHash": "sha256-4dyXqrOTqDPVz7RAZFBmiACVxMkJ8asm8pQU+AzjBvw=",
         "owner": "overengineeringstudio",
         "repo": "effect-utils",
         "rev": "d56890945baccfcf35ff77f110b9049a1bb41d0b",
