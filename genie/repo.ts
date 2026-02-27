@@ -479,13 +479,10 @@ export { githubWorkflow } from '../repos/effect-utils/packages/@overeng/genie/sr
 import {
   bashShellDefaults,
   namespaceRunner as namespaceRunnerBase,
-  runDevenvTasksBefore,
   installNixStep,
   cachixStep,
   installMegarepoStep,
   syncMegarepoStep,
-  installDevenvFromLockStep,
-  validateNixStoreStep,
   checkoutStep,
 } from '../repos/effect-utils/genie/ci-workflow.ts'
 
@@ -493,7 +490,31 @@ export const devenvShellDefaults = {
   run: { shell: 'devenv shell bash -- -e {0}' },
 } as const
 export { bashShellDefaults }
-export { runDevenvTasksBefore }
+
+const pinnedDevenvCmd =
+  'nix run "github:cachix/devenv/$(jq -r .nodes.devenv.locked.rev devenv.lock)" --'
+
+export const runDevenvTasksBefore = (...args: [string, ...string[]]) =>
+  `${pinnedDevenvCmd} tasks run ${args.join(' ')} --mode before`
+
+export const installDevenvFromLockStep = {
+  name: 'Use pinned devenv from lock',
+  run: `${pinnedDevenvCmd} version`,
+  shell: 'bash',
+} as const
+
+export const validateNixStoreStep = {
+  name: 'Validate Nix store',
+  run: `if ${pinnedDevenvCmd} shell -- true > /dev/null 2>&1; then
+  echo "Nix store OK"
+else
+  echo "::warning::Nix store validation failed, repairing..."
+  nix-store --verify --check-contents --repair 2>&1 | tail -20
+  rm -rf ~/.cache/nix/eval-cache-*
+  ${pinnedDevenvCmd} shell -- true
+fi`,
+  shell: 'bash',
+} as const
 
 export const namespaceRunner = (runId: string) =>
   namespaceRunnerBase('namespace-profile-linux-x86-64', runId)
