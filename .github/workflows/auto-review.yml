@@ -17,5 +17,5 @@ jobs:
     steps:
       - name: Request review from schickling
         env:
-          GH_TOKEN: '${{ secrets.GITHUB_TOKEN }}'
-        run: 'gh pr edit ${{ github.event.pull_request.number }} --repo ${{ github.repository }} --add-reviewer schickling'
+          GH_TOKEN: "${{ secrets.GITHUB_TOKEN }}"
+        run: "gh pr edit ${{ github.event.pull_request.number }} --repo ${{ github.repository }} --add-reviewer schickling"

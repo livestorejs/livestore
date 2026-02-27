@@ -495,7 +495,7 @@ const pinnedDevenvCmd =
   'nix run "github:cachix/devenv/$(jq -r .nodes.devenv.locked.rev devenv.lock)" --'
 
 export const runDevenvTasksBefore = (...args: [string, ...string[]]) =>
-  `${pinnedDevenvCmd} tasks run ${args.join(' ')} --mode before`
+  `if [ -n "${'${NIX_CONFIG:-}'}" ]; then NIX_CONFIG_WITH_UNRESTRICTED_EVAL="$NIX_CONFIG"$'\\n''restrict-eval = false'; else NIX_CONFIG_WITH_UNRESTRICTED_EVAL='restrict-eval = false'; fi; NIX_CONFIG="$NIX_CONFIG_WITH_UNRESTRICTED_EVAL" ${pinnedDevenvCmd} tasks run ${args.join(' ')} --mode before`
 
 export const installDevenvFromLockStep = {
   name: 'Use pinned devenv from lock',
