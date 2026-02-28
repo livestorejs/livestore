@@ -88,8 +88,9 @@ const phase2Rules = {
   'typescript/no-unsafe-type-assertion': 'off',
   // Inverse of overeng/explicit-boolean-compare — must stay off
   'typescript/no-unnecessary-boolean-literal-compare': 'off',
-  // 79 violations, mostly generic verbosity
-  'typescript/no-unnecessary-type-arguments': 'error',
+  // TODO(oep-1n3.16): Re-enable after tsgolint crash is fixed upstream.
+  // Currently triggers a nil pointer panic in tsgolint/typescript-go.
+  'typescript/no-unnecessary-type-arguments': 'off',
   // 72 violations, concentrated in generated clients and broad union types
   'typescript/no-duplicate-type-constituents': 'error',
   // 57 violations, assertion cleanup churn

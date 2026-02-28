@@ -48,21 +48,52 @@ jobs:
       - name: Sync megarepo dependencies
         run: mr sync --frozen
         shell: bash
-      - name: Install devenv if needed
-        run: 'command -v devenv > /dev/null || nix profile install "github:cachix/devenv/$(jq -r .nodes.devenv.locked.rev devenv.lock)"'
+      - name: Use pinned devenv from lock
+        run: |
+          DEVENV_REV=$(jq -r .nodes.devenv.locked.rev devenv.lock)
+          if [ -z "$DEVENV_REV" ] || [ "$DEVENV_REV" = "null" ]; then
+            echo '::error::devenv.lock missing .nodes.devenv.locked.rev'
+            exit 1
+          fi
+          echo "DEVENV_REV=$DEVENV_REV" >> "$GITHUB_ENV"
+          echo "Pinned devenv rev: $DEVENV_REV"
         shell: bash
       - name: Validate Nix store
         run: |
-          if devenv shell -- true > /dev/null 2>&1; then
+          if [ -z "${DEVENV_REV:-}" ]; then
+            DEVENV_REV=$(jq -r .nodes.devenv.locked.rev devenv.lock)
+          if [ -z "$DEVENV_REV" ] || [ "$DEVENV_REV" = "null" ]; then
+            echo '::error::devenv.lock missing .nodes.devenv.locked.rev'
+            exit 1
+          fi
+          fi
+
+          resolve_devenv() {
+            nix build --no-link --print-out-paths "github:cachix/devenv/$DEVENV_REV#devenv"
+          }
+
+          # Always append restrict-eval=false so caller-provided NIX_CONFIG keeps its settings.
+          if [ -n "${NIX_CONFIG:-}" ]; then
+            NIX_CONFIG_WITH_UNRESTRICTED_EVAL="$NIX_CONFIG"$'\n''restrict-eval = false'
+          else
+            NIX_CONFIG_WITH_UNRESTRICTED_EVAL='restrict-eval = false'
+          fi
+
+          if DEVENV_OUT=$(resolve_devenv) && DEVENV_BIN="$DEVENV_OUT/bin/devenv" && NIX_CONFIG="$NIX_CONFIG_WITH_UNRESTRICTED_EVAL" "$DEVENV_BIN" info > /dev/null 2>&1; then
             echo "Nix store OK"
           else
             echo "::warning::Nix store validation failed, repairing..."
             nix-store --verify --check-contents --repair 2>&1 | tail -20
             rm -rf ~/.cache/nix/eval-cache-*
-            devenv shell -- true
+            DEVENV_OUT=$(resolve_devenv)
+            DEVENV_BIN="$DEVENV_OUT/bin/devenv"
+            NIX_CONFIG="$NIX_CONFIG_WITH_UNRESTRICTED_EVAL" "$DEVENV_BIN" info > /dev/null
           fi
+
+          echo "DEVENV_BIN=$DEVENV_BIN" >> "$GITHUB_ENV"
+          "$DEVENV_BIN" version
         shell: bash
-      - run: 'devenv tasks run lint:full:with-megarepo-check --mode before'
+      - run: "if [ -n \"${NIX_CONFIG:-}\" ]; then NIX_CONFIG_WITH_UNRESTRICTED_EVAL=\"$NIX_CONFIG\"$'\\n''restrict-eval = false'; else NIX_CONFIG_WITH_UNRESTRICTED_EVAL='restrict-eval = false'; fi; NIX_CONFIG=\"$NIX_CONFIG_WITH_UNRESTRICTED_EVAL\" \"${DEVENV_BIN:?DEVENV_BIN not set}\" tasks run lint:full:with-megarepo-check --mode before"
   type-check:
     runs-on: [namespace-profile-linux-x86-64, 'namespace-features:github.run-id=${{ github.run_id }}']
     defaults:
@@ -90,21 +121,52 @@ jobs:
       - name: Sync megarepo dependencies
         run: mr sync --frozen
         shell: bash
-      - name: Install devenv if needed
-        run: 'command -v devenv > /dev/null || nix profile install "github:cachix/devenv/$(jq -r .nodes.devenv.locked.rev devenv.lock)"'
+      - name: Use pinned devenv from lock
+        run: |
+          DEVENV_REV=$(jq -r .nodes.devenv.locked.rev devenv.lock)
+          if [ -z "$DEVENV_REV" ] || [ "$DEVENV_REV" = "null" ]; then
+            echo '::error::devenv.lock missing .nodes.devenv.locked.rev'
+            exit 1
+          fi
+          echo "DEVENV_REV=$DEVENV_REV" >> "$GITHUB_ENV"
+          echo "Pinned devenv rev: $DEVENV_REV"
         shell: bash
       - name: Validate Nix store
         run: |
-          if devenv shell -- true > /dev/null 2>&1; then
+          if [ -z "${DEVENV_REV:-}" ]; then
+            DEVENV_REV=$(jq -r .nodes.devenv.locked.rev devenv.lock)
+          if [ -z "$DEVENV_REV" ] || [ "$DEVENV_REV" = "null" ]; then
+            echo '::error::devenv.lock missing .nodes.devenv.locked.rev'
+            exit 1
+          fi
+          fi
+
+          resolve_devenv() {
+            nix build --no-link --print-out-paths "github:cachix/devenv/$DEVENV_REV#devenv"
+          }
+
+          # Always append restrict-eval=false so caller-provided NIX_CONFIG keeps its settings.
+          if [ -n "${NIX_CONFIG:-}" ]; then
+            NIX_CONFIG_WITH_UNRESTRICTED_EVAL="$NIX_CONFIG"$'\n''restrict-eval = false'
+          else
+            NIX_CONFIG_WITH_UNRESTRICTED_EVAL='restrict-eval = false'
+          fi
+
+          if DEVENV_OUT=$(resolve_devenv) && DEVENV_BIN="$DEVENV_OUT/bin/devenv" && NIX_CONFIG="$NIX_CONFIG_WITH_UNRESTRICTED_EVAL" "$DEVENV_BIN" info > /dev/null 2>&1; then
             echo "Nix store OK"
           else
             echo "::warning::Nix store validation failed, repairing..."
             nix-store --verify --check-contents --repair 2>&1 | tail -20
             rm -rf ~/.cache/nix/eval-cache-*
-            devenv shell -- true
+            DEVENV_OUT=$(resolve_devenv)
+            DEVENV_BIN="$DEVENV_OUT/bin/devenv"
+            NIX_CONFIG="$NIX_CONFIG_WITH_UNRESTRICTED_EVAL" "$DEVENV_BIN" info > /dev/null
           fi
+
+          echo "DEVENV_BIN=$DEVENV_BIN" >> "$GITHUB_ENV"
+          "$DEVENV_BIN" version
         shell: bash
-      - run: 'devenv tasks run ts:build --mode before'
+      - run: "if [ -n \"${NIX_CONFIG:-}\" ]; then NIX_CONFIG_WITH_UNRESTRICTED_EVAL=\"$NIX_CONFIG\"$'\\n''restrict-eval = false'; else NIX_CONFIG_WITH_UNRESTRICTED_EVAL='restrict-eval = false'; fi; NIX_CONFIG=\"$NIX_CONFIG_WITH_UNRESTRICTED_EVAL\" \"${DEVENV_BIN:?DEVENV_BIN not set}\" tasks run ts:build --mode before"
   test-unit:
     runs-on: [namespace-profile-linux-x86-64, 'namespace-features:github.run-id=${{ github.run_id }}']
     defaults:
@@ -132,21 +194,52 @@ jobs:
       - name: Sync megarepo dependencies
         run: mr sync --frozen
         shell: bash
-      - name: Install devenv if needed
-        run: 'command -v devenv > /dev/null || nix profile install "github:cachix/devenv/$(jq -r .nodes.devenv.locked.rev devenv.lock)"'
+      - name: Use pinned devenv from lock
+        run: |
+          DEVENV_REV=$(jq -r .nodes.devenv.locked.rev devenv.lock)
+          if [ -z "$DEVENV_REV" ] || [ "$DEVENV_REV" = "null" ]; then
+            echo '::error::devenv.lock missing .nodes.devenv.locked.rev'
+            exit 1
+          fi
+          echo "DEVENV_REV=$DEVENV_REV" >> "$GITHUB_ENV"
+          echo "Pinned devenv rev: $DEVENV_REV"
         shell: bash
       - name: Validate Nix store
         run: |
-          if devenv shell -- true > /dev/null 2>&1; then
+          if [ -z "${DEVENV_REV:-}" ]; then
+            DEVENV_REV=$(jq -r .nodes.devenv.locked.rev devenv.lock)
+          if [ -z "$DEVENV_REV" ] || [ "$DEVENV_REV" = "null" ]; then
+            echo '::error::devenv.lock missing .nodes.devenv.locked.rev'
+            exit 1
+          fi
+          fi
+
+          resolve_devenv() {
+            nix build --no-link --print-out-paths "github:cachix/devenv/$DEVENV_REV#devenv"
+          }
+
+          # Always append restrict-eval=false so caller-provided NIX_CONFIG keeps its settings.
+          if [ -n "${NIX_CONFIG:-}" ]; then
+            NIX_CONFIG_WITH_UNRESTRICTED_EVAL="$NIX_CONFIG"$'\n''restrict-eval = false'
+          else
+            NIX_CONFIG_WITH_UNRESTRICTED_EVAL='restrict-eval = false'
+          fi
+
+          if DEVENV_OUT=$(resolve_devenv) && DEVENV_BIN="$DEVENV_OUT/bin/devenv" && NIX_CONFIG="$NIX_CONFIG_WITH_UNRESTRICTED_EVAL" "$DEVENV_BIN" info > /dev/null 2>&1; then
             echo "Nix store OK"
           else
             echo "::warning::Nix store validation failed, repairing..."
             nix-store --verify --check-contents --repair 2>&1 | tail -20
             rm -rf ~/.cache/nix/eval-cache-*
-            devenv shell -- true
+            DEVENV_OUT=$(resolve_devenv)
+            DEVENV_BIN="$DEVENV_OUT/bin/devenv"
+            NIX_CONFIG="$NIX_CONFIG_WITH_UNRESTRICTED_EVAL" "$DEVENV_BIN" info > /dev/null
           fi
+
+          echo "DEVENV_BIN=$DEVENV_BIN" >> "$GITHUB_ENV"
+          "$DEVENV_BIN" version
         shell: bash
-      - run: 'devenv tasks run test:unit --mode before'
+      - run: "if [ -n \"${NIX_CONFIG:-}\" ]; then NIX_CONFIG_WITH_UNRESTRICTED_EVAL=\"$NIX_CONFIG\"$'\\n''restrict-eval = false'; else NIX_CONFIG_WITH_UNRESTRICTED_EVAL='restrict-eval = false'; fi; NIX_CONFIG=\"$NIX_CONFIG_WITH_UNRESTRICTED_EVAL\" \"${DEVENV_BIN:?DEVENV_BIN not set}\" tasks run test:unit --mode before"
   test-integration-node-sync:
     runs-on: [namespace-profile-linux-x86-64, 'namespace-features:github.run-id=${{ github.run_id }}']
     defaults:
@@ -174,19 +267,50 @@ jobs:
       - name: Sync megarepo dependencies
         run: mr sync --frozen
         shell: bash
-      - name: Install devenv if needed
-        run: 'command -v devenv > /dev/null || nix profile install "github:cachix/devenv/$(jq -r .nodes.devenv.locked.rev devenv.lock)"'
+      - name: Use pinned devenv from lock
+        run: |
+          DEVENV_REV=$(jq -r .nodes.devenv.locked.rev devenv.lock)
+          if [ -z "$DEVENV_REV" ] || [ "$DEVENV_REV" = "null" ]; then
+            echo '::error::devenv.lock missing .nodes.devenv.locked.rev'
+            exit 1
+          fi
+          echo "DEVENV_REV=$DEVENV_REV" >> "$GITHUB_ENV"
+          echo "Pinned devenv rev: $DEVENV_REV"
         shell: bash
       - name: Validate Nix store
         run: |
-          if devenv shell -- true > /dev/null 2>&1; then
+          if [ -z "${DEVENV_REV:-}" ]; then
+            DEVENV_REV=$(jq -r .nodes.devenv.locked.rev devenv.lock)
+          if [ -z "$DEVENV_REV" ] || [ "$DEVENV_REV" = "null" ]; then
+            echo '::error::devenv.lock missing .nodes.devenv.locked.rev'
+            exit 1
+          fi
+          fi
+
+          resolve_devenv() {
+            nix build --no-link --print-out-paths "github:cachix/devenv/$DEVENV_REV#devenv"
+          }
+
+          # Always append restrict-eval=false so caller-provided NIX_CONFIG keeps its settings.
+          if [ -n "${NIX_CONFIG:-}" ]; then
+            NIX_CONFIG_WITH_UNRESTRICTED_EVAL="$NIX_CONFIG"$'\n''restrict-eval = false'
+          else
+            NIX_CONFIG_WITH_UNRESTRICTED_EVAL='restrict-eval = false'
+          fi
+
+          if DEVENV_OUT=$(resolve_devenv) && DEVENV_BIN="$DEVENV_OUT/bin/devenv" && NIX_CONFIG="$NIX_CONFIG_WITH_UNRESTRICTED_EVAL" "$DEVENV_BIN" info > /dev/null 2>&1; then
             echo "Nix store OK"
           else
             echo "::warning::Nix store validation failed, repairing..."
             nix-store --verify --check-contents --repair 2>&1 | tail -20
             rm -rf ~/.cache/nix/eval-cache-*
-            devenv shell -- true
+            DEVENV_OUT=$(resolve_devenv)
+            DEVENV_BIN="$DEVENV_OUT/bin/devenv"
+            NIX_CONFIG="$NIX_CONFIG_WITH_UNRESTRICTED_EVAL" "$DEVENV_BIN" info > /dev/null
           fi
+
+          echo "DEVENV_BIN=$DEVENV_BIN" >> "$GITHUB_ENV"
+          "$DEVENV_BIN" version
         shell: bash
       - name: Set OTEL_EXPORTER_OTLP_HEADERS environment variable
         env:
@@ -199,7 +323,7 @@ jobs:
           # Disable in Vite (otherwise CORS issues)
           echo "VITE_OTEL_EXPORTER_OTLP_ENDPOINT=" >> $GITHUB_ENV
       - name: Run node-sync integration tests
-        run: 'devenv tasks run test:integration:node-sync:allow-flaky --mode before'
+        run: "if [ -n \"${NIX_CONFIG:-}\" ]; then NIX_CONFIG_WITH_UNRESTRICTED_EVAL=\"$NIX_CONFIG\"$'\\n''restrict-eval = false'; else NIX_CONFIG_WITH_UNRESTRICTED_EVAL='restrict-eval = false'; fi; NIX_CONFIG=\"$NIX_CONFIG_WITH_UNRESTRICTED_EVAL\" \"${DEVENV_BIN:?DEVENV_BIN not set}\" tasks run test:integration:node-sync:allow-flaky --mode before"
       - name: Display node-sync logs
         if: always()
         run: |
@@ -261,19 +385,50 @@ jobs:
       - name: Sync megarepo dependencies
         run: mr sync --frozen
         shell: bash
-      - name: Install devenv if needed
-        run: 'command -v devenv > /dev/null || nix profile install "github:cachix/devenv/$(jq -r .nodes.devenv.locked.rev devenv.lock)"'
+      - name: Use pinned devenv from lock
+        run: |
+          DEVENV_REV=$(jq -r .nodes.devenv.locked.rev devenv.lock)
+          if [ -z "$DEVENV_REV" ] || [ "$DEVENV_REV" = "null" ]; then
+            echo '::error::devenv.lock missing .nodes.devenv.locked.rev'
+            exit 1
+          fi
+          echo "DEVENV_REV=$DEVENV_REV" >> "$GITHUB_ENV"
+          echo "Pinned devenv rev: $DEVENV_REV"
         shell: bash
       - name: Validate Nix store
         run: |
-          if devenv shell -- true > /dev/null 2>&1; then
+          if [ -z "${DEVENV_REV:-}" ]; then
+            DEVENV_REV=$(jq -r .nodes.devenv.locked.rev devenv.lock)
+          if [ -z "$DEVENV_REV" ] || [ "$DEVENV_REV" = "null" ]; then
+            echo '::error::devenv.lock missing .nodes.devenv.locked.rev'
+            exit 1
+          fi
+          fi
+
+          resolve_devenv() {
+            nix build --no-link --print-out-paths "github:cachix/devenv/$DEVENV_REV#devenv"
+          }
+
+          # Always append restrict-eval=false so caller-provided NIX_CONFIG keeps its settings.
+          if [ -n "${NIX_CONFIG:-}" ]; then
+            NIX_CONFIG_WITH_UNRESTRICTED_EVAL="$NIX_CONFIG"$'\n''restrict-eval = false'
+          else
+            NIX_CONFIG_WITH_UNRESTRICTED_EVAL='restrict-eval = false'
+          fi
+
+          if DEVENV_OUT=$(resolve_devenv) && DEVENV_BIN="$DEVENV_OUT/bin/devenv" && NIX_CONFIG="$NIX_CONFIG_WITH_UNRESTRICTED_EVAL" "$DEVENV_BIN" info > /dev/null 2>&1; then
             echo "Nix store OK"
           else
             echo "::warning::Nix store validation failed, repairing..."
             nix-store --verify --check-contents --repair 2>&1 | tail -20
             rm -rf ~/.cache/nix/eval-cache-*
-            devenv shell -- true
+            DEVENV_OUT=$(resolve_devenv)
+            DEVENV_BIN="$DEVENV_OUT/bin/devenv"
+            NIX_CONFIG="$NIX_CONFIG_WITH_UNRESTRICTED_EVAL" "$DEVENV_BIN" info > /dev/null
           fi
+
+          echo "DEVENV_BIN=$DEVENV_BIN" >> "$GITHUB_ENV"
+          "$DEVENV_BIN" version
         shell: bash
       - name: Set OTEL_EXPORTER_OTLP_HEADERS environment variable
         env:
@@ -300,7 +455,7 @@ jobs:
           done
         shell: bash
       - name: 'Run sync-provider tests for ${{ matrix.provider }}'
-        run: 'devenv tasks run test:integration:sync-provider:matrix --mode before'
+        run: "if [ -n \"${NIX_CONFIG:-}\" ]; then NIX_CONFIG_WITH_UNRESTRICTED_EVAL=\"$NIX_CONFIG\"$'\\n''restrict-eval = false'; else NIX_CONFIG_WITH_UNRESTRICTED_EVAL='restrict-eval = false'; fi; NIX_CONFIG=\"$NIX_CONFIG_WITH_UNRESTRICTED_EVAL\" \"${DEVENV_BIN:?DEVENV_BIN not set}\" tasks run test:integration:sync-provider:matrix --mode before"
         env:
           TEST_SYNC_PROVIDER: '${{ matrix.provider }}'
   test-integration-playwright:
@@ -333,19 +488,50 @@ jobs:
       - name: Sync megarepo dependencies
         run: mr sync --frozen
         shell: bash
-      - name: Install devenv if needed
-        run: 'command -v devenv > /dev/null || nix profile install "github:cachix/devenv/$(jq -r .nodes.devenv.locked.rev devenv.lock)"'
+      - name: Use pinned devenv from lock
+        run: |
+          DEVENV_REV=$(jq -r .nodes.devenv.locked.rev devenv.lock)
+          if [ -z "$DEVENV_REV" ] || [ "$DEVENV_REV" = "null" ]; then
+            echo '::error::devenv.lock missing .nodes.devenv.locked.rev'
+            exit 1
+          fi
+          echo "DEVENV_REV=$DEVENV_REV" >> "$GITHUB_ENV"
+          echo "Pinned devenv rev: $DEVENV_REV"
         shell: bash
       - name: Validate Nix store
         run: |
-          if devenv shell -- true > /dev/null 2>&1; then
+          if [ -z "${DEVENV_REV:-}" ]; then
+            DEVENV_REV=$(jq -r .nodes.devenv.locked.rev devenv.lock)
+          if [ -z "$DEVENV_REV" ] || [ "$DEVENV_REV" = "null" ]; then
+            echo '::error::devenv.lock missing .nodes.devenv.locked.rev'
+            exit 1
+          fi
+          fi
+
+          resolve_devenv() {
+            nix build --no-link --print-out-paths "github:cachix/devenv/$DEVENV_REV#devenv"
+          }
+
+          # Always append restrict-eval=false so caller-provided NIX_CONFIG keeps its settings.
+          if [ -n "${NIX_CONFIG:-}" ]; then
+            NIX_CONFIG_WITH_UNRESTRICTED_EVAL="$NIX_CONFIG"$'\n''restrict-eval = false'
+          else
+            NIX_CONFIG_WITH_UNRESTRICTED_EVAL='restrict-eval = false'
+          fi
+
+          if DEVENV_OUT=$(resolve_devenv) && DEVENV_BIN="$DEVENV_OUT/bin/devenv" && NIX_CONFIG="$NIX_CONFIG_WITH_UNRESTRICTED_EVAL" "$DEVENV_BIN" info > /dev/null 2>&1; then
             echo "Nix store OK"
           else
             echo "::warning::Nix store validation failed, repairing..."
             nix-store --verify --check-contents --repair 2>&1 | tail -20
             rm -rf ~/.cache/nix/eval-cache-*
-            devenv shell -- true
+            DEVENV_OUT=$(resolve_devenv)
+            DEVENV_BIN="$DEVENV_OUT/bin/devenv"
+            NIX_CONFIG="$NIX_CONFIG_WITH_UNRESTRICTED_EVAL" "$DEVENV_BIN" info > /dev/null
           fi
+
+          echo "DEVENV_BIN=$DEVENV_BIN" >> "$GITHUB_ENV"
+          "$DEVENV_BIN" version
         shell: bash
       - name: Set OTEL_EXPORTER_OTLP_HEADERS environment variable
         env:
@@ -360,7 +546,7 @@ jobs:
       - name: Run integration tests
         env:
           PLAYWRIGHT_SUITE: '${{ matrix.suite }}'
-        run: 'devenv tasks run test:integration:playwright:suite --mode before'
+        run: "if [ -n \"${NIX_CONFIG:-}\" ]; then NIX_CONFIG_WITH_UNRESTRICTED_EVAL=\"$NIX_CONFIG\"$'\\n''restrict-eval = false'; else NIX_CONFIG_WITH_UNRESTRICTED_EVAL='restrict-eval = false'; fi; NIX_CONFIG=\"$NIX_CONFIG_WITH_UNRESTRICTED_EVAL\" \"${DEVENV_BIN:?DEVENV_BIN not set}\" tasks run test:integration:playwright:suite --mode before"
       - uses: actions/upload-artifact@v4
         if: '${{ !cancelled() }}'
         with:
@@ -372,7 +558,7 @@ jobs:
         env:
           NETLIFY_AUTH_TOKEN: '${{ secrets.NETLIFY_AUTH_TOKEN }}'
           PLAYWRIGHT_SUITE: '${{ matrix.suite }}'
-        run: 'devenv tasks run test:integration:playwright:upload-trace --mode before'
+        run: "if [ -n \"${NIX_CONFIG:-}\" ]; then NIX_CONFIG_WITH_UNRESTRICTED_EVAL=\"$NIX_CONFIG\"$'\\n''restrict-eval = false'; else NIX_CONFIG_WITH_UNRESTRICTED_EVAL='restrict-eval = false'; fi; NIX_CONFIG=\"$NIX_CONFIG_WITH_UNRESTRICTED_EVAL\" \"${DEVENV_BIN:?DEVENV_BIN not set}\" tasks run test:integration:playwright:upload-trace --mode before"
   perf-test:
     runs-on: [namespace-profile-linux-x86-64, 'namespace-features:github.run-id=${{ github.run_id }}']
     defaults:
@@ -403,19 +589,50 @@ jobs:
       - name: Sync megarepo dependencies
         run: mr sync --frozen
         shell: bash
-      - name: Install devenv if needed
-        run: 'command -v devenv > /dev/null || nix profile install "github:cachix/devenv/$(jq -r .nodes.devenv.locked.rev devenv.lock)"'
+      - name: Use pinned devenv from lock
+        run: |
+          DEVENV_REV=$(jq -r .nodes.devenv.locked.rev devenv.lock)
+          if [ -z "$DEVENV_REV" ] || [ "$DEVENV_REV" = "null" ]; then
+            echo '::error::devenv.lock missing .nodes.devenv.locked.rev'
+            exit 1
+          fi
+          echo "DEVENV_REV=$DEVENV_REV" >> "$GITHUB_ENV"
+          echo "Pinned devenv rev: $DEVENV_REV"
         shell: bash
       - name: Validate Nix store
         run: |
-          if devenv shell -- true > /dev/null 2>&1; then
+          if [ -z "${DEVENV_REV:-}" ]; then
+            DEVENV_REV=$(jq -r .nodes.devenv.locked.rev devenv.lock)
+          if [ -z "$DEVENV_REV" ] || [ "$DEVENV_REV" = "null" ]; then
+            echo '::error::devenv.lock missing .nodes.devenv.locked.rev'
+            exit 1
+          fi
+          fi
+
+          resolve_devenv() {
+            nix build --no-link --print-out-paths "github:cachix/devenv/$DEVENV_REV#devenv"
+          }
+
+          # Always append restrict-eval=false so caller-provided NIX_CONFIG keeps its settings.
+          if [ -n "${NIX_CONFIG:-}" ]; then
+            NIX_CONFIG_WITH_UNRESTRICTED_EVAL="$NIX_CONFIG"$'\n''restrict-eval = false'
+          else
+            NIX_CONFIG_WITH_UNRESTRICTED_EVAL='restrict-eval = false'
+          fi
+
+          if DEVENV_OUT=$(resolve_devenv) && DEVENV_BIN="$DEVENV_OUT/bin/devenv" && NIX_CONFIG="$NIX_CONFIG_WITH_UNRESTRICTED_EVAL" "$DEVENV_BIN" info > /dev/null 2>&1; then
             echo "Nix store OK"
           else
             echo "::warning::Nix store validation failed, repairing..."
             nix-store --verify --check-contents --repair 2>&1 | tail -20
             rm -rf ~/.cache/nix/eval-cache-*
-            devenv shell -- true
+            DEVENV_OUT=$(resolve_devenv)
+            DEVENV_BIN="$DEVENV_OUT/bin/devenv"
+            NIX_CONFIG="$NIX_CONFIG_WITH_UNRESTRICTED_EVAL" "$DEVENV_BIN" info > /dev/null
           fi
+
+          echo "DEVENV_BIN=$DEVENV_BIN" >> "$GITHUB_ENV"
+          "$DEVENV_BIN" version
         shell: bash
       - name: Set OTEL_EXPORTER_OTLP_HEADERS environment variable
         env:
@@ -428,7 +645,7 @@ jobs:
           # Disable in Vite (otherwise CORS issues)
           echo "VITE_OTEL_EXPORTER_OTLP_ENDPOINT=" >> $GITHUB_ENV
       - name: Run performance tests
-        run: 'devenv tasks run test:perf --mode before'
+        run: "if [ -n \"${NIX_CONFIG:-}\" ]; then NIX_CONFIG_WITH_UNRESTRICTED_EVAL=\"$NIX_CONFIG\"$'\\n''restrict-eval = false'; else NIX_CONFIG_WITH_UNRESTRICTED_EVAL='restrict-eval = false'; fi; NIX_CONFIG=\"$NIX_CONFIG_WITH_UNRESTRICTED_EVAL\" \"${DEVENV_BIN:?DEVENV_BIN not set}\" tasks run test:perf --mode before"
         env:
           COMMIT_SHA: '${{ github.event.pull_request.head.sha || github.sha }}'
           GRAFANA_ENDPOINT: 'https://livestore.grafana.net'
@@ -460,19 +677,50 @@ jobs:
       - name: Sync megarepo dependencies
         run: mr sync --frozen
         shell: bash
-      - name: Install devenv if needed
-        run: 'command -v devenv > /dev/null || nix profile install "github:cachix/devenv/$(jq -r .nodes.devenv.locked.rev devenv.lock)"'
+      - name: Use pinned devenv from lock
+        run: |
+          DEVENV_REV=$(jq -r .nodes.devenv.locked.rev devenv.lock)
+          if [ -z "$DEVENV_REV" ] || [ "$DEVENV_REV" = "null" ]; then
+            echo '::error::devenv.lock missing .nodes.devenv.locked.rev'
+            exit 1
+          fi
+          echo "DEVENV_REV=$DEVENV_REV" >> "$GITHUB_ENV"
+          echo "Pinned devenv rev: $DEVENV_REV"
         shell: bash
       - name: Validate Nix store
         run: |
-          if devenv shell -- true > /dev/null 2>&1; then
+          if [ -z "${DEVENV_REV:-}" ]; then
+            DEVENV_REV=$(jq -r .nodes.devenv.locked.rev devenv.lock)
+          if [ -z "$DEVENV_REV" ] || [ "$DEVENV_REV" = "null" ]; then
+            echo '::error::devenv.lock missing .nodes.devenv.locked.rev'
+            exit 1
+          fi
+          fi
+
+          resolve_devenv() {
+            nix build --no-link --print-out-paths "github:cachix/devenv/$DEVENV_REV#devenv"
+          }
+
+          # Always append restrict-eval=false so caller-provided NIX_CONFIG keeps its settings.
+          if [ -n "${NIX_CONFIG:-}" ]; then
+            NIX_CONFIG_WITH_UNRESTRICTED_EVAL="$NIX_CONFIG"$'\n''restrict-eval = false'
+          else
+            NIX_CONFIG_WITH_UNRESTRICTED_EVAL='restrict-eval = false'
+          fi
+
+          if DEVENV_OUT=$(resolve_devenv) && DEVENV_BIN="$DEVENV_OUT/bin/devenv" && NIX_CONFIG="$NIX_CONFIG_WITH_UNRESTRICTED_EVAL" "$DEVENV_BIN" info > /dev/null 2>&1; then
             echo "Nix store OK"
           else
             echo "::warning::Nix store validation failed, repairing..."
             nix-store --verify --check-contents --repair 2>&1 | tail -20
             rm -rf ~/.cache/nix/eval-cache-*
-            devenv shell -- true
+            DEVENV_OUT=$(resolve_devenv)
+            DEVENV_BIN="$DEVENV_OUT/bin/devenv"
+            NIX_CONFIG="$NIX_CONFIG_WITH_UNRESTRICTED_EVAL" "$DEVENV_BIN" info > /dev/null
           fi
+
+          echo "DEVENV_BIN=$DEVENV_BIN" >> "$GITHUB_ENV"
+          "$DEVENV_BIN" version
         shell: bash
       - name: Set OTEL_EXPORTER_OTLP_HEADERS environment variable
         env:
@@ -485,9 +733,9 @@ jobs:
           # Disable in Vite (otherwise CORS issues)
           echo "VITE_OTEL_EXPORTER_OTLP_ENDPOINT=" >> $GITHUB_ENV
       - name: Build wa-sqlite
-        run: 'devenv tasks run test:integration:wa-sqlite:build --mode before'
+        run: "if [ -n \"${NIX_CONFIG:-}\" ]; then NIX_CONFIG_WITH_UNRESTRICTED_EVAL=\"$NIX_CONFIG\"$'\\n''restrict-eval = false'; else NIX_CONFIG_WITH_UNRESTRICTED_EVAL='restrict-eval = false'; fi; NIX_CONFIG=\"$NIX_CONFIG_WITH_UNRESTRICTED_EVAL\" \"${DEVENV_BIN:?DEVENV_BIN not set}\" tasks run test:integration:wa-sqlite:build --mode before"
       - name: Run wa-sqlite tests
-        run: 'devenv tasks run test:integration:wa-sqlite --mode before'
+        run: "if [ -n \"${NIX_CONFIG:-}\" ]; then NIX_CONFIG_WITH_UNRESTRICTED_EVAL=\"$NIX_CONFIG\"$'\\n''restrict-eval = false'; else NIX_CONFIG_WITH_UNRESTRICTED_EVAL='restrict-eval = false'; fi; NIX_CONFIG=\"$NIX_CONFIG_WITH_UNRESTRICTED_EVAL\" \"${DEVENV_BIN:?DEVENV_BIN not set}\" tasks run test:integration:wa-sqlite --mode before"
         env:
           COMMIT_SHA: '${{ github.event.pull_request.head.sha || github.sha }}'
           GRAFANA_ENDPOINT: 'https://livestore.grafana.net'
@@ -521,21 +769,52 @@ jobs:
       - name: Sync megarepo dependencies
         run: mr sync --frozen
         shell: bash
-      - name: Install devenv if needed
-        run: 'command -v devenv > /dev/null || nix profile install "github:cachix/devenv/$(jq -r .nodes.devenv.locked.rev devenv.lock)"'
+      - name: Use pinned devenv from lock
+        run: |
+          DEVENV_REV=$(jq -r .nodes.devenv.locked.rev devenv.lock)
+          if [ -z "$DEVENV_REV" ] || [ "$DEVENV_REV" = "null" ]; then
+            echo '::error::devenv.lock missing .nodes.devenv.locked.rev'
+            exit 1
+          fi
+          echo "DEVENV_REV=$DEVENV_REV" >> "$GITHUB_ENV"
+          echo "Pinned devenv rev: $DEVENV_REV"
         shell: bash
       - name: Validate Nix store
         run: |
-          if devenv shell -- true > /dev/null 2>&1; then
+          if [ -z "${DEVENV_REV:-}" ]; then
+            DEVENV_REV=$(jq -r .nodes.devenv.locked.rev devenv.lock)
+          if [ -z "$DEVENV_REV" ] || [ "$DEVENV_REV" = "null" ]; then
+            echo '::error::devenv.lock missing .nodes.devenv.locked.rev'
+            exit 1
+          fi
+          fi
+
+          resolve_devenv() {
+            nix build --no-link --print-out-paths "github:cachix/devenv/$DEVENV_REV#devenv"
+          }
+
+          # Always append restrict-eval=false so caller-provided NIX_CONFIG keeps its settings.
+          if [ -n "${NIX_CONFIG:-}" ]; then
+            NIX_CONFIG_WITH_UNRESTRICTED_EVAL="$NIX_CONFIG"$'\n''restrict-eval = false'
+          else
+            NIX_CONFIG_WITH_UNRESTRICTED_EVAL='restrict-eval = false'
+          fi
+
+          if DEVENV_OUT=$(resolve_devenv) && DEVENV_BIN="$DEVENV_OUT/bin/devenv" && NIX_CONFIG="$NIX_CONFIG_WITH_UNRESTRICTED_EVAL" "$DEVENV_BIN" info > /dev/null 2>&1; then
             echo "Nix store OK"
           else
             echo "::warning::Nix store validation failed, repairing..."
             nix-store --verify --check-contents --repair 2>&1 | tail -20
             rm -rf ~/.cache/nix/eval-cache-*
-            devenv shell -- true
+            DEVENV_OUT=$(resolve_devenv)
+            DEVENV_BIN="$DEVENV_OUT/bin/devenv"
+            NIX_CONFIG="$NIX_CONFIG_WITH_UNRESTRICTED_EVAL" "$DEVENV_BIN" info > /dev/null
           fi
+
+          echo "DEVENV_BIN=$DEVENV_BIN" >> "$GITHUB_ENV"
+          "$DEVENV_BIN" version
         shell: bash
-      - run: 'devenv tasks run release:snapshot:git-sha --mode before'
+      - run: "if [ -n \"${NIX_CONFIG:-}\" ]; then NIX_CONFIG_WITH_UNRESTRICTED_EVAL=\"$NIX_CONFIG\"$'\\n''restrict-eval = false'; else NIX_CONFIG_WITH_UNRESTRICTED_EVAL='restrict-eval = false'; fi; NIX_CONFIG=\"$NIX_CONFIG_WITH_UNRESTRICTED_EVAL\" \"${DEVENV_BIN:?DEVENV_BIN not set}\" tasks run release:snapshot:git-sha --mode before"
         env:
           GIT_SHA: '${{ github.sha }}'
   build-and-deploy-examples-src:
@@ -565,29 +844,60 @@ jobs:
       - name: Sync megarepo dependencies
         run: mr sync --frozen
         shell: bash
-      - name: Install devenv if needed
-        run: 'command -v devenv > /dev/null || nix profile install "github:cachix/devenv/$(jq -r .nodes.devenv.locked.rev devenv.lock)"'
+      - name: Use pinned devenv from lock
+        run: |
+          DEVENV_REV=$(jq -r .nodes.devenv.locked.rev devenv.lock)
+          if [ -z "$DEVENV_REV" ] || [ "$DEVENV_REV" = "null" ]; then
+            echo '::error::devenv.lock missing .nodes.devenv.locked.rev'
+            exit 1
+          fi
+          echo "DEVENV_REV=$DEVENV_REV" >> "$GITHUB_ENV"
+          echo "Pinned devenv rev: $DEVENV_REV"
         shell: bash
       - name: Validate Nix store
         run: |
-          if devenv shell -- true > /dev/null 2>&1; then
+          if [ -z "${DEVENV_REV:-}" ]; then
+            DEVENV_REV=$(jq -r .nodes.devenv.locked.rev devenv.lock)
+          if [ -z "$DEVENV_REV" ] || [ "$DEVENV_REV" = "null" ]; then
+            echo '::error::devenv.lock missing .nodes.devenv.locked.rev'
+            exit 1
+          fi
+          fi
+
+          resolve_devenv() {
+            nix build --no-link --print-out-paths "github:cachix/devenv/$DEVENV_REV#devenv"
+          }
+
+          # Always append restrict-eval=false so caller-provided NIX_CONFIG keeps its settings.
+          if [ -n "${NIX_CONFIG:-}" ]; then
+            NIX_CONFIG_WITH_UNRESTRICTED_EVAL="$NIX_CONFIG"$'\n''restrict-eval = false'
+          else
+            NIX_CONFIG_WITH_UNRESTRICTED_EVAL='restrict-eval = false'
+          fi
+
+          if DEVENV_OUT=$(resolve_devenv) && DEVENV_BIN="$DEVENV_OUT/bin/devenv" && NIX_CONFIG="$NIX_CONFIG_WITH_UNRESTRICTED_EVAL" "$DEVENV_BIN" info > /dev/null 2>&1; then
             echo "Nix store OK"
           else
             echo "::warning::Nix store validation failed, repairing..."
             nix-store --verify --check-contents --repair 2>&1 | tail -20
             rm -rf ~/.cache/nix/eval-cache-*
-            devenv shell -- true
+            DEVENV_OUT=$(resolve_devenv)
+            DEVENV_BIN="$DEVENV_OUT/bin/devenv"
+            NIX_CONFIG="$NIX_CONFIG_WITH_UNRESTRICTED_EVAL" "$DEVENV_BIN" info > /dev/null
           fi
+
+          echo "DEVENV_BIN=$DEVENV_BIN" >> "$GITHUB_ENV"
+          "$DEVENV_BIN" version
         shell: bash
       - name: Install examples dependencies
-        run: 'devenv tasks run examples:install --mode before'
+        run: "if [ -n \"${NIX_CONFIG:-}\" ]; then NIX_CONFIG_WITH_UNRESTRICTED_EVAL=\"$NIX_CONFIG\"$'\\n''restrict-eval = false'; else NIX_CONFIG_WITH_UNRESTRICTED_EVAL='restrict-eval = false'; fi; NIX_CONFIG=\"$NIX_CONFIG_WITH_UNRESTRICTED_EVAL\" \"${DEVENV_BIN:?DEVENV_BIN not set}\" tasks run examples:install --mode before"
       - name: Build examples
-        run: 'devenv tasks run examples:build:src --mode before'
+        run: "if [ -n \"${NIX_CONFIG:-}\" ]; then NIX_CONFIG_WITH_UNRESTRICTED_EVAL=\"$NIX_CONFIG\"$'\\n''restrict-eval = false'; else NIX_CONFIG_WITH_UNRESTRICTED_EVAL='restrict-eval = false'; fi; NIX_CONFIG=\"$NIX_CONFIG_WITH_UNRESTRICTED_EVAL\" \"${DEVENV_BIN:?DEVENV_BIN not set}\" tasks run examples:build:src --mode before"
       - name: Test examples
-        run: 'devenv tasks run examples:test --mode before'
+        run: "if [ -n \"${NIX_CONFIG:-}\" ]; then NIX_CONFIG_WITH_UNRESTRICTED_EVAL=\"$NIX_CONFIG\"$'\\n''restrict-eval = false'; else NIX_CONFIG_WITH_UNRESTRICTED_EVAL='restrict-eval = false'; fi; NIX_CONFIG=\"$NIX_CONFIG_WITH_UNRESTRICTED_EVAL\" \"${DEVENV_BIN:?DEVENV_BIN not set}\" tasks run examples:test --mode before"
       - name: Deploy examples to Cloudflare
         if: github.event.pull_request.head.repo.fork != true
-        run: 'devenv tasks run examples:deploy --mode before'
+        run: "if [ -n \"${NIX_CONFIG:-}\" ]; then NIX_CONFIG_WITH_UNRESTRICTED_EVAL=\"$NIX_CONFIG\"$'\\n''restrict-eval = false'; else NIX_CONFIG_WITH_UNRESTRICTED_EVAL='restrict-eval = false'; fi; NIX_CONFIG=\"$NIX_CONFIG_WITH_UNRESTRICTED_EVAL\" \"${DEVENV_BIN:?DEVENV_BIN not set}\" tasks run examples:deploy --mode before"
         env:
           CLOUDFLARE_API_TOKEN: '${{ secrets.CLOUDFLARE_API_TOKEN }}'
           CLOUDFLARE_ACCOUNT_ID: '${{ secrets.CLOUDFLARE_ACCOUNT_ID }}'
@@ -618,29 +928,60 @@ jobs:
       - name: Sync megarepo dependencies
         run: mr sync --frozen
         shell: bash
-      - name: Install devenv if needed
-        run: 'command -v devenv > /dev/null || nix profile install "github:cachix/devenv/$(jq -r .nodes.devenv.locked.rev devenv.lock)"'
+      - name: Use pinned devenv from lock
+        run: |
+          DEVENV_REV=$(jq -r .nodes.devenv.locked.rev devenv.lock)
+          if [ -z "$DEVENV_REV" ] || [ "$DEVENV_REV" = "null" ]; then
+            echo '::error::devenv.lock missing .nodes.devenv.locked.rev'
+            exit 1
+          fi
+          echo "DEVENV_REV=$DEVENV_REV" >> "$GITHUB_ENV"
+          echo "Pinned devenv rev: $DEVENV_REV"
         shell: bash
       - name: Validate Nix store
         run: |
-          if devenv shell -- true > /dev/null 2>&1; then
+          if [ -z "${DEVENV_REV:-}" ]; then
+            DEVENV_REV=$(jq -r .nodes.devenv.locked.rev devenv.lock)
+          if [ -z "$DEVENV_REV" ] || [ "$DEVENV_REV" = "null" ]; then
+            echo '::error::devenv.lock missing .nodes.devenv.locked.rev'
+            exit 1
+          fi
+          fi
+
+          resolve_devenv() {
+            nix build --no-link --print-out-paths "github:cachix/devenv/$DEVENV_REV#devenv"
+          }
+
+          # Always append restrict-eval=false so caller-provided NIX_CONFIG keeps its settings.
+          if [ -n "${NIX_CONFIG:-}" ]; then
+            NIX_CONFIG_WITH_UNRESTRICTED_EVAL="$NIX_CONFIG"$'\n''restrict-eval = false'
+          else
+            NIX_CONFIG_WITH_UNRESTRICTED_EVAL='restrict-eval = false'
+          fi
+
+          if DEVENV_OUT=$(resolve_devenv) && DEVENV_BIN="$DEVENV_OUT/bin/devenv" && NIX_CONFIG="$NIX_CONFIG_WITH_UNRESTRICTED_EVAL" "$DEVENV_BIN" info > /dev/null 2>&1; then
             echo "Nix store OK"
           else
             echo "::warning::Nix store validation failed, repairing..."
             nix-store --verify --check-contents --repair 2>&1 | tail -20
             rm -rf ~/.cache/nix/eval-cache-*
-            devenv shell -- true
+            DEVENV_OUT=$(resolve_devenv)
+            DEVENV_BIN="$DEVENV_OUT/bin/devenv"
+            NIX_CONFIG="$NIX_CONFIG_WITH_UNRESTRICTED_EVAL" "$DEVENV_BIN" info > /dev/null
           fi
+
+          echo "DEVENV_BIN=$DEVENV_BIN" >> "$GITHUB_ENV"
+          "$DEVENV_BIN" version
         shell: bash
       - name: Build docs snippets
-        run: 'devenv tasks run docs:build:phase:snippets --mode before'
+        run: "if [ -n \"${NIX_CONFIG:-}\" ]; then NIX_CONFIG_WITH_UNRESTRICTED_EVAL=\"$NIX_CONFIG\"$'\\n''restrict-eval = false'; else NIX_CONFIG_WITH_UNRESTRICTED_EVAL='restrict-eval = false'; fi; NIX_CONFIG=\"$NIX_CONFIG_WITH_UNRESTRICTED_EVAL\" \"${DEVENV_BIN:?DEVENV_BIN not set}\" tasks run docs:build:phase:snippets --mode before"
       - name: Build docs diagrams
-        run: 'devenv tasks run docs:build:phase:diagrams --mode before'
+        run: "if [ -n \"${NIX_CONFIG:-}\" ]; then NIX_CONFIG_WITH_UNRESTRICTED_EVAL=\"$NIX_CONFIG\"$'\\n''restrict-eval = false'; else NIX_CONFIG_WITH_UNRESTRICTED_EVAL='restrict-eval = false'; fi; NIX_CONFIG=\"$NIX_CONFIG_WITH_UNRESTRICTED_EVAL\" \"${DEVENV_BIN:?DEVENV_BIN not set}\" tasks run docs:build:phase:diagrams --mode before"
       - name: Build Astro docs bundle
-        run: 'devenv tasks run docs:build:phase:astro --mode before'
+        run: "if [ -n \"${NIX_CONFIG:-}\" ]; then NIX_CONFIG_WITH_UNRESTRICTED_EVAL=\"$NIX_CONFIG\"$'\\n''restrict-eval = false'; else NIX_CONFIG_WITH_UNRESTRICTED_EVAL='restrict-eval = false'; fi; NIX_CONFIG=\"$NIX_CONFIG_WITH_UNRESTRICTED_EVAL\" \"${DEVENV_BIN:?DEVENV_BIN not set}\" tasks run docs:build:phase:astro --mode before"
       - name: Collect docs build diagnostics on failure
         if: '${{ failure() }}'
-        run: 'devenv tasks run docs:build:diagnostics --mode before'
+        run: "if [ -n \"${NIX_CONFIG:-}\" ]; then NIX_CONFIG_WITH_UNRESTRICTED_EVAL=\"$NIX_CONFIG\"$'\\n''restrict-eval = false'; else NIX_CONFIG_WITH_UNRESTRICTED_EVAL='restrict-eval = false'; fi; NIX_CONFIG=\"$NIX_CONFIG_WITH_UNRESTRICTED_EVAL\" \"${DEVENV_BIN:?DEVENV_BIN not set}\" tasks run docs:build:diagnostics --mode before"
       - name: Upload docs build logs
         if: '${{ always() }}'
         uses: actions/upload-artifact@v4
@@ -650,7 +991,7 @@ jobs:
           retention-days: 14
       - name: Deploy docs
         if: "${{ success() && (github.event_name != 'pull_request' || github.event.pull_request.head.repo.fork != true) }}"
-        run: 'devenv tasks run docs:deploy --mode before'
+        run: "if [ -n \"${NIX_CONFIG:-}\" ]; then NIX_CONFIG_WITH_UNRESTRICTED_EVAL=\"$NIX_CONFIG\"$'\\n''restrict-eval = false'; else NIX_CONFIG_WITH_UNRESTRICTED_EVAL='restrict-eval = false'; fi; NIX_CONFIG=\"$NIX_CONFIG_WITH_UNRESTRICTED_EVAL\" \"${DEVENV_BIN:?DEVENV_BIN not set}\" tasks run docs:deploy --mode before"
         env:
           NETLIFY_AUTH_TOKEN: '${{ secrets.NETLIFY_AUTH_TOKEN }}'
   build-example-create:

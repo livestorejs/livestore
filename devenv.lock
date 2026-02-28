@@ -3,11 +3,11 @@
     "devenv": {
       "locked": {
         "dir": "src/modules",
-        "lastModified": 1771510130,
-        "narHash": "sha256-Kd/dmNOYLEBwkjT+96DFMt0Ft80ZOYRb6ZSunSXsnUE=",
+        "lastModified": 1772200369,
+        "narHash": "sha256-rB1sVq9PF9D9r42qdSzWkdgHUZnzhrqKxKPjW0d9/kM=",
         "owner": "cachix",
         "repo": "devenv",
-        "rev": "0bcb90a82f1df250943c189545ea614a4dbeaf63",
+        "rev": "f543579e19b31a2cd59867b1ea12a6e30a714077",
         "type": "github"
       },
       "original": {
@@ -99,11 +99,11 @@
         ]
       },
       "locked": {
-        "lastModified": 1769069492,
-        "narHash": "sha256-Efs3VUPelRduf3PpfPP2ovEB4CXT7vHf8W+xc49RL/U=",
+        "lastModified": 1772024342,
+        "narHash": "sha256-+eXlIc4/7dE6EcPs9a2DaSY3fTA9AE526hGqkNID3Wg=",
         "owner": "cachix",
         "repo": "git-hooks.nix",
-        "rev": "a1ef738813b15cf8ec759bdff5761b027e3e1d23",
+        "rev": "6e34e97ed9788b17796ee43ccdbaf871a5c2b476",
         "type": "github"
       },
       "original": {
@@ -135,11 +135,11 @@
     },
     "nixpkgs": {
       "locked": {
-        "lastModified": 1769018530,
-        "narHash": "sha256-MJ27Cy2NtBEV5tsK+YraYr2g851f3Fl1LpNHDzDX15c=",
+        "lastModified": 1771848320,
+        "narHash": "sha256-0MAd+0mun3K/Ns8JATeHT1sX28faLII5hVLq0L3BdZU=",
         "owner": "NixOS",
         "repo": "nixpkgs",
-        "rev": "88d3861acdd3d2f0e361767018218e51810df8a1",
+        "rev": "2fc6539b481e1d2569f25f8799236694180c0993",
         "type": "github"
       },
       "original": {
@@ -158,11 +158,19 @@
       },
       "locked": {
         "dir": "nix/playwright-flake",
+<<<<<<< HEAD
         "lastModified": 1772286493,
         "narHash": "sha256-ua5vCuAgKOsYrw+AE/AYv0phTINOfA2N/NiLMxKmbho=",
         "owner": "overengineeringstudio",
         "repo": "effect-utils",
         "rev": "7891e6e64a2f46a193e840f463f375b65ca756a7",
+=======
+        "lastModified": 1772272128,
+        "narHash": "sha256-70Vb57dR4Zv8oXP0gMZCsdw3BONXxrx6634UKamSo0k=",
+        "owner": "overengineeringstudio",
+        "repo": "effect-utils",
+        "rev": "f88f18424ed431d4b0fdc3d0c8dd7124ea5f2835",
+>>>>>>> origin/dev
         "type": "github"
       },
       "original": {
