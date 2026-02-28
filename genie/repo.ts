@@ -479,14 +479,14 @@ export { githubWorkflow } from '../repos/effect-utils/packages/@overeng/genie/sr
 import {
   bashShellDefaults,
   namespaceRunner as namespaceRunnerBase,
-  runDevenvTasksBefore,
   installNixStep,
   cachixStep,
   installMegarepoStep,
   syncMegarepoStep,
-  installDevenvFromLockStep,
-  validateNixStoreStep,
   checkoutStep,
+  preparePinnedDevenvStep,
+  runDevenvTasksBefore,
+  validateNixStoreStep,
 } from '../repos/effect-utils/genie/ci-workflow.ts'
 
 export const devenvShellDefaults = {
@@ -495,8 +495,7 @@ export const devenvShellDefaults = {
 export { bashShellDefaults }
 export { runDevenvTasksBefore }
 
-export const namespaceRunner = (runId: string) =>
-  namespaceRunnerBase('namespace-profile-linux-x86-64', runId)
+export const namespaceRunner = (runId: string) => namespaceRunnerBase('namespace-profile-linux-x86-64', runId)
 
 /**
  * Setup steps for livestore CI jobs (without checkout).
@@ -510,7 +509,7 @@ export const livestoreSetupStepsAfterCheckout = [
   cachixStep({ name: 'livestore', authToken: '${{ env.CACHIX_AUTH_TOKEN }}' }),
   installMegarepoStep,
   syncMegarepoStep(),
-  installDevenvFromLockStep,
+  preparePinnedDevenvStep,
   validateNixStoreStep,
 ] as const
 

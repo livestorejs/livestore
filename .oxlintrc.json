@@ -67,7 +67,7 @@
     "unicorn/no-empty-file": "off",
     "typescript/no-unsafe-type-assertion": "off",
     "typescript/no-unnecessary-boolean-literal-compare": "off",
-    "typescript/no-unnecessary-type-arguments": "error",
+    "typescript/no-unnecessary-type-arguments": "off",
     "typescript/no-duplicate-type-constituents": "error",
     "typescript/no-unnecessary-type-assertion": "error",
     "typescript/restrict-template-expressions": "error",
