@@ -484,46 +484,18 @@ import {
   installMegarepoStep,
   syncMegarepoStep,
   checkoutStep,
+  preparePinnedDevenvStep,
+  runDevenvTasksBefore,
+  validateNixStoreStep,
 } from '../repos/effect-utils/genie/ci-workflow.ts'
 
 export const devenvShellDefaults = {
   run: { shell: 'devenv shell bash -- -e {0}' },
 } as const
 export { bashShellDefaults }
+export { runDevenvTasksBefore }
 
-const pinnedDevenvCmd =
-  'nix run "github:cachix/devenv/$(jq -r .nodes.devenv.locked.rev devenv.lock)" --'
-
-export const runDevenvTasksBefore = (...args: [string, ...string[]]) =>
-  `${pinnedDevenvCmd} tasks run ${args.join(' ')} --mode before`
-
-export const installDevenvFromLockStep = {
-  name: 'Use pinned devenv from lock',
-  run: `${pinnedDevenvCmd} version`,
-  shell: 'bash',
-} as const
-
-export const validateNixStoreStep = {
-  name: 'Validate Nix store',
-  run: `if [ -n "${'${NIX_CONFIG:-}'}" ]; then
-  NIX_CONFIG_WITH_UNRESTRICTED_EVAL="$NIX_CONFIG"$'\n''restrict-eval = false'
-else
-  NIX_CONFIG_WITH_UNRESTRICTED_EVAL='restrict-eval = false'
-fi
-
-if NIX_CONFIG="$NIX_CONFIG_WITH_UNRESTRICTED_EVAL" ${pinnedDevenvCmd} info > /dev/null 2>&1; then
-  echo "Nix store OK"
-else
-  echo "::warning::Nix store validation failed, repairing..."
-  nix-store --verify --check-contents --repair 2>&1 | tail -20
-  rm -rf ~/.cache/nix/eval-cache-*
-  NIX_CONFIG="$NIX_CONFIG_WITH_UNRESTRICTED_EVAL" ${pinnedDevenvCmd} info > /dev/null
-fi`,
-  shell: 'bash',
-} as const
-
-export const namespaceRunner = (runId: string) =>
-  namespaceRunnerBase('namespace-profile-linux-x86-64', runId)
+export const namespaceRunner = (runId: string) => namespaceRunnerBase('namespace-profile-linux-x86-64', runId)
 
 /**
  * Setup steps for livestore CI jobs (without checkout).
@@ -537,7 +509,7 @@ export const livestoreSetupStepsAfterCheckout = [
   cachixStep({ name: 'livestore', authToken: '${{ env.CACHIX_AUTH_TOKEN }}' }),
   installMegarepoStep,
   syncMegarepoStep(),
-  installDevenvFromLockStep,
+  preparePinnedDevenvStep,
   validateNixStoreStep,
 ] as const
 
