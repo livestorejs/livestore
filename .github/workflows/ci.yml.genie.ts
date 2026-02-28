@@ -5,6 +5,7 @@ import {
   livestoreSetupSteps,
   livestoreSetupStepsAfterCheckout,
   namespaceRunner,
+  nixDiagnosticsArtifactStep,
   otelSetupStep,
   runDevenvTasksBefore,
 } from '../../genie/repo.ts'
@@ -37,12 +38,14 @@ const namespaceRunnerConfig = {
   'runs-on': namespaceRunner(GITHUB_RUN_ID),
 }
 
+const withNixDiagnosticsOnFailure = (steps: unknown[]) => [...steps, nixDiagnosticsArtifactStep()]
+
 /** Standard CI job configuration (namespace runner + bash shell) */
 const standardCIJob = (config: { env?: Record<string, string>; steps: unknown[] }) => ({
   ...namespaceRunnerConfig,
   env: config.env,
   defaults: bashShellDefaults,
-  steps: config.steps,
+  steps: withNixDiagnosticsOnFailure(config.steps),
 })
 
 /** OTEL-enabled CI job with Grafana Cloud export */
@@ -169,6 +172,7 @@ done`,
           run: runDevenvTasksBefore('test:integration:sync-provider:matrix'),
           env: { TEST_SYNC_PROVIDER: '${{ matrix.provider }}' },
         },
+        nixDiagnosticsArtifactStep(),
       ],
     },
 
@@ -207,6 +211,7 @@ done`,
           },
           run: runDevenvTasksBefore('test:integration:playwright:upload-trace'),
         },
+        nixDiagnosticsArtifactStep(),
       ],
     },
 
@@ -232,6 +237,7 @@ done`,
             OTEL_EXPORTER_OTLP_ENDPOINT: 'https://otlp-gateway-prod-us-east-2.grafana.net/otlp',
           },
         },
+        nixDiagnosticsArtifactStep(),
       ],
     },
 
@@ -252,6 +258,7 @@ done`,
             OTEL_EXPORTER_OTLP_ENDPOINT: 'https://otlp-gateway-prod-us-east-2.grafana.net/otlp',
           },
         },
+        nixDiagnosticsArtifactStep(),
       ],
     },
 
@@ -270,16 +277,16 @@ done`,
         'test-integration-playwright',
       ],
       defaults: bashShellDefaults,
-      steps: [
+      steps: withNixDiagnosticsOnFailure([
         ...livestoreSetupSteps,
         { run: runDevenvTasksBefore('release:snapshot:git-sha'), env: { GIT_SHA: GITHUB_SHA } },
-      ],
+      ]),
     },
 
     'build-and-deploy-examples-src': {
       ...namespaceRunnerConfig,
       defaults: bashShellDefaults,
-      steps: [
+      steps: withNixDiagnosticsOnFailure([
         ...livestoreSetupSteps,
         {
           name: 'Install examples dependencies',
@@ -299,7 +306,7 @@ done`,
             CLOUDFLARE_ACCOUNT_ID: '${{ secrets.CLOUDFLARE_ACCOUNT_ID }}',
           },
         },
-      ],
+      ]),
     },
 
     /**
@@ -315,7 +322,7 @@ done`,
     'build-deploy-docs': {
       ...namespaceRunnerConfig,
       defaults: bashShellDefaults,
-      steps: [
+      steps: withNixDiagnosticsOnFailure([
         ...livestoreSetupSteps,
         // TODO(oep-bbd): Restore once root cause is fixed and diagnostics are removed.
         // { name: 'Build docs', run: runDevenvTasksBefore('docs:build:api') },
@@ -362,7 +369,7 @@ done`,
           run: runDevenvTasksBefore('docs:deploy'),
           env: { NETLIFY_AUTH_TOKEN: '${{ secrets.NETLIFY_AUTH_TOKEN }}' },
         },
-      ],
+      ]),
     },
 
     'build-example-create': {
