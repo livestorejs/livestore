@@ -15,15 +15,14 @@ on:
   pull_request: {}
 
 env:
-  GITHUB_BRANCH_NAME: "${{ github.head_ref || github.ref_name }}"
-  CACHIX_AUTH_TOKEN: "${{ secrets.CACHIX_AUTH_TOKEN }}"
-  FORCE_SETUP: "1"
-  CI: "true"
+  GITHUB_BRANCH_NAME: '${{ github.head_ref || github.ref_name }}'
+  CACHIX_AUTH_TOKEN: '${{ secrets.CACHIX_AUTH_TOKEN }}'
+  FORCE_SETUP: '1'
+  CI: 'true'
 
 jobs:
   lint:
-    runs-on:
-      [namespace-profile-linux-x86-64, "namespace-features:github.run-id=${{ github.run_id }}"]
+    runs-on: [namespace-profile-linux-x86-64, 'namespace-features:github.run-id=${{ github.run_id }}']
     defaults:
       run:
         shell: bash
@@ -42,9 +41,9 @@ jobs:
         uses: cachix/cachix-action@v16
         with:
           name: livestore
-          authToken: "${{ env.CACHIX_AUTH_TOKEN }}"
+          authToken: '${{ env.CACHIX_AUTH_TOKEN }}'
       - name: Install megarepo CLI
-        run: "nix profile install github:overengineeringstudio/effect-utils#megarepo"
+        run: 'nix profile install github:overengineeringstudio/effect-utils#megarepo'
         shell: bash
       - name: Sync megarepo dependencies
         run: mr sync --frozen
@@ -72,8 +71,7 @@ jobs:
         shell: bash
       - run: 'nix run "github:cachix/devenv/$(jq -r .nodes.devenv.locked.rev devenv.lock)" -- tasks run lint:full:with-megarepo-check --mode before'
   type-check:
-    runs-on:
-      [namespace-profile-linux-x86-64, "namespace-features:github.run-id=${{ github.run_id }}"]
+    runs-on: [namespace-profile-linux-x86-64, 'namespace-features:github.run-id=${{ github.run_id }}']
     defaults:
       run:
         shell: bash
@@ -92,9 +90,9 @@ jobs:
         uses: cachix/cachix-action@v16
         with:
           name: livestore
-          authToken: "${{ env.CACHIX_AUTH_TOKEN }}"
+          authToken: '${{ env.CACHIX_AUTH_TOKEN }}'
       - name: Install megarepo CLI
-        run: "nix profile install github:overengineeringstudio/effect-utils#megarepo"
+        run: 'nix profile install github:overengineeringstudio/effect-utils#megarepo'
         shell: bash
       - name: Sync megarepo dependencies
         run: mr sync --frozen
@@ -122,8 +120,7 @@ jobs:
         shell: bash
       - run: 'nix run "github:cachix/devenv/$(jq -r .nodes.devenv.locked.rev devenv.lock)" -- tasks run ts:build --mode before'
   test-unit:
-    runs-on:
-      [namespace-profile-linux-x86-64, "namespace-features:github.run-id=${{ github.run_id }}"]
+    runs-on: [namespace-profile-linux-x86-64, 'namespace-features:github.run-id=${{ github.run_id }}']
     defaults:
       run:
         shell: bash
@@ -142,9 +139,9 @@ jobs:
         uses: cachix/cachix-action@v16
         with:
           name: livestore
-          authToken: "${{ env.CACHIX_AUTH_TOKEN }}"
+          authToken: '${{ env.CACHIX_AUTH_TOKEN }}'
       - name: Install megarepo CLI
-        run: "nix profile install github:overengineeringstudio/effect-utils#megarepo"
+        run: 'nix profile install github:overengineeringstudio/effect-utils#megarepo'
         shell: bash
       - name: Sync megarepo dependencies
         run: mr sync --frozen
@@ -172,8 +169,7 @@ jobs:
         shell: bash
       - run: 'nix run "github:cachix/devenv/$(jq -r .nodes.devenv.locked.rev devenv.lock)" -- tasks run test:unit --mode before'
   test-integration-node-sync:
-    runs-on:
-      [namespace-profile-linux-x86-64, "namespace-features:github.run-id=${{ github.run_id }}"]
+    runs-on: [namespace-profile-linux-x86-64, 'namespace-features:github.run-id=${{ github.run_id }}']
     defaults:
       run:
         shell: bash
@@ -192,9 +188,9 @@ jobs:
         uses: cachix/cachix-action@v16
         with:
           name: livestore
-          authToken: "${{ env.CACHIX_AUTH_TOKEN }}"
+          authToken: '${{ env.CACHIX_AUTH_TOKEN }}'
       - name: Install megarepo CLI
-        run: "nix profile install github:overengineeringstudio/effect-utils#megarepo"
+        run: 'nix profile install github:overengineeringstudio/effect-utils#megarepo'
         shell: bash
       - name: Sync megarepo dependencies
         run: mr sync --frozen
@@ -222,8 +218,8 @@ jobs:
         shell: bash
       - name: Set OTEL_EXPORTER_OTLP_HEADERS environment variable
         env:
-          GRAFANA_CLOUD_OTLP_INSTANCE_ID: "1227256"
-          GRAFANA_CLOUD_OTLP_API_KEY: "${{ secrets.GRAFANA_CLOUD_OTLP_API_KEY }}"
+          GRAFANA_CLOUD_OTLP_INSTANCE_ID: '1227256'
+          GRAFANA_CLOUD_OTLP_API_KEY: '${{ secrets.GRAFANA_CLOUD_OTLP_API_KEY }}'
         run: |
           echo "OTEL_EXPORTER_OTLP_HEADERS=Authorization=Basic $(echo -n "$GRAFANA_CLOUD_OTLP_INSTANCE_ID:$GRAFANA_CLOUD_OTLP_API_KEY" | base64 -w 0)" >> $GITHUB_ENV
           echo "GRAFANA_ENDPOINT=https://livestore.grafana.net" >> $GITHUB_ENV
@@ -267,8 +263,7 @@ jobs:
           - cf-ws-do
           - cf-do-rpc-d1
           - cf-do-rpc-do
-    runs-on:
-      [namespace-profile-linux-x86-64, "namespace-features:github.run-id=${{ github.run_id }}"]
+    runs-on: [namespace-profile-linux-x86-64, 'namespace-features:github.run-id=${{ github.run_id }}']
     defaults:
       run:
         shell: bash
@@ -287,9 +282,9 @@ jobs:
         uses: cachix/cachix-action@v16
         with:
           name: livestore
-          authToken: "${{ env.CACHIX_AUTH_TOKEN }}"
+          authToken: '${{ env.CACHIX_AUTH_TOKEN }}'
       - name: Install megarepo CLI
-        run: "nix profile install github:overengineeringstudio/effect-utils#megarepo"
+        run: 'nix profile install github:overengineeringstudio/effect-utils#megarepo'
         shell: bash
       - name: Sync megarepo dependencies
         run: mr sync --frozen
@@ -317,8 +312,8 @@ jobs:
         shell: bash
       - name: Set OTEL_EXPORTER_OTLP_HEADERS environment variable
         env:
-          GRAFANA_CLOUD_OTLP_INSTANCE_ID: "1227256"
-          GRAFANA_CLOUD_OTLP_API_KEY: "${{ secrets.GRAFANA_CLOUD_OTLP_API_KEY }}"
+          GRAFANA_CLOUD_OTLP_INSTANCE_ID: '1227256'
+          GRAFANA_CLOUD_OTLP_API_KEY: '${{ secrets.GRAFANA_CLOUD_OTLP_API_KEY }}'
         run: |
           echo "OTEL_EXPORTER_OTLP_HEADERS=Authorization=Basic $(echo -n "$GRAFANA_CLOUD_OTLP_INSTANCE_ID:$GRAFANA_CLOUD_OTLP_API_KEY" | base64 -w 0)" >> $GITHUB_ENV
           echo "GRAFANA_ENDPOINT=https://livestore.grafana.net" >> $GITHUB_ENV
@@ -339,16 +334,15 @@ jobs:
             sleep 1
           done
         shell: bash
-      - name: "Run sync-provider tests for ${{ matrix.provider }}"
+      - name: 'Run sync-provider tests for ${{ matrix.provider }}'
         run: 'nix run "github:cachix/devenv/$(jq -r .nodes.devenv.locked.rev devenv.lock)" -- tasks run test:integration:sync-provider:matrix --mode before'
         env:
-          TEST_SYNC_PROVIDER: "${{ matrix.provider }}"
+          TEST_SYNC_PROVIDER: '${{ matrix.provider }}'
   test-integration-playwright:
     strategy:
       matrix:
         suite: [misc, todomvc, devtools]
-    runs-on:
-      [namespace-profile-linux-x86-64, "namespace-features:github.run-id=${{ github.run_id }}"]
+    runs-on: [namespace-profile-linux-x86-64, 'namespace-features:github.run-id=${{ github.run_id }}']
     defaults:
       run:
         shell: bash
@@ -367,9 +361,9 @@ jobs:
         uses: cachix/cachix-action@v16
         with:
           name: livestore
-          authToken: "${{ env.CACHIX_AUTH_TOKEN }}"
+          authToken: '${{ env.CACHIX_AUTH_TOKEN }}'
       - name: Install megarepo CLI
-        run: "nix profile install github:overengineeringstudio/effect-utils#megarepo"
+        run: 'nix profile install github:overengineeringstudio/effect-utils#megarepo'
         shell: bash
       - name: Sync megarepo dependencies
         run: mr sync --frozen
@@ -397,8 +391,8 @@ jobs:
         shell: bash
       - name: Set OTEL_EXPORTER_OTLP_HEADERS environment variable
         env:
-          GRAFANA_CLOUD_OTLP_INSTANCE_ID: "1227256"
-          GRAFANA_CLOUD_OTLP_API_KEY: "${{ secrets.GRAFANA_CLOUD_OTLP_API_KEY }}"
+          GRAFANA_CLOUD_OTLP_INSTANCE_ID: '1227256'
+          GRAFANA_CLOUD_OTLP_API_KEY: '${{ secrets.GRAFANA_CLOUD_OTLP_API_KEY }}'
         run: |
           echo "OTEL_EXPORTER_OTLP_HEADERS=Authorization=Basic $(echo -n "$GRAFANA_CLOUD_OTLP_INSTANCE_ID:$GRAFANA_CLOUD_OTLP_API_KEY" | base64 -w 0)" >> $GITHUB_ENV
           echo "GRAFANA_ENDPOINT=https://livestore.grafana.net" >> $GITHUB_ENV
@@ -407,23 +401,22 @@ jobs:
           echo "VITE_OTEL_EXPORTER_OTLP_ENDPOINT=" >> $GITHUB_ENV
       - name: Run integration tests
         env:
-          PLAYWRIGHT_SUITE: "${{ matrix.suite }}"
+          PLAYWRIGHT_SUITE: '${{ matrix.suite }}'
         run: 'nix run "github:cachix/devenv/$(jq -r .nodes.devenv.locked.rev devenv.lock)" -- tasks run test:integration:playwright:suite --mode before'
       - uses: actions/upload-artifact@v4
-        if: "${{ !cancelled() }}"
+        if: '${{ !cancelled() }}'
         with:
-          name: "playwright-report-${{ matrix.suite }}"
+          name: 'playwright-report-${{ matrix.suite }}'
           path: tests/integration/playwright-report/
           retention-days: 30
       - name: Upload trace
-        if: "${{ !cancelled() }}"
+        if: '${{ !cancelled() }}'
         env:
-          NETLIFY_AUTH_TOKEN: "${{ secrets.NETLIFY_AUTH_TOKEN }}"
-          PLAYWRIGHT_SUITE: "${{ matrix.suite }}"
+          NETLIFY_AUTH_TOKEN: '${{ secrets.NETLIFY_AUTH_TOKEN }}'
+          PLAYWRIGHT_SUITE: '${{ matrix.suite }}'
         run: 'nix run "github:cachix/devenv/$(jq -r .nodes.devenv.locked.rev devenv.lock)" -- tasks run test:integration:playwright:upload-trace --mode before'
   perf-test:
-    runs-on:
-      [namespace-profile-linux-x86-64, "namespace-features:github.run-id=${{ github.run_id }}"]
+    runs-on: [namespace-profile-linux-x86-64, 'namespace-features:github.run-id=${{ github.run_id }}']
     defaults:
       run:
         shell: bash
@@ -431,7 +424,7 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v4
         with:
-          ref: "${{ github.event.pull_request.head.sha || github.sha }}"
+          ref: '${{ github.event.pull_request.head.sha || github.sha }}'
       - name: Install Nix
         uses: DeterminateSystems/determinate-nix-action@v3
         with:
@@ -445,9 +438,9 @@ jobs:
         uses: cachix/cachix-action@v16
         with:
           name: livestore
-          authToken: "${{ env.CACHIX_AUTH_TOKEN }}"
+          authToken: '${{ env.CACHIX_AUTH_TOKEN }}'
       - name: Install megarepo CLI
-        run: "nix profile install github:overengineeringstudio/effect-utils#megarepo"
+        run: 'nix profile install github:overengineeringstudio/effect-utils#megarepo'
         shell: bash
       - name: Sync megarepo dependencies
         run: mr sync --frozen
@@ -475,8 +468,8 @@ jobs:
         shell: bash
       - name: Set OTEL_EXPORTER_OTLP_HEADERS environment variable
         env:
-          GRAFANA_CLOUD_OTLP_INSTANCE_ID: "1227256"
-          GRAFANA_CLOUD_OTLP_API_KEY: "${{ secrets.GRAFANA_CLOUD_OTLP_API_KEY }}"
+          GRAFANA_CLOUD_OTLP_INSTANCE_ID: '1227256'
+          GRAFANA_CLOUD_OTLP_API_KEY: '${{ secrets.GRAFANA_CLOUD_OTLP_API_KEY }}'
         run: |
           echo "OTEL_EXPORTER_OTLP_HEADERS=Authorization=Basic $(echo -n "$GRAFANA_CLOUD_OTLP_INSTANCE_ID:$GRAFANA_CLOUD_OTLP_API_KEY" | base64 -w 0)" >> $GITHUB_ENV
           echo "GRAFANA_ENDPOINT=https://livestore.grafana.net" >> $GITHUB_ENV
@@ -486,12 +479,11 @@ jobs:
       - name: Run performance tests
         run: 'nix run "github:cachix/devenv/$(jq -r .nodes.devenv.locked.rev devenv.lock)" -- tasks run test:perf --mode before'
         env:
-          COMMIT_SHA: "${{ github.event.pull_request.head.sha || github.sha }}"
-          GRAFANA_ENDPOINT: "https://livestore.grafana.net"
-          OTEL_EXPORTER_OTLP_ENDPOINT: "https://otlp-gateway-prod-us-east-2.grafana.net/otlp"
+          COMMIT_SHA: '${{ github.event.pull_request.head.sha || github.sha }}'
+          GRAFANA_ENDPOINT: 'https://livestore.grafana.net'
+          OTEL_EXPORTER_OTLP_ENDPOINT: 'https://otlp-gateway-prod-us-east-2.grafana.net/otlp'
   wa-sqlite-test:
-    runs-on:
-      [namespace-profile-linux-x86-64, "namespace-features:github.run-id=${{ github.run_id }}"]
+    runs-on: [namespace-profile-linux-x86-64, 'namespace-features:github.run-id=${{ github.run_id }}']
     defaults:
       run:
         shell: bash
@@ -510,9 +502,9 @@ jobs:
         uses: cachix/cachix-action@v16
         with:
           name: livestore
-          authToken: "${{ env.CACHIX_AUTH_TOKEN }}"
+          authToken: '${{ env.CACHIX_AUTH_TOKEN }}'
       - name: Install megarepo CLI
-        run: "nix profile install github:overengineeringstudio/effect-utils#megarepo"
+        run: 'nix profile install github:overengineeringstudio/effect-utils#megarepo'
         shell: bash
       - name: Sync megarepo dependencies
         run: mr sync --frozen
@@ -540,8 +532,8 @@ jobs:
         shell: bash
       - name: Set OTEL_EXPORTER_OTLP_HEADERS environment variable
         env:
-          GRAFANA_CLOUD_OTLP_INSTANCE_ID: "1227256"
-          GRAFANA_CLOUD_OTLP_API_KEY: "${{ secrets.GRAFANA_CLOUD_OTLP_API_KEY }}"
+          GRAFANA_CLOUD_OTLP_INSTANCE_ID: '1227256'
+          GRAFANA_CLOUD_OTLP_API_KEY: '${{ secrets.GRAFANA_CLOUD_OTLP_API_KEY }}'
         run: |
           echo "OTEL_EXPORTER_OTLP_HEADERS=Authorization=Basic $(echo -n "$GRAFANA_CLOUD_OTLP_INSTANCE_ID:$GRAFANA_CLOUD_OTLP_API_KEY" | base64 -w 0)" >> $GITHUB_ENV
           echo "GRAFANA_ENDPOINT=https://livestore.grafana.net" >> $GITHUB_ENV
@@ -553,19 +545,13 @@ jobs:
       - name: Run wa-sqlite tests
         run: 'nix run "github:cachix/devenv/$(jq -r .nodes.devenv.locked.rev devenv.lock)" -- tasks run test:integration:wa-sqlite --mode before'
         env:
-          COMMIT_SHA: "${{ github.event.pull_request.head.sha || github.sha }}"
-          GRAFANA_ENDPOINT: "https://livestore.grafana.net"
-          OTEL_EXPORTER_OTLP_ENDPOINT: "https://otlp-gateway-prod-us-east-2.grafana.net/otlp"
+          COMMIT_SHA: '${{ github.event.pull_request.head.sha || github.sha }}'
+          GRAFANA_ENDPOINT: 'https://livestore.grafana.net'
+          OTEL_EXPORTER_OTLP_ENDPOINT: 'https://otlp-gateway-prod-us-east-2.grafana.net/otlp'
   publish-snapshot-version:
     if: github.event.pull_request.head.repo.fork != true
     runs-on: ubuntu-24.04
-    needs:
-      [
-        test-unit,
-        test-integration-node-sync,
-        test-integration-sync-provider,
-        test-integration-playwright,
-      ]
+    needs: [test-unit, test-integration-node-sync, test-integration-sync-provider, test-integration-playwright]
     defaults:
       run:
         shell: bash
@@ -584,9 +570,9 @@ jobs:
         uses: cachix/cachix-action@v16
         with:
           name: livestore
-          authToken: "${{ env.CACHIX_AUTH_TOKEN }}"
+          authToken: '${{ env.CACHIX_AUTH_TOKEN }}'
       - name: Install megarepo CLI
-        run: "nix profile install github:overengineeringstudio/effect-utils#megarepo"
+        run: 'nix profile install github:overengineeringstudio/effect-utils#megarepo'
         shell: bash
       - name: Sync megarepo dependencies
         run: mr sync --frozen
@@ -614,10 +600,9 @@ jobs:
         shell: bash
       - run: 'nix run "github:cachix/devenv/$(jq -r .nodes.devenv.locked.rev devenv.lock)" -- tasks run release:snapshot:git-sha --mode before'
         env:
-          GIT_SHA: "${{ github.sha }}"
+          GIT_SHA: '${{ github.sha }}'
   build-and-deploy-examples-src:
-    runs-on:
-      [namespace-profile-linux-x86-64, "namespace-features:github.run-id=${{ github.run_id }}"]
+    runs-on: [namespace-profile-linux-x86-64, 'namespace-features:github.run-id=${{ github.run_id }}']
     defaults:
       run:
         shell: bash
@@ -636,9 +621,9 @@ jobs:
         uses: cachix/cachix-action@v16
         with:
           name: livestore
-          authToken: "${{ env.CACHIX_AUTH_TOKEN }}"
+          authToken: '${{ env.CACHIX_AUTH_TOKEN }}'
       - name: Install megarepo CLI
-        run: "nix profile install github:overengineeringstudio/effect-utils#megarepo"
+        run: 'nix profile install github:overengineeringstudio/effect-utils#megarepo'
         shell: bash
       - name: Sync megarepo dependencies
         run: mr sync --frozen
@@ -674,11 +659,10 @@ jobs:
         if: github.event.pull_request.head.repo.fork != true
         run: 'nix run "github:cachix/devenv/$(jq -r .nodes.devenv.locked.rev devenv.lock)" -- tasks run examples:deploy --mode before'
         env:
-          CLOUDFLARE_API_TOKEN: "${{ secrets.CLOUDFLARE_API_TOKEN }}"
-          CLOUDFLARE_ACCOUNT_ID: "${{ secrets.CLOUDFLARE_ACCOUNT_ID }}"
+          CLOUDFLARE_API_TOKEN: '${{ secrets.CLOUDFLARE_API_TOKEN }}'
+          CLOUDFLARE_ACCOUNT_ID: '${{ secrets.CLOUDFLARE_ACCOUNT_ID }}'
   build-deploy-docs:
-    runs-on:
-      [namespace-profile-linux-x86-64, "namespace-features:github.run-id=${{ github.run_id }}"]
+    runs-on: [namespace-profile-linux-x86-64, 'namespace-features:github.run-id=${{ github.run_id }}']
     defaults:
       run:
         shell: bash
@@ -697,9 +681,9 @@ jobs:
         uses: cachix/cachix-action@v16
         with:
           name: livestore
-          authToken: "${{ env.CACHIX_AUTH_TOKEN }}"
+          authToken: '${{ env.CACHIX_AUTH_TOKEN }}'
       - name: Install megarepo CLI
-        run: "nix profile install github:overengineeringstudio/effect-utils#megarepo"
+        run: 'nix profile install github:overengineeringstudio/effect-utils#megarepo'
         shell: bash
       - name: Sync megarepo dependencies
         run: mr sync --frozen
@@ -732,10 +716,10 @@ jobs:
       - name: Build Astro docs bundle
         run: 'nix run "github:cachix/devenv/$(jq -r .nodes.devenv.locked.rev devenv.lock)" -- tasks run docs:build:phase:astro --mode before'
       - name: Collect docs build diagnostics on failure
-        if: "${{ failure() }}"
+        if: '${{ failure() }}'
         run: 'nix run "github:cachix/devenv/$(jq -r .nodes.devenv.locked.rev devenv.lock)" -- tasks run docs:build:diagnostics --mode before'
       - name: Upload docs build logs
-        if: "${{ always() }}"
+        if: '${{ always() }}'
         uses: actions/upload-artifact@v4
         with:
           name: docs-build-logs
@@ -745,18 +729,17 @@ jobs:
         if: "${{ success() && (github.event_name != 'pull_request' || github.event.pull_request.head.repo.fork != true) }}"
         run: 'nix run "github:cachix/devenv/$(jq -r .nodes.devenv.locked.rev devenv.lock)" -- tasks run docs:deploy --mode before'
         env:
-          NETLIFY_AUTH_TOKEN: "${{ secrets.NETLIFY_AUTH_TOKEN }}"
+          NETLIFY_AUTH_TOKEN: '${{ secrets.NETLIFY_AUTH_TOKEN }}'
   build-example-create:
     if: github.event.pull_request.head.repo.fork != true
     needs: publish-snapshot-version
     strategy:
       matrix:
         app: [web-todomvc, web-linearlite, expo-linearlite]
-    runs-on:
-      [namespace-profile-linux-x86-64, "namespace-features:github.run-id=${{ github.run_id }}"]
+    runs-on: [namespace-profile-linux-x86-64, 'namespace-features:github.run-id=${{ github.run_id }}']
     env:
-      APP_PATH: "examples/${{ matrix.app }}"
-      SNAPSHOT_VERSION: "0.0.0-snapshot-${{ github.sha }}"
+      APP_PATH: 'examples/${{ matrix.app }}'
+      SNAPSHOT_VERSION: '0.0.0-snapshot-${{ github.sha }}'
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
@@ -770,9 +753,9 @@ jobs:
           DEPS=$(jq -r '[(.dependencies // {}), (.devDependencies // {}) | to_entries[] | select(.key | startswith("@livestore/")) | .key] | .[]' ${{ env.APP_PATH }}/package.json | while read dep; do dir="packages/@livestore/${dep#@livestore/}"; [ -d "$dir" ] && echo "$dep"; done | tr '\n' ' ')
           echo "WORKSPACE_DEPS=$DEPS" >> $GITHUB_ENV
       - name: Copy example app
-        run: "pnpm dlx @livestore/cli@${{ env.SNAPSHOT_VERSION }} create --example ${{ matrix.app }} --ref ${{ github.ref }} ${{ runner.temp }}/${{ env.APP_PATH }}"
+        run: 'pnpm dlx @livestore/cli@${{ env.SNAPSHOT_VERSION }} create --example ${{ matrix.app }} --ref ${{ github.ref }} ${{ runner.temp }}/${{ env.APP_PATH }}'
       - name: Use snapshot version of workspace dependencies
-        working-directory: "${{ runner.temp }}/${{ env.APP_PATH }}"
+        working-directory: '${{ runner.temp }}/${{ env.APP_PATH }}'
         run: |
           pnpm add $(
             for dep in $WORKSPACE_DEPS; do
@@ -780,5 +763,5 @@ jobs:
             done
           )
       - if: "${{ matrix.app != 'expo-linearlite' }}"
-        working-directory: "${{ runner.temp }}/${{ env.APP_PATH }}"
+        working-directory: '${{ runner.temp }}/${{ env.APP_PATH }}'
         run: pnpm build
