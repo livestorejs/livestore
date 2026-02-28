@@ -13,8 +13,13 @@ import {
   WebChannel,
 } from '@livestore/utils/effect'
 
-import { type ChannelName, type MeshNodeName, type MessageQueueItem, packetAsOtelAttributes } from '../common.js'
-import * as MeshSchema from '../mesh-schema.js'
+import { type ChannelName, type MeshNodeName, type MessageQueueItem, packetAsOtelAttributes } from '../common.ts'
+import * as MeshSchema from '../mesh-schema.ts'
+
+// WORKAROUND: @effect/opentelemetry mis-parses `Span.addEvent(name, attributes)` and treats the attributes object as a
+// time input, causing `TypeError: {} is not iterable` at runtime.
+// Upstream: https://github.com/Effect-TS/effect/pull/5929
+// TODO: simplify back to the 2-arg overload once the upstream fix is released and adopted.
 
 export interface MakeDirectChannelArgs {
   nodeName: MeshNodeName
@@ -107,12 +112,16 @@ export const makeDirectChannelInternal = ({
       Effect.gen(function* () {
         const channelState = channelStateRef.current
 
-        span?.addEvent(`process:${packet._tag}`, {
-          channelState: channelState._tag,
-          packetId: packet.id,
-          packetReqId: packet.reqId,
-          packetChannelVersion: Predicate.hasProperty('channelVersion')(packet) ? packet.channelVersion : undefined,
-        })
+        span?.addEvent(
+          `process:${packet._tag}`,
+          {
+            channelState: channelState._tag,
+            packetId: packet.id,
+            packetReqId: packet.reqId,
+            packetChannelVersion: Predicate.hasProperty('channelVersion')(packet) === true ? packet.channelVersion : undefined,
+          },
+          undefined,
+        )
 
         // const reqIdStr =
         //   Predicate.hasProperty('reqId')(packet) && packet.reqId !== undefined ? ` for ${packet.reqId}` : ''
@@ -198,7 +207,7 @@ export const makeDirectChannelInternal = ({
 
             const isWinner = nodeName > target
 
-            if (isWinner) {
+            if (isWinner === true) {
               span?.addEvent(`winner side: creating direct channel and sending response`)
               const mc = new MessageChannel()
 
@@ -251,7 +260,7 @@ export const makeDirectChannelInternal = ({
               channelStateRef.current = { _tag: 'loser:WaitingForResponse', otherSourceId: packet.sourceId }
             }
 
-            break
+            return
           }
           case 'DirectChannelResponseSuccess': {
             if (channelState._tag !== 'loser:WaitingForResponse') {

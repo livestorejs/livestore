@@ -1,12 +1,63 @@
-import { getDurationMsFromSpan } from '@livestore/common'
 import * as otel from '@opentelemetry/api'
 
-import type { Thunk } from '../reactive.js'
-import type { RefreshReason } from '../store/store-types.js'
-import { isValidFunctionString } from '../utils/function-string.js'
-import type { DepKey, GetAtomResult, LiveQueryDef, ReactivityGraph, ReactivityGraphContext } from './base-class.js'
-import { depsToString, LiveStoreQueryBase, makeGetAtomResult, withRCMap } from './base-class.js'
+import { getDurationMsFromSpan } from '@livestore/common'
+import { Equal, Hash } from '@livestore/utils/effect'
 
+import type { Thunk } from '../reactive.ts'
+import type { RefreshReason } from '../store/store-types.ts'
+import { isValidFunctionString } from '../utils/function-string.ts'
+import type { DepKey, GetAtomResult, LiveQueryDef, ReactivityGraph, ReactivityGraphContext } from './base-class.ts'
+import { depsToString, LiveStoreQueryBase, makeGetAtomResult, withRCMap } from './base-class.ts'
+
+/**
+ * Creates a derived query that computes a value from other queries or signals.
+ *
+ * Computed queries are memoized—they only re-evaluate when their dependencies change,
+ * and if the new result equals the previous result, downstream dependents won't re-run.
+ * Use them for expensive calculations, aggregations, or transformations.
+ *
+ * The `get` function inside `computed` establishes reactive dependencies automatically.
+ * When any dependency updates, the computed re-evaluates.
+ *
+ * @example
+ * ```ts
+ * // Derive a count from a database query
+ * const todos$ = queryDb(tables.todos.all())
+ * const todoCount$ = computed((get) => get(todos$).length, { label: 'todoCount' })
+ *
+ * // Use in a component
+ * const count = store.query(todoCount$) // 5
+ * ```
+ *
+ * @example
+ * ```ts
+ * // Combine multiple queries into derived stats
+ * const stats$ = computed((get) => {
+ *   const todos = get(todos$)
+ *   const completed = todos.filter((t) => t.completed).length
+ *   return {
+ *     total: todos.length,
+ *     completed,
+ *     remaining: todos.length - completed,
+ *     percentComplete: todos.length > 0 ? (completed / todos.length) * 100 : 0,
+ *   }
+ * }, { label: 'todoStats' })
+ * ```
+ *
+ * @example
+ * ```ts
+ * // Chain computed queries
+ * const hasCompletedTodos$ = computed(
+ *   (get) => get(stats$).completed > 0,
+ *   { label: 'hasCompletedTodos' }
+ * )
+ * ```
+ *
+ * @param fn - Pure function that computes the result. Use `get()` to read dependencies.
+ * @param options.label - Human-readable label for debugging and devtools
+ * @param options.deps - Explicit dependency keys (required on Expo/React Native where `fn.toString()` returns `[native code]`)
+ * @returns A query definition usable with `store.query()`, `store.subscribe()`, and as a dependency in other queries
+ */
 export const computed = <TResult>(
   fn: (get: GetAtomResult) => TResult,
   options?: {
@@ -14,7 +65,7 @@ export const computed = <TResult>(
     deps?: DepKey
   },
 ): LiveQueryDef<TResult> => {
-  const hash = options?.deps ? depsToString(options.deps) : fn.toString()
+  const hash = options?.deps !== undefined ? depsToString(options.deps) : fn.toString()
   if (isValidFunctionString(hash)._tag === 'invalid') {
     throw new Error(`On Expo/React Native, computed queries must provide a \`deps\` option`)
   }
@@ -35,11 +86,24 @@ export const computed = <TResult>(
     // TODO we should figure out whether this could cause some problems and/or if there's a better way to do this
     // NOTE `fn.toString()` doesn't work in Expo as it always produces `[native code]`
     hash,
+    [Equal.symbol](that: LiveQueryDef<any>): boolean {
+      return this.hash === that.hash
+    },
+    [Hash.symbol](): number {
+      return Hash.string(this.hash)
+    },
   }
 
   return def
 }
 
+/**
+ * A live computed query instance bound to a specific Store.
+ *
+ * Computed query instances are created internally when you use a `LiveQueryDef` (from {@link computed})
+ * with the Store. You typically don't construct these directly—use `computed()` to create definitions
+ * and `store.query()` / `store.subscribe()` to interact with them.
+ */
 export class LiveStoreComputedQuery<TResult> extends LiveStoreQueryBase<TResult> {
   _tag = 'computed' as const
 

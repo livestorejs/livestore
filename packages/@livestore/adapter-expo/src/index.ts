@@ -1,28 +1,58 @@
-import './polyfill.js'
-
-import type { Adapter, BootStatus, ClientSessionLeaderThreadProxy, LockStatus, SyncOptions } from '@livestore/common'
-import { Devtools, liveStoreStorageFormatVersion, makeClientSession, UnexpectedError } from '@livestore/common'
-import type { DevtoolsOptions, LeaderSqliteDb } from '@livestore/common/leader-thread'
-import { Eventlog, LeaderThreadCtx, makeLeaderThreadLayer } from '@livestore/common/leader-thread'
-import type { LiveStoreSchema } from '@livestore/common/schema'
-import { LiveStoreEvent } from '@livestore/common/schema'
-import { shouldNeverHappen } from '@livestore/utils'
-import type { Schema, Scope } from '@livestore/utils/effect'
-import { Cause, Effect, FetchHttpClient, Fiber, Layer, Queue, Stream, SubscriptionRef } from '@livestore/utils/effect'
-import * as Webmesh from '@livestore/webmesh'
+import './polyfill.ts'
 import * as ExpoApplication from 'expo-application'
 import * as SQLite from 'expo-sqlite'
 import * as RN from 'react-native'
 
-import type { MakeExpoSqliteDb } from './make-sqlite-db.js'
-import { makeSqliteDb } from './make-sqlite-db.js'
-import { makeShutdownChannel } from './shutdown-channel.js'
+import {
+  type Adapter,
+  type BootStatus,
+  ClientSessionLeaderThreadProxy,
+  Devtools,
+  IntentionalShutdownCause,
+  type LockStatus,
+  liveStoreStorageFormatVersion,
+  makeClientSession,
+  type SyncOptions,
+  UnknownError,
+} from '@livestore/common'
+import type { DevtoolsOptions, LeaderSqliteDb } from '@livestore/common/leader-thread'
+import {
+  Eventlog,
+  LeaderThreadCtx,
+  makeLeaderThreadLayer,
+  streamEventsWithSyncState,
+} from '@livestore/common/leader-thread'
+import type { LiveStoreSchema } from '@livestore/common/schema'
+import { LiveStoreEvent } from '@livestore/common/schema'
+import { shouldNeverHappen } from '@livestore/utils'
+import type { Schema, Scope } from '@livestore/utils/effect'
+import {
+  Effect,
+  Exit,
+  FetchHttpClient,
+  Fiber,
+  Layer,
+  Queue,
+  Schedule,
+  Stream,
+  SubscriptionRef,
+} from '@livestore/utils/effect'
+import * as Webmesh from '@livestore/webmesh'
+
+import type { MakeExpoSqliteDb } from './make-sqlite-db.ts'
+import { makeSqliteDb } from './make-sqlite-db.ts'
+import { makeShutdownChannel } from './shutdown-channel.ts'
 
 export type MakeDbOptions = {
   sync?: SyncOptions
   storage?: {
     /**
-     * Relative to expo-sqlite's default directory
+     * The directory where the database file is located.
+     * @default SQLite.defaultDatabaseDirectory
+     */
+    directory?: string
+    /**
+     * Sub-directory relative to the configured `directory` (or expo-sqlite's default directory if not specified).
      *
      * Example of a resulting path for `subDirectory: 'my-app'`:
      * `/data/Containers/Data/Application/<APP_UUID>/Documents/ExponentExperienceData/@<USERNAME>/<APPNAME>/SQLite/my-app/<STORE_ID>/livestore-eventlog@3.db`
@@ -34,31 +64,79 @@ export type MakeDbOptions = {
   clientId?: string
   /** @default 'static' */
   sessionId?: string
+  /**
+   * Warning: This will reset both the app and eventlog database. This should only be used during development.
+   *
+   * @default false
+   */
+  resetPersistence?: boolean
 }
 
-declare global {
-  // eslint-disable-next-line no-var
-  var RN$Bridgeless: boolean | undefined
-}
+// Expo Go with the New Architecture enables Fabric and TurboModules, but may not run in "bridgeless" mode.
+// Rely on Fabric/TurboModules feature detection instead of RN$Bridgeless.
+const IS_NEW_ARCH =
+  // Fabric global – set when the new renderer is enabled
+  Boolean((globalThis as any).nativeFabricUIManager) ||
+  // TurboModule proxy – indicates new arch TurboModules
+  Boolean((globalThis as any).__turboModuleProxy)
 
-const IS_NEW_ARCH = globalThis.RN$Bridgeless === true
-
+/**
+ * Creates a persisted LiveStore adapter for Expo/React Native applications.
+ *
+ * This adapter stores data in SQLite databases on the device filesystem, providing
+ * persistence across app restarts. It supports optional sync backends for multi-device
+ * synchronization.
+ *
+ * **Requirements:**
+ * - React Native New Architecture (Fabric) must be enabled
+ * - Expo SDK 51+ recommended
+ *
+ * @example
+ * ```ts
+ * import { makePersistedAdapter } from '@livestore/adapter-expo'
+ * import { makeWsSync } from '@livestore/sync-cf/client'
+ *
+ * const adapter = makePersistedAdapter({
+ *   sync: {
+ *     backend: makeWsSync({ url: 'wss://api.example.com/sync' }),
+ *   },
+ *   storage: {
+ *     subDirectory: 'my-app',
+ *   },
+ * })
+ * ```
+ *
+ * @example
+ * ```ts
+ * // Minimal setup without sync
+ * const adapter = makePersistedAdapter()
+ * ```
+ *
+ * @see https://livestore.dev/docs/reference/adapters/expo for detailed setup guide
+ */
 // TODO refactor with leader-thread code from `@livestore/common/leader-thread`
 export const makePersistedAdapter =
   (options: MakeDbOptions = {}): Adapter =>
   (adapterArgs) =>
     Effect.gen(function* () {
       if (IS_NEW_ARCH === false) {
-        return yield* UnexpectedError.make({
+        return yield* UnknownError.make({
           cause: new Error(
             'The LiveStore Expo adapter requires the new React Native architecture (aka Fabric). See https://docs.expo.dev/guides/new-architecture',
           ),
         })
       }
 
-      const { schema, shutdown, devtoolsEnabled, storeId, bootStatusQueue, syncPayload } = adapterArgs
+      const { schema, shutdown, devtoolsEnabled, storeId, bootStatusQueue, syncPayloadEncoded, syncPayloadSchema } =
+        adapterArgs
 
-      const { storage, clientId = yield* getDeviceId, sessionId = 'static', sync: syncOptions } = options
+      const {
+        storage,
+        clientId = yield* getDeviceId,
+        sessionId = 'static',
+        sync: syncOptions,
+        resetPersistence = false,
+      } = options
 
       yield* Queue.offer(bootStatusQueue, { stage: 'loading' })
 
@@ -66,16 +144,24 @@ export const makePersistedAdapter =
 
       const shutdownChannel = yield* makeShutdownChannel(storeId)
 
+      if (resetPersistence === true) {
+        yield* shutdownChannel.send(IntentionalShutdownCause.make({ reason: 'adapter-reset' }))
+
+        yield* resetExpoPersistence({ storeId, storage, schema })
+      }
+
       yield* shutdownChannel.listen.pipe(
         Stream.flatten(),
-        Stream.tap((error) => shutdown(Cause.fail(error))),
+        Stream.tap((cause) =>
+          shutdown(cause._tag === 'LiveStore.IntentionalShutdownCause' ? Exit.succeed(cause) : Exit.fail(cause)),
+        ),
         Stream.runDrain,
         Effect.interruptible,
         Effect.tapCauseLogPretty,
         Effect.forkScoped,
       )
 
-      const devtoolsUrl = getDevtoolsUrl().toString()
+      const devtoolsUrl = devtoolsEnabled === true ? getDevtoolsUrl().toString() : 'ws://127.0.0.1:4242'
 
       const { leaderThread, initialSnapshot } = yield* makeLeaderThread({
         storeId,
@@ -86,7 +172,8 @@ export const makePersistedAdapter =
         storage: storage ?? {},
         devtoolsEnabled,
         bootStatusQueue,
-        syncPayload,
+        syncPayloadEncoded,
+        syncPayloadSchema,
         devtoolsUrl,
       })
 
@@ -103,7 +190,7 @@ export const makePersistedAdapter =
         sqliteDb,
         webmeshMode: 'proxy',
         connectWebmeshNode: Effect.fnUntraced(function* ({ webmeshNode }) {
-          if (devtoolsEnabled) {
+          if (devtoolsEnabled === true) {
             yield* Webmesh.connectViaWebSocket({
               node: webmeshNode,
               url: devtoolsUrl,
@@ -118,10 +205,11 @@ export const makePersistedAdapter =
 
           return () => {}
         },
+        origin: undefined,
       })
 
       return clientSession
-    }).pipe(UnexpectedError.mapToUnexpectedError, Effect.provide(FetchHttpClient.layer), Effect.tapCauseLogPretty)
+    }).pipe(UnknownError.mapToUnknownError, Effect.provide(FetchHttpClient.layer), Effect.tapCauseLogPretty)
 
 const makeLeaderThread = ({
   storeId,
@@ -132,7 +220,8 @@ const makeLeaderThread = ({
   storage,
   devtoolsEnabled,
   bootStatusQueue: bootStatusQueueClientSession,
-  syncPayload,
+  syncPayloadEncoded,
+  syncPayloadSchema,
   devtoolsUrl,
 }: {
   storeId: string
@@ -141,25 +230,24 @@ const makeLeaderThread = ({
   makeSqliteDb: MakeExpoSqliteDb
   syncOptions: SyncOptions | undefined
   storage: {
+    directory?: string
     subDirectory?: string
   }
   devtoolsEnabled: boolean
   bootStatusQueue: Queue.Queue<BootStatus>
-  syncPayload: Schema.JsonValue | undefined
+  syncPayloadEncoded: Schema.JsonValue | undefined
+  syncPayloadSchema: Schema.Schema<any> | undefined
   devtoolsUrl: string
 }) =>
   Effect.gen(function* () {
-    const subDirectory = storage.subDirectory ? `${storage.subDirectory.replace(/\/$/, '')}/` : ''
-    const pathJoin = (...paths: string[]) => paths.join('/').replaceAll(/\/+/g, '/')
-    const directory = pathJoin(SQLite.defaultDatabaseDirectory, subDirectory, storeId)
-
-    const schemaHashSuffix =
-      schema.state.sqlite.migrations.strategy === 'manual' ? 'fixed' : schema.state.sqlite.hash.toString()
-    const stateDatabaseName = `${'livestore-'}${schemaHashSuffix}@${liveStoreStorageFormatVersion}.db`
-    const dbEventlogPath = `${'livestore-'}eventlog@${liveStoreStorageFormatVersion}.db`
+    const { directory, stateDatabaseName, eventlogDatabaseName } = resolveExpoPersistencePaths({
+      storeId,
+      storage,
+      schema,
+    })
 
     const dbState = yield* makeSqliteDb({ _tag: 'file', databaseName: stateDatabaseName, directory })
-    const dbEventlog = yield* makeSqliteDb({ _tag: 'file', databaseName: dbEventlogPath, directory })
+    const dbEventlog = yield* makeSqliteDb({ _tag: 'file', databaseName: eventlogDatabaseName, directory })
 
     const devtoolsOptions = yield* makeDevtoolsOptions({
       devtoolsEnabled,
@@ -182,7 +270,8 @@ const makeLeaderThread = ({
         shutdownChannel: yield* makeShutdownChannel(storeId),
         storeId,
         syncOptions,
-        syncPayload,
+        syncPayloadEncoded,
+        syncPayloadSchema,
       }).pipe(Layer.provideMerge(FetchHttpClient.layer)),
     )
 
@@ -194,6 +283,7 @@ const makeLeaderThread = ({
         extraIncomingMessagesQueue,
         initialState,
         bootStatusQueue,
+        networkStatus,
       } = yield* LeaderThreadCtx
 
       const bootStatusFiber = yield* Queue.takeBetween(bootStatusQueue, 1, 1000).pipe(
@@ -211,29 +301,93 @@ const makeLeaderThread = ({
 
       const initialLeaderHead = Eventlog.getClientHeadFromDb(dbEventlog)
 
-      const leaderThread = {
+      const leaderThread = ClientSessionLeaderThreadProxy.of({
         events: {
           pull: ({ cursor }) => syncProcessor.pull({ cursor }),
           push: (batch) =>
             syncProcessor
               .push(
-                batch.map((item) => new LiveStoreEvent.EncodedWithMeta(item)),
+                batch.map((item) => new LiveStoreEvent.Client.EncodedWithMeta(item)),
                 { waitForProcessing: true },
               )
               .pipe(Effect.provide(layer), Effect.scoped),
+          stream: (options) =>
+            streamEventsWithSyncState({
+              dbEventlog,
+              syncState: syncProcessor.syncState,
+              options,
+            }),
         },
-        initialState: { leaderHead: initialLeaderHead, migrationsReport: initialState.migrationsReport },
+        initialState: {
+          leaderHead: initialLeaderHead,
+          migrationsReport: initialState.migrationsReport,
+          storageMode: 'persisted',
+        },
         export: Effect.sync(() => db.export()),
         getEventlogData: Effect.sync(() => dbEventlog.export()),
-        getSyncState: syncProcessor.syncState,
+        syncState: syncProcessor.syncState,
         sendDevtoolsMessage: (message) => extraIncomingMessagesQueue.offer(message),
-      } satisfies ClientSessionLeaderThreadProxy
+        networkStatus,
+      })
 
       const initialSnapshot = db.export()
 
       return { leaderThread, initialSnapshot }
     }).pipe(Effect.provide(layer))
   })
+
+const resolveExpoPersistencePaths = ({
+  storeId,
+  storage,
+  schema,
+}: {
+  storeId: string
+  schema: LiveStoreSchema
+  storage: { directory?: string; subDirectory?: string } | undefined
+}) => {
+  const subDirectory = storage?.subDirectory !== undefined ? `${storage.subDirectory.replace(/\/$/, '')}/` : ''
+  const pathJoin = (...paths: string[]) => paths.join('/').replaceAll(/\/+/g, '/')
+  const directoryBasePath = storage?.directory ?? SQLite.defaultDatabaseDirectory
+
+  const directory = pathJoin(directoryBasePath, subDirectory, storeId)
+
+  const schemaHashSuffix =
+    schema.state.sqlite.migrations.strategy === 'manual' ? 'fixed' : schema.state.sqlite.hash.toString()
+  const stateDatabaseName = `livestore-${schemaHashSuffix}@${liveStoreStorageFormatVersion}.db`
+  const eventlogDatabaseName = `livestore-eventlog@${liveStoreStorageFormatVersion}.db`
+
+  return { directory, stateDatabaseName, eventlogDatabaseName }
+}
+
+const resetExpoPersistence = ({
+  storeId,
+  storage,
+  schema,
+}: {
+  storeId: string
+  storage: MakeDbOptions['storage']
+  schema: LiveStoreSchema
+}) =>
+  Effect.try({
+    try: () => {
+      const { directory, stateDatabaseName, eventlogDatabaseName } = resolveExpoPersistencePaths({
+        storeId,
+        storage,
+        schema,
+      })
+
+      SQLite.deleteDatabaseSync(stateDatabaseName, directory)
+      SQLite.deleteDatabaseSync(eventlogDatabaseName, directory)
+    },
+    catch: (cause) =>
+      new UnknownError({
+        cause,
+        note: `@livestore/adapter-expo: Failed to reset persistence for store ${storeId}`,
+      }),
+  }).pipe(
+    Effect.retry({ schedule: Schedule.exponentialBackoff10Sec }),
+    Effect.withSpan('@livestore/adapter-expo:resetPersistence', { attributes: { storeId } }),
+  )
 
 const makeDevtoolsOptions = ({
   devtoolsEnabled,
@@ -249,7 +403,7 @@ const makeDevtoolsOptions = ({
   dbEventlog: LeaderSqliteDb
   storeId: string
   clientId: string
-}): Effect.Effect<DevtoolsOptions, UnexpectedError, Scope.Scope> =>
+}): Effect.Effect<DevtoolsOptions, UnknownError, Scope.Scope> =>
   Effect.sync(() => {
     if (devtoolsEnabled === false) {
       return {
@@ -301,7 +455,6 @@ const getDevtoolsUrl = () => {
   const url = new URL(process.env.EXPO_PUBLIC_LIVESTORE_DEVTOOLS_URL ?? `ws://0.0.0.0:4242`)
   const port = url.port
 
-  // eslint-disable-next-line @typescript-eslint/no-require-imports, unicorn/prefer-module
   const getDevServer = require('react-native/Libraries/Core/Devtools/getDevServer').default
   const devServer = getDevServer().url.replace(/\/?$/, '') as string
 

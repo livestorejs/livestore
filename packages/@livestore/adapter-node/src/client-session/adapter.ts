@@ -1,31 +1,40 @@
 import { hostname } from 'node:os'
+import path from 'node:path'
+import type { URL } from 'node:url'
 import * as WT from 'node:worker_threads'
 
-import type {
-  Adapter,
-  BootStatus,
+import {
+  type Adapter,
+  type BootStatus,
   ClientSessionLeaderThreadProxy,
   IntentionalShutdownCause,
-  LockStatus,
-  MakeSqliteDb,
-  SyncOptions,
+  type LockStatus,
+  type MakeSqliteDb,
+  makeClientSession,
+  type SyncError,
+  type SyncOptions,
+  UnknownError,
 } from '@livestore/common'
-import { makeClientSession, UnexpectedError } from '@livestore/common'
-import { Eventlog, LeaderThreadCtx } from '@livestore/common/leader-thread'
+import { Eventlog, LeaderThreadCtx, streamEventsWithSyncState } from '@livestore/common/leader-thread'
 import type { LiveStoreSchema } from '@livestore/common/schema'
 import { LiveStoreEvent } from '@livestore/common/schema'
 import { loadSqlite3Wasm } from '@livestore/sqlite-wasm/load-wasm'
 import { sqliteDbFactory } from '@livestore/sqlite-wasm/node'
+import { omitUndefineds } from '@livestore/utils'
 import {
   Cause,
   Effect,
+  Exit,
   FetchHttpClient,
   Fiber,
+  FileSystem,
   Layer,
   ParseResult,
   Queue,
+  Schedule,
   Schema,
   Stream,
+  Subscribable,
   SubscriptionRef,
   Worker,
   WorkerError,
@@ -33,10 +42,10 @@ import {
 import { PlatformNode } from '@livestore/utils/node'
 import * as Webmesh from '@livestore/webmesh'
 
-import type { TestingOverrides } from '../leader-thread-shared.js'
-import { makeLeaderThread } from '../leader-thread-shared.js'
-import { makeShutdownChannel } from '../shutdown-channel.js'
-import * as WorkerSchema from '../worker-schema.js'
+import type { TestingOverrides } from '../leader-thread-shared.ts'
+import { makeLeaderThread } from '../leader-thread-shared.ts'
+import { makeShutdownChannel } from '../shutdown-channel.ts'
+import * as WorkerSchema from '../worker-schema.ts'
 
 export interface NodeAdapterOptions {
   storage: WorkerSchema.StorageType
@@ -47,6 +56,13 @@ export interface NodeAdapterOptions {
    * @default 'static'
    */
   sessionId?: string
+
+  /**
+   * Warning: This will reset both the app and eventlog database. This should only be used during development.
+   *
+   * @default false
+   */
+  resetPersistence?: boolean
 
   devtools?: {
     schemaPath: string | URL
@@ -74,7 +90,43 @@ export interface NodeAdapterOptions {
   }
 }
 
-/** Runs everything in the same thread. Use `makeWorkerAdapter` for multi-threaded implementation. */
+/**
+ * Creates a single-threaded LiveStore adapter for Node.js applications.
+ *
+ * This adapter runs the leader thread (persistence and sync) in the same thread as
+ * your application. Suitable for CLI tools, scripts, and applications where simplicity
+ * is preferred over maximum performance.
+ *
+ * For production servers or performance-critical applications, consider `makeWorkerAdapter`
+ * which runs persistence/sync in a separate worker thread.
+ *
+ * @example
+ * ```ts
+ * import { makeAdapter } from '@livestore/adapter-node'
+ * import { makeWsSync } from '@livestore/sync-cf/client'
+ *
+ * const adapter = makeAdapter({
+ *   storage: { type: 'fs', baseDirectory: './data' },
+ *   sync: {
+ *     backend: makeWsSync({ url: 'wss://api.example.com/sync' }),
+ *   },
+ * })
+ * ```
+ *
+ * @example
+ * ```ts
+ * // With DevTools support
+ * const adapter = makeAdapter({
+ *   storage: { type: 'fs', baseDirectory: './data' },
+ *   devtools: {
+ *     schemaPath: new URL('./schema.ts', import.meta.url),
+ *     port: 4242,
+ *   },
+ * })
+ * ```
+ *
+ * @see https://livestore.dev/docs/reference/adapters/node for setup guide
+ */
 export const makeAdapter = ({
   sync,
   ...options
@@ -83,17 +135,52 @@ export const makeAdapter = ({
 }): Adapter => makeAdapterImpl({ ...options, leaderThread: { _tag: 'single-threaded', sync } })
 
 /**
- * Runs persistence and syncing in a worker thread.
+ * Creates a multi-threaded LiveStore adapter for Node.js applications.
+ *
+ * This adapter runs the leader thread (persistence, sync, and heavy SQLite operations)
+ * in a separate worker thread, keeping your main thread responsive. Recommended for
+ * production servers and performance-critical applications.
+ *
+ * You must create a worker file that calls `makeLeaderWorker()` and pass its URL
+ * to this function.
+ *
+ * @example
+ * ```ts
+ * // In your main file:
+ * import { makeWorkerAdapter } from '@livestore/adapter-node'
+ *
+ * const adapter = makeWorkerAdapter({
+ *   storage: { type: 'fs', baseDirectory: './data' },
+ *   workerUrl: new URL('./livestore.worker.ts', import.meta.url),
+ * })
+ * ```
+ *
+ * @example
+ * ```ts
+ * // In livestore.worker.ts:
+ * import { makeLeaderWorker } from '@livestore/adapter-node/worker'
+ * import { schema } from './schema'
+ *
+ * makeLeaderWorker({ schema })
+ * ```
+ *
+ * @see https://livestore.dev/docs/reference/adapters/node for setup guide
  */
 export const makeWorkerAdapter = ({
   workerUrl,
+  workerExtraArgs,
   ...options
 }: NodeAdapterOptions & {
   /**
-   * Example: `new URL('./livestore.worker.js', import.meta.url)`
+   * Example: `new URL('./livestore.worker.ts', import.meta.url)`
    */
   workerUrl: URL
-}): Adapter => makeAdapterImpl({ ...options, leaderThread: { _tag: 'multi-threaded', workerUrl } })
+  /**
+   * Extra arguments to pass to the worker which can be accessed in the worker
+   * via `getWorkerArgs()`
+   */
+  workerExtraArgs?: Schema.JsonValue
+}): Adapter => makeAdapterImpl({ ...options, leaderThread: { _tag: 'multi-threaded', workerUrl, workerExtraArgs } })
 
 const makeAdapterImpl = ({
   storage,
@@ -102,6 +189,7 @@ const makeAdapterImpl = ({
   // TODO make this dynamic and actually support multiple sessions
   sessionId = 'static',
   testing,
+  resetPersistence = false,
   leaderThread: leaderThreadInput,
 }: NodeAdapterOptions & {
   leaderThread:
@@ -112,11 +200,13 @@ const makeAdapterImpl = ({
     | {
         _tag: 'multi-threaded'
         workerUrl: URL
+        workerExtraArgs: Schema.JsonValue | undefined
       }
 }): Adapter =>
   ((adapterArgs) =>
     Effect.gen(function* () {
-      const { storeId, devtoolsEnabled, shutdown, bootStatusQueue, syncPayload, schema } = adapterArgs
+      const { storeId, devtoolsEnabled, shutdown, bootStatusQueue, syncPayloadEncoded, syncPayloadSchema, schema } =
+        adapterArgs
 
       yield* Queue.offer(bootStatusQueue, { stage: 'loading' })
 
@@ -133,9 +223,19 @@ const makeAdapterImpl = ({
 
       const shutdownChannel = yield* makeShutdownChannel(storeId)
 
+      if (resetPersistence === true) {
+        yield* shutdownChannel
+          .send(IntentionalShutdownCause.make({ reason: 'adapter-reset' }))
+          .pipe(UnknownError.mapToUnknownError)
+
+        yield* resetNodePersistence({ storage, storeId })
+      }
+
       yield* shutdownChannel.listen.pipe(
         Stream.flatten(),
-        Stream.tap((error) => shutdown(Cause.fail(error))),
+        Stream.tap((cause) =>
+          shutdown(cause._tag === 'LiveStore.IntentionalShutdownCause' ? Exit.succeed(cause) : Exit.fail(cause)),
+        ),
         Stream.runDrain,
         Effect.interruptible,
         Effect.tapCauseLogPretty,
@@ -147,8 +247,8 @@ const makeAdapterImpl = ({
       // TODO actually implement this multi-session support
       const lockStatus = yield* SubscriptionRef.make<LockStatus>('has-lock')
 
-      const devtoolsOptions: WorkerSchema.LeaderWorkerInner.InitialMessage['devtools'] =
-        devtoolsEnabled && devtoolsOptionsInput !== undefined
+      const devtoolsOptions: WorkerSchema.LeaderWorkerInnerInitialMessage['devtools'] =
+        devtoolsEnabled === true && devtoolsOptionsInput !== undefined
           ? {
               enabled: true,
               schemaPath:
@@ -169,32 +269,37 @@ const makeAdapterImpl = ({
               clientId,
               schema,
               makeSqliteDb,
-              syncOptions: leaderThreadInput.sync,
-              syncPayload,
               devtools: devtoolsOptions,
               storage,
-              testing,
-            }).pipe(UnexpectedError.mapToUnexpectedError)
+              ...omitUndefineds({
+                syncOptions: leaderThreadInput.sync,
+                syncPayloadEncoded,
+                syncPayloadSchema,
+                testing,
+              }),
+            }).pipe(UnknownError.mapToUnknownError)
           : yield* makeWorkerLeaderThread({
               shutdown,
               storeId,
               clientId,
               sessionId,
               workerUrl: leaderThreadInput.workerUrl,
+              workerExtraArgs: leaderThreadInput.workerExtraArgs,
               storage,
               devtools: devtoolsOptions,
               bootStatusQueue,
-              syncPayload,
+              syncPayloadEncoded,
             })
 
       syncInMemoryDb.import(initialSnapshot)
+      syncInMemoryDb.debug.head = leaderThread.initialState.leaderHead
 
       const clientSession = yield* makeClientSession({
         ...adapterArgs,
         sqliteDb: syncInMemoryDb,
         webmeshMode: 'proxy',
         connectWebmeshNode: Effect.fnUntraced(function* ({ webmeshNode }) {
-          if (devtoolsOptions.enabled) {
+          if (devtoolsOptions.enabled === true) {
             yield* Webmesh.connectViaWebSocket({
               node: webmeshNode,
               url: `ws://${devtoolsOptions.host}:${devtoolsOptions.port}`,
@@ -209,15 +314,43 @@ const makeAdapterImpl = ({
         isLeader: true,
         // Not really applicable for node as there is no "reload the app" concept
         registerBeforeUnload: (_onBeforeUnload) => () => {},
+        origin: undefined,
       })
 
       return clientSession
     }).pipe(
       Effect.withSpan('@livestore/adapter-node:adapter'),
-      Effect.parallelFinalizers,
-      Effect.provide(PlatformNode.NodeFileSystem.layer),
-      Effect.provide(FetchHttpClient.layer),
+      Effect.provide(Layer.mergeAll(PlatformNode.NodeFileSystem.layer, FetchHttpClient.layer)),
     )) satisfies Adapter
+
+const resetNodePersistence = ({
+  storage,
+  storeId,
+}: {
+  storage: WorkerSchema.StorageType
+  storeId: string
+}): Effect.Effect<void, UnknownError, FileSystem.FileSystem> => {
+  if (storage.type !== 'fs') {
+    return Effect.void
+  }
+
+  const directory = path.join(storage.baseDirectory ?? '', storeId)
+
+  return Effect.gen(function* () {
+    const fs = yield* FileSystem.FileSystem
+
+    const directoryExists = yield* fs.exists(directory).pipe(UnknownError.mapToUnknownError)
+
+    if (directoryExists === false) {
+      return
+    }
+
+    yield* fs.remove(directory, { recursive: true }).pipe(UnknownError.mapToUnknownError)
+  }).pipe(
+    Effect.retry({ schedule: Schedule.exponentialBackoff10Sec }),
+    Effect.withSpan('@livestore/adapter-node:resetPersistence', { attributes: { directory } }),
+  )
+}
 
 const makeLocalLeaderThread = ({
   storeId,
@@ -225,7 +358,8 @@ const makeLocalLeaderThread = ({
   schema,
   makeSqliteDb,
   syncOptions,
-  syncPayload,
+  syncPayloadEncoded,
+  syncPayloadSchema,
   storage,
   devtools,
   testing,
@@ -236,8 +370,9 @@ const makeLocalLeaderThread = ({
   makeSqliteDb: MakeSqliteDb
   syncOptions: SyncOptions | undefined
   storage: WorkerSchema.StorageType
-  syncPayload: Schema.JsonValue | undefined
-  devtools: WorkerSchema.LeaderWorkerInner.InitialMessage['devtools']
+  syncPayloadEncoded: Schema.JsonValue | undefined
+  syncPayloadSchema: Schema.Schema<any>
+  devtools: WorkerSchema.LeaderWorkerInnerInitialMessage['devtools']
   testing?: {
     overrides?: TestingOverrides
   }
@@ -250,35 +385,49 @@ const makeLocalLeaderThread = ({
         schema,
         syncOptions,
         storage,
-        syncPayload,
+        syncPayloadEncoded,
+        syncPayloadSchema,
         devtools,
         makeSqliteDb,
-        testing: testing?.overrides,
+        ...omitUndefineds({ testing: testing?.overrides }),
       }).pipe(Layer.unwrapScoped),
     )
 
     return yield* Effect.gen(function* () {
-      const { dbState, dbEventlog, syncProcessor, extraIncomingMessagesQueue, initialState } = yield* LeaderThreadCtx
+      const { dbState, dbEventlog, syncProcessor, extraIncomingMessagesQueue, initialState, networkStatus } =
+        yield* LeaderThreadCtx
 
       const initialLeaderHead = Eventlog.getClientHeadFromDb(dbEventlog)
 
-      const leaderThread = {
-        events: {
-          pull:
-            testing?.overrides?.clientSession?.leaderThreadProxy?.events?.pull ??
-            (({ cursor }) => syncProcessor.pull({ cursor })),
-          push: (batch) =>
-            syncProcessor.push(
-              batch.map((item) => new LiveStoreEvent.EncodedWithMeta(item)),
-              { waitForProcessing: true },
-            ),
+      const leaderThread = ClientSessionLeaderThreadProxy.of(
+        {
+          events: {
+            pull: ({ cursor }) => syncProcessor.pull({ cursor }),
+            push: (batch) =>
+              syncProcessor.push(
+                batch.map((item) => new LiveStoreEvent.Client.EncodedWithMeta(item)),
+                { waitForProcessing: true },
+              ),
+            stream: (options) =>
+              streamEventsWithSyncState({
+                dbEventlog,
+                syncState: syncProcessor.syncState,
+                options,
+              }),
+          },
+          initialState: {
+            leaderHead: initialLeaderHead,
+            migrationsReport: initialState.migrationsReport,
+            storageMode: 'persisted',
+          },
+          export: Effect.sync(() => dbState.export()),
+          getEventlogData: Effect.sync(() => dbEventlog.export()),
+          syncState: syncProcessor.syncState,
+          sendDevtoolsMessage: (message) => extraIncomingMessagesQueue.offer(message),
+          networkStatus,
         },
-        initialState: { leaderHead: initialLeaderHead, migrationsReport: initialState.migrationsReport },
-        export: Effect.sync(() => dbState.export()),
-        getEventlogData: Effect.sync(() => dbEventlog.export()),
-        getSyncState: syncProcessor.syncState,
-        sendDevtoolsMessage: (message) => extraIncomingMessagesQueue.offer(message),
-      } satisfies ClientSessionLeaderThreadProxy
+        { ...omitUndefineds({ overrides: testing?.overrides?.clientSession?.leaderThreadProxy }) },
+      )
 
       const initialSnapshot = dbState.export()
 
@@ -292,68 +441,56 @@ const makeWorkerLeaderThread = ({
   clientId,
   sessionId,
   workerUrl,
+  workerExtraArgs,
   storage,
   devtools,
   bootStatusQueue,
-  syncPayload,
+  syncPayloadEncoded,
   testing,
 }: {
-  shutdown: (cause: Cause.Cause<UnexpectedError | IntentionalShutdownCause>) => Effect.Effect<void>
+  shutdown: (cause: Exit.Exit<IntentionalShutdownCause, UnknownError | SyncError>) => Effect.Effect<void>
   storeId: string
   clientId: string
   sessionId: string
   workerUrl: URL
+  workerExtraArgs: Schema.JsonValue | undefined
   storage: WorkerSchema.StorageType
-  devtools: WorkerSchema.LeaderWorkerInner.InitialMessage['devtools']
+  devtools: WorkerSchema.LeaderWorkerInnerInitialMessage['devtools']
   bootStatusQueue: Queue.Queue<BootStatus>
-  syncPayload: Schema.JsonValue | undefined
+  syncPayloadEncoded: Schema.JsonValue | undefined
   testing?: {
     overrides?: TestingOverrides
   }
 }) =>
   Effect.gen(function* () {
     const nodeWorker = new WT.Worker(workerUrl, {
-      execArgv: process.env.DEBUG_WORKER ? ['--inspect --enable-source-maps'] : ['--enable-source-maps'],
-      argv: [Schema.encodeSync(WorkerSchema.WorkerArgv)({ storeId, clientId, sessionId })],
+      execArgv: process.env.DEBUG_WORKER !== undefined ? ['--inspect --enable-source-maps'] : ['--enable-source-maps'],
+      argv: [yield* Schema.encode(WorkerSchema.WorkerArgv)({ storeId, clientId, sessionId, extraArgs: workerExtraArgs }).pipe(Effect.orDie)],
     })
     const nodeWorkerLayer = yield* Layer.build(PlatformNode.NodeWorker.layer(() => nodeWorker))
 
-    const worker = yield* Worker.makePoolSerialized<typeof WorkerSchema.LeaderWorkerInner.Request.Type>({
+    const worker = yield* Worker.makePoolSerialized<typeof WorkerSchema.LeaderWorkerInnerRequest.Type>({
       size: 1,
       concurrency: 100,
       initialMessage: () =>
-        new WorkerSchema.LeaderWorkerInner.InitialMessage({
+        new WorkerSchema.LeaderWorkerInnerInitialMessage({
           storeId,
           clientId,
           storage,
           devtools,
-          syncPayload,
+          syncPayloadEncoded,
         }),
     }).pipe(
       Effect.provide(nodeWorkerLayer),
-      UnexpectedError.mapToUnexpectedError,
-      Effect.tapErrorCause(shutdown),
+      UnknownError.mapToUnknownError,
+      Effect.tapErrorCause((cause) => shutdown(Exit.failCause(cause))),
       Effect.withSpan('@livestore/adapter-node:adapter:setupLeaderThread'),
     )
 
-    yield* Effect.addFinalizer(() =>
-      Effect.gen(function* () {
-        // We first try to gracefully shutdown the leader worker and then forcefully terminate it
-        yield* Effect.raceFirst(
-          runInWorker(new WorkerSchema.LeaderWorkerInner.Shutdown()).pipe(Effect.andThen(() => nodeWorker.terminate())),
-
-          Effect.sync(() => {
-            console.warn('[@livestore/adapter-node:adapter] Worker did not gracefully shutdown in time, terminating it')
-            nodeWorker.terminate()
-          }).pipe(Effect.delay(1000)),
-        ).pipe(Effect.exit) // The disconnect is to prevent the interrupt to bubble out
-      }).pipe(Effect.withSpan('@livestore/adapter-node:adapter:shutdown'), Effect.tapCauseLogPretty, Effect.orDie),
-    )
-
-    const runInWorker = <TReq extends typeof WorkerSchema.LeaderWorkerInner.Request.Type>(
+    const runInWorker = <TReq extends typeof WorkerSchema.LeaderWorkerInnerRequest.Type>(
       req: TReq,
     ): TReq extends Schema.WithResult<infer A, infer _I, infer _E, infer _EI, infer R>
-      ? Effect.Effect<A, UnexpectedError, R>
+      ? Effect.Effect<A, UnknownError, R>
       : never =>
       (worker.executeEffect(req) as any).pipe(
         Effect.logWarnIfTakesLongerThan({
@@ -362,35 +499,35 @@ const makeWorkerLeaderThread = ({
         }),
         Effect.withSpan(`@livestore/adapter-node:client-session:runInWorker:${req._tag}`),
         Effect.mapError((cause) =>
-          Schema.is(UnexpectedError)(cause)
+          Schema.is(UnknownError)(cause) === true
             ? cause
-            : ParseResult.isParseError(cause) || Schema.is(WorkerError.WorkerError)(cause)
-              ? new UnexpectedError({ cause })
+            : ParseResult.isParseError(cause) === true || Schema.is(WorkerError.WorkerError)(cause) === true
+              ? new UnknownError({ cause })
               : cause,
         ),
-        Effect.catchAllDefect((cause) => new UnexpectedError({ cause })),
-      ) as any
+        Effect.catchAllDefect((cause) => new UnknownError({ cause })),
+      )
 
-    const runInWorkerStream = <TReq extends typeof WorkerSchema.LeaderWorkerInner.Request.Type>(
+    const runInWorkerStream = <TReq extends typeof WorkerSchema.LeaderWorkerInnerRequest.Type>(
       req: TReq,
     ): TReq extends Schema.WithResult<infer A, infer _I, infer _E, infer _EI, infer R>
-      ? Stream.Stream<A, UnexpectedError, R>
+      ? Stream.Stream<A, UnknownError, R>
       : never =>
       worker.execute(req as any).pipe(
         Stream.mapError((cause) =>
-          Schema.is(UnexpectedError)(cause)
+          Schema.is(UnknownError)(cause) === true
             ? cause
-            : ParseResult.isParseError(cause) || Schema.is(WorkerError.WorkerError)(cause)
-              ? new UnexpectedError({ cause })
+            : ParseResult.isParseError(cause) === true || Schema.is(WorkerError.WorkerError)(cause) === true
+              ? new UnknownError({ cause })
               : cause,
         ),
         Stream.withSpan(`@livestore/adapter-node:client-session:runInWorkerStream:${req._tag}`),
       ) as any
 
-    const bootStatusFiber = yield* runInWorkerStream(new WorkerSchema.LeaderWorkerInner.BootStatusStream()).pipe(
+    const bootStatusFiber = yield* runInWorkerStream(new WorkerSchema.LeaderWorkerInnerBootStatusStream()).pipe(
       Stream.tap((bootStatus) => Queue.offer(bootStatusQueue, bootStatus)),
       Stream.runDrain,
-      Effect.tapErrorCause((cause) => (Cause.isInterruptedOnly(cause) ? Effect.void : shutdown(cause))),
+      Effect.tapErrorCause((cause) => (Cause.isInterruptedOnly(cause) === true ? Effect.void : shutdown(Exit.failCause(cause)))),
       Effect.interruptible,
       Effect.tapCauseLogPretty,
       Effect.forkScoped,
@@ -402,47 +539,63 @@ const makeWorkerLeaderThread = ({
       Effect.forkScoped,
     )
 
-    const initialLeaderHead = yield* runInWorker(new WorkerSchema.LeaderWorkerInner.GetLeaderHead())
+    const initialLeaderHead = yield* runInWorker(new WorkerSchema.LeaderWorkerInnerGetLeaderHead())
 
-    const bootResult = yield* runInWorker(new WorkerSchema.LeaderWorkerInner.GetRecreateSnapshot()).pipe(
+    const bootResult = yield* runInWorker(new WorkerSchema.LeaderWorkerInnerGetRecreateSnapshot()).pipe(
       Effect.timeout(10_000),
-      UnexpectedError.mapToUnexpectedError,
+      UnknownError.mapToUnknownError,
       Effect.withSpan('@livestore/adapter-node:client-session:export'),
     )
 
-    const leaderThread = {
-      events: {
-        pull:
-          testing?.overrides?.clientSession?.leaderThreadProxy?.events?.pull ??
-          (({ cursor }) =>
-            runInWorkerStream(new WorkerSchema.LeaderWorkerInner.PullStream({ cursor })).pipe(Stream.orDie)),
-        push: (batch) =>
-          runInWorker(new WorkerSchema.LeaderWorkerInner.PushToLeader({ batch })).pipe(
-            Effect.withSpan('@livestore/adapter-node:client-session:pushToLeader', {
-              attributes: { batchSize: batch.length },
-            }),
-          ),
-      },
-      initialState: {
-        leaderHead: initialLeaderHead,
-        migrationsReport: bootResult.migrationsReport,
-      },
-      export: runInWorker(new WorkerSchema.LeaderWorkerInner.Export()).pipe(
-        Effect.timeout(10_000),
-        UnexpectedError.mapToUnexpectedError,
-        Effect.withSpan('@livestore/adapter-node:client-session:export'),
-      ),
-      getEventlogData: Effect.dieMessage('Not implemented'),
-      getSyncState: runInWorker(new WorkerSchema.LeaderWorkerInner.GetLeaderSyncState()).pipe(
-        UnexpectedError.mapToUnexpectedError,
-        Effect.withSpan('@livestore/adapter-node:client-session:getLeaderSyncState'),
-      ),
-      sendDevtoolsMessage: (message) =>
-        runInWorker(new WorkerSchema.LeaderWorkerInner.ExtraDevtoolsMessage({ message })).pipe(
-          UnexpectedError.mapToUnexpectedError,
-          Effect.withSpan('@livestore/adapter-node:client-session:devtoolsMessageForLeader'),
+    const leaderThread = ClientSessionLeaderThreadProxy.of(
+      {
+        events: {
+          pull: ({ cursor }) =>
+            runInWorkerStream(new WorkerSchema.LeaderWorkerInnerPullStream({ cursor })).pipe(Stream.orDie),
+          push: (batch) =>
+            runInWorker(new WorkerSchema.LeaderWorkerInnerPushToLeader({ batch })).pipe(
+              Effect.withSpan('@livestore/adapter-node:client-session:pushToLeader', {
+                attributes: { batchSize: batch.length },
+              }),
+            ),
+          stream: (options) =>
+            runInWorkerStream(new WorkerSchema.LeaderWorkerInnerStreamEvents(options)).pipe(
+              Stream.withSpan('@livestore/adapter-node:client-session:streamEvents'),
+              Stream.orDie,
+            ),
+        },
+        initialState: {
+          leaderHead: initialLeaderHead,
+          migrationsReport: bootResult.migrationsReport,
+          storageMode: 'persisted',
+        },
+        export: runInWorker(new WorkerSchema.LeaderWorkerInnerExport()).pipe(
+          Effect.timeout(10_000),
+          UnknownError.mapToUnknownError,
+          Effect.withSpan('@livestore/adapter-node:client-session:export'),
         ),
-    } satisfies ClientSessionLeaderThreadProxy
+        getEventlogData: Effect.dieMessage('Not implemented'),
+        syncState: Subscribable.make({
+          get: runInWorker(new WorkerSchema.LeaderWorkerInnerGetLeaderSyncState()).pipe(
+            UnknownError.mapToUnknownError,
+            Effect.withSpan('@livestore/adapter-node:client-session:getLeaderSyncState'),
+          ),
+          changes: runInWorkerStream(new WorkerSchema.LeaderWorkerInnerSyncStateStream()).pipe(Stream.orDie),
+        }),
+        sendDevtoolsMessage: (message) =>
+          runInWorker(new WorkerSchema.LeaderWorkerInnerExtraDevtoolsMessage({ message })).pipe(
+            UnknownError.mapToUnknownError,
+            Effect.withSpan('@livestore/adapter-node:client-session:devtoolsMessageForLeader'),
+          ),
+        networkStatus: Subscribable.make({
+          get: runInWorker(new WorkerSchema.LeaderWorkerInnerGetNetworkStatus()).pipe(Effect.orDie),
+          changes: runInWorkerStream(new WorkerSchema.LeaderWorkerInnerNetworkStatusStream()).pipe(Stream.orDie),
+        }),
+      },
+      {
+        ...omitUndefineds({ overrides: testing?.overrides?.clientSession?.leaderThreadProxy }),
+      },
+    )
 
     return { leaderThread, initialSnapshot: bootResult.snapshot }
   })

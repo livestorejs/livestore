@@ -1,11 +1,12 @@
 import type { Nullable } from '@livestore/utils'
+import { omitUndefineds } from '@livestore/utils'
 import type { Option, Types } from '@livestore/utils/effect'
 import { Schema } from '@livestore/utils/effect'
 
-import type * as SqliteAst from '../ast/sqlite.js'
-import type { ColumnDefinition } from './field-defs.js'
+import type * as SqliteAst from '../ast/sqlite.ts'
+import type { ColumnDefinition } from './field-defs.ts'
 
-export * from './field-defs.js'
+export * from './field-defs.ts'
 
 export type DbSchema = {
   [key: string]: TableDefinition<string, Columns>
@@ -30,7 +31,7 @@ export type DbSchemaFromInputSchema<TSchemaInput extends DbSchemaInput> =
 export const makeDbSchema = <TDbSchemaInput extends DbSchemaInput>(
   schema: TDbSchemaInput,
 ): DbSchemaFromInputSchema<TDbSchemaInput> => {
-  return Array.isArray(schema) ? Object.fromEntries(schema.map((_) => [_.name, _])) : (schema as any)
+  return Array.isArray(schema) === true ? Object.fromEntries(schema.map((_) => [_.name, _])) : (schema as any)
 }
 
 export const table = <TTableName extends string, TColumns extends Columns, TIndexes extends Index[]>(
@@ -45,7 +46,7 @@ export const table = <TTableName extends string, TColumns extends Columns, TInde
     indexes: indexesToAst(indexes ?? []),
   }
 
-  return { name, columns, indexes, ast }
+  return { name, columns, ...omitUndefineds({ indexes }), ast }
 }
 
 export type AnyIfConstained<In, Out> = '__constrained' extends keyof In ? any : Out
@@ -75,6 +76,7 @@ export const insertStructSchemaForTable = <TTableDefinition extends TableDefinit
     Object.fromEntries(
       tableDef.ast.columns.map((column) => [
         column.name,
+
         column.nullable === true || column.default._tag === 'Some' ? Schema.optional(column.schema) : column.schema,
       ]),
     ),
@@ -91,6 +93,7 @@ const columsToAst = (columns: Columns): ReadonlyArray<SqliteAst.Column> => {
       default: column.default as any,
       nullable: column.nullable ?? false,
       primaryKey: column.primaryKey ?? false,
+      autoIncrement: column.autoIncrement ?? false,
       type: { _tag: column.columnType },
     } satisfies SqliteAst.Column
   })

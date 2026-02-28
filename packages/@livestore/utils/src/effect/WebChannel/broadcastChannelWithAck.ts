@@ -1,8 +1,8 @@
 import { Deferred, Exit, Predicate, Queue, Schema, Scope, Stream } from 'effect'
 
-import * as Effect from '../Effect.js'
-import type { InputSchema, WebChannel } from './common.js'
-import { listenToDebugPing, mapSchema, WebChannelSymbol } from './common.js'
+import * as Effect from '../Effect.ts'
+import type { InputSchema, WebChannel } from './common.ts'
+import { listenToDebugPing, mapSchema, WebChannelSymbol } from './common.ts'
 
 const ConnectMessage = Schema.TaggedStruct('ConnectMessage', {
   from: Schema.String,
@@ -69,7 +69,7 @@ export const broadcastChannelWithAck = <MsgListen, MsgSend, MsgListenEncoded, Ms
                 peerIdRef.current = data.from
                 postMessage(ConnectAckMessage.make({ from: connectionId, to: data.from }))
                 yield* connectedLatch.open
-                break
+                return undefined
               }
               // Case: other side sends connect-ack message (because otherside was already online when this side connected)
               case 'ConnectAckMessage': {
@@ -77,7 +77,7 @@ export const broadcastChannelWithAck = <MsgListen, MsgSend, MsgListenEncoded, Ms
                   peerIdRef.current = data.from
                   yield* connectedLatch.open
                 }
-                break
+                return undefined
               }
               case 'DisconnectMessage': {
                 if (data.from === peerIdRef.current) {
@@ -85,13 +85,13 @@ export const broadcastChannelWithAck = <MsgListen, MsgSend, MsgListenEncoded, Ms
                   yield* connectedLatch.close
                   yield* establishConnection
                 }
-                break
+                return undefined
               }
               case 'PayloadMessage': {
                 if (data.to === connectionId) {
                   return Schema.decodeEither(schema.listen)(data.payload)
                 }
-                break
+                return undefined
               }
             }
           }),

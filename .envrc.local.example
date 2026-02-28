@@ -1,0 +1,15 @@
+# Example .envrc.local file for LiveStore development
+# Copy this file to .envrc.local and fill in your actual values
+# This file is git-ignored and should contain your personal/sensitive configuration
+
+# Required for mixedbread AI search functionality in docs
+export MXBAI_API_KEY=""
+export MXBAI_VECTOR_STORE_ID=""
+
+# Optional: Override default development URLs if needed
+# export OTEL_EXPORTER_OTLP_ENDPOINT="http://localhost:4318"
+# export GRAFANA_ENDPOINT="http://localhost:30003"
+
+# Optional: Enable trace logging for debugging
+# export LS_TRACE_VERBOSE="1"
+# export VITE_LS_TRACE_VERBOSE="1"

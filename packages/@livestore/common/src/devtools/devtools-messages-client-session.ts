@@ -1,9 +1,9 @@
 import { Schema } from '@livestore/utils/effect'
 
-import { DebugInfo } from '../debug-info.js'
-import { EventSequenceNumber } from '../schema/mod.js'
-import { PreparedBindValues } from '../util.js'
-import { LSDClientSessionChannelMessage, LSDClientSessionReqResMessage } from './devtools-messages-common.js'
+import { DebugInfo } from '../debug-info.ts'
+import { EventSequenceNumber } from '../schema/mod.ts'
+import { PreparedBindValues } from '../util.ts'
+import { LSDClientSessionChannelMessage, LSDClientSessionReqResMessage } from './devtools-messages-common.ts'
 
 export class DebugInfoReq extends LSDClientSessionReqResMessage('LSD.ClientSession.DebugInfoReq', {}) {}
 
@@ -52,8 +52,8 @@ export class SyncHeadUnsubscribe extends LSDClientSessionReqResMessage('LSD.Clie
   subscriptionId: Schema.String,
 }) {}
 export class SyncHeadRes extends LSDClientSessionReqResMessage('LSD.ClientSession.SyncHeadRes', {
-  local: EventSequenceNumber.EventSequenceNumber,
-  upstream: EventSequenceNumber.EventSequenceNumber,
+  local: EventSequenceNumber.Client.Composite,
+  upstream: EventSequenceNumber.Client.Composite,
   subscriptionId: Schema.String,
 }) {}
 
@@ -107,6 +107,17 @@ export class Ping extends LSDClientSessionReqResMessage('LSD.ClientSession.Ping'
 
 export class Pong extends LSDClientSessionReqResMessage('LSD.ClientSession.Pong', {}) {}
 
+/**
+ * Sent by the app when DevTools version doesn't match.
+ * Contains the app's actual version so DevTools can display a meaningful error.
+ */
+export class VersionMismatch extends LSDClientSessionReqResMessage('LSD.ClientSession.VersionMismatch', {
+  /** The version running in the app */
+  appVersion: Schema.String,
+  /** The version that was sent by DevTools (that caused the mismatch) */
+  receivedVersion: Schema.String,
+}) {}
+
 export class Disconnect extends LSDClientSessionChannelMessage('LSD.ClientSession.Disconnect', {}) {}
 
 export const MessageToApp = Schema.Union(
@@ -136,6 +147,7 @@ export const MessageFromApp = Schema.Union(
   LiveQueriesRes,
   Disconnect,
   Pong,
+  VersionMismatch,
   SyncHeadRes,
 ).annotations({ identifier: 'LSD.ClientSession.MessageFromApp' })
 

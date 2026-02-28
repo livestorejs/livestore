@@ -1,0 +1,95 @@
+import type { Store } from '@livestore/livestore'
+import { queryDb } from '@livestore/livestore'
+import { LiveList } from '@livestore/react'
+import React from 'react'
+
+import { uiState$ } from '../livestore/queries.ts'
+import { events, tables } from '../livestore/schema.ts'
+import { useAppStore } from '../livestore/store.ts'
+
+type Todo = typeof tables.todos.Type
+
+const visibleTodos$ = queryDb(
+  (get) => {
+    const { filter } = get(uiState$)
+    return tables.todos.where({
+      deletedAt: null,
+      completed: filter === 'all' ? undefined : filter === 'completed',
+    })
+  },
+  { label: 'visibleTodos' },
+)
+
+export const MainSection: React.FC = () => {
+  const store = useAppStore()
+
+  // We record an event that specifies marking complete or incomplete,
+  // The reason is that this better captures the user's intention
+  // when the event gets synced across multiple devices--
+  // If another user toggled concurrently, we shouldn't toggle it back
+  const toggleTodo = React.useCallback(
+    (todo: Todo) =>
+      store.commit(todo.completed ? events.todoUncompleted({ id: todo.id }) : events.todoCompleted({ id: todo.id })),
+    [store],
+  )
+
+  const getKey = React.useCallback((todo: Todo): string => todo.id, [])
+  const renderItem = React.useCallback(
+    (todo: Todo, { isInitialListRender }: { index: number; isInitialListRender: boolean }) => (
+      <Item todo={todo} parentHasMounted={!isInitialListRender} store={store} toggleTodo={toggleTodo} />
+    ),
+    [store, toggleTodo],
+  )
+
+  return (
+    <section className="main">
+      <ul className="todo-list">
+        <LiveList items$={visibleTodos$} getKey={getKey} renderItem={renderItem} store={store} />
+      </ul>
+    </section>
+  )
+}
+const Item = ({
+  todo,
+  toggleTodo,
+  store,
+  parentHasMounted,
+}: {
+  todo: Todo
+  toggleTodo: (_: Todo) => void
+  store: Store<any, any>
+  parentHasMounted: boolean
+}) => {
+  const [state, setState] = React.useState<'initial' | 'deleting' | 'mounted'>('initial')
+  const isDeletedRef = React.useRef(false)
+
+  React.useEffect(() => setState('mounted'), [])
+  const isZero = parentHasMounted && (state === 'initial' || state === 'deleting')
+  const itemStyle = React.useMemo(
+    () => ({ opacity: isZero ? 0 : 1, height: isZero ? 0 : 58, transition: 'all 0.2s ease-in-out' }),
+    [isZero],
+  )
+
+  const handleTransitionEnd = React.useCallback(() => {
+    // NOTE to avoid triggering a delete twice, we need to check if the todo has been deleted via the ref
+    // Since using the `setState` doesn't seem to happen "quickly enough"
+    if (state === 'deleting' && todo.deletedAt === null && !isDeletedRef.current) {
+      store.commit(events.todoDeleted({ id: todo.id, deletedAt: new Date() }))
+      isDeletedRef.current = true
+    }
+  }, [state, store, todo.deletedAt, todo.id])
+
+  const handleToggle = React.useCallback(() => toggleTodo(todo), [todo, toggleTodo])
+  const handleDelete = React.useCallback(() => setState('deleting'), [])
+
+  return (
+    <li style={itemStyle} onTransitionEnd={handleTransitionEnd}>
+      <div className="view">
+        <input type="checkbox" className="toggle" checked={todo.completed} onChange={handleToggle} />
+        {/** biome-ignore lint/a11y/noLabelWithoutControl: otherwise breaks TODO MVC CSS 🙈 */}
+        <label>{todo.text}</label>
+        <button type="button" className="destroy" onClick={handleDelete} />
+      </div>
+    </li>
+  )
+}

@@ -1,7 +1,0 @@
-packages:
-  - scripts
-  - docs
-  - packages/@livestore/*
-  - examples/src/*
-  - examples/standalone/*
-  - tests/*

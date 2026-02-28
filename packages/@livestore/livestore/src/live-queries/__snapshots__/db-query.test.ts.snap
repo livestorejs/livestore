@@ -1,5 +1,179 @@
 // Vitest Snapshot v1, https://vitest.dev/guide/snapshot.html
 
+exports[`otel > QueryBuilder subscription - async iterator 1`] = `
+{
+  "_name": "createStore",
+  "attributes": {
+    "debugInstanceId": "test",
+    "storeId": "default",
+  },
+  "children": [
+    {
+      "_name": "livestore.in-memory-db:execute",
+      "attributes": {
+        "sql.query": "
+      PRAGMA page_size=32768;
+      PRAGMA cache_size=10000;
+      PRAGMA synchronous='OFF';
+      PRAGMA temp_store='MEMORY';
+      PRAGMA foreign_keys='ON'; -- we want foreign key constraints to be enforced
+    ",
+      },
+    },
+    {
+      "_name": "@livestore/common:LeaderSyncProcessor:push",
+      "attributes": {
+        "batch": "undefined",
+        "batchSize": 1,
+      },
+    },
+    {
+      "_name": "client-session-sync-processor:pull",
+      "attributes": {
+        "code.stacktrace": "<STACKTRACE>",
+        "span.label": "⚠︎ Interrupted",
+        "status.interrupted": true,
+      },
+    },
+    {
+      "_name": "LiveStore:sync",
+    },
+    {
+      "_name": "LiveStore:commits",
+    },
+    {
+      "_name": "LiveStore:queries",
+    },
+  ],
+}
+`;
+
+exports[`otel > QueryBuilder subscription - async iterator 2`] = `
+[
+  {
+    "_name": "LiveStore:commit",
+    "attributes": {
+      "livestore.eventTags": "[
+  "todo.created"
+]",
+      "livestore.eventsCount": 1,
+    },
+    "children": [
+      {
+        "_name": "client-session-sync-processor:push",
+        "attributes": {
+          "batchSize": 1,
+          "eventCounts": "{
+  "todo.created": 1
+}",
+          "mergeResultTag": "advance",
+        },
+        "children": [
+          {
+            "_name": "client-session-sync-processor:materialize-event",
+            "children": [
+              {
+                "_name": "livestore.in-memory-db:execute",
+                "attributes": {
+                  "sql.query": "INSERT INTO 'todos' ("id", "text", "completed") VALUES (?, ?, ?)",
+                },
+              },
+            ],
+          },
+        ],
+      },
+    ],
+  },
+]
+`;
+
+exports[`otel > QueryBuilder subscription - async iterator with skipInitialRun 1`] = `
+{
+  "_name": "createStore",
+  "attributes": {
+    "debugInstanceId": "test",
+    "storeId": "default",
+  },
+  "children": [
+    {
+      "_name": "livestore.in-memory-db:execute",
+      "attributes": {
+        "sql.query": "
+      PRAGMA page_size=32768;
+      PRAGMA cache_size=10000;
+      PRAGMA synchronous='OFF';
+      PRAGMA temp_store='MEMORY';
+      PRAGMA foreign_keys='ON'; -- we want foreign key constraints to be enforced
+    ",
+      },
+    },
+    {
+      "_name": "@livestore/common:LeaderSyncProcessor:push",
+      "attributes": {
+        "batch": "undefined",
+        "batchSize": 1,
+      },
+    },
+    {
+      "_name": "client-session-sync-processor:pull",
+      "attributes": {
+        "code.stacktrace": "<STACKTRACE>",
+        "span.label": "⚠︎ Interrupted",
+        "status.interrupted": true,
+      },
+    },
+    {
+      "_name": "LiveStore:sync",
+    },
+    {
+      "_name": "LiveStore:commits",
+    },
+    {
+      "_name": "LiveStore:queries",
+    },
+  ],
+}
+`;
+
+exports[`otel > QueryBuilder subscription - async iterator with skipInitialRun 2`] = `
+[
+  {
+    "_name": "LiveStore:commit",
+    "attributes": {
+      "livestore.eventTags": "[
+  "todo.created"
+]",
+      "livestore.eventsCount": 1,
+    },
+    "children": [
+      {
+        "_name": "client-session-sync-processor:push",
+        "attributes": {
+          "batchSize": 1,
+          "eventCounts": "{
+  "todo.created": 1
+}",
+          "mergeResultTag": "advance",
+        },
+        "children": [
+          {
+            "_name": "client-session-sync-processor:materialize-event",
+            "children": [
+              {
+                "_name": "livestore.in-memory-db:execute",
+                "attributes": {
+                  "sql.query": "INSERT INTO 'todos' ("id", "text", "completed") VALUES (?, ?, ?)",
+                },
+              },
+            ],
+          },
+        ],
+      },
+    ],
+  },
+]
+`;
+
 exports[`otel > QueryBuilder subscription - basic functionality 1`] = `
 {
   "_name": "createStore",
@@ -40,25 +214,6 @@ exports[`otel > QueryBuilder subscription - basic functionality 1`] = `
     },
     {
       "_name": "LiveStore:commits",
-      "children": [
-        {
-          "_name": "LiveStore:commit",
-          "attributes": {
-            "livestore.eventTags": [
-              "livestore.RawSql",
-            ],
-            "livestore.eventsCount": 1,
-          },
-          "children": [
-            {
-              "_name": "livestore.in-memory-db:execute",
-              "attributes": {
-                "sql.query": "INSERT INTO todos (id, text, completed) VALUES ('t1', 'buy milk', 0)",
-              },
-            },
-          ],
-        },
-      ],
     },
     {
       "_name": "LiveStore:queries",
@@ -66,14 +221,14 @@ exports[`otel > QueryBuilder subscription - basic functionality 1`] = `
         {
           "_name": "LiveStore.subscribe",
           "attributes": {
-            "queryLabel": "SELECT * FROM 'todos' WHERE completed = ? LIMIT ?",
+            "queryLabel": "SELECT * FROM 'todos' WHERE "completed" = ? LIMIT ?",
           },
           "children": [
             {
-              "_name": "db:SELECT * FROM 'todos' WHERE completed = ? LIMIT ?",
+              "_name": "db:SELECT * FROM 'todos' WHERE "completed" = ? LIMIT ",
               "attributes": {
                 "livestore.debugRefreshReason": "subscribe-initial-run:undefined",
-                "sql.query": "SELECT * FROM 'todos' WHERE completed = ? LIMIT ?",
+                "sql.query": "SELECT * FROM 'todos' WHERE "completed" = ? LIMIT ?",
                 "sql.rowsCount": 0,
               },
               "children": [
@@ -81,17 +236,17 @@ exports[`otel > QueryBuilder subscription - basic functionality 1`] = `
                   "_name": "sql-in-memory-select",
                   "attributes": {
                     "sql.cached": false,
-                    "sql.query": "SELECT * FROM 'todos' WHERE completed = ? LIMIT ?",
+                    "sql.query": "SELECT * FROM 'todos' WHERE "completed" = ? LIMIT ?",
                     "sql.rowsCount": 0,
                   },
                 },
               ],
             },
             {
-              "_name": "db:SELECT * FROM 'todos' WHERE completed = ? LIMIT ?",
+              "_name": "db:SELECT * FROM 'todos' WHERE "completed" = ? LIMIT ",
               "attributes": {
                 "livestore.debugRefreshReason": "commit",
-                "sql.query": "SELECT * FROM 'todos' WHERE completed = ? LIMIT ?",
+                "sql.query": "SELECT * FROM 'todos' WHERE "completed" = ? LIMIT ?",
                 "sql.rowsCount": 1,
               },
               "children": [
@@ -99,7 +254,7 @@ exports[`otel > QueryBuilder subscription - basic functionality 1`] = `
                   "_name": "sql-in-memory-select",
                   "attributes": {
                     "sql.cached": false,
-                    "sql.query": "SELECT * FROM 'todos' WHERE completed = ? LIMIT ?",
+                    "sql.query": "SELECT * FROM 'todos' WHERE "completed" = ? LIMIT ?",
                     "sql.rowsCount": 1,
                   },
                 },
@@ -111,6 +266,45 @@ exports[`otel > QueryBuilder subscription - basic functionality 1`] = `
     },
   ],
 }
+`;
+
+exports[`otel > QueryBuilder subscription - basic functionality 2`] = `
+[
+  {
+    "_name": "LiveStore:commit",
+    "attributes": {
+      "livestore.eventTags": "[
+  "todo.created"
+]",
+      "livestore.eventsCount": 1,
+    },
+    "children": [
+      {
+        "_name": "client-session-sync-processor:push",
+        "attributes": {
+          "batchSize": 1,
+          "eventCounts": "{
+  "todo.created": 1
+}",
+          "mergeResultTag": "advance",
+        },
+        "children": [
+          {
+            "_name": "client-session-sync-processor:materialize-event",
+            "children": [
+              {
+                "_name": "livestore.in-memory-db:execute",
+                "attributes": {
+                  "sql.query": "INSERT INTO 'todos' ("id", "text", "completed") VALUES (?, ?, ?)",
+                },
+              },
+            ],
+          },
+        ],
+      },
+    ],
+  },
+]
 `;
 
 exports[`otel > QueryBuilder subscription - direct table subscription 1`] = `
@@ -153,25 +347,6 @@ exports[`otel > QueryBuilder subscription - direct table subscription 1`] = `
     },
     {
       "_name": "LiveStore:commits",
-      "children": [
-        {
-          "_name": "LiveStore:commit",
-          "attributes": {
-            "livestore.eventTags": [
-              "livestore.RawSql",
-            ],
-            "livestore.eventsCount": 1,
-          },
-          "children": [
-            {
-              "_name": "livestore.in-memory-db:execute",
-              "attributes": {
-                "sql.query": "INSERT INTO todos (id, text, completed) VALUES ('t5', 'clean house', 1)",
-              },
-            },
-          ],
-        },
-      ],
     },
     {
       "_name": "LiveStore:queries",
@@ -226,6 +401,178 @@ exports[`otel > QueryBuilder subscription - direct table subscription 1`] = `
 }
 `;
 
+exports[`otel > QueryBuilder subscription - direct table subscription 2`] = `
+[
+  {
+    "_name": "LiveStore:commit",
+    "attributes": {
+      "livestore.eventTags": "[
+  "todo.created"
+]",
+      "livestore.eventsCount": 1,
+    },
+    "children": [
+      {
+        "_name": "client-session-sync-processor:push",
+        "attributes": {
+          "batchSize": 1,
+          "eventCounts": "{
+  "todo.created": 1
+}",
+          "mergeResultTag": "advance",
+        },
+        "children": [
+          {
+            "_name": "client-session-sync-processor:materialize-event",
+            "children": [
+              {
+                "_name": "livestore.in-memory-db:execute",
+                "attributes": {
+                  "sql.query": "INSERT INTO 'todos' ("id", "text", "completed") VALUES (?, ?, ?)",
+                },
+              },
+            ],
+          },
+        ],
+      },
+    ],
+  },
+]
+`;
+
+exports[`otel > QueryBuilder subscription - skipInitialRun 1`] = `
+{
+  "_name": "createStore",
+  "attributes": {
+    "debugInstanceId": "test",
+    "storeId": "default",
+  },
+  "children": [
+    {
+      "_name": "livestore.in-memory-db:execute",
+      "attributes": {
+        "sql.query": "
+      PRAGMA page_size=32768;
+      PRAGMA cache_size=10000;
+      PRAGMA synchronous='OFF';
+      PRAGMA temp_store='MEMORY';
+      PRAGMA foreign_keys='ON'; -- we want foreign key constraints to be enforced
+    ",
+      },
+    },
+    {
+      "_name": "@livestore/common:LeaderSyncProcessor:push",
+      "attributes": {
+        "batch": "undefined",
+        "batchSize": 1,
+      },
+    },
+    {
+      "_name": "client-session-sync-processor:pull",
+      "attributes": {
+        "code.stacktrace": "<STACKTRACE>",
+        "span.label": "⚠︎ Interrupted",
+        "status.interrupted": true,
+      },
+    },
+    {
+      "_name": "LiveStore:sync",
+    },
+    {
+      "_name": "LiveStore:commits",
+    },
+    {
+      "_name": "LiveStore:queries",
+      "children": [
+        {
+          "_name": "LiveStore.subscribe",
+          "attributes": {
+            "queryLabel": "SELECT * FROM 'todos' WHERE "completed" = ? LIMIT ?",
+          },
+          "children": [
+            {
+              "_name": "db:SELECT * FROM 'todos' WHERE "completed" = ? LIMIT ",
+              "attributes": {
+                "livestore.debugRefreshReason": "subscribe-initial-run:undefined",
+                "sql.query": "SELECT * FROM 'todos' WHERE "completed" = ? LIMIT ?",
+                "sql.rowsCount": 0,
+              },
+              "children": [
+                {
+                  "_name": "sql-in-memory-select",
+                  "attributes": {
+                    "sql.cached": false,
+                    "sql.query": "SELECT * FROM 'todos' WHERE "completed" = ? LIMIT ?",
+                    "sql.rowsCount": 0,
+                  },
+                },
+              ],
+            },
+            {
+              "_name": "db:SELECT * FROM 'todos' WHERE "completed" = ? LIMIT ",
+              "attributes": {
+                "livestore.debugRefreshReason": "commit",
+                "sql.query": "SELECT * FROM 'todos' WHERE "completed" = ? LIMIT ?",
+                "sql.rowsCount": 1,
+              },
+              "children": [
+                {
+                  "_name": "sql-in-memory-select",
+                  "attributes": {
+                    "sql.cached": false,
+                    "sql.query": "SELECT * FROM 'todos' WHERE "completed" = ? LIMIT ?",
+                    "sql.rowsCount": 1,
+                  },
+                },
+              ],
+            },
+          ],
+        },
+      ],
+    },
+  ],
+}
+`;
+
+exports[`otel > QueryBuilder subscription - skipInitialRun 2`] = `
+[
+  {
+    "_name": "LiveStore:commit",
+    "attributes": {
+      "livestore.eventTags": "[
+  "todo.created"
+]",
+      "livestore.eventsCount": 1,
+    },
+    "children": [
+      {
+        "_name": "client-session-sync-processor:push",
+        "attributes": {
+          "batchSize": 1,
+          "eventCounts": "{
+  "todo.created": 1
+}",
+          "mergeResultTag": "advance",
+        },
+        "children": [
+          {
+            "_name": "client-session-sync-processor:materialize-event",
+            "children": [
+              {
+                "_name": "livestore.in-memory-db:execute",
+                "attributes": {
+                  "sql.query": "INSERT INTO 'todos' ("id", "text", "completed") VALUES (?, ?, ?)",
+                },
+              },
+            ],
+          },
+        ],
+      },
+    ],
+  },
+]
+`;
+
 exports[`otel > QueryBuilder subscription - unsubscribe functionality 1`] = `
 {
   "_name": "createStore",
@@ -273,42 +620,6 @@ exports[`otel > QueryBuilder subscription - unsubscribe functionality 1`] = `
     },
     {
       "_name": "LiveStore:commits",
-      "children": [
-        {
-          "_name": "LiveStore:commit",
-          "attributes": {
-            "livestore.eventTags": [
-              "livestore.RawSql",
-            ],
-            "livestore.eventsCount": 1,
-          },
-          "children": [
-            {
-              "_name": "livestore.in-memory-db:execute",
-              "attributes": {
-                "sql.query": "INSERT INTO todos (id, text, completed) VALUES ('t3', 'read book', 0)",
-              },
-            },
-          ],
-        },
-        {
-          "_name": "LiveStore:commit",
-          "attributes": {
-            "livestore.eventTags": [
-              "livestore.RawSql",
-            ],
-            "livestore.eventsCount": 1,
-          },
-          "children": [
-            {
-              "_name": "livestore.in-memory-db:execute",
-              "attributes": {
-                "sql.query": "INSERT INTO todos (id, text, completed) VALUES ('t4', 'cook dinner', 0)",
-              },
-            },
-          ],
-        },
-      ],
     },
     {
       "_name": "LiveStore:queries",
@@ -316,14 +627,14 @@ exports[`otel > QueryBuilder subscription - unsubscribe functionality 1`] = `
         {
           "_name": "LiveStore.subscribe",
           "attributes": {
-            "queryLabel": "SELECT * FROM 'todos' WHERE completed = ? LIMIT ?",
+            "queryLabel": "SELECT * FROM 'todos' WHERE "completed" = ? LIMIT ?",
           },
           "children": [
             {
-              "_name": "db:SELECT * FROM 'todos' WHERE completed = ? LIMIT ?",
+              "_name": "db:SELECT * FROM 'todos' WHERE "completed" = ? LIMIT ",
               "attributes": {
                 "livestore.debugRefreshReason": "subscribe-initial-run:undefined",
-                "sql.query": "SELECT * FROM 'todos' WHERE completed = ? LIMIT ?",
+                "sql.query": "SELECT * FROM 'todos' WHERE "completed" = ? LIMIT ?",
                 "sql.rowsCount": 0,
               },
               "children": [
@@ -331,17 +642,17 @@ exports[`otel > QueryBuilder subscription - unsubscribe functionality 1`] = `
                   "_name": "sql-in-memory-select",
                   "attributes": {
                     "sql.cached": false,
-                    "sql.query": "SELECT * FROM 'todos' WHERE completed = ? LIMIT ?",
+                    "sql.query": "SELECT * FROM 'todos' WHERE "completed" = ? LIMIT ?",
                     "sql.rowsCount": 0,
                   },
                 },
               ],
             },
             {
-              "_name": "db:SELECT * FROM 'todos' WHERE completed = ? LIMIT ?",
+              "_name": "db:SELECT * FROM 'todos' WHERE "completed" = ? LIMIT ",
               "attributes": {
                 "livestore.debugRefreshReason": "commit",
-                "sql.query": "SELECT * FROM 'todos' WHERE completed = ? LIMIT ?",
+                "sql.query": "SELECT * FROM 'todos' WHERE "completed" = ? LIMIT ?",
                 "sql.rowsCount": 1,
               },
               "children": [
@@ -349,7 +660,7 @@ exports[`otel > QueryBuilder subscription - unsubscribe functionality 1`] = `
                   "_name": "sql-in-memory-select",
                   "attributes": {
                     "sql.cached": false,
-                    "sql.query": "SELECT * FROM 'todos' WHERE completed = ? LIMIT ?",
+                    "sql.query": "SELECT * FROM 'todos' WHERE "completed" = ? LIMIT ?",
                     "sql.rowsCount": 1,
                   },
                 },
@@ -360,14 +671,14 @@ exports[`otel > QueryBuilder subscription - unsubscribe functionality 1`] = `
         {
           "_name": "LiveStore.subscribe",
           "attributes": {
-            "queryLabel": "SELECT * FROM 'todos' WHERE completed = ? LIMIT ?",
+            "queryLabel": "SELECT * FROM 'todos' WHERE "completed" = ? LIMIT ?",
           },
           "children": [
             {
-              "_name": "db:SELECT * FROM 'todos' WHERE completed = ? LIMIT ?",
+              "_name": "db:SELECT * FROM 'todos' WHERE "completed" = ? LIMIT ",
               "attributes": {
                 "livestore.debugRefreshReason": "commit",
-                "sql.query": "SELECT * FROM 'todos' WHERE completed = ? LIMIT ?",
+                "sql.query": "SELECT * FROM 'todos' WHERE "completed" = ? LIMIT ?",
                 "sql.rowsCount": 1,
               },
               "children": [
@@ -375,7 +686,7 @@ exports[`otel > QueryBuilder subscription - unsubscribe functionality 1`] = `
                   "_name": "sql-in-memory-select",
                   "attributes": {
                     "sql.cached": false,
-                    "sql.query": "SELECT * FROM 'todos' WHERE completed = ? LIMIT ?",
+                    "sql.query": "SELECT * FROM 'todos' WHERE "completed" = ? LIMIT ?",
                     "sql.rowsCount": 1,
                   },
                 },
@@ -387,6 +698,79 @@ exports[`otel > QueryBuilder subscription - unsubscribe functionality 1`] = `
     },
   ],
 }
+`;
+
+exports[`otel > QueryBuilder subscription - unsubscribe functionality 2`] = `
+[
+  {
+    "_name": "LiveStore:commit",
+    "attributes": {
+      "livestore.eventTags": "[
+  "todo.created"
+]",
+      "livestore.eventsCount": 1,
+    },
+    "children": [
+      {
+        "_name": "client-session-sync-processor:push",
+        "attributes": {
+          "batchSize": 1,
+          "eventCounts": "{
+  "todo.created": 1
+}",
+          "mergeResultTag": "advance",
+        },
+        "children": [
+          {
+            "_name": "client-session-sync-processor:materialize-event",
+            "children": [
+              {
+                "_name": "livestore.in-memory-db:execute",
+                "attributes": {
+                  "sql.query": "INSERT INTO 'todos' ("id", "text", "completed") VALUES (?, ?, ?)",
+                },
+              },
+            ],
+          },
+        ],
+      },
+    ],
+  },
+  {
+    "_name": "LiveStore:commit",
+    "attributes": {
+      "livestore.eventTags": "[
+  "todo.created"
+]",
+      "livestore.eventsCount": 1,
+    },
+    "children": [
+      {
+        "_name": "client-session-sync-processor:push",
+        "attributes": {
+          "batchSize": 1,
+          "eventCounts": "{
+  "todo.created": 1
+}",
+          "mergeResultTag": "advance",
+        },
+        "children": [
+          {
+            "_name": "client-session-sync-processor:materialize-event",
+            "children": [
+              {
+                "_name": "livestore.in-memory-db:execute",
+                "attributes": {
+                  "sql.query": "INSERT INTO 'todos' ("id", "text", "completed") VALUES (?, ?, ?)",
+                },
+              },
+            ],
+          },
+        ],
+      },
+    ],
+  },
+]
 `;
 
 exports[`otel > otel 3`] = `
@@ -429,25 +813,6 @@ exports[`otel > otel 3`] = `
     },
     {
       "_name": "LiveStore:commits",
-      "children": [
-        {
-          "_name": "LiveStore:commit",
-          "attributes": {
-            "livestore.eventTags": [
-              "livestore.RawSql",
-            ],
-            "livestore.eventsCount": 1,
-          },
-          "children": [
-            {
-              "_name": "livestore.in-memory-db:execute",
-              "attributes": {
-                "sql.query": "INSERT INTO todos (id, text, completed) VALUES ('t1', 'buy milk', 0)",
-              },
-            },
-          ],
-        },
-      ],
     },
     {
       "_name": "LiveStore:queries",
@@ -490,6 +855,45 @@ exports[`otel > otel 3`] = `
     },
   ],
 }
+`;
+
+exports[`otel > otel 4`] = `
+[
+  {
+    "_name": "LiveStore:commit",
+    "attributes": {
+      "livestore.eventTags": "[
+  "todo.created"
+]",
+      "livestore.eventsCount": 1,
+    },
+    "children": [
+      {
+        "_name": "client-session-sync-processor:push",
+        "attributes": {
+          "batchSize": 1,
+          "eventCounts": "{
+  "todo.created": 1
+}",
+          "mergeResultTag": "advance",
+        },
+        "children": [
+          {
+            "_name": "client-session-sync-processor:materialize-event",
+            "children": [
+              {
+                "_name": "livestore.in-memory-db:execute",
+                "attributes": {
+                  "sql.query": "INSERT INTO 'todos' ("id", "text", "completed") VALUES (?, ?, ?)",
+                },
+              },
+            ],
+          },
+        ],
+      },
+    ],
+  },
+]
 `;
 
 exports[`otel > with thunks 1`] = `
@@ -704,25 +1108,6 @@ exports[`otel > with thunks 7`] = `
     },
     {
       "_name": "LiveStore:commits",
-      "children": [
-        {
-          "_name": "LiveStore:commit",
-          "attributes": {
-            "livestore.eventTags": [
-              "livestore.RawSql",
-            ],
-            "livestore.eventsCount": 1,
-          },
-          "children": [
-            {
-              "_name": "livestore.in-memory-db:execute",
-              "attributes": {
-                "sql.query": "INSERT INTO todos (id, text, completed) VALUES ('t1', 'buy milk', 0)",
-              },
-            },
-          ],
-        },
-      ],
     },
     {
       "_name": "LiveStore:queries",
@@ -773,6 +1158,45 @@ exports[`otel > with thunks 7`] = `
 }
 `;
 
+exports[`otel > with thunks 8`] = `
+[
+  {
+    "_name": "LiveStore:commit",
+    "attributes": {
+      "livestore.eventTags": "[
+  "todo.created"
+]",
+      "livestore.eventsCount": 1,
+    },
+    "children": [
+      {
+        "_name": "client-session-sync-processor:push",
+        "attributes": {
+          "batchSize": 1,
+          "eventCounts": "{
+  "todo.created": 1
+}",
+          "mergeResultTag": "advance",
+        },
+        "children": [
+          {
+            "_name": "client-session-sync-processor:materialize-event",
+            "children": [
+              {
+                "_name": "livestore.in-memory-db:execute",
+                "attributes": {
+                  "sql.query": "INSERT INTO 'todos' ("id", "text", "completed") VALUES (?, ?, ?)",
+                },
+              },
+            ],
+          },
+        ],
+      },
+    ],
+  },
+]
+`;
+
 exports[`otel > with thunks with query builder and without labels 3`] = `
 {
   "_name": "createStore",
@@ -813,33 +1237,14 @@ exports[`otel > with thunks with query builder and without labels 3`] = `
     },
     {
       "_name": "LiveStore:commits",
-      "children": [
-        {
-          "_name": "LiveStore:commit",
-          "attributes": {
-            "livestore.eventTags": [
-              "livestore.RawSql",
-            ],
-            "livestore.eventsCount": 1,
-          },
-          "children": [
-            {
-              "_name": "livestore.in-memory-db:execute",
-              "attributes": {
-                "sql.query": "INSERT INTO todos (id, text, completed) VALUES ('t1', 'buy milk', 0)",
-              },
-            },
-          ],
-        },
-      ],
     },
     {
       "_name": "LiveStore:queries",
       "children": [
         {
-          "_name": "db:SELECT * FROM 'todos' WHERE completed = ? LIMIT ?",
+          "_name": "db:SELECT * FROM 'todos' WHERE "completed" = ? LIMIT ",
           "attributes": {
-            "sql.query": "SELECT * FROM 'todos' WHERE completed = ? LIMIT ?",
+            "sql.query": "SELECT * FROM 'todos' WHERE "completed" = ? LIMIT ?",
             "sql.rowsCount": 0,
           },
           "children": [
@@ -850,16 +1255,16 @@ exports[`otel > with thunks with query builder and without labels 3`] = `
               "_name": "sql-in-memory-select",
               "attributes": {
                 "sql.cached": false,
-                "sql.query": "SELECT * FROM 'todos' WHERE completed = ? LIMIT ?",
+                "sql.query": "SELECT * FROM 'todos' WHERE "completed" = ? LIMIT ?",
                 "sql.rowsCount": 0,
               },
             },
           ],
         },
         {
-          "_name": "db:SELECT * FROM 'todos' WHERE completed = ? LIMIT ?",
+          "_name": "db:SELECT * FROM 'todos' WHERE "completed" = ? LIMIT ",
           "attributes": {
-            "sql.query": "SELECT * FROM 'todos' WHERE completed = ? LIMIT ?",
+            "sql.query": "SELECT * FROM 'todos' WHERE "completed" = ? LIMIT ?",
             "sql.rowsCount": 1,
           },
           "children": [
@@ -870,7 +1275,7 @@ exports[`otel > with thunks with query builder and without labels 3`] = `
               "_name": "sql-in-memory-select",
               "attributes": {
                 "sql.cached": false,
-                "sql.query": "SELECT * FROM 'todos' WHERE completed = ? LIMIT ?",
+                "sql.query": "SELECT * FROM 'todos' WHERE "completed" = ? LIMIT ?",
                 "sql.rowsCount": 1,
               },
             },
@@ -880,4 +1285,43 @@ exports[`otel > with thunks with query builder and without labels 3`] = `
     },
   ],
 }
+`;
+
+exports[`otel > with thunks with query builder and without labels 4`] = `
+[
+  {
+    "_name": "LiveStore:commit",
+    "attributes": {
+      "livestore.eventTags": "[
+  "todo.created"
+]",
+      "livestore.eventsCount": 1,
+    },
+    "children": [
+      {
+        "_name": "client-session-sync-processor:push",
+        "attributes": {
+          "batchSize": 1,
+          "eventCounts": "{
+  "todo.created": 1
+}",
+          "mergeResultTag": "advance",
+        },
+        "children": [
+          {
+            "_name": "client-session-sync-processor:materialize-event",
+            "children": [
+              {
+                "_name": "livestore.in-memory-db:execute",
+                "attributes": {
+                  "sql.query": "INSERT INTO 'todos' ("id", "text", "completed") VALUES (?, ?, ?)",
+                },
+              },
+            ],
+          },
+        ],
+      },
+    ],
+  },
+]
 `;

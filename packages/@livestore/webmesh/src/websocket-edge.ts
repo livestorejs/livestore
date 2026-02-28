@@ -5,6 +5,7 @@ import {
   Either,
   Exit,
   Layer,
+  MsgPack,
   Queue,
   Schedule,
   Schema,
@@ -14,8 +15,8 @@ import {
   WebChannel,
 } from '@livestore/utils/effect'
 
-import * as WebmeshSchema from './mesh-schema.js'
-import type { MeshNode } from './node.js'
+import * as WebmeshSchema from './mesh-schema.ts'
+import type { MeshNode } from './node.ts'
 
 export class WSEdgeInit extends Schema.TaggedStruct('WSEdgeInit', {
   from: Schema.String,
@@ -28,7 +29,7 @@ export class WSEdgePayload extends Schema.TaggedStruct('WSEdgePayload', {
 
 export class WSEdgeMessage extends Schema.Union(WSEdgeInit, WSEdgePayload) {}
 
-export const MessageMsgPack = Schema.MsgPack(WSEdgeMessage)
+export const MessageMsgPack = MsgPack.schema(WSEdgeMessage)
 
 export type SocketType =
   | {
@@ -77,7 +78,7 @@ export const makeWebSocketEdge = ({
 }: {
   socket: Socket.Socket
   socketType: SocketType
-  debug?: { id?: string }
+  debug?: { id?: string } | undefined
 }): Effect.Effect<
   {
     webChannel: WebChannel.WebChannel<typeof WebmeshSchema.Packet.Type, typeof WebmeshSchema.Packet.Type>
@@ -104,12 +105,13 @@ export const makeWebSocketEdge = ({
         Schedule.whileInput((_: Socket.SocketError) => _.reason === 'OpenTimeout' || _.reason === 'Open'),
       )
 
+      const sendToSocket = yield* socket.writer
+
       yield* Stream.never.pipe(
         Stream.pipeThroughChannel(Socket.toChannel(socket)),
         Stream.catchTag(
           'SocketError',
           Effect.fnUntraced(function* (error) {
-            // yield* Effect.logError(`[websocket-edge] Socket error`, error, { socketType, debugId: debugInfo?.id })
             // In the case of the socket being closed, we're interrupting the stream
             // and close the WebChannel (which can be observed from the outside)
             if (error.reason === 'Close') {
@@ -117,7 +119,7 @@ export const makeWebSocketEdge = ({
               yield* isConnectedLatch.close
               return yield* Effect.interrupt
             } else {
-              return yield* Effect.fail(error)
+              return yield* error
             }
           }),
         ),
@@ -129,7 +131,6 @@ export const makeWebSocketEdge = ({
               yield* Deferred.succeed(fromDeferred, msg.from)
             } else {
               const decodedPayload = yield* Schema.decode(schema.listen)(msg.payload)
-              // yield* Effect.logDebug(`[websocket-edge] recv from ${msg.from}: ${decodedPayload._tag}`, decodedPayload)
               yield* Queue.offer(listenQueue, decodedPayload)
             }
           }),
@@ -146,8 +147,6 @@ export const makeWebSocketEdge = ({
         Effect.tapCauseLogPretty,
         Effect.forkScoped,
       )
-
-      const sendToSocket = yield* socket.writer
 
       const initHandshake = (from: string) =>
         sendToSocket(Schema.encodeSync(MessageMsgPack)({ _tag: 'WSEdgeInit', from }))
@@ -167,7 +166,7 @@ export const makeWebSocketEdge = ({
         Effect.gen(function* () {
           yield* isConnectedLatch.await
           const payload = yield* Schema.encode(schema.send)(message)
-          yield* sendToSocket(Schema.encodeSync(MessageMsgPack)({ _tag: 'WSEdgePayload', payload, from }))
+          yield* sendToSocket(yield* Schema.encode(MessageMsgPack)({ _tag: 'WSEdgePayload', payload, from }))
         }).pipe(Effect.orDie)
 
       const listen = Stream.fromQueue(listenQueue).pipe(

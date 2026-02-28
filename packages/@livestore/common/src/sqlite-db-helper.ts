@@ -1,8 +1,8 @@
 import { Schema } from '@livestore/utils/effect'
 
-import type { SqliteDb } from './adapter-types.js'
-import { getResultSchema, isQueryBuilder } from './schema/state/sqlite/query-builder/mod.js'
-import type { PreparedBindValues } from './util.js'
+import { type SqliteDb, SqliteError } from './adapter-types.ts'
+import { getResultSchema, isQueryBuilder } from './schema/state/sqlite/query-builder/mod.ts'
+import type { PreparedBindValues } from './util.ts'
 
 export const makeExecute = (
   execute: (
@@ -14,7 +14,7 @@ export const makeExecute = (
   return (...args: any[]) => {
     const [queryStrOrQueryBuilder, bindValuesOrOptions, maybeOptions] = args
 
-    if (isQueryBuilder(queryStrOrQueryBuilder)) {
+    if (isQueryBuilder(queryStrOrQueryBuilder) === true) {
       const { query, bindValues } = queryStrOrQueryBuilder.asSql()
       return execute(query, bindValues as unknown as PreparedBindValues, bindValuesOrOptions)
     } else {
@@ -29,7 +29,7 @@ export const makeSelect = <T>(
   return (...args: any[]) => {
     const [queryStrOrQueryBuilder, maybeBindValues] = args
 
-    if (isQueryBuilder(queryStrOrQueryBuilder)) {
+    if (isQueryBuilder(queryStrOrQueryBuilder) === true) {
       const { query, bindValues } = queryStrOrQueryBuilder.asSql()
       const resultSchema = getResultSchema(queryStrOrQueryBuilder)
       const results = select(query, bindValues as unknown as PreparedBindValues)
@@ -38,4 +38,22 @@ export const makeSelect = <T>(
       return select(queryStrOrQueryBuilder, maybeBindValues)
     }
   }
+}
+
+export const validateSnapshot = (snapshot: Uint8Array) => {
+  const headerBytes = new TextDecoder().decode(snapshot.slice(0, 16))
+  const hasValidHeader = headerBytes.startsWith('SQLite format 3')
+
+  if (hasValidHeader === false) {
+    throw new SqliteError({
+      cause: 'Invalid SQLite header',
+      note: `Expected header to start with 'SQLite format 3', but got: ${headerBytes}`,
+    })
+  }
+}
+
+export const makeExport = (exportFn: () => Uint8Array<ArrayBuffer>) => () => {
+  const snapshot = exportFn()
+  validateSnapshot(snapshot)
+  return snapshot
 }

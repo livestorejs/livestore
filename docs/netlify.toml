@@ -1,0 +1,32 @@
+# Netlify configuration for docs deployment
+#
+# Note: Our deploy scripts execute Netlify CLI with CWD set to the docs app
+# directory. Paths below are therefore relative to this folder.
+#
+# This file also configures Netlify's Image CDN to allow remote image
+# transformations from the hosted asset service used for example screenshots.
+
+[images]
+# Allow image transformations from gitbucket.schickling.dev
+# This is needed for example screenshots to display properly in production
+# The domain is double-escaped as required by Netlify's regex configuration
+remote_images = ["https://gitbucket\\.schickling\\.dev/.*"]
+
+# Build & publish
+# Let the Netlify CLI run the build so it can bundle and attach Edge Functions
+# reliably in CI. Astro's static/SSR build does not emit the final edge bundle;
+# Netlify's build phase does. We also anchor publish to the docs app so the CLI
+# resolves paths consistently in monorepos.
+[build]
+# Paths are relative to this file's directory (docs/).
+# On the genie branch with per-package workspaces, Netlify CLI --filter resolves
+# the package base to docs/ itself, so paths must not include the docs/ prefix.
+publish = "dist"
+edge_functions = "netlify/edge-functions"
+
+# Edge Function configuration. The Edge runtime bundles the file(s) below and
+# attaches them at the CDN layer during the Netlify build phase.
+
+[[edge_functions]]
+function = "markdown-negotiation"
+path = "/*"

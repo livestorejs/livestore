@@ -1,44 +1,62 @@
 {
   "name": "@livestore/sync-cf",
-  "version": "0.3.1",
-  "type": "module",
-  "sideEffects": false,
-  "exports": {
-    ".": {
-      "types": "./dist/sync-impl/mod.d.ts",
-      "default": "./dist/sync-impl/mod.js"
-    },
-    "./cf-worker": {
-      "types": "./dist/cf-worker/mod.d.ts",
-      "default": "./dist/cf-worker/mod.js"
-    },
-    "./cf-worker/durable-object": {
-      "types": "./dist/cf-worker/durable-object.d.ts",
-      "default": "./dist/cf-worker/durable-object.js"
-    },
-    "./cf-worker/worker": {
-      "types": "./dist/cf-worker/worker.d.ts",
-      "default": "./dist/cf-worker/worker.js"
-    }  
-  },
-  "dependencies": {
-    "@livestore/common": "workspace:*",
-    "@livestore/utils": "workspace:*"
-  },
-  "devDependencies": {
-    "@cloudflare/workers-types": "^4.20250702.0"
+  "version": "0.4.0-dev.22",
+  "license": "Apache-2.0",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/livestorejs/livestore.git"
   },
   "files": [
     "dist",
-    "src",
     "package.json",
-    "README.md"
+    "README.md",
+    "src"
   ],
-  "license": "Apache-2.0",
+  "type": "module",
+  "sideEffects": false,
+  "exports": {
+    "./cf-worker": "./src/cf-worker/mod.ts",
+    "./client": "./src/client/mod.ts",
+    "./common": "./src/common/mod.ts"
+  },
   "publishConfig": {
-    "access": "public"
+    "access": "public",
+    "exports": {
+      "./client": "./dist/client/mod.js",
+      "./common": "./dist/common/mod.js",
+      "./cf-worker": "./dist/cf-worker/mod.js"
+    }
   },
   "scripts": {
     "test": "echo 'No tests yet'"
+  },
+  "dependencies": {
+    "@cloudflare/workers-types": "4.20251118.0",
+    "@livestore/common": "workspace:*",
+    "@livestore/common-cf": "workspace:*",
+    "@livestore/utils": "workspace:*"
+  },
+  "peerDependencies": {
+    "@effect/ai": "^0.33.2",
+    "@effect/cli": "^0.73.1",
+    "@effect/cluster": "^0.56.1",
+    "@effect/experimental": "^0.58.0",
+    "@effect/opentelemetry": "^0.61.0",
+    "@effect/platform": "^0.94.2",
+    "@effect/platform-browser": "^0.73.0",
+    "@effect/platform-bun": "^0.86.0",
+    "@effect/platform-node": "^0.104.1",
+    "@effect/printer": "^0.47.0",
+    "@effect/printer-ansi": "^0.47.0",
+    "@effect/rpc": "^0.73.0",
+    "@effect/sql": "^0.49.0",
+    "@effect/typeclass": "^0.38.0",
+    "@opentelemetry/api": "^1.9.0",
+    "@opentelemetry/resources": "^2.2.0",
+    "effect": "^3.19.15"
+  },
+  "$genie": {
+    "source": "package.json.genie.ts",
+    "warning": "DO NOT EDIT - changes will be overwritten"
   }
 }

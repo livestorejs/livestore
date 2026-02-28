@@ -3,9 +3,9 @@ import { Context, Effect, Layer, Stream, WebChannel } from '@livestore/utils/eff
 import type { MeshNode } from '@livestore/webmesh'
 import { makeMeshNode, WebmeshSchema } from '@livestore/webmesh'
 
-import type * as SharedWorkerSchema from './schema.js'
+import type * as SharedWorkerSchema from './schema.ts'
 
-export * as Schema from './schema.js'
+export * as Schema from './schema.ts'
 
 export class CacheService extends Context.Tag('@livestore/devtools-web-common:CacheService')<
   CacheService,
@@ -30,7 +30,7 @@ export const CreateConnection = ({ from, port }: typeof SharedWorkerSchema.Creat
 
       yield* node.addEdge({ target: from, edgeChannel: messagePortChannel, replaceIfExists: true })
 
-      if (LS_DEV) {
+      if (LS_DEV === true) {
         yield* Effect.logDebug(`@livestore/devtools-web-common: accepted edge: ${node.nodeName} ← ${from}`)
       }
 

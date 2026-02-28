@@ -1,4 +1,9 @@
+# Generated file - DO NOT EDIT
+# Source: ci.yml.genie.ts
+
 name: ci
+
+run-name: "${{ github.event.pull_request.title || format('Push to {0}', github.ref_name) }} (${{ github.event.pull_request.head.sha || github.sha }})"
 
 permissions:
   id-token: write
@@ -6,276 +11,680 @@ permissions:
 
 on:
   push:
-    branches:
-      - main  # Only run on pushes to main
-  pull_request:
-    branches: ['**']  # Run on PRs targeting any branch
+    branches: [main, dev]
+  pull_request: {}
 
 env:
-  GITHUB_BRANCH_NAME: ${{ github.head_ref || github.ref_name }}
+  GITHUB_BRANCH_NAME: '${{ github.head_ref || github.ref_name }}'
+  CACHIX_AUTH_TOKEN: '${{ secrets.CACHIX_AUTH_TOKEN }}'
+  FORCE_SETUP: '1'
+  CI: 'true'
 
 jobs:
   lint:
-    strategy:
-      matrix:
-        os: [ubuntu-latest]
-    runs-on: ${{ matrix.os }}
+    runs-on: [namespace-profile-linux-x86-64, 'namespace-features:github.run-id=${{ github.run_id }}']
+    defaults:
+      run:
+        shell: bash
     steps:
       - uses: actions/checkout@v4
-      - name: Install Determinate Nix
+      - name: Install Nix
         uses: DeterminateSystems/determinate-nix-action@v3
-      - uses: DeterminateSystems/flakehub-cache-action@main
-      - uses: HatsuneMiku3939/direnv-action@v1
-        timeout-minutes: 5
-      - run: pnpm install
-      - run: pnpm build:ts
-      - run: mono lint
-
-  test:
-    strategy:
-      matrix:
-        os: [ubuntu-latest]
-    runs-on: ${{ matrix.os }}
+        with:
+          extra-conf: |
+            extra-substituters = https://devenv.cachix.org
+            extra-trusted-public-keys = devenv.cachix.org-1:w1cLUi8dv3hnoSPGAuibQv+f9TZLr6cv/Hm9XgU50cw=
+            access-tokens = github.com=${{ github.token }}
+            extra-substituters = https://cache.nixos.org
+            extra-trusted-public-keys = cache.nixos.org-1:6NCHdD59X431o0gWypbMrAURkbJ16ZPMQFGspcDShjY=
+      - name: Enable Cachix cache
+        uses: cachix/cachix-action@v16
+        with:
+          name: livestore
+          authToken: '${{ env.CACHIX_AUTH_TOKEN }}'
+      - name: Install megarepo CLI
+        run: 'nix profile install github:overengineeringstudio/effect-utils#megarepo'
+        shell: bash
+      - name: Sync megarepo dependencies
+        run: mr sync --frozen
+        shell: bash
+      - name: Install devenv if needed
+        run: 'command -v devenv > /dev/null || nix profile install "github:cachix/devenv/$(jq -r .nodes.devenv.locked.rev devenv.lock)"'
+        shell: bash
+      - name: Validate Nix store
+        run: |
+          if devenv shell -- true > /dev/null 2>&1; then
+            echo "Nix store OK"
+          else
+            echo "::warning::Nix store validation failed, repairing..."
+            nix-store --verify --check-contents --repair 2>&1 | tail -20
+            rm -rf ~/.cache/nix/eval-cache-*
+            devenv shell -- true
+          fi
+        shell: bash
+      - run: 'devenv tasks run lint:full:with-megarepo-check --mode before'
+  type-check:
+    runs-on: [namespace-profile-linux-x86-64, 'namespace-features:github.run-id=${{ github.run_id }}']
+    defaults:
+      run:
+        shell: bash
     steps:
       - uses: actions/checkout@v4
-      - name: Install Determinate Nix
+      - name: Install Nix
         uses: DeterminateSystems/determinate-nix-action@v3
-      - uses: DeterminateSystems/flakehub-cache-action@main
-      - uses: HatsuneMiku3939/direnv-action@v1
-        timeout-minutes: 5
-      - run: pnpm install
-      - run: pnpm build:ts
+        with:
+          extra-conf: |
+            extra-substituters = https://devenv.cachix.org
+            extra-trusted-public-keys = devenv.cachix.org-1:w1cLUi8dv3hnoSPGAuibQv+f9TZLr6cv/Hm9XgU50cw=
+            access-tokens = github.com=${{ github.token }}
+            extra-substituters = https://cache.nixos.org
+            extra-trusted-public-keys = cache.nixos.org-1:6NCHdD59X431o0gWypbMrAURkbJ16ZPMQFGspcDShjY=
+      - name: Enable Cachix cache
+        uses: cachix/cachix-action@v16
+        with:
+          name: livestore
+          authToken: '${{ env.CACHIX_AUTH_TOKEN }}'
+      - name: Install megarepo CLI
+        run: 'nix profile install github:overengineeringstudio/effect-utils#megarepo'
+        shell: bash
+      - name: Sync megarepo dependencies
+        run: mr sync --frozen
+        shell: bash
+      - name: Install devenv if needed
+        run: 'command -v devenv > /dev/null || nix profile install "github:cachix/devenv/$(jq -r .nodes.devenv.locked.rev devenv.lock)"'
+        shell: bash
+      - name: Validate Nix store
+        run: |
+          if devenv shell -- true > /dev/null 2>&1; then
+            echo "Nix store OK"
+          else
+            echo "::warning::Nix store validation failed, repairing..."
+            nix-store --verify --check-contents --repair 2>&1 | tail -20
+            rm -rf ~/.cache/nix/eval-cache-*
+            devenv shell -- true
+          fi
+        shell: bash
+      - run: 'devenv tasks run ts:build --mode before'
+  test-unit:
+    runs-on: [namespace-profile-linux-x86-64, 'namespace-features:github.run-id=${{ github.run_id }}']
+    defaults:
+      run:
+        shell: bash
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install Nix
+        uses: DeterminateSystems/determinate-nix-action@v3
+        with:
+          extra-conf: |
+            extra-substituters = https://devenv.cachix.org
+            extra-trusted-public-keys = devenv.cachix.org-1:w1cLUi8dv3hnoSPGAuibQv+f9TZLr6cv/Hm9XgU50cw=
+            access-tokens = github.com=${{ github.token }}
+            extra-substituters = https://cache.nixos.org
+            extra-trusted-public-keys = cache.nixos.org-1:6NCHdD59X431o0gWypbMrAURkbJ16ZPMQFGspcDShjY=
+      - name: Enable Cachix cache
+        uses: cachix/cachix-action@v16
+        with:
+          name: livestore
+          authToken: '${{ env.CACHIX_AUTH_TOKEN }}'
+      - name: Install megarepo CLI
+        run: 'nix profile install github:overengineeringstudio/effect-utils#megarepo'
+        shell: bash
+      - name: Sync megarepo dependencies
+        run: mr sync --frozen
+        shell: bash
+      - name: Install devenv if needed
+        run: 'command -v devenv > /dev/null || nix profile install "github:cachix/devenv/$(jq -r .nodes.devenv.locked.rev devenv.lock)"'
+        shell: bash
+      - name: Validate Nix store
+        run: |
+          if devenv shell -- true > /dev/null 2>&1; then
+            echo "Nix store OK"
+          else
+            echo "::warning::Nix store validation failed, repairing..."
+            nix-store --verify --check-contents --repair 2>&1 | tail -20
+            rm -rf ~/.cache/nix/eval-cache-*
+            devenv shell -- true
+          fi
+        shell: bash
+      - run: 'devenv tasks run test:unit --mode before'
+  test-integration-node-sync:
+    runs-on: [namespace-profile-linux-x86-64, 'namespace-features:github.run-id=${{ github.run_id }}']
+    defaults:
+      run:
+        shell: bash
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install Nix
+        uses: DeterminateSystems/determinate-nix-action@v3
+        with:
+          extra-conf: |
+            extra-substituters = https://devenv.cachix.org
+            extra-trusted-public-keys = devenv.cachix.org-1:w1cLUi8dv3hnoSPGAuibQv+f9TZLr6cv/Hm9XgU50cw=
+            access-tokens = github.com=${{ github.token }}
+            extra-substituters = https://cache.nixos.org
+            extra-trusted-public-keys = cache.nixos.org-1:6NCHdD59X431o0gWypbMrAURkbJ16ZPMQFGspcDShjY=
+      - name: Enable Cachix cache
+        uses: cachix/cachix-action@v16
+        with:
+          name: livestore
+          authToken: '${{ env.CACHIX_AUTH_TOKEN }}'
+      - name: Install megarepo CLI
+        run: 'nix profile install github:overengineeringstudio/effect-utils#megarepo'
+        shell: bash
+      - name: Sync megarepo dependencies
+        run: mr sync --frozen
+        shell: bash
+      - name: Install devenv if needed
+        run: 'command -v devenv > /dev/null || nix profile install "github:cachix/devenv/$(jq -r .nodes.devenv.locked.rev devenv.lock)"'
+        shell: bash
+      - name: Validate Nix store
+        run: |
+          if devenv shell -- true > /dev/null 2>&1; then
+            echo "Nix store OK"
+          else
+            echo "::warning::Nix store validation failed, repairing..."
+            nix-store --verify --check-contents --repair 2>&1 | tail -20
+            rm -rf ~/.cache/nix/eval-cache-*
+            devenv shell -- true
+          fi
+        shell: bash
       - name: Set OTEL_EXPORTER_OTLP_HEADERS environment variable
         env:
-          GRAFANA_CLOUD_OTLP_INSTANCE_ID: 1227256
-          GRAFANA_CLOUD_OTLP_API_KEY: ${{ secrets.GRAFANA_CLOUD_OTLP_API_KEY }}
+          GRAFANA_CLOUD_OTLP_INSTANCE_ID: '1227256'
+          GRAFANA_CLOUD_OTLP_API_KEY: '${{ secrets.GRAFANA_CLOUD_OTLP_API_KEY }}'
         run: |
           echo "OTEL_EXPORTER_OTLP_HEADERS=Authorization=Basic $(echo -n "$GRAFANA_CLOUD_OTLP_INSTANCE_ID:$GRAFANA_CLOUD_OTLP_API_KEY" | base64 -w 0)" >> $GITHUB_ENV
           echo "GRAFANA_ENDPOINT=https://livestore.grafana.net" >> $GITHUB_ENV
           echo "OTEL_EXPORTER_OTLP_ENDPOINT=https://otlp-gateway-prod-us-east-2.grafana.net/otlp" >> $GITHUB_ENV
-      - run: mono test unit
-      - run: mono test integration misc
-      - run: mono test integration todomvc
-      - run: mono test integration node-sync
-      # - run: mono test integration devtools
-      # TODO fix flaky devtools test
-      - run: mono test integration devtools || echo "::warning::Script failed but continuing"
-
+          # Disable in Vite (otherwise CORS issues)
+          echo "VITE_OTEL_EXPORTER_OTLP_ENDPOINT=" >> $GITHUB_ENV
+      - name: Run node-sync integration tests
+        run: 'devenv tasks run test:integration:node-sync:allow-flaky --mode before'
+      - name: Display node-sync logs
+        if: always()
+        run: |
+          if [ -d "tests/integration/tmp/logs" ]; then
+            echo "::group::Node-sync test logs"
+            for log_file in tests/integration/tmp/logs/*.log; do
+              if [ -f "$log_file" ]; then
+                echo "::group::$(basename "$log_file")"
+                cat "$log_file"
+                echo "::endgroup::"
+              fi
+            done
+            echo "::endgroup::"
+          else
+            echo "No log files found"
+          fi
       - uses: actions/upload-artifact@v4
-        if: ${{ !cancelled() }}
+        if: always()
         with:
-          name: playwright-report
+          name: node-sync-logs
+          path: tests/integration/tmp/logs/
+          retention-days: 30
+  test-integration-sync-provider:
+    strategy:
+      matrix:
+        provider:
+          - mock
+          - electric
+          - s2
+          - cf-http-d1
+          - cf-http-do
+          - cf-ws-d1
+          - cf-ws-do
+          - cf-do-rpc-d1
+          - cf-do-rpc-do
+    runs-on: [namespace-profile-linux-x86-64, 'namespace-features:github.run-id=${{ github.run_id }}']
+    defaults:
+      run:
+        shell: bash
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install Nix
+        uses: DeterminateSystems/determinate-nix-action@v3
+        with:
+          extra-conf: |
+            extra-substituters = https://devenv.cachix.org
+            extra-trusted-public-keys = devenv.cachix.org-1:w1cLUi8dv3hnoSPGAuibQv+f9TZLr6cv/Hm9XgU50cw=
+            access-tokens = github.com=${{ github.token }}
+            extra-substituters = https://cache.nixos.org
+            extra-trusted-public-keys = cache.nixos.org-1:6NCHdD59X431o0gWypbMrAURkbJ16ZPMQFGspcDShjY=
+      - name: Enable Cachix cache
+        uses: cachix/cachix-action@v16
+        with:
+          name: livestore
+          authToken: '${{ env.CACHIX_AUTH_TOKEN }}'
+      - name: Install megarepo CLI
+        run: 'nix profile install github:overengineeringstudio/effect-utils#megarepo'
+        shell: bash
+      - name: Sync megarepo dependencies
+        run: mr sync --frozen
+        shell: bash
+      - name: Install devenv if needed
+        run: 'command -v devenv > /dev/null || nix profile install "github:cachix/devenv/$(jq -r .nodes.devenv.locked.rev devenv.lock)"'
+        shell: bash
+      - name: Validate Nix store
+        run: |
+          if devenv shell -- true > /dev/null 2>&1; then
+            echo "Nix store OK"
+          else
+            echo "::warning::Nix store validation failed, repairing..."
+            nix-store --verify --check-contents --repair 2>&1 | tail -20
+            rm -rf ~/.cache/nix/eval-cache-*
+            devenv shell -- true
+          fi
+        shell: bash
+      - name: Set OTEL_EXPORTER_OTLP_HEADERS environment variable
+        env:
+          GRAFANA_CLOUD_OTLP_INSTANCE_ID: '1227256'
+          GRAFANA_CLOUD_OTLP_API_KEY: '${{ secrets.GRAFANA_CLOUD_OTLP_API_KEY }}'
+        run: |
+          echo "OTEL_EXPORTER_OTLP_HEADERS=Authorization=Basic $(echo -n "$GRAFANA_CLOUD_OTLP_INSTANCE_ID:$GRAFANA_CLOUD_OTLP_API_KEY" | base64 -w 0)" >> $GITHUB_ENV
+          echo "GRAFANA_ENDPOINT=https://livestore.grafana.net" >> $GITHUB_ENV
+          echo "OTEL_EXPORTER_OTLP_ENDPOINT=https://otlp-gateway-prod-us-east-2.grafana.net/otlp" >> $GITHUB_ENV
+          # Disable in Vite (otherwise CORS issues)
+          echo "VITE_OTEL_EXPORTER_OTLP_ENDPOINT=" >> $GITHUB_ENV
+      - name: Start s2-lite container
+        if: "${{ matrix.provider == 's2' }}"
+        run: |
+          docker run -d --name s2-lite -p 4566:80 ghcr.io/s2-streamstore/s2 lite
+          # Wait for s2-lite to be ready
+          for i in {1..30}; do
+            if curl -sf http://localhost:4566/ping > /dev/null 2>&1; then
+              echo "s2-lite is ready"
+              break
+            fi
+            echo "Waiting for s2-lite... ($i/30)"
+            sleep 1
+          done
+        shell: bash
+      - name: 'Run sync-provider tests for ${{ matrix.provider }}'
+        run: 'devenv tasks run test:integration:sync-provider:matrix --mode before'
+        env:
+          TEST_SYNC_PROVIDER: '${{ matrix.provider }}'
+  test-integration-playwright:
+    strategy:
+      matrix:
+        suite: [misc, todomvc, devtools]
+    runs-on: [namespace-profile-linux-x86-64, 'namespace-features:github.run-id=${{ github.run_id }}']
+    defaults:
+      run:
+        shell: bash
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install Nix
+        uses: DeterminateSystems/determinate-nix-action@v3
+        with:
+          extra-conf: |
+            extra-substituters = https://devenv.cachix.org
+            extra-trusted-public-keys = devenv.cachix.org-1:w1cLUi8dv3hnoSPGAuibQv+f9TZLr6cv/Hm9XgU50cw=
+            access-tokens = github.com=${{ github.token }}
+            extra-substituters = https://cache.nixos.org
+            extra-trusted-public-keys = cache.nixos.org-1:6NCHdD59X431o0gWypbMrAURkbJ16ZPMQFGspcDShjY=
+      - name: Enable Cachix cache
+        uses: cachix/cachix-action@v16
+        with:
+          name: livestore
+          authToken: '${{ env.CACHIX_AUTH_TOKEN }}'
+      - name: Install megarepo CLI
+        run: 'nix profile install github:overengineeringstudio/effect-utils#megarepo'
+        shell: bash
+      - name: Sync megarepo dependencies
+        run: mr sync --frozen
+        shell: bash
+      - name: Install devenv if needed
+        run: 'command -v devenv > /dev/null || nix profile install "github:cachix/devenv/$(jq -r .nodes.devenv.locked.rev devenv.lock)"'
+        shell: bash
+      - name: Validate Nix store
+        run: |
+          if devenv shell -- true > /dev/null 2>&1; then
+            echo "Nix store OK"
+          else
+            echo "::warning::Nix store validation failed, repairing..."
+            nix-store --verify --check-contents --repair 2>&1 | tail -20
+            rm -rf ~/.cache/nix/eval-cache-*
+            devenv shell -- true
+          fi
+        shell: bash
+      - name: Set OTEL_EXPORTER_OTLP_HEADERS environment variable
+        env:
+          GRAFANA_CLOUD_OTLP_INSTANCE_ID: '1227256'
+          GRAFANA_CLOUD_OTLP_API_KEY: '${{ secrets.GRAFANA_CLOUD_OTLP_API_KEY }}'
+        run: |
+          echo "OTEL_EXPORTER_OTLP_HEADERS=Authorization=Basic $(echo -n "$GRAFANA_CLOUD_OTLP_INSTANCE_ID:$GRAFANA_CLOUD_OTLP_API_KEY" | base64 -w 0)" >> $GITHUB_ENV
+          echo "GRAFANA_ENDPOINT=https://livestore.grafana.net" >> $GITHUB_ENV
+          echo "OTEL_EXPORTER_OTLP_ENDPOINT=https://otlp-gateway-prod-us-east-2.grafana.net/otlp" >> $GITHUB_ENV
+          # Disable in Vite (otherwise CORS issues)
+          echo "VITE_OTEL_EXPORTER_OTLP_ENDPOINT=" >> $GITHUB_ENV
+      - name: Run integration tests
+        env:
+          PLAYWRIGHT_SUITE: '${{ matrix.suite }}'
+        run: 'devenv tasks run test:integration:playwright:suite --mode before'
+      - uses: actions/upload-artifact@v4
+        if: '${{ !cancelled() }}'
+        with:
+          name: 'playwright-report-${{ matrix.suite }}'
           path: tests/integration/playwright-report/
           retention-days: 30
-      - name: "Upload trace"
-        if: ${{ !cancelled() }}
+      - name: Upload trace
+        if: '${{ !cancelled() }}'
         env:
-          NETLIFY_AUTH_TOKEN: ${{ secrets.NETLIFY_AUTH_TOKEN }}
-          # TODO surface deploy url in github UI via environments
-        run: |
-          if [ -n "$NETLIFY_AUTH_TOKEN" ]; then
-            bunx netlify-cli deploy --no-build --dir=tests/integration/playwright-report --site livestore-ci --filter @local/tests-integration
-          else
-            echo "Skipping Netlify deploy: NETLIFY_AUTH_TOKEN not set"
-          fi
+          NETLIFY_AUTH_TOKEN: '${{ secrets.NETLIFY_AUTH_TOKEN }}'
+          PLAYWRIGHT_SUITE: '${{ matrix.suite }}'
+        run: 'devenv tasks run test:integration:playwright:upload-trace --mode before'
   perf-test:
-    runs-on: ubuntu-24.04 # Prefer a specific version for more consistent performance measurements between runs
+    runs-on: [namespace-profile-linux-x86-64, 'namespace-features:github.run-id=${{ github.run_id }}']
+    defaults:
+      run:
+        shell: bash
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
         with:
-          ref: ${{ github.event.pull_request.head.sha || github.sha }} # See https://github.com/orgs/community/discussions/26325
-      - name: Install Determinate Nix
+          ref: '${{ github.event.pull_request.head.sha || github.sha }}'
+      - name: Install Nix
         uses: DeterminateSystems/determinate-nix-action@v3
-      - name: Use FlakeHub Cache for Nix binaries
-        uses: DeterminateSystems/flakehub-cache-action@main
-      - name: Load environment with direnv
-        uses: HatsuneMiku3939/direnv-action@v1
-        timeout-minutes: 5
-      - run: pnpm install
-      - run: pnpm build:ts
+        with:
+          extra-conf: |
+            extra-substituters = https://devenv.cachix.org
+            extra-trusted-public-keys = devenv.cachix.org-1:w1cLUi8dv3hnoSPGAuibQv+f9TZLr6cv/Hm9XgU50cw=
+            access-tokens = github.com=${{ github.token }}
+            extra-substituters = https://cache.nixos.org
+            extra-trusted-public-keys = cache.nixos.org-1:6NCHdD59X431o0gWypbMrAURkbJ16ZPMQFGspcDShjY=
+      - name: Enable Cachix cache
+        uses: cachix/cachix-action@v16
+        with:
+          name: livestore
+          authToken: '${{ env.CACHIX_AUTH_TOKEN }}'
+      - name: Install megarepo CLI
+        run: 'nix profile install github:overengineeringstudio/effect-utils#megarepo'
+        shell: bash
+      - name: Sync megarepo dependencies
+        run: mr sync --frozen
+        shell: bash
+      - name: Install devenv if needed
+        run: 'command -v devenv > /dev/null || nix profile install "github:cachix/devenv/$(jq -r .nodes.devenv.locked.rev devenv.lock)"'
+        shell: bash
+      - name: Validate Nix store
+        run: |
+          if devenv shell -- true > /dev/null 2>&1; then
+            echo "Nix store OK"
+          else
+            echo "::warning::Nix store validation failed, repairing..."
+            nix-store --verify --check-contents --repair 2>&1 | tail -20
+            rm -rf ~/.cache/nix/eval-cache-*
+            devenv shell -- true
+          fi
+        shell: bash
       - name: Set OTEL_EXPORTER_OTLP_HEADERS environment variable
         env:
-          GRAFANA_CLOUD_OTLP_INSTANCE_ID: 1227256
-          GRAFANA_CLOUD_OTLP_API_KEY: ${{ secrets.GRAFANA_CLOUD_OTLP_API_KEY }}
-        run: echo "OTEL_EXPORTER_OTLP_HEADERS=Authorization=Basic $(echo -n "$GRAFANA_CLOUD_OTLP_INSTANCE_ID:$GRAFANA_CLOUD_OTLP_API_KEY" | base64 -w 0)" >> $GITHUB_ENV
+          GRAFANA_CLOUD_OTLP_INSTANCE_ID: '1227256'
+          GRAFANA_CLOUD_OTLP_API_KEY: '${{ secrets.GRAFANA_CLOUD_OTLP_API_KEY }}'
+        run: |
+          echo "OTEL_EXPORTER_OTLP_HEADERS=Authorization=Basic $(echo -n "$GRAFANA_CLOUD_OTLP_INSTANCE_ID:$GRAFANA_CLOUD_OTLP_API_KEY" | base64 -w 0)" >> $GITHUB_ENV
+          echo "GRAFANA_ENDPOINT=https://livestore.grafana.net" >> $GITHUB_ENV
+          echo "OTEL_EXPORTER_OTLP_ENDPOINT=https://otlp-gateway-prod-us-east-2.grafana.net/otlp" >> $GITHUB_ENV
+          # Disable in Vite (otherwise CORS issues)
+          echo "VITE_OTEL_EXPORTER_OTLP_ENDPOINT=" >> $GITHUB_ENV
       - name: Run performance tests
-        run: pnpm test:perf
+        run: 'devenv tasks run test:perf --mode before'
         env:
-          COMMIT_SHA: ${{ github.event.pull_request.head.sha || github.sha }} # See https://github.com/orgs/community/discussions/26325
-          GRAFANA_ENDPOINT: https://livestore.grafana.net
-          OTEL_EXPORTER_OTLP_ENDPOINT: https://otlp-gateway-prod-us-east-2.grafana.net/otlp
-
+          COMMIT_SHA: '${{ github.event.pull_request.head.sha || github.sha }}'
+          GRAFANA_ENDPOINT: 'https://livestore.grafana.net'
+          OTEL_EXPORTER_OTLP_ENDPOINT: 'https://otlp-gateway-prod-us-east-2.grafana.net/otlp'
+  wa-sqlite-test:
+    runs-on: [namespace-profile-linux-x86-64, 'namespace-features:github.run-id=${{ github.run_id }}']
+    defaults:
+      run:
+        shell: bash
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install Nix
+        uses: DeterminateSystems/determinate-nix-action@v3
+        with:
+          extra-conf: |
+            extra-substituters = https://devenv.cachix.org
+            extra-trusted-public-keys = devenv.cachix.org-1:w1cLUi8dv3hnoSPGAuibQv+f9TZLr6cv/Hm9XgU50cw=
+            access-tokens = github.com=${{ github.token }}
+            extra-substituters = https://cache.nixos.org
+            extra-trusted-public-keys = cache.nixos.org-1:6NCHdD59X431o0gWypbMrAURkbJ16ZPMQFGspcDShjY=
+      - name: Enable Cachix cache
+        uses: cachix/cachix-action@v16
+        with:
+          name: livestore
+          authToken: '${{ env.CACHIX_AUTH_TOKEN }}'
+      - name: Install megarepo CLI
+        run: 'nix profile install github:overengineeringstudio/effect-utils#megarepo'
+        shell: bash
+      - name: Sync megarepo dependencies
+        run: mr sync --frozen
+        shell: bash
+      - name: Install devenv if needed
+        run: 'command -v devenv > /dev/null || nix profile install "github:cachix/devenv/$(jq -r .nodes.devenv.locked.rev devenv.lock)"'
+        shell: bash
+      - name: Validate Nix store
+        run: |
+          if devenv shell -- true > /dev/null 2>&1; then
+            echo "Nix store OK"
+          else
+            echo "::warning::Nix store validation failed, repairing..."
+            nix-store --verify --check-contents --repair 2>&1 | tail -20
+            rm -rf ~/.cache/nix/eval-cache-*
+            devenv shell -- true
+          fi
+        shell: bash
+      - name: Set OTEL_EXPORTER_OTLP_HEADERS environment variable
+        env:
+          GRAFANA_CLOUD_OTLP_INSTANCE_ID: '1227256'
+          GRAFANA_CLOUD_OTLP_API_KEY: '${{ secrets.GRAFANA_CLOUD_OTLP_API_KEY }}'
+        run: |
+          echo "OTEL_EXPORTER_OTLP_HEADERS=Authorization=Basic $(echo -n "$GRAFANA_CLOUD_OTLP_INSTANCE_ID:$GRAFANA_CLOUD_OTLP_API_KEY" | base64 -w 0)" >> $GITHUB_ENV
+          echo "GRAFANA_ENDPOINT=https://livestore.grafana.net" >> $GITHUB_ENV
+          echo "OTEL_EXPORTER_OTLP_ENDPOINT=https://otlp-gateway-prod-us-east-2.grafana.net/otlp" >> $GITHUB_ENV
+          # Disable in Vite (otherwise CORS issues)
+          echo "VITE_OTEL_EXPORTER_OTLP_ENDPOINT=" >> $GITHUB_ENV
+      - name: Build wa-sqlite
+        run: 'devenv tasks run test:integration:wa-sqlite:build --mode before'
+      - name: Run wa-sqlite tests
+        run: 'devenv tasks run test:integration:wa-sqlite --mode before'
+        env:
+          COMMIT_SHA: '${{ github.event.pull_request.head.sha || github.sha }}'
+          GRAFANA_ENDPOINT: 'https://livestore.grafana.net'
+          OTEL_EXPORTER_OTLP_ENDPOINT: 'https://otlp-gateway-prod-us-east-2.grafana.net/otlp'
   publish-snapshot-version:
     if: github.event.pull_request.head.repo.fork != true
-    strategy:
-      matrix:
-        os: [ubuntu-latest]
-    runs-on: ${{ matrix.os }}
-    needs: [test]
+    runs-on: ubuntu-24.04
+    needs: [test-unit, test-integration-node-sync, test-integration-sync-provider, test-integration-playwright]
+    defaults:
+      run:
+        shell: bash
     steps:
       - uses: actions/checkout@v4
-      - name: Install Determinate Nix
+      - name: Install Nix
         uses: DeterminateSystems/determinate-nix-action@v3
-      - uses: DeterminateSystems/flakehub-cache-action@main
-      - uses: HatsuneMiku3939/direnv-action@v1
-        timeout-minutes: 5
-      - run: pnpm install
-      - run: pnpm build:ts
-      - name: Configure NPM authentication
+        with:
+          extra-conf: |
+            extra-substituters = https://devenv.cachix.org
+            extra-trusted-public-keys = devenv.cachix.org-1:w1cLUi8dv3hnoSPGAuibQv+f9TZLr6cv/Hm9XgU50cw=
+            access-tokens = github.com=${{ github.token }}
+            extra-substituters = https://cache.nixos.org
+            extra-trusted-public-keys = cache.nixos.org-1:6NCHdD59X431o0gWypbMrAURkbJ16ZPMQFGspcDShjY=
+      - name: Enable Cachix cache
+        uses: cachix/cachix-action@v16
+        with:
+          name: livestore
+          authToken: '${{ env.CACHIX_AUTH_TOKEN }}'
+      - name: Install megarepo CLI
+        run: 'nix profile install github:overengineeringstudio/effect-utils#megarepo'
+        shell: bash
+      - name: Sync megarepo dependencies
+        run: mr sync --frozen
+        shell: bash
+      - name: Install devenv if needed
+        run: 'command -v devenv > /dev/null || nix profile install "github:cachix/devenv/$(jq -r .nodes.devenv.locked.rev devenv.lock)"'
+        shell: bash
+      - name: Validate Nix store
         run: |
-          echo "//registry.npmjs.org/:_authToken=${NPM_TOKEN}" >> ~/.npmrc
+          if devenv shell -- true > /dev/null 2>&1; then
+            echo "Nix store OK"
+          else
+            echo "::warning::Nix store validation failed, repairing..."
+            nix-store --verify --check-contents --repair 2>&1 | tail -20
+            rm -rf ~/.cache/nix/eval-cache-*
+            devenv shell -- true
+          fi
+        shell: bash
+      - run: 'devenv tasks run release:snapshot:git-sha --mode before'
         env:
-          NPM_TOKEN: ${{ secrets.NPM_TOKEN }}
-      - run: mono release snapshot --git-sha=${{ github.sha }}
-
-  generate-examples-standalone:
-    strategy:
-      matrix:
-        os: [ubuntu-latest]
-    runs-on: ${{ matrix.os }}
-    steps:
-      - uses: actions/checkout@v4
-      - name: Install Determinate Nix
-        uses: DeterminateSystems/determinate-nix-action@v3
-      - uses: DeterminateSystems/flakehub-cache-action@main
-      - uses: HatsuneMiku3939/direnv-action@v1
-        timeout-minutes: 5
-      - run: pnpm install
-      - run: pnpm build:ts
-      - run: mono examples sync --direction src-to-standalone
-
+          GIT_SHA: '${{ github.sha }}'
   build-and-deploy-examples-src:
-    strategy:
-      matrix:
-        os: [ubuntu-latest]
-    runs-on: ${{ matrix.os }}
+    runs-on: [namespace-profile-linux-x86-64, 'namespace-features:github.run-id=${{ github.run_id }}']
+    defaults:
+      run:
+        shell: bash
     steps:
       - uses: actions/checkout@v4
-      - name: Install Determinate Nix
+      - name: Install Nix
         uses: DeterminateSystems/determinate-nix-action@v3
-      - uses: DeterminateSystems/flakehub-cache-action@main
-      - uses: HatsuneMiku3939/direnv-action@v1
-        timeout-minutes: 5
-      - run: pnpm install
-      - run: pnpm build:ts
-      - run: |
-          mono examples deploy \
-            --prod=${{ github.ref == 'refs/heads/main' && 1 || 0 }} \
-            --alias=snapshot-$(git rev-parse --short HEAD)
+        with:
+          extra-conf: |
+            extra-substituters = https://devenv.cachix.org
+            extra-trusted-public-keys = devenv.cachix.org-1:w1cLUi8dv3hnoSPGAuibQv+f9TZLr6cv/Hm9XgU50cw=
+            access-tokens = github.com=${{ github.token }}
+            extra-substituters = https://cache.nixos.org
+            extra-trusted-public-keys = cache.nixos.org-1:6NCHdD59X431o0gWypbMrAURkbJ16ZPMQFGspcDShjY=
+      - name: Enable Cachix cache
+        uses: cachix/cachix-action@v16
+        with:
+          name: livestore
+          authToken: '${{ env.CACHIX_AUTH_TOKEN }}'
+      - name: Install megarepo CLI
+        run: 'nix profile install github:overengineeringstudio/effect-utils#megarepo'
+        shell: bash
+      - name: Sync megarepo dependencies
+        run: mr sync --frozen
+        shell: bash
+      - name: Install devenv if needed
+        run: 'command -v devenv > /dev/null || nix profile install "github:cachix/devenv/$(jq -r .nodes.devenv.locked.rev devenv.lock)"'
+        shell: bash
+      - name: Validate Nix store
+        run: |
+          if devenv shell -- true > /dev/null 2>&1; then
+            echo "Nix store OK"
+          else
+            echo "::warning::Nix store validation failed, repairing..."
+            nix-store --verify --check-contents --repair 2>&1 | tail -20
+            rm -rf ~/.cache/nix/eval-cache-*
+            devenv shell -- true
+          fi
+        shell: bash
+      - name: Install examples dependencies
+        run: 'devenv tasks run examples:install --mode before'
+      - name: Build examples
+        run: 'devenv tasks run examples:build:src --mode before'
+      - name: Test examples
+        run: 'devenv tasks run examples:test --mode before'
+      - name: Deploy examples to Cloudflare
+        if: github.event.pull_request.head.repo.fork != true
+        run: 'devenv tasks run examples:deploy --mode before'
         env:
-          NETLIFY_AUTH_TOKEN: ${{ secrets.NETLIFY_AUTH_TOKEN }}
-          VITE_LIVESTORE_SYNC_URL: 'https://websocket-server.schickling.workers.dev'
-
+          CLOUDFLARE_API_TOKEN: '${{ secrets.CLOUDFLARE_API_TOKEN }}'
+          CLOUDFLARE_ACCOUNT_ID: '${{ secrets.CLOUDFLARE_ACCOUNT_ID }}'
   build-deploy-docs:
-    strategy:
-      matrix:
-        os: [ubuntu-latest]
-    runs-on: ${{ matrix.os }}
+    runs-on: [namespace-profile-linux-x86-64, 'namespace-features:github.run-id=${{ github.run_id }}']
+    defaults:
+      run:
+        shell: bash
     steps:
       - uses: actions/checkout@v4
-      - name: Install Determinate Nix
+      - name: Install Nix
         uses: DeterminateSystems/determinate-nix-action@v3
-      - uses: DeterminateSystems/flakehub-cache-action@main
-      - uses: HatsuneMiku3939/direnv-action@v1
-        timeout-minutes: 5
-      - run: pnpm install
-      - run: pnpm build:ts # Needed for starlight-typedoc
-      - run: mono docs build --api-docs
-      - run: mono docs deploy
+        with:
+          extra-conf: |
+            extra-substituters = https://devenv.cachix.org
+            extra-trusted-public-keys = devenv.cachix.org-1:w1cLUi8dv3hnoSPGAuibQv+f9TZLr6cv/Hm9XgU50cw=
+            access-tokens = github.com=${{ github.token }}
+            extra-substituters = https://cache.nixos.org
+            extra-trusted-public-keys = cache.nixos.org-1:6NCHdD59X431o0gWypbMrAURkbJ16ZPMQFGspcDShjY=
+      - name: Enable Cachix cache
+        uses: cachix/cachix-action@v16
+        with:
+          name: livestore
+          authToken: '${{ env.CACHIX_AUTH_TOKEN }}'
+      - name: Install megarepo CLI
+        run: 'nix profile install github:overengineeringstudio/effect-utils#megarepo'
+        shell: bash
+      - name: Sync megarepo dependencies
+        run: mr sync --frozen
+        shell: bash
+      - name: Install devenv if needed
+        run: 'command -v devenv > /dev/null || nix profile install "github:cachix/devenv/$(jq -r .nodes.devenv.locked.rev devenv.lock)"'
+        shell: bash
+      - name: Validate Nix store
+        run: |
+          if devenv shell -- true > /dev/null 2>&1; then
+            echo "Nix store OK"
+          else
+            echo "::warning::Nix store validation failed, repairing..."
+            nix-store --verify --check-contents --repair 2>&1 | tail -20
+            rm -rf ~/.cache/nix/eval-cache-*
+            devenv shell -- true
+          fi
+        shell: bash
+      - name: Build docs snippets
+        run: 'devenv tasks run docs:build:phase:snippets --mode before'
+      - name: Build docs diagrams
+        run: 'devenv tasks run docs:build:phase:diagrams --mode before'
+      - name: Build Astro docs bundle
+        run: 'devenv tasks run docs:build:phase:astro --mode before'
+      - name: Collect docs build diagnostics on failure
+        if: '${{ failure() }}'
+        run: 'devenv tasks run docs:build:diagnostics --mode before'
+      - name: Upload docs build logs
+        if: '${{ always() }}'
+        uses: actions/upload-artifact@v4
+        with:
+          name: docs-build-logs
+          path: tmp/ci-docs/
+          retention-days: 14
+      - name: Deploy docs
+        if: "${{ success() && (github.event_name != 'pull_request' || github.event.pull_request.head.repo.fork != true) }}"
+        run: 'devenv tasks run docs:deploy --mode before'
         env:
-          NETLIFY_AUTH_TOKEN: ${{ secrets.NETLIFY_AUTH_TOKEN }}
-
-  # NOTE for the example jobs below we're not using the Nix setup but instead are just using bun directly
-  # to simulate a simple user-facing setup
-
-  build-example-tiged-todomvc:
+          NETLIFY_AUTH_TOKEN: '${{ secrets.NETLIFY_AUTH_TOKEN }}'
+  build-example-create:
     if: github.event.pull_request.head.repo.fork != true
+    needs: publish-snapshot-version
     strategy:
       matrix:
-        os: [ubuntu-latest]
-    runs-on: ${{ matrix.os }}
-    needs: [publish-snapshot-version]
+        app: [web-todomvc, web-linearlite, expo-linearlite]
+    runs-on: [namespace-profile-linux-x86-64, 'namespace-features:github.run-id=${{ github.run_id }}']
+    env:
+      APP_PATH: 'examples/${{ matrix.app }}'
+      SNAPSHOT_VERSION: '0.0.0-snapshot-${{ github.sha }}'
     steps:
-      - uses: oven-sh/setup-bun@v2
-      # TODO bring back once repo is public
-      # - run: bunx tiged https://github.com/livestorejs/livestore/examples/todomvc#${{ github.sha }} example
-      - uses: actions/checkout@v4
+      - name: Checkout repository
+        uses: actions/checkout@v4
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
         with:
-          path: example-repo
-      - run: cp -r example-repo/examples/standalone/web-todomvc example
-      - name: Add snapshot resolution to package.json
+          version: latest
+          standalone: true
+      - name: Get app's workspace @livestore dependencies
         run: |
-          for pkg in livestore adapter-web peer-deps react common utils; do
-            jq --arg pkg "$pkg" --arg sha "${{ github.sha }}" '.resolutions["@livestore/" + $pkg] = "0.0.0-snapshot-" + $sha' package.json > package.json.tmp && mv package.json.tmp package.json
-          done
-        working-directory: example
-      - uses: nick-fields/retry@v3
-        with:
-          retry_wait_seconds: 10
-          timeout_minutes: 5
-          max_attempts: 2
-          command: cd example && bun install
-      - run: bun run build
-        working-directory: example
-
-  build-example-tiged-linearlite:
-    if: github.event.pull_request.head.repo.fork != true
-    strategy:
-      matrix:
-        os: [ubuntu-latest]
-    runs-on: ${{ matrix.os }}
-    needs: [publish-snapshot-version]
-    steps:
-      - uses: oven-sh/setup-bun@v2
-      # TODO bring back once repo is public
-      # - run: bunx tiged https://github.com/livestorejs/livestore/examples/linearlite#${{ github.sha }} example
-      - uses: actions/checkout@v4
-        with:
-          path: example-repo
-      - run: cp -r example-repo/examples/standalone/web-linearlite example
-      - name: Add snapshot resolution to package.json
+          DEPS=$(jq -r '[(.dependencies // {}), (.devDependencies // {}) | to_entries[] | select(.key | startswith("@livestore/")) | .key] | .[]' ${{ env.APP_PATH }}/package.json | while read dep; do dir="packages/@livestore/${dep#@livestore/}"; [ -d "$dir" ] && echo "$dep"; done | tr '\n' ' ')
+          echo "WORKSPACE_DEPS=$DEPS" >> $GITHUB_ENV
+      - name: Copy example app
+        run: 'pnpm dlx @livestore/cli@${{ env.SNAPSHOT_VERSION }} create --example ${{ matrix.app }} --ref ${{ github.ref }} ${{ runner.temp }}/${{ env.APP_PATH }}'
+      - name: Use snapshot version of workspace dependencies
+        working-directory: '${{ runner.temp }}/${{ env.APP_PATH }}'
         run: |
-          for pkg in livestore adapter-web peer-deps react common utils; do
-            jq --arg pkg "$pkg" --arg sha "${{ github.sha }}" '.resolutions["@livestore/" + $pkg] = "0.0.0-snapshot-" + $sha' package.json > package.json.tmp && mv package.json.tmp package.json
-          done
-        working-directory: example
-      - uses: nick-fields/retry@v3
-        with:
-          retry_wait_seconds: 10
-          timeout_minutes: 5
-          max_attempts: 2
-          command: cd example && bun install
-      - run: bun run build
-        working-directory: example
-
-  build-example-tiged-expo-linearlite:
-    if: github.event.pull_request.head.repo.fork != true
-    strategy:
-      matrix:
-        os: [ubuntu-latest]
-    runs-on: ${{ matrix.os }}
-    needs: [publish-snapshot-version]
-    steps:
-      - uses: oven-sh/setup-bun@v2
-      # TODO bring back once repo is public
-      # - run: bunx tiged https://github.com/livestorejs/livestore/examples/expo-linearlite#${{ github.sha }} example
-      - uses: actions/checkout@v4
-        with:
-          path: example-repo
-      - run: cp -r example-repo/examples/standalone/expo-linearlite example
-      - name: Add snapshot resolution to package.json
-        run: |
-          for pkg in livestore adapter-web peer-deps react common utils; do
-            jq --arg pkg "$pkg" --arg sha "${{ github.sha }}" '.resolutions["@livestore/" + $pkg] = "0.0.0-snapshot-" + $sha' package.json > package.json.tmp && mv package.json.tmp package.json
-          done
-        working-directory: example
-      - uses: nick-fields/retry@v3
-        with:
-          retry_wait_seconds: 10
-          timeout_minutes: 5
-          max_attempts: 2
-          command: cd example && bun install
-      # TODO EAS build
-      # - run: bun run build
-      #   working-directory: example
+          pnpm add $(
+            for dep in $WORKSPACE_DEPS; do
+              echo "$dep@${{ env.SNAPSHOT_VERSION }}"
+            done
+          )
+      - if: "${{ matrix.app != 'expo-linearlite' }}"
+        working-directory: '${{ runner.temp }}/${{ env.APP_PATH }}'
+        run: pnpm build

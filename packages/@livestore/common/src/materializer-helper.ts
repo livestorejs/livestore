@@ -1,17 +1,17 @@
 import { isDevEnv, isNil, isReadonlyArray } from '@livestore/utils'
 import { Hash, Option, Schema } from '@livestore/utils/effect'
 
-import type { SqliteDb } from './adapter-types.js'
-import { SessionIdSymbol } from './adapter-types.js'
-import type { EventDef, Materializer, MaterializerContextQuery, MaterializerResult } from './schema/EventDef.js'
-import type * as LiveStoreEvent from './schema/LiveStoreEvent.js'
-import { getEventDef, type LiveStoreSchema } from './schema/schema.js'
-import type { QueryBuilder } from './schema/state/sqlite/query-builder/api.js'
-import { isQueryBuilder } from './schema/state/sqlite/query-builder/api.js'
-import { getResultSchema } from './schema/state/sqlite/query-builder/impl.js'
-import type { BindValues } from './sql-queries/sql-queries.js'
-import type { ParamsObject, PreparedBindValues } from './util.js'
-import { prepareBindValues } from './util.js'
+import type { SqliteDb } from './adapter-types.ts'
+import { SessionIdSymbol } from './adapter-types.ts'
+import type { EventDef, Materializer, MaterializerContextQuery, MaterializerResult } from './schema/EventDef/mod.ts'
+import type * as LiveStoreEvent from './schema/LiveStoreEvent/mod.ts'
+import type { LiveStoreSchema } from './schema/schema.ts'
+import type { QueryBuilder } from './schema/state/sqlite/query-builder/api.ts'
+import { isQueryBuilder } from './schema/state/sqlite/query-builder/api.ts'
+import { getResultSchema } from './schema/state/sqlite/query-builder/impl.ts'
+import type { BindValues } from './sql-queries/sql-queries.ts'
+import type { ParamsObject, PreparedBindValues } from './util.ts'
+import { prepareBindValues } from './util.ts'
 
 export const getExecStatementsFromMaterializer = ({
   eventDef,
@@ -24,25 +24,24 @@ export const getExecStatementsFromMaterializer = ({
   dbState: SqliteDb
   /** Both encoded and decoded events are supported to reduce the number of times we need to decode/encode */
   event:
-    | {
-        decoded: LiveStoreEvent.AnyDecoded | LiveStoreEvent.PartialAnyDecoded
-        encoded: undefined
-      }
-    | {
-        decoded: undefined
-        encoded: LiveStoreEvent.AnyEncoded | LiveStoreEvent.PartialAnyEncoded
-      }
+    | { decoded: LiveStoreEvent.Client.Decoded; encoded: undefined }
+    | { decoded: undefined; encoded: LiveStoreEvent.Client.Encoded }
 }): ReadonlyArray<{
   statementSql: string
   bindValues: PreparedBindValues
   writeTables: ReadonlySet<string> | undefined
 }> => {
-  const eventArgsDecoded =
-    event.decoded === undefined ? Schema.decodeUnknownSync(eventDef.schema)(event.encoded!.args) : event.decoded.args
+  const eventDecoded =
+    event.decoded === undefined
+      ? {
+          ...event.encoded,
+          args: Schema.decodeUnknownSync(eventDef.schema)(event.encoded.args),
+        }
+      : event.decoded
 
-  const eventArgsEncoded = isNil(event.decoded?.args)
+  const eventArgsEncoded = isNil(event.decoded?.args) === true
     ? undefined
-    : Schema.encodeUnknownSync(eventDef.schema)(event.decoded!.args)
+    : Schema.encodeUnknownSync(eventDef.schema)(event.decoded.args)
 
   const query: MaterializerContextQuery = (
     rawQueryOrQueryBuilder:
@@ -52,7 +51,7 @@ export const getExecStatementsFromMaterializer = ({
         }
       | QueryBuilder.Any,
   ) => {
-    if (isQueryBuilder(rawQueryOrQueryBuilder)) {
+    if (isQueryBuilder(rawQueryOrQueryBuilder) === true) {
       const { query, bindValues } = rawQueryOrQueryBuilder.asSql()
       const rawResults = dbState.select(query, prepareBindValues(bindValues, query))
       const resultSchema = getResultSchema(rawQueryOrQueryBuilder)
@@ -64,11 +63,12 @@ export const getExecStatementsFromMaterializer = ({
   }
 
   const statementResults = fromMaterializerResult(
-    materializer(eventArgsDecoded, {
+    materializer(eventDecoded.args, {
       eventDef,
       query,
       // TODO properly implement this
       currentFacts: new Map(),
+      event: eventDecoded,
     }),
   )
 
@@ -85,9 +85,20 @@ export const getExecStatementsFromMaterializer = ({
 
 export const makeMaterializerHash =
   ({ schema, dbState }: { schema: LiveStoreSchema; dbState: SqliteDb }) =>
-  (event: LiveStoreEvent.AnyEncodedGlobal): Option.Option<number> => {
-    if (isDevEnv()) {
-      const { eventDef, materializer } = getEventDef(schema, event.name)
+  (event: LiveStoreEvent.Client.Encoded): Option.Option<number> => {
+    if (isDevEnv() === true) {
+      // Hashing is only needed during dev-mode diagnostics. Skip work entirely for
+      // unknown events (no definition/materializer) so we do not introduce noisy
+      // warnings while still returning `Option.none()` to disable hash checks.
+      const eventDef = schema.eventsDefsMap.get(event.name)
+      const materializer = schema.state.materializers.get(event.name)
+      if (eventDef === undefined || materializer === undefined) {
+        return Option.none()
+      }
+      // For known events we replay the materializer with the encoded payload and
+      // hash the resulting SQL statements. This lets us cheaply detect
+      // side-effects or logic drift between leader/client materializers without
+      // mutating the underlying state.
       const materializerResults = getExecStatementsFromMaterializer({
         eventDef,
         materializer,
@@ -115,12 +126,12 @@ const fromMaterializerResult = (
   bindValues: BindValues
   writeTables: ReadonlySet<string> | undefined
 }> => {
-  if (isReadonlyArray(materializerResult)) {
+  if (isReadonlyArray(materializerResult) === true) {
     return materializerResult.flatMap(fromMaterializerResult)
   }
-  if (isQueryBuilder(materializerResult)) {
-    const { query, bindValues } = materializerResult.asSql()
-    return [{ sql: query, bindValues: bindValues as BindValues, writeTables: undefined }]
+  if (isQueryBuilder(materializerResult) === true) {
+    const { query, bindValues, usedTables } = materializerResult.asSql()
+    return [{ sql: query, bindValues: bindValues as BindValues, writeTables: usedTables }]
   } else if (typeof materializerResult === 'string') {
     return [{ sql: materializerResult, bindValues: {} as BindValues, writeTables: undefined }]
   } else {
@@ -144,7 +155,7 @@ export const replaceSessionIdSymbol = (
 }
 
 const deepReplaceValue = <S, R>(input: any, searchValue: S, replaceValue: R): void => {
-  if (Array.isArray(input)) {
+  if (Array.isArray(input) === true) {
     for (const i in input) {
       if (input[i] === searchValue) {
         input[i] = replaceValue

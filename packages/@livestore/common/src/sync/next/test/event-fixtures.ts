@@ -1,16 +1,16 @@
 import { Schema } from '@livestore/utils/effect'
 
-import type { EventDef } from '../../../schema/EventDef.js'
-import { defineEvent, defineFacts } from '../../../schema/EventDef.js'
-import * as EventSequenceNumber from '../../../schema/EventSequenceNumber.js'
-import { factsSnapshotForDag, getFactsGroupForEventArgs } from '../facts.js'
-import { historyDagFromNodes } from '../history-dag.js'
-import type { HistoryDagNode } from '../history-dag-common.js'
-import { rootEventNode } from '../history-dag-common.js'
+import type { EventDef } from '../../../schema/EventDef/mod.ts'
+import { defineEvent, defineFacts } from '../../../schema/EventDef/mod.ts'
+import * as EventSequenceNumber from '../../../schema/EventSequenceNumber/mod.ts'
+import { factsSnapshotForDag, getFactsGroupForEventArgs } from '../facts.ts'
+import type { HistoryDagNode } from '../history-dag-common.ts'
+import { rootEventNode } from '../history-dag-common.ts'
+import { historyDagFromNodes } from '../history-dag.ts'
 
 export const printEvent = ({ seqNum, parentSeqNum, factsGroup, ...rest }: HistoryDagNode) => ({
-  seqNum: EventSequenceNumber.toString(seqNum),
-  parentSeqNum: EventSequenceNumber.toString(parentSeqNum),
+  seqNum: EventSequenceNumber.Client.toString(seqNum),
+  parentSeqNum: EventSequenceNumber.Client.toString(parentSeqNum),
   ...rest,
   facts: factsGroup,
 })
@@ -45,7 +45,7 @@ export const events = {
     // {
     facts: ({ id }, currentFacts) =>
       // TODO enable an API along the lines of `map.has(key, value)`
-      currentFacts.has(facts.todoExists(id)) && currentFacts.get(facts.todoIsWriteable(id, true)[0]) === false
+      currentFacts.has(facts.todoExists(id)) === true && currentFacts.get(facts.todoIsWriteable(id, true)[0]) === false
         ? { require: [facts.todoExists(id), facts.todoIsWriteable(id, true)] }
         : { modify: { set: [facts.todoExists(id), facts.todoIsWriteable(id, true), facts.todoTextUpdated(id)] } },
   }),
@@ -140,11 +140,14 @@ export const toEventNodes = (
 ): HistoryDagNode[] => {
   const nodesAcc: HistoryDagNode[] = [rootEventNode]
 
-  let currentEventSequenceNumber: EventSequenceNumber.EventSequenceNumber = EventSequenceNumber.ROOT
+  let currentEventSequenceNumber: EventSequenceNumber.Client.Composite = EventSequenceNumber.Client.ROOT
 
   const eventNodes = partialEvents.map((partialEvent) => {
     const eventDef = eventDefs[partialEvent.name]!
-    const eventNum = EventSequenceNumber.nextPair(currentEventSequenceNumber, eventDef.options.clientOnly).seqNum
+    const eventNum = EventSequenceNumber.Client.nextPair({
+      seqNum: currentEventSequenceNumber,
+      isClient: eventDef.options.clientOnly,
+    }).seqNum
     currentEventSequenceNumber = eventNum
 
     const factsSnapshot = factsSnapshotForDag(historyDagFromNodes(nodesAcc, { skipFactsCheck: true }), undefined)
@@ -216,13 +219,19 @@ export const toEventNodes = (
   return eventNodes
 }
 
-const getParentNum = (eventNum: EventSequenceNumber.EventSequenceNumber): EventSequenceNumber.EventSequenceNumber => {
+const getParentNum = (eventNum: EventSequenceNumber.Client.Composite): EventSequenceNumber.Client.Composite => {
   const globalParentNum = eventNum.global
   const clientParentNum = eventNum.client - 1
 
   if (clientParentNum < 0) {
-    return EventSequenceNumber.make({ global: globalParentNum - 1, client: EventSequenceNumber.clientDefault })
+    return EventSequenceNumber.Client.Composite.make({
+      global: globalParentNum - 1,
+      client: EventSequenceNumber.Client.DEFAULT,
+    })
   }
 
-  return EventSequenceNumber.make({ global: globalParentNum, client: clientParentNum })
+  return EventSequenceNumber.Client.Composite.make({
+    global: globalParentNum,
+    client: clientParentNum,
+  })
 }

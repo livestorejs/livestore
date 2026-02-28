@@ -2,6 +2,7 @@
 
 exports[`FieldDefs > boolean 1`] = `
 {
+  "autoIncrement": false,
   "columnType": "text",
   "default": {
     "_id": "Option",
@@ -15,6 +16,7 @@ exports[`FieldDefs > boolean 1`] = `
 
 exports[`FieldDefs > boolean 2`] = `
 {
+  "autoIncrement": false,
   "columnType": "text",
   "default": {
     "_id": "Option",
@@ -28,6 +30,7 @@ exports[`FieldDefs > boolean 2`] = `
 
 exports[`FieldDefs > boolean 3`] = `
 {
+  "autoIncrement": false,
   "columnType": "text",
   "default": {
     "_id": "Option",
@@ -42,6 +45,7 @@ exports[`FieldDefs > boolean 3`] = `
 
 exports[`FieldDefs > boolean 4`] = `
 {
+  "autoIncrement": false,
   "columnType": "text",
   "default": {
     "_id": "Option",
@@ -56,6 +60,7 @@ exports[`FieldDefs > boolean 4`] = `
 
 exports[`FieldDefs > boolean 5`] = `
 {
+  "autoIncrement": false,
   "columnType": "text",
   "default": {
     "_id": "Option",
@@ -70,6 +75,7 @@ exports[`FieldDefs > boolean 5`] = `
 
 exports[`FieldDefs > boolean 6`] = `
 {
+  "autoIncrement": false,
   "columnType": "text",
   "default": {
     "_id": "Option",
@@ -83,6 +89,7 @@ exports[`FieldDefs > boolean 6`] = `
 
 exports[`FieldDefs > boolean 7`] = `
 {
+  "autoIncrement": false,
   "columnType": "text",
   "default": {
     "_id": "Option",
@@ -97,6 +104,7 @@ exports[`FieldDefs > boolean 7`] = `
 
 exports[`FieldDefs > boolean 8`] = `
 {
+  "autoIncrement": false,
   "columnType": "text",
   "default": {
     "_id": "Option",
@@ -113,6 +121,7 @@ exports[`FieldDefs > boolean 8`] = `
 
 exports[`FieldDefs > boolean 9`] = `
 {
+  "autoIncrement": false,
   "columnType": "text",
   "default": {
     "_id": "Option",
@@ -126,6 +135,7 @@ exports[`FieldDefs > boolean 9`] = `
 
 exports[`FieldDefs > boolean 10`] = `
 {
+  "autoIncrement": false,
   "columnType": "text",
   "default": {
     "_id": "Option",
@@ -139,6 +149,7 @@ exports[`FieldDefs > boolean 10`] = `
 
 exports[`FieldDefs > boolean 11`] = `
 {
+  "autoIncrement": false,
   "columnType": "text",
   "default": {
     "_id": "Option",
@@ -153,6 +164,7 @@ exports[`FieldDefs > boolean 11`] = `
 
 exports[`FieldDefs > boolean 12`] = `
 {
+  "autoIncrement": false,
   "columnType": "text",
   "default": {
     "_id": "Option",
@@ -167,6 +179,7 @@ exports[`FieldDefs > boolean 12`] = `
 
 exports[`FieldDefs > boolean 13`] = `
 {
+  "autoIncrement": false,
   "columnType": "integer",
   "default": {
     "_id": "Option",
@@ -180,6 +193,7 @@ exports[`FieldDefs > boolean 13`] = `
 
 exports[`FieldDefs > boolean 14`] = `
 {
+  "autoIncrement": false,
   "columnType": "integer",
   "default": {
     "_id": "Option",
@@ -193,6 +207,7 @@ exports[`FieldDefs > boolean 14`] = `
 
 exports[`FieldDefs > boolean 15`] = `
 {
+  "autoIncrement": false,
   "columnType": "integer",
   "default": {
     "_id": "Option",

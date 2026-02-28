@@ -9,6 +9,5 @@ export const messageChannel = (shouldYield: Scheduler.Scheduler['shouldYield'] =
 
     messageChannel.port1.postMessage(undefined)
 
-    // eslint-disable-next-line unicorn/prefer-add-event-listener
     messageChannel.port2.onmessage = task
   }, shouldYield)

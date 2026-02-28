@@ -1,1 +1,1 @@
-export { makeAdapter, makeWorkerAdapter } from './client-session/adapter.js'
+export { makeAdapter, makeWorkerAdapter } from './client-session/adapter.ts'

@@ -1,15 +1,20 @@
+/** biome-ignore-all lint/correctness/noEmptyPattern: playwright expects destructuring */
 import fs from 'node:fs'
 import os from 'node:os'
 import path from 'node:path'
 import process from 'node:process'
 
-import type { UnexpectedError } from '@livestore/common'
-import * as Playwright from '@livestore/effect-playwright'
-import { Deferred, Effect, Fiber, Layer, Logger, Schema } from '@livestore/utils/effect'
 import type * as PW from '@playwright/test'
 
+import type { UnknownError } from '@livestore/common'
+import * as Playwright from '@livestore/effect-playwright'
+import { Deferred, Duration, Effect, Fiber, Layer, Logger, Schema } from '@livestore/utils/effect'
+
+// Allow for slowest observed misc test (schema-migration performs 22 OPFS migrations).
+const runAndGetExitTimeoutMs = Duration.minutes(2)
+
 export const runTest =
-  (eff: Effect.Effect<void, unknown, Playwright.BrowserContext>) =>
+  <E>(eff: Effect.Effect<void, E, Playwright.BrowserContext>) =>
   (
     {}: PW.PlaywrightTestArgs & PW.PlaywrightTestOptions & PW.PlaywrightWorkerArgs & PW.PlaywrightWorkerOptions,
     testInfo: PW.TestInfo,
@@ -42,10 +47,7 @@ export const runAndGetExit = <Tag extends string, A>({
 }: {
   importPath: string
   exportName: string
-  schema: Schema.TaggedStruct<
-    Tag,
-    { exit: Schema.Exit<Schema.Schema<A>, typeof UnexpectedError, typeof Schema.Defect> }
-  >
+  schema: Schema.TaggedStruct<Tag, { exit: Schema.Exit<Schema.Schema<A>, typeof UnknownError, typeof Schema.Defect> }>
 }) =>
   Effect.gen(function* () {
     const { browserContext } = yield* Playwright.BrowserContext
@@ -78,8 +80,6 @@ export const runAndGetExit = <Tag extends string, A>({
         }),
       )
 
-      const exit = yield* Deferred.await(deferred).pipe(Effect.timeout(10_000))
-
-      return exit
+      return yield* deferred.pipe(Effect.timeout(runAndGetExitTimeoutMs))
     }).pipe(Effect.raceFirst(Fiber.joinAll([pageConsoleFiber]) as Effect.Effect<never, Playwright.SiteError>))
   })

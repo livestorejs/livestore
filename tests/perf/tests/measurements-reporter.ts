@@ -1,6 +1,8 @@
-/* eslint-disable unicorn/throw-new-error */
 import os from 'node:os'
 
+import type { FullConfig, Reporter, Suite, TestCase, TestResult } from '@playwright/test/reporter'
+
+import { OtelLiveHttp } from '@livestore/utils-dev/node'
 import {
   Config,
   Data,
@@ -14,10 +16,8 @@ import {
   ReadonlyArray,
   Schema,
 } from '@livestore/utils/effect'
-import { OtelLiveHttp } from '@livestore/utils-dev/node'
-import type { FullConfig, Reporter, Suite, TestCase, TestResult } from '@playwright/test/reporter'
 
-import { printConsoleTable } from './print-console-table.js'
+import { printConsoleTable } from './print-console-table.ts'
 
 const MeasurementUnit = Schema.Literal('ms', 'bytes')
 type MeasurementUnit = typeof MeasurementUnit.Type
@@ -198,7 +198,7 @@ export default class MeasurementsReporter implements Reporter {
   private measurementEffects: Effect.Effect<unknown, ParseResult.ParseError | MissingAnnotationError>[] = []
   private runtime = ManagedRuntime.make(OtelLayer)
 
-  onBegin = (config: FullConfig, suite: Suite): void => {
+  onBegin = (_config: FullConfig, suite: Suite): void => {
     this.runtime.runSync(
       Effect.forEach(
         suite.allTests(),
@@ -244,7 +244,7 @@ export default class MeasurementsReporter implements Reporter {
             )
 
             const isCi = yield* Config.boolean('CI').pipe(Config.withDefault(false))
-            if (isCi) {
+            if (isCi === true) {
               const commitSha = yield* Config.string('COMMIT_SHA')
               const refName = yield* Config.string('GITHUB_REF_NAME')
               metric = metric.pipe(
@@ -306,7 +306,7 @@ export default class MeasurementsReporter implements Reporter {
       if (Object.keys(trackedMetricsInGroup).length === 0) continue
 
       const firstTrackedMetric = Object.values(trackedMetricsInGroup)[0]
-      if (!firstTrackedMetric) continue
+      if (firstTrackedMetric == null) continue
 
       const testSuiteTitle = firstTrackedMetric.meta.testSuiteTitle
 
@@ -321,10 +321,10 @@ export default class MeasurementsReporter implements Reporter {
     for (const [testTitle, trackedMetric] of Object.entries(this.metricsByTestTitle)) {
       const path = trackedMetric.meta.testSuiteTitlePath
 
-      if (!result[path]) {
+      if (result[path] == null) {
         result[path] = {}
       }
-      result[path]![testTitle] = trackedMetric
+      result[path][testTitle] = trackedMetric
     }
 
     return result
@@ -356,7 +356,7 @@ export default class MeasurementsReporter implements Reporter {
     const displayUnit = measurementUnitToDisplayUnit[unit]
     const formatValue = unitFormatters[unit]
 
-    if (hasSingleMeasurementPerTestTitle) {
+    if (hasSingleMeasurementPerTestTitle === true) {
       const headers = [testSuiteTitle, `Measurement`]
       const rows = Object.entries(metricStatesResult).map(([testTitle, state]) => {
         return [testTitle, `${formatValue(state.sum)} ${displayUnit}`]

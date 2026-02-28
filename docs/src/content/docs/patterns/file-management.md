@@ -1,5 +1,5 @@
 ---
-title: File Management
+title: File management
 description: How to manage files with LiveStore
 ---
 

@@ -1,12 +1,25 @@
 import * as OtelTracer from '@effect/opentelemetry/Tracer'
-import type { Context, Duration, Stream } from 'effect'
-import { Cause, Deferred, Effect, Fiber, FiberRef, HashSet, Logger, pipe, Scope } from 'effect'
+import {
+  Cause,
+  type Context,
+  Deferred,
+  Duration,
+  Effect,
+  Fiber,
+  FiberRef,
+  HashSet,
+  Logger,
+  pipe,
+  Scope,
+  type Stream,
+} from 'effect'
 import type { UnknownException } from 'effect/Cause'
 import { log } from 'effect/Console'
-import type { LazyArg } from 'effect/Function'
+import { dual, type LazyArg } from 'effect/Function'
+import type { Predicate, Refinement } from 'effect/Predicate'
 
-import { isPromise } from '../index.js'
-import { UnknownError } from './Error.js'
+import { isPromise, objectToString } from '../mod.ts'
+import { UnknownError } from './Error.ts'
 
 export * from 'effect/Effect'
 
@@ -37,18 +50,23 @@ export const scopeWithCloseable = <R, E, A>(
     return yield* fn(scope).pipe(Scope.extend(scope))
   })
 
+export type SyncOrPromiseOrEffect<TResult, TError = never, TContext = never> =
+  | TResult
+  | Promise<TResult>
+  | Effect.Effect<TResult, TError, TContext>
+
 export const tryAll = <Res>(
   fn: () => Res,
-): Res extends Effect.Effect<infer A, infer E, never>
-  ? Effect.Effect<A, E | UnknownException, never>
+): Res extends Effect.Effect<infer A, infer E>
+  ? Effect.Effect<A, E | UnknownException>
   : Res extends Promise<infer A>
-    ? Effect.Effect<A, UnknownException, never>
-    : Effect.Effect<Res, UnknownException, never> =>
+    ? Effect.Effect<A, UnknownException>
+    : Effect.Effect<Res, UnknownException> =>
   Effect.try(() => fn()).pipe(
     Effect.andThen((fnRes) =>
-      Effect.isEffect(fnRes)
+      Effect.isEffect(fnRes) === true
         ? (fnRes as any as Effect.Effect<any>)
-        : isPromise(fnRes)
+        : isPromise(fnRes) === true
           ? Effect.promise(() => fnRes)
           : Effect.succeed(fnRes),
     ),
@@ -57,7 +75,10 @@ export const tryAll = <Res>(
 export const acquireReleaseLog = (label: string) =>
   Effect.acquireRelease(Effect.log(`${label} acquire`), (_, ex) => Effect.log(`${label} release`, ex))
 
-export const addFinalizerLog = (...msgs: any[]) => Effect.addFinalizer(() => Effect.log(...msgs))
+export const addFinalizerLog = (...msgs: any[]) =>
+  Effect.addFinalizer((exit) =>
+    Effect.log(...msgs, exit._tag === 'Success' ? 'with success' : `with failure: ${Cause.pretty(exit.cause)}`),
+  )
 
 export const logBefore =
   (...msgs: any[]) =>
@@ -68,7 +89,7 @@ export const logBefore =
 export const tapCauseLogPretty = <R, E, A>(eff: Effect.Effect<A, E, R>): Effect.Effect<A, E, R> =>
   Effect.tapErrorCause(eff, (cause) =>
     Effect.gen(function* () {
-      if (Cause.isInterruptedOnly(cause)) {
+      if (Cause.isInterruptedOnly(cause) === true) {
         // console.log('interrupted', Cause.pretty(err), err)
         return
       }
@@ -86,14 +107,28 @@ export const tapCauseLogPretty = <R, E, A>(eff: Effect.Effect<A, E, R>): Effect.
     }),
   )
 
+export const ignoreIf: {
+  <E, EB extends E>(
+    refinement: Refinement<NoInfer<E>, EB>,
+  ): <A, R>(self: Effect.Effect<A, E, R>) => Effect.Effect<void, Exclude<E, EB>, R>
+  <E>(predicate: Predicate<NoInfer<E>>): <A, R>(self: Effect.Effect<A, E, R>) => Effect.Effect<void, E, R>
+  <A, E, R, EB extends E>(
+    self: Effect.Effect<A, E, R>,
+    refinement: Refinement<E, EB>,
+  ): Effect.Effect<void, Exclude<E, EB>, R>
+  <A, E, R>(self: Effect.Effect<A, E, R>, predicate: Predicate<E>): Effect.Effect<void, E, R>
+} = dual(2, <A, E, R>(self: Effect.Effect<A, E, R>, predicate: Predicate<E>) =>
+  self.pipe(Effect.catchIf(predicate, () => Effect.void)),
+)
+
 export const eventListener = <TEvent = unknown>(
   target: Stream.EventListener<TEvent>,
   type: string,
-  handler: (event: TEvent) => Effect.Effect<void, never, never>,
+  handler: (event: TEvent) => Effect.Effect<void>,
   options?: { once?: boolean },
 ) =>
   Effect.gen(function* () {
-    const runtime = yield* Effect.runtime<never>()
+    const runtime = yield* Effect.runtime()
 
     const handlerFn = (event: TEvent) => handler(event).pipe(Effect.provide(runtime), Effect.runFork)
 
@@ -111,7 +146,7 @@ export const logWarnIfTakesLongerThan =
   ({ label, duration }: { label: string; duration: Duration.DurationInput }) =>
   <R, E, A>(eff: Effect.Effect<A, E, R>): Effect.Effect<A, E, R> =>
     Effect.gen(function* () {
-      const runtime = yield* Effect.runtime<never>()
+      const runtime = yield* Effect.runtime()
 
       let tookLongerThanTimer = false
 
@@ -119,7 +154,7 @@ export const logWarnIfTakesLongerThan =
         Effect.tap(() => {
           tookLongerThanTimer = true
           // TODO include span info
-          return Effect.logWarning(`${label}: Took longer than ${duration}ms`)
+          return Effect.logWarning(`${label}: Took longer than ${objectToString(duration)}ms`)
         }),
         Effect.provide(runtime),
         Effect.runFork,
@@ -134,13 +169,14 @@ export const logWarnIfTakesLongerThan =
 
             yield* Fiber.interrupt(timeoutFiber)
 
-            if (tookLongerThanTimer) {
+            if (tookLongerThanTimer === true) {
               yield* Effect.logWarning(`${label}: Interrupted after ${end - start}ms`)
             }
           }),
         ),
       )
 
+      // eslint-disable-next-line overeng/explicit-boolean-compare -- mutated in forked fiber; TS can't see the mutation
       if (tookLongerThanTimer) {
         const end = Date.now()
         yield* Effect.logWarning(`${label}: Actual duration: ${end - start}ms`)
@@ -158,7 +194,7 @@ export const logDuration =
       const start = Date.now()
       const res = yield* eff
       const end = Date.now()
-      yield* Effect.log(`${label}: ${end - start}ms`)
+      yield* Effect.log(`${label}: ${Duration.format(end - start)}`)
       return res
     })
 
@@ -206,12 +242,12 @@ export const withPerformanceMeasure =
   (meaureLabel: string) =>
   <R, E, A>(eff: Effect.Effect<A, E, R>): Effect.Effect<A, E, R> =>
     Effect.acquireUseRelease(
-      Effect.sync(() => performance.mark(`${meaureLabel}:start`)),
+      Effect.sync(() => globalThis.performance.mark(`${meaureLabel}:start`)),
       () => eff,
       () =>
         Effect.sync(() => {
-          performance.mark(`${meaureLabel}:end`)
-          performance.measure(meaureLabel, `${meaureLabel}:start`, `${meaureLabel}:end`)
+          globalThis.performance.mark(`${meaureLabel}:end`)
+          globalThis.performance.measure(meaureLabel, `${meaureLabel}:start`, `${meaureLabel}:end`)
         }),
     )
 

@@ -1,8 +1,7 @@
-import { EventSequenceNumber } from '../../schema/mod.js'
-import { replacesFacts } from './facts.js'
-import { graphologyDag } from './graphology_.js'
-import type { HistoryDag } from './history-dag-common.js'
-import { emptyHistoryDag } from './history-dag-common.js'
+import { EventSequenceNumber } from '../../schema/mod.ts'
+import { replacesFacts } from './facts.ts'
+import type { HistoryDag } from './history-dag-common.ts'
+import { emptyHistoryDag } from './history-dag-common.ts'
 
 /**
  * Idea:
@@ -17,7 +16,7 @@ export const compactEvents = (inputDag: HistoryDag): { dag: HistoryDag; compacte
   const dag = inputDag.copy()
   const compactedEventCount = 0
 
-  const orderedEventSequenceNumberStrs = graphologyDag.topologicalSort(dag).reverse()
+  const orderedEventSequenceNumberStrs = dag.topologicalNodeIds().toReversed()
 
   // drop root
   orderedEventSequenceNumberStrs.pop()
@@ -30,7 +29,7 @@ export const compactEvents = (inputDag: HistoryDag): { dag: HistoryDag; compacte
     const subDagsForEvent = Array.from(makeSubDagsForEvent(dag, eventNumStr))
     for (const subDag of subDagsForEvent) {
       let shouldRetry = true
-      while (shouldRetry) {
+      while (shouldRetry === true) {
         const subDagsInHistory = findSubDagsInHistory(dag, subDag, eventNumStr)
 
         // console.debug(
@@ -65,7 +64,7 @@ export const compactEvents = (inputDag: HistoryDag): { dag: HistoryDag; compacte
   return { dag, compactedEventCount }
 }
 
-function* makeSubDagsForEvent(inputDag: HistoryDag, eventNumStr: string): Generator<HistoryDag> {
+const makeSubDagsForEvent = function* (inputDag: HistoryDag, eventNumStr: string): Generator<HistoryDag> {
   /** Map from eventNumStr to array of eventNumStrs that are dependencies */
   let nextIterationEls: Map<string, string[]> = new Map([[eventNumStr, []]])
   let previousDag: HistoryDag | undefined
@@ -116,7 +115,7 @@ const findSubDagsInHistory = (
   const subDags: HistoryDag[] = []
   const allOutsideDependencies: string[][] = []
 
-  for (const eventNumStr of graphologyDag.topologicalSort(inputDag)) {
+  for (const eventNumStr of inputDag.topologicalNodeIds()) {
     if (eventNumStr === upToExclEventSequenceNumberStr) {
       break
     }
@@ -132,7 +131,7 @@ const findSubDagsInHistory = (
         allOutsideDependencies.push(outsideDependencies)
       }
 
-      if (outsideDependencies.length === 0 && dagReplacesDag(subDag, targetSubDag)) {
+      if (outsideDependencies.length === 0 && dagReplacesDag(subDag, targetSubDag) === true) {
         subDags.push(subDag)
       } else {
         break
@@ -172,7 +171,7 @@ const dagDependsOnDag = (dagA: HistoryDag, dagB: HistoryDag, inputDag: HistoryDa
     for (const edgeEntryA of inputDag.inboundEdgeEntries(nodeAIdStr)) {
       if (edgeEntryA.attributes.type === 'facts') {
         const depNodeIdStr = edgeEntryA.target
-        if (dagB.hasNode(depNodeIdStr)) {
+        if (dagB.hasNode(depNodeIdStr) === true) {
           return true
         }
       }
@@ -189,8 +188,8 @@ const dagReplacesDag = (dagA: HistoryDag, dagB: HistoryDag): boolean => {
   }
 
   // TODO write tests that covers deterministic order when DAGs have branches
-  const nodeEntriesA = graphologyDag.topologicalSort(dagA).map((nodeId) => dagA.getNodeAttributes(nodeId))
-  const nodeEntriesB = graphologyDag.topologicalSort(dagB).map((nodeId) => dagB.getNodeAttributes(nodeId))
+  const nodeEntriesA = dagA.topologicalNodeIds().map((nodeId) => dagA.getNodeAttributes(nodeId))
+  const nodeEntriesB = dagB.topologicalNodeIds().map((nodeId) => dagB.getNodeAttributes(nodeId))
 
   for (let i = 0; i < nodeEntriesA.length; i++) {
     const nodeA = nodeEntriesA[i]!
@@ -207,14 +206,14 @@ const dagReplacesDag = (dagA: HistoryDag, dagB: HistoryDag): boolean => {
 const removeEvent = (dag: HistoryDag, eventNumStr: string) => {
   // console.debug('removing event', eventNumStr)
   const event = dag.getNodeAttributes(eventNumStr)
-  const parentSeqNumStr = EventSequenceNumber.toString(event.parentSeqNum)
+  const parentSeqNumStr = EventSequenceNumber.Client.toString(event.parentSeqNum)
   const childEdges = dag.outboundEdgeEntries(eventNumStr)
 
   for (const childEdge of childEdges) {
     if (childEdge.attributes.type === 'parent') {
       const childEvent = dag.getNodeAttributes(childEdge.target)
       childEvent.parentSeqNum = { ...event.parentSeqNum }
-      dag.addEdge(parentSeqNumStr, EventSequenceNumber.toString(childEvent.seqNum), { type: 'parent' })
+      dag.addEdge(parentSeqNumStr, EventSequenceNumber.Client.toString(childEvent.seqNum), { type: 'parent' })
     }
   }
 

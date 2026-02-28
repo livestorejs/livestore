@@ -1,7 +1,11 @@
-/* eslint-disable prefer-arrow/prefer-arrow-functions */
+import type * as otel from '@opentelemetry/api'
 
 import {
+  BoundArray,
+  BoundMap,
   type DebugInfo,
+  getDurationMsFromSpan,
+  getStartTimeHighResFromSpan,
   type MutableDebugInfo,
   type PreparedBindValues,
   type PreparedStatement,
@@ -9,19 +13,12 @@ import {
   type SqliteDbChangeset,
   SqliteDbHelper,
   type SqliteDbSession,
-} from '@livestore/common'
-import {
-  BoundArray,
-  BoundMap,
-  getDurationMsFromSpan,
-  getStartTimeHighResFromSpan,
-  sql,
   SqliteError,
+  sql,
 } from '@livestore/common'
 import { isDevEnv, LS_DEV } from '@livestore/utils'
-import type * as otel from '@opentelemetry/api'
 
-import QueryCache from './QueryCache.js'
+import QueryCache from './QueryCache.ts'
 
 export const emptyDebugInfo = (): DebugInfo => ({
   slowQueries: new BoundArray(200),
@@ -68,11 +65,16 @@ export class SqliteDbWrapper implements SqliteDb {
 
     configureSQLite(this)
   }
-  metadata: any
+  get debug() {
+    return this.db.debug
+  }
+  get metadata() {
+    return this.db.metadata
+  }
   prepare(queryStr: string): PreparedStatement {
     return this.db.prepare(queryStr)
   }
-  import(data: Uint8Array<ArrayBufferLike> | SqliteDb<any, any>) {
+  import(data: Uint8Array<ArrayBuffer> | SqliteDb<any, any>) {
     return this.db.import(data)
   }
   close(): void {
@@ -84,7 +86,7 @@ export class SqliteDbWrapper implements SqliteDb {
   session(): SqliteDbSession {
     return this.db.session()
   }
-  makeChangeset(data: Uint8Array): SqliteDbChangeset {
+  makeChangeset(data: Uint8Array<ArrayBuffer>): SqliteDbChangeset {
     return this.db.makeChangeset(data)
   }
 
@@ -102,7 +104,7 @@ export class SqliteDbWrapper implements SqliteDb {
       throw e
     }
 
-    if (!errored) {
+    if (errored === false) {
       this.execute(sql`commit;`)
     }
 
@@ -111,7 +113,7 @@ export class SqliteDbWrapper implements SqliteDb {
 
   withChangeset<TRes>(callback: () => TRes): {
     result: TRes
-    changeset: { _tag: 'sessionChangeset'; data: Uint8Array; debug: any } | { _tag: 'no-op' }
+    changeset: { _tag: 'sessionChangeset'; data: Uint8Array<ArrayBuffer>; debug: any } | { _tag: 'no-op' }
   } {
     const session = this.db.session()
     const result = callback()
@@ -121,11 +123,11 @@ export class SqliteDbWrapper implements SqliteDb {
 
     return {
       result,
-      changeset: changeset ? { _tag: 'sessionChangeset', data: changeset, debug: null } : { _tag: 'no-op' },
+      changeset: changeset !== undefined ? { _tag: 'sessionChangeset', data: changeset, debug: null } : { _tag: 'no-op' },
     }
   }
 
-  rollback(changeset: Uint8Array) {
+  rollback(changeset: Uint8Array<ArrayBuffer>) {
     const invertedChangeset = this.db.makeChangeset(changeset).invert()
     invertedChangeset.apply()
   }
@@ -139,7 +141,7 @@ export class SqliteDbWrapper implements SqliteDb {
     }
 
     const cached = this.tablesUsedCache.get(query)
-    if (cached) {
+    if (cached !== undefined) {
       return cached
     }
     const stmt = this.tablesUsedStmt
@@ -160,7 +162,7 @@ export class SqliteDbWrapper implements SqliteDb {
 
   cachedExecute(
     queryStr: string,
-    bindValues?: PreparedBindValues | undefined,
+    bindValues?: PreparedBindValues  ,
     options?: {
       hasNoEffects?: boolean
       otelContext?: otel.Context
@@ -185,7 +187,7 @@ export class SqliteDbWrapper implements SqliteDb {
 
           stmt.execute(bindValues)
 
-          if (options?.hasNoEffects !== true && !this.resultCache.ignoreQuery(queryStr)) {
+          if (options?.hasNoEffects !== true && this.resultCache.ignoreQuery(queryStr) === false) {
             // TODO use write tables instead
             // check what queries actually end up here.
             this.resultCache.invalidate(options?.writeTables ?? this.getTablesUsed(queryStr))
@@ -198,7 +200,7 @@ export class SqliteDbWrapper implements SqliteDb {
           this.debugInfo.queryFrameDuration += durationMs
           this.debugInfo.queryFrameCount++
 
-          if (durationMs > 5 && isDevEnv()) {
+          if (durationMs > 5 && isDevEnv() === true) {
             this.debugInfo.slowQueries.push({
               queryStr,
               bindValues,
@@ -213,8 +215,8 @@ export class SqliteDbWrapper implements SqliteDb {
         } catch (cause: any) {
           span.recordException(cause)
           span.end()
-          if (LS_DEV) {
-            // biome-ignore lint/suspicious/noDebugger: <explanation>
+          if (LS_DEV === true) {
+            // oxlint-disable-next-line eslint(no-debugger) -- intentional breakpoint for SQL errors during development
             debugger
           }
           throw new SqliteError({ cause, query: { bindValues: bindValues ?? {}, sql: queryStr } })
@@ -229,7 +231,7 @@ export class SqliteDbWrapper implements SqliteDb {
 
   cachedSelect<T = any>(
     queryStr: string,
-    bindValues?: PreparedBindValues | undefined,
+    bindValues?: PreparedBindValues  ,
     options?: {
       queriedTables?: ReadonlySet<string>
       skipCache?: boolean
@@ -279,7 +281,7 @@ export class SqliteDbWrapper implements SqliteDb {
           this.debugInfo.queryFrameCount++
 
           // TODO also enable in non-dev mode
-          if (durationMs > 5 && isDevEnv()) {
+          if (durationMs > 5 && isDevEnv() === true) {
             this.debugInfo.slowQueries.push({
               queryStr,
               bindValues,

@@ -1,1 +1,1 @@
-export * as WaSqlite from './index_.js'
+export * as WaSqlite from './index_.ts'

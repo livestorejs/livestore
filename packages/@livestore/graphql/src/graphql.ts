@@ -1,12 +1,14 @@
 import type { TypedDocumentNode as DocumentNode } from '@graphql-typed-document-node/core'
-import { getDurationMsFromSpan } from '@livestore/common'
-import type { RefreshReason, SqliteDbWrapper, Store } from '@livestore/livestore'
-import { LiveQueries, ReactiveGraph } from '@livestore/livestore/internal'
-import { shouldNeverHappen } from '@livestore/utils'
-import { Predicate, Schema, TreeFormatter } from '@livestore/utils/effect'
 import * as otel from '@opentelemetry/api'
 import type { GraphQLSchema } from 'graphql'
 import * as graphql from 'graphql'
+
+import { getDurationMsFromSpan } from '@livestore/common'
+import type { RefreshReason, SqliteDbWrapper, Store } from '@livestore/livestore'
+import { StoreInternalsSymbol } from '@livestore/livestore'
+import { LiveQueries, ReactiveGraph } from '@livestore/livestore/internal'
+import { objectToString, omitUndefineds, shouldNeverHappen } from '@livestore/utils'
+import { Equal, Hash, Predicate, Schema, TreeFormatter } from '@livestore/utils/effect'
 
 export type BaseGraphQLContext = {
   queriedTables: Set<string>
@@ -48,7 +50,7 @@ export const queryGraphQL = <
   } = {},
 ): LiveQueries.LiveQueryDef<TResultMapped> => {
   const documentName = graphql.getOperationAST(document)?.name?.value
-  const hash = options.deps
+  const hash = options.deps !== undefined
     ? LiveQueries.depsToString(options.deps)
     : (documentName ?? shouldNeverHappen('No document name found and no deps provided'))
   const label = options.label ?? documentName ?? 'graphql'
@@ -61,13 +63,19 @@ export const queryGraphQL = <
         document,
         genVariableValues,
         label,
-        map,
+        ...omitUndefineds({ map }),
         reactivityGraph: ctx.reactivityGraph.deref()!,
         def,
       })
     }),
     label,
     hash,
+    [Equal.symbol](that: LiveQueries.LiveQueryDef<any>): boolean {
+      return this.hash === that.hash
+    },
+    [Hash.symbol](): number {
+      return Hash.string(this.hash)
+    },
   }
 
   return def
@@ -124,22 +132,24 @@ export class LiveStoreGraphQLQuery<
     this.mapResult =
       map === undefined
         ? (res: TResult) => res as any as TResultMapped
-        : Schema.isSchema(map)
+        : Schema.isSchema(map) === true
           ? (res: TResult) => {
               const parseResult = Schema.decodeEither(map as Schema.Schema<TResultMapped, TResult>)(res)
               if (parseResult._tag === 'Left') {
                 console.error(`Error parsing GraphQL query result: ${TreeFormatter.formatErrorSync(parseResult.left)}`)
-                return shouldNeverHappen(`Error parsing SQL query result: ${parseResult.left}`)
+                return shouldNeverHappen(`Error parsing SQL query result: ${String(parseResult.left)}`)
               } else {
-                return parseResult.right as TResultMapped
+                return parseResult.right
               }
             }
           : typeof map === 'function'
             ? map
-            : shouldNeverHappen(`Invalid map function ${map}`)
+          : shouldNeverHappen(`Invalid map function ${objectToString(map)}`)
 
     // TODO don't even create a thunk if variables are static
-    let variableValues$OrvariableValues
+    let variableValues$OrvariableValues:
+      | TVariableValues
+      | ReactiveGraph.Thunk<TVariableValues, LiveQueries.ReactivityGraphContext, RefreshReason>
 
     if (typeof genVariableValues === 'function') {
       variableValues$OrvariableValues = this.reactivityGraph.makeThunk(
@@ -159,7 +169,7 @@ export class LiveStoreGraphQLQuery<
     this.results$ = this.reactivityGraph.makeThunk<TResultMapped>(
       (get, setDebugInfo, ctx, otelContext, debugRefreshReason) => {
         const { store, otelTracer, rootOtelContext } = ctx
-        const variableValues = ReactiveGraph.isThunk(variableValues$OrvariableValues)
+        const variableValues = ReactiveGraph.isThunk(variableValues$OrvariableValues) === true
           ? (get(variableValues$OrvariableValues, otelContext, debugRefreshReason) as TVariableValues)
           : (variableValues$OrvariableValues as TVariableValues)
         const { result, queriedTables, durationMs } = this.queryOnce({
@@ -173,7 +183,8 @@ export class LiveStoreGraphQLQuery<
 
         // Add dependencies on any tables that were used
         for (const tableName of queriedTables) {
-          const tableRef = store.tableRefs[tableName] ?? shouldNeverHappen(`No table ref found for ${tableName}`)
+          const tableRef =
+            store[StoreInternalsSymbol].tableRefs[tableName] ?? shouldNeverHappen(`No table ref found for ${tableName}`)
           get(tableRef)
         }
 
@@ -222,7 +233,7 @@ export class LiveStoreGraphQLQuery<
 
       // TODO track number of nested SQL queries via Otel + debug info
 
-      if (res.errors) {
+      if (res.errors !== undefined) {
         span.setStatus({ code: otel.SpanStatusCode.ERROR, message: 'GraphQL error' })
         span.setAttribute('graphql.error', res.errors.join('\n'))
         span.setAttribute('graphql.error-detail', JSON.stringify(res.errors))
@@ -230,6 +241,7 @@ export class LiveStoreGraphQLQuery<
         for (const error of res.errors) {
           console.error(error)
         }
+        // oxlint-disable-next-line eslint(no-debugger) -- intentional breakpoint for GraphQL errors
         debugger
         shouldNeverHappen(`GraphQL error: ${res.errors.join('\n')}`)
       }

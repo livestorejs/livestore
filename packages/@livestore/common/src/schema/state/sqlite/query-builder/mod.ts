@@ -1,5 +1,5 @@
-export * from './api.js'
-export * from './impl.js'
+export * from './api.ts'
+export * from './impl.ts'
 
 /**
  * Design decisions:

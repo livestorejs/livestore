@@ -1,0 +1,91 @@
+# Project-Specific Instructions for Claude
+
+## Setup
+
+This repository uses [`devenv`](https://devenv.sh) for development environment management. Run `devenv shell` to enter the development environment.
+
+## Tooling
+
+- If tools aren't directly in `$PATH`, enter the dev environment first with `devenv shell`.
+
+- For dependency management see ./contributor-docs/dependency-management.md
+
+### `mono` CLI
+
+Use the `mono` CLI for common workflows:
+
+- `dt lint:full` / `dt lint:full:fix` to run the linting checks
+- `mono test <unit|integration|perf>` to run the tests
+  - Some tests can take a while to run.
+- `mono ts [--watch] [--clean]` to build the TypeScript code
+- `mono docs <dev|build|deploy>` for docs workflows
+- `mono examples <run|deploy|test>` for example workflows
+- ... and more
+
+## Testing
+
+- When working on specific Vitest tests, use the `vitest` CLI directly instead of `mono test` and make sure to target the specific test file and test name: e.g. `vitest run packages/@livestore/common/src/index.test.ts --testNamePattern "should be able to get the number of users"`.
+
+## TypeScript
+
+- Avoid `as any`, force-casting etc as much as possible.
+- When writing non-trivial code, make sure to leave some concise code comments explaining the why. (Preferably jsdoc style.)
+- When refactoring code you don't need to consider backwards compatibility unless specifically asked for.
+- Keep exported members at the top of the file and move unexported helpers to the bottom.
+- Never add `paths` to `tsconfig.json`. Prefer using `package.json#exports` instead.
+
+## Task Management (Beads)
+
+This repo uses [beads](https://github.com/steveyegge/beads) for task tracking via the megarepo setup.
+
+- The beads database lives in the `overeng-beads-public` repo, **not** in this repo. Run `bd` commands from within that repo directory (e.g. `cd ./repos/overeng-beads-public/`). Do **not** run `bd init` in the livestore repo.
+- Create an **epic** for larger work items and correlate it with the PR
+- Create **follow-up beads** (or a follow-up epic for larger scope) for out-of-scope work discovered during implementation
+- Run `bd sync` in the overeng-beads-public repo before pushing to keep beads in sync with git
+
+## Git
+
+- The default branch of this repository is `dev`.
+- Before committing, run `dt lint:full:fix` to auto-fix most linting errors. Make sure there are no type check/lint errors.
+
+### Branch Naming Conventions
+
+- Use descriptive branch names that clearly indicate the purpose: `my-username/feat/add-user-auth`, `my-username/fix/memory-leak`, `my-username/docs/api-reference`
+- Keep branch names concise but specific (under 30 characters when possible)
+- Use kebab-case for consistency
+
+### Development Workflow
+
+- Run the full test suite before pushing: `dt test:run`
+- Ensure TypeScript compilation passes: `dt ts:check`
+- Use `dt lint:full:fix` to automatically fix formatting issues
+
+### Issues
+
+- When asked to create a GitHub issue, use the GitHub CLI to do so.
+- Add appropriate labels to the issue. Only use existing labels, don't create new ones.
+
+### Pull Requests
+
+Describe the pull request in terms of the problem it addresses and the approach it takes—avoid titles like "update tests" that hide the intent. A good title should hint at both the underlying issue and the chosen fix, e.g. `Fix backlog replay flake by stabilizing event helper`. Frame the story around the impact to downstream data consumers or workflows rather than generic "user-facing" language.
+
+Checklist:
+
+- State the problem, solution, and validation steps in the PR body using the template sections.
+- Mention any trade-offs or follow-up work the reviewer should know about.
+- Research relevant issues and link them to the PR.
+- Note which tests were run (or why none were needed).
+- Keep the title and description in sync with the current scope as the work evolves—update them whenever the plan shifts.
+- Keep CHANGELOG.md up to date with the changes in the PR according to `contributor-docs/changelog-guide.md`.
+- Make sure to apply appropriate labels. Don't create new labels, but only reuse existing ones.
+- After every substantial change (new commit, merge, or rebase), reread the PR title/body and refresh them before pushing or requesting review.
+- When possible, include demo evidence (logs, screenshots, CLI commands, or quick diagrams like Mermaid/ASCII) that demonstrates the change from a data-workflow perspective so reviewers can visualize the impact faster.
+
+### Environment Variables
+
+- Keep sensitive environment variables in `.envrc.local` and never commit them to the repository.
+
+## Documentation / Examples
+
+- It's critical that the documentation and examples are up to date and accurate. When changing code, make sure to update the documentation and examples.
+- For code snippets make sure to follow ./contributor-docs/docs/snippets.md

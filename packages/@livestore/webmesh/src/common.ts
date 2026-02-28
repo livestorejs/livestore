@@ -1,6 +1,7 @@
+import { omitUndefineds } from '@livestore/utils'
 import { type Effect, Predicate, Schema } from '@livestore/utils/effect'
 
-import type { DirectChannelPacket, Packet, ProxyChannelPacket } from './mesh-schema.js'
+import type { DirectChannelPacket, Packet, ProxyChannelPacket } from './mesh-schema.ts'
 
 export type ProxyQueueItem = {
   packet: typeof ProxyChannelPacket.Type
@@ -30,14 +31,17 @@ export class EdgeAlreadyExistsError extends Schema.TaggedError<EdgeAlreadyExists
 export const packetAsOtelAttributes = (packet: typeof Packet.Type) => ({
   packetId: packet.id,
   'span.label':
-    packet.id + (Predicate.hasProperty(packet, 'reqId') && packet.reqId !== undefined ? ` for ${packet.reqId}` : ''),
-  ...(packet._tag !== 'DirectChannelResponseSuccess' && packet._tag !== 'ProxyChannelPayload' ? { packet } : {}),
+    packet.id + (Predicate.hasProperty(packet, 'reqId') === true && packet.reqId !== undefined ? ` for ${packet.reqId}` : ''),
+  ...omitUndefineds({
+    packet:
+      packet._tag !== 'DirectChannelResponseSuccess' && packet._tag !== 'ProxyChannelPayload' ? packet : undefined,
+  }),
 })
 
 export const ListenForChannelResult = Schema.Struct({
   channelName: Schema.String,
   source: Schema.String,
-  mode: Schema.Union(Schema.Literal('proxy'), Schema.Literal('direct')),
+  mode: Schema.Literal('proxy', 'direct'),
 })
 
 export type ListenForChannelResult = typeof ListenForChannelResult.Type

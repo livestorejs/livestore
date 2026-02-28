@@ -1,27 +1,11 @@
-import '@livestore/utils-dev/node-vitest-polyfill'
-
-import { IS_CI } from '@livestore/utils'
-import {
-  Chunk,
-  Deferred,
-  Effect,
-  Exit,
-  identity,
-  Layer,
-  Logger,
-  LogLevel,
-  Schema,
-  Scope,
-  Stream,
-  WebChannel,
-} from '@livestore/utils/effect'
-import { OtelLiveHttp } from '@livestore/utils-dev/node'
+import { IS_CI, omitUndefineds } from '@livestore/utils'
+import { Chunk, Deferred, Effect, Exit, Schema, Scope, Stream, WebChannel } from '@livestore/utils/effect'
 import { Vitest } from '@livestore/utils-dev/node-vitest'
 import { expect } from 'vitest'
 
-import { Packet } from './mesh-schema.js'
-import type { MeshNode } from './node.js'
-import { makeMeshNode } from './node.js'
+import { Packet } from './mesh-schema.ts'
+import type { MeshNode } from './node.ts'
+import { makeMeshNode } from './node.ts'
 
 // TODO test cases where in-between node only comes online later
 // TODO test cases where other side tries to reconnect
@@ -41,12 +25,12 @@ const connectNodesViaMessageChannel = (nodeA: MeshNode, nodeB: MeshNode, options
     yield* nodeA.addEdge({
       target: nodeB.nodeName,
       edgeChannel: meshChannelAToB,
-      replaceIfExists: options?.replaceIfExists,
+      ...omitUndefineds({ replaceIfExists: options?.replaceIfExists }),
     })
     yield* nodeB.addEdge({
       target: nodeA.nodeName,
       edgeChannel: meshChannelBToA,
-      replaceIfExists: options?.replaceIfExists,
+      ...omitUndefineds({ replaceIfExists: options?.replaceIfExists }),
     })
   }).pipe(Effect.withSpan(`connectNodesViaMessageChannel:${nodeA.nodeName}↔${nodeB.nodeName}`))
 
@@ -66,12 +50,12 @@ const connectNodesViaBroadcastChannel = (nodeA: MeshNode, nodeB: MeshNode, optio
     yield* nodeA.addEdge({
       target: nodeB.nodeName,
       edgeChannel: broadcastWebChannelA,
-      replaceIfExists: options?.replaceIfExists,
+      ...omitUndefineds({ replaceIfExists: options?.replaceIfExists }),
     })
     yield* nodeB.addEdge({
       target: nodeA.nodeName,
       edgeChannel: broadcastWebChannelB,
-      replaceIfExists: options?.replaceIfExists,
+      ...omitUndefineds({ replaceIfExists: options?.replaceIfExists }),
     })
   }).pipe(Effect.withSpan(`connectNodesViaBroadcastChannel:${nodeA.nodeName}↔${nodeB.nodeName}`))
 
@@ -101,8 +85,8 @@ const maybeDelay =
       ? effect
       : Effect.sleep(delay).pipe(Effect.withSpan(`${label}:delay(${delay})`), Effect.andThen(effect))
 
-const testTimeout = IS_CI ? 30_000 : 1000
-const propTestTimeout = IS_CI ? 60_000 : 20_000
+const testTimeout = IS_CI === true ? 30_000 : 1000
+const propTestTimeout = IS_CI === true ? 60_000 : 20_000
 
 // TODO also make work without `Vitest.scopedLive` (i.e. with `Vitest.scoped`)
 // probably requires controlling the clocks
@@ -204,102 +188,102 @@ Vitest.describe('webmesh node', { timeout: testTimeout }, () => {
               nodeX,
               nodeY,
               channelType,
-              delays: { x: delayX, y: delayY, connect: connectDelay },
+              delays: {
+                ...omitUndefineds({
+                  x: delayX,
+                  y: delayY,
+                  connect: connectDelay,
+                }),
+              },
             })
 
             yield* Effect.promise(() => nodeX.debug.requestTopology(100))
           }).pipe(
-            withCtx(test, {
-              skipOtel: true,
-              suffix: `delayX=${delayX} delayY=${delayY} connectDelay=${connectDelay} channelType=${channelType} nodeNames=${nodeNames}`,
+            Vitest.withTestCtx(test, {
+              suffix: `delayX=${delayX} delayY=${delayY} connectDelay=${connectDelay} channelType=${channelType} nodeNames=${nodeNames.join(',')}`,
             }),
           ),
         // { fastCheck: { numRuns: 20 } },
       )
+      // const waitForOfflineDelay = undefined
+      // const sleepDelay = 0
+      // const channelType = 'direct'
+      // Vitest.scopedLive(
+      //   'b reconnects',
+      //   (test) =>
+      Vitest.scopedLive.prop(
+        'b reconnects',
+        [Delay, Delay, ChannelType],
+        ([waitForOfflineDelay, sleepDelay, channelType], test) =>
+          Effect.gen(function* () {
+            // console.log({ waitForOfflineDelay, sleepDelay, channelType })
 
-      {
-        // const waitForOfflineDelay = undefined
-        // const sleepDelay = 0
-        // const channelType = 'direct'
-        // Vitest.scopedLive(
-        //   'b reconnects',
-        //   (test) =>
-        Vitest.scopedLive.prop(
-          'b reconnects',
-          [Delay, Delay, ChannelType],
-          ([waitForOfflineDelay, sleepDelay, channelType], test) =>
-            Effect.gen(function* () {
-              // console.log({ waitForOfflineDelay, sleepDelay, channelType })
+            if (waitForOfflineDelay === undefined) {
+              // TODO we still need to fix this scenario but it shouldn't really be common in practice
+              return
+            }
 
-              if (waitForOfflineDelay === undefined) {
-                // TODO we still need to fix this scenario but it shouldn't really be common in practice
-                return
+            const nodeA = yield* makeMeshNode('A')
+            const nodeB = yield* makeMeshNode('B')
+
+            const { mode, connectNodes } = fromChannelType(channelType)
+
+            // TODO also optionally delay the edge
+            yield* connectNodes(nodeA, nodeB)
+
+            const waitForBToBeOffline = waitForOfflineDelay === undefined ? undefined : yield* Deferred.make<void>()
+
+            const nodeACode = Effect.gen(function* () {
+              const channelAToB = yield* createChannel(nodeA, 'B', { mode })
+              yield* channelAToB.send({ message: 'A1' })
+              expect(yield* getFirstMessage(channelAToB)).toEqual({ message: 'B1' })
+
+              console.log('nodeACode:waiting for B to be offline')
+              if (waitForBToBeOffline !== undefined) {
+                yield* waitForBToBeOffline
               }
 
-              const nodeA = yield* makeMeshNode('A')
-              const nodeB = yield* makeMeshNode('B')
+              yield* channelAToB.send({ message: 'A2' })
+              expect(yield* getFirstMessage(channelAToB)).toEqual({ message: 'B2' })
+            })
 
-              const { mode, connectNodes } = fromChannelType(channelType)
+            // Simulating node b going offline and then coming back online
+            // This test also illustrates why we need a ack-message channel since otherwise
+            // sent messages might get lost
+            const nodeBCode = Effect.gen(function* () {
+              yield* Effect.gen(function* () {
+                const channelBToA = yield* createChannel(nodeB, 'A', { mode })
 
-              // TODO also optionally delay the edge
-              yield* connectNodes(nodeA, nodeB)
+                yield* channelBToA.send({ message: 'B1' })
+                expect(yield* getFirstMessage(channelBToA)).toEqual({ message: 'A1' })
+              }).pipe(Effect.scoped, Effect.withSpan('nodeBCode:part1'))
 
-              const waitForBToBeOffline =
-                waitForOfflineDelay === undefined ? undefined : yield* Deferred.make<void, never>()
+              console.log('nodeBCode:B node going offline')
+              if (waitForBToBeOffline !== undefined) {
+                yield* Deferred.succeed(waitForBToBeOffline, void 0)
+              }
 
-              const nodeACode = Effect.gen(function* () {
-                const channelAToB = yield* createChannel(nodeA, 'B', { mode })
-                yield* channelAToB.send({ message: 'A1' })
-                expect(yield* getFirstMessage(channelAToB)).toEqual({ message: 'B1' })
+              if (sleepDelay !== undefined) {
+                yield* Effect.sleep(sleepDelay).pipe(Effect.withSpan(`B:sleep(${sleepDelay})`))
+              }
 
-                console.log('nodeACode:waiting for B to be offline')
-                if (waitForBToBeOffline !== undefined) {
-                  yield* waitForBToBeOffline
-                }
+              // Recreating the channel
+              yield* Effect.gen(function* () {
+                const channelBToA = yield* createChannel(nodeB, 'A', { mode })
 
-                yield* channelAToB.send({ message: 'A2' })
-                expect(yield* getFirstMessage(channelAToB)).toEqual({ message: 'B2' })
-              })
+                yield* channelBToA.send({ message: 'B2' })
+                expect(yield* getFirstMessage(channelBToA)).toEqual({ message: 'A2' })
+              }).pipe(Effect.scoped, Effect.withSpan('nodeBCode:part2'))
+            })
 
-              // Simulating node b going offline and then coming back online
-              // This test also illustrates why we need a ack-message channel since otherwise
-              // sent messages might get lost
-              const nodeBCode = Effect.gen(function* () {
-                yield* Effect.gen(function* () {
-                  const channelBToA = yield* createChannel(nodeB, 'A', { mode })
-
-                  yield* channelBToA.send({ message: 'B1' })
-                  expect(yield* getFirstMessage(channelBToA)).toEqual({ message: 'A1' })
-                }).pipe(Effect.scoped, Effect.withSpan('nodeBCode:part1'))
-
-                console.log('nodeBCode:B node going offline')
-                if (waitForBToBeOffline !== undefined) {
-                  yield* Deferred.succeed(waitForBToBeOffline, void 0)
-                }
-
-                if (sleepDelay !== undefined) {
-                  yield* Effect.sleep(sleepDelay).pipe(Effect.withSpan(`B:sleep(${sleepDelay})`))
-                }
-
-                // Recreating the channel
-                yield* Effect.gen(function* () {
-                  const channelBToA = yield* createChannel(nodeB, 'A', { mode })
-
-                  yield* channelBToA.send({ message: 'B2' })
-                  expect(yield* getFirstMessage(channelBToA)).toEqual({ message: 'A2' })
-                }).pipe(Effect.scoped, Effect.withSpan('nodeBCode:part2'))
-              })
-
-              yield* Effect.all([nodeACode, nodeBCode], { concurrency: 'unbounded' }).pipe(Effect.withSpan('test'))
-            }).pipe(
-              withCtx(test, {
-                skipOtel: true,
-                suffix: `waitForOfflineDelay=${waitForOfflineDelay} sleepDelay=${sleepDelay} channelType=${channelType}`,
-              }),
-            ),
-          { fastCheck: { numRuns: 20 } },
-        )
-      }
+            yield* Effect.all([nodeACode, nodeBCode], { concurrency: 'unbounded' }).pipe(Effect.withSpan('test'))
+          }).pipe(
+            Vitest.withTestCtx(test, {
+              suffix: `waitForOfflineDelay=${waitForOfflineDelay} sleepDelay=${sleepDelay} channelType=${channelType}`,
+            }),
+          ),
+        { fastCheck: { numRuns: 20 } },
+      )
 
       Vitest.scopedLive('reconnect with re-created node', (test) =>
         Effect.gen(function* () {
@@ -341,7 +325,7 @@ Vitest.describe('webmesh node', { timeout: testTimeout }, () => {
           yield* Effect.all([nodeACode, nodeBCode(nodeBgen2)], { concurrency: 'unbounded' }).pipe(
             Effect.withSpan('test2'),
           )
-        }).pipe(withCtx(test)),
+        }).pipe(Vitest.withTestCtx(test)),
       )
 
       const ChannelTypeWithoutMessageChannelProxy = Schema.Literal('proxy', 'direct')
@@ -406,9 +390,8 @@ Vitest.describe('webmesh node', { timeout: testTimeout }, () => {
 
             yield* Effect.all([nodeXCode, nodeYCode], { concurrency: 'unbounded' })
           }).pipe(
-            withCtx(test, {
-              skipOtel: true,
-              suffix: `channelType=${channelType} nodeNames=${nodeNames}`,
+            Vitest.withTestCtx(test, {
+              suffix: `channelType=${channelType} nodeNames=${nodeNames.join(',')}`,
             }),
           ),
         { fastCheck: { numRuns: 10 } },
@@ -462,8 +445,7 @@ Vitest.describe('webmesh node', { timeout: testTimeout }, () => {
                 concurrency: 'unbounded',
               })
             }).pipe(
-              withCtx(test, {
-                skipOtel: true,
+              Vitest.withTestCtx(test, {
                 suffix: `channelType=${channelType} count=${count}`,
                 timeout: testTimeout * 2,
               }),
@@ -503,7 +485,7 @@ Vitest.describe('webmesh node', { timeout: testTimeout }, () => {
           }).pipe(Effect.scoped, Effect.repeatN(messageCount))
 
           yield* bFiber
-        }).pipe(withCtx(test)),
+        }).pipe(Vitest.withTestCtx(test)),
       )
     })
 
@@ -532,7 +514,7 @@ Vitest.describe('webmesh node', { timeout: testTimeout }, () => {
         yield* Effect.all([nodeACode, nodeBCode, connectNodes(nodeA, nodeB).pipe(Effect.delay(100))], {
           concurrency: 'unbounded',
         })
-      }).pipe(withCtx(test)),
+      }).pipe(Vitest.withTestCtx(test)),
     )
 
     Vitest.scopedLive('broadcast edge with message channel', (test) =>
@@ -544,7 +526,7 @@ Vitest.describe('webmesh node', { timeout: testTimeout }, () => {
 
         const err = yield* createChannel(nodeA, 'B', { mode: 'direct' }).pipe(Effect.timeout(200), Effect.flip)
         expect(err._tag).toBe('TimeoutException')
-      }).pipe(withCtx(test)),
+      }).pipe(Vitest.withTestCtx(test)),
     )
   })
 
@@ -576,7 +558,7 @@ Vitest.describe('webmesh node', { timeout: testTimeout }, () => {
         })
 
         yield* Effect.all([nodeACode, nodeCCode], { concurrency: 'unbounded' })
-      }).pipe(withCtx(test)),
+      }).pipe(Vitest.withTestCtx(test)),
     )
 
     Vitest.scopedLive('should work - delayed edge', (test) =>
@@ -611,7 +593,7 @@ Vitest.describe('webmesh node', { timeout: testTimeout }, () => {
           ],
           { concurrency: 'unbounded' },
         )
-      }).pipe(withCtx(test)),
+      }).pipe(Vitest.withTestCtx(test)),
     )
 
     Vitest.scopedLive('proxy channel', (test) =>
@@ -636,8 +618,272 @@ Vitest.describe('webmesh node', { timeout: testTimeout }, () => {
         })
 
         yield* Effect.all([nodeACode, nodeCCode], { concurrency: 'unbounded' })
-      }).pipe(withCtx(test)),
+      }).pipe(Vitest.withTestCtx(test)),
     )
+
+    /**
+     * Pattern test: ACK sending must not block message processing.
+     *
+     * This test documents the pattern where ACKs are sent fire-and-forget using `Effect.forkScoped`
+     * to avoid blocking the message processing loop.
+     *
+     * Background: Before the fix, ACKs were sent with `await` which blocked message processing.
+     * This caused heartbeat timeouts in devtools after ~30 seconds ("Connection to app lost").
+     *
+     * Note: This unit test passes both with and without the fix because in-memory channels
+     * complete ACK sends instantly. The actual regression test is the Playwright test
+     * `node-adapter-timeout.play.ts` which uses real network conditions.
+     *
+     * This test exists to:
+     * 1. Document the expected pattern (high message throughput via proxy channels)
+     * 2. Verify the pattern works correctly with forked ACKs
+     * 3. Serve as a reference for the fix in proxy-channel.ts
+     */
+    Vitest.scopedLive('ACK sending should not block message processing', (test) =>
+      Effect.gen(function* () {
+        const nodeA = yield* makeMeshNode('A')
+        const nodeB = yield* makeMeshNode('B')
+        const nodeC = yield* makeMeshNode('C')
+
+        yield* connectNodesViaBroadcastChannel(nodeA, nodeB)
+        yield* connectNodesViaBroadcastChannel(nodeB, nodeC)
+
+        // Send many messages to stress the ACK handling
+        const messageCount = 10
+
+        const nodeACode = Effect.gen(function* () {
+          const channelAToC = yield* createChannel(nodeA, 'C', { mode: 'proxy' })
+          // Send multiple messages concurrently
+          yield* Effect.forEach(
+            Chunk.makeBy(messageCount, (i) => ({ message: `A${i}` })),
+            channelAToC.send,
+            { concurrency: 'unbounded' },
+          )
+          // Receive responses
+          const responses = yield* channelAToC.listen.pipe(
+            Stream.flatten(),
+            Stream.take(messageCount),
+            Stream.runCollect,
+          )
+          expect(Chunk.size(responses)).toBe(messageCount)
+        })
+
+        const nodeCCode = Effect.gen(function* () {
+          const channelCToA = yield* createChannel(nodeC, 'A', { mode: 'proxy' })
+          // Send multiple messages concurrently
+          yield* Effect.forEach(
+            Chunk.makeBy(messageCount, (i) => ({ message: `C${i}` })),
+            channelCToA.send,
+            { concurrency: 'unbounded' },
+          )
+          // Receive responses
+          const responses = yield* channelCToA.listen.pipe(
+            Stream.flatten(),
+            Stream.take(messageCount),
+            Stream.runCollect,
+          )
+          expect(Chunk.size(responses)).toBe(messageCount)
+        })
+
+        yield* Effect.all([nodeACode, nodeCCode], { concurrency: 'unbounded' })
+      }).pipe(Vitest.withTestCtx(test)),
+    )
+
+    Vitest.describe('ACK forkScoped regression tests', { timeout: 10_000 }, () => {
+      /**
+       * REGRESSION TEST: ACK sends must be forked (non-blocking) to allow message processing to continue.
+       *
+       * This test uses simulation parameters to inject a delay BEFORE the ACK send.
+       * It then measures when messages arrive at the receiver's listen queue.
+       *
+       * With the fix (Effect.forkScoped):
+       * - ACK send is forked in the background
+       * - Message is added to listen queue IMMEDIATELY (before ACK send completes)
+       * - Multiple messages arrive close together regardless of ACK delay
+       *
+       * Without the fix (blocking yield*):
+       * - ACK send blocks the processing loop
+       * - Message is added to listen queue AFTER ACK send completes
+       * - Messages arrive spread out by the ACK delay
+       *
+       * To verify this test catches the regression:
+       * 1. Temporarily change `Effect.forkScoped` to `yield*` in proxy-channel.ts:319
+       * 2. Run this test - it should FAIL because messages arrive too slowly
+       * 3. Revert the change - test should PASS
+       */
+      /**
+       * This test verifies the fix works: messages should arrive at the listen queue
+       * without being blocked by slow ACK sends. We measure how long it takes to receive
+       * all messages - with forked ACKs it should be fast, with blocking ACKs it would be slow.
+       */
+      Vitest.scopedLive('messages arrive in listen queue without waiting for ACK send', (test) =>
+        Effect.gen(function* () {
+          const ACK_DELAY_MS = 50
+          const MESSAGE_COUNT = 5
+
+          const nodeA = yield* makeMeshNode('A')
+          const nodeB = yield* makeMeshNode('B')
+
+          yield* connectNodesViaMessageChannel(nodeA, nodeB)
+
+          const receivedMessages: string[] = []
+
+          const senderCode = Effect.gen(function* () {
+            const channelAToB = yield* nodeA.makeChannel({
+              target: 'B',
+              channelName: 'test-ack-timing',
+              schema: ExampleSchema,
+              mode: 'proxy',
+              timeout: 3000,
+            })
+
+            // Send all messages concurrently - this is key!
+            // With forked ACKs, all messages get processed immediately at receiver
+            // With blocking ACKs, messages would be processed one at a time with delays
+            yield* Effect.forEach(
+              Chunk.makeBy(MESSAGE_COUNT, (i) => ({ message: `msg${i}` })),
+              channelAToB.send,
+              { concurrency: 'unbounded' },
+            )
+          })
+
+          const receiverCode = Effect.gen(function* () {
+            const channelBToA = yield* nodeB.makeChannel({
+              target: 'A',
+              channelName: 'test-ack-timing',
+              schema: ExampleSchema,
+              mode: 'proxy',
+              timeout: 3000,
+              // KEY: Inject delay BEFORE ACK send
+              // With forkScoped: message arrives in queue immediately, then ACK is sent in background
+              // Without forkScoped: message waits for ACK delay before being added to queue
+              simulation: {
+                onPayload: {
+                  beforeAckSend: ACK_DELAY_MS,
+                  afterAckFork: 0,
+                  afterListenQueueOffer: 0,
+                },
+              },
+            })
+
+            yield* channelBToA.listen.pipe(
+              Stream.flatten(),
+              Stream.tap((msg) =>
+                Effect.sync(() => {
+                  receivedMessages.push(msg.message)
+                }),
+              ),
+              Stream.take(MESSAGE_COUNT),
+              Stream.runDrain,
+            )
+          })
+
+          const startTime = Date.now()
+          yield* Effect.all([senderCode, receiverCode], { concurrency: 'unbounded' })
+          const elapsed = Date.now() - startTime
+
+          console.log(`[regression-test-1] Received ${receivedMessages.length} messages in ${elapsed}ms`)
+          console.log(`[regression-test-1] Messages: ${receivedMessages.join(', ')}`)
+
+          expect(receivedMessages.length).toBe(MESSAGE_COUNT)
+
+          // With forked ACKs, elapsed time should be much less than MESSAGE_COUNT * ACK_DELAY_MS
+          // because ACKs don't block message processing
+          const blockingTime = MESSAGE_COUNT * ACK_DELAY_MS
+          console.log(`[regression-test-1] Elapsed: ${elapsed}ms, Blocking estimate: ${blockingTime}ms`)
+
+          // The test passes if messages arrive faster than they would with blocking ACKs
+          // Allow some margin for test overhead (2x faster than blocking)
+          if (elapsed > blockingTime / 2) {
+            throw new Error(
+              `REGRESSION DETECTED: Processing took ${elapsed}ms, blocking estimate: ${blockingTime}ms. ` +
+                `With forked ACKs, processing should be much faster. ` +
+                `Check that proxy-channel.ts uses Effect.forkScoped for ACK sends.`,
+            )
+          }
+        }).pipe(Vitest.withTestCtx(test)),
+      )
+
+      /**
+       * Additional test: Verify message processing continues during slow ACK sends.
+       *
+       * This test sends multiple messages concurrently and verifies they're all
+       * processed even when ACK sends are slow.
+       */
+      Vitest.scopedLive('concurrent messages processed despite slow ACK sends', (test) =>
+        Effect.gen(function* () {
+          const ACK_DELAY_MS = 50
+          const MESSAGE_COUNT = 5
+
+          const nodeA = yield* makeMeshNode('A')
+          const nodeB = yield* makeMeshNode('B')
+
+          yield* connectNodesViaMessageChannel(nodeA, nodeB)
+
+          const receivedMessages: string[] = []
+
+          const senderCode = Effect.gen(function* () {
+            const channelAToB = yield* nodeA.makeChannel({
+              target: 'B',
+              channelName: 'test-concurrent',
+              schema: ExampleSchema,
+              mode: 'proxy',
+              timeout: 3000,
+            })
+
+            // Send all messages concurrently
+            yield* Effect.forEach(
+              Chunk.makeBy(MESSAGE_COUNT, (i) => ({ message: `msg${i}` })),
+              channelAToB.send,
+              { concurrency: 'unbounded' },
+            )
+          })
+
+          const receiverCode = Effect.gen(function* () {
+            const channelBToA = yield* nodeB.makeChannel({
+              target: 'A',
+              channelName: 'test-concurrent',
+              schema: ExampleSchema,
+              mode: 'proxy',
+              timeout: 3000,
+              simulation: {
+                onPayload: {
+                  beforeAckSend: ACK_DELAY_MS,
+                  afterAckFork: 0,
+                  afterListenQueueOffer: 0,
+                },
+              },
+            })
+
+            yield* channelBToA.listen.pipe(
+              Stream.flatten(),
+              Stream.tap((msg) =>
+                Effect.sync(() => {
+                  receivedMessages.push(msg.message)
+                }),
+              ),
+              Stream.take(MESSAGE_COUNT),
+              Stream.runDrain,
+            )
+          })
+
+          const startTime = Date.now()
+          yield* Effect.all([senderCode, receiverCode], { concurrency: 'unbounded' })
+          const elapsed = Date.now() - startTime
+
+          console.log(`[regression-test] Received ${receivedMessages.length} messages in ${elapsed}ms`)
+          console.log(`[regression-test] Messages: ${receivedMessages.join(', ')}`)
+
+          // All messages should be received
+          expect(receivedMessages.length).toBe(MESSAGE_COUNT)
+
+          // With forked ACKs, elapsed time should be much less than MESSAGE_COUNT * ACK_DELAY_MS
+          // because ACKs don't block message processing
+          const blockingTime = MESSAGE_COUNT * ACK_DELAY_MS
+          console.log(`[regression-test] Elapsed: ${elapsed}ms, Blocking estimate: ${blockingTime}ms`)
+        }).pipe(Vitest.withTestCtx(test)),
+      )
+    })
 
     Vitest.scopedLive('should fail with timeout due to missing edge', (test) =>
       Effect.gen(function* () {
@@ -659,7 +905,7 @@ Vitest.describe('webmesh node', { timeout: testTimeout }, () => {
         })
 
         yield* Effect.all([nodeACode, nodeCCode], { concurrency: 'unbounded' })
-      }).pipe(withCtx(test)),
+      }).pipe(Vitest.withTestCtx(test)),
     )
 
     Vitest.scopedLive('should fail with timeout due no transferable', (test) =>
@@ -680,7 +926,7 @@ Vitest.describe('webmesh node', { timeout: testTimeout }, () => {
         })
 
         yield* Effect.all([nodeACode, nodeBCode], { concurrency: 'unbounded' })
-      }).pipe(withCtx(test)),
+      }).pipe(Vitest.withTestCtx(test)),
     )
 
     Vitest.scopedLive('reconnect with re-created node', (test) =>
@@ -722,7 +968,7 @@ Vitest.describe('webmesh node', { timeout: testTimeout }, () => {
         yield* Effect.all([nodeACode, nodeCCode(nodeCgen2)], { concurrency: 'unbounded' }).pipe(
           Effect.withSpan('test2'),
         )
-      }).pipe(withCtx(test)),
+      }).pipe(Vitest.withTestCtx(test)),
     )
   })
 
@@ -759,7 +1005,7 @@ Vitest.describe('webmesh node', { timeout: testTimeout }, () => {
         })
 
         yield* Effect.all([nodeACode, nodeDCode], { concurrency: 'unbounded' })
-      }).pipe(withCtx(test)),
+      }).pipe(Vitest.withTestCtx(test)),
     )
   })
 
@@ -803,7 +1049,7 @@ Vitest.describe('webmesh node', { timeout: testTimeout }, () => {
         })
 
         yield* Effect.all([nodeACode, nodeECode], { concurrency: 'unbounded' })
-      }).pipe(withCtx(test)),
+      }).pipe(Vitest.withTestCtx(test)),
     )
   })
 
@@ -819,7 +1065,7 @@ Vitest.describe('webmesh node', { timeout: testTimeout }, () => {
         const err = yield* connectNodesViaBroadcastChannel(nodeA, nodeB).pipe(Effect.flip)
 
         expect(err._tag).toBe('EdgeAlreadyExistsError')
-      }).pipe(withCtx(test)),
+      }).pipe(Vitest.withTestCtx(test)),
     )
 
     Vitest.scopedLive('should work for directs', (test) =>
@@ -844,7 +1090,7 @@ Vitest.describe('webmesh node', { timeout: testTimeout }, () => {
         })
 
         yield* Effect.all([nodeACode, nodeCCode], { concurrency: 'unbounded' })
-      }).pipe(withCtx(test)),
+      }).pipe(Vitest.withTestCtx(test)),
     )
   })
 
@@ -884,7 +1130,7 @@ Vitest.describe('webmesh node', { timeout: testTimeout }, () => {
         })
 
         yield* Effect.all([nodeACode, nodeBCode.pipe(Effect.delay(500))], { concurrency: 'unbounded' })
-      }).pipe(withCtx(test)),
+      }).pipe(Vitest.withTestCtx(test)),
     )
 
     // TODO provide a way to allow for reconnecting in the `listenForChannel` case
@@ -948,7 +1194,7 @@ Vitest.describe('webmesh node', { timeout: testTimeout }, () => {
         )
 
         yield* Effect.all([nodeACode, nodeBCode], { concurrency: 'unbounded' })
-      }).pipe(withCtx(test)),
+      }).pipe(Vitest.withTestCtx(test)),
     )
 
     Vitest.describe('prop tests', { timeout: propTestTimeout }, () => {
@@ -961,7 +1207,7 @@ Vitest.describe('webmesh node', { timeout: testTimeout }, () => {
             const nodeB = yield* makeMeshNode('B')
             const nodeC = yield* makeMeshNode('C')
 
-            const mode = channelType.includes('proxy') ? 'proxy' : 'direct'
+            const mode = channelType.includes('proxy') === true ? 'proxy' : 'direct'
             const connect = channelType === 'direct' ? connectNodesViaMessageChannel : connectNodesViaBroadcastChannel
             yield* connect(nodeA, nodeB).pipe(maybeDelay(delayConnectAB, 'delayConnectAB'))
             yield* connect(nodeB, nodeC).pipe(maybeDelay(delayConnectBC, 'delayConnectBC'))
@@ -1002,8 +1248,7 @@ Vitest.describe('webmesh node', { timeout: testTimeout }, () => {
               { concurrency: 'unbounded' },
             )
           }).pipe(
-            withCtx(test, {
-              skipOtel: true,
+            Vitest.withTestCtx(test, {
               suffix: `delayNodeA=${delayNodeA} delayNodeC=${delayNodeC} delayConnectAB=${delayConnectAB} delayConnectBC=${delayConnectBC} channelType=${channelType}`,
               timeout: testTimeout * 2,
             }),
@@ -1044,24 +1289,7 @@ Vitest.describe('webmesh node', { timeout: testTimeout }, () => {
 
         expect(yield* listenOnAFiber).toEqual('C1')
         expect(yield* listenOnCFiber).toEqual('A1')
-      }).pipe(withCtx(test)),
+      }).pipe(Vitest.withTestCtx(test)),
     )
   })
 })
-
-const otelLayer = IS_CI ? Layer.empty : OtelLiveHttp({ serviceName: 'webmesh-node-test', skipLogUrl: false })
-
-const withCtx =
-  (
-    testContext: Vitest.TaskContext,
-    { suffix, skipOtel = false, timeout = testTimeout }: { suffix?: string; skipOtel?: boolean; timeout?: number } = {},
-  ) =>
-  <A, E, R>(self: Effect.Effect<A, E, R>) =>
-    self.pipe(
-      Effect.timeout(timeout),
-      Effect.provide(Logger.pretty),
-      Logger.withMinimumLogLevel(LogLevel.Debug),
-      Effect.scoped, // We need to scope the effect manually here because otherwise the span is not closed
-      Effect.withSpan(`${testContext.task.suite?.name}:${testContext.task.name}${suffix ? `:${suffix}` : ''}`),
-      skipOtel ? identity : Effect.provide(otelLayer),
-    )

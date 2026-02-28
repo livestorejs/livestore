@@ -1,39 +1,37 @@
 {
   "name": "@livestore/livestore",
-  "version": "0.3.1",
+  "version": "0.4.0-dev.22",
+  "license": "Apache-2.0",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/livestorejs/livestore.git"
+  },
+  "files": [
+    "dist",
+    "docs",
+    "package.json",
+    "src"
+  ],
   "type": "module",
   "sideEffects": false,
   "exports": {
-    ".": {
-      "types": "./dist/mod.d.ts",
-      "default": "./dist/mod.js"
-    },
-    "./internal": {
-      "types": "./dist/internal/mod.d.ts",
-      "default": "./dist/internal/mod.js"
-    },
-    "./internal/testing-utils": {
-      "types": "./dist/utils/tests/mod.d.ts",
-      "default": "./dist/utils/tests/mod.js"
-    },
-    "./effect": {
-      "types": "./dist/effect/mod.d.ts",
-      "default": "./dist/effect/mod.js"
+    ".": "./src/mod.ts",
+    "./effect": "./src/effect/mod.ts",
+    "./internal": "./src/internal/mod.ts",
+    "./internal/testing-utils": "./src/utils/tests/mod.ts"
+  },
+  "publishConfig": {
+    "access": "public",
+    "exports": {
+      ".": "./dist/mod.js",
+      "./internal": "./dist/internal/mod.js",
+      "./internal/testing-utils": "./dist/utils/tests/mod.js",
+      "./effect": "./dist/effect/mod.js"
     }
   },
-  "types": "./dist/mod.d.ts",
-  "typesVersions": {
-    "*": {
-      "internal": [
-        "./dist/internal/mod.d.ts"
-      ],
-      "testing-utils": [
-        "./dist/utils/tests/mod.d.ts"
-      ],
-      "effect": [
-        "./dist/effect/mod.d.ts"
-      ]
-    }
+  "scripts": {
+    "build": "tsc",
+    "test": "vitest"
   },
   "dependencies": {
     "@livestore/common": "workspace:*",
@@ -43,23 +41,33 @@
   "devDependencies": {
     "@livestore/adapter-web": "workspace:*",
     "@livestore/utils-dev": "workspace:*",
-    "@opentelemetry/sdk-trace-base": "^2.0.0",
-    "jsdom": "^26.0.0",
-    "typescript": "^5.8.3",
-    "vite": "^6.3.4",
-    "vitest": "^3.1.2"
+    "@opentelemetry/sdk-trace-base": "2.2.0",
+    "jsdom": "26.1.0",
+    "typescript": "5.9.3",
+    "vite": "7.3.0",
+    "vitest": "3.2.4"
   },
-  "files": [
-    "package.json",
-    "src",
-    "dist"
-  ],
-  "license": "Apache-2.0",
-  "publishConfig": {
-    "access": "public"
+  "peerDependencies": {
+    "@effect/ai": "^0.33.2",
+    "@effect/cli": "^0.73.1",
+    "@effect/cluster": "^0.56.1",
+    "@effect/experimental": "^0.58.0",
+    "@effect/opentelemetry": "^0.61.0",
+    "@effect/platform": "^0.94.2",
+    "@effect/platform-browser": "^0.73.0",
+    "@effect/platform-bun": "^0.86.0",
+    "@effect/platform-node": "^0.104.1",
+    "@effect/printer": "^0.47.0",
+    "@effect/printer-ansi": "^0.47.0",
+    "@effect/rpc": "^0.73.0",
+    "@effect/sql": "^0.49.0",
+    "@effect/typeclass": "^0.38.0",
+    "@opentelemetry/api": "^1.9.0",
+    "@opentelemetry/resources": "^2.2.0",
+    "effect": "^3.19.15"
   },
-  "scripts": {
-    "build": "tsc",
-    "test": "vitest"
+  "$genie": {
+    "source": "package.json.genie.ts",
+    "warning": "DO NOT EDIT - changes will be overwritten"
   }
 }

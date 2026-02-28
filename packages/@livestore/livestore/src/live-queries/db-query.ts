@@ -7,19 +7,20 @@ import {
   QueryBuilderAstSymbol,
   replaceSessionIdSymbol,
   SessionIdSymbol,
-  UnexpectedError,
+  UnknownError,
 } from '@livestore/common'
-import { deepEqual, shouldNeverHappen } from '@livestore/utils'
-import { Predicate, Schema, TreeFormatter } from '@livestore/utils/effect'
+import { deepEqual, objectToString, omitUndefineds, shouldNeverHappen } from '@livestore/utils'
+import { Equal, Hash, Predicate, Schema, TreeFormatter } from '@livestore/utils/effect'
 import * as otel from '@opentelemetry/api'
 
-import type { Thunk } from '../reactive.js'
-import { isThunk, NOT_REFRESHED_YET } from '../reactive.js'
-import type { RefreshReason } from '../store/store-types.js'
-import { isValidFunctionString } from '../utils/function-string.js'
-import type { DepKey, GetAtomResult, LiveQueryDef, ReactivityGraph, ReactivityGraphContext } from './base-class.js'
-import { depsToString, LiveStoreQueryBase, makeGetAtomResult, withRCMap } from './base-class.js'
-import { makeExecBeforeFirstRun, rowQueryLabel } from './client-document-get-query.js'
+import type { Thunk } from '../reactive.ts'
+import { isThunk, NOT_REFRESHED_YET } from '../reactive.ts'
+import type { RefreshReason } from '../store/store-types.ts'
+import { StoreInternalsSymbol } from '../store/store-types.ts'
+import { isValidFunctionString } from '../utils/function-string.ts'
+import type { DepKey, GetAtomResult, LiveQueryDef, ReactivityGraph, ReactivityGraphContext } from './base-class.ts'
+import { depsToString, LiveStoreQueryBase, makeGetAtomResult, withRCMap } from './base-class.ts'
+import { makeExecBeforeFirstRun, rowQueryLabel } from './client-document-get-query.ts'
 
 export type QueryInputRaw<TDecoded, TEncoded> = {
   query: string
@@ -102,7 +103,7 @@ export const queryDb: {
 } = (queryInput, options) => {
   const { queryString, extraDeps } = getQueryStringAndExtraDeps(queryInput)
 
-  const hash = [queryString, options?.deps ? depsToString(options.deps) : undefined, depsToString(extraDeps)]
+  const hash = [queryString, options?.deps !== undefined ? depsToString(options.deps) : undefined, depsToString(extraDeps)]
     .filter(Boolean)
     .join('-')
 
@@ -111,7 +112,7 @@ export const queryDb: {
   }
 
   if (hash.trim() === '') {
-    return shouldNeverHappen(`Invalid query hash for query: ${queryInput}`)
+      return shouldNeverHappen('Invalid query hash for query:', objectToString(queryInput))
   }
 
   const label = options?.label ?? queryString
@@ -124,13 +125,18 @@ export const queryDb: {
         reactivityGraph: ctx.reactivityGraph.deref()!,
         queryInput,
         label,
-        map: options?.map,
-        otelContext,
         def,
+        ...omitUndefineds({ map: options?.map, otelContext }),
       })
     }),
     label,
     hash,
+    [Equal.symbol](that: LiveQueryDef<any>): boolean {
+      return this.hash === that.hash
+    },
+    [Hash.symbol](): number {
+      return Hash.string(this.hash)
+    },
   }
 
   return def
@@ -149,12 +155,12 @@ const bindValuesToDepKey = (bindValues: Bindable | undefined): DepKey => {
 const getQueryStringAndExtraDeps = (
   queryInput: QueryInput<any, any> | ((get: GetAtomResult) => QueryInput<any, any>),
 ): { queryString: string; extraDeps: DepKey } => {
-  if (isQueryBuilder(queryInput)) {
+  if (isQueryBuilder(queryInput) === true) {
     const { query, bindValues } = queryInput.asSql()
     return { queryString: query, extraDeps: bindValuesToDepKey(bindValues) }
   }
 
-  if (isQueryInputRaw(queryInput)) {
+  if (isQueryInputRaw(queryInput) === true) {
     return { queryString: queryInput.query, extraDeps: bindValuesToDepKey(queryInput.bindValues) }
   }
 
@@ -162,7 +168,7 @@ const getQueryStringAndExtraDeps = (
     return { queryString: queryInput.toString(), extraDeps: [] }
   }
 
-  return shouldNeverHappen(`Invalid query input: ${queryInput}`)
+  return shouldNeverHappen(`Invalid query input: ${String(queryInput)}`)
 }
 
 /* An object encapsulating a reactive SQL query */
@@ -210,7 +216,7 @@ export class LiveStoreDbQuery<TResultSchema, TResult = TResultSchema> extends Li
 
     const schemaRef: { current: Schema.Schema<any, any> | undefined } = {
       current:
-        typeof queryInput === 'function' ? undefined : isQueryBuilder(queryInput) ? undefined : queryInput.schema,
+        typeof queryInput === 'function' ? undefined : isQueryBuilder(queryInput) === true ? undefined : queryInput.schema,
     }
 
     const execBeforeFirstRunRef: {
@@ -248,7 +254,7 @@ export class LiveStoreDbQuery<TResultSchema, TResult = TResultSchema> extends Li
               : undefined,
         }
       } catch (cause) {
-        throw new UnexpectedError({ cause, note: `Error building query for ${qb.toString()}`, payload: { qb } })
+        throw new UnknownError({ cause, note: `Error building query for ${qb.toString()}`, payload: { qb } })
       }
     }
 
@@ -264,7 +270,7 @@ export class LiveStoreDbQuery<TResultSchema, TResult = TResultSchema> extends Li
 
           let queryInputRaw: TQueryInputRaw
 
-          if (isQueryBuilder(queryInputResult)) {
+          if (isQueryBuilder(queryInputResult) === true) {
             const res = fromQueryBuilder(queryInputResult, otelContext)
             queryInputRaw = res.queryInputRaw
             // setting label dynamically here
@@ -291,7 +297,7 @@ export class LiveStoreDbQuery<TResultSchema, TResult = TResultSchema> extends Li
       this.queryInput$ = queryInputRaw$OrQueryInputRaw
     } else {
       let queryInputRaw: TQueryInputRaw
-      if (isQueryBuilder(queryInput)) {
+      if (isQueryBuilder(queryInput) === true) {
         const res = fromQueryBuilder(queryInput, otelContext)
         queryInputRaw = res.queryInputRaw
         label = res.label
@@ -304,7 +310,7 @@ export class LiveStoreDbQuery<TResultSchema, TResult = TResultSchema> extends Li
       queryInputRaw$OrQueryInputRaw = queryInputRaw
 
       // this.label = inputLabel ? this.label : `db(${})`
-      if (inputLabel === undefined && isQueryBuilder(queryInput)) {
+      if (inputLabel === undefined && isQueryBuilder(queryInput) === true) {
         const ast = queryInput[QueryBuilderAstSymbol]
         if (ast._tag === 'RowQuery') {
           label = `db(${rowQueryLabel(ast.tableDef, ast.id)})`
@@ -314,8 +320,11 @@ export class LiveStoreDbQuery<TResultSchema, TResult = TResultSchema> extends Li
 
     const queriedTablesRef: { current: Set<string> | undefined } = { current: undefined }
 
-    const makeResultsEqual = (resultSchema: Schema.Schema<any, any>) => (a: TResult, b: TResult) =>
-      a === NOT_REFRESHED_YET || b === NOT_REFRESHED_YET ? false : Schema.equivalence(resultSchema)(a, b)
+    const makeResultsEqual = (resultSchema: Schema.Schema<any, any>) => {
+      // Creating the equivalence function eagerly in outer scope as it might be expensive
+      const eq = Schema.equivalence(resultSchema)
+      return (a: TResult, b: TResult) => (a === NOT_REFRESHED_YET || b === NOT_REFRESHED_YET ? false : eq(a, b))
+    }
 
     // NOTE we try to create the equality function eagerly as it might be expensive
     // TODO also support derived equality for `map` (probably will depend on having an easy way to transform a schema without an `encode` step)
@@ -333,7 +342,7 @@ export class LiveStoreDbQuery<TResultSchema, TResult = TResultSchema> extends Li
           'db:...', // NOTE span name will be overridden further down
           {
             attributes: {
-              'livestore.debugRefreshReason': Predicate.hasProperty(debugRefreshReason, 'label')
+              'livestore.debugRefreshReason': Predicate.hasProperty(debugRefreshReason, 'label') === true
                 ? (debugRefreshReason.label as string)
                 : debugRefreshReason?._tag,
             },
@@ -348,7 +357,7 @@ export class LiveStoreDbQuery<TResultSchema, TResult = TResultSchema> extends Li
               execBeforeFirstRunRef.current = undefined
             }
 
-            const queryInputResult = isThunk(queryInputRaw$OrQueryInputRaw)
+            const queryInputResult = isThunk(queryInputRaw$OrQueryInputRaw) === true
               ? (get(queryInputRaw$OrQueryInputRaw, otelContext, debugRefreshReason) as TQueryInputRaw)
               : (queryInputRaw$OrQueryInputRaw as TQueryInputRaw)
 
@@ -356,25 +365,27 @@ export class LiveStoreDbQuery<TResultSchema, TResult = TResultSchema> extends Li
             const bindValues = queryInputResult.bindValues
 
             if (queriedTablesRef.current === undefined) {
-              queriedTablesRef.current = store.sqliteDbWrapper.getTablesUsed(sqlString)
+              queriedTablesRef.current = store[StoreInternalsSymbol].sqliteDbWrapper.getTablesUsed(sqlString)
             }
 
             if (bindValues !== undefined) {
-              replaceSessionIdSymbol(bindValues, store.clientSession.sessionId)
+              replaceSessionIdSymbol(bindValues, store.sessionId)
             }
 
             // Establish a reactive dependency on the tables used in the query
             for (const tableName of queriedTablesRef.current) {
-              const tableRef = store.tableRefs[tableName] ?? shouldNeverHappen(`No table ref found for ${tableName}`)
+              const tableRef =
+                store[StoreInternalsSymbol].tableRefs[tableName] ??
+                shouldNeverHappen(`No table ref found for ${tableName}`)
               get(tableRef, otelContext, debugRefreshReason)
             }
 
             span.setAttribute('sql.query', sqlString)
             span.updateName(`db:${sqlString.slice(0, 50)}`)
 
-            const rawDbResults = store.sqliteDbWrapper.cachedSelect<any>(
+            const rawDbResults = store[StoreInternalsSymbol].sqliteDbWrapper.cachedSelect(
               sqlString,
-              bindValues ? prepareBindValues(bindValues, sqlString) : undefined,
+              bindValues !== undefined ? prepareBindValues(bindValues, sqlString) : undefined,
               {
                 queriedTables: queriedTablesRef.current,
                 otelContext,
@@ -420,7 +431,11 @@ Result:`,
             return result
           },
         ),
-      { label: `${label}:results`, meta: { liveStoreThunkType: 'db.result' }, equal: resultsEqual },
+      {
+        label: `${label}:results`,
+        meta: { liveStoreThunkType: 'db.result' },
+        ...omitUndefineds({ equal: resultsEqual }),
+      },
     )
 
     this.results$ = results$

@@ -1,20 +1,21 @@
 import { Deferred, Either, Exit, GlobalValue, identity, Option, PubSub, Queue, Scope } from 'effect'
 import type { DurationInput } from 'effect/Duration'
 
-import { shouldNeverHappen } from '../../misc.js'
-import * as Effect from '../Effect.js'
-import * as Schema from '../Schema/index.js'
-import * as Stream from '../Stream.js'
+import { shouldNeverHappen } from '../../misc.ts'
+import * as Effect from '../Effect.ts'
+import * as Schema from '../Schema/index.ts'
+import * as Stream from '../Stream.ts'
 import {
   DebugPingMessage,
   type InputSchema,
+  listenToDebugPing,
+  mapSchema,
   type WebChannel,
   WebChannelHeartbeat,
   WebChannelPing,
   WebChannelPong,
   WebChannelSymbol,
-} from './common.js'
-import { listenToDebugPing, mapSchema } from './common.js'
+} from './common.ts'
 
 export const shutdown = <MsgListen, MsgSend>(webChannel: WebChannel<MsgListen, MsgSend>): Effect.Effect<void> =>
   Deferred.done(webChannel.closedDeferred, Exit.void)
@@ -37,134 +38,11 @@ export const noopChannel = <MsgListen, MsgSend>(): Effect.Effect<WebChannel<MsgL
     }).pipe(Effect.withSpan(`WebChannel:noopChannel`)),
   )
 
-/** Only works in browser environments */
-export const broadcastChannel = <MsgListen, MsgSend, MsgListenEncoded, MsgSendEncoded>({
-  channelName,
-  schema: inputSchema,
-}: {
-  channelName: string
+export const messagePortChannel: <MsgListen, MsgSend, MsgListenEncoded, MsgSendEncoded>(args: {
+  port: MessagePort
   schema: InputSchema<MsgListen, MsgSend, MsgListenEncoded, MsgSendEncoded>
-}): Effect.Effect<WebChannel<MsgListen, MsgSend>, never, Scope.Scope> =>
-  Effect.scopeWithCloseable((scope) =>
-    Effect.gen(function* () {
-      const schema = mapSchema(inputSchema)
-
-      const channel = new BroadcastChannel(channelName)
-
-      yield* Effect.addFinalizer(() => Effect.try(() => channel.close()).pipe(Effect.ignoreLogged))
-
-      const send = (message: MsgSend) =>
-        Effect.gen(function* () {
-          const messageEncoded = yield* Schema.encode(schema.send)(message)
-          channel.postMessage(messageEncoded)
-        })
-
-      // TODO also listen to `messageerror` in parallel
-      const listen = Stream.fromEventListener<MessageEvent>(channel, 'message').pipe(
-        Stream.map((_) => Schema.decodeEither(schema.listen)(_.data)),
-        listenToDebugPing(channelName),
-      )
-
-      const closedDeferred = yield* Deferred.make<void>().pipe(Effect.acquireRelease(Deferred.done(Exit.void)))
-      const supportsTransferables = false
-
-      return {
-        [WebChannelSymbol]: WebChannelSymbol,
-        send,
-        listen,
-        closedDeferred,
-        shutdown: Scope.close(scope, Exit.succeed('shutdown')),
-        schema,
-        supportsTransferables,
-      }
-    }).pipe(Effect.withSpan(`WebChannel:broadcastChannel(${channelName})`)),
-  )
-
-/**
- * NOTE the `listenName` and `sendName` is needed for cases where both sides are using the same window
- * e.g. for a browser extension, so we need a way to know for which side a message is intended for.
- */
-export const windowChannel = <MsgListen, MsgSend, MsgListenEncoded, MsgSendEncoded>({
-  listenWindow,
-  sendWindow,
-  targetOrigin = '*',
-  ids,
-  schema: inputSchema,
-}: {
-  listenWindow: Window
-  sendWindow: Window
-  targetOrigin?: string
-  ids: { own: string; other: string }
-  schema: InputSchema<MsgListen, MsgSend, MsgListenEncoded, MsgSendEncoded>
-}): Effect.Effect<WebChannel<MsgListen, MsgSend>, never, Scope.Scope> =>
-  Effect.scopeWithCloseable((scope) =>
-    Effect.gen(function* () {
-      const schema = mapSchema(inputSchema)
-
-      const debugInfo = {
-        sendTotal: 0,
-        listenTotal: 0,
-        targetOrigin,
-        ids,
-      }
-
-      const WindowMessageListen = Schema.Struct({
-        message: schema.listen,
-        from: Schema.Literal(ids.other),
-        to: Schema.Literal(ids.own),
-      }).annotations({ title: 'webmesh.WindowMessageListen' })
-
-      const WindowMessageSend = Schema.Struct({
-        message: schema.send,
-        from: Schema.Literal(ids.own),
-        to: Schema.Literal(ids.other),
-      }).annotations({ title: 'webmesh.WindowMessageSend' })
-
-      const send = (message: MsgSend) =>
-        Effect.gen(function* () {
-          debugInfo.sendTotal++
-
-          const [messageEncoded, transferables] = yield* Schema.encodeWithTransferables(WindowMessageSend)({
-            message,
-            from: ids.own,
-            to: ids.other,
-          })
-          sendWindow.postMessage(messageEncoded, targetOrigin, transferables)
-        })
-
-      const listen = Stream.fromEventListener<MessageEvent>(listenWindow, 'message').pipe(
-        // Stream.tap((_) => Effect.log(`${ids.other}→${ids.own}:message`, _.data)),
-        Stream.filter((_) => Schema.is(Schema.encodedSchema(WindowMessageListen))(_.data)),
-        Stream.map((_) => {
-          debugInfo.listenTotal++
-          return Schema.decodeEither(schema.listen)(_.data.message)
-        }),
-        listenToDebugPing('window'),
-      )
-
-      const closedDeferred = yield* Deferred.make<void>().pipe(Effect.acquireRelease(Deferred.done(Exit.void)))
-      const supportsTransferables = true
-
-      return {
-        [WebChannelSymbol]: WebChannelSymbol,
-        send,
-        listen,
-        closedDeferred,
-        shutdown: Scope.close(scope, Exit.succeed('shutdown')),
-        schema,
-        supportsTransferables,
-        debugInfo,
-      }
-    }).pipe(Effect.withSpan(`WebChannel:windowChannel`)),
-  )
-
-export const messagePortChannel: {
-  <MsgListen, MsgSend, MsgListenEncoded, MsgSendEncoded>(args: {
-    port: MessagePort
-    schema: InputSchema<MsgListen, MsgSend, MsgListenEncoded, MsgSendEncoded>
-    debugId?: string | number
-  }): Effect.Effect<WebChannel<MsgListen, MsgSend>, never, Scope.Scope>
-} = ({ port, schema: inputSchema, debugId }) =>
+  debugId?: string | number
+}) => Effect.Effect<WebChannel<MsgListen, MsgSend>, never, Scope.Scope> = ({ port, schema: inputSchema, debugId }) =>
   Effect.scopeWithCloseable((scope) =>
     Effect.gen(function* () {
       const schema = mapSchema(inputSchema)
@@ -226,10 +104,7 @@ export const sameThreadChannel = <MsgListen, MsgSend, MsgListenEncoded, MsgSendE
 
       const schema = mapSchema(inputSchema)
 
-      const send = (message: MsgSend) =>
-        Effect.gen(function* () {
-          yield* PubSub.publish(pubSub, message)
-        })
+      const send = (message: MsgSend) => PubSub.publish(pubSub, message)
 
       const listen = Stream.fromPubSub(pubSub).pipe(Stream.map(Either.right), listenToDebugPing(channelName))
 
@@ -247,13 +122,11 @@ export const sameThreadChannel = <MsgListen, MsgSend, MsgListenEncoded, MsgSendE
     }),
   )
 
-export const messagePortChannelWithAck: {
-  <MsgListen, MsgSend, MsgListenEncoded, MsgSendEncoded>(args: {
-    port: MessagePort
-    schema: InputSchema<MsgListen, MsgSend, MsgListenEncoded, MsgSendEncoded>
-    debugId?: string | number
-  }): Effect.Effect<WebChannel<MsgListen, MsgSend>, never, Scope.Scope>
-} = ({ port, schema: inputSchema, debugId }) =>
+export const messagePortChannelWithAck: <MsgListen, MsgSend, MsgListenEncoded, MsgSendEncoded>(args: {
+  port: MessagePort
+  schema: InputSchema<MsgListen, MsgSend, MsgListenEncoded, MsgSendEncoded>
+  debugId?: string | number
+}) => Effect.Effect<WebChannel<MsgListen, MsgSend>, never, Scope.Scope> = ({ port, schema: inputSchema, debugId }) =>
   Effect.scopeWithCloseable((scope) =>
     Effect.gen(function* () {
       const schema = mapSchema(inputSchema)
@@ -273,7 +146,6 @@ export const messagePortChannelWithAck: {
       const ChannelMessage = Schema.Union(ChannelRequest, ChannelRequestAck).annotations({
         title: 'webmesh.ChannelMessage',
       })
-      type ChannelMessage = typeof ChannelMessage.Type
 
       const debugInfo = {
         sendTotal: 0,
@@ -319,7 +191,7 @@ export const messagePortChannelWithAck: {
                 yield* Deferred.succeed(requestAckMap.get(msg.right.reqId)!, void 0)
               } else if (msg.right._tag === 'ChannelRequest') {
                 debugInfo.listenTotal++
-                port.postMessage(Schema.encodeSync(ChannelMessage)({ _tag: 'ChannelRequestAck', reqId: msg.right.id }))
+                port.postMessage(yield* Schema.encode(ChannelMessage)({ _tag: 'ChannelRequestAck', reqId: msg.right.id }))
               }
             }
           }),
@@ -412,8 +284,8 @@ export const queueChannelProxy = <MsgListen, MsgSend>({
 /**
  * Eagerly starts listening to a channel by buffering incoming messages in a queue.
  */
-export const toOpenChannel = (
-  channel: WebChannel<any, any>,
+export const toOpenChannel = <MsgListen, MsgSend>(
+  channel: WebChannel<MsgListen, MsgSend>,
   options?: {
     /**
      * Sends a heartbeat message to the other end of the channel every `interval`.
@@ -424,9 +296,14 @@ export const toOpenChannel = (
       timeout: DurationInput
     }
   },
-): Effect.Effect<WebChannel<any, any>, never, Scope.Scope> =>
+): Effect.Effect<WebChannel<MsgListen, MsgSend>, never, Scope.Scope> =>
   Effect.gen(function* () {
-    const queue = yield* Queue.unbounded<Either.Either<any, any>>().pipe(Effect.acquireRelease(Queue.shutdown))
+    const queue = yield* Queue.unbounded<Either.Either<MsgListen, any>>().pipe(Effect.acquireRelease(Queue.shutdown))
+
+    const heartbeatChannel = channel as WebChannel<
+      MsgListen | typeof WebChannelHeartbeat.Type,
+      MsgSend | typeof WebChannelHeartbeat.Type
+    >
 
     const pendingPingDeferredRef = {
       current: undefined as { deferred: Deferred.Deferred<void>; requestId: string } | undefined,
@@ -434,12 +311,12 @@ export const toOpenChannel = (
 
     yield* channel.listen.pipe(
       // TODO implement this on the "chunk" level for better performance
-      options?.heartbeat
+      options?.heartbeat !== undefined
         ? Stream.filterEffect(
             Effect.fn(function* (msg) {
-              if (msg._tag === 'Right' && Schema.is(WebChannelHeartbeat)(msg.right)) {
+              if (msg._tag === 'Right' && Schema.is(WebChannelHeartbeat)(msg.right) === true) {
                 if (msg.right._tag === 'WebChannel.Ping') {
-                  yield* channel.send(WebChannelPong.make({ requestId: msg.right.requestId }))
+                  yield* heartbeatChannel.send(WebChannelPong.make({ requestId: msg.right.requestId }))
                 } else {
                   const { deferred, requestId } = pendingPingDeferredRef.current ?? shouldNeverHappen('No pending ping')
                   if (requestId !== msg.right.requestId) {
@@ -459,13 +336,13 @@ export const toOpenChannel = (
       Effect.forkScoped,
     )
 
-    if (options?.heartbeat) {
+    if (options?.heartbeat !== undefined) {
       const { interval, timeout } = options.heartbeat
       yield* Effect.gen(function* () {
         while (true) {
           yield* Effect.sleep(interval)
           const requestId = crypto.randomUUID()
-          yield* channel.send(WebChannelPing.make({ requestId }))
+          yield* heartbeatChannel.send(WebChannelPing.make({ requestId }))
           const deferred = yield* Deferred.make<void>()
           pendingPingDeferredRef.current = { deferred, requestId }
           yield* deferred.pipe(
@@ -496,7 +373,4 @@ export const toOpenChannel = (
     }
   })
 
-export const sendDebugPing = (channel: WebChannel<any, any>) =>
-  Effect.gen(function* () {
-    yield* channel.send(DebugPingMessage.make({ message: 'ping' }))
-  })
+export const sendDebugPing = (channel: WebChannel<any, any>) => channel.send(DebugPingMessage.make({ message: 'ping' }))

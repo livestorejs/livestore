@@ -15,12 +15,12 @@ import {
   WebChannel,
 } from '@livestore/utils/effect'
 
-import { makeDirectChannel } from './channel/direct-channel.js'
-import { makeProxyChannel } from './channel/proxy-channel.js'
-import type { ChannelKey, ListenForChannelResult, MeshNodeName, MessageQueueItem, ProxyQueueItem } from './common.js'
-import { EdgeAlreadyExistsError, packetAsOtelAttributes } from './common.js'
-import * as WebmeshSchema from './mesh-schema.js'
-import { TimeoutSet } from './utils.js'
+import { makeDirectChannel } from './channel/direct-channel.ts'
+import { makeProxyChannel, type ProxyChannelSimulationParams } from './channel/proxy-channel.ts'
+import type { ChannelKey, ListenForChannelResult, MeshNodeName, MessageQueueItem, ProxyQueueItem } from './common.ts'
+import { EdgeAlreadyExistsError, packetAsOtelAttributes } from './common.ts'
+import * as WebmeshSchema from './mesh-schema.ts'
+import { TimeoutSet } from './utils.ts'
 
 type EdgeChannel = WebChannel.WebChannel<typeof WebmeshSchema.Packet.Type, typeof WebmeshSchema.Packet.Type>
 
@@ -114,6 +114,11 @@ export interface MeshNode<TName extends MeshNodeName = MeshNodeName> {
      * @default false
      */
     closeExisting?: boolean
+    /**
+     * Optional simulation parameters for testing timing-sensitive behavior.
+     * Only used when mode is 'proxy'.
+     */
+    simulation?: ProxyChannelSimulationParams
   }) => Effect.Effect<WebChannel.WebChannel<MsgListen, MsgSend>, never, Scope.Scope>
 
   listenForChannel: Stream.Stream<ListenForChannelResult>
@@ -171,11 +176,9 @@ export const makeMeshNode = <TName extends MeshNodeName>(
     const checkTransferableEdges = (packet: typeof WebmeshSchema.DirectChannelPacket.Type) => {
       if (
         (packet._tag === 'DirectChannelRequest' &&
-          (edgeChannels.size === 0 ||
-            // Either if direct edge does not support transferables ...
-            edgeChannels.get(packet.target)?.channel.supportsTransferables === false)) ||
-        // ... or if no forward-edges support transferables
-        ![...edgeChannels.values()].some((c) => c.channel.supportsTransferables === true)
+          (edgeChannels.size === 0 || // Either if direct edge does not support transferables ...
+            edgeChannels.get(packet.target)?.channel.supportsTransferables === false)) || // ... or if no forward-edges support transferables
+        [...edgeChannels.values()].some((c) => c.channel.supportsTransferables) === false
       ) {
         return WebmeshSchema.DirectChannelResponseNoTransferables.make({
           reqId: packet.id,
@@ -189,13 +192,14 @@ export const makeMeshNode = <TName extends MeshNodeName>(
           hops: [],
         })
       }
+      return undefined
     }
 
     const sendPacket = (packet: typeof WebmeshSchema.Packet.Type) =>
       Effect.gen(function* () {
         // yield* Effect.log(`${nodeName}: sendPacket:${packet._tag} [${packet.id}]`)
 
-        if (Schema.is(WebmeshSchema.NetworkEdgeAdded)(packet)) {
+        if (Schema.is(WebmeshSchema.NetworkEdgeAdded)(packet) === true) {
           yield* Effect.spanEvent('NetworkEdgeAdded', { packet, nodeName })
           yield* PubSub.publish(newEdgeAvailablePubSub, packet.target)
 
@@ -207,7 +211,7 @@ export const makeMeshNode = <TName extends MeshNodeName>(
           return
         }
 
-        if (Schema.is(WebmeshSchema.BroadcastChannelPacket)(packet)) {
+        if (Schema.is(WebmeshSchema.BroadcastChannelPacket)(packet) === true) {
           const edgesToForwardTo = Array.from(edgeChannels)
             .filter(([name]) => !packet.hops.includes(name))
             .map(([_, con]) => con.channel)
@@ -233,7 +237,7 @@ export const makeMeshNode = <TName extends MeshNodeName>(
           return
         }
 
-        if (Schema.is(WebmeshSchema.NetworkTopologyRequest)(packet)) {
+        if (Schema.is(WebmeshSchema.NetworkTopologyRequest)(packet) === true) {
           if (packet.source !== nodeName) {
             const backEdgeName =
               packet.hops.at(-1) ?? shouldNeverHappen(`${nodeName}: Expected hops for packet`, packet)
@@ -267,7 +271,7 @@ export const makeMeshNode = <TName extends MeshNodeName>(
           return
         }
 
-        if (Schema.is(WebmeshSchema.NetworkTopologyResponse)(packet)) {
+        if (Schema.is(WebmeshSchema.NetworkTopologyResponse)(packet) === true) {
           if (packet.source === nodeName) {
             const topologyRequestItem = topologyRequestsMap.get(packet.reqId)!
             topologyRequestItem.set(packet.nodeName, new Set(packet.edges))
@@ -291,14 +295,13 @@ export const makeMeshNode = <TName extends MeshNodeName>(
         }
 
         // We have a direct edge to the target node
-        if (edgeChannels.has(packet.target)) {
+        if (edgeChannels.has(packet.target) === true) {
           const edgeChannel = edgeChannels.get(packet.target)!.channel
           const hops = packet.source === nodeName ? [] : [...packet.hops, nodeName]
           yield* Effect.annotateCurrentSpan({ hasDirectEdge: true })
           yield* edgeChannel.send({ ...packet, hops })
         }
         // In this case we have an expected route back we should follow
-        // eslint-disable-next-line unicorn/no-negated-condition
         else if (packet.remainingHops !== undefined) {
           const hopTarget =
             packet.remainingHops.at(-1) ?? shouldNeverHappen(`${nodeName}: Expected remaining hops for packet`, packet)
@@ -328,7 +331,7 @@ export const makeMeshNode = <TName extends MeshNodeName>(
             .map(([name, con]) => ({ name, channel: con.channel }))
 
           // TODO if hops-depth=0, we should fail right away with no route found
-          if (hops.length === 0 && edgesToForwardTo.length === 0 && LS_DEV) {
+          if (hops.length === 0 && edgesToForwardTo.length === 0 && LS_DEV === true) {
             yield* Effect.logWarning(nodeName, 'no route found to', packet.target, packet._tag, 'TODO handle better')
             // TODO return a expected failure
           }
@@ -351,8 +354,8 @@ export const makeMeshNode = <TName extends MeshNodeName>(
 
     const addEdge: MeshNode['addEdge'] = ({ target: targetNodeName, edgeChannel, replaceIfExists = false }) =>
       Effect.gen(function* () {
-        if (edgeChannels.has(targetNodeName)) {
-          if (replaceIfExists) {
+        if (edgeChannels.has(targetNodeName) === true) {
+          if (replaceIfExists === true) {
             yield* removeEdge(targetNodeName).pipe(Effect.orDie)
           } else {
             return yield* new EdgeAlreadyExistsError({ target: targetNodeName })
@@ -368,7 +371,7 @@ export const makeMeshNode = <TName extends MeshNodeName>(
 
               // console.debug(nodeName, 'recv', packet._tag, packet.source, packet.target)
 
-              if (handledPacketIds.has(packet.id)) return
+              if (handledPacketIds.has(packet.id) === true) return
               handledPacketIds.add(packet.id)
 
               switch (packet._tag) {
@@ -383,7 +386,7 @@ export const makeMeshNode = <TName extends MeshNodeName>(
                   if (packet.target === nodeName) {
                     const channelKey = `target:${packet.source}, channelName:${packet.channelName}` satisfies ChannelKey
 
-                    if (!channelMap.has(channelKey)) {
+                    if (channelMap.has(channelKey) === false) {
                       const channelQueue = yield* Queue.unbounded<MessageQueueItem | ProxyQueueItem>().pipe(
                         Effect.acquireRelease(Queue.shutdown),
                       )
@@ -403,9 +406,9 @@ export const makeMeshNode = <TName extends MeshNodeName>(
                           Effect.orDie,
                         )
 
-                    if (Schema.is(WebmeshSchema.ProxyChannelPacket)(packet)) {
+                    if (Schema.is(WebmeshSchema.ProxyChannelPacket)(packet) === true) {
                       yield* Queue.offer(channelQueue, { packet, respondToSender })
-                    } else if (Schema.is(WebmeshSchema.DirectChannelPacket)(packet)) {
+                    } else if (Schema.is(WebmeshSchema.DirectChannelPacket)(packet) === true) {
                       yield* Queue.offer(channelQueue, { packet, respondToSender })
                     }
 
@@ -417,7 +420,7 @@ export const makeMeshNode = <TName extends MeshNodeName>(
                       })
                     }
                   } else {
-                    if (Schema.is(WebmeshSchema.DirectChannelPacket)(packet)) {
+                    if (Schema.is(WebmeshSchema.DirectChannelPacket)(packet) === true) {
                       const noTransferableResponse = checkTransferableEdges(packet)
                       if (noTransferableResponse !== undefined) {
                         yield* Effect.spanEvent(`No transferable edges found for ${packet.source}→${packet.target}`)
@@ -458,8 +461,8 @@ export const makeMeshNode = <TName extends MeshNodeName>(
 
     const removeEdge: MeshNode['removeEdge'] = (targetNodeName) =>
       Effect.gen(function* () {
-        if (!edgeChannels.has(targetNodeName)) {
-          yield* new Cause.NoSuchElementException(`No edge found for ${targetNodeName}`)
+        if (edgeChannels.has(targetNodeName) === false) {
+          return yield* new Cause.NoSuchElementException(`No edge found for ${targetNodeName}`)
         }
 
         yield* Fiber.interrupt(edgeChannels.get(targetNodeName)!.listenFiber)
@@ -480,15 +483,16 @@ export const makeMeshNode = <TName extends MeshNodeName>(
       mode,
       timeout = Duration.seconds(1),
       closeExisting = false,
+      simulation,
     }) =>
       Effect.gen(function* () {
         const schema = WebChannel.mapSchema(inputSchema)
         const channelKey = `target:${target}, channelName:${channelName}` satisfies ChannelKey
 
-        if (channelMap.has(channelKey)) {
+        if (channelMap.has(channelKey) === true) {
           const existingChannel = channelMap.get(channelKey)!.debugInfo?.channel
-          if (existingChannel) {
-            if (closeExisting) {
+          if (existingChannel !== undefined) {
+            if (closeExisting === true) {
               yield* existingChannel.shutdown
               channelMap.delete(channelKey)
             } else {
@@ -549,6 +553,7 @@ export const makeMeshNode = <TName extends MeshNodeName>(
             schema,
             queue: channelQueue,
             sendPacket,
+            simulation,
           })
 
           channelMap.set(channelKey, { queue: channelQueue, debugInfo: { channel, target } })
@@ -567,7 +572,7 @@ export const makeMeshNode = <TName extends MeshNodeName>(
     // TODO also provide a way to allow for reconnects
     let listenAlreadyStarted = false
     const listenForChannel: MeshNode['listenForChannel'] = Stream.suspend(() => {
-      if (listenAlreadyStarted) {
+      if (listenAlreadyStarted === true) {
         return shouldNeverHappen('listenForChannel already started')
       }
       listenAlreadyStarted = true
@@ -579,7 +584,7 @@ export const makeMeshNode = <TName extends MeshNodeName>(
       return Stream.fromQueue(channelRequestsQueue).pipe(
         Stream.filter((res) => {
           const hashed = hash(res)
-          if (seen.has(hashed)) {
+          if (seen.has(hashed) === true) {
             return false
           }
           seen.add(hashed)
@@ -591,7 +596,7 @@ export const makeMeshNode = <TName extends MeshNodeName>(
     const makeBroadcastChannel: MeshNode['makeBroadcastChannel'] = ({ channelName, schema }) =>
       Effect.scopeWithCloseable((scope) =>
         Effect.gen(function* () {
-          if (broadcastChannelListenQueueMap.has(channelName)) {
+          if (broadcastChannelListenQueueMap.has(channelName) === true) {
             return shouldNeverHappen(
               `Broadcast channel ${channelName} already exists`,
               broadcastChannelListenQueueMap.get(channelName),
@@ -660,7 +665,7 @@ export const makeMeshNode = <TName extends MeshNodeName>(
               supportsTransferables: value.debugInfo?.channel.supportsTransferables,
               ...value.debugInfo?.channel.debugInfo,
             })
-              .map(([key, value]) => indent(`${key}=${value}`, 4))
+              .map(([key, value]) => indent(`${key}=${String(value)}`, 4))
               .join('\n'),
             '    ',
             value.debugInfo?.channel,

@@ -1,19 +1,30 @@
-// eslint-disable-next-line @typescript-eslint/no-require-imports, unicorn/prefer-module, @typescript-eslint/consistent-type-imports, prettier/prettier
-const { Effect, Logger, LogLevel } = require('@livestore/utils/effect') as typeof import('@livestore/utils/effect', { with: { "resolution-mode": "import" } })
+// eslint-disable-next-line @typescript-eslint/no-require-imports, unicorn/prefer-module, @typescript-eslint/consistent-type-imports
+const { Effect, Logger, LogLevel, Layer } = require('@livestore/utils/effect') as typeof import(
+  '@livestore/utils/effect',
+  {
+    with: {
+      'resolution-mode': 'import',
+    },
+  }
+)
 
-// eslint-disable-next-line @typescript-eslint/no-require-imports, unicorn/prefer-module, @typescript-eslint/consistent-type-imports, prettier/prettier
-const { PlatformNode } = require('@livestore/utils/node') as typeof import('@livestore/utils/node', { with: { "resolution-mode": "import" } })
+// eslint-disable-next-line @typescript-eslint/no-require-imports, unicorn/prefer-module, @typescript-eslint/consistent-type-imports
+const { PlatformNode } = require('@livestore/utils/node') as typeof import('@livestore/utils/node', {
+  with: {
+    'resolution-mode': 'import',
+  },
+})
 
 import type { MetroConfig } from 'expo/metro-config'
 
-import type { Middleware, Options } from './types.js'
+import type { Middleware, Options } from './types.ts'
 
 /**
  * Patches the Metro config to add a middleware via `config.server.enhanceMiddleware`.
  */
 const addLiveStoreDevtoolsMiddleware = (config: MutableDeep<MetroConfig>, options: Options) => {
   // NOTE in CI we want to skip this
-  if (process.env.CI || !process.stdout.isTTY) {
+  if (process.env.CI !== undefined || process.stdout.isTTY === false) {
     return
   }
   const host = options.host ?? '0.0.0.0' // Defaulting to a hostname that can be reached from the device
@@ -24,14 +35,18 @@ const addLiveStoreDevtoolsMiddleware = (config: MutableDeep<MetroConfig>, option
 
   import('@livestore/adapter-node/devtools')
     .then(async ({ startDevtoolsServer }) => {
+      const layer = Layer.mergeAll(
+        PlatformNode.NodeHttpClient.layer,
+        Logger.prettyWithThread('@livestore/devtools-expo:metro-config'),
+      )
+
       startDevtoolsServer({
         clientSessionInfo: undefined,
         schemaPath: options.schemaPath,
         host,
         port,
       }).pipe(
-        Effect.provide(PlatformNode.NodeHttpClient.layer),
-        Effect.provide(Logger.prettyWithThread('@livestore/devtools-expo:metro-config')),
+        Effect.provide(layer),
         Logger.withMinimumLogLevel(LogLevel.Debug),
         Effect.tapCauseLogPretty,
         Effect.runPromise,
@@ -63,7 +78,7 @@ const addLiveStoreDevtoolsMiddleware = (config: MutableDeep<MetroConfig>, option
     const enhancedMiddleware = previousEnhanceMiddleware(metroMiddleware, server)
 
     return (req, res, next) =>
-      req.url?.startsWith('/_livestore')
+      req.url?.startsWith('/_livestore') === true
         ? redirectMiddleware(req, res, () => enhancedMiddleware(req, res, next))
         : enhancedMiddleware(req, res, next)
   }
@@ -82,4 +97,4 @@ module.exports = {
 }
 
 export type { addLiveStoreDevtoolsMiddleware }
-export type { Options } from './types.js'
+export type { Options } from './types.ts'
