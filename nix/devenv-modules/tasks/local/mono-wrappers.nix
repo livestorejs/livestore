@@ -22,7 +22,7 @@
 
     "test:perf" = {
       description = "Run performance tests";
-      exec = "mono test perf";
+      exec = "cd tests/perf && FORCE_PLAYWRIGHT_VIA_CLI=1 NODE_OPTIONS=--disable-warning=ExperimentalWarning pnpm playwright test";
     };
 
     # Integration test suites
