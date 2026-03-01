@@ -172,7 +172,8 @@ export class AccessHandlePoolVFS extends FacadeVFS {
   override jOpen(zName: string, fileId: number, flags: number, pOutFlags: DataView): number {
     return Effect.gen(this, function* () {
       // First try to open a path that already exists in the file system.
-      const path = zName ? this.#getPath(zName) : Math.random().toString(36)
+      const name = zName as unknown
+      const path = typeof name === 'string' && name !== '' ? this.#getPath(name) : Math.random().toString(36)
       let accessHandle = this.#mapPathToAccessHandle.get(path)
       if (accessHandle == null && (flags & VFS.SQLITE_OPEN_CREATE) !== 0) {
         // File not found so try to create it.
@@ -436,7 +437,7 @@ export class AccessHandlePoolVFS extends FacadeVFS {
         Stream.runForEach(({ opfsFileName, accessHandle, path }) =>
           Effect.gen(this, function* () {
             this.#mapAccessHandleToName.set(accessHandle, opfsFileName)
-            if (path !== undefined) {
+            if (path !== '') {
               this.#mapPathToAccessHandle.set(path, accessHandle)
             } else {
               this.#availableAccessHandles.add(accessHandle)
@@ -474,7 +475,7 @@ export class AccessHandlePoolVFS extends FacadeVFS {
       // Delete files not expected to be present.
       const dataView = new DataView(corpus.buffer, corpus.byteOffset)
       const flags = dataView.getUint32(HEADER_OFFSET_FLAGS)
-      if (corpus[0] && ((flags & VFS.SQLITE_OPEN_DELETEONCLOSE) !== 0 || (flags & PERSISTENT_FILE_TYPES) === 0)) {
+      if (corpus[0] !== 0 && ((flags & VFS.SQLITE_OPEN_DELETEONCLOSE) !== 0 || (flags & PERSISTENT_FILE_TYPES) === 0)) {
         yield* Effect.logWarning(`Remove file with unexpected flags ${flags.toString(16)}`)
         yield* this.#setAssociatedPath(accessHandle, '', 0)
         return ''
@@ -545,7 +546,7 @@ export class AccessHandlePoolVFS extends FacadeVFS {
    * @returns {ArrayBuffer} 64-bit digest
    */
   #computeDigest(corpus: Uint8Array): Uint32Array {
-    if (!corpus[0]) {
+    if (corpus[0] === 0) {
       // Optimization for deleted file.
       return new Uint32Array([0xfe_cc_5f_80, 0xac_ce_c0_37])
     }

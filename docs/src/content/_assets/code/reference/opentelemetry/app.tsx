@@ -10,6 +10,7 @@ import { tracer } from './otel.ts'
 import { schema } from './schema.ts'
 
 const adapter = makeInMemoryAdapter()
+const suspenseFallback = <div>Loading...</div>
 
 // ---cut---
 const useAppStore = () =>
@@ -24,7 +25,7 @@ const useAppStore = () =>
 export const App: FC = () => {
   const [storeRegistry] = useState(() => new StoreRegistry())
   return (
-    <Suspense fallback={<div>Loading...</div>}>
+    <Suspense fallback={suspenseFallback}>
       <StoreRegistryProvider storeRegistry={storeRegistry}>
         <AppContent />
       </StoreRegistryProvider>

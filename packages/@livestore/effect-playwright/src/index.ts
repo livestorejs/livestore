@@ -63,7 +63,7 @@ export const browserContext = ({
           ...launchOptions,
           headless: false, // Using `--headless` flag below instead
           args: [
-            headless ? `--headless=new` : '', // Headless mode https://playwright.dev/docs/chrome-extensions#headless-mode
+            headless === true ? `--headless=new` : '', // Headless mode https://playwright.dev/docs/chrome-extensions#headless-mode
             `--disable-extensions-except=${extensionPath}`,
             `--load-extension=${extensionPath}`,
           ],
@@ -125,18 +125,19 @@ const parsePlaywrightConsoleMessage = async (
 ): Promise<Option.Option<typeof ConsoleMessage.Type>> => {
   const msgType = message.type() as PlaywrightConsoleMessageType
   const msg = message.text()
-  const args_ = shouldEvaluateArgs === true
-    ? await Promise.all(
-        message.args().map(async (argHandle) => {
-          const isDisposable = await argHandle
-            .evaluate((arg) => arg instanceof MessagePort || arg instanceof Uint8Array || arg instanceof ArrayBuffer)
-            .catch((e) => `<Error in serialization: ${e.message}>`)
-          return isDisposable === true
-            ? '<Disposable>'
-            : await argHandle.jsonValue().catch((e) => `<Error in serialization: ${e.message}>`)
-        }),
-      )
-    : []
+  const args_ =
+    shouldEvaluateArgs === true
+      ? await Promise.all(
+          message.args().map(async (argHandle) => {
+            const isDisposable = await argHandle
+              .evaluate((arg) => arg instanceof MessagePort || arg instanceof Uint8Array || arg instanceof ArrayBuffer)
+              .catch((e) => `<Error in serialization: ${e.message}>`)
+            return isDisposable === true
+              ? '<Disposable>'
+              : await argHandle.jsonValue().catch((e) => `<Error in serialization: ${e.message}>`)
+          }),
+        )
+      : []
 
   // We don't want to repeat the message in the args
   const args = args_.join(' ') === msg ? [] : args_

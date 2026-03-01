@@ -1,5 +1,3 @@
-import type * as otel from '@opentelemetry/api'
-
 /// <reference lib="dom" />
 import { LS_DEV, shouldNeverHappen, TRACE_VERBOSE } from '@livestore/utils'
 import {
@@ -15,6 +13,7 @@ import {
   Stream,
   Subscribable,
 } from '@livestore/utils/effect'
+import type * as otel from '@opentelemetry/api'
 
 import { type ClientSession, UnknownError } from '../adapter-types.ts'
 import type { MaterializeError } from '../errors.ts'
@@ -152,7 +151,7 @@ export const makeClientSessionSyncProcessor = ({
         acc[event.name] = (acc[event.name] ?? 0) + 1
         return acc
       }, {}),
-      ...(TRACE_VERBOSE && { mergeResult: jsonStringify(mergeResult) }),
+      ...(TRACE_VERBOSE === true ? { mergeResult: jsonStringify(mergeResult) } : {}),
     })
 
     if (mergeResult._tag === 'unknown-error') {
@@ -198,7 +197,11 @@ export const makeClientSessionSyncProcessor = ({
   }
 
   const boot: ClientSessionSyncProcessor['boot'] = Effect.gen(function* () {
-    if (confirmUnsavedChanges === true && typeof window !== 'undefined' && typeof window.addEventListener === 'function') {
+    if (
+      confirmUnsavedChanges === true &&
+      typeof window !== 'undefined' &&
+      typeof window.addEventListener === 'function'
+    ) {
       const onBeforeUnload = (event: BeforeUnloadEvent) => {
         if (syncStateRef.current.pending.length > 0) {
           // Trigger the default browser dialog
@@ -258,10 +261,10 @@ export const makeClientSessionSyncProcessor = ({
               'merge:pull:rebase',
               {
                 payloadTag: payload._tag,
-                payload: TRACE_VERBOSE ? jsonStringify(payload) : undefined,
+                payload: TRACE_VERBOSE === true ? jsonStringify(payload) : undefined,
                 newEventsCount: mergeResult.newEvents.length,
                 rollbackCount: mergeResult.rollbackEvents.length,
-                res: TRACE_VERBOSE ? jsonStringify(mergeResult) : undefined,
+                res: TRACE_VERBOSE === true ? jsonStringify(mergeResult) : undefined,
               },
               undefined,
             )
@@ -307,9 +310,9 @@ export const makeClientSessionSyncProcessor = ({
               'merge:pull:advance',
               {
                 payloadTag: payload._tag,
-                payload: TRACE_VERBOSE ? jsonStringify(payload) : undefined,
+                payload: TRACE_VERBOSE === true ? jsonStringify(payload) : undefined,
                 newEventsCount: mergeResult.newEvents.length,
-                res: TRACE_VERBOSE ? jsonStringify(mergeResult) : undefined,
+                res: TRACE_VERBOSE === true ? jsonStringify(mergeResult) : undefined,
               },
               undefined,
             )

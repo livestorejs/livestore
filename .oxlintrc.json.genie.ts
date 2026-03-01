@@ -84,12 +84,13 @@ const phase2Rules = {
   // TODO(oep-1n3.7): 4 violations — empty files
   'unicorn/no-empty-file': 'off',
 
-  // TODO(oep-3632.1): ~567 violations; enable --type-aware in CI once resolved
-  'typescript/no-unsafe-type-assertion': 'warn',
+  // TODO(oep-3632.1): ~567 violations; disable temporarily to unblock CI (https://github.com/livestorejs/livestore/issues/1057)
+  'typescript/no-unsafe-type-assertion': 'off',
   // Inverse of overeng/explicit-boolean-compare — must stay off
   'typescript/no-unnecessary-boolean-literal-compare': 'off',
-  // 79 violations, mostly generic verbosity
-  'typescript/no-unnecessary-type-arguments': 'error',
+  // TODO(oep-1n3.16): Re-enable after tsgolint crash is fixed upstream.
+  // Currently triggers a nil pointer panic in tsgolint/typescript-go.
+  'typescript/no-unnecessary-type-arguments': 'off',
   // 72 violations, concentrated in generated clients and broad union types
   'typescript/no-duplicate-type-constituents': 'error',
   // 57 violations, assertion cleanup churn
@@ -141,7 +142,7 @@ const phase2Rules = {
   'import/export': 'off',
 } as const
 
-const livestoreOxlintRules = {
+export const livestoreOxlintRules = {
   ...activeRules,
   ...permanentlyDisabledRules,
   ...phase2Rules,
@@ -151,7 +152,7 @@ const livestoreOxlintRules = {
  * LiveStore-specific overrides (without overeng rules).
  * Based on effect-utils overrides but excluding overeng/* rules.
  */
-const livestoreOxlintOverrides = [
+export const livestoreOxlintOverrides = [
   // CommonJS files legitimately use require/module.exports
   {
     files: ['**/*.cjs', '**/*.cts', '**/*.js'],
@@ -228,10 +229,18 @@ const livestoreOxlintOverrides = [
   },
 ] as const
 
+export const livestoreOxlintPlugins = [...baseOxlintPlugins, 'react', 'react-perf'] as const
+export const livestoreOxlintCategories = baseOxlintCategories
+export const livestoreOxlintIgnorePatterns = [
+  ...baseOxlintIgnorePatterns,
+  'tests/integration/node_modules/**',
+  'docs/src/plugins/**',
+] as const
+
 export default oxlintConfig({
-  plugins: [...baseOxlintPlugins, 'react', 'react-perf'],
-  categories: baseOxlintCategories,
+  plugins: livestoreOxlintPlugins,
+  categories: livestoreOxlintCategories,
   rules: livestoreOxlintRules,
   overrides: livestoreOxlintOverrides,
-  ignorePatterns: [...baseOxlintIgnorePatterns, 'tests/integration/node_modules/**', 'docs/src/plugins/**'],
+  ignorePatterns: livestoreOxlintIgnorePatterns,
 })

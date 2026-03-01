@@ -373,10 +373,12 @@ export class UnknownError extends Schema.TaggedError<UnknownError>()('@livestore
 }) {
   readonly [TypeId]: TypeId = TypeId
   override get message(): string {
-    const messageEnd = Predicate.isUndefined(this.description) ? 'A web error occurred' : this.description
+    const messageEnd = Predicate.isUndefined(this.description) === true ? 'A web error occurred' : this.description
     const moduleMethod =
-      Predicate.isString(this.module) && Predicate.isString(this.method) ? `${this.module}.${this.method}` : undefined
-    return Predicate.isUndefined(moduleMethod) ? messageEnd : `${moduleMethod}: ${messageEnd}`
+      Predicate.isString(this.module) === true && Predicate.isString(this.method) === true
+        ? `${this.module}.${this.method}`
+        : undefined
+    return Predicate.isUndefined(moduleMethod) === true ? messageEnd : `${moduleMethod}: ${messageEnd}`
   }
 }
 

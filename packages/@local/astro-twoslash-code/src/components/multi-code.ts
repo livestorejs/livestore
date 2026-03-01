@@ -96,9 +96,10 @@ const guessLanguage = (filename: string, fallback?: string): string => {
 const normalizeGlobals = (globals: SnippetBundle['globals']): SnippetGlobals => ({
   baseStyles: typeof globals?.baseStyles === 'string' && globals.baseStyles.length > 0 ? globals.baseStyles : null,
   themeStyles: typeof globals?.themeStyles === 'string' && globals.themeStyles.length > 0 ? globals.themeStyles : null,
-  jsModules: Array.isArray(globals?.jsModules) === true
-    ? globals.jsModules.filter((module): module is string => typeof module === 'string' && module.length > 0)
-    : [],
+  jsModules:
+    Array.isArray(globals?.jsModules) === true
+      ? globals.jsModules.filter((module): module is string => typeof module === 'string' && module.length > 0)
+      : [],
 })
 
 export const prepareMultiCodeData = (props: MultiCodeProps): PreparedMultiCode => {
@@ -164,7 +165,7 @@ export const prepareMultiCodeData = (props: MultiCodeProps): PreparedMultiCode =
   })
 
   const renderedMap = new Map<string, RenderedSnippet>()
-  if (isRecord(code?.rendered) && Array.isArray(code.rendered) === false) {
+  if (isRecord(code?.rendered) === true && Array.isArray(code.rendered) === false) {
     for (const [key, value] of Object.entries(code.rendered)) {
       if (isRecord(value) === false) continue
       const filename = normalizeFilename(key)
@@ -173,12 +174,14 @@ export const prepareMultiCodeData = (props: MultiCodeProps): PreparedMultiCode =
         html: typeof value.html === 'string' ? value.html : null,
         language: typeof value.language === 'string' ? value.language : 'ts',
         meta: typeof value.meta === 'string' && value.meta.length > 0 ? value.meta : activeMeta,
-        diagnostics: Array.isArray(value.diagnostics) === true
-          ? value.diagnostics.filter((item): item is string => typeof item === 'string')
-          : [],
-        styles: Array.isArray(value.styles) === true
-          ? value.styles.filter((item): item is string => typeof item === 'string')
-          : [],
+        diagnostics:
+          Array.isArray(value.diagnostics) === true
+            ? value.diagnostics.filter((item): item is string => typeof item === 'string')
+            : [],
+        styles:
+          Array.isArray(value.styles) === true
+            ? value.styles.filter((item): item is string => typeof item === 'string')
+            : [],
       })
     }
   } else if (Array.isArray(code?.rendered) === true) {

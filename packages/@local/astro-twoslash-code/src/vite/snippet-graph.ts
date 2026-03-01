@@ -39,7 +39,11 @@ const resolveCandidatesFor = (specifier: string, fromDirectory: string): string[
   const resolved = path.resolve(fromDirectory, specifier)
   const candidates = [resolved]
 
-  if (!resolved.endsWith('.ts') && !resolved.endsWith('.tsx') && !resolved.endsWith('.d.ts')) {
+  if (
+    resolved.endsWith('.ts') === false &&
+    resolved.endsWith('.tsx') === false &&
+    resolved.endsWith('.d.ts') === false
+  ) {
     candidates.push(`${resolved}.ts`, `${resolved}.tsx`)
   }
 
@@ -89,7 +93,7 @@ export const buildSnippetBundle = ({
   const addFile = (absolutePath: string) => {
     const relativePath = toPosix(path.relative(resolvedBaseDir, absolutePath))
     const existing = collected.get(relativePath)
-    if (existing) return existing
+    if (existing !== undefined) return existing
     const content = readFile(absolutePath)
     const record = {
       absolutePath,
@@ -102,24 +106,24 @@ export const buildSnippetBundle = ({
 
   while (queue.length > 0) {
     const current = queue.shift()
-    if (!current) continue
+    if (current === undefined) continue
     const { absolutePath } = current
-    if (processed.has(absolutePath)) continue
+    if (processed.has(absolutePath) === true) continue
     processed.add(absolutePath)
 
-    if (!fileExists(absolutePath)) {
+    if (fileExists(absolutePath) === false) {
       continue
     }
 
     const record = addFile(absolutePath)
-    if (!record) continue
+    if (record === undefined) continue
     const { content } = record
 
     for (const specifier of extractRelativeImports(content)) {
-      if (!specifier.startsWith('./') && !specifier.startsWith('../')) continue
+      if (specifier.startsWith('./') === false && specifier.startsWith('../') === false) continue
       const candidates = resolveCandidatesFor(specifier, path.dirname(absolutePath))
       for (const candidate of candidates) {
-        if (fileExists(candidate)) {
+        if (fileExists(candidate) === true) {
           queue.push({ absolutePath: candidate })
           break
         }
@@ -132,8 +136,8 @@ export const buildSnippetBundle = ({
   collectedFiles.sort((left, right) => {
     const leftIsDts = left.relativePath.endsWith('.d.ts')
     const rightIsDts = right.relativePath.endsWith('.d.ts')
-    if (leftIsDts && !rightIsDts) return -1
-    if (!leftIsDts && rightIsDts) return 1
+    if (leftIsDts === true && rightIsDts === false) return -1
+    if (leftIsDts === false && rightIsDts === true) return 1
     return left.relativePath.localeCompare(right.relativePath)
   })
 

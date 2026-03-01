@@ -408,7 +408,9 @@ export const EventControls: React.FC<EventControlsProps> = ({
   const handleBatchSizeChange = React.useCallback(
     (event: React.ChangeEvent<HTMLInputElement>) => {
       const next = Number.parseInt(event.target.value, 10)
-      onEventBatchSizeChange(Number.isFinite(next) ? Math.max(EVENT_BATCH_SIZE_MIN, next) : EVENT_BATCH_SIZE_MIN)
+      onEventBatchSizeChange(
+        Number.isFinite(next) === true ? Math.max(EVENT_BATCH_SIZE_MIN, next) : EVENT_BATCH_SIZE_MIN,
+      )
     },
     [onEventBatchSizeChange],
   )
@@ -422,7 +424,7 @@ export const EventControls: React.FC<EventControlsProps> = ({
       }
 
       const next = Number.parseInt(raw, 10)
-      onEventUntilChange(Number.isFinite(next) && next >= 0 ? next : undefined)
+      onEventUntilChange(Number.isFinite(next) === true && next >= 0 ? next : undefined)
     },
     [onEventUntilChange],
   )
@@ -495,7 +497,7 @@ export const EventControls: React.FC<EventControlsProps> = ({
       </div>
       <div style={controlsRowWithTopMarginStyle}>
         <button type="button" data-testid="toggle-events" onClick={handleToggleEvents}>
-          {eventsVisible ? 'Hide events stream' : 'Show events stream'}
+          {eventsVisible === true ? 'Hide events stream' : 'Show events stream'}
         </button>
         <button type="button" data-testid="reset-harness" onClick={handleResetHarness} disabled={isGenerating}>
           Reset harness

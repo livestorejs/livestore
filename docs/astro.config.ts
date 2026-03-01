@@ -32,13 +32,14 @@ const port = 5252
 const branch = getBranchName()
 
 // Netlify preview domain (see https://docs.netlify.com/configure-builds/environment-variables/#build-metadata)
-const domain = process.env.DEPLOY_PRIME_URL !== undefined
-  ? new URL(process.env.DEPLOY_PRIME_URL).hostname
-  : process.env.NODE_ENV === 'production'
-    ? branch === 'main'
-      ? 'docs.livestore.dev'
-      : 'dev.docs.livestore.dev'
-    : `localhost:${port}`
+const domain =
+  process.env.DEPLOY_PRIME_URL !== undefined
+    ? new URL(process.env.DEPLOY_PRIME_URL).hostname
+    : process.env.NODE_ENV === 'production'
+      ? branch === 'main'
+        ? 'docs.livestore.dev'
+        : 'dev.docs.livestore.dev'
+      : `localhost:${port}`
 
 const site = `https://${domain}`
 

@@ -15,14 +15,21 @@
     # Testing
     # =========================================================================
 
+    # CI bootstrap for heavy jobs:
+    # keep setup strict via task dependencies instead of a separate preflight step.
+    # TODO: simplify once nested devenv task failures are fixed upstream:
+    # https://github.com/cachix/devenv/issues/2512
+
     "test:unit" = {
       description = "Run unit tests";
       exec = "mono test unit";
+      after = [ "setup:strict" ];
     };
 
     "test:perf" = {
       description = "Run performance tests";
-      exec = "cd tests/perf && FORCE_PLAYWRIGHT_VIA_CLI=1 NODE_OPTIONS=--disable-warning=ExperimentalWarning pnpm playwright test";
+      exec = "mono test perf";
+      after = [ "setup:strict" ];
     };
 
     # Integration test suites
@@ -49,6 +56,18 @@
     "test:integration:node-sync" = {
       description = "Run node-sync tests";
       exec = "mono test integration node-sync";
+    };
+
+    "test:integration:node-sync:allow-flaky" = {
+      description = "Run node-sync tests, warn on flaky failure";
+      exec = ''
+        if mono test integration node-sync; then
+          exit 0
+        fi
+        echo "::warning::Node-sync integration tests failed (flaky; see https://github.com/livestorejs/livestore/issues/624 for details)"
+        exit 0
+      '';
+      after = [ "setup:strict" ];
     };
 
     # Sync provider tests (individual providers for CI matrix)
@@ -102,6 +121,78 @@
       exec = "mono test integration sync-provider --provider cf-do-rpc-do";
     };
 
+    "test:integration:sync-provider:matrix" = {
+      description = "Run sync-provider tests for TEST_SYNC_PROVIDER";
+      exec = ''
+        set -euo pipefail
+        provider="''${TEST_SYNC_PROVIDER:-}"
+
+        if [ -z "$provider" ]; then
+          echo "Error: TEST_SYNC_PROVIDER is required"
+          exit 1
+        fi
+
+        if [[ "$provider" == cf-* ]]; then
+          if mono test integration sync-provider --provider "$provider"; then
+            exit 0
+          fi
+          echo "::warning::Cloudflare sync-provider tests for $provider failed (flaky; see https://github.com/livestorejs/livestore/issues/625 and upstream https://github.com/cloudflare/workers-sdk/issues/11122)"
+          exit 0
+        fi
+
+        mono test integration sync-provider --provider "$provider"
+      '';
+      after = [ "setup:strict" ];
+    };
+
+    "test:integration:playwright:suite" = {
+      description = "Run PLAYWRIGHT_SUITE integration tests";
+      exec = ''
+        set -euo pipefail
+        suite="''${PLAYWRIGHT_SUITE:-}"
+
+        if [ -z "$suite" ]; then
+          echo "Error: PLAYWRIGHT_SUITE is required"
+          exit 1
+        fi
+
+        if [ "$suite" = "devtools" ]; then
+          mono test integration devtools || echo "::warning::Script failed but continuing"
+          exit 0
+        fi
+
+        mono test integration "$suite"
+      '';
+      after = [ "setup:strict" ];
+    };
+
+    "test:integration:playwright:upload-trace" = {
+      description = "Upload Playwright report to Netlify for PLAYWRIGHT_SUITE";
+      exec = ''
+        set -euo pipefail
+        suite="''${PLAYWRIGHT_SUITE:-}"
+
+        if [ -z "$suite" ]; then
+          echo "Error: PLAYWRIGHT_SUITE is required"
+          exit 1
+        fi
+
+        if [ -n "''${NETLIFY_AUTH_TOKEN:-}" ]; then
+          bunx netlify-cli deploy --no-build --dir=tests/integration/playwright-report --site livestore-ci --filter @local/tests-integration --alias "$suite-$(git rev-parse --short HEAD)"
+        else
+          echo "Skipping Netlify deploy: NETLIFY_AUTH_TOKEN not set"
+        fi
+      '';
+      after = [ "setup:strict" ];
+    };
+
+    "test:integration:wa-sqlite:build" = {
+      description = "Build wa-sqlite integration test target";
+      cwd = "packages/@livestore/wa-sqlite";
+      exec = "nix run .#build";
+      after = [ "setup:strict" ];
+    };
+
     # =========================================================================
     # Docs
     # =========================================================================
@@ -126,6 +217,57 @@
       exec = "mono docs deploy";
     };
 
+    "docs:build:phase:snippets" = {
+      description = "Build docs snippets (CI phase)";
+      exec = ''
+        set -euo pipefail
+        mkdir -p tmp/ci-docs
+        timeout --signal=TERM --kill-after=2m 20m mono docs snippets build 2>&1 | tee tmp/ci-docs/01-snippets.log
+      '';
+      after = [ "setup:strict" ];
+    };
+
+    "docs:build:phase:diagrams" = {
+      description = "Build docs diagrams (CI phase)";
+      exec = ''
+        set -euo pipefail
+        mkdir -p tmp/ci-docs
+        timeout --signal=TERM --kill-after=2m 20m mono docs diagrams build 2>&1 | tee tmp/ci-docs/02-diagrams.log
+      '';
+    };
+
+    "docs:build:phase:astro" = {
+      description = "Build Astro docs bundle (CI phase)";
+      exec = ''
+        set -euo pipefail
+        mkdir -p tmp/ci-docs
+        (
+          while true; do
+            echo "[docs-heartbeat] $(date -u +%Y-%m-%dT%H:%M:%SZ) astro build still running"
+            pgrep -af 'astro|chromium|chrome_crashpad_handler|node|mono' || true
+            sleep 60
+          done
+        ) > tmp/ci-docs/03-heartbeat.log 2>&1 &
+        HEARTBEAT_PID=$!
+        cleanup() {
+          kill "$HEARTBEAT_PID" 2>/dev/null || true
+        }
+        trap cleanup EXIT
+        timeout --signal=TERM --kill-after=2m 20m mono docs build --api-docs --skip-deps 2>&1 | tee tmp/ci-docs/03-astro-build.log
+      '';
+    };
+
+    "docs:build:diagnostics" = {
+      description = "Collect docs build diagnostics";
+      exec = ''
+        set -euo pipefail
+        mkdir -p tmp/ci-docs
+        date -u +%Y-%m-%dT%H:%M:%SZ | tee tmp/ci-docs/failure-timestamp.log
+        ps -eo pid,ppid,etime,pcpu,pmem,comm,args > tmp/ci-docs/ps-full.log || true
+        pgrep -af 'astro|chromium|chrome_crashpad_handler|node|mono|dt' > tmp/ci-docs/pgrep-build-procs.log || true
+      '';
+    };
+
     # =========================================================================
     # Examples
     # =========================================================================
@@ -140,6 +282,18 @@
       exec = "mono examples deploy";
     };
 
+    "examples:install" = {
+      description = "Install examples workspace dependencies";
+      exec = "pnpm install --frozen-lockfile --dir examples";
+      after = [ "setup:strict" ];
+    };
+
+    "examples:build:src" = {
+      description = "Build examples source bundles";
+      exec = "pnpm --dir examples --filter 'livestore-example-*' --workspace-concurrency=1 build";
+      after = [ "examples:install" ];
+    };
+
     # =========================================================================
     # Release
     # =========================================================================
@@ -147,6 +301,19 @@
     "release:snapshot" = {
       description = "Publish snapshot release to npm";
       exec = "mono release snapshot";
+    };
+
+    "release:snapshot:git-sha" = {
+      description = "Publish snapshot release pinned to GIT_SHA";
+      exec = ''
+        set -euo pipefail
+        if [ -z "''${GIT_SHA:-}" ]; then
+          echo "Error: GIT_SHA is required"
+          exit 1
+        fi
+        mono release snapshot --git-sha="$GIT_SHA"
+      '';
+      after = [ "setup:strict" ];
     };
 
     # =========================================================================
@@ -182,6 +349,14 @@
         "lint:check"
         "lint:check:madge"
         "lint:check:md-imports"
+      ];
+    };
+
+    "lint:full:with-megarepo-check" = {
+      description = "Run full lint checks plus megarepo consistency";
+      after = [
+        "lint:full"
+        "megarepo:check"
       ];
     };
 

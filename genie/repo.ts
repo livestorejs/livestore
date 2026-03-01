@@ -339,30 +339,30 @@ export const solidJsx = { jsx: 'preserve' as const, jsxImportSource: 'solid-js' 
 export { githubWorkflow } from '../repos/effect-utils/packages/@overeng/genie/src/runtime/mod.ts'
 
 import {
+  bashShellDefaults,
   namespaceRunner as namespaceRunnerBase,
-  devenvShellDefaults,
   installNixStep,
   cachixStep,
   installMegarepoStep,
   syncMegarepoStep,
-  installDevenvFromLockStep,
-  validateNixStoreStep,
   checkoutStep,
+  preparePinnedDevenvStep,
+  runDevenvTasksBefore,
+  nixDiagnosticsArtifactStep,
+  validateNixStoreStep,
 } from '../repos/effect-utils/genie/ci-workflow.ts'
 
-export { devenvShellDefaults }
+export const devenvShellDefaults = {
+  run: { shell: 'devenv shell bash -- -e {0}' },
+} as const
+export { bashShellDefaults }
+export { runDevenvTasksBefore, nixDiagnosticsArtifactStep }
 
-export const namespaceRunner = (runId: string) =>
-  namespaceRunnerBase('namespace-profile-linux-x86-64', runId)
+export const namespaceRunner = (runId: string) => namespaceRunnerBase('namespace-profile-linux-x86-64', runId)
 
 /**
  * Setup steps for livestore CI jobs (without checkout).
  * Uses shared step atoms from effect-utils/genie/ci-workflow.ts.
- *
- * Note: We use DEVENV_SKIP_SETUP=1 to prevent enterShell from running setup
- * tasks via nested devenv processes (which fail in GitHub Actions due to
- * temp script file access issues). Instead, setup tasks are run explicitly
- * via `devenv tasks run`.
  */
 export const livestoreSetupStepsAfterCheckout = [
   installNixStep({
@@ -372,7 +372,7 @@ export const livestoreSetupStepsAfterCheckout = [
   cachixStep({ name: 'livestore', authToken: '${{ env.CACHIX_AUTH_TOKEN }}' }),
   installMegarepoStep,
   syncMegarepoStep(),
-  installDevenvFromLockStep,
+  preparePinnedDevenvStep,
   validateNixStoreStep,
 ] as const
 

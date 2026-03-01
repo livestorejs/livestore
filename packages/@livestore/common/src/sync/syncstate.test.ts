@@ -525,9 +525,9 @@ const expectAdvance: (
   expect(result._tag).toBe('advance')
 }
 
-function expectRebase(
+const expectRebase: (
   result: typeof SyncState.MergeResult.Type,
-): asserts result is typeof SyncState.MergeResultRebase.Type {
+) => asserts result is typeof SyncState.MergeResultRebase.Type = (result) => {
   expect(result._tag, `Expected rebase, got ${result._tag}`).toBe('rebase')
 }
 

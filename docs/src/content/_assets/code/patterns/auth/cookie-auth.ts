@@ -68,7 +68,7 @@ export default makeWorker({
 
 // --- Helper functions (implement based on your auth library) ---
 
-function parseCookie(cookieHeader: string, name: string): string | undefined {
+const parseCookie = (cookieHeader: string, name: string): string | undefined => {
   const cookies = cookieHeader.split(';').map((c) => c.trim())
   for (const cookie of cookies) {
     const [key, value] = cookie.split('=')
@@ -82,7 +82,7 @@ interface Session {
   email: string
 }
 
-async function getSessionFromToken(_token: string | undefined): Promise<Session | null> {
+const getSessionFromToken = async (_token: string | undefined): Promise<Session | null> => {
   // Implement session lookup using your auth library
   // Example with better-auth:
   // return await auth.api.getSession({ headers: { cookie: `session_token=${token}` } })

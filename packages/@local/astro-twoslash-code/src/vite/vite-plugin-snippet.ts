@@ -244,12 +244,14 @@ const collectRenderedEntries = (renderedField: unknown): Record<string, Twoslash
       const filename = rawFilename.replace(/\\/g, '/').trim()
       if (filename.length === 0) continue
 
-      const diagnostics = Array.isArray(rawValue.diagnostics) === true
-        ? rawValue.diagnostics.filter((value): value is string => typeof value === 'string')
-        : []
-      const styles = Array.isArray(rawValue.styles) === true
-        ? rawValue.styles.filter((value): value is string => typeof value === 'string')
-        : []
+      const diagnostics =
+        Array.isArray(rawValue.diagnostics) === true
+          ? rawValue.diagnostics.filter((value): value is string => typeof value === 'string')
+          : []
+      const styles =
+        Array.isArray(rawValue.styles) === true
+          ? rawValue.styles.filter((value): value is string => typeof value === 'string')
+          : []
 
       assignEntry(filename, {
         html: typeof rawValue.html === 'string' ? rawValue.html : null,
@@ -271,12 +273,14 @@ const collectRenderedEntries = (renderedField: unknown): Record<string, Twoslash
     const filenameValue = typeof entry.filename === 'string' ? entry.filename.replace(/\\/g, '/').trim() : ''
     if (filenameValue.length === 0) continue
 
-    const diagnostics = Array.isArray(entry.diagnostics) === true
-      ? entry.diagnostics.filter((value): value is string => typeof value === 'string')
-      : []
-    const styles = Array.isArray(entry.styles) === true
-      ? entry.styles.filter((value): value is string => typeof value === 'string')
-      : []
+    const diagnostics =
+      Array.isArray(entry.diagnostics) === true
+        ? entry.diagnostics.filter((value): value is string => typeof value === 'string')
+        : []
+    const styles =
+      Array.isArray(entry.styles) === true
+        ? entry.styles.filter((value): value is string => typeof value === 'string')
+        : []
 
     const renderedRecord: TwoslashSnippetRenderedEntry = {
       html: typeof entry.html === 'string' ? entry.html : null,
@@ -390,9 +394,10 @@ export const createTwoslashSnippetPlugin = (options: TwoslashSnippetPluginOption
       const manifestGlobals: TwoslashSnippetGlobals = {
         baseStyles: typeof manifest.raw.baseStyles === 'string' ? manifest.raw.baseStyles : '',
         themeStyles: typeof manifest.raw.themeStyles === 'string' ? manifest.raw.themeStyles : '',
-        jsModules: Array.isArray(manifest.raw.jsModules) === true
-          ? manifest.raw.jsModules.filter((entry): entry is string => typeof entry === 'string' && entry.length > 0)
-          : [],
+        jsModules:
+          Array.isArray(manifest.raw.jsModules) === true
+            ? manifest.raw.jsModules.filter((entry): entry is string => typeof entry === 'string' && entry.length > 0)
+            : [],
       }
       const entryRelative = path.relative(paths.snippetAssetsRoot, filepath).replace(/\\/g, '/')
       const manifestEntry = manifest.byEntry.get(entryRelative)

@@ -25,7 +25,7 @@ jobs:
     runs-on: [namespace-profile-linux-x86-64, 'namespace-features:github.run-id=${{ github.run_id }}']
     defaults:
       run:
-        shell: devenv shell bash -- -e {0}
+        shell: bash
     steps:
       - uses: actions/checkout@v4
       - name: Install Nix
@@ -34,6 +34,7 @@ jobs:
           extra-conf: |
             extra-substituters = https://devenv.cachix.org
             extra-trusted-public-keys = devenv.cachix.org-1:w1cLUi8dv3hnoSPGAuibQv+f9TZLr6cv/Hm9XgU50cw=
+            access-tokens = github.com=${{ github.token }}
             extra-substituters = https://cache.nixos.org
             extra-trusted-public-keys = cache.nixos.org-1:6NCHdD59X431o0gWypbMrAURkbJ16ZPMQFGspcDShjY=
       - name: Enable Cachix cache
@@ -47,25 +48,104 @@ jobs:
       - name: Sync megarepo dependencies
         run: mr sync --frozen
         shell: bash
-      - name: Install devenv
-        run: 'nix profile install github:cachix/devenv/$(jq -r ".nodes.devenv.locked.rev" devenv.lock)'
+      - name: Use pinned devenv from lock
+        run: |
+          DEVENV_REV=$(jq -r .nodes.devenv.locked.rev devenv.lock)
+          if [ -z "$DEVENV_REV" ] || [ "$DEVENV_REV" = "null" ]; then
+            echo '::error::devenv.lock missing .nodes.devenv.locked.rev'
+            exit 1
+          fi
+          echo "DEVENV_REV=$DEVENV_REV" >> "$GITHUB_ENV"
+          echo "Pinned devenv rev: $DEVENV_REV"
         shell: bash
       - name: Validate Nix store
         run: |
-          if devenv version > /dev/null 2>&1; then
+          if [ -z "${DEVENV_REV:-}" ]; then
+            DEVENV_REV=$(jq -r .nodes.devenv.locked.rev devenv.lock)
+          if [ -z "$DEVENV_REV" ] || [ "$DEVENV_REV" = "null" ]; then
+            echo '::error::devenv.lock missing .nodes.devenv.locked.rev'
+            exit 1
+          fi
+          fi
+
+          resolve_devenv() {
+            nix build --no-link --print-out-paths "github:cachix/devenv/$DEVENV_REV#devenv"
+          }
+
+          # Always append restrict-eval=false so caller-provided NIX_CONFIG keeps its settings.
+          if [ -n "${NIX_CONFIG:-}" ]; then
+            NIX_CONFIG_WITH_UNRESTRICTED_EVAL="$NIX_CONFIG"$'\n''restrict-eval = false'
+          else
+            NIX_CONFIG_WITH_UNRESTRICTED_EVAL='restrict-eval = false'
+          fi
+
+          # Temporary: capture complete diagnostics for #272 root-cause analysis.
+          DIAG_ROOT="${RUNNER_TEMP:-/tmp}/nix-store-diagnostics-${GITHUB_JOB:-job}-${RUNNER_OS:-unknown}-${GITHUB_RUN_ATTEMPT:-0}"
+          mkdir -p "$DIAG_ROOT"
+          echo "NIX_STORE_DIAGNOSTICS_DIR=$DIAG_ROOT" >> "$GITHUB_ENV"
+
+          {
+            echo "timestamp_utc=$(date -u +%Y-%m-%dT%H:%M:%SZ)"
+            echo "runner_name=${RUNNER_NAME:-unknown}"
+            echo "runner_os=${RUNNER_OS:-unknown}"
+            echo "runner_arch=${RUNNER_ARCH:-unknown}"
+            echo "github_job=${GITHUB_JOB:-unknown}"
+            echo "github_run_id=${GITHUB_RUN_ID:-unknown}"
+            echo "github_run_attempt=${GITHUB_RUN_ATTEMPT:-unknown}"
+            echo "nix_user_conf_files=${NIX_USER_CONF_FILES:-}"
+            echo ""
+            echo "== uname -a =="
+            uname -a || true
+            if command -v sw_vers > /dev/null 2>&1; then
+              echo ""
+              echo "== sw_vers =="
+              sw_vers || true
+            fi
+            echo ""
+            echo "== nix --version =="
+            nix --version || true
+          } > "$DIAG_ROOT/environment.txt" 2>&1
+
+          pre_resolve_log="$DIAG_ROOT/resolve-devenv-pre-repair.log"
+          pre_info_log="$DIAG_ROOT/devenv-info-pre-repair.log"
+          verify_log="$DIAG_ROOT/nix-store-verify-pre-repair.log"
+          repair_log="$DIAG_ROOT/nix-store-verify-repair.log"
+          post_resolve_log="$DIAG_ROOT/resolve-devenv-post-repair.log"
+          post_info_log="$DIAG_ROOT/devenv-info-post-repair.log"
+
+          if DEVENV_OUT=$(resolve_devenv 2>"$pre_resolve_log") && DEVENV_BIN="$DEVENV_OUT/bin/devenv" && NIX_CONFIG="$NIX_CONFIG_WITH_UNRESTRICTED_EVAL" "$DEVENV_BIN" info > "$pre_info_log" 2>&1; then
             echo "Nix store OK"
           else
-            echo "::warning::Nix store validation failed, running repair..."
-            nix-store --verify --repair 2>&1 | tail -20
-            devenv version
+            echo "::warning::Nix store validation failed, collecting diagnostics and repairing..."
+            if ! nix-store --verify --check-contents > "$verify_log" 2>&1; then
+              echo "::warning::nix-store --verify --check-contents reported issues (see diagnostics artifact)"
+            fi
+            if ! nix-store --verify --check-contents --repair > "$repair_log" 2>&1; then
+              echo "::warning::nix-store --verify --check-contents --repair reported issues (see diagnostics artifact)"
+            fi
+            rm -rf ~/.cache/nix/eval-cache-*
+            DEVENV_OUT=$(resolve_devenv 2>"$post_resolve_log")
+            DEVENV_BIN="$DEVENV_OUT/bin/devenv"
+            NIX_CONFIG="$NIX_CONFIG_WITH_UNRESTRICTED_EVAL" "$DEVENV_BIN" info > "$post_info_log" 2>&1
           fi
+
+          echo "DEVENV_BIN=$DEVENV_BIN" >> "$GITHUB_ENV"
+          "$DEVENV_BIN" version | tee "$DIAG_ROOT/devenv-version.txt"
         shell: bash
-      - run: 'dt lint:full megarepo:check'
+      - run: "if [ -n \"${NIX_CONFIG:-}\" ]; then NIX_CONFIG_WITH_UNRESTRICTED_EVAL=\"$NIX_CONFIG\"$'\\n''restrict-eval = false'; else NIX_CONFIG_WITH_UNRESTRICTED_EVAL='restrict-eval = false'; fi; NIX_CONFIG=\"$NIX_CONFIG_WITH_UNRESTRICTED_EVAL\" \"${DEVENV_BIN:?DEVENV_BIN not set}\" tasks run lint:full:with-megarepo-check --mode before"
+      - name: Upload Nix diagnostics artifact
+        if: failure() && env.NIX_STORE_DIAGNOSTICS_DIR != ''
+        uses: actions/upload-artifact@v4
+        with:
+          name: 'nix-store-diagnostics-${{ github.job }}-${{ runner.os }}-run-${{ github.run_id }}-attempt-${{ github.run_attempt }}'
+          path: '${{ env.NIX_STORE_DIAGNOSTICS_DIR }}'
+          if-no-files-found: ignore
+          retention-days: 14
   type-check:
     runs-on: [namespace-profile-linux-x86-64, 'namespace-features:github.run-id=${{ github.run_id }}']
     defaults:
       run:
-        shell: devenv shell bash -- -e {0}
+        shell: bash
     steps:
       - uses: actions/checkout@v4
       - name: Install Nix
@@ -74,6 +154,7 @@ jobs:
           extra-conf: |
             extra-substituters = https://devenv.cachix.org
             extra-trusted-public-keys = devenv.cachix.org-1:w1cLUi8dv3hnoSPGAuibQv+f9TZLr6cv/Hm9XgU50cw=
+            access-tokens = github.com=${{ github.token }}
             extra-substituters = https://cache.nixos.org
             extra-trusted-public-keys = cache.nixos.org-1:6NCHdD59X431o0gWypbMrAURkbJ16ZPMQFGspcDShjY=
       - name: Enable Cachix cache
@@ -87,25 +168,104 @@ jobs:
       - name: Sync megarepo dependencies
         run: mr sync --frozen
         shell: bash
-      - name: Install devenv
-        run: 'nix profile install github:cachix/devenv/$(jq -r ".nodes.devenv.locked.rev" devenv.lock)'
+      - name: Use pinned devenv from lock
+        run: |
+          DEVENV_REV=$(jq -r .nodes.devenv.locked.rev devenv.lock)
+          if [ -z "$DEVENV_REV" ] || [ "$DEVENV_REV" = "null" ]; then
+            echo '::error::devenv.lock missing .nodes.devenv.locked.rev'
+            exit 1
+          fi
+          echo "DEVENV_REV=$DEVENV_REV" >> "$GITHUB_ENV"
+          echo "Pinned devenv rev: $DEVENV_REV"
         shell: bash
       - name: Validate Nix store
         run: |
-          if devenv version > /dev/null 2>&1; then
+          if [ -z "${DEVENV_REV:-}" ]; then
+            DEVENV_REV=$(jq -r .nodes.devenv.locked.rev devenv.lock)
+          if [ -z "$DEVENV_REV" ] || [ "$DEVENV_REV" = "null" ]; then
+            echo '::error::devenv.lock missing .nodes.devenv.locked.rev'
+            exit 1
+          fi
+          fi
+
+          resolve_devenv() {
+            nix build --no-link --print-out-paths "github:cachix/devenv/$DEVENV_REV#devenv"
+          }
+
+          # Always append restrict-eval=false so caller-provided NIX_CONFIG keeps its settings.
+          if [ -n "${NIX_CONFIG:-}" ]; then
+            NIX_CONFIG_WITH_UNRESTRICTED_EVAL="$NIX_CONFIG"$'\n''restrict-eval = false'
+          else
+            NIX_CONFIG_WITH_UNRESTRICTED_EVAL='restrict-eval = false'
+          fi
+
+          # Temporary: capture complete diagnostics for #272 root-cause analysis.
+          DIAG_ROOT="${RUNNER_TEMP:-/tmp}/nix-store-diagnostics-${GITHUB_JOB:-job}-${RUNNER_OS:-unknown}-${GITHUB_RUN_ATTEMPT:-0}"
+          mkdir -p "$DIAG_ROOT"
+          echo "NIX_STORE_DIAGNOSTICS_DIR=$DIAG_ROOT" >> "$GITHUB_ENV"
+
+          {
+            echo "timestamp_utc=$(date -u +%Y-%m-%dT%H:%M:%SZ)"
+            echo "runner_name=${RUNNER_NAME:-unknown}"
+            echo "runner_os=${RUNNER_OS:-unknown}"
+            echo "runner_arch=${RUNNER_ARCH:-unknown}"
+            echo "github_job=${GITHUB_JOB:-unknown}"
+            echo "github_run_id=${GITHUB_RUN_ID:-unknown}"
+            echo "github_run_attempt=${GITHUB_RUN_ATTEMPT:-unknown}"
+            echo "nix_user_conf_files=${NIX_USER_CONF_FILES:-}"
+            echo ""
+            echo "== uname -a =="
+            uname -a || true
+            if command -v sw_vers > /dev/null 2>&1; then
+              echo ""
+              echo "== sw_vers =="
+              sw_vers || true
+            fi
+            echo ""
+            echo "== nix --version =="
+            nix --version || true
+          } > "$DIAG_ROOT/environment.txt" 2>&1
+
+          pre_resolve_log="$DIAG_ROOT/resolve-devenv-pre-repair.log"
+          pre_info_log="$DIAG_ROOT/devenv-info-pre-repair.log"
+          verify_log="$DIAG_ROOT/nix-store-verify-pre-repair.log"
+          repair_log="$DIAG_ROOT/nix-store-verify-repair.log"
+          post_resolve_log="$DIAG_ROOT/resolve-devenv-post-repair.log"
+          post_info_log="$DIAG_ROOT/devenv-info-post-repair.log"
+
+          if DEVENV_OUT=$(resolve_devenv 2>"$pre_resolve_log") && DEVENV_BIN="$DEVENV_OUT/bin/devenv" && NIX_CONFIG="$NIX_CONFIG_WITH_UNRESTRICTED_EVAL" "$DEVENV_BIN" info > "$pre_info_log" 2>&1; then
             echo "Nix store OK"
           else
-            echo "::warning::Nix store validation failed, running repair..."
-            nix-store --verify --repair 2>&1 | tail -20
-            devenv version
+            echo "::warning::Nix store validation failed, collecting diagnostics and repairing..."
+            if ! nix-store --verify --check-contents > "$verify_log" 2>&1; then
+              echo "::warning::nix-store --verify --check-contents reported issues (see diagnostics artifact)"
+            fi
+            if ! nix-store --verify --check-contents --repair > "$repair_log" 2>&1; then
+              echo "::warning::nix-store --verify --check-contents --repair reported issues (see diagnostics artifact)"
+            fi
+            rm -rf ~/.cache/nix/eval-cache-*
+            DEVENV_OUT=$(resolve_devenv 2>"$post_resolve_log")
+            DEVENV_BIN="$DEVENV_OUT/bin/devenv"
+            NIX_CONFIG="$NIX_CONFIG_WITH_UNRESTRICTED_EVAL" "$DEVENV_BIN" info > "$post_info_log" 2>&1
           fi
+
+          echo "DEVENV_BIN=$DEVENV_BIN" >> "$GITHUB_ENV"
+          "$DEVENV_BIN" version | tee "$DIAG_ROOT/devenv-version.txt"
         shell: bash
-      - run: 'dt ts:build'
+      - run: "if [ -n \"${NIX_CONFIG:-}\" ]; then NIX_CONFIG_WITH_UNRESTRICTED_EVAL=\"$NIX_CONFIG\"$'\\n''restrict-eval = false'; else NIX_CONFIG_WITH_UNRESTRICTED_EVAL='restrict-eval = false'; fi; NIX_CONFIG=\"$NIX_CONFIG_WITH_UNRESTRICTED_EVAL\" \"${DEVENV_BIN:?DEVENV_BIN not set}\" tasks run ts:build --mode before"
+      - name: Upload Nix diagnostics artifact
+        if: failure() && env.NIX_STORE_DIAGNOSTICS_DIR != ''
+        uses: actions/upload-artifact@v4
+        with:
+          name: 'nix-store-diagnostics-${{ github.job }}-${{ runner.os }}-run-${{ github.run_id }}-attempt-${{ github.run_attempt }}'
+          path: '${{ env.NIX_STORE_DIAGNOSTICS_DIR }}'
+          if-no-files-found: ignore
+          retention-days: 14
   test-unit:
     runs-on: [namespace-profile-linux-x86-64, 'namespace-features:github.run-id=${{ github.run_id }}']
     defaults:
       run:
-        shell: devenv shell bash -- -e {0}
+        shell: bash
     steps:
       - uses: actions/checkout@v4
       - name: Install Nix
@@ -114,6 +274,7 @@ jobs:
           extra-conf: |
             extra-substituters = https://devenv.cachix.org
             extra-trusted-public-keys = devenv.cachix.org-1:w1cLUi8dv3hnoSPGAuibQv+f9TZLr6cv/Hm9XgU50cw=
+            access-tokens = github.com=${{ github.token }}
             extra-substituters = https://cache.nixos.org
             extra-trusted-public-keys = cache.nixos.org-1:6NCHdD59X431o0gWypbMrAURkbJ16ZPMQFGspcDShjY=
       - name: Enable Cachix cache
@@ -127,28 +288,104 @@ jobs:
       - name: Sync megarepo dependencies
         run: mr sync --frozen
         shell: bash
-      - name: Install devenv
-        run: 'nix profile install github:cachix/devenv/$(jq -r ".nodes.devenv.locked.rev" devenv.lock)'
+      - name: Use pinned devenv from lock
+        run: |
+          DEVENV_REV=$(jq -r .nodes.devenv.locked.rev devenv.lock)
+          if [ -z "$DEVENV_REV" ] || [ "$DEVENV_REV" = "null" ]; then
+            echo '::error::devenv.lock missing .nodes.devenv.locked.rev'
+            exit 1
+          fi
+          echo "DEVENV_REV=$DEVENV_REV" >> "$GITHUB_ENV"
+          echo "Pinned devenv rev: $DEVENV_REV"
         shell: bash
       - name: Validate Nix store
         run: |
-          if devenv version > /dev/null 2>&1; then
+          if [ -z "${DEVENV_REV:-}" ]; then
+            DEVENV_REV=$(jq -r .nodes.devenv.locked.rev devenv.lock)
+          if [ -z "$DEVENV_REV" ] || [ "$DEVENV_REV" = "null" ]; then
+            echo '::error::devenv.lock missing .nodes.devenv.locked.rev'
+            exit 1
+          fi
+          fi
+
+          resolve_devenv() {
+            nix build --no-link --print-out-paths "github:cachix/devenv/$DEVENV_REV#devenv"
+          }
+
+          # Always append restrict-eval=false so caller-provided NIX_CONFIG keeps its settings.
+          if [ -n "${NIX_CONFIG:-}" ]; then
+            NIX_CONFIG_WITH_UNRESTRICTED_EVAL="$NIX_CONFIG"$'\n''restrict-eval = false'
+          else
+            NIX_CONFIG_WITH_UNRESTRICTED_EVAL='restrict-eval = false'
+          fi
+
+          # Temporary: capture complete diagnostics for #272 root-cause analysis.
+          DIAG_ROOT="${RUNNER_TEMP:-/tmp}/nix-store-diagnostics-${GITHUB_JOB:-job}-${RUNNER_OS:-unknown}-${GITHUB_RUN_ATTEMPT:-0}"
+          mkdir -p "$DIAG_ROOT"
+          echo "NIX_STORE_DIAGNOSTICS_DIR=$DIAG_ROOT" >> "$GITHUB_ENV"
+
+          {
+            echo "timestamp_utc=$(date -u +%Y-%m-%dT%H:%M:%SZ)"
+            echo "runner_name=${RUNNER_NAME:-unknown}"
+            echo "runner_os=${RUNNER_OS:-unknown}"
+            echo "runner_arch=${RUNNER_ARCH:-unknown}"
+            echo "github_job=${GITHUB_JOB:-unknown}"
+            echo "github_run_id=${GITHUB_RUN_ID:-unknown}"
+            echo "github_run_attempt=${GITHUB_RUN_ATTEMPT:-unknown}"
+            echo "nix_user_conf_files=${NIX_USER_CONF_FILES:-}"
+            echo ""
+            echo "== uname -a =="
+            uname -a || true
+            if command -v sw_vers > /dev/null 2>&1; then
+              echo ""
+              echo "== sw_vers =="
+              sw_vers || true
+            fi
+            echo ""
+            echo "== nix --version =="
+            nix --version || true
+          } > "$DIAG_ROOT/environment.txt" 2>&1
+
+          pre_resolve_log="$DIAG_ROOT/resolve-devenv-pre-repair.log"
+          pre_info_log="$DIAG_ROOT/devenv-info-pre-repair.log"
+          verify_log="$DIAG_ROOT/nix-store-verify-pre-repair.log"
+          repair_log="$DIAG_ROOT/nix-store-verify-repair.log"
+          post_resolve_log="$DIAG_ROOT/resolve-devenv-post-repair.log"
+          post_info_log="$DIAG_ROOT/devenv-info-post-repair.log"
+
+          if DEVENV_OUT=$(resolve_devenv 2>"$pre_resolve_log") && DEVENV_BIN="$DEVENV_OUT/bin/devenv" && NIX_CONFIG="$NIX_CONFIG_WITH_UNRESTRICTED_EVAL" "$DEVENV_BIN" info > "$pre_info_log" 2>&1; then
             echo "Nix store OK"
           else
-            echo "::warning::Nix store validation failed, running repair..."
-            nix-store --verify --repair 2>&1 | tail -20
-            devenv version
+            echo "::warning::Nix store validation failed, collecting diagnostics and repairing..."
+            if ! nix-store --verify --check-contents > "$verify_log" 2>&1; then
+              echo "::warning::nix-store --verify --check-contents reported issues (see diagnostics artifact)"
+            fi
+            if ! nix-store --verify --check-contents --repair > "$repair_log" 2>&1; then
+              echo "::warning::nix-store --verify --check-contents --repair reported issues (see diagnostics artifact)"
+            fi
+            rm -rf ~/.cache/nix/eval-cache-*
+            DEVENV_OUT=$(resolve_devenv 2>"$post_resolve_log")
+            DEVENV_BIN="$DEVENV_OUT/bin/devenv"
+            NIX_CONFIG="$NIX_CONFIG_WITH_UNRESTRICTED_EVAL" "$DEVENV_BIN" info > "$post_info_log" 2>&1
           fi
+
+          echo "DEVENV_BIN=$DEVENV_BIN" >> "$GITHUB_ENV"
+          "$DEVENV_BIN" version | tee "$DIAG_ROOT/devenv-version.txt"
         shell: bash
-      - name: Preflight workspace bootstrap
-        run: 'DEVENV_SKIP_SETUP=1 devenv tasks run pnpm:install genie:run ts:build --mode before --verbose'
-        shell: bash
-      - run: 'dt test:unit'
+      - run: "if [ -n \"${NIX_CONFIG:-}\" ]; then NIX_CONFIG_WITH_UNRESTRICTED_EVAL=\"$NIX_CONFIG\"$'\\n''restrict-eval = false'; else NIX_CONFIG_WITH_UNRESTRICTED_EVAL='restrict-eval = false'; fi; NIX_CONFIG=\"$NIX_CONFIG_WITH_UNRESTRICTED_EVAL\" \"${DEVENV_BIN:?DEVENV_BIN not set}\" tasks run test:unit --mode before"
+      - name: Upload Nix diagnostics artifact
+        if: failure() && env.NIX_STORE_DIAGNOSTICS_DIR != ''
+        uses: actions/upload-artifact@v4
+        with:
+          name: 'nix-store-diagnostics-${{ github.job }}-${{ runner.os }}-run-${{ github.run_id }}-attempt-${{ github.run_attempt }}'
+          path: '${{ env.NIX_STORE_DIAGNOSTICS_DIR }}'
+          if-no-files-found: ignore
+          retention-days: 14
   test-integration-node-sync:
     runs-on: [namespace-profile-linux-x86-64, 'namespace-features:github.run-id=${{ github.run_id }}']
     defaults:
       run:
-        shell: devenv shell bash -- -e {0}
+        shell: bash
     steps:
       - uses: actions/checkout@v4
       - name: Install Nix
@@ -157,6 +394,7 @@ jobs:
           extra-conf: |
             extra-substituters = https://devenv.cachix.org
             extra-trusted-public-keys = devenv.cachix.org-1:w1cLUi8dv3hnoSPGAuibQv+f9TZLr6cv/Hm9XgU50cw=
+            access-tokens = github.com=${{ github.token }}
             extra-substituters = https://cache.nixos.org
             extra-trusted-public-keys = cache.nixos.org-1:6NCHdD59X431o0gWypbMrAURkbJ16ZPMQFGspcDShjY=
       - name: Enable Cachix cache
@@ -170,18 +408,89 @@ jobs:
       - name: Sync megarepo dependencies
         run: mr sync --frozen
         shell: bash
-      - name: Install devenv
-        run: 'nix profile install github:cachix/devenv/$(jq -r ".nodes.devenv.locked.rev" devenv.lock)'
+      - name: Use pinned devenv from lock
+        run: |
+          DEVENV_REV=$(jq -r .nodes.devenv.locked.rev devenv.lock)
+          if [ -z "$DEVENV_REV" ] || [ "$DEVENV_REV" = "null" ]; then
+            echo '::error::devenv.lock missing .nodes.devenv.locked.rev'
+            exit 1
+          fi
+          echo "DEVENV_REV=$DEVENV_REV" >> "$GITHUB_ENV"
+          echo "Pinned devenv rev: $DEVENV_REV"
         shell: bash
       - name: Validate Nix store
         run: |
-          if devenv version > /dev/null 2>&1; then
+          if [ -z "${DEVENV_REV:-}" ]; then
+            DEVENV_REV=$(jq -r .nodes.devenv.locked.rev devenv.lock)
+          if [ -z "$DEVENV_REV" ] || [ "$DEVENV_REV" = "null" ]; then
+            echo '::error::devenv.lock missing .nodes.devenv.locked.rev'
+            exit 1
+          fi
+          fi
+
+          resolve_devenv() {
+            nix build --no-link --print-out-paths "github:cachix/devenv/$DEVENV_REV#devenv"
+          }
+
+          # Always append restrict-eval=false so caller-provided NIX_CONFIG keeps its settings.
+          if [ -n "${NIX_CONFIG:-}" ]; then
+            NIX_CONFIG_WITH_UNRESTRICTED_EVAL="$NIX_CONFIG"$'\n''restrict-eval = false'
+          else
+            NIX_CONFIG_WITH_UNRESTRICTED_EVAL='restrict-eval = false'
+          fi
+
+          # Temporary: capture complete diagnostics for #272 root-cause analysis.
+          DIAG_ROOT="${RUNNER_TEMP:-/tmp}/nix-store-diagnostics-${GITHUB_JOB:-job}-${RUNNER_OS:-unknown}-${GITHUB_RUN_ATTEMPT:-0}"
+          mkdir -p "$DIAG_ROOT"
+          echo "NIX_STORE_DIAGNOSTICS_DIR=$DIAG_ROOT" >> "$GITHUB_ENV"
+
+          {
+            echo "timestamp_utc=$(date -u +%Y-%m-%dT%H:%M:%SZ)"
+            echo "runner_name=${RUNNER_NAME:-unknown}"
+            echo "runner_os=${RUNNER_OS:-unknown}"
+            echo "runner_arch=${RUNNER_ARCH:-unknown}"
+            echo "github_job=${GITHUB_JOB:-unknown}"
+            echo "github_run_id=${GITHUB_RUN_ID:-unknown}"
+            echo "github_run_attempt=${GITHUB_RUN_ATTEMPT:-unknown}"
+            echo "nix_user_conf_files=${NIX_USER_CONF_FILES:-}"
+            echo ""
+            echo "== uname -a =="
+            uname -a || true
+            if command -v sw_vers > /dev/null 2>&1; then
+              echo ""
+              echo "== sw_vers =="
+              sw_vers || true
+            fi
+            echo ""
+            echo "== nix --version =="
+            nix --version || true
+          } > "$DIAG_ROOT/environment.txt" 2>&1
+
+          pre_resolve_log="$DIAG_ROOT/resolve-devenv-pre-repair.log"
+          pre_info_log="$DIAG_ROOT/devenv-info-pre-repair.log"
+          verify_log="$DIAG_ROOT/nix-store-verify-pre-repair.log"
+          repair_log="$DIAG_ROOT/nix-store-verify-repair.log"
+          post_resolve_log="$DIAG_ROOT/resolve-devenv-post-repair.log"
+          post_info_log="$DIAG_ROOT/devenv-info-post-repair.log"
+
+          if DEVENV_OUT=$(resolve_devenv 2>"$pre_resolve_log") && DEVENV_BIN="$DEVENV_OUT/bin/devenv" && NIX_CONFIG="$NIX_CONFIG_WITH_UNRESTRICTED_EVAL" "$DEVENV_BIN" info > "$pre_info_log" 2>&1; then
             echo "Nix store OK"
           else
-            echo "::warning::Nix store validation failed, running repair..."
-            nix-store --verify --repair 2>&1 | tail -20
-            devenv version
+            echo "::warning::Nix store validation failed, collecting diagnostics and repairing..."
+            if ! nix-store --verify --check-contents > "$verify_log" 2>&1; then
+              echo "::warning::nix-store --verify --check-contents reported issues (see diagnostics artifact)"
+            fi
+            if ! nix-store --verify --check-contents --repair > "$repair_log" 2>&1; then
+              echo "::warning::nix-store --verify --check-contents --repair reported issues (see diagnostics artifact)"
+            fi
+            rm -rf ~/.cache/nix/eval-cache-*
+            DEVENV_OUT=$(resolve_devenv 2>"$post_resolve_log")
+            DEVENV_BIN="$DEVENV_OUT/bin/devenv"
+            NIX_CONFIG="$NIX_CONFIG_WITH_UNRESTRICTED_EVAL" "$DEVENV_BIN" info > "$post_info_log" 2>&1
           fi
+
+          echo "DEVENV_BIN=$DEVENV_BIN" >> "$GITHUB_ENV"
+          "$DEVENV_BIN" version | tee "$DIAG_ROOT/devenv-version.txt"
         shell: bash
       - name: Set OTEL_EXPORTER_OTLP_HEADERS environment variable
         env:
@@ -194,13 +503,7 @@ jobs:
           # Disable in Vite (otherwise CORS issues)
           echo "VITE_OTEL_EXPORTER_OTLP_ENDPOINT=" >> $GITHUB_ENV
       - name: Run node-sync integration tests
-        run: |
-          if dt test:integration:node-sync; then
-            exit 0
-          else
-            echo "::warning::Node-sync integration tests failed (flaky; see https://github.com/livestorejs/livestore/issues/624 for details)"
-            exit 0
-          fi
+        run: "if [ -n \"${NIX_CONFIG:-}\" ]; then NIX_CONFIG_WITH_UNRESTRICTED_EVAL=\"$NIX_CONFIG\"$'\\n''restrict-eval = false'; else NIX_CONFIG_WITH_UNRESTRICTED_EVAL='restrict-eval = false'; fi; NIX_CONFIG=\"$NIX_CONFIG_WITH_UNRESTRICTED_EVAL\" \"${DEVENV_BIN:?DEVENV_BIN not set}\" tasks run test:integration:node-sync:allow-flaky --mode before"
       - name: Display node-sync logs
         if: always()
         run: |
@@ -223,6 +526,14 @@ jobs:
           name: node-sync-logs
           path: tests/integration/tmp/logs/
           retention-days: 30
+      - name: Upload Nix diagnostics artifact
+        if: failure() && env.NIX_STORE_DIAGNOSTICS_DIR != ''
+        uses: actions/upload-artifact@v4
+        with:
+          name: 'nix-store-diagnostics-${{ github.job }}-${{ runner.os }}-run-${{ github.run_id }}-attempt-${{ github.run_attempt }}'
+          path: '${{ env.NIX_STORE_DIAGNOSTICS_DIR }}'
+          if-no-files-found: ignore
+          retention-days: 14
   test-integration-sync-provider:
     strategy:
       matrix:
@@ -239,7 +550,7 @@ jobs:
     runs-on: [namespace-profile-linux-x86-64, 'namespace-features:github.run-id=${{ github.run_id }}']
     defaults:
       run:
-        shell: devenv shell bash -- -e {0}
+        shell: bash
     steps:
       - uses: actions/checkout@v4
       - name: Install Nix
@@ -248,6 +559,7 @@ jobs:
           extra-conf: |
             extra-substituters = https://devenv.cachix.org
             extra-trusted-public-keys = devenv.cachix.org-1:w1cLUi8dv3hnoSPGAuibQv+f9TZLr6cv/Hm9XgU50cw=
+            access-tokens = github.com=${{ github.token }}
             extra-substituters = https://cache.nixos.org
             extra-trusted-public-keys = cache.nixos.org-1:6NCHdD59X431o0gWypbMrAURkbJ16ZPMQFGspcDShjY=
       - name: Enable Cachix cache
@@ -261,21 +573,89 @@ jobs:
       - name: Sync megarepo dependencies
         run: mr sync --frozen
         shell: bash
-      - name: Install devenv
-        run: 'nix profile install github:cachix/devenv/$(jq -r ".nodes.devenv.locked.rev" devenv.lock)'
+      - name: Use pinned devenv from lock
+        run: |
+          DEVENV_REV=$(jq -r .nodes.devenv.locked.rev devenv.lock)
+          if [ -z "$DEVENV_REV" ] || [ "$DEVENV_REV" = "null" ]; then
+            echo '::error::devenv.lock missing .nodes.devenv.locked.rev'
+            exit 1
+          fi
+          echo "DEVENV_REV=$DEVENV_REV" >> "$GITHUB_ENV"
+          echo "Pinned devenv rev: $DEVENV_REV"
         shell: bash
       - name: Validate Nix store
         run: |
-          if devenv version > /dev/null 2>&1; then
+          if [ -z "${DEVENV_REV:-}" ]; then
+            DEVENV_REV=$(jq -r .nodes.devenv.locked.rev devenv.lock)
+          if [ -z "$DEVENV_REV" ] || [ "$DEVENV_REV" = "null" ]; then
+            echo '::error::devenv.lock missing .nodes.devenv.locked.rev'
+            exit 1
+          fi
+          fi
+
+          resolve_devenv() {
+            nix build --no-link --print-out-paths "github:cachix/devenv/$DEVENV_REV#devenv"
+          }
+
+          # Always append restrict-eval=false so caller-provided NIX_CONFIG keeps its settings.
+          if [ -n "${NIX_CONFIG:-}" ]; then
+            NIX_CONFIG_WITH_UNRESTRICTED_EVAL="$NIX_CONFIG"$'\n''restrict-eval = false'
+          else
+            NIX_CONFIG_WITH_UNRESTRICTED_EVAL='restrict-eval = false'
+          fi
+
+          # Temporary: capture complete diagnostics for #272 root-cause analysis.
+          DIAG_ROOT="${RUNNER_TEMP:-/tmp}/nix-store-diagnostics-${GITHUB_JOB:-job}-${RUNNER_OS:-unknown}-${GITHUB_RUN_ATTEMPT:-0}"
+          mkdir -p "$DIAG_ROOT"
+          echo "NIX_STORE_DIAGNOSTICS_DIR=$DIAG_ROOT" >> "$GITHUB_ENV"
+
+          {
+            echo "timestamp_utc=$(date -u +%Y-%m-%dT%H:%M:%SZ)"
+            echo "runner_name=${RUNNER_NAME:-unknown}"
+            echo "runner_os=${RUNNER_OS:-unknown}"
+            echo "runner_arch=${RUNNER_ARCH:-unknown}"
+            echo "github_job=${GITHUB_JOB:-unknown}"
+            echo "github_run_id=${GITHUB_RUN_ID:-unknown}"
+            echo "github_run_attempt=${GITHUB_RUN_ATTEMPT:-unknown}"
+            echo "nix_user_conf_files=${NIX_USER_CONF_FILES:-}"
+            echo ""
+            echo "== uname -a =="
+            uname -a || true
+            if command -v sw_vers > /dev/null 2>&1; then
+              echo ""
+              echo "== sw_vers =="
+              sw_vers || true
+            fi
+            echo ""
+            echo "== nix --version =="
+            nix --version || true
+          } > "$DIAG_ROOT/environment.txt" 2>&1
+
+          pre_resolve_log="$DIAG_ROOT/resolve-devenv-pre-repair.log"
+          pre_info_log="$DIAG_ROOT/devenv-info-pre-repair.log"
+          verify_log="$DIAG_ROOT/nix-store-verify-pre-repair.log"
+          repair_log="$DIAG_ROOT/nix-store-verify-repair.log"
+          post_resolve_log="$DIAG_ROOT/resolve-devenv-post-repair.log"
+          post_info_log="$DIAG_ROOT/devenv-info-post-repair.log"
+
+          if DEVENV_OUT=$(resolve_devenv 2>"$pre_resolve_log") && DEVENV_BIN="$DEVENV_OUT/bin/devenv" && NIX_CONFIG="$NIX_CONFIG_WITH_UNRESTRICTED_EVAL" "$DEVENV_BIN" info > "$pre_info_log" 2>&1; then
             echo "Nix store OK"
           else
-            echo "::warning::Nix store validation failed, running repair..."
-            nix-store --verify --repair 2>&1 | tail -20
-            devenv version
+            echo "::warning::Nix store validation failed, collecting diagnostics and repairing..."
+            if ! nix-store --verify --check-contents > "$verify_log" 2>&1; then
+              echo "::warning::nix-store --verify --check-contents reported issues (see diagnostics artifact)"
+            fi
+            if ! nix-store --verify --check-contents --repair > "$repair_log" 2>&1; then
+              echo "::warning::nix-store --verify --check-contents --repair reported issues (see diagnostics artifact)"
+            fi
+            rm -rf ~/.cache/nix/eval-cache-*
+            DEVENV_OUT=$(resolve_devenv 2>"$post_resolve_log")
+            DEVENV_BIN="$DEVENV_OUT/bin/devenv"
+            NIX_CONFIG="$NIX_CONFIG_WITH_UNRESTRICTED_EVAL" "$DEVENV_BIN" info > "$post_info_log" 2>&1
           fi
-        shell: bash
-      - name: Preflight workspace bootstrap
-        run: 'DEVENV_SKIP_SETUP=1 devenv tasks run pnpm:install genie:run ts:build --mode before --verbose'
+
+          echo "DEVENV_BIN=$DEVENV_BIN" >> "$GITHUB_ENV"
+          "$DEVENV_BIN" version | tee "$DIAG_ROOT/devenv-version.txt"
         shell: bash
       - name: Set OTEL_EXPORTER_OTLP_HEADERS environment variable
         env:
@@ -302,17 +682,17 @@ jobs:
           done
         shell: bash
       - name: 'Run sync-provider tests for ${{ matrix.provider }}'
-        run: |
-          if [[ "${{ matrix.provider }}" == cf-* ]]; then
-            if dt "test:integration:sync-provider:${{ matrix.provider }}"; then
-              exit 0
-            else
-              echo "::warning::Cloudflare sync-provider tests for ${{ matrix.provider }} failed (flaky; see https://github.com/livestorejs/livestore/issues/625 and upstream https://github.com/cloudflare/workers-sdk/issues/11122)"
-              exit 0
-            fi
-          else
-            dt "test:integration:sync-provider:${{ matrix.provider }}"
-          fi
+        run: "if [ -n \"${NIX_CONFIG:-}\" ]; then NIX_CONFIG_WITH_UNRESTRICTED_EVAL=\"$NIX_CONFIG\"$'\\n''restrict-eval = false'; else NIX_CONFIG_WITH_UNRESTRICTED_EVAL='restrict-eval = false'; fi; NIX_CONFIG=\"$NIX_CONFIG_WITH_UNRESTRICTED_EVAL\" \"${DEVENV_BIN:?DEVENV_BIN not set}\" tasks run test:integration:sync-provider:matrix --mode before"
+        env:
+          TEST_SYNC_PROVIDER: '${{ matrix.provider }}'
+      - name: Upload Nix diagnostics artifact
+        if: failure() && env.NIX_STORE_DIAGNOSTICS_DIR != ''
+        uses: actions/upload-artifact@v4
+        with:
+          name: 'nix-store-diagnostics-${{ github.job }}-${{ runner.os }}-run-${{ github.run_id }}-attempt-${{ github.run_attempt }}'
+          path: '${{ env.NIX_STORE_DIAGNOSTICS_DIR }}'
+          if-no-files-found: ignore
+          retention-days: 14
   test-integration-playwright:
     strategy:
       matrix:
@@ -320,7 +700,7 @@ jobs:
     runs-on: [namespace-profile-linux-x86-64, 'namespace-features:github.run-id=${{ github.run_id }}']
     defaults:
       run:
-        shell: devenv shell bash -- -e {0}
+        shell: bash
     steps:
       - uses: actions/checkout@v4
       - name: Install Nix
@@ -329,6 +709,7 @@ jobs:
           extra-conf: |
             extra-substituters = https://devenv.cachix.org
             extra-trusted-public-keys = devenv.cachix.org-1:w1cLUi8dv3hnoSPGAuibQv+f9TZLr6cv/Hm9XgU50cw=
+            access-tokens = github.com=${{ github.token }}
             extra-substituters = https://cache.nixos.org
             extra-trusted-public-keys = cache.nixos.org-1:6NCHdD59X431o0gWypbMrAURkbJ16ZPMQFGspcDShjY=
       - name: Enable Cachix cache
@@ -342,21 +723,89 @@ jobs:
       - name: Sync megarepo dependencies
         run: mr sync --frozen
         shell: bash
-      - name: Install devenv
-        run: 'nix profile install github:cachix/devenv/$(jq -r ".nodes.devenv.locked.rev" devenv.lock)'
+      - name: Use pinned devenv from lock
+        run: |
+          DEVENV_REV=$(jq -r .nodes.devenv.locked.rev devenv.lock)
+          if [ -z "$DEVENV_REV" ] || [ "$DEVENV_REV" = "null" ]; then
+            echo '::error::devenv.lock missing .nodes.devenv.locked.rev'
+            exit 1
+          fi
+          echo "DEVENV_REV=$DEVENV_REV" >> "$GITHUB_ENV"
+          echo "Pinned devenv rev: $DEVENV_REV"
         shell: bash
       - name: Validate Nix store
         run: |
-          if devenv version > /dev/null 2>&1; then
+          if [ -z "${DEVENV_REV:-}" ]; then
+            DEVENV_REV=$(jq -r .nodes.devenv.locked.rev devenv.lock)
+          if [ -z "$DEVENV_REV" ] || [ "$DEVENV_REV" = "null" ]; then
+            echo '::error::devenv.lock missing .nodes.devenv.locked.rev'
+            exit 1
+          fi
+          fi
+
+          resolve_devenv() {
+            nix build --no-link --print-out-paths "github:cachix/devenv/$DEVENV_REV#devenv"
+          }
+
+          # Always append restrict-eval=false so caller-provided NIX_CONFIG keeps its settings.
+          if [ -n "${NIX_CONFIG:-}" ]; then
+            NIX_CONFIG_WITH_UNRESTRICTED_EVAL="$NIX_CONFIG"$'\n''restrict-eval = false'
+          else
+            NIX_CONFIG_WITH_UNRESTRICTED_EVAL='restrict-eval = false'
+          fi
+
+          # Temporary: capture complete diagnostics for #272 root-cause analysis.
+          DIAG_ROOT="${RUNNER_TEMP:-/tmp}/nix-store-diagnostics-${GITHUB_JOB:-job}-${RUNNER_OS:-unknown}-${GITHUB_RUN_ATTEMPT:-0}"
+          mkdir -p "$DIAG_ROOT"
+          echo "NIX_STORE_DIAGNOSTICS_DIR=$DIAG_ROOT" >> "$GITHUB_ENV"
+
+          {
+            echo "timestamp_utc=$(date -u +%Y-%m-%dT%H:%M:%SZ)"
+            echo "runner_name=${RUNNER_NAME:-unknown}"
+            echo "runner_os=${RUNNER_OS:-unknown}"
+            echo "runner_arch=${RUNNER_ARCH:-unknown}"
+            echo "github_job=${GITHUB_JOB:-unknown}"
+            echo "github_run_id=${GITHUB_RUN_ID:-unknown}"
+            echo "github_run_attempt=${GITHUB_RUN_ATTEMPT:-unknown}"
+            echo "nix_user_conf_files=${NIX_USER_CONF_FILES:-}"
+            echo ""
+            echo "== uname -a =="
+            uname -a || true
+            if command -v sw_vers > /dev/null 2>&1; then
+              echo ""
+              echo "== sw_vers =="
+              sw_vers || true
+            fi
+            echo ""
+            echo "== nix --version =="
+            nix --version || true
+          } > "$DIAG_ROOT/environment.txt" 2>&1
+
+          pre_resolve_log="$DIAG_ROOT/resolve-devenv-pre-repair.log"
+          pre_info_log="$DIAG_ROOT/devenv-info-pre-repair.log"
+          verify_log="$DIAG_ROOT/nix-store-verify-pre-repair.log"
+          repair_log="$DIAG_ROOT/nix-store-verify-repair.log"
+          post_resolve_log="$DIAG_ROOT/resolve-devenv-post-repair.log"
+          post_info_log="$DIAG_ROOT/devenv-info-post-repair.log"
+
+          if DEVENV_OUT=$(resolve_devenv 2>"$pre_resolve_log") && DEVENV_BIN="$DEVENV_OUT/bin/devenv" && NIX_CONFIG="$NIX_CONFIG_WITH_UNRESTRICTED_EVAL" "$DEVENV_BIN" info > "$pre_info_log" 2>&1; then
             echo "Nix store OK"
           else
-            echo "::warning::Nix store validation failed, running repair..."
-            nix-store --verify --repair 2>&1 | tail -20
-            devenv version
+            echo "::warning::Nix store validation failed, collecting diagnostics and repairing..."
+            if ! nix-store --verify --check-contents > "$verify_log" 2>&1; then
+              echo "::warning::nix-store --verify --check-contents reported issues (see diagnostics artifact)"
+            fi
+            if ! nix-store --verify --check-contents --repair > "$repair_log" 2>&1; then
+              echo "::warning::nix-store --verify --check-contents --repair reported issues (see diagnostics artifact)"
+            fi
+            rm -rf ~/.cache/nix/eval-cache-*
+            DEVENV_OUT=$(resolve_devenv 2>"$post_resolve_log")
+            DEVENV_BIN="$DEVENV_OUT/bin/devenv"
+            NIX_CONFIG="$NIX_CONFIG_WITH_UNRESTRICTED_EVAL" "$DEVENV_BIN" info > "$post_info_log" 2>&1
           fi
-        shell: bash
-      - name: Preflight workspace bootstrap
-        run: 'DEVENV_SKIP_SETUP=1 devenv tasks run pnpm:install genie:run ts:build --mode before --verbose'
+
+          echo "DEVENV_BIN=$DEVENV_BIN" >> "$GITHUB_ENV"
+          "$DEVENV_BIN" version | tee "$DIAG_ROOT/devenv-version.txt"
         shell: bash
       - name: Set OTEL_EXPORTER_OTLP_HEADERS environment variable
         env:
@@ -371,12 +820,7 @@ jobs:
       - name: Run integration tests
         env:
           PLAYWRIGHT_SUITE: '${{ matrix.suite }}'
-        run: |
-          if [ "${{ matrix.suite }}" = "devtools" ]; then
-            dt test:integration:devtools || echo "::warning::Script failed but continuing"
-          else
-            dt "test:integration:${{ matrix.suite }}"
-          fi
+        run: "if [ -n \"${NIX_CONFIG:-}\" ]; then NIX_CONFIG_WITH_UNRESTRICTED_EVAL=\"$NIX_CONFIG\"$'\\n''restrict-eval = false'; else NIX_CONFIG_WITH_UNRESTRICTED_EVAL='restrict-eval = false'; fi; NIX_CONFIG=\"$NIX_CONFIG_WITH_UNRESTRICTED_EVAL\" \"${DEVENV_BIN:?DEVENV_BIN not set}\" tasks run test:integration:playwright:suite --mode before"
       - uses: actions/upload-artifact@v4
         if: '${{ !cancelled() }}'
         with:
@@ -388,17 +832,20 @@ jobs:
         env:
           NETLIFY_AUTH_TOKEN: '${{ secrets.NETLIFY_AUTH_TOKEN }}'
           PLAYWRIGHT_SUITE: '${{ matrix.suite }}'
-        run: |
-          if [ -n "$NETLIFY_AUTH_TOKEN" ]; then
-            bunx netlify-cli deploy --no-build --dir=tests/integration/playwright-report --site livestore-ci --filter @local/tests-integration --alias ${{ matrix.suite }}-$(git rev-parse --short HEAD)
-          else
-            echo "Skipping Netlify deploy: NETLIFY_AUTH_TOKEN not set"
-          fi
+        run: "if [ -n \"${NIX_CONFIG:-}\" ]; then NIX_CONFIG_WITH_UNRESTRICTED_EVAL=\"$NIX_CONFIG\"$'\\n''restrict-eval = false'; else NIX_CONFIG_WITH_UNRESTRICTED_EVAL='restrict-eval = false'; fi; NIX_CONFIG=\"$NIX_CONFIG_WITH_UNRESTRICTED_EVAL\" \"${DEVENV_BIN:?DEVENV_BIN not set}\" tasks run test:integration:playwright:upload-trace --mode before"
+      - name: Upload Nix diagnostics artifact
+        if: failure() && env.NIX_STORE_DIAGNOSTICS_DIR != ''
+        uses: actions/upload-artifact@v4
+        with:
+          name: 'nix-store-diagnostics-${{ github.job }}-${{ runner.os }}-run-${{ github.run_id }}-attempt-${{ github.run_attempt }}'
+          path: '${{ env.NIX_STORE_DIAGNOSTICS_DIR }}'
+          if-no-files-found: ignore
+          retention-days: 14
   perf-test:
     runs-on: [namespace-profile-linux-x86-64, 'namespace-features:github.run-id=${{ github.run_id }}']
     defaults:
       run:
-        shell: devenv shell bash -- -e {0}
+        shell: bash
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
@@ -410,6 +857,7 @@ jobs:
           extra-conf: |
             extra-substituters = https://devenv.cachix.org
             extra-trusted-public-keys = devenv.cachix.org-1:w1cLUi8dv3hnoSPGAuibQv+f9TZLr6cv/Hm9XgU50cw=
+            access-tokens = github.com=${{ github.token }}
             extra-substituters = https://cache.nixos.org
             extra-trusted-public-keys = cache.nixos.org-1:6NCHdD59X431o0gWypbMrAURkbJ16ZPMQFGspcDShjY=
       - name: Enable Cachix cache
@@ -423,21 +871,89 @@ jobs:
       - name: Sync megarepo dependencies
         run: mr sync --frozen
         shell: bash
-      - name: Install devenv
-        run: 'nix profile install github:cachix/devenv/$(jq -r ".nodes.devenv.locked.rev" devenv.lock)'
+      - name: Use pinned devenv from lock
+        run: |
+          DEVENV_REV=$(jq -r .nodes.devenv.locked.rev devenv.lock)
+          if [ -z "$DEVENV_REV" ] || [ "$DEVENV_REV" = "null" ]; then
+            echo '::error::devenv.lock missing .nodes.devenv.locked.rev'
+            exit 1
+          fi
+          echo "DEVENV_REV=$DEVENV_REV" >> "$GITHUB_ENV"
+          echo "Pinned devenv rev: $DEVENV_REV"
         shell: bash
       - name: Validate Nix store
         run: |
-          if devenv version > /dev/null 2>&1; then
+          if [ -z "${DEVENV_REV:-}" ]; then
+            DEVENV_REV=$(jq -r .nodes.devenv.locked.rev devenv.lock)
+          if [ -z "$DEVENV_REV" ] || [ "$DEVENV_REV" = "null" ]; then
+            echo '::error::devenv.lock missing .nodes.devenv.locked.rev'
+            exit 1
+          fi
+          fi
+
+          resolve_devenv() {
+            nix build --no-link --print-out-paths "github:cachix/devenv/$DEVENV_REV#devenv"
+          }
+
+          # Always append restrict-eval=false so caller-provided NIX_CONFIG keeps its settings.
+          if [ -n "${NIX_CONFIG:-}" ]; then
+            NIX_CONFIG_WITH_UNRESTRICTED_EVAL="$NIX_CONFIG"$'\n''restrict-eval = false'
+          else
+            NIX_CONFIG_WITH_UNRESTRICTED_EVAL='restrict-eval = false'
+          fi
+
+          # Temporary: capture complete diagnostics for #272 root-cause analysis.
+          DIAG_ROOT="${RUNNER_TEMP:-/tmp}/nix-store-diagnostics-${GITHUB_JOB:-job}-${RUNNER_OS:-unknown}-${GITHUB_RUN_ATTEMPT:-0}"
+          mkdir -p "$DIAG_ROOT"
+          echo "NIX_STORE_DIAGNOSTICS_DIR=$DIAG_ROOT" >> "$GITHUB_ENV"
+
+          {
+            echo "timestamp_utc=$(date -u +%Y-%m-%dT%H:%M:%SZ)"
+            echo "runner_name=${RUNNER_NAME:-unknown}"
+            echo "runner_os=${RUNNER_OS:-unknown}"
+            echo "runner_arch=${RUNNER_ARCH:-unknown}"
+            echo "github_job=${GITHUB_JOB:-unknown}"
+            echo "github_run_id=${GITHUB_RUN_ID:-unknown}"
+            echo "github_run_attempt=${GITHUB_RUN_ATTEMPT:-unknown}"
+            echo "nix_user_conf_files=${NIX_USER_CONF_FILES:-}"
+            echo ""
+            echo "== uname -a =="
+            uname -a || true
+            if command -v sw_vers > /dev/null 2>&1; then
+              echo ""
+              echo "== sw_vers =="
+              sw_vers || true
+            fi
+            echo ""
+            echo "== nix --version =="
+            nix --version || true
+          } > "$DIAG_ROOT/environment.txt" 2>&1
+
+          pre_resolve_log="$DIAG_ROOT/resolve-devenv-pre-repair.log"
+          pre_info_log="$DIAG_ROOT/devenv-info-pre-repair.log"
+          verify_log="$DIAG_ROOT/nix-store-verify-pre-repair.log"
+          repair_log="$DIAG_ROOT/nix-store-verify-repair.log"
+          post_resolve_log="$DIAG_ROOT/resolve-devenv-post-repair.log"
+          post_info_log="$DIAG_ROOT/devenv-info-post-repair.log"
+
+          if DEVENV_OUT=$(resolve_devenv 2>"$pre_resolve_log") && DEVENV_BIN="$DEVENV_OUT/bin/devenv" && NIX_CONFIG="$NIX_CONFIG_WITH_UNRESTRICTED_EVAL" "$DEVENV_BIN" info > "$pre_info_log" 2>&1; then
             echo "Nix store OK"
           else
-            echo "::warning::Nix store validation failed, running repair..."
-            nix-store --verify --repair 2>&1 | tail -20
-            devenv version
+            echo "::warning::Nix store validation failed, collecting diagnostics and repairing..."
+            if ! nix-store --verify --check-contents > "$verify_log" 2>&1; then
+              echo "::warning::nix-store --verify --check-contents reported issues (see diagnostics artifact)"
+            fi
+            if ! nix-store --verify --check-contents --repair > "$repair_log" 2>&1; then
+              echo "::warning::nix-store --verify --check-contents --repair reported issues (see diagnostics artifact)"
+            fi
+            rm -rf ~/.cache/nix/eval-cache-*
+            DEVENV_OUT=$(resolve_devenv 2>"$post_resolve_log")
+            DEVENV_BIN="$DEVENV_OUT/bin/devenv"
+            NIX_CONFIG="$NIX_CONFIG_WITH_UNRESTRICTED_EVAL" "$DEVENV_BIN" info > "$post_info_log" 2>&1
           fi
-        shell: bash
-      - name: Preflight workspace bootstrap
-        run: 'DEVENV_SKIP_SETUP=1 devenv tasks run pnpm:install genie:run ts:build --mode before --verbose'
+
+          echo "DEVENV_BIN=$DEVENV_BIN" >> "$GITHUB_ENV"
+          "$DEVENV_BIN" version | tee "$DIAG_ROOT/devenv-version.txt"
         shell: bash
       - name: Set OTEL_EXPORTER_OTLP_HEADERS environment variable
         env:
@@ -450,13 +966,24 @@ jobs:
           # Disable in Vite (otherwise CORS issues)
           echo "VITE_OTEL_EXPORTER_OTLP_ENDPOINT=" >> $GITHUB_ENV
       - name: Run performance tests
-        run: 'dt test:perf'
+        run: "if [ -n \"${NIX_CONFIG:-}\" ]; then NIX_CONFIG_WITH_UNRESTRICTED_EVAL=\"$NIX_CONFIG\"$'\\n''restrict-eval = false'; else NIX_CONFIG_WITH_UNRESTRICTED_EVAL='restrict-eval = false'; fi; NIX_CONFIG=\"$NIX_CONFIG_WITH_UNRESTRICTED_EVAL\" \"${DEVENV_BIN:?DEVENV_BIN not set}\" tasks run test:perf --mode before"
         env:
           COMMIT_SHA: '${{ github.event.pull_request.head.sha || github.sha }}'
           GRAFANA_ENDPOINT: 'https://livestore.grafana.net'
           OTEL_EXPORTER_OTLP_ENDPOINT: 'https://otlp-gateway-prod-us-east-2.grafana.net/otlp'
+      - name: Upload Nix diagnostics artifact
+        if: failure() && env.NIX_STORE_DIAGNOSTICS_DIR != ''
+        uses: actions/upload-artifact@v4
+        with:
+          name: 'nix-store-diagnostics-${{ github.job }}-${{ runner.os }}-run-${{ github.run_id }}-attempt-${{ github.run_attempt }}'
+          path: '${{ env.NIX_STORE_DIAGNOSTICS_DIR }}'
+          if-no-files-found: ignore
+          retention-days: 14
   wa-sqlite-test:
     runs-on: [namespace-profile-linux-x86-64, 'namespace-features:github.run-id=${{ github.run_id }}']
+    defaults:
+      run:
+        shell: bash
     steps:
       - uses: actions/checkout@v4
       - name: Install Nix
@@ -465,6 +992,7 @@ jobs:
           extra-conf: |
             extra-substituters = https://devenv.cachix.org
             extra-trusted-public-keys = devenv.cachix.org-1:w1cLUi8dv3hnoSPGAuibQv+f9TZLr6cv/Hm9XgU50cw=
+            access-tokens = github.com=${{ github.token }}
             extra-substituters = https://cache.nixos.org
             extra-trusted-public-keys = cache.nixos.org-1:6NCHdD59X431o0gWypbMrAURkbJ16ZPMQFGspcDShjY=
       - name: Enable Cachix cache
@@ -478,21 +1006,89 @@ jobs:
       - name: Sync megarepo dependencies
         run: mr sync --frozen
         shell: bash
-      - name: Install devenv
-        run: 'nix profile install github:cachix/devenv/$(jq -r ".nodes.devenv.locked.rev" devenv.lock)'
+      - name: Use pinned devenv from lock
+        run: |
+          DEVENV_REV=$(jq -r .nodes.devenv.locked.rev devenv.lock)
+          if [ -z "$DEVENV_REV" ] || [ "$DEVENV_REV" = "null" ]; then
+            echo '::error::devenv.lock missing .nodes.devenv.locked.rev'
+            exit 1
+          fi
+          echo "DEVENV_REV=$DEVENV_REV" >> "$GITHUB_ENV"
+          echo "Pinned devenv rev: $DEVENV_REV"
         shell: bash
       - name: Validate Nix store
         run: |
-          if devenv version > /dev/null 2>&1; then
+          if [ -z "${DEVENV_REV:-}" ]; then
+            DEVENV_REV=$(jq -r .nodes.devenv.locked.rev devenv.lock)
+          if [ -z "$DEVENV_REV" ] || [ "$DEVENV_REV" = "null" ]; then
+            echo '::error::devenv.lock missing .nodes.devenv.locked.rev'
+            exit 1
+          fi
+          fi
+
+          resolve_devenv() {
+            nix build --no-link --print-out-paths "github:cachix/devenv/$DEVENV_REV#devenv"
+          }
+
+          # Always append restrict-eval=false so caller-provided NIX_CONFIG keeps its settings.
+          if [ -n "${NIX_CONFIG:-}" ]; then
+            NIX_CONFIG_WITH_UNRESTRICTED_EVAL="$NIX_CONFIG"$'\n''restrict-eval = false'
+          else
+            NIX_CONFIG_WITH_UNRESTRICTED_EVAL='restrict-eval = false'
+          fi
+
+          # Temporary: capture complete diagnostics for #272 root-cause analysis.
+          DIAG_ROOT="${RUNNER_TEMP:-/tmp}/nix-store-diagnostics-${GITHUB_JOB:-job}-${RUNNER_OS:-unknown}-${GITHUB_RUN_ATTEMPT:-0}"
+          mkdir -p "$DIAG_ROOT"
+          echo "NIX_STORE_DIAGNOSTICS_DIR=$DIAG_ROOT" >> "$GITHUB_ENV"
+
+          {
+            echo "timestamp_utc=$(date -u +%Y-%m-%dT%H:%M:%SZ)"
+            echo "runner_name=${RUNNER_NAME:-unknown}"
+            echo "runner_os=${RUNNER_OS:-unknown}"
+            echo "runner_arch=${RUNNER_ARCH:-unknown}"
+            echo "github_job=${GITHUB_JOB:-unknown}"
+            echo "github_run_id=${GITHUB_RUN_ID:-unknown}"
+            echo "github_run_attempt=${GITHUB_RUN_ATTEMPT:-unknown}"
+            echo "nix_user_conf_files=${NIX_USER_CONF_FILES:-}"
+            echo ""
+            echo "== uname -a =="
+            uname -a || true
+            if command -v sw_vers > /dev/null 2>&1; then
+              echo ""
+              echo "== sw_vers =="
+              sw_vers || true
+            fi
+            echo ""
+            echo "== nix --version =="
+            nix --version || true
+          } > "$DIAG_ROOT/environment.txt" 2>&1
+
+          pre_resolve_log="$DIAG_ROOT/resolve-devenv-pre-repair.log"
+          pre_info_log="$DIAG_ROOT/devenv-info-pre-repair.log"
+          verify_log="$DIAG_ROOT/nix-store-verify-pre-repair.log"
+          repair_log="$DIAG_ROOT/nix-store-verify-repair.log"
+          post_resolve_log="$DIAG_ROOT/resolve-devenv-post-repair.log"
+          post_info_log="$DIAG_ROOT/devenv-info-post-repair.log"
+
+          if DEVENV_OUT=$(resolve_devenv 2>"$pre_resolve_log") && DEVENV_BIN="$DEVENV_OUT/bin/devenv" && NIX_CONFIG="$NIX_CONFIG_WITH_UNRESTRICTED_EVAL" "$DEVENV_BIN" info > "$pre_info_log" 2>&1; then
             echo "Nix store OK"
           else
-            echo "::warning::Nix store validation failed, running repair..."
-            nix-store --verify --repair 2>&1 | tail -20
-            devenv version
+            echo "::warning::Nix store validation failed, collecting diagnostics and repairing..."
+            if ! nix-store --verify --check-contents > "$verify_log" 2>&1; then
+              echo "::warning::nix-store --verify --check-contents reported issues (see diagnostics artifact)"
+            fi
+            if ! nix-store --verify --check-contents --repair > "$repair_log" 2>&1; then
+              echo "::warning::nix-store --verify --check-contents --repair reported issues (see diagnostics artifact)"
+            fi
+            rm -rf ~/.cache/nix/eval-cache-*
+            DEVENV_OUT=$(resolve_devenv 2>"$post_resolve_log")
+            DEVENV_BIN="$DEVENV_OUT/bin/devenv"
+            NIX_CONFIG="$NIX_CONFIG_WITH_UNRESTRICTED_EVAL" "$DEVENV_BIN" info > "$post_info_log" 2>&1
           fi
-        shell: bash
-      - name: Preflight workspace bootstrap
-        run: 'DEVENV_SKIP_SETUP=1 devenv tasks run pnpm:install genie:run ts:build --mode before --verbose'
+
+          echo "DEVENV_BIN=$DEVENV_BIN" >> "$GITHUB_ENV"
+          "$DEVENV_BIN" version | tee "$DIAG_ROOT/devenv-version.txt"
         shell: bash
       - name: Set OTEL_EXPORTER_OTLP_HEADERS environment variable
         env:
@@ -505,21 +1101,28 @@ jobs:
           # Disable in Vite (otherwise CORS issues)
           echo "VITE_OTEL_EXPORTER_OTLP_ENDPOINT=" >> $GITHUB_ENV
       - name: Build wa-sqlite
-        working-directory: packages/@livestore/wa-sqlite
-        run: 'nix run .#build'
+        run: "if [ -n \"${NIX_CONFIG:-}\" ]; then NIX_CONFIG_WITH_UNRESTRICTED_EVAL=\"$NIX_CONFIG\"$'\\n''restrict-eval = false'; else NIX_CONFIG_WITH_UNRESTRICTED_EVAL='restrict-eval = false'; fi; NIX_CONFIG=\"$NIX_CONFIG_WITH_UNRESTRICTED_EVAL\" \"${DEVENV_BIN:?DEVENV_BIN not set}\" tasks run test:integration:wa-sqlite:build --mode before"
       - name: Run wa-sqlite tests
-        run: 'devenv shell dt test:integration:wa-sqlite'
+        run: "if [ -n \"${NIX_CONFIG:-}\" ]; then NIX_CONFIG_WITH_UNRESTRICTED_EVAL=\"$NIX_CONFIG\"$'\\n''restrict-eval = false'; else NIX_CONFIG_WITH_UNRESTRICTED_EVAL='restrict-eval = false'; fi; NIX_CONFIG=\"$NIX_CONFIG_WITH_UNRESTRICTED_EVAL\" \"${DEVENV_BIN:?DEVENV_BIN not set}\" tasks run test:integration:wa-sqlite --mode before"
         env:
           COMMIT_SHA: '${{ github.event.pull_request.head.sha || github.sha }}'
           GRAFANA_ENDPOINT: 'https://livestore.grafana.net'
           OTEL_EXPORTER_OTLP_ENDPOINT: 'https://otlp-gateway-prod-us-east-2.grafana.net/otlp'
+      - name: Upload Nix diagnostics artifact
+        if: failure() && env.NIX_STORE_DIAGNOSTICS_DIR != ''
+        uses: actions/upload-artifact@v4
+        with:
+          name: 'nix-store-diagnostics-${{ github.job }}-${{ runner.os }}-run-${{ github.run_id }}-attempt-${{ github.run_attempt }}'
+          path: '${{ env.NIX_STORE_DIAGNOSTICS_DIR }}'
+          if-no-files-found: ignore
+          retention-days: 14
   publish-snapshot-version:
     if: github.event.pull_request.head.repo.fork != true
     runs-on: ubuntu-24.04
     needs: [test-unit, test-integration-node-sync, test-integration-sync-provider, test-integration-playwright]
     defaults:
       run:
-        shell: devenv shell bash -- -e {0}
+        shell: bash
     steps:
       - uses: actions/checkout@v4
       - name: Install Nix
@@ -528,6 +1131,7 @@ jobs:
           extra-conf: |
             extra-substituters = https://devenv.cachix.org
             extra-trusted-public-keys = devenv.cachix.org-1:w1cLUi8dv3hnoSPGAuibQv+f9TZLr6cv/Hm9XgU50cw=
+            access-tokens = github.com=${{ github.token }}
             extra-substituters = https://cache.nixos.org
             extra-trusted-public-keys = cache.nixos.org-1:6NCHdD59X431o0gWypbMrAURkbJ16ZPMQFGspcDShjY=
       - name: Enable Cachix cache
@@ -541,25 +1145,106 @@ jobs:
       - name: Sync megarepo dependencies
         run: mr sync --frozen
         shell: bash
-      - name: Install devenv
-        run: 'nix profile install github:cachix/devenv/$(jq -r ".nodes.devenv.locked.rev" devenv.lock)'
+      - name: Use pinned devenv from lock
+        run: |
+          DEVENV_REV=$(jq -r .nodes.devenv.locked.rev devenv.lock)
+          if [ -z "$DEVENV_REV" ] || [ "$DEVENV_REV" = "null" ]; then
+            echo '::error::devenv.lock missing .nodes.devenv.locked.rev'
+            exit 1
+          fi
+          echo "DEVENV_REV=$DEVENV_REV" >> "$GITHUB_ENV"
+          echo "Pinned devenv rev: $DEVENV_REV"
         shell: bash
       - name: Validate Nix store
         run: |
-          if devenv version > /dev/null 2>&1; then
+          if [ -z "${DEVENV_REV:-}" ]; then
+            DEVENV_REV=$(jq -r .nodes.devenv.locked.rev devenv.lock)
+          if [ -z "$DEVENV_REV" ] || [ "$DEVENV_REV" = "null" ]; then
+            echo '::error::devenv.lock missing .nodes.devenv.locked.rev'
+            exit 1
+          fi
+          fi
+
+          resolve_devenv() {
+            nix build --no-link --print-out-paths "github:cachix/devenv/$DEVENV_REV#devenv"
+          }
+
+          # Always append restrict-eval=false so caller-provided NIX_CONFIG keeps its settings.
+          if [ -n "${NIX_CONFIG:-}" ]; then
+            NIX_CONFIG_WITH_UNRESTRICTED_EVAL="$NIX_CONFIG"$'\n''restrict-eval = false'
+          else
+            NIX_CONFIG_WITH_UNRESTRICTED_EVAL='restrict-eval = false'
+          fi
+
+          # Temporary: capture complete diagnostics for #272 root-cause analysis.
+          DIAG_ROOT="${RUNNER_TEMP:-/tmp}/nix-store-diagnostics-${GITHUB_JOB:-job}-${RUNNER_OS:-unknown}-${GITHUB_RUN_ATTEMPT:-0}"
+          mkdir -p "$DIAG_ROOT"
+          echo "NIX_STORE_DIAGNOSTICS_DIR=$DIAG_ROOT" >> "$GITHUB_ENV"
+
+          {
+            echo "timestamp_utc=$(date -u +%Y-%m-%dT%H:%M:%SZ)"
+            echo "runner_name=${RUNNER_NAME:-unknown}"
+            echo "runner_os=${RUNNER_OS:-unknown}"
+            echo "runner_arch=${RUNNER_ARCH:-unknown}"
+            echo "github_job=${GITHUB_JOB:-unknown}"
+            echo "github_run_id=${GITHUB_RUN_ID:-unknown}"
+            echo "github_run_attempt=${GITHUB_RUN_ATTEMPT:-unknown}"
+            echo "nix_user_conf_files=${NIX_USER_CONF_FILES:-}"
+            echo ""
+            echo "== uname -a =="
+            uname -a || true
+            if command -v sw_vers > /dev/null 2>&1; then
+              echo ""
+              echo "== sw_vers =="
+              sw_vers || true
+            fi
+            echo ""
+            echo "== nix --version =="
+            nix --version || true
+          } > "$DIAG_ROOT/environment.txt" 2>&1
+
+          pre_resolve_log="$DIAG_ROOT/resolve-devenv-pre-repair.log"
+          pre_info_log="$DIAG_ROOT/devenv-info-pre-repair.log"
+          verify_log="$DIAG_ROOT/nix-store-verify-pre-repair.log"
+          repair_log="$DIAG_ROOT/nix-store-verify-repair.log"
+          post_resolve_log="$DIAG_ROOT/resolve-devenv-post-repair.log"
+          post_info_log="$DIAG_ROOT/devenv-info-post-repair.log"
+
+          if DEVENV_OUT=$(resolve_devenv 2>"$pre_resolve_log") && DEVENV_BIN="$DEVENV_OUT/bin/devenv" && NIX_CONFIG="$NIX_CONFIG_WITH_UNRESTRICTED_EVAL" "$DEVENV_BIN" info > "$pre_info_log" 2>&1; then
             echo "Nix store OK"
           else
-            echo "::warning::Nix store validation failed, running repair..."
-            nix-store --verify --repair 2>&1 | tail -20
-            devenv version
+            echo "::warning::Nix store validation failed, collecting diagnostics and repairing..."
+            if ! nix-store --verify --check-contents > "$verify_log" 2>&1; then
+              echo "::warning::nix-store --verify --check-contents reported issues (see diagnostics artifact)"
+            fi
+            if ! nix-store --verify --check-contents --repair > "$repair_log" 2>&1; then
+              echo "::warning::nix-store --verify --check-contents --repair reported issues (see diagnostics artifact)"
+            fi
+            rm -rf ~/.cache/nix/eval-cache-*
+            DEVENV_OUT=$(resolve_devenv 2>"$post_resolve_log")
+            DEVENV_BIN="$DEVENV_OUT/bin/devenv"
+            NIX_CONFIG="$NIX_CONFIG_WITH_UNRESTRICTED_EVAL" "$DEVENV_BIN" info > "$post_info_log" 2>&1
           fi
+
+          echo "DEVENV_BIN=$DEVENV_BIN" >> "$GITHUB_ENV"
+          "$DEVENV_BIN" version | tee "$DIAG_ROOT/devenv-version.txt"
         shell: bash
-      - run: 'mono release snapshot --git-sha=${{ github.sha }} --yes'
+      - run: "if [ -n \"${NIX_CONFIG:-}\" ]; then NIX_CONFIG_WITH_UNRESTRICTED_EVAL=\"$NIX_CONFIG\"$'\\n''restrict-eval = false'; else NIX_CONFIG_WITH_UNRESTRICTED_EVAL='restrict-eval = false'; fi; NIX_CONFIG=\"$NIX_CONFIG_WITH_UNRESTRICTED_EVAL\" \"${DEVENV_BIN:?DEVENV_BIN not set}\" tasks run release:snapshot:git-sha --mode before"
+        env:
+          GIT_SHA: '${{ github.sha }}'
+      - name: Upload Nix diagnostics artifact
+        if: failure() && env.NIX_STORE_DIAGNOSTICS_DIR != ''
+        uses: actions/upload-artifact@v4
+        with:
+          name: 'nix-store-diagnostics-${{ github.job }}-${{ runner.os }}-run-${{ github.run_id }}-attempt-${{ github.run_attempt }}'
+          path: '${{ env.NIX_STORE_DIAGNOSTICS_DIR }}'
+          if-no-files-found: ignore
+          retention-days: 14
   build-and-deploy-examples-src:
     runs-on: [namespace-profile-linux-x86-64, 'namespace-features:github.run-id=${{ github.run_id }}']
     defaults:
       run:
-        shell: devenv shell bash -- -e {0}
+        shell: bash
     steps:
       - uses: actions/checkout@v4
       - name: Install Nix
@@ -568,6 +1253,7 @@ jobs:
           extra-conf: |
             extra-substituters = https://devenv.cachix.org
             extra-trusted-public-keys = devenv.cachix.org-1:w1cLUi8dv3hnoSPGAuibQv+f9TZLr6cv/Hm9XgU50cw=
+            access-tokens = github.com=${{ github.token }}
             extra-substituters = https://cache.nixos.org
             extra-trusted-public-keys = cache.nixos.org-1:6NCHdD59X431o0gWypbMrAURkbJ16ZPMQFGspcDShjY=
       - name: Enable Cachix cache
@@ -581,39 +1267,115 @@ jobs:
       - name: Sync megarepo dependencies
         run: mr sync --frozen
         shell: bash
-      - name: Install devenv
-        run: 'nix profile install github:cachix/devenv/$(jq -r ".nodes.devenv.locked.rev" devenv.lock)'
+      - name: Use pinned devenv from lock
+        run: |
+          DEVENV_REV=$(jq -r .nodes.devenv.locked.rev devenv.lock)
+          if [ -z "$DEVENV_REV" ] || [ "$DEVENV_REV" = "null" ]; then
+            echo '::error::devenv.lock missing .nodes.devenv.locked.rev'
+            exit 1
+          fi
+          echo "DEVENV_REV=$DEVENV_REV" >> "$GITHUB_ENV"
+          echo "Pinned devenv rev: $DEVENV_REV"
         shell: bash
       - name: Validate Nix store
         run: |
-          if devenv version > /dev/null 2>&1; then
+          if [ -z "${DEVENV_REV:-}" ]; then
+            DEVENV_REV=$(jq -r .nodes.devenv.locked.rev devenv.lock)
+          if [ -z "$DEVENV_REV" ] || [ "$DEVENV_REV" = "null" ]; then
+            echo '::error::devenv.lock missing .nodes.devenv.locked.rev'
+            exit 1
+          fi
+          fi
+
+          resolve_devenv() {
+            nix build --no-link --print-out-paths "github:cachix/devenv/$DEVENV_REV#devenv"
+          }
+
+          # Always append restrict-eval=false so caller-provided NIX_CONFIG keeps its settings.
+          if [ -n "${NIX_CONFIG:-}" ]; then
+            NIX_CONFIG_WITH_UNRESTRICTED_EVAL="$NIX_CONFIG"$'\n''restrict-eval = false'
+          else
+            NIX_CONFIG_WITH_UNRESTRICTED_EVAL='restrict-eval = false'
+          fi
+
+          # Temporary: capture complete diagnostics for #272 root-cause analysis.
+          DIAG_ROOT="${RUNNER_TEMP:-/tmp}/nix-store-diagnostics-${GITHUB_JOB:-job}-${RUNNER_OS:-unknown}-${GITHUB_RUN_ATTEMPT:-0}"
+          mkdir -p "$DIAG_ROOT"
+          echo "NIX_STORE_DIAGNOSTICS_DIR=$DIAG_ROOT" >> "$GITHUB_ENV"
+
+          {
+            echo "timestamp_utc=$(date -u +%Y-%m-%dT%H:%M:%SZ)"
+            echo "runner_name=${RUNNER_NAME:-unknown}"
+            echo "runner_os=${RUNNER_OS:-unknown}"
+            echo "runner_arch=${RUNNER_ARCH:-unknown}"
+            echo "github_job=${GITHUB_JOB:-unknown}"
+            echo "github_run_id=${GITHUB_RUN_ID:-unknown}"
+            echo "github_run_attempt=${GITHUB_RUN_ATTEMPT:-unknown}"
+            echo "nix_user_conf_files=${NIX_USER_CONF_FILES:-}"
+            echo ""
+            echo "== uname -a =="
+            uname -a || true
+            if command -v sw_vers > /dev/null 2>&1; then
+              echo ""
+              echo "== sw_vers =="
+              sw_vers || true
+            fi
+            echo ""
+            echo "== nix --version =="
+            nix --version || true
+          } > "$DIAG_ROOT/environment.txt" 2>&1
+
+          pre_resolve_log="$DIAG_ROOT/resolve-devenv-pre-repair.log"
+          pre_info_log="$DIAG_ROOT/devenv-info-pre-repair.log"
+          verify_log="$DIAG_ROOT/nix-store-verify-pre-repair.log"
+          repair_log="$DIAG_ROOT/nix-store-verify-repair.log"
+          post_resolve_log="$DIAG_ROOT/resolve-devenv-post-repair.log"
+          post_info_log="$DIAG_ROOT/devenv-info-post-repair.log"
+
+          if DEVENV_OUT=$(resolve_devenv 2>"$pre_resolve_log") && DEVENV_BIN="$DEVENV_OUT/bin/devenv" && NIX_CONFIG="$NIX_CONFIG_WITH_UNRESTRICTED_EVAL" "$DEVENV_BIN" info > "$pre_info_log" 2>&1; then
             echo "Nix store OK"
           else
-            echo "::warning::Nix store validation failed, running repair..."
-            nix-store --verify --repair 2>&1 | tail -20
-            devenv version
+            echo "::warning::Nix store validation failed, collecting diagnostics and repairing..."
+            if ! nix-store --verify --check-contents > "$verify_log" 2>&1; then
+              echo "::warning::nix-store --verify --check-contents reported issues (see diagnostics artifact)"
+            fi
+            if ! nix-store --verify --check-contents --repair > "$repair_log" 2>&1; then
+              echo "::warning::nix-store --verify --check-contents --repair reported issues (see diagnostics artifact)"
+            fi
+            rm -rf ~/.cache/nix/eval-cache-*
+            DEVENV_OUT=$(resolve_devenv 2>"$post_resolve_log")
+            DEVENV_BIN="$DEVENV_OUT/bin/devenv"
+            NIX_CONFIG="$NIX_CONFIG_WITH_UNRESTRICTED_EVAL" "$DEVENV_BIN" info > "$post_info_log" 2>&1
           fi
-        shell: bash
-      - name: Preflight workspace bootstrap
-        run: 'DEVENV_SKIP_SETUP=1 devenv tasks run pnpm:install genie:run ts:build --mode before --verbose'
+
+          echo "DEVENV_BIN=$DEVENV_BIN" >> "$GITHUB_ENV"
+          "$DEVENV_BIN" version | tee "$DIAG_ROOT/devenv-version.txt"
         shell: bash
       - name: Install examples dependencies
-        run: pnpm install --frozen-lockfile --dir examples
+        run: "if [ -n \"${NIX_CONFIG:-}\" ]; then NIX_CONFIG_WITH_UNRESTRICTED_EVAL=\"$NIX_CONFIG\"$'\\n''restrict-eval = false'; else NIX_CONFIG_WITH_UNRESTRICTED_EVAL='restrict-eval = false'; fi; NIX_CONFIG=\"$NIX_CONFIG_WITH_UNRESTRICTED_EVAL\" \"${DEVENV_BIN:?DEVENV_BIN not set}\" tasks run examples:install --mode before"
       - name: Build examples
-        run: pnpm --dir examples --filter 'livestore-example-*' --workspace-concurrency=1 build
+        run: "if [ -n \"${NIX_CONFIG:-}\" ]; then NIX_CONFIG_WITH_UNRESTRICTED_EVAL=\"$NIX_CONFIG\"$'\\n''restrict-eval = false'; else NIX_CONFIG_WITH_UNRESTRICTED_EVAL='restrict-eval = false'; fi; NIX_CONFIG=\"$NIX_CONFIG_WITH_UNRESTRICTED_EVAL\" \"${DEVENV_BIN:?DEVENV_BIN not set}\" tasks run examples:build:src --mode before"
       - name: Test examples
-        run: 'dt examples:test'
+        run: "if [ -n \"${NIX_CONFIG:-}\" ]; then NIX_CONFIG_WITH_UNRESTRICTED_EVAL=\"$NIX_CONFIG\"$'\\n''restrict-eval = false'; else NIX_CONFIG_WITH_UNRESTRICTED_EVAL='restrict-eval = false'; fi; NIX_CONFIG=\"$NIX_CONFIG_WITH_UNRESTRICTED_EVAL\" \"${DEVENV_BIN:?DEVENV_BIN not set}\" tasks run examples:test --mode before"
       - name: Deploy examples to Cloudflare
         if: github.event.pull_request.head.repo.fork != true
-        run: 'dt examples:deploy'
+        run: "if [ -n \"${NIX_CONFIG:-}\" ]; then NIX_CONFIG_WITH_UNRESTRICTED_EVAL=\"$NIX_CONFIG\"$'\\n''restrict-eval = false'; else NIX_CONFIG_WITH_UNRESTRICTED_EVAL='restrict-eval = false'; fi; NIX_CONFIG=\"$NIX_CONFIG_WITH_UNRESTRICTED_EVAL\" \"${DEVENV_BIN:?DEVENV_BIN not set}\" tasks run examples:deploy --mode before"
         env:
           CLOUDFLARE_API_TOKEN: '${{ secrets.CLOUDFLARE_API_TOKEN }}'
           CLOUDFLARE_ACCOUNT_ID: '${{ secrets.CLOUDFLARE_ACCOUNT_ID }}'
+      - name: Upload Nix diagnostics artifact
+        if: failure() && env.NIX_STORE_DIAGNOSTICS_DIR != ''
+        uses: actions/upload-artifact@v4
+        with:
+          name: 'nix-store-diagnostics-${{ github.job }}-${{ runner.os }}-run-${{ github.run_id }}-attempt-${{ github.run_attempt }}'
+          path: '${{ env.NIX_STORE_DIAGNOSTICS_DIR }}'
+          if-no-files-found: ignore
+          retention-days: 14
   build-deploy-docs:
     runs-on: [namespace-profile-linux-x86-64, 'namespace-features:github.run-id=${{ github.run_id }}']
     defaults:
       run:
-        shell: devenv shell bash -- -e {0}
+        shell: bash
     steps:
       - uses: actions/checkout@v4
       - name: Install Nix
@@ -622,6 +1384,7 @@ jobs:
           extra-conf: |
             extra-substituters = https://devenv.cachix.org
             extra-trusted-public-keys = devenv.cachix.org-1:w1cLUi8dv3hnoSPGAuibQv+f9TZLr6cv/Hm9XgU50cw=
+            access-tokens = github.com=${{ github.token }}
             extra-substituters = https://cache.nixos.org
             extra-trusted-public-keys = cache.nixos.org-1:6NCHdD59X431o0gWypbMrAURkbJ16ZPMQFGspcDShjY=
       - name: Enable Cachix cache
@@ -635,57 +1398,99 @@ jobs:
       - name: Sync megarepo dependencies
         run: mr sync --frozen
         shell: bash
-      - name: Install devenv
-        run: 'nix profile install github:cachix/devenv/$(jq -r ".nodes.devenv.locked.rev" devenv.lock)'
+      - name: Use pinned devenv from lock
+        run: |
+          DEVENV_REV=$(jq -r .nodes.devenv.locked.rev devenv.lock)
+          if [ -z "$DEVENV_REV" ] || [ "$DEVENV_REV" = "null" ]; then
+            echo '::error::devenv.lock missing .nodes.devenv.locked.rev'
+            exit 1
+          fi
+          echo "DEVENV_REV=$DEVENV_REV" >> "$GITHUB_ENV"
+          echo "Pinned devenv rev: $DEVENV_REV"
         shell: bash
       - name: Validate Nix store
         run: |
-          if devenv version > /dev/null 2>&1; then
+          if [ -z "${DEVENV_REV:-}" ]; then
+            DEVENV_REV=$(jq -r .nodes.devenv.locked.rev devenv.lock)
+          if [ -z "$DEVENV_REV" ] || [ "$DEVENV_REV" = "null" ]; then
+            echo '::error::devenv.lock missing .nodes.devenv.locked.rev'
+            exit 1
+          fi
+          fi
+
+          resolve_devenv() {
+            nix build --no-link --print-out-paths "github:cachix/devenv/$DEVENV_REV#devenv"
+          }
+
+          # Always append restrict-eval=false so caller-provided NIX_CONFIG keeps its settings.
+          if [ -n "${NIX_CONFIG:-}" ]; then
+            NIX_CONFIG_WITH_UNRESTRICTED_EVAL="$NIX_CONFIG"$'\n''restrict-eval = false'
+          else
+            NIX_CONFIG_WITH_UNRESTRICTED_EVAL='restrict-eval = false'
+          fi
+
+          # Temporary: capture complete diagnostics for #272 root-cause analysis.
+          DIAG_ROOT="${RUNNER_TEMP:-/tmp}/nix-store-diagnostics-${GITHUB_JOB:-job}-${RUNNER_OS:-unknown}-${GITHUB_RUN_ATTEMPT:-0}"
+          mkdir -p "$DIAG_ROOT"
+          echo "NIX_STORE_DIAGNOSTICS_DIR=$DIAG_ROOT" >> "$GITHUB_ENV"
+
+          {
+            echo "timestamp_utc=$(date -u +%Y-%m-%dT%H:%M:%SZ)"
+            echo "runner_name=${RUNNER_NAME:-unknown}"
+            echo "runner_os=${RUNNER_OS:-unknown}"
+            echo "runner_arch=${RUNNER_ARCH:-unknown}"
+            echo "github_job=${GITHUB_JOB:-unknown}"
+            echo "github_run_id=${GITHUB_RUN_ID:-unknown}"
+            echo "github_run_attempt=${GITHUB_RUN_ATTEMPT:-unknown}"
+            echo "nix_user_conf_files=${NIX_USER_CONF_FILES:-}"
+            echo ""
+            echo "== uname -a =="
+            uname -a || true
+            if command -v sw_vers > /dev/null 2>&1; then
+              echo ""
+              echo "== sw_vers =="
+              sw_vers || true
+            fi
+            echo ""
+            echo "== nix --version =="
+            nix --version || true
+          } > "$DIAG_ROOT/environment.txt" 2>&1
+
+          pre_resolve_log="$DIAG_ROOT/resolve-devenv-pre-repair.log"
+          pre_info_log="$DIAG_ROOT/devenv-info-pre-repair.log"
+          verify_log="$DIAG_ROOT/nix-store-verify-pre-repair.log"
+          repair_log="$DIAG_ROOT/nix-store-verify-repair.log"
+          post_resolve_log="$DIAG_ROOT/resolve-devenv-post-repair.log"
+          post_info_log="$DIAG_ROOT/devenv-info-post-repair.log"
+
+          if DEVENV_OUT=$(resolve_devenv 2>"$pre_resolve_log") && DEVENV_BIN="$DEVENV_OUT/bin/devenv" && NIX_CONFIG="$NIX_CONFIG_WITH_UNRESTRICTED_EVAL" "$DEVENV_BIN" info > "$pre_info_log" 2>&1; then
             echo "Nix store OK"
           else
-            echo "::warning::Nix store validation failed, running repair..."
-            nix-store --verify --repair 2>&1 | tail -20
-            devenv version
+            echo "::warning::Nix store validation failed, collecting diagnostics and repairing..."
+            if ! nix-store --verify --check-contents > "$verify_log" 2>&1; then
+              echo "::warning::nix-store --verify --check-contents reported issues (see diagnostics artifact)"
+            fi
+            if ! nix-store --verify --check-contents --repair > "$repair_log" 2>&1; then
+              echo "::warning::nix-store --verify --check-contents --repair reported issues (see diagnostics artifact)"
+            fi
+            rm -rf ~/.cache/nix/eval-cache-*
+            DEVENV_OUT=$(resolve_devenv 2>"$post_resolve_log")
+            DEVENV_BIN="$DEVENV_OUT/bin/devenv"
+            NIX_CONFIG="$NIX_CONFIG_WITH_UNRESTRICTED_EVAL" "$DEVENV_BIN" info > "$post_info_log" 2>&1
           fi
-        shell: bash
-      - name: Preflight workspace bootstrap
-        run: 'DEVENV_SKIP_SETUP=1 devenv tasks run pnpm:install genie:run ts:build --mode before --verbose'
+
+          echo "DEVENV_BIN=$DEVENV_BIN" >> "$GITHUB_ENV"
+          "$DEVENV_BIN" version | tee "$DIAG_ROOT/devenv-version.txt"
         shell: bash
       - name: Build docs snippets
-        run: |
-          set -euo pipefail
-          mkdir -p tmp/ci-docs
-          timeout --signal=TERM --kill-after=2m 20m mono docs snippets build 2>&1 | tee tmp/ci-docs/01-snippets.log
+        run: "if [ -n \"${NIX_CONFIG:-}\" ]; then NIX_CONFIG_WITH_UNRESTRICTED_EVAL=\"$NIX_CONFIG\"$'\\n''restrict-eval = false'; else NIX_CONFIG_WITH_UNRESTRICTED_EVAL='restrict-eval = false'; fi; NIX_CONFIG=\"$NIX_CONFIG_WITH_UNRESTRICTED_EVAL\" \"${DEVENV_BIN:?DEVENV_BIN not set}\" tasks run docs:build:phase:snippets --mode before"
       - name: Build docs diagrams
-        run: |
-          set -euo pipefail
-          mkdir -p tmp/ci-docs
-          timeout --signal=TERM --kill-after=2m 20m mono docs diagrams build 2>&1 | tee tmp/ci-docs/02-diagrams.log
+        run: "if [ -n \"${NIX_CONFIG:-}\" ]; then NIX_CONFIG_WITH_UNRESTRICTED_EVAL=\"$NIX_CONFIG\"$'\\n''restrict-eval = false'; else NIX_CONFIG_WITH_UNRESTRICTED_EVAL='restrict-eval = false'; fi; NIX_CONFIG=\"$NIX_CONFIG_WITH_UNRESTRICTED_EVAL\" \"${DEVENV_BIN:?DEVENV_BIN not set}\" tasks run docs:build:phase:diagrams --mode before"
       - name: Build Astro docs bundle
-        run: |
-          set -euo pipefail
-          mkdir -p tmp/ci-docs
-          (
-            while true; do
-              echo "[docs-heartbeat] $(date -u +%Y-%m-%dT%H:%M:%SZ) astro build still running"
-              pgrep -af 'astro|chromium|chrome_crashpad_handler|node|mono' || true
-              sleep 60
-            done
-          ) > tmp/ci-docs/03-heartbeat.log 2>&1 &
-          HEARTBEAT_PID=$!
-          cleanup() {
-            kill "$HEARTBEAT_PID" 2>/dev/null || true
-          }
-          trap cleanup EXIT
-          timeout --signal=TERM --kill-after=2m 20m mono docs build --api-docs --skip-deps 2>&1 | tee tmp/ci-docs/03-astro-build.log
+        run: "if [ -n \"${NIX_CONFIG:-}\" ]; then NIX_CONFIG_WITH_UNRESTRICTED_EVAL=\"$NIX_CONFIG\"$'\\n''restrict-eval = false'; else NIX_CONFIG_WITH_UNRESTRICTED_EVAL='restrict-eval = false'; fi; NIX_CONFIG=\"$NIX_CONFIG_WITH_UNRESTRICTED_EVAL\" \"${DEVENV_BIN:?DEVENV_BIN not set}\" tasks run docs:build:phase:astro --mode before"
       - name: Collect docs build diagnostics on failure
         if: '${{ failure() }}'
-        run: |
-          set -euo pipefail
-          mkdir -p tmp/ci-docs
-          date -u +%Y-%m-%dT%H:%M:%SZ | tee tmp/ci-docs/failure-timestamp.log
-          ps -eo pid,ppid,etime,pcpu,pmem,comm,args > tmp/ci-docs/ps-full.log || true
-          pgrep -af 'astro|chromium|chrome_crashpad_handler|node|mono|dt' > tmp/ci-docs/pgrep-build-procs.log || true
+        run: "if [ -n \"${NIX_CONFIG:-}\" ]; then NIX_CONFIG_WITH_UNRESTRICTED_EVAL=\"$NIX_CONFIG\"$'\\n''restrict-eval = false'; else NIX_CONFIG_WITH_UNRESTRICTED_EVAL='restrict-eval = false'; fi; NIX_CONFIG=\"$NIX_CONFIG_WITH_UNRESTRICTED_EVAL\" \"${DEVENV_BIN:?DEVENV_BIN not set}\" tasks run docs:build:diagnostics --mode before"
       - name: Upload docs build logs
         if: '${{ always() }}'
         uses: actions/upload-artifact@v4
@@ -695,9 +1500,17 @@ jobs:
           retention-days: 14
       - name: Deploy docs
         if: "${{ success() && (github.event_name != 'pull_request' || github.event.pull_request.head.repo.fork != true) }}"
-        run: 'dt docs:deploy'
+        run: "if [ -n \"${NIX_CONFIG:-}\" ]; then NIX_CONFIG_WITH_UNRESTRICTED_EVAL=\"$NIX_CONFIG\"$'\\n''restrict-eval = false'; else NIX_CONFIG_WITH_UNRESTRICTED_EVAL='restrict-eval = false'; fi; NIX_CONFIG=\"$NIX_CONFIG_WITH_UNRESTRICTED_EVAL\" \"${DEVENV_BIN:?DEVENV_BIN not set}\" tasks run docs:deploy --mode before"
         env:
           NETLIFY_AUTH_TOKEN: '${{ secrets.NETLIFY_AUTH_TOKEN }}'
+      - name: Upload Nix diagnostics artifact
+        if: failure() && env.NIX_STORE_DIAGNOSTICS_DIR != ''
+        uses: actions/upload-artifact@v4
+        with:
+          name: 'nix-store-diagnostics-${{ github.job }}-${{ runner.os }}-run-${{ github.run_id }}-attempt-${{ github.run_attempt }}'
+          path: '${{ env.NIX_STORE_DIAGNOSTICS_DIR }}'
+          if-no-files-found: ignore
+          retention-days: 14
   build-example-create:
     if: github.event.pull_request.head.repo.fork != true
     needs: publish-snapshot-version
@@ -722,8 +1535,6 @@ jobs:
           echo "WORKSPACE_DEPS=$DEPS" >> $GITHUB_ENV
       - name: Copy example app
         run: 'pnpm dlx @livestore/cli@${{ env.SNAPSHOT_VERSION }} create --example ${{ matrix.app }} --ref ${{ github.ref }} ${{ runner.temp }}/${{ env.APP_PATH }}'
-      - name: Increase pnpm fetch retries
-        run: pnpm config set fetchRetries 3
       - name: Use snapshot version of workspace dependencies
         working-directory: '${{ runner.temp }}/${{ env.APP_PATH }}'
         run: |

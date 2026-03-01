@@ -21,9 +21,27 @@ const visibleTodos$ = queryDb(
 export const MainSection: React.FC = () => {
   const store = useAppStore()
 
-  const toggleTodo = React.useCallback(
-    ({ id, completed }: typeof tables.todos.Type) =>
-      store.commit(completed === true ? events.todoUncompleted({ id }) : events.todoCompleted({ id })),
+  const handleToggleTodo = React.useCallback(
+    (event: React.ChangeEvent<HTMLInputElement>) => {
+      const todoId = event.currentTarget.dataset.todoId
+      if (todoId == null) return
+
+      store.commit(
+        event.currentTarget.checked === true
+          ? events.todoCompleted({ id: todoId })
+          : events.todoUncompleted({ id: todoId }),
+      )
+    },
+    [store],
+  )
+
+  const handleDeleteTodo = React.useCallback(
+    (event: React.MouseEvent<HTMLButtonElement>) => {
+      const todoId = event.currentTarget.dataset.todoId
+      if (todoId == null) return
+
+      store.commit(events.todoDeleted({ id: todoId, deletedAt: new Date() }))
+    },
     [store],
   )
 
@@ -39,15 +57,12 @@ export const MainSection: React.FC = () => {
                 type="checkbox"
                 className="toggle"
                 id={`todo-${todo.id}`}
+                data-todo-id={todo.id}
                 checked={todo.completed}
-                onChange={() => toggleTodo(todo)}
+                onChange={handleToggleTodo}
               />
               <label htmlFor={`todo-${todo.id}`}>{todo.text}</label>
-              <button
-                type="button"
-                className="destroy"
-                onClick={() => store.commit(events.todoDeleted({ id: todo.id, deletedAt: new Date() }))}
-              />
+              <button type="button" className="destroy" data-todo-id={todo.id} onClick={handleDeleteTodo} />
             </div>
           </li>
         ))}
