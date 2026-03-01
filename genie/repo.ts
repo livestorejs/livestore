@@ -32,6 +32,11 @@ import {
   domLib,
   reactJsx,
 } from '../repos/effect-utils/genie/external.ts'
+import {
+  livestoreCatalogOverrides,
+  livestoreOnlyCatalog,
+  livestoreWorkspaceCatalog,
+} from './external.ts'
 
 export { baseTsconfigCompilerOptions, domLib, reactJsx }
 
@@ -54,149 +59,6 @@ export const packageTsconfigCompilerOptions = {
  * 2. External consumption via workspace:* when consumers include these in their workspace
  * 3. Proper symlink resolution in both internal and external contexts
  */
-const workspaceCatalog = {
-  // @livestore/* packages
-  '@livestore/utils': 'workspace:*',
-  '@livestore/utils-dev': 'workspace:*',
-  '@livestore/common': 'workspace:*',
-  '@livestore/common-cf': 'workspace:*',
-  '@livestore/livestore': 'workspace:*',
-  '@livestore/react': 'workspace:*',
-  '@livestore/solid': 'workspace:*',
-  '@livestore/svelte': 'workspace:*',
-  '@livestore/adapter-web': 'workspace:*',
-  '@livestore/adapter-node': 'workspace:*',
-  '@livestore/adapter-expo': 'workspace:*',
-  '@livestore/adapter-cloudflare': 'workspace:*',
-  '@livestore/sqlite-wasm': 'workspace:*',
-  '@livestore/webmesh': 'workspace:*',
-  '@livestore/devtools-web-common': 'workspace:*',
-  '@livestore/devtools-expo': 'workspace:*',
-  '@livestore/graphql': 'workspace:*',
-  '@livestore/sync-cf': 'workspace:*',
-  '@livestore/sync-s2': 'workspace:*',
-  '@livestore/sync-electric': 'workspace:*',
-  '@livestore/cli': 'workspace:*',
-  '@livestore/effect-playwright': 'workspace:*',
-  '@livestore/framework-toolkit': 'workspace:*',
-  '@livestore/peer-deps': 'workspace:*',
-  '@livestore/wa-sqlite': 'workspace:*',
-
-  // @local/* packages (internal tooling)
-  '@local/astro-tldraw': 'workspace:*',
-  '@local/astro-twoslash-code': 'workspace:*',
-  '@local/shared': 'workspace:*',
-  '@local/docs': 'workspace:*',
-  '@local/scripts': 'workspace:*',
-  '@local/tests-integration': 'workspace:*',
-  '@local/tests-package-common': 'workspace:*',
-  '@local/tests-perf': 'workspace:*',
-  '@local/tests-perf-streaming-loopback': 'workspace:*',
-  '@local/tests-sync-provider': 'workspace:*',
-  '@local/tests-wa-sqlite': 'workspace:*',
-} as const
-
-/** LiveStore-specific packages not in effect-utils catalog */
-const livestoreOnlyCatalog = {
-  // Published @livestore packages (not workspace packages)
-  '@livestore/devtools-vite': '0.4.0-dev.22',
-
-  // Build/lint tools
-  '@biomejs/biome': '2.3.8',
-
-  // Additional type packages
-  '@types/chrome': '0.1.4',
-  '@types/web': '0.0.264',
-  '@types/hast': '3.0.4',
-  '@types/jasmine': '5.1.4',
-  '@types/jsdom': '21.1.7',
-  '@types/wicg-file-system-access': '2023.10.6',
-
-  // Additional build tools
-  '@vitest/ui': '3.2.4',
-
-  // SolidJS ecosystem
-  'solid-js': '1.9.10',
-  '@solidjs/testing-library': '0.8.10',
-
-  // Additional testing tools
-  '@testing-library/dom': '10.4.1',
-  '@testing-library/jest-dom': '6.6.3',
-  '@testing-library/svelte': '5.2.4',
-  '@web/dev-server': '0.4.6',
-  '@web/test-runner': '0.20.0',
-  '@web/test-runner-core': '0.13.4',
-  'jasmine-core': '4.5.0',
-  jsdom: '26.1.0',
-  'web-test-runner-jasmine': '0.0.6',
-
-  // Additional Effect packages
-  '@effect/ai-openai': '0.37.2',
-  '@effect/platform-browser': '0.73.0',
-  '@effect/platform-bun': '0.86.0',
-  '@effect/platform-node-shared': '0.56.0',
-  '@effect/sql-sqlite-node': '0.49.1',
-
-  // Additional OpenTelemetry packages (base packages inherited from effect-utils)
-  '@opentelemetry/context-zone': '2.2.0',
-  '@opentelemetry/core': '2.2.0',
-  '@opentelemetry/exporter-metrics-otlp-grpc': '0.208.0',
-  '@opentelemetry/exporter-metrics-otlp-http': '0.208.0',
-  '@opentelemetry/exporter-trace-otlp-grpc': '0.208.0',
-  '@opentelemetry/exporter-trace-otlp-http': '0.208.0',
-  '@opentelemetry/otlp-exporter-base': '0.208.0',
-  '@opentelemetry/otlp-transformer': '0.208.0',
-
-  // Common utilities
-  graphql: '16.11.0',
-  comlink: '4.4.1',
-  'react-window': '1.8.11',
-  'monaco-editor': '0.34.1',
-  nanoid: '5.0.9',
-  'pretty-bytes': '7.0.1',
-  'qrcode-generator': '1.4.4',
-  '@standard-schema/spec': '1.0.0',
-  '@iarna/toml': '3.0.0',
-  '@graphql-typed-document-node/core': '3.2.0',
-
-  // Astro ecosystem for docs
-  'astro-expressive-code': '0.41.5',
-  'expressive-code': '0.41.5',
-  'expressive-code-twoslash': '0.5.3',
-  hast: '1.0.0',
-  'hast-util-to-html': '9.0.4',
-  '@kitschpatrol/tldraw-cli': '5.0.1',
-
-  // Rollup
-  rollup: '4.49.0',
-  '@rollup/plugin-commonjs': '28.0.6',
-  '@rollup/plugin-node-resolve': '16.0.1',
-  '@rollup/plugin-terser': '0.4.4',
-
-  // Svelte
-  svelte: '5.43.14',
-  '@sveltejs/vite-plugin-svelte': '6.2.1',
-
-  // Astro/docs
-  astro: '5.13.4',
-  '@astrojs/starlight': '0.35.2',
-  typedoc: '0.28.11',
-
-  // Expo/React Native
-  expo: '54.0.12',
-  'expo-application': '7.0.7',
-  'expo-sqlite': '16.0.8',
-  'react-native': '0.81.4',
-
-  // Cloudflare tools
-  wrangler: '4.42.2',
-  '@cloudflare/workers-types': '4.20251118.0',
-
-  // Development tools
-  husky: '9.1.7',
-  madge: '8.0.0',
-  yaml: '2.8.1',
-} as const
 
 /**
  * Override @playwright/test version to match nix-provided browser revision.
@@ -206,14 +68,14 @@ const livestoreOnlyCatalog = {
  */
 const effectUtilsCatalogPatched = Object.assign(Object.create(Object.getPrototypeOf(effectUtilsCatalog)), {
   ...effectUtilsCatalog,
-  '@playwright/test': '1.58.0',
+  ...livestoreCatalogOverrides,
 })
 
 /** Composed catalog - effect-utils base + livestore-specific + workspace packages */
 export const catalog = defineCatalog({
   extends: effectUtilsCatalogPatched,
   packages: {
-    ...workspaceCatalog,
+    ...livestoreWorkspaceCatalog,
     ...livestoreOnlyCatalog,
   },
 })
