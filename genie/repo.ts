@@ -33,7 +33,6 @@ import {
   reactJsx,
 } from '../repos/effect-utils/genie/external.ts'
 import {
-  livestoreCatalogOverrides,
   livestoreOnlyCatalog,
   livestoreWorkspaceCatalog,
 } from './external.ts'
@@ -60,20 +59,9 @@ export const packageTsconfigCompilerOptions = {
  * 3. Proper symlink resolution in both internal and external contexts
  */
 
-/**
- * Override @playwright/test version to match nix-provided browser revision.
- * The nix playwright-web-flake provides browsers for 1.58.0 (chromium rev 1208),
- * but effect-utils catalog still pins 1.57.0 (chromium rev 1200).
- * defineCatalog doesn't support overrides, so we patch the base catalog object directly.
- */
-const effectUtilsCatalogPatched = Object.assign(Object.create(Object.getPrototypeOf(effectUtilsCatalog)), {
-  ...effectUtilsCatalog,
-  ...livestoreCatalogOverrides,
-})
-
 /** Composed catalog - effect-utils base + livestore-specific + workspace packages */
 export const catalog = defineCatalog({
-  extends: effectUtilsCatalogPatched,
+  extends: effectUtilsCatalog,
   packages: {
     ...livestoreWorkspaceCatalog,
     ...livestoreOnlyCatalog,
