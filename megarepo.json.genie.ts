@@ -8,6 +8,7 @@ export default megarepoJson({
 
     /** Input members — consumed via lock files but never modified during alignment. */
     'overeng-beads-public': 'overengineeringstudio/overeng-beads-public',
+    /** Reference only — not a build dependency */
     effect: 'effect-ts/effect',
   },
 })
