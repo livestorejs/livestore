@@ -828,6 +828,10 @@ export class Store<TSchema extends LiveStoreSchema = LiveStoreSchema.Any, TConte
       const currentSpan = yield* OtelTracer.currentOtelSpan.pipe(Effect.orDie)
       mutationsSpan?.addLink({ context: currentSpan.spanContext() })
 
+      // Client document schemas are defined statically at module level, before the store boots and a session ID
+      // is assigned. To let users reference their own session without threading the ID manually, schemas use
+      // `SessionIdSymbol` as a placeholder. Here we resolve those placeholders to the real session ID right
+      // before the events are materialized (materializers will throw if any symbol remains unresolved).
       for (const event of events) {
         replaceSessionIdSymbol(event.args, this[StoreInternalsSymbol].clientSession.sessionId)
       }
