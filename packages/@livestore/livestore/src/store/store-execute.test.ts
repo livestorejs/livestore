@@ -428,17 +428,18 @@ Vitest.describe('store.execute', () => {
       }).pipe(withTestCtx(test)),
     )
 
-    Vitest.scopedLive('should throw `CommandExecutionError` with `CommandNotFound` reason for unknown command name', (test) =>
+    Vitest.scopedLive('should throw CommandExecutionError with `CommandHandlerThrew` reason when handler throws', (test) =>
       Effect.gen(function* () {
         const { makeStore, mockSyncBackend } = yield* TestContext
         const store = yield* makeStore()
+
         yield* mockSyncBackend.disconnect
 
-        // Execute a command while disconnected — events stay pending
-        const result = store.execute(commands.createTodo({ id: 'todo-1', text: 'Buy milk' }))
+        // throwOnReplay succeeds on initial execution (creates a todo) but throws on replay
+        const result = store.execute(commands.throwOnReplay({ id: 'todo-1' }))
         assert(result._tag === 'pending')
 
-        // Inject an external event to trigger rebase and command replay
+        // Inject an external event to trigger a rebase when we reconnect
         const backendFactory = EventFactory.makeFactory(events)({
           client: EventFactory.clientIdentity('other-client'),
         })
@@ -446,44 +447,22 @@ Vitest.describe('store.execute', () => {
           backendFactory.todoCreated.next({ id: 'todo-2', text: 'From other client', completed: false }),
         )
 
-        // TODO: Simulate a schema that no longer includes CreateTodo.
-        // This requires a way to swap the schema between initial execution and replay.
-
-        // Connect — triggers pull, rebase, and command replay
+        // Connect — triggers pull, rebase, and command replay.
         yield* mockSyncBackend.connect
 
-        // Expect the replay to die with CommandNotFound and phase 'replay'
-      }).pipe(withTestCtx(test)),
-    )
+        const outcome = yield* Effect.tryPromise({
+          try: () => result.confirmation,
+          catch: (err) => err as CommandExecutionError,
+        }).pipe(Effect.either)
 
-    Vitest.scopedLive('should throw CommandExecutionError with `CommandHandlerThrew` reason when handler throws', (test) =>
-      Effect.gen(function* () {
-        const { makeStore, mockSyncBackend } = yield* TestContext
-        const store = yield* makeStore()
-
-        // Seed a todo so completeTodo succeeds initially
-        store.commit(events.todoCreated({ id: 'todo-1', text: 'Buy milk', completed: false }))
-
-        yield* mockSyncBackend.disconnect
-
-        // Execute completeTodo while disconnected — succeeds because todo-1 exists
-        const result = store.execute(commands.completeTodo({ id: 'todo-1' }))
-        assert(result._tag === 'pending')
-
-        // Inject an external event that deletes todo-1, so replay of completeTodo will throw
-        // TODO: Add a todoDeleted event to the fixture to enable this scenario.
-        // For now, this test outlines the expected behavior.
-        const backendFactory = EventFactory.makeFactory(events)({
-          client: EventFactory.clientIdentity('other-client'),
-        })
-        yield* mockSyncBackend.advance(
-          backendFactory.todoCreated.next({ id: 'todo-3', text: 'From other client', completed: false }),
-        )
-
-        // Connect — triggers pull, rebase, and command replay
-        yield* mockSyncBackend.connect
-
-        // Expect the replay to die with CommandHandlerThrew and phase 'replay'
+        assert(outcome._tag === 'Left')
+        expect(outcome.left).toBeInstanceOf(CommandExecutionError)
+        expect(outcome.left._tag).toBe('LiveStore.CommandExecutionError')
+        expect(outcome.left.command.name).toBe('ThrowOnReplay')
+        expect(outcome.left.reason).toBe('CommandHandlerThrew')
+        expect(outcome.left.phase).toBe('replay')
+        assert.instanceOf(outcome.left.cause, Error)
+        expect(outcome.left.cause.message).toContain('Replay not supported')
       }).pipe(withTestCtx(test)),
     )
 
@@ -493,24 +472,33 @@ Vitest.describe('store.execute', () => {
         const store = yield* makeStore()
         yield* mockSyncBackend.disconnect
 
-        // Execute a command that returns events initially
-        // TODO: Add a fixture command whose handler conditionally returns [] based on state,
-        // so that after an external event changes state, replay produces no events.
-        const result = store.execute(commands.createTodo({ id: 'todo-1', text: 'Buy milk' }))
+        // Execute createTodoIfNotExists while disconnected — succeeds (todo-1 doesn't exist yet)
+        const result = store.execute(commands.createTodoIfNotExists({ id: 'todo-1', text: 'Mine' }))
         assert(result._tag === 'pending')
 
-        // Inject an external event to trigger rebase and command replay
+        // Inject an external event that creates todo-1, so replay returns [] (no events)
         const backendFactory = EventFactory.makeFactory(events)({
           client: EventFactory.clientIdentity('other-client'),
         })
         yield* mockSyncBackend.advance(
-          backendFactory.todoCreated.next({ id: 'todo-2', text: 'From other client', completed: false }),
+          backendFactory.todoCreated.next({ id: 'todo-1', text: 'Theirs', completed: false }),
         )
 
-        // Connect — triggers pull, rebase, and command replay
+        // Connect — triggers pull, rebase, and command replay.
+        // The replay of createTodoIfNotExists returns [] because todo-1 now exists.
         yield* mockSyncBackend.connect
 
-        // Expect the replay to die with NoEventProduced and phase 'replay'
+        const outcome = yield* Effect.tryPromise({
+          try: () => result.confirmation,
+          catch: (err) => err as CommandExecutionError,
+        }).pipe(Effect.either)
+
+        assert(outcome._tag === 'Left')
+        expect(outcome.left).toBeInstanceOf(CommandExecutionError)
+        expect(outcome.left._tag).toBe('LiveStore.CommandExecutionError')
+        expect(outcome.left.command.name).toBe('CreateTodoIfNotExists')
+        expect(outcome.left.reason).toBe('NoEventProduced')
+        expect(outcome.left.phase).toBe('replay')
       }).pipe(withTestCtx(test)),
     )
   })

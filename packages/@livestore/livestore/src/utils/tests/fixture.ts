@@ -122,6 +122,25 @@ export const commands = {
       return events.todoCreated({ id, text: `${text} (count: ${count})`, completed: false })
     },
   }),
+  /** Returns no events when the todo already exists (for NoEventProduced replay testing). */
+  createTodoIfNotExists: defineCommand({
+    name: 'CreateTodoIfNotExists',
+    schema: Schema.Struct({ id: Schema.String, text: Schema.String }),
+    handler: ({ id, text }, ctx) => {
+      const existing = ctx.query(tables.todos.where({ id }).first())
+      if (existing !== undefined) return [] as const
+      return events.todoCreated({ id, text, completed: false })
+    },
+  }),
+  /** Succeeds on initial execution but throws on replay (for CommandHandlerThrew replay testing). */
+  throwOnReplay: defineCommand({
+    name: 'ThrowOnReplay',
+    schema: Schema.Struct({ id: Schema.String }),
+    handler: ({ id }, ctx) => {
+      if (ctx.phase._tag === 'replay') throw new Error('Replay not supported')
+      return events.todoCreated({ id, text: 'from throwOnReplay', completed: false })
+    },
+  }),
   /** Handler that throws a string value instead of an Error instance. */
   throwsString: defineCommand({
     name: 'ThrowsString',
