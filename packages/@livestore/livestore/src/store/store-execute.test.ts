@@ -9,7 +9,7 @@ import { createStore, makeShutdownDeferred } from '@livestore/livestore'
 import { omitUndefineds } from '@livestore/utils'
 import { Vitest } from '@livestore/utils-dev/node-vitest'
 import type { OtelTracer, Scope } from '@livestore/utils/effect'
-import { Context, Effect, FetchHttpClient, Layer, Logger, LogLevel } from '@livestore/utils/effect'
+import { Chunk, Context, Effect, FetchHttpClient, Layer, Logger, LogLevel, Stream } from '@livestore/utils/effect'
 import { nanoid } from '@livestore/utils/nanoid'
 import { PlatformNode } from '@livestore/utils/node'
 import { EventFactory } from '@livestore/common/testing'
@@ -290,6 +290,45 @@ Vitest.describe('store.execute', () => {
         assert(todoB !== undefined)
         expect(todoA.text).toBe('A (count: 1)')
         expect(todoB.text).toBe('B (count: 2)')
+      }).pipe(withTestCtx(test)),
+    )
+
+    Vitest.scopedLive('should preserve ordering between interleaved commit() and execute() calls', (test) =>
+      Effect.gen(function* () {
+        const { makeStore, mockSyncBackend } = yield* TestContext
+        const store = yield* makeStore()
+
+        // commit → execute → commit: all three must be processed in order by the leader
+        store.commit(events.todoCreated({ id: 'seed', text: 'Seed', completed: false }))
+        const execResult = store.execute(commands.completeTodo({ id: 'seed' }))
+        store.commit(events.todoCreated({ id: 'new-1', text: 'New', completed: false }))
+
+        expect(execResult._tag).toBe('pending')
+
+        // Wait for all 3 events to be pushed to the sync backend
+        const pushed = yield* mockSyncBackend.pushedEvents.pipe(
+          Stream.take(3),
+          Stream.runCollect,
+          Effect.map(Chunk.toReadonlyArray),
+        )
+
+        // Verify event order: todo.created(seed), todo.completed(seed), todo.created(new-1)
+        expect(pushed).toHaveLength(3)
+        expect(pushed[0]!.name).toBe('todo.created')
+        expect(pushed[0]!.args).toMatchObject({ id: 'seed' })
+        expect(pushed[1]!.name).toBe('todo.completed')
+        expect(pushed[1]!.args).toMatchObject({ id: 'seed' })
+        expect(pushed[2]!.name).toBe('todo.created')
+        expect(pushed[2]!.args).toMatchObject({ id: 'new-1' })
+
+        // Verify final state: seed is completed, new-1 exists and not completed
+        const seed = store.query(tables.todos.where({ id: 'seed' }).first())
+        assert(seed !== undefined)
+        expect(seed.completed).toBe(true)
+
+        const newTodo = store.query(tables.todos.where({ id: 'new-1' }).first())
+        assert(newTodo !== undefined)
+        expect(newTodo.completed).toBe(false)
       }).pipe(withTestCtx(test)),
     )
   })
