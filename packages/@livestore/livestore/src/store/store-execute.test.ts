@@ -246,9 +246,7 @@ Vitest.describe('store.execute', () => {
       }).pipe(withTestCtx(test)),
     )
 
-    // Skipped: full command confirmation (all the way to sync backend) is not yet wired into the sync pipeline.
-    // See https://github.com/livestorejs/livestore/issues/1016
-    Vitest.scopedLive.skip('should reject pending confirmations on shutdown', (test) =>
+    Vitest.scopedLive('should reject pending confirmations on shutdown', (test) =>
       Effect.gen(function* () {
         const { makeStore, mockSyncBackend } = yield* TestContext
         const store = yield* makeStore()
@@ -269,10 +267,7 @@ Vitest.describe('store.execute', () => {
       }).pipe(withTestCtx(test)),
     )
 
-    // Skipped: command execution atomicity is not yet implemented.
-    // Two concurrent commands that both check capacity should not both pass when only one slot remains.
-    // See https://github.com/livestorejs/livestore/issues/1065
-    Vitest.scopedLive.skip('should serialize concurrent command executions to preserve invariants', (test) =>
+    Vitest.scopedLive('should serialize concurrent command executions to preserve invariants', (test) =>
       Effect.gen(function* () {
         const { makeStore } = yield* TestContext
         const store = yield* makeStore()
@@ -300,9 +295,7 @@ Vitest.describe('store.execute', () => {
   })
 
   Vitest.describe('replay execution', () => {
-    // Skipped: command replay is not yet wired into the sync pipeline.
-    // See https://github.com/livestorejs/livestore/issues/1016
-    Vitest.scopedLive.skip('should confirm after successful command replay', (test) =>
+    Vitest.scopedLive('should confirm after successful command replay', (test) =>
       Effect.gen(function* () {
         const { makeStore, mockSyncBackend } = yield* TestContext
         const store = yield* makeStore()
@@ -331,9 +324,7 @@ Vitest.describe('store.execute', () => {
       }).pipe(withTestCtx(test)),
     )
 
-    // Skipped: command replay is not yet wired into the sync pipeline.
-    // See https://github.com/livestorejs/livestore/issues/1016
-    Vitest.scopedLive.skip('should resolve to conflict when replay returns error', (test) =>
+    Vitest.scopedLive('should resolve to conflict when replay returns error', (test) =>
       Effect.gen(function* () {
         const { makeStore, mockSyncBackend } = yield* TestContext
         const store = yield* makeStore()
@@ -361,10 +352,7 @@ Vitest.describe('store.execute', () => {
       }).pipe(withTestCtx(test)),
     )
 
-    // Skipped: command replay is not yet wired into the sync pipeline.
-    // The capturePhase handler embeds ctx.phase._tag into the todo text — during replay it should be 'replay'.
-    // See https://github.com/livestorejs/livestore/issues/1016
-    Vitest.scopedLive.skip('should pass `ctx.phase` with _tag "replay"', (test) =>
+    Vitest.scopedLive('should pass `ctx.phase` with _tag "replay"', (test) =>
       Effect.gen(function* () {
         const { makeStore, mockSyncBackend } = yield* TestContext
         const store = yield* makeStore()
@@ -401,10 +389,7 @@ Vitest.describe('store.execute', () => {
       }).pipe(withTestCtx(test)),
     )
 
-    // Skipped: command replay is not yet wired into the sync pipeline.
-    // During replay, a command whose definition was removed from the schema should raise CommandNotFound.
-    // See https://github.com/livestorejs/livestore/issues/1016
-    Vitest.scopedLive.skip('should throw `CommandExecutionError` with `CommandNotFound` reason for unknown command name', (test) =>
+    Vitest.scopedLive('should throw `CommandExecutionError` with `CommandNotFound` reason for unknown command name', (test) =>
       Effect.gen(function* () {
         const { makeStore, mockSyncBackend } = yield* TestContext
         const store = yield* makeStore()
@@ -432,11 +417,7 @@ Vitest.describe('store.execute', () => {
       }).pipe(withTestCtx(test)),
     )
 
-    // Skipped: command replay is not yet wired into the sync pipeline.
-    // A handler that throws during replay (e.g. because external events deleted a required entity)
-    // should raise CommandHandlerThrew with phase 'replay'.
-    // See https://github.com/livestorejs/livestore/issues/1016
-    Vitest.scopedLive.skip('should throw CommandExecutionError with `CommandHandlerThrew` reason when handler throws', (test) =>
+    Vitest.scopedLive('should throw CommandExecutionError with `CommandHandlerThrew` reason when handler throws', (test) =>
       Effect.gen(function* () {
         const { makeStore, mockSyncBackend } = yield* TestContext
         const store = yield* makeStore()
@@ -467,11 +448,7 @@ Vitest.describe('store.execute', () => {
       }).pipe(withTestCtx(test)),
     )
 
-    // Skipped: command replay is not yet wired into the sync pipeline.
-    // A handler that returns an empty array during replay (e.g. because state-dependent
-    // logic now produces no events) should raise NoEventProduced with phase 'replay'.
-    // See https://github.com/livestorejs/livestore/issues/1016
-    Vitest.scopedLive.skip('should throw `CommandExecutionError` with `NoEventProduced` reason when handler returns empty array', (test) =>
+    Vitest.scopedLive('should throw `CommandExecutionError` with `NoEventProduced` reason when handler returns empty array', (test) =>
       Effect.gen(function* () {
         const { makeStore, mockSyncBackend } = yield* TestContext
         const store = yield* makeStore()
