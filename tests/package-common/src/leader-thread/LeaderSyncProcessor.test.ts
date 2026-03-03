@@ -740,14 +740,7 @@ Vitest.describe.concurrent('LeaderSyncProcessor', { timeout: 60000 }, () => {
   })
 
   Vitest.describe('command journal lifecycle', () => {
-    // TODO: Journal cleanup on advance/rebase confirmation is not yet functional because
-    // `commandId` metadata is not persisted to the eventlog. When events round-trip through the
-    // sync backend, they lose their `commandId`, so the cleanup code in `backgroundBackendPulling`
-    // can't identify which journal entries to remove. This needs to be addressed by either:
-    // (a) persisting commandId in the eventlog, or
-    // (b) tracking pending commandIds → eventSeqNums in memory.
-    // See: backgroundBackendPulling advance/rebase path `confirmedCommandIds` logic.
-    Vitest.scopedLive.skip('journal entry removed on advance confirmation', (test) =>
+    Vitest.scopedLive('journal entry removed on advance confirmation', (test) =>
       Effect.gen(function* () {
         const leaderThreadCtx = yield* LeaderThreadCtx
         const testContext = yield* TestContext
@@ -773,7 +766,7 @@ Vitest.describe.concurrent('LeaderSyncProcessor', { timeout: 60000 }, () => {
       }).pipe(withTestCtx()(test)),
     )
 
-    Vitest.scopedLive.skip('journal entry removed during rebase', (test) =>
+    Vitest.scopedLive('journal entry removed during rebase', (test) =>
       Effect.gen(function* () {
         const leaderThreadCtx = yield* LeaderThreadCtx
         const testContext = yield* TestContext
