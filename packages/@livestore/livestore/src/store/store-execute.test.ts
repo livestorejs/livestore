@@ -390,6 +390,10 @@ Vitest.describe('store.execute', () => {
         // Connect — triggers pull, rebase, and command replay
         yield* mockSyncBackend.connect
 
+        // Wait for the full round-trip (rebase → push → echo → advance → confirm)
+        const confirmation = yield* Effect.promise(() => result.confirmation)
+        expect(confirmation._tag).toBe('confirmed')
+
         // After replay, the handler should have re-executed with phase 'replay'
         const todoAfter = store.query(tables.todos.where({ id: 'todo-1' }).first())
         assert(todoAfter !== undefined)
