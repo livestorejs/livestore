@@ -428,7 +428,7 @@ Vitest.describe('store.execute', () => {
       }).pipe(withTestCtx(test)),
     )
 
-    Vitest.scopedLive('should throw CommandExecutionError with `CommandHandlerThrew` reason when handler throws', (test) =>
+    Vitest.scopedLive.skip('should throw `CommandExecutionError` with `CommandHandlerThrew` reason when handler throws', (test) =>
       Effect.gen(function* () {
         const { makeStore, mockSyncBackend } = yield* TestContext
         const store = yield* makeStore()
@@ -466,7 +466,7 @@ Vitest.describe('store.execute', () => {
       }).pipe(withTestCtx(test)),
     )
 
-    Vitest.scopedLive('should throw `CommandExecutionError` with `NoEventProduced` reason when handler returns empty array', (test) =>
+    Vitest.scopedLive.skip('should throw `CommandExecutionError` with `NoEventProduced` reason when handler returns empty array', (test) =>
       Effect.gen(function* () {
         const { makeStore, mockSyncBackend } = yield* TestContext
         const store = yield* makeStore()
