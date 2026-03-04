@@ -397,10 +397,7 @@ Vitest.describe('store.execute', () => {
         store.commit(events.todoCreated({ id: 'todo-1', text: 'Before', completed: false }))
 
         // completeTodo for non-existent id throws on the leader (session also throws, so catch it)
-        yield* Effect.try({
-          try: () => store.execute(commands.completeTodo({ id: 'non-existent' })),
-          catch: () => 'expected',
-        })
+        yield* Effect.try(() => store.execute(commands.completeTodo({ id: 'non-existent' }))).pipe(Effect.ignore)
 
         // Commit another valid event — store must still be functional
         store.commit(events.todoCreated({ id: 'todo-2', text: 'After', completed: false }))
