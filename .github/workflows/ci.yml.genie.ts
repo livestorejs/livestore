@@ -375,7 +375,12 @@ done`,
 
     'notify-alignment': {
       'runs-on': 'ubuntu-latest',
-      needs: ['test-unit', 'test-integration-node-sync', 'test-integration-sync-provider', 'test-integration-playwright'],
+      needs: [
+        'test-unit',
+        'test-integration-node-sync',
+        'test-integration-sync-provider',
+        'test-integration-playwright',
+      ],
       if: "(github.ref == 'refs/heads/main' || github.ref == 'refs/heads/dev') && github.event_name == 'push'",
       steps: [dispatchAlignmentStep({ targetRepo: 'schickling/megarepo-all' })],
     },
