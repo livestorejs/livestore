@@ -28,7 +28,7 @@
     "@livestore/utils": "workspace:*"
   },
   "devDependencies": {
-    "@types/node": "25.0.3",
+    "@types/node": "25.3.3",
     "expo": "54.0.12",
     "vite": "7.3.0"
   },
