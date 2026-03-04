@@ -340,6 +340,7 @@ export { githubWorkflow } from '../repos/effect-utils/packages/@overeng/genie/sr
 
 import {
   bashShellDefaults,
+  dispatchAlignmentStep,
   namespaceRunner as namespaceRunnerBase,
   installNixStep,
   cachixStep,
@@ -356,7 +357,7 @@ export const devenvShellDefaults = {
   run: { shell: 'devenv shell bash -- -e {0}' },
 } as const
 export { bashShellDefaults }
-export { runDevenvTasksBefore, nixDiagnosticsArtifactStep }
+export { dispatchAlignmentStep, runDevenvTasksBefore, nixDiagnosticsArtifactStep }
 
 export const namespaceRunner = (runId: string) => namespaceRunnerBase('namespace-profile-linux-x86-64', runId)
 
