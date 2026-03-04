@@ -331,6 +331,98 @@ Vitest.describe('store.execute', () => {
         expect(newTodo.completed).toBe(false)
       }).pipe(withTestCtx(test)),
     )
+
+    Vitest.scopedLive('should confirm when backend confirms events', (test) =>
+      Effect.gen(function* () {
+        const { makeStore } = yield* TestContext
+        const store = yield* makeStore()
+
+        // Execute while connected — no external events, no disconnect.
+        const result = store.execute(commands.createTodo({ id: 'todo-1', text: 'Buy milk' }))
+        assert(result._tag === 'pending')
+
+        // Confirmation should resolve.
+        const confirmation = yield* Effect.promise(() => result.confirmation)
+        assert(confirmation !== undefined, 'confirmation timed out')
+        expect(confirmation._tag).toBe('confirmed')
+      }).pipe(withTestCtx(test)),
+    )
+
+    Vitest.scopedLive('should confirm after reconnect even without external events', (test) =>
+      Effect.gen(function* () {
+        const { makeStore, mockSyncBackend } = yield* TestContext
+        const store = yield* makeStore()
+        yield* mockSyncBackend.disconnect
+
+        const result = store.execute(commands.createTodo({ id: 'todo-1', text: 'Buy milk' }))
+        assert(result._tag === 'pending')
+
+        // Reconnect — no external events injected.
+        yield* mockSyncBackend.connect
+
+        const confirmation = yield* Effect.promise(() => result.confirmation)
+        assert(confirmation !== undefined, 'confirmation timed out')
+        expect(confirmation._tag).toBe('confirmed')
+      }).pipe(withTestCtx(test)),
+    )
+
+    Vitest.scopedLive('should confirm multiple commands', (test) =>
+      Effect.gen(function* () {
+        const { makeStore } = yield* TestContext
+        const store = yield* makeStore()
+
+        const r1 = store.execute(commands.createTodo({ id: 'todo-1', text: 'First' }))
+        const r2 = store.execute(commands.createTodo({ id: 'todo-2', text: 'Second' }))
+        assert(r1._tag === 'pending')
+        assert(r2._tag === 'pending')
+
+        const [c1, c2] = yield* Effect.all([
+          Effect.promise(() => r1.confirmation),
+          Effect.promise(() => r2.confirmation),
+        ])
+
+        assert(c1 !== undefined, 'first confirmation timed out')
+        assert(c2 !== undefined, 'second confirmation timed out')
+        expect(c1._tag).toBe('confirmed')
+        expect(c2._tag).toBe('confirmed')
+      }).pipe(withTestCtx(test)),
+    )
+
+    Vitest.scopedLive('should remain operational after a command fails', (test) =>
+      Effect.gen(function* () {
+        const { makeStore, mockSyncBackend } = yield* TestContext
+        const store = yield* makeStore()
+
+        // Commit a valid event first
+        store.commit(events.todoCreated({ id: 'todo-1', text: 'Before', completed: false }))
+
+        // completeTodo for non-existent id throws on the leader (session also throws, so catch it)
+        yield* Effect.try({
+          try: () => store.execute(commands.completeTodo({ id: 'non-existent' })),
+          catch: () => 'expected',
+        })
+
+        // Commit another valid event — store must still be functional
+        store.commit(events.todoCreated({ id: 'todo-2', text: 'After', completed: false }))
+
+        const todo1 = store.query(tables.todos.where({ id: 'todo-1' }).first())
+        const todo2 = store.query(tables.todos.where({ id: 'todo-2' }).first())
+        assert(todo1 !== undefined)
+        assert(todo2 !== undefined)
+        expect(todo1.text).toBe('Before')
+        expect(todo2.text).toBe('After')
+
+        // Verify sync still works — the two valid events should reach the backend
+        const pushed = yield* mockSyncBackend.pushedEvents.pipe(
+          Stream.take(2),
+          Stream.runCollect,
+          Effect.map(Chunk.toReadonlyArray),
+          Effect.timeout('5 seconds'),
+        )
+        assert(pushed !== undefined, 'sync stalled — pushed events timed out')
+        expect(pushed).toHaveLength(2)
+      }).pipe(withTestCtx(test)),
+    )
   })
 
   Vitest.describe('replay execution', () => {
@@ -427,6 +519,211 @@ Vitest.describe('store.execute', () => {
         expect(todoAfter.text).toBe('replay')
       }).pipe(withTestCtx(test)),
     )
+
+    Vitest.scopedLive('should remain consistent when replay produces a different event count', (test) =>
+      Effect.gen(function* () {
+        const { makeStore, mockSyncBackend } = yield* TestContext
+        const store = yield* makeStore()
+
+        // Seed 2 incomplete todos
+        store.commit(events.todoCreated({ id: 'todo-1', text: 'First', completed: false }))
+        store.commit(events.todoCreated({ id: 'todo-2', text: 'Second', completed: false }))
+
+        yield* mockSyncBackend.disconnect
+
+        // Execute completeAllTodos — produces 2 todoCompleted events (todo-1, todo-2)
+        const result = store.execute(commands.completeAllTodos({}))
+        assert(result._tag === 'pending')
+
+        // Inject an external event that adds a 3rd incomplete todo
+        const backendFactory = EventFactory.makeFactory(events)({
+          client: EventFactory.clientIdentity('other-client'),
+        })
+        yield* mockSyncBackend.advance(
+          backendFactory.todoCreated.next({ id: 'todo-3', text: 'From other', completed: false }),
+        )
+
+        // Reconnect — triggers rebase. Replay now sees 3 incomplete todos → 3 events (was 2).
+        yield* mockSyncBackend.connect
+
+        const confirmation = yield* Effect.promise(() => result.confirmation)
+        expect(confirmation._tag).toBe('confirmed')
+
+        // All 3 todos should be completed after replay
+        for (const id of ['todo-1', 'todo-2', 'todo-3']) {
+          const todo = store.query(tables.todos.where({ id }).first())
+          assert(todo !== undefined, `${id} should exist`)
+          expect(todo.completed).toBe(true)
+        }
+
+        // Verify the store remains operational with a subsequent command
+        const result2 = store.execute(commands.createTodo({ id: 'todo-4', text: 'After replay' }))
+        assert(result2._tag === 'pending')
+
+        const confirmation2 = yield* Effect.promise(() => result2.confirmation)
+        expect(confirmation2._tag).toBe('confirmed')
+      }).pipe(withTestCtx(test)),
+    )
+
+    Vitest.scopedLive('should handle replay conflict with interleaved non-command events', (test) =>
+      Effect.gen(function* () {
+        const { makeStore, mockSyncBackend } = yield* TestContext
+        const store = yield* makeStore()
+
+        // Seed a todo so completeTodo can succeed
+        store.commit(events.todoCreated({ id: 'todo-1', text: 'Seed', completed: false }))
+
+        yield* mockSyncBackend.disconnect
+
+        // Interleave non-command events with commands:
+        // commit → execute (will conflict on replay) → commit → execute (will succeed)
+        store.commit(events.todoCreated({ id: 'todo-2', text: 'NonCmd-1', completed: false }))
+        const conflicting = store.execute(commands.createTodoUnique({ id: 'todo-3', text: 'Mine' }))
+        store.commit(events.todoCreated({ id: 'todo-4', text: 'NonCmd-2', completed: false }))
+        const surviving = store.execute(commands.completeTodo({ id: 'todo-1' }))
+
+        assert(conflicting._tag === 'pending')
+        assert(surviving._tag === 'pending')
+
+        // External event creates todo-3 first — will conflict with createTodoUnique
+        const backendFactory = EventFactory.makeFactory(events)({
+          client: EventFactory.clientIdentity('other-client'),
+        })
+        yield* mockSyncBackend.advance(
+          backendFactory.todoCreated.next({ id: 'todo-3', text: 'Theirs', completed: false }),
+        )
+
+        // Reconnect — rebase replays both commands.
+        // createTodoUnique(todo-3) → conflict (todo-3 already exists)
+        // completeTodo(todo-1) → success
+        yield* mockSyncBackend.connect
+
+        const conflictConfirmation = yield* Effect.promise(() => conflicting.confirmation)
+        expect(conflictConfirmation._tag).toBe('conflict')
+        assert(conflictConfirmation._tag === 'conflict')
+        expect(conflictConfirmation.error._tag).toBe('TodoAlreadyExists')
+
+        const surviveConfirmation = yield* Effect.promise(() => surviving.confirmation)
+        expect(surviveConfirmation._tag).toBe('confirmed')
+
+        // Verify state: todo-3 is from external, todo-1 is completed, todo-2 and todo-4 exist
+        const todo1 = store.query(tables.todos.where({ id: 'todo-1' }).first())
+        assert(todo1 !== undefined)
+        expect(todo1.completed).toBe(true)
+
+        const todo3 = store.query(tables.todos.where({ id: 'todo-3' }).first())
+        assert(todo3 !== undefined)
+        expect(todo3.text).toBe('Theirs')
+
+        // Verify the store is still operational after the gapped pending state.
+        // If the SyncState is corrupted, this command will fail or hang.
+        const postResult = store.execute(commands.createTodo({ id: 'todo-5', text: 'Post-conflict' }))
+        assert(postResult._tag === 'pending')
+
+        const postConfirmation = yield* Effect.promise(() => postResult.confirmation)
+        expect(postConfirmation._tag).toBe('confirmed')
+      }).pipe(withTestCtx(test)),
+    )
+
+    Vitest.scopedLive('should settle all confirmations after rebase with interleaved commits and executes', (test) =>
+      Effect.gen(function* () {
+        const { makeStore, mockSyncBackend } = yield* TestContext
+        const store = yield* makeStore()
+
+        store.commit(events.todoCreated({ id: 'seed', text: 'Seed', completed: false }))
+        yield* mockSyncBackend.disconnect
+
+        // Interleave commits and executes while disconnected
+        store.commit(events.todoCreated({ id: 'todo-1', text: 'Commit-1', completed: false }))
+        const exec1 = store.execute(commands.completeTodo({ id: 'seed' }))
+        store.commit(events.todoCreated({ id: 'todo-2', text: 'Commit-2', completed: false }))
+        const exec2 = store.execute(commands.createTodo({ id: 'todo-3', text: 'Exec-2' }))
+
+        assert(exec1._tag === 'pending')
+        assert(exec2._tag === 'pending')
+
+        // Inject a non-conflicting external event to trigger rebase
+        const backendFactory = EventFactory.makeFactory(events)({
+          client: EventFactory.clientIdentity('other-client'),
+        })
+        yield* mockSyncBackend.advance(
+          backendFactory.todoCreated.next({ id: 'todo-ext', text: 'External', completed: false }),
+        )
+
+        yield* mockSyncBackend.connect
+
+        // Both confirmations must resolve (not hang)
+        const [conf1, conf2] = yield* Effect.all([
+          Effect.promise(() => exec1.confirmation),
+          Effect.promise(() => exec2.confirmation),
+        ])
+
+        expect(conf1._tag).toBe('confirmed')
+        expect(conf2._tag).toBe('confirmed')
+
+        // Verify store is fully operational afterward
+        const finalResult = store.execute(commands.createTodo({ id: 'todo-final', text: 'After rebase' }))
+        assert(finalResult._tag === 'pending')
+
+        const finalConf = yield* Effect.promise(() => finalResult.confirmation)
+        expect(finalConf._tag).toBe('confirmed')
+      }).pipe(withTestCtx(test)),
+    )
+
+    Vitest.scopedLive('should not replay already-confirmed commands on a second rebase', (test) =>
+      Effect.gen(function* () {
+        const { makeStore, mockSyncBackend } = yield* TestContext
+        const store = yield* makeStore()
+
+        const backendFactory = EventFactory.makeFactory(events)({
+          client: EventFactory.clientIdentity('other-client'),
+        })
+
+        // --- First round: execute command, trigger rebase, confirm ---
+        yield* mockSyncBackend.disconnect
+
+        const r1 = store.execute(commands.capturePhase({ id: 'todo-1' }))
+        assert(r1._tag === 'pending')
+
+        yield* mockSyncBackend.advance(
+          backendFactory.todoCreated.next({ id: 'ext-1', text: 'External 1', completed: false }),
+        )
+        yield* mockSyncBackend.connect
+
+        const c1 = yield* Effect.promise(() => r1.confirmation).pipe(Effect.timeout('5 seconds'))
+        assert(c1 !== undefined, 'first confirmation timed out')
+        expect(c1._tag).toBe('confirmed')
+
+        // After first rebase, todo-1 text should be 'replay' (handler re-executed)
+        const afterFirst = store.query(tables.todos.where({ id: 'todo-1' }).first())
+        assert(afterFirst !== undefined)
+        expect(afterFirst.text).toBe('replay')
+
+        // --- Second round: new command, new rebase ---
+        yield* mockSyncBackend.disconnect
+
+        const r2 = store.execute(commands.createTodo({ id: 'todo-2', text: 'Second' }))
+        assert(r2._tag === 'pending')
+
+        yield* mockSyncBackend.advance(
+          backendFactory.todoCreated.next({ id: 'ext-2', text: 'External 2', completed: false }),
+        )
+        yield* mockSyncBackend.connect
+
+        const c2 = yield* Effect.promise(() => r2.confirmation).pipe(Effect.timeout('5 seconds'))
+        assert(c2 !== undefined, 'second confirmation timed out')
+        expect(c2._tag).toBe('confirmed')
+
+        // todo-1 should STILL have text 'replay' — not re-replayed.
+        // If the journal wasn't cleaned after the first confirmation,
+        // the second rebase would replay capturePhase again, potentially
+        // causing a duplicate insert error or overwriting the text.
+        const afterSecond = store.query(tables.todos.where({ id: 'todo-1' }).first())
+        assert(afterSecond !== undefined)
+        expect(afterSecond.text).toBe('replay')
+      }).pipe(withTestCtx(test)),
+    )
+
 
     Vitest.scopedLive.skip('should throw `CommandExecutionError` with `CommandHandlerThrew` reason when handler throws', (test) =>
       Effect.gen(function* () {

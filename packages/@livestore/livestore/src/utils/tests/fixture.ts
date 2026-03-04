@@ -141,6 +141,15 @@ export const commands = {
       return events.todoCreated({ id, text: 'from throwOnReplay', completed: false })
     },
   }),
+  /** Completes all incomplete todos. Event count depends on current state — useful for replay-count-mismatch testing. */
+  completeAllTodos: defineCommand({
+    name: 'CompleteAllTodos',
+    schema: Schema.Struct({}),
+    handler: (_, ctx) => {
+      const rows = ctx.query({ query: 'SELECT id FROM todos WHERE completed = 0 ORDER BY id', bindValues: {} }) as Array<{ id: string }>
+      return rows.map(({ id }) => events.todoCompleted({ id }))
+    },
+  }),
   /** Handler that throws a string value instead of an Error instance. */
   throwsString: defineCommand({
     name: 'ThrowsString',
