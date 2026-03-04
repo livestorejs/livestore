@@ -22,7 +22,7 @@
   "devDependencies": {
     "@playwright/test": "1.58.0",
     "@tailwindcss/vite": "4.1.18",
-    "@types/node": "25.0.3",
+    "@types/node": "25.3.3",
     "tailwindcss": "4.1.18",
     "typescript": "5.9.3"
   },

@@ -42,7 +42,7 @@
     "@rollup/plugin-commonjs": "28.0.6",
     "@rollup/plugin-node-resolve": "16.0.1",
     "@rollup/plugin-terser": "0.4.4",
-    "@types/node": "25.0.3",
+    "@types/node": "25.3.3",
     "rollup": "4.49.0"
   },
   "peerDependencies": {
