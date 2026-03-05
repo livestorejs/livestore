@@ -415,16 +415,11 @@ echo "WORKSPACE_DEPS=$DEPS" >> $GITHUB_ENV`,
         },
         {
           /**
-           * - We use `github.ref` instead of `github.sha` because, when a workflow is triggered by a pull request,
-           *   `github.sha` refers to a temporary commit SHA that can become inaccessible in some contexts.
-           * - We use `github.ref` instead of `github.ref_name` because GitHub's public API requires full refs.
-           *   `github.ref_name` produces shortened refs like `123/merge` for PRs, which the API doesn't recognize.
-           *   `github.ref` provides the full ref (e.g., `refs/pull/123/merge`) that the API understands.
-           *
-           * See https://www.kenmuse.com/blog/the-many-shas-of-a-github-pull-request/
+           * Use PR head SHA for pull_request events. `refs/pull/<id>/merge` can be missing when
+           * merge commits are unavailable, which makes GitHub contents API calls fail.
            */
           name: 'Copy example app',
-          run: `pnpm dlx @livestore/cli@\${{ env.SNAPSHOT_VERSION }} create --example \${{ matrix.app }} --ref ${GITHUB_REF} \${{ runner.temp }}/\${{ env.APP_PATH }}`,
+          run: `pnpm dlx @livestore/cli@\${{ env.SNAPSHOT_VERSION }} create --example \${{ matrix.app }} --ref ${PR_HEAD_SHA} \${{ runner.temp }}/\${{ env.APP_PATH }}`,
         },
         {
           name: 'Use snapshot version of workspace dependencies',
