@@ -19,7 +19,7 @@ export const logDevtoolsUrl = Effect.fn('@livestore/adapter-web:client-session:d
   sessionId: string
 }) {
   if (isDevEnv() === true) {
-    const devtoolsPath = globalThis.LIVESTORE_DEVTOOLS_PATH ?? `/_livestore`
+    const devtoolsPath = LIVESTORE_DEVTOOLS_PATH ?? `/_livestore`
     const devtoolsBaseUrl = `${location.origin}${devtoolsPath}`
 
     // Check whether devtools are available and then log the URL

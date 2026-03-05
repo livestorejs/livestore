@@ -31,7 +31,7 @@ export const recreateDb = ({
 }): Effect.Effect<{ migrationsReport: MigrationsReport }, UnknownError | MaterializeError | SqliteError> =>
   Effect.gen(function* () {
     const migrationOptions = schema.state.sqlite.migrations
-    let migrationsReport: MigrationsReport
+    let migrationsReport: MigrationsReport = { migrations: [] }
 
     yield* Effect.addFinalizer(
       Effect.fn('recreateDb:finalizer')(function* (ex) {
