@@ -291,6 +291,10 @@ export const makeClientSessionSyncProcessor = ({
     }
 
     const leaderPushingFiberHandle = yield* FiberHandle.make()
+    // Number of events currently in-flight to the leader. This is used to decide whether
+    // an upstream-advance-triggered rebase must re-queue pending events.
+    let inFlightEventCount = 0
+    let inFlightEvents: ReadonlyArray<LiveStoreEvent.Client.EncodedWithMeta> = []
 
     const backgroundLeaderPushing = Effect.gen(function* () {
       const batch = yield* BucketQueue.takeBetween(leaderPushQueue, 1, params.leaderPushBatchSize)
@@ -300,6 +304,8 @@ export const makeClientSessionSyncProcessor = ({
 
       const flushEvents = Effect.gen(function* () {
         if (eventAccum.length === 0) return
+        inFlightEventCount = eventAccum.length
+        inFlightEvents = [...eventAccum]
         yield* clientSession.leaderThread.events.push(eventAccum).pipe(
           Effect.catchTag('LeaderAheadError', () => {
             debugInfo.rejectCount++
@@ -316,6 +322,10 @@ export const makeClientSessionSyncProcessor = ({
             })
             return Effect.void
           }),
+          Effect.ensuring(Effect.sync(() => {
+            inFlightEventCount = 0
+            inFlightEvents = []
+          })),
         )
         eventAccum = []
       })
@@ -368,6 +378,7 @@ export const makeClientSessionSyncProcessor = ({
 
           let effectiveNewSyncState = mergeResult.newSyncState
           let effectiveNewEvents = mergeResult.newEvents
+          let interruptedInFlightEvents: ReadonlyArray<LiveStoreEvent.Client.EncodedWithMeta> = []
 
           // In command mode, an upstream advance can include a command event that also exists in
           // local pending (same commandId). The generic rebase merge then appends a blind-rebased
@@ -451,6 +462,10 @@ export const makeClientSessionSyncProcessor = ({
 
             debugInfo.rebaseCount++
 
+            if (payload._tag === 'upstream-advance' && inFlightEventCount > 0) {
+              interruptedInFlightEvents = [...inFlightEvents]
+            }
+
             if (SIMULATION_ENABLED === true) yield* simSleep('pull', '1_before_leader_push_fiber_interrupt')
 
             yield* FiberHandle.clear(leaderPushingFiberHandle)
@@ -497,14 +512,48 @@ export const makeClientSessionSyncProcessor = ({
             ? new Set(payload.replayedPending.map((event) => EventSequenceNumber.Client.toString(event.seqNum)))
             : undefined
 
+          /**
+           * Requeue pending non-command events after a session-level rebase.
+           * For upstream-rebase payloads, avoid re-sending events the leader already replayed.
+           * For upstream-advance payloads, re-push only interrupted in-flight events and only in
+           * non-command mode. Interleaved command replay manages pending through a separate path.
+           */
+          const getPendingToRepush = (
+            pending: ReadonlyArray<LiveStoreEvent.Client.EncodedWithMeta>,
+          ): ReadonlyArray<LiveStoreEvent.Client.EncodedWithMeta> => {
+            if (payload._tag === 'upstream-advance') {
+              if (interruptedInFlightEvents.length === 0) return []
+              if (pending.some((event) => Option.isSome(event.meta.commandId)) === true) return []
+
+              const interruptedPool = [...interruptedInFlightEvents]
+              return pending.filter((pendingEvent) => {
+                if (Option.isSome(pendingEvent.meta.commandId) === true) return false
+                const matchIdx = interruptedPool.findIndex((inFlightEvent) =>
+                  SyncState.isSamePendingEventForRebase(
+                    pendingEvent,
+                    inFlightEvent,
+                    LiveStoreEvent.Client.isEqualEncoded,
+                  ),
+                )
+                if (matchIdx === -1) return false
+                const inFlightEvent = interruptedPool[matchIdx]!
+                interruptedPool.splice(matchIdx, 1)
+                // If the seqNum didn't change across the rebase, the in-flight push can still
+                // arrive as-is and should not be re-queued to avoid duplicate confirmation echoes.
+                return EventSequenceNumber.Client.isEqual(pendingEvent.seqNum, inFlightEvent.seqNum) === false
+              })
+            }
+            return pending.filter((event) =>
+              Option.isNone(event.meta.commandId) &&
+              (payload._tag !== 'upstream-rebase' ||
+                leaderReplayedSeqNums!.has(EventSequenceNumber.Client.toString(event.seqNum)) === false)
+            )
+          }
+
           if (effectiveNewEvents.length === 0) {
             if (mergeResult._tag === 'rebase') {
-              if (payload._tag === 'upstream-rebase') {
-                const pendingToRepush = effectiveNewSyncState.pending.filter(
-                  (event) =>
-                    !leaderReplayedSeqNums!.has(EventSequenceNumber.Client.toString(event.seqNum)) &&
-                    Option.isNone(event.meta.commandId),
-                )
+              const pendingToRepush = getPendingToRepush(effectiveNewSyncState.pending)
+              if (pendingToRepush.length > 0) {
                 if (SIMULATION_ENABLED === true) yield* simSleep('pull', '4_before_leader_push_queue_offer')
                 yield* BucketQueue.offerAll(
                   leaderPushQueue,
@@ -612,19 +661,13 @@ export const makeClientSessionSyncProcessor = ({
               })
             }
 
-            if (payload._tag === 'upstream-rebase') {
+            const pendingToRepush = getPendingToRepush(effectivePending)
+            if (pendingToRepush.length > 0) {
               if (SIMULATION_ENABLED === true) yield* simSleep('pull', '4_before_leader_push_queue_offer')
-
-              const pendingToRepush = effectivePending.filter(
-                (event) =>
-                  !leaderReplayedSeqNums!.has(EventSequenceNumber.Client.toString(event.seqNum)) &&
-                  Option.isNone(event.meta.commandId),
-              )
               yield* BucketQueue.offerAll(
                 leaderPushQueue,
                 pendingToRepush.map((event) => ({ _tag: 'event' as const, event })),
               )
-
             }
             if (SIMULATION_ENABLED === true) yield* simSleep('pull', '5_before_leader_push_fiber_run')
             yield* FiberHandle.run(leaderPushingFiberHandle, backgroundLeaderPushing)
