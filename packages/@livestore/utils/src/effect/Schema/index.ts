@@ -42,8 +42,8 @@ export const getResolvedPropertySignatures = (
 type TransferableObject = ArrayBuffer | MessagePort
 
 export const encodeWithTransferables =
-  <A, I, R>(schema: Schema.Schema<A, I, R>, options?: ParseOptions | undefined) =>
-  (a: A, overrideOptions?: ParseOptions | undefined): Effect.Effect<[I, TransferableObject[]], ParseError, R> =>
+  <A, I, R>(schema: Schema.Schema<A, I, R>, options?: ParseOptions) =>
+  (a: A, overrideOptions?: ParseOptions): Effect.Effect<[I, TransferableObject[]], ParseError, R> =>
     Effect.gen(function* () {
       const collector = yield* Transferable.makeCollector
 
