@@ -359,8 +359,7 @@ export const getResultSchema = (qb: QueryBuilder<any, any, any>): Schema.Schema<
         Schema.headOrElse(),
       )
     }
-    default: {
-      casesHandled(queryAst)
-    }
+    default:
+      return casesHandled(queryAst)
   }
 }
