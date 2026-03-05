@@ -6,9 +6,9 @@ import { useMailboxStore } from '../stores/mailbox'
 import { mailboxTables } from '../stores/mailbox/schema.ts'
 import { threadStoreOptions } from '../stores/thread'
 import { threadTables } from '../stores/thread/schema.ts'
-import { ThreadLoading } from './AppLayout.tsx'
 import { Message } from './Message.tsx'
 import { ThreadActions } from './ThreadActions.tsx'
+import { ThreadLoading } from './ThreadLoading.tsx'
 
 type ThreadViewProps = {
   threadId: string

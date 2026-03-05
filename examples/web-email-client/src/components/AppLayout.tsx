@@ -7,6 +7,7 @@ import { useMailboxStore } from '../stores/mailbox/index.ts'
 import { mailboxTables } from '../stores/mailbox/schema.ts'
 import { LabelSidebar } from './LabelSidebar.tsx'
 import { ThreadList } from './ThreadList.tsx'
+import { ThreadLoading } from './ThreadLoading.tsx'
 import { ThreadView } from './ThreadView.tsx'
 
 const labelsQuery = queryDb(mailboxTables.labels.where({}), { label: 'labels' })
@@ -63,8 +64,3 @@ const ThreadError: React.FC = () => (
   </div>
 )
 
-export const ThreadLoading: React.FC = () => (
-  <div className="grid place-items-center h-full">
-    <p className="text-gray-500">Loading thread...</p>
-  </div>
-)
