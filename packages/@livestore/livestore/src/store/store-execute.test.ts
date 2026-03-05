@@ -13,7 +13,7 @@ import { Chunk, Context, Effect, FetchHttpClient, Layer, Logger, LogLevel, Strea
 import { nanoid } from '@livestore/utils/nanoid'
 import { PlatformNode } from '@livestore/utils/node'
 import { EventFactory } from '@livestore/common/testing'
-import { commands, events, schema, tables, TodoTextEmpty } from '../utils/tests/fixture.ts'
+import { commands, events, schema, tables, TodoAlreadyExists, TodoTextEmpty } from '../utils/tests/fixture.ts'
 
 const withTestCtx = Vitest.makeWithTestCtx({
   makeLayer: () =>
@@ -420,6 +420,125 @@ Vitest.describe('store.execute', () => {
         expect(pushed).toHaveLength(2)
       }).pipe(withTestCtx(test)),
     )
+
+    Vitest.scopedLive('should return "pending" when handler returns a single event wrapped in an array', (test) =>
+      Effect.gen(function* () {
+        const { makeStore } = yield* TestContext
+        const store = yield* makeStore()
+
+        const result = store.execute(commands.createTodoWrapped({ id: 'todo-1', text: 'Buy milk' }))
+
+        expect(result._tag).toBe('pending')
+
+        const todo = store.query(tables.todos.where({ id: 'todo-1' }).first())
+        assert(todo !== undefined)
+        expect(todo.text).toBe('Buy milk')
+        expect(todo.completed).toBe(false)
+      }).pipe(withTestCtx(test)),
+    )
+
+    Vitest.scopedLive('should support `ctx.query` with query builder in handler', (test) =>
+      Effect.gen(function* () {
+        const { makeStore } = yield* TestContext
+        const store = yield* makeStore()
+
+        // Seed a todo to read via query builder
+        store.commit(events.todoCreated({ id: 'seed-1', text: 'Hello', completed: false }))
+
+        const result = store.execute(commands.queryBuilderRead({ id: 'seed-1', suffix: 'World' }))
+        expect(result._tag).toBe('pending')
+
+        const derived = store.query(tables.todos.where({ id: 'seed-1-derived' }).first())
+        assert(derived !== undefined)
+        expect(derived.text).toBe('Hello-World')
+      }).pipe(withTestCtx(test)),
+    )
+
+    Vitest.scopedLive('should remain operational after a command returns a domain error', (test) =>
+      Effect.gen(function* () {
+        const { makeStore } = yield* TestContext
+        const store = yield* makeStore()
+
+        // First command fails with domain error
+        const failed = store.execute(commands.createTodo({ id: 'todo-1', text: '   ' }))
+        assert(failed._tag === 'failed')
+        expect(failed.error).toBeInstanceOf(TodoTextEmpty)
+
+        // Second command should succeed and confirm
+        const success = store.execute(commands.createTodo({ id: 'todo-2', text: 'Valid' }))
+        assert(success._tag === 'pending')
+
+        const todo = store.query(tables.todos.where({ id: 'todo-2' }).first())
+        assert(todo !== undefined)
+        expect(todo.text).toBe('Valid')
+
+        const confirmation = yield* Effect.promise(() => success.confirmation)
+        expect(confirmation._tag).toBe('confirmed')
+      }).pipe(withTestCtx(test)),
+    )
+
+    Vitest.scopedLive('should confirm a multi-event command atomically', (test) =>
+      Effect.gen(function* () {
+        const { makeStore } = yield* TestContext
+        const store = yield* makeStore()
+
+        const result = store.execute(
+          commands.multiEventCommand({
+            todos: [
+              { id: 'todo-1', text: 'First' },
+              { id: 'todo-2', text: 'Second' },
+              { id: 'todo-3', text: 'Third' },
+            ],
+          }),
+        )
+
+        assert(result._tag === 'pending')
+
+        // Single confirmation for the entire command
+        const confirmation = yield* Effect.promise(() => result.confirmation)
+        expect(confirmation._tag).toBe('confirmed')
+
+        // All 3 todos exist
+        for (const id of ['todo-1', 'todo-2', 'todo-3']) {
+          const todo = store.query(tables.todos.where({ id }).first())
+          assert(todo !== undefined, `${id} should exist`)
+        }
+      }).pipe(withTestCtx(test)),
+    )
+
+    Vitest.scopedLive('should handle a command that produces both synced and client-only events', (test) =>
+      Effect.gen(function* () {
+        const { makeStore, mockSyncBackend } = yield* TestContext
+        const store = yield* makeStore()
+
+        const result = store.execute(commands.createAndHighlightTodo({ id: 'todo-1', text: 'Highlighted' }))
+        assert(result._tag === 'pending')
+
+        // Both effects are materialized locally
+        const todo = store.query(tables.todos.where({ id: 'todo-1' }).first())
+        assert(todo !== undefined)
+        expect(todo.text).toBe('Highlighted')
+
+        const highlight = store.query(tables.highlights.where({ todoId: 'todo-1' }).first())
+        assert(highlight !== undefined)
+
+        const confirmation = yield* Effect.promise(() => result.confirmation)
+        expect(confirmation._tag).toBe('confirmed')
+
+        // Push a second command to flush the stream, then verify only synced events reached the backend
+        store.execute(commands.createTodo({ id: 'todo-2', text: 'Marker' }))
+
+        const pushed = yield* mockSyncBackend.pushedEvents.pipe(
+          Stream.take(2),
+          Stream.runCollect,
+          Effect.map(Chunk.toReadonlyArray),
+        )
+        // Only synced events (todo.created) should be pushed; todo.highlighted is client-only
+        expect(pushed).toHaveLength(2)
+        expect(pushed[0]!.name).toBe('todo.created')
+        expect(pushed[1]!.name).toBe('todo.created')
+      }).pipe(withTestCtx(test)),
+    )
   })
 
   Vitest.describe('replay execution', () => {
@@ -793,6 +912,286 @@ Vitest.describe('store.execute', () => {
         expect(outcome.left.command.name).toBe('CreateTodoIfNotExists')
         expect(outcome.left.reason).toBe('NoEventProduced')
         expect(outcome.left.phase).toBe('replay')
+      }).pipe(withTestCtx(test)),
+    )
+
+    Vitest.scopedLive('should resolve mixed confirm/conflict outcomes across three or more commands', (test) =>
+      Effect.gen(function* () {
+        const { makeStore, mockSyncBackend } = yield* TestContext
+        const store = yield* makeStore()
+
+        // Seed a todo for completeTodo to succeed
+        store.commit(events.todoCreated({ id: 'seed', text: 'Seed', completed: false }))
+        yield* mockSyncBackend.disconnect
+
+        // Execute 4 commands: 1 will conflict, 3 will succeed
+        const r1 = store.execute(commands.createTodoUnique({ id: 'conflict', text: 'Mine' }))
+        const r2 = store.execute(commands.createTodoUnique({ id: 'safe', text: 'Safe' }))
+        const r3 = store.execute(commands.completeTodo({ id: 'seed' }))
+        const r4 = store.execute(commands.createTodo({ id: 'basic', text: 'Basic' }))
+
+        assert(r1._tag === 'pending')
+        assert(r2._tag === 'pending')
+        assert(r3._tag === 'pending')
+        assert(r4._tag === 'pending')
+
+        // External event creates 'conflict' first
+        const backendFactory = EventFactory.makeFactory(events)({
+          client: EventFactory.clientIdentity('other-client'),
+        })
+        yield* mockSyncBackend.advance(
+          backendFactory.todoCreated.next({ id: 'conflict', text: 'Theirs', completed: false }),
+        )
+
+        yield* mockSyncBackend.connect
+
+        const c1 = yield* Effect.promise(() => r1.confirmation)
+        expect(c1._tag).toBe('conflict')
+        if (c1._tag === 'conflict') {
+          expect(c1.error).toMatchObject({ _tag: 'TodoAlreadyExists' })
+        }
+
+        const c2 = yield* Effect.promise(() => r2.confirmation)
+        expect(c2._tag).toBe('confirmed')
+
+        const c3 = yield* Effect.promise(() => r3.confirmation)
+        expect(c3._tag).toBe('confirmed')
+
+        const c4 = yield* Effect.promise(() => r4.confirmation)
+        expect(c4._tag).toBe('confirmed')
+
+        // Verify state
+        const conflict = store.query(tables.todos.where({ id: 'conflict' }).first())
+        assert(conflict !== undefined)
+        expect(conflict.text).toBe('Theirs')
+
+        const safe = store.query(tables.todos.where({ id: 'safe' }).first())
+        assert(safe !== undefined)
+
+        const seed = store.query(tables.todos.where({ id: 'seed' }).first())
+        assert(seed !== undefined)
+        expect(seed.completed).toBe(true)
+
+        // Store is operational
+        const postResult = store.execute(commands.createTodo({ id: 'post', text: 'After' }))
+        assert(postResult._tag === 'pending')
+        const postConf = yield* Effect.promise(() => postResult.confirmation)
+        expect(postConf._tag).toBe('confirmed')
+      }).pipe(withTestCtx(test)),
+    )
+
+    Vitest.scopedLive('should confirm when replay produces fewer events than initial execution', (test) =>
+      Effect.gen(function* () {
+        const { makeStore, mockSyncBackend } = yield* TestContext
+        const store = yield* makeStore()
+
+        // Seed 3 incomplete todos
+        store.commit(events.todoCreated({ id: 'todo-1', text: 'First', completed: false }))
+        store.commit(events.todoCreated({ id: 'todo-2', text: 'Second', completed: false }))
+        store.commit(events.todoCreated({ id: 'todo-3', text: 'Third', completed: false }))
+
+        yield* mockSyncBackend.disconnect
+
+        // Execute completeAllTodos — produces 3 todoCompleted events
+        const result = store.execute(commands.completeAllTodos({}))
+        assert(result._tag === 'pending')
+
+        // External event completes todo-3 → replay will see only 2 incomplete todos
+        const backendFactory = EventFactory.makeFactory(events)({
+          client: EventFactory.clientIdentity('other-client'),
+        })
+        yield* mockSyncBackend.advance(
+          backendFactory.todoCompleted.next({ id: 'todo-3' }),
+        )
+
+        yield* mockSyncBackend.connect
+
+        // Replay produces 2 events (todo-1, todo-2) instead of 3 — command still confirms
+        const confirmation = yield* Effect.promise(() => result.confirmation)
+        expect(confirmation._tag).toBe('confirmed')
+
+        // All 3 todos should be completed
+        for (const id of ['todo-1', 'todo-2', 'todo-3']) {
+          const todo = store.query(tables.todos.where({ id }).first())
+          assert(todo !== undefined, `${id} should exist`)
+          expect(todo.completed).toBe(true)
+        }
+      }).pipe(withTestCtx(test)),
+    )
+
+    Vitest.scopedLive('should treat a multi-event command as all-or-nothing on replay conflict', (test) =>
+      Effect.gen(function* () {
+        const { makeStore, mockSyncBackend } = yield* TestContext
+        const store = yield* makeStore()
+        yield* mockSyncBackend.disconnect
+
+        // Create 3 unique todos in one command
+        const result = store.execute(
+          commands.createMultipleTodosUnique({
+            todos: [
+              { id: 'a', text: 'Alpha' },
+              { id: 'b', text: 'Bravo' },
+              { id: 'c', text: 'Charlie' },
+            ],
+          }),
+        )
+        assert(result._tag === 'pending')
+
+        // External event creates 'b' first → replay will fail on uniqueness check
+        const backendFactory = EventFactory.makeFactory(events)({
+          client: EventFactory.clientIdentity('other-client'),
+        })
+        yield* mockSyncBackend.advance(
+          backendFactory.todoCreated.next({ id: 'b', text: 'External-B', completed: false }),
+        )
+
+        yield* mockSyncBackend.connect
+
+        const confirmation = yield* Effect.promise(() => result.confirmation)
+        expect(confirmation._tag).toBe('conflict')
+        if (confirmation._tag === 'conflict') {
+          expect(confirmation.error).toMatchObject({ _tag: 'TodoAlreadyExists' })
+        }
+
+        // 'b' should exist with external data
+        const todoB = store.query(tables.todos.where({ id: 'b' }).first())
+        assert(todoB !== undefined)
+        expect(todoB.text).toBe('External-B')
+
+        // 'a' and 'c' should NOT exist — command was all-or-nothing
+        const todoA = store.query(tables.todos.where({ id: 'a' }).first())
+        expect(todoA).toBeUndefined()
+
+        const todoC = store.query(tables.todos.where({ id: 'c' }).first())
+        expect(todoC).toBeUndefined()
+
+        // Store is operational
+        const postResult = store.execute(commands.createTodo({ id: 'post', text: 'After' }))
+        assert(postResult._tag === 'pending')
+        const postConf = yield* Effect.promise(() => postResult.confirmation)
+        expect(postConf._tag).toBe('confirmed')
+      }).pipe(withTestCtx(test)),
+    )
+
+    Vitest.scopedLive('should not re-replay confirmed or conflicted commands across multiple rebases', (test) =>
+      Effect.gen(function* () {
+        const { makeStore, mockSyncBackend } = yield* TestContext
+        const store = yield* makeStore()
+
+        store.commit(events.todoCreated({ id: 'seed', text: 'Seed', completed: false }))
+
+        const backendFactory = EventFactory.makeFactory(events)({
+          client: EventFactory.clientIdentity('other-client'),
+        })
+
+        // --- Round 1: one command conflicts, one succeeds ---
+        yield* mockSyncBackend.disconnect
+
+        const r1 = store.execute(commands.createTodoUnique({ id: 'contested', text: 'Mine' }))
+        const r2 = store.execute(commands.completeTodo({ id: 'seed' }))
+        assert(r1._tag === 'pending')
+        assert(r2._tag === 'pending')
+
+        yield* mockSyncBackend.advance(
+          backendFactory.todoCreated.next({ id: 'contested', text: 'Theirs', completed: false }),
+        )
+        yield* mockSyncBackend.connect
+
+        const c1 = yield* Effect.promise(() => r1.confirmation)
+        expect(c1._tag).toBe('conflict')
+
+        const c2 = yield* Effect.promise(() => r2.confirmation)
+        expect(c2._tag).toBe('confirmed')
+
+        // --- Round 2: new command, new rebase ---
+        yield* mockSyncBackend.disconnect
+
+        const r3 = store.execute(commands.capturePhase({ id: 'phase-todo' }))
+        assert(r3._tag === 'pending')
+
+        // Allow the push fiber to deliver r3 to the leader while disconnected.
+        // Without this, there's a race between the push fiber (delivering r3 to the
+        // leader's localPushesQueue) and the pull loop (processing ext-2 after connect).
+        // The pull loop is blocked on isConnected, so r3 will be fully processed and
+        // journaled before the pull loop can compete for the pushPullMutex.
+        yield* Effect.sleep('500 millis')
+
+        yield* mockSyncBackend.advance(
+          backendFactory.todoCreated.next({ id: 'ext-2', text: 'External 2', completed: false }),
+        )
+        yield* mockSyncBackend.connect
+
+        const c3 = yield* Effect.promise(() => r3.confirmation).pipe(Effect.timeout('5 seconds'))
+        assert(c3 !== undefined, 'third confirmation timed out')
+        expect(c3._tag).toBe('confirmed')
+
+        // Verify: r1 (conflicted) and r2 (confirmed) are not re-replayed in round 2
+        const seed = store.query(tables.todos.where({ id: 'seed' }).first())
+        assert(seed !== undefined)
+        expect(seed.completed).toBe(true)
+
+        const contested = store.query(tables.todos.where({ id: 'contested' }).first())
+        assert(contested !== undefined)
+        expect(contested.text).toBe('Theirs')
+
+        // phase-todo was replayed in round 2
+        const phaseTodo = store.query(tables.todos.where({ id: 'phase-todo' }).first())
+        assert(phaseTodo !== undefined)
+        expect(phaseTodo.text).toBe('replay')
+
+        // Store is operational
+        const postResult = store.execute(commands.createTodo({ id: 'final', text: 'Final' }))
+        assert(postResult._tag === 'pending')
+        const postConf = yield* Effect.promise(() => postResult.confirmation)
+        expect(postConf._tag).toBe('confirmed')
+      }).pipe(withTestCtx(test)),
+    )
+
+    Vitest.scopedLive('should handle non-command committed events that duplicate an external event effect during rebase', (test) =>
+      Effect.gen(function* () {
+        const { makeStore, mockSyncBackend } = yield* TestContext
+        const store = yield* makeStore()
+
+        // Seed 2 incomplete todos
+        store.commit(events.todoCreated({ id: 'shared', text: 'Shared', completed: false }))
+        store.commit(events.todoCreated({ id: 'other', text: 'Other', completed: false }))
+
+        yield* mockSyncBackend.disconnect
+
+        // Commit non-command event completing 'shared' (idempotent UPDATE)
+        store.commit(events.todoCompleted({ id: 'shared' }))
+        // Execute command completing 'other'
+        const result = store.execute(commands.completeTodo({ id: 'other' }))
+        assert(result._tag === 'pending')
+
+        // External event also completes 'shared' — same effect, idempotent
+        const backendFactory = EventFactory.makeFactory(events)({
+          client: EventFactory.clientIdentity('other-client'),
+        })
+        yield* mockSyncBackend.advance(
+          backendFactory.todoCompleted.next({ id: 'shared' }),
+        )
+
+        yield* mockSyncBackend.connect
+
+        // Command for 'other' should confirm
+        const confirmation = yield* Effect.promise(() => result.confirmation)
+        expect(confirmation._tag).toBe('confirmed')
+
+        // Both todos should be completed
+        const shared = store.query(tables.todos.where({ id: 'shared' }).first())
+        assert(shared !== undefined)
+        expect(shared.completed).toBe(true)
+
+        const other = store.query(tables.todos.where({ id: 'other' }).first())
+        assert(other !== undefined)
+        expect(other.completed).toBe(true)
+
+        // Store is operational
+        const postResult = store.execute(commands.createTodo({ id: 'post', text: 'After' }))
+        assert(postResult._tag === 'pending')
+        const postConf = yield* Effect.promise(() => postResult.confirmation)
+        expect(postConf._tag).toBe('confirmed')
       }).pipe(withTestCtx(test)),
     )
   })

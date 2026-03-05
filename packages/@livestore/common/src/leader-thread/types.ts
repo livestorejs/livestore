@@ -24,11 +24,24 @@ import type {
   SyncBackend,
   UnknownError,
 } from '../index.ts'
+import type { CommandInstance } from '../schema/command/command-instance.ts'
 import { EventSequenceNumber, type LiveStoreEvent, type LiveStoreSchema } from '../schema/mod.ts'
 import type * as SyncState from '../sync/syncstate.ts'
 import type { ShutdownChannel } from './shutdown-channel.ts'
 
 export type ShutdownState = 'running' | 'shutting-down'
+
+/**
+ * Result of pushing a command to the leader for execution.
+ *
+ * - `ok`: Handler succeeded; events will arrive through the pull stream.
+ * - `error`: Handler returned a recoverable error; no events were committed.
+ * - `threw`: Handler threw an unexpected error; no events were committed.
+ */
+export type CommandPushResult =
+  | { readonly _tag: 'ok' }
+  | { readonly _tag: 'error'; readonly error: unknown }
+  | { readonly _tag: 'threw'; readonly cause: unknown }
 
 export const InitialSyncOptionsSkip = Schema.TaggedStruct('Skip', {})
 export type InitialSyncOptionsSkip = typeof InitialSyncOptionsSkip.Type
@@ -205,6 +218,13 @@ export interface LeaderSyncProcessor {
       waitForProcessing?: boolean
     },
   ) => Effect.Effect<void, LeaderAheadError>
+
+  /** Used by client sessions to push a command to the leader for execution */
+  pushCommand: (args: {
+    command: CommandInstance
+    clientId: string
+    sessionId: string
+  }) => Effect.Effect<CommandPushResult, UnknownError>
 
   /** Currently only used by devtools which don't provide their own event numbers */
   pushPartial: (args: {

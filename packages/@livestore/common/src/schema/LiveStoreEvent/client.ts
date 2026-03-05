@@ -85,6 +85,8 @@ export class EncodedWithMeta extends Schema.Class<EncodedWithMeta>('LiveStoreEve
     /** Used to detect if the materializer is side effecting (during dev) */
     materializerHashLeader: Schema.Option(Schema.Number),
     materializerHashSession: Schema.Option(Schema.Number),
+    /** The command instance ID that produced this event, if any. Used for confirmation tracking and journal cleanup. */
+    commandId: Schema.Option(Schema.String),
   }).pipe(
     Schema.mutable,
     Schema.optional,
@@ -94,12 +96,14 @@ export class EncodedWithMeta extends Schema.Class<EncodedWithMeta>('LiveStoreEve
         syncMetadata: Option.none(),
         materializerHashLeader: Option.none(),
         materializerHashSession: Option.none(),
+        commandId: Option.none(),
       }),
       decoding: () => ({
         sessionChangeset: { _tag: 'unset' as const },
         syncMetadata: Option.none(),
         materializerHashLeader: Option.none(),
         materializerHashSession: Option.none(),
+        commandId: Option.none(),
       }),
     }),
   ),
@@ -140,11 +144,15 @@ export class EncodedWithMeta extends Schema.Class<EncodedWithMeta>('LiveStoreEve
     parentSeqNum: EventSequenceNumber.Client.Composite
     isClient: boolean
     rebaseGeneration: number
-  }) =>
-    new EncodedWithMeta({
+  }) => {
+    const rebased = new EncodedWithMeta({
       ...this,
       ...EventSequenceNumber.Client.nextPair({ seqNum: parentSeqNum, isClient, rebaseGeneration }),
     })
+    // Schema.Class constructor resets meta to defaults; manually preserve commandId
+    rebased.meta.commandId = this.meta.commandId
+    return rebased
+  }
 
   static fromGlobal = (
     event: Global.Encoded,
@@ -171,6 +179,7 @@ export class EncodedWithMeta extends Schema.Class<EncodedWithMeta>('LiveStoreEve
         syncMetadata: meta.syncMetadata,
         materializerHashLeader: meta.materializerHashLeader,
         materializerHashSession: meta.materializerHashSession,
+        commandId: Option.none(),
       },
     })
 

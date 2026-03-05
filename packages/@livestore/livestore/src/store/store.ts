@@ -20,7 +20,7 @@ import {
   type SyncState,
   UnknownError, type QueryBuilder,
 } from '@livestore/common'
-import type { StreamEventsOptions } from '@livestore/common/leader-thread'
+import type { CommandPushResult, StreamEventsOptions } from '@livestore/common/leader-thread'
 import {
   type CommandDef,
   type CommandHandlerContext,
@@ -91,7 +91,6 @@ if (isDevEnv() === true) {
 /**
  * Flag to save whether we've warned about experimental commands.
  */
-let hasWarnedExperimentalCommands = false
 
 /**
  * Default parameters for the Store. Also used in `create-store.ts`
@@ -332,6 +331,17 @@ export class Store<TSchema extends LiveStoreSchema = LiveStoreSchema.Any, TConte
           tablesToUpdate.push([tableRef!, null])
         }
         reactivityGraph.setRefs(tablesToUpdate)
+      },
+      resolveCommandConfirmation: (commandId, result) => {
+        const handlers = this[StoreInternalsSymbol].pendingCommandConfirmations.get(commandId)
+        if (handlers !== undefined) {
+          if (result._tag === 'reject') {
+            handlers.reject(result.error)
+          } else {
+            handlers.resolve(result)
+          }
+          this[StoreInternalsSymbol].pendingCommandConfirmations.delete(commandId)
+        }
       },
       span: syncSpan,
       params: {
@@ -961,15 +971,6 @@ export class Store<TSchema extends LiveStoreSchema = LiveStoreSchema.Any, TConte
       : undefined
 
     const exit = Effect.gen(this, function* () {
-      if (hasWarnedExperimentalCommands === false) {
-        yield* Effect.logWarning(
-          '[LiveStore] Commands API is experimental. Initial execution works, but command replay, ' +
-            'conflict detection, and sync confirmation are not yet implemented. ' +
-            'See https://github.com/livestorejs/livestore/issues/717',
-        )
-        yield* Effect.sync(() => { hasWarnedExperimentalCommands = true })
-      }
-
      // Reverse link: attach execute span to the mutations collector span
       const mutationsSpan = otel.trace.getSpan(this[StoreInternalsSymbol].otel.mutationsSpanContext)
       mutationsSpan?.addEvent('execute')
@@ -1052,27 +1053,68 @@ export class Store<TSchema extends LiveStoreSchema = LiveStoreSchema.Any, TConte
               )
             }
 
-            return Effect.sync(() => {
-              // Pass the execute span's otel context so the commit span becomes a child
-              const executeOtelContext = otel.trace.setSpan(otel.context.active(), currentSpan)
-              const commitOptions: StoreCommitOptions = {
-                otelContext: executeOtelContext,
-                ...(options?.label !== undefined && { label: options.label }),
-                ...(options?.skipRefresh !== undefined && { skipRefresh: options.skipRefresh }),
-              }
-              this.commit(commitOptions, ...r.events)
+            return Effect.gen(this, function* () {
+              // Optimistically materialize events on the session and push the command to the leader
+              const { writeTables, pushResult } = yield* this[StoreInternalsSymbol].syncProcessor.pushCommand({
+                events: r.events,
+                command,
+              })
 
-              // TODO: Confirmation settles when the command's events are pushed to the leader (leave session pending),
-              // but doesn't yet handle replay/conflict detection after sync backend confirmation.
-              // See https://github.com/livestorejs/livestore/issues/1016
-              const confirmation = new Promise<
-                { readonly _tag: 'confirmed' } | { readonly _tag: 'conflict'; readonly error: TError }
-              >((_resolve, reject) => {
+              // Refresh reactive tables (same pattern as commit)
+              const tablesToUpdate: [Ref<null, ReactivityGraphContext, RefreshReason>, null][] = []
+              for (const tableName of writeTables) {
+                const tableRef = this[StoreInternalsSymbol].tableRefs[tableName]
+                assertNever(tableRef !== undefined, `No table ref found for ${tableName}`)
+                tablesToUpdate.push([tableRef!, null])
+              }
+
+              const debugRefreshReason: RefreshReason = {
+                _tag: 'commit',
+                events: r.events,
+                writeTables: Array.from(writeTables),
+              }
+              const skipRefresh = options?.skipRefresh ?? false
+              const currentSpan = yield* OtelTracer.currentOtelSpan.pipe(Effect.orDie)
+
+              this[StoreInternalsSymbol].reactivityGraph.setRefs(tablesToUpdate, {
+                debugRefreshReason,
+                skipRefresh,
+                otelContext: otel.trace.setSpan(otel.context.active(), currentSpan),
+              })
+
+              // Register for sync confirmation tracking immediately, before the leader processes the
+              // command, to avoid a race where the pull handler resolves the command (via rebase)
+              // before the pushResult callback registers the handler.
+              type Confirmation = { readonly _tag: 'confirmed' } | { readonly _tag: 'conflict'; readonly error: TError }
+              const syncConfirmation = new Promise<Confirmation>((_resolve, reject) => {
                 this[StoreInternalsSymbol].pendingCommandConfirmations.set(command.id, {
                   resolve: _resolve as (value: { _tag: 'confirmed' } | { _tag: 'conflict'; error: unknown }) => void,
                   reject,
                 })
               })
+              // Mark as handled to avoid unhandled-rejection warnings
+              void syncConfirmation.catch(() => {})
+
+              // Wire the confirmation promise: wait for leader to accept, then wait for backend confirmation.
+              // Race pushResult against syncConfirmation so that if the push fiber is interrupted
+              // during a rebase (losing the command deferred), the confirmation still resolves when
+              // the leader confirms the command via advance confirmedCommandIds or rebase.
+              const pushPath = pushResult.then((result: CommandPushResult): Confirmation | Promise<Confirmation> => {
+                if (result._tag === 'ok') {
+                  // Leader accepted — wait for backend-level confirmation (resolved by the pull handler)
+                  return syncConfirmation
+                } else if (result._tag === 'error') {
+                  // Leader rejected — clean up the registered handler
+                  this[StoreInternalsSymbol].pendingCommandConfirmations.delete(command.id)
+                  return { _tag: 'conflict' as const, error: result.error as TError }
+                } else {
+                  this[StoreInternalsSymbol].pendingCommandConfirmations.delete(command.id)
+                  throw result.cause
+                }
+              })
+              // Prevent unhandled rejection if syncConfirmation wins the race
+              void pushPath.catch(() => {})
+              const confirmation: Promise<Confirmation> = Promise.race([pushPath, syncConfirmation])
               // Mark as handled to avoid unhandled-rejection warnings when the store shuts down
               // before callers await `.confirmation` (e.g. fire-and-forget command execution).
               void confirmation.catch(() => {})

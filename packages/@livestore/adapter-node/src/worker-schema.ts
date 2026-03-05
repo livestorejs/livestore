@@ -8,7 +8,7 @@ import {
   UnknownError,
 } from '@livestore/common'
 import { StreamEventsOptionsFields } from '@livestore/common/leader-thread'
-import { EventSequenceNumber, LiveStoreEvent } from '@livestore/common/schema'
+import { CommandInstanceSchema, EventSequenceNumber, LiveStoreEvent } from '@livestore/common/schema'
 import { Schema, Transferable } from '@livestore/utils/effect'
 
 export const WorkerArgv = Schema.parseJson(
@@ -132,6 +132,26 @@ export class LeaderWorkerInnerPushToLeader extends Schema.TaggedRequest<LeaderWo
   },
 ) {}
 
+/** Schema for CommandPushResult used in worker communication. */
+const CommandPushResultSchema = Schema.Union(
+  Schema.Struct({ _tag: Schema.Literal('ok') }),
+  Schema.Struct({ _tag: Schema.Literal('error'), error: Schema.Unknown }),
+  Schema.Struct({ _tag: Schema.Literal('threw'), cause: Schema.Unknown }),
+)
+
+export class LeaderWorkerInnerPushCommandToLeader extends Schema.TaggedRequest<LeaderWorkerInnerPushCommandToLeader>()(
+  'PushCommandToLeader',
+  {
+    payload: {
+      command: CommandInstanceSchema,
+      clientId: Schema.String,
+      sessionId: Schema.String,
+    },
+    success: CommandPushResultSchema,
+    failure: UnknownError,
+  },
+) {}
+
 export class LeaderWorkerInnerExport extends Schema.TaggedRequest<LeaderWorkerInnerExport>()('Export', {
   payload: {},
   success: Transferable.Uint8Array as Schema.Schema<Uint8Array<ArrayBuffer>>,
@@ -227,6 +247,7 @@ export const LeaderWorkerInnerRequest = Schema.Union(
   LeaderWorkerInnerPullStream,
   LeaderWorkerInnerStreamEvents,
   LeaderWorkerInnerPushToLeader,
+  LeaderWorkerInnerPushCommandToLeader,
   LeaderWorkerInnerExport,
   LeaderWorkerInnerGetRecreateSnapshot,
   LeaderWorkerInnerExportEventlog,

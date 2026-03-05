@@ -44,9 +44,9 @@ import { type Bindable, prepareBindValues, sql } from '../util.ts'
 import * as Eventlog from './eventlog.ts'
 import { rollback } from './materialize-event.ts'
 import type { ShutdownChannel } from './shutdown-channel.ts'
-import type { InitialBlockingSyncContext, LeaderSyncProcessor } from './types.ts'
+import type { CommandPushResult, InitialBlockingSyncContext, LeaderSyncProcessor } from './types.ts'
 import { LeaderThreadCtx } from './types.ts'
-import { CommandJournal } from './CommandJournal.ts'
+import { CommandJournal, make as makeCommandJournal } from './CommandJournal.ts'
 import { isQueryBuilder, type QueryBuilder } from '../schema/state/sqlite/query-builder/mod.ts'
 import { getResultSchema } from '../schema/state/sqlite/query-builder/impl.ts'
 
@@ -58,10 +58,19 @@ import { getResultSchema } from '../schema/state/sqlite/query-builder/impl.ts'
 /** Serialize value to JSON string for trace attributes */
 const jsonStringify = Schema.encodeSync(Schema.parseJson())
 
-type LocalPushQueueItem = [
-  event: LiveStoreEvent.Client.EncodedWithMeta,
-  deferred: Deferred.Deferred<void, LeaderAheadError> | undefined,
-]
+type LocalPushQueueItem =
+  | {
+      readonly _tag: 'event'
+      readonly event: LiveStoreEvent.Client.EncodedWithMeta
+      readonly deferred: Deferred.Deferred<void, LeaderAheadError> | undefined
+    }
+  | {
+      readonly _tag: 'command'
+      readonly command: CommandInstance
+      readonly clientId: string
+      readonly sessionId: string
+      readonly deferred: Deferred.Deferred<CommandPushResult, never> | undefined
+    }
 
 /**
  * The LeaderSyncProcessor manages synchronization of events between
@@ -213,7 +222,6 @@ export const makeLeaderSyncProcessor = ({
       Effect.gen(function* () {
         if (newEvents.length === 0) return
 
-        // console.debug('push', newEvents)
 
         yield* validatePushBatch(newEvents, pushHeadRef.current)
 
@@ -224,13 +232,21 @@ export const makeLeaderSyncProcessor = ({
         if (waitForProcessing === true) {
           const deferreds = yield* Effect.forEach(newEvents, () => Deferred.make<void, LeaderAheadError>())
 
-          const items = newEvents.map((eventEncoded, i) => [eventEncoded, deferreds[i]] as LocalPushQueueItem)
+          const items: LocalPushQueueItem[] = newEvents.map((event, i) => ({
+            _tag: 'event' as const,
+            event,
+            deferred: deferreds[i],
+          }))
 
           yield* BucketQueue.offerAll(localPushesQueue, items)
 
           yield* Effect.all(deferreds)
         } else {
-          const items = newEvents.map((eventEncoded) => [eventEncoded, undefined] as LocalPushQueueItem)
+          const items: LocalPushQueueItem[] = newEvents.map((event) => ({
+            _tag: 'event' as const,
+            event,
+            deferred: undefined,
+          }))
           yield* BucketQueue.offerAll(localPushesQueue, items)
         }
       }).pipe(
@@ -281,6 +297,20 @@ export const makeLeaderSyncProcessor = ({
 
         yield* push([eventEncoded])
       }).pipe(Effect.catchTag('LeaderAheadError', Effect.orDie))
+
+    const pushCommand: LeaderSyncProcessor['pushCommand'] = ({ command, clientId, sessionId }) =>
+      Effect.gen(function* () {
+        const deferred = yield* Deferred.make<CommandPushResult, never>()
+        yield* BucketQueue.offerAll(localPushesQueue, [
+          { _tag: 'command' as const, command, clientId, sessionId, deferred },
+        ])
+        return yield* Deferred.await(deferred)
+      }).pipe(
+        UnknownError.mapToUnknownError,
+        Effect.withSpan('@livestore/common:LeaderSyncProcessor:pushCommand', {
+          attributes: { commandName: command.name, commandId: command.id },
+        }),
+      )
 
     // Starts various background loops
     const boot: LeaderSyncProcessor['boot'] = Effect.gen(function* () {
@@ -456,6 +486,7 @@ export const makeLeaderSyncProcessor = ({
       pull,
       pullQueue,
       push,
+      pushCommand,
       pushPartial,
       boot,
       syncState,
@@ -488,6 +519,307 @@ const backgroundApplyLocalPushes = ({
   }
 }) =>
   Effect.gen(function* () {
+    /** Process a batch of event items (existing flow). Returns false if a reject requires a continue. */
+    const processEventBatch = (
+      eventItems: ReadonlyArray<LocalPushQueueItem & { _tag: 'event' }>,
+      syncState: SyncState.SyncState,
+      currentRebaseGeneration: number,
+    ) =>
+      Effect.gen(function* () {
+        const newEvents = eventItems.map((_) => _.event)
+        const deferreds = eventItems.map((_) => _.deferred)
+
+        const mergeResult = SyncState.merge({
+          syncState,
+          payload: { _tag: 'local-push', newEvents },
+          isClientEvent,
+          isEqualEvent: LiveStoreEvent.Client.isEqualEncoded,
+        })
+
+        switch (mergeResult._tag) {
+          case 'unknown-error': {
+            otelSpan?.addEvent(
+              `push:unknown-error`,
+              {
+                batchSize: newEvents.length,
+                newEvents: TRACE_VERBOSE === true ? jsonStringify(newEvents) : undefined,
+              },
+              undefined,
+            )
+            return yield* new UnknownError({ cause: mergeResult.message })
+          }
+          case 'rebase': {
+            return shouldNeverHappen('The leader thread should never have to rebase due to a local push')
+          }
+          case 'reject': {
+            otelSpan?.addEvent(
+              `push:reject`,
+              {
+                batchSize: newEvents.length,
+                mergeResult: TRACE_VERBOSE === true ? jsonStringify(mergeResult) : undefined,
+              },
+              undefined,
+            )
+
+            // TODO: how to test this?
+            const nextRebaseGeneration = currentRebaseGeneration + 1
+
+            const providedNum = newEvents.at(0)!.seqNum
+            // All subsequent pushes with same generation should be rejected as well
+            // We're also handling the case where the localPushQueue already contains events
+            // from the next generation which we preserve in the queue
+            const remainingEventsMatchingGeneration = yield* BucketQueue.takeSplitWhere(
+              localPushesQueue,
+              (item) => item._tag === 'command' || item.event.seqNum.rebaseGeneration >= nextRebaseGeneration,
+            )
+
+            // TODO we still need to better understand and handle this scenario
+            if (LS_DEV === true && (yield* BucketQueue.size(localPushesQueue)) > 0) {
+              console.log('localPushesQueue is not empty', yield* BucketQueue.size(localPushesQueue))
+              // oxlint-disable-next-line eslint(no-debugger) -- intentional breakpoint for unexpected queue state
+              debugger
+            }
+
+            const allDeferredsToReject = [
+              ...deferreds,
+              ...remainingEventsMatchingGeneration
+                .filter((item): item is LocalPushQueueItem & { _tag: 'event' } => item._tag === 'event')
+                .map((_) => _.deferred),
+            ].filter(isNotUndefined)
+
+            yield* Effect.forEach(allDeferredsToReject, (deferred) =>
+              Deferred.fail(
+                deferred,
+                LeaderAheadError.make({ minimumExpectedNum: mergeResult.expectedMinimumId, providedNum }),
+              ),
+            )
+
+            return { _tag: 'rejected' as const }
+          }
+          case 'advance': {
+            break
+          }
+          default: {
+            casesHandled(mergeResult)
+          }
+        }
+
+        yield* SubscriptionRef.set(syncStateSref, mergeResult.newSyncState)
+
+        yield* connectedClientSessionPullQueues.offer({
+          payload: SyncState.PayloadUpstreamAdvance.make({ newEvents: mergeResult.newEvents }),
+          leaderHead: mergeResult.newSyncState.localHead,
+        })
+
+        otelSpan?.addEvent(
+          `push:advance`,
+          {
+            batchSize: newEvents.length,
+            mergeResult: TRACE_VERBOSE === true ? jsonStringify(mergeResult) : undefined,
+          },
+          undefined,
+        )
+
+        // Don't sync client-local events
+        const filteredBatch = mergeResult.newEvents.filter((eventEncoded) => {
+          const eventDef = schema.eventsDefsMap.get(eventEncoded.name)
+          return eventDef === undefined ? true : !eventDef.options.clientOnly
+        })
+
+        yield* BucketQueue.offerAll(syncBackendPushQueue, filteredBatch)
+
+        yield* materializeEventsBatch({ batchItems: mergeResult.newEvents, deferreds })
+
+        return { _tag: 'advanced' as const }
+      })
+
+    /** Execute a command on the leader within a transaction, encode events, merge, materialize, broadcast, and journal. */
+    const processCommandItem = (
+      item: LocalPushQueueItem & { _tag: 'command' },
+    ) =>
+      Effect.gen(function* () {
+        const { dbState: db, dbEventlog, materializeEvent, eventSchema } = yield* LeaderThreadCtx
+        const commandJournal = makeCommandJournal(dbEventlog)
+
+        const syncState = yield* syncStateSref
+        if (syncState === undefined) return shouldNeverHappen('Not initialized')
+
+        // If the command's events are already in pending (e.g., blind-rebased during a prior rebase),
+        // skip re-execution to avoid duplicates. Just journal the command for future replays.
+        const pendingCommandIds = syncState.pending.map((e) => Option.getOrUndefined(e.meta.commandId))
+        const pendingHasCommand = pendingCommandIds.includes(item.command.id)
+        if (pendingHasCommand) {
+          yield* commandJournal.write(item.command).pipe(Effect.orDie)
+          const result: CommandPushResult = { _tag: 'ok' }
+          if (item.deferred !== undefined) yield* Deferred.succeed(item.deferred, result)
+          return
+        }
+
+        const commandDef = schema.commandDefsMap.get(item.command.name)
+        if (commandDef === undefined) {
+          const result: CommandPushResult = {
+            _tag: 'threw',
+            cause: new CommandExecutionError({
+              command: { name: item.command.name, id: item.command.id },
+              phase: 'initial',
+              reason: 'CommandNotFound',
+              description: `Command definition "${item.command.name}" not found in schema`,
+            }),
+          }
+          if (item.deferred !== undefined) yield* Deferred.succeed(item.deferred, result)
+          return
+        }
+
+        // Execute handler within a transaction for atomicity (reads + writes in same snapshot)
+        db.execute('BEGIN TRANSACTION', undefined)
+        dbEventlog.execute('BEGIN TRANSACTION', undefined)
+
+        const query: CommandHandlerContextQuery = (
+          rawQueryOrQueryBuilder:
+            | { query: string; bindValues: Bindable }
+            | QueryBuilder.Any,
+        ) => {
+          if (isQueryBuilder(rawQueryOrQueryBuilder) === true) {
+            const { query, bindValues } = rawQueryOrQueryBuilder.asSql()
+            const rawResults = db.select(query, prepareBindValues(bindValues, query))
+            const resultSchema = getResultSchema(rawQueryOrQueryBuilder)
+            return Schema.decodeSync(resultSchema)(rawResults)
+          } else {
+            const { query, bindValues } = rawQueryOrQueryBuilder
+            return db.select(query, prepareBindValues(bindValues, query))
+          }
+        }
+        const handlerContext: CommandHandlerContext = { phase: { _tag: 'initial' }, query }
+        const handlerResult = executeCommandHandler(commandDef.handler, item.command.args, handlerContext)
+
+        if (handlerResult._tag === 'error') {
+          db.execute('ROLLBACK', undefined)
+          dbEventlog.execute('ROLLBACK', undefined)
+          const result: CommandPushResult = { _tag: 'error', error: handlerResult.error }
+          if (item.deferred !== undefined) yield* Deferred.succeed(item.deferred, result)
+          return
+        }
+
+        if (handlerResult._tag === 'threw') {
+          db.execute('ROLLBACK', undefined)
+          dbEventlog.execute('ROLLBACK', undefined)
+          const result: CommandPushResult = {
+            _tag: 'threw',
+            cause: new CommandExecutionError({
+              command: { name: item.command.name, id: item.command.id },
+              reason: 'CommandHandlerThrew',
+              phase: 'initial',
+              cause: handlerResult.cause,
+            }),
+          }
+          if (item.deferred !== undefined) yield* Deferred.succeed(item.deferred, result)
+          return
+        }
+
+        // Handler succeeded — encode events with sequence numbers
+        const events = handlerResult.events
+        if (events.length === 0) {
+          db.execute('ROLLBACK', undefined)
+          dbEventlog.execute('ROLLBACK', undefined)
+          const result: CommandPushResult = {
+            _tag: 'threw',
+            cause: new CommandExecutionError({
+              command: { name: item.command.name, id: item.command.id },
+              phase: 'initial',
+              reason: 'NoEventProduced',
+              description: 'Command handlers must return one event, an array with at least one event, or a recoverable error value.',
+            }),
+          }
+          if (item.deferred !== undefined) yield* Deferred.succeed(item.deferred, result)
+          return
+        }
+
+        let baseSeqNum = syncState.localHead
+        const encodedEvents = events.map(({ name, args }) => {
+          const eventDef = schema.eventsDefsMap.get(name)
+          if (eventDef === undefined) {
+            return shouldNeverHappen(`No event definition found for \`${name}\`.`)
+          }
+
+          const nextNumPair = EventSequenceNumber.Client.nextPair({
+            seqNum: baseSeqNum,
+            isClient: eventDef.options.clientOnly,
+            rebaseGeneration: baseSeqNum.rebaseGeneration,
+          })
+          baseSeqNum = nextNumPair.seqNum
+
+          const encoded = Schema.encodeUnknownSync(eventSchema)({
+            name,
+            args,
+            ...nextNumPair,
+            clientId: item.clientId,
+            sessionId: item.sessionId,
+          })
+          const event = new LiveStoreEvent.Client.EncodedWithMeta(encoded)
+          event.meta.commandId = Option.some(item.command.id)
+          return event
+        })
+
+        // Merge into sync state
+        const mergeResult = SyncState.merge({
+          syncState,
+          payload: { _tag: 'local-push', newEvents: encodedEvents },
+          isClientEvent,
+          isEqualEvent: LiveStoreEvent.Client.isEqualEncoded,
+        })
+
+        if (mergeResult._tag !== 'advance') {
+          db.execute('ROLLBACK', undefined)
+          dbEventlog.execute('ROLLBACK', undefined)
+          return shouldNeverHappen(`Expected advance for command push, got ${mergeResult._tag}`)
+        }
+
+        // Materialize events within the open transaction (also inserts into eventlog)
+        for (const event of mergeResult.newEvents) {
+          const { sessionChangeset, hash } = yield* materializeEvent(event)
+          event.meta.sessionChangeset = sessionChangeset
+          event.meta.materializerHashLeader = hash
+        }
+
+        // Journal the command for future replay
+        yield* commandJournal.write(item.command).pipe(Effect.orDie)
+
+        db.execute('COMMIT', undefined)
+        dbEventlog.execute('COMMIT', undefined)
+
+        yield* SubscriptionRef.set(syncStateSref, mergeResult.newSyncState)
+
+        // Broadcast to sessions
+        yield* connectedClientSessionPullQueues.offer({
+          payload: SyncState.PayloadUpstreamAdvance.make({ newEvents: mergeResult.newEvents }),
+          leaderHead: mergeResult.newSyncState.localHead,
+        })
+
+        // Queue for sync backend push (excluding client-only events)
+        const filteredBatch = mergeResult.newEvents.filter((eventEncoded) => {
+          const eventDef = schema.eventsDefsMap.get(eventEncoded.name)
+          return eventDef === undefined ? true : !eventDef.options.clientOnly
+        })
+        yield* BucketQueue.offerAll(syncBackendPushQueue, filteredBatch)
+
+        otelSpan?.addEvent(
+          'push:command:advance',
+          {
+            commandName: item.command.name,
+            commandId: item.command.id,
+            eventCount: mergeResult.newEvents.length,
+          },
+          undefined,
+        )
+
+        const result: CommandPushResult = { _tag: 'ok' }
+        if (item.deferred !== undefined) yield* Deferred.succeed(item.deferred, result)
+      }).pipe(
+        Effect.withSpan('@livestore/common:LeaderSyncProcessor:processCommandItem', {
+          attributes: { commandName: item.command.name, commandId: item.command.id },
+        }),
+      )
+
     while (true) {
       if (testing.delay !== undefined) {
         yield* testing.delay.pipe(Effect.withSpan('localPushProcessingDelay'))
@@ -503,12 +835,18 @@ const backgroundApplyLocalPushes = ({
 
       const currentRebaseGeneration = syncState.localHead.rebaseGeneration
 
-      // Since the rebase generation might have changed since enqueuing, we need to filter out items with older generation
-      // It's important that we filter after acquiring the pushPullMutex, otherwise we might filter with the old generation
-      const [droppedItems, filteredItems] = ReadonlyArray.partition(
-        batchItems,
-        ([eventEncoded]) => eventEncoded.seqNum.rebaseGeneration >= currentRebaseGeneration,
-      )
+      // Filter out event items with stale rebase generation (commands don't have seqNums and are always kept)
+      const droppedItems: (LocalPushQueueItem & { _tag: 'event' })[] = []
+      const filteredItems: LocalPushQueueItem[] = []
+      for (const item of batchItems) {
+        if (item._tag === 'command') {
+          filteredItems.push(item)
+        } else if (item.event.seqNum.rebaseGeneration >= currentRebaseGeneration) {
+          filteredItems.push(item)
+        } else {
+          droppedItems.push(item)
+        }
+      }
 
       if (droppedItems.length > 0) {
         otelSpan?.addEvent(
@@ -520,21 +858,18 @@ const backgroundApplyLocalPushes = ({
           undefined,
         )
 
-        /**
-         * Dropped pushes may still have a deferred awaiting completion.
-         * Fail it so the caller learns the leader advanced and resubmits with the updated generation.
-         */
+        // Fail deferreds of dropped event items so callers learn the leader advanced
         yield* Effect.forEach(
           droppedItems.filter(
-            (item): item is [LiveStoreEvent.Client.EncodedWithMeta, Deferred.Deferred<void, LeaderAheadError>] =>
-              item[1] !== undefined,
+            (item): item is LocalPushQueueItem & { _tag: 'event'; deferred: Deferred.Deferred<void, LeaderAheadError> } =>
+              item.deferred !== undefined,
           ),
-          ([eventEncoded, deferred]) =>
+          (item) =>
             Deferred.fail(
-              deferred,
+              item.deferred,
               LeaderAheadError.make({
                 minimumExpectedNum: syncState.localHead,
-                providedNum: eventEncoded.seqNum,
+                providedNum: item.event.seqNum,
               }),
             ),
         )
@@ -545,111 +880,43 @@ const backgroundApplyLocalPushes = ({
         continue
       }
 
-      const [newEvents, deferreds] = ReadonlyArray.unzip(filteredItems)
+      // Process items in order, batching consecutive events but flushing before/after commands
+      let rejected = false
+      let eventAccum: (LocalPushQueueItem & { _tag: 'event' })[] = []
 
-      const mergeResult = SyncState.merge({
-        syncState,
-        payload: { _tag: 'local-push', newEvents },
-        isClientEvent,
-        isEqualEvent: LiveStoreEvent.Client.isEqualEncoded,
-      })
-
-      switch (mergeResult._tag) {
-        case 'unknown-error': {
-          otelSpan?.addEvent(
-            `push:unknown-error`,
-            {
-              batchSize: newEvents.length,
-              newEvents: TRACE_VERBOSE === true ? jsonStringify(newEvents) : undefined,
-            },
-            undefined,
-          )
-          return yield* new UnknownError({ cause: mergeResult.message })
-        }
-        case 'rebase': {
-          return shouldNeverHappen('The leader thread should never have to rebase due to a local push')
-        }
-        case 'reject': {
-          otelSpan?.addEvent(
-            `push:reject`,
-            {
-              batchSize: newEvents.length,
-              mergeResult: TRACE_VERBOSE === true ? jsonStringify(mergeResult) : undefined,
-            },
-            undefined,
-          )
-
-          // TODO: how to test this?
-          const nextRebaseGeneration = currentRebaseGeneration + 1
-
-          const providedNum = newEvents.at(0)!.seqNum
-          // All subsequent pushes with same generation should be rejected as well
-          // We're also handling the case where the localPushQueue already contains events
-          // from the next generation which we preserve in the queue
-          const remainingEventsMatchingGeneration = yield* BucketQueue.takeSplitWhere(
-            localPushesQueue,
-            ([eventEncoded]) => eventEncoded.seqNum.rebaseGeneration >= nextRebaseGeneration,
-          )
-
-          // TODO we still need to better understand and handle this scenario
-          if (LS_DEV === true && (yield* BucketQueue.size(localPushesQueue)) > 0) {
-            console.log('localPushesQueue is not empty', yield* BucketQueue.size(localPushesQueue))
-            // oxlint-disable-next-line eslint(no-debugger) -- intentional breakpoint for unexpected queue state
-            debugger
-          }
-
-          const allDeferredsToReject = [
-            ...deferreds,
-            ...remainingEventsMatchingGeneration.map(([_, deferred]) => deferred),
-          ].filter(isNotUndefined)
-
-          yield* Effect.forEach(allDeferredsToReject, (deferred) =>
-            Deferred.fail(
-              deferred,
-              LeaderAheadError.make({ minimumExpectedNum: mergeResult.expectedMinimumId, providedNum }),
-            ),
-          )
-
-          // Allow the backend pulling to start
-          yield* pushPullMutex.release(1)
-
-          // In this case we're skipping state update and down/upstream processing
-          // We've cleared the local push queue and are now waiting for new local pushes / backend pulls
+      for (const item of filteredItems) {
+        if (item._tag === 'event') {
+          eventAccum.push(item)
           continue
         }
-        case 'advance': {
-          break
+
+        // Flush accumulated events before processing a command
+        if (eventAccum.length > 0 && !rejected) {
+          const currentSyncState = (yield* syncStateSref) ?? shouldNeverHappen('Not initialized')
+          const result = yield* processEventBatch(eventAccum, currentSyncState, currentRebaseGeneration)
+          if (result._tag === 'rejected') {
+            rejected = true
+          }
+          eventAccum = []
         }
-        default: {
-          casesHandled(mergeResult)
+
+        // Process command
+        if (!rejected) {
+          yield* processCommandItem(item)
+        } else if (item.deferred !== undefined) {
+          // If events were rejected, commands in the same batch should also be failed
+          yield* Deferred.succeed(item.deferred, { _tag: 'threw' as const, cause: 'Leader rejected batch due to stale generation' })
         }
       }
 
-      yield* SubscriptionRef.set(syncStateSref, mergeResult.newSyncState)
-
-      yield* connectedClientSessionPullQueues.offer({
-        payload: SyncState.PayloadUpstreamAdvance.make({ newEvents: mergeResult.newEvents }),
-        leaderHead: mergeResult.newSyncState.localHead,
-      })
-
-      otelSpan?.addEvent(
-        `push:advance`,
-        {
-          batchSize: newEvents.length,
-          mergeResult: TRACE_VERBOSE === true ? jsonStringify(mergeResult) : undefined,
-        },
-        undefined,
-      )
-
-      // Don't sync client-local events
-      const filteredBatch = mergeResult.newEvents.filter((eventEncoded) => {
-        const eventDef = schema.eventsDefsMap.get(eventEncoded.name)
-        return eventDef === undefined ? true : !eventDef.options.clientOnly
-      })
-
-      yield* BucketQueue.offerAll(syncBackendPushQueue, filteredBatch)
-
-      yield* materializeEventsBatch({ batchItems: mergeResult.newEvents, deferreds })
+      // Flush remaining events
+      if (eventAccum.length > 0 && !rejected) {
+        const remainingSyncState = (yield* syncStateSref) ?? shouldNeverHappen('Not initialized')
+        const result = yield* processEventBatch(eventAccum, remainingSyncState, currentRebaseGeneration)
+        if (result._tag === 'rejected') {
+          // rejected — already handled
+        }
+      }
 
       // Allow the backend pulling to start
       yield* pushPullMutex.release(1)
@@ -750,9 +1017,22 @@ const backgroundBackendPulling = Effect.fn('@livestore/common:LeaderSyncProcesso
       const syncState = yield* syncStateSref
       if (syncState === undefined) return shouldNeverHappen('Not initialized')
 
+      // Pull streams can contain overlap after reconnect/retry. Drop already-applied events
+      // so merge remains idempotent instead of treating duplicates as an unknown error.
+      const newEventsToProcess = ReadonlyArray.dropWhile(
+        newEvents,
+        (event) => EventSequenceNumber.Client.isGreaterThanOrEqual(syncState.upstreamHead, event.seqNum),
+      )
+      if (newEventsToProcess.length === 0) {
+        if (pageInfo._tag === 'NoMore') {
+          yield* pushPullMutex.release(1)
+        }
+        return
+      }
+
       const mergeResult = SyncState.merge({
         syncState,
-        payload: SyncState.PayloadUpstreamAdvance.make({ newEvents }),
+        payload: SyncState.PayloadUpstreamAdvance.make({ newEvents: newEventsToProcess }),
         isClientEvent,
         isEqualEvent: LiveStoreEvent.Client.isEqualEncoded,
         ignoreClientEvents: true,
@@ -764,15 +1044,15 @@ const backgroundBackendPulling = Effect.fn('@livestore/common:LeaderSyncProcesso
         otelSpan?.addEvent(
           `pull:unknown-error`,
           {
-            newEventsCount: newEvents.length,
-            newEvents: TRACE_VERBOSE === true ? jsonStringify(newEvents) : undefined,
+            newEventsCount: newEventsToProcess.length,
+            newEvents: TRACE_VERBOSE === true ? jsonStringify(newEventsToProcess) : undefined,
           },
           undefined,
         )
         return yield* new UnknownError({ cause: mergeResult.message })
       }
 
-      const newBackendHead = newEvents.at(-1)!.seqNum
+      const newBackendHead = newEventsToProcess.at(-1)!.seqNum
 
       Eventlog.updateBackendHead(dbEventlog, newBackendHead)
 
@@ -780,19 +1060,13 @@ const backgroundBackendPulling = Effect.fn('@livestore/common:LeaderSyncProcesso
         otelSpan?.addEvent(
           `pull:rebase[${mergeResult.newSyncState.localHead.rebaseGeneration}]`,
           {
-            newEventsCount: newEvents.length,
-            newEvents: TRACE_VERBOSE === true ? jsonStringify(newEvents) : undefined,
+            newEventsCount: newEventsToProcess.length,
+            newEvents: TRACE_VERBOSE === true ? jsonStringify(newEventsToProcess) : undefined,
             rollbackCount: mergeResult.rollbackEvents.length,
             mergeResult: TRACE_VERBOSE === true ? jsonStringify(mergeResult) : undefined,
           },
           undefined,
         )
-
-        const globalRebasedPendingEvents = mergeResult.newSyncState.pending.filter((event) => {
-          const eventDef = schema.eventsDefsMap.get(event.name)
-          return eventDef === undefined ? true : !eventDef.options.clientOnly
-        })
-        yield* restartBackendPushing(globalRebasedPendingEvents)
 
         if (mergeResult.rollbackEvents.length > 0) {
           yield* rollback({
@@ -802,15 +1076,193 @@ const backgroundBackendPulling = Effect.fn('@livestore/common:LeaderSyncProcesso
           })
         }
 
-        yield* connectedClientSessionPullQueues.offer({
-          payload: SyncState.payloadFromMergeResult(mergeResult),
-          leaderHead: mergeResult.newSyncState.localHead,
+        // Split newEvents into confirmed upstream events and blind-rebased pending events.
+        // newEvents = [...confirmedUpstream, ...rebasedPending]
+        const rebasedPendingSet = new Set(
+          mergeResult.newSyncState.pending.map((e) => EventSequenceNumber.Client.toString(e.seqNum)),
+        )
+        const confirmedEvents = mergeResult.newEvents.filter(
+          (e) => !rebasedPendingSet.has(EventSequenceNumber.Client.toString(e.seqNum)),
+        )
+        const blindRebasedPending = mergeResult.newSyncState.pending
+
+        // Materialize confirmed events first to establish the new base state
+        yield* materializeEventsBatch({ batchItems: confirmedEvents, deferreds: undefined })
+
+        // Replay journaled commands against the new base state.
+        // Commands produce new events that replace the blind-rebased events for those commands.
+        const commandJournal = makeCommandJournal(dbEventlog)
+        const journaledCommands = yield* commandJournal.entries.pipe(Effect.orDie)
+        const journalMap = new Map(journaledCommands.map((c) => [c.id, c]))
+
+        // Collect unique commandIds from blind-rebased pending in order of first appearance
+        const commandIdsInOrder: string[] = []
+        const seenCommandIds = new Set<string>()
+        for (const event of blindRebasedPending) {
+          const commandId = Option.getOrUndefined(event.meta.commandId)
+          if (commandId !== undefined && !seenCommandIds.has(commandId)) {
+            seenCommandIds.add(commandId)
+            commandIdsInOrder.push(commandId)
+          }
+        }
+
+        const replayConflicts: SyncState.ReplayConflictInfo[] = []
+        // newPending accumulates the actual events after replay (may differ from blind rebase)
+        const newPending: LiveStoreEvent.Client.EncodedWithMeta[] = []
+        // Track the running seqNum head for encoding replayed events
+        const newUpstreamHead = confirmedEvents.at(-1)?.seqNum ?? syncState.upstreamHead
+        let currentHead = newUpstreamHead
+
+        // Process pending items in order: non-command events keep blind-rebased versions, commands are replayed
+        let pendingIdx = 0
+        while (pendingIdx < blindRebasedPending.length) {
+          const event = blindRebasedPending[pendingIdx]!
+          const commandId = Option.getOrUndefined(event.meta.commandId)
+
+          if (commandId === undefined) {
+            // Non-command event: keep the blind-rebased version, materialize it
+            yield* materializeEventsBatch({ batchItems: [event], deferreds: undefined })
+            currentHead = event.seqNum
+            newPending.push(event)
+            pendingIdx++
+            continue
+          }
+
+          // Collect all consecutive events for this command
+          const commandEvents: LiveStoreEvent.Client.EncodedWithMeta[] = []
+          while (
+            pendingIdx < blindRebasedPending.length &&
+            Option.getOrUndefined(blindRebasedPending[pendingIdx]!.meta.commandId) === commandId
+          ) {
+            commandEvents.push(blindRebasedPending[pendingIdx]!)
+            pendingIdx++
+          }
+
+          const journaledCommand = journalMap.get(commandId)
+          if (journaledCommand === undefined) {
+            // No journal entry — keep blind-rebased events as fallback
+            for (const ce of commandEvents) {
+              yield* materializeEventsBatch({ batchItems: [ce], deferreds: undefined })
+              currentHead = ce.seqNum
+              newPending.push(ce)
+            }
+            continue
+          }
+
+          // Replay the command against the current (post-confirmed) state
+          const replayResult = yield* replayCommand({
+            command: journaledCommand,
+            schema,
+            dbState: db,
+          }).pipe(
+            Effect.provideService(CommandJournal, commandJournal),
+            Effect.either,
+          )
+
+          if (replayResult._tag === 'Left') {
+            // Command replay failed (conflict) — its events are dropped from pending.
+            // replayCommand already removed the command from the journal.
+            replayConflicts.push(
+              new SyncState.ReplayConflictInfo({
+                commandId,
+                error: replayResult.left.error,
+              }),
+            )
+            continue
+          }
+
+          // Replay succeeded — encode new events with fresh seqNums based on currentHead
+          const replayedInputEvents = replayResult.right
+          const { eventSchema } = yield* LeaderThreadCtx
+          const replayedEncoded: LiveStoreEvent.Client.EncodedWithMeta[] = []
+          for (const { name, args } of replayedInputEvents) {
+            const eventDef = schema.eventsDefsMap.get(name)
+            if (eventDef === undefined) {
+              return shouldNeverHappen(`No event definition found for \`${name}\`.`)
+            }
+            const nextNumPair = EventSequenceNumber.Client.nextPair({
+              seqNum: currentHead,
+              isClient: eventDef.options.clientOnly,
+              rebaseGeneration: currentHead.rebaseGeneration,
+            })
+            currentHead = nextNumPair.seqNum
+            const encoded = Schema.encodeUnknownSync(eventSchema)({
+              name,
+              args,
+              ...nextNumPair,
+              // Use clientId/sessionId from the original blind-rebased events
+              clientId: commandEvents[0]!.clientId,
+              sessionId: commandEvents[0]!.sessionId,
+            })
+            const replayedEvent = new LiveStoreEvent.Client.EncodedWithMeta(encoded)
+            replayedEvent.meta.commandId = Option.some(commandId)
+            replayedEncoded.push(replayedEvent)
+          }
+
+          // Materialize replayed events within a transaction (materializeEventsBatch handles
+          // BEGIN/COMMIT and ROLLBACK on failure via Effect.addFinalizer)
+          yield* materializeEventsBatch({ batchItems: replayedEncoded, deferreds: undefined })
+
+          for (const re of replayedEncoded) {
+            newPending.push(re)
+          }
+        }
+
+        // Build the final sync state with actual pending after replay
+        const finalLocalHead = newPending.at(-1)?.seqNum ?? newUpstreamHead
+        const finalSyncState = new SyncState.SyncState({
+          pending: newPending,
+          upstreamHead: newUpstreamHead,
+          localHead: finalLocalHead,
         })
+
+        // Derive confirmed pending events from pre-merge syncState.pending minus rollbackEvents.
+        // These original in-memory events retain commandId (unlike reconstructed confirmedEvents).
+        const rollbackSeqNums = new Set(
+          mergeResult.rollbackEvents.map((e) => EventSequenceNumber.Client.toString(e.seqNum)),
+        )
+        const confirmedPendingEvents = syncState.pending.filter(
+          (e) => !rollbackSeqNums.has(EventSequenceNumber.Client.toString(e.seqNum)),
+        )
+        const confirmedCommandIds = new Set<string>()
+        for (const event of confirmedPendingEvents) {
+          const cmdId = Option.getOrUndefined(event.meta.commandId)
+          if (cmdId !== undefined) confirmedCommandIds.add(cmdId)
+        }
+        if (confirmedCommandIds.size > 0) {
+          yield* commandJournal.remove([...confirmedCommandIds]).pipe(Effect.orDie)
+        }
+
+        const globalRebasedPendingEvents = newPending.filter((event) => {
+          const eventDef = schema.eventsDefsMap.get(event.name)
+          return eventDef === undefined ? true : !eventDef.options.clientOnly
+        })
+        yield* restartBackendPushing(globalRebasedPendingEvents)
+
+        // Removes the changeset rows which are no longer needed as we'll never have to rollback beyond this point
+        trimChangesetRows(db, newBackendHead)
+
+        // Broadcast rebase to sessions with all events (confirmed + replayed pending) and any conflicts.
+        // Using replayed events instead of blind-rebased events ensures sessions see the correct
+        // (re-executed) command output, not the stale original content.
+        yield* connectedClientSessionPullQueues.offer({
+          payload: {
+            _tag: 'upstream-rebase' as const,
+            newEvents: [...confirmedEvents, ...newPending],
+            rollbackEvents: mergeResult.rollbackEvents,
+            conflicts: replayConflicts,
+            replayedPending: newPending,
+          },
+          leaderHead: finalLocalHead,
+        })
+
+        advancePushHead(finalLocalHead)
+        yield* SubscriptionRef.set(syncStateSref, finalSyncState)
       } else {
         otelSpan?.addEvent(
           `pull:advance`,
           {
-            newEventsCount: newEvents.length,
+            newEventsCount: newEventsToProcess.length,
             mergeResult: TRACE_VERBOSE === true ? jsonStringify(mergeResult) : undefined,
           },
           undefined,
@@ -823,31 +1275,46 @@ const backgroundBackendPulling = Effect.fn('@livestore/common:LeaderSyncProcesso
         })
         yield* restartBackendPushing(globalPendingEvents)
 
+        // Extract commandIds from confirmed events so we can notify sessions and clean up the journal
+        const confirmedCommandIds = new Set<string>()
+        for (const event of mergeResult.confirmedEvents) {
+          const cmdId = Option.getOrUndefined(event.meta.commandId)
+          if (cmdId !== undefined) confirmedCommandIds.add(cmdId)
+        }
+
         yield* connectedClientSessionPullQueues.offer({
-          payload: SyncState.payloadFromMergeResult(mergeResult),
+          payload: {
+            _tag: 'upstream-advance' as const,
+            newEvents: mergeResult.newEvents,
+            confirmedCommandIds: [...confirmedCommandIds],
+          },
           leaderHead: mergeResult.newSyncState.localHead,
         })
 
         if (mergeResult.confirmedEvents.length > 0) {
           // `mergeResult.confirmedEvents` don't contain the correct sync metadata, so we need to use
           // `newEvents` instead which we filter via `mergeResult.confirmedEvents`
-          const confirmedNewEvents = newEvents.filter((event) =>
+          const confirmedNewEvents = newEventsToProcess.filter((event) =>
             mergeResult.confirmedEvents.some((confirmedEvent) =>
               EventSequenceNumber.Client.isEqual(event.seqNum, confirmedEvent.seqNum),
             ),
           )
           yield* Eventlog.updateSyncMetadata(confirmedNewEvents).pipe(UnknownError.mapToUnknownError)
         }
+
+        if (confirmedCommandIds.size > 0) {
+          const commandJournal = makeCommandJournal(dbEventlog)
+          yield* commandJournal.remove([...confirmedCommandIds]).pipe(Effect.orDie)
+        }
+
+        // Removes the changeset rows which are no longer needed as we'll never have to rollback beyond this point
+        trimChangesetRows(db, newBackendHead)
+
+        yield* materializeEventsBatch({ batchItems: mergeResult.newEvents, deferreds: undefined })
+
+        advancePushHead(mergeResult.newSyncState.localHead)
+        yield* SubscriptionRef.set(syncStateSref, mergeResult.newSyncState)
       }
-
-      // Removes the changeset rows which are no longer needed as we'll never have to rollback beyond this point
-      trimChangesetRows(db, newBackendHead)
-
-      advancePushHead(mergeResult.newSyncState.localHead)
-
-      yield* materializeEventsBatch({ batchItems: mergeResult.newEvents, deferreds: undefined })
-
-      yield* SubscriptionRef.set(syncStateSref, mergeResult.newSyncState)
 
       // Allow local pushes to be processed again
       if (pageInfo._tag === 'NoMore') {
@@ -1045,6 +1512,7 @@ const makePullQueueSet = Effect.gen(function* () {
                 newEvents: ReadonlyArray.dropWhile(payload.newEvents, (eventEncoded) =>
                   EventSequenceNumber.Client.isGreaterThanOrEqual(cursor, eventEncoded.seqNum),
                 ),
+                confirmedCommandIds: payload.confirmedCommandIds,
               },
             }
           } else {
@@ -1098,8 +1566,12 @@ const makePullQueueSet = Effect.gen(function* () {
 
       // console.debug(`offering to ${set.size} queues`, item.leaderHead, JSON.stringify(item.payload, null, 2))
 
-      // Short-circuit if the payload is an empty upstream advance
-      if (item.payload._tag === 'upstream-advance' && item.payload.newEvents.length === 0) {
+      // Short-circuit if the payload is an empty upstream advance with no confirmed commands
+      if (
+        item.payload._tag === 'upstream-advance' &&
+        item.payload.newEvents.length === 0 &&
+        (item.payload.confirmedCommandIds === undefined || item.payload.confirmedCommandIds.length === 0)
+      ) {
         return
       }
 
@@ -1245,12 +1717,17 @@ const replayCommand = Effect.fn('@livestore/common:LeaderSyncProcessor:replayCom
   // Look up command definition from schema
   const commandDef = schema.commandDefsMap.get(command.name)
   if (commandDef === undefined) {
-    return yield* Effect.die(new CommandExecutionError({
-      command: { name: command.name, id: command.id },
-      phase: 'replay',
-      reason: 'CommandNotFound',
-      description: `Command definition "${command.name}" not found in schema`,
-    }))
+    yield* commandJournal.remove([command.id]).pipe(Effect.orDie)
+    return yield* Effect.fail({
+      command,
+      error: new CommandExecutionError({
+        command: { name: command.name, id: command.id },
+        phase: 'replay',
+        reason: 'CommandNotFound',
+        description: `Command definition "${command.name}" not found in schema`,
+      }),
+      timestamp: Date.now(),
+    } satisfies ReplayConflict)
   }
 
   // TODO: replay should be transactional with event append
@@ -1280,34 +1757,42 @@ const replayCommand = Effect.fn('@livestore/common:LeaderSyncProcessor:replayCom
   if (replayResult._tag === 'ok') {
     const events = replayResult.events
     if (events.length === 0) {
-      return yield* Effect.die( new CommandExecutionError({
-        command: { name: command.name, id: command.id },
-        phase: 'replay',
-        reason: 'NoEventProduced',
-        description:
-          'Command handlers must return one event, an array with at least one event, or a recoverable error value.',
-      }))
+      // No events produced on replay — treat as a conflict (command is no longer applicable)
+      yield* commandJournal.remove([command.id]).pipe(Effect.orDie)
+      return yield* Effect.fail({
+        command,
+        error: new CommandExecutionError({
+          command: { name: command.name, id: command.id },
+          phase: 'replay',
+          reason: 'NoEventProduced',
+          description: 'Command produced no events on replay.',
+        }),
+        timestamp: Date.now(),
+      } satisfies ReplayConflict)
     }
     return events
   } else if (replayResult._tag === 'error') {
     // Command's previous events are rolled back on conflict — remove from journal since
     // there are no pending events left to confirm.
     yield* commandJournal.remove([command.id]).pipe(Effect.orDie)
-    const conflict: ReplayConflict = {
+    return yield* Effect.fail({
       command,
       error: replayResult.error,
       timestamp: Date.now(),
-    }
-    return yield* Effect.fail(conflict)
+    } satisfies ReplayConflict)
   } else if (replayResult._tag === 'threw') {
     // Handler threw unexpectedly — remove from journal since retrying won't help.
     yield* commandJournal.remove([command.id]).pipe(Effect.orDie)
-    return yield* Effect.die(new CommandExecutionError({
-      command: { id: command.id, name: command.name},
-      phase: 'replay',
-      reason: 'CommandHandlerThrew',
-      cause: replayResult.cause,
-    }))
+    return yield* Effect.fail({
+      command,
+      error: new CommandExecutionError({
+        command: { id: command.id, name: command.name },
+        phase: 'replay',
+        reason: 'CommandHandlerThrew',
+        cause: replayResult.cause,
+      }),
+      timestamp: Date.now(),
+    } satisfies ReplayConflict)
   } else {
     return shouldNeverHappen('Unexpected replay result', replayResult)
   }

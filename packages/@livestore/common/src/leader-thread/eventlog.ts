@@ -94,6 +94,7 @@ export const getEventsSince = ({
           syncMetadata: eventlogEvent.syncMetadataJson,
           materializerHashLeader: Option.none(),
           materializerHashSession: Option.none(),
+          commandId: Option.none(),
         },
       })
     })

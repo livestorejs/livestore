@@ -2,6 +2,8 @@
 import { LS_DEV, shouldNeverHappen, TRACE_VERBOSE } from '@livestore/utils'
 import {
   BucketQueue,
+  Cause,
+  Deferred,
   Effect,
   Exit,
   FiberHandle,
@@ -16,7 +18,9 @@ import {
 import type * as otel from '@opentelemetry/api'
 
 import { type ClientSession, UnknownError } from '../adapter-types.ts'
-import type { MaterializeError } from '../errors.ts'
+import { CommandExecutionError, type MaterializeError } from '../errors.ts'
+import type { CommandPushResult } from '../leader-thread/types.ts'
+import type { CommandInstance } from '../schema/command/command-instance.ts'
 import * as EventSequenceNumber from '../schema/EventSequenceNumber/mod.ts'
 import * as LiveStoreEvent from '../schema/LiveStoreEvent/mod.ts'
 import type { LiveStoreSchema } from '../schema/mod.ts'
@@ -29,6 +33,25 @@ import * as SyncState from './syncstate.ts'
 
 /** Serialize value to JSON string for trace attributes */
 const jsonStringify = Schema.encodeSync(Schema.parseJson())
+
+const shouldRejectReplayFailure = (error: unknown): boolean => {
+  if (Schema.is(CommandExecutionError)(error) === true) {
+    return error.reason !== undefined
+  }
+
+  if (typeof error === 'object' && error !== null) {
+    const reason = (error as { reason?: unknown }).reason
+    if (
+      reason === 'CommandHandlerThrew' ||
+      reason === 'NoEventProduced' ||
+      reason === 'CommandNotFound'
+    ) {
+      return true
+    }
+  }
+
+  return false
+}
 
 /**
  * Rebase behaviour:
@@ -52,6 +75,7 @@ export const makeClientSessionSyncProcessor = ({
   materializeEvent,
   rollback,
   refreshTables,
+  resolveCommandConfirmation,
   span,
   params,
   confirmUnsavedChanges,
@@ -75,6 +99,11 @@ export const makeClientSessionSyncProcessor = ({
   >
   rollback: (changeset: Uint8Array<ArrayBuffer>) => void
   refreshTables: (tables: Set<string>) => void
+  /** Called when a command's events are confirmed or when a replay conflict is detected. */
+  resolveCommandConfirmation: (
+    commandId: string,
+    result: { _tag: 'confirmed' } | { _tag: 'conflict'; error: unknown } | { _tag: 'reject'; error: unknown },
+  ) => void
   span: otel.Span
   params: {
     leaderPushBatchSize: number
@@ -108,8 +137,63 @@ export const makeClientSessionSyncProcessor = ({
   const isClientEvent = (eventEncoded: LiveStoreEvent.Client.EncodedWithMeta) =>
     schema.eventsDefsMap.get(eventEncoded.name)?.options.clientOnly ?? false
 
+  type LeaderPushItem =
+    | { readonly _tag: 'event'; readonly event: LiveStoreEvent.Client.EncodedWithMeta }
+    | { readonly _tag: 'command'; readonly command: CommandInstance; readonly deferred: Deferred.Deferred<CommandPushResult, never> }
+
   /** We're queuing push requests to reduce the number of messages sent to the leader by batching them */
-  const leaderPushQueue = BucketQueue.make<LiveStoreEvent.Client.EncodedWithMeta>().pipe(Effect.runSync)
+  const leaderPushQueue = BucketQueue.make<LeaderPushItem>().pipe(Effect.runSync)
+
+  /**
+   * Resolves pending command confirmations after a backend-level sync event.
+   *
+   * For advances: the leader includes `confirmedCommandIds` when the backend acknowledges
+   * pending events that originated from commands. This handles the common case where events
+   * are confirmed without a rebase (no upstream conflicts).
+   *
+   * For rebases: a command is confirmed when its replayed events appear in the rebase newEvents.
+   * A command is conflicted when it appears in the rebase payload's `conflicts` array.
+   */
+  const resolveConfirmedCommands = (
+    payload: typeof SyncState.Payload.Type,
+  ) => {
+    if (payload._tag === 'upstream-advance') {
+      // Backend confirmed these commands via advance (no rebase needed)
+      for (const commandId of payload.confirmedCommandIds) {
+        resolveCommandConfirmation(commandId, { _tag: 'confirmed' })
+      }
+      return
+    }
+
+    if (payload._tag !== 'upstream-rebase') return
+
+    // Resolve replay conflicts reported by the leader
+    const conflictIds = new Set<string>()
+    for (const conflict of payload.conflicts) {
+      conflictIds.add(conflict.commandId)
+      if (shouldRejectReplayFailure(conflict.error)) {
+        resolveCommandConfirmation(conflict.commandId, { _tag: 'reject', error: conflict.error })
+      } else {
+        resolveCommandConfirmation(conflict.commandId, { _tag: 'conflict', error: conflict.error })
+      }
+    }
+
+    // Resolve confirmed commands — only commands the LEADER has replayed (in replayedPending).
+    // Commands that exist in the session's pending but weren't replayed by the leader
+    // (because they hadn't been pushed to the leader yet) must NOT be confirmed here;
+    // they will be confirmed later via an advance with confirmedCommandIds after the
+    // backend round-trip completes.
+    const confirmedIds = new Set<string>()
+    for (const event of payload.replayedPending) {
+      const cmdId = Option.getOrUndefined(event.meta.commandId)
+      if (cmdId !== undefined && !conflictIds.has(cmdId)) {
+        confirmedIds.add(cmdId)
+      }
+    }
+    for (const commandId of confirmedIds) {
+      resolveCommandConfirmation(commandId, { _tag: 'confirmed' })
+    }
+  }
 
   const push: ClientSessionSyncProcessor['push'] = Effect.fn('client-session-sync-processor:push')(function* (batch) {
     // TODO validate batch
@@ -184,8 +268,7 @@ export const makeClientSessionSyncProcessor = ({
     }
 
     // Trigger push to leader
-    // console.debug('pushToLeader', encodedEventDefs.length, ...encodedEventDefs.map((_) => _.toJSON()))
-    yield* BucketQueue.offerAll(leaderPushQueue, encodedEventDefs)
+    yield* BucketQueue.offerAll(leaderPushQueue, encodedEventDefs.map((event) => ({ _tag: 'event' as const, event })))
 
     return { writeTables }
   })
@@ -219,12 +302,49 @@ export const makeClientSessionSyncProcessor = ({
 
     const backgroundLeaderPushing = Effect.gen(function* () {
       const batch = yield* BucketQueue.takeBetween(leaderPushQueue, 1, params.leaderPushBatchSize)
-      yield* clientSession.leaderThread.events.push(batch).pipe(
-        Effect.catchTag('LeaderAheadError', () => {
-          debugInfo.rejectCount++
-          return BucketQueue.clear(leaderPushQueue)
-        }),
-      )
+
+      // Process items in order, batching consecutive events but flushing before/after commands
+      let eventAccum: LiveStoreEvent.Client.EncodedWithMeta[] = []
+
+      const flushEvents = Effect.gen(function* () {
+        if (eventAccum.length === 0) return
+        yield* clientSession.leaderThread.events.push(eventAccum).pipe(
+          Effect.catchTag('LeaderAheadError', () => {
+            debugInfo.rejectCount++
+            const rejectedSeqNums = new Set(
+              eventAccum.map((event) => EventSequenceNumber.Client.toString(event.seqNum)),
+            )
+            const nextPending = syncStateRef.current.pending.filter(
+              (event) => !rejectedSeqNums.has(EventSequenceNumber.Client.toString(event.seqNum)),
+            )
+            syncStateRef.current = new SyncState.SyncState({
+              pending: nextPending,
+              upstreamHead: syncStateRef.current.upstreamHead,
+              localHead: nextPending.at(-1)?.seqNum ?? syncStateRef.current.upstreamHead,
+            })
+            return Effect.void
+          }),
+        )
+        eventAccum = []
+      })
+
+      for (const item of batch) {
+        if (item._tag === 'event') {
+          eventAccum.push(item.event)
+        } else {
+          // Flush accumulated events first to preserve ordering
+          yield* flushEvents
+          // Push command and resolve deferred
+          const result = yield* clientSession.leaderThread.commands.push(item.command).pipe(
+            Effect.catchAll((error) =>
+              Effect.succeed({ _tag: 'threw' as const, cause: error } satisfies CommandPushResult),
+            ),
+          )
+          yield* Deferred.succeed(item.deferred, result)
+        }
+      }
+      // Flush remaining events
+      yield* flushEvents
     }).pipe(Effect.forever, Effect.interruptible, Effect.tapCauseLogPretty)
 
     yield* FiberHandle.run(leaderPushingFiberHandle, backgroundLeaderPushing)
@@ -254,7 +374,89 @@ export const makeClientSessionSyncProcessor = ({
             return shouldNeverHappen('Unexpected reject in client-session-sync-processor', mergeResult)
           }
 
-          syncStateRef.current = mergeResult.newSyncState
+          let effectiveNewSyncState = mergeResult.newSyncState
+          let effectiveNewEvents = mergeResult.newEvents
+
+          // In command mode, an upstream advance can include a command event that also exists in
+          // local pending (same commandId). The generic rebase merge then appends a blind-rebased
+          // pending copy, which would duplicate materialization. Drop those rebased duplicates.
+          if (mergeResult._tag === 'rebase' && payload._tag === 'upstream-advance') {
+            const upstreamCommandIds = new Set<string>()
+            for (const event of payload.newEvents) {
+              const cmdId = Option.getOrUndefined(event.meta.commandId)
+              if (cmdId !== undefined) upstreamCommandIds.add(cmdId)
+            }
+
+            if (upstreamCommandIds.size > 0) {
+              const droppedPendingSeqNums = new Set<string>()
+              const dedupedPending = mergeResult.newSyncState.pending.filter((event) => {
+                const cmdId = Option.getOrUndefined(event.meta.commandId)
+                const shouldDrop = cmdId !== undefined && upstreamCommandIds.has(cmdId)
+                if (shouldDrop) {
+                  droppedPendingSeqNums.add(EventSequenceNumber.Client.toString(event.seqNum))
+                }
+                return !shouldDrop
+              })
+
+              effectiveNewSyncState = new SyncState.SyncState({
+                pending: dedupedPending,
+                upstreamHead: mergeResult.newSyncState.upstreamHead,
+                localHead: dedupedPending.at(-1)?.seqNum ?? mergeResult.newSyncState.upstreamHead,
+              })
+              effectiveNewEvents = mergeResult.newEvents.filter(
+                (event) => !droppedPendingSeqNums.has(EventSequenceNumber.Client.toString(event.seqNum)),
+              )
+            }
+          }
+
+          if (payload._tag === 'upstream-advance' && payload.confirmedCommandIds.length > 0) {
+            const confirmedCommandIds = new Set(payload.confirmedCommandIds)
+            const pendingWithoutConfirmed = effectiveNewSyncState.pending.filter((event) => {
+              const cmdId = Option.getOrUndefined(event.meta.commandId)
+              return cmdId === undefined || !confirmedCommandIds.has(cmdId)
+            })
+            effectiveNewSyncState = new SyncState.SyncState({
+              pending: pendingWithoutConfirmed,
+              upstreamHead: effectiveNewSyncState.upstreamHead,
+              localHead: pendingWithoutConfirmed.at(-1)?.seqNum ?? effectiveNewSyncState.upstreamHead,
+            })
+          }
+
+          // `payload.replayedPending` are authoritative events already accepted by the leader.
+          // Keep them in `newEvents` for one-time materialization, but do not keep them in
+          // session pending; otherwise later upstream advances rebase/replay them again.
+          if (payload._tag === 'upstream-rebase' && payload.replayedPending.length > 0) {
+            const replayedPool = [...payload.replayedPending]
+            const pendingWithoutLeaderReplayed = effectiveNewSyncState.pending.filter((pendingEvent) => {
+              const matchIdx = replayedPool.findIndex((replayedEvent) => {
+                const pendingCommandId = Option.getOrUndefined(pendingEvent.meta.commandId)
+                const replayedCommandId = Option.getOrUndefined(replayedEvent.meta.commandId)
+                if (pendingCommandId !== undefined || replayedCommandId !== undefined) {
+                  return (
+                    pendingCommandId !== undefined &&
+                    replayedCommandId !== undefined &&
+                    pendingCommandId === replayedCommandId
+                  )
+                }
+                return (
+                  pendingEvent.name === replayedEvent.name &&
+                  pendingEvent.clientId === replayedEvent.clientId &&
+                  pendingEvent.sessionId === replayedEvent.sessionId &&
+                  JSON.stringify(pendingEvent.args) === JSON.stringify(replayedEvent.args)
+                )
+              })
+              if (matchIdx === -1) return true
+              replayedPool.splice(matchIdx, 1)
+              return false
+            })
+            effectiveNewSyncState = new SyncState.SyncState({
+              pending: pendingWithoutLeaderReplayed,
+              upstreamHead: effectiveNewSyncState.upstreamHead,
+              localHead: pendingWithoutLeaderReplayed.at(-1)?.seqNum ?? effectiveNewSyncState.upstreamHead,
+            })
+          }
+
+          syncStateRef.current = effectiveNewSyncState
 
           if (mergeResult._tag === 'rebase') {
             span.addEvent(
@@ -297,14 +499,6 @@ export const makeClientSessionSyncProcessor = ({
                 event.meta.sessionChangeset = { _tag: 'unset' }
               }
             }
-
-            if (SIMULATION_ENABLED === true) yield* simSleep('pull', '4_before_leader_push_queue_offer')
-
-            yield* BucketQueue.offerAll(leaderPushQueue, mergeResult.newSyncState.pending)
-
-            if (SIMULATION_ENABLED === true) yield* simSleep('pull', '5_before_leader_push_fiber_run')
-
-            yield* FiberHandle.run(leaderPushingFiberHandle, backgroundLeaderPushing)
           } else {
             span.addEvent(
               'merge:pull:advance',
@@ -320,34 +514,160 @@ export const makeClientSessionSyncProcessor = ({
             debugInfo.advanceCount++
           }
 
-          if (mergeResult.newEvents.length === 0) {
+          if (effectiveNewEvents.length === 0) {
+            if (mergeResult._tag === 'rebase') {
+              if (payload._tag === 'upstream-rebase') {
+                const leaderReplayedSeqNums = new Set(
+                  payload.replayedPending.map((event) => EventSequenceNumber.Client.toString(event.seqNum)),
+                )
+                const pendingToRepush = effectiveNewSyncState.pending.filter(
+                  (event) =>
+                    !leaderReplayedSeqNums.has(EventSequenceNumber.Client.toString(event.seqNum)) &&
+                    Option.isNone(event.meta.commandId),
+                )
+                if (SIMULATION_ENABLED === true) yield* simSleep('pull', '4_before_leader_push_queue_offer')
+                yield* BucketQueue.offerAll(
+                  leaderPushQueue,
+                  pendingToRepush.map((event) => ({ _tag: 'event' as const, event })),
+                )
+              }
+              if (SIMULATION_ENABLED === true) yield* simSleep('pull', '5_before_leader_push_fiber_run')
+              yield* FiberHandle.run(leaderPushingFiberHandle, backgroundLeaderPushing)
+            }
             // If there are no new events, we need to update the sync state as well
-            yield* syncStateUpdateQueue.offer(mergeResult.newSyncState)
+            resolveConfirmedCommands(payload)
+            yield* syncStateUpdateQueue.offer(effectiveNewSyncState)
             return
           }
 
+          // Materialize events. During rebase, pending events may conflict with upstream events
+          // (e.g., when the session's optimistic events clash with externally confirmed events).
+          // Catch materialization errors on pending events and treat them as conflicts.
           const writeTables = new Set<string>()
-          for (const event of mergeResult.newEvents) {
-            const {
-              writeTables: newWriteTables,
-              sessionChangeset,
-              materializerHash,
-            } = yield* materializeEvent(event, {
-              withChangeset: true,
-              materializerHashLeader: event.meta.materializerHashLeader,
-            })
-            for (const table of newWriteTables) {
-              writeTables.add(table)
+          const conflictedCommandIds = new Set<string>()
+
+          // Pre-collect conflicted commandIds reported by the leader so we can skip materializing
+          // their events entirely (all-or-nothing for multi-event commands). Leader-reported
+          // conflicts are resolved later by resolveConfirmedCommands with the proper error info.
+          const leaderConflictedCmdIds = new Set<string>()
+          if (payload._tag === 'upstream-rebase') {
+            for (const conflict of payload.conflicts) {
+              leaderConflictedCmdIds.add(conflict.commandId)
+            }
+          }
+
+          // Identify pending events so we can handle their materialization errors gracefully
+          const pendingSeqNums = mergeResult._tag === 'rebase'
+            ? new Set(effectiveNewSyncState.pending.map((e) => EventSequenceNumber.Client.toString(e.seqNum)))
+            : undefined
+
+          for (const event of effectiveNewEvents) {
+            const isPendingEvent = pendingSeqNums?.has(EventSequenceNumber.Client.toString(event.seqNum)) ?? false
+
+            if (isPendingEvent) {
+              // Skip events from commands the leader already reported as conflicted, or from
+              // commands where an earlier event in the same batch failed to materialize.
+              // This ensures multi-event commands are treated as all-or-nothing.
+              const cmdId = Option.getOrUndefined(event.meta.commandId)
+              if (cmdId !== undefined && (leaderConflictedCmdIds.has(cmdId) || conflictedCommandIds.has(cmdId))) {
+                continue
+              }
+
+              // Rebased pending event — handle materialization errors gracefully.
+              // Use Effect.exit to catch both typed failures AND defects (e.g., SQLite constraint violations
+              // that propagate as synchronous throws → Effect.die).
+              const materializeResult = yield* materializeEvent(event, {
+                withChangeset: true,
+                materializerHashLeader: event.meta.materializerHashLeader,
+              }).pipe(Effect.exit)
+
+              if (Exit.isFailure(materializeResult)) {
+                // Materialization failed — record as conflict if it's a command event
+                if (cmdId !== undefined) {
+                  conflictedCommandIds.add(cmdId)
+                }
+                continue
+              }
+
+              const { writeTables: newWriteTables, sessionChangeset, materializerHash } = materializeResult.value
+              for (const table of newWriteTables) {
+                writeTables.add(table)
+              }
+              event.meta.sessionChangeset = sessionChangeset
+              event.meta.materializerHashSession = materializerHash
+            } else {
+              // Upstream event — must succeed
+              const {
+                writeTables: newWriteTables,
+                sessionChangeset,
+                materializerHash,
+              } = yield* materializeEvent(event, {
+                withChangeset: true,
+                materializerHashLeader: event.meta.materializerHashLeader,
+              })
+              for (const table of newWriteTables) {
+                writeTables.add(table)
+              }
+              event.meta.sessionChangeset = sessionChangeset
+              event.meta.materializerHashSession = materializerHash
+            }
+          }
+
+          // For rebase: update pending to exclude conflicted command events, re-queue, and restart push
+          if (mergeResult._tag === 'rebase') {
+            // Combine locally-detected and leader-reported conflicts for pending cleanup
+            const allConflictedCmdIds = new Set([...conflictedCommandIds, ...leaderConflictedCmdIds])
+            let effectivePending = effectiveNewSyncState.pending
+            if (allConflictedCmdIds.size > 0) {
+              // Drop all events belonging to conflicted commands from pending
+              effectivePending = effectiveNewSyncState.pending.filter((e) => {
+                const cmdId = Option.getOrUndefined(e.meta.commandId)
+                return cmdId === undefined || !allConflictedCmdIds.has(cmdId)
+              })
+              // Update sync state with surviving pending
+              syncStateRef.current = new SyncState.SyncState({
+                pending: effectivePending,
+                upstreamHead: effectiveNewSyncState.upstreamHead,
+                localHead: effectivePending.at(-1)?.seqNum ?? effectiveNewSyncState.upstreamHead,
+              })
             }
 
-            event.meta.sessionChangeset = sessionChangeset
-            event.meta.materializerHashSession = materializerHash
+            if (payload._tag === 'upstream-rebase') {
+              if (SIMULATION_ENABLED === true) yield* simSleep('pull', '4_before_leader_push_queue_offer')
+
+              const leaderReplayedSeqNums = new Set(
+                payload.replayedPending.map((event) => EventSequenceNumber.Client.toString(event.seqNum)),
+              )
+              const pendingToRepush = effectivePending.filter(
+                (event) =>
+                  !leaderReplayedSeqNums.has(EventSequenceNumber.Client.toString(event.seqNum)) &&
+                  Option.isNone(event.meta.commandId),
+              )
+              yield* BucketQueue.offerAll(
+                leaderPushQueue,
+                pendingToRepush.map((event) => ({ _tag: 'event' as const, event })),
+              )
+
+            }
+            if (SIMULATION_ENABLED === true) yield* simSleep('pull', '5_before_leader_push_fiber_run')
+            yield* FiberHandle.run(leaderPushingFiberHandle, backgroundLeaderPushing)
+
+            // Resolve conflicted commands
+            for (const cmdId of conflictedCommandIds) {
+              resolveCommandConfirmation(cmdId, {
+                _tag: 'reject',
+                error: new Error('Command events could not be materialized after rebase'),
+              })
+            }
           }
 
           refreshTables(writeTables)
 
+          // Resolve command confirmations after materialization so the store state is up-to-date
+          resolveConfirmedCommands(payload)
+
           // We're only triggering the sync state update after all events have been materialized
-          yield* syncStateUpdateQueue.offer(mergeResult.newSyncState)
+          yield* syncStateUpdateQueue.offer(syncStateRef.current)
         }).pipe(
           Effect.tapCauseLogPretty,
           Effect.catchAllCause((cause) => clientSession.shutdown(Exit.failCause(cause))),
@@ -362,8 +682,91 @@ export const makeClientSessionSyncProcessor = ({
     )
   })
 
+  const pushCommand: ClientSessionSyncProcessor['pushCommand'] = Effect.fn(
+    'client-session-sync-processor:pushCommand',
+  )(function* ({ events, command }) {
+    // Optimistically materialize command events on the session (same as push)
+    let baseEventSequenceNumber = syncStateRef.current.localHead
+    const encodedEventDefs = events.map(({ name, args }) => {
+      const eventDef = schema.eventsDefsMap.get(name)
+      if (eventDef === undefined) {
+        return shouldNeverHappen(`No event definition found for \`${name}\`.`)
+      }
+      const nextNumPair = EventSequenceNumber.Client.nextPair({
+        seqNum: baseEventSequenceNumber,
+        isClient: eventDef.options.clientOnly,
+        rebaseGeneration: baseEventSequenceNumber.rebaseGeneration,
+      })
+      baseEventSequenceNumber = nextNumPair.seqNum
+      const event = new LiveStoreEvent.Client.EncodedWithMeta(
+        Schema.encodeUnknownSync(eventSchema)({
+          name,
+          args,
+          ...nextNumPair,
+          clientId: clientSession.clientId,
+          sessionId: clientSession.sessionId,
+        }),
+      )
+      event.meta.commandId = Option.some(command.id)
+      return event
+    })
+
+    const mergeResult = SyncState.merge({
+      syncState: syncStateRef.current,
+      payload: { _tag: 'local-push', newEvents: encodedEventDefs },
+      isClientEvent,
+      isEqualEvent: LiveStoreEvent.Client.isEqualEncoded,
+    })
+
+    if (mergeResult._tag === 'unknown-error') {
+      return shouldNeverHappen('Unknown error in client-session-sync-processor:pushCommand', mergeResult.message)
+    }
+
+    if (mergeResult._tag !== 'advance') {
+      return shouldNeverHappen(`Expected advance, got ${mergeResult._tag}`)
+    }
+
+    syncStateRef.current = mergeResult.newSyncState
+    yield* syncStateUpdateQueue.offer(mergeResult.newSyncState)
+
+    // Materialize events to state
+    const writeTables = new Set<string>()
+    for (const event of mergeResult.newEvents) {
+      const {
+        writeTables: newWriteTables,
+        sessionChangeset,
+        materializerHash,
+      } = yield* materializeEvent(event, {
+        withChangeset: true,
+        materializerHashLeader: Option.none(),
+      })
+      for (const table of newWriteTables) {
+        writeTables.add(table)
+      }
+      event.meta.sessionChangeset = sessionChangeset
+      event.meta.materializerHashSession = materializerHash
+    }
+
+    // Queue the command for the leader (not the events — the leader executes the command independently)
+    const deferred = yield* Deferred.make<CommandPushResult>()
+    yield* BucketQueue.offerAll(leaderPushQueue, [{ _tag: 'command' as const, command, deferred }])
+
+    // Return immediately with writeTables for UI refresh and a promise for the leader result.
+    // We convert the deferred to a promise so the caller can await it without blocking the Effect runtime.
+    const pushResult = new Promise<CommandPushResult>((resolve, reject) => {
+      Deferred.await(deferred).pipe(
+        Effect.tap((result) => Effect.sync(() => resolve(result))),
+        Effect.tapErrorCause((cause) => Effect.sync(() => reject(cause))),
+        Effect.provide(runtime),
+        Effect.runFork,
+      )
+    })
+    return { writeTables, pushResult }
+  })
+
   return {
     push,
+    pushCommand,
     boot,
     syncState: Subscribable.make({
       get: Effect.gen(function* () {
@@ -383,7 +786,7 @@ export const makeClientSessionSyncProcessor = ({
           const pushQueueItems = yield* BucketQueue.peekAll(leaderPushQueue)
           console.log(
             'pushQueueItems',
-            pushQueueItems.map((_) => _.toJSON()),
+            pushQueueItems.map((_) => (_._tag === 'event' ? _.event.toJSON() : { _tag: 'command', command: _.command })),
           )
         }).pipe(Effect.provide(runtime), Effect.runSync),
       debugInfo: () => debugInfo,
@@ -395,6 +798,15 @@ export interface ClientSessionSyncProcessor {
   push: (
     batch: ReadonlyArray<LiveStoreEvent.Input.Decoded>,
   ) => Effect.Effect<{ writeTables: Set<string> }, MaterializeError>
+  /**
+   * Optimistically materialize command events on the session, then push the command to the leader.
+   * Returns immediately with `writeTables` for UI refresh and a `pushResult` promise that resolves
+   * when the leader has processed the command.
+   */
+  pushCommand: (args: {
+    events: ReadonlyArray<LiveStoreEvent.Input.Decoded>
+    command: CommandInstance
+  }) => Effect.Effect<{ writeTables: Set<string>; pushResult: Promise<CommandPushResult> }, MaterializeError>
   boot: Effect.Effect<void, UnknownError, Scope.Scope>
   /**
    * Only used for debugging / observability.

@@ -394,6 +394,14 @@ export const makeSingleTabAdapter =
               Stream.orDie,
             ),
         },
+        commands: {
+          push: (command) =>
+            runInWorker(new WorkerSchema.LeaderWorkerInnerPushCommandToLeader({ command, clientId, sessionId })).pipe(
+              Effect.withSpan('@livestore/adapter-web:single-tab:pushCommandToLeader', {
+                attributes: { commandName: command.name },
+              }),
+            ),
+        },
 
         initialState: {
           leaderHead: initialLeaderHead,

@@ -137,6 +137,7 @@ export const makeInMemoryAdapter =
         schema,
         storeId,
         clientId,
+        sessionId,
         makeSqliteDb: sqliteDbFactory({ sqlite3 }),
         syncOptions: options.sync,
         syncPayloadEncoded,
@@ -189,6 +190,7 @@ export interface MakeLeaderThreadArgs {
   schema: LiveStoreSchema
   storeId: string
   clientId: string
+  sessionId: string
   makeSqliteDb: MakeWebSqliteDb
   syncOptions: SyncOptions | undefined
   syncPayloadEncoded: Schema.JsonValue | undefined
@@ -202,6 +204,7 @@ const makeLeaderThread = ({
   schema,
   storeId,
   clientId,
+  sessionId,
   makeSqliteDb,
   syncOptions,
   syncPayloadEncoded,
@@ -277,6 +280,9 @@ const makeLeaderThread = ({
               syncState: syncProcessor.syncState,
               options,
             }),
+        },
+        commands: {
+          push: (command) => syncProcessor.pushCommand({ command, clientId, sessionId }),
         },
         initialState: {
           leaderHead: initialLeaderHead,

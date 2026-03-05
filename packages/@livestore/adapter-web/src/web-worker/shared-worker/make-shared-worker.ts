@@ -252,6 +252,7 @@ const makeWorkerRunner = Effect.gen(function* () {
     // Proxied requests
     BootStatusStream: forwardRequestStream,
     PushToLeader: forwardRequest,
+    PushCommandToLeader: forwardRequest,
     PullStream: forwardRequestStream,
     StreamEvents: forwardRequestStream,
     Export: forwardRequest,

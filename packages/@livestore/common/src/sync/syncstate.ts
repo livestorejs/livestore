@@ -1,5 +1,5 @@
 import { casesHandled, LS_DEV, shouldNeverHappen } from '@livestore/utils'
-import { Match, ReadonlyArray, Schema } from '@livestore/utils/effect'
+import { Match, Option, ReadonlyArray, Schema } from '@livestore/utils/effect'
 
 import * as EventSequenceNumber from '../schema/EventSequenceNumber/mod.ts'
 import * as LiveStoreEvent from '../schema/LiveStoreEvent/mod.ts'
@@ -58,15 +58,32 @@ export class SyncState extends Schema.Class<SyncState>('SyncState')({
 /**
  * This payload propagates a rebase from the upstream node
  */
+/** Conflict info produced when a command fails during replay. */
+export class ReplayConflictInfo extends Schema.Class<ReplayConflictInfo>('ReplayConflictInfo')({
+  commandId: Schema.String,
+  error: Schema.Unknown,
+}) {}
+
 export class PayloadUpstreamRebase extends Schema.TaggedStruct('upstream-rebase', {
   /** Events which need to be rolled back */
   rollbackEvents: Schema.Array(LiveStoreEvent.Client.EncodedWithMeta),
   /** Events which need to be applied after the rollback (already rebased by the upstream node) */
   newEvents: Schema.Array(LiveStoreEvent.Client.EncodedWithMeta),
+  /** Commands that failed during replay (conflicts). Empty when no conflicts occurred. */
+  conflicts: Schema.optionalWith(Schema.Array(ReplayConflictInfo), { default: () => [] }),
+  /**
+   * When the leader replays commands during rebase, the replayed events replace the session's blind-rebased pending.
+   * If provided, the session adopts these as its new pending instead of blind-rebasing its own events.
+   */
+  replayedPending: Schema.optionalWith(Schema.Array(LiveStoreEvent.Client.EncodedWithMeta), {
+    default: () => [],
+  }),
 }) {}
 
 export class PayloadUpstreamAdvance extends Schema.TaggedStruct('upstream-advance', {
   newEvents: Schema.Array(LiveStoreEvent.Client.EncodedWithMeta),
+  /** CommandIds confirmed by the backend during this advance. Present when the backend acknowledges pending events that originated from commands. */
+  confirmedCommandIds: Schema.optionalWith(Schema.Array(Schema.String), { default: () => [] }),
 }) {}
 
 export class PayloadLocalPush extends Schema.TaggedStruct('local-push', {
@@ -178,11 +195,14 @@ export const payloadFromMergeResult = (
     Match.tag('advance', (result) => ({
       _tag: 'upstream-advance' as const,
       newEvents: result.newEvents,
+      confirmedCommandIds: [] as readonly string[],
     })),
     Match.tag('rebase', (result) => ({
       _tag: 'upstream-rebase' as const,
       newEvents: result.newEvents,
       rollbackEvents: result.rollbackEvents,
+      conflicts: [] as readonly ReplayConflictInfo[],
+      replayedPending: [] as readonly LiveStoreEvent.Client.EncodedWithMeta[],
     })),
     Match.exhaustive,
   )
@@ -229,22 +249,53 @@ export const merge = ({
       // Get the last new event's ID as the new upstream head
       const newUpstreamHead = payload.newEvents.at(-1)?.seqNum ?? syncState.upstreamHead
 
-      // Rebase pending events on top of the new events
-      const rebasedPending = rebaseEvents({
-        events: syncState.pending,
-        baseEventSequenceNumber: newUpstreamHead,
-        isClientEvent,
-      })
+      let effectivePending: readonly LiveStoreEvent.Client.EncodedWithMeta[]
+
+      if (payload.replayedPending.length > 0) {
+        // The leader replayed commands and provided authoritative pending events.
+        // payload.newEvents already contains [...confirmed, ...replayedPending], so we must NOT
+        // blind-rebase events the leader already processed — that would create duplicates.
+        // Only session-only events (not yet reflected in replayedPending) need blind rebasing.
+        // We must compare by event equality rather than seqNum because replayed events have fresh
+        // sequence numbers after rebase.
+        const replayedPool = [...payload.replayedPending]
+        const sessionOnlyPending = syncState.pending.filter((pendingEvent) => {
+          const matchIdx = replayedPool.findIndex((replayedEvent) =>
+            isSamePendingEventForRebase(pendingEvent, replayedEvent, isEqualEvent),
+          )
+          if (matchIdx === -1) return true
+          replayedPool.splice(matchIdx, 1)
+          return false
+        })
+        const rebasedSessionOnly = rebaseEvents({
+          events: sessionOnlyPending,
+          baseEventSequenceNumber: payload.replayedPending.at(-1)?.seqNum ?? newUpstreamHead,
+          isClientEvent,
+        })
+        effectivePending = [...payload.replayedPending, ...rebasedSessionOnly]
+      } else {
+        // No leader replay info — fall back to blind rebase of all session pending
+        effectivePending = rebaseEvents({
+          events: syncState.pending,
+          baseEventSequenceNumber: newUpstreamHead,
+          isClientEvent,
+        })
+      }
 
       return validateMergeResult(
         MergeResultRebase.make({
           _tag: 'rebase',
           newSyncState: new SyncState({
-            pending: rebasedPending,
+            pending: effectivePending,
             upstreamHead: newUpstreamHead,
-            localHead: rebasedPending.at(-1)?.seqNum ?? newUpstreamHead,
+            localHead: effectivePending.at(-1)?.seqNum ?? newUpstreamHead,
           }),
-          newEvents: [...payload.newEvents, ...rebasedPending],
+          // When replayedPending is provided, payload.newEvents already contains the replayed events;
+          // only append session-only blind-rebased events to avoid duplicates.
+          newEvents:
+            payload.replayedPending.length > 0
+              ? [...payload.newEvents, ...effectivePending.slice(payload.replayedPending.length)]
+              : [...payload.newEvents, ...effectivePending],
           rollbackEvents,
           mergeContext,
         }),
@@ -507,6 +558,33 @@ const rebaseEvents = ({
 }
 
 /**
+ * Rebase-aware pending identity matcher.
+ * - Command-originated events are matched by commandId because replay can produce different args/count.
+ * - Non-command events are matched structurally while ignoring sequence numbers.
+ */
+const isSamePendingEventForRebase = (
+  a: LiveStoreEvent.Client.EncodedWithMeta,
+  b: LiveStoreEvent.Client.EncodedWithMeta,
+  isEqualEvent: (a: LiveStoreEvent.Client.EncodedWithMeta, b: LiveStoreEvent.Client.EncodedWithMeta) => boolean,
+): boolean => {
+  const aCommandId = Option.getOrUndefined(a.meta.commandId)
+  const bCommandId = Option.getOrUndefined(b.meta.commandId)
+
+  if (aCommandId !== undefined || bCommandId !== undefined) {
+    return aCommandId !== undefined && bCommandId !== undefined && aCommandId === bCommandId
+  }
+
+  if (isEqualEvent(a, b) === true) return true
+
+  return (
+    a.name === b.name &&
+    a.clientId === b.clientId &&
+    a.sessionId === b.sessionId &&
+    JSON.stringify(a.args) === JSON.stringify(b.args)
+  )
+}
+
+/**
  * TODO: Implement this
  *
  * In certain scenarios e.g. when the client session has a queue of upstream update results,
@@ -590,30 +668,36 @@ const validateMergeResult = (mergeResult: typeof MergeResult.Type) => {
     })
   }
 
-  // Ensure new local head is greater than or equal to the previous local head
-  if (
-    EventSequenceNumber.Client.isGreaterThanOrEqual(
-      mergeResult.newSyncState.localHead,
-      mergeResult.mergeContext.syncState.localHead,
-    ) === false
-  ) {
-    shouldNeverHappen('New local head must be greater than or equal to the previous local head', {
-      localHead: mergeResult.newSyncState.localHead,
-      previousLocalHead: mergeResult.mergeContext.syncState.localHead,
-    })
-  }
+  // For advance results, ensure heads never regress.
+  // For rebase results, head regression is expected: the upstream may have rolled back events
+  // that the local node previously treated as confirmed (e.g., when the leader echoed command
+  // events as an advance before the backend confirmed them, then a backend rebase undid them).
+  if (mergeResult._tag === 'advance') {
+    // Ensure new local head is greater than or equal to the previous local head
+    if (
+      EventSequenceNumber.Client.isGreaterThanOrEqual(
+        mergeResult.newSyncState.localHead,
+        mergeResult.mergeContext.syncState.localHead,
+      ) === false
+    ) {
+      shouldNeverHappen('New local head must be greater than or equal to the previous local head', {
+        localHead: mergeResult.newSyncState.localHead,
+        previousLocalHead: mergeResult.mergeContext.syncState.localHead,
+      })
+    }
 
-  // Ensure new upstream head is greater than or equal to the previous upstream head
-  if (
-    EventSequenceNumber.Client.isGreaterThanOrEqual(
-      mergeResult.newSyncState.upstreamHead,
-      mergeResult.mergeContext.syncState.upstreamHead,
-    ) === false
-  ) {
-    shouldNeverHappen('New upstream head must be greater than or equal to the previous upstream head', {
-      upstreamHead: mergeResult.newSyncState.upstreamHead,
-      previousUpstreamHead: mergeResult.mergeContext.syncState.upstreamHead,
-    })
+    // Ensure new upstream head is greater than or equal to the previous upstream head
+    if (
+      EventSequenceNumber.Client.isGreaterThanOrEqual(
+        mergeResult.newSyncState.upstreamHead,
+        mergeResult.mergeContext.syncState.upstreamHead,
+      ) === false
+    ) {
+      shouldNeverHappen('New upstream head must be greater than or equal to the previous upstream head', {
+        upstreamHead: mergeResult.newSyncState.upstreamHead,
+        previousUpstreamHead: mergeResult.mergeContext.syncState.upstreamHead,
+      })
+    }
   }
 
   return mergeResult

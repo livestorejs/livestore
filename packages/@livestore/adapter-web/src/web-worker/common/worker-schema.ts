@@ -9,7 +9,7 @@ import {
   UnknownError,
 } from '@livestore/common'
 import { StreamEventsOptionsFields } from '@livestore/common/leader-thread'
-import { EventSequenceNumber, LiveStoreEvent } from '@livestore/common/schema'
+import { CommandInstanceSchema, EventSequenceNumber, LiveStoreEvent } from '@livestore/common/schema'
 import * as WebmeshWorker from '@livestore/devtools-web-common/worker'
 import { Schema, Transferable } from '@livestore/utils/effect'
 
@@ -90,6 +90,26 @@ export class LeaderWorkerInnerPushToLeader extends Schema.TaggedRequest<LeaderWo
     },
     success: Schema.Void as Schema.Schema<void>,
     failure: Schema.Union(UnknownError, LeaderAheadError),
+  },
+) {}
+
+/** Schema for CommandPushResult used in worker communication. */
+const CommandPushResultSchema = Schema.Union(
+  Schema.Struct({ _tag: Schema.Literal('ok') }),
+  Schema.Struct({ _tag: Schema.Literal('error'), error: Schema.Unknown }),
+  Schema.Struct({ _tag: Schema.Literal('threw'), cause: Schema.Unknown }),
+)
+
+export class LeaderWorkerInnerPushCommandToLeader extends Schema.TaggedRequest<LeaderWorkerInnerPushCommandToLeader>()(
+  'PushCommandToLeader',
+  {
+    payload: {
+      command: CommandInstanceSchema,
+      clientId: Schema.String,
+      sessionId: Schema.String,
+    },
+    success: CommandPushResultSchema,
+    failure: UnknownError,
   },
 ) {}
 
@@ -205,6 +225,7 @@ export const LeaderWorkerInnerRequest = Schema.Union(
   LeaderWorkerInnerInitialMessage,
   LeaderWorkerInnerBootStatusStream,
   LeaderWorkerInnerPushToLeader,
+  LeaderWorkerInnerPushCommandToLeader,
   LeaderWorkerInnerPullStream,
   LeaderWorkerInnerStreamEvents,
   LeaderWorkerInnerExport,
@@ -247,6 +268,7 @@ export class SharedWorkerRequest extends Schema.Union(
   // Proxied requests
   LeaderWorkerInnerBootStatusStream,
   LeaderWorkerInnerPushToLeader,
+  LeaderWorkerInnerPushCommandToLeader,
   LeaderWorkerInnerPullStream,
   LeaderWorkerInnerStreamEvents,
   LeaderWorkerInnerExport,

@@ -532,6 +532,14 @@ export const makePersistedAdapter =
               Stream.orDie,
             ),
         },
+        commands: {
+          push: (command) =>
+            runInWorker(new WorkerSchema.LeaderWorkerInnerPushCommandToLeader({ command, clientId, sessionId })).pipe(
+              Effect.withSpan('@livestore/adapter-web:client-session:pushCommandToLeader', {
+                attributes: { commandName: command.name },
+              }),
+            ),
+        },
 
         initialState: {
           leaderHead: initialLeaderHead,
