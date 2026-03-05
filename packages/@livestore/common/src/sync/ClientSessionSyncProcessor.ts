@@ -35,21 +35,13 @@ import * as SyncState from './syncstate.ts'
 const jsonStringify = Schema.encodeSync(Schema.parseJson())
 
 const shouldRejectReplayFailure = (error: unknown): boolean => {
-  if (Schema.is(CommandExecutionError)(error) === true) {
-    return error.reason !== undefined
-  }
-
+  // Class instance check (same-realm)
+  if (Schema.is(CommandExecutionError)(error) === true) return true
+  // Duck-type fallback for cross-worker-serialized errors that lost their prototype
   if (typeof error === 'object' && error !== null) {
     const reason = (error as { reason?: unknown }).reason
-    if (
-      reason === 'CommandHandlerThrew' ||
-      reason === 'NoEventProduced' ||
-      reason === 'CommandNotFound'
-    ) {
-      return true
-    }
+    return reason === 'CommandHandlerThrew' || reason === 'NoEventProduced' || reason === 'CommandNotFound'
   }
-
   return false
 }
 

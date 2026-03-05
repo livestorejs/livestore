@@ -56,6 +56,16 @@ import { makeCommandQueryFn } from '../command-query.ts'
 /** Serialize value to JSON string for trace attributes */
 const jsonStringify = Schema.encodeSync(Schema.parseJson())
 
+/** Collect unique command IDs from a list of events. */
+const extractCommandIds = (events: ReadonlyArray<LiveStoreEvent.Client.EncodedWithMeta>): Set<string> => {
+  const ids = new Set<string>()
+  for (const event of events) {
+    const id = Option.getOrUndefined(event.meta.commandId)
+    if (id !== undefined) ids.add(id)
+  }
+  return ids
+}
+
 type LocalPushQueueItem =
   | {
       readonly _tag: 'event'
@@ -637,8 +647,9 @@ const backgroundApplyLocalPushes = ({
 
         // If the command's events are already in pending (e.g., blind-rebased during a prior rebase),
         // skip re-execution to avoid duplicates. Just journal the command for future replays.
-        const pendingCommandIds = syncState.pending.map((e) => Option.getOrUndefined(e.meta.commandId))
-        const pendingHasCommand = pendingCommandIds.includes(item.command.id)
+        const pendingHasCommand = syncState.pending.some(
+          (e) => Option.getOrUndefined(e.meta.commandId) === item.command.id,
+        )
         if (pendingHasCommand === true) {
           yield* commandJournal.write(item.command).pipe(Effect.orDie)
           const result: CommandPushResult = { _tag: 'ok' }
@@ -1193,11 +1204,7 @@ const backgroundBackendPulling = Effect.fn('@livestore/common:LeaderSyncProcesso
         const confirmedPendingEvents = syncState.pending.filter(
           (e) => !rollbackSeqNums.has(EventSequenceNumber.Client.toString(e.seqNum)),
         )
-        const confirmedCommandIds = new Set<string>()
-        for (const event of confirmedPendingEvents) {
-          const cmdId = Option.getOrUndefined(event.meta.commandId)
-          if (cmdId !== undefined) confirmedCommandIds.add(cmdId)
-        }
+        const confirmedCommandIds = extractCommandIds(confirmedPendingEvents)
         if (confirmedCommandIds.size > 0) {
           yield* commandJournal.remove([...confirmedCommandIds]).pipe(Effect.orDie)
         }
@@ -1239,11 +1246,7 @@ const backgroundBackendPulling = Effect.fn('@livestore/common:LeaderSyncProcesso
         yield* restartBackendPushing(globalPendingEvents)
 
         // Extract commandIds from confirmed events so we can notify sessions and clean up the journal
-        const confirmedCommandIds = new Set<string>()
-        for (const event of mergeResult.confirmedEvents) {
-          const cmdId = Option.getOrUndefined(event.meta.commandId)
-          if (cmdId !== undefined) confirmedCommandIds.add(cmdId)
-        }
+        const confirmedCommandIds = extractCommandIds(mergeResult.confirmedEvents)
 
         yield* connectedClientSessionPullQueues.offer({
           payload: {
