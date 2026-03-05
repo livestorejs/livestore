@@ -562,7 +562,7 @@ const rebaseEvents = ({
  * - Command-originated events are matched by commandId because replay can produce different args/count.
  * - Non-command events are matched structurally while ignoring sequence numbers.
  */
-const isSamePendingEventForRebase = (
+export const isSamePendingEventForRebase = (
   a: LiveStoreEvent.Client.EncodedWithMeta,
   b: LiveStoreEvent.Client.EncodedWithMeta,
   isEqualEvent: (a: LiveStoreEvent.Client.EncodedWithMeta, b: LiveStoreEvent.Client.EncodedWithMeta) => boolean,

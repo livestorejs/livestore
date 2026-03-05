@@ -9,6 +9,7 @@ import {
   IntentionalShutdownCause,
   isQueryBuilder,
   liveStoreVersion,
+  makeCommandQueryFn,
   MaterializeError,
   MaterializerHashMismatchError,
   makeClientSessionSyncProcessor,
@@ -24,7 +25,6 @@ import type { CommandPushResult, StreamEventsOptions } from '@livestore/common/l
 import {
   type CommandDef,
   type CommandHandlerContext,
-  type CommandHandlerContextQuery,
   type CommandInstance,
   EventSequenceNumber,
   LiveStoreEvent,
@@ -991,30 +991,8 @@ export class Store<TSchema extends LiveStoreSchema = LiveStoreSchema.Any, TConte
 
       // TODO: Command execution should be transactional with event append
       // See https://github.com/livestorejs/livestore/issues/1065
-      const query: CommandHandlerContextQuery = (
-        rawQueryOrQueryBuilder:
-          | {
-            query: string
-            bindValues: Bindable
-          }
-          | QueryBuilder.Any,
-      ) => {
-        if (isQueryBuilder(rawQueryOrQueryBuilder) === true) {
-          const { query, bindValues } = rawQueryOrQueryBuilder.asSql()
-          const rawResults = this[StoreInternalsSymbol].sqliteDbWrapper.select(
-            query,
-            prepareBindValues(bindValues, query),
-          )
-          const resultSchema = getResultSchema(rawQueryOrQueryBuilder)
-          return Schema.decodeSync(resultSchema)(rawResults)
-        } else {
-          const { query, bindValues } = rawQueryOrQueryBuilder
-          return this[StoreInternalsSymbol].sqliteDbWrapper.select(query, prepareBindValues(bindValues, query))
-        }
-      }
-
       const handlerContext: CommandHandlerContext = {
-        query,
+        query: makeCommandQueryFn(this[StoreInternalsSymbol].sqliteDbWrapper),
         phase: { _tag: 'initial' },
       }
 

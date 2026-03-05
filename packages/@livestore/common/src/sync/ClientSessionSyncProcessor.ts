@@ -428,23 +428,9 @@ export const makeClientSessionSyncProcessor = ({
           if (payload._tag === 'upstream-rebase' && payload.replayedPending.length > 0) {
             const replayedPool = [...payload.replayedPending]
             const pendingWithoutLeaderReplayed = effectiveNewSyncState.pending.filter((pendingEvent) => {
-              const matchIdx = replayedPool.findIndex((replayedEvent) => {
-                const pendingCommandId = Option.getOrUndefined(pendingEvent.meta.commandId)
-                const replayedCommandId = Option.getOrUndefined(replayedEvent.meta.commandId)
-                if (pendingCommandId !== undefined || replayedCommandId !== undefined) {
-                  return (
-                    pendingCommandId !== undefined &&
-                    replayedCommandId !== undefined &&
-                    pendingCommandId === replayedCommandId
-                  )
-                }
-                return (
-                  pendingEvent.name === replayedEvent.name &&
-                  pendingEvent.clientId === replayedEvent.clientId &&
-                  pendingEvent.sessionId === replayedEvent.sessionId &&
-                  JSON.stringify(pendingEvent.args) === JSON.stringify(replayedEvent.args)
-                )
-              })
+              const matchIdx = replayedPool.findIndex((replayedEvent) =>
+                SyncState.isSamePendingEventForRebase(pendingEvent, replayedEvent, LiveStoreEvent.Client.isEqualEncoded),
+              )
               if (matchIdx === -1) return true
               replayedPool.splice(matchIdx, 1)
               return false
@@ -514,15 +500,17 @@ export const makeClientSessionSyncProcessor = ({
             debugInfo.advanceCount++
           }
 
+          // Pre-compute leader-replayed seqNums once for use in both branches below
+          const leaderReplayedSeqNums = payload._tag === 'upstream-rebase'
+            ? new Set(payload.replayedPending.map((event) => EventSequenceNumber.Client.toString(event.seqNum)))
+            : undefined
+
           if (effectiveNewEvents.length === 0) {
             if (mergeResult._tag === 'rebase') {
               if (payload._tag === 'upstream-rebase') {
-                const leaderReplayedSeqNums = new Set(
-                  payload.replayedPending.map((event) => EventSequenceNumber.Client.toString(event.seqNum)),
-                )
                 const pendingToRepush = effectiveNewSyncState.pending.filter(
                   (event) =>
-                    !leaderReplayedSeqNums.has(EventSequenceNumber.Client.toString(event.seqNum)) &&
+                    !leaderReplayedSeqNums!.has(EventSequenceNumber.Client.toString(event.seqNum)) &&
                     Option.isNone(event.meta.commandId),
                 )
                 if (SIMULATION_ENABLED === true) yield* simSleep('pull', '4_before_leader_push_queue_offer')
@@ -635,12 +623,9 @@ export const makeClientSessionSyncProcessor = ({
             if (payload._tag === 'upstream-rebase') {
               if (SIMULATION_ENABLED === true) yield* simSleep('pull', '4_before_leader_push_queue_offer')
 
-              const leaderReplayedSeqNums = new Set(
-                payload.replayedPending.map((event) => EventSequenceNumber.Client.toString(event.seqNum)),
-              )
               const pendingToRepush = effectivePending.filter(
                 (event) =>
-                  !leaderReplayedSeqNums.has(EventSequenceNumber.Client.toString(event.seqNum)) &&
+                  !leaderReplayedSeqNums!.has(EventSequenceNumber.Client.toString(event.seqNum)) &&
                   Option.isNone(event.meta.commandId),
               )
               yield* BucketQueue.offerAll(

@@ -27,6 +27,7 @@ import type {
 import type { CommandInstance } from '../schema/command/command-instance.ts'
 import { EventSequenceNumber, type LiveStoreEvent, type LiveStoreSchema } from '../schema/mod.ts'
 import type * as SyncState from '../sync/syncstate.ts'
+import type { CommandJournal } from './CommandJournal.ts'
 import type { ShutdownChannel } from './shutdown-channel.ts'
 
 export type ShutdownState = 'running' | 'shutting-down'
@@ -42,6 +43,13 @@ export type CommandPushResult =
   | { readonly _tag: 'ok' }
   | { readonly _tag: 'error'; readonly error: unknown }
   | { readonly _tag: 'threw'; readonly cause: unknown }
+
+/** Schema for {@link CommandPushResult}, used in worker communication. */
+export const CommandPushResultSchema = Schema.Union(
+  Schema.Struct({ _tag: Schema.Literal('ok') }),
+  Schema.Struct({ _tag: Schema.Literal('error'), error: Schema.Unknown }),
+  Schema.Struct({ _tag: Schema.Literal('threw'), cause: Schema.Unknown }),
+)
 
 export const InitialSyncOptionsSkip = Schema.TaggedStruct('Skip', {})
 export type InitialSyncOptionsSkip = typeof InitialSyncOptionsSkip.Type
@@ -236,7 +244,7 @@ export interface LeaderSyncProcessor {
   boot: Effect.Effect<
     { initialLeaderHead: EventSequenceNumber.Client.Composite },
     UnknownError,
-    LeaderThreadCtx | Scope.Scope | HttpClient.HttpClient
+    CommandJournal | LeaderThreadCtx | Scope.Scope | HttpClient.HttpClient
   >
   syncState: Subscribable.Subscribable<SyncState.SyncState>
 }

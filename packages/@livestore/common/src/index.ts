@@ -1,5 +1,6 @@
 export * from './adapter-types.ts'
 export * from './bounded-collections.ts'
+export * from './command-query.ts'
 export * from './debug-info.ts'
 export * as Devtools from './devtools/mod.ts'
 export * as LogConfig from './logging.ts'

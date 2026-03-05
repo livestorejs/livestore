@@ -26,7 +26,6 @@ import { IntentionalShutdownCause } from '../errors.ts'
 import { makeMaterializerHash } from '../materializer-helper.ts'
 import {
   type CommandHandlerContext,
-  type CommandHandlerContextQuery,
   type CommandInstance, executeCommandHandler,
   type LiveStoreSchema
 } from '../schema/mod.ts'
@@ -40,15 +39,14 @@ import {
   type SyncBackend,
 } from '../sync/sync.ts'
 import * as SyncState from '../sync/syncstate.ts'
-import { type Bindable, prepareBindValues, sql } from '../util.ts'
+import { prepareBindValues, sql } from '../util.ts'
 import * as Eventlog from './eventlog.ts'
 import { rollback } from './materialize-event.ts'
 import type { ShutdownChannel } from './shutdown-channel.ts'
 import type { CommandPushResult, InitialBlockingSyncContext, LeaderSyncProcessor } from './types.ts'
 import { LeaderThreadCtx } from './types.ts'
-import { CommandJournal, make as makeCommandJournal } from './CommandJournal.ts'
-import { isQueryBuilder, type QueryBuilder } from '../schema/state/sqlite/query-builder/mod.ts'
-import { getResultSchema } from '../schema/state/sqlite/query-builder/impl.ts'
+import { CommandJournal } from './CommandJournal.ts'
+import { makeCommandQueryFn } from '../command-query.ts'
 
 // WORKAROUND: @effect/opentelemetry mis-parses `Span.addEvent(name, attributes)` and treats the attributes object as a
 // time input, causing `TypeError: {} is not iterable` at runtime.
@@ -184,6 +182,10 @@ export const makeLeaderSyncProcessor = ({
 
     const isClientEvent = (eventEncoded: LiveStoreEvent.Client.EncodedWithMeta) =>
       schema.eventsDefsMap.get(eventEncoded.name)?.options.clientOnly ?? false
+
+    /** Filter out client-only events, keeping only events that should be synced with the backend. */
+    const filterGlobalEvents = (events: ReadonlyArray<LiveStoreEvent.Client.EncodedWithMeta>) =>
+      events.filter((event) => !isClientEvent(event))
 
     const connectedClientSessionPullQueues = yield* makePullQueueSet
 
@@ -331,12 +333,7 @@ export const makeLeaderSyncProcessor = ({
 
       // Rehydrate sync queue
       if (initialSyncState.pending.length > 0) {
-        const globalPendingEvents = initialSyncState.pending
-          // Don't sync client-local events
-          .filter((eventEncoded) => {
-            const eventDef = schema.eventsDefsMap.get(eventEncoded.name)
-            return eventDef === undefined ? true : !eventDef.options.clientOnly
-          })
+        const globalPendingEvents = filterGlobalEvents(initialSyncState.pending)
 
         if (globalPendingEvents.length > 0) {
           yield* BucketQueue.offerAll(syncBackendPushQueue, globalPendingEvents)
@@ -620,13 +617,7 @@ const backgroundApplyLocalPushes = ({
           undefined,
         )
 
-        // Don't sync client-local events
-        const filteredBatch = mergeResult.newEvents.filter((eventEncoded) => {
-          const eventDef = schema.eventsDefsMap.get(eventEncoded.name)
-          return eventDef === undefined ? true : !eventDef.options.clientOnly
-        })
-
-        yield* BucketQueue.offerAll(syncBackendPushQueue, filteredBatch)
+        yield* BucketQueue.offerAll(syncBackendPushQueue, mergeResult.newEvents.filter((e) => !isClientEvent(e)))
 
         yield* materializeEventsBatch({ batchItems: mergeResult.newEvents, deferreds })
 
@@ -639,7 +630,7 @@ const backgroundApplyLocalPushes = ({
     ) =>
       Effect.gen(function* () {
         const { dbState: db, dbEventlog, materializeEvent, eventSchema } = yield* LeaderThreadCtx
-        const commandJournal = makeCommandJournal(dbEventlog)
+        const commandJournal = yield* CommandJournal
 
         const syncState = yield* syncStateSref
         if (syncState === undefined) return shouldNeverHappen('Not initialized')
@@ -674,22 +665,7 @@ const backgroundApplyLocalPushes = ({
         db.execute('BEGIN TRANSACTION', undefined)
         dbEventlog.execute('BEGIN TRANSACTION', undefined)
 
-        const query: CommandHandlerContextQuery = (
-          rawQueryOrQueryBuilder:
-            | { query: string; bindValues: Bindable }
-            | QueryBuilder.Any,
-        ) => {
-          if (isQueryBuilder(rawQueryOrQueryBuilder) === true) {
-            const { query, bindValues } = rawQueryOrQueryBuilder.asSql()
-            const rawResults = db.select(query, prepareBindValues(bindValues, query))
-            const resultSchema = getResultSchema(rawQueryOrQueryBuilder)
-            return Schema.decodeSync(resultSchema)(rawResults)
-          } else {
-            const { query, bindValues } = rawQueryOrQueryBuilder
-            return db.select(query, prepareBindValues(bindValues, query))
-          }
-        }
-        const handlerContext: CommandHandlerContext = { phase: { _tag: 'initial' }, query }
+        const handlerContext: CommandHandlerContext = { phase: { _tag: 'initial' }, query: makeCommandQueryFn(db) }
         const handlerResult = executeCommandHandler(commandDef.handler, item.command.args, handlerContext)
 
         if (handlerResult._tag === 'error') {
@@ -796,11 +772,7 @@ const backgroundApplyLocalPushes = ({
         })
 
         // Queue for sync backend push (excluding client-only events)
-        const filteredBatch = mergeResult.newEvents.filter((eventEncoded) => {
-          const eventDef = schema.eventsDefsMap.get(eventEncoded.name)
-          return eventDef === undefined ? true : !eventDef.options.clientOnly
-        })
-        yield* BucketQueue.offerAll(syncBackendPushQueue, filteredBatch)
+        yield* BucketQueue.offerAll(syncBackendPushQueue, mergeResult.newEvents.filter((e) => !isClientEvent(e)))
 
         otelSpan?.addEvent(
           'push:command:advance',
@@ -905,7 +877,15 @@ const backgroundApplyLocalPushes = ({
           yield* processCommandItem(item)
         } else if (item.deferred !== undefined) {
           // If events were rejected, commands in the same batch should also be failed
-          yield* Deferred.succeed(item.deferred, { _tag: 'threw' as const, cause: 'Leader rejected batch due to stale generation' })
+          yield* Deferred.succeed(item.deferred, {
+            _tag: 'threw' as const,
+            cause: new CommandExecutionError({
+              command: { name: item.command.name, id: item.command.id },
+              phase: 'initial',
+              reason: 'CommandHandlerThrew',
+              description: 'Leader rejected batch due to stale generation',
+            }),
+          })
         }
       }
 
@@ -1091,20 +1071,9 @@ const backgroundBackendPulling = Effect.fn('@livestore/common:LeaderSyncProcesso
 
         // Replay journaled commands against the new base state.
         // Commands produce new events that replace the blind-rebased events for those commands.
-        const commandJournal = makeCommandJournal(dbEventlog)
+        const commandJournal = yield* CommandJournal
         const journaledCommands = yield* commandJournal.entries.pipe(Effect.orDie)
         const journalMap = new Map(journaledCommands.map((c) => [c.id, c]))
-
-        // Collect unique commandIds from blind-rebased pending in order of first appearance
-        const commandIdsInOrder: string[] = []
-        const seenCommandIds = new Set<string>()
-        for (const event of blindRebasedPending) {
-          const commandId = Option.getOrUndefined(event.meta.commandId)
-          if (commandId !== undefined && seenCommandIds.has(commandId) === false) {
-            seenCommandIds.add(commandId)
-            commandIdsInOrder.push(commandId)
-          }
-        }
 
         const replayConflicts: SyncState.ReplayConflictInfo[] = []
         // newPending accumulates the actual events after replay (may differ from blind rebase)
@@ -1233,10 +1202,7 @@ const backgroundBackendPulling = Effect.fn('@livestore/common:LeaderSyncProcesso
           yield* commandJournal.remove([...confirmedCommandIds]).pipe(Effect.orDie)
         }
 
-        const globalRebasedPendingEvents = newPending.filter((event) => {
-          const eventDef = schema.eventsDefsMap.get(event.name)
-          return eventDef === undefined ? true : !eventDef.options.clientOnly
-        })
+        const globalRebasedPendingEvents = newPending.filter((e) => !isClientEvent(e))
         yield* restartBackendPushing(globalRebasedPendingEvents)
 
         // Removes the changeset rows which are no longer needed as we'll never have to rollback beyond this point
@@ -1269,10 +1235,7 @@ const backgroundBackendPulling = Effect.fn('@livestore/common:LeaderSyncProcesso
         )
 
         // Ensure push fiber is active after advance by restarting with current pending (non-client) events
-        const globalPendingEvents = mergeResult.newSyncState.pending.filter((event) => {
-          const eventDef = schema.eventsDefsMap.get(event.name)
-          return eventDef === undefined ? true : !eventDef.options.clientOnly
-        })
+        const globalPendingEvents = mergeResult.newSyncState.pending.filter((e) => !isClientEvent(e))
         yield* restartBackendPushing(globalPendingEvents)
 
         // Extract commandIds from confirmed events so we can notify sessions and clean up the journal
@@ -1303,7 +1266,7 @@ const backgroundBackendPulling = Effect.fn('@livestore/common:LeaderSyncProcesso
         }
 
         if (confirmedCommandIds.size > 0) {
-          const commandJournal = makeCommandJournal(dbEventlog)
+          const commandJournal = yield* CommandJournal
           yield* commandJournal.remove([...confirmedCommandIds]).pipe(Effect.orDie)
         }
 
@@ -1732,25 +1695,7 @@ const replayCommand = Effect.fn('@livestore/common:LeaderSyncProcessor:replayCom
 
   // TODO: replay should be transactional with event append
   // See https://github.com/livestorejs/livestore/issues/1065
-  const query: CommandHandlerContextQuery = (
-    rawQueryOrQueryBuilder:
-      | {
-      query: string
-      bindValues: Bindable
-    }
-      | QueryBuilder.Any,
-  ) => {
-    if (isQueryBuilder(rawQueryOrQueryBuilder) === true) {
-      const { query, bindValues } = rawQueryOrQueryBuilder.asSql()
-      const rawResults = dbState.select(query, prepareBindValues(bindValues, query))
-      const resultSchema = getResultSchema(rawQueryOrQueryBuilder)
-      return Schema.decodeSync(resultSchema)(rawResults)
-    } else {
-      const { query, bindValues } = rawQueryOrQueryBuilder
-      return dbState.select(query, prepareBindValues(bindValues, query))
-    }
-  }
-  const handlerContext: CommandHandlerContext = { phase: { _tag: 'replay' }, query }
+  const handlerContext: CommandHandlerContext = { phase: { _tag: 'replay' }, query: makeCommandQueryFn(dbState) }
 
   const replayResult = executeCommandHandler(commandDef.handler, command.args, handlerContext)
 

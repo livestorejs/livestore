@@ -7,7 +7,7 @@ import {
   SyncState,
   UnknownError,
 } from '@livestore/common'
-import { StreamEventsOptionsFields } from '@livestore/common/leader-thread'
+import { CommandPushResultSchema, StreamEventsOptionsFields } from '@livestore/common/leader-thread'
 import { CommandInstanceSchema, EventSequenceNumber, LiveStoreEvent } from '@livestore/common/schema'
 import { Schema, Transferable } from '@livestore/utils/effect'
 
@@ -131,13 +131,6 @@ export class LeaderWorkerInnerPushToLeader extends Schema.TaggedRequest<LeaderWo
     failure: Schema.Union(UnknownError, LeaderAheadError),
   },
 ) {}
-
-/** Schema for CommandPushResult used in worker communication. */
-const CommandPushResultSchema = Schema.Union(
-  Schema.Struct({ _tag: Schema.Literal('ok') }),
-  Schema.Struct({ _tag: Schema.Literal('error'), error: Schema.Unknown }),
-  Schema.Struct({ _tag: Schema.Literal('threw'), cause: Schema.Unknown }),
-)
 
 export class LeaderWorkerInnerPushCommandToLeader extends Schema.TaggedRequest<LeaderWorkerInnerPushCommandToLeader>()(
   'PushCommandToLeader',

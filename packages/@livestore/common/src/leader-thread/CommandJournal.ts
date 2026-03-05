@@ -58,7 +58,7 @@ export class CommandJournal extends Context.Tag('@livestore/common/CommandJourna
 export class CommandJournalError extends Schema.TaggedError<CommandJournalError>()(
   '@livestore/common/CommandJournalError',
   {
-    method: Schema.String,
+    method: Schema.Literal('write', 'entries', 'remove', 'destroy'),
     cause: Schema.Defect,
   },
 ) {}
