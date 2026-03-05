@@ -4,7 +4,6 @@ export default tsconfigJson({
   compilerOptions: {
     ...baseTsconfigCompilerOptions,
     composite: true,
-    exactOptionalPropertyTypes: false,
     outDir: './dist',
     rootDir: '.',
     resolveJsonModule: true,

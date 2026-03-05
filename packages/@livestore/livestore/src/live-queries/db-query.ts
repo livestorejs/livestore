@@ -387,8 +387,8 @@ export class LiveStoreDbQuery<TResultSchema, TResult = TResultSchema> extends Li
               sqlString,
               bindValues !== undefined ? prepareBindValues(bindValues, sqlString) : undefined,
               {
-                queriedTables: queriedTablesRef.current,
                 otelContext,
+                ...(queriedTablesRef.current !== undefined ? { queriedTables: queriedTablesRef.current } : {}),
               },
             )
 

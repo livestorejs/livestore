@@ -10,7 +10,6 @@ export default tsconfigJson({
   compilerOptions: {
     ...baseTsconfigCompilerOptions,
     ...packageTsconfigCompilerOptions,
-    exactOptionalPropertyTypes: false,
     target: 'es2022',
   },
   include: ['./src'],

@@ -50,7 +50,7 @@ export const connectViaWebSocket = ({
   openTimeout?: number
 }): Effect.Effect<void, never, Scope.Scope | HttpClient.HttpClient> =>
   Effect.gen(function* () {
-    const socket = yield* Socket.makeWebSocket(url, { openTimeout })
+    const socket = yield* Socket.makeWebSocket(url, openTimeout !== undefined ? { openTimeout } : undefined)
 
     const edgeChannel = yield* makeWebSocketEdge({
       socket,
@@ -78,7 +78,7 @@ export const makeWebSocketEdge = ({
 }: {
   socket: Socket.Socket
   socketType: SocketType
-  debug?: { id?: string } | undefined
+  debug?: { id?: string | undefined } | undefined
 }): Effect.Effect<
   {
     webChannel: WebChannel.WebChannel<typeof WebmeshSchema.Packet.Type, typeof WebmeshSchema.Packet.Type>
@@ -182,7 +182,7 @@ export const makeWebSocketEdge = ({
         schema,
         supportsTransferables: false,
         shutdown: Scope.close(scope, Exit.void),
-        debugInfo,
+        ...(debugInfo !== undefined ? { debugInfo } : {}),
       } satisfies WebChannel.WebChannel<typeof WebmeshSchema.Packet.Type, typeof WebmeshSchema.Packet.Type>
 
       return { webChannel, from }

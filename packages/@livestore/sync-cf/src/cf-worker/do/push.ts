@@ -50,7 +50,13 @@ export const makePush =
       }
 
       if (options?.onPush !== undefined) {
-        yield* Effect.tryAll(() => options.onPush!(pushRequest, { storeId, payload, headers })).pipe(
+        yield* Effect.tryAll(() =>
+          options.onPush!(pushRequest, {
+            storeId,
+            ...(payload !== undefined ? { payload } : {}),
+            ...(headers !== undefined ? { headers } : {}),
+          }),
+        ).pipe(
           UnknownError.mapToUnknownError,
         )
       }
