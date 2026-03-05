@@ -31,7 +31,13 @@ export const makeEndingPullStream = ({
     const { doOptions, backendId, storeId, storage } = yield* DoCtx
 
     if (doOptions?.onPull !== undefined) {
-      yield* Effect.tryAll(() => doOptions.onPull!(req, { storeId, payload, headers })).pipe(
+      yield* Effect.tryAll(() =>
+        doOptions.onPull!(req, {
+          storeId,
+          ...(payload !== undefined ? { payload } : {}),
+          ...(headers !== undefined ? { headers } : {}),
+        }),
+      ).pipe(
         UnknownError.mapToUnknownError,
       )
     }

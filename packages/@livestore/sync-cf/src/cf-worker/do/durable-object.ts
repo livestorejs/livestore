@@ -230,8 +230,8 @@ export const makeDurableObject: MakeDurableObjectClass = (options) => {
     private handleHttp = (request: CfTypes.Request, forwardedHeaders: Record<string, string> | undefined) =>
       createHttpRpcHandler({
         request,
-        responseHeaders: options?.http?.responseHeaders,
-        forwardedHeaders,
+        ...(options?.http?.responseHeaders !== undefined ? { responseHeaders: options.http.responseHeaders } : {}),
+        ...(forwardedHeaders !== undefined ? { forwardedHeaders } : {}),
       }).pipe(Effect.withSpan('@livestore/sync-cf:durable-object:handleHttp'))
 
     private runEffectAsPromise = <T, E = never>(effect: Effect.Effect<T, E, Scope.Scope>): Promise<T> =>

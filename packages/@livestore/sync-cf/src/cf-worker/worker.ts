@@ -205,7 +205,7 @@ export const handleSyncRequest = <
         if (decodedEither._tag === 'Left') {
           const message = decodedEither.left.toString()
           console.error('Invalid payload (decode failed)', message)
-          return new Response(message, { status: 400, headers })
+          return new Response(message, { status: 400, ...(headers !== undefined ? { headers } : {}) })
         }
 
         const result = yield* Effect.promise(async () =>
@@ -214,7 +214,7 @@ export const handleSyncRequest = <
 
         if (result._tag === 'Left') {
           console.error('Invalid payload (validation failed)', result.left)
-          return new Response(result.left.toString(), { status: 400, headers })
+          return new Response(result.left.toString(), { status: 400, ...(headers !== undefined ? { headers } : {}) })
         }
       } else {
         const result = yield* Effect.promise(async () =>
@@ -223,7 +223,7 @@ export const handleSyncRequest = <
 
         if (result._tag === 'Left') {
           console.error('Invalid payload (validation failed)', result.left)
-          return new Response(result.left.toString(), { status: 400, headers })
+          return new Response(result.left.toString(), { status: 400, ...(headers !== undefined ? { headers } : {}) })
         }
       }
     }
@@ -235,7 +235,7 @@ export const handleSyncRequest = <
         `Failed dependency: Required Durable Object binding '${syncBackendBinding as string}' not available`,
         {
           status: 424,
-          headers,
+          ...(headers !== undefined ? { headers } : {}),
         },
       )
     }
@@ -252,7 +252,7 @@ export const handleSyncRequest = <
     if (transport === 'ws' && (upgradeHeader === null || upgradeHeader !== 'websocket')) {
       return new Response('Durable Object expected Upgrade: websocket', {
         status: 426,
-        headers,
+        ...(headers !== undefined ? { headers } : {}),
       })
     }
 
