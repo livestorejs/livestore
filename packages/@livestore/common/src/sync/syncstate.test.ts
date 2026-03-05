@@ -133,7 +133,7 @@ describe('syncstate', () => {
           upstreamHead: EventSequenceNumber.Client.ROOT,
           localHead: e1_0.seqNum,
         })
-        const result = merge({ syncState, payload: { _tag: 'upstream-advance', newEvents: [e1_1, e1_0] } })
+        const result = merge({ syncState, payload: { _tag: 'upstream-advance', newEvents: [e1_1, e1_0], confirmedCommandIds: [] } })
         expect(result).toMatchObject({ _tag: 'unknown-error' })
       })
 
@@ -143,7 +143,7 @@ describe('syncstate', () => {
           upstreamHead: EventSequenceNumber.Client.ROOT,
           localHead: e1_0.seqNum,
         })
-        const result = merge({ syncState, payload: { _tag: 'upstream-advance', newEvents: [e2_0, e1_0] } })
+        const result = merge({ syncState, payload: { _tag: 'upstream-advance', newEvents: [e2_0, e1_0] , confirmedCommandIds: [] } })
         expect(result).toMatchObject({ _tag: 'unknown-error' })
       })
 
@@ -153,7 +153,7 @@ describe('syncstate', () => {
           upstreamHead: e2_0.seqNum,
           localHead: e2_0.seqNum,
         })
-        const result = merge({ syncState, payload: { _tag: 'upstream-advance', newEvents: [e1_0] } })
+        const result = merge({ syncState, payload: { _tag: 'upstream-advance', newEvents: [e1_0] , confirmedCommandIds: [] } })
         expect(result).toMatchObject({ _tag: 'unknown-error' })
       })
 
@@ -163,7 +163,7 @@ describe('syncstate', () => {
           upstreamHead: e2_0.seqNum,
           localHead: e2_0.seqNum,
         })
-        const result = merge({ syncState, payload: { _tag: 'upstream-advance', newEvents: [e2_0] } })
+        const result = merge({ syncState, payload: { _tag: 'upstream-advance', newEvents: [e2_0] , confirmedCommandIds: [] } })
         expect(result).toMatchObject({ _tag: 'unknown-error' })
       })
 
@@ -173,7 +173,7 @@ describe('syncstate', () => {
           upstreamHead: EventSequenceNumber.Client.ROOT,
           localHead: e1_0.seqNum,
         })
-        const result = merge({ syncState, payload: { _tag: 'upstream-advance', newEvents: [e1_0] } })
+        const result = merge({ syncState, payload: { _tag: 'upstream-advance', newEvents: [e1_0] , confirmedCommandIds: [] } })
 
         expectAdvance(result)
         expectEventArraysEqual(result.newSyncState.pending, [])
@@ -189,7 +189,7 @@ describe('syncstate', () => {
           upstreamHead: EventSequenceNumber.Client.ROOT,
           localHead: e2_0.seqNum,
         })
-        const result = merge({ syncState, payload: { _tag: 'upstream-advance', newEvents: [e1_0] } })
+        const result = merge({ syncState, payload: { _tag: 'upstream-advance', newEvents: [e1_0] , confirmedCommandIds: [] } })
 
         expectAdvance(result)
         expectEventArraysEqual(result.newSyncState.pending, [e2_0])
@@ -205,7 +205,7 @@ describe('syncstate', () => {
           upstreamHead: EventSequenceNumber.Client.ROOT,
           localHead: e1_0.seqNum,
         })
-        const result = merge({ syncState, payload: { _tag: 'upstream-advance', newEvents: [e1_0, e1_1] } })
+        const result = merge({ syncState, payload: { _tag: 'upstream-advance', newEvents: [e1_0, e1_1] , confirmedCommandIds: [] } })
 
         expectAdvance(result)
         expectEventArraysEqual(result.newSyncState.pending, [])
@@ -223,7 +223,7 @@ describe('syncstate', () => {
         })
         const result = merge({
           syncState,
-          payload: { _tag: 'upstream-advance', newEvents: [e1_1, e1_2, e1_3, e2_0, e2_1] },
+          payload: { _tag: 'upstream-advance', newEvents: [e1_1, e1_2, e1_3, e2_0, e2_1], confirmedCommandIds: [] },
         })
 
         expectAdvance(result)
@@ -242,7 +242,7 @@ describe('syncstate', () => {
         })
         const result = merge({
           syncState,
-          payload: { _tag: 'upstream-advance', newEvents: [e1_0] },
+          payload: { _tag: 'upstream-advance', newEvents: [e1_0], confirmedCommandIds: [] },
         })
 
         expectAdvance(result)
@@ -261,7 +261,7 @@ describe('syncstate', () => {
         })
         const result = merge({
           syncState,
-          payload: { _tag: 'upstream-advance', newEvents: [e1_0] },
+          payload: { _tag: 'upstream-advance', newEvents: [e1_0], confirmedCommandIds: [] },
           ignoreClientEvents: true,
         })
         expectAdvance(result)
@@ -280,7 +280,7 @@ describe('syncstate', () => {
         })
         const result = merge({
           syncState,
-          payload: { _tag: 'upstream-advance', newEvents: [e1_0] },
+          payload: { _tag: 'upstream-advance', newEvents: [e1_0], confirmedCommandIds: [] },
           ignoreClientEvents: true,
         })
         expectAdvance(result)
@@ -299,7 +299,7 @@ describe('syncstate', () => {
         })
         const result = merge({
           syncState,
-          payload: { _tag: 'upstream-advance', newEvents: [e1_0, e2_0] },
+          payload: { _tag: 'upstream-advance', newEvents: [e1_0, e2_0], confirmedCommandIds: [] },
           ignoreClientEvents: true,
         })
 
@@ -317,7 +317,7 @@ describe('syncstate', () => {
           upstreamHead: e2_0.seqNum,
           localHead: e2_0.seqNum,
         })
-        const result = merge({ syncState, payload: { _tag: 'upstream-advance', newEvents: [e1_0] } })
+        const result = merge({ syncState, payload: { _tag: 'upstream-advance', newEvents: [e1_0] , confirmedCommandIds: [] } })
         expect(result).toMatchObject({ _tag: 'unknown-error' })
       })
     })

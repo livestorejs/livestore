@@ -166,6 +166,7 @@ export const makePersistedAdapter =
       const { leaderThread, initialSnapshot } = yield* makeLeaderThread({
         storeId,
         clientId,
+        sessionId,
         schema,
         makeSqliteDb,
         syncOptions,
@@ -214,6 +215,7 @@ export const makePersistedAdapter =
 const makeLeaderThread = ({
   storeId,
   clientId,
+  sessionId,
   schema,
   makeSqliteDb,
   syncOptions,
@@ -226,6 +228,7 @@ const makeLeaderThread = ({
 }: {
   storeId: string
   clientId: string
+  sessionId: string
   schema: LiveStoreSchema
   makeSqliteDb: MakeExpoSqliteDb
   syncOptions: SyncOptions | undefined
@@ -317,6 +320,9 @@ const makeLeaderThread = ({
               syncState: syncProcessor.syncState,
               options,
             }),
+        },
+        commands: {
+          push: (command) => syncProcessor.pushCommand({ command, clientId, sessionId }),
         },
         initialState: {
           leaderHead: initialLeaderHead,

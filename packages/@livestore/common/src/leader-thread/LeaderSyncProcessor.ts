@@ -648,7 +648,7 @@ const backgroundApplyLocalPushes = ({
         // skip re-execution to avoid duplicates. Just journal the command for future replays.
         const pendingCommandIds = syncState.pending.map((e) => Option.getOrUndefined(e.meta.commandId))
         const pendingHasCommand = pendingCommandIds.includes(item.command.id)
-        if (pendingHasCommand) {
+        if (pendingHasCommand === true) {
           yield* commandJournal.write(item.command).pipe(Effect.orDie)
           const result: CommandPushResult = { _tag: 'ok' }
           if (item.deferred !== undefined) yield* Deferred.succeed(item.deferred, result)
@@ -891,7 +891,7 @@ const backgroundApplyLocalPushes = ({
         }
 
         // Flush accumulated events before processing a command
-        if (eventAccum.length > 0 && !rejected) {
+        if (eventAccum.length > 0 && rejected === false) {
           const currentSyncState = (yield* syncStateSref) ?? shouldNeverHappen('Not initialized')
           const result = yield* processEventBatch(eventAccum, currentSyncState, currentRebaseGeneration)
           if (result._tag === 'rejected') {
@@ -901,7 +901,7 @@ const backgroundApplyLocalPushes = ({
         }
 
         // Process command
-        if (!rejected) {
+        if (rejected === false) {
           yield* processCommandItem(item)
         } else if (item.deferred !== undefined) {
           // If events were rejected, commands in the same batch should also be failed
@@ -910,7 +910,7 @@ const backgroundApplyLocalPushes = ({
       }
 
       // Flush remaining events
-      if (eventAccum.length > 0 && !rejected) {
+      if (eventAccum.length > 0 && rejected === false) {
         const remainingSyncState = (yield* syncStateSref) ?? shouldNeverHappen('Not initialized')
         const result = yield* processEventBatch(eventAccum, remainingSyncState, currentRebaseGeneration)
         if (result._tag === 'rejected') {
@@ -1100,7 +1100,7 @@ const backgroundBackendPulling = Effect.fn('@livestore/common:LeaderSyncProcesso
         const seenCommandIds = new Set<string>()
         for (const event of blindRebasedPending) {
           const commandId = Option.getOrUndefined(event.meta.commandId)
-          if (commandId !== undefined && !seenCommandIds.has(commandId)) {
+          if (commandId !== undefined && seenCommandIds.has(commandId) === false) {
             seenCommandIds.add(commandId)
             commandIdsInOrder.push(commandId)
           }

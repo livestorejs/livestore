@@ -171,7 +171,7 @@ export const makeClientSessionSyncProcessor = ({
     const conflictIds = new Set<string>()
     for (const conflict of payload.conflicts) {
       conflictIds.add(conflict.commandId)
-      if (shouldRejectReplayFailure(conflict.error)) {
+      if (shouldRejectReplayFailure(conflict.error) === true) {
         resolveCommandConfirmation(conflict.commandId, { _tag: 'reject', error: conflict.error })
       } else {
         resolveCommandConfirmation(conflict.commandId, { _tag: 'conflict', error: conflict.error })
@@ -186,7 +186,7 @@ export const makeClientSessionSyncProcessor = ({
     const confirmedIds = new Set<string>()
     for (const event of payload.replayedPending) {
       const cmdId = Option.getOrUndefined(event.meta.commandId)
-      if (cmdId !== undefined && !conflictIds.has(cmdId)) {
+      if (cmdId !== undefined && conflictIds.has(cmdId) === false) {
         confirmedIds.add(cmdId)
       }
     }
@@ -392,7 +392,7 @@ export const makeClientSessionSyncProcessor = ({
               const dedupedPending = mergeResult.newSyncState.pending.filter((event) => {
                 const cmdId = Option.getOrUndefined(event.meta.commandId)
                 const shouldDrop = cmdId !== undefined && upstreamCommandIds.has(cmdId)
-                if (shouldDrop) {
+                if (shouldDrop === true) {
                   droppedPendingSeqNums.add(EventSequenceNumber.Client.toString(event.seqNum))
                 }
                 return !shouldDrop
@@ -564,12 +564,12 @@ export const makeClientSessionSyncProcessor = ({
           for (const event of effectiveNewEvents) {
             const isPendingEvent = pendingSeqNums?.has(EventSequenceNumber.Client.toString(event.seqNum)) ?? false
 
-            if (isPendingEvent) {
+            if (isPendingEvent === true) {
               // Skip events from commands the leader already reported as conflicted, or from
               // commands where an earlier event in the same batch failed to materialize.
               // This ensures multi-event commands are treated as all-or-nothing.
               const cmdId = Option.getOrUndefined(event.meta.commandId)
-              if (cmdId !== undefined && (leaderConflictedCmdIds.has(cmdId) || conflictedCommandIds.has(cmdId))) {
+              if (cmdId !== undefined && (leaderConflictedCmdIds.has(cmdId) === true || conflictedCommandIds.has(cmdId) === true)) {
                 continue
               }
 
@@ -581,7 +581,7 @@ export const makeClientSessionSyncProcessor = ({
                 materializerHashLeader: event.meta.materializerHashLeader,
               }).pipe(Effect.exit)
 
-              if (Exit.isFailure(materializeResult)) {
+              if (Exit.isFailure(materializeResult) === true) {
                 // Materialization failed — record as conflict if it's a command event
                 if (cmdId !== undefined) {
                   conflictedCommandIds.add(cmdId)

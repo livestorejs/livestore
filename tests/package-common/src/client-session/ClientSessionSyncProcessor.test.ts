@@ -341,6 +341,9 @@ Vitest.describe.concurrent('ClientSessionSyncProcessor', () => {
           push: () => Effect.void,
           stream: () => Stream.empty,
         },
+        commands: {
+          push: () => Effect.succeed({ _tag: 'ok' }),
+        },
         initialState: {
           leaderHead: baseHead,
           migrationsReport: { migrations: [] },
@@ -389,6 +392,7 @@ Vitest.describe.concurrent('ClientSessionSyncProcessor', () => {
         span,
         params: { leaderPushBatchSize: 10 },
         confirmUnsavedChanges: false,
+        resolveCommandConfirmation: () => {},
       })
 
       yield* syncProcessor.push([events.todoCreated({ id: 'post-rebase', text: 'after', completed: false })])
@@ -462,6 +466,7 @@ Vitest.describe.concurrent('ClientSessionSyncProcessor', () => {
           materializerHashSession: Option.none(),
           // Set a leader hash that won't match what our non-deterministic materializer computes
           materializerHashLeader: Option.some(99), // This hash will not match the computed hash
+          commandId: Option.none(),
         },
       })
 
@@ -532,6 +537,9 @@ Vitest.describe.concurrent('ClientSessionSyncProcessor', () => {
               ),
             stream: () => Stream.empty,
           },
+          commands: {
+            push: () => Effect.succeed({ _tag: 'ok' as const }),
+          },
           export: Effect.dieMessage('not used'),
           getEventlogData: Effect.dieMessage('not used'),
           syncState: Subscribable.make({
@@ -554,6 +562,7 @@ Vitest.describe.concurrent('ClientSessionSyncProcessor', () => {
         span,
         params: { leaderPushBatchSize: 10 },
         confirmUnsavedChanges: false,
+        resolveCommandConfirmation: () => {},
       })
 
       const unknownEvent = LiveStoreEvent.Client.EncodedWithMeta.make({

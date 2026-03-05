@@ -1109,13 +1109,11 @@ Vitest.describe('store.execute', () => {
         const r3 = store.execute(commands.capturePhase({ id: 'phase-todo' }))
         assert(r3._tag === 'pending')
 
-        // Allow the push fiber to deliver r3 to the leader while disconnected.
-        // Without this, there's a race between the push fiber (delivering r3 to the
-        // leader's localPushesQueue) and the pull loop (processing ext-2 after connect).
-        // The pull loop is blocked on isConnected, so r3 will be fully processed and
-        // journaled before the pull loop can compete for the pushPullMutex.
-        yield* Effect.sleep('500 millis')
-
+        // After Round 1's rebase, the leader pushed rebased events to the backend,
+        // advancing the backend head to global 3. The event factory must produce
+        // ext-2 with a seqNum > 3 so the leader's pull processing doesn't drop it
+        // (the leader drops events with seqNum <= upstreamHead).
+        backendFactory.todoCreated.advanceTo(4)
         yield* mockSyncBackend.advance(
           backendFactory.todoCreated.next({ id: 'ext-2', text: 'External 2', completed: false }),
         )
