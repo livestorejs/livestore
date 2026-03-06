@@ -55,15 +55,18 @@ export class SyncState extends Schema.Class<SyncState>('SyncState')({
   })
 }
 
+
 /**
- * This payload propagates a rebase from the upstream node
+ * Conflict info produced when a command fails during replay.
  */
-/** Conflict info produced when a command fails during replay. */
 export class ReplayConflictInfo extends Schema.Class<ReplayConflictInfo>('ReplayConflictInfo')({
   commandId: Schema.String,
   error: Schema.Unknown,
 }) {}
 
+/**
+ * This payload propagates a rebase from the upstream node
+ */
 export class PayloadUpstreamRebase extends Schema.TaggedStruct('upstream-rebase', {
   /** Events which need to be rolled back */
   rollbackEvents: Schema.Array(LiveStoreEvent.Client.EncodedWithMeta),
