@@ -148,11 +148,14 @@ export type CommandHandlerExecutionResult<TError> =
   | { readonly _tag: 'threw'; readonly cause: unknown }
 
 /**
- * Execute a command handler and classify the outcome.
+ * Execute a command handler against the current database state and classify the outcome
+ * into a discriminated union.
  *
- * - Returned event(s) => `{ _tag: 'ok' }`
- * - Returned recoverable error => `{ _tag: 'error' }`
- * - Thrown unexpected error => `{ _tag: 'threw' }`
+ * @param handler - The command handler function to execute.
+ * @param commandArgs - Decoded arguments for the command.
+ * @param db - SQLite database used for state reads within the handler.
+ * @param phaseTag - Command execution phase.
+ * @returns A discriminated union indicating the outcome of the handler execution.
  */
 export const executeCommandHandler = <TError>({
   handler,
