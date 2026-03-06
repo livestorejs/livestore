@@ -891,7 +891,7 @@ export class Store<TSchema extends LiveStoreSchema = LiveStoreSchema.Any, TConte
       })
     }).pipe(
       Effect.withSpan('LiveStore:commit', {
-        // When otelContext carries a parent span (e.g. from execute), the commit span becomes
+        // When `options.otelContext` carries a parent span, the commit span becomes
         // a child of that span. Otherwise it's a root span with its own trace.
         ...(parentSpanContext !== undefined
           ? { parent: OtelTracer.makeExternalSpan(parentSpanContext) }
