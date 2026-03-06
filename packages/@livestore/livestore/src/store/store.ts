@@ -1074,15 +1074,18 @@ export class Store<TSchema extends LiveStoreSchema = LiveStoreSchema.Any, TConte
               // the leader confirms the command via advance confirmedCommandIds or rebase.
               const pushPath = pushResult.then((result: CommandPushResult): Confirmation | Promise<Confirmation> => {
                 if (result._tag === 'ok') {
-                  // Leader accepted — wait for backend-level confirmation (resolved by the pull handler)
+                  // Command handler returned events on leader — wait for backend-level confirmation (resolved by the pull handler)
                   return syncConfirmation
                 } else if (result._tag === 'error') {
-                  // Leader rejected — clean up the registered handler
+                  // Command handler returned a recoverable error on leader
                   this[StoreInternalsSymbol].pendingCommandConfirmations.delete(command.id)
                   return { _tag: 'conflict' as const, error: result.error as TError }
-                } else {
+                } else if (result._tag === 'threw') {
+                  // An unrecoverable, unexpected error occurred during command execution on leader
                   this[StoreInternalsSymbol].pendingCommandConfirmations.delete(command.id)
                   throw result.cause
+                } else {
+                  return shouldNeverHappen('Unexpected CommandPushResult', result)
                 }
               })
               // Prevent unhandled rejection if syncConfirmation wins the race
