@@ -889,8 +889,8 @@ export class Store<TSchema extends LiveStoreSchema = LiveStoreSchema.Any, TConte
       })
     }).pipe(
       Effect.withSpan('LiveStore:commit', {
-        // When `options.otelContext` carries a parent span, the commit span becomes
-        // a child of that span. Otherwise it's a root span with its own trace.
+        // When `options.otelContext` carries a parent span, the "LiveStore:commit" span becomes
+        // a child of that span. Otherwise, it's a root span with its own trace.
         ...(parentSpanContext !== undefined
           ? { parent: OtelTracer.makeExternalSpan(parentSpanContext) }
           : { root: true }),
@@ -1102,8 +1102,8 @@ export class Store<TSchema extends LiveStoreSchema = LiveStoreSchema.Any, TConte
       )
     }).pipe(
       Effect.withSpan('LiveStore:execute', {
-        // When otelContext carries a parent span, the execute span becomes a child
-        // of that span. Otherwise it's a root span with its own trace.
+        // When `options.otelContext` carries a parent span, the "LiveStore:execute" span becomes a child
+        // of that span. Otherwise, it's a root span with its own trace.
         ...(parentSpanContext !== undefined
           ? { parent: OtelTracer.makeExternalSpan(parentSpanContext) }
           : { root: true }),
