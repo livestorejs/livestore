@@ -48,7 +48,7 @@
     "react-dom": "19.2.3",
     "react-window": "1.8.11",
     "typescript": "5.9.3",
-    "vite": "7.3.0",
+    "vite": "7.3.1",
     "vitest": "3.2.4"
   },
   "peerDependencies": {
