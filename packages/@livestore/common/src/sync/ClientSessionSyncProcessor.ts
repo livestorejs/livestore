@@ -91,7 +91,18 @@ export const makeClientSessionSyncProcessor = ({
   >
   rollback: (changeset: Uint8Array<ArrayBuffer>) => void
   refreshTables: (tables: Set<string>) => void
-  /** Called when a command's events are confirmed or when a replay conflict is detected. */
+  /**
+   * Settles a pending command's confirmation promise registered by the store during `execute`.
+   *
+   * - `confirmed` — The backend acknowledged the command's events (via advance `confirmedCommandIds`
+   *   or rebase `replayedPending`). Resolves the promise so callers of `execute` see success.
+   * - `conflict` — The command's events could not be replayed after a rebase but the failure is
+   *   retryable (e.g. materialization error). Resolves the promise with a conflict result.
+   * - `reject` — The command failed with a terminal error (e.g. `CommandHandlerThrew`,
+   *   `NoEventProduced`, `CommandNotFound`). Rejects the promise so callers see a thrown error.
+   *
+   * After resolution the command is removed from the store's `pendingCommandConfirmations` map.
+   */
   resolveCommandConfirmation: (
     commandId: string,
     result: { _tag: 'confirmed' } | { _tag: 'conflict'; error: unknown } | { _tag: 'reject'; error: unknown },
