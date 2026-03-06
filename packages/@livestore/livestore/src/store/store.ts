@@ -330,14 +330,19 @@ export class Store<TSchema extends LiveStoreSchema = LiveStoreSchema.Any, TConte
       },
       resolveCommandConfirmation: (commandId, result) => {
         const handlers = this[StoreInternalsSymbol].pendingCommandConfirmations.get(commandId)
-        if (handlers !== undefined) {
-          if (result._tag === 'reject') {
-            handlers.reject(result.error)
-          } else {
-            handlers.resolve(result)
-          }
-          this[StoreInternalsSymbol].pendingCommandConfirmations.delete(commandId)
+        if (handlers === undefined) return
+
+        if (result._tag === 'reject') {
+          handlers.reject(result.error)
+        } else if (result._tag === 'conflict') {
+          handlers.resolve(result)
+        } else if (result._tag === 'confirmed') {
+          handlers.resolve(result)
+        } else {
+          shouldNeverHappen('Invalid command confirmation result', result)
         }
+
+        this[StoreInternalsSymbol].pendingCommandConfirmations.delete(commandId)
       },
       span: syncSpan,
       params: {
