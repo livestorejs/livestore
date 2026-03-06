@@ -314,7 +314,6 @@ export type StoreInternals = {
 
   /**
    * In-flight command confirmations keyed by command id.
-   * Entries are resolved when command events leave `syncState.pending`.
    */
   readonly pendingCommandConfirmations: Map<
     string,
@@ -437,14 +436,14 @@ export type StoreExecuteOptions = {
   label?: string
   /**
    * When `true`, defers reactive query refresh after the command's events are committed.
-   * Call {@link Store.manualRefresh} afterwards to flush updates in a single pass.
+   * Call {@link Store.manualRefresh} afterward to flush updates in a single pass.
    */
   skipRefresh?: boolean
   /** Additional OpenTelemetry span links attached to the `LiveStore:execute` span. */
   spanLinks?: otel.Link[]
   /**
    * When provided, the `LiveStore:execute` span becomes a child of the span in this context
-   * instead of a root span. The context is also forwarded to the underlying commit.
+   * instead of a root span.
    */
   otelContext?: otel.Context
 }
