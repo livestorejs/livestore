@@ -41,7 +41,7 @@ export const noopChannel = <MsgListen, MsgSend>(): Effect.Effect<WebChannel<MsgL
 export const messagePortChannel: <MsgListen, MsgSend, MsgListenEncoded, MsgSendEncoded>(args: {
   port: MessagePort
   schema: InputSchema<MsgListen, MsgSend, MsgListenEncoded, MsgSendEncoded>
-  debugId?: string | number
+  debugId?: string | number | undefined
 }) => Effect.Effect<WebChannel<MsgListen, MsgSend>, never, Scope.Scope> = ({ port, schema: inputSchema, debugId }) =>
   Effect.scopeWithCloseable((scope) =>
     Effect.gen(function* () {
@@ -125,7 +125,7 @@ export const sameThreadChannel = <MsgListen, MsgSend, MsgListenEncoded, MsgSendE
 export const messagePortChannelWithAck: <MsgListen, MsgSend, MsgListenEncoded, MsgSendEncoded>(args: {
   port: MessagePort
   schema: InputSchema<MsgListen, MsgSend, MsgListenEncoded, MsgSendEncoded>
-  debugId?: string | number
+  debugId?: string | number | undefined
 }) => Effect.Effect<WebChannel<MsgListen, MsgSend>, never, Scope.Scope> = ({ port, schema: inputSchema, debugId }) =>
   Effect.scopeWithCloseable((scope) =>
     Effect.gen(function* () {

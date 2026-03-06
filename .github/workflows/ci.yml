@@ -1511,6 +1511,16 @@ jobs:
           path: '${{ env.NIX_STORE_DIAGNOSTICS_DIR }}'
           if-no-files-found: ignore
           retention-days: 14
+  notify-alignment:
+    runs-on: ubuntu-latest
+    needs: [test-unit, test-integration-node-sync, test-integration-sync-provider, test-integration-playwright]
+    if: (github.ref == 'refs/heads/main' || github.ref == 'refs/heads/dev') && github.event_name == 'push'
+    steps:
+      - name: Dispatch alignment to coordinator
+        env:
+          GH_TOKEN: '${{ secrets.MEGAREPO_ALIGNMENT_TOKEN }}'
+        run: 'printf ''{"event_type":"upstream-changed","client_payload":{"source_repo":"%s","source_sha":"%s"}}'' "${{ github.repository }}" "${{ github.sha }}" | gh api repos/schickling/megarepo-all/dispatches --input -'
+        shell: bash
   build-example-create:
     if: github.event.pull_request.head.repo.fork != true
     needs: publish-snapshot-version

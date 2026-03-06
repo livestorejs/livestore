@@ -43,10 +43,10 @@ export const createDoRpcHandler = (
           if (req.rpcContext !== undefined) {
             rpcSubscriptions.set(req.storeId, {
               storeId: req.storeId,
-              payload: req.payload,
               subscribedAt: Date.now(),
               requestId: Headers.get(headers, 'x-rpc-request-id').pipe(Option.getOrThrow),
               callerContext: req.rpcContext.callerContext,
+              ...(req.payload !== undefined ? { payload: req.payload } : {}),
             })
           }
 
