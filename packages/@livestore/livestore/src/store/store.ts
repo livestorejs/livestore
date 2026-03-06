@@ -89,10 +89,6 @@ if (isDevEnv() === true) {
 }
 
 /**
- * Flag to save whether we've warned about experimental commands.
- */
-
-/**
  * Default parameters for the Store. Also used in `create-store.ts`
  */
 export const STORE_DEFAULT_PARAMS = {
