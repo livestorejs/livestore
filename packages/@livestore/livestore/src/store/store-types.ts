@@ -15,7 +15,7 @@ import {
   type UnknownError,
 } from '@livestore/common'
 import type { StreamEventsOptions } from '@livestore/common/leader-thread'
-import type { LiveStoreEvent, LiveStoreSchema } from '@livestore/common/schema'
+import type { CommandInstance, LiveStoreEvent, LiveStoreSchema } from '@livestore/common/schema'
 import type { Effect, Runtime, Schema, Scope } from '@livestore/utils/effect'
 import { Deferred, Predicate } from '@livestore/utils/effect'
 
@@ -380,6 +380,15 @@ export type RefreshReason =
       events: ReadonlyArray<LiveStoreEvent.Client.Decoded | LiveStoreEvent.Input.Decoded>
 
       /** The tables that were written to by the event */
+      writeTables: ReadonlyArray<string>
+    }
+  | {
+      _tag: 'execute'
+      /** The command that was executed */
+      command: CommandInstance
+      /** The events produced by the command */
+      events: ReadonlyArray<LiveStoreEvent.Input.Decoded>
+      /** The tables that were written to by the command's events */
       writeTables: ReadonlyArray<string>
     }
   | {

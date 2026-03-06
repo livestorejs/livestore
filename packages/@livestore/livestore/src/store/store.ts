@@ -1041,7 +1041,8 @@ export class Store<TSchema extends LiveStoreSchema = LiveStoreSchema.Any, TConte
               }
 
               const debugRefreshReason: RefreshReason = {
-                _tag: 'commit',
+                _tag: 'execute',
+                command,
                 events: r.events,
                 writeTables: Array.from(writeTables),
               }
