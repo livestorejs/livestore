@@ -976,7 +976,6 @@ export class Store<TSchema extends LiveStoreSchema = LiveStoreSchema.Any, TConte
       const currentSpan = yield* OtelTracer.currentOtelSpan.pipe(Effect.orDie)
       mutationsSpan?.addLink({ context: currentSpan.spanContext() })
 
-      // Look up command definition from schema
       const commandDef = this.schema.commandDefsMap.get(command.name)
       if (commandDef === undefined) {
         return yield* Effect.die(
