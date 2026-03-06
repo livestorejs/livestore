@@ -9,7 +9,6 @@ import {
   IntentionalShutdownCause,
   isQueryBuilder,
   liveStoreVersion,
-  makeCommandQueryFn,
   MaterializeError,
   MaterializerHashMismatchError,
   makeClientSessionSyncProcessor,
@@ -24,7 +23,6 @@ import {
 import type { CommandPushResult, StreamEventsOptions } from '@livestore/common/leader-thread'
 import {
   type CommandDef,
-  type CommandHandlerContext,
   type CommandInstance,
   EventSequenceNumber,
   LiveStoreEvent,
@@ -987,14 +985,12 @@ export class Store<TSchema extends LiveStoreSchema = LiveStoreSchema.Any, TConte
         )
       }
 
-      // TODO: Command execution should be transactional with event append
-      // See https://github.com/livestorejs/livestore/issues/1065
-      const handlerContext: CommandHandlerContext = {
-        query: makeCommandQueryFn(this[StoreInternalsSymbol].sqliteDbWrapper),
-        phase: { _tag: 'initial' },
-      }
-
-      const executionResult = executeCommandHandler<TError>(commandDef.handler, command.args, handlerContext)
+      const executionResult = executeCommandHandler<TError>({
+        handler: commandDef.handler,
+        commandArgs: command.args,
+        db: this[StoreInternalsSymbol].sqliteDbWrapper,
+        phaseTag: 'initial',
+      })
 
       return yield* Match.value(executionResult).pipe(
         Match.tagsExhaustive({

@@ -1,22 +1,21 @@
 import { describe, expect, it } from 'vitest'
 
+import type { SqliteDb } from '../../adapter-types.ts'
 import { executeCommandHandler } from './command-handler.ts'
 
 describe('executeCommandHandler', () => {
-  const initialContext = {
-    query: () => [],
-    phase: { _tag: 'initial' as const },
-  }
+  const stubDb = { select: () => [] } as unknown as SqliteDb
 
   it('returns ok for a single event', () => {
-    const result = executeCommandHandler(
-      () => ({
+    const result = executeCommandHandler({
+      handler: () => ({
         name: 'TodoCreated',
         args: { id: 'todo-1' },
       }),
-      {},
-      initialContext,
-    )
+      commandArgs: {},
+      db: stubDb,
+      phaseTag: 'initial',
+    })
 
     expect(result).toEqual({
       _tag: 'ok',
@@ -25,14 +24,15 @@ describe('executeCommandHandler', () => {
   })
 
   it('returns ok for an event array', () => {
-    const result = executeCommandHandler(
-      () => [
+    const result = executeCommandHandler({
+      handler: () => [
         { name: 'TodoCreated', args: { id: 'todo-1' } },
         { name: 'TodoCompleted', args: { id: 'todo-1' } },
       ],
-      {},
-      initialContext,
-    )
+      commandArgs: {},
+      db: stubDb,
+      phaseTag: 'initial',
+    })
 
     expect(result).toEqual({
       _tag: 'ok',
@@ -44,11 +44,12 @@ describe('executeCommandHandler', () => {
   })
 
   it('returns error for recoverable handler values', () => {
-    const result = executeCommandHandler(
-      () => ({ _tag: 'RoomAtCapacity', roomId: 'room-1' }),
-      {},
-      initialContext,
-    )
+    const result = executeCommandHandler({
+      handler: () => ({ _tag: 'RoomAtCapacity', roomId: 'room-1' }),
+      commandArgs: {},
+      db: stubDb,
+      phaseTag: 'initial',
+    })
 
     expect(result).toEqual({
       _tag: 'error',
@@ -58,13 +59,14 @@ describe('executeCommandHandler', () => {
 
   it('returns threw for unexpected exceptions', () => {
     const cause = new Error('boom')
-    const result = executeCommandHandler(
-      () => {
+    const result = executeCommandHandler({
+      handler: () => {
         throw cause
       },
-      {},
-      initialContext,
-    )
+      commandArgs: {},
+      db: stubDb,
+      phaseTag: 'initial',
+    })
 
     expect(result).toEqual({
       _tag: 'threw',
@@ -73,20 +75,16 @@ describe('executeCommandHandler', () => {
   })
 
   it('passes "replay" phase to handler context', () => {
-    const replayContext = {
-      query: () => [],
-      phase: { _tag: 'replay' as const },
-    }
-
     let receivedPhase: { _tag: string } | undefined
-    executeCommandHandler(
-      (_args, ctx) => {
+    executeCommandHandler({
+      handler: (_args, ctx) => {
         receivedPhase = ctx.phase
         return { name: 'TodoCreated', args: { id: 'todo-1' } }
       },
-      {},
-      replayContext,
-    )
+      commandArgs: {},
+      db: stubDb,
+      phaseTag: 'replay',
+    })
 
     expect(receivedPhase).toEqual({ _tag: 'replay' })
   })

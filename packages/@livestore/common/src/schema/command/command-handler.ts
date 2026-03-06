@@ -1,8 +1,11 @@
-import type { Schema } from '@livestore/utils/effect'
+import { Schema } from '@livestore/utils/effect'
 
+import type { SqliteDb } from '../../adapter-types.ts'
+import { type Bindable, prepareBindValues } from '../../util.ts'
 import type * as LiveStoreEvent from '../LiveStoreEvent/mod.ts'
+import { isQueryBuilder } from '../state/sqlite/query-builder/api.ts'
+import { getResultSchema } from '../state/sqlite/query-builder/impl.ts'
 import type { QueryBuilder } from '../state/sqlite/query-builder/mod.ts'
-import type { Bindable } from '../../util.ts'
 import type { CommandDef } from './command-def.ts'
 
 /**
@@ -151,11 +154,18 @@ export type CommandHandlerExecutionResult<TError> =
  * - Returned recoverable error => `{ _tag: 'error' }`
  * - Thrown unexpected error => `{ _tag: 'threw' }`
  */
-export const executeCommandHandler = <TError>(
-  handler: (commandArgs: unknown, context: CommandHandlerContext) => CommandHandlerResult<TError>,
-  commandArgs: unknown,
-  context: CommandHandlerContext,
-): CommandHandlerExecutionResult<TError> => {
+export const executeCommandHandler = <TError>({
+  handler,
+  commandArgs,
+  db,
+  phaseTag,
+}: {
+  handler: (commandArgs: unknown, context: CommandHandlerContext) => CommandHandlerResult<TError>
+  commandArgs: unknown
+  db: SqliteDb
+  phaseTag: CommandHandlerExecutionPhase['_tag']
+}): CommandHandlerExecutionResult<TError> => {
+  const context: CommandHandlerContext = { query: makeCommandQueryFn(db), phase: { _tag: phaseTag } }
   let rawResult: CommandHandlerResult<TError>
   try {
     rawResult = handler(commandArgs, context)
@@ -164,9 +174,8 @@ export const executeCommandHandler = <TError>(
   }
 
   const normalized = normalizeHandlerResult(rawResult)
-  if (normalized.ok === false) {
-    return { _tag: 'error', error: normalized.error }
-  }
+  if (normalized.ok === false) return { _tag: 'error', error: normalized.error }
+
   return { _tag: 'ok', events: normalized.events }
 }
 
@@ -191,6 +200,24 @@ export const executeCommandHandler = <TError>(
  * }
  * ```
  */
+/**
+ * Create a {@link CommandHandlerContextQuery} function backed by a given SQLite database.
+ *
+ * Supports both type-safe query builders and raw SQL queries.
+ */
+export const makeCommandQueryFn = (db: SqliteDb): CommandHandlerContextQuery =>
+  ((rawQueryOrQueryBuilder: { query: string; bindValues: Bindable } | QueryBuilder.Any) => {
+    if (isQueryBuilder(rawQueryOrQueryBuilder) === true) {
+      const { query, bindValues } = rawQueryOrQueryBuilder.asSql()
+      const rawResults = db.select(query, prepareBindValues(bindValues, query))
+      const resultSchema = getResultSchema(rawQueryOrQueryBuilder)
+      return Schema.decodeSync(resultSchema)(rawResults)
+    } else {
+      const { query, bindValues } = rawQueryOrQueryBuilder
+      return db.select(query, prepareBindValues(bindValues, query))
+    }
+  })
+
 export type CommandHandler<
   TCommandDef extends { schema: Schema.Schema<any, any> } = CommandDef.AnyWithoutFn,
   TError = never,

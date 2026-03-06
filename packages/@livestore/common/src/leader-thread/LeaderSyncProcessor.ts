@@ -25,7 +25,6 @@ import { CommandExecutionError, type MaterializeError, type SqliteDb, UnknownErr
 import { IntentionalShutdownCause } from '../errors.ts'
 import { makeMaterializerHash } from '../materializer-helper.ts'
 import {
-  type CommandHandlerContext,
   type CommandInstance, executeCommandHandler,
   type LiveStoreSchema
 } from '../schema/mod.ts'
@@ -46,7 +45,6 @@ import type { ShutdownChannel } from './shutdown-channel.ts'
 import type { CommandPushResult, InitialBlockingSyncContext, LeaderSyncProcessor } from './types.ts'
 import { LeaderThreadCtx } from './types.ts'
 import { CommandJournal } from './CommandJournal.ts'
-import { makeCommandQueryFn } from '../command-query.ts'
 
 // WORKAROUND: @effect/opentelemetry mis-parses `Span.addEvent(name, attributes)` and treats the attributes object as a
 // time input, causing `TypeError: {} is not iterable` at runtime.
@@ -676,8 +674,12 @@ const backgroundApplyLocalPushes = ({
         db.execute('BEGIN TRANSACTION', undefined)
         dbEventlog.execute('BEGIN TRANSACTION', undefined)
 
-        const handlerContext: CommandHandlerContext = { phase: { _tag: 'initial' }, query: makeCommandQueryFn(db) }
-        const handlerResult = executeCommandHandler(commandDef.handler, item.command.args, handlerContext)
+        const handlerResult = executeCommandHandler({
+          handler: commandDef.handler,
+          commandArgs: item.command.args,
+          db,
+          phaseTag: 'initial',
+        })
 
         if (handlerResult._tag === 'error') {
           db.execute('ROLLBACK', undefined)
@@ -1698,9 +1700,12 @@ const replayCommand = Effect.fn('@livestore/common:LeaderSyncProcessor:replayCom
 
   // TODO: replay should be transactional with event append
   // See https://github.com/livestorejs/livestore/issues/1065
-  const handlerContext: CommandHandlerContext = { phase: { _tag: 'replay' }, query: makeCommandQueryFn(dbState) }
-
-  const replayResult = executeCommandHandler(commandDef.handler, command.args, handlerContext)
+  const replayResult = executeCommandHandler({
+    handler: commandDef.handler,
+    commandArgs: command.args,
+    db: dbState,
+    phaseTag: 'replay',
+  })
 
   if (replayResult._tag === 'ok') {
     const events = replayResult.events
