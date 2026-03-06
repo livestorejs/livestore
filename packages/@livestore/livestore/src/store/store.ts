@@ -1059,9 +1059,9 @@ export class Store<TSchema extends LiveStoreSchema = LiveStoreSchema.Any, TConte
               // command, to avoid a race where the pull handler resolves the command (via rebase)
               // before the pushResult callback registers the handler.
               type Confirmation = { readonly _tag: 'confirmed' } | { readonly _tag: 'conflict'; readonly error: TError }
-              const syncConfirmation = new Promise<Confirmation>((_resolve, reject) => {
+              const syncConfirmation = new Promise<Confirmation>((resolve, reject) => {
                 this[StoreInternalsSymbol].pendingCommandConfirmations.set(command.id, {
-                  resolve: _resolve as (value: { _tag: 'confirmed' } | { _tag: 'conflict'; error: unknown }) => void,
+                  resolve: resolve as (value: { _tag: 'confirmed' } | { _tag: 'conflict'; error: unknown }) => void,
                   reject,
                 })
               })
