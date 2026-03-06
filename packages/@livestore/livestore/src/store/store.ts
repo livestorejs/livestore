@@ -970,7 +970,7 @@ export class Store<TSchema extends LiveStoreSchema = LiveStoreSchema.Any, TConte
       : undefined
 
     const exit = Effect.gen(this, function* () {
-     // Reverse link: attach execute span to the mutations collector span
+      // Reverse link: attach "LiveStore:execute" span to the "LiveStore:mutations" collector span
       const mutationsSpan = otel.trace.getSpan(this[StoreInternalsSymbol].otel.mutationsSpanContext)
       mutationsSpan?.addEvent('execute')
       const currentSpan = yield* OtelTracer.currentOtelSpan.pipe(Effect.orDie)
