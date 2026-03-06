@@ -921,14 +921,12 @@ export class Store<TSchema extends LiveStoreSchema = LiveStoreSchema.Any, TConte
   /**
    * Execute a command against the current state.
    *
+   * @remarks
    * Commands encode user intentions that can be validated against the current state
    * and re-evaluated during sync.
    *
-   * @experimental Commands API is under active development. Initial execution works, but
-   * command replay, conflict detection, and sync confirmation are not yet implemented.
-   * The `confirmation` promise never resolves — it only rejects on store shutdown.
-   *
    * @param command - The command instance to execute (created by calling a {@link CommandDef})
+   * @param options - Configuration for the command execution
    * @returns An {@link ExecuteResult} — either {@link ExecuteResultFailed} or {@link ExecuteResultPending}
    *
    * @example
@@ -937,16 +935,16 @@ export class Store<TSchema extends LiveStoreSchema = LiveStoreSchema.Any, TConte
    *
    * if (result._tag === 'failed') {
    *   switch (result.error._tag) {
-   *       case 'RoomAtCapacity':
-   *          console.error('Room is full:', result.error)
-   *          break
-   *       case 'GuestNotFound':
-   *          console.error('Guest not found:', result.error)
-   *          break
-   *       default:
-   *          console.error('Could not check in guest:', result.error)
-   *          break
-   *    }
+   *     case 'RoomAtCapacity':
+   *       console.error('Room is full:', result.error)
+   *       break
+   *     case 'GuestNotFound':
+   *       console.error('Guest not found:', result.error)
+   *       break
+   *     default:
+   *       console.error('Could not check in guest:', result.error)
+   *       break
+   *   }
    *   return
    * }
    *

@@ -82,26 +82,23 @@ export type LiveStoreContextRunning<TSchema extends LiveStoreSchema = LiveStoreS
 /**
  * Result of confirmation after sync.
  *
+ * @remarks
+ *
  * Used as the resolution type of {@link ExecuteResultPending.confirmation} so
  * consumers can pattern-match on confirmed vs. conflict:
  *
  * - `'confirmed'`: Command's event(s) were pushed and confirmed by the sync backend
  * - `'conflict'`: Command's handler returned an error during command replay
  *
- * @experimental Commands API is under active development. Initial execution works, but
- * command replay, conflict detection, and sync confirmation are not yet implemented.
- *
  * @example
  * ```ts
  * const confirmation = await result.confirmation
- * switch (confirmation._tag) {
- *   case 'confirmed':
- *     console.log('Command confirmed by sync backend')
- *     break
- *   case 'conflict':
- *     console.error('Conflict:', confirmation.error)
- *     break
+ * if (confirmation._tag === 'conflict') {
+ *   console.error('Conflict:', confirmation.error)
+ *   return
  * }
+ *
+ * console.log('Command confirmed')
  * ```
  */
 export type CommandConfirmation<TError = unknown> =
@@ -111,9 +108,9 @@ export type CommandConfirmation<TError = unknown> =
 /**
  * Result of a failed initial command execution.
  *
- * Returned when the command handler returns an error during initial execution.
+ * @remarks
  *
- * @experimental Commands API is under active development.
+ * Returned when the command handler returns an error during initial execution.
  */
 export interface ExecuteResultFailed<TError = unknown> {
   /** Type discriminator for a failed result. */
@@ -136,13 +133,13 @@ export interface ExecuteResultFailed<TError = unknown> {
 }
 
 /**
- * Result of a successful command execution.
+ * Result of a successful initial command execution.
  *
- * Returned when the command handler successfully produces events.
- * The events are materialized locally but may still fail during replay
- * during sync reconciliation.
+ * @remarks
  *
- * @experimental Commands API is under active development.
+ * Returned when the command handler successfully returns events during
+ * initial execution. The events are materialized locally but may still
+ * not be confirmed due to conflicts or errors during sync.
  */
 export interface ExecuteResultPending<TError = never> {
   /** Type discriminator for pending result. */
@@ -150,37 +147,36 @@ export interface ExecuteResultPending<TError = never> {
 
   /**
    * Promise that resolves when the command's event(s) are confirmed by the sync backend
-   * or an error is returned by the command handler during command replay.
+   * or an error is returned by the command handler during command replay. It rejects
+   * when the command handler throws (unexpected and non-recoverable) an error after
+   * initial execution.
    *
-   * Rejects when the command handler throws (unexpected and non-recoverable) an error
-   * during command replay.
-   *
-   * @experimental Commands API is under active development. The promise will never
-   * resolve to `'conflict'` or `'confirmed'` in this version.
-   *
-   * @example Await confirmation directly (skips initial execution failures)
+   * @example Only handle conflicts (skip initial execution failures)
    * ```ts
    * const confirmation = await store.execute(commands.toggleTodo({ id })).confirmation
-   * if (confirmation._tag === 'conflict') {
-   *   toast.error('Toggle rolled back')
+   * if (confirmation._tag === 'conflict' && confirmation.error._tag === 'TodoDoesNotExist') {
+   *   console.error('Todo was deleted:', confirmation.error)
+   *   return
    * }
+   *
+   * console.log('Todo toggled')
    * ```
    *
-   * @example Handle initial execution failures first, then await confirmation
+   * @example Handle initial execution failures and conflicts
    * ```ts
    * const result = store.execute(commands.createTodo({ id, text }))
-   *
    * if (result._tag === 'failed' && result.error._tag === 'TodoTextEmpty') {
-   *   toast.error('Todo text cannot be empty.')
+   *   console.error('Todo text cannot be empty:', result.error)
    *   return
    * }
    *
    * const confirmation = await result.confirmation
-   * if (confirmation._tag === 'confirmed') {
-   *   toast.success('Todo confirmed')
-   * } else {
-   *   toast.error(`Todo rolled back: ${confirmation.error}`)
+   * if (confirmation._tag === 'conflict') {
+   *   console.error('Todo rolled back:', confirmation.error)
+   *   return
    * }
+   *
+   * console.log('Todo confirmed')
    * ```
    */
   readonly confirmation: Promise<CommandConfirmation<TError>>
@@ -189,38 +185,42 @@ export interface ExecuteResultPending<TError = never> {
 /**
  * Result of a command execution.
  *
+ * @remarks
+ *
  * Commands either fail during initial execution (`failed`)
  * or succeed with pending confirmation (`pending`).
  *
- * Both variants expose a `confirmation` promise:
+ * Both variants expose a `confirmation` promise so callers can await confirmation
+ * without handling initial execution failures. For each variant, the promise:
  * - `pending`: resolves to {@link CommandConfirmation} when sync completes
- * - `failed`: rejects with the error (for callers who skip initial execution failure handling)
- *
- * @experimental Commands API is under active development. Initial execution works, but
- * command replay, conflict detection, and sync confirmation are not yet implemented.
+ * - `failed`: rejects with an error during initial execution (for callers who skip initial execution failures)
  *
  * @example Only handle conflicts (skip initial execution failures)
  * ```ts
  * const confirmation = await store.execute(commands.toggleTodo({ id })).confirmation
- * if (confirmation._tag === 'conflict') {
- *   toast.error('Action rolled back')
+ * if (confirmation._tag === 'conflict' && confirmation.error._tag === 'TodoDoesNotExist') {
+ *   console.error('Todo was deleted:', confirmation.error)
+ *   return
  * }
+ *
+ * console.log('Todo toggled')
  * ```
  *
  * @example Handle initial execution failures and conflicts
  * ```ts
  * const result = store.execute(commands.createTodo({ id, text }))
- *
- * if (result._tag === 'failed') {
- *   // result.error is TodoTextEmpty — fully typed
- *   console.error('Failed:', result.error)
+ * if (result._tag === 'failed' && result.error._tag === 'TodoTextEmpty') {
+ *   console.error('Todo text cannot be empty:', result.error)
  *   return
  * }
  *
  * const confirmation = await result.confirmation
  * if (confirmation._tag === 'conflict') {
- *   toast.error('Action rolled back')
+ *   console.error('Todo rolled back:', confirmation.error)
+ *   return
  * }
+ *
+ * console.log('Todo confirmed')
  * ```
  */
 export type ExecuteResult<TError = unknown> = ExecuteResultFailed<TError> | ExecuteResultPending<TError>
@@ -423,9 +423,6 @@ export type StoreCommitOptions = {
   otelContext?: otel.Context
 }
 
-/**
- * @experimental Commands API is under active development.
- */
 export type StoreExecuteOptions = {
   /** Human-readable label for tracing and debugging, added as an OpenTelemetry span attribute. */
   label?: string
