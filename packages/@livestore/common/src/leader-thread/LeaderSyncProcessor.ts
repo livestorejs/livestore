@@ -1088,7 +1088,7 @@ const backgroundBackendPulling = Effect.fn('@livestore/common:LeaderSyncProcesso
         const journaledCommands = yield* commandJournal.entries.pipe(Effect.orDie)
         const journalMap = new Map(journaledCommands.map((c) => [c.id, c]))
 
-        const replayConflicts: SyncState.ReplayConflictInfo[] = []
+        const replayConflicts: { readonly commandId: string; readonly error: unknown }[] = []
         // newPending accumulates the actual events after replay (may differ from rebase without replay)
         const newPending: LiveStoreEvent.Client.EncodedWithMeta[] = []
         // Track the running seqNum head for encoding replayed events
@@ -1145,10 +1145,10 @@ const backgroundBackendPulling = Effect.fn('@livestore/common:LeaderSyncProcesso
             // Command replay failed (conflict) — its events are dropped from pending.
             // replayCommand already removed the command from the journal.
             replayConflicts.push(
-              new SyncState.ReplayConflictInfo({
+              {
                 commandId,
                 error: replayResult.left.error,
-              }),
+              },
             )
             continue
           }

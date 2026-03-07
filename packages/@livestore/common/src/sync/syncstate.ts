@@ -55,15 +55,6 @@ export class SyncState extends Schema.Class<SyncState>('SyncState')({
   })
 }
 
-
-/**
- * Conflict info produced when a command fails during replay.
- */
-export class ReplayConflictInfo extends Schema.Class<ReplayConflictInfo>('ReplayConflictInfo')({
-  commandId: Schema.String,
-  error: Schema.Unknown,
-}) {}
-
 /**
  * This payload propagates a rebase from the upstream node
  */
@@ -73,7 +64,7 @@ export class PayloadUpstreamRebase extends Schema.TaggedStruct('upstream-rebase'
   /** Events which need to be applied after the rollback (already rebased by the upstream node) */
   newEvents: Schema.Array(LiveStoreEvent.Client.EncodedWithMeta),
   /** Commands that failed during replay (conflicts). Empty when no conflicts occurred. */
-  conflicts: Schema.optionalWith(Schema.Array(ReplayConflictInfo), { default: () => [] }),
+  conflicts: Schema.optionalWith(Schema.Array(Schema.Struct({ commandId: Schema.String, error: Schema.Unknown })), { default: () => [] }),
   /**
    * When the leader replays commands during rebase, the replayed events replace the session's pending (rebased without replay).
    * If provided, the session adopts these as its new pending instead of rebasing its own events without replay.
@@ -204,7 +195,7 @@ export const payloadFromMergeResult = (
       _tag: 'upstream-rebase' as const,
       newEvents: result.newEvents,
       rollbackEvents: result.rollbackEvents,
-      conflicts: [] as readonly ReplayConflictInfo[],
+      conflicts: [] as readonly { readonly commandId: string; readonly error: unknown }[],
       replayedPending: [] as readonly LiveStoreEvent.Client.EncodedWithMeta[],
     })),
     Match.exhaustive,
