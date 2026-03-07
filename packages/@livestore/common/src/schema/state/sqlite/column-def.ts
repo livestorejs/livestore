@@ -198,7 +198,7 @@ const getColumnForSchema = (schema: Schema.Schema.AnyNoContext, nullable = false
 const stripNullable = (ast: SchemaAST.AST): SchemaAST.AST => {
   let cur = ast
   // could be wrapped twice like [null | [undefined | X] ]
-  while (SchemaAST.isUnion(cur) === false) {
+  while (SchemaAST.isUnion(cur) === true) {
       // Filter out null/undefined members while preserving any annotations on the union
       const coreTypes = cur.types.filter(
         (type) => !(SchemaAST.isLiteral(type) && type.literal === null) && !SchemaAST.isUndefinedKeyword(type),
