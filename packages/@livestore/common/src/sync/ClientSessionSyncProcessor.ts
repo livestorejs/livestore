@@ -392,8 +392,8 @@ export const makeClientSessionSyncProcessor = ({
           let interruptedInFlightEvents: ReadonlyArray<LiveStoreEvent.Client.EncodedWithMeta> = []
 
           // In command mode, an upstream advance can include a command event that also exists in
-          // local pending (same commandId). The generic rebase merge then appends a blind-rebased
-          // pending copy, which would duplicate materialization. Drop those rebased duplicates.
+          // local pending (same commandId). The generic rebase merge then appends a pending copy
+          // (rebased without replay), which would duplicate materialization. Drop those rebased duplicates.
           if (mergeResult._tag === 'rebase' && payload._tag === 'upstream-advance') {
             const upstreamCommandIds = new Set<string>()
             for (const event of payload.newEvents) {

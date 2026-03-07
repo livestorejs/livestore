@@ -75,8 +75,8 @@ export class PayloadUpstreamRebase extends Schema.TaggedStruct('upstream-rebase'
   /** Commands that failed during replay (conflicts). Empty when no conflicts occurred. */
   conflicts: Schema.optionalWith(Schema.Array(ReplayConflictInfo), { default: () => [] }),
   /**
-   * When the leader replays commands during rebase, the replayed events replace the session's blind-rebased pending.
-   * If provided, the session adopts these as its new pending instead of blind-rebasing its own events.
+   * When the leader replays commands during rebase, the replayed events replace the session's pending (rebased without replay).
+   * If provided, the session adopts these as its new pending instead of rebasing its own events without replay.
    */
   replayedPending: Schema.optionalWith(Schema.Array(LiveStoreEvent.Client.EncodedWithMeta), {
     default: () => [],
@@ -257,8 +257,8 @@ export const merge = ({
       if (payload.replayedPending.length > 0) {
         // The leader replayed commands and provided authoritative pending events.
         // payload.newEvents already contains [...confirmed, ...replayedPending], so we must NOT
-        // blind-rebase events the leader already processed — that would create duplicates.
-        // Only session-only events (not yet reflected in replayedPending) need blind rebasing.
+        // rebase without replay events the leader already processed — that would create duplicates.
+        // Only session-only events (not yet reflected in replayedPending) need rebasing without replay.
         // We must compare by event equality rather than seqNum because replayed events have fresh
         // sequence numbers after rebase.
         const replayedPool = [...payload.replayedPending]
@@ -277,7 +277,7 @@ export const merge = ({
         })
         effectivePending = [...payload.replayedPending, ...rebasedSessionOnly]
       } else {
-        // No leader replay info — fall back to blind rebase of all session pending
+        // No leader replay info — fall back to rebase without replay of all session pending
         effectivePending = rebaseEvents({
           events: syncState.pending,
           baseEventSequenceNumber: newUpstreamHead,
@@ -294,7 +294,7 @@ export const merge = ({
             localHead: effectivePending.at(-1)?.seqNum ?? newUpstreamHead,
           }),
           // When replayedPending is provided, payload.newEvents already contains the replayed events;
-          // only append session-only blind-rebased events to avoid duplicates.
+          // only append session-only events rebased without replay to avoid duplicates.
           newEvents:
             payload.replayedPending.length > 0
               ? [...payload.newEvents, ...effectivePending.slice(payload.replayedPending.length)]

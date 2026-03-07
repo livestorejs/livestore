@@ -643,7 +643,7 @@ const backgroundApplyLocalPushes = ({
         const syncState = yield* syncStateSref
         if (syncState === undefined) return shouldNeverHappen('Not initialized')
 
-        // If the command's events are already in pending (e.g., blind-rebased during a prior rebase),
+        // If the command's events are already in pending (e.g., rebased without replay during a prior rebase),
         // skip re-execution to avoid duplicates. Just journal the command for future replays.
         const pendingHasCommand = syncState.pending.some(
           (e) => Option.getOrUndefined(e.meta.commandId) === item.command.id,
@@ -1069,7 +1069,7 @@ const backgroundBackendPulling = Effect.fn('@livestore/common:LeaderSyncProcesso
           })
         }
 
-        // Split newEvents into confirmed upstream events and blind-rebased pending events.
+        // Split newEvents into confirmed upstream events and pending events rebased without replay.
         // newEvents = [...confirmedUpstream, ...rebasedPending]
         const rebasedPendingSet = new Set(
           mergeResult.newSyncState.pending.map((e) => EventSequenceNumber.Client.toString(e.seqNum)),
@@ -1077,32 +1077,32 @@ const backgroundBackendPulling = Effect.fn('@livestore/common:LeaderSyncProcesso
         const confirmedEvents = mergeResult.newEvents.filter(
           (e) => !rebasedPendingSet.has(EventSequenceNumber.Client.toString(e.seqNum)),
         )
-        const blindRebasedPending = mergeResult.newSyncState.pending
+        const pendingRebasedWithoutReplay = mergeResult.newSyncState.pending
 
         // Materialize confirmed events first to establish the new base state
         yield* materializeEventsBatch({ batchItems: confirmedEvents, deferreds: undefined })
 
         // Replay journaled commands against the new base state.
-        // Commands produce new events that replace the blind-rebased events for those commands.
+        // Commands produce new events that replace the events rebased without replay for those commands.
         const commandJournal = yield* CommandJournal
         const journaledCommands = yield* commandJournal.entries.pipe(Effect.orDie)
         const journalMap = new Map(journaledCommands.map((c) => [c.id, c]))
 
         const replayConflicts: SyncState.ReplayConflictInfo[] = []
-        // newPending accumulates the actual events after replay (may differ from blind rebase)
+        // newPending accumulates the actual events after replay (may differ from rebase without replay)
         const newPending: LiveStoreEvent.Client.EncodedWithMeta[] = []
         // Track the running seqNum head for encoding replayed events
         const newUpstreamHead = confirmedEvents.at(-1)?.seqNum ?? syncState.upstreamHead
         let currentHead = newUpstreamHead
 
-        // Process pending items in order: non-command events keep blind-rebased versions, commands are replayed
+        // Process pending items in order: non-command events keep versions rebased without replay, commands are replayed
         let pendingIdx = 0
-        while (pendingIdx < blindRebasedPending.length) {
-          const event = blindRebasedPending[pendingIdx]!
+        while (pendingIdx < pendingRebasedWithoutReplay.length) {
+          const event = pendingRebasedWithoutReplay[pendingIdx]!
           const commandId = Option.getOrUndefined(event.meta.commandId)
 
           if (commandId === undefined) {
-            // Non-command event: keep the blind-rebased version, materialize it
+            // Non-command event: keep the version rebased without replay, materialize it
             yield* materializeEventsBatch({ batchItems: [event], deferreds: undefined })
             currentHead = event.seqNum
             newPending.push(event)
@@ -1113,16 +1113,16 @@ const backgroundBackendPulling = Effect.fn('@livestore/common:LeaderSyncProcesso
           // Collect all consecutive events for this command
           const commandEvents: LiveStoreEvent.Client.EncodedWithMeta[] = []
           while (
-            pendingIdx < blindRebasedPending.length &&
-            Option.getOrUndefined(blindRebasedPending[pendingIdx]!.meta.commandId) === commandId
+            pendingIdx < pendingRebasedWithoutReplay.length &&
+            Option.getOrUndefined(pendingRebasedWithoutReplay[pendingIdx]!.meta.commandId) === commandId
           ) {
-            commandEvents.push(blindRebasedPending[pendingIdx]!)
+            commandEvents.push(pendingRebasedWithoutReplay[pendingIdx]!)
             pendingIdx++
           }
 
           const journaledCommand = journalMap.get(commandId)
           if (journaledCommand === undefined) {
-            // No journal entry — keep blind-rebased events as fallback
+            // No journal entry — keep events rebased without replay as fallback
             for (const ce of commandEvents) {
               yield* materializeEventsBatch({ batchItems: [ce], deferreds: undefined })
               currentHead = ce.seqNum
@@ -1172,7 +1172,7 @@ const backgroundBackendPulling = Effect.fn('@livestore/common:LeaderSyncProcesso
               name,
               args,
               ...nextNumPair,
-              // Use clientId/sessionId from the original blind-rebased events
+              // Use clientId/sessionId from the original events rebased without replay
               clientId: commandEvents[0]!.clientId,
               sessionId: commandEvents[0]!.sessionId,
             })
@@ -1218,7 +1218,7 @@ const backgroundBackendPulling = Effect.fn('@livestore/common:LeaderSyncProcesso
         trimChangesetRows(db, newBackendHead)
 
         // Broadcast rebase to sessions with all events (confirmed + replayed pending) and any conflicts.
-        // Using replayed events instead of blind-rebased events ensures sessions see the correct
+        // Using replayed events instead of events rebased without replay ensures sessions see the correct
         // (re-executed) command output, not the stale original content.
         yield* connectedClientSessionPullQueues.offer({
           payload: {
