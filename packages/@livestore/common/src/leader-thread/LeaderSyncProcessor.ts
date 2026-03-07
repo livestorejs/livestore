@@ -183,7 +183,6 @@ export const makeLeaderSyncProcessor = ({
     }
 
     const localPushesQueue = yield* BucketQueue.make<LocalPushQueueItem>()
-    const syncPushesLatch = yield* Effect.makeLatch(false)
     // Ensures mutual exclusion between local push and backend pull processing.
     const pushPullMutex = yield* Effect.makeSemaphore(1)
 
@@ -366,7 +365,7 @@ export const makeLeaderSyncProcessor = ({
 
       const backendPushingFiberHandle = yield* FiberHandle.make<void, never>()
       const backendPushingEffect = backgroundBackendPushing({
-        syncPushesLatch,
+        pushPullMutex,
         syncBackendPushQueue,
         otelSpan,
         devtoolsLatch: ctxRef.current?.devtoolsLatch,
@@ -390,7 +389,6 @@ export const makeLeaderSyncProcessor = ({
             yield* FiberHandle.run(backendPushingFiberHandle, backendPushingEffect)
           }),
         syncStateSref,
-        syncPushesLatch,
         pushPullMutex,
         livePull,
         dbState,
@@ -717,7 +715,6 @@ const backgroundBackendPulling = Effect.fn('@livestore/common:LeaderSyncProcesso
   otelSpan,
   dbState,
   syncStateSref,
-  syncPushesLatch,
   pushPullMutex,
   livePull,
   devtoolsLatch,
@@ -732,7 +729,6 @@ const backgroundBackendPulling = Effect.fn('@livestore/common:LeaderSyncProcesso
   otelSpan: otel.Span | undefined
   syncStateSref: SubscriptionRef.SubscriptionRef<SyncState.SyncState | undefined>
   dbState: SqliteDb
-  syncPushesLatch: Effect.Latch
   pushPullMutex: Effect.Semaphore
   livePull: boolean
   devtoolsLatch: Effect.Latch | undefined
@@ -750,7 +746,6 @@ const backgroundBackendPulling = Effect.fn('@livestore/common:LeaderSyncProcesso
           // Allow local pushes to be processed again
           if (pageInfo._tag === 'NoMore') {
             yield* pushPullMutex.release(1)
-            yield* syncPushesLatch.release
           }
         }))
         if (newEvents.length === 0) return
@@ -925,13 +920,13 @@ const backgroundBackendPulling = Effect.fn('@livestore/common:LeaderSyncProcesso
 })
 
 const backgroundBackendPushing = Effect.fn('@livestore/common:LeaderSyncProcessor:backend-pushing')(function* ({
-  syncPushesLatch,
+  pushPullMutex,
   syncBackendPushQueue,
   otelSpan,
   devtoolsLatch,
   backendPushBatchSize,
 }: {
-  syncPushesLatch: Effect.Latch
+  pushPullMutex: Effect.Semaphore
   syncBackendPushQueue: BucketQueue.BucketQueue<LiveStoreEvent.Client.EncodedWithMeta>
   otelSpan: otel.Span | undefined
   devtoolsLatch: Effect.Latch | undefined
@@ -952,7 +947,7 @@ const backgroundBackendPushing = Effect.fn('@livestore/common:LeaderSyncProcesso
     }
 
     // Wait for the backend pulling to finish
-    yield* syncPushesLatch.await
+    yield* pushPullMutex.take(1)
 
     otelSpan?.addEvent(
       'backend-push',
