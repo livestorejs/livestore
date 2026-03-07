@@ -6,6 +6,7 @@ import {
   type BootStatus,
   type ClientSession,
   type ClientSessionLeaderThreadProxy,
+  LeaderAheadError,
   makeMockSyncBackend,
   SyncState,
   type UnknownError,
@@ -717,6 +718,138 @@ Vitest.describe.concurrent('ClientSessionSyncProcessor', () => {
             expect(rePushedBatch[0]!.name).toBe('todoCreated')
             // Rebased onto the external event at global:1 → new seqNum should be global:2
             expect(rePushedBatch[0]!.seqNum.global).toBe(2)
+          }),
+        )
+
+        span.end()
+      }).pipe(withTestCtx(test)),
+  )
+
+  Vitest.scopedLive(
+    'preserves rejected pending events for rebase and re-pushes them after LeaderAheadError',
+    (test) =>
+      Effect.gen(function* () {
+        const upstreamQueue = yield* Queue.unbounded<LiveStoreEvent.Client.EncodedWithMeta>()
+        const leaderPushedBatches: LiveStoreEvent.Client.Encoded[][] = []
+        const firstPushRejected = yield* Deferred.make<void>()
+        const secondPushDone = yield* Deferred.make<void>()
+
+        const runtime = yield* Effect.runtime<Scope.Scope>()
+        const span = makeNoopSpan()
+        const lockStatus = yield* SubscriptionRef.make<LockStatus>('has-lock')
+
+        let pushCount = 0
+
+        const clientSession = {
+          sqliteDb: {} as ClientSession['sqliteDb'],
+          devtools: { enabled: false } as ClientSession['devtools'],
+          clientId: 'client-test',
+          sessionId: 'session-test',
+          lockStatus,
+          shutdown: () => Effect.void,
+          leaderThread: {
+            initialState: {
+              leaderHead: EventSequenceNumber.Client.ROOT,
+              migrationsReport: { migrations: [] },
+              storageMode: 'persisted' as const,
+            },
+            events: {
+              push: (batch: ReadonlyArray<LiveStoreEvent.Client.Encoded>) =>
+                Effect.gen(function* () {
+                  pushCount++
+                  leaderPushedBatches.push([...batch])
+                  if (pushCount === 1) {
+                    yield* Deferred.succeed(firstPushRejected, void 0)
+                    return yield* Effect.fail(
+                      new LeaderAheadError({
+                        minimumExpectedNum: EventSequenceNumber.Client.Composite.make({ global: 1, client: 0 }),
+                        providedNum: batch[0]!.seqNum,
+                      }),
+                    )
+                  }
+
+                  yield* Deferred.succeed(secondPushDone, void 0)
+                }),
+              pull: () =>
+                Stream.fromQueue(upstreamQueue).pipe(
+                  Stream.map((event) => ({
+                    payload: SyncState.PayloadUpstreamAdvance.make({ newEvents: [event] }),
+                  })),
+                ),
+              stream: () => Stream.empty,
+            },
+            commands: {
+              push: () => Effect.succeed({ _tag: 'ok' as const }),
+            },
+            export: Effect.dieMessage('not used'),
+            getEventlogData: Effect.dieMessage('not used'),
+            syncState: Subscribable.make({
+              get: Effect.dieMessage('not used'),
+              changes: Stream.never,
+            }),
+            sendDevtoolsMessage: () => Effect.dieMessage('not used'),
+            networkStatus: Subscribable.make({
+              get: Effect.succeed({
+                isConnected: true,
+                timestampMs: 0,
+                devtools: { latchClosed: false },
+              }),
+              changes: Stream.empty,
+            }),
+          },
+          debugInstanceId: 'test-instance',
+        } satisfies ClientSession
+
+        const syncProcessor = makeClientSessionSyncProcessor({
+          schema: schema as LiveStoreSchema,
+          clientSession,
+          runtime,
+          materializeEvent: () =>
+            Effect.succeed({
+              writeTables: new Set<string>(),
+              sessionChangeset: { _tag: 'no-op' as const },
+              materializerHash: Option.none<number>(),
+            }),
+          rollback: () => undefined,
+          refreshTables: () => undefined,
+          span,
+          params: { leaderPushBatchSize: 10 },
+          confirmUnsavedChanges: false,
+          resolveCommandConfirmation: () => {},
+        })
+
+        yield* Effect.scoped(
+          Effect.gen(function* () {
+            yield* syncProcessor.boot
+
+            yield* syncProcessor.push([events.todoCreated({ id: 'local-1', text: 'local', completed: false })])
+
+            yield* Deferred.await(firstPushRejected).pipe(Effect.timeout('2 seconds'), Effect.orDie)
+
+            const externalEvent = LiveStoreEvent.Client.EncodedWithMeta.make({
+              ...encode(events.todoCreated({ id: 'external-1', text: 'external', completed: false })),
+              seqNum: EventSequenceNumber.Client.Composite.make({ global: 1, client: 0 }),
+              parentSeqNum: EventSequenceNumber.Client.ROOT,
+              clientId: 'other-client',
+              sessionId: 'other-session',
+            })
+            yield* Queue.offer(upstreamQueue, externalEvent)
+
+            yield* Deferred.await(secondPushDone).pipe(Effect.timeout('2 seconds'), Effect.orDie)
+
+            const syncState = yield* syncProcessor.syncState.get
+            expect(syncState.pending).toHaveLength(1)
+            expect(syncState.pending[0]!.name).toBe('todoCreated')
+            expect(syncState.pending[0]!.seqNum.global).toBe(2)
+            expect(syncState.pending[0]!.args).toEqual({
+              id: 'local-1',
+              text: 'local',
+              completed: false,
+            })
+
+            expect(leaderPushedBatches).toHaveLength(2)
+            expect(leaderPushedBatches[1]).toHaveLength(1)
+            expect(leaderPushedBatches[1]![0]!.seqNum.global).toBe(2)
           }),
         )
 

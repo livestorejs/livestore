@@ -3,6 +3,7 @@ import { assert, expect } from 'vitest'
 import type { SyncOptions } from '@livestore/common'
 import {
   BackendIdMismatchError,
+  type BootStatus,
   CommandExecutionError,
   type IntentionalShutdownCause,
   InvalidPushError,
@@ -15,11 +16,19 @@ import {
   type UnknownError,
 } from '@livestore/common'
 import type { CommandPushResult, MakeLeaderThreadLayerParams } from '@livestore/common/leader-thread'
-import { LeaderThreadCtx, makeLeaderThreadLayer, ShutdownChannel as Shutdown } from '@livestore/common/leader-thread'
+import {
+  CommandJournal,
+  Eventlog,
+  LeaderThreadCtx,
+  makeLeaderThreadLayer,
+  makeMaterializeEvent,
+  recreateDb,
+  ShutdownChannel as Shutdown,
+} from '@livestore/common/leader-thread'
 import { EventSequenceNumber, LiveStoreEvent, makeCommandInstance } from '@livestore/common/schema'
 import { EventFactory } from '@livestore/common/testing'
 import { loadSqlite3Wasm } from '@livestore/sqlite-wasm/load-wasm'
-import { type MakeNodeSqliteDb, sqliteDbFactory } from '@livestore/sqlite-wasm/node'
+import { sqliteDbFactory } from '@livestore/sqlite-wasm/node'
 import { omitUndefineds } from '@livestore/utils'
 import { Vitest } from '@livestore/utils-dev/node-vitest'
 import {
@@ -32,7 +41,9 @@ import {
   Layer,
   Logger,
   LogLevel,
+  Option,
   Queue,
+  Schema,
   type Scope,
   Stream,
   WebChannel,
@@ -72,6 +83,10 @@ const withTestCtx = (
   })
 
 const makeEventFactory = EventFactory.makeFactory(events)
+const withPlatformCtx = Vitest.makeWithTestCtx({
+  makeLayer: () => Layer.merge(PlatformNode.NodeFileSystem.layer, Logger.minimumLogLevel(LogLevel.Debug)),
+  forceOtel: true,
+})
 
 Vitest.describe.concurrent('LeaderSyncProcessor', { timeout: 60000 }, () => {
   Vitest.scopedLive('sync', (test) =>
@@ -846,6 +861,97 @@ Vitest.describe.concurrent('LeaderSyncProcessor', { timeout: 60000 }, () => {
         assert(rebasePayload.payload._tag === 'upstream-rebase')
         expect(rebasePayload.payload.conflicts.length).toBeGreaterThanOrEqual(1)
       }).pipe(withTestCtx()(test)),
+    )
+
+    Vitest.scopedLive('restart rehydrates pending commandIds for replay conflict cleanup', (test) =>
+      Effect.gen(function* () {
+        const mockSyncBackend = yield* makeMockSyncBackend()
+        const sqlite3 = yield* Effect.promise(() => loadSqlite3Wasm()).pipe(
+          Effect.withSpan('@livestore/adapter-node:leader-thread:loadSqlite3Wasm'),
+        )
+        const makeSqliteDb = yield* sqliteDbFactory({ sqlite3 })
+        const dbState = yield* makeSqliteDb({ _tag: 'in-memory' })
+        const dbEventlog = yield* makeSqliteDb({ _tag: 'in-memory' })
+
+        const localEventFactory = makeEventFactory({
+          client: EventFactory.clientIdentity('test', 'static-session-id'),
+        })
+        const backendEventFactory = makeEventFactory({
+          client: EventFactory.clientIdentity('other-client', 'other-session'),
+        })
+
+        const pendingCommand = commands.createTodoUnique({ id: 'todo-1', text: 'Mine' })
+        const pendingEvent = LiveStoreEvent.Client.EncodedWithMeta.make({
+          ...LiveStoreEvent.Global.toClientEncoded(
+            localEventFactory.todoCreated.next({ id: 'todo-1', text: 'Mine', completed: false }),
+          ),
+        })
+        pendingEvent.meta.commandId = Option.some(pendingCommand.id)
+
+        yield* Eventlog.initEventlogDb(dbEventlog)
+        yield* Eventlog.insertIntoEventlog(
+          pendingEvent,
+          dbEventlog,
+          Schema.hash(events.todoCreated.schema),
+          pendingEvent.clientId,
+          pendingEvent.sessionId,
+        )
+
+        yield* CommandJournal.make(dbEventlog).write(pendingCommand).pipe(Effect.orDie)
+
+        const bootStatusQueue = yield* Queue.unbounded<BootStatus>()
+        const materializeEvent = yield* makeMaterializeEvent({ schema, dbState, dbEventlog })
+        yield* recreateDb({ dbState, dbEventlog, schema, bootStatusQueue, materializeEvent })
+
+        yield* mockSyncBackend.advance(
+          backendEventFactory.todoCreated.next({
+            id: 'todo-1',
+            text: 'From other client',
+            completed: false,
+          }),
+        )
+
+        const shutdownChannel = yield* WebChannel.noopChannel<any, any>()
+        const leaderContextLayer = makeLeaderThreadLayer({
+          schema,
+          storeId: 'test',
+          clientId: 'test',
+          syncPayloadEncoded: undefined,
+          syncPayloadSchema: undefined,
+          makeSqliteDb,
+          syncOptions: { backend: () => mockSyncBackend.makeSyncBackend },
+          dbState,
+          dbEventlog,
+          devtoolsOptions: { enabled: false },
+          shutdownChannel,
+        }).pipe(Layer.provide(FetchHttpClient.layer))
+
+        const syncStateAfterRebase = yield* Effect.gen(function* () {
+          const leaderThreadCtx = yield* LeaderThreadCtx
+          const syncState = yield* leaderThreadCtx.syncProcessor.syncState.get
+          if (syncState.upstreamHead.global >= 1) return syncState
+
+          yield* leaderThreadCtx.syncProcessor.syncState.changes.pipe(
+            Stream.filter((state) => state.upstreamHead.global >= 1),
+            Stream.take(1),
+            Stream.runDrain,
+          )
+
+          return yield* leaderThreadCtx.syncProcessor.syncState.get
+        }).pipe(Effect.provide(leaderContextLayer), Effect.timeout('2 seconds'), Effect.orDie)
+
+        expect(syncStateAfterRebase.pending).toHaveLength(0)
+
+        const journalAfter = dbEventlog.select<{ id: string }>(
+          `SELECT id FROM __livestore_command_journal`,
+        )
+        expect(journalAfter).toHaveLength(0)
+
+        const rows = dbState.select<{ id: string; text: string; completed: number }>(
+          `SELECT id, text, completed FROM todos ORDER BY id`,
+        )
+        expect(rows).toEqual([{ id: 'todo-1', text: 'From other client', completed: 0 }])
+      }).pipe(withPlatformCtx(test)),
     )
   })
 })

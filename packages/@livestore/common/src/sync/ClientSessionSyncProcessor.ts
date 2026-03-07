@@ -306,6 +306,11 @@ export const makeClientSessionSyncProcessor = ({
     // an upstream-advance-triggered rebase must re-queue pending events.
     let inFlightEventCount = 0
     let inFlightEvents: ReadonlyArray<LiveStoreEvent.Client.EncodedWithMeta> = []
+    /**
+     * Event batches rejected with `LeaderAheadError` were already removed from the local push queue,
+     * so the next upstream-advance rebase must explicitly re-queue their rebased counterparts.
+     */
+    let rejectedPushEvents: ReadonlyArray<LiveStoreEvent.Client.EncodedWithMeta> = []
 
     const backgroundLeaderPushing = Effect.gen(function* () {
       const batch = yield* BucketQueue.takeBetween(leaderPushQueue, 1, params.leaderPushBatchSize)
@@ -320,17 +325,7 @@ export const makeClientSessionSyncProcessor = ({
         yield* clientSession.leaderThread.events.push(eventAccum).pipe(
           Effect.catchTag('LeaderAheadError', () => {
             debugInfo.rejectCount++
-            const rejectedSeqNums = new Set(
-              eventAccum.map((event) => EventSequenceNumber.Client.toString(event.seqNum)),
-            )
-            const nextPending = syncStateRef.current.pending.filter(
-              (event) => !rejectedSeqNums.has(EventSequenceNumber.Client.toString(event.seqNum)),
-            )
-            syncStateRef.current = new SyncState.SyncState({
-              pending: nextPending,
-              upstreamHead: syncStateRef.current.upstreamHead,
-              localHead: nextPending.at(-1)?.seqNum ?? syncStateRef.current.upstreamHead,
-            })
+            rejectedPushEvents = [...rejectedPushEvents, ...eventAccum]
             return Effect.void
           }),
           Effect.ensuring(Effect.sync(() => {
@@ -475,6 +470,10 @@ export const makeClientSessionSyncProcessor = ({
 
             if (payload._tag === 'upstream-advance' && inFlightEventCount > 0) {
               interruptedInFlightEvents = [...inFlightEvents]
+            }
+            if (payload._tag === 'upstream-advance' && rejectedPushEvents.length > 0) {
+              interruptedInFlightEvents = [...interruptedInFlightEvents, ...rejectedPushEvents]
+              rejectedPushEvents = []
             }
 
             if (SIMULATION_ENABLED === true) yield* simSleep('pull', '1_before_leader_push_fiber_interrupt')

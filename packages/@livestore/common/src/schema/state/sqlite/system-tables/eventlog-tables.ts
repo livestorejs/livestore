@@ -33,6 +33,8 @@ export const eventlogMetaTable = table({
     argsJson: SqliteDsl.text({ schema: Schema.parseJson(Schema.Any) }),
     clientId: SqliteDsl.text({}),
     sessionId: SqliteDsl.text({}),
+    /** The command instance ID that produced this event, if any. */
+    commandId: SqliteDsl.text({ nullable: true }),
     schemaHash: SqliteDsl.integer({}),
     syncMetadataJson: SqliteDsl.text({ schema: Schema.parseJson(Schema.Option(Schema.JsonValue)) }),
   },

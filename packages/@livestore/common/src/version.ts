@@ -25,4 +25,4 @@ export const liveStoreVersion: string = (globalThis as any).__LIVESTORE_VERSION_
  *
  * Impact: Version changes trigger a "soft reset" - old data becomes inaccessible but remains on disk.
  */
-export const liveStoreStorageFormatVersion = 6
+export const liveStoreStorageFormatVersion = 7
