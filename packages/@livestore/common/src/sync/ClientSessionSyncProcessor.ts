@@ -303,7 +303,7 @@ export const makeClientSessionSyncProcessor = ({
               leaderSyncState.upstreamHead,
               syncStateRef.current.localHead,
             )
-            if (leaderHasAdvancedPastClient) {
+            if (leaderHasAdvancedPastClient === true) {
               const newEvents = payloadOriginal.newEvents.filter(e => EventSequenceNumber.Client.isGreaterThan(
                 e.seqNum,
                 syncStateRef.current.upstreamHead,
