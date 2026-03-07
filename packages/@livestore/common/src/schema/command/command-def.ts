@@ -18,9 +18,6 @@ import { type CommandInstance, makeCommandInstance } from './command-instance.ts
  * - A handler function that validates invariants and produces event(s) or error
  *
  * CommandDefs are callable - invoking them creates a command instance suitable for `store.execute()`.
- *
- * @experimental Commands API is under active development. Initial execution works, but
- * command replay, conflict detection, and sync confirmation are not yet implemented.
  */
 export type CommandDef<TName extends string, TArgs, TEncoded = TArgs, TError = never> = {
   /** Unique identifier for this command type. */
@@ -90,9 +87,6 @@ export type CommandDefRecord = {
  *   returns event(s) or a recoverable error. See {@link CommandHandler}.
  * @returns A callable {@link CommandDef} — invoke it with arguments to create a
  *   {@link CommandInstance} suitable for {@link Store.execute}.
- *
- * @experimental Commands API is under active development. Initial execution works but
- * command replay, conflict detection, and sync confirmation are not yet implemented.
  *
  * @example
  * ```ts

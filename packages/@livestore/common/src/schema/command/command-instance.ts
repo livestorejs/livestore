@@ -25,9 +25,6 @@ const TypeId = '@livestore/common/CommandInstance'
  *
  * The error type is carried via a branded field so TypeScript can infer `TError`
  * when passing the instance to `store.execute()`.
- *
- * @experimental Commands API is under active development. Initial execution works, but
- * command replay, conflict detection, and sync confirmation are not yet implemented.
  */
 export interface CommandInstance<TName extends string = string, TArgs = unknown, TError = unknown> {
   /**

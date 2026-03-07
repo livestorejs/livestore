@@ -46,12 +46,6 @@ export type CommandHandlerContextQuery = {
  * - `'replay'` — re-execution after pulling new events
  *
  * @see {@link CommandHandlerContext.phase}
- *
- * @experimental Commands API is under active development. Currently, only
- * `'initial'` is used at runtime. The `'replay'` phase is defined for
- * forward compatibility, but command replay is not yet wired into the sync
- * pipeline.
- *
  */
 export type CommandHandlerExecutionPhase = { readonly _tag: 'initial' } | { readonly _tag: 'replay' }
 
@@ -61,9 +55,6 @@ export type CommandHandlerExecutionPhase = { readonly _tag: 'initial' } | { read
  * Provides read access to the current state and indicates **when** the handler
  * is running so handlers can adapt their behavior accordingly (e.g., return
  * alternative events during replay instead of returning an error).
- *
- * @experimental Commands API is under active development. Initial execution works, but
- * command replay, conflict detection, and sync confirmation are not yet implemented.
  *
  * @example
  * ```ts
@@ -189,9 +180,6 @@ export const executeCommandHandler = <TError>({
  * access. They should validate invariants and return the events to be
  * committed, or return an error for expected and recoverable failures.
  * Thrown errors are treated as unexpected and non-recoverable.
- *
- * @experimental Commands API is under active development. Initial execution works, but
- * command replay, conflict detection, and sync confirmation are not yet implemented.
  *
  * @example
  * ```ts
