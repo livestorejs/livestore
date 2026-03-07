@@ -1003,10 +1003,9 @@ const backgroundBackendPushing = Effect.fn('@livestore/common:LeaderSyncProcesso
           // It's a core part of the sync protocol that the sync backend will emit a new pull chunk alongside the ServerAheadError
           yield* Effect.logDebug('handled backend-push-error (waiting for interupt caused by pull)', { error })
           return yield* Effect.never
-        } else {
-          yield* Effect.logDebug('handled unknown backend-push-error', { error })
         }
 
+        yield* Effect.logDebug('handled unknown backend-push-error', { error })
         return yield* error
       }
     }).pipe(Effect.retry(retrySchedule))
