@@ -1,33 +1,28 @@
 {
   "name": "@livestore/common",
   "version": "0.4.0-dev.22",
+  "license": "Apache-2.0",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/livestorejs/livestore.git"
+  },
+  "files": [
+    "dist",
+    "package.json",
+    "src"
+  ],
   "type": "module",
   "sideEffects": false,
   "exports": {
     ".": "./src/index.ts",
-    "./sql-queries": "./src/sql-queries/index.ts",
     "./leader-thread": "./src/leader-thread/mod.ts",
     "./schema": "./src/schema/mod.ts",
+    "./sql-queries": "./src/sql-queries/index.ts",
     "./sync": "./src/sync/index.ts",
     "./sync/next": "./src/sync/next/mod.ts",
     "./sync/next/test": "./src/sync/next/test/mod.ts",
     "./testing": "./src/testing/mod.ts"
   },
-  "dependencies": {
-    "@livestore/utils": "workspace:*",
-    "@livestore/webmesh": "workspace:*",
-    "@opentelemetry/api": "catalog:"
-  },
-  "devDependencies": {
-    "@livestore/utils-dev": "workspace:*",
-    "vitest": "catalog:"
-  },
-  "files": [
-    "package.json",
-    "src",
-    "dist"
-  ],
-  "license": "Apache-2.0",
   "publishConfig": {
     "access": "public",
     "exports": {
@@ -43,5 +38,54 @@
   },
   "scripts": {
     "test": "vitest"
+  },
+  "dependencies": {
+    "@livestore/utils": "workspace:*",
+    "@livestore/webmesh": "workspace:*",
+    "@opentelemetry/api": "1.9.0"
+  },
+  "devDependencies": {
+    "@effect/ai": "0.33.2",
+    "@effect/cli": "0.73.1",
+    "@effect/cluster": "0.56.1",
+    "@effect/experimental": "0.58.0",
+    "@effect/opentelemetry": "0.61.0",
+    "@effect/platform": "0.94.2",
+    "@effect/platform-browser": "0.73.0",
+    "@effect/platform-bun": "0.86.0",
+    "@effect/platform-node": "0.104.1",
+    "@effect/printer": "0.47.0",
+    "@effect/printer-ansi": "0.47.0",
+    "@effect/rpc": "0.73.0",
+    "@effect/sql": "0.49.0",
+    "@effect/typeclass": "0.38.0",
+    "@livestore/utils-dev": "workspace:*",
+    "@opentelemetry/api": "1.9.0",
+    "@opentelemetry/resources": "2.2.0",
+    "effect": "3.19.15",
+    "vitest": "3.2.4"
+  },
+  "peerDependencies": {
+    "@effect/ai": "^0.33.2",
+    "@effect/cli": "^0.73.1",
+    "@effect/cluster": "^0.56.1",
+    "@effect/experimental": "^0.58.0",
+    "@effect/opentelemetry": "^0.61.0",
+    "@effect/platform": "^0.94.2",
+    "@effect/platform-browser": "^0.73.0",
+    "@effect/platform-bun": "^0.86.0",
+    "@effect/platform-node": "^0.104.1",
+    "@effect/printer": "^0.47.0",
+    "@effect/printer-ansi": "^0.47.0",
+    "@effect/rpc": "^0.73.0",
+    "@effect/sql": "^0.49.0",
+    "@effect/typeclass": "^0.38.0",
+    "@opentelemetry/api": "^1.9.0",
+    "@opentelemetry/resources": "^2.2.0",
+    "effect": "^3.19.15"
+  },
+  "$genie": {
+    "source": "package.json.genie.ts",
+    "warning": "DO NOT EDIT - changes will be overwritten"
   }
 }

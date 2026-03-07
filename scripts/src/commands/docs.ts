@@ -1,11 +1,13 @@
 import fs from 'node:fs'
+
 import { liveStoreVersion } from '@livestore/common'
 import { shouldNeverHappen } from '@livestore/utils'
+import { cmd, cmdText, LivestoreWorkspace } from '@livestore/utils-dev/node'
 import { Effect, HttpClient, HttpClientRequest, Schedule } from '@livestore/utils/effect'
 import { Cli, getFreePort } from '@livestore/utils/node'
-import { cmd, cmdText, LivestoreWorkspace } from '@livestore/utils-dev/node'
 import { buildDiagrams, watchDiagrams } from '@local/astro-tldraw'
 import { buildSnippets, createSnippetsCommand } from '@local/astro-twoslash-code'
+
 import { appendGithubSummaryMarkdown, formatMarkdownTable } from '../shared/misc.ts'
 import { deployToNetlify, purgeNetlifyCdn } from '../shared/netlify.ts'
 import { exportMarkdownCommand } from './docs-export.ts'
@@ -92,19 +94,19 @@ const formatDocsDeploymentSummaryMarkdown = ({
       `alias: ${prAliases.stickyAlias} (stable for PR)`,
     ])
     const commitNotes: string[] = [`alias: ${prAliases.commitAlias}`]
-    if (purgeCdn) commitNotes.push('CDN purged')
+    if (purgeCdn === true) commitNotes.push('CDN purged')
     rows.push(['commit', site, commitDeploy.deploy_id, commitDeploy.deploy_url, commitNotes.join(', ')])
   } else {
     /** Non-PR deployment: single row */
     const notes: string[] = []
-    if (!prod && branchAlias) {
+    if (prod === false && branchAlias !== undefined) {
       notes.push(`alias: ${branchAlias}`)
     }
-    if (purgeCdn) {
+    if (purgeCdn === true) {
       notes.push('CDN purged')
     }
     rows.push([
-      prod ? 'prod' : 'alias',
+      prod === true ? 'prod' : 'alias',
       site,
       commitDeploy.deploy_id,
       commitDeploy.deploy_url,
@@ -154,7 +156,7 @@ const docsBuildCommand = Cli.Command.make(
     ),
   },
   Effect.fn(function* ({ apiDocs, clean, skipDeps }) {
-    if (clean) {
+    if (clean === true) {
       // Wipe Astro output plus cached diagram/snippet artefacts to avoid stale renders between builds.
       yield* cmd(
         'rm -rf dist .astro tsconfig.tsbuildinfo node_modules/.astro-tldraw node_modules/.astro-twoslash-code .cache/snippets',
@@ -165,7 +167,7 @@ const docsBuildCommand = Cli.Command.make(
     // Always clean up .netlify folder as it can cause issues with the build
     yield* cmd('rm -rf .netlify').pipe(Effect.provide(LivestoreWorkspace.toCwd('docs')))
 
-    if (!skipDeps) {
+    if (skipDeps === false) {
       yield* Effect.log('Building snippets and diagrams...')
       yield* Effect.all([buildSnippets({ projectRoot: docsPath }), runDocsDiagramsBuild], {
         concurrency: 'unbounded',
@@ -178,7 +180,7 @@ const docsBuildCommand = Cli.Command.make(
     // Netlify build (single build overall), which handles Edge bundling.
     yield* cmd('pnpm astro build', {
       env: {
-        STARLIGHT_INCLUDE_API_DOCS: apiDocs ? '1' : undefined,
+        STARLIGHT_INCLUDE_API_DOCS: apiDocs === true ? '1' : undefined,
         // Building the docs sometimes runs out of memory, so we give it more
         NODE_OPTIONS: '--max_old_space_size=4096',
         // Snippets/diagrams already built above (or skipped), tell Astro integrations not to auto-build.
@@ -204,7 +206,7 @@ export const docsCommand = Cli.Command.make('docs').pipe(
         ),
       },
       Effect.fn(function* ({ open, skipDeps }) {
-        if (!skipDeps) {
+        if (skipDeps === false) {
           yield* Effect.log('Building snippets and diagrams...')
           yield* Effect.all([buildSnippets({ projectRoot: docsPath }), runDocsDiagramsBuild], {
             concurrency: 'unbounded',
@@ -212,15 +214,15 @@ export const docsCommand = Cli.Command.make('docs').pipe(
           yield* Effect.log('Snippets and diagrams built successfully')
         }
 
-        if (!skipDeps) {
+        if (skipDeps === false) {
           yield* runDocsDiagramsWatchNoInitialBuild.pipe(
-            Effect.catchAllCause((cause) => Effect.logWarning(`Diagrams watch stopped: ${cause}`)),
+            Effect.catchAllCause((cause) => Effect.logWarning('Diagrams watch stopped', cause)),
             Effect.forkScoped,
           )
         }
 
         /* Run Astro dev server */
-        yield* cmd(['pnpm', 'astro', 'dev', open ? '--open' : undefined], {
+        yield* cmd(['pnpm', 'astro', 'dev', open === true ? '--open' : undefined], {
           logDir: `${docsPath}/logs`,
         }).pipe(Effect.provide(LivestoreWorkspace.toCwd('docs')))
       }),
@@ -242,7 +244,7 @@ export const docsCommand = Cli.Command.make('docs').pipe(
         ),
       },
       Effect.fn(function* ({ port: portOption, build }) {
-        if (build) {
+        if (build === true) {
           yield* docsBuildCommand.handler({ apiDocs: false, clean: false, skipDeps: false })
         }
 
@@ -250,7 +252,7 @@ export const docsCommand = Cli.Command.make('docs').pipe(
         const previewTargetPort = yield* getFreePort
 
         const distPath = `${docsPath}/dist`
-        if (!fs.existsSync(distPath)) {
+        if (fs.existsSync(distPath) === false) {
           yield* Effect.logWarning(
             `Docs dist folder not found at ${distPath}. Run 'mono docs build' or pass '--build' to 'mono docs preview'.`,
           )
@@ -272,7 +274,7 @@ export const docsCommand = Cli.Command.make('docs').pipe(
           '--no-open',
         ]
 
-        if (requestedPort !== undefined && !Number.isNaN(requestedPort)) {
+        if (requestedPort !== undefined && Number.isNaN(requestedPort) === false) {
           netlifyArgs.push('--port', String(requestedPort))
         }
 
@@ -304,7 +306,7 @@ export const docsCommand = Cli.Command.make('docs').pipe(
       Effect.fn(
         function* ({ prod: prodOption, alias: aliasOption, site: siteOption, purgeCdn, build: buildOption }) {
           const branchName = yield* Effect.gen(function* () {
-            if (isGithubAction) {
+            if (isGithubAction === true) {
               const branchFromEnv = process.env.GITHUB_HEAD_REF ?? process.env.GITHUB_REF_NAME
               if (branchFromEnv !== undefined && branchFromEnv !== '') {
                 return branchFromEnv
@@ -335,7 +337,7 @@ export const docsCommand = Cli.Command.make('docs').pipe(
             const ref = process.env.GITHUB_REF
             if (typeof ref === 'string') {
               const match = ref.match(/refs\/pull\/(\d+)\//)
-              if (match?.[1]) return match[1]
+              if (match?.[1] !== undefined) return match[1]
             }
             return undefined
           })()
@@ -352,18 +354,18 @@ export const docsCommand = Cli.Command.make('docs').pipe(
             ))
           const runId = process.env.GITHUB_RUN_ID
           const commitUrl = `https://github.com/${repo}/commit/${fullSha}`
-          const prUrl = prNumber ? `https://github.com/${repo}/pull/${prNumber}` : undefined
-          const runUrl = runId ? `https://github.com/${repo}/actions/runs/${runId}` : undefined
+          const prUrl = prNumber !== undefined ? `https://github.com/${repo}/pull/${prNumber}` : undefined
+          const runUrl = runId !== undefined ? `https://github.com/${repo}/actions/runs/${runId}` : undefined
 
-          const contextLabelFor = (isProd: boolean, a: string) => (isProd ? 'prod' : `alias:${a}`)
+          const contextLabelFor = (isProd: boolean, a: string) => (isProd === true ? 'prod' : `alias:${a}`)
           const buildMessage = (ctx: string) =>
             [
               'docs deploy',
               `context: ${ctx}`,
               `branch: ${branchName}`,
               `commit: ${shortSha} ${commitUrl}`,
-              prNumber ? `pr: #${prNumber} ${prUrl}` : undefined,
-              runUrl ? `run: ${runUrl}` : undefined,
+              prNumber !== undefined ? `pr: #${prNumber} ${prUrl}` : undefined,
+              runUrl !== undefined ? `run: ${runUrl}` : undefined,
             ]
               .filter((p): p is string => typeof p === 'string')
               .join(' | ')
@@ -373,7 +375,7 @@ export const docsCommand = Cli.Command.make('docs').pipe(
            * For non-PRs: use the explicit alias option or derive from branch name
            */
           const prAliases: PrDeployAliases | undefined =
-            isPr && prNumber !== undefined && aliasOption._tag === 'None'
+            isPr === true && prNumber !== undefined && aliasOption._tag === 'None'
               ? { stickyAlias: `pr-${prNumber}`, commitAlias: `pr-${prNumber}-${shortSha}` }
               : undefined
 
@@ -387,11 +389,11 @@ export const docsCommand = Cli.Command.make('docs').pipe(
           const prod =
             prodOption._tag === 'Some' && prodOption.value === true // TODO clean up when Effect CLI boolean flag is fixed
               ? prodOption.value
-              : isPr
+              : isPr === true
                 ? false
                 : branchName === 'main' || branchName === devBranchName
 
-          if (prod && site === 'livestore-docs' && liveStoreVersion.includes('dev')) {
+          if (prod === true && site === 'livestore-docs' && liveStoreVersion.includes('dev') === true) {
             return yield* Effect.die('Cannot deploy docs for dev version of LiveStore to prod')
           }
 
@@ -401,11 +403,11 @@ export const docsCommand = Cli.Command.make('docs').pipe(
               : branchAlias !== undefined
                 ? `with alias (${branchAlias})`
                 : ''
-          yield* Effect.log(`Deploying to "${site}" ${prod ? 'in prod' : deployAliasLabel}`)
+          yield* Effect.log(`Deploying to "${site}" ${prod === true ? 'in prod' : deployAliasLabel}`)
 
           // Split mode: build first only when requested via --build
           const shouldBuild = buildOption._tag === 'Some' && buildOption.value === true
-          if (shouldBuild) {
+          if (shouldBuild === true) {
             yield* docsBuildCommand.handler({ apiDocs: true, clean: false, skipDeps: false })
           }
 
@@ -435,7 +437,7 @@ export const docsCommand = Cli.Command.make('docs').pipe(
               /** Non-PR deploy: single deploy with prod or branch alias */
               const deploy: NetlifyDeploySummary = yield* deployToNetlify({
                 site,
-                target: prod ? { _tag: 'prod' } : { _tag: 'alias', alias: branchAlias! },
+                target: prod === true ? { _tag: 'prod' } : { _tag: 'alias', alias: branchAlias! },
                 message: buildMessage(contextLabelFor(prod, branchAlias ?? '')),
               }).pipe(docsWorkspaceCwd)
 
@@ -450,11 +452,11 @@ export const docsCommand = Cli.Command.make('docs').pipe(
             ),
           ).pipe(Effect.map((res) => res.headers['content-type']))
 
-          if (!rootContentType?.toLowerCase().includes('text/markdown')) {
+          if (rootContentType?.toLowerCase().includes('text/markdown') === false) {
             return shouldNeverHappen('Docs deploy validation failed: markdown negotiation at root')
           }
 
-          if (purgeCdn) {
+          if (purgeCdn === true) {
             const purgeSiteId = commitDeploy.site_id
             yield* purgeNetlifyCdn({ siteId: purgeSiteId, siteSlug: site })
           }

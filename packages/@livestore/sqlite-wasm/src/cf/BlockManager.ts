@@ -133,7 +133,7 @@ export class BlockManager {
 
     for (let blockId = range.startBlock; blockId <= range.endBlock; blockId++) {
       const blockData = blocks.get(blockId)
-      if (!blockData) {
+      if (blockData == null) {
         // Block not found - fill with zeros (sparse file behavior)
         const zeroLength = Math.min(this.blockSize, requestedLength - resultOffset)
         // result is already zero-filled by default

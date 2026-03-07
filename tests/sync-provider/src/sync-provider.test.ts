@@ -1,8 +1,12 @@
+import { expect } from 'vitest'
+
 import { BackendIdMismatchError, InvalidPullError, SyncBackend } from '@livestore/common'
 import { EventFactory } from '@livestore/common/testing'
 import type { LiveStoreEvent } from '@livestore/livestore'
 import { EventSequenceNumber, nanoid } from '@livestore/livestore'
 import { events } from '@livestore/livestore/internal/testing-utils'
+import { OtelLiveHttp } from '@livestore/utils-dev/node'
+import { Vitest } from '@livestore/utils-dev/node-vitest'
 import {
   Chunk,
   Duration,
@@ -19,9 +23,7 @@ import {
   Schema,
   Stream,
 } from '@livestore/utils/effect'
-import { OtelLiveHttp } from '@livestore/utils-dev/node'
-import { Vitest } from '@livestore/utils-dev/node-vitest'
-import { expect } from 'vitest'
+
 import { providerKeys, providerRegistry } from './providers/registry.ts'
 import { SyncProviderImpl, type SyncProviderOptions } from './types.ts'
 
@@ -312,7 +314,7 @@ Vitest.describe.each(providerLayers)('$name sync provider', { timeout: 60000 }, 
           expect(stats.totalEvents).toBe(scenario.eventCount)
           expect(stats.nonEmptyBatches).toBeGreaterThan(0)
 
-          if (scenario.variant === 'manySmall' && name.toLowerCase().includes('cloudflare')) {
+          if (scenario.variant === 'manySmall' && name.toLowerCase().includes('cloudflare') === true) {
             expect(stats.nonEmptyBatches).toBeGreaterThan(1)
           }
         }).pipe(
@@ -351,7 +353,7 @@ Vitest.describe.each(providerLayers)('$name sync provider', { timeout: 60000 }, 
           expect(stats.totalEvents).toBe(scenario.eventCount)
           expect(stats.nonEmptyBatches).toBeGreaterThan(0)
 
-          if (scenario.variant === 'manySmall' && name.toLowerCase().includes('cloudflare')) {
+          if (scenario.variant === 'manySmall' && name.toLowerCase().includes('cloudflare') === true) {
             expect(stats.nonEmptyBatches).toBeGreaterThan(1)
           }
         }).pipe(
@@ -621,8 +623,8 @@ Vitest.describe.each(providerLayers)('$name sync provider', { timeout: 60000 }, 
         // Verify first event after cursor has higher sequence number
         if (
           eventsFromMiddle.length > 0 &&
-          middleEvent.eventEncoded.seqNum &&
-          eventsFromMiddle[0]?.eventEncoded.seqNum
+          middleEvent.eventEncoded.seqNum !== undefined &&
+          eventsFromMiddle[0]?.eventEncoded.seqNum !== undefined
         ) {
           const firstAfterCursor = eventsFromMiddle[0]
           const firstSeqNum = firstAfterCursor.eventEncoded.seqNum
@@ -663,7 +665,11 @@ Vitest.describe.each(providerLayers)('$name sync provider', { timeout: 60000 }, 
       expect((originalError.cause as BackendIdMismatchError).received).toBe('received-backend-id-456')
 
       // Simulate what happens during RPC: encode to JSON and decode back
-      const encoded = JSON.parse(JSON.stringify(originalError))
+      const str = yield* Schema.encode(Schema.parseJson())(originalError)
+      const encoded = (yield* Schema.decodeUnknown(Schema.parseJson())(str)) as {
+        _tag: string
+        cause: { _tag: string; expected: string; received: string }
+      }
 
       // The encoded form should preserve the structure (this was broken before the fix)
       expect(encoded._tag).toBe('InvalidPullError')

@@ -2,13 +2,19 @@ import { readFileSync } from 'node:fs'
 import os from 'node:os'
 import { join } from 'node:path'
 
-import { Effect, HttpClient, HttpClientRequest, Schema } from '@livestore/utils/effect'
+import { isNotUndefined } from '@livestore/utils'
 import { CurrentWorkingDirectory, cmdText } from '@livestore/utils-dev/node'
+import { Command, Effect, Fiber, HttpClient, HttpClientRequest, Schema, Stream } from '@livestore/utils/effect'
 
 export class NetlifyError extends Schema.TaggedError<NetlifyError>()('NetlifyError', {
   reason: Schema.Literal('auth', 'unknown'),
   message: Schema.String,
   cause: Schema.optional(Schema.Unknown),
+}) {}
+
+class FileReadError extends Schema.TaggedError<FileReadError>()('FileReadError', {
+  cause: Schema.Defect,
+  path: Schema.String,
 }) {}
 
 const NetlifyDeployResultSchema = Schema.Struct({
@@ -35,6 +41,8 @@ const NetlifyPurgeRequestSchema = Schema.Struct({
   site_id: Schema.optional(Schema.String),
   site_slug: Schema.optional(Schema.String),
 })
+
+const NetlifySiteListSchema = Schema.Array(Schema.Struct({ id: Schema.String, name: Schema.String }))
 
 export type Target =
   | {
@@ -76,7 +84,7 @@ export const deployToNetlify = ({
     const cwd = yield* CurrentWorkingDirectory
     const netlifyStatus = yield* cmdText(['bunx', 'netlify-cli', 'status'], { stderr: 'pipe' })
 
-    if (netlifyStatus.includes(NOT_LOGGED_IN_TO_NETLIFY_ERROR_MESSAGE)) {
+    if (netlifyStatus.includes(NOT_LOGGED_IN_TO_NETLIFY_ERROR_MESSAGE) === true) {
       return yield* new NetlifyError({ message: 'Not logged in to Netlify', reason: 'auth' })
     }
 
@@ -86,83 +94,93 @@ export const deployToNetlify = ({
 
     const resolvedSiteArg = yield* Effect.gen(function* () {
       const explicit = process.env.NETLIFY_SITE_ID
-      if (explicit && explicit !== '') return explicit
-      // Resolve site name → id for more reliable config resolution
-      const raw = yield* cmdText(['pnpm', '--package=netlify-cli', 'dlx', 'netlify', 'sites:list', '--json'], {
-        stderr: 'pipe',
-      })
-
-      const SiteListSchema = Schema.Array(Schema.Struct({ id: Schema.String, name: Schema.String }))
-
-      const sites = yield* Schema.decode(Schema.parseJson(SiteListSchema))(raw).pipe(
-        Effect.mapError(
-          (cause) =>
-            new NetlifyError({
-              message: 'Failed to parse output from netlify sites:list',
-              reason: 'unknown',
-              cause,
-            }),
-        ),
-      )
-      const match = sites.find((s) => s.name === site)
-      return match ? match.id : site
+      if (explicit !== undefined && explicit !== '') return explicit
+      return yield* resolveSiteIdViaApi(site)
     })
 
     yield* Effect.logDebug(`[deploy-to-netlify] Using site argument: ${resolvedSiteArg}`)
 
-    const deployCommand = cmdText(
-      [
-        'pnpm',
-        '--package=netlify-cli',
-        'dlx',
-        'netlify',
-        // 'bunx',
-        // 'netlify-cli',
-        'deploy',
-        // In debug mode, omit --json so we get full build logs in stdout/stderr
-        // Request machine-readable JSON from Netlify CLI on success
-        debugEnabled ? undefined : '--json',
-        debugEnabled ? '--debug' : undefined,
-        '--filter',
-        '@local/docs',
-        // Split flow default: do not run Netlify build; rely on netlify.toml publish
-        '--no-build',
-        `--site=${resolvedSiteArg}`,
-        message ? `--message=${message}` : undefined,
-        // Either use `--prod` or `--alias`
-        target._tag === 'prod' ? '--prod' : target._tag === 'alias' ? `--alias=${target.alias}` : undefined,
-      ],
-      {
-        // Pipe stderr into stdout so the returned string includes build errors
-        stderr: 'pipe',
-        env: {
-          CI: '1', // Prevent netlify from using TTY
-          // Force the CLI to read the docs-local Netlify config so Edge Functions
-          // mapping is consistently applied in CI and locally.
-          NETLIFY_CONFIG: join(cwd, 'netlify.toml'),
-        },
-      },
+    const deployCmd = 'pnpm'
+    const deployRest = [
+      '--package=netlify-cli',
+      'dlx',
+      'netlify',
+      'deploy',
+      // In debug mode, omit --json so we get full build logs in stdout/stderr
+      debugEnabled === true ? undefined : '--json',
+      debugEnabled === true ? '--debug' : undefined,
+      '--filter',
+      '@local/docs',
+      // Split flow default: do not run Netlify build; rely on netlify.toml publish
+      '--no-build',
+      `--site=${resolvedSiteArg}`,
+      message !== undefined ? `--message=${message}` : undefined,
+      target._tag === 'prod' ? '--prod' : target._tag === 'alias' ? `--alias=${target.alias}` : undefined,
+    ].filter(isNotUndefined)
+
+    /** Capture both stdout and stderr so CLI errors are never silently lost */
+    const { stdout: rawOutput, stderr: rawStderr } = yield* Effect.scoped(
+      Effect.gen(function* () {
+        const proc = yield* Effect.acquireRelease(
+          Command.make(deployCmd, ...deployRest).pipe(
+            Command.stdout('pipe'),
+            Command.stderr('pipe'),
+            Command.workingDirectory(cwd),
+            Command.env({
+              CI: '1',
+              NETLIFY_CONFIG: join(cwd, 'netlify.toml'),
+            }),
+            Command.start,
+          ),
+          (p) =>
+            p.isRunning.pipe(
+              Effect.flatMap((running) =>
+                running === true ? p.kill().pipe(Effect.catchAll(() => Effect.void)) : Effect.void,
+              ),
+              Effect.ignore,
+            ),
+        )
+
+        const stdoutFiber = yield* proc.stdout.pipe(
+          Stream.decodeText('utf8'),
+          Stream.runFold('', (acc, chunk) => acc + chunk),
+          Effect.forkScoped,
+        )
+
+        const stderrFiber = yield* proc.stderr.pipe(
+          Stream.decodeText('utf8'),
+          Stream.runFold('', (acc, chunk) => acc + chunk),
+          Effect.forkScoped,
+        )
+
+        yield* proc.exitCode
+
+        const stdout = yield* Fiber.join(stdoutFiber)
+        const stderr = yield* Fiber.join(stderrFiber)
+
+        return { stdout, stderr }
+      }),
     )
 
-    // Capture raw CLI output first so we can include it in error logs if JSON
-    // parsing fails (Netlify sometimes prints human-readable errors instead).
-    const rawOutput = yield* deployCommand.pipe(
-      Effect.tap((out) => Effect.logDebug(`[deploy-to-netlify] Deploy raw output for ${site}: ${out}`)),
-    )
+    yield* Effect.logDebug(`[deploy-to-netlify] Deploy raw stdout for ${site}: ${rawOutput}`)
+    if (rawStderr.trim().length > 0) {
+      yield* Effect.logWarning(`[deploy-to-netlify] Deploy stderr for ${site}: ${rawStderr}`)
+    }
 
     const result = yield* Schema.decode(Schema.parseJson(NetlifyDeployResultSchema))(rawOutput).pipe(
       Effect.catchAll((error) =>
         Effect.gen(function* () {
-          // Log the problematic output to aid debugging, then fail with a
-          // structured error that includes both the parse error and raw text.
           yield* Effect.logError(
             `[deploy-to-netlify] Failed to decode Netlify deploy JSON for ${site}; raw output follows:`,
           )
           yield* Effect.logError(rawOutput)
+          if (rawStderr.trim().length > 0) {
+            yield* Effect.logError(`[deploy-to-netlify] stderr: ${rawStderr}`)
+          }
           return yield* new NetlifyError({
-            message: 'Failed to decode Netlify deploy result',
+            message: `Failed to decode Netlify deploy result${rawStderr.trim().length > 0 ? `: ${rawStderr.trim()}` : ''}`,
             reason: 'unknown',
-            cause: { error, raw: rawOutput },
+            cause: { error, raw: rawOutput, stderr: rawStderr },
           })
         }),
       ),
@@ -178,7 +196,7 @@ const resolveNetlifyAuthToken = Effect.gen(function* () {
   }
 
   const homeDirectory = os.homedir()
-  if (!homeDirectory) {
+  if (homeDirectory == null) {
     return yield* new NetlifyError({
       message: 'Unable to determine home directory for Netlify auth token lookup',
       reason: 'auth',
@@ -193,7 +211,7 @@ const resolveNetlifyAuthToken = Effect.gen(function* () {
   for (const candidate of configCandidates) {
     const readResult = yield* Effect.try({
       try: () => readFileSync(candidate, 'utf8'),
-      catch: (error) => error as NodeJS.ErrnoException,
+      catch: (error) => new FileReadError({ cause: error, path: candidate }),
     }).pipe(Effect.either)
 
     if (readResult._tag === 'Right') {
@@ -203,18 +221,18 @@ const resolveNetlifyAuthToken = Effect.gen(function* () {
     }
 
     const readError = readResult.left
-    if (isFileMissingError(readError)) {
+    if (isFileMissingError(readError) === true) {
       continue
     }
 
     return yield* new NetlifyError({
       message: `Failed to read Netlify CLI config at ${candidate}`,
       reason: 'auth',
-      cause: readError,
+      cause: readError.cause,
     })
   }
 
-  if (!configContent || !configPath) {
+  if (configContent == null || configPath == null) {
     return yield* new NetlifyError({
       message: `Netlify auth token not found. Checked: ${configCandidates.join(', ')}. Run 'bunx netlify-cli login' or set NETLIFY_AUTH_TOKEN.`,
       reason: 'auth',
@@ -232,13 +250,14 @@ const resolveNetlifyAuthToken = Effect.gen(function* () {
     ),
   )
 
-  const resolvedToken = config.users
-    ? Object.values(config.users)
-        .map((user) => user.auth?.token)
-        .find((candidate): candidate is string => typeof candidate === 'string' && candidate.length > 0)
-    : undefined
+  const resolvedToken =
+    config.users !== undefined
+      ? Object.values(config.users)
+          .map((user) => user.auth?.token)
+          .find((candidate): candidate is string => typeof candidate === 'string' && candidate.length > 0)
+      : undefined
 
-  if (!resolvedToken) {
+  if (resolvedToken == null) {
     return yield* new NetlifyError({
       message: `Netlify auth token not found in ${configPath}. Run 'bunx netlify-cli login' or set NETLIFY_AUTH_TOKEN.`,
       reason: 'auth',
@@ -248,9 +267,38 @@ const resolveNetlifyAuthToken = Effect.gen(function* () {
   return resolvedToken
 })
 
+/** Resolve a Netlify site name to its site ID via the HTTP API (avoids CLI stdout corruption) */
+const resolveSiteIdViaApi = Effect.fn('resolveSiteIdViaApi')(function* (siteName: string) {
+  const token = yield* resolveNetlifyAuthToken
+  const httpClient = yield* HttpClient.HttpClient
+
+  const sites = yield* httpClient
+    .pipe(HttpClient.filterStatusOk)
+    .execute(
+      HttpClientRequest.get('https://api.netlify.com/api/v1/sites?per_page=100').pipe(
+        HttpClientRequest.setHeader('authorization', `Bearer ${token}`),
+      ),
+    )
+    .pipe(
+      Effect.andThen((res) => res.json),
+      Effect.andThen(Schema.decodeUnknown(NetlifySiteListSchema)),
+      Effect.mapError(
+        (cause) =>
+          new NetlifyError({
+            message: `Failed to resolve Netlify site "${siteName}" via API`,
+            reason: 'unknown',
+            cause,
+          }),
+      ),
+    )
+
+  const match = sites.find((s) => s.name === siteName)
+  return match !== undefined ? match.id : siteName
+})
+
 export const purgeNetlifyCdn = ({ siteId, siteSlug }: { siteId?: string; siteSlug?: string }) =>
   Effect.gen(function* () {
-    if (!siteId && !siteSlug) {
+    if (siteId == null && siteSlug == null) {
       return yield* new NetlifyError({
         message: 'A site identifier is required to purge the Netlify CDN cache',
         reason: 'unknown',
@@ -296,7 +344,7 @@ const determineNetlifyConfigCandidates = (homeDirectory: string): readonly strin
 const resolveOsConfigDirectory = (homeDirectory: string): string => {
   if (process.platform === 'win32') {
     const appData = process.env.APPDATA
-    if (appData && appData !== '') {
+    if (appData !== undefined && appData !== '') {
       return join(appData, 'netlify')
     }
     return join(homeDirectory, 'AppData', 'Roaming', 'netlify')
@@ -307,18 +355,19 @@ const resolveOsConfigDirectory = (homeDirectory: string): string => {
   }
 
   const xdgConfigHome = process.env.XDG_CONFIG_HOME
-  if (xdgConfigHome && xdgConfigHome !== '') {
+  if (xdgConfigHome !== undefined && xdgConfigHome !== '') {
     return join(xdgConfigHome, 'netlify')
   }
 
   return join(homeDirectory, '.config', 'netlify')
 }
 
-const isFileMissingError = (error: unknown): error is NodeJS.ErrnoException => {
-  if (typeof error !== 'object' || error === null) {
+const isFileMissingError = (error: FileReadError): boolean => {
+  const cause = error.cause
+  if (typeof cause !== 'object' || cause === null) {
     return false
   }
 
-  const maybeError = error as NodeJS.ErrnoException
+  const maybeError = cause as NodeJS.ErrnoException
   return maybeError.code === 'ENOENT' || maybeError.code === 'ENOTDIR'
 }

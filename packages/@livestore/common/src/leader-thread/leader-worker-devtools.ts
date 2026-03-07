@@ -18,81 +18,81 @@ const isDevtoolsViteNotInstalledError = (
   typeof error === 'object' && error !== null && '_tag' in error && error._tag === 'DevtoolsViteNotInstalledError'
 
 // TODO bind scope to the webchannel lifetime
-export const bootDevtools = (options: DevtoolsOptions) =>
-  Effect.gen(function* () {
-    if (options.enabled === false) {
-      return
-    }
+export const bootDevtools = Effect.fn('@livestore/common:leader-thread:devtools:boot')(function* (
+  options: DevtoolsOptions,
+) {
+  if (options.enabled === false) {
+    return
+  }
 
-    const { syncProcessor, extraIncomingMessagesQueue, clientId, storeId } = yield* LeaderThreadCtx
+  const { syncProcessor, extraIncomingMessagesQueue, clientId, storeId } = yield* LeaderThreadCtx
 
-    yield* listenToDevtools({
-      incomingMessages: Stream.fromQueue(extraIncomingMessagesQueue),
-      sendMessage: () => Effect.void,
-    }).pipe(Effect.tapCauseLogPretty, Effect.forkScoped)
+  yield* listenToDevtools({
+    incomingMessages: Stream.fromQueue(extraIncomingMessagesQueue),
+    sendMessage: () => Effect.void,
+  }).pipe(Effect.tapCauseLogPretty, Effect.forkScoped)
 
-    const bootResult = yield* options.boot.pipe(
-      Effect.map(Option.some),
-      Effect.catchIf(isDevtoolsViteNotInstalledError, (error) =>
-        Effect.logWarning(`[@livestore/devtools] ${error.message} Devtools will be disabled.`).pipe(
-          Effect.as(Option.none()),
-        ),
+  const bootResult = yield* options.boot.pipe(
+    Effect.map(Option.some),
+    Effect.catchIf(isDevtoolsViteNotInstalledError, (error) =>
+      Effect.logWarning(`[@livestore/devtools] ${error.message} Devtools will be disabled.`).pipe(
+        Effect.as(Option.none()),
       ),
-      Effect.catchAllCause((cause) =>
-        Effect.logWarning(
-          `[@livestore/devtools] Failed to start devtools server. Devtools will be disabled.`,
-          cause,
-        ).pipe(Effect.as(Option.none())),
-      ),
-    )
+    ),
+    Effect.catchAllCause((cause) =>
+      Effect.logWarning(
+        `[@livestore/devtools] Failed to start devtools server. Devtools will be disabled.`,
+        cause,
+      ).pipe(Effect.as(Option.none())),
+    ),
+  )
 
-    if (Option.isNone(bootResult)) {
-      return
-    }
+  if (Option.isNone(bootResult) === true) {
+    return
+  }
 
-    const { node, persistenceInfo, mode } = bootResult.value
+  const { node, persistenceInfo, mode } = bootResult.value
 
-    yield* node.listenForChannel.pipe(
-      Stream.filter(
-        (res) =>
-          Devtools.isChannelName.devtoolsClientLeader(res.channelName, { storeId, clientId }) && res.mode === mode,
-      ),
-      Stream.tap(({ channelName, source }) =>
-        Effect.gen(function* () {
-          const channel = yield* node.makeChannel({
-            target: source,
-            channelName,
-            schema: { listen: Devtools.Leader.MessageToApp, send: Devtools.Leader.MessageFromApp },
-            mode,
-          })
+  yield* node.listenForChannel.pipe(
+    Stream.filter(
+      (res) => Devtools.isChannelName.devtoolsClientLeader(res.channelName, { storeId, clientId }) && res.mode === mode,
+    ),
+    Stream.tap(({ channelName, source }) =>
+      Effect.gen(function* () {
+        const channel = yield* node.makeChannel({
+          target: source,
+          channelName,
+          schema: { listen: Devtools.Leader.MessageToApp, send: Devtools.Leader.MessageFromApp },
+          mode,
+        })
 
-          const sendMessage: SendMessageToDevtools = (message) =>
-            channel
-              .send(message)
-              .pipe(
-                Effect.withSpan('@livestore/common:leader-thread:devtools:sendToDevtools'),
-                Effect.interruptible,
-                Effect.ignoreLogged,
-              )
+        const sendMessage: SendMessageToDevtools = (message) =>
+          channel
+            .send(message)
+            .pipe(
+              Effect.withSpan('@livestore/common:leader-thread:devtools:sendToDevtools'),
+              Effect.interruptible,
+              Effect.ignoreLogged,
+            )
 
-          const syncState = yield* syncProcessor.syncState
+        const syncState = yield* syncProcessor.syncState
 
-          yield* syncProcessor.pull({ cursor: syncState.localHead }).pipe(
-            Stream.tap(({ payload }) => sendMessage(Devtools.Leader.SyncPull.make({ payload, liveStoreVersion }))),
-            Stream.runDrain,
-            Effect.forkScoped,
-          )
+        yield* syncProcessor.pull({ cursor: syncState.localHead }).pipe(
+          Stream.tap(({ payload }) => sendMessage(Devtools.Leader.SyncPull.make({ payload, liveStoreVersion }))),
+          Stream.runDrain,
+          Effect.forkScoped,
+        )
 
-          yield* listenToDevtools({
-            incomingMessages: channel.listen.pipe(Stream.flatten(), Stream.orDie),
-            sendMessage,
-            persistenceInfo,
-          })
-        }).pipe(Effect.tapCauseLogPretty, Effect.forkScoped),
-      ),
-      Stream.runDrain,
-    )
-  }).pipe(Effect.withSpan('@livestore/common:leader-thread:devtools:boot'))
+        yield* listenToDevtools({
+          incomingMessages: channel.listen.pipe(Stream.flatten(), Stream.orDie),
+          sendMessage,
+          persistenceInfo,
+        })
+      }).pipe(Effect.tapCauseLogPretty, Effect.forkScoped),
+    ),
+    Stream.runDrain,
+  )
+})
 
 const listenToDevtools = ({
   incomingMessages,
@@ -131,7 +131,7 @@ const listenToDevtools = ({
       loadDatabaseBatchTracker.set(batchId, entry)
       const finished = entry.has('state') && entry.has('eventlog')
 
-      if (finished) {
+      if (finished === true) {
         loadDatabaseBatchTracker.delete(batchId)
       }
 
@@ -157,7 +157,7 @@ const listenToDevtools = ({
           // So far I could only observe this problem with webmesh proxy channels (e.g. for Expo)
           // Proof: https://share.cleanshot.com/V9G87B0B
           // Also see `store/devtools.ts` for same problem
-          if (handledRequestIds.has(requestId)) {
+          if (handledRequestIds.has(requestId) === true) {
             // yield* Effect.logWarning(`Duplicate message`, decodedEvent)
             return
           }
@@ -205,24 +205,24 @@ const listenToDevtools = ({
 
                 let databaseKind: LoadDatabaseKind | undefined
 
-                if (tableNames.has(SystemTables.EVENTLOG_META_TABLE)) {
+                if (tableNames.has(SystemTables.EVENTLOG_META_TABLE) === true) {
                   databaseKind = 'eventlog'
                   yield* SubscriptionRef.set(shutdownStateSubRef, 'shutting-down')
-                  yield* Effect.try(() => void dbEventlog.import(data))
+                  yield* Effect.try(() => dbEventlog.import(data))
 
                   if (batchId === undefined) {
-                    yield* Effect.try(() => void dbState.destroy())
+                    yield* Effect.try(() => dbState.destroy())
                   }
                 } else if (
-                  tableNames.has(SystemTables.SCHEMA_META_TABLE) &&
-                  tableNames.has(SystemTables.SCHEMA_EVENT_DEFS_META_TABLE)
+                  tableNames.has(SystemTables.SCHEMA_META_TABLE) === true &&
+                  tableNames.has(SystemTables.SCHEMA_EVENT_DEFS_META_TABLE) === true
                 ) {
                   databaseKind = 'state'
                   yield* SubscriptionRef.set(shutdownStateSubRef, 'shutting-down')
-                  yield* Effect.try(() => void dbState.import(data))
+                  yield* Effect.try(() => dbState.import(data))
 
                   if (batchId === undefined) {
-                    yield* Effect.try(() => void dbEventlog.destroy())
+                    yield* Effect.try(() => dbEventlog.destroy())
                   }
                 } else {
                   return yield* Effect.fail({ _tag: 'unsupported-database' } as const)
@@ -238,7 +238,7 @@ const listenToDevtools = ({
 
                 yield* sendMessage(Devtools.Leader.LoadDatabaseFile.Success.make({ ...reqPayload }))
 
-                if (shouldShutdown) {
+                if (shouldShutdown === true) {
                   yield* shutdownChannel.send(IntentionalShutdownCause.make({ reason: 'devtools-import' }))
                 }
               })
@@ -380,7 +380,9 @@ const listenToDevtools = ({
 
                 yield* Stream.zipLatest(
                   syncBackend.isConnected.changes,
-                  devtools.enabled ? devtools.syncBackendLatchState.changes : Stream.make({ latchClosed: false }),
+                  devtools.enabled === true
+                    ? devtools.syncBackendLatchState.changes
+                    : Stream.make({ latchClosed: false }),
                 ).pipe(
                   Stream.tap(([isConnected, { latchClosed }]) =>
                     sendMessage(

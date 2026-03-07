@@ -31,12 +31,12 @@ The docs theme defines `--ls-twoslash-tooltip-z` relative to Starlight’s navba
 
 All paths are resolved relative to the Astro project root (usually the directory containing `astro.config.*`). The layout is intentionally fixed so different apps share the same structure:
 
-| Purpose | Path |
-| --- | --- |
-| Snippet sources | `src/content/_assets/code/` |
-| Twoslash cache artefacts | `node_modules/.astro-twoslash-code/` |
-| Twoslash manifest | `node_modules/.astro-twoslash-code/manifest.json` |
-| Expressive Code config | Managed internally by the integration |
+| Purpose                  | Path                                              |
+| ------------------------ | ------------------------------------------------- |
+| Snippet sources          | `src/content/_assets/code/`                       |
+| Twoslash cache artefacts | `node_modules/.astro-twoslash-code/`              |
+| Twoslash manifest        | `node_modules/.astro-twoslash-code/manifest.json` |
+| Expressive Code config   | Managed internally by the integration             |
 
 Additional expectations:
 
@@ -114,9 +114,7 @@ const snippetRuntime = {
 const projectRoot = path.resolve(fileURLToPath(new URL('..', import.meta.url)))
 
 PlatformNode.NodeRuntime.runMain(
-  buildSnippets({ projectRoot, runtime: snippetRuntime }).pipe(
-    Effect.provide(PlatformNode.NodeFileSystem.layer),
-  ),
+  buildSnippets({ projectRoot, runtime: snippetRuntime }).pipe(Effect.provide(PlatformNode.NodeFileSystem.layer)),
 )
 ```
 

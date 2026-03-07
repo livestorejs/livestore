@@ -21,10 +21,11 @@
 //   is maintained eagerly as edges are added and removed.)
 // - At every thunk we check value equality with the previous value and cutoff propagation if possible.
 
+import type * as otel from '@opentelemetry/api'
+
 import { BoundArray } from '@livestore/common'
 import { deepEqual, omitUndefineds, shouldNeverHappen } from '@livestore/utils'
 import type { Types } from '@livestore/utils/effect'
-import type * as otel from '@opentelemetry/api'
 // import { getDurationMsFromSpan } from './otel.ts'
 
 export const NOT_REFRESHED_YET = Symbol.for('NOT_REFRESHED_YET')
@@ -32,8 +33,8 @@ export type NOT_REFRESHED_YET = typeof NOT_REFRESHED_YET
 
 export type GetAtom = <T>(
   atom: Atom<T, any, any>,
-  otelContext?: otel.Context | undefined,
-  debugRefreshReason?: TODO | undefined,
+  otelContext?: otel.Context  ,
+  debugRefreshReason?: TODO  ,
 ) => T
 
 export type Ref<T, TContext, TDebugRefreshReason extends DebugRefreshReason> = {
@@ -47,7 +48,7 @@ export type Ref<T, TContext, TDebugRefreshReason extends DebugRefreshReason> = {
   super: Set<Thunk<any, TContext, TDebugRefreshReason> | Effect<TDebugRefreshReason>>
   label?: string | undefined
   /** Container for meta information (e.g. the LiveStore Store) */
-  meta?: any | undefined
+  meta?: unknown
   equal: (a: T, b: T) => boolean
   refreshes: number
 }
@@ -63,7 +64,7 @@ export type Thunk<TResult, TContext, TDebugRefreshReason extends DebugRefreshRea
   super: Set<Thunk<any, TContext, TDebugRefreshReason> | Effect<TDebugRefreshReason>>
   label?: string | undefined
   /** Container for meta information (e.g. the LiveStore Store) */
-  meta?: any | undefined
+  meta?: unknown
   equal: (a: TResult, b: TResult) => boolean
   recomputations: number
 
@@ -78,7 +79,7 @@ export type Effect<TDebugRefreshReason extends DebugRefreshReason> = {
   _tag: 'effect'
   id: string
   isDestroyed: boolean
-  doEffect: (otelContext?: otel.Context | undefined, debugRefreshReason?: TDebugRefreshReason | undefined) => void
+  doEffect: (otelContext?: otel.Context  , debugRefreshReason?: TDebugRefreshReason  ) => void
   sub: Set<Atom<any, TODO, TODO>>
   label?: string | undefined
   invocations: number
@@ -91,7 +92,7 @@ export type Node<T, TContext, TDebugRefreshReason extends DebugRefreshReason> =
 export const isThunk = <T, TContext, TDebugRefreshReason extends DebugRefreshReason>(
   obj: unknown,
 ): obj is Thunk<T, TContext, TDebugRefreshReason> => {
-  return typeof obj === 'object' && obj !== null && '_tag' in obj && (obj as any)._tag === 'thunk'
+  return typeof obj === 'object' && obj !== null && '_tag' in obj && (obj as { _tag: unknown })._tag === 'thunk'
 }
 
 export type DebugThunkInfo<T extends string = string> = {
@@ -203,9 +204,7 @@ export class ReactiveGraph<
 
   debugRefreshInfos: BoundArray<RefreshDebugInfo<TDebugRefreshReason, TDebugThunkInfo>> = new BoundArray(200)
 
-  private currentDebugRefresh:
-    | { refreshedAtoms: AtomDebugInfo<TDebugThunkInfo>[]; startMs: DOMHighResTimeStamp }
-    | undefined
+  private currentDebugRefresh: { refreshedAtoms: AtomDebugInfo<TDebugThunkInfo>[]; startMs: number } | undefined
 
   private deferredEffects: Map<Effect<TDebugRefreshReason>, Set<TDebugRefreshReason>> = new Map()
 
@@ -253,7 +252,7 @@ export class ReactiveGraph<
           meta?: any
           equal?: (a: T, b: T) => boolean
         }
-      | undefined,
+       ,
   ): Thunk<T, TContext, TDebugRefreshReason> {
     const thunk: Thunk<T, TContext, TDebugRefreshReason> = {
       _tag: 'thunk',
@@ -262,10 +261,10 @@ export class ReactiveGraph<
       isDirty: true,
       isDestroyed: false,
       computeResult: (otelContext, debugRefreshReason) => {
-        if (thunk.isDirty) {
+        if (thunk.isDirty === true) {
           const neededCurrentRefresh = this.currentDebugRefresh === undefined
           let localDebugRefresh: { refreshedAtoms: any[]; startMs: number } | undefined
-          if (neededCurrentRefresh) {
+          if (neededCurrentRefresh === true) {
             // Use local variable to prevent corruption from nested computations
             localDebugRefresh = { refreshedAtoms: [], startMs: performance.now() }
             this.currentDebugRefresh = localDebugRefresh
@@ -292,7 +291,7 @@ export class ReactiveGraph<
             debugRefreshReason,
           )
 
-          const resultChanged = thunk.equal(thunk.previousResult as T, result) === false
+          const resultChanged = ! thunk.equal(thunk.previousResult as T, result)
 
           const debugInfoForAtom = {
             atom: serializeAtom(thunk, false),
@@ -302,7 +301,7 @@ export class ReactiveGraph<
 
           // Use currentDebugRefresh if available (could be from parent or local)
           const debugRefresh = localDebugRefresh ?? this.currentDebugRefresh
-          if (debugRefresh) {
+          if (debugRefresh !== undefined) {
             debugRefresh.refreshedAtoms.push(debugInfoForAtom)
           }
 
@@ -310,7 +309,7 @@ export class ReactiveGraph<
           thunk.previousResult = result
           thunk.recomputations++
 
-          if (neededCurrentRefresh && localDebugRefresh) {
+          if (neededCurrentRefresh === true && localDebugRefresh !== undefined) {
             // Use local reference which can't be corrupted by nested calls
             const refreshedAtoms = localDebugRefresh.refreshedAtoms
             const durationMs = performance.now() - localDebugRefresh.startMs
@@ -385,7 +384,7 @@ export class ReactiveGraph<
       otelContext: otel.Context | undefined,
       debugRefreshReason: DebugRefreshReason | undefined,
     ) => void,
-    options?: { label?: string } | undefined,
+    options?: { label?: string }  ,
   ): Effect<TDebugRefreshReason> {
     const effect: Effect<TDebugRefreshReason> = {
       _tag: 'effect',
@@ -429,7 +428,7 @@ export class ReactiveGraph<
           debugRefreshReason?: TDebugRefreshReason
           otelContext?: otel.Context
         }
-      | undefined,
+       ,
   ) {
     this.setRefs([[ref, val]], options)
   }
@@ -442,7 +441,7 @@ export class ReactiveGraph<
           debugRefreshReason?: TDebugRefreshReason
           otelContext?: otel.Context
         }
-      | undefined,
+       ,
   ) {
     const effectsToRefresh = new Set<Effect<TDebugRefreshReason>>()
     for (const [ref, val] of refs) {
@@ -452,7 +451,7 @@ export class ReactiveGraph<
       markSuperCompDirtyRec(ref, effectsToRefresh)
     }
 
-    if (options?.skipRefresh) {
+    if (options?.skipRefresh === true) {
       for (const effect of effectsToRefresh) {
         if (this.deferredEffects.has(effect) === false) {
           this.deferredEffects.set(effect, new Set())
@@ -598,11 +597,11 @@ const compute = <T>(
   debugRefreshReason: DebugRefreshReason | undefined,
 ): T => {
   // const __getResult = atom._tag === 'thunk' ? atom.__getResult.toString() : ''
-  if (atom.isDestroyed) {
+  if (atom.isDestroyed === true) {
     shouldNeverHappen(`LiveStore Error: Attempted to compute destroyed ${atom._tag} (${atom.id}): ${atom.label ?? ''}`)
   }
 
-  if (atom.isDirty) {
+  if (atom.isDirty === true) {
     // console.log('atom is dirty', atom.id, atom.label ?? '', atom._tag, __getResult)
     const result = atom.computeResult(otelContext, debugRefreshReason)
     atom.isDirty = false
@@ -641,7 +640,7 @@ const serializeAtom = (atom: Atom<any, unknown, any>, includeResult: boolean): S
     super_.push(a.id)
   }
 
-  const previousResult: EncodedOption<string> = includeResult
+  const previousResult: EncodedOption<string> = includeResult === true
     ? encodedOptionSome(
         atom.previousResult === NOT_REFRESHED_YET ? '"SYMBOL_NOT_REFRESHED_YET"' : JSON.stringify(atom.previousResult),
       )

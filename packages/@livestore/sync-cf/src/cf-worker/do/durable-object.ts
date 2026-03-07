@@ -1,6 +1,7 @@
 /// <reference types="@cloudflare/workers-types" />
 
 import { DurableObject } from 'cloudflare:workers'
+
 import { type CfTypes, setupDurableObjectWebSocketRpc } from '@livestore/common-cf'
 import { CfDeclare } from '@livestore/common-cf/declare'
 import {
@@ -14,6 +15,7 @@ import {
   Schema,
   type Scope,
 } from '@livestore/utils/effect'
+
 import {
   type Env,
   extractForwardedHeaders,
@@ -34,7 +36,7 @@ declare class Response extends CfDeclare.Response {}
 declare class WebSocketPair extends CfDeclare.WebSocketPair {}
 declare class WebSocketRequestResponsePair extends CfDeclare.WebSocketRequestResponsePair {}
 
-const DurableObjectBase = DurableObject<Env> as any as new (
+const DurableObjectBase = DurableObject as any as new (
   state: CfTypes.DurableObjectState,
   env: Env,
 ) => CfTypes.DurableObject & { ctx: CfTypes.DurableObjectState; env: Env }
@@ -88,14 +90,14 @@ export const makeDurableObject: MakeDurableObjectClass = (options) => {
 
   const Logging = Logger.consoleWithThread('SyncDo')
 
-  const Observability = options?.otel?.baseUrl
-    ? Otlp.layer({
+  const Observability: Layer.Layer<never> = options?.otel?.baseUrl !== undefined
+    ? (Otlp.layer({
         baseUrl: options.otel.baseUrl,
         tracerExportInterval: 50,
         resource: {
           serviceName: options.otel.serviceName ?? 'sync-cf-do',
         },
-      }).pipe(Layer.provide(FetchHttpClient.layer))
+      }).pipe(Layer.provide(FetchHttpClient.layer)) as Layer.Layer<never>)
     : Layer.empty
 
   return class SyncBackendDOBase extends DurableObjectBase implements SyncBackendRpcInterface {
@@ -107,7 +109,7 @@ export const makeDurableObject: MakeDurableObjectClass = (options) => {
       const WebSocketRpcServerLive = makeRpcServer({ doSelf: this, doOptions: options })
 
       // This registers the `webSocketMessage` and `webSocketClose` handlers
-      if (enabledTransports.has('ws')) {
+      if (enabledTransports.has('ws') === true) {
         setupDurableObjectWebSocketRpc({
           doSelf: this,
           rpcLayer: WebSocketRpcServerLive,
@@ -143,7 +145,7 @@ export const makeDurableObject: MakeDurableObjectClass = (options) => {
       }
     }
 
-    fetch = async (request: Request): Promise<Response> =>
+    override fetch = async (request: Request): Promise<Response> =>
       Effect.gen(this, function* () {
         const searchParams = matchSyncRequest(request)
         if (searchParams === undefined) {
@@ -228,8 +230,8 @@ export const makeDurableObject: MakeDurableObjectClass = (options) => {
     private handleHttp = (request: CfTypes.Request, forwardedHeaders: Record<string, string> | undefined) =>
       createHttpRpcHandler({
         request,
-        responseHeaders: options?.http?.responseHeaders,
-        forwardedHeaders,
+        ...(options?.http?.responseHeaders !== undefined ? { responseHeaders: options.http.responseHeaders } : {}),
+        ...(forwardedHeaders !== undefined ? { forwardedHeaders } : {}),
       }).pipe(Effect.withSpan('@livestore/sync-cf:durable-object:handleHttp'))
 
     private runEffectAsPromise = <T, E = never>(effect: Effect.Effect<T, E, Scope.Scope>): Promise<T> =>

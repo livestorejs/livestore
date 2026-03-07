@@ -2,11 +2,12 @@
 // ---cut---
 import { makePersistedAdapter } from '@livestore/adapter-web'
 import LiveStoreSharedWorker from '@livestore/adapter-web/shared-worker?sharedworker'
+
 import LiveStoreWorker from './livestore.worker.ts?worker'
 
 const resetPersistence = import.meta.env.DEV && new URLSearchParams(window.location.search).get('reset') !== null
 
-if (resetPersistence) {
+if (resetPersistence === true) {
   const searchParams = new URLSearchParams(window.location.search)
   searchParams.delete('reset')
   window.history.replaceState(null, '', `${window.location.pathname}?${searchParams.toString()}`)

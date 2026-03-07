@@ -118,7 +118,7 @@ export const makeDirectChannelInternal = ({
             channelState: channelState._tag,
             packetId: packet.id,
             packetReqId: packet.reqId,
-            packetChannelVersion: Predicate.hasProperty('channelVersion')(packet) ? packet.channelVersion : undefined,
+            packetChannelVersion: Predicate.hasProperty('channelVersion')(packet) === true ? packet.channelVersion : undefined,
           },
           undefined,
         )
@@ -207,7 +207,7 @@ export const makeDirectChannelInternal = ({
 
             const isWinner = nodeName > target
 
-            if (isWinner) {
+            if (isWinner === true) {
               span?.addEvent(`winner side: creating direct channel and sending response`)
               const mc = new MessageChannel()
 
@@ -260,7 +260,7 @@ export const makeDirectChannelInternal = ({
               channelStateRef.current = { _tag: 'loser:WaitingForResponse', otherSourceId: packet.sourceId }
             }
 
-            break
+            return
           }
           case 'DirectChannelResponseSuccess': {
             if (channelState._tag !== 'loser:WaitingForResponse') {

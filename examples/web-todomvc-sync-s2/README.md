@@ -19,11 +19,13 @@ export S2_BASIN="ls-examples"        # Optional, defaults to "ls-examples"
 ### Option 2: S2-Lite (self-hosted)
 
 Start s2-lite locally:
+
 ```bash
-docker run -p 8080:80 ghcr.io/s2-streamstore/s2-lite
+docker run -p 8080:80 ghcr.io/s2-streamstore/s2 lite
 ```
 
 Then configure the example:
+
 ```bash
 export S2_ENDPOINT="http://localhost:8080"  # Enables s2-lite mode
 export S2_BASIN="my-basin"                   # Your basin name

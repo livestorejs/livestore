@@ -1,4 +1,5 @@
 import type React from 'react'
+
 import { useFrontendState } from '../../livestore/queries.ts'
 import { MobileMenu } from './sidebar/mobile-menu.tsx'
 import { Toolbar } from './toolbar/index.tsx'

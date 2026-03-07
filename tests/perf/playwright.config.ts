@@ -1,11 +1,12 @@
 import * as process from 'node:process'
+
 import { defineConfig, devices } from '@playwright/test'
 
 /**
  * Ensure Playwright tests are run via the mono CLI (or VS Code extension) to guarantee proper environment setup.
  */
 const isVSCode = process.env.VSCODE_PID !== undefined
-if (process.env.FORCE_PLAYWRIGHT_VIA_CLI !== '1' && !isVSCode) {
+if (process.env.FORCE_PLAYWRIGHT_VIA_CLI !== '1' && isVSCode === false) {
   throw new Error(`Playwright tests must be run via 'mono test perf'.`)
 }
 
@@ -17,7 +18,7 @@ export default defineConfig({
   forbidOnly: !!process.env.CI, // Fail the build on CI if we accidentally left test.only in the source code
   workers: 1, // Run tests serially for more consistent performance measurements
   reportSlowTests: null,
-  reporter: [process.env.CI ? ['dot'] : ['line'], ['./tests/measurements-reporter.ts']],
+  reporter: [process.env.CI !== undefined ? ['dot'] : ['line'], ['./tests/measurements-reporter.ts']],
   use: { baseURL: 'http://localhost:4173' },
   projects: [
     {

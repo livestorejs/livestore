@@ -14,55 +14,52 @@ export type TCmdLoggingOptions = {
  * Prepares logging directories, archives previous canonical log and prunes archives.
  * Returns the canonical current log path if logging is enabled, otherwise undefined.
  */
-export const prepareCmdLogging: (options: TCmdLoggingOptions) => Effect.Effect<string | undefined, never, never> =
-  Effect.fn('cmd.logging.prepare')(function* ({
-    logDir,
-    logFileName = 'dev.log',
-    logRetention = 50,
-  }: TCmdLoggingOptions) {
-    if (!logDir || logDir === '') return undefined as string | undefined
+export const prepareCmdLogging: (options: TCmdLoggingOptions) => Effect.Effect<string | undefined> = Effect.fn(
+  'cmd.logging.prepare',
+)(function* ({ logDir, logFileName = 'dev.log', logRetention = 50 }: TCmdLoggingOptions) {
+  if (logDir == null || logDir === '') return undefined as string | undefined
 
-    const logsDir = logDir
-    const archiveDir = path.join(logsDir, 'archive')
-    const currentLogPath = path.join(logsDir, logFileName)
+  const logsDir = logDir
+  const archiveDir = path.join(logsDir, 'archive')
+  const currentLogPath = path.join(logsDir, logFileName)
 
-    // Ensure directories exist
-    yield* Effect.sync(() => fs.mkdirSync(archiveDir, { recursive: true }))
+  // Ensure directories exist
+  yield* Effect.sync(() => fs.mkdirSync(archiveDir, { recursive: true }))
 
-    // Archive previous log if present
-    if (fs.existsSync(currentLogPath)) {
-      const safeIso = new Date().toISOString().replaceAll(':', '-')
-      const archivedBase = `${path.parse(logFileName).name}-${safeIso}.log`
-      const archivedLog = path.join(archiveDir, archivedBase)
-      yield* Effect.try(() => fs.renameSync(currentLogPath, archivedLog)).pipe(
-        Effect.catchAll(() =>
-          Effect.try(() => {
-            fs.copyFileSync(currentLogPath, archivedLog)
-            fs.truncateSync(currentLogPath, 0)
-          }),
+  // Archive previous log if present
+  if (fs.existsSync(currentLogPath) === true) {
+    const safeIso = new Date().toISOString().replaceAll(':', '-')
+    const archivedBase = `${path.parse(logFileName).name}-${safeIso}.log`
+    const archivedLog = path.join(archiveDir, archivedBase)
+    yield* Effect.try(() => fs.renameSync(currentLogPath, archivedLog)).pipe(
+      Effect.catchAll(() =>
+        Effect.try(() => {
+          fs.copyFileSync(currentLogPath, archivedLog)
+          fs.truncateSync(currentLogPath, 0)
+        }),
+      ),
+      Effect.ignore,
+    )
+
+    // Prune archives to retain only the newest N
+    yield* Effect.try(() => fs.readdirSync(archiveDir)).pipe(
+      Effect.map((names) => names.filter((n) => n.endsWith('.log'))),
+      Effect.map((names) =>
+        names
+          .map((name) => ({ name, mtimeMs: fs.statSync(path.join(archiveDir, name)).mtimeMs }))
+          .sort((a, b) => b.mtimeMs - a.mtimeMs),
+      ),
+      Effect.flatMap((entries) =>
+        Effect.forEach(entries.slice(logRetention), (e) =>
+          Effect.try(() => fs.unlinkSync(path.join(archiveDir, e.name))).pipe(Effect.ignore),
         ),
-        Effect.ignore,
-      )
+      ),
+      Effect.ignore,
+    )
+  }
 
-      // Prune archives to retain only the newest N
-      yield* Effect.try(() => fs.readdirSync(archiveDir)).pipe(
-        Effect.map((names) => names.filter((n) => n.endsWith('.log'))),
-        Effect.map((names) =>
-          names
-            .map((name) => ({ name, mtimeMs: fs.statSync(path.join(archiveDir, name)).mtimeMs }))
-            .sort((a, b) => b.mtimeMs - a.mtimeMs),
-        ),
-        Effect.flatMap((entries) =>
-          Effect.forEach(entries.slice(logRetention), (e) =>
-            Effect.try(() => fs.unlinkSync(path.join(archiveDir, e.name))).pipe(Effect.ignore),
-          ),
-        ),
-        Effect.ignore,
-      )
-    }
-
-    return currentLogPath
-  })
+  return currentLogPath
+})
 
 /**
  * Given a command input, applies logging by piping output through `tee` to the
@@ -71,17 +68,17 @@ export const prepareCmdLogging: (options: TCmdLoggingOptions) => Effect.Effect<s
 export const applyLoggingToCommand: (
   commandInput: string | (string | undefined)[],
   options: TCmdLoggingOptions,
-) => Effect.Effect<{ input: string | string[]; subshell: boolean; logPath?: string }, never, never> = Effect.fn(
-  'cmd.logging.apply',
-)(function* (commandInput, options) {
-  const asArray = Array.isArray(commandInput)
-  const parts = asArray ? (commandInput as (string | undefined)[]).filter(isNotUndefined) : undefined
+) => Effect.Effect<{ input: string | string[]; subshell: boolean; logPath?: string }> = Effect.fn('cmd.logging.apply')(
+  function* (commandInput, options) {
+    const asArray = Array.isArray(commandInput)
+    const parts = asArray === true ? commandInput.filter(isNotUndefined) : undefined
 
-  const logPath = yield* prepareCmdLogging(options)
+    const logPath = yield* prepareCmdLogging(options)
 
-  return {
-    input: asArray ? ((parts as string[]) ?? []) : (commandInput as string),
-    subshell: false,
-    ...(logPath ? { logPath } : {}),
-  }
-})
+    return {
+      input: asArray === true ? ((parts as string[]) ?? []) : commandInput,
+      subshell: false,
+      ...(logPath !== undefined ? { logPath } : {}),
+    }
+  },
+)

@@ -1,8 +1,12 @@
 import './thread-polyfill.ts'
-
 import * as ChildProcess from 'node:child_process'
+
+import { expect } from 'vitest'
+
 import { ClientSessionSyncProcessorSimulationParams } from '@livestore/common'
 import { IS_CI, stringifyObject } from '@livestore/utils'
+import { Vitest } from '@livestore/utils-dev/node-vitest'
+import { WranglerDevServerService } from '@livestore/utils-dev/wrangler'
 import {
   Duration,
   Effect,
@@ -16,15 +20,13 @@ import {
 } from '@livestore/utils/effect'
 import { nanoid } from '@livestore/utils/nanoid'
 import { ChildProcessWorker, PlatformNode } from '@livestore/utils/node'
-import { Vitest } from '@livestore/utils-dev/node-vitest'
-import { WranglerDevServerService } from '@livestore/utils-dev/wrangler'
-import { expect } from 'vitest'
+
 import { makeFileLogger } from './fixtures/file-logger.ts'
 import * as WorkerSchema from './worker-schema.ts'
 
 // Timeout needs to be long enough to allow for all the test runs to complete, especially in CI where the environment is slower.
 // A single test run can take significant time depending on the passed todo count and simulation params.
-const testTimeout = Duration.toMillis(IS_CI ? Duration.minutes(10) : Duration.minutes(15))
+const testTimeout = Duration.toMillis(IS_CI === true ? Duration.minutes(10) : Duration.minutes(15))
 
 // We might need to also run the tests in a CPU-limited environment as it might change the concurrency characteristics of the tests
 // bash -c 'taskset -c 0 env CI=1 DEBUGGER_ACTIVE=0 NODE_SYNC_DEBUG=1 direnv exec . vitest run tests/integration/src/tests/node-sync/node-sync.test.ts --reporter verbose'
@@ -92,7 +94,7 @@ Vitest.describe.concurrent('node-sync', { timeout: testTimeout }, () => {
   Vitest.asProp(
     Vitest.scopedLive,
     'node-sync prop tests',
-    Vitest.DEBUGGER_ACTIVE
+    Vitest.DEBUGGER_ACTIVE === true
       ? {
           storageType: Schema.Literal('fs'),
           adapterType: Schema.Literal('worker'),
@@ -203,9 +205,9 @@ Vitest.describe.concurrent('node-sync', { timeout: testTimeout }, () => {
         // Logging without context (to make sure log is always displayed)
         Effect.logDuration(`${test.task.suite?.name}:${test.task.name} (Run ${runIndex + 1}/${numRuns})`),
       ),
-    Vitest.DEBUGGER_ACTIVE
+    Vitest.DEBUGGER_ACTIVE === true
       ? { fastCheck: { numRuns: 1 }, timeout: testTimeout * 100 }
-      : { fastCheck: { numRuns: IS_CI ? 6 : 20 } },
+      : { fastCheck: { numRuns: IS_CI === true ? 6 : 20 } },
   )
 })
 

@@ -1,4 +1,5 @@
 import { queryDb, type Store } from '@livestore/livestore'
+
 import { type schema, tables } from '../framework-integrations/react/schema.ts'
 
 declare const store: Store<typeof schema>

@@ -27,6 +27,9 @@ import * as SyncState from './syncstate.ts'
 // Upstream: https://github.com/Effect-TS/effect/pull/5929
 // TODO: simplify back to the 2-arg overload once the upstream fix is released and adopted.
 
+/** Serialize value to JSON string for trace attributes */
+const jsonStringify = Schema.encodeSync(Schema.parseJson())
+
 /**
  * Rebase behaviour:
  * - We continously pull events from the leader and apply them to the local store.
@@ -160,7 +163,7 @@ export const makeClientSessionSyncProcessor = ({
         acc[event.name] = (acc[event.name] ?? 0) + 1
         return acc
       }, {}),
-      ...(TRACE_VERBOSE && { mergeResult: JSON.stringify(mergeResult) }),
+      ...(TRACE_VERBOSE === true ? { mergeResult: jsonStringify(mergeResult) } : {}),
     })
 
     if (mergeResult._tag === 'unknown-error') {
@@ -206,7 +209,11 @@ export const makeClientSessionSyncProcessor = ({
   }
 
   const boot: ClientSessionSyncProcessor['boot'] = Effect.gen(function* () {
-    if (confirmUnsavedChanges && typeof window !== 'undefined' && typeof window.addEventListener === 'function') {
+    if (
+      confirmUnsavedChanges === true &&
+      typeof window !== 'undefined' &&
+      typeof window.addEventListener === 'function'
+    ) {
       const onBeforeUnload = (event: BeforeUnloadEvent) => {
         if (syncStateRef.current.pending.length > 0) {
           // Trigger the default browser dialog
@@ -243,7 +250,7 @@ export const makeClientSessionSyncProcessor = ({
         Effect.gen(function* () {
           // yield* Effect.logDebug('ClientSessionSyncProcessor:pull', payload)
 
-          if (clientSession.devtools.enabled) {
+          if (clientSession.devtools.enabled === true) {
             yield* clientSession.devtools.pullLatch.await
           }
 
@@ -335,28 +342,28 @@ export const makeClientSessionSyncProcessor = ({
               'merge:pull:rebase',
               {
                 payloadTag: payload._tag,
-                payload: TRACE_VERBOSE ? JSON.stringify(payload) : undefined,
+                payload: TRACE_VERBOSE === true ? jsonStringify(payload) : undefined,
                 newEventsCount: mergeResult.newEvents.length,
                 rollbackCount: mergeResult.rollbackEvents.length,
-                res: TRACE_VERBOSE ? JSON.stringify(mergeResult) : undefined,
+                res: TRACE_VERBOSE === true ? jsonStringify(mergeResult) : undefined,
               },
               undefined,
             )
 
             debugInfo.rebaseCount++
 
-            if (SIMULATION_ENABLED) yield* simSleep('pull', '1_before_leader_push_fiber_interrupt')
+            if (SIMULATION_ENABLED === true) yield* simSleep('pull', '1_before_leader_push_fiber_interrupt')
 
             yield* FiberHandle.clear(leaderPushingFiberHandle)
 
-            if (SIMULATION_ENABLED) yield* simSleep('pull', '2_before_leader_push_queue_clear')
+            if (SIMULATION_ENABLED === true) yield* simSleep('pull', '2_before_leader_push_queue_clear')
 
             // Reset the leader push queue since we're rebasing and will push again
             yield* BucketQueue.clear(leaderPushQueue)
 
-            if (SIMULATION_ENABLED) yield* simSleep('pull', '3_before_rebase_rollback')
+            if (SIMULATION_ENABLED === true) yield* simSleep('pull', '3_before_rebase_rollback')
 
-            if (LS_DEV) {
+            if (LS_DEV === true) {
               yield* Effect.logDebug(
                 'merge:pull:rebase: rollback',
                 mergeResult.rollbackEvents.length,
@@ -372,11 +379,11 @@ export const makeClientSessionSyncProcessor = ({
               }
             }
 
-            if (SIMULATION_ENABLED) yield* simSleep('pull', '4_before_leader_push_queue_offer')
+            if (SIMULATION_ENABLED === true) yield* simSleep('pull', '4_before_leader_push_queue_offer')
 
             yield* BucketQueue.offerAll(leaderPushQueue, mergeResult.newSyncState.pending)
 
-            if (SIMULATION_ENABLED) yield* simSleep('pull', '5_before_leader_push_fiber_run')
+            if (SIMULATION_ENABLED === true) yield* simSleep('pull', '5_before_leader_push_fiber_run')
 
             yield* FiberHandle.run(leaderPushingFiberHandle, backgroundLeaderPushing)
           } else {
@@ -384,9 +391,9 @@ export const makeClientSessionSyncProcessor = ({
               'merge:pull:advance',
               {
                 payloadTag: payload._tag,
-                payload: TRACE_VERBOSE ? JSON.stringify(payload) : undefined,
+                payload: TRACE_VERBOSE === true ? jsonStringify(payload) : undefined,
                 newEventsCount: mergeResult.newEvents.length,
-                res: TRACE_VERBOSE ? JSON.stringify(mergeResult) : undefined,
+                res: TRACE_VERBOSE === true ? jsonStringify(mergeResult) : undefined,
               },
               undefined,
             )

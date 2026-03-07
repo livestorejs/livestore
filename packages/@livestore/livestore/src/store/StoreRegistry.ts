@@ -16,6 +16,7 @@ import {
   type Schema,
   type Scope,
 } from '@livestore/utils/effect'
+
 import { type CreateStoreOptions, createStore } from './create-store.ts'
 import type { Store } from './store.ts'
 import type { OtelOptions } from './store-types.ts'
@@ -180,7 +181,7 @@ export class StoreRegistry {
    * ```
    */
   constructor(config: StoreRegistryConfig = {}) {
-    if (config.runtime) {
+    if (config.runtime !== undefined) {
       this.#runtime = config.runtime
     } else {
       const ownedRuntime = ManagedRuntime.make(Layer.mergeAll(Layer.scope, OtelLiveDummy))
@@ -264,29 +265,34 @@ export class StoreRegistry {
   ): Store<TSchema, TContext> | Promise<Store<TSchema, TContext>> => {
     const exit = this.getOrLoad(options).pipe(Effect.scoped, Runtime.runSyncExit(this.#runtime))
 
-    if (Exit.isSuccess(exit)) return exit.value
+    if (Exit.isSuccess(exit) === true) return exit.value
 
     // Check if the failure is due to async work
     const defect = Cause.dieOption(exit.cause)
-    if (defect._tag === 'Some' && Runtime.isAsyncFiberException(defect.value)) {
-      const { storeId } = options
-
-      // Return cached promise if one exists (ensures concurrent calls get the same Promise reference)
-      const cached = this.#loadingPromises.get(storeId)
-      if (cached) return cached as Promise<Store<TSchema, TContext>>
-
-      // Create and cache the promise
-      const fiber = defect.value.fiber
-      const promise = Fiber.join(fiber)
-        .pipe(Runtime.runPromise(this.#runtime))
-        .finally(() => this.#loadingPromises.delete(storeId)) as Promise<Store<TSchema, TContext>>
-
-      this.#loadingPromises.set(storeId, promise)
-      return promise
+    if (defect._tag !== 'Some') {
+      // Handle synchronous failure
+      throw Cause.squash(exit.cause)
     }
 
-    // Handle synchronous failure
-    throw Cause.squash(exit.cause)
+    if (Runtime.isAsyncFiberException(defect.value) === false) {
+      // Handle synchronous failure
+      throw Cause.squash(exit.cause)
+    }
+
+    const { storeId } = options
+
+    // Return cached promise if one exists (ensures concurrent calls get the same Promise reference)
+    const cached = this.#loadingPromises.get(storeId)
+    if (cached !== undefined) return cached as Promise<Store<TSchema, TContext>>
+
+    // Create and cache the promise
+    const fiber = defect.value.fiber as Fiber.RuntimeFiber<Store<TSchema, TContext>>
+    const promise = Fiber.join(fiber)
+      .pipe(Runtime.runPromise(this.#runtime))
+      .finally(() => this.#loadingPromises.delete(storeId))
+
+    this.#loadingPromises.set(storeId, promise)
+    return promise
   }
 
   /**
@@ -405,12 +411,10 @@ export class StoreRegistry {
  * });
  * ```
  */
-export function storeOptions<
+export const storeOptions = <
   TSchema extends LiveStoreSchema,
   TContext = {},
   TSyncPayloadSchema extends Schema.Schema<any> = typeof Schema.JsonValue,
 >(
   options: RegistryStoreOptions<TSchema, TContext, TSyncPayloadSchema>,
-): RegistryStoreOptions<TSchema, TContext, TSyncPayloadSchema> {
-  return options
-}
+): RegistryStoreOptions<TSchema, TContext, TSyncPayloadSchema> => options

@@ -66,7 +66,7 @@ export const windowChannel = <MsgListen, MsgSend, MsgListenEncoded, MsgSendEncod
 }: {
   listenWindow: Window
   sendWindow: Window
-  targetOrigin?: string
+  targetOrigin?: string | undefined
   ids: { own: string; other: string }
   schema: InputSchema<MsgListen, MsgSend, MsgListenEncoded, MsgSendEncoded>
 }): Effect.Effect<WebChannel<MsgListen, MsgSend>, never, Scope.Scope> =>

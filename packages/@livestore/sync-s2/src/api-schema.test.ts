@@ -1,5 +1,7 @@
-import { Schema } from '@livestore/utils/effect'
 import { describe, expect, it } from 'vitest'
+
+import { Schema } from '@livestore/utils/effect'
+
 import * as Api from './api-schema.ts'
 import { decodePullArgsFromSearchParams } from './make-s2-url.ts'
 import { s2SeqNum } from './types.ts'

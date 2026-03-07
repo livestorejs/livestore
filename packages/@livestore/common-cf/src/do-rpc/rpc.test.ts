@@ -1,3 +1,7 @@
+import { expect } from 'vitest'
+
+import { Vitest } from '@livestore/utils-dev/node-vitest'
+import { WranglerDevServerService } from '@livestore/utils-dev/wrangler'
 import {
   Chunk,
   Effect,
@@ -11,9 +15,7 @@ import {
   Stream,
 } from '@livestore/utils/effect'
 import { PlatformNode } from '@livestore/utils/node'
-import { Vitest } from '@livestore/utils-dev/node-vitest'
-import { WranglerDevServerService } from '@livestore/utils-dev/wrangler'
-import { expect } from 'vitest'
+
 import { TestRpcs } from './test-fixtures/rpc-schema.ts'
 
 const testTimeout = 60_000

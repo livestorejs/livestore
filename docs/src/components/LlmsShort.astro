@@ -32,17 +32,17 @@ for (const doc of docs) {
 }
 
 const getDocsForDirectory = (directory: string): TLlmsEntry[] => {
-  const normalizedDirectory = directory.endsWith('/') ? directory.slice(0, -1) : directory
+  const normalizedDirectory = directory.endsWith('/') === true ? directory.slice(0, -1) : directory
   const prefix = `${normalizedDirectory}/`
 
   return entries
     .filter((entry) => {
       if (entry.slug === normalizedDirectory) return true
-      if (!entry.slug.startsWith(prefix)) return false
+      if (entry.slug.startsWith(prefix) === false) return false
       const remaining = entry.slug.slice(prefix.length)
       return !remaining.includes('/')
     })
-    .sort((a, b) => {
+    .toSorted((a, b) => {
       const docA = docBySlug.get(a.slug)
       const docB = docBySlug.get(b.slug)
       const orderA = docA?.data.sidebar?.order ?? 999
@@ -59,17 +59,17 @@ type TProcessedItem<T extends { _tag: string }> =
  * Groups consecutive link items together into batches, preserving order.
  * This ensures all links at the same level are rendered in a single <ul>.
  */
-function processItems<T extends { _tag: string }>(
+const processItems = <T extends { _tag: string }>(
   items: readonly T[],
   getEntry: (item: T) => TLlmsEntry | undefined,
-): TProcessedItem<T>[] {
+): TProcessedItem<T>[] => {
   const result: TProcessedItem<T>[] = []
   let currentBatch: TLlmsEntry[] = []
 
   for (const item of items) {
     if (item._tag === 'link') {
       const entry = getEntry(item)
-      if (entry) {
+      if (entry !== undefined) {
         currentBatch.push(entry)
       }
     } else {

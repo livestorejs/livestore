@@ -5,6 +5,7 @@ export default defineConfig({
     name: '@livestore/livestore',
     root: import.meta.dirname,
     include: ['src/**/*.test.ts'],
+    server: { deps: { inline: ['@effect/vitest'] } },
   },
   resolve: {
     alias: {

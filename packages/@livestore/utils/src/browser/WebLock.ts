@@ -18,13 +18,13 @@ export const withLock =
 
       const exit = yield* Effect.tryPromise<Exit.Exit<A, E>, E | E2>({
         try: (signal) => {
-          if (signal.aborted) return 'aborted' as never
+          if (signal.aborted === true) return 'aborted' as never
 
           // NOTE The 'signal' and 'ifAvailable' options cannot be used together.
           const requestOptions = options?.ifAvailable === true ? options : { ...options, signal }
           return navigator.locks.request(lockName, requestOptions, async (lock) => {
             if (lock === null) {
-              if (onTaken) {
+              if (onTaken !== undefined) {
                 const exit = await Runtime.runPromiseExit(runtime)(onTaken)
                 if (exit._tag === 'Failure') {
                   return exit
@@ -49,7 +49,7 @@ export const withLock =
 
 export const waitForDeferredLock = (deferred: Deferred.Deferred<void>, lockName: string) =>
   Effect.async<void>((cb, signal) => {
-    if (signal.aborted) return
+    if (signal.aborted === true) return
 
     navigator.locks
       .request(lockName, { signal, mode: 'exclusive', ifAvailable: false }, (_lock) => {
@@ -117,7 +117,7 @@ export const stealDeferredLock = (deferred: Deferred.Deferred<void>, lockName: s
 
 export const waitForLock = (lockName: string) =>
   Effect.async<void>((cb, signal) => {
-    if (signal.aborted) return
+    if (signal.aborted === true) return
 
     navigator.locks.request(lockName, { mode: 'shared', signal, ifAvailable: false }, (_lock) => {
       cb(Effect.succeed(void 0))
@@ -127,7 +127,7 @@ export const waitForLock = (lockName: string) =>
 /** Attempts to get the lock if available and waits for it to be stolen */
 export const getLockAndWaitForSteal = (lockName: string) =>
   Effect.async<void>((cb, signal) => {
-    if (signal.aborted) return
+    if (signal.aborted === true) return
 
     navigator.locks
       .request(lockName, { mode: 'exclusive', ifAvailable: true }, async (lock) => {
@@ -148,7 +148,7 @@ export const getLockAndWaitForSteal = (lockName: string) =>
             resolve()
           })
 
-          return Promise.race([holdLock, signal.aborted ? Promise.resolve() : holdLock]).catch(() => {})
+          return Promise.race([holdLock, signal.aborted === true ? Promise.resolve() : holdLock]).catch(() => {})
         }).catch(() => {})
 
         cb(Effect.succeed(void 0))

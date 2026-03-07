@@ -4,6 +4,7 @@
  */
 
 import type { LiveStoreEvent } from '@livestore/livestore'
+
 import type { PullArgs } from './api-schema.ts'
 import { chunkEventsForS2 } from './limits.ts'
 import { makeS2StreamName } from './make-s2-url.ts'
@@ -28,7 +29,7 @@ export interface S2Config {
 export const isLiteMode = (config: S2Config): boolean => config.lite === true
 
 const getBasinHeader = (config: S2Config): Record<string, string> =>
-  isLiteMode(config) ? { 's2-basin': config.basin } : {}
+  isLiteMode(config) === true ? { 's2-basin': config.basin } : {}
 
 // URL construction helpers
 export const getBasinUrl = (config: S2Config, path: string): string => {
@@ -47,7 +48,7 @@ export const getStreamRecordsUrl = (
   params?: { seq_num?: number; count?: number; clamp?: boolean; wait?: number },
 ): string => {
   const base = getBasinUrl(config, `/streams/${encodeURIComponent(stream)}/records`)
-  if (!params) return base
+  if (params == null) return base
 
   const searchParams = new URLSearchParams()
   /** seq_num - The sequence number to start from. See: https://docs.s2.dev/api#seq_num */
@@ -59,7 +60,8 @@ export const getStreamRecordsUrl = (
   /** wait - How long to wait for new records before returning. See: https://docs.s2.dev/api#wait */
   if (params.wait !== undefined) searchParams.append('wait', params.wait.toString())
 
-  return searchParams.toString() ? `${base}?${searchParams}` : base
+  const searchParamsString = searchParams.toString()
+  return searchParamsString.length > 0 ? `${base}?${searchParams}` : base
 }
 
 // Header helpers
@@ -129,7 +131,7 @@ export const buildPullRequest = ({
   // cursor points to last processed record, seq_num needs to be the next record
   const seq_num = args.s2SeqNum === 'from-start' ? 0 : args.s2SeqNum + 1
 
-  if (args.live) {
+  if (args.live === true) {
     const url = getStreamRecordsUrl(config, streamName, { seq_num, clamp: true })
     return { url, headers: getSSEHeaders(config) }
   } else {

@@ -1,6 +1,7 @@
 import { generateKeyBetween } from 'fractional-indexing'
 import React from 'react'
 import { Button } from 'react-aria-components'
+
 import { NewIssueModalContext } from '../../../app/contexts.ts'
 import { highestIssueId$, useFrontendState } from '../../../livestore/queries.ts'
 import { events, tables } from '../../../livestore/schema/index.ts'
@@ -21,14 +22,14 @@ export const NewIssueModal = () => {
   const [priority, setPriority] = React.useState<Priority>(0)
   const store = useAppStore()
 
-  const closeModal = () => {
+  const closeModal = React.useCallback(() => {
     setTitle('')
     setDescription('')
     setPriority(0)
     setNewIssueModalStatus(false)
-  }
+  }, [setNewIssueModalStatus])
 
-  const createIssue = () => {
+  const createIssue = React.useCallback(() => {
     if (!title) return
     const date = new Date()
     // TODO make this "merge safe"
@@ -36,7 +37,7 @@ export const NewIssueModal = () => {
     const highestKanbanOrder = store.query(
       tables.issue
         .select('kanbanorder')
-        .where({ status: newIssueModalStatus === false ? 0 : (newIssueModalStatus as Status) })
+        .where({ status: newIssueModalStatus === false ? 0 : (newIssueModalStatus) })
         .orderBy('kanbanorder', 'desc')
         .first({ behaviour: 'fallback', fallback: () => 'a1' }),
     )
@@ -46,7 +47,7 @@ export const NewIssueModal = () => {
         id: highestIssueId + 1,
         title,
         priority,
-        status: newIssueModalStatus as Status,
+        status: newIssueModalStatus,
         modified: date,
         created: date,
         creator: frontendState.user,
@@ -55,7 +56,7 @@ export const NewIssueModal = () => {
       }),
     )
     closeModal()
-  }
+  }, [closeModal, frontendState.user, newIssueModalStatus, priority, store, title, description])
 
   return (
     <Modal show={newIssueModalStatus !== false} setShow={closeModal}>
@@ -72,7 +73,7 @@ export const NewIssueModal = () => {
         <div className="mt-2 flex gap-px w-full">
           <StatusMenu
             showLabel
-            status={newIssueModalStatus === false ? 0 : (newIssueModalStatus as Status)}
+            status={newIssueModalStatus === false ? 0 : (newIssueModalStatus)}
             onStatusChange={setNewIssueModalStatus}
           />
           <PriorityMenu showLabel priority={priority} onPriorityChange={setPriority} />

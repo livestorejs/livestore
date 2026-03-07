@@ -3,6 +3,7 @@
 import type { CfTypes } from '@livestore/common-cf'
 import * as VFS from '@livestore/wa-sqlite/src/VFS.js'
 import { beforeEach, describe, expect, it } from 'vitest'
+
 import { CloudflareWorkerVFS } from '../../mod.ts'
 
 describe('CloudflareWorkerVFS - Reliability & Error Recovery', () => {
@@ -15,7 +16,7 @@ describe('CloudflareWorkerVFS - Reliability & Error Recovery', () => {
 
     mockStorage = {
       get: (async (_key: string | string[]) => {
-        if (Array.isArray(_key)) {
+        if (Array.isArray(_key) === true) {
           return new Map()
         }
         return storageData.get(_key)
@@ -32,10 +33,10 @@ describe('CloudflareWorkerVFS - Reliability & Error Recovery', () => {
       },
 
       delete: (async (_key: string | string[]) => {
-        if (Array.isArray(_key)) {
+        if (Array.isArray(_key) === true) {
           let count = 0
           for (const k of _key) {
-            if (storageData.delete(k)) count++
+            if (storageData.delete(k) === true) count++
           }
           return count
         } else {

@@ -1,5 +1,6 @@
 import type { CfTypes } from '@livestore/sync-cf/cf-worker'
 import * as SyncBackend from '@livestore/sync-cf/cf-worker'
+
 import type { Env } from './shared.ts'
 import { storeIdFromRequest } from './shared.ts'
 

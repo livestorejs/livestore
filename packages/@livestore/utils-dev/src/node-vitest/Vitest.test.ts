@@ -1,4 +1,5 @@
 import { Effect, FastCheck, Schema } from '@livestore/utils/effect'
+
 import * as Vitest from './Vitest.ts'
 
 export class TestError extends Schema.TaggedError<TestError>()('TestError', {
@@ -66,7 +67,7 @@ Vitest.describe('Vitest.asProp', () => {
           return yield* new TestError({ message: `Value ${value} is too large (> 80)` })
         }
 
-        if (alreadyFailed && enhanced._tag === 'shrinking') {
+        if (alreadyFailed === true && enhanced._tag === 'shrinking') {
           ctx.skip("For the sake of this test, we don't want to fail but want to skip")
           return
         }

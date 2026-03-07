@@ -2,7 +2,9 @@ import crypto from 'node:crypto'
 import fs from 'node:fs'
 import path from 'node:path'
 import { fileURLToPath } from 'node:url'
+
 import { shouldNeverHappen } from '@livestore/utils'
+
 import { createExpressiveCodeConfig, normalizeRuntimeOptions, type TwoslashRuntimeOptions } from '../expressive-code.ts'
 import { formatRebuildInstruction, resolveProjectPaths, type TwoslashProjectPaths } from '../project-paths.ts'
 import { buildSnippetBundle, type SnippetBundle } from './snippet-graph.ts'
@@ -94,12 +96,12 @@ const ensureFreshArtefact = (
 
   for (const filename of bundle.fileOrder) {
     const file = bundle.files[filename]
-    if (!file) {
+    if (file == null) {
       throw new Error(`Snippet '${entryRelative}' is missing expected file ${filename}. ${rebuildInstruction}`)
     }
     const currentHash = hashString(file.content)
     const storedHash = storedHashes.get(filename)
-    if (!storedHash || storedHash !== currentHash) {
+    if (storedHash == null || storedHash !== currentHash) {
       throw new Error(`Snippet '${entryRelative}' is stale. ${rebuildInstruction}`)
     }
     seen.add(filename)
@@ -146,7 +148,7 @@ const parseSnippetMode = (rawQuery: string): 'component' | 'raw' | null => {
     }
   }
 
-  return rawSeen ? 'raw' : null
+  return rawSeen === true ? 'raw' : null
 }
 
 const collectSnippetFiles = (
@@ -160,9 +162,9 @@ const collectSnippetFiles = (
   const files: Record<string, TwoslashSnippetFile> = {}
   const validationHashes: Record<string, string> = {}
 
-  if (isRecord(filesField) && !Array.isArray(filesField)) {
+  if (isRecord(filesField) === true && Array.isArray(filesField) === false) {
     for (const [rawFilename, rawValue] of Object.entries(filesField)) {
-      if (!isRecord(rawValue)) continue
+      if (isRecord(rawValue) === false) continue
       const filename = rawFilename.replace(/\\/g, '/').trim()
       if (filename.length === 0) continue
 
@@ -187,9 +189,9 @@ const collectSnippetFiles = (
 
       files[filename] = snippetFile
     }
-  } else if (Array.isArray(filesField)) {
+  } else if (Array.isArray(filesField) === true) {
     for (const entry of filesField) {
-      if (!isRecord(entry)) continue
+      if (isRecord(entry) === false) continue
       const filenameValue = typeof entry.filename === 'string' ? entry.filename.replace(/\\/g, '/').trim() : ''
       if (filenameValue.length === 0) continue
 
@@ -217,7 +219,7 @@ const collectSnippetFiles = (
   }
 
   let fileOrder: string[] = []
-  if (Array.isArray(orderField)) {
+  if (Array.isArray(orderField) === true) {
     fileOrder = orderField
       .map((value) => (typeof value === 'string' ? value.replace(/\\/g, '/').trim() : ''))
       .filter((value) => value.length > 0)
@@ -236,18 +238,20 @@ const collectRenderedEntries = (renderedField: unknown): Record<string, Twoslash
     rendered[filename] = entry
   }
 
-  if (isRecord(renderedField) && !Array.isArray(renderedField)) {
+  if (isRecord(renderedField) === true && Array.isArray(renderedField) === false) {
     for (const [rawFilename, rawValue] of Object.entries(renderedField)) {
-      if (!isRecord(rawValue)) continue
+      if (isRecord(rawValue) === false) continue
       const filename = rawFilename.replace(/\\/g, '/').trim()
       if (filename.length === 0) continue
 
-      const diagnostics = Array.isArray(rawValue.diagnostics)
-        ? rawValue.diagnostics.filter((value): value is string => typeof value === 'string')
-        : []
-      const styles = Array.isArray(rawValue.styles)
-        ? rawValue.styles.filter((value): value is string => typeof value === 'string')
-        : []
+      const diagnostics =
+        Array.isArray(rawValue.diagnostics) === true
+          ? rawValue.diagnostics.filter((value): value is string => typeof value === 'string')
+          : []
+      const styles =
+        Array.isArray(rawValue.styles) === true
+          ? rawValue.styles.filter((value): value is string => typeof value === 'string')
+          : []
 
       assignEntry(filename, {
         html: typeof rawValue.html === 'string' ? rawValue.html : null,
@@ -260,21 +264,23 @@ const collectRenderedEntries = (renderedField: unknown): Record<string, Twoslash
     return rendered
   }
 
-  if (!Array.isArray(renderedField)) {
+  if (Array.isArray(renderedField) === false) {
     return rendered
   }
 
   for (const entry of renderedField) {
-    if (!isRecord(entry)) continue
+    if (isRecord(entry) === false) continue
     const filenameValue = typeof entry.filename === 'string' ? entry.filename.replace(/\\/g, '/').trim() : ''
     if (filenameValue.length === 0) continue
 
-    const diagnostics = Array.isArray(entry.diagnostics)
-      ? entry.diagnostics.filter((value): value is string => typeof value === 'string')
-      : []
-    const styles = Array.isArray(entry.styles)
-      ? entry.styles.filter((value): value is string => typeof value === 'string')
-      : []
+    const diagnostics =
+      Array.isArray(entry.diagnostics) === true
+        ? entry.diagnostics.filter((value): value is string => typeof value === 'string')
+        : []
+    const styles =
+      Array.isArray(entry.styles) === true
+        ? entry.styles.filter((value): value is string => typeof value === 'string')
+        : []
 
     const renderedRecord: TwoslashSnippetRenderedEntry = {
       html: typeof entry.html === 'string' ? entry.html : null,
@@ -318,9 +324,9 @@ export const createTwoslashSnippetPlugin = (options: TwoslashSnippetPluginOption
   let expectedConfigHash: string | null = null
 
   const loadManifest = (): ManifestCache => {
-    if (manifestCache) return manifestCache
+    if (manifestCache !== null) return manifestCache
 
-    if (!fs.existsSync(paths.manifestPath)) {
+    if (fs.existsSync(paths.manifestPath) === false) {
       throw new Error(`Missing snippet manifest at ${paths.manifestPath}. ${rebuildInstruction}`)
     }
 
@@ -336,7 +342,9 @@ export const createTwoslashSnippetPlugin = (options: TwoslashSnippetPluginOption
         return fingerprintHash
       } catch (cause) {
         const reason = cause instanceof Error ? cause.message : String(cause)
-        throw new Error(`Unable to compute Expressive Code configuration (${reason}). ${rebuildInstruction}`)
+        throw new Error(`Unable to compute Expressive Code configuration (${reason}). ${rebuildInstruction}`, {
+          cause: cause,
+        })
       }
     })()
 
@@ -346,7 +354,7 @@ export const createTwoslashSnippetPlugin = (options: TwoslashSnippetPluginOption
 
     const byEntry = new Map<string, ManifestEntry>()
     for (const entry of raw.entries ?? []) {
-      if (entry?.entryFile) byEntry.set(entry.entryFile, entry)
+      if (entry?.entryFile !== undefined) byEntry.set(entry.entryFile, entry)
     }
 
     manifestCache = { raw, byEntry }
@@ -358,7 +366,7 @@ export const createTwoslashSnippetPlugin = (options: TwoslashSnippetPluginOption
     enforce: 'pre',
 
     configResolved(config) {
-      if (!options.projectRoot) {
+      if (options.projectRoot == null) {
         paths = resolveProjectPaths(config.root)
       }
       rebuildInstruction = formatRebuildInstruction()
@@ -373,12 +381,12 @@ export const createTwoslashSnippetPlugin = (options: TwoslashSnippetPluginOption
 
     transform(_code, id) {
       const [filepath, rawQuery] = id.split('?')
-      if (!filepath || !rawQuery) {
+      if (filepath == null || rawQuery == null) {
         return null
       }
 
       const mode = parseSnippetMode(rawQuery)
-      if (!mode) {
+      if (mode == null) {
         return null
       }
 
@@ -386,23 +394,24 @@ export const createTwoslashSnippetPlugin = (options: TwoslashSnippetPluginOption
       const manifestGlobals: TwoslashSnippetGlobals = {
         baseStyles: typeof manifest.raw.baseStyles === 'string' ? manifest.raw.baseStyles : '',
         themeStyles: typeof manifest.raw.themeStyles === 'string' ? manifest.raw.themeStyles : '',
-        jsModules: Array.isArray(manifest.raw.jsModules)
-          ? manifest.raw.jsModules.filter((entry): entry is string => typeof entry === 'string' && entry.length > 0)
-          : [],
+        jsModules:
+          Array.isArray(manifest.raw.jsModules) === true
+            ? manifest.raw.jsModules.filter((entry): entry is string => typeof entry === 'string' && entry.length > 0)
+            : [],
       }
       const entryRelative = path.relative(paths.snippetAssetsRoot, filepath).replace(/\\/g, '/')
       const manifestEntry = manifest.byEntry.get(entryRelative)
-      if (!manifestEntry) {
+      if (manifestEntry == null) {
         throw new Error(`No cached snippet artefact for ${entryRelative}. ${rebuildInstruction}`)
       }
 
       const artefactPath = path.join(paths.cacheRoot, manifestEntry.artifactPath)
-      if (!fs.existsSync(artefactPath)) {
+      if (fs.existsSync(artefactPath) === false) {
         throw new Error(`Missing snippet artefact at ${artefactPath}. ${rebuildInstruction}`)
       }
 
       const artefactData = JSON.parse(fs.readFileSync(artefactPath, 'utf-8')) as unknown
-      if (!isRecord(artefactData)) {
+      if (isRecord(artefactData) === false) {
         throw new Error(`Invalid snippet artefact for ${entryRelative}. ${rebuildInstruction}`)
       }
       const artefactRecord = artefactData as {

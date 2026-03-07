@@ -1,5 +1,6 @@
 import type { Schema, Scope } from '@livestore/utils/effect'
 import { Effect, Mailbox, Option, Queue, Ref, Stream, SubscriptionRef } from '@livestore/utils/effect'
+
 import { UnknownError } from '../errors.ts'
 import { EventSequenceNumber, type LiveStoreEvent } from '../schema/mod.ts'
 import { InvalidPullError, InvalidPushError } from './errors.ts'
@@ -125,7 +126,7 @@ export const makeMockSyncBackend = (
       // TODO consider making offline state actively error pull/push.
       // Currently, offline only reflects in `isConnected`, while operations still succeed,
       // mirroring how some real providers behave during transient disconnects.
-      return SyncBackend.of<Schema.JsonValue>({
+      return SyncBackend.of({
         isConnected: syncIsConnectedRef,
         connect: SubscriptionRef.set(syncIsConnectedRef, true),
         ping: Effect.void,
@@ -138,7 +139,7 @@ export const makeMockSyncBackend = (
               }),
             ),
           ).pipe(
-            Stream.flatMap(() => (pullOptions?.live ? pullLive : pullNonLive(cursor))),
+            Stream.flatMap(() => (pullOptions?.live === true ? pullLive : pullNonLive(cursor))),
             Stream.withSpan('MockSyncBackend:pull', { parent: span }),
           ),
         push: (batch) =>

@@ -1,4 +1,5 @@
 import http from 'node:http'
+
 import { UnknownError } from '@livestore/common'
 import type { LiveStoreEvent } from '@livestore/livestore'
 import * as S2Sync from '@livestore/sync-s2'
@@ -19,6 +20,7 @@ import {
   Stream,
 } from '@livestore/utils/effect'
 import { getFreePort, PlatformNode } from '@livestore/utils/node'
+
 import { SyncProviderImpl, type SyncProviderLayer } from '../types.ts'
 
 /** S2-Lite based sync provider for testing. Uses the open-source s2-lite container. */
@@ -167,7 +169,7 @@ const makeRouter = ({
         const args = S2Sync.decodePullArgsFromSearchParams(new URL(request.url, 'http://localhost').searchParams)
 
         const stream = S2Sync.makeS2StreamName(args.storeId)
-        if (!createdStreams.has(stream)) {
+        if (createdStreams.has(stream) === false) {
           yield* basinClient
             .createStream({ stream })
             .pipe(
@@ -177,7 +179,7 @@ const makeRouter = ({
           createdStreams.add(stream)
         }
 
-        if ((args.payload as any)?.testCloseOnce === true && !closedOnceStreams.has(stream)) {
+        if ((args.payload as any)?.testCloseOnce === true && closedOnceStreams.has(stream) === false) {
           closedOnceStreams.add(stream)
           const sseLines = ['event: ping', 'data: {}', '']
           return yield* HttpServerResponse.stream(Stream.fromIterable(sseLines).pipe(Stream.encodeText), {
@@ -210,7 +212,7 @@ const makeRouter = ({
         const parsed = yield* Schema.decodeUnknown(S2Sync.ApiSchema.PushPayload)(body)
 
         const streamName = S2Sync.makeS2StreamName(parsed.storeId)
-        if (!createdStreams.has(streamName)) {
+        if (createdStreams.has(streamName) === false) {
           yield* basinClient.createStream({ stream: streamName }).pipe(
             Effect.catchIf(
               (_) => _._tag === 'ErrorResponse' && _.cause.code === 'stream_already_exists',
@@ -251,7 +253,7 @@ const makeRouter = ({
         const request = yield* HttpServerRequest.HttpServerRequest
         const body = (yield* request.json) as { storeId: string; bodies: string[] }
         const stream = S2Sync.makeS2StreamName(body.storeId)
-        if (!createdStreams.has(stream)) {
+        if (createdStreams.has(stream) === false) {
           yield* basinClient.createStream({ stream }).pipe(
             Effect.catchIf(
               (_) => _._tag === 'ErrorResponse' && _.cause.code === 'stream_already_exists',

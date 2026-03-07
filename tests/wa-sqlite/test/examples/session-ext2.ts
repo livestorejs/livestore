@@ -1,14 +1,14 @@
 import * as WaSqlite from '@livestore/wa-sqlite'
 import WaSqliteFactory from '@livestore/wa-sqlite/dist/wa-sqlite.node.mjs'
 import { MemoryVFS } from '@livestore/wa-sqlite/src/examples/MemoryVFS.js'
+
 import { makeSynchronousDatabase } from '../lib/lib.ts'
 
 const main = async () => {
   const module = await WaSqliteFactory()
   const sqlite3 = WaSqlite.Factory(module)
 
-  if (sqlite3.vfs_registered.has('memory-vfs') === false) {
-    // @ts-expect-error TODO fix types
+  if (!sqlite3.vfs_registered.has('memory-vfs')) {
     const vfs = new MemoryVFS('memory-vfs', (sqlite3 as any).module)
 
     // @ts-expect-error TODO fix types

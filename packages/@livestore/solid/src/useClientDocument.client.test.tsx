@@ -8,6 +8,7 @@ import * as otel from '@opentelemetry/api'
 import { BasicTracerProvider, InMemorySpanExporter, SimpleSpanProcessor } from '@opentelemetry/sdk-trace-base'
 import * as SolidTesting from '@solidjs/testing-library'
 import * as Solid from 'solid-js'
+
 import { events, makeTodoMvcSolid, StoreInternalsSymbol, tables } from './__tests__/fixture.tsx'
 import type * as LiveStoreSolid from './mod.ts'
 
@@ -108,23 +109,21 @@ Vitest.describe('useClientDocument', () => {
 
         return (
           <div>
-            <TasksList setTaskId={(taskId) => setState({ currentTaskId: taskId })} />
+            <TasksList />
             <div role={'current-id' as any}>Current Task Id: {state().currentTaskId ?? '-'}</div>
-            <Solid.Show when={state().currentTaskId} fallback={<div>Click on a task to see details</div>}>
-              {(id) => <TaskDetails id={id()} />}
+            <Solid.Show when={state().currentTaskId} fallback={'Click on a task to see details'}>
+              {(id: Solid.Accessor<string>) => <TaskDetails id={id()} />}
             </Solid.Show>
           </div>
         )
       }
 
-      const TasksList = (props: { setTaskId: (_: string) => void }) => {
+      const TasksList = () => {
         const allTodos = store.useQuery(() => allTodos$)
 
         return (
           <div>
-            <Solid.For each={allTodos()}>
-              {(todo) => <div onClick={() => props.setTaskId(todo.id)}>{todo.id}</div>}
-            </Solid.For>
+            <Solid.For each={allTodos()}>{(todo) => <div>{todo.id}</div>}</Solid.For>
           </div>
         )
       }
@@ -280,7 +279,7 @@ Vitest.describe('useClientDocument', () => {
             const stackInfo = JSON.parse(val as string) as LiveStore.StackInfo
             // stackInfo.frames.shift() // Removes `renderHook.wrapper` from the stack
             stackInfo.frames.forEach((_) => {
-              if (_.name.includes('renderHook.wrapper')) {
+              if (_.name.includes('renderHook.wrapper') === true) {
                 _.name = 'renderHook.wrapper'
               }
               _.filePath = '__REPLACED_FOR_SNAPSHOT__'

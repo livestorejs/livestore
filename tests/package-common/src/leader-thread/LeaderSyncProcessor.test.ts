@@ -1,3 +1,5 @@
+import { expect } from 'vitest'
+
 import type { SyncOptions } from '@livestore/common'
 import {
   BackendIdMismatchError,
@@ -18,6 +20,7 @@ import { EventFactory } from '@livestore/common/testing'
 import { loadSqlite3Wasm } from '@livestore/sqlite-wasm/load-wasm'
 import { type MakeNodeSqliteDb, sqliteDbFactory } from '@livestore/sqlite-wasm/node'
 import { omitUndefineds } from '@livestore/utils'
+import { Vitest } from '@livestore/utils-dev/node-vitest'
 import {
   Chunk,
   Context,
@@ -34,8 +37,6 @@ import {
   WebChannel,
 } from '@livestore/utils/effect'
 import { PlatformNode } from '@livestore/utils/node'
-import { Vitest } from '@livestore/utils-dev/node-vitest'
-import { expect } from 'vitest'
 
 import { events, schema, tables } from './fixture.ts'
 
@@ -657,9 +658,9 @@ const LeaderThreadCtxLive = ({
       Effect.withSpan('@livestore/adapter-node:leader-thread:loadSqlite3Wasm'),
     )
 
-    const makeSqliteDb = (yield* sqliteDbFactory({ sqlite3 })) as MakeNodeSqliteDb
+    const makeSqliteDb = (yield* sqliteDbFactory({ sqlite3 }))
 
-    const shutdownProxy = captureShutdown ? yield* WebChannel.queueChannelProxy({ schema: Shutdown.All }) : undefined
+    const shutdownProxy = captureShutdown !== undefined ? yield* WebChannel.queueChannelProxy({ schema: Shutdown.All }) : undefined
 
     const leaderContextLayer = makeLeaderThreadLayer({
       schema,

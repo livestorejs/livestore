@@ -7,9 +7,10 @@ import {
   storeOptions,
 } from '@livestore/livestore'
 import { shouldNeverHappen } from '@livestore/utils'
-import { act, type RenderHookResult, type RenderResult, render, renderHook, waitFor } from '@testing-library/react'
+import { act, type RenderHookResult, type RenderResult, fireEvent, render, renderHook, waitFor } from '@testing-library/react'
 import * as React from 'react'
-import { describe, expect, it } from 'vitest'
+import { describe, expect, it, vi } from 'vitest'
+
 import { schema } from './__tests__/fixture.tsx'
 import { StoreRegistryProvider } from './StoreRegistryContext.tsx'
 import { useStore } from './useStore.ts'
@@ -44,7 +45,7 @@ describe('experimental useStore', () => {
     await act(async () => {
       view = render(
         <StoreRegistryProvider storeRegistry={storeRegistry}>
-          <React.Suspense fallback={<div data-testid="fallback" />}>
+          <React.Suspense fallback={makeSuspenseFallback()}>
             <StoreConsumer options={options} />
           </React.Suspense>
         </StoreRegistryProvider>,
@@ -62,10 +63,9 @@ describe('experimental useStore', () => {
   it('does not re-suspend on subsequent renders when store is already loaded', async () => {
     const storeRegistry = new StoreRegistry()
     const options = testStoreOptions()
-
     const Wrapper = ({ opts }: { opts: RegistryStoreOptions<typeof schema> }) => (
       <StoreRegistryProvider storeRegistry={storeRegistry}>
-        <React.Suspense fallback={<div data-testid="fallback" />}>
+        <React.Suspense fallback={makeSuspenseFallback()}>
           <StoreConsumer options={opts} />
         </React.Suspense>
       </StoreRegistryProvider>
@@ -82,8 +82,9 @@ describe('experimental useStore', () => {
     expect(renderedView.getByTestId('ready')).toBeDefined()
 
     // Rerender with new options object (but same storeId)
+    const rerenderOptions = cloneStoreOptions(options)
     await act(async () => {
-      renderedView.rerender(<Wrapper opts={{ ...options }} />)
+      renderedView.rerender(<Wrapper opts={rerenderOptions} />)
     })
 
     // Should not show fallback
@@ -172,12 +173,57 @@ describe('experimental useStore', () => {
     await cleanupAfterUnmount(unmount)
   })
 
+  it('does not block useActionState transitions from committing', async () => {
+    const storeRegistry = new StoreRegistry()
+    const options = testStoreOptions()
+    const getOrLoadSpy = vi.spyOn(storeRegistry, 'getOrLoadPromise')
+
+    let view: RenderResult | undefined
+    await act(async () => {
+      view = render(
+        <StoreRegistryProvider storeRegistry={storeRegistry}>
+          <React.Suspense fallback={makeSuspenseFallback()}>
+            <StoreWithActionState options={options} />
+          </React.Suspense>
+        </StoreRegistryProvider>,
+      )
+    })
+    const renderedView = view ?? shouldNeverHappen('render failed')
+
+    // Wait for store to load
+    await waitForSuspenseResolved(renderedView)
+    expect(renderedView.getByTestId('state').textContent).toBe('none')
+    expect(renderedView.getByTestId('pending').textContent).toBe('false')
+
+    // After store is loaded, clear spy to only track calls during the transition render
+    getOrLoadSpy.mockClear()
+
+    // Trigger a useActionState transition
+    await act(async () => {
+      fireEvent.click(renderedView.getByTestId('submit'))
+    })
+
+    // getOrLoadPromise must be called on each render (not cached via useMemo).
+    // When the initial Promise is cached, React.use() is called with a resolved Promise
+    // on every subsequent render, which blocks React transitions (e.g. useActionState)
+    // from ever committing in browser environments.
+    expect(getOrLoadSpy).toHaveBeenCalled()
+
+    // The transition should commit: state updates and isPending returns to false
+    await waitFor(() => {
+      expect(renderedView.getByTestId('state').textContent).toBe('updated')
+      expect(renderedView.getByTestId('pending').textContent).toBe('false')
+    })
+
+    getOrLoadSpy.mockRestore()
+    await cleanupAfterUnmount(() => renderedView.unmount())
+  })
+
   // useStore doesn't handle unusedCacheTime=0 correctly because retain is called in useEffect (after render)
   // See https://github.com/livestorejs/livestore/issues/916
   it.skip('should load store with unusedCacheTime set to 0', async () => {
     const storeRegistry = new StoreRegistry({ defaultOptions: { unusedCacheTime: 0 } })
     const options = testStoreOptions({ unusedCacheTime: 0 })
-
     const StoreConsumerWithVerification = ({ opts }: { opts: RegistryStoreOptions<typeof schema> }) => {
       const store = useStore(opts)
       // Verify store is usable - access internals to confirm it's not disposed
@@ -189,7 +235,7 @@ describe('experimental useStore', () => {
     await act(async () => {
       view = render(
         <StoreRegistryProvider storeRegistry={storeRegistry}>
-          <React.Suspense fallback={<div data-testid="fallback" />}>
+          <React.Suspense fallback={makeSuspenseFallback()}>
             <StoreConsumerWithVerification opts={options} />
           </React.Suspense>
         </StoreRegistryProvider>,
@@ -218,12 +264,42 @@ const StoreConsumer = ({ options }: { options: RegistryStoreOptions<any> }) => {
   return <div data-testid="ready" />
 }
 
+/** Component that combines useStore with useActionState to test transition compatibility. */
+const StoreWithActionState = ({ options }: { options: RegistryStoreOptions<any> }) => {
+  useStore(options)
+
+  const [state, dispatch, isPending] = React.useActionState(
+    (_prev: string | undefined, value: string): string => value,
+    undefined,
+  )
+
+  return (
+    <div>
+      <button
+        data-testid="submit"
+        // eslint-disable-next-line react-perf/jsx-no-new-function-as-prop -- test component
+        onClick={() => React.startTransition(() => dispatch('updated'))}
+      >
+        Submit
+      </button>
+      <div data-testid="state">{state ?? 'none'}</div>
+      <div data-testid="pending">{String(isPending)}</div>
+    </div>
+  )
+}
+
+const makeSuspenseFallback = () => React.createElement('div', { 'data-testid': 'fallback' })
+
+const cloneStoreOptions = <TOptions extends object>(options: TOptions): TOptions => {
+  return { ...options }
+}
+
 const makeProvider =
   (storeRegistry: StoreRegistry, { suspense = false }: { suspense?: boolean } = {}) =>
   ({ children }: { children: React.ReactNode }) => {
     let content = <StoreRegistryProvider storeRegistry={storeRegistry}>{children}</StoreRegistryProvider>
 
-    if (suspense) {
+    if (suspense !== undefined) {
       content = <React.Suspense fallback={null}>{content}</React.Suspense>
     }
 

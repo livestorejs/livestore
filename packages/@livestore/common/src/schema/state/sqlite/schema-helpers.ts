@@ -13,7 +13,7 @@ export const getDefaultValuesEncoded = <TTableDef extends TableDefBase>(
     ReadonlyRecord.filter((col, key) => {
       if (fallbackValues?.[key] !== undefined) return true
       if (key === 'id') return false
-      return col!.default._tag === 'None' || SqliteDsl.isSqlDefaultValue(col!.default.value) === false
+      return col!.default._tag === 'None' || !SqliteDsl.isSqlDefaultValue(col!.default.value)
     }),
     ReadonlyRecord.map((column, columnName) => {
       if (fallbackValues?.[columnName] !== undefined) return fallbackValues[columnName]
@@ -39,7 +39,7 @@ export const getDefaultValuesDecoded = <TTableDef extends TableDefBase>(
     ReadonlyRecord.filter((col, key) => {
       if (fallbackValues?.[key] !== undefined) return true
       if (key === 'id') return false
-      return col!.default._tag === 'None' || SqliteDsl.isSqlDefaultValue(col!.default.value) === false
+      return col!.default._tag === 'None' || !SqliteDsl.isSqlDefaultValue(col!.default.value)
     }),
     ReadonlyRecord.map((column, columnName) => {
       if (fallbackValues?.[columnName] !== undefined) return fallbackValues[columnName]

@@ -1,4 +1,5 @@
 import type { APIRoute } from 'astro'
+
 import { loadLlmsDocs, replaceLlmsShortPlaceholders } from '../utils/llms.ts'
 import { transformMultiCodeDocument } from '../utils/multi-code-markdown.ts'
 
@@ -32,7 +33,7 @@ export const GET: APIRoute = async ({ site }) => {
   const dedupedSections = (() => {
     const seen = new Set<string>()
     return sections.replace(/(##+ `[^`]+`\n\n```[^\n]* filename="([^"]+)"[\s\S]*?```)/g, (_match, block, filename) => {
-      if (seen.has(filename)) {
+      if (seen.has(filename) === true) {
         return ''
       }
       seen.add(filename)

@@ -1,5 +1,4 @@
 import './thread-polyfill.ts'
-
 import path from 'node:path'
 
 import { makeAdapter, makeWorkerAdapter } from '@livestore/adapter-node'
@@ -7,6 +6,7 @@ import type { ShutdownDeferred, Store } from '@livestore/livestore'
 import { createStore, makeShutdownDeferred, queryDb } from '@livestore/livestore'
 import { makeWsSync } from '@livestore/sync-cf/client'
 import { IS_CI } from '@livestore/utils'
+import { OtelLiveHttp } from '@livestore/utils-dev/node'
 import {
   Context,
   Effect,
@@ -21,7 +21,7 @@ import {
 } from '@livestore/utils/effect'
 import { nanoid } from '@livestore/utils/nanoid'
 import { ChildProcessRunner, OtelLiveDummy, PlatformNode } from '@livestore/utils/node'
-import { OtelLiveHttp } from '@livestore/utils-dev/node'
+
 import { makeFileLogger } from './fixtures/file-logger.ts'
 import { events, schema, tables } from './schema.ts'
 import * as WorkerSchema from './worker-schema.ts'
@@ -73,7 +73,7 @@ const runner = WorkerRunner.layerSerialized(WorkerSchema.Request, {
         shutdownDeferred,
         params: {
           leaderPushBatchSize: params?.leaderPushBatchSize,
-          simulation: params?.simulation ? { clientSessionSyncProcessor: params.simulation } : undefined,
+          simulation: params?.simulation !== undefined ? { clientSessionSyncProcessor: params.simulation } : undefined,
         },
       })
       // @ts-expect-error for debugging
@@ -108,11 +108,10 @@ const runner = WorkerRunner.layerSerialized(WorkerSchema.Request, {
       const query$ = queryDb(tables.todo.orderBy('id', 'desc'))
       return store.subscribeStream(query$)
     }).pipe(Stream.unwrap, Stream.withSpan('@livestore/adapter-node-sync:test:stream-todos')),
-  OnShutdown: () =>
-    Effect.gen(function* () {
-      const { shutdownDeferred } = yield* WorkerContext
-      yield* shutdownDeferred.pipe(Effect.catchTag('LiveStore.StoreInterrupted', () => Effect.void))
-    }).pipe(Effect.withSpan('@livestore/adapter-node-sync:test:on-shutdown')),
+  OnShutdown: Effect.fn('@livestore/adapter-node-sync:test:on-shutdown')(function* () {
+    const { shutdownDeferred } = yield* WorkerContext
+    yield* shutdownDeferred.pipe(Effect.catchTag('LiveStore.StoreInterrupted', () => Effect.void))
+  }),
 })
 
 const clientId = process.argv[2]!
@@ -125,7 +124,7 @@ runner.pipe(
   WorkerRunner.launch,
   // TODO this parent span is currently missing in the trace
   Effect.withSpan(`@livestore/adapter-node-sync:run-worker-${clientId}`),
-  Effect.provide(IS_CI ? OtelLiveDummy : OtelLiveHttp({ serviceName, skipLogUrl: true })),
+  Effect.provide(IS_CI === true ? OtelLiveDummy : OtelLiveHttp({ serviceName, skipLogUrl: true })),
   Effect.scoped,
   Effect.tapCauseLogPretty,
   Effect.annotateLogs({ thread: serviceName, clientId }),

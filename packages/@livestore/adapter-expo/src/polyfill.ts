@@ -6,6 +6,6 @@
 
 if (typeof Array.prototype.toSorted === 'undefined') {
   Array.prototype.toSorted = function (compareFn) {
-    return this.sort(compareFn)
+    return this.toSorted(compareFn)
   }
 }

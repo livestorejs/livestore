@@ -1,8 +1,10 @@
 /// <reference types="@cloudflare/workers-types" />
 
 import { DurableObject } from 'cloudflare:workers'
+
 import { type ClientDoWithRpcCallback, createStoreDoPromise } from '@livestore/adapter-cloudflare'
 import { liveStoreStorageFormatVersion } from '@livestore/common'
+import { CfDeclare } from '@livestore/common-cf/declare'
 import type { Store } from '@livestore/livestore'
 import {
   type CfTypes,
@@ -13,7 +15,10 @@ import {
 } from '@livestore/sync-cf/cf-worker'
 import { handleSyncUpdateRpc } from '@livestore/sync-cf/client'
 import { shouldNeverHappen } from '@livestore/utils'
+
 import { events, schema, tables } from '../schema.ts'
+
+declare class Response extends CfDeclare.Response {}
 
 type PersistenceSnapshot = {
   state: PersistenceCounts
@@ -39,13 +44,14 @@ type Env = {
 export class SyncBackendDO extends makeDurableObject({}) {}
 
 export class TestStoreDo extends DurableObject<Env> implements ClientDoWithRpcCallback {
-  __DURABLE_OBJECT_BRAND = 'TestStoreDo' as never
+  override __DURABLE_OBJECT_BRAND = 'TestStoreDo' as never
   private cachedStore: Store<typeof schema> | undefined
   private cachedStoreId: string | undefined
   /** Captures the VFS counts immediately before/after a reset so tests can assert the deletion actually happened. */
   private lastResetSnapshot: ResetPersistenceSnapshot | undefined
 
-  async fetch(request: Request): Promise<Response> {
+  // @ts-expect-error - Type mismatch due to different Request/Response types across workspaces
+  override async fetch(request: Request): Promise<Response> {
     const url = new URL(request.url)
     const storeId = url.searchParams.get('storeId')
 
@@ -55,7 +61,7 @@ export class TestStoreDo extends DurableObject<Env> implements ClientDoWithRpcCa
 
     if (url.pathname === '/store/todos') {
       if (request.method === 'POST') {
-        const payload = (await request.json()) as { id?: string; title: string }
+        const payload = await request.json<{ id?: string; title: string }>()
         const id = payload.id ?? crypto.randomUUID()
         const store = await this.ensureStore({ storeId, resetPersistence: false })
 
@@ -125,9 +131,9 @@ export class TestStoreDo extends DurableObject<Env> implements ClientDoWithRpcCa
   }): Promise<Store<typeof schema>> {
     // If the caller requested a reset (or we're handling a different store ID),
     // make sure to dispose the previous store instance so we can boot with a clean slate.
-    const shouldRecreate = resetPersistence === true || this.cachedStore === undefined || this.cachedStoreId !== storeId
+    const shouldRecreate = resetPersistence || this.cachedStore === undefined || this.cachedStoreId !== storeId
 
-    if (shouldRecreate) {
+    if (shouldRecreate === true) {
       if (this.cachedStore !== undefined) {
         await this.cachedStore.shutdownPromise()
       }
@@ -145,7 +151,7 @@ export class TestStoreDo extends DurableObject<Env> implements ClientDoWithRpcCa
 
       let snapshotDuringReset: ResetPersistenceSnapshot | undefined
 
-      if (resetPersistence) {
+      if (resetPersistence === true) {
         const storage = this.ctx.storage
         const originalTransactionSync = storage.transactionSync
         const invokeOriginalTransactionSync = <T>(callback: () => T): T =>
@@ -241,7 +247,7 @@ export default {
 
     const url = new URL(request.url)
 
-    if (url.pathname.startsWith('/store')) {
+    if (url.pathname.startsWith('/store') === true) {
       const storeId = url.searchParams.get('storeId')
       if (storeId === null) {
         return new Response('storeId is required', { status: 400 })

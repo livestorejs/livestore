@@ -1,5 +1,6 @@
 import { InvalidPullError, InvalidPushError, UnknownError } from '@livestore/common'
 import { Rpc, RpcGroup, Schema } from '@livestore/utils/effect'
+
 import * as SyncMessage from './sync-message-types.ts'
 
 /**

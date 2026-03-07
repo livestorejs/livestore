@@ -1,14 +1,16 @@
-import { makeInMemoryAdapter } from '@livestore/adapter-web'
-import { StoreRegistry } from '@livestore/livestore'
-import { StoreRegistryProvider, useStore } from '@livestore/react'
 import type { FC } from 'react'
 import { Suspense, useState } from 'react'
 import { unstable_batchedUpdates as batchUpdates } from 'react-dom'
+
+import { makeInMemoryAdapter } from '@livestore/adapter-web'
+import { StoreRegistry } from '@livestore/livestore'
+import { StoreRegistryProvider, useStore } from '@livestore/react'
 
 import { tracer } from './otel.ts'
 import { schema } from './schema.ts'
 
 const adapter = makeInMemoryAdapter()
+const suspenseFallback = <div>Loading...</div>
 
 // ---cut---
 const useAppStore = () =>
@@ -23,7 +25,7 @@ const useAppStore = () =>
 export const App: FC = () => {
   const [storeRegistry] = useState(() => new StoreRegistry())
   return (
-    <Suspense fallback={<div>Loading...</div>}>
+    <Suspense fallback={suspenseFallback}>
       <StoreRegistryProvider storeRegistry={storeRegistry}>
         <AppContent />
       </StoreRegistryProvider>

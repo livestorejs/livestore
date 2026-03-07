@@ -20,10 +20,10 @@ export type DetectPackageManagerResult = { _tag: 'supported'; pm: PackageManager
 export const detectPackageManager = (
   userAgent = process.env.npm_config_user_agent ?? '',
 ): DetectPackageManagerResult => {
-  if (userAgent.startsWith('bun/')) return { _tag: 'supported', pm: 'bun' }
-  if (userAgent.startsWith('pnpm/')) return { _tag: 'supported', pm: 'pnpm' }
-  if (userAgent.startsWith('npm/')) return { _tag: 'supported', pm: 'npm' }
-  if (userAgent.startsWith('yarn/')) return { _tag: 'unsupported', pm: 'yarn' }
+  if (userAgent.startsWith('bun/') === true) return { _tag: 'supported', pm: 'bun' }
+  if (userAgent.startsWith('pnpm/') === true) return { _tag: 'supported', pm: 'pnpm' }
+  if (userAgent.startsWith('npm/') === true) return { _tag: 'supported', pm: 'npm' }
+  if (userAgent.startsWith('yarn/') === true) return { _tag: 'unsupported', pm: 'yarn' }
 
   // Default to bun when the package manager can't be detected
   return { _tag: 'supported', pm: 'bun' }

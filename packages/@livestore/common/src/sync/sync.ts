@@ -2,6 +2,7 @@ export * from './errors.ts'
 export * as SyncBackend from './sync-backend.ts'
 
 import type { Schema } from '@livestore/utils/effect'
+
 import type { InitialSyncOptions } from '../leader-thread/types.ts'
 import type { SyncBackendConstructor } from './sync-backend.ts'
 

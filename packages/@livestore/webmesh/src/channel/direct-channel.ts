@@ -61,7 +61,7 @@ export const makeDirectChannel = ({
         innerChannelRef: { current: undefined as WebChannel.WebChannel<any, any> | undefined },
       }
 
-      // #region reconnect-loop
+      //#region reconnect-loop
       yield* Effect.gen(function* () {
         const resultDeferred = yield* Deferred.make<{
           channel: WebChannel.WebChannel<any, any>
@@ -133,8 +133,8 @@ export const makeDirectChannel = ({
               yield* Scope.close(makeDirectChannelScope, channelExit)
 
               if (
-                Cause.isFailType(channelExit.cause) &&
-                Schema.is(WebmeshSchema.DirectChannelResponseNoTransferables)(channelExit.cause.error)
+                Cause.isFailType(channelExit.cause) === true &&
+                Schema.is(WebmeshSchema.DirectChannelResponseNoTransferables)(channelExit.cause.error) === true
               ) {
                 // Only retry when there is a new edge available
                 yield* waitForNewEdgeFiber.pipe(Effect.exit)
@@ -193,7 +193,7 @@ export const makeDirectChannel = ({
         Effect.tapCauseLogPretty,
         Effect.forkScoped,
       )
-      // #endregion reconnect-loop
+      //#endregion reconnect-loop
 
       const parentSpan = yield* Effect.currentSpan.pipe(Effect.orDie)
 

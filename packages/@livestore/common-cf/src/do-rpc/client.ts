@@ -8,6 +8,7 @@ import {
   RpcSerialization,
   type Scope,
 } from '@livestore/utils/effect'
+
 import type * as CfTypes from '../cf-types.ts'
 
 /**
@@ -17,8 +18,8 @@ import type * as CfTypes from '../cf-types.ts'
 const processReadableStream = (
   stream: CfTypes.ReadableStream,
   parser: ReturnType<typeof RpcSerialization.msgPack.unsafeMake>,
-  writeResponse: (response: any) => Effect.Effect<void, never, never>,
-): Effect.Effect<void, never, never> =>
+  writeResponse: (response: any) => Effect.Effect<void>,
+): Effect.Effect<void> =>
   Effect.gen(function* () {
     const reader = stream.getReader()
 
@@ -26,7 +27,7 @@ const processReadableStream = (
       while (true) {
         const { done, value } = yield* Effect.tryPromise(() => reader.read()).pipe(Effect.orDie)
 
-        if (done) {
+        if (done === true) {
           break
         }
 
@@ -35,10 +36,10 @@ const processReadableStream = (
 
         // Handle array of messages - we get [[message]] from server
         let messages: any[]
-        if (Array.isArray(decoded) && decoded.length === 1 && Array.isArray(decoded[0])) {
+        if (Array.isArray(decoded) === true && decoded.length === 1 && Array.isArray(decoded[0]) === true) {
           // Double-wrapped array [[message]] -> [message]
           messages = decoded[0]
-        } else if (Array.isArray(decoded)) {
+        } else if (Array.isArray(decoded) === true) {
           // Single array [message]
           messages = decoded
         } else {
@@ -72,7 +73,7 @@ interface MakeDoRpcProtocolArgs {
  */
 export const layerProtocolDurableObject = (
   args: MakeDoRpcProtocolArgs,
-): Layer.Layer<RpcClient.Protocol, never, never> => Layer.scoped(RpcClient.Protocol, makeProtocolDurableObject(args))
+): Layer.Layer<RpcClient.Protocol> => Layer.scoped(RpcClient.Protocol, makeProtocolDurableObject(args))
 
 /**
  * Implementation of the RPC Protocol interface using Cloudflare Durable Object RPC calls.
@@ -88,7 +89,7 @@ const makeProtocolDurableObject = ({
       // const fiberMap = new Map<string, Fiber.RuntimeFiber<void, never>>()
       const fiberMap = yield* FiberMap.make<string, void, never>()
 
-      const send = (message: RpcMessage.FromClientEncoded): Effect.Effect<void, never, never> => {
+  const send = (message: RpcMessage.FromClientEncoded): Effect.Effect<void> => {
         if (message._tag !== 'Request') {
           if (message._tag === 'Interrupt') {
             return Effect.gen(function* () {
@@ -130,10 +131,10 @@ const makeProtocolDurableObject = ({
 
           // Handle potential nested array from server serialization
           let responseArray: any[]
-          if (Array.isArray(decoded) && decoded.length === 1 && Array.isArray(decoded[0])) {
+          if (Array.isArray(decoded) === true && decoded.length === 1 && Array.isArray(decoded[0]) === true) {
             // Double-wrapped array [[Exit]] -> [Exit]
             responseArray = decoded[0]
-          } else if (Array.isArray(decoded)) {
+          } else if (Array.isArray(decoded) === true) {
             // Single array [Exit]
             responseArray = decoded
           } else {

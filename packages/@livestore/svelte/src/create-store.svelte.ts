@@ -65,7 +65,7 @@ export const createStore = async <TSchema extends LiveStoreSchema>(
     options?: { otelContext?: otel.Context; debugRefreshReason?: RefreshReason },
   ): TResult => {
     // TODO support other query types
-    if (isLiveQueryDef(queryDef) && queryDef._tag === 'def' && $effect.tracking()) {
+    if (isLiveQueryDef(queryDef) === true && queryDef._tag === 'def' && $effect.tracking() === true) {
       const token = {}
 
       // this will cause the effect/derived containing the `store.query(...)` call
@@ -76,7 +76,7 @@ export const createStore = async <TSchema extends LiveStoreSchema>(
 
       $effect(() => {
         const unsubscribe = store.subscribe(queryDef, () => {
-          if (initial) {
+          if (initial === true) {
             initial = false
             return
           }

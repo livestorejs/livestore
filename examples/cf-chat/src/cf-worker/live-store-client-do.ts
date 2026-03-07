@@ -1,8 +1,10 @@
 import { DurableObject } from 'cloudflare:workers'
+
 import { type ClientDoWithRpcCallback, createStoreDoPromise } from '@livestore/adapter-cloudflare'
-import { nanoid, type Store, StoreInternalsSymbol, type Unsubscribe } from '@livestore/livestore'
+import { nanoid, StoreInternalsSymbol } from '@livestore/livestore'
 import { handleSyncUpdateRpc } from '@livestore/sync-cf/client'
 import type { CfTypes } from '@livestore/sync-cf/common'
+
 import { events, schema, tables } from '../livestore/schema.ts'
 import type { Env } from './shared.ts'
 import { storeIdFromRequest } from './shared.ts'
@@ -10,8 +12,9 @@ import { storeIdFromRequest } from './shared.ts'
 export class LiveStoreClientDO extends DurableObject<Env> implements ClientDoWithRpcCallback {
   __DURABLE_OBJECT_BRAND = 'livestore-client-do' as never
   private storeId: string | undefined
-  private cachedStore: Store<typeof schema> | undefined
-  private storeSubscription: Unsubscribe | undefined
+  private cachedStore!: Awaited<ReturnType<typeof createStoreDoPromise>>
+  private hasCachedStore = false
+  private storeSubscription: (() => void) | undefined
 
   async fetch(request: Request): Promise<Response> {
     try {
@@ -51,7 +54,7 @@ export class LiveStoreClientDO extends DurableObject<Env> implements ClientDoWit
   }
 
   async getStore() {
-    if (this.cachedStore !== undefined) {
+    if (this.hasCachedStore === true) {
       return this.cachedStore
     }
 
@@ -67,6 +70,7 @@ export class LiveStoreClientDO extends DurableObject<Env> implements ClientDoWit
     })
 
     this.cachedStore = store
+    this.hasCachedStore = true
 
     return store
   }

@@ -32,7 +32,7 @@ Materializers can return:
 - `void` (i.e., no return value) if no database modifications are needed.
 - An `Effect` that resolves to one of the above (e.g., `Effect.succeed(writeOp)` or `Effect.void`).
 
-The `context` object passed to each materializer provides `query` for database reads, `db` for direct database access if needed, and `event` for the full event details.
+The `context` object passed to each materializer provides `query` for database reads and `event` for the full event details.
 
 ## Error handling
 

@@ -8,6 +8,7 @@ import {
 import { isDevEnv } from '@livestore/utils'
 import { Chunk, Effect, Option, Order, Schedule, Schema, Stream } from '@livestore/utils/effect'
 import { Opfs, type WebError } from '@livestore/utils/effect/browser'
+
 import type * as WorkerSchema from './worker-schema.ts'
 
 export class PersistedSqliteError extends Schema.TaggedError<PersistedSqliteError>()('PersistedSqliteError', {
@@ -56,7 +57,7 @@ export const readPersistedStateDbFromClientSession: (args: {
       Stream.runHead,
     )
 
-    if (Option.isNone(stateDbFileOption)) {
+    if (Option.isNone(stateDbFileOption) === true) {
       return yield* new PersistedSqliteError({
         message: `State database file not found in client session (expected '${stateDbFileName}' in '${accessHandlePoolDirString}')`,
       })
@@ -106,7 +107,7 @@ export const sanitizeOpfsDir = Effect.fn('@livestore/adapter-web:sanitizeOpfsDir
     return `livestore-${storeId}@${liveStoreStorageFormatVersion}`
   }
 
-  if (directory.includes('/')) {
+  if (directory.includes('/') === true) {
     return yield* new PersistedSqliteError({
       message: `Nested directories are not yet supported ('${directory}')`,
     })
@@ -183,12 +184,13 @@ export const cleanupOldStateDbFiles: (options: {
   }
 
   const absoluteArchiveDirName = `${opfsDirectory}/${ARCHIVE_DIR_NAME}`
-  if (isDev && !(yield* Opfs.exists(absoluteArchiveDirName))) yield* Opfs.makeDirectory(absoluteArchiveDirName)
+  if (isDev === true && (yield* Opfs.exists(absoluteArchiveDirName)) === false)
+    yield* Opfs.makeDirectory(absoluteArchiveDirName)
 
   for (const path of oldStateDbPaths) {
-    const fileName = path.startsWith('/') ? path.slice(1) : path
+    const fileName = path.startsWith('/') === true ? path.slice(1) : path
 
-    if (isDev) {
+    if (isDev === true) {
       const archiveFileData = yield* vfs.readFilePayload(fileName)
 
       const archiveFileName = `${Date.now()}-${fileName}`
@@ -201,7 +203,7 @@ export const cleanupOldStateDbFiles: (options: {
       const supportsCreateWritable =
         typeof FileSystemFileHandle !== 'undefined' && 'createWritable' in FileSystemFileHandle.prototype
 
-      if (supportsCreateWritable) {
+      if (supportsCreateWritable === true) {
         yield* Opfs.writeFile(archivePath, archiveData)
       } else {
         yield* Opfs.syncWriteFile(archivePath, archiveData)
@@ -225,7 +227,7 @@ export const cleanupOldStateDbFiles: (options: {
     yield* Effect.logDebug(`Deleted old state database file: ${fileName}`)
   }
 
-  if (isDev) {
+  if (isDev === true) {
     yield* pruneArchiveDirectory({
       archiveDirectory: absoluteArchiveDirName,
       keep: MAX_ARCHIVED_STATE_DBS_IN_DEV,
@@ -248,6 +250,7 @@ const pruneArchiveDirectory = Effect.fn('@livestore/adapter-web:pruneArchiveDire
     Stream.runCollect,
   )
   const filesToDelete = filesWithMetadata.pipe(
+    // oxlint-disable-next-line unicorn/no-array-sort -- false positive: Effect Chunk.sort is immutable, not Array#sort (https://github.com/oxc-project/oxc/issues/19110)
     Chunk.sort(Order.mapInput(Order.number, (entry: { lastModified: number }) => entry.lastModified)),
     Chunk.drop(keep),
     Chunk.toReadonlyArray,

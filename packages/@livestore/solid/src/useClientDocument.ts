@@ -1,10 +1,11 @@
+import * as Solid from 'solid-js'
+
 import type { RowQuery } from '@livestore/common'
 import { SessionIdSymbol } from '@livestore/common'
 import { State } from '@livestore/common/schema'
 import { removeUndefinedValues, type StateSetters, validateTableOptions } from '@livestore/framework-toolkit'
 import type { LiveQuery, LiveQueryDef, Store } from '@livestore/livestore'
 import { queryDb } from '@livestore/livestore'
-import * as Solid from 'solid-js'
 
 import { useQueryRef } from './useQuery.ts'
 import { type AccessorMaybe, resolve } from './utils.ts'
@@ -112,7 +113,7 @@ export const useClientDocument: UseClientDocument = <TTableDef extends State.SQL
     queryDb(
       resolve(table).get(
         id(),
-        options?.default
+        options?.default !== undefined
           ? {
               default: options.default,
             }

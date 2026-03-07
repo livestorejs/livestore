@@ -275,7 +275,7 @@ export const makeSyncBackend =
 
           // Check for delete/update operations and throw descriptive error
           const invalidOperations = ReadonlyArray.filterMap(allItems, (item) =>
-            Schema.is(ResponseItemInvalid)(item) ? Option.some(item.headers.operation) : Option.none(),
+            Schema.is(ResponseItemInvalid)(item) === true ? Option.some(item.headers.operation) : Option.none(),
           )
 
           if (invalidOperations.length > 0) {
@@ -288,7 +288,7 @@ export const makeSyncBackend =
 
           const items = allItems.filter(Schema.is(ResponseItemInsert)).map((item) => ({
             metadata: Option.some({ offset: nextHandle.offset, handle: nextHandle.handle }),
-            eventEncoded: item.value as LiveStoreEvent.Global.Encoded,
+            eventEncoded: item.value,
           }))
 
           yield* Effect.annotateCurrentSpan({ itemsCount: items.length, nextHandle })
@@ -328,9 +328,8 @@ export const makeSyncBackend =
 
       // If the pull endpoint has the same origin as the current page, we can assume that we already have a connection
       // otherwise we send a HEAD request to speed up the connection process
-      const connect: SyncBackend.SyncBackend<SyncMetadata>['connect'] = pullEndpointHasSameOrigin
-        ? Effect.void
-        : ping.pipe(UnknownError.mapToUnknownError)
+      const connect: SyncBackend.SyncBackend<SyncMetadata>['connect'] =
+        pullEndpointHasSameOrigin === true ? Effect.void : ping.pipe(UnknownError.mapToUnknownError)
 
       return SyncBackend.of({
         connect,
@@ -340,7 +339,7 @@ export const makeSyncBackend =
           return Stream.unfoldEffect(cursor.pipe(Option.flatMap((_) => _.metadata)), (metadataOption) =>
             Effect.gen(function* () {
               const result = yield* runPull(metadataOption, { live: options?.live ?? false })
-              if (Option.isNone(result)) return Option.none()
+              if (Option.isNone(result) === true) return Option.none()
 
               const [batch, nextMetadataOption] = result.value
 
@@ -351,7 +350,7 @@ export const makeSyncBackend =
               }
 
               // Make sure we emit at least once even if there's no data or we're live-pulling
-              if (hasEmittedAtLeastOnce === false || options?.live) {
+              if (hasEmittedAtLeastOnce === false || options?.live === true) {
                 hasEmittedAtLeastOnce = true
                 return Option.some([{ batch, hasMore: false }, nextMetadataOption])
               }
@@ -362,28 +361,27 @@ export const makeSyncBackend =
           ).pipe(
             Stream.map(({ batch, hasMore }) => ({
               batch,
-              pageInfo: hasMore ? SyncBackend.pageInfoMoreUnknown : SyncBackend.pageInfoNoMore,
+              pageInfo: hasMore === true ? SyncBackend.pageInfoMoreUnknown : SyncBackend.pageInfoNoMore,
             })),
             Stream.withSpan('electric-provider:pull'),
           )
         },
 
-        push: (batch) =>
-          Effect.gen(function* () {
-            const resp = yield* HttpClientRequest.schemaBodyJson(ApiSchema.PushPayload)(
-              HttpClientRequest.post(pushEndpoint),
-              ApiSchema.PushPayload.make({ storeId, batch }),
-            ).pipe(
-              Effect.andThen(httpClient.pipe(HttpClient.filterStatusOk).execute),
-              Effect.andThen(HttpClientResponse.schemaBodyJson(Schema.Struct({ success: Schema.Boolean }))),
-              Effect.scoped,
-              Effect.mapError((cause) => InvalidPushError.make({ cause: UnknownError.make({ cause }) })),
-            )
+        push: Effect.fn('electric-provider:push')(function* (batch) {
+          const resp = yield* HttpClientRequest.schemaBodyJson(ApiSchema.PushPayload)(
+            HttpClientRequest.post(pushEndpoint),
+            ApiSchema.PushPayload.make({ storeId, batch }),
+          ).pipe(
+            Effect.andThen(httpClient.pipe(HttpClient.filterStatusOk).execute),
+            Effect.andThen(HttpClientResponse.schemaBodyJson(Schema.Struct({ success: Schema.Boolean }))),
+            Effect.scoped,
+            Effect.mapError((cause) => InvalidPushError.make({ cause: UnknownError.make({ cause }) })),
+          )
 
-            if (!resp.success) {
-              return yield* InvalidPushError.make({ cause: new UnknownError({ cause: new Error('Push failed') }) })
-            }
-          }).pipe(Effect.withSpan('electric-provider:push')),
+          if (resp.success === false) {
+            return yield* InvalidPushError.make({ cause: new UnknownError({ cause: new Error('Push failed') }) })
+          }
+        }),
         ping,
         isConnected,
         metadata: {

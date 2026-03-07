@@ -9,6 +9,7 @@ import {
   type Stream,
   type SubscriptionRef,
 } from '@livestore/utils/effect'
+
 import type { UnknownError } from '../adapter-types.ts'
 import type * as LiveStoreEvent from '../schema/LiveStoreEvent/mod.ts'
 import type { EventSequenceNumber } from '../schema/mod.ts'
@@ -178,7 +179,7 @@ export const cursorFromPullResItem = <TSyncMetadata = Schema.JsonValue>(
   metadata: Option.Option<TSyncMetadata>
 }> => {
   const lastEvent = item.batch.at(-1)
-  if (!lastEvent) {
+  if (lastEvent == null) {
     return Option.none()
   }
   return Option.some({ eventSequenceNumber: lastEvent.eventEncoded.seqNum, metadata: lastEvent.metadata })

@@ -1,4 +1,5 @@
 import { Schema, State } from '@livestore/livestore'
+
 import { Priority } from '../../types/priority.ts'
 import { Status } from '../../types/status.ts'
 

@@ -1,10 +1,11 @@
-import { isNotNil } from '@livestore/utils'
-import { Equal, Hash, Predicate } from '@livestore/utils/effect'
 import type * as otel from '@opentelemetry/api'
 
+import { isNotNil } from '@livestore/utils'
+import { Equal, Hash, Predicate } from '@livestore/utils/effect'
+
 import * as RG from '../reactive.ts'
-import type { Store } from '../store/store.ts'
 import type { QueryDebugInfo, RefreshReason } from '../store/store-types.ts'
+import type { Store } from '../store/store.ts'
 import type { StackInfo } from '../utils/stack-info.ts'
 
 export type ReactivityGraph = RG.ReactiveGraph<RefreshReason, QueryDebugInfo, ReactivityGraphContext>
@@ -272,8 +273,8 @@ export abstract class LiveStoreQueryBase<TResult> implements LiveQuery<TResult> 
  */
 export type GetAtomResult = <T>(
   atom: RG.Atom<T, any, RefreshReason> | LiveQueryDef<T> | LiveQuery<T> | ISignal<T> | SignalDef<T>,
-  otelContext?: otel.Context | undefined,
-  debugRefreshReason?: RefreshReason | undefined,
+  otelContext?: otel.Context  ,
+  debugRefreshReason?: RefreshReason  ,
 ) => T
 
 export type DependencyQueriesRef = Set<RcRef<LiveQuery.Any | ISignal<any>>>
@@ -298,7 +299,7 @@ export const makeGetAtomResult = (
     }
 
     // Signal case
-    if (atom._tag === 'signal' && Predicate.hasProperty(atom, 'ref')) {
+    if (atom._tag === 'signal' && Predicate.hasProperty(atom, 'ref') === true) {
       return get(atom.ref, otelContext, debugRefreshReason)
     }
 
@@ -315,7 +316,7 @@ export const withRCMap = <T extends LiveQuery.Any | ISignal<any>>(
 ): ((ctx: ReactivityGraphContext, otelContext?: otel.Context) => RcRef<T>) => {
   return (ctx, otelContext) => {
     let item = ctx.defRcMap.get(id)
-    if (item) {
+    if (item !== undefined) {
       item.rc++
       return item as RcRef<T>
     }

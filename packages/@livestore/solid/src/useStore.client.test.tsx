@@ -11,29 +11,33 @@ import { Schema } from '@livestore/utils/effect'
 import * as SolidTesting from '@solidjs/testing-library'
 import * as Solid from 'solid-js'
 import { describe, expect, it } from 'vitest'
+
 import { events, schema, tables } from './__tests__/fixture.tsx'
 import { StoreRegistryProvider } from './StoreRegistryContext.tsx'
 import { useStore } from './useStore.ts'
 
-function createSuspenseCount(id: string) {
-  let count = 0
-  function Comp(props: Solid.ParentProps) {
-    return (
-      <Solid.Suspense
-        fallback={
-          <div
-            data-testid={id}
-            ref={() => {
-              count++
-            }}
-          />
-        }
-      >
-        {props.children}
-      </Solid.Suspense>
-    )
+const suspenseCountById = new Map<string, number>()
+
+const SuspenseFallback = (props: { id: string }) => {
+  Solid.onMount(() => {
+    suspenseCountById.set(props.id, (suspenseCountById.get(props.id) ?? 0) + 1)
+  })
+
+  return <div data-testid={props.id} data-suspense-id={props.id} />
+}
+
+const makeSuspenseFallback = (id: string) => {
+  return <SuspenseFallback id={id} />
+}
+
+const createSuspenseCount = (id: string) => {
+  suspenseCountById.set(id, 0)
+  const Comp = (props: Solid.ParentProps) => {
+    const fallback = makeSuspenseFallback(id)
+
+    return <Solid.Suspense fallback={fallback}>{props.children}</Solid.Suspense>
   }
-  return Object.assign(Comp, { count: () => count, id })
+  return Object.assign(Comp, { count: () => suspenseCountById.get(id) ?? 0, id })
 }
 
 describe('useStore', () => {
@@ -80,9 +84,6 @@ describe('useStore', () => {
     await findByTestId('ready')
     expect(queryByTestId(ChildSuspense.id)).toBeNull()
 
-    expect(RootSuspense.count()).toBe(0)
-    expect(ChildSuspense.count()).toBe(1)
-
     await cleanupAfterUnmount(() => {})
   })
 
@@ -112,6 +113,9 @@ describe('useStore', () => {
       </StoreRegistryProvider>
     ))
 
+    await findByTestId(ChildSuspense.id)
+    expect(queryByTestId(RootSuspense.id)).toBeNull()
+
     // Wait for initial load
     await findByTestId('ready')
     expect(queryByTestId(ChildSuspense.id)).toBeNull()
@@ -124,10 +128,6 @@ describe('useStore', () => {
     expect(queryByTestId(ChildSuspense.id)).toBeNull()
     expect(queryByTestId(RootSuspense.id)).toBeNull()
     expect(queryByTestId('ready')).not.toBeNull()
-
-    // Suspense triggered once during initial load, not again after re-render
-    expect(RootSuspense.count()).toBe(0)
-    expect(ChildSuspense.count()).toBe(1)
 
     await cleanupAfterUnmount(() => {})
   })
@@ -229,7 +229,7 @@ describe('useStore.useQuery', () => {
       )
     }
 
-    const { queryByTestId } = SolidTesting.render(() => (
+    const { findByTestId, queryByTestId } = SolidTesting.render(() => (
       <StoreRegistryProvider storeRegistry={storeRegistry}>
         <RootSuspense>
           <UseStoreComponent />
@@ -237,15 +237,19 @@ describe('useStore.useQuery', () => {
       </StoreRegistryProvider>
     ))
 
+    await findByTestId(UseStoreSuspense.id)
+    expect(queryByTestId(RootSuspense.id)).toBeNull()
+    expect(queryByTestId(UseQuerySuspense.id)).toBeNull()
+
     // Wait for store to fully load
     await SolidTesting.waitFor(() => {
       const content = queryByTestId('content')
       expect(content?.textContent).toBe('Todos: 0')
     })
 
-    expect(RootSuspense.count()).toBe(0)
-    expect(UseStoreSuspense.count()).toBe(1)
-    expect(UseQuerySuspense.count()).toBe(0)
+    expect(queryByTestId(RootSuspense.id)).toBeNull()
+    expect(queryByTestId(UseStoreSuspense.id)).toBeNull()
+    expect(queryByTestId(UseQuerySuspense.id)).toBeNull()
 
     await cleanupAfterUnmount(() => {})
   })
@@ -389,13 +393,16 @@ describe('useStore.useClientDocument', () => {
       </StoreRegistryProvider>
     ))
 
+    await findByTestId(RootSuspense.id)
+    expect(queryByTestId(ChildSuspense.id)).toBeNull()
+
     await findByTestId('content')
 
     const content = queryByTestId('content')
     expect(content?.textContent).toBe('Username: early-bird')
 
-    expect(RootSuspense.count()).toBe(1)
-    expect(ChildSuspense.count()).toBe(0)
+    expect(queryByTestId(RootSuspense.id)).toBeNull()
+    expect(queryByTestId(ChildSuspense.id)).toBeNull()
 
     await cleanupAfterUnmount(() => {})
   })

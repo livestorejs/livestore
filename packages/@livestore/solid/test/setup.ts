@@ -1,5 +1,6 @@
 import { readFile } from 'node:fs/promises'
 import path from 'node:path'
+
 import { shouldNeverHappen } from '@livestore/utils'
 
 // In jsdom the browser build of wa-sqlite tries to fetch the wasm; jsdom cannot
@@ -10,7 +11,7 @@ const wasmBinary = await readFile(wasmPath)
 const originalFetch = globalThis.fetch.bind(globalThis)
 
 globalThis.fetch = async (input, init) => {
-  if (typeof input === 'string' && input.includes('wa-sqlite') && input.endsWith('.wasm')) {
+  if (typeof input === 'string' && input.includes('wa-sqlite') === true && input.endsWith('.wasm') === true) {
     return new Response(wasmBinary, {
       status: 200,
       headers: { 'Content-Type': 'application/wasm' },

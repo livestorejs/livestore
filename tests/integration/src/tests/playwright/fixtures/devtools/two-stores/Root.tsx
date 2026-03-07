@@ -10,6 +10,8 @@ import LiveStoreWorkerTodos from './livestore-todos.worker.ts?worker'
 import { schema as schemaNotes } from './schema-notes.ts'
 import { schema as schemaTodos } from './schema-todos.ts'
 
+const SuspenseFallback = <div>Loading...</div>
+
 const sp = new URLSearchParams(window.location.search)
 const adapterKind = (sp.get('adapter') ?? 'persisted') as 'persisted' | 'inmemory'
 const clientId = sp.get('clientId')
@@ -19,15 +21,15 @@ const adapterTodos =
   adapterKind === 'inmemory'
     ? makeInMemoryAdapter({
         devtools: { sharedWorker: LiveStoreSharedWorker },
-        ...(clientId ? { clientId } : {}),
-        ...(sessionId ? { sessionId } : {}),
+        ...(clientId !== null ? { clientId } : {}),
+        ...(sessionId !== null ? { sessionId } : {}),
       })
     : makePersistedAdapter({
         storage: { type: 'opfs', directory: 'todos' },
         sharedWorker: LiveStoreSharedWorker,
         worker: LiveStoreWorkerTodos,
-        ...(clientId ? { clientId } : {}),
-        ...(sessionId ? { sessionId } : {}),
+        ...(clientId !== null ? { clientId } : {}),
+        ...(sessionId !== null ? { sessionId } : {}),
       })
 
 const Todos = () => {
@@ -48,15 +50,15 @@ const adapterNotes =
   adapterKind === 'inmemory'
     ? makeInMemoryAdapter({
         devtools: { sharedWorker: LiveStoreSharedWorker },
-        ...(clientId ? { clientId } : {}),
-        ...(sessionId ? { sessionId } : {}),
+        ...(clientId !== null ? { clientId } : {}),
+        ...(sessionId !== null ? { sessionId } : {}),
       })
     : makePersistedAdapter({
         storage: { type: 'opfs', directory: 'notes' },
         sharedWorker: LiveStoreSharedWorker,
         worker: LiveStoreWorkerNotes,
-        ...(clientId ? { clientId } : {}),
-        ...(sessionId ? { sessionId } : {}),
+        ...(clientId !== null ? { clientId } : {}),
+        ...(sessionId !== null ? { sessionId } : {}),
       })
 
 const Notes = () => {
@@ -76,7 +78,7 @@ const Notes = () => {
 export const Root = () => {
   const [storeRegistry] = useState(() => new StoreRegistry())
   return (
-    <Suspense fallback={<div>Loading...</div>}>
+    <Suspense fallback={SuspenseFallback}>
       <StoreRegistryProvider storeRegistry={storeRegistry}>
         <Todos />
         <Notes />

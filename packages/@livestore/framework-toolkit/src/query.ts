@@ -1,9 +1,10 @@
+import * as otel from '@opentelemetry/api'
+
 import { isQueryBuilder } from '@livestore/common'
 import type { LiveQuery, LiveQueryDef, Queryable, SignalDef, StackInfo, Store } from '@livestore/livestore'
 import { isQueryable, queryDb, StoreInternalsSymbol, stackInfoToString } from '@livestore/livestore'
 import type { LiveQueries } from '@livestore/livestore/internal'
 import { indent, shouldNeverHappen } from '@livestore/utils'
-import * as otel from '@opentelemetry/api'
 
 import type { NormalizedQueryable } from './types.ts'
 
@@ -18,11 +19,11 @@ import type { NormalizedQueryable } from './types.ts'
  * @throws If the input is not a valid Queryable
  */
 export const normalizeQueryable = <TResult>(queryable: Queryable<TResult>): NormalizedQueryable<TResult> => {
-  if (!isQueryable(queryable)) {
+  if (isQueryable(queryable) === false) {
     return shouldNeverHappen('Expected a Queryable value')
   }
 
-  if (isQueryBuilder(queryable)) {
+  if (isQueryBuilder(queryable) === true) {
     return { _tag: 'definition', def: queryDb(queryable) }
   }
 
@@ -69,7 +70,7 @@ export const formatQueryError = (
   cause: Error,
   label: string,
   stackInfo: StackInfo,
-  framework: 'react' | 'solid' | 'svelte' | string,
+  framework: string,
 ): Error => {
   return new Error(
     `\
@@ -102,7 +103,7 @@ export const runInitialQuery = <TResult>(
   query$: LiveQuery<TResult>,
   otelContext: otel.Context,
   stackInfo: StackInfo,
-  framework: 'react' | 'solid' | 'svelte' | string,
+  framework: string,
 ): TResult => {
   try {
     return query$.run({

@@ -1,6 +1,7 @@
+import { expect, test } from '@playwright/test'
+
 import { UnknownError } from '@livestore/common'
 import { Effect, Exit } from '@livestore/utils/effect'
-import { expect, test } from '@playwright/test'
 
 import { runAndGetExit, runTest } from './shared-test.ts'
 import * as Bridge from './unit-tests/bridge.ts'

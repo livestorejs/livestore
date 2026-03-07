@@ -1,10 +1,10 @@
 import process from 'node:process'
 
-import { Effect, FileSystem, Layer, Logger, LogLevel, Option, Schema } from '@livestore/utils/effect'
-
-import { Cli, PlatformNode } from '@livestore/utils/node'
 import { cmd, cmdText, LivestoreWorkspace } from '@livestore/utils-dev/node'
+import { Effect, FileSystem, Layer, Logger, LogLevel, Option, Schema } from '@livestore/utils/effect'
+import { Cli, PlatformNode } from '@livestore/utils/node'
 
+import { cloudflareExamples } from '../../shared/cloudflare-manifest.ts'
 import {
   buildCloudflareWorker,
   type CloudflareEnvironmentKind,
@@ -16,7 +16,6 @@ import {
   resolveWorkerName,
   resolveWorkersSubdomain,
 } from '../../shared/cloudflare.ts'
-import { cloudflareExamples } from '../../shared/cloudflare-manifest.ts'
 import { appendGithubSummaryMarkdown, formatMarkdownTable } from '../../shared/misc.ts'
 
 export class ScriptError extends Schema.TaggedError<ScriptError>()('ScriptError', {
@@ -29,7 +28,7 @@ export class ScriptError extends Schema.TaggedError<ScriptError>()('ScriptError'
  */
 
 const workspaceRoot = process.env.WORKSPACE_ROOT
-if (!workspaceRoot) {
+if (workspaceRoot == null) {
   console.error('WORKSPACE_ROOT environment variable is not set')
   process.exit(1)
 }
@@ -61,7 +60,7 @@ export const readExampleSlugs = Effect.fn('deploy-examples/readExampleSlugs')(fu
       Effect.catchAll(() => Effect.succeed(false)),
     )
 
-    if (info) {
+    if (info === true) {
       directories.push(entry)
     }
   }
@@ -71,7 +70,7 @@ export const readExampleSlugs = Effect.fn('deploy-examples/readExampleSlugs')(fu
 })
 
 export const ensureExampleExists = (example: string, available: readonly string[]) =>
-  available.includes(example)
+  available.includes(example) === true
     ? Effect.succeed(example)
     : new ScriptError({
         message: `Unknown example "${example}". Available examples: ${available.length > 0 ? available.join(', ') : 'none'}`,
@@ -93,11 +92,24 @@ export const runExampleTests = (examples: ReadonlyArray<string>, options: { skip
     const fs = yield* FileSystem.FileSystem
 
     for (const example of examples) {
+      const isDirectory = yield* fs.stat(`${examplesDir}/${example}`).pipe(
+        Effect.map((stat) => stat.type === 'Directory'),
+        Effect.catchAll(() => Effect.succeed(false)),
+      )
+
+      if (isDirectory === false) {
+        if (skipMissing === true) {
+          yield* Effect.logWarning(`Skipping ${example}: not a directory`)
+          continue
+        }
+        return yield* new ScriptError({ message: `Cannot run tests for ${example}: not a directory` })
+      }
+
       const packageJsonPath = `${examplesDir}/${example}/package.json`
       const hasPackageJson = yield* fs.exists(packageJsonPath)
 
-      if (!hasPackageJson) {
-        if (skipMissing) {
+      if (hasPackageJson === false) {
+        if (skipMissing === true) {
           yield* Effect.logWarning(`Skipping ${example}: package.json not found`)
           continue
         }
@@ -108,7 +120,7 @@ export const runExampleTests = (examples: ReadonlyArray<string>, options: { skip
       const decoded = yield* parseExamplePackageJson(packageJsonContent).pipe(Effect.either)
 
       if (decoded._tag === 'Left') {
-        if (skipMissing) {
+        if (skipMissing === true) {
           yield* Effect.logWarning(`Skipping ${example}: unable to decode package.json`)
           continue
         }
@@ -117,7 +129,7 @@ export const runExampleTests = (examples: ReadonlyArray<string>, options: { skip
 
       const packageJson = decoded.right
       if (typeof packageJson.scripts?.test !== 'string') {
-        if (skipMissing) {
+        if (skipMissing === true) {
           yield* Effect.logWarning(`Skipping ${example}: no test script defined`)
           continue
         }
@@ -163,13 +175,13 @@ const getBranchInfo = Effect.gen(function* () {
   const branchFromEnv = process.env.GITHUB_BRANCH_NAME ?? process.env.GITHUB_REF_NAME ?? process.env.GITHUB_HEAD_REF
 
   let branchName =
-    branchFromEnv && branchFromEnv.trim().length > 0
+    branchFromEnv !== undefined && branchFromEnv.trim().length > 0
       ? branchFromEnv.trim()
       : (yield* cmdText('git rev-parse --abbrev-ref HEAD').pipe(Effect.provide(LivestoreWorkspace.toCwd()))).trim()
 
   if (branchName === '' || branchName === 'HEAD') {
     const refFromEnv = process.env.GITHUB_REF
-    if (refFromEnv?.startsWith('refs/')) {
+    if (refFromEnv?.startsWith('refs/') === true) {
       const [, , ...rest] = refFromEnv.split('/')
       branchName = rest.join('/')
     }
@@ -195,7 +207,7 @@ const determineDeploymentKind = ({
 }): CloudflareEnvironmentKind => {
   const normalizedBranch = branchName.toLowerCase()
 
-  if (prod || normalizedBranch === 'main') {
+  if (prod === true || normalizedBranch === 'main') {
     return 'prod'
   }
 
@@ -284,13 +296,13 @@ export const command = Cli.Command.make(
     console.log(`Deploy branch: ${branchName}`)
 
     const filteredExamples = cloudflareExamples.filter((example) =>
-      Option.isSome(exampleFilter) ? example.slug.includes(exampleFilter.value) : true,
+      Option.isSome(exampleFilter) === true ? example.slug.includes(exampleFilter.value) : true,
     )
 
     if (filteredExamples.length === 0) {
       const available = cloudflareExamples.map((example) => example.slug).join(', ')
       console.error(
-        Option.isSome(exampleFilter)
+        Option.isSome(exampleFilter) === true
           ? `No examples found matching filter: ${exampleFilter.value}. Available examples: ${available}`
           : 'No examples configured for Cloudflare deployment.',
       )
@@ -299,7 +311,7 @@ export const command = Cli.Command.make(
 
     const workersSubdomain = yield* resolveWorkersSubdomain
     console.log(
-      `Deploying${prod ? ' (to prod)' : ''}: ${filteredExamples.map((example) => example.slug).join(', ')} using ${workersSubdomain}.workers.dev`,
+      `Deploying${prod === true ? ' (to prod)' : ''}: ${filteredExamples.map((example) => example.slug).join(', ')} using ${workersSubdomain}.workers.dev`,
     )
 
     const results = yield* Effect.forEach(
@@ -335,7 +347,7 @@ export const command = Cli.Command.make(
   }),
 )
 
-if (import.meta.main) {
+if (import.meta.main === true) {
   const cli = Cli.Command.run(command, {
     name: 'Deploy Examples',
     version: '0.0.0',

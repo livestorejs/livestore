@@ -2,6 +2,7 @@ import crypto from 'node:crypto'
 import path from 'node:path'
 
 import { tldrawToImage } from '@kitschpatrol/tldraw-cli'
+
 import { shouldNeverHappen } from '@livestore/utils'
 import { Duration, Effect, FileSystem, Schema } from '@livestore/utils/effect'
 
@@ -125,7 +126,7 @@ const renderSvgWithTheme = (
             }),
           duration: Duration.millis(RENDER_TIMEOUT_MS),
         }),
-      ) as Effect.Effect<Array<string | Buffer>, RenderTimeoutError | RenderInvocationError>
+      )
 
       let attempt = 1
       // retry loop with capped attempts and delay
@@ -140,7 +141,7 @@ const renderSvgWithTheme = (
             return shouldNeverHappen(`No SVG generated for ${tldrPath}`)
           }
           const [svgPath] = outputPaths
-          if (!svgPath) {
+          if (svgPath == null) {
             return shouldNeverHappen(`SVG path is undefined for ${tldrPath}`)
           }
 
@@ -240,7 +241,7 @@ export const getSvgDimensions = (
   svg: string,
 ): { width: number | undefined; height: number | undefined } | undefined => {
   const viewBoxMatch = svg.match(/viewBox="([^"]+)"/)
-  if (viewBoxMatch?.[1]) {
+  if (viewBoxMatch?.[1] !== undefined) {
     const [, , width, height] = viewBoxMatch[1].split(' ').map(Number)
     return { width, height }
   }
@@ -248,7 +249,7 @@ export const getSvgDimensions = (
   const widthMatch = svg.match(/width="([^"]+)"/)
   const heightMatch = svg.match(/height="([^"]+)"/)
 
-  if (widthMatch?.[1] && heightMatch?.[1]) {
+  if (widthMatch?.[1] !== undefined && heightMatch?.[1] !== undefined) {
     return {
       width: Number.parseFloat(widthMatch[1]),
       height: Number.parseFloat(heightMatch[1]),

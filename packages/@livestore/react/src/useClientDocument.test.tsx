@@ -8,7 +8,7 @@ import { Vitest } from '@livestore/utils-dev/node-vitest'
 import * as otel from '@opentelemetry/api'
 import { BasicTracerProvider, InMemorySpanExporter, SimpleSpanProcessor } from '@opentelemetry/sdk-trace-base'
 import * as ReactTesting from '@testing-library/react'
-import type React from 'react'
+import * as React from 'react'
 import { beforeEach, expect, it } from 'vitest'
 
 import { events, makeTodoMvcReact, tables } from './__tests__/fixture.tsx'
@@ -120,25 +120,35 @@ Vitest.describe('useClientDocument', () => {
         renderCount.inc()
 
         const [state, setState] = store.useClientDocument(tables.AppRouterSchema, 'singleton')
+        const setCurrentTaskId = React.useCallback((taskId: string) => setState({ currentTaskId: taskId }), [setState])
 
         globalSetState = setState
 
         return (
           <div>
-            <TasksList setTaskId={(taskId) => setState({ currentTaskId: taskId })} />
+            <TasksList setTaskId={setCurrentTaskId} />
             <div role="current-id">Current Task Id: {state.currentTaskId ?? '-'}</div>
-            {state.currentTaskId ? <TaskDetails id={state.currentTaskId} /> : <div>Click on a task to see details</div>}
+            {state.currentTaskId !== null ? <TaskDetails id={state.currentTaskId} /> : <div>Click on a task to see details</div>}
           </div>
         )
       }
 
       const TasksList: React.FC<{ setTaskId: (_: string) => void }> = ({ setTaskId }) => {
         const allTodos = store.useQuery(allTodos$)
+        const handleTaskClick = React.useCallback(
+          (event: React.MouseEvent<HTMLDivElement>) => {
+            const taskId = event.currentTarget.dataset.taskId
+            if (taskId !== undefined) {
+              setTaskId(taskId)
+            }
+          },
+          [setTaskId],
+        )
 
         return (
           <div>
             {allTodos.map((_) => (
-              <div key={_.id} onClick={() => setTaskId(_.id)}>
+              <div key={_.id} data-task-id={_.id} onClick={handleTaskClick}>
                 {_.id}
               </div>
             ))}
@@ -264,7 +274,7 @@ Vitest.describe('useClientDocument', () => {
         spanProcessors: [new SimpleSpanProcessor(exporter)],
       })
 
-      const otelTracer = provider.getTracer(`testing-${strictMode ? 'strict' : 'non-strict'}`)
+      const otelTracer = provider.getTracer(`testing-${strictMode !== undefined ? 'strict' : 'non-strict'}`)
 
       const span = otelTracer.startSpan('test-root')
       const otelContext = otel.trace.setSpan(otel.context.active(), span)
@@ -314,7 +324,7 @@ Vitest.describe('useClientDocument', () => {
             const stackInfo = JSON.parse(val as string) as LiveStore.StackInfo
             // stackInfo.frames.shift() // Removes `renderHook.wrapper` from the stack
             stackInfo.frames.forEach((_) => {
-              if (_.name.includes('renderHook.wrapper')) {
+              if (_.name.includes('renderHook.wrapper') === true) {
                 _.name = 'renderHook.wrapper'
               }
               _.filePath = '__REPLACED_FOR_SNAPSHOT__'

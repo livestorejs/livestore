@@ -1,0 +1,8 @@
+# Generated file - DO NOT EDIT
+# Source: pnpm-workspace.yaml.genie.ts
+
+packages: [., ../packages/@livestore/*, ../packages/@local/*, ./src/content/_assets/code]
+
+dedupePeerDependents: true
+
+publicHoistPattern: [react, react-dom, react-reconciler]

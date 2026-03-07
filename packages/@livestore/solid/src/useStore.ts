@@ -1,8 +1,10 @@
+import * as Solid from 'solid-js'
+
 import type { RowQuery, SessionIdSymbol } from '@livestore/common'
 import type { LiveStoreSchema, State } from '@livestore/common/schema'
 import type { Queryable, RegistryStoreOptions, Store } from '@livestore/livestore'
 import type { Schema } from '@livestore/utils/effect'
-import * as Solid from 'solid-js'
+
 import { useStoreRegistry } from './StoreRegistryContext.tsx'
 import { type UseClientDocumentResult, useClientDocument } from './useClientDocument.ts'
 import { useQuery } from './useQuery.ts'

@@ -24,7 +24,7 @@ export const hash = (schema: Schema.Schema<any>) => {
 }
 
 const resolveStructAst = (ast: SchemaAST.AST): SchemaAST.AST => {
-  if (SchemaAST.isTransformation(ast)) {
+  if (SchemaAST.isTransformation(ast) === true) {
     return resolveStructAst(ast.from)
   }
 
@@ -38,9 +38,12 @@ export const getResolvedPropertySignatures = (
   return SchemaAST.getPropertySignatures(resolvedAst)
 }
 
+/** Objects that can be transferred between contexts (workers, etc.) */
+type TransferableObject = ArrayBuffer | MessagePort
+
 export const encodeWithTransferables =
-  <A, I, R>(schema: Schema.Schema<A, I, R>, options?: ParseOptions | undefined) =>
-  (a: A, overrideOptions?: ParseOptions | undefined): Effect.Effect<[I, Transferable[]], ParseError, R> =>
+  <A, I, R>(schema: Schema.Schema<A, I, R>, options?: ParseOptions) =>
+  (a: A, overrideOptions?: ParseOptions): Effect.Effect<[I, TransferableObject[]], ParseError, R> =>
     Effect.gen(function* () {
       const collector = yield* Transferable.makeCollector
 
@@ -48,11 +51,11 @@ export const encodeWithTransferables =
         Effect.provideService(Transferable.Collector, collector),
       )
 
-      return [encoded, collector.unsafeRead() as Transferable[]]
+      return [encoded, collector.unsafeRead() as TransferableObject[]]
     })
 
 export const decodeSyncDebug: <A, I>(
-  schema: Schema.Schema<A, I, never>,
+  schema: Schema.Schema<A, I>,
   options?: SchemaAST.ParseOptions,
 ) => (i: I, overrideOptions?: SchemaAST.ParseOptions) => A = (schema, options) => (input, overrideOptions) => {
   const res = Schema.decodeEither(schema, options)(input, overrideOptions)
@@ -64,7 +67,7 @@ export const decodeSyncDebug: <A, I>(
 }
 
 export const encodeSyncDebug: <A, I>(
-  schema: Schema.Schema<A, I, never>,
+  schema: Schema.Schema<A, I>,
   options?: SchemaAST.ParseOptions,
 ) => (a: A, overrideOptions?: SchemaAST.ParseOptions) => I = (schema, options) => (input, overrideOptions) => {
   const res = Schema.encodeEither(schema, options)(input, overrideOptions)

@@ -14,5 +14,6 @@ export default defineConfig({
         main: './src/test/setup.ts',
       },
     },
+    server: { deps: { inline: ['@effect/vitest'] } },
   },
 })

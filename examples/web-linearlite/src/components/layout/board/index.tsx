@@ -1,4 +1,5 @@
 import { queryDb } from '@livestore/livestore'
+
 import { statusOptions } from '../../../data/status-options.ts'
 import { filterState$ } from '../../../livestore/queries.ts'
 import { tables } from '../../../livestore/schema/index.ts'

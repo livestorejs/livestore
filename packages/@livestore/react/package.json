@@ -1,43 +1,21 @@
 {
   "name": "@livestore/react",
   "version": "0.4.0-dev.22",
+  "license": "Apache-2.0",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/livestorejs/livestore.git"
+  },
+  "files": [
+    "dist",
+    "package.json",
+    "src"
+  ],
   "type": "module",
   "sideEffects": false,
   "exports": {
     ".": "./src/mod.ts",
     "./experimental": "./src/experimental/mod.ts"
-  },
-  "dependencies": {
-    "@livestore/common": "workspace:*",
-    "@livestore/framework-toolkit": "workspace:*",
-    "@livestore/livestore": "workspace:*",
-    "@livestore/utils": "workspace:*",
-    "@opentelemetry/api": "catalog:"
-  },
-  "devDependencies": {
-    "@livestore/adapter-web": "workspace:*",
-    "@livestore/utils-dev": "workspace:*",
-    "@opentelemetry/sdk-trace-base": "catalog:",
-    "@testing-library/dom": "^10.4.1",
-    "@testing-library/react": "^16.3.0",
-    "@types/react": "catalog:",
-    "@types/react-dom": "catalog:",
-    "jsdom": "^26.1.0",
-    "react": "catalog:",
-    "react-dom": "catalog:",
-    "react-window": "^1.8.11",
-    "typescript": "catalog:",
-    "vite": "catalog:",
-    "vitest": "catalog:"
-  },
-  "files": [
-    "package.json",
-    "src",
-    "dist"
-  ],
-  "license": "Apache-2.0",
-  "peerDependencies": {
-    "react": "^19.1.0"
   },
   "publishConfig": {
     "access": "public",
@@ -49,5 +27,52 @@
   "scripts": {
     "build": "tsc",
     "test": "vitest && REACT_STRICT_MODE=1 vitest"
+  },
+  "dependencies": {
+    "@livestore/common": "workspace:*",
+    "@livestore/framework-toolkit": "workspace:*",
+    "@livestore/livestore": "workspace:*",
+    "@livestore/utils": "workspace:*",
+    "@opentelemetry/api": "1.9.0"
+  },
+  "devDependencies": {
+    "@livestore/adapter-web": "workspace:*",
+    "@livestore/utils-dev": "workspace:*",
+    "@opentelemetry/sdk-trace-base": "2.2.0",
+    "@testing-library/dom": "10.4.1",
+    "@testing-library/react": "16.3.1",
+    "@types/react": "19.2.7",
+    "@types/react-dom": "19.2.3",
+    "jsdom": "26.1.0",
+    "react": "19.2.3",
+    "react-dom": "19.2.3",
+    "react-window": "1.8.11",
+    "typescript": "5.9.3",
+    "vite": "7.3.0",
+    "vitest": "3.2.4"
+  },
+  "peerDependencies": {
+    "@effect/ai": "^0.33.2",
+    "@effect/cli": "^0.73.1",
+    "@effect/cluster": "^0.56.1",
+    "@effect/experimental": "^0.58.0",
+    "@effect/opentelemetry": "^0.61.0",
+    "@effect/platform": "^0.94.2",
+    "@effect/platform-browser": "^0.73.0",
+    "@effect/platform-bun": "^0.86.0",
+    "@effect/platform-node": "^0.104.1",
+    "@effect/printer": "^0.47.0",
+    "@effect/printer-ansi": "^0.47.0",
+    "@effect/rpc": "^0.73.0",
+    "@effect/sql": "^0.49.0",
+    "@effect/typeclass": "^0.38.0",
+    "@opentelemetry/api": "^1.9.0",
+    "@opentelemetry/resources": "^2.2.0",
+    "effect": "^3.19.15",
+    "react": "^19.0.0"
+  },
+  "$genie": {
+    "source": "package.json.genie.ts",
+    "warning": "DO NOT EDIT - changes will be overwritten"
   }
 }

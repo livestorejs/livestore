@@ -1,9 +1,10 @@
 import fs from 'node:fs'
 
 import { shouldNeverHappen } from '@livestore/utils'
+import { cmd, LivestoreWorkspace } from '@livestore/utils-dev/node'
 import { Effect, Option } from '@livestore/utils/effect'
 import { Cli } from '@livestore/utils/node'
-import { cmd, LivestoreWorkspace } from '@livestore/utils-dev/node'
+
 import { copyTodomvcSrc } from './copy-examples.ts'
 import {
   command as deployExamplesCommand,
@@ -32,7 +33,7 @@ const exampleChoices = (() => {
           return false
         }
       })
-      .sort((a, b) => a.localeCompare(b))
+      .toSorted((a, b) => a.localeCompare(b))
   } catch {
     return []
   }
@@ -46,9 +47,10 @@ const examplesTestCommand = Cli.Command.make(
   Effect.fn(function* ({ example }) {
     // Reuse the deploy helpers so local workflows and CI keep the same validation rules.
     const availableExamples = yield* readExampleSlugs()
-    const targets = Option.isSome(example)
-      ? [yield* ensureExampleExists(example.value, availableExamples)]
-      : availableExamples
+    const targets =
+      Option.isSome(example) === true
+        ? [yield* ensureExampleExists(example.value, availableExamples)]
+        : availableExamples
 
     if (targets.length === 0) {
       yield* Effect.logWarning('No examples found in the examples directory')

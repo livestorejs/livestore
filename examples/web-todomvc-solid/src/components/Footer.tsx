@@ -1,5 +1,5 @@
 import { queryDb } from '@livestore/livestore'
-import type { Component } from 'solid-js'
+import { type Component, createMemo } from 'solid-js'
 
 import { uiState$ } from '../livestore/queries.ts'
 import { events, tables } from '../livestore/schema.ts'
@@ -16,19 +16,40 @@ export const Footer: Component = () => {
 
   const setFilter = (filter: (typeof tables.uiState.Value)['filter']) => store()?.commit(events.uiStateSet({ filter }))
 
+  const handleFilterClick = createMemo(() => (event: MouseEvent & { currentTarget: HTMLAnchorElement }) => {
+    const nextFilter = event.currentTarget.dataset.filter
+    if (nextFilter === 'all' || nextFilter === 'active' || nextFilter === 'completed') {
+      setFilter(nextFilter)
+    }
+  })
+
+  const handleClearCompleted = createMemo(() => () => {
+    store()?.commit(events.todoClearedCompleted({ deletedAt: new Date() }))
+  })
+
   return (
     <footer class="footer">
       <span class="todo-count">{incompleteCount() ?? 0} items left</span>
       <ul class="filters">
         <li>
           {/* biome-ignore lint/a11y/useValidAnchor: TodoMVC standard convention for filter buttons */}
-          <a href="#/" classList={{ selected: uiState()?.filter === 'all' }} onClick={() => setFilter('all')}>
+          <a
+            href="#/"
+            class={uiState()?.filter === 'all' ? 'selected' : undefined}
+            data-filter="all"
+            onClick={handleFilterClick()}
+          >
             All
           </a>
         </li>
         <li>
           {/* biome-ignore lint/a11y/useValidAnchor: TodoMVC standard convention for filter buttons */}
-          <a href="#/" classList={{ selected: uiState()?.filter === 'active' }} onClick={() => setFilter('active')}>
+          <a
+            href="#/"
+            class={uiState()?.filter === 'active' ? 'selected' : undefined}
+            data-filter="active"
+            onClick={handleFilterClick()}
+          >
             Active
           </a>
         </li>
@@ -36,18 +57,15 @@ export const Footer: Component = () => {
           {/* biome-ignore lint/a11y/useValidAnchor: TodoMVC standard convention for filter buttons */}
           <a
             href="#/"
-            classList={{ selected: uiState()?.filter === 'completed' }}
-            onClick={() => setFilter('completed')}
+            class={uiState()?.filter === 'completed' ? 'selected' : undefined}
+            data-filter="completed"
+            onClick={handleFilterClick()}
           >
             Completed
           </a>
         </li>
       </ul>
-      <button
-        type="button"
-        class="clear-completed"
-        onClick={() => store()?.commit(events.todoClearedCompleted({ deletedAt: new Date() }))}
-      >
+      <button type="button" class="clear-completed" onClick={handleClearCompleted()}>
         Clear completed
       </button>
     </footer>

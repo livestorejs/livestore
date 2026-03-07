@@ -38,9 +38,8 @@ Good:
 Bad:
 
 ```md
-##  This pages is about cloudflare workers
+## This pages is about cloudflare workers
 ```
-
 
 ## Create proper frontmatter for every page
 
@@ -60,6 +59,7 @@ Frontmatter is YAML metadata at the start of MD/MDX files (between `---` markers
 ### SEO impact
 
 The `title` and `description` fields directly impact SEO:
+
 - `title` becomes the `<title>` tag and search result headline
 - `description` becomes the `<meta name="description">` tag and search snippet
 - Both are used for Open Graph and Twitter Card previews
@@ -68,6 +68,7 @@ The `title` and `description` fields directly impact SEO:
 ### Examples
 
 Minimal (title only):
+
 ```yaml
 ---
 title: Getting started with LiveStore + React
@@ -75,6 +76,7 @@ title: Getting started with LiveStore + React
 ```
 
 With description and sidebar:
+
 ```yaml
 ---
 title: Getting started with LiveStore + React

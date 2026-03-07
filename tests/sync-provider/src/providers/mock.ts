@@ -1,5 +1,6 @@
 import { type MockSyncBackend, makeMockSyncBackend, UnknownError } from '@livestore/common'
 import { Effect, Layer, Ref } from '@livestore/utils/effect'
+
 import { SyncProviderImpl, type SyncProviderLayer } from '../types.ts'
 
 export const name = 'Mock Sync Backend'

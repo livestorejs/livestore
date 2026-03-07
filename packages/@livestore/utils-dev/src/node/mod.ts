@@ -1,15 +1,16 @@
 import { performance } from 'node:perf_hooks'
 
 import * as OtelNodeSdk from '@effect/opentelemetry/NodeSdk'
-import { IS_BUN, isNonEmptyString } from '@livestore/utils'
-import type { Tracer } from '@livestore/utils/effect'
-import { Config, Effect, FiberRef, Layer, LogLevel, OtelTracer } from '@livestore/utils/effect'
-import { OtelLiveDummy } from '@livestore/utils/node'
 import * as otel from '@opentelemetry/api'
 import { OTLPMetricExporter } from '@opentelemetry/exporter-metrics-otlp-http'
 import { OTLPTraceExporter } from '@opentelemetry/exporter-trace-otlp-http'
 import { PeriodicExportingMetricReader } from '@opentelemetry/sdk-metrics'
 import { BatchSpanProcessor } from '@opentelemetry/sdk-trace-base'
+
+import { IS_BUN, isNonEmptyString } from '@livestore/utils'
+import type { Tracer } from '@livestore/utils/effect'
+import { Config, Effect, FiberRef, Layer, LogLevel, OtelTracer, Schema } from '@livestore/utils/effect'
+import { OtelLiveDummy } from '@livestore/utils/node'
 
 export { OTLPMetricExporter } from '@opentelemetry/exporter-metrics-otlp-http'
 export { OTLPTraceExporter } from '@opentelemetry/exporter-trace-otlp-http'
@@ -40,16 +41,16 @@ export const OtelLiveHttp = ({
   rootSpanAttributes?: Record<string, unknown>
   skipLogUrl?: boolean
   traceNodeBootstrap?: boolean
-} = {}): Layer.Layer<OtelTracer.OtelTracer | Tracer.ParentSpan, never, never> =>
+} = {}): Layer.Layer<OtelTracer.OtelTracer | Tracer.ParentSpan> =>
   Effect.gen(function* () {
     const configRes = yield* Config.all({
       exporterUrl: Config.string('OTEL_EXPORTER_OTLP_ENDPOINT').pipe(
         Config.validate({ message: 'OTEL_EXPORTER_OTLP_ENDPOINT must be set', validation: isNonEmptyString }),
       ),
-      serviceName: serviceName
+      serviceName: serviceName !== undefined
         ? Config.succeed(serviceName)
         : Config.string('OTEL_SERVICE_NAME').pipe(Config.withDefault('livestore-utils-dev')),
-      rootSpanName: rootSpanName
+      rootSpanName: rootSpanName !== undefined
         ? Config.succeed(rootSpanName)
         : Config.string('OTEL_ROOT_SPAN_NAME').pipe(Config.withDefault('RootSpan')),
     }).pipe(Effect.option)
@@ -91,13 +92,13 @@ export const OtelLiveHttp = ({
 
     const RootSpanLive = Layer.span(config.rootSpanName, {
       attributes: { config, ...rootSpanAttributes },
-      onEnd: skipLogUrl ? undefined : (span: any) => logTraceUiUrlForSpan()(span.span),
+      onEnd: skipLogUrl === true ? undefined : (span: any) => logTraceUiUrlForSpan()(span.span),
       parent: parentSpan,
     })
 
     const layer = yield* Layer.memoize(RootSpanLive.pipe(Layer.provideMerge(OtelLive)))
 
-    if (traceNodeBootstrap && !IS_BUN) {
+    if (traceNodeBootstrap === true && IS_BUN === false) {
       /**
        * Create a span representing the Node.js bootstrap duration.
        * Note: Skipped in Bun since performance.nodeTiming is not properly supported.
@@ -136,7 +137,7 @@ export const logTraceUiUrlForSpan = (printMsg?: (url: string) => string) => (spa
       if (url === undefined) {
         return Effect.logWarning('No tracing backend url found')
       } else {
-        if (printMsg) {
+        if (printMsg !== undefined) {
           return Effect.log(printMsg(url))
         } else {
           return Effect.log(`Trace URL: ${url}`)
@@ -155,13 +156,14 @@ export const getTracingBackendUrl = (span: otel.Span) =>
     // Grafana + Tempo
 
     const grafanaEndpoint = endpoint.value
+    const left = yield* Schema.encode(Schema.parseJson())({
+      datasource: 'tempo',
+      queries: [{ query: traceId, queryType: 'traceql', refId: 'A' }],
+      range: { from: 'now-1h', to: 'now' },
+    }).pipe(Effect.orDie)
     const searchParams = new URLSearchParams({
       orgId: '1',
-      left: JSON.stringify({
-        datasource: 'tempo',
-        queries: [{ query: traceId, queryType: 'traceql', refId: 'A' }],
-        range: { from: 'now-1h', to: 'now' },
-      }),
+      left,
     })
 
     // TODO make dynamic via env var
@@ -188,14 +190,14 @@ const computeBootstrapTiming = () => {
   const nodeTiming = performance.nodeTiming
 
   // Absolute start time in ms since epoch.
-  const startAbs = IS_BUN
+  const startAbs = IS_BUN === true
     ? typeof nodeTiming.nodeStart === 'number'
       ? nodeTiming.nodeStart
       : performance.timeOrigin
     : performance.timeOrigin + nodeTiming.nodeStart
 
   // Absolute end time.
-  const endAbs = IS_BUN
+  const endAbs = IS_BUN === true
     ? (() => {
         const { loopStart, bootstrapComplete } = nodeTiming
         if (typeof loopStart === 'number' && loopStart > 0) return startAbs + loopStart
@@ -205,7 +207,7 @@ const computeBootstrapTiming = () => {
     : startAbs + nodeTiming.duration
 
   // Duration attribute value for the span.
-  const durationAttr = IS_BUN
+  const durationAttr = IS_BUN === true
     ? (() => {
         const { loopStart } = nodeTiming
         return typeof loopStart === 'number' && loopStart > 0 ? loopStart : 0

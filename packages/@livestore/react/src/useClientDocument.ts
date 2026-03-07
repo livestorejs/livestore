@@ -1,3 +1,5 @@
+import React from 'react'
+
 import type { RowQuery } from '@livestore/common'
 import { SessionIdSymbol } from '@livestore/common'
 import { State } from '@livestore/common/schema'
@@ -5,7 +7,6 @@ import { removeUndefinedValues, type StateSetters, validateTableOptions } from '
 import type { LiveQuery, LiveQueryDef, Store } from '@livestore/livestore'
 import { queryDb } from '@livestore/livestore'
 import { omitUndefineds, shouldNeverHappen } from '@livestore/utils'
-import React from 'react'
 
 import { useQueryRef } from './useQuery.ts'
 
@@ -122,8 +123,8 @@ export const useClientDocument: {
   type QueryDef = LiveQueryDef<TTableDef['Value']>
   const queryDef: QueryDef = React.useMemo(
     () =>
-      queryDb(table.get(id!, { default: defaultValues! }), {
-        deps: [idStr!, table.sqliteDef.name, JSON.stringify(defaultValues)],
+      queryDb(table.get(id, { default: defaultValues! }), {
+        deps: [idStr, table.sqliteDef.name, JSON.stringify(defaultValues)],
       }),
     [table, id, defaultValues, idStr],
   )
@@ -138,7 +139,7 @@ export const useClientDocument: {
       const newValue = typeof newValueOrFn === 'function' ? newValueOrFn(queryRef.valueRef.current) : newValueOrFn
       if (queryRef.valueRef.current === newValue) return
 
-      store.commit(table.set(removeUndefinedValues(newValue), id as any))
+      store.commit(table.set(removeUndefinedValues(newValue), id))
     },
     [id, queryRef.valueRef, store, table],
   )

@@ -11,6 +11,7 @@ import {
   RpcSerialization,
   Stream,
 } from '@livestore/utils/effect'
+
 import { SyncDoRpc } from '../../../common/do-rpc-schema.ts'
 import { SyncMessage } from '../../../common/mod.ts'
 import { DoCtx, type DoCtxInput } from '../layer.ts'
@@ -39,13 +40,13 @@ export const createDoRpcHandler = (
           const { rpcSubscriptions } = yield* DoCtx
 
           // TODO rename `req.rpcContext` to something more appropriate
-          if (req.rpcContext) {
+          if (req.rpcContext !== undefined) {
             rpcSubscriptions.set(req.storeId, {
               storeId: req.storeId,
-              payload: req.payload,
               subscribedAt: Date.now(),
               requestId: Headers.get(headers, 'x-rpc-request-id').pipe(Option.getOrThrow),
               callerContext: req.rpcContext.callerContext,
+              ...(req.payload !== undefined ? { payload: req.payload } : {}),
             })
           }
 

@@ -59,5 +59,7 @@ export const materializers = State.SQLite.materializers(events, {
   [events.factoryResetApplied.name]: defineMaterializer(events.factoryResetApplied, () => [
     table1.update({ someVal: 0 }),
     table2.update({ otherVal: 'default' }),
+    // Raw SQL is also supported via { sql, bindValues }
+    { sql: 'DELETE FROM todos', bindValues: {} },
   ]),
 })

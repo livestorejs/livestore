@@ -1,10 +1,14 @@
 import path from 'node:path'
 import { fileURLToPath } from 'node:url'
+
 import { shouldNeverHappen } from '@livestore/utils'
 import { Effect, Schema } from '@livestore/utils/effect'
 import { PlatformNode } from '@livestore/utils/node'
+
 import { getCacheEntry, loadCachedDiagram, loadManifest, resolveCachePaths, type TldrawCachePaths } from './cache.ts'
 import { getSvgDimensions } from './renderer.ts'
+
+const jsonStringify = Schema.encodeSync(Schema.parseJson())
 
 type MinimalVitePlugin = {
   name: string
@@ -68,9 +72,10 @@ const createComponentModuleSource = (serializedPayload: string, componentSpecifi
   ].join('\n')
 
 export const createTldrawPlugin = (options: TldrawPluginOptions = {}): MinimalVitePlugin => {
-  let paths: TldrawCachePaths = options.projectRoot
-    ? resolveCachePaths(options.projectRoot)
-    : shouldNeverHappen('projectRoot is not set')
+  let paths: TldrawCachePaths =
+    options.projectRoot !== undefined
+      ? resolveCachePaths(options.projectRoot)
+      : shouldNeverHappen('projectRoot is not set')
   let rebuildInstruction = formatRebuildInstruction()
 
   return {
@@ -78,7 +83,7 @@ export const createTldrawPlugin = (options: TldrawPluginOptions = {}): MinimalVi
     enforce: 'pre',
 
     configResolved(config) {
-      if (!options.projectRoot) {
+      if (options.projectRoot == null) {
         paths = resolveCachePaths(config.root)
       }
       rebuildInstruction = formatRebuildInstruction()
@@ -90,12 +95,12 @@ export const createTldrawPlugin = (options: TldrawPluginOptions = {}): MinimalVi
 
     transform(_code, id) {
       const [filepath, rawQuery] = id.split('?')
-      if (!filepath || !rawQuery) {
+      if (filepath == null || rawQuery == null) {
         return null
       }
 
       /* Check if this is a .tldr?tldraw import */
-      if (!filepath.endsWith('.tldr') || !rawQuery.includes(TLDRAW_QUERY)) {
+      if (filepath.endsWith('.tldr') === false || rawQuery.includes(TLDRAW_QUERY) === false) {
         return null
       }
 
@@ -105,11 +110,11 @@ export const createTldrawPlugin = (options: TldrawPluginOptions = {}): MinimalVi
           const manifest = yield* loadManifest(paths.manifestPath)
 
           /* Resolve filepath to absolute path if it's relative */
-          const absoluteFilepath = path.isAbsolute(filepath) ? filepath : path.resolve(filepath)
+          const absoluteFilepath = path.isAbsolute(filepath) === true ? filepath : path.resolve(filepath)
           const entryRelative = path.relative(paths.diagramsRoot, absoluteFilepath).replace(/\\/g, '/')
           const entry = getCacheEntry(manifest, entryRelative)
 
-          if (!entry) {
+          if (entry == null) {
             return yield* new CachedDiagramMissingError({
               entryRelative,
               rebuildInstruction,
@@ -142,7 +147,7 @@ export const createTldrawPlugin = (options: TldrawPluginOptions = {}): MinimalVi
             generatedAt: cached.generatedAt,
           }
 
-          const serializedPayload = JSON.stringify(payload)
+          const serializedPayload = jsonStringify(payload)
 
           return {
             code: createComponentModuleSource(serializedPayload, diagramComponentSpecifier),

@@ -1,8 +1,13 @@
 import path from 'node:path'
+
 import type { UnknownError } from '@livestore/common'
-import { Console, Effect, FileSystem, type HttpClient, type Scope } from '@livestore/utils/effect'
+import { Console, Effect, FileSystem, type HttpClient, Schema, type Scope } from '@livestore/utils/effect'
 import { Cli } from '@livestore/utils/node'
+
 import * as SyncOps from '../sync-operations.ts'
+
+const jsonStringifyPretty = Schema.encodeSync(Schema.parseJson({ space: 2 }))
+const jsonParse = Schema.decodeUnknownSync(Schema.parseJson())
 
 const LARGE_EVENT_WARNING_THRESHOLD = 100_000
 
@@ -38,14 +43,14 @@ const exportEvents = ({
     }
 
     const fs = yield* FileSystem.FileSystem
-    const absOutputPath = path.isAbsolute(outputPath) ? outputPath : path.resolve(process.cwd(), outputPath)
+    const absOutputPath = path.isAbsolute(outputPath) === true ? outputPath : path.resolve(process.cwd(), outputPath)
 
-    yield* fs.writeFileString(absOutputPath, JSON.stringify(result.data, null, 2)).pipe(
+    yield* fs.writeFileString(absOutputPath, jsonStringifyPretty(result.data)).pipe(
       Effect.mapError(
         (cause) =>
           new SyncOps.ExportError({
             cause,
-            note: `Failed to write export file: ${cause}`,
+            note: `Failed to write export file: ${String(cause)}`,
           }),
       ),
     )
@@ -77,18 +82,18 @@ const importEvents = ({
 > =>
   Effect.gen(function* () {
     const fs = yield* FileSystem.FileSystem
-    const absInputPath = path.isAbsolute(inputPath) ? inputPath : path.resolve(process.cwd(), inputPath)
+    const absInputPath = path.isAbsolute(inputPath) === true ? inputPath : path.resolve(process.cwd(), inputPath)
 
     const exists = yield* fs.exists(absInputPath).pipe(
       Effect.mapError(
         (cause) =>
           new SyncOps.ImportError({
             cause,
-            note: `Failed to check file existence: ${cause}`,
+            note: `Failed to check file existence: ${String(cause)}`,
           }),
       ),
     )
-    if (!exists) {
+    if (exists === false) {
       return yield* new SyncOps.ImportError({
         cause: new Error(`File not found: ${absInputPath}`),
         note: `Import file does not exist at ${absInputPath}`,
@@ -102,13 +107,13 @@ const importEvents = ({
         (cause) =>
           new SyncOps.ImportError({
             cause,
-            note: `Failed to read import file: ${cause}`,
+            note: `Failed to read import file: ${String(cause)}`,
           }),
       ),
     )
 
     const parsedContent = yield* Effect.try({
-      try: () => JSON.parse(fileContent),
+      try: () => jsonParse(fileContent),
       catch: (error) =>
         new SyncOps.ImportError({
           cause: new Error(`Failed to parse JSON: ${error instanceof Error ? error.message : String(error)}`),
@@ -119,8 +124,8 @@ const importEvents = ({
     /** Validate export file format before proceeding */
     const validation = yield* SyncOps.validateExportData({ data: parsedContent, targetStoreId: storeId })
 
-    if (validation.storeIdMismatch) {
-      if (!force) {
+    if (validation.storeIdMismatch === true) {
+      if (force !== true) {
         return yield* new SyncOps.ImportError({
           cause: new Error(`Store ID mismatch: file has '${validation.sourceStoreId}', expected '${storeId}'`),
           note: `The export file was created for a different store. Use --force to import anyway.`,
@@ -138,7 +143,7 @@ const importEvents = ({
       )
     }
 
-    if (dryRun) {
+    if (dryRun === true) {
       yield* Console.log(`Dry run - validating import file...`)
       yield* Console.log(`Dry run complete. ${validation.eventCount} events would be imported.`)
       return
@@ -255,8 +260,8 @@ export const importCommand = Cli.Command.make(
     yield* Console.log(`   Config: ${config}`)
     yield* Console.log(`   Store ID: ${storeId}`)
     yield* Console.log(`   Input: ${input}`)
-    if (force) yield* Console.log(`   Force: enabled`)
-    if (dryRun) yield* Console.log(`   Dry run: enabled`)
+    if (force === true) yield* Console.log(`   Force: enabled`)
+    if (dryRun === true) yield* Console.log(`   Dry run: enabled`)
     yield* Console.log('')
 
     yield* importEvents({

@@ -7,6 +7,7 @@ import {
   type SyncOptions,
   UnknownError,
 } from '@livestore/common'
+import type { CfTypes } from '@livestore/common-cf'
 import {
   type DevtoolsOptions,
   Eventlog,
@@ -14,7 +15,6 @@ import {
   makeLeaderThreadLayer,
   streamEventsWithSyncState,
 } from '@livestore/common/leader-thread'
-import type { CfTypes } from '@livestore/common-cf'
 import { LiveStoreEvent } from '@livestore/livestore'
 import { sqliteDbFactory } from '@livestore/sqlite-wasm/cf'
 import { loadSqlite3Wasm } from '@livestore/sqlite-wasm/load-wasm'
@@ -155,7 +155,7 @@ export const makeAdapter =
         sqliteDb: syncInMemoryDb,
         webmeshMode: 'proxy',
         connectWebmeshNode: Effect.fnUntraced(function* ({ webmeshNode }) {
-          if (devtoolsOptions.enabled) {
+          if (devtoolsOptions.enabled === true) {
             console.log('connectWebmeshNode', { webmeshNode })
             //   yield* Webmesh.connectViaWebSocket({
             //     node: webmeshNode,
@@ -216,7 +216,7 @@ const safeSqlExec = (storage: CfTypes.DurableObjectStorage, query: string, bindi
   try {
     storage.sql.exec(query, binding)
   } catch (error) {
-    if (isMissingVfsTableError(error)) {
+    if (isMissingVfsTableError(error) === true) {
       return
     }
 

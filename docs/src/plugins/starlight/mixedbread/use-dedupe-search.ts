@@ -1,4 +1,5 @@
 import { useCallback, useRef } from 'react'
+
 import type { SearchResult } from './Search.tsx'
 
 interface ActiveRequest {

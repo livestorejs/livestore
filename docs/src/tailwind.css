@@ -1,13 +1,13 @@
 /* Replace when fixed https://github.com/withastro/starlight/issues/2862 */
 @layer theme, base, components, utilities;
 
-@import "tailwindcss/theme.css" layer(theme);
-@import "tailwindcss/utilities.css" layer(utilities);
+@import 'tailwindcss/theme.css' layer(theme);
+@import 'tailwindcss/utilities.css' layer(utilities);
 
 @theme {
   --font-sans:
-    Geist, Poppins, ui-sans-serif, system-ui, sans-serif, "Apple Color Emoji", "Segoe UI Emoji", "Segoe UI Symbol",
-    "Noto Color Emoji";
+    Geist, Poppins, ui-sans-serif, system-ui, sans-serif, 'Apple Color Emoji', 'Segoe UI Emoji', 'Segoe UI Symbol',
+    'Noto Color Emoji';
 
   --color-gray-100: #f5f5f5;
   --color-gray-200: #e5e5e5;
@@ -324,7 +324,7 @@
     margin-left: -1px;
   }
 
-  .sidebar-content a[aria-current="page"] {
+  .sidebar-content a[aria-current='page'] {
     color: var(--sl-color-text-accent);
     font-weight: 400;
     background: none;
@@ -414,8 +414,8 @@
     color: white;
   }
 
-  .right-sidebar-container starlight-toc a[aria-current="true"],
-  .right-sidebar-container starlight-toc a[aria-current="true"]:hover {
+  .right-sidebar-container starlight-toc a[aria-current='true'],
+  .right-sidebar-container starlight-toc a[aria-current='true']:hover {
     color: var(--sl-color-text-accent);
   }
 
@@ -440,7 +440,7 @@
     margin: 0.5em 0;
   }
 
-  .sidebar .sidebar-content ul:not(.top-level) a[aria-current="page"] {
+  .sidebar .sidebar-content ul:not(.top-level) a[aria-current='page'] {
     border-left: 1px solid var(--sl-color-text-accent);
     color: var(--sl-color-text-accent);
   }
@@ -469,7 +469,7 @@
     color: white;
   }
 
-  .sidebar .sidebar-content ul:not(.top-level) a[aria-current="page"]:hover {
+  .sidebar .sidebar-content ul:not(.top-level) a[aria-current='page']:hover {
     color: var(--sl-color-text-accent);
   }
 
@@ -572,7 +572,7 @@
     border-bottom: 1px solid transparent;
   }
 
-  main .sl-markdown-content starlight-tabs .tablist-wrapper ul li a[aria-selected="true"] {
+  main .sl-markdown-content starlight-tabs .tablist-wrapper ul li a[aria-selected='true'] {
     border-bottom: 1px solid var(--color-accent-500);
     font-weight: 400;
   }
@@ -810,7 +810,7 @@
 
   /* -------------------------- END custom styling to match landing page */
 
-  &[data-theme="light"] {
+  &[data-theme='light'] {
     /* Light mode Starlight theme variables */
     --custom-outline-color: var(--color-accent-600);
     --sl-color-white: var(--color-gray-900);
@@ -903,7 +903,7 @@
       color: black;
     }
 
-    .sidebar .sidebar-content ul:not(.top-level) a[aria-current="page"] {
+    .sidebar .sidebar-content ul:not(.top-level) a[aria-current='page'] {
       color: var(--sl-color-text-accent);
       font-weight: 400;
       background: none;
@@ -959,8 +959,8 @@
       color: black;
     }
 
-    starlight-toc a[aria-current="true"],
-    starlight-toc a[aria-current="true"]:hover {
+    starlight-toc a[aria-current='true'],
+    starlight-toc a[aria-current='true']:hover {
       color: var(--sl-color-text-accent);
     }
 

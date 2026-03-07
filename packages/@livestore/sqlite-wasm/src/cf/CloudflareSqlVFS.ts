@@ -1,5 +1,6 @@
 import type { CfTypes } from '@livestore/common-cf'
 import * as VFS from '@livestore/wa-sqlite/src/VFS.js'
+
 import { FacadeVFS } from '../FacadeVFS.ts'
 import { BlockManager } from './BlockManager.ts'
 
@@ -78,7 +79,7 @@ export class CloudflareSqlVFS extends FacadeVFS {
    * Initialize the VFS by setting up SQL schema
    */
   async isReady(): Promise<boolean> {
-    if (this.#initialized) {
+    if (this.#initialized === true) {
       return true
     }
 
@@ -152,7 +153,7 @@ export class CloudflareSqlVFS extends FacadeVFS {
 
       for (const row of cursor) {
         // Check if file should be persistent
-        if (!(row.flags & PERSISTENT_FILE_TYPES)) {
+        if ((row.flags & PERSISTENT_FILE_TYPES) === 0) {
           filesToDelete.push(row.file_path)
         }
       }
@@ -168,7 +169,7 @@ export class CloudflareSqlVFS extends FacadeVFS {
 
   // VFS Interface Implementation
 
-  jOpen(path: string, fileId: number, flags: number, pOutFlags: DataView): number {
+  override jOpen(path: string, fileId: number, flags: number, pOutFlags: DataView): number {
     try {
       if (this.#openFiles.size >= this.#maxFiles) {
         return VFS.SQLITE_CANTOPEN
@@ -177,13 +178,13 @@ export class CloudflareSqlVFS extends FacadeVFS {
       // Check if file exists
       const existingFile = this.#getFileMetadata(path)
 
-      if (!existingFile && !(flags & VFS.SQLITE_OPEN_CREATE)) {
+      if (existingFile == null && (flags & VFS.SQLITE_OPEN_CREATE) === 0) {
         return VFS.SQLITE_CANTOPEN
       }
 
       let metadata: FileMetadata
 
-      if (existingFile) {
+      if (existingFile !== undefined) {
         metadata = existingFile
       } else {
         // Create new file
@@ -221,15 +222,15 @@ export class CloudflareSqlVFS extends FacadeVFS {
     }
   }
 
-  jClose(fileId: number): number {
+  override jClose(fileId: number): number {
     this.#openFiles.delete(fileId)
     return VFS.SQLITE_OK
   }
 
-  jRead(fileId: number, buffer: Uint8Array, offset: number): number {
+  override jRead(fileId: number, buffer: Uint8Array, offset: number): number {
     try {
       const handle = this.#openFiles.get(fileId)
-      if (!handle) {
+      if (handle == null) {
         return VFS.SQLITE_IOERR
       }
 
@@ -250,10 +251,10 @@ export class CloudflareSqlVFS extends FacadeVFS {
     }
   }
 
-  jWrite(fileId: number, data: Uint8Array, offset: number): number {
+  override jWrite(fileId: number, data: Uint8Array, offset: number): number {
     try {
       const handle = this.#openFiles.get(fileId)
-      if (!handle) {
+      if (handle == null) {
         return VFS.SQLITE_IOERR
       }
 
@@ -298,10 +299,10 @@ export class CloudflareSqlVFS extends FacadeVFS {
     }
   }
 
-  jTruncate(fileId: number, size: number): number {
+  override jTruncate(fileId: number, size: number): number {
     try {
       const handle = this.#openFiles.get(fileId)
-      if (!handle) {
+      if (handle == null) {
         return VFS.SQLITE_IOERR
       }
 
@@ -316,7 +317,7 @@ export class CloudflareSqlVFS extends FacadeVFS {
         const existingBlocks = this.#blockManager.readBlocks(this.#sql, handle.path, [lastBlockId])
         const blockData = existingBlocks.get(lastBlockId)
 
-        if (blockData) {
+        if (blockData !== undefined) {
           const truncatedBlock = blockData.slice(0, size % this.#blockManager.getBlockSize())
           const paddedBlock = new Uint8Array(this.#blockManager.getBlockSize())
           paddedBlock.set(truncatedBlock)
@@ -337,19 +338,19 @@ export class CloudflareSqlVFS extends FacadeVFS {
     }
   }
 
-  jSync(fileId: number, _flags: number): number {
+  override jSync(fileId: number, _flags: number): number {
     // SQL storage provides immediate durability, so sync is effectively a no-op
     const handle = this.#openFiles.get(fileId)
-    if (!handle) {
+    if (handle == null) {
       return VFS.SQLITE_IOERR
     }
     return VFS.SQLITE_OK
   }
 
-  jFileSize(fileId: number, pSize64: DataView): number {
+  override jFileSize(fileId: number, pSize64: DataView): number {
     try {
       const handle = this.#openFiles.get(fileId)
-      if (!handle) {
+      if (handle == null) {
         return VFS.SQLITE_IOERR
       }
 
@@ -361,7 +362,7 @@ export class CloudflareSqlVFS extends FacadeVFS {
     }
   }
 
-  jDelete(path: string, _syncDir: number): number {
+  override jDelete(path: string, _syncDir: number): number {
     try {
       this.#sql.exec('DELETE FROM vfs_files WHERE file_path = ?', path)
       return VFS.SQLITE_OK
@@ -371,10 +372,10 @@ export class CloudflareSqlVFS extends FacadeVFS {
     }
   }
 
-  jAccess(path: string, _flags: number, pResOut: DataView): number {
+  override jAccess(path: string, _flags: number, pResOut: DataView): number {
     try {
       const metadata = this.#getFileMetadata(path)
-      pResOut.setInt32(0, metadata ? 1 : 0, true)
+      pResOut.setInt32(0, metadata !== undefined ? 1 : 0, true)
       return VFS.SQLITE_OK
     } catch (error) {
       console.error('jAccess error:', error)
@@ -382,11 +383,11 @@ export class CloudflareSqlVFS extends FacadeVFS {
     }
   }
 
-  jSectorSize(_fileId: number): number {
+  override jSectorSize(_fileId: number): number {
     return SECTOR_SIZE
   }
 
-  jDeviceCharacteristics(_fileId: number): number {
+  override jDeviceCharacteristics(_fileId: number): number {
     return VFS.SQLITE_IOCAP_UNDELETABLE_WHEN_OPEN
   }
 

@@ -1,8 +1,9 @@
 import { fileURLToPath } from 'node:url'
 
+import type { AstroIntegration } from 'astro'
+
 import { Effect, Fiber } from '@livestore/utils/effect'
 import { PlatformNode } from '@livestore/utils/node'
-import type { AstroIntegration } from 'astro'
 
 import { type BuildSnippetsOptions, buildSnippets, watchSnippets } from '../cli/snippets.ts'
 import type { TwoslashRuntimeOptions } from '../expressive-code.ts'
@@ -25,10 +26,10 @@ const shouldSkipSnippetAutoBuildAndWatch = () => process.env.LS_SKIP_SNIPPET_AUT
 export const createAstroTwoslashCodeIntegration = (options: AstroTwoslashCodeOptions = {}): AstroIntegration => {
   const autoBuild = options.autoBuild ?? true
   let resolvedBuildOptions: BuildSnippetsOptions | undefined
-  let watchFiber: Fiber.RuntimeFiber<void, never> | null = null
+  let watchFiber: Fiber.RuntimeFiber<void> | null = null
 
   const runSnippetBuild = () => {
-    if (!resolvedBuildOptions) {
+    if (resolvedBuildOptions == null) {
       return Promise.resolve()
     }
 
@@ -48,7 +49,7 @@ export const createAstroTwoslashCodeIntegration = (options: AstroTwoslashCodeOpt
         resolvedBuildOptions = {
           projectRoot,
           ...(options.runtime !== undefined ? { runtime: options.runtime } : {}),
-          ...(options.buildOptions ?? {}),
+          ...options.buildOptions,
         }
 
         const pluginOptions = {
@@ -66,18 +67,18 @@ export const createAstroTwoslashCodeIntegration = (options: AstroTwoslashCodeOpt
         })
       },
       'astro:server:start': async (_context: ServerStartContext) => {
-        if (!autoBuild || shouldSkipSnippetAutoBuildAndWatch()) {
+        if (autoBuild === false || shouldSkipSnippetAutoBuildAndWatch() === true) {
           return
         }
 
         await runSnippetBuild()
 
-        if (resolvedBuildOptions && watchFiber === null) {
+        if (resolvedBuildOptions !== undefined && watchFiber === null) {
           watchFiber = Effect.runFork(watchSnippets(resolvedBuildOptions))
         }
       },
       'astro:build:start': async (_context: BuildStartContext) => {
-        if (!autoBuild || shouldSkipSnippetAutoBuildAndWatch()) {
+        if (autoBuild === false || shouldSkipSnippetAutoBuildAndWatch() === true) {
           return
         }
 

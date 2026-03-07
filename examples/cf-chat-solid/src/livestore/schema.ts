@@ -139,9 +139,7 @@ const materializers = State.SQLite.materializers(events, {
   'v1.MessageRead': ({ id, messageId, userId, username, timestamp }) =>
     // Read receipts can be emitted multiple times from different clients for the
     // same (messageId, userId). Use ON CONFLICT DO NOTHING for idempotency.
-    tables.readReceipts
-      .insert({ id, messageId, userId, username, timestamp })
-      .onConflict('id', 'ignore'),
+    tables.readReceipts.insert({ id, messageId, userId, username, timestamp }).onConflict('id', 'ignore'),
   'v1.BotProcessedMessage': ({ messageId, processedAt }) =>
     tables.botProcessedMessages.insert({ messageId, processedAt }),
 })

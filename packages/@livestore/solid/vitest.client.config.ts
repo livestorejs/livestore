@@ -6,7 +6,7 @@ export default defineConfig({
     solidPlugin({
       hot: false,
       solid: { generate: 'dom' },
-    }) as Plugin,
+    }),
   ],
   test: {
     root: import.meta.dirname,
@@ -23,7 +23,7 @@ export default defineConfig({
     include: ['src/**/*.client.test.{ts,tsx}'],
     server: {
       deps: {
-        inline: [/solid-js/],
+        inline: [/solid-js/, '@effect/vitest'],
       },
     },
   },

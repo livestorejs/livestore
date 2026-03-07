@@ -1,6 +1,6 @@
+import { cmd, LivestoreWorkspace } from '@livestore/utils-dev/node'
 import { Effect } from '@livestore/utils/effect'
 import { Cli } from '@livestore/utils/node'
-import { cmd, LivestoreWorkspace } from '@livestore/utils-dev/node'
 
 // Create biome debug subcommands
 const debugBiomeCommand = Cli.Command.make('biome').pipe(

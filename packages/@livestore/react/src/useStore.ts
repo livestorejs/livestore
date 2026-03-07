@@ -1,7 +1,9 @@
+import React from 'react'
+
 import type { LiveStoreSchema } from '@livestore/common/schema'
 import type { RegistryStoreOptions, Store, SyncStatus } from '@livestore/livestore'
 import type { Schema } from '@livestore/utils/effect'
-import React from 'react'
+
 import { useStoreRegistry } from './StoreRegistryContext.tsx'
 import { useClientDocument } from './useClientDocument.ts'
 import { useQuery } from './useQuery.ts'
@@ -62,14 +64,18 @@ export const useStore = <
   const storeRegistry = useStoreRegistry()
 
   // NOTE: retain() is called in useEffect (after render), while getOrLoadPromise() is called
-  // in useMemo (during render). This creates a timing gap where with very short unusedCacheTime
+  // during render. This creates a timing gap where with very short unusedCacheTime
   // values (e.g., 0), the store could theoretically be disposed before the effect fires.
   // In practice, this is not an issue with the default 60s cache time, but it becomes an issue when
   // `unusedCacheTime` is configured to values less than ~100ms.
   // See https://github.com/livestorejs/livestore/issues/916
   React.useEffect(() => storeRegistry.retain(options), [storeRegistry, options])
 
-  const storeOrPromise = React.useMemo(() => storeRegistry.getOrLoadPromise(options), [storeRegistry, options])
+  // Called on every render (intentionally not memoized). For already-loaded stores this returns
+  // the Store synchronously, so React.use() is skipped entirely. Caching the initial Promise via
+  // useMemo would cause React.use() to be called with a resolved Promise on subsequent renders,
+  // which blocks React transitions from committing.
+  const storeOrPromise = storeRegistry.getOrLoadPromise(options)
 
   const store = storeOrPromise instanceof Promise ? React.use(storeOrPromise) : storeOrPromise
 

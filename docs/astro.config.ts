@@ -1,15 +1,12 @@
 import os from 'node:os'
 import { fileURLToPath } from 'node:url'
+
 import netlify from '@astrojs/netlify'
 import react from '@astrojs/react'
 import starlight from '@astrojs/starlight'
-import { liveStoreVersion } from '@livestore/common'
-import { createAstroTldrawIntegration } from '@local/astro-tldraw'
-import { createAstroTwoslashCodeIntegration } from '@local/astro-twoslash-code/integration'
-import { DISCORD_INVITE_URL } from '@local/shared'
 import tailwind from '@tailwindcss/vite'
-import { defineConfig, envField } from 'astro/config'
 import astroD2 from 'astro-d2'
+import { defineConfig, envField } from 'astro/config'
 import rehypeMermaid from 'rehype-mermaid'
 import remarkCustomHeaderId from 'remark-custom-header-id'
 import starlightContextualMenu from 'starlight-contextual-menu'
@@ -17,6 +14,12 @@ import starlightContextualMenu from 'starlight-contextual-menu'
 import starlightLinksValidator from 'starlight-links-validator'
 import starlightSidebarTopics from 'starlight-sidebar-topics'
 import starlightTypeDoc from 'starlight-typedoc'
+
+import { liveStoreVersion } from '@livestore/common'
+import { createAstroTldrawIntegration } from '@local/astro-tldraw'
+import { createAstroTwoslashCodeIntegration } from '@local/astro-twoslash-code/integration'
+import { DISCORD_INVITE_URL } from '@local/shared'
+
 import { getBranchName } from './src/data/data.ts'
 import { rehypeExternalLinks } from './src/plugins/rehype/externalLinks.js'
 import { remarkGithubIssueLinks } from './src/plugins/remark/githubIssueLinks.js'
@@ -29,13 +32,14 @@ const port = 5252
 const branch = getBranchName()
 
 // Netlify preview domain (see https://docs.netlify.com/configure-builds/environment-variables/#build-metadata)
-const domain = process.env.DEPLOY_PRIME_URL
-  ? new URL(process.env.DEPLOY_PRIME_URL).hostname
-  : process.env.NODE_ENV === 'production'
-    ? branch === 'main'
-      ? 'docs.livestore.dev'
-      : 'dev.docs.livestore.dev'
-    : `localhost:${port}`
+const domain =
+  process.env.DEPLOY_PRIME_URL !== undefined
+    ? new URL(process.env.DEPLOY_PRIME_URL).hostname
+    : process.env.NODE_ENV === 'production'
+      ? branch === 'main'
+        ? 'docs.livestore.dev'
+        : 'dev.docs.livestore.dev'
+      : `localhost:${port}`
 
 const site = `https://${domain}`
 
@@ -285,7 +289,7 @@ export default defineConfig({
           // Didn't yet take the time to investigate/fix the root cause https://share.cleanshot.com/88lpCkCl
           errorOnRelativeLinks: false,
         }),
-        ...(process.env.STARLIGHT_INCLUDE_API_DOCS
+        ...(process.env.STARLIGHT_INCLUDE_API_DOCS !== undefined
           ? [
               starlightTypeDoc({
                 entryPoints: ['../packages/@livestore/livestore/src/mod.ts'],
@@ -294,6 +298,10 @@ export default defineConfig({
                 typeDoc: {
                   excludeExternals: true,
                   externalPattern: ['**/@effect/**', '**/effect/**'],
+                  // The genie-generated tsconfigs include the @effect/language-service plugin which
+                  // emits TS diagnostics (warnings). TypeDoc treats any diagnostic as a fatal error
+                  // and returns no reflections. skipErrorChecking bypasses this check.
+                  skipErrorChecking: true,
                 },
               }),
               starlightTypeDoc({
@@ -303,6 +311,10 @@ export default defineConfig({
                 typeDoc: {
                   excludeExternals: true,
                   externalPattern: ['**/@effect/**', '**/effect/**'],
+                  // The genie-generated tsconfigs include the @effect/language-service plugin which
+                  // emits TS diagnostics (warnings). TypeDoc treats any diagnostic as a fatal error
+                  // and returns no reflections. skipErrorChecking bypasses this check.
+                  skipErrorChecking: true,
                 },
               }),
               starlightTypeDoc({
@@ -312,6 +324,10 @@ export default defineConfig({
                 typeDoc: {
                   excludeExternals: true,
                   externalPattern: ['**/@effect/**', '**/effect/**'],
+                  // The genie-generated tsconfigs include the @effect/language-service plugin which
+                  // emits TS diagnostics (warnings). TypeDoc treats any diagnostic as a fatal error
+                  // and returns no reflections. skipErrorChecking bypasses this check.
+                  skipErrorChecking: true,
                 },
               }),
               starlightTypeDoc({
@@ -321,6 +337,10 @@ export default defineConfig({
                 typeDoc: {
                   excludeExternals: true,
                   externalPattern: ['**/@effect/**', '**/effect/**'],
+                  // The genie-generated tsconfigs include the @effect/language-service plugin which
+                  // emits TS diagnostics (warnings). TypeDoc treats any diagnostic as a fatal error
+                  // and returns no reflections. skipErrorChecking bypasses this check.
+                  skipErrorChecking: true,
                 },
               }),
               starlightTypeDoc({
@@ -330,6 +350,10 @@ export default defineConfig({
                 typeDoc: {
                   excludeExternals: true,
                   externalPattern: ['**/@effect/**', '**/effect/**'],
+                  // The genie-generated tsconfigs include the @effect/language-service plugin which
+                  // emits TS diagnostics (warnings). TypeDoc treats any diagnostic as a fatal error
+                  // and returns no reflections. skipErrorChecking bypasses this check.
+                  skipErrorChecking: true,
                 },
               }),
               starlightTypeDoc({
@@ -342,6 +366,10 @@ export default defineConfig({
                 typeDoc: {
                   excludeExternals: true,
                   externalPattern: ['**/@effect/**', '**/effect/**'],
+                  // The genie-generated tsconfigs include the @effect/language-service plugin which
+                  // emits TS diagnostics (warnings). TypeDoc treats any diagnostic as a fatal error
+                  // and returns no reflections. skipErrorChecking bypasses this check.
+                  skipErrorChecking: true,
                 },
               }),
               starlightTypeDoc({
@@ -351,6 +379,10 @@ export default defineConfig({
                 typeDoc: {
                   excludeExternals: true,
                   externalPattern: ['**/@effect/**', '**/effect/**'],
+                  // The genie-generated tsconfigs include the @effect/language-service plugin which
+                  // emits TS diagnostics (warnings). TypeDoc treats any diagnostic as a fatal error
+                  // and returns no reflections. skipErrorChecking bypasses this check.
+                  skipErrorChecking: true,
                 },
               }),
             ]

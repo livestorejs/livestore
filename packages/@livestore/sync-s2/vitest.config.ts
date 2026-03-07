@@ -5,5 +5,6 @@ export default defineProject({
     name: '@livestore/sync-s2',
     root: import.meta.dirname,
     include: ['src/**/*.test.ts'],
+    server: { deps: { inline: ['@effect/vitest'] } },
   },
 })

@@ -1,0 +1,49 @@
+import { catalog, livestorePackageDefaults, packageJson } from '../../../genie/repo.ts'
+import utilsPkg from '../utils/package.json.genie.ts'
+
+export default packageJson({
+  name: '@livestore/solid',
+  ...livestorePackageDefaults,
+  exports: {
+    '.': './src/mod.ts',
+  },
+  dependencies: {
+    ...catalog.pick(
+      '@livestore/common',
+      '@livestore/framework-toolkit',
+      '@livestore/livestore',
+      '@livestore/utils',
+      '@opentelemetry/api',
+    ),
+  },
+  devDependencies: {
+    ...catalog.pick(
+      '@livestore/adapter-web',
+      '@livestore/utils-dev',
+      '@opentelemetry/sdk-trace-base',
+      '@solidjs/testing-library',
+      'jsdom',
+      'solid-js',
+      'typescript',
+      'vite',
+      'vitest',
+    ),
+    // Required for vitest config (vite-plugin-solid) and test setup (@testing-library/jest-dom)
+    'vite-plugin-solid': '2.11.10',
+    ...catalog.pick('@testing-library/jest-dom'),
+  },
+  peerDependencies: {
+    ...utilsPkg.data.peerDependencies,
+    'solid-js': '^1.9.10',
+  },
+  publishConfig: {
+    access: 'public',
+    exports: {
+      '.': './dist/mod.js',
+    },
+  },
+  scripts: {
+    build: 'tsc',
+    test: "echo 'todo'",
+  },
+})

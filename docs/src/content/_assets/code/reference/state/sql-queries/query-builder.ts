@@ -1,5 +1,6 @@
-import { State } from '@livestore/livestore'
 import { Schema } from 'effect'
+
+import { State } from '@livestore/livestore'
 
 const table = State.SQLite.table({
   name: 'my_table',

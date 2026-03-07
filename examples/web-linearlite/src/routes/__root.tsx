@@ -4,11 +4,11 @@ import type { StoreRegistry } from '@livestore/livestore'
 import { StoreRegistryProvider } from '@livestore/react'
 import { createRootRouteWithContext, HeadContent, Outlet, Scripts } from '@tanstack/react-router'
 import React, { type ReactNode, Suspense } from 'react'
+
 import { MenuContext, NewIssueModalContext } from '../app/contexts.ts'
 import stylesheetUrl from '../app/style.css?url'
 import { Icon } from '../components/icons/index.tsx'
 import { VersionBadge } from '../components/VersionBadge.tsx'
-import type { Status } from '../types/status.ts'
 
 const RootDocument = ({ children }: { children: ReactNode }) => {
   return (
@@ -24,18 +24,25 @@ const RootDocument = ({ children }: { children: ReactNode }) => {
   )
 }
 
+const loadingStyle = { fontFamily: 'system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif' }
+
 const RootComponent = () => {
   const { storeRegistry } = Route.useRouteContext()
 
   const [showMenu, setShowMenu] = React.useState(false)
-  const [newIssueModalStatus, setNewIssueModalStatus] = React.useState<Status | false>(false)
+  const [newIssueModalStatus, setNewIssueModalStatus] = React.useState<0 | 1 | 2 | 3 | 4 | false>(false)
+  const menuContextValue = React.useMemo(() => ({ showMenu, setShowMenu }), [showMenu])
+  const newIssueModalContextValue = React.useMemo(
+    () => ({ newIssueModalStatus, setNewIssueModalStatus }),
+    [newIssueModalStatus],
+  )
 
   return (
     <RootDocument>
-      <Suspense fallback={<Loading />}>
+      <Suspense fallback={React.createElement(Loading)}>
         <StoreRegistryProvider storeRegistry={storeRegistry}>
-          <MenuContext.Provider value={{ showMenu, setShowMenu }}>
-            <NewIssueModalContext.Provider value={{ newIssueModalStatus, setNewIssueModalStatus }}>
+          <MenuContext.Provider value={menuContextValue}>
+            <NewIssueModalContext.Provider value={newIssueModalContextValue}>
               <Outlet />
             </NewIssueModalContext.Provider>
           </MenuContext.Provider>
@@ -46,11 +53,11 @@ const RootComponent = () => {
   )
 }
 
-function Loading() {
+const Loading = () => {
   return (
     <div
       className="fixed inset-0 bg-white dark:bg-neutral-900 flex flex-col items-center justify-center gap-4 text-sm"
-      style={{ fontFamily: 'system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif' }}
+      style={loadingStyle}
     >
       <div className="flex items-center gap-3 text-xl font-bold">
         <Icon name="livestore" className="size-7 mt-1" />

@@ -1,0 +1,12 @@
+# Generated file - DO NOT EDIT
+# Source: pnpm-workspace.yaml.genie.ts
+
+packages:
+  - .
+  - ../packages/@livestore/*
+  - ../packages/@local/*
+  - ../docs
+  - ../docs/src/content/_assets/code
+  - ../tests/*
+
+dedupePeerDependents: true

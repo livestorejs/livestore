@@ -1,6 +1,6 @@
+import { cmd, LivestoreWorkspace } from '@livestore/utils-dev/node'
 import { Effect } from '@livestore/utils/effect'
 import { Cli } from '@livestore/utils/node'
-import { cmd, LivestoreWorkspace } from '@livestore/utils-dev/node'
 /**
  * Since there are many todomvc examples which we want to keep in sync, we're treating the `web-todomvc`
  * example as the source of truth and copy most files from there to the other todomvc examples.
@@ -31,11 +31,11 @@ export const copyTodomvcSrc = Cli.Command.make(
 
       yield* copy('livestore/')
 
-      if (['web-todomvc-solid', 'web-todomvc-experimental', 'web-todomvc-custom-elements'].includes(example)) {
+      if (['web-todomvc-solid', 'web-todomvc-experimental', 'web-todomvc-custom-elements'].includes(example) === true) {
         yield* copy('livestore.worker.ts')
       }
 
-      if (['web-todomvc-sync-cf', 'web-todomvc-sync-electric'].includes(example)) {
+      if (['web-todomvc-sync-cf', 'web-todomvc-sync-electric'].includes(example) === true) {
         yield* copy('components/')
       }
     }

@@ -1,11 +1,12 @@
 import './thread-polyfill.ts'
-
 import inspector from 'node:inspector'
 
-if (process.execArgv.includes('--inspect')) {
+if (process.execArgv.includes('--inspect') === true) {
   inspector.open()
   inspector.waitForDebugger()
 }
+
+import type * as otel from '@opentelemetry/api'
 
 import type { SyncOptions } from '@livestore/common'
 import { LogConfig, UnknownError } from '@livestore/common'
@@ -17,7 +18,6 @@ import { loadSqlite3Wasm } from '@livestore/sqlite-wasm/load-wasm'
 import { sqliteDbFactory } from '@livestore/sqlite-wasm/node'
 import { Effect, FetchHttpClient, Layer, OtelTracer, Schema, Stream, WorkerRunner } from '@livestore/utils/effect'
 import { PlatformNode } from '@livestore/utils/node'
-import type * as otel from '@opentelemetry/api'
 
 import type { TestingOverrides } from './leader-thread-shared.ts'
 import { makeLeaderThread } from './leader-thread-shared.ts'
@@ -42,7 +42,7 @@ export const makeWorker = (options: WorkerOptions) => {
 }
 
 export const makeWorkerEffect = (options: WorkerOptions) => {
-  const TracingLive = options.otelOptions?.tracer
+  const TracingLive = options.otelOptions?.tracer !== undefined
     ? Layer.unwrapEffect(Effect.map(OtelTracer.make, Layer.setTracer)).pipe(
         Layer.provideMerge(Layer.succeed(OtelTracer.OtelTracer, options.otelOptions.tracer)),
       )
@@ -111,58 +111,52 @@ export const makeWorkerEffect = (options: WorkerOptions) => {
         UnknownError.mapToUnknownError,
         Effect.withSpan('@livestore/adapter-node:worker:ExportEventlog'),
       ),
-    GetLeaderHead: () =>
-      Effect.gen(function* () {
-        const workerCtx = yield* LeaderThreadCtx
-        return Eventlog.getClientHeadFromDb(workerCtx.dbEventlog)
-      }).pipe(UnknownError.mapToUnknownError, Effect.withSpan('@livestore/adapter-node:worker:GetLeaderHead')),
-    GetLeaderSyncState: () =>
-      Effect.gen(function* () {
-        const workerCtx = yield* LeaderThreadCtx
-        return yield* workerCtx.syncProcessor.syncState
-      }).pipe(UnknownError.mapToUnknownError, Effect.withSpan('@livestore/adapter-node:worker:GetLeaderSyncState')),
+    GetLeaderHead: Effect.fn('@livestore/adapter-node:worker:GetLeaderHead')(function* () {
+      const workerCtx = yield* LeaderThreadCtx
+      return Eventlog.getClientHeadFromDb(workerCtx.dbEventlog)
+    }, UnknownError.mapToUnknownError),
+    GetLeaderSyncState: Effect.fn('@livestore/adapter-node:worker:GetLeaderSyncState')(function* () {
+      const workerCtx = yield* LeaderThreadCtx
+      return yield* workerCtx.syncProcessor.syncState
+    }, UnknownError.mapToUnknownError),
     SyncStateStream: () =>
       Effect.gen(function* () {
         const workerCtx = yield* LeaderThreadCtx
         return workerCtx.syncProcessor.syncState.changes
       }).pipe(Stream.unwrapScoped),
-    GetNetworkStatus: () =>
-      Effect.gen(function* () {
-        const workerCtx = yield* LeaderThreadCtx
-        return yield* workerCtx.networkStatus
-      }).pipe(UnknownError.mapToUnknownError, Effect.withSpan('@livestore/adapter-node:worker:GetNetworkStatus')),
+    GetNetworkStatus: Effect.fn('@livestore/adapter-node:worker:GetNetworkStatus')(function* () {
+      const workerCtx = yield* LeaderThreadCtx
+      return yield* workerCtx.networkStatus
+    }, UnknownError.mapToUnknownError),
     NetworkStatusStream: () =>
       Effect.gen(function* () {
         const workerCtx = yield* LeaderThreadCtx
         return workerCtx.networkStatus.changes
       }).pipe(Stream.unwrapScoped),
-    GetRecreateSnapshot: () =>
-      Effect.gen(function* () {
-        const workerCtx = yield* LeaderThreadCtx
-        // const result = yield* Deferred.await(workerCtx.initialSetupDeferred)
-        // NOTE we can only return the cached snapshot once as it's transferred (i.e. disposed), so we need to set it to undefined
-        // const cachedSnapshot =
-        //   result._tag === 'Recreate' ? yield* Ref.getAndSet(result.snapshotRef, undefined) : undefined
-        // return cachedSnapshot ?? workerCtx.db.export()
-        const snapshot = workerCtx.dbState.export()
-        return { snapshot, migrationsReport: workerCtx.initialState.migrationsReport }
-      }).pipe(UnknownError.mapToUnknownError, Effect.withSpan('@livestore/adapter-node:worker:GetRecreateSnapshot')),
-    Shutdown: () =>
-      // @effect-diagnostics-next-line unnecessaryEffectGen:off
-      Effect.gen(function* () {
-        // const { db, dbEventlog } = yield* LeaderThreadCtx
-        yield* Effect.logDebug('[@livestore/adapter-node:worker] Shutdown')
+    GetRecreateSnapshot: Effect.fn('@livestore/adapter-node:worker:GetRecreateSnapshot')(function* () {
+      const workerCtx = yield* LeaderThreadCtx
+      // const result = yield* Deferred.await(workerCtx.initialSetupDeferred)
+      // NOTE we can only return the cached snapshot once as it's transferred (i.e. disposed), so we need to set it to undefined
+      // const cachedSnapshot =
+      //   result._tag === 'Recreate' ? yield* Ref.getAndSet(result.snapshotRef, undefined) : undefined
+      // return cachedSnapshot ?? workerCtx.db.export()
+      const snapshot = workerCtx.dbState.export()
+      return { snapshot, migrationsReport: workerCtx.initialState.migrationsReport }
+    }, UnknownError.mapToUnknownError),
+    Shutdown: Effect.fn('@livestore/adapter-node:worker:Shutdown')(function* () {
+      // const { db, dbEventlog } = yield* LeaderThreadCtx
+      yield* Effect.logDebug('[@livestore/adapter-node:worker] Shutdown')
 
-        // if (devtools.enabled) {
-        //   yield* FiberSet.clear(devtools.connections)
-        // }
-        // db.close()
-        // dbEventlog.close()
+      // if (devtools.enabled) {
+      //   yield* FiberSet.clear(devtools.connections)
+      // }
+      // db.close()
+      // dbEventlog.close()
 
-        // Buy some time for Otel to flush
-        // TODO find a cleaner way to do this
-        // yield* Effect.sleep(1000)
-      }).pipe(UnknownError.mapToUnknownError, Effect.withSpan('@livestore/adapter-node:worker:Shutdown')),
+      // Buy some time for Otel to flush
+      // TODO find a cleaner way to do this
+      // yield* Effect.sleep(1000)
+    }, UnknownError.mapToUnknownError),
     ExtraDevtoolsMessage: ({ message }) =>
       Effect.andThen(LeaderThreadCtx, (_) => _.extraIncomingMessagesQueue.offer(message)).pipe(
         UnknownError.mapToUnknownError,

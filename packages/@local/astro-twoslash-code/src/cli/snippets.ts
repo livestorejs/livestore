@@ -83,7 +83,6 @@ import * as astroExpressiveCodeModuleStatic from 'astro-expressive-code'
  * any code in this module, update this spec first; drift here will guarantee regressions the next
  * time someone tweaks Twoslash or the docs build.
  */
-
 /**
  * CLI entrypoint that keeps docs snippets warm.
  *
@@ -95,9 +94,6 @@ import * as astroExpressiveCodeModuleStatic from 'astro-expressive-code'
  * The pre-rendered output is consumed by Astro at build time so code examples render instantly without running
  * Twoslash in the browser.
  */
-
-import { type Duration, Effect, FileSystem, type PlatformError, Schema, Stream } from '@livestore/utils/effect'
-import { Cli, NodeFileSystemWithWatch } from '@livestore/utils/node'
 import type { ExpressiveCodeBlockOptions } from 'expressive-code'
 import type {
   Element as THastElement,
@@ -107,11 +103,18 @@ import type {
   RootContent as THastRootContent,
 } from 'hast'
 import { toHtml } from 'hast-util-to-html'
+
+import { type Duration, Effect, FileSystem, type PlatformError, Schema, Stream } from '@livestore/utils/effect'
+import { Cli, NodeFileSystemWithWatch } from '@livestore/utils/node'
+
 import type { LineOwnerMarker, LineOwnerMetadata, TwoslashRuntimeOptions } from '../expressive-code.ts'
 import { createExpressiveCodeConfig, normalizeRuntimeOptions } from '../expressive-code.ts'
 import { resolveProjectPaths, type TwoslashProjectPaths } from '../project-paths.ts'
 import type { SnippetBundle } from '../vite/snippet-graph.ts'
 import { buildSnippetBundle, __internal as snippetGraphInternal } from '../vite/snippet-graph.ts'
+
+const jsonStringify = Schema.encodeSync(Schema.parseJson())
+const jsonStringifyPretty = Schema.encodeSync(Schema.parseJson({ space: 2 }))
 
 type THastRendererResult = {
   renderedGroupAst: THastElement
@@ -217,7 +220,7 @@ const assembleSnippet = (
       })
       insertStartSentinel()
       pushLines(focusLines, file.content, owner, (line) => {
-        if (isCutMarkerLine(line)) {
+        if (isCutMarkerLine(line) === true) {
           insertStartSentinel()
         }
       })
@@ -244,7 +247,7 @@ const assembleSnippet = (
     })
     insertSupportStartSentinel()
     pushLines(supportLines, file.content, owner, (line) => {
-      if (isCutMarkerLine(line)) {
+      if (isCutMarkerLine(line) === true) {
         insertSupportStartSentinel()
       }
     })
@@ -263,7 +266,7 @@ const assembleSnippet = (
 
   const code = lines.map((line) => line.content).join('\n')
   return {
-    code: code.endsWith('\n') ? code : `${code}\n`,
+    code: code.endsWith('\n') === true ? code : `${code}\n`,
     lines,
   }
 }
@@ -277,18 +280,18 @@ type SnippetLineKind =
 
 const classifySnippetLine = (line: string): SnippetLineKind => {
   const trimmed = line.trimStart()
-  if (trimmed.startsWith('// @filename:')) {
+  if (trimmed.startsWith('// @filename:') === true) {
     return { _tag: 'filename' }
   }
-  if (trimmed.startsWith('// ---cut---') || trimmed.startsWith('// __LS_CUT__')) {
+  if (trimmed.startsWith('// ---cut---') === true || trimmed.startsWith('// __LS_CUT__') === true) {
     return { _tag: 'cut' }
   }
   const startMatch = line.match(/^\s*\/\/ __LS_FILE_START__:[^\s]+\s*/)
-  if (startMatch) {
+  if (startMatch !== null) {
     return { _tag: 'start', remainder: line.slice(startMatch[0].length) }
   }
   const endMatch = line.match(/^\s*\/\/ __LS_FILE_END__:[^\s]+\s*/)
-  if (endMatch) {
+  if (endMatch !== null) {
     return { _tag: 'end', remainder: line.slice(endMatch[0].length) }
   }
   return { _tag: 'code', content: line }
@@ -316,7 +319,7 @@ const canonicalizeDisplayPath = (relativePath: string, fallback: string): string
 }
 
 const canonicalizeVirtualPath = (displayPath: string): string =>
-  displayPath.startsWith('.') ? displayPath : `./${displayPath}`
+  displayPath.startsWith('.') === true ? displayPath : `./${displayPath}`
 
 type TVirtualFileRecord = SnippetBundle['files'][number] & {
   virtualPath: string
@@ -362,7 +365,7 @@ const replaceRelativeSpecifier = (source: string, from: string, to: string): str
 
   let rewritten = source
   for (const [needle, replacement] of patterns) {
-    if (rewritten.includes(needle)) {
+    if (rewritten.includes(needle) === true) {
       rewritten = rewritten.replaceAll(needle, replacement)
     }
   }
@@ -392,7 +395,7 @@ const normalizeRelativeSpecifiers = (
   const rewrites: Mutable<TVirtualFileRecord['relativeImports']> = []
 
   for (const specifier of snippetGraphInternal.extractRelativeImports(content)) {
-    if (!specifier.startsWith('./') && !specifier.startsWith('../')) continue
+    if (specifier.startsWith('./') === false && specifier.startsWith('../') === false) continue
     const { pathPart, suffix } = splitImportSpecifier(specifier)
     const fromDir = path.posix.dirname(fileRelativePath)
     const resolved = path.posix.normalize(path.posix.join(fromDir, pathPart))
@@ -400,7 +403,7 @@ const normalizeRelativeSpecifiers = (
     let relativeSpecifier = path.posix.relative(fromDir, resolved)
     if (relativeSpecifier.length === 0 || relativeSpecifier === '.') {
       relativeSpecifier = `./${path.posix.basename(resolved)}`
-    } else if (!relativeSpecifier.startsWith('./') && !relativeSpecifier.startsWith('../')) {
+    } else if (relativeSpecifier.startsWith('./') === false && relativeSpecifier.startsWith('../') === false) {
       relativeSpecifier = `./${relativeSpecifier}`
     }
 
@@ -442,7 +445,7 @@ const applySpecifierRewrites = (
 const createVirtualFiles = (files: SnippetBundle['files'], fileOrder: readonly string[]): TVirtualFileRecord[] => {
   const records = fileOrder.map((filename) => {
     const file = files[filename]
-    if (!file) {
+    if (file == null) {
       throw new Error(`createVirtualFiles: missing file record for ${filename}`)
     }
     const fallbackName = path.posix.basename(file.absolutePath) || 'index.ts'
@@ -500,7 +503,7 @@ const remapVirtualPathsForFocus = (files: TVirtualFileRecord[], focusFilename: s
     return {
       ...file,
       virtualPath: file.canonicalVirtualPath,
-      content: isFocus ? file.focusTwoslashContent : file.canonicalContent,
+      content: isFocus === true ? file.focusTwoslashContent : file.canonicalContent,
     }
   })
 }
@@ -514,14 +517,14 @@ const isElementNode = (node: THastElementContent | THastRootContent | undefined)
   Boolean(node && node.type === 'element')
 
 const extractText = (node: THastElementContent | THastRootContent | null | undefined): string => {
-  if (!node) return ''
+  if (node == null) return ''
   if (node.type === 'text') {
     return node.value ?? ''
   }
   if (node.type === 'comment') {
     return ''
   }
-  if (Array.isArray((node as THastParent).children)) {
+  if (Array.isArray((node as THastParent).children) === true) {
     return (node as THastParent).children
       .map((child) => extractText(child as THastElementContent | THastRootContent))
       .join('')
@@ -534,9 +537,9 @@ const extractText = (node: THastElementContent | THastRootContent | null | undef
  * couple of wrapper nodes (figure/pre/code), so a shallow scan is sufficient.
  */
 const findChildByTag = (parent: THastParent | null | undefined, tagName: string): THastElement | null => {
-  if (!parent?.children) return null
+  if (parent?.children == null) return null
   for (const child of parent.children) {
-    if (isElementNode(child) && child.tagName === tagName) {
+    if (isElementNode(child) === true && child.tagName === tagName) {
       return child
     }
   }
@@ -544,7 +547,7 @@ const findChildByTag = (parent: THastParent | null | undefined, tagName: string)
 }
 
 const toClassList = (value: unknown): string[] => {
-  if (Array.isArray(value)) {
+  if (Array.isArray(value) === true) {
     return value.flatMap((item) => toClassList(item))
   }
   if (typeof value === 'string') {
@@ -557,18 +560,18 @@ const collectDiagnostics = (node: THastElement): string[] => {
   const diagnostics: string[] = []
 
   const walk = (current: THastElementContent | THastRootContent | undefined) => {
-    if (!isElementNode(current)) return
+    if (isElementNode(current) === false) return
 
-    const element = current as THastElement
+    const element = current
     const classList = toClassList(element.properties?.className)
-    if (classList.includes('twoslash-error-box-content-message')) {
+    if (classList.includes('twoslash-error-box-content-message') === true) {
       const message = extractText(element).trim()
       if (message.length > 0) {
         diagnostics.push(message)
       }
     }
 
-    if (Array.isArray(element.children)) {
+    if (Array.isArray(element.children) === true) {
       for (const child of element.children) {
         walk(child as THastElementContent | THastRootContent)
       }
@@ -583,7 +586,7 @@ const normalizeSnippetPath = (value: string): string => {
   const trimmed = value.trim()
   if (trimmed.length === 0) return trimmed
   const normalized = path.posix.normalize(trimmed)
-  if (normalized.startsWith('./') || normalized.startsWith('../')) {
+  if (normalized.startsWith('./') === true || normalized.startsWith('../') === true) {
     return normalized
   }
   return `./${normalized}`
@@ -631,7 +634,7 @@ const stripSentinelsFromDataCodeAttributes = (html: string): string =>
 const extractCanonicalOwner = (raw: string | null | undefined): string | null => {
   if (typeof raw !== 'string') return null
   const [token] = raw.trim().split(/\s+/, 1)
-  if (!token) return null
+  if (token == null) return null
   return normalizeSnippetPath(token)
 }
 
@@ -642,7 +645,7 @@ type LineOwnershipAttributes = {
 }
 
 const isSentinelText = (text: string): boolean => {
-  if (text.includes('__LS_FILE_START__') || text.includes('__LS_FILE_END__')) {
+  if (text.includes('__LS_FILE_START__') === true || text.includes('__LS_FILE_END__') === true) {
     return true
   }
   const classified = classifySnippetLine(text)
@@ -650,29 +653,29 @@ const isSentinelText = (text: string): boolean => {
 }
 
 const removeSentinelNodes = (current: THastElementContent | THastRootContent | null | undefined): void => {
-  if (!current) return
+  if (current == null) return
   if (current.type === 'text') {
-    if (isSentinelText(current.value ?? '')) {
+    if (isSentinelText(current.value ?? '') === true) {
       current.value = ''
     }
     return
   }
-  if (!isElementNode(current)) return
+  if (isElementNode(current) === false) return
 
   const element = current as THastElement & THastParent
-  if (!Array.isArray(element.children)) return
+  if (Array.isArray(element.children) === false) return
 
   const retained: Array<THastElementContent> = []
   for (const child of element.children) {
-    if (isElementNode(child)) {
-      if (isSentinelText(extractText(child))) {
+    if (isElementNode(child) === true) {
+      if (isSentinelText(extractText(child)) === true) {
         continue
       }
       removeSentinelNodes(child as THastElementContent)
       retained.push(child as THastElementContent)
       continue
     }
-    if (child.type === 'text' && isSentinelText(child.value ?? '')) {
+    if (child.type === 'text' && isSentinelText(child.value ?? '') === true) {
       continue
     }
     removeSentinelNodes(child as THastElementContent)
@@ -686,26 +689,26 @@ const extractLineOwnershipAttributes = (line: THastElement): LineOwnershipAttrib
   const ownerRaw = typeof properties['data-ls-owner'] === 'string' ? properties['data-ls-owner'].trim() : null
   const markerRaw = typeof properties['data-ls-marker'] === 'string' ? properties['data-ls-marker'].trim() : null
   const marker = markerRaw === 'start' || markerRaw === 'end' ? (markerRaw as LineOwnerMarker) : null
-  const owner = ownerRaw && ownerRaw.length > 0 ? ownerRaw : null
+  const owner = ownerRaw != null && ownerRaw.length > 0 ? ownerRaw : null
   if (owner !== null || marker !== null || ownerRaw === '') {
     return { wrapper: line, owner, marker }
   }
 
-  if (!Array.isArray((line as THastParent).children)) {
+  if (Array.isArray((line as THastParent).children) === false) {
     return { wrapper: null, owner: null, marker: null }
   }
 
   for (const child of (line as THastParent).children) {
-    if (!isElementNode(child)) {
+    if (isElementNode(child) === false) {
       continue
     }
-    const element = child as THastElement
+    const element = child
     const childProps = (element.properties ?? {}) as Record<string, unknown>
     const childOwnerRaw = typeof childProps['data-ls-owner'] === 'string' ? childProps['data-ls-owner'].trim() : null
     const childMarkerRaw = typeof childProps['data-ls-marker'] === 'string' ? childProps['data-ls-marker'].trim() : null
     const childMarker =
       childMarkerRaw === 'start' || childMarkerRaw === 'end' ? (childMarkerRaw as LineOwnerMarker) : null
-    const childOwner = childOwnerRaw && childOwnerRaw.length > 0 ? childOwnerRaw : null
+    const childOwner = childOwnerRaw != null && childOwnerRaw.length > 0 ? childOwnerRaw : null
     if (childOwner !== null || childMarker !== null || childOwnerRaw === '') {
       return { wrapper: element, owner: childOwner, marker: childMarker }
     }
@@ -718,7 +721,7 @@ const trimRenderedAst = (root: THastElement, focusVirtualPath: string, assembled
   const figure = findChildByTag(root as THastParent, 'figure')
   const pre = findChildByTag(figure, 'pre')
   const code = findChildByTag(pre, 'code')
-  if (!code || !Array.isArray(code.children)) return root
+  if (code == null || Array.isArray(code.children) === false) return root
 
   const canonicalFocus = extractCanonicalOwner(focusVirtualPath)
   if (canonicalFocus === null) {
@@ -728,14 +731,14 @@ const trimRenderedAst = (root: THastElement, focusVirtualPath: string, assembled
   const filtered: THastElement[] = []
 
   for (const child of code.children) {
-    if (!isElementNode(child)) {
+    if (isElementNode(child) === false) {
       continue
     }
-    if ((child as THastElement).tagName !== 'div') {
+    if (child.tagName !== 'div') {
       continue
     }
 
-    const lineElement = child as THastElement
+    const lineElement = child
     const { wrapper, owner, marker } = extractLineOwnershipAttributes(lineElement)
 
     if (marker !== null) {
@@ -753,14 +756,14 @@ const trimRenderedAst = (root: THastElement, focusVirtualPath: string, assembled
 
     const textContent = extractText(lineElement)
     const trimmedText = textContent.trim()
-    if (trimmedText.startsWith('// @filename:')) {
+    if (trimmedText.startsWith('// @filename:') === true) {
       continue
     }
-    if (isCutMarkerLine(trimmedText)) {
+    if (isCutMarkerLine(trimmedText) === true) {
       continue
     }
 
-    if (wrapper) {
+    if (wrapper !== null) {
       const wrapperProperties = (wrapper.properties ?? {}) as Record<string, unknown>
       delete wrapperProperties['data-ls-owner']
       delete wrapperProperties['data-ls-marker']
@@ -795,22 +798,26 @@ const trimRenderedAst = (root: THastElement, focusVirtualPath: string, assembled
   code.children = filtered
 
   const figcaption = findChildByTag(figure, 'figcaption')
-  if (figure && Array.isArray((figure as THastParent).children) && figcaption) {
+  if (figure !== null && Array.isArray((figure as THastParent).children) === true && figcaption !== null) {
     ;(figure as THastParent).children = (figure as THastParent).children.filter((child) => child !== figcaption)
   }
 
   const copyElement =
-    figure && Array.isArray((figure as THastParent).children)
+    figure !== null && Array.isArray((figure as THastParent).children) === true
       ? (figure as THastParent).children.find((child) => {
-          if (!isElementNode(child)) return false
+          if (isElementNode(child) === false) return false
           if (child.tagName !== 'div') return false
-          return toClassList((child as THastElement).properties?.className).includes('copy')
+          return toClassList(child.properties?.className).includes('copy')
         })
       : null
 
-  if (copyElement && isElementNode(copyElement) && Array.isArray((copyElement as THastParent).children)) {
+  if (
+    copyElement !== null &&
+    isElementNode(copyElement) === true &&
+    Array.isArray((copyElement as THastParent).children) === true
+  ) {
     for (const node of (copyElement as THastParent).children) {
-      if (!isElementNode(node)) continue
+      if (isElementNode(node) === false) continue
       if (node.tagName !== 'button') continue
       const properties = node.properties ?? {}
       const trimmedSource = assembled.lines
@@ -821,7 +828,7 @@ const trimRenderedAst = (root: THastElement, focusVirtualPath: string, assembled
             return false
           }
           const trimmed = line.content.trimStart()
-          if (isCutMarkerLine(trimmed)) {
+          if (isCutMarkerLine(trimmed) === true) {
             return false
           }
           return true
@@ -834,15 +841,15 @@ const trimRenderedAst = (root: THastElement, focusVirtualPath: string, assembled
     }
   }
 
-  if (figure && Array.isArray((figure as THastParent).children)) {
+  if (figure !== null && Array.isArray((figure as THastParent).children) === true) {
     const retainedChildren: Array<THastElementContent> = []
 
     // Sentinel nodes were already cleaned from individual lines before setting code.children
     // So we can safely add the pre element without further cleaning
-    if (pre) {
+    if (pre !== null) {
       retainedChildren.push(pre as unknown as THastElementContent)
     }
-    if (copyElement && isElementNode(copyElement)) {
+    if (copyElement !== null && isElementNode(copyElement) === true) {
       removeSentinelNodes(copyElement as unknown as THastElementContent)
       retainedChildren.push(copyElement as THastElementContent)
     }
@@ -875,7 +882,7 @@ const restoreFocusSpecifiers = (root: THastElement, rewrites: TVirtualFileRecord
     }
     let current = value
     for (const rewrite of replacements) {
-      if (current.includes(rewrite.canonical)) {
+      if (current.includes(rewrite.canonical) === true) {
         current = current.split(rewrite.canonical).join(rewrite.raw)
       }
     }
@@ -883,7 +890,7 @@ const restoreFocusSpecifiers = (root: THastElement, rewrites: TVirtualFileRecord
   }
 
   const walk = (node: THastElementContent | THastRootContent | null | undefined): void => {
-    if (!node) return
+    if (node == null) return
     if ((node as { type?: string }).type === 'text') {
       const textNode = node as { value?: string }
       const replaced = replaceValue(textNode.value)
@@ -892,9 +899,9 @@ const restoreFocusSpecifiers = (root: THastElement, rewrites: TVirtualFileRecord
       }
       return
     }
-    if (isElementNode(node)) {
-      const element = node as THastElement
-      if (Array.isArray(element.children)) {
+    if (isElementNode(node) === true) {
+      const element = node
+      if (Array.isArray(element.children) === true) {
         for (const child of element.children) {
           walk(child as THastElementContent | THastRootContent)
         }
@@ -907,7 +914,7 @@ const restoreFocusSpecifiers = (root: THastElement, rewrites: TVirtualFileRecord
 }
 
 const sanitizeRenderedHtml = (html: string): string => {
-  if (!html) return html
+  if (html == null) return html
   return html.replace(/<figcaption[^>]*>[\s\S]*?<\/figcaption>/g, '')
 }
 
@@ -921,7 +928,7 @@ const sanitizeRenderedHtml = (html: string): string => {
  */
 const patchJsModules = (modules: readonly string[]): string[] =>
   modules.map((moduleCode) =>
-    moduleCode.includes('function setupTooltip')
+    moduleCode.includes('function setupTooltip') === true
       ? (() => {
           let patched = moduleCode
           // Anchor the tooltip in `document.body` so a single container handles
@@ -929,34 +936,34 @@ const patchJsModules = (modules: readonly string[]): string[] =>
           // coordinates below to account for window scroll offset so placement stays
           // consistent even when the page is scrolled far past the snippet.
           const anchorPattern = 's.closest(".expressive-code")'
-          if (patched.includes(anchorPattern)) {
+          if (patched.includes(anchorPattern) === true) {
             patched = patched.split(anchorPattern).join('document.body')
           }
-          if (!patched.includes('if(!s)return;')) {
+          if (patched.includes('if(!s)return;') === false) {
             patched = patched.replace(
               'let s=e.querySelector(".twoslash-popup-container"),',
               'let s=e.querySelector(".twoslash-popup-container");if(!s)return;let ',
             )
           }
-          if (!patched.includes('let a=!1,r,u=0;')) {
+          if (patched.includes('let a=!1,r,u=0;') === false) {
             patched = patched.replace('let a=!1,r;', 'let a=!1,r,u=0;')
           }
-          if (!patched.includes('return void requestAnimationFrame(n);')) {
+          if (patched.includes('return void requestAnimationFrame(n);') === false) {
             patched = patched.replace(
               'function n(){clearTimeout(r),t.appendChild(s),',
               'function n(){clearTimeout(r);const c=e.getBoundingClientRect();if(c.width===0&&c.height===0){if(u<5){u+=1;return void requestAnimationFrame(n);}return;}u=0;t.appendChild(s),',
             )
           }
-          if (patched.includes('t.appendChild(s),t.appendChild(s),')) {
+          if (patched.includes('t.appendChild(s),t.appendChild(s),') === true) {
             patched = patched.replace('t.appendChild(s),t.appendChild(s),', 't.appendChild(s),')
           }
-          if (!patched.includes('s.style.visibility="hidden",new Promise')) {
+          if (patched.includes('s.style.visibility="hidden",new Promise') === false) {
             patched = patched.replace(
               't.appendChild(s),new Promise',
               't.appendChild(s),s.style.position="absolute",s.style.display="block",s.style.visibility="hidden",new Promise',
             )
           }
-          if (!patched.includes('s.style.visibility="visible",s.setAttribute')) {
+          if (patched.includes('s.style.visibility="visible",s.setAttribute') === false) {
             patched = patched.replace(
               // biome-ignore lint/suspicious/noTemplateCurlyInString: it's ok
               'Object.assign(s.style,{display:"block",left:`${o?20:e}px`,top:t+"px"})',
@@ -964,7 +971,7 @@ const patchJsModules = (modules: readonly string[]): string[] =>
               'Object.assign(s.style,{left:`${o?20:e}px`,top:t+"px"}),s.style.visibility="visible"',
             )
           }
-          if (!patched.includes('s.style.display="none",s.style.visibility="hidden"')) {
+          if (patched.includes('s.style.display="none",s.style.visibility="hidden"') === false) {
             patched = patched.replace('s.style.display="none"', 's.style.display="none",s.style.visibility="hidden"')
           }
           return patched
@@ -985,8 +992,8 @@ const collectSourceFiles = (
     const files: string[] = []
 
     for (const name of entries) {
-      if (EXCLUDED_DIRECTORIES.has(name)) continue
-      if (name.startsWith('.')) {
+      if (EXCLUDED_DIRECTORIES.has(name) === true) continue
+      if (name.startsWith('.') === true) {
         if (!(name === '.gitignore' || name === '.eslintrc' || name === '.prettierrc')) continue
       }
 
@@ -1001,7 +1008,7 @@ const collectSourceFiles = (
 
       if (info.type !== 'File') continue
 
-      if (!SUPPORTED_SOURCE_EXTENSIONS.has(path.extname(name))) continue
+      if (SUPPORTED_SOURCE_EXTENSIONS.has(path.extname(name)) === false) continue
       files.push(fullPath)
     }
 
@@ -1052,7 +1059,7 @@ const collectSnippetEntries = (
           continue
         }
         const [rawPath] = specifier.split('?')
-        if (!rawPath || !(rawPath.startsWith('./') || rawPath.startsWith('../'))) {
+        if (rawPath == null || !(rawPath.startsWith('./') === true || rawPath.startsWith('../') === true)) {
           match = SNIPPET_IMPORT_REGEX.exec(source)
           continue
         }
@@ -1067,13 +1074,13 @@ const collectSnippetEntries = (
               }),
           ),
         )
-        if (!exists) {
+        if (exists === false) {
           match = SNIPPET_IMPORT_REGEX.exec(source)
           continue
         }
 
         const record = entries.get(resolved)
-        if (record) {
+        if (record !== undefined) {
           record.importers.add(filePath)
         } else {
           entries.set(resolved, {
@@ -1089,7 +1096,7 @@ const collectSnippetEntries = (
 
     return Array.from(entries.values()).map(({ entryPath, importers }) => ({
       entryPath,
-      importers: Array.from(importers).sort(),
+      importers: Array.from(importers).toSorted(),
     }))
   })
 
@@ -1264,7 +1271,7 @@ const loadPreviousManifest = (
   fs: FileSystem.FileSystem,
   paths: TwoslashProjectPaths,
   expectedConfigHash: string,
-): Effect.Effect<TPreviousManifest | null, never> =>
+): Effect.Effect<TPreviousManifest | null> =>
   Effect.gen(function* () {
     const manifestExistsResult = yield* fs.exists(paths.manifestPath).pipe(Effect.either)
     if (manifestExistsResult._tag === 'Left') {
@@ -1301,7 +1308,7 @@ const loadPreviousManifest = (
 
     const entries = new Map<string, TManifestEntry>()
     for (const entry of parsed.entries ?? []) {
-      if (!entry?.entryFile) continue
+      if (entry?.entryFile == null) continue
       entries.set(entry.entryFile, {
         entryFile: entry.entryFile,
         mainFilename: entry.mainFilename,
@@ -1325,7 +1332,7 @@ type ResolvedBuildOptions = {
 
 type NormalizedWatchOptions = {
   debounce: Duration.DurationInput
-  onRebuild: (info: WatchSnippetsRebuildInfo) => Effect.Effect<void, never>
+  onRebuild: (info: WatchSnippetsRebuildInfo) => Effect.Effect<void>
 }
 
 const DEFAULT_WATCH_DEBOUNCE: Duration.DurationInput = '150 millis'
@@ -1348,11 +1355,11 @@ export type WatchSnippetsRebuildInfo = {
 
 export type WatchSnippetsOptions = BuildSnippetsOptions & {
   debounce?: Duration.DurationInput
-  onRebuild?: (info: WatchSnippetsRebuildInfo) => Effect.Effect<void, never>
+  onRebuild?: (info: WatchSnippetsRebuildInfo) => Effect.Effect<void>
 }
 
 const resolveOptions = (options: BuildSnippetsOptions = {}): ResolvedBuildOptions => {
-  const projectRoot = options.projectRoot ? path.resolve(options.projectRoot) : process.cwd()
+  const projectRoot = options.projectRoot !== undefined ? path.resolve(options.projectRoot) : process.cwd()
   const runtimeOptions = normalizeRuntimeOptions(options.runtime)
   return {
     paths: resolveProjectPaths(projectRoot),
@@ -1385,18 +1392,18 @@ const summarizeWatchEvent = (
 ): WatchEventSummary | null => {
   const rootAbsolute = path.resolve(root)
   const rawPath = event.path
-  const absolutePath = path.resolve(path.isAbsolute(rawPath) ? rawPath : path.join(rootAbsolute, rawPath))
+  const absolutePath = path.resolve(path.isAbsolute(rawPath) === true ? rawPath : path.join(rootAbsolute, rawPath))
 
-  if (scope === 'snippet' && isWithinDirectory(absolutePath, cacheRoot)) {
+  if (scope === 'snippet' && isWithinDirectory(absolutePath, cacheRoot) === true) {
     return null
   }
 
-  if (!isWithinDirectory(absolutePath, rootAbsolute)) {
+  if (isWithinDirectory(absolutePath, rootAbsolute) === false) {
     return null
   }
 
   const extension = path.extname(absolutePath).toLowerCase()
-  if (scope === 'source' && extension.length > 0 && !SUPPORTED_SOURCE_EXTENSIONS.has(extension as typeof extension)) {
+  if (scope === 'source' && extension.length > 0 && SUPPORTED_SOURCE_EXTENSIONS.has(extension) === false) {
     return null
   }
 
@@ -1452,7 +1459,7 @@ const buildSnippetsInternal = ({ paths, runtimeOptions }: ResolvedBuildOptions) 
           baseDir: paths.snippetAssetsRoot,
         })
 
-        if (!isWithinDirectory(bundle.entryFilePath, paths.snippetAssetsRoot)) {
+        if (isWithinDirectory(bundle.entryFilePath, paths.snippetAssetsRoot) === false) {
           return yield* new SnippetBuildError({
             message: `Snippet entry ${bundle.entryFilePath} is outside the snippet root (${paths.snippetAssetsRoot}). Copy the file into the docs snippet assets and import it from there.`,
             entry: entry.entryPath,
@@ -1460,7 +1467,7 @@ const buildSnippetsInternal = ({ paths, runtimeOptions }: ResolvedBuildOptions) 
         }
 
         for (const file of Object.values(bundle.files)) {
-          if (!isWithinDirectory(file.absolutePath, paths.snippetAssetsRoot)) {
+          if (isWithinDirectory(file.absolutePath, paths.snippetAssetsRoot) === false) {
             return yield* new SnippetBuildError({
               message: `Snippet file ${file.absolutePath} is outside the snippet root (${paths.snippetAssetsRoot}). Move or copy it under the snippet assets directory.`,
               entry: entry.entryPath,
@@ -1472,7 +1479,7 @@ const buildSnippetsInternal = ({ paths, runtimeOptions }: ResolvedBuildOptions) 
 
         const filesWithHash = bundle.fileOrder.map((filename, index) => {
           const file = bundle.files[filename]
-          if (!file) {
+          if (file == null) {
             throw new SnippetBuildError({
               message: `Snippet bundle missing file record for ${filename}`,
               entry: entry.entryPath,
@@ -1487,7 +1494,7 @@ const buildSnippetsInternal = ({ paths, runtimeOptions }: ResolvedBuildOptions) 
         })
 
         const bundleHash = hashString(
-          JSON.stringify({
+          jsonStringify({
             files: filesWithHash.map((file) => ({
               filename: file.filename,
               hash: file.hash,
@@ -1497,10 +1504,10 @@ const buildSnippetsInternal = ({ paths, runtimeOptions }: ResolvedBuildOptions) 
         )
 
         const cachedEntry = previousEntries.get(entryFileRelative)
-        if (cachedEntry && cachedEntry.bundleHash === bundleHash) {
+        if (cachedEntry !== undefined && cachedEntry.bundleHash === bundleHash) {
           const cachedArtifactPath = path.join(paths.cacheRoot, cachedEntry.artifactPath)
           const cachedArtifactExists = yield* fs.exists(cachedArtifactPath)
-          if (cachedArtifactExists) {
+          if (cachedArtifactExists === true) {
             artifactEntries.push({
               entryFile: cachedEntry.entryFile,
               mainFilename: cachedEntry.mainFilename,
@@ -1552,7 +1559,7 @@ const buildSnippetsInternal = ({ paths, runtimeOptions }: ResolvedBuildOptions) 
         }
 
         const artifactPath = path.resolve(paths.cacheRoot, `${bundle.mainFileRelativePath}.json`)
-        if (!isWithinDirectory(artifactPath, paths.cacheRoot)) {
+        if (isWithinDirectory(artifactPath, paths.cacheRoot) === false) {
           return yield* new SnippetBuildError({
             message: `Resolved artefact path escapes cache root: ${artifactPath}`,
             entry: entry.entryPath,
@@ -1568,7 +1575,7 @@ const buildSnippetsInternal = ({ paths, runtimeOptions }: ResolvedBuildOptions) 
           ),
         )
 
-        yield* fs.writeFileString(artifactPath, `${JSON.stringify(artifact, null, 2)}\n`).pipe(
+        yield* fs.writeFileString(artifactPath, `${jsonStringifyPretty(artifact)}\n`).pipe(
           Effect.mapError(
             (cause) =>
               new SnippetBuildError({
@@ -1604,17 +1611,15 @@ const buildSnippetsInternal = ({ paths, runtimeOptions }: ResolvedBuildOptions) 
       entries: artifactEntries,
     }
 
-    yield* fs
-      .writeFileString(path.join(paths.cacheRoot, 'manifest.json'), `${JSON.stringify(manifest, null, 2)}\n`)
-      .pipe(
-        Effect.mapError(
-          (cause) =>
-            new SnippetBuildError({
-              message: 'Unable to write snippets manifest',
-              cause,
-            }),
-        ),
-      )
+    yield* fs.writeFileString(path.join(paths.cacheRoot, 'manifest.json'), `${jsonStringifyPretty(manifest)}\n`).pipe(
+      Effect.mapError(
+        (cause) =>
+          new SnippetBuildError({
+            message: 'Unable to write snippets manifest',
+            cause,
+          }),
+      ),
+    )
 
     const cacheHits = snippetEntries.length - renderedCount
     yield* Effect.log(`Rendered ${renderedCount} snippet bundles (${cacheHits} cache hits)`)
@@ -1647,10 +1652,10 @@ const watchSnippetsInternal = (
     const sourceRootExists = yield* fs.exists(paths.srcRoot).pipe(Effect.catchAll(() => Effect.succeed(false)))
 
     const watchStreams: Array<Stream.Stream<WatchEventSummary, PlatformError.PlatformError>> = []
-    if (snippetRootExists) {
+    if (snippetRootExists === true) {
       watchStreams.push(createWatchStream(fs, 'snippet', paths.snippetAssetsRoot, paths.cacheRoot))
     }
-    if (sourceRootExists) {
+    if (sourceRootExists === true) {
       watchStreams.push(createWatchStream(fs, 'source', paths.srcRoot, paths.cacheRoot))
     }
 
@@ -1659,7 +1664,7 @@ const watchSnippetsInternal = (
     const runRebuild = (reason: WatchSnippetsRebuildInfo['reason'], event: WatchEventSummary | null) =>
       Effect.gen(function* () {
         const startedAt = Date.now()
-        if (event) {
+        if (event !== null) {
           yield* Effect.log(
             `Snippets watch: ${event.scope} ${event.kind.toLowerCase()} at ${event.relativePath}, rebuilding...`,
           )
@@ -1673,7 +1678,7 @@ const watchSnippetsInternal = (
         if (result._tag === 'Left') {
           const error = result.left
           yield* Effect.logError(
-            `Snippets watch: build failed${event ? ` (trigger: ${event.relativePath})` : ''}: ${error.message}`,
+            `Snippets watch: build failed${event !== null ? ` (trigger: ${event.relativePath})` : ''}: ${error.message}`,
           )
           yield* notify({ reason, event, renderedCount: -1, durationMs })
           return

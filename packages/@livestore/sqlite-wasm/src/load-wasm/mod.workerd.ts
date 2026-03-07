@@ -1,6 +1,5 @@
 import * as WaSqlite from '@livestore/wa-sqlite'
 import WaSqliteFactory from '@livestore/wa-sqlite/dist/wa-sqlite.mjs'
-
 // @ts-expect-error TODO fix types in wa-sqlite
 import wasm from '@livestore/wa-sqlite/dist/wa-sqlite.wasm'
 

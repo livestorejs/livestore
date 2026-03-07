@@ -1,8 +1,9 @@
-import { Effect, ReadonlyRecord, Schema } from '@livestore/utils/effect'
-import { Vitest } from '@livestore/utils-dev/node-vitest'
 import * as otel from '@opentelemetry/api'
 import { BasicTracerProvider, InMemorySpanExporter, SimpleSpanProcessor } from '@opentelemetry/sdk-trace-base'
 import { assert, expect } from 'vitest'
+
+import { Vitest } from '@livestore/utils-dev/node-vitest'
+import { Effect, ReadonlyRecord, Schema } from '@livestore/utils/effect'
 
 import * as RG from '../reactive.ts'
 import { StoreInternalsSymbol } from '../store/store-types.ts'

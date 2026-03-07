@@ -1,7 +1,8 @@
 import { UnknownError } from '@livestore/common'
-import type { LiveStoreEvent } from '@livestore/common/schema'
 import type { CfTypes } from '@livestore/common-cf'
+import type { LiveStoreEvent } from '@livestore/common/schema'
 import { Chunk, Effect, Option, Schema, Stream } from '@livestore/utils/effect'
+
 import { SyncMetadata } from '../../common/sync-message-types.ts'
 import { PERSISTENCE_FORMAT_VERSION, type StoreId } from '../shared.ts'
 import { eventlogTable } from './sqlite.ts'
@@ -51,6 +52,7 @@ export const makeStorage = (
   const D1_MIN_PAGE_SIZE = 1
 
   const decodeEventlogRows = Schema.decodeUnknownSync(Schema.Array(eventlogTable.rowSchema))
+  const jsonStringify = Schema.encodeSync(Schema.parseJson())
   const textEncoder = new TextEncoder()
 
   const decreaseLimit = (limit: number) => Math.max(D1_MIN_PAGE_SIZE, Math.floor(limit / 2))
@@ -120,7 +122,7 @@ export const makeStorage = (
             return Option.none()
           }
 
-          const encodedSize = textEncoder.encode(JSON.stringify(rawEvents)).byteLength
+          const encodedSize = textEncoder.encode(jsonStringify(rawEvents)).byteLength
 
           if (encodedSize > D1_TARGET_RESPONSE_BYTES && state.limit > D1_MIN_PAGE_SIZE) {
             const nextLimit = decreaseLimit(state.limit)

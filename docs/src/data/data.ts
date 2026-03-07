@@ -11,13 +11,13 @@ export const officeHours = [
 ]
 
 export const getBranchName = () =>
-  isNonEmptyString(process.env.GITHUB_BRANCH_NAME)
+  isNonEmptyString(process.env.GITHUB_BRANCH_NAME) === true
     ? process.env.GITHUB_BRANCH_NAME
     : execSync('git rev-parse --abbrev-ref HEAD').toString().trim()
 
-export const versionNpmSuffix = liveStoreVersion.includes('dev') ? `@${liveStoreVersion}` : ''
+export const versionNpmSuffix = liveStoreVersion.includes('dev') === true ? `@${liveStoreVersion}` : ''
 
-export const npmTagSuffix = liveStoreVersion.includes('dev') ? '@dev' : ''
+export const npmTagSuffix = liveStoreVersion.includes('dev') === true ? '@dev' : ''
 
 export const IS_MAIN_BRANCH = getBranchName() === 'main'
 

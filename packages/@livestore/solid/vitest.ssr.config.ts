@@ -7,7 +7,7 @@ export default defineConfig({
       hot: false,
       solid: { generate: 'ssr' },
       ssr: true,
-    }) as Plugin,
+    }),
   ],
   test: {
     root: import.meta.dirname,
@@ -21,6 +21,7 @@ export default defineConfig({
     environment: 'node',
     globals: true,
     include: ['src/**/*.server.test.{ts,tsx}'],
+    server: { deps: { inline: ['@effect/vitest'] } },
   },
   resolve: {
     conditions: ['node'],

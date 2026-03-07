@@ -3,11 +3,13 @@
 Webmesh is a library for connecting multiple nodes (windows/tabs, workers, threads, ...) in a network-like topology. It helps to establish communication channels between nodes.
 
 There are three types of channels:
+
 - ProxyChannel: a virtual channel by proxying messages along edges (via hop nodes)
-- DirectChannel: an end-to-end channel with support for transferable objects (e.g. `Uint8Array`) 
+- DirectChannel: an end-to-end channel with support for transferable objects (e.g. `Uint8Array`)
 - BroadcastChannel: a virtual channel by broadcasting messages to all connected nodes
 
 ProxyChannels and DirectChannels have the following properties (similar to TCP):
+
 - Has a unique name across the network
 - Auto-reconnects
 - Ordered messages
@@ -90,6 +92,6 @@ const codeOnNodeC = Effect.gen(function* () {
 
 - Elixir `Distribution` / OTP
   - https://elixirschool.com/en/lessons/advanced/otp_distribution
-	- https://serokell.io/blog/elixir-otp-guide
+  - https://serokell.io/blog/elixir-otp-guide
 - Consul by HashiCorp
 - Ethernet

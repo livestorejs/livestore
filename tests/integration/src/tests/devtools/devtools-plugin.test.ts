@@ -12,9 +12,11 @@
 import fs from 'node:fs'
 import type { AddressInfo } from 'node:net'
 import path from 'node:path'
-import { livestoreDevtoolsPlugin } from '@livestore/devtools-vite'
+
 import { type ConfigEnv, createServer, type ViteDevServer } from 'vite'
 import { describe, expect, it } from 'vitest'
+
+import { livestoreDevtoolsPlugin } from '@livestore/devtools-vite'
 
 const makeEnv = (): ConfigEnv => ({ command: 'serve', mode: 'development' })
 const fixtureRoot = path.resolve(import.meta.dirname, 'fixtures', 'repro-731')
@@ -60,7 +62,7 @@ describe('livestoreDevtoolsPlugin (real Vite server)', () => {
 
     try {
       await server.listen()
-      if (server.optimizeDeps && typeof server.optimizeDeps.run === 'function') {
+      if (server.optimizeDeps !== undefined && typeof server.optimizeDeps.run === 'function') {
         await server.optimizeDeps.run({ force: true, entries: [devtoolsSchemaEntry] })
       }
       const address = server.httpServer?.address() as AddressInfo
@@ -110,7 +112,7 @@ describe('livestoreDevtoolsPlugin (real Vite server)', () => {
 
 const listDeps = (cacheDir: string): ReadonlyArray<string> => {
   const depsDir = path.join(cacheDir, 'deps')
-  if (!fs.existsSync(depsDir)) {
+  if (fs.existsSync(depsDir) === false) {
     return []
   }
   return fs.readdirSync(depsDir).sort()
@@ -118,7 +120,7 @@ const listDeps = (cacheDir: string): ReadonlyArray<string> => {
 
 const readDepsMetadata = (cacheDir: string): string => {
   const metadataPath = path.join(cacheDir, 'deps', '_metadata.json')
-  if (!fs.existsSync(metadataPath)) {
+  if (fs.existsSync(metadataPath) === false) {
     return ''
   }
   return fs.readFileSync(metadataPath, 'utf8')
@@ -139,7 +141,7 @@ const waitForDepsStable = async (cacheDir: string): Promise<ReadonlyArray<string
 
 const runConfigHook = async (plugin: any, config: Record<string, unknown>, env: ConfigEnv) => {
   const hook = plugin.config
-  if (!hook) return config
+  if (hook == null) return config
   if (typeof hook === 'function') {
     return hook(config, env)
   }

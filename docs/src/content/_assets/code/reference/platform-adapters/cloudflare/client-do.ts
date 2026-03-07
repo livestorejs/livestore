@@ -1,9 +1,11 @@
 /// <reference types="@cloudflare/workers-types" />
 
 import { DurableObject } from 'cloudflare:workers'
+
 import { type ClientDoWithRpcCallback, createStoreDoPromise } from '@livestore/adapter-cloudflare'
 import { nanoid, type Store, type Unsubscribe } from '@livestore/livestore'
 import { handleSyncUpdateRpc } from '@livestore/sync-cf/client'
+
 import type { Env } from './env.ts'
 import { schema, tables } from './schema.ts'
 import { storeIdFromRequest } from './shared.ts'
@@ -14,14 +16,14 @@ type AlarmInfo = {
 }
 
 export class LiveStoreClientDO extends DurableObject<Env> implements ClientDoWithRpcCallback {
-  __DURABLE_OBJECT_BRAND: never = undefined as never
+  override __DURABLE_OBJECT_BRAND: never = undefined as never
 
   private storeId: string | undefined
   private cachedStore: Store<typeof schema> | undefined
   private storeSubscription: Unsubscribe | undefined
   private readonly todosQuery = tables.todos.select()
 
-  async fetch(request: Request): Promise<Response> {
+  override async fetch(request: Request): Promise<Response> {
     // @ts-expect-error TODO remove casts once CF types are fixed in https://github.com/cloudflare/workerd/issues/4811
     this.storeId = storeIdFromRequest(request)
 
@@ -72,7 +74,7 @@ export class LiveStoreClientDO extends DurableObject<Env> implements ClientDoWit
     await this.ctx.storage.setAlarm(Date.now() + 1000)
   }
 
-  alarm(_alarmInfo?: AlarmInfo): void | Promise<void> {
+  override alarm(_alarmInfo?: AlarmInfo): void | Promise<void> {
     return this.subscribeToStore()
   }
 

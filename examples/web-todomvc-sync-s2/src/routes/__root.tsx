@@ -7,6 +7,8 @@ import stylesheetUrl from 'todomvc-app-css/index.css?url'
 
 import { VersionBadge } from '../components/VersionBadge.tsx'
 
+const suspenseFallback = <div>Loading...</div>
+
 const RootComponent = () => {
   const isServer = typeof window === 'undefined'
   const { storeRegistry } = Route.useRouteContext()
@@ -21,7 +23,7 @@ const RootComponent = () => {
 
   return (
     <RootDocument>
-      <Suspense fallback={<div>Loading...</div>}>
+      <Suspense fallback={suspenseFallback}>
         <StoreRegistryProvider storeRegistry={storeRegistry}>
           <Outlet />
           <VersionBadge />

@@ -1,5 +1,6 @@
-import { queryDb } from '@livestore/livestore'
 import type { FC } from 'react'
+
+import { queryDb } from '@livestore/livestore'
 
 import { tables } from './schema.ts'
 import { useAppStore } from './store.ts'

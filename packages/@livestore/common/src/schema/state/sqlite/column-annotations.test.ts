@@ -1,5 +1,6 @@
-import { Schema, SchemaAST } from '@livestore/utils/effect'
 import { describe, expect, test } from 'vitest'
+
+import { Schema, SchemaAST } from '@livestore/utils/effect'
 
 import { withColumnType, withPrimaryKey } from './column-annotations.ts'
 

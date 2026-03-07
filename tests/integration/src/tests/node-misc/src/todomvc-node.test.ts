@@ -1,11 +1,14 @@
 import path from 'node:path'
+
+import { expect } from 'vitest'
+
 import { makeAdapter } from '@livestore/adapter-node'
 import { createStore, StoreInternalsSymbol } from '@livestore/livestore'
 import { IS_CI, shouldNeverHappen } from '@livestore/utils'
+import { Vitest } from '@livestore/utils-dev/node-vitest'
 import { Effect } from '@livestore/utils/effect'
 import { nanoid } from '@livestore/utils/nanoid'
-import { Vitest } from '@livestore/utils-dev/node-vitest'
-import { expect } from 'vitest'
+
 // Reuse the same schema from node-sync tests
 import { events, schema, tables } from '../../node-sync/schema.ts'
 
@@ -19,7 +22,7 @@ const TMP_STORE_DIR = path.join(
   'tmp',
 )
 
-const withTestCtx = Vitest.makeWithTestCtx({ timeout: IS_CI ? 600_000 : 900_000 })
+const withTestCtx = Vitest.makeWithTestCtx({ timeout: IS_CI === true ? 600_000 : 900_000 })
 
 Vitest.describe('todomvc-node', () => {
   Vitest.scopedLive('should push pending events to the leader after reboot', (test) =>

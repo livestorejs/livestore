@@ -2,7 +2,11 @@ import crypto from 'node:crypto'
 import path from 'node:path'
 
 import { Effect, FileSystem, Schema } from '@livestore/utils/effect'
+
 import type { RenderResult } from './renderer.ts'
+
+const jsonStringifyPretty = Schema.encodeSync(Schema.parseJson({ space: 2 }))
+const jsonParse = Schema.decodeUnknownSync(Schema.parseJson())
 
 const hashString = (value: string): string => crypto.createHash('sha256').update(value).digest('hex')
 
@@ -105,7 +109,7 @@ export const saveManifest = (
         .pipe(Effect.mapError((cause) => new FileSystemError({ path: manifestPath, operation: 'mkdir', cause })))
 
       yield* fs
-        .writeFileString(manifestPath, JSON.stringify(manifest, null, 2))
+        .writeFileString(manifestPath, jsonStringifyPretty(manifest))
         .pipe(
           Effect.mapError((cause) => new FileSystemError({ path: manifestPath, operation: 'write manifest', cause })),
         )
@@ -118,7 +122,7 @@ export const getCacheEntry = (manifest: DiagramManifest, entryFile: string): Dia
 
 /** Check if cached diagram is still valid */
 export const isCacheValid = (entry: DiagramCacheEntry | undefined, currentSourceHash: string): boolean => {
-  if (!entry) return false
+  if (entry == null) return false
   return entry.sourceHash === currentSourceHash
 }
 
@@ -159,7 +163,7 @@ export const saveDiagramToCache = (
 
       /* Write to disk */
       yield* fs
-        .writeFileString(fullArtifactPath, JSON.stringify(cachedDiagram, null, 2))
+        .writeFileString(fullArtifactPath, jsonStringifyPretty(cachedDiagram))
         .pipe(
           Effect.mapError(
             (cause) => new FileSystemError({ path: fullArtifactPath, operation: 'write diagram', cause }),
@@ -199,7 +203,7 @@ export const loadCachedDiagram = (
 
       yield* Effect.annotateCurrentSpan({ entryFile: entry.entryFile, artifactPath: entry.artifactPath })
 
-      return JSON.parse(content) as CachedDiagram
+      return jsonParse(content) as CachedDiagram
     }),
   )
 

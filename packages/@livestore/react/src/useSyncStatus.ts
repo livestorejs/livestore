@@ -1,5 +1,6 @@
-import type { Store, SyncStatus } from '@livestore/livestore'
 import React from 'react'
+
+import type { Store, SyncStatus } from '@livestore/livestore'
 
 /**
  * React hook that subscribes to sync status changes.
@@ -27,7 +28,7 @@ export const useSyncStatus = (options: { store: Store<any> }): SyncStatus => {
     return store.subscribeSyncStatus(setStatus)
   }, [store])
 
-  React.useDebugValue(`LiveStore:useSyncStatus:${status.isSynced ? 'synced' : 'pending'}`)
+  React.useDebugValue(`LiveStore:useSyncStatus:${status.isSynced === true ? 'synced' : 'pending'}`)
 
   return status
 }

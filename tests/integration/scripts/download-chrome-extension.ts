@@ -1,8 +1,9 @@
 import path from 'node:path'
+
 import { UnknownError } from '@livestore/common'
+import { CurrentWorkingDirectory, cmd } from '@livestore/utils-dev/node'
 import { Effect, FileSystem, HttpClient, HttpClientResponse, Schema } from '@livestore/utils/effect'
 import { Cli } from '@livestore/utils/node'
-import { CurrentWorkingDirectory, cmd } from '@livestore/utils-dev/node'
 
 /** Download the latest Chrome extension from LiveStore GitHub releases */
 export const downloadChromeExtension = ({ version, targetDir }: { version?: string; targetDir: string }) =>
@@ -24,7 +25,7 @@ export const downloadChromeExtension = ({ version, targetDir }: { version?: stri
     if ((yield* fs.exists(targetDir)) === true) {
       yield* Effect.logInfo(`Target directory ${targetDir} already exists`)
 
-      if (yield* Cli.Prompt.confirm({ message: `Delete existing directory ${targetDir}?` })) {
+      if ((yield* Cli.Prompt.confirm({ message: `Delete existing directory ${targetDir}?` })) === true) {
         yield* fs.remove(targetDir, { recursive: true })
       } else {
         return yield* Effect.die('Aborting...')
@@ -34,7 +35,7 @@ export const downloadChromeExtension = ({ version, targetDir }: { version?: stri
     // Create target directory
     yield* fs.makeDirectory(targetDir, { recursive: true })
 
-    const releaseEndpoint = version ? `tags/${version}` : 'latest'
+    const releaseEndpoint = version !== undefined ? `tags/${version}` : 'latest'
     const releaseUrl = `https://api.github.com/repos/livestorejs/livestore/releases/${releaseEndpoint}`
 
     const releaseResponse = yield* HttpClient.get(releaseUrl).pipe(

@@ -1,5 +1,6 @@
 import path from 'node:path'
 import { fileURLToPath } from 'node:url'
+
 import { cloudflare } from '@cloudflare/vite-plugin'
 import { redwood } from 'rwsdk/vite'
 import { defineConfig } from 'vite'

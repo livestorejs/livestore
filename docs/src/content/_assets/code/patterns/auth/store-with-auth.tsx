@@ -1,13 +1,15 @@
+import { Suspense, useState } from 'react'
+import { unstable_batchedUpdates as batchUpdates } from 'react-dom'
+
 import { makeInMemoryAdapter } from '@livestore/adapter-web'
 import { type LiveStoreSchema, StoreRegistry } from '@livestore/livestore'
 import { StoreRegistryProvider, useStore } from '@livestore/react'
-import { Suspense, useState } from 'react'
-import { unstable_batchedUpdates as batchUpdates } from 'react-dom'
 
 const schema = {} as LiveStoreSchema
 const storeId = 'demo-store'
 const user = { jwt: 'user-token' }
 const adapter = makeInMemoryAdapter()
+const suspenseFallback = <div>Loading...</div>
 
 // ---cut---
 const useAppStore = () =>
@@ -24,7 +26,7 @@ const useAppStore = () =>
 export const App = () => {
   const [storeRegistry] = useState(() => new StoreRegistry())
   return (
-    <Suspense fallback={<div>Loading...</div>}>
+    <Suspense fallback={suspenseFallback}>
       <StoreRegistryProvider storeRegistry={storeRegistry}>
         <AppContent />
       </StoreRegistryProvider>

@@ -119,7 +119,7 @@ export const debugCatch = <T>(try_: () => T): T => {
   try {
     return try_()
   } catch (e: any) {
-    // biome-ignore lint/suspicious/noDebugger: debugging
+    // oxlint-disable-next-line eslint(no-debugger) -- intentional breakpoint for debugging exceptions
     debugger
     throw e
   }
@@ -130,7 +130,7 @@ export const debugCatch = <T>(try_: () => T): T => {
  * Mutates the input value.
  */
 export const recRemoveUndefinedValues = (val: any): void => {
-  if (Array.isArray(val)) {
+  if (Array.isArray(val) === true) {
     val.forEach(recRemoveUndefinedValues)
   } else if (typeof val === 'object') {
     Object.keys(val).forEach((key) => {
@@ -173,8 +173,8 @@ export const isReadonlyArray = <I, T>(value: ReadonlyArray<I> | T): value is Rea
  * union have been accounted for.
  */
 
-export function casesHandled(unexpectedCase: never): never {
-  // biome-ignore lint/suspicious/noDebugger: debugging
+export const casesHandled = (unexpectedCase: never): never => {
+  // oxlint-disable-next-line eslint(no-debugger) -- intentional breakpoint for unhandled cases
   debugger
   throw new Error(`A case was not handled for value: ${truncate(objectToString(unexpectedCase), 1000)}`)
 }
@@ -189,7 +189,7 @@ export function casesHandled(unexpectedCase: never): never {
  */
 export const assertNever = (failIfFalse: boolean, msg?: string): void => {
   if (failIfFalse === false) {
-    // biome-ignore lint/suspicious/noDebugger: debugging
+    // oxlint-disable-next-line eslint(no-debugger) -- intentional breakpoint for impossible states
     debugger
     throw new Error(`This should never happen: ${msg}`)
   }
@@ -204,7 +204,7 @@ export const assertNever = (failIfFalse: boolean, msg?: string): void => {
  * ```
  */
 export const debuggerPipe = <T>(val: T): T => {
-  // biome-ignore lint/suspicious/noDebugger: debugging
+  // oxlint-disable-next-line eslint(no-debugger) -- intentional: this function's purpose is to trigger debugger
   debugger
   return val
 }
@@ -231,7 +231,7 @@ const truncate = (str: string, length: number): string => {
  * ```
  */
 export const notYetImplemented = (msg?: string): never => {
-  // biome-ignore lint/suspicious/noDebugger: debugging
+  // oxlint-disable-next-line eslint(no-debugger) -- intentional breakpoint for unimplemented code paths
   debugger
   throw new Error(`Not yet implemented: ${msg}`)
 }
@@ -303,7 +303,7 @@ export const throttle = (fn: () => void, ms: number) => {
   let shouldCallAgain = false
 
   const timeoutFunc = () => {
-    if (shouldCallAgain) {
+    if (shouldCallAgain === true) {
       fn()
       shouldCallAgain = false
       setTimeout(timeoutFunc, ms)
@@ -313,7 +313,7 @@ export const throttle = (fn: () => void, ms: number) => {
   }
 
   return () => {
-    if (shouldWait) {
+    if (shouldWait === true) {
       shouldCallAgain = true
       return
     }
@@ -374,7 +374,7 @@ export const memoizeByStringifyArgs = <T extends (...args: any[]) => any>(fn: T)
 
   return ((...args: any[]) => {
     const key = JSON.stringify(args)
-    if (cache.has(key)) {
+    if (cache.has(key) === true) {
       return cache.get(key)
     }
 
@@ -400,7 +400,7 @@ export const memoizeByRef = <T extends (arg: any) => any>(fn: T): T => {
   const cache = new Map<Parameters<T>[0], ReturnType<T>>()
 
   return ((arg: any) => {
-    if (cache.has(arg)) {
+    if (cache.has(arg) === true) {
       return cache.get(arg)
     }
 

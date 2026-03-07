@@ -24,7 +24,11 @@ const check = <TValue, TResult, TFallbackResult = undefined>(
   fallback?: () => TFallbackResult,
 ): TResult | TFallbackResult | undefined => {
   const value = resolve(accessor)
-  return value ? callback(value as NonNullable<TValue>) : fallback ? fallback() : undefined
+  return Boolean(value) === true
+    ? callback(value as NonNullable<TValue>)
+    : fallback !== undefined
+      ? fallback()
+      : undefined
 }
 
 /**
@@ -51,7 +55,7 @@ export const when: {
   fallback?: (...args: Args) => TFallbackResult,
 ): ((...args: Args) => TResult | TFallbackResult | undefined) => {
   return (...args: Args) =>
-    check(accessor, (value) => callback(value, ...args), fallback ? () => fallback(...args) : undefined)
+    check(accessor, (value) => callback(value, ...args), fallback !== undefined ? () => fallback(...args) : undefined)
 }
 
 /**
@@ -61,14 +65,14 @@ export const when: {
  * @returns A function that can be called to conditionally execute based on the truthiness of all accessor values,
  *          returning their results as an array or undefined if any are not truthy.
  */
-export function every<TAccessors extends Array<AccessorMaybe<any>>>(
+export const every = <TAccessors extends Array<AccessorMaybe<any>>>(
   ...accessors: TAccessors
-): () => InferNonNullableTuple<TAccessors> | undefined {
+): (() => InferNonNullableTuple<TAccessors> | undefined) => {
   return () => {
     const values = new Array(accessors.length) as InferNonNullableTuple<TAccessors>
     for (let i = 0; i < accessors.length; i++) {
       const _value = resolve(accessors[i])
-      if (!_value) return undefined
+      if (_value == null) return undefined
       values[i] = _value
     }
     return values

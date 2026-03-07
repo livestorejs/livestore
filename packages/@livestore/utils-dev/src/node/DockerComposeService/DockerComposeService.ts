@@ -1,4 +1,4 @@
-import { omitUndefineds } from '@livestore/utils'
+import { objectToString, omitUndefineds } from '@livestore/utils'
 import {
   Command,
   type CommandExecutor,
@@ -127,61 +127,60 @@ export class DockerComposeService extends Effect.Service<DockerComposeService>()
         Effect.scoped,
       )
 
-      const start = (options: StartOptions = {}) =>
-        Effect.gen(function* () {
-          const { detached = true, healthCheck } = options
+      const start = Effect.fn('startDockerCompose')(function* (options: StartOptions = {}) {
+        const { detached = true, healthCheck } = options
 
-          // Build start command
-          const startArgs = ['docker', 'compose', ...baseComposeArgs, 'up']
-          if (detached) startArgs.push('-d')
-          if (serviceName) startArgs.push(serviceName)
+        // Build start command
+        const startArgs = ['docker', 'compose', ...baseComposeArgs, 'up']
+        if (detached === true) startArgs.push('-d')
+        if (serviceName !== undefined) startArgs.push(serviceName)
 
-          const command = yield* Command.make(startArgs[0]!, ...startArgs.slice(1)).pipe(
-            Command.workingDirectory(cwd),
-            Command.env(options.env ?? {}),
-            Command.stderr('inherit'),
-            Command.stdout('inherit'),
-            Command.start,
-            Effect.catchAll((cause) =>
-              Effect.fail(
-                new DockerComposeError({
-                  cause,
-                  note: `Failed to start Docker Compose services in ${cwd}`,
-                }),
-              ),
-            ),
-            Effect.provide(commandExecutorContext),
-          )
+        const command = yield* Command.make(startArgs[0]!, ...startArgs.slice(1)).pipe(
+          Command.workingDirectory(cwd),
+          Command.env(options.env ?? {}),
+          Command.stderr('inherit'),
+          Command.stdout('inherit'),
+          Command.start,
+          Effect.mapError(
+            (cause) =>
+              new DockerComposeError({
+                cause,
+                note: `Failed to start Docker Compose services in ${cwd}`,
+              }),
+          ),
+          Effect.provide(commandExecutorContext),
+        )
 
-          // Wait for command completion
-          yield* command.exitCode.pipe(
-            Effect.flatMap((exitCode) =>
-              exitCode === 0
-                ? Effect.void
-                : Effect.fail(
-                    new DockerComposeError({
-                      cause: new Error(`Docker compose exited with code ${exitCode}`),
-                      note: `Docker Compose failed to start with exit code ${exitCode}. Env: ${JSON.stringify(options.env)}`,
-                    }),
-                  ),
-            ),
-            Effect.provide(commandExecutorContext),
-          )
+        // Wait for command completion
+        yield* command.exitCode.pipe(
+          Effect.flatMap((exitCode) =>
+            exitCode === 0
+              ? Effect.void
+              : Effect.fail(
+                  new DockerComposeError({
+                    cause: new Error(`Docker compose exited with code ${exitCode}`),
+                    note: `Docker Compose failed to start with exit code ${exitCode}. Env: ${JSON.stringify(options.env)}`,
+                  }),
+                ),
+          ),
+          Effect.provide(commandExecutorContext),
+        )
 
-          // Perform health check if requested
-          if (healthCheck) {
-            yield* performHealthCheck(healthCheck).pipe(Effect.provide(commandExecutorContext))
-          }
+        // Perform health check if requested
+        if (healthCheck !== undefined) {
+          yield* performHealthCheck(healthCheck).pipe(Effect.provide(commandExecutorContext))
+        }
 
-          yield* Effect.log(`Docker Compose services started successfully in ${cwd}`)
-        }).pipe(Effect.withSpan('startDockerCompose'))
+        yield* Effect.log(`Docker Compose services started successfully in ${cwd}`)
+      })
 
       const stop = Effect.gen(function* () {
         yield* Effect.log(`Stopping Docker Compose services in ${cwd}`)
 
-        const stopCommand = serviceName
-          ? Command.make('docker', 'compose', ...baseComposeArgs, 'stop', serviceName)
-          : Command.make('docker', 'compose', ...baseComposeArgs, 'stop')
+        const stopCommand =
+          serviceName !== undefined
+            ? Command.make('docker', 'compose', ...baseComposeArgs, 'stop', serviceName)
+            : Command.make('docker', 'compose', ...baseComposeArgs, 'stop')
 
         yield* stopCommand.pipe(
           Command.workingDirectory(cwd),
@@ -207,21 +206,20 @@ export class DockerComposeService extends Effect.Service<DockerComposeService>()
           const { follow = false, tail, since } = options
 
           const logsArgs = ['docker', 'compose', ...baseComposeArgs, 'logs']
-          if (follow) logsArgs.push('-f')
-          if (tail) logsArgs.push('--tail', tail.toString())
-          if (since) logsArgs.push('--since', since)
-          if (serviceName) logsArgs.push(serviceName)
+          if (follow === true) logsArgs.push('-f')
+          if (tail !== undefined) logsArgs.push('--tail', tail.toString())
+          if (since !== undefined) logsArgs.push('--since', since)
+          if (serviceName !== undefined) logsArgs.push(serviceName)
 
           const command = yield* Command.make(logsArgs[0]!, ...logsArgs.slice(1)).pipe(
             Command.workingDirectory(cwd),
             Command.start,
-            Effect.catchAll((cause) =>
-              Effect.fail(
+            Effect.mapError(
+              (cause) =>
                 new DockerComposeError({
                   cause,
                   note: `Failed to read Docker Compose logs in ${cwd}`,
                 }),
-              ),
             ),
             Effect.provide(commandExecutorContext),
           )
@@ -239,44 +237,45 @@ export class DockerComposeService extends Effect.Service<DockerComposeService>()
           )
         }).pipe(Stream.unwrapScoped)
 
-      const down = (options?: {
+      const down = Effect.fn('downDockerCompose')(function* (options?: {
         readonly env?: Record<string, string>
         readonly volumes?: boolean
         readonly removeOrphans?: boolean
-      }) =>
-        Effect.gen(function* () {
-          yield* Effect.log(`Tearing down Docker Compose services in ${cwd}`)
+      }) {
+        yield* Effect.log(`Tearing down Docker Compose services in ${cwd}`)
 
-          const downArgs = ['docker', 'compose', ...baseComposeArgs, 'down']
-          if (options?.volumes) downArgs.push('-v')
-          if (options?.removeOrphans) downArgs.push('--remove-orphans')
-          if (serviceName) downArgs.push(serviceName)
+        const downArgs = ['docker', 'compose', ...baseComposeArgs, 'down']
+        if (options?.volumes === true) downArgs.push('-v')
+        if (options?.removeOrphans === true) downArgs.push('--remove-orphans')
+        if (serviceName !== undefined) downArgs.push(serviceName)
 
-          yield* Command.make(downArgs[0]!, ...downArgs.slice(1)).pipe(
-            Command.workingDirectory(cwd),
-            Command.env(options?.env ?? {}),
-            Command.exitCode,
-            Effect.flatMap((exitCode: number) =>
-              exitCode === 0
-                ? Effect.void
-                : Effect.fail(
-                    new DockerComposeError({
-                      cause: new Error(`Docker compose down exited with code ${exitCode}`),
-                      note: `Failed to tear down Docker Compose services`,
-                    }),
-                  ),
-            ),
-            Effect.provide(commandExecutorContext),
-          )
+        yield* Command.make(downArgs[0]!, ...downArgs.slice(1)).pipe(
+          Command.workingDirectory(cwd),
+          Command.env(options?.env ?? {}),
+          Command.exitCode,
+          Effect.flatMap((exitCode: number) =>
+            exitCode === 0
+              ? Effect.void
+              : Effect.fail(
+                  new DockerComposeError({
+                    cause: new Error(`Docker compose down exited with code ${exitCode}`),
+                    note: `Failed to tear down Docker Compose services`,
+                  }),
+                ),
+          ),
+          Effect.provide(commandExecutorContext),
+        )
 
-          yield* Effect.log(`Docker Compose services torn down successfully`)
-        }).pipe(Effect.withSpan('downDockerCompose'))
+        yield* Effect.log(`Docker Compose services torn down successfully`)
+      })
 
       // Register cleanup finalizer to ensure containers are removed when scope closes
       yield* Effect.addFinalizer(() =>
         down({ volumes: true, removeOrphans: true }).pipe(
           Effect.tap(() => Effect.log(`Docker Compose cleanup completed for project ${projectName}`)),
-          Effect.catchAll((error) => Effect.log(`Docker Compose cleanup failed for project ${projectName}: ${error}`)),
+          Effect.catchAll((error) =>
+            Effect.log('Docker Compose cleanup failed for project', projectName, objectToString(error)),
+          ),
         ),
       )
 
@@ -304,17 +303,16 @@ const performHealthCheck = ({
 
     const healthCheck = checkHealth.pipe(
       Effect.repeat({
-        while: (healthy: boolean) => !healthy,
+        while: (healthy: boolean) => healthy === false,
         schedule: Schedule.fixed(interval),
       }),
       Effect.timeout(timeout),
-      Effect.catchAll(() =>
-        Effect.fail(
+      Effect.mapError(
+        () =>
           new DockerComposeError({
             cause: new Error('Health check timeout'),
             note: `Health check failed for ${url} after ${Duration.toMillis(timeout)}ms`,
           }),
-        ),
       ),
     )
 
@@ -337,7 +335,7 @@ export const startDockerComposeServicesScoped = (
 
     // Start the services
     yield* dockerCompose.start({
-      ...omitUndefineds({ healthCheck: args.healthCheck ? args.healthCheck : undefined }),
+      ...omitUndefineds({ healthCheck: args.healthCheck !== undefined ? args.healthCheck : undefined }),
     })
 
     // Add cleanup finalizer to the current scope

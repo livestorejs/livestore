@@ -1,16 +1,18 @@
-import { queryDb } from '@livestore/livestore'
 import type { FC } from 'react'
+
+import { queryDb } from '@livestore/livestore'
+
 import { tables } from '../framework-integrations/react/schema.ts'
 import { useAppStore } from '../framework-integrations/react/store.ts'
 
 export const todos$ = ({ showCompleted }: { showCompleted: boolean }) =>
   queryDb(
     () => {
-      return tables.todos.where(showCompleted ? { completed: true } : {})
+      return tables.todos.where(showCompleted === true ? { completed: true } : {})
     },
     {
       label: 'todos$',
-      deps: [showCompleted ? 'true' : 'false'],
+      deps: [showCompleted === true ? 'true' : 'false'],
     },
   )
 

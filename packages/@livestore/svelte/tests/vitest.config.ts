@@ -1,4 +1,5 @@
 import { fileURLToPath } from 'node:url'
+
 import { svelte } from '@sveltejs/vite-plugin-svelte'
 import { svelteTesting } from '@testing-library/svelte/vite'
 import { defineConfig } from 'vitest/config'
@@ -11,6 +12,7 @@ export default defineConfig({
     clearMocks: true,
     include: ['**/*.svelte.{test,spec}.{js,ts}', '**/*.{test,spec}.{js,ts}'],
     setupFiles: [fileURLToPath(new URL('./vitest-setup-client.ts', import.meta.url))],
+    server: { deps: { inline: ['@effect/vitest'] } },
   },
   plugins: [
     svelte({

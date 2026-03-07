@@ -79,11 +79,16 @@ export const useRcResource = <T>(
 ): T => {
   const keyRef = React.useRef<string | undefined>(undefined)
   const didDisposeInMemo = React.useRef(false)
+  const createRef = React.useRef(create)
+  const disposeRef = React.useRef(dispose)
+
+  createRef.current = create
+  disposeRef.current = dispose
 
   // biome-ignore lint/correctness/useExhaustiveDependencies: Dependency is deliberately limited to `key` to avoid unintended re-creations.
   const resource = React.useMemo(() => {
     // console.debug('useMemo', key)
-    if (didDisposeInMemo.current) {
+    if (didDisposeInMemo.current === true) {
       // console.debug('useMemo', key, 'skip')
       const cachedItem = cache.get(key)
       if (cachedItem !== undefined && cachedItem._tag === 'active') {
@@ -104,7 +109,7 @@ export const useRcResource = <T>(
 
         if (cachedItemForPreviousKey.rc === 0) {
           // Clean up the stateful resource if no longer referenced
-          dispose(cachedItemForPreviousKey.resource)
+          disposeRef.current(cachedItemForPreviousKey.resource)
           cache.set(previousKey, { _tag: 'destroyed' })
           didDisposeInMemo.current = true
         }
@@ -122,7 +127,7 @@ export const useRcResource = <T>(
     }
 
     // Create a new stateful resource if not cached
-    const resource = create()
+    const resource = createRef.current()
     cache.set(key, { _tag: 'active', rc: 1, resource })
     return resource
   }, [key])
@@ -130,7 +135,7 @@ export const useRcResource = <T>(
   // biome-ignore lint/correctness/useExhaustiveDependencies: We assume the `dispose` function is stable and won't change across renders
   React.useEffect(() => {
     return () => {
-      if (didDisposeInMemo.current) {
+      if (didDisposeInMemo.current === true) {
         // console.debug('unmount', keyRef.current, 'skip')
         didDisposeInMemo.current = false
         return
@@ -146,7 +151,7 @@ export const useRcResource = <T>(
       // console.debug('rc--', cachedItem.rc, ...(_options?.debugPrint?.(cachedItem.resource) ?? []))
 
       if (cachedItem.rc === 0) {
-        dispose(cachedItem.resource)
+        disposeRef.current(cachedItem.resource)
         cache.delete(key)
       }
     }

@@ -10,7 +10,7 @@ export const isDevEnv = () => {
   }
 
   // @ts-expect-error Only exists in Expo / RN
-  if (globalThis?.__DEV__) {
+  if (globalThis?.__DEV__ === true) {
     return true
   }
 
@@ -48,8 +48,8 @@ export const envTruish = (env: string | undefined) =>
 
 export const shouldNeverHappen = (msg?: string, ...args: any[]): never => {
   console.error(msg, ...args)
-  if (isDevEnv()) {
-    // biome-ignore lint/suspicious/noDebugger: debugging
+  if (isDevEnv() === true) {
+    // oxlint-disable-next-line eslint(no-debugger) -- intentional breakpoint for impossible states during development
     debugger
   }
 

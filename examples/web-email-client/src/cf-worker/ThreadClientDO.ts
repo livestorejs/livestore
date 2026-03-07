@@ -1,17 +1,20 @@
 import { DurableObject } from 'cloudflare:workers'
+
 import { type ClientDoWithRpcCallback, createStoreDoPromise } from '@livestore/adapter-cloudflare'
-import { nanoid, type Store, type Unsubscribe } from '@livestore/livestore'
+import { nanoid } from '@livestore/livestore'
 import type * as SyncBackend from '@livestore/sync-cf/cf-worker'
 import { handleSyncUpdateRpc } from '@livestore/sync-cf/client'
+
 import { schema as threadSchema, threadTables } from '../stores/thread/schema.ts'
 import { seedThread } from '../stores/thread/seed.ts'
 import type { Env } from './shared.ts'
 
 // Scoped by storeId
 export class ThreadClientDO extends DurableObject<Env> implements ClientDoWithRpcCallback {
-  private store: Store<typeof threadSchema> | undefined
-  private threadLabelsSubscription: Unsubscribe | undefined
-  private threadSubscription: Unsubscribe | undefined
+  private store!: Awaited<ReturnType<typeof createStoreDoPromise>>
+  private hasStore = false
+  private threadLabelsSubscription: (() => void) | undefined
+  private threadSubscription: (() => void) | undefined
   private previousLabels: ReadonlyArray<{
     readonly threadId: string
     readonly labelId: string
@@ -20,7 +23,7 @@ export class ThreadClientDO extends DurableObject<Env> implements ClientDoWithRp
   private threadPublished = false // track if we've published the thread creation event
 
   async initialize({ threadId, inboxLabelId }: { threadId: string; inboxLabelId: string }) {
-    if (this.store !== undefined) return
+    if (this.hasStore === true) return
 
     const storeId = `thread-${threadId}`
 
@@ -37,6 +40,7 @@ export class ThreadClientDO extends DurableObject<Env> implements ClientDoWithRp
       syncBackendStub: this.env.SYNC_BACKEND_DO.getByName(storeId),
       livePull: true,
     })
+    this.hasStore = true
 
     // Check if seeding has already been done by looking for existing threads
     const existingThreadCount = this.store.query(threadTables.thread.count())
@@ -54,7 +58,7 @@ export class ThreadClientDO extends DurableObject<Env> implements ClientDoWithRp
   private async subscribeToStore() {
     if (this.threadLabelsSubscription || this.threadSubscription) return
 
-    if (!this.store) throw new Error('Store not initialized. Call initialize() first.')
+    if (this.hasStore === false) throw new Error('Store not initialized. Call initialize() first.')
 
     // Subscribe to threadLabels table changes to detect label applications/removals
     this.threadLabelsSubscription = this.store.subscribe(threadTables.threadLabels, this.publishLabelChanges)

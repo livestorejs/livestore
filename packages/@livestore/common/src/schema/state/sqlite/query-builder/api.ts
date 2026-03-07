@@ -230,9 +230,8 @@ export namespace QueryBuilder {
       /** Select multiple columns */
       <TColumns extends keyof TTableDef['sqliteDef']['columns'] & string>(
         ...columns: TColumns[]
-        // TODO also support arbitrary SQL selects
-        // params: QueryBuilderSelectParams,
-      ): QueryBuilder<
+      )// params: QueryBuilderSelectParams, // TODO also support arbitrary SQL selects
+      : QueryBuilder<
         ReadonlyArray<{
           readonly [K in TColumns]: TTableDef['sqliteDef']['columns'][K]['schema']['Type']
         }>,

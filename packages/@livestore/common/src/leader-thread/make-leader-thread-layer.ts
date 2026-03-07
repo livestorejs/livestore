@@ -12,6 +12,7 @@ import {
   Subscribable,
   SubscriptionRef,
 } from '@livestore/utils/effect'
+
 import {
   type BootStatus,
   type MakeSqliteDb,
@@ -156,9 +157,10 @@ export const makeLeaderThreadLayer = ({
 
     // Recreate state database if needed BEFORE creating sync processor
     // This ensures all system tables exist before any queries are made
-    const { migrationsReport } = dbStateMissing
-      ? yield* recreateDb({ dbState, dbEventlog, schema, bootStatusQueue, materializeEvent })
-      : { migrationsReport: { migrations: [] } }
+    const { migrationsReport } =
+      dbStateMissing === true
+        ? yield* recreateDb({ dbState, dbEventlog, schema, bootStatusQueue, materializeEvent })
+        : { migrationsReport: { migrations: [] } }
 
     const syncProcessor = yield* makeLeaderSyncProcessor({
       schema,
@@ -183,13 +185,14 @@ export const makeLeaderThreadLayer = ({
       Effect.acquireRelease(Queue.shutdown),
     )
 
-    const devtoolsContext = devtoolsOptions.enabled
-      ? {
-          enabled: true as const,
-          syncBackendLatch: yield* Effect.makeLatch(true),
-          syncBackendLatchState: yield* SubscriptionRef.make<{ latchClosed: boolean }>({ latchClosed: false }),
-        }
-      : { enabled: false as const }
+    const devtoolsContext =
+      devtoolsOptions.enabled === true
+        ? {
+            enabled: true as const,
+            syncBackendLatch: yield* Effect.makeLatch(true),
+            syncBackendLatchState: yield* SubscriptionRef.make<{ latchClosed: boolean }>({ latchClosed: false }),
+          }
+        : { enabled: false as const }
 
     const networkStatus = yield* makeNetworkStatusSubscribable({ syncBackend, devtoolsContext })
 
@@ -248,7 +251,7 @@ const hasStateTables = (db: SqliteDb) => {
 
 const isSubsetOf = (a: Set<string>, b: Set<string>): boolean => {
   for (const item of a) {
-    if (!b.has(item)) {
+    if (b.has(item) === false) {
       return false
     }
   }
@@ -265,13 +268,11 @@ const getInitialSyncState = ({
   dbState: SqliteDb
   dbEventlogMissing: boolean
 }) => {
-  const initialBackendHead = dbEventlogMissing
-    ? EventSequenceNumber.Client.ROOT.global
-    : Eventlog.getBackendHeadFromDb(dbEventlog)
+  const initialBackendHead =
+    dbEventlogMissing === true ? EventSequenceNumber.Client.ROOT.global : Eventlog.getBackendHeadFromDb(dbEventlog)
 
-  const initialLocalHead = dbEventlogMissing
-    ? EventSequenceNumber.Client.ROOT
-    : Eventlog.getClientHeadFromDb(dbEventlog)
+  const initialLocalHead =
+    dbEventlogMissing === true ? EventSequenceNumber.Client.ROOT : Eventlog.getClientHeadFromDb(dbEventlog)
 
   if (initialBackendHead > initialLocalHead.global) {
     return shouldNeverHappen(
@@ -286,17 +287,18 @@ const getInitialSyncState = ({
       client: EventSequenceNumber.Client.DEFAULT,
       rebaseGeneration: EventSequenceNumber.Client.REBASE_GENERATION_DEFAULT,
     },
-    pending: dbEventlogMissing
-      ? []
-      : Eventlog.getEventsSince({
-          dbEventlog,
-          dbState,
-          since: {
-            global: initialBackendHead,
-            client: EventSequenceNumber.Client.DEFAULT,
-            rebaseGeneration: initialLocalHead.rebaseGeneration,
-          },
-        }),
+    pending:
+      dbEventlogMissing === true
+        ? []
+        : Eventlog.getEventsSince({
+            dbEventlog,
+            dbState,
+            since: {
+              global: initialBackendHead,
+              client: EventSequenceNumber.Client.DEFAULT,
+              rebaseGeneration: initialLocalHead.rebaseGeneration,
+            },
+          }),
   })
 }
 

@@ -1,4 +1,5 @@
 import { makeSchema, Schema, State } from '@livestore/livestore'
+
 import * as eventsDefs from '../events.ts'
 import { type Comment, comment } from './comment.ts'
 import { type Description, description } from './description.ts'

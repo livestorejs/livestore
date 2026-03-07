@@ -25,14 +25,15 @@ export class NodeFS extends FacadeVFS {
     this.directory = directory
   }
 
-  getFilename(fileId: number): string {
+  override getFilename(fileId: number): string {
     const pathname = this.mapIdToFile.get(fileId)?.pathname
     return `NodeFS:${pathname}`
   }
 
-  jOpen(zName: string | null, fileId: number, flags: number, pOutFlags: DataView): number {
+  override jOpen(zName: string | null, fileId: number, flags: number, pOutFlags: DataView): number {
     try {
-      const pathname = zName ? path.resolve(this.directory, zName) : Math.random().toString(36).slice(2)
+      const pathname =
+        zName !== null && zName !== '' ? path.resolve(this.directory, zName) : Math.random().toString(36).slice(2)
       const file: NodeFsFile = { pathname, flags, fileHandle: null }
       this.mapIdToFile.set(fileId, file)
 
@@ -41,11 +42,11 @@ export class NodeFS extends FacadeVFS {
 
       // Convert SQLite flags to Node.js flags
       let fsFlags = 'r'
-      if (create && readwrite) {
+      if (create === true && readwrite === true) {
         // Check if file exists first
         const exists = fs.existsSync(pathname)
-        fsFlags = exists ? 'r+' : 'w+' // Use r+ for existing files, w+ only for new files
-      } else if (readwrite) {
+        fsFlags = exists === true ? 'r+' : 'w+' // Use r+ for existing files, w+ only for new files
+      } else if (readwrite === true) {
         fsFlags = 'r+' // Open file for reading and writing
       }
 
@@ -54,7 +55,7 @@ export class NodeFS extends FacadeVFS {
         pOutFlags.setInt32(0, flags, true)
         return VFS.SQLITE_OK
       } catch (err: any) {
-        if (err.code === 'ENOENT' && !create) {
+        if (err.code === 'ENOENT' && create == null) {
           return VFS.SQLITE_CANTOPEN
         }
         throw err
@@ -65,10 +66,10 @@ export class NodeFS extends FacadeVFS {
     }
   }
 
-  jRead(fileId: number, pData: Uint8Array<ArrayBuffer>, iOffset: number): number {
+  override jRead(fileId: number, pData: Uint8Array<ArrayBuffer>, iOffset: number): number {
     try {
       const file = this.mapIdToFile.get(fileId)
-      if (!file?.fileHandle) return VFS.SQLITE_IOERR_READ
+      if (file?.fileHandle == null) return VFS.SQLITE_IOERR_READ
 
       // const view = new DataView(pData.buffer, pData.byteOffset, pData.length)
       // const bytesRead = fs.readSync(file.fileHandle, view, 0, pData.length, iOffset)
@@ -85,10 +86,10 @@ export class NodeFS extends FacadeVFS {
     }
   }
 
-  jWrite(fileId: number, pData: Uint8Array<ArrayBuffer>, iOffset: number): number {
+  override jWrite(fileId: number, pData: Uint8Array<ArrayBuffer>, iOffset: number): number {
     try {
       const file = this.mapIdToFile.get(fileId)
-      if (!file?.fileHandle) return VFS.SQLITE_IOERR_WRITE
+      if (file?.fileHandle == null) return VFS.SQLITE_IOERR_WRITE
 
       // const view = new DataView(pData.buffer, pData.byteOffset, pData.length)
       // fs.writeSync(file.fileHandle, view, 0, pData.length, iOffset)
@@ -100,17 +101,17 @@ export class NodeFS extends FacadeVFS {
     }
   }
 
-  jClose(fileId: number): number {
+  override jClose(fileId: number): number {
     try {
       const file = this.mapIdToFile.get(fileId)
-      if (!file) return VFS.SQLITE_OK
+      if (file == null) return VFS.SQLITE_OK
 
       this.mapIdToFile.delete(fileId)
       if (file.fileHandle !== null) {
         fs.closeSync(file.fileHandle)
       }
 
-      if (file.flags & VFS.SQLITE_OPEN_DELETEONCLOSE) {
+      if ((file.flags & VFS.SQLITE_OPEN_DELETEONCLOSE) !== 0) {
         fs.unlinkSync(file.pathname)
       }
       return VFS.SQLITE_OK
@@ -120,10 +121,10 @@ export class NodeFS extends FacadeVFS {
     }
   }
 
-  jFileSize(fileId: number, pSize64: DataView): number {
+  override jFileSize(fileId: number, pSize64: DataView): number {
     try {
       const file = this.mapIdToFile.get(fileId)
-      if (!file?.fileHandle) return VFS.SQLITE_IOERR_FSTAT
+      if (file?.fileHandle == null) return VFS.SQLITE_IOERR_FSTAT
 
       const stats = fs.fstatSync(file.fileHandle)
       pSize64.setBigInt64(0, BigInt(stats.size), true)
@@ -134,10 +135,10 @@ export class NodeFS extends FacadeVFS {
     }
   }
 
-  jTruncate(fileId: number, iSize: number): number {
+  override jTruncate(fileId: number, iSize: number): number {
     try {
       const file = this.mapIdToFile.get(fileId)
-      if (!file?.fileHandle) return VFS.SQLITE_IOERR_TRUNCATE
+      if (file?.fileHandle == null) return VFS.SQLITE_IOERR_TRUNCATE
 
       fs.ftruncateSync(file.fileHandle, iSize)
       return VFS.SQLITE_OK
@@ -147,10 +148,10 @@ export class NodeFS extends FacadeVFS {
     }
   }
 
-  jSync(fileId: number, _flags: number): number {
+  override jSync(fileId: number, _flags: number): number {
     try {
       const file = this.mapIdToFile.get(fileId)
-      if (!file?.fileHandle) return VFS.SQLITE_OK
+      if (file?.fileHandle == null) return VFS.SQLITE_OK
 
       // TODO do this out of band (for now we disable it to speed up the node vfs)
       // fs.fsyncSync(file.fileHandle)
@@ -161,7 +162,7 @@ export class NodeFS extends FacadeVFS {
     }
   }
 
-  jDelete(zName: string, _syncDir: number): number {
+  override jDelete(zName: string, _syncDir: number): number {
     try {
       const pathname = path.resolve(this.directory, zName)
       fs.unlinkSync(pathname)
@@ -172,11 +173,11 @@ export class NodeFS extends FacadeVFS {
     }
   }
 
-  jAccess(zName: string, _flags: number, pResOut: DataView): number {
+  override jAccess(zName: string, _flags: number, pResOut: DataView): number {
     try {
       const pathname = path.resolve(this.directory, zName)
       const exists = fs.existsSync(pathname)
-      pResOut.setInt32(0, exists ? 1 : 0, true)
+      pResOut.setInt32(0, exists === true ? 1 : 0, true)
       return VFS.SQLITE_OK
     } catch (e: any) {
       this.lastError = e

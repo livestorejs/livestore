@@ -6,6 +6,9 @@ import { render } from 'solid-js/web'
 
 import App from './App.tsx'
 
+const errorBoundaryFallback = <div>Something went wrong</div>
+const suspenseFallback = <div>Loading app...</div>
+
 const root = document.getElementById('root')
 
 if (import.meta.env.DEV && !(root instanceof HTMLElement)) {
@@ -18,8 +21,8 @@ const storeRegistry = new StoreRegistry()
 
 render(
   () => (
-    <ErrorBoundary fallback={<div>Something went wrong</div>}>
-      <Suspense fallback={<div>Loading app...</div>}>
+    <ErrorBoundary fallback={errorBoundaryFallback}>
+      <Suspense fallback={suspenseFallback}>
         <StoreRegistryProvider storeRegistry={storeRegistry}>
           <App />
         </StoreRegistryProvider>

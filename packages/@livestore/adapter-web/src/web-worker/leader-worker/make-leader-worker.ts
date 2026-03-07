@@ -1,3 +1,5 @@
+import type * as otel from '@opentelemetry/api'
+
 import type { BootStatus, BootWarningReason, SqliteDb, SyncOptions } from '@livestore/common'
 import { Devtools, LogConfig, UnknownError } from '@livestore/common'
 import type { DevtoolsOptions, StreamEventsOptions } from '@livestore/common/leader-thread'
@@ -28,7 +30,6 @@ import {
   WorkerRunner,
 } from '@livestore/utils/effect'
 import { BrowserWorkerRunner, Opfs, WebError } from '@livestore/utils/effect/browser'
-import type * as otel from '@opentelemetry/api'
 
 import { cleanupOldStateDbFiles, getStateDbFileName, sanitizeOpfsDir } from '../common/persisted-sqlite.ts'
 import { makeShutdownChannel } from '../common/shutdown-channel.ts'
@@ -43,13 +44,13 @@ export type WorkerOptions = {
   }
 } & LogConfig.WithLoggerOptions
 
-if (isDevEnv()) {
+if (isDevEnv() === true) {
   globalThis.__debugLiveStoreUtils = {
     opfs: Opfs.debugUtils,
     blobUrl: (buffer: Uint8Array<ArrayBuffer>) =>
       URL.createObjectURL(new Blob([buffer], { type: 'application/octet-stream' })),
-    runSync: (effect: Effect.Effect<any, any, never>) => Effect.runSync(effect),
-    runFork: (effect: Effect.Effect<any, any, never>) => Effect.runFork(effect),
+    runSync: <A, E>(effect: Effect.Effect<A, E>) => Effect.runSync(effect),
+    runFork: <A, E>(effect: Effect.Effect<A, E>) => Effect.runFork(effect),
   }
 }
 
@@ -58,7 +59,7 @@ export const makeWorker = (options: WorkerOptions) => {
 }
 
 export const makeWorkerEffect = (options: WorkerOptions) => {
-  const TracingLive = options.otelOptions?.tracer
+  const TracingLive = options.otelOptions?.tracer !== undefined
     ? Layer.unwrapEffect(Effect.map(OtelTracer.make, Layer.setTracer)).pipe(
         Layer.provideMerge(Layer.succeed(OtelTracer.OtelTracer, options.otelOptions.tracer)),
       )
@@ -73,7 +74,7 @@ export const makeWorkerEffect = (options: WorkerOptions) => {
     Effect.tapCauseLogPretty,
     Effect.annotateLogs({ thread: self.name }),
     Effect.provide(runtimeLayer),
-    LS_DEV ? TaskTracing.withAsyncTaggingTracing((name) => (console as any).createTask(name)) : identity,
+    LS_DEV === true ? TaskTracing.withAsyncTaggingTracing((name) => (console as any).createTask(name)) : identity,
     // We're using this custom scheduler to improve op batching behaviour and reduce the overhead
     // of the Effect fiber runtime given we have different tradeoffs on a worker thread.
     // Despite the "message channel" name, is has nothing to do with the `incomingRequestsPort` above.
@@ -118,7 +119,7 @@ const makeWorkerRunnerInner = ({ schema, sync: syncOptions, syncPayloadSchema }:
       Effect.gen(function* () {
         const sqlite3 = yield* Effect.promise(() => loadSqlite3Wasm())
         const makeSqliteDb = sqliteDbFactory({ sqlite3 })
-        const runtime = yield* Effect.runtime<never>()
+        const runtime = yield* Effect.runtime()
 
         // Check OPFS availability and determine storage mode
         const opfsCheck = yield* checkOpfsAvailability
@@ -126,7 +127,7 @@ const makeWorkerRunnerInner = ({ schema, sync: syncOptions, syncPayloadSchema }:
 
         // Track boot warning to emit later
         let bootWarning: BootStatus | undefined
-        if (!useOpfs) {
+        if (useOpfs === false) {
           yield* Effect.logWarning(
             '[@livestore/adapter-web:worker] OPFS unavailable, using in-memory storage',
             opfsCheck,
@@ -134,7 +135,7 @@ const makeWorkerRunnerInner = ({ schema, sync: syncOptions, syncPayloadSchema }:
           bootWarning = { stage: 'warning', ...opfsCheck }
         }
 
-        const opfsDirectory = useOpfs ? yield* sanitizeOpfsDir(storageOptions.directory, storeId) : undefined
+        const opfsDirectory = useOpfs === true ? yield* sanitizeOpfsDir(storageOptions.directory, storeId) : undefined
 
         const makeOpfsDb = (kind: 'state' | 'eventlog') =>
           makeSqliteDb({
@@ -160,7 +161,7 @@ const makeWorkerRunnerInner = ({ schema, sync: syncOptions, syncPayloadSchema }:
           }).pipe(Effect.acquireRelease((db) => Effect.try(() => db.close()).pipe(Effect.ignoreLogged)))
 
         // Use OPFS if available, otherwise fall back to in-memory
-        const [dbState, dbEventlog] = useOpfs
+        const [dbState, dbEventlog] = useOpfs === true
           ? yield* Effect.all([makeOpfsDb('state'), makeOpfsDb('eventlog')], { concurrency: 2 })
           : yield* Effect.all([makeInMemoryDb(), makeInMemoryDb()], { concurrency: 2 })
 
@@ -199,19 +200,18 @@ const makeWorkerRunnerInner = ({ schema, sync: syncOptions, syncPayloadSchema }:
         Effect.annotateSpans({ debugInstanceId }),
         Layer.unwrapScoped,
       ),
-    GetRecreateSnapshot: () =>
-      Effect.gen(function* () {
-        const workerCtx = yield* LeaderThreadCtx
+    GetRecreateSnapshot: Effect.fn('@livestore/adapter-web:worker:GetRecreateSnapshot')(function* () {
+      const workerCtx = yield* LeaderThreadCtx
 
-        // NOTE we can only return the cached snapshot once as it's transferred (i.e. disposed), so we need to set it to undefined
-        // const cachedSnapshot =
-        //   result._tag === 'Recreate' ? yield* Ref.getAndSet(result.snapshotRef, undefined) : undefined
+      // NOTE we can only return the cached snapshot once as it's transferred (i.e. disposed), so we need to set it to undefined
+      // const cachedSnapshot =
+      //   result._tag === 'Recreate' ? yield* Ref.getAndSet(result.snapshotRef, undefined) : undefined
 
-        // return cachedSnapshot ?? workerCtx.db.export()
+      // return cachedSnapshot ?? workerCtx.db.export()
 
-        const snapshot = workerCtx.dbState.export()
-        return { snapshot, migrationsReport: workerCtx.initialState.migrationsReport }
-      }).pipe(UnknownError.mapToUnknownError, Effect.withSpan('@livestore/adapter-web:worker:GetRecreateSnapshot')),
+      const snapshot = workerCtx.dbState.export()
+      return { snapshot, migrationsReport: workerCtx.initialState.migrationsReport }
+    }, UnknownError.mapToUnknownError),
     PullStream: ({ cursor }) =>
       Effect.gen(function* () {
         const { syncProcessor } = yield* LeaderThreadCtx // <- syncState comes from here
@@ -255,39 +255,35 @@ const makeWorkerRunnerInner = ({ schema, sync: syncOptions, syncPayloadSchema }:
       ),
     BootStatusStream: () =>
       Effect.andThen(LeaderThreadCtx, (_) => Stream.fromQueue(_.bootStatusQueue)).pipe(Stream.unwrap),
-    GetLeaderHead: () =>
-      Effect.gen(function* () {
-        const workerCtx = yield* LeaderThreadCtx
-        return Eventlog.getClientHeadFromDb(workerCtx.dbEventlog)
-      }).pipe(UnknownError.mapToUnknownError, Effect.withSpan('@livestore/adapter-web:worker:GetLeaderHead')),
-    GetLeaderSyncState: () =>
-      Effect.gen(function* () {
-        const workerCtx = yield* LeaderThreadCtx
-        return yield* workerCtx.syncProcessor.syncState
-      }).pipe(UnknownError.mapToUnknownError, Effect.withSpan('@livestore/adapter-web:worker:GetLeaderSyncState')),
+    GetLeaderHead: Effect.fn('@livestore/adapter-web:worker:GetLeaderHead')(function* () {
+      const workerCtx = yield* LeaderThreadCtx
+      return Eventlog.getClientHeadFromDb(workerCtx.dbEventlog)
+    }, UnknownError.mapToUnknownError),
+    GetLeaderSyncState: Effect.fn('@livestore/adapter-web:worker:GetLeaderSyncState')(function* () {
+      const workerCtx = yield* LeaderThreadCtx
+      return yield* workerCtx.syncProcessor.syncState
+    }, UnknownError.mapToUnknownError),
     SyncStateStream: () =>
       Effect.gen(function* () {
         const workerCtx = yield* LeaderThreadCtx
         return workerCtx.syncProcessor.syncState.changes
       }).pipe(Stream.unwrapScoped),
-    GetNetworkStatus: () =>
-      Effect.gen(function* () {
-        const workerCtx = yield* LeaderThreadCtx
-        return yield* workerCtx.networkStatus
-      }).pipe(UnknownError.mapToUnknownError, Effect.withSpan('@livestore/adapter-web:worker:GetNetworkStatus')),
+    GetNetworkStatus: Effect.fn('@livestore/adapter-web:worker:GetNetworkStatus')(function* () {
+      const workerCtx = yield* LeaderThreadCtx
+      return yield* workerCtx.networkStatus
+    }, UnknownError.mapToUnknownError),
     NetworkStatusStream: () =>
       Effect.gen(function* () {
         const workerCtx = yield* LeaderThreadCtx
         return workerCtx.networkStatus.changes
       }).pipe(Stream.unwrapScoped),
-    Shutdown: () =>
-      Effect.gen(function* () {
-        yield* Effect.logDebug('[@livestore/adapter-web:worker] Shutdown')
+    Shutdown: Effect.fn('@livestore/adapter-web:worker:Shutdown')(function* () {
+      yield* Effect.logDebug('[@livestore/adapter-web:worker] Shutdown')
 
-        // Buy some time for Otel to flush
-        // TODO find a cleaner way to do this
-        yield* Effect.sleep(300)
-      }).pipe(UnknownError.mapToUnknownError, Effect.withSpan('@livestore/adapter-web:worker:Shutdown')),
+      // Buy some time for Otel to flush
+      // TODO find a cleaner way to do this
+      yield* Effect.sleep(300)
+    }, UnknownError.mapToUnknownError),
     ExtraDevtoolsMessage: ({ message }) =>
       Effect.andThen(LeaderThreadCtx, (_) => _.extraIncomingMessagesQueue.offer(message)).pipe(
         UnknownError.mapToUnknownError,
@@ -339,7 +335,7 @@ const checkOpfsAvailability = Effect.gen(function* () {
     Effect.as(undefined),
     Effect.catchAll((error) => {
       const reason: BootWarningReason =
-        Schema.is(WebError.SecurityError)(error) || Schema.is(WebError.NotAllowedError)(error)
+        Schema.is(WebError.SecurityError)(error) === true || Schema.is(WebError.NotAllowedError)(error) === true
           ? 'private-browsing'
           : 'storage-unavailable'
       const message =

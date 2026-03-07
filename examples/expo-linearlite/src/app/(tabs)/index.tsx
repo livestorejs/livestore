@@ -7,7 +7,6 @@ import { IssueItem } from '../../components/IssueItem.tsx'
 import { ThemedText } from '../../components/ThemedText.tsx'
 import { useUser } from '../../hooks/useUser.ts'
 import { uiState$ } from '../../livestore/queries.ts'
-
 import { events, tables } from '../../livestore/schema.ts'
 import { useAppStore } from '../../livestore/store.ts'
 
@@ -113,6 +112,27 @@ const HomeScreen = () => {
     [appSettings],
   )
 
+  const assignedTabButtonStyle = useMemo(
+    () =>
+      StyleSheet.compose(
+        StyleSheet.compose(styles.tabButton, isDark ? styles.tabButtonDark : undefined),
+        selectedHomeTab === 'assigned' ? styles.tabButtonOpaque : styles.tabButtonFaded,
+      ),
+    [isDark, selectedHomeTab],
+  )
+  const createdTabButtonStyle = useMemo(
+    () =>
+      StyleSheet.compose(
+        StyleSheet.compose(styles.tabButton, isDark ? styles.tabButtonDark : undefined),
+        selectedHomeTab === 'created' ? styles.tabButtonOpaque : styles.tabButtonFaded,
+      ),
+    [isDark, selectedHomeTab],
+  )
+  const headerContainerStyle = useMemo(
+    () => StyleSheet.compose(styles.headerContainer, isDark ? styles.headerContainerDark : undefined),
+    [isDark],
+  )
+
   // Memoize display settings separately
   const displaySettings = useMemo(
     () => ({
@@ -189,38 +209,29 @@ const HomeScreen = () => {
     ),
     [selectedHomeTab, displaySettings],
   )
+  const keyExtractor = useCallback((item: (typeof issues)[number]) => item.id.toString(), [])
+
+  const selectAssignedTab = useCallback(async () => {
+    await Haptics.selectionAsync()
+    store.commit(events.uiStateSet({ selectedHomeTab: 'assigned' }))
+  }, [store])
+
+  const selectCreatedTab = useCallback(async () => {
+    await Haptics.selectionAsync()
+    store.commit(events.uiStateSet({ selectedHomeTab: 'created' }))
+  }, [store])
 
   // Memoize the header component
   const ListHeaderComponent = useMemo(
     () => (
-      <View style={[styles.headerContainer, isDark && styles.headerContainerDark]}>
+      <View style={headerContainerStyle}>
         <View style={styles.tabContainer}>
-          <Pressable
-            onPressIn={async () => {
-              await Haptics.selectionAsync()
-              store.commit(events.uiStateSet({ selectedHomeTab: 'assigned' }))
-            }}
-            style={[
-              styles.tabButton,
-              isDark && styles.tabButtonDark,
-              { opacity: selectedHomeTab === 'assigned' ? 1 : 0.5 },
-            ]}
-          >
+          <Pressable onPressIn={selectAssignedTab} style={assignedTabButtonStyle}>
             <ThemedText style={styles.tabText} type="defaultSemiBold">
               Assigned
             </ThemedText>
           </Pressable>
-          <Pressable
-            onPressIn={async () => {
-              await Haptics.selectionAsync()
-              store.commit(events.uiStateSet({ selectedHomeTab: 'created' }))
-            }}
-            style={[
-              styles.tabButton,
-              isDark && styles.tabButtonDark,
-              { opacity: selectedHomeTab === 'created' ? 1 : 0.5 },
-            ]}
-          >
+          <Pressable onPressIn={selectCreatedTab} style={createdTabButtonStyle}>
             <ThemedText style={styles.tabText} type="defaultSemiBold">
               Created
             </ThemedText>
@@ -228,7 +239,7 @@ const HomeScreen = () => {
         </View>
       </View>
     ),
-    [selectedHomeTab, store, isDark],
+    [assignedTabButtonStyle, createdTabButtonStyle, headerContainerStyle, selectAssignedTab, selectCreatedTab],
   )
 
   return (
@@ -236,7 +247,7 @@ const HomeScreen = () => {
       data={issues}
       renderItem={renderItem}
       contentContainerStyle={styles.listContent}
-      keyExtractor={(item) => item.id.toString()}
+      keyExtractor={keyExtractor}
       ListHeaderComponent={ListHeaderComponent}
     />
   )
@@ -264,6 +275,12 @@ const styles = StyleSheet.create({
   },
   tabButtonDark: {
     backgroundColor: '#27272a', // zinc-800
+  },
+  tabButtonOpaque: {
+    opacity: 1,
+  },
+  tabButtonFaded: {
+    opacity: 0.5,
   },
   tabText: {
     textAlign: 'center',

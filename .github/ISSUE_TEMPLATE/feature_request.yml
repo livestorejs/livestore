@@ -1,13 +1,13 @@
 name: ✨ Feature Request
 description: Propose a new feature or enhancement for LiveStore
-title: "[Feature]: "
-labels: ["enhancement"]
+title: '[Feature]: '
+labels: ['enhancement']
 body:
   - type: markdown
     attributes:
       value: |
         Thanks for taking the time to propose a new feature! Please describe your idea as clearly as possible.
-        
+
         **Before you start:** Please search [existing issues](https://github.com/livestorejs/livestore/issues) and [discussions](https://github.com/livestorejs/livestore/discussions) to see if your feature has already been requested.
 
   - type: textarea
@@ -63,10 +63,10 @@ body:
       label: Priority/Impact
       description: How important is this feature to you?
       options:
-        - "Nice to have"
-        - "Would be helpful"
-        - "Important for my use case"
-        - "Critical/blocking"
+        - 'Nice to have'
+        - 'Would be helpful'
+        - 'Important for my use case'
+        - 'Critical/blocking'
 
   - type: textarea
     id: additional
@@ -74,7 +74,7 @@ body:
       label: Additional Context
       description: |
         Add any other context, screenshots, examples, or links about the feature request here.
-        
+
         **Tip:** You can attach images by clicking this area to highlight it and then dragging files in.
 
   - type: checkboxes

@@ -1,5 +1,6 @@
 import type { CFWorker, CfTypes } from '@livestore/sync-cf/cf-worker'
 import { handleSyncRequest, matchSyncRequest } from '@livestore/sync-cf/cf-worker'
+
 import type { Env } from './env.ts'
 
 export default {

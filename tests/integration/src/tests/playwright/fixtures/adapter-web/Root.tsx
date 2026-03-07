@@ -5,21 +5,25 @@ import { StoreRegistryProvider, useStore } from '@livestore/react'
 import React, { memo, Suspense, useState } from 'react'
 import { unstable_batchedUpdates as batchUpdates } from 'react-dom'
 import { ErrorBoundary } from 'react-error-boundary'
+
 import LiveStoreWorker from '../devtools/todomvc/livestore/livestore.worker.ts?worker'
 import { schema } from '../devtools/todomvc/livestore/schema.ts'
+
+const ErrorFallback = <div data-webtest="error">Error</div>
+const SuspenseFallback = <div>Loading...</div>
 
 const useBarrierStart = () => {
   const [started, setStarted] = React.useState(false)
   React.useEffect(() => {
     const sp = new URLSearchParams(window.location.search)
     const barrier = sp.get('barrier') !== null
-    if (!barrier) {
+    if (barrier === false) {
       setStarted(true)
       return
     }
     const bc = new BroadcastChannel('ls-webtest')
     const onMsg = (ev: MessageEvent) => {
-      if (ev.data && ev.data.type === 'go') {
+      if (ev.data !== undefined && ev.data.type === 'go') {
         setStarted(true)
       }
     }
@@ -50,14 +54,14 @@ export const Root: React.FC = () => {
 
   const [canBoot, setCanBoot] = React.useState(false)
   React.useEffect(() => {
-    if (!started) return
+    if (started === false) return
     const t = setTimeout(() => setCanBoot(true), bootDelayMs)
     return () => clearTimeout(t)
   }, [started, bootDelayMs])
 
   const adapter = React.useMemo(
     () =>
-      canBoot
+      canBoot === true
         ? makePersistedAdapter({
             storage: { type: 'opfs' },
             worker: LiveStoreWorker,
@@ -71,7 +75,7 @@ export const Root: React.FC = () => {
     [canBoot, reset, sessionId, clientId, disableFastPath],
   )
 
-  if (!started) {
+  if (started === false) {
     return <div>Waiting for barrier…</div>
   }
 
@@ -80,8 +84,8 @@ export const Root: React.FC = () => {
   }
 
   return (
-    <ErrorBoundary fallback={<div data-webtest="error">Error</div>}>
-      <Suspense fallback={<div>Loading...</div>}>
+    <ErrorBoundary fallback={ErrorFallback}>
+      <Suspense fallback={SuspenseFallback}>
         <StoreRegistryProvider storeRegistry={storeRegistry}>
           <AppWithStore adapter={adapter} />
         </StoreRegistryProvider>

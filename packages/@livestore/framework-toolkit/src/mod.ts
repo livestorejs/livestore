@@ -14,10 +14,4 @@ export {
 } from './query.ts'
 // Stack info utilities
 export { captureStackInfo, originalStackLimit, type StackInfo } from './stack-info.ts'
-export type {
-  Dispatch,
-  NormalizedQueryable,
-  SetStateAction,
-  SetStateActionPartial,
-  StateSetters,
-} from './types.ts'
+export type { Dispatch, NormalizedQueryable, SetStateAction, SetStateActionPartial, StateSetters } from './types.ts'

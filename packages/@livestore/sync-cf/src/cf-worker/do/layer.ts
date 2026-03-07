@@ -1,9 +1,10 @@
 import { UnknownError } from '@livestore/common'
-import { EventSequenceNumber, State } from '@livestore/common/schema'
 import type { CfTypes } from '@livestore/common-cf'
+import { EventSequenceNumber, State } from '@livestore/common/schema'
 import { shouldNeverHappen } from '@livestore/utils'
 import { Effect, Predicate } from '@livestore/utils/effect'
 import { nanoid } from '@livestore/utils/nanoid'
+
 import type { Env, MakeDurableObjectClassOptions, RpcSubscription } from '../shared.ts'
 import { contextTable, eventlogTable } from './sqlite.ts'
 import { makeStorage } from './sync-storage.ts'
@@ -27,7 +28,7 @@ export class DoCtx extends Effect.Service<DoCtx>()('DoCtx', {
       }
 
       const getStoreId = (from: CfTypes.Request | { storeId: string }) => {
-        if (Predicate.hasProperty(from, 'url')) {
+        if (Predicate.hasProperty(from, 'url') === true) {
           const url = new URL(from.url)
           return (
             url.searchParams.get('storeId') ?? shouldNeverHappen(`No storeId provided in request URL search params`)
@@ -42,7 +43,7 @@ export class DoCtx extends Effect.Service<DoCtx>()('DoCtx', {
         const opt = doOptions?.storage
         if (opt?._tag === 'd1') {
           const db = (doSelf.env as any)[opt.binding]
-          if (!db) {
+          if (db == null) {
             return yield* UnknownError.make({ cause: new Error(`D1 binding '${opt.binding}' not found on env`) })
           }
           return { _tag: 'd1' as const, db }

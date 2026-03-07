@@ -18,9 +18,6 @@ export class FacadeVFS extends VFS.Base {
    * @param {string} name
    * @param {object} module
    */
-  constructor(name, module) {
-    super(name, module)
-  }
 
   /**
    * Override to indicate which methods are asynchronous.
@@ -429,17 +426,17 @@ export class FacadeVFS extends VFS.Base {
         }
         if (prop === getter) {
           return (byteOffset, littleEndian) => {
-            if (!littleEndian) throw new Error('must be little endian')
+            if (littleEndian === false) throw new Error('must be little endian')
             return dataView[prop](byteOffset, littleEndian)
           }
         }
         if (prop === setter) {
           return (byteOffset, value, littleEndian) => {
-            if (!littleEndian) throw new Error('must be little endian')
+            if (littleEndian === false) throw new Error('must be little endian')
             return dataView[prop](byteOffset, value, littleEndian)
           }
         }
-        if (typeof prop === 'string' && /^(get)|(set)/.test(prop)) {
+        if (typeof prop === 'string' && /^(get)|(set)/.test(prop) === true) {
           throw new Error('invalid type')
         }
         const result = dataView[prop]
@@ -467,19 +464,19 @@ export class FacadeVFS extends VFS.Base {
   }
 
   #decodeFilename(zName, flags) {
-    if (flags & VFS.SQLITE_OPEN_URI) {
+    if ((flags & VFS.SQLITE_OPEN_URI) !== 0) {
       // The first null-terminated string is the URI path. Subsequent
       // strings are query parameter keys and values.
       // https://www.sqlite.org/c3ref/open.html#urifilenamesinsqlite3open
       let pName = zName
       let state = 1
       const charCodes = []
-      while (state) {
+      while (state !== null) {
         const charCode = this._module.HEAPU8[pName++]
-        if (charCode) {
+        if (charCode !== 0) {
           charCodes.push(charCode)
         } else {
-          if (!this._module.HEAPU8[pName]) state = null
+          if (this._module.HEAPU8[pName] === 0) state = null
           switch (state) {
             case 1: {
               // path
@@ -504,11 +501,9 @@ export class FacadeVFS extends VFS.Base {
       }
       return new TextDecoder().decode(new Uint8Array(charCodes))
     }
-    return zName ? this._module.UTF8ToString(zName) : null
+    return zName !== 0 ? this._module.UTF8ToString(zName) : null
   }
 }
 // Emscripten "legalizes" 64-bit integer arguments by passing them as
 // two 32-bit signed integers.
-function delegalize(lo32, hi32) {
-  return hi32 * 0x1_00_00_00_00 + lo32 + (lo32 < 0 ? 2 ** 32 : 0)
-}
+const delegalize = (lo32, hi32) => hi32 * 0x1_00_00_00_00 + lo32 + (lo32 < 0 ? 2 ** 32 : 0)

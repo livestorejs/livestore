@@ -1,8 +1,10 @@
+import type * as otel from '@opentelemetry/api'
+
 import type { PreparedBindValues } from '@livestore/common'
 import { SessionIdSymbol } from '@livestore/common'
 import { State } from '@livestore/common/schema'
 import { shouldNeverHappen } from '@livestore/utils'
-import type * as otel from '@opentelemetry/api'
+
 import { StoreInternalsSymbol } from '../store/store-types.ts'
 import type { ReactivityGraphContext } from './base-class.ts'
 
@@ -40,7 +42,7 @@ export const makeExecBeforeFirstRun =
         { otelContext },
       ).length === 1
 
-    if (rowExists) return
+    if (rowExists === true) return
 
     // It's important that we only commit and don't refresh here, as this function might be called during a render
     // and otherwise we might end up in a "reactive loop"

@@ -1,13 +1,16 @@
 import { XMarkIcon } from '@heroicons/react/16/solid'
+import { useCallback } from 'react'
 import { Button } from 'react-aria-components'
+
 import { statusOptions } from '../../../data/status-options.ts'
 import { useFilterState } from '../../../livestore/queries.ts'
 import type { Status } from '../../../types/status.ts'
-import { Icon, type IconName } from '../../icons/index.tsx'
+import { Icon } from '../../icons/index.tsx'
 import { FilterMenu } from './filter-menu.tsx'
 
 export const StatusFilter = () => {
   const [filterState, setFilterState] = useFilterState()
+  const handleClear = useCallback(() => setFilterState({ status: null }), [setFilterState])
   if (!filterState.status) return null
 
   return (
@@ -21,14 +24,14 @@ export const StatusFilter = () => {
           {filterState.status.map((status) => (
             <div key={status} className="h-4 -ml-3 p-px rounded-full bg-white dark:bg-neutral-900">
               <Icon
-                name={statusOptions[status as Status]!.icon as IconName}
+                name={statusOptions[status as Status]!.icon}
                 className={`h-full ${statusOptions[status as Status]!.style}`}
               />
             </div>
           ))}
           {filterState.status.length === 1 ? (
             <span className="font-medium text-neutral-600 dark:text-neutral-200">
-              {statusOptions[filterState.status[0] as Status]!.name}
+              {statusOptions[filterState.status[0]]!.name}
             </span>
           ) : (
             <span>{filterState.status.length} statuses</span>
@@ -36,7 +39,7 @@ export const StatusFilter = () => {
         </Button>
       </FilterMenu>
       <Button
-        onPress={() => setFilterState({ status: null })}
+        onPress={handleClear}
         className="h-full flex items-center px-1 group hover:bg-neutral-50 dark:hover:bg-neutral-800 focus:outline-none focus:bg-neutral-100 dark:focus:bg-neutral-800 border-l border-neutral-200 dark:border-neutral-700"
       >
         <XMarkIcon className="size-4 group-hover:text-neutral-700 dark:group-hover:text-neutral-200" />

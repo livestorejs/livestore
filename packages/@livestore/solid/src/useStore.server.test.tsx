@@ -3,19 +3,21 @@
  * These tests run in node environment with SSR JSX transform using renderToString.
  */
 
+import { isServer, renderToString } from 'solid-js/web'
+import { describe, expect, it } from 'vitest'
+
 import { makeInMemoryAdapter } from '@livestore/adapter-web'
 import { provideOtel } from '@livestore/common'
 import { createStore } from '@livestore/livestore'
 import { Effect } from '@livestore/utils/effect'
-import { isServer, renderToString } from 'solid-js/web'
-import { describe, expect, it } from 'vitest'
 
 import { schema, tables } from './__tests__/fixture.tsx'
 import { withSolidApi } from './useStore.ts'
 
 describe('environment', () => {
   it('runs on server', () => {
-    expect(typeof window).toBe('undefined')
+    // Use 'window' in globalThis to avoid TypeScript error without DOM lib
+    expect('window' in globalThis).toBe(false)
     expect(isServer).toBe(true)
   })
 })
