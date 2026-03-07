@@ -61,6 +61,12 @@ export const events = {
       id: Schema.String,
     }),
   }),
+  todoDeleted: Events.synced({
+    name: 'todo.deleted',
+    schema: Schema.Struct({
+      id: Schema.String,
+    }),
+  }),
   todoHighlighted: Events.clientOnly({
     name: 'todo.highlighted',
     schema: Schema.Struct({ id: Schema.String }),
@@ -70,6 +76,7 @@ export const events = {
 const materializers = State.SQLite.materializers(events, {
   'todo.created': ({ id, text, completed }) => tables.todos.insert({ id, text, completed }),
   'todo.completed': ({ id }) => tables.todos.update({ completed: true }).where({ id }),
+  'todo.deleted': ({ id }) => tables.todos.delete().where({ id }),
   'todo.highlighted': ({ id }) => tables.highlights.insert({ todoId: id }),
 })
 

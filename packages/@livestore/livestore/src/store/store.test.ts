@@ -3,17 +3,18 @@ import { assert, expect } from 'vitest'
 import { makeInMemoryAdapter } from '@livestore/adapter-web'
 import type { MockSyncBackend } from '@livestore/common'
 import { type ClientSessionLeaderThreadProxy, CommandExecutionError, makeMockSyncBackend, type UnknownError } from '@livestore/common'
-import type { LiveStoreEvent, LiveStoreSchema } from '@livestore/common/schema'
+import { EventSequenceNumber, type LiveStoreEvent, type LiveStoreSchema } from '@livestore/common/schema'
 import type { ShutdownDeferred, Store } from '@livestore/livestore'
 import { createStore, makeShutdownDeferred } from '@livestore/livestore'
 import { omitUndefineds } from '@livestore/utils'
 import { Vitest } from '@livestore/utils-dev/node-vitest'
 import type { OtelTracer, Scope } from '@livestore/utils/effect'
-import { Chunk, Context, Effect, FetchHttpClient, Layer, Logger, LogLevel, Queue, Stream } from '@livestore/utils/effect'
+import { Chunk, Context, Deferred, Effect, FetchHttpClient, Layer, Logger, LogLevel, Queue, Stream } from '@livestore/utils/effect'
 import { nanoid } from '@livestore/utils/nanoid'
 import { PlatformNode } from '@livestore/utils/node'
 import { EventFactory } from '@livestore/common/testing'
 import { commands, events, schema, tables, TodoAlreadyExists, TodoTextEmpty } from '../utils/tests/fixture.ts'
+import { StoreInternalsSymbol } from './store-types.ts'
 
 const withTestCtx = Vitest.makeWithTestCtx({
   makeLayer: () =>
@@ -633,6 +634,80 @@ Vitest.describe('store.execute', () => {
         const todoAfter = store.query(tables.todos.where({ id: 'todo-1' }).first())
         assert(todoAfter !== undefined)
         expect(todoAfter.text).toBe('replay')
+      }).pipe(withTestCtx(test)),
+    )
+
+    Vitest.scopedLive('should reject confirmation when validation fails on leader state', (test) =>
+      Effect.gen(function* () {
+        const { makeStore, mockSyncBackend } = yield* TestContext
+        const commandPushEntered = yield* Deferred.make<void, never>()
+        const releaseCommandPush = yield* Deferred.make<void, never>()
+        const store = yield* makeStore()
+        const leaderThreadProxy = store[StoreInternalsSymbol].clientSession.leaderThread
+        const originalPushCommand = leaderThreadProxy.commands.push
+        leaderThreadProxy.commands.push = (command) =>
+          Effect.gen(function* () {
+            yield* Deferred.succeed(commandPushEntered, undefined)
+            yield* Deferred.await(releaseCommandPush)
+            return yield* originalPushCommand(command)
+          })
+
+        // Commit while connected so the create becomes the same authoritative event on the leader.
+        store.commit(events.todoCreated({ id: 'todo-1', text: 'Seed', completed: false }))
+
+        const pushed = yield* mockSyncBackend.pushedEvents.pipe(
+          Stream.take(1),
+          Stream.runCollect,
+          Effect.map(Chunk.toReadonlyArray),
+        )
+        expect(pushed).toHaveLength(1)
+        expect(pushed[0]!.name).toBe('todo.created')
+
+        // Optimistically succeeds against the stale local view where the todo still exists.
+        const result = store.execute(commands.completeTodo({ id: 'todo-1' }))
+        assert(result._tag === 'pending')
+        yield* Deferred.await(commandPushEntered)
+
+        const optimisticTodo = store.query(tables.todos.where({ id: 'todo-1' }).first())
+        assert(optimisticTodo !== undefined)
+        expect(optimisticTodo.completed).toBe(true)
+
+        // Another client deletes the same authoritative todo directly on the leader
+        // before this session's command reaches it.
+        const leaderSyncState = yield* leaderThreadProxy.syncState
+        expect(leaderSyncState.localHead.global).toBe(1)
+
+        const deleteEvent = {
+          ...events.todoDeleted.encoded({ id: 'todo-1' }),
+          ...EventSequenceNumber.Client.nextPair({
+            seqNum: leaderSyncState.localHead,
+            isClient: false,
+          }),
+          clientId: 'other-client',
+          sessionId: 'other-client-session',
+        }
+        yield* leaderThreadProxy.events.push([deleteEvent])
+        const leaderAfterDelete = yield* leaderThreadProxy.syncState
+        expect(leaderAfterDelete.localHead.global).toBe(2)
+
+        // Let the pending command reach the leader only after the delete is authoritative there.
+        yield* Deferred.succeed(releaseCommandPush, undefined)
+
+        const outcome = yield* Effect.tryPromise({
+          try: () => result.confirmation,
+          catch: (err) => err as CommandExecutionError,
+        }).pipe(Effect.either)
+
+        const deletedTodo = store.query(tables.todos.where({ id: 'todo-1' }).first())
+
+        assert(outcome._tag === 'Left')
+        expect(outcome.left).toBeInstanceOf(CommandExecutionError)
+        expect(outcome.left.reason).toBe('CommandHandlerThrew')
+        expect(outcome.left.phase).toBe('initial')
+        expect(deletedTodo).toBeUndefined()
+
+        const leaderAfterRelease = yield* leaderThreadProxy.syncState
+        expect(leaderAfterRelease.localHead.global).toBe(2)
       }).pipe(withTestCtx(test)),
     )
 
