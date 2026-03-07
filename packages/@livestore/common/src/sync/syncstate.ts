@@ -243,7 +243,7 @@ export const merge = ({
       // Get the last new event's ID as the new upstream head
       const newUpstreamHead = payload.newEvents.at(-1)?.seqNum ?? syncState.upstreamHead
 
-      let effectivePending: readonly LiveStoreEvent.Client.EncodedWithMeta[]
+      let rebasedPending: readonly LiveStoreEvent.Client.EncodedWithMeta[]
 
       if (payload.replayedPending.length > 0) {
         // The leader replayed commands and provided authoritative pending events.
@@ -266,10 +266,10 @@ export const merge = ({
           baseEventSequenceNumber: payload.replayedPending.at(-1)?.seqNum ?? newUpstreamHead,
           isClientEvent,
         })
-        effectivePending = [...payload.replayedPending, ...rebasedSessionOnly]
+        rebasedPending = [...payload.replayedPending, ...rebasedSessionOnly]
       } else {
         // No leader replay info — fall back to rebase without replay of all session pending
-        effectivePending = rebaseEvents({
+        rebasedPending = rebaseEvents({
           events: syncState.pending,
           baseEventSequenceNumber: newUpstreamHead,
           isClientEvent,
@@ -280,16 +280,16 @@ export const merge = ({
         MergeResultRebase.make({
           _tag: 'rebase',
           newSyncState: new SyncState({
-            pending: effectivePending,
+            pending: rebasedPending,
             upstreamHead: newUpstreamHead,
-            localHead: effectivePending.at(-1)?.seqNum ?? newUpstreamHead,
+            localHead: rebasedPending.at(-1)?.seqNum ?? newUpstreamHead,
           }),
           // When replayedPending is provided, payload.newEvents already contains the replayed events;
           // only append session-only events rebased without replay to avoid duplicates.
           newEvents:
             payload.replayedPending.length > 0
-              ? [...payload.newEvents, ...effectivePending.slice(payload.replayedPending.length)]
-              : [...payload.newEvents, ...effectivePending],
+              ? [...payload.newEvents, ...rebasedPending.slice(payload.replayedPending.length)]
+              : [...payload.newEvents, ...rebasedPending],
           rollbackEvents,
           mergeContext,
         }),
