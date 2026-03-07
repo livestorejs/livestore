@@ -189,14 +189,14 @@ export const payloadFromMergeResult = (
     Match.tag('advance', (result) => ({
       _tag: 'upstream-advance' as const,
       newEvents: result.newEvents,
-      confirmedCommandIds: [] as readonly string[],
+      confirmedCommandIds: [],
     })),
     Match.tag('rebase', (result) => ({
       _tag: 'upstream-rebase' as const,
       newEvents: result.newEvents,
       rollbackEvents: result.rollbackEvents,
-      conflicts: [] as readonly { readonly commandId: string; readonly error: unknown }[],
-      replayedPending: [] as readonly LiveStoreEvent.Client.EncodedWithMeta[],
+      conflicts: [],
+      replayedPending: [],
     })),
     Match.exhaustive,
   )
