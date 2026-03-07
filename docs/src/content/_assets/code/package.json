@@ -61,7 +61,7 @@
     "react-native": "0.81.4",
     "solid-js": "1.9.10",
     "svelte": "5.43.14",
-    "vite": "7.3.0",
+    "vite": "7.3.1",
     "vite-plugin-vue-devtools": "7.7.9",
     "vue-livestore": "0.2.3"
   },

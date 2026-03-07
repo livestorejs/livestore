@@ -434,9 +434,8 @@ export const merge = ({
       }
     }
 
-    default: {
-      casesHandled(payload)
-    }
+    default:
+      return casesHandled(payload)
   }
 }
 

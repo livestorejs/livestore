@@ -53,7 +53,7 @@ export const deepEqual = <T>(a: T, b: T): boolean => {
     length = keys.length
     if (length !== Object.keys(b).length) return false
 
-    for (i = length; i-- !== 0; ) if (Object.hasOwn(b, keys[i]) === false) return false
+    for (i = length; i-- !== 0; ) if (Object.prototype.hasOwnProperty.call(b, keys[i]) === false) return false
 
     for (i = length; i-- !== 0; ) {
       const key = keys[i]

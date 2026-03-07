@@ -103,9 +103,16 @@ export class Opfs extends Effect.Service<Opfs>()('@livestore/utils/Opfs', {
      *
      * @see {@link https://developer.mozilla.org/en-US/docs/Web/API/FileSystemDirectoryHandle/values | MDN Reference}
      */
-    const values = (directory: FileSystemDirectoryHandle) =>
-      Stream.fromAsyncIterable(directory.values(), (u) =>
-        WebError.parseWebError(u, [WebError.NotAllowedError, WebError.NotFoundError]),
+    const values = (
+      directory: FileSystemDirectoryHandle,
+    ): Stream.Stream<
+      FileSystemHandle,
+      WebError.NotAllowedError | WebError.NotFoundError | WebError.UnknownError,
+      never
+    > =>
+      Stream.fromAsyncIterable(
+        (directory as unknown as { values(): AsyncIterable<FileSystemHandle> }).values(),
+        (u) => WebError.parseWebError(u, [WebError.NotAllowedError, WebError.NotFoundError]),
       )
 
     /**
