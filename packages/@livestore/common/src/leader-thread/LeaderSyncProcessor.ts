@@ -403,8 +403,10 @@ export const makeLeaderSyncProcessor = ({
           //  This will stop retrying if while returns false and require page refresh to reconnect
           // We want to retry pulling if we've lost connection to the sync backend
           while: (cause) => cause._tag === 'IsOfflineError',
-          // FIXME: make that configurable, should match the non-failure repeat inside
-          schedule: Schedule.spaced("10 seconds")
+          schedule: Schedule.exponential("1 seconds").pipe(
+            Schedule.andThenEither(Schedule.spaced("30 seconds")),
+            Schedule.jittered,
+          )
         }),
         Effect.catchAllCause(maybeShutdownOnError),
         // Needed to avoid `Fiber terminated with an unhandled error` logs which seem to happen because of the `Effect.retry` above.
