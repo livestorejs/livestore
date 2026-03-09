@@ -964,8 +964,9 @@ const backgroundBackendPushing = Effect.fn('@livestore/common:LeaderSyncProcesso
     // - Resets automatically after successful push
     // TODO(metrics): expose counters/gauges for retry attempts and queue health via devtools/metrics
 
-      // Only retry for transient UnknownError cases
-      const isRetryable = (err: InvalidPushError | IsOfflineError) => err._tag === 'IsOfflineError'
+    // Only retry for transient UnknownError cases
+    const isRetryable = (err: InvalidPushError | IsOfflineError) =>
+      err._tag === 'InvalidPushError' && err.cause._tag === 'LiveStore.UnknownError'
 
     // Input: InvalidPushError | IsOfflineError, Output: Duration
     const retrySchedule: Schedule.Schedule<Duration.DurationInput, InvalidPushError | IsOfflineError> =
