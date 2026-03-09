@@ -399,8 +399,6 @@ export const makeLeaderSyncProcessor = ({
         advancePushHead,
       }).pipe(
         Effect.retry({
-          // FIXME: shouldn't maybeShutdownOnError decide whether we shut down or not?
-          //  This will stop retrying if while returns false and require page refresh to reconnect
           // We want to retry pulling if we've lost connection to the sync backend
           while: (cause) => cause._tag === 'IsOfflineError',
           schedule: Schedule.exponential("1 seconds").pipe(
