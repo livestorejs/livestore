@@ -41,11 +41,6 @@ exports[`useClientDocument > otel > should update the data based on component ke
         "span.label": "⚠︎ Interrupted",
         "status.interrupted": true,
       },
-      "children": [
-        {
-          "_name": "@livestore/common:SyncState:merge",
-        },
-      ],
     },
     {
       "_name": "LiveStore:sync",
@@ -209,9 +204,6 @@ exports[`useClientDocument > otel > should update the data based on component ke
         },
         "children": [
           {
-            "_name": "@livestore/common:SyncState:merge",
-          },
-          {
             "_name": "client-session-sync-processor:materialize-event",
             "children": [
               {
@@ -249,9 +241,6 @@ exports[`useClientDocument > otel > should update the data based on component ke
           "mergeResultTag": "advance",
         },
         "children": [
-          {
-            "_name": "@livestore/common:SyncState:merge",
-          },
           {
             "_name": "client-session-sync-processor:materialize-event",
             "children": [
@@ -315,11 +304,6 @@ exports[`useClientDocument > otel > should update the data based on component ke
         "span.label": "⚠︎ Interrupted",
         "status.interrupted": true,
       },
-      "children": [
-        {
-          "_name": "@livestore/common:SyncState:merge",
-        },
-      ],
     },
     {
       "_name": "LiveStore:sync",
@@ -421,9 +405,6 @@ exports[`useClientDocument > otel > should update the data based on component ke
         },
         "children": [
           {
-            "_name": "@livestore/common:SyncState:merge",
-          },
-          {
             "_name": "client-session-sync-processor:materialize-event",
             "children": [
               {
@@ -461,9 +442,6 @@ exports[`useClientDocument > otel > should update the data based on component ke
           "mergeResultTag": "advance",
         },
         "children": [
-          {
-            "_name": "@livestore/common:SyncState:merge",
-          },
           {
             "_name": "client-session-sync-processor:materialize-event",
             "children": [

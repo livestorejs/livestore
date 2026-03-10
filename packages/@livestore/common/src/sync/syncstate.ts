@@ -188,7 +188,7 @@ The same applies to even further hierarchy levels
 
 TODO: possibly even keep the client events in a separate table in the client leader
 */
-export const merge = Effect.fn('@livestore/common:SyncState:merge')(function* ({
+export const merge = Effect.fnUntraced(function* ({
   syncState,
   payload,
   isClientEvent,
