@@ -23,6 +23,7 @@ import type {
   SqliteDb,
   SyncBackend,
   UnknownError,
+  UnknownEventError,
 } from '../index.ts'
 import { EventSequenceNumber, type LiveStoreEvent, type LiveStoreSchema } from '../schema/mod.ts'
 import type * as SyncState from '../sync/syncstate.ts'
@@ -211,7 +212,7 @@ export interface LeaderSyncProcessor {
     event: LiveStoreEvent.Input.Encoded
     clientId: string
     sessionId: string
-  }) => Effect.Effect<void, UnknownError>
+  }) => Effect.Effect<void, UnknownEventError>
 
   boot: Effect.Effect<
     { initialLeaderHead: EventSequenceNumber.Client.Composite },
