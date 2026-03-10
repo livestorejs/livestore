@@ -1,4 +1,4 @@
-import { casesHandled, isNotUndefined, LS_DEV, shouldNeverHappen, TRACE_VERBOSE } from '@livestore/utils'
+import { casesHandled, isNotUndefined, LS_DEV, TRACE_VERBOSE } from '@livestore/utils'
 import type { HttpClient, Runtime, Scope, Tracer } from '@livestore/utils/effect'
 import {
   BucketQueue,
@@ -241,7 +241,7 @@ export const makeLeaderSyncProcessor = ({
     const pushPartial: LeaderSyncProcessor['pushPartial'] = ({ event: { name, args }, clientId, sessionId }) =>
       Effect.gen(function* () {
         const syncState = yield* syncStateSref
-        if (syncState === undefined) return shouldNeverHappen('Not initialized')
+        if (syncState === undefined) return yield* Effect.dieWithDebugger('Not initialized')
 
         const resolution = yield* resolveEventDef(schema, {
           operation: '@livestore/common:LeaderSyncProcessor:pushPartial',
@@ -431,15 +431,15 @@ export const makeLeaderSyncProcessor = ({
       - full new state db snapshot in the "rebase" case
         - downside: importing the snapshot is expensive
     */
-    const pullQueue: LeaderSyncProcessor['pullQueue'] = ({ cursor }) => {
-      const runtime = ctxRef.current?.runtime ?? shouldNeverHappen('Not initialized')
-      return connectedClientSessionPullQueues.makeQueue(cursor).pipe(Effect.provide(runtime))
-    }
+    const pullQueue: LeaderSyncProcessor['pullQueue'] = ({ cursor }) =>
+      ctxRef.current?.runtime === undefined ?
+        Effect.dieWithDebugger('Not initialized') :
+        connectedClientSessionPullQueues.makeQueue(cursor).pipe(Effect.provide(ctxRef.current.runtime))
 
     const syncState = Subscribable.make({
       get: Effect.gen(function* () {
         const syncState = yield* syncStateSref
-        if (syncState === undefined) return shouldNeverHappen('Not initialized')
+        if (syncState === undefined) return yield* Effect.dieWithDebugger('Not initialized')
         return syncState
       }),
       changes: syncStateSref.changes.pipe(Stream.filter(isNotUndefined)),
@@ -491,7 +491,7 @@ const backgroundApplyLocalPushes = ({
       // Applies a batch of local pushes, guarded by the localPushBackendPullMutex to ensure mutual exclusion with backend pulling
       yield* Effect.gen(function* () {
         const syncState = yield* syncStateSref
-        if (syncState === undefined) return shouldNeverHappen('Not initialized')
+        if (syncState === undefined) return yield* Effect.dieWithDebugger('Not initialized')
 
         const currentRebaseGeneration = syncState.localHead.rebaseGeneration
 
@@ -552,7 +552,7 @@ const backgroundApplyLocalPushes = ({
 
         switch (mergeResult._tag) {
           case 'rebase': {
-            return shouldNeverHappen('The leader thread should never have to rebase due to a local push')
+            return yield* Effect.dieWithDebugger('The leader thread should never have to rebase due to a local push')
           }
           case 'reject': {
             otelSpan?.addEvent(
@@ -747,7 +747,7 @@ const backgroundBackendPulling = Effect.fn('@livestore/common:LeaderSyncProcesso
 
       const chunkExit = yield* Effect.gen(function* () {
         const syncState = yield* syncStateSref
-        if (syncState === undefined) return shouldNeverHappen('Not initialized')
+        if (syncState === undefined) return yield* Effect.dieWithDebugger('Not initialized')
 
         yield* Effect.annotateCurrentSpan({
         'merge.newEventsCount': newEvents.length,
@@ -763,7 +763,7 @@ const backgroundBackendPulling = Effect.fn('@livestore/common:LeaderSyncProcesso
       })
 
       if (mergeResult._tag === 'reject') {
-        return shouldNeverHappen('The leader thread should never reject upstream advances')
+        return yield* Effect.dieWithDebugger('The leader thread should never reject upstream advances')
       }
 
         const newBackendHead = newEvents.at(-1)!.seqNum
@@ -855,7 +855,7 @@ const backgroundBackendPulling = Effect.fn('@livestore/common:LeaderSyncProcesso
     })
 
   const syncState = yield* syncStateSref
-  if (syncState === undefined) return shouldNeverHappen('Not initialized')
+  if (syncState === undefined) return yield* Effect.dieWithDebugger('Not initialized')
   const cursorInfo = yield* Eventlog.getSyncBackendCursorInfo({ remoteHead: syncState.upstreamHead.global })
 
   const hashMaterializerResult = makeMaterializerHash({ schema, dbState })
