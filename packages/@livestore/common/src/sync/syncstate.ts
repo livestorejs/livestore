@@ -1,5 +1,5 @@
-import { casesHandled, LS_DEV, shouldNeverHappen } from '@livestore/utils'
-import { Match, ReadonlyArray, Schema } from '@livestore/utils/effect'
+import { casesHandled, shouldNeverHappen } from '@livestore/utils'
+import { Effect, Match, ReadonlyArray, Schema } from '@livestore/utils/effect'
 
 import * as EventSequenceNumber from '../schema/EventSequenceNumber/mod.ts'
 import * as LiveStoreEvent from '../schema/LiveStoreEvent/mod.ts'
@@ -159,16 +159,10 @@ export class MergeResultReject extends Schema.Class<MergeResultReject>('MergeRes
   }
 }
 
-export class MergeResultUnknownError extends Schema.Class<MergeResultUnknownError>('MergeResultUnknownError')({
-  _tag: Schema.Literal('unknown-error'),
-  message: Schema.String,
-}) {}
-
 export class MergeResult extends Schema.Union(
   MergeResultAdvance,
   MergeResultRebase,
   MergeResultReject,
-  MergeResultUnknownError,
 ) {}
 
 export const payloadFromMergeResult = (
@@ -187,15 +181,6 @@ export const payloadFromMergeResult = (
     Match.exhaustive,
   )
 
-const unknownError = (message: string): MergeResultUnknownError => {
-  if (LS_DEV === true) {
-    // oxlint-disable-next-line eslint(no-debugger) -- intentional breakpoint for unknown merge errors
-    debugger
-  }
-
-  return MergeResultUnknownError.make({ _tag: 'unknown-error', message })
-}
-
 // TODO Idea: call merge recursively through hierarchy levels
 /*
 Idea: have a map that maps from `globalEventSequenceNumber` to Array<ClientEvents>
@@ -203,7 +188,7 @@ The same applies to even further hierarchy levels
 
 TODO: possibly even keep the client events in a separate table in the client leader
 */
-export const merge = ({
+export const merge = Effect.fn('@livestore/common:SyncState:merge')(function* ({
   syncState,
   payload,
   isClientEvent,
@@ -216,9 +201,9 @@ export const merge = ({
   isEqualEvent: (a: LiveStoreEvent.Client.EncodedWithMeta, b: LiveStoreEvent.Client.EncodedWithMeta) => boolean
   /** This is used in the leader which should ignore client events when receiving an upstream-advance payload */
   ignoreClientEvents?: boolean
-}): typeof MergeResult.Type => {
+}) {
   validateSyncState(syncState)
-  validatePayload(payload)
+  yield* validatePayload(payload)
 
   const mergeContext = MergeContext.make({ payload, syncState })
 
@@ -275,7 +260,7 @@ export const merge = ({
           EventSequenceNumber.Client.isGreaterThan(payload.newEvents[i - 1]!.seqNum, payload.newEvents[i]!.seqNum) ===
           true
         ) {
-          return unknownError(
+          return yield* Effect.dieWithDebugger(
             `Events must be sorted in ascending order by event number. Received: [${payload.newEvents.map((e) => EventSequenceNumber.Client.toString(e.seqNum)).join(', ')}]`,
           )
         }
@@ -286,7 +271,7 @@ export const merge = ({
         EventSequenceNumber.Client.isGreaterThan(syncState.upstreamHead, payload.newEvents[0]!.seqNum) === true ||
         EventSequenceNumber.Client.isEqual(syncState.upstreamHead, payload.newEvents[0]!.seqNum) === true
       ) {
-        return unknownError(
+        return yield* Effect.dieWithDebugger(
           `Incoming events must be greater than upstream head. Expected greater than: ${EventSequenceNumber.Client.toString(syncState.upstreamHead)}. Received: [${payload.newEvents.map((e) => EventSequenceNumber.Client.toString(e.seqNum)).join(', ')}]`,
         )
       }
@@ -437,7 +422,7 @@ export const merge = ({
     default:
       return casesHandled(payload)
   }
-}
+  })
 
 /**
  * Gets the index relative to `existingEvents` where the divergence point is
@@ -514,21 +499,21 @@ const rebaseEvents = ({
  */
 const _flattenMergeResults = (_updateResults: ReadonlyArray<MergeResult>) => {}
 
-const validatePayload = (payload: typeof Payload.Type) => {
-  for (let i = 1; i < payload.newEvents.length; i++) {
-    if (
-      EventSequenceNumber.Client.isGreaterThanOrEqual(
-        payload.newEvents[i - 1]!.seqNum,
-        payload.newEvents[i]!.seqNum,
-      ) === true
-    ) {
-      return unknownError(
-        `Events must be ordered in monotonically ascending order by eventNum. Received: [${payload.newEvents.map((e) => EventSequenceNumber.Client.toString(e.seqNum)).join(', ')}]`,
-      )
+const validatePayload = (payload: typeof Payload.Type) =>
+  Effect.gen(function* () {
+    for (let i = 1; i < payload.newEvents.length; i++) {
+      if (
+        EventSequenceNumber.Client.isGreaterThanOrEqual(
+          payload.newEvents[i - 1]!.seqNum,
+          payload.newEvents[i]!.seqNum,
+        ) === true
+      ) {
+        return yield* Effect.dieWithDebugger(
+          `Events must be ordered in monotonically ascending order by eventNum. Received: [${payload.newEvents.map((e) => EventSequenceNumber.Client.toString(e.seqNum)).join(', ')}]`,
+        )
+      }
     }
-  }
-  return undefined
-}
+  })
 
 const validateSyncState = (syncState: SyncState) => {
   for (let i = 0; i < syncState.pending.length; i++) {
@@ -572,7 +557,7 @@ const validateSyncState = (syncState: SyncState) => {
 }
 
 const validateMergeResult = (mergeResult: typeof MergeResult.Type) => {
-  if (mergeResult._tag === 'unknown-error' || mergeResult._tag === 'reject') return mergeResult
+  if (mergeResult._tag === 'reject') return mergeResult
 
   validateSyncState(mergeResult.newSyncState)
 

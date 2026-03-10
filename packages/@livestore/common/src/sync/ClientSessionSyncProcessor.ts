@@ -15,7 +15,7 @@ import {
 } from '@livestore/utils/effect'
 import type * as otel from '@opentelemetry/api'
 
-import { type ClientSession, UnknownError } from '../adapter-types.ts'
+import { type ClientSession, type UnknownError } from '../adapter-types.ts'
 import type { MaterializeError } from '../errors.ts'
 import * as EventSequenceNumber from '../schema/EventSequenceNumber/mod.ts'
 import * as LiveStoreEvent from '../schema/LiveStoreEvent/mod.ts'
@@ -137,7 +137,7 @@ export const makeClientSessionSyncProcessor = ({
       )
     })
 
-    const mergeResult = SyncState.merge({
+    const mergeResult = yield* SyncState.merge({
       syncState: syncStateRef.current,
       payload: { _tag: 'local-push', newEvents: encodedEventDefs },
       isClientEvent,
@@ -153,10 +153,6 @@ export const makeClientSessionSyncProcessor = ({
       }, {}),
       ...(TRACE_VERBOSE === true ? { mergeResult: jsonStringify(mergeResult) } : {}),
     })
-
-    if (mergeResult._tag === 'unknown-error') {
-      return shouldNeverHappen('Unknown error in client-session-sync-processor', mergeResult.message)
-    }
 
     if (mergeResult._tag !== 'advance') {
       return shouldNeverHappen(`Expected advance, got ${mergeResult._tag}`)
@@ -241,16 +237,14 @@ export const makeClientSessionSyncProcessor = ({
             yield* clientSession.devtools.pullLatch.await
           }
 
-          const mergeResult = SyncState.merge({
+          const mergeResult = yield* SyncState.merge({
             syncState: syncStateRef.current,
             payload,
             isClientEvent,
             isEqualEvent: LiveStoreEvent.Client.isEqualEncoded,
           })
 
-          if (mergeResult._tag === 'unknown-error') {
-            return yield* new UnknownError({ cause: mergeResult.message })
-          } else if (mergeResult._tag === 'reject') {
+          if (mergeResult._tag === 'reject') {
             return shouldNeverHappen('Unexpected reject in client-session-sync-processor', mergeResult)
           }
 

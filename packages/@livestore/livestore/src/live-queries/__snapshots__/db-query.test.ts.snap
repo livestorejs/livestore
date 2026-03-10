@@ -34,6 +34,11 @@ exports[`otel > QueryBuilder subscription - async iterator 1`] = `
         "span.label": "⚠︎ Interrupted",
         "status.interrupted": true,
       },
+      "children": [
+        {
+          "_name": "@livestore/common:SyncState:merge",
+        },
+      ],
     },
     {
       "_name": "LiveStore:sync",
@@ -69,6 +74,9 @@ exports[`otel > QueryBuilder subscription - async iterator 2`] = `
           "mergeResultTag": "advance",
         },
         "children": [
+          {
+            "_name": "@livestore/common:SyncState:merge",
+          },
           {
             "_name": "client-session-sync-processor:materialize-event",
             "children": [
@@ -121,6 +129,11 @@ exports[`otel > QueryBuilder subscription - async iterator with skipInitialRun 1
         "span.label": "⚠︎ Interrupted",
         "status.interrupted": true,
       },
+      "children": [
+        {
+          "_name": "@livestore/common:SyncState:merge",
+        },
+      ],
     },
     {
       "_name": "LiveStore:sync",
@@ -156,6 +169,9 @@ exports[`otel > QueryBuilder subscription - async iterator with skipInitialRun 2
           "mergeResultTag": "advance",
         },
         "children": [
+          {
+            "_name": "@livestore/common:SyncState:merge",
+          },
           {
             "_name": "client-session-sync-processor:materialize-event",
             "children": [
@@ -208,6 +224,11 @@ exports[`otel > QueryBuilder subscription - basic functionality 1`] = `
         "span.label": "⚠︎ Interrupted",
         "status.interrupted": true,
       },
+      "children": [
+        {
+          "_name": "@livestore/common:SyncState:merge",
+        },
+      ],
     },
     {
       "_name": "LiveStore:sync",
@@ -290,6 +311,9 @@ exports[`otel > QueryBuilder subscription - basic functionality 2`] = `
         },
         "children": [
           {
+            "_name": "@livestore/common:SyncState:merge",
+          },
+          {
             "_name": "client-session-sync-processor:materialize-event",
             "children": [
               {
@@ -341,6 +365,11 @@ exports[`otel > QueryBuilder subscription - direct table subscription 1`] = `
         "span.label": "⚠︎ Interrupted",
         "status.interrupted": true,
       },
+      "children": [
+        {
+          "_name": "@livestore/common:SyncState:merge",
+        },
+      ],
     },
     {
       "_name": "LiveStore:sync",
@@ -423,6 +452,9 @@ exports[`otel > QueryBuilder subscription - direct table subscription 2`] = `
         },
         "children": [
           {
+            "_name": "@livestore/common:SyncState:merge",
+          },
+          {
             "_name": "client-session-sync-processor:materialize-event",
             "children": [
               {
@@ -474,6 +506,11 @@ exports[`otel > QueryBuilder subscription - skipInitialRun 1`] = `
         "span.label": "⚠︎ Interrupted",
         "status.interrupted": true,
       },
+      "children": [
+        {
+          "_name": "@livestore/common:SyncState:merge",
+        },
+      ],
     },
     {
       "_name": "LiveStore:sync",
@@ -556,6 +593,9 @@ exports[`otel > QueryBuilder subscription - skipInitialRun 2`] = `
         },
         "children": [
           {
+            "_name": "@livestore/common:SyncState:merge",
+          },
+          {
             "_name": "client-session-sync-processor:materialize-event",
             "children": [
               {
@@ -614,6 +654,11 @@ exports[`otel > QueryBuilder subscription - unsubscribe functionality 1`] = `
         "span.label": "⚠︎ Interrupted",
         "status.interrupted": true,
       },
+      "children": [
+        {
+          "_name": "@livestore/common:SyncState:merge",
+        },
+      ],
     },
     {
       "_name": "LiveStore:sync",
@@ -722,6 +767,9 @@ exports[`otel > QueryBuilder subscription - unsubscribe functionality 2`] = `
         },
         "children": [
           {
+            "_name": "@livestore/common:SyncState:merge",
+          },
+          {
             "_name": "client-session-sync-processor:materialize-event",
             "children": [
               {
@@ -755,6 +803,9 @@ exports[`otel > QueryBuilder subscription - unsubscribe functionality 2`] = `
           "mergeResultTag": "advance",
         },
         "children": [
+          {
+            "_name": "@livestore/common:SyncState:merge",
+          },
           {
             "_name": "client-session-sync-processor:materialize-event",
             "children": [
@@ -807,6 +858,11 @@ exports[`otel > otel 3`] = `
         "span.label": "⚠︎ Interrupted",
         "status.interrupted": true,
       },
+      "children": [
+        {
+          "_name": "@livestore/common:SyncState:merge",
+        },
+      ],
     },
     {
       "_name": "LiveStore:sync",
@@ -878,6 +934,9 @@ exports[`otel > otel 4`] = `
           "mergeResultTag": "advance",
         },
         "children": [
+          {
+            "_name": "@livestore/common:SyncState:merge",
+          },
           {
             "_name": "client-session-sync-processor:materialize-event",
             "children": [
@@ -1102,6 +1161,11 @@ exports[`otel > with thunks 7`] = `
         "span.label": "⚠︎ Interrupted",
         "status.interrupted": true,
       },
+      "children": [
+        {
+          "_name": "@livestore/common:SyncState:merge",
+        },
+      ],
     },
     {
       "_name": "LiveStore:sync",
@@ -1180,6 +1244,9 @@ exports[`otel > with thunks 8`] = `
         },
         "children": [
           {
+            "_name": "@livestore/common:SyncState:merge",
+          },
+          {
             "_name": "client-session-sync-processor:materialize-event",
             "children": [
               {
@@ -1231,6 +1298,11 @@ exports[`otel > with thunks with query builder and without labels 3`] = `
         "span.label": "⚠︎ Interrupted",
         "status.interrupted": true,
       },
+      "children": [
+        {
+          "_name": "@livestore/common:SyncState:merge",
+        },
+      ],
     },
     {
       "_name": "LiveStore:sync",
@@ -1308,6 +1380,9 @@ exports[`otel > with thunks with query builder and without labels 4`] = `
           "mergeResultTag": "advance",
         },
         "children": [
+          {
+            "_name": "@livestore/common:SyncState:merge",
+          },
           {
             "_name": "client-session-sync-processor:materialize-event",
             "children": [
