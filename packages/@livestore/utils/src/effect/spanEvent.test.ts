@@ -1,9 +1,9 @@
 import { it, describe, expect } from '@effect/vitest'
 import { Effect, Tracer } from 'effect'
 
-import { spanEvent } from './Effect.ts'
+import { spanEvent } from './spanEvent.ts'
 
-type RecordedEvent = { name: string; attributes?: Record<string, unknown> }
+type RecordedEvent = { name: string; attributes: Record<string, unknown> | undefined }
 
 /**
  * Creates a test tracer that captures span events for assertion,
@@ -78,9 +78,7 @@ describe('spanEvent', () => {
     return Effect.gen(function* () {
       yield* spanEvent('outer-event')
 
-      yield* Effect.gen(function* () {
-        yield* spanEvent('inner-event')
-      }).pipe(Effect.withSpan('inner-span'))
+      yield* spanEvent('inner-event').pipe(Effect.withSpan('inner-span'))
 
       const outerEvents = getEvents('outer-span')
       const innerEvents = getEvents('inner-span')
@@ -93,9 +91,5 @@ describe('spanEvent', () => {
     }).pipe(Effect.withSpan('outer-span'), Effect.withTracer(tracer))
   })
 
-  it.effect('should be a no-op when no span is in context', () =>
-    Effect.gen(function* () {
-      yield* spanEvent('orphan-event')
-    }),
-  )
+  it.effect('should be a no-op when no span is in context', () => spanEvent('orphan-event'))
 })
