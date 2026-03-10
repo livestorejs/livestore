@@ -50,6 +50,7 @@
     "@opentelemetry/api": "1.9.0",
     "@opentelemetry/resources": "2.2.0",
     "@playwright/test": "1.58.0",
+    "@standard-schema/spec": "1.0.0",
     "effect": "3.19.15",
     "tsx": "^4.20.0"
   },
