@@ -278,8 +278,8 @@ export const pnpmWorkspaceTestsReact = (packageNames: readonly string[], extraPa
 // =============================================================================
 
 /**
- * Core Effect ecosystem peer dependencies for @livestore/utils.
- * These are the packages that utils exposes types from and consumers need.
+ * Peer dependencies for the public @livestore/utils surface.
+ * These are the packages that utils exposes types or values from and consumers need.
  *
  * Usage pattern:
  * - Include in devDependencies via catalog.pick() for local development
@@ -303,6 +303,7 @@ export const utilsEffectPeerDeps = [
   '@effect/typeclass',
   '@opentelemetry/api',
   '@opentelemetry/resources',
+  '@standard-schema/spec',
 ] as const
 
 /**

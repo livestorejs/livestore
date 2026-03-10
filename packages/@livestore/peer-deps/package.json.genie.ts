@@ -21,6 +21,7 @@ export default packageJson({
       '@effect/typeclass',
       '@opentelemetry/api',
       '@opentelemetry/resources',
+      '@standard-schema/spec',
       'effect',
     ),
   },
