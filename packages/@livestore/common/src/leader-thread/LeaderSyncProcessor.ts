@@ -252,7 +252,7 @@ export const makeLeaderSyncProcessor = ({
             sessionId,
             seqNum: syncState.localHead,
           },
-        }).pipe(UnknownError.mapToUnknownError)
+        })
 
         if (resolution._tag === 'unknown') {
           // Ignore partial pushes for unrecognised events – they are still
