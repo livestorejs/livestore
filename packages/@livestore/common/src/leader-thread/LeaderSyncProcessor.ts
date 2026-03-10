@@ -997,13 +997,13 @@ interface PullQueueSet {
     cursor: EventSequenceNumber.Client.Composite,
   ) => Effect.Effect<
     Queue.Queue<{ payload: typeof SyncState.PayloadUpstream.Type }>,
-    UnknownError,
+    never,
     Scope.Scope | LeaderThreadCtx
   >
   offer: (item: {
     payload: typeof SyncState.PayloadUpstream.Type
     leaderHead: EventSequenceNumber.Client.Composite
-  }) => Effect.Effect<void, UnknownError>
+  }) => Effect.Effect<void, never>
 }
 
 const makePullQueueSet = Effect.gen(function* () {
