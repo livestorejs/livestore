@@ -13,7 +13,6 @@ import {
   Stream,
   Subscribable,
 } from '@livestore/utils/effect'
-import type * as otel from '@opentelemetry/api'
 
 import { type ClientSession, type UnknownError } from '../adapter-types.ts'
 import type { MaterializeError } from '../errors.ts'
@@ -22,11 +21,6 @@ import * as EventSequenceNumber from '../schema/EventSequenceNumber/mod.ts'
 import * as LiveStoreEvent from '../schema/LiveStoreEvent/mod.ts'
 import type { LiveStoreSchema } from '../schema/mod.ts'
 import * as SyncState from './syncstate.ts'
-
-// WORKAROUND: @effect/opentelemetry mis-parses `Span.addEvent(name, attributes)` and treats the attributes object as a
-// time input, causing `TypeError: {} is not iterable` at runtime.
-// Upstream: https://github.com/Effect-TS/effect/pull/5929
-// TODO: simplify back to the 2-arg overload once the upstream fix is released and adopted.
 
 /** Serialize value to JSON string for trace attributes */
 const jsonStringify = Schema.encodeSync(Schema.parseJson())
@@ -53,7 +47,6 @@ export const makeClientSessionSyncProcessor = ({
   materializeEvent,
   rollback,
   refreshTables,
-  span,
   params,
   confirmUnsavedChanges,
 }: {
@@ -76,7 +69,6 @@ export const makeClientSessionSyncProcessor = ({
   >
   rollback: (changeset: Uint8Array<ArrayBuffer>) => void
   refreshTables: (tables: Set<string>) => void
-  span: otel.Span
   params: {
     leaderPushBatchSize: number
     simulation?: ClientSessionSyncProcessorSimulationParams
@@ -252,17 +244,13 @@ export const makeClientSessionSyncProcessor = ({
           syncStateRef.current = mergeResult.newSyncState
 
           if (mergeResult._tag === 'rebase') {
-            span.addEvent(
-              'merge:pull:rebase',
-              {
-                payloadTag: payload._tag,
-                payload: TRACE_VERBOSE === true ? jsonStringify(payload) : undefined,
-                newEventsCount: mergeResult.newEvents.length,
-                rollbackCount: mergeResult.rollbackEvents.length,
-                res: TRACE_VERBOSE === true ? jsonStringify(mergeResult) : undefined,
-              },
-              undefined,
-            )
+            yield* Effect.spanEvent('merge:pull:rebase', {
+              payloadTag: payload._tag,
+              ...(TRACE_VERBOSE === true ? { payload: jsonStringify(payload) } : {}),
+              newEventsCount: mergeResult.newEvents.length,
+              rollbackCount: mergeResult.rollbackEvents.length,
+              ...(TRACE_VERBOSE === true ? { res: jsonStringify(mergeResult) } : {}),
+            })
 
             debugInfo.rebaseCount++
 
@@ -301,16 +289,12 @@ export const makeClientSessionSyncProcessor = ({
 
             yield* FiberHandle.run(leaderPushingFiberHandle, backgroundLeaderPushing)
           } else {
-            span.addEvent(
-              'merge:pull:advance',
-              {
-                payloadTag: payload._tag,
-                payload: TRACE_VERBOSE === true ? jsonStringify(payload) : undefined,
-                newEventsCount: mergeResult.newEvents.length,
-                res: TRACE_VERBOSE === true ? jsonStringify(mergeResult) : undefined,
-              },
-              undefined,
-            )
+            yield* Effect.spanEvent('merge:pull:advance', {
+              payloadTag: payload._tag,
+              ...(TRACE_VERBOSE === true ? { payload: jsonStringify(payload) } : {}),
+              newEventsCount: mergeResult.newEvents.length,
+              ...(TRACE_VERBOSE === true ? { res: jsonStringify(mergeResult) } : {}),
+            })
 
             debugInfo.advanceCount++
           }

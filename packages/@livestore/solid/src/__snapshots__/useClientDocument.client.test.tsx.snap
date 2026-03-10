@@ -36,9 +36,6 @@ exports[`useClientDocument > otel > should update the data based on component ke
       },
     },
     {
-      "_name": "LiveStore:sync",
-    },
-    {
       "_name": "LiveStore:commits",
     },
     {
