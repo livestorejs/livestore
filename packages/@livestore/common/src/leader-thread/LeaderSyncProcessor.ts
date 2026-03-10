@@ -537,25 +537,19 @@ const backgroundApplyLocalPushes = ({
 
         const [newEvents, deferreds] = ReadonlyArray.unzip(filteredItems)
 
-        const mergeResult = SyncState.merge({
-          syncState,
-          payload: { _tag: 'local-push', newEvents },
-          isClientEvent,
-          isEqualEvent: LiveStoreEvent.Client.isEqualEncoded,
-        })
+        yield* Effect.annotateCurrentSpan({
+        'batchSize': newEvents.length,
+        ...(TRACE_VERBOSE === true ? { 'newEvents': jsonStringify(newEvents) } : {}),
+      })
+
+      const mergeResult = yield* SyncState.merge({
+        syncState,
+        payload: { _tag: 'local-push', newEvents },
+        isClientEvent,
+        isEqualEvent: LiveStoreEvent.Client.isEqualEncoded,
+      })
 
         switch (mergeResult._tag) {
-          case 'unknown-error': {
-            otelSpan?.addEvent(
-              `push:unknown-error`,
-              {
-                batchSize: newEvents.length,
-                newEvents: TRACE_VERBOSE === true ? jsonStringify(newEvents) : undefined,
-              },
-              undefined,
-            )
-            return yield* new UnknownError({ cause: mergeResult.message })
-          }
           case 'rebase': {
             return shouldNeverHappen('The leader thread should never have to rebase due to a local push')
           }
@@ -754,27 +748,22 @@ const backgroundBackendPulling = Effect.fn('@livestore/common:LeaderSyncProcesso
         const syncState = yield* syncStateSref
         if (syncState === undefined) return shouldNeverHappen('Not initialized')
 
-        const mergeResult = SyncState.merge({
-          syncState,
-          payload: SyncState.PayloadUpstreamAdvance.make({ newEvents }),
-          isClientEvent,
-          isEqualEvent: LiveStoreEvent.Client.isEqualEncoded,
-          ignoreClientEvents: true,
-        })
+        yield* Effect.annotateCurrentSpan({
+        'merge.newEventsCount': newEvents.length,
+        ...(TRACE_VERBOSE === true ? { 'merge.newEvents': jsonStringify(newEvents) } : {}),
+      })
 
-        if (mergeResult._tag === 'reject') {
-          return shouldNeverHappen('The leader thread should never reject upstream advances')
-        } else if (mergeResult._tag === 'unknown-error') {
-          otelSpan?.addEvent(
-            `pull:unknown-error`,
-            {
-              newEventsCount: newEvents.length,
-              newEvents: TRACE_VERBOSE === true ? jsonStringify(newEvents) : undefined,
-            },
-            undefined,
-          )
-          return yield* new UnknownError({ cause: mergeResult.message })
-        }
+      const mergeResult = yield* SyncState.merge({
+        syncState,
+        payload: SyncState.PayloadUpstreamAdvance.make({ newEvents }),
+        isClientEvent,
+        isEqualEvent: LiveStoreEvent.Client.isEqualEncoded,
+        ignoreClientEvents: true,
+      })
+
+      if (mergeResult._tag === 'reject') {
+        return shouldNeverHappen('The leader thread should never reject upstream advances')
+      }
 
         const newBackendHead = newEvents.at(-1)!.seqNum
 
