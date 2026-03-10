@@ -6,9 +6,6 @@ import {
   Duration,
   Effect,
   Fiber,
-  FiberRef,
-  HashSet,
-  Logger,
   pipe,
   Scope,
   type Stream,
@@ -22,6 +19,7 @@ import { isDevEnv, isPromise, objectToString } from '../mod.ts'
 import { UnknownError } from './Error.ts'
 
 export * from 'effect/Effect'
+export { spanEvent } from './spanEvent.ts'
 
 // export const log = <A>(message: A, ...rest: any[]): Effect.Effect<void> =>
 //   Effect.sync(() => {
@@ -177,11 +175,6 @@ export const eventListener = <TEvent = unknown>(
 
     yield* Effect.addFinalizer(() => Effect.sync(() => target.removeEventListener(type, handlerFn)))
   })
-
-export const spanEvent = (message: any, attributes?: Record<string, any>) =>
-  Effect.locallyWith(Effect.log(message).pipe(Effect.annotateLogs(attributes ?? {})), FiberRef.currentLoggers, () =>
-    HashSet.make(Logger.tracerLogger),
-  )
 
 export const logWarnIfTakesLongerThan =
   ({ label, duration }: { label: string; duration: Duration.DurationInput }) =>
