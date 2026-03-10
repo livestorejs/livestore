@@ -24,9 +24,12 @@ class CloudflarePreparedStatement implements PreparedStatement {
 
   execute = (bindValues?: PreparedBindValues, options?: { onRowsChanged?: (count: number) => void }) => {
     try {
+      if (isTransactionControlStatement(this.sql) === true) {
+        return
+      }
+
       const cursor = this.sqlStorage.exec(this.sql, ...(bindValues !== undefined ? Object.values(bindValues) : []))
 
-      // Count affected rows by iterating through cursor
       let changedCount = 0
       for (const _row of cursor) {
         changedCount++
@@ -254,4 +257,18 @@ export const makeSqliteDb_ = <
   metadata.configureDb(sqliteDb)
 
   return sqliteDb
+}
+
+/** CF DO SQLite rejects SQL-level transaction control and requires `storage.transactionSync()` instead. */
+const isTransactionControlStatement = (sql: string): boolean => {
+  const upper = sql.trim().toUpperCase()
+  return (
+    upper === 'BEGIN TRANSACTION' ||
+    upper === 'BEGIN' ||
+    upper === 'COMMIT' ||
+    upper === 'END TRANSACTION' ||
+    upper === 'ROLLBACK' ||
+    upper.startsWith('SAVEPOINT') === true ||
+    upper.startsWith('RELEASE') === true
+  )
 }

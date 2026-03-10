@@ -10,8 +10,6 @@ const testDir = path.dirname(fileURLToPath(import.meta.url))
 const fixturesDir = path.join(testDir, 'fixtures')
 const testTimeout = Duration.toMillis(Duration.minutes(2))
 
-// Wrangler refuses to start when proxy environment variables are set, which can
-// happen in CI. Clearing them keeps the dev server reachable during tests.
 delete process.env.HTTP_PROXY
 delete process.env.http_proxy
 delete process.env.HTTPS_PROXY
@@ -37,76 +35,79 @@ const makeStoreUrl = (serverUrl: string, pathname: string, storeId: string) => {
   return url
 }
 
+const makeStoreHelpers = (serverUrl: string, storeId: string) => {
+  const createTodo = (id: string, title: string) =>
+    Effect.tryPromise(async () => {
+      const url = makeStoreUrl(serverUrl, '/store/todos', storeId)
+      const response = await fetch(url, {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({ id, title }),
+      })
+      if (response.ok !== true) {
+        throw new Error(`failed to create todo: ${response.status} ${await response.text()}`)
+      }
+      return response.json<{ id: string }>()
+    })
+
+  const listTodos = () =>
+    Effect.tryPromise(async () => {
+      const url = makeStoreUrl(serverUrl, '/store/todos', storeId)
+      const response = await fetch(url)
+      if (response.ok !== true) {
+        throw new Error(`failed to list todos: ${response.status}`)
+      }
+      return response.json<ReadonlyArray<{ id: string; title: string }>>()
+    })
+
+  const getMetrics = () =>
+    Effect.tryPromise(async () => {
+      const url = makeStoreUrl(serverUrl, '/store/metrics', storeId)
+      const response = await fetch(url)
+      if (response.ok !== true) {
+        throw new Error(`failed to read metrics: ${response.status}`)
+      }
+      return response.json<{ totalRowsWritten: number }>()
+    })
+
+  const resetMetrics = () =>
+    Effect.tryPromise(async () => {
+      const url = makeStoreUrl(serverUrl, '/store/metrics', storeId)
+      const response = await fetch(url, { method: 'DELETE' })
+      if (response.ok !== true) {
+        throw new Error(`failed to reset metrics: ${response.status}`)
+      }
+      return response.json<{ totalRowsWritten: number }>()
+    })
+
+  const shutdownStore = () =>
+    Effect.tryPromise(async () => {
+      const url = makeStoreUrl(serverUrl, '/store/shutdown', storeId)
+      const response = await fetch(url, { method: 'POST' })
+      if (response.ok !== true) {
+        throw new Error(`failed to shutdown store: ${response.status}`)
+      }
+      return response.json<{ ok: boolean }>()
+    })
+
+  return { createTodo, listTodos, getMetrics, resetMetrics, shutdownStore }
+}
+
 Vitest.describe('adapter-cloudflare-writes', { timeout: testTimeout }, () => {
-  Vitest.scopedLive('measures rowsWritten baseline for VFS-backed storage', (test) =>
+  Vitest.scopedLive('verifies low rowsWritten with native eventlog and in-memory state DB', (test) =>
     Effect.gen(function* () {
       const server = yield* WranglerDevServerService
       const storeId = `cf-writes-${nanoid(6)}`
+      const { createTodo, listTodos, getMetrics, resetMetrics } = makeStoreHelpers(server.url, storeId)
 
-      const createTodo = (id: string, title: string) =>
-        Effect.tryPromise(async () => {
-          const url = makeStoreUrl(server.url, '/store/todos', storeId)
-          const response = await fetch(url, {
-            method: 'POST',
-            headers: { 'content-type': 'application/json' },
-            body: JSON.stringify({ id, title }),
-          })
-
-          if (response.ok !== true) {
-            throw new Error(`failed to create todo: ${response.status} ${await response.text()}`)
-          }
-
-          return response.json<{ id: string }>()
-        })
-
-      const listTodos = () =>
-        Effect.tryPromise(async () => {
-          const url = makeStoreUrl(server.url, '/store/todos', storeId)
-          const response = await fetch(url)
-
-          if (response.ok !== true) {
-            throw new Error(`failed to list todos: ${response.status}`)
-          }
-
-          return response.json<ReadonlyArray<{ id: string; title: string }>>()
-        })
-
-      const getMetrics = () =>
-        Effect.tryPromise(async () => {
-          const url = makeStoreUrl(server.url, '/store/metrics', storeId)
-          const response = await fetch(url)
-
-          if (response.ok !== true) {
-            throw new Error(`failed to read metrics: ${response.status}`)
-          }
-
-          return response.json<{ totalRowsWritten: number }>()
-        })
-
-      const resetMetrics = () =>
-        Effect.tryPromise(async () => {
-          const url = makeStoreUrl(server.url, '/store/metrics', storeId)
-          const response = await fetch(url, { method: 'DELETE' })
-
-          if (response.ok !== true) {
-            throw new Error(`failed to reset metrics: ${response.status}`)
-          }
-
-          return response.json<{ totalRowsWritten: number }>()
-        })
-
-      // Boot the store — this triggers initial materialization and VFS setup.
-      // The boot itself incurs writes (VFS table creation, schema setup, etc.).
       yield* createTodo('boot-todo', 'initial boot')
 
       const bootMetrics = yield* getMetrics()
-      console.log('[baseline] rowsWritten after boot + first todo:', bootMetrics.totalRowsWritten)
+      console.log('[optimized] rowsWritten after boot + first todo:', bootMetrics.totalRowsWritten)
 
-      // Reset counter to measure steady-state writes per todo
       yield* resetMetrics()
 
       const todoCount = 10
-
       for (let i = 0; i < todoCount; i++) {
         yield* createTodo(`todo-${i}`, `item ${i}`)
       }
@@ -114,26 +115,105 @@ Vitest.describe('adapter-cloudflare-writes', { timeout: testTimeout }, () => {
       const steadyStateMetrics = yield* getMetrics()
       const writesPerTodo = steadyStateMetrics.totalRowsWritten / todoCount
 
-      console.log('[baseline] rowsWritten for', todoCount, 'todos:', steadyStateMetrics.totalRowsWritten)
-      console.log('[baseline] rowsWritten per todo:', writesPerTodo)
+      console.log('[optimized] rowsWritten for', todoCount, 'todos:', steadyStateMetrics.totalRowsWritten)
+      console.log('[optimized] rowsWritten per todo:', writesPerTodo)
 
-      // Verify todos were actually created correctly
       const allTodos = yield* listTodos()
-      expect(allTodos).toHaveLength(todoCount + 1) // +1 for boot todo
+      expect(allTodos).toHaveLength(todoCount + 1)
+      expect(writesPerTodo).toBeLessThan(20)
 
-      // Assert VFS write amplification: each todo should cause significantly
-      // more than 1 row written due to VFS block splitting (64 KiB blocks in
-      // vfs_blocks table). Measured baseline: ~238x amplification per event
-      // (both dbState and dbEventlog go through VFS).
-      // We use a conservative threshold to avoid flaky tests while still
-      // catching any accidental improvement or regression.
-      expect(writesPerTodo).toBeGreaterThan(50)
+      console.log('[optimized] Writes per todo:', writesPerTodo.toFixed(1), '(down from ~238 with VFS-backed storage)')
+    }).pipe(withTestCtx(test)),
+  )
 
-      console.log(
-        '[baseline] Write amplification factor:',
-        `${writesPerTodo.toFixed(1)}x`,
-        '(measured baseline: ~238x for VFS-backed storage)',
+  Vitest.scopedLive('snapshot restore on cold start avoids full rematerialization', (test) =>
+    Effect.gen(function* () {
+      const server = yield* WranglerDevServerService
+      const storeId = `cf-snapshot-${nanoid(6)}`
+      const { createTodo, listTodos, getMetrics, resetMetrics, shutdownStore } = makeStoreHelpers(
+        server.url,
+        storeId,
       )
+
+      const todoCount = 5
+      for (let i = 0; i < todoCount; i++) {
+        yield* createTodo(`todo-${i}`, `item ${i}`)
+      }
+
+      const preShutdownTodos = yield* listTodos()
+      expect(preShutdownTodos).toHaveLength(todoCount)
+
+      yield* shutdownStore()
+      yield* resetMetrics()
+
+      const postRestartTodos = yield* listTodos()
+      expect(postRestartTodos).toHaveLength(todoCount)
+
+      for (let i = 0; i < todoCount; i++) {
+        expect(postRestartTodos.find((t) => t.id === `todo-${i}`)).toBeDefined()
+      }
+
+      const restartMetrics = yield* getMetrics()
+      console.log('[snapshot-restore] rowsWritten on cold start:', restartMetrics.totalRowsWritten)
+
+      // Snapshot restore should be much cheaper than full rematerialization.
+      // Full rematerialization of 5 events with VFS would cost ~1000+ writes.
+      // With snapshot restore + native eventlog, expect under 50.
+      expect(restartMetrics.totalRowsWritten).toBeLessThan(50)
+    }).pipe(withTestCtx(test)),
+  )
+
+  Vitest.scopedLive('data survives multiple shutdown cycles', (test) =>
+    Effect.gen(function* () {
+      const server = yield* WranglerDevServerService
+      const storeId = `cf-cycles-${nanoid(6)}`
+      const { createTodo, listTodos, shutdownStore } = makeStoreHelpers(server.url, storeId)
+
+      yield* createTodo('todo-a', 'first cycle')
+      yield* shutdownStore()
+
+      yield* createTodo('todo-b', 'second cycle')
+      yield* shutdownStore()
+
+      yield* createTodo('todo-c', 'third cycle')
+
+      const allTodos = yield* listTodos()
+      expect(allTodos).toHaveLength(3)
+      expect(allTodos.find((t) => t.id === 'todo-a')).toBeDefined()
+      expect(allTodos.find((t) => t.id === 'todo-b')).toBeDefined()
+      expect(allTodos.find((t) => t.id === 'todo-c')).toBeDefined()
+    }).pipe(withTestCtx(test)),
+  )
+
+  Vitest.scopedLive('steady-state writes remain low after cold start', (test) =>
+    Effect.gen(function* () {
+      const server = yield* WranglerDevServerService
+      const storeId = `cf-post-restart-${nanoid(6)}`
+      const { createTodo, listTodos, getMetrics, resetMetrics, shutdownStore } = makeStoreHelpers(
+        server.url,
+        storeId,
+      )
+
+      yield* createTodo('seed-todo', 'seed')
+      yield* shutdownStore()
+
+      // Reboot and let snapshot restore
+      yield* createTodo('post-restart-boot', 'boot after restart')
+      yield* resetMetrics()
+
+      const todoCount = 5
+      for (let i = 0; i < todoCount; i++) {
+        yield* createTodo(`post-restart-${i}`, `item ${i}`)
+      }
+
+      const metrics = yield* getMetrics()
+      const writesPerTodo = metrics.totalRowsWritten / todoCount
+
+      console.log('[post-restart] rowsWritten per todo:', writesPerTodo.toFixed(1))
+
+      const allTodos = yield* listTodos()
+      expect(allTodos).toHaveLength(todoCount + 2) // seed + boot + N
+      expect(writesPerTodo).toBeLessThan(20)
     }).pipe(withTestCtx(test)),
   )
 })
