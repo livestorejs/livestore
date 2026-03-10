@@ -207,8 +207,6 @@ export class Store<TSchema extends LiveStoreSchema = LiveStoreSchema.Any, TConte
 
     const reactivityGraph = makeReactivityGraph()
 
-    const syncSpan = otelOptions.tracer.startSpan('LiveStore:sync', {}, otelOptions.rootSpanContext)
-
     const syncProcessor = makeClientSessionSyncProcessor({
       schema,
       clientSession,
@@ -314,7 +312,6 @@ export class Store<TSchema extends LiveStoreSchema = LiveStoreSchema.Any, TConte
         }
         reactivityGraph.setRefs(tablesToUpdate)
       },
-      span: syncSpan,
       params: {
         ...omitUndefineds({
           leaderPushBatchSize: params.leaderPushBatchSize,
@@ -385,7 +382,6 @@ export class Store<TSchema extends LiveStoreSchema = LiveStoreSchema.Any, TConte
           }
 
           // End the otel spans
-          syncSpan.end()
           commitsSpan.end()
           queriesSpan.end()
         }),

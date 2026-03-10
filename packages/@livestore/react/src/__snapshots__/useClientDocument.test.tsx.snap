@@ -43,9 +43,6 @@ exports[`useClientDocument > otel > should update the data based on component ke
       },
     },
     {
-      "_name": "LiveStore:sync",
-    },
-    {
       "_name": "LiveStore:commits",
     },
     {
@@ -304,9 +301,6 @@ exports[`useClientDocument > otel > should update the data based on component ke
         "span.label": "⚠︎ Interrupted",
         "status.interrupted": true,
       },
-    },
-    {
-      "_name": "LiveStore:sync",
     },
     {
       "_name": "LiveStore:commits",

@@ -18,7 +18,7 @@ import { EventFactory } from '@livestore/common/testing'
 import type { ShutdownDeferred, Store } from '@livestore/livestore'
 import { createStore, makeShutdownDeferred, StoreInternalsSymbol } from '@livestore/livestore'
 import type { MakeNodeSqliteDb } from '@livestore/sqlite-wasm/node'
-import { makeNoopSpan, omitUndefineds } from '@livestore/utils'
+import { omitUndefineds } from '@livestore/utils'
 import { Vitest } from '@livestore/utils-dev/node-vitest'
 import type { OtelTracer } from '@livestore/utils/effect'
 import {
@@ -344,7 +344,7 @@ Vitest.describe.concurrent('ClientSessionSyncProcessor', () => {
     Effect.gen(function* () {
       const lockStatus = yield* SubscriptionRef.make<LockStatus>('has-lock')
       const runtime = yield* Effect.runtime<Scope.Scope>()
-      const span = makeNoopSpan()
+
       const baseHead = EventSequenceNumber.Client.Composite.make({ global: 10, client: 0, rebaseGeneration: 4 })
       const recordedEvents: LiveStoreEvent.Client.EncodedWithMeta[] = []
 
@@ -399,7 +399,7 @@ Vitest.describe.concurrent('ClientSessionSyncProcessor', () => {
           ),
         rollback: () => undefined,
         refreshTables: () => undefined,
-        span,
+
         params: { leaderPushBatchSize: 10 },
         confirmUnsavedChanges: false,
       })
@@ -494,7 +494,7 @@ Vitest.describe.concurrent('ClientSessionSyncProcessor', () => {
       const materializedEvents: LiveStoreEvent.Client.EncodedWithMeta[] = []
       const materialized = yield* Deferred.make<void>()
       const runtime = yield* Effect.runtime<Scope.Scope>()
-      const span = makeNoopSpan()
+
       const lockStatus = yield* SubscriptionRef.make<'has-lock' | 'no-lock'>('has-lock')
 
       const networkStatus = Subscribable.make<SyncBackend.NetworkStatus, never, never>({
@@ -564,7 +564,7 @@ Vitest.describe.concurrent('ClientSessionSyncProcessor', () => {
         materializeEvent,
         rollback: () => undefined,
         refreshTables: () => undefined,
-        span,
+
         params: { leaderPushBatchSize: 10 },
         confirmUnsavedChanges: false,
       })
@@ -585,8 +585,6 @@ Vitest.describe.concurrent('ClientSessionSyncProcessor', () => {
           yield* Deferred.await(materialized)
         }),
       )
-
-      span.end()
 
       expect(materializedEvents).toHaveLength(1)
       expect(materializedEvents[0]?.name).toEqual('unknown_event_test')

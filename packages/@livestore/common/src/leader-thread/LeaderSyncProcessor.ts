@@ -10,7 +10,6 @@ import {
   FiberHandle,
   Layer,
   Option,
-  OtelTracer,
   Queue,
   ReadonlyArray,
   Schedule,
@@ -19,7 +18,6 @@ import {
   Subscribable,
   SubscriptionRef,
 } from '@livestore/utils/effect'
-import type * as otel from '@opentelemetry/api'
 
 import { type MaterializeError, type SqliteDb, UnknownError } from '../adapter-types.ts'
 import { IntentionalShutdownCause } from '../errors.ts'
@@ -36,11 +34,6 @@ import { rollback } from './materialize-event.ts'
 import type { ShutdownChannel } from './shutdown-channel.ts'
 import type { InitialBlockingSyncContext, LeaderSyncProcessor } from './types.ts'
 import { LeaderThreadCtx } from './types.ts'
-
-// WORKAROUND: @effect/opentelemetry mis-parses `Span.addEvent(name, attributes)` and treats the attributes object as a
-// time input, causing `TypeError: {} is not iterable` at runtime.
-// Upstream: https://github.com/Effect-TS/effect/pull/5929
-// TODO: simplify back to the 2-arg overload once the upstream fix is released and adopted.
 
 /** Serialize value to JSON string for trace attributes */
 const jsonStringify = Schema.encodeSync(Schema.parseJson())
@@ -182,7 +175,6 @@ export const makeLeaderSyncProcessor = ({
       current: undefined as
         | undefined
         | {
-            otelSpan: otel.Span | undefined
             span: Tracer.Span
             devtoolsLatch: Effect.Latch | undefined
             runtime: Runtime.Runtime<LeaderThreadCtx>
@@ -286,12 +278,10 @@ export const makeLeaderSyncProcessor = ({
     // Starts various background loops
     const boot: LeaderSyncProcessor['boot'] = Effect.gen(function* () {
       const span = yield* Effect.currentSpan.pipe(Effect.orDie)
-      const otelSpan = yield* OtelTracer.currentOtelSpan.pipe(Effect.catchAll(() => Effect.succeed(undefined)))
       const { devtools, shutdownChannel } = yield* LeaderThreadCtx
       const runtime = yield* Effect.runtime<LeaderThreadCtx>()
 
       ctxRef.current = {
-        otelSpan,
         span,
         devtoolsLatch: devtools.enabled === true ? devtools.syncBackendLatch : undefined,
         runtime,
@@ -361,7 +351,6 @@ export const makeLeaderSyncProcessor = ({
         syncBackendPushQueue,
         schema,
         isClientEvent,
-        otelSpan,
         connectedClientSessionPullQueues,
         localPushBatchSize,
         testing: {
@@ -372,7 +361,6 @@ export const makeLeaderSyncProcessor = ({
       const backendPushingFiberHandle = yield* FiberHandle.make<void, never>()
       const backendPushingEffect = backgroundBackendPushing({
         syncBackendPushQueue,
-        otelSpan,
         devtoolsLatch: ctxRef.current?.devtoolsLatch,
         backendPushBatchSize,
       }).pipe(
@@ -399,7 +387,6 @@ export const makeLeaderSyncProcessor = ({
         localPushBackendPullMutex,
         livePull,
         dbState,
-        otelSpan,
         initialBlockingSyncContext,
         devtoolsLatch: ctxRef.current?.devtoolsLatch,
         connectedClientSessionPullQueues,
@@ -471,7 +458,6 @@ const backgroundApplyLocalPushes = ({
   syncBackendPushQueue,
   schema,
   isClientEvent,
-  otelSpan,
   connectedClientSessionPullQueues,
   localPushBatchSize,
   testing,
@@ -482,7 +468,6 @@ const backgroundApplyLocalPushes = ({
   syncBackendPushQueue: BucketQueue.BucketQueue<LiveStoreEvent.Client.EncodedWithMeta>
   schema: LiveStoreSchema
   isClientEvent: (eventEncoded: LiveStoreEvent.Client.EncodedWithMeta) => boolean
-  otelSpan: otel.Span | undefined
   connectedClientSessionPullQueues: PullQueueSet
   localPushBatchSize: number
   testing: {
@@ -511,14 +496,10 @@ const backgroundApplyLocalPushes = ({
         )
 
         if (droppedItems.length > 0) {
-          otelSpan?.addEvent(
-            `push:drop-old-generation`,
-            {
-              droppedCount: droppedItems.length,
-              currentRebaseGeneration,
-            },
-            undefined,
-          )
+          yield* Effect.spanEvent(`push:drop-old-generation`, {
+          droppedCount: droppedItems.length,
+          currentRebaseGeneration,
+        })
 
         /**
          * Dropped pushes may still have a deferred awaiting completion.
@@ -550,28 +531,24 @@ const backgroundApplyLocalPushes = ({
         yield* Effect.annotateCurrentSpan({
         'batchSize': newEvents.length,
         ...(TRACE_VERBOSE === true ? { 'newEvents': jsonStringify(newEvents) } : {}),
-      })
+        })
 
-      const mergeResult = yield* SyncState.merge({
-        syncState,
-        payload: { _tag: 'local-push', newEvents },
-        isClientEvent,
-        isEqualEvent: LiveStoreEvent.Client.isEqualEncoded,
-      })
+        const mergeResult = yield* SyncState.merge({
+          syncState,
+          payload: { _tag: 'local-push', newEvents },
+          isClientEvent,
+          isEqualEvent: LiveStoreEvent.Client.isEqualEncoded,
+        })
 
         switch (mergeResult._tag) {
           case 'rebase': {
             return yield* Effect.dieDebugger('The leader thread should never have to rebase due to a local push')
           }
           case 'reject': {
-            otelSpan?.addEvent(
-              `push:reject`,
-              {
-                batchSize: newEvents.length,
-                mergeResult: TRACE_VERBOSE === true ? jsonStringify(mergeResult) : undefined,
-              },
-              undefined,
-            )
+            yield* Effect.spanEvent(`push:reject`, {
+              batchSize: newEvents.length,
+              ...(TRACE_VERBOSE === true ? { mergeResult: jsonStringify(mergeResult) } : {}),
+            })
 
             // TODO: how to test this?
             const nextRebaseGeneration = currentRebaseGeneration + 1
@@ -623,14 +600,10 @@ const backgroundApplyLocalPushes = ({
           leaderHead: mergeResult.newSyncState.localHead,
         })
 
-        otelSpan?.addEvent(
-          `push:advance`,
-          {
-            batchSize: newEvents.length,
-            mergeResult: TRACE_VERBOSE === true ? jsonStringify(mergeResult) : undefined,
-          },
-          undefined,
-        )
+        yield* Effect.spanEvent(`push:advance`, {
+          batchSize: newEvents.length,
+        ...(TRACE_VERBOSE === true ? { mergeResult: jsonStringify(mergeResult) } : {}),
+        })
 
         // Don't sync client-local events
         const filteredBatch = mergeResult.newEvents.filter((eventEncoded) => {
@@ -697,7 +670,6 @@ const materializeEventsBatch: MaterializeEventsBatch = ({ batchItems, deferreds 
 const backgroundBackendPulling = Effect.fn('@livestore/common:LeaderSyncProcessor:backend-pulling')(function* ({
   isClientEvent,
   restartBackendPushing,
-  otelSpan,
   dbState,
   syncStateSref,
   localPushBackendPullMutex,
@@ -711,7 +683,6 @@ const backgroundBackendPulling = Effect.fn('@livestore/common:LeaderSyncProcesso
   restartBackendPushing: (
     filteredRebasedPending: ReadonlyArray<LiveStoreEvent.Client.EncodedWithMeta>,
   ) => Effect.Effect<void, never, LeaderThreadCtx | HttpClient.HttpClient>
-  otelSpan: otel.Span | undefined
   syncStateSref: SubscriptionRef.SubscriptionRef<SyncState.SyncState | undefined>
   dbState: SqliteDb
   localPushBackendPullMutex: Effect.Semaphore
@@ -779,16 +750,12 @@ const backgroundBackendPulling = Effect.fn('@livestore/common:LeaderSyncProcesso
         Eventlog.updateBackendHead(dbEventlog, newBackendHead)
 
         if (mergeResult._tag === 'rebase') {
-          otelSpan?.addEvent(
-            `pull:rebase[${mergeResult.newSyncState.localHead.rebaseGeneration}]`,
-            {
-              newEventsCount: newEvents.length,
-              newEvents: TRACE_VERBOSE === true ? jsonStringify(newEvents) : undefined,
-              rollbackCount: mergeResult.rollbackEvents.length,
-              mergeResult: TRACE_VERBOSE === true ? jsonStringify(mergeResult) : undefined,
-            },
-            undefined,
-          )
+          yield* Effect.spanEvent(`pull:rebase[${mergeResult.newSyncState.localHead.rebaseGeneration}]`, {
+          newEventsCount: newEvents.length,
+          ...(TRACE_VERBOSE === true ? { newEvents: jsonStringify(newEvents) } : {}),
+          rollbackCount: mergeResult.rollbackEvents.length,
+          ...(TRACE_VERBOSE === true ? { mergeResult: jsonStringify(mergeResult) } : {}),
+          })
 
           const globalRebasedPendingEvents = mergeResult.newSyncState.pending.filter((event) => {
             const eventDef = schema.eventsDefsMap.get(event.name)
@@ -809,14 +776,10 @@ const backgroundBackendPulling = Effect.fn('@livestore/common:LeaderSyncProcesso
             leaderHead: mergeResult.newSyncState.localHead,
           })
         } else {
-          otelSpan?.addEvent(
-            `pull:advance`,
-            {
-              newEventsCount: newEvents.length,
-              mergeResult: TRACE_VERBOSE === true ? jsonStringify(mergeResult) : undefined,
-            },
-            undefined,
-          )
+          yield* Effect.spanEvent(`pull:advance`, {
+            newEventsCount: newEvents.length,
+          ...(TRACE_VERBOSE === true ? { mergeResult: jsonStringify(mergeResult) } : {}),
+          })
 
           // Ensure push fiber is active after advance by restarting with current pending (non-client) events
           const globalPendingEvents = mergeResult.newSyncState.pending.filter((event) => {
@@ -871,12 +834,6 @@ const backgroundBackendPulling = Effect.fn('@livestore/common:LeaderSyncProcesso
     // TODO only take from queue while connected
     Stream.tap(({ batch, pageInfo }) =>
       Effect.gen(function* () {
-        // yield* Effect.spanEvent('batch', {
-        //   attributes: {
-        //     batchSize: batch.length,
-        //     batch: TRACE_VERBOSE ? batch : undefined,
-        //   },
-        // })
         // NOTE we only want to take process events when the sync backend is connected
         // (e.g. needed for simulating being offline)
         // TODO remove when there's a better way to handle this in stream above
@@ -907,12 +864,10 @@ const backgroundBackendPulling = Effect.fn('@livestore/common:LeaderSyncProcesso
 
 const backgroundBackendPushing = Effect.fn('@livestore/common:LeaderSyncProcessor:backend-pushing')(function* ({
   syncBackendPushQueue,
-  otelSpan,
   devtoolsLatch,
   backendPushBatchSize,
 }: {
   syncBackendPushQueue: BucketQueue.BucketQueue<LiveStoreEvent.Client.EncodedWithMeta>
-  otelSpan: otel.Span | undefined
   devtoolsLatch: Effect.Latch | undefined
   backendPushBatchSize: number
 }) {
@@ -930,14 +885,10 @@ const backgroundBackendPushing = Effect.fn('@livestore/common:LeaderSyncProcesso
       yield* devtoolsLatch.await
     }
 
-    otelSpan?.addEvent(
-      'backend-push',
-      {
-        batchSize: queueItems.length,
-        batch: TRACE_VERBOSE === true ? jsonStringify(queueItems) : undefined,
-      },
-      undefined,
-    )
+    yield* Effect.spanEvent('backend-push', {
+      batchSize: queueItems.length,
+      ...(TRACE_VERBOSE === true ? { batch: jsonStringify(queueItems) } : {}),
+    })
 
     // Push with declarative retry/backoff using Effect schedules
     // - Exponential backoff starting at 1s and doubling (1s, 2s, 4s, 8s, 16s, 30s ...)
@@ -951,19 +902,15 @@ const backgroundBackendPushing = Effect.fn('@livestore/common:LeaderSyncProcesso
 
       const retries = iteration.recurrence
       if (retries > 0 && pushResult._tag === 'Right') {
-        otelSpan?.addEvent('backend-push-retry-success', { retries, batchSize: queueItems.length }, undefined)
+        yield* Effect.spanEvent('backend-push-retry-success', { retries, batchSize: queueItems.length })
       }
 
       if (pushResult._tag === 'Left') {
-        otelSpan?.addEvent(
-          'backend-push-error',
-          {
-            error: pushResult.left.toString(),
-            retries,
-            batchSize: queueItems.length,
-          },
-          undefined,
-        )
+        yield* Effect.spanEvent('backend-push-error', {
+          error: pushResult.left.toString(),
+          retries,
+          batchSize: queueItems.length,
+        })
         const error = pushResult.left
         if (error._tag === 'InvalidPushError' && error.cause._tag === 'ServerAheadError') {
           // It's a core part of the sync protocol that the sync backend will emit a new pull chunk alongside the ServerAheadError
