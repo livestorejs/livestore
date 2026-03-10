@@ -21,7 +21,7 @@ import {
 } from '@livestore/utils/effect'
 import type * as otel from '@opentelemetry/api'
 
-import { type MaterializeError, type SqliteDb, UnknownError } from '../adapter-types.ts'
+import { type MaterializeError, type SqliteError, type SqliteDb, UnknownError } from '../adapter-types.ts'
 import { IntentionalShutdownCause } from '../errors.ts'
 import { makeMaterializerHash } from '../materializer-helper.ts'
 import type { LiveStoreSchema } from '../schema/mod.ts'
@@ -313,6 +313,7 @@ export const makeLeaderSyncProcessor = ({
           | InvalidPushError
           | InvalidPullError
           | MaterializeError
+          | SqliteError
         >,
       ) =>
         Effect.gen(function* () {
@@ -829,7 +830,7 @@ const backgroundBackendPulling = Effect.fn('@livestore/common:LeaderSyncProcesso
                 EventSequenceNumber.Client.isEqual(event.seqNum, confirmedEvent.seqNum),
               ),
             )
-            yield* Eventlog.updateSyncMetadata(confirmedNewEvents).pipe(UnknownError.mapToUnknownError)
+            yield* Eventlog.updateSyncMetadata(confirmedNewEvents)
           }
         }
 
@@ -1159,7 +1160,7 @@ const handleBackendIdMismatch = Effect.fn('@livestore/common:LeaderSyncProcessor
   shutdownChannel,
 }: {
   cause: Cause.Cause<
-    UnknownError | IntentionalShutdownCause | IsOfflineError | InvalidPushError | InvalidPullError | MaterializeError
+    UnknownError | IntentionalShutdownCause | IsOfflineError | InvalidPushError | InvalidPullError | MaterializeError | SqliteError
   >
   onBackendIdMismatch: 'reset' | 'shutdown' | 'ignore'
   shutdownChannel: ShutdownChannel

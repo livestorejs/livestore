@@ -11,6 +11,7 @@ import {
   type IsOfflineError,
   LogConfig,
   type MaterializeError,
+  type SqliteError,
   type MigrationsReport,
   provideOtel,
   type SyncError,
@@ -326,7 +327,7 @@ export const createStore = <
       const shutdown = (
         exit: Exit.Exit<
           IntentionalShutdownCause,
-          UnknownError | MaterializeError | SyncError | InvalidPullError | IsOfflineError
+          UnknownError | MaterializeError | SyncError | InvalidPullError | IsOfflineError | SqliteError
         >,
       ) =>
         Effect.gen(function* () {
