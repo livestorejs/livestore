@@ -46,7 +46,12 @@ export const tryAsFunctionAndNew = <TArg, TResult>(
 export const envTruish = (env: string | undefined) =>
   env !== undefined && env.toLowerCase() !== 'false' && env.toLowerCase() !== '0'
 
-export const shouldNeverHappen = (msg?: string, ...args: any[]): never => {
+/**
+ * Throws for impossible states, pausing at a breakpoint in development.
+ *
+ * @see {@link dieWithDebugger} in `@livestore/utils/effect` for the Effect equivalent.
+ */
+export const shouldNeverHappen = (msg?: string, ...args: ReadonlyArray<unknown>): never => {
   console.error(msg, ...args)
   if (isDevEnv() === true) {
     // oxlint-disable-next-line eslint(no-debugger) -- intentional breakpoint for impossible states during development
