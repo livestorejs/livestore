@@ -47,14 +47,17 @@ export const envTruish = (env: string | undefined) =>
   env !== undefined && env.toLowerCase() !== 'false' && env.toLowerCase() !== '0'
 
 /**
- * Throws for impossible states, pausing at a breakpoint in development.
+ * Logs and throws for impossible states, pausing at a breakpoint in development.
  *
- * @see {@link dieDebugger} in `@livestore/utils/effect` for the Effect equivalent.
+ * @param msg - The error message to log and pass to the error.
+ * @param args - Arbitrary arguments to include in the log.
+ *
+ * @see {@link dieDebugger} for the Effect equivalent.
  */
 export const shouldNeverHappen = (msg?: string, ...args: ReadonlyArray<unknown>): never => {
   console.error(msg, ...args)
   if (isDevEnv() === true) {
-    // oxlint-disable-next-line eslint(no-debugger) -- intentional breakpoint for impossible states during development
+    // oxlint-disable-next-line eslint(no-debugger) -- intentional breakpoint during development
     debugger
   }
 
