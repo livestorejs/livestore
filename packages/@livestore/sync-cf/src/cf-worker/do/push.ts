@@ -201,7 +201,7 @@ export const makePush =
         }),
       ),
       Effect.mapError((cause) =>
-        cause._tag === 'BackendIdMismatchError' || cause._tag === 'ServerAheadError' || cause._tag === 'LiveStore.UnknownError'
+        cause._tag === 'BackendIdMismatchError' || cause._tag === 'ServerAheadError' || cause._tag === 'UnknownError'
           ? cause
           : new UnknownError({ cause }),
       ),

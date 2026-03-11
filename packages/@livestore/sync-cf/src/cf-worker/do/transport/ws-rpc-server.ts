@@ -18,7 +18,7 @@ export const makeRpcServer = ({ doSelf, doOptions }: Omit<DoCtxInput, 'from'>) =
           req.live === true ? Stream.concat(Stream.never) : identity,
           Stream.provideLayer(DoCtx.Default({ doSelf, doOptions, from: { storeId: req.storeId } })),
           Stream.mapError((cause) =>
-            cause._tag === 'LiveStore.UnknownError' || cause._tag === 'BackendIdMismatchError'
+            cause._tag === 'UnknownError' || cause._tag === 'BackendIdMismatchError'
               ? cause
               : new UnknownError({ cause }),
           ),
@@ -35,7 +35,7 @@ export const makeRpcServer = ({ doSelf, doOptions }: Omit<DoCtxInput, 'from'>) =
       }).pipe(
         Effect.provide(DoCtx.Default({ doSelf, doOptions, from: { storeId: req.storeId } })),
         Effect.mapError((cause) =>
-          cause._tag === 'LiveStore.UnknownError' || cause._tag === 'ServerAheadError' || cause._tag === 'BackendIdMismatchError'
+          cause._tag === 'UnknownError' || cause._tag === 'ServerAheadError' || cause._tag === 'BackendIdMismatchError'
             ? cause
             : new UnknownError({ cause }),
         ),

@@ -178,7 +178,7 @@ export const makeSyncBackend =
             ),
             Stream.filterMap((_) => _), // filter out Option.none()
             Stream.mapError((cause) =>
-              cause._tag === 'LiveStore.UnknownError' ? cause : new UnknownError({ cause }),
+              cause._tag === 'UnknownError' ? cause : new UnknownError({ cause }),
             ),
             Stream.retry(retry?.pull ?? defaultRetry),
           )
