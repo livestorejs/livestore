@@ -345,7 +345,7 @@ export const makeLeaderSyncProcessor = ({
           const errorToSend = Cause.isFailType(cause) === true ? cause.error : UnknownError.make({ cause })
           yield* shutdownChannel.send(errorToSend).pipe(Effect.orDie)
 
-          return yield* Effect.die(cause)
+          return yield* Effect.failCause(cause).pipe(Effect.orDie)
         })
 
       yield* backgroundApplyLocalPushes({
@@ -1179,7 +1179,7 @@ const handleBackendIdMismatch = Effect.fn('@livestore/common:LeaderSyncProcessor
     // Send shutdown signal with special reason
     yield* shutdownChannel.send(IntentionalShutdownCause.make({ reason: 'backend-id-mismatch' })).pipe(Effect.orDie)
 
-    return yield* Effect.die(cause)
+    return yield* Effect.failCause(cause).pipe(Effect.orDie)
   }
 
   if (onBackendIdMismatch === 'shutdown') {
@@ -1191,7 +1191,7 @@ const handleBackendIdMismatch = Effect.fn('@livestore/common:LeaderSyncProcessor
     const errorToSend = Cause.isFailType(cause) === true ? cause.error : UnknownError.make({ cause })
     yield* shutdownChannel.send(errorToSend).pipe(Effect.orDie)
 
-    return yield* Effect.die(cause)
+    return yield* Effect.failCause(cause).pipe(Effect.orDie)
   }
 
   // ignore mode
