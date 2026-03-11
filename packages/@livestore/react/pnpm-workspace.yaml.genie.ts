@@ -1,11 +1,8 @@
-import { pnpmWorkspaceReact } from '../../../genie/repo.ts'
+import { pnpmWorkspaceYamlFromPackage } from '../../../genie/repo.ts'
+import pkg from './package.json.genie.ts'
 
-// React package - needs React hoisting for single instance
-export default pnpmWorkspaceReact(
-  '../common',
-  '../framework-toolkit',
-  '../livestore',
-  '../utils',
-  '../adapter-web',
-  '../utils-dev',
-)
+export default pnpmWorkspaceYamlFromPackage({
+  pkg,
+  dedupePeerDependents: true,
+  publicHoistPattern: ['react', 'react-dom', 'react-reconciler'],
+})

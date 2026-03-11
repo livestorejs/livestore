@@ -1,15 +1,7 @@
-import { pnpmWorkspaceTests } from '../../genie/repo.ts'
+import { pnpmWorkspaceYamlFromPackage } from '../../genie/repo.ts'
+import pkg from './package.json.genie.ts'
 
-export default pnpmWorkspaceTests([
-  'adapter-cloudflare',
-  'adapter-node',
-  'common',
-  'common-cf',
-  'livestore',
-  'sqlite-wasm',
-  'sync-cf',
-  'sync-electric',
-  'sync-s2',
-  'utils',
-  'utils-dev',
-])
+export default pnpmWorkspaceYamlFromPackage({
+  pkg,
+  dedupePeerDependents: true,
+})

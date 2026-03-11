@@ -1,12 +1,21 @@
 import { catalog, localPackageDefaults, packageJson } from '../../../genie/repo.ts'
 
-export default packageJson({
-  name: '@local/shared',
-  exports: {
-    '.': './src/index.ts',
-  },
+const runtimeDeps = catalog.compose({
+  dir: import.meta.dirname,
   devDependencies: {
-    ...catalog.pick('@types/node'),
+    external: catalog.pick('@types/node'),
   },
-  ...localPackageDefaults,
 })
+
+export default packageJson(
+  {
+    name: '@local/shared',
+    exports: {
+      '.': './src/index.ts',
+    },
+    ...localPackageDefaults,
+  },
+  {
+    composition: runtimeDeps,
+  },
+)

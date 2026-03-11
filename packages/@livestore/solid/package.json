@@ -34,8 +34,6 @@
     "@opentelemetry/api": "1.9.0"
   },
   "devDependencies": {
-    "@livestore/adapter-web": "workspace:*",
-    "@livestore/utils-dev": "workspace:*",
     "@opentelemetry/sdk-trace-base": "2.2.0",
     "@solidjs/testing-library": "0.8.10",
     "@testing-library/jest-dom": "6.6.3",

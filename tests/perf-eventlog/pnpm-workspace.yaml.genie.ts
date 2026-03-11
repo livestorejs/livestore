@@ -1,11 +1,8 @@
-import { pnpmWorkspaceTestsReact } from '../../genie/repo.ts'
+import { pnpmWorkspaceYamlFromPackage } from '../../genie/repo.ts'
+import pkg from './package.json.genie.ts'
 
-export default pnpmWorkspaceTestsReact([
-  'adapter-web',
-  'common',
-  'livestore',
-  'react',
-  'sqlite-wasm',
-  'utils',
-  'utils-dev',
-])
+export default pnpmWorkspaceYamlFromPackage({
+  pkg,
+  dedupePeerDependents: true,
+  publicHoistPattern: ['react', 'react-dom', 'react-reconciler'],
+})
