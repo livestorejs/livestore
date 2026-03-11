@@ -101,8 +101,20 @@ export const makeLeaderSyncProcessor = ({
   initialBlockingSyncContext: InitialBlockingSyncContext
   /** Initial sync state rehydrated from the persisted eventlog or initial sync state */
   initialSyncState: SyncState.SyncState
+  /**
+   * What to do when a failure (any cause) occurs (except `BackendIdMismatchError`).
+   *
+   * - `'shutdown'`: Send the error to the shutdown channel and terminate the sync processor.
+   * - `'ignore'`: Continue running.
+   */
   onError: 'shutdown' | 'ignore'
-  /** What to do when the sync backend identity has changed (backend was reset) */
+  /**
+   * What to do when the sync backend identity has changed (i.e. the backend was reset).
+   *
+   * - `'reset'`: Clear local databases (eventlog and state) and send an intentional shutdown signal.
+   * - `'shutdown'`: Send a shutdown signal without clearing local storage.
+   * - `'ignore'`: Continue running with stale data.
+   */
   onBackendIdMismatch: 'reset' | 'shutdown' | 'ignore'
   params: {
     /**
