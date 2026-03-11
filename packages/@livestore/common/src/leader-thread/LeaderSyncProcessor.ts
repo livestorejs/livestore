@@ -240,8 +240,7 @@ export const makeLeaderSyncProcessor = ({
 
     const pushPartial: LeaderSyncProcessor['pushPartial'] = ({ event: { name, args }, clientId, sessionId }) =>
       Effect.gen(function* () {
-        const syncState = yield* syncStateSref
-        if (syncState === undefined) return yield* Effect.dieDebugger('Not initialized')
+        const syncState = yield* Effect.fromNullable(yield* syncStateSref).pipe(Effect.orDieDebugger)
 
         const resolution = yield* resolveEventDef(schema, {
           operation: '@livestore/common:LeaderSyncProcessor:pushPartial',
@@ -432,16 +431,15 @@ export const makeLeaderSyncProcessor = ({
         - downside: importing the snapshot is expensive
     */
     const pullQueue: LeaderSyncProcessor['pullQueue'] = ({ cursor }) =>
-      ctxRef.current?.runtime === undefined ?
-        Effect.dieDebugger('Not initialized') :
-        connectedClientSessionPullQueues.makeQueue(cursor).pipe(Effect.provide(ctxRef.current.runtime))
+      Effect.fromNullable(ctxRef.current?.runtime).pipe(
+        Effect.orDieDebugger,
+        Effect.flatMap((runtime) =>
+          connectedClientSessionPullQueues.makeQueue(cursor).pipe(Effect.provide(runtime))
+        )
+      )
 
     const syncState = Subscribable.make({
-      get: Effect.gen(function* () {
-        const syncState = yield* syncStateSref
-        if (syncState === undefined) return yield* Effect.dieDebugger('Not initialized')
-        return syncState
-      }),
+      get: syncStateSref.pipe(Effect.flatMap(Effect.fromNullable), Effect.orDieDebugger),
       changes: syncStateSref.changes.pipe(Stream.filter(isNotUndefined)),
     })
 
@@ -490,8 +488,7 @@ const backgroundApplyLocalPushes = ({
 
       // Applies a batch of local pushes, guarded by the localPushBackendPullMutex to ensure mutual exclusion with backend pulling
       yield* Effect.gen(function* () {
-        const syncState = yield* syncStateSref
-        if (syncState === undefined) return yield* Effect.dieDebugger('Not initialized')
+        const syncState = yield* Effect.fromNullable(yield* syncStateSref).pipe(Effect.orDieDebugger)
 
         const currentRebaseGeneration = syncState.localHead.rebaseGeneration
 
@@ -746,8 +743,7 @@ const backgroundBackendPulling = Effect.fn('@livestore/common:LeaderSyncProcesso
       }
 
       const chunkExit = yield* Effect.gen(function* () {
-        const syncState = yield* syncStateSref
-        if (syncState === undefined) return yield* Effect.dieDebugger('Not initialized')
+        const syncState = yield* Effect.fromNullable(yield* syncStateSref).pipe(Effect.orDieDebugger)
 
         yield* Effect.annotateCurrentSpan({
         'merge.newEventsCount': newEvents.length,
@@ -854,8 +850,7 @@ const backgroundBackendPulling = Effect.fn('@livestore/common:LeaderSyncProcesso
       }
     })
 
-  const syncState = yield* syncStateSref
-  if (syncState === undefined) return yield* Effect.dieDebugger('Not initialized')
+  const syncState = yield* Effect.fromNullable(yield* syncStateSref).pipe(Effect.orDieDebugger)
   const cursorInfo = yield* Eventlog.getSyncBackendCursorInfo({ remoteHead: syncState.upstreamHead.global })
 
   const hashMaterializerResult = makeMaterializerHash({ schema, dbState })
