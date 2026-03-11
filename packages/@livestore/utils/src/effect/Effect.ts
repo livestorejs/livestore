@@ -112,7 +112,7 @@ export const tapCauseLogPretty = <R, E, A>(eff: Effect.Effect<A, E, R>): Effect.
  *
  * @see {@link shouldNeverHappen} for the non-Effect equivalent that throws synchronously.
  */
-export const dieWithDebugger = (msg: string, ...args: ReadonlyArray<unknown>): Effect.Effect<never> =>
+export const dieDebugger = (msg: string, ...args: ReadonlyArray<unknown>): Effect.Effect<never> =>
   Effect.suspend(() => {
     if (isDevEnv() === true) {
       // oxlint-disable-next-line eslint(no-debugger) -- intentional breakpoint for impossible states during development
