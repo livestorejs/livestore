@@ -114,6 +114,7 @@ export const tapCauseLogPretty = <R, E, A>(eff: Effect.Effect<A, E, R>): Effect.
  * @param args - Arbitrary arguments available for inspection during debugging.
  *
  * @see {@link shouldNeverHappen} for the non-Effect equivalent that throws synchronously.
+ * @see {@link orDieDebugger}
  */
 export const dieDebugger = (msg: string, ...args: ReadonlyArray<unknown>): Effect.Effect<never> =>
   Effect.suspend(() => {
@@ -123,6 +124,23 @@ export const dieDebugger = (msg: string, ...args: ReadonlyArray<unknown>): Effec
       void args // Keeps the variable in scope so it's inspectable when the debugger pauses
     }
     return Effect.dieMessage(msg)
+  })
+
+/**
+ * Converts a failure into a defect, pausing at a breakpoint in development.
+ *
+ * @param self - The effect on which to apply the operation.
+ *
+ * @see {@link Effect.orDie}
+ * @see {@link dieDebugger}
+ */
+export const orDieDebugger = <A, E, R>(self: Effect.Effect<A, E, R>): Effect.Effect<A, never, R> =>
+  Effect.suspend(() => {
+    if (isDevEnv() === true) {
+      // oxlint-disable-next-line eslint(no-debugger) -- intentional breakpoint for impossible states during development
+      debugger
+    }
+    return Effect.orDie(self)
   })
 
 export const ignoreIf: {
