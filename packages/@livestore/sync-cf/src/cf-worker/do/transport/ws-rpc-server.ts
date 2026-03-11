@@ -35,7 +35,7 @@ export const makeRpcServer = ({ doSelf, doOptions }: Omit<DoCtxInput, 'from'>) =
       }).pipe(
         Effect.provide(DoCtx.Default({ doSelf, doOptions, from: { storeId: req.storeId } })),
         Effect.mapError((cause) =>
-          cause._tag === 'InvalidPushError' || cause._tag === 'BackendIdMismatchError'
+          cause._tag === 'InvalidPushError' || cause._tag === 'ServerAheadError' || cause._tag === 'BackendIdMismatchError'
             ? cause
             : InvalidPushError.make({ cause }),
         ),

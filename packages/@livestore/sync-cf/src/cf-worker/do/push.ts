@@ -202,7 +202,9 @@ export const makePush =
         }),
       ),
       Effect.mapError((cause) =>
-        cause._tag === 'BackendIdMismatchError' ? cause : InvalidPushError.make({ cause }),
+        cause._tag === 'BackendIdMismatchError' || cause._tag === 'ServerAheadError'
+          ? cause
+          : InvalidPushError.make({ cause }),
       ),
       Effect.withSpan('sync-cf:do:push', { attributes: { storeId, batchSize: pushRequest.batch.length } }),
     )

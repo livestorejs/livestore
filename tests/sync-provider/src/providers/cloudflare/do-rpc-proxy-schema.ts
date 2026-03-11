@@ -1,4 +1,4 @@
-import { BackendIdMismatchError, InvalidPullError, InvalidPushError, IsOfflineError, UnknownError } from '@livestore/common'
+import { BackendIdMismatchError, InvalidPullError, InvalidPushError, IsOfflineError, ServerAheadError, UnknownError } from '@livestore/common'
 import { LiveStoreEvent } from '@livestore/common/schema'
 import { SyncMessage } from '@livestore/sync-cf/common'
 /** Explicit type imports so TypeScript can name inferred types in declaration emit (fixes TS2742). */
@@ -40,7 +40,7 @@ export class DoRpcProxyRpcs extends RpcGroup.make(
       batch: Schema.Array(LiveStoreEvent.Global.Encoded),
     }),
     success: Schema.Void,
-    error: Schema.Union(IsOfflineError, InvalidPushError, BackendIdMismatchError),
+    error: Schema.Union(IsOfflineError, InvalidPushError, ServerAheadError, BackendIdMismatchError),
   }),
 
   // Mirror the ping method

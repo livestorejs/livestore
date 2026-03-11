@@ -25,8 +25,7 @@ import { makeMaterializerHash } from '../materializer-helper.ts'
 import type { LiveStoreSchema } from '../schema/mod.ts'
 import { EventSequenceNumber, LiveStoreEvent, resolveEventDef, SystemTables } from '../schema/mod.ts'
 import { EVENTLOG_META_TABLE, SYNC_STATUS_TABLE } from '../schema/state/sqlite/system-tables/eventlog-tables.ts'
-import { type BackendIdMismatchError,
-  type InvalidPullError, type InvalidPushError, type IsOfflineError, type SyncBackend } from '../sync/sync.ts'
+import type { BackendIdMismatchError, InvalidPullError, InvalidPushError, IsOfflineError, SyncBackend } from '../sync/sync.ts'
 import { isRejectedPushError, LeaderAheadError, NonMonotonicBatchError, StaleRebaseGenerationError } from './RejectedPushError.ts'
 import * as SyncState from '../sync/syncstate.ts'
 import { sql } from '../util.ts'
@@ -906,7 +905,7 @@ const backgroundBackendPushing = Effect.fn('@livestore/common:LeaderSyncProcesso
           batchSize: queueItems.length,
         })
         const error = pushResult.left
-        if (error._tag === 'InvalidPushError' && error.cause._tag === 'ServerAheadError') {
+        if (error._tag === 'ServerAheadError') {
           // It's a core part of the sync protocol that the sync backend will emit a new pull chunk alongside the ServerAheadError
           yield* Effect.logDebug('handled backend-push-error (waiting for interupt caused by pull)', { error })
           return yield* Effect.never

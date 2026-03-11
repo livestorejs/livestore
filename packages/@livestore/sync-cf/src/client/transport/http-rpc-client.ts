@@ -205,7 +205,7 @@ export const makeHttpSync =
         },
         pushSemaphore.withPermits(1),
         Effect.mapError((cause) =>
-          cause._tag === 'InvalidPushError' || cause._tag === 'BackendIdMismatchError'
+          cause._tag === 'InvalidPushError' || cause._tag === 'ServerAheadError' || cause._tag === 'BackendIdMismatchError'
             ? cause
             : new InvalidPushError({ cause: new UnknownError({ cause }) }),
         ),
