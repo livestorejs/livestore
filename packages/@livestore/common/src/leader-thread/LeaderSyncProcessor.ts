@@ -157,7 +157,7 @@ export const makeLeaderSyncProcessor = ({
       localPushProcessing?: Effect.Effect<void>
     }
   }
-}): Effect.Effect<LeaderSyncProcessor, UnknownError, Scope.Scope> =>
+}): Effect.Effect<LeaderSyncProcessor, never, Scope.Scope> =>
   Effect.gen(function* () {
     const syncBackendPushQueue = yield* BucketQueue.make<LiveStoreEvent.Client.EncodedWithMeta>()
     const localPushBatchSize = params.localPushBatchSize ?? 10
@@ -698,7 +698,7 @@ const backgroundBackendPulling = Effect.fn('@livestore/common:LeaderSyncProcesso
   isClientEvent: (eventEncoded: LiveStoreEvent.Client.EncodedWithMeta) => boolean
   restartBackendPushing: (
     filteredRebasedPending: ReadonlyArray<LiveStoreEvent.Client.EncodedWithMeta>,
-  ) => Effect.Effect<void, UnknownError, LeaderThreadCtx | HttpClient.HttpClient>
+  ) => Effect.Effect<void, never, LeaderThreadCtx | HttpClient.HttpClient>
   otelSpan: otel.Span | undefined
   syncStateSref: SubscriptionRef.SubscriptionRef<SyncState.SyncState | undefined>
   dbState: SqliteDb
