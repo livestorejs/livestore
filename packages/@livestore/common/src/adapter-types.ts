@@ -13,7 +13,7 @@ import type * as Devtools from './devtools/mod.ts'
 import type { IntentionalShutdownCause, MaterializeError, UnknownError } from './errors.ts'
 import type { LiveStoreSchema } from './schema/mod.ts'
 import type { SqliteDb } from './sqlite-types.ts'
-import type { SyncError } from './sync/index.ts'
+import type { BackendIdMismatchError, SyncError } from './sync/index.ts'
 
 export * as ClientSessionLeaderThreadProxy from './ClientSessionLeaderThreadProxy.ts'
 export * from './defs.ts'
@@ -36,7 +36,7 @@ export interface ClientSession {
   shutdown: (
     cause: Exit.Exit<
       IntentionalShutdownCause,
-      UnknownError | SyncError | MaterializeError
+      UnknownError | SyncError | MaterializeError | BackendIdMismatchError
     >,
   ) => Effect.Effect<void>
   /** A proxy API to communicate with the leader thread */
@@ -165,7 +165,7 @@ export interface AdapterArgs {
   shutdown: (
     exit: Exit.Exit<
       IntentionalShutdownCause,
-      UnknownError | SyncError | MaterializeError
+      UnknownError | SyncError | MaterializeError | BackendIdMismatchError
     >,
   ) => Effect.Effect<void>
   connectDevtoolsToStore: ConnectDevtoolsToStore

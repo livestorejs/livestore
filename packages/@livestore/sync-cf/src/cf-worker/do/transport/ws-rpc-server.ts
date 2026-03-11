@@ -18,7 +18,9 @@ export const makeRpcServer = ({ doSelf, doOptions }: Omit<DoCtxInput, 'from'>) =
           req.live === true ? Stream.concat(Stream.never) : identity,
           Stream.provideLayer(DoCtx.Default({ doSelf, doOptions, from: { storeId: req.storeId } })),
           Stream.mapError((cause) =>
-            cause._tag === 'InvalidPullError' ? cause : InvalidPullError.make({ cause: new UnknownError({ cause }) }),
+            cause._tag === 'InvalidPullError' || cause._tag === 'BackendIdMismatchError'
+              ? cause
+              : InvalidPullError.make({ cause: new UnknownError({ cause }) }),
           ),
         )
       }).pipe(Stream.unwrap),
@@ -32,7 +34,11 @@ export const makeRpcServer = ({ doSelf, doOptions }: Omit<DoCtxInput, 'from'>) =
         return yield* push(req)
       }).pipe(
         Effect.provide(DoCtx.Default({ doSelf, doOptions, from: { storeId: req.storeId } })),
-        Effect.mapError((cause) => (cause._tag === 'InvalidPushError' ? cause : InvalidPushError.make({ cause }))),
+        Effect.mapError((cause) =>
+          cause._tag === 'InvalidPushError' || cause._tag === 'BackendIdMismatchError'
+            ? cause
+            : InvalidPushError.make({ cause }),
+        ),
         Effect.tapCauseLogPretty,
       ),
   })
