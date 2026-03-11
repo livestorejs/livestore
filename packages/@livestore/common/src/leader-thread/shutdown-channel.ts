@@ -4,8 +4,6 @@ import { Schema } from '@livestore/utils/effect'
 import {
   BackendIdMismatchError,
   IntentionalShutdownCause,
-  InvalidPullError,
-  InvalidPushError,
   MaterializeError,
   UnknownError,
 } from '../index.ts'
@@ -13,8 +11,6 @@ import {
 export class All extends Schema.Union(
   IntentionalShutdownCause,
   UnknownError,
-  InvalidPushError,
-  InvalidPullError,
   BackendIdMismatchError,
   MaterializeError,
 ) {}

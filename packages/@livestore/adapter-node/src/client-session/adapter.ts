@@ -11,7 +11,6 @@ import {
   type LockStatus,
   type MakeSqliteDb,
   makeClientSession,
-  type SyncError,
   type SyncOptions,
   UnknownError,
 } from '@livestore/common'
@@ -448,7 +447,7 @@ const makeWorkerLeaderThread = ({
   syncPayloadEncoded,
   testing,
 }: {
-  shutdown: (cause: Exit.Exit<IntentionalShutdownCause, UnknownError | SyncError>) => Effect.Effect<void>
+  shutdown: (cause: Exit.Exit<IntentionalShutdownCause, UnknownError>) => Effect.Effect<void>
   storeId: string
   clientId: string
   sessionId: string

@@ -102,12 +102,12 @@ Vitest.describe('ElectricSQL specific error handling', { timeout: 60000 }, () =>
       const pullResult = yield* syncBackend
         .pull(initialPullRes.pipe(Option.flatMap(SyncBackend.cursorFromPullResItem)), { live: true })
         .pipe(
-          // Drain items until the stream fails with InvalidPullError, then flip to capture the error as success
+          // Drain items until the stream fails with UnknownError, then flip to capture the error as success
           Stream.runDrain,
           Effect.flip,
         )
 
-      expect(pullResult._tag).toBe('InvalidPullError')
+      expect(pullResult._tag).toBe('LiveStore.UnknownError')
       const cause = pullResult.cause as any
       expect(cause._tag).toBe('InvalidOperationError')
       expect(cause.operation).toBe('delete')
@@ -150,7 +150,7 @@ Vitest.describe('ElectricSQL specific error handling', { timeout: 60000 }, () =>
         .pull(initialPullRes.pipe(Option.flatMap(SyncBackend.cursorFromPullResItem)), { live: true })
         .pipe(Stream.runDrain, Effect.flip)
 
-      expect(pullResult._tag).toBe('InvalidPullError')
+      expect(pullResult._tag).toBe('LiveStore.UnknownError')
       const cause = pullResult.cause as any
       expect(cause._tag).toBe('InvalidOperationError')
       expect(cause.operation).toBe('update')

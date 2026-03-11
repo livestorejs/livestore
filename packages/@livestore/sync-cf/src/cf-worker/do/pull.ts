@@ -1,4 +1,4 @@
-import { BackendIdMismatchError, InvalidPullError, SyncBackend, UnknownError } from '@livestore/common'
+import { BackendIdMismatchError, SyncBackend, UnknownError } from '@livestore/common'
 import { splitChunkBySize } from '@livestore/common/sync'
 import { Chunk, Effect, Option, Schema, Stream } from '@livestore/utils/effect'
 
@@ -26,7 +26,7 @@ export const makeEndingPullStream = ({
   req: SyncMessage.PullRequest
   payload: Schema.JsonValue | undefined
   headers: ForwardedHeaders | undefined
-}): Stream.Stream<SyncMessage.PullResponse, InvalidPullError | BackendIdMismatchError, DoCtx> =>
+}): Stream.Stream<SyncMessage.PullResponse, UnknownError | BackendIdMismatchError, DoCtx> =>
   Effect.gen(function* () {
     const { doOptions, backendId, storeId, storage } = yield* DoCtx
 
@@ -86,11 +86,9 @@ export const makeEndingPullStream = ({
   }).pipe(
     Stream.unwrap,
     Stream.mapError((cause) =>
-      cause._tag === 'BackendIdMismatchError'
+      cause._tag === 'BackendIdMismatchError' || cause._tag === 'LiveStore.UnknownError'
         ? cause
-        : InvalidPullError.make({
-            cause: cause._tag === 'LiveStore.UnknownError' ? cause : new UnknownError({ cause }),
-          }),
+        : new UnknownError({ cause }),
     ),
     Stream.withSpan('cloudflare-provider:pull'),
   )

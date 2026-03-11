@@ -31,18 +31,18 @@ graph LR
     subgraph Browser
         LS[LiveStore Client]
     end
-    
+
     subgraph "Your Server"
         AP[API Proxy<br/>'/api/s2']
     end
-    
+
     subgraph "S2 Cloud"
         S2[S2 Backend<br/>'*.s2.dev']
     end
-    
+
     LS -->|"GET (pull)<br/>POST (push)<br/>HEAD (ping)"| AP
     AP -->|"Authenticated<br/>Requests"| S2
-    
+
     style LS fill:#e1f5fe
     style AP fill:#fff3e0
     style S2 fill:#f3e5f5
@@ -98,7 +98,7 @@ S2 provider supports live pulls over Server-Sent Events (SSE). When `live: true`
 - Parses SSE frames robustly (multi-line `data:` support) and reacts to typed events:
   - `event: batch` → parses `data` as S2 `ReadBatch` and emits items.
   - `event: ping` → ignored; keeps the stream alive.
-  - `event: error` → mapped to `InvalidPullError`.
+  - `event: error` → mapped to `UnknownError`.
 
 ## Implementation notes
 
