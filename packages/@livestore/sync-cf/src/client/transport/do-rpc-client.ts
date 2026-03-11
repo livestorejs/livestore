@@ -128,7 +128,7 @@ export const makeDoRpcSync =
           }
         },
         Effect.mapError((cause) =>
-          cause._tag === 'InvalidPushError' || cause._tag === 'BackendIdMismatchError'
+          cause._tag === 'InvalidPushError' || cause._tag === 'ServerAheadError' || cause._tag === 'BackendIdMismatchError'
             ? cause
             : InvalidPushError.make({ cause: new UnknownError({ cause }) }),
         ),

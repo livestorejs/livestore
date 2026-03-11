@@ -1,4 +1,4 @@
-import { BackendIdMismatchError, InvalidPullError, InvalidPushError } from '@livestore/common'
+import { BackendIdMismatchError, InvalidPullError, InvalidPushError, ServerAheadError } from '@livestore/common'
 import { Rpc, RpcGroup, Schema } from '@livestore/utils/effect'
 
 import * as SyncMessage from './sync-message-types.ts'
@@ -30,7 +30,7 @@ export class SyncWsRpc extends RpcGroup.make(
       ...SyncMessage.PushRequest.fields,
     }),
     success: SyncMessage.PushAck,
-    error: Schema.Union(InvalidPushError, BackendIdMismatchError),
+    error: Schema.Union(InvalidPushError, ServerAheadError, BackendIdMismatchError),
   }),
   // Ping <> Pong is handled by DO WS auto-response
   // TODO add admin RPCs

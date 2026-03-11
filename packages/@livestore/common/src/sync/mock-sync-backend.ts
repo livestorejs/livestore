@@ -3,7 +3,7 @@ import { Effect, Mailbox, Option, Queue, Ref, Stream, SubscriptionRef } from '@l
 
 import { UnknownError } from '../errors.ts'
 import { EventSequenceNumber, type LiveStoreEvent } from '../schema/mod.ts'
-import { type BackendIdMismatchError, InvalidPullError, InvalidPushError } from './errors.ts'
+import { type BackendIdMismatchError, InvalidPullError, InvalidPushError, type ServerAheadError } from './errors.ts'
 import * as SyncBackend from './sync-backend.ts'
 import { validatePushPayload } from './validate-push-payload.ts'
 
@@ -13,12 +13,12 @@ export interface MockSyncBackend {
   disconnect: Effect.Effect<void>
   makeSyncBackend: Effect.Effect<SyncBackend.SyncBackend, UnknownError, Scope.Scope>
   advance: (...batch: LiveStoreEvent.Global.Encoded[]) => Effect.Effect<void>
-  /** Fail the next N push calls with an InvalidPushError, BackendIdMismatchError, or custom error */
+  /** Fail the next N push calls with an InvalidPushError, ServerAheadError, BackendIdMismatchError, or custom error */
   failNextPushes: (
     count: number,
     error?: (
       batch: ReadonlyArray<LiveStoreEvent.Global.Encoded>,
-    ) => Effect.Effect<never, InvalidPushError | BackendIdMismatchError>,
+    ) => Effect.Effect<never, InvalidPushError | ServerAheadError | BackendIdMismatchError>,
   ) => Effect.Effect<void>
   /** Fail the next N pull calls with an InvalidPullError, BackendIdMismatchError, or custom error */
   failNextPulls: (
@@ -53,7 +53,7 @@ export const makeMockSyncBackend = (
 
     // Failure simulation state
     const failPushRef = yield* Ref.make<
-      FailureState<InvalidPushError | BackendIdMismatchError, [ReadonlyArray<LiveStoreEvent.Global.Encoded>]>
+      FailureState<InvalidPushError | ServerAheadError | BackendIdMismatchError, [ReadonlyArray<LiveStoreEvent.Global.Encoded>]>
     >({ remaining: 0, error: undefined })
     const failPullRef = yield* Ref.make<FailureState<InvalidPullError | BackendIdMismatchError, []>>({
       remaining: 0,
@@ -204,7 +204,7 @@ export const makeMockSyncBackend = (
       count: number,
       error?: (
         batch: ReadonlyArray<LiveStoreEvent.Global.Encoded>,
-      ) => Effect.Effect<never, InvalidPushError | BackendIdMismatchError>,
+      ) => Effect.Effect<never, InvalidPushError | ServerAheadError | BackendIdMismatchError>,
     ) => Ref.set(failPushRef, { remaining: count, error })
 
     const failNextPulls = (

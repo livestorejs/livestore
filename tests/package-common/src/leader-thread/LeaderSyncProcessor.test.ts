@@ -1,8 +1,6 @@
 import {
   BackendIdMismatchError,
   type IntentionalShutdownCause,
-  InvalidPullError,
-  InvalidPushError,
   type MockSyncBackend,
   type MockSyncBackendOptions,
   makeMockSyncBackend,
@@ -13,6 +11,7 @@ import {
   StaleRebaseGenerationError,
   type SyncOptions,
   UnknownError,
+  InvalidPullError,
 } from '@livestore/common'
 import type { MakeLeaderThreadLayerParams } from '@livestore/common/leader-thread'
 import { LeaderThreadCtx, makeLeaderThreadLayer, ShutdownChannel as Shutdown } from '@livestore/common/leader-thread'
@@ -533,11 +532,9 @@ Vitest.describe.concurrent('LeaderSyncProcessor', { timeout: 60000 }, () => {
       yield* testContext.mockSyncBackend.failNextPushes(
         1,
         () =>
-          new InvalidPushError({
-            cause: new ServerAheadError({
-              minimumExpectedNum: EventSequenceNumber.Global.make(2),
-              providedNum: EventSequenceNumber.Global.make(1),
-            }),
+          new ServerAheadError({
+            minimumExpectedNum: EventSequenceNumber.Global.make(2),
+            providedNum: EventSequenceNumber.Global.make(1),
           }),
       )
 

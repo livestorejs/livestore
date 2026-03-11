@@ -76,7 +76,7 @@ export const createDoRpcHandler = (
         }).pipe(
           Effect.provide(DoCtx.Default({ ...input, from: { storeId: req.storeId } })),
           Effect.mapError((cause) =>
-            cause._tag === 'InvalidPushError' || cause._tag === 'BackendIdMismatchError'
+            cause._tag === 'InvalidPushError' || cause._tag === 'ServerAheadError' || cause._tag === 'BackendIdMismatchError'
               ? cause
               : InvalidPushError.make({ cause }),
           ),
