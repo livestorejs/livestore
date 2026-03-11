@@ -1,17 +1,30 @@
-import { catalog, effectDevDeps, localPackageDefaults, packageJson } from '../../genie/repo.ts'
+import {
+  catalog,
+  effectDevDeps,
+  localPackageDefaults,
+  packageJson,
+} from '../../genie/repo.ts'
+import adapterWebPkg from '../../packages/@livestore/adapter-web/package.json.genie.ts'
+import commonPkg from '../../packages/@livestore/common/package.json.genie.ts'
+import livestorePkg from '../../packages/@livestore/livestore/package.json.genie.ts'
+import reactPkg from '../../packages/@livestore/react/package.json.genie.ts'
+import sqliteWasmPkg from '../../packages/@livestore/sqlite-wasm/package.json.genie.ts'
+import utilsPkg from '../../packages/@livestore/utils/package.json.genie.ts'
+import utilsDevPkg from '../../packages/@livestore/utils-dev/package.json.genie.ts'
 
-export default packageJson({
-  name: '@local/tests-perf-streaming-loopback',
-  ...localPackageDefaults,
+const runtimeDeps = catalog.compose({
+  dir: import.meta.dirname,
   dependencies: {
-    ...catalog.pick(
-      '@livestore/adapter-web',
-      '@livestore/common',
-      '@livestore/livestore',
-      '@livestore/react',
-      '@livestore/sqlite-wasm',
-      '@livestore/utils',
-      '@livestore/utils-dev',
+    workspace: [
+      adapterWebPkg,
+      commonPkg,
+      livestorePkg,
+      reactPkg,
+      sqliteWasmPkg,
+      utilsPkg,
+      utilsDevPkg,
+    ],
+    external: catalog.pick(
       '@opentelemetry/api',
       '@opentelemetry/core',
       '@opentelemetry/resources',
@@ -28,13 +41,25 @@ export default packageJson({
     ),
   },
   devDependencies: {
-    ...effectDevDeps('@livestore/devtools-vite', '@playwright/test'),
-    tsx: '^4.20.0',
-  },
-  scripts: {
-    build: 'pnpm exec vite build --config test-app/vite.config.ts',
-    dev: 'pnpm exec vite --config test-app/vite.config.ts',
-    preview: 'pnpm exec vite preview --config test-app/vite.config.ts',
-    test: 'NODE_OPTIONS=--disable-warning=ExperimentalWarning playwright test',
+    external: {
+      ...effectDevDeps('@livestore/devtools-vite', '@playwright/test'),
+      tsx: '^4.20.0',
+    },
   },
 })
+
+export default packageJson(
+  {
+    name: '@local/tests-perf-streaming-loopback',
+    ...localPackageDefaults,
+    scripts: {
+      build: 'pnpm exec vite build --config test-app/vite.config.ts',
+      dev: 'pnpm exec vite --config test-app/vite.config.ts',
+      preview: 'pnpm exec vite preview --config test-app/vite.config.ts',
+      test: 'NODE_OPTIONS=--disable-warning=ExperimentalWarning playwright test',
+    },
+  },
+  {
+    composition: runtimeDeps,
+  },
+)

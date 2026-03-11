@@ -1,10 +1,7 @@
-import { pnpmWorkspace } from '../../../genie/repo.ts'
+import { pnpmWorkspaceYamlFromPackage } from '../../../genie/repo.ts'
+import pkg from './package.json.genie.ts'
 
-export default pnpmWorkspace(
-  '../common',
-  '../framework-toolkit',
-  '../livestore',
-  '../utils',
-  '../adapter-web',
-  '../utils-dev',
-)
+export default pnpmWorkspaceYamlFromPackage({
+  pkg,
+  dedupePeerDependents: true,
+})

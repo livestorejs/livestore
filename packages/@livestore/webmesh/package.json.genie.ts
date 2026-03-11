@@ -1,26 +1,43 @@
-import { catalog, livestorePackageDefaults, packageJson, utilsEffectPeerDeps } from '../../../genie/repo.ts'
+import {
+  catalog,
+  livestorePackageDefaults,
+  packageJson,
+  utilsEffectPeerDeps,
+} from '../../../genie/repo.ts'
+import utilsDevPkg from '../utils-dev/package.json.genie.ts'
 import utilsPkg from '../utils/package.json.genie.ts'
 
-export default packageJson({
-  name: '@livestore/webmesh',
-  ...livestorePackageDefaults,
-  exports: {
-    '.': './src/mod.ts',
+const runtimeDeps = catalog.compose({
+  dir: import.meta.dirname,
+  dependencies: {
+    workspace: [utilsPkg],
   },
-  dependencies: { ...catalog.pick('@livestore/utils') },
   devDependencies: {
-    // Include peer deps from utils for local development
-    ...catalog.pick(...utilsEffectPeerDeps, '@livestore/utils-dev', 'vitest'),
-  },
-  // Re-expose utils' peer dependencies
-  peerDependencies: utilsPkg.data.peerDependencies,
-  publishConfig: {
-    access: 'public',
-    exports: {
-      '.': './dist/mod.js',
-    },
-  },
-  scripts: {
-    test: 'vitest',
+    workspace: [utilsDevPkg],
+    external: catalog.pick(...utilsEffectPeerDeps, 'vitest'),
   },
 })
+
+export default packageJson(
+  {
+    name: '@livestore/webmesh',
+    ...livestorePackageDefaults,
+    exports: {
+      '.': './src/mod.ts',
+    },
+    // Re-expose utils' peer dependencies
+    peerDependencies: utilsPkg.data.peerDependencies,
+    publishConfig: {
+      access: 'public',
+      exports: {
+        '.': './dist/mod.js',
+      },
+    },
+    scripts: {
+      test: 'vitest',
+    },
+  },
+  {
+    composition: runtimeDeps,
+  },
+)

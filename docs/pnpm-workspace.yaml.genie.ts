@@ -1,5 +1,9 @@
-import { pnpmWorkspaceReact } from '../genie/repo.ts'
+import { pnpmWorkspaceYamlFromPackage } from '../genie/repo.ts'
+import pkg from './package.json.genie.ts'
 
-// Docs package - uses glob patterns to include all workspace packages
-// Also includes the code snippets directory for documentation examples
-export default pnpmWorkspaceReact('../packages/@livestore/*', '../packages/@local/*', './src/content/_assets/code')
+export default pnpmWorkspaceYamlFromPackage({
+  pkg,
+  extraPackages: ['./src/content/_assets/code'],
+  dedupePeerDependents: true,
+  publicHoistPattern: ['react', 'react-dom', 'react-reconciler'],
+})

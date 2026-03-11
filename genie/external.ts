@@ -117,11 +117,6 @@ export const livestoreOnlyCatalog = {
   yaml: '2.8.1',
 } as const
 
-/** Catalog overrides applied on top of effect-utils base catalog. */
-export const livestoreCatalogOverrides = {
-  '@playwright/test': '1.58.0',
-} as const
-
 const livestorePackageNames = [
   'adapter-cloudflare',
   'adapter-expo',
@@ -154,6 +149,4 @@ const toCamelCase = (value: string) => value.replace(/-([a-z])/g, (_, char: stri
 
 /** Internal refs for consumers that need path mappings to @livestore packages. */
 export const createLivestoreRefs = (basePath: string) =>
-  Object.fromEntries(
-    livestorePackageNames.map((name) => [toCamelCase(name), { path: `${basePath}/${name}` }]),
-  )
+  Object.fromEntries(livestorePackageNames.map((name) => [toCamelCase(name), { path: `${basePath}/${name}` }]))

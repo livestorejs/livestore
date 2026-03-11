@@ -47,7 +47,6 @@
     "effect": "3.19.15"
   },
   "devDependencies": {
-    "@livestore/utils-dev": "workspace:*",
     "@types/node": "25.3.3",
     "typescript": "5.9.3",
     "vitest": "3.2.4"

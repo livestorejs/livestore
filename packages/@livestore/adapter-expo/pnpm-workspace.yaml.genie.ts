@@ -1,4 +1,8 @@
-import { pnpmWorkspaceExpo } from '../../../genie/repo.ts'
+import { pnpmWorkspaceYamlFromPackage } from '../../../genie/repo.ts'
+import pkg from './package.json.genie.ts'
 
-// Expo package - needs React Native hoisting
-export default pnpmWorkspaceExpo('../common', '../utils', '../webmesh')
+export default pnpmWorkspaceYamlFromPackage({
+  pkg,
+  dedupePeerDependents: true,
+  publicHoistPattern: ['react', 'react-dom', 'react-reconciler', 'react-native', 'expo', 'expo-*'],
+})

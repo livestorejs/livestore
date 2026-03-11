@@ -15,30 +15,46 @@
  */
 
 import {
-  defineCatalog,
-  packageJson,
-  tsconfigJson,
-  oxlintConfig,
-  oxfmtConfig,
-  pnpmWorkspaceYaml,
-} from '../repos/effect-utils/packages/@overeng/genie/src/runtime/mod.ts'
-
-export { tsconfigJson, packageJson, oxlintConfig, oxfmtConfig, pnpmWorkspaceYaml }
-
-import {
   catalog as effectUtilsCatalog,
   baseTsconfigCompilerOptions,
+  defineCatalog,
   packageTsconfigCompilerOptions as effectUtilsPackageTsconfigCompilerOptions,
   domLib,
+  githubWorkflow,
+  oxfmtConfig,
+  oxlintConfig,
+  packageJson,
+  pnpmWorkspaceYaml,
+  pnpmWorkspaceYamlFromPackage,
   reactJsx,
+  tsconfigJson,
+  type PackageJsonData,
+  type PnpmWorkspaceData,
+  type WorkspaceMeta,
+  type WorkspaceMetadata,
+  type WorkspacePackage,
+  type WorkspacePackageLike,
 } from '../repos/effect-utils/genie/external.ts'
-import {
-  livestoreCatalogOverrides,
-  livestoreOnlyCatalog,
-  livestoreWorkspaceCatalog,
-} from './external.ts'
+import { livestoreOnlyCatalog, livestoreWorkspaceCatalog } from './external.ts'
 
 export { baseTsconfigCompilerOptions, domLib, reactJsx }
+export {
+  githubWorkflow,
+  oxfmtConfig,
+  oxlintConfig,
+  packageJson,
+  pnpmWorkspaceYaml,
+  pnpmWorkspaceYamlFromPackage,
+  tsconfigJson,
+}
+export type {
+  PackageJsonData,
+  PnpmWorkspaceData,
+  WorkspaceMeta,
+  WorkspaceMetadata,
+  WorkspacePackage,
+  WorkspacePackageLike,
+}
 
 /**
  * Package tsconfig compiler options for livestore.
@@ -60,20 +76,9 @@ export const packageTsconfigCompilerOptions = {
  * 3. Proper symlink resolution in both internal and external contexts
  */
 
-/**
- * Override @playwright/test version to match nix-provided browser revision.
- * The nix playwright-web-flake provides browsers for 1.58.0 (chromium rev 1208),
- * but effect-utils catalog still pins 1.57.0 (chromium rev 1200).
- * defineCatalog doesn't support overrides, so we patch the base catalog object directly.
- */
-const effectUtilsCatalogPatched = Object.assign(Object.create(Object.getPrototypeOf(effectUtilsCatalog)), {
-  ...effectUtilsCatalog,
-  ...livestoreCatalogOverrides,
-})
-
 /** Composed catalog - effect-utils base + livestore-specific + workspace packages */
 export const catalog = defineCatalog({
-  extends: effectUtilsCatalogPatched,
+  extends: effectUtilsCatalog,
   packages: {
     ...livestoreWorkspaceCatalog,
     ...livestoreOnlyCatalog,
@@ -100,178 +105,6 @@ export const localPackageDefaults = {
   type: 'module' as const,
   private: true as const,
 }
-
-// =============================================================================
-// pnpm Workspace Configuration
-// =============================================================================
-
-/**
- * Direct workspace dependencies for each @livestore package.
- *
- * Maps package dirname (e.g., 'common') to its direct workspace dep dirnames.
- * This is the single source of truth for workspace dependency relationships.
- * Both `pnpm-workspace.yaml.genie.ts` and this graph should stay in sync
- * with `package.json.genie.ts` workspace:* dependencies.
- *
- * When adding a workspace dependency to a package.json.genie.ts, add it here too.
- * The `resolveTransitiveDeps` function will automatically include all transitive deps
- * in the generated pnpm-workspace.yaml files.
- */
-const workspaceDeps: Record<string, readonly string[]> = {
-  utils: [],
-  'utils-dev': ['utils'],
-  'wa-sqlite': [],
-  'peer-deps': [],
-  webmesh: ['utils', 'utils-dev'],
-  common: ['utils', 'webmesh', 'utils-dev'],
-  'common-cf': ['utils', 'utils-dev'],
-  'effect-playwright': ['utils'],
-  'devtools-web-common': ['common', 'utils', 'webmesh'],
-  'sqlite-wasm': ['common', 'common-cf', 'utils', 'wa-sqlite'],
-  'sync-cf': ['common', 'common-cf', 'utils'],
-  'sync-electric': ['common', 'utils'],
-  livestore: ['common', 'utils', 'adapter-web', 'utils-dev'],
-  'adapter-web': ['common', 'devtools-web-common', 'sqlite-wasm', 'utils', 'webmesh'],
-  'adapter-node': ['common', 'sqlite-wasm', 'utils', 'webmesh'],
-  'adapter-expo': ['common', 'utils', 'webmesh'],
-  'adapter-cloudflare': ['common', 'common-cf', 'livestore', 'sqlite-wasm', 'sync-cf', 'utils'],
-  cli: ['adapter-node', 'common', 'livestore', 'peer-deps', 'utils', 'utils-dev'],
-  'framework-toolkit': ['adapter-web', 'common', 'livestore', 'utils', 'utils-dev'],
-  graphql: ['common', 'livestore', 'utils'],
-  react: ['common', 'framework-toolkit', 'livestore', 'utils', 'adapter-web', 'utils-dev'],
-  solid: ['common', 'framework-toolkit', 'livestore', 'utils', 'adapter-web', 'utils-dev'],
-  svelte: ['common', 'livestore', 'utils', 'adapter-web', 'utils-dev'],
-  'sync-s2': ['common', 'livestore', 'utils'],
-  'devtools-expo': ['adapter-node', 'utils'],
-} as const
-
-/** Resolve transitive closure of workspace dependency short names. */
-const resolveTransitivePackageNames = (packageNames: readonly string[]): string[] => {
-  const result = new Set<string>()
-  const visit = (name: string) => {
-    if (result.has(name)) return
-    result.add(name)
-    const deps = workspaceDeps[name]
-    if (deps) for (const dep of deps) visit(dep)
-  }
-  for (const name of packageNames) {
-    if (name in workspaceDeps) visit(name)
-  }
-  return [...result].toSorted()
-}
-
-/**
- * Compute the transitive closure of workspace dependencies for a set of direct deps.
- *
- * Given direct dependency patterns (e.g., '../common', '../utils'), resolves all
- * transitive workspace dependencies by following the `workspaceDeps` graph.
- * This ensures pnpm can resolve `workspace:*` specifiers for all nested deps.
- *
- * Only resolves patterns matching `../<name>` (sibling @livestore packages).
- * Non-matching patterns (e.g., `../../@livestore/*` globs) are passed through as-is.
- */
-const resolveTransitiveDeps = (patterns: string[]): string[] => {
-  const nonResolvable: string[] = []
-  const names: string[] = []
-  for (const pattern of patterns) {
-    const match = pattern.match(/^\.\.\/([^/]+)$/)
-    if (match && match[1] in workspaceDeps) {
-      names.push(match[1])
-    } else {
-      nonResolvable.push(pattern)
-    }
-  }
-
-  return [...nonResolvable, ...resolveTransitivePackageNames(names).map((name) => `../${name}`)]
-}
-
-/**
- * Per-package pnpm workspace configuration with automatic transitive dependency resolution.
- *
- * Following effect-utils best practices:
- * - Each package lists its direct workspace dependencies
- * - Transitive deps are automatically computed via `workspaceDeps` graph
- * - Includes dedupePeerDependents to prevent duplicate dependency resolution
- *
- * @param patterns - Direct workspace dependency paths (e.g., '../utils', '../common')
- *                   Pass no args for standalone packages with no workspace deps
- *
- * @example
- * // Standalone package (no workspace deps)
- * pnpmWorkspace()
- *
- * // Package with specific deps (transitive deps resolved automatically)
- * pnpmWorkspace('../utils', '../common')
- */
-export const pnpmWorkspace = (...patterns: string[]) =>
-  pnpmWorkspaceYaml({
-    packages: ['.', ...resolveTransitiveDeps(patterns)],
-    dedupePeerDependents: true,
-  })
-
-/**
- * pnpm workspace for React packages.
- * Adds publicHoistPattern to ensure single React instance across packages.
- * Automatically resolves transitive workspace dependencies.
- *
- * @param patterns - Direct workspace dependency paths
- */
-export const pnpmWorkspaceReact = (...patterns: string[]) =>
-  pnpmWorkspaceYaml({
-    packages: ['.', ...resolveTransitiveDeps(patterns)],
-    dedupePeerDependents: true,
-    publicHoistPattern: ['react', 'react-dom', 'react-reconciler'],
-  })
-
-/**
- * pnpm workspace for Expo/React Native packages.
- * Hoists React Native related packages to prevent bundler issues.
- * Automatically resolves transitive workspace dependencies.
- *
- * @param patterns - Direct workspace dependency paths
- */
-export const pnpmWorkspaceExpo = (...patterns: string[]) =>
-  pnpmWorkspaceYaml({
-    packages: ['.', ...resolveTransitiveDeps(patterns)],
-    dedupePeerDependents: true,
-    publicHoistPattern: ['react', 'react-dom', 'react-reconciler', 'react-native', 'expo', 'expo-*'],
-  })
-
-/**
- * pnpm workspace for test packages at tests/<name>/.
- * Uses explicit transitive dep resolution instead of globs to avoid
- * overlapping workspace symlink conflicts between test workspaces.
- *
- * @param packageNames - Direct @livestore package short names (e.g., 'common', 'utils')
- * @param extraPackages - Additional non-@livestore workspace paths
- */
-export const pnpmWorkspaceTests = (packageNames: readonly string[], extraPackages?: readonly string[]) =>
-  pnpmWorkspaceYaml({
-    packages: [
-      '.',
-      ...resolveTransitivePackageNames(packageNames).map((n) => `../../packages/@livestore/${n}`),
-      ...(extraPackages ?? []),
-    ],
-    dedupePeerDependents: true,
-  })
-
-/**
- * pnpm workspace for test packages that need React hoisting.
- * Uses explicit transitive dep resolution instead of globs.
- *
- * @param packageNames - Direct @livestore package short names
- * @param extraPackages - Additional non-@livestore workspace paths
- */
-export const pnpmWorkspaceTestsReact = (packageNames: readonly string[], extraPackages?: readonly string[]) =>
-  pnpmWorkspaceYaml({
-    packages: [
-      '.',
-      ...resolveTransitivePackageNames(packageNames).map((n) => `../../packages/@livestore/${n}`),
-      ...(extraPackages ?? []),
-    ],
-    dedupePeerDependents: true,
-    publicHoistPattern: ['react', 'react-dom', 'react-reconciler'],
-  })
 
 // =============================================================================
 // Effect Peer Dependency Helpers
@@ -328,16 +161,15 @@ export const effectDevDeps = (...additionalDeps: Parameters<typeof catalog.pick>
  * See: effect-utils/context/workarounds/pnpm-issues.md
  * Also excludes *.genie.ts files which are only used by genie CLI, not tsc.
  */
-export const packageTsconfigExclude = ['node_modules', '**/dist', '**/node_modules/.pnpm', '**/*.genie.ts'] as const
+export const packageTsconfigExclude = [
+  'node_modules',
+  '**/dist',
+  '**/node_modules/.pnpm',
+  '**/*.genie.ts',
+] as const
 
 /** Solid JSX configuration */
 export const solidJsx = { jsx: 'preserve' as const, jsxImportSource: 'solid-js' }
-
-// =============================================================================
-// GitHub Workflow Helpers
-// =============================================================================
-
-export { githubWorkflow } from '../repos/effect-utils/packages/@overeng/genie/src/runtime/mod.ts'
 
 import {
   bashShellDefaults,
@@ -360,7 +192,8 @@ export const devenvShellDefaults = {
 export { bashShellDefaults }
 export { dispatchAlignmentStep, runDevenvTasksBefore, nixDiagnosticsArtifactStep }
 
-export const namespaceRunner = (runId: string) => namespaceRunnerBase('namespace-profile-linux-x86-64', runId)
+export const namespaceRunner = (runId: string) =>
+  namespaceRunnerBase('namespace-profile-linux-x86-64', runId)
 
 /**
  * Setup steps for livestore CI jobs (without checkout).
