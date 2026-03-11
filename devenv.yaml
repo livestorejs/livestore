@@ -12,7 +12,7 @@ inputs:
       nixpkgs:
         follows: nixpkgs
   effect-utils:
-    url: github:overengineeringstudio/effect-utils
+    url: git+https://github.com/overengineeringstudio/effect-utils?ref=schickling/2026-03-08-pnpm-gvs-boundary-spec&rev=0ac77ac2bd9feef6082629a5faab7541c0a1e4fd
     inputs:
       nixpkgs:
         follows: nixpkgs
