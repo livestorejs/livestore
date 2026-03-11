@@ -6,6 +6,7 @@
 }:
 let
   effectUtils = inputs.effect-utils;
+  effectUtilsPackages = effectUtils.packages.${pkgs.system};
   taskModules = effectUtils.devenvModules.tasks;
   ci = builtins.getEnv "CI" != "";
 
@@ -14,6 +15,9 @@ let
     inherit pkgs;
     bun = pkgs.bun;
     src = inputs.effect-utils;
+  };
+  oxlintWithPlugins = effectUtils.lib.mkOxlintWithPlugins {
+    inherit pkgs oxlintNpm;
   };
 
   # Pre-compiled Grafana dashboards for livestore OTEL traces
@@ -117,7 +121,6 @@ in
     })
     # Lint tasks are dt-native via lint-oxc plus local aggregate wrappers.
     (taskModules.lint-oxc {
-      jsPlugins = lib.optionals (oxlintNpm.pluginPath != null) [ oxlintNpm.pluginPath ];
       lintPaths = [
         "packages"
         "tests"
@@ -179,6 +182,9 @@ in
       genieCoverageExcludes = [ "packages/@livestore/wa-sqlite/" ];
       tsconfig = "tsconfig.dev.json";
     })
+    (taskModules.lint-effect-lsp {
+      tsconfigFile = "tsconfig.dev.json";
+    })
     (taskModules.pnpm { packages = pnpmPackages; })
     # Setup task (auto-runs in enterShell)
     (taskModules.setup {
@@ -198,9 +204,12 @@ in
     pkgs.bun
     pkgs.nodejs_24
     pkgs.typescript
-    oxlintNpm
+    oxlintWithPlugins
     pkgs.oxfmt
     # CLIs from effect-utils (Nix-built packages)
+  ]
+  ++ [ effectUtilsPackages.effect-tsgo ]
+  ++ [
     effectUtils.packages.${pkgs.system}.genie
     effectUtils.packages.${pkgs.system}.megarepo
     pkgs.caddy
