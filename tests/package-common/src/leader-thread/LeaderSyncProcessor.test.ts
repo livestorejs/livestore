@@ -641,17 +641,16 @@ Vitest.describe.concurrent('LeaderSyncProcessor', { timeout: 60000 }, () => {
 
       // Fail the next push due to backend id mismatch
       yield* testContext.mockSyncBackend.failNextPushes(1, () =>
-        Effect.fail(new InvalidPushError({ cause: new BackendIdMismatchError({ expected: 'a', received: 'b' }) })),
+        Effect.fail(new BackendIdMismatchError({ expected: 'a', received: 'b' })),
       )
 
       // Trigger a local push
       yield* testContext.pushEncoded(eventFactory.todoCreated.next({ id: 'mismatch', text: 'x', completed: false }))
 
-      // Expect a shutdown message to be sent with InvalidPushError/BackendIdMismatchError
+      // Expect a shutdown message to be sent with BackendIdMismatchError
       const shutdownMsg = yield* testContext.shutdownDeferred.pipe(Effect.flip, Effect.timeout(3000))
 
-      expect(shutdownMsg._tag).toEqual('InvalidPushError')
-      expect((shutdownMsg as InvalidPushError).cause._tag).toEqual('BackendIdMismatchError')
+      expect(shutdownMsg._tag).toEqual('BackendIdMismatchError')
     }).pipe(
       withTestCtx({
         syncOptions: { onBackendIdMismatch: 'shutdown', livePull: false },
@@ -684,9 +683,7 @@ Vitest.describe.concurrent('LeaderSyncProcessor', { timeout: 60000 }, () => {
 
       // Fail the next push due to backend id mismatch
       yield* testContext.mockSyncBackend.failNextPushes(1, () =>
-        Effect.fail(
-          new InvalidPushError({ cause: new BackendIdMismatchError({ expected: 'new-id', received: 'old-id' }) }),
-        ),
+        Effect.fail(new BackendIdMismatchError({ expected: 'new-id', received: 'old-id' })),
       )
 
       // Trigger another push that will fail
@@ -733,18 +730,16 @@ Vitest.describe.concurrent('LeaderSyncProcessor', { timeout: 60000 }, () => {
 
       // Fail the next push due to backend id mismatch
       yield* testContext.mockSyncBackend.failNextPushes(1, () =>
-        Effect.fail(
-          new InvalidPushError({ cause: new BackendIdMismatchError({ expected: 'new-id', received: 'old-id' }) }),
-        ),
+        Effect.fail(new BackendIdMismatchError({ expected: 'new-id', received: 'old-id' })),
       )
 
       // Trigger another push that will fail
       yield* testContext.pushEncoded(eventFactory.todoCreated.next({ id: '2', text: 't2', completed: false }))
 
-      // Expect a shutdown message with InvalidPushError (not IntentionalShutdownCause)
+      // Expect a shutdown message with BackendIdMismatchError (not IntentionalShutdownCause)
       const shutdownMsg = yield* testContext.shutdownDeferred.pipe(Effect.flip, Effect.timeout(3000))
 
-      expect(shutdownMsg._tag).toEqual('InvalidPushError')
+      expect(shutdownMsg._tag).toEqual('BackendIdMismatchError')
 
       // Verify databases were NOT cleared
       const afterRows = leaderThreadCtx.dbEventlog.select<{ name: string }>(`SELECT name FROM eventlog`)
@@ -772,9 +767,7 @@ Vitest.describe.concurrent('LeaderSyncProcessor', { timeout: 60000 }, () => {
 
       // Fail the next push due to backend id mismatch
       yield* testContext.mockSyncBackend.failNextPushes(1, () =>
-        Effect.fail(
-          new InvalidPushError({ cause: new BackendIdMismatchError({ expected: 'new-id', received: 'old-id' }) }),
-        ),
+        Effect.fail(new BackendIdMismatchError({ expected: 'new-id', received: 'old-id' })),
       )
 
       // Trigger another push that will fail

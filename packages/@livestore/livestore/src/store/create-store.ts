@@ -10,6 +10,7 @@ import {
   type InvalidPullError,
   LogConfig,
   type MaterializeError,
+  type BackendIdMismatchError,
   type MigrationsReport,
   provideOtel,
   type SyncError,
@@ -325,7 +326,7 @@ export const createStore = <
       const shutdown = (
         exit: Exit.Exit<
           IntentionalShutdownCause,
-          UnknownError | MaterializeError | SyncError | InvalidPullError
+          UnknownError | MaterializeError | SyncError | InvalidPullError | BackendIdMismatchError
         >,
       ) =>
         Effect.gen(function* () {

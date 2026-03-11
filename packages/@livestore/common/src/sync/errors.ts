@@ -21,11 +21,11 @@ export class ServerAheadError extends Schema.TaggedError<ServerAheadError>()('Se
 }) {}
 
 export class InvalidPushError extends Schema.TaggedError<InvalidPushError>()('InvalidPushError', {
-  cause: Schema.Union(UnknownError, ServerAheadError, BackendIdMismatchError),
+  cause: Schema.Union(UnknownError, ServerAheadError),
 }) {}
 
 export class InvalidPullError extends Schema.TaggedError<InvalidPullError>()('InvalidPullError', {
-  cause: Schema.Union(UnknownError, BackendIdMismatchError),
+  cause: UnknownError,
 }) {}
 
 export const SyncError = Schema.Union(InvalidPushError, InvalidPullError)

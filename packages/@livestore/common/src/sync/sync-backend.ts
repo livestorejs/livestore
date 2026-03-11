@@ -13,7 +13,7 @@ import {
 import type { UnknownError } from '../adapter-types.ts'
 import type * as LiveStoreEvent from '../schema/LiveStoreEvent/mod.ts'
 import type { EventSequenceNumber } from '../schema/mod.ts'
-import type { InvalidPullError, InvalidPushError, IsOfflineError } from './errors.ts'
+import type { BackendIdMismatchError, InvalidPullError, InvalidPushError, IsOfflineError } from './errors.ts'
 
 export * from './sync-backend-kv.ts'
 
@@ -61,7 +61,7 @@ export type SyncBackend<TSyncMetadata = Schema.JsonValue> = {
        */
       live?: boolean
     },
-  ) => Stream.Stream<PullResItem<TSyncMetadata>, IsOfflineError | InvalidPullError>
+  ) => Stream.Stream<PullResItem<TSyncMetadata>, IsOfflineError | InvalidPullError | BackendIdMismatchError>
   // TODO support transactions (i.e. group of mutation events which need to be applied together)
   push: (
     /**
@@ -70,7 +70,7 @@ export type SyncBackend<TSyncMetadata = Schema.JsonValue> = {
      * - sequence numbers must be in ascending order
      * */
     batch: ReadonlyArray<LiveStoreEvent.Global.Encoded>,
-  ) => Effect.Effect<void, IsOfflineError | InvalidPushError>
+  ) => Effect.Effect<void, IsOfflineError | InvalidPushError | BackendIdMismatchError>
   ping: Effect.Effect<void, IsOfflineError | UnknownError | Cause.TimeoutException>
   // TODO also expose latency information additionally to whether the backend is connected
   isConnected: SubscriptionRef.SubscriptionRef<boolean>

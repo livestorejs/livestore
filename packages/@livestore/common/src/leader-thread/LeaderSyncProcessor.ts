@@ -25,7 +25,8 @@ import { makeMaterializerHash } from '../materializer-helper.ts'
 import type { LiveStoreSchema } from '../schema/mod.ts'
 import { EventSequenceNumber, LiveStoreEvent, resolveEventDef, SystemTables } from '../schema/mod.ts'
 import { EVENTLOG_META_TABLE, SYNC_STATUS_TABLE } from '../schema/state/sqlite/system-tables/eventlog-tables.ts'
-import { type InvalidPullError, type InvalidPushError, type IsOfflineError, type SyncBackend } from '../sync/sync.ts'
+import { type BackendIdMismatchError,
+  type InvalidPullError, type InvalidPushError, type IsOfflineError, type SyncBackend } from '../sync/sync.ts'
 import { isRejectedPushError, LeaderAheadError, NonMonotonicBatchError, StaleRebaseGenerationError } from './RejectedPushError.ts'
 import * as SyncState from '../sync/syncstate.ts'
 import { sql } from '../util.ts'
@@ -304,6 +305,9 @@ export const makeLeaderSyncProcessor = ({
         }
       }
 
+      const handleBackendIdMismatchError = (error: BackendIdMismatchError) =>
+        handleBackendIdMismatch({ error, onBackendIdMismatch, shutdownChannel })
+
       const maybeShutdownOnError = (
         cause: Cause.Cause<
           | UnknownError
@@ -313,21 +317,6 @@ export const makeLeaderSyncProcessor = ({
         >,
       ) =>
         Effect.gen(function* () {
-          // Check if this is a BackendIdMismatchError and handle it specially
-          const isBackendIdMismatch =
-            Cause.isFailType(cause) &&
-            (cause.error._tag === 'InvalidPullError' || cause.error._tag === 'InvalidPushError') &&
-            cause.error.cause._tag === 'BackendIdMismatchError'
-
-          if (isBackendIdMismatch === true) {
-            return yield* handleBackendIdMismatch({
-              cause,
-              onBackendIdMismatch,
-              shutdownChannel,
-            })
-          }
-
-          // Handle other errors with existing logic
           if (onError === 'ignore') {
             if (LS_DEV === true) {
               yield* Effect.logDebug(
@@ -356,7 +345,10 @@ export const makeLeaderSyncProcessor = ({
         testing: {
           delay: testing?.delays?.localPushProcessing,
         },
-      }).pipe(Effect.catchAllCause(maybeShutdownOnError), Effect.forkScoped)
+      }).pipe(
+        Effect.catchAllCause(maybeShutdownOnError),
+        Effect.forkScoped,
+      )
 
       const backendPushingFiberHandle = yield* FiberHandle.make<void, never>()
       const backendPushingEffect = backgroundBackendPushing({
@@ -364,6 +356,7 @@ export const makeLeaderSyncProcessor = ({
         devtoolsLatch: ctxRef.current?.devtoolsLatch,
         backendPushBatchSize,
       }).pipe(
+        Effect.catchTag('BackendIdMismatchError', handleBackendIdMismatchError),
         Effect.catchAllCause(maybeShutdownOnError),
       )
 
@@ -398,6 +391,7 @@ export const makeLeaderSyncProcessor = ({
           // See https://github.com/Effect-TS/effect/issues/6122
           until: (error): error is Exclude<typeof error, IsOfflineError> => error._tag !== 'IsOfflineError',
         }),
+        Effect.catchTag('BackendIdMismatchError', handleBackendIdMismatchError),
         Effect.catchAllCause(maybeShutdownOnError),
         // Needed to avoid `Fiber terminated with an unhandled error` logs which seem to happen because of the `Effect.retry` above.
         // This might be a bug in Effect. Only seems to happen in the browser.
@@ -1104,13 +1098,11 @@ const validatePushBatch = (
  * This occurs when the sync backend has been reset and has a new identity.
  */
 const handleBackendIdMismatch = Effect.fn('@livestore/common:LeaderSyncProcessor:handleBackendIdMismatch')(function* ({
-  cause,
+  error,
   onBackendIdMismatch,
   shutdownChannel,
 }: {
-  cause: Cause.Cause<
-    UnknownError | InvalidPushError | InvalidPullError | MaterializeError
-  >
+  error: BackendIdMismatchError
   onBackendIdMismatch: 'reset' | 'shutdown' | 'ignore'
   shutdownChannel: ShutdownChannel
 }) {
@@ -1119,7 +1111,7 @@ const handleBackendIdMismatch = Effect.fn('@livestore/common:LeaderSyncProcessor
   if (onBackendIdMismatch === 'reset') {
     yield* Effect.logWarning(
       'Sync backend identity changed (backend was reset). Clearing local storage and shutting down.',
-      { cause: Cause.isFailType(cause) === true ? cause.error.cause : cause },
+      error,
     )
 
     // Clear local databases so the client can start fresh on next boot
@@ -1128,26 +1120,25 @@ const handleBackendIdMismatch = Effect.fn('@livestore/common:LeaderSyncProcessor
     // Send shutdown signal with special reason
     yield* shutdownChannel.send(IntentionalShutdownCause.make({ reason: 'backend-id-mismatch' })).pipe(Effect.orDie)
 
-    return yield* Effect.failCause(cause).pipe(Effect.orDie)
+    return yield* Effect.die(error)
   }
 
   if (onBackendIdMismatch === 'shutdown') {
     yield* Effect.logWarning(
       'Sync backend identity changed (backend was reset). Shutting down without clearing local storage.',
-      { cause: Cause.isFailType(cause) === true ? cause.error.cause : cause },
+      error,
     )
 
-    const errorToSend = Cause.isFailType(cause) === true ? cause.error : UnknownError.make({ cause })
-    yield* shutdownChannel.send(errorToSend).pipe(Effect.orDie)
+    yield* shutdownChannel.send(error).pipe(Effect.orDie)
 
-    return yield* Effect.failCause(cause).pipe(Effect.orDie)
+    return yield* Effect.die(error)
   }
 
   // ignore mode
   if (LS_DEV === true) {
     yield* Effect.logDebug(
       'Ignoring BackendIdMismatchError (sync backend was reset but client continues with stale data)',
-      Cause.pretty(cause),
+      error,
     )
   }
 })

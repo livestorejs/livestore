@@ -95,7 +95,9 @@ export const makeDoRpcSync =
           Stream.tap((res) => backendIdHelper.lazySet(res.backendId)),
           Stream.map((res) => omit(res, ['backendId'])),
           Stream.mapError((cause) =>
-            cause._tag === 'InvalidPullError' ? cause : InvalidPullError.make({ cause: new UnknownError({ cause }) }),
+            cause._tag === 'InvalidPullError' || cause._tag === 'BackendIdMismatchError'
+              ? cause
+              : InvalidPullError.make({ cause: new UnknownError({ cause }) }),
           ),
           Stream.withSpan('rpc-sync-client:pull'),
         )
@@ -126,7 +128,9 @@ export const makeDoRpcSync =
           }
         },
         Effect.mapError((cause) =>
-          cause._tag === 'InvalidPushError' ? cause : InvalidPushError.make({ cause: new UnknownError({ cause }) }),
+          cause._tag === 'InvalidPushError' || cause._tag === 'BackendIdMismatchError'
+            ? cause
+            : InvalidPushError.make({ cause: new UnknownError({ cause }) }),
         ),
       )
 

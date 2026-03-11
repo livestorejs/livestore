@@ -26,7 +26,7 @@ export const makeEndingPullStream = ({
   req: SyncMessage.PullRequest
   payload: Schema.JsonValue | undefined
   headers: ForwardedHeaders | undefined
-}): Stream.Stream<SyncMessage.PullResponse, InvalidPullError, DoCtx> =>
+}): Stream.Stream<SyncMessage.PullResponse, InvalidPullError | BackendIdMismatchError, DoCtx> =>
   Effect.gen(function* () {
     const { doOptions, backendId, storeId, storage } = yield* DoCtx
 
@@ -86,12 +86,11 @@ export const makeEndingPullStream = ({
   }).pipe(
     Stream.unwrap,
     Stream.mapError((cause) =>
-      InvalidPullError.make({
-        cause:
-          cause._tag === 'BackendIdMismatchError' || cause._tag === 'LiveStore.UnknownError'
-            ? cause
-            : new UnknownError({ cause }),
-      }),
+      cause._tag === 'BackendIdMismatchError'
+        ? cause
+        : InvalidPullError.make({
+            cause: cause._tag === 'LiveStore.UnknownError' ? cause : new UnknownError({ cause }),
+          }),
     ),
     Stream.withSpan('cloudflare-provider:pull'),
   )

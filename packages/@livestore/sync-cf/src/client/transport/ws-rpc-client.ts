@@ -146,7 +146,7 @@ export const makeWsSync =
             Stream.mapError((cause) =>
               cause._tag === 'RpcClientError' && Socket.isSocketError(cause.cause) === true
                 ? new IsOfflineError({ cause: cause.cause })
-                : cause._tag === 'InvalidPullError'
+                : cause._tag === 'InvalidPullError' || cause._tag === 'BackendIdMismatchError'
                   ? cause
                   : InvalidPullError.make({ cause: new UnknownError({ cause }) }),
             ),
@@ -180,7 +180,7 @@ export const makeWsSync =
               backendId: backendIdHelper.get(),
             }).pipe(
               Effect.mapError((cause) =>
-                cause._tag === 'InvalidPushError'
+                cause._tag === 'InvalidPushError' || cause._tag === 'BackendIdMismatchError'
                   ? cause
                   : new InvalidPushError({ cause: new UnknownError({ cause }) }),
               ),

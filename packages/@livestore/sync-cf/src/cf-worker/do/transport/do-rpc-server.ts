@@ -60,7 +60,9 @@ export const createDoRpcHandler = (
           })),
           Stream.provideLayer(DoCtx.Default({ ...input, from: { storeId: req.storeId } })),
           Stream.mapError((cause) =>
-            cause._tag === 'InvalidPullError' ? cause : InvalidPullError.make({ cause: new UnknownError({ cause }) }),
+            cause._tag === 'InvalidPullError' || cause._tag === 'BackendIdMismatchError'
+              ? cause
+              : InvalidPullError.make({ cause: new UnknownError({ cause }) }),
           ),
           Stream.tapErrorCause(Effect.log),
         ),
@@ -73,7 +75,11 @@ export const createDoRpcHandler = (
           return yield* push(req)
         }).pipe(
           Effect.provide(DoCtx.Default({ ...input, from: { storeId: req.storeId } })),
-          Effect.mapError((cause) => (cause._tag === 'InvalidPushError' ? cause : InvalidPushError.make({ cause }))),
+          Effect.mapError((cause) =>
+            cause._tag === 'InvalidPushError' || cause._tag === 'BackendIdMismatchError'
+              ? cause
+              : InvalidPushError.make({ cause }),
+          ),
           Effect.tapCauseLogPretty,
         ),
     })

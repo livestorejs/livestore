@@ -2,6 +2,7 @@ import type { WebChannel } from '@livestore/utils/effect'
 import { Schema } from '@livestore/utils/effect'
 
 import {
+  BackendIdMismatchError,
   IntentionalShutdownCause,
   InvalidPullError,
   InvalidPushError,
@@ -14,6 +15,7 @@ export class All extends Schema.Union(
   UnknownError,
   InvalidPushError,
   InvalidPullError,
+  BackendIdMismatchError,
   MaterializeError,
 ) {}
 
