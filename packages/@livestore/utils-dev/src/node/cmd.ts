@@ -141,7 +141,7 @@ export const cmdText: (
     )
   })
 
-export class CmdError extends Schema.TaggedError<CmdError>()('CmdError', {
+export class CmdError extends Schema.TaggedError<CmdError>('~@livestore/utils-dev/CmdError')('CmdError', {
   command: Schema.String,
   args: Schema.Array(Schema.String),
   cwd: Schema.String,
