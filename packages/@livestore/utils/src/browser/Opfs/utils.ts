@@ -158,7 +158,7 @@ export const exists = Effect.fn('@livestore/utils:Opfs.exists')(function* (path:
   const { parentSegments, leafSegment: targetName } = splitPathSegments(pathSegments)
 
   const parentDirHandle = yield* traverseDirectoryPath(parentSegments, { create: false }).pipe(
-    Effect.catchTag('@livestore/utils/Web/NotFoundError', () => Effect.succeed(undefined)),
+    Effect.catchTag('NotFoundError', () => Effect.succeed(undefined)),
   )
 
   if (parentDirHandle === undefined) return false
@@ -166,7 +166,7 @@ export const exists = Effect.fn('@livestore/utils:Opfs.exists')(function* (path:
   return yield* Opfs.getFileHandle(parentDirHandle, targetName).pipe(
     Effect.orElse(() => Opfs.getDirectoryHandle(parentDirHandle, targetName, { create: false })),
     Effect.as(true),
-    Effect.catchTag('@livestore/utils/Web/NotFoundError', () => Effect.succeed(false)),
+    Effect.catchTag('NotFoundError', () => Effect.succeed(false)),
   )
 })
 

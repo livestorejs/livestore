@@ -91,7 +91,7 @@ export const resetPersistedDataFromClientSession = Effect.fn(
     const directory = yield* sanitizeOpfsDir(storageOptions.directory, storeId)
     yield* Opfs.remove(directory, { recursive: true }).pipe(
       // We ignore NotFoundError here as it may not exist or have already been deleted
-      Effect.catchTag('@livestore/utils/Web/NotFoundError', () => Effect.void),
+      Effect.catchTag('NotFoundError', () => Effect.void),
     )
   },
   Effect.retry({
