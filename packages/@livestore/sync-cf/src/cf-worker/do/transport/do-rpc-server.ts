@@ -60,7 +60,7 @@ export const createDoRpcHandler = (
           })),
           Stream.provideLayer(DoCtx.Default({ ...input, from: { storeId: req.storeId } })),
           Stream.mapError((cause) =>
-            cause._tag === 'LiveStore.UnknownError' || cause._tag === 'BackendIdMismatchError'
+            cause._tag === 'UnknownError' || cause._tag === 'BackendIdMismatchError'
               ? cause
               : new UnknownError({ cause }),
           ),
@@ -76,7 +76,7 @@ export const createDoRpcHandler = (
         }).pipe(
           Effect.provide(DoCtx.Default({ ...input, from: { storeId: req.storeId } })),
           Effect.mapError((cause) =>
-            cause._tag === 'LiveStore.UnknownError' || cause._tag === 'ServerAheadError' || cause._tag === 'BackendIdMismatchError'
+            cause._tag === 'UnknownError' || cause._tag === 'ServerAheadError' || cause._tag === 'BackendIdMismatchError'
               ? cause
               : new UnknownError({ cause }),
           ),

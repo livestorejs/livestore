@@ -95,7 +95,7 @@ export const makeDoRpcSync =
           Stream.tap((res) => backendIdHelper.lazySet(res.backendId)),
           Stream.map((res) => omit(res, ['backendId'])),
           Stream.mapError((cause) =>
-            cause._tag === 'LiveStore.UnknownError' || cause._tag === 'BackendIdMismatchError'
+            cause._tag === 'UnknownError' || cause._tag === 'BackendIdMismatchError'
               ? cause
               : new UnknownError({ cause }),
           ),
@@ -128,7 +128,7 @@ export const makeDoRpcSync =
           }
         },
         Effect.mapError((cause) =>
-          cause._tag === 'LiveStore.UnknownError' || cause._tag === 'ServerAheadError' || cause._tag === 'BackendIdMismatchError'
+          cause._tag === 'UnknownError' || cause._tag === 'ServerAheadError' || cause._tag === 'BackendIdMismatchError'
             ? cause
             : new UnknownError({ cause }),
         ),

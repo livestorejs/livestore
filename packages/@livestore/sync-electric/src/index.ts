@@ -293,7 +293,7 @@ export const makeSyncBackend =
         }).pipe(
           Effect.scoped,
           Effect.mapError((cause) =>
-            cause._tag === 'LiveStore.UnknownError' ? cause : new UnknownError({ cause }),
+            cause._tag === 'UnknownError' ? cause : new UnknownError({ cause }),
           ),
           Effect.withSpan('electric-provider:runPull', { attributes: { handle, live } }),
         )

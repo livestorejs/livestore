@@ -233,7 +233,7 @@ const makeAdapterImpl = ({
       yield* shutdownChannel.listen.pipe(
         Stream.flatten(),
         Stream.tap((cause) =>
-          shutdown(cause._tag === 'LiveStore.IntentionalShutdownCause' ? Exit.succeed(cause) : Exit.fail(cause)),
+          shutdown(cause._tag === 'IntentionalShutdownCause' ? Exit.succeed(cause) : Exit.fail(cause)),
         ),
         Stream.runDrain,
         Effect.interruptible,

@@ -917,10 +917,10 @@ const backgroundBackendPushing = Effect.fn('@livestore/common:LeaderSyncProcesso
         schedule: Schedule.exponential(Duration.seconds(1)).pipe(
           Schedule.modifyDelay((_, delay) => Duration.min(delay, Duration.seconds(30))) // Cap delay at 30s intervals.
         ),
-        while: (error) => error._tag === 'IsOfflineError' || error._tag === 'LiveStore.UnknownError',
+        while: (error) => error._tag === 'IsOfflineError' || error._tag === 'UnknownError',
       }),
       // This is needed to narrow the Error type. Our retry policy runs indefinitely, but Effect.retry does not narrow the Error type.
-      Effect.catchIf((error) => error._tag === 'IsOfflineError' || error._tag === 'LiveStore.UnknownError', Effect.die),
+      Effect.catchIf((error) => error._tag === 'IsOfflineError' || error._tag === 'UnknownError', Effect.die),
     )
   }
 }, Effect.interruptible)

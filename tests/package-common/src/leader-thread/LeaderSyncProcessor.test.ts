@@ -686,7 +686,7 @@ Vitest.describe.concurrent('LeaderSyncProcessor', { timeout: 60000 }, () => {
       // Expect a shutdown message with IntentionalShutdownCause and reason 'backend-id-mismatch'
       const shutdownMsg = yield* testContext.shutdownDeferred.pipe(Effect.flip, Effect.timeout(3000))
 
-      expect(shutdownMsg._tag).toEqual('LiveStore.IntentionalShutdownCause')
+      expect(shutdownMsg._tag).toEqual('IntentionalShutdownCause')
       expect((shutdownMsg as IntentionalShutdownCause).reason).toEqual('backend-id-mismatch')
 
       // Verify databases were cleared

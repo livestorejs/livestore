@@ -151,7 +151,7 @@
 
   Update all references:
   - Class name: `UnexpectedError` → `UnknownError`
-  - Error tag: `'LiveStore.UnexpectedError'` → `'LiveStore.UnknownError'`
+  - Error tag: `'LiveStore.UnexpectedError'` → `'UnknownError'`
   - Static methods: `mapToUnexpectedError*` → `mapToUnknownError*`
   - Related type: `MergeResultUnexpectedError` → `MergeResultUnknownError`
 
@@ -334,7 +334,7 @@ See the [S2 sync provider docs](https://dev.docs.livestore.dev/reference/syncing
 
   This keeps the schema as a single source of truth, enforces types at compile time, and removes duplicate column definitions.
 
-- **Materializer hash checks:** Development builds compute hashes for materializer output and raise `LiveStore.MaterializerHashMismatchError` when handlers diverge, catching non-pure implementations before they reach production.
+- **Materializer hash checks:** Development builds compute hashes for materializer output and raise `MaterializerHashMismatchError` when handlers diverge, catching non-pure implementations before they reach production.
 
   ```typescript
   // This triggers warnings in development
@@ -436,7 +436,7 @@ See the [S2 sync provider docs](https://dev.docs.livestore.dev/reference/syncing
 - Fix in-memory SQLite database connection handling in Expo adapter
 - Fix OPFS file pool capacity exhaustion from old state databases (#569)
 - Upgrade wa-sqlite to SQLite 3.50.4 (#581)
-- **WAL snapshot guard:** `@livestore/sqlite-wasm` now aborts WAL-mode snapshot imports with an explicit `LiveStore.SqliteError`, preventing silent corruption when loading backups ([#694](https://github.com/livestorejs/livestore/issues/694)).
+- **WAL snapshot guard:** `@livestore/sqlite-wasm` now aborts WAL-mode snapshot imports with an explicit `SqliteError`, preventing silent corruption when loading backups ([#694](https://github.com/livestorejs/livestore/issues/694)).
 
 ##### Concurrency & Lifecycle
 

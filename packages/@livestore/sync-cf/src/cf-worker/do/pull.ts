@@ -86,7 +86,7 @@ export const makeEndingPullStream = ({
   }).pipe(
     Stream.unwrap,
     Stream.mapError((cause) =>
-      cause._tag === 'BackendIdMismatchError' || cause._tag === 'LiveStore.UnknownError'
+      cause._tag === 'BackendIdMismatchError' || cause._tag === 'UnknownError'
         ? cause
         : new UnknownError({ cause }),
     ),
