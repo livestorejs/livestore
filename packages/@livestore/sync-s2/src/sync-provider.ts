@@ -28,10 +28,10 @@
  *   DO NOT couple these systems together or assume 1:1 correspondence.
  *
  * Errors
- * - push → InvalidPushError on non‑2xx; pull → InvalidPullError on non‑2xx; ping/connect map timeouts to offline.
+ * - push → UnknownError on non‑2xx; pull → UnknownError on non‑2xx; ping/connect map timeouts to offline.
  * - The proxy should surface helpful status codes and error bodies.
  */
-import { InvalidPullError, InvalidPushError, SyncBackend, UnknownError } from '@livestore/common'
+import { SyncBackend, UnknownError } from '@livestore/common'
 import type { EventSequenceNumber } from '@livestore/common/schema'
 import { shouldNeverHappen } from '@livestore/utils'
 import {
@@ -72,9 +72,9 @@ export interface SyncS2Options {
   }
   retry?: {
     /** Custom retry schedule for non-live pulls (default: 2 recurs, 100ms spaced) */
-    pull?: Schedule.Schedule<number, InvalidPullError>
+    pull?: Schedule.Schedule<number, UnknownError>
     /** Custom retry schedule for pushes (default: 2 recurs, 100ms spaced) */
-    push?: Schedule.Schedule<number, InvalidPushError>
+    push?: Schedule.Schedule<number, UnknownError>
   }
 }
 
@@ -121,7 +121,7 @@ export const makeSyncBackend =
           metadata: Option.Option<SyncMetadata>
         }>,
         live: boolean,
-      ): Stream.Stream<SyncBackend.PullResItem<SyncMetadata>, InvalidPullError> => {
+      ): Stream.Stream<SyncBackend.PullResItem<SyncMetadata>, UnknownError> => {
         // Extract S2 seqNum from metadata for SSE cursor
         const s2SeqNum = cursor.pipe(
           Option.flatMap((_) => _.metadata),
@@ -145,9 +145,7 @@ export const makeSyncBackend =
                 const evt = msg.event.toLowerCase()
                 if (evt === 'ping') return Option.none()
                 if (evt === 'error') {
-                  return yield* new InvalidPullError({
-                    cause: new UnknownError({ cause: new Error(`SSE error: ${msg.data}`) }),
-                  })
+                  return yield* new UnknownError({ cause: new Error(`SSE error: ${msg.data}`) })
                 }
                 if (evt === 'batch') {
                   const readBatch = yield* Schema.decode(Schema.parseJson(HttpClientGenerated.ReadBatch))(msg.data)
@@ -180,7 +178,7 @@ export const makeSyncBackend =
             ),
             Stream.filterMap((_) => _), // filter out Option.none()
             Stream.mapError((cause) =>
-              cause._tag === 'InvalidPullError' ? cause : new InvalidPullError({ cause: new UnknownError({ cause }) }),
+              cause._tag === 'LiveStore.UnknownError' ? cause : new UnknownError({ cause }),
             ),
             Stream.retry(retry?.pull ?? defaultRetry),
           )
@@ -191,7 +189,7 @@ export const makeSyncBackend =
           eventSequenceNumber: EventSequenceNumber.Global.Type
           metadata: Option.Option<SyncMetadata>
         }>,
-      ): Stream.Stream<SyncBackend.PullResItem<SyncMetadata>, InvalidPullError> => {
+      ): Stream.Stream<SyncBackend.PullResItem<SyncMetadata>, UnknownError> => {
         const computeNextCursor = (
           lastItem: Option.Option<SyncBackend.PullResItem<SyncMetadata>>,
           current: Option.Option<{
@@ -217,7 +215,7 @@ export const makeSyncBackend =
             metadata: Option.Option<SyncMetadata>
           }>,
           isFirst: boolean,
-        ): Stream.Stream<SyncBackend.PullResItem<SyncMetadata>, InvalidPullError> => {
+        ): Stream.Stream<SyncBackend.PullResItem<SyncMetadata>, UnknownError> => {
           const sseStream = (live: boolean) =>
             runPullSse(cursor, live).pipe(
               Stream.emitIfEmpty({
@@ -253,13 +251,9 @@ export const makeSyncBackend =
         },
         push: (batch) =>
           Effect.gen(function* () {
-            const makeInvalidPushError = (cause: unknown): InvalidPushError => {
-              if (cause instanceof InvalidPushError) {
-                return cause
-              }
-
+            const toUnknownError = (cause: unknown): UnknownError => {
               if (cause instanceof UnknownError) {
-                return new InvalidPushError({ cause })
+                return cause
               }
 
               if (cause instanceof S2LimitExceededError) {
@@ -268,24 +262,22 @@ export const makeSyncBackend =
                     ? `S2 record exceeded ${cause.max} metered bytes (actual: ${cause.actual})`
                     : `S2 batch exceeded ${cause.max} (type: ${cause.limitType}, actual: ${cause.actual})`
 
-                return new InvalidPushError({
-                  cause: new UnknownError({
-                    cause,
-                    note,
-                    payload: {
-                      limitType: cause.limitType,
-                      max: cause.max,
-                      actual: cause.actual,
-                      recordIndex: cause.recordIndex,
-                    },
-                  }),
+                return new UnknownError({
+                  cause,
+                  note,
+                  payload: {
+                    limitType: cause.limitType,
+                    max: cause.max,
+                    actual: cause.actual,
+                    recordIndex: cause.recordIndex,
+                  },
                 })
               }
 
-              return new InvalidPushError({ cause: new UnknownError({ cause }) })
+              return new UnknownError({ cause })
             }
 
-            const chunks = yield* Effect.sync(() => chunkEventsForS2(batch)).pipe(Effect.mapError(makeInvalidPushError))
+            const chunks = yield* Effect.sync(() => chunkEventsForS2(batch)).pipe(Effect.mapError(toUnknownError))
 
             for (const chunk of chunks) {
               yield* HttpClientRequest.schemaBodyJson(ApiSchema.PushPayload)(HttpClientRequest.post(pushEndpoint), {
@@ -294,7 +286,7 @@ export const makeSyncBackend =
               }).pipe(
                 Effect.andThen(httpClient.pipe(HttpClient.filterStatusOk).execute),
                 Effect.andThen(HttpClientResponse.schemaBodyJson(ApiSchema.PushResponse)),
-                Effect.mapError(makeInvalidPushError),
+                Effect.mapError(toUnknownError),
                 Effect.retry(retry?.push ?? defaultRetry),
               )
             }

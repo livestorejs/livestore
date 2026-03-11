@@ -1,4 +1,4 @@
-import { InvalidPullError, InvalidPushError, UnknownError } from '@livestore/common'
+import { UnknownError } from '@livestore/common'
 import { WsContext } from '@livestore/common-cf'
 import { Effect, identity, Layer, RpcServer, Schema, Stream } from '@livestore/utils/effect'
 
@@ -18,9 +18,9 @@ export const makeRpcServer = ({ doSelf, doOptions }: Omit<DoCtxInput, 'from'>) =
           req.live === true ? Stream.concat(Stream.never) : identity,
           Stream.provideLayer(DoCtx.Default({ doSelf, doOptions, from: { storeId: req.storeId } })),
           Stream.mapError((cause) =>
-            cause._tag === 'InvalidPullError' || cause._tag === 'BackendIdMismatchError'
+            cause._tag === 'LiveStore.UnknownError' || cause._tag === 'BackendIdMismatchError'
               ? cause
-              : InvalidPullError.make({ cause: new UnknownError({ cause }) }),
+              : new UnknownError({ cause }),
           ),
         )
       }).pipe(Stream.unwrap),
@@ -35,9 +35,9 @@ export const makeRpcServer = ({ doSelf, doOptions }: Omit<DoCtxInput, 'from'>) =
       }).pipe(
         Effect.provide(DoCtx.Default({ doSelf, doOptions, from: { storeId: req.storeId } })),
         Effect.mapError((cause) =>
-          cause._tag === 'InvalidPushError' || cause._tag === 'ServerAheadError' || cause._tag === 'BackendIdMismatchError'
+          cause._tag === 'LiveStore.UnknownError' || cause._tag === 'ServerAheadError' || cause._tag === 'BackendIdMismatchError'
             ? cause
-            : InvalidPushError.make({ cause }),
+            : new UnknownError({ cause }),
         ),
         Effect.tapCauseLogPretty,
       ),

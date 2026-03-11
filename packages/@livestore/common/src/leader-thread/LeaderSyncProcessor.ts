@@ -25,7 +25,7 @@ import { makeMaterializerHash } from '../materializer-helper.ts'
 import type { LiveStoreSchema } from '../schema/mod.ts'
 import { EventSequenceNumber, LiveStoreEvent, resolveEventDef, SystemTables } from '../schema/mod.ts'
 import { EVENTLOG_META_TABLE, SYNC_STATUS_TABLE } from '../schema/state/sqlite/system-tables/eventlog-tables.ts'
-import type { BackendIdMismatchError, InvalidPullError, InvalidPushError, IsOfflineError, SyncBackend } from '../sync/sync.ts'
+import type { BackendIdMismatchError, IsOfflineError, SyncBackend } from '../sync/sync.ts'
 import { isRejectedPushError, LeaderAheadError, NonMonotonicBatchError, StaleRebaseGenerationError } from './RejectedPushError.ts'
 import * as SyncState from '../sync/syncstate.ts'
 import { sql } from '../util.ts'
@@ -310,8 +310,6 @@ export const makeLeaderSyncProcessor = ({
       const maybeShutdownOnError = (
         cause: Cause.Cause<
           | UnknownError
-          | InvalidPushError
-          | InvalidPullError
           | MaterializeError
         >,
       ) =>
@@ -919,10 +917,10 @@ const backgroundBackendPushing = Effect.fn('@livestore/common:LeaderSyncProcesso
         schedule: Schedule.exponential(Duration.seconds(1)).pipe(
           Schedule.modifyDelay((_, delay) => Duration.min(delay, Duration.seconds(30))) // Cap delay at 30s intervals.
         ),
-        while: (error) => error._tag === 'IsOfflineError' || (error._tag === 'InvalidPushError' && error.cause._tag === 'LiveStore.UnknownError'),
+        while: (error) => error._tag === 'IsOfflineError' || error._tag === 'LiveStore.UnknownError',
       }),
       // This is needed to narrow the Error type. Our retry policy runs indefinitely, but Effect.retry does not narrow the Error type.
-      Effect.catchTag("IsOfflineError", Effect.die),
+      Effect.catchIf((error) => error._tag === 'IsOfflineError' || error._tag === 'LiveStore.UnknownError', Effect.die),
     )
   }
 }, Effect.interruptible)

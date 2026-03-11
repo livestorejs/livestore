@@ -13,8 +13,12 @@ Implement the `SyncBackend` interface (running in the client) which describes th
 ```ts
 // Slightly simplified API (see packages/@livestore/common/src/sync/sync.ts for the full API)
 export type SyncBackend = {
-  pull: (cursor: EventSequenceNumber) => Stream<{ batch: LiveStoreEvent[] }, InvalidPullError>
-  push: (batch: LiveStoreEvent[]) => Effect<void, InvalidPushError>
+  pull: (
+    cursor: EventSequenceNumber,
+  ) => Stream<{ batch: LiveStoreEvent[] }, IsOfflineError | BackendIdMismatchError | UnknownError>
+  push: (
+    batch: LiveStoreEvent[],
+  ) => Effect<void, IsOfflineError | BackendIdMismatchError | ServerAheadError | UnknownError>
 }
 
 // my-sync-backend.ts

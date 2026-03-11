@@ -11,7 +11,6 @@ import {
   StaleRebaseGenerationError,
   type SyncOptions,
   UnknownError,
-  InvalidPullError,
 } from '@livestore/common'
 import type { MakeLeaderThreadLayerParams } from '@livestore/common/leader-thread'
 import { LeaderThreadCtx, makeLeaderThreadLayer, ShutdownChannel as Shutdown } from '@livestore/common/leader-thread'
@@ -219,9 +218,7 @@ Vitest.describe.concurrent('LeaderSyncProcessor', { timeout: 60000 }, () => {
                   syncBackend.pull(cursor, pullOptions).pipe(Stream.take(1)),
                   Stream.fromEffect(
                     Effect.fail(
-                      new InvalidPullError({
-                        cause: new UnknownError({ cause: new Error('Simulated mid-pagination pull failure') }),
-                      }),
+                      new UnknownError({ cause: new Error('Simulated mid-pagination pull failure') }),
                     ),
                   ),
                 ),
