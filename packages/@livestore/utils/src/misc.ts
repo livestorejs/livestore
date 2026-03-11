@@ -49,7 +49,7 @@ export const envTruish = (env: string | undefined) =>
 /**
  * Throws for impossible states, pausing at a breakpoint in development.
  *
- * @see {@link dieWithDebugger} in `@livestore/utils/effect` for the Effect equivalent.
+ * @see {@link dieDebugger} in `@livestore/utils/effect` for the Effect equivalent.
  */
 export const shouldNeverHappen = (msg?: string, ...args: ReadonlyArray<unknown>): never => {
   console.error(msg, ...args)

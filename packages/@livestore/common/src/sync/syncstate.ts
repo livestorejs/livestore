@@ -260,7 +260,7 @@ export const merge = Effect.fnUntraced(function* ({
           EventSequenceNumber.Client.isGreaterThan(payload.newEvents[i - 1]!.seqNum, payload.newEvents[i]!.seqNum) ===
           true
         ) {
-          return yield* Effect.dieWithDebugger(
+          return yield* Effect.dieDebugger(
             `Events must be sorted in ascending order by event number. Received: [${payload.newEvents.map((e) => EventSequenceNumber.Client.toString(e.seqNum)).join(', ')}]`,
           )
         }
@@ -271,7 +271,7 @@ export const merge = Effect.fnUntraced(function* ({
         EventSequenceNumber.Client.isGreaterThan(syncState.upstreamHead, payload.newEvents[0]!.seqNum) === true ||
         EventSequenceNumber.Client.isEqual(syncState.upstreamHead, payload.newEvents[0]!.seqNum) === true
       ) {
-        return yield* Effect.dieWithDebugger(
+        return yield* Effect.dieDebugger(
           `Incoming events must be greater than upstream head. Expected greater than: ${EventSequenceNumber.Client.toString(syncState.upstreamHead)}. Received: [${payload.newEvents.map((e) => EventSequenceNumber.Client.toString(e.seqNum)).join(', ')}]`,
         )
       }
@@ -508,7 +508,7 @@ const validatePayload = (payload: typeof Payload.Type) =>
           payload.newEvents[i]!.seqNum,
         ) === true
       ) {
-        return yield* Effect.dieWithDebugger(
+        return yield* Effect.dieDebugger(
           `Events must be ordered in monotonically ascending order by eventNum. Received: [${payload.newEvents.map((e) => EventSequenceNumber.Client.toString(e.seqNum)).join(', ')}]`,
         )
       }
@@ -524,7 +524,7 @@ const validateSyncState = Effect.fnUntraced(function* (
     if (nextEvent === undefined) break // Reached end of chain
 
     if (EventSequenceNumber.Client.isGreaterThanOrEqual(event.seqNum, nextEvent.seqNum) === true) {
-      return yield* Effect.dieWithDebugger(
+      return yield* Effect.dieDebugger(
         `Events must be ordered in monotonically ascending order by eventNum. Received: [${syncState.pending.map((e) => EventSequenceNumber.Client.toString(e.seqNum)).join(', ')}]`,
         { event, nextEvent },
       )
@@ -534,7 +534,7 @@ const validateSyncState = Effect.fnUntraced(function* (
     const globalIdHasIncreased = nextEvent.seqNum.global > event.seqNum.global
     if (globalIdHasIncreased === true) {
       if (nextEvent.seqNum.client !== 0) {
-        return yield* Effect.dieWithDebugger(
+        return yield* Effect.dieDebugger(
           `New global events must point to clientId 0 in the parentSeqNum. Received: (${EventSequenceNumber.Client.toString(nextEvent.seqNum)})`,
           syncState.pending,
           { event, nextEvent },
@@ -543,7 +543,7 @@ const validateSyncState = Effect.fnUntraced(function* (
     } else {
       // Otherwise, the parentSeqNum must be the same as the previous event's id
       if (EventSequenceNumber.Client.isEqual(nextEvent.parentSeqNum, event.seqNum) === false) {
-        return yield* Effect.dieWithDebugger(
+        return yield* Effect.dieDebugger(
           'Events must be linked in a continuous chain via the parentSeqNum',
           syncState.pending,
           { event, nextEvent },
@@ -567,7 +567,7 @@ const validateMergeResult = Effect.fnUntraced(function* (
       mergeResult.newSyncState.localHead,
     ) === true
   ) {
-    return yield* Effect.dieWithDebugger('Local head must be greater than or equal to upstream head', {
+    return yield* Effect.dieDebugger('Local head must be greater than or equal to upstream head', {
       localHead: mergeResult.newSyncState.localHead,
       upstreamHead: mergeResult.newSyncState.upstreamHead,
     })
@@ -580,7 +580,7 @@ const validateMergeResult = Effect.fnUntraced(function* (
       mergeResult.mergeContext.syncState.localHead,
     ) === false
   ) {
-    return yield* Effect.dieWithDebugger('New local head must be greater than or equal to the previous local head', {
+    return yield* Effect.dieDebugger('New local head must be greater than or equal to the previous local head', {
       localHead: mergeResult.newSyncState.localHead,
       previousLocalHead: mergeResult.mergeContext.syncState.localHead,
     })
@@ -593,7 +593,7 @@ const validateMergeResult = Effect.fnUntraced(function* (
       mergeResult.mergeContext.syncState.upstreamHead,
     ) === false
   ) {
-    return yield* Effect.dieWithDebugger('New upstream head must be greater than or equal to the previous upstream head', {
+    return yield* Effect.dieDebugger('New upstream head must be greater than or equal to the previous upstream head', {
       upstreamHead: mergeResult.newSyncState.upstreamHead,
       previousUpstreamHead: mergeResult.mergeContext.syncState.upstreamHead,
     })
