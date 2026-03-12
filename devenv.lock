@@ -3,11 +3,11 @@
     "devenv": {
       "locked": {
         "dir": "src/modules",
-        "lastModified": 1773258458,
-        "narHash": "sha256-dA0iMwHI+rH0yqWiK9MWDetWm/d4lR2du0My+gRr9Ow=",
+        "lastModified": 1773331734,
+        "narHash": "sha256-c3llxzZqXH3UICBRSp0D97C0wCzDHltYugAODvlnPBA=",
         "owner": "cachix",
         "repo": "devenv",
-        "rev": "724263b1d5571c4f97996af5ee3e36812380dbf6",
+        "rev": "44372d4882bcae99e9abf596ae4060a421447b5b",
         "type": "github"
       },
       "original": {
@@ -26,11 +26,11 @@
         "tsgo": "tsgo"
       },
       "locked": {
-        "lastModified": 1773327460,
-        "narHash": "sha256-uKW1WbBW9U7ZzB2Kss+Swc+3ccNZqbB6B+RrsNTM6oY=",
+        "lastModified": 1773333646,
+        "narHash": "sha256-0N7U6etCpL2+ih7CllifDXGrdjUxbU1vbdQ8Y/7iY6g=",
         "ref": "schickling/2026-03-08-pnpm-gvs-boundary-spec",
-        "rev": "51a67f704ddac6afd3a5230e696dbc440257f07d",
-        "revCount": 761,
+        "rev": "a88e5d76d392e96e5b26c8d78d988afc8282cddc",
+        "revCount": 764,
         "type": "git",
         "url": "https://github.com/overengineeringstudio/effect-utils"
       },
@@ -169,11 +169,11 @@
     },
     "nixpkgs_2": {
       "locked": {
-        "lastModified": 1772963539,
-        "narHash": "sha256-9jVDGZnvCckTGdYT53d/EfznygLskyLQXYwJLKMPsZs=",
+        "lastModified": 1773122722,
+        "narHash": "sha256-FIqHByVqxCprNjor1NqF80F2QQoiiyqanNNefdlvOg4=",
         "owner": "NixOS",
         "repo": "nixpkgs",
-        "rev": "9dcb002ca1690658be4a04645215baea8b95f31d",
+        "rev": "62dc67aa6a52b4364dd75994ec00b51fbf474e50",
         "type": "github"
       },
       "original": {
@@ -192,11 +192,11 @@
       },
       "locked": {
         "dir": "nix/playwright-flake",
-        "lastModified": 1773307843,
-        "narHash": "sha256-oxwi0UQlNxH2UieGgeBrt1yOtb+9O7BNLUJXElZZDw4=",
+        "lastModified": 1773051231,
+        "narHash": "sha256-hQQkvxvMmMZCfcY9NafMmx80NxyC+ndxaFRilynBTl0=",
         "owner": "overengineeringstudio",
         "repo": "effect-utils",
-        "rev": "5ed484e840a05d0ca80aaa5bfbaf2948c042ea90",
+        "rev": "849bd27584dcf0b7046df9510267a83b4c364aa7",
         "type": "github"
       },
       "original": {
