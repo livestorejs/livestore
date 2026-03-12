@@ -1,7 +1,7 @@
-import { catalog, localPackageDefaults, packageJson } from '../../../genie/repo.ts'
+import { catalog, localPackageDefaults, packageJson, workspaceMember } from '../../../genie/repo.ts'
 
 const runtimeDeps = catalog.compose({
-  dir: import.meta.dirname,
+  workspace: workspaceMember('packages/@local/shared'),
   devDependencies: {
     external: catalog.pick('@types/node'),
   },

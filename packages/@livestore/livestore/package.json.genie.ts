@@ -1,11 +1,17 @@
-import { catalog, livestorePackageDefaults, packageJson } from '../../../genie/repo.ts'
+import {
+  catalog,
+  livestorePackageDefaults,
+  packageJson,
+  workspaceMember,
+  getUtilsPeerDeps,
+} from '../../../genie/repo.ts'
 import adapterWebPkg from '../adapter-web/package.json.genie.ts'
 import commonPkg from '../common/package.json.genie.ts'
 import utilsDevPkg from '../utils-dev/package.json.genie.ts'
 import utilsPkg from '../utils/package.json.genie.ts'
 
 const runtimeDeps = catalog.compose({
-  dir: import.meta.dirname,
+  workspace: workspaceMember('packages/@livestore/livestore'),
   dependencies: {
     workspace: [commonPkg, utilsPkg],
     external: catalog.pick('@opentelemetry/api'),
@@ -13,6 +19,9 @@ const runtimeDeps = catalog.compose({
   devDependencies: {
     workspace: [adapterWebPkg, utilsDevPkg],
     external: catalog.pick('@opentelemetry/sdk-trace-base', 'jsdom', 'typescript', 'vite', 'vitest'),
+  },
+  peerDependencies: {
+    external: getUtilsPeerDeps(),
   },
 })
 
@@ -26,7 +35,6 @@ export default packageJson(
       './internal/testing-utils': './src/utils/tests/mod.ts',
       './effect': './src/effect/mod.ts',
     },
-    peerDependencies: utilsPkg.data.peerDependencies,
     files: [...livestorePackageDefaults.files, 'docs'],
     publishConfig: {
       access: 'public',

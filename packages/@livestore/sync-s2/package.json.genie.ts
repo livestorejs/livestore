@@ -1,15 +1,25 @@
-import { catalog, livestorePackageDefaults, packageJson } from '../../../genie/repo.ts'
+import {
+  catalog,
+  livestorePackageDefaults,
+  packageJson,
+  utilsEffectPeerDeps,
+  workspaceMember,
+  getUtilsPeerDeps,
+} from '../../../genie/repo.ts'
 import commonPkg from '../common/package.json.genie.ts'
 import livestorePkg from '../livestore/package.json.genie.ts'
 import utilsPkg from '../utils/package.json.genie.ts'
 
 const runtimeDeps = catalog.compose({
-  dir: import.meta.dirname,
+  workspace: workspaceMember('packages/@livestore/sync-s2'),
   dependencies: {
     workspace: [commonPkg, livestorePkg, utilsPkg],
   },
   devDependencies: {
-    external: catalog.pick('vitest'),
+    external: catalog.pick(...utilsEffectPeerDeps, 'vitest'),
+  },
+  peerDependencies: {
+    external: getUtilsPeerDeps(),
   },
 })
 
@@ -21,7 +31,6 @@ export default packageJson(
       '.': './src/mod.ts',
       './s2-proxy-helpers': './src/s2-proxy-helpers.ts',
     },
-    peerDependencies: utilsPkg.data.peerDependencies,
     publishConfig: {
       access: 'public',
       exports: {

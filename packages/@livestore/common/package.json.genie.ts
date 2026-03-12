@@ -1,10 +1,17 @@
-import { catalog, livestorePackageDefaults, packageJson, utilsEffectPeerDeps } from '../../../genie/repo.ts'
+import {
+  catalog,
+  livestorePackageDefaults,
+  packageJson,
+  utilsEffectPeerDeps,
+  workspaceMember,
+  getUtilsPeerDeps,
+} from '../../../genie/repo.ts'
 import utilsDevPkg from '../utils-dev/package.json.genie.ts'
 import utilsPkg from '../utils/package.json.genie.ts'
 import webmeshPkg from '../webmesh/package.json.genie.ts'
 
 const runtimeDeps = catalog.compose({
-  dir: import.meta.dirname,
+  workspace: workspaceMember('packages/@livestore/common'),
   dependencies: {
     workspace: [utilsPkg, webmeshPkg],
     external: catalog.pick('@opentelemetry/api'),
@@ -12,6 +19,10 @@ const runtimeDeps = catalog.compose({
   devDependencies: {
     workspace: [utilsDevPkg],
     external: catalog.pick(...utilsEffectPeerDeps, 'vitest'),
+  },
+  // Re-expose utils' peer dependencies
+  peerDependencies: {
+    external: getUtilsPeerDeps(),
   },
 })
 
@@ -29,8 +40,6 @@ export default packageJson(
       './sync/next/test': './src/sync/next/test/mod.ts',
       './testing': './src/testing/mod.ts',
     },
-    // Re-expose utils' peer dependencies
-    peerDependencies: utilsPkg.data.peerDependencies,
     publishConfig: {
       access: 'public',
       exports: {

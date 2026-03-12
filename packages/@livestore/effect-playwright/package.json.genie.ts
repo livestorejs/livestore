@@ -1,13 +1,18 @@
-import { catalog, effectDevDeps, packageJson } from '../../../genie/repo.ts'
+import { catalog, effectDevDeps, packageJson, workspaceMember } from '../../../genie/repo.ts'
 import utilsPkg from '../utils/package.json.genie.ts'
 
 const runtimeDeps = catalog.compose({
-  dir: import.meta.dirname,
+  workspace: workspaceMember('packages/@livestore/effect-playwright'),
   dependencies: {
     workspace: [utilsPkg],
   },
   devDependencies: {
     external: effectDevDeps('@playwright/test', '@types/node'),
+  },
+  peerDependencies: {
+    external: {
+      '@playwright/test': '^1.56.0',
+    },
   },
 })
 
@@ -19,9 +24,6 @@ export default packageJson(
     private: true,
     exports: {
       '.': './src/index.ts',
-    },
-    peerDependencies: {
-      '@playwright/test': '^1.56.0',
     },
     scripts: {
       test: "echo 'No tests'",

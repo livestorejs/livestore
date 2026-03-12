@@ -1,9 +1,15 @@
-import { catalog, livestorePackageDefaults, packageJson } from '../../../genie/repo.ts'
+import {
+  catalog,
+  livestorePackageDefaults,
+  packageJson,
+  workspaceMember,
+  getUtilsPeerDeps,
+} from '../../../genie/repo.ts'
 import utilsDevPkg from '../utils-dev/package.json.genie.ts'
 import utilsPkg from '../utils/package.json.genie.ts'
 
 const runtimeDeps = catalog.compose({
-  dir: import.meta.dirname,
+  workspace: workspaceMember('packages/@livestore/common-cf'),
   dependencies: {
     workspace: [utilsPkg],
     external: catalog.pick('@cloudflare/workers-types'),
@@ -11,6 +17,9 @@ const runtimeDeps = catalog.compose({
   devDependencies: {
     workspace: [utilsDevPkg],
     external: catalog.pick('vitest', 'wrangler'),
+  },
+  peerDependencies: {
+    external: getUtilsPeerDeps(),
   },
 })
 
@@ -22,7 +31,6 @@ export default packageJson(
       '.': './src/mod.ts',
       './declare': './src/declare/mod.ts',
     },
-    peerDependencies: utilsPkg.data.peerDependencies,
     files: [...livestorePackageDefaults.files, 'README.md'],
     publishConfig: {
       access: 'public',

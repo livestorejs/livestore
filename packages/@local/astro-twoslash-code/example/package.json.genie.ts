@@ -1,28 +1,35 @@
-import { catalog, localPackageDefaults, packageJson } from '../../../../genie/repo.ts'
+import { catalog, localPackageDefaults, packageJson, workspaceMember } from '../../../../genie/repo.ts'
+import utilsPkg from '../../../@livestore/utils/package.json.genie.ts'
+import astroTwoslashCodePkg from '../package.json.genie.ts'
 
-export default packageJson({
-  name: '@local/astro-twoslash-code-demo',
+const runtimeDeps = catalog.compose({
+  workspace: workspaceMember('packages/@local/astro-twoslash-code/example'),
   dependencies: {
-    ...catalog.pick(
+    workspace: [astroTwoslashCodePkg, utilsPkg],
+    external: catalog.pick(
       '@astrojs/starlight',
       'astro',
       'astro-expressive-code',
       'expressive-code-twoslash',
       'expressive-code',
     ),
-
-    '@livestore/utils': 'file:../../../@livestore/utils',
-    '@local/astro-twoslash-code': 'file:..',
   },
   devDependencies: {
-    ...catalog.pick('@playwright/test', '@tailwindcss/vite', '@types/node', 'tailwindcss', 'typescript'),
+    external: catalog.pick('@playwright/test', '@tailwindcss/vite', '@types/node', 'tailwindcss', 'typescript'),
   },
-  scripts: {
-    build: 'astro build',
-    dev: 'astro dev',
-    preview: 'astro preview',
-    'snippets:build': 'bun run scripts/build-snippets.ts',
-    test: 'bun run snippets:build && bun run playwright test',
-  },
-  ...localPackageDefaults,
 })
+
+export default packageJson(
+  {
+    name: '@local/astro-twoslash-code-demo',
+    scripts: {
+      build: 'astro build',
+      dev: 'astro dev',
+      preview: 'astro preview',
+      'snippets:build': 'bun run scripts/build-snippets.ts',
+      test: 'bun run snippets:build && bun run playwright test',
+    },
+    ...localPackageDefaults,
+  },
+  runtimeDeps,
+)

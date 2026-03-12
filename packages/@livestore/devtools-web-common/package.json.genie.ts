@@ -1,12 +1,21 @@
-import { catalog, livestorePackageDefaults, packageJson } from '../../../genie/repo.ts'
+import {
+  catalog,
+  livestorePackageDefaults,
+  packageJson,
+  workspaceMember,
+  getUtilsPeerDeps,
+} from '../../../genie/repo.ts'
 import commonPkg from '../common/package.json.genie.ts'
 import utilsPkg from '../utils/package.json.genie.ts'
 import webmeshPkg from '../webmesh/package.json.genie.ts'
 
 const runtimeDeps = catalog.compose({
-  dir: import.meta.dirname,
+  workspace: workspaceMember('packages/@livestore/devtools-web-common'),
   dependencies: {
     workspace: [commonPkg, utilsPkg, webmeshPkg],
+  },
+  peerDependencies: {
+    external: getUtilsPeerDeps(),
   },
 })
 
@@ -18,7 +27,6 @@ export default packageJson(
       './web-channel': './src/web-channel/index.ts',
       './worker': './src/worker/mod.ts',
     },
-    peerDependencies: utilsPkg.data.peerDependencies,
     publishConfig: {
       access: 'public',
       exports: {

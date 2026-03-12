@@ -1,8 +1,8 @@
-import { catalog, effectDevDeps, localPackageDefaults, packageJson } from '../../../genie/repo.ts'
+import { catalog, effectDevDeps, localPackageDefaults, packageJson, workspaceMember } from '../../../genie/repo.ts'
 import utilsPkg from '../../@livestore/utils/package.json.genie.ts'
 
 const runtimeDeps = catalog.compose({
-  dir: import.meta.dirname,
+  workspace: workspaceMember('packages/@local/astro-twoslash-code'),
   dependencies: {
     workspace: [utilsPkg],
     external: catalog.pick(
@@ -18,6 +18,12 @@ const runtimeDeps = catalog.compose({
   devDependencies: {
     external: effectDevDeps('@astrojs/starlight', '@types/hast', '@types/node', 'astro', 'vitest'),
   },
+  peerDependencies: {
+    external: {
+      '@astrojs/starlight': '^0.35.0',
+      astro: '^5.0.0',
+    },
+  },
 })
 
 export default packageJson(
@@ -32,10 +38,6 @@ export default packageJson(
       './components/MultiCode.astro': './src/components/MultiCode.astro',
     },
     ...localPackageDefaults,
-    peerDependencies: {
-      '@astrojs/starlight': '^0.35.0',
-      astro: '^5.0.0',
-    },
   },
   runtimeDeps,
 )

@@ -24,12 +24,12 @@ import {
   oxfmtConfig,
   oxlintConfig,
   packageJson,
-  pnpmWorkspaceYamlFromPackage,
-  pnpmWorkspaceYamlFromPackages,
+  pnpmWorkspaceYaml,
   reactJsx,
   tsconfigJson,
   type PackageJsonData,
   type PnpmWorkspaceData,
+  type WorkspaceIdentity,
   type WorkspaceMeta,
   type WorkspaceMetadata,
   type WorkspacePackage,
@@ -38,18 +38,11 @@ import {
 import { livestoreOnlyCatalog, livestoreWorkspaceCatalog } from './external.ts'
 
 export { baseTsconfigCompilerOptions, domLib, reactJsx }
-export {
-  githubWorkflow,
-  oxfmtConfig,
-  oxlintConfig,
-  packageJson,
-  pnpmWorkspaceYamlFromPackage,
-  pnpmWorkspaceYamlFromPackages,
-  tsconfigJson,
-}
+export { githubWorkflow, oxfmtConfig, oxlintConfig, packageJson, pnpmWorkspaceYaml, tsconfigJson }
 export type {
   PackageJsonData,
   PnpmWorkspaceData,
+  WorkspaceIdentity,
   WorkspaceMeta,
   WorkspaceMetadata,
   WorkspacePackage,
@@ -83,6 +76,13 @@ export const catalog = defineCatalog({
     ...livestoreWorkspaceCatalog,
     ...livestoreOnlyCatalog,
   },
+})
+
+const WORKSPACE_REPO_NAME = 'livestore'
+
+export const workspaceMember = (memberPath: string): WorkspaceIdentity => ({
+  repoName: WORKSPACE_REPO_NAME,
+  memberPath,
 })
 
 // =============================================================================

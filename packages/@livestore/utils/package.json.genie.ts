@@ -4,10 +4,11 @@ import {
   packageJson,
   utilsEffectPeerDeps,
   getUtilsPeerDeps,
+  workspaceMember,
 } from '../../../genie/repo.ts'
 
 const runtimeDeps = catalog.compose({
-  dir: import.meta.dirname,
+  workspace: workspaceMember('packages/@livestore/utils'),
   dependencies: {
     external: catalog.pick(
       '@effect/platform-node',
@@ -30,6 +31,10 @@ const runtimeDeps = catalog.compose({
       'vitest',
     ),
   },
+  // Use catalog.peers() for consistent versioning with ^ prefix
+  peerDependencies: {
+    external: getUtilsPeerDeps(),
+  },
 })
 
 export default packageJson(
@@ -51,8 +56,6 @@ export default packageJson(
       './node': './src/node/mod.ts',
       './bun': './src/bun/mod.ts',
     },
-    // Use catalog.peers() for consistent versioning with ^ prefix
-    peerDependencies: getUtilsPeerDeps(),
     publishConfig: {
       access: 'public',
       exports: {

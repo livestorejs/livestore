@@ -1,4 +1,10 @@
-import { catalog, livestorePackageDefaults, packageJson } from '../../../genie/repo.ts'
+import {
+  catalog,
+  livestorePackageDefaults,
+  packageJson,
+  workspaceMember,
+  getUtilsPeerDeps,
+} from '../../../genie/repo.ts'
 import adapterNodePkg from '../adapter-node/package.json.genie.ts'
 import commonPkg from '../common/package.json.genie.ts'
 import livestorePkg from '../livestore/package.json.genie.ts'
@@ -7,7 +13,7 @@ import utilsDevPkg from '../utils-dev/package.json.genie.ts'
 import utilsPkg from '../utils/package.json.genie.ts'
 
 const runtimeDeps = catalog.compose({
-  dir: import.meta.dirname,
+  workspace: workspaceMember('packages/@livestore/cli'),
   dependencies: {
     workspace: [adapterNodePkg, commonPkg, livestorePkg, peerDepsPkg, utilsPkg],
     external: catalog.pick(
@@ -24,6 +30,12 @@ const runtimeDeps = catalog.compose({
     workspace: [utilsDevPkg],
     external: catalog.pick('@types/node', 'typescript', 'vitest'),
   },
+  peerDependencies: {
+    external: {
+      ...getUtilsPeerDeps(),
+      ...catalog.peers('@livestore/devtools-vite'),
+    },
+  },
 })
 
 export default packageJson(
@@ -35,10 +47,6 @@ export default packageJson(
     },
     bin: {
       livestore: './src/bin.ts',
-    },
-    peerDependencies: {
-      ...utilsPkg.data.peerDependencies,
-      ...catalog.peers('@livestore/devtools-vite'),
     },
     peerDependenciesMeta: adapterNodePkg.data.peerDependenciesMeta,
     publishConfig: {

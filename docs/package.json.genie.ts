@@ -1,4 +1,4 @@
-import { catalog, packageJson } from '../genie/repo.ts'
+import { catalog, packageJson, workspaceMember } from '../genie/repo.ts'
 import adapterCloudflarePkg from '../packages/@livestore/adapter-cloudflare/package.json.genie.ts'
 import adapterExpoPkg from '../packages/@livestore/adapter-expo/package.json.genie.ts'
 import adapterNodePkg from '../packages/@livestore/adapter-node/package.json.genie.ts'
@@ -16,7 +16,7 @@ import localAstroTwoslashCodePkg from '../packages/@local/astro-twoslash-code/pa
 import localSharedPkg from '../packages/@local/shared/package.json.genie.ts'
 
 const runtimeDeps = catalog.compose({
-  dir: import.meta.dirname,
+  workspace: workspaceMember('docs'),
   dependencies: {
     workspace: [
       adapterCloudflarePkg,

@@ -1,4 +1,4 @@
-import { pnpmWorkspaceYamlFromPackages } from '../genie/repo.ts'
+import { pnpmWorkspaceYaml } from '../genie/repo.ts'
 /**
  * Examples workspace configuration
  *
@@ -64,7 +64,7 @@ const packages = [
   webmeshPkg,
 ] as const
 
-export default pnpmWorkspaceYamlFromPackages({
+export default pnpmWorkspaceYaml.root({
   dir: import.meta.dirname,
   packages,
   extraPackages: ['*'],

@@ -1,7 +1,7 @@
-import { catalog, livestorePackageDefaults, packageJson } from '../../../genie/repo.ts'
+import { catalog, livestorePackageDefaults, packageJson, workspaceMember } from '../../../genie/repo.ts'
 
 const runtimeDeps = catalog.compose({
-  dir: import.meta.dirname,
+  workspace: workspaceMember('packages/@livestore/wa-sqlite'),
   devDependencies: {
     external: catalog.pick(
       '@types/jasmine',

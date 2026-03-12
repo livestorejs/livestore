@@ -35,7 +35,7 @@
     "effect": "3.19.15"
   },
   "peerDependencies": {
-    "@playwright/test": "^1.56.0"
+    "@playwright/test": "^^1.56.0"
   },
   "$genie": {
     "source": "package.json.genie.ts",

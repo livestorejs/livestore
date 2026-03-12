@@ -1,8 +1,15 @@
-import { catalog, livestorePackageDefaults, packageJson, utilsEffectPeerDeps } from '../../../genie/repo.ts'
+import {
+  catalog,
+  livestorePackageDefaults,
+  packageJson,
+  utilsEffectPeerDeps,
+  workspaceMember,
+  getUtilsPeerDeps,
+} from '../../../genie/repo.ts'
 import utilsPkg from '../utils/package.json.genie.ts'
 
 const runtimeDeps = catalog.compose({
-  dir: import.meta.dirname,
+  workspace: workspaceMember('packages/@livestore/utils-dev'),
   dependencies: {
     workspace: [utilsPkg],
     external: catalog.pick(
@@ -21,6 +28,10 @@ const runtimeDeps = catalog.compose({
   devDependencies: {
     external: catalog.pick(...utilsEffectPeerDeps, 'vitest'),
   },
+  // Re-expose utils' peer dependencies for consumers
+  peerDependencies: {
+    external: getUtilsPeerDeps(),
+  },
 })
 
 export default packageJson(
@@ -33,8 +44,6 @@ export default packageJson(
       './node-vitest': './src/node-vitest/mod.ts',
       './wrangler': './src/wrangler/mod.ts',
     },
-    // Re-expose utils' peer dependencies for consumers
-    peerDependencies: utilsPkg.data.peerDependencies,
     publishConfig: {
       access: 'public',
       exports: {
