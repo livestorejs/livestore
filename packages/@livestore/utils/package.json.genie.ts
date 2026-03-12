@@ -97,7 +97,5 @@ export default packageJson(
       test: 'vitest',
     },
   },
-  {
-    composition: runtimeDeps,
-  },
+  runtimeDeps,
 )

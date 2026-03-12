@@ -55,7 +55,5 @@ export default packageJson(
       dev: 'bun src/bin.ts',
     },
   },
-  {
-    composition: runtimeDeps,
-  },
+  runtimeDeps,
 )

@@ -104,7 +104,5 @@ export default packageJson(
       start: 'astro dev',
     },
   },
-  {
-    composition: runtimeDeps,
-  },
+  runtimeDeps,
 )

@@ -42,7 +42,5 @@ export default packageJson(
       './lint': './src/commands/lint.ts',
     },
   },
-  {
-    composition,
-  },
+  composition,
 )

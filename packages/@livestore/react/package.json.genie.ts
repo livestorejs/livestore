@@ -55,7 +55,5 @@ export default packageJson(
       test: 'vitest && REACT_STRICT_MODE=1 vitest',
     },
   },
-  {
-    composition: runtimeDeps,
-  },
+  runtimeDeps,
 )

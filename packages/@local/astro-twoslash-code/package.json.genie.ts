@@ -37,7 +37,5 @@ export default packageJson(
       astro: '^5.0.0',
     },
   },
-  {
-    composition: runtimeDeps,
-  },
+  runtimeDeps,
 )

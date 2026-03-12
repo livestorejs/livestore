@@ -1,9 +1,4 @@
-import {
-  catalog,
-  livestorePackageDefaults,
-  packageJson,
-  utilsEffectPeerDeps,
-} from '../../../genie/repo.ts'
+import { catalog, livestorePackageDefaults, packageJson, utilsEffectPeerDeps } from '../../../genie/repo.ts'
 import utilsDevPkg from '../utils-dev/package.json.genie.ts'
 import utilsPkg from '../utils/package.json.genie.ts'
 import webmeshPkg from '../webmesh/package.json.genie.ts'
@@ -53,7 +48,5 @@ export default packageJson(
       test: 'vitest',
     },
   },
-  {
-    composition: runtimeDeps,
-  },
+  runtimeDeps,
 )

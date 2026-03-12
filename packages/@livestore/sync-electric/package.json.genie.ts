@@ -1,9 +1,4 @@
-import {
-  catalog,
-  livestorePackageDefaults,
-  packageJson,
-  utilsEffectPeerDeps,
-} from '../../../genie/repo.ts'
+import { catalog, livestorePackageDefaults, packageJson, utilsEffectPeerDeps } from '../../../genie/repo.ts'
 import commonPkg from '../common/package.json.genie.ts'
 import utilsPkg from '../utils/package.json.genie.ts'
 
@@ -36,7 +31,5 @@ export default packageJson(
       test: "echo 'No tests yet'",
     },
   },
-  {
-    composition: runtimeDeps,
-  },
+  runtimeDeps,
 )

@@ -24,8 +24,8 @@ import {
   oxfmtConfig,
   oxlintConfig,
   packageJson,
-  pnpmWorkspaceYaml,
   pnpmWorkspaceYamlFromPackage,
+  pnpmWorkspaceYamlFromPackages,
   reactJsx,
   tsconfigJson,
   type PackageJsonData,
@@ -43,8 +43,8 @@ export {
   oxfmtConfig,
   oxlintConfig,
   packageJson,
-  pnpmWorkspaceYaml,
   pnpmWorkspaceYamlFromPackage,
+  pnpmWorkspaceYamlFromPackages,
   tsconfigJson,
 }
 export type {
@@ -161,12 +161,7 @@ export const effectDevDeps = (...additionalDeps: Parameters<typeof catalog.pick>
  * See: effect-utils/context/workarounds/pnpm-issues.md
  * Also excludes *.genie.ts files which are only used by genie CLI, not tsc.
  */
-export const packageTsconfigExclude = [
-  'node_modules',
-  '**/dist',
-  '**/node_modules/.pnpm',
-  '**/*.genie.ts',
-] as const
+export const packageTsconfigExclude = ['node_modules', '**/dist', '**/node_modules/.pnpm', '**/*.genie.ts'] as const
 
 /** Solid JSX configuration */
 export const solidJsx = { jsx: 'preserve' as const, jsxImportSource: 'solid-js' }
@@ -192,8 +187,7 @@ export const devenvShellDefaults = {
 export { bashShellDefaults }
 export { dispatchAlignmentStep, runDevenvTasksBefore, nixDiagnosticsArtifactStep }
 
-export const namespaceRunner = (runId: string) =>
-  namespaceRunnerBase('namespace-profile-linux-x86-64', runId)
+export const namespaceRunner = (runId: string) => namespaceRunnerBase('namespace-profile-linux-x86-64', runId)
 
 /**
  * Setup steps for livestore CI jobs (without checkout).

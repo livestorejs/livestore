@@ -35,7 +35,5 @@ export default packageJson(
       test: "echo 'No tests'",
     },
   },
-  {
-    composition: runtimeDeps,
-  },
+  runtimeDeps,
 )

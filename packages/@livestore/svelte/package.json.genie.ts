@@ -49,7 +49,5 @@ export default packageJson(
       test: 'vitest --config ./tests/vitest.config.ts',
     },
   },
-  {
-    composition: runtimeDeps,
-  },
+  runtimeDeps,
 )

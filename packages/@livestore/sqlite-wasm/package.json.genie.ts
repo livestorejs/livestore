@@ -11,13 +11,7 @@ const runtimeDeps = catalog.compose({
     external: catalog.pick('@cloudflare/workers-types'),
   },
   devDependencies: {
-    external: catalog.pick(
-      '@types/chrome',
-      '@types/node',
-      '@types/wicg-file-system-access',
-      'vitest',
-      'wrangler',
-    ),
+    external: catalog.pick('@types/chrome', '@types/node', '@types/wicg-file-system-access', 'vitest', 'wrangler'),
   },
 })
 
@@ -74,7 +68,5 @@ export default packageJson(
       'test:watch': 'vitest --watch',
     },
   },
-  {
-    composition: runtimeDeps,
-  },
+  runtimeDeps,
 )

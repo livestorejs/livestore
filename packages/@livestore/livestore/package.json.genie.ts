@@ -12,13 +12,7 @@ const runtimeDeps = catalog.compose({
   },
   devDependencies: {
     workspace: [adapterWebPkg, utilsDevPkg],
-    external: catalog.pick(
-      '@opentelemetry/sdk-trace-base',
-      'jsdom',
-      'typescript',
-      'vite',
-      'vitest',
-    ),
+    external: catalog.pick('@opentelemetry/sdk-trace-base', 'jsdom', 'typescript', 'vite', 'vitest'),
   },
 })
 
@@ -48,7 +42,5 @@ export default packageJson(
       test: 'vitest',
     },
   },
-  {
-    composition: runtimeDeps,
-  },
+  runtimeDeps,
 )

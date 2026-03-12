@@ -15,7 +15,5 @@ export default packageJson(
     },
     ...localPackageDefaults,
   },
-  {
-    composition: runtimeDeps,
-  },
+  runtimeDeps,
 )

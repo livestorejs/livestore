@@ -71,7 +71,5 @@ export default packageJson(
       test: 'CI=1 bun ./scripts/run-tests.ts',
     },
   },
-  {
-    composition: runtimeDeps,
-  },
+  runtimeDeps,
 )

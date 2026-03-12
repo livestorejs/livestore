@@ -1,9 +1,4 @@
-import {
-  catalog,
-  livestorePackageDefaults,
-  packageJson,
-  utilsEffectPeerDeps,
-} from '../../../genie/repo.ts'
+import { catalog, livestorePackageDefaults, packageJson, utilsEffectPeerDeps } from '../../../genie/repo.ts'
 import commonPkg from '../common/package.json.genie.ts'
 import utilsPkg from '../utils/package.json.genie.ts'
 import webmeshPkg from '../webmesh/package.json.genie.ts'
@@ -15,13 +10,7 @@ const runtimeDeps = catalog.compose({
     external: catalog.pick('@opentelemetry/api'),
   },
   devDependencies: {
-    external: catalog.pick(
-      ...utilsEffectPeerDeps,
-      '@types/node',
-      'expo-application',
-      'expo-sqlite',
-      'react-native',
-    ),
+    external: catalog.pick(...utilsEffectPeerDeps, '@types/node', 'expo-application', 'expo-sqlite', 'react-native'),
   },
 })
 
@@ -47,7 +36,5 @@ export default packageJson(
       test: 'echo No tests yet',
     },
   },
-  {
-    composition: runtimeDeps,
-  },
+  runtimeDeps,
 )

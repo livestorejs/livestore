@@ -1,9 +1,4 @@
-import {
-  catalog,
-  livestorePackageDefaults,
-  packageJson,
-  utilsEffectPeerDeps,
-} from '../../../genie/repo.ts'
+import { catalog, livestorePackageDefaults, packageJson, utilsEffectPeerDeps } from '../../../genie/repo.ts'
 import utilsPkg from '../utils/package.json.genie.ts'
 
 const runtimeDeps = catalog.compose({
@@ -52,7 +47,5 @@ export default packageJson(
       test: "echo 'No tests for utils-dev'",
     },
   },
-  {
-    composition: runtimeDeps,
-  },
+  runtimeDeps,
 )

@@ -37,7 +37,5 @@ export default packageJson(
       build: 'tsc',
     },
   },
-  {
-    composition: runtimeDeps,
-  },
+  runtimeDeps,
 )

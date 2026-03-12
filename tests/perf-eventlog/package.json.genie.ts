@@ -1,16 +1,11 @@
-import {
-  catalog,
-  effectDevDeps,
-  localPackageDefaults,
-  packageJson,
-} from '../../genie/repo.ts'
+import { catalog, effectDevDeps, localPackageDefaults, packageJson } from '../../genie/repo.ts'
 import adapterWebPkg from '../../packages/@livestore/adapter-web/package.json.genie.ts'
 import commonPkg from '../../packages/@livestore/common/package.json.genie.ts'
 import livestorePkg from '../../packages/@livestore/livestore/package.json.genie.ts'
 import reactPkg from '../../packages/@livestore/react/package.json.genie.ts'
 import sqliteWasmPkg from '../../packages/@livestore/sqlite-wasm/package.json.genie.ts'
-import utilsPkg from '../../packages/@livestore/utils/package.json.genie.ts'
 import utilsDevPkg from '../../packages/@livestore/utils-dev/package.json.genie.ts'
+import utilsPkg from '../../packages/@livestore/utils/package.json.genie.ts'
 
 const runtimeDeps = catalog.compose({
   dir: import.meta.dirname,
@@ -59,7 +54,5 @@ export default packageJson(
       test: 'NODE_OPTIONS=--disable-warning=ExperimentalWarning playwright test',
     },
   },
-  {
-    composition: runtimeDeps,
-  },
+  runtimeDeps,
 )

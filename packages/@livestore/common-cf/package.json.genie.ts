@@ -35,7 +35,5 @@ export default packageJson(
       test: 'vitest run',
     },
   },
-  {
-    composition: runtimeDeps,
-  },
+  runtimeDeps,
 )

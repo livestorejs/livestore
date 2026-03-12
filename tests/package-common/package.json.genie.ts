@@ -27,7 +27,5 @@ export default packageJson(
       './todomvc-fixture': './src/todomvc-fixture.ts',
     },
   },
-  {
-    composition: runtimeDeps,
-  },
+  runtimeDeps,
 )

@@ -19,7 +19,5 @@ export default packageJson(
       test: 'vitest',
     },
   },
-  {
-    composition,
-  },
+  composition,
 )

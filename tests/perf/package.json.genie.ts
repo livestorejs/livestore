@@ -41,7 +41,5 @@ export default packageJson(
       'test:profiler': 'PERF_PROFILER=1 pnpm test',
     },
   },
-  {
-    composition: runtimeDeps,
-  },
+  runtimeDeps,
 )

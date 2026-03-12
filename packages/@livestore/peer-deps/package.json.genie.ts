@@ -40,7 +40,5 @@ export default packageJson(
       test: "echo 'No tests for peer-deps'",
     },
   },
-  {
-    composition: runtimeDeps,
-  },
+  runtimeDeps,
 )

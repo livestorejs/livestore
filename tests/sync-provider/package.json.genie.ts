@@ -50,7 +50,5 @@ export default packageJson(
       'test:watch': 'vitest',
     },
   },
-  {
-    composition: runtimeDeps,
-  },
+  runtimeDeps,
 )

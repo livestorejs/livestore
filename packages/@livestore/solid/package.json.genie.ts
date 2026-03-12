@@ -52,7 +52,5 @@ export default packageJson(
       test: "echo 'todo'",
     },
   },
-  {
-    composition: runtimeDeps,
-  },
+  runtimeDeps,
 )

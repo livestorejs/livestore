@@ -65,7 +65,5 @@ export default packageJson(
       'test-manual': 'web-test-runner --manual',
     },
   },
-  {
-    composition: runtimeDeps,
-  },
+  runtimeDeps,
 )
