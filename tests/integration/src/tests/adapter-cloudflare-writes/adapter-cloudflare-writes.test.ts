@@ -1,6 +1,14 @@
 import path from 'node:path'
 import { fileURLToPath } from 'node:url'
-import { Duration, Effect, FetchHttpClient, Layer } from '@livestore/utils/effect'
+import {
+  Duration,
+  Effect,
+  FetchHttpClient,
+  HttpClient, HttpClientRequest,
+  HttpClientResponse,
+  Layer,
+  Schema
+} from '@livestore/utils/effect'
 import { nanoid } from '@livestore/utils/nanoid'
 import { PlatformNode } from '@livestore/utils/node'
 import { Vitest } from '@livestore/utils-dev/node-vitest'
@@ -22,88 +30,67 @@ const { WranglerDevServerService } = await import('@livestore/utils-dev/wrangler
 const withTestCtx = Vitest.makeWithTestCtx({
   timeout: testTimeout,
   makeLayer: () =>
-    WranglerDevServerService.Default({
-      cwd: fixturesDir,
-      readiness: { connectTimeout: Duration.seconds(45) },
-      showLogs: true,
-    }).pipe(Layer.provide(Layer.mergeAll(PlatformNode.NodeContext.layer, FetchHttpClient.layer))),
+    Layer.mergeAll(
+      WranglerDevServerService.Default({
+        cwd: fixturesDir,
+        readiness: { connectTimeout: Duration.seconds(45) },
+        showLogs: true,
+      }).pipe(
+        Layer.provide(Layer.mergeAll(PlatformNode.NodeContext.layer, FetchHttpClient.layer)),
+      ),
+      FetchHttpClient.layer,
+    ),
 })
 
-const makeStoreUrl = (serverUrl: string, pathname: string, storeId: string) => {
-  const url = new URL(pathname, serverUrl)
-  url.searchParams.set('storeId', storeId)
-  return url
-}
+const makeStoreHelpers = (serverUrl: string, storeId: string) =>
+  Effect.gen(function* () {
+    const client = (yield* HttpClient.HttpClient).pipe(
+      HttpClient.mapRequest((req) =>
+        req.pipe(
+          HttpClientRequest.prependUrl(serverUrl),
+          HttpClientRequest.setUrlParam('storeId', storeId),
+        ),
+      ),
+      HttpClient.filterStatusOk,
+    )
 
-const makeStoreHelpers = (serverUrl: string, storeId: string) => {
-  const createTodo = (id: string, title: string) =>
-    Effect.tryPromise(async () => {
-      const url = makeStoreUrl(serverUrl, '/store/todos', storeId)
-      const response = await fetch(url, {
-        method: 'POST',
-        headers: { 'content-type': 'application/json' },
-        body: JSON.stringify({ id, title }),
-      })
-      if (response.ok !== true) {
-        throw new Error(`failed to create todo: ${response.status} ${await response.text()}`)
-      }
-      return response.json<{ id: string }>()
-    })
+    return {
+      createTodo: (id: string, title: string) =>
+        HttpClientRequest.post('/store/todos').pipe(
+          HttpClientRequest.bodyJson({ id, title }),
+          Effect.flatMap(client.execute),
+          Effect.flatMap(HttpClientResponse.schemaBodyJson(Schema.Struct({ id: Schema.String })))
+        ),
 
-  const listTodos = () =>
-    Effect.tryPromise(async () => {
-      const url = makeStoreUrl(serverUrl, '/store/todos', storeId)
-      const response = await fetch(url)
-      if (response.ok !== true) {
-        throw new Error(`failed to list todos: ${response.status}`)
-      }
-      return response.json<ReadonlyArray<{ id: string; title: string }>>()
-    })
+      listTodos: () => client.get('/store/todos').pipe(
+        Effect.flatMap(HttpClientResponse.schemaBodyJson(Schema.Array(Schema.Struct({ id: Schema.String, title: Schema.String })))),
+      ),
 
-  const getMetrics = () =>
-    Effect.tryPromise(async () => {
-      const url = makeStoreUrl(serverUrl, '/store/metrics', storeId)
-      const response = await fetch(url)
-      if (response.ok !== true) {
-        throw new Error(`failed to read metrics: ${response.status}`)
-      }
-      return response.json<{ totalRowsWritten: number }>()
-    })
+      getMetrics: () => client.get('/store/metrics').pipe(
+        Effect.flatMap(HttpClientResponse.schemaBodyJson(Schema.Struct({ totalRowsWritten: Schema.Number }))),
+      ),
 
-  const resetMetrics = () =>
-    Effect.tryPromise(async () => {
-      const url = makeStoreUrl(serverUrl, '/store/metrics', storeId)
-      const response = await fetch(url, { method: 'DELETE' })
-      if (response.ok !== true) {
-        throw new Error(`failed to reset metrics: ${response.status}`)
-      }
-      return response.json<{ totalRowsWritten: number }>()
-    })
+      resetMetrics: () => client.del('/store/metrics').pipe(
+        Effect.flatMap(HttpClientResponse.schemaBodyJson(Schema.Struct({ totalRowsWritten: Schema.Number }))),
+      ),
 
-  const shutdownStore = () =>
-    Effect.tryPromise(async () => {
-      const url = makeStoreUrl(serverUrl, '/store/shutdown', storeId)
-      const response = await fetch(url, { method: 'POST' })
-      if (response.ok !== true) {
-        throw new Error(`failed to shutdown store: ${response.status}`)
-      }
-      return response.json<{ ok: boolean }>()
-    })
-
-  return { createTodo, listTodos, getMetrics, resetMetrics, shutdownStore }
-}
+      shutdownStore: () => client.post('/store/shutdown').pipe(
+        Effect.flatMap(HttpClientResponse.schemaBodyJson(Schema.Struct({ ok: Schema.Boolean }))),
+      ),
+    }
+  })
 
 Vitest.describe('adapter-cloudflare-writes', { timeout: testTimeout }, () => {
-  Vitest.scopedLive('verifies low rowsWritten with native eventlog and in-memory state DB', (test) =>
+  Vitest.live('verifies low rowsWritten with native eventlog and in-memory state DB', (test) =>
     Effect.gen(function* () {
       const server = yield* WranglerDevServerService
       const storeId = `cf-writes-${nanoid(6)}`
-      const { createTodo, listTodos, getMetrics, resetMetrics } = makeStoreHelpers(server.url, storeId)
+      const { createTodo, listTodos, getMetrics, resetMetrics } = yield* makeStoreHelpers(server.url, storeId)
 
       yield* createTodo('boot-todo', 'initial boot')
 
       const bootMetrics = yield* getMetrics()
-      console.log('[optimized] rowsWritten after boot + first todo:', bootMetrics.totalRowsWritten)
+      yield* Effect.log('[optimized] rowsWritten after boot + first todo:', bootMetrics.totalRowsWritten)
 
       yield* resetMetrics()
 
@@ -115,22 +102,22 @@ Vitest.describe('adapter-cloudflare-writes', { timeout: testTimeout }, () => {
       const steadyStateMetrics = yield* getMetrics()
       const writesPerTodo = steadyStateMetrics.totalRowsWritten / todoCount
 
-      console.log('[optimized] rowsWritten for', todoCount, 'todos:', steadyStateMetrics.totalRowsWritten)
-      console.log('[optimized] rowsWritten per todo:', writesPerTodo)
+      yield* Effect.log('[optimized] rowsWritten for', todoCount, 'todos:', steadyStateMetrics.totalRowsWritten)
+      yield* Effect.log('[optimized] rowsWritten per todo:', writesPerTodo)
 
       const allTodos = yield* listTodos()
       expect(allTodos).toHaveLength(todoCount + 1)
       expect(writesPerTodo).toBeLessThan(20)
 
-      console.log('[optimized] Writes per todo:', writesPerTodo.toFixed(1), '(down from ~238 with VFS-backed storage)')
+      yield* Effect.log('[optimized] Writes per todo:', writesPerTodo.toFixed(1), '(down from ~238 with VFS-backed storage)')
     }).pipe(withTestCtx(test)),
   )
 
-  Vitest.scopedLive('snapshot restore on cold start avoids full rematerialization', (test) =>
+  Vitest.live('snapshot restore on cold start avoids full rematerialization', (test) =>
     Effect.gen(function* () {
       const server = yield* WranglerDevServerService
       const storeId = `cf-snapshot-${nanoid(6)}`
-      const { createTodo, listTodos, getMetrics, resetMetrics, shutdownStore } = makeStoreHelpers(
+      const { createTodo, listTodos, getMetrics, resetMetrics, shutdownStore } = yield* makeStoreHelpers(
         server.url,
         storeId,
       )
@@ -154,7 +141,7 @@ Vitest.describe('adapter-cloudflare-writes', { timeout: testTimeout }, () => {
       }
 
       const restartMetrics = yield* getMetrics()
-      console.log('[snapshot-restore] rowsWritten on cold start:', restartMetrics.totalRowsWritten)
+      yield* Effect.log('[snapshot-restore] rowsWritten on cold start:', restartMetrics.totalRowsWritten)
 
       // Snapshot restore should be much cheaper than full rematerialization.
       // Full rematerialization of 5 events with VFS would cost ~1000+ writes.
@@ -163,11 +150,11 @@ Vitest.describe('adapter-cloudflare-writes', { timeout: testTimeout }, () => {
     }).pipe(withTestCtx(test)),
   )
 
-  Vitest.scopedLive('data survives multiple shutdown cycles', (test) =>
+  Vitest.live('data survives multiple shutdown cycles', (test) =>
     Effect.gen(function* () {
       const server = yield* WranglerDevServerService
       const storeId = `cf-cycles-${nanoid(6)}`
-      const { createTodo, listTodos, shutdownStore } = makeStoreHelpers(server.url, storeId)
+      const { createTodo, listTodos, shutdownStore } = yield* makeStoreHelpers(server.url, storeId)
 
       yield* createTodo('todo-a', 'first cycle')
       yield* shutdownStore()
@@ -185,11 +172,11 @@ Vitest.describe('adapter-cloudflare-writes', { timeout: testTimeout }, () => {
     }).pipe(withTestCtx(test)),
   )
 
-  Vitest.scopedLive('steady-state writes remain low after cold start', (test) =>
+  Vitest.live('steady-state writes remain low after cold start', (test) =>
     Effect.gen(function* () {
       const server = yield* WranglerDevServerService
       const storeId = `cf-post-restart-${nanoid(6)}`
-      const { createTodo, listTodos, getMetrics, resetMetrics, shutdownStore } = makeStoreHelpers(
+      const { createTodo, listTodos, getMetrics, resetMetrics, shutdownStore } = yield* makeStoreHelpers(
         server.url,
         storeId,
       )
@@ -209,7 +196,7 @@ Vitest.describe('adapter-cloudflare-writes', { timeout: testTimeout }, () => {
       const metrics = yield* getMetrics()
       const writesPerTodo = metrics.totalRowsWritten / todoCount
 
-      console.log('[post-restart] rowsWritten per todo:', writesPerTodo.toFixed(1))
+      yield* Effect.log('[post-restart] rowsWritten per todo:', writesPerTodo.toFixed(1))
 
       const allTodos = yield* listTodos()
       expect(allTodos).toHaveLength(todoCount + 2) // seed + boot + N
