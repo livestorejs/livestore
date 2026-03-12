@@ -49,9 +49,14 @@ jobs:
         env:
           MEGAREPO_STORE: '${{ runner.temp }}/megarepo-store/${{ github.run_id }}/${{ github.run_attempt }}/${{ github.job }}'
         run: |
+          EU_REV=$(jq -r '.members["effect-utils"].commit' megarepo.lock)
+          if [ -z "$EU_REV" ] || [ "$EU_REV" = "null" ]; then
+            echo '::error::megarepo.lock missing members["effect-utils"].commit'
+            exit 1
+          fi
           mkdir -p "$MEGAREPO_STORE"
           echo "Using job-local megarepo store: $MEGAREPO_STORE"
-          mr sync --frozen
+          nix run "github:overengineeringstudio/effect-utils/$EU_REV#megarepo" -- lock apply
         shell: bash
       - name: Use pinned devenv from lock
         run: |
@@ -174,9 +179,14 @@ jobs:
         env:
           MEGAREPO_STORE: '${{ runner.temp }}/megarepo-store/${{ github.run_id }}/${{ github.run_attempt }}/${{ github.job }}'
         run: |
+          EU_REV=$(jq -r '.members["effect-utils"].commit' megarepo.lock)
+          if [ -z "$EU_REV" ] || [ "$EU_REV" = "null" ]; then
+            echo '::error::megarepo.lock missing members["effect-utils"].commit'
+            exit 1
+          fi
           mkdir -p "$MEGAREPO_STORE"
           echo "Using job-local megarepo store: $MEGAREPO_STORE"
-          mr sync --frozen
+          nix run "github:overengineeringstudio/effect-utils/$EU_REV#megarepo" -- lock apply
         shell: bash
       - name: Use pinned devenv from lock
         run: |
@@ -299,9 +309,14 @@ jobs:
         env:
           MEGAREPO_STORE: '${{ runner.temp }}/megarepo-store/${{ github.run_id }}/${{ github.run_attempt }}/${{ github.job }}'
         run: |
+          EU_REV=$(jq -r '.members["effect-utils"].commit' megarepo.lock)
+          if [ -z "$EU_REV" ] || [ "$EU_REV" = "null" ]; then
+            echo '::error::megarepo.lock missing members["effect-utils"].commit'
+            exit 1
+          fi
           mkdir -p "$MEGAREPO_STORE"
           echo "Using job-local megarepo store: $MEGAREPO_STORE"
-          mr sync --frozen
+          nix run "github:overengineeringstudio/effect-utils/$EU_REV#megarepo" -- lock apply
         shell: bash
       - name: Use pinned devenv from lock
         run: |
@@ -424,9 +439,14 @@ jobs:
         env:
           MEGAREPO_STORE: '${{ runner.temp }}/megarepo-store/${{ github.run_id }}/${{ github.run_attempt }}/${{ github.job }}'
         run: |
+          EU_REV=$(jq -r '.members["effect-utils"].commit' megarepo.lock)
+          if [ -z "$EU_REV" ] || [ "$EU_REV" = "null" ]; then
+            echo '::error::megarepo.lock missing members["effect-utils"].commit'
+            exit 1
+          fi
           mkdir -p "$MEGAREPO_STORE"
           echo "Using job-local megarepo store: $MEGAREPO_STORE"
-          mr sync --frozen
+          nix run "github:overengineeringstudio/effect-utils/$EU_REV#megarepo" -- lock apply
         shell: bash
       - name: Use pinned devenv from lock
         run: |
@@ -594,9 +614,14 @@ jobs:
         env:
           MEGAREPO_STORE: '${{ runner.temp }}/megarepo-store/${{ github.run_id }}/${{ github.run_attempt }}/${{ github.job }}'
         run: |
+          EU_REV=$(jq -r '.members["effect-utils"].commit' megarepo.lock)
+          if [ -z "$EU_REV" ] || [ "$EU_REV" = "null" ]; then
+            echo '::error::megarepo.lock missing members["effect-utils"].commit'
+            exit 1
+          fi
           mkdir -p "$MEGAREPO_STORE"
           echo "Using job-local megarepo store: $MEGAREPO_STORE"
-          mr sync --frozen
+          nix run "github:overengineeringstudio/effect-utils/$EU_REV#megarepo" -- lock apply
         shell: bash
       - name: Use pinned devenv from lock
         run: |
@@ -749,9 +774,14 @@ jobs:
         env:
           MEGAREPO_STORE: '${{ runner.temp }}/megarepo-store/${{ github.run_id }}/${{ github.run_attempt }}/${{ github.job }}'
         run: |
+          EU_REV=$(jq -r '.members["effect-utils"].commit' megarepo.lock)
+          if [ -z "$EU_REV" ] || [ "$EU_REV" = "null" ]; then
+            echo '::error::megarepo.lock missing members["effect-utils"].commit'
+            exit 1
+          fi
           mkdir -p "$MEGAREPO_STORE"
           echo "Using job-local megarepo store: $MEGAREPO_STORE"
-          mr sync --frozen
+          nix run "github:overengineeringstudio/effect-utils/$EU_REV#megarepo" -- lock apply
         shell: bash
       - name: Use pinned devenv from lock
         run: |
@@ -902,9 +932,14 @@ jobs:
         env:
           MEGAREPO_STORE: '${{ runner.temp }}/megarepo-store/${{ github.run_id }}/${{ github.run_attempt }}/${{ github.job }}'
         run: |
+          EU_REV=$(jq -r '.members["effect-utils"].commit' megarepo.lock)
+          if [ -z "$EU_REV" ] || [ "$EU_REV" = "null" ]; then
+            echo '::error::megarepo.lock missing members["effect-utils"].commit'
+            exit 1
+          fi
           mkdir -p "$MEGAREPO_STORE"
           echo "Using job-local megarepo store: $MEGAREPO_STORE"
-          mr sync --frozen
+          nix run "github:overengineeringstudio/effect-utils/$EU_REV#megarepo" -- lock apply
         shell: bash
       - name: Use pinned devenv from lock
         run: |
@@ -1042,9 +1077,14 @@ jobs:
         env:
           MEGAREPO_STORE: '${{ runner.temp }}/megarepo-store/${{ github.run_id }}/${{ github.run_attempt }}/${{ github.job }}'
         run: |
+          EU_REV=$(jq -r '.members["effect-utils"].commit' megarepo.lock)
+          if [ -z "$EU_REV" ] || [ "$EU_REV" = "null" ]; then
+            echo '::error::megarepo.lock missing members["effect-utils"].commit'
+            exit 1
+          fi
           mkdir -p "$MEGAREPO_STORE"
           echo "Using job-local megarepo store: $MEGAREPO_STORE"
-          mr sync --frozen
+          nix run "github:overengineeringstudio/effect-utils/$EU_REV#megarepo" -- lock apply
         shell: bash
       - name: Use pinned devenv from lock
         run: |
@@ -1186,9 +1226,14 @@ jobs:
         env:
           MEGAREPO_STORE: '${{ runner.temp }}/megarepo-store/${{ github.run_id }}/${{ github.run_attempt }}/${{ github.job }}'
         run: |
+          EU_REV=$(jq -r '.members["effect-utils"].commit' megarepo.lock)
+          if [ -z "$EU_REV" ] || [ "$EU_REV" = "null" ]; then
+            echo '::error::megarepo.lock missing members["effect-utils"].commit'
+            exit 1
+          fi
           mkdir -p "$MEGAREPO_STORE"
           echo "Using job-local megarepo store: $MEGAREPO_STORE"
-          mr sync --frozen
+          nix run "github:overengineeringstudio/effect-utils/$EU_REV#megarepo" -- lock apply
         shell: bash
       - name: Use pinned devenv from lock
         run: |
@@ -1313,9 +1358,14 @@ jobs:
         env:
           MEGAREPO_STORE: '${{ runner.temp }}/megarepo-store/${{ github.run_id }}/${{ github.run_attempt }}/${{ github.job }}'
         run: |
+          EU_REV=$(jq -r '.members["effect-utils"].commit' megarepo.lock)
+          if [ -z "$EU_REV" ] || [ "$EU_REV" = "null" ]; then
+            echo '::error::megarepo.lock missing members["effect-utils"].commit'
+            exit 1
+          fi
           mkdir -p "$MEGAREPO_STORE"
           echo "Using job-local megarepo store: $MEGAREPO_STORE"
-          mr sync --frozen
+          nix run "github:overengineeringstudio/effect-utils/$EU_REV#megarepo" -- lock apply
         shell: bash
       - name: Use pinned devenv from lock
         run: |
@@ -1449,9 +1499,14 @@ jobs:
         env:
           MEGAREPO_STORE: '${{ runner.temp }}/megarepo-store/${{ github.run_id }}/${{ github.run_attempt }}/${{ github.job }}'
         run: |
+          EU_REV=$(jq -r '.members["effect-utils"].commit' megarepo.lock)
+          if [ -z "$EU_REV" ] || [ "$EU_REV" = "null" ]; then
+            echo '::error::megarepo.lock missing members["effect-utils"].commit'
+            exit 1
+          fi
           mkdir -p "$MEGAREPO_STORE"
           echo "Using job-local megarepo store: $MEGAREPO_STORE"
-          mr sync --frozen
+          nix run "github:overengineeringstudio/effect-utils/$EU_REV#megarepo" -- lock apply
         shell: bash
       - name: Use pinned devenv from lock
         run: |

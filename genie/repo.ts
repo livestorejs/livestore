@@ -171,7 +171,7 @@ import {
   installNixStep,
   cachixStep,
   installMegarepoStep,
-  syncMegarepoStep,
+  applyMegarepoLockStep,
   checkoutStep,
   preparePinnedDevenvStep,
   runDevenvTasksBefore,
@@ -198,7 +198,7 @@ export const livestoreSetupStepsAfterCheckout = [
   }),
   cachixStep({ name: 'livestore', authToken: '${{ env.CACHIX_AUTH_TOKEN }}' }),
   installMegarepoStep,
-  syncMegarepoStep(),
+  applyMegarepoLockStep(),
   preparePinnedDevenvStep,
   validateNixStoreStep,
 ] as const
