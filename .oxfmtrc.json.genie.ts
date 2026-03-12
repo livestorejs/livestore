@@ -1,5 +1,4 @@
-import { oxfmtConfig } from './repos/effect-utils/genie/external.ts'
-import { baseOxfmtIgnorePatterns, baseOxfmtOptions } from './repos/effect-utils/genie/oxfmt-base.ts'
+import { baseOxfmtIgnorePatterns, baseOxfmtOptions, oxfmtConfig } from './genie/repo.ts'
 
 export default oxfmtConfig({
   ...baseOxfmtOptions,

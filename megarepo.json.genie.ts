@@ -1,4 +1,4 @@
-import { megarepoJson } from './repos/effect-utils/genie/external.ts'
+import { megarepoJson } from './genie/repo.ts'
 
 /** Megarepo config for livestore */
 export default megarepoJson({

@@ -1,5 +1,5 @@
 import { requiredCIJobs } from '../genie/ci.ts'
-import { githubRuleset } from '../repos/effect-utils/genie/external.ts'
+import { githubRuleset } from '../genie/repo.ts'
 
 export default githubRuleset({
   name: 'main-branch-rules',

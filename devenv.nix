@@ -92,7 +92,6 @@ in
     effectUtils.devenvModules.dt
     # OTEL observability stack with livestore-specific dashboards
     (effectUtils.devenvModules.otel {
-      mode = "local";
       extraDashboards = [
         {
           name = "livestore";

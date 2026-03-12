@@ -26,11 +26,9 @@
         "tsgo": "tsgo"
       },
       "locked": {
-        "lastModified": 1773333646,
-        "narHash": "sha256-0N7U6etCpL2+ih7CllifDXGrdjUxbU1vbdQ8Y/7iY6g=",
         "ref": "schickling/2026-03-08-pnpm-gvs-boundary-spec",
-        "rev": "a88e5d76d392e96e5b26c8d78d988afc8282cddc",
-        "revCount": 764,
+        "rev": "6632ab1c548f74069017041b86a8f9de1419b888",
+        "revCount": 768,
         "type": "git",
         "url": "https://github.com/overengineeringstudio/effect-utils"
       },
@@ -192,11 +190,9 @@
       },
       "locked": {
         "dir": "nix/playwright-flake",
-        "lastModified": 1773051231,
-        "narHash": "sha256-hQQkvxvMmMZCfcY9NafMmx80NxyC+ndxaFRilynBTl0=",
         "owner": "overengineeringstudio",
         "repo": "effect-utils",
-        "rev": "849bd27584dcf0b7046df9510267a83b4c364aa7",
+        "rev": "6632ab1c548f74069017041b86a8f9de1419b888",
         "type": "github"
       },
       "original": {
