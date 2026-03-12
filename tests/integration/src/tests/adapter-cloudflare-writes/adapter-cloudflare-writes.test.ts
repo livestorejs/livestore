@@ -1,3 +1,4 @@
+import fs from 'node:fs'
 import path from 'node:path'
 import { fileURLToPath } from 'node:url'
 import {
@@ -25,6 +26,9 @@ delete process.env.ALL_PROXY
 delete process.env.all_proxy
 
 const { WranglerDevServerService } = await import('@livestore/utils-dev/wrangler')
+
+// Wipe persisted DO state so static store IDs start clean on every test run.
+fs.rmSync(path.join(fixturesDir, '.wrangler', 'state'), { recursive: true, force: true })
 
 const withTestCtx = Vitest.makeWithTestCtx({
   timeout: testTimeout,
