@@ -9,12 +9,14 @@ packages:
   - ../packages/@livestore/adapter-web
   - ../packages/@livestore/common
   - ../packages/@livestore/common-cf
+  - ../packages/@livestore/devtools-expo
   - ../packages/@livestore/devtools-web-common
   - ../packages/@livestore/framework-toolkit
   - ../packages/@livestore/livestore
   - ../packages/@livestore/react
   - ../packages/@livestore/solid
   - ../packages/@livestore/sqlite-wasm
+  - ../packages/@livestore/svelte
   - ../packages/@livestore/sync-cf
   - ../packages/@livestore/sync-electric
   - ../packages/@livestore/sync-s2
@@ -25,6 +27,7 @@ packages:
   - ../packages/@local/astro-tldraw
   - ../packages/@local/astro-twoslash-code
   - ../packages/@local/shared
+  - ./src/content/_assets/code
 
 dedupePeerDependents: true
 

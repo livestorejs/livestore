@@ -64,9 +64,8 @@ const packages = [
   webmeshPkg,
 ] as const
 
-export default pnpmWorkspaceYaml.root({
-  packages,
-  extraPackages: ['*'],
+export default pnpmWorkspaceYaml.manual({
+  packages: ['*', ...packages.map((pkg) => pkg.meta.workspace.memberPath)],
   // Link workspace packages even when the specifier version doesn't exactly match
   // the workspace package version. This allows examples with fixed versions like
   // "@livestore/solid": "0.4.0-dev.22" to resolve to the local workspace package.
