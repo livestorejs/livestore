@@ -96,15 +96,12 @@ Vitest.describe('adapter-cloudflare-writes', { timeout: testTimeout }, () => {
       const steadyStateMetrics = yield* getMetrics()
       const writesPerTodo = steadyStateMetrics.totalRowsWritten / todos.length
 
-      yield* Effect.log('[optimized] rowsWritten for', todos.length, 'todos:', steadyStateMetrics.totalRowsWritten)
-      yield* Effect.log('[optimized] rowsWritten per todo:', writesPerTodo)
-
       const allTodos = yield* listTodos()
       expect(allTodos).toHaveLength(todos.length + 1)
       expect(writesPerTodo).toBeGreaterThan(0)
       expect(writesPerTodo).toBeLessThan(20)
 
-      yield* Effect.log('[optimized] Writes per todo:', writesPerTodo.toFixed(1), '(down from ~238 with VFS-backed storage)')
+      yield* Effect.promise(() => test.annotate(`${writesPerTodo.toFixed(1)} writes/todo (total: ${steadyStateMetrics.totalRowsWritten} for ${todos.length} todos)`))
     }).pipe(withTestCtx(test)),
   )
 
@@ -132,13 +129,14 @@ Vitest.describe('adapter-cloudflare-writes', { timeout: testTimeout }, () => {
       expect(postRestartTodos.map((t) => t.id)).toEqual(expect.arrayContaining(todos.map((t) => t.id)))
 
       const restartMetrics = yield* getMetrics()
-      yield* Effect.log('[snapshot-restore] rowsWritten on cold start:', restartMetrics.totalRowsWritten)
 
       // Snapshot restore should be much cheaper than full rematerialization.
       // Full rematerialization of 5 events with VFS would cost ~1000+ writes.
       // With snapshot restore + native eventlog, expect under 50.
       expect(restartMetrics.totalRowsWritten).toBeGreaterThan(0)
       expect(restartMetrics.totalRowsWritten).toBeLessThan(50)
+
+      yield* Effect.promise(() => test.annotate(`${restartMetrics.totalRowsWritten} writes on cold start`))
     }).pipe(withTestCtx(test)),
   )
 
@@ -190,12 +188,12 @@ Vitest.describe('adapter-cloudflare-writes', { timeout: testTimeout }, () => {
       const metrics = yield* getMetrics()
       const writesPerTodo = metrics.totalRowsWritten / todos.length
 
-      yield* Effect.log('[post-restart] rowsWritten per todo:', writesPerTodo.toFixed(1))
-
       const allTodos = yield* listTodos()
       expect(allTodos).toHaveLength(todos.length + 2) // seed + boot + N
       expect(writesPerTodo).toBeGreaterThan(0)
       expect(writesPerTodo).toBeLessThan(20)
+
+      yield* Effect.promise(() => test.annotate(`${writesPerTodo.toFixed(1)} writes/todo after cold start`))
     }).pipe(withTestCtx(test)),
   )
 })
