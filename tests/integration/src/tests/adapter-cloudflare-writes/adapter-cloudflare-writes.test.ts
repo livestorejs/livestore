@@ -80,7 +80,7 @@ const makeStoreHelpers = (serverUrl: string, storeId: string) =>
   })
 
 Vitest.describe('adapter-cloudflare-writes', { timeout: testTimeout }, () => {
-  Vitest.live('verifies low rowsWritten with native eventlog and in-memory state DB', (test) =>
+  Vitest.live('rows written is below 20 per todo created', (test) =>
     Effect.gen(function* () {
       const server = yield* WranglerDevServerService
       const storeId = 'cf-writes-steady-state'
@@ -170,7 +170,7 @@ Vitest.describe('adapter-cloudflare-writes', { timeout: testTimeout }, () => {
     }).pipe(withTestCtx(test)),
   )
 
-  Vitest.live('steady-state writes remain low after cold start', (test) =>
+  Vitest.live('rows written is below 20 per todo created after cold start', (test) =>
     Effect.gen(function* () {
       const server = yield* WranglerDevServerService
       const storeId = 'cf-writes-post-restart'
