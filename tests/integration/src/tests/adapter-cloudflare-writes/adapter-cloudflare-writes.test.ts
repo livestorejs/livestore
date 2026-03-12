@@ -104,6 +104,7 @@ Vitest.describe('adapter-cloudflare-writes', { timeout: testTimeout }, () => {
 
       const allTodos = yield* listTodos()
       expect(allTodos).toHaveLength(todoCount + 1)
+      expect(writesPerTodo).toBeGreaterThan(0)
       expect(writesPerTodo).toBeLessThan(20)
 
       yield* Effect.log('[optimized] Writes per todo:', writesPerTodo.toFixed(1), '(down from ~238 with VFS-backed storage)')
@@ -143,6 +144,7 @@ Vitest.describe('adapter-cloudflare-writes', { timeout: testTimeout }, () => {
       // Snapshot restore should be much cheaper than full rematerialization.
       // Full rematerialization of 5 events with VFS would cost ~1000+ writes.
       // With snapshot restore + native eventlog, expect under 50.
+      expect(restartMetrics.totalRowsWritten).toBeGreaterThan(0)
       expect(restartMetrics.totalRowsWritten).toBeLessThan(50)
     }).pipe(withTestCtx(test)),
   )
@@ -197,6 +199,7 @@ Vitest.describe('adapter-cloudflare-writes', { timeout: testTimeout }, () => {
 
       const allTodos = yield* listTodos()
       expect(allTodos).toHaveLength(todoCount + 2) // seed + boot + N
+      expect(writesPerTodo).toBeGreaterThan(0)
       expect(writesPerTodo).toBeLessThan(20)
     }).pipe(withTestCtx(test)),
   )
