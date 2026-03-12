@@ -91,19 +91,17 @@ Vitest.describe('adapter-cloudflare-writes', { timeout: testTimeout }, () => {
       yield* createTodo('boot-todo', 'initial boot')
       yield* resetMetrics()
 
-      const todoCount = 10
-      for (let i = 0; i < todoCount; i++) {
-        yield* createTodo(`todo-${i}`, `item ${i}`)
-      }
+      const todos = Array.from({ length: 10 }, (_, i) => ({ id: `todo-${i}`, title: `item ${i}` }))
+      yield* Effect.forEach(todos, ({ id, title }) => createTodo(id, title), { concurrency: 1 })
 
       const steadyStateMetrics = yield* getMetrics()
-      const writesPerTodo = steadyStateMetrics.totalRowsWritten / todoCount
+      const writesPerTodo = steadyStateMetrics.totalRowsWritten / todos.length
 
-      yield* Effect.log('[optimized] rowsWritten for', todoCount, 'todos:', steadyStateMetrics.totalRowsWritten)
+      yield* Effect.log('[optimized] rowsWritten for', todos.length, 'todos:', steadyStateMetrics.totalRowsWritten)
       yield* Effect.log('[optimized] rowsWritten per todo:', writesPerTodo)
 
       const allTodos = yield* listTodos()
-      expect(allTodos).toHaveLength(todoCount + 1)
+      expect(allTodos).toHaveLength(todos.length + 1)
       expect(writesPerTodo).toBeGreaterThan(0)
       expect(writesPerTodo).toBeLessThan(20)
 
@@ -120,22 +118,20 @@ Vitest.describe('adapter-cloudflare-writes', { timeout: testTimeout }, () => {
         storeId,
       )
 
-      const todoCount = 5
-      for (let i = 0; i < todoCount; i++) {
-        yield* createTodo(`todo-${i}`, `item ${i}`)
-      }
+      const todos = Array.from({ length: 5 }, (_, i) => ({ id: `todo-${i}`, title: `item ${i}` }))
+      yield* Effect.forEach(todos, ({ id, title }) => createTodo(id, title), { concurrency: 1 })
 
       const preShutdownTodos = yield* listTodos()
-      expect(preShutdownTodos).toHaveLength(todoCount)
+      expect(preShutdownTodos).toHaveLength(todos.length)
 
       yield* shutdownStore()
       yield* resetMetrics()
 
       const postRestartTodos = yield* listTodos()
-      expect(postRestartTodos).toHaveLength(todoCount)
+      expect(postRestartTodos).toHaveLength(todos.length)
 
-      for (let i = 0; i < todoCount; i++) {
-        expect(postRestartTodos.find((t) => t.id === `todo-${i}`)).toBeDefined()
+      for (const todo of todos) {
+        expect(postRestartTodos.find((t) => t.id === todo.id)).toBeDefined()
       }
 
       const restartMetrics = yield* getMetrics()
@@ -187,18 +183,16 @@ Vitest.describe('adapter-cloudflare-writes', { timeout: testTimeout }, () => {
       yield* createTodo('post-restart-boot', 'boot after restart')
       yield* resetMetrics()
 
-      const todoCount = 5
-      for (let i = 0; i < todoCount; i++) {
-        yield* createTodo(`post-restart-${i}`, `item ${i}`)
-      }
+      const todos = Array.from({ length: 5 }, (_, i) => ({ id: `post-restart-${i}`, title: `item ${i}` }))
+      yield* Effect.forEach(todos, ({ id, title }) => createTodo(id, title), { concurrency: 1 })
 
       const metrics = yield* getMetrics()
-      const writesPerTodo = metrics.totalRowsWritten / todoCount
+      const writesPerTodo = metrics.totalRowsWritten / todos.length
 
       yield* Effect.log('[post-restart] rowsWritten per todo:', writesPerTodo.toFixed(1))
 
       const allTodos = yield* listTodos()
-      expect(allTodos).toHaveLength(todoCount + 2) // seed + boot + N
+      expect(allTodos).toHaveLength(todos.length + 2) // seed + boot + N
       expect(writesPerTodo).toBeGreaterThan(0)
       expect(writesPerTodo).toBeLessThan(20)
     }).pipe(withTestCtx(test)),
