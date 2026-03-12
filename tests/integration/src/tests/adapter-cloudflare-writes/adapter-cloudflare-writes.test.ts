@@ -15,7 +15,7 @@ import { expect } from 'vitest'
 
 const testDir = path.dirname(fileURLToPath(import.meta.url))
 const fixturesDir = path.join(testDir, 'fixtures')
-const testTimeout = Duration.toMillis(Duration.minutes(2))
+const testTimeout = Duration.toMillis(Duration.seconds(45))
 
 delete process.env.HTTP_PROXY
 delete process.env.http_proxy
