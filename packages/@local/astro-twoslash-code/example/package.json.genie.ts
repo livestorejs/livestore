@@ -1,4 +1,4 @@
-import { catalog, localPackageDefaults, packageJson, workspaceMember } from '../../../../genie/repo.ts'
+import { catalog, effectDevDeps, localPackageDefaults, packageJson, workspaceMember } from '../../../../genie/repo.ts'
 import utilsPkg from '../../../@livestore/utils/package.json.genie.ts'
 import astroTwoslashCodePkg from '../package.json.genie.ts'
 
@@ -15,7 +15,7 @@ const runtimeDeps = catalog.compose({
     ),
   },
   devDependencies: {
-    external: catalog.pick('@playwright/test', '@tailwindcss/vite', '@types/node', 'tailwindcss', 'typescript'),
+    external: effectDevDeps('@playwright/test', '@tailwindcss/vite', '@types/node', 'tailwindcss', 'typescript'),
   },
 })
 

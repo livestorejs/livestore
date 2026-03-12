@@ -62,11 +62,9 @@ export const packageTsconfigCompilerOptions = {
 /**
  * Internal workspace packages using workspace:* protocol.
  *
- * Each package has its own pnpm-workspace.yaml that includes sibling packages.
- * This enables:
- * 1. Per-package workspace setup (no monorepo root workspace needed)
- * 2. External consumption via workspace:* when consumers include these in their workspace
- * 3. Proper symlink resolution in both internal and external contexts
+ * The repo-root pnpm workspace is the authoritative install owner and lockfile
+ * source of truth. Package-local pnpm-workspace.yaml files remain useful as
+ * package-closure projection metadata.
  */
 
 /** Composed catalog - effect-utils base + livestore-specific + workspace packages */

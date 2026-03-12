@@ -38,7 +38,7 @@
     "vitest": "3.2.4"
   },
   "peerDependencies": {
-    "astro": "^^5.0.0"
+    "astro": "^5.0.0"
   },
   "$genie": {
     "source": "package.json.genie.ts",

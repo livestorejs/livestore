@@ -12,7 +12,7 @@ direnv exec . mono update-deps --dry-run
 direnv exec . mono update-deps
 
 # 3. Review changes
-git diff package.json packages/*/package.json examples/*/package.json pnpm-lock.yaml
+git diff package.json packages/*/package.json examples/*/package.json pnpm-workspace.yaml pnpm-lock.yaml
 
 # 4. Update version constants (see below)
 ```
@@ -37,6 +37,10 @@ After updating dependencies, check if version constants in `packages/@local/shar
 - Look for constants that reference dependency versions (e.g., `*_VERSION` exports)
 - Update constants when their corresponding dependencies are updated
 - Common patterns: Framework versions, runtime requirements, tool versions
+
+The repo-root `pnpm-lock.yaml` is the only authoritative lockfile. Package-local
+`pnpm-workspace.yaml` files remain as package-closure projection metadata, but
+package-local lockfiles are not part of the intended model anymore.
 
 ## PNPM Catalog Management
 

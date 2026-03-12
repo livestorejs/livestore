@@ -19,8 +19,8 @@ remote_images = ["https://gitbucket\\.schickling\\.dev/.*"]
 # resolves paths consistently in monorepos.
 [build]
 # Paths are relative to this file's directory (docs/).
-# On the genie branch with per-package workspaces, Netlify CLI --filter resolves
-# the package base to docs/ itself, so paths must not include the docs/ prefix.
+# Netlify CLI --filter resolves the package base to docs/ itself, so paths must
+# not include the docs/ prefix.
 publish = "dist"
 edge_functions = "netlify/edge-functions"
 

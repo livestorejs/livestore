@@ -64,18 +64,9 @@ const packages = [
   webmeshPkg,
 ] as const
 
-export default pnpmWorkspaceYaml.manual({
-  packages: ['*', ...packages.map((pkg) => pkg.meta.workspace.memberPath)],
-  // Link workspace packages even when the specifier version doesn't exactly match
-  // the workspace package version. This allows examples with fixed versions like
-  // "@livestore/solid": "0.4.0-dev.22" to resolve to the local workspace package.
+export const examplesWorkspaceData = {
   linkWorkspacePackages: true,
   dedupePeerDependents: true,
-  // Pin all TanStack router packages to 1.139.14 to prevent version skew.
-  // Without this, transitive peer deps (e.g. @tanstack/router-devtools-core's
-  // peer dep on @tanstack/router-core@^1.139.14) resolve to a newer version
-  // (1.158.x) which is incompatible with @tanstack/start-server-core@1.139.14,
-  // causing "router.serverSsr?.isSerializationFinished is not a function" at runtime.
   overrides: {
     '@tanstack/router-core': '1.139.14',
     '@tanstack/history': '1.139.0',
@@ -89,4 +80,9 @@ export default pnpmWorkspaceYaml.manual({
     '@tanstack/start-server-core': '1.139.14',
     '@tanstack/start-client-core': '1.139.14',
   },
+} as const
+
+export default pnpmWorkspaceYaml.manual({
+  packages: ['*', ...packages.map((pkg) => pkg.meta.workspace.memberPath)],
+  ...examplesWorkspaceData,
 })
