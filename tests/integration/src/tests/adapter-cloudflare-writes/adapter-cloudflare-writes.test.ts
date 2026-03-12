@@ -161,9 +161,13 @@ Vitest.describe('adapter-cloudflare-writes', { timeout: testTimeout }, () => {
 
       const allTodos = yield* listTodos()
       expect(allTodos).toHaveLength(3)
-      expect(allTodos.find((t) => t.id === 'todo-a')).toBeDefined()
-      expect(allTodos.find((t) => t.id === 'todo-b')).toBeDefined()
-      expect(allTodos.find((t) => t.id === 'todo-c')).toBeDefined()
+      expect(allTodos).toEqual(
+        expect.arrayContaining([
+          expect.objectContaining({ id: 'todo-a', title: 'first cycle' }),
+          expect.objectContaining({ id: 'todo-b', title: 'second cycle' }),
+          expect.objectContaining({ id: 'todo-c', title: 'third cycle' }),
+        ]),
+      )
     }).pipe(withTestCtx(test)),
   )
 
