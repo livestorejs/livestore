@@ -26,17 +26,16 @@
         "tsgo": "tsgo"
       },
       "locked": {
+        "lastModified": 1773323717,
+        "narHash": "sha256-NIwWmI8kIDLmt6/f3ILg4Tdr9bJmg1nhaRghs46mhUE=",
         "ref": "schickling/2026-03-08-pnpm-gvs-boundary-spec",
-        "rev": "5ed484e840a05d0ca80aaa5bfbaf2948c042ea90",
-        "revCount": 750,
+        "rev": "c1aefb34c478d6dcb7230b694ac06316fc469e41",
+        "revCount": 754,
         "type": "git",
-        "url": "https://github.com/overengineeringstudio/effect-utils",
-        "narHash": "sha256-oxwi0UQlNxH2UieGgeBrt1yOtb+9O7BNLUJXElZZDw4=",
-        "lastModified": 1773307843
+        "url": "https://github.com/overengineeringstudio/effect-utils"
       },
       "original": {
         "ref": "schickling/2026-03-08-pnpm-gvs-boundary-spec",
-        "rev": "686cec8a04f796e74abec3dbde91f761e6ee9518",
         "type": "git",
         "url": "https://github.com/overengineeringstudio/effect-utils"
       }
@@ -193,12 +192,12 @@
       },
       "locked": {
         "dir": "nix/playwright-flake",
+        "lastModified": 1773307843,
+        "narHash": "sha256-oxwi0UQlNxH2UieGgeBrt1yOtb+9O7BNLUJXElZZDw4=",
         "owner": "overengineeringstudio",
         "repo": "effect-utils",
         "rev": "5ed484e840a05d0ca80aaa5bfbaf2948c042ea90",
-        "type": "github",
-        "narHash": "sha256-oxwi0UQlNxH2UieGgeBrt1yOtb+9O7BNLUJXElZZDw4=",
-        "lastModified": 1773307843
+        "type": "github"
       },
       "original": {
         "dir": "nix/playwright-flake",
