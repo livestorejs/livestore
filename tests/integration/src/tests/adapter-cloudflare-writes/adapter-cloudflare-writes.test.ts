@@ -9,7 +9,6 @@ import {
   Layer,
   Schema
 } from '@livestore/utils/effect'
-import { nanoid } from '@livestore/utils/nanoid'
 import { PlatformNode } from '@livestore/utils/node'
 import { Vitest } from '@livestore/utils-dev/node-vitest'
 import { expect } from 'vitest'
@@ -84,7 +83,7 @@ Vitest.describe('adapter-cloudflare-writes', { timeout: testTimeout }, () => {
   Vitest.live('verifies low rowsWritten with native eventlog and in-memory state DB', (test) =>
     Effect.gen(function* () {
       const server = yield* WranglerDevServerService
-      const storeId = `cf-writes-${nanoid(6)}`
+      const storeId = 'cf-writes-steady-state'
       const { createTodo, listTodos, getMetrics, resetMetrics } = yield* makeStoreHelpers(server.url, storeId)
 
       // Boot the store and discard initial write overhead so we measure steady-state only.
@@ -112,7 +111,7 @@ Vitest.describe('adapter-cloudflare-writes', { timeout: testTimeout }, () => {
   Vitest.live('snapshot restore on cold start avoids full rematerialization', (test) =>
     Effect.gen(function* () {
       const server = yield* WranglerDevServerService
-      const storeId = `cf-snapshot-${nanoid(6)}`
+      const storeId = 'cf-writes-snapshot-restore'
       const { createTodo, listTodos, getMetrics, resetMetrics, shutdownStore } = yield* makeStoreHelpers(
         server.url,
         storeId,
@@ -148,7 +147,7 @@ Vitest.describe('adapter-cloudflare-writes', { timeout: testTimeout }, () => {
   Vitest.live('data survives multiple shutdown cycles', (test) =>
     Effect.gen(function* () {
       const server = yield* WranglerDevServerService
-      const storeId = `cf-cycles-${nanoid(6)}`
+      const storeId = 'cf-writes-multi-cycle'
       const { createTodo, listTodos, shutdownStore } = yield* makeStoreHelpers(server.url, storeId)
 
       yield* createTodo('todo-a', 'first cycle')
@@ -174,7 +173,7 @@ Vitest.describe('adapter-cloudflare-writes', { timeout: testTimeout }, () => {
   Vitest.live('steady-state writes remain low after cold start', (test) =>
     Effect.gen(function* () {
       const server = yield* WranglerDevServerService
-      const storeId = `cf-post-restart-${nanoid(6)}`
+      const storeId = 'cf-writes-post-restart'
       const { createTodo, listTodos, getMetrics, resetMetrics, shutdownStore } = yield* makeStoreHelpers(
         server.url,
         storeId,
