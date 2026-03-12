@@ -26,17 +26,17 @@
         "tsgo": "tsgo"
       },
       "locked": {
-        "lastModified": 1773263187,
-        "narHash": "sha256-VGseIZQKL+OBgxxFQLjQXL+4ljCuT3Z9R5KaU6Xbdao=",
+        "lastModified": 1773306123,
+        "narHash": "sha256-GSf2ls0srwVFL7J80nd1N65k5Wuj9KuPpHCwqMPv6og=",
         "ref": "schickling/2026-03-08-pnpm-gvs-boundary-spec",
-        "rev": "0ac77ac2bd9feef6082629a5faab7541c0a1e4fd",
-        "revCount": 747,
+        "rev": "686cec8a04f796e74abec3dbde91f761e6ee9518",
+        "revCount": 750,
         "type": "git",
         "url": "https://github.com/overengineeringstudio/effect-utils"
       },
       "original": {
         "ref": "schickling/2026-03-08-pnpm-gvs-boundary-spec",
-        "rev": "0ac77ac2bd9feef6082629a5faab7541c0a1e4fd",
+        "rev": "686cec8a04f796e74abec3dbde91f761e6ee9518",
         "type": "git",
         "url": "https://github.com/overengineeringstudio/effect-utils"
       }
