@@ -129,9 +129,7 @@ Vitest.describe('adapter-cloudflare-writes', { timeout: testTimeout }, () => {
       const postRestartTodos = yield* listTodos()
       expect(postRestartTodos).toHaveLength(todos.length)
 
-      for (const todo of todos) {
-        expect(postRestartTodos.find((t) => t.id === todo.id)).toBeDefined()
-      }
+      expect(postRestartTodos.map((t) => t.id)).toEqual(expect.arrayContaining(todos.map((t) => t.id)))
 
       const restartMetrics = yield* getMetrics()
       yield* Effect.log('[snapshot-restore] rowsWritten on cold start:', restartMetrics.totalRowsWritten)
