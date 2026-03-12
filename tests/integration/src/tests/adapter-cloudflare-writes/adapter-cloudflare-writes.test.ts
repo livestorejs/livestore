@@ -87,11 +87,8 @@ Vitest.describe('adapter-cloudflare-writes', { timeout: testTimeout }, () => {
       const storeId = `cf-writes-${nanoid(6)}`
       const { createTodo, listTodos, getMetrics, resetMetrics } = yield* makeStoreHelpers(server.url, storeId)
 
+      // Boot the store and discard initial write overhead so we measure steady-state only.
       yield* createTodo('boot-todo', 'initial boot')
-
-      const bootMetrics = yield* getMetrics()
-      yield* Effect.log('[optimized] rowsWritten after boot + first todo:', bootMetrics.totalRowsWritten)
-
       yield* resetMetrics()
 
       const todoCount = 10
