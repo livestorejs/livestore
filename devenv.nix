@@ -182,7 +182,7 @@ in
       genieCoverageExcludes = [ "packages/@livestore/wa-sqlite/" ];
       tsconfig = "tsconfig.dev.json";
     })
-    (taskModules.lint-effect-lsp {
+    (taskModules.ts-effect-lsp {
       tsconfigFile = "tsconfig.dev.json";
     })
     (taskModules.pnpm { packages = pnpmPackages; })
