@@ -1,4 +1,3 @@
-import fs from 'node:fs'
 import path from 'node:path'
 import { fileURLToPath } from 'node:url'
 import {
@@ -10,6 +9,7 @@ import {
   Layer,
   Schema
 } from '@livestore/utils/effect'
+import { nanoid } from '@livestore/utils/nanoid'
 import { PlatformNode } from '@livestore/utils/node'
 import { Vitest } from '@livestore/utils-dev/node-vitest'
 import { expect } from 'vitest'
@@ -26,9 +26,6 @@ delete process.env.ALL_PROXY
 delete process.env.all_proxy
 
 const { WranglerDevServerService } = await import('@livestore/utils-dev/wrangler')
-
-// Wipe persisted DO state so static store IDs start clean on every test run.
-fs.rmSync(path.join(fixturesDir, '.wrangler', 'state'), { recursive: true, force: true })
 
 const withTestCtx = Vitest.makeWithTestCtx({
   timeout: testTimeout,
@@ -87,7 +84,7 @@ Vitest.describe('adapter-cloudflare-writes', { timeout: testTimeout }, () => {
   Vitest.live('rows written is below 20 per todo created', (test) =>
     Effect.gen(function* () {
       const server = yield* WranglerDevServerService
-      const storeId = 'cf-writes-steady-state'
+      const storeId = `cf-writes-steady-state-${nanoid(6)}`
       const { createTodo, listTodos, getMetrics, resetMetrics } = yield* makeStoreHelpers(server.url, storeId)
 
       // Boot the store and discard initial write overhead so we measure steady-state only.
@@ -112,7 +109,7 @@ Vitest.describe('adapter-cloudflare-writes', { timeout: testTimeout }, () => {
   Vitest.live('snapshot restore on cold start avoids full rematerialization', (test) =>
     Effect.gen(function* () {
       const server = yield* WranglerDevServerService
-      const storeId = 'cf-writes-snapshot-restore'
+      const storeId = `cf-writes-snapshot-restore-${nanoid(6)}`
       const { createTodo, listTodos, getMetrics, resetMetrics, shutdownStore } = yield* makeStoreHelpers(
         server.url,
         storeId,
@@ -147,7 +144,7 @@ Vitest.describe('adapter-cloudflare-writes', { timeout: testTimeout }, () => {
   Vitest.live('data survives multiple shutdown cycles', (test) =>
     Effect.gen(function* () {
       const server = yield* WranglerDevServerService
-      const storeId = 'cf-writes-multi-cycle'
+      const storeId = `cf-writes-multi-cycle-${nanoid(6)}`
       const { createTodo, listTodos, shutdownStore } = yield* makeStoreHelpers(server.url, storeId)
 
       yield* createTodo('todo-a', 'first cycle')
@@ -173,7 +170,7 @@ Vitest.describe('adapter-cloudflare-writes', { timeout: testTimeout }, () => {
   Vitest.live('rows written is below 20 per todo created after cold start', (test) =>
     Effect.gen(function* () {
       const server = yield* WranglerDevServerService
-      const storeId = 'cf-writes-post-restart'
+      const storeId = `cf-writes-post-restart-${nanoid(6)}`
       const { createTodo, listTodos, getMetrics, resetMetrics, shutdownStore } = yield* makeStoreHelpers(
         server.url,
         storeId,
