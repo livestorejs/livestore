@@ -34,7 +34,6 @@ const withTestCtx = Vitest.makeWithTestCtx({
       WranglerDevServerService.Default({
         cwd: fixturesDir,
         readiness: { connectTimeout: Duration.seconds(45) },
-        showLogs: true,
       }).pipe(
         Layer.provide(Layer.mergeAll(PlatformNode.NodeContext.layer, FetchHttpClient.layer)),
       ),
