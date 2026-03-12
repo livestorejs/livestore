@@ -65,7 +65,6 @@ const packages = [
 ] as const
 
 export default pnpmWorkspaceYaml.root({
-  dir: import.meta.dirname,
   packages,
   extraPackages: ['*'],
   // Link workspace packages even when the specifier version doesn't exactly match

@@ -25,7 +25,6 @@ packages:
   - ../packages/@local/astro-tldraw
   - ../packages/@local/astro-twoslash-code
   - ../packages/@local/shared
-  - ./src/content/_assets/code
 
 dedupePeerDependents: true
 

@@ -4,7 +4,6 @@
 packages:
   - .
   - ../docs
-  - ../docs/src/content/_assets/code
   - ../packages/@livestore/adapter-cloudflare
   - ../packages/@livestore/adapter-expo
   - ../packages/@livestore/adapter-node
