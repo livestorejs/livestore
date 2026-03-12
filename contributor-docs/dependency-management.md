@@ -38,9 +38,9 @@ After updating dependencies, check if version constants in `packages/@local/shar
 - Update constants when their corresponding dependencies are updated
 - Common patterns: Framework versions, runtime requirements, tool versions
 
-The repo-root `pnpm-lock.yaml` is the only authoritative lockfile. Package-local
-`pnpm-workspace.yaml` files remain as package-closure projection metadata, but
-package-local lockfiles are not part of the intended model anymore.
+The repo-root `pnpm-lock.yaml` is the only authoritative lockfile. Package
+closures are derived from workspace metadata at build time, and package-local
+lockfiles are not part of the intended model anymore.
 
 ## PNPM Catalog Management
 

@@ -9,7 +9,9 @@ import testsIntegrationPkg from '../tests/integration/package.json.genie.ts'
 import testsSyncProviderPkg from '../tests/sync-provider/package.json.genie.ts'
 
 const composition = catalog.compose({
-  workspace: workspaceMember('scripts'),
+  workspace: workspaceMember('scripts', {
+    extraMemberPaths: ['docs/src/content/_assets/code'],
+  }),
   devDependencies: {
     workspace: [
       commonPkg,

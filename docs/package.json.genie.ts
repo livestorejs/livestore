@@ -16,7 +16,9 @@ import localAstroTwoslashCodePkg from '../packages/@local/astro-twoslash-code/pa
 import localSharedPkg from '../packages/@local/shared/package.json.genie.ts'
 
 const runtimeDeps = catalog.compose({
-  workspace: workspaceMember('docs'),
+  workspace: workspaceMember('docs', {
+    extraMemberPaths: ['docs/src/content/_assets/code'],
+  }),
   dependencies: {
     workspace: [
       adapterCloudflarePkg,

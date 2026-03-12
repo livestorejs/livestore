@@ -16,14 +16,20 @@
 
 import {
   catalog as effectUtilsCatalog,
+  baseOxlintCategories,
+  baseOxlintIgnorePatterns,
+  baseOxlintPlugins,
   baseTsconfigCompilerOptions,
   defineCatalog,
-  packageTsconfigCompilerOptions as effectUtilsPackageTsconfigCompilerOptions,
   domLib,
+  githubRuleset,
   githubWorkflow,
+  megarepoJson,
   oxfmtConfig,
   oxlintConfig,
+  packageTsconfigCompilerOptions as effectUtilsPackageTsconfigCompilerOptions,
   packageJson,
+  type PnpmPackageClosureConfig,
   pnpmWorkspaceYaml,
   reactJsx,
   tsconfigJson,
@@ -35,12 +41,28 @@ import {
   type WorkspacePackage,
   type WorkspacePackageLike,
 } from '../repos/effect-utils/genie/external.ts'
+import { baseOxfmtIgnorePatterns, baseOxfmtOptions } from '../repos/effect-utils/genie/oxfmt-base.ts'
 import { livestoreOnlyCatalog, livestoreWorkspaceCatalog } from './external.ts'
 
 export { baseTsconfigCompilerOptions, domLib, reactJsx }
-export { githubWorkflow, oxfmtConfig, oxlintConfig, packageJson, pnpmWorkspaceYaml, tsconfigJson }
+export {
+  baseOxfmtIgnorePatterns,
+  baseOxfmtOptions,
+  baseOxlintCategories,
+  baseOxlintIgnorePatterns,
+  baseOxlintPlugins,
+  githubRuleset,
+  githubWorkflow,
+  megarepoJson,
+  oxfmtConfig,
+  oxlintConfig,
+  packageJson,
+  pnpmWorkspaceYaml,
+  tsconfigJson,
+}
 export type {
   PackageJsonData,
+  PnpmPackageClosureConfig,
   PnpmWorkspaceData,
   WorkspaceIdentity,
   WorkspaceMeta,
@@ -63,8 +85,8 @@ export const packageTsconfigCompilerOptions = {
  * Internal workspace packages using workspace:* protocol.
  *
  * The repo-root pnpm workspace is the authoritative install owner and lockfile
- * source of truth. Package-local pnpm-workspace.yaml files remain useful as
- * package-closure projection metadata.
+ * source of truth. Package closures are derived from workspace metadata at
+ * build time instead of being committed as package-local pnpm-workspace files.
  */
 
 /** Composed catalog - effect-utils base + livestore-specific + workspace packages */
@@ -78,9 +100,13 @@ export const catalog = defineCatalog({
 
 const WORKSPACE_REPO_NAME = 'livestore'
 
-export const workspaceMember = (memberPath: string): WorkspaceIdentity => ({
+export const workspaceMember = (
+  memberPath: string,
+  pnpmPackageClosure: PnpmPackageClosureConfig = {},
+): WorkspaceIdentity => ({
   repoName: WORKSPACE_REPO_NAME,
   memberPath,
+  pnpmPackageClosure,
 })
 
 // =============================================================================
