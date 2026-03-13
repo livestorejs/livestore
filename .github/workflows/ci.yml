@@ -102,7 +102,6 @@ jobs:
           DEVENV_BIN="$DEVENV_OUT/bin/devenv"
 
           # Fast validity check on the devenv store path (~1-2s vs ~25s for devenv info).
-          # Deeper transitive-dep corruption is caught lazily at task time via retry wrapper.
           if ! nix-store --check-validity "$DEVENV_OUT" 2>/dev/null; then
             echo "::warning::devenv store path invalid, repairing..."
             nix-store --verify --check-contents --repair > "$DIAG_ROOT/nix-store-verify-repair.log" 2>&1 || true
@@ -204,7 +203,6 @@ jobs:
           DEVENV_BIN="$DEVENV_OUT/bin/devenv"
 
           # Fast validity check on the devenv store path (~1-2s vs ~25s for devenv info).
-          # Deeper transitive-dep corruption is caught lazily at task time via retry wrapper.
           if ! nix-store --check-validity "$DEVENV_OUT" 2>/dev/null; then
             echo "::warning::devenv store path invalid, repairing..."
             nix-store --verify --check-contents --repair > "$DIAG_ROOT/nix-store-verify-repair.log" 2>&1 || true
@@ -306,7 +304,6 @@ jobs:
           DEVENV_BIN="$DEVENV_OUT/bin/devenv"
 
           # Fast validity check on the devenv store path (~1-2s vs ~25s for devenv info).
-          # Deeper transitive-dep corruption is caught lazily at task time via retry wrapper.
           if ! nix-store --check-validity "$DEVENV_OUT" 2>/dev/null; then
             echo "::warning::devenv store path invalid, repairing..."
             nix-store --verify --check-contents --repair > "$DIAG_ROOT/nix-store-verify-repair.log" 2>&1 || true
@@ -408,7 +405,6 @@ jobs:
           DEVENV_BIN="$DEVENV_OUT/bin/devenv"
 
           # Fast validity check on the devenv store path (~1-2s vs ~25s for devenv info).
-          # Deeper transitive-dep corruption is caught lazily at task time via retry wrapper.
           if ! nix-store --check-validity "$DEVENV_OUT" 2>/dev/null; then
             echo "::warning::devenv store path invalid, repairing..."
             nix-store --verify --check-contents --repair > "$DIAG_ROOT/nix-store-verify-repair.log" 2>&1 || true
@@ -555,7 +551,6 @@ jobs:
           DEVENV_BIN="$DEVENV_OUT/bin/devenv"
 
           # Fast validity check on the devenv store path (~1-2s vs ~25s for devenv info).
-          # Deeper transitive-dep corruption is caught lazily at task time via retry wrapper.
           if ! nix-store --check-validity "$DEVENV_OUT" 2>/dev/null; then
             echo "::warning::devenv store path invalid, repairing..."
             nix-store --verify --check-contents --repair > "$DIAG_ROOT/nix-store-verify-repair.log" 2>&1 || true
@@ -687,7 +682,6 @@ jobs:
           DEVENV_BIN="$DEVENV_OUT/bin/devenv"
 
           # Fast validity check on the devenv store path (~1-2s vs ~25s for devenv info).
-          # Deeper transitive-dep corruption is caught lazily at task time via retry wrapper.
           if ! nix-store --check-validity "$DEVENV_OUT" 2>/dev/null; then
             echo "::warning::devenv store path invalid, repairing..."
             nix-store --verify --check-contents --repair > "$DIAG_ROOT/nix-store-verify-repair.log" 2>&1 || true
@@ -817,7 +811,6 @@ jobs:
           DEVENV_BIN="$DEVENV_OUT/bin/devenv"
 
           # Fast validity check on the devenv store path (~1-2s vs ~25s for devenv info).
-          # Deeper transitive-dep corruption is caught lazily at task time via retry wrapper.
           if ! nix-store --check-validity "$DEVENV_OUT" 2>/dev/null; then
             echo "::warning::devenv store path invalid, repairing..."
             nix-store --verify --check-contents --repair > "$DIAG_ROOT/nix-store-verify-repair.log" 2>&1 || true
@@ -934,7 +927,6 @@ jobs:
           DEVENV_BIN="$DEVENV_OUT/bin/devenv"
 
           # Fast validity check on the devenv store path (~1-2s vs ~25s for devenv info).
-          # Deeper transitive-dep corruption is caught lazily at task time via retry wrapper.
           if ! nix-store --check-validity "$DEVENV_OUT" 2>/dev/null; then
             echo "::warning::devenv store path invalid, repairing..."
             nix-store --verify --check-contents --repair > "$DIAG_ROOT/nix-store-verify-repair.log" 2>&1 || true
@@ -1055,7 +1047,6 @@ jobs:
           DEVENV_BIN="$DEVENV_OUT/bin/devenv"
 
           # Fast validity check on the devenv store path (~1-2s vs ~25s for devenv info).
-          # Deeper transitive-dep corruption is caught lazily at task time via retry wrapper.
           if ! nix-store --check-validity "$DEVENV_OUT" 2>/dev/null; then
             echo "::warning::devenv store path invalid, repairing..."
             nix-store --verify --check-contents --repair > "$DIAG_ROOT/nix-store-verify-repair.log" 2>&1 || true
@@ -1159,7 +1150,6 @@ jobs:
           DEVENV_BIN="$DEVENV_OUT/bin/devenv"
 
           # Fast validity check on the devenv store path (~1-2s vs ~25s for devenv info).
-          # Deeper transitive-dep corruption is caught lazily at task time via retry wrapper.
           if ! nix-store --check-validity "$DEVENV_OUT" 2>/dev/null; then
             echo "::warning::devenv store path invalid, repairing..."
             nix-store --verify --check-contents --repair > "$DIAG_ROOT/nix-store-verify-repair.log" 2>&1 || true
@@ -1272,7 +1262,6 @@ jobs:
           DEVENV_BIN="$DEVENV_OUT/bin/devenv"
 
           # Fast validity check on the devenv store path (~1-2s vs ~25s for devenv info).
-          # Deeper transitive-dep corruption is caught lazily at task time via retry wrapper.
           if ! nix-store --check-validity "$DEVENV_OUT" 2>/dev/null; then
             echo "::warning::devenv store path invalid, repairing..."
             nix-store --verify --check-contents --repair > "$DIAG_ROOT/nix-store-verify-repair.log" 2>&1 || true

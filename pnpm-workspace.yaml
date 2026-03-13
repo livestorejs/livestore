@@ -55,6 +55,15 @@ overrides:
   '@tanstack/start-server-core': 1.139.14
   '@tanstack/start-client-core': 1.139.14
 
+settings:
+  nodeLinker: hoisted
+
+supportedArchitectures:
+  os: [linux, darwin]
+  cpu: [x64, arm64]
+
 dedupePeerDependents: true
+
+strictPeerDependencies: true
 
 linkWorkspacePackages: true

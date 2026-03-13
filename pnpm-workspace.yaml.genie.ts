@@ -1,9 +1,8 @@
-import { pnpmWorkspaceYaml } from './genie/repo.ts'
+import { commonPnpmPolicySettings, pnpmWorkspaceYaml } from './genie/repo.ts'
 import { rootWorkspaceMemberPaths } from './package.json.genie.ts'
 
 const examplesWorkspaceSettings = {
   linkWorkspacePackages: true,
-  dedupePeerDependents: true,
   overrides: {
     '@tanstack/router-core': '1.139.14',
     '@tanstack/history': '1.139.0',
@@ -23,5 +22,6 @@ const examplesWorkspaceSettings = {
  * but are intentionally not genie-managed (standalone, copyable). `root(...)` can't derive non-genie-managed members. */
 export default pnpmWorkspaceYaml.manual({
   packages: rootWorkspaceMemberPaths,
+  ...commonPnpmPolicySettings,
   ...examplesWorkspaceSettings,
 })
