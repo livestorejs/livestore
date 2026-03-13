@@ -26,11 +26,11 @@
         "tsgo": "tsgo"
       },
       "locked": {
-        "lastModified": 1773404530,
-        "narHash": "sha256-KY39Er/ahFw/W0clMRv22BCTUi/l3dWbXnJ/lrZbgEA=",
+        "lastModified": 1773418658,
+        "narHash": "sha256-Cx9TYS2bfwxH3tw/xlHXdsp+NGmZnU5twJpNnd3LjxM=",
         "ref": "schickling/2026-03-08-pnpm-gvs-boundary-spec",
-        "rev": "39de206d88d13cea93bc81af0204e04528e3ea47",
-        "revCount": 798,
+        "rev": "d766ced083ed933fc725452cf0d600e1724eb463",
+        "revCount": 800,
         "type": "git",
         "url": "https://github.com/overengineeringstudio/effect-utils"
       },

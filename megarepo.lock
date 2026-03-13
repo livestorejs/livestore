@@ -4,7 +4,7 @@
     "effect-utils": {
       "url": "https://github.com/overengineeringstudio/effect-utils",
       "ref": "schickling/2026-03-08-pnpm-gvs-boundary-spec",
-      "commit": "39de206d88d13cea93bc81af0204e04528e3ea47",
+      "commit": "d766ced083ed933fc725452cf0d600e1724eb463",
       "pinned": false,
       "lockedAt": "2026-03-13T00:00:00.000Z"
     },
