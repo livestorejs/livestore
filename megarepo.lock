@@ -4,9 +4,9 @@
     "effect-utils": {
       "url": "https://github.com/overengineeringstudio/effect-utils",
       "ref": "schickling/2026-03-08-pnpm-gvs-boundary-spec",
-      "commit": "6632ab1c548f74069017041b86a8f9de1419b888",
+      "commit": "39de206d88d13cea93bc81af0204e04528e3ea47",
       "pinned": false,
-      "lockedAt": "2026-03-12T21:25:30.278Z"
+      "lockedAt": "2026-03-13T00:00:00.000Z"
     },
     "overeng-beads-public": {
       "url": "https://github.com/overengineeringstudio/overeng-beads-public",

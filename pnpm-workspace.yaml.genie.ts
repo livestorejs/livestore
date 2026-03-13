@@ -19,6 +19,8 @@ const examplesWorkspaceSettings = {
   },
 } as const
 
+/** Uses `manual(...)` because `examples/*` must be workspace members for local dev linking
+ * but are intentionally not genie-managed (standalone, copyable). `root(...)` can't derive non-genie-managed members. */
 export default pnpmWorkspaceYaml.manual({
   packages: rootWorkspaceMemberPaths,
   ...examplesWorkspaceSettings,
