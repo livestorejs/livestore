@@ -319,8 +319,6 @@ export const makeLeaderSyncProcessor = ({
       const maybeShutdownOnError = (
         cause: Cause.Cause<
           | UnknownError
-          | IntentionalShutdownCause
-          | IsOfflineError
           | InvalidPushError
           | InvalidPullError
           | MaterializeError
@@ -409,8 +407,10 @@ export const makeLeaderSyncProcessor = ({
         advancePushHead,
       }).pipe(
         Effect.retry({
-          // We want to retry pulling if we've lost connection to the sync backend
-          while: (cause) => cause._tag === 'IsOfflineError',
+          // Retry pulling when we've lost connection to the sync backend
+          // We're using `until` with a refinement instead of `while` to narrow `IsOfflineError` out of the error type.
+          // See https://github.com/Effect-TS/effect/issues/6122
+          until: (cause): cause is Exclude<typeof cause, IsOfflineError> => cause._tag !== 'IsOfflineError',
         }),
         Effect.catchAllCause(maybeShutdownOnError),
         // Needed to avoid `Fiber terminated with an unhandled error` logs which seem to happen because of the `Effect.retry` above.
@@ -945,16 +945,13 @@ const backgroundBackendPushing = Effect.fn('@livestore/common:LeaderSyncProcesso
     // - Resets automatically after successful push
     // TODO(metrics): expose counters/gauges for retry attempts and queue health via devtools/metrics
 
-    // Only retry for transient UnknownError cases
-    const isRetryable = (err: InvalidPushError | IsOfflineError) =>
-      err._tag === 'InvalidPushError' && err.cause._tag === 'LiveStore.UnknownError'
-
-    // Input: InvalidPushError | IsOfflineError, Output: Duration
-    const retrySchedule: Schedule.Schedule<Duration.DurationInput, InvalidPushError | IsOfflineError> =
+    // Input: InvalidPushError, Output: Duration
+    const retrySchedule: Schedule.Schedule<Duration.DurationInput, InvalidPushError> =
       Schedule.exponential(Duration.seconds(1)).pipe(
         Schedule.andThenEither(Schedule.spaced(Duration.seconds(30))), // clamp at 30 second intervals
         Schedule.compose(Schedule.elapsed),
-        Schedule.whileInput(isRetryable),
+        // Only retry for transient UnknownError cases
+        Schedule.whileInput((err: InvalidPushError) => err.cause._tag === 'LiveStore.UnknownError'),
       )
 
     yield* Effect.gen(function* () {
@@ -1167,7 +1164,7 @@ const handleBackendIdMismatch = Effect.fn('@livestore/common:LeaderSyncProcessor
   shutdownChannel,
 }: {
   cause: Cause.Cause<
-    UnknownError | IntentionalShutdownCause | IsOfflineError | InvalidPushError | InvalidPullError | MaterializeError | SqliteError
+    UnknownError | InvalidPushError | InvalidPullError | MaterializeError | SqliteError
   >
   onBackendIdMismatch: 'reset' | 'shutdown' | 'ignore'
   shutdownChannel: ShutdownChannel
