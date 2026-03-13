@@ -79,12 +79,13 @@ export const rootWorkspacePackages = [
   testsWaSqlitePkg,
 ] as const
 
-export const rootWorkspaceMemberPaths = [
-  ...rootWorkspacePackages.map((pkg) => pkg.meta.workspace.memberPath),
-  'examples/*',
-] satisfies readonly string[]
-
-export default packageJson.aggregate({
+const rootWorkspace = packageJson.aggregateFromPackages({
+  packages: rootWorkspacePackages,
   name: 'livestore-workspace',
-  workspaces: rootWorkspaceMemberPaths,
+  repoName: 'livestore',
+  extraMembers: ['examples/*'],
 })
+
+export const rootWorkspaceMemberPaths = rootWorkspace.data.workspaces
+
+export default rootWorkspace

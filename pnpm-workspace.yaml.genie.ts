@@ -1,5 +1,5 @@
 import { commonPnpmPolicySettings, pnpmWorkspaceYaml } from './genie/repo.ts'
-import { rootWorkspaceMemberPaths } from './package.json.genie.ts'
+import { rootWorkspacePackages } from './package.json.genie.ts'
 
 const examplesWorkspaceSettings = {
   linkWorkspacePackages: true,
@@ -18,10 +18,10 @@ const examplesWorkspaceSettings = {
   },
 } as const
 
-/** Uses `manual(...)` because `examples/*` must be workspace members for local dev linking
- * but are intentionally not genie-managed (standalone, copyable). `root(...)` can't derive non-genie-managed members. */
-export default pnpmWorkspaceYaml.manual({
-  packages: rootWorkspaceMemberPaths,
+export default pnpmWorkspaceYaml.root({
+  packages: rootWorkspacePackages,
+  repoName: 'livestore',
+  extraMembers: ['examples/*'],
   ...commonPnpmPolicySettings,
   ...examplesWorkspaceSettings,
 })
