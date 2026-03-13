@@ -26,7 +26,7 @@
         "tsgo": "tsgo"
       },
       "locked": {
-        "lastModified": 1741891800,
+        "lastModified": 1773419809,
         "narHash": "sha256-03hbs3IziUQKWw7C9LW9SI+BGm60bIXmdFsJjQsqY74=",
         "ref": "schickling/2026-03-08-pnpm-gvs-boundary-spec",
         "rev": "bbb6d48ea55034dcf4029734e7900d7b508c8379",
