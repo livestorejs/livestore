@@ -8,7 +8,10 @@ export const Header = () => {
   const store = useAppStore()
   const { newTodoText } = store.useQuery(uiState$)
 
-  const updatedNewTodoText = useCallback((text: string) => store.commit(events.uiStateSet({ newTodoText: text })), [store])
+  const updatedNewTodoText = useCallback(
+    (text: string) => store.commit(events.uiStateSet({ newTodoText: text })),
+    [store],
+  )
 
   const todoCreated = useCallback(
     () =>

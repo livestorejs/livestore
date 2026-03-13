@@ -1,5 +1,6 @@
-import { liveStoreVersion } from '@livestore/livestore'
 import { onMount } from 'solid-js'
+
+import { liveStoreVersion } from '@livestore/livestore'
 
 const versionBadgeStyle = {
   position: 'fixed',
