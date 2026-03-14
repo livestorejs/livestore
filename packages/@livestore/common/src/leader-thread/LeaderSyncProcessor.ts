@@ -32,6 +32,7 @@ import {
   type InvalidPushError,
   type IsOfflineError,
   LeaderAheadError,
+  NonMonotonicBatchError,
   type SyncBackend,
 } from '../sync/sync.ts'
 import * as SyncState from '../sync/syncstate.ts'
@@ -283,7 +284,13 @@ export const makeLeaderSyncProcessor = ({
         })
 
         yield* push([eventEncoded])
-      }).pipe(Effect.catchTag('LeaderAheadError', Effect.orDie))
+      }).pipe(
+        // pushPartial constructs the event sequence number internally, so these errors should never happen.
+        Effect.catchIf(
+          (error) => error._tag === 'LeaderAheadError' || error._tag === 'NonMonotonicBatchError',
+          Effect.die,
+        ),
+      )
 
     // Starts various background loops
     const boot: LeaderSyncProcessor['boot'] = Effect.gen(function* () {
@@ -1134,9 +1141,11 @@ const validatePushBatch = (
     // of event numbers.
     for (let i = 1; i < batch.length; i++) {
       if (EventSequenceNumber.Client.isGreaterThanOrEqual(batch[i - 1]!.seqNum, batch[i]!.seqNum) === true) {
-        return yield* LeaderAheadError.make({
-          minimumExpectedNum: batch[i - 1]!.seqNum,
-          providedNum: batch[i]!.seqNum,
+        return yield* NonMonotonicBatchError.make({
+          precedingSeqNum: batch[i - 1]!.seqNum,
+          violatingSeqNum: batch[i]!.seqNum,
+          violationIndex: i,
+          sessionId: batch[i]!.sessionId,
         })
       }
     }

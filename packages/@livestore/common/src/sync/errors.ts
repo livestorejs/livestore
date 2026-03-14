@@ -28,6 +28,31 @@ export class InvalidPullError extends Schema.TaggedError<InvalidPullError>()('In
   cause: Schema.Union(UnknownError, BackendIdMismatchError),
 }) {}
 
+/**
+ * A push events batch failed validation because its sequence numbers are not strictly increasing.
+ *
+ * @remarks
+ * This is a defensive check — callers are expected to construct monotonic batches.
+ * The client should rebase and retry.
+ */
+export class NonMonotonicBatchError extends Schema.TaggedError<NonMonotonicBatchError>()(
+  'NonMonotonicBatchError',
+  {
+    /** The sequence number that broke the monotonic invariant (i.e. the one that is >= the next). */
+    precedingSeqNum: EventSequenceNumber.Client.Composite,
+    /** The sequence number that was expected to be greater than `precedingSeqNum`. */
+    violatingSeqNum: EventSequenceNumber.Client.Composite,
+    /** The index in the batch where the violation occurred. */
+    violationIndex: Schema.Number,
+    /** The session that produced the malformed batch. */
+    sessionId: Schema.String,
+  },
+) {
+  override get message(): string {
+    return `Push events batch sequence numbers are not strictly increasing at index ${this.violationIndex} (session ${this.sessionId}): ${EventSequenceNumber.Client.toString(this.precedingSeqNum)} >= ${EventSequenceNumber.Client.toString(this.violatingSeqNum)}`
+  }
+}
+
 export class LeaderAheadError extends Schema.TaggedError<LeaderAheadError>()('LeaderAheadError', {
   minimumExpectedNum: EventSequenceNumber.Client.Composite,
   providedNum: EventSequenceNumber.Client.Composite,
