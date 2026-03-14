@@ -1130,10 +1130,8 @@ const validatePushBatch = (
       return
     }
 
-    // Example: session A already enqueued e1…e6 while session B (same client, different
-    // session) still believes the head is e1 and submits [e2, e7, e8]. The numbers look
-    // monotonic from B’s perspective, but we must reject and force B to rebase locally
-    // so the leader never regresses.
+    // Defensive check: callers should already provide a strictly increasing sequence
+    // of event numbers.
     for (let i = 1; i < batch.length; i++) {
       if (EventSequenceNumber.Client.isGreaterThanOrEqual(batch[i - 1]!.seqNum, batch[i]!.seqNum) === true) {
         return yield* LeaderAheadError.make({
@@ -1143,7 +1141,7 @@ const validatePushBatch = (
       }
     }
 
-    // Make sure smallest sequence number is > pushHead
+    // Reject stale batches whose first event is at or behind the leader's push head.
     if (EventSequenceNumber.Client.isGreaterThanOrEqual(pushHead, batch[0]!.seqNum) === true) {
       return yield* LeaderAheadError.make({
         minimumExpectedNum: pushHead,
