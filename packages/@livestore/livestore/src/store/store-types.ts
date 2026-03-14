@@ -6,7 +6,6 @@ import {
   type ClientSessionSyncProcessorSimulationParams,
   type IntentionalShutdownCause,
   type InvalidPullError,
-  type IsOfflineError,
   isQueryBuilder,
   type MaterializeError,
   type QueryBuilder,
@@ -57,11 +56,11 @@ export type LiveStoreContext<TSchema extends LiveStoreSchema = LiveStoreSchema.A
 
 export type ShutdownDeferred = Deferred.Deferred<
   IntentionalShutdownCause,
-  UnknownError | SyncError | StoreInterrupted | MaterializeError | InvalidPullError | IsOfflineError | SqliteError
+  UnknownError | SyncError | StoreInterrupted | MaterializeError | InvalidPullError | SqliteError
 >
 export const makeShutdownDeferred: Effect.Effect<ShutdownDeferred> = Deferred.make<
   IntentionalShutdownCause,
-  UnknownError | SyncError | StoreInterrupted | MaterializeError | InvalidPullError | IsOfflineError | SqliteError
+  UnknownError | SyncError | StoreInterrupted | MaterializeError | InvalidPullError | SqliteError
 >()
 
 /**
