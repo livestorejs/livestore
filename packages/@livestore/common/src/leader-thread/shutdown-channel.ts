@@ -5,7 +5,6 @@ import {
   IntentionalShutdownCause,
   InvalidPullError,
   InvalidPushError,
-  IsOfflineError,
   MaterializeError,
   SqliteError,
   UnknownError,
@@ -14,7 +13,6 @@ import {
 export class All extends Schema.Union(
   IntentionalShutdownCause,
   UnknownError,
-  IsOfflineError,
   InvalidPushError,
   InvalidPullError,
   MaterializeError,

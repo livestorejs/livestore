@@ -378,7 +378,20 @@ export const makeLeaderSyncProcessor = ({
         otelSpan,
         devtoolsLatch: ctxRef.current?.devtoolsLatch,
         backendPushBatchSize,
-      }).pipe(Effect.catchAllCause(maybeShutdownOnError))
+      }).pipe(
+        // Retry transient errors
+        Effect.retry(
+          {
+            schedule: Schedule.exponential(Duration.seconds(1)).pipe(
+              Schedule.modifyDelay((_, delay) => Duration.min(delay, Duration.seconds(30))) // Cap delay at 30s intervals.
+            ),
+            while: (error) => error._tag === 'IsOfflineError' || (error._tag === 'InvalidPushError' && error.cause._tag === 'LiveStore.UnknownError'),
+          }
+        ),
+        // This is needed to narrow the Error type. Our retry policy runs indefinitely, but Effect.retry does not narrow the Error type.
+        Effect.catchTag("IsOfflineError", Effect.die),
+        Effect.catchAllCause(maybeShutdownOnError),
+      )
 
       yield* FiberHandle.run(backendPushingFiberHandle, backendPushingEffect)
 
@@ -945,15 +958,6 @@ const backgroundBackendPushing = Effect.fn('@livestore/common:LeaderSyncProcesso
     // - Resets automatically after successful push
     // TODO(metrics): expose counters/gauges for retry attempts and queue health via devtools/metrics
 
-    // Input: InvalidPushError, Output: Duration
-    const retrySchedule: Schedule.Schedule<Duration.DurationInput, InvalidPushError> =
-      Schedule.exponential(Duration.seconds(1)).pipe(
-        Schedule.andThenEither(Schedule.spaced(Duration.seconds(30))), // clamp at 30 second intervals
-        Schedule.compose(Schedule.elapsed),
-        // Only retry for transient UnknownError cases
-        Schedule.whileInput((err: InvalidPushError) => err.cause._tag === 'LiveStore.UnknownError'),
-      )
-
     yield* Effect.gen(function* () {
       const iteration = yield* Schedule.CurrentIterationMetadata
 
@@ -975,10 +979,7 @@ const backgroundBackendPushing = Effect.fn('@livestore/common:LeaderSyncProcesso
           undefined,
         )
         const error = pushResult.left
-        if (
-          error._tag === 'IsOfflineError' ||
-          (error._tag === 'InvalidPushError' && error.cause._tag === 'ServerAheadError')
-        ) {
+        if (error._tag === 'InvalidPushError' && error.cause._tag === 'ServerAheadError') {
           // It's a core part of the sync protocol that the sync backend will emit a new pull chunk alongside the ServerAheadError
           yield* Effect.logDebug('handled backend-push-error (waiting for interupt caused by pull)', { error })
           return yield* Effect.never
@@ -986,7 +987,7 @@ const backgroundBackendPushing = Effect.fn('@livestore/common:LeaderSyncProcesso
 
         return yield* error
       }
-    }).pipe(Effect.retry(retrySchedule))
+    })
   }
 }, Effect.interruptible)
 

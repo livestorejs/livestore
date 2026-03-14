@@ -8,7 +8,6 @@ import {
   type ClientSessionSyncProcessorSimulationParams,
   type IntentionalShutdownCause,
   type InvalidPullError,
-  type IsOfflineError,
   LogConfig,
   type MaterializeError,
   type SqliteError,
@@ -327,7 +326,7 @@ export const createStore = <
       const shutdown = (
         exit: Exit.Exit<
           IntentionalShutdownCause,
-          UnknownError | MaterializeError | SyncError | InvalidPullError | IsOfflineError | SqliteError
+          UnknownError | MaterializeError | SyncError | InvalidPullError | SqliteError
         >,
       ) =>
         Effect.gen(function* () {
