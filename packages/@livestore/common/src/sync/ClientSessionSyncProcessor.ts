@@ -216,10 +216,13 @@ export const makeClientSessionSyncProcessor = ({
     const backgroundLeaderPushing = Effect.gen(function* () {
       const batch = yield* BucketQueue.takeBetween(leaderPushQueue, 1, params.leaderPushBatchSize)
       yield* clientSession.leaderThread.events.push(batch).pipe(
-        Effect.catchTag('LeaderAheadError', () => {
-          debugInfo.rejectCount++
-          return BucketQueue.clear(leaderPushQueue)
-        }),
+        Effect.catchIf(
+          (error) => error._tag === 'LeaderAheadError' || error._tag === 'NonMonotonicBatchError',
+          () => {
+            debugInfo.rejectCount++
+            return BucketQueue.clear(leaderPushQueue)
+          },
+        ),
       )
     }).pipe(Effect.forever, Effect.interruptible, Effect.tapCauseLogPretty)
 
