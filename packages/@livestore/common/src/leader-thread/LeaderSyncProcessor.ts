@@ -379,17 +379,6 @@ export const makeLeaderSyncProcessor = ({
         devtoolsLatch: ctxRef.current?.devtoolsLatch,
         backendPushBatchSize,
       }).pipe(
-        // Retry transient errors
-        Effect.retry(
-          {
-            schedule: Schedule.exponential(Duration.seconds(1)).pipe(
-              Schedule.modifyDelay((_, delay) => Duration.min(delay, Duration.seconds(30))) // Cap delay at 30s intervals.
-            ),
-            while: (error) => error._tag === 'IsOfflineError' || (error._tag === 'InvalidPushError' && error.cause._tag === 'LiveStore.UnknownError'),
-          }
-        ),
-        // This is needed to narrow the Error type. Our retry policy runs indefinitely, but Effect.retry does not narrow the Error type.
-        Effect.catchTag("IsOfflineError", Effect.die),
         Effect.catchAllCause(maybeShutdownOnError),
       )
 
@@ -957,7 +946,6 @@ const backgroundBackendPushing = Effect.fn('@livestore/common:LeaderSyncProcesso
     // - Delay clamped at 30s (continues retrying at 30s)
     // - Resets automatically after successful push
     // TODO(metrics): expose counters/gauges for retry attempts and queue health via devtools/metrics
-
     yield* Effect.gen(function* () {
       const iteration = yield* Schedule.CurrentIterationMetadata
 
@@ -987,7 +975,17 @@ const backgroundBackendPushing = Effect.fn('@livestore/common:LeaderSyncProcesso
 
         return yield* error
       }
-    })
+    }).pipe(
+      // Retry transient errors
+      Effect.retry({
+        schedule: Schedule.exponential(Duration.seconds(1)).pipe(
+          Schedule.modifyDelay((_, delay) => Duration.min(delay, Duration.seconds(30))) // Cap delay at 30s intervals.
+        ),
+        while: (error) => error._tag === 'IsOfflineError' || (error._tag === 'InvalidPushError' && error.cause._tag === 'LiveStore.UnknownError'),
+      }),
+      // This is needed to narrow the Error type. Our retry policy runs indefinitely, but Effect.retry does not narrow the Error type.
+      Effect.catchTag("IsOfflineError", Effect.die),
+    )
   }
 }, Effect.interruptible)
 
