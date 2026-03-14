@@ -10,7 +10,6 @@ import {
   type MaterializeError,
   type QueryBuilder,
   type StoreInterrupted,
-  type SqliteError,
   type SyncError,
   type UnknownError,
 } from '@livestore/common'
@@ -56,11 +55,11 @@ export type LiveStoreContext<TSchema extends LiveStoreSchema = LiveStoreSchema.A
 
 export type ShutdownDeferred = Deferred.Deferred<
   IntentionalShutdownCause,
-  UnknownError | SyncError | StoreInterrupted | MaterializeError | InvalidPullError | SqliteError
+  UnknownError | SyncError | StoreInterrupted | MaterializeError | InvalidPullError
 >
 export const makeShutdownDeferred: Effect.Effect<ShutdownDeferred> = Deferred.make<
   IntentionalShutdownCause,
-  UnknownError | SyncError | StoreInterrupted | MaterializeError | InvalidPullError | SqliteError
+  UnknownError | SyncError | StoreInterrupted | MaterializeError | InvalidPullError
 >()
 
 /**

@@ -6,7 +6,6 @@ import {
   InvalidPullError,
   InvalidPushError,
   MaterializeError,
-  SqliteError,
   UnknownError,
 } from '../index.ts'
 
@@ -16,7 +15,6 @@ export class All extends Schema.Union(
   InvalidPushError,
   InvalidPullError,
   MaterializeError,
-  SqliteError,
 ) {}
 
 /**

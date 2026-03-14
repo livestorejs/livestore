@@ -18,7 +18,6 @@ import {
   type MakeSqliteDb,
   type MaterializerHashMismatchError,
   type SqliteDb,
-  type SqliteError,
   UnknownError,
 } from '../adapter-types.ts'
 import type { MigrationsReport } from '../defs.ts'
@@ -363,7 +362,7 @@ const bootLeaderThread = ({
   devtoolsOptions: DevtoolsOptions
 }): Effect.Effect<
   LeaderThreadCtx['Type']['initialState'],
-  UnknownError | SqliteError | InvalidPullError | MaterializerHashMismatchError,
+  UnknownError | InvalidPullError | MaterializerHashMismatchError,
   LeaderThreadCtx | Scope.Scope | HttpClient.HttpClient
 > =>
   Effect.gen(function* () {
