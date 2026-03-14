@@ -410,7 +410,7 @@ export const makeLeaderSyncProcessor = ({
           // Retry pulling when we've lost connection to the sync backend
           // We're using `until` with a refinement instead of `while` to narrow `IsOfflineError` out of the error type.
           // See https://github.com/Effect-TS/effect/issues/6122
-          until: (cause): cause is Exclude<typeof cause, IsOfflineError> => cause._tag !== 'IsOfflineError',
+          until: (error): error is Exclude<typeof error, IsOfflineError> => error._tag !== 'IsOfflineError',
         }),
         Effect.catchAllCause(maybeShutdownOnError),
         // Needed to avoid `Fiber terminated with an unhandled error` logs which seem to happen because of the `Effect.retry` above.
