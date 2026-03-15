@@ -1,6 +1,7 @@
-import { queryDb } from '@livestore/livestore'
 import { useCallback } from 'react'
 import { NavLink } from 'react-router-dom'
+
+import { queryDb } from '@livestore/livestore'
 
 import { uiState$ } from '../livestore/queries.ts'
 import { events, tables } from '../livestore/schema.ts'

@@ -1,39 +1,52 @@
-import { catalog, livestorePackageDefaults, packageJson } from '../../../genie/repo.ts'
+import {
+  catalog,
+  livestorePackageDefaults,
+  packageJson,
+  workspaceMember,
+  getUtilsPeerDeps,
+} from '../../../genie/repo.ts'
+import commonPkg from '../common/package.json.genie.ts'
+import devtoolsWebCommonPkg from '../devtools-web-common/package.json.genie.ts'
+import sqliteWasmPkg from '../sqlite-wasm/package.json.genie.ts'
 import utilsPkg from '../utils/package.json.genie.ts'
+import webmeshPkg from '../webmesh/package.json.genie.ts'
 
-export default packageJson({
-  name: '@livestore/adapter-web',
-  ...livestorePackageDefaults,
-  exports: {
-    '.': './src/index.ts',
-    './worker': './src/web-worker/leader-worker/make-leader-worker.ts',
-    './worker-vite-dev-polyfill': './src/web-worker/vite-dev-polyfill.ts',
-    './shared-worker': './src/web-worker/shared-worker/make-shared-worker.ts',
-  },
+const runtimeDeps = catalog.compose({
+  workspace: workspaceMember('packages/@livestore/adapter-web'),
   dependencies: {
-    ...catalog.pick(
-      '@livestore/common',
-      '@livestore/devtools-web-common',
-      '@livestore/sqlite-wasm',
-      '@livestore/utils',
-      '@livestore/webmesh',
-      '@opentelemetry/api',
-    ),
+    workspace: [commonPkg, devtoolsWebCommonPkg, sqliteWasmPkg, utilsPkg, webmeshPkg],
+    external: catalog.pick('@opentelemetry/api'),
   },
   devDependencies: {
-    ...catalog.pick('@types/chrome', '@types/wicg-file-system-access', 'vitest'),
+    external: catalog.pick('@types/chrome', '@types/wicg-file-system-access', 'vitest'),
   },
-  peerDependencies: utilsPkg.data.peerDependencies,
-  publishConfig: {
-    access: 'public',
-    exports: {
-      '.': './dist/index.js',
-      './worker': './dist/web-worker/leader-worker/make-leader-worker.js',
-      './worker-vite-dev-polyfill': './dist/web-worker/vite-dev-polyfill.js',
-      './shared-worker': './dist/web-worker/shared-worker/make-shared-worker.js',
-    },
-  },
-  scripts: {
-    test: 'echo No tests yet',
+  peerDependencies: {
+    external: getUtilsPeerDeps(),
   },
 })
+
+export default packageJson(
+  {
+    name: '@livestore/adapter-web',
+    ...livestorePackageDefaults,
+    exports: {
+      '.': './src/index.ts',
+      './worker': './src/web-worker/leader-worker/make-leader-worker.ts',
+      './worker-vite-dev-polyfill': './src/web-worker/vite-dev-polyfill.ts',
+      './shared-worker': './src/web-worker/shared-worker/make-shared-worker.ts',
+    },
+    publishConfig: {
+      access: 'public',
+      exports: {
+        '.': './dist/index.js',
+        './worker': './dist/web-worker/leader-worker/make-leader-worker.js',
+        './worker-vite-dev-polyfill': './dist/web-worker/vite-dev-polyfill.js',
+        './shared-worker': './dist/web-worker/shared-worker/make-shared-worker.js',
+      },
+    },
+    scripts: {
+      test: 'echo No tests yet',
+    },
+  },
+  runtimeDeps,
+)

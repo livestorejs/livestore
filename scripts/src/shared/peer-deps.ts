@@ -80,11 +80,14 @@ export const checkPeerDependencies = Effect.gen(function* () {
   const workspaceRoot = yield* LivestoreWorkspace
   const lockfilePath = path.join(workspaceRoot, 'pnpm-lock.yaml')
 
-  // Per-package workspaces don't have a root lockfile — skip check gracefully
   const exists = yield* fs.exists(lockfilePath)
   if (exists === false) {
-    yield* Console.warn('Skipping peer dep check: no root pnpm-lock.yaml (per-package workspaces)')
-    return [] as PeerDepViolation[]
+    return yield* Effect.fail(
+      new PeerDepCheckError({
+        message:
+          'Missing repo-root pnpm-lock.yaml. Run pnpm install from the repo root to refresh the authoritative lockfile.',
+      }),
+    )
   }
 
   // Read and parse the lockfile

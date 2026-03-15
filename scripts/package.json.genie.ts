@@ -1,34 +1,48 @@
-import { catalog, effectDevDeps, localPackageDefaults, packageJson } from '../genie/repo.ts'
+import docsPkg from '../docs/package.json.genie.ts'
+import { catalog, effectDevDeps, localPackageDefaults, packageJson, workspaceMember } from '../genie/repo.ts'
+import commonPkg from '../packages/@livestore/common/package.json.genie.ts'
+import utilsDevPkg from '../packages/@livestore/utils-dev/package.json.genie.ts'
+import utilsPkg from '../packages/@livestore/utils/package.json.genie.ts'
+import astroTldrawPkg from '../packages/@local/astro-tldraw/package.json.genie.ts'
+import astroTwoslashCodePkg from '../packages/@local/astro-twoslash-code/package.json.genie.ts'
+import testsIntegrationPkg from '../tests/integration/package.json.genie.ts'
+import testsSyncProviderPkg from '../tests/sync-provider/package.json.genie.ts'
 
-export default packageJson({
-  name: '@local/scripts',
-  ...localPackageDefaults,
-  exports: {
-    './release': './src/commands/release.ts',
-    './docs-export': './src/commands/docs-export.ts',
-    './lint': './src/commands/lint.ts',
-  },
+const composition = catalog.compose({
+  workspace: workspaceMember('scripts', {
+    extraMemberPaths: ['docs/src/content/_assets/code'],
+  }),
   devDependencies: {
-    // Effect packages - needed to avoid TS2742 errors when types are inferred from
-    // workspace dependencies. Scripts must have its own Effect deps, not borrowed from docs.
-    ...effectDevDeps(),
-    ...catalog.pick(
-      '@livestore/common',
-      '@livestore/utils',
-      '@livestore/utils-dev',
-      '@local/astro-tldraw',
-      '@local/astro-twoslash-code',
-      '@local/docs',
-      '@local/tests-integration',
-      '@local/tests-sync-provider',
-      '@types/node',
-      // vitest needed on PATH for test:unit and test:integration commands
-      'vitest',
-    ),
-    '@types/bun': '1.3.5',
-    '@types/semver': '^7.7.0',
-    madge: '^8.0.0',
-    semver: '^7.7.3',
-    yaml: '2.8.1',
+    workspace: [
+      commonPkg,
+      utilsPkg,
+      utilsDevPkg,
+      astroTldrawPkg,
+      astroTwoslashCodePkg,
+      docsPkg,
+      testsIntegrationPkg,
+      testsSyncProviderPkg,
+    ],
+    external: {
+      ...effectDevDeps('@types/node', 'vitest'),
+      '@types/bun': '1.3.5',
+      '@types/semver': '^7.7.0',
+      madge: '^8.0.0',
+      semver: '^7.7.3',
+      yaml: '2.8.1',
+    },
   },
 })
+
+export default packageJson(
+  {
+    name: '@local/scripts',
+    ...localPackageDefaults,
+    exports: {
+      './release': './src/commands/release.ts',
+      './docs-export': './src/commands/docs-export.ts',
+      './lint': './src/commands/lint.ts',
+    },
+  },
+  composition,
+)

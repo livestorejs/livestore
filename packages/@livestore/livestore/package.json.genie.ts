@@ -1,40 +1,54 @@
-import { catalog, livestorePackageDefaults, packageJson } from '../../../genie/repo.ts'
+import {
+  catalog,
+  livestorePackageDefaults,
+  packageJson,
+  workspaceMember,
+  getUtilsPeerDeps,
+} from '../../../genie/repo.ts'
+import adapterWebPkg from '../adapter-web/package.json.genie.ts'
+import commonPkg from '../common/package.json.genie.ts'
+import utilsDevPkg from '../utils-dev/package.json.genie.ts'
 import utilsPkg from '../utils/package.json.genie.ts'
 
-export default packageJson({
-  name: '@livestore/livestore',
-  ...livestorePackageDefaults,
-  exports: {
-    '.': './src/mod.ts',
-    './internal': './src/internal/mod.ts',
-    './internal/testing-utils': './src/utils/tests/mod.ts',
-    './effect': './src/effect/mod.ts',
+const runtimeDeps = catalog.compose({
+  workspace: workspaceMember('packages/@livestore/livestore'),
+  dependencies: {
+    workspace: [commonPkg, utilsPkg],
+    external: catalog.pick('@opentelemetry/api'),
   },
-  dependencies: { ...catalog.pick('@livestore/common', '@livestore/utils', '@opentelemetry/api') },
-  peerDependencies: utilsPkg.data.peerDependencies,
   devDependencies: {
-    ...catalog.pick(
-      '@livestore/adapter-web',
-      '@livestore/utils-dev',
-      '@opentelemetry/sdk-trace-base',
-      'jsdom',
-      'typescript',
-      'vite',
-      'vitest',
-    ),
+    workspace: [adapterWebPkg, utilsDevPkg],
+    external: catalog.pick('@opentelemetry/sdk-trace-base', 'jsdom', 'typescript', 'vite', 'vitest'),
   },
-  files: [...livestorePackageDefaults.files, 'docs'],
-  publishConfig: {
-    access: 'public',
-    exports: {
-      '.': './dist/mod.js',
-      './internal': './dist/internal/mod.js',
-      './internal/testing-utils': './dist/utils/tests/mod.js',
-      './effect': './dist/effect/mod.js',
-    },
-  },
-  scripts: {
-    build: 'tsc',
-    test: 'vitest',
+  peerDependencies: {
+    external: getUtilsPeerDeps(),
   },
 })
+
+export default packageJson(
+  {
+    name: '@livestore/livestore',
+    ...livestorePackageDefaults,
+    exports: {
+      '.': './src/mod.ts',
+      './internal': './src/internal/mod.ts',
+      './internal/testing-utils': './src/utils/tests/mod.ts',
+      './effect': './src/effect/mod.ts',
+    },
+    files: [...livestorePackageDefaults.files, 'docs'],
+    publishConfig: {
+      access: 'public',
+      exports: {
+        '.': './dist/mod.js',
+        './internal': './dist/internal/mod.js',
+        './internal/testing-utils': './dist/utils/tests/mod.js',
+        './effect': './dist/effect/mod.js',
+      },
+    },
+    scripts: {
+      build: 'tsc',
+      test: 'vitest',
+    },
+  },
+  runtimeDeps,
+)

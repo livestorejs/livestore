@@ -1,0 +1,69 @@
+# Generated file - DO NOT EDIT
+# Source: pnpm-workspace.yaml.genie.ts
+
+packages:
+  - docs
+  - docs/src/content/_assets/code
+  - examples/*
+  - packages/@livestore/adapter-cloudflare
+  - packages/@livestore/adapter-expo
+  - packages/@livestore/adapter-node
+  - packages/@livestore/adapter-web
+  - packages/@livestore/cli
+  - packages/@livestore/common
+  - packages/@livestore/common-cf
+  - packages/@livestore/devtools-expo
+  - packages/@livestore/devtools-web-common
+  - packages/@livestore/effect-playwright
+  - packages/@livestore/framework-toolkit
+  - packages/@livestore/graphql
+  - packages/@livestore/livestore
+  - packages/@livestore/peer-deps
+  - packages/@livestore/react
+  - packages/@livestore/solid
+  - packages/@livestore/sqlite-wasm
+  - packages/@livestore/svelte
+  - packages/@livestore/sync-cf
+  - packages/@livestore/sync-electric
+  - packages/@livestore/sync-s2
+  - packages/@livestore/utils
+  - packages/@livestore/utils-dev
+  - packages/@livestore/wa-sqlite
+  - packages/@livestore/webmesh
+  - packages/@local/astro-tldraw
+  - packages/@local/astro-twoslash-code
+  - packages/@local/astro-twoslash-code/example
+  - packages/@local/shared
+  - scripts
+  - tests/integration
+  - tests/package-common
+  - tests/perf
+  - tests/perf-eventlog
+  - tests/sync-provider
+  - tests/wa-sqlite
+
+overrides:
+  '@tanstack/router-core': 1.139.14
+  '@tanstack/history': 1.139.0
+  '@tanstack/react-router': 1.139.14
+  '@tanstack/react-start': 1.139.14
+  '@tanstack/router-devtools': 1.139.14
+  '@tanstack/router-devtools-core': 1.139.14
+  '@tanstack/react-router-devtools': 1.139.14
+  '@tanstack/router-plugin': 1.139.14
+  '@tanstack/start-plugin-core': 1.139.14
+  '@tanstack/start-server-core': 1.139.14
+  '@tanstack/start-client-core': 1.139.14
+
+settings:
+  nodeLinker: hoisted
+
+supportedArchitectures:
+  os: [linux, darwin]
+  cpu: [x64, arm64]
+
+dedupePeerDependents: true
+
+strictPeerDependencies: true
+
+linkWorkspacePackages: true

@@ -88,7 +88,6 @@ export const deployToNetlify = ({
       return yield* new NetlifyError({ message: 'Not logged in to Netlify', reason: 'auth' })
     }
 
-    // TODO replace pnpm dlx with bunx again once fixed (https://share.cleanshot.com/CKSg1dX9)
     const debugEnabled =
       debug === true || process.env.NETLIFY_CLI_DEBUG === '1' || process.env.NETLIFY_CLI_DEBUG === 'true'
 
@@ -100,18 +99,16 @@ export const deployToNetlify = ({
 
     yield* Effect.logDebug(`[deploy-to-netlify] Using site argument: ${resolvedSiteArg}`)
 
-    const deployCmd = 'pnpm'
+    // Netlify CLI resolves publish from the git root, not the process CWD.
+    // Use --dir with absolute path to bypass config-relative path resolution.
+    const deployCmd = 'bunx'
     const deployRest = [
-      '--package=netlify-cli',
-      'dlx',
-      'netlify',
+      'netlify-cli',
       'deploy',
       // In debug mode, omit --json so we get full build logs in stdout/stderr
       debugEnabled === true ? undefined : '--json',
       debugEnabled === true ? '--debug' : undefined,
-      '--filter',
-      '@local/docs',
-      // Split flow default: do not run Netlify build; rely on netlify.toml publish
+      `--dir=${join(cwd, 'dist')}`,
       '--no-build',
       `--site=${resolvedSiteArg}`,
       message !== undefined ? `--message=${message}` : undefined,

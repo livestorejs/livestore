@@ -1,10 +1,9 @@
-import { catalog, livestorePackageDefaults, packageJson } from '../../../genie/repo.ts'
+import { catalog, livestorePackageDefaults, packageJson, workspaceMember } from '../../../genie/repo.ts'
 
-export default packageJson({
-  name: '@livestore/peer-deps',
-  ...livestorePackageDefaults,
+const runtimeDeps = catalog.compose({
+  workspace: workspaceMember('packages/@livestore/peer-deps'),
   dependencies: {
-    ...catalog.pick(
+    external: catalog.pick(
       '@effect/ai',
       '@effect/cli',
       '@effect/cluster',
@@ -25,13 +24,21 @@ export default packageJson({
       'effect',
     ),
   },
-  description:
-    'This is a convenience package that can be installed to satisfy peer dependencies of Livestore packages.',
-  files: ['package.json'],
-  publishConfig: {
-    access: 'public',
-  },
-  scripts: {
-    test: "echo 'No tests for peer-deps'",
-  },
 })
+
+export default packageJson(
+  {
+    name: '@livestore/peer-deps',
+    ...livestorePackageDefaults,
+    description:
+      'This is a convenience package that can be installed to satisfy peer dependencies of Livestore packages.',
+    files: ['package.json'],
+    publishConfig: {
+      access: 'public',
+    },
+    scripts: {
+      test: "echo 'No tests for peer-deps'",
+    },
+  },
+  runtimeDeps,
+)

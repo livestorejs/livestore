@@ -1,21 +1,32 @@
-import { catalog, effectDevDeps, localPackageDefaults, packageJson } from '../../../genie/repo.ts'
+import { catalog, effectDevDeps, localPackageDefaults, packageJson, workspaceMember } from '../../../genie/repo.ts'
+import utilsPkg from '../../@livestore/utils/package.json.genie.ts'
 
-export default packageJson({
-  name: '@local/astro-tldraw',
-  exports: {
-    '.': './src/mod.ts',
-    './integration': './src/integration.ts',
-    './vite': './src/vite-plugin.ts',
-    './components/TldrawDiagram.astro': './src/components/TldrawDiagram.astro',
-  },
+const runtimeDeps = catalog.compose({
+  workspace: workspaceMember('packages/@local/astro-tldraw'),
   dependencies: {
-    ...catalog.pick('@kitschpatrol/tldraw-cli', '@livestore/utils'),
+    workspace: [utilsPkg],
+    external: catalog.pick('@kitschpatrol/tldraw-cli'),
   },
   devDependencies: {
-    ...effectDevDeps('@effect/vitest', '@types/node', 'astro', 'vitest'),
+    external: effectDevDeps('@effect/vitest', '@types/node', 'astro', 'vitest'),
   },
-  ...localPackageDefaults,
   peerDependencies: {
-    astro: '^5.0.0',
+    external: {
+      astro: '^5.0.0',
+    },
   },
 })
+
+export default packageJson(
+  {
+    name: '@local/astro-tldraw',
+    exports: {
+      '.': './src/mod.ts',
+      './integration': './src/integration.ts',
+      './vite': './src/vite-plugin.ts',
+      './components/TldrawDiagram.astro': './src/components/TldrawDiagram.astro',
+    },
+    ...localPackageDefaults,
+  },
+  runtimeDeps,
+)

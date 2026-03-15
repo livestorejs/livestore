@@ -1,33 +1,47 @@
-import { catalog, livestorePackageDefaults, packageJson } from '../../../genie/repo.ts'
+import {
+  catalog,
+  livestorePackageDefaults,
+  packageJson,
+  workspaceMember,
+  getUtilsPeerDeps,
+} from '../../../genie/repo.ts'
+import commonPkg from '../common/package.json.genie.ts'
+import livestorePkg from '../livestore/package.json.genie.ts'
 import utilsPkg from '../utils/package.json.genie.ts'
 
-export default packageJson({
-  name: '@livestore/graphql',
-  ...livestorePackageDefaults,
-  exports: {
-    '.': './src/index.ts',
-  },
+const runtimeDeps = catalog.compose({
+  workspace: workspaceMember('packages/@livestore/graphql'),
   dependencies: {
-    ...catalog.pick(
-      '@graphql-typed-document-node/core',
-      '@livestore/common',
-      '@livestore/livestore',
-      '@livestore/utils',
-      '@opentelemetry/api',
-    ),
+    workspace: [commonPkg, livestorePkg, utilsPkg],
+    external: catalog.pick('@graphql-typed-document-node/core', '@opentelemetry/api'),
   },
-  devDependencies: { ...catalog.pick('graphql') },
+  devDependencies: {
+    external: catalog.pick('graphql'),
+  },
   peerDependencies: {
-    ...utilsPkg.data.peerDependencies,
-    graphql: '^16.11.0',
-  },
-  publishConfig: {
-    access: 'public',
-    exports: {
-      '.': './dist/index.js',
+    external: {
+      ...getUtilsPeerDeps(),
+      graphql: '^16.11.0',
     },
   },
-  scripts: {
-    test: "echo 'No tests'",
-  },
 })
+
+export default packageJson(
+  {
+    name: '@livestore/graphql',
+    ...livestorePackageDefaults,
+    exports: {
+      '.': './src/index.ts',
+    },
+    publishConfig: {
+      access: 'public',
+      exports: {
+        '.': './dist/index.js',
+      },
+    },
+    scripts: {
+      test: "echo 'No tests'",
+    },
+  },
+  runtimeDeps,
+)

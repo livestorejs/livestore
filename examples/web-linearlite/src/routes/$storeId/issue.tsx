@@ -1,5 +1,6 @@
-import { shouldNeverHappen } from '@livestore/utils'
 import { createFileRoute } from '@tanstack/react-router'
+
+import { shouldNeverHappen } from '@livestore/utils'
 
 import { Issue } from '../../components/layout/issue/index.tsx'
 

@@ -1,6 +1,7 @@
-import { queryDb } from '@livestore/livestore'
 import { useCallback } from 'react'
 import { FlatList } from 'react-native'
+
+import { queryDb } from '@livestore/livestore'
 
 import { uiState$ } from '../livestore/queries.ts'
 import { tables } from '../livestore/schema.ts'

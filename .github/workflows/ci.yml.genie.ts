@@ -405,7 +405,7 @@ done`,
           // to simulate a simple, user-facing setup.
           name: 'Setup pnpm',
           uses: 'pnpm/action-setup@v4',
-          with: { version: 'latest', standalone: true },
+          with: { standalone: true },
         },
         {
           /** Only include @livestore/* deps that exist in this workspace (excludes externally-published packages like devtools-vite) */

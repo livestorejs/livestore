@@ -1,21 +1,21 @@
-import { catalog, livestorePackageDefaults, packageJson, utilsEffectPeerDeps } from '../../../genie/repo.ts'
+import {
+  catalog,
+  livestorePackageDefaults,
+  packageJson,
+  utilsEffectPeerDeps,
+  workspaceMember,
+  getUtilsPeerDeps,
+} from '../../../genie/repo.ts'
 import utilsPkg from '../utils/package.json.genie.ts'
 
-export default packageJson({
-  name: '@livestore/utils-dev',
-  ...livestorePackageDefaults,
-  sideEffects: ['./src/node-vitest/global.ts', './dist/node-vitest/global.js'],
-  exports: {
-    './node': './src/node/mod.ts',
-    './node-vitest': './src/node-vitest/mod.ts',
-    './wrangler': './src/wrangler/mod.ts',
-  },
+const runtimeDeps = catalog.compose({
+  workspace: workspaceMember('packages/@livestore/utils-dev'),
   dependencies: {
-    ...catalog.pick(
+    workspace: [utilsPkg],
+    external: catalog.pick(
       '@effect/opentelemetry',
       '@effect/vitest',
       '@iarna/toml',
-      '@livestore/utils',
       '@opentelemetry/api',
       '@opentelemetry/exporter-metrics-otlp-http',
       '@opentelemetry/exporter-trace-otlp-http',
@@ -26,20 +26,35 @@ export default packageJson({
     ),
   },
   devDependencies: {
-    // Include all peer deps from utils for local development + vitest for tests
-    ...catalog.pick(...utilsEffectPeerDeps, 'vitest'),
+    external: catalog.pick(...utilsEffectPeerDeps, 'vitest'),
   },
   // Re-expose utils' peer dependencies for consumers
-  peerDependencies: utilsPkg.data.peerDependencies,
-  publishConfig: {
-    access: 'public',
-    exports: {
-      './node': './dist/node/mod.js',
-      './node-vitest': './dist/node-vitest/mod.js',
-      './wrangler': './dist/wrangler/mod.js',
-    },
-  },
-  scripts: {
-    test: "echo 'No tests for utils-dev'",
+  peerDependencies: {
+    external: getUtilsPeerDeps(),
   },
 })
+
+export default packageJson(
+  {
+    name: '@livestore/utils-dev',
+    ...livestorePackageDefaults,
+    sideEffects: ['./src/node-vitest/global.ts', './dist/node-vitest/global.js'],
+    exports: {
+      './node': './src/node/mod.ts',
+      './node-vitest': './src/node-vitest/mod.ts',
+      './wrangler': './src/wrangler/mod.ts',
+    },
+    publishConfig: {
+      access: 'public',
+      exports: {
+        './node': './dist/node/mod.js',
+        './node-vitest': './dist/node-vitest/mod.js',
+        './wrangler': './dist/wrangler/mod.js',
+      },
+    },
+    scripts: {
+      test: "echo 'No tests for utils-dev'",
+    },
+  },
+  runtimeDeps,
+)

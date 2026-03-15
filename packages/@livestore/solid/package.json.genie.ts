@@ -1,49 +1,64 @@
-import { catalog, livestorePackageDefaults, packageJson } from '../../../genie/repo.ts'
+import {
+  catalog,
+  livestorePackageDefaults,
+  packageJson,
+  workspaceMember,
+  getUtilsPeerDeps,
+} from '../../../genie/repo.ts'
+import adapterWebPkg from '../adapter-web/package.json.genie.ts'
+import commonPkg from '../common/package.json.genie.ts'
+import frameworkToolkitPkg from '../framework-toolkit/package.json.genie.ts'
+import livestorePkg from '../livestore/package.json.genie.ts'
+import utilsDevPkg from '../utils-dev/package.json.genie.ts'
 import utilsPkg from '../utils/package.json.genie.ts'
 
-export default packageJson({
-  name: '@livestore/solid',
-  ...livestorePackageDefaults,
-  exports: {
-    '.': './src/mod.ts',
-  },
+const runtimeDeps = catalog.compose({
+  workspace: workspaceMember('packages/@livestore/solid'),
   dependencies: {
-    ...catalog.pick(
-      '@livestore/common',
-      '@livestore/framework-toolkit',
-      '@livestore/livestore',
-      '@livestore/utils',
-      '@opentelemetry/api',
-    ),
+    workspace: [commonPkg, frameworkToolkitPkg, livestorePkg, utilsPkg],
+    external: catalog.pick('@opentelemetry/api'),
   },
   devDependencies: {
-    ...catalog.pick(
-      '@livestore/adapter-web',
-      '@livestore/utils-dev',
-      '@opentelemetry/sdk-trace-base',
-      '@solidjs/testing-library',
-      'jsdom',
-      'solid-js',
-      'typescript',
-      'vite',
-      'vitest',
-    ),
-    // Required for vitest config (vite-plugin-solid) and test setup (@testing-library/jest-dom)
-    'vite-plugin-solid': '2.11.10',
-    ...catalog.pick('@testing-library/jest-dom'),
-  },
-  peerDependencies: {
-    ...utilsPkg.data.peerDependencies,
-    'solid-js': '^1.9.10',
-  },
-  publishConfig: {
-    access: 'public',
-    exports: {
-      '.': './dist/mod.js',
+    workspace: [adapterWebPkg, utilsDevPkg],
+    external: {
+      ...catalog.pick(
+        '@opentelemetry/sdk-trace-base',
+        '@solidjs/testing-library',
+        'jsdom',
+        'solid-js',
+        'typescript',
+        'vite',
+        'vitest',
+      ),
+      'vite-plugin-solid': '2.11.10',
+      ...catalog.pick('@testing-library/jest-dom'),
     },
   },
-  scripts: {
-    build: 'tsc',
-    test: "echo 'todo'",
+  peerDependencies: {
+    external: {
+      ...getUtilsPeerDeps(),
+      'solid-js': '^1.9.10',
+    },
   },
 })
+
+export default packageJson(
+  {
+    name: '@livestore/solid',
+    ...livestorePackageDefaults,
+    exports: {
+      '.': './src/mod.ts',
+    },
+    publishConfig: {
+      access: 'public',
+      exports: {
+        '.': './dist/mod.js',
+      },
+    },
+    scripts: {
+      build: 'tsc',
+      test: "echo 'todo'",
+    },
+  },
+  runtimeDeps,
+)
