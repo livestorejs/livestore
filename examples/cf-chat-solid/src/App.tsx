@@ -149,6 +149,7 @@ const UserNameWrapper = (props: { children: JSX.Element }) => {
     <Show
       when={uiState()?.userContext?.hasJoined}
       fallback={
+        // oxlint-disable-next-line react-perf/jsx-no-jsx-as-prop -- Solid doesn't re-render like React, so inline JSX props are fine
         <div class="min-h-screen bg-gray-900 flex items-center justify-center p-4 transition-colors">
           <div class="bg-gray-800 rounded-lg shadow-lg p-6 lg:p-8 w-full max-w-md lg:max-w-lg">
             <h1 class="text-2xl lg:text-3xl font-bold text-gray-100 mb-2 lg:mb-4">💬 LiveChat</h1>
