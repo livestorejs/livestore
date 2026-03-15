@@ -104,13 +104,7 @@ in
     # Shared task modules from effect-utils
     taskModules.genie
     (taskModules.megarepo { syncAll = !ci; })
-    (taskModules.ts {
-      tsconfigFile = "tsconfig.dev.json";
-      # TODO(oep-1n3.9): Switch back to patched tsc once Effect diagnostics backlog is addressed.
-      # TODO(oep-1n3.15): Prefer patched tsc + disable Effect diagnostics in tsc output (IDE-only).
-      # Using the Nix-provided tsc avoids build-time Effect LS diagnostics while keeping full tsc typechecking.
-      tscBin = "${pkgs.typescript}/bin/tsc";
-    })
+    (taskModules.ts { tsconfigFile = "tsconfig.dev.json"; })
     (taskModules.check {
       hasTests = false;
       hasNixCheck = false;
