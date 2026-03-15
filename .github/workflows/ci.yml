@@ -56,7 +56,7 @@ jobs:
           fi
           mkdir -p "$MEGAREPO_STORE"
           echo "Using job-local megarepo store: $MEGAREPO_STORE"
-          nix run "github:overengineeringstudio/effect-utils/$EU_REV#megarepo" -- lock apply --all
+          nix run "github:overengineeringstudio/effect-utils/$EU_REV#megarepo" -- apply --all
         shell: bash
       - name: Use pinned devenv from lock
         run: |
@@ -103,8 +103,8 @@ jobs:
 
           # Fast validity check on the devenv store path (~1-2s vs ~25s for devenv info).
           if ! nix-store --check-validity "$DEVENV_OUT" 2>/dev/null; then
-            echo "::warning::devenv store path invalid, repairing..."
-            nix-store --verify --check-contents --repair > "$DIAG_ROOT/nix-store-verify-repair.log" 2>&1 || true
+            echo "::warning::devenv store path invalid, repairing targeted path..."
+            nix-store --repair-path "$DEVENV_OUT" > "$DIAG_ROOT/nix-store-verify-repair.log" 2>&1 || true
             rm -rf ~/.cache/nix/eval-cache-*
             DEVENV_OUT=$(resolve_devenv 2>"$DIAG_ROOT/resolve-devenv-post-repair.log")
             DEVENV_BIN="$DEVENV_OUT/bin/devenv"
@@ -113,7 +113,7 @@ jobs:
           echo "DEVENV_BIN=$DEVENV_BIN" >> "$GITHUB_ENV"
           "$DEVENV_BIN" version | tee "$DIAG_ROOT/devenv-version.txt"
         shell: bash
-      - run: "if [ -n \"${NIX_CONFIG:-}\" ]; then NIX_CONFIG_WITH_APPEND=$(printf '%s\\n%s' \"$NIX_CONFIG\" 'restrict-eval = false'); else NIX_CONFIG_WITH_APPEND='restrict-eval = false'; fi; NIX_CONFIG=\"$NIX_CONFIG_WITH_APPEND\" \"${DEVENV_BIN:?DEVENV_BIN not set}\" tasks run lint:full:with-megarepo-check --mode before"
+      - run: "if [ -n \"${NIX_CONFIG:-}\" ]; then NIX_CONFIG_WITH_APPEND=$(printf '%s\\n%s' \"$NIX_CONFIG\" 'restrict-eval = false'); else NIX_CONFIG_WITH_APPEND='restrict-eval = false'; fi; NIX_CONFIG=\"$NIX_CONFIG_WITH_APPEND\" DT_PASSTHROUGH=1 \"${DEVENV_BIN:?DEVENV_BIN not set}\" tasks run lint:full:with-megarepo-check --mode before"
       - name: Upload Nix diagnostics artifact
         if: failure() && env.NIX_STORE_DIAGNOSTICS_DIR != ''
         uses: actions/upload-artifact@v4
@@ -157,7 +157,7 @@ jobs:
           fi
           mkdir -p "$MEGAREPO_STORE"
           echo "Using job-local megarepo store: $MEGAREPO_STORE"
-          nix run "github:overengineeringstudio/effect-utils/$EU_REV#megarepo" -- lock apply --all
+          nix run "github:overengineeringstudio/effect-utils/$EU_REV#megarepo" -- apply --all
         shell: bash
       - name: Use pinned devenv from lock
         run: |
@@ -204,8 +204,8 @@ jobs:
 
           # Fast validity check on the devenv store path (~1-2s vs ~25s for devenv info).
           if ! nix-store --check-validity "$DEVENV_OUT" 2>/dev/null; then
-            echo "::warning::devenv store path invalid, repairing..."
-            nix-store --verify --check-contents --repair > "$DIAG_ROOT/nix-store-verify-repair.log" 2>&1 || true
+            echo "::warning::devenv store path invalid, repairing targeted path..."
+            nix-store --repair-path "$DEVENV_OUT" > "$DIAG_ROOT/nix-store-verify-repair.log" 2>&1 || true
             rm -rf ~/.cache/nix/eval-cache-*
             DEVENV_OUT=$(resolve_devenv 2>"$DIAG_ROOT/resolve-devenv-post-repair.log")
             DEVENV_BIN="$DEVENV_OUT/bin/devenv"
@@ -214,7 +214,7 @@ jobs:
           echo "DEVENV_BIN=$DEVENV_BIN" >> "$GITHUB_ENV"
           "$DEVENV_BIN" version | tee "$DIAG_ROOT/devenv-version.txt"
         shell: bash
-      - run: "if [ -n \"${NIX_CONFIG:-}\" ]; then NIX_CONFIG_WITH_APPEND=$(printf '%s\\n%s' \"$NIX_CONFIG\" 'restrict-eval = false'); else NIX_CONFIG_WITH_APPEND='restrict-eval = false'; fi; NIX_CONFIG=\"$NIX_CONFIG_WITH_APPEND\" \"${DEVENV_BIN:?DEVENV_BIN not set}\" tasks run ts:build --mode before"
+      - run: "if [ -n \"${NIX_CONFIG:-}\" ]; then NIX_CONFIG_WITH_APPEND=$(printf '%s\\n%s' \"$NIX_CONFIG\" 'restrict-eval = false'); else NIX_CONFIG_WITH_APPEND='restrict-eval = false'; fi; NIX_CONFIG=\"$NIX_CONFIG_WITH_APPEND\" DT_PASSTHROUGH=1 \"${DEVENV_BIN:?DEVENV_BIN not set}\" tasks run ts:build --mode before"
       - name: Upload Nix diagnostics artifact
         if: failure() && env.NIX_STORE_DIAGNOSTICS_DIR != ''
         uses: actions/upload-artifact@v4
@@ -258,7 +258,7 @@ jobs:
           fi
           mkdir -p "$MEGAREPO_STORE"
           echo "Using job-local megarepo store: $MEGAREPO_STORE"
-          nix run "github:overengineeringstudio/effect-utils/$EU_REV#megarepo" -- lock apply --all
+          nix run "github:overengineeringstudio/effect-utils/$EU_REV#megarepo" -- apply --all
         shell: bash
       - name: Use pinned devenv from lock
         run: |
@@ -305,8 +305,8 @@ jobs:
 
           # Fast validity check on the devenv store path (~1-2s vs ~25s for devenv info).
           if ! nix-store --check-validity "$DEVENV_OUT" 2>/dev/null; then
-            echo "::warning::devenv store path invalid, repairing..."
-            nix-store --verify --check-contents --repair > "$DIAG_ROOT/nix-store-verify-repair.log" 2>&1 || true
+            echo "::warning::devenv store path invalid, repairing targeted path..."
+            nix-store --repair-path "$DEVENV_OUT" > "$DIAG_ROOT/nix-store-verify-repair.log" 2>&1 || true
             rm -rf ~/.cache/nix/eval-cache-*
             DEVENV_OUT=$(resolve_devenv 2>"$DIAG_ROOT/resolve-devenv-post-repair.log")
             DEVENV_BIN="$DEVENV_OUT/bin/devenv"
@@ -315,7 +315,7 @@ jobs:
           echo "DEVENV_BIN=$DEVENV_BIN" >> "$GITHUB_ENV"
           "$DEVENV_BIN" version | tee "$DIAG_ROOT/devenv-version.txt"
         shell: bash
-      - run: "if [ -n \"${NIX_CONFIG:-}\" ]; then NIX_CONFIG_WITH_APPEND=$(printf '%s\\n%s' \"$NIX_CONFIG\" 'restrict-eval = false'); else NIX_CONFIG_WITH_APPEND='restrict-eval = false'; fi; NIX_CONFIG=\"$NIX_CONFIG_WITH_APPEND\" \"${DEVENV_BIN:?DEVENV_BIN not set}\" tasks run test:unit --mode before"
+      - run: "if [ -n \"${NIX_CONFIG:-}\" ]; then NIX_CONFIG_WITH_APPEND=$(printf '%s\\n%s' \"$NIX_CONFIG\" 'restrict-eval = false'); else NIX_CONFIG_WITH_APPEND='restrict-eval = false'; fi; NIX_CONFIG=\"$NIX_CONFIG_WITH_APPEND\" DT_PASSTHROUGH=1 \"${DEVENV_BIN:?DEVENV_BIN not set}\" tasks run test:unit --mode before"
       - name: Upload Nix diagnostics artifact
         if: failure() && env.NIX_STORE_DIAGNOSTICS_DIR != ''
         uses: actions/upload-artifact@v4
@@ -359,7 +359,7 @@ jobs:
           fi
           mkdir -p "$MEGAREPO_STORE"
           echo "Using job-local megarepo store: $MEGAREPO_STORE"
-          nix run "github:overengineeringstudio/effect-utils/$EU_REV#megarepo" -- lock apply --all
+          nix run "github:overengineeringstudio/effect-utils/$EU_REV#megarepo" -- apply --all
         shell: bash
       - name: Use pinned devenv from lock
         run: |
@@ -406,8 +406,8 @@ jobs:
 
           # Fast validity check on the devenv store path (~1-2s vs ~25s for devenv info).
           if ! nix-store --check-validity "$DEVENV_OUT" 2>/dev/null; then
-            echo "::warning::devenv store path invalid, repairing..."
-            nix-store --verify --check-contents --repair > "$DIAG_ROOT/nix-store-verify-repair.log" 2>&1 || true
+            echo "::warning::devenv store path invalid, repairing targeted path..."
+            nix-store --repair-path "$DEVENV_OUT" > "$DIAG_ROOT/nix-store-verify-repair.log" 2>&1 || true
             rm -rf ~/.cache/nix/eval-cache-*
             DEVENV_OUT=$(resolve_devenv 2>"$DIAG_ROOT/resolve-devenv-post-repair.log")
             DEVENV_BIN="$DEVENV_OUT/bin/devenv"
@@ -427,7 +427,7 @@ jobs:
           # Disable in Vite (otherwise CORS issues)
           echo "VITE_OTEL_EXPORTER_OTLP_ENDPOINT=" >> $GITHUB_ENV
       - name: Run node-sync integration tests
-        run: "if [ -n \"${NIX_CONFIG:-}\" ]; then NIX_CONFIG_WITH_APPEND=$(printf '%s\\n%s' \"$NIX_CONFIG\" 'restrict-eval = false'); else NIX_CONFIG_WITH_APPEND='restrict-eval = false'; fi; NIX_CONFIG=\"$NIX_CONFIG_WITH_APPEND\" \"${DEVENV_BIN:?DEVENV_BIN not set}\" tasks run test:integration:node-sync:allow-flaky --mode before"
+        run: "if [ -n \"${NIX_CONFIG:-}\" ]; then NIX_CONFIG_WITH_APPEND=$(printf '%s\\n%s' \"$NIX_CONFIG\" 'restrict-eval = false'); else NIX_CONFIG_WITH_APPEND='restrict-eval = false'; fi; NIX_CONFIG=\"$NIX_CONFIG_WITH_APPEND\" DT_PASSTHROUGH=1 \"${DEVENV_BIN:?DEVENV_BIN not set}\" tasks run test:integration:node-sync:allow-flaky --mode before"
       - name: Display node-sync logs
         if: always()
         run: |
@@ -505,7 +505,7 @@ jobs:
           fi
           mkdir -p "$MEGAREPO_STORE"
           echo "Using job-local megarepo store: $MEGAREPO_STORE"
-          nix run "github:overengineeringstudio/effect-utils/$EU_REV#megarepo" -- lock apply --all
+          nix run "github:overengineeringstudio/effect-utils/$EU_REV#megarepo" -- apply --all
         shell: bash
       - name: Use pinned devenv from lock
         run: |
@@ -552,8 +552,8 @@ jobs:
 
           # Fast validity check on the devenv store path (~1-2s vs ~25s for devenv info).
           if ! nix-store --check-validity "$DEVENV_OUT" 2>/dev/null; then
-            echo "::warning::devenv store path invalid, repairing..."
-            nix-store --verify --check-contents --repair > "$DIAG_ROOT/nix-store-verify-repair.log" 2>&1 || true
+            echo "::warning::devenv store path invalid, repairing targeted path..."
+            nix-store --repair-path "$DEVENV_OUT" > "$DIAG_ROOT/nix-store-verify-repair.log" 2>&1 || true
             rm -rf ~/.cache/nix/eval-cache-*
             DEVENV_OUT=$(resolve_devenv 2>"$DIAG_ROOT/resolve-devenv-post-repair.log")
             DEVENV_BIN="$DEVENV_OUT/bin/devenv"
@@ -587,7 +587,7 @@ jobs:
           done
         shell: bash
       - name: 'Run sync-provider tests for ${{ matrix.provider }}'
-        run: "if [ -n \"${NIX_CONFIG:-}\" ]; then NIX_CONFIG_WITH_APPEND=$(printf '%s\\n%s' \"$NIX_CONFIG\" 'restrict-eval = false'); else NIX_CONFIG_WITH_APPEND='restrict-eval = false'; fi; NIX_CONFIG=\"$NIX_CONFIG_WITH_APPEND\" \"${DEVENV_BIN:?DEVENV_BIN not set}\" tasks run test:integration:sync-provider:matrix --mode before"
+        run: "if [ -n \"${NIX_CONFIG:-}\" ]; then NIX_CONFIG_WITH_APPEND=$(printf '%s\\n%s' \"$NIX_CONFIG\" 'restrict-eval = false'); else NIX_CONFIG_WITH_APPEND='restrict-eval = false'; fi; NIX_CONFIG=\"$NIX_CONFIG_WITH_APPEND\" DT_PASSTHROUGH=1 \"${DEVENV_BIN:?DEVENV_BIN not set}\" tasks run test:integration:sync-provider:matrix --mode before"
         env:
           TEST_SYNC_PROVIDER: '${{ matrix.provider }}'
       - name: Upload Nix diagnostics artifact
@@ -636,7 +636,7 @@ jobs:
           fi
           mkdir -p "$MEGAREPO_STORE"
           echo "Using job-local megarepo store: $MEGAREPO_STORE"
-          nix run "github:overengineeringstudio/effect-utils/$EU_REV#megarepo" -- lock apply --all
+          nix run "github:overengineeringstudio/effect-utils/$EU_REV#megarepo" -- apply --all
         shell: bash
       - name: Use pinned devenv from lock
         run: |
@@ -683,8 +683,8 @@ jobs:
 
           # Fast validity check on the devenv store path (~1-2s vs ~25s for devenv info).
           if ! nix-store --check-validity "$DEVENV_OUT" 2>/dev/null; then
-            echo "::warning::devenv store path invalid, repairing..."
-            nix-store --verify --check-contents --repair > "$DIAG_ROOT/nix-store-verify-repair.log" 2>&1 || true
+            echo "::warning::devenv store path invalid, repairing targeted path..."
+            nix-store --repair-path "$DEVENV_OUT" > "$DIAG_ROOT/nix-store-verify-repair.log" 2>&1 || true
             rm -rf ~/.cache/nix/eval-cache-*
             DEVENV_OUT=$(resolve_devenv 2>"$DIAG_ROOT/resolve-devenv-post-repair.log")
             DEVENV_BIN="$DEVENV_OUT/bin/devenv"
@@ -706,7 +706,7 @@ jobs:
       - name: Run integration tests
         env:
           PLAYWRIGHT_SUITE: '${{ matrix.suite }}'
-        run: "if [ -n \"${NIX_CONFIG:-}\" ]; then NIX_CONFIG_WITH_APPEND=$(printf '%s\\n%s' \"$NIX_CONFIG\" 'restrict-eval = false'); else NIX_CONFIG_WITH_APPEND='restrict-eval = false'; fi; NIX_CONFIG=\"$NIX_CONFIG_WITH_APPEND\" \"${DEVENV_BIN:?DEVENV_BIN not set}\" tasks run test:integration:playwright:suite --mode before"
+        run: "if [ -n \"${NIX_CONFIG:-}\" ]; then NIX_CONFIG_WITH_APPEND=$(printf '%s\\n%s' \"$NIX_CONFIG\" 'restrict-eval = false'); else NIX_CONFIG_WITH_APPEND='restrict-eval = false'; fi; NIX_CONFIG=\"$NIX_CONFIG_WITH_APPEND\" DT_PASSTHROUGH=1 \"${DEVENV_BIN:?DEVENV_BIN not set}\" tasks run test:integration:playwright:suite --mode before"
       - uses: actions/upload-artifact@v4
         if: '${{ !cancelled() }}'
         with:
@@ -718,7 +718,7 @@ jobs:
         env:
           NETLIFY_AUTH_TOKEN: '${{ secrets.NETLIFY_AUTH_TOKEN }}'
           PLAYWRIGHT_SUITE: '${{ matrix.suite }}'
-        run: "if [ -n \"${NIX_CONFIG:-}\" ]; then NIX_CONFIG_WITH_APPEND=$(printf '%s\\n%s' \"$NIX_CONFIG\" 'restrict-eval = false'); else NIX_CONFIG_WITH_APPEND='restrict-eval = false'; fi; NIX_CONFIG=\"$NIX_CONFIG_WITH_APPEND\" \"${DEVENV_BIN:?DEVENV_BIN not set}\" tasks run test:integration:playwright:upload-trace --mode before"
+        run: "if [ -n \"${NIX_CONFIG:-}\" ]; then NIX_CONFIG_WITH_APPEND=$(printf '%s\\n%s' \"$NIX_CONFIG\" 'restrict-eval = false'); else NIX_CONFIG_WITH_APPEND='restrict-eval = false'; fi; NIX_CONFIG=\"$NIX_CONFIG_WITH_APPEND\" DT_PASSTHROUGH=1 \"${DEVENV_BIN:?DEVENV_BIN not set}\" tasks run test:integration:playwright:upload-trace --mode before"
       - name: Upload Nix diagnostics artifact
         if: failure() && env.NIX_STORE_DIAGNOSTICS_DIR != ''
         uses: actions/upload-artifact@v4
@@ -765,7 +765,7 @@ jobs:
           fi
           mkdir -p "$MEGAREPO_STORE"
           echo "Using job-local megarepo store: $MEGAREPO_STORE"
-          nix run "github:overengineeringstudio/effect-utils/$EU_REV#megarepo" -- lock apply --all
+          nix run "github:overengineeringstudio/effect-utils/$EU_REV#megarepo" -- apply --all
         shell: bash
       - name: Use pinned devenv from lock
         run: |
@@ -812,8 +812,8 @@ jobs:
 
           # Fast validity check on the devenv store path (~1-2s vs ~25s for devenv info).
           if ! nix-store --check-validity "$DEVENV_OUT" 2>/dev/null; then
-            echo "::warning::devenv store path invalid, repairing..."
-            nix-store --verify --check-contents --repair > "$DIAG_ROOT/nix-store-verify-repair.log" 2>&1 || true
+            echo "::warning::devenv store path invalid, repairing targeted path..."
+            nix-store --repair-path "$DEVENV_OUT" > "$DIAG_ROOT/nix-store-verify-repair.log" 2>&1 || true
             rm -rf ~/.cache/nix/eval-cache-*
             DEVENV_OUT=$(resolve_devenv 2>"$DIAG_ROOT/resolve-devenv-post-repair.log")
             DEVENV_BIN="$DEVENV_OUT/bin/devenv"
@@ -833,7 +833,7 @@ jobs:
           # Disable in Vite (otherwise CORS issues)
           echo "VITE_OTEL_EXPORTER_OTLP_ENDPOINT=" >> $GITHUB_ENV
       - name: Run performance tests
-        run: "if [ -n \"${NIX_CONFIG:-}\" ]; then NIX_CONFIG_WITH_APPEND=$(printf '%s\\n%s' \"$NIX_CONFIG\" 'restrict-eval = false'); else NIX_CONFIG_WITH_APPEND='restrict-eval = false'; fi; NIX_CONFIG=\"$NIX_CONFIG_WITH_APPEND\" \"${DEVENV_BIN:?DEVENV_BIN not set}\" tasks run test:perf --mode before"
+        run: "if [ -n \"${NIX_CONFIG:-}\" ]; then NIX_CONFIG_WITH_APPEND=$(printf '%s\\n%s' \"$NIX_CONFIG\" 'restrict-eval = false'); else NIX_CONFIG_WITH_APPEND='restrict-eval = false'; fi; NIX_CONFIG=\"$NIX_CONFIG_WITH_APPEND\" DT_PASSTHROUGH=1 \"${DEVENV_BIN:?DEVENV_BIN not set}\" tasks run test:perf --mode before"
         env:
           COMMIT_SHA: '${{ github.event.pull_request.head.sha || github.sha }}'
           GRAFANA_ENDPOINT: 'https://livestore.grafana.net'
@@ -881,7 +881,7 @@ jobs:
           fi
           mkdir -p "$MEGAREPO_STORE"
           echo "Using job-local megarepo store: $MEGAREPO_STORE"
-          nix run "github:overengineeringstudio/effect-utils/$EU_REV#megarepo" -- lock apply --all
+          nix run "github:overengineeringstudio/effect-utils/$EU_REV#megarepo" -- apply --all
         shell: bash
       - name: Use pinned devenv from lock
         run: |
@@ -928,8 +928,8 @@ jobs:
 
           # Fast validity check on the devenv store path (~1-2s vs ~25s for devenv info).
           if ! nix-store --check-validity "$DEVENV_OUT" 2>/dev/null; then
-            echo "::warning::devenv store path invalid, repairing..."
-            nix-store --verify --check-contents --repair > "$DIAG_ROOT/nix-store-verify-repair.log" 2>&1 || true
+            echo "::warning::devenv store path invalid, repairing targeted path..."
+            nix-store --repair-path "$DEVENV_OUT" > "$DIAG_ROOT/nix-store-verify-repair.log" 2>&1 || true
             rm -rf ~/.cache/nix/eval-cache-*
             DEVENV_OUT=$(resolve_devenv 2>"$DIAG_ROOT/resolve-devenv-post-repair.log")
             DEVENV_BIN="$DEVENV_OUT/bin/devenv"
@@ -949,9 +949,9 @@ jobs:
           # Disable in Vite (otherwise CORS issues)
           echo "VITE_OTEL_EXPORTER_OTLP_ENDPOINT=" >> $GITHUB_ENV
       - name: Build wa-sqlite
-        run: "if [ -n \"${NIX_CONFIG:-}\" ]; then NIX_CONFIG_WITH_APPEND=$(printf '%s\\n%s' \"$NIX_CONFIG\" 'restrict-eval = false'); else NIX_CONFIG_WITH_APPEND='restrict-eval = false'; fi; NIX_CONFIG=\"$NIX_CONFIG_WITH_APPEND\" \"${DEVENV_BIN:?DEVENV_BIN not set}\" tasks run test:integration:wa-sqlite:build --mode before"
+        run: "if [ -n \"${NIX_CONFIG:-}\" ]; then NIX_CONFIG_WITH_APPEND=$(printf '%s\\n%s' \"$NIX_CONFIG\" 'restrict-eval = false'); else NIX_CONFIG_WITH_APPEND='restrict-eval = false'; fi; NIX_CONFIG=\"$NIX_CONFIG_WITH_APPEND\" DT_PASSTHROUGH=1 \"${DEVENV_BIN:?DEVENV_BIN not set}\" tasks run test:integration:wa-sqlite:build --mode before"
       - name: Run wa-sqlite tests
-        run: "if [ -n \"${NIX_CONFIG:-}\" ]; then NIX_CONFIG_WITH_APPEND=$(printf '%s\\n%s' \"$NIX_CONFIG\" 'restrict-eval = false'); else NIX_CONFIG_WITH_APPEND='restrict-eval = false'; fi; NIX_CONFIG=\"$NIX_CONFIG_WITH_APPEND\" \"${DEVENV_BIN:?DEVENV_BIN not set}\" tasks run test:integration:wa-sqlite --mode before"
+        run: "if [ -n \"${NIX_CONFIG:-}\" ]; then NIX_CONFIG_WITH_APPEND=$(printf '%s\\n%s' \"$NIX_CONFIG\" 'restrict-eval = false'); else NIX_CONFIG_WITH_APPEND='restrict-eval = false'; fi; NIX_CONFIG=\"$NIX_CONFIG_WITH_APPEND\" DT_PASSTHROUGH=1 \"${DEVENV_BIN:?DEVENV_BIN not set}\" tasks run test:integration:wa-sqlite --mode before"
         env:
           COMMIT_SHA: '${{ github.event.pull_request.head.sha || github.sha }}'
           GRAFANA_ENDPOINT: 'https://livestore.grafana.net'
@@ -1001,7 +1001,7 @@ jobs:
           fi
           mkdir -p "$MEGAREPO_STORE"
           echo "Using job-local megarepo store: $MEGAREPO_STORE"
-          nix run "github:overengineeringstudio/effect-utils/$EU_REV#megarepo" -- lock apply --all
+          nix run "github:overengineeringstudio/effect-utils/$EU_REV#megarepo" -- apply --all
         shell: bash
       - name: Use pinned devenv from lock
         run: |
@@ -1048,8 +1048,8 @@ jobs:
 
           # Fast validity check on the devenv store path (~1-2s vs ~25s for devenv info).
           if ! nix-store --check-validity "$DEVENV_OUT" 2>/dev/null; then
-            echo "::warning::devenv store path invalid, repairing..."
-            nix-store --verify --check-contents --repair > "$DIAG_ROOT/nix-store-verify-repair.log" 2>&1 || true
+            echo "::warning::devenv store path invalid, repairing targeted path..."
+            nix-store --repair-path "$DEVENV_OUT" > "$DIAG_ROOT/nix-store-verify-repair.log" 2>&1 || true
             rm -rf ~/.cache/nix/eval-cache-*
             DEVENV_OUT=$(resolve_devenv 2>"$DIAG_ROOT/resolve-devenv-post-repair.log")
             DEVENV_BIN="$DEVENV_OUT/bin/devenv"
@@ -1058,7 +1058,7 @@ jobs:
           echo "DEVENV_BIN=$DEVENV_BIN" >> "$GITHUB_ENV"
           "$DEVENV_BIN" version | tee "$DIAG_ROOT/devenv-version.txt"
         shell: bash
-      - run: "if [ -n \"${NIX_CONFIG:-}\" ]; then NIX_CONFIG_WITH_APPEND=$(printf '%s\\n%s' \"$NIX_CONFIG\" 'restrict-eval = false'); else NIX_CONFIG_WITH_APPEND='restrict-eval = false'; fi; NIX_CONFIG=\"$NIX_CONFIG_WITH_APPEND\" \"${DEVENV_BIN:?DEVENV_BIN not set}\" tasks run release:snapshot:git-sha --mode before"
+      - run: "if [ -n \"${NIX_CONFIG:-}\" ]; then NIX_CONFIG_WITH_APPEND=$(printf '%s\\n%s' \"$NIX_CONFIG\" 'restrict-eval = false'); else NIX_CONFIG_WITH_APPEND='restrict-eval = false'; fi; NIX_CONFIG=\"$NIX_CONFIG_WITH_APPEND\" DT_PASSTHROUGH=1 \"${DEVENV_BIN:?DEVENV_BIN not set}\" tasks run release:snapshot:git-sha --mode before"
         env:
           GIT_SHA: '${{ github.sha }}'
       - name: Upload Nix diagnostics artifact
@@ -1104,7 +1104,7 @@ jobs:
           fi
           mkdir -p "$MEGAREPO_STORE"
           echo "Using job-local megarepo store: $MEGAREPO_STORE"
-          nix run "github:overengineeringstudio/effect-utils/$EU_REV#megarepo" -- lock apply --all
+          nix run "github:overengineeringstudio/effect-utils/$EU_REV#megarepo" -- apply --all
         shell: bash
       - name: Use pinned devenv from lock
         run: |
@@ -1151,8 +1151,8 @@ jobs:
 
           # Fast validity check on the devenv store path (~1-2s vs ~25s for devenv info).
           if ! nix-store --check-validity "$DEVENV_OUT" 2>/dev/null; then
-            echo "::warning::devenv store path invalid, repairing..."
-            nix-store --verify --check-contents --repair > "$DIAG_ROOT/nix-store-verify-repair.log" 2>&1 || true
+            echo "::warning::devenv store path invalid, repairing targeted path..."
+            nix-store --repair-path "$DEVENV_OUT" > "$DIAG_ROOT/nix-store-verify-repair.log" 2>&1 || true
             rm -rf ~/.cache/nix/eval-cache-*
             DEVENV_OUT=$(resolve_devenv 2>"$DIAG_ROOT/resolve-devenv-post-repair.log")
             DEVENV_BIN="$DEVENV_OUT/bin/devenv"
@@ -1162,14 +1162,14 @@ jobs:
           "$DEVENV_BIN" version | tee "$DIAG_ROOT/devenv-version.txt"
         shell: bash
       - name: Install examples dependencies
-        run: "if [ -n \"${NIX_CONFIG:-}\" ]; then NIX_CONFIG_WITH_APPEND=$(printf '%s\\n%s' \"$NIX_CONFIG\" 'restrict-eval = false'); else NIX_CONFIG_WITH_APPEND='restrict-eval = false'; fi; NIX_CONFIG=\"$NIX_CONFIG_WITH_APPEND\" \"${DEVENV_BIN:?DEVENV_BIN not set}\" tasks run examples:install --mode before"
+        run: "if [ -n \"${NIX_CONFIG:-}\" ]; then NIX_CONFIG_WITH_APPEND=$(printf '%s\\n%s' \"$NIX_CONFIG\" 'restrict-eval = false'); else NIX_CONFIG_WITH_APPEND='restrict-eval = false'; fi; NIX_CONFIG=\"$NIX_CONFIG_WITH_APPEND\" DT_PASSTHROUGH=1 \"${DEVENV_BIN:?DEVENV_BIN not set}\" tasks run examples:install --mode before"
       - name: Build examples
-        run: "if [ -n \"${NIX_CONFIG:-}\" ]; then NIX_CONFIG_WITH_APPEND=$(printf '%s\\n%s' \"$NIX_CONFIG\" 'restrict-eval = false'); else NIX_CONFIG_WITH_APPEND='restrict-eval = false'; fi; NIX_CONFIG=\"$NIX_CONFIG_WITH_APPEND\" \"${DEVENV_BIN:?DEVENV_BIN not set}\" tasks run examples:build:src --mode before"
+        run: "if [ -n \"${NIX_CONFIG:-}\" ]; then NIX_CONFIG_WITH_APPEND=$(printf '%s\\n%s' \"$NIX_CONFIG\" 'restrict-eval = false'); else NIX_CONFIG_WITH_APPEND='restrict-eval = false'; fi; NIX_CONFIG=\"$NIX_CONFIG_WITH_APPEND\" DT_PASSTHROUGH=1 \"${DEVENV_BIN:?DEVENV_BIN not set}\" tasks run examples:build:src --mode before"
       - name: Test examples
-        run: "if [ -n \"${NIX_CONFIG:-}\" ]; then NIX_CONFIG_WITH_APPEND=$(printf '%s\\n%s' \"$NIX_CONFIG\" 'restrict-eval = false'); else NIX_CONFIG_WITH_APPEND='restrict-eval = false'; fi; NIX_CONFIG=\"$NIX_CONFIG_WITH_APPEND\" \"${DEVENV_BIN:?DEVENV_BIN not set}\" tasks run examples:test --mode before"
+        run: "if [ -n \"${NIX_CONFIG:-}\" ]; then NIX_CONFIG_WITH_APPEND=$(printf '%s\\n%s' \"$NIX_CONFIG\" 'restrict-eval = false'); else NIX_CONFIG_WITH_APPEND='restrict-eval = false'; fi; NIX_CONFIG=\"$NIX_CONFIG_WITH_APPEND\" DT_PASSTHROUGH=1 \"${DEVENV_BIN:?DEVENV_BIN not set}\" tasks run examples:test --mode before"
       - name: Deploy examples to Cloudflare
         if: github.event.pull_request.head.repo.fork != true
-        run: "if [ -n \"${NIX_CONFIG:-}\" ]; then NIX_CONFIG_WITH_APPEND=$(printf '%s\\n%s' \"$NIX_CONFIG\" 'restrict-eval = false'); else NIX_CONFIG_WITH_APPEND='restrict-eval = false'; fi; NIX_CONFIG=\"$NIX_CONFIG_WITH_APPEND\" \"${DEVENV_BIN:?DEVENV_BIN not set}\" tasks run examples:deploy --mode before"
+        run: "if [ -n \"${NIX_CONFIG:-}\" ]; then NIX_CONFIG_WITH_APPEND=$(printf '%s\\n%s' \"$NIX_CONFIG\" 'restrict-eval = false'); else NIX_CONFIG_WITH_APPEND='restrict-eval = false'; fi; NIX_CONFIG=\"$NIX_CONFIG_WITH_APPEND\" DT_PASSTHROUGH=1 \"${DEVENV_BIN:?DEVENV_BIN not set}\" tasks run examples:deploy --mode before"
         env:
           CLOUDFLARE_API_TOKEN: '${{ secrets.CLOUDFLARE_API_TOKEN }}'
           CLOUDFLARE_ACCOUNT_ID: '${{ secrets.CLOUDFLARE_ACCOUNT_ID }}'
@@ -1216,7 +1216,7 @@ jobs:
           fi
           mkdir -p "$MEGAREPO_STORE"
           echo "Using job-local megarepo store: $MEGAREPO_STORE"
-          nix run "github:overengineeringstudio/effect-utils/$EU_REV#megarepo" -- lock apply --all
+          nix run "github:overengineeringstudio/effect-utils/$EU_REV#megarepo" -- apply --all
         shell: bash
       - name: Use pinned devenv from lock
         run: |
@@ -1263,8 +1263,8 @@ jobs:
 
           # Fast validity check on the devenv store path (~1-2s vs ~25s for devenv info).
           if ! nix-store --check-validity "$DEVENV_OUT" 2>/dev/null; then
-            echo "::warning::devenv store path invalid, repairing..."
-            nix-store --verify --check-contents --repair > "$DIAG_ROOT/nix-store-verify-repair.log" 2>&1 || true
+            echo "::warning::devenv store path invalid, repairing targeted path..."
+            nix-store --repair-path "$DEVENV_OUT" > "$DIAG_ROOT/nix-store-verify-repair.log" 2>&1 || true
             rm -rf ~/.cache/nix/eval-cache-*
             DEVENV_OUT=$(resolve_devenv 2>"$DIAG_ROOT/resolve-devenv-post-repair.log")
             DEVENV_BIN="$DEVENV_OUT/bin/devenv"
@@ -1274,14 +1274,14 @@ jobs:
           "$DEVENV_BIN" version | tee "$DIAG_ROOT/devenv-version.txt"
         shell: bash
       - name: Build docs snippets
-        run: "if [ -n \"${NIX_CONFIG:-}\" ]; then NIX_CONFIG_WITH_APPEND=$(printf '%s\\n%s' \"$NIX_CONFIG\" 'restrict-eval = false'); else NIX_CONFIG_WITH_APPEND='restrict-eval = false'; fi; NIX_CONFIG=\"$NIX_CONFIG_WITH_APPEND\" \"${DEVENV_BIN:?DEVENV_BIN not set}\" tasks run docs:build:phase:snippets --mode before"
+        run: "if [ -n \"${NIX_CONFIG:-}\" ]; then NIX_CONFIG_WITH_APPEND=$(printf '%s\\n%s' \"$NIX_CONFIG\" 'restrict-eval = false'); else NIX_CONFIG_WITH_APPEND='restrict-eval = false'; fi; NIX_CONFIG=\"$NIX_CONFIG_WITH_APPEND\" DT_PASSTHROUGH=1 \"${DEVENV_BIN:?DEVENV_BIN not set}\" tasks run docs:build:phase:snippets --mode before"
       - name: Build docs diagrams
-        run: "if [ -n \"${NIX_CONFIG:-}\" ]; then NIX_CONFIG_WITH_APPEND=$(printf '%s\\n%s' \"$NIX_CONFIG\" 'restrict-eval = false'); else NIX_CONFIG_WITH_APPEND='restrict-eval = false'; fi; NIX_CONFIG=\"$NIX_CONFIG_WITH_APPEND\" \"${DEVENV_BIN:?DEVENV_BIN not set}\" tasks run docs:build:phase:diagrams --mode before"
+        run: "if [ -n \"${NIX_CONFIG:-}\" ]; then NIX_CONFIG_WITH_APPEND=$(printf '%s\\n%s' \"$NIX_CONFIG\" 'restrict-eval = false'); else NIX_CONFIG_WITH_APPEND='restrict-eval = false'; fi; NIX_CONFIG=\"$NIX_CONFIG_WITH_APPEND\" DT_PASSTHROUGH=1 \"${DEVENV_BIN:?DEVENV_BIN not set}\" tasks run docs:build:phase:diagrams --mode before"
       - name: Build Astro docs bundle
-        run: "if [ -n \"${NIX_CONFIG:-}\" ]; then NIX_CONFIG_WITH_APPEND=$(printf '%s\\n%s' \"$NIX_CONFIG\" 'restrict-eval = false'); else NIX_CONFIG_WITH_APPEND='restrict-eval = false'; fi; NIX_CONFIG=\"$NIX_CONFIG_WITH_APPEND\" \"${DEVENV_BIN:?DEVENV_BIN not set}\" tasks run docs:build:phase:astro --mode before"
+        run: "if [ -n \"${NIX_CONFIG:-}\" ]; then NIX_CONFIG_WITH_APPEND=$(printf '%s\\n%s' \"$NIX_CONFIG\" 'restrict-eval = false'); else NIX_CONFIG_WITH_APPEND='restrict-eval = false'; fi; NIX_CONFIG=\"$NIX_CONFIG_WITH_APPEND\" DT_PASSTHROUGH=1 \"${DEVENV_BIN:?DEVENV_BIN not set}\" tasks run docs:build:phase:astro --mode before"
       - name: Collect docs build diagnostics on failure
         if: '${{ failure() }}'
-        run: "if [ -n \"${NIX_CONFIG:-}\" ]; then NIX_CONFIG_WITH_APPEND=$(printf '%s\\n%s' \"$NIX_CONFIG\" 'restrict-eval = false'); else NIX_CONFIG_WITH_APPEND='restrict-eval = false'; fi; NIX_CONFIG=\"$NIX_CONFIG_WITH_APPEND\" \"${DEVENV_BIN:?DEVENV_BIN not set}\" tasks run docs:build:diagnostics --mode before"
+        run: "if [ -n \"${NIX_CONFIG:-}\" ]; then NIX_CONFIG_WITH_APPEND=$(printf '%s\\n%s' \"$NIX_CONFIG\" 'restrict-eval = false'); else NIX_CONFIG_WITH_APPEND='restrict-eval = false'; fi; NIX_CONFIG=\"$NIX_CONFIG_WITH_APPEND\" DT_PASSTHROUGH=1 \"${DEVENV_BIN:?DEVENV_BIN not set}\" tasks run docs:build:diagnostics --mode before"
       - name: Upload docs build logs
         if: '${{ always() }}'
         uses: actions/upload-artifact@v4
@@ -1291,7 +1291,7 @@ jobs:
           retention-days: 14
       - name: Deploy docs
         if: "${{ success() && (github.event_name != 'pull_request' || github.event.pull_request.head.repo.fork != true) }}"
-        run: "if [ -n \"${NIX_CONFIG:-}\" ]; then NIX_CONFIG_WITH_APPEND=$(printf '%s\\n%s' \"$NIX_CONFIG\" 'restrict-eval = false'); else NIX_CONFIG_WITH_APPEND='restrict-eval = false'; fi; NIX_CONFIG=\"$NIX_CONFIG_WITH_APPEND\" \"${DEVENV_BIN:?DEVENV_BIN not set}\" tasks run docs:deploy --mode before"
+        run: "if [ -n \"${NIX_CONFIG:-}\" ]; then NIX_CONFIG_WITH_APPEND=$(printf '%s\\n%s' \"$NIX_CONFIG\" 'restrict-eval = false'); else NIX_CONFIG_WITH_APPEND='restrict-eval = false'; fi; NIX_CONFIG=\"$NIX_CONFIG_WITH_APPEND\" DT_PASSTHROUGH=1 \"${DEVENV_BIN:?DEVENV_BIN not set}\" tasks run docs:deploy --mode before"
         env:
           NETLIFY_AUTH_TOKEN: '${{ secrets.NETLIFY_AUTH_TOKEN }}'
       - name: Upload Nix diagnostics artifact

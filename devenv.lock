@@ -3,11 +3,11 @@
     "devenv": {
       "locked": {
         "dir": "src/modules",
-        "lastModified": 1773331734,
-        "narHash": "sha256-c3llxzZqXH3UICBRSp0D97C0wCzDHltYugAODvlnPBA=",
+        "lastModified": 1773527229,
+        "narHash": "sha256-rpSPbPJjjMIT2+bR+KSMu9DQbvniv6BepVU3JMFSdrU=",
         "owner": "cachix",
         "repo": "devenv",
-        "rev": "44372d4882bcae99e9abf596ae4060a421447b5b",
+        "rev": "9a408da24966fc2d014fa3a36485dfe42ebc212b",
         "type": "github"
       },
       "original": {
@@ -26,16 +26,16 @@
         "tsgo": "tsgo"
       },
       "locked": {
-        "lastModified": 1773427982,
-        "narHash": "sha256-lqCZdluWMd+oKk8ly/H+D1oS/aNh6A1En7AmSgUdVhc=",
-        "ref": "schickling/2026-03-08-pnpm-gvs-boundary-spec",
-        "rev": "e906b069970720c948b3113de4408979e0097e88",
-        "revCount": 800,
+        "lastModified": 1773567049,
+        "narHash": "sha256-Y9YpVKbh5uDvEvAMTmBkb+4Tm7YKroC6vYNjYvtDD0k=",
+        "ref": "main",
+        "rev": "1e00876daee6cbd20c5e301f02cd0365fc5829b9",
+        "revCount": 708,
         "type": "git",
         "url": "https://github.com/overengineeringstudio/effect-utils"
       },
       "original": {
-        "ref": "schickling/2026-03-08-pnpm-gvs-boundary-spec",
+        "ref": "main",
         "type": "git",
         "url": "https://github.com/overengineeringstudio/effect-utils"
       }
@@ -169,11 +169,11 @@
     },
     "nixpkgs_2": {
       "locked": {
-        "lastModified": 1773122722,
-        "narHash": "sha256-FIqHByVqxCprNjor1NqF80F2QQoiiyqanNNefdlvOg4=",
+        "lastModified": 1773389992,
+        "narHash": "sha256-wvfdLLWJ2I9oEpDd9PfMA8osfIZicoQ5MT1jIwNs9Tk=",
         "owner": "NixOS",
         "repo": "nixpkgs",
-        "rev": "62dc67aa6a52b4364dd75994ec00b51fbf474e50",
+        "rev": "c06b4ae3d6599a672a6210b7021d699c351eebda",
         "type": "github"
       },
       "original": {
@@ -192,11 +192,11 @@
       },
       "locked": {
         "dir": "nix/playwright-flake",
-        "lastModified": 1773051231,
-        "narHash": "sha256-hQQkvxvMmMZCfcY9NafMmx80NxyC+ndxaFRilynBTl0=",
+        "lastModified": 1773567049,
+        "narHash": "sha256-Y9YpVKbh5uDvEvAMTmBkb+4Tm7YKroC6vYNjYvtDD0k=",
         "owner": "overengineeringstudio",
         "repo": "effect-utils",
-        "rev": "849bd27584dcf0b7046df9510267a83b4c364aa7",
+        "rev": "1e00876daee6cbd20c5e301f02cd0365fc5829b9",
         "type": "github"
       },
       "original": {

@@ -4,7 +4,7 @@ import { megarepoJson } from './genie/repo.ts'
 export default megarepoJson({
   members: {
     /** Primary member */
-    'effect-utils': 'overengineeringstudio/effect-utils#schickling/2026-03-08-pnpm-gvs-boundary-spec',
+    'effect-utils': 'overengineeringstudio/effect-utils',
 
     /** Secondary members */
     'overeng-beads-public': 'overengineeringstudio/overeng-beads-public',
