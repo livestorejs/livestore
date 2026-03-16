@@ -7,12 +7,29 @@
 #   ./run-bench.sh https://livestore-cf-bench.<your-subdomain>.workers.dev
 #   ./run-bench.sh http://localhost:8787   # for local wrangler dev
 #
-# Runs increasing event loads and reports rowsWritten + timing.
+# Environment variables:
+#   BENCH_TIERS       Space-separated tier list (default: "10 100 1000")
+#   BENCH_SYNC_WAIT   Max seconds to wait for sync catch-up (default: 60)
+#   BENCH_STORE_ID    Override store ID (default: bench-<timestamp>)
+#
+# Examples:
+#   # Phase 1: smoke test (~11k rows_written)
+#   ./run-bench.sh https://livestore-cf-bench.example.workers.dev
+#
+#   # Phase 2: larger scale (~49k rows_written)
+#   BENCH_TIERS="10 100 1000 5000" ./run-bench.sh https://...
+#
+#   # Reuse same store (e.g. to test cold start on existing data)
+#   BENCH_STORE_ID="bench-1742..." ./run-bench.sh https://...
 
 set -euo pipefail
 
 BASE_URL="${1:?Usage: $0 <base-url>}"
-STORE_ID="bench-$(date +%s)"
+STORE_ID="${BENCH_STORE_ID:-bench-$(date +%s)}"
+SYNC_WAIT="${BENCH_SYNC_WAIT:-60}"
+
+# Parse tiers from env or use default
+read -ra TIERS <<< "${BENCH_TIERS:-10 100 1000}"
 
 # macOS `date` doesn't support %3N — use python for ms timestamps
 now_ms() {
@@ -43,9 +60,52 @@ curl_check() {
   echo "$body"
 }
 
+# Helper: print sync status (head, event count, synced)
+print_sync_status() {
+  local label="${1:-Sync status}"
+  local status
+  status=$(curl_check "$BASE_URL/store/sync-status?storeId=$STORE_ID" 2>/dev/null) || {
+    echo "  $label: (unreachable)"
+    return 0
+  }
+  local head count synced
+  head=$(json_field "$status" syncHead)
+  count=$(json_field "$status" eventCount)
+  synced=$(python3 -c "import sys,json; d=json.loads(sys.argv[1]); print(d.get('synced', False))" "$status" 2>/dev/null)
+  echo "  $label: syncHead=$head, events=$count, synced=$synced"
+}
+
+# Helper: wait for sync to finish (poll sync-status until synced)
+wait_for_sync() {
+  local max_wait=${1:-$SYNC_WAIT}
+  local elapsed=0
+  echo -n "  Waiting for sync to drain"
+  while [ "$elapsed" -lt "$max_wait" ]; do
+    local status
+    status=$(curl_check "$BASE_URL/store/sync-status?storeId=$STORE_ID" 2>/dev/null) || break
+    local synced
+    synced=$(python3 -c "import sys,json; d=json.loads(sys.argv[1]); print(d.get('synced', False))" "$status" 2>/dev/null) || break
+    if [ "$synced" = "True" ]; then
+      local head count
+      head=$(json_field "$status" syncHead)
+      count=$(json_field "$status" eventCount)
+      echo " done (head=$head, events=$count, ${elapsed}s)"
+      return 0
+    fi
+    echo -n "."
+    sleep 1
+    elapsed=$((elapsed + 1))
+  done
+  echo " timeout after ${max_wait}s"
+  print_sync_status "Final sync status"
+  return 0
+}
+
 echo "=== LiveStore CF Adapter Benchmark ==="
 echo "URL:      $BASE_URL"
 echo "Store ID: $STORE_ID"
+echo "Tiers:    ${TIERS[*]}"
+echo "Sync wait: ${SYNC_WAIT}s"
 echo ""
 
 # Health check
@@ -103,7 +163,6 @@ echo ""
 echo "--- Steady-state writes (rows_written resets between tiers) ---"
 echo "  writes/todo = rows_written / todos added in tier (ideal: 1.0, VFS baseline: ~238)"
 echo ""
-TIERS=(10 100 1000 5000 10000 20000 50000 100000)
 
 reset_metrics
 TOTAL_CREATED=1  # boot todo
@@ -132,8 +191,15 @@ done
 
 echo ""
 
+# --- Sync status after steady-state ---
+echo "--- Sync catch-up after steady-state ---"
+print_sync_status "Before wait"
+wait_for_sync "$SYNC_WAIT"
+echo ""
+
 # --- Cold start cost ---
 echo "--- Cold start cost (shutdown + reboot) ---"
+wait_for_sync "$SYNC_WAIT"
 shutdown_store
 reset_metrics
 
@@ -162,4 +228,17 @@ WRITES_PER=$(python3 -c "print(f'{$ROWS / 100:.1f}')")
 echo "  100 todos: $ROWS rows_written ($WRITES_PER writes/todo) in $((END - START))ms"
 echo ""
 
+# --- Final sync status ---
+echo "--- Final sync status ---"
+print_sync_status "After all operations"
+wait_for_sync "$SYNC_WAIT"
+echo ""
+
 echo "=== Done ==="
+echo ""
+echo "Summary:"
+echo "  Store ID: $STORE_ID"
+echo "  Tiers:    ${TIERS[*]}"
+echo "  Total events created: ~$((TOTAL_CREATED + 1 + 100))"
+echo ""
+echo "To reuse this store: BENCH_STORE_ID=\"$STORE_ID\" $0 $BASE_URL"

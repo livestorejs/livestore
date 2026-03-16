@@ -130,9 +130,9 @@ Vitest.describe('adapter-cloudflare-writes', { timeout: testTimeout }, () => {
 
       const restartMetrics = yield* getMetrics()
 
-      // Snapshot restore should be much cheaper than full rematerialization.
-      // Full rematerialization of 5 events with VFS would cost ~1000+ writes.
-      // With snapshot restore + native eventlog, expect under 50.
+      // Cold start with VFS-backed state should be cheap — just reopens the VFS.
+      // The eventlog is on native DO SQLite (1 row per event).
+      // Expect rematerialization overhead under 50 writes.
       expect(restartMetrics.totalRowsWritten).toBeGreaterThan(0)
       expect(restartMetrics.totalRowsWritten).toBeLessThan(50)
 
@@ -178,7 +178,7 @@ Vitest.describe('adapter-cloudflare-writes', { timeout: testTimeout }, () => {
       yield* createTodo('seed-todo', 'seed')
       yield* shutdownStore()
 
-      // Reboot and let snapshot restore
+      // Reboot — VFS-backed state persists automatically
       yield* createTodo('post-restart-boot', 'boot after restart')
       yield* resetMetrics()
 

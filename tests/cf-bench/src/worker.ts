@@ -148,6 +148,23 @@ export class BenchStoreDo extends DurableObject<Env> implements ClientDoWithRpcC
         })
       }
 
+      if (url.pathname === '/store/sync-status' && request.method === 'GET') {
+        this.ensureSqlTracking()
+        const sql = this.trackedSql ?? this.ctx.storage.sql
+        try {
+          const eventCount = [...sql.exec<{ cnt: number }>('SELECT COUNT(*) as cnt FROM eventlog')][0]?.cnt ?? 0
+          const syncHead = [...sql.exec<{ head: number }>('SELECT head FROM __livestore_sync_status')][0]?.head ?? 0
+          return new Response(
+            JSON.stringify({ eventCount, syncHead, synced: syncHead >= eventCount }),
+            { headers: { 'content-type': 'application/json' } },
+          )
+        } catch {
+          return new Response(JSON.stringify({ eventCount: 0, syncHead: 0, synced: true }), {
+            headers: { 'content-type': 'application/json' },
+          })
+        }
+      }
+
       if (url.pathname === '/store/shutdown' && request.method === 'POST') {
         if (this.cachedStore !== undefined) {
           await this.cachedStore.shutdownPromise()

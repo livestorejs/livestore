@@ -6,15 +6,20 @@ import { BlockManager } from './BlockManager.ts'
 
 const SECTOR_SIZE = 4096
 
-// Block size for SQL-based storage (same as CloudflareWorkerVFS for consistency)
-const BLOCK_SIZE = 64 * 1024 // 64 KiB
+// Block size for SQL-based storage. Matches dbState page size (PRAGMA page_size=8192)
+// to avoid read-merge-write amplification — each page write maps to exactly one block write.
+// Previously 64 KiB (inherited from CloudflareWorkerVFS which used storage.put() with 128 KiB
+// value limit), but storage.sql has no such limit.
+const BLOCK_SIZE = 8 * 1024 // 8 KiB
 
 // Maximum number of open files
 const DEFAULT_MAX_FILES = 100
 
-// These file types are expected to persist in the file system
-const PERSISTENT_FILE_TYPES =
-  VFS.SQLITE_OPEN_MAIN_DB | VFS.SQLITE_OPEN_MAIN_JOURNAL | VFS.SQLITE_OPEN_SUPER_JOURNAL | VFS.SQLITE_OPEN_WAL
+// Only persist the main DB file. Journal/WAL files are transient — persisting them
+// adds unnecessary rowsWritten (each journal page = 1 INSERT OR REPLACE + index updates).
+// The single-threaded DO model guarantees no concurrent access, so crash recovery
+// via journal is not needed (native DO SQLite handles durability).
+const PERSISTENT_FILE_TYPES = VFS.SQLITE_OPEN_MAIN_DB
 
 interface FileMetadata {
   path: string
@@ -121,11 +126,13 @@ export class CloudflareSqlVFS extends FacadeVFS {
         FOREIGN KEY (file_path) REFERENCES vfs_files(file_path) ON DELETE CASCADE
       )`,
 
-      `CREATE INDEX IF NOT EXISTS idx_vfs_blocks_range ON vfs_blocks(file_path, block_id)`,
+      // NOTE: No secondary index on vfs_blocks — the composite PRIMARY KEY (file_path, block_id)
+      // already serves as the clustered index. A redundant index would double rowsWritten
+      // per block write (each INSERT OR REPLACE updates both the table B-tree and the index).
 
       `CREATE INDEX IF NOT EXISTS idx_vfs_files_modified ON vfs_files(modified_at)`,
 
-      `CREATE TRIGGER IF NOT EXISTS trg_vfs_files_update_modified 
+      `CREATE TRIGGER IF NOT EXISTS trg_vfs_files_update_modified
         AFTER UPDATE OF file_size ON vfs_files
         BEGIN
           UPDATE vfs_files SET modified_at = unixepoch() WHERE file_path = NEW.file_path;

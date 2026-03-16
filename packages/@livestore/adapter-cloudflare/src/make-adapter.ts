@@ -4,7 +4,6 @@ import {
   type LockStatus,
   liveStoreStorageFormatVersion,
   makeClientSession,
-  type SqliteDb,
   type SyncOptions,
   UnknownError,
 } from '@livestore/common'
@@ -71,13 +70,16 @@ export const makeAdapter =
       }
 
       const dbState = yield* makeSqliteDb({
-        _tag: 'in-memory',
-        configureDb: () => {},
+        _tag: 'storage',
+        storage,
+        fileName: stateDbFileName,
+        // journal_mode=MEMORY keeps the rollback journal in wasm heap memory instead of
+        // writing it through the VFS to native DO SQLite. This eliminates journal-related
+        // rowsWritten (journal create/write/delete per transaction) while preserving
+        // in-process transaction rollback. Safe because the single-threaded DO model
+        // guarantees no concurrent access and native DO SQLite handles block durability.
+        configureDb: (db) => db.execute('PRAGMA journal_mode=MEMORY'),
       }).pipe(UnknownError.mapToUnknownError)
-
-      yield* restoreStateSnapshot({ storage, dbState, stateDbFileName })
-
-      installSnapshotAutoSave({ storage, dbState, stateDbFileName })
 
       const dbEventlog = yield* makeNativeSqliteDb({
         _tag: 'file',
@@ -185,120 +187,6 @@ const getStateDbFileName = (suffix: string) => `state${suffix}@${liveStoreStorag
 
 const getEventlogDbFileName = () => `eventlog@${liveStoreStorageFormatVersion}.db`
 
-const getEventlogHead = (sql: CfTypes.SqlStorage): number => {
-  const cursor = sql.exec('SELECT seqNumGlobal FROM eventlog ORDER BY seqNumGlobal DESC LIMIT 1')
-  for (const row of cursor) {
-    return Number(row.seqNumGlobal)
-  }
-  return 0
-}
-
-const toArrayBuffer = (data: CfTypes.SqlStorageValue): Uint8Array<ArrayBuffer> => {
-  const rawData = data instanceof Uint8Array ? data : new Uint8Array(data as ArrayBuffer)
-  return new Uint8Array(
-    rawData.buffer.slice(rawData.byteOffset, rawData.byteOffset + rawData.byteLength),
-  ) as Uint8Array<ArrayBuffer>
-}
-
-const ensureSnapshotTable = (sql: CfTypes.SqlStorage) =>
-  sql.exec('CREATE TABLE IF NOT EXISTS _state_snapshot (id TEXT PRIMARY KEY, data BLOB NOT NULL, head INTEGER NOT NULL)')
-
-const restoreStateSnapshot = ({
-  storage,
-  dbState,
-  stateDbFileName,
-}: {
-  storage: CfTypes.DurableObjectStorage
-  dbState: SqliteDb
-  stateDbFileName: string
-}) =>
-  Effect.gen(function* () {
-    ensureSnapshotTable(storage.sql)
-    const cursor = storage.sql.exec('SELECT data, head FROM _state_snapshot WHERE id = ?', stateDbFileName)
-    for (const row of cursor) {
-      if (row.data === undefined || row.data === null || Number(row.head) <= 0) {
-        break
-      }
-      const blob = toArrayBuffer(row.data)
-      dbState.import(blob)
-
-      const snapshotHead = Number(row.head)
-      const eventlogHead = getEventlogHead(storage.sql)
-
-      if (snapshotHead < eventlogHead) {
-        yield* truncateEventlogToHead(storage.sql, snapshotHead)
-      }
-      break
-    }
-  }).pipe(
-    UnknownError.mapToUnknownError,
-    Effect.catchAll((error) => Effect.logWarning('Snapshot restore failed, will rematerialize', error)),
-    Effect.withSpan('@livestore/adapter-cloudflare:restoreStateSnapshot'),
-  )
-
-const truncateEventlogToHead = (sql: CfTypes.SqlStorage, head: number) =>
-  Effect.gen(function* () {
-    sql.exec('DELETE FROM eventlog WHERE seqNumGlobal > ?', head)
-    yield* Effect.try(() => sql.exec('UPDATE __livestore_sync_status SET head = ?', head)).pipe(
-      Effect.catchAll(() => Effect.void),
-    )
-  })
-
-/**
- * Wraps `dbState.execute` to persist a snapshot after each materialization batch COMMIT.
- * This is the only integration point — livestore has no post-materialization hook.
- *
- * Uses `(...args: any[])` to match the overloaded `SqliteDb['execute']` signature,
- * consistent with `makeExecute` in `sqlite-db-helper.ts`.
- */
-const installSnapshotAutoSave = ({
-  storage,
-  dbState,
-  stateDbFileName,
-}: {
-  storage: CfTypes.DurableObjectStorage
-  dbState: SqliteDb
-  stateDbFileName: string
-}) => {
-  const originalExecute = dbState.execute
-
-  dbState.execute = ((...args: readonly unknown[]) => {
-    ;(originalExecute as (...args: readonly unknown[]) => void)(...args)
-
-    const queryStr = args[0]
-    if (typeof queryStr === 'string' && queryStr.trim().toUpperCase() === 'COMMIT') {
-      saveStateSnapshot({ storage, dbState, stateDbFileName }).pipe(Effect.runSync)
-    }
-  }) as SqliteDb['execute']
-}
-
-const saveStateSnapshot = ({
-  storage,
-  dbState,
-  stateDbFileName,
-}: {
-  storage: CfTypes.DurableObjectStorage
-  dbState: SqliteDb
-  stateDbFileName: string
-}) =>
-  Effect.try({
-    try: () => {
-      const snapshot = dbState.export()
-      if (snapshot.byteLength <= 0) {
-        return
-      }
-      const head = getEventlogHead(storage.sql)
-      storage.sql.exec(
-        'INSERT OR REPLACE INTO _state_snapshot (id, data, head) VALUES (?, ?, ?)',
-        stateDbFileName,
-        snapshot,
-        head,
-      )
-    },
-    catch: (cause) =>
-      new UnknownError({ cause, note: '@livestore/adapter-cloudflare: Failed to save state snapshot' }),
-  }).pipe(Effect.ignoreLogged)
-
 const resetDurableObjectPersistence = ({
   storage,
   storeId,
@@ -318,7 +206,6 @@ const resetDurableObjectPersistence = ({
         }
         safeSqlExec(storage, 'DELETE FROM eventlog')
         safeSqlExec(storage, 'DELETE FROM __livestore_sync_status')
-        safeSqlExec(storage, 'DELETE FROM _state_snapshot')
       }),
     catch: (cause) =>
       new UnknownError({
