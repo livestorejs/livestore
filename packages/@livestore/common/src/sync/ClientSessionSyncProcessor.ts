@@ -17,6 +17,7 @@ import type * as otel from '@opentelemetry/api'
 
 import { type ClientSession, type UnknownError } from '../adapter-types.ts'
 import type { MaterializeError } from '../errors.ts'
+import { isRejectedPushError } from '../leader-thread/RejectedPushError.ts'
 import * as EventSequenceNumber from '../schema/EventSequenceNumber/mod.ts'
 import * as LiveStoreEvent from '../schema/LiveStoreEvent/mod.ts'
 import type { LiveStoreSchema } from '../schema/mod.ts'
@@ -216,13 +217,10 @@ export const makeClientSessionSyncProcessor = ({
     const backgroundLeaderPushing = Effect.gen(function* () {
       const batch = yield* BucketQueue.takeBetween(leaderPushQueue, 1, params.leaderPushBatchSize)
       yield* clientSession.leaderThread.events.push(batch).pipe(
-        Effect.catchIf(
-          (error) => error._tag === 'LeaderAheadError' || error._tag === 'NonMonotonicBatchError' || error._tag === 'StaleRebaseGenerationError',
-          () => {
-            debugInfo.rejectCount++
-            return BucketQueue.clear(leaderPushQueue)
-          },
-        ),
+        Effect.catchIf(isRejectedPushError, () => {
+          debugInfo.rejectCount++
+          return BucketQueue.clear(leaderPushQueue)
+        }),
       )
     }).pipe(Effect.forever, Effect.interruptible, Effect.tapCauseLogPretty)
 

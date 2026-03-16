@@ -27,15 +27,8 @@ import { makeMaterializerHash } from '../materializer-helper.ts'
 import type { LiveStoreSchema } from '../schema/mod.ts'
 import { EventSequenceNumber, LiveStoreEvent, resolveEventDef, SystemTables } from '../schema/mod.ts'
 import { EVENTLOG_META_TABLE, SYNC_STATUS_TABLE } from '../schema/state/sqlite/system-tables/eventlog-tables.ts'
-import {
-  type InvalidPullError,
-  type InvalidPushError,
-  type IsOfflineError,
-  LeaderAheadError,
-  NonMonotonicBatchError,
-  StaleRebaseGenerationError,
-  type SyncBackend,
-} from '../sync/sync.ts'
+import { type InvalidPullError, type InvalidPushError, type IsOfflineError, type SyncBackend } from '../sync/sync.ts'
+import { isRejectedPushError, LeaderAheadError, NonMonotonicBatchError, StaleRebaseGenerationError } from './RejectedPushError.ts'
 import * as SyncState from '../sync/syncstate.ts'
 import { sql } from '../util.ts'
 import * as Eventlog from './eventlog.ts'
@@ -287,10 +280,7 @@ export const makeLeaderSyncProcessor = ({
         yield* push([eventEncoded])
       }).pipe(
         // pushPartial constructs the event sequence number internally, so these errors should never happen.
-        Effect.catchIf(
-          (error) => error._tag === 'LeaderAheadError' || error._tag === 'NonMonotonicBatchError' || error._tag === 'StaleRebaseGenerationError',
-          Effect.die,
-        ),
+        Effect.catchIf(isRejectedPushError, Effect.die),
       )
 
     // Starts various background loops
@@ -610,7 +600,7 @@ const backgroundApplyLocalPushes = ({
             yield* Effect.forEach(allDeferredsToReject, (deferred) =>
               Deferred.fail(
                 deferred,
-                LeaderAheadError.make({ minimumExpectedNum: mergeResult.expectedMinimumId, providedNum }),
+                LeaderAheadError.make({ minimumExpectedNum: mergeResult.expectedMinimumId, providedNum, sessionId: newEvents.at(0)!.sessionId }),
               ),
             )
 
@@ -1157,6 +1147,7 @@ const validatePushBatch = (
       return yield* LeaderAheadError.make({
         minimumExpectedNum: pushHead,
         providedNum: batch[0]!.seqNum,
+        sessionId: batch[0]!.sessionId,
       })
     }
   })
