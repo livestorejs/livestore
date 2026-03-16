@@ -1,9 +1,7 @@
 import {
   BootStatus,
   Devtools,
-  LeaderAheadError,
-  NonMonotonicBatchError,
-  StaleRebaseGenerationError,
+  RejectedPushError,
   liveStoreVersion,
   MigrationsReport,
   SyncBackend,
@@ -91,7 +89,7 @@ export class LeaderWorkerInnerPushToLeader extends Schema.TaggedRequest<LeaderWo
       batch: Schema.Array(Schema.typeSchema(LiveStoreEvent.Client.Encoded)),
     },
     success: Schema.Void as Schema.Schema<void>,
-    failure: Schema.Union(UnknownError, LeaderAheadError, NonMonotonicBatchError, StaleRebaseGenerationError),
+    failure: Schema.Union(UnknownError, RejectedPushError),
   },
 ) {}
 

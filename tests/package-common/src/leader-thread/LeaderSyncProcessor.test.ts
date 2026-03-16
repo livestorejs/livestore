@@ -1,16 +1,17 @@
-import { type NonMonotonicBatchError, StaleRebaseGenerationError, type SyncOptions } from '@livestore/common'
 import {
   BackendIdMismatchError,
   type IntentionalShutdownCause,
   InvalidPullError,
   InvalidPushError,
-  type LeaderAheadError,
   type MockSyncBackend,
   type MockSyncBackendOptions,
   makeMockSyncBackend,
   ServerAheadError,
   type SyncBackend,
   type SyncState,
+  type RejectedPushError,
+  StaleRebaseGenerationError,
+  type SyncOptions,
   UnknownError,
 } from '@livestore/common'
 import type { MakeLeaderThreadLayerParams } from '@livestore/common/leader-thread'
@@ -828,7 +829,7 @@ class TestContext extends Context.Tag('TestContext')<
     /** Equivalent to the ClientSessionSyncProcessor calling `.push` on the LeaderThreadCtx */
     pushEncoded: (
       ...events: ReadonlyArray<LiveStoreEvent.Global.Encoded>
-    ) => Effect.Effect<void, LeaderAheadError | StaleRebaseGenerationError | NonMonotonicBatchError, Scope.Scope | LeaderThreadCtx>
+    ) => Effect.Effect<void, RejectedPushError, Scope.Scope | LeaderThreadCtx>
   }
 >() {}
 

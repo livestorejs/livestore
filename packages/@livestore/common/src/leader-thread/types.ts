@@ -17,9 +17,6 @@ import type { MaterializeError } from '../errors.ts'
 import type {
   BootStatus,
   Devtools,
-  LeaderAheadError,
-  NonMonotonicBatchError,
-  StaleRebaseGenerationError,
   MakeSqliteDb,
   PersistenceInfo,
   SqliteDb,
@@ -27,6 +24,7 @@ import type {
   UnknownError,
   UnknownEventError,
 } from '../index.ts'
+import type { RejectedPushError } from './RejectedPushError.ts'
 import { EventSequenceNumber, type LiveStoreEvent, type LiveStoreSchema } from '../schema/mod.ts'
 import type * as SyncState from '../sync/syncstate.ts'
 import type { ShutdownChannel } from './shutdown-channel.ts'
@@ -207,7 +205,7 @@ export interface LeaderSyncProcessor {
        */
       waitForProcessing?: boolean
     },
-  ) => Effect.Effect<void, LeaderAheadError | NonMonotonicBatchError | StaleRebaseGenerationError>
+  ) => Effect.Effect<void, RejectedPushError>
 
   /** Currently only used by devtools which don't provide their own event numbers */
   pushPartial: (args: {
