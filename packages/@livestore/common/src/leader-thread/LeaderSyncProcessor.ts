@@ -184,7 +184,7 @@ export const makeLeaderSyncProcessor = ({
 
     const localPushesQueue = yield* BucketQueue.make<LocalPushQueueItem>()
     // Ensures mutual exclusion between local push and backend pull processing.
-    const pushPullMutex = yield* Effect.makeSemaphore(1)
+    const localPushBackendPullMutex = yield* Effect.makeSemaphore(1)
 
     /**
      * Additionally to the `syncStateSref` we also need the `pushHeadRef` in order to prevent old/duplicate
@@ -348,7 +348,7 @@ export const makeLeaderSyncProcessor = ({
         })
 
       yield* backgroundApplyLocalPushes({
-        pushPullMutex,
+        localPushBackendPullMutex,
         localPushesQueue,
         syncStateSref,
         syncBackendPushQueue,
@@ -387,7 +387,7 @@ export const makeLeaderSyncProcessor = ({
             yield* FiberHandle.run(backendPushingFiberHandle, backendPushingEffect)
           }),
         syncStateSref,
-        pushPullMutex,
+        localPushBackendPullMutex,
         livePull,
         dbState,
         otelSpan,
@@ -455,7 +455,7 @@ export const makeLeaderSyncProcessor = ({
   })
 
 const backgroundApplyLocalPushes = ({
-  pushPullMutex,
+  localPushBackendPullMutex,
   localPushesQueue,
   syncStateSref,
   syncBackendPushQueue,
@@ -466,7 +466,7 @@ const backgroundApplyLocalPushes = ({
   localPushBatchSize,
   testing,
 }: {
-  pushPullMutex: Effect.Semaphore
+  localPushBackendPullMutex: Effect.Semaphore
   localPushesQueue: BucketQueue.BucketQueue<LocalPushQueueItem>
   syncStateSref: SubscriptionRef.SubscriptionRef<SyncState.SyncState | undefined>
   syncBackendPushQueue: BucketQueue.BucketQueue<LiveStoreEvent.Client.EncodedWithMeta>
@@ -487,7 +487,7 @@ const backgroundApplyLocalPushes = ({
 
       const batchItems = yield* BucketQueue.takeBetween(localPushesQueue, 1, localPushBatchSize)
 
-      // Applies a batch of local pushes, guarded by the pushPullMutex to ensure mutual exclusion with backend pulling
+      // Applies a batch of local pushes, guarded by the localPushBackendPullMutex to ensure mutual exclusion with backend pulling
       yield* Effect.gen(function* () {
         const syncState = yield* syncStateSref
         if (syncState === undefined) return shouldNeverHappen('Not initialized')
@@ -495,7 +495,7 @@ const backgroundApplyLocalPushes = ({
         const currentRebaseGeneration = syncState.localHead.rebaseGeneration
 
         // Since the rebase generation might have changed since enqueuing, we need to filter out items with older generation
-        // It's important that we filter after acquiring the pushPullMutex, otherwise we might filter with the old generation
+        // It's important that we filter after acquiring the localPushBackendPullMutex, otherwise we might filter with the old generation
         const [droppedItems, filteredItems] = ReadonlyArray.partition(
           batchItems,
           ([eventEncoded]) => eventEncoded.seqNum.rebaseGeneration >= currentRebaseGeneration,
@@ -637,7 +637,7 @@ const backgroundApplyLocalPushes = ({
         yield* BucketQueue.offerAll(syncBackendPushQueue, filteredBatch)
 
         yield* materializeEventsBatch({ batchItems: mergeResult.newEvents, deferreds })
-      }).pipe(pushPullMutex.withPermits(1))
+      }).pipe(localPushBackendPullMutex.withPermits(1))
     }
   })
 
@@ -696,7 +696,7 @@ const backgroundBackendPulling = Effect.fn('@livestore/common:LeaderSyncProcesso
   otelSpan,
   dbState,
   syncStateSref,
-  pushPullMutex,
+  localPushBackendPullMutex,
   livePull,
   devtoolsLatch,
   initialBlockingSyncContext,
@@ -710,7 +710,7 @@ const backgroundBackendPulling = Effect.fn('@livestore/common:LeaderSyncProcesso
   otelSpan: otel.Span | undefined
   syncStateSref: SubscriptionRef.SubscriptionRef<SyncState.SyncState | undefined>
   dbState: SqliteDb
-  pushPullMutex: Effect.Semaphore
+  localPushBackendPullMutex: Effect.Semaphore
   livePull: boolean
   devtoolsLatch: Effect.Latch | undefined
   initialBlockingSyncContext: InitialBlockingSyncContext
@@ -730,7 +730,7 @@ const backgroundBackendPulling = Effect.fn('@livestore/common:LeaderSyncProcesso
       }
 
       // Prevent more local pushes from being processed until this pull is finished and waits for pending local pushes to finish
-      yield* pushPullMutex.take(1)
+      yield* localPushBackendPullMutex.take(1)
 
       const syncState = yield* syncStateSref
       if (syncState === undefined) return shouldNeverHappen('Not initialized')
@@ -836,7 +836,7 @@ const backgroundBackendPulling = Effect.fn('@livestore/common:LeaderSyncProcesso
 
       // Allow local pushes to be processed again
       if (pageInfo._tag === 'NoMore') {
-        yield* pushPullMutex.release(1)
+        yield* localPushBackendPullMutex.release(1)
       }
     })
 
