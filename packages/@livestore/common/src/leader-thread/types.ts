@@ -19,6 +19,7 @@ import type {
   Devtools,
   LeaderAheadError,
   NonMonotonicBatchError,
+  StaleRebaseGenerationError,
   MakeSqliteDb,
   PersistenceInfo,
   SqliteDb,
@@ -206,7 +207,7 @@ export interface LeaderSyncProcessor {
        */
       waitForProcessing?: boolean
     },
-  ) => Effect.Effect<void, LeaderAheadError | NonMonotonicBatchError>
+  ) => Effect.Effect<void, LeaderAheadError | NonMonotonicBatchError | StaleRebaseGenerationError>
 
   /** Currently only used by devtools which don't provide their own event numbers */
   pushPartial: (args: {

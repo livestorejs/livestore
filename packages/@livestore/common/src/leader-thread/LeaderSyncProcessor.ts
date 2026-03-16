@@ -33,6 +33,7 @@ import {
   type IsOfflineError,
   LeaderAheadError,
   NonMonotonicBatchError,
+  StaleRebaseGenerationError,
   type SyncBackend,
 } from '../sync/sync.ts'
 import * as SyncState from '../sync/syncstate.ts'
@@ -53,7 +54,7 @@ const jsonStringify = Schema.encodeSync(Schema.parseJson())
 
 type LocalPushQueueItem = [
   event: LiveStoreEvent.Client.EncodedWithMeta,
-  deferred: Deferred.Deferred<void, LeaderAheadError> | undefined,
+  deferred: Deferred.Deferred<void, LeaderAheadError | StaleRebaseGenerationError> | undefined,
 ]
 
 /**
@@ -227,7 +228,7 @@ export const makeLeaderSyncProcessor = ({
         const waitForProcessing = options?.waitForProcessing ?? false
 
         if (waitForProcessing === true) {
-          const deferreds = yield* Effect.forEach(newEvents, () => Deferred.make<void, LeaderAheadError>())
+          const deferreds = yield* Effect.forEach(newEvents, () => Deferred.make<void, LeaderAheadError | StaleRebaseGenerationError>())
 
           const items = newEvents.map((eventEncoded, i) => [eventEncoded, deferreds[i]] as LocalPushQueueItem)
 
@@ -287,7 +288,7 @@ export const makeLeaderSyncProcessor = ({
       }).pipe(
         // pushPartial constructs the event sequence number internally, so these errors should never happen.
         Effect.catchIf(
-          (error) => error._tag === 'LeaderAheadError' || error._tag === 'NonMonotonicBatchError',
+          (error) => error._tag === 'LeaderAheadError' || error._tag === 'NonMonotonicBatchError' || error._tag === 'StaleRebaseGenerationError',
           Effect.die,
         ),
       )
@@ -529,21 +530,22 @@ const backgroundApplyLocalPushes = ({
             undefined,
           )
 
-          /**
-           * Dropped pushes may still have a deferred awaiting completion.
-           * Fail it so the caller learns the leader advanced and resubmits with the updated generation.
-           */
-          yield* Effect.forEach(
-            droppedItems.filter(
-              (item): item is [LiveStoreEvent.Client.EncodedWithMeta, Deferred.Deferred<void, LeaderAheadError>] =>
+        /**
+         * Dropped pushes may still have a deferred awaiting completion.
+         * Fail it so the caller learns the leader advanced and resubmits with the updated generation.
+         */
+        yield* Effect.forEach(
+          droppedItems.filter(
+            (item): item is [LiveStoreEvent.Client.EncodedWithMeta, Deferred.Deferred<void, LeaderAheadError | StaleRebaseGenerationError>] =>
                 item[1] !== undefined,
             ),
             ([eventEncoded, deferred]) =>
               Deferred.fail(
                 deferred,
-                LeaderAheadError.make({
-                  minimumExpectedNum: syncState.localHead,
-                  providedNum: eventEncoded.seqNum,
+                StaleRebaseGenerationError.make({
+                  currentRebaseGeneration,
+                  providedRebaseGeneration: eventEncoded.seqNum.rebaseGeneration,
+                sessionId: eventEncoded.sessionId,
                 }),
               ),
           )
@@ -659,7 +661,7 @@ type MaterializeEventsBatch = (_: {
    * The deferreds are used by the caller to know when the mutation has been processed.
    * Indexes are aligned with `batchItems`
    */
-  deferreds: ReadonlyArray<Deferred.Deferred<void, LeaderAheadError> | undefined> | undefined
+  deferreds: ReadonlyArray<Deferred.Deferred<void, LeaderAheadError | StaleRebaseGenerationError> | undefined> | undefined
 }) => Effect.Effect<void, MaterializeError, LeaderThreadCtx>
 
 // TODO how to handle errors gracefully

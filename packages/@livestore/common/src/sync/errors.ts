@@ -29,10 +29,11 @@ export class InvalidPullError extends Schema.TaggedError<InvalidPullError>()('In
 }) {}
 
 /**
- * A push events batch failed validation because its sequence numbers are not strictly increasing.
+ * A pushed batch of events failed validation because its sequence numbers are not strictly increasing.
  *
  * @remarks
- * This is a defensive check — callers are expected to construct monotonic batches.
+ *
+ * This is a defensive check — callers are expected to construct monotonic event batches.
  * The client should rebase and retry.
  */
 export class NonMonotonicBatchError extends Schema.TaggedError<NonMonotonicBatchError>()(
@@ -49,7 +50,30 @@ export class NonMonotonicBatchError extends Schema.TaggedError<NonMonotonicBatch
   },
 ) {
   override get message(): string {
-    return `Push events batch sequence numbers are not strictly increasing at index ${this.violationIndex} (session ${this.sessionId}): ${EventSequenceNumber.Client.toString(this.precedingSeqNum)} >= ${EventSequenceNumber.Client.toString(this.violatingSeqNum)}`
+    return `Pushed events' sequence numbers are not strictly increasing at index ${this.violationIndex} (session ${this.sessionId}): ${EventSequenceNumber.Client.toString(this.precedingSeqNum)} >= ${EventSequenceNumber.Client.toString(this.violatingSeqNum)}`
+  }
+}
+
+/**
+ * A pushed batch of events failed validation because its rebase generation is older than the leader's current rebase generation.
+ *
+ * @remarks
+ *
+ * This happens when events were enqueued before a backend-pull-triggered rebase incremented the generation.
+ */
+export class StaleRebaseGenerationError extends Schema.TaggedError<StaleRebaseGenerationError>()(
+  'StaleRebaseGenerationError',
+  {
+    /** The leader's current rebase generation. */
+    currentRebaseGeneration: Schema.Number,
+    /** The rebase generation carried by the dropped events. */
+    providedRebaseGeneration: Schema.Number,
+    /** The session that produced the stale batch. */
+    sessionId: Schema.String,
+  },
+) {
+  override get message(): string {
+    return `Pushed events have stale rebase generation (session ${this.sessionId}): expected >= ${this.currentRebaseGeneration}, got ${this.providedRebaseGeneration}`
   }
 }
 

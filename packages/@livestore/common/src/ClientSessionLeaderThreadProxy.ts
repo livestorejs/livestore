@@ -7,7 +7,7 @@ import type { UnknownError } from './errors.ts'
 import type { StreamEventsOptions } from './leader-thread/types.ts'
 import type * as EventSequenceNumber from './schema/EventSequenceNumber/mod.ts'
 import type { LiveStoreEvent } from './schema/mod.ts'
-import type { LeaderAheadError, NonMonotonicBatchError, SyncBackend } from './sync/sync.ts'
+import type { LeaderAheadError, NonMonotonicBatchError, StaleRebaseGenerationError, SyncBackend } from './sync/sync.ts'
 import type { PayloadUpstream, SyncState } from './sync/syncstate.ts'
 
 export interface ClientSessionLeaderThreadProxy {
@@ -16,7 +16,7 @@ export interface ClientSessionLeaderThreadProxy {
       cursor: EventSequenceNumber.Client.Composite
     }) => Stream.Stream<{ payload: typeof PayloadUpstream.Type }, UnknownError>
     /** It's important that a client session doesn't call `push` concurrently. */
-    push(batch: ReadonlyArray<LiveStoreEvent.Client.Encoded>): Effect.Effect<void, UnknownError | LeaderAheadError | NonMonotonicBatchError>
+    push(batch: ReadonlyArray<LiveStoreEvent.Client.Encoded>): Effect.Effect<void, UnknownError | LeaderAheadError | NonMonotonicBatchError | StaleRebaseGenerationError>
     /** Stream events with filtering */
     stream(options: StreamEventsOptions): Stream.Stream<LiveStoreEvent.Client.Encoded, UnknownError>
   }

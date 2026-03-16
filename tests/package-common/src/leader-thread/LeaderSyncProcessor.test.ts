@@ -1,4 +1,4 @@
-import type { SyncOptions } from '@livestore/common'
+import { type NonMonotonicBatchError, StaleRebaseGenerationError, type SyncOptions } from '@livestore/common'
 import {
   BackendIdMismatchError,
   type IntentionalShutdownCause,
@@ -37,7 +37,7 @@ import {
 } from '@livestore/utils/effect'
 import { PlatformNode } from '@livestore/utils/node'
 import { Vitest } from '@livestore/utils-dev/node-vitest'
-import { expect } from 'vitest'
+import { expect, assert } from 'vitest'
 
 import { events, schema, tables } from './fixture.ts'
 
@@ -294,7 +294,7 @@ Vitest.describe.concurrent('LeaderSyncProcessor', { timeout: 60000 }, () => {
     ),
   )
 
-  Vitest.scopedLive('local push old-gen items fail promptly with LeaderAheadError', (test) =>
+  Vitest.scopedLive('local push old-gen items fail promptly with StaleRebaseGenerationError', (test) =>
     Effect.gen(function* () {
       const leaderThreadCtx = yield* LeaderThreadCtx
       const testContext = yield* TestContext
@@ -326,13 +326,15 @@ Vitest.describe.concurrent('LeaderSyncProcessor', { timeout: 60000 }, () => {
         parentSeqNum: staleParent,
       })
 
-      const leaderAheadError = yield* leaderThreadCtx.syncProcessor
+      const error = yield* leaderThreadCtx.syncProcessor
         .push([staleEvent], { waitForProcessing: true })
         .pipe(Effect.flip)
 
-      expect(leaderAheadError._tag).toBe('LeaderAheadError')
-      expect(leaderAheadError.minimumExpectedNum).toEqual(syncStateBefore.localHead)
-      expect(leaderAheadError.providedNum).toEqual(staleSeq)
+      expect(error._tag).toBe('StaleRebaseGenerationError')
+      assert(error instanceof StaleRebaseGenerationError)
+
+      expect(error.currentRebaseGeneration).toBe(syncStateBefore.localHead.rebaseGeneration)
+      expect(error.providedRebaseGeneration).toBe(staleSeq.rebaseGeneration)
     }).pipe(withTestCtx()(test)),
   )
 
@@ -826,7 +828,7 @@ class TestContext extends Context.Tag('TestContext')<
     /** Equivalent to the ClientSessionSyncProcessor calling `.push` on the LeaderThreadCtx */
     pushEncoded: (
       ...events: ReadonlyArray<LiveStoreEvent.Global.Encoded>
-    ) => Effect.Effect<void, UnknownError | LeaderAheadError, Scope.Scope | LeaderThreadCtx>
+    ) => Effect.Effect<void, LeaderAheadError | StaleRebaseGenerationError | NonMonotonicBatchError, Scope.Scope | LeaderThreadCtx>
   }
 >() {}
 
