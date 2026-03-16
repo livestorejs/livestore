@@ -74,11 +74,11 @@ type LocalPushQueueItem = [
  *   - Maintains events in ascending order.
  *   - Uses `Deferred` objects to resolve/reject events based on application success.
  * - Processes events from the queue, applying events in batches.
- * - Controlled by a mutex (`Semaphore(1)`) to ensure mutual exclusion between push and pull processing.
- * - The pull side acquires the mutex before processing and releases it on post-pull completion.
+ * - Controlled by a mutex (`Semaphore(1)`) to ensure mutual exclusion between local push and backend pull processing.
+ * - The backend pull side acquires the mutex before processing and releases it on post-pull completion.
  * - Processes up to `maxBatchSize` events per cycle.
  *
- * Currently we're advancing the state db and eventlog in lockstep, but we could also decouple this in the future
+ * Currently, we're advancing the state db and eventlog in lockstep, but we could also decouple this in the future
  *
  * Tricky concurrency scenarios:
  * - Queued local push batches becoming invalid due to a prior local push item being rejected.
