@@ -22,7 +22,6 @@ declare class Response extends CfDeclare.Response {}
 type Env = {
   SYNC_BACKEND_DO: CfTypes.DurableObjectNamespace<SyncBackendRpcInterface>
   TEST_STORE_DO: CfTypes.DurableObjectNamespace<ClientDoWithRpcCallback>
-  DB: CfTypes.D1Database
 }
 
 export class SyncBackendDO extends makeDurableObject({}) {}
