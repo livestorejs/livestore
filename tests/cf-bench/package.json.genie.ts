@@ -1,28 +1,36 @@
-import { localPackageDefaults, packageJson } from '../../genie/repo.ts'
+import { catalog, localPackageDefaults, packageJson, workspaceMember } from '../../genie/repo.ts'
+import adapterCfPkg from '../../packages/@livestore/adapter-cloudflare/package.json.genie.ts'
+import commonPkg from '../../packages/@livestore/common/package.json.genie.ts'
+import commonCfPkg from '../../packages/@livestore/common-cf/package.json.genie.ts'
+import livestorePkg from '../../packages/@livestore/livestore/package.json.genie.ts'
+import syncCfPkg from '../../packages/@livestore/sync-cf/package.json.genie.ts'
+import utilsPkg from '../../packages/@livestore/utils/package.json.genie.ts'
 
 /**
  * cf-bench is a standalone workspace (own pnpm-workspace.yaml) used for
- * manual benchmarking of the CF adapter. Dependencies are pinned manually
- * since this package is not part of the monorepo's pnpm workspace.
+ * manual benchmarking of the CF adapter. It uses workspace:* deps to build
+ * against local adapter changes.
  */
-export default packageJson({
-  name: '@local/cf-bench',
-  ...localPackageDefaults,
-  scripts: {
-    dev: 'wrangler dev',
-    deploy: 'wrangler deploy',
-    bench: './run-bench.sh',
-  },
+const composition = catalog.compose({
+  workspace: workspaceMember('tests/cf-bench'),
   dependencies: {
-    '@cloudflare/workers-types': '4.20251118.0',
-    '@livestore/adapter-cloudflare': 'workspace:*',
-    '@livestore/common': 'workspace:*',
-    '@livestore/common-cf': 'workspace:*',
-    '@livestore/livestore': 'workspace:*',
-    '@livestore/sync-cf': 'workspace:*',
-    '@livestore/utils': 'workspace:*',
+    workspace: [adapterCfPkg, commonPkg, commonCfPkg, livestorePkg, syncCfPkg, utilsPkg],
+    external: catalog.pick('@cloudflare/workers-types'),
   },
   devDependencies: {
-    wrangler: '^4.42.2',
+    external: catalog.pick('wrangler'),
   },
 })
+
+export default packageJson(
+  {
+    name: '@local/cf-bench',
+    ...localPackageDefaults,
+    scripts: {
+      dev: 'wrangler dev',
+      deploy: 'wrangler deploy',
+      bench: './run-bench.sh',
+    },
+  },
+  composition,
+)
