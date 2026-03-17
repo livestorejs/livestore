@@ -4,15 +4,16 @@
  * Deployable CF worker for benchmarking livestore DO adapter write amplification
  * and memory usage under load.
  *
- * Endpoints (all require `?storeId=<id>` query param):
- *   POST /store/todos        — create a todo: { id, title }
- *   POST /store/todos/bulk   — create N todos: { count, prefix? }
- *   GET  /store/todos        — list all todos
- *   GET  /store/todos/count  — { count } (cheaper than listing all)
- *   GET  /store/metrics      — { totalRowsWritten, todoCount }
- *   DELETE /store/metrics    — reset rowsWritten counter
- *   POST /store/shutdown     — shut down the store (simulates cold start on next request)
- *   GET  /health             — health check (no storeId needed)
+ * Endpoints (all require `?storeId=<id>` query param unless noted):
+ *   POST   /store/todos        — create a todo: { id, title }
+ *   POST   /store/todos/bulk   — create N todos: { count, prefix? }
+ *   GET    /store/todos        — list all todos
+ *   GET    /store/todos/count  — { count } (cheaper than listing all)
+ *   GET    /store/metrics      — { totalRowsWritten, todoCount }
+ *   DELETE /store/metrics      — reset rowsWritten counter
+ *   GET    /store/sync-status  — { eventCount, syncHead, synced }
+ *   POST   /store/shutdown     — shut down the store (simulates cold start on next request)
+ *   GET    /health             — health check (no storeId needed)
  *
  * Deploy:  cd tests/cf-bench && pnpm install && pnpm deploy
  * Local:   pnpm dev
@@ -103,14 +104,23 @@ export class BenchStoreDo extends DurableObject<Env> implements ClientDoWithRpcC
         const payload = await request.json<{ count: number; prefix?: string }>()
         const prefix = payload.prefix ?? 'todo'
         const store = await this.ensureStore({ storeId })
+        let committed = 0
+        let firstError: string | undefined
         for (let i = 0; i < payload.count; i++) {
           const id = `${prefix}-${i}-${crypto.randomUUID().slice(0, 6)}`
-          store.commit(events.todoCreated({ id, title: `${prefix} item ${i}` }))
+          try {
+            store.commit(events.todoCreated({ id, title: `${prefix} item ${i}` }))
+            committed++
+          } catch (err) {
+            if (firstError === undefined) {
+              firstError = err instanceof Error ? err.message : String(err)
+            }
+          }
         }
-        return new Response(JSON.stringify({ created: payload.count }), {
-          status: 201,
-          headers: { 'content-type': 'application/json' },
-        })
+        return new Response(
+          JSON.stringify({ created: payload.count, committed, firstError: firstError ?? null }),
+          { status: 201, headers: { 'content-type': 'application/json' } },
+        )
       }
 
       if (url.pathname === '/store/todos' && request.method === 'GET') {
