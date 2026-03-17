@@ -369,7 +369,7 @@ describe('CloudflareSqlVFS - Core Functionality', () => {
       expect(stats).toHaveProperty('maxFiles')
       expect(stats).toHaveProperty('blockSize')
       expect(stats).toHaveProperty('totalStoredBytes')
-      expect(stats.blockSize).toBe(64 * 1024)
+      expect(stats.blockSize).toBe(8 * 1024)
     })
   })
 
