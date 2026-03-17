@@ -33,6 +33,7 @@ export class SyncBackendDO extends makeDurableObject({}) {}
  */
 const wrapSqlForTracking = (sql: CfTypes.SqlStorage) => {
   let totalRowsWritten = 0
+  let totalRowsRead = 0
 
   const trackedExec: CfTypes.SqlStorage['exec'] = <T extends Record<string, CfTypes.SqlStorageValue>>(
     query: string,
@@ -45,6 +46,7 @@ const wrapSqlForTracking = (sql: CfTypes.SqlStorage) => {
     // iteration. Most VFS write operations (INSERT, UPDATE, DELETE) never
     // iterate the cursor, so we must capture the count eagerly.
     totalRowsWritten += cursor.rowsWritten
+    totalRowsRead += cursor.rowsRead
 
     return cursor
   }
@@ -53,14 +55,16 @@ const wrapSqlForTracking = (sql: CfTypes.SqlStorage) => {
     get(target, prop, receiver) {
       if (prop === 'exec') return trackedExec
       if (prop === 'totalRowsWritten') return totalRowsWritten
+      if (prop === 'totalRowsRead') return totalRowsRead
       if (prop === 'resetMetrics') {
         return () => {
           totalRowsWritten = 0
+          totalRowsRead = 0
         }
       }
       return Reflect.get(target, prop, receiver)
     },
-  }) as CfTypes.SqlStorage & { totalRowsWritten: number; resetMetrics: () => void }
+  }) as CfTypes.SqlStorage & { totalRowsWritten: number; totalRowsRead: number; resetMetrics: () => void }
 
   return trackedSql
 }
@@ -111,7 +115,10 @@ export class WriteTrackingStoreDo extends DurableObject<Env> implements ClientDo
         await this.ensureStore({ storeId })
 
         return new Response(
-          JSON.stringify({ totalRowsWritten: this.trackedSql?.totalRowsWritten ?? 0 }),
+          JSON.stringify({
+            totalRowsWritten: this.trackedSql?.totalRowsWritten ?? 0,
+            totalRowsRead: this.trackedSql?.totalRowsRead ?? 0,
+          }),
           { headers: { 'content-type': 'application/json' } },
         )
       }
@@ -119,7 +126,7 @@ export class WriteTrackingStoreDo extends DurableObject<Env> implements ClientDo
       if (request.method === 'DELETE') {
         this.trackedSql?.resetMetrics()
 
-        return new Response(JSON.stringify({ totalRowsWritten: 0 }), {
+        return new Response(JSON.stringify({ totalRowsWritten: 0, totalRowsRead: 0 }), {
           headers: { 'content-type': 'application/json' },
         })
       }

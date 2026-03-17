@@ -66,11 +66,11 @@ const makeStoreHelpers = (serverUrl: string, storeId: string) =>
       ),
 
       getMetrics: () => client.get('/store/metrics').pipe(
-        Effect.flatMap(HttpClientResponse.schemaBodyJson(Schema.Struct({ totalRowsWritten: Schema.Number }))),
+        Effect.flatMap(HttpClientResponse.schemaBodyJson(Schema.Struct({ totalRowsWritten: Schema.Number, totalRowsRead: Schema.Number }))),
       ),
 
       resetMetrics: () => client.del('/store/metrics').pipe(
-        Effect.flatMap(HttpClientResponse.schemaBodyJson(Schema.Struct({ totalRowsWritten: Schema.Number }))),
+        Effect.flatMap(HttpClientResponse.schemaBodyJson(Schema.Struct({ totalRowsWritten: Schema.Number, totalRowsRead: Schema.Number }))),
       ),
 
       shutdownStore: () => client.post('/store/shutdown').pipe(
@@ -105,7 +105,7 @@ Vitest.describe('adapter-cloudflare-writes', { timeout: testTimeout }, () => {
     }).pipe(withTestCtx(test)),
   )
 
-  Vitest.live('snapshot restore on cold start avoids full rematerialization', (test) =>
+  Vitest.live('cold start reopens persisted VFS state with zero writes', (test) =>
     Effect.gen(function* () {
       const server = yield* WranglerDevServerService
       const storeId = `cf-writes-snapshot-restore-${nanoid(6)}`
@@ -132,11 +132,11 @@ Vitest.describe('adapter-cloudflare-writes', { timeout: testTimeout }, () => {
 
       // Cold start with VFS-backed state should be cheap — just reopens the VFS.
       // The eventlog is on native DO SQLite (1 row per event).
-      // Expect rematerialization overhead under 50 writes.
-      expect(restartMetrics.totalRowsWritten).toBeGreaterThan(0)
-      expect(restartMetrics.totalRowsWritten).toBeLessThan(50)
+      expect(restartMetrics.totalRowsRead).toBeGreaterThan(0)
+      expect(restartMetrics.totalRowsRead).toBeLessThan(50)
+      expect(restartMetrics.totalRowsWritten).toBe(0)
 
-      yield* Effect.promise(() => test.annotate(`${restartMetrics.totalRowsWritten} writes on cold start`))
+      yield* Effect.promise(() => test.annotate(`${restartMetrics.totalRowsWritten} writes, ${restartMetrics.totalRowsRead} reads on cold start`))
     }).pipe(withTestCtx(test)),
   )
 
