@@ -73,12 +73,26 @@ export const makeAdapter =
         _tag: 'storage',
         storage,
         fileName: stateDbFileName,
-        // journal_mode=MEMORY keeps the rollback journal in wasm heap memory instead of
-        // writing it through the VFS to native DO SQLite. This eliminates journal-related
-        // rowsWritten (journal create/write/delete per transaction) while preserving
-        // in-process transaction rollback. Safe because the single-threaded DO model
-        // guarantees no concurrent access and native DO SQLite handles block durability.
-        configureDb: (db) => db.execute('PRAGMA journal_mode=MEMORY'),
+        // Minimize VFS rows_written — dbState is recoverable from eventlog, so durability is not needed.
+        // - journal_mode=MEMORY: keeps rollback journal in wasm heap instead of writing through VFS,
+        //   eliminating journal-related rowsWritten while preserving in-process ROLLBACK.
+        // - synchronous=OFF: skips jSync VFS calls (already a no-op, but avoids the dispatch).
+        // - locking_mode=EXCLUSIVE: skips per-transaction lock/unlock and hot-journal xAccess checks.
+        //   Matches the single-threaded DO model (only one connection exists).
+        // - temp_store=MEMORY: keeps temp tables/indices in wasm heap, preventing temp file VFS writes.
+        // - cache_size=-8000: ~8 MB / ~1000 pages at 8 KB. Large enough to hold all dirty pages
+        //   during materialization without exceeding the soft limit, working in tandem with cache_spill=OFF.
+        // - cache_spill=OFF: prevents mid-transaction page spilling that can cause double-writes
+        //   (spilled page dirtied again = 2 rowsWritten) and wasted writes on ROLLBACK.
+        configureDb: (db) =>
+          db.execute(`
+            PRAGMA journal_mode=MEMORY;
+            PRAGMA synchronous=OFF;
+            PRAGMA locking_mode=EXCLUSIVE;
+            PRAGMA temp_store=MEMORY;
+            PRAGMA cache_size=-8000;
+            PRAGMA cache_spill=OFF;
+          `),
       }).pipe(UnknownError.mapToUnknownError)
 
       const dbEventlog = yield* makeNativeSqliteDb({
