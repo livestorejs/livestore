@@ -8,6 +8,13 @@ export default defineConfig({
       solid: { generate: 'dom' },
     }),
   ],
+  server: {
+    fs: {
+      /** GVS (enableGlobalVirtualStore) stores packages in ~/Library/pnpm/store/
+       * which is outside the project root. Vite blocks serving these by default. */
+      strict: false,
+    },
+  },
   test: {
     root: import.meta.dirname,
     name: 'solid-client',
@@ -23,7 +30,10 @@ export default defineConfig({
     include: ['src/**/*.client.test.{ts,tsx}'],
     server: {
       deps: {
-        inline: [/solid-js/, '@effect/vitest'],
+        /** solid-js removed from inline — with GVS, inlining creates a duplicate
+         * module instance alongside the GVS-resolved one, triggering "multiple
+         * instances of Solid" and breaking Suspense/signals. */
+        inline: ['@effect/vitest'],
       },
     },
   },
