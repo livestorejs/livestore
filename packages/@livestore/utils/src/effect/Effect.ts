@@ -275,7 +275,12 @@ const getSpanTrace = () => {
 
 const logSpanTrace = () => console.log(getSpanTrace())
 
-// @ts-expect-error TODO fix types
+declare global {
+  /** Debug helper: returns the current Effect span trace */
+  var getSpanTrace: () => string
+  /** Debug helper: logs the current Effect span trace */
+  var logSpanTrace: () => void
+}
+
 globalThis.getSpanTrace = getSpanTrace
-// @ts-expect-error TODO fix types
 globalThis.logSpanTrace = logSpanTrace
