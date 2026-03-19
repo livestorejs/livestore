@@ -74,6 +74,9 @@ export const makeAdapter =
           ),
       }).pipe(UnknownError.mapToUnknownError)
 
+      // dbEventlog runs on DO SQLite directly (not through the VFS). SQL-level transaction
+      // control (BEGIN/COMMIT/ROLLBACK) is silently dropped — see isTransactionControlStatement
+      // in make-sqlite-db.ts for details on why this is safe.
       const dbEventlog = yield* makeDoSqliteDb({
         _tag: 'file',
         db: storage.sql,

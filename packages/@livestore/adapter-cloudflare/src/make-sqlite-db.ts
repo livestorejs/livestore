@@ -259,6 +259,20 @@ export const makeSqliteDb_ = <
  * The current adapter only detects and suppresses those SQL statements. It does not yet translate the
  * caller's transaction intent into a shared Durable Object storage transaction.
  *
+ * ## Consistency implications
+ *
+ * `LeaderSyncProcessor.materializeEventsBatch()` wraps both `dbState` and `dbEventlog` in
+ * `BEGIN`/`COMMIT` to keep them consistent. Because this adapter drops those statements,
+ * eventlog INSERTs are auto-committed individually while `dbState` (VFS-backed) still has
+ * real transaction boundaries. If a batch partially fails, earlier eventlog rows survive
+ * while `dbState` rolls back.
+ *
+ * This is safe because:
+ * - The eventlog is append-only and idempotent — replaying already-inserted events is a no-op.
+ * - State is always rebuildable from the eventlog on cold start (`recreateDb`).
+ * - A Durable Object is single-threaded, so no concurrent reader can observe the
+ *   intermediate inconsistency.
+ *
  * Uses prefix matching to cover all SQLite variants:
  * - `BEGIN [DEFERRED | IMMEDIATE | EXCLUSIVE] [TRANSACTION]`
  * - `COMMIT [TRANSACTION]` / `END [TRANSACTION]`
