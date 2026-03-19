@@ -4,12 +4,10 @@ import type { CfTypes } from '@livestore/common-cf'
 import * as VFS from '@livestore/wa-sqlite/src/VFS.js'
 import { beforeEach, describe, expect, it } from 'vitest'
 
-import { CloudflareDurableObjectVFS } from '../../mod.ts'
-
-const PAGE_SIZE = 8 * 1024
+import { CF_SQL_VFS_PAGE_SIZE, CloudflareDurableObjectVFS } from '../../mod.ts'
 
 const makePage = (fillByte: number, text?: string): Uint8Array => {
-  const page = new Uint8Array(PAGE_SIZE)
+  const page = new Uint8Array(CF_SQL_VFS_PAGE_SIZE)
   page.fill(fillByte)
 
   if (text !== undefined) {
@@ -285,7 +283,7 @@ describe('CloudflareDurableObjectVFS - Core Functionality', () => {
       expect(pSize64.getBigInt64(0, true)).toBe(0n)
 
       // Write one full page (8 KiB) and check size
-      const pageSize = PAGE_SIZE
+      const pageSize = CF_SQL_VFS_PAGE_SIZE
       const testData = new Uint8Array(pageSize)
       testData.fill(0xaa)
       vfs.jWrite(fileId, testData, 0)
@@ -303,7 +301,7 @@ describe('CloudflareDurableObjectVFS - Core Functionality', () => {
       vfs.jOpen(path, fileId, flags, pOutFlags)
 
       // Write two full pages
-      const pageSize = PAGE_SIZE
+      const pageSize = CF_SQL_VFS_PAGE_SIZE
       vfs.jWrite(fileId, makePage(0xbb), 0)
       vfs.jWrite(fileId, makePage(0xcc), pageSize)
 
@@ -364,14 +362,14 @@ describe('CloudflareDurableObjectVFS - Core Functionality', () => {
       expect(stats).toHaveProperty('pageSize')
       expect(stats).toHaveProperty('totalPages')
       expect(stats).toHaveProperty('totalStoredBytes')
-      expect(stats.pageSize).toBe(PAGE_SIZE)
+      expect(stats.pageSize).toBe(CF_SQL_VFS_PAGE_SIZE)
     })
   })
 
   describe('Error Handling', () => {
     it('should return SQLITE_IOERR for handle-based operations on unknown file IDs', () => {
       const invalidFileId = 999
-      const buffer = new Uint8Array(PAGE_SIZE)
+      const buffer = new Uint8Array(CF_SQL_VFS_PAGE_SIZE)
       const pSize64 = new DataView(new ArrayBuffer(8))
 
       expect(vfs.jRead(invalidFileId, buffer, 0)).toBe(VFS.SQLITE_IOERR)
@@ -386,7 +384,7 @@ describe('CloudflareDurableObjectVFS - Core Functionality', () => {
       const fileId = 1
       const flags = VFS.SQLITE_OPEN_CREATE | VFS.SQLITE_OPEN_READWRITE
       const pOutFlags = new DataView(new ArrayBuffer(4))
-      const buffer = new Uint8Array(PAGE_SIZE)
+      const buffer = new Uint8Array(CF_SQL_VFS_PAGE_SIZE)
       const pSize64 = new DataView(new ArrayBuffer(8))
 
       expect(vfs.jOpen(path, fileId, flags, pOutFlags)).toBe(VFS.SQLITE_OK)
@@ -414,7 +412,7 @@ describe('CloudflareDurableObjectVFS - Core Functionality', () => {
       const pOutFlags = new DataView(new ArrayBuffer(4))
 
       expect(vfs.jOpen(path, fileId, flags, pOutFlags)).toBe(VFS.SQLITE_OK)
-      expect(vfs.jWrite(fileId, new Uint8Array(PAGE_SIZE / 2), 0)).toBe(VFS.SQLITE_IOERR)
+      expect(vfs.jWrite(fileId, new Uint8Array(CF_SQL_VFS_PAGE_SIZE / 2), 0)).toBe(VFS.SQLITE_IOERR)
       expect(mockPages.size).toBe(0)
     })
 
@@ -425,7 +423,7 @@ describe('CloudflareDurableObjectVFS - Core Functionality', () => {
       const pOutFlags = new DataView(new ArrayBuffer(4))
 
       expect(vfs.jOpen(path, fileId, flags, pOutFlags)).toBe(VFS.SQLITE_OK)
-      expect(vfs.jWrite(fileId, makePage(0x88), PAGE_SIZE / 2)).toBe(VFS.SQLITE_IOERR)
+      expect(vfs.jWrite(fileId, makePage(0x88), CF_SQL_VFS_PAGE_SIZE / 2)).toBe(VFS.SQLITE_IOERR)
       expect(mockPages.size).toBe(0)
     })
 

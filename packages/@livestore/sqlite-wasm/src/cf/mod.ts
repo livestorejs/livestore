@@ -10,7 +10,11 @@ import { makeInMemoryDb } from '../in-memory-vfs.ts'
 import { makeSqliteDb } from '../make-sqlite-db.ts'
 import { CloudflareDurableObjectVFS } from './CloudflareDurableObjectVFS.ts'
 
-export { CloudflareDurableObjectVFS, REQUIRED_PRAGMAS as CF_SQL_VFS_REQUIRED_PRAGMAS } from './CloudflareDurableObjectVFS.ts'
+export {
+  CloudflareDurableObjectVFS,
+  PAGE_SIZE as CF_SQL_VFS_PAGE_SIZE,
+  REQUIRED_PRAGMAS as CF_SQL_VFS_REQUIRED_PRAGMAS,
+} from './CloudflareDurableObjectVFS.ts'
 export { CloudflareWorkerVFS } from './CloudflareWorkerVFS.ts'
 
 export type CloudflareDatabaseMetadataInMemory = {

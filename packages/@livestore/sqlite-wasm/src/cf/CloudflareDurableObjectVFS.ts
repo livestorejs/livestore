@@ -5,13 +5,16 @@ import { FacadeVFS } from '../FacadeVFS.ts'
 
 // Page size for SQL-based storage. Matches dbState page size (PRAGMA page_size=8192)
 // so each SQLite page write maps to exactly one vfs_pages row write — no read-merge-write.
-const DEFAULT_PAGE_SIZE = 8 * 1024 // 8 KiB
+export const PAGE_SIZE = 8 * 1024 // 8 KiB
 
 /**
  * The {@link CloudflareDurableObjectVFS} VFS assumes SQLite is configured with these pragmas.
- * These pragmas are required for minimizing SQLite writes to the underlying storage.
+ * These pragmas are required both for correctness and for minimizing SQLite writes
+ * to the underlying storage.
  */
 export const REQUIRED_PRAGMAS = [
+  // Must match the fixed VFS page size so each SQLite page maps to one vfs_pages row.
+  `page_size=${PAGE_SIZE}`,
   // The rollback journal is the largest source of VFS writes. Keeping it
   // in WASM memory avoids writing journal pages through the VFS entirely.
   // This is acceptable because the state database is rebuildable from the
@@ -56,7 +59,6 @@ export const REQUIRED_PRAGMAS = [
  * isolated databases across process restarts.
  */
 export class CloudflareDurableObjectVFS extends FacadeVFS {
-  #pageSize: number
   #sql: CfTypes.SqlStorage
   /**
    * Tracks the path and open flags for each SQLite file handle.
@@ -74,12 +76,9 @@ export class CloudflareDurableObjectVFS extends FacadeVFS {
    * @param name - VFS name registered with wa-sqlite (must be unique per database).
    * @param sql - The Durable Object's {@link CfTypes.SqlStorage} handle.
    * @param module - The wa-sqlite WASM module instance.
-   * @param options.pageSize - Must match `PRAGMA page_size` on the wa-sqlite database.
-   *   Defaults to 8 KiB.
    */
-  constructor(name: string, sql: CfTypes.SqlStorage, module: any, options: { pageSize?: number } = {}) {
+  constructor(name: string, sql: CfTypes.SqlStorage, module: any) {
     super(name, module)
-    this.#pageSize = options.pageSize ?? DEFAULT_PAGE_SIZE
     this.#sql = sql
     this.#sql.exec(
       `CREATE TABLE IF NOT EXISTS vfs_pages (
@@ -137,7 +136,7 @@ export class CloudflareDurableObjectVFS extends FacadeVFS {
   override jRead(fileId: number, buffer: Uint8Array, offset: number): number {
     try {
       const { path } = this.#getOpenFile(fileId)
-      const pageNo = Math.floor(offset / this.#pageSize)
+      const pageNo = Math.floor(offset / PAGE_SIZE)
       const cursor = this.#sql.exec<{ page_data: ArrayBuffer }>(
         'SELECT page_data FROM vfs_pages WHERE file_path = ? AND page_no = ?',
         path,
@@ -152,7 +151,7 @@ export class CloudflareDurableObjectVFS extends FacadeVFS {
       }
 
       const src = new Uint8Array(rows[0]!.page_data)
-      const pageOffset = offset % this.#pageSize
+      const pageOffset = offset % PAGE_SIZE
       const available = src.byteLength - pageOffset
 
       if (available >= buffer.byteLength) {
@@ -186,7 +185,7 @@ export class CloudflareDurableObjectVFS extends FacadeVFS {
     try {
       const { path } = this.#getOpenFile(fileId)
       this.#assertCanonicalPageWrite(data, offset)
-      const pageNo = Math.floor(offset / this.#pageSize)
+      const pageNo = Math.floor(offset / PAGE_SIZE)
       // data.slice() copies out of the WASM heap Proxy so CF SQL storage can persist the BLOB correctly.
       this.#sql.exec(
         'INSERT OR REPLACE INTO vfs_pages (file_path, page_no, page_data) VALUES (?, ?, ?)',
@@ -205,7 +204,7 @@ export class CloudflareDurableObjectVFS extends FacadeVFS {
   override jTruncate(fileId: number, size: number): number {
     try {
       const { path } = this.#getOpenFile(fileId)
-      const lastPageNo = Math.ceil(size / this.#pageSize)
+      const lastPageNo = Math.ceil(size / PAGE_SIZE)
       this.#sql.exec('DELETE FROM vfs_pages WHERE file_path = ? AND page_no >= ?', path, lastPageNo)
       return VFS.SQLITE_OK
     } catch (error) {
@@ -228,7 +227,7 @@ export class CloudflareDurableObjectVFS extends FacadeVFS {
         'SELECT MAX(page_no) AS max_page FROM vfs_pages WHERE file_path = ?',
         path,
       ).one()
-      const fileSize = row.max_page === null ? 0 : (row.max_page + 1) * this.#pageSize
+      const fileSize = row.max_page === null ? 0 : (row.max_page + 1) * PAGE_SIZE
       pSize64.setBigInt64(0, BigInt(fileSize), true)
       return VFS.SQLITE_OK
     } catch (error) {
@@ -274,13 +273,13 @@ export class CloudflareDurableObjectVFS extends FacadeVFS {
       const stats = cursor.one()
 
       return {
-        pageSize: this.#pageSize,
+        pageSize: PAGE_SIZE,
         totalPages: stats.total_pages,
         totalStoredBytes: stats.total_bytes,
       }
     } catch {
       return {
-        pageSize: this.#pageSize,
+        pageSize: PAGE_SIZE,
         totalPages: 0,
         totalStoredBytes: 0,
       }
@@ -307,15 +306,15 @@ export class CloudflareDurableObjectVFS extends FacadeVFS {
   }
 
   #assertCanonicalPageWrite(data: Uint8Array, offset: number) {
-    if (offset % this.#pageSize !== 0) {
+    if (offset % PAGE_SIZE !== 0) {
       throw new Error(
-        `CloudflareDurableObjectVFS expected page-aligned writes, got offset=${offset} for pageSize=${this.#pageSize}`,
+        `CloudflareDurableObjectVFS expected page-aligned writes, got offset=${offset} for pageSize=${PAGE_SIZE}`,
       )
     }
 
-    if (data.byteLength !== this.#pageSize) {
+    if (data.byteLength !== PAGE_SIZE) {
       throw new Error(
-        `CloudflareDurableObjectVFS expected single-page writes of ${this.#pageSize} bytes, got ${data.byteLength}. Check that SQLite PRAGMA page_size matches the VFS page size.`,
+        `CloudflareDurableObjectVFS expected single-page writes of ${PAGE_SIZE} bytes, got ${data.byteLength}. Check that SQLite PRAGMA page_size matches the VFS page size.`,
       )
     }
   }
