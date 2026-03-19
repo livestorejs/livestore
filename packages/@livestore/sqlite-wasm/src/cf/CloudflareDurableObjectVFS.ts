@@ -174,6 +174,10 @@ export class CloudflareDurableObjectVFS extends FacadeVFS {
    *
    * @remarks
    *
+   * The VFS only supports canonical SQLite page writes. Rejecting any other
+   * shape turns page-size mismatches into a hard failure instead of silently
+   * aliasing multiple SQLite pages onto the same `vfs_pages` row.
+   *
    * The data is copied out of the WASM heap via `data.slice()` because
    * Cloudflare's SQL storage cannot persist the {@link FacadeVFS}
    * Proxy-wrapped buffer across DO restarts.
@@ -181,6 +185,7 @@ export class CloudflareDurableObjectVFS extends FacadeVFS {
   override jWrite(fileId: number, data: Uint8Array, offset: number): number {
     try {
       const { path } = this.#getOpenFile(fileId)
+      this.#assertCanonicalPageWrite(data, offset)
       const pageNo = Math.floor(offset / this.#pageSize)
       // data.slice() copies out of the WASM heap Proxy so CF SQL storage can persist the BLOB correctly.
       this.#sql.exec(
@@ -299,6 +304,20 @@ export class CloudflareDurableObjectVFS extends FacadeVFS {
     const openFile = this.#openFiles.get(fileId)
     if (openFile === undefined) throw new Error(`Unknown fileId ${fileId}`)
     return openFile
+  }
+
+  #assertCanonicalPageWrite(data: Uint8Array, offset: number) {
+    if (offset % this.#pageSize !== 0) {
+      throw new Error(
+        `CloudflareDurableObjectVFS expected page-aligned writes, got offset=${offset} for pageSize=${this.#pageSize}`,
+      )
+    }
+
+    if (data.byteLength !== this.#pageSize) {
+      throw new Error(
+        `CloudflareDurableObjectVFS expected single-page writes of ${this.#pageSize} bytes, got ${data.byteLength}. Check that SQLite PRAGMA page_size matches the VFS page size.`,
+      )
+    }
   }
 
   #deleteFilePages(path: string) {

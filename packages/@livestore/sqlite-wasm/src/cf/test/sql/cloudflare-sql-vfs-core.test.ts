@@ -6,6 +6,19 @@ import { beforeEach, describe, expect, it } from 'vitest'
 
 import { CloudflareDurableObjectVFS } from '../../mod.ts'
 
+const PAGE_SIZE = 8 * 1024
+
+const makePage = (fillByte: number, text?: string): Uint8Array => {
+  const page = new Uint8Array(PAGE_SIZE)
+  page.fill(fillByte)
+
+  if (text !== undefined) {
+    page.set(new TextEncoder().encode(text))
+  }
+
+  return page
+}
+
 describe('CloudflareDurableObjectVFS - Core Functionality', () => {
   let vfs: CloudflareDurableObjectVFS
   let mockSql: CfTypes.SqlStorage
@@ -203,14 +216,14 @@ describe('CloudflareDurableObjectVFS - Core Functionality', () => {
       const keepFileId = 1
       const keepFlags = VFS.SQLITE_OPEN_CREATE | VFS.SQLITE_OPEN_READWRITE
       vfs.jOpen(keepPath, keepFileId, keepFlags, pOutFlags)
-      const keepData = new TextEncoder().encode('keep-me')
+      const keepData = makePage(0x11, 'keep-me')
       expect(vfs.jWrite(keepFileId, keepData, 0)).toBe(VFS.SQLITE_OK)
 
       const deletePath = '/test/delete-on-close.db'
       const deleteFileId = 2
       const deleteFlags = VFS.SQLITE_OPEN_CREATE | VFS.SQLITE_OPEN_READWRITE | VFS.SQLITE_OPEN_DELETEONCLOSE
       vfs.jOpen(deletePath, deleteFileId, deleteFlags, pOutFlags)
-      expect(vfs.jWrite(deleteFileId, new TextEncoder().encode('delete-me'), 0)).toBe(VFS.SQLITE_OK)
+      expect(vfs.jWrite(deleteFileId, makePage(0x22, 'delete-me'), 0)).toBe(VFS.SQLITE_OK)
 
       expect(vfs.jClose(deleteFileId)).toBe(VFS.SQLITE_OK)
 
@@ -229,7 +242,7 @@ describe('CloudflareDurableObjectVFS - Core Functionality', () => {
       vfs.jOpen(path, fileId, flags, pOutFlags)
 
       // Write data
-      const testData = new TextEncoder().encode('Hello, SQL VFS!')
+      const testData = makePage(0x33, 'Hello, SQL VFS!')
       expect(vfs.jWrite(fileId, testData, 0)).toBe(VFS.SQLITE_OK)
 
       // Read data back
@@ -246,7 +259,7 @@ describe('CloudflareDurableObjectVFS - Core Functionality', () => {
       const oldFileId = 1
       vfs.jOpen(oldPath, oldFileId, flags, pOutFlags)
 
-      const oldData = new TextEncoder().encode('stale-state')
+      const oldData = makePage(0x44, 'stale-state')
       expect(vfs.jWrite(oldFileId, oldData, 0)).toBe(VFS.SQLITE_OK)
 
       const newPath = '/test/state-new.db'
@@ -272,7 +285,7 @@ describe('CloudflareDurableObjectVFS - Core Functionality', () => {
       expect(pSize64.getBigInt64(0, true)).toBe(0n)
 
       // Write one full page (8 KiB) and check size
-      const pageSize = 8 * 1024
+      const pageSize = PAGE_SIZE
       const testData = new Uint8Array(pageSize)
       testData.fill(0xaa)
       vfs.jWrite(fileId, testData, 0)
@@ -290,10 +303,9 @@ describe('CloudflareDurableObjectVFS - Core Functionality', () => {
       vfs.jOpen(path, fileId, flags, pOutFlags)
 
       // Write two full pages
-      const pageSize = 8 * 1024
-      const testData = new Uint8Array(pageSize * 2)
-      testData.fill(0xbb)
-      vfs.jWrite(fileId, testData, 0)
+      const pageSize = PAGE_SIZE
+      vfs.jWrite(fileId, makePage(0xbb), 0)
+      vfs.jWrite(fileId, makePage(0xcc), pageSize)
 
       // Truncate to one page
       expect(vfs.jTruncate(fileId, pageSize)).toBe(VFS.SQLITE_OK)
@@ -312,7 +324,7 @@ describe('CloudflareDurableObjectVFS - Core Functionality', () => {
 
       // Create file
       vfs.jOpen(path, fileId, flags, pOutFlags)
-      const testData = new TextEncoder().encode('Delete test')
+      const testData = makePage(0x55, 'Delete test')
       vfs.jWrite(fileId, testData, 0)
 
       // Delete file
@@ -329,13 +341,13 @@ describe('CloudflareDurableObjectVFS - Core Functionality', () => {
       const keepPath = '/test/keep.db'
       const keepFileId = 1
       vfs.jOpen(keepPath, keepFileId, flags, pOutFlags)
-      const keepData = new TextEncoder().encode('keep-me')
+      const keepData = makePage(0x66, 'keep-me')
       expect(vfs.jWrite(keepFileId, keepData, 0)).toBe(VFS.SQLITE_OK)
 
       const deletePath = '/test/delete-only.db'
       const deleteFileId = 2
       vfs.jOpen(deletePath, deleteFileId, flags, pOutFlags)
-      expect(vfs.jWrite(deleteFileId, new TextEncoder().encode('delete-me'), 0)).toBe(VFS.SQLITE_OK)
+      expect(vfs.jWrite(deleteFileId, makePage(0x77, 'delete-me'), 0)).toBe(VFS.SQLITE_OK)
 
       expect(vfs.jDelete(deletePath, 0)).toBe(VFS.SQLITE_OK)
 
@@ -352,14 +364,14 @@ describe('CloudflareDurableObjectVFS - Core Functionality', () => {
       expect(stats).toHaveProperty('pageSize')
       expect(stats).toHaveProperty('totalPages')
       expect(stats).toHaveProperty('totalStoredBytes')
-      expect(stats.pageSize).toBe(8 * 1024)
+      expect(stats.pageSize).toBe(PAGE_SIZE)
     })
   })
 
   describe('Error Handling', () => {
     it('should return SQLITE_IOERR for handle-based operations on unknown file IDs', () => {
       const invalidFileId = 999
-      const buffer = new Uint8Array(10)
+      const buffer = new Uint8Array(PAGE_SIZE)
       const pSize64 = new DataView(new ArrayBuffer(8))
 
       expect(vfs.jRead(invalidFileId, buffer, 0)).toBe(VFS.SQLITE_IOERR)
@@ -374,7 +386,7 @@ describe('CloudflareDurableObjectVFS - Core Functionality', () => {
       const fileId = 1
       const flags = VFS.SQLITE_OPEN_CREATE | VFS.SQLITE_OPEN_READWRITE
       const pOutFlags = new DataView(new ArrayBuffer(4))
-      const buffer = new Uint8Array(10)
+      const buffer = new Uint8Array(PAGE_SIZE)
       const pSize64 = new DataView(new ArrayBuffer(8))
 
       expect(vfs.jOpen(path, fileId, flags, pOutFlags)).toBe(VFS.SQLITE_OK)
@@ -395,6 +407,28 @@ describe('CloudflareDurableObjectVFS - Core Functionality', () => {
       expect(vfs.jOpen(invalidPath, fileId, flags, pOutFlags)).toBe(VFS.SQLITE_OK)
     })
 
+    it('should reject writes that do not match the configured page size', () => {
+      const path = '/test/page-size-mismatch.db'
+      const fileId = 1
+      const flags = VFS.SQLITE_OPEN_CREATE | VFS.SQLITE_OPEN_READWRITE
+      const pOutFlags = new DataView(new ArrayBuffer(4))
+
+      expect(vfs.jOpen(path, fileId, flags, pOutFlags)).toBe(VFS.SQLITE_OK)
+      expect(vfs.jWrite(fileId, new Uint8Array(PAGE_SIZE / 2), 0)).toBe(VFS.SQLITE_IOERR)
+      expect(mockPages.size).toBe(0)
+    })
+
+    it('should reject writes at non-page-aligned offsets', () => {
+      const path = '/test/page-offset-mismatch.db'
+      const fileId = 1
+      const flags = VFS.SQLITE_OPEN_CREATE | VFS.SQLITE_OPEN_READWRITE
+      const pOutFlags = new DataView(new ArrayBuffer(4))
+
+      expect(vfs.jOpen(path, fileId, flags, pOutFlags)).toBe(VFS.SQLITE_OK)
+      expect(vfs.jWrite(fileId, makePage(0x88), PAGE_SIZE / 2)).toBe(VFS.SQLITE_IOERR)
+      expect(mockPages.size).toBe(0)
+    })
+
     it('should always report not found from jAccess', () => {
       const path = '/test/access.db'
       const fileId = 1
@@ -403,7 +437,7 @@ describe('CloudflareDurableObjectVFS - Core Functionality', () => {
       const pResOut = new DataView(new ArrayBuffer(4))
 
       expect(vfs.jOpen(path, fileId, flags, pOutFlags)).toBe(VFS.SQLITE_OK)
-      expect(vfs.jWrite(fileId, new TextEncoder().encode('access-test'), 0)).toBe(VFS.SQLITE_OK)
+      expect(vfs.jWrite(fileId, makePage(0x99, 'access-test'), 0)).toBe(VFS.SQLITE_OK)
 
       expect(vfs.jAccess(path, VFS.SQLITE_ACCESS_EXISTS, pResOut)).toBe(VFS.SQLITE_OK)
       expect(pResOut.getUint32(0, true)).toBe(0)
