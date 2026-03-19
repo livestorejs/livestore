@@ -100,14 +100,12 @@ export type MakeCloudflareSqliteDb = MakeSqliteDb<Metadata, CloudflareDatabaseIn
 
 export const makeSqliteDb: MakeCloudflareSqliteDb = (input: CloudflareDatabaseInput) =>
   Effect.gen(function* () {
-    // console.log('makeSqliteDb', input)
     if (input._tag === 'in-memory') {
       return makeSqliteDb_<Metadata>({
         sqlStorage: input.db,
         metadata: {
           _tag: 'file' as const,
           dbPointer: 0,
-          // persistenceInfo: { fileName: ':memory:' },
           persistenceInfo: { fileName: 'cf' },
           input,
           configureDb: input.configureDb,
@@ -121,7 +119,6 @@ export const makeSqliteDb: MakeCloudflareSqliteDb = (input: CloudflareDatabaseIn
         metadata: {
           _tag: 'file' as const,
           dbPointer: 0,
-          // persistenceInfo: { fileName: `${input.directory}/${input.databaseName}` },
           persistenceInfo: { fileName: 'cf' },
           input,
           configureDb: input.configureDb,
@@ -133,7 +130,6 @@ export const makeSqliteDb: MakeCloudflareSqliteDb = (input: CloudflareDatabaseIn
 export const makeSqliteDb_ = <
   TMetadata extends {
     persistenceInfo: PersistenceInfo
-    // deleteDb: () => void
     configureDb: (db: SqliteDb<TMetadata>) => void
   },
 >({
@@ -191,7 +187,6 @@ export const makeSqliteDb_ = <
     destroy: () => {
       sqliteDb.close()
 
-      // metadata.deleteDb()
       throw new SqliteError({
         code: -1,
         cause: 'Database destroy not supported with public SqlStorage API',
