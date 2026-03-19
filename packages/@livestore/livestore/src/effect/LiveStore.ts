@@ -110,12 +110,20 @@ export type StoreLayerProps<TSchema extends LiveStoreSchema, TContext = {}> = Om
  *
  * Note: This uses a type alias with a new() signature to make it extendable.
  */
-export type StoreTagClass<TSchema extends LiveStoreSchema, TStoreId extends string> = {
+/**
+ * Type for a Store.Tag class. Uses self-referential identifier so that `yield*`
+ * and method R channels resolve to the same type, enabling proper layer composition.
+ *
+ * Uses `interface` (not `type`) to allow the self-referential identifier without
+ * triggering TS2456 (circular type alias).
+ */
+export interface StoreTagClass<TSchema extends LiveStoreSchema, TStoreId extends string>
+  extends Context.Tag<StoreTagClass<TSchema, TStoreId>, LiveStoreContextRunningType<TSchema>> {
   /** Constructor signature (makes the type extendable as a class) */
-  new (): Context.Tag<StoreContextId<TSchema, TStoreId>, LiveStoreContextRunningType<TSchema>>
+  new (): Context.Tag<StoreTagClass<TSchema, TStoreId>, LiveStoreContextRunningType<TSchema>>
 
   /** Tag identity type (from Context.Tag) */
-  readonly Id: StoreContextId<TSchema, TStoreId>
+  readonly Id: StoreTagClass<TSchema, TStoreId>
 
   /** Service type (from Context.Tag) */
   readonly Type: LiveStoreContextRunningType<TSchema>
@@ -127,7 +135,7 @@ export type StoreTagClass<TSchema extends LiveStoreSchema, TStoreId extends stri
   readonly storeId: TStoreId
 
   /** Creates a layer that initializes the store */
-  layer<TContext = {}>(
+  layer<TContext>(
     props: StoreLayerProps<TSchema, TContext>,
   ): Layer.Layer<StoreTagClass<TSchema, TStoreId>, UnknownError | Cause.TimeoutException, OtelTracer.OtelTracer>
 
@@ -155,7 +163,7 @@ export type StoreTagClass<TSchema extends LiveStoreSchema, TStoreId extends stri
   use<A, E, R>(
     f: (ctx: LiveStoreContextRunningType<TSchema>) => Effect.Effect<A, E, R>,
   ): Effect.Effect<A, E, R | StoreTagClass<TSchema, TStoreId>>
-} & Context.Tag<StoreContextId<TSchema, TStoreId>, LiveStoreContextRunningType<TSchema>>
+}
 
 /**
  * Create a typed store context class for use with Effect.
