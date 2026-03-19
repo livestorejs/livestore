@@ -255,7 +255,7 @@ Vitest.describe('adapter-cloudflare', { timeout: testTimeout }, () => {
       const restartMetrics = yield* getMetrics()
 
       // Cold start with VFS-backed state should be cheap — just reopens the VFS.
-      // The eventlog is on native DO SQLite (1 row per event).
+      // The eventlog is on DO SQLite directly (1 row per event).
       expect(restartMetrics.totalRowsRead).toBeGreaterThan(0)
       expect(restartMetrics.totalRowsRead).toBeLessThan(50)
       expect(restartMetrics.totalRowsWritten).toBe(0)

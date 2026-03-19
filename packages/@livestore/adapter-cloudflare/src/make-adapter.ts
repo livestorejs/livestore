@@ -17,7 +17,7 @@ import {
 } from '@livestore/common/leader-thread'
 import { LiveStoreEvent } from '@livestore/livestore'
 import { CF_SQL_VFS_REQUIRED_PRAGMAS, sqliteDbFactory } from '@livestore/sqlite-wasm/cf'
-import { makeSqliteDb as makeNativeSqliteDb } from './make-sqlite-db.ts'
+import { makeSqliteDb as makeDoSqliteDb } from './make-sqlite-db.ts'
 import { loadSqlite3Wasm } from '@livestore/sqlite-wasm/load-wasm'
 import { Effect, FetchHttpClient, Layer, Schedule, SubscriptionRef, WebChannel } from '@livestore/utils/effect'
 
@@ -74,7 +74,7 @@ export const makeAdapter =
           ),
       }).pipe(UnknownError.mapToUnknownError)
 
-      const dbEventlog = yield* makeNativeSqliteDb({
+      const dbEventlog = yield* makeDoSqliteDb({
         _tag: 'file',
         db: storage.sql,
         configureDb: () => {},

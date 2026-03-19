@@ -33,6 +33,6 @@ pnpm dev                    # start local wrangler dev server
 
 A `BenchStoreDo` Durable Object wraps `storage.sql` with a Proxy that tracks `cursor.rowsWritten` after every `exec()` call. The bench script sends HTTP requests to create todos individually or in bulk, then reads the accumulated `rowsWritten` from the `/store/metrics` endpoint.
 
-The `/store/sync-status` endpoint queries native DO SQLite directly to report `eventCount`, `syncHead`, and whether sync has caught up — useful for diagnosing sync lag under load.
+The `/store/sync-status` endpoint queries [SQLite in Durable Objects](https://developers.cloudflare.com/durable-objects/api/sqlite-storage-api/) directly to report `eventCount`, `syncHead`, and whether sync has caught up — useful for diagnosing sync lag under load.
 
 This project has its own `pnpm-workspace.yaml` and uses `workspace:*` dependencies to build against local adapter changes. It does not affect the monorepo's root lockfile.

@@ -203,7 +203,7 @@ export class TestStoreDo extends DurableObject<Env> implements ClientDoWithRpcCa
     if (this.trackedSql !== undefined) return
 
     // Install the tracking proxy on storage.sql permanently. The VFS and
-    // native-sqlite adapters capture storage.sql at init time, so the proxy
+    // DO SQLite adapters capture storage.sql at init time, so the proxy
     // must be in place before any store is created and stay active for the
     // entire DO lifetime.
     this.trackedSql = wrapSqlForTracking(this.ctx.storage.sql)
@@ -290,7 +290,7 @@ export class TestStoreDo extends DurableObject<Env> implements ClientDoWithRpcCa
 
   private getPersistenceSnapshot(): PersistenceSnapshot {
     // Single vfs_pages table — no file_path filtering needed.
-    // "state" counts VFS pages (dbState), "eventlog" counts native eventlog rows.
+    // "state" counts VFS pages (dbState), "eventlog" counts DO SQLite eventlog rows.
     return {
       state: this.countVfsPages(),
       eventlog: this.countEventlogRows(),

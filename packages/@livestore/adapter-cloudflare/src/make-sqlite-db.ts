@@ -261,6 +261,8 @@ export const makeSqliteDb_ = <
 
 /**
  * CF DO SQLite rejects SQL-level transaction control and requires `storage.transactionSync()` instead.
+ * The current adapter only detects and suppresses those SQL statements. It does not yet translate the
+ * caller's transaction intent into a shared Durable Object storage transaction.
  *
  * Uses prefix matching to cover all SQLite variants:
  * - `BEGIN [DEFERRED | IMMEDIATE | EXCLUSIVE] [TRANSACTION]`
