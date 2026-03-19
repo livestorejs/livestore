@@ -29,6 +29,7 @@ class CloudflarePreparedStatement implements PreparedStatement {
 
       const cursor = this.sqlStorage.exec(this.sql, ...(bindValues !== undefined ? Object.values(bindValues) : []))
 
+      // Count affected rows by iterating through cursor
       let changedCount = 0
       for (const _row of cursor) {
         changedCount++
