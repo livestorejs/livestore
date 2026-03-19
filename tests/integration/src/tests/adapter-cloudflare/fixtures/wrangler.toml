@@ -1,7 +1,6 @@
 name = "adapter-cloudflare-test"
 main = "./worker.ts"
 compatibility_date = "2025-08-24"
-compatibility_flags = ["enable_request_signal"]
 
 [[durable_objects.bindings]]
 name = "SYNC_BACKEND_DO"
@@ -14,8 +13,3 @@ class_name = "TestStoreDo"
 [[migrations]]
 tag = "v1"
 new_sqlite_classes = ["SyncBackendDO", "TestStoreDo"]
-
-[[d1_databases]]
-binding = "DB"
-database_name = "livestore-integration-tests"
-database_id = "unused"
