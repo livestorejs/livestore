@@ -49,12 +49,12 @@ describe('CloudflareDurableObjectVFS - Core Functionality', () => {
 
         const normalizedQuery = query.trim().replace(/\s+/g, ' ').toUpperCase()
 
-        if (normalizedQuery.includes('CREATE TABLE')) {
+        if (normalizedQuery.includes('CREATE TABLE') === true) {
           return createMockCursor([] as any)
         }
 
         // INSERT OR REPLACE INTO vfs_pages (file_path, page_no, page_data) VALUES (?, ?, ?)
-        if (normalizedQuery.startsWith('INSERT OR REPLACE INTO VFS_PAGES')) {
+        if (normalizedQuery.startsWith('INSERT OR REPLACE INTO VFS_PAGES') === true) {
           const [filePath, pageNo, pageData] = bindings
           getOrCreateFilePages(filePath as string).set(
             pageNo as number,
@@ -64,14 +64,14 @@ describe('CloudflareDurableObjectVFS - Core Functionality', () => {
         }
 
         // SELECT page_data FROM vfs_pages WHERE file_path = ? AND page_no = ?
-        if (normalizedQuery.startsWith('SELECT PAGE_DATA FROM VFS_PAGES WHERE FILE_PATH = ? AND PAGE_NO = ?')) {
+        if (normalizedQuery.startsWith('SELECT PAGE_DATA FROM VFS_PAGES WHERE FILE_PATH = ? AND PAGE_NO = ?') === true) {
           const [filePath, pageNo] = bindings
           const data = mockPages.get(filePath as string)?.get(pageNo as number)
           return createMockCursor(data !== undefined ? [{ page_data: data }] as any : [] as any)
         }
 
         // SELECT 1 AS x FROM vfs_pages LIMIT 1
-        if (normalizedQuery.includes('SELECT 1 AS X FROM VFS_PAGES')) {
+        if (normalizedQuery.includes('SELECT 1 AS X FROM VFS_PAGES') === true) {
           if (mockPages.size > 0) {
             return createMockCursor([{ x: 1 }] as any)
           }
@@ -79,7 +79,7 @@ describe('CloudflareDurableObjectVFS - Core Functionality', () => {
         }
 
         // SELECT MAX(page_no) AS max_page FROM vfs_pages WHERE file_path = ?
-        if (normalizedQuery.includes('SELECT MAX(PAGE_NO) AS MAX_PAGE FROM VFS_PAGES WHERE FILE_PATH = ?')) {
+        if (normalizedQuery.includes('SELECT MAX(PAGE_NO) AS MAX_PAGE FROM VFS_PAGES WHERE FILE_PATH = ?') === true) {
           const [filePath] = bindings
           const pages = mockPages.get(filePath as string)
 
@@ -92,7 +92,7 @@ describe('CloudflareDurableObjectVFS - Core Functionality', () => {
         }
 
         // SELECT COUNT(*) AS total_pages, COALESCE(...) FROM vfs_pages
-        if (normalizedQuery.includes('FROM VFS_PAGES') && normalizedQuery.includes('COUNT(*)')) {
+        if (normalizedQuery.includes('FROM VFS_PAGES') === true && normalizedQuery.includes('COUNT(*)') === true) {
           let totalBytes = 0
           let totalPages = 0
 
@@ -108,12 +108,12 @@ describe('CloudflareDurableObjectVFS - Core Functionality', () => {
         }
 
         // DELETE FROM vfs_pages WHERE file_path = ? AND page_no >= ?
-        if (normalizedQuery.startsWith('DELETE FROM VFS_PAGES WHERE FILE_PATH = ? AND PAGE_NO >= ?')) {
+        if (normalizedQuery.startsWith('DELETE FROM VFS_PAGES WHERE FILE_PATH = ? AND PAGE_NO >= ?') === true) {
           const [filePath, minPageNo] = bindings
           const pages = mockPages.get(filePath as string)
 
           if (pages !== undefined) {
-            for (const pageNo of [...pages.keys()]) {
+            for (const pageNo of pages.keys()) {
               if (pageNo >= (minPageNo as number)) {
                 pages.delete(pageNo)
               }
