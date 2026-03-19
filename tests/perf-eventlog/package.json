@@ -33,17 +33,17 @@
   },
   "devDependencies": {
     "@effect/ai": "0.33.2",
-    "@effect/cli": "0.73.1",
-    "@effect/cluster": "0.56.1",
+    "@effect/cli": "0.73.2",
+    "@effect/cluster": "0.56.4",
     "@effect/experimental": "0.58.0",
     "@effect/opentelemetry": "0.61.0",
-    "@effect/platform": "0.94.2",
+    "@effect/platform": "0.94.5",
     "@effect/platform-browser": "0.73.0",
     "@effect/platform-bun": "0.86.0",
     "@effect/platform-node": "0.104.1",
     "@effect/printer": "0.47.0",
     "@effect/printer-ansi": "0.47.0",
-    "@effect/rpc": "0.73.0",
+    "@effect/rpc": "0.73.2",
     "@effect/sql": "0.49.0",
     "@effect/typeclass": "0.38.0",
     "@livestore/devtools-vite": "0.4.0-dev.22",
@@ -51,11 +51,26 @@
     "@opentelemetry/resources": "2.2.0",
     "@playwright/test": "1.58.2",
     "@standard-schema/spec": "1.0.0",
-    "effect": "3.19.15",
+    "effect": "3.19.19",
     "tsx": "^4.20.0"
   },
   "$genie": {
     "source": "package.json.genie.ts",
-    "warning": "DO NOT EDIT - changes will be overwritten"
+    "warning": "DO NOT EDIT - changes will be overwritten",
+    "workspaceClosureDirs": [
+      "packages/@livestore/adapter-web",
+      "packages/@livestore/common",
+      "packages/@livestore/common-cf",
+      "packages/@livestore/devtools-web-common",
+      "packages/@livestore/framework-toolkit",
+      "packages/@livestore/livestore",
+      "packages/@livestore/react",
+      "packages/@livestore/sqlite-wasm",
+      "packages/@livestore/utils",
+      "packages/@livestore/utils-dev",
+      "packages/@livestore/wa-sqlite",
+      "packages/@livestore/webmesh",
+      "tests/perf-eventlog"
+    ]
   }
 }
