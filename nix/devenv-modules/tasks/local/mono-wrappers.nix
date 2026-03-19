@@ -356,7 +356,7 @@
       description = "Run full lint checks plus megarepo consistency";
       after = [
         "lint:full"
-        "megarepo:check"
+        "mr:check"
       ];
     };
 
