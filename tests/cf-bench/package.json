@@ -1,0 +1,23 @@
+{
+  "name": "@local/cf-bench",
+  "version": "0.0.0",
+  "type": "module",
+  "private": true,
+  "dependencies": {
+    "@cloudflare/workers-types": "4.20251118.0",
+    "@livestore/adapter-cloudflare": "workspace:*",
+    "@livestore/common": "workspace:*",
+    "@livestore/common-cf": "workspace:*",
+    "@livestore/livestore": "workspace:*",
+    "@livestore/sync-cf": "workspace:*",
+    "@livestore/utils": "workspace:*"
+  },
+  "devDependencies": {
+    "wrangler": "^4.42.2"
+  },
+  "scripts": {
+    "dev": "wrangler dev",
+    "deploy": "wrangler deploy",
+    "bench": "./run-bench.sh"
+  }
+}

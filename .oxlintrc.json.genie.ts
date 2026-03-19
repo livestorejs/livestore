@@ -228,6 +228,9 @@ export const livestoreOxlintPlugins = [...baseOxlintPlugins, 'react', 'react-per
 export const livestoreOxlintCategories = baseOxlintCategories
 export const livestoreOxlintIgnorePatterns = [
   ...baseOxlintIgnorePatterns,
+  // cf-bench is a standalone workspace with its own pnpm-workspace.yaml;
+  // CI doesn't install its deps so types resolve to 'any', causing false positives.
+  'tests/cf-bench/**',
   'tests/integration/node_modules/**',
   'docs/src/plugins/**',
 ] as const

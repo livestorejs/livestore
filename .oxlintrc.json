@@ -24,6 +24,7 @@
     "**/patches/**",
     "**/.cache/**",
     "**/.turbo/**",
+    "tests/cf-bench/**",
     "tests/integration/node_modules/**",
     "docs/src/plugins/**"
   ],
