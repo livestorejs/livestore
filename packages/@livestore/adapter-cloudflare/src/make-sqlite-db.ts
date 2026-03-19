@@ -24,9 +24,8 @@ class CloudflarePreparedStatement implements PreparedStatement {
 
   execute = (bindValues?: PreparedBindValues, options?: { onRowsChanged?: (count: number) => void }) => {
     try {
-      if (isTransactionControlStatement(this.sql) === true) {
-        return
-      }
+      if (isTransactionControlStatement(this.sql) === true) return
+
 
       const cursor = this.sqlStorage.exec(this.sql, ...(bindValues !== undefined ? Object.values(bindValues) : []))
 
