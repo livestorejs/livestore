@@ -192,7 +192,6 @@ describe('CloudflareDurableObjectVFS - Core Functionality', () => {
     }
 
     vfs = new CloudflareDurableObjectVFS('test-sql-vfs', mockSql, {})
-    await vfs.isReady()
   })
 
   describe('Basic File Operations', () => {
