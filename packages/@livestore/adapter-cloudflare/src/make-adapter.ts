@@ -190,6 +190,10 @@ const resetDurableObjectPersistence = ({
 }) =>
   Effect.try({
     try: () =>
+      // All three tables live in the DO's single storage.sql database but are
+      // owned by different layers during normal operation:
+      // - vfs_pages: written by the wa-sqlite VFS layer (backs dbState)
+      // - eventlog, __livestore_sync_status: written directly by dbEventlog via storage.sql
       storage.transactionSync(() => {
         safeSqlExec(storage, 'DELETE FROM vfs_pages')
         safeSqlExec(storage, 'DELETE FROM eventlog')
