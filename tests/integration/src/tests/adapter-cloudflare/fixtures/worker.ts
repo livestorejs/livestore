@@ -3,7 +3,6 @@
 import { DurableObject } from 'cloudflare:workers'
 
 import { type ClientDoWithRpcCallback, createStoreDoPromise } from '@livestore/adapter-cloudflare'
-import { liveStoreStorageFormatVersion } from '@livestore/common'
 import { CfDeclare } from '@livestore/common-cf/declare'
 import type { Store } from '@livestore/livestore'
 import {
@@ -26,8 +25,7 @@ type PersistenceSnapshot = {
 }
 
 type PersistenceCounts = {
-  files: number
-  blocks: number
+  count: number
 }
 
 type ResetPersistenceSnapshot = {
@@ -196,38 +194,32 @@ export class TestStoreDo extends DurableObject<Env> implements ClientDoWithRpcCa
   }
 
   private getPersistenceSnapshot(): PersistenceSnapshot {
-    const schemaHashSuffix =
-      schema.state.sqlite.migrations.strategy === 'manual' ? 'fixed' : schema.state.sqlite.hash.toString()
-
-    // The adapter stores SQLite data inside Durable Object persistence using the
-    // liveStoreStorageFormatVersion as part of the VFS file path. Looking up
-    // matching records lets the test confirm whether the reset logic wiped the
-    // relevant rows.
+    // Single vfs_pages table — no file_path filtering needed.
+    // "state" counts VFS pages (dbState), "eventlog" counts native eventlog rows.
     return {
-      state: this.countPersistenceEntries(getStateDbFileName(schemaHashSuffix)),
-      eventlog: this.countPersistenceEntries(getEventlogDbFileName()),
+      state: this.countVfsPages(),
+      eventlog: this.countEventlogRows(),
     }
   }
 
-  private countPersistenceEntries(baseName: string): PersistenceCounts {
-    const likePattern = `${baseName}%`
-
-    return {
-      files: this.countMatchingRecords('vfs_files', likePattern),
-      blocks: this.countMatchingRecords('vfs_blocks', likePattern),
+  private countVfsPages(): PersistenceCounts {
+    try {
+      const rows = this.ctx.storage.sql.exec<{ count: number }>('SELECT COUNT(*) AS count FROM vfs_pages')
+      const [row] = Array.from(rows)
+      return { count: Number(row?.count ?? 0) }
+    } catch {
+      return { count: 0 }
     }
   }
 
-  private countMatchingRecords(table: 'vfs_files' | 'vfs_blocks', likePattern: string): number {
-    const rows = this.ctx.storage.sql.exec(`SELECT COUNT(*) AS count FROM ${table} WHERE file_path LIKE ?`, likePattern)
-
-    if (rows === undefined) {
-      return 0
+  private countEventlogRows(): PersistenceCounts {
+    try {
+      const rows = this.ctx.storage.sql.exec<{ count: number }>('SELECT COUNT(*) AS count FROM eventlog')
+      const [row] = Array.from(rows)
+      return { count: Number(row?.count ?? 0) }
+    } catch {
+      return { count: 0 }
     }
-
-    const [row] = Array.from(rows)
-
-    return Number(row?.count ?? 0)
   }
 }
 
@@ -261,6 +253,3 @@ export default {
   },
 }
 
-const getStateDbFileName = (suffix: string) => `state${suffix}@${liveStoreStorageFormatVersion}.db`
-
-const getEventlogDbFileName = () => `eventlog@${liveStoreStorageFormatVersion}.db`

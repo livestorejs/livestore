@@ -11,8 +11,8 @@ const fixturesDir = path.join(testDir, 'fixtures')
 const testTimeout = Duration.toMillis(Duration.minutes(2))
 
 type PersistenceSnapshot = {
-  state: { files: number; blocks: number }
-  eventlog: { files: number; blocks: number }
+  state: { count: number }
+  eventlog: { count: number }
 }
 
 type ResetPersistenceSnapshot = {
@@ -108,13 +108,9 @@ Vitest.describe('adapter-cloudflare', { timeout: testTimeout }, () => {
       ])
 
       const persistenceAfterSecondInsert = yield* getPersistenceSnapshot()
-      // Without a reset the adapter should keep the SQLite blobs backing the state/eventlog VFS around.
-      expect(persistenceAfterSecondInsert.state.files).toBeGreaterThan(0)
-      expect(persistenceAfterSecondInsert.state.blocks).toBeGreaterThan(0)
-      expect(persistenceAfterSecondInsert.eventlog.files).toBeGreaterThan(0)
-      // Eventlog writes are sparse during the test, so the VFS file metadata is
-      // the reliable signal that data stuck around between requests.
-      expect(persistenceAfterSecondInsert.eventlog.blocks).toBeGreaterThanOrEqual(0)
+      // Without a reset the adapter should keep the VFS pages backing the state around.
+      expect(persistenceAfterSecondInsert.state.count).toBeGreaterThan(0)
+      expect(persistenceAfterSecondInsert.eventlog.count).toBeGreaterThan(0)
     }).pipe(withTestCtx(test)),
   )
 
@@ -187,23 +183,17 @@ Vitest.describe('adapter-cloudflare', { timeout: testTimeout }, () => {
       expect(todosBeforeReset).toHaveLength(2)
 
       const persistenceBeforeReset = yield* getPersistenceSnapshot()
-      expect(persistenceBeforeReset.state.files).toBeGreaterThan(0)
-      expect(persistenceBeforeReset.state.blocks).toBeGreaterThan(0)
-      expect(persistenceBeforeReset.eventlog.files).toBeGreaterThan(0)
-      expect(persistenceBeforeReset.eventlog.blocks).toBeGreaterThanOrEqual(0)
+      expect(persistenceBeforeReset.state.count).toBeGreaterThan(0)
+      expect(persistenceBeforeReset.eventlog.count).toBeGreaterThan(0)
 
       const { persistence, resetSnapshot } = yield* resetStore()
       // The reset route boots the adapter with `resetPersistence: true`. Capture the on-reset metadata to make sure rows were cleared.
       expect(resetSnapshot).not.toBeNull()
       const snapshotDuringReset = resetSnapshot as ResetPersistenceSnapshot
-      expect(snapshotDuringReset.before.state.files).toBeGreaterThan(0)
-      expect(snapshotDuringReset.before.state.blocks).toBeGreaterThan(0)
-      expect(snapshotDuringReset.before.eventlog.files).toBeGreaterThan(0)
-      expect(snapshotDuringReset.before.eventlog.blocks).toBeGreaterThanOrEqual(0)
-      expect(snapshotDuringReset.after.state.files).toBe(0)
-      expect(snapshotDuringReset.after.state.blocks).toBe(0)
-      expect(snapshotDuringReset.after.eventlog.files).toBe(0)
-      expect(snapshotDuringReset.after.eventlog.blocks).toBe(0)
+      expect(snapshotDuringReset.before.state.count).toBeGreaterThan(0)
+      expect(snapshotDuringReset.before.eventlog.count).toBeGreaterThan(0)
+      expect(snapshotDuringReset.after.state.count).toBe(0)
+      expect(snapshotDuringReset.after.eventlog.count).toBe(0)
 
       const todosAfterReset = yield* listTodos()
       // Sync backend still holds previous events, so the freshly booted store rehydrates the two original todos.
@@ -216,14 +206,10 @@ Vitest.describe('adapter-cloudflare', { timeout: testTimeout }, () => {
 
       const persistenceAfterRepopulation = yield* getPersistenceSnapshot()
       // After the reset completes the adapter should continue writing new state/eventlog pages as usual.
-      expect(persistence.state.files).toBeGreaterThan(0)
-      expect(persistence.state.blocks).toBeGreaterThan(0)
-      expect(persistence.eventlog.files).toBeGreaterThan(0)
-      expect(persistence.eventlog.blocks).toBeGreaterThanOrEqual(0)
-      expect(persistenceAfterRepopulation.state.files).toBeGreaterThan(0)
-      expect(persistenceAfterRepopulation.state.blocks).toBeGreaterThan(0)
-      expect(persistenceAfterRepopulation.eventlog.files).toBeGreaterThan(0)
-      expect(persistenceAfterRepopulation.eventlog.blocks).toBeGreaterThanOrEqual(0)
+      expect(persistence.state.count).toBeGreaterThan(0)
+      expect(persistence.eventlog.count).toBeGreaterThan(0)
+      expect(persistenceAfterRepopulation.state.count).toBeGreaterThan(0)
+      expect(persistenceAfterRepopulation.eventlog.count).toBeGreaterThan(0)
     }).pipe(withTestCtx(test)),
   )
 })

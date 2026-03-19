@@ -16,7 +16,7 @@ import {
   streamEventsWithSyncState,
 } from '@livestore/common/leader-thread'
 import { LiveStoreEvent } from '@livestore/livestore'
-import { sqliteDbFactory } from '@livestore/sqlite-wasm/cf'
+import { CF_SQL_VFS_REQUIRED_PRAGMAS, sqliteDbFactory } from '@livestore/sqlite-wasm/cf'
 import { makeSqliteDb as makeNativeSqliteDb } from './make-sqlite-db.ts'
 import { loadSqlite3Wasm } from '@livestore/sqlite-wasm/load-wasm'
 import { Effect, FetchHttpClient, Layer, Schedule, SubscriptionRef, WebChannel } from '@livestore/utils/effect'
@@ -58,41 +58,20 @@ export const makeAdapter =
       const schemaHashSuffix =
         schema.state.sqlite.migrations.strategy === 'manual' ? 'fixed' : schema.state.sqlite.hash.toString()
 
-      const stateDbFileName = getStateDbFileName(schemaHashSuffix)
-      const eventlogDbFileName = getEventlogDbFileName()
-
       if (resetPersistence === true) {
-        yield* resetDurableObjectPersistence({
-          storage,
-          storeId,
-          dbFileNames: [stateDbFileName, eventlogDbFileName],
-        })
+        yield* resetDurableObjectPersistence({ storage, storeId })
       }
+
+      const stateDbFileName = getStateDbFileName(schemaHashSuffix)
 
       const dbState = yield* makeSqliteDb({
         _tag: 'storage',
         storage,
         fileName: stateDbFileName,
-        // Minimize VFS rows_written — dbState is recoverable from eventlog, so durability is not needed.
-        // - journal_mode=MEMORY: keeps rollback journal in wasm heap instead of writing through VFS,
-        //   eliminating journal-related rowsWritten while preserving in-process ROLLBACK.
-        // - synchronous=OFF: skips jSync VFS calls (already a no-op, but avoids the dispatch).
-        // - locking_mode=EXCLUSIVE: skips per-transaction lock/unlock and hot-journal xAccess checks.
-        //   Matches the single-threaded DO model (only one connection exists).
-        // - temp_store=MEMORY: keeps temp tables/indices in wasm heap, preventing temp file VFS writes.
-        // - cache_size=-8000: ~8 MB / ~1000 pages at 8 KB. Large enough to hold all dirty pages
-        //   during materialization without exceeding the soft limit, working in tandem with cache_spill=OFF.
-        // - cache_spill=OFF: prevents mid-transaction page spilling that can cause double-writes
-        //   (spilled page dirtied again = 2 rowsWritten) and wasted writes on ROLLBACK.
         configureDb: (db) =>
-          db.execute(`
-            PRAGMA journal_mode=MEMORY;
-            PRAGMA synchronous=OFF;
-            PRAGMA locking_mode=EXCLUSIVE;
-            PRAGMA temp_store=MEMORY;
-            PRAGMA cache_size=-8000;
-            PRAGMA cache_spill=OFF;
-          `),
+          db.execute(
+            [...CF_SQL_VFS_REQUIRED_PRAGMAS, 'cache_size=-8000'].map((p) => `PRAGMA ${p}`).join(';\n'),
+          ),
       }).pipe(UnknownError.mapToUnknownError)
 
       const dbEventlog = yield* makeNativeSqliteDb({
@@ -199,25 +178,17 @@ export const makeAdapter =
 
 const getStateDbFileName = (suffix: string) => `state${suffix}@${liveStoreStorageFormatVersion}.db`
 
-const getEventlogDbFileName = () => `eventlog@${liveStoreStorageFormatVersion}.db`
-
 const resetDurableObjectPersistence = ({
   storage,
   storeId,
-  dbFileNames,
 }: {
   storage: CfTypes.DurableObjectStorage
   storeId: string
-  dbFileNames: ReadonlyArray<string>
 }) =>
   Effect.try({
     try: () =>
       storage.transactionSync(() => {
-        for (const baseName of dbFileNames) {
-          const likePattern = `${baseName}%`
-          safeSqlExec(storage, 'DELETE FROM vfs_blocks WHERE file_path LIKE ?', likePattern)
-          safeSqlExec(storage, 'DELETE FROM vfs_files WHERE file_path LIKE ?', likePattern)
-        }
+        safeSqlExec(storage, 'DELETE FROM vfs_pages')
         safeSqlExec(storage, 'DELETE FROM eventlog')
         safeSqlExec(storage, 'DELETE FROM __livestore_sync_status')
       }),

@@ -6,7 +6,7 @@ This directory contains comprehensive tests for both SQLite WASM VFS implementat
 
 ### `/sql/` - SQL Storage Tests
 
-Tests for the CloudflareSqlVFS implementation, which uses Cloudflare's DurableObject SQL API for storage.
+Tests for the CloudflareDurableObjectVFS implementation, which uses Cloudflare's [SQLite in DurableObjects](https://developers.cloudflare.com/durable-objects/api/sql-storage/) for storage.
 
 - **`cloudflare-sql-vfs-core.test.ts`** - Core SQL VFS functionality tests
 
@@ -29,11 +29,11 @@ Tests for the CloudflareWorkerVFS implementation, which uses DurableObjectStorag
 
 ## VFS Implementation Comparison
 
-### SQL Storage VFS (`CloudflareSqlVFS`)
+### SQL Storage VFS (`CloudflareDurableObjectVFS`)
 
-- **Backend**: Cloudflare DurableObject SQL API
-- **Storage Model**: Relational tables with blocks and metadata
-- **Advantages**: ACID transactions, complex queries, relational integrity
+- **Backend**: Cloudflare's SQLite in Durable Objects
+- **Storage Model**: Single `vfs_pages` table keyed by file path and page number
+- **Advantages**: Simple synchronous SQL storage with direct page lookups
 - **Use Case**: Applications requiring complex data relationships
 
 ### Async Storage VFS (`CloudflareWorkerVFS`)
@@ -47,9 +47,10 @@ Tests for the CloudflareWorkerVFS implementation, which uses DurableObjectStorag
 
 ### SQL Storage Approach
 
-- **Block-based Storage**: Files stored as blocks in SQL tables
-- **Metadata Management**: File metadata in dedicated tables
-- **Transaction Safety**: ACID compliance for data integrity
+- **Page-based Storage**: SQLite pages stored directly in `vfs_pages`
+- **File-path Isolation**: Each logical SQLite file is scoped by `file_path`
+- **Handle Tracking**: Open SQLite file handles map back to persisted file paths
+- **Transaction Model**: Page writes are persisted directly through Durable Object SQL
 
 ### Async Storage Approach
 
@@ -108,22 +109,23 @@ pnpm test --coverage
 
 ```typescript
 import { describe, it, expect, beforeEach } from 'vitest'
-import { type Cf, CloudflareSqlVFS } from '../../mod.ts'
+import type { CfTypes } from '@livestore/common-cf'
+import { CloudflareDurableObjectVFS } from '../../mod.ts'
 
 describe('SQL VFS Test Suite', () => {
-  let vfs: CloudflareSqlVFS
-  let mockSql: Cf.SqlStorage
+  let vfs: CloudflareDurableObjectVFS
+  let mockSql: CfTypes.SqlStorage
   let queryLog: string[]
 
   beforeEach(async () => {
     // Setup mock SQL storage
     mockSql = {
       exec: (query: string, ...bindings: any[]) => {
-        // Mock SQL implementation
+        // Mock SQL implementation for vfs_pages(file_path, page_no, page_data)
       },
     }
 
-    vfs = new CloudflareSqlVFS('test-vfs', mockSql, {})
+    vfs = new CloudflareDurableObjectVFS('test-vfs', mockSql, {})
     await vfs.isReady()
   })
 
@@ -197,9 +199,9 @@ describe('Async Storage VFS Test Suite', () => {
 
 ### Common Issues
 
-1. **SQL Schema Issues**: Ensure proper table creation and constraints
+1. **SQL Schema Issues**: Ensure `vfs_pages(file_path, page_no, page_data)` is created as expected
 2. **Cache Misses**: Verify proper preloading in VFS initialization
-3. **Async/Sync Mismatch**: Check async operations are properly handled
+3. **Handle/Path Mismatch**: Verify reads and writes use the path captured during `jOpen`
 4. **Storage Limits**: Verify chunk sizes and storage capacity
 
 ### Test Debugging
