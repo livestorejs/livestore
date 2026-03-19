@@ -259,15 +259,22 @@ export const makeSqliteDb_ = <
   return sqliteDb
 }
 
-/** CF DO SQLite rejects SQL-level transaction control and requires `storage.transactionSync()` instead. */
+/**
+ * CF DO SQLite rejects SQL-level transaction control and requires `storage.transactionSync()` instead.
+ *
+ * Uses prefix matching to cover all SQLite variants:
+ * - `BEGIN [DEFERRED | IMMEDIATE | EXCLUSIVE] [TRANSACTION]`
+ * - `COMMIT [TRANSACTION]` / `END [TRANSACTION]`
+ * - `ROLLBACK [TRANSACTION] [TO [SAVEPOINT] name]`
+ * - `SAVEPOINT name` / `RELEASE [SAVEPOINT] name`
+ */
 const isTransactionControlStatement = (sql: string): boolean => {
   const upper = sql.trim().toUpperCase()
   return (
-    upper === 'BEGIN TRANSACTION' ||
-    upper === 'BEGIN' ||
-    upper === 'COMMIT' ||
-    upper === 'END TRANSACTION' ||
-    upper === 'ROLLBACK' ||
+    upper.startsWith('BEGIN') === true ||
+    upper.startsWith('COMMIT') === true ||
+    upper.startsWith('END') === true ||
+    upper.startsWith('ROLLBACK') === true ||
     upper.startsWith('SAVEPOINT') === true ||
     upper.startsWith('RELEASE') === true
   )
