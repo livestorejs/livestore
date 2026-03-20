@@ -80,6 +80,9 @@ importers:
       '@effect/typeclass':
         specifier: 0.38.0
         version: 0.38.0(effect@3.19.19)
+      '@effect/vitest':
+        specifier: 0.27.0
+        version: 0.27.0(effect@3.19.19)(vitest@3.2.4(@types/debug@4.1.12)(@types/node@25.3.3)(jiti@2.6.1)(jsdom@26.1.0)(lightningcss@1.32.0)(terser@5.46.0)(tsx@4.21.0)(yaml@2.8.2))
       '@livestore/adapter-cloudflare':
         specifier: workspace:*
         version: link:../packages/@livestore/adapter-cloudflare
@@ -306,6 +309,9 @@ importers:
       '@effect/typeclass':
         specifier: 0.38.0
         version: 0.38.0(effect@3.19.19)
+      '@effect/vitest':
+        specifier: 0.27.0
+        version: 0.27.0(effect@3.19.19)(vitest@3.2.4(@types/debug@4.1.12)(@types/node@25.3.3)(jiti@2.6.1)(jsdom@26.1.0)(lightningcss@1.32.0)(terser@5.46.0)(tsx@4.21.0)(yaml@2.8.2))
       '@livestore/adapter-cloudflare':
         specifier: workspace:*
         version: link:../../../../../packages/@livestore/adapter-cloudflare
@@ -1980,6 +1986,9 @@ importers:
       '@effect/typeclass':
         specifier: 0.38.0
         version: 0.38.0(effect@3.19.19)
+      '@effect/vitest':
+        specifier: 0.27.0
+        version: 0.27.0(effect@3.19.19)(vitest@3.2.4(@types/debug@4.1.12)(@types/node@25.3.3)(jiti@2.6.1)(jsdom@26.1.0)(lightningcss@1.32.0)(terser@5.46.0)(tsx@4.21.0)(yaml@2.8.2))
       '@opentelemetry/resources':
         specifier: 2.2.0
         version: 2.2.0(@opentelemetry/api@1.9.0)
@@ -2179,6 +2188,9 @@ importers:
       '@effect/typeclass':
         specifier: 0.38.0
         version: 0.38.0(effect@3.19.19)
+      '@effect/vitest':
+        specifier: 0.27.0
+        version: 0.27.0(effect@3.19.19)(vitest@3.2.4(@types/debug@4.1.12)(@types/node@25.3.3)(jiti@2.6.1)(jsdom@26.1.0)(lightningcss@1.32.0)(terser@5.46.0)(tsx@4.21.0)(yaml@2.8.2))
       '@livestore/utils-dev':
         specifier: workspace:*
         version: link:../utils-dev
@@ -2293,6 +2305,9 @@ importers:
       '@effect/typeclass':
         specifier: 0.38.0
         version: 0.38.0(effect@3.19.19)
+      '@effect/vitest':
+        specifier: 0.27.0
+        version: 0.27.0(effect@3.19.19)(vitest@3.2.4(@types/debug@4.1.12)(@types/node@25.3.3)(jiti@2.6.1)(jsdom@26.1.0)(lightningcss@1.32.0)(terser@5.46.0)(tsx@4.21.0)(yaml@2.8.2))
       '@opentelemetry/api':
         specifier: 1.9.0
         version: 1.9.0
@@ -2437,6 +2452,9 @@ importers:
       '@effect/typeclass':
         specifier: 0.38.0
         version: 0.38.0(effect@3.19.19)
+      '@effect/vitest':
+        specifier: 0.27.0
+        version: 0.27.0(effect@3.19.19)(vitest@3.2.4(@types/debug@4.1.12)(@types/node@25.3.3)(jiti@2.6.1)(jsdom@26.1.0)(lightningcss@1.32.0)(terser@5.46.0)(tsx@4.21.0)(yaml@2.8.2))
       '@opentelemetry/api':
         specifier: 1.9.0
         version: 1.9.0
@@ -2700,6 +2718,9 @@ importers:
       '@effect/typeclass':
         specifier: 0.38.0
         version: 0.38.0(effect@3.19.19)
+      '@effect/vitest':
+        specifier: 0.27.0
+        version: 0.27.0(effect@3.19.19)(vitest@3.2.4(@types/debug@4.1.12)(@types/node@25.3.3)(jiti@2.6.1)(jsdom@26.1.0)(lightningcss@1.32.0)(terser@5.46.0)(tsx@4.21.0)(yaml@2.8.2))
       '@opentelemetry/api':
         specifier: 1.9.0
         version: 1.9.0
@@ -2764,6 +2785,9 @@ importers:
       '@effect/typeclass':
         specifier: 0.38.0
         version: 0.38.0(effect@3.19.19)
+      '@effect/vitest':
+        specifier: 0.27.0
+        version: 0.27.0(effect@3.19.19)(vitest@3.2.4(@types/debug@4.1.12)(@types/node@25.3.3)(jiti@2.6.1)(jsdom@26.1.0)(lightningcss@1.32.0)(terser@5.46.0)(tsx@4.21.0)(yaml@2.8.2))
       '@opentelemetry/api':
         specifier: 1.9.0
         version: 1.9.0
@@ -2831,6 +2855,9 @@ importers:
       '@effect/typeclass':
         specifier: 0.38.0
         version: 0.38.0(effect@3.19.19)
+      '@effect/vitest':
+        specifier: 0.27.0
+        version: 0.27.0(effect@3.19.19)(vitest@3.2.4(@types/debug@4.1.12)(@types/node@25.3.3)(jiti@2.6.1)(jsdom@26.1.0)(lightningcss@1.32.0)(terser@5.46.0)(tsx@4.21.0)(yaml@2.8.2))
       '@opentelemetry/api':
         specifier: 1.9.0
         version: 1.9.0
@@ -3112,6 +3139,9 @@ importers:
       '@effect/typeclass':
         specifier: 0.38.0
         version: 0.38.0(effect@3.19.19)
+      '@effect/vitest':
+        specifier: 0.27.0
+        version: 0.27.0(effect@3.19.19)(vitest@3.2.4(@types/debug@4.1.12)(@types/node@25.3.3)(jiti@2.6.1)(jsdom@26.1.0)(lightningcss@1.32.0)(terser@5.46.0)(tsx@4.21.0)(yaml@2.8.2))
       '@livestore/utils-dev':
         specifier: workspace:*
         version: link:../utils-dev
@@ -3276,6 +3306,9 @@ importers:
       '@effect/typeclass':
         specifier: 0.38.0
         version: 0.38.0(effect@3.19.19)
+      '@effect/vitest':
+        specifier: 0.27.0
+        version: 0.27.0(effect@3.19.19)(vitest@3.2.4(@types/debug@4.1.12)(@types/node@25.3.3)(jiti@2.6.1)(jsdom@26.1.0)(lightningcss@1.32.0)(terser@5.46.0)(tsx@4.21.0)(yaml@2.8.2))
       '@opentelemetry/api':
         specifier: 1.9.0
         version: 1.9.0
@@ -3367,6 +3400,9 @@ importers:
       '@effect/typeclass':
         specifier: 0.38.0
         version: 0.38.0(effect@3.19.19)
+      '@effect/vitest':
+        specifier: 0.27.0
+        version: 0.27.0(effect@3.19.19)(vitest@3.2.4(@types/debug@4.1.12)(@types/node@25.3.3)(jiti@2.6.1)(jsdom@26.1.0)(lightningcss@1.32.0)(terser@5.46.0)(tsx@4.21.0)(yaml@2.8.2))
       '@opentelemetry/api':
         specifier: 1.9.0
         version: 1.9.0
@@ -3445,6 +3481,9 @@ importers:
       '@effect/typeclass':
         specifier: 0.38.0
         version: 0.38.0(effect@3.19.19)
+      '@effect/vitest':
+        specifier: 0.27.0
+        version: 0.27.0(effect@3.19.19)(vitest@3.2.4(@types/debug@4.1.12)(@types/node@25.3.3)(jiti@2.6.1)(jsdom@26.1.0)(lightningcss@1.32.0)(terser@5.46.0)(tsx@4.21.0)(yaml@2.8.1))
       '@livestore/common':
         specifier: workspace:*
         version: link:../packages/@livestore/common
@@ -3590,6 +3629,9 @@ importers:
       '@effect/typeclass':
         specifier: 0.38.0
         version: 0.38.0(effect@3.19.19)
+      '@effect/vitest':
+        specifier: 0.27.0
+        version: 0.27.0(effect@3.19.19)(vitest@3.2.4(@types/debug@4.1.12)(@types/node@25.3.3)(jiti@2.6.1)(jsdom@26.1.0)(lightningcss@1.32.0)(terser@5.46.0)(tsx@4.21.0)(yaml@2.8.2))
       '@opentelemetry/api':
         specifier: 1.9.0
         version: 1.9.0
@@ -3717,6 +3759,9 @@ importers:
       '@effect/typeclass':
         specifier: 0.38.0
         version: 0.38.0(effect@3.19.19)
+      '@effect/vitest':
+        specifier: 0.27.0
+        version: 0.27.0(effect@3.19.19)(vitest@3.2.4(@types/debug@4.1.12)(@types/node@25.3.3)(jiti@2.6.1)(jsdom@26.1.0)(lightningcss@1.32.0)(terser@5.46.0)(tsx@4.21.0)(yaml@2.8.2))
       '@livestore/devtools-vite':
         specifier: 0.4.0-dev.22
         version: 0.4.0-dev.22(eeb10664014f361b682b81933b1c1aa5)
@@ -3835,6 +3880,9 @@ importers:
       '@effect/typeclass':
         specifier: 0.38.0
         version: 0.38.0(effect@3.19.19)
+      '@effect/vitest':
+        specifier: 0.27.0
+        version: 0.27.0(effect@3.19.19)(vitest@3.2.4(@types/debug@4.1.12)(@types/node@25.3.3)(jiti@2.6.1)(jsdom@26.1.0)(lightningcss@1.32.0)(terser@5.46.0)(tsx@4.21.0)(yaml@2.8.2))
       '@opentelemetry/api':
         specifier: 1.9.0
         version: 1.9.0
@@ -3950,6 +3998,9 @@ importers:
       '@effect/typeclass':
         specifier: 0.38.0
         version: 0.38.0(effect@3.19.19)
+      '@effect/vitest':
+        specifier: 0.27.0
+        version: 0.27.0(effect@3.19.19)(vitest@3.2.4(@types/debug@4.1.12)(@types/node@25.3.3)(jiti@2.6.1)(jsdom@26.1.0)(lightningcss@1.32.0)(terser@5.46.0)(tsx@4.21.0)(yaml@2.8.2))
       '@livestore/devtools-vite':
         specifier: 0.4.0-dev.22
         version: 0.4.0-dev.22(eeb10664014f361b682b81933b1c1aa5)
@@ -4047,6 +4098,9 @@ importers:
       '@effect/typeclass':
         specifier: 0.38.0
         version: 0.38.0(effect@3.19.19)
+      '@effect/vitest':
+        specifier: 0.27.0
+        version: 0.27.0(effect@3.19.19)(vitest@3.2.4(@types/debug@4.1.12)(@types/node@25.3.3)(jiti@2.6.1)(jsdom@26.1.0)(lightningcss@1.32.0)(terser@5.46.0)(tsx@4.21.0)(yaml@2.8.2))
       '@livestore/devtools-vite':
         specifier: 0.4.0-dev.22
         version: 0.4.0-dev.22(eeb10664014f361b682b81933b1c1aa5)
@@ -19277,6 +19331,11 @@ snapshots:
   '@effect/typeclass@0.38.0(effect@3.19.19)':
     dependencies:
       effect: 3.19.19
+
+  '@effect/vitest@0.27.0(effect@3.19.19)(vitest@3.2.4(@types/debug@4.1.12)(@types/node@25.3.3)(jiti@2.6.1)(jsdom@26.1.0)(lightningcss@1.32.0)(terser@5.46.0)(tsx@4.21.0)(yaml@2.8.1))':
+    dependencies:
+      effect: 3.19.19
+      vitest: 3.2.4(@types/debug@4.1.12)(@types/node@25.3.3)(jiti@2.6.1)(jsdom@26.1.0)(lightningcss@1.32.0)(terser@5.46.0)(tsx@4.21.0)(yaml@2.8.1)
 
   '@effect/vitest@0.27.0(effect@3.19.19)(vitest@3.2.4(@types/debug@4.1.12)(@types/node@25.3.3)(jiti@2.6.1)(jsdom@26.1.0)(lightningcss@1.32.0)(terser@5.46.0)(tsx@4.21.0)(yaml@2.8.2))':
     dependencies:

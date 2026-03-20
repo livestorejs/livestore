@@ -8,7 +8,7 @@ const runtimeDeps = catalog.compose({
     external: catalog.pick('@kitschpatrol/tldraw-cli'),
   },
   devDependencies: {
-    external: effectDevDeps('@effect/vitest', '@types/node', 'astro', 'vitest'),
+    external: effectDevDeps('@types/node', 'astro', 'vitest'),
   },
   peerDependencies: {
     external: {

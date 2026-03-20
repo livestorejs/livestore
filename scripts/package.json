@@ -23,6 +23,7 @@
     "@effect/rpc": "0.73.2",
     "@effect/sql": "0.49.0",
     "@effect/typeclass": "0.38.0",
+    "@effect/vitest": "0.27.0",
     "@livestore/common": "workspace:*",
     "@livestore/utils": "workspace:*",
     "@livestore/utils-dev": "workspace:*",

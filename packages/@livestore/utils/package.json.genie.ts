@@ -21,7 +21,6 @@ const runtimeDeps = catalog.compose({
   devDependencies: {
     external: catalog.pick(
       ...utilsEffectPeerDeps,
-      '@effect/vitest',
       '@effect/workflow',
       '@types/bun',
       '@types/jsdom',
