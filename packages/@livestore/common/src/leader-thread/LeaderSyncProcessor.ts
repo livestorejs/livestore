@@ -735,7 +735,7 @@ const backgroundBackendPulling = Effect.fn('@livestore/common:LeaderSyncProcesso
       }
 
       if (newEvents.length === 0) {
-        if (pageInfo._tag === 'NoMore') {
+        if (pageInfo._tag !== 'MoreKnown') {
           yield* releasePullMutexIfHeld
         }
         return
@@ -856,7 +856,7 @@ const backgroundBackendPulling = Effect.fn('@livestore/common:LeaderSyncProcesso
         return yield* Effect.failCause(chunkExit.cause)
       }
 
-      if (pageInfo._tag === 'NoMore') {
+      if (pageInfo._tag !== 'MoreKnown') {
         yield* releasePullMutexIfHeld
       }
     })
