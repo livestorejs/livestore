@@ -1310,7 +1310,7 @@ jobs:
       - name: Dispatch alignment to coordinator
         env:
           GH_TOKEN: '${{ secrets.MEGAREPO_ALIGNMENT_TOKEN }}'
-        run: "export NIX_CONFIG=\"${NIX_CONFIG:+$NIX_CONFIG$'\\n'}access-tokens = github.com=${GH_TOKEN}\" && printf '{\"event_type\":\"upstream-changed\",\"client_payload\":{\"source_repo\":\"%s\",\"source_sha\":\"%s\"}}' \"${{ github.repository }}\" \"${{ github.sha }}\" | nix run nixpkgs#gh -- api repos/schickling/megarepo-all/dispatches --input -"
+        run: 'printf ''{"event_type":"upstream-changed","client_payload":{"source_repo":"%s","source_sha":"%s"}}'' "${{ github.repository }}" "${{ github.sha }}" | gh api repos/schickling/megarepo-all/dispatches --input -'
         shell: bash
   build-example-create:
     if: github.event.pull_request.head.repo.fork != true
