@@ -1,4 +1,10 @@
-import { catalog, livestorePackageDefaults, packageJson, utilsEffectPeerDeps, workspaceMember } from '../../../genie/repo.ts'
+import {
+  catalog,
+  livestorePackageDefaults,
+  packageJson,
+  utilsEffectPeerDeps,
+  workspaceMember,
+} from '../../../genie/repo.ts'
 
 /** Derives dependencies from the canonical utilsEffectPeerDeps list */
 const runtimeDeps = catalog.compose({
