@@ -8,10 +8,13 @@ import type { MemoryVFS } from '@livestore/wa-sqlite/src/examples/MemoryVFS.js'
 
 import { makeInMemoryDb } from '../in-memory-vfs.ts'
 import { makeSqliteDb } from '../make-sqlite-db.ts'
-import { CloudflareSqlVFS } from './CloudflareSqlVFS.ts'
+import { CloudflareDurableObjectVFS } from './CloudflareDurableObjectVFS.ts'
 
-export { BlockManager } from './BlockManager.ts'
-export { CloudflareSqlVFS } from './CloudflareSqlVFS.ts'
+export {
+  CloudflareDurableObjectVFS,
+  PAGE_SIZE as CF_SQL_VFS_PAGE_SIZE,
+  REQUIRED_PRAGMAS as CF_SQL_VFS_REQUIRED_PRAGMAS,
+} from './CloudflareDurableObjectVFS.ts'
 export { CloudflareWorkerVFS } from './CloudflareWorkerVFS.ts'
 
 export type CloudflareDatabaseMetadataInMemory = {
@@ -25,8 +28,7 @@ export type CloudflareDatabaseMetadataInMemory = {
 
 export type CloudflareDatabaseMetadataFs = {
   _tag: 'storage'
-  // vfs: CloudflareWorkerVFS
-  vfs: CloudflareSqlVFS
+  vfs: CloudflareDurableObjectVFS
   dbPointer: number
   persistenceInfo: PersistenceInfo
   deleteDb: () => void
@@ -116,18 +118,10 @@ const makeCloudflareFsDb = ({
     // If this is becoming a problem, we can use a hashed version of the directory name
     const vfsName = `cf-do-sqlite-${fileName}`
     if (sqlite3.vfs_registered.has(vfsName) === false) {
-      // TODO refactor with Effect FileSystem instead of using `node:fs` directly inside of CloudflareWorkerVFS
-      // const nodeFsVfs = new CloudflareWorkerVFS(vfsName, storage, (sqlite3 as any).module)
-      const nodeFsVfs = new CloudflareSqlVFS(vfsName, storage.sql, (sqlite3 as any).module)
-
-      // Initialize the VFS schema before registering it
-      const isReady = yield* Effect.promise(() => nodeFsVfs.isReady())
-      if (isReady === false) {
-        throw new Error(`Failed to initialize CloudflareSqlVFS for ${vfsName}`)
-      }
+      const vfs = new CloudflareDurableObjectVFS(vfsName, storage.sql, (sqlite3 as any).module)
 
       // @ts-expect-error TODO fix types
-      sqlite3.vfs_register(nodeFsVfs, false)
+      sqlite3.vfs_register(vfs, false)
     }
 
     // yield* fs.makeDirectory(directory, { recursive: true })

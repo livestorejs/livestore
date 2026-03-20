@@ -1,28 +1,16 @@
-import { catalog, livestorePackageDefaults, packageJson, workspaceMember } from '../../../genie/repo.ts'
+import {
+  catalog,
+  livestorePackageDefaults,
+  packageJson,
+  utilsEffectPeerDeps,
+  workspaceMember,
+} from '../../../genie/repo.ts'
 
+/** Derives dependencies from the canonical utilsEffectPeerDeps list */
 const runtimeDeps = catalog.compose({
   workspace: workspaceMember('packages/@livestore/peer-deps'),
   dependencies: {
-    external: catalog.pick(
-      '@effect/ai',
-      '@effect/cli',
-      '@effect/cluster',
-      '@effect/experimental',
-      '@effect/opentelemetry',
-      '@effect/platform',
-      '@effect/platform-browser',
-      '@effect/platform-bun',
-      '@effect/platform-node',
-      '@effect/printer',
-      '@effect/printer-ansi',
-      '@effect/rpc',
-      '@effect/sql',
-      '@effect/typeclass',
-      '@opentelemetry/api',
-      '@opentelemetry/resources',
-      '@standard-schema/spec',
-      'effect',
-    ),
+    external: catalog.pick(...utilsEffectPeerDeps),
   },
 })
 

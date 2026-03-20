@@ -160,6 +160,7 @@ export const utilsEffectPeerDeps = [
   '@effect/rpc',
   '@effect/sql',
   '@effect/typeclass',
+  '@effect/vitest',
   '@opentelemetry/api',
   '@opentelemetry/resources',
   '@standard-schema/spec',

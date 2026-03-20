@@ -4,17 +4,40 @@ import type { CfTypes } from '@livestore/common-cf'
 import * as VFS from '@livestore/wa-sqlite/src/VFS.js'
 import { beforeEach, describe, expect, it } from 'vitest'
 
-import { CloudflareSqlVFS } from '../../mod.ts'
+import { CF_SQL_VFS_PAGE_SIZE, CloudflareDurableObjectVFS } from '../../mod.ts'
 
-describe('CloudflareSqlVFS - Core Functionality', () => {
-  let vfs: CloudflareSqlVFS
+const makePage = (fillByte: number, text?: string): Uint8Array => {
+  const page = new Uint8Array(CF_SQL_VFS_PAGE_SIZE)
+  page.fill(fillByte)
+
+  if (text !== undefined) {
+    page.set(new TextEncoder().encode(text))
+  }
+
+  return page
+}
+
+describe('CloudflareDurableObjectVFS - Core Functionality', () => {
+  let vfs: CloudflareDurableObjectVFS
   let mockSql: CfTypes.SqlStorage
-  let mockDatabase: Map<string, any[]>
+  /** In-memory page store keyed by file_path and page_no */
+  let mockPages: Map<string, Map<number, Uint8Array>>
   let queryLog: string[]
 
   beforeEach(async () => {
-    mockDatabase = new Map()
+    mockPages = new Map()
     queryLog = []
+
+    const getOrCreateFilePages = (filePath: string) => {
+      let pages = mockPages.get(filePath)
+
+      if (pages === undefined) {
+        pages = new Map()
+        mockPages.set(filePath, pages)
+      }
+
+      return pages
+    }
 
     // Mock SQL storage that mimics the Cloudflare DurableObject SQL API
     mockSql = {
@@ -24,109 +47,105 @@ describe('CloudflareSqlVFS - Core Functionality', () => {
       ): CfTypes.SqlStorageCursor<T> => {
         queryLog.push(`${query} [${bindings.join(', ')}]`)
 
-        // Simple SQL parser for testing - handles basic CREATE, INSERT, SELECT, UPDATE, DELETE
-        const normalizedQuery = query.trim().toUpperCase()
+        const normalizedQuery = query.trim().replace(/\s+/g, ' ').toUpperCase()
 
-        if (
-          normalizedQuery.includes('CREATE TABLE') === true ||
-          normalizedQuery.includes('CREATE INDEX') === true ||
-          normalizedQuery.includes('CREATE TRIGGER') === true
-        ) {
-          // Handle schema creation
+        if (normalizedQuery.includes('CREATE TABLE') === true) {
           return createMockCursor([] as any)
         }
 
-        if (normalizedQuery.startsWith('INSERT OR REPLACE INTO VFS_BLOCKS') === true) {
-          const [filePath, blockId, blockData] = bindings
-          const key = `blocks:${filePath}`
-          if (mockDatabase.has(key) === false) {
-            mockDatabase.set(key, [])
-          }
-          const blocks = mockDatabase.get(key)!
-          const existingIndex = blocks.findIndex((b: any) => b.block_id === blockId)
-          const blockEntry = { file_path: filePath, block_id: blockId, block_data: blockData }
-
-          if (existingIndex >= 0) {
-            blocks[existingIndex] = blockEntry
-          } else {
-            blocks.push(blockEntry)
-          }
+        // INSERT OR REPLACE INTO vfs_pages (file_path, page_no, page_data) VALUES (?, ?, ?)
+        if (normalizedQuery.startsWith('INSERT OR REPLACE INTO VFS_PAGES') === true) {
+          const [filePath, pageNo, pageData] = bindings
+          getOrCreateFilePages(filePath as string).set(
+            pageNo as number,
+            pageData instanceof Uint8Array ? pageData : new Uint8Array(pageData),
+          )
           return createMockCursor([] as any)
         }
 
-        if (normalizedQuery.startsWith('INSERT INTO VFS_FILES') === true) {
-          const [filePath, fileSize, flags, createdAt, modifiedAt] = bindings
-          mockDatabase.set(`file:${filePath}`, {
-            file_path: filePath as string,
-            file_size: fileSize as number,
-            flags: flags as number,
-            created_at: createdAt as number,
-            modified_at: modifiedAt as number,
-          } as any)
-          return createMockCursor([] as any)
+        // SELECT page_data FROM vfs_pages WHERE file_path = ? AND page_no = ?
+        if (normalizedQuery.startsWith('SELECT PAGE_DATA FROM VFS_PAGES WHERE FILE_PATH = ? AND PAGE_NO = ?') === true) {
+          const [filePath, pageNo] = bindings
+          const data = mockPages.get(filePath as string)?.get(pageNo as number)
+          return createMockCursor(data !== undefined ? [{ page_data: data }] as any : [] as any)
         }
 
-        if (normalizedQuery.startsWith('SELECT') === true && normalizedQuery.includes('FROM VFS_FILES') === true) {
-          if (normalizedQuery.includes('WHERE FILE_PATH = ?') === true) {
-            const [filePath] = bindings
-            const fileData = mockDatabase.get(`file:${filePath}`)
-            return createMockCursor(fileData !== undefined ? [fileData] : ([] as any))
+        // SELECT 1 AS x FROM vfs_pages LIMIT 1
+        if (normalizedQuery.includes('SELECT 1 AS X FROM VFS_PAGES') === true) {
+          if (mockPages.size > 0) {
+            return createMockCursor([{ x: 1 }] as any)
           }
           return createMockCursor([] as any)
         }
 
-        if (normalizedQuery.startsWith('SELECT') === true && normalizedQuery.includes('FROM VFS_BLOCKS') === true) {
-          if (normalizedQuery.includes('WHERE FILE_PATH = ?') === true) {
-            const filePath = bindings[0]
-            const blocks = mockDatabase.get(`blocks:${filePath}`) || []
-
-            if (normalizedQuery.includes('AND BLOCK_ID IN') === true) {
-              const requestedBlockIds = new Set(bindings.slice(1))
-              const matchingBlocks = blocks.filter((b: any) => requestedBlockIds.has(b.block_id))
-              return createMockCursor(matchingBlocks as any)
-            }
-
-            return createMockCursor(blocks as any)
-          }
-          return createMockCursor([] as any)
-        }
-
-        if (normalizedQuery.startsWith('UPDATE VFS_FILES') === true) {
-          if (normalizedQuery.includes('SET FILE_SIZE = ?') === true) {
-            const [newSize, filePath] = bindings
-            const fileData = mockDatabase.get(`file:${filePath}`) as any
-            if (fileData !== undefined) {
-              fileData.file_size = newSize as number
-              fileData.modified_at = Math.floor(Date.now() / 1000)
-            }
-          }
-          return createMockCursor([] as any)
-        }
-
-        if (normalizedQuery.startsWith('DELETE FROM VFS_BLOCKS') === true) {
-          const [filePath, minBlockId] = bindings
-          const blocks = mockDatabase.get(`blocks:${filePath}`)
-          if (blocks !== undefined) {
-            const filteredBlocks = blocks.filter((b: any) => b.block_id < minBlockId)
-            mockDatabase.set(`blocks:${filePath}`, filteredBlocks)
-          }
-          return createMockCursor([] as any)
-        }
-
-        if (normalizedQuery.startsWith('DELETE FROM VFS_FILES') === true) {
+        // SELECT MAX(page_no) AS max_page FROM vfs_pages WHERE file_path = ?
+        if (normalizedQuery.includes('SELECT MAX(PAGE_NO) AS MAX_PAGE FROM VFS_PAGES WHERE FILE_PATH = ?') === true) {
           const [filePath] = bindings
-          mockDatabase.delete(`file:${filePath}`)
-          mockDatabase.delete(`blocks:${filePath}`)
+          const pages = mockPages.get(filePath as string)
+
+          if (pages === undefined || pages.size === 0) {
+            return createMockCursor([{ max_page: null }] as any)
+          }
+
+          const maxPage = Math.max(...pages.keys())
+          return createMockCursor([{ max_page: maxPage }] as any)
+        }
+
+        // SELECT COUNT(*) AS total_pages, COALESCE(...) FROM vfs_pages
+        if (normalizedQuery.includes('FROM VFS_PAGES') === true && normalizedQuery.includes('COUNT(*)') === true) {
+          let totalBytes = 0
+          let totalPages = 0
+
+          for (const pages of mockPages.values()) {
+            totalPages += pages.size
+
+            for (const data of pages.values()) {
+              totalBytes += data.length
+            }
+          }
+
+          return createMockCursor([{ total_pages: totalPages, total_bytes: totalBytes }] as any)
+        }
+
+        // DELETE FROM vfs_pages WHERE file_path = ? AND page_no >= ?
+        if (normalizedQuery.startsWith('DELETE FROM VFS_PAGES WHERE FILE_PATH = ? AND PAGE_NO >= ?') === true) {
+          const [filePath, minPageNo] = bindings
+          const pages = mockPages.get(filePath as string)
+
+          if (pages !== undefined) {
+            for (const pageNo of pages.keys()) {
+              if (pageNo >= (minPageNo as number)) {
+                pages.delete(pageNo)
+              }
+            }
+
+            if (pages.size === 0) {
+              mockPages.delete(filePath as string)
+            }
+          }
+
           return createMockCursor([] as any)
         }
 
-        // Default empty result for unhandled queries
+        // DELETE FROM vfs_pages WHERE file_path = ?
+        if (normalizedQuery === 'DELETE FROM VFS_PAGES WHERE FILE_PATH = ?') {
+          const [filePath] = bindings
+          mockPages.delete(filePath as string)
+          return createMockCursor([] as any)
+        }
+
+        // DELETE FROM vfs_pages (no WHERE - full wipe)
+        if (normalizedQuery === 'DELETE FROM VFS_PAGES') {
+          mockPages.clear()
+          return createMockCursor([] as any)
+        }
+
         console.warn('Unhandled query:', query, bindings)
         return createMockCursor([] as any)
       },
 
       get databaseSize(): number {
-        return 1024 * 1024 // Mock 1MB database
+        return 1024 * 1024
       },
 
       Cursor: {} as any,
@@ -172,12 +191,11 @@ describe('CloudflareSqlVFS - Core Functionality', () => {
       } as CfTypes.SqlStorageCursor<T>
     }
 
-    vfs = new CloudflareSqlVFS('test-sql-vfs', mockSql, {})
-    await vfs.isReady()
+    vfs = new CloudflareDurableObjectVFS('test-sql-vfs', mockSql, {})
   })
 
   describe('Basic File Operations', () => {
-    it('should create and open files', async () => {
+    it('should create and open files', () => {
       const path = '/test/basic.db'
       const fileId = 1
       const flags = VFS.SQLITE_OPEN_CREATE | VFS.SQLITE_OPEN_READWRITE
@@ -186,34 +204,33 @@ describe('CloudflareSqlVFS - Core Functionality', () => {
       const result = vfs.jOpen(path, fileId, flags, pOutFlags)
       expect(result).toBe(VFS.SQLITE_OK)
       expect(pOutFlags.getUint32(0, true)).toBe(flags)
-
-      expect(vfs.jClose(fileId)).toBe(VFS.SQLITE_OK)
-
-      // Verify file was created in mock database
-      expect(mockDatabase.has(`file:${path}`)).toBe(true)
     })
 
-    it('should handle file access checks', async () => {
-      const path = '/test/access.db'
-      const fileId = 1
-      const flags = VFS.SQLITE_OPEN_CREATE | VFS.SQLITE_OPEN_READWRITE
+    it('should delete only the opened file on close when SQLITE_OPEN_DELETEONCLOSE is set', () => {
       const pOutFlags = new DataView(new ArrayBuffer(4))
 
-      // File doesn't exist initially
-      const pResOut = new DataView(new ArrayBuffer(4))
-      expect(vfs.jAccess(path, VFS.SQLITE_ACCESS_EXISTS, pResOut)).toBe(VFS.SQLITE_OK)
-      expect(pResOut.getUint32(0, true)).toBe(0)
+      const keepPath = '/test/keep-on-close.db'
+      const keepFileId = 1
+      const keepFlags = VFS.SQLITE_OPEN_CREATE | VFS.SQLITE_OPEN_READWRITE
+      vfs.jOpen(keepPath, keepFileId, keepFlags, pOutFlags)
+      const keepData = makePage(0x11, 'keep-me')
+      expect(vfs.jWrite(keepFileId, keepData, 0)).toBe(VFS.SQLITE_OK)
 
-      // Create file
-      vfs.jOpen(path, fileId, flags, pOutFlags)
-      vfs.jClose(fileId)
+      const deletePath = '/test/delete-on-close.db'
+      const deleteFileId = 2
+      const deleteFlags = VFS.SQLITE_OPEN_CREATE | VFS.SQLITE_OPEN_READWRITE | VFS.SQLITE_OPEN_DELETEONCLOSE
+      vfs.jOpen(deletePath, deleteFileId, deleteFlags, pOutFlags)
+      expect(vfs.jWrite(deleteFileId, makePage(0x22, 'delete-me'), 0)).toBe(VFS.SQLITE_OK)
 
-      // File should exist now
-      expect(vfs.jAccess(path, VFS.SQLITE_ACCESS_EXISTS, pResOut)).toBe(VFS.SQLITE_OK)
-      expect(pResOut.getUint32(0, true)).toBe(1)
+      expect(vfs.jClose(deleteFileId)).toBe(VFS.SQLITE_OK)
+
+      const readBuffer = new Uint8Array(keepData.length)
+      expect(vfs.jRead(keepFileId, readBuffer, 0)).toBe(VFS.SQLITE_OK)
+      expect(readBuffer).toEqual(keepData)
+      expect(mockPages.has(deletePath)).toBe(false)
     })
 
-    it('should handle basic read/write operations', async () => {
+    it('should handle basic read/write operations', () => {
       const path = '/test/readwrite.db'
       const fileId = 1
       const flags = VFS.SQLITE_OPEN_CREATE | VFS.SQLITE_OPEN_READWRITE
@@ -222,18 +239,36 @@ describe('CloudflareSqlVFS - Core Functionality', () => {
       vfs.jOpen(path, fileId, flags, pOutFlags)
 
       // Write data
-      const testData = new TextEncoder().encode('Hello, SQL VFS!')
+      const testData = makePage(0x33, 'Hello, SQL VFS!')
       expect(vfs.jWrite(fileId, testData, 0)).toBe(VFS.SQLITE_OK)
 
       // Read data back
       const readBuffer = new Uint8Array(testData.length)
       expect(vfs.jRead(fileId, readBuffer, 0)).toBe(VFS.SQLITE_OK)
       expect(readBuffer).toEqual(testData)
-
-      vfs.jClose(fileId)
     })
 
-    it('should handle file size operations', async () => {
+    it('should isolate pages by file path', () => {
+      const flags = VFS.SQLITE_OPEN_CREATE | VFS.SQLITE_OPEN_READWRITE
+      const pOutFlags = new DataView(new ArrayBuffer(4))
+
+      const oldPath = '/test/state-old.db'
+      const oldFileId = 1
+      vfs.jOpen(oldPath, oldFileId, flags, pOutFlags)
+
+      const oldData = makePage(0x44, 'stale-state')
+      expect(vfs.jWrite(oldFileId, oldData, 0)).toBe(VFS.SQLITE_OK)
+
+      const newPath = '/test/state-new.db'
+      const newFileId = 2
+      vfs.jOpen(newPath, newFileId, flags, pOutFlags)
+
+      const readBuffer = new Uint8Array(oldData.length)
+      expect(vfs.jRead(newFileId, readBuffer, 0)).toBe(VFS.SQLITE_OK)
+      expect(readBuffer).toEqual(new Uint8Array(oldData.length))
+    })
+
+    it('should handle file size operations', () => {
       const path = '/test/size.db'
       const fileId = 1
       const flags = VFS.SQLITE_OPEN_CREATE | VFS.SQLITE_OPEN_READWRITE
@@ -246,18 +281,17 @@ describe('CloudflareSqlVFS - Core Functionality', () => {
       expect(vfs.jFileSize(fileId, pSize64)).toBe(VFS.SQLITE_OK)
       expect(pSize64.getBigInt64(0, true)).toBe(0n)
 
-      // Write data and check size
-      const testData = new Uint8Array(1000)
+      // Write one full page (8 KiB) and check size
+      const pageSize = CF_SQL_VFS_PAGE_SIZE
+      const testData = new Uint8Array(pageSize)
       testData.fill(0xaa)
       vfs.jWrite(fileId, testData, 0)
 
       expect(vfs.jFileSize(fileId, pSize64)).toBe(VFS.SQLITE_OK)
-      expect(pSize64.getBigInt64(0, true)).toBe(1000n)
-
-      vfs.jClose(fileId)
+      expect(pSize64.getBigInt64(0, true)).toBe(BigInt(pageSize))
     })
 
-    it('should handle file truncation', async () => {
+    it('should handle file truncation', () => {
       const path = '/test/truncate.db'
       const fileId = 1
       const flags = VFS.SQLITE_OPEN_CREATE | VFS.SQLITE_OPEN_READWRITE
@@ -265,42 +299,21 @@ describe('CloudflareSqlVFS - Core Functionality', () => {
 
       vfs.jOpen(path, fileId, flags, pOutFlags)
 
-      // Write data
-      const testData = new Uint8Array(2000)
-      testData.fill(0xbb)
-      vfs.jWrite(fileId, testData, 0)
+      // Write two full pages
+      const pageSize = CF_SQL_VFS_PAGE_SIZE
+      vfs.jWrite(fileId, makePage(0xbb), 0)
+      vfs.jWrite(fileId, makePage(0xcc), pageSize)
 
-      // Truncate to smaller size
-      expect(vfs.jTruncate(fileId, 500)).toBe(VFS.SQLITE_OK)
+      // Truncate to one page
+      expect(vfs.jTruncate(fileId, pageSize)).toBe(VFS.SQLITE_OK)
 
       // Verify size
       const pSize64 = new DataView(new ArrayBuffer(8))
       expect(vfs.jFileSize(fileId, pSize64)).toBe(VFS.SQLITE_OK)
-      expect(pSize64.getBigInt64(0, true)).toBe(500n)
-
-      vfs.jClose(fileId)
+      expect(pSize64.getBigInt64(0, true)).toBe(BigInt(pageSize))
     })
 
-    it('should handle sync operations', async () => {
-      const path = '/test/sync.db'
-      const fileId = 1
-      const flags = VFS.SQLITE_OPEN_CREATE | VFS.SQLITE_OPEN_READWRITE
-      const pOutFlags = new DataView(new ArrayBuffer(4))
-
-      vfs.jOpen(path, fileId, flags, pOutFlags)
-
-      const testData = new TextEncoder().encode('Sync test data')
-      vfs.jWrite(fileId, testData, 0)
-
-      // Test different sync modes - should all be no-ops for SQL VFS
-      expect(vfs.jSync(fileId, VFS.SQLITE_SYNC_NORMAL)).toBe(VFS.SQLITE_OK)
-      expect(vfs.jSync(fileId, VFS.SQLITE_SYNC_FULL)).toBe(VFS.SQLITE_OK)
-      expect(vfs.jSync(fileId, VFS.SQLITE_SYNC_DATAONLY)).toBe(VFS.SQLITE_OK)
-
-      vfs.jClose(fileId)
-    })
-
-    it('should handle file deletion', async () => {
+    it('should handle file deletion', () => {
       const path = '/test/delete.db'
       const fileId = 1
       const flags = VFS.SQLITE_OPEN_CREATE | VFS.SQLITE_OPEN_READWRITE
@@ -308,81 +321,78 @@ describe('CloudflareSqlVFS - Core Functionality', () => {
 
       // Create file
       vfs.jOpen(path, fileId, flags, pOutFlags)
-      const testData = new TextEncoder().encode('Delete test')
+      const testData = makePage(0x55, 'Delete test')
       vfs.jWrite(fileId, testData, 0)
-      vfs.jClose(fileId)
 
       // Delete file
       expect(vfs.jDelete(path, 0)).toBe(VFS.SQLITE_OK)
 
-      // Verify file is gone
-      expect(mockDatabase.has(`file:${path}`)).toBe(false)
-      expect(mockDatabase.has(`blocks:${path}`)).toBe(false)
+      // Verify pages are gone
+      expect(mockPages.size).toBe(0)
+    })
+
+    it('should delete only the requested file path', () => {
+      const flags = VFS.SQLITE_OPEN_CREATE | VFS.SQLITE_OPEN_READWRITE
+      const pOutFlags = new DataView(new ArrayBuffer(4))
+
+      const keepPath = '/test/keep.db'
+      const keepFileId = 1
+      vfs.jOpen(keepPath, keepFileId, flags, pOutFlags)
+      const keepData = makePage(0x66, 'keep-me')
+      expect(vfs.jWrite(keepFileId, keepData, 0)).toBe(VFS.SQLITE_OK)
+
+      const deletePath = '/test/delete-only.db'
+      const deleteFileId = 2
+      vfs.jOpen(deletePath, deleteFileId, flags, pOutFlags)
+      expect(vfs.jWrite(deleteFileId, makePage(0x77, 'delete-me'), 0)).toBe(VFS.SQLITE_OK)
+
+      expect(vfs.jDelete(deletePath, 0)).toBe(VFS.SQLITE_OK)
+
+      const readBuffer = new Uint8Array(keepData.length)
+      expect(vfs.jRead(keepFileId, readBuffer, 0)).toBe(VFS.SQLITE_OK)
+      expect(readBuffer).toEqual(keepData)
+      expect(mockPages.has(deletePath)).toBe(false)
     })
   })
 
   describe('VFS Management', () => {
-    it('should provide correct VFS characteristics', () => {
-      expect(vfs.jSectorSize(1)).toBe(4096)
-      expect(vfs.jDeviceCharacteristics(1)).toBe(VFS.SQLITE_IOCAP_UNDELETABLE_WHEN_OPEN)
-    })
-
-    it('should handle multiple files', async () => {
-      const files = [
-        { path: '/test/file1.db', id: 1 },
-        { path: '/test/file2.db', id: 2 },
-        { path: '/test/file3.db', id: 3 },
-      ]
-
-      const flags = VFS.SQLITE_OPEN_CREATE | VFS.SQLITE_OPEN_READWRITE
-      const pOutFlags = new DataView(new ArrayBuffer(4))
-
-      // Open all files
-      for (const file of files) {
-        expect(vfs.jOpen(file.path, file.id, flags, pOutFlags)).toBe(VFS.SQLITE_OK)
-      }
-
-      // Write different data to each
-      for (let i = 0; i < files.length; i++) {
-        const data = new TextEncoder().encode(`File ${i + 1} data`)
-        expect(vfs.jWrite(files[i]?.id ?? 0, data, 0)).toBe(VFS.SQLITE_OK)
-      }
-
-      // Read back and verify
-      for (let i = 0; i < files.length; i++) {
-        const expected = new TextEncoder().encode(`File ${i + 1} data`)
-        const actual = new Uint8Array(expected.length)
-        expect(vfs.jRead(files[i]?.id ?? 0, actual, 0)).toBe(VFS.SQLITE_OK)
-        expect(actual).toEqual(expected)
-      }
-
-      // Close all files
-      for (const file of files) {
-        expect(vfs.jClose(file.id)).toBe(VFS.SQLITE_OK)
-      }
-    })
-
     it('should provide VFS statistics', () => {
       const stats = vfs.getStats()
-      expect(stats).toHaveProperty('activeFiles')
-      expect(stats).toHaveProperty('openFiles')
-      expect(stats).toHaveProperty('maxFiles')
-      expect(stats).toHaveProperty('blockSize')
+      expect(stats).toHaveProperty('pageSize')
+      expect(stats).toHaveProperty('totalPages')
       expect(stats).toHaveProperty('totalStoredBytes')
-      expect(stats.blockSize).toBe(64 * 1024)
+      expect(stats.pageSize).toBe(CF_SQL_VFS_PAGE_SIZE)
     })
   })
 
   describe('Error Handling', () => {
-    it('should handle invalid file IDs', () => {
+    it('should return SQLITE_IOERR for handle-based operations on unknown file IDs', () => {
       const invalidFileId = 999
-      const buffer = new Uint8Array(100)
+      const buffer = new Uint8Array(CF_SQL_VFS_PAGE_SIZE)
+      const pSize64 = new DataView(new ArrayBuffer(8))
 
       expect(vfs.jRead(invalidFileId, buffer, 0)).toBe(VFS.SQLITE_IOERR)
       expect(vfs.jWrite(invalidFileId, buffer, 0)).toBe(VFS.SQLITE_IOERR)
-      expect(vfs.jTruncate(invalidFileId, 50)).toBe(VFS.SQLITE_IOERR)
-      expect(vfs.jSync(invalidFileId, 0)).toBe(VFS.SQLITE_IOERR)
+      expect(vfs.jTruncate(invalidFileId, 0)).toBe(VFS.SQLITE_IOERR)
+      expect(vfs.jFileSize(invalidFileId, pSize64)).toBe(VFS.SQLITE_IOERR)
       expect(vfs.jClose(invalidFileId)).toBe(VFS.SQLITE_OK)
+    })
+
+    it('should return SQLITE_IOERR for handle-based operations after close', () => {
+      const path = '/test/closed.db'
+      const fileId = 1
+      const flags = VFS.SQLITE_OPEN_CREATE | VFS.SQLITE_OPEN_READWRITE
+      const pOutFlags = new DataView(new ArrayBuffer(4))
+      const buffer = new Uint8Array(CF_SQL_VFS_PAGE_SIZE)
+      const pSize64 = new DataView(new ArrayBuffer(8))
+
+      expect(vfs.jOpen(path, fileId, flags, pOutFlags)).toBe(VFS.SQLITE_OK)
+      expect(vfs.jClose(fileId)).toBe(VFS.SQLITE_OK)
+
+      expect(vfs.jRead(fileId, buffer, 0)).toBe(VFS.SQLITE_IOERR)
+      expect(vfs.jWrite(fileId, buffer, 0)).toBe(VFS.SQLITE_IOERR)
+      expect(vfs.jTruncate(fileId, 0)).toBe(VFS.SQLITE_IOERR)
+      expect(vfs.jFileSize(fileId, pSize64)).toBe(VFS.SQLITE_IOERR)
     })
 
     it('should handle invalid paths', () => {
@@ -394,20 +404,40 @@ describe('CloudflareSqlVFS - Core Functionality', () => {
       expect(vfs.jOpen(invalidPath, fileId, flags, pOutFlags)).toBe(VFS.SQLITE_OK)
     })
 
-    it('should handle file operations on closed files', () => {
-      const path = '/test/closed.db'
+    it('should reject writes that do not match the configured page size', () => {
+      const path = '/test/page-size-mismatch.db'
       const fileId = 1
       const flags = VFS.SQLITE_OPEN_CREATE | VFS.SQLITE_OPEN_READWRITE
       const pOutFlags = new DataView(new ArrayBuffer(4))
 
-      // Open and close file
-      vfs.jOpen(path, fileId, flags, pOutFlags)
-      vfs.jClose(fileId)
+      expect(vfs.jOpen(path, fileId, flags, pOutFlags)).toBe(VFS.SQLITE_OK)
+      expect(vfs.jWrite(fileId, new Uint8Array(CF_SQL_VFS_PAGE_SIZE / 2), 0)).toBe(VFS.SQLITE_IOERR)
+      expect(mockPages.size).toBe(0)
+    })
 
-      // Try to operate on closed file
-      const buffer = new Uint8Array(10)
-      expect(vfs.jRead(fileId, buffer, 0)).toBe(VFS.SQLITE_IOERR)
-      expect(vfs.jWrite(fileId, buffer, 0)).toBe(VFS.SQLITE_IOERR)
+    it('should reject writes at non-page-aligned offsets', () => {
+      const path = '/test/page-offset-mismatch.db'
+      const fileId = 1
+      const flags = VFS.SQLITE_OPEN_CREATE | VFS.SQLITE_OPEN_READWRITE
+      const pOutFlags = new DataView(new ArrayBuffer(4))
+
+      expect(vfs.jOpen(path, fileId, flags, pOutFlags)).toBe(VFS.SQLITE_OK)
+      expect(vfs.jWrite(fileId, makePage(0x88), CF_SQL_VFS_PAGE_SIZE / 2)).toBe(VFS.SQLITE_IOERR)
+      expect(mockPages.size).toBe(0)
+    })
+
+    it('should always report not found from jAccess', () => {
+      const path = '/test/access.db'
+      const fileId = 1
+      const flags = VFS.SQLITE_OPEN_CREATE | VFS.SQLITE_OPEN_READWRITE
+      const pOutFlags = new DataView(new ArrayBuffer(4))
+      const pResOut = new DataView(new ArrayBuffer(4))
+
+      expect(vfs.jOpen(path, fileId, flags, pOutFlags)).toBe(VFS.SQLITE_OK)
+      expect(vfs.jWrite(fileId, makePage(0x99, 'access-test'), 0)).toBe(VFS.SQLITE_OK)
+
+      expect(vfs.jAccess(path, VFS.SQLITE_ACCESS_EXISTS, pResOut)).toBe(VFS.SQLITE_OK)
+      expect(pResOut.getUint32(0, true)).toBe(0)
     })
   })
 
