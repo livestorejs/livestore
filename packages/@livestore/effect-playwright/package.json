@@ -39,6 +39,10 @@
   },
   "$genie": {
     "source": "package.json.genie.ts",
-    "warning": "DO NOT EDIT - changes will be overwritten"
+    "warning": "DO NOT EDIT - changes will be overwritten",
+    "workspaceClosureDirs": [
+      "packages/@livestore/effect-playwright",
+      "packages/@livestore/utils"
+    ]
   }
 }

@@ -43,6 +43,7 @@ packages:
   - tests/wa-sqlite
 
 overrides:
+  effect: 3.19.19
   '@tanstack/router-core': 1.139.14
   '@tanstack/history': 1.139.0
   '@tanstack/react-router': 1.139.14

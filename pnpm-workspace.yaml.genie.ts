@@ -1,9 +1,12 @@
-import { commonPnpmPolicySettings, pnpmWorkspaceYaml } from './genie/repo.ts'
+import { catalog, commonPnpmPolicySettings, pnpmWorkspaceYaml } from './genie/repo.ts'
 import { rootWorkspacePackages } from './package.json.genie.ts'
 
 const examplesWorkspaceSettings = {
   linkWorkspacePackages: true,
   overrides: {
+    /** Force single effect version across all transitive deps.
+     * Published @livestore/* packages pull in old effect@3.15.2 via stale transitive deps. */
+    ...catalog.pick('effect'),
     '@tanstack/router-core': '1.139.14',
     '@tanstack/history': '1.139.0',
     '@tanstack/react-router': '1.139.14',
