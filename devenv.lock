@@ -26,18 +26,17 @@
         "tsgo": "tsgo"
       },
       "locked": {
-        "lastModified": 1773914049,
-        "narHash": "sha256-g94WJQ1U0R8pmufY8YLMPSc4bc6Xus4yx2qSDCji31A=",
-        "ref": "main",
-        "rev": "e7644510dde358521e004acf97921e9863b51da8",
-        "revCount": 720,
-        "type": "git",
-        "url": "https://github.com/overengineeringstudio/effect-utils"
+        "lastModified": 1773941485,
+        "narHash": "sha256-qtb/Ylu30MrC9/hqVfgbGf01prCmq6EzRaKdrmeYJKQ=",
+        "owner": "overengineeringstudio",
+        "repo": "effect-utils",
+        "rev": "b245c4e5039310bb58022e7f2555eb71a33b17ca",
+        "type": "github"
       },
       "original": {
-        "ref": "main",
-        "type": "git",
-        "url": "https://github.com/overengineeringstudio/effect-utils"
+        "owner": "overengineeringstudio",
+        "repo": "effect-utils",
+        "type": "github"
       }
     },
     "flake-compat": {
@@ -192,11 +191,11 @@
       },
       "locked": {
         "dir": "nix/playwright-flake",
-        "lastModified": 1773914049,
-        "narHash": "sha256-g94WJQ1U0R8pmufY8YLMPSc4bc6Xus4yx2qSDCji31A=",
+        "lastModified": 1773941485,
+        "narHash": "sha256-qtb/Ylu30MrC9/hqVfgbGf01prCmq6EzRaKdrmeYJKQ=",
         "owner": "overengineeringstudio",
         "repo": "effect-utils",
-        "rev": "e7644510dde358521e004acf97921e9863b51da8",
+        "rev": "b245c4e5039310bb58022e7f2555eb71a33b17ca",
         "type": "github"
       },
       "original": {
