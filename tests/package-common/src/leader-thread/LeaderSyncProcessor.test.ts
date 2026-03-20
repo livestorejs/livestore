@@ -18,7 +18,7 @@ import { LeaderThreadCtx, makeLeaderThreadLayer, ShutdownChannel as Shutdown } f
 import { EventSequenceNumber, LiveStoreEvent } from '@livestore/common/schema'
 import { EventFactory } from '@livestore/common/testing'
 import { loadSqlite3Wasm } from '@livestore/sqlite-wasm/load-wasm'
-import { type MakeNodeSqliteDb, sqliteDbFactory } from '@livestore/sqlite-wasm/node'
+import { sqliteDbFactory } from '@livestore/sqlite-wasm/node'
 import { omitUndefineds } from '@livestore/utils'
 import {
   Chunk,
@@ -859,7 +859,7 @@ const LeaderThreadCtxLive = ({
       Effect.withSpan('@livestore/adapter-node:leader-thread:loadSqlite3Wasm'),
     )
 
-    const makeSqliteDb = (yield* sqliteDbFactory({ sqlite3 })) as MakeNodeSqliteDb
+    const makeSqliteDb = yield* sqliteDbFactory({ sqlite3 })
 
     const shutdownProxy = captureShutdown ? yield* WebChannel.queueChannelProxy({ schema: Shutdown.All }) : undefined
 
