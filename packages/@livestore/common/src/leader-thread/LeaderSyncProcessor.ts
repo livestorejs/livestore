@@ -728,6 +728,8 @@ const backgroundBackendPulling = Effect.fn('@livestore/common:LeaderSyncProcesso
     yield* localPushBackendPullMutex.release(1)
   })
 
+  const isPullPaginationComplete = (pageInfo: SyncBackend.PullResPageInfo) => pageInfo._tag === 'NoMore'
+
   const onNewPullChunk = (newEvents: LiveStoreEvent.Client.EncodedWithMeta[], pageInfo: SyncBackend.PullResPageInfo) =>
     Effect.gen(function* () {
       if (devtoolsLatch !== undefined) {
@@ -735,7 +737,7 @@ const backgroundBackendPulling = Effect.fn('@livestore/common:LeaderSyncProcesso
       }
 
       if (newEvents.length === 0) {
-        if (pageInfo._tag !== 'MoreKnown') {
+        if (isPullPaginationComplete(pageInfo) === true) {
           yield* releasePullMutexIfHeld
         }
         return
@@ -856,7 +858,7 @@ const backgroundBackendPulling = Effect.fn('@livestore/common:LeaderSyncProcesso
         return yield* Effect.failCause(chunkExit.cause)
       }
 
-      if (pageInfo._tag !== 'MoreKnown') {
+      if (isPullPaginationComplete(pageInfo) === true) {
         yield* releasePullMutexIfHeld
       }
     })
