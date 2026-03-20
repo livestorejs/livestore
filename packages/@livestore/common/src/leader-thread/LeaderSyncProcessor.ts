@@ -213,7 +213,7 @@ export const makeLeaderSyncProcessor = ({
 
         const waitForProcessing = options?.waitForProcessing ?? false
 
-        if (waitForProcessing) {
+        if (waitForProcessing === true) {
           const deferreds = yield* Effect.forEach(newEvents, () => Deferred.make<void, LeaderAheadError>())
 
           const items = newEvents.map((eventEncoded, i) => [eventEncoded, deferreds[i]] as LocalPushQueueItem)
@@ -229,9 +229,12 @@ export const makeLeaderSyncProcessor = ({
         Effect.withSpan('@livestore/common:LeaderSyncProcessor:push', {
           attributes: {
             batchSize: newEvents.length,
-            batch: TRACE_VERBOSE ? newEvents : undefined,
+            batch: TRACE_VERBOSE === true ? newEvents : undefined,
           },
-          links: ctxRef.current?.span ? [{ _tag: 'SpanLink', span: ctxRef.current.span, attributes: {} }] : undefined,
+          links:
+            ctxRef.current?.span !== undefined
+              ? [{ _tag: 'SpanLink', span: ctxRef.current.span, attributes: {} }]
+              : undefined,
         }),
       )
 
@@ -281,7 +284,7 @@ export const makeLeaderSyncProcessor = ({
       ctxRef.current = {
         otelSpan,
         span,
-        devtoolsLatch: devtools.enabled ? devtools.syncBackendLatch : undefined,
+        devtoolsLatch: devtools.enabled === true ? devtools.syncBackendLatch : undefined,
         runtime,
       }
 
@@ -319,7 +322,7 @@ export const makeLeaderSyncProcessor = ({
             (cause.error._tag === 'InvalidPullError' || cause.error._tag === 'InvalidPushError') &&
             cause.error.cause._tag === 'BackendIdMismatchError'
 
-          if (isBackendIdMismatch) {
+          if (isBackendIdMismatch === true) {
             return yield* handleBackendIdMismatch({
               cause,
               onBackendIdMismatch,
@@ -329,7 +332,7 @@ export const makeLeaderSyncProcessor = ({
 
           // Handle other errors with existing logic
           if (onError === 'ignore') {
-            if (LS_DEV) {
+            if (LS_DEV === true) {
               yield* Effect.logDebug(
                 `Ignoring sync error (${cause._tag === 'Fail' ? cause.error._tag : cause._tag})`,
                 Cause.pretty(cause),
@@ -338,7 +341,7 @@ export const makeLeaderSyncProcessor = ({
             return
           }
 
-          const errorToSend = Cause.isFailType(cause) ? cause.error : UnknownError.make({ cause })
+          const errorToSend = Cause.isFailType(cause) === true ? cause.error : UnknownError.make({ cause })
           yield* shutdownChannel.send(errorToSend).pipe(Effect.orDie)
 
           return yield* Effect.die(cause)
@@ -546,7 +549,7 @@ const backgroundApplyLocalPushes = ({
               `push:unknown-error`,
               {
                 batchSize: newEvents.length,
-                newEvents: TRACE_VERBOSE ? jsonStringify(newEvents) : undefined,
+                newEvents: TRACE_VERBOSE === true ? jsonStringify(newEvents) : undefined,
               },
               undefined,
             )
@@ -560,7 +563,7 @@ const backgroundApplyLocalPushes = ({
               `push:reject`,
               {
                 batchSize: newEvents.length,
-                mergeResult: TRACE_VERBOSE ? jsonStringify(mergeResult) : undefined,
+                mergeResult: TRACE_VERBOSE === true ? jsonStringify(mergeResult) : undefined,
               },
               undefined,
             )
@@ -578,7 +581,7 @@ const backgroundApplyLocalPushes = ({
             )
 
             // TODO we still need to better understand and handle this scenario
-            if (LS_DEV && (yield* BucketQueue.size(localPushesQueue)) > 0) {
+            if (LS_DEV === true && (yield* BucketQueue.size(localPushesQueue)) > 0) {
               console.log('localPushesQueue is not empty', yield* BucketQueue.size(localPushesQueue))
               // oxlint-disable-next-line eslint(no-debugger) -- intentional breakpoint for unexpected queue state
               debugger
@@ -619,7 +622,7 @@ const backgroundApplyLocalPushes = ({
           `push:advance`,
           {
             batchSize: newEvents.length,
-            mergeResult: TRACE_VERBOSE ? jsonStringify(mergeResult) : undefined,
+            mergeResult: TRACE_VERBOSE === true ? jsonStringify(mergeResult) : undefined,
           },
           undefined,
         )
@@ -657,7 +660,7 @@ const materializeEventsBatch: MaterializeEventsBatch = ({ batchItems, deferreds 
 
     yield* Effect.addFinalizer((exit) =>
       Effect.gen(function* () {
-        if (Exit.isSuccess(exit)) return
+        if (Exit.isSuccess(exit) === true) return
 
         // Rollback in case of an error
         db.execute('ROLLBACK', undefined)
@@ -763,7 +766,7 @@ const backgroundBackendPulling = Effect.fn('@livestore/common:LeaderSyncProcesso
             `pull:unknown-error`,
             {
               newEventsCount: newEvents.length,
-              newEvents: TRACE_VERBOSE ? jsonStringify(newEvents) : undefined,
+              newEvents: TRACE_VERBOSE === true ? jsonStringify(newEvents) : undefined,
             },
             undefined,
           )
@@ -779,9 +782,9 @@ const backgroundBackendPulling = Effect.fn('@livestore/common:LeaderSyncProcesso
             `pull:rebase[${mergeResult.newSyncState.localHead.rebaseGeneration}]`,
             {
               newEventsCount: newEvents.length,
-              newEvents: TRACE_VERBOSE ? jsonStringify(newEvents) : undefined,
+              newEvents: TRACE_VERBOSE === true ? jsonStringify(newEvents) : undefined,
               rollbackCount: mergeResult.rollbackEvents.length,
-              mergeResult: TRACE_VERBOSE ? jsonStringify(mergeResult) : undefined,
+              mergeResult: TRACE_VERBOSE === true ? jsonStringify(mergeResult) : undefined,
             },
             undefined,
           )
@@ -809,7 +812,7 @@ const backgroundBackendPulling = Effect.fn('@livestore/common:LeaderSyncProcesso
             `pull:advance`,
             {
               newEventsCount: newEvents.length,
-              mergeResult: TRACE_VERBOSE ? jsonStringify(mergeResult) : undefined,
+              mergeResult: TRACE_VERBOSE === true ? jsonStringify(mergeResult) : undefined,
             },
             undefined,
           )
@@ -848,7 +851,7 @@ const backgroundBackendPulling = Effect.fn('@livestore/common:LeaderSyncProcesso
         yield* SubscriptionRef.set(syncStateSref, mergeResult.newSyncState)
       }).pipe(Effect.exit)
 
-      if (Exit.isFailure(chunkExit)) {
+      if (Exit.isFailure(chunkExit) === true) {
         yield* releasePullMutexIfHeld
         return yield* Effect.failCause(chunkExit.cause)
       }
@@ -931,7 +934,7 @@ const backgroundBackendPushing = Effect.fn('@livestore/common:LeaderSyncProcesso
       'backend-push',
       {
         batchSize: queueItems.length,
-        batch: TRACE_VERBOSE ? jsonStringify(queueItems) : undefined,
+        batch: TRACE_VERBOSE === true ? jsonStringify(queueItems) : undefined,
       },
       undefined,
     )
@@ -1094,7 +1097,7 @@ const makePullQueueSet = Effect.gen(function* () {
   const offer: PullQueueSet['offer'] = (item) =>
     Effect.gen(function* () {
       const seqNumStr = EventSequenceNumber.Client.toString(item.leaderHead)
-      if (cachedPayloads.has(seqNumStr)) {
+      if (cachedPayloads.has(seqNumStr) === true) {
         cachedPayloads.get(seqNumStr)!.push(item.payload)
       } else {
         cachedPayloads.set(seqNumStr, [item.payload])
@@ -1137,7 +1140,7 @@ const validatePushBatch = (
     // monotonic from B’s perspective, but we must reject and force B to rebase locally
     // so the leader never regresses.
     for (let i = 1; i < batch.length; i++) {
-      if (EventSequenceNumber.Client.isGreaterThanOrEqual(batch[i - 1]!.seqNum, batch[i]!.seqNum)) {
+      if (EventSequenceNumber.Client.isGreaterThanOrEqual(batch[i - 1]!.seqNum, batch[i]!.seqNum) === true) {
         return yield* LeaderAheadError.make({
           minimumExpectedNum: batch[i - 1]!.seqNum,
           providedNum: batch[i]!.seqNum,
@@ -1146,7 +1149,7 @@ const validatePushBatch = (
     }
 
     // Make sure smallest sequence number is > pushHead
-    if (EventSequenceNumber.Client.isGreaterThanOrEqual(pushHead, batch[0]!.seqNum)) {
+    if (EventSequenceNumber.Client.isGreaterThanOrEqual(pushHead, batch[0]!.seqNum) === true) {
       return yield* LeaderAheadError.make({
         minimumExpectedNum: pushHead,
         providedNum: batch[0]!.seqNum,
@@ -1174,7 +1177,7 @@ const handleBackendIdMismatch = Effect.fn('@livestore/common:LeaderSyncProcessor
   if (onBackendIdMismatch === 'reset') {
     yield* Effect.logWarning(
       'Sync backend identity changed (backend was reset). Clearing local storage and shutting down.',
-      { cause: Cause.isFailType(cause) ? cause.error.cause : cause },
+      { cause: Cause.isFailType(cause) === true ? cause.error.cause : cause },
     )
 
     // Clear local databases so the client can start fresh on next boot
@@ -1189,17 +1192,17 @@ const handleBackendIdMismatch = Effect.fn('@livestore/common:LeaderSyncProcessor
   if (onBackendIdMismatch === 'shutdown') {
     yield* Effect.logWarning(
       'Sync backend identity changed (backend was reset). Shutting down without clearing local storage.',
-      { cause: Cause.isFailType(cause) ? cause.error.cause : cause },
+      { cause: Cause.isFailType(cause) === true ? cause.error.cause : cause },
     )
 
-    const errorToSend = Cause.isFailType(cause) ? cause.error : UnknownError.make({ cause })
+    const errorToSend = Cause.isFailType(cause) === true ? cause.error : UnknownError.make({ cause })
     yield* shutdownChannel.send(errorToSend).pipe(Effect.orDie)
 
     return yield* Effect.die(cause)
   }
 
   // ignore mode
-  if (LS_DEV) {
+  if (LS_DEV === true) {
     yield* Effect.logDebug(
       'Ignoring BackendIdMismatchError (sync backend was reset but client continues with stale data)',
       Cause.pretty(cause),

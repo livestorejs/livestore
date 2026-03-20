@@ -861,7 +861,8 @@ const LeaderThreadCtxLive = ({
 
     const makeSqliteDb = yield* sqliteDbFactory({ sqlite3 })
 
-    const shutdownProxy = captureShutdown ? yield* WebChannel.queueChannelProxy({ schema: Shutdown.All }) : undefined
+    const shutdownProxy =
+      captureShutdown === true ? yield* WebChannel.queueChannelProxy({ schema: Shutdown.All }) : undefined
 
     const leaderContextLayer = makeLeaderThreadLayer({
       schema,
