@@ -26,16 +26,16 @@
       "locked": {
         "lastModified": 1774118527,
         "narHash": "sha256-gKguJPQCR0+xpamAUNkYCwulUKx+ajwaedjbj9d+Vjo=",
-        "ref": "schickling/2026-03-21-effect-utils-upstream-nixpkgs-authority",
+        "owner": "overengineeringstudio",
+        "repo": "effect-utils",
         "rev": "a839067688943b39644cbb4812b721f7fcf3db5c",
-        "revCount": 734,
-        "type": "git",
-        "url": "https://github.com/overengineeringstudio/effect-utils"
+        "type": "github"
       },
       "original": {
+        "owner": "overengineeringstudio",
         "ref": "schickling/2026-03-21-effect-utils-upstream-nixpkgs-authority",
-        "type": "git",
-        "url": "https://github.com/overengineeringstudio/effect-utils"
+        "repo": "effect-utils",
+        "type": "github"
       }
     },
     "flake-compat": {
