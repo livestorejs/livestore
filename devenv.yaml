@@ -1,6 +1,6 @@
 inputs:
   nixpkgs:
-    url: github:NixOS/nixpkgs/nixos-unstable
+    follows: effect-utils/nixpkgs
   git-hooks:
     url: github:cachix/git-hooks.nix
     inputs:
@@ -13,6 +13,3 @@ inputs:
         follows: nixpkgs
   effect-utils:
     url: github:overengineeringstudio/effect-utils
-    inputs:
-      nixpkgs:
-        follows: nixpkgs
