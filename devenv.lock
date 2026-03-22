@@ -24,16 +24,15 @@
         "tsgo": "tsgo"
       },
       "locked": {
-        "lastModified": 1774130306,
-        "narHash": "sha256-jIPNUKi46ky/hyuW1TvHKtMvicadtamjTj1mf+baNaU=",
+        "lastModified": 1774167356,
+        "narHash": "sha256-sa5J6xuEKUfsYKmTftmh5QfruWXGH/yXFkAKjMaVi7w=",
         "owner": "overengineeringstudio",
         "repo": "effect-utils",
-        "rev": "9fcb736a7e650e59a7980d5a50774a00616b2a13",
+        "rev": "37b80e41a836f6548c5937a35f0d17e68381f25b",
         "type": "github"
       },
       "original": {
         "owner": "overengineeringstudio",
-        "ref": "schickling/2026-03-21-effect-utils-upstream-nixpkgs-authority",
         "repo": "effect-utils",
         "type": "github"
       }

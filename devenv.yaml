@@ -12,4 +12,4 @@ inputs:
       nixpkgs:
         follows: nixpkgs
   effect-utils:
-    url: github:overengineeringstudio/effect-utils/schickling/2026-03-21-effect-utils-upstream-nixpkgs-authority
+    url: github:overengineeringstudio/effect-utils

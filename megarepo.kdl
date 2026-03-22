@@ -1,5 +1,5 @@
 members {
-    effect-utils "overengineeringstudio/effect-utils#schickling/2026-03-21-effect-utils-upstream-nixpkgs-authority"
+    effect-utils "overengineeringstudio/effect-utils"
     overeng-beads-public "overengineeringstudio/overeng-beads-public"
     effect "effect-ts/effect"
 }
