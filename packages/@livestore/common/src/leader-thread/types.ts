@@ -17,13 +17,14 @@ import type { MaterializeError } from '../errors.ts'
 import type {
   BootStatus,
   Devtools,
-  LeaderAheadError,
   MakeSqliteDb,
   PersistenceInfo,
   SqliteDb,
   SyncBackend,
   UnknownError,
+  UnknownEventError,
 } from '../index.ts'
+import type { RejectedPushError } from './RejectedPushError.ts'
 import { EventSequenceNumber, type LiveStoreEvent, type LiveStoreSchema } from '../schema/mod.ts'
 import type * as SyncState from '../sync/syncstate.ts'
 import type { ShutdownChannel } from './shutdown-channel.ts'
@@ -204,14 +205,14 @@ export interface LeaderSyncProcessor {
        */
       waitForProcessing?: boolean
     },
-  ) => Effect.Effect<void, LeaderAheadError>
+  ) => Effect.Effect<void, RejectedPushError>
 
   /** Currently only used by devtools which don't provide their own event numbers */
   pushPartial: (args: {
     event: LiveStoreEvent.Input.Encoded
     clientId: string
     sessionId: string
-  }) => Effect.Effect<void, UnknownError>
+  }) => Effect.Effect<void, UnknownEventError>
 
   boot: Effect.Effect<
     { initialLeaderHead: EventSequenceNumber.Client.Composite },

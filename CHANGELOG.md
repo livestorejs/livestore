@@ -493,6 +493,7 @@ See the [S2 sync provider docs](https://dev.docs.livestore.dev/reference/syncing
 
 #### Development Tooling
 
+- **Strict peer dep composition:** Added `@effect/vitest` to `utilsEffectPeerDeps` and `@livestore/peer-deps`, and deduplicated the peer-deps package to derive its dependency list from the canonical `utilsEffectPeerDeps` source ([#1107](https://github.com/livestorejs/livestore/issues/1107)).
 - Migration from ESLint to Biome for improved performance (#447)
 - Automated dependency management with Renovate
 - Pre-commit hooks via Husky (#522)

@@ -18,7 +18,7 @@ import { log } from 'effect/Console'
 import { dual, type LazyArg } from 'effect/Function'
 import type { Predicate, Refinement } from 'effect/Predicate'
 
-import { isPromise, objectToString } from '../mod.ts'
+import { isDevEnv, isPromise, objectToString } from '../mod.ts'
 import { UnknownError } from './Error.ts'
 
 export * from 'effect/Effect'
@@ -106,6 +106,47 @@ export const tapCauseLogPretty = <R, E, A>(eff: Effect.Effect<A, E, R>): Effect.
       )
     }),
   )
+
+/**
+ * Creates a defect, pausing at a breakpoint in development.
+ *
+ * @param msg - The error message to include in the defect.
+ * @param args - Arbitrary arguments available for inspection during debugging.
+ *
+ * @see {@link shouldNeverHappen} for the non-Effect equivalent that throws synchronously.
+ * @see {@link orDieDebugger}
+ */
+export const dieDebugger = (msg: string, ...args: ReadonlyArray<unknown>): Effect.Effect<never> =>
+  Effect.suspend(() => {
+    if (isDevEnv() === true) {
+      // oxlint-disable-next-line eslint(no-debugger) -- intentional breakpoint during development
+      debugger
+      void args // Keeps the variable in scope so it's inspectable when the debugger pauses
+    }
+    return Effect.dieMessage(msg)
+  })
+
+/**
+ * Converts a failure into a defect, pausing at a breakpoint in development.
+ *
+ * @param self - The effect on which to apply the operation.
+ *
+ * @see {@link Effect.orDie}
+ * @see {@link dieDebugger}
+ */
+export const orDieDebugger = <A, E, R>(self: Effect.Effect<A, E, R>): Effect.Effect<A, never, R> =>
+  Effect.matchEffect(self, {
+    onFailure: (error) =>
+      // Keep the debugger hook so that `debugger` runs only when the wrapped effect actually fails, not while building the wrapper.
+      Effect.dieSync(() => {
+        if (isDevEnv() === true) {
+          // oxlint-disable-next-line eslint(no-debugger) -- intentional breakpoint for impossible states during development
+          debugger
+        }
+        return error
+      }),
+    onSuccess: Effect.succeed,
+  })
 
 export const ignoreIf: {
   <E, EB extends E>(

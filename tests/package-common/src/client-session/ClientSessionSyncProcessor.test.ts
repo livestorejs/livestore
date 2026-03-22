@@ -1,4 +1,4 @@
-import { expect } from 'vitest'
+import  { expect, assert } from 'vitest'
 
 import { makeAdapter } from '@livestore/adapter-node'
 import type { LockStatus, MockSyncBackend } from '@livestore/common'
@@ -22,9 +22,11 @@ import { makeNoopSpan, omitUndefineds } from '@livestore/utils'
 import { Vitest } from '@livestore/utils-dev/node-vitest'
 import type { OtelTracer } from '@livestore/utils/effect'
 import {
+  Cause,
   Context,
   Deferred,
   Effect,
+  Exit,
   FetchHttpClient,
   Layer,
   Logger,
@@ -230,10 +232,21 @@ Vitest.describe.concurrent('ClientSessionSyncProcessor', () => {
         }),
       ).pipe(Effect.repeatN(1))
 
-      const error = yield* shutdownDeferred.pipe(Effect.flip)
+      // Merge invariant violations are defects (not typed errors), so the shutdown
+      // deferred receives an Exit with a Die cause containing the error message.
+      const exit = yield* Effect.exit(shutdownDeferred)
 
-      expect(error._tag).toEqual('LiveStore.UnknownError')
-      expect(error.cause).toEqual(
+      expect(Exit.isFailure(exit)).toBe(true)
+      assert(Exit.isFailure(exit))
+
+      const defect = Cause.dieOption(exit.cause)
+      expect(defect._tag).toBe('Some')
+      assert(defect._tag === 'Some')
+
+      expect(defect.value).toBeInstanceOf(Error)
+      assert(defect.value instanceof Error)
+
+      expect(defect.value.message).toEqual(
         'Incoming events must be greater than upstream head. Expected greater than: e1. Received: [e1]',
       )
     }).pipe(withTestCtx(test)),

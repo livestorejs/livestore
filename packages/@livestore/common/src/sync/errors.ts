@@ -28,12 +28,5 @@ export class InvalidPullError extends Schema.TaggedError<InvalidPullError>()('In
   cause: Schema.Union(UnknownError, BackendIdMismatchError),
 }) {}
 
-export class LeaderAheadError extends Schema.TaggedError<LeaderAheadError>()('LeaderAheadError', {
-  minimumExpectedNum: EventSequenceNumber.Client.Composite,
-  providedNum: EventSequenceNumber.Client.Composite,
-  /** Generation number the client session should use for subsequent pushes */
-  // nextGeneration: Schema.Number,
-}) {}
-
 export const SyncError = Schema.Union(InvalidPushError, InvalidPullError)
 export type SyncError = typeof SyncError.Type

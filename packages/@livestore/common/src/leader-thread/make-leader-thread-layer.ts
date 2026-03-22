@@ -18,14 +18,13 @@ import {
   type MakeSqliteDb,
   type MaterializerHashMismatchError,
   type SqliteDb,
-  type SqliteError,
   UnknownError,
 } from '../adapter-types.ts'
 import type { MigrationsReport } from '../defs.ts'
 import type * as Devtools from '../devtools/mod.ts'
 import type { LiveStoreSchema } from '../schema/mod.ts'
 import { EventSequenceNumber, LiveStoreEvent, SystemTables } from '../schema/mod.ts'
-import type { InvalidPullError, IsOfflineError, SyncBackend, SyncOptions } from '../sync/sync.ts'
+import type { InvalidPullError, SyncBackend, SyncOptions } from '../sync/sync.ts'
 import { SyncState } from '../sync/syncstate.ts'
 import { sql } from '../util.ts'
 import * as Eventlog from './eventlog.ts'
@@ -363,7 +362,7 @@ const bootLeaderThread = ({
   devtoolsOptions: DevtoolsOptions
 }): Effect.Effect<
   LeaderThreadCtx['Type']['initialState'],
-  UnknownError | SqliteError | IsOfflineError | InvalidPullError | MaterializerHashMismatchError,
+  UnknownError | InvalidPullError | MaterializerHashMismatchError,
   LeaderThreadCtx | Scope.Scope | HttpClient.HttpClient
 > =>
   Effect.gen(function* () {
