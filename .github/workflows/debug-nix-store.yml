@@ -1,0 +1,318 @@
+name: debug-nix-store-path-validity
+
+run-name: "Debug: Nix store path validity investigation"
+
+permissions:
+  id-token: write
+  contents: read
+
+on:
+  pull_request: {}
+
+env:
+  GITHUB_BRANCH_NAME: '${{ github.head_ref || github.ref_name }}'
+  CACHIX_AUTH_TOKEN: '${{ secrets.CACHIX_AUTH_TOKEN }}'
+  FORCE_SETUP: '1'
+  CI: 'true'
+
+jobs:
+  repro-with-diagnostics:
+    runs-on: [namespace-profile-linux-x86-64, 'namespace-features:github.run-id=${{ github.run_id }}']
+    defaults:
+      run:
+        shell: bash
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install Nix
+        uses: DeterminateSystems/determinate-nix-action@v3
+        with:
+          extra-conf: |
+            extra-substituters = https://devenv.cachix.org
+            extra-trusted-public-keys = devenv.cachix.org-1:w1cLUi8dv3hnoSPGAuibQv+f9TZLr6cv/Hm9XgU50cw=
+            access-tokens = github.com=${{ github.token }}
+            extra-substituters = https://cache.nixos.org
+            extra-trusted-public-keys = cache.nixos.org-1:6NCHdD59X431o0gWypbMrAURkbJ16ZPMQFGspcDShjY=
+      - name: Enable Cachix cache
+        uses: cachix/cachix-action@v16
+        with:
+          name: livestore
+          authToken: '${{ env.CACHIX_AUTH_TOKEN }}'
+      - name: Nix configuration dump
+        run: |
+          echo "=== Nix version ==="
+          nix --version
+          echo ""
+          echo "=== experimental-features ==="
+          nix config show experimental-features 2>&1 || true
+          echo ""
+          echo "=== substituters ==="
+          nix config show substituters 2>&1 || true
+          echo ""
+          echo "=== All nix.conf files ==="
+          for f in /etc/nix/nix.conf ~/.config/nix/nix.conf; do
+            if [ -f "$f" ]; then
+              echo "--- $f ---"
+              cat "$f"
+              echo ""
+            fi
+          done
+          echo "=== NIX_CONFIG env ==="
+          echo "${NIX_CONFIG:-<not set>}"
+          echo "=== NIX_USER_CONF_FILES ==="
+          echo "${NIX_USER_CONF_FILES:-<not set>}"
+          for f in ${NIX_USER_CONF_FILES//:/ }; do
+            if [ -f "$f" ]; then
+              echo "--- $f ---"
+              cat "$f"
+              echo ""
+            fi
+          done
+      - name: Check audit-tmpdir.sh path availability
+        run: |
+          PROBLEM_PATH="/nix/store/h9lc1dpi14z7is86ffhl3ld569138595-audit-tmpdir.sh"
+          echo "=== Problem path: $PROBLEM_PATH ==="
+          echo "--- Local validity ---"
+          nix-store --check-validity "$PROBLEM_PATH" 2>&1 && echo "VALID" || echo "NOT VALID"
+          echo "--- Exists on disk? ---"
+          ls -la "$PROBLEM_PATH" 2>&1 || echo "Not on disk"
+          echo "--- cache.nixos.org ---"
+          nix path-info --store https://cache.nixos.org "$PROBLEM_PATH" 2>&1 || echo "Not on cache.nixos.org"
+          echo "--- devenv.cachix.org ---"
+          nix path-info --store https://devenv.cachix.org "$PROBLEM_PATH" 2>&1 || echo "Not on devenv.cachix.org"
+          echo "--- livestore.cachix.org ---"
+          nix path-info --store https://livestore.cachix.org "$PROBLEM_PATH" 2>&1 || echo "Not on livestore.cachix.org"
+          echo "--- All audit-tmpdir in local store ---"
+          find /nix/store -maxdepth 1 -name '*audit-tmpdir*' 2>/dev/null || echo "None"
+      - name: Install megarepo CLI
+        run: nix profile install github:overengineeringstudio/effect-utils#megarepo
+      - name: Sync megarepo dependencies
+        env:
+          MEGAREPO_STORE: '${{ runner.temp }}/megarepo-store/${{ github.run_id }}/${{ github.run_attempt }}/${{ github.job }}'
+        run: |
+          EU_REV=$(jq -r '.members["effect-utils"].commit' megarepo.lock)
+          mkdir -p "$MEGAREPO_STORE"
+          nix run "github:overengineeringstudio/effect-utils/$EU_REV#megarepo" -- apply --all
+      - name: Clear eval cache
+        run: |
+          echo "=== Eval cache before ==="
+          ls -la ~/.cache/nix/eval-cache-* 2>&1 || echo "No eval cache"
+          rm -rf ~/.cache/nix/eval-cache-*
+      - name: Resolve devenv
+        run: |
+          DEVENV_REV=$(jq -r .nodes.devenv.locked.rev devenv.lock)
+          echo "Devenv rev: $DEVENV_REV"
+          DEVENV_OUT=$(nix build --no-link --print-out-paths "github:cachix/devenv/$DEVENV_REV#devenv" 2>&1 | tee /dev/stderr | tail -1)
+          DEVENV_BIN="$DEVENV_OUT/bin/devenv"
+          if ! nix-store --check-validity "$DEVENV_OUT" 2>/dev/null; then
+            echo "::warning::devenv store path invalid, repairing..."
+            nix-store --repair-path "$DEVENV_OUT" 2>&1 || true
+            rm -rf ~/.cache/nix/eval-cache-*
+            DEVENV_OUT=$(nix build --no-link --print-out-paths "github:cachix/devenv/$DEVENV_REV#devenv" 2>&1 | tee /dev/stderr | tail -1)
+            DEVENV_BIN="$DEVENV_OUT/bin/devenv"
+          fi
+          echo "DEVENV_BIN=$DEVENV_BIN" >> "$GITHUB_ENV"
+          "$DEVENV_BIN" version
+      - name: Devenv shell eval (reproduce failure)
+        run: |
+          if [ -n "${NIX_CONFIG:-}" ]; then
+            NIX_CONFIG_WITH_APPEND=$(printf '%s\n%s' "$NIX_CONFIG" 'restrict-eval = false')
+          else
+            NIX_CONFIG_WITH_APPEND='restrict-eval = false'
+          fi
+          NIX_CONFIG="$NIX_CONFIG_WITH_APPEND" DT_PASSTHROUGH=1 "${DEVENV_BIN:?}" tasks run ts:build --mode before 2>&1 || {
+            EXIT_CODE=$?
+            echo ""
+            echo "=== FAILED (exit $EXIT_CODE) - Post-mortem ==="
+            PROBLEM_PATH="/nix/store/h9lc1dpi14z7is86ffhl3ld569138595-audit-tmpdir.sh"
+            nix-store --check-validity "$PROBLEM_PATH" 2>&1 && echo "Path now VALID" || echo "Path still NOT VALID"
+            ls -la "$PROBLEM_PATH" 2>&1 || echo "Not on disk"
+            nix-store --query --info "$PROBLEM_PATH" 2>&1 || echo "No DB entry"
+            echo "=== All audit-tmpdir in store ==="
+            find /nix/store -maxdepth 1 -name '*audit-tmpdir*' 2>/dev/null
+            for p in $(find /nix/store -maxdepth 1 -name '*audit-tmpdir*' 2>/dev/null); do
+              echo "$p"
+              nix-store --query --hash "$p" 2>&1 || true
+            done
+            echo "=== Try to realise the missing path ==="
+            nix-store --realise "$PROBLEM_PATH" 2>&1 || echo "Cannot realise"
+            exit $EXIT_CODE
+          }
+          echo "=== SUCCESS ==="
+
+  without-ca-derivations:
+    runs-on: [namespace-profile-linux-x86-64, 'namespace-features:github.run-id=${{ github.run_id }}']
+    defaults:
+      run:
+        shell: bash
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install Nix (without ca-derivations)
+        uses: DeterminateSystems/determinate-nix-action@v3
+        with:
+          extra-conf: |
+            extra-substituters = https://devenv.cachix.org
+            extra-trusted-public-keys = devenv.cachix.org-1:w1cLUi8dv3hnoSPGAuibQv+f9TZLr6cv/Hm9XgU50cw=
+            access-tokens = github.com=${{ github.token }}
+            extra-substituters = https://cache.nixos.org
+            extra-trusted-public-keys = cache.nixos.org-1:6NCHdD59X431o0gWypbMrAURkbJ16ZPMQFGspcDShjY=
+            experimental-features = nix-command flakes
+      - name: Verify ca-derivations is disabled
+        run: nix config show experimental-features 2>&1
+      - name: Enable Cachix cache
+        uses: cachix/cachix-action@v16
+        with:
+          name: livestore
+          authToken: '${{ env.CACHIX_AUTH_TOKEN }}'
+      - name: Install megarepo CLI
+        run: nix profile install github:overengineeringstudio/effect-utils#megarepo
+      - name: Sync megarepo dependencies
+        env:
+          MEGAREPO_STORE: '${{ runner.temp }}/megarepo-store/${{ github.run_id }}/${{ github.run_attempt }}/${{ github.job }}'
+        run: |
+          EU_REV=$(jq -r '.members["effect-utils"].commit' megarepo.lock)
+          mkdir -p "$MEGAREPO_STORE"
+          nix run "github:overengineeringstudio/effect-utils/$EU_REV#megarepo" -- apply --all
+      - name: Clear eval cache
+        run: rm -rf ~/.cache/nix/eval-cache-*
+      - name: Resolve devenv
+        run: |
+          DEVENV_REV=$(jq -r .nodes.devenv.locked.rev devenv.lock)
+          DEVENV_OUT=$(nix build --no-link --print-out-paths "github:cachix/devenv/$DEVENV_REV#devenv")
+          DEVENV_BIN="$DEVENV_OUT/bin/devenv"
+          echo "DEVENV_BIN=$DEVENV_BIN" >> "$GITHUB_ENV"
+          "$DEVENV_BIN" version
+      - name: Devenv shell eval (without ca-derivations)
+        run: |
+          if [ -n "${NIX_CONFIG:-}" ]; then
+            NIX_CONFIG_WITH_APPEND=$(printf '%s\n%s' "$NIX_CONFIG" 'restrict-eval = false')
+          else
+            NIX_CONFIG_WITH_APPEND='restrict-eval = false'
+          fi
+          NIX_CONFIG="$NIX_CONFIG_WITH_APPEND" DT_PASSTHROUGH=1 "${DEVENV_BIN:?}" tasks run ts:build --mode before 2>&1 || {
+            echo "=== FAILED even without ca-derivations ==="
+            find /nix/store -maxdepth 1 -name '*audit-tmpdir*' 2>/dev/null || echo "None"
+            exit 1
+          }
+          echo "=== SUCCESS without ca-derivations ==="
+
+  with-store-repair:
+    runs-on: [namespace-profile-linux-x86-64, 'namespace-features:github.run-id=${{ github.run_id }}']
+    defaults:
+      run:
+        shell: bash
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install Nix
+        uses: DeterminateSystems/determinate-nix-action@v3
+        with:
+          extra-conf: |
+            extra-substituters = https://devenv.cachix.org
+            extra-trusted-public-keys = devenv.cachix.org-1:w1cLUi8dv3hnoSPGAuibQv+f9TZLr6cv/Hm9XgU50cw=
+            access-tokens = github.com=${{ github.token }}
+            extra-substituters = https://cache.nixos.org
+            extra-trusted-public-keys = cache.nixos.org-1:6NCHdD59X431o0gWypbMrAURkbJ16ZPMQFGspcDShjY=
+      - name: Enable Cachix cache
+        uses: cachix/cachix-action@v16
+        with:
+          name: livestore
+          authToken: '${{ env.CACHIX_AUTH_TOKEN }}'
+      - name: Install megarepo CLI
+        run: nix profile install github:overengineeringstudio/effect-utils#megarepo
+      - name: Sync megarepo dependencies
+        env:
+          MEGAREPO_STORE: '${{ runner.temp }}/megarepo-store/${{ github.run_id }}/${{ github.run_attempt }}/${{ github.job }}'
+        run: |
+          EU_REV=$(jq -r '.members["effect-utils"].commit' megarepo.lock)
+          mkdir -p "$MEGAREPO_STORE"
+          nix run "github:overengineeringstudio/effect-utils/$EU_REV#megarepo" -- apply --all
+      - name: Full store verify + repair + clear eval cache
+        run: |
+          echo "=== nix-store --verify --check-contents ==="
+          nix-store --verify --check-contents 2>&1 | tail -50
+          echo ""
+          rm -rf ~/.cache/nix/eval-cache-*
+          echo "Eval cache cleared"
+      - name: Resolve devenv
+        run: |
+          DEVENV_REV=$(jq -r .nodes.devenv.locked.rev devenv.lock)
+          DEVENV_OUT=$(nix build --no-link --print-out-paths "github:cachix/devenv/$DEVENV_REV#devenv")
+          DEVENV_BIN="$DEVENV_OUT/bin/devenv"
+          echo "DEVENV_BIN=$DEVENV_BIN" >> "$GITHUB_ENV"
+          "$DEVENV_BIN" version
+      - name: Devenv shell eval (after store repair)
+        run: |
+          if [ -n "${NIX_CONFIG:-}" ]; then
+            NIX_CONFIG_WITH_APPEND=$(printf '%s\n%s' "$NIX_CONFIG" 'restrict-eval = false')
+          else
+            NIX_CONFIG_WITH_APPEND='restrict-eval = false'
+          fi
+          NIX_CONFIG="$NIX_CONFIG_WITH_APPEND" DT_PASSTHROUGH=1 "${DEVENV_BIN:?}" tasks run ts:build --mode before 2>&1 || {
+            echo "=== FAILED even after store repair ==="
+            find /nix/store -maxdepth 1 -name '*audit-tmpdir*' 2>/dev/null || echo "None"
+            exit 1
+          }
+          echo "=== SUCCESS after store repair ==="
+
+  fetch-missing-path:
+    runs-on: [namespace-profile-linux-x86-64, 'namespace-features:github.run-id=${{ github.run_id }}']
+    defaults:
+      run:
+        shell: bash
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install Nix
+        uses: DeterminateSystems/determinate-nix-action@v3
+        with:
+          extra-conf: |
+            extra-substituters = https://devenv.cachix.org
+            extra-trusted-public-keys = devenv.cachix.org-1:w1cLUi8dv3hnoSPGAuibQv+f9TZLr6cv/Hm9XgU50cw=
+            access-tokens = github.com=${{ github.token }}
+            extra-substituters = https://cache.nixos.org
+            extra-trusted-public-keys = cache.nixos.org-1:6NCHdD59X431o0gWypbMrAURkbJ16ZPMQFGspcDShjY=
+      - name: Enable Cachix cache
+        uses: cachix/cachix-action@v16
+        with:
+          name: livestore
+          authToken: '${{ env.CACHIX_AUTH_TOKEN }}'
+      - name: Install megarepo CLI
+        run: nix profile install github:overengineeringstudio/effect-utils#megarepo
+      - name: Sync megarepo dependencies
+        env:
+          MEGAREPO_STORE: '${{ runner.temp }}/megarepo-store/${{ github.run_id }}/${{ github.run_attempt }}/${{ github.job }}'
+        run: |
+          EU_REV=$(jq -r '.members["effect-utils"].commit' megarepo.lock)
+          mkdir -p "$MEGAREPO_STORE"
+          nix run "github:overengineeringstudio/effect-utils/$EU_REV#megarepo" -- apply --all
+      - name: Clear eval cache and pre-fetch missing path
+        run: |
+          rm -rf ~/.cache/nix/eval-cache-*
+          PROBLEM_PATH="/nix/store/h9lc1dpi14z7is86ffhl3ld569138595-audit-tmpdir.sh"
+          echo "=== Pre-fetch: try to realise the missing path ==="
+          nix-store --realise "$PROBLEM_PATH" 2>&1 || {
+            echo "Cannot realise directly. Trying to copy from cache.nixos.org..."
+            nix copy --from https://cache.nixos.org "$PROBLEM_PATH" 2>&1 || echo "Cannot copy from cache.nixos.org"
+            nix copy --from https://devenv.cachix.org "$PROBLEM_PATH" 2>&1 || echo "Cannot copy from devenv.cachix.org"
+          }
+          echo "--- Check after fetch attempt ---"
+          nix-store --check-validity "$PROBLEM_PATH" 2>&1 && echo "NOW VALID" || echo "STILL NOT VALID"
+          ls -la "$PROBLEM_PATH" 2>&1 || echo "Still not on disk"
+      - name: Resolve devenv
+        run: |
+          DEVENV_REV=$(jq -r .nodes.devenv.locked.rev devenv.lock)
+          DEVENV_OUT=$(nix build --no-link --print-out-paths "github:cachix/devenv/$DEVENV_REV#devenv")
+          DEVENV_BIN="$DEVENV_OUT/bin/devenv"
+          echo "DEVENV_BIN=$DEVENV_BIN" >> "$GITHUB_ENV"
+          "$DEVENV_BIN" version
+      - name: Devenv shell eval (after pre-fetching missing path)
+        run: |
+          if [ -n "${NIX_CONFIG:-}" ]; then
+            NIX_CONFIG_WITH_APPEND=$(printf '%s\n%s' "$NIX_CONFIG" 'restrict-eval = false')
+          else
+            NIX_CONFIG_WITH_APPEND='restrict-eval = false'
+          fi
+          NIX_CONFIG="$NIX_CONFIG_WITH_APPEND" DT_PASSTHROUGH=1 "${DEVENV_BIN:?}" tasks run ts:build --mode before 2>&1 || {
+            echo "=== FAILED even after pre-fetching ==="
+            find /nix/store -maxdepth 1 -name '*audit-tmpdir*' 2>/dev/null || echo "None"
+            exit 1
+          }
+          echo "=== SUCCESS after pre-fetch ==="
