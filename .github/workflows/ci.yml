@@ -22,7 +22,9 @@ env:
 
 jobs:
   lint:
-    runs-on: [namespace-profile-linux-x86-64, 'namespace-features:github.run-id=${{ github.run_id }}']
+    runs-on:
+      - null
+      - 'namespace-features:github.run-id=undefined'
     defaults:
       run:
         shell: bash
@@ -123,7 +125,9 @@ jobs:
           if-no-files-found: ignore
           retention-days: 14
   type-check:
-    runs-on: [namespace-profile-linux-x86-64, 'namespace-features:github.run-id=${{ github.run_id }}']
+    runs-on:
+      - null
+      - 'namespace-features:github.run-id=undefined'
     defaults:
       run:
         shell: bash
@@ -224,7 +228,9 @@ jobs:
           if-no-files-found: ignore
           retention-days: 14
   test-unit:
-    runs-on: [namespace-profile-linux-x86-64, 'namespace-features:github.run-id=${{ github.run_id }}']
+    runs-on:
+      - null
+      - 'namespace-features:github.run-id=undefined'
     defaults:
       run:
         shell: bash
@@ -325,7 +331,9 @@ jobs:
           if-no-files-found: ignore
           retention-days: 14
   test-integration-node-sync:
-    runs-on: [namespace-profile-linux-x86-64, 'namespace-features:github.run-id=${{ github.run_id }}']
+    runs-on:
+      - null
+      - 'namespace-features:github.run-id=undefined'
     defaults:
       run:
         shell: bash
@@ -471,7 +479,9 @@ jobs:
           - cf-ws-do
           - cf-do-rpc-d1
           - cf-do-rpc-do
-    runs-on: [namespace-profile-linux-x86-64, 'namespace-features:github.run-id=${{ github.run_id }}']
+    runs-on:
+      - null
+      - 'namespace-features:github.run-id=undefined'
     defaults:
       run:
         shell: bash
@@ -602,7 +612,9 @@ jobs:
     strategy:
       matrix:
         suite: [misc, todomvc, devtools]
-    runs-on: [namespace-profile-linux-x86-64, 'namespace-features:github.run-id=${{ github.run_id }}']
+    runs-on:
+      - null
+      - 'namespace-features:github.run-id=undefined'
     defaults:
       run:
         shell: bash
@@ -728,7 +740,9 @@ jobs:
           if-no-files-found: ignore
           retention-days: 14
   perf-test:
-    runs-on: [namespace-profile-linux-x86-64, 'namespace-features:github.run-id=${{ github.run_id }}']
+    runs-on:
+      - null
+      - 'namespace-features:github.run-id=undefined'
     defaults:
       run:
         shell: bash
@@ -847,7 +861,9 @@ jobs:
           if-no-files-found: ignore
           retention-days: 14
   wa-sqlite-test:
-    runs-on: [namespace-profile-linux-x86-64, 'namespace-features:github.run-id=${{ github.run_id }}']
+    runs-on:
+      - null
+      - 'namespace-features:github.run-id=undefined'
     defaults:
       run:
         shell: bash
@@ -1070,7 +1086,9 @@ jobs:
           if-no-files-found: ignore
           retention-days: 14
   build-and-deploy-examples-src:
-    runs-on: [namespace-profile-linux-x86-64, 'namespace-features:github.run-id=${{ github.run_id }}']
+    runs-on:
+      - null
+      - 'namespace-features:github.run-id=undefined'
     defaults:
       run:
         shell: bash
@@ -1182,7 +1200,9 @@ jobs:
           if-no-files-found: ignore
           retention-days: 14
   build-deploy-docs:
-    runs-on: [namespace-profile-linux-x86-64, 'namespace-features:github.run-id=${{ github.run_id }}']
+    runs-on:
+      - null
+      - 'namespace-features:github.run-id=undefined'
     defaults:
       run:
         shell: bash
@@ -1310,7 +1330,7 @@ jobs:
       - name: Dispatch alignment to coordinator
         env:
           GH_TOKEN: '${{ secrets.MEGAREPO_ALIGNMENT_TOKEN }}'
-        run: "export NIX_CONFIG=\"${NIX_CONFIG:+$NIX_CONFIG$'\\n'}access-tokens = github.com=${GH_TOKEN}\" && printf '{\"event_type\":\"upstream-changed\",\"client_payload\":{\"source_repo\":\"%s\",\"source_sha\":\"%s\"}}' \"${{ github.repository }}\" \"${{ github.sha }}\" | nix run nixpkgs#gh -- api repos/schickling/megarepo-all/dispatches --input -"
+        run: 'printf ''{"event_type":"upstream-changed","client_payload":{"source_repo":"%s","source_sha":"%s"}}'' "${{ github.repository }}" "${{ github.sha }}" | gh api repos/schickling/megarepo-all/dispatches --input -'
         shell: bash
   build-example-create:
     if: github.event.pull_request.head.repo.fork != true
@@ -1318,7 +1338,9 @@ jobs:
     strategy:
       matrix:
         app: [web-todomvc, web-linearlite, expo-linearlite]
-    runs-on: [namespace-profile-linux-x86-64, 'namespace-features:github.run-id=${{ github.run_id }}']
+    runs-on:
+      - null
+      - 'namespace-features:github.run-id=undefined'
     env:
       APP_PATH: 'examples/${{ matrix.app }}'
       SNAPSHOT_VERSION: '0.0.0-snapshot-${{ github.sha }}'
