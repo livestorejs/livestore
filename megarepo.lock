@@ -3,10 +3,10 @@
   "members": {
     "effect-utils": {
       "url": "https://github.com/overengineeringstudio/effect-utils",
-      "ref": "main",
-      "commit": "d4b92ddc4e9c3d0c55878ce687d63581ff8a43a8",
-      "pinned": false,
-      "lockedAt": "2026-03-21T18:45:19.080Z"
+      "ref": "schickling/2026-03-21-effect-utils-upstream-nixpkgs-authority",
+      "commit": "9fcb736a7e650e59a7980d5a50774a00616b2a13",
+      "pinned": true,
+      "lockedAt": "2026-03-22T07:52:15.292Z"
     },
     "overeng-beads-public": {
       "url": "https://github.com/overengineeringstudio/overeng-beads-public",

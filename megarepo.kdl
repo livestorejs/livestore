@@ -1,10 +1,5 @@
-// Megarepo config for livestore
 members {
-  // Primary member
-  effect-utils "overengineeringstudio/effect-utils"
-
-  // Secondary members
-  overeng-beads-public "overengineeringstudio/overeng-beads-public"
-  // Reference only — not a build dependency
-  effect "effect-ts/effect"
+    effect-utils "overengineeringstudio/effect-utils#schickling/2026-03-21-effect-utils-upstream-nixpkgs-authority"
+    overeng-beads-public "overengineeringstudio/overeng-beads-public"
+    effect "effect-ts/effect"
 }
