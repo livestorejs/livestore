@@ -214,7 +214,8 @@ export const devenvShellDefaults = {
 export { bashShellDefaults }
 export { dispatchAlignmentStep, runDevenvTasksBefore, nixDiagnosticsArtifactStep }
 
-export const namespaceRunner = (runId: string) => namespaceRunnerBase('namespace-profile-linux-x86-64', runId)
+export const namespaceRunner = (runId: string) =>
+  namespaceRunnerBase({ profile: 'namespace-profile-linux-x86-64', runId })
 
 /**
  * Setup steps for livestore CI jobs (without checkout).

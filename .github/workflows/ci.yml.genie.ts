@@ -20,6 +20,7 @@ const GITHUB_SHA = '${{ github.sha }}'
 const GITHUB_REF = '${{ github.ref }}'
 const PR_HEAD_SHA = '${{ github.event.pull_request.head.sha || github.sha }}'
 const IS_NOT_FORK = 'github.event.pull_request.head.repo.fork != true'
+const devenvBinRef = '"${DEVENV_BIN:?DEVENV_BIN not set}"'
 
 // =============================================================================
 // Job Helpers
@@ -170,7 +171,7 @@ done`,
         },
         {
           name: 'Run sync-provider tests for ${{ matrix.provider }}',
-          run: runDevenvTasksBefore('test:integration:sync-provider:matrix'),
+          run: `OTEL_STATE_DIR= DT_PASSTHROUGH=1 ${devenvBinRef} tasks run test:integration:sync-provider:matrix --mode before`,
           env: { TEST_SYNC_PROVIDER: '${{ matrix.provider }}' },
         },
         nixDiagnosticsArtifactStep(),

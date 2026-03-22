@@ -587,7 +587,7 @@ jobs:
           done
         shell: bash
       - name: 'Run sync-provider tests for ${{ matrix.provider }}'
-        run: "if [ -n \"${NIX_CONFIG:-}\" ]; then NIX_CONFIG_WITH_APPEND=$(printf '%s\\n%s' \"$NIX_CONFIG\" 'restrict-eval = false'); else NIX_CONFIG_WITH_APPEND='restrict-eval = false'; fi; NIX_CONFIG=\"$NIX_CONFIG_WITH_APPEND\" DT_PASSTHROUGH=1 \"${DEVENV_BIN:?DEVENV_BIN not set}\" tasks run test:integration:sync-provider:matrix --mode before"
+        run: 'OTEL_STATE_DIR= DT_PASSTHROUGH=1 "${DEVENV_BIN:?DEVENV_BIN not set}" tasks run test:integration:sync-provider:matrix --mode before'
         env:
           TEST_SYNC_PROVIDER: '${{ matrix.provider }}'
       - name: Upload Nix diagnostics artifact
@@ -1310,7 +1310,7 @@ jobs:
       - name: Dispatch alignment to coordinator
         env:
           GH_TOKEN: '${{ secrets.MEGAREPO_ALIGNMENT_TOKEN }}'
-        run: "export NIX_CONFIG=\"${NIX_CONFIG:+$NIX_CONFIG$'\\n'}access-tokens = github.com=${GH_TOKEN}\" && printf '{\"event_type\":\"upstream-changed\",\"client_payload\":{\"source_repo\":\"%s\",\"source_sha\":\"%s\"}}' \"${{ github.repository }}\" \"${{ github.sha }}\" | nix run nixpkgs#gh -- api repos/schickling/megarepo-all/dispatches --input -"
+        run: 'printf ''{"event_type":"upstream-changed","client_payload":{"source_repo":"%s","source_sha":"%s"}}'' "${{ github.repository }}" "${{ github.sha }}" | gh api repos/schickling/megarepo-all/dispatches --input -'
         shell: bash
   build-example-create:
     if: github.event.pull_request.head.repo.fork != true
