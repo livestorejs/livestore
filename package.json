@@ -42,7 +42,7 @@
     "tests/sync-provider",
     "tests/wa-sqlite"
   ],
-  "packageManager": "pnpm@10.29.2",
+  "packageManager": "pnpm@11.0.0-beta.2",
   "$genie": {
     "source": "package.json.genie.ts",
     "warning": "DO NOT EDIT - changes will be overwritten"
