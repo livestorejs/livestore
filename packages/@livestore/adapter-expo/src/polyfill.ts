@@ -6,7 +6,7 @@
 
 if (typeof Array.prototype.toSorted === 'undefined') {
   Array.prototype.toSorted = function (compareFn) {
-    // eslint-disable-next-line unicorn/no-array-sort -- this is the toSorted polyfill itself
+    // oxlint-disable-next-line unicorn/no-array-sort -- this is the toSorted polyfill itself
     return this.slice().sort(compareFn)
   }
 }
