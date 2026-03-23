@@ -20,6 +20,10 @@ env:
   FORCE_SETUP: '1'
   CI: 'true'
 
+concurrency:
+  group: '${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}'
+  cancel-in-progress: true
+
 jobs:
   lint:
     runs-on: [namespace-profile-linux-x86-64, 'namespace-features:github.run-id=${{ github.run_id }}']
@@ -592,7 +596,7 @@ jobs:
           done
         shell: bash
       - name: 'Run sync-provider tests for ${{ matrix.provider }}'
-        run: 'OTEL_STATE_DIR= DT_PASSTHROUGH=1 "${DEVENV_BIN:?DEVENV_BIN not set}" tasks run test:integration:sync-provider:matrix --mode before'
+        run: "OTEL_STATE_DIR= if [ -n \"${NIX_CONFIG:-}\" ]; then NIX_CONFIG_WITH_APPEND=$(printf '%s\\n%s' \"$NIX_CONFIG\" 'restrict-eval = false'); else NIX_CONFIG_WITH_APPEND='restrict-eval = false'; fi; NIX_CONFIG=\"$NIX_CONFIG_WITH_APPEND\" DT_PASSTHROUGH=1 \"${DEVENV_BIN:?DEVENV_BIN not set}\" tasks run test:integration:sync-provider:matrix --mode before"
         env:
           TEST_SYNC_PROVIDER: '${{ matrix.provider }}'
       - name: Upload Nix diagnostics artifact

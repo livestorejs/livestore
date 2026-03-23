@@ -1,8 +1,8 @@
 import { playwrightSuites, syncProviderMatrix } from '../../genie/ci.ts'
 import {
   bashShellDefaults,
+  ciWorkflow,
   dispatchAlignmentStep,
-  githubWorkflow,
   livestoreSetupSteps,
   livestoreSetupStepsAfterCheckout,
   namespaceRunner,
@@ -20,7 +20,6 @@ const GITHUB_SHA = '${{ github.sha }}'
 const GITHUB_REF = '${{ github.ref }}'
 const PR_HEAD_SHA = '${{ github.event.pull_request.head.sha || github.sha }}'
 const IS_NOT_FORK = 'github.event.pull_request.head.repo.fork != true'
-const devenvBinRef = '"${DEVENV_BIN:?DEVENV_BIN not set}"'
 
 // =============================================================================
 // Job Helpers
@@ -65,7 +64,7 @@ const otelCIJob = (config: { env?: Record<string, string>; steps: unknown[] }) =
  * Required status checks are managed by `.github/repo-settings.*.json.genie.ts`.
  * Keep matrix values aligned with `genie/ci.ts` so rulesets and workflow stay in sync.
  */
-export default githubWorkflow({
+export default ciWorkflow({
   name: 'ci',
   'run-name': `\${{ github.event.pull_request.title || format('Push to {0}', github.ref_name) }} (${PR_HEAD_SHA})`,
 
@@ -171,7 +170,7 @@ done`,
         },
         {
           name: 'Run sync-provider tests for ${{ matrix.provider }}',
-          run: `OTEL_STATE_DIR= DT_PASSTHROUGH=1 ${devenvBinRef} tasks run test:integration:sync-provider:matrix --mode before`,
+          run: `OTEL_STATE_DIR= ${runDevenvTasksBefore('test:integration:sync-provider:matrix')}`,
           env: { TEST_SYNC_PROVIDER: '${{ matrix.provider }}' },
         },
         nixDiagnosticsArtifactStep(),

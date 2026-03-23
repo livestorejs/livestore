@@ -204,6 +204,7 @@ import {
   checkoutStep,
   preparePinnedDevenvStep,
   runDevenvTasksBefore,
+  ciWorkflow,
   nixDiagnosticsArtifactStep,
   validateNixStoreStep,
 } from '../repos/effect-utils/genie/ci-workflow.ts'
@@ -212,7 +213,7 @@ export const devenvShellDefaults = {
   run: { shell: 'devenv shell bash -- -e {0}' },
 } as const
 export { bashShellDefaults }
-export { dispatchAlignmentStep, runDevenvTasksBefore, nixDiagnosticsArtifactStep }
+export { ciWorkflow, dispatchAlignmentStep, runDevenvTasksBefore, nixDiagnosticsArtifactStep }
 
 export const namespaceRunner = (runId: string) =>
   namespaceRunnerBase({ profile: 'namespace-profile-linux-x86-64', runId })
