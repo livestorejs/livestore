@@ -1,0 +1,206 @@
+name: debug-nix-store-path-substitution
+
+run-name: "Debug: Nix eval-time substitution for missing store paths"
+
+permissions:
+  id-token: write
+  contents: read
+
+on:
+  workflow_dispatch: {}
+
+env:
+  CACHIX_AUTH_TOKEN: '${{ secrets.CACHIX_AUTH_TOKEN }}'
+  CI: 'true'
+
+jobs:
+  repro-missing-path-during-eval:
+    runs-on: [namespace-profile-linux-x86-64, 'namespace-features:github.run-id=${{ github.run_id }}']
+    defaults:
+      run:
+        shell: bash
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install Nix
+        uses: DeterminateSystems/determinate-nix-action@v3
+        with:
+          extra-conf: |
+            experimental-features = nix-command flakes
+            accept-flake-config = true
+            extra-substituters = https://devenv.cachix.org
+            extra-trusted-public-keys = devenv.cachix.org-1:w1cLUi8dv3hnoSPGAuibQv+f9TZLr6cv/Hm9XgU50cw=
+            access-tokens = github.com=${{ github.token }}
+            extra-substituters = https://cache.nixos.org
+            extra-trusted-public-keys = cache.nixos.org-1:6NCHdD59X431o0gWypbMrAURkbJ16ZPMQFGspcDShjY=
+      - name: Enable Cachix cache
+        uses: cachix/cachix-action@v16
+        with:
+          name: livestore
+          authToken: '${{ env.CACHIX_AUTH_TOKEN }}'
+
+      - name: Nix config snapshot
+        run: |
+          echo "=== Nix version ==="
+          nix --version
+          echo "=== experimental-features ==="
+          nix config show experimental-features 2>&1 || true
+          echo "=== substituters ==="
+          nix config show substituters 2>&1 || true
+          echo "=== trusted-substituters ==="
+          nix config show trusted-substituters 2>&1 || true
+
+      - name: Check target path availability
+        run: |
+          TARGET="/nix/store/h9lc1dpi14z7is86ffhl3ld569138595-audit-tmpdir.sh"
+          echo "=== Target: $TARGET ==="
+
+          echo "--- 1. Local validity ---"
+          nix-store --check-validity "$TARGET" 2>&1 && echo "VALID" || echo "NOT VALID"
+
+          echo "--- 2. On disk? ---"
+          ls -la "$TARGET" 2>&1 || echo "NOT on disk"
+
+          echo "--- 3. Available on cache.nixos.org? ---"
+          nix path-info --store https://cache.nixos.org "$TARGET" 2>&1 || echo "NOT on cache.nixos.org"
+
+          echo "--- 4. All audit-tmpdir variants in local store ---"
+          find /nix/store -maxdepth 1 -name '*audit-tmpdir*' 2>/dev/null || echo "None"
+
+      - name: 'Experiment 1: Deliberate deletion + devenv eval (the repro)'
+        run: |
+          TARGET="/nix/store/h9lc1dpi14z7is86ffhl3ld569138595-audit-tmpdir.sh"
+
+          echo "=== Step A: Ensure path exists first ==="
+          if ! nix-store --check-validity "$TARGET" 2>/dev/null; then
+            echo "Path not in store, fetching it..."
+            nix-store --realise "$TARGET" 2>&1 || nix copy --from https://cache.nixos.org "$TARGET" 2>&1 || echo "Cannot fetch"
+          fi
+          nix-store --check-validity "$TARGET" 2>&1 && echo "Path is now VALID" || { echo "Cannot obtain path, skipping deletion experiment"; exit 0; }
+
+          echo "=== Step B: Delete the path to simulate corruption ==="
+          sudo nix-store --delete "$TARGET" 2>&1 || {
+            echo "Cannot delete (might have referrers). Trying nix store delete..."
+            nix store delete "$TARGET" 2>&1 || echo "Cannot delete path"
+          }
+
+          echo "--- After deletion ---"
+          nix-store --check-validity "$TARGET" 2>&1 && echo "Still VALID (delete failed)" || echo "Successfully INVALIDATED"
+          ls -la "$TARGET" 2>&1 || echo "NOT on disk"
+
+          echo "=== Step C: Try nix-build of a derivation referencing this path ==="
+          echo "This tests whether Nix auto-substitutes during derivationStrict..."
+
+          # Build a minimal derivation that references audit-tmpdir.sh via stdenv
+          # The nixpkgs revision that produces this specific audit-tmpdir.sh hash:
+          nix build --no-link --print-out-paths \
+            --expr '(import (builtins.fetchTarball "https://github.com/NixOS/nixpkgs/archive/ac62194c324085e9e5765e498b70ee3e3c71cc9c.tar.gz") {}).mkShell { name = "test-shell"; }' \
+            2>&1 || echo "BUILD FAILED (expected if Nix doesn't auto-substitute)"
+
+          echo "--- After build attempt ---"
+          nix-store --check-validity "$TARGET" 2>&1 && echo "Path was AUTO-SUBSTITUTED" || echo "Path still NOT VALID (Nix did NOT auto-substitute)"
+
+      - name: 'Experiment 2: Check if restrict-eval affects substitution'
+        run: |
+          TARGET="/nix/store/h9lc1dpi14z7is86ffhl3ld569138595-audit-tmpdir.sh"
+
+          # Ensure path is deleted
+          sudo nix-store --delete "$TARGET" 2>&1 || true
+          nix store delete "$TARGET" 2>&1 || true
+
+          if nix-store --check-validity "$TARGET" 2>/dev/null; then
+            echo "Cannot delete path, skipping experiment"
+            exit 0
+          fi
+
+          echo "=== With restrict-eval = false ==="
+          NIX_CONFIG="restrict-eval = false" nix build --no-link --print-out-paths \
+            --expr '(import (builtins.fetchTarball "https://github.com/NixOS/nixpkgs/archive/ac62194c324085e9e5765e498b70ee3e3c71cc9c.tar.gz") {}).mkShell { name = "test-shell"; }' \
+            2>&1 || echo "FAILED with restrict-eval = false"
+
+          nix-store --check-validity "$TARGET" 2>&1 && echo "Path substituted with restrict-eval=false" || echo "Still missing"
+
+      - name: 'Experiment 3: Check Nix daemon vs single-user mode'
+        run: |
+          echo "=== Nix store info ==="
+          nix store info 2>&1 | head -10
+          echo ""
+          echo "=== Daemon socket ==="
+          ls -la /nix/var/nix/daemon-socket/ 2>&1 || echo "No daemon socket dir"
+          echo ""
+          echo "=== NIX_REMOTE ==="
+          echo "${NIX_REMOTE:-<not set>}"
+          echo ""
+          echo "=== Nix daemon process ==="
+          ps aux | grep "[n]ix-daemon\|[n]ix daemon" | head -5 || echo "No daemon process"
+
+      - name: 'Experiment 4: DT_PASSTHROUGH effect on substitution'
+        run: |
+          TARGET="/nix/store/h9lc1dpi14z7is86ffhl3ld569138595-audit-tmpdir.sh"
+
+          # Ensure path is deleted
+          sudo nix-store --delete "$TARGET" 2>&1 || true
+          nix store delete "$TARGET" 2>&1 || true
+
+          if nix-store --check-validity "$TARGET" 2>/dev/null; then
+            echo "Cannot delete path, skipping experiment"
+            exit 0
+          fi
+
+          echo "=== Without DT_PASSTHROUGH ==="
+          nix build --no-link --print-out-paths \
+            --expr '(import (builtins.fetchTarball "https://github.com/NixOS/nixpkgs/archive/ac62194c324085e9e5765e498b70ee3e3c71cc9c.tar.gz") {}).mkShell { name = "test-shell"; }' \
+            2>&1 || echo "FAILED without DT_PASSTHROUGH"
+          nix-store --check-validity "$TARGET" 2>&1 && echo "Substituted" || echo "Still missing"
+
+          # Re-delete
+          sudo nix-store --delete "$TARGET" 2>&1 || true
+          nix store delete "$TARGET" 2>&1 || true
+
+          echo "=== With DT_PASSTHROUGH=1 ==="
+          DT_PASSTHROUGH=1 nix build --no-link --print-out-paths \
+            --expr '(import (builtins.fetchTarball "https://github.com/NixOS/nixpkgs/archive/ac62194c324085e9e5765e498b70ee3e3c71cc9c.tar.gz") {}).mkShell { name = "test-shell"; }' \
+            2>&1 || echo "FAILED with DT_PASSTHROUGH=1"
+          nix-store --check-validity "$TARGET" 2>&1 && echo "Substituted" || echo "Still missing"
+
+      - name: 'Experiment 5: devenv shell eval with missing path'
+        run: |
+          TARGET="/nix/store/h9lc1dpi14z7is86ffhl3ld569138595-audit-tmpdir.sh"
+
+          # Fetch devenv
+          DEVENV_REV=$(jq -r .nodes.devenv.locked.rev devenv.lock)
+          DEVENV_OUT=$(nix build --no-link --print-out-paths "github:cachix/devenv/$DEVENV_REV#devenv")
+          DEVENV_BIN="$DEVENV_OUT/bin/devenv"
+          $DEVENV_BIN version
+
+          # Install megarepo deps
+          EU_REV=$(jq -r '.members["effect-utils"].commit' megarepo.lock)
+          nix run "github:overengineeringstudio/effect-utils/$EU_REV#megarepo" -- apply --all
+
+          # Ensure path is present first, then delete
+          nix-store --realise "$TARGET" 2>&1 || true
+          sudo nix-store --delete "$TARGET" 2>&1 || true
+          nix store delete "$TARGET" 2>&1 || true
+
+          if nix-store --check-validity "$TARGET" 2>/dev/null; then
+            echo "Cannot delete path (has referrers), trying GC approach..."
+            # Try to remove it from the DB without deleting (simulate corruption)
+            echo "Skipping - cannot simulate corruption safely"
+            exit 0
+          fi
+
+          echo "=== Path deleted. Now running devenv shell eval ==="
+          NIX_CONFIG="restrict-eval = false" DT_PASSTHROUGH=1 $DEVENV_BIN tasks run ts:build --mode before 2>&1 || {
+            echo ""
+            echo "=== FAILED (as expected). Post-mortem ==="
+            nix-store --check-validity "$TARGET" 2>&1 && echo "Path was substituted during failure" || echo "Path still NOT VALID"
+
+            echo ""
+            echo "=== Now manually realise the path and retry ==="
+            nix-store --realise "$TARGET" 2>&1
+            nix-store --check-validity "$TARGET" 2>&1 && echo "Path now VALID after manual realise"
+
+            echo ""
+            echo "=== Retry devenv eval ==="
+            rm -rf ~/.cache/nix/eval-cache-*
+            NIX_CONFIG="restrict-eval = false" DT_PASSTHROUGH=1 $DEVENV_BIN tasks run ts:build --mode before 2>&1 && echo "=== RETRY SUCCEEDED ===" || echo "=== RETRY ALSO FAILED ==="
+          }
