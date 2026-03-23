@@ -1,6 +1,6 @@
 name: debug-nix-store-path-substitution
 
-run-name: "Debug: Nix eval-time substitution for missing store paths"
+run-name: "Debug: Nix eval-time substitution — never-fetched path scenario"
 
 permissions:
   id-token: write
@@ -15,7 +15,9 @@ env:
   CI: 'true'
 
 jobs:
-  repro:
+  # Scenario A: Eval a nixpkgs that was NEVER used on this runner
+  # Use a specific old nixpkgs rev whose stdenv paths are unlikely to be cached
+  never-fetched-path:
     runs-on: [namespace-profile-linux-x86-64, 'namespace-features:github.run-id=${{ github.run_id }}']
     defaults:
       run:
@@ -39,85 +41,104 @@ jobs:
           name: livestore
           authToken: '${{ env.CACHIX_AUTH_TOKEN }}'
 
-      - name: Nix environment snapshot
+      - name: Nix snapshot
         run: |
-          echo "=== Nix version ==="
           nix --version
-          echo "=== Substituters ==="
           nix config show substituters 2>&1
-          echo "=== experimental-features ==="
           nix config show experimental-features 2>&1 || true
-          echo "=== Store URL ==="
-          nix store info 2>&1 | head -5
-          echo "=== Daemon ==="
-          ps aux | grep "[n]ix" | head -5
 
-      - name: 'Repro: simulate store corruption via sqlite + test derivationStrict'
+      - name: 'Test A: nix eval with never-cached nixpkgs (direct)'
         run: |
-          set -euo pipefail
+          echo "=== Evaluating a mkShell from a nixpkgs rev whose stdenv is NOT in this runner's store ==="
+          echo "Using nixos-25.05 (ac62194c3917) — this runner likely only has nixos-unstable cached"
+          echo ""
+
+          # Check if the target path exists
           TARGET="/nix/store/h9lc1dpi14z7is86ffhl3ld569138595-audit-tmpdir.sh"
-          echo "=== Target: $TARGET ==="
+          nix-store --check-validity "$TARGET" 2>/dev/null && echo "Path ALREADY in store (test invalid — this runner has it cached)" || echo "Path NOT in store (good — this is the scenario)"
+          echo ""
 
-          echo "--- Step 1: Check if path exists ---"
-          if nix-store --check-validity "$TARGET" 2>/dev/null; then
-            echo "Path is VALID. Will invalidate via sqlite."
-          else
-            echo "Path NOT in store. Fetching first..."
-            nix-store --realise "$TARGET" 2>&1 || { echo "Cannot fetch. SKIP."; exit 0; }
-          fi
-
-          echo "--- Step 2: Invalidate via sqlite (simulate corruption) ---"
-          # Remove from Nix DB but leave file on disk — mimics real corruption
-          sudo sqlite3 /nix/var/nix/db/db.sqlite "DELETE FROM ValidPaths WHERE path = '$TARGET';" 2>&1 || {
-            echo "sqlite3 failed. Trying nix store delete..."
-            nix store delete "$TARGET" 2>&1 || { echo "Cannot invalidate. SKIP."; exit 0; }
-          }
-          nix-store --check-validity "$TARGET" 2>&1 && { echo "Still valid after sqlite delete. SKIP."; exit 0; } || echo "Path invalidated."
-          ls -la "$TARGET" 2>&1 && echo "File still on disk (DB orphan)" || echo "File removed"
-
-          echo "--- Step 3: Also remove the file to simulate full absence ---"
-          sudo rm -f "$TARGET" 2>/dev/null || true
-          ls -la "$TARGET" 2>&1 && echo "WARNING: File still exists" || echo "File confirmed absent"
-
-          echo "--- Step 4: Clear eval cache ---"
+          # Clear eval cache
           rm -rf ~/.cache/nix/eval-cache-*
 
-          echo "--- Step 5: Verify path is on cache.nixos.org ---"
-          nix path-info --store https://cache.nixos.org "$TARGET" 2>&1 && echo "On cache.nixos.org" || echo "NOT on cache.nixos.org"
-
-          echo "--- Step 6: Try nix eval (derivationStrict test) ---"
-          echo "This evaluates a mkShell from the same nixpkgs that needs $TARGET"
-
-          # Use the flake's nixpkgs to eval a shell
-          NIXPKGS_REV=$(jq -r '.nodes.nixpkgs_2.locked.rev // .nodes.nixpkgs.locked.rev' devenv.lock 2>/dev/null || echo "ac62194c3917d5f474c1a844b6fd6da2db95077d")
-          echo "Using nixpkgs rev: $NIXPKGS_REV"
-
+          # Direct nix eval — does Nix substitute the missing stdenv paths?
+          echo "Running: nix eval --impure --expr '(import (builtins.getFlake ...) {}).mkShell { name = \"test\"; }'"
           NIX_CONFIG="restrict-eval = false" nix eval --impure --expr \
-            "(import (builtins.getFlake \"github:NixOS/nixpkgs/$NIXPKGS_REV\") { system = \"x86_64-linux\"; }).mkShell { name = \"test\"; }" \
-            2>&1 && {
-            echo ""
-            echo "RESULT: nix eval SUCCEEDED — Nix auto-substituted."
-            echo "Bug NOT reproduced on this runner."
+            "(import (builtins.getFlake \"github:NixOS/nixpkgs/ac62194c3917d5f474c1a844b6fd6da2db95077d\") { system = \"x86_64-linux\"; }).mkShell { name = \"test\"; }" \
+            2>&1 && echo "RESULT: SUCCEEDED" || echo "RESULT: FAILED (exit $?)"
+
+      - name: 'Test B: devenv shell eval (the real failing scenario)'
+        run: |
+          echo "=== Replicating the exact devenv flow ==="
+
+          # Install megarepo deps (syncs effect-utils which changes nixpkgs)
+          EU_REV=$(jq -r '.members["effect-utils"].commit' megarepo.lock)
+          nix run "github:overengineeringstudio/effect-utils/$EU_REV#megarepo" -- apply --all 2>&1 | tail -3
+
+          # Resolve devenv
+          DEVENV_REV=$(jq -r .nodes.devenv.locked.rev devenv.lock)
+          DEVENV_OUT=$(nix build --no-link --print-out-paths "github:cachix/devenv/$DEVENV_REV#devenv")
+          DEVENV_BIN="$DEVENV_OUT/bin/devenv"
+          $DEVENV_BIN version
+
+          # Check target path before eval
+          TARGET="/nix/store/h9lc1dpi14z7is86ffhl3ld569138595-audit-tmpdir.sh"
+          echo ""
+          echo "Path status before devenv eval:"
+          nix-store --check-validity "$TARGET" 2>/dev/null && echo "  VALID" || echo "  NOT VALID"
+          ls -la "$TARGET" 2>&1 | head -1 || echo "  Not on disk"
+
+          # Clear eval cache
+          rm -rf ~/.cache/nix/eval-cache-*
+
+          echo ""
+          echo "=== Running devenv tasks (the step that fails in real CI) ==="
+          NIX_CONFIG="restrict-eval = false" DT_PASSTHROUGH=1 $DEVENV_BIN tasks run ts:build --mode before 2>&1 && {
+            echo "RESULT: devenv eval SUCCEEDED"
           } || {
-            EXIT_CODE=$?
+            echo "RESULT: devenv eval FAILED (exit $?)"
             echo ""
-            echo "RESULT: nix eval FAILED (exit $EXIT_CODE)"
-
-            echo "--- Step 7: Prove it CAN be fetched ---"
-            nix-store --realise "$TARGET" 2>&1 && {
-              echo "Fetched with nix-store --realise."
-              echo ""
-              echo "BUG CONFIRMED: derivationStrict fails instead of substituting."
-              echo "Path: $TARGET"
-              echo "Substituter: cache.nixos.org"
-              echo "Nix version: $(nix --version)"
-            } || {
-              echo "Cannot fetch — substituter issue."
-            }
-
-            echo "--- Step 8: Retry after manual fetch ---"
+            echo "Post-mortem:"
+            nix-store --check-validity "$TARGET" 2>/dev/null && echo "  Path is now VALID (was fetched during failure?)" || echo "  Path still NOT VALID"
+            echo ""
+            echo "Attempting manual fetch + retry..."
+            nix-store --realise "$TARGET" 2>&1 || true
             rm -rf ~/.cache/nix/eval-cache-*
-            NIX_CONFIG="restrict-eval = false" nix eval --impure --expr \
-              "(import (builtins.getFlake \"github:NixOS/nixpkgs/$NIXPKGS_REV\") { system = \"x86_64-linux\"; }).mkShell { name = \"test\"; }" \
-              2>&1 && echo "Retry SUCCEEDED" || echo "Retry FAILED"
+            NIX_CONFIG="restrict-eval = false" DT_PASSTHROUGH=1 $DEVENV_BIN tasks run ts:build --mode before 2>&1 && echo "RETRY: SUCCEEDED" || echo "RETRY: FAILED"
           }
+
+      - name: 'Test C: Compare DT_PASSTHROUGH vs normal'
+        run: |
+          TARGET="/nix/store/h9lc1dpi14z7is86ffhl3ld569138595-audit-tmpdir.sh"
+
+          # Try to invalidate the path via sqlite
+          sudo sqlite3 /nix/var/nix/db/db.sqlite "DELETE FROM ValidPaths WHERE path = '$TARGET';" 2>/dev/null || true
+          sudo rm -f "$TARGET" 2>/dev/null || true
+          rm -rf ~/.cache/nix/eval-cache-*
+
+          STATUS="unknown"
+          nix-store --check-validity "$TARGET" 2>/dev/null && STATUS="valid" || STATUS="invalid"
+
+          if [ "$STATUS" = "valid" ]; then
+            echo "Cannot invalidate path — skipping DT_PASSTHROUGH comparison"
+            exit 0
+          fi
+
+          echo "Path invalidated. Testing nix eval with and without DT_PASSTHROUGH..."
+
+          echo ""
+          echo "=== Without DT_PASSTHROUGH ==="
+          NIX_CONFIG="restrict-eval = false" nix eval --impure --expr \
+            "(import (builtins.getFlake \"github:NixOS/nixpkgs/ac62194c3917d5f474c1a844b6fd6da2db95077d\") { system = \"x86_64-linux\"; }).mkShell { name = \"test\"; }" \
+            2>&1 && echo "WITHOUT DT_PASSTHROUGH: SUCCEEDED" || echo "WITHOUT DT_PASSTHROUGH: FAILED"
+
+          # Re-invalidate
+          sudo sqlite3 /nix/var/nix/db/db.sqlite "DELETE FROM ValidPaths WHERE path = '$TARGET';" 2>/dev/null || true
+          sudo rm -f "$TARGET" 2>/dev/null || true
+          rm -rf ~/.cache/nix/eval-cache-*
+
+          echo ""
+          echo "=== With DT_PASSTHROUGH=1 ==="
+          DT_PASSTHROUGH=1 NIX_CONFIG="restrict-eval = false" nix eval --impure --expr \
+            "(import (builtins.getFlake \"github:NixOS/nixpkgs/ac62194c3917d5f474c1a844b6fd6da2db95077d\") { system = \"x86_64-linux\"; }).mkShell { name = \"test\"; }" \
+            2>&1 && echo "WITH DT_PASSTHROUGH: SUCCEEDED" || echo "WITH DT_PASSTHROUGH: FAILED"
