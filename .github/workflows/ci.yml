@@ -637,8 +637,9 @@ jobs:
           done
         shell: bash
       - name: 'Run sync-provider tests for ${{ matrix.provider }}'
-        run: 'OTEL_STATE_DIR= DT_PASSTHROUGH=1 "${DEVENV_BIN:?DEVENV_BIN not set}" tasks run test:integration:sync-provider:matrix --mode before'
+        run: "if [ -n \"${NIX_CONFIG:-}\" ]; then NIX_CONFIG_WITH_APPEND=$(printf '%s\\n%s' \"$NIX_CONFIG\" 'restrict-eval = false'); else NIX_CONFIG_WITH_APPEND='restrict-eval = false'; fi; NIX_CONFIG=\"$NIX_CONFIG_WITH_APPEND\" DT_PASSTHROUGH=1 \"${DEVENV_BIN:?DEVENV_BIN not set}\" tasks run test:integration:sync-provider:matrix --mode before"
         env:
+          OTEL_STATE_DIR: ''
           TEST_SYNC_PROVIDER: '${{ matrix.provider }}'
       - name: Upload Nix diagnostics artifact
         if: failure() && env.NIX_STORE_DIAGNOSTICS_DIR != ''
