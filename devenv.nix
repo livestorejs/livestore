@@ -194,7 +194,7 @@ in
   ];
 
   packages = [
-    pkgs.pnpm
+    (effectUtils.lib.mkPnpm { inherit pkgs; })
     pkgs.bun
     pkgs.nodejs_24
     pkgs.typescript
