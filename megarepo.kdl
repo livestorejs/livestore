@@ -1,5 +1,5 @@
 members {
-    effect-utils "overengineeringstudio/effect-utils"
+    effect-utils "overengineeringstudio/effect-utils#schickling/ci-job-local-pnpm-store"
     overeng-beads-public "overengineeringstudio/overeng-beads-public"
     effect "effect-ts/effect"
 }
