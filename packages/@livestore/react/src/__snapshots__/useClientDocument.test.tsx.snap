@@ -21,20 +21,6 @@ exports[`useClientDocument > otel > should update the data based on component ke
       },
     },
     {
-      "_name": "@livestore/common:LeaderSyncProcessor:push",
-      "attributes": {
-        "batch": "undefined",
-        "batchSize": 1,
-      },
-    },
-    {
-      "_name": "@livestore/common:LeaderSyncProcessor:push",
-      "attributes": {
-        "batch": "undefined",
-        "batchSize": 1,
-      },
-    },
-    {
       "_name": "client-session-sync-processor:pull",
       "attributes": {
         "code.stacktrace": "<STACKTRACE>",
@@ -215,6 +201,13 @@ exports[`useClientDocument > otel > should update the data based on component ke
               },
             ],
           },
+          {
+            "_name": "@livestore/common:LeaderSyncProcessor:push",
+            "attributes": {
+              "batch": "undefined",
+              "batchSize": 1,
+            },
+          },
         ],
       },
     ],
@@ -253,6 +246,13 @@ exports[`useClientDocument > otel > should update the data based on component ke
               },
             ],
           },
+          {
+            "_name": "@livestore/common:LeaderSyncProcessor:push",
+            "attributes": {
+              "batch": "undefined",
+              "batchSize": 1,
+            },
+          },
         ],
       },
     ],
@@ -278,20 +278,6 @@ exports[`useClientDocument > otel > should update the data based on component ke
       PRAGMA temp_store='MEMORY';
       PRAGMA foreign_keys='ON'; -- we want foreign key constraints to be enforced
     ",
-      },
-    },
-    {
-      "_name": "@livestore/common:LeaderSyncProcessor:push",
-      "attributes": {
-        "batch": "undefined",
-        "batchSize": 1,
-      },
-    },
-    {
-      "_name": "@livestore/common:LeaderSyncProcessor:push",
-      "attributes": {
-        "batch": "undefined",
-        "batchSize": 1,
       },
     },
     {
@@ -413,6 +399,13 @@ exports[`useClientDocument > otel > should update the data based on component ke
               },
             ],
           },
+          {
+            "_name": "@livestore/common:LeaderSyncProcessor:push",
+            "attributes": {
+              "batch": "undefined",
+              "batchSize": 1,
+            },
+          },
         ],
       },
     ],
@@ -450,6 +443,13 @@ exports[`useClientDocument > otel > should update the data based on component ke
                 },
               },
             ],
+          },
+          {
+            "_name": "@livestore/common:LeaderSyncProcessor:push",
+            "attributes": {
+              "batch": "undefined",
+              "batchSize": 1,
+            },
           },
         ],
       },
