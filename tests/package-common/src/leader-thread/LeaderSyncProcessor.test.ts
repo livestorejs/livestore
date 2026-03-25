@@ -8,7 +8,6 @@ import {
   type SyncBackend,
   type SyncState,
   type RejectedPushError,
-  StaleRebaseGenerationError,
   type SyncOptions,
   UnknownError,
 } from '@livestore/common'
@@ -36,7 +35,7 @@ import {
 } from '@livestore/utils/effect'
 import { PlatformNode } from '@livestore/utils/node'
 import { Vitest } from '@livestore/utils-dev/node-vitest'
-import { expect, assert } from 'vitest'
+import { expect } from 'vitest'
 
 import { events, schema, tables } from './fixture.ts'
 
@@ -55,7 +54,7 @@ TODO:
 */
 
 const withTestCtx = (
-  args: Partial<Pick<MakeLeaderThreadLayerParams, 'params' | 'testing'>> & {
+  args: Partial<Pick<MakeLeaderThreadLayerParams, 'params'>> & {
     /** Warning: Setting `livePull` to `false` will lead to some less explored scenarios (e.g. only pulls once on boot) */
     syncOptions?: Partial<SyncOptions>
     captureShutdown?: boolean
@@ -291,50 +290,6 @@ Vitest.describe.concurrent('LeaderSyncProcessor', { timeout: 60000 }, () => {
     ),
   )
 
-  Vitest.scopedLive('local push old-gen items fail promptly with StaleRebaseGenerationError', (test) =>
-    Effect.gen(function* () {
-      const leaderThreadCtx = yield* LeaderThreadCtx
-      const testContext = yield* TestContext
-
-      const syncStateBefore = yield* leaderThreadCtx.syncProcessor.syncState.get
-
-      // Create an event with a stale rebase generation to mimic a client that cached an outdated head.
-      const baseEvent = testContext.eventFactory.todoCreated.next({
-        id: 'local-old-gen',
-        text: 'y',
-        completed: false,
-      })
-
-      const staleSeq = EventSequenceNumber.Client.Composite.make({
-        global: (syncStateBefore.localHead.global + 1) as any,
-        client: EventSequenceNumber.Client.DEFAULT,
-        rebaseGeneration: syncStateBefore.localHead.rebaseGeneration - 1,
-      })
-
-      const staleParent = EventSequenceNumber.Client.Composite.make({
-        ...syncStateBefore.localHead,
-        rebaseGeneration: syncStateBefore.localHead.rebaseGeneration - 1,
-      })
-
-      // The waitForProcessing flag ensures push waits on the deferred, so we observe the rejection path.
-      const staleEvent = LiveStoreEvent.Client.EncodedWithMeta.make({
-        ...LiveStoreEvent.Global.toClientEncoded(baseEvent),
-        seqNum: staleSeq,
-        parentSeqNum: staleParent,
-      })
-
-      const error = yield* leaderThreadCtx.syncProcessor
-        .push([staleEvent], { waitForProcessing: true })
-        .pipe(Effect.flip)
-
-      expect(error._tag).toBe('StaleRebaseGenerationError')
-      assert(error instanceof StaleRebaseGenerationError)
-
-      expect(error.currentRebaseGeneration).toBe(syncStateBefore.localHead.rebaseGeneration)
-      expect(error.providedRebaseGeneration).toBe(staleSeq.rebaseGeneration)
-    }).pipe(withTestCtx()(test)),
-  )
-
   // TODO property based testing to test following cases:
   // push first, then pull + latency in between (need to adjust the backend id accordingly)
   // pull first, then push + latency in between
@@ -447,10 +402,7 @@ Vitest.describe.concurrent('LeaderSyncProcessor', { timeout: 60000 }, () => {
 
       yield* testContext.mockSyncBackend.pushedEvents.pipe(Stream.take(10), Stream.runDrain)
     }).pipe(
-      withTestCtx({
-        testing: { syncProcessor: { delays: { localPushProcessing: Effect.sleep(10) } } },
-        params: { localPushBatchSize: 2 },
-      })(test),
+      withTestCtx({})(test),
     ),
   )
 
@@ -821,7 +773,6 @@ class TestContext extends Context.Tag('TestContext')<
 >() {}
 
 const LeaderThreadCtxLive = ({
-  syncProcessor,
   params,
   syncOptions,
   captureShutdown,
@@ -829,7 +780,6 @@ const LeaderThreadCtxLive = ({
   seedMockBackend,
   mockBackendOverride,
 }: {
-  syncProcessor?: NonNullable<MakeLeaderThreadLayerParams['testing']>['syncProcessor']
   params?: MakeLeaderThreadLayerParams['params']
   /** Optional overrides for sync options (e.g. custom backend, livePull flag) */
   syncOptions?: Partial<SyncOptions>
@@ -875,9 +825,6 @@ const LeaderThreadCtxLive = ({
       dbEventlog: yield* makeSqliteDb({ _tag: 'in-memory' }),
       devtoolsOptions: { enabled: false },
       shutdownChannel: shutdownProxy?.webChannel ?? (yield* WebChannel.noopChannel<any, any>()),
-      testing: {
-        ...omitUndefineds({ syncProcessor }),
-      },
       ...omitUndefineds({ params }),
     }).pipe(Layer.provide(FetchHttpClient.layer))
 

@@ -58,15 +58,7 @@ export interface MakeLeaderThreadLayerParams {
   /** Boot warning to emit (e.g., OPFS unavailable in private browsing) */
   bootWarning?: BootStatus
   params?: {
-    localPushBatchSize?: number
     backendPushBatchSize?: number
-  }
-  testing?: {
-    syncProcessor?: {
-      delays?: {
-        localPushProcessing?: Effect.Effect<void>
-      }
-    }
   }
 }
 
@@ -84,7 +76,6 @@ export const makeLeaderThreadLayer = ({
   shutdownChannel,
   bootWarning,
   params,
-  testing,
 }: MakeLeaderThreadLayerParams): Layer.Layer<LeaderThreadCtx, UnknownError, Scope.Scope | HttpClient.HttpClient> =>
   Effect.gen(function* () {
     const syncPayloadDecoded =
@@ -171,12 +162,8 @@ export const makeLeaderThreadLayer = ({
       livePull: syncOptions?.livePull ?? true,
       params: {
         ...omitUndefineds({
-          localPushBatchSize: params?.localPushBatchSize,
           backendPushBatchSize: params?.backendPushBatchSize,
         }),
-      },
-      testing: {
-        ...omitUndefineds({ delays: testing?.syncProcessor?.delays }),
       },
     })
 
