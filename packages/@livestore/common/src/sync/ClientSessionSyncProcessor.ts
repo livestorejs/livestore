@@ -35,7 +35,6 @@ export const makeClientSessionSyncProcessor = ({
   materializeEvent,
   rollback,
   refreshTables,
-  params: _params,
   confirmUnsavedChanges,
 }: {
   schema: LiveStoreSchema
@@ -57,7 +56,6 @@ export const makeClientSessionSyncProcessor = ({
   >
   rollback: (changeset: Uint8Array<ArrayBuffer>) => void
   refreshTables: (tables: Set<string>) => void
-  params?: Record<string, never>
   /**
    * Currently only used in the web adapter:
    * If true, registers a beforeunload event listener to confirm unsaved changes.

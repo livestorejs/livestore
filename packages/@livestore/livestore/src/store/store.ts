@@ -311,7 +311,6 @@ export class Store<TSchema extends LiveStoreSchema = LiveStoreSchema.Any, TConte
         }
         reactivityGraph.setRefs(tablesToUpdate)
       },
-      params: {},
       confirmUnsavedChanges,
     })
 
