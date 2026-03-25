@@ -29,13 +29,6 @@ exports[`useClientDocument > otel > should update the data based on component ke
       },
     },
     {
-      "_name": "@livestore/common:LeaderSyncProcessor:push",
-      "attributes": {
-        "batch": "undefined",
-        "batchSize": 1,
-      },
-    },
-    {
       "_name": "LiveStore:commits",
     },
     {
