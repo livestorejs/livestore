@@ -78,7 +78,6 @@ if (isDevEnv() === true) {
  * Default parameters for the Store. Also used in `create-store.ts`
  */
 export const STORE_DEFAULT_PARAMS = {
-  leaderPushBatchSize: 100,
   eventQueryBatchSize: 100,
 }
 
@@ -312,14 +311,7 @@ export class Store<TSchema extends LiveStoreSchema = LiveStoreSchema.Any, TConte
         }
         reactivityGraph.setRefs(tablesToUpdate)
       },
-      params: {
-        ...omitUndefineds({
-          leaderPushBatchSize: params.leaderPushBatchSize,
-        }),
-        ...(params.simulation?.clientSessionSyncProcessor !== undefined
-          ? { simulation: params.simulation.clientSessionSyncProcessor }
-          : {}),
-      },
+      params: {},
       confirmUnsavedChanges,
     })
 

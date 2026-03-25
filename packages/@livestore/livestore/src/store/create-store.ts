@@ -5,7 +5,6 @@ import {
   type BootStatus,
   type ClientSession,
   type ClientSessionDevtoolsChannel,
-  type ClientSessionSyncProcessorSimulationParams,
   type IntentionalShutdownCause,
   LogConfig,
   type MaterializeError,
@@ -209,13 +208,8 @@ export interface CreateStoreOptions<
   syncPayload?: Schema.Schema.Type<TSyncPayloadSchema>
   /** Options provided to the Store constructor. */
   params?: {
-    /** Max events pushed to the leader per write batch. */
-    leaderPushBatchSize?: number
     /** Chunk size used when the stream replays confirmed events. */
     eventQueryBatchSize?: number
-    simulation?: {
-      clientSessionSyncProcessor: typeof ClientSessionSyncProcessorSimulationParams.Type
-    }
   }
   debug?: {
     instanceId?: string
@@ -395,9 +389,7 @@ export const createStore = <
         batchUpdates: (run) => run(),
         storeId,
         params: {
-          leaderPushBatchSize: params?.leaderPushBatchSize ?? STORE_DEFAULT_PARAMS.leaderPushBatchSize,
           eventQueryBatchSize: params?.eventQueryBatchSize ?? STORE_DEFAULT_PARAMS.eventQueryBatchSize,
-          ...omitUndefineds({ simulation: params?.simulation }),
         },
       })
 

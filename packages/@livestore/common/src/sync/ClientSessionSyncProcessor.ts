@@ -1,18 +1,6 @@
 /// <reference lib="dom" />
 import { LS_DEV, shouldNeverHappen, TRACE_VERBOSE } from '@livestore/utils'
-import {
-  BucketQueue,
-  Effect,
-  Exit,
-  FiberHandle,
-  Option,
-  Queue,
-  type Runtime,
-  Schema,
-  type Scope,
-  Stream,
-  Subscribable,
-} from '@livestore/utils/effect'
+import { Effect, Exit, Option, Queue, type Runtime, Schema, type Scope, Stream, Subscribable } from '@livestore/utils/effect'
 
 import { type ClientSession, type UnknownError } from '../adapter-types.ts'
 import type { MaterializeError } from '../errors.ts'
@@ -47,7 +35,7 @@ export const makeClientSessionSyncProcessor = ({
   materializeEvent,
   rollback,
   refreshTables,
-  params,
+  params: _params,
   confirmUnsavedChanges,
 }: {
   schema: LiveStoreSchema
@@ -69,10 +57,7 @@ export const makeClientSessionSyncProcessor = ({
   >
   rollback: (changeset: Uint8Array<ArrayBuffer>) => void
   refreshTables: (tables: Set<string>) => void
-  params: {
-    leaderPushBatchSize: number
-    simulation?: ClientSessionSyncProcessorSimulationParams
-  }
+  params?: Record<string, never>
   /**
    * Currently only used in the web adapter:
    * If true, registers a beforeunload event listener to confirm unsaved changes.
@@ -80,11 +65,6 @@ export const makeClientSessionSyncProcessor = ({
   confirmUnsavedChanges: boolean
 }): ClientSessionSyncProcessor => {
   const eventSchema = LiveStoreEvent.Client.makeSchemaMemo(schema)
-
-  const simSleep = <TKey extends keyof ClientSessionSyncProcessorSimulationParams>(
-    key: TKey,
-    key2: keyof ClientSessionSyncProcessorSimulationParams[TKey],
-  ) => Effect.sleep((params.simulation?.[key]?.[key2] ?? 0) as number)
 
   const syncStateRef = {
     // The initial state is identical to the leader's initial state
@@ -101,8 +81,19 @@ export const makeClientSessionSyncProcessor = ({
   const isClientEvent = (eventEncoded: LiveStoreEvent.Client.EncodedWithMeta) =>
     schema.eventsDefsMap.get(eventEncoded.name)?.options.clientOnly ?? false
 
-  /** We're queuing push requests to reduce the number of messages sent to the leader by batching them */
-  const leaderPushQueue = BucketQueue.make<LiveStoreEvent.Client.EncodedWithMeta>().pipe(Effect.runSync)
+  /** Serializes pushes to the leader to satisfy the "no concurrent push" contract on the proxy interface. */
+  const leaderPushSemaphore = Effect.makeSemaphore(1).pipe(Effect.runSync)
+
+  /** Fire-and-forget push to the leader, serialized by the semaphore. Rejected pushes are silently ignored — the pull stream will deliver a rebase. */
+  const pushToLeader = (batch: ReadonlyArray<LiveStoreEvent.Client.EncodedWithMeta>) =>
+    leaderPushSemaphore.withPermits(1)(
+      clientSession.leaderThread.events.push(batch).pipe(
+        Effect.catchIf(isRejectedPushError, () => {
+          debugInfo.rejectCount++
+          return Effect.void
+        }),
+      ),
+    ).pipe(Effect.interruptible, Effect.tapCauseLogPretty, Effect.forkDaemon)
 
   const push: ClientSessionSyncProcessor['push'] = Effect.fn('client-session-sync-processor:push')(function* (batch) {
     // TODO validate batch
@@ -172,9 +163,8 @@ export const makeClientSessionSyncProcessor = ({
       event.meta.materializerHashSession = materializerHash
     }
 
-    // Trigger push to leader
-    // console.debug('pushToLeader', encodedEventDefs.length, ...encodedEventDefs.map((_) => _.toJSON()))
-    yield* BucketQueue.offerAll(leaderPushQueue, encodedEventDefs)
+    // Fire-and-forget push to leader
+    yield* pushToLeader(encodedEventDefs)
 
     return { writeTables }
   })
@@ -203,20 +193,6 @@ export const makeClientSessionSyncProcessor = ({
         () => Effect.sync(() => window.removeEventListener('beforeunload', onBeforeUnload)),
       )
     }
-
-    const leaderPushingFiberHandle = yield* FiberHandle.make()
-
-    const backgroundLeaderPushing = Effect.gen(function* () {
-      const batch = yield* BucketQueue.takeBetween(leaderPushQueue, 1, params.leaderPushBatchSize)
-      yield* clientSession.leaderThread.events.push(batch).pipe(
-        Effect.catchIf(isRejectedPushError, () => {
-          debugInfo.rejectCount++
-          return BucketQueue.clear(leaderPushQueue)
-        }),
-      )
-    }).pipe(Effect.forever, Effect.interruptible, Effect.tapCauseLogPretty)
-
-    yield* FiberHandle.run(leaderPushingFiberHandle, backgroundLeaderPushing)
 
     // NOTE We need to lazily call `.pull` as we want the cursor to be updated
     yield* Stream.suspend(() =>
@@ -254,17 +230,6 @@ export const makeClientSessionSyncProcessor = ({
 
             debugInfo.rebaseCount++
 
-            if (SIMULATION_ENABLED === true) yield* simSleep('pull', '1_before_leader_push_fiber_interrupt')
-
-            yield* FiberHandle.clear(leaderPushingFiberHandle)
-
-            if (SIMULATION_ENABLED === true) yield* simSleep('pull', '2_before_leader_push_queue_clear')
-
-            // Reset the leader push queue since we're rebasing and will push again
-            yield* BucketQueue.clear(leaderPushQueue)
-
-            if (SIMULATION_ENABLED === true) yield* simSleep('pull', '3_before_rebase_rollback')
-
             if (LS_DEV === true) {
               yield* Effect.logDebug(
                 'merge:pull:rebase: rollback',
@@ -281,13 +246,10 @@ export const makeClientSessionSyncProcessor = ({
               }
             }
 
-            if (SIMULATION_ENABLED === true) yield* simSleep('pull', '4_before_leader_push_queue_offer')
-
-            yield* BucketQueue.offerAll(leaderPushQueue, mergeResult.newSyncState.pending)
-
-            if (SIMULATION_ENABLED === true) yield* simSleep('pull', '5_before_leader_push_fiber_run')
-
-            yield* FiberHandle.run(leaderPushingFiberHandle, backgroundLeaderPushing)
+            // Re-push rebased pending events to the leader
+            if (mergeResult.newSyncState.pending.length > 0) {
+              yield* pushToLeader(mergeResult.newSyncState.pending)
+            }
           } else {
             yield* Effect.spanEvent('merge:pull:advance', {
               payloadTag: payload._tag,
@@ -357,13 +319,6 @@ export const makeClientSessionSyncProcessor = ({
         Effect.gen(function* () {
           console.log('debugInfo', debugInfo)
           console.log('syncState', syncStateRef.current)
-          const pushQueueSize = yield* BucketQueue.size(leaderPushQueue)
-          console.log('pushQueueSize', pushQueueSize)
-          const pushQueueItems = yield* BucketQueue.peekAll(leaderPushQueue)
-          console.log(
-            'pushQueueItems',
-            pushQueueItems.map((_) => _.toJSON()),
-          )
         }).pipe(Effect.provide(runtime), Effect.runSync),
       debugInfo: () => debugInfo,
     },
@@ -387,18 +342,3 @@ export interface ClientSessionSyncProcessor {
     }
   }
 }
-
-// TODO turn this into a build-time "macro" so all simulation snippets are removed for production builds
-const SIMULATION_ENABLED = true
-
-// Warning: High values for the simulation params can lead to very long test runs since those get multiplied with the number of events
-export const ClientSessionSyncProcessorSimulationParams = Schema.Struct({
-  pull: Schema.Struct({
-    '1_before_leader_push_fiber_interrupt': Schema.Int.pipe(Schema.between(0, 15)),
-    '2_before_leader_push_queue_clear': Schema.Int.pipe(Schema.between(0, 15)),
-    '3_before_rebase_rollback': Schema.Int.pipe(Schema.between(0, 15)),
-    '4_before_leader_push_queue_offer': Schema.Int.pipe(Schema.between(0, 15)),
-    '5_before_leader_push_fiber_run': Schema.Int.pipe(Schema.between(0, 15)),
-  }),
-})
-type ClientSessionSyncProcessorSimulationParams = typeof ClientSessionSyncProcessorSimulationParams.Type

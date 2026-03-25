@@ -400,7 +400,7 @@ Vitest.describe.concurrent('ClientSessionSyncProcessor', () => {
         rollback: () => undefined,
         refreshTables: () => undefined,
 
-        params: { leaderPushBatchSize: 10 },
+        params: {},
         confirmUnsavedChanges: false,
       })
 
@@ -565,7 +565,7 @@ Vitest.describe.concurrent('ClientSessionSyncProcessor', () => {
         rollback: () => undefined,
         refreshTables: () => undefined,
 
-        params: { leaderPushBatchSize: 10 },
+        params: {},
         confirmUnsavedChanges: false,
       })
 

@@ -1,4 +1,3 @@
-import { ClientSessionSyncProcessorSimulationParams } from '@livestore/common'
 import { ShutdownChannel } from '@livestore/common/leader-thread'
 import { Schema } from '@livestore/utils/effect'
 
@@ -7,10 +6,7 @@ import { tables } from './schema.ts'
 export const StorageType = Schema.Literal('in-memory', 'fs')
 export const AdapterType = Schema.Literal('single-threaded', 'worker')
 
-export const Params = Schema.Struct({
-  leaderPushBatchSize: Schema.optional(Schema.Number),
-  simulation: Schema.optional(ClientSessionSyncProcessorSimulationParams),
-})
+export const Params = Schema.Struct({})
 
 export type Params = typeof Params.Type
 

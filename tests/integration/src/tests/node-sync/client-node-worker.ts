@@ -35,7 +35,7 @@ class WorkerContext extends Context.Tag('WorkerContext')<
 >() {}
 
 const runner = WorkerRunner.layerSerialized(WorkerSchema.Request, {
-  InitialMessage: ({ storeId, clientId, adapterType, storageType, params, syncUrl }) =>
+  InitialMessage: ({ storeId, clientId, adapterType, storageType, syncUrl }) =>
     Effect.gen(function* () {
       const storage =
         storageType === 'fs'
@@ -71,10 +71,6 @@ const runner = WorkerRunner.layerSerialized(WorkerSchema.Request, {
         storeId,
         disableDevtools: true,
         shutdownDeferred,
-        params: {
-          leaderPushBatchSize: params?.leaderPushBatchSize,
-          simulation: params?.simulation !== undefined ? { clientSessionSyncProcessor: params.simulation } : undefined,
-        },
       })
       // @ts-expect-error for debugging
       globalThis.store = store
