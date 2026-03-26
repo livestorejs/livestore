@@ -4,9 +4,9 @@
     "effect-utils": {
       "url": "https://github.com/overengineeringstudio/effect-utils",
       "ref": "schickling/ci-job-local-pnpm-store",
-      "commit": "09d8ddc787839c44b38640e6f08f89a362582086",
+      "commit": "3a33490ee66dde46d54c0ab5947217f9647b036d",
       "pinned": true,
-      "lockedAt": "2026-03-26T12:11:54.380Z"
+      "lockedAt": "2026-03-26T12:31:15.935Z"
     },
     "overeng-beads-public": {
       "url": "https://github.com/overengineeringstudio/overeng-beads-public",
