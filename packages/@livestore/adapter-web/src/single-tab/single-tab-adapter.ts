@@ -24,20 +24,21 @@ import {
 import { EventSequenceNumber } from '@livestore/common/schema'
 import { sqliteDbFactory } from '@livestore/sqlite-wasm/browser'
 import { shouldNeverHappen, tryAsFunctionAndNew } from '@livestore/utils'
+import type {
+  ParseResult,
+  WorkerError} from '@livestore/utils/effect';
 import {
   Cause,
   Effect,
   Exit,
   Fiber,
   Layer,
-  ParseResult,
   Queue,
   Schema,
   Stream,
   Subscribable,
   SubscriptionRef,
-  Worker,
-  WorkerError,
+  Worker
 } from '@livestore/utils/effect'
 import { BrowserWorker, Opfs, WebError } from '@livestore/utils/effect/browser'
 import { nanoid } from '@livestore/utils/nanoid'
@@ -251,49 +252,40 @@ export const makeSingleTabAdapter =
       // Helper to run requests against the worker
       const runInWorker = <TReq extends WorkerSchema.LeaderWorkerInnerRequest>(
         req: TReq,
-      ): TReq extends Schema.WithResult<infer A, infer _I, infer E, infer _EI, infer R>
-        ? Effect.Effect<A, UnknownError | E, R>
-        : never =>
+      ) =>
         Fiber.join(innerWorkerFiber).pipe(
-          Effect.flatMap((worker) => worker.executeEffect(req) as any),
+          Effect.orDie,
+          Effect.flatMap((worker) =>
+            worker.executeEffect(req) as unknown as Effect.Effect<
+              Schema.WithResult.Success<TReq>,
+              Schema.WithResult.Failure<TReq> | WorkerError.WorkerError | ParseResult.ParseError,
+              Schema.WithResult.Context<TReq>
+            >,
+          ),
           Effect.logWarnIfTakesLongerThan({
             label: `@livestore/adapter-web:single-tab:runInWorker:${req._tag}`,
             duration: 2000,
           }),
           Effect.withSpan(`@livestore/adapter-web:single-tab:runInWorker:${req._tag}`),
-          Effect.mapError((cause) =>
-            Schema.is(UnknownError)(cause) === true
-              ? cause
-              : ParseResult.isParseError(cause) === true || Schema.is(WorkerError.WorkerError)(cause) === true
-                ? new UnknownError({ cause })
-                : cause,
-          ),
-          Effect.catchAllDefect((cause) => new UnknownError({ cause })),
-        ) as any
+        )
 
       const runInWorkerStream = <TReq extends WorkerSchema.LeaderWorkerInnerRequest>(
         req: TReq,
-      ): TReq extends Schema.WithResult<infer A, infer _I, infer _E, infer _EI, infer R>
-        ? Stream.Stream<A, UnknownError, R>
-        : never =>
+      ) =>
         Effect.gen(function* () {
-          const innerWorker = yield* Fiber.join(innerWorkerFiber)
-          return innerWorker.execute(req as any).pipe(
-            Stream.mapError((cause) =>
-              Schema.is(UnknownError)(cause) === true
-                ? cause
-                : ParseResult.isParseError(cause) === true || Schema.is(WorkerError.WorkerError)(cause) === true
-                  ? new UnknownError({ cause })
-                  : cause,
-            ),
-            Stream.withSpan(`@livestore/adapter-web:single-tab:runInWorkerStream:${req._tag}`),
-          )
-        }).pipe(Stream.unwrap) as any
+          const innerWorker = yield* Fiber.join(innerWorkerFiber).pipe(Effect.orDie)
+          return innerWorker.execute(req) as unknown as Stream.Stream<
+            Schema.WithResult.Success<TReq>,
+            Schema.WithResult.Failure<TReq> | WorkerError.WorkerError | ParseResult.ParseError,
+            Schema.WithResult.Context<TReq>
+          >
+        }).pipe(Stream.unwrap)
 
       // Forward boot status from worker
       const bootStatusFiber = yield* runInWorkerStream(new WorkerSchema.LeaderWorkerInnerBootStatusStream()).pipe(
         Stream.tap((_) => Queue.offer(bootStatusQueue, _)),
         Stream.runDrain,
+        UnknownError.mapToUnknownError,
         Effect.tapErrorCause((cause) =>
           Cause.isInterruptedOnly(cause) === true ? Effect.void : shutdown(Exit.failCause(cause)),
         ),

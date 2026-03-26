@@ -1,4 +1,4 @@
-import type { Effect, Stream, Subscribable } from '@livestore/utils/effect'
+import type { Effect, ParseResult, Stream, Subscribable, WorkerError } from '@livestore/utils/effect'
 
 import type { StorageMode } from './adapter-types.ts'
 import type { MigrationsReport } from './defs.ts'
@@ -17,7 +17,9 @@ export interface ClientSessionLeaderThreadProxy {
       cursor: EventSequenceNumber.Client.Composite
     }) => Stream.Stream<{ payload: typeof PayloadUpstream.Type }, UnknownError>
     /** It's important that a client session doesn't call `push` concurrently. */
-    push(batch: ReadonlyArray<LiveStoreEvent.Client.Encoded>): Effect.Effect<void, UnknownError | RejectedPushError>
+    push(
+      batch: ReadonlyArray<LiveStoreEvent.Client.Encoded>,
+    ): Effect.Effect<void, RejectedPushError | WorkerError.WorkerError | ParseResult.ParseError>
     /** Stream events with filtering */
     stream(options: StreamEventsOptions): Stream.Stream<LiveStoreEvent.Client.Encoded, UnknownError>
   }

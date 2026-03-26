@@ -13,6 +13,9 @@ import {
 import { EventSequenceNumber } from '@livestore/common/schema'
 import { sqliteDbFactory } from '@livestore/sqlite-wasm/browser'
 import { isDevEnv, omitUndefineds, shouldNeverHappen, tryAsFunctionAndNew } from '@livestore/utils'
+import type {
+  ParseResult,
+  WorkerError} from '@livestore/utils/effect';
 import {
   Cause,
   Deferred,
@@ -20,14 +23,12 @@ import {
   Exit,
   Fiber,
   Layer,
-  ParseResult,
   Queue,
   Schema,
   Stream,
   Subscribable,
   SubscriptionRef,
-  Worker,
-  WorkerError,
+  Worker
 } from '@livestore/utils/effect'
 import { BrowserWorker, Opfs, WebError, WebLock } from '@livestore/utils/effect/browser'
 import { nanoid } from '@livestore/utils/nanoid'
@@ -377,13 +378,18 @@ export const makePersistedAdapter =
 
       const runInWorker = <TReq extends typeof WorkerSchema.SharedWorkerRequest.Type>(
         req: TReq,
-      ): TReq extends Schema.WithResult<infer A, infer _I, infer E, infer _EI, infer R>
-        ? Effect.Effect<A, UnknownError | E, R>
-        : never =>
+      ) =>
         Fiber.join(sharedWorkerFiber).pipe(
+          Effect.orDie,
           // NOTE we need to wait for the shared worker to be initialized before we can send requests to it
           Effect.tap(() => waitForSharedWorkerInitialized),
-          Effect.flatMap((worker) => worker.executeEffect(req) as any),
+          Effect.flatMap((worker) =>
+            worker.executeEffect(req) as unknown as Effect.Effect<
+              Schema.WithResult.Success<TReq>,
+              Schema.WithResult.Failure<TReq> | WorkerError.WorkerError | ParseResult.ParseError,
+              Schema.WithResult.Context<TReq>
+            >,
+          ),
           // NOTE we want to treat worker requests as atomic and therefore not allow them to be interrupted
           // Interruption usually only happens during leader re-election or store shutdown
           // Effect.uninterruptible,
@@ -392,38 +398,24 @@ export const makePersistedAdapter =
             duration: 2000,
           }),
           Effect.withSpan(`@livestore/adapter-web:client-session:runInWorker:${req._tag}`),
-          Effect.mapError((cause) =>
-            Schema.is(UnknownError)(cause) === true
-              ? cause
-              : ParseResult.isParseError(cause) === true || Schema.is(WorkerError.WorkerError)(cause) === true
-                ? new UnknownError({ cause })
-                : cause,
-          ),
-          Effect.catchAllDefect((cause) => new UnknownError({ cause })),
-        ) as any
+        )
 
       const runInWorkerStream = <TReq extends typeof WorkerSchema.SharedWorkerRequest.Type>(
         req: TReq,
-      ): TReq extends Schema.WithResult<infer A, infer _I, infer _E, infer _EI, infer R>
-        ? Stream.Stream<A, UnknownError, R>
-        : never =>
+      ) =>
         Effect.gen(function* () {
-          const sharedWorker = yield* Fiber.join(sharedWorkerFiber)
-          return sharedWorker.execute(req as any).pipe(
-            Stream.mapError((cause) =>
-              Schema.is(UnknownError)(cause) === true
-                ? cause
-                : ParseResult.isParseError(cause) === true || Schema.is(WorkerError.WorkerError)(cause) === true
-                  ? new UnknownError({ cause })
-                  : cause,
-            ),
-            Stream.withSpan(`@livestore/adapter-web:client-session:runInWorkerStream:${req._tag}`),
-          )
-        }).pipe(Stream.unwrap) as any
+          const sharedWorker = yield* Fiber.join(sharedWorkerFiber).pipe(Effect.orDie)
+          return sharedWorker.execute(req) as unknown as Stream.Stream<
+            Schema.WithResult.Success<TReq>,
+            Schema.WithResult.Failure<TReq> | WorkerError.WorkerError | ParseResult.ParseError,
+            Schema.WithResult.Context<TReq>
+          >
+        }).pipe(Stream.unwrap)
 
       const bootStatusFiber = yield* runInWorkerStream(new WorkerSchema.LeaderWorkerInnerBootStatusStream()).pipe(
         Stream.tap((_) => Queue.offer(bootStatusQueue, _)),
         Stream.runDrain,
+        UnknownError.mapToUnknownError,
         Effect.tapErrorCause((cause) =>
           Cause.isInterruptedOnly(cause) === true ? Effect.void : shutdown(Exit.failCause(cause)),
         ),

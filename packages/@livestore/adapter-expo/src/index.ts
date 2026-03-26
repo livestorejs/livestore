@@ -305,12 +305,10 @@ const makeLeaderThread = ({
         events: {
           pull: ({ cursor }) => syncProcessor.pull({ cursor }),
           push: (batch) =>
-            syncProcessor
-              .push(
-                batch.map((item) => new LiveStoreEvent.Client.EncodedWithMeta(item)),
-                { waitForProcessing: true },
-              )
-              .pipe(Effect.provide(layer), Effect.scoped),
+            syncProcessor.push(
+              batch.map((item) => new LiveStoreEvent.Client.EncodedWithMeta(item)),
+              { waitForProcessing: true },
+            ),
           stream: (options) =>
             streamEventsWithSyncState({
               dbEventlog,

@@ -2,6 +2,9 @@ import { Devtools, LogConfig, liveStoreVersion, UnknownError } from '@livestore/
 import * as DevtoolsWeb from '@livestore/devtools-web-common/web-channel'
 import * as WebmeshWorker from '@livestore/devtools-web-common/worker'
 import { isDevEnv, isNotUndefined, LS_DEV } from '@livestore/utils'
+import type {
+  ParseResult,
+  WorkerError} from '@livestore/utils/effect';
 import {
   Deferred,
   Effect,
@@ -9,7 +12,6 @@ import {
   FetchHttpClient,
   identity,
   Layer,
-  ParseResult,
   Ref,
   Schema,
   Scope,
@@ -17,7 +19,6 @@ import {
   SubscriptionRef,
   TaskTracing,
   Worker,
-  WorkerError,
   WorkerRunner,
 } from '@livestore/utils/effect'
 import { BrowserWorker, BrowserWorkerRunner } from '@livestore/utils/effect/browser'
@@ -66,10 +67,9 @@ const makeWorkerRunner = Effect.gen(function* () {
     req: TReq,
   ): Effect.Effect<
     Schema.WithResult.Success<TReq>,
-    UnknownError | Schema.WithResult.Failure<TReq>,
+    Schema.WithResult.Failure<TReq>,
     Schema.WithResult.Context<TReq>
   > =>
-    // Forward the request to the active worker and normalize platform errors into UnknownError.
     waitForWorker.pipe(
       // Effect.logBefore(`forwardRequest: ${req._tag}`),
       Effect.andThen((worker) =>
@@ -85,18 +85,10 @@ const makeWorkerRunner = Effect.gen(function* () {
         label: `@livestore/adapter-web:shared-worker:forwardRequest:${req._tag}`,
         duration: 500,
       }),
-      Effect.mapError((cause) =>
-        Schema.is(UnknownError)(cause) === true
-          ? cause
-          : ParseResult.isParseError(cause) === true || Schema.is(WorkerError.WorkerError)(cause) === true
-            ? new UnknownError({ cause })
-            : cause,
-      ),
-      Effect.catchAllDefect((cause) => new UnknownError({ cause })),
       Effect.tapCauseLogPretty,
     ) as Effect.Effect<
       Schema.WithResult.Success<TReq>,
-      UnknownError | Schema.WithResult.Failure<TReq>,
+      Schema.WithResult.Failure<TReq>,
       Schema.WithResult.Context<TReq>
     >
 
@@ -104,7 +96,7 @@ const makeWorkerRunner = Effect.gen(function* () {
     req: TReq,
   ): Stream.Stream<
     Schema.WithResult.Success<TReq>,
-    UnknownError | Schema.WithResult.Failure<TReq>,
+    Schema.WithResult.Failure<TReq>,
     Schema.WithResult.Context<TReq>
   > =>
     Effect.gen(function* () {
@@ -129,14 +121,12 @@ const makeWorkerRunner = Effect.gen(function* () {
       return Stream.merge(stream, scopeShutdownStream, { haltStrategy: 'either' })
     }).pipe(
       Effect.interruptible,
-      UnknownError.mapToUnknownError,
       Effect.tapCauseLogPretty,
       Stream.unwrap,
       Stream.ensuring(Effect.logDebug(`shutting down stream for ${req._tag}`)),
-      UnknownError.mapToUnknownErrorStream,
     ) as Stream.Stream<
       Schema.WithResult.Success<TReq>,
-      UnknownError | Schema.WithResult.Failure<TReq>,
+      Schema.WithResult.Failure<TReq>,
       Schema.WithResult.Context<TReq>
     >
 

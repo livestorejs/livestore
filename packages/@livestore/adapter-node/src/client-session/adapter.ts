@@ -20,6 +20,9 @@ import { LiveStoreEvent } from '@livestore/common/schema'
 import { loadSqlite3Wasm } from '@livestore/sqlite-wasm/load-wasm'
 import { sqliteDbFactory } from '@livestore/sqlite-wasm/node'
 import { omitUndefineds } from '@livestore/utils'
+import type {
+  ParseResult,
+  WorkerError} from '@livestore/utils/effect';
 import {
   Cause,
   Effect,
@@ -28,15 +31,13 @@ import {
   Fiber,
   FileSystem,
   Layer,
-  ParseResult,
   Queue,
   Schedule,
   Schema,
   Stream,
   Subscribable,
   SubscriptionRef,
-  Worker,
-  WorkerError,
+  Worker
 } from '@livestore/utils/effect'
 import { PlatformNode } from '@livestore/utils/node'
 import * as Webmesh from '@livestore/webmesh'
@@ -488,44 +489,34 @@ const makeWorkerLeaderThread = ({
 
     const runInWorker = <TReq extends typeof WorkerSchema.LeaderWorkerInnerRequest.Type>(
       req: TReq,
-    ): TReq extends Schema.WithResult<infer A, infer _I, infer _E, infer _EI, infer R>
-      ? Effect.Effect<A, UnknownError, R>
-      : never =>
-      (worker.executeEffect(req) as any).pipe(
+    ) =>
+      (worker.executeEffect(req) as unknown as Effect.Effect<
+        Schema.WithResult.Success<TReq>,
+        Schema.WithResult.Failure<TReq> | WorkerError.WorkerError | ParseResult.ParseError,
+        Schema.WithResult.Context<TReq>
+      >).pipe(
         Effect.logWarnIfTakesLongerThan({
           label: `@livestore/adapter-node:client-session:runInWorker:${req._tag}`,
           duration: 2000,
         }),
         Effect.withSpan(`@livestore/adapter-node:client-session:runInWorker:${req._tag}`),
-        Effect.mapError((cause) =>
-          Schema.is(UnknownError)(cause) === true
-            ? cause
-            : ParseResult.isParseError(cause) === true || Schema.is(WorkerError.WorkerError)(cause) === true
-              ? new UnknownError({ cause })
-              : cause,
-        ),
-        Effect.catchAllDefect((cause) => new UnknownError({ cause })),
       )
 
     const runInWorkerStream = <TReq extends typeof WorkerSchema.LeaderWorkerInnerRequest.Type>(
       req: TReq,
-    ): TReq extends Schema.WithResult<infer A, infer _I, infer _E, infer _EI, infer R>
-      ? Stream.Stream<A, UnknownError, R>
-      : never =>
-      worker.execute(req as any).pipe(
-        Stream.mapError((cause) =>
-          Schema.is(UnknownError)(cause) === true
-            ? cause
-            : ParseResult.isParseError(cause) === true || Schema.is(WorkerError.WorkerError)(cause) === true
-              ? new UnknownError({ cause })
-              : cause,
-        ),
+    ) =>
+      (worker.execute(req) as unknown as Stream.Stream<
+        Schema.WithResult.Success<TReq>,
+        Schema.WithResult.Failure<TReq> | WorkerError.WorkerError | ParseResult.ParseError,
+        Schema.WithResult.Context<TReq>
+      >).pipe(
         Stream.withSpan(`@livestore/adapter-node:client-session:runInWorkerStream:${req._tag}`),
-      ) as any
+      )
 
     const bootStatusFiber = yield* runInWorkerStream(new WorkerSchema.LeaderWorkerInnerBootStatusStream()).pipe(
       Stream.tap((bootStatus) => Queue.offer(bootStatusQueue, bootStatus)),
       Stream.runDrain,
+      UnknownError.mapToUnknownError,
       Effect.tapErrorCause((cause) => (Cause.isInterruptedOnly(cause) === true ? Effect.void : shutdown(Exit.failCause(cause)))),
       Effect.interruptible,
       Effect.tapCauseLogPretty,
@@ -538,7 +529,9 @@ const makeWorkerLeaderThread = ({
       Effect.forkScoped,
     )
 
-    const initialLeaderHead = yield* runInWorker(new WorkerSchema.LeaderWorkerInnerGetLeaderHead())
+    const initialLeaderHead = yield* runInWorker(new WorkerSchema.LeaderWorkerInnerGetLeaderHead()).pipe(
+      UnknownError.mapToUnknownError,
+    )
 
     const bootResult = yield* runInWorker(new WorkerSchema.LeaderWorkerInnerGetRecreateSnapshot()).pipe(
       Effect.timeout(10_000),
