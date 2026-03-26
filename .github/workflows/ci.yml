@@ -123,22 +123,72 @@ jobs:
           echo "DEVENV_BIN=$DEVENV_BIN" >> "$GITHUB_ENV"
           "$DEVENV_BIN" version | tee "$DIAG_ROOT/devenv-version.txt"
         shell: bash
-      - run: |
+      - name: Run lint checks
+        run: |
           __nix_gc_retry() {
-            local __max=${NIX_GC_RACE_MAX_RETRIES:-10} __n=1 __log __rc __path
+            local __task='devenv tasks run lint:full:with-megarepo-check --mode before' __max=${NIX_GC_RACE_MAX_RETRIES:-10} __heartbeat=${CI_PROGRESS_HEARTBEAT_SECONDS:-60} __n=1 __log __rc __path __start __now __elapsed __hb_pid
+            __start=$(date +%s)
+
+            __write_summary() {
+              [ -n "${GITHUB_STEP_SUMMARY:-}" ] || return 0
+              {
+                echo "### CI Task"
+                echo "- Task: `$__task`"
+                echo "- Status: `$1`"
+                echo "- Duration: `$__elapsed s`"
+                echo "- Attempts: `$__n/$__max`"
+                [ -z "${2:-}" ] || echo "- Note: $2"
+              } >> "$GITHUB_STEP_SUMMARY"
+            }
+
             while [ "$__n" -le "$__max" ]; do
+              echo "::notice::[ci] starting $__task (attempt $__n/$__max)"
+              (
+                while sleep "$__heartbeat"; do
+                  __now=$(date +%s)
+                  __elapsed=$((__now - __start))
+                  echo "::notice::[ci] $__task still running after $__elapsed s (attempt $__n/$__max)"
+                done
+              ) &
+              __hb_pid=$!
+
               __log=$(mktemp)
               set +e; eval "$1" 2> >(tee "$__log" >&2); __rc=$?; set -e
-              [ $__rc -eq 0 ] && { rm -f "$__log"; return 0; }
+
+              kill "$__hb_pid" 2>/dev/null || true
+              wait "$__hb_pid" 2>/dev/null || true
+
+              __now=$(date +%s)
+              __elapsed=$((__now - __start))
+
+              [ $__rc -eq 0 ] && {
+                echo "::notice::[ci] completed $__task in $__elapsed s"
+                if [ "$__n" -gt 1 ]; then
+                  __write_summary success "Recovered from Nix GC race after retry"
+                else
+                  __write_summary success
+                fi
+                rm -f "$__log"
+                return 0
+              }
+
               __path=$(perl -0pe 's/\e\[[0-9;]*m//g; s/\n/ /g' "$__log" | grep -oP "error:\s+path '\K/nix/store/[^']*(?='\s+is not valid)" 2>/dev/null | head -1 | tr -d '[:space:]' || true)
               rm -f "$__log"
-              [ -z "$__path" ] && return $__rc
-              echo "::warning::Nix GC race detected (attempt $__n/$__max): $__path"
+              if [ -z "$__path" ]; then
+                echo "::warning::[ci] $__task failed after $__elapsed s without a detected Nix GC race"
+                __write_summary failure "No Nix GC race signature detected"
+                return $__rc
+              fi
+              echo "::warning::Nix GC race detected for $__task (attempt $__n/$__max): $__path"
               nix-store --realise "$__path" 2>/dev/null || true
               rm -rf ~/.cache/nix/eval-cache-*
               __n=$((__n + 1))
             done
-            echo "::error::Nix GC race retry exhausted ($__max attempts)"
+
+            __now=$(date +%s)
+            __elapsed=$((__now - __start))
+            echo "::error::Nix GC race retry exhausted for $__task ($__max attempts)"
+            __write_summary failure "Nix GC race retry exhausted"
             return 1
           }; __nix_gc_retry 'if [ -n "${NIX_CONFIG:-}" ]; then NIX_CONFIG_WITH_APPEND=$(printf '"'"'%s\n%s'"'"' "$NIX_CONFIG" '"'"'restrict-eval = false'"'"'); else NIX_CONFIG_WITH_APPEND='"'"'restrict-eval = false'"'"'; fi; NIX_CONFIG="$NIX_CONFIG_WITH_APPEND" PNPM_HOME='"'"'${{ runner.temp }}/pnpm-home/${{ github.run_id }}/${{ github.run_attempt }}/${{ github.job }}'"'"' DT_PASSTHROUGH=1 "${DEVENV_BIN:?DEVENV_BIN not set}" tasks run lint:full:with-megarepo-check --mode before'
       - name: Upload Nix diagnostics artifact
@@ -251,22 +301,72 @@ jobs:
           echo "DEVENV_BIN=$DEVENV_BIN" >> "$GITHUB_ENV"
           "$DEVENV_BIN" version | tee "$DIAG_ROOT/devenv-version.txt"
         shell: bash
-      - run: |
+      - name: Run type-check
+        run: |
           __nix_gc_retry() {
-            local __max=${NIX_GC_RACE_MAX_RETRIES:-10} __n=1 __log __rc __path
+            local __task='devenv tasks run ts:build --mode before' __max=${NIX_GC_RACE_MAX_RETRIES:-10} __heartbeat=${CI_PROGRESS_HEARTBEAT_SECONDS:-60} __n=1 __log __rc __path __start __now __elapsed __hb_pid
+            __start=$(date +%s)
+
+            __write_summary() {
+              [ -n "${GITHUB_STEP_SUMMARY:-}" ] || return 0
+              {
+                echo "### CI Task"
+                echo "- Task: `$__task`"
+                echo "- Status: `$1`"
+                echo "- Duration: `$__elapsed s`"
+                echo "- Attempts: `$__n/$__max`"
+                [ -z "${2:-}" ] || echo "- Note: $2"
+              } >> "$GITHUB_STEP_SUMMARY"
+            }
+
             while [ "$__n" -le "$__max" ]; do
+              echo "::notice::[ci] starting $__task (attempt $__n/$__max)"
+              (
+                while sleep "$__heartbeat"; do
+                  __now=$(date +%s)
+                  __elapsed=$((__now - __start))
+                  echo "::notice::[ci] $__task still running after $__elapsed s (attempt $__n/$__max)"
+                done
+              ) &
+              __hb_pid=$!
+
               __log=$(mktemp)
               set +e; eval "$1" 2> >(tee "$__log" >&2); __rc=$?; set -e
-              [ $__rc -eq 0 ] && { rm -f "$__log"; return 0; }
+
+              kill "$__hb_pid" 2>/dev/null || true
+              wait "$__hb_pid" 2>/dev/null || true
+
+              __now=$(date +%s)
+              __elapsed=$((__now - __start))
+
+              [ $__rc -eq 0 ] && {
+                echo "::notice::[ci] completed $__task in $__elapsed s"
+                if [ "$__n" -gt 1 ]; then
+                  __write_summary success "Recovered from Nix GC race after retry"
+                else
+                  __write_summary success
+                fi
+                rm -f "$__log"
+                return 0
+              }
+
               __path=$(perl -0pe 's/\e\[[0-9;]*m//g; s/\n/ /g' "$__log" | grep -oP "error:\s+path '\K/nix/store/[^']*(?='\s+is not valid)" 2>/dev/null | head -1 | tr -d '[:space:]' || true)
               rm -f "$__log"
-              [ -z "$__path" ] && return $__rc
-              echo "::warning::Nix GC race detected (attempt $__n/$__max): $__path"
+              if [ -z "$__path" ]; then
+                echo "::warning::[ci] $__task failed after $__elapsed s without a detected Nix GC race"
+                __write_summary failure "No Nix GC race signature detected"
+                return $__rc
+              fi
+              echo "::warning::Nix GC race detected for $__task (attempt $__n/$__max): $__path"
               nix-store --realise "$__path" 2>/dev/null || true
               rm -rf ~/.cache/nix/eval-cache-*
               __n=$((__n + 1))
             done
-            echo "::error::Nix GC race retry exhausted ($__max attempts)"
+
+            __now=$(date +%s)
+            __elapsed=$((__now - __start))
+            echo "::error::Nix GC race retry exhausted for $__task ($__max attempts)"
+            __write_summary failure "Nix GC race retry exhausted"
             return 1
           }; __nix_gc_retry 'if [ -n "${NIX_CONFIG:-}" ]; then NIX_CONFIG_WITH_APPEND=$(printf '"'"'%s\n%s'"'"' "$NIX_CONFIG" '"'"'restrict-eval = false'"'"'); else NIX_CONFIG_WITH_APPEND='"'"'restrict-eval = false'"'"'; fi; NIX_CONFIG="$NIX_CONFIG_WITH_APPEND" PNPM_HOME='"'"'${{ runner.temp }}/pnpm-home/${{ github.run_id }}/${{ github.run_attempt }}/${{ github.job }}'"'"' DT_PASSTHROUGH=1 "${DEVENV_BIN:?DEVENV_BIN not set}" tasks run ts:build --mode before'
       - name: Upload Nix diagnostics artifact
@@ -379,22 +479,72 @@ jobs:
           echo "DEVENV_BIN=$DEVENV_BIN" >> "$GITHUB_ENV"
           "$DEVENV_BIN" version | tee "$DIAG_ROOT/devenv-version.txt"
         shell: bash
-      - run: |
+      - name: Run unit tests
+        run: |
           __nix_gc_retry() {
-            local __max=${NIX_GC_RACE_MAX_RETRIES:-10} __n=1 __log __rc __path
+            local __task='devenv tasks run test:unit --mode before' __max=${NIX_GC_RACE_MAX_RETRIES:-10} __heartbeat=${CI_PROGRESS_HEARTBEAT_SECONDS:-60} __n=1 __log __rc __path __start __now __elapsed __hb_pid
+            __start=$(date +%s)
+
+            __write_summary() {
+              [ -n "${GITHUB_STEP_SUMMARY:-}" ] || return 0
+              {
+                echo "### CI Task"
+                echo "- Task: `$__task`"
+                echo "- Status: `$1`"
+                echo "- Duration: `$__elapsed s`"
+                echo "- Attempts: `$__n/$__max`"
+                [ -z "${2:-}" ] || echo "- Note: $2"
+              } >> "$GITHUB_STEP_SUMMARY"
+            }
+
             while [ "$__n" -le "$__max" ]; do
+              echo "::notice::[ci] starting $__task (attempt $__n/$__max)"
+              (
+                while sleep "$__heartbeat"; do
+                  __now=$(date +%s)
+                  __elapsed=$((__now - __start))
+                  echo "::notice::[ci] $__task still running after $__elapsed s (attempt $__n/$__max)"
+                done
+              ) &
+              __hb_pid=$!
+
               __log=$(mktemp)
               set +e; eval "$1" 2> >(tee "$__log" >&2); __rc=$?; set -e
-              [ $__rc -eq 0 ] && { rm -f "$__log"; return 0; }
+
+              kill "$__hb_pid" 2>/dev/null || true
+              wait "$__hb_pid" 2>/dev/null || true
+
+              __now=$(date +%s)
+              __elapsed=$((__now - __start))
+
+              [ $__rc -eq 0 ] && {
+                echo "::notice::[ci] completed $__task in $__elapsed s"
+                if [ "$__n" -gt 1 ]; then
+                  __write_summary success "Recovered from Nix GC race after retry"
+                else
+                  __write_summary success
+                fi
+                rm -f "$__log"
+                return 0
+              }
+
               __path=$(perl -0pe 's/\e\[[0-9;]*m//g; s/\n/ /g' "$__log" | grep -oP "error:\s+path '\K/nix/store/[^']*(?='\s+is not valid)" 2>/dev/null | head -1 | tr -d '[:space:]' || true)
               rm -f "$__log"
-              [ -z "$__path" ] && return $__rc
-              echo "::warning::Nix GC race detected (attempt $__n/$__max): $__path"
+              if [ -z "$__path" ]; then
+                echo "::warning::[ci] $__task failed after $__elapsed s without a detected Nix GC race"
+                __write_summary failure "No Nix GC race signature detected"
+                return $__rc
+              fi
+              echo "::warning::Nix GC race detected for $__task (attempt $__n/$__max): $__path"
               nix-store --realise "$__path" 2>/dev/null || true
               rm -rf ~/.cache/nix/eval-cache-*
               __n=$((__n + 1))
             done
-            echo "::error::Nix GC race retry exhausted ($__max attempts)"
+
+            __now=$(date +%s)
+            __elapsed=$((__now - __start))
+            echo "::error::Nix GC race retry exhausted for $__task ($__max attempts)"
+            __write_summary failure "Nix GC race retry exhausted"
             return 1
           }; __nix_gc_retry 'if [ -n "${NIX_CONFIG:-}" ]; then NIX_CONFIG_WITH_APPEND=$(printf '"'"'%s\n%s'"'"' "$NIX_CONFIG" '"'"'restrict-eval = false'"'"'); else NIX_CONFIG_WITH_APPEND='"'"'restrict-eval = false'"'"'; fi; NIX_CONFIG="$NIX_CONFIG_WITH_APPEND" PNPM_HOME='"'"'${{ runner.temp }}/pnpm-home/${{ github.run_id }}/${{ github.run_attempt }}/${{ github.job }}'"'"' DT_PASSTHROUGH=1 "${DEVENV_BIN:?DEVENV_BIN not set}" tasks run test:unit --mode before'
       - name: Upload Nix diagnostics artifact
@@ -520,20 +670,69 @@ jobs:
       - name: Run node-sync integration tests
         run: |
           __nix_gc_retry() {
-            local __max=${NIX_GC_RACE_MAX_RETRIES:-10} __n=1 __log __rc __path
+            local __task='devenv tasks run test:integration:node-sync:allow-flaky --mode before' __max=${NIX_GC_RACE_MAX_RETRIES:-10} __heartbeat=${CI_PROGRESS_HEARTBEAT_SECONDS:-60} __n=1 __log __rc __path __start __now __elapsed __hb_pid
+            __start=$(date +%s)
+
+            __write_summary() {
+              [ -n "${GITHUB_STEP_SUMMARY:-}" ] || return 0
+              {
+                echo "### CI Task"
+                echo "- Task: `$__task`"
+                echo "- Status: `$1`"
+                echo "- Duration: `$__elapsed s`"
+                echo "- Attempts: `$__n/$__max`"
+                [ -z "${2:-}" ] || echo "- Note: $2"
+              } >> "$GITHUB_STEP_SUMMARY"
+            }
+
             while [ "$__n" -le "$__max" ]; do
+              echo "::notice::[ci] starting $__task (attempt $__n/$__max)"
+              (
+                while sleep "$__heartbeat"; do
+                  __now=$(date +%s)
+                  __elapsed=$((__now - __start))
+                  echo "::notice::[ci] $__task still running after $__elapsed s (attempt $__n/$__max)"
+                done
+              ) &
+              __hb_pid=$!
+
               __log=$(mktemp)
               set +e; eval "$1" 2> >(tee "$__log" >&2); __rc=$?; set -e
-              [ $__rc -eq 0 ] && { rm -f "$__log"; return 0; }
+
+              kill "$__hb_pid" 2>/dev/null || true
+              wait "$__hb_pid" 2>/dev/null || true
+
+              __now=$(date +%s)
+              __elapsed=$((__now - __start))
+
+              [ $__rc -eq 0 ] && {
+                echo "::notice::[ci] completed $__task in $__elapsed s"
+                if [ "$__n" -gt 1 ]; then
+                  __write_summary success "Recovered from Nix GC race after retry"
+                else
+                  __write_summary success
+                fi
+                rm -f "$__log"
+                return 0
+              }
+
               __path=$(perl -0pe 's/\e\[[0-9;]*m//g; s/\n/ /g' "$__log" | grep -oP "error:\s+path '\K/nix/store/[^']*(?='\s+is not valid)" 2>/dev/null | head -1 | tr -d '[:space:]' || true)
               rm -f "$__log"
-              [ -z "$__path" ] && return $__rc
-              echo "::warning::Nix GC race detected (attempt $__n/$__max): $__path"
+              if [ -z "$__path" ]; then
+                echo "::warning::[ci] $__task failed after $__elapsed s without a detected Nix GC race"
+                __write_summary failure "No Nix GC race signature detected"
+                return $__rc
+              fi
+              echo "::warning::Nix GC race detected for $__task (attempt $__n/$__max): $__path"
               nix-store --realise "$__path" 2>/dev/null || true
               rm -rf ~/.cache/nix/eval-cache-*
               __n=$((__n + 1))
             done
-            echo "::error::Nix GC race retry exhausted ($__max attempts)"
+
+            __now=$(date +%s)
+            __elapsed=$((__now - __start))
+            echo "::error::Nix GC race retry exhausted for $__task ($__max attempts)"
+            __write_summary failure "Nix GC race retry exhausted"
             return 1
           }; __nix_gc_retry 'if [ -n "${NIX_CONFIG:-}" ]; then NIX_CONFIG_WITH_APPEND=$(printf '"'"'%s\n%s'"'"' "$NIX_CONFIG" '"'"'restrict-eval = false'"'"'); else NIX_CONFIG_WITH_APPEND='"'"'restrict-eval = false'"'"'; fi; NIX_CONFIG="$NIX_CONFIG_WITH_APPEND" PNPM_HOME='"'"'${{ runner.temp }}/pnpm-home/${{ github.run_id }}/${{ github.run_attempt }}/${{ github.job }}'"'"' DT_PASSTHROUGH=1 "${DEVENV_BIN:?DEVENV_BIN not set}" tasks run test:integration:node-sync:allow-flaky --mode before'
       - name: Display node-sync logs
@@ -707,20 +906,69 @@ jobs:
       - name: 'Run sync-provider tests for ${{ matrix.provider }}'
         run: |
           __nix_gc_retry() {
-            local __max=${NIX_GC_RACE_MAX_RETRIES:-10} __n=1 __log __rc __path
+            local __task='devenv tasks run test:integration:sync-provider:matrix --mode before' __max=${NIX_GC_RACE_MAX_RETRIES:-10} __heartbeat=${CI_PROGRESS_HEARTBEAT_SECONDS:-60} __n=1 __log __rc __path __start __now __elapsed __hb_pid
+            __start=$(date +%s)
+
+            __write_summary() {
+              [ -n "${GITHUB_STEP_SUMMARY:-}" ] || return 0
+              {
+                echo "### CI Task"
+                echo "- Task: `$__task`"
+                echo "- Status: `$1`"
+                echo "- Duration: `$__elapsed s`"
+                echo "- Attempts: `$__n/$__max`"
+                [ -z "${2:-}" ] || echo "- Note: $2"
+              } >> "$GITHUB_STEP_SUMMARY"
+            }
+
             while [ "$__n" -le "$__max" ]; do
+              echo "::notice::[ci] starting $__task (attempt $__n/$__max)"
+              (
+                while sleep "$__heartbeat"; do
+                  __now=$(date +%s)
+                  __elapsed=$((__now - __start))
+                  echo "::notice::[ci] $__task still running after $__elapsed s (attempt $__n/$__max)"
+                done
+              ) &
+              __hb_pid=$!
+
               __log=$(mktemp)
               set +e; eval "$1" 2> >(tee "$__log" >&2); __rc=$?; set -e
-              [ $__rc -eq 0 ] && { rm -f "$__log"; return 0; }
+
+              kill "$__hb_pid" 2>/dev/null || true
+              wait "$__hb_pid" 2>/dev/null || true
+
+              __now=$(date +%s)
+              __elapsed=$((__now - __start))
+
+              [ $__rc -eq 0 ] && {
+                echo "::notice::[ci] completed $__task in $__elapsed s"
+                if [ "$__n" -gt 1 ]; then
+                  __write_summary success "Recovered from Nix GC race after retry"
+                else
+                  __write_summary success
+                fi
+                rm -f "$__log"
+                return 0
+              }
+
               __path=$(perl -0pe 's/\e\[[0-9;]*m//g; s/\n/ /g' "$__log" | grep -oP "error:\s+path '\K/nix/store/[^']*(?='\s+is not valid)" 2>/dev/null | head -1 | tr -d '[:space:]' || true)
               rm -f "$__log"
-              [ -z "$__path" ] && return $__rc
-              echo "::warning::Nix GC race detected (attempt $__n/$__max): $__path"
+              if [ -z "$__path" ]; then
+                echo "::warning::[ci] $__task failed after $__elapsed s without a detected Nix GC race"
+                __write_summary failure "No Nix GC race signature detected"
+                return $__rc
+              fi
+              echo "::warning::Nix GC race detected for $__task (attempt $__n/$__max): $__path"
               nix-store --realise "$__path" 2>/dev/null || true
               rm -rf ~/.cache/nix/eval-cache-*
               __n=$((__n + 1))
             done
-            echo "::error::Nix GC race retry exhausted ($__max attempts)"
+
+            __now=$(date +%s)
+            __elapsed=$((__now - __start))
+            echo "::error::Nix GC race retry exhausted for $__task ($__max attempts)"
+            __write_summary failure "Nix GC race retry exhausted"
             return 1
           }; __nix_gc_retry 'if [ -n "${NIX_CONFIG:-}" ]; then NIX_CONFIG_WITH_APPEND=$(printf '"'"'%s\n%s'"'"' "$NIX_CONFIG" '"'"'restrict-eval = false'"'"'); else NIX_CONFIG_WITH_APPEND='"'"'restrict-eval = false'"'"'; fi; NIX_CONFIG="$NIX_CONFIG_WITH_APPEND" PNPM_HOME='"'"'${{ runner.temp }}/pnpm-home/${{ github.run_id }}/${{ github.run_attempt }}/${{ github.job }}'"'"' DT_PASSTHROUGH=1 "${DEVENV_BIN:?DEVENV_BIN not set}" tasks run test:integration:sync-provider:matrix --mode before'
         env:
@@ -854,20 +1102,69 @@ jobs:
           PLAYWRIGHT_SUITE: '${{ matrix.suite }}'
         run: |
           __nix_gc_retry() {
-            local __max=${NIX_GC_RACE_MAX_RETRIES:-10} __n=1 __log __rc __path
+            local __task='devenv tasks run test:integration:playwright:suite --mode before' __max=${NIX_GC_RACE_MAX_RETRIES:-10} __heartbeat=${CI_PROGRESS_HEARTBEAT_SECONDS:-60} __n=1 __log __rc __path __start __now __elapsed __hb_pid
+            __start=$(date +%s)
+
+            __write_summary() {
+              [ -n "${GITHUB_STEP_SUMMARY:-}" ] || return 0
+              {
+                echo "### CI Task"
+                echo "- Task: `$__task`"
+                echo "- Status: `$1`"
+                echo "- Duration: `$__elapsed s`"
+                echo "- Attempts: `$__n/$__max`"
+                [ -z "${2:-}" ] || echo "- Note: $2"
+              } >> "$GITHUB_STEP_SUMMARY"
+            }
+
             while [ "$__n" -le "$__max" ]; do
+              echo "::notice::[ci] starting $__task (attempt $__n/$__max)"
+              (
+                while sleep "$__heartbeat"; do
+                  __now=$(date +%s)
+                  __elapsed=$((__now - __start))
+                  echo "::notice::[ci] $__task still running after $__elapsed s (attempt $__n/$__max)"
+                done
+              ) &
+              __hb_pid=$!
+
               __log=$(mktemp)
               set +e; eval "$1" 2> >(tee "$__log" >&2); __rc=$?; set -e
-              [ $__rc -eq 0 ] && { rm -f "$__log"; return 0; }
+
+              kill "$__hb_pid" 2>/dev/null || true
+              wait "$__hb_pid" 2>/dev/null || true
+
+              __now=$(date +%s)
+              __elapsed=$((__now - __start))
+
+              [ $__rc -eq 0 ] && {
+                echo "::notice::[ci] completed $__task in $__elapsed s"
+                if [ "$__n" -gt 1 ]; then
+                  __write_summary success "Recovered from Nix GC race after retry"
+                else
+                  __write_summary success
+                fi
+                rm -f "$__log"
+                return 0
+              }
+
               __path=$(perl -0pe 's/\e\[[0-9;]*m//g; s/\n/ /g' "$__log" | grep -oP "error:\s+path '\K/nix/store/[^']*(?='\s+is not valid)" 2>/dev/null | head -1 | tr -d '[:space:]' || true)
               rm -f "$__log"
-              [ -z "$__path" ] && return $__rc
-              echo "::warning::Nix GC race detected (attempt $__n/$__max): $__path"
+              if [ -z "$__path" ]; then
+                echo "::warning::[ci] $__task failed after $__elapsed s without a detected Nix GC race"
+                __write_summary failure "No Nix GC race signature detected"
+                return $__rc
+              fi
+              echo "::warning::Nix GC race detected for $__task (attempt $__n/$__max): $__path"
               nix-store --realise "$__path" 2>/dev/null || true
               rm -rf ~/.cache/nix/eval-cache-*
               __n=$((__n + 1))
             done
-            echo "::error::Nix GC race retry exhausted ($__max attempts)"
+
+            __now=$(date +%s)
+            __elapsed=$((__now - __start))
+            echo "::error::Nix GC race retry exhausted for $__task ($__max attempts)"
+            __write_summary failure "Nix GC race retry exhausted"
             return 1
           }; __nix_gc_retry 'if [ -n "${NIX_CONFIG:-}" ]; then NIX_CONFIG_WITH_APPEND=$(printf '"'"'%s\n%s'"'"' "$NIX_CONFIG" '"'"'restrict-eval = false'"'"'); else NIX_CONFIG_WITH_APPEND='"'"'restrict-eval = false'"'"'; fi; NIX_CONFIG="$NIX_CONFIG_WITH_APPEND" PNPM_HOME='"'"'${{ runner.temp }}/pnpm-home/${{ github.run_id }}/${{ github.run_attempt }}/${{ github.job }}'"'"' DT_PASSTHROUGH=1 "${DEVENV_BIN:?DEVENV_BIN not set}" tasks run test:integration:playwright:suite --mode before'
       - uses: actions/upload-artifact@v4
@@ -883,20 +1180,69 @@ jobs:
           PLAYWRIGHT_SUITE: '${{ matrix.suite }}'
         run: |
           __nix_gc_retry() {
-            local __max=${NIX_GC_RACE_MAX_RETRIES:-10} __n=1 __log __rc __path
+            local __task='devenv tasks run test:integration:playwright:upload-trace --mode before' __max=${NIX_GC_RACE_MAX_RETRIES:-10} __heartbeat=${CI_PROGRESS_HEARTBEAT_SECONDS:-60} __n=1 __log __rc __path __start __now __elapsed __hb_pid
+            __start=$(date +%s)
+
+            __write_summary() {
+              [ -n "${GITHUB_STEP_SUMMARY:-}" ] || return 0
+              {
+                echo "### CI Task"
+                echo "- Task: `$__task`"
+                echo "- Status: `$1`"
+                echo "- Duration: `$__elapsed s`"
+                echo "- Attempts: `$__n/$__max`"
+                [ -z "${2:-}" ] || echo "- Note: $2"
+              } >> "$GITHUB_STEP_SUMMARY"
+            }
+
             while [ "$__n" -le "$__max" ]; do
+              echo "::notice::[ci] starting $__task (attempt $__n/$__max)"
+              (
+                while sleep "$__heartbeat"; do
+                  __now=$(date +%s)
+                  __elapsed=$((__now - __start))
+                  echo "::notice::[ci] $__task still running after $__elapsed s (attempt $__n/$__max)"
+                done
+              ) &
+              __hb_pid=$!
+
               __log=$(mktemp)
               set +e; eval "$1" 2> >(tee "$__log" >&2); __rc=$?; set -e
-              [ $__rc -eq 0 ] && { rm -f "$__log"; return 0; }
+
+              kill "$__hb_pid" 2>/dev/null || true
+              wait "$__hb_pid" 2>/dev/null || true
+
+              __now=$(date +%s)
+              __elapsed=$((__now - __start))
+
+              [ $__rc -eq 0 ] && {
+                echo "::notice::[ci] completed $__task in $__elapsed s"
+                if [ "$__n" -gt 1 ]; then
+                  __write_summary success "Recovered from Nix GC race after retry"
+                else
+                  __write_summary success
+                fi
+                rm -f "$__log"
+                return 0
+              }
+
               __path=$(perl -0pe 's/\e\[[0-9;]*m//g; s/\n/ /g' "$__log" | grep -oP "error:\s+path '\K/nix/store/[^']*(?='\s+is not valid)" 2>/dev/null | head -1 | tr -d '[:space:]' || true)
               rm -f "$__log"
-              [ -z "$__path" ] && return $__rc
-              echo "::warning::Nix GC race detected (attempt $__n/$__max): $__path"
+              if [ -z "$__path" ]; then
+                echo "::warning::[ci] $__task failed after $__elapsed s without a detected Nix GC race"
+                __write_summary failure "No Nix GC race signature detected"
+                return $__rc
+              fi
+              echo "::warning::Nix GC race detected for $__task (attempt $__n/$__max): $__path"
               nix-store --realise "$__path" 2>/dev/null || true
               rm -rf ~/.cache/nix/eval-cache-*
               __n=$((__n + 1))
             done
-            echo "::error::Nix GC race retry exhausted ($__max attempts)"
+
+            __now=$(date +%s)
+            __elapsed=$((__now - __start))
+            echo "::error::Nix GC race retry exhausted for $__task ($__max attempts)"
+            __write_summary failure "Nix GC race retry exhausted"
             return 1
           }; __nix_gc_retry 'if [ -n "${NIX_CONFIG:-}" ]; then NIX_CONFIG_WITH_APPEND=$(printf '"'"'%s\n%s'"'"' "$NIX_CONFIG" '"'"'restrict-eval = false'"'"'); else NIX_CONFIG_WITH_APPEND='"'"'restrict-eval = false'"'"'; fi; NIX_CONFIG="$NIX_CONFIG_WITH_APPEND" PNPM_HOME='"'"'${{ runner.temp }}/pnpm-home/${{ github.run_id }}/${{ github.run_attempt }}/${{ github.job }}'"'"' DT_PASSTHROUGH=1 "${DEVENV_BIN:?DEVENV_BIN not set}" tasks run test:integration:playwright:upload-trace --mode before'
       - name: Upload Nix diagnostics artifact
@@ -1025,20 +1371,69 @@ jobs:
       - name: Run performance tests
         run: |
           __nix_gc_retry() {
-            local __max=${NIX_GC_RACE_MAX_RETRIES:-10} __n=1 __log __rc __path
+            local __task='devenv tasks run test:perf --mode before' __max=${NIX_GC_RACE_MAX_RETRIES:-10} __heartbeat=${CI_PROGRESS_HEARTBEAT_SECONDS:-60} __n=1 __log __rc __path __start __now __elapsed __hb_pid
+            __start=$(date +%s)
+
+            __write_summary() {
+              [ -n "${GITHUB_STEP_SUMMARY:-}" ] || return 0
+              {
+                echo "### CI Task"
+                echo "- Task: `$__task`"
+                echo "- Status: `$1`"
+                echo "- Duration: `$__elapsed s`"
+                echo "- Attempts: `$__n/$__max`"
+                [ -z "${2:-}" ] || echo "- Note: $2"
+              } >> "$GITHUB_STEP_SUMMARY"
+            }
+
             while [ "$__n" -le "$__max" ]; do
+              echo "::notice::[ci] starting $__task (attempt $__n/$__max)"
+              (
+                while sleep "$__heartbeat"; do
+                  __now=$(date +%s)
+                  __elapsed=$((__now - __start))
+                  echo "::notice::[ci] $__task still running after $__elapsed s (attempt $__n/$__max)"
+                done
+              ) &
+              __hb_pid=$!
+
               __log=$(mktemp)
               set +e; eval "$1" 2> >(tee "$__log" >&2); __rc=$?; set -e
-              [ $__rc -eq 0 ] && { rm -f "$__log"; return 0; }
+
+              kill "$__hb_pid" 2>/dev/null || true
+              wait "$__hb_pid" 2>/dev/null || true
+
+              __now=$(date +%s)
+              __elapsed=$((__now - __start))
+
+              [ $__rc -eq 0 ] && {
+                echo "::notice::[ci] completed $__task in $__elapsed s"
+                if [ "$__n" -gt 1 ]; then
+                  __write_summary success "Recovered from Nix GC race after retry"
+                else
+                  __write_summary success
+                fi
+                rm -f "$__log"
+                return 0
+              }
+
               __path=$(perl -0pe 's/\e\[[0-9;]*m//g; s/\n/ /g' "$__log" | grep -oP "error:\s+path '\K/nix/store/[^']*(?='\s+is not valid)" 2>/dev/null | head -1 | tr -d '[:space:]' || true)
               rm -f "$__log"
-              [ -z "$__path" ] && return $__rc
-              echo "::warning::Nix GC race detected (attempt $__n/$__max): $__path"
+              if [ -z "$__path" ]; then
+                echo "::warning::[ci] $__task failed after $__elapsed s without a detected Nix GC race"
+                __write_summary failure "No Nix GC race signature detected"
+                return $__rc
+              fi
+              echo "::warning::Nix GC race detected for $__task (attempt $__n/$__max): $__path"
               nix-store --realise "$__path" 2>/dev/null || true
               rm -rf ~/.cache/nix/eval-cache-*
               __n=$((__n + 1))
             done
-            echo "::error::Nix GC race retry exhausted ($__max attempts)"
+
+            __now=$(date +%s)
+            __elapsed=$((__now - __start))
+            echo "::error::Nix GC race retry exhausted for $__task ($__max attempts)"
+            __write_summary failure "Nix GC race retry exhausted"
             return 1
           }; __nix_gc_retry 'if [ -n "${NIX_CONFIG:-}" ]; then NIX_CONFIG_WITH_APPEND=$(printf '"'"'%s\n%s'"'"' "$NIX_CONFIG" '"'"'restrict-eval = false'"'"'); else NIX_CONFIG_WITH_APPEND='"'"'restrict-eval = false'"'"'; fi; NIX_CONFIG="$NIX_CONFIG_WITH_APPEND" PNPM_HOME='"'"'${{ runner.temp }}/pnpm-home/${{ github.run_id }}/${{ github.run_attempt }}/${{ github.job }}'"'"' DT_PASSTHROUGH=1 "${DEVENV_BIN:?DEVENV_BIN not set}" tasks run test:perf --mode before'
         env:
@@ -1168,39 +1563,137 @@ jobs:
       - name: Build wa-sqlite
         run: |
           __nix_gc_retry() {
-            local __max=${NIX_GC_RACE_MAX_RETRIES:-10} __n=1 __log __rc __path
+            local __task='devenv tasks run test:integration:wa-sqlite:build --mode before' __max=${NIX_GC_RACE_MAX_RETRIES:-10} __heartbeat=${CI_PROGRESS_HEARTBEAT_SECONDS:-60} __n=1 __log __rc __path __start __now __elapsed __hb_pid
+            __start=$(date +%s)
+
+            __write_summary() {
+              [ -n "${GITHUB_STEP_SUMMARY:-}" ] || return 0
+              {
+                echo "### CI Task"
+                echo "- Task: `$__task`"
+                echo "- Status: `$1`"
+                echo "- Duration: `$__elapsed s`"
+                echo "- Attempts: `$__n/$__max`"
+                [ -z "${2:-}" ] || echo "- Note: $2"
+              } >> "$GITHUB_STEP_SUMMARY"
+            }
+
             while [ "$__n" -le "$__max" ]; do
+              echo "::notice::[ci] starting $__task (attempt $__n/$__max)"
+              (
+                while sleep "$__heartbeat"; do
+                  __now=$(date +%s)
+                  __elapsed=$((__now - __start))
+                  echo "::notice::[ci] $__task still running after $__elapsed s (attempt $__n/$__max)"
+                done
+              ) &
+              __hb_pid=$!
+
               __log=$(mktemp)
               set +e; eval "$1" 2> >(tee "$__log" >&2); __rc=$?; set -e
-              [ $__rc -eq 0 ] && { rm -f "$__log"; return 0; }
+
+              kill "$__hb_pid" 2>/dev/null || true
+              wait "$__hb_pid" 2>/dev/null || true
+
+              __now=$(date +%s)
+              __elapsed=$((__now - __start))
+
+              [ $__rc -eq 0 ] && {
+                echo "::notice::[ci] completed $__task in $__elapsed s"
+                if [ "$__n" -gt 1 ]; then
+                  __write_summary success "Recovered from Nix GC race after retry"
+                else
+                  __write_summary success
+                fi
+                rm -f "$__log"
+                return 0
+              }
+
               __path=$(perl -0pe 's/\e\[[0-9;]*m//g; s/\n/ /g' "$__log" | grep -oP "error:\s+path '\K/nix/store/[^']*(?='\s+is not valid)" 2>/dev/null | head -1 | tr -d '[:space:]' || true)
               rm -f "$__log"
-              [ -z "$__path" ] && return $__rc
-              echo "::warning::Nix GC race detected (attempt $__n/$__max): $__path"
+              if [ -z "$__path" ]; then
+                echo "::warning::[ci] $__task failed after $__elapsed s without a detected Nix GC race"
+                __write_summary failure "No Nix GC race signature detected"
+                return $__rc
+              fi
+              echo "::warning::Nix GC race detected for $__task (attempt $__n/$__max): $__path"
               nix-store --realise "$__path" 2>/dev/null || true
               rm -rf ~/.cache/nix/eval-cache-*
               __n=$((__n + 1))
             done
-            echo "::error::Nix GC race retry exhausted ($__max attempts)"
+
+            __now=$(date +%s)
+            __elapsed=$((__now - __start))
+            echo "::error::Nix GC race retry exhausted for $__task ($__max attempts)"
+            __write_summary failure "Nix GC race retry exhausted"
             return 1
           }; __nix_gc_retry 'if [ -n "${NIX_CONFIG:-}" ]; then NIX_CONFIG_WITH_APPEND=$(printf '"'"'%s\n%s'"'"' "$NIX_CONFIG" '"'"'restrict-eval = false'"'"'); else NIX_CONFIG_WITH_APPEND='"'"'restrict-eval = false'"'"'; fi; NIX_CONFIG="$NIX_CONFIG_WITH_APPEND" PNPM_HOME='"'"'${{ runner.temp }}/pnpm-home/${{ github.run_id }}/${{ github.run_attempt }}/${{ github.job }}'"'"' DT_PASSTHROUGH=1 "${DEVENV_BIN:?DEVENV_BIN not set}" tasks run test:integration:wa-sqlite:build --mode before'
       - name: Run wa-sqlite tests
         run: |
           __nix_gc_retry() {
-            local __max=${NIX_GC_RACE_MAX_RETRIES:-10} __n=1 __log __rc __path
+            local __task='devenv tasks run test:integration:wa-sqlite --mode before' __max=${NIX_GC_RACE_MAX_RETRIES:-10} __heartbeat=${CI_PROGRESS_HEARTBEAT_SECONDS:-60} __n=1 __log __rc __path __start __now __elapsed __hb_pid
+            __start=$(date +%s)
+
+            __write_summary() {
+              [ -n "${GITHUB_STEP_SUMMARY:-}" ] || return 0
+              {
+                echo "### CI Task"
+                echo "- Task: `$__task`"
+                echo "- Status: `$1`"
+                echo "- Duration: `$__elapsed s`"
+                echo "- Attempts: `$__n/$__max`"
+                [ -z "${2:-}" ] || echo "- Note: $2"
+              } >> "$GITHUB_STEP_SUMMARY"
+            }
+
             while [ "$__n" -le "$__max" ]; do
+              echo "::notice::[ci] starting $__task (attempt $__n/$__max)"
+              (
+                while sleep "$__heartbeat"; do
+                  __now=$(date +%s)
+                  __elapsed=$((__now - __start))
+                  echo "::notice::[ci] $__task still running after $__elapsed s (attempt $__n/$__max)"
+                done
+              ) &
+              __hb_pid=$!
+
               __log=$(mktemp)
               set +e; eval "$1" 2> >(tee "$__log" >&2); __rc=$?; set -e
-              [ $__rc -eq 0 ] && { rm -f "$__log"; return 0; }
+
+              kill "$__hb_pid" 2>/dev/null || true
+              wait "$__hb_pid" 2>/dev/null || true
+
+              __now=$(date +%s)
+              __elapsed=$((__now - __start))
+
+              [ $__rc -eq 0 ] && {
+                echo "::notice::[ci] completed $__task in $__elapsed s"
+                if [ "$__n" -gt 1 ]; then
+                  __write_summary success "Recovered from Nix GC race after retry"
+                else
+                  __write_summary success
+                fi
+                rm -f "$__log"
+                return 0
+              }
+
               __path=$(perl -0pe 's/\e\[[0-9;]*m//g; s/\n/ /g' "$__log" | grep -oP "error:\s+path '\K/nix/store/[^']*(?='\s+is not valid)" 2>/dev/null | head -1 | tr -d '[:space:]' || true)
               rm -f "$__log"
-              [ -z "$__path" ] && return $__rc
-              echo "::warning::Nix GC race detected (attempt $__n/$__max): $__path"
+              if [ -z "$__path" ]; then
+                echo "::warning::[ci] $__task failed after $__elapsed s without a detected Nix GC race"
+                __write_summary failure "No Nix GC race signature detected"
+                return $__rc
+              fi
+              echo "::warning::Nix GC race detected for $__task (attempt $__n/$__max): $__path"
               nix-store --realise "$__path" 2>/dev/null || true
               rm -rf ~/.cache/nix/eval-cache-*
               __n=$((__n + 1))
             done
-            echo "::error::Nix GC race retry exhausted ($__max attempts)"
+
+            __now=$(date +%s)
+            __elapsed=$((__now - __start))
+            echo "::error::Nix GC race retry exhausted for $__task ($__max attempts)"
+            __write_summary failure "Nix GC race retry exhausted"
             return 1
           }; __nix_gc_retry 'if [ -n "${NIX_CONFIG:-}" ]; then NIX_CONFIG_WITH_APPEND=$(printf '"'"'%s\n%s'"'"' "$NIX_CONFIG" '"'"'restrict-eval = false'"'"'); else NIX_CONFIG_WITH_APPEND='"'"'restrict-eval = false'"'"'; fi; NIX_CONFIG="$NIX_CONFIG_WITH_APPEND" PNPM_HOME='"'"'${{ runner.temp }}/pnpm-home/${{ github.run_id }}/${{ github.run_attempt }}/${{ github.job }}'"'"' DT_PASSTHROUGH=1 "${DEVENV_BIN:?DEVENV_BIN not set}" tasks run test:integration:wa-sqlite --mode before'
         env:
@@ -1319,22 +1812,72 @@ jobs:
           echo "DEVENV_BIN=$DEVENV_BIN" >> "$GITHUB_ENV"
           "$DEVENV_BIN" version | tee "$DIAG_ROOT/devenv-version.txt"
         shell: bash
-      - run: |
+      - name: Publish snapshot version
+        run: |
           __nix_gc_retry() {
-            local __max=${NIX_GC_RACE_MAX_RETRIES:-10} __n=1 __log __rc __path
+            local __task='devenv tasks run release:snapshot:git-sha --mode before' __max=${NIX_GC_RACE_MAX_RETRIES:-10} __heartbeat=${CI_PROGRESS_HEARTBEAT_SECONDS:-60} __n=1 __log __rc __path __start __now __elapsed __hb_pid
+            __start=$(date +%s)
+
+            __write_summary() {
+              [ -n "${GITHUB_STEP_SUMMARY:-}" ] || return 0
+              {
+                echo "### CI Task"
+                echo "- Task: `$__task`"
+                echo "- Status: `$1`"
+                echo "- Duration: `$__elapsed s`"
+                echo "- Attempts: `$__n/$__max`"
+                [ -z "${2:-}" ] || echo "- Note: $2"
+              } >> "$GITHUB_STEP_SUMMARY"
+            }
+
             while [ "$__n" -le "$__max" ]; do
+              echo "::notice::[ci] starting $__task (attempt $__n/$__max)"
+              (
+                while sleep "$__heartbeat"; do
+                  __now=$(date +%s)
+                  __elapsed=$((__now - __start))
+                  echo "::notice::[ci] $__task still running after $__elapsed s (attempt $__n/$__max)"
+                done
+              ) &
+              __hb_pid=$!
+
               __log=$(mktemp)
               set +e; eval "$1" 2> >(tee "$__log" >&2); __rc=$?; set -e
-              [ $__rc -eq 0 ] && { rm -f "$__log"; return 0; }
+
+              kill "$__hb_pid" 2>/dev/null || true
+              wait "$__hb_pid" 2>/dev/null || true
+
+              __now=$(date +%s)
+              __elapsed=$((__now - __start))
+
+              [ $__rc -eq 0 ] && {
+                echo "::notice::[ci] completed $__task in $__elapsed s"
+                if [ "$__n" -gt 1 ]; then
+                  __write_summary success "Recovered from Nix GC race after retry"
+                else
+                  __write_summary success
+                fi
+                rm -f "$__log"
+                return 0
+              }
+
               __path=$(perl -0pe 's/\e\[[0-9;]*m//g; s/\n/ /g' "$__log" | grep -oP "error:\s+path '\K/nix/store/[^']*(?='\s+is not valid)" 2>/dev/null | head -1 | tr -d '[:space:]' || true)
               rm -f "$__log"
-              [ -z "$__path" ] && return $__rc
-              echo "::warning::Nix GC race detected (attempt $__n/$__max): $__path"
+              if [ -z "$__path" ]; then
+                echo "::warning::[ci] $__task failed after $__elapsed s without a detected Nix GC race"
+                __write_summary failure "No Nix GC race signature detected"
+                return $__rc
+              fi
+              echo "::warning::Nix GC race detected for $__task (attempt $__n/$__max): $__path"
               nix-store --realise "$__path" 2>/dev/null || true
               rm -rf ~/.cache/nix/eval-cache-*
               __n=$((__n + 1))
             done
-            echo "::error::Nix GC race retry exhausted ($__max attempts)"
+
+            __now=$(date +%s)
+            __elapsed=$((__now - __start))
+            echo "::error::Nix GC race retry exhausted for $__task ($__max attempts)"
+            __write_summary failure "Nix GC race retry exhausted"
             return 1
           }; __nix_gc_retry 'if [ -n "${NIX_CONFIG:-}" ]; then NIX_CONFIG_WITH_APPEND=$(printf '"'"'%s\n%s'"'"' "$NIX_CONFIG" '"'"'restrict-eval = false'"'"'); else NIX_CONFIG_WITH_APPEND='"'"'restrict-eval = false'"'"'; fi; NIX_CONFIG="$NIX_CONFIG_WITH_APPEND" PNPM_HOME='"'"'${{ runner.temp }}/pnpm-home/${{ github.run_id }}/${{ github.run_attempt }}/${{ github.job }}'"'"' DT_PASSTHROUGH=1 "${DEVENV_BIN:?DEVENV_BIN not set}" tasks run release:snapshot:git-sha --mode before'
         env:
@@ -1452,78 +1995,274 @@ jobs:
       - name: Install examples dependencies
         run: |
           __nix_gc_retry() {
-            local __max=${NIX_GC_RACE_MAX_RETRIES:-10} __n=1 __log __rc __path
+            local __task='devenv tasks run examples:install --mode before' __max=${NIX_GC_RACE_MAX_RETRIES:-10} __heartbeat=${CI_PROGRESS_HEARTBEAT_SECONDS:-60} __n=1 __log __rc __path __start __now __elapsed __hb_pid
+            __start=$(date +%s)
+
+            __write_summary() {
+              [ -n "${GITHUB_STEP_SUMMARY:-}" ] || return 0
+              {
+                echo "### CI Task"
+                echo "- Task: `$__task`"
+                echo "- Status: `$1`"
+                echo "- Duration: `$__elapsed s`"
+                echo "- Attempts: `$__n/$__max`"
+                [ -z "${2:-}" ] || echo "- Note: $2"
+              } >> "$GITHUB_STEP_SUMMARY"
+            }
+
             while [ "$__n" -le "$__max" ]; do
+              echo "::notice::[ci] starting $__task (attempt $__n/$__max)"
+              (
+                while sleep "$__heartbeat"; do
+                  __now=$(date +%s)
+                  __elapsed=$((__now - __start))
+                  echo "::notice::[ci] $__task still running after $__elapsed s (attempt $__n/$__max)"
+                done
+              ) &
+              __hb_pid=$!
+
               __log=$(mktemp)
               set +e; eval "$1" 2> >(tee "$__log" >&2); __rc=$?; set -e
-              [ $__rc -eq 0 ] && { rm -f "$__log"; return 0; }
+
+              kill "$__hb_pid" 2>/dev/null || true
+              wait "$__hb_pid" 2>/dev/null || true
+
+              __now=$(date +%s)
+              __elapsed=$((__now - __start))
+
+              [ $__rc -eq 0 ] && {
+                echo "::notice::[ci] completed $__task in $__elapsed s"
+                if [ "$__n" -gt 1 ]; then
+                  __write_summary success "Recovered from Nix GC race after retry"
+                else
+                  __write_summary success
+                fi
+                rm -f "$__log"
+                return 0
+              }
+
               __path=$(perl -0pe 's/\e\[[0-9;]*m//g; s/\n/ /g' "$__log" | grep -oP "error:\s+path '\K/nix/store/[^']*(?='\s+is not valid)" 2>/dev/null | head -1 | tr -d '[:space:]' || true)
               rm -f "$__log"
-              [ -z "$__path" ] && return $__rc
-              echo "::warning::Nix GC race detected (attempt $__n/$__max): $__path"
+              if [ -z "$__path" ]; then
+                echo "::warning::[ci] $__task failed after $__elapsed s without a detected Nix GC race"
+                __write_summary failure "No Nix GC race signature detected"
+                return $__rc
+              fi
+              echo "::warning::Nix GC race detected for $__task (attempt $__n/$__max): $__path"
               nix-store --realise "$__path" 2>/dev/null || true
               rm -rf ~/.cache/nix/eval-cache-*
               __n=$((__n + 1))
             done
-            echo "::error::Nix GC race retry exhausted ($__max attempts)"
+
+            __now=$(date +%s)
+            __elapsed=$((__now - __start))
+            echo "::error::Nix GC race retry exhausted for $__task ($__max attempts)"
+            __write_summary failure "Nix GC race retry exhausted"
             return 1
           }; __nix_gc_retry 'if [ -n "${NIX_CONFIG:-}" ]; then NIX_CONFIG_WITH_APPEND=$(printf '"'"'%s\n%s'"'"' "$NIX_CONFIG" '"'"'restrict-eval = false'"'"'); else NIX_CONFIG_WITH_APPEND='"'"'restrict-eval = false'"'"'; fi; NIX_CONFIG="$NIX_CONFIG_WITH_APPEND" PNPM_HOME='"'"'${{ runner.temp }}/pnpm-home/${{ github.run_id }}/${{ github.run_attempt }}/${{ github.job }}'"'"' DT_PASSTHROUGH=1 "${DEVENV_BIN:?DEVENV_BIN not set}" tasks run examples:install --mode before'
       - name: Build examples
         run: |
           __nix_gc_retry() {
-            local __max=${NIX_GC_RACE_MAX_RETRIES:-10} __n=1 __log __rc __path
+            local __task='devenv tasks run examples:build:src --mode before' __max=${NIX_GC_RACE_MAX_RETRIES:-10} __heartbeat=${CI_PROGRESS_HEARTBEAT_SECONDS:-60} __n=1 __log __rc __path __start __now __elapsed __hb_pid
+            __start=$(date +%s)
+
+            __write_summary() {
+              [ -n "${GITHUB_STEP_SUMMARY:-}" ] || return 0
+              {
+                echo "### CI Task"
+                echo "- Task: `$__task`"
+                echo "- Status: `$1`"
+                echo "- Duration: `$__elapsed s`"
+                echo "- Attempts: `$__n/$__max`"
+                [ -z "${2:-}" ] || echo "- Note: $2"
+              } >> "$GITHUB_STEP_SUMMARY"
+            }
+
             while [ "$__n" -le "$__max" ]; do
+              echo "::notice::[ci] starting $__task (attempt $__n/$__max)"
+              (
+                while sleep "$__heartbeat"; do
+                  __now=$(date +%s)
+                  __elapsed=$((__now - __start))
+                  echo "::notice::[ci] $__task still running after $__elapsed s (attempt $__n/$__max)"
+                done
+              ) &
+              __hb_pid=$!
+
               __log=$(mktemp)
               set +e; eval "$1" 2> >(tee "$__log" >&2); __rc=$?; set -e
-              [ $__rc -eq 0 ] && { rm -f "$__log"; return 0; }
+
+              kill "$__hb_pid" 2>/dev/null || true
+              wait "$__hb_pid" 2>/dev/null || true
+
+              __now=$(date +%s)
+              __elapsed=$((__now - __start))
+
+              [ $__rc -eq 0 ] && {
+                echo "::notice::[ci] completed $__task in $__elapsed s"
+                if [ "$__n" -gt 1 ]; then
+                  __write_summary success "Recovered from Nix GC race after retry"
+                else
+                  __write_summary success
+                fi
+                rm -f "$__log"
+                return 0
+              }
+
               __path=$(perl -0pe 's/\e\[[0-9;]*m//g; s/\n/ /g' "$__log" | grep -oP "error:\s+path '\K/nix/store/[^']*(?='\s+is not valid)" 2>/dev/null | head -1 | tr -d '[:space:]' || true)
               rm -f "$__log"
-              [ -z "$__path" ] && return $__rc
-              echo "::warning::Nix GC race detected (attempt $__n/$__max): $__path"
+              if [ -z "$__path" ]; then
+                echo "::warning::[ci] $__task failed after $__elapsed s without a detected Nix GC race"
+                __write_summary failure "No Nix GC race signature detected"
+                return $__rc
+              fi
+              echo "::warning::Nix GC race detected for $__task (attempt $__n/$__max): $__path"
               nix-store --realise "$__path" 2>/dev/null || true
               rm -rf ~/.cache/nix/eval-cache-*
               __n=$((__n + 1))
             done
-            echo "::error::Nix GC race retry exhausted ($__max attempts)"
+
+            __now=$(date +%s)
+            __elapsed=$((__now - __start))
+            echo "::error::Nix GC race retry exhausted for $__task ($__max attempts)"
+            __write_summary failure "Nix GC race retry exhausted"
             return 1
           }; __nix_gc_retry 'if [ -n "${NIX_CONFIG:-}" ]; then NIX_CONFIG_WITH_APPEND=$(printf '"'"'%s\n%s'"'"' "$NIX_CONFIG" '"'"'restrict-eval = false'"'"'); else NIX_CONFIG_WITH_APPEND='"'"'restrict-eval = false'"'"'; fi; NIX_CONFIG="$NIX_CONFIG_WITH_APPEND" PNPM_HOME='"'"'${{ runner.temp }}/pnpm-home/${{ github.run_id }}/${{ github.run_attempt }}/${{ github.job }}'"'"' DT_PASSTHROUGH=1 "${DEVENV_BIN:?DEVENV_BIN not set}" tasks run examples:build:src --mode before'
       - name: Test examples
         run: |
           __nix_gc_retry() {
-            local __max=${NIX_GC_RACE_MAX_RETRIES:-10} __n=1 __log __rc __path
+            local __task='devenv tasks run examples:test --mode before' __max=${NIX_GC_RACE_MAX_RETRIES:-10} __heartbeat=${CI_PROGRESS_HEARTBEAT_SECONDS:-60} __n=1 __log __rc __path __start __now __elapsed __hb_pid
+            __start=$(date +%s)
+
+            __write_summary() {
+              [ -n "${GITHUB_STEP_SUMMARY:-}" ] || return 0
+              {
+                echo "### CI Task"
+                echo "- Task: `$__task`"
+                echo "- Status: `$1`"
+                echo "- Duration: `$__elapsed s`"
+                echo "- Attempts: `$__n/$__max`"
+                [ -z "${2:-}" ] || echo "- Note: $2"
+              } >> "$GITHUB_STEP_SUMMARY"
+            }
+
             while [ "$__n" -le "$__max" ]; do
+              echo "::notice::[ci] starting $__task (attempt $__n/$__max)"
+              (
+                while sleep "$__heartbeat"; do
+                  __now=$(date +%s)
+                  __elapsed=$((__now - __start))
+                  echo "::notice::[ci] $__task still running after $__elapsed s (attempt $__n/$__max)"
+                done
+              ) &
+              __hb_pid=$!
+
               __log=$(mktemp)
               set +e; eval "$1" 2> >(tee "$__log" >&2); __rc=$?; set -e
-              [ $__rc -eq 0 ] && { rm -f "$__log"; return 0; }
+
+              kill "$__hb_pid" 2>/dev/null || true
+              wait "$__hb_pid" 2>/dev/null || true
+
+              __now=$(date +%s)
+              __elapsed=$((__now - __start))
+
+              [ $__rc -eq 0 ] && {
+                echo "::notice::[ci] completed $__task in $__elapsed s"
+                if [ "$__n" -gt 1 ]; then
+                  __write_summary success "Recovered from Nix GC race after retry"
+                else
+                  __write_summary success
+                fi
+                rm -f "$__log"
+                return 0
+              }
+
               __path=$(perl -0pe 's/\e\[[0-9;]*m//g; s/\n/ /g' "$__log" | grep -oP "error:\s+path '\K/nix/store/[^']*(?='\s+is not valid)" 2>/dev/null | head -1 | tr -d '[:space:]' || true)
               rm -f "$__log"
-              [ -z "$__path" ] && return $__rc
-              echo "::warning::Nix GC race detected (attempt $__n/$__max): $__path"
+              if [ -z "$__path" ]; then
+                echo "::warning::[ci] $__task failed after $__elapsed s without a detected Nix GC race"
+                __write_summary failure "No Nix GC race signature detected"
+                return $__rc
+              fi
+              echo "::warning::Nix GC race detected for $__task (attempt $__n/$__max): $__path"
               nix-store --realise "$__path" 2>/dev/null || true
               rm -rf ~/.cache/nix/eval-cache-*
               __n=$((__n + 1))
             done
-            echo "::error::Nix GC race retry exhausted ($__max attempts)"
+
+            __now=$(date +%s)
+            __elapsed=$((__now - __start))
+            echo "::error::Nix GC race retry exhausted for $__task ($__max attempts)"
+            __write_summary failure "Nix GC race retry exhausted"
             return 1
           }; __nix_gc_retry 'if [ -n "${NIX_CONFIG:-}" ]; then NIX_CONFIG_WITH_APPEND=$(printf '"'"'%s\n%s'"'"' "$NIX_CONFIG" '"'"'restrict-eval = false'"'"'); else NIX_CONFIG_WITH_APPEND='"'"'restrict-eval = false'"'"'; fi; NIX_CONFIG="$NIX_CONFIG_WITH_APPEND" PNPM_HOME='"'"'${{ runner.temp }}/pnpm-home/${{ github.run_id }}/${{ github.run_attempt }}/${{ github.job }}'"'"' DT_PASSTHROUGH=1 "${DEVENV_BIN:?DEVENV_BIN not set}" tasks run examples:test --mode before'
       - name: Deploy examples to Cloudflare
         if: github.event.pull_request.head.repo.fork != true
         run: |
           __nix_gc_retry() {
-            local __max=${NIX_GC_RACE_MAX_RETRIES:-10} __n=1 __log __rc __path
+            local __task='devenv tasks run examples:deploy --mode before' __max=${NIX_GC_RACE_MAX_RETRIES:-10} __heartbeat=${CI_PROGRESS_HEARTBEAT_SECONDS:-60} __n=1 __log __rc __path __start __now __elapsed __hb_pid
+            __start=$(date +%s)
+
+            __write_summary() {
+              [ -n "${GITHUB_STEP_SUMMARY:-}" ] || return 0
+              {
+                echo "### CI Task"
+                echo "- Task: `$__task`"
+                echo "- Status: `$1`"
+                echo "- Duration: `$__elapsed s`"
+                echo "- Attempts: `$__n/$__max`"
+                [ -z "${2:-}" ] || echo "- Note: $2"
+              } >> "$GITHUB_STEP_SUMMARY"
+            }
+
             while [ "$__n" -le "$__max" ]; do
+              echo "::notice::[ci] starting $__task (attempt $__n/$__max)"
+              (
+                while sleep "$__heartbeat"; do
+                  __now=$(date +%s)
+                  __elapsed=$((__now - __start))
+                  echo "::notice::[ci] $__task still running after $__elapsed s (attempt $__n/$__max)"
+                done
+              ) &
+              __hb_pid=$!
+
               __log=$(mktemp)
               set +e; eval "$1" 2> >(tee "$__log" >&2); __rc=$?; set -e
-              [ $__rc -eq 0 ] && { rm -f "$__log"; return 0; }
+
+              kill "$__hb_pid" 2>/dev/null || true
+              wait "$__hb_pid" 2>/dev/null || true
+
+              __now=$(date +%s)
+              __elapsed=$((__now - __start))
+
+              [ $__rc -eq 0 ] && {
+                echo "::notice::[ci] completed $__task in $__elapsed s"
+                if [ "$__n" -gt 1 ]; then
+                  __write_summary success "Recovered from Nix GC race after retry"
+                else
+                  __write_summary success
+                fi
+                rm -f "$__log"
+                return 0
+              }
+
               __path=$(perl -0pe 's/\e\[[0-9;]*m//g; s/\n/ /g' "$__log" | grep -oP "error:\s+path '\K/nix/store/[^']*(?='\s+is not valid)" 2>/dev/null | head -1 | tr -d '[:space:]' || true)
               rm -f "$__log"
-              [ -z "$__path" ] && return $__rc
-              echo "::warning::Nix GC race detected (attempt $__n/$__max): $__path"
+              if [ -z "$__path" ]; then
+                echo "::warning::[ci] $__task failed after $__elapsed s without a detected Nix GC race"
+                __write_summary failure "No Nix GC race signature detected"
+                return $__rc
+              fi
+              echo "::warning::Nix GC race detected for $__task (attempt $__n/$__max): $__path"
               nix-store --realise "$__path" 2>/dev/null || true
               rm -rf ~/.cache/nix/eval-cache-*
               __n=$((__n + 1))
             done
-            echo "::error::Nix GC race retry exhausted ($__max attempts)"
+
+            __now=$(date +%s)
+            __elapsed=$((__now - __start))
+            echo "::error::Nix GC race retry exhausted for $__task ($__max attempts)"
+            __write_summary failure "Nix GC race retry exhausted"
             return 1
           }; __nix_gc_retry 'if [ -n "${NIX_CONFIG:-}" ]; then NIX_CONFIG_WITH_APPEND=$(printf '"'"'%s\n%s'"'"' "$NIX_CONFIG" '"'"'restrict-eval = false'"'"'); else NIX_CONFIG_WITH_APPEND='"'"'restrict-eval = false'"'"'; fi; NIX_CONFIG="$NIX_CONFIG_WITH_APPEND" PNPM_HOME='"'"'${{ runner.temp }}/pnpm-home/${{ github.run_id }}/${{ github.run_attempt }}/${{ github.job }}'"'"' DT_PASSTHROUGH=1 "${DEVENV_BIN:?DEVENV_BIN not set}" tasks run examples:deploy --mode before'
         env:
@@ -1642,78 +2381,274 @@ jobs:
       - name: Build docs snippets
         run: |
           __nix_gc_retry() {
-            local __max=${NIX_GC_RACE_MAX_RETRIES:-10} __n=1 __log __rc __path
+            local __task='devenv tasks run docs:build:phase:snippets --mode before' __max=${NIX_GC_RACE_MAX_RETRIES:-10} __heartbeat=${CI_PROGRESS_HEARTBEAT_SECONDS:-60} __n=1 __log __rc __path __start __now __elapsed __hb_pid
+            __start=$(date +%s)
+
+            __write_summary() {
+              [ -n "${GITHUB_STEP_SUMMARY:-}" ] || return 0
+              {
+                echo "### CI Task"
+                echo "- Task: `$__task`"
+                echo "- Status: `$1`"
+                echo "- Duration: `$__elapsed s`"
+                echo "- Attempts: `$__n/$__max`"
+                [ -z "${2:-}" ] || echo "- Note: $2"
+              } >> "$GITHUB_STEP_SUMMARY"
+            }
+
             while [ "$__n" -le "$__max" ]; do
+              echo "::notice::[ci] starting $__task (attempt $__n/$__max)"
+              (
+                while sleep "$__heartbeat"; do
+                  __now=$(date +%s)
+                  __elapsed=$((__now - __start))
+                  echo "::notice::[ci] $__task still running after $__elapsed s (attempt $__n/$__max)"
+                done
+              ) &
+              __hb_pid=$!
+
               __log=$(mktemp)
               set +e; eval "$1" 2> >(tee "$__log" >&2); __rc=$?; set -e
-              [ $__rc -eq 0 ] && { rm -f "$__log"; return 0; }
+
+              kill "$__hb_pid" 2>/dev/null || true
+              wait "$__hb_pid" 2>/dev/null || true
+
+              __now=$(date +%s)
+              __elapsed=$((__now - __start))
+
+              [ $__rc -eq 0 ] && {
+                echo "::notice::[ci] completed $__task in $__elapsed s"
+                if [ "$__n" -gt 1 ]; then
+                  __write_summary success "Recovered from Nix GC race after retry"
+                else
+                  __write_summary success
+                fi
+                rm -f "$__log"
+                return 0
+              }
+
               __path=$(perl -0pe 's/\e\[[0-9;]*m//g; s/\n/ /g' "$__log" | grep -oP "error:\s+path '\K/nix/store/[^']*(?='\s+is not valid)" 2>/dev/null | head -1 | tr -d '[:space:]' || true)
               rm -f "$__log"
-              [ -z "$__path" ] && return $__rc
-              echo "::warning::Nix GC race detected (attempt $__n/$__max): $__path"
+              if [ -z "$__path" ]; then
+                echo "::warning::[ci] $__task failed after $__elapsed s without a detected Nix GC race"
+                __write_summary failure "No Nix GC race signature detected"
+                return $__rc
+              fi
+              echo "::warning::Nix GC race detected for $__task (attempt $__n/$__max): $__path"
               nix-store --realise "$__path" 2>/dev/null || true
               rm -rf ~/.cache/nix/eval-cache-*
               __n=$((__n + 1))
             done
-            echo "::error::Nix GC race retry exhausted ($__max attempts)"
+
+            __now=$(date +%s)
+            __elapsed=$((__now - __start))
+            echo "::error::Nix GC race retry exhausted for $__task ($__max attempts)"
+            __write_summary failure "Nix GC race retry exhausted"
             return 1
           }; __nix_gc_retry 'if [ -n "${NIX_CONFIG:-}" ]; then NIX_CONFIG_WITH_APPEND=$(printf '"'"'%s\n%s'"'"' "$NIX_CONFIG" '"'"'restrict-eval = false'"'"'); else NIX_CONFIG_WITH_APPEND='"'"'restrict-eval = false'"'"'; fi; NIX_CONFIG="$NIX_CONFIG_WITH_APPEND" PNPM_HOME='"'"'${{ runner.temp }}/pnpm-home/${{ github.run_id }}/${{ github.run_attempt }}/${{ github.job }}'"'"' DT_PASSTHROUGH=1 "${DEVENV_BIN:?DEVENV_BIN not set}" tasks run docs:build:phase:snippets --mode before'
       - name: Build docs diagrams
         run: |
           __nix_gc_retry() {
-            local __max=${NIX_GC_RACE_MAX_RETRIES:-10} __n=1 __log __rc __path
+            local __task='devenv tasks run docs:build:phase:diagrams --mode before' __max=${NIX_GC_RACE_MAX_RETRIES:-10} __heartbeat=${CI_PROGRESS_HEARTBEAT_SECONDS:-60} __n=1 __log __rc __path __start __now __elapsed __hb_pid
+            __start=$(date +%s)
+
+            __write_summary() {
+              [ -n "${GITHUB_STEP_SUMMARY:-}" ] || return 0
+              {
+                echo "### CI Task"
+                echo "- Task: `$__task`"
+                echo "- Status: `$1`"
+                echo "- Duration: `$__elapsed s`"
+                echo "- Attempts: `$__n/$__max`"
+                [ -z "${2:-}" ] || echo "- Note: $2"
+              } >> "$GITHUB_STEP_SUMMARY"
+            }
+
             while [ "$__n" -le "$__max" ]; do
+              echo "::notice::[ci] starting $__task (attempt $__n/$__max)"
+              (
+                while sleep "$__heartbeat"; do
+                  __now=$(date +%s)
+                  __elapsed=$((__now - __start))
+                  echo "::notice::[ci] $__task still running after $__elapsed s (attempt $__n/$__max)"
+                done
+              ) &
+              __hb_pid=$!
+
               __log=$(mktemp)
               set +e; eval "$1" 2> >(tee "$__log" >&2); __rc=$?; set -e
-              [ $__rc -eq 0 ] && { rm -f "$__log"; return 0; }
+
+              kill "$__hb_pid" 2>/dev/null || true
+              wait "$__hb_pid" 2>/dev/null || true
+
+              __now=$(date +%s)
+              __elapsed=$((__now - __start))
+
+              [ $__rc -eq 0 ] && {
+                echo "::notice::[ci] completed $__task in $__elapsed s"
+                if [ "$__n" -gt 1 ]; then
+                  __write_summary success "Recovered from Nix GC race after retry"
+                else
+                  __write_summary success
+                fi
+                rm -f "$__log"
+                return 0
+              }
+
               __path=$(perl -0pe 's/\e\[[0-9;]*m//g; s/\n/ /g' "$__log" | grep -oP "error:\s+path '\K/nix/store/[^']*(?='\s+is not valid)" 2>/dev/null | head -1 | tr -d '[:space:]' || true)
               rm -f "$__log"
-              [ -z "$__path" ] && return $__rc
-              echo "::warning::Nix GC race detected (attempt $__n/$__max): $__path"
+              if [ -z "$__path" ]; then
+                echo "::warning::[ci] $__task failed after $__elapsed s without a detected Nix GC race"
+                __write_summary failure "No Nix GC race signature detected"
+                return $__rc
+              fi
+              echo "::warning::Nix GC race detected for $__task (attempt $__n/$__max): $__path"
               nix-store --realise "$__path" 2>/dev/null || true
               rm -rf ~/.cache/nix/eval-cache-*
               __n=$((__n + 1))
             done
-            echo "::error::Nix GC race retry exhausted ($__max attempts)"
+
+            __now=$(date +%s)
+            __elapsed=$((__now - __start))
+            echo "::error::Nix GC race retry exhausted for $__task ($__max attempts)"
+            __write_summary failure "Nix GC race retry exhausted"
             return 1
           }; __nix_gc_retry 'if [ -n "${NIX_CONFIG:-}" ]; then NIX_CONFIG_WITH_APPEND=$(printf '"'"'%s\n%s'"'"' "$NIX_CONFIG" '"'"'restrict-eval = false'"'"'); else NIX_CONFIG_WITH_APPEND='"'"'restrict-eval = false'"'"'; fi; NIX_CONFIG="$NIX_CONFIG_WITH_APPEND" PNPM_HOME='"'"'${{ runner.temp }}/pnpm-home/${{ github.run_id }}/${{ github.run_attempt }}/${{ github.job }}'"'"' DT_PASSTHROUGH=1 "${DEVENV_BIN:?DEVENV_BIN not set}" tasks run docs:build:phase:diagrams --mode before'
       - name: Build Astro docs bundle
         run: |
           __nix_gc_retry() {
-            local __max=${NIX_GC_RACE_MAX_RETRIES:-10} __n=1 __log __rc __path
+            local __task='devenv tasks run docs:build:phase:astro --mode before' __max=${NIX_GC_RACE_MAX_RETRIES:-10} __heartbeat=${CI_PROGRESS_HEARTBEAT_SECONDS:-60} __n=1 __log __rc __path __start __now __elapsed __hb_pid
+            __start=$(date +%s)
+
+            __write_summary() {
+              [ -n "${GITHUB_STEP_SUMMARY:-}" ] || return 0
+              {
+                echo "### CI Task"
+                echo "- Task: `$__task`"
+                echo "- Status: `$1`"
+                echo "- Duration: `$__elapsed s`"
+                echo "- Attempts: `$__n/$__max`"
+                [ -z "${2:-}" ] || echo "- Note: $2"
+              } >> "$GITHUB_STEP_SUMMARY"
+            }
+
             while [ "$__n" -le "$__max" ]; do
+              echo "::notice::[ci] starting $__task (attempt $__n/$__max)"
+              (
+                while sleep "$__heartbeat"; do
+                  __now=$(date +%s)
+                  __elapsed=$((__now - __start))
+                  echo "::notice::[ci] $__task still running after $__elapsed s (attempt $__n/$__max)"
+                done
+              ) &
+              __hb_pid=$!
+
               __log=$(mktemp)
               set +e; eval "$1" 2> >(tee "$__log" >&2); __rc=$?; set -e
-              [ $__rc -eq 0 ] && { rm -f "$__log"; return 0; }
+
+              kill "$__hb_pid" 2>/dev/null || true
+              wait "$__hb_pid" 2>/dev/null || true
+
+              __now=$(date +%s)
+              __elapsed=$((__now - __start))
+
+              [ $__rc -eq 0 ] && {
+                echo "::notice::[ci] completed $__task in $__elapsed s"
+                if [ "$__n" -gt 1 ]; then
+                  __write_summary success "Recovered from Nix GC race after retry"
+                else
+                  __write_summary success
+                fi
+                rm -f "$__log"
+                return 0
+              }
+
               __path=$(perl -0pe 's/\e\[[0-9;]*m//g; s/\n/ /g' "$__log" | grep -oP "error:\s+path '\K/nix/store/[^']*(?='\s+is not valid)" 2>/dev/null | head -1 | tr -d '[:space:]' || true)
               rm -f "$__log"
-              [ -z "$__path" ] && return $__rc
-              echo "::warning::Nix GC race detected (attempt $__n/$__max): $__path"
+              if [ -z "$__path" ]; then
+                echo "::warning::[ci] $__task failed after $__elapsed s without a detected Nix GC race"
+                __write_summary failure "No Nix GC race signature detected"
+                return $__rc
+              fi
+              echo "::warning::Nix GC race detected for $__task (attempt $__n/$__max): $__path"
               nix-store --realise "$__path" 2>/dev/null || true
               rm -rf ~/.cache/nix/eval-cache-*
               __n=$((__n + 1))
             done
-            echo "::error::Nix GC race retry exhausted ($__max attempts)"
+
+            __now=$(date +%s)
+            __elapsed=$((__now - __start))
+            echo "::error::Nix GC race retry exhausted for $__task ($__max attempts)"
+            __write_summary failure "Nix GC race retry exhausted"
             return 1
           }; __nix_gc_retry 'if [ -n "${NIX_CONFIG:-}" ]; then NIX_CONFIG_WITH_APPEND=$(printf '"'"'%s\n%s'"'"' "$NIX_CONFIG" '"'"'restrict-eval = false'"'"'); else NIX_CONFIG_WITH_APPEND='"'"'restrict-eval = false'"'"'; fi; NIX_CONFIG="$NIX_CONFIG_WITH_APPEND" PNPM_HOME='"'"'${{ runner.temp }}/pnpm-home/${{ github.run_id }}/${{ github.run_attempt }}/${{ github.job }}'"'"' DT_PASSTHROUGH=1 "${DEVENV_BIN:?DEVENV_BIN not set}" tasks run docs:build:phase:astro --mode before'
       - name: Collect docs build diagnostics on failure
         if: '${{ failure() }}'
         run: |
           __nix_gc_retry() {
-            local __max=${NIX_GC_RACE_MAX_RETRIES:-10} __n=1 __log __rc __path
+            local __task='devenv tasks run docs:build:diagnostics --mode before' __max=${NIX_GC_RACE_MAX_RETRIES:-10} __heartbeat=${CI_PROGRESS_HEARTBEAT_SECONDS:-60} __n=1 __log __rc __path __start __now __elapsed __hb_pid
+            __start=$(date +%s)
+
+            __write_summary() {
+              [ -n "${GITHUB_STEP_SUMMARY:-}" ] || return 0
+              {
+                echo "### CI Task"
+                echo "- Task: `$__task`"
+                echo "- Status: `$1`"
+                echo "- Duration: `$__elapsed s`"
+                echo "- Attempts: `$__n/$__max`"
+                [ -z "${2:-}" ] || echo "- Note: $2"
+              } >> "$GITHUB_STEP_SUMMARY"
+            }
+
             while [ "$__n" -le "$__max" ]; do
+              echo "::notice::[ci] starting $__task (attempt $__n/$__max)"
+              (
+                while sleep "$__heartbeat"; do
+                  __now=$(date +%s)
+                  __elapsed=$((__now - __start))
+                  echo "::notice::[ci] $__task still running after $__elapsed s (attempt $__n/$__max)"
+                done
+              ) &
+              __hb_pid=$!
+
               __log=$(mktemp)
               set +e; eval "$1" 2> >(tee "$__log" >&2); __rc=$?; set -e
-              [ $__rc -eq 0 ] && { rm -f "$__log"; return 0; }
+
+              kill "$__hb_pid" 2>/dev/null || true
+              wait "$__hb_pid" 2>/dev/null || true
+
+              __now=$(date +%s)
+              __elapsed=$((__now - __start))
+
+              [ $__rc -eq 0 ] && {
+                echo "::notice::[ci] completed $__task in $__elapsed s"
+                if [ "$__n" -gt 1 ]; then
+                  __write_summary success "Recovered from Nix GC race after retry"
+                else
+                  __write_summary success
+                fi
+                rm -f "$__log"
+                return 0
+              }
+
               __path=$(perl -0pe 's/\e\[[0-9;]*m//g; s/\n/ /g' "$__log" | grep -oP "error:\s+path '\K/nix/store/[^']*(?='\s+is not valid)" 2>/dev/null | head -1 | tr -d '[:space:]' || true)
               rm -f "$__log"
-              [ -z "$__path" ] && return $__rc
-              echo "::warning::Nix GC race detected (attempt $__n/$__max): $__path"
+              if [ -z "$__path" ]; then
+                echo "::warning::[ci] $__task failed after $__elapsed s without a detected Nix GC race"
+                __write_summary failure "No Nix GC race signature detected"
+                return $__rc
+              fi
+              echo "::warning::Nix GC race detected for $__task (attempt $__n/$__max): $__path"
               nix-store --realise "$__path" 2>/dev/null || true
               rm -rf ~/.cache/nix/eval-cache-*
               __n=$((__n + 1))
             done
-            echo "::error::Nix GC race retry exhausted ($__max attempts)"
+
+            __now=$(date +%s)
+            __elapsed=$((__now - __start))
+            echo "::error::Nix GC race retry exhausted for $__task ($__max attempts)"
+            __write_summary failure "Nix GC race retry exhausted"
             return 1
           }; __nix_gc_retry 'if [ -n "${NIX_CONFIG:-}" ]; then NIX_CONFIG_WITH_APPEND=$(printf '"'"'%s\n%s'"'"' "$NIX_CONFIG" '"'"'restrict-eval = false'"'"'); else NIX_CONFIG_WITH_APPEND='"'"'restrict-eval = false'"'"'; fi; NIX_CONFIG="$NIX_CONFIG_WITH_APPEND" PNPM_HOME='"'"'${{ runner.temp }}/pnpm-home/${{ github.run_id }}/${{ github.run_attempt }}/${{ github.job }}'"'"' DT_PASSTHROUGH=1 "${DEVENV_BIN:?DEVENV_BIN not set}" tasks run docs:build:diagnostics --mode before'
       - name: Upload docs build logs
@@ -1727,20 +2662,69 @@ jobs:
         if: "${{ success() && (github.event_name != 'pull_request' || github.event.pull_request.head.repo.fork != true) }}"
         run: |
           __nix_gc_retry() {
-            local __max=${NIX_GC_RACE_MAX_RETRIES:-10} __n=1 __log __rc __path
+            local __task='devenv tasks run docs:deploy --mode before' __max=${NIX_GC_RACE_MAX_RETRIES:-10} __heartbeat=${CI_PROGRESS_HEARTBEAT_SECONDS:-60} __n=1 __log __rc __path __start __now __elapsed __hb_pid
+            __start=$(date +%s)
+
+            __write_summary() {
+              [ -n "${GITHUB_STEP_SUMMARY:-}" ] || return 0
+              {
+                echo "### CI Task"
+                echo "- Task: `$__task`"
+                echo "- Status: `$1`"
+                echo "- Duration: `$__elapsed s`"
+                echo "- Attempts: `$__n/$__max`"
+                [ -z "${2:-}" ] || echo "- Note: $2"
+              } >> "$GITHUB_STEP_SUMMARY"
+            }
+
             while [ "$__n" -le "$__max" ]; do
+              echo "::notice::[ci] starting $__task (attempt $__n/$__max)"
+              (
+                while sleep "$__heartbeat"; do
+                  __now=$(date +%s)
+                  __elapsed=$((__now - __start))
+                  echo "::notice::[ci] $__task still running after $__elapsed s (attempt $__n/$__max)"
+                done
+              ) &
+              __hb_pid=$!
+
               __log=$(mktemp)
               set +e; eval "$1" 2> >(tee "$__log" >&2); __rc=$?; set -e
-              [ $__rc -eq 0 ] && { rm -f "$__log"; return 0; }
+
+              kill "$__hb_pid" 2>/dev/null || true
+              wait "$__hb_pid" 2>/dev/null || true
+
+              __now=$(date +%s)
+              __elapsed=$((__now - __start))
+
+              [ $__rc -eq 0 ] && {
+                echo "::notice::[ci] completed $__task in $__elapsed s"
+                if [ "$__n" -gt 1 ]; then
+                  __write_summary success "Recovered from Nix GC race after retry"
+                else
+                  __write_summary success
+                fi
+                rm -f "$__log"
+                return 0
+              }
+
               __path=$(perl -0pe 's/\e\[[0-9;]*m//g; s/\n/ /g' "$__log" | grep -oP "error:\s+path '\K/nix/store/[^']*(?='\s+is not valid)" 2>/dev/null | head -1 | tr -d '[:space:]' || true)
               rm -f "$__log"
-              [ -z "$__path" ] && return $__rc
-              echo "::warning::Nix GC race detected (attempt $__n/$__max): $__path"
+              if [ -z "$__path" ]; then
+                echo "::warning::[ci] $__task failed after $__elapsed s without a detected Nix GC race"
+                __write_summary failure "No Nix GC race signature detected"
+                return $__rc
+              fi
+              echo "::warning::Nix GC race detected for $__task (attempt $__n/$__max): $__path"
               nix-store --realise "$__path" 2>/dev/null || true
               rm -rf ~/.cache/nix/eval-cache-*
               __n=$((__n + 1))
             done
-            echo "::error::Nix GC race retry exhausted ($__max attempts)"
+
+            __now=$(date +%s)
+            __elapsed=$((__now - __start))
+            echo "::error::Nix GC race retry exhausted for $__task ($__max attempts)"
+            __write_summary failure "Nix GC race retry exhausted"
             return 1
           }; __nix_gc_retry 'if [ -n "${NIX_CONFIG:-}" ]; then NIX_CONFIG_WITH_APPEND=$(printf '"'"'%s\n%s'"'"' "$NIX_CONFIG" '"'"'restrict-eval = false'"'"'); else NIX_CONFIG_WITH_APPEND='"'"'restrict-eval = false'"'"'; fi; NIX_CONFIG="$NIX_CONFIG_WITH_APPEND" PNPM_HOME='"'"'${{ runner.temp }}/pnpm-home/${{ github.run_id }}/${{ github.run_attempt }}/${{ github.job }}'"'"' DT_PASSTHROUGH=1 "${DEVENV_BIN:?DEVENV_BIN not set}" tasks run docs:deploy --mode before'
         env:

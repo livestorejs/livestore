@@ -90,16 +90,19 @@ export default githubWorkflow({
 
   jobs: {
     lint: standardCIJob({
-      steps: [...livestoreSetupSteps, { run: runDevenvTasksBefore('lint:full:with-megarepo-check') }],
+      steps: [
+        ...livestoreSetupSteps,
+        { name: 'Run lint checks', run: runDevenvTasksBefore('lint:full:with-megarepo-check') },
+      ],
     }),
 
     'type-check': standardCIJob({
       // TODO(oep-1n3.9): Switch back to patched tsc once Effect diagnostics backlog is addressed.
-      steps: [...livestoreSetupSteps, { run: runDevenvTasksBefore('ts:build') }],
+      steps: [...livestoreSetupSteps, { name: 'Run type-check', run: runDevenvTasksBefore('ts:build') }],
     }),
 
     'test-unit': standardCIJob({
-      steps: [...livestoreSetupSteps, { run: runDevenvTasksBefore('test:unit') }],
+      steps: [...livestoreSetupSteps, { name: 'Run unit tests', run: runDevenvTasksBefore('test:unit') }],
     }),
 
     // TODO: Remove flaky test wrapper once node-sync flakiness is resolved
@@ -280,7 +283,11 @@ done`,
       defaults: bashShellDefaults,
       steps: withNixDiagnosticsOnFailure([
         ...livestoreSetupSteps,
-        { run: runDevenvTasksBefore('release:snapshot:git-sha'), env: { GIT_SHA: GITHUB_SHA } },
+        {
+          name: 'Publish snapshot version',
+          run: runDevenvTasksBefore('release:snapshot:git-sha'),
+          env: { GIT_SHA: GITHUB_SHA },
+        },
       ]),
     },
 
