@@ -205,6 +205,8 @@ import {
   preparePinnedDevenvStep,
   runDevenvTasksBefore,
   nixDiagnosticsArtifactStep,
+  cachePnpmStoreStep,
+  pnpmStoreSetupStep,
   validateNixStoreStep,
 } from '../repos/effect-utils/genie/ci-workflow.ts'
 
@@ -230,6 +232,8 @@ export const livestoreSetupStepsAfterCheckout = [
   installMegarepoStep,
   applyMegarepoLockStep(),
   preparePinnedDevenvStep,
+  pnpmStoreSetupStep,
+  cachePnpmStoreStep({ keyPrefix: 'livestore-pnpm-store' }),
   validateNixStoreStep,
 ] as const
 

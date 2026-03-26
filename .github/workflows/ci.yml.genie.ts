@@ -86,9 +86,6 @@ export default githubWorkflow({
     CACHIX_AUTH_TOKEN: '${{ secrets.CACHIX_AUTH_TOKEN }}',
     FORCE_SETUP: '1',
     CI: 'true',
-    CI_DEBUG_WRAPPER: '1',
-    CI_DEBUG_LOG_TAIL_LINES: '60',
-    CI_DEBUG_PROCESS_SNAPSHOT_EVERY_HEARTBEATS: '2',
   },
 
   jobs: {

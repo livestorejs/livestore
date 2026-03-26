@@ -3,10 +3,10 @@
   "members": {
     "effect-utils": {
       "url": "https://github.com/overengineeringstudio/effect-utils",
-      "ref": "schickling/debug-ci-run-hang",
-      "commit": "40e4470b4e0f6ee4fe4b45e2b97ba7d2b6d39b3d",
-      "pinned": true,
-      "lockedAt": "2026-03-26T16:47:53.000Z"
+      "ref": "main",
+      "commit": "07dbab8e26a9e83c81026c6564459ad1938c3f29",
+      "pinned": false,
+      "lockedAt": "2026-03-26T17:14:43.260Z"
     },
     "overeng-beads-public": {
       "url": "https://github.com/overengineeringstudio/overeng-beads-public",

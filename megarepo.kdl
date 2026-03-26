@@ -1,5 +1,5 @@
 members {
-    effect-utils "overengineeringstudio/effect-utils#schickling/debug-ci-run-hang"
+    effect-utils "overengineeringstudio/effect-utils"
     overeng-beads-public "overengineeringstudio/overeng-beads-public"
     effect "effect-ts/effect"
 }
