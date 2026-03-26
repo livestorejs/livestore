@@ -19,6 +19,9 @@ env:
   CACHIX_AUTH_TOKEN: '${{ secrets.CACHIX_AUTH_TOKEN }}'
   FORCE_SETUP: '1'
   CI: 'true'
+  CI_DEBUG_WRAPPER: '1'
+  CI_DEBUG_LOG_TAIL_LINES: '60'
+  CI_DEBUG_PROCESS_SNAPSHOT_EVERY_HEARTBEATS: '2'
 
 jobs:
   lint:
@@ -126,34 +129,96 @@ jobs:
       - name: Run lint checks
         run: |
           __nix_gc_retry() {
-            local __task='devenv tasks run lint:full:with-megarepo-check --mode before' __max=${NIX_GC_RACE_MAX_RETRIES:-10} __heartbeat=${CI_PROGRESS_HEARTBEAT_SECONDS:-60} __n=1 __log __rc __path __start __now __elapsed __hb_pid
+            local __task='devenv tasks run lint:full:with-megarepo-check --mode before' __max=${NIX_GC_RACE_MAX_RETRIES:-10} __heartbeat=${CI_PROGRESS_HEARTBEAT_SECONDS:-60} __debug=${CI_DEBUG_WRAPPER:-0} __tail_lines=${CI_DEBUG_LOG_TAIL_LINES:-80} __snapshot_every=${CI_DEBUG_PROCESS_SNAPSHOT_EVERY_HEARTBEATS:-3} __n=1 __log __rc __path __start __now __elapsed __hb_pid __cmd_pid
             __start=$(date +%s)
+            if ! [ "$__snapshot_every" -ge 1 ] 2>/dev/null; then
+              __snapshot_every=1
+            fi
 
             __write_summary() {
               [ -n "${GITHUB_STEP_SUMMARY:-}" ] || return 0
               {
                 echo "### CI Task"
-                echo "- Task: `$__task`"
-                echo "- Status: `$1`"
-                echo "- Duration: `$__elapsed s`"
-                echo "- Attempts: `$__n/$__max`"
+                # Keep summary values plain text. Backticks inside double quotes trigger
+                # shell command substitution and turned failed-task metadata into bogus
+                # commands on GitHub Actions runners.
+                echo "- Task: $__task"
+                echo "- Status: $1"
+                echo "- Duration: $__elapsed s"
+                echo "- Attempts: $__n/$__max"
                 [ -z "${2:-}" ] || echo "- Note: $2"
               } >> "$GITHUB_STEP_SUMMARY"
             }
 
+            __dump_process_subtree() {
+              local __queue __pid __children
+              __queue="${1:-}"
+              while [ -n "$__queue" ]; do
+                __pid=${__queue%% *}
+                if [ "$__queue" = "$__pid" ]; then
+                  __queue=''
+                else
+                  __queue=${__queue#* }
+                fi
+                [ -n "$__pid" ] || continue
+                ps -ww -o pid=,ppid=,pgid=,stat=,etime=,%cpu=,%mem=,args= -p "$__pid" 2>/dev/null || true
+                __children=$(pgrep -P "$__pid" 2>/dev/null | tr '
+          ' ' ' | sed 's/[[:space:]]*$//' || true)
+                [ -z "$__children" ] || __queue="$__queue $__children"
+              done
+            }
+
+            __dump_debug_snapshot() {
+              [ "$__debug" = 1 ] || return 0
+              echo "::group::[ci-debug] $__task snapshot after $__elapsed s (attempt $__n/$__max)"
+              echo "[ci-debug] command pid: ${__cmd_pid:-unknown}"
+              if [ -n "${__cmd_pid:-}" ] && kill -0 "$__cmd_pid" 2>/dev/null; then
+                if command -v pstree >/dev/null 2>&1; then
+                  echo "[ci-debug] process tree"
+                  pstree -apl "$__cmd_pid" || true
+                else
+                  echo "[ci-debug] process snapshot"
+                  __dump_process_subtree "$__cmd_pid"
+                fi
+              else
+                echo "[ci-debug] wrapped command is no longer running"
+              fi
+
+              if [ -f "$__log" ] && [ -s "$__log" ]; then
+                echo "[ci-debug] recent combined output"
+                tail -n "$__tail_lines" "$__log" || true
+              else
+                echo "[ci-debug] no combined output captured yet"
+              fi
+              echo "::endgroup::"
+            }
+
             while [ "$__n" -le "$__max" ]; do
               echo "::notice::[ci] starting $__task (attempt $__n/$__max)"
+              __log=$(mktemp)
+              set +e
               (
-                while sleep "$__heartbeat"; do
+                set -o pipefail
+                eval "$1" > >(tee -a "$__log") 2> >(tee -a "$__log" >&2)
+              ) &
+              __cmd_pid=$!
+              (
+                __heartbeat_count=0
+                while kill -0 "$__cmd_pid" 2>/dev/null; do
+                  sleep "$__heartbeat" || break
+                  kill -0 "$__cmd_pid" 2>/dev/null || break
                   __now=$(date +%s)
                   __elapsed=$((__now - __start))
+                  __heartbeat_count=$((__heartbeat_count + 1))
                   echo "::notice::[ci] $__task still running after $__elapsed s (attempt $__n/$__max)"
+                  if [ "$__debug" = 1 ] && [ $((__heartbeat_count % __snapshot_every)) -eq 0 ]; then
+                    __dump_debug_snapshot
+                  fi
                 done
               ) &
               __hb_pid=$!
-
-              __log=$(mktemp)
-              set +e; eval "$1" 2> >(tee "$__log" >&2); __rc=$?; set -e
+              wait "$__cmd_pid"; __rc=$?
+              set -e
 
               kill "$__hb_pid" 2>/dev/null || true
               wait "$__hb_pid" 2>/dev/null || true
@@ -173,6 +238,9 @@ jobs:
               }
 
               __path=$(perl -0pe 's/\e\[[0-9;]*m//g; s/\n/ /g' "$__log" | grep -oP "error:\s+path '\K/nix/store/[^']*(?='\s+is not valid)" 2>/dev/null | head -1 | tr -d '[:space:]' || true)
+              if [ "$__debug" = 1 ]; then
+                __dump_debug_snapshot
+              fi
               rm -f "$__log"
               if [ -z "$__path" ]; then
                 echo "::warning::[ci] $__task failed after $__elapsed s without a detected Nix GC race"
@@ -190,7 +258,7 @@ jobs:
             echo "::error::Nix GC race retry exhausted for $__task ($__max attempts)"
             __write_summary failure "Nix GC race retry exhausted"
             return 1
-          }; __nix_gc_retry 'if [ -n "${NIX_CONFIG:-}" ]; then NIX_CONFIG_WITH_APPEND=$(printf '"'"'%s\n%s'"'"' "$NIX_CONFIG" '"'"'restrict-eval = false'"'"'); else NIX_CONFIG_WITH_APPEND='"'"'restrict-eval = false'"'"'; fi; NIX_CONFIG="$NIX_CONFIG_WITH_APPEND" PNPM_HOME='"'"'${{ runner.temp }}/pnpm-home/${{ github.run_id }}/${{ github.run_attempt }}/${{ github.job }}'"'"' DT_PASSTHROUGH=1 "${DEVENV_BIN:?DEVENV_BIN not set}" tasks run lint:full:with-megarepo-check --mode before'
+          }; __nix_gc_retry 'if [ -n "${NIX_CONFIG:-}" ]; then NIX_CONFIG_WITH_APPEND=$(printf '"'"'%s\n%s'"'"' "$NIX_CONFIG" '"'"'restrict-eval = false'"'"'); else NIX_CONFIG_WITH_APPEND='"'"'restrict-eval = false'"'"'; fi; NIX_CONFIG="$NIX_CONFIG_WITH_APPEND" PNPM_HOME="${PNPM_HOME:-${{ github.workspace }}/.pnpm-home}" PNPM_STORE_DIR="${PNPM_STORE_DIR:-${{ runner.temp }}/pnpm-store/${{ github.job }}}" DT_PASSTHROUGH=1 "${DEVENV_BIN:?DEVENV_BIN not set}" tasks run lint:full:with-megarepo-check --mode before'
       - name: Upload Nix diagnostics artifact
         if: failure() && env.NIX_STORE_DIAGNOSTICS_DIR != ''
         uses: actions/upload-artifact@v4
@@ -304,34 +372,96 @@ jobs:
       - name: Run type-check
         run: |
           __nix_gc_retry() {
-            local __task='devenv tasks run ts:build --mode before' __max=${NIX_GC_RACE_MAX_RETRIES:-10} __heartbeat=${CI_PROGRESS_HEARTBEAT_SECONDS:-60} __n=1 __log __rc __path __start __now __elapsed __hb_pid
+            local __task='devenv tasks run ts:build --mode before' __max=${NIX_GC_RACE_MAX_RETRIES:-10} __heartbeat=${CI_PROGRESS_HEARTBEAT_SECONDS:-60} __debug=${CI_DEBUG_WRAPPER:-0} __tail_lines=${CI_DEBUG_LOG_TAIL_LINES:-80} __snapshot_every=${CI_DEBUG_PROCESS_SNAPSHOT_EVERY_HEARTBEATS:-3} __n=1 __log __rc __path __start __now __elapsed __hb_pid __cmd_pid
             __start=$(date +%s)
+            if ! [ "$__snapshot_every" -ge 1 ] 2>/dev/null; then
+              __snapshot_every=1
+            fi
 
             __write_summary() {
               [ -n "${GITHUB_STEP_SUMMARY:-}" ] || return 0
               {
                 echo "### CI Task"
-                echo "- Task: `$__task`"
-                echo "- Status: `$1`"
-                echo "- Duration: `$__elapsed s`"
-                echo "- Attempts: `$__n/$__max`"
+                # Keep summary values plain text. Backticks inside double quotes trigger
+                # shell command substitution and turned failed-task metadata into bogus
+                # commands on GitHub Actions runners.
+                echo "- Task: $__task"
+                echo "- Status: $1"
+                echo "- Duration: $__elapsed s"
+                echo "- Attempts: $__n/$__max"
                 [ -z "${2:-}" ] || echo "- Note: $2"
               } >> "$GITHUB_STEP_SUMMARY"
             }
 
+            __dump_process_subtree() {
+              local __queue __pid __children
+              __queue="${1:-}"
+              while [ -n "$__queue" ]; do
+                __pid=${__queue%% *}
+                if [ "$__queue" = "$__pid" ]; then
+                  __queue=''
+                else
+                  __queue=${__queue#* }
+                fi
+                [ -n "$__pid" ] || continue
+                ps -ww -o pid=,ppid=,pgid=,stat=,etime=,%cpu=,%mem=,args= -p "$__pid" 2>/dev/null || true
+                __children=$(pgrep -P "$__pid" 2>/dev/null | tr '
+          ' ' ' | sed 's/[[:space:]]*$//' || true)
+                [ -z "$__children" ] || __queue="$__queue $__children"
+              done
+            }
+
+            __dump_debug_snapshot() {
+              [ "$__debug" = 1 ] || return 0
+              echo "::group::[ci-debug] $__task snapshot after $__elapsed s (attempt $__n/$__max)"
+              echo "[ci-debug] command pid: ${__cmd_pid:-unknown}"
+              if [ -n "${__cmd_pid:-}" ] && kill -0 "$__cmd_pid" 2>/dev/null; then
+                if command -v pstree >/dev/null 2>&1; then
+                  echo "[ci-debug] process tree"
+                  pstree -apl "$__cmd_pid" || true
+                else
+                  echo "[ci-debug] process snapshot"
+                  __dump_process_subtree "$__cmd_pid"
+                fi
+              else
+                echo "[ci-debug] wrapped command is no longer running"
+              fi
+
+              if [ -f "$__log" ] && [ -s "$__log" ]; then
+                echo "[ci-debug] recent combined output"
+                tail -n "$__tail_lines" "$__log" || true
+              else
+                echo "[ci-debug] no combined output captured yet"
+              fi
+              echo "::endgroup::"
+            }
+
             while [ "$__n" -le "$__max" ]; do
               echo "::notice::[ci] starting $__task (attempt $__n/$__max)"
+              __log=$(mktemp)
+              set +e
               (
-                while sleep "$__heartbeat"; do
+                set -o pipefail
+                eval "$1" > >(tee -a "$__log") 2> >(tee -a "$__log" >&2)
+              ) &
+              __cmd_pid=$!
+              (
+                __heartbeat_count=0
+                while kill -0 "$__cmd_pid" 2>/dev/null; do
+                  sleep "$__heartbeat" || break
+                  kill -0 "$__cmd_pid" 2>/dev/null || break
                   __now=$(date +%s)
                   __elapsed=$((__now - __start))
+                  __heartbeat_count=$((__heartbeat_count + 1))
                   echo "::notice::[ci] $__task still running after $__elapsed s (attempt $__n/$__max)"
+                  if [ "$__debug" = 1 ] && [ $((__heartbeat_count % __snapshot_every)) -eq 0 ]; then
+                    __dump_debug_snapshot
+                  fi
                 done
               ) &
               __hb_pid=$!
-
-              __log=$(mktemp)
-              set +e; eval "$1" 2> >(tee "$__log" >&2); __rc=$?; set -e
+              wait "$__cmd_pid"; __rc=$?
+              set -e
 
               kill "$__hb_pid" 2>/dev/null || true
               wait "$__hb_pid" 2>/dev/null || true
@@ -351,6 +481,9 @@ jobs:
               }
 
               __path=$(perl -0pe 's/\e\[[0-9;]*m//g; s/\n/ /g' "$__log" | grep -oP "error:\s+path '\K/nix/store/[^']*(?='\s+is not valid)" 2>/dev/null | head -1 | tr -d '[:space:]' || true)
+              if [ "$__debug" = 1 ]; then
+                __dump_debug_snapshot
+              fi
               rm -f "$__log"
               if [ -z "$__path" ]; then
                 echo "::warning::[ci] $__task failed after $__elapsed s without a detected Nix GC race"
@@ -368,7 +501,7 @@ jobs:
             echo "::error::Nix GC race retry exhausted for $__task ($__max attempts)"
             __write_summary failure "Nix GC race retry exhausted"
             return 1
-          }; __nix_gc_retry 'if [ -n "${NIX_CONFIG:-}" ]; then NIX_CONFIG_WITH_APPEND=$(printf '"'"'%s\n%s'"'"' "$NIX_CONFIG" '"'"'restrict-eval = false'"'"'); else NIX_CONFIG_WITH_APPEND='"'"'restrict-eval = false'"'"'; fi; NIX_CONFIG="$NIX_CONFIG_WITH_APPEND" PNPM_HOME='"'"'${{ runner.temp }}/pnpm-home/${{ github.run_id }}/${{ github.run_attempt }}/${{ github.job }}'"'"' DT_PASSTHROUGH=1 "${DEVENV_BIN:?DEVENV_BIN not set}" tasks run ts:build --mode before'
+          }; __nix_gc_retry 'if [ -n "${NIX_CONFIG:-}" ]; then NIX_CONFIG_WITH_APPEND=$(printf '"'"'%s\n%s'"'"' "$NIX_CONFIG" '"'"'restrict-eval = false'"'"'); else NIX_CONFIG_WITH_APPEND='"'"'restrict-eval = false'"'"'; fi; NIX_CONFIG="$NIX_CONFIG_WITH_APPEND" PNPM_HOME="${PNPM_HOME:-${{ github.workspace }}/.pnpm-home}" PNPM_STORE_DIR="${PNPM_STORE_DIR:-${{ runner.temp }}/pnpm-store/${{ github.job }}}" DT_PASSTHROUGH=1 "${DEVENV_BIN:?DEVENV_BIN not set}" tasks run ts:build --mode before'
       - name: Upload Nix diagnostics artifact
         if: failure() && env.NIX_STORE_DIAGNOSTICS_DIR != ''
         uses: actions/upload-artifact@v4
@@ -482,34 +615,96 @@ jobs:
       - name: Run unit tests
         run: |
           __nix_gc_retry() {
-            local __task='devenv tasks run test:unit --mode before' __max=${NIX_GC_RACE_MAX_RETRIES:-10} __heartbeat=${CI_PROGRESS_HEARTBEAT_SECONDS:-60} __n=1 __log __rc __path __start __now __elapsed __hb_pid
+            local __task='devenv tasks run test:unit --mode before' __max=${NIX_GC_RACE_MAX_RETRIES:-10} __heartbeat=${CI_PROGRESS_HEARTBEAT_SECONDS:-60} __debug=${CI_DEBUG_WRAPPER:-0} __tail_lines=${CI_DEBUG_LOG_TAIL_LINES:-80} __snapshot_every=${CI_DEBUG_PROCESS_SNAPSHOT_EVERY_HEARTBEATS:-3} __n=1 __log __rc __path __start __now __elapsed __hb_pid __cmd_pid
             __start=$(date +%s)
+            if ! [ "$__snapshot_every" -ge 1 ] 2>/dev/null; then
+              __snapshot_every=1
+            fi
 
             __write_summary() {
               [ -n "${GITHUB_STEP_SUMMARY:-}" ] || return 0
               {
                 echo "### CI Task"
-                echo "- Task: `$__task`"
-                echo "- Status: `$1`"
-                echo "- Duration: `$__elapsed s`"
-                echo "- Attempts: `$__n/$__max`"
+                # Keep summary values plain text. Backticks inside double quotes trigger
+                # shell command substitution and turned failed-task metadata into bogus
+                # commands on GitHub Actions runners.
+                echo "- Task: $__task"
+                echo "- Status: $1"
+                echo "- Duration: $__elapsed s"
+                echo "- Attempts: $__n/$__max"
                 [ -z "${2:-}" ] || echo "- Note: $2"
               } >> "$GITHUB_STEP_SUMMARY"
             }
 
+            __dump_process_subtree() {
+              local __queue __pid __children
+              __queue="${1:-}"
+              while [ -n "$__queue" ]; do
+                __pid=${__queue%% *}
+                if [ "$__queue" = "$__pid" ]; then
+                  __queue=''
+                else
+                  __queue=${__queue#* }
+                fi
+                [ -n "$__pid" ] || continue
+                ps -ww -o pid=,ppid=,pgid=,stat=,etime=,%cpu=,%mem=,args= -p "$__pid" 2>/dev/null || true
+                __children=$(pgrep -P "$__pid" 2>/dev/null | tr '
+          ' ' ' | sed 's/[[:space:]]*$//' || true)
+                [ -z "$__children" ] || __queue="$__queue $__children"
+              done
+            }
+
+            __dump_debug_snapshot() {
+              [ "$__debug" = 1 ] || return 0
+              echo "::group::[ci-debug] $__task snapshot after $__elapsed s (attempt $__n/$__max)"
+              echo "[ci-debug] command pid: ${__cmd_pid:-unknown}"
+              if [ -n "${__cmd_pid:-}" ] && kill -0 "$__cmd_pid" 2>/dev/null; then
+                if command -v pstree >/dev/null 2>&1; then
+                  echo "[ci-debug] process tree"
+                  pstree -apl "$__cmd_pid" || true
+                else
+                  echo "[ci-debug] process snapshot"
+                  __dump_process_subtree "$__cmd_pid"
+                fi
+              else
+                echo "[ci-debug] wrapped command is no longer running"
+              fi
+
+              if [ -f "$__log" ] && [ -s "$__log" ]; then
+                echo "[ci-debug] recent combined output"
+                tail -n "$__tail_lines" "$__log" || true
+              else
+                echo "[ci-debug] no combined output captured yet"
+              fi
+              echo "::endgroup::"
+            }
+
             while [ "$__n" -le "$__max" ]; do
               echo "::notice::[ci] starting $__task (attempt $__n/$__max)"
+              __log=$(mktemp)
+              set +e
               (
-                while sleep "$__heartbeat"; do
+                set -o pipefail
+                eval "$1" > >(tee -a "$__log") 2> >(tee -a "$__log" >&2)
+              ) &
+              __cmd_pid=$!
+              (
+                __heartbeat_count=0
+                while kill -0 "$__cmd_pid" 2>/dev/null; do
+                  sleep "$__heartbeat" || break
+                  kill -0 "$__cmd_pid" 2>/dev/null || break
                   __now=$(date +%s)
                   __elapsed=$((__now - __start))
+                  __heartbeat_count=$((__heartbeat_count + 1))
                   echo "::notice::[ci] $__task still running after $__elapsed s (attempt $__n/$__max)"
+                  if [ "$__debug" = 1 ] && [ $((__heartbeat_count % __snapshot_every)) -eq 0 ]; then
+                    __dump_debug_snapshot
+                  fi
                 done
               ) &
               __hb_pid=$!
-
-              __log=$(mktemp)
-              set +e; eval "$1" 2> >(tee "$__log" >&2); __rc=$?; set -e
+              wait "$__cmd_pid"; __rc=$?
+              set -e
 
               kill "$__hb_pid" 2>/dev/null || true
               wait "$__hb_pid" 2>/dev/null || true
@@ -529,6 +724,9 @@ jobs:
               }
 
               __path=$(perl -0pe 's/\e\[[0-9;]*m//g; s/\n/ /g' "$__log" | grep -oP "error:\s+path '\K/nix/store/[^']*(?='\s+is not valid)" 2>/dev/null | head -1 | tr -d '[:space:]' || true)
+              if [ "$__debug" = 1 ]; then
+                __dump_debug_snapshot
+              fi
               rm -f "$__log"
               if [ -z "$__path" ]; then
                 echo "::warning::[ci] $__task failed after $__elapsed s without a detected Nix GC race"
@@ -546,7 +744,7 @@ jobs:
             echo "::error::Nix GC race retry exhausted for $__task ($__max attempts)"
             __write_summary failure "Nix GC race retry exhausted"
             return 1
-          }; __nix_gc_retry 'if [ -n "${NIX_CONFIG:-}" ]; then NIX_CONFIG_WITH_APPEND=$(printf '"'"'%s\n%s'"'"' "$NIX_CONFIG" '"'"'restrict-eval = false'"'"'); else NIX_CONFIG_WITH_APPEND='"'"'restrict-eval = false'"'"'; fi; NIX_CONFIG="$NIX_CONFIG_WITH_APPEND" PNPM_HOME='"'"'${{ runner.temp }}/pnpm-home/${{ github.run_id }}/${{ github.run_attempt }}/${{ github.job }}'"'"' DT_PASSTHROUGH=1 "${DEVENV_BIN:?DEVENV_BIN not set}" tasks run test:unit --mode before'
+          }; __nix_gc_retry 'if [ -n "${NIX_CONFIG:-}" ]; then NIX_CONFIG_WITH_APPEND=$(printf '"'"'%s\n%s'"'"' "$NIX_CONFIG" '"'"'restrict-eval = false'"'"'); else NIX_CONFIG_WITH_APPEND='"'"'restrict-eval = false'"'"'; fi; NIX_CONFIG="$NIX_CONFIG_WITH_APPEND" PNPM_HOME="${PNPM_HOME:-${{ github.workspace }}/.pnpm-home}" PNPM_STORE_DIR="${PNPM_STORE_DIR:-${{ runner.temp }}/pnpm-store/${{ github.job }}}" DT_PASSTHROUGH=1 "${DEVENV_BIN:?DEVENV_BIN not set}" tasks run test:unit --mode before'
       - name: Upload Nix diagnostics artifact
         if: failure() && env.NIX_STORE_DIAGNOSTICS_DIR != ''
         uses: actions/upload-artifact@v4
@@ -670,34 +868,96 @@ jobs:
       - name: Run node-sync integration tests
         run: |
           __nix_gc_retry() {
-            local __task='devenv tasks run test:integration:node-sync:allow-flaky --mode before' __max=${NIX_GC_RACE_MAX_RETRIES:-10} __heartbeat=${CI_PROGRESS_HEARTBEAT_SECONDS:-60} __n=1 __log __rc __path __start __now __elapsed __hb_pid
+            local __task='devenv tasks run test:integration:node-sync:allow-flaky --mode before' __max=${NIX_GC_RACE_MAX_RETRIES:-10} __heartbeat=${CI_PROGRESS_HEARTBEAT_SECONDS:-60} __debug=${CI_DEBUG_WRAPPER:-0} __tail_lines=${CI_DEBUG_LOG_TAIL_LINES:-80} __snapshot_every=${CI_DEBUG_PROCESS_SNAPSHOT_EVERY_HEARTBEATS:-3} __n=1 __log __rc __path __start __now __elapsed __hb_pid __cmd_pid
             __start=$(date +%s)
+            if ! [ "$__snapshot_every" -ge 1 ] 2>/dev/null; then
+              __snapshot_every=1
+            fi
 
             __write_summary() {
               [ -n "${GITHUB_STEP_SUMMARY:-}" ] || return 0
               {
                 echo "### CI Task"
-                echo "- Task: `$__task`"
-                echo "- Status: `$1`"
-                echo "- Duration: `$__elapsed s`"
-                echo "- Attempts: `$__n/$__max`"
+                # Keep summary values plain text. Backticks inside double quotes trigger
+                # shell command substitution and turned failed-task metadata into bogus
+                # commands on GitHub Actions runners.
+                echo "- Task: $__task"
+                echo "- Status: $1"
+                echo "- Duration: $__elapsed s"
+                echo "- Attempts: $__n/$__max"
                 [ -z "${2:-}" ] || echo "- Note: $2"
               } >> "$GITHUB_STEP_SUMMARY"
             }
 
+            __dump_process_subtree() {
+              local __queue __pid __children
+              __queue="${1:-}"
+              while [ -n "$__queue" ]; do
+                __pid=${__queue%% *}
+                if [ "$__queue" = "$__pid" ]; then
+                  __queue=''
+                else
+                  __queue=${__queue#* }
+                fi
+                [ -n "$__pid" ] || continue
+                ps -ww -o pid=,ppid=,pgid=,stat=,etime=,%cpu=,%mem=,args= -p "$__pid" 2>/dev/null || true
+                __children=$(pgrep -P "$__pid" 2>/dev/null | tr '
+          ' ' ' | sed 's/[[:space:]]*$//' || true)
+                [ -z "$__children" ] || __queue="$__queue $__children"
+              done
+            }
+
+            __dump_debug_snapshot() {
+              [ "$__debug" = 1 ] || return 0
+              echo "::group::[ci-debug] $__task snapshot after $__elapsed s (attempt $__n/$__max)"
+              echo "[ci-debug] command pid: ${__cmd_pid:-unknown}"
+              if [ -n "${__cmd_pid:-}" ] && kill -0 "$__cmd_pid" 2>/dev/null; then
+                if command -v pstree >/dev/null 2>&1; then
+                  echo "[ci-debug] process tree"
+                  pstree -apl "$__cmd_pid" || true
+                else
+                  echo "[ci-debug] process snapshot"
+                  __dump_process_subtree "$__cmd_pid"
+                fi
+              else
+                echo "[ci-debug] wrapped command is no longer running"
+              fi
+
+              if [ -f "$__log" ] && [ -s "$__log" ]; then
+                echo "[ci-debug] recent combined output"
+                tail -n "$__tail_lines" "$__log" || true
+              else
+                echo "[ci-debug] no combined output captured yet"
+              fi
+              echo "::endgroup::"
+            }
+
             while [ "$__n" -le "$__max" ]; do
               echo "::notice::[ci] starting $__task (attempt $__n/$__max)"
+              __log=$(mktemp)
+              set +e
               (
-                while sleep "$__heartbeat"; do
+                set -o pipefail
+                eval "$1" > >(tee -a "$__log") 2> >(tee -a "$__log" >&2)
+              ) &
+              __cmd_pid=$!
+              (
+                __heartbeat_count=0
+                while kill -0 "$__cmd_pid" 2>/dev/null; do
+                  sleep "$__heartbeat" || break
+                  kill -0 "$__cmd_pid" 2>/dev/null || break
                   __now=$(date +%s)
                   __elapsed=$((__now - __start))
+                  __heartbeat_count=$((__heartbeat_count + 1))
                   echo "::notice::[ci] $__task still running after $__elapsed s (attempt $__n/$__max)"
+                  if [ "$__debug" = 1 ] && [ $((__heartbeat_count % __snapshot_every)) -eq 0 ]; then
+                    __dump_debug_snapshot
+                  fi
                 done
               ) &
               __hb_pid=$!
-
-              __log=$(mktemp)
-              set +e; eval "$1" 2> >(tee "$__log" >&2); __rc=$?; set -e
+              wait "$__cmd_pid"; __rc=$?
+              set -e
 
               kill "$__hb_pid" 2>/dev/null || true
               wait "$__hb_pid" 2>/dev/null || true
@@ -717,6 +977,9 @@ jobs:
               }
 
               __path=$(perl -0pe 's/\e\[[0-9;]*m//g; s/\n/ /g' "$__log" | grep -oP "error:\s+path '\K/nix/store/[^']*(?='\s+is not valid)" 2>/dev/null | head -1 | tr -d '[:space:]' || true)
+              if [ "$__debug" = 1 ]; then
+                __dump_debug_snapshot
+              fi
               rm -f "$__log"
               if [ -z "$__path" ]; then
                 echo "::warning::[ci] $__task failed after $__elapsed s without a detected Nix GC race"
@@ -734,7 +997,7 @@ jobs:
             echo "::error::Nix GC race retry exhausted for $__task ($__max attempts)"
             __write_summary failure "Nix GC race retry exhausted"
             return 1
-          }; __nix_gc_retry 'if [ -n "${NIX_CONFIG:-}" ]; then NIX_CONFIG_WITH_APPEND=$(printf '"'"'%s\n%s'"'"' "$NIX_CONFIG" '"'"'restrict-eval = false'"'"'); else NIX_CONFIG_WITH_APPEND='"'"'restrict-eval = false'"'"'; fi; NIX_CONFIG="$NIX_CONFIG_WITH_APPEND" PNPM_HOME='"'"'${{ runner.temp }}/pnpm-home/${{ github.run_id }}/${{ github.run_attempt }}/${{ github.job }}'"'"' DT_PASSTHROUGH=1 "${DEVENV_BIN:?DEVENV_BIN not set}" tasks run test:integration:node-sync:allow-flaky --mode before'
+          }; __nix_gc_retry 'if [ -n "${NIX_CONFIG:-}" ]; then NIX_CONFIG_WITH_APPEND=$(printf '"'"'%s\n%s'"'"' "$NIX_CONFIG" '"'"'restrict-eval = false'"'"'); else NIX_CONFIG_WITH_APPEND='"'"'restrict-eval = false'"'"'; fi; NIX_CONFIG="$NIX_CONFIG_WITH_APPEND" PNPM_HOME="${PNPM_HOME:-${{ github.workspace }}/.pnpm-home}" PNPM_STORE_DIR="${PNPM_STORE_DIR:-${{ runner.temp }}/pnpm-store/${{ github.job }}}" DT_PASSTHROUGH=1 "${DEVENV_BIN:?DEVENV_BIN not set}" tasks run test:integration:node-sync:allow-flaky --mode before'
       - name: Display node-sync logs
         if: always()
         run: |
@@ -906,34 +1169,96 @@ jobs:
       - name: 'Run sync-provider tests for ${{ matrix.provider }}'
         run: |
           __nix_gc_retry() {
-            local __task='devenv tasks run test:integration:sync-provider:matrix --mode before' __max=${NIX_GC_RACE_MAX_RETRIES:-10} __heartbeat=${CI_PROGRESS_HEARTBEAT_SECONDS:-60} __n=1 __log __rc __path __start __now __elapsed __hb_pid
+            local __task='devenv tasks run test:integration:sync-provider:matrix --mode before' __max=${NIX_GC_RACE_MAX_RETRIES:-10} __heartbeat=${CI_PROGRESS_HEARTBEAT_SECONDS:-60} __debug=${CI_DEBUG_WRAPPER:-0} __tail_lines=${CI_DEBUG_LOG_TAIL_LINES:-80} __snapshot_every=${CI_DEBUG_PROCESS_SNAPSHOT_EVERY_HEARTBEATS:-3} __n=1 __log __rc __path __start __now __elapsed __hb_pid __cmd_pid
             __start=$(date +%s)
+            if ! [ "$__snapshot_every" -ge 1 ] 2>/dev/null; then
+              __snapshot_every=1
+            fi
 
             __write_summary() {
               [ -n "${GITHUB_STEP_SUMMARY:-}" ] || return 0
               {
                 echo "### CI Task"
-                echo "- Task: `$__task`"
-                echo "- Status: `$1`"
-                echo "- Duration: `$__elapsed s`"
-                echo "- Attempts: `$__n/$__max`"
+                # Keep summary values plain text. Backticks inside double quotes trigger
+                # shell command substitution and turned failed-task metadata into bogus
+                # commands on GitHub Actions runners.
+                echo "- Task: $__task"
+                echo "- Status: $1"
+                echo "- Duration: $__elapsed s"
+                echo "- Attempts: $__n/$__max"
                 [ -z "${2:-}" ] || echo "- Note: $2"
               } >> "$GITHUB_STEP_SUMMARY"
             }
 
+            __dump_process_subtree() {
+              local __queue __pid __children
+              __queue="${1:-}"
+              while [ -n "$__queue" ]; do
+                __pid=${__queue%% *}
+                if [ "$__queue" = "$__pid" ]; then
+                  __queue=''
+                else
+                  __queue=${__queue#* }
+                fi
+                [ -n "$__pid" ] || continue
+                ps -ww -o pid=,ppid=,pgid=,stat=,etime=,%cpu=,%mem=,args= -p "$__pid" 2>/dev/null || true
+                __children=$(pgrep -P "$__pid" 2>/dev/null | tr '
+          ' ' ' | sed 's/[[:space:]]*$//' || true)
+                [ -z "$__children" ] || __queue="$__queue $__children"
+              done
+            }
+
+            __dump_debug_snapshot() {
+              [ "$__debug" = 1 ] || return 0
+              echo "::group::[ci-debug] $__task snapshot after $__elapsed s (attempt $__n/$__max)"
+              echo "[ci-debug] command pid: ${__cmd_pid:-unknown}"
+              if [ -n "${__cmd_pid:-}" ] && kill -0 "$__cmd_pid" 2>/dev/null; then
+                if command -v pstree >/dev/null 2>&1; then
+                  echo "[ci-debug] process tree"
+                  pstree -apl "$__cmd_pid" || true
+                else
+                  echo "[ci-debug] process snapshot"
+                  __dump_process_subtree "$__cmd_pid"
+                fi
+              else
+                echo "[ci-debug] wrapped command is no longer running"
+              fi
+
+              if [ -f "$__log" ] && [ -s "$__log" ]; then
+                echo "[ci-debug] recent combined output"
+                tail -n "$__tail_lines" "$__log" || true
+              else
+                echo "[ci-debug] no combined output captured yet"
+              fi
+              echo "::endgroup::"
+            }
+
             while [ "$__n" -le "$__max" ]; do
               echo "::notice::[ci] starting $__task (attempt $__n/$__max)"
+              __log=$(mktemp)
+              set +e
               (
-                while sleep "$__heartbeat"; do
+                set -o pipefail
+                eval "$1" > >(tee -a "$__log") 2> >(tee -a "$__log" >&2)
+              ) &
+              __cmd_pid=$!
+              (
+                __heartbeat_count=0
+                while kill -0 "$__cmd_pid" 2>/dev/null; do
+                  sleep "$__heartbeat" || break
+                  kill -0 "$__cmd_pid" 2>/dev/null || break
                   __now=$(date +%s)
                   __elapsed=$((__now - __start))
+                  __heartbeat_count=$((__heartbeat_count + 1))
                   echo "::notice::[ci] $__task still running after $__elapsed s (attempt $__n/$__max)"
+                  if [ "$__debug" = 1 ] && [ $((__heartbeat_count % __snapshot_every)) -eq 0 ]; then
+                    __dump_debug_snapshot
+                  fi
                 done
               ) &
               __hb_pid=$!
-
-              __log=$(mktemp)
-              set +e; eval "$1" 2> >(tee "$__log" >&2); __rc=$?; set -e
+              wait "$__cmd_pid"; __rc=$?
+              set -e
 
               kill "$__hb_pid" 2>/dev/null || true
               wait "$__hb_pid" 2>/dev/null || true
@@ -953,6 +1278,9 @@ jobs:
               }
 
               __path=$(perl -0pe 's/\e\[[0-9;]*m//g; s/\n/ /g' "$__log" | grep -oP "error:\s+path '\K/nix/store/[^']*(?='\s+is not valid)" 2>/dev/null | head -1 | tr -d '[:space:]' || true)
+              if [ "$__debug" = 1 ]; then
+                __dump_debug_snapshot
+              fi
               rm -f "$__log"
               if [ -z "$__path" ]; then
                 echo "::warning::[ci] $__task failed after $__elapsed s without a detected Nix GC race"
@@ -970,7 +1298,7 @@ jobs:
             echo "::error::Nix GC race retry exhausted for $__task ($__max attempts)"
             __write_summary failure "Nix GC race retry exhausted"
             return 1
-          }; __nix_gc_retry 'if [ -n "${NIX_CONFIG:-}" ]; then NIX_CONFIG_WITH_APPEND=$(printf '"'"'%s\n%s'"'"' "$NIX_CONFIG" '"'"'restrict-eval = false'"'"'); else NIX_CONFIG_WITH_APPEND='"'"'restrict-eval = false'"'"'; fi; NIX_CONFIG="$NIX_CONFIG_WITH_APPEND" PNPM_HOME='"'"'${{ runner.temp }}/pnpm-home/${{ github.run_id }}/${{ github.run_attempt }}/${{ github.job }}'"'"' DT_PASSTHROUGH=1 "${DEVENV_BIN:?DEVENV_BIN not set}" tasks run test:integration:sync-provider:matrix --mode before'
+          }; __nix_gc_retry 'if [ -n "${NIX_CONFIG:-}" ]; then NIX_CONFIG_WITH_APPEND=$(printf '"'"'%s\n%s'"'"' "$NIX_CONFIG" '"'"'restrict-eval = false'"'"'); else NIX_CONFIG_WITH_APPEND='"'"'restrict-eval = false'"'"'; fi; NIX_CONFIG="$NIX_CONFIG_WITH_APPEND" PNPM_HOME="${PNPM_HOME:-${{ github.workspace }}/.pnpm-home}" PNPM_STORE_DIR="${PNPM_STORE_DIR:-${{ runner.temp }}/pnpm-store/${{ github.job }}}" DT_PASSTHROUGH=1 "${DEVENV_BIN:?DEVENV_BIN not set}" tasks run test:integration:sync-provider:matrix --mode before'
         env:
           OTEL_STATE_DIR: ''
           TEST_SYNC_PROVIDER: '${{ matrix.provider }}'
@@ -1102,34 +1430,96 @@ jobs:
           PLAYWRIGHT_SUITE: '${{ matrix.suite }}'
         run: |
           __nix_gc_retry() {
-            local __task='devenv tasks run test:integration:playwright:suite --mode before' __max=${NIX_GC_RACE_MAX_RETRIES:-10} __heartbeat=${CI_PROGRESS_HEARTBEAT_SECONDS:-60} __n=1 __log __rc __path __start __now __elapsed __hb_pid
+            local __task='devenv tasks run test:integration:playwright:suite --mode before' __max=${NIX_GC_RACE_MAX_RETRIES:-10} __heartbeat=${CI_PROGRESS_HEARTBEAT_SECONDS:-60} __debug=${CI_DEBUG_WRAPPER:-0} __tail_lines=${CI_DEBUG_LOG_TAIL_LINES:-80} __snapshot_every=${CI_DEBUG_PROCESS_SNAPSHOT_EVERY_HEARTBEATS:-3} __n=1 __log __rc __path __start __now __elapsed __hb_pid __cmd_pid
             __start=$(date +%s)
+            if ! [ "$__snapshot_every" -ge 1 ] 2>/dev/null; then
+              __snapshot_every=1
+            fi
 
             __write_summary() {
               [ -n "${GITHUB_STEP_SUMMARY:-}" ] || return 0
               {
                 echo "### CI Task"
-                echo "- Task: `$__task`"
-                echo "- Status: `$1`"
-                echo "- Duration: `$__elapsed s`"
-                echo "- Attempts: `$__n/$__max`"
+                # Keep summary values plain text. Backticks inside double quotes trigger
+                # shell command substitution and turned failed-task metadata into bogus
+                # commands on GitHub Actions runners.
+                echo "- Task: $__task"
+                echo "- Status: $1"
+                echo "- Duration: $__elapsed s"
+                echo "- Attempts: $__n/$__max"
                 [ -z "${2:-}" ] || echo "- Note: $2"
               } >> "$GITHUB_STEP_SUMMARY"
             }
 
+            __dump_process_subtree() {
+              local __queue __pid __children
+              __queue="${1:-}"
+              while [ -n "$__queue" ]; do
+                __pid=${__queue%% *}
+                if [ "$__queue" = "$__pid" ]; then
+                  __queue=''
+                else
+                  __queue=${__queue#* }
+                fi
+                [ -n "$__pid" ] || continue
+                ps -ww -o pid=,ppid=,pgid=,stat=,etime=,%cpu=,%mem=,args= -p "$__pid" 2>/dev/null || true
+                __children=$(pgrep -P "$__pid" 2>/dev/null | tr '
+          ' ' ' | sed 's/[[:space:]]*$//' || true)
+                [ -z "$__children" ] || __queue="$__queue $__children"
+              done
+            }
+
+            __dump_debug_snapshot() {
+              [ "$__debug" = 1 ] || return 0
+              echo "::group::[ci-debug] $__task snapshot after $__elapsed s (attempt $__n/$__max)"
+              echo "[ci-debug] command pid: ${__cmd_pid:-unknown}"
+              if [ -n "${__cmd_pid:-}" ] && kill -0 "$__cmd_pid" 2>/dev/null; then
+                if command -v pstree >/dev/null 2>&1; then
+                  echo "[ci-debug] process tree"
+                  pstree -apl "$__cmd_pid" || true
+                else
+                  echo "[ci-debug] process snapshot"
+                  __dump_process_subtree "$__cmd_pid"
+                fi
+              else
+                echo "[ci-debug] wrapped command is no longer running"
+              fi
+
+              if [ -f "$__log" ] && [ -s "$__log" ]; then
+                echo "[ci-debug] recent combined output"
+                tail -n "$__tail_lines" "$__log" || true
+              else
+                echo "[ci-debug] no combined output captured yet"
+              fi
+              echo "::endgroup::"
+            }
+
             while [ "$__n" -le "$__max" ]; do
               echo "::notice::[ci] starting $__task (attempt $__n/$__max)"
+              __log=$(mktemp)
+              set +e
               (
-                while sleep "$__heartbeat"; do
+                set -o pipefail
+                eval "$1" > >(tee -a "$__log") 2> >(tee -a "$__log" >&2)
+              ) &
+              __cmd_pid=$!
+              (
+                __heartbeat_count=0
+                while kill -0 "$__cmd_pid" 2>/dev/null; do
+                  sleep "$__heartbeat" || break
+                  kill -0 "$__cmd_pid" 2>/dev/null || break
                   __now=$(date +%s)
                   __elapsed=$((__now - __start))
+                  __heartbeat_count=$((__heartbeat_count + 1))
                   echo "::notice::[ci] $__task still running after $__elapsed s (attempt $__n/$__max)"
+                  if [ "$__debug" = 1 ] && [ $((__heartbeat_count % __snapshot_every)) -eq 0 ]; then
+                    __dump_debug_snapshot
+                  fi
                 done
               ) &
               __hb_pid=$!
-
-              __log=$(mktemp)
-              set +e; eval "$1" 2> >(tee "$__log" >&2); __rc=$?; set -e
+              wait "$__cmd_pid"; __rc=$?
+              set -e
 
               kill "$__hb_pid" 2>/dev/null || true
               wait "$__hb_pid" 2>/dev/null || true
@@ -1149,6 +1539,9 @@ jobs:
               }
 
               __path=$(perl -0pe 's/\e\[[0-9;]*m//g; s/\n/ /g' "$__log" | grep -oP "error:\s+path '\K/nix/store/[^']*(?='\s+is not valid)" 2>/dev/null | head -1 | tr -d '[:space:]' || true)
+              if [ "$__debug" = 1 ]; then
+                __dump_debug_snapshot
+              fi
               rm -f "$__log"
               if [ -z "$__path" ]; then
                 echo "::warning::[ci] $__task failed after $__elapsed s without a detected Nix GC race"
@@ -1166,7 +1559,7 @@ jobs:
             echo "::error::Nix GC race retry exhausted for $__task ($__max attempts)"
             __write_summary failure "Nix GC race retry exhausted"
             return 1
-          }; __nix_gc_retry 'if [ -n "${NIX_CONFIG:-}" ]; then NIX_CONFIG_WITH_APPEND=$(printf '"'"'%s\n%s'"'"' "$NIX_CONFIG" '"'"'restrict-eval = false'"'"'); else NIX_CONFIG_WITH_APPEND='"'"'restrict-eval = false'"'"'; fi; NIX_CONFIG="$NIX_CONFIG_WITH_APPEND" PNPM_HOME='"'"'${{ runner.temp }}/pnpm-home/${{ github.run_id }}/${{ github.run_attempt }}/${{ github.job }}'"'"' DT_PASSTHROUGH=1 "${DEVENV_BIN:?DEVENV_BIN not set}" tasks run test:integration:playwright:suite --mode before'
+          }; __nix_gc_retry 'if [ -n "${NIX_CONFIG:-}" ]; then NIX_CONFIG_WITH_APPEND=$(printf '"'"'%s\n%s'"'"' "$NIX_CONFIG" '"'"'restrict-eval = false'"'"'); else NIX_CONFIG_WITH_APPEND='"'"'restrict-eval = false'"'"'; fi; NIX_CONFIG="$NIX_CONFIG_WITH_APPEND" PNPM_HOME="${PNPM_HOME:-${{ github.workspace }}/.pnpm-home}" PNPM_STORE_DIR="${PNPM_STORE_DIR:-${{ runner.temp }}/pnpm-store/${{ github.job }}}" DT_PASSTHROUGH=1 "${DEVENV_BIN:?DEVENV_BIN not set}" tasks run test:integration:playwright:suite --mode before'
       - uses: actions/upload-artifact@v4
         if: '${{ !cancelled() }}'
         with:
@@ -1180,34 +1573,96 @@ jobs:
           PLAYWRIGHT_SUITE: '${{ matrix.suite }}'
         run: |
           __nix_gc_retry() {
-            local __task='devenv tasks run test:integration:playwright:upload-trace --mode before' __max=${NIX_GC_RACE_MAX_RETRIES:-10} __heartbeat=${CI_PROGRESS_HEARTBEAT_SECONDS:-60} __n=1 __log __rc __path __start __now __elapsed __hb_pid
+            local __task='devenv tasks run test:integration:playwright:upload-trace --mode before' __max=${NIX_GC_RACE_MAX_RETRIES:-10} __heartbeat=${CI_PROGRESS_HEARTBEAT_SECONDS:-60} __debug=${CI_DEBUG_WRAPPER:-0} __tail_lines=${CI_DEBUG_LOG_TAIL_LINES:-80} __snapshot_every=${CI_DEBUG_PROCESS_SNAPSHOT_EVERY_HEARTBEATS:-3} __n=1 __log __rc __path __start __now __elapsed __hb_pid __cmd_pid
             __start=$(date +%s)
+            if ! [ "$__snapshot_every" -ge 1 ] 2>/dev/null; then
+              __snapshot_every=1
+            fi
 
             __write_summary() {
               [ -n "${GITHUB_STEP_SUMMARY:-}" ] || return 0
               {
                 echo "### CI Task"
-                echo "- Task: `$__task`"
-                echo "- Status: `$1`"
-                echo "- Duration: `$__elapsed s`"
-                echo "- Attempts: `$__n/$__max`"
+                # Keep summary values plain text. Backticks inside double quotes trigger
+                # shell command substitution and turned failed-task metadata into bogus
+                # commands on GitHub Actions runners.
+                echo "- Task: $__task"
+                echo "- Status: $1"
+                echo "- Duration: $__elapsed s"
+                echo "- Attempts: $__n/$__max"
                 [ -z "${2:-}" ] || echo "- Note: $2"
               } >> "$GITHUB_STEP_SUMMARY"
             }
 
+            __dump_process_subtree() {
+              local __queue __pid __children
+              __queue="${1:-}"
+              while [ -n "$__queue" ]; do
+                __pid=${__queue%% *}
+                if [ "$__queue" = "$__pid" ]; then
+                  __queue=''
+                else
+                  __queue=${__queue#* }
+                fi
+                [ -n "$__pid" ] || continue
+                ps -ww -o pid=,ppid=,pgid=,stat=,etime=,%cpu=,%mem=,args= -p "$__pid" 2>/dev/null || true
+                __children=$(pgrep -P "$__pid" 2>/dev/null | tr '
+          ' ' ' | sed 's/[[:space:]]*$//' || true)
+                [ -z "$__children" ] || __queue="$__queue $__children"
+              done
+            }
+
+            __dump_debug_snapshot() {
+              [ "$__debug" = 1 ] || return 0
+              echo "::group::[ci-debug] $__task snapshot after $__elapsed s (attempt $__n/$__max)"
+              echo "[ci-debug] command pid: ${__cmd_pid:-unknown}"
+              if [ -n "${__cmd_pid:-}" ] && kill -0 "$__cmd_pid" 2>/dev/null; then
+                if command -v pstree >/dev/null 2>&1; then
+                  echo "[ci-debug] process tree"
+                  pstree -apl "$__cmd_pid" || true
+                else
+                  echo "[ci-debug] process snapshot"
+                  __dump_process_subtree "$__cmd_pid"
+                fi
+              else
+                echo "[ci-debug] wrapped command is no longer running"
+              fi
+
+              if [ -f "$__log" ] && [ -s "$__log" ]; then
+                echo "[ci-debug] recent combined output"
+                tail -n "$__tail_lines" "$__log" || true
+              else
+                echo "[ci-debug] no combined output captured yet"
+              fi
+              echo "::endgroup::"
+            }
+
             while [ "$__n" -le "$__max" ]; do
               echo "::notice::[ci] starting $__task (attempt $__n/$__max)"
+              __log=$(mktemp)
+              set +e
               (
-                while sleep "$__heartbeat"; do
+                set -o pipefail
+                eval "$1" > >(tee -a "$__log") 2> >(tee -a "$__log" >&2)
+              ) &
+              __cmd_pid=$!
+              (
+                __heartbeat_count=0
+                while kill -0 "$__cmd_pid" 2>/dev/null; do
+                  sleep "$__heartbeat" || break
+                  kill -0 "$__cmd_pid" 2>/dev/null || break
                   __now=$(date +%s)
                   __elapsed=$((__now - __start))
+                  __heartbeat_count=$((__heartbeat_count + 1))
                   echo "::notice::[ci] $__task still running after $__elapsed s (attempt $__n/$__max)"
+                  if [ "$__debug" = 1 ] && [ $((__heartbeat_count % __snapshot_every)) -eq 0 ]; then
+                    __dump_debug_snapshot
+                  fi
                 done
               ) &
               __hb_pid=$!
-
-              __log=$(mktemp)
-              set +e; eval "$1" 2> >(tee "$__log" >&2); __rc=$?; set -e
+              wait "$__cmd_pid"; __rc=$?
+              set -e
 
               kill "$__hb_pid" 2>/dev/null || true
               wait "$__hb_pid" 2>/dev/null || true
@@ -1227,6 +1682,9 @@ jobs:
               }
 
               __path=$(perl -0pe 's/\e\[[0-9;]*m//g; s/\n/ /g' "$__log" | grep -oP "error:\s+path '\K/nix/store/[^']*(?='\s+is not valid)" 2>/dev/null | head -1 | tr -d '[:space:]' || true)
+              if [ "$__debug" = 1 ]; then
+                __dump_debug_snapshot
+              fi
               rm -f "$__log"
               if [ -z "$__path" ]; then
                 echo "::warning::[ci] $__task failed after $__elapsed s without a detected Nix GC race"
@@ -1244,7 +1702,7 @@ jobs:
             echo "::error::Nix GC race retry exhausted for $__task ($__max attempts)"
             __write_summary failure "Nix GC race retry exhausted"
             return 1
-          }; __nix_gc_retry 'if [ -n "${NIX_CONFIG:-}" ]; then NIX_CONFIG_WITH_APPEND=$(printf '"'"'%s\n%s'"'"' "$NIX_CONFIG" '"'"'restrict-eval = false'"'"'); else NIX_CONFIG_WITH_APPEND='"'"'restrict-eval = false'"'"'; fi; NIX_CONFIG="$NIX_CONFIG_WITH_APPEND" PNPM_HOME='"'"'${{ runner.temp }}/pnpm-home/${{ github.run_id }}/${{ github.run_attempt }}/${{ github.job }}'"'"' DT_PASSTHROUGH=1 "${DEVENV_BIN:?DEVENV_BIN not set}" tasks run test:integration:playwright:upload-trace --mode before'
+          }; __nix_gc_retry 'if [ -n "${NIX_CONFIG:-}" ]; then NIX_CONFIG_WITH_APPEND=$(printf '"'"'%s\n%s'"'"' "$NIX_CONFIG" '"'"'restrict-eval = false'"'"'); else NIX_CONFIG_WITH_APPEND='"'"'restrict-eval = false'"'"'; fi; NIX_CONFIG="$NIX_CONFIG_WITH_APPEND" PNPM_HOME="${PNPM_HOME:-${{ github.workspace }}/.pnpm-home}" PNPM_STORE_DIR="${PNPM_STORE_DIR:-${{ runner.temp }}/pnpm-store/${{ github.job }}}" DT_PASSTHROUGH=1 "${DEVENV_BIN:?DEVENV_BIN not set}" tasks run test:integration:playwright:upload-trace --mode before'
       - name: Upload Nix diagnostics artifact
         if: failure() && env.NIX_STORE_DIAGNOSTICS_DIR != ''
         uses: actions/upload-artifact@v4
@@ -1371,34 +1829,96 @@ jobs:
       - name: Run performance tests
         run: |
           __nix_gc_retry() {
-            local __task='devenv tasks run test:perf --mode before' __max=${NIX_GC_RACE_MAX_RETRIES:-10} __heartbeat=${CI_PROGRESS_HEARTBEAT_SECONDS:-60} __n=1 __log __rc __path __start __now __elapsed __hb_pid
+            local __task='devenv tasks run test:perf --mode before' __max=${NIX_GC_RACE_MAX_RETRIES:-10} __heartbeat=${CI_PROGRESS_HEARTBEAT_SECONDS:-60} __debug=${CI_DEBUG_WRAPPER:-0} __tail_lines=${CI_DEBUG_LOG_TAIL_LINES:-80} __snapshot_every=${CI_DEBUG_PROCESS_SNAPSHOT_EVERY_HEARTBEATS:-3} __n=1 __log __rc __path __start __now __elapsed __hb_pid __cmd_pid
             __start=$(date +%s)
+            if ! [ "$__snapshot_every" -ge 1 ] 2>/dev/null; then
+              __snapshot_every=1
+            fi
 
             __write_summary() {
               [ -n "${GITHUB_STEP_SUMMARY:-}" ] || return 0
               {
                 echo "### CI Task"
-                echo "- Task: `$__task`"
-                echo "- Status: `$1`"
-                echo "- Duration: `$__elapsed s`"
-                echo "- Attempts: `$__n/$__max`"
+                # Keep summary values plain text. Backticks inside double quotes trigger
+                # shell command substitution and turned failed-task metadata into bogus
+                # commands on GitHub Actions runners.
+                echo "- Task: $__task"
+                echo "- Status: $1"
+                echo "- Duration: $__elapsed s"
+                echo "- Attempts: $__n/$__max"
                 [ -z "${2:-}" ] || echo "- Note: $2"
               } >> "$GITHUB_STEP_SUMMARY"
             }
 
+            __dump_process_subtree() {
+              local __queue __pid __children
+              __queue="${1:-}"
+              while [ -n "$__queue" ]; do
+                __pid=${__queue%% *}
+                if [ "$__queue" = "$__pid" ]; then
+                  __queue=''
+                else
+                  __queue=${__queue#* }
+                fi
+                [ -n "$__pid" ] || continue
+                ps -ww -o pid=,ppid=,pgid=,stat=,etime=,%cpu=,%mem=,args= -p "$__pid" 2>/dev/null || true
+                __children=$(pgrep -P "$__pid" 2>/dev/null | tr '
+          ' ' ' | sed 's/[[:space:]]*$//' || true)
+                [ -z "$__children" ] || __queue="$__queue $__children"
+              done
+            }
+
+            __dump_debug_snapshot() {
+              [ "$__debug" = 1 ] || return 0
+              echo "::group::[ci-debug] $__task snapshot after $__elapsed s (attempt $__n/$__max)"
+              echo "[ci-debug] command pid: ${__cmd_pid:-unknown}"
+              if [ -n "${__cmd_pid:-}" ] && kill -0 "$__cmd_pid" 2>/dev/null; then
+                if command -v pstree >/dev/null 2>&1; then
+                  echo "[ci-debug] process tree"
+                  pstree -apl "$__cmd_pid" || true
+                else
+                  echo "[ci-debug] process snapshot"
+                  __dump_process_subtree "$__cmd_pid"
+                fi
+              else
+                echo "[ci-debug] wrapped command is no longer running"
+              fi
+
+              if [ -f "$__log" ] && [ -s "$__log" ]; then
+                echo "[ci-debug] recent combined output"
+                tail -n "$__tail_lines" "$__log" || true
+              else
+                echo "[ci-debug] no combined output captured yet"
+              fi
+              echo "::endgroup::"
+            }
+
             while [ "$__n" -le "$__max" ]; do
               echo "::notice::[ci] starting $__task (attempt $__n/$__max)"
+              __log=$(mktemp)
+              set +e
               (
-                while sleep "$__heartbeat"; do
+                set -o pipefail
+                eval "$1" > >(tee -a "$__log") 2> >(tee -a "$__log" >&2)
+              ) &
+              __cmd_pid=$!
+              (
+                __heartbeat_count=0
+                while kill -0 "$__cmd_pid" 2>/dev/null; do
+                  sleep "$__heartbeat" || break
+                  kill -0 "$__cmd_pid" 2>/dev/null || break
                   __now=$(date +%s)
                   __elapsed=$((__now - __start))
+                  __heartbeat_count=$((__heartbeat_count + 1))
                   echo "::notice::[ci] $__task still running after $__elapsed s (attempt $__n/$__max)"
+                  if [ "$__debug" = 1 ] && [ $((__heartbeat_count % __snapshot_every)) -eq 0 ]; then
+                    __dump_debug_snapshot
+                  fi
                 done
               ) &
               __hb_pid=$!
-
-              __log=$(mktemp)
-              set +e; eval "$1" 2> >(tee "$__log" >&2); __rc=$?; set -e
+              wait "$__cmd_pid"; __rc=$?
+              set -e
 
               kill "$__hb_pid" 2>/dev/null || true
               wait "$__hb_pid" 2>/dev/null || true
@@ -1418,6 +1938,9 @@ jobs:
               }
 
               __path=$(perl -0pe 's/\e\[[0-9;]*m//g; s/\n/ /g' "$__log" | grep -oP "error:\s+path '\K/nix/store/[^']*(?='\s+is not valid)" 2>/dev/null | head -1 | tr -d '[:space:]' || true)
+              if [ "$__debug" = 1 ]; then
+                __dump_debug_snapshot
+              fi
               rm -f "$__log"
               if [ -z "$__path" ]; then
                 echo "::warning::[ci] $__task failed after $__elapsed s without a detected Nix GC race"
@@ -1435,7 +1958,7 @@ jobs:
             echo "::error::Nix GC race retry exhausted for $__task ($__max attempts)"
             __write_summary failure "Nix GC race retry exhausted"
             return 1
-          }; __nix_gc_retry 'if [ -n "${NIX_CONFIG:-}" ]; then NIX_CONFIG_WITH_APPEND=$(printf '"'"'%s\n%s'"'"' "$NIX_CONFIG" '"'"'restrict-eval = false'"'"'); else NIX_CONFIG_WITH_APPEND='"'"'restrict-eval = false'"'"'; fi; NIX_CONFIG="$NIX_CONFIG_WITH_APPEND" PNPM_HOME='"'"'${{ runner.temp }}/pnpm-home/${{ github.run_id }}/${{ github.run_attempt }}/${{ github.job }}'"'"' DT_PASSTHROUGH=1 "${DEVENV_BIN:?DEVENV_BIN not set}" tasks run test:perf --mode before'
+          }; __nix_gc_retry 'if [ -n "${NIX_CONFIG:-}" ]; then NIX_CONFIG_WITH_APPEND=$(printf '"'"'%s\n%s'"'"' "$NIX_CONFIG" '"'"'restrict-eval = false'"'"'); else NIX_CONFIG_WITH_APPEND='"'"'restrict-eval = false'"'"'; fi; NIX_CONFIG="$NIX_CONFIG_WITH_APPEND" PNPM_HOME="${PNPM_HOME:-${{ github.workspace }}/.pnpm-home}" PNPM_STORE_DIR="${PNPM_STORE_DIR:-${{ runner.temp }}/pnpm-store/${{ github.job }}}" DT_PASSTHROUGH=1 "${DEVENV_BIN:?DEVENV_BIN not set}" tasks run test:perf --mode before'
         env:
           COMMIT_SHA: '${{ github.event.pull_request.head.sha || github.sha }}'
           GRAFANA_ENDPOINT: 'https://livestore.grafana.net'
@@ -1563,34 +2086,96 @@ jobs:
       - name: Build wa-sqlite
         run: |
           __nix_gc_retry() {
-            local __task='devenv tasks run test:integration:wa-sqlite:build --mode before' __max=${NIX_GC_RACE_MAX_RETRIES:-10} __heartbeat=${CI_PROGRESS_HEARTBEAT_SECONDS:-60} __n=1 __log __rc __path __start __now __elapsed __hb_pid
+            local __task='devenv tasks run test:integration:wa-sqlite:build --mode before' __max=${NIX_GC_RACE_MAX_RETRIES:-10} __heartbeat=${CI_PROGRESS_HEARTBEAT_SECONDS:-60} __debug=${CI_DEBUG_WRAPPER:-0} __tail_lines=${CI_DEBUG_LOG_TAIL_LINES:-80} __snapshot_every=${CI_DEBUG_PROCESS_SNAPSHOT_EVERY_HEARTBEATS:-3} __n=1 __log __rc __path __start __now __elapsed __hb_pid __cmd_pid
             __start=$(date +%s)
+            if ! [ "$__snapshot_every" -ge 1 ] 2>/dev/null; then
+              __snapshot_every=1
+            fi
 
             __write_summary() {
               [ -n "${GITHUB_STEP_SUMMARY:-}" ] || return 0
               {
                 echo "### CI Task"
-                echo "- Task: `$__task`"
-                echo "- Status: `$1`"
-                echo "- Duration: `$__elapsed s`"
-                echo "- Attempts: `$__n/$__max`"
+                # Keep summary values plain text. Backticks inside double quotes trigger
+                # shell command substitution and turned failed-task metadata into bogus
+                # commands on GitHub Actions runners.
+                echo "- Task: $__task"
+                echo "- Status: $1"
+                echo "- Duration: $__elapsed s"
+                echo "- Attempts: $__n/$__max"
                 [ -z "${2:-}" ] || echo "- Note: $2"
               } >> "$GITHUB_STEP_SUMMARY"
             }
 
+            __dump_process_subtree() {
+              local __queue __pid __children
+              __queue="${1:-}"
+              while [ -n "$__queue" ]; do
+                __pid=${__queue%% *}
+                if [ "$__queue" = "$__pid" ]; then
+                  __queue=''
+                else
+                  __queue=${__queue#* }
+                fi
+                [ -n "$__pid" ] || continue
+                ps -ww -o pid=,ppid=,pgid=,stat=,etime=,%cpu=,%mem=,args= -p "$__pid" 2>/dev/null || true
+                __children=$(pgrep -P "$__pid" 2>/dev/null | tr '
+          ' ' ' | sed 's/[[:space:]]*$//' || true)
+                [ -z "$__children" ] || __queue="$__queue $__children"
+              done
+            }
+
+            __dump_debug_snapshot() {
+              [ "$__debug" = 1 ] || return 0
+              echo "::group::[ci-debug] $__task snapshot after $__elapsed s (attempt $__n/$__max)"
+              echo "[ci-debug] command pid: ${__cmd_pid:-unknown}"
+              if [ -n "${__cmd_pid:-}" ] && kill -0 "$__cmd_pid" 2>/dev/null; then
+                if command -v pstree >/dev/null 2>&1; then
+                  echo "[ci-debug] process tree"
+                  pstree -apl "$__cmd_pid" || true
+                else
+                  echo "[ci-debug] process snapshot"
+                  __dump_process_subtree "$__cmd_pid"
+                fi
+              else
+                echo "[ci-debug] wrapped command is no longer running"
+              fi
+
+              if [ -f "$__log" ] && [ -s "$__log" ]; then
+                echo "[ci-debug] recent combined output"
+                tail -n "$__tail_lines" "$__log" || true
+              else
+                echo "[ci-debug] no combined output captured yet"
+              fi
+              echo "::endgroup::"
+            }
+
             while [ "$__n" -le "$__max" ]; do
               echo "::notice::[ci] starting $__task (attempt $__n/$__max)"
+              __log=$(mktemp)
+              set +e
               (
-                while sleep "$__heartbeat"; do
+                set -o pipefail
+                eval "$1" > >(tee -a "$__log") 2> >(tee -a "$__log" >&2)
+              ) &
+              __cmd_pid=$!
+              (
+                __heartbeat_count=0
+                while kill -0 "$__cmd_pid" 2>/dev/null; do
+                  sleep "$__heartbeat" || break
+                  kill -0 "$__cmd_pid" 2>/dev/null || break
                   __now=$(date +%s)
                   __elapsed=$((__now - __start))
+                  __heartbeat_count=$((__heartbeat_count + 1))
                   echo "::notice::[ci] $__task still running after $__elapsed s (attempt $__n/$__max)"
+                  if [ "$__debug" = 1 ] && [ $((__heartbeat_count % __snapshot_every)) -eq 0 ]; then
+                    __dump_debug_snapshot
+                  fi
                 done
               ) &
               __hb_pid=$!
-
-              __log=$(mktemp)
-              set +e; eval "$1" 2> >(tee "$__log" >&2); __rc=$?; set -e
+              wait "$__cmd_pid"; __rc=$?
+              set -e
 
               kill "$__hb_pid" 2>/dev/null || true
               wait "$__hb_pid" 2>/dev/null || true
@@ -1610,6 +2195,9 @@ jobs:
               }
 
               __path=$(perl -0pe 's/\e\[[0-9;]*m//g; s/\n/ /g' "$__log" | grep -oP "error:\s+path '\K/nix/store/[^']*(?='\s+is not valid)" 2>/dev/null | head -1 | tr -d '[:space:]' || true)
+              if [ "$__debug" = 1 ]; then
+                __dump_debug_snapshot
+              fi
               rm -f "$__log"
               if [ -z "$__path" ]; then
                 echo "::warning::[ci] $__task failed after $__elapsed s without a detected Nix GC race"
@@ -1627,38 +2215,100 @@ jobs:
             echo "::error::Nix GC race retry exhausted for $__task ($__max attempts)"
             __write_summary failure "Nix GC race retry exhausted"
             return 1
-          }; __nix_gc_retry 'if [ -n "${NIX_CONFIG:-}" ]; then NIX_CONFIG_WITH_APPEND=$(printf '"'"'%s\n%s'"'"' "$NIX_CONFIG" '"'"'restrict-eval = false'"'"'); else NIX_CONFIG_WITH_APPEND='"'"'restrict-eval = false'"'"'; fi; NIX_CONFIG="$NIX_CONFIG_WITH_APPEND" PNPM_HOME='"'"'${{ runner.temp }}/pnpm-home/${{ github.run_id }}/${{ github.run_attempt }}/${{ github.job }}'"'"' DT_PASSTHROUGH=1 "${DEVENV_BIN:?DEVENV_BIN not set}" tasks run test:integration:wa-sqlite:build --mode before'
+          }; __nix_gc_retry 'if [ -n "${NIX_CONFIG:-}" ]; then NIX_CONFIG_WITH_APPEND=$(printf '"'"'%s\n%s'"'"' "$NIX_CONFIG" '"'"'restrict-eval = false'"'"'); else NIX_CONFIG_WITH_APPEND='"'"'restrict-eval = false'"'"'; fi; NIX_CONFIG="$NIX_CONFIG_WITH_APPEND" PNPM_HOME="${PNPM_HOME:-${{ github.workspace }}/.pnpm-home}" PNPM_STORE_DIR="${PNPM_STORE_DIR:-${{ runner.temp }}/pnpm-store/${{ github.job }}}" DT_PASSTHROUGH=1 "${DEVENV_BIN:?DEVENV_BIN not set}" tasks run test:integration:wa-sqlite:build --mode before'
       - name: Run wa-sqlite tests
         run: |
           __nix_gc_retry() {
-            local __task='devenv tasks run test:integration:wa-sqlite --mode before' __max=${NIX_GC_RACE_MAX_RETRIES:-10} __heartbeat=${CI_PROGRESS_HEARTBEAT_SECONDS:-60} __n=1 __log __rc __path __start __now __elapsed __hb_pid
+            local __task='devenv tasks run test:integration:wa-sqlite --mode before' __max=${NIX_GC_RACE_MAX_RETRIES:-10} __heartbeat=${CI_PROGRESS_HEARTBEAT_SECONDS:-60} __debug=${CI_DEBUG_WRAPPER:-0} __tail_lines=${CI_DEBUG_LOG_TAIL_LINES:-80} __snapshot_every=${CI_DEBUG_PROCESS_SNAPSHOT_EVERY_HEARTBEATS:-3} __n=1 __log __rc __path __start __now __elapsed __hb_pid __cmd_pid
             __start=$(date +%s)
+            if ! [ "$__snapshot_every" -ge 1 ] 2>/dev/null; then
+              __snapshot_every=1
+            fi
 
             __write_summary() {
               [ -n "${GITHUB_STEP_SUMMARY:-}" ] || return 0
               {
                 echo "### CI Task"
-                echo "- Task: `$__task`"
-                echo "- Status: `$1`"
-                echo "- Duration: `$__elapsed s`"
-                echo "- Attempts: `$__n/$__max`"
+                # Keep summary values plain text. Backticks inside double quotes trigger
+                # shell command substitution and turned failed-task metadata into bogus
+                # commands on GitHub Actions runners.
+                echo "- Task: $__task"
+                echo "- Status: $1"
+                echo "- Duration: $__elapsed s"
+                echo "- Attempts: $__n/$__max"
                 [ -z "${2:-}" ] || echo "- Note: $2"
               } >> "$GITHUB_STEP_SUMMARY"
             }
 
+            __dump_process_subtree() {
+              local __queue __pid __children
+              __queue="${1:-}"
+              while [ -n "$__queue" ]; do
+                __pid=${__queue%% *}
+                if [ "$__queue" = "$__pid" ]; then
+                  __queue=''
+                else
+                  __queue=${__queue#* }
+                fi
+                [ -n "$__pid" ] || continue
+                ps -ww -o pid=,ppid=,pgid=,stat=,etime=,%cpu=,%mem=,args= -p "$__pid" 2>/dev/null || true
+                __children=$(pgrep -P "$__pid" 2>/dev/null | tr '
+          ' ' ' | sed 's/[[:space:]]*$//' || true)
+                [ -z "$__children" ] || __queue="$__queue $__children"
+              done
+            }
+
+            __dump_debug_snapshot() {
+              [ "$__debug" = 1 ] || return 0
+              echo "::group::[ci-debug] $__task snapshot after $__elapsed s (attempt $__n/$__max)"
+              echo "[ci-debug] command pid: ${__cmd_pid:-unknown}"
+              if [ -n "${__cmd_pid:-}" ] && kill -0 "$__cmd_pid" 2>/dev/null; then
+                if command -v pstree >/dev/null 2>&1; then
+                  echo "[ci-debug] process tree"
+                  pstree -apl "$__cmd_pid" || true
+                else
+                  echo "[ci-debug] process snapshot"
+                  __dump_process_subtree "$__cmd_pid"
+                fi
+              else
+                echo "[ci-debug] wrapped command is no longer running"
+              fi
+
+              if [ -f "$__log" ] && [ -s "$__log" ]; then
+                echo "[ci-debug] recent combined output"
+                tail -n "$__tail_lines" "$__log" || true
+              else
+                echo "[ci-debug] no combined output captured yet"
+              fi
+              echo "::endgroup::"
+            }
+
             while [ "$__n" -le "$__max" ]; do
               echo "::notice::[ci] starting $__task (attempt $__n/$__max)"
+              __log=$(mktemp)
+              set +e
               (
-                while sleep "$__heartbeat"; do
+                set -o pipefail
+                eval "$1" > >(tee -a "$__log") 2> >(tee -a "$__log" >&2)
+              ) &
+              __cmd_pid=$!
+              (
+                __heartbeat_count=0
+                while kill -0 "$__cmd_pid" 2>/dev/null; do
+                  sleep "$__heartbeat" || break
+                  kill -0 "$__cmd_pid" 2>/dev/null || break
                   __now=$(date +%s)
                   __elapsed=$((__now - __start))
+                  __heartbeat_count=$((__heartbeat_count + 1))
                   echo "::notice::[ci] $__task still running after $__elapsed s (attempt $__n/$__max)"
+                  if [ "$__debug" = 1 ] && [ $((__heartbeat_count % __snapshot_every)) -eq 0 ]; then
+                    __dump_debug_snapshot
+                  fi
                 done
               ) &
               __hb_pid=$!
-
-              __log=$(mktemp)
-              set +e; eval "$1" 2> >(tee "$__log" >&2); __rc=$?; set -e
+              wait "$__cmd_pid"; __rc=$?
+              set -e
 
               kill "$__hb_pid" 2>/dev/null || true
               wait "$__hb_pid" 2>/dev/null || true
@@ -1678,6 +2328,9 @@ jobs:
               }
 
               __path=$(perl -0pe 's/\e\[[0-9;]*m//g; s/\n/ /g' "$__log" | grep -oP "error:\s+path '\K/nix/store/[^']*(?='\s+is not valid)" 2>/dev/null | head -1 | tr -d '[:space:]' || true)
+              if [ "$__debug" = 1 ]; then
+                __dump_debug_snapshot
+              fi
               rm -f "$__log"
               if [ -z "$__path" ]; then
                 echo "::warning::[ci] $__task failed after $__elapsed s without a detected Nix GC race"
@@ -1695,7 +2348,7 @@ jobs:
             echo "::error::Nix GC race retry exhausted for $__task ($__max attempts)"
             __write_summary failure "Nix GC race retry exhausted"
             return 1
-          }; __nix_gc_retry 'if [ -n "${NIX_CONFIG:-}" ]; then NIX_CONFIG_WITH_APPEND=$(printf '"'"'%s\n%s'"'"' "$NIX_CONFIG" '"'"'restrict-eval = false'"'"'); else NIX_CONFIG_WITH_APPEND='"'"'restrict-eval = false'"'"'; fi; NIX_CONFIG="$NIX_CONFIG_WITH_APPEND" PNPM_HOME='"'"'${{ runner.temp }}/pnpm-home/${{ github.run_id }}/${{ github.run_attempt }}/${{ github.job }}'"'"' DT_PASSTHROUGH=1 "${DEVENV_BIN:?DEVENV_BIN not set}" tasks run test:integration:wa-sqlite --mode before'
+          }; __nix_gc_retry 'if [ -n "${NIX_CONFIG:-}" ]; then NIX_CONFIG_WITH_APPEND=$(printf '"'"'%s\n%s'"'"' "$NIX_CONFIG" '"'"'restrict-eval = false'"'"'); else NIX_CONFIG_WITH_APPEND='"'"'restrict-eval = false'"'"'; fi; NIX_CONFIG="$NIX_CONFIG_WITH_APPEND" PNPM_HOME="${PNPM_HOME:-${{ github.workspace }}/.pnpm-home}" PNPM_STORE_DIR="${PNPM_STORE_DIR:-${{ runner.temp }}/pnpm-store/${{ github.job }}}" DT_PASSTHROUGH=1 "${DEVENV_BIN:?DEVENV_BIN not set}" tasks run test:integration:wa-sqlite --mode before'
         env:
           COMMIT_SHA: '${{ github.event.pull_request.head.sha || github.sha }}'
           GRAFANA_ENDPOINT: 'https://livestore.grafana.net'
@@ -1815,34 +2468,96 @@ jobs:
       - name: Publish snapshot version
         run: |
           __nix_gc_retry() {
-            local __task='devenv tasks run release:snapshot:git-sha --mode before' __max=${NIX_GC_RACE_MAX_RETRIES:-10} __heartbeat=${CI_PROGRESS_HEARTBEAT_SECONDS:-60} __n=1 __log __rc __path __start __now __elapsed __hb_pid
+            local __task='devenv tasks run release:snapshot:git-sha --mode before' __max=${NIX_GC_RACE_MAX_RETRIES:-10} __heartbeat=${CI_PROGRESS_HEARTBEAT_SECONDS:-60} __debug=${CI_DEBUG_WRAPPER:-0} __tail_lines=${CI_DEBUG_LOG_TAIL_LINES:-80} __snapshot_every=${CI_DEBUG_PROCESS_SNAPSHOT_EVERY_HEARTBEATS:-3} __n=1 __log __rc __path __start __now __elapsed __hb_pid __cmd_pid
             __start=$(date +%s)
+            if ! [ "$__snapshot_every" -ge 1 ] 2>/dev/null; then
+              __snapshot_every=1
+            fi
 
             __write_summary() {
               [ -n "${GITHUB_STEP_SUMMARY:-}" ] || return 0
               {
                 echo "### CI Task"
-                echo "- Task: `$__task`"
-                echo "- Status: `$1`"
-                echo "- Duration: `$__elapsed s`"
-                echo "- Attempts: `$__n/$__max`"
+                # Keep summary values plain text. Backticks inside double quotes trigger
+                # shell command substitution and turned failed-task metadata into bogus
+                # commands on GitHub Actions runners.
+                echo "- Task: $__task"
+                echo "- Status: $1"
+                echo "- Duration: $__elapsed s"
+                echo "- Attempts: $__n/$__max"
                 [ -z "${2:-}" ] || echo "- Note: $2"
               } >> "$GITHUB_STEP_SUMMARY"
             }
 
+            __dump_process_subtree() {
+              local __queue __pid __children
+              __queue="${1:-}"
+              while [ -n "$__queue" ]; do
+                __pid=${__queue%% *}
+                if [ "$__queue" = "$__pid" ]; then
+                  __queue=''
+                else
+                  __queue=${__queue#* }
+                fi
+                [ -n "$__pid" ] || continue
+                ps -ww -o pid=,ppid=,pgid=,stat=,etime=,%cpu=,%mem=,args= -p "$__pid" 2>/dev/null || true
+                __children=$(pgrep -P "$__pid" 2>/dev/null | tr '
+          ' ' ' | sed 's/[[:space:]]*$//' || true)
+                [ -z "$__children" ] || __queue="$__queue $__children"
+              done
+            }
+
+            __dump_debug_snapshot() {
+              [ "$__debug" = 1 ] || return 0
+              echo "::group::[ci-debug] $__task snapshot after $__elapsed s (attempt $__n/$__max)"
+              echo "[ci-debug] command pid: ${__cmd_pid:-unknown}"
+              if [ -n "${__cmd_pid:-}" ] && kill -0 "$__cmd_pid" 2>/dev/null; then
+                if command -v pstree >/dev/null 2>&1; then
+                  echo "[ci-debug] process tree"
+                  pstree -apl "$__cmd_pid" || true
+                else
+                  echo "[ci-debug] process snapshot"
+                  __dump_process_subtree "$__cmd_pid"
+                fi
+              else
+                echo "[ci-debug] wrapped command is no longer running"
+              fi
+
+              if [ -f "$__log" ] && [ -s "$__log" ]; then
+                echo "[ci-debug] recent combined output"
+                tail -n "$__tail_lines" "$__log" || true
+              else
+                echo "[ci-debug] no combined output captured yet"
+              fi
+              echo "::endgroup::"
+            }
+
             while [ "$__n" -le "$__max" ]; do
               echo "::notice::[ci] starting $__task (attempt $__n/$__max)"
+              __log=$(mktemp)
+              set +e
               (
-                while sleep "$__heartbeat"; do
+                set -o pipefail
+                eval "$1" > >(tee -a "$__log") 2> >(tee -a "$__log" >&2)
+              ) &
+              __cmd_pid=$!
+              (
+                __heartbeat_count=0
+                while kill -0 "$__cmd_pid" 2>/dev/null; do
+                  sleep "$__heartbeat" || break
+                  kill -0 "$__cmd_pid" 2>/dev/null || break
                   __now=$(date +%s)
                   __elapsed=$((__now - __start))
+                  __heartbeat_count=$((__heartbeat_count + 1))
                   echo "::notice::[ci] $__task still running after $__elapsed s (attempt $__n/$__max)"
+                  if [ "$__debug" = 1 ] && [ $((__heartbeat_count % __snapshot_every)) -eq 0 ]; then
+                    __dump_debug_snapshot
+                  fi
                 done
               ) &
               __hb_pid=$!
-
-              __log=$(mktemp)
-              set +e; eval "$1" 2> >(tee "$__log" >&2); __rc=$?; set -e
+              wait "$__cmd_pid"; __rc=$?
+              set -e
 
               kill "$__hb_pid" 2>/dev/null || true
               wait "$__hb_pid" 2>/dev/null || true
@@ -1862,6 +2577,9 @@ jobs:
               }
 
               __path=$(perl -0pe 's/\e\[[0-9;]*m//g; s/\n/ /g' "$__log" | grep -oP "error:\s+path '\K/nix/store/[^']*(?='\s+is not valid)" 2>/dev/null | head -1 | tr -d '[:space:]' || true)
+              if [ "$__debug" = 1 ]; then
+                __dump_debug_snapshot
+              fi
               rm -f "$__log"
               if [ -z "$__path" ]; then
                 echo "::warning::[ci] $__task failed after $__elapsed s without a detected Nix GC race"
@@ -1879,7 +2597,7 @@ jobs:
             echo "::error::Nix GC race retry exhausted for $__task ($__max attempts)"
             __write_summary failure "Nix GC race retry exhausted"
             return 1
-          }; __nix_gc_retry 'if [ -n "${NIX_CONFIG:-}" ]; then NIX_CONFIG_WITH_APPEND=$(printf '"'"'%s\n%s'"'"' "$NIX_CONFIG" '"'"'restrict-eval = false'"'"'); else NIX_CONFIG_WITH_APPEND='"'"'restrict-eval = false'"'"'; fi; NIX_CONFIG="$NIX_CONFIG_WITH_APPEND" PNPM_HOME='"'"'${{ runner.temp }}/pnpm-home/${{ github.run_id }}/${{ github.run_attempt }}/${{ github.job }}'"'"' DT_PASSTHROUGH=1 "${DEVENV_BIN:?DEVENV_BIN not set}" tasks run release:snapshot:git-sha --mode before'
+          }; __nix_gc_retry 'if [ -n "${NIX_CONFIG:-}" ]; then NIX_CONFIG_WITH_APPEND=$(printf '"'"'%s\n%s'"'"' "$NIX_CONFIG" '"'"'restrict-eval = false'"'"'); else NIX_CONFIG_WITH_APPEND='"'"'restrict-eval = false'"'"'; fi; NIX_CONFIG="$NIX_CONFIG_WITH_APPEND" PNPM_HOME="${PNPM_HOME:-${{ github.workspace }}/.pnpm-home}" PNPM_STORE_DIR="${PNPM_STORE_DIR:-${{ runner.temp }}/pnpm-store/${{ github.job }}}" DT_PASSTHROUGH=1 "${DEVENV_BIN:?DEVENV_BIN not set}" tasks run release:snapshot:git-sha --mode before'
         env:
           GIT_SHA: '${{ github.sha }}'
       - name: Upload Nix diagnostics artifact
@@ -1995,34 +2713,96 @@ jobs:
       - name: Install examples dependencies
         run: |
           __nix_gc_retry() {
-            local __task='devenv tasks run examples:install --mode before' __max=${NIX_GC_RACE_MAX_RETRIES:-10} __heartbeat=${CI_PROGRESS_HEARTBEAT_SECONDS:-60} __n=1 __log __rc __path __start __now __elapsed __hb_pid
+            local __task='devenv tasks run examples:install --mode before' __max=${NIX_GC_RACE_MAX_RETRIES:-10} __heartbeat=${CI_PROGRESS_HEARTBEAT_SECONDS:-60} __debug=${CI_DEBUG_WRAPPER:-0} __tail_lines=${CI_DEBUG_LOG_TAIL_LINES:-80} __snapshot_every=${CI_DEBUG_PROCESS_SNAPSHOT_EVERY_HEARTBEATS:-3} __n=1 __log __rc __path __start __now __elapsed __hb_pid __cmd_pid
             __start=$(date +%s)
+            if ! [ "$__snapshot_every" -ge 1 ] 2>/dev/null; then
+              __snapshot_every=1
+            fi
 
             __write_summary() {
               [ -n "${GITHUB_STEP_SUMMARY:-}" ] || return 0
               {
                 echo "### CI Task"
-                echo "- Task: `$__task`"
-                echo "- Status: `$1`"
-                echo "- Duration: `$__elapsed s`"
-                echo "- Attempts: `$__n/$__max`"
+                # Keep summary values plain text. Backticks inside double quotes trigger
+                # shell command substitution and turned failed-task metadata into bogus
+                # commands on GitHub Actions runners.
+                echo "- Task: $__task"
+                echo "- Status: $1"
+                echo "- Duration: $__elapsed s"
+                echo "- Attempts: $__n/$__max"
                 [ -z "${2:-}" ] || echo "- Note: $2"
               } >> "$GITHUB_STEP_SUMMARY"
             }
 
+            __dump_process_subtree() {
+              local __queue __pid __children
+              __queue="${1:-}"
+              while [ -n "$__queue" ]; do
+                __pid=${__queue%% *}
+                if [ "$__queue" = "$__pid" ]; then
+                  __queue=''
+                else
+                  __queue=${__queue#* }
+                fi
+                [ -n "$__pid" ] || continue
+                ps -ww -o pid=,ppid=,pgid=,stat=,etime=,%cpu=,%mem=,args= -p "$__pid" 2>/dev/null || true
+                __children=$(pgrep -P "$__pid" 2>/dev/null | tr '
+          ' ' ' | sed 's/[[:space:]]*$//' || true)
+                [ -z "$__children" ] || __queue="$__queue $__children"
+              done
+            }
+
+            __dump_debug_snapshot() {
+              [ "$__debug" = 1 ] || return 0
+              echo "::group::[ci-debug] $__task snapshot after $__elapsed s (attempt $__n/$__max)"
+              echo "[ci-debug] command pid: ${__cmd_pid:-unknown}"
+              if [ -n "${__cmd_pid:-}" ] && kill -0 "$__cmd_pid" 2>/dev/null; then
+                if command -v pstree >/dev/null 2>&1; then
+                  echo "[ci-debug] process tree"
+                  pstree -apl "$__cmd_pid" || true
+                else
+                  echo "[ci-debug] process snapshot"
+                  __dump_process_subtree "$__cmd_pid"
+                fi
+              else
+                echo "[ci-debug] wrapped command is no longer running"
+              fi
+
+              if [ -f "$__log" ] && [ -s "$__log" ]; then
+                echo "[ci-debug] recent combined output"
+                tail -n "$__tail_lines" "$__log" || true
+              else
+                echo "[ci-debug] no combined output captured yet"
+              fi
+              echo "::endgroup::"
+            }
+
             while [ "$__n" -le "$__max" ]; do
               echo "::notice::[ci] starting $__task (attempt $__n/$__max)"
+              __log=$(mktemp)
+              set +e
               (
-                while sleep "$__heartbeat"; do
+                set -o pipefail
+                eval "$1" > >(tee -a "$__log") 2> >(tee -a "$__log" >&2)
+              ) &
+              __cmd_pid=$!
+              (
+                __heartbeat_count=0
+                while kill -0 "$__cmd_pid" 2>/dev/null; do
+                  sleep "$__heartbeat" || break
+                  kill -0 "$__cmd_pid" 2>/dev/null || break
                   __now=$(date +%s)
                   __elapsed=$((__now - __start))
+                  __heartbeat_count=$((__heartbeat_count + 1))
                   echo "::notice::[ci] $__task still running after $__elapsed s (attempt $__n/$__max)"
+                  if [ "$__debug" = 1 ] && [ $((__heartbeat_count % __snapshot_every)) -eq 0 ]; then
+                    __dump_debug_snapshot
+                  fi
                 done
               ) &
               __hb_pid=$!
-
-              __log=$(mktemp)
-              set +e; eval "$1" 2> >(tee "$__log" >&2); __rc=$?; set -e
+              wait "$__cmd_pid"; __rc=$?
+              set -e
 
               kill "$__hb_pid" 2>/dev/null || true
               wait "$__hb_pid" 2>/dev/null || true
@@ -2042,6 +2822,9 @@ jobs:
               }
 
               __path=$(perl -0pe 's/\e\[[0-9;]*m//g; s/\n/ /g' "$__log" | grep -oP "error:\s+path '\K/nix/store/[^']*(?='\s+is not valid)" 2>/dev/null | head -1 | tr -d '[:space:]' || true)
+              if [ "$__debug" = 1 ]; then
+                __dump_debug_snapshot
+              fi
               rm -f "$__log"
               if [ -z "$__path" ]; then
                 echo "::warning::[ci] $__task failed after $__elapsed s without a detected Nix GC race"
@@ -2059,38 +2842,100 @@ jobs:
             echo "::error::Nix GC race retry exhausted for $__task ($__max attempts)"
             __write_summary failure "Nix GC race retry exhausted"
             return 1
-          }; __nix_gc_retry 'if [ -n "${NIX_CONFIG:-}" ]; then NIX_CONFIG_WITH_APPEND=$(printf '"'"'%s\n%s'"'"' "$NIX_CONFIG" '"'"'restrict-eval = false'"'"'); else NIX_CONFIG_WITH_APPEND='"'"'restrict-eval = false'"'"'; fi; NIX_CONFIG="$NIX_CONFIG_WITH_APPEND" PNPM_HOME='"'"'${{ runner.temp }}/pnpm-home/${{ github.run_id }}/${{ github.run_attempt }}/${{ github.job }}'"'"' DT_PASSTHROUGH=1 "${DEVENV_BIN:?DEVENV_BIN not set}" tasks run examples:install --mode before'
+          }; __nix_gc_retry 'if [ -n "${NIX_CONFIG:-}" ]; then NIX_CONFIG_WITH_APPEND=$(printf '"'"'%s\n%s'"'"' "$NIX_CONFIG" '"'"'restrict-eval = false'"'"'); else NIX_CONFIG_WITH_APPEND='"'"'restrict-eval = false'"'"'; fi; NIX_CONFIG="$NIX_CONFIG_WITH_APPEND" PNPM_HOME="${PNPM_HOME:-${{ github.workspace }}/.pnpm-home}" PNPM_STORE_DIR="${PNPM_STORE_DIR:-${{ runner.temp }}/pnpm-store/${{ github.job }}}" DT_PASSTHROUGH=1 "${DEVENV_BIN:?DEVENV_BIN not set}" tasks run examples:install --mode before'
       - name: Build examples
         run: |
           __nix_gc_retry() {
-            local __task='devenv tasks run examples:build:src --mode before' __max=${NIX_GC_RACE_MAX_RETRIES:-10} __heartbeat=${CI_PROGRESS_HEARTBEAT_SECONDS:-60} __n=1 __log __rc __path __start __now __elapsed __hb_pid
+            local __task='devenv tasks run examples:build:src --mode before' __max=${NIX_GC_RACE_MAX_RETRIES:-10} __heartbeat=${CI_PROGRESS_HEARTBEAT_SECONDS:-60} __debug=${CI_DEBUG_WRAPPER:-0} __tail_lines=${CI_DEBUG_LOG_TAIL_LINES:-80} __snapshot_every=${CI_DEBUG_PROCESS_SNAPSHOT_EVERY_HEARTBEATS:-3} __n=1 __log __rc __path __start __now __elapsed __hb_pid __cmd_pid
             __start=$(date +%s)
+            if ! [ "$__snapshot_every" -ge 1 ] 2>/dev/null; then
+              __snapshot_every=1
+            fi
 
             __write_summary() {
               [ -n "${GITHUB_STEP_SUMMARY:-}" ] || return 0
               {
                 echo "### CI Task"
-                echo "- Task: `$__task`"
-                echo "- Status: `$1`"
-                echo "- Duration: `$__elapsed s`"
-                echo "- Attempts: `$__n/$__max`"
+                # Keep summary values plain text. Backticks inside double quotes trigger
+                # shell command substitution and turned failed-task metadata into bogus
+                # commands on GitHub Actions runners.
+                echo "- Task: $__task"
+                echo "- Status: $1"
+                echo "- Duration: $__elapsed s"
+                echo "- Attempts: $__n/$__max"
                 [ -z "${2:-}" ] || echo "- Note: $2"
               } >> "$GITHUB_STEP_SUMMARY"
             }
 
+            __dump_process_subtree() {
+              local __queue __pid __children
+              __queue="${1:-}"
+              while [ -n "$__queue" ]; do
+                __pid=${__queue%% *}
+                if [ "$__queue" = "$__pid" ]; then
+                  __queue=''
+                else
+                  __queue=${__queue#* }
+                fi
+                [ -n "$__pid" ] || continue
+                ps -ww -o pid=,ppid=,pgid=,stat=,etime=,%cpu=,%mem=,args= -p "$__pid" 2>/dev/null || true
+                __children=$(pgrep -P "$__pid" 2>/dev/null | tr '
+          ' ' ' | sed 's/[[:space:]]*$//' || true)
+                [ -z "$__children" ] || __queue="$__queue $__children"
+              done
+            }
+
+            __dump_debug_snapshot() {
+              [ "$__debug" = 1 ] || return 0
+              echo "::group::[ci-debug] $__task snapshot after $__elapsed s (attempt $__n/$__max)"
+              echo "[ci-debug] command pid: ${__cmd_pid:-unknown}"
+              if [ -n "${__cmd_pid:-}" ] && kill -0 "$__cmd_pid" 2>/dev/null; then
+                if command -v pstree >/dev/null 2>&1; then
+                  echo "[ci-debug] process tree"
+                  pstree -apl "$__cmd_pid" || true
+                else
+                  echo "[ci-debug] process snapshot"
+                  __dump_process_subtree "$__cmd_pid"
+                fi
+              else
+                echo "[ci-debug] wrapped command is no longer running"
+              fi
+
+              if [ -f "$__log" ] && [ -s "$__log" ]; then
+                echo "[ci-debug] recent combined output"
+                tail -n "$__tail_lines" "$__log" || true
+              else
+                echo "[ci-debug] no combined output captured yet"
+              fi
+              echo "::endgroup::"
+            }
+
             while [ "$__n" -le "$__max" ]; do
               echo "::notice::[ci] starting $__task (attempt $__n/$__max)"
+              __log=$(mktemp)
+              set +e
               (
-                while sleep "$__heartbeat"; do
+                set -o pipefail
+                eval "$1" > >(tee -a "$__log") 2> >(tee -a "$__log" >&2)
+              ) &
+              __cmd_pid=$!
+              (
+                __heartbeat_count=0
+                while kill -0 "$__cmd_pid" 2>/dev/null; do
+                  sleep "$__heartbeat" || break
+                  kill -0 "$__cmd_pid" 2>/dev/null || break
                   __now=$(date +%s)
                   __elapsed=$((__now - __start))
+                  __heartbeat_count=$((__heartbeat_count + 1))
                   echo "::notice::[ci] $__task still running after $__elapsed s (attempt $__n/$__max)"
+                  if [ "$__debug" = 1 ] && [ $((__heartbeat_count % __snapshot_every)) -eq 0 ]; then
+                    __dump_debug_snapshot
+                  fi
                 done
               ) &
               __hb_pid=$!
-
-              __log=$(mktemp)
-              set +e; eval "$1" 2> >(tee "$__log" >&2); __rc=$?; set -e
+              wait "$__cmd_pid"; __rc=$?
+              set -e
 
               kill "$__hb_pid" 2>/dev/null || true
               wait "$__hb_pid" 2>/dev/null || true
@@ -2110,6 +2955,9 @@ jobs:
               }
 
               __path=$(perl -0pe 's/\e\[[0-9;]*m//g; s/\n/ /g' "$__log" | grep -oP "error:\s+path '\K/nix/store/[^']*(?='\s+is not valid)" 2>/dev/null | head -1 | tr -d '[:space:]' || true)
+              if [ "$__debug" = 1 ]; then
+                __dump_debug_snapshot
+              fi
               rm -f "$__log"
               if [ -z "$__path" ]; then
                 echo "::warning::[ci] $__task failed after $__elapsed s without a detected Nix GC race"
@@ -2127,38 +2975,100 @@ jobs:
             echo "::error::Nix GC race retry exhausted for $__task ($__max attempts)"
             __write_summary failure "Nix GC race retry exhausted"
             return 1
-          }; __nix_gc_retry 'if [ -n "${NIX_CONFIG:-}" ]; then NIX_CONFIG_WITH_APPEND=$(printf '"'"'%s\n%s'"'"' "$NIX_CONFIG" '"'"'restrict-eval = false'"'"'); else NIX_CONFIG_WITH_APPEND='"'"'restrict-eval = false'"'"'; fi; NIX_CONFIG="$NIX_CONFIG_WITH_APPEND" PNPM_HOME='"'"'${{ runner.temp }}/pnpm-home/${{ github.run_id }}/${{ github.run_attempt }}/${{ github.job }}'"'"' DT_PASSTHROUGH=1 "${DEVENV_BIN:?DEVENV_BIN not set}" tasks run examples:build:src --mode before'
+          }; __nix_gc_retry 'if [ -n "${NIX_CONFIG:-}" ]; then NIX_CONFIG_WITH_APPEND=$(printf '"'"'%s\n%s'"'"' "$NIX_CONFIG" '"'"'restrict-eval = false'"'"'); else NIX_CONFIG_WITH_APPEND='"'"'restrict-eval = false'"'"'; fi; NIX_CONFIG="$NIX_CONFIG_WITH_APPEND" PNPM_HOME="${PNPM_HOME:-${{ github.workspace }}/.pnpm-home}" PNPM_STORE_DIR="${PNPM_STORE_DIR:-${{ runner.temp }}/pnpm-store/${{ github.job }}}" DT_PASSTHROUGH=1 "${DEVENV_BIN:?DEVENV_BIN not set}" tasks run examples:build:src --mode before'
       - name: Test examples
         run: |
           __nix_gc_retry() {
-            local __task='devenv tasks run examples:test --mode before' __max=${NIX_GC_RACE_MAX_RETRIES:-10} __heartbeat=${CI_PROGRESS_HEARTBEAT_SECONDS:-60} __n=1 __log __rc __path __start __now __elapsed __hb_pid
+            local __task='devenv tasks run examples:test --mode before' __max=${NIX_GC_RACE_MAX_RETRIES:-10} __heartbeat=${CI_PROGRESS_HEARTBEAT_SECONDS:-60} __debug=${CI_DEBUG_WRAPPER:-0} __tail_lines=${CI_DEBUG_LOG_TAIL_LINES:-80} __snapshot_every=${CI_DEBUG_PROCESS_SNAPSHOT_EVERY_HEARTBEATS:-3} __n=1 __log __rc __path __start __now __elapsed __hb_pid __cmd_pid
             __start=$(date +%s)
+            if ! [ "$__snapshot_every" -ge 1 ] 2>/dev/null; then
+              __snapshot_every=1
+            fi
 
             __write_summary() {
               [ -n "${GITHUB_STEP_SUMMARY:-}" ] || return 0
               {
                 echo "### CI Task"
-                echo "- Task: `$__task`"
-                echo "- Status: `$1`"
-                echo "- Duration: `$__elapsed s`"
-                echo "- Attempts: `$__n/$__max`"
+                # Keep summary values plain text. Backticks inside double quotes trigger
+                # shell command substitution and turned failed-task metadata into bogus
+                # commands on GitHub Actions runners.
+                echo "- Task: $__task"
+                echo "- Status: $1"
+                echo "- Duration: $__elapsed s"
+                echo "- Attempts: $__n/$__max"
                 [ -z "${2:-}" ] || echo "- Note: $2"
               } >> "$GITHUB_STEP_SUMMARY"
             }
 
+            __dump_process_subtree() {
+              local __queue __pid __children
+              __queue="${1:-}"
+              while [ -n "$__queue" ]; do
+                __pid=${__queue%% *}
+                if [ "$__queue" = "$__pid" ]; then
+                  __queue=''
+                else
+                  __queue=${__queue#* }
+                fi
+                [ -n "$__pid" ] || continue
+                ps -ww -o pid=,ppid=,pgid=,stat=,etime=,%cpu=,%mem=,args= -p "$__pid" 2>/dev/null || true
+                __children=$(pgrep -P "$__pid" 2>/dev/null | tr '
+          ' ' ' | sed 's/[[:space:]]*$//' || true)
+                [ -z "$__children" ] || __queue="$__queue $__children"
+              done
+            }
+
+            __dump_debug_snapshot() {
+              [ "$__debug" = 1 ] || return 0
+              echo "::group::[ci-debug] $__task snapshot after $__elapsed s (attempt $__n/$__max)"
+              echo "[ci-debug] command pid: ${__cmd_pid:-unknown}"
+              if [ -n "${__cmd_pid:-}" ] && kill -0 "$__cmd_pid" 2>/dev/null; then
+                if command -v pstree >/dev/null 2>&1; then
+                  echo "[ci-debug] process tree"
+                  pstree -apl "$__cmd_pid" || true
+                else
+                  echo "[ci-debug] process snapshot"
+                  __dump_process_subtree "$__cmd_pid"
+                fi
+              else
+                echo "[ci-debug] wrapped command is no longer running"
+              fi
+
+              if [ -f "$__log" ] && [ -s "$__log" ]; then
+                echo "[ci-debug] recent combined output"
+                tail -n "$__tail_lines" "$__log" || true
+              else
+                echo "[ci-debug] no combined output captured yet"
+              fi
+              echo "::endgroup::"
+            }
+
             while [ "$__n" -le "$__max" ]; do
               echo "::notice::[ci] starting $__task (attempt $__n/$__max)"
+              __log=$(mktemp)
+              set +e
               (
-                while sleep "$__heartbeat"; do
+                set -o pipefail
+                eval "$1" > >(tee -a "$__log") 2> >(tee -a "$__log" >&2)
+              ) &
+              __cmd_pid=$!
+              (
+                __heartbeat_count=0
+                while kill -0 "$__cmd_pid" 2>/dev/null; do
+                  sleep "$__heartbeat" || break
+                  kill -0 "$__cmd_pid" 2>/dev/null || break
                   __now=$(date +%s)
                   __elapsed=$((__now - __start))
+                  __heartbeat_count=$((__heartbeat_count + 1))
                   echo "::notice::[ci] $__task still running after $__elapsed s (attempt $__n/$__max)"
+                  if [ "$__debug" = 1 ] && [ $((__heartbeat_count % __snapshot_every)) -eq 0 ]; then
+                    __dump_debug_snapshot
+                  fi
                 done
               ) &
               __hb_pid=$!
-
-              __log=$(mktemp)
-              set +e; eval "$1" 2> >(tee "$__log" >&2); __rc=$?; set -e
+              wait "$__cmd_pid"; __rc=$?
+              set -e
 
               kill "$__hb_pid" 2>/dev/null || true
               wait "$__hb_pid" 2>/dev/null || true
@@ -2178,6 +3088,9 @@ jobs:
               }
 
               __path=$(perl -0pe 's/\e\[[0-9;]*m//g; s/\n/ /g' "$__log" | grep -oP "error:\s+path '\K/nix/store/[^']*(?='\s+is not valid)" 2>/dev/null | head -1 | tr -d '[:space:]' || true)
+              if [ "$__debug" = 1 ]; then
+                __dump_debug_snapshot
+              fi
               rm -f "$__log"
               if [ -z "$__path" ]; then
                 echo "::warning::[ci] $__task failed after $__elapsed s without a detected Nix GC race"
@@ -2195,39 +3108,101 @@ jobs:
             echo "::error::Nix GC race retry exhausted for $__task ($__max attempts)"
             __write_summary failure "Nix GC race retry exhausted"
             return 1
-          }; __nix_gc_retry 'if [ -n "${NIX_CONFIG:-}" ]; then NIX_CONFIG_WITH_APPEND=$(printf '"'"'%s\n%s'"'"' "$NIX_CONFIG" '"'"'restrict-eval = false'"'"'); else NIX_CONFIG_WITH_APPEND='"'"'restrict-eval = false'"'"'; fi; NIX_CONFIG="$NIX_CONFIG_WITH_APPEND" PNPM_HOME='"'"'${{ runner.temp }}/pnpm-home/${{ github.run_id }}/${{ github.run_attempt }}/${{ github.job }}'"'"' DT_PASSTHROUGH=1 "${DEVENV_BIN:?DEVENV_BIN not set}" tasks run examples:test --mode before'
+          }; __nix_gc_retry 'if [ -n "${NIX_CONFIG:-}" ]; then NIX_CONFIG_WITH_APPEND=$(printf '"'"'%s\n%s'"'"' "$NIX_CONFIG" '"'"'restrict-eval = false'"'"'); else NIX_CONFIG_WITH_APPEND='"'"'restrict-eval = false'"'"'; fi; NIX_CONFIG="$NIX_CONFIG_WITH_APPEND" PNPM_HOME="${PNPM_HOME:-${{ github.workspace }}/.pnpm-home}" PNPM_STORE_DIR="${PNPM_STORE_DIR:-${{ runner.temp }}/pnpm-store/${{ github.job }}}" DT_PASSTHROUGH=1 "${DEVENV_BIN:?DEVENV_BIN not set}" tasks run examples:test --mode before'
       - name: Deploy examples to Cloudflare
         if: github.event.pull_request.head.repo.fork != true
         run: |
           __nix_gc_retry() {
-            local __task='devenv tasks run examples:deploy --mode before' __max=${NIX_GC_RACE_MAX_RETRIES:-10} __heartbeat=${CI_PROGRESS_HEARTBEAT_SECONDS:-60} __n=1 __log __rc __path __start __now __elapsed __hb_pid
+            local __task='devenv tasks run examples:deploy --mode before' __max=${NIX_GC_RACE_MAX_RETRIES:-10} __heartbeat=${CI_PROGRESS_HEARTBEAT_SECONDS:-60} __debug=${CI_DEBUG_WRAPPER:-0} __tail_lines=${CI_DEBUG_LOG_TAIL_LINES:-80} __snapshot_every=${CI_DEBUG_PROCESS_SNAPSHOT_EVERY_HEARTBEATS:-3} __n=1 __log __rc __path __start __now __elapsed __hb_pid __cmd_pid
             __start=$(date +%s)
+            if ! [ "$__snapshot_every" -ge 1 ] 2>/dev/null; then
+              __snapshot_every=1
+            fi
 
             __write_summary() {
               [ -n "${GITHUB_STEP_SUMMARY:-}" ] || return 0
               {
                 echo "### CI Task"
-                echo "- Task: `$__task`"
-                echo "- Status: `$1`"
-                echo "- Duration: `$__elapsed s`"
-                echo "- Attempts: `$__n/$__max`"
+                # Keep summary values plain text. Backticks inside double quotes trigger
+                # shell command substitution and turned failed-task metadata into bogus
+                # commands on GitHub Actions runners.
+                echo "- Task: $__task"
+                echo "- Status: $1"
+                echo "- Duration: $__elapsed s"
+                echo "- Attempts: $__n/$__max"
                 [ -z "${2:-}" ] || echo "- Note: $2"
               } >> "$GITHUB_STEP_SUMMARY"
             }
 
+            __dump_process_subtree() {
+              local __queue __pid __children
+              __queue="${1:-}"
+              while [ -n "$__queue" ]; do
+                __pid=${__queue%% *}
+                if [ "$__queue" = "$__pid" ]; then
+                  __queue=''
+                else
+                  __queue=${__queue#* }
+                fi
+                [ -n "$__pid" ] || continue
+                ps -ww -o pid=,ppid=,pgid=,stat=,etime=,%cpu=,%mem=,args= -p "$__pid" 2>/dev/null || true
+                __children=$(pgrep -P "$__pid" 2>/dev/null | tr '
+          ' ' ' | sed 's/[[:space:]]*$//' || true)
+                [ -z "$__children" ] || __queue="$__queue $__children"
+              done
+            }
+
+            __dump_debug_snapshot() {
+              [ "$__debug" = 1 ] || return 0
+              echo "::group::[ci-debug] $__task snapshot after $__elapsed s (attempt $__n/$__max)"
+              echo "[ci-debug] command pid: ${__cmd_pid:-unknown}"
+              if [ -n "${__cmd_pid:-}" ] && kill -0 "$__cmd_pid" 2>/dev/null; then
+                if command -v pstree >/dev/null 2>&1; then
+                  echo "[ci-debug] process tree"
+                  pstree -apl "$__cmd_pid" || true
+                else
+                  echo "[ci-debug] process snapshot"
+                  __dump_process_subtree "$__cmd_pid"
+                fi
+              else
+                echo "[ci-debug] wrapped command is no longer running"
+              fi
+
+              if [ -f "$__log" ] && [ -s "$__log" ]; then
+                echo "[ci-debug] recent combined output"
+                tail -n "$__tail_lines" "$__log" || true
+              else
+                echo "[ci-debug] no combined output captured yet"
+              fi
+              echo "::endgroup::"
+            }
+
             while [ "$__n" -le "$__max" ]; do
               echo "::notice::[ci] starting $__task (attempt $__n/$__max)"
+              __log=$(mktemp)
+              set +e
               (
-                while sleep "$__heartbeat"; do
+                set -o pipefail
+                eval "$1" > >(tee -a "$__log") 2> >(tee -a "$__log" >&2)
+              ) &
+              __cmd_pid=$!
+              (
+                __heartbeat_count=0
+                while kill -0 "$__cmd_pid" 2>/dev/null; do
+                  sleep "$__heartbeat" || break
+                  kill -0 "$__cmd_pid" 2>/dev/null || break
                   __now=$(date +%s)
                   __elapsed=$((__now - __start))
+                  __heartbeat_count=$((__heartbeat_count + 1))
                   echo "::notice::[ci] $__task still running after $__elapsed s (attempt $__n/$__max)"
+                  if [ "$__debug" = 1 ] && [ $((__heartbeat_count % __snapshot_every)) -eq 0 ]; then
+                    __dump_debug_snapshot
+                  fi
                 done
               ) &
               __hb_pid=$!
-
-              __log=$(mktemp)
-              set +e; eval "$1" 2> >(tee "$__log" >&2); __rc=$?; set -e
+              wait "$__cmd_pid"; __rc=$?
+              set -e
 
               kill "$__hb_pid" 2>/dev/null || true
               wait "$__hb_pid" 2>/dev/null || true
@@ -2247,6 +3222,9 @@ jobs:
               }
 
               __path=$(perl -0pe 's/\e\[[0-9;]*m//g; s/\n/ /g' "$__log" | grep -oP "error:\s+path '\K/nix/store/[^']*(?='\s+is not valid)" 2>/dev/null | head -1 | tr -d '[:space:]' || true)
+              if [ "$__debug" = 1 ]; then
+                __dump_debug_snapshot
+              fi
               rm -f "$__log"
               if [ -z "$__path" ]; then
                 echo "::warning::[ci] $__task failed after $__elapsed s without a detected Nix GC race"
@@ -2264,7 +3242,7 @@ jobs:
             echo "::error::Nix GC race retry exhausted for $__task ($__max attempts)"
             __write_summary failure "Nix GC race retry exhausted"
             return 1
-          }; __nix_gc_retry 'if [ -n "${NIX_CONFIG:-}" ]; then NIX_CONFIG_WITH_APPEND=$(printf '"'"'%s\n%s'"'"' "$NIX_CONFIG" '"'"'restrict-eval = false'"'"'); else NIX_CONFIG_WITH_APPEND='"'"'restrict-eval = false'"'"'; fi; NIX_CONFIG="$NIX_CONFIG_WITH_APPEND" PNPM_HOME='"'"'${{ runner.temp }}/pnpm-home/${{ github.run_id }}/${{ github.run_attempt }}/${{ github.job }}'"'"' DT_PASSTHROUGH=1 "${DEVENV_BIN:?DEVENV_BIN not set}" tasks run examples:deploy --mode before'
+          }; __nix_gc_retry 'if [ -n "${NIX_CONFIG:-}" ]; then NIX_CONFIG_WITH_APPEND=$(printf '"'"'%s\n%s'"'"' "$NIX_CONFIG" '"'"'restrict-eval = false'"'"'); else NIX_CONFIG_WITH_APPEND='"'"'restrict-eval = false'"'"'; fi; NIX_CONFIG="$NIX_CONFIG_WITH_APPEND" PNPM_HOME="${PNPM_HOME:-${{ github.workspace }}/.pnpm-home}" PNPM_STORE_DIR="${PNPM_STORE_DIR:-${{ runner.temp }}/pnpm-store/${{ github.job }}}" DT_PASSTHROUGH=1 "${DEVENV_BIN:?DEVENV_BIN not set}" tasks run examples:deploy --mode before'
         env:
           CLOUDFLARE_API_TOKEN: '${{ secrets.CLOUDFLARE_API_TOKEN }}'
           CLOUDFLARE_ACCOUNT_ID: '${{ secrets.CLOUDFLARE_ACCOUNT_ID }}'
@@ -2381,34 +3359,96 @@ jobs:
       - name: Build docs snippets
         run: |
           __nix_gc_retry() {
-            local __task='devenv tasks run docs:build:phase:snippets --mode before' __max=${NIX_GC_RACE_MAX_RETRIES:-10} __heartbeat=${CI_PROGRESS_HEARTBEAT_SECONDS:-60} __n=1 __log __rc __path __start __now __elapsed __hb_pid
+            local __task='devenv tasks run docs:build:phase:snippets --mode before' __max=${NIX_GC_RACE_MAX_RETRIES:-10} __heartbeat=${CI_PROGRESS_HEARTBEAT_SECONDS:-60} __debug=${CI_DEBUG_WRAPPER:-0} __tail_lines=${CI_DEBUG_LOG_TAIL_LINES:-80} __snapshot_every=${CI_DEBUG_PROCESS_SNAPSHOT_EVERY_HEARTBEATS:-3} __n=1 __log __rc __path __start __now __elapsed __hb_pid __cmd_pid
             __start=$(date +%s)
+            if ! [ "$__snapshot_every" -ge 1 ] 2>/dev/null; then
+              __snapshot_every=1
+            fi
 
             __write_summary() {
               [ -n "${GITHUB_STEP_SUMMARY:-}" ] || return 0
               {
                 echo "### CI Task"
-                echo "- Task: `$__task`"
-                echo "- Status: `$1`"
-                echo "- Duration: `$__elapsed s`"
-                echo "- Attempts: `$__n/$__max`"
+                # Keep summary values plain text. Backticks inside double quotes trigger
+                # shell command substitution and turned failed-task metadata into bogus
+                # commands on GitHub Actions runners.
+                echo "- Task: $__task"
+                echo "- Status: $1"
+                echo "- Duration: $__elapsed s"
+                echo "- Attempts: $__n/$__max"
                 [ -z "${2:-}" ] || echo "- Note: $2"
               } >> "$GITHUB_STEP_SUMMARY"
             }
 
+            __dump_process_subtree() {
+              local __queue __pid __children
+              __queue="${1:-}"
+              while [ -n "$__queue" ]; do
+                __pid=${__queue%% *}
+                if [ "$__queue" = "$__pid" ]; then
+                  __queue=''
+                else
+                  __queue=${__queue#* }
+                fi
+                [ -n "$__pid" ] || continue
+                ps -ww -o pid=,ppid=,pgid=,stat=,etime=,%cpu=,%mem=,args= -p "$__pid" 2>/dev/null || true
+                __children=$(pgrep -P "$__pid" 2>/dev/null | tr '
+          ' ' ' | sed 's/[[:space:]]*$//' || true)
+                [ -z "$__children" ] || __queue="$__queue $__children"
+              done
+            }
+
+            __dump_debug_snapshot() {
+              [ "$__debug" = 1 ] || return 0
+              echo "::group::[ci-debug] $__task snapshot after $__elapsed s (attempt $__n/$__max)"
+              echo "[ci-debug] command pid: ${__cmd_pid:-unknown}"
+              if [ -n "${__cmd_pid:-}" ] && kill -0 "$__cmd_pid" 2>/dev/null; then
+                if command -v pstree >/dev/null 2>&1; then
+                  echo "[ci-debug] process tree"
+                  pstree -apl "$__cmd_pid" || true
+                else
+                  echo "[ci-debug] process snapshot"
+                  __dump_process_subtree "$__cmd_pid"
+                fi
+              else
+                echo "[ci-debug] wrapped command is no longer running"
+              fi
+
+              if [ -f "$__log" ] && [ -s "$__log" ]; then
+                echo "[ci-debug] recent combined output"
+                tail -n "$__tail_lines" "$__log" || true
+              else
+                echo "[ci-debug] no combined output captured yet"
+              fi
+              echo "::endgroup::"
+            }
+
             while [ "$__n" -le "$__max" ]; do
               echo "::notice::[ci] starting $__task (attempt $__n/$__max)"
+              __log=$(mktemp)
+              set +e
               (
-                while sleep "$__heartbeat"; do
+                set -o pipefail
+                eval "$1" > >(tee -a "$__log") 2> >(tee -a "$__log" >&2)
+              ) &
+              __cmd_pid=$!
+              (
+                __heartbeat_count=0
+                while kill -0 "$__cmd_pid" 2>/dev/null; do
+                  sleep "$__heartbeat" || break
+                  kill -0 "$__cmd_pid" 2>/dev/null || break
                   __now=$(date +%s)
                   __elapsed=$((__now - __start))
+                  __heartbeat_count=$((__heartbeat_count + 1))
                   echo "::notice::[ci] $__task still running after $__elapsed s (attempt $__n/$__max)"
+                  if [ "$__debug" = 1 ] && [ $((__heartbeat_count % __snapshot_every)) -eq 0 ]; then
+                    __dump_debug_snapshot
+                  fi
                 done
               ) &
               __hb_pid=$!
-
-              __log=$(mktemp)
-              set +e; eval "$1" 2> >(tee "$__log" >&2); __rc=$?; set -e
+              wait "$__cmd_pid"; __rc=$?
+              set -e
 
               kill "$__hb_pid" 2>/dev/null || true
               wait "$__hb_pid" 2>/dev/null || true
@@ -2428,6 +3468,9 @@ jobs:
               }
 
               __path=$(perl -0pe 's/\e\[[0-9;]*m//g; s/\n/ /g' "$__log" | grep -oP "error:\s+path '\K/nix/store/[^']*(?='\s+is not valid)" 2>/dev/null | head -1 | tr -d '[:space:]' || true)
+              if [ "$__debug" = 1 ]; then
+                __dump_debug_snapshot
+              fi
               rm -f "$__log"
               if [ -z "$__path" ]; then
                 echo "::warning::[ci] $__task failed after $__elapsed s without a detected Nix GC race"
@@ -2445,38 +3488,100 @@ jobs:
             echo "::error::Nix GC race retry exhausted for $__task ($__max attempts)"
             __write_summary failure "Nix GC race retry exhausted"
             return 1
-          }; __nix_gc_retry 'if [ -n "${NIX_CONFIG:-}" ]; then NIX_CONFIG_WITH_APPEND=$(printf '"'"'%s\n%s'"'"' "$NIX_CONFIG" '"'"'restrict-eval = false'"'"'); else NIX_CONFIG_WITH_APPEND='"'"'restrict-eval = false'"'"'; fi; NIX_CONFIG="$NIX_CONFIG_WITH_APPEND" PNPM_HOME='"'"'${{ runner.temp }}/pnpm-home/${{ github.run_id }}/${{ github.run_attempt }}/${{ github.job }}'"'"' DT_PASSTHROUGH=1 "${DEVENV_BIN:?DEVENV_BIN not set}" tasks run docs:build:phase:snippets --mode before'
+          }; __nix_gc_retry 'if [ -n "${NIX_CONFIG:-}" ]; then NIX_CONFIG_WITH_APPEND=$(printf '"'"'%s\n%s'"'"' "$NIX_CONFIG" '"'"'restrict-eval = false'"'"'); else NIX_CONFIG_WITH_APPEND='"'"'restrict-eval = false'"'"'; fi; NIX_CONFIG="$NIX_CONFIG_WITH_APPEND" PNPM_HOME="${PNPM_HOME:-${{ github.workspace }}/.pnpm-home}" PNPM_STORE_DIR="${PNPM_STORE_DIR:-${{ runner.temp }}/pnpm-store/${{ github.job }}}" DT_PASSTHROUGH=1 "${DEVENV_BIN:?DEVENV_BIN not set}" tasks run docs:build:phase:snippets --mode before'
       - name: Build docs diagrams
         run: |
           __nix_gc_retry() {
-            local __task='devenv tasks run docs:build:phase:diagrams --mode before' __max=${NIX_GC_RACE_MAX_RETRIES:-10} __heartbeat=${CI_PROGRESS_HEARTBEAT_SECONDS:-60} __n=1 __log __rc __path __start __now __elapsed __hb_pid
+            local __task='devenv tasks run docs:build:phase:diagrams --mode before' __max=${NIX_GC_RACE_MAX_RETRIES:-10} __heartbeat=${CI_PROGRESS_HEARTBEAT_SECONDS:-60} __debug=${CI_DEBUG_WRAPPER:-0} __tail_lines=${CI_DEBUG_LOG_TAIL_LINES:-80} __snapshot_every=${CI_DEBUG_PROCESS_SNAPSHOT_EVERY_HEARTBEATS:-3} __n=1 __log __rc __path __start __now __elapsed __hb_pid __cmd_pid
             __start=$(date +%s)
+            if ! [ "$__snapshot_every" -ge 1 ] 2>/dev/null; then
+              __snapshot_every=1
+            fi
 
             __write_summary() {
               [ -n "${GITHUB_STEP_SUMMARY:-}" ] || return 0
               {
                 echo "### CI Task"
-                echo "- Task: `$__task`"
-                echo "- Status: `$1`"
-                echo "- Duration: `$__elapsed s`"
-                echo "- Attempts: `$__n/$__max`"
+                # Keep summary values plain text. Backticks inside double quotes trigger
+                # shell command substitution and turned failed-task metadata into bogus
+                # commands on GitHub Actions runners.
+                echo "- Task: $__task"
+                echo "- Status: $1"
+                echo "- Duration: $__elapsed s"
+                echo "- Attempts: $__n/$__max"
                 [ -z "${2:-}" ] || echo "- Note: $2"
               } >> "$GITHUB_STEP_SUMMARY"
             }
 
+            __dump_process_subtree() {
+              local __queue __pid __children
+              __queue="${1:-}"
+              while [ -n "$__queue" ]; do
+                __pid=${__queue%% *}
+                if [ "$__queue" = "$__pid" ]; then
+                  __queue=''
+                else
+                  __queue=${__queue#* }
+                fi
+                [ -n "$__pid" ] || continue
+                ps -ww -o pid=,ppid=,pgid=,stat=,etime=,%cpu=,%mem=,args= -p "$__pid" 2>/dev/null || true
+                __children=$(pgrep -P "$__pid" 2>/dev/null | tr '
+          ' ' ' | sed 's/[[:space:]]*$//' || true)
+                [ -z "$__children" ] || __queue="$__queue $__children"
+              done
+            }
+
+            __dump_debug_snapshot() {
+              [ "$__debug" = 1 ] || return 0
+              echo "::group::[ci-debug] $__task snapshot after $__elapsed s (attempt $__n/$__max)"
+              echo "[ci-debug] command pid: ${__cmd_pid:-unknown}"
+              if [ -n "${__cmd_pid:-}" ] && kill -0 "$__cmd_pid" 2>/dev/null; then
+                if command -v pstree >/dev/null 2>&1; then
+                  echo "[ci-debug] process tree"
+                  pstree -apl "$__cmd_pid" || true
+                else
+                  echo "[ci-debug] process snapshot"
+                  __dump_process_subtree "$__cmd_pid"
+                fi
+              else
+                echo "[ci-debug] wrapped command is no longer running"
+              fi
+
+              if [ -f "$__log" ] && [ -s "$__log" ]; then
+                echo "[ci-debug] recent combined output"
+                tail -n "$__tail_lines" "$__log" || true
+              else
+                echo "[ci-debug] no combined output captured yet"
+              fi
+              echo "::endgroup::"
+            }
+
             while [ "$__n" -le "$__max" ]; do
               echo "::notice::[ci] starting $__task (attempt $__n/$__max)"
+              __log=$(mktemp)
+              set +e
               (
-                while sleep "$__heartbeat"; do
+                set -o pipefail
+                eval "$1" > >(tee -a "$__log") 2> >(tee -a "$__log" >&2)
+              ) &
+              __cmd_pid=$!
+              (
+                __heartbeat_count=0
+                while kill -0 "$__cmd_pid" 2>/dev/null; do
+                  sleep "$__heartbeat" || break
+                  kill -0 "$__cmd_pid" 2>/dev/null || break
                   __now=$(date +%s)
                   __elapsed=$((__now - __start))
+                  __heartbeat_count=$((__heartbeat_count + 1))
                   echo "::notice::[ci] $__task still running after $__elapsed s (attempt $__n/$__max)"
+                  if [ "$__debug" = 1 ] && [ $((__heartbeat_count % __snapshot_every)) -eq 0 ]; then
+                    __dump_debug_snapshot
+                  fi
                 done
               ) &
               __hb_pid=$!
-
-              __log=$(mktemp)
-              set +e; eval "$1" 2> >(tee "$__log" >&2); __rc=$?; set -e
+              wait "$__cmd_pid"; __rc=$?
+              set -e
 
               kill "$__hb_pid" 2>/dev/null || true
               wait "$__hb_pid" 2>/dev/null || true
@@ -2496,6 +3601,9 @@ jobs:
               }
 
               __path=$(perl -0pe 's/\e\[[0-9;]*m//g; s/\n/ /g' "$__log" | grep -oP "error:\s+path '\K/nix/store/[^']*(?='\s+is not valid)" 2>/dev/null | head -1 | tr -d '[:space:]' || true)
+              if [ "$__debug" = 1 ]; then
+                __dump_debug_snapshot
+              fi
               rm -f "$__log"
               if [ -z "$__path" ]; then
                 echo "::warning::[ci] $__task failed after $__elapsed s without a detected Nix GC race"
@@ -2513,38 +3621,100 @@ jobs:
             echo "::error::Nix GC race retry exhausted for $__task ($__max attempts)"
             __write_summary failure "Nix GC race retry exhausted"
             return 1
-          }; __nix_gc_retry 'if [ -n "${NIX_CONFIG:-}" ]; then NIX_CONFIG_WITH_APPEND=$(printf '"'"'%s\n%s'"'"' "$NIX_CONFIG" '"'"'restrict-eval = false'"'"'); else NIX_CONFIG_WITH_APPEND='"'"'restrict-eval = false'"'"'; fi; NIX_CONFIG="$NIX_CONFIG_WITH_APPEND" PNPM_HOME='"'"'${{ runner.temp }}/pnpm-home/${{ github.run_id }}/${{ github.run_attempt }}/${{ github.job }}'"'"' DT_PASSTHROUGH=1 "${DEVENV_BIN:?DEVENV_BIN not set}" tasks run docs:build:phase:diagrams --mode before'
+          }; __nix_gc_retry 'if [ -n "${NIX_CONFIG:-}" ]; then NIX_CONFIG_WITH_APPEND=$(printf '"'"'%s\n%s'"'"' "$NIX_CONFIG" '"'"'restrict-eval = false'"'"'); else NIX_CONFIG_WITH_APPEND='"'"'restrict-eval = false'"'"'; fi; NIX_CONFIG="$NIX_CONFIG_WITH_APPEND" PNPM_HOME="${PNPM_HOME:-${{ github.workspace }}/.pnpm-home}" PNPM_STORE_DIR="${PNPM_STORE_DIR:-${{ runner.temp }}/pnpm-store/${{ github.job }}}" DT_PASSTHROUGH=1 "${DEVENV_BIN:?DEVENV_BIN not set}" tasks run docs:build:phase:diagrams --mode before'
       - name: Build Astro docs bundle
         run: |
           __nix_gc_retry() {
-            local __task='devenv tasks run docs:build:phase:astro --mode before' __max=${NIX_GC_RACE_MAX_RETRIES:-10} __heartbeat=${CI_PROGRESS_HEARTBEAT_SECONDS:-60} __n=1 __log __rc __path __start __now __elapsed __hb_pid
+            local __task='devenv tasks run docs:build:phase:astro --mode before' __max=${NIX_GC_RACE_MAX_RETRIES:-10} __heartbeat=${CI_PROGRESS_HEARTBEAT_SECONDS:-60} __debug=${CI_DEBUG_WRAPPER:-0} __tail_lines=${CI_DEBUG_LOG_TAIL_LINES:-80} __snapshot_every=${CI_DEBUG_PROCESS_SNAPSHOT_EVERY_HEARTBEATS:-3} __n=1 __log __rc __path __start __now __elapsed __hb_pid __cmd_pid
             __start=$(date +%s)
+            if ! [ "$__snapshot_every" -ge 1 ] 2>/dev/null; then
+              __snapshot_every=1
+            fi
 
             __write_summary() {
               [ -n "${GITHUB_STEP_SUMMARY:-}" ] || return 0
               {
                 echo "### CI Task"
-                echo "- Task: `$__task`"
-                echo "- Status: `$1`"
-                echo "- Duration: `$__elapsed s`"
-                echo "- Attempts: `$__n/$__max`"
+                # Keep summary values plain text. Backticks inside double quotes trigger
+                # shell command substitution and turned failed-task metadata into bogus
+                # commands on GitHub Actions runners.
+                echo "- Task: $__task"
+                echo "- Status: $1"
+                echo "- Duration: $__elapsed s"
+                echo "- Attempts: $__n/$__max"
                 [ -z "${2:-}" ] || echo "- Note: $2"
               } >> "$GITHUB_STEP_SUMMARY"
             }
 
+            __dump_process_subtree() {
+              local __queue __pid __children
+              __queue="${1:-}"
+              while [ -n "$__queue" ]; do
+                __pid=${__queue%% *}
+                if [ "$__queue" = "$__pid" ]; then
+                  __queue=''
+                else
+                  __queue=${__queue#* }
+                fi
+                [ -n "$__pid" ] || continue
+                ps -ww -o pid=,ppid=,pgid=,stat=,etime=,%cpu=,%mem=,args= -p "$__pid" 2>/dev/null || true
+                __children=$(pgrep -P "$__pid" 2>/dev/null | tr '
+          ' ' ' | sed 's/[[:space:]]*$//' || true)
+                [ -z "$__children" ] || __queue="$__queue $__children"
+              done
+            }
+
+            __dump_debug_snapshot() {
+              [ "$__debug" = 1 ] || return 0
+              echo "::group::[ci-debug] $__task snapshot after $__elapsed s (attempt $__n/$__max)"
+              echo "[ci-debug] command pid: ${__cmd_pid:-unknown}"
+              if [ -n "${__cmd_pid:-}" ] && kill -0 "$__cmd_pid" 2>/dev/null; then
+                if command -v pstree >/dev/null 2>&1; then
+                  echo "[ci-debug] process tree"
+                  pstree -apl "$__cmd_pid" || true
+                else
+                  echo "[ci-debug] process snapshot"
+                  __dump_process_subtree "$__cmd_pid"
+                fi
+              else
+                echo "[ci-debug] wrapped command is no longer running"
+              fi
+
+              if [ -f "$__log" ] && [ -s "$__log" ]; then
+                echo "[ci-debug] recent combined output"
+                tail -n "$__tail_lines" "$__log" || true
+              else
+                echo "[ci-debug] no combined output captured yet"
+              fi
+              echo "::endgroup::"
+            }
+
             while [ "$__n" -le "$__max" ]; do
               echo "::notice::[ci] starting $__task (attempt $__n/$__max)"
+              __log=$(mktemp)
+              set +e
               (
-                while sleep "$__heartbeat"; do
+                set -o pipefail
+                eval "$1" > >(tee -a "$__log") 2> >(tee -a "$__log" >&2)
+              ) &
+              __cmd_pid=$!
+              (
+                __heartbeat_count=0
+                while kill -0 "$__cmd_pid" 2>/dev/null; do
+                  sleep "$__heartbeat" || break
+                  kill -0 "$__cmd_pid" 2>/dev/null || break
                   __now=$(date +%s)
                   __elapsed=$((__now - __start))
+                  __heartbeat_count=$((__heartbeat_count + 1))
                   echo "::notice::[ci] $__task still running after $__elapsed s (attempt $__n/$__max)"
+                  if [ "$__debug" = 1 ] && [ $((__heartbeat_count % __snapshot_every)) -eq 0 ]; then
+                    __dump_debug_snapshot
+                  fi
                 done
               ) &
               __hb_pid=$!
-
-              __log=$(mktemp)
-              set +e; eval "$1" 2> >(tee "$__log" >&2); __rc=$?; set -e
+              wait "$__cmd_pid"; __rc=$?
+              set -e
 
               kill "$__hb_pid" 2>/dev/null || true
               wait "$__hb_pid" 2>/dev/null || true
@@ -2564,6 +3734,9 @@ jobs:
               }
 
               __path=$(perl -0pe 's/\e\[[0-9;]*m//g; s/\n/ /g' "$__log" | grep -oP "error:\s+path '\K/nix/store/[^']*(?='\s+is not valid)" 2>/dev/null | head -1 | tr -d '[:space:]' || true)
+              if [ "$__debug" = 1 ]; then
+                __dump_debug_snapshot
+              fi
               rm -f "$__log"
               if [ -z "$__path" ]; then
                 echo "::warning::[ci] $__task failed after $__elapsed s without a detected Nix GC race"
@@ -2581,39 +3754,101 @@ jobs:
             echo "::error::Nix GC race retry exhausted for $__task ($__max attempts)"
             __write_summary failure "Nix GC race retry exhausted"
             return 1
-          }; __nix_gc_retry 'if [ -n "${NIX_CONFIG:-}" ]; then NIX_CONFIG_WITH_APPEND=$(printf '"'"'%s\n%s'"'"' "$NIX_CONFIG" '"'"'restrict-eval = false'"'"'); else NIX_CONFIG_WITH_APPEND='"'"'restrict-eval = false'"'"'; fi; NIX_CONFIG="$NIX_CONFIG_WITH_APPEND" PNPM_HOME='"'"'${{ runner.temp }}/pnpm-home/${{ github.run_id }}/${{ github.run_attempt }}/${{ github.job }}'"'"' DT_PASSTHROUGH=1 "${DEVENV_BIN:?DEVENV_BIN not set}" tasks run docs:build:phase:astro --mode before'
+          }; __nix_gc_retry 'if [ -n "${NIX_CONFIG:-}" ]; then NIX_CONFIG_WITH_APPEND=$(printf '"'"'%s\n%s'"'"' "$NIX_CONFIG" '"'"'restrict-eval = false'"'"'); else NIX_CONFIG_WITH_APPEND='"'"'restrict-eval = false'"'"'; fi; NIX_CONFIG="$NIX_CONFIG_WITH_APPEND" PNPM_HOME="${PNPM_HOME:-${{ github.workspace }}/.pnpm-home}" PNPM_STORE_DIR="${PNPM_STORE_DIR:-${{ runner.temp }}/pnpm-store/${{ github.job }}}" DT_PASSTHROUGH=1 "${DEVENV_BIN:?DEVENV_BIN not set}" tasks run docs:build:phase:astro --mode before'
       - name: Collect docs build diagnostics on failure
         if: '${{ failure() }}'
         run: |
           __nix_gc_retry() {
-            local __task='devenv tasks run docs:build:diagnostics --mode before' __max=${NIX_GC_RACE_MAX_RETRIES:-10} __heartbeat=${CI_PROGRESS_HEARTBEAT_SECONDS:-60} __n=1 __log __rc __path __start __now __elapsed __hb_pid
+            local __task='devenv tasks run docs:build:diagnostics --mode before' __max=${NIX_GC_RACE_MAX_RETRIES:-10} __heartbeat=${CI_PROGRESS_HEARTBEAT_SECONDS:-60} __debug=${CI_DEBUG_WRAPPER:-0} __tail_lines=${CI_DEBUG_LOG_TAIL_LINES:-80} __snapshot_every=${CI_DEBUG_PROCESS_SNAPSHOT_EVERY_HEARTBEATS:-3} __n=1 __log __rc __path __start __now __elapsed __hb_pid __cmd_pid
             __start=$(date +%s)
+            if ! [ "$__snapshot_every" -ge 1 ] 2>/dev/null; then
+              __snapshot_every=1
+            fi
 
             __write_summary() {
               [ -n "${GITHUB_STEP_SUMMARY:-}" ] || return 0
               {
                 echo "### CI Task"
-                echo "- Task: `$__task`"
-                echo "- Status: `$1`"
-                echo "- Duration: `$__elapsed s`"
-                echo "- Attempts: `$__n/$__max`"
+                # Keep summary values plain text. Backticks inside double quotes trigger
+                # shell command substitution and turned failed-task metadata into bogus
+                # commands on GitHub Actions runners.
+                echo "- Task: $__task"
+                echo "- Status: $1"
+                echo "- Duration: $__elapsed s"
+                echo "- Attempts: $__n/$__max"
                 [ -z "${2:-}" ] || echo "- Note: $2"
               } >> "$GITHUB_STEP_SUMMARY"
             }
 
+            __dump_process_subtree() {
+              local __queue __pid __children
+              __queue="${1:-}"
+              while [ -n "$__queue" ]; do
+                __pid=${__queue%% *}
+                if [ "$__queue" = "$__pid" ]; then
+                  __queue=''
+                else
+                  __queue=${__queue#* }
+                fi
+                [ -n "$__pid" ] || continue
+                ps -ww -o pid=,ppid=,pgid=,stat=,etime=,%cpu=,%mem=,args= -p "$__pid" 2>/dev/null || true
+                __children=$(pgrep -P "$__pid" 2>/dev/null | tr '
+          ' ' ' | sed 's/[[:space:]]*$//' || true)
+                [ -z "$__children" ] || __queue="$__queue $__children"
+              done
+            }
+
+            __dump_debug_snapshot() {
+              [ "$__debug" = 1 ] || return 0
+              echo "::group::[ci-debug] $__task snapshot after $__elapsed s (attempt $__n/$__max)"
+              echo "[ci-debug] command pid: ${__cmd_pid:-unknown}"
+              if [ -n "${__cmd_pid:-}" ] && kill -0 "$__cmd_pid" 2>/dev/null; then
+                if command -v pstree >/dev/null 2>&1; then
+                  echo "[ci-debug] process tree"
+                  pstree -apl "$__cmd_pid" || true
+                else
+                  echo "[ci-debug] process snapshot"
+                  __dump_process_subtree "$__cmd_pid"
+                fi
+              else
+                echo "[ci-debug] wrapped command is no longer running"
+              fi
+
+              if [ -f "$__log" ] && [ -s "$__log" ]; then
+                echo "[ci-debug] recent combined output"
+                tail -n "$__tail_lines" "$__log" || true
+              else
+                echo "[ci-debug] no combined output captured yet"
+              fi
+              echo "::endgroup::"
+            }
+
             while [ "$__n" -le "$__max" ]; do
               echo "::notice::[ci] starting $__task (attempt $__n/$__max)"
+              __log=$(mktemp)
+              set +e
               (
-                while sleep "$__heartbeat"; do
+                set -o pipefail
+                eval "$1" > >(tee -a "$__log") 2> >(tee -a "$__log" >&2)
+              ) &
+              __cmd_pid=$!
+              (
+                __heartbeat_count=0
+                while kill -0 "$__cmd_pid" 2>/dev/null; do
+                  sleep "$__heartbeat" || break
+                  kill -0 "$__cmd_pid" 2>/dev/null || break
                   __now=$(date +%s)
                   __elapsed=$((__now - __start))
+                  __heartbeat_count=$((__heartbeat_count + 1))
                   echo "::notice::[ci] $__task still running after $__elapsed s (attempt $__n/$__max)"
+                  if [ "$__debug" = 1 ] && [ $((__heartbeat_count % __snapshot_every)) -eq 0 ]; then
+                    __dump_debug_snapshot
+                  fi
                 done
               ) &
               __hb_pid=$!
-
-              __log=$(mktemp)
-              set +e; eval "$1" 2> >(tee "$__log" >&2); __rc=$?; set -e
+              wait "$__cmd_pid"; __rc=$?
+              set -e
 
               kill "$__hb_pid" 2>/dev/null || true
               wait "$__hb_pid" 2>/dev/null || true
@@ -2633,6 +3868,9 @@ jobs:
               }
 
               __path=$(perl -0pe 's/\e\[[0-9;]*m//g; s/\n/ /g' "$__log" | grep -oP "error:\s+path '\K/nix/store/[^']*(?='\s+is not valid)" 2>/dev/null | head -1 | tr -d '[:space:]' || true)
+              if [ "$__debug" = 1 ]; then
+                __dump_debug_snapshot
+              fi
               rm -f "$__log"
               if [ -z "$__path" ]; then
                 echo "::warning::[ci] $__task failed after $__elapsed s without a detected Nix GC race"
@@ -2650,7 +3888,7 @@ jobs:
             echo "::error::Nix GC race retry exhausted for $__task ($__max attempts)"
             __write_summary failure "Nix GC race retry exhausted"
             return 1
-          }; __nix_gc_retry 'if [ -n "${NIX_CONFIG:-}" ]; then NIX_CONFIG_WITH_APPEND=$(printf '"'"'%s\n%s'"'"' "$NIX_CONFIG" '"'"'restrict-eval = false'"'"'); else NIX_CONFIG_WITH_APPEND='"'"'restrict-eval = false'"'"'; fi; NIX_CONFIG="$NIX_CONFIG_WITH_APPEND" PNPM_HOME='"'"'${{ runner.temp }}/pnpm-home/${{ github.run_id }}/${{ github.run_attempt }}/${{ github.job }}'"'"' DT_PASSTHROUGH=1 "${DEVENV_BIN:?DEVENV_BIN not set}" tasks run docs:build:diagnostics --mode before'
+          }; __nix_gc_retry 'if [ -n "${NIX_CONFIG:-}" ]; then NIX_CONFIG_WITH_APPEND=$(printf '"'"'%s\n%s'"'"' "$NIX_CONFIG" '"'"'restrict-eval = false'"'"'); else NIX_CONFIG_WITH_APPEND='"'"'restrict-eval = false'"'"'; fi; NIX_CONFIG="$NIX_CONFIG_WITH_APPEND" PNPM_HOME="${PNPM_HOME:-${{ github.workspace }}/.pnpm-home}" PNPM_STORE_DIR="${PNPM_STORE_DIR:-${{ runner.temp }}/pnpm-store/${{ github.job }}}" DT_PASSTHROUGH=1 "${DEVENV_BIN:?DEVENV_BIN not set}" tasks run docs:build:diagnostics --mode before'
       - name: Upload docs build logs
         if: '${{ always() }}'
         uses: actions/upload-artifact@v4
@@ -2662,34 +3900,96 @@ jobs:
         if: "${{ success() && (github.event_name != 'pull_request' || github.event.pull_request.head.repo.fork != true) }}"
         run: |
           __nix_gc_retry() {
-            local __task='devenv tasks run docs:deploy --mode before' __max=${NIX_GC_RACE_MAX_RETRIES:-10} __heartbeat=${CI_PROGRESS_HEARTBEAT_SECONDS:-60} __n=1 __log __rc __path __start __now __elapsed __hb_pid
+            local __task='devenv tasks run docs:deploy --mode before' __max=${NIX_GC_RACE_MAX_RETRIES:-10} __heartbeat=${CI_PROGRESS_HEARTBEAT_SECONDS:-60} __debug=${CI_DEBUG_WRAPPER:-0} __tail_lines=${CI_DEBUG_LOG_TAIL_LINES:-80} __snapshot_every=${CI_DEBUG_PROCESS_SNAPSHOT_EVERY_HEARTBEATS:-3} __n=1 __log __rc __path __start __now __elapsed __hb_pid __cmd_pid
             __start=$(date +%s)
+            if ! [ "$__snapshot_every" -ge 1 ] 2>/dev/null; then
+              __snapshot_every=1
+            fi
 
             __write_summary() {
               [ -n "${GITHUB_STEP_SUMMARY:-}" ] || return 0
               {
                 echo "### CI Task"
-                echo "- Task: `$__task`"
-                echo "- Status: `$1`"
-                echo "- Duration: `$__elapsed s`"
-                echo "- Attempts: `$__n/$__max`"
+                # Keep summary values plain text. Backticks inside double quotes trigger
+                # shell command substitution and turned failed-task metadata into bogus
+                # commands on GitHub Actions runners.
+                echo "- Task: $__task"
+                echo "- Status: $1"
+                echo "- Duration: $__elapsed s"
+                echo "- Attempts: $__n/$__max"
                 [ -z "${2:-}" ] || echo "- Note: $2"
               } >> "$GITHUB_STEP_SUMMARY"
             }
 
+            __dump_process_subtree() {
+              local __queue __pid __children
+              __queue="${1:-}"
+              while [ -n "$__queue" ]; do
+                __pid=${__queue%% *}
+                if [ "$__queue" = "$__pid" ]; then
+                  __queue=''
+                else
+                  __queue=${__queue#* }
+                fi
+                [ -n "$__pid" ] || continue
+                ps -ww -o pid=,ppid=,pgid=,stat=,etime=,%cpu=,%mem=,args= -p "$__pid" 2>/dev/null || true
+                __children=$(pgrep -P "$__pid" 2>/dev/null | tr '
+          ' ' ' | sed 's/[[:space:]]*$//' || true)
+                [ -z "$__children" ] || __queue="$__queue $__children"
+              done
+            }
+
+            __dump_debug_snapshot() {
+              [ "$__debug" = 1 ] || return 0
+              echo "::group::[ci-debug] $__task snapshot after $__elapsed s (attempt $__n/$__max)"
+              echo "[ci-debug] command pid: ${__cmd_pid:-unknown}"
+              if [ -n "${__cmd_pid:-}" ] && kill -0 "$__cmd_pid" 2>/dev/null; then
+                if command -v pstree >/dev/null 2>&1; then
+                  echo "[ci-debug] process tree"
+                  pstree -apl "$__cmd_pid" || true
+                else
+                  echo "[ci-debug] process snapshot"
+                  __dump_process_subtree "$__cmd_pid"
+                fi
+              else
+                echo "[ci-debug] wrapped command is no longer running"
+              fi
+
+              if [ -f "$__log" ] && [ -s "$__log" ]; then
+                echo "[ci-debug] recent combined output"
+                tail -n "$__tail_lines" "$__log" || true
+              else
+                echo "[ci-debug] no combined output captured yet"
+              fi
+              echo "::endgroup::"
+            }
+
             while [ "$__n" -le "$__max" ]; do
               echo "::notice::[ci] starting $__task (attempt $__n/$__max)"
+              __log=$(mktemp)
+              set +e
               (
-                while sleep "$__heartbeat"; do
+                set -o pipefail
+                eval "$1" > >(tee -a "$__log") 2> >(tee -a "$__log" >&2)
+              ) &
+              __cmd_pid=$!
+              (
+                __heartbeat_count=0
+                while kill -0 "$__cmd_pid" 2>/dev/null; do
+                  sleep "$__heartbeat" || break
+                  kill -0 "$__cmd_pid" 2>/dev/null || break
                   __now=$(date +%s)
                   __elapsed=$((__now - __start))
+                  __heartbeat_count=$((__heartbeat_count + 1))
                   echo "::notice::[ci] $__task still running after $__elapsed s (attempt $__n/$__max)"
+                  if [ "$__debug" = 1 ] && [ $((__heartbeat_count % __snapshot_every)) -eq 0 ]; then
+                    __dump_debug_snapshot
+                  fi
                 done
               ) &
               __hb_pid=$!
-
-              __log=$(mktemp)
-              set +e; eval "$1" 2> >(tee "$__log" >&2); __rc=$?; set -e
+              wait "$__cmd_pid"; __rc=$?
+              set -e
 
               kill "$__hb_pid" 2>/dev/null || true
               wait "$__hb_pid" 2>/dev/null || true
@@ -2709,6 +4009,9 @@ jobs:
               }
 
               __path=$(perl -0pe 's/\e\[[0-9;]*m//g; s/\n/ /g' "$__log" | grep -oP "error:\s+path '\K/nix/store/[^']*(?='\s+is not valid)" 2>/dev/null | head -1 | tr -d '[:space:]' || true)
+              if [ "$__debug" = 1 ]; then
+                __dump_debug_snapshot
+              fi
               rm -f "$__log"
               if [ -z "$__path" ]; then
                 echo "::warning::[ci] $__task failed after $__elapsed s without a detected Nix GC race"
@@ -2726,7 +4029,7 @@ jobs:
             echo "::error::Nix GC race retry exhausted for $__task ($__max attempts)"
             __write_summary failure "Nix GC race retry exhausted"
             return 1
-          }; __nix_gc_retry 'if [ -n "${NIX_CONFIG:-}" ]; then NIX_CONFIG_WITH_APPEND=$(printf '"'"'%s\n%s'"'"' "$NIX_CONFIG" '"'"'restrict-eval = false'"'"'); else NIX_CONFIG_WITH_APPEND='"'"'restrict-eval = false'"'"'; fi; NIX_CONFIG="$NIX_CONFIG_WITH_APPEND" PNPM_HOME='"'"'${{ runner.temp }}/pnpm-home/${{ github.run_id }}/${{ github.run_attempt }}/${{ github.job }}'"'"' DT_PASSTHROUGH=1 "${DEVENV_BIN:?DEVENV_BIN not set}" tasks run docs:deploy --mode before'
+          }; __nix_gc_retry 'if [ -n "${NIX_CONFIG:-}" ]; then NIX_CONFIG_WITH_APPEND=$(printf '"'"'%s\n%s'"'"' "$NIX_CONFIG" '"'"'restrict-eval = false'"'"'); else NIX_CONFIG_WITH_APPEND='"'"'restrict-eval = false'"'"'; fi; NIX_CONFIG="$NIX_CONFIG_WITH_APPEND" PNPM_HOME="${PNPM_HOME:-${{ github.workspace }}/.pnpm-home}" PNPM_STORE_DIR="${PNPM_STORE_DIR:-${{ runner.temp }}/pnpm-store/${{ github.job }}}" DT_PASSTHROUGH=1 "${DEVENV_BIN:?DEVENV_BIN not set}" tasks run docs:deploy --mode before'
         env:
           NETLIFY_AUTH_TOKEN: '${{ secrets.NETLIFY_AUTH_TOKEN }}'
       - name: Upload Nix diagnostics artifact

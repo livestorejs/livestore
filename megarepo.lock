@@ -3,10 +3,10 @@
   "members": {
     "effect-utils": {
       "url": "https://github.com/overengineeringstudio/effect-utils",
-      "ref": "schickling/ci-job-local-pnpm-store",
-      "commit": "3a33490ee66dde46d54c0ab5947217f9647b036d",
+      "ref": "schickling/debug-ci-run-hang",
+      "commit": "40e4470b4e0f6ee4fe4b45e2b97ba7d2b6d39b3d",
       "pinned": true,
-      "lockedAt": "2026-03-26T12:31:15.935Z"
+      "lockedAt": "2026-03-26T16:47:53.000Z"
     },
     "overeng-beads-public": {
       "url": "https://github.com/overengineeringstudio/overeng-beads-public",
