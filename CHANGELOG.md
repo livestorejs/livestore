@@ -440,6 +440,7 @@ See the [S2 sync provider docs](https://dev.docs.livestore.dev/reference/syncing
 
 ##### Concurrency & Lifecycle
 
+- Fix background push fiber dying silently on non-`RejectedPushError` failures in `ClientSessionSyncProcessor`, leaving sessions unable to push ([#1133](https://github.com/livestorejs/livestore/issues/1133))
 - Fix correct type assertion in withLock function
 - Fix finalizers execution order (#450)
 - Ensure large batches no longer leave follower sessions behind by reconciling leader/follower heads correctly (#362)

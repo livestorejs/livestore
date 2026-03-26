@@ -592,6 +592,44 @@ Vitest.describe.concurrent('ClientSessionSyncProcessor', () => {
     }).pipe(withTestCtx(test)),
   )
 
+  Vitest.scopedLive('push fiber triggers shutdown on non-RejectedPushError', (test) =>
+    Effect.gen(function* () {
+      const pushError = new Error('unexpected transport failure')
+
+      const { makeStore, shutdownDeferred } = yield* TestContext
+
+      const store = yield* makeStore({
+        testing: {
+          overrides: {
+            clientSession: {
+              leaderThreadProxy: (leader) => ({
+                events: {
+                  pull: leader.events.pull,
+                  push: () => Effect.die(pushError),
+                  stream: leader.events.stream,
+                },
+              }),
+            },
+          },
+        },
+      })
+
+      store.commit(events.todoCreated({ id: 'trigger', text: 'boom', completed: false }))
+
+      const exit = yield* Effect.exit(shutdownDeferred)
+
+      expect(Exit.isFailure(exit)).toBe(true)
+      assert(Exit.isFailure(exit))
+
+      const defect = Cause.dieOption(exit.cause)
+      expect(defect._tag).toBe('Some')
+      assert(defect._tag === 'Some')
+      expect(defect.value).toBeInstanceOf(Error)
+      assert(defect.value instanceof Error)
+      expect(defect.value.message).toBe('unexpected transport failure')
+    }).pipe(withTestCtx(test)),
+  )
+
   // TODO write tests for:
   // - leader re-election
 })

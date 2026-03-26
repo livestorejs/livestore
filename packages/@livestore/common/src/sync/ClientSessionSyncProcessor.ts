@@ -214,7 +214,12 @@ export const makeClientSessionSyncProcessor = ({
           return BucketQueue.clear(leaderPushQueue)
         }),
       )
-    }).pipe(Effect.forever, Effect.interruptible, Effect.tapCauseLogPretty)
+    }).pipe(
+      Effect.forever,
+      Effect.interruptible,
+      Effect.tapCauseLogPretty,
+      Effect.catchAllCause((cause) => clientSession.shutdown(Exit.failCause(cause))),
+    )
 
     yield* FiberHandle.run(leaderPushingFiberHandle, backgroundLeaderPushing)
 
