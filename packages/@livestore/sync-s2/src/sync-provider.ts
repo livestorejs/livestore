@@ -80,6 +80,18 @@ export interface SyncS2Options {
 
 export const defaultRetry = Schedule.compose(Schedule.recurs(2), Schedule.spaced(100))
 
+const getBrowserOrigin = () => {
+  if (typeof globalThis !== 'object' || globalThis === null || !('location' in globalThis)) {
+    return undefined
+  }
+
+  const { location } = globalThis as typeof globalThis & {
+    location?: { origin?: unknown } | undefined
+  }
+
+  return typeof location?.origin === 'string' ? location.origin : undefined
+}
+
 export const makeSyncBackend =
   ({ endpoint, ping: pingOptions, retry }: SyncS2Options): SyncBackend.SyncBackendConstructor<SyncMetadata> =>
   ({ storeId, payload }) =>
@@ -91,14 +103,7 @@ export const makeSyncBackend =
 
       const httpClient = yield* HttpClient.HttpClient
 
-      const browserOrigin =
-        'location' in globalThis &&
-        typeof globalThis.location === 'object' &&
-        globalThis.location !== null &&
-        'origin' in globalThis.location &&
-        typeof globalThis.location.origin === 'string'
-          ? globalThis.location.origin
-          : undefined
+      const browserOrigin = getBrowserOrigin()
       const pullEndpointHasSameOrigin =
         pullEndpoint.startsWith('/') || (browserOrigin !== undefined && browserOrigin === new URL(pullEndpoint).origin)
 

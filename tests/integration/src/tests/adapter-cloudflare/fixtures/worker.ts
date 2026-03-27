@@ -17,7 +17,12 @@ import { shouldNeverHappen } from '@livestore/utils'
 
 import { events, schema, tables } from '../schema.ts'
 
-declare class Response extends CfDeclare.Response {}
+/**
+ * Bridge Cloudflare's worker `Response` constructor back to the worker type in this mixed DOM/worker TS program.
+ */
+const makeCfResponse = (...args: ConstructorParameters<typeof CfDeclare.Response>): CfTypes.Response =>
+  // oxlint-disable-next-line typescript-eslint(no-unsafe-type-assertion) -- runtime value is Cloudflare's Response constructor, but TS collapses it to the DOM shape here
+  new CfDeclare.Response(...args) as CfTypes.Response
 
 type PersistenceSnapshot = {
   state: PersistenceCounts
@@ -37,6 +42,11 @@ type Env = {
   SYNC_BACKEND_DO: CfTypes.DurableObjectNamespace<SyncBackendRpcInterface>
   TEST_STORE_DO: CfTypes.DurableObjectNamespace<ClientDoWithRpcCallback>
 }
+
+const DurableObjectBase = DurableObject as any as new (
+  state: CfTypes.DurableObjectState,
+  env: Env,
+) => CfTypes.DurableObject & { ctx: CfTypes.DurableObjectState; env: Env }
 
 export class SyncBackendDO extends makeDurableObject({}) {}
 
@@ -83,21 +93,20 @@ const wrapSqlForTracking = (sql: CfTypes.SqlStorage) => {
   return trackedSql
 }
 
-export class TestStoreDo extends DurableObject<Env> implements ClientDoWithRpcCallback {
-  override __DURABLE_OBJECT_BRAND = 'TestStoreDo' as never
+export class TestStoreDo extends DurableObjectBase implements ClientDoWithRpcCallback {
+  __DURABLE_OBJECT_BRAND = 'TestStoreDo' as never
   private cachedStore: Store<typeof schema> | undefined
   private cachedStoreId: string | undefined
   /** Captures the VFS counts immediately before/after a reset so tests can assert the deletion actually happened. */
   private lastResetSnapshot: ResetPersistenceSnapshot | undefined
   private trackedSql: ReturnType<typeof wrapSqlForTracking> | undefined
 
-  // @ts-expect-error - Type mismatch due to different Request/Response types across workspaces
-  override async fetch(request: Request): Promise<Response> {
+  override async fetch(request: CfTypes.Request): Promise<CfTypes.Response> {
     const url = new URL(request.url)
     const storeId = url.searchParams.get('storeId')
 
     if (storeId === null) {
-      return new Response('storeId is required', { status: 400 })
+      return makeCfResponse('storeId is required', { status: 400 })
     }
 
     if (url.pathname === '/store/todos') {
@@ -108,7 +117,7 @@ export class TestStoreDo extends DurableObject<Env> implements ClientDoWithRpcCa
 
         store.commit(events.todoCreated({ id, title: payload.title }))
 
-        return new Response(JSON.stringify({ id }), {
+        return makeCfResponse(JSON.stringify({ id }), {
           status: 201,
           headers: { 'content-type': 'application/json' },
         })
@@ -118,12 +127,12 @@ export class TestStoreDo extends DurableObject<Env> implements ClientDoWithRpcCa
         const store = await this.ensureStore({ storeId, resetPersistence: false })
         const todos = store.query(tables.todos)
 
-        return new Response(JSON.stringify(todos), {
+        return makeCfResponse(JSON.stringify(todos), {
           headers: { 'content-type': 'application/json' },
         })
       }
 
-      return new Response('Method not allowed', { status: 405 })
+      return makeCfResponse('Method not allowed', { status: 405 })
     }
 
     if (url.pathname === '/store/persistence' && request.method === 'GET') {
@@ -133,7 +142,7 @@ export class TestStoreDo extends DurableObject<Env> implements ClientDoWithRpcCa
 
       const persistence = this.getPersistenceSnapshot()
 
-      return new Response(JSON.stringify({ persistence }), {
+      return makeCfResponse(JSON.stringify({ persistence }), {
         headers: { 'content-type': 'application/json' },
       })
     }
@@ -144,7 +153,7 @@ export class TestStoreDo extends DurableObject<Env> implements ClientDoWithRpcCa
       const persistence = this.getPersistenceSnapshot()
       const resetSnapshot = this.lastResetSnapshot ?? null
 
-      return new Response(
+      return makeCfResponse(
         JSON.stringify({
           todos,
           persistence,
@@ -160,7 +169,7 @@ export class TestStoreDo extends DurableObject<Env> implements ClientDoWithRpcCa
       if (request.method === 'GET') {
         await this.ensureStore({ storeId, resetPersistence: false })
 
-        return new Response(
+        return makeCfResponse(
           JSON.stringify({
             totalRowsWritten: this.trackedSql?.totalRowsWritten ?? 0,
             totalRowsRead: this.trackedSql?.totalRowsRead ?? 0,
@@ -172,12 +181,12 @@ export class TestStoreDo extends DurableObject<Env> implements ClientDoWithRpcCa
       if (request.method === 'DELETE') {
         this.trackedSql?.resetMetrics()
 
-        return new Response(JSON.stringify({ totalRowsWritten: 0, totalRowsRead: 0 }), {
+        return makeCfResponse(JSON.stringify({ totalRowsWritten: 0, totalRowsRead: 0 }), {
           headers: { 'content-type': 'application/json' },
         })
       }
 
-      return new Response('Method not allowed', { status: 405 })
+      return makeCfResponse('Method not allowed', { status: 405 })
     }
 
     if (url.pathname === '/store/shutdown' && request.method === 'POST') {
@@ -187,12 +196,12 @@ export class TestStoreDo extends DurableObject<Env> implements ClientDoWithRpcCa
         this.cachedStoreId = undefined
       }
 
-      return new Response(JSON.stringify({ ok: true }), {
+      return makeCfResponse(JSON.stringify({ ok: true }), {
         headers: { 'content-type': 'application/json' },
       })
     }
 
-    return new Response('Not found', { status: 404 })
+    return makeCfResponse('Not found', { status: 404 })
   }
 
   async syncUpdateRpc(payload: unknown) {
@@ -337,13 +346,13 @@ export default {
     if (url.pathname.startsWith('/store') === true) {
       const storeId = url.searchParams.get('storeId')
       if (storeId === null) {
-        return new Response('storeId is required', { status: 400 })
+        return makeCfResponse('storeId is required', { status: 400 })
       }
 
       const id = env.TEST_STORE_DO.idFromName(storeId)
       return env.TEST_STORE_DO.get(id).fetch(request)
     }
 
-    return new Response('Not found', { status: 404 })
+    return makeCfResponse('Not found', { status: 404 })
   },
 }

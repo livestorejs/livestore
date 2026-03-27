@@ -1,12 +1,10 @@
 import { Suspense, useCallback, useState } from 'react'
-import { ErrorBoundary } from 'react-error-boundary'
 
 import { useStoreRegistry } from '@livestore/react'
 
 import { issueStoreOptions } from './issue.store.ts'
 import { IssueView } from './IssueView.tsx'
 
-const preloadedIssueErrorFallback = <div>Error loading issue</div>
 const preloadedIssueLoadingFallback = <div>Loading issue...</div>
 
 export const PreloadedIssue = ({ issueId }: { issueId: string }) => {
@@ -32,11 +30,9 @@ export const PreloadedIssue = ({ issueId }: { issueId: string }) => {
           Show Issue
         </button>
       ) : (
-        <ErrorBoundary fallback={preloadedIssueErrorFallback}>
-          <Suspense fallback={preloadedIssueLoadingFallback}>
-            <IssueView issueId={issueId} />
-          </Suspense>
-        </ErrorBoundary>
+        <Suspense fallback={preloadedIssueLoadingFallback}>
+          <IssueView issueId={issueId} />
+        </Suspense>
       )}
     </div>
   )

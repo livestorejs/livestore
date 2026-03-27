@@ -1,5 +1,4 @@
 import { Suspense } from 'react'
-import { ErrorBoundary } from 'react-error-boundary'
 
 import { queryDb } from '@livestore/livestore'
 
@@ -7,7 +6,6 @@ import { userTables } from './user.schema.ts'
 import { useCurrentUserStore } from './user.store.ts'
 import { Workspace } from './Workspace.tsx'
 
-const workspaceListErrorFallback = <div>Error loading workspaces</div>
 const workspaceListLoadingFallback = <div>Loading workspaces...</div>
 
 export const WorkspaceList = () => {
@@ -22,17 +20,15 @@ export const WorkspaceList = () => {
       {workspaces.length === 0 ? (
         <p>No workspaces yet</p>
       ) : (
-        <ErrorBoundary fallback={workspaceListErrorFallback}>
-          <Suspense fallback={workspaceListLoadingFallback}>
-            <ul>
-              {workspaces.map((w) => (
-                <li key={w.workspaceId}>
-                  <Workspace workspaceId={w.workspaceId} />
-                </li>
-              ))}
-            </ul>
-          </Suspense>
-        </ErrorBoundary>
+        <Suspense fallback={workspaceListLoadingFallback}>
+          <ul>
+            {workspaces.map((w) => (
+              <li key={w.workspaceId}>
+                <Workspace workspaceId={w.workspaceId} />
+              </li>
+            ))}
+          </ul>
+        </Suspense>
       )}
     </div>
   )
