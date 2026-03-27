@@ -3,10 +3,10 @@
   "members": {
     "effect-utils": {
       "url": "https://github.com/overengineeringstudio/effect-utils",
-      "ref": "main",
-      "commit": "d47c509426e3a9cffc4744f54d6fee14d56b0186",
+      "ref": "schickling/fix-pnpm-gvs-probe-hang",
+      "commit": "ba62019ebe918b432f0713e59a06ac4e326222e4",
       "pinned": true,
-      "lockedAt": "2026-03-27T09:41:19.155Z"
+      "lockedAt": "2026-03-27T09:54:45.497Z"
     },
     "overeng-beads-public": {
       "url": "https://github.com/overengineeringstudio/overeng-beads-public",
