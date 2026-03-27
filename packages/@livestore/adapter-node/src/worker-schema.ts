@@ -7,9 +7,9 @@ import {
   SyncState,
   UnknownError,
 } from '@livestore/common'
-import { StreamEventsOptionsFields } from '@livestore/common/leader-thread'
+import { LeaderWorkerTransportError, StreamEventsOptionsFields } from '@livestore/common/leader-thread'
 import { EventSequenceNumber, LiveStoreEvent } from '@livestore/common/schema'
-import { ParseResult, Schema, Transferable, WorkerError } from '@livestore/utils/effect'
+import { Schema, Transferable } from '@livestore/utils/effect'
 
 export const WorkerArgv = Schema.parseJson(
   Schema.Struct({
@@ -57,38 +57,15 @@ export type StorageTypeEncoded = typeof StorageType.Encoded
 export const SyncBackendOptions = Schema.Record({ key: Schema.String, value: Schema.JsonValue })
 export type SyncBackendOptions = Record<string, Schema.JsonValue>
 
-const TransportParseErrorEncoded = Schema.Struct({
-  _tag: Schema.Literal('ParseError'),
-  message: Schema.String,
-})
+const VoidSchema = Schema.Void
 
-/**
- * Effect's `ParseError` carries internal schema state that we don't want to serialize directly.
- * We preserve the original error type over the worker transport by round-tripping its formatted message.
- */
-export class TransportParseError extends Schema.transformOrFail(
-  TransportParseErrorEncoded,
-  Schema.instanceOf(ParseResult.ParseError),
-  {
-    strict: true,
-    decode: ({ message }) =>
-      ParseResult.succeed(
-        new ParseResult.ParseError({
-          issue: new ParseResult.Type(Schema.Unknown.ast, undefined, message),
-        }),
-      ),
-    encode: (error) =>
-      ParseResult.succeed(
-        TransportParseErrorEncoded.make({
-          _tag: 'ParseError',
-          message: error.message,
-        }),
-      ),
-  },
-) {}
-
-export const LeaderWorkerTransportError = Schema.Union(WorkerError.WorkerError, TransportParseError)
-export type LeaderWorkerTransportError = typeof LeaderWorkerTransportError.Type
+const TransferableUint8ArrayFromArrayBuffer = Transferable.schema(
+  Schema.declare<Uint8Array<ArrayBuffer>>(
+    (input): input is Uint8Array<ArrayBuffer> =>
+      input instanceof Uint8Array && input.buffer instanceof ArrayBuffer,
+  ),
+  (_) => [_.buffer],
+)
 
 export class LeaderWorkerOuterInitialMessage extends Schema.TaggedRequest<LeaderWorkerOuterInitialMessage>()(
   'InitialMessage',
@@ -160,14 +137,14 @@ export class LeaderWorkerInnerPushToLeader extends Schema.TaggedRequest<LeaderWo
     payload: {
       batch: Schema.Array(Schema.typeSchema(LiveStoreEvent.Client.Encoded)),
     },
-    success: Schema.Void as Schema.Schema<void>,
+    success: VoidSchema,
     failure: Schema.Union(RejectedPushError, LeaderWorkerTransportError),
   },
 ) {}
 
 export class LeaderWorkerInnerExport extends Schema.TaggedRequest<LeaderWorkerInnerExport>()('Export', {
   payload: {},
-  success: Transferable.Uint8Array as Schema.Schema<Uint8Array<ArrayBuffer>>,
+  success: TransferableUint8ArrayFromArrayBuffer,
   failure: Schema.Union(UnknownError, LeaderWorkerTransportError),
 }) {}
 
@@ -176,7 +153,7 @@ export class LeaderWorkerInnerGetRecreateSnapshot extends Schema.TaggedRequest<L
   {
     payload: {},
     success: Schema.Struct({
-      snapshot: Transferable.Uint8Array as Schema.Schema<Uint8Array<ArrayBuffer>>,
+      snapshot: TransferableUint8ArrayFromArrayBuffer,
       migrationsReport: MigrationsReport,
     }),
     failure: Schema.Union(UnknownError, LeaderWorkerTransportError),
@@ -187,7 +164,7 @@ export class LeaderWorkerInnerExportEventlog extends Schema.TaggedRequest<Leader
   'ExportEventlog',
   {
     payload: {},
-    success: Transferable.Uint8Array as Schema.Schema<Uint8Array<ArrayBuffer>>,
+    success: TransferableUint8ArrayFromArrayBuffer,
     failure: Schema.Union(UnknownError, LeaderWorkerTransportError),
   },
 ) {}
