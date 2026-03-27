@@ -1,5 +1,5 @@
 members {
-    effect-utils "overengineeringstudio/effect-utils#schickling/fix-ci-task-output-deadlock"
+    effect-utils "overengineeringstudio/effect-utils#main"
     overeng-beads-public "overengineeringstudio/overeng-beads-public"
     effect "effect-ts/effect"
 }
