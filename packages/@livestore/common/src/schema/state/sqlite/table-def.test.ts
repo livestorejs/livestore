@@ -1,7 +1,7 @@
 import { objectToString } from '@livestore/utils'
 
 import { Schema } from '@livestore/utils/effect'
-import { describe, expect, it } from 'vitest'
+import { describe, expect, expectTypeOf, it } from 'vitest'
 
 import { State } from '../../mod.ts'
 
@@ -318,6 +318,50 @@ describe('table function overloads', () => {
     expect(userTable.sqliteDef.columns.active.columnType).toBe('integer')
     expect(userTable.sqliteDef.columns.metadata.columnType).toBe('text')
     expect(userTable.sqliteDef.columns.metadata.nullable).toBe(true)
+  })
+
+  it('should allow omitting nullable fields in insert()', () => {
+    const UserSchema = Schema.Struct({
+      id: Schema.String.pipe(State.SQLite.withPrimaryKey),
+      undefined: Schema.Undefined,
+      null: Schema.Null,
+      undefinedOrString: Schema.UndefinedOr(Schema.String),
+      nullOrString: Schema.NullOr(Schema.String),
+      optionalString: Schema.optional(Schema.String),
+      optionalNullOrString: Schema.optional(Schema.NullOr(Schema.String)),
+    })
+
+    const usersTable = State.SQLite.table({
+      name: 'users',
+      schema: UserSchema,
+    })
+
+    // Non-nullable fields (id) are required — omitting id should be rejected
+    expectTypeOf<{ undefined: undefined }>().not.toExtend<Parameters<typeof usersTable.insert>[0]>()
+
+    // Nullable fields (NullOr, optional+NullOr) are omittable — SQL defaults to NULL
+    expectTypeOf(usersTable.insert)
+      .toBeCallableWith({ id: '1' })
+      .toBeCallableWith({ id: '1', undefined: undefined })
+      .toBeCallableWith({ id: '1', undefined: undefined, null: null })
+      .toBeCallableWith({ id: '1', undefined: undefined, null: null, undefinedOrString: undefined })
+      .toBeCallableWith({ id: '1', undefined: undefined, null: null, undefinedOrString: 'string' })
+      .toBeCallableWith({ id: '1', undefined: undefined, null: null, undefinedOrString: 'string', nullOrString: null })
+      .toBeCallableWith({ id: '1', undefined: undefined, null: null, undefinedOrString: 'string', nullOrString: 'string' })
+      .toBeCallableWith({ id: '1', undefined: undefined, null: null, undefinedOrString: 'string', nullOrString: 'string', optionalString: 'string' })
+      .toBeCallableWith({ id: '1', undefined: undefined, null: null, undefinedOrString: 'string', nullOrString: 'string', optionalString: 'string', optionalNullOrString: null })
+      .toBeCallableWith({ id: '1', undefined: undefined, null: null, undefinedOrString: 'string', nullOrString: 'string', optionalString: 'string', optionalNullOrString: 'string' })
+
+    expect(() => usersTable.insert({ id: '1' }).asSql()).not.toThrow()
+    expect(() => usersTable.insert({ id: '1', undefined: undefined }).asSql()).not.toThrow()
+    expect(() => usersTable.insert({ id: '1', undefined: undefined, null: null }).asSql()).not.toThrow()
+    expect(() => usersTable.insert({ id: '1', undefined: undefined, null: null, undefinedOrString: undefined }).asSql()).not.toThrow()
+    expect(() => usersTable.insert({ id: '1', undefined: undefined, null: null, undefinedOrString: 'string' }).asSql()).not.toThrow()
+    expect(() => usersTable.insert({ id: '1', undefined: undefined, null: null, undefinedOrString: 'string', nullOrString: null }).asSql()).not.toThrow()
+    expect(() => usersTable.insert({ id: '1', undefined: undefined, null: null, undefinedOrString: 'string', nullOrString: 'string' }).asSql()).not.toThrow()
+    expect(() => usersTable.insert({ id: '1', undefined: undefined, null: null, undefinedOrString: 'string', nullOrString: 'string', optionalString: 'string' }).asSql()).not.toThrow()
+    expect(() => usersTable.insert({ id: '1', undefined: undefined, null: null, undefinedOrString: 'string', nullOrString: 'string', optionalString: 'string', optionalNullOrString: null }).asSql()).not.toThrow()
+    expect(() => usersTable.insert({ id: '1', undefined: undefined, null: null, undefinedOrString: 'string', nullOrString: 'string', optionalString: 'string', optionalNullOrString: 'string' }).asSql()).not.toThrow()
   })
 
   it('supports discriminated unions with parsed JSON payloads', () => {
