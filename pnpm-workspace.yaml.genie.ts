@@ -18,16 +18,6 @@ const examplesWorkspaceSettings = {
   },
 } as const
 
-const repoAllowBuilds = {
-  ...commonPnpmPolicySettings.allowBuilds,
-  '@mixedbread/cli': false,
-  'cbor-extract': false,
-  'dtrace-provider': false,
-  protobufjs: false,
-  puppeteer: false,
-  workerd: true,
-} as const
-
 const repoPackageExtensions = {
   'starlight-auto-sidebar': {
     dependencies: {
@@ -56,8 +46,15 @@ export default pnpmWorkspaceYaml.root({
   repoName: 'livestore',
   extraMembers: ['examples/*'],
   ...commonPnpmPolicySettings,
-  autoInstallPeers: false,
-  allowBuilds: repoAllowBuilds,
+  allowBuilds: {
+    ...commonPnpmPolicySettings.allowBuilds,
+    '@mixedbread/cli': true,
+    'cbor-extract': true,
+    'dtrace-provider': true,
+    protobufjs: true,
+    puppeteer: true,
+    workerd: true,
+  },
   packageExtensions: repoPackageExtensions,
   ...examplesWorkspaceSettings,
 })
