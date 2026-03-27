@@ -13,9 +13,6 @@ import {
 import { EventSequenceNumber } from '@livestore/common/schema'
 import { sqliteDbFactory } from '@livestore/sqlite-wasm/browser'
 import { isDevEnv, omitUndefineds, shouldNeverHappen, tryAsFunctionAndNew } from '@livestore/utils'
-import type {
-  ParseResult,
-  WorkerError} from '@livestore/utils/effect';
 import {
   Cause,
   Deferred,
@@ -300,6 +297,9 @@ export const makePersistedAdapter =
         yield* Deferred.succeed(waitForSharedWorkerInitialized, undefined)
       }
 
+      type SharedWorkerRequest = typeof WorkerSchema.SharedWorkerRequest.Type
+      type SharedWorkerPool = Worker.SerializedWorkerPool<SharedWorkerRequest>
+
       const runLocked = Effect.gen(function* () {
         yield* Effect.logDebug(
           `[@livestore/adapter-web:client-session] ✅ Got lock '${LIVESTORE_TAB_LOCK}' (clientId: ${clientId}, sessionId: ${sessionId}).`,
@@ -376,43 +376,37 @@ export const makePersistedAdapter =
         yield* runLocked.pipe(Effect.interruptible, Effect.tapCauseLogPretty, Effect.forkScoped)
       }
 
-      const runInWorker = <TReq extends typeof WorkerSchema.SharedWorkerRequest.Type>(
-        req: TReq,
-      ) =>
+      const runInWorker = <A, E, R>(
+        label: string,
+        run: (worker: SharedWorkerPool) => Effect.Effect<A, E, R>,
+      ): Effect.Effect<A, E, R> =>
         Fiber.join(sharedWorkerFiber).pipe(
           Effect.orDie,
           // NOTE we need to wait for the shared worker to be initialized before we can send requests to it
           Effect.tap(() => waitForSharedWorkerInitialized),
-          Effect.flatMap((worker) =>
-            worker.executeEffect(req) as unknown as Effect.Effect<
-              Schema.WithResult.Success<TReq>,
-              Schema.WithResult.Failure<TReq> | WorkerError.WorkerError | ParseResult.ParseError,
-              Schema.WithResult.Context<TReq>
-            >,
-          ),
+          Effect.flatMap(run),
           // NOTE we want to treat worker requests as atomic and therefore not allow them to be interrupted
           // Interruption usually only happens during leader re-election or store shutdown
           // Effect.uninterruptible,
           Effect.logWarnIfTakesLongerThan({
-            label: `@livestore/adapter-web:client-session:runInWorker:${req._tag}`,
+            label: `@livestore/adapter-web:client-session:runInWorker:${label}`,
             duration: 2000,
           }),
-          Effect.withSpan(`@livestore/adapter-web:client-session:runInWorker:${req._tag}`),
+          Effect.withSpan(`@livestore/adapter-web:client-session:runInWorker:${label}`),
         )
 
-      const runInWorkerStream = <TReq extends typeof WorkerSchema.SharedWorkerRequest.Type>(
-        req: TReq,
-      ) =>
+      const runInWorkerStream = <A, E, R>(
+        label: string,
+        run: (worker: SharedWorkerPool) => Stream.Stream<A, E, R>,
+      ): Stream.Stream<A, E, R> =>
         Effect.gen(function* () {
           const sharedWorker = yield* Fiber.join(sharedWorkerFiber).pipe(Effect.orDie)
-          return sharedWorker.execute(req) as unknown as Stream.Stream<
-            Schema.WithResult.Success<TReq>,
-            Schema.WithResult.Failure<TReq> | WorkerError.WorkerError | ParseResult.ParseError,
-            Schema.WithResult.Context<TReq>
-          >
-        }).pipe(Stream.unwrap)
+          return run(sharedWorker)
+        }).pipe(Stream.unwrap, Stream.withSpan(`@livestore/adapter-web:client-session:runInWorkerStream:${label}`))
 
-      const bootStatusFiber = yield* runInWorkerStream(new WorkerSchema.LeaderWorkerInnerBootStatusStream()).pipe(
+      const bootStatusFiber = yield* runInWorkerStream('BootStatusStream', (worker) =>
+        worker.execute(new WorkerSchema.LeaderWorkerInnerBootStatusStream()),
+      ).pipe(
         Stream.tap((_) => Queue.offer(bootStatusQueue, _)),
         Stream.runDrain,
         UnknownError.mapToUnknownError,
@@ -434,7 +428,9 @@ export const makePersistedAdapter =
       // re-exporting the db
       const initialResult =
         dataFromFile === undefined
-          ? yield* runInWorker(new WorkerSchema.LeaderWorkerInnerGetRecreateSnapshot()).pipe(
+          ? yield* runInWorker('GetRecreateSnapshot', (worker) =>
+              worker.executeEffect(new WorkerSchema.LeaderWorkerInnerGetRecreateSnapshot()),
+            ).pipe(
               Effect.map(({ snapshot, migrationsReport }) => ({
                 _tag: 'from-leader-worker' as const,
                 snapshot,
@@ -503,7 +499,7 @@ export const makePersistedAdapter =
       )
 
       const leaderThread: ClientSession['leaderThread'] = {
-        export: runInWorker(new WorkerSchema.LeaderWorkerInnerExport()).pipe(
+        export: runInWorker('Export', (worker) => worker.executeEffect(new WorkerSchema.LeaderWorkerInnerExport())).pipe(
           Effect.timeout(10_000),
           UnknownError.mapToUnknownError,
           Effect.withSpan('@livestore/adapter-web:client-session:export'),
@@ -511,15 +507,21 @@ export const makePersistedAdapter =
 
         events: {
           pull: ({ cursor }) =>
-            runInWorkerStream(new WorkerSchema.LeaderWorkerInnerPullStream({ cursor })).pipe(Stream.orDie),
+            runInWorkerStream('PullStream', (worker) =>
+              worker.execute(new WorkerSchema.LeaderWorkerInnerPullStream({ cursor })),
+            ).pipe(Stream.orDie),
           push: (batch) =>
-            runInWorker(new WorkerSchema.LeaderWorkerInnerPushToLeader({ batch })).pipe(
+            runInWorker('PushToLeader', (worker) =>
+              worker.executeEffect(new WorkerSchema.LeaderWorkerInnerPushToLeader({ batch })),
+            ).pipe(
               Effect.withSpan('@livestore/adapter-web:client-session:pushToLeader', {
                 attributes: { batchSize: batch.length },
               }),
             ),
           stream: (options) =>
-            runInWorkerStream(new WorkerSchema.LeaderWorkerInnerStreamEvents(options)).pipe(
+            runInWorkerStream('StreamEvents', (worker) =>
+              worker.execute(new WorkerSchema.LeaderWorkerInnerStreamEvents(options)),
+            ).pipe(
               Stream.withSpan('@livestore/adapter-web:client-session:streamEvents'),
               Stream.orDie,
             ),
@@ -531,28 +533,40 @@ export const makePersistedAdapter =
           storageMode: opfsWarning === undefined ? 'persisted' : 'in-memory',
         },
 
-        getEventlogData: runInWorker(new WorkerSchema.LeaderWorkerInnerExportEventlog()).pipe(
+        getEventlogData: runInWorker('ExportEventlog', (worker) =>
+          worker.executeEffect(new WorkerSchema.LeaderWorkerInnerExportEventlog()),
+        ).pipe(
           Effect.timeout(10_000),
           UnknownError.mapToUnknownError,
           Effect.withSpan('@livestore/adapter-web:client-session:getEventlogData'),
         ),
 
         syncState: Subscribable.make({
-          get: runInWorker(new WorkerSchema.LeaderWorkerInnerGetLeaderSyncState()).pipe(
+          get: runInWorker('GetLeaderSyncState', (worker) =>
+            worker.executeEffect(new WorkerSchema.LeaderWorkerInnerGetLeaderSyncState()),
+          ).pipe(
             UnknownError.mapToUnknownError,
             Effect.withSpan('@livestore/adapter-web:client-session:getLeaderSyncState'),
           ),
-          changes: runInWorkerStream(new WorkerSchema.LeaderWorkerInnerSyncStateStream()).pipe(Stream.orDie),
+          changes: runInWorkerStream('SyncStateStream', (worker) =>
+            worker.execute(new WorkerSchema.LeaderWorkerInnerSyncStateStream()),
+          ).pipe(Stream.orDie),
         }),
 
         sendDevtoolsMessage: (message) =>
-          runInWorker(new WorkerSchema.LeaderWorkerInnerExtraDevtoolsMessage({ message })).pipe(
+          runInWorker('ExtraDevtoolsMessage', (worker) =>
+            worker.executeEffect(new WorkerSchema.LeaderWorkerInnerExtraDevtoolsMessage({ message })),
+          ).pipe(
             UnknownError.mapToUnknownError,
             Effect.withSpan('@livestore/adapter-web:client-session:devtoolsMessageForLeader'),
           ),
         networkStatus: Subscribable.make({
-          get: runInWorker(new WorkerSchema.LeaderWorkerInnerGetNetworkStatus()).pipe(Effect.orDie),
-          changes: runInWorkerStream(new WorkerSchema.LeaderWorkerInnerNetworkStatusStream()).pipe(Stream.orDie),
+          get: runInWorker('GetNetworkStatus', (worker) =>
+            worker.executeEffect(new WorkerSchema.LeaderWorkerInnerGetNetworkStatus()),
+          ).pipe(Effect.orDie),
+          changes: runInWorkerStream('NetworkStatusStream', (worker) =>
+            worker.execute(new WorkerSchema.LeaderWorkerInnerNetworkStatusStream()),
+          ).pipe(Stream.orDie),
         }),
       }
 

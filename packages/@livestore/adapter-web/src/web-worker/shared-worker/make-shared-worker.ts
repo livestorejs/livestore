@@ -2,9 +2,6 @@ import { Devtools, LogConfig, liveStoreVersion, UnknownError } from '@livestore/
 import * as DevtoolsWeb from '@livestore/devtools-web-common/web-channel'
 import * as WebmeshWorker from '@livestore/devtools-web-common/worker'
 import { isDevEnv, isNotUndefined, LS_DEV } from '@livestore/utils'
-import type {
-  ParseResult,
-  WorkerError} from '@livestore/utils/effect';
 import {
   Deferred,
   Effect,
@@ -63,72 +60,134 @@ const makeWorkerRunner = Effect.gen(function* () {
     Effect.map((_) => _.worker),
   )
 
-  const forwardRequest = <TReq extends WorkerSchema.LeaderWorkerInnerRequest>(
-    req: TReq,
-  ): Effect.Effect<
-    Schema.WithResult.Success<TReq>,
-    Schema.WithResult.Failure<TReq>,
-    Schema.WithResult.Context<TReq>
-  > =>
-    waitForWorker.pipe(
-      // Effect.logBefore(`forwardRequest: ${req._tag}`),
-      Effect.andThen((worker) =>
-        worker.executeEffect(req) as unknown as Effect.Effect<
-          Schema.WithResult.Success<TReq>,
-          WorkerError.WorkerError | ParseResult.ParseError | Schema.WithResult.Failure<TReq>
-        >,
-      ),
-      // Effect.tap((_) => Effect.log(`forwardRequest: ${req._tag}`, _)),
-      // Effect.tapError((cause) => Effect.logError(`forwardRequest err: ${req._tag}`, cause)),
+  type SharedWorkerRequest = typeof WorkerSchema.SharedWorkerRequest.Type
+  type SharedWorkerHandlers = WorkerRunner.SerializedRunner.Handlers<SharedWorkerRequest>
+
+  const decorateForwardedEffect = <A, E, R>(
+    effect: Effect.Effect<A, E, R>,
+    label: string,
+  ): Effect.Effect<A, E, R> =>
+    effect.pipe(
       Effect.interruptible,
       Effect.logWarnIfTakesLongerThan({
-        label: `@livestore/adapter-web:shared-worker:forwardRequest:${req._tag}`,
+        label: `@livestore/adapter-web:shared-worker:forwardRequest:${label}`,
         duration: 500,
       }),
       Effect.tapCauseLogPretty,
-    ) as Effect.Effect<
-      Schema.WithResult.Success<TReq>,
-      Schema.WithResult.Failure<TReq>,
-      Schema.WithResult.Context<TReq>
-    >
+    )
 
-  const forwardRequestStream = <TReq extends WorkerSchema.LeaderWorkerInnerRequest>(
-    req: TReq,
-  ): Stream.Stream<
-    Schema.WithResult.Success<TReq>,
-    Schema.WithResult.Failure<TReq>,
-    Schema.WithResult.Context<TReq>
-  > =>
+  const interruptWhenScopeCloses = <A, E, R>(
+    stream: Stream.Stream<A, E, R>,
+    scope: Scope.CloseableScope,
+  ): Effect.Effect<Stream.Stream<A, E, R>> =>
     Effect.gen(function* () {
-      yield* Effect.logDebug(`forwardRequestStream: ${req._tag}`)
-      const { worker, scope } = yield* SubscriptionRef.waitUntil(leaderWorkerContextSubRef, isNotUndefined)
-      const stream = worker.execute(req) as unknown as Stream.Stream<
-        Schema.WithResult.Success<TReq>,
-        WorkerError.WorkerError | ParseResult.ParseError | Schema.WithResult.Failure<TReq>
-      >
-
-      // It seems the request stream is not automatically interrupted when the scope shuts down
-      // so we need to manually interrupt it when the scope shuts down
+      // The leader worker scope outlives individual request fibers, so we need to interrupt
+      // proxied streams explicitly when that scope shuts down.
       const shutdownDeferred = yield* Deferred.make<void>()
       yield* Scope.addFinalizer(scope, Deferred.succeed(shutdownDeferred, undefined))
 
-      // Here we're creating an empty stream that will finish when the scope shuts down
-      const scopeShutdownStream = Effect.gen(function* () {
-        yield* shutdownDeferred
-        return Stream.empty
-      }).pipe(Stream.unwrap)
+      return Stream.interruptWhenDeferred(stream, shutdownDeferred)
+    })
 
-      return Stream.merge(stream, scopeShutdownStream, { haltStrategy: 'either' })
-    }).pipe(
-      Effect.interruptible,
-      Effect.tapCauseLogPretty,
-      Stream.unwrap,
-      Stream.ensuring(Effect.logDebug(`shutting down stream for ${req._tag}`)),
-    ) as Stream.Stream<
-      Schema.WithResult.Success<TReq>,
-      Schema.WithResult.Failure<TReq>,
-      Schema.WithResult.Context<TReq>
-    >
+  const handleBootStatusStream: SharedWorkerHandlers['BootStatusStream'] = (req) =>
+    Stream.unwrapScoped(
+      Effect.gen(function* () {
+        yield* Effect.logDebug(`forwardRequestStream: ${req._tag}`)
+        const { worker, scope } = yield* SubscriptionRef.waitUntil(
+          leaderWorkerContextSubRef,
+          isNotUndefined,
+        )
+
+        return yield* interruptWhenScopeCloses(worker.execute(req), scope)
+      }).pipe(Effect.interruptible, Effect.tapCauseLogPretty),
+    ).pipe(Stream.ensuring(Effect.logDebug(`shutting down stream for ${req._tag}`)))
+
+  const handlePushToLeader: SharedWorkerHandlers['PushToLeader'] = (req) =>
+    decorateForwardedEffect(
+      waitForWorker.pipe(
+        // Effect.logBefore(`forwardRequest: ${req._tag}`),
+        Effect.andThen((worker) => worker.executeEffect(req)),
+        // Effect.tap((_) => Effect.log(`forwardRequest: ${req._tag}`, _)),
+        // Effect.tapError((cause) => Effect.logError(`forwardRequest err: ${req._tag}`, cause)),
+      ),
+      req._tag,
+    )
+
+  const handlePullStream: SharedWorkerHandlers['PullStream'] = (req) =>
+    Stream.unwrapScoped(
+      Effect.gen(function* () {
+        yield* Effect.logDebug(`forwardRequestStream: ${req._tag}`)
+        const { worker, scope } = yield* SubscriptionRef.waitUntil(
+          leaderWorkerContextSubRef,
+          isNotUndefined,
+        )
+
+        return yield* interruptWhenScopeCloses(worker.execute(req), scope)
+      }).pipe(Effect.interruptible, Effect.tapCauseLogPretty),
+    ).pipe(Stream.ensuring(Effect.logDebug(`shutting down stream for ${req._tag}`)))
+
+  const handleStreamEvents: SharedWorkerHandlers['StreamEvents'] = (req) =>
+    Stream.unwrapScoped(
+      Effect.gen(function* () {
+        yield* Effect.logDebug(`forwardRequestStream: ${req._tag}`)
+        const { worker, scope } = yield* SubscriptionRef.waitUntil(
+          leaderWorkerContextSubRef,
+          isNotUndefined,
+        )
+
+        return yield* interruptWhenScopeCloses(worker.execute(req), scope)
+      }).pipe(Effect.interruptible, Effect.tapCauseLogPretty),
+    ).pipe(Stream.ensuring(Effect.logDebug(`shutting down stream for ${req._tag}`)))
+
+  const handleExport: SharedWorkerHandlers['Export'] = (req) =>
+    decorateForwardedEffect(waitForWorker.pipe(Effect.andThen((worker) => worker.executeEffect(req))), req._tag)
+
+  const handleGetRecreateSnapshot: SharedWorkerHandlers['GetRecreateSnapshot'] = (req) =>
+    decorateForwardedEffect(waitForWorker.pipe(Effect.andThen((worker) => worker.executeEffect(req))), req._tag)
+
+  const handleExportEventlog: SharedWorkerHandlers['ExportEventlog'] = (req) =>
+    decorateForwardedEffect(waitForWorker.pipe(Effect.andThen((worker) => worker.executeEffect(req))), req._tag)
+
+  const handleGetLeaderSyncState: SharedWorkerHandlers['GetLeaderSyncState'] = (req) =>
+    decorateForwardedEffect(waitForWorker.pipe(Effect.andThen((worker) => worker.executeEffect(req))), req._tag)
+
+  const handleSyncStateStream: SharedWorkerHandlers['SyncStateStream'] = (req) =>
+    Stream.unwrapScoped(
+      Effect.gen(function* () {
+        yield* Effect.logDebug(`forwardRequestStream: ${req._tag}`)
+        const { worker, scope } = yield* SubscriptionRef.waitUntil(
+          leaderWorkerContextSubRef,
+          isNotUndefined,
+        )
+
+        return yield* interruptWhenScopeCloses(worker.execute(req), scope)
+      }).pipe(Effect.interruptible, Effect.tapCauseLogPretty),
+    ).pipe(Stream.ensuring(Effect.logDebug(`shutting down stream for ${req._tag}`)))
+
+  const handleGetLeaderHead: SharedWorkerHandlers['GetLeaderHead'] = (req) =>
+    decorateForwardedEffect(waitForWorker.pipe(Effect.andThen((worker) => worker.executeEffect(req))), req._tag)
+
+  const handleGetNetworkStatus: SharedWorkerHandlers['GetNetworkStatus'] = (req) =>
+    decorateForwardedEffect(waitForWorker.pipe(Effect.andThen((worker) => worker.executeEffect(req))), req._tag)
+
+  const handleNetworkStatusStream: SharedWorkerHandlers['NetworkStatusStream'] = (req) =>
+    Stream.unwrapScoped(
+      Effect.gen(function* () {
+        yield* Effect.logDebug(`forwardRequestStream: ${req._tag}`)
+        const { worker, scope } = yield* SubscriptionRef.waitUntil(
+          leaderWorkerContextSubRef,
+          isNotUndefined,
+        )
+
+        return yield* interruptWhenScopeCloses(worker.execute(req), scope)
+      }).pipe(Effect.interruptible, Effect.tapCauseLogPretty),
+    ).pipe(Stream.ensuring(Effect.logDebug(`shutting down stream for ${req._tag}`)))
+
+  const handleShutdown: SharedWorkerHandlers['Shutdown'] = (req) =>
+    decorateForwardedEffect(waitForWorker.pipe(Effect.andThen((worker) => worker.executeEffect(req))), req._tag)
+
+  const handleExtraDevtoolsMessage: SharedWorkerHandlers['ExtraDevtoolsMessage'] = (req) =>
+    decorateForwardedEffect(waitForWorker.pipe(Effect.andThen((worker) => worker.executeEffect(req))), req._tag)
 
   const resetCurrentWorkerCtx = Effect.gen(function* () {
     const prevWorker = yield* SubscriptionRef.get(leaderWorkerContextSubRef)
@@ -240,21 +299,20 @@ const makeWorkerRunner = Effect.gen(function* () {
       ),
 
     // Proxied requests
-    BootStatusStream: forwardRequestStream,
-    PushToLeader: forwardRequest,
-    PullStream: forwardRequestStream,
-    StreamEvents: forwardRequestStream,
-    Export: forwardRequest,
-    GetRecreateSnapshot: forwardRequest,
-    ExportEventlog: forwardRequest,
-    Setup: forwardRequest,
-    GetLeaderSyncState: forwardRequest,
-    SyncStateStream: forwardRequestStream,
-    GetLeaderHead: forwardRequest,
-    GetNetworkStatus: forwardRequest,
-    NetworkStatusStream: forwardRequestStream,
-    Shutdown: forwardRequest,
-    ExtraDevtoolsMessage: forwardRequest,
+    BootStatusStream: handleBootStatusStream,
+    PushToLeader: handlePushToLeader,
+    PullStream: handlePullStream,
+    StreamEvents: handleStreamEvents,
+    Export: handleExport,
+    GetRecreateSnapshot: handleGetRecreateSnapshot,
+    ExportEventlog: handleExportEventlog,
+    GetLeaderSyncState: handleGetLeaderSyncState,
+    SyncStateStream: handleSyncStateStream,
+    GetLeaderHead: handleGetLeaderHead,
+    GetNetworkStatus: handleGetNetworkStatus,
+    NetworkStatusStream: handleNetworkStatusStream,
+    Shutdown: handleShutdown,
+    ExtraDevtoolsMessage: handleExtraDevtoolsMessage,
 
     // Accept devtools connections (from leader and client sessions)
     'DevtoolsWebCommon.CreateConnection': WebmeshWorker.CreateConnection,
@@ -268,21 +326,23 @@ export const makeWorker = (options?: LogConfig.WithLoggerOptions): void => {
   )
 
   // @effect-diagnostics-next-line anyUnknownInErrorContext:off -- propagated from `makeWorkerRunner`
-  makeWorkerRunner.pipe(
+  const launchWorkerEffect = makeWorkerRunner.pipe(
     Layer.provide(BrowserWorkerRunner.layer),
-    // WorkerRunner.launch,
     Layer.launch,
     Effect.scoped,
     Effect.tapCauseLogPretty,
     Effect.annotateLogs({ thread: self.name }),
     Effect.provide(runtimeLayer),
-    LS_DEV === true ? TaskTracing.withAsyncTaggingTracing((name) => (console as any).createTask(name)) : identity,
-    // TODO remove type-cast (currently needed to silence a tsc bug)
-    // @effect-diagnostics-next-line anyUnknownInErrorContext:off -- TSC bug workaround; the cast uses `any` as an intermediate
-    (_) => _ as any as Effect.Effect<void>,
-    LogConfig.withLoggerConfig(options, { threadName: self.name }),
-    Effect.runFork,
   )
+
+  const tracedLaunchWorkerEffect =
+    LS_DEV === true
+      ? TaskTracing.withAsyncTaggingTracing((name) => Reflect.get(console, 'createTask')(name))(
+          launchWorkerEffect,
+        )
+      : identity(launchWorkerEffect)
+
+  tracedLaunchWorkerEffect.pipe(LogConfig.withLoggerConfig(options, { threadName: self.name }), Effect.runFork)
 }
 
 makeWorker()
