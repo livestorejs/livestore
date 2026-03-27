@@ -28,6 +28,29 @@ const repoAllowBuilds = {
   workerd: true,
 } as const
 
+const repoPackageExtensions = {
+  'starlight-auto-sidebar': {
+    dependencies: {
+      astro: '>=5.0.0',
+    },
+  },
+  'starlight-links-validator': {
+    dependencies: {
+      astro: '>=5.0.0',
+    },
+  },
+  'starlight-sidebar-topics': {
+    dependencies: {
+      astro: '>=5.0.0',
+    },
+  },
+  typedoc: {
+    dependencies: {
+      'typedoc-plugin-markdown': '^4.8.1',
+    },
+  },
+} as const
+
 export default pnpmWorkspaceYaml.root({
   packages: rootWorkspacePackages,
   repoName: 'livestore',
@@ -35,5 +58,6 @@ export default pnpmWorkspaceYaml.root({
   ...commonPnpmPolicySettings,
   autoInstallPeers: false,
   allowBuilds: repoAllowBuilds,
+  packageExtensions: repoPackageExtensions,
   ...examplesWorkspaceSettings,
 })

@@ -198,6 +198,8 @@ overrides:
   '@tanstack/start-server-core': 1.139.14
   '@tanstack/start-client-core': 1.139.14
 
+packageExtensionsChecksum: sha256-Cgy+dbXdKNakAaNXVnNesVfXK66aoKvMHZKDpP1G2DM=
+
 importers:
 
   .: {}
@@ -380,19 +382,19 @@ importers:
         version: 1.9.10
       starlight-auto-sidebar:
         specifier: 0.1.2
-        version: 0.1.2(@astrojs/starlight@0.35.2(astro@5.13.4(@netlify/blobs@10.7.2)(@types/node@25.3.3)(jiti@2.6.1)(lightningcss@1.32.0)(rollup@4.49.0)(terser@5.46.0)(tsx@4.21.0)(typescript@5.9.3)(yaml@2.8.2)))
+        version: 0.1.2(@astrojs/starlight@0.35.2(astro@5.13.4(@netlify/blobs@10.7.2)(@types/node@25.3.3)(jiti@2.6.1)(lightningcss@1.32.0)(rollup@4.49.0)(terser@5.46.0)(tsx@4.21.0)(typescript@5.9.3)(yaml@2.8.2)))(@netlify/blobs@10.7.2)(@types/node@25.3.3)(jiti@2.6.1)(lightningcss@1.32.0)(rollup@4.49.0)(terser@5.46.0)(tsx@4.21.0)(typescript@5.9.3)(yaml@2.8.2)
       starlight-contextual-menu:
         specifier: 0.1.3
         version: 0.1.3(astro@5.13.4(@netlify/blobs@10.7.2)(@types/node@25.3.3)(jiti@2.6.1)(lightningcss@1.32.0)(rollup@4.49.0)(terser@5.46.0)(tsx@4.21.0)(typescript@5.9.3)(yaml@2.8.2))(starlight-markdown@0.1.5(astro@5.13.4(@netlify/blobs@10.7.2)(@types/node@25.3.3)(jiti@2.6.1)(lightningcss@1.32.0)(rollup@4.49.0)(terser@5.46.0)(tsx@4.21.0)(typescript@5.9.3)(yaml@2.8.2)))
       starlight-links-validator:
         specifier: 0.17.1
-        version: 0.17.1(@astrojs/starlight@0.35.2(astro@5.13.4(@netlify/blobs@10.7.2)(@types/node@25.3.3)(jiti@2.6.1)(lightningcss@1.32.0)(rollup@4.49.0)(terser@5.46.0)(tsx@4.21.0)(typescript@5.9.3)(yaml@2.8.2)))
+        version: 0.17.1(@astrojs/starlight@0.35.2(astro@5.13.4(@netlify/blobs@10.7.2)(@types/node@25.3.3)(jiti@2.6.1)(lightningcss@1.32.0)(rollup@4.49.0)(terser@5.46.0)(tsx@4.21.0)(typescript@5.9.3)(yaml@2.8.2)))(@netlify/blobs@10.7.2)(@types/node@25.3.3)(jiti@2.6.1)(lightningcss@1.32.0)(rollup@4.49.0)(terser@5.46.0)(tsx@4.21.0)(typescript@5.9.3)(yaml@2.8.2)
       starlight-markdown:
         specifier: 0.1.5
         version: 0.1.5(astro@5.13.4(@netlify/blobs@10.7.2)(@types/node@25.3.3)(jiti@2.6.1)(lightningcss@1.32.0)(rollup@4.49.0)(terser@5.46.0)(tsx@4.21.0)(typescript@5.9.3)(yaml@2.8.2))
       starlight-sidebar-topics:
         specifier: 0.6.0
-        version: 0.6.0(@astrojs/starlight@0.35.2(astro@5.13.4(@netlify/blobs@10.7.2)(@types/node@25.3.3)(jiti@2.6.1)(lightningcss@1.32.0)(rollup@4.49.0)(terser@5.46.0)(tsx@4.21.0)(typescript@5.9.3)(yaml@2.8.2)))
+        version: 0.6.0(@astrojs/starlight@0.35.2(astro@5.13.4(@netlify/blobs@10.7.2)(@types/node@25.3.3)(jiti@2.6.1)(lightningcss@1.32.0)(rollup@4.49.0)(terser@5.46.0)(tsx@4.21.0)(typescript@5.9.3)(yaml@2.8.2)))(@netlify/blobs@10.7.2)(@types/node@25.3.3)(jiti@2.6.1)(lightningcss@1.32.0)(rollup@4.49.0)(terser@5.46.0)(tsx@4.21.0)(typescript@5.9.3)(yaml@2.8.2)
       starlight-typedoc:
         specifier: 0.21.3
         version: 0.21.3(@astrojs/starlight@0.35.2(astro@5.13.4(@netlify/blobs@10.7.2)(@types/node@25.3.3)(jiti@2.6.1)(lightningcss@1.32.0)(rollup@4.49.0)(terser@5.46.0)(tsx@4.21.0)(typescript@5.9.3)(yaml@2.8.2)))(typedoc-plugin-markdown@4.8.1(typedoc@0.28.11(typescript@5.9.3)))(typedoc@0.28.11(typescript@5.9.3))
@@ -34647,20 +34649,57 @@ snapshots:
     dependencies:
       type-fest: 0.7.1
 
-  starlight-auto-sidebar@0.1.2(@astrojs/starlight@0.35.2(astro@5.13.4(@netlify/blobs@10.7.2)(@types/node@25.3.3)(jiti@2.6.1)(lightningcss@1.32.0)(rollup@4.49.0)(terser@5.46.0)(tsx@4.21.0)(typescript@5.9.3)(yaml@2.8.2))):
+  starlight-auto-sidebar@0.1.2(@astrojs/starlight@0.35.2(astro@5.13.4(@netlify/blobs@10.7.2)(@types/node@25.3.3)(jiti@2.6.1)(lightningcss@1.32.0)(rollup@4.49.0)(terser@5.46.0)(tsx@4.21.0)(typescript@5.9.3)(yaml@2.8.2)))(@netlify/blobs@10.7.2)(@types/node@25.3.3)(jiti@2.6.1)(lightningcss@1.32.0)(rollup@4.49.0)(terser@5.46.0)(tsx@4.21.0)(typescript@5.9.3)(yaml@2.8.2):
     dependencies:
       '@astrojs/starlight': 0.35.2(astro@5.13.4(@netlify/blobs@10.7.2)(@types/node@25.3.3)(jiti@2.6.1)(lightningcss@1.32.0)(rollup@4.49.0)(terser@5.46.0)(tsx@4.21.0)(typescript@5.9.3)(yaml@2.8.2))
+      astro: 5.13.4(@netlify/blobs@10.7.2)(@types/node@25.3.3)(jiti@2.6.1)(lightningcss@1.32.0)(rollup@4.49.0)(terser@5.46.0)(tsx@4.21.0)(typescript@5.9.3)(yaml@2.8.2)
       github-slugger: 2.0.0
+    transitivePeerDependencies:
+      - '@azure/app-configuration'
+      - '@azure/cosmos'
+      - '@azure/data-tables'
+      - '@azure/identity'
+      - '@azure/keyvault-secrets'
+      - '@azure/storage-blob'
+      - '@capacitor/preferences'
+      - '@deno/kv'
+      - '@netlify/blobs'
+      - '@planetscale/database'
+      - '@types/node'
+      - '@upstash/redis'
+      - '@vercel/blob'
+      - '@vercel/functions'
+      - '@vercel/kv'
+      - aws4fetch
+      - db0
+      - encoding
+      - idb-keyval
+      - ioredis
+      - jiti
+      - less
+      - lightningcss
+      - rollup
+      - sass
+      - sass-embedded
+      - stylus
+      - sugarss
+      - supports-color
+      - terser
+      - tsx
+      - typescript
+      - uploadthing
+      - yaml
 
   starlight-contextual-menu@0.1.3(astro@5.13.4(@netlify/blobs@10.7.2)(@types/node@25.3.3)(jiti@2.6.1)(lightningcss@1.32.0)(rollup@4.49.0)(terser@5.46.0)(tsx@4.21.0)(typescript@5.9.3)(yaml@2.8.2))(starlight-markdown@0.1.5(astro@5.13.4(@netlify/blobs@10.7.2)(@types/node@25.3.3)(jiti@2.6.1)(lightningcss@1.32.0)(rollup@4.49.0)(terser@5.46.0)(tsx@4.21.0)(typescript@5.9.3)(yaml@2.8.2))):
     dependencies:
       astro: 5.13.4(@netlify/blobs@10.7.2)(@types/node@25.3.3)(jiti@2.6.1)(lightningcss@1.32.0)(rollup@4.49.0)(terser@5.46.0)(tsx@4.21.0)(typescript@5.9.3)(yaml@2.8.2)
       starlight-markdown: 0.1.5(astro@5.13.4(@netlify/blobs@10.7.2)(@types/node@25.3.3)(jiti@2.6.1)(lightningcss@1.32.0)(rollup@4.49.0)(terser@5.46.0)(tsx@4.21.0)(typescript@5.9.3)(yaml@2.8.2))
 
-  starlight-links-validator@0.17.1(@astrojs/starlight@0.35.2(astro@5.13.4(@netlify/blobs@10.7.2)(@types/node@25.3.3)(jiti@2.6.1)(lightningcss@1.32.0)(rollup@4.49.0)(terser@5.46.0)(tsx@4.21.0)(typescript@5.9.3)(yaml@2.8.2))):
+  starlight-links-validator@0.17.1(@astrojs/starlight@0.35.2(astro@5.13.4(@netlify/blobs@10.7.2)(@types/node@25.3.3)(jiti@2.6.1)(lightningcss@1.32.0)(rollup@4.49.0)(terser@5.46.0)(tsx@4.21.0)(typescript@5.9.3)(yaml@2.8.2)))(@netlify/blobs@10.7.2)(@types/node@25.3.3)(jiti@2.6.1)(lightningcss@1.32.0)(rollup@4.49.0)(terser@5.46.0)(tsx@4.21.0)(typescript@5.9.3)(yaml@2.8.2):
     dependencies:
       '@astrojs/starlight': 0.35.2(astro@5.13.4(@netlify/blobs@10.7.2)(@types/node@25.3.3)(jiti@2.6.1)(lightningcss@1.32.0)(rollup@4.49.0)(terser@5.46.0)(tsx@4.21.0)(typescript@5.9.3)(yaml@2.8.2))
       '@types/picomatch': 3.0.2
+      astro: 5.13.4(@netlify/blobs@10.7.2)(@types/node@25.3.3)(jiti@2.6.1)(lightningcss@1.32.0)(rollup@4.49.0)(terser@5.46.0)(tsx@4.21.0)(typescript@5.9.3)(yaml@2.8.2)
       github-slugger: 2.0.0
       hast-util-from-html: 2.0.3
       hast-util-has-property: 3.0.0
@@ -34671,16 +34710,85 @@ snapshots:
       picomatch: 4.0.3
       unist-util-visit: 5.0.0
     transitivePeerDependencies:
+      - '@azure/app-configuration'
+      - '@azure/cosmos'
+      - '@azure/data-tables'
+      - '@azure/identity'
+      - '@azure/keyvault-secrets'
+      - '@azure/storage-blob'
+      - '@capacitor/preferences'
+      - '@deno/kv'
+      - '@netlify/blobs'
+      - '@planetscale/database'
+      - '@types/node'
+      - '@upstash/redis'
+      - '@vercel/blob'
+      - '@vercel/functions'
+      - '@vercel/kv'
+      - aws4fetch
+      - db0
+      - encoding
+      - idb-keyval
+      - ioredis
+      - jiti
+      - less
+      - lightningcss
+      - rollup
+      - sass
+      - sass-embedded
+      - stylus
+      - sugarss
       - supports-color
+      - terser
+      - tsx
+      - typescript
+      - uploadthing
+      - yaml
 
   starlight-markdown@0.1.5(astro@5.13.4(@netlify/blobs@10.7.2)(@types/node@25.3.3)(jiti@2.6.1)(lightningcss@1.32.0)(rollup@4.49.0)(terser@5.46.0)(tsx@4.21.0)(typescript@5.9.3)(yaml@2.8.2)):
     dependencies:
       astro: 5.13.4(@netlify/blobs@10.7.2)(@types/node@25.3.3)(jiti@2.6.1)(lightningcss@1.32.0)(rollup@4.49.0)(terser@5.46.0)(tsx@4.21.0)(typescript@5.9.3)(yaml@2.8.2)
 
-  starlight-sidebar-topics@0.6.0(@astrojs/starlight@0.35.2(astro@5.13.4(@netlify/blobs@10.7.2)(@types/node@25.3.3)(jiti@2.6.1)(lightningcss@1.32.0)(rollup@4.49.0)(terser@5.46.0)(tsx@4.21.0)(typescript@5.9.3)(yaml@2.8.2))):
+  starlight-sidebar-topics@0.6.0(@astrojs/starlight@0.35.2(astro@5.13.4(@netlify/blobs@10.7.2)(@types/node@25.3.3)(jiti@2.6.1)(lightningcss@1.32.0)(rollup@4.49.0)(terser@5.46.0)(tsx@4.21.0)(typescript@5.9.3)(yaml@2.8.2)))(@netlify/blobs@10.7.2)(@types/node@25.3.3)(jiti@2.6.1)(lightningcss@1.32.0)(rollup@4.49.0)(terser@5.46.0)(tsx@4.21.0)(typescript@5.9.3)(yaml@2.8.2):
     dependencies:
       '@astrojs/starlight': 0.35.2(astro@5.13.4(@netlify/blobs@10.7.2)(@types/node@25.3.3)(jiti@2.6.1)(lightningcss@1.32.0)(rollup@4.49.0)(terser@5.46.0)(tsx@4.21.0)(typescript@5.9.3)(yaml@2.8.2))
+      astro: 5.13.4(@netlify/blobs@10.7.2)(@types/node@25.3.3)(jiti@2.6.1)(lightningcss@1.32.0)(rollup@4.49.0)(terser@5.46.0)(tsx@4.21.0)(typescript@5.9.3)(yaml@2.8.2)
       picomatch: 4.0.3
+    transitivePeerDependencies:
+      - '@azure/app-configuration'
+      - '@azure/cosmos'
+      - '@azure/data-tables'
+      - '@azure/identity'
+      - '@azure/keyvault-secrets'
+      - '@azure/storage-blob'
+      - '@capacitor/preferences'
+      - '@deno/kv'
+      - '@netlify/blobs'
+      - '@planetscale/database'
+      - '@types/node'
+      - '@upstash/redis'
+      - '@vercel/blob'
+      - '@vercel/functions'
+      - '@vercel/kv'
+      - aws4fetch
+      - db0
+      - encoding
+      - idb-keyval
+      - ioredis
+      - jiti
+      - less
+      - lightningcss
+      - rollup
+      - sass
+      - sass-embedded
+      - stylus
+      - sugarss
+      - supports-color
+      - terser
+      - tsx
+      - typescript
+      - uploadthing
+      - yaml
 
   starlight-typedoc@0.21.3(@astrojs/starlight@0.35.2(astro@5.13.4(@netlify/blobs@10.7.2)(@types/node@25.3.3)(jiti@2.6.1)(lightningcss@1.32.0)(rollup@4.49.0)(terser@5.46.0)(tsx@4.21.0)(typescript@5.9.3)(yaml@2.8.2)))(typedoc-plugin-markdown@4.8.1(typedoc@0.28.11(typescript@5.9.3)))(typedoc@0.28.11(typescript@5.9.3)):
     dependencies:
@@ -35307,6 +35415,7 @@ snapshots:
       lunr: 2.3.9
       markdown-it: 14.1.1
       minimatch: 9.0.9
+      typedoc-plugin-markdown: 4.8.1(typedoc@0.28.11(typescript@5.9.3))
       typescript: 5.9.3
       yaml: 2.8.1
 

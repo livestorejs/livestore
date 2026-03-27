@@ -55,6 +55,20 @@ overrides:
   '@tanstack/start-server-core': 1.139.14
   '@tanstack/start-client-core': 1.139.14
 
+packageExtensions:
+  starlight-auto-sidebar:
+    dependencies:
+      astro: '>=5.0.0'
+  starlight-links-validator:
+    dependencies:
+      astro: '>=5.0.0'
+  starlight-sidebar-topics:
+    dependencies:
+      astro: '>=5.0.0'
+  typedoc:
+    dependencies:
+      typedoc-plugin-markdown: ^4.8.1
+
 allowBuilds:
   '@parcel/watcher': true
   esbuild: true
