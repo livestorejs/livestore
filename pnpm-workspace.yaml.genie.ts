@@ -48,5 +48,7 @@ export default pnpmWorkspaceYaml.root({
   ...commonPnpmPolicySettings,
   allowBuilds: repoPnpmAllowBuilds,
   packageExtensions: repoPackageExtensions,
+  /** Relaxed until @livestore/devtools-vite publishes with updated Effect peer ranges */
+  strictPeerDependencies: false,
   ...examplesWorkspaceSettings,
 })
