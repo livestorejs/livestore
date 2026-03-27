@@ -55,11 +55,6 @@
     "effect": "^3.19.19",
     "expo": "^54.0.12"
   },
-  "peerDependenciesMeta": {
-    "@livestore/devtools-vite": {
-      "optional": true
-    }
-  },
   "$genie": {
     "source": "package.json.genie.ts",
     "warning": "DO NOT EDIT - changes will be overwritten",

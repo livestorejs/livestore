@@ -2328,9 +2328,6 @@ importers:
       effect:
         specifier: ^3.19.19
         version: 3.19.19
-      vite:
-        specifier: 7.3.1
-        version: 7.3.1(@types/node@25.3.3)(jiti@2.6.1)(lightningcss@1.32.0)(terser@5.46.0)(tsx@4.21.0)(yaml@2.8.2)
     devDependencies:
       '@livestore/devtools-vite':
         specifier: 0.4.0-dev.22
@@ -2350,6 +2347,9 @@ importers:
       rollup:
         specifier: 4.49.0
         version: 4.49.0
+      vite:
+        specifier: 7.3.1
+        version: 7.3.1(@types/node@25.3.3)(jiti@2.6.1)(lightningcss@1.32.0)(terser@5.46.0)(tsx@4.21.0)(yaml@2.8.2)
 
   packages/@livestore/adapter-web:
     dependencies:
@@ -2492,9 +2492,6 @@ importers:
       '@livestore/common':
         specifier: workspace:^
         version: link:../common
-      '@livestore/devtools-vite':
-        specifier: ^0.4.0-dev.22
-        version: 0.4.0-dev.22(4a0e5c9a72c2342ea41dfcd9a6fab4ff)
       '@livestore/livestore':
         specifier: workspace:^
         version: link:../livestore

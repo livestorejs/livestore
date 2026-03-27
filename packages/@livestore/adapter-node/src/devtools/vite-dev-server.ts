@@ -1,6 +1,6 @@
 import path from 'node:path'
 
-import * as Vite from 'vite'
+import type * as Vite from 'vite'
 
 import type { Devtools } from '@livestore/common'
 import { UnknownError } from '@livestore/common'
@@ -26,6 +26,20 @@ export class DevtoolsViteNotInstalledError extends Schema.TaggedError<DevtoolsVi
   }
 }
 
+/** Error thrown when vite is not installed for the devtools server path. */
+export class ViteNotInstalledError extends Schema.TaggedError<ViteNotInstalledError>(
+  '~@livestore/adapter-node/ViteNotInstalledError',
+)('ViteNotInstalledError', {
+  cause: Schema.Defect,
+}) {
+  override get message(): string {
+    return (
+      `vite is required for @livestore/adapter-node/devtools but not installed. ` +
+      `Install it with: pnpm add -D vite@<version>.`
+    )
+  }
+}
+
 export type ViteDevtoolsOptions = {
   viteConfig?: (config: Vite.UserConfig) => Vite.UserConfig
   /**
@@ -46,9 +60,10 @@ export type ViteDevtoolsOptions = {
 // NOTE this is currently also used in @livestore/devtools-expo
 export const makeViteMiddleware = (
   options: ViteDevtoolsOptions,
-): Effect.Effect<Vite.ViteDevServer, DevtoolsViteNotInstalledError | UnknownError> =>
+): Effect.Effect<Vite.ViteDevServer, DevtoolsViteNotInstalledError | ViteNotInstalledError | UnknownError> =>
   Effect.gen(function* () {
     const { livestoreDevtoolsPlugin } = yield* importDevtoolsVite()
+    const Vite = yield* importVite()
 
     const cwd = process.cwd()
 
@@ -93,4 +108,11 @@ const importDevtoolsVite = () =>
   Effect.tryPromise({
     try: () => import('@livestore/devtools-vite'),
     catch: (cause) => new DevtoolsViteNotInstalledError({ cause }),
+  })
+
+/** Dynamically imports vite for the devtools-only server path. */
+const importVite = () =>
+  Effect.tryPromise({
+    try: () => import('vite'),
+    catch: (cause) => new ViteNotInstalledError({ cause }),
   })

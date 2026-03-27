@@ -33,7 +33,6 @@ const runtimeDeps = catalog.compose({
   peerDependencies: {
     external: {
       ...getUtilsPeerDeps(),
-      ...catalog.peers('@livestore/devtools-vite'),
     },
   },
 })
@@ -48,7 +47,6 @@ export default packageJson(
     bin: {
       livestore: './src/bin.ts',
     },
-    peerDependenciesMeta: adapterNodePkg.data.peerDependenciesMeta,
     publishConfig: {
       access: 'public',
       exports: {

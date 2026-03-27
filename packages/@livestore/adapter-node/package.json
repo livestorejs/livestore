@@ -34,8 +34,7 @@
     "@livestore/sqlite-wasm": "workspace:^",
     "@livestore/utils": "workspace:^",
     "@livestore/webmesh": "workspace:^",
-    "@opentelemetry/api": "1.9.0",
-    "vite": "7.3.1"
+    "@opentelemetry/api": "1.9.0"
   },
   "devDependencies": {
     "@livestore/devtools-vite": "0.4.0-dev.22",
@@ -43,7 +42,8 @@
     "@rollup/plugin-node-resolve": "16.0.1",
     "@rollup/plugin-terser": "0.4.4",
     "@types/node": "25.3.3",
-    "rollup": "4.49.0"
+    "rollup": "4.49.0",
+    "vite": "7.3.1"
   },
   "peerDependencies": {
     "@effect/ai": "^0.33.2",
@@ -61,16 +61,10 @@
     "@effect/sql": "^0.49.0",
     "@effect/typeclass": "^0.38.0",
     "@effect/vitest": "^0.27.0",
-    "@livestore/devtools-vite": "^0.4.0-dev.22",
     "@opentelemetry/api": "^1.9.0",
     "@opentelemetry/resources": "^2.2.0",
     "@standard-schema/spec": "^1.0.0",
     "effect": "^3.19.19"
-  },
-  "peerDependenciesMeta": {
-    "@livestore/devtools-vite": {
-      "optional": true
-    }
   },
   "$genie": {
     "source": "package.json.genie.ts",
