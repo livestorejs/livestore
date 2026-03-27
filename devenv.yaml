@@ -7,9 +7,9 @@ inputs:
       nixpkgs:
         follows: nixpkgs
   playwright:
-    url: github:overengineeringstudio/effect-utils?dir=nix/playwright-flake
+    url: github:overengineeringstudio/effect-utils/schickling/fix-ci-task-output-deadlock?dir=nix/playwright-flake
     inputs:
       nixpkgs:
         follows: nixpkgs
   effect-utils:
-    url: github:overengineeringstudio/effect-utils
+    url: github:overengineeringstudio/effect-utils/schickling/fix-ci-task-output-deadlock

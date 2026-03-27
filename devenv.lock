@@ -24,15 +24,16 @@
         "tsgo": "tsgo"
       },
       "locked": {
-        "lastModified": 1774607618,
-        "narHash": "sha256-r16/KBDCc1jI8kJzty7xUU7xawjpkPRql5/LSZle3IA=",
+        "lastModified": 1774609711,
+        "narHash": "sha256-t9I59EwNlv7b82I9ow6Y1y+n0N521Uxl3z6as/p4ms0=",
         "owner": "overengineeringstudio",
         "repo": "effect-utils",
-        "rev": "c2531f4e5440e5b73a552e218e1fb79d8d1988f6",
+        "rev": "bfc2470dc860a3ef8fb81e57306ac10af61279c8",
         "type": "github"
       },
       "original": {
         "owner": "overengineeringstudio",
+        "ref": "schickling/fix-ci-task-output-deadlock",
         "repo": "effect-utils",
         "type": "github"
       }
@@ -189,16 +190,17 @@
       },
       "locked": {
         "dir": "nix/playwright-flake",
-        "lastModified": 1774604233,
-        "narHash": "sha256-9DJlv76/p1Pjh792ikg9AckFrhfRtgzss5q9tWCudVQ=",
+        "lastModified": 1774609711,
+        "narHash": "sha256-t9I59EwNlv7b82I9ow6Y1y+n0N521Uxl3z6as/p4ms0=",
         "owner": "overengineeringstudio",
         "repo": "effect-utils",
-        "rev": "d47c509426e3a9cffc4744f54d6fee14d56b0186",
+        "rev": "bfc2470dc860a3ef8fb81e57306ac10af61279c8",
         "type": "github"
       },
       "original": {
         "dir": "nix/playwright-flake",
         "owner": "overengineeringstudio",
+        "ref": "schickling/fix-ci-task-output-deadlock",
         "repo": "effect-utils",
         "type": "github"
       }
