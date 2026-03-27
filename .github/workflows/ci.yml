@@ -72,6 +72,9 @@ jobs:
         run: |
           echo "PNPM_STORE_DIR=${{ runner.temp }}/pnpm-store/${{ github.job }}" >> "$GITHUB_ENV"
           echo "PNPM_HOME=${{ github.workspace }}/.pnpm-home" >> "$GITHUB_ENV"
+      - name: Use temp PNPM_HOME
+        shell: bash
+        run: 'echo "PNPM_HOME=${{ runner.temp }}/pnpm-home/${{ github.job }}" >> "$GITHUB_ENV"'
       - name: Cache pnpm store
         uses: actions/cache@v4
         with:
@@ -261,6 +264,9 @@ jobs:
         run: |
           echo "PNPM_STORE_DIR=${{ runner.temp }}/pnpm-store/${{ github.job }}" >> "$GITHUB_ENV"
           echo "PNPM_HOME=${{ github.workspace }}/.pnpm-home" >> "$GITHUB_ENV"
+      - name: Use temp PNPM_HOME
+        shell: bash
+        run: 'echo "PNPM_HOME=${{ runner.temp }}/pnpm-home/${{ github.job }}" >> "$GITHUB_ENV"'
       - name: Cache pnpm store
         uses: actions/cache@v4
         with:
@@ -450,6 +456,9 @@ jobs:
         run: |
           echo "PNPM_STORE_DIR=${{ runner.temp }}/pnpm-store/${{ github.job }}" >> "$GITHUB_ENV"
           echo "PNPM_HOME=${{ github.workspace }}/.pnpm-home" >> "$GITHUB_ENV"
+      - name: Use temp PNPM_HOME
+        shell: bash
+        run: 'echo "PNPM_HOME=${{ runner.temp }}/pnpm-home/${{ github.job }}" >> "$GITHUB_ENV"'
       - name: Cache pnpm store
         uses: actions/cache@v4
         with:
@@ -639,6 +648,9 @@ jobs:
         run: |
           echo "PNPM_STORE_DIR=${{ runner.temp }}/pnpm-store/${{ github.job }}" >> "$GITHUB_ENV"
           echo "PNPM_HOME=${{ github.workspace }}/.pnpm-home" >> "$GITHUB_ENV"
+      - name: Use temp PNPM_HOME
+        shell: bash
+        run: 'echo "PNPM_HOME=${{ runner.temp }}/pnpm-home/${{ github.job }}" >> "$GITHUB_ENV"'
       - name: Cache pnpm store
         uses: actions/cache@v4
         with:
@@ -872,6 +884,9 @@ jobs:
         run: |
           echo "PNPM_STORE_DIR=${{ runner.temp }}/pnpm-store/${{ github.job }}" >> "$GITHUB_ENV"
           echo "PNPM_HOME=${{ github.workspace }}/.pnpm-home" >> "$GITHUB_ENV"
+      - name: Use temp PNPM_HOME
+        shell: bash
+        run: 'echo "PNPM_HOME=${{ runner.temp }}/pnpm-home/${{ github.job }}" >> "$GITHUB_ENV"'
       - name: Cache pnpm store
         uses: actions/cache@v4
         with:
@@ -1091,6 +1106,9 @@ jobs:
         run: |
           echo "PNPM_STORE_DIR=${{ runner.temp }}/pnpm-store/${{ github.job }}" >> "$GITHUB_ENV"
           echo "PNPM_HOME=${{ github.workspace }}/.pnpm-home" >> "$GITHUB_ENV"
+      - name: Use temp PNPM_HOME
+        shell: bash
+        run: 'echo "PNPM_HOME=${{ runner.temp }}/pnpm-home/${{ github.job }}" >> "$GITHUB_ENV"'
       - name: Cache pnpm store
         uses: actions/cache@v4
         with:
@@ -1376,6 +1394,9 @@ jobs:
         run: |
           echo "PNPM_STORE_DIR=${{ runner.temp }}/pnpm-store/${{ github.job }}" >> "$GITHUB_ENV"
           echo "PNPM_HOME=${{ github.workspace }}/.pnpm-home" >> "$GITHUB_ENV"
+      - name: Use temp PNPM_HOME
+        shell: bash
+        run: 'echo "PNPM_HOME=${{ runner.temp }}/pnpm-home/${{ github.job }}" >> "$GITHUB_ENV"'
       - name: Cache pnpm store
         uses: actions/cache@v4
         with:
@@ -1579,6 +1600,9 @@ jobs:
         run: |
           echo "PNPM_STORE_DIR=${{ runner.temp }}/pnpm-store/${{ github.job }}" >> "$GITHUB_ENV"
           echo "PNPM_HOME=${{ github.workspace }}/.pnpm-home" >> "$GITHUB_ENV"
+      - name: Use temp PNPM_HOME
+        shell: bash
+        run: 'echo "PNPM_HOME=${{ runner.temp }}/pnpm-home/${{ github.job }}" >> "$GITHUB_ENV"'
       - name: Cache pnpm store
         uses: actions/cache@v4
         with:
@@ -1855,6 +1879,9 @@ jobs:
         run: |
           echo "PNPM_STORE_DIR=${{ runner.temp }}/pnpm-store/${{ github.job }}" >> "$GITHUB_ENV"
           echo "PNPM_HOME=${{ github.workspace }}/.pnpm-home" >> "$GITHUB_ENV"
+      - name: Use temp PNPM_HOME
+        shell: bash
+        run: 'echo "PNPM_HOME=${{ runner.temp }}/pnpm-home/${{ github.job }}" >> "$GITHUB_ENV"'
       - name: Cache pnpm store
         uses: actions/cache@v4
         with:
@@ -2046,6 +2073,9 @@ jobs:
         run: |
           echo "PNPM_STORE_DIR=${{ runner.temp }}/pnpm-store/${{ github.job }}" >> "$GITHUB_ENV"
           echo "PNPM_HOME=${{ github.workspace }}/.pnpm-home" >> "$GITHUB_ENV"
+      - name: Use temp PNPM_HOME
+        shell: bash
+        run: 'echo "PNPM_HOME=${{ runner.temp }}/pnpm-home/${{ github.job }}" >> "$GITHUB_ENV"'
       - name: Cache pnpm store
         uses: actions/cache@v4
         with:
@@ -2452,6 +2482,9 @@ jobs:
         run: |
           echo "PNPM_STORE_DIR=${{ runner.temp }}/pnpm-store/${{ github.job }}" >> "$GITHUB_ENV"
           echo "PNPM_HOME=${{ github.workspace }}/.pnpm-home" >> "$GITHUB_ENV"
+      - name: Use temp PNPM_HOME
+        shell: bash
+        run: 'echo "PNPM_HOME=${{ runner.temp }}/pnpm-home/${{ github.job }}" >> "$GITHUB_ENV"'
       - name: Cache pnpm store
         uses: actions/cache@v4
         with:

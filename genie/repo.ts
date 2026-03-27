@@ -218,6 +218,12 @@ export { dispatchAlignmentStep, runDevenvTasksBefore, nixDiagnosticsArtifactStep
 export const namespaceRunner = (runId: string) =>
   namespaceRunnerBase({ profile: 'namespace-profile-linux-x86-64', runId })
 
+const namespaceCiPnpmHomeStep = {
+  name: 'Use temp PNPM_HOME',
+  shell: 'bash',
+  run: `echo "PNPM_HOME=${'${{ runner.temp }}'}/pnpm-home/${'${{ github.job }}'}" >> "$GITHUB_ENV"`,
+} as const
+
 /**
  * Setup steps for livestore CI jobs (without checkout).
  * Uses shared step atoms from effect-utils/genie/ci-workflow.ts.
@@ -231,6 +237,7 @@ export const livestoreSetupStepsAfterCheckout = [
   applyMegarepoLockStep(),
   preparePinnedDevenvStep,
   pnpmStoreSetupStep,
+  namespaceCiPnpmHomeStep,
   cachePnpmStoreStep({ keyPrefix: 'livestore-pnpm-store' }),
   validateNixStoreStep,
 ] as const
