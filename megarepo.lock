@@ -4,9 +4,9 @@
     "effect-utils": {
       "url": "https://github.com/overengineeringstudio/effect-utils",
       "ref": "schickling/fix-ci-task-output-deadlock",
-      "commit": "bfc2470dc860a3ef8fb81e57306ac10af61279c8",
+      "commit": "398652470720a6a48c1a59b853fd0cba9fdd4ee7",
       "pinned": true,
-      "lockedAt": "2026-03-27T11:12:25.861Z"
+      "lockedAt": "2026-03-27T11:22:33.615Z"
     },
     "overeng-beads-public": {
       "url": "https://github.com/overengineeringstudio/overeng-beads-public",
