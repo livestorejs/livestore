@@ -52,7 +52,7 @@ const runtimeDeps = catalog.compose({
         'vitest',
         'wrangler',
       ),
-      'react-error-boundary': '^6.0.0',
+      'react-error-boundary': '^6.1.1',
       'todomvc-app-css': '^2.4.3',
     },
   },

@@ -28,9 +28,9 @@
     "test": "echo No tests yet"
   },
   "dependencies": {
-    "@livestore/common": "workspace:*",
-    "@livestore/utils": "workspace:*",
-    "@livestore/webmesh": "workspace:*"
+    "@livestore/common": "workspace:^",
+    "@livestore/utils": "workspace:^",
+    "@livestore/webmesh": "workspace:^"
   },
   "peerDependencies": {
     "@effect/ai": "^0.33.2",

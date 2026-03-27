@@ -91,9 +91,16 @@ export const makeSyncBackend =
 
       const httpClient = yield* HttpClient.HttpClient
 
+      const browserOrigin =
+        'location' in globalThis &&
+        typeof globalThis.location === 'object' &&
+        globalThis.location !== null &&
+        'origin' in globalThis.location &&
+        typeof globalThis.location.origin === 'string'
+          ? globalThis.location.origin
+          : undefined
       const pullEndpointHasSameOrigin =
-        pullEndpoint.startsWith('/') ||
-        (globalThis.location !== undefined && globalThis.location.origin === new URL(pullEndpoint).origin)
+        pullEndpoint.startsWith('/') || (browserOrigin !== undefined && browserOrigin === new URL(pullEndpoint).origin)
 
       const pingTimeout = pingOptions?.requestTimeout ?? 10_000
 

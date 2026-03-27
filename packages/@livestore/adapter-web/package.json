@@ -32,11 +32,11 @@
     "test": "echo No tests yet"
   },
   "dependencies": {
-    "@livestore/common": "workspace:*",
-    "@livestore/devtools-web-common": "workspace:*",
-    "@livestore/sqlite-wasm": "workspace:*",
-    "@livestore/utils": "workspace:*",
-    "@livestore/webmesh": "workspace:*",
+    "@livestore/common": "workspace:^",
+    "@livestore/devtools-web-common": "workspace:^",
+    "@livestore/sqlite-wasm": "workspace:^",
+    "@livestore/utils": "workspace:^",
+    "@livestore/webmesh": "workspace:^",
     "@opentelemetry/api": "1.9.0"
   },
   "devDependencies": {

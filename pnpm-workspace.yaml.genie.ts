@@ -18,10 +18,22 @@ const examplesWorkspaceSettings = {
   },
 } as const
 
+const repoAllowBuilds = {
+  ...commonPnpmPolicySettings.allowBuilds,
+  '@mixedbread/cli': false,
+  'cbor-extract': false,
+  'dtrace-provider': false,
+  protobufjs: false,
+  puppeteer: false,
+  workerd: true,
+} as const
+
 export default pnpmWorkspaceYaml.root({
   packages: rootWorkspacePackages,
   repoName: 'livestore',
   extraMembers: ['examples/*'],
   ...commonPnpmPolicySettings,
+  autoInstallPeers: false,
+  allowBuilds: repoAllowBuilds,
   ...examplesWorkspaceSettings,
 })

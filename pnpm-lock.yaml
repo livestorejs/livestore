@@ -84,52 +84,52 @@ importers:
         specifier: 0.27.0
         version: 0.27.0(effect@3.19.19)(vitest@3.2.4(@types/debug@4.1.12)(@types/node@25.3.3)(jiti@2.6.1)(jsdom@26.1.0)(lightningcss@1.32.0)(terser@5.46.0)(tsx@4.21.0)(yaml@2.8.2))
       '@livestore/adapter-cloudflare':
-        specifier: workspace:*
+        specifier: workspace:^
         version: link:../packages/@livestore/adapter-cloudflare
       '@livestore/adapter-expo':
-        specifier: workspace:*
+        specifier: workspace:^
         version: link:../packages/@livestore/adapter-expo
       '@livestore/adapter-node':
-        specifier: workspace:*
+        specifier: workspace:^
         version: link:../packages/@livestore/adapter-node
       '@livestore/adapter-web':
-        specifier: workspace:*
+        specifier: workspace:^
         version: link:../packages/@livestore/adapter-web
       '@livestore/common':
-        specifier: workspace:*
+        specifier: workspace:^
         version: link:../packages/@livestore/common
       '@livestore/devtools-vite':
         specifier: 0.4.0-dev.22
         version: 0.4.0-dev.22(eeb10664014f361b682b81933b1c1aa5)
       '@livestore/livestore':
-        specifier: workspace:*
+        specifier: workspace:^
         version: link:../packages/@livestore/livestore
       '@livestore/react':
-        specifier: workspace:*
+        specifier: workspace:^
         version: link:../packages/@livestore/react
       '@livestore/solid':
-        specifier: workspace:*
+        specifier: workspace:^
         version: link:../packages/@livestore/solid
       '@livestore/sync-cf':
-        specifier: workspace:*
+        specifier: workspace:^
         version: link:../packages/@livestore/sync-cf
       '@livestore/sync-electric':
-        specifier: workspace:*
+        specifier: workspace:^
         version: link:../packages/@livestore/sync-electric
       '@livestore/sync-s2':
-        specifier: workspace:*
+        specifier: workspace:^
         version: link:../packages/@livestore/sync-s2
       '@livestore/utils':
-        specifier: workspace:*
+        specifier: workspace:^
         version: link:../packages/@livestore/utils
       '@local/astro-tldraw':
-        specifier: workspace:*
+        specifier: workspace:^
         version: link:../packages/@local/astro-tldraw
       '@local/astro-twoslash-code':
-        specifier: workspace:*
+        specifier: workspace:^
         version: link:../packages/@local/astro-twoslash-code
       '@local/shared':
-        specifier: workspace:*
+        specifier: workspace:^
         version: link:../packages/@local/shared
       '@mixedbread/cli':
         specifier: 1.2.1
@@ -152,6 +152,9 @@ importers:
       '@types/react':
         specifier: 19.2.7
         version: 19.2.7
+      '@types/react-dom':
+        specifier: 19.2.3
+        version: 19.2.3(@types/react@19.2.7)
       astro:
         specifier: 5.13.4
         version: 5.13.4(@netlify/blobs@10.7.2)(@types/node@25.3.3)(jiti@2.6.1)(lightningcss@1.32.0)(rollup@4.49.0)(terser@5.46.0)(tsx@4.21.0)(typescript@5.9.3)(yaml@2.8.2)
@@ -313,46 +316,46 @@ importers:
         specifier: 0.27.0
         version: 0.27.0(effect@3.19.19)(vitest@3.2.4(@types/debug@4.1.12)(@types/node@25.3.3)(jiti@2.6.1)(jsdom@26.1.0)(lightningcss@1.32.0)(terser@5.46.0)(tsx@4.21.0)(yaml@2.8.2))
       '@livestore/adapter-cloudflare':
-        specifier: workspace:*
+        specifier: workspace:^
         version: link:../../../../../packages/@livestore/adapter-cloudflare
       '@livestore/adapter-expo':
-        specifier: workspace:*
+        specifier: workspace:^
         version: link:../../../../../packages/@livestore/adapter-expo
       '@livestore/adapter-node':
-        specifier: workspace:*
+        specifier: workspace:^
         version: link:../../../../../packages/@livestore/adapter-node
       '@livestore/adapter-web':
-        specifier: workspace:*
+        specifier: workspace:^
         version: link:../../../../../packages/@livestore/adapter-web
       '@livestore/devtools-expo':
-        specifier: workspace:*
+        specifier: workspace:^
         version: link:../../../../../packages/@livestore/devtools-expo
       '@livestore/devtools-vite':
         specifier: 0.4.0-dev.22
         version: 0.4.0-dev.22(eeb10664014f361b682b81933b1c1aa5)
       '@livestore/livestore':
-        specifier: workspace:*
+        specifier: workspace:^
         version: link:../../../../../packages/@livestore/livestore
       '@livestore/react':
-        specifier: workspace:*
+        specifier: workspace:^
         version: link:../../../../../packages/@livestore/react
       '@livestore/solid':
-        specifier: workspace:*
+        specifier: workspace:^
         version: link:../../../../../packages/@livestore/solid
       '@livestore/svelte':
-        specifier: workspace:*
+        specifier: workspace:^
         version: link:../../../../../packages/@livestore/svelte
       '@livestore/sync-cf':
-        specifier: workspace:*
+        specifier: workspace:^
         version: link:../../../../../packages/@livestore/sync-cf
       '@livestore/sync-electric':
-        specifier: workspace:*
+        specifier: workspace:^
         version: link:../../../../../packages/@livestore/sync-electric
       '@livestore/sync-s2':
-        specifier: workspace:*
+        specifier: workspace:^
         version: link:../../../../../packages/@livestore/sync-s2
       '@livestore/utils':
-        specifier: workspace:*
+        specifier: workspace:^
         version: link:../../../../../packages/@livestore/utils
       '@opentelemetry/api':
         specifier: 1.9.0
@@ -415,8 +418,8 @@ importers:
         specifier: 19.2.3
         version: 19.2.3(react@19.2.3)
       react-error-boundary:
-        specifier: 6.0.0
-        version: 6.0.0(react@19.2.3)
+        specifier: 6.1.1
+        version: 6.1.1(react@19.2.3)
       react-native:
         specifier: 0.81.4
         version: 0.81.4(@babel/core@7.29.0)(@types/react@19.2.7)(react@19.2.3)
@@ -1907,22 +1910,22 @@ importers:
         specifier: 4.20251118.0
         version: 4.20251118.0
       '@livestore/common':
-        specifier: workspace:*
+        specifier: workspace:^
         version: link:../common
       '@livestore/common-cf':
-        specifier: workspace:*
+        specifier: workspace:^
         version: link:../common-cf
       '@livestore/livestore':
-        specifier: workspace:*
+        specifier: workspace:^
         version: link:../livestore
       '@livestore/sqlite-wasm':
-        specifier: workspace:*
+        specifier: workspace:^
         version: link:../sqlite-wasm
       '@livestore/sync-cf':
-        specifier: workspace:*
+        specifier: workspace:^
         version: link:../sync-cf
       '@livestore/utils':
-        specifier: workspace:*
+        specifier: workspace:^
         version: link:../utils
     devDependencies:
       wrangler:
@@ -1932,13 +1935,13 @@ importers:
   packages/@livestore/adapter-expo:
     dependencies:
       '@livestore/common':
-        specifier: workspace:*
+        specifier: workspace:^
         version: link:../common
       '@livestore/utils':
-        specifier: workspace:*
+        specifier: workspace:^
         version: link:../utils
       '@livestore/webmesh':
-        specifier: workspace:*
+        specifier: workspace:^
         version: link:../webmesh
       '@opentelemetry/api':
         specifier: 1.9.0
@@ -2014,16 +2017,16 @@ importers:
   packages/@livestore/adapter-node:
     dependencies:
       '@livestore/common':
-        specifier: workspace:*
+        specifier: workspace:^
         version: link:../common
       '@livestore/sqlite-wasm':
-        specifier: workspace:*
+        specifier: workspace:^
         version: link:../sqlite-wasm
       '@livestore/utils':
-        specifier: workspace:*
+        specifier: workspace:^
         version: link:../utils
       '@livestore/webmesh':
-        specifier: workspace:*
+        specifier: workspace:^
         version: link:../webmesh
       '@opentelemetry/api':
         specifier: 1.9.0
@@ -2054,19 +2057,19 @@ importers:
   packages/@livestore/adapter-web:
     dependencies:
       '@livestore/common':
-        specifier: workspace:*
+        specifier: workspace:^
         version: link:../common
       '@livestore/devtools-web-common':
-        specifier: workspace:*
+        specifier: workspace:^
         version: link:../devtools-web-common
       '@livestore/sqlite-wasm':
-        specifier: workspace:*
+        specifier: workspace:^
         version: link:../sqlite-wasm
       '@livestore/utils':
-        specifier: workspace:*
+        specifier: workspace:^
         version: link:../utils
       '@livestore/webmesh':
-        specifier: workspace:*
+        specifier: workspace:^
         version: link:../webmesh
       '@opentelemetry/api':
         specifier: 1.9.0
@@ -2103,26 +2106,26 @@ importers:
         specifier: 0.73.2
         version: 0.73.2(@effect/platform@0.94.5(effect@3.19.19))(effect@3.19.19)
       '@livestore/adapter-node':
-        specifier: workspace:*
+        specifier: workspace:^
         version: link:../adapter-node
       '@livestore/common':
-        specifier: workspace:*
+        specifier: workspace:^
         version: link:../common
       '@livestore/livestore':
-        specifier: workspace:*
+        specifier: workspace:^
         version: link:../livestore
       '@livestore/peer-deps':
-        specifier: workspace:*
+        specifier: workspace:^
         version: link:../peer-deps
       '@livestore/utils':
-        specifier: workspace:*
+        specifier: workspace:^
         version: link:../utils
       effect:
         specifier: 3.19.19
         version: 3.19.19
     devDependencies:
       '@livestore/utils-dev':
-        specifier: workspace:*
+        specifier: workspace:^
         version: link:../utils-dev
       '@types/node':
         specifier: 25.3.3
@@ -2137,10 +2140,10 @@ importers:
   packages/@livestore/common:
     dependencies:
       '@livestore/utils':
-        specifier: workspace:*
+        specifier: workspace:^
         version: link:../utils
       '@livestore/webmesh':
-        specifier: workspace:*
+        specifier: workspace:^
         version: link:../webmesh
       '@opentelemetry/api':
         specifier: 1.9.0
@@ -2192,7 +2195,7 @@ importers:
         specifier: 0.27.0
         version: 0.27.0(effect@3.19.19)(vitest@3.2.4(@types/debug@4.1.12)(@types/node@25.3.3)(jiti@2.6.1)(jsdom@26.1.0)(lightningcss@1.32.0)(terser@5.46.0)(tsx@4.21.0)(yaml@2.8.2))
       '@livestore/utils-dev':
-        specifier: workspace:*
+        specifier: workspace:^
         version: link:../utils-dev
       '@opentelemetry/resources':
         specifier: 2.2.0
@@ -2213,11 +2216,11 @@ importers:
         specifier: 4.20251118.0
         version: 4.20251118.0
       '@livestore/utils':
-        specifier: workspace:*
+        specifier: workspace:^
         version: link:../utils
     devDependencies:
       '@livestore/utils-dev':
-        specifier: workspace:*
+        specifier: workspace:^
         version: link:../utils-dev
       vitest:
         specifier: 3.2.4
@@ -2229,10 +2232,10 @@ importers:
   packages/@livestore/devtools-expo:
     dependencies:
       '@livestore/adapter-node':
-        specifier: workspace:*
+        specifier: workspace:^
         version: link:../adapter-node
       '@livestore/utils':
-        specifier: workspace:*
+        specifier: workspace:^
         version: link:../utils
     devDependencies:
       '@types/node':
@@ -2248,19 +2251,19 @@ importers:
   packages/@livestore/devtools-web-common:
     dependencies:
       '@livestore/common':
-        specifier: workspace:*
+        specifier: workspace:^
         version: link:../common
       '@livestore/utils':
-        specifier: workspace:*
+        specifier: workspace:^
         version: link:../utils
       '@livestore/webmesh':
-        specifier: workspace:*
+        specifier: workspace:^
         version: link:../webmesh
 
   packages/@livestore/effect-playwright:
     dependencies:
       '@livestore/utils':
-        specifier: workspace:*
+        specifier: workspace:^
         version: link:../utils
     devDependencies:
       '@effect/ai':
@@ -2330,23 +2333,23 @@ importers:
   packages/@livestore/framework-toolkit:
     dependencies:
       '@livestore/adapter-web':
-        specifier: workspace:*
+        specifier: workspace:^
         version: link:../adapter-web
       '@livestore/common':
-        specifier: workspace:*
+        specifier: workspace:^
         version: link:../common
       '@livestore/livestore':
-        specifier: workspace:*
+        specifier: workspace:^
         version: link:../livestore
       '@livestore/utils':
-        specifier: workspace:*
+        specifier: workspace:^
         version: link:../utils
       '@opentelemetry/api':
         specifier: 1.9.0
         version: 1.9.0
     devDependencies:
       '@livestore/utils-dev':
-        specifier: workspace:*
+        specifier: workspace:^
         version: link:../utils-dev
       typescript:
         specifier: 5.9.3
@@ -2358,13 +2361,13 @@ importers:
         specifier: 3.2.0
         version: 3.2.0(graphql@16.11.0)
       '@livestore/common':
-        specifier: workspace:*
+        specifier: workspace:^
         version: link:../common
       '@livestore/livestore':
-        specifier: workspace:*
+        specifier: workspace:^
         version: link:../livestore
       '@livestore/utils':
-        specifier: workspace:*
+        specifier: workspace:^
         version: link:../utils
       '@opentelemetry/api':
         specifier: 1.9.0
@@ -2377,20 +2380,20 @@ importers:
   packages/@livestore/livestore:
     dependencies:
       '@livestore/common':
-        specifier: workspace:*
+        specifier: workspace:^
         version: link:../common
       '@livestore/utils':
-        specifier: workspace:*
+        specifier: workspace:^
         version: link:../utils
       '@opentelemetry/api':
         specifier: 1.9.0
         version: 1.9.0
     devDependencies:
       '@livestore/adapter-web':
-        specifier: workspace:*
+        specifier: workspace:^
         version: link:../adapter-web
       '@livestore/utils-dev':
-        specifier: workspace:*
+        specifier: workspace:^
         version: link:../utils-dev
       '@opentelemetry/sdk-trace-base':
         specifier: 2.2.0
@@ -2471,26 +2474,26 @@ importers:
   packages/@livestore/react:
     dependencies:
       '@livestore/common':
-        specifier: workspace:*
+        specifier: workspace:^
         version: link:../common
       '@livestore/framework-toolkit':
-        specifier: workspace:*
+        specifier: workspace:^
         version: link:../framework-toolkit
       '@livestore/livestore':
-        specifier: workspace:*
+        specifier: workspace:^
         version: link:../livestore
       '@livestore/utils':
-        specifier: workspace:*
+        specifier: workspace:^
         version: link:../utils
       '@opentelemetry/api':
         specifier: 1.9.0
         version: 1.9.0
     devDependencies:
       '@livestore/adapter-web':
-        specifier: workspace:*
+        specifier: workspace:^
         version: link:../adapter-web
       '@livestore/utils-dev':
-        specifier: workspace:*
+        specifier: workspace:^
         version: link:../utils-dev
       '@opentelemetry/sdk-trace-base':
         specifier: 2.2.0
@@ -2532,26 +2535,26 @@ importers:
   packages/@livestore/solid:
     dependencies:
       '@livestore/common':
-        specifier: workspace:*
+        specifier: workspace:^
         version: link:../common
       '@livestore/framework-toolkit':
-        specifier: workspace:*
+        specifier: workspace:^
         version: link:../framework-toolkit
       '@livestore/livestore':
-        specifier: workspace:*
+        specifier: workspace:^
         version: link:../livestore
       '@livestore/utils':
-        specifier: workspace:*
+        specifier: workspace:^
         version: link:../utils
       '@opentelemetry/api':
         specifier: 1.9.0
         version: 1.9.0
     devDependencies:
       '@livestore/adapter-web':
-        specifier: workspace:*
+        specifier: workspace:^
         version: link:../adapter-web
       '@livestore/utils-dev':
-        specifier: workspace:*
+        specifier: workspace:^
         version: link:../utils-dev
       '@opentelemetry/sdk-trace-base':
         specifier: 2.2.0
@@ -2587,16 +2590,16 @@ importers:
         specifier: 4.20251118.0
         version: 4.20251118.0
       '@livestore/common':
-        specifier: workspace:*
+        specifier: workspace:^
         version: link:../common
       '@livestore/common-cf':
-        specifier: workspace:*
+        specifier: workspace:^
         version: link:../common-cf
       '@livestore/utils':
-        specifier: workspace:*
+        specifier: workspace:^
         version: link:../utils
       '@livestore/wa-sqlite':
-        specifier: workspace:*
+        specifier: workspace:^
         version: link:../wa-sqlite
     devDependencies:
       '@types/chrome':
@@ -2618,23 +2621,23 @@ importers:
   packages/@livestore/svelte:
     dependencies:
       '@livestore/common':
-        specifier: workspace:*
+        specifier: workspace:^
         version: link:../common
       '@livestore/livestore':
-        specifier: workspace:*
+        specifier: workspace:^
         version: link:../livestore
       '@livestore/utils':
-        specifier: workspace:*
+        specifier: workspace:^
         version: link:../utils
       '@opentelemetry/api':
         specifier: 1.9.0
         version: 1.9.0
     devDependencies:
       '@livestore/adapter-web':
-        specifier: workspace:*
+        specifier: workspace:^
         version: link:../adapter-web
       '@livestore/utils-dev':
-        specifier: workspace:*
+        specifier: workspace:^
         version: link:../utils-dev
       '@sveltejs/vite-plugin-svelte':
         specifier: 6.2.1
@@ -2667,13 +2670,13 @@ importers:
         specifier: 4.20251118.0
         version: 4.20251118.0
       '@livestore/common':
-        specifier: workspace:*
+        specifier: workspace:^
         version: link:../common
       '@livestore/common-cf':
-        specifier: workspace:*
+        specifier: workspace:^
         version: link:../common-cf
       '@livestore/utils':
-        specifier: workspace:*
+        specifier: workspace:^
         version: link:../utils
     devDependencies:
       '@effect/ai':
@@ -2737,10 +2740,10 @@ importers:
   packages/@livestore/sync-electric:
     dependencies:
       '@livestore/common':
-        specifier: workspace:*
+        specifier: workspace:^
         version: link:../common
       '@livestore/utils':
-        specifier: workspace:*
+        specifier: workspace:^
         version: link:../utils
     devDependencies:
       '@effect/ai':
@@ -2804,13 +2807,13 @@ importers:
   packages/@livestore/sync-s2:
     dependencies:
       '@livestore/common':
-        specifier: workspace:*
+        specifier: workspace:^
         version: link:../common
       '@livestore/livestore':
-        specifier: workspace:*
+        specifier: workspace:^
         version: link:../livestore
       '@livestore/utils':
-        specifier: workspace:*
+        specifier: workspace:^
         version: link:../utils
     devDependencies:
       '@effect/ai':
@@ -2977,7 +2980,7 @@ importers:
         specifier: 3.0.0
         version: 3.0.0
       '@livestore/utils':
-        specifier: workspace:*
+        specifier: workspace:^
         version: link:../utils
       '@opentelemetry/api':
         specifier: 1.9.0
@@ -3094,7 +3097,7 @@ importers:
   packages/@livestore/webmesh:
     dependencies:
       '@livestore/utils':
-        specifier: workspace:*
+        specifier: workspace:^
         version: link:../utils
     devDependencies:
       '@effect/ai':
@@ -3143,7 +3146,7 @@ importers:
         specifier: 0.27.0
         version: 0.27.0(effect@3.19.19)(vitest@3.2.4(@types/debug@4.1.12)(@types/node@25.3.3)(jiti@2.6.1)(jsdom@26.1.0)(lightningcss@1.32.0)(terser@5.46.0)(tsx@4.21.0)(yaml@2.8.2))
       '@livestore/utils-dev':
-        specifier: workspace:*
+        specifier: workspace:^
         version: link:../utils-dev
       '@opentelemetry/api':
         specifier: 1.9.0
@@ -3167,7 +3170,7 @@ importers:
         specifier: 5.0.1
         version: 5.0.1(typescript@5.9.3)
       '@livestore/utils':
-        specifier: workspace:*
+        specifier: workspace:^
         version: link:../../@livestore/utils
     devDependencies:
       '@effect/ai':
@@ -3243,7 +3246,7 @@ importers:
         specifier: 0.104.1
         version: 0.104.1(@effect/cluster@0.56.4(@effect/platform@0.94.5(effect@3.19.19))(@effect/rpc@0.73.2(@effect/platform@0.94.5(effect@3.19.19))(effect@3.19.19))(@effect/sql@0.49.0(@effect/experimental@0.58.0(@effect/platform@0.94.5(effect@3.19.19))(effect@3.19.19))(@effect/platform@0.94.5(effect@3.19.19))(effect@3.19.19))(@effect/workflow@0.16.0(@effect/experimental@0.58.0(@effect/platform@0.94.5(effect@3.19.19))(effect@3.19.19))(@effect/platform@0.94.5(effect@3.19.19))(@effect/rpc@0.73.2(@effect/platform@0.94.5(effect@3.19.19))(effect@3.19.19))(effect@3.19.19))(effect@3.19.19))(@effect/platform@0.94.5(effect@3.19.19))(@effect/rpc@0.73.2(@effect/platform@0.94.5(effect@3.19.19))(effect@3.19.19))(@effect/sql@0.49.0(@effect/experimental@0.58.0(@effect/platform@0.94.5(effect@3.19.19))(effect@3.19.19))(@effect/platform@0.94.5(effect@3.19.19))(effect@3.19.19))(effect@3.19.19)
       '@livestore/utils':
-        specifier: workspace:*
+        specifier: workspace:^
         version: link:../../@livestore/utils
       astro-expressive-code:
         specifier: 0.41.5
@@ -3340,10 +3343,10 @@ importers:
         specifier: 0.35.2
         version: 0.35.2(astro@5.13.4(@netlify/blobs@10.7.2)(@types/node@25.3.3)(jiti@2.6.1)(lightningcss@1.32.0)(rollup@4.49.0)(terser@5.46.0)(tsx@4.21.0)(typescript@5.9.3)(yaml@2.8.2))
       '@livestore/utils':
-        specifier: workspace:*
+        specifier: workspace:^
         version: link:../../../@livestore/utils
       '@local/astro-twoslash-code':
-        specifier: workspace:*
+        specifier: workspace:^
         version: link:..
       astro:
         specifier: 5.13.4
@@ -3485,28 +3488,28 @@ importers:
         specifier: 0.27.0
         version: 0.27.0(effect@3.19.19)(vitest@3.2.4(@types/debug@4.1.12)(@types/node@25.3.3)(jiti@2.6.1)(jsdom@26.1.0)(lightningcss@1.32.0)(terser@5.46.0)(tsx@4.21.0)(yaml@2.8.1))
       '@livestore/common':
-        specifier: workspace:*
+        specifier: workspace:^
         version: link:../packages/@livestore/common
       '@livestore/utils':
-        specifier: workspace:*
+        specifier: workspace:^
         version: link:../packages/@livestore/utils
       '@livestore/utils-dev':
-        specifier: workspace:*
+        specifier: workspace:^
         version: link:../packages/@livestore/utils-dev
       '@local/astro-tldraw':
-        specifier: workspace:*
+        specifier: workspace:^
         version: link:../packages/@local/astro-tldraw
       '@local/astro-twoslash-code':
-        specifier: workspace:*
+        specifier: workspace:^
         version: link:../packages/@local/astro-twoslash-code
       '@local/docs':
-        specifier: workspace:*
+        specifier: workspace:^
         version: link:../docs
       '@local/tests-integration':
-        specifier: workspace:*
+        specifier: workspace:^
         version: link:../tests/integration
       '@local/tests-sync-provider':
-        specifier: workspace:*
+        specifier: workspace:^
         version: link:../tests/sync-provider
       '@opentelemetry/api':
         specifier: 1.9.0
@@ -3545,43 +3548,43 @@ importers:
   tests/integration:
     dependencies:
       '@livestore/adapter-cloudflare':
-        specifier: workspace:*
+        specifier: workspace:^
         version: link:../../packages/@livestore/adapter-cloudflare
       '@livestore/adapter-node':
-        specifier: workspace:*
+        specifier: workspace:^
         version: link:../../packages/@livestore/adapter-node
       '@livestore/adapter-web':
-        specifier: workspace:*
+        specifier: workspace:^
         version: link:../../packages/@livestore/adapter-web
       '@livestore/common':
-        specifier: workspace:*
+        specifier: workspace:^
         version: link:../../packages/@livestore/common
       '@livestore/common-cf':
-        specifier: workspace:*
+        specifier: workspace:^
         version: link:../../packages/@livestore/common-cf
       '@livestore/devtools-vite':
         specifier: 0.4.0-dev.22
         version: 0.4.0-dev.22(eeb10664014f361b682b81933b1c1aa5)
       '@livestore/effect-playwright':
-        specifier: workspace:*
+        specifier: workspace:^
         version: link:../../packages/@livestore/effect-playwright
       '@livestore/livestore':
-        specifier: workspace:*
+        specifier: workspace:^
         version: link:../../packages/@livestore/livestore
       '@livestore/react':
-        specifier: workspace:*
+        specifier: workspace:^
         version: link:../../packages/@livestore/react
       '@livestore/sync-cf':
-        specifier: workspace:*
+        specifier: workspace:^
         version: link:../../packages/@livestore/sync-cf
       '@livestore/utils':
-        specifier: workspace:*
+        specifier: workspace:^
         version: link:../../packages/@livestore/utils
       '@livestore/utils-dev':
-        specifier: workspace:*
+        specifier: workspace:^
         version: link:../../packages/@livestore/utils-dev
       '@local/shared':
-        specifier: workspace:*
+        specifier: workspace:^
         version: link:../../packages/@local/shared
     devDependencies:
       '@cloudflare/workers-types':
@@ -3678,8 +3681,8 @@ importers:
         specifier: 19.2.3
         version: 19.2.3(react@19.2.3)
       react-error-boundary:
-        specifier: ^6.0.0
-        version: 6.0.0(react@19.2.3)
+        specifier: ^6.1.1
+        version: 6.1.1(react@19.2.3)
       todomvc-app-css:
         specifier: ^2.4.3
         version: 2.4.3
@@ -3696,22 +3699,22 @@ importers:
   tests/package-common:
     dependencies:
       '@livestore/adapter-node':
-        specifier: workspace:*
+        specifier: workspace:^
         version: link:../../packages/@livestore/adapter-node
       '@livestore/adapter-web':
-        specifier: workspace:*
+        specifier: workspace:^
         version: link:../../packages/@livestore/adapter-web
       '@livestore/common':
-        specifier: workspace:*
+        specifier: workspace:^
         version: link:../../packages/@livestore/common
       '@livestore/livestore':
-        specifier: workspace:*
+        specifier: workspace:^
         version: link:../../packages/@livestore/livestore
       '@livestore/sqlite-wasm':
-        specifier: workspace:*
+        specifier: workspace:^
         version: link:../../packages/@livestore/sqlite-wasm
       '@livestore/utils':
-        specifier: workspace:*
+        specifier: workspace:^
         version: link:../../packages/@livestore/utils
       '@opentelemetry/api':
         specifier: 1.9.0
@@ -3766,7 +3769,7 @@ importers:
         specifier: 0.4.0-dev.22
         version: 0.4.0-dev.22(eeb10664014f361b682b81933b1c1aa5)
       '@livestore/utils-dev':
-        specifier: workspace:*
+        specifier: workspace:^
         version: link:../../packages/@livestore/utils-dev
       '@opentelemetry/resources':
         specifier: 2.2.0
@@ -3784,19 +3787,19 @@ importers:
   tests/perf:
     dependencies:
       '@livestore/adapter-web':
-        specifier: workspace:*
+        specifier: workspace:^
         version: link:../../packages/@livestore/adapter-web
       '@livestore/livestore':
-        specifier: workspace:*
+        specifier: workspace:^
         version: link:../../packages/@livestore/livestore
       '@livestore/react':
-        specifier: workspace:*
+        specifier: workspace:^
         version: link:../../packages/@livestore/react
       '@livestore/utils':
-        specifier: workspace:*
+        specifier: workspace:^
         version: link:../../packages/@livestore/utils
       '@livestore/utils-dev':
-        specifier: workspace:*
+        specifier: workspace:^
         version: link:../../packages/@livestore/utils-dev
       '@opentelemetry/exporter-trace-otlp-http':
         specifier: 0.208.0
@@ -3896,25 +3899,25 @@ importers:
   tests/perf-eventlog:
     dependencies:
       '@livestore/adapter-web':
-        specifier: workspace:*
+        specifier: workspace:^
         version: link:../../packages/@livestore/adapter-web
       '@livestore/common':
-        specifier: workspace:*
+        specifier: workspace:^
         version: link:../../packages/@livestore/common
       '@livestore/livestore':
-        specifier: workspace:*
+        specifier: workspace:^
         version: link:../../packages/@livestore/livestore
       '@livestore/react':
-        specifier: workspace:*
+        specifier: workspace:^
         version: link:../../packages/@livestore/react
       '@livestore/sqlite-wasm':
-        specifier: workspace:*
+        specifier: workspace:^
         version: link:../../packages/@livestore/sqlite-wasm
       '@livestore/utils':
-        specifier: workspace:*
+        specifier: workspace:^
         version: link:../../packages/@livestore/utils
       '@livestore/utils-dev':
-        specifier: workspace:*
+        specifier: workspace:^
         version: link:../../packages/@livestore/utils-dev
       '@opentelemetry/api':
         specifier: 1.9.0
@@ -4023,34 +4026,34 @@ importers:
         specifier: 4.20251118.0
         version: 4.20251118.0
       '@livestore/adapter-cloudflare':
-        specifier: workspace:*
+        specifier: workspace:^
         version: link:../../packages/@livestore/adapter-cloudflare
       '@livestore/adapter-node':
-        specifier: workspace:*
+        specifier: workspace:^
         version: link:../../packages/@livestore/adapter-node
       '@livestore/common':
-        specifier: workspace:*
+        specifier: workspace:^
         version: link:../../packages/@livestore/common
       '@livestore/common-cf':
-        specifier: workspace:*
+        specifier: workspace:^
         version: link:../../packages/@livestore/common-cf
       '@livestore/livestore':
-        specifier: workspace:*
+        specifier: workspace:^
         version: link:../../packages/@livestore/livestore
       '@livestore/sqlite-wasm':
-        specifier: workspace:*
+        specifier: workspace:^
         version: link:../../packages/@livestore/sqlite-wasm
       '@livestore/sync-cf':
-        specifier: workspace:*
+        specifier: workspace:^
         version: link:../../packages/@livestore/sync-cf
       '@livestore/sync-electric':
-        specifier: workspace:*
+        specifier: workspace:^
         version: link:../../packages/@livestore/sync-electric
       '@livestore/sync-s2':
-        specifier: workspace:*
+        specifier: workspace:^
         version: link:../../packages/@livestore/sync-s2
       '@livestore/utils':
-        specifier: workspace:*
+        specifier: workspace:^
         version: link:../../packages/@livestore/utils
       postgres:
         specifier: 3.4.7
@@ -4105,7 +4108,7 @@ importers:
         specifier: 0.4.0-dev.22
         version: 0.4.0-dev.22(eeb10664014f361b682b81933b1c1aa5)
       '@livestore/utils-dev':
-        specifier: workspace:*
+        specifier: workspace:^
         version: link:../../packages/@livestore/utils-dev
       '@opentelemetry/api':
         specifier: 1.9.0
@@ -4129,7 +4132,7 @@ importers:
   tests/wa-sqlite:
     devDependencies:
       '@livestore/wa-sqlite':
-        specifier: workspace:*
+        specifier: workspace:^
         version: link:../../packages/@livestore/wa-sqlite
       vitest:
         specifier: 3.2.4
@@ -15306,6 +15309,11 @@ packages:
     resolution: {integrity: sha512-gdlJjD7NWr0IfkPlaREN2d9uUZUlksrfOx7SX62VRerwXbMY6ftGCIZua1VG1aXFNOimhISsTq+Owp725b9SiA==}
     peerDependencies:
       react: '>=16.13.1'
+
+  react-error-boundary@6.1.1:
+    resolution: {integrity: sha512-BrYwPOdXi5mqkk5lw+Uvt0ThHx32rCt3BkukS4X23A2AIWDPSGX6iaWTc0y9TU/mHDA/6qOSGel+B2ERkOvD1w==}
+    peerDependencies:
+      react: ^18.0.0 || ^19.0.0
 
   react-fast-compare@3.2.2:
     resolution: {integrity: sha512-nsO+KSNgo1SbJqJEYRE9ERzo7YtYbou/OqjSQKxV7jcKox7+usiUVZOAC+XnDOABXggQTno0Y1CpVnuWEc1boQ==}
@@ -33065,9 +33073,8 @@ snapshots:
       '@babel/runtime': 7.28.6
       react: 19.1.0
 
-  react-error-boundary@6.0.0(react@19.2.3):
+  react-error-boundary@6.1.1(react@19.2.3):
     dependencies:
-      '@babel/runtime': 7.28.6
       react: 19.2.3
 
   react-fast-compare@3.2.2: {}

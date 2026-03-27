@@ -34,13 +34,13 @@
     "test": "vitest"
   },
   "dependencies": {
-    "@livestore/common": "workspace:*",
-    "@livestore/utils": "workspace:*",
+    "@livestore/common": "workspace:^",
+    "@livestore/utils": "workspace:^",
     "@opentelemetry/api": "1.9.0"
   },
   "devDependencies": {
-    "@livestore/adapter-web": "workspace:*",
-    "@livestore/utils-dev": "workspace:*",
+    "@livestore/adapter-web": "workspace:^",
+    "@livestore/utils-dev": "workspace:^",
     "@opentelemetry/sdk-trace-base": "2.2.0",
     "jsdom": "26.1.0",
     "typescript": "5.9.3",

@@ -7,12 +7,12 @@
     "./todomvc-fixture": "./src/todomvc-fixture.ts"
   },
   "dependencies": {
-    "@livestore/adapter-node": "workspace:*",
-    "@livestore/adapter-web": "workspace:*",
-    "@livestore/common": "workspace:*",
-    "@livestore/livestore": "workspace:*",
-    "@livestore/sqlite-wasm": "workspace:*",
-    "@livestore/utils": "workspace:*",
+    "@livestore/adapter-node": "workspace:^",
+    "@livestore/adapter-web": "workspace:^",
+    "@livestore/common": "workspace:^",
+    "@livestore/livestore": "workspace:^",
+    "@livestore/sqlite-wasm": "workspace:^",
+    "@livestore/utils": "workspace:^",
     "@opentelemetry/api": "1.9.0"
   },
   "devDependencies": {
@@ -32,7 +32,7 @@
     "@effect/typeclass": "0.38.0",
     "@effect/vitest": "0.27.0",
     "@livestore/devtools-vite": "0.4.0-dev.22",
-    "@livestore/utils-dev": "workspace:*",
+    "@livestore/utils-dev": "workspace:^",
     "@opentelemetry/api": "1.9.0",
     "@opentelemetry/resources": "2.2.0",
     "@standard-schema/spec": "1.0.0",

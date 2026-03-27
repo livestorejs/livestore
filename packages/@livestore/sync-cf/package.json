@@ -32,9 +32,9 @@
   },
   "dependencies": {
     "@cloudflare/workers-types": "4.20251118.0",
-    "@livestore/common": "workspace:*",
-    "@livestore/common-cf": "workspace:*",
-    "@livestore/utils": "workspace:*"
+    "@livestore/common": "workspace:^",
+    "@livestore/common-cf": "workspace:^",
+    "@livestore/utils": "workspace:^"
   },
   "devDependencies": {
     "@effect/ai": "0.33.2",

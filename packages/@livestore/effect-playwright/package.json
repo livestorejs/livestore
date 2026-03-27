@@ -10,7 +10,7 @@
     "test": "echo 'No tests'"
   },
   "dependencies": {
-    "@livestore/utils": "workspace:*"
+    "@livestore/utils": "workspace:^"
   },
   "devDependencies": {
     "@effect/ai": "0.33.2",

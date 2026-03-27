@@ -29,9 +29,9 @@
     "test": "echo 'No tests yet'"
   },
   "dependencies": {
-    "@livestore/common": "workspace:*",
-    "@livestore/livestore": "workspace:*",
-    "@livestore/utils": "workspace:*"
+    "@livestore/common": "workspace:^",
+    "@livestore/livestore": "workspace:^",
+    "@livestore/utils": "workspace:^"
   },
   "devDependencies": {
     "@effect/ai": "0.33.2",
