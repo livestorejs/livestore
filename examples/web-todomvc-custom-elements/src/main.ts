@@ -177,6 +177,8 @@ const TodoListTemplate = html`
 `
 
 class TodoList extends HTMLElement {
+  #hasReceivedInitialAppState = false
+
   constructor() {
     super()
     const shadowRoot = this.attachShadow({ mode: 'open' })
@@ -215,6 +217,11 @@ class TodoList extends HTMLElement {
     // TODO unsubscribe
     store.subscribe(appState$, (newValue) => {
       input.value = newValue.newTodoText
+
+      if (this.#hasReceivedInitialAppState === false) {
+        this.#hasReceivedInitialAppState = true
+        this.dataset.storeReady = 'true'
+      }
     })
   }
 

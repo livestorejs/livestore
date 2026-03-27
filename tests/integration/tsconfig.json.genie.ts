@@ -10,7 +10,7 @@ export default tsconfigJson({
     resolveJsonModule: true,
     ...reactJsx,
     tsBuildInfoFile: './dist/.tsbuildinfo',
-    types: ['@cloudflare/workers-types'],
+    types: ['@cloudflare/workers-types', '@types/react', '@types/react-dom'],
   },
   include: ['./src', './scripts'],
   exclude: [...packageTsconfigExclude, './src/tests/devtools/fixtures'],

@@ -8,7 +8,14 @@
 # - Uniform interface: All CI commands use `dt`
 # - No regression risk: mono logic unchanged
 # - Incremental migration: Can gradually move logic from mono to dt
-{ ... }:
+{
+  inputs,
+  pkgs,
+  ...
+}:
+let
+  pnpm = "${inputs.effect-utils.lib.mkPnpm { inherit pkgs; }}/bin/pnpm";
+in
 {
   tasks = {
     # =========================================================================
@@ -284,13 +291,19 @@
 
     "examples:install" = {
       description = "Install examples workspace dependencies";
-      exec = "pnpm install --frozen-lockfile --dir examples";
+      exec = ''
+        export npm_config_manage_package_manager_versions=false
+        ${pnpm} install --frozen-lockfile --dir examples
+      '';
       after = [ "setup:strict" ];
     };
 
     "examples:build:src" = {
       description = "Build examples source bundles";
-      exec = "pnpm --dir examples --filter 'livestore-example-*' --workspace-concurrency=1 build";
+      exec = ''
+        export npm_config_manage_package_manager_versions=false
+        ${pnpm} --dir examples --filter 'livestore-example-*' --workspace-concurrency=1 build
+      '';
       after = [ "examples:install" ];
     };
 

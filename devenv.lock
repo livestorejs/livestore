@@ -3,11 +3,11 @@
     "devenv": {
       "locked": {
         "dir": "src/modules",
-        "lastModified": 1773527229,
-        "narHash": "sha256-rpSPbPJjjMIT2+bR+KSMu9DQbvniv6BepVU3JMFSdrU=",
+        "lastModified": 1774574416,
+        "narHash": "sha256-lSDwajbwYOAXggD0EAs/pOaBcnSfRjX1ScPo4fk8+tI=",
         "owner": "cachix",
         "repo": "devenv",
-        "rev": "9a408da24966fc2d014fa3a36485dfe42ebc212b",
+        "rev": "4dbca34da522d2169cffb62e56965e4b8ee2453d",
         "type": "github"
       },
       "original": {
@@ -24,15 +24,16 @@
         "tsgo": "tsgo"
       },
       "locked": {
-        "lastModified": 1774190652,
-        "narHash": "sha256-RVh4MHWFRxxW9gfX8rx/F5h+KD1N3M/6CXD6YwParOg=",
+        "lastModified": 1774607618,
+        "narHash": "sha256-r16/KBDCc1jI8kJzty7xUU7xawjpkPRql5/LSZle3IA=",
         "owner": "overengineeringstudio",
         "repo": "effect-utils",
-        "rev": "2bb367318ca696fb310605a932b9963dab4da489",
+        "rev": "c2531f4e5440e5b73a552e218e1fb79d8d1988f6",
         "type": "github"
       },
       "original": {
         "owner": "overengineeringstudio",
+        "ref": "main",
         "repo": "effect-utils",
         "type": "github"
       }
@@ -98,11 +99,11 @@
         ]
       },
       "locked": {
-        "lastModified": 1772893680,
-        "narHash": "sha256-JDqZMgxUTCq85ObSaFw0HhE+lvdOre1lx9iI6vYyOEs=",
+        "lastModified": 1774104215,
+        "narHash": "sha256-EAtviqz0sEAxdHS4crqu7JGR5oI3BwaqG0mw7CmXkO8=",
         "owner": "cachix",
         "repo": "git-hooks.nix",
-        "rev": "8baab586afc9c9b57645a734c820e4ac0a604af9",
+        "rev": "f799ae951fde0627157f40aec28dec27b22076d0",
         "type": "github"
       },
       "original": {
@@ -189,16 +190,17 @@
       },
       "locked": {
         "dir": "nix/playwright-flake",
-        "lastModified": 1774190652,
-        "narHash": "sha256-RVh4MHWFRxxW9gfX8rx/F5h+KD1N3M/6CXD6YwParOg=",
+        "lastModified": 1774607618,
+        "narHash": "sha256-r16/KBDCc1jI8kJzty7xUU7xawjpkPRql5/LSZle3IA=",
         "owner": "overengineeringstudio",
         "repo": "effect-utils",
-        "rev": "2bb367318ca696fb310605a932b9963dab4da489",
+        "rev": "c2531f4e5440e5b73a552e218e1fb79d8d1988f6",
         "type": "github"
       },
       "original": {
         "dir": "nix/playwright-flake",
         "owner": "overengineeringstudio",
+        "ref": "main",
         "repo": "effect-utils",
         "type": "github"
       }

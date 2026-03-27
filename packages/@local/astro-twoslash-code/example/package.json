@@ -12,8 +12,8 @@
   },
   "dependencies": {
     "@astrojs/starlight": "0.35.2",
-    "@livestore/utils": "workspace:*",
-    "@local/astro-twoslash-code": "workspace:*",
+    "@livestore/utils": "workspace:^",
+    "@local/astro-twoslash-code": "workspace:^",
     "astro": "5.13.4",
     "astro-expressive-code": "0.41.5",
     "expressive-code": "0.41.5",

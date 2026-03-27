@@ -199,12 +199,14 @@ import {
   namespaceRunner as namespaceRunnerBase,
   installNixStep,
   cachixStep,
-  installMegarepoStep,
   applyMegarepoLockStep,
   checkoutStep,
   preparePinnedDevenvStep,
+  pnpmStoreSetupStep,
+  restorePnpmStoreStep,
   runDevenvTasksBefore,
   nixDiagnosticsArtifactStep,
+  savePnpmStoreStep,
   validateNixStoreStep,
 } from '../repos/effect-utils/genie/ci-workflow.ts'
 
@@ -212,7 +214,7 @@ export const devenvShellDefaults = {
   run: { shell: 'devenv shell bash -- -e {0}' },
 } as const
 export { bashShellDefaults }
-export { dispatchAlignmentStep, runDevenvTasksBefore, nixDiagnosticsArtifactStep }
+export { dispatchAlignmentStep, runDevenvTasksBefore, nixDiagnosticsArtifactStep, savePnpmStoreStep }
 
 export const namespaceRunner = (runId: string) =>
   namespaceRunnerBase({ profile: 'namespace-profile-linux-x86-64', runId })
@@ -227,9 +229,10 @@ export const livestoreSetupStepsAfterCheckout = [
       'extra-substituters = https://cache.nixos.org\nextra-trusted-public-keys = cache.nixos.org-1:6NCHdD59X431o0gWypbMrAURkbJ16ZPMQFGspcDShjY=',
   }),
   cachixStep({ name: 'livestore', authToken: '${{ env.CACHIX_AUTH_TOKEN }}' }),
-  installMegarepoStep,
   applyMegarepoLockStep(),
   preparePinnedDevenvStep,
+  pnpmStoreSetupStep,
+  restorePnpmStoreStep({ keyPrefix: 'livestore-pnpm-store' }),
   validateNixStoreStep,
 ] as const
 

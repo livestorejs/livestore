@@ -24,8 +24,8 @@
     "test": "echo No tests yet"
   },
   "dependencies": {
-    "@livestore/adapter-node": "workspace:*",
-    "@livestore/utils": "workspace:*"
+    "@livestore/adapter-node": "workspace:^",
+    "@livestore/utils": "workspace:^"
   },
   "devDependencies": {
     "@types/node": "25.3.3",

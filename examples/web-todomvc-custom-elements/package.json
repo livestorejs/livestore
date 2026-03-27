@@ -36,5 +36,43 @@
     "dev": "vite --force",
     "preview": "vite preview",
     "test": "playwright test"
+  },
+  "pnpm": {
+    "onlyBuiltDependencies": [
+      "@parcel/watcher",
+      "esbuild",
+      "msgpackr-extract",
+      "sharp",
+      "unix-dgram",
+      "@mixedbread/cli",
+      "cbor-extract",
+      "dtrace-provider",
+      "protobufjs",
+      "puppeteer",
+      "workerd"
+    ],
+    "overrides": {
+      "@effect/ai": "0.33.2",
+      "@effect/cli": "0.73.2",
+      "@effect/cluster": "0.56.4",
+      "@effect/experimental": "0.58.0",
+      "@effect/opentelemetry": "0.61.0",
+      "@effect/platform": "0.94.5",
+      "@effect/platform-browser": "0.73.0",
+      "@effect/platform-bun": "0.86.0",
+      "@effect/platform-node": "0.104.1",
+      "@effect/printer": "0.47.0",
+      "@effect/printer-ansi": "0.47.0",
+      "@effect/rpc": "0.73.2",
+      "@effect/sql": "0.49.0",
+      "@effect/typeclass": "0.38.0",
+      "@effect/vitest": "0.27.0",
+      "@opentelemetry/api": "1.9.0",
+      "@opentelemetry/resources": "2.2.0",
+      "@standard-schema/spec": "1.0.0",
+      "effect": "3.19.19",
+      "@cloudflare/workers-types": "4.20260317.1",
+      "@effect/workflow": "0.16.0"
+    }
   }
 }
