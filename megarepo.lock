@@ -4,9 +4,9 @@
     "effect-utils": {
       "url": "https://github.com/overengineeringstudio/effect-utils",
       "ref": "schickling/fix-pnpm-version-stdin",
-      "commit": "c069f5b6acc008b5aa48d3bd09ec65954b4f7a29",
+      "commit": "ad4e549c23765722f490f1083533ef9ea8bf171b",
       "pinned": true,
-      "lockedAt": "2026-03-27T07:51:23.738Z"
+      "lockedAt": "2026-03-27T07:59:55.533Z"
     },
     "overeng-beads-public": {
       "url": "https://github.com/overengineeringstudio/overeng-beads-public",
