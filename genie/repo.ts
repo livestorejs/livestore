@@ -111,6 +111,21 @@ export const workspaceMember = (
   pnpmPackageClosure,
 })
 
+export const repoPnpmAllowBuilds = {
+  ...commonPnpmPolicySettings.allowBuilds,
+  '@mixedbread/cli': true,
+  'cbor-extract': true,
+  'dtrace-provider': true,
+  protobufjs: true,
+  puppeteer: true,
+  workerd: true,
+} as const
+
+export const repoPnpmOnlyBuiltDependencies = Object.entries(repoPnpmAllowBuilds)
+  .filter(([, isAllowed]) => isAllowed === true)
+  .map(([name]) => name)
+  .toSorted()
+
 // =============================================================================
 // Package Config Exports
 // =============================================================================

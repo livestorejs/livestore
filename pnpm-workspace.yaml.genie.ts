@@ -1,4 +1,4 @@
-import { commonPnpmPolicySettings, pnpmWorkspaceYaml } from './genie/repo.ts'
+import { commonPnpmPolicySettings, pnpmWorkspaceYaml, repoPnpmAllowBuilds } from './genie/repo.ts'
 import { rootWorkspacePackages } from './package.json.genie.ts'
 
 const examplesWorkspaceSettings = {
@@ -46,15 +46,7 @@ export default pnpmWorkspaceYaml.root({
   repoName: 'livestore',
   extraMembers: ['examples/*'],
   ...commonPnpmPolicySettings,
-  allowBuilds: {
-    ...commonPnpmPolicySettings.allowBuilds,
-    '@mixedbread/cli': true,
-    'cbor-extract': true,
-    'dtrace-provider': true,
-    protobufjs: true,
-    puppeteer: true,
-    workerd: true,
-  },
+  allowBuilds: repoPnpmAllowBuilds,
   packageExtensions: repoPackageExtensions,
   ...examplesWorkspaceSettings,
 })
