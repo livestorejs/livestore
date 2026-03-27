@@ -21,8 +21,7 @@ import { events, schema, tables } from '../schema.ts'
  * Bridge Cloudflare's worker `Response` constructor back to the worker type in this mixed DOM/worker TS program.
  */
 const makeCfResponse = (...args: ConstructorParameters<typeof CfDeclare.Response>): CfTypes.Response =>
-  // oxlint-disable-next-line typescript-eslint(no-unsafe-type-assertion) -- runtime value is Cloudflare's Response constructor, but TS collapses it to the DOM shape here
-  new CfDeclare.Response(...args) as CfTypes.Response
+  new CfDeclare.Response(...args)
 
 type PersistenceSnapshot = {
   state: PersistenceCounts
@@ -246,7 +245,7 @@ export class TestStoreDo extends DurableObjectBase implements ClientDoWithRpcCal
           storeId,
           clientId: 'integration-client',
           sessionId: crypto.randomUUID(),
-          durableObject: { ctx: this.ctx as CfTypes.DurableObjectState, env: this.env, bindingName: 'TEST_STORE_DO' },
+          durableObject: { ctx: this.ctx, env: this.env, bindingName: 'TEST_STORE_DO' },
           syncBackendStub: this.env.SYNC_BACKEND_DO.get(this.env.SYNC_BACKEND_DO.idFromName(storeId)),
           resetPersistence,
         })
