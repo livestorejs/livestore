@@ -9,6 +9,7 @@ import {
   nixDiagnosticsArtifactStep,
   otelSetupStep,
   runDevenvTasksBefore,
+  savePnpmStoreStep,
 } from '../../genie/repo.ts'
 
 // =============================================================================
@@ -39,7 +40,11 @@ const namespaceRunnerConfig = {
   'runs-on': namespaceRunner(GITHUB_RUN_ID),
 }
 
-const withNixDiagnosticsOnFailure = (steps: unknown[]) => [...steps, nixDiagnosticsArtifactStep()]
+const withNixDiagnosticsOnFailure = (steps: unknown[]) => [
+  ...steps,
+  savePnpmStoreStep({ keyPrefix: 'livestore-pnpm-store' }),
+  nixDiagnosticsArtifactStep(),
+]
 
 /** Standard CI job configuration (namespace runner + bash shell) */
 const standardCIJob = (config: { env?: Record<string, string>; steps: unknown[] }) => ({
@@ -176,6 +181,7 @@ done`,
           run: runDevenvTasksBefore('test:integration:sync-provider:matrix'),
           env: { OTEL_STATE_DIR: '', TEST_SYNC_PROVIDER: '${{ matrix.provider }}' },
         },
+        savePnpmStoreStep({ keyPrefix: 'livestore-pnpm-store' }),
         nixDiagnosticsArtifactStep(),
       ],
     },
@@ -215,6 +221,7 @@ done`,
           },
           run: runDevenvTasksBefore('test:integration:playwright:upload-trace'),
         },
+        savePnpmStoreStep({ keyPrefix: 'livestore-pnpm-store' }),
         nixDiagnosticsArtifactStep(),
       ],
     },
@@ -241,6 +248,7 @@ done`,
             OTEL_EXPORTER_OTLP_ENDPOINT: 'https://otlp-gateway-prod-us-east-2.grafana.net/otlp',
           },
         },
+        savePnpmStoreStep({ keyPrefix: 'livestore-pnpm-store' }),
         nixDiagnosticsArtifactStep(),
       ],
     },
@@ -262,6 +270,7 @@ done`,
             OTEL_EXPORTER_OTLP_ENDPOINT: 'https://otlp-gateway-prod-us-east-2.grafana.net/otlp',
           },
         },
+        savePnpmStoreStep({ keyPrefix: 'livestore-pnpm-store' }),
         nixDiagnosticsArtifactStep(),
       ],
     },
