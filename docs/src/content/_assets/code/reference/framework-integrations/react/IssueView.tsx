@@ -1,4 +1,5 @@
 import { Suspense } from 'react'
+import { ErrorBoundary } from 'react-error-boundary'
 
 import { queryDb } from '@livestore/livestore'
 import { useStore } from '@livestore/react'
@@ -6,6 +7,7 @@ import { useStore } from '@livestore/react'
 import { tables } from './issue.schema.ts'
 import { issueStoreOptions } from './issue.store.ts'
 
+const issueErrorFallback = <div>Error loading issue</div>
 const issueLoadingFallback = <div>Loading issue...</div>
 
 export const IssueView = ({ issueId }: { issueId: string }) => {
@@ -26,11 +28,13 @@ export const IssueView = ({ issueId }: { issueId: string }) => {
   )
 }
 
-// Wrap with Suspense for loading states
+// Wrap with Suspense and ErrorBoundary for loading and error states
 export const IssueViewWithSuspense = ({ issueId }: { issueId: string }) => {
   return (
-    <Suspense fallback={issueLoadingFallback}>
-      <IssueView issueId={issueId} />
-    </Suspense>
+    <ErrorBoundary fallback={issueErrorFallback}>
+      <Suspense fallback={issueLoadingFallback}>
+        <IssueView issueId={issueId} />
+      </Suspense>
+    </ErrorBoundary>
   )
 }

@@ -56,6 +56,9 @@ const runtimeDeps = catalog.compose({
       'todomvc-app-css': '^2.4.3',
     },
   },
+  gvsTypeExtensions: {
+    'react-error-boundary': catalog.pick('@types/react', '@types/react-dom'),
+  },
 })
 
 export default packageJson(

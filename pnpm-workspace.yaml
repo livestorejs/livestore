@@ -56,6 +56,10 @@ overrides:
   '@tanstack/start-client-core': 1.139.14
 
 packageExtensions:
+  react-error-boundary:
+    dependencies:
+      '@types/react': 19.2.7
+      '@types/react-dom': 19.2.3
   starlight-auto-sidebar:
     dependencies:
       astro: '>=5.0.0'

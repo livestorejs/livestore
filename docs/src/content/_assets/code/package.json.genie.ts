@@ -69,6 +69,9 @@ const runtimeDeps = catalog.compose({
       'vue-livestore': '0.2.3',
     },
   },
+  gvsTypeExtensions: {
+    'react-error-boundary': catalog.pick('@types/react', '@types/react-dom'),
+  },
   mode: 'install',
 })
 

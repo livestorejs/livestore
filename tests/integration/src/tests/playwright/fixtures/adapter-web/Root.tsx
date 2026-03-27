@@ -4,10 +4,12 @@ import { StoreRegistry } from '@livestore/livestore'
 import { StoreRegistryProvider, useStore } from '@livestore/react'
 import React, { memo, Suspense, useState } from 'react'
 import { unstable_batchedUpdates as batchUpdates } from 'react-dom'
+import { ErrorBoundary } from 'react-error-boundary'
 
 import LiveStoreWorker from '../devtools/todomvc/livestore/livestore.worker.ts?worker'
 import { schema } from '../devtools/todomvc/livestore/schema.ts'
 
+const ErrorFallback = <div data-webtest="error">Error</div>
 const SuspenseFallback = <div>Loading...</div>
 
 const useBarrierStart = () => {
@@ -82,11 +84,13 @@ export const Root: React.FC = () => {
   }
 
   return (
-    <Suspense fallback={SuspenseFallback}>
-      <StoreRegistryProvider storeRegistry={storeRegistry}>
-        <AppWithStore adapter={adapter} />
-      </StoreRegistryProvider>
-    </Suspense>
+    <ErrorBoundary fallback={ErrorFallback}>
+      <Suspense fallback={SuspenseFallback}>
+        <StoreRegistryProvider storeRegistry={storeRegistry}>
+          <AppWithStore adapter={adapter} />
+        </StoreRegistryProvider>
+      </Suspense>
+    </ErrorBoundary>
   )
 }
 

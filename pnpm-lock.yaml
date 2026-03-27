@@ -198,7 +198,7 @@ overrides:
   '@tanstack/start-server-core': 1.139.14
   '@tanstack/start-client-core': 1.139.14
 
-packageExtensionsChecksum: sha256-Cgy+dbXdKNakAaNXVnNesVfXK66aoKvMHZKDpP1G2DM=
+packageExtensionsChecksum: sha256-7YcoS1641lRAmSqRcs4IGptEje/ekJAQXXTonMs6mHQ=
 
 importers:
 
@@ -34586,10 +34586,14 @@ snapshots:
   react-error-boundary@6.0.0(react@19.1.0):
     dependencies:
       '@babel/runtime': 7.28.6
+      '@types/react': 19.2.7
+      '@types/react-dom': 19.2.3(@types/react@19.2.7)
       react: 19.1.0
 
   react-error-boundary@6.1.1(react@19.2.3):
     dependencies:
+      '@types/react': 19.2.7
+      '@types/react-dom': 19.2.3(@types/react@19.2.7)
       react: 19.2.3
 
   react-fast-compare@3.2.2: {}

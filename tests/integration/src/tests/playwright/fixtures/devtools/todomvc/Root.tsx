@@ -4,11 +4,13 @@ import { StoreRegistry } from '@livestore/livestore'
 import { StoreRegistryProvider } from '@livestore/react'
 import type React from 'react'
 import { Suspense, useState } from 'react'
+import { ErrorBoundary } from 'react-error-boundary'
 
 import { Footer } from './components/Footer.tsx'
 import { Header } from './components/Header.tsx'
 import { MainSection } from './components/MainSection.tsx'
 
+const ErrorFallback = <div>Something went wrong</div>
 const SuspenseFallback = <div>Loading app...</div>
 
 const AppBody: React.FC = () => (
@@ -23,10 +25,12 @@ export const App: React.FC = () => {
   const [storeRegistry] = useState(() => new StoreRegistry())
 
   return (
-    <Suspense fallback={SuspenseFallback}>
-      <StoreRegistryProvider storeRegistry={storeRegistry}>
-        <AppBody />
-      </StoreRegistryProvider>
-    </Suspense>
+    <ErrorBoundary fallback={ErrorFallback}>
+      <Suspense fallback={SuspenseFallback}>
+        <StoreRegistryProvider storeRegistry={storeRegistry}>
+          <AppBody />
+        </StoreRegistryProvider>
+      </Suspense>
+    </ErrorBoundary>
   )
 }
