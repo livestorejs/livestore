@@ -396,8 +396,8 @@ describe('StoreRegistry', () => {
     expect(store1).not.toBe(store2)
 
     // Both should be cached independently
-    expect(storeRegistry.getOrLoadPromise(options1)).toBe(store1)
-    expect(storeRegistry.getOrLoadPromise(options2)).toBe(store2)
+    expect(await storeRegistry.getOrLoadPromise(options1)).toBe(store1)
+    expect(await storeRegistry.getOrLoadPromise(options2)).toBe(store2)
 
     // Wait for both stores to be disposed
     await sleep(unusedCacheTime + 50)
