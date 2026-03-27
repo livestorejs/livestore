@@ -44,9 +44,6 @@ jobs:
         with:
           name: livestore
           authToken: '${{ env.CACHIX_AUTH_TOKEN }}'
-      - name: Install megarepo CLI
-        run: 'nix profile install github:overengineeringstudio/effect-utils#megarepo'
-        shell: bash
       - name: Sync megarepo dependencies
         env:
           MEGAREPO_STORE: '${{ runner.temp }}/megarepo-store/${{ github.run_id }}/${{ github.run_attempt }}/${{ github.job }}'
@@ -236,9 +233,6 @@ jobs:
         with:
           name: livestore
           authToken: '${{ env.CACHIX_AUTH_TOKEN }}'
-      - name: Install megarepo CLI
-        run: 'nix profile install github:overengineeringstudio/effect-utils#megarepo'
-        shell: bash
       - name: Sync megarepo dependencies
         env:
           MEGAREPO_STORE: '${{ runner.temp }}/megarepo-store/${{ github.run_id }}/${{ github.run_attempt }}/${{ github.job }}'
@@ -428,9 +422,6 @@ jobs:
         with:
           name: livestore
           authToken: '${{ env.CACHIX_AUTH_TOKEN }}'
-      - name: Install megarepo CLI
-        run: 'nix profile install github:overengineeringstudio/effect-utils#megarepo'
-        shell: bash
       - name: Sync megarepo dependencies
         env:
           MEGAREPO_STORE: '${{ runner.temp }}/megarepo-store/${{ github.run_id }}/${{ github.run_attempt }}/${{ github.job }}'
@@ -620,9 +611,6 @@ jobs:
         with:
           name: livestore
           authToken: '${{ env.CACHIX_AUTH_TOKEN }}'
-      - name: Install megarepo CLI
-        run: 'nix profile install github:overengineeringstudio/effect-utils#megarepo'
-        shell: bash
       - name: Sync megarepo dependencies
         env:
           MEGAREPO_STORE: '${{ runner.temp }}/megarepo-store/${{ github.run_id }}/${{ github.run_attempt }}/${{ github.job }}'
@@ -856,9 +844,6 @@ jobs:
         with:
           name: livestore
           authToken: '${{ env.CACHIX_AUTH_TOKEN }}'
-      - name: Install megarepo CLI
-        run: 'nix profile install github:overengineeringstudio/effect-utils#megarepo'
-        shell: bash
       - name: Sync megarepo dependencies
         env:
           MEGAREPO_STORE: '${{ runner.temp }}/megarepo-store/${{ github.run_id }}/${{ github.run_attempt }}/${{ github.job }}'
@@ -1078,9 +1063,6 @@ jobs:
         with:
           name: livestore
           authToken: '${{ env.CACHIX_AUTH_TOKEN }}'
-      - name: Install megarepo CLI
-        run: 'nix profile install github:overengineeringstudio/effect-utils#megarepo'
-        shell: bash
       - name: Sync megarepo dependencies
         env:
           MEGAREPO_STORE: '${{ runner.temp }}/megarepo-store/${{ github.run_id }}/${{ github.run_attempt }}/${{ github.job }}'
@@ -1366,9 +1348,6 @@ jobs:
         with:
           name: livestore
           authToken: '${{ env.CACHIX_AUTH_TOKEN }}'
-      - name: Install megarepo CLI
-        run: 'nix profile install github:overengineeringstudio/effect-utils#megarepo'
-        shell: bash
       - name: Sync megarepo dependencies
         env:
           MEGAREPO_STORE: '${{ runner.temp }}/megarepo-store/${{ github.run_id }}/${{ github.run_attempt }}/${{ github.job }}'
@@ -1572,9 +1551,6 @@ jobs:
         with:
           name: livestore
           authToken: '${{ env.CACHIX_AUTH_TOKEN }}'
-      - name: Install megarepo CLI
-        run: 'nix profile install github:overengineeringstudio/effect-utils#megarepo'
-        shell: bash
       - name: Sync megarepo dependencies
         env:
           MEGAREPO_STORE: '${{ runner.temp }}/megarepo-store/${{ github.run_id }}/${{ github.run_attempt }}/${{ github.job }}'
@@ -1851,9 +1827,6 @@ jobs:
         with:
           name: livestore
           authToken: '${{ env.CACHIX_AUTH_TOKEN }}'
-      - name: Install megarepo CLI
-        run: 'nix profile install github:overengineeringstudio/effect-utils#megarepo'
-        shell: bash
       - name: Sync megarepo dependencies
         env:
           MEGAREPO_STORE: '${{ runner.temp }}/megarepo-store/${{ github.run_id }}/${{ github.run_attempt }}/${{ github.job }}'
@@ -2045,9 +2018,6 @@ jobs:
         with:
           name: livestore
           authToken: '${{ env.CACHIX_AUTH_TOKEN }}'
-      - name: Install megarepo CLI
-        run: 'nix profile install github:overengineeringstudio/effect-utils#megarepo'
-        shell: bash
       - name: Sync megarepo dependencies
         env:
           MEGAREPO_STORE: '${{ runner.temp }}/megarepo-store/${{ github.run_id }}/${{ github.run_attempt }}/${{ github.job }}'
@@ -2454,9 +2424,6 @@ jobs:
         with:
           name: livestore
           authToken: '${{ env.CACHIX_AUTH_TOKEN }}'
-      - name: Install megarepo CLI
-        run: 'nix profile install github:overengineeringstudio/effect-utils#megarepo'
-        shell: bash
       - name: Sync megarepo dependencies
         env:
           MEGAREPO_STORE: '${{ runner.temp }}/megarepo-store/${{ github.run_id }}/${{ github.run_attempt }}/${{ github.job }}'
