@@ -2,6 +2,7 @@ import {
   catalog,
   livestorePackageDefaults,
   packageJson,
+  repoPnpmOnlyBuiltDependencies,
   workspaceMember,
   getUtilsPeerDeps,
 } from '../../../genie/repo.ts'
@@ -33,7 +34,6 @@ const runtimeDeps = catalog.compose({
   peerDependencies: {
     external: {
       ...getUtilsPeerDeps(),
-      ...catalog.peers('@livestore/devtools-vite'),
     },
   },
 })
@@ -48,7 +48,6 @@ export default packageJson(
     bin: {
       livestore: './src/bin.ts',
     },
-    peerDependenciesMeta: adapterNodePkg.data.peerDependenciesMeta,
     publishConfig: {
       access: 'public',
       exports: {
@@ -57,6 +56,9 @@ export default packageJson(
       bin: {
         livestore: './dist/bin.js',
       },
+    },
+    pnpm: {
+      onlyBuiltDependencies: repoPnpmOnlyBuiltDependencies,
     },
     scripts: {
       build: 'tsc',

@@ -24,11 +24,11 @@
         "tsgo": "tsgo"
       },
       "locked": {
-        "lastModified": 1774607618,
-        "narHash": "sha256-r16/KBDCc1jI8kJzty7xUU7xawjpkPRql5/LSZle3IA=",
+        "lastModified": 1774694313,
+        "narHash": "sha256-aoi3cC2mqxMfI/+/Xk8r94dLQMq1SlU3FsCbW092aBE=",
         "owner": "overengineeringstudio",
         "repo": "effect-utils",
-        "rev": "c2531f4e5440e5b73a552e218e1fb79d8d1988f6",
+        "rev": "1bd4b185346ba3d45cb075be405d38123e5e2f13",
         "type": "github"
       },
       "original": {
@@ -190,11 +190,11 @@
       },
       "locked": {
         "dir": "nix/playwright-flake",
-        "lastModified": 1774607618,
-        "narHash": "sha256-r16/KBDCc1jI8kJzty7xUU7xawjpkPRql5/LSZle3IA=",
+        "lastModified": 1774694313,
+        "narHash": "sha256-aoi3cC2mqxMfI/+/Xk8r94dLQMq1SlU3FsCbW092aBE=",
         "owner": "overengineeringstudio",
         "repo": "effect-utils",
-        "rev": "c2531f4e5440e5b73a552e218e1fb79d8d1988f6",
+        "rev": "1bd4b185346ba3d45cb075be405d38123e5e2f13",
         "type": "github"
       },
       "original": {

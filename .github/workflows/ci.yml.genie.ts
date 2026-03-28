@@ -8,6 +8,7 @@ import {
   namespaceRunner,
   nixDiagnosticsArtifactStep,
   otelSetupStep,
+  repoPnpmOnlyBuiltDependencies,
   runDevenvTasksBefore,
   savePnpmStoreStep,
 } from '../../genie/repo.ts'
@@ -21,6 +22,8 @@ const GITHUB_SHA = '${{ github.sha }}'
 const GITHUB_REF = '${{ github.ref }}'
 const PR_HEAD_SHA = '${{ github.event.pull_request.head.sha || github.sha }}'
 const IS_NOT_FORK = 'github.event.pull_request.head.repo.fork != true'
+const DLX_ALLOW_BUILD_FLAGS = repoPnpmOnlyBuiltDependencies.map((name) => `--allow-build=${name}`).join(' ')
+const PNPM_ADD_ALLOW_BUILD_FLAGS = repoPnpmOnlyBuiltDependencies.map((name) => `--allow-build=${name}`).join(' ')
 
 // =============================================================================
 // Job Helpers
@@ -435,12 +438,12 @@ echo "WORKSPACE_DEPS=$DEPS" >> $GITHUB_ENV`,
            * merge commits are unavailable, which makes GitHub contents API calls fail.
            */
           name: 'Copy example app',
-          run: `pnpm dlx @livestore/cli@\${{ env.SNAPSHOT_VERSION }} create --example \${{ matrix.app }} --ref ${PR_HEAD_SHA} \${{ runner.temp }}/\${{ env.APP_PATH }}`,
+          run: `pnpm dlx ${DLX_ALLOW_BUILD_FLAGS} @livestore/cli@\${{ env.SNAPSHOT_VERSION }} create --example \${{ matrix.app }} --ref ${PR_HEAD_SHA} \${{ runner.temp }}/\${{ env.APP_PATH }}`,
         },
         {
           name: 'Use snapshot version of workspace dependencies',
           'working-directory': '${{ runner.temp }}/${{ env.APP_PATH }}',
-          run: `pnpm add $(
+          run: `pnpm add ${PNPM_ADD_ALLOW_BUILD_FLAGS} $(
   for dep in $WORKSPACE_DEPS; do
     echo "$dep@\${{ env.SNAPSHOT_VERSION }}"
   done

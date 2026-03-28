@@ -14,7 +14,7 @@ const runtimeDeps = catalog.compose({
   workspace: workspaceMember('packages/@livestore/adapter-node'),
   dependencies: {
     workspace: [commonPkg, sqliteWasmPkg, utilsPkg, webmeshPkg],
-    external: catalog.pick('@opentelemetry/api', 'vite'),
+    external: catalog.pick('@opentelemetry/api'),
   },
   devDependencies: {
     external: catalog.pick(
@@ -24,12 +24,12 @@ const runtimeDeps = catalog.compose({
       '@rollup/plugin-terser',
       '@types/node',
       'rollup',
+      'vite',
     ),
   },
   peerDependencies: {
     external: {
       ...getUtilsPeerDeps(),
-      ...catalog.peers('@livestore/devtools-vite'),
     },
   },
 })
@@ -42,9 +42,6 @@ export default packageJson(
       '.': './src/index.ts',
       './devtools': './src/devtools/mod.ts',
       './worker': './src/make-leader-worker.ts',
-    },
-    peerDependenciesMeta: {
-      '@livestore/devtools-vite': { optional: true },
     },
     publishConfig: {
       access: 'public',

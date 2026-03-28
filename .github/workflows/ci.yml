@@ -3394,11 +3394,11 @@ jobs:
           DEPS=$(jq -r '[(.dependencies // {}), (.devDependencies // {}) | to_entries[] | select(.key | startswith("@livestore/")) | .key] | .[]' ${{ env.APP_PATH }}/package.json | while read dep; do dir="packages/@livestore/${dep#@livestore/}"; [ -d "$dir" ] && echo "$dep"; done | tr '\n' ' ')
           echo "WORKSPACE_DEPS=$DEPS" >> $GITHUB_ENV
       - name: Copy example app
-        run: 'pnpm dlx @livestore/cli@${{ env.SNAPSHOT_VERSION }} create --example ${{ matrix.app }} --ref ${{ github.event.pull_request.head.sha || github.sha }} ${{ runner.temp }}/${{ env.APP_PATH }}'
+        run: 'pnpm dlx --allow-build=@mixedbread/cli --allow-build=@parcel/watcher --allow-build=cbor-extract --allow-build=dtrace-provider --allow-build=esbuild --allow-build=msgpackr-extract --allow-build=protobufjs --allow-build=puppeteer --allow-build=sharp --allow-build=unix-dgram --allow-build=workerd @livestore/cli@${{ env.SNAPSHOT_VERSION }} create --example ${{ matrix.app }} --ref ${{ github.event.pull_request.head.sha || github.sha }} ${{ runner.temp }}/${{ env.APP_PATH }}'
       - name: Use snapshot version of workspace dependencies
         working-directory: '${{ runner.temp }}/${{ env.APP_PATH }}'
         run: |
-          pnpm add $(
+          pnpm add --allow-build=@mixedbread/cli --allow-build=@parcel/watcher --allow-build=cbor-extract --allow-build=dtrace-provider --allow-build=esbuild --allow-build=msgpackr-extract --allow-build=protobufjs --allow-build=puppeteer --allow-build=sharp --allow-build=unix-dgram --allow-build=workerd $(
             for dep in $WORKSPACE_DEPS; do
               echo "$dep@${{ env.SNAPSHOT_VERSION }}"
             done

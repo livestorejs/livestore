@@ -10,8 +10,117 @@ class PackageJsonParseError extends Schema.TaggedError<PackageJsonParseError>()(
   cause: Schema.Defect,
 }) {}
 
+type TDependencyField = 'dependencies' | 'devDependencies' | 'peerDependencies' | 'optionalDependencies'
+
+type TMutablePackageJson = {
+  name?: string
+  private?: boolean
+  dependencies?: Record<string, string>
+  devDependencies?: Record<string, string>
+  peerDependencies?: Record<string, string>
+  optionalDependencies?: Record<string, string>
+}
+
 const toErrorMessage = (cause: unknown) => (cause instanceof Error ? cause.message : String(cause))
 
+const dependencyFields = ['dependencies', 'devDependencies', 'peerDependencies', 'optionalDependencies'] as const
+
+const isSnapshotVersion = (version: string) => version.includes('-snapshot-')
+
+/**
+ * Snapshot publishing only rewrites public `@livestore/*` packages.
+ * The release flow operates on package names, so we need a stable mapping
+ * back to the published package directory to patch `package.json` in place.
+ */
+const packageJsonPathFromPackageName = (cwd: string, packageName: string) =>
+  `${cwd}/packages/@livestore/${packageName.replace('@livestore/', '')}/package.json`
+
+/**
+ * Snapshot versions must collapse workspace and ranged internal deps to the
+ * exact published snapshot version. Leaving prerelease ranges in place lets
+ * pnpm resolve a different snapshot build, which breaks standalone installs.
+ */
+const pinSnapshotDependencySpec = ({
+  dependencyName,
+  currentSpec,
+  snapshotPackages,
+  snapshotVersion,
+}: {
+  dependencyName: string
+  currentSpec: string
+  snapshotPackages: ReadonlySet<string>
+  snapshotVersion: string
+}) => {
+  if (snapshotPackages.has(dependencyName) === false) return currentSpec
+  if (currentSpec === snapshotVersion) return currentSpec
+  if (currentSpec.startsWith('workspace:') === true) return snapshotVersion
+  if (currentSpec === `^${snapshotVersion}` || currentSpec === `~${snapshotVersion}`) return snapshotVersion
+  return currentSpec
+}
+
+/**
+ * Rewrites internal dependency ranges after Genie generation so the published
+ * snapshot graph is self-contained and installable outside the monorepo.
+ */
+export const rewriteSnapshotInternalDependencyRanges = ({
+  cwd,
+  snapshotPackages,
+  snapshotVersion,
+}: {
+  cwd: string
+  snapshotPackages: ReadonlyArray<string>
+  snapshotVersion: string
+}) =>
+  Effect.gen(function* () {
+    if (isSnapshotVersion(snapshotVersion) === false) return
+
+    const fsEffect = yield* FileSystem.FileSystem
+    const snapshotPackageSet = new Set(snapshotPackages)
+
+    for (const packageName of snapshotPackages) {
+      const packageJsonPath = packageJsonPathFromPackageName(cwd, packageName)
+      const packageJson = yield* fsEffect.readFileString(packageJsonPath).pipe(
+        Effect.flatMap((content) =>
+          Effect.try({
+            try: () => JSON.parse(content) as TMutablePackageJson,
+            catch: (cause) => new PackageJsonParseError({ message: `Failed to parse ${packageJsonPath}`, cause }),
+          }),
+        ),
+      )
+
+      let rewriteCount = 0
+
+      for (const field of dependencyFields) {
+        const dependencies = packageJson[field]
+        if (dependencies === undefined) continue
+
+        for (const [dependencyName, currentSpec] of Object.entries(dependencies)) {
+          const nextSpec = pinSnapshotDependencySpec({
+            dependencyName,
+            currentSpec,
+            snapshotPackages: snapshotPackageSet,
+            snapshotVersion,
+          })
+
+          if (nextSpec === currentSpec) continue
+
+          dependencies[dependencyName] = nextSpec
+          rewriteCount += 1
+        }
+      }
+
+      if (rewriteCount === 0) continue
+
+      yield* fsEffect.writeFileString(packageJsonPath, `${JSON.stringify(packageJson, null, 2)}\n`)
+      yield* Effect.log(`Pinned ${rewriteCount} internal snapshot dependency range(s) in ${packageName}`)
+    }
+  })
+
+/**
+ * Enumerates the publishable `@livestore/*` packages for snapshot releases.
+ * We intentionally read from the generated `package.json` files so the summary
+ * and publish loop follow the exact publish surface for the current checkout.
+ */
 const listSnapshotPackages = (cwd: string) =>
   Effect.gen(function* () {
     const fsEffect = yield* FileSystem.FileSystem
@@ -27,6 +136,7 @@ const listSnapshotPackages = (cwd: string) =>
     const entries = yield* fsEffect.readDirectory(baseDir)
 
     for (const entry of entries) {
+      /** `effect-playwright` is consumed as a workspace helper and is not part of the public snapshot set. */
       if (entry === 'effect-playwright') continue
 
       const packageJsonPath = `${baseDir}/${entry}/package.json`
@@ -143,6 +253,13 @@ export const releaseSnapshotCommand = Cli.Command.make(
       Effect.provide(CurrentWorkingDirectory.fromPath(cwd)),
     )
 
+    /**
+     * Snapshot prereleases must pin internal @livestore package edges exactly.
+     * Semver ranges on prereleases allow pnpm to resolve an older snapshot,
+     * which breaks standalone installs like `pnpm dlx @livestore/cli@<snapshot>`.
+     */
+    yield* rewriteSnapshotInternalDependencyRanges({ cwd, snapshotPackages, snapshotVersion })
+
     /** Rebuild TypeScript so dist/ picks up the snapshot version from package.json (emit-only, type checking is separate) */
     const tsc = tscBinOption._tag === 'Some' ? tscBinOption.value : 'tsc'
     yield* cmd(`${tsc} --build tsconfig.dev.json --noCheck`, { shell: true }).pipe(
@@ -151,8 +268,8 @@ export const releaseSnapshotCommand = Cli.Command.make(
 
     /**
      * Publish each package sequentially via pnpm publish.
-     * pnpm publish resolves workspace:* → concrete versions automatically,
-     * then delegates to the system npm binary for OIDC trusted publishing.
+     * Internal snapshot ranges are already rewritten to exact versions above so
+     * the published prerelease graph remains self-consistent.
      */
     for (const pkg of snapshotPackages) {
       const pkgDir = `${cwd}/packages/${pkg}`
