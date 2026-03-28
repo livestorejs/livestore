@@ -3,7 +3,9 @@
 {
   "compilerOptions": {
     "target": "ES2024",
-    "lib": ["ES2024"],
+    "lib": [
+      "ES2024"
+    ],
     "module": "NodeNext",
     "moduleResolution": "NodeNext",
     "allowImportingTsExtensions": true,
@@ -43,8 +45,16 @@
     "tsBuildInfoFile": "./dist/.tsbuildinfo",
     "jsx": "react-jsx"
   },
-  "include": ["./src", "src/types.d.ts"],
-  "exclude": ["node_modules", "**/dist", "**/node_modules/.pnpm", "**/*.genie.ts"],
+  "include": [
+    "./src",
+    "src/types.d.ts"
+  ],
+  "exclude": [
+    "node_modules",
+    "**/dist",
+    "**/node_modules/.pnpm",
+    "**/*.genie.ts"
+  ],
   "references": [
     {
       "path": "../adapter-web"

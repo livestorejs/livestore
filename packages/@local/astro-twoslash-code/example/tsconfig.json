@@ -3,7 +3,9 @@
 {
   "compilerOptions": {
     "target": "ES2024",
-    "lib": ["ES2023"],
+    "lib": [
+      "ES2023"
+    ],
     "allowImportingTsExtensions": true,
     "rewriteRelativeImportExtensions": true,
     "resolveJsonModule": true,
@@ -25,7 +27,10 @@
     "declarationMap": true,
     "sourceMap": true,
     "outDir": "./dist",
-    "types": ["node", "@astrojs/astro-types"],
+    "types": [
+      "node",
+      "@astrojs/astro-types"
+    ],
     "jsx": "preserve",
     "jsxImportSource": "astro"
   },
@@ -34,5 +39,11 @@
       "path": ".."
     }
   ],
-  "include": ["astro.config.mjs", "src", "scripts", "tests", "playwright.config.ts"]
+  "include": [
+    "astro.config.mjs",
+    "src",
+    "scripts",
+    "tests",
+    "playwright.config.ts"
+  ]
 }

@@ -4,7 +4,9 @@
   "data": {
     "compilerOptions": {
       "target": "ES2024",
-      "lib": ["ES2024"],
+      "lib": [
+        "ES2024"
+      ],
       "module": "NodeNext",
       "moduleResolution": "NodeNext",
       "allowImportingTsExtensions": true,
@@ -42,8 +44,17 @@
       "noEmit": true,
       "jsx": "react-jsx"
     },
-    "include": ["./test-app", "./src", "./tests"],
-    "exclude": ["node_modules", "**/dist", "**/node_modules/.pnpm", "**/*.genie.ts"],
+    "include": [
+      "./test-app",
+      "./src",
+      "./tests"
+    ],
+    "exclude": [
+      "node_modules",
+      "**/dist",
+      "**/node_modules/.pnpm",
+      "**/*.genie.ts"
+    ],
     "references": [
       {
         "path": "../../packages/@livestore/adapter-web"
@@ -66,7 +77,14 @@
     ]
   },
   "compilerOptions": {
-    "types": ["vite/client"]
+    "types": [
+      "vite/client"
+    ]
   },
-  "include": ["./src", "./vite.config.ts", "./index.html", "../src"]
+  "include": [
+    "./src",
+    "./vite.config.ts",
+    "./index.html",
+    "../src"
+  ]
 }

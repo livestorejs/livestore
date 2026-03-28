@@ -3,7 +3,9 @@
 {
   "compilerOptions": {
     "target": "ES2024",
-    "lib": ["ES2024"],
+    "lib": [
+      "ES2024"
+    ],
     "module": "NodeNext",
     "moduleResolution": "NodeNext",
     "allowImportingTsExtensions": true,
@@ -42,10 +44,23 @@
     "rootDir": ".",
     "jsx": "react-jsx",
     "tsBuildInfoFile": "./dist/.tsbuildinfo",
-    "types": ["@cloudflare/workers-types", "@types/react", "@types/react-dom"]
+    "types": [
+      "@cloudflare/workers-types",
+      "@types/react",
+      "@types/react-dom"
+    ]
   },
-  "include": ["./src", "./scripts"],
-  "exclude": ["node_modules", "**/dist", "**/node_modules/.pnpm", "**/*.genie.ts", "./src/tests/devtools/fixtures"],
+  "include": [
+    "./src",
+    "./scripts"
+  ],
+  "exclude": [
+    "node_modules",
+    "**/dist",
+    "**/node_modules/.pnpm",
+    "**/*.genie.ts",
+    "./src/tests/devtools/fixtures"
+  ],
   "references": [
     {
       "path": "../../packages/@local/shared"
