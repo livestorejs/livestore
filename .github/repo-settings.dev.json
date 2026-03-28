@@ -4,9 +4,7 @@
   "target": "branch",
   "conditions": {
     "ref_name": {
-      "include": [
-        "refs/heads/dev"
-      ],
+      "include": ["refs/heads/dev"],
       "exclude": []
     }
   },

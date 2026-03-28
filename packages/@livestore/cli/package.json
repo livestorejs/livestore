@@ -1,34 +1,10 @@
 {
-  "$genie": {
-    "source": "package.json.genie.ts",
-    "warning": "DO NOT EDIT - changes will be overwritten",
-    "workspaceClosureDirs": [
-      "packages/@livestore/adapter-node",
-      "packages/@livestore/adapter-web",
-      "packages/@livestore/cli",
-      "packages/@livestore/common",
-      "packages/@livestore/common-cf",
-      "packages/@livestore/devtools-web-common",
-      "packages/@livestore/livestore",
-      "packages/@livestore/peer-deps",
-      "packages/@livestore/sqlite-wasm",
-      "packages/@livestore/utils",
-      "packages/@livestore/utils-dev",
-      "packages/@livestore/wa-sqlite",
-      "packages/@livestore/webmesh"
-    ]
-  },
   "name": "@livestore/cli",
   "version": "0.4.0-dev.22",
-  "type": "module",
-  "sideEffects": false,
   "license": "Apache-2.0",
   "repository": {
     "type": "git",
     "url": "git+https://github.com/livestorejs/livestore.git"
-  },
-  "exports": {
-    ".": "./src/mod.ts"
   },
   "bin": {
     "livestore": "./src/bin.ts"
@@ -38,6 +14,20 @@
     "package.json",
     "src"
   ],
+  "type": "module",
+  "sideEffects": false,
+  "exports": {
+    ".": "./src/mod.ts"
+  },
+  "publishConfig": {
+    "access": "public",
+    "bin": {
+      "livestore": "./dist/bin.js"
+    },
+    "exports": {
+      ".": "./dist/mod.js"
+    }
+  },
   "scripts": {
     "build": "tsc",
     "dev": "bun src/bin.ts"
@@ -83,15 +73,6 @@
     "@standard-schema/spec": "^1.0.0",
     "effect": "^3.19.19"
   },
-  "publishConfig": {
-    "access": "public",
-    "exports": {
-      ".": "./dist/mod.js"
-    },
-    "bin": {
-      "livestore": "./dist/bin.js"
-    }
-  },
   "pnpm": {
     "onlyBuiltDependencies": [
       "@mixedbread/cli",
@@ -105,6 +86,25 @@
       "sharp",
       "unix-dgram",
       "workerd"
+    ]
+  },
+  "$genie": {
+    "source": "package.json.genie.ts",
+    "warning": "DO NOT EDIT - changes will be overwritten",
+    "workspaceClosureDirs": [
+      "packages/@livestore/adapter-node",
+      "packages/@livestore/adapter-web",
+      "packages/@livestore/cli",
+      "packages/@livestore/common",
+      "packages/@livestore/common-cf",
+      "packages/@livestore/devtools-web-common",
+      "packages/@livestore/livestore",
+      "packages/@livestore/peer-deps",
+      "packages/@livestore/sqlite-wasm",
+      "packages/@livestore/utils",
+      "packages/@livestore/utils-dev",
+      "packages/@livestore/wa-sqlite",
+      "packages/@livestore/webmesh"
     ]
   }
 }

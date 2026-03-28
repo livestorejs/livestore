@@ -1,39 +1,29 @@
 {
-  "$genie": {
-    "source": "package.json.genie.ts",
-    "warning": "DO NOT EDIT - changes will be overwritten",
-    "workspaceClosureDirs": [
-      "packages/@livestore/adapter-web",
-      "packages/@livestore/common",
-      "packages/@livestore/common-cf",
-      "packages/@livestore/devtools-web-common",
-      "packages/@livestore/framework-toolkit",
-      "packages/@livestore/livestore",
-      "packages/@livestore/sqlite-wasm",
-      "packages/@livestore/utils",
-      "packages/@livestore/utils-dev",
-      "packages/@livestore/wa-sqlite",
-      "packages/@livestore/webmesh"
-    ]
-  },
   "name": "@livestore/framework-toolkit",
   "version": "0.4.0-dev.22",
-  "type": "module",
-  "sideEffects": false,
   "license": "Apache-2.0",
   "repository": {
     "type": "git",
     "url": "git+https://github.com/livestorejs/livestore.git"
-  },
-  "exports": {
-    ".": "./src/mod.ts",
-    "./testing": "./src/testing.ts"
   },
   "files": [
     "dist",
     "package.json",
     "src"
   ],
+  "type": "module",
+  "sideEffects": false,
+  "exports": {
+    ".": "./src/mod.ts",
+    "./testing": "./src/testing.ts"
+  },
+  "publishConfig": {
+    "access": "public",
+    "exports": {
+      ".": "./dist/mod.js",
+      "./testing": "./dist/testing.js"
+    }
+  },
   "scripts": {
     "build": "tsc"
   },
@@ -69,11 +59,21 @@
     "@standard-schema/spec": "^1.0.0",
     "effect": "^3.19.19"
   },
-  "publishConfig": {
-    "access": "public",
-    "exports": {
-      ".": "./dist/mod.js",
-      "./testing": "./dist/testing.js"
-    }
+  "$genie": {
+    "source": "package.json.genie.ts",
+    "warning": "DO NOT EDIT - changes will be overwritten",
+    "workspaceClosureDirs": [
+      "packages/@livestore/adapter-web",
+      "packages/@livestore/common",
+      "packages/@livestore/common-cf",
+      "packages/@livestore/devtools-web-common",
+      "packages/@livestore/framework-toolkit",
+      "packages/@livestore/livestore",
+      "packages/@livestore/sqlite-wasm",
+      "packages/@livestore/utils",
+      "packages/@livestore/utils-dev",
+      "packages/@livestore/wa-sqlite",
+      "packages/@livestore/webmesh"
+    ]
   }
 }

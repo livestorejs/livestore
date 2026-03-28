@@ -1,34 +1,34 @@
 {
-  "$genie": {
-    "source": "package.json.genie.ts",
-    "warning": "DO NOT EDIT - changes will be overwritten",
-    "workspaceClosureDirs": [
-      "packages/@livestore/utils",
-      "packages/@livestore/utils-dev"
-    ]
-  },
   "name": "@livestore/utils-dev",
   "version": "0.4.0-dev.22",
-  "type": "module",
-  "sideEffects": [
-    "./src/node-vitest/global.ts",
-    "./dist/node-vitest/global.js"
-  ],
   "license": "Apache-2.0",
   "repository": {
     "type": "git",
     "url": "git+https://github.com/livestorejs/livestore.git"
-  },
-  "exports": {
-    "./node": "./src/node/mod.ts",
-    "./node-vitest": "./src/node-vitest/mod.ts",
-    "./wrangler": "./src/wrangler/mod.ts"
   },
   "files": [
     "dist",
     "package.json",
     "src"
   ],
+  "type": "module",
+  "sideEffects": [
+    "./src/node-vitest/global.ts",
+    "./dist/node-vitest/global.js"
+  ],
+  "exports": {
+    "./node": "./src/node/mod.ts",
+    "./node-vitest": "./src/node-vitest/mod.ts",
+    "./wrangler": "./src/wrangler/mod.ts"
+  },
+  "publishConfig": {
+    "access": "public",
+    "exports": {
+      "./node": "./dist/node/mod.js",
+      "./node-vitest": "./dist/node-vitest/mod.js",
+      "./wrangler": "./dist/wrangler/mod.js"
+    }
+  },
   "scripts": {
     "test": "echo 'No tests for utils-dev'"
   },
@@ -88,12 +88,12 @@
     "@standard-schema/spec": "^1.0.0",
     "effect": "^3.19.19"
   },
-  "publishConfig": {
-    "access": "public",
-    "exports": {
-      "./node": "./dist/node/mod.js",
-      "./node-vitest": "./dist/node-vitest/mod.js",
-      "./wrangler": "./dist/wrangler/mod.js"
-    }
+  "$genie": {
+    "source": "package.json.genie.ts",
+    "warning": "DO NOT EDIT - changes will be overwritten",
+    "workspaceClosureDirs": [
+      "packages/@livestore/utils",
+      "packages/@livestore/utils-dev"
+    ]
   }
 }

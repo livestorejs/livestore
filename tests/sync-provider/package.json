@@ -1,30 +1,8 @@
 {
-  "$genie": {
-    "source": "package.json.genie.ts",
-    "warning": "DO NOT EDIT - changes will be overwritten",
-    "workspaceClosureDirs": [
-      "packages/@livestore/adapter-cloudflare",
-      "packages/@livestore/adapter-node",
-      "packages/@livestore/adapter-web",
-      "packages/@livestore/common",
-      "packages/@livestore/common-cf",
-      "packages/@livestore/devtools-web-common",
-      "packages/@livestore/livestore",
-      "packages/@livestore/sqlite-wasm",
-      "packages/@livestore/sync-cf",
-      "packages/@livestore/sync-electric",
-      "packages/@livestore/sync-s2",
-      "packages/@livestore/utils",
-      "packages/@livestore/utils-dev",
-      "packages/@livestore/wa-sqlite",
-      "packages/@livestore/webmesh",
-      "tests/sync-provider"
-    ]
-  },
   "name": "@local/tests-sync-provider",
   "version": "0.0.0",
-  "type": "module",
   "private": true,
+  "type": "module",
   "exports": {
     "./prepare-ci": "./src/prepare-ci.ts",
     "./registry": "./src/providers/registry.ts"
@@ -71,5 +49,27 @@
     "@types/node": "25.3.3",
     "effect": "3.19.19",
     "vitest": "3.2.4"
+  },
+  "$genie": {
+    "source": "package.json.genie.ts",
+    "warning": "DO NOT EDIT - changes will be overwritten",
+    "workspaceClosureDirs": [
+      "packages/@livestore/adapter-cloudflare",
+      "packages/@livestore/adapter-node",
+      "packages/@livestore/adapter-web",
+      "packages/@livestore/common",
+      "packages/@livestore/common-cf",
+      "packages/@livestore/devtools-web-common",
+      "packages/@livestore/livestore",
+      "packages/@livestore/sqlite-wasm",
+      "packages/@livestore/sync-cf",
+      "packages/@livestore/sync-electric",
+      "packages/@livestore/sync-s2",
+      "packages/@livestore/utils",
+      "packages/@livestore/utils-dev",
+      "packages/@livestore/wa-sqlite",
+      "packages/@livestore/webmesh",
+      "tests/sync-provider"
+    ]
   }
 }

@@ -3,11 +3,7 @@
 {
   "compilerOptions": {
     "target": "ES2024",
-    "lib": [
-      "ES2024",
-      "DOM",
-      "DOM.Iterable"
-    ],
+    "lib": ["ES2024", "DOM", "DOM.Iterable"],
     "module": "NodeNext",
     "moduleResolution": "NodeNext",
     "allowImportingTsExtensions": true,
@@ -44,26 +40,12 @@
     ],
     "rootDir": "./",
     "jsx": "react-jsx",
-    "types": [
-      "vite/client",
-      "node",
-      "@cloudflare/workers-types",
-      "@types/react",
-      "@types/react-dom"
-    ],
+    "types": ["vite/client", "node", "@cloudflare/workers-types", "@types/react", "@types/react-dom"],
     "noEmit": true,
     "composite": false
   },
-  "include": [
-    "./**/*.ts",
-    "./**/*.tsx",
-    "./**/*.d.ts"
-  ],
-  "exclude": [
-    "./node_modules",
-    "./dist",
-    "**/*.genie.ts"
-  ],
+  "include": ["./**/*.ts", "./**/*.tsx", "./**/*.d.ts"],
+  "exclude": ["./node_modules", "./dist", "**/*.genie.ts"],
   "references": [
     {
       "path": "../../../../../packages/@livestore/adapter-cloudflare"

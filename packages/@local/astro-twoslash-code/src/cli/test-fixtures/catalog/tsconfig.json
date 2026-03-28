@@ -3,9 +3,7 @@
 {
   "compilerOptions": {
     "target": "ES2024",
-    "lib": [
-      "ES2024"
-    ],
+    "lib": ["ES2024"],
     "module": "NodeNext",
     "moduleResolution": "NodeNext",
     "allowImportingTsExtensions": true,
@@ -41,14 +39,8 @@
       }
     ],
     "rootDir": "./",
-    "types": [
-      "vite/client"
-    ],
+    "types": ["vite/client"],
     "noEmit": true
   },
-  "include": [
-    "./**/*.ts",
-    "./**/*.tsx",
-    "./**/*.d.ts"
-  ]
+  "include": ["./**/*.ts", "./**/*.tsx", "./**/*.d.ts"]
 }

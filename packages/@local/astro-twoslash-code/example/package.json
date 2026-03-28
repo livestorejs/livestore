@@ -1,17 +1,8 @@
 {
-  "$genie": {
-    "source": "package.json.genie.ts",
-    "warning": "DO NOT EDIT - changes will be overwritten",
-    "workspaceClosureDirs": [
-      "packages/@livestore/utils",
-      "packages/@local/astro-twoslash-code",
-      "packages/@local/astro-twoslash-code/example"
-    ]
-  },
   "name": "@local/astro-twoslash-code-demo",
   "version": "0.0.0",
-  "type": "module",
   "private": true,
+  "type": "module",
   "scripts": {
     "build": "astro build",
     "dev": "astro dev",
@@ -53,5 +44,14 @@
     "effect": "3.19.19",
     "tailwindcss": "4.1.18",
     "typescript": "5.9.3"
+  },
+  "$genie": {
+    "source": "package.json.genie.ts",
+    "warning": "DO NOT EDIT - changes will be overwritten",
+    "workspaceClosureDirs": [
+      "packages/@livestore/utils",
+      "packages/@local/astro-twoslash-code",
+      "packages/@local/astro-twoslash-code/example"
+    ]
   }
 }

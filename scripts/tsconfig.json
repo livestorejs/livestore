@@ -3,9 +3,7 @@
 {
   "compilerOptions": {
     "target": "ES2024",
-    "lib": [
-      "ES2024"
-    ],
+    "lib": ["ES2024"],
     "module": "NodeNext",
     "moduleResolution": "NodeNext",
     "allowImportingTsExtensions": true,
@@ -43,16 +41,8 @@
     "noEmit": true,
     "composite": false
   },
-  "include": [
-    "./src",
-    "./standalone"
-  ],
-  "exclude": [
-    "node_modules",
-    "**/dist",
-    "**/node_modules/.pnpm",
-    "**/*.genie.ts"
-  ],
+  "include": ["./src", "./standalone"],
+  "exclude": ["node_modules", "**/dist", "**/node_modules/.pnpm", "**/*.genie.ts"],
   "references": [
     {
       "path": "../packages/@livestore/utils"

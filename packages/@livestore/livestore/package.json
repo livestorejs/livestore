@@ -1,41 +1,34 @@
 {
-  "$genie": {
-    "source": "package.json.genie.ts",
-    "warning": "DO NOT EDIT - changes will be overwritten",
-    "workspaceClosureDirs": [
-      "packages/@livestore/adapter-web",
-      "packages/@livestore/common",
-      "packages/@livestore/common-cf",
-      "packages/@livestore/devtools-web-common",
-      "packages/@livestore/livestore",
-      "packages/@livestore/sqlite-wasm",
-      "packages/@livestore/utils",
-      "packages/@livestore/utils-dev",
-      "packages/@livestore/wa-sqlite",
-      "packages/@livestore/webmesh"
-    ]
-  },
   "name": "@livestore/livestore",
   "version": "0.4.0-dev.22",
-  "type": "module",
-  "sideEffects": false,
   "license": "Apache-2.0",
   "repository": {
     "type": "git",
     "url": "git+https://github.com/livestorejs/livestore.git"
   },
+  "files": [
+    "dist",
+    "docs",
+    "package.json",
+    "src"
+  ],
+  "type": "module",
+  "sideEffects": false,
   "exports": {
     ".": "./src/mod.ts",
     "./effect": "./src/effect/mod.ts",
     "./internal": "./src/internal/mod.ts",
     "./internal/testing-utils": "./src/utils/tests/mod.ts"
   },
-  "files": [
-    "dist",
-    "package.json",
-    "src",
-    "docs"
-  ],
+  "publishConfig": {
+    "access": "public",
+    "exports": {
+      ".": "./dist/mod.js",
+      "./internal": "./dist/internal/mod.js",
+      "./internal/testing-utils": "./dist/utils/tests/mod.js",
+      "./effect": "./dist/effect/mod.js"
+    }
+  },
   "scripts": {
     "build": "tsc",
     "test": "vitest"
@@ -75,13 +68,20 @@
     "@standard-schema/spec": "^1.0.0",
     "effect": "^3.19.19"
   },
-  "publishConfig": {
-    "access": "public",
-    "exports": {
-      ".": "./dist/mod.js",
-      "./internal": "./dist/internal/mod.js",
-      "./internal/testing-utils": "./dist/utils/tests/mod.js",
-      "./effect": "./dist/effect/mod.js"
-    }
+  "$genie": {
+    "source": "package.json.genie.ts",
+    "warning": "DO NOT EDIT - changes will be overwritten",
+    "workspaceClosureDirs": [
+      "packages/@livestore/adapter-web",
+      "packages/@livestore/common",
+      "packages/@livestore/common-cf",
+      "packages/@livestore/devtools-web-common",
+      "packages/@livestore/livestore",
+      "packages/@livestore/sqlite-wasm",
+      "packages/@livestore/utils",
+      "packages/@livestore/utils-dev",
+      "packages/@livestore/wa-sqlite",
+      "packages/@livestore/webmesh"
+    ]
   }
 }

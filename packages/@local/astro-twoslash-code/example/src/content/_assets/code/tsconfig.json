@@ -3,9 +3,7 @@
 {
   "compilerOptions": {
     "target": "ES2024",
-    "lib": [
-      "ES2023"
-    ],
+    "lib": ["ES2023"],
     "allowImportingTsExtensions": true,
     "rewriteRelativeImportExtensions": true,
     "resolveJsonModule": true,
@@ -25,17 +23,9 @@
     "moduleResolution": "Bundler",
     "rootDir": "./",
     "jsx": "react-jsx",
-    "types": [
-      "node"
-    ],
+    "types": ["node"],
     "noEmit": true
   },
-  "include": [
-    "./**/*.ts",
-    "./**/*.tsx",
-    "./**/*.d.ts"
-  ],
-  "exclude": [
-    "./node_modules"
-  ]
+  "include": ["./**/*.ts", "./**/*.tsx", "./**/*.d.ts"],
+  "exclude": ["./node_modules"]
 }

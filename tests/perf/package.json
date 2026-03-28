@@ -1,27 +1,8 @@
 {
-  "$genie": {
-    "source": "package.json.genie.ts",
-    "warning": "DO NOT EDIT - changes will be overwritten",
-    "workspaceClosureDirs": [
-      "packages/@livestore/adapter-web",
-      "packages/@livestore/common",
-      "packages/@livestore/common-cf",
-      "packages/@livestore/devtools-web-common",
-      "packages/@livestore/framework-toolkit",
-      "packages/@livestore/livestore",
-      "packages/@livestore/react",
-      "packages/@livestore/sqlite-wasm",
-      "packages/@livestore/utils",
-      "packages/@livestore/utils-dev",
-      "packages/@livestore/wa-sqlite",
-      "packages/@livestore/webmesh",
-      "tests/perf"
-    ]
-  },
   "name": "@local/tests-perf",
   "version": "0.0.0",
-  "type": "module",
   "private": true,
+  "type": "module",
   "scripts": {
     "test": "NODE_OPTIONS=--disable-warning=ExperimentalWarning playwright test",
     "test-app": "vite build test-app && vite preview test-app",
@@ -68,5 +49,24 @@
     "@opentelemetry/resources": "2.2.0",
     "@standard-schema/spec": "1.0.0",
     "effect": "3.19.19"
+  },
+  "$genie": {
+    "source": "package.json.genie.ts",
+    "warning": "DO NOT EDIT - changes will be overwritten",
+    "workspaceClosureDirs": [
+      "packages/@livestore/adapter-web",
+      "packages/@livestore/common",
+      "packages/@livestore/common-cf",
+      "packages/@livestore/devtools-web-common",
+      "packages/@livestore/framework-toolkit",
+      "packages/@livestore/livestore",
+      "packages/@livestore/react",
+      "packages/@livestore/sqlite-wasm",
+      "packages/@livestore/utils",
+      "packages/@livestore/utils-dev",
+      "packages/@livestore/wa-sqlite",
+      "packages/@livestore/webmesh",
+      "tests/perf"
+    ]
   }
 }

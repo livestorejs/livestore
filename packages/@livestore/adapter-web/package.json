@@ -1,39 +1,33 @@
 {
-  "$genie": {
-    "source": "package.json.genie.ts",
-    "warning": "DO NOT EDIT - changes will be overwritten",
-    "workspaceClosureDirs": [
-      "packages/@livestore/adapter-web",
-      "packages/@livestore/common",
-      "packages/@livestore/common-cf",
-      "packages/@livestore/devtools-web-common",
-      "packages/@livestore/sqlite-wasm",
-      "packages/@livestore/utils",
-      "packages/@livestore/utils-dev",
-      "packages/@livestore/wa-sqlite",
-      "packages/@livestore/webmesh"
-    ]
-  },
   "name": "@livestore/adapter-web",
   "version": "0.4.0-dev.22",
-  "type": "module",
-  "sideEffects": false,
   "license": "Apache-2.0",
   "repository": {
     "type": "git",
     "url": "git+https://github.com/livestorejs/livestore.git"
-  },
-  "exports": {
-    ".": "./src/index.ts",
-    "./shared-worker": "./src/web-worker/shared-worker/make-shared-worker.ts",
-    "./worker": "./src/web-worker/leader-worker/make-leader-worker.ts",
-    "./worker-vite-dev-polyfill": "./src/web-worker/vite-dev-polyfill.ts"
   },
   "files": [
     "dist",
     "package.json",
     "src"
   ],
+  "type": "module",
+  "sideEffects": false,
+  "exports": {
+    ".": "./src/index.ts",
+    "./shared-worker": "./src/web-worker/shared-worker/make-shared-worker.ts",
+    "./worker": "./src/web-worker/leader-worker/make-leader-worker.ts",
+    "./worker-vite-dev-polyfill": "./src/web-worker/vite-dev-polyfill.ts"
+  },
+  "publishConfig": {
+    "access": "public",
+    "exports": {
+      ".": "./dist/index.js",
+      "./worker": "./dist/web-worker/leader-worker/make-leader-worker.js",
+      "./worker-vite-dev-polyfill": "./dist/web-worker/vite-dev-polyfill.js",
+      "./shared-worker": "./dist/web-worker/shared-worker/make-shared-worker.js"
+    }
+  },
   "scripts": {
     "test": "echo No tests yet"
   },
@@ -71,13 +65,19 @@
     "@standard-schema/spec": "^1.0.0",
     "effect": "^3.19.19"
   },
-  "publishConfig": {
-    "access": "public",
-    "exports": {
-      ".": "./dist/index.js",
-      "./worker": "./dist/web-worker/leader-worker/make-leader-worker.js",
-      "./worker-vite-dev-polyfill": "./dist/web-worker/vite-dev-polyfill.js",
-      "./shared-worker": "./dist/web-worker/shared-worker/make-shared-worker.js"
-    }
+  "$genie": {
+    "source": "package.json.genie.ts",
+    "warning": "DO NOT EDIT - changes will be overwritten",
+    "workspaceClosureDirs": [
+      "packages/@livestore/adapter-web",
+      "packages/@livestore/common",
+      "packages/@livestore/common-cf",
+      "packages/@livestore/devtools-web-common",
+      "packages/@livestore/sqlite-wasm",
+      "packages/@livestore/utils",
+      "packages/@livestore/utils-dev",
+      "packages/@livestore/wa-sqlite",
+      "packages/@livestore/webmesh"
+    ]
   }
 }

@@ -1,27 +1,8 @@
 {
-  "$genie": {
-    "source": "package.json.genie.ts",
-    "warning": "DO NOT EDIT - changes will be overwritten",
-    "workspaceClosureDirs": [
-      "packages/@livestore/adapter-web",
-      "packages/@livestore/common",
-      "packages/@livestore/common-cf",
-      "packages/@livestore/devtools-web-common",
-      "packages/@livestore/framework-toolkit",
-      "packages/@livestore/livestore",
-      "packages/@livestore/react",
-      "packages/@livestore/sqlite-wasm",
-      "packages/@livestore/utils",
-      "packages/@livestore/utils-dev",
-      "packages/@livestore/wa-sqlite",
-      "packages/@livestore/webmesh",
-      "tests/perf-eventlog"
-    ]
-  },
   "name": "@local/tests-perf-streaming-loopback",
   "version": "0.0.0",
-  "type": "module",
   "private": true,
+  "type": "module",
   "scripts": {
     "build": "pnpm exec vite build --config test-app/vite.config.ts",
     "dev": "pnpm exec vite --config test-app/vite.config.ts",
@@ -73,5 +54,24 @@
     "@standard-schema/spec": "1.0.0",
     "effect": "3.19.19",
     "tsx": "^4.20.0"
+  },
+  "$genie": {
+    "source": "package.json.genie.ts",
+    "warning": "DO NOT EDIT - changes will be overwritten",
+    "workspaceClosureDirs": [
+      "packages/@livestore/adapter-web",
+      "packages/@livestore/common",
+      "packages/@livestore/common-cf",
+      "packages/@livestore/devtools-web-common",
+      "packages/@livestore/framework-toolkit",
+      "packages/@livestore/livestore",
+      "packages/@livestore/react",
+      "packages/@livestore/sqlite-wasm",
+      "packages/@livestore/utils",
+      "packages/@livestore/utils-dev",
+      "packages/@livestore/wa-sqlite",
+      "packages/@livestore/webmesh",
+      "tests/perf-eventlog"
+    ]
   }
 }

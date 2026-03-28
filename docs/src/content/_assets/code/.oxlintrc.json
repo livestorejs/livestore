@@ -1,14 +1,6 @@
 {
   "$schema": "https://raw.githubusercontent.com/oxc-project/oxc/main/npm/oxlint/configuration_schema.json",
-  "plugins": [
-    "import",
-    "typescript",
-    "unicorn",
-    "oxc",
-    "react",
-    "react",
-    "react-perf"
-  ],
+  "plugins": ["import", "typescript", "unicorn", "oxc", "react", "react", "react-perf"],
   "ignorePatterns": [
     "**/node_modules/**",
     "**/.pnpm/**",
@@ -114,41 +106,25 @@
   },
   "overrides": [
     {
-      "files": [
-        "**/*.cjs",
-        "**/*.cts",
-        "**/*.js"
-      ],
+      "files": ["**/*.cjs", "**/*.cts", "**/*.js"],
       "rules": {
         "import/no-commonjs": "off"
       }
     },
     {
-      "files": [
-        "**/docs/src/content/_assets/code/**"
-      ],
+      "files": ["**/docs/src/content/_assets/code/**"],
       "rules": {
         "import/no-commonjs": "off"
       }
     },
     {
-      "files": [
-        "**/vitest.config.ts",
-        "**/vite.config.ts",
-        "**/playwright.config.ts",
-        "**/*.genie.ts"
-      ],
+      "files": ["**/vitest.config.ts", "**/vite.config.ts", "**/playwright.config.ts", "**/*.genie.ts"],
       "rules": {
         "func-style": "off"
       }
     },
     {
-      "files": [
-        "**/*.test.ts",
-        "**/*.test.tsx",
-        "**/__tests__/**",
-        "**/tests/**"
-      ],
+      "files": ["**/*.test.ts", "**/*.test.tsx", "**/__tests__/**", "**/tests/**"],
       "rules": {
         "unicorn/no-array-sort": "off",
         "unicorn/consistent-function-scoping": "off",
@@ -156,19 +132,13 @@
       }
     },
     {
-      "files": [
-        "**/*.d.ts"
-      ],
+      "files": ["**/*.d.ts"],
       "rules": {
         "typescript/consistent-type-imports": "off"
       }
     },
     {
-      "files": [
-        "**/*.gen.*",
-        "**/.astro/**",
-        "**/routeTree.gen.ts"
-      ],
+      "files": ["**/*.gen.*", "**/.astro/**", "**/routeTree.gen.ts"],
       "rules": {
         "func-style": "off",
         "import/no-commonjs": "off",
@@ -180,17 +150,13 @@
       }
     },
     {
-      "files": [
-        "packages/@livestore/react/src/useRcResource.ts"
-      ],
+      "files": ["packages/@livestore/react/src/useRcResource.ts"],
       "rules": {
         "react-hooks/exhaustive-deps": "off"
       }
     },
     {
-      "files": [
-        "**/wa-sqlite/**"
-      ],
+      "files": ["**/wa-sqlite/**"],
       "rules": {
         "func-style": "off",
         "import/no-commonjs": "off",
@@ -202,9 +168,7 @@
       }
     },
     {
-      "files": [
-        "**/*.svelte"
-      ],
+      "files": ["**/*.svelte"],
       "rules": {
         "import/no-unassigned-import": "off"
       }

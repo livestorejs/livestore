@@ -3,9 +3,7 @@
 {
   "compilerOptions": {
     "target": "ES2024",
-    "lib": [
-      "ES2024"
-    ],
+    "lib": ["ES2024"],
     "module": "NodeNext",
     "moduleResolution": "NodeNext",
     "allowImportingTsExtensions": true,
@@ -44,13 +42,6 @@
     "rootDir": "./src",
     "tsBuildInfoFile": "./.tsc-out/.tsbuildinfo"
   },
-  "include": [
-    "src/**/*"
-  ],
-  "exclude": [
-    "node_modules",
-    "**/dist",
-    "**/node_modules/.pnpm",
-    "**/*.genie.ts"
-  ]
+  "include": ["src/**/*"],
+  "exclude": ["node_modules", "**/dist", "**/node_modules/.pnpm", "**/*.genie.ts"]
 }

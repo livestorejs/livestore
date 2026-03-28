@@ -3,11 +3,7 @@
 {
   "compilerOptions": {
     "target": "ES2024",
-    "lib": [
-      "ES2024",
-      "DOM",
-      "DOM.Iterable"
-    ],
+    "lib": ["ES2024", "DOM", "DOM.Iterable"],
     "module": "NodeNext",
     "moduleResolution": "NodeNext",
     "allowImportingTsExtensions": true,
@@ -44,22 +40,8 @@
     ],
     "composite": true,
     "rootDir": ".",
-    "types": [
-      "node",
-      "astro"
-    ]
+    "types": ["node", "astro"]
   },
-  "include": [
-    "src",
-    "tests",
-    "examples"
-  ],
-  "exclude": [
-    "node_modules",
-    "**/dist",
-    "**/node_modules/.pnpm",
-    "**/*.genie.ts",
-    "dist",
-    "src/cli/test-fixtures"
-  ]
+  "include": ["src", "tests", "examples"],
+  "exclude": ["node_modules", "**/dist", "**/node_modules/.pnpm", "**/*.genie.ts", "dist", "src/cli/test-fixtures"]
 }

@@ -1,25 +1,6 @@
 {
-  "$genie": {
-    "source": "package.json.genie.ts",
-    "warning": "DO NOT EDIT - changes will be overwritten",
-    "workspaceClosureDirs": [
-      "packages/@livestore/adapter-web",
-      "packages/@livestore/common",
-      "packages/@livestore/common-cf",
-      "packages/@livestore/devtools-web-common",
-      "packages/@livestore/livestore",
-      "packages/@livestore/sqlite-wasm",
-      "packages/@livestore/svelte",
-      "packages/@livestore/utils",
-      "packages/@livestore/utils-dev",
-      "packages/@livestore/wa-sqlite",
-      "packages/@livestore/webmesh"
-    ]
-  },
   "name": "@livestore/svelte",
   "version": "0.4.0-dev.22",
-  "type": "module",
-  "sideEffects": false,
   "keywords": [
     "svelte"
   ],
@@ -28,14 +9,22 @@
     "type": "git",
     "url": "git+https://github.com/livestorejs/livestore.git"
   },
-  "exports": {
-    ".": "./src/mod.ts"
-  },
   "files": [
     "dist",
     "package.json",
     "src"
   ],
+  "type": "module",
+  "sideEffects": false,
+  "exports": {
+    ".": "./src/mod.ts"
+  },
+  "publishConfig": {
+    "access": "public",
+    "exports": {
+      ".": "./dist/mod.js"
+    }
+  },
   "scripts": {
     "build": "tsc",
     "test": "vitest --config ./tests/vitest.config.ts"
@@ -80,10 +69,21 @@
     "effect": "^3.19.19",
     "svelte": "^5.31.0"
   },
-  "publishConfig": {
-    "access": "public",
-    "exports": {
-      ".": "./dist/mod.js"
-    }
+  "$genie": {
+    "source": "package.json.genie.ts",
+    "warning": "DO NOT EDIT - changes will be overwritten",
+    "workspaceClosureDirs": [
+      "packages/@livestore/adapter-web",
+      "packages/@livestore/common",
+      "packages/@livestore/common-cf",
+      "packages/@livestore/devtools-web-common",
+      "packages/@livestore/livestore",
+      "packages/@livestore/sqlite-wasm",
+      "packages/@livestore/svelte",
+      "packages/@livestore/utils",
+      "packages/@livestore/utils-dev",
+      "packages/@livestore/wa-sqlite",
+      "packages/@livestore/webmesh"
+    ]
   }
 }

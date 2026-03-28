@@ -43,23 +43,23 @@ packages:
   - tests/wa-sqlite
 
 overrides:
-  "@tanstack/router-core": 1.139.14
-  "@tanstack/history": 1.139.0
-  "@tanstack/react-router": 1.139.14
-  "@tanstack/react-start": 1.139.14
-  "@tanstack/router-devtools": 1.139.14
-  "@tanstack/router-devtools-core": 1.139.14
-  "@tanstack/react-router-devtools": 1.139.14
-  "@tanstack/router-plugin": 1.139.14
-  "@tanstack/start-plugin-core": 1.139.14
-  "@tanstack/start-server-core": 1.139.14
-  "@tanstack/start-client-core": 1.139.14
+  '@tanstack/router-core': 1.139.14
+  '@tanstack/history': 1.139.0
+  '@tanstack/react-router': 1.139.14
+  '@tanstack/react-start': 1.139.14
+  '@tanstack/router-devtools': 1.139.14
+  '@tanstack/router-devtools-core': 1.139.14
+  '@tanstack/react-router-devtools': 1.139.14
+  '@tanstack/router-plugin': 1.139.14
+  '@tanstack/start-plugin-core': 1.139.14
+  '@tanstack/start-server-core': 1.139.14
+  '@tanstack/start-client-core': 1.139.14
 
 packageExtensions:
   react-error-boundary:
     dependencies:
-      "@types/react": 19.2.7
-      "@types/react-dom": 19.2.3
+      '@types/react': 19.2.7
+      '@types/react-dom': 19.2.3
   starlight-auto-sidebar:
     dependencies:
       astro: '>=5.0.0'
@@ -74,12 +74,12 @@ packageExtensions:
       typedoc-plugin-markdown: ^4.8.1
 
 allowBuilds:
-  "@parcel/watcher": true
+  '@parcel/watcher': true
   esbuild: true
   msgpackr-extract: true
   sharp: true
   unix-dgram: true
-  "@mixedbread/cli": true
+  '@mixedbread/cli': true
   cbor-extract: true
   dtrace-provider: true
   protobufjs: true

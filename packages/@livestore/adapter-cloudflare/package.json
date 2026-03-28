@@ -1,43 +1,32 @@
 {
-  "$genie": {
-    "source": "package.json.genie.ts",
-    "warning": "DO NOT EDIT - changes will be overwritten",
-    "workspaceClosureDirs": [
-      "packages/@livestore/adapter-cloudflare",
-      "packages/@livestore/adapter-web",
-      "packages/@livestore/common",
-      "packages/@livestore/common-cf",
-      "packages/@livestore/devtools-web-common",
-      "packages/@livestore/livestore",
-      "packages/@livestore/sqlite-wasm",
-      "packages/@livestore/sync-cf",
-      "packages/@livestore/utils",
-      "packages/@livestore/utils-dev",
-      "packages/@livestore/wa-sqlite",
-      "packages/@livestore/webmesh"
-    ]
-  },
   "name": "@livestore/adapter-cloudflare",
   "version": "0.4.0-dev.22",
-  "type": "module",
-  "sideEffects": [
-    "./src/polyfill.ts",
-    "./dist/polyfill.js"
-  ],
   "license": "Apache-2.0",
   "repository": {
     "type": "git",
     "url": "git+https://github.com/livestorejs/livestore.git"
-  },
-  "exports": {
-    ".": "./src/mod.ts",
-    "./polyfill": "./src/polyfill.ts"
   },
   "files": [
     "dist",
     "package.json",
     "src"
   ],
+  "type": "module",
+  "sideEffects": [
+    "./src/polyfill.ts",
+    "./dist/polyfill.js"
+  ],
+  "exports": {
+    ".": "./src/mod.ts",
+    "./polyfill": "./src/polyfill.ts"
+  },
+  "publishConfig": {
+    "access": "public",
+    "exports": {
+      ".": "./dist/mod.js",
+      "./polyfill": "./dist/polyfill.js"
+    }
+  },
   "scripts": {
     "test": "echo No tests yet"
   },
@@ -74,11 +63,22 @@
     "@standard-schema/spec": "^1.0.0",
     "effect": "^3.19.19"
   },
-  "publishConfig": {
-    "access": "public",
-    "exports": {
-      ".": "./dist/mod.js",
-      "./polyfill": "./dist/polyfill.js"
-    }
+  "$genie": {
+    "source": "package.json.genie.ts",
+    "warning": "DO NOT EDIT - changes will be overwritten",
+    "workspaceClosureDirs": [
+      "packages/@livestore/adapter-cloudflare",
+      "packages/@livestore/adapter-web",
+      "packages/@livestore/common",
+      "packages/@livestore/common-cf",
+      "packages/@livestore/devtools-web-common",
+      "packages/@livestore/livestore",
+      "packages/@livestore/sqlite-wasm",
+      "packages/@livestore/sync-cf",
+      "packages/@livestore/utils",
+      "packages/@livestore/utils-dev",
+      "packages/@livestore/wa-sqlite",
+      "packages/@livestore/webmesh"
+    ]
   }
 }

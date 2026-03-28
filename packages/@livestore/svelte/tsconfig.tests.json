@@ -3,11 +3,7 @@
 {
   "compilerOptions": {
     "target": "ES2024",
-    "lib": [
-      "ES2024",
-      "DOM",
-      "DOM.Iterable"
-    ],
+    "lib": ["ES2024", "DOM", "DOM.Iterable"],
     "module": "NodeNext",
     "moduleResolution": "NodeNext",
     "allowImportingTsExtensions": true,
@@ -46,18 +42,8 @@
     "composite": false,
     "rootDir": "."
   },
-  "include": [
-    "./tests/**/*.ts",
-    "./tests/**/*.svelte",
-    "./tests/**/*.d.ts"
-  ],
-  "exclude": [
-    "./tests/vitest.config.ts",
-    "node_modules",
-    "**/dist",
-    "**/node_modules/.pnpm",
-    "**/*.genie.ts"
-  ],
+  "include": ["./tests/**/*.ts", "./tests/**/*.svelte", "./tests/**/*.d.ts"],
+  "exclude": ["./tests/vitest.config.ts", "node_modules", "**/dist", "**/node_modules/.pnpm", "**/*.genie.ts"],
   "references": [
     {
       "path": "../common"
