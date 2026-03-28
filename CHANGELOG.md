@@ -384,6 +384,7 @@ See the [S2 sync provider docs](https://dev.docs.livestore.dev/reference/syncing
 
 #### API & DX
 
+- **Per-store `unusedCacheTime` in `StoreRegistry`:** Each store managed by a `StoreRegistry` can now specify its own `unusedCacheTime` via `storeOptions()`, overriding the registry-level default. Short-lived ephemeral stores can be disposed quickly while persistent stores stay cached longer ([#917](https://github.com/livestorejs/livestore/issues/917)).
 - **Store:** `store.networkStatus` now surfaces sync backend connectivity so apps can read the latest status or subscribe directly; the signal is no longer re-exposed on client sessions (livestorejs/livestore#394).
 - `LiveStoreSchema.Any` type alias simplifies schema composition across adapters.
 - Query builder const assertions improve type inference, and `store.subscribe()` now accepts query builders (#371, thanks @rgbkrk).
