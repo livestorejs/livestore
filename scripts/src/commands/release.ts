@@ -27,9 +27,19 @@ const dependencyFields = ['dependencies', 'devDependencies', 'peerDependencies',
 
 const isSnapshotVersion = (version: string) => version.includes('-snapshot-')
 
+/**
+ * Snapshot publishing only rewrites public `@livestore/*` packages.
+ * The release flow operates on package names, so we need a stable mapping
+ * back to the published package directory to patch `package.json` in place.
+ */
 const packageJsonPathFromPackageName = (cwd: string, packageName: string) =>
   `${cwd}/packages/@livestore/${packageName.replace('@livestore/', '')}/package.json`
 
+/**
+ * Snapshot versions must collapse workspace and ranged internal deps to the
+ * exact published snapshot version. Leaving prerelease ranges in place lets
+ * pnpm resolve a different snapshot build, which breaks standalone installs.
+ */
 const pinSnapshotDependencySpec = ({
   dependencyName,
   currentSpec,
@@ -48,6 +58,10 @@ const pinSnapshotDependencySpec = ({
   return currentSpec
 }
 
+/**
+ * Rewrites internal dependency ranges after Genie generation so the published
+ * snapshot graph is self-contained and installable outside the monorepo.
+ */
 export const rewriteSnapshotInternalDependencyRanges = ({
   cwd,
   snapshotPackages,
@@ -102,6 +116,11 @@ export const rewriteSnapshotInternalDependencyRanges = ({
     }
   })
 
+/**
+ * Enumerates the publishable `@livestore/*` packages for snapshot releases.
+ * We intentionally read from the generated `package.json` files so the summary
+ * and publish loop follow the exact publish surface for the current checkout.
+ */
 const listSnapshotPackages = (cwd: string) =>
   Effect.gen(function* () {
     const fsEffect = yield* FileSystem.FileSystem
@@ -117,6 +136,7 @@ const listSnapshotPackages = (cwd: string) =>
     const entries = yield* fsEffect.readDirectory(baseDir)
 
     for (const entry of entries) {
+      /** `effect-playwright` is consumed as a workspace helper and is not part of the public snapshot set. */
       if (entry === 'effect-playwright') continue
 
       const packageJsonPath = `${baseDir}/${entry}/package.json`
