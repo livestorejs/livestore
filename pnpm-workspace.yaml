@@ -93,7 +93,7 @@ supportedArchitectures:
 
 dedupePeerDependents: true
 
-strictPeerDependencies: true
+strictPeerDependencies: false
 
 enableGlobalVirtualStore: true
 
