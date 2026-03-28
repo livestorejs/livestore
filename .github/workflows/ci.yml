@@ -3398,7 +3398,7 @@ jobs:
       - name: Use snapshot version of workspace dependencies
         working-directory: '${{ runner.temp }}/${{ env.APP_PATH }}'
         run: |
-          pnpm add $(
+          pnpm add --allow-build=@mixedbread/cli --allow-build=@parcel/watcher --allow-build=cbor-extract --allow-build=dtrace-provider --allow-build=esbuild --allow-build=msgpackr-extract --allow-build=protobufjs --allow-build=puppeteer --allow-build=sharp --allow-build=unix-dgram --allow-build=workerd $(
             for dep in $WORKSPACE_DEPS; do
               echo "$dep@${{ env.SNAPSHOT_VERSION }}"
             done
