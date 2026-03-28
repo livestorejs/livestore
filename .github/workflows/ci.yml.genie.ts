@@ -22,7 +22,7 @@ const GITHUB_SHA = '${{ github.sha }}'
 const GITHUB_REF = '${{ github.ref }}'
 const PR_HEAD_SHA = '${{ github.event.pull_request.head.sha || github.sha }}'
 const IS_NOT_FORK = 'github.event.pull_request.head.repo.fork != true'
-const DLX_ROOT_DIR = '${{ runner.temp }}/pnpm-dlx-root'
+const DLX_ALLOW_BUILD_FLAGS = repoPnpmOnlyBuiltDependencies.map((name) => `--allow-build=${name}`).join(' ')
 
 // =============================================================================
 // Job Helpers
@@ -432,30 +432,12 @@ done`,
 echo "WORKSPACE_DEPS=$DEPS" >> $GITHUB_ENV`,
         },
         {
-          name: 'Prepare pnpm dlx root',
-          run: `mkdir -p "${DLX_ROOT_DIR}"
-cat > "${DLX_ROOT_DIR}/package.json" <<'EOF'
-{
-  "name": "livestore-cli-dlx-root",
-  "private": true,
-  "type": "module",
-  "pnpm": {
-    "onlyBuiltDependencies": ${JSON.stringify(repoPnpmOnlyBuiltDependencies)}
-  }
-}
-EOF
-cat > "${DLX_ROOT_DIR}/.npmrc" <<'EOF'
-strict-dep-builds=true
-EOF`,
-        },
-        {
           /**
            * Use PR head SHA for pull_request events. `refs/pull/<id>/merge` can be missing when
            * merge commits are unavailable, which makes GitHub contents API calls fail.
            */
           name: 'Copy example app',
-          'working-directory': DLX_ROOT_DIR,
-          run: `pnpm dlx @livestore/cli@\${{ env.SNAPSHOT_VERSION }} create --example \${{ matrix.app }} --ref ${PR_HEAD_SHA} \${{ runner.temp }}/\${{ env.APP_PATH }}`,
+          run: `pnpm dlx ${DLX_ALLOW_BUILD_FLAGS} @livestore/cli@\${{ env.SNAPSHOT_VERSION }} create --example \${{ matrix.app }} --ref ${PR_HEAD_SHA} \${{ runner.temp }}/\${{ env.APP_PATH }}`,
         },
         {
           name: 'Use snapshot version of workspace dependencies',
