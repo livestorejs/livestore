@@ -96,7 +96,10 @@ export const makeWsSync =
 
       const ProtocolLive = RpcClient.layerProtocolSocketWithIsConnected({
         isConnected,
-        retryTransientErrors: Schedule.fixed(1000),
+        retryTransientErrors: Schedule.exponential('1 seconds').pipe(
+          Schedule.union(Schedule.fixed('30 seconds')),
+          Schedule.jittered,
+        ),
         pingSchedule: Schedule.once.pipe(Schedule.andThen(Schedule.fixed(pingInterval))),
         url: wsUrl,
       }).pipe(
