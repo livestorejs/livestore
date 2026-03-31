@@ -241,7 +241,7 @@ export class SharedWorkerUpdateMessagePort extends Schema.TaggedRequest<SharedWo
   },
 ) {}
 
-export class SharedWorkerRequest extends Schema.Union(
+export const SharedWorkerRequest = Schema.Union(
   SharedWorkerUpdateMessagePort,
 
   // Proxied requests
@@ -261,4 +261,5 @@ export class SharedWorkerRequest extends Schema.Union(
   LeaderWorkerInnerExtraDevtoolsMessage,
 
   WebmeshWorker.Schema.CreateConnection,
-) {}
+)
+export type SharedWorkerRequest = typeof SharedWorkerRequest.Type
