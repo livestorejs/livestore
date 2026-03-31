@@ -309,8 +309,7 @@ const makeLeaderThread = ({
               .push(
                 batch.map((item) => new LiveStoreEvent.Client.EncodedWithMeta(item)),
                 { waitForProcessing: true },
-              )
-              .pipe(Effect.provide(layer), Effect.scoped),
+              ),
           stream: (options) =>
             streamEventsWithSyncState({
               dbEventlog,

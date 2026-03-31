@@ -16,6 +16,7 @@
 import type { Adapter, BootWarningReason, ClientSession, LockStatus } from '@livestore/common'
 import {
   IntentionalShutdownCause,
+  isWorkerTransportError,
   makeClientSession,
   StoreInterrupted,
   sessionChangesetMetaTable,
@@ -30,14 +31,13 @@ import {
   Exit,
   Fiber,
   Layer,
-  ParseResult,
+  Option,
   Queue,
   Schema,
   Stream,
   Subscribable,
   SubscriptionRef,
   Worker,
-  WorkerError,
 } from '@livestore/utils/effect'
 import { BrowserWorker, Opfs, WebError } from '@livestore/utils/effect/browser'
 import { nanoid } from '@livestore/utils/nanoid'
@@ -242,46 +242,33 @@ export const makeSingleTabAdapter =
       }).pipe(
         Effect.provide(innerWorkerContext),
         Effect.tapCauseLogPretty,
-        UnknownError.mapToUnknownError,
+        Effect.orDie,
         Effect.tapErrorCause((cause) => shutdown(Exit.failCause(cause))),
         Effect.withSpan('@livestore/adapter-web:single-tab:setupInnerWorker'),
         Effect.forkScoped,
       )
 
       // Helper to run requests against the worker
-      const runInWorker = <A, E, R>(
-        req: WorkerSchema.LeaderWorkerInnerRequest & Schema.WithResult<A, any, E, any, R>,
-      ): Effect.Effect<A, E | UnknownError, R> =>
+      const runInWorker = <A, I, E, EI, R>(
+        req: WorkerSchema.LeaderWorkerInnerRequest & Schema.WithResult<A, I, E, EI, R>,
+      ): Effect.Effect<A, E, R> =>
         Fiber.join(innerWorkerFiber).pipe(
           Effect.flatMap((worker) => worker.executeEffect(req)),
+          Effect.catchIf(isWorkerTransportError, (e) => Effect.die(e)),
           Effect.logWarnIfTakesLongerThan({
             label: `@livestore/adapter-web:single-tab:runInWorker:${req._tag}`,
             duration: 2000,
           }),
           Effect.withSpan(`@livestore/adapter-web:single-tab:runInWorker:${req._tag}`),
-          Effect.mapError((cause) =>
-            Schema.is(UnknownError)(cause) === true
-              ? cause
-              : ParseResult.isParseError(cause) === true || Schema.is(WorkerError.WorkerError)(cause) === true
-                ? new UnknownError({ cause })
-                : cause,
-          ),
-          Effect.catchAllDefect((cause) => new UnknownError({ cause })),
         )
 
-      const runInWorkerStream = <A, E, R>(
-        req: WorkerSchema.LeaderWorkerInnerRequest & Schema.WithResult<A, any, E, any, R>,
-      ): Stream.Stream<A, E | UnknownError, R> =>
+      const runInWorkerStream = <A, I, E, EI, R>(
+        req: WorkerSchema.LeaderWorkerInnerRequest & Schema.WithResult<A, I, E, EI, R>,
+      ): Stream.Stream<A, E, R> =>
         Effect.gen(function* () {
           const innerWorker = yield* Fiber.join(innerWorkerFiber)
           return innerWorker.execute(req).pipe(
-            Stream.mapError((cause) =>
-              Schema.is(UnknownError)(cause) === true
-                ? cause
-                : ParseResult.isParseError(cause) === true || Schema.is(WorkerError.WorkerError)(cause) === true
-                  ? new UnknownError({ cause })
-                  : cause,
-            ),
+            Stream.refineOrDie((e) => isWorkerTransportError(e) === true ? Option.none() : Option.some(e)),
             Stream.withSpan(`@livestore/adapter-web:single-tab:runInWorkerStream:${req._tag}`),
           )
         }).pipe(Stream.unwrap)

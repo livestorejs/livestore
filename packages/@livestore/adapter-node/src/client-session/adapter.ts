@@ -8,6 +8,7 @@ import {
   type BootStatus,
   ClientSessionLeaderThreadProxy,
   IntentionalShutdownCause,
+  isWorkerTransportError,
   type LockStatus,
   type MakeSqliteDb,
   makeClientSession,
@@ -28,7 +29,7 @@ import {
   Fiber,
   FileSystem,
   Layer,
-  ParseResult,
+  Option,
   Queue,
   Schedule,
   Schema,
@@ -36,7 +37,6 @@ import {
   Subscribable,
   SubscriptionRef,
   Worker,
-  WorkerError,
 } from '@livestore/utils/effect'
 import { PlatformNode } from '@livestore/utils/node'
 import * as Webmesh from '@livestore/webmesh'
@@ -486,36 +486,23 @@ const makeWorkerLeaderThread = ({
       Effect.withSpan('@livestore/adapter-node:adapter:setupLeaderThread'),
     )
 
-    const runInWorker = <A, E, R>(
-      req: WorkerSchema.LeaderWorkerInnerRequest & Schema.WithResult<A, any, E, any, R>,
-    ): Effect.Effect<A, E | UnknownError, R> =>
-      (worker.executeEffect(req)).pipe(
+    const runInWorker = <A, I, E, EI, R>(
+      req: WorkerSchema.LeaderWorkerInnerRequest & Schema.WithResult<A, I, E, EI, R>,
+    ): Effect.Effect<A, E, R> =>
+      worker.executeEffect(req).pipe(
+        Effect.catchIf(isWorkerTransportError, (e) => Effect.die(e)),
         Effect.logWarnIfTakesLongerThan({
           label: `@livestore/adapter-node:client-session:runInWorker:${req._tag}`,
           duration: 2000,
         }),
         Effect.withSpan(`@livestore/adapter-node:client-session:runInWorker:${req._tag}`),
-        Effect.mapError((cause) =>
-          Schema.is(UnknownError)(cause) === true
-            ? cause
-            : ParseResult.isParseError(cause) === true || Schema.is(WorkerError.WorkerError)(cause) === true
-              ? new UnknownError({ cause })
-              : cause,
-        ),
-        Effect.catchAllDefect((cause) => new UnknownError({ cause })),
       )
 
-    const runInWorkerStream = <A, E, R>(
-      req: WorkerSchema.LeaderWorkerInnerRequest & Schema.WithResult<A, any, E, any, R>,
-    ): Stream.Stream<A, E | UnknownError, R> =>
+    const runInWorkerStream = <A, I, E, EI, R>(
+      req: WorkerSchema.LeaderWorkerInnerRequest & Schema.WithResult<A, I, E, EI, R>,
+    ): Stream.Stream<A, E, R> =>
       worker.execute(req).pipe(
-        Stream.mapError((cause) =>
-          Schema.is(UnknownError)(cause) === true
-            ? cause
-            : ParseResult.isParseError(cause) === true || Schema.is(WorkerError.WorkerError)(cause) === true
-              ? new UnknownError({ cause })
-              : cause,
-        ),
+        Stream.refineOrDie((e) => isWorkerTransportError(e) === true ? Option.none() : Option.some(e)),
         Stream.withSpan(`@livestore/adapter-node:client-session:runInWorkerStream:${req._tag}`),
       )
 
