@@ -103,22 +103,20 @@ export const makeWorkerEffect = (options: WorkerOptions) => {
       ),
     Export: () =>
       Effect.andThen(LeaderThreadCtx, (_) => _.dbState.export()).pipe(
-        UnknownError.mapToUnknownError,
         Effect.withSpan('@livestore/adapter-node:worker:Export'),
       ),
     ExportEventlog: () =>
       Effect.andThen(LeaderThreadCtx, (_) => _.dbEventlog.export()).pipe(
-        UnknownError.mapToUnknownError,
         Effect.withSpan('@livestore/adapter-node:worker:ExportEventlog'),
       ),
     GetLeaderHead: Effect.fn('@livestore/adapter-node:worker:GetLeaderHead')(function* () {
       const workerCtx = yield* LeaderThreadCtx
       return Eventlog.getClientHeadFromDb(workerCtx.dbEventlog)
-    }, UnknownError.mapToUnknownError),
+    }),
     GetLeaderSyncState: Effect.fn('@livestore/adapter-node:worker:GetLeaderSyncState')(function* () {
       const workerCtx = yield* LeaderThreadCtx
       return yield* workerCtx.syncProcessor.syncState
-    }, UnknownError.mapToUnknownError),
+    }),
     SyncStateStream: () =>
       Effect.gen(function* () {
         const workerCtx = yield* LeaderThreadCtx
@@ -127,7 +125,7 @@ export const makeWorkerEffect = (options: WorkerOptions) => {
     GetNetworkStatus: Effect.fn('@livestore/adapter-node:worker:GetNetworkStatus')(function* () {
       const workerCtx = yield* LeaderThreadCtx
       return yield* workerCtx.networkStatus
-    }, UnknownError.mapToUnknownError),
+    }),
     NetworkStatusStream: () =>
       Effect.gen(function* () {
         const workerCtx = yield* LeaderThreadCtx
@@ -142,7 +140,7 @@ export const makeWorkerEffect = (options: WorkerOptions) => {
       // return cachedSnapshot ?? workerCtx.db.export()
       const snapshot = workerCtx.dbState.export()
       return { snapshot, migrationsReport: workerCtx.initialState.migrationsReport }
-    }, UnknownError.mapToUnknownError),
+    }),
     Shutdown: Effect.fn('@livestore/adapter-node:worker:Shutdown')(function* () {
       // const { db, dbEventlog } = yield* LeaderThreadCtx
       yield* Effect.logDebug('[@livestore/adapter-node:worker] Shutdown')
@@ -156,10 +154,9 @@ export const makeWorkerEffect = (options: WorkerOptions) => {
       // Buy some time for Otel to flush
       // TODO find a cleaner way to do this
       // yield* Effect.sleep(1000)
-    }, UnknownError.mapToUnknownError),
+    }),
     ExtraDevtoolsMessage: ({ message }) =>
       Effect.andThen(LeaderThreadCtx, (_) => _.extraIncomingMessagesQueue.offer(message)).pipe(
-        UnknownError.mapToUnknownError,
         Effect.withSpan('@livestore/adapter-node:worker:ExtraDevtoolsMessage'),
       ),
   }).pipe(

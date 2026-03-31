@@ -495,8 +495,7 @@ export const makePersistedAdapter =
 
       const leaderThread: ClientSession['leaderThread'] = {
         export: runInWorker(new WorkerSchema.LeaderWorkerInnerExport()).pipe(
-          Effect.timeout(10_000),
-          UnknownError.mapToUnknownError,
+          Effect.timeoutOrDie(10_000),
           Effect.withSpan('@livestore/adapter-web:client-session:export'),
         ),
 
@@ -523,14 +522,12 @@ export const makePersistedAdapter =
         },
 
         getEventlogData: runInWorker(new WorkerSchema.LeaderWorkerInnerExportEventlog()).pipe(
-          Effect.timeout(10_000),
-          UnknownError.mapToUnknownError,
+          Effect.timeoutOrDie(10_000),
           Effect.withSpan('@livestore/adapter-web:client-session:getEventlogData'),
         ),
 
         syncState: Subscribable.make({
           get: runInWorker(new WorkerSchema.LeaderWorkerInnerGetLeaderSyncState()).pipe(
-            UnknownError.mapToUnknownError,
             Effect.withSpan('@livestore/adapter-web:client-session:getLeaderSyncState'),
           ),
           changes: runInWorkerStream(new WorkerSchema.LeaderWorkerInnerSyncStateStream()).pipe(Stream.orDie),
@@ -538,12 +535,11 @@ export const makePersistedAdapter =
 
         sendDevtoolsMessage: (message) =>
           runInWorker(new WorkerSchema.LeaderWorkerInnerExtraDevtoolsMessage({ message })).pipe(
-            UnknownError.mapToUnknownError,
             Effect.withSpan('@livestore/adapter-web:client-session:devtoolsMessageForLeader'),
           ),
         networkStatus: Subscribable.make({
-          get: runInWorker(new WorkerSchema.LeaderWorkerInnerGetNetworkStatus()).pipe(Effect.orDie),
-          changes: runInWorkerStream(new WorkerSchema.LeaderWorkerInnerNetworkStatusStream()).pipe(Stream.orDie),
+          get: runInWorker(new WorkerSchema.LeaderWorkerInnerGetNetworkStatus()),
+          changes: runInWorkerStream(new WorkerSchema.LeaderWorkerInnerNetworkStatusStream()),
         }),
       }
 

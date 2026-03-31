@@ -212,7 +212,6 @@ const makeWorkerRunner = Effect.gen(function* () {
         }).pipe(Effect.tapCauseLogPretty, Scope.extend(scope), Effect.forkIn(scope))
       }).pipe(
         Effect.withSpan('@livestore/adapter-web:shared-worker:updateMessagePort'),
-        UnknownError.mapToUnknownError,
         Effect.tapCauseLogPretty,
       ),
 

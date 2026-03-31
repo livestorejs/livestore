@@ -187,11 +187,11 @@ export interface LeaderSyncProcessor {
   /** Used by client sessions to subscribe to upstream sync state changes */
   pull: (args: {
     cursor: EventSequenceNumber.Client.Composite
-  }) => Stream.Stream<{ payload: typeof SyncState.PayloadUpstream.Type }, UnknownError>
+  }) => Stream.Stream<{ payload: typeof SyncState.PayloadUpstream.Type }>
   /** The `pullQueue` API can be used instead of `pull` when more convenient */
   pullQueue: (args: {
     cursor: EventSequenceNumber.Client.Composite
-  }) => Effect.Effect<Queue.Queue<{ payload: typeof SyncState.PayloadUpstream.Type }>, UnknownError, Scope.Scope>
+  }) => Effect.Effect<Queue.Queue<{ payload: typeof SyncState.PayloadUpstream.Type }>, never, Scope.Scope>
 
   /** Used by client sessions to push events to the leader thread */
   push: (
@@ -216,7 +216,7 @@ export interface LeaderSyncProcessor {
 
   boot: Effect.Effect<
     { initialLeaderHead: EventSequenceNumber.Client.Composite },
-    UnknownError,
+    never,
     LeaderThreadCtx | Scope.Scope | HttpClient.HttpClient
   >
   syncState: Subscribable.Subscribable<SyncState.SyncState>
