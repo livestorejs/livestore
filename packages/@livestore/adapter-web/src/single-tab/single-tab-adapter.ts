@@ -249,13 +249,11 @@ export const makeSingleTabAdapter =
       )
 
       // Helper to run requests against the worker
-      const runInWorker = <TReq extends WorkerSchema.LeaderWorkerInnerRequest>(
-        req: TReq,
-      ): TReq extends Schema.WithResult<infer A, infer _I, infer E, infer _EI, infer R>
-        ? Effect.Effect<A, UnknownError | E, R>
-        : never =>
+      const runInWorker = <A, E, R>(
+        req: WorkerSchema.LeaderWorkerInnerRequest & Schema.WithResult<A, any, E, any, R>,
+      ): Effect.Effect<A, E | UnknownError, R> =>
         Fiber.join(innerWorkerFiber).pipe(
-          Effect.flatMap((worker) => worker.executeEffect(req) as any),
+          Effect.flatMap((worker) => worker.executeEffect(req)),
           Effect.logWarnIfTakesLongerThan({
             label: `@livestore/adapter-web:single-tab:runInWorker:${req._tag}`,
             duration: 2000,
@@ -269,16 +267,14 @@ export const makeSingleTabAdapter =
                 : cause,
           ),
           Effect.catchAllDefect((cause) => new UnknownError({ cause })),
-        ) as any
+        )
 
-      const runInWorkerStream = <TReq extends WorkerSchema.LeaderWorkerInnerRequest>(
-        req: TReq,
-      ): TReq extends Schema.WithResult<infer A, infer _I, infer _E, infer _EI, infer R>
-        ? Stream.Stream<A, UnknownError, R>
-        : never =>
+      const runInWorkerStream = <A, E, R>(
+        req: WorkerSchema.LeaderWorkerInnerRequest & Schema.WithResult<A, any, E, any, R>,
+      ): Stream.Stream<A, E | UnknownError, R> =>
         Effect.gen(function* () {
           const innerWorker = yield* Fiber.join(innerWorkerFiber)
-          return innerWorker.execute(req as any).pipe(
+          return innerWorker.execute(req).pipe(
             Stream.mapError((cause) =>
               Schema.is(UnknownError)(cause) === true
                 ? cause
@@ -288,7 +284,7 @@ export const makeSingleTabAdapter =
             ),
             Stream.withSpan(`@livestore/adapter-web:single-tab:runInWorkerStream:${req._tag}`),
           )
-        }).pipe(Stream.unwrap) as any
+        }).pipe(Stream.unwrap)
 
       // Forward boot status from worker
       const bootStatusFiber = yield* runInWorkerStream(new WorkerSchema.LeaderWorkerInnerBootStatusStream()).pipe(

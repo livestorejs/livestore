@@ -486,12 +486,10 @@ const makeWorkerLeaderThread = ({
       Effect.withSpan('@livestore/adapter-node:adapter:setupLeaderThread'),
     )
 
-    const runInWorker = <TReq extends typeof WorkerSchema.LeaderWorkerInnerRequest.Type>(
-      req: TReq,
-    ): TReq extends Schema.WithResult<infer A, infer _I, infer _E, infer _EI, infer R>
-      ? Effect.Effect<A, UnknownError, R>
-      : never =>
-      (worker.executeEffect(req) as any).pipe(
+    const runInWorker = <A, E, R>(
+      req: WorkerSchema.LeaderWorkerInnerRequest & Schema.WithResult<A, any, E, any, R>,
+    ): Effect.Effect<A, E | UnknownError, R> =>
+      (worker.executeEffect(req)).pipe(
         Effect.logWarnIfTakesLongerThan({
           label: `@livestore/adapter-node:client-session:runInWorker:${req._tag}`,
           duration: 2000,
@@ -507,12 +505,10 @@ const makeWorkerLeaderThread = ({
         Effect.catchAllDefect((cause) => new UnknownError({ cause })),
       )
 
-    const runInWorkerStream = <TReq extends typeof WorkerSchema.LeaderWorkerInnerRequest.Type>(
-      req: TReq,
-    ): TReq extends Schema.WithResult<infer A, infer _I, infer _E, infer _EI, infer R>
-      ? Stream.Stream<A, UnknownError, R>
-      : never =>
-      worker.execute(req as any).pipe(
+    const runInWorkerStream = <A, E, R>(
+      req: WorkerSchema.LeaderWorkerInnerRequest & Schema.WithResult<A, any, E, any, R>,
+    ): Stream.Stream<A, E | UnknownError, R> =>
+      worker.execute(req).pipe(
         Stream.mapError((cause) =>
           Schema.is(UnknownError)(cause) === true
             ? cause
@@ -521,7 +517,7 @@ const makeWorkerLeaderThread = ({
               : cause,
         ),
         Stream.withSpan(`@livestore/adapter-node:client-session:runInWorkerStream:${req._tag}`),
-      ) as any
+      )
 
     const bootStatusFiber = yield* runInWorkerStream(new WorkerSchema.LeaderWorkerInnerBootStatusStream()).pipe(
       Stream.tap((bootStatus) => Queue.offer(bootStatusQueue, bootStatus)),

@@ -375,15 +375,13 @@ export const makePersistedAdapter =
         yield* runLocked.pipe(Effect.interruptible, Effect.tapCauseLogPretty, Effect.forkScoped)
       }
 
-      const runInWorker = <TReq extends typeof WorkerSchema.SharedWorkerRequest.Type>(
-        req: TReq,
-      ): TReq extends Schema.WithResult<infer A, infer _I, infer E, infer _EI, infer R>
-        ? Effect.Effect<A, UnknownError | E, R>
-        : never =>
+      const runInWorker = <A, E, R>(
+        req: WorkerSchema.SharedWorkerRequest & Schema.WithResult<A, any, E, any, R>,
+      ): Effect.Effect<A, E | UnknownError, R> =>
         Fiber.join(sharedWorkerFiber).pipe(
           // NOTE we need to wait for the shared worker to be initialized before we can send requests to it
           Effect.tap(() => waitForSharedWorkerInitialized),
-          Effect.flatMap((worker) => worker.executeEffect(req) as any),
+          Effect.flatMap((worker) => worker.executeEffect(req)),
           // NOTE we want to treat worker requests as atomic and therefore not allow them to be interrupted
           // Interruption usually only happens during leader re-election or store shutdown
           // Effect.uninterruptible,
@@ -400,16 +398,14 @@ export const makePersistedAdapter =
                 : cause,
           ),
           Effect.catchAllDefect((cause) => new UnknownError({ cause })),
-        ) as any
+        )
 
-      const runInWorkerStream = <TReq extends typeof WorkerSchema.SharedWorkerRequest.Type>(
-        req: TReq,
-      ): TReq extends Schema.WithResult<infer A, infer _I, infer _E, infer _EI, infer R>
-        ? Stream.Stream<A, UnknownError, R>
-        : never =>
+      const runInWorkerStream = <A, E, R>(
+        req: WorkerSchema.SharedWorkerRequest & Schema.WithResult<A, any, E, any, R>,
+      ): Stream.Stream<A, E | UnknownError, R> =>
         Effect.gen(function* () {
           const sharedWorker = yield* Fiber.join(sharedWorkerFiber)
-          return sharedWorker.execute(req as any).pipe(
+          return sharedWorker.execute(req).pipe(
             Stream.mapError((cause) =>
               Schema.is(UnknownError)(cause) === true
                 ? cause
@@ -419,7 +415,7 @@ export const makePersistedAdapter =
             ),
             Stream.withSpan(`@livestore/adapter-web:client-session:runInWorkerStream:${req._tag}`),
           )
-        }).pipe(Stream.unwrap) as any
+        }).pipe(Stream.unwrap)
 
       const bootStatusFiber = yield* runInWorkerStream(new WorkerSchema.LeaderWorkerInnerBootStatusStream()).pipe(
         Stream.tap((_) => Queue.offer(bootStatusQueue, _)),
