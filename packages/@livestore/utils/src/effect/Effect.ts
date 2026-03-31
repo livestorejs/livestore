@@ -243,19 +243,61 @@ export const debugLogEnv = (msg?: string): Effect.Effect<Context.Context<never>>
     Effect.tap((env) => log(msg ?? 'debugLogEnv', env)),
   )
 
-export const timeoutDie =
-  <E1>(options: { onTimeout: LazyArg<E1>; duration: Duration.DurationInput }) =>
-  <R, E, A>(self: Effect.Effect<A, E, R>): Effect.Effect<A, E, R> =>
-    Effect.orDie(Effect.timeoutFail(options)(self))
+/**
+ * Enforces a time limit on an effect, triggering a defect on timeout.
+ *
+ * @remarks
+ *
+ * This function allows you to enforce a time limit on the execution of an
+ * effect. If the effect does not complete within the given duration, it dies
+ * with a {@link Cause.TimeoutException} as an unchecked defect. Unlike
+ * {@link Effect.timeout}, which adds `TimeoutException` to the error channel,
+ * this function keeps the error channel unchanged by treating the timeout as
+ * a defect.
+ *
+ * The returned effect will either:
+ * - Succeed with the original effect's result if it completes within the
+ *   specified duration.
+ * - Die with a {@link Cause.TimeoutException} defect if the time limit is exceeded.
+ *
+ * @see {@link timeoutOrDieMessage} for a version with a custom message.
+ * @see {@link Effect.timeout} for a version that raises a `TimeoutException` as a typed error.
+ * @see {@link Effect.timeoutFailCause} for a version that raises a custom defect.
+ */
+export const timeoutOrDie = (duration: Duration.DurationInput) =>
+  <A, E, R>(self: Effect.Effect<A, E, R>): Effect.Effect<A, E, R> =>
+    Effect.timeoutFailCause(self, {
+      duration,
+      onTimeout: () => Cause.die(new Cause.TimeoutException())
+    })
 
-export const timeoutDieMsg =
-  (options: { error: string; duration: Duration.DurationInput }) =>
-  <R, E, A>(self: Effect.Effect<A, E, R>): Effect.Effect<A, E, R> =>
-    Effect.orDie(
-      Effect.timeoutFail({ onTimeout: () => new UnknownError({ cause: options.error }), duration: options.duration })(
-        self,
-      ),
-    )
+/**
+ * Enforces a time limit on an effect, triggering a defect with a custom
+ * message on timeout.
+ *
+ * @remarks
+ *
+ * This function behaves like {@link timeoutOrDie}, but allows you to provide
+ * a custom message for the {@link Cause.TimeoutException} defect. This is useful
+ * for adding context about which operation timed out, making it easier to
+ * diagnose issues in logs or error reports.
+ *
+ * The returned effect will either:
+ * - Succeed with the original effect's result if it completes within the
+ *   specified duration.
+ * - Die with a {@link Cause.TimeoutException} defect containing the provided
+ *   message if the time limit is exceeded.
+ *
+ * @see {@link timeoutOrDie} for a version without a custom message.
+ * @see {@link Effect.timeout} for a version that raises a `TimeoutException` as a typed error.
+ * @see {@link Effect.timeoutFailCause} for a version that raises a custom defect.
+ */
+export const timeoutOrDieMessage = (duration: Duration.DurationInput, message: string) =>
+  <A, E, R>(self: Effect.Effect<A, E, R>): Effect.Effect<A, E, R> =>
+    Effect.timeoutFailCause(self, {
+      duration,
+      onTimeout: () => Cause.die(new Cause.TimeoutException(message))
+    })
 
 export const toForkedDeferred = <R, E, A>(
   eff: Effect.Effect<A, E, R>,
