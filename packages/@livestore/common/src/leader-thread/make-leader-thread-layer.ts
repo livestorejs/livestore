@@ -407,13 +407,19 @@ export const makeNetworkStatusSubscribable = ({
 
     const networkStatusRef = yield* SubscriptionRef.make<SyncBackend.NetworkStatus>({
       isConnected: initialIsConnected,
+      connectionStatus: initialIsConnected ? 'connected' : 'disconnected',
       timestampMs: Date.now(),
       devtools: { latchClosed: initialLatchClosed },
     })
 
-    const updateNetworkStatus = (patch: { isConnected?: boolean; latchClosed?: boolean }) =>
+    const updateNetworkStatus = (patch: {
+      isConnected?: boolean
+      connectionStatus?: SyncBackend.ConnectionStatus
+      latchClosed?: boolean
+    }) =>
       SubscriptionRef.update(networkStatusRef, (previous) => ({
         isConnected: patch.isConnected ?? previous.isConnected,
+        connectionStatus: patch.connectionStatus ?? previous.connectionStatus,
         timestampMs: Date.now(),
         devtools: {
           latchClosed: patch.latchClosed ?? previous.devtools.latchClosed,
@@ -421,8 +427,10 @@ export const makeNetworkStatusSubscribable = ({
       }))
 
     if (syncBackend !== undefined) {
-      yield* syncBackend.isConnected.changes.pipe(
-        Stream.tap((isConnected) => updateNetworkStatus({ isConnected })),
+      yield* syncBackend.connectionStatus.changes.pipe(
+        Stream.tap((connectionStatus) =>
+          updateNetworkStatus({ isConnected: connectionStatus === 'connected', connectionStatus }),
+        ),
         Stream.runDrain,
         Effect.interruptible,
         Effect.tapCauseLogPretty,

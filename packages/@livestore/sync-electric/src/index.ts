@@ -196,6 +196,7 @@ export const makeSyncBackend =
   ({ storeId, payload }) =>
     Effect.gen(function* () {
       const isConnected = yield* SubscriptionRef.make(false)
+      const connectionStatus = yield* SubscriptionRef.make<SyncBackend.ConnectionStatus>('disconnected')
       const pullEndpoint = typeof endpoint === 'string' ? endpoint : endpoint.pull
       const pushEndpoint = typeof endpoint === 'string' ? endpoint : endpoint.push
       const pingEndpoint = typeof endpoint === 'string' ? endpoint : endpoint.ping
@@ -308,10 +309,13 @@ export const makeSyncBackend =
         yield* httpClient.pipe(HttpClient.filterStatusOk).head(pingEndpoint)
 
         yield* SubscriptionRef.set(isConnected, true)
+        yield* SubscriptionRef.set(connectionStatus, 'connected')
       }).pipe(
         UnknownError.mapToUnknownError,
         Effect.timeout(pingTimeout),
-        Effect.catchTag('TimeoutException', () => SubscriptionRef.set(isConnected, false)),
+        Effect.catchTag('TimeoutException', () =>
+          Effect.all([SubscriptionRef.set(isConnected, false), SubscriptionRef.set(connectionStatus, 'disconnected')]),
+        ),
         Effect.withSpan('electric-provider:ping'),
       )
 
@@ -329,6 +333,7 @@ export const makeSyncBackend =
 
       return SyncBackend.of({
         connect,
+        connectionStatus,
         pull: (cursor, options) => {
           let hasEmittedAtLeastOnce = false
 
@@ -380,6 +385,7 @@ export const makeSyncBackend =
         }),
         ping,
         isConnected,
+        connectionStatus,
         metadata: {
           name: '@livestore/sync-electric',
           description: 'LiveStore sync backend implementation using ElectricSQL',

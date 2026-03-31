@@ -378,17 +378,22 @@ const listenToDevtools = ({
                 // This is probably the same "flaky databrowser loading" bug as we're seeing in the playwright tests
                 yield* Effect.sleep(1000)
 
+                const connectionStatusStream = syncBackend.connectionStatus.changes
+
+                const latchStream = devtools.enabled === true
+                  ? devtools.syncBackendLatchState.changes
+                  : Stream.make({ latchClosed: false })
+
                 yield* Stream.zipLatest(
-                  syncBackend.isConnected.changes,
-                  devtools.enabled === true
-                    ? devtools.syncBackendLatchState.changes
-                    : Stream.make({ latchClosed: false }),
+                  connectionStatusStream,
+                  latchStream,
                 ).pipe(
-                  Stream.tap(([isConnected, { latchClosed }]) =>
+                  Stream.tap(([connectionStatus, { latchClosed }]) =>
                     sendMessage(
                       Devtools.Leader.NetworkStatusRes.make({
                         networkStatus: {
-                          isConnected,
+                          isConnected: connectionStatus === 'connected',
+                          connectionStatus,
                           timestampMs: Date.now(),
                           devtools: { latchClosed },
                         },

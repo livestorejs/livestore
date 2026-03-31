@@ -50,6 +50,7 @@ export const makeDoRpcSync =
   ({ storeId, payload }) =>
     Effect.gen(function* () {
       const isConnected = yield* SubscriptionRef.make(true)
+      const connectionStatus = yield* SubscriptionRef.make<SyncBackend.ConnectionStatus>('connected')
 
       const ProtocolLive = layerProtocolDurableObject({
         callRpc: (payload) => syncBackendStub.rpc(payload),
@@ -142,6 +143,7 @@ export const makeDoRpcSync =
       return SyncBackend.of({
         connect,
         isConnected,
+        connectionStatus,
         pull,
         push,
         ping,

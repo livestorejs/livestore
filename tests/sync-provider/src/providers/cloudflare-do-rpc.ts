@@ -96,6 +96,7 @@ const makeProxyDoRpcSync = ({
   // TODO pass through clientId, payload, storeId to worker/DO
   Effect.fn(function* ({ clientId, storeId, payload }) {
     const socketConnectionRef = yield* SubscriptionRef.make(false)
+    const connectionStatus = yield* SubscriptionRef.make<SyncBackend.ConnectionStatus>('disconnected')
 
     const ProtocolLive = RpcClient.layerProtocolSocketWithIsConnected({
       url: `ws://localhost:${port}/do-rpc-ws-proxy`,
@@ -118,6 +119,13 @@ const makeProxyDoRpcSync = ({
       false,
     )
 
+    // Mirror isConnected into connectionStatus
+    yield* isConnected.changes.pipe(
+      Stream.tap((c) => SubscriptionRef.set(connectionStatus, c ? 'connected' : 'disconnected')),
+      Stream.runDrain,
+      Effect.forkScoped,
+    )
+
     const metadata = yield* client.GetMetadata({ clientId, storeId, payload })
     const backendIdHelper = yield* SyncBackend.makeBackendIdHelper
 
@@ -126,6 +134,7 @@ const makeProxyDoRpcSync = ({
         .Connect({ clientId, storeId, payload })
         .pipe(Effect.catchTag('RpcClientError', (e) => Effect.die(e))),
       isConnected,
+      connectionStatus,
       pull: (cursor, options) =>
         client
           .Pull({

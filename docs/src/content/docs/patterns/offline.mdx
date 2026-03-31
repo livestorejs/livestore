@@ -12,6 +12,8 @@ import TrackingConnectivitySnippet from '../../_assets/code/patterns/offline/tra
 
 Use `store.networkStatus` to react to connectivity transitions. The subscribable emits every time the sync backend connection flips or the devtools latch simulates an offline state.
 
+The `connectionStatus` field provides richer state than `isConnected`: it can be `'connected'`, `'disconnected'`, or `'reconnecting'`. Use it to show UI indicators when the client is actively trying to re-establish a connection after a transient failure.
+
 <TrackingConnectivitySnippet />
 
 When devtools close the sync latch to simulate an offline client, `status.devtools.latchClosed` is `true`, allowing you to differentiate between real and simulated outages. Remember to dispose of long-lived subscriptions using the Effect scope you already manage for your runtime.

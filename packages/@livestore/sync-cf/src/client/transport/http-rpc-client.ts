@@ -70,6 +70,7 @@ export const makeHttpSync =
     Effect.gen(function* () {
       // Based on ping responses
       const isConnected = yield* SubscriptionRef.make(false)
+      const connectionStatus = yield* SubscriptionRef.make<SyncBackend.ConnectionStatus>('disconnected')
 
       const livePullInterval = options.livePull?.pollInterval ?? 5_000
 
@@ -103,10 +104,13 @@ export const makeHttpSync =
         yield* rpcClient.SyncHttpRpc.Ping({ storeId, payload })
 
         yield* SubscriptionRef.set(isConnected, true)
+        yield* SubscriptionRef.set(connectionStatus, 'connected')
       }).pipe(
         UnknownError.mapToUnknownError,
         Effect.timeout(pingTimeout),
-        Effect.catchTag('TimeoutException', () => SubscriptionRef.set(isConnected, false)),
+        Effect.catchTag('TimeoutException', () =>
+          Effect.all([SubscriptionRef.set(isConnected, false), SubscriptionRef.set(connectionStatus, 'disconnected')]),
+        ),
       )
 
       const pingInterval = options.ping?.requestInterval ?? 10_000
@@ -214,6 +218,7 @@ export const makeHttpSync =
       return SyncBackend.of({
         connect,
         isConnected,
+        connectionStatus,
         pull,
         push,
         ping,

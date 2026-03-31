@@ -17,6 +17,9 @@ import type { BackendIdMismatchError, IsOfflineError, ServerAheadError } from '.
 
 export * from './sync-backend-kv.ts'
 
+export const ConnectionStatus = Schema.Literal('connected', 'disconnected', 'reconnecting')
+export type ConnectionStatus = typeof ConnectionStatus.Type
+
 /**
  * Those arguments can be used to implement multi-tenancy etc and are passed in from the store.
  */
@@ -75,6 +78,10 @@ export type SyncBackend<TSyncMetadata = Schema.JsonValue> = {
   // TODO also expose latency information additionally to whether the backend is connected
   isConnected: SubscriptionRef.SubscriptionRef<boolean>
   /**
+   * Richer connection state that distinguishes between "disconnected" and "reconnecting".
+   */
+  connectionStatus: SubscriptionRef.SubscriptionRef<ConnectionStatus>
+  /**
    * Metadata describing the sync backend. (Currently only used by devtools.)
    */
   metadata: { name: string; description: string } & Record<string, Schema.JsonValue>
@@ -98,6 +105,11 @@ export type SyncBackend<TSyncMetadata = Schema.JsonValue> = {
 export const NetworkStatus = Schema.Struct({
   /** True when the upstream sync backend is reachable and responding to health checks. */
   isConnected: Schema.Boolean,
+  /**
+   * Richer connection state: "connected", "disconnected", or "reconnecting".
+   * Falls back to a value derived from `isConnected` for backends that don't track this.
+   */
+  connectionStatus: ConnectionStatus,
   /** Unix epoch timestamp (ms) of the latest connectivity state transition. */
   timestampMs: Schema.Number,
   /** Devtools specific metadata describing simulator overrides. */

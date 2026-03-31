@@ -11,6 +11,13 @@ if (status.isConnected === false) {
   console.warn('Sync backend offline since', new Date(status.timestampMs))
 }
 
+// Use connectionStatus for richer state — distinguishes active reconnection from disconnected
+if (status.connectionStatus === 'reconnecting') {
+  console.log('Attempting to reconnect...')
+} else if (status.connectionStatus === 'disconnected') {
+  console.log('Disconnected — no active reconnection attempt')
+}
+
 await store.networkStatus.changes.pipe(
   Stream.tap((next) => Effect.sync(() => console.log('network status updated', next))),
   Stream.runDrain,

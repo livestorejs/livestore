@@ -80,6 +80,7 @@ export const makeWsSync =
       const wsUrl = `${options.url}?${UrlParams.toString(urlParams)}`
 
       const isConnected = yield* SubscriptionRef.make(false)
+      const connectionStatus = yield* SubscriptionRef.make<SyncBackend.ConnectionStatus>('disconnected')
 
       // TODO bring this back in a cross-platform way
       // If the browser already tells us we're offline, then we'll at least wait until the browser
@@ -96,6 +97,7 @@ export const makeWsSync =
 
       const ProtocolLive = RpcClient.layerProtocolSocketWithIsConnected({
         isConnected,
+        connectionStatus,
         retryTransientErrors: Schedule.exponential('1 seconds').pipe(
           Schedule.union(Schedule.fixed('30 seconds')),
           Schedule.jittered,
@@ -120,9 +122,15 @@ export const makeWsSync =
         const pinger = yield* RpcClient.SocketPinger.pipe(Effect.provide(ctx))
         yield* pinger.ping
         yield* SubscriptionRef.set(isConnected, true)
+        yield* SubscriptionRef.set(connectionStatus, 'connected')
       }).pipe(
         Effect.timeout(pingTimeout),
-        Effect.catchTag('TimeoutException', () => SubscriptionRef.set(isConnected, false)),
+        Effect.catchTag('TimeoutException', () =>
+          Effect.all([
+            SubscriptionRef.set(isConnected, false),
+            SubscriptionRef.set(connectionStatus, 'disconnected'),
+          ]),
+        ),
         UnknownError.mapToUnknownError,
         Effect.withSpan('ping'),
       )
@@ -131,6 +139,7 @@ export const makeWsSync =
 
       return SyncBackend.of<SyncMetadata>({
         isConnected,
+        connectionStatus,
         connect: ping,
         pull: (cursor, options) =>
           rpcClient.SyncWsRpc.Pull({

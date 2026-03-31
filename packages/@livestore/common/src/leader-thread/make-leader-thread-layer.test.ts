@@ -23,6 +23,7 @@ Vitest.describe('makeNetworkStatusSubscribable', () => {
 
       const initial = yield* networkStatus
       Vitest.expect(initial.isConnected).toBe(false)
+      Vitest.expect(initial.connectionStatus).toBe('disconnected')
       Vitest.expect(initial.devtools.latchClosed).toBe(false)
 
       const waitFor = (predicate: (status: SyncBackend.NetworkStatus) => boolean) =>
@@ -32,7 +33,26 @@ Vitest.describe('makeNetworkStatusSubscribable', () => {
       yield* mockBackend.connect
       const online = yield* onlineFiber
       Vitest.expect(online.isConnected).toBe(true)
+      Vitest.expect(online.connectionStatus).toBe('connected')
       Vitest.expect(online.timestampMs).toBeGreaterThan(initial.timestampMs)
+
+      // Simulate reconnecting state
+      const reconnectingFiber = yield* waitFor((status) => status.connectionStatus === 'reconnecting').pipe(
+        Effect.forkScoped,
+      )
+      yield* mockBackend.reconnecting
+      const reconnecting = yield* reconnectingFiber
+      Vitest.expect(reconnecting.isConnected).toBe(false)
+      Vitest.expect(reconnecting.connectionStatus).toBe('reconnecting')
+
+      // Reconnect
+      const reconnectedFiber = yield* waitFor((status) => status.connectionStatus === 'connected').pipe(
+        Effect.forkScoped,
+      )
+      yield* mockBackend.connect
+      const reconnected = yield* reconnectedFiber
+      Vitest.expect(reconnected.isConnected).toBe(true)
+      Vitest.expect(reconnected.connectionStatus).toBe('connected')
 
       const latchedFiber = yield* waitFor((status) => status.devtools.latchClosed).pipe(Effect.forkScoped)
       yield* SubscriptionRef.set(latchStateRef, { latchClosed: true })

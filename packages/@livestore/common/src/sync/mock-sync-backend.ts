@@ -11,6 +11,8 @@ export interface MockSyncBackend {
   pushedEvents: Stream.Stream<LiveStoreEvent.Global.Encoded>
   connect: Effect.Effect<void>
   disconnect: Effect.Effect<void>
+  /** Simulate a reconnecting state (disconnected but actively retrying) */
+  reconnecting: Effect.Effect<void>
   makeSyncBackend: Effect.Effect<SyncBackend.SyncBackend, UnknownError, Scope.Scope>
   advance: (...batch: LiveStoreEvent.Global.Encoded[]) => Effect.Effect<void>
   /** Fail the next N push calls with an UnknownError, ServerAheadError, BackendIdMismatchError, or custom error */
@@ -46,6 +48,9 @@ export const makeMockSyncBackend = (
     const syncHeadRef = yield* Ref.make(EventSequenceNumber.Client.ROOT.global)
     const allEventsRef = yield* Ref.make<LiveStoreEvent.Global.Encoded[]>([])
     const syncIsConnectedRef = yield* SubscriptionRef.make(options?.startConnected ?? false)
+    const syncConnectionStatusRef = yield* SubscriptionRef.make<SyncBackend.ConnectionStatus>(
+      options?.startConnected ? 'connected' : 'disconnected',
+    )
 
     // Queues for streaming
     const syncPullQueue = yield* Queue.unbounded<LiveStoreEvent.Global.Encoded>()
@@ -136,7 +141,11 @@ export const makeMockSyncBackend = (
       // mirroring how some real providers behave during transient disconnects.
       return SyncBackend.of({
         isConnected: syncIsConnectedRef,
-        connect: SubscriptionRef.set(syncIsConnectedRef, true),
+        connectionStatus: syncConnectionStatusRef,
+        connect: Effect.all([
+          SubscriptionRef.set(syncIsConnectedRef, true),
+          SubscriptionRef.set(syncConnectionStatusRef, 'connected'),
+        ]).pipe(Effect.asVoid),
         ping: Effect.void,
         pull: (cursor, pullOptions) =>
           Stream.fromEffect(
@@ -210,8 +219,18 @@ export const makeMockSyncBackend = (
 
     return {
       pushedEvents: Mailbox.toStream(pushedEventsQueue),
-      connect: SubscriptionRef.set(syncIsConnectedRef, true),
-      disconnect: SubscriptionRef.set(syncIsConnectedRef, false),
+      connect: Effect.all([
+        SubscriptionRef.set(syncIsConnectedRef, true),
+        SubscriptionRef.set(syncConnectionStatusRef, 'connected'),
+      ]).pipe(Effect.asVoid),
+      disconnect: Effect.all([
+        SubscriptionRef.set(syncIsConnectedRef, false),
+        SubscriptionRef.set(syncConnectionStatusRef, 'disconnected'),
+      ]).pipe(Effect.asVoid),
+      reconnecting: Effect.all([
+        SubscriptionRef.set(syncIsConnectedRef, false),
+        SubscriptionRef.set(syncConnectionStatusRef, 'reconnecting'),
+      ]).pipe(Effect.asVoid),
       makeSyncBackend,
       advance,
       failNextPushes,

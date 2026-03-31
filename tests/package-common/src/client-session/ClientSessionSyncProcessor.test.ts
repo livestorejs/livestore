@@ -500,6 +500,7 @@ Vitest.describe.concurrent('ClientSessionSyncProcessor', () => {
       const networkStatus = Subscribable.make<SyncBackend.NetworkStatus, never, never>({
         get: Effect.succeed({
           isConnected: true,
+          connectionStatus: 'connected' as const,
           timestampMs: 0,
           devtools: { latchClosed: false },
         }),

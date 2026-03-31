@@ -100,6 +100,7 @@ Vitest.describe.each(providerLayers)('$name sync provider', { timeout: 60000 }, 
       expect(syncBackend.pull).toBeDefined()
       expect(syncBackend.push).toBeDefined()
       expect(syncBackend.isConnected).toBeDefined()
+      expect(syncBackend.connectionStatus).toBeDefined()
     }).pipe(withTestCtx()(test)),
   )
 
@@ -118,6 +119,8 @@ Vitest.describe.each(providerLayers)('$name sync provider', { timeout: 60000 }, 
       // Check initial state
       const initialConnected = yield* syncBackend.isConnected.get
       expect(initialConnected).toBe(false)
+      const initialConnectionStatus = yield* syncBackend.connectionStatus.get
+      expect(initialConnectionStatus).toBe('disconnected')
 
       // Connect
       yield* syncBackend.connect
@@ -125,6 +128,8 @@ Vitest.describe.each(providerLayers)('$name sync provider', { timeout: 60000 }, 
       // Check connected state
       const connected = yield* syncBackend.isConnected
       expect(connected).toBe(true)
+      const connectionStatus = yield* syncBackend.connectionStatus
+      expect(connectionStatus).toBe('connected')
     }).pipe(withTestCtx()(test)),
   )
 

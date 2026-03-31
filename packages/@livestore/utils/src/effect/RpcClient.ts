@@ -18,6 +18,7 @@ export const layerProtocolSocketWithIsConnected = (options: {
   readonly url: string
   readonly retryTransientErrors?: Schedule.Schedule<unknown> | undefined
   readonly isConnected: SubscriptionRef.SubscriptionRef<boolean>
+  readonly connectionStatus?: SubscriptionRef.SubscriptionRef<'connected' | 'disconnected' | 'reconnecting'> | undefined
   readonly pingSchedule?: Schedule.Schedule<unknown> | undefined
 }): Layer.Layer<Protocol, never, RpcSerialization.RpcSerialization | Socket.Socket> =>
   Layer.scoped(Protocol, makeProtocolSocketWithIsConnected(options))
@@ -27,6 +28,7 @@ export const makeProtocolSocketWithIsConnected = (options: {
   readonly retryTransientErrors?: Schedule.Schedule<unknown> | undefined
   // CHANGED: add isConnected subscription ref
   readonly isConnected: SubscriptionRef.SubscriptionRef<boolean>
+  readonly connectionStatus?: SubscriptionRef.SubscriptionRef<'connected' | 'disconnected' | 'reconnecting'> | undefined
   // CHANGED: add ping schedule
   readonly pingSchedule?: Schedule.Schedule<unknown> | undefined
 }): Effect.Effect<Protocol['Type'], never, Scope.Scope | RpcSerialization.RpcSerialization | Socket.Socket> =>
@@ -70,6 +72,9 @@ export const makeProtocolSocketWithIsConnected = (options: {
                       Effect.fn(function* () {
                         if (options?.isConnected !== undefined) {
                           yield* SubscriptionRef.set(options.isConnected, true)
+                        }
+                        if (options?.connectionStatus !== undefined) {
+                          yield* SubscriptionRef.set(options.connectionStatus, 'connected')
                         }
                       }),
                     ),
@@ -119,11 +124,16 @@ export const makeProtocolSocketWithIsConnected = (options: {
             }
 
             const error = Cause.failureOption(cause)
-            if (
+            const isTransient =
               options?.retryTransientErrors !== undefined &&
-              Option.isSome(error) === true &&
+              Option.isSome(error) &&
               (error.value.reason === 'Open' || error.value.reason === 'OpenTimeout')
-            ) {
+
+            if (options?.connectionStatus !== undefined) {
+              yield* SubscriptionRef.set(options.connectionStatus, isTransient ? 'reconnecting' : 'disconnected')
+            }
+
+            if (isTransient) {
               return
             }
             // yield* Effect.logError('Error in socket', cause)

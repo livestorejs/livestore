@@ -97,6 +97,7 @@ export const makeSyncBackend =
   ({ storeId, payload }) =>
     Effect.gen(function* () {
       const isConnected = yield* SubscriptionRef.make(false)
+      const connectionStatus = yield* SubscriptionRef.make<SyncBackend.ConnectionStatus>('disconnected')
       const pullEndpoint = typeof endpoint === 'string' ? endpoint : endpoint.pull
       const pushEndpoint = typeof endpoint === 'string' ? endpoint : endpoint.push
       const pingEndpoint = typeof endpoint === 'string' ? endpoint : endpoint.ping
@@ -112,10 +113,13 @@ export const makeSyncBackend =
       const ping: SyncBackend.SyncBackend<SyncMetadata>['ping'] = Effect.gen(function* () {
         yield* httpClient.pipe(HttpClient.filterStatusOk).head(pingEndpoint)
         yield* SubscriptionRef.set(isConnected, true)
+        yield* SubscriptionRef.set(connectionStatus, 'connected')
       }).pipe(
         UnknownError.mapToUnknownError,
         Effect.timeout(pingTimeout),
-        Effect.catchTag('TimeoutException', () => SubscriptionRef.set(isConnected, false)),
+        Effect.catchTag('TimeoutException', () =>
+          Effect.all([SubscriptionRef.set(isConnected, false), SubscriptionRef.set(connectionStatus, 'disconnected')]),
+        ),
       )
 
       const pingInterval = pingOptions?.requestInterval ?? 10_000
@@ -249,6 +253,7 @@ export const makeSyncBackend =
 
       return SyncBackend.of({
         connect,
+        connectionStatus,
         pull: (cursor, options) => {
           if (options?.live === true) {
             return ssePull(cursor)
