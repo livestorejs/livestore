@@ -88,7 +88,6 @@ export const livestoreOnlyCatalog = {
   nanoid: '5.0.9',
   'pretty-bytes': '7.0.1',
   'qrcode-generator': '1.4.4',
-  '@standard-schema/spec': '1.0.0',
   '@iarna/toml': '3.0.0',
   '@graphql-typed-document-node/core': '3.2.0',
   'astro-expressive-code': '0.41.5',

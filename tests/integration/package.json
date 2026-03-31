@@ -47,7 +47,7 @@
     "@opentelemetry/sdk-trace-base": "2.2.0",
     "@opentelemetry/sdk-trace-web": "2.2.0",
     "@playwright/test": "1.58.2",
-    "@standard-schema/spec": "1.0.0",
+    "@standard-schema/spec": "1.1.0",
     "@tanstack/react-router": "1.145.7",
     "@tanstack/router-plugin": "1.145.10",
     "@types/node": "25.3.3",
