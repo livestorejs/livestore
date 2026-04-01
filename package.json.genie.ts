@@ -79,6 +79,60 @@ export const rootWorkspacePackages = [
   testsWaSqlitePkg,
 ] as const
 
+const coreWorkspaceExclusions = [
+  'docs',
+  'scripts',
+  'tests',
+  'packages/@local/astro-tldraw',
+  'packages/@local/astro-twoslash-code',
+] as const
+
+const isWorkspacePackageExcluded = (
+  excludedPaths: readonly string[],
+  workspacePackage: (typeof rootWorkspacePackages)[number],
+) =>
+  excludedPaths.some(
+    (excludedPath) =>
+      workspacePackage.meta.workspace.memberPath === excludedPath ||
+      workspacePackage.meta.workspace.memberPath.startsWith(`${excludedPath}/`),
+  )
+
+const isCoreWorkspacePackage = (workspacePackage: (typeof rootWorkspacePackages)[number]) =>
+  isWorkspacePackageExcluded(coreWorkspaceExclusions, workspacePackage) === false
+
+/**
+ * Livestore core workspace packages.
+ *
+ * This is the install-projection used by the core workspace root in
+ * `genie/projections/core/`.
+ * It intentionally excludes examples, docs, tests, scripts, and local demo packages
+ * so downstream consumers can install the production/library graph without the
+ * full repo breadth.
+ */
+export const coreWorkspacePackages = rootWorkspacePackages.filter(isCoreWorkspacePackage)
+
+const toolingWorkspacePackagesByPath = new Set([
+  ...coreWorkspacePackages.map((workspacePackage) => workspacePackage.meta.workspace.memberPath),
+  'docs',
+  'docs/src/content/_assets/code',
+  'packages/@local/astro-tldraw',
+  'packages/@local/astro-twoslash-code',
+  'scripts',
+  'tests/integration',
+  'tests/sync-provider',
+])
+
+/**
+ * Livestore tooling workspace packages.
+ *
+ * This extends the core projection with the local/docs/tooling packages needed
+ * by downstream devtools and release workflows without pulling in the full repo
+ * workspace breadth.
+ */
+export const toolingWorkspacePackages = rootWorkspacePackages.filter((workspacePackage) =>
+  toolingWorkspacePackagesByPath.has(workspacePackage.meta.workspace.memberPath),
+)
+
 const rootWorkspace = packageJson.aggregateFromPackages({
   packages: rootWorkspacePackages,
   name: 'livestore-workspace',

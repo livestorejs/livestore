@@ -24,11 +24,11 @@
         "tsgo": "tsgo"
       },
       "locked": {
-        "lastModified": 1775034251,
-        "narHash": "sha256-wz8RzKSS/ylXmUlOmZo5jfkUyJCfTJvw0dXzCt8UxX0=",
+        "lastModified": 1774940186,
+        "narHash": "sha256-QJlw3nwOQKS4qVVARUw7YAHz6ag8qDdygbKn45HqeGA=",
         "owner": "overengineeringstudio",
         "repo": "effect-utils",
-        "rev": "cb07ccc9cfbb2b61cfec2884b4e49b1f0741c3db",
+        "rev": "88f362706635fc645ebe368e4c7005ac832c3221",
         "type": "github"
       },
       "original": {
@@ -190,11 +190,11 @@
       },
       "locked": {
         "dir": "nix/playwright-flake",
-        "lastModified": 1775034251,
-        "narHash": "sha256-wz8RzKSS/ylXmUlOmZo5jfkUyJCfTJvw0dXzCt8UxX0=",
+        "lastModified": 1774940186,
+        "narHash": "sha256-QJlw3nwOQKS4qVVARUw7YAHz6ag8qDdygbKn45HqeGA=",
         "owner": "overengineeringstudio",
         "repo": "effect-utils",
-        "rev": "cb07ccc9cfbb2b61cfec2884b4e49b1f0741c3db",
+        "rev": "88f362706635fc645ebe368e4c7005ac832c3221",
         "type": "github"
       },
       "original": {
@@ -277,11 +277,11 @@
         "typescript-src": "typescript-src"
       },
       "locked": {
-        "lastModified": 1774889517,
-        "narHash": "sha256-wl+OjG7kVWMt6B9ROP2keiT3CELQkNyL0bh1SoCKXh0=",
+        "lastModified": 1773387039,
+        "narHash": "sha256-v7O3R7RxDqK/T+ot3JPEZcBcLZsAMIjD2EbpYy1/t1I=",
         "owner": "Effect-TS",
         "repo": "tsgo",
-        "rev": "24a8a96ec80681a1d15243da30c2423d73cb1193",
+        "rev": "c219f226cb0579a8c077fab3192d7ddf190ba77a",
         "type": "github"
       },
       "original": {
@@ -293,17 +293,17 @@
     "typescript-go-src": {
       "flake": false,
       "locked": {
-        "lastModified": 1774829605,
-        "narHash": "sha256-t6imfxEDl9Vm2weZjkumqSL+K5z3YcYm7w2GgNMrpSA=",
+        "lastModified": 1773275612,
+        "narHash": "sha256-S5TnTCE3/e7ZyQgsBKYzBp5aqCvecflo1JAEL0LDv4Q=",
         "owner": "microsoft",
         "repo": "typescript-go",
-        "rev": "8a834dad086d6912b091e8b467e98499dab68cd9",
+        "rev": "8b515c6ce5f821ed382cdb540c6df488738bb515",
         "type": "github"
       },
       "original": {
         "owner": "microsoft",
         "repo": "typescript-go",
-        "rev": "8a834dad086d6912b091e8b467e98499dab68cd9",
+        "rev": "8b515c6ce5f821ed382cdb540c6df488738bb515",
         "type": "github"
       }
     },
