@@ -383,7 +383,7 @@ Vitest.describe.concurrent('ClientSessionSyncProcessor', () => {
         debugInstanceId: 'test-instance',
       }
 
-      const syncProcessor = makeClientSessionSyncProcessor({
+      const syncProcessor = yield* makeClientSessionSyncProcessor({
         schema: schema as LiveStoreSchema,
         clientSession,
         runtime,
@@ -557,7 +557,7 @@ Vitest.describe.concurrent('ClientSessionSyncProcessor', () => {
         debugInstanceId: 'test-instance',
       } satisfies ClientSession
 
-      const syncProcessor = makeClientSessionSyncProcessor({
+      const syncProcessor = yield* makeClientSessionSyncProcessor({
         schema: schema as LiveStoreSchema,
         clientSession,
         runtime,

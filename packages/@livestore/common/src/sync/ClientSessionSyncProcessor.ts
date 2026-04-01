@@ -40,7 +40,7 @@ const jsonStringify = Schema.encodeSync(Schema.parseJson())
  * - The leader sync processor pulls regular LiveStore events, while the session sync processor pulls SyncState.PayloadUpstream items
  * - The session sync processor has no downstream nodes.
  */
-export const makeClientSessionSyncProcessor = ({
+export const makeClientSessionSyncProcessor = Effect.fn('makeClientSessionSyncProcessor')(function* ({
   schema,
   clientSession,
   runtime,
@@ -78,7 +78,7 @@ export const makeClientSessionSyncProcessor = ({
    * If true, registers a beforeunload event listener to confirm unsaved changes.
    */
   confirmUnsavedChanges: boolean
-}): ClientSessionSyncProcessor => {
+}): Effect.fn.Return<ClientSessionSyncProcessor> {
   const eventSchema = LiveStoreEvent.Client.makeSchemaMemo(schema)
 
   const simSleep = <TKey extends keyof ClientSessionSyncProcessorSimulationParams>(
@@ -97,12 +97,12 @@ export const makeClientSessionSyncProcessor = ({
   }
 
   /** Only used for debugging / observability / testing, it's not relied upon for correctness of the sync processor. */
-  const syncStateUpdateQueue = Queue.unbounded<SyncState.SyncState>().pipe(Effect.runSync)
+  const syncStateUpdateQueue = yield* Queue.unbounded<SyncState.SyncState>()
   const isClientEvent = (eventEncoded: LiveStoreEvent.Client.EncodedWithMeta) =>
     schema.eventsDefsMap.get(eventEncoded.name)?.options.clientOnly ?? false
 
   /** We're queuing push requests to reduce the number of messages sent to the leader by batching them */
-  const leaderPushQueue = BucketQueue.make<LiveStoreEvent.Client.EncodedWithMeta>().pipe(Effect.runSync)
+  const leaderPushQueue = yield* BucketQueue.make<LiveStoreEvent.Client.EncodedWithMeta>()
 
   const push: ClientSessionSyncProcessor['push'] = Effect.fn('client-session-sync-processor:push')(function* (batch) {
     // TODO validate batch
@@ -370,7 +370,7 @@ export const makeClientSessionSyncProcessor = ({
       debugInfo: () => debugInfo,
     },
   } satisfies ClientSessionSyncProcessor
-}
+})
 
 export interface ClientSessionSyncProcessor {
   push: (
