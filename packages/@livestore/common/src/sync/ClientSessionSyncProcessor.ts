@@ -350,11 +350,7 @@ export const makeClientSessionSyncProcessor = ({
     push,
     boot,
     syncState: Subscribable.make({
-      get: Effect.gen(function* () {
-        const syncState = syncStateRef.current
-        if (syncStateRef === undefined) return shouldNeverHappen('Not initialized')
-        return syncState
-      }),
+      get: Effect.sync(() => syncStateRef.current),
       changes: Stream.fromQueue(syncStateUpdateQueue),
     }),
     debug: {
