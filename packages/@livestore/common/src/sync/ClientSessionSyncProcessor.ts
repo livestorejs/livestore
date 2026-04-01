@@ -185,7 +185,7 @@ export const makeClientSessionSyncProcessor = Effect.fn('makeClientSessionSyncPr
     rejectCount: 0,
   }
 
-  const boot: ClientSessionSyncProcessor['boot'] = Effect.gen(function* () {
+  const boot: ClientSessionSyncProcessor['boot'] = Effect.fn('client-session-sync-processor:boot')(function* () {
     if (
       confirmUnsavedChanges === true &&
       typeof window !== 'undefined' &&
@@ -345,7 +345,7 @@ export const makeClientSessionSyncProcessor = Effect.fn('makeClientSessionSyncPr
       Effect.tapCauseLogPretty,
       Effect.forkScoped,
     )
-  })
+  })()
 
   return {
     push,
