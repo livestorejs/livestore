@@ -403,7 +403,11 @@ Vitest.describe.concurrent('ClientSessionSyncProcessor', () => {
         confirmUnsavedChanges: false,
       })
 
-      yield* syncProcessor.push([events.todoCreated({ id: 'post-rebase', text: 'after', completed: false })])
+      const encoded = yield* syncProcessor.encodeEvents([
+        events.todoCreated({ id: 'post-rebase', text: 'after', completed: false }),
+      ])
+      yield* syncProcessor.push(encoded)
+      yield* syncProcessor.materializeEvents(encoded)
 
       expect(recordedEvents).toHaveLength(1)
       const event = recordedEvents[0]!

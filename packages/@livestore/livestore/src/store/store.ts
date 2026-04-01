@@ -802,23 +802,20 @@ export class Store<TSchema extends LiveStoreSchema = LiveStoreSchema.Any, TConte
 
       const localRuntime = yield* Effect.runtime()
 
-      const materializeEventsTx = Effect.try({
-        try: () => {
-          const runMaterializeEvents = () => {
-            return this[StoreInternalsSymbol].syncProcessor.push(events).pipe(Runtime.runSync(localRuntime))
-          }
+      const encodedEvents = yield* this[StoreInternalsSymbol].syncProcessor.encodeEvents(events)
 
-          if (events.length > 1) {
-            return this[StoreInternalsSymbol].sqliteDbWrapper.txn(runMaterializeEvents)
-          } else {
-            return runMaterializeEvents()
-          }
+      const { writeTables } = yield* Effect.try({
+        try: () => {
+          const materialize = () =>
+            this[StoreInternalsSymbol].syncProcessor.materializeEvents(encodedEvents).pipe(Runtime.runSync(localRuntime))
+          return events.length > 1
+            ? this[StoreInternalsSymbol].sqliteDbWrapper.txn(materialize)
+            : materialize()
         },
         catch: (cause) => UnknownError.make({ cause }),
       })
 
-      // Materialize events to state
-      const { writeTables } = yield* materializeEventsTx
+      yield* this[StoreInternalsSymbol].syncProcessor.push(encodedEvents)
 
       const tablesToUpdate: [Ref<null, ReactivityGraphContext, RefreshReason>, null][] = []
       for (const tableName of writeTables) {

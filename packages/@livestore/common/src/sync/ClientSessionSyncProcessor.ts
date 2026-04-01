@@ -101,11 +101,11 @@ export const makeClientSessionSyncProcessor = Effect.fn('makeClientSessionSyncPr
   /** We're queuing push requests to reduce the number of messages sent to the leader by batching them */
   const leaderPushQueue = yield* BucketQueue.make<LiveStoreEvent.Client.EncodedWithMeta>()
 
-  const push: ClientSessionSyncProcessor['push'] = Effect.fn('client-session-sync-processor:push')(function* (batch) {
-    // TODO validate batch
-
+  const encodeEvents: ClientSessionSyncProcessor['encodeEvents'] = Effect.fn('client-session-sync-processor:encodeEvents')(function* (
+    events,
+  ) {
     let baseEventSequenceNumber = syncStateRef.current.localHead
-    const encodedEventDefs = yield* Effect.forEach(batch, ({ name, args }) =>
+    return yield* Effect.forEach(events, ({ name, args }) =>
       Effect.gen(function* () {
         const eventDef = yield* Effect.fromNullable(schema.eventsDefsMap.get(name)).pipe(Effect.orDieDebugger)
         const nextNumPair = EventSequenceNumber.Client.nextPair({
@@ -125,10 +125,14 @@ export const makeClientSessionSyncProcessor = Effect.fn('makeClientSessionSyncPr
         )
       }),
     )
+  })
 
+  const push: ClientSessionSyncProcessor['push'] = Effect.fn('client-session-sync-processor:push')(function* (
+    encodedEvents,
+  ) {
     const mergeResult = yield* SyncState.merge({
       syncState: syncStateRef.current,
-      payload: { _tag: 'local-push', newEvents: encodedEventDefs },
+      payload: { _tag: 'local-push', newEvents: encodedEvents },
       isClientEvent,
       isEqualEvent: LiveStoreEvent.Client.isEqualEncoded,
     }).pipe(
@@ -139,9 +143,9 @@ export const makeClientSessionSyncProcessor = Effect.fn('makeClientSessionSyncPr
     )
 
     yield* Effect.annotateCurrentSpan({
-      batchSize: encodedEventDefs.length,
+      batchSize: encodedEvents.length,
       mergeResultTag: mergeResult._tag,
-      eventCounts: encodedEventDefs.reduce<Record<string, number>>((acc, event) => {
+      eventCounts: encodedEvents.reduce<Record<string, number>>((acc, event) => {
         acc[event.name] = (acc[event.name] ?? 0) + 1
         return acc
       }, {}),
@@ -150,31 +154,29 @@ export const makeClientSessionSyncProcessor = Effect.fn('makeClientSessionSyncPr
 
     syncStateRef.current = mergeResult.newSyncState
     yield* syncStateUpdateQueue.offer(mergeResult.newSyncState)
-
-    // Materialize events to state
-    const writeTables = new Set<string>()
-    for (const event of mergeResult.newEvents) {
-      const {
-        writeTables: newWriteTables,
-        sessionChangeset,
-        materializerHash,
-      } = yield* materializeEvent(event, {
-        withChangeset: true,
-        materializerHashLeader: Option.none(),
-      })
-      for (const table of newWriteTables) {
-        writeTables.add(table)
-      }
-      event.meta.sessionChangeset = sessionChangeset
-      event.meta.materializerHashSession = materializerHash
-    }
-
-    // Trigger push to leader
-    // console.debug('pushToLeader', encodedEventDefs.length, ...encodedEventDefs.map((_) => _.toJSON()))
-    yield* BucketQueue.offerAll(leaderPushQueue, encodedEventDefs)
-
-    return { writeTables }
+    yield* BucketQueue.offerAll(leaderPushQueue, mergeResult.newEvents)
   })
+
+  const materializeEvents: ClientSessionSyncProcessor['materializeEvents'] = (events) =>
+    Effect.gen(function* () {
+      const writeTables = new Set<string>()
+      for (const event of events) {
+        const {
+          writeTables: newWriteTables,
+          sessionChangeset,
+          materializerHash,
+        } = yield* materializeEvent(event, {
+          withChangeset: true,
+          materializerHashLeader: Option.none(),
+        })
+        for (const table of newWriteTables) {
+          writeTables.add(table)
+        }
+        event.meta.sessionChangeset = sessionChangeset
+        event.meta.materializerHashSession = materializerHash
+      }
+      return { writeTables }
+    })
 
   const debugInfo = {
     rebaseCount: 0,
@@ -345,7 +347,9 @@ export const makeClientSessionSyncProcessor = Effect.fn('makeClientSessionSyncPr
   })()
 
   return {
+    encodeEvents,
     push,
+    materializeEvents,
     boot,
     syncState: Subscribable.make({
       get: Effect.sync(() => syncStateRef.current),
@@ -370,8 +374,14 @@ export const makeClientSessionSyncProcessor = Effect.fn('makeClientSessionSyncPr
 })
 
 export interface ClientSessionSyncProcessor {
+  encodeEvents: (
+    events: ReadonlyArray<LiveStoreEvent.Input.Decoded>,
+  ) => Effect.Effect<ReadonlyArray<LiveStoreEvent.Client.EncodedWithMeta>>
   push: (
-    batch: ReadonlyArray<LiveStoreEvent.Input.Decoded>,
+    events: ReadonlyArray<LiveStoreEvent.Client.EncodedWithMeta>,
+  ) => Effect.Effect<void>
+  materializeEvents: (
+    events: ReadonlyArray<LiveStoreEvent.Client.EncodedWithMeta>,
   ) => Effect.Effect<{ writeTables: Set<string> }, MaterializeError>
   boot: Effect.Effect<void, never, Scope.Scope>
   /**
