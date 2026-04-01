@@ -1,5 +1,5 @@
 /// <reference lib="dom" />
-import { LS_DEV, shouldNeverHappen, TRACE_VERBOSE } from '@livestore/utils'
+import { LS_DEV, TRACE_VERBOSE } from '@livestore/utils'
 import {
   BucketQueue,
   Effect,
@@ -134,7 +134,12 @@ export const makeClientSessionSyncProcessor = ({
       payload: { _tag: 'local-push', newEvents: encodedEventDefs },
       isClientEvent,
       isEqualEvent: LiveStoreEvent.Client.isEqualEncoded,
-    })
+    }).pipe(
+      Effect.filterOrDieMessage(
+        (r) => r._tag === 'advance',
+        'Expected advance from local-push merge',
+      ),
+    )
 
     yield* Effect.annotateCurrentSpan({
       batchSize: encodedEventDefs.length,
@@ -145,10 +150,6 @@ export const makeClientSessionSyncProcessor = ({
       }, {}),
       ...(TRACE_VERBOSE === true ? { mergeResult: jsonStringify(mergeResult) } : {}),
     })
-
-    if (mergeResult._tag !== 'advance') {
-      return shouldNeverHappen(`Expected advance, got ${mergeResult._tag}`)
-    }
 
     syncStateRef.current = mergeResult.newSyncState
     yield* syncStateUpdateQueue.offer(mergeResult.newSyncState)
@@ -239,11 +240,12 @@ export const makeClientSessionSyncProcessor = ({
             payload,
             isClientEvent,
             isEqualEvent: LiveStoreEvent.Client.isEqualEncoded,
-          })
-
-          if (mergeResult._tag === 'reject') {
-            return shouldNeverHappen('Unexpected reject in client-session-sync-processor', mergeResult)
-          }
+          }).pipe(
+            Effect.filterOrDieMessage(
+              (r) => r._tag !== 'reject',
+              'Unexpected reject in client-session-sync-processor',
+            ),
+          )
 
           syncStateRef.current = mergeResult.newSyncState
 
