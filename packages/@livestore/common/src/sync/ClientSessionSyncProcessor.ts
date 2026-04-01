@@ -108,27 +108,26 @@ export const makeClientSessionSyncProcessor = ({
     // TODO validate batch
 
     let baseEventSequenceNumber = syncStateRef.current.localHead
-    const encodedEventDefs = batch.map(({ name, args }) => {
-      const eventDef = schema.eventsDefsMap.get(name)
-      if (eventDef === undefined) {
-        return shouldNeverHappen(`No event definition found for \`${name}\`.`)
-      }
-      const nextNumPair = EventSequenceNumber.Client.nextPair({
-        seqNum: baseEventSequenceNumber,
-        isClient: eventDef.options.clientOnly,
-        rebaseGeneration: baseEventSequenceNumber.rebaseGeneration,
-      })
-      baseEventSequenceNumber = nextNumPair.seqNum
-      return new LiveStoreEvent.Client.EncodedWithMeta(
-        Schema.encodeUnknownSync(eventSchema)({
-          name,
-          args,
-          ...nextNumPair,
-          clientId: clientSession.clientId,
-          sessionId: clientSession.sessionId,
-        }),
-      )
-    })
+    const encodedEventDefs = yield* Effect.forEach(batch, ({ name, args }) =>
+      Effect.gen(function* () {
+        const eventDef = yield* Effect.fromNullable(schema.eventsDefsMap.get(name)).pipe(Effect.orDieDebugger)
+        const nextNumPair = EventSequenceNumber.Client.nextPair({
+          seqNum: baseEventSequenceNumber,
+          isClient: eventDef.options.clientOnly,
+          rebaseGeneration: baseEventSequenceNumber.rebaseGeneration,
+        })
+        baseEventSequenceNumber = nextNumPair.seqNum
+        return new LiveStoreEvent.Client.EncodedWithMeta(
+          Schema.encodeUnknownSync(eventSchema)({
+            name,
+            args,
+            ...nextNumPair,
+            clientId: clientSession.clientId,
+            sessionId: clientSession.sessionId,
+          }),
+        )
+      }),
+    )
 
     const mergeResult = yield* SyncState.merge({
       syncState: syncStateRef.current,
