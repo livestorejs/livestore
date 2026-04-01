@@ -14,7 +14,7 @@ import {
   Subscribable,
 } from '@livestore/utils/effect'
 
-import { type ClientSession, type UnknownError } from '../adapter-types.ts'
+import type { ClientSession } from '../adapter-types.ts'
 import type { MaterializeError } from '../errors.ts'
 import { isRejectedPushError } from '../leader-thread/RejectedPushError.ts'
 import * as EventSequenceNumber from '../schema/EventSequenceNumber/mod.ts'
@@ -379,7 +379,7 @@ export interface ClientSessionSyncProcessor {
   push: (
     batch: ReadonlyArray<LiveStoreEvent.Input.Decoded>,
   ) => Effect.Effect<{ writeTables: Set<string> }, MaterializeError>
-  boot: Effect.Effect<void, UnknownError, Scope.Scope>
+  boot: Effect.Effect<void, never, Scope.Scope>
   /**
    * Only used for debugging / observability.
    */
