@@ -126,6 +126,14 @@ export const repoPnpmOnlyBuiltDependencies = Object.entries(repoPnpmAllowBuilds)
   .map(([name]) => name)
   .toSorted()
 
+/** Repo-specific pnpm packageExtensions for starlight/typedoc peer resolution */
+export const repoPackageExtensions = {
+  'starlight-auto-sidebar': { dependencies: { astro: '>=5.0.0' } },
+  'starlight-links-validator': { dependencies: { astro: '>=5.0.0' } },
+  'starlight-sidebar-topics': { dependencies: { astro: '>=5.0.0' } },
+  typedoc: { dependencies: { 'typedoc-plugin-markdown': '^4.8.1' } },
+} as const
+
 // =============================================================================
 // Package Config Exports
 // =============================================================================

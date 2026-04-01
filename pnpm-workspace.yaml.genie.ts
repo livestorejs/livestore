@@ -18,7 +18,7 @@ const examplesWorkspaceSettings = {
   },
 } as const
 
-const repoPackageExtensions = {
+export const repoPackageExtensions = {
   'starlight-auto-sidebar': {
     dependencies: {
       astro: '>=5.0.0',
