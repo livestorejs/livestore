@@ -210,7 +210,6 @@ export class Store<TSchema extends LiveStoreSchema = LiveStoreSchema.Any, TConte
     const syncProcessor = makeClientSessionSyncProcessor({
       schema,
       clientSession,
-      runtime: effectContext.runtime,
       materializeEvent: Effect.fn('client-session-sync-processor:materialize-event')(
         (eventEncoded, { withChangeset, materializerHashLeader }) =>
           // We need to use `Effect.gen` (even though we're using `Effect.fn`) so that we can pass `this` to the function

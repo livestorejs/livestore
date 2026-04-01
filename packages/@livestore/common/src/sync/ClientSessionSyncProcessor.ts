@@ -7,7 +7,6 @@ import {
   FiberHandle,
   Option,
   Queue,
-  type Runtime,
   Schema,
   type Scope,
   Stream,
@@ -43,7 +42,6 @@ const jsonStringify = Schema.encodeSync(Schema.parseJson())
 export const makeClientSessionSyncProcessor = Effect.fn('makeClientSessionSyncProcessor')(function* ({
   schema,
   clientSession,
-  runtime,
   materializeEvent,
   rollback,
   refreshTables,
@@ -52,7 +50,6 @@ export const makeClientSessionSyncProcessor = Effect.fn('makeClientSessionSyncPr
 }: {
   schema: LiveStoreSchema
   clientSession: ClientSession
-  runtime: Runtime.Runtime<Scope.Scope>
   materializeEvent: (
     eventEncoded: LiveStoreEvent.Client.EncodedWithMeta,
     options: { withChangeset: boolean; materializerHashLeader: Option.Option<number> },
@@ -366,7 +363,7 @@ export const makeClientSessionSyncProcessor = Effect.fn('makeClientSessionSyncPr
             'pushQueueItems',
             pushQueueItems.map((_) => _.toJSON()),
           )
-        }).pipe(Effect.provide(runtime), Effect.runSync),
+        }).pipe(Effect.runSync),
       debugInfo: () => debugInfo,
     },
   } satisfies ClientSessionSyncProcessor

@@ -343,7 +343,7 @@ Vitest.describe.concurrent('ClientSessionSyncProcessor', () => {
   Vitest.scopedLive('rebased pushes carry rebase generation forward', (test) =>
     Effect.gen(function* () {
       const lockStatus = yield* SubscriptionRef.make<LockStatus>('has-lock')
-      const runtime = yield* Effect.runtime<Scope.Scope>()
+
 
       const baseHead = EventSequenceNumber.Client.Composite.make({ global: 10, client: 0, rebaseGeneration: 4 })
       const recordedEvents: LiveStoreEvent.Client.EncodedWithMeta[] = []
@@ -386,7 +386,6 @@ Vitest.describe.concurrent('ClientSessionSyncProcessor', () => {
       const syncProcessor = yield* makeClientSessionSyncProcessor({
         schema: schema as LiveStoreSchema,
         clientSession,
-        runtime,
         materializeEvent: (event) =>
           Effect.sync(() => {
             recordedEvents.push(event)
@@ -493,7 +492,7 @@ Vitest.describe.concurrent('ClientSessionSyncProcessor', () => {
       const upstreamQueue = yield* Queue.unbounded<LiveStoreEvent.Client.EncodedWithMeta>()
       const materializedEvents: LiveStoreEvent.Client.EncodedWithMeta[] = []
       const materialized = yield* Deferred.make<void>()
-      const runtime = yield* Effect.runtime<Scope.Scope>()
+
 
       const lockStatus = yield* SubscriptionRef.make<'has-lock' | 'no-lock'>('has-lock')
 
@@ -560,7 +559,6 @@ Vitest.describe.concurrent('ClientSessionSyncProcessor', () => {
       const syncProcessor = yield* makeClientSessionSyncProcessor({
         schema: schema as LiveStoreSchema,
         clientSession,
-        runtime,
         materializeEvent,
         rollback: () => undefined,
         refreshTables: () => undefined,
