@@ -5,7 +5,7 @@ const examplesWorkspaceSettings = {
   linkWorkspacePackages: true,
   overrides: {
     /** Dedupe effect packages pulled in transitively by vue-livestore@0.2.3 (via @livestore/peer-deps@0.3.1) */
-    'effect': '3.21.0',
+    effect: '3.21.0',
     '@effect/platform': '0.96.0',
     '@effect/platform-browser': '0.76.0',
     '@effect/platform-bun': '0.89.0',
@@ -18,7 +18,7 @@ const examplesWorkspaceSettings = {
     '@effect/printer-ansi': '0.49.0',
     '@effect/typeclass': '0.40.0',
     /** Dedupe react/react-dom for examples still on 19.1.0 */
-    'react': '19.2.3',
+    react: '19.2.3',
     'react-dom': '19.2.3',
     '@tanstack/router-core': '1.139.14',
     '@tanstack/history': '1.139.0',
