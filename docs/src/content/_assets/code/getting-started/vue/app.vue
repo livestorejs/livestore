@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { makePersistedAdapter } from '@livestore/adapter-web'
 import LiveStoreSharedWorker from '@livestore/adapter-web/shared-worker?sharedworker'
+
 import LiveStoreWorker from './livestore/livestore.worker.ts?worker'
 import { schema } from './livestore/schema.ts'
 

@@ -1,22 +1,37 @@
-import { commonPnpmPolicySettings, pnpmWorkspaceYaml, repoPnpmAllowBuilds } from './genie/repo.ts'
+import { catalog, commonPnpmPolicySettings, pnpmWorkspaceYaml, repoPnpmAllowBuilds } from './genie/repo.ts'
 import { rootWorkspacePackages } from './package.json.genie.ts'
 
 const examplesWorkspaceSettings = {
   linkWorkspacePackages: true,
-  overrides: {
-    '@tanstack/router-core': '1.139.14',
-    '@tanstack/history': '1.139.0',
-    '@tanstack/react-router': '1.139.14',
-    '@tanstack/react-start': '1.139.14',
-    '@tanstack/router-devtools': '1.139.14',
-    '@tanstack/router-devtools-core': '1.139.14',
-    '@tanstack/react-router-devtools': '1.139.14',
-    '@tanstack/router-plugin': '1.139.14',
-    '@tanstack/start-plugin-core': '1.139.14',
-    '@tanstack/start-server-core': '1.139.14',
-    '@tanstack/start-client-core': '1.139.14',
-  },
-} as const
+  /** Dedupe packages pulled in transitively by older example/peer-deps dependencies */
+  overrides: catalog.pick(
+    'effect',
+    '@effect/platform',
+    '@effect/platform-browser',
+    '@effect/platform-bun',
+    '@effect/platform-node',
+    '@effect/platform-node-shared',
+    '@effect/cli',
+    '@effect/experimental',
+    '@effect/opentelemetry',
+    '@effect/printer',
+    '@effect/printer-ansi',
+    '@effect/typeclass',
+    'react',
+    'react-dom',
+    '@tanstack/router-core',
+    '@tanstack/history',
+    '@tanstack/react-router',
+    '@tanstack/react-start',
+    '@tanstack/router-devtools',
+    '@tanstack/router-devtools-core',
+    '@tanstack/react-router-devtools',
+    '@tanstack/router-plugin',
+    '@tanstack/start-plugin-core',
+    '@tanstack/start-server-core',
+    '@tanstack/start-client-core',
+  ),
+}
 
 export const repoPackageExtensions = {
   'starlight-auto-sidebar': {

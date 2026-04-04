@@ -11,8 +11,8 @@
     "@livestore/sqlite-wasm": "0.4.0-dev.22",
     "@livestore/wa-sqlite": "0.4.0-dev.22",
     "@overengineering/fps-meter": "0.2.4",
-    "react": "19.1.0",
-    "react-dom": "19.1.0",
+    "react": "19.2.3",
+    "react-dom": "19.2.3",
     "react-server-dom-webpack": "19.1.0",
     "rwsdk": "1.0.0-beta.12",
     "todomvc-app-css": "2.4.3"

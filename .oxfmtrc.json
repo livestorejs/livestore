@@ -26,6 +26,7 @@
     "**/package.json",
     "**/tsconfig.json",
     "**/tsconfig.*.json",
+    "**/pnpm-lock.normalized.yaml",
     "**/node_modules/**",
     "**/.pnpm/**",
     "**/.pnpm-store/**",
