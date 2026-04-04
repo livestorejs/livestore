@@ -49,6 +49,15 @@ export const livestoreWorkspaceCatalog = {
 /** LiveStore-only versions not provided by effect-utils base catalog. */
 export const livestoreOnlyCatalog = {
   '@livestore/devtools-vite': '0.4.0-dev.22',
+  /** Tanstack router sub-packages not in effect-utils catalog (react-router/react-start/router-plugin are there) */
+  '@tanstack/router-core': '1.145.7',
+  '@tanstack/history': '1.145.7',
+  '@tanstack/router-devtools': '1.145.7',
+  '@tanstack/router-devtools-core': '1.145.7',
+  '@tanstack/react-router-devtools': '1.145.7',
+  '@tanstack/start-plugin-core': '1.145.7',
+  '@tanstack/start-server-core': '1.145.7',
+  '@tanstack/start-client-core': '1.145.7',
   '@biomejs/biome': '2.3.8',
   '@types/chrome': '0.1.4',
   '@types/web': '0.0.264',

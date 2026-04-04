@@ -1,38 +1,37 @@
-import { commonPnpmPolicySettings, pnpmWorkspaceYaml, repoPnpmAllowBuilds } from './genie/repo.ts'
+import { catalog, commonPnpmPolicySettings, pnpmWorkspaceYaml, repoPnpmAllowBuilds } from './genie/repo.ts'
 import { rootWorkspacePackages } from './package.json.genie.ts'
 
 const examplesWorkspaceSettings = {
   linkWorkspacePackages: true,
-  overrides: {
-    /** Dedupe effect packages pulled in transitively by vue-livestore@0.2.3 (via @livestore/peer-deps@0.3.1) */
-    effect: '3.21.0',
-    '@effect/platform': '0.96.0',
-    '@effect/platform-browser': '0.76.0',
-    '@effect/platform-bun': '0.89.0',
-    '@effect/platform-node': '0.106.0',
-    '@effect/platform-node-shared': '0.59.0',
-    '@effect/cli': '0.75.0',
-    '@effect/experimental': '0.60.0',
-    '@effect/opentelemetry': '0.63.0',
-    '@effect/printer': '0.49.0',
-    '@effect/printer-ansi': '0.49.0',
-    '@effect/typeclass': '0.40.0',
-    /** Dedupe react/react-dom for examples still on 19.1.0 */
-    react: '19.2.3',
-    'react-dom': '19.2.3',
-    '@tanstack/router-core': '1.139.14',
-    '@tanstack/history': '1.139.0',
-    '@tanstack/react-router': '1.139.14',
-    '@tanstack/react-start': '1.139.14',
-    '@tanstack/router-devtools': '1.139.14',
-    '@tanstack/router-devtools-core': '1.139.14',
-    '@tanstack/react-router-devtools': '1.139.14',
-    '@tanstack/router-plugin': '1.139.14',
-    '@tanstack/start-plugin-core': '1.139.14',
-    '@tanstack/start-server-core': '1.139.14',
-    '@tanstack/start-client-core': '1.139.14',
-  },
-} as const
+  /** Dedupe packages pulled in transitively by older example/peer-deps dependencies */
+  overrides: catalog.pick(
+    'effect',
+    '@effect/platform',
+    '@effect/platform-browser',
+    '@effect/platform-bun',
+    '@effect/platform-node',
+    '@effect/platform-node-shared',
+    '@effect/cli',
+    '@effect/experimental',
+    '@effect/opentelemetry',
+    '@effect/printer',
+    '@effect/printer-ansi',
+    '@effect/typeclass',
+    'react',
+    'react-dom',
+    '@tanstack/router-core',
+    '@tanstack/history',
+    '@tanstack/react-router',
+    '@tanstack/react-start',
+    '@tanstack/router-devtools',
+    '@tanstack/router-devtools-core',
+    '@tanstack/react-router-devtools',
+    '@tanstack/router-plugin',
+    '@tanstack/start-plugin-core',
+    '@tanstack/start-server-core',
+    '@tanstack/start-client-core',
+  ),
+}
 
 export const repoPackageExtensions = {
   'starlight-auto-sidebar': {
