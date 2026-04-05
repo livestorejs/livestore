@@ -24,16 +24,16 @@
         "tsgo": "tsgo"
       },
       "locked": {
-        "lastModified": 1775409064,
-        "narHash": "sha256-LkDCRN0+E8pK9m1UTvNFzjZAEoUGFWSFQo/VL1EIfX8=",
+        "lastModified": 1775428068,
+        "narHash": "sha256-wQMSy5c7fyMftvfcVODM7Q8eDLRwEPwYY//HlmD9s7k=",
         "owner": "overengineeringstudio",
         "repo": "effect-utils",
-        "rev": "4e3296f7214663cc6b54147e518acf07614468e4",
+        "rev": "61c75a543297a79c7f48d144be1b9a29c5b00ce8",
         "type": "github"
       },
       "original": {
         "owner": "overengineeringstudio",
-        "ref": "main",
+        "ref": "schickling/2026-04-05-genie-declaration-paths",
         "repo": "effect-utils",
         "type": "github"
       }
@@ -135,11 +135,11 @@
     },
     "nixpkgs": {
       "locked": {
-        "lastModified": 1769461804,
-        "narHash": "sha256-msG8SU5WsBUfVVa/9RPLaymvi5bI8edTavbIq3vRlhI=",
+        "lastModified": 1775036866,
+        "narHash": "sha256-ZojAnPuCdy657PbTq5V0Y+AHKhZAIwSIT2cb8UgAz/U=",
         "owner": "NixOS",
         "repo": "nixpkgs",
-        "rev": "bfc1b8a4574108ceef22f02bafcf6611380c100d",
+        "rev": "6201e203d09599479a3b3450ed24fa81537ebc4e",
         "type": "github"
       },
       "original": {
@@ -277,11 +277,11 @@
         "typescript-src": "typescript-src"
       },
       "locked": {
-        "lastModified": 1773387039,
-        "narHash": "sha256-v7O3R7RxDqK/T+ot3JPEZcBcLZsAMIjD2EbpYy1/t1I=",
+        "lastModified": 1774889517,
+        "narHash": "sha256-wl+OjG7kVWMt6B9ROP2keiT3CELQkNyL0bh1SoCKXh0=",
         "owner": "Effect-TS",
         "repo": "tsgo",
-        "rev": "c219f226cb0579a8c077fab3192d7ddf190ba77a",
+        "rev": "24a8a96ec80681a1d15243da30c2423d73cb1193",
         "type": "github"
       },
       "original": {
@@ -293,17 +293,17 @@
     "typescript-go-src": {
       "flake": false,
       "locked": {
-        "lastModified": 1773275612,
-        "narHash": "sha256-S5TnTCE3/e7ZyQgsBKYzBp5aqCvecflo1JAEL0LDv4Q=",
+        "lastModified": 1774829605,
+        "narHash": "sha256-t6imfxEDl9Vm2weZjkumqSL+K5z3YcYm7w2GgNMrpSA=",
         "owner": "microsoft",
         "repo": "typescript-go",
-        "rev": "8b515c6ce5f821ed382cdb540c6df488738bb515",
+        "rev": "8a834dad086d6912b091e8b467e98499dab68cd9",
         "type": "github"
       },
       "original": {
         "owner": "microsoft",
         "repo": "typescript-go",
-        "rev": "8b515c6ce5f821ed382cdb540c6df488738bb515",
+        "rev": "8a834dad086d6912b091e8b467e98499dab68cd9",
         "type": "github"
       }
     },
