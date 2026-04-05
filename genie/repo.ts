@@ -1,3 +1,7 @@
+import { existsSync, readFileSync, readdirSync } from 'node:fs'
+import path from 'node:path'
+import { fileURLToPath } from 'node:url'
+
 /**
  * LiveStore monorepo configuration
  *
@@ -22,6 +26,7 @@ import {
   baseTsconfigCompilerOptions,
   commonPnpmPolicySettings,
   defineCatalog,
+  declarationPathMappingsForPackage,
   domLib,
   githubRuleset,
   githubWorkflow,
@@ -33,7 +38,7 @@ import {
   type PnpmPackageClosureConfig,
   pnpmWorkspaceYaml,
   reactJsx,
-  tsconfigJson,
+  tsconfigJson as externalTsconfigJson,
   type PackageJsonData,
   type PnpmWorkspaceData,
   type WorkspaceIdentity,
@@ -60,7 +65,6 @@ export {
   oxlintConfig,
   packageJson,
   pnpmWorkspaceYaml,
-  tsconfigJson,
 }
 export type {
   PackageJsonData,
@@ -73,6 +77,131 @@ export type {
   WorkspacePackageLike,
 }
 
+type PackageManifestForPaths = {
+  name?: string
+  exports?: Record<string, string | Record<string, string>>
+  publishConfig?: {
+    exports?: Record<string, string | Record<string, string>>
+  }
+}
+
+const repoRoot = fileURLToPath(new URL('..', import.meta.url))
+
+const walkPackageManifests = (dir: string): string[] => {
+  if (existsSync(dir) === false) return []
+
+  const entries = readdirSync(dir, { withFileTypes: true })
+  const manifests: string[] = []
+
+  for (const entry of entries) {
+    if (entry.name === 'dist' || entry.name === 'node_modules' || entry.name.startsWith('.')) {
+      continue
+    }
+
+    const fullPath = path.join(dir, entry.name)
+    if (entry.isDirectory()) {
+      manifests.push(...walkPackageManifests(fullPath))
+      continue
+    }
+
+    if (entry.isFile() && entry.name === 'package.json') {
+      manifests.push(fullPath)
+    }
+  }
+
+  return manifests
+}
+
+const localPackageDeclarationMappings = (() => {
+  const manifests = [
+    ...walkPackageManifests(path.join(repoRoot, 'packages')),
+    ...walkPackageManifests(path.join(repoRoot, 'tests')),
+    path.join(repoRoot, 'scripts', 'package.json'),
+    path.join(repoRoot, 'docs', 'package.json'),
+  ]
+
+  const mappings: Record<string, string> = {}
+
+  for (const manifestPath of manifests) {
+    if (existsSync(manifestPath) === false) continue
+
+    const manifest = JSON.parse(readFileSync(manifestPath, 'utf8')) as PackageManifestForPaths
+    if (manifest.name === undefined || manifest.exports === undefined) continue
+
+    const packageBasePath = path.relative(repoRoot, path.dirname(manifestPath))
+    const declarationMappings = declarationPathMappingsForPackage({
+      packageName: manifest.name,
+      exports: manifest.exports,
+      publishConfigExports: manifest.publishConfig?.exports,
+      packageBasePath,
+    })
+
+    for (const [specifier, [target]] of Object.entries(declarationMappings)) {
+      if (target !== undefined) mappings[specifier] = target
+    }
+  }
+
+  return mappings
+})()
+
+const packageNameForLocation = (location: string): string | undefined => {
+  const manifestPath = path.join(repoRoot, location, 'package.json')
+  if (existsSync(manifestPath) === false) return undefined
+
+  const manifest = JSON.parse(readFileSync(manifestPath, 'utf8')) as PackageManifestForPaths
+  return manifest.name
+}
+
+const tsconfigPathsForLocation = (location: string): Record<string, string[]> => {
+  const depth = location.split('/').filter(Boolean).length
+  const toRoot = '../'.repeat(depth)
+  const currentPackageName = packageNameForLocation(location)
+  const paths: Record<string, string[]> = {}
+
+  for (const [specifier, target] of Object.entries(localPackageDeclarationMappings)) {
+    if (
+      currentPackageName !== undefined &&
+      (specifier === currentPackageName || specifier.startsWith(`${currentPackageName}/`))
+    ) {
+      continue
+    }
+
+    paths[specifier] = [`${toRoot}${target}`]
+  }
+
+  return paths
+}
+
+export const tsconfigJson = (
+  args: Parameters<typeof externalTsconfigJson>[0],
+): ReturnType<typeof externalTsconfigJson> => {
+  const base = externalTsconfigJson(args)
+
+  return {
+    ...base,
+    stringify: (ctx) => {
+      const compilerOptions = {
+        ...args.compilerOptions,
+        preserveSymlinks: true,
+        baseUrl: args.compilerOptions?.baseUrl ?? '.',
+        paths: {
+          ...tsconfigPathsForLocation(ctx.location),
+          ...args.compilerOptions?.paths,
+        },
+      }
+
+      return JSON.stringify(
+        {
+          ...args,
+          compilerOptions,
+        },
+        null,
+        2,
+      ) + '\n'
+    },
+  }
+}
+
 /**
  * Package tsconfig compiler options for livestore.
  * Uses src/ as rootDir (effect-utils uses . for rootDir).
@@ -81,6 +210,7 @@ export const packageTsconfigCompilerOptions = {
   ...effectUtilsPackageTsconfigCompilerOptions,
   rootDir: './src',
   tsBuildInfoFile: './dist/.tsbuildinfo',
+  preserveSymlinks: true,
 } as const
 
 /**

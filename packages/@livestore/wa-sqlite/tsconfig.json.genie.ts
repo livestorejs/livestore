@@ -15,6 +15,7 @@ export default tsconfigJson({
     tsBuildInfoFile: './.tsc-out/.tsbuildinfo',
     declaration: true,
     declarationMap: true,
+    emitDeclarationOnly: true,
   },
   include: ['src/**/*'],
   exclude: [...packageTsconfigExclude],

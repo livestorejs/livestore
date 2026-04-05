@@ -40,7 +40,168 @@
     ],
     "composite": true,
     "rootDir": "./src",
-    "tsBuildInfoFile": "./dist/.tsbuildinfo"
+    "tsBuildInfoFile": "./dist/.tsbuildinfo",
+    "preserveSymlinks": true,
+    "baseUrl": ".",
+    "paths": {
+      "@livestore/sync-cf/cf-worker": [
+        "../../../packages/@livestore/sync-cf/dist/cf-worker/mod.d.ts"
+      ],
+      "@livestore/sync-cf/client": ["../../../packages/@livestore/sync-cf/dist/client/mod.d.ts"],
+      "@livestore/sync-cf/common": ["../../../packages/@livestore/sync-cf/dist/common/mod.d.ts"],
+      "@livestore/sync-electric": ["../../../packages/@livestore/sync-electric/dist/index.d.ts"],
+      "@livestore/adapter-node": ["../../../packages/@livestore/adapter-node/dist/index.d.ts"],
+      "@livestore/adapter-node/devtools": [
+        "../../../packages/@livestore/adapter-node/dist/devtools/mod.d.ts"
+      ],
+      "@livestore/adapter-node/worker": [
+        "../../../packages/@livestore/adapter-node/dist/make-leader-worker.d.ts"
+      ],
+      "@livestore/svelte": ["../../../packages/@livestore/svelte/dist/mod.d.ts"],
+      "@livestore/adapter-cloudflare": [
+        "../../../packages/@livestore/adapter-cloudflare/dist/mod.d.ts"
+      ],
+      "@livestore/adapter-cloudflare/polyfill": [
+        "../../../packages/@livestore/adapter-cloudflare/dist/polyfill.d.ts"
+      ],
+      "@livestore/livestore": ["../../../packages/@livestore/livestore/dist/mod.d.ts"],
+      "@livestore/livestore/effect": [
+        "../../../packages/@livestore/livestore/dist/effect/mod.d.ts"
+      ],
+      "@livestore/livestore/internal": [
+        "../../../packages/@livestore/livestore/dist/internal/mod.d.ts"
+      ],
+      "@livestore/livestore/internal/testing-utils": [
+        "../../../packages/@livestore/livestore/dist/utils/tests/mod.d.ts"
+      ],
+      "@livestore/sync-s2": ["../../../packages/@livestore/sync-s2/dist/mod.d.ts"],
+      "@livestore/sync-s2/s2-proxy-helpers": [
+        "../../../packages/@livestore/sync-s2/dist/s2-proxy-helpers.d.ts"
+      ],
+      "@livestore/sqlite-wasm": ["../../../packages/@livestore/sqlite-wasm/dist/index.d.ts"],
+      "@livestore/sqlite-wasm/browser": [
+        "../../../packages/@livestore/sqlite-wasm/dist/browser/mod.d.ts"
+      ],
+      "@livestore/sqlite-wasm/cf": ["../../../packages/@livestore/sqlite-wasm/dist/cf/mod.d.ts"],
+      "@livestore/sqlite-wasm/load-wasm": [
+        "../../../packages/@livestore/sqlite-wasm/dist/load-wasm/mod.browser.d.ts"
+      ],
+      "@livestore/sqlite-wasm/node": [
+        "../../../packages/@livestore/sqlite-wasm/dist/node/mod.d.ts"
+      ],
+      "@livestore/solid": ["../../../packages/@livestore/solid/dist/mod.d.ts"],
+      "@livestore/utils": ["../../../packages/@livestore/utils/dist/mod.d.ts"],
+      "@livestore/utils/browser": ["../../../packages/@livestore/utils/dist/browser/mod.d.ts"],
+      "@livestore/utils/bun": ["../../../packages/@livestore/utils/dist/bun/mod.d.ts"],
+      "@livestore/utils/cuid": ["../../../packages/@livestore/utils/dist/cuid/cuid.node.d.ts"],
+      "@livestore/utils/effect": ["../../../packages/@livestore/utils/dist/effect/mod.d.ts"],
+      "@livestore/utils/effect/browser": [
+        "../../../packages/@livestore/utils/dist/browser/mod.d.ts"
+      ],
+      "@livestore/utils/nanoid": ["../../../packages/@livestore/utils/dist/nanoid/index.d.ts"],
+      "@livestore/utils/node": ["../../../packages/@livestore/utils/dist/node/mod.d.ts"],
+      "@livestore/adapter-web": ["../../../packages/@livestore/adapter-web/dist/index.d.ts"],
+      "@livestore/adapter-web/shared-worker": [
+        "../../../packages/@livestore/adapter-web/dist/web-worker/shared-worker/make-shared-worker.d.ts"
+      ],
+      "@livestore/adapter-web/worker": [
+        "../../../packages/@livestore/adapter-web/dist/web-worker/leader-worker/make-leader-worker.d.ts"
+      ],
+      "@livestore/adapter-web/worker-vite-dev-polyfill": [
+        "../../../packages/@livestore/adapter-web/dist/web-worker/vite-dev-polyfill.d.ts"
+      ],
+      "@livestore/cli": ["../../../packages/@livestore/cli/dist/mod.d.ts"],
+      "@livestore/wa-sqlite": ["../../../packages/@livestore/wa-sqlite/src/types/index.d.ts"],
+      "@livestore/wa-sqlite/src/FacadeVFS.js": [
+        "../../../packages/@livestore/wa-sqlite/src/FacadeVFS.d.ts"
+      ],
+      "@livestore/wa-sqlite/src/sqlite-api.js": [
+        "../../../packages/@livestore/wa-sqlite/src/sqlite-api.d.ts"
+      ],
+      "@livestore/wa-sqlite/src/sqlite-constants.js": [
+        "../../../packages/@livestore/wa-sqlite/src/sqlite-constants.d.ts"
+      ],
+      "@livestore/wa-sqlite/src/VFS.js": ["../../../packages/@livestore/wa-sqlite/src/VFS.d.ts"],
+      "@livestore/wa-sqlite/src/WebLocksMixin.js": [
+        "../../../packages/@livestore/wa-sqlite/src/WebLocksMixin.d.ts"
+      ],
+      "@livestore/common": ["../../../packages/@livestore/common/dist/index.d.ts"],
+      "@livestore/common/leader-thread": [
+        "../../../packages/@livestore/common/dist/leader-thread/mod.d.ts"
+      ],
+      "@livestore/common/schema": ["../../../packages/@livestore/common/dist/schema/mod.d.ts"],
+      "@livestore/common/sql-queries": [
+        "../../../packages/@livestore/common/dist/sql-queries/index.d.ts"
+      ],
+      "@livestore/common/sync": ["../../../packages/@livestore/common/dist/sync/index.d.ts"],
+      "@livestore/common/sync/next": [
+        "../../../packages/@livestore/common/dist/sync/next/mod.d.ts"
+      ],
+      "@livestore/common/sync/next/test": [
+        "../../../packages/@livestore/common/dist/sync/next/test/mod.d.ts"
+      ],
+      "@livestore/common/testing": ["../../../packages/@livestore/common/dist/testing/mod.d.ts"],
+      "@livestore/common-cf": ["../../../packages/@livestore/common-cf/dist/mod.d.ts"],
+      "@livestore/common-cf/declare": [
+        "../../../packages/@livestore/common-cf/dist/declare/mod.d.ts"
+      ],
+      "@livestore/graphql": ["../../../packages/@livestore/graphql/dist/index.d.ts"],
+      "@livestore/adapter-expo": ["../../../packages/@livestore/adapter-expo/dist/index.d.ts"],
+      "@livestore/effect-playwright": [
+        "../../../packages/@livestore/effect-playwright/dist/index.d.ts"
+      ],
+      "@livestore/framework-toolkit": [
+        "../../../packages/@livestore/framework-toolkit/dist/mod.d.ts"
+      ],
+      "@livestore/framework-toolkit/testing": [
+        "../../../packages/@livestore/framework-toolkit/dist/testing.d.ts"
+      ],
+      "@livestore/react": ["../../../packages/@livestore/react/dist/mod.d.ts"],
+      "@livestore/react/experimental": [
+        "../../../packages/@livestore/react/dist/experimental/mod.d.ts"
+      ],
+      "@livestore/devtools-web-common/web-channel": [
+        "../../../packages/@livestore/devtools-web-common/dist/web-channel/index.d.ts"
+      ],
+      "@livestore/devtools-web-common/worker": [
+        "../../../packages/@livestore/devtools-web-common/dist/worker/mod.d.ts"
+      ],
+      "@livestore/webmesh": ["../../../packages/@livestore/webmesh/dist/mod.d.ts"],
+      "@local/astro-twoslash-code": ["../../../packages/@local/astro-twoslash-code/dist/mod.d.ts"],
+      "@local/astro-twoslash-code/cli": [
+        "../../../packages/@local/astro-twoslash-code/dist/cli/snippets.d.ts"
+      ],
+      "@local/astro-twoslash-code/components/multi-code": [
+        "../../../packages/@local/astro-twoslash-code/dist/components/multi-code.d.ts"
+      ],
+      "@local/astro-twoslash-code/integration": [
+        "../../../packages/@local/astro-twoslash-code/dist/integration/astro-twoslash-code.d.ts"
+      ],
+      "@local/astro-twoslash-code/vite": [
+        "../../../packages/@local/astro-twoslash-code/dist/vite/vite-plugin-snippet.d.ts"
+      ],
+      "@local/shared": ["../../../packages/@local/shared/dist/index.d.ts"],
+      "@local/astro-tldraw": ["../../../packages/@local/astro-tldraw/dist/mod.d.ts"],
+      "@local/astro-tldraw/integration": [
+        "../../../packages/@local/astro-tldraw/dist/integration.d.ts"
+      ],
+      "@local/astro-tldraw/vite": ["../../../packages/@local/astro-tldraw/dist/vite-plugin.d.ts"],
+      "@local/tests-package-common/todomvc-fixture": [
+        "../../../tests/package-common/dist/todomvc-fixture.d.ts"
+      ],
+      "@local/tests-integration/run-tests": ["../../../tests/integration/scripts/run-tests.d.ts"],
+      "@local/tests-sync-provider/prepare-ci": [
+        "../../../tests/sync-provider/dist/prepare-ci.d.ts"
+      ],
+      "@local/tests-sync-provider/registry": [
+        "../../../tests/sync-provider/dist/providers/registry.d.ts"
+      ],
+      "@local/scripts/docs-export": ["../../../scripts/dist/commands/docs-export.d.ts"],
+      "@local/scripts/lint": ["../../../scripts/dist/commands/lint.d.ts"],
+      "@local/scripts/release": ["../../../scripts/dist/commands/release.d.ts"],
+      "@local/docs/multi-code-markdown": ["../../../docs/dist/utils/multi-code-markdown.d.ts"],
+      "@local/docs/sidebar": ["../../../docs/dist/data/sidebar.d.ts"]
+    }
   },
   "include": ["./src"],
   "exclude": ["node_modules", "**/dist", "**/node_modules/.pnpm", "**/*.genie.ts"],
