@@ -26,7 +26,6 @@ import {
   baseTsconfigCompilerOptions,
   commonPnpmPolicySettings,
   defineCatalog,
-  declarationPathMappingsForPackage,
   domLib,
   githubRuleset,
   githubWorkflow,
@@ -85,7 +84,175 @@ type PackageManifestForPaths = {
   }
 }
 
+type PackageExportTarget = string | Record<string, string> | Array<string | Record<string, string>>
+
+const exportConditionPriority = [
+  'types',
+  'default',
+  'import',
+  'node',
+  'require',
+  'browser',
+  'react-native',
+  'bun',
+  'worker',
+  'workerd',
+] as const
+
 const repoRoot = fileURLToPath(new URL('..', import.meta.url))
+
+const getPreferredExportTarget = (entry: PackageExportTarget | undefined): string | undefined => {
+  if (entry === undefined) return undefined
+  if (typeof entry === 'string') return entry
+
+  if (Array.isArray(entry)) {
+    for (const target of entry) {
+      const resolved = getPreferredExportTarget(target)
+      if (resolved !== undefined) return resolved
+    }
+
+    return undefined
+  }
+
+  for (const condition of exportConditionPriority) {
+    const target = entry[condition]
+    if (target !== undefined) return target
+  }
+
+  return Object.values(entry).find((value) => typeof value === 'string')
+}
+
+const toDeclarationPaths = (target: string): string[] => {
+  if (target.endsWith('.d.ts') || target.endsWith('.d.mts') || target.endsWith('.d.cts')) {
+    return [target]
+  }
+
+  if (target.endsWith('.js') || target.endsWith('.mjs') || target.endsWith('.cjs')) {
+    return [target.replace(/\.(?:mjs|cjs|js)$/u, '.d.ts')]
+  }
+
+  if (
+    target.endsWith('.ts') ||
+    target.endsWith('.mts') ||
+    target.endsWith('.cts') ||
+    target.endsWith('.tsx')
+  ) {
+    const declarationTarget = target.replace(/\.(?:tsx|mts|cts|ts)$/u, '.d.ts')
+
+    if (target.startsWith('./src/')) {
+      return [
+        declarationTarget.replace(/^\.\/src\//u, './dist/'),
+        declarationTarget.replace(/^\.\/src\//u, './dist/src/'),
+      ]
+    }
+
+    return [declarationTarget]
+  }
+
+  return []
+}
+
+const normalizeRelativePath = (target: string) => path.posix.normalize(target.replace(/^\.\//u, ''))
+
+const declarationExtensionForSourceTarget = (target: string) => {
+  if (target.endsWith('.mts')) return '.d.mts'
+  if (target.endsWith('.cts')) return '.d.cts'
+  return '.d.ts'
+}
+
+const readTsconfigCompilerOptions = (packageRoot: string) => {
+  const tsconfigPath = path.join(packageRoot, 'tsconfig.json')
+  if (existsSync(tsconfigPath) === false) return undefined
+
+  try {
+    const tsconfigText = readFileSync(tsconfigPath, 'utf8')
+    const tsconfig = JSON.parse(tsconfigText.replace(/^\s*\/\/.*$/gmu, '')) as {
+      compilerOptions?: Record<string, unknown>
+    }
+    return tsconfig.compilerOptions
+  } catch {
+    return undefined
+  }
+}
+
+const deriveEmittedDeclarationPath = ({
+  packageRoot,
+  sourceTarget,
+}: {
+  packageRoot: string
+  sourceTarget: string
+}) => {
+  if (
+    sourceTarget.endsWith('.ts') === false &&
+    sourceTarget.endsWith('.tsx') === false &&
+    sourceTarget.endsWith('.mts') === false &&
+    sourceTarget.endsWith('.cts') === false
+  ) {
+    return undefined
+  }
+
+  const compilerOptions = readTsconfigCompilerOptions(packageRoot)
+  const outDir = compilerOptions?.outDir
+  const rootDir = compilerOptions?.rootDir
+  if (typeof outDir !== 'string' || typeof rootDir !== 'string') return undefined
+
+  const normalizedSource = normalizeRelativePath(sourceTarget)
+  const normalizedRootDir = normalizeRelativePath(rootDir)
+  const normalizedOutDir = normalizeRelativePath(outDir)
+  const relativeSource = path.posix.relative(normalizedRootDir, normalizedSource)
+  if (relativeSource.startsWith('..')) return undefined
+
+  const declarationPath = relativeSource.replace(
+    /\.(?:tsx|mts|cts|ts)$/u,
+    declarationExtensionForSourceTarget(sourceTarget),
+  )
+
+  return `./${path.posix.join(normalizedOutDir, declarationPath)}`
+}
+
+const declarationPathMappingsForPackage = ({
+  packageName,
+  exports,
+  publishConfigExports,
+  packageBasePath,
+}: {
+  packageName: string
+  exports: Record<string, PackageExportTarget> | undefined
+  publishConfigExports: Record<string, PackageExportTarget> | undefined
+  packageBasePath: string
+}) => {
+  const packageRoot = path.resolve(repoRoot, packageBasePath)
+  const mappings: Record<string, string[]> = {}
+  const exportPaths = new Set([
+    ...Object.keys(exports ?? {}),
+    ...Object.keys(publishConfigExports ?? {}),
+  ])
+
+  for (const exportPath of exportPaths) {
+    if (exportPath !== '.' && exportPath.startsWith('./') === false) continue
+
+    const publishTarget = getPreferredExportTarget(publishConfigExports?.[exportPath])
+    const sourceTarget = getPreferredExportTarget(exports?.[exportPath])
+    const declarationTargets = [
+      ...(sourceTarget === undefined
+        ? []
+        : [deriveEmittedDeclarationPath({ packageRoot, sourceTarget })].flatMap((target) =>
+            target === undefined ? [] : [target],
+          )),
+      ...[publishTarget, sourceTarget].flatMap((target) =>
+        target === undefined ? [] : toDeclarationPaths(target),
+      ),
+    ]
+    const declarationTarget = declarationTargets[0]
+    if (declarationTarget === undefined) continue
+
+    const specifier =
+      exportPath === '.' ? packageName : `${packageName}/${exportPath.replace(/^\.\//, '')}`
+    mappings[specifier] = [`${packageBasePath}/${declarationTarget.replace(/^\.\//u, '')}`]
+  }
+
+  return mappings
+}
 
 const walkPackageManifests = (dir: string): string[] => {
   if (existsSync(dir) === false) return []
