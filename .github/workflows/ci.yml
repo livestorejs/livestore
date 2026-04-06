@@ -56,7 +56,7 @@ jobs:
           fi
           mkdir -p "$MEGAREPO_STORE"
           echo "Using job-local megarepo store: $MEGAREPO_STORE"
-          nix run "github:overengineeringstudio/effect-utils/$EU_REV#megarepo" -- fetch --apply --all
+          nix run "github:overengineeringstudio/effect-utils/$EU_REV#megarepo" -- apply --all
         shell: bash
       - name: Use pinned devenv from lock
         run: |
@@ -292,7 +292,7 @@ jobs:
           fi
           mkdir -p "$MEGAREPO_STORE"
           echo "Using job-local megarepo store: $MEGAREPO_STORE"
-          nix run "github:overengineeringstudio/effect-utils/$EU_REV#megarepo" -- fetch --apply --all
+          nix run "github:overengineeringstudio/effect-utils/$EU_REV#megarepo" -- apply --all
         shell: bash
       - name: Use pinned devenv from lock
         run: |
@@ -528,7 +528,7 @@ jobs:
           fi
           mkdir -p "$MEGAREPO_STORE"
           echo "Using job-local megarepo store: $MEGAREPO_STORE"
-          nix run "github:overengineeringstudio/effect-utils/$EU_REV#megarepo" -- fetch --apply --all
+          nix run "github:overengineeringstudio/effect-utils/$EU_REV#megarepo" -- apply --all
         shell: bash
       - name: Use pinned devenv from lock
         run: |
@@ -764,7 +764,7 @@ jobs:
           fi
           mkdir -p "$MEGAREPO_STORE"
           echo "Using job-local megarepo store: $MEGAREPO_STORE"
-          nix run "github:overengineeringstudio/effect-utils/$EU_REV#megarepo" -- fetch --apply --all
+          nix run "github:overengineeringstudio/effect-utils/$EU_REV#megarepo" -- apply --all
         shell: bash
       - name: Use pinned devenv from lock
         run: |
@@ -1044,7 +1044,7 @@ jobs:
           fi
           mkdir -p "$MEGAREPO_STORE"
           echo "Using job-local megarepo store: $MEGAREPO_STORE"
-          nix run "github:overengineeringstudio/effect-utils/$EU_REV#megarepo" -- fetch --apply --all
+          nix run "github:overengineeringstudio/effect-utils/$EU_REV#megarepo" -- apply --all
         shell: bash
       - name: Use pinned devenv from lock
         run: |
@@ -1310,7 +1310,7 @@ jobs:
           fi
           mkdir -p "$MEGAREPO_STORE"
           echo "Using job-local megarepo store: $MEGAREPO_STORE"
-          nix run "github:overengineeringstudio/effect-utils/$EU_REV#megarepo" -- fetch --apply --all
+          nix run "github:overengineeringstudio/effect-utils/$EU_REV#megarepo" -- apply --all
         shell: bash
       - name: Use pinned devenv from lock
         run: |
@@ -1681,7 +1681,7 @@ jobs:
           fi
           mkdir -p "$MEGAREPO_STORE"
           echo "Using job-local megarepo store: $MEGAREPO_STORE"
-          nix run "github:overengineeringstudio/effect-utils/$EU_REV#megarepo" -- fetch --apply --all
+          nix run "github:overengineeringstudio/effect-utils/$EU_REV#megarepo" -- apply --all
         shell: bash
       - name: Use pinned devenv from lock
         run: |
@@ -1931,7 +1931,7 @@ jobs:
           fi
           mkdir -p "$MEGAREPO_STORE"
           echo "Using job-local megarepo store: $MEGAREPO_STORE"
-          nix run "github:overengineeringstudio/effect-utils/$EU_REV#megarepo" -- fetch --apply --all
+          nix run "github:overengineeringstudio/effect-utils/$EU_REV#megarepo" -- apply --all
         shell: bash
       - name: Use pinned devenv from lock
         run: |
@@ -2298,7 +2298,7 @@ jobs:
           fi
           mkdir -p "$MEGAREPO_STORE"
           echo "Using job-local megarepo store: $MEGAREPO_STORE"
-          nix run "github:overengineeringstudio/effect-utils/$EU_REV#megarepo" -- fetch --apply --all
+          nix run "github:overengineeringstudio/effect-utils/$EU_REV#megarepo" -- apply --all
         shell: bash
       - name: Use pinned devenv from lock
         run: |
@@ -2536,7 +2536,7 @@ jobs:
           fi
           mkdir -p "$MEGAREPO_STORE"
           echo "Using job-local megarepo store: $MEGAREPO_STORE"
-          nix run "github:overengineeringstudio/effect-utils/$EU_REV#megarepo" -- fetch --apply --all
+          nix run "github:overengineeringstudio/effect-utils/$EU_REV#megarepo" -- apply --all
         shell: bash
       - name: Use pinned devenv from lock
         run: |
@@ -3106,7 +3106,7 @@ jobs:
           fi
           mkdir -p "$MEGAREPO_STORE"
           echo "Using job-local megarepo store: $MEGAREPO_STORE"
-          nix run "github:overengineeringstudio/effect-utils/$EU_REV#megarepo" -- fetch --apply --all
+          nix run "github:overengineeringstudio/effect-utils/$EU_REV#megarepo" -- apply --all
         shell: bash
       - name: Use pinned devenv from lock
         run: |
