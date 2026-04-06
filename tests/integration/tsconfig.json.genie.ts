@@ -16,8 +16,10 @@ export default tsconfigJson({
   exclude: [...packageTsconfigExclude, './src/tests/devtools/fixtures'],
   references: [
     { path: '../../packages/@local/shared' },
+    { path: '../../packages/@livestore/adapter-cloudflare' },
     { path: '../../packages/@livestore/effect-playwright' },
     { path: '../../packages/@livestore/common' },
+    { path: '../../packages/@livestore/common-cf' },
     { path: '../../packages/@livestore/react' },
     { path: '../../packages/@livestore/livestore' },
     { path: '../../packages/@livestore/adapter-node' },

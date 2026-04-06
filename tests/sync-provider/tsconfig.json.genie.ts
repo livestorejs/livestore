@@ -23,6 +23,7 @@ export default tsconfigJson({
     { path: '../../packages/@livestore/adapter-cloudflare' },
     { path: '../../packages/@livestore/sync-cf' },
     { path: '../../packages/@livestore/sync-electric' },
+    { path: '../../packages/@livestore/sync-s2' },
     { path: '../../packages/@livestore/livestore' },
   ],
 })

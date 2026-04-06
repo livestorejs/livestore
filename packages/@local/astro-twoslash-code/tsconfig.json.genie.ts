@@ -11,4 +11,5 @@ export default tsconfigJson({
   },
   include: ['src', 'tests', 'examples'],
   exclude: [...packageTsconfigExclude, 'dist', 'src/cli/test-fixtures'],
+  references: [{ path: '../../@livestore/utils' }],
 })

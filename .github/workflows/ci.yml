@@ -22,13 +22,12 @@ env:
 
 jobs:
   lint:
-    runs-on:
-      [namespace-profile-linux-x86-64, 'namespace-features:github.run-id=${{ github.run_id }}']
+    runs-on: [namespace-profile-linux-x86-64, 'namespace-features:github.run-id=${{ github.run_id }}']
     defaults:
       run:
         shell: bash
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
       - name: Install Nix
         uses: DeterminateSystems/determinate-nix-action@v3
         with:
@@ -40,8 +39,9 @@ jobs:
             access-tokens = github.com=${{ github.token }}
             extra-substituters = https://cache.nixos.org
             extra-trusted-public-keys = cache.nixos.org-1:6NCHdD59X431o0gWypbMrAURkbJ16ZPMQFGspcDShjY=
+          summarize: true
       - name: Enable Cachix cache
-        uses: cachix/cachix-action@v16
+        uses: cachix/cachix-action@v17
         with:
           name: livestore
           authToken: '${{ env.CACHIX_AUTH_TOKEN }}'
@@ -56,13 +56,19 @@ jobs:
           fi
           mkdir -p "$MEGAREPO_STORE"
           echo "Using job-local megarepo store: $MEGAREPO_STORE"
-          nix run "github:overengineeringstudio/effect-utils/$EU_REV#megarepo" -- apply --all
+          nix run "github:overengineeringstudio/effect-utils/$EU_REV#megarepo" -- fetch --apply --all
         shell: bash
       - name: Use pinned devenv from lock
         run: |
-          DEVENV_REV=$(jq -r .nodes.devenv.locked.rev devenv.lock)
+          DEVENV_NODE=$(jq -r '.nodes.root.inputs.devenv // "devenv"' devenv.lock)
+          if [ -z "$DEVENV_NODE" ] || [ "$DEVENV_NODE" = "null" ]; then
+            echo '::error::devenv.lock missing .nodes.root.inputs.devenv'
+            exit 1
+          fi
+
+          DEVENV_REV=$(jq -r --arg node "$DEVENV_NODE" '.nodes[$node].locked.rev // .nodes.devenv.locked.rev // empty' devenv.lock)
           if [ -z "$DEVENV_REV" ] || [ "$DEVENV_REV" = "null" ]; then
-            echo '::error::devenv.lock missing .nodes.devenv.locked.rev'
+            echo "::error::devenv.lock missing locked.rev for node $DEVENV_NODE"
             exit 1
           fi
           echo "DEVENV_REV=$DEVENV_REV" >> "$GITHUB_ENV"
@@ -83,9 +89,15 @@ jobs:
       - name: Resolve devenv
         run: |
           if [ -z "${DEVENV_REV:-}" ]; then
-            DEVENV_REV=$(jq -r .nodes.devenv.locked.rev devenv.lock)
+            DEVENV_NODE=$(jq -r '.nodes.root.inputs.devenv // "devenv"' devenv.lock)
+          if [ -z "$DEVENV_NODE" ] || [ "$DEVENV_NODE" = "null" ]; then
+            echo '::error::devenv.lock missing .nodes.root.inputs.devenv'
+            exit 1
+          fi
+
+          DEVENV_REV=$(jq -r --arg node "$DEVENV_NODE" '.nodes[$node].locked.rev // .nodes.devenv.locked.rev // empty' devenv.lock)
           if [ -z "$DEVENV_REV" ] || [ "$DEVENV_REV" = "null" ]; then
-            echo '::error::devenv.lock missing .nodes.devenv.locked.rev'
+            echo "::error::devenv.lock missing locked.rev for node $DEVENV_NODE"
             exit 1
           fi
           fi
@@ -201,7 +213,7 @@ jobs:
                 return 0
               fi
 
-              flattened=$(awk 'BEGIN { ORS=" " } { gsub(/\033\[[0-9;]*m/, ""); print }' "$log")
+              flattened=$(tr '\r\n' '  ' < "$log" | sed -E $'s/\x1B\\[[0-9;]*m//g')
               path=$(printf '%s' "$flattened" |
                 grep -o "error:[[:space:]]*path '/nix/store/[^']*'[[:space:]]*is not valid" |
                 head -1 |
@@ -258,13 +270,12 @@ jobs:
           if-no-files-found: ignore
           retention-days: 14
   type-check:
-    runs-on:
-      [namespace-profile-linux-x86-64, 'namespace-features:github.run-id=${{ github.run_id }}']
+    runs-on: [namespace-profile-linux-x86-64, 'namespace-features:github.run-id=${{ github.run_id }}']
     defaults:
       run:
         shell: bash
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
       - name: Install Nix
         uses: DeterminateSystems/determinate-nix-action@v3
         with:
@@ -276,8 +287,9 @@ jobs:
             access-tokens = github.com=${{ github.token }}
             extra-substituters = https://cache.nixos.org
             extra-trusted-public-keys = cache.nixos.org-1:6NCHdD59X431o0gWypbMrAURkbJ16ZPMQFGspcDShjY=
+          summarize: true
       - name: Enable Cachix cache
-        uses: cachix/cachix-action@v16
+        uses: cachix/cachix-action@v17
         with:
           name: livestore
           authToken: '${{ env.CACHIX_AUTH_TOKEN }}'
@@ -292,13 +304,19 @@ jobs:
           fi
           mkdir -p "$MEGAREPO_STORE"
           echo "Using job-local megarepo store: $MEGAREPO_STORE"
-          nix run "github:overengineeringstudio/effect-utils/$EU_REV#megarepo" -- apply --all
+          nix run "github:overengineeringstudio/effect-utils/$EU_REV#megarepo" -- fetch --apply --all
         shell: bash
       - name: Use pinned devenv from lock
         run: |
-          DEVENV_REV=$(jq -r .nodes.devenv.locked.rev devenv.lock)
+          DEVENV_NODE=$(jq -r '.nodes.root.inputs.devenv // "devenv"' devenv.lock)
+          if [ -z "$DEVENV_NODE" ] || [ "$DEVENV_NODE" = "null" ]; then
+            echo '::error::devenv.lock missing .nodes.root.inputs.devenv'
+            exit 1
+          fi
+
+          DEVENV_REV=$(jq -r --arg node "$DEVENV_NODE" '.nodes[$node].locked.rev // .nodes.devenv.locked.rev // empty' devenv.lock)
           if [ -z "$DEVENV_REV" ] || [ "$DEVENV_REV" = "null" ]; then
-            echo '::error::devenv.lock missing .nodes.devenv.locked.rev'
+            echo "::error::devenv.lock missing locked.rev for node $DEVENV_NODE"
             exit 1
           fi
           echo "DEVENV_REV=$DEVENV_REV" >> "$GITHUB_ENV"
@@ -319,9 +337,15 @@ jobs:
       - name: Resolve devenv
         run: |
           if [ -z "${DEVENV_REV:-}" ]; then
-            DEVENV_REV=$(jq -r .nodes.devenv.locked.rev devenv.lock)
+            DEVENV_NODE=$(jq -r '.nodes.root.inputs.devenv // "devenv"' devenv.lock)
+          if [ -z "$DEVENV_NODE" ] || [ "$DEVENV_NODE" = "null" ]; then
+            echo '::error::devenv.lock missing .nodes.root.inputs.devenv'
+            exit 1
+          fi
+
+          DEVENV_REV=$(jq -r --arg node "$DEVENV_NODE" '.nodes[$node].locked.rev // .nodes.devenv.locked.rev // empty' devenv.lock)
           if [ -z "$DEVENV_REV" ] || [ "$DEVENV_REV" = "null" ]; then
-            echo '::error::devenv.lock missing .nodes.devenv.locked.rev'
+            echo "::error::devenv.lock missing locked.rev for node $DEVENV_NODE"
             exit 1
           fi
           fi
@@ -437,7 +461,7 @@ jobs:
                 return 0
               fi
 
-              flattened=$(awk 'BEGIN { ORS=" " } { gsub(/\033\[[0-9;]*m/, ""); print }' "$log")
+              flattened=$(tr '\r\n' '  ' < "$log" | sed -E $'s/\x1B\\[[0-9;]*m//g')
               path=$(printf '%s' "$flattened" |
                 grep -o "error:[[:space:]]*path '/nix/store/[^']*'[[:space:]]*is not valid" |
                 head -1 |
@@ -494,13 +518,12 @@ jobs:
           if-no-files-found: ignore
           retention-days: 14
   test-unit:
-    runs-on:
-      [namespace-profile-linux-x86-64, 'namespace-features:github.run-id=${{ github.run_id }}']
+    runs-on: [namespace-profile-linux-x86-64, 'namespace-features:github.run-id=${{ github.run_id }}']
     defaults:
       run:
         shell: bash
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
       - name: Install Nix
         uses: DeterminateSystems/determinate-nix-action@v3
         with:
@@ -512,8 +535,9 @@ jobs:
             access-tokens = github.com=${{ github.token }}
             extra-substituters = https://cache.nixos.org
             extra-trusted-public-keys = cache.nixos.org-1:6NCHdD59X431o0gWypbMrAURkbJ16ZPMQFGspcDShjY=
+          summarize: true
       - name: Enable Cachix cache
-        uses: cachix/cachix-action@v16
+        uses: cachix/cachix-action@v17
         with:
           name: livestore
           authToken: '${{ env.CACHIX_AUTH_TOKEN }}'
@@ -528,13 +552,19 @@ jobs:
           fi
           mkdir -p "$MEGAREPO_STORE"
           echo "Using job-local megarepo store: $MEGAREPO_STORE"
-          nix run "github:overengineeringstudio/effect-utils/$EU_REV#megarepo" -- apply --all
+          nix run "github:overengineeringstudio/effect-utils/$EU_REV#megarepo" -- fetch --apply --all
         shell: bash
       - name: Use pinned devenv from lock
         run: |
-          DEVENV_REV=$(jq -r .nodes.devenv.locked.rev devenv.lock)
+          DEVENV_NODE=$(jq -r '.nodes.root.inputs.devenv // "devenv"' devenv.lock)
+          if [ -z "$DEVENV_NODE" ] || [ "$DEVENV_NODE" = "null" ]; then
+            echo '::error::devenv.lock missing .nodes.root.inputs.devenv'
+            exit 1
+          fi
+
+          DEVENV_REV=$(jq -r --arg node "$DEVENV_NODE" '.nodes[$node].locked.rev // .nodes.devenv.locked.rev // empty' devenv.lock)
           if [ -z "$DEVENV_REV" ] || [ "$DEVENV_REV" = "null" ]; then
-            echo '::error::devenv.lock missing .nodes.devenv.locked.rev'
+            echo "::error::devenv.lock missing locked.rev for node $DEVENV_NODE"
             exit 1
           fi
           echo "DEVENV_REV=$DEVENV_REV" >> "$GITHUB_ENV"
@@ -555,9 +585,15 @@ jobs:
       - name: Resolve devenv
         run: |
           if [ -z "${DEVENV_REV:-}" ]; then
-            DEVENV_REV=$(jq -r .nodes.devenv.locked.rev devenv.lock)
+            DEVENV_NODE=$(jq -r '.nodes.root.inputs.devenv // "devenv"' devenv.lock)
+          if [ -z "$DEVENV_NODE" ] || [ "$DEVENV_NODE" = "null" ]; then
+            echo '::error::devenv.lock missing .nodes.root.inputs.devenv'
+            exit 1
+          fi
+
+          DEVENV_REV=$(jq -r --arg node "$DEVENV_NODE" '.nodes[$node].locked.rev // .nodes.devenv.locked.rev // empty' devenv.lock)
           if [ -z "$DEVENV_REV" ] || [ "$DEVENV_REV" = "null" ]; then
-            echo '::error::devenv.lock missing .nodes.devenv.locked.rev'
+            echo "::error::devenv.lock missing locked.rev for node $DEVENV_NODE"
             exit 1
           fi
           fi
@@ -673,7 +709,7 @@ jobs:
                 return 0
               fi
 
-              flattened=$(awk 'BEGIN { ORS=" " } { gsub(/\033\[[0-9;]*m/, ""); print }' "$log")
+              flattened=$(tr '\r\n' '  ' < "$log" | sed -E $'s/\x1B\\[[0-9;]*m//g')
               path=$(printf '%s' "$flattened" |
                 grep -o "error:[[:space:]]*path '/nix/store/[^']*'[[:space:]]*is not valid" |
                 head -1 |
@@ -730,13 +766,12 @@ jobs:
           if-no-files-found: ignore
           retention-days: 14
   test-integration-node-sync:
-    runs-on:
-      [namespace-profile-linux-x86-64, 'namespace-features:github.run-id=${{ github.run_id }}']
+    runs-on: [namespace-profile-linux-x86-64, 'namespace-features:github.run-id=${{ github.run_id }}']
     defaults:
       run:
         shell: bash
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
       - name: Install Nix
         uses: DeterminateSystems/determinate-nix-action@v3
         with:
@@ -748,8 +783,9 @@ jobs:
             access-tokens = github.com=${{ github.token }}
             extra-substituters = https://cache.nixos.org
             extra-trusted-public-keys = cache.nixos.org-1:6NCHdD59X431o0gWypbMrAURkbJ16ZPMQFGspcDShjY=
+          summarize: true
       - name: Enable Cachix cache
-        uses: cachix/cachix-action@v16
+        uses: cachix/cachix-action@v17
         with:
           name: livestore
           authToken: '${{ env.CACHIX_AUTH_TOKEN }}'
@@ -764,13 +800,19 @@ jobs:
           fi
           mkdir -p "$MEGAREPO_STORE"
           echo "Using job-local megarepo store: $MEGAREPO_STORE"
-          nix run "github:overengineeringstudio/effect-utils/$EU_REV#megarepo" -- apply --all
+          nix run "github:overengineeringstudio/effect-utils/$EU_REV#megarepo" -- fetch --apply --all
         shell: bash
       - name: Use pinned devenv from lock
         run: |
-          DEVENV_REV=$(jq -r .nodes.devenv.locked.rev devenv.lock)
+          DEVENV_NODE=$(jq -r '.nodes.root.inputs.devenv // "devenv"' devenv.lock)
+          if [ -z "$DEVENV_NODE" ] || [ "$DEVENV_NODE" = "null" ]; then
+            echo '::error::devenv.lock missing .nodes.root.inputs.devenv'
+            exit 1
+          fi
+
+          DEVENV_REV=$(jq -r --arg node "$DEVENV_NODE" '.nodes[$node].locked.rev // .nodes.devenv.locked.rev // empty' devenv.lock)
           if [ -z "$DEVENV_REV" ] || [ "$DEVENV_REV" = "null" ]; then
-            echo '::error::devenv.lock missing .nodes.devenv.locked.rev'
+            echo "::error::devenv.lock missing locked.rev for node $DEVENV_NODE"
             exit 1
           fi
           echo "DEVENV_REV=$DEVENV_REV" >> "$GITHUB_ENV"
@@ -791,9 +833,15 @@ jobs:
       - name: Resolve devenv
         run: |
           if [ -z "${DEVENV_REV:-}" ]; then
-            DEVENV_REV=$(jq -r .nodes.devenv.locked.rev devenv.lock)
+            DEVENV_NODE=$(jq -r '.nodes.root.inputs.devenv // "devenv"' devenv.lock)
+          if [ -z "$DEVENV_NODE" ] || [ "$DEVENV_NODE" = "null" ]; then
+            echo '::error::devenv.lock missing .nodes.root.inputs.devenv'
+            exit 1
+          fi
+
+          DEVENV_REV=$(jq -r --arg node "$DEVENV_NODE" '.nodes[$node].locked.rev // .nodes.devenv.locked.rev // empty' devenv.lock)
           if [ -z "$DEVENV_REV" ] || [ "$DEVENV_REV" = "null" ]; then
-            echo '::error::devenv.lock missing .nodes.devenv.locked.rev'
+            echo "::error::devenv.lock missing locked.rev for node $DEVENV_NODE"
             exit 1
           fi
           fi
@@ -919,7 +967,7 @@ jobs:
                 return 0
               fi
 
-              flattened=$(awk 'BEGIN { ORS=" " } { gsub(/\033\[[0-9;]*m/, ""); print }' "$log")
+              flattened=$(tr '\r\n' '  ' < "$log" | sed -E $'s/\x1B\\[[0-9;]*m//g')
               path=$(printf '%s' "$flattened" |
                 grep -o "error:[[:space:]]*path '/nix/store/[^']*'[[:space:]]*is not valid" |
                 head -1 |
@@ -1010,13 +1058,12 @@ jobs:
           - cf-ws-do
           - cf-do-rpc-d1
           - cf-do-rpc-do
-    runs-on:
-      [namespace-profile-linux-x86-64, 'namespace-features:github.run-id=${{ github.run_id }}']
+    runs-on: [namespace-profile-linux-x86-64, 'namespace-features:github.run-id=${{ github.run_id }}']
     defaults:
       run:
         shell: bash
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
       - name: Install Nix
         uses: DeterminateSystems/determinate-nix-action@v3
         with:
@@ -1028,8 +1075,9 @@ jobs:
             access-tokens = github.com=${{ github.token }}
             extra-substituters = https://cache.nixos.org
             extra-trusted-public-keys = cache.nixos.org-1:6NCHdD59X431o0gWypbMrAURkbJ16ZPMQFGspcDShjY=
+          summarize: true
       - name: Enable Cachix cache
-        uses: cachix/cachix-action@v16
+        uses: cachix/cachix-action@v17
         with:
           name: livestore
           authToken: '${{ env.CACHIX_AUTH_TOKEN }}'
@@ -1044,13 +1092,19 @@ jobs:
           fi
           mkdir -p "$MEGAREPO_STORE"
           echo "Using job-local megarepo store: $MEGAREPO_STORE"
-          nix run "github:overengineeringstudio/effect-utils/$EU_REV#megarepo" -- apply --all
+          nix run "github:overengineeringstudio/effect-utils/$EU_REV#megarepo" -- fetch --apply --all
         shell: bash
       - name: Use pinned devenv from lock
         run: |
-          DEVENV_REV=$(jq -r .nodes.devenv.locked.rev devenv.lock)
+          DEVENV_NODE=$(jq -r '.nodes.root.inputs.devenv // "devenv"' devenv.lock)
+          if [ -z "$DEVENV_NODE" ] || [ "$DEVENV_NODE" = "null" ]; then
+            echo '::error::devenv.lock missing .nodes.root.inputs.devenv'
+            exit 1
+          fi
+
+          DEVENV_REV=$(jq -r --arg node "$DEVENV_NODE" '.nodes[$node].locked.rev // .nodes.devenv.locked.rev // empty' devenv.lock)
           if [ -z "$DEVENV_REV" ] || [ "$DEVENV_REV" = "null" ]; then
-            echo '::error::devenv.lock missing .nodes.devenv.locked.rev'
+            echo "::error::devenv.lock missing locked.rev for node $DEVENV_NODE"
             exit 1
           fi
           echo "DEVENV_REV=$DEVENV_REV" >> "$GITHUB_ENV"
@@ -1071,9 +1125,15 @@ jobs:
       - name: Resolve devenv
         run: |
           if [ -z "${DEVENV_REV:-}" ]; then
-            DEVENV_REV=$(jq -r .nodes.devenv.locked.rev devenv.lock)
+            DEVENV_NODE=$(jq -r '.nodes.root.inputs.devenv // "devenv"' devenv.lock)
+          if [ -z "$DEVENV_NODE" ] || [ "$DEVENV_NODE" = "null" ]; then
+            echo '::error::devenv.lock missing .nodes.root.inputs.devenv'
+            exit 1
+          fi
+
+          DEVENV_REV=$(jq -r --arg node "$DEVENV_NODE" '.nodes[$node].locked.rev // .nodes.devenv.locked.rev // empty' devenv.lock)
           if [ -z "$DEVENV_REV" ] || [ "$DEVENV_REV" = "null" ]; then
-            echo '::error::devenv.lock missing .nodes.devenv.locked.rev'
+            echo "::error::devenv.lock missing locked.rev for node $DEVENV_NODE"
             exit 1
           fi
           fi
@@ -1213,7 +1273,7 @@ jobs:
                 return 0
               fi
 
-              flattened=$(awk 'BEGIN { ORS=" " } { gsub(/\033\[[0-9;]*m/, ""); print }' "$log")
+              flattened=$(tr '\r\n' '  ' < "$log" | sed -E $'s/\x1B\\[[0-9;]*m//g')
               path=$(printf '%s' "$flattened" |
                 grep -o "error:[[:space:]]*path '/nix/store/[^']*'[[:space:]]*is not valid" |
                 head -1 |
@@ -1276,13 +1336,12 @@ jobs:
     strategy:
       matrix:
         suite: [misc, todomvc, devtools]
-    runs-on:
-      [namespace-profile-linux-x86-64, 'namespace-features:github.run-id=${{ github.run_id }}']
+    runs-on: [namespace-profile-linux-x86-64, 'namespace-features:github.run-id=${{ github.run_id }}']
     defaults:
       run:
         shell: bash
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
       - name: Install Nix
         uses: DeterminateSystems/determinate-nix-action@v3
         with:
@@ -1294,8 +1353,9 @@ jobs:
             access-tokens = github.com=${{ github.token }}
             extra-substituters = https://cache.nixos.org
             extra-trusted-public-keys = cache.nixos.org-1:6NCHdD59X431o0gWypbMrAURkbJ16ZPMQFGspcDShjY=
+          summarize: true
       - name: Enable Cachix cache
-        uses: cachix/cachix-action@v16
+        uses: cachix/cachix-action@v17
         with:
           name: livestore
           authToken: '${{ env.CACHIX_AUTH_TOKEN }}'
@@ -1310,13 +1370,19 @@ jobs:
           fi
           mkdir -p "$MEGAREPO_STORE"
           echo "Using job-local megarepo store: $MEGAREPO_STORE"
-          nix run "github:overengineeringstudio/effect-utils/$EU_REV#megarepo" -- apply --all
+          nix run "github:overengineeringstudio/effect-utils/$EU_REV#megarepo" -- fetch --apply --all
         shell: bash
       - name: Use pinned devenv from lock
         run: |
-          DEVENV_REV=$(jq -r .nodes.devenv.locked.rev devenv.lock)
+          DEVENV_NODE=$(jq -r '.nodes.root.inputs.devenv // "devenv"' devenv.lock)
+          if [ -z "$DEVENV_NODE" ] || [ "$DEVENV_NODE" = "null" ]; then
+            echo '::error::devenv.lock missing .nodes.root.inputs.devenv'
+            exit 1
+          fi
+
+          DEVENV_REV=$(jq -r --arg node "$DEVENV_NODE" '.nodes[$node].locked.rev // .nodes.devenv.locked.rev // empty' devenv.lock)
           if [ -z "$DEVENV_REV" ] || [ "$DEVENV_REV" = "null" ]; then
-            echo '::error::devenv.lock missing .nodes.devenv.locked.rev'
+            echo "::error::devenv.lock missing locked.rev for node $DEVENV_NODE"
             exit 1
           fi
           echo "DEVENV_REV=$DEVENV_REV" >> "$GITHUB_ENV"
@@ -1337,9 +1403,15 @@ jobs:
       - name: Resolve devenv
         run: |
           if [ -z "${DEVENV_REV:-}" ]; then
-            DEVENV_REV=$(jq -r .nodes.devenv.locked.rev devenv.lock)
+            DEVENV_NODE=$(jq -r '.nodes.root.inputs.devenv // "devenv"' devenv.lock)
+          if [ -z "$DEVENV_NODE" ] || [ "$DEVENV_NODE" = "null" ]; then
+            echo '::error::devenv.lock missing .nodes.root.inputs.devenv'
+            exit 1
+          fi
+
+          DEVENV_REV=$(jq -r --arg node "$DEVENV_NODE" '.nodes[$node].locked.rev // .nodes.devenv.locked.rev // empty' devenv.lock)
           if [ -z "$DEVENV_REV" ] || [ "$DEVENV_REV" = "null" ]; then
-            echo '::error::devenv.lock missing .nodes.devenv.locked.rev'
+            echo "::error::devenv.lock missing locked.rev for node $DEVENV_NODE"
             exit 1
           fi
           fi
@@ -1467,7 +1539,7 @@ jobs:
                 return 0
               fi
 
-              flattened=$(awk 'BEGIN { ORS=" " } { gsub(/\033\[[0-9;]*m/, ""); print }' "$log")
+              flattened=$(tr '\r\n' '  ' < "$log" | sed -E $'s/\x1B\\[[0-9;]*m//g')
               path=$(printf '%s' "$flattened" |
                 grep -o "error:[[:space:]]*path '/nix/store/[^']*'[[:space:]]*is not valid" |
                 head -1 |
@@ -1587,7 +1659,7 @@ jobs:
                 return 0
               fi
 
-              flattened=$(awk 'BEGIN { ORS=" " } { gsub(/\033\[[0-9;]*m/, ""); print }' "$log")
+              flattened=$(tr '\r\n' '  ' < "$log" | sed -E $'s/\x1B\\[[0-9;]*m//g')
               path=$(printf '%s' "$flattened" |
                 grep -o "error:[[:space:]]*path '/nix/store/[^']*'[[:space:]]*is not valid" |
                 head -1 |
@@ -1644,8 +1716,7 @@ jobs:
           if-no-files-found: ignore
           retention-days: 14
   perf-test:
-    runs-on:
-      [namespace-profile-linux-x86-64, 'namespace-features:github.run-id=${{ github.run_id }}']
+    runs-on: [namespace-profile-linux-x86-64, 'namespace-features:github.run-id=${{ github.run_id }}']
     defaults:
       run:
         shell: bash
@@ -1665,8 +1736,9 @@ jobs:
             access-tokens = github.com=${{ github.token }}
             extra-substituters = https://cache.nixos.org
             extra-trusted-public-keys = cache.nixos.org-1:6NCHdD59X431o0gWypbMrAURkbJ16ZPMQFGspcDShjY=
+          summarize: true
       - name: Enable Cachix cache
-        uses: cachix/cachix-action@v16
+        uses: cachix/cachix-action@v17
         with:
           name: livestore
           authToken: '${{ env.CACHIX_AUTH_TOKEN }}'
@@ -1681,13 +1753,19 @@ jobs:
           fi
           mkdir -p "$MEGAREPO_STORE"
           echo "Using job-local megarepo store: $MEGAREPO_STORE"
-          nix run "github:overengineeringstudio/effect-utils/$EU_REV#megarepo" -- apply --all
+          nix run "github:overengineeringstudio/effect-utils/$EU_REV#megarepo" -- fetch --apply --all
         shell: bash
       - name: Use pinned devenv from lock
         run: |
-          DEVENV_REV=$(jq -r .nodes.devenv.locked.rev devenv.lock)
+          DEVENV_NODE=$(jq -r '.nodes.root.inputs.devenv // "devenv"' devenv.lock)
+          if [ -z "$DEVENV_NODE" ] || [ "$DEVENV_NODE" = "null" ]; then
+            echo '::error::devenv.lock missing .nodes.root.inputs.devenv'
+            exit 1
+          fi
+
+          DEVENV_REV=$(jq -r --arg node "$DEVENV_NODE" '.nodes[$node].locked.rev // .nodes.devenv.locked.rev // empty' devenv.lock)
           if [ -z "$DEVENV_REV" ] || [ "$DEVENV_REV" = "null" ]; then
-            echo '::error::devenv.lock missing .nodes.devenv.locked.rev'
+            echo "::error::devenv.lock missing locked.rev for node $DEVENV_NODE"
             exit 1
           fi
           echo "DEVENV_REV=$DEVENV_REV" >> "$GITHUB_ENV"
@@ -1708,9 +1786,15 @@ jobs:
       - name: Resolve devenv
         run: |
           if [ -z "${DEVENV_REV:-}" ]; then
-            DEVENV_REV=$(jq -r .nodes.devenv.locked.rev devenv.lock)
+            DEVENV_NODE=$(jq -r '.nodes.root.inputs.devenv // "devenv"' devenv.lock)
+          if [ -z "$DEVENV_NODE" ] || [ "$DEVENV_NODE" = "null" ]; then
+            echo '::error::devenv.lock missing .nodes.root.inputs.devenv'
+            exit 1
+          fi
+
+          DEVENV_REV=$(jq -r --arg node "$DEVENV_NODE" '.nodes[$node].locked.rev // .nodes.devenv.locked.rev // empty' devenv.lock)
           if [ -z "$DEVENV_REV" ] || [ "$DEVENV_REV" = "null" ]; then
-            echo '::error::devenv.lock missing .nodes.devenv.locked.rev'
+            echo "::error::devenv.lock missing locked.rev for node $DEVENV_NODE"
             exit 1
           fi
           fi
@@ -1836,7 +1920,7 @@ jobs:
                 return 0
               fi
 
-              flattened=$(awk 'BEGIN { ORS=" " } { gsub(/\033\[[0-9;]*m/, ""); print }' "$log")
+              flattened=$(tr '\r\n' '  ' < "$log" | sed -E $'s/\x1B\\[[0-9;]*m//g')
               path=$(printf '%s' "$flattened" |
                 grep -o "error:[[:space:]]*path '/nix/store/[^']*'[[:space:]]*is not valid" |
                 head -1 |
@@ -1897,13 +1981,12 @@ jobs:
           if-no-files-found: ignore
           retention-days: 14
   wa-sqlite-test:
-    runs-on:
-      [namespace-profile-linux-x86-64, 'namespace-features:github.run-id=${{ github.run_id }}']
+    runs-on: [namespace-profile-linux-x86-64, 'namespace-features:github.run-id=${{ github.run_id }}']
     defaults:
       run:
         shell: bash
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
       - name: Install Nix
         uses: DeterminateSystems/determinate-nix-action@v3
         with:
@@ -1915,8 +1998,9 @@ jobs:
             access-tokens = github.com=${{ github.token }}
             extra-substituters = https://cache.nixos.org
             extra-trusted-public-keys = cache.nixos.org-1:6NCHdD59X431o0gWypbMrAURkbJ16ZPMQFGspcDShjY=
+          summarize: true
       - name: Enable Cachix cache
-        uses: cachix/cachix-action@v16
+        uses: cachix/cachix-action@v17
         with:
           name: livestore
           authToken: '${{ env.CACHIX_AUTH_TOKEN }}'
@@ -1931,13 +2015,19 @@ jobs:
           fi
           mkdir -p "$MEGAREPO_STORE"
           echo "Using job-local megarepo store: $MEGAREPO_STORE"
-          nix run "github:overengineeringstudio/effect-utils/$EU_REV#megarepo" -- apply --all
+          nix run "github:overengineeringstudio/effect-utils/$EU_REV#megarepo" -- fetch --apply --all
         shell: bash
       - name: Use pinned devenv from lock
         run: |
-          DEVENV_REV=$(jq -r .nodes.devenv.locked.rev devenv.lock)
+          DEVENV_NODE=$(jq -r '.nodes.root.inputs.devenv // "devenv"' devenv.lock)
+          if [ -z "$DEVENV_NODE" ] || [ "$DEVENV_NODE" = "null" ]; then
+            echo '::error::devenv.lock missing .nodes.root.inputs.devenv'
+            exit 1
+          fi
+
+          DEVENV_REV=$(jq -r --arg node "$DEVENV_NODE" '.nodes[$node].locked.rev // .nodes.devenv.locked.rev // empty' devenv.lock)
           if [ -z "$DEVENV_REV" ] || [ "$DEVENV_REV" = "null" ]; then
-            echo '::error::devenv.lock missing .nodes.devenv.locked.rev'
+            echo "::error::devenv.lock missing locked.rev for node $DEVENV_NODE"
             exit 1
           fi
           echo "DEVENV_REV=$DEVENV_REV" >> "$GITHUB_ENV"
@@ -1958,9 +2048,15 @@ jobs:
       - name: Resolve devenv
         run: |
           if [ -z "${DEVENV_REV:-}" ]; then
-            DEVENV_REV=$(jq -r .nodes.devenv.locked.rev devenv.lock)
+            DEVENV_NODE=$(jq -r '.nodes.root.inputs.devenv // "devenv"' devenv.lock)
+          if [ -z "$DEVENV_NODE" ] || [ "$DEVENV_NODE" = "null" ]; then
+            echo '::error::devenv.lock missing .nodes.root.inputs.devenv'
+            exit 1
+          fi
+
+          DEVENV_REV=$(jq -r --arg node "$DEVENV_NODE" '.nodes[$node].locked.rev // .nodes.devenv.locked.rev // empty' devenv.lock)
           if [ -z "$DEVENV_REV" ] || [ "$DEVENV_REV" = "null" ]; then
-            echo '::error::devenv.lock missing .nodes.devenv.locked.rev'
+            echo "::error::devenv.lock missing locked.rev for node $DEVENV_NODE"
             exit 1
           fi
           fi
@@ -2086,7 +2182,7 @@ jobs:
                 return 0
               fi
 
-              flattened=$(awk 'BEGIN { ORS=" " } { gsub(/\033\[[0-9;]*m/, ""); print }' "$log")
+              flattened=$(tr '\r\n' '  ' < "$log" | sed -E $'s/\x1B\\[[0-9;]*m//g')
               path=$(printf '%s' "$flattened" |
                 grep -o "error:[[:space:]]*path '/nix/store/[^']*'[[:space:]]*is not valid" |
                 head -1 |
@@ -2196,7 +2292,7 @@ jobs:
                 return 0
               fi
 
-              flattened=$(awk 'BEGIN { ORS=" " } { gsub(/\033\[[0-9;]*m/, ""); print }' "$log")
+              flattened=$(tr '\r\n' '  ' < "$log" | sed -E $'s/\x1B\\[[0-9;]*m//g')
               path=$(printf '%s' "$flattened" |
                 grep -o "error:[[:space:]]*path '/nix/store/[^']*'[[:space:]]*is not valid" |
                 head -1 |
@@ -2259,18 +2355,12 @@ jobs:
   publish-snapshot-version:
     if: github.event.pull_request.head.repo.fork != true
     runs-on: ubuntu-24.04
-    needs:
-      [
-        test-unit,
-        test-integration-node-sync,
-        test-integration-sync-provider,
-        test-integration-playwright,
-      ]
+    needs: [test-unit, test-integration-node-sync, test-integration-sync-provider, test-integration-playwright]
     defaults:
       run:
         shell: bash
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
       - name: Install Nix
         uses: DeterminateSystems/determinate-nix-action@v3
         with:
@@ -2282,8 +2372,9 @@ jobs:
             access-tokens = github.com=${{ github.token }}
             extra-substituters = https://cache.nixos.org
             extra-trusted-public-keys = cache.nixos.org-1:6NCHdD59X431o0gWypbMrAURkbJ16ZPMQFGspcDShjY=
+          summarize: true
       - name: Enable Cachix cache
-        uses: cachix/cachix-action@v16
+        uses: cachix/cachix-action@v17
         with:
           name: livestore
           authToken: '${{ env.CACHIX_AUTH_TOKEN }}'
@@ -2298,13 +2389,19 @@ jobs:
           fi
           mkdir -p "$MEGAREPO_STORE"
           echo "Using job-local megarepo store: $MEGAREPO_STORE"
-          nix run "github:overengineeringstudio/effect-utils/$EU_REV#megarepo" -- apply --all
+          nix run "github:overengineeringstudio/effect-utils/$EU_REV#megarepo" -- fetch --apply --all
         shell: bash
       - name: Use pinned devenv from lock
         run: |
-          DEVENV_REV=$(jq -r .nodes.devenv.locked.rev devenv.lock)
+          DEVENV_NODE=$(jq -r '.nodes.root.inputs.devenv // "devenv"' devenv.lock)
+          if [ -z "$DEVENV_NODE" ] || [ "$DEVENV_NODE" = "null" ]; then
+            echo '::error::devenv.lock missing .nodes.root.inputs.devenv'
+            exit 1
+          fi
+
+          DEVENV_REV=$(jq -r --arg node "$DEVENV_NODE" '.nodes[$node].locked.rev // .nodes.devenv.locked.rev // empty' devenv.lock)
           if [ -z "$DEVENV_REV" ] || [ "$DEVENV_REV" = "null" ]; then
-            echo '::error::devenv.lock missing .nodes.devenv.locked.rev'
+            echo "::error::devenv.lock missing locked.rev for node $DEVENV_NODE"
             exit 1
           fi
           echo "DEVENV_REV=$DEVENV_REV" >> "$GITHUB_ENV"
@@ -2325,9 +2422,15 @@ jobs:
       - name: Resolve devenv
         run: |
           if [ -z "${DEVENV_REV:-}" ]; then
-            DEVENV_REV=$(jq -r .nodes.devenv.locked.rev devenv.lock)
+            DEVENV_NODE=$(jq -r '.nodes.root.inputs.devenv // "devenv"' devenv.lock)
+          if [ -z "$DEVENV_NODE" ] || [ "$DEVENV_NODE" = "null" ]; then
+            echo '::error::devenv.lock missing .nodes.root.inputs.devenv'
+            exit 1
+          fi
+
+          DEVENV_REV=$(jq -r --arg node "$DEVENV_NODE" '.nodes[$node].locked.rev // .nodes.devenv.locked.rev // empty' devenv.lock)
           if [ -z "$DEVENV_REV" ] || [ "$DEVENV_REV" = "null" ]; then
-            echo '::error::devenv.lock missing .nodes.devenv.locked.rev'
+            echo "::error::devenv.lock missing locked.rev for node $DEVENV_NODE"
             exit 1
           fi
           fi
@@ -2443,7 +2546,7 @@ jobs:
                 return 0
               fi
 
-              flattened=$(awk 'BEGIN { ORS=" " } { gsub(/\033\[[0-9;]*m/, ""); print }' "$log")
+              flattened=$(tr '\r\n' '  ' < "$log" | sed -E $'s/\x1B\\[[0-9;]*m//g')
               path=$(printf '%s' "$flattened" |
                 grep -o "error:[[:space:]]*path '/nix/store/[^']*'[[:space:]]*is not valid" |
                 head -1 |
@@ -2502,13 +2605,12 @@ jobs:
           if-no-files-found: ignore
           retention-days: 14
   build-and-deploy-examples-src:
-    runs-on:
-      [namespace-profile-linux-x86-64, 'namespace-features:github.run-id=${{ github.run_id }}']
+    runs-on: [namespace-profile-linux-x86-64, 'namespace-features:github.run-id=${{ github.run_id }}']
     defaults:
       run:
         shell: bash
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
       - name: Install Nix
         uses: DeterminateSystems/determinate-nix-action@v3
         with:
@@ -2520,8 +2622,9 @@ jobs:
             access-tokens = github.com=${{ github.token }}
             extra-substituters = https://cache.nixos.org
             extra-trusted-public-keys = cache.nixos.org-1:6NCHdD59X431o0gWypbMrAURkbJ16ZPMQFGspcDShjY=
+          summarize: true
       - name: Enable Cachix cache
-        uses: cachix/cachix-action@v16
+        uses: cachix/cachix-action@v17
         with:
           name: livestore
           authToken: '${{ env.CACHIX_AUTH_TOKEN }}'
@@ -2536,13 +2639,19 @@ jobs:
           fi
           mkdir -p "$MEGAREPO_STORE"
           echo "Using job-local megarepo store: $MEGAREPO_STORE"
-          nix run "github:overengineeringstudio/effect-utils/$EU_REV#megarepo" -- apply --all
+          nix run "github:overengineeringstudio/effect-utils/$EU_REV#megarepo" -- fetch --apply --all
         shell: bash
       - name: Use pinned devenv from lock
         run: |
-          DEVENV_REV=$(jq -r .nodes.devenv.locked.rev devenv.lock)
+          DEVENV_NODE=$(jq -r '.nodes.root.inputs.devenv // "devenv"' devenv.lock)
+          if [ -z "$DEVENV_NODE" ] || [ "$DEVENV_NODE" = "null" ]; then
+            echo '::error::devenv.lock missing .nodes.root.inputs.devenv'
+            exit 1
+          fi
+
+          DEVENV_REV=$(jq -r --arg node "$DEVENV_NODE" '.nodes[$node].locked.rev // .nodes.devenv.locked.rev // empty' devenv.lock)
           if [ -z "$DEVENV_REV" ] || [ "$DEVENV_REV" = "null" ]; then
-            echo '::error::devenv.lock missing .nodes.devenv.locked.rev'
+            echo "::error::devenv.lock missing locked.rev for node $DEVENV_NODE"
             exit 1
           fi
           echo "DEVENV_REV=$DEVENV_REV" >> "$GITHUB_ENV"
@@ -2563,9 +2672,15 @@ jobs:
       - name: Resolve devenv
         run: |
           if [ -z "${DEVENV_REV:-}" ]; then
-            DEVENV_REV=$(jq -r .nodes.devenv.locked.rev devenv.lock)
+            DEVENV_NODE=$(jq -r '.nodes.root.inputs.devenv // "devenv"' devenv.lock)
+          if [ -z "$DEVENV_NODE" ] || [ "$DEVENV_NODE" = "null" ]; then
+            echo '::error::devenv.lock missing .nodes.root.inputs.devenv'
+            exit 1
+          fi
+
+          DEVENV_REV=$(jq -r --arg node "$DEVENV_NODE" '.nodes[$node].locked.rev // .nodes.devenv.locked.rev // empty' devenv.lock)
           if [ -z "$DEVENV_REV" ] || [ "$DEVENV_REV" = "null" ]; then
-            echo '::error::devenv.lock missing .nodes.devenv.locked.rev'
+            echo "::error::devenv.lock missing locked.rev for node $DEVENV_NODE"
             exit 1
           fi
           fi
@@ -2681,7 +2796,7 @@ jobs:
                 return 0
               fi
 
-              flattened=$(awk 'BEGIN { ORS=" " } { gsub(/\033\[[0-9;]*m/, ""); print }' "$log")
+              flattened=$(tr '\r\n' '  ' < "$log" | sed -E $'s/\x1B\\[[0-9;]*m//g')
               path=$(printf '%s' "$flattened" |
                 grep -o "error:[[:space:]]*path '/nix/store/[^']*'[[:space:]]*is not valid" |
                 head -1 |
@@ -2791,7 +2906,7 @@ jobs:
                 return 0
               fi
 
-              flattened=$(awk 'BEGIN { ORS=" " } { gsub(/\033\[[0-9;]*m/, ""); print }' "$log")
+              flattened=$(tr '\r\n' '  ' < "$log" | sed -E $'s/\x1B\\[[0-9;]*m//g')
               path=$(printf '%s' "$flattened" |
                 grep -o "error:[[:space:]]*path '/nix/store/[^']*'[[:space:]]*is not valid" |
                 head -1 |
@@ -2901,7 +3016,7 @@ jobs:
                 return 0
               fi
 
-              flattened=$(awk 'BEGIN { ORS=" " } { gsub(/\033\[[0-9;]*m/, ""); print }' "$log")
+              flattened=$(tr '\r\n' '  ' < "$log" | sed -E $'s/\x1B\\[[0-9;]*m//g')
               path=$(printf '%s' "$flattened" |
                 grep -o "error:[[:space:]]*path '/nix/store/[^']*'[[:space:]]*is not valid" |
                 head -1 |
@@ -3012,7 +3127,7 @@ jobs:
                 return 0
               fi
 
-              flattened=$(awk 'BEGIN { ORS=" " } { gsub(/\033\[[0-9;]*m/, ""); print }' "$log")
+              flattened=$(tr '\r\n' '  ' < "$log" | sed -E $'s/\x1B\\[[0-9;]*m//g')
               path=$(printf '%s' "$flattened" |
                 grep -o "error:[[:space:]]*path '/nix/store/[^']*'[[:space:]]*is not valid" |
                 head -1 |
@@ -3072,13 +3187,12 @@ jobs:
           if-no-files-found: ignore
           retention-days: 14
   build-deploy-docs:
-    runs-on:
-      [namespace-profile-linux-x86-64, 'namespace-features:github.run-id=${{ github.run_id }}']
+    runs-on: [namespace-profile-linux-x86-64, 'namespace-features:github.run-id=${{ github.run_id }}']
     defaults:
       run:
         shell: bash
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
       - name: Install Nix
         uses: DeterminateSystems/determinate-nix-action@v3
         with:
@@ -3090,8 +3204,9 @@ jobs:
             access-tokens = github.com=${{ github.token }}
             extra-substituters = https://cache.nixos.org
             extra-trusted-public-keys = cache.nixos.org-1:6NCHdD59X431o0gWypbMrAURkbJ16ZPMQFGspcDShjY=
+          summarize: true
       - name: Enable Cachix cache
-        uses: cachix/cachix-action@v16
+        uses: cachix/cachix-action@v17
         with:
           name: livestore
           authToken: '${{ env.CACHIX_AUTH_TOKEN }}'
@@ -3106,13 +3221,19 @@ jobs:
           fi
           mkdir -p "$MEGAREPO_STORE"
           echo "Using job-local megarepo store: $MEGAREPO_STORE"
-          nix run "github:overengineeringstudio/effect-utils/$EU_REV#megarepo" -- apply --all
+          nix run "github:overengineeringstudio/effect-utils/$EU_REV#megarepo" -- fetch --apply --all
         shell: bash
       - name: Use pinned devenv from lock
         run: |
-          DEVENV_REV=$(jq -r .nodes.devenv.locked.rev devenv.lock)
+          DEVENV_NODE=$(jq -r '.nodes.root.inputs.devenv // "devenv"' devenv.lock)
+          if [ -z "$DEVENV_NODE" ] || [ "$DEVENV_NODE" = "null" ]; then
+            echo '::error::devenv.lock missing .nodes.root.inputs.devenv'
+            exit 1
+          fi
+
+          DEVENV_REV=$(jq -r --arg node "$DEVENV_NODE" '.nodes[$node].locked.rev // .nodes.devenv.locked.rev // empty' devenv.lock)
           if [ -z "$DEVENV_REV" ] || [ "$DEVENV_REV" = "null" ]; then
-            echo '::error::devenv.lock missing .nodes.devenv.locked.rev'
+            echo "::error::devenv.lock missing locked.rev for node $DEVENV_NODE"
             exit 1
           fi
           echo "DEVENV_REV=$DEVENV_REV" >> "$GITHUB_ENV"
@@ -3133,9 +3254,15 @@ jobs:
       - name: Resolve devenv
         run: |
           if [ -z "${DEVENV_REV:-}" ]; then
-            DEVENV_REV=$(jq -r .nodes.devenv.locked.rev devenv.lock)
+            DEVENV_NODE=$(jq -r '.nodes.root.inputs.devenv // "devenv"' devenv.lock)
+          if [ -z "$DEVENV_NODE" ] || [ "$DEVENV_NODE" = "null" ]; then
+            echo '::error::devenv.lock missing .nodes.root.inputs.devenv'
+            exit 1
+          fi
+
+          DEVENV_REV=$(jq -r --arg node "$DEVENV_NODE" '.nodes[$node].locked.rev // .nodes.devenv.locked.rev // empty' devenv.lock)
           if [ -z "$DEVENV_REV" ] || [ "$DEVENV_REV" = "null" ]; then
-            echo '::error::devenv.lock missing .nodes.devenv.locked.rev'
+            echo "::error::devenv.lock missing locked.rev for node $DEVENV_NODE"
             exit 1
           fi
           fi
@@ -3251,7 +3378,7 @@ jobs:
                 return 0
               fi
 
-              flattened=$(awk 'BEGIN { ORS=" " } { gsub(/\033\[[0-9;]*m/, ""); print }' "$log")
+              flattened=$(tr '\r\n' '  ' < "$log" | sed -E $'s/\x1B\\[[0-9;]*m//g')
               path=$(printf '%s' "$flattened" |
                 grep -o "error:[[:space:]]*path '/nix/store/[^']*'[[:space:]]*is not valid" |
                 head -1 |
@@ -3361,7 +3488,7 @@ jobs:
                 return 0
               fi
 
-              flattened=$(awk 'BEGIN { ORS=" " } { gsub(/\033\[[0-9;]*m/, ""); print }' "$log")
+              flattened=$(tr '\r\n' '  ' < "$log" | sed -E $'s/\x1B\\[[0-9;]*m//g')
               path=$(printf '%s' "$flattened" |
                 grep -o "error:[[:space:]]*path '/nix/store/[^']*'[[:space:]]*is not valid" |
                 head -1 |
@@ -3471,7 +3598,7 @@ jobs:
                 return 0
               fi
 
-              flattened=$(awk 'BEGIN { ORS=" " } { gsub(/\033\[[0-9;]*m/, ""); print }' "$log")
+              flattened=$(tr '\r\n' '  ' < "$log" | sed -E $'s/\x1B\\[[0-9;]*m//g')
               path=$(printf '%s' "$flattened" |
                 grep -o "error:[[:space:]]*path '/nix/store/[^']*'[[:space:]]*is not valid" |
                 head -1 |
@@ -3582,7 +3709,7 @@ jobs:
                 return 0
               fi
 
-              flattened=$(awk 'BEGIN { ORS=" " } { gsub(/\033\[[0-9;]*m/, ""); print }' "$log")
+              flattened=$(tr '\r\n' '  ' < "$log" | sed -E $'s/\x1B\\[[0-9;]*m//g')
               path=$(printf '%s' "$flattened" |
                 grep -o "error:[[:space:]]*path '/nix/store/[^']*'[[:space:]]*is not valid" |
                 head -1 |
@@ -3700,7 +3827,7 @@ jobs:
                 return 0
               fi
 
-              flattened=$(awk 'BEGIN { ORS=" " } { gsub(/\033\[[0-9;]*m/, ""); print }' "$log")
+              flattened=$(tr '\r\n' '  ' < "$log" | sed -E $'s/\x1B\\[[0-9;]*m//g')
               path=$(printf '%s' "$flattened" |
                 grep -o "error:[[:space:]]*path '/nix/store/[^']*'[[:space:]]*is not valid" |
                 head -1 |
@@ -3760,13 +3887,7 @@ jobs:
           retention-days: 14
   notify-alignment:
     runs-on: ubuntu-latest
-    needs:
-      [
-        test-unit,
-        test-integration-node-sync,
-        test-integration-sync-provider,
-        test-integration-playwright,
-      ]
+    needs: [test-unit, test-integration-node-sync, test-integration-sync-provider, test-integration-playwright]
     if: (github.ref == 'refs/heads/main' || github.ref == 'refs/heads/dev') && github.event_name == 'push'
     steps:
       - name: Dispatch alignment to coordinator
@@ -3780,8 +3901,7 @@ jobs:
     strategy:
       matrix:
         app: [web-todomvc, web-linearlite, expo-linearlite]
-    runs-on:
-      [namespace-profile-linux-x86-64, 'namespace-features:github.run-id=${{ github.run_id }}']
+    runs-on: [namespace-profile-linux-x86-64, 'namespace-features:github.run-id=${{ github.run_id }}']
     env:
       APP_PATH: 'examples/${{ matrix.app }}'
       SNAPSHOT_VERSION: '0.0.0-snapshot-${{ github.sha }}'
