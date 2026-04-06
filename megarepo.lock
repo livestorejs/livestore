@@ -3,10 +3,10 @@
   "members": {
     "effect-utils": {
       "url": "https://github.com/overengineeringstudio/effect-utils",
-      "ref": "schickling/2026-04-05-genie-declaration-paths",
-      "commit": "61c75a543297a79c7f48d144be1b9a29c5b00ce8",
+      "ref": "schickling/2026-04-05-ci-lock-shape3",
+      "commit": "76462bdf017aa45a69ac1b19c7b30a718b4fdbaa",
       "pinned": false,
-      "lockedAt": "2026-04-05T22:27:48.000Z"
+      "lockedAt": "2026-04-06T13:22:53.000Z"
     },
     "overeng-beads-public": {
       "url": "https://github.com/overengineeringstudio/overeng-beads-public",
