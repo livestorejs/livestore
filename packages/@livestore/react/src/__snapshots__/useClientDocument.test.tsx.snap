@@ -199,6 +199,24 @@ exports[`useClientDocument > otel > should update the data based on component ke
     },
     "children": [
       {
+        "_name": "client-session-sync-processor:encodeEvents",
+      },
+      {
+        "_name": "client-session-sync-processor:materialize-event",
+        "children": [
+          {
+            "_name": "livestore.in-memory-db:execute",
+            "attributes": {
+              "sql.query": "
+      INSERT INTO 'UserInfo' (id, value)
+      VALUES (?, ?)
+      ON CONFLICT (id) DO UPDATE SET value = json_set(json_set(value, ?, json(?)), ?, json(?))
+    ",
+            },
+          },
+        ],
+      },
+      {
         "_name": "client-session-sync-processor:push",
         "attributes": {
           "batchSize": 1,
@@ -207,23 +225,6 @@ exports[`useClientDocument > otel > should update the data based on component ke
 }",
           "mergeResultTag": "advance",
         },
-        "children": [
-          {
-            "_name": "client-session-sync-processor:materialize-event",
-            "children": [
-              {
-                "_name": "livestore.in-memory-db:execute",
-                "attributes": {
-                  "sql.query": "
-      INSERT INTO 'UserInfo' (id, value)
-      VALUES (?, ?)
-      ON CONFLICT (id) DO UPDATE SET value = json_set(json_set(value, ?, json(?)), ?, json(?))
-    ",
-                },
-              },
-            ],
-          },
-        ],
       },
     ],
   },
@@ -237,6 +238,24 @@ exports[`useClientDocument > otel > should update the data based on component ke
     },
     "children": [
       {
+        "_name": "client-session-sync-processor:encodeEvents",
+      },
+      {
+        "_name": "client-session-sync-processor:materialize-event",
+        "children": [
+          {
+            "_name": "livestore.in-memory-db:execute",
+            "attributes": {
+              "sql.query": "
+      INSERT INTO 'UserInfo' (id, value)
+      VALUES (?, ?)
+      ON CONFLICT (id) DO UPDATE SET value = json_set(value, ?, json(?))
+    ",
+            },
+          },
+        ],
+      },
+      {
         "_name": "client-session-sync-processor:push",
         "attributes": {
           "batchSize": 1,
@@ -245,23 +264,6 @@ exports[`useClientDocument > otel > should update the data based on component ke
 }",
           "mergeResultTag": "advance",
         },
-        "children": [
-          {
-            "_name": "client-session-sync-processor:materialize-event",
-            "children": [
-              {
-                "_name": "livestore.in-memory-db:execute",
-                "attributes": {
-                  "sql.query": "
-      INSERT INTO 'UserInfo' (id, value)
-      VALUES (?, ?)
-      ON CONFLICT (id) DO UPDATE SET value = json_set(value, ?, json(?))
-    ",
-                },
-              },
-            ],
-          },
-        ],
       },
     ],
   },
@@ -405,6 +407,24 @@ exports[`useClientDocument > otel > should update the data based on component ke
     },
     "children": [
       {
+        "_name": "client-session-sync-processor:encodeEvents",
+      },
+      {
+        "_name": "client-session-sync-processor:materialize-event",
+        "children": [
+          {
+            "_name": "livestore.in-memory-db:execute",
+            "attributes": {
+              "sql.query": "
+      INSERT INTO 'UserInfo' (id, value)
+      VALUES (?, ?)
+      ON CONFLICT (id) DO UPDATE SET value = json_set(json_set(value, ?, json(?)), ?, json(?))
+    ",
+            },
+          },
+        ],
+      },
+      {
         "_name": "client-session-sync-processor:push",
         "attributes": {
           "batchSize": 1,
@@ -413,23 +433,6 @@ exports[`useClientDocument > otel > should update the data based on component ke
 }",
           "mergeResultTag": "advance",
         },
-        "children": [
-          {
-            "_name": "client-session-sync-processor:materialize-event",
-            "children": [
-              {
-                "_name": "livestore.in-memory-db:execute",
-                "attributes": {
-                  "sql.query": "
-      INSERT INTO 'UserInfo' (id, value)
-      VALUES (?, ?)
-      ON CONFLICT (id) DO UPDATE SET value = json_set(json_set(value, ?, json(?)), ?, json(?))
-    ",
-                },
-              },
-            ],
-          },
-        ],
       },
     ],
   },
@@ -443,6 +446,24 @@ exports[`useClientDocument > otel > should update the data based on component ke
     },
     "children": [
       {
+        "_name": "client-session-sync-processor:encodeEvents",
+      },
+      {
+        "_name": "client-session-sync-processor:materialize-event",
+        "children": [
+          {
+            "_name": "livestore.in-memory-db:execute",
+            "attributes": {
+              "sql.query": "
+      INSERT INTO 'UserInfo' (id, value)
+      VALUES (?, ?)
+      ON CONFLICT (id) DO UPDATE SET value = json_set(value, ?, json(?))
+    ",
+            },
+          },
+        ],
+      },
+      {
         "_name": "client-session-sync-processor:push",
         "attributes": {
           "batchSize": 1,
@@ -451,23 +472,6 @@ exports[`useClientDocument > otel > should update the data based on component ke
 }",
           "mergeResultTag": "advance",
         },
-        "children": [
-          {
-            "_name": "client-session-sync-processor:materialize-event",
-            "children": [
-              {
-                "_name": "livestore.in-memory-db:execute",
-                "attributes": {
-                  "sql.query": "
-      INSERT INTO 'UserInfo' (id, value)
-      VALUES (?, ?)
-      ON CONFLICT (id) DO UPDATE SET value = json_set(value, ?, json(?))
-    ",
-                },
-              },
-            ],
-          },
-        ],
       },
     ],
   },
