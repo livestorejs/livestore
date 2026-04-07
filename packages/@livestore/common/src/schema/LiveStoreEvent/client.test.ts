@@ -71,6 +71,24 @@ Vitest.describe('isEqualEncoded', () => {
     expect(isEqualEncoded(a, b)).toBe(false)
   })
 
+  Vitest.it('should handle null args', () => {
+    const a = makeEncodedEvent(null)
+    const b = makeEncodedEvent(null)
+    expect(isEqualEncoded(a, b)).toBe(true)
+  })
+
+  Vitest.it('should handle array args', () => {
+    const a = makeEncodedEvent([1, 2, 3])
+    const b = makeEncodedEvent([1, 2, 3])
+    expect(isEqualEncoded(a, b)).toBe(true)
+  })
+
+  Vitest.it('should handle empty object args', () => {
+    const a = makeEncodedEvent({})
+    const b = makeEncodedEvent({})
+    expect(isEqualEncoded(a, b)).toBe(true)
+  })
+
   Vitest.it('should consider events with different names as not equal', () => {
     const a = { ...makeEncodedEvent({ id: 'abc' }), name: 'eventA' }
     const b = { ...makeEncodedEvent({ id: 'abc' }), name: 'eventB' }
