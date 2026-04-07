@@ -9,6 +9,9 @@ exports[`otel > QueryBuilder subscription - async iterator 1`] = `
   },
   "children": [
     {
+      "_name": "makeClientSessionSyncProcessor",
+    },
+    {
       "_name": "livestore.in-memory-db:execute",
       "attributes": {
         "sql.query": "
@@ -21,19 +24,24 @@ exports[`otel > QueryBuilder subscription - async iterator 1`] = `
       },
     },
     {
-      "_name": "@livestore/common:LeaderSyncProcessor:push",
-      "attributes": {
-        "batch": "undefined",
-        "batchSize": 1,
-      },
-    },
-    {
-      "_name": "client-session-sync-processor:pull",
-      "attributes": {
-        "code.stacktrace": "<STACKTRACE>",
-        "span.label": "⚠︎ Interrupted",
-        "status.interrupted": true,
-      },
+      "_name": "client-session-sync-processor:boot",
+      "children": [
+        {
+          "_name": "@livestore/common:LeaderSyncProcessor:push",
+          "attributes": {
+            "batch": "undefined",
+            "batchSize": 1,
+          },
+        },
+        {
+          "_name": "client-session-sync-processor:pull",
+          "attributes": {
+            "code.stacktrace": "<STACKTRACE>",
+            "span.label": "⚠︎ Interrupted",
+            "status.interrupted": true,
+          },
+        },
+      ],
     },
     {
       "_name": "LiveStore:commits",
@@ -93,6 +101,9 @@ exports[`otel > QueryBuilder subscription - async iterator with skipInitialRun 1
   },
   "children": [
     {
+      "_name": "makeClientSessionSyncProcessor",
+    },
+    {
       "_name": "livestore.in-memory-db:execute",
       "attributes": {
         "sql.query": "
@@ -105,19 +116,24 @@ exports[`otel > QueryBuilder subscription - async iterator with skipInitialRun 1
       },
     },
     {
-      "_name": "@livestore/common:LeaderSyncProcessor:push",
-      "attributes": {
-        "batch": "undefined",
-        "batchSize": 1,
-      },
-    },
-    {
-      "_name": "client-session-sync-processor:pull",
-      "attributes": {
-        "code.stacktrace": "<STACKTRACE>",
-        "span.label": "⚠︎ Interrupted",
-        "status.interrupted": true,
-      },
+      "_name": "client-session-sync-processor:boot",
+      "children": [
+        {
+          "_name": "@livestore/common:LeaderSyncProcessor:push",
+          "attributes": {
+            "batch": "undefined",
+            "batchSize": 1,
+          },
+        },
+        {
+          "_name": "client-session-sync-processor:pull",
+          "attributes": {
+            "code.stacktrace": "<STACKTRACE>",
+            "span.label": "⚠︎ Interrupted",
+            "status.interrupted": true,
+          },
+        },
+      ],
     },
     {
       "_name": "LiveStore:commits",
@@ -177,6 +193,9 @@ exports[`otel > QueryBuilder subscription - basic functionality 1`] = `
   },
   "children": [
     {
+      "_name": "makeClientSessionSyncProcessor",
+    },
+    {
       "_name": "livestore.in-memory-db:execute",
       "attributes": {
         "sql.query": "
@@ -189,19 +208,24 @@ exports[`otel > QueryBuilder subscription - basic functionality 1`] = `
       },
     },
     {
-      "_name": "@livestore/common:LeaderSyncProcessor:push",
-      "attributes": {
-        "batch": "undefined",
-        "batchSize": 1,
-      },
-    },
-    {
-      "_name": "client-session-sync-processor:pull",
-      "attributes": {
-        "code.stacktrace": "<STACKTRACE>",
-        "span.label": "⚠︎ Interrupted",
-        "status.interrupted": true,
-      },
+      "_name": "client-session-sync-processor:boot",
+      "children": [
+        {
+          "_name": "@livestore/common:LeaderSyncProcessor:push",
+          "attributes": {
+            "batch": "undefined",
+            "batchSize": 1,
+          },
+        },
+        {
+          "_name": "client-session-sync-processor:pull",
+          "attributes": {
+            "code.stacktrace": "<STACKTRACE>",
+            "span.label": "⚠︎ Interrupted",
+            "status.interrupted": true,
+          },
+        },
+      ],
     },
     {
       "_name": "LiveStore:commits",
@@ -307,6 +331,9 @@ exports[`otel > QueryBuilder subscription - direct table subscription 1`] = `
   },
   "children": [
     {
+      "_name": "makeClientSessionSyncProcessor",
+    },
+    {
       "_name": "livestore.in-memory-db:execute",
       "attributes": {
         "sql.query": "
@@ -319,19 +346,24 @@ exports[`otel > QueryBuilder subscription - direct table subscription 1`] = `
       },
     },
     {
-      "_name": "@livestore/common:LeaderSyncProcessor:push",
-      "attributes": {
-        "batch": "undefined",
-        "batchSize": 1,
-      },
-    },
-    {
-      "_name": "client-session-sync-processor:pull",
-      "attributes": {
-        "code.stacktrace": "<STACKTRACE>",
-        "span.label": "⚠︎ Interrupted",
-        "status.interrupted": true,
-      },
+      "_name": "client-session-sync-processor:boot",
+      "children": [
+        {
+          "_name": "@livestore/common:LeaderSyncProcessor:push",
+          "attributes": {
+            "batch": "undefined",
+            "batchSize": 1,
+          },
+        },
+        {
+          "_name": "client-session-sync-processor:pull",
+          "attributes": {
+            "code.stacktrace": "<STACKTRACE>",
+            "span.label": "⚠︎ Interrupted",
+            "status.interrupted": true,
+          },
+        },
+      ],
     },
     {
       "_name": "LiveStore:commits",
@@ -437,6 +469,9 @@ exports[`otel > QueryBuilder subscription - skipInitialRun 1`] = `
   },
   "children": [
     {
+      "_name": "makeClientSessionSyncProcessor",
+    },
+    {
       "_name": "livestore.in-memory-db:execute",
       "attributes": {
         "sql.query": "
@@ -449,19 +484,24 @@ exports[`otel > QueryBuilder subscription - skipInitialRun 1`] = `
       },
     },
     {
-      "_name": "@livestore/common:LeaderSyncProcessor:push",
-      "attributes": {
-        "batch": "undefined",
-        "batchSize": 1,
-      },
-    },
-    {
-      "_name": "client-session-sync-processor:pull",
-      "attributes": {
-        "code.stacktrace": "<STACKTRACE>",
-        "span.label": "⚠︎ Interrupted",
-        "status.interrupted": true,
-      },
+      "_name": "client-session-sync-processor:boot",
+      "children": [
+        {
+          "_name": "@livestore/common:LeaderSyncProcessor:push",
+          "attributes": {
+            "batch": "undefined",
+            "batchSize": 1,
+          },
+        },
+        {
+          "_name": "client-session-sync-processor:pull",
+          "attributes": {
+            "code.stacktrace": "<STACKTRACE>",
+            "span.label": "⚠︎ Interrupted",
+            "status.interrupted": true,
+          },
+        },
+      ],
     },
     {
       "_name": "LiveStore:commits",
@@ -567,6 +607,9 @@ exports[`otel > QueryBuilder subscription - unsubscribe functionality 1`] = `
   },
   "children": [
     {
+      "_name": "makeClientSessionSyncProcessor",
+    },
+    {
       "_name": "livestore.in-memory-db:execute",
       "attributes": {
         "sql.query": "
@@ -579,26 +622,31 @@ exports[`otel > QueryBuilder subscription - unsubscribe functionality 1`] = `
       },
     },
     {
-      "_name": "@livestore/common:LeaderSyncProcessor:push",
-      "attributes": {
-        "batch": "undefined",
-        "batchSize": 1,
-      },
-    },
-    {
-      "_name": "@livestore/common:LeaderSyncProcessor:push",
-      "attributes": {
-        "batch": "undefined",
-        "batchSize": 1,
-      },
-    },
-    {
-      "_name": "client-session-sync-processor:pull",
-      "attributes": {
-        "code.stacktrace": "<STACKTRACE>",
-        "span.label": "⚠︎ Interrupted",
-        "status.interrupted": true,
-      },
+      "_name": "client-session-sync-processor:boot",
+      "children": [
+        {
+          "_name": "@livestore/common:LeaderSyncProcessor:push",
+          "attributes": {
+            "batch": "undefined",
+            "batchSize": 1,
+          },
+        },
+        {
+          "_name": "@livestore/common:LeaderSyncProcessor:push",
+          "attributes": {
+            "batch": "undefined",
+            "batchSize": 1,
+          },
+        },
+        {
+          "_name": "client-session-sync-processor:pull",
+          "attributes": {
+            "code.stacktrace": "<STACKTRACE>",
+            "span.label": "⚠︎ Interrupted",
+            "status.interrupted": true,
+          },
+        },
+      ],
     },
     {
       "_name": "LiveStore:commits",
@@ -764,6 +812,9 @@ exports[`otel > otel 3`] = `
   },
   "children": [
     {
+      "_name": "makeClientSessionSyncProcessor",
+    },
+    {
       "_name": "livestore.in-memory-db:execute",
       "attributes": {
         "sql.query": "
@@ -776,19 +827,24 @@ exports[`otel > otel 3`] = `
       },
     },
     {
-      "_name": "@livestore/common:LeaderSyncProcessor:push",
-      "attributes": {
-        "batch": "undefined",
-        "batchSize": 1,
-      },
-    },
-    {
-      "_name": "client-session-sync-processor:pull",
-      "attributes": {
-        "code.stacktrace": "<STACKTRACE>",
-        "span.label": "⚠︎ Interrupted",
-        "status.interrupted": true,
-      },
+      "_name": "client-session-sync-processor:boot",
+      "children": [
+        {
+          "_name": "@livestore/common:LeaderSyncProcessor:push",
+          "attributes": {
+            "batch": "undefined",
+            "batchSize": 1,
+          },
+        },
+        {
+          "_name": "client-session-sync-processor:pull",
+          "attributes": {
+            "code.stacktrace": "<STACKTRACE>",
+            "span.label": "⚠︎ Interrupted",
+            "status.interrupted": true,
+          },
+        },
+      ],
     },
     {
       "_name": "LiveStore:commits",
@@ -1056,6 +1112,9 @@ exports[`otel > with thunks 7`] = `
   },
   "children": [
     {
+      "_name": "makeClientSessionSyncProcessor",
+    },
+    {
       "_name": "livestore.in-memory-db:execute",
       "attributes": {
         "sql.query": "
@@ -1068,19 +1127,24 @@ exports[`otel > with thunks 7`] = `
       },
     },
     {
-      "_name": "@livestore/common:LeaderSyncProcessor:push",
-      "attributes": {
-        "batch": "undefined",
-        "batchSize": 1,
-      },
-    },
-    {
-      "_name": "client-session-sync-processor:pull",
-      "attributes": {
-        "code.stacktrace": "<STACKTRACE>",
-        "span.label": "⚠︎ Interrupted",
-        "status.interrupted": true,
-      },
+      "_name": "client-session-sync-processor:boot",
+      "children": [
+        {
+          "_name": "@livestore/common:LeaderSyncProcessor:push",
+          "attributes": {
+            "batch": "undefined",
+            "batchSize": 1,
+          },
+        },
+        {
+          "_name": "client-session-sync-processor:pull",
+          "attributes": {
+            "code.stacktrace": "<STACKTRACE>",
+            "span.label": "⚠︎ Interrupted",
+            "status.interrupted": true,
+          },
+        },
+      ],
     },
     {
       "_name": "LiveStore:commits",
@@ -1182,6 +1246,9 @@ exports[`otel > with thunks with query builder and without labels 3`] = `
   },
   "children": [
     {
+      "_name": "makeClientSessionSyncProcessor",
+    },
+    {
       "_name": "livestore.in-memory-db:execute",
       "attributes": {
         "sql.query": "
@@ -1194,19 +1261,24 @@ exports[`otel > with thunks with query builder and without labels 3`] = `
       },
     },
     {
-      "_name": "@livestore/common:LeaderSyncProcessor:push",
-      "attributes": {
-        "batch": "undefined",
-        "batchSize": 1,
-      },
-    },
-    {
-      "_name": "client-session-sync-processor:pull",
-      "attributes": {
-        "code.stacktrace": "<STACKTRACE>",
-        "span.label": "⚠︎ Interrupted",
-        "status.interrupted": true,
-      },
+      "_name": "client-session-sync-processor:boot",
+      "children": [
+        {
+          "_name": "@livestore/common:LeaderSyncProcessor:push",
+          "attributes": {
+            "batch": "undefined",
+            "batchSize": 1,
+          },
+        },
+        {
+          "_name": "client-session-sync-processor:pull",
+          "attributes": {
+            "code.stacktrace": "<STACKTRACE>",
+            "span.label": "⚠︎ Interrupted",
+            "status.interrupted": true,
+          },
+        },
+      ],
     },
     {
       "_name": "LiveStore:commits",
