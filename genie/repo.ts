@@ -218,6 +218,7 @@ export const solidJsx = { jsx: 'preserve' as const, jsxImportSource: 'solid-js' 
 
 import {
   bashShellDefaults,
+  defaultActionlintConfig,
   dispatchAlignmentStep,
   namespaceRunner as namespaceRunnerBase,
   installNixStep,
@@ -237,7 +238,7 @@ export const devenvShellDefaults = {
   run: { shell: 'devenv shell bash -- -e {0}' },
 } as const
 export { bashShellDefaults }
-export { dispatchAlignmentStep, runDevenvTasksBefore, nixDiagnosticsArtifactStep, savePnpmStoreStep }
+export { defaultActionlintConfig, dispatchAlignmentStep, runDevenvTasksBefore, nixDiagnosticsArtifactStep, savePnpmStoreStep }
 
 export const namespaceRunner = (runId: string) =>
   namespaceRunnerBase({ profile: 'namespace-profile-linux-x86-64', runId })

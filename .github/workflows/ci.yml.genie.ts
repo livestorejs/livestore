@@ -1,6 +1,7 @@
 import { playwrightSuites, syncProviderMatrix } from '../../genie/ci.ts'
 import {
   bashShellDefaults,
+  defaultActionlintConfig,
   dispatchAlignmentStep,
   githubWorkflow,
   livestoreSetupSteps,
@@ -75,6 +76,7 @@ const otelCIJob = (config: { env?: Record<string, string>; steps: unknown[] }) =
 export default githubWorkflow({
   name: 'ci',
   'run-name': `\${{ github.event.pull_request.title || format('Push to {0}', github.ref_name) }} (${PR_HEAD_SHA})`,
+  actionlint: defaultActionlintConfig,
 
   permissions: {
     'id-token': 'write',
