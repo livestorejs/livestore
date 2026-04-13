@@ -5,7 +5,14 @@
   ...
 }:
 let
-  effectUtils = inputs.effect-utils;
+  # Prefer the megarepo-materialized effect-utils checkout when present so the
+  # downstream shell/task CLIs match the exact generator sources imported from
+  # ./repos/effect-utils during CI and local megarepo workflows.
+  effectUtils =
+    if builtins.pathExists ./repos/effect-utils/flake.nix then
+      builtins.getFlake (toString ./repos/effect-utils)
+    else
+      inputs.effect-utils;
   effectUtilsPackages = effectUtils.packages.${pkgs.system};
   taskModules = effectUtils.devenvModules.tasks;
   ci = builtins.getEnv "CI" != "";
@@ -204,7 +211,7 @@ in
   ]
   ++ [ effectUtilsPackages.effect-tsgo ]
   ++ [
-    effectUtils.packages.${pkgs.system}.genie
+    effectUtilsPackages.genie
     effectUtils.packages.${pkgs.system}.megarepo
     pkgs.caddy
     pkgs.jq

@@ -9,8 +9,8 @@
   "files": [
     "dist",
     "package.json",
-    "src",
-    "README.md"
+    "README.md",
+    "src"
   ],
   "type": "module",
   "sideEffects": false,
