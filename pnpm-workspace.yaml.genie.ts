@@ -64,6 +64,7 @@ export default pnpmWorkspaceYaml.root({
   allowBuilds: repoPnpmAllowBuilds,
   packageExtensions: repoPackageExtensions,
   patchedDependencies: {
+    // Temporary patch until upstream fix lands: https://github.com/Effect-TS/effect/pull/6161
     '@effect/rpc@0.75.0': 'patches/@effect__rpc@0.75.0.patch',
   },
   /** Relaxed until @livestore/devtools-vite publishes with updated Effect peer ranges */
