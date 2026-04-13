@@ -5,6 +5,12 @@ dedupePeerDependents: true
 
 strictPeerDependencies: false
 
+peerDependencyRules:
+  allowedVersions:
+    '@effect/experimental': '>=0.58.0'
+    '@effect/platform': '>=0.94.2'
+    '@effect/rpc': '>=0.73.0'
+
 enableGlobalVirtualStore: true
 
 optimisticRepeatInstall: false
@@ -18,8 +24,10 @@ supportedArchitectures:
 
 allowBuilds:
   '@parcel/watcher': true
+  '@myobie/pty': true
   esbuild: true
   msgpackr-extract: true
+  node-pty: true
   sharp: true
   unix-dgram: true
   '@mixedbread/cli': true
