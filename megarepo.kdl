@@ -1,5 +1,5 @@
 members {
-    effect-utils "overengineeringstudio/effect-utils#main"
+    effect-utils "overengineeringstudio/effect-utils#1da5fbefb2986d61b85f58a84f76c96722985a0a"
     overeng-beads-public "overengineeringstudio/overeng-beads-public"
     effect "effect-ts/effect"
 }
