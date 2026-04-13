@@ -87,6 +87,9 @@ packageExtensions:
     dependencies:
       typedoc-plugin-markdown: ^4.8.1
 
+patchedDependencies:
+  '@effect/rpc@0.75.0': patches/@effect__rpc@0.75.0.patch
+
 peerDependencyRules:
   allowedVersions:
     '@effect/experimental': '>=0.58.0'
