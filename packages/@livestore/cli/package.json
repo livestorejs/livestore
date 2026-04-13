@@ -76,11 +76,13 @@
   "pnpm": {
     "onlyBuiltDependencies": [
       "@mixedbread/cli",
+      "@myobie/pty",
       "@parcel/watcher",
       "cbor-extract",
       "dtrace-provider",
       "esbuild",
       "msgpackr-extract",
+      "node-pty",
       "protobufjs",
       "puppeteer",
       "sharp",
