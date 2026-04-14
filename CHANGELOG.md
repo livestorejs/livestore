@@ -440,6 +440,7 @@ See the [S2 sync provider docs](https://dev.docs.livestore.dev/reference/syncing
 
 ##### Concurrency & Lifecycle
 
+- Fix `toGlobal()` leaking a debug `toJSON` method onto the returned `Global.Encoded` object, causing `JSON.stringify` to produce string seqNums instead of integers in custom sync backends (#1165). Thanks @OrkhanAlikhanov for diagnosing the root cause.
 - Fix correct type assertion in withLock function
 - Fix finalizers execution order (#450)
 - Ensure large batches no longer leave follower sessions behind by reconciling leader/follower heads correctly (#362)
