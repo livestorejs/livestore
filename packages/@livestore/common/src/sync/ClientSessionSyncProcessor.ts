@@ -1,5 +1,5 @@
 /// <reference lib="dom" />
-import { LS_DEV, shouldNeverHappen, TRACE_VERBOSE } from '@livestore/utils'
+import { LS_DEV, TRACE_VERBOSE } from '@livestore/utils'
 import {
   BucketQueue,
   Effect,
@@ -108,34 +108,38 @@ export const makeClientSessionSyncProcessor = ({
     // TODO validate batch
 
     let baseEventSequenceNumber = syncStateRef.current.localHead
-    const encodedEventDefs = batch.map(({ name, args }) => {
-      const eventDef = schema.eventsDefsMap.get(name)
-      if (eventDef === undefined) {
-        return shouldNeverHappen(`No event definition found for \`${name}\`.`)
-      }
-      const nextNumPair = EventSequenceNumber.Client.nextPair({
-        seqNum: baseEventSequenceNumber,
-        isClient: eventDef.options.clientOnly,
-        rebaseGeneration: baseEventSequenceNumber.rebaseGeneration,
-      })
-      baseEventSequenceNumber = nextNumPair.seqNum
-      return new LiveStoreEvent.Client.EncodedWithMeta(
-        Schema.encodeUnknownSync(eventSchema)({
-          name,
-          args,
-          ...nextNumPair,
-          clientId: clientSession.clientId,
-          sessionId: clientSession.sessionId,
-        }),
-      )
-    })
+    const encodedEventDefs = yield* Effect.forEach(batch, ({ name, args }) =>
+      Effect.gen(function* () {
+        const eventDef = yield* Effect.fromNullable(schema.eventsDefsMap.get(name)).pipe(Effect.orDieDebugger)
+        const nextNumPair = EventSequenceNumber.Client.nextPair({
+          seqNum: baseEventSequenceNumber,
+          isClient: eventDef.options.clientOnly,
+          rebaseGeneration: baseEventSequenceNumber.rebaseGeneration,
+        })
+        baseEventSequenceNumber = nextNumPair.seqNum
+        return new LiveStoreEvent.Client.EncodedWithMeta(
+          Schema.encodeUnknownSync(eventSchema)({
+            name,
+            args,
+            ...nextNumPair,
+            clientId: clientSession.clientId,
+            sessionId: clientSession.sessionId,
+          }),
+        )
+      }),
+    )
 
     const mergeResult = yield* SyncState.merge({
       syncState: syncStateRef.current,
       payload: { _tag: 'local-push', newEvents: encodedEventDefs },
       isClientEvent,
       isEqualEvent: LiveStoreEvent.Client.isEqualEncoded,
-    })
+    }).pipe(
+      Effect.filterOrDieMessage(
+        (r) => r._tag === 'advance',
+        'Expected advance from local-push merge',
+      ),
+    )
 
     yield* Effect.annotateCurrentSpan({
       batchSize: encodedEventDefs.length,
@@ -146,10 +150,6 @@ export const makeClientSessionSyncProcessor = ({
       }, {}),
       ...(TRACE_VERBOSE === true ? { mergeResult: jsonStringify(mergeResult) } : {}),
     })
-
-    if (mergeResult._tag !== 'advance') {
-      return shouldNeverHappen(`Expected advance, got ${mergeResult._tag}`)
-    }
 
     syncStateRef.current = mergeResult.newSyncState
     yield* syncStateUpdateQueue.offer(mergeResult.newSyncState)
@@ -240,11 +240,12 @@ export const makeClientSessionSyncProcessor = ({
             payload,
             isClientEvent,
             isEqualEvent: LiveStoreEvent.Client.isEqualEncoded,
-          })
-
-          if (mergeResult._tag === 'reject') {
-            return shouldNeverHappen('Unexpected reject in client-session-sync-processor', mergeResult)
-          }
+          }).pipe(
+            Effect.filterOrDieMessage(
+              (r) => r._tag !== 'reject',
+              'Unexpected reject in client-session-sync-processor',
+            ),
+          )
 
           syncStateRef.current = mergeResult.newSyncState
 
