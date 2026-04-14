@@ -4,7 +4,7 @@ import { Option } from '@livestore/utils/effect'
 import { Vitest } from '@livestore/utils-dev/node-vitest'
 
 import * as EventSequenceNumber from '../EventSequenceNumber/mod.ts'
-import { EncodedWithMeta, isEqualEncoded, Encoded } from './client.ts'
+import { EncodedWithMeta, isEqualEncoded, type Encoded } from './client.ts'
 
 Vitest.describe('EncodedWithMeta', () => {
   Vitest.test('toGlobal() produces numeric seqNums through JSON.stringify', () => {
