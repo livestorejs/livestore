@@ -369,15 +369,16 @@ export type ToColumns<TColumns extends SqliteDsl.Columns | SqliteDsl.ColumnDefin
       : never
 
 export declare namespace SchemaToColumns {
-  // Type helper to create column definition with proper schema
-  export type ColumnDefForType<TEncoded, TType> = SqliteDsl.ColumnDefinition<TEncoded, TType>
+  /** Checks if `null` or `undefined` is assignable to `T`, matching the runtime nullable detection. */
+  type IsNullable<T> = null extends T ? true : undefined extends T ? true : false
 
-  // Create columns type from schema Type and Encoded
+  // Type helper to create column definition with proper schema
+  export type ColumnDefForType<TEncoded, TType> = SqliteDsl.ColumnDefinition<TEncoded, TType, IsNullable<TEncoded>>
+
   export type FromTypes<TType, TEncoded> =
     TEncoded extends Record<string, any>
       ? {
-          [K in keyof TEncoded]-?: ColumnDefForType<
-            TEncoded[K],
+          [K in keyof TEncoded]-?: ColumnDefForType<TEncoded[K],
             TType extends Record<string, any> ? (K extends keyof TType ? TType[K] : TEncoded[K]) : TEncoded[K]
           >
         }
