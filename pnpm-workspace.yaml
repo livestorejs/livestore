@@ -69,6 +69,9 @@ overrides:
   '@tanstack/start-server-core': 1.145.7
   '@tanstack/start-client-core': 1.145.7
 
+patchedDependencies:
+  '@effect/rpc@0.75.0': patches/@effect__rpc@0.75.0.patch
+
 packageExtensions:
   react-error-boundary:
     dependencies:
@@ -87,10 +90,18 @@ packageExtensions:
     dependencies:
       typedoc-plugin-markdown: ^4.8.1
 
+peerDependencyRules:
+  allowedVersions:
+    '@effect/experimental': '>=0.58.0'
+    '@effect/platform': '>=0.94.2'
+    '@effect/rpc': '>=0.73.0'
+
 allowBuilds:
   '@parcel/watcher': true
+  '@myobie/pty': true
   esbuild: true
   msgpackr-extract: true
+  node-pty: true
   sharp: true
   unix-dgram: true
   '@mixedbread/cli': true

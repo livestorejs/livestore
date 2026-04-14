@@ -1,6 +1,7 @@
 import { playwrightSuites, syncProviderMatrix } from '../../genie/ci.ts'
 import {
   bashShellDefaults,
+  defaultActionlintConfig,
   dispatchAlignmentStep,
   githubWorkflow,
   livestoreSetupSteps,
@@ -10,7 +11,7 @@ import {
   otelSetupStep,
   repoPnpmOnlyBuiltDependencies,
   runDevenvTasksBefore,
-  savePnpmStoreStep,
+  savePnpmStateStep,
 } from '../../genie/repo.ts'
 
 // =============================================================================
@@ -45,7 +46,7 @@ const namespaceRunnerConfig = {
 
 const withNixDiagnosticsOnFailure = (steps: unknown[]) => [
   ...steps,
-  savePnpmStoreStep({ keyPrefix: 'livestore-pnpm-store' }),
+  savePnpmStateStep({ keyPrefix: 'livestore-pnpm-state-v1' }),
   nixDiagnosticsArtifactStep(),
 ]
 
@@ -75,6 +76,7 @@ const otelCIJob = (config: { env?: Record<string, string>; steps: unknown[] }) =
 export default githubWorkflow({
   name: 'ci',
   'run-name': `\${{ github.event.pull_request.title || format('Push to {0}', github.ref_name) }} (${PR_HEAD_SHA})`,
+  actionlint: defaultActionlintConfig,
 
   permissions: {
     'id-token': 'write',
@@ -184,7 +186,7 @@ done`,
           run: runDevenvTasksBefore('test:integration:sync-provider:matrix'),
           env: { OTEL_STATE_DIR: '', TEST_SYNC_PROVIDER: '${{ matrix.provider }}' },
         },
-        savePnpmStoreStep({ keyPrefix: 'livestore-pnpm-store' }),
+        savePnpmStateStep({ keyPrefix: 'livestore-pnpm-state-v1' }),
         nixDiagnosticsArtifactStep(),
       ],
     },
@@ -224,7 +226,7 @@ done`,
           },
           run: runDevenvTasksBefore('test:integration:playwright:upload-trace'),
         },
-        savePnpmStoreStep({ keyPrefix: 'livestore-pnpm-store' }),
+        savePnpmStateStep({ keyPrefix: 'livestore-pnpm-state-v1' }),
         nixDiagnosticsArtifactStep(),
       ],
     },
@@ -251,7 +253,7 @@ done`,
             OTEL_EXPORTER_OTLP_ENDPOINT: 'https://otlp-gateway-prod-us-east-2.grafana.net/otlp',
           },
         },
-        savePnpmStoreStep({ keyPrefix: 'livestore-pnpm-store' }),
+        savePnpmStateStep({ keyPrefix: 'livestore-pnpm-state-v1' }),
         nixDiagnosticsArtifactStep(),
       ],
     },
@@ -273,7 +275,7 @@ done`,
             OTEL_EXPORTER_OTLP_ENDPOINT: 'https://otlp-gateway-prod-us-east-2.grafana.net/otlp',
           },
         },
-        savePnpmStoreStep({ keyPrefix: 'livestore-pnpm-store' }),
+        savePnpmStateStep({ keyPrefix: 'livestore-pnpm-state-v1' }),
         nixDiagnosticsArtifactStep(),
       ],
     },

@@ -218,6 +218,7 @@ export const solidJsx = { jsx: 'preserve' as const, jsxImportSource: 'solid-js' 
 
 import {
   bashShellDefaults,
+  defaultActionlintConfig,
   dispatchAlignmentStep,
   namespaceRunner as namespaceRunnerBase,
   installNixStep,
@@ -225,11 +226,11 @@ import {
   applyMegarepoLockStep,
   checkoutStep,
   preparePinnedDevenvStep,
-  pnpmStoreSetupStep,
-  restorePnpmStoreStep,
+  pnpmStateSetupStep,
+  restorePnpmStateStep,
   runDevenvTasksBefore,
   nixDiagnosticsArtifactStep,
-  savePnpmStoreStep,
+  savePnpmStateStep,
   validateNixStoreStep,
 } from '../repos/effect-utils/genie/ci-workflow.ts'
 
@@ -237,7 +238,7 @@ export const devenvShellDefaults = {
   run: { shell: 'devenv shell bash -- -e {0}' },
 } as const
 export { bashShellDefaults }
-export { dispatchAlignmentStep, runDevenvTasksBefore, nixDiagnosticsArtifactStep, savePnpmStoreStep }
+export { defaultActionlintConfig, dispatchAlignmentStep, runDevenvTasksBefore, nixDiagnosticsArtifactStep, savePnpmStateStep }
 
 export const namespaceRunner = (runId: string) =>
   namespaceRunnerBase({ profile: 'namespace-profile-linux-x86-64', runId })
@@ -254,8 +255,8 @@ export const livestoreSetupStepsAfterCheckout = [
   cachixStep({ name: 'livestore', authToken: '${{ env.CACHIX_AUTH_TOKEN }}' }),
   applyMegarepoLockStep(),
   preparePinnedDevenvStep,
-  pnpmStoreSetupStep,
-  restorePnpmStoreStep({ keyPrefix: 'livestore-pnpm-store' }),
+  pnpmStateSetupStep,
+  restorePnpmStateStep({ keyPrefix: 'livestore-pnpm-state-v1' }),
   validateNixStoreStep,
 ] as const
 
