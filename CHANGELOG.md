@@ -450,6 +450,7 @@ See the [S2 sync provider docs](https://dev.docs.livestore.dev/reference/syncing
 - Stop advancing the backend head when materializers crash so subsequent boots no longer fail (#409)
 - Prevent `store.subscribe` reentrancy crashes by restoring the reactive debug context after nested commits (#577, #656)
 - Fix `subscribe` with `skipInitialRun` to properly register reactive dependencies while suppressing the initial callback (#847)
+- Fix event equality check failing when args key order differs, which caused duplicate events when syncing with backends that reorder JSON keys (e.g. PostgreSQL `jsonb`) (#1160)
 
 ##### TypeScript & Build
 
