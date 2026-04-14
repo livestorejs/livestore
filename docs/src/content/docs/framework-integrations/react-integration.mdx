@@ -126,7 +126,7 @@ Options:
 - `storeId` - Unique identifier for this store instance
 - `schema` - The LiveStore schema
 - `adapter` - The platform adapter
-- `unusedCacheTime?` - Time in ms to keep unused stores in cache (default: `60_000` in browser, `Infinity` in non-browser environments)
+- `unusedCacheTime?` - Time in ms to keep this store in cache after it becomes unused (default: `60_000` in browser, `Infinity` in non-browser environments). Overrides the registry-level default when set.
 - `batchUpdates?` - Function for batching React updates (recommended)
 - `boot?` - Function called when the store is loaded
 - `onBootStatus?` - Callback for boot status updates

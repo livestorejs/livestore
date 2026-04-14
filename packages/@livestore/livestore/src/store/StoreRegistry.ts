@@ -17,7 +17,7 @@ import {
   type Scope,
 } from '@livestore/utils/effect'
 
-import { type CreateStoreOptions, createStore } from './create-store.ts'
+import { createStore, type CreateStoreOptions } from './create-store.ts'
 import type { Store } from './store.ts'
 import type { OtelOptions } from './store-types.ts'
 
@@ -66,10 +66,10 @@ export interface RegistryStoreOptions<
    * have unmounted.
    *
    * @remarks
-   * - **Limitation:** Per-store values are not yet supported. Only the registry-level default
-   *   (via `StoreRegistry` constructor's `defaultOptions.unusedCacheTime`) is used.
-   *   See {@link https://github.com/livestorejs/livestore/issues/917 | #917} for per-store support
-   *   and {@link https://github.com/livestorejs/livestore/issues/918 | #918} for dynamic "longest wins" behavior.
+   * - Per-store values override the registry-level default (set via `StoreRegistry` constructor's
+   *   `defaultOptions.unusedCacheTime`)
+   * - The value is fixed when the store is first loaded into the registry. If the same `storeId` is
+   *   requested again with a different `unusedCacheTime`, the original value is kept.
    * - If set to `Infinity`, will disable automatic disposal
    * - The maximum allowed time is about {@link https://developer.mozilla.org/en-US/docs/Web/API/Window/setTimeout#maximum_delay_value | 24 days}
    *
@@ -205,9 +205,7 @@ export class StoreRegistry {
           ),
         )
       },
-      // TODO: Make idleTimeToLive vary for each store when Effect supports per-resource TTL
-      // See https://github.com/livestorejs/livestore/issues/917
-      idleTimeToLive: config.defaultOptions?.unusedCacheTime ?? DEFAULT_UNUSED_CACHE_TIME,
+      idleTimeToLive: ({ options }: StoreCacheKey) => options.unusedCacheTime ?? config.defaultOptions?.unusedCacheTime ?? DEFAULT_UNUSED_CACHE_TIME,
     }).pipe(Runtime.runSync(this.#runtime))
   }
 
