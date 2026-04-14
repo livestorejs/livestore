@@ -175,9 +175,12 @@ export class EncodedWithMeta extends Schema.Class<EncodedWithMeta>('LiveStoreEve
     })
 
   toGlobal = (): Global.Encoded => ({
-    ...this,
+    name: this.name,
+    args: this.args,
     seqNum: this.seqNum.global,
     parentSeqNum: this.parentSeqNum.global,
+    clientId: this.clientId,
+    sessionId: this.sessionId,
   })
 }
 
