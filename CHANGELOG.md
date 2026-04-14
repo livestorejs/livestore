@@ -454,6 +454,7 @@ See the [S2 sync provider docs](https://dev.docs.livestore.dev/reference/syncing
 
 - Fix TypeScript build issues and examples restructuring
 - Fix TypeScript erasableSyntaxOnly compatibility issues (#459)
+- **`table.insert()` now correctly omits nullable fields:** Schema-derived table definitions previously required all fields in `insert()` calls. Nullable columns (e.g. `S.NullOr`) are now correctly omittable, matching SQL semantics where nullable columns implicitly default to `NULL` (#1117).
 
 #### Docs & Examples
 

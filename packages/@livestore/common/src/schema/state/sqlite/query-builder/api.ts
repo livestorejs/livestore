@@ -357,12 +357,20 @@ export namespace QueryBuilder {
     >
 
     /**
-     * Insert a new row into the table
+     * Insert a new row into the table.
      *
-     * Example:
+     * @remarks
+     *
+     * Follows SQL semantics: nullable columns and columns with defaults are omittable.
+     * `NullOr(S)` and `optional(NullOr(S))` both produce nullable columns, so both are omittable.
+     *
+     * @example
+     *
      * ```ts
      * db.todos.insert({ id: '123', text: 'Buy milk', status: 'active' })
      * ```
+     *
+     * @param values - The row values to insert.
      */
     readonly insert: (
       values: TTableDef['insertSchema']['Type'],
