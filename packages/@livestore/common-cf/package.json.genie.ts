@@ -12,7 +12,7 @@ const runtimeDeps = catalog.compose({
   workspace: workspaceMember('packages/@livestore/common-cf'),
   dependencies: {
     workspace: [utilsPkg],
-    external: catalog.pick('@cloudflare/workers-types'),
+    external: catalog.pick('@cloudflare/workers-types', 'msgpackr'),
   },
   devDependencies: {
     workspace: [utilsDevPkg],

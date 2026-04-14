@@ -1,4 +1,5 @@
 import {
+  type Cause,
   Chunk,
   Effect,
   Exit,
@@ -10,13 +11,13 @@ import {
   type RpcGroup,
   type RpcMessage,
   RpcSchema,
-  RpcSerialization,
   Schema,
   type Scope,
   Stream,
 } from '@livestore/utils/effect'
 
 import type * as CfTypes from '../cf-types.ts'
+import { makeMsgPackParser, type MsgPackParser } from './msgpack.ts'
 
 export interface ClientDoWithRpcCallback {
   __DURABLE_OBJECT_BRAND: never
@@ -41,7 +42,7 @@ export const toDurableObjectHandler =
   ) => Effect.Effect<Uint8Array<ArrayBuffer> | CfTypes.ReadableStream>) =>
   (serializedPayload) =>
     Effect.gen(function* () {
-      const parser = RpcSerialization.msgPack.unsafeMake()
+      const parser = makeMsgPackParser()
 
       // Decode incoming requests - client sends array of requests
       const decoded = parser.decode(serializedPayload)
@@ -130,7 +131,7 @@ export const toDurableObjectHandler =
             exit: encodedExit,
           }
         }).pipe(
-          Effect.catchAllCause((cause) => {
+          Effect.catchAllCause((cause: Cause.Cause<unknown>) => {
             // Get the exit schema for this RPC
             // oxlint-disable-next-line typescript-eslint(no-unsafe-type-assertion) -- Rpc.exitSchema requires AnyWithProps; type narrowing already done above
             const exitSchema = Rpc.exitSchema(rpc as any) as Schema.Schema<any>
@@ -199,7 +200,7 @@ const createStreamingResponse = <Rpcs extends Rpc.Any, LE>(
   rpc: Rpc.AnyWithProps,
   entry: Rpc.Handler<Rpcs['_tag']>,
   request: any,
-  parser: ReturnType<typeof RpcSerialization.msgPack.unsafeMake>,
+  parser: MsgPackParser,
   layer: Layer.Layer<Rpc.ToHandler<Rpcs> | Rpc.Middleware<Rpcs>, LE>,
 ): Effect.Effect<CfTypes.ReadableStream, never, Scope.Scope> =>
   Effect.gen(function* () {
@@ -231,7 +232,7 @@ const createStreamingResponse = <Rpcs extends Rpc.Any, LE>(
         // Run the stream and send chunks + final exit
         const runStream = Effect.gen(function* () {
           // Process stream chunks - let chunk encoder handle Effect objects properly
-          yield* Stream.runForEachChunk(stream, (chunk) =>
+          yield* Stream.runForEachChunk(stream, (chunk: Chunk.Chunk<any>) =>
             Effect.gen(function* () {
               const chunkArray = Chunk.toReadonlyArray(chunk)
               if (chunkArray.length === 0) return
@@ -268,7 +269,7 @@ const createStreamingResponse = <Rpcs extends Rpc.Any, LE>(
           controller.enqueue(exitSerialized)
           controller.close()
         }).pipe(
-          Effect.catchAllCause((cause) =>
+          Effect.catchAllCause((cause: Cause.Cause<unknown>) =>
             Effect.gen(function* () {
               // Send error exit with proper schema encoding
               const rawExit = Exit.failCause(cause)

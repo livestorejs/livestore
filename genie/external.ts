@@ -99,6 +99,7 @@ export const livestoreOnlyCatalog = {
   'qrcode-generator': '1.4.4',
   '@iarna/toml': '3.0.0',
   '@graphql-typed-document-node/core': '3.2.0',
+  msgpackr: '1.11.9',
   'astro-expressive-code': '0.41.5',
   'expressive-code': '0.41.5',
   'expressive-code-twoslash': '0.5.3',
