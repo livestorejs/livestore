@@ -441,6 +441,7 @@ See the [S2 sync provider docs](https://dev.docs.livestore.dev/reference/syncing
 
 ##### Concurrency & Lifecycle
 
+- Fix background push fiber dying silently on non-`RejectedPushError` failures in `ClientSessionSyncProcessor`, leaving sessions unable to push ([#1133](https://github.com/livestorejs/livestore/issues/1133))
 - Fix `toGlobal()` leaking a debug `toJSON` method onto the returned `Global.Encoded` object, causing `JSON.stringify` to produce string seqNums instead of integers in custom sync backends (#1165). Thanks @OrkhanAlikhanov for diagnosing the root cause.
 - Fix correct type assertion in withLock function
 - Fix finalizers execution order (#450)
