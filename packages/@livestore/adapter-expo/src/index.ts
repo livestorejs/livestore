@@ -153,7 +153,7 @@ export const makePersistedAdapter =
       yield* shutdownChannel.listen.pipe(
         Stream.flatten(),
         Stream.tap((cause) =>
-          shutdown(cause._tag === 'LiveStore.IntentionalShutdownCause' ? Exit.succeed(cause) : Exit.fail(cause)),
+          shutdown(cause._tag === 'IntentionalShutdownCause' ? Exit.succeed(cause) : Exit.fail(cause)),
         ),
         Stream.runDrain,
         Effect.interruptible,
@@ -312,8 +312,7 @@ const makeLeaderThread = ({
               .push(
                 batch.map((item) => new LiveStoreEvent.Client.EncodedWithMeta(item)),
                 { waitForProcessing: true },
-              )
-              .pipe(Effect.provide(layer), Effect.scoped),
+              ),
           stream: (options) =>
             streamEventsWithSyncState({
               dbEventlog,

@@ -5,7 +5,15 @@
   ...
 }:
 let
-  effectUtils = inputs.effect-utils;
+  # Prefer the megarepo-materialized effect-utils checkout when present so the
+  # downstream shell/task CLIs match the exact generator sources imported from
+  # ./repos/effect-utils during CI and local megarepo workflows.
+  effectUtils =
+    if builtins.pathExists ./repos/effect-utils/flake.nix then
+      builtins.getFlake (toString ./repos/effect-utils)
+    else
+      inputs.effect-utils;
+  effectUtilsPackages = effectUtils.packages.${pkgs.system};
   taskModules = effectUtils.devenvModules.tasks;
   ci = builtins.getEnv "CI" != "";
 
@@ -14,6 +22,9 @@ let
     inherit pkgs;
     bun = pkgs.bun;
     src = inputs.effect-utils;
+  };
+  oxlintWithPlugins = effectUtils.lib.mkOxlintWithPlugins {
+    inherit pkgs oxlintNpm;
   };
 
   # Pre-compiled Grafana dashboards for livestore OTEL traces
@@ -100,13 +111,7 @@ in
     # Shared task modules from effect-utils
     taskModules.genie
     (taskModules.megarepo { syncAll = !ci; })
-    (taskModules.ts {
-      tsconfigFile = "tsconfig.dev.json";
-      # TODO(oep-1n3.9): Switch back to patched tsc once Effect diagnostics backlog is addressed.
-      # TODO(oep-1n3.15): Prefer patched tsc + disable Effect diagnostics in tsc output (IDE-only).
-      # Using the Nix-provided tsc avoids build-time Effect LS diagnostics while keeping full tsc typechecking.
-      tscBin = "${pkgs.typescript}/bin/tsc";
-    })
+    (taskModules.ts { tsconfigFile = "tsconfig.dev.json"; })
     (taskModules.check {
       hasTests = false;
       hasNixCheck = false;
@@ -117,7 +122,6 @@ in
     })
     # Lint tasks are dt-native via lint-oxc plus local aggregate wrappers.
     (taskModules.lint-oxc {
-      jsPlugins = lib.optionals (oxlintNpm.pluginPath != null) [ oxlintNpm.pluginPath ];
       lintPaths = [
         "packages"
         "tests"
@@ -179,6 +183,9 @@ in
       genieCoverageExcludes = [ "packages/@livestore/wa-sqlite/" ];
       tsconfig = "tsconfig.dev.json";
     })
+    (taskModules.ts-effect-lsp {
+      tsconfigFile = "tsconfig.dev.json";
+    })
     (taskModules.pnpm { packages = pnpmPackages; })
     # Setup task (auto-runs in enterShell)
     (taskModules.setup {
@@ -194,14 +201,17 @@ in
   ];
 
   packages = [
-    pkgs.pnpm
+    (effectUtils.lib.mkPnpm { inherit pkgs; })
     pkgs.bun
     pkgs.nodejs_24
     pkgs.typescript
-    oxlintNpm
+    oxlintWithPlugins
     pkgs.oxfmt
     # CLIs from effect-utils (Nix-built packages)
-    effectUtils.packages.${pkgs.system}.genie
+  ]
+  ++ [ effectUtilsPackages.effect-tsgo ]
+  ++ [
+    effectUtilsPackages.genie
     effectUtils.packages.${pkgs.system}.megarepo
     pkgs.caddy
     pkgs.jq

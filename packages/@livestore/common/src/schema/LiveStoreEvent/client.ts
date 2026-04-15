@@ -1,4 +1,4 @@
-import { memoizeByRef } from '@livestore/utils'
+import { deepEqual, memoizeByRef } from '@livestore/utils'
 import { Option, Schema } from '@livestore/utils/effect'
 
 import type { EventDef } from '../EventDef/mod.ts'
@@ -184,9 +184,12 @@ export class EncodedWithMeta extends Schema.Class<EncodedWithMeta>('LiveStoreEve
     })
 
   toGlobal = (): Global.Encoded => ({
-    ...this,
+    name: this.name,
+    args: this.args,
     seqNum: this.seqNum.global,
     parentSeqNum: this.parentSeqNum.global,
+    clientId: this.clientId,
+    sessionId: this.sessionId,
   })
 }
 
@@ -200,7 +203,7 @@ export const isEqualEncoded = (a: Encoded, b: Encoded) =>
   a.name === b.name &&
   a.clientId === b.clientId &&
   a.sessionId === b.sessionId &&
-  JSON.stringify(a.args) === JSON.stringify(b.args) // TODO use schema equality here
+  deepEqual(a.args, b.args) // TODO use schema equality here
 
 /**
  * Creates an Effect Schema union for all event types in a schema (with composite sequence numbers).

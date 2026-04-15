@@ -1,15 +1,15 @@
-import { catalog, effectDevDeps, localPackageDefaults, packageJson } from '../../genie/repo.ts'
+import { catalog, effectDevDeps, localPackageDefaults, packageJson, workspaceMember } from '../../genie/repo.ts'
+import adapterWebPkg from '../../packages/@livestore/adapter-web/package.json.genie.ts'
+import livestorePkg from '../../packages/@livestore/livestore/package.json.genie.ts'
+import reactPkg from '../../packages/@livestore/react/package.json.genie.ts'
+import utilsDevPkg from '../../packages/@livestore/utils-dev/package.json.genie.ts'
+import utilsPkg from '../../packages/@livestore/utils/package.json.genie.ts'
 
-export default packageJson({
-  name: '@local/tests-perf',
-  ...localPackageDefaults,
+const runtimeDeps = catalog.compose({
+  workspace: workspaceMember("tests/perf"),
   dependencies: {
-    ...catalog.pick(
-      '@livestore/adapter-web',
-      '@livestore/livestore',
-      '@livestore/react',
-      '@livestore/utils',
-      '@livestore/utils-dev',
+    workspace: [adapterWebPkg, livestorePkg, reactPkg, utilsPkg, utilsDevPkg],
+    external: catalog.pick(
       '@opentelemetry/exporter-trace-otlp-http',
       '@opentelemetry/resources',
       '@opentelemetry/sdk-trace-base',
@@ -26,12 +26,20 @@ export default packageJson({
     ),
   },
   devDependencies: {
-    ...effectDevDeps(),
-  },
-  scripts: {
-    test: 'NODE_OPTIONS=--disable-warning=ExperimentalWarning playwright test',
-    'test-app': 'vite build test-app && vite preview test-app',
-    'test-app:dev': 'vite test-app',
-    'test:profiler': 'PERF_PROFILER=1 pnpm test',
+    external: effectDevDeps(),
   },
 })
+
+export default packageJson(
+  {
+    name: '@local/tests-perf',
+    ...localPackageDefaults,
+    scripts: {
+      test: 'NODE_OPTIONS=--disable-warning=ExperimentalWarning playwright test',
+      'test-app': 'vite build test-app && vite preview test-app',
+      'test-app:dev': 'vite test-app',
+      'test:profiler': 'PERF_PROFILER=1 pnpm test',
+    },
+  },
+  runtimeDeps,
+)

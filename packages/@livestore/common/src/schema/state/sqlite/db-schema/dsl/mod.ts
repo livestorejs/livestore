@@ -196,8 +196,7 @@ export namespace FromColumns {
   }
 
   export type NullableColumnNames<TColumns extends Columns> = keyof {
-    // TODO double check why there is a `true` in the type
-    [K in keyof TColumns as TColumns[K] extends ColumnDefinition<any, true> ? K : never]: {}
+    [K in keyof TColumns as TColumns[K]['nullable'] extends true ? K : never]: {}
   }
 
   export type RequiredInsertColumns<TColumns extends Columns> = {

@@ -49,6 +49,15 @@ export const livestoreWorkspaceCatalog = {
 /** LiveStore-only versions not provided by effect-utils base catalog. */
 export const livestoreOnlyCatalog = {
   '@livestore/devtools-vite': '0.4.0-dev.22',
+  /** Tanstack router sub-packages not in effect-utils catalog (react-router/react-start/router-plugin are there) */
+  '@tanstack/router-core': '1.145.7',
+  '@tanstack/history': '1.145.7',
+  '@tanstack/router-devtools': '1.145.7',
+  '@tanstack/router-devtools-core': '1.145.7',
+  '@tanstack/react-router-devtools': '1.145.7',
+  '@tanstack/start-plugin-core': '1.145.7',
+  '@tanstack/start-server-core': '1.145.7',
+  '@tanstack/start-client-core': '1.145.7',
   '@biomejs/biome': '2.3.8',
   '@types/chrome': '0.1.4',
   '@types/web': '0.0.264',
@@ -68,11 +77,11 @@ export const livestoreOnlyCatalog = {
   'jasmine-core': '4.5.0',
   jsdom: '26.1.0',
   'web-test-runner-jasmine': '0.0.6',
-  '@effect/ai-openai': '0.37.2',
-  '@effect/platform-browser': '0.73.0',
-  '@effect/platform-bun': '0.86.0',
-  '@effect/platform-node-shared': '0.56.0',
-  '@effect/sql-sqlite-node': '0.49.1',
+  '@effect/ai-openai': '0.39.0',
+  '@effect/platform-browser': '0.76.0',
+  '@effect/platform-bun': '0.89.0',
+  '@effect/platform-node-shared': '0.59.0',
+  '@effect/sql-sqlite-node': '0.52.0',
   '@opentelemetry/context-zone': '2.2.0',
   '@opentelemetry/core': '2.2.0',
   '@opentelemetry/exporter-metrics-otlp-grpc': '0.208.0',
@@ -88,7 +97,6 @@ export const livestoreOnlyCatalog = {
   nanoid: '5.0.9',
   'pretty-bytes': '7.0.1',
   'qrcode-generator': '1.4.4',
-  '@standard-schema/spec': '1.0.0',
   '@iarna/toml': '3.0.0',
   '@graphql-typed-document-node/core': '3.2.0',
   'astro-expressive-code': '0.41.5',
@@ -115,11 +123,6 @@ export const livestoreOnlyCatalog = {
   husky: '9.1.7',
   madge: '8.0.0',
   yaml: '2.8.1',
-} as const
-
-/** Catalog overrides applied on top of effect-utils base catalog. */
-export const livestoreCatalogOverrides = {
-  '@playwright/test': '1.58.0',
 } as const
 
 const livestorePackageNames = [
@@ -154,6 +157,4 @@ const toCamelCase = (value: string) => value.replace(/-([a-z])/g, (_, char: stri
 
 /** Internal refs for consumers that need path mappings to @livestore packages. */
 export const createLivestoreRefs = (basePath: string) =>
-  Object.fromEntries(
-    livestorePackageNames.map((name) => [toCamelCase(name), { path: `${basePath}/${name}` }]),
-  )
+  Object.fromEntries(livestorePackageNames.map((name) => [toCamelCase(name), { path: `${basePath}/${name}` }]))

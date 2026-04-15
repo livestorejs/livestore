@@ -1,7 +1,8 @@
-import { nanoid } from '@livestore/livestore'
 import { useCallback, useRef } from 'react'
 import type { NativeSyntheticEvent, TextInputKeyPressEventData } from 'react-native'
 import { Keyboard, Pressable, StyleSheet, Text, TextInput, TouchableWithoutFeedback, View } from 'react-native'
+
+import { nanoid } from '@livestore/livestore'
 
 import { uiState$ } from '../livestore/queries.ts'
 import { events } from '../livestore/schema.ts'

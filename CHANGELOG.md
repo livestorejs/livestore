@@ -151,7 +151,7 @@
 
   Update all references:
   - Class name: `UnexpectedError` → `UnknownError`
-  - Error tag: `'LiveStore.UnexpectedError'` → `'LiveStore.UnknownError'`
+  - Error tag: `'LiveStore.UnexpectedError'` → `'UnknownError'`
   - Static methods: `mapToUnexpectedError*` → `mapToUnknownError*`
   - Related type: `MergeResultUnexpectedError` → `MergeResultUnknownError`
 
@@ -334,7 +334,7 @@ See the [S2 sync provider docs](https://dev.docs.livestore.dev/reference/syncing
 
   This keeps the schema as a single source of truth, enforces types at compile time, and removes duplicate column definitions.
 
-- **Materializer hash checks:** Development builds compute hashes for materializer output and raise `LiveStore.MaterializerHashMismatchError` when handlers diverge, catching non-pure implementations before they reach production.
+- **Materializer hash checks:** Development builds compute hashes for materializer output and raise `MaterializerHashMismatchError` when handlers diverge, catching non-pure implementations before they reach production.
 
   ```typescript
   // This triggers warnings in development
@@ -384,6 +384,7 @@ See the [S2 sync provider docs](https://dev.docs.livestore.dev/reference/syncing
 
 #### API & DX
 
+- **Per-store `unusedCacheTime` in `StoreRegistry`:** Each store managed by a `StoreRegistry` can now specify its own `unusedCacheTime` via `storeOptions()`, overriding the registry-level default. Short-lived ephemeral stores can be disposed quickly while persistent stores stay cached longer ([#917](https://github.com/livestorejs/livestore/issues/917)).
 - **Store:** `store.networkStatus` now surfaces sync backend connectivity so apps can read the latest status or subscribe directly; the signal is no longer re-exposed on client sessions (livestorejs/livestore#394).
 - `LiveStoreSchema.Any` type alias simplifies schema composition across adapters.
 - Query builder const assertions improve type inference, and `store.subscribe()` now accepts query builders (#371, thanks @rgbkrk).
@@ -436,10 +437,12 @@ See the [S2 sync provider docs](https://dev.docs.livestore.dev/reference/syncing
 - Fix in-memory SQLite database connection handling in Expo adapter
 - Fix OPFS file pool capacity exhaustion from old state databases (#569)
 - Upgrade wa-sqlite to SQLite 3.50.4 (#581)
-- **WAL snapshot guard:** `@livestore/sqlite-wasm` now aborts WAL-mode snapshot imports with an explicit `LiveStore.SqliteError`, preventing silent corruption when loading backups ([#694](https://github.com/livestorejs/livestore/issues/694)).
+- **WAL snapshot guard:** `@livestore/sqlite-wasm` now aborts WAL-mode snapshot imports with an explicit `SqliteError`, preventing silent corruption when loading backups ([#694](https://github.com/livestorejs/livestore/issues/694)).
 
 ##### Concurrency & Lifecycle
 
+- Fix background push fiber dying silently on non-`RejectedPushError` failures in `ClientSessionSyncProcessor`, leaving sessions unable to push ([#1133](https://github.com/livestorejs/livestore/issues/1133))
+- Fix `toGlobal()` leaking a debug `toJSON` method onto the returned `Global.Encoded` object, causing `JSON.stringify` to produce string seqNums instead of integers in custom sync backends (#1165). Thanks @OrkhanAlikhanov for diagnosing the root cause.
 - Fix correct type assertion in withLock function
 - Fix finalizers execution order (#450)
 - Ensure large batches no longer leave follower sessions behind by reconciling leader/follower heads correctly (#362)
@@ -447,11 +450,13 @@ See the [S2 sync provider docs](https://dev.docs.livestore.dev/reference/syncing
 - Stop advancing the backend head when materializers crash so subsequent boots no longer fail (#409)
 - Prevent `store.subscribe` reentrancy crashes by restoring the reactive debug context after nested commits (#577, #656)
 - Fix `subscribe` with `skipInitialRun` to properly register reactive dependencies while suppressing the initial callback (#847)
+- Fix event equality check failing when args key order differs, which caused duplicate events when syncing with backends that reorder JSON keys (e.g. PostgreSQL `jsonb`) (#1160)
 
 ##### TypeScript & Build
 
 - Fix TypeScript build issues and examples restructuring
 - Fix TypeScript erasableSyntaxOnly compatibility issues (#459)
+- **`table.insert()` now correctly omits nullable fields:** Schema-derived table definitions previously required all fields in `insert()` calls. Nullable columns (e.g. `S.NullOr`) are now correctly omittable, matching SQL semantics where nullable columns implicitly default to `NULL` (#1117).
 
 #### Docs & Examples
 
@@ -493,6 +498,7 @@ See the [S2 sync provider docs](https://dev.docs.livestore.dev/reference/syncing
 
 #### Development Tooling
 
+- **Strict peer dep composition:** Added `@effect/vitest` to `utilsEffectPeerDeps` and `@livestore/peer-deps`, and deduplicated the peer-deps package to derive its dependency list from the canonical `utilsEffectPeerDeps` source ([#1107](https://github.com/livestorejs/livestore/issues/1107)).
 - Migration from ESLint to Biome for improved performance (#447)
 - Automated dependency management with Renovate
 - Pre-commit hooks via Husky (#522)

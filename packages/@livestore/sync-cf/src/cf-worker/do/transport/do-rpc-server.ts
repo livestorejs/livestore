@@ -1,4 +1,4 @@
-import { InvalidPullError, InvalidPushError, UnknownError } from '@livestore/common'
+import { UnknownError } from '@livestore/common'
 import { type CfTypes, toDurableObjectHandler } from '@livestore/common-cf'
 import {
   Effect,
@@ -60,7 +60,9 @@ export const createDoRpcHandler = (
           })),
           Stream.provideLayer(DoCtx.Default({ ...input, from: { storeId: req.storeId } })),
           Stream.mapError((cause) =>
-            cause._tag === 'InvalidPullError' ? cause : InvalidPullError.make({ cause: new UnknownError({ cause }) }),
+            cause._tag === 'UnknownError' || cause._tag === 'BackendIdMismatchError'
+              ? cause
+              : new UnknownError({ cause }),
           ),
           Stream.tapErrorCause(Effect.log),
         ),
@@ -73,7 +75,11 @@ export const createDoRpcHandler = (
           return yield* push(req)
         }).pipe(
           Effect.provide(DoCtx.Default({ ...input, from: { storeId: req.storeId } })),
-          Effect.mapError((cause) => (cause._tag === 'InvalidPushError' ? cause : InvalidPushError.make({ cause }))),
+          Effect.mapError((cause) =>
+            cause._tag === 'UnknownError' || cause._tag === 'ServerAheadError' || cause._tag === 'BackendIdMismatchError'
+              ? cause
+              : new UnknownError({ cause }),
+          ),
           Effect.tapCauseLogPretty,
         ),
     })

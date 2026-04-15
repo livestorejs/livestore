@@ -1,7 +1,8 @@
-import { queryDb } from '@livestore/livestore'
 import { Stack, useLocalSearchParams, useRouter } from 'expo-router'
 import { useCallback, useMemo } from 'react'
 import { Image, Pressable, ScrollView, StyleSheet, TextInput, View } from 'react-native'
+
+import { queryDb } from '@livestore/livestore'
 
 import { IssueStatusIcon, PriorityIcon } from '../components/IssueItem.tsx'
 import { ThemedText } from '../components/ThemedText.tsx'

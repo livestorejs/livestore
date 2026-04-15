@@ -1,19 +1,18 @@
-import { assert, expect } from 'vitest'
-
-import type { SyncOptions } from '@livestore/common'
 import {
   BackendIdMismatchError,
   type BootStatus,
   CommandExecutionError,
   type IntentionalShutdownCause,
-  InvalidPushError,
-  type LeaderAheadError,
   type MockSyncBackend,
+  type MockSyncBackendOptions,
   makeMockSyncBackend,
   ServerAheadError,
   type SyncBackend,
   type SyncState,
-  type UnknownError,
+  type RejectedPushError,
+  StaleRebaseGenerationError,
+  type SyncOptions,
+  UnknownError,
 } from '@livestore/common'
 import type { CommandPushResult, MakeLeaderThreadLayerParams } from '@livestore/common/leader-thread'
 import {
@@ -30,7 +29,6 @@ import { EventFactory } from '@livestore/common/testing'
 import { loadSqlite3Wasm } from '@livestore/sqlite-wasm/load-wasm'
 import { sqliteDbFactory } from '@livestore/sqlite-wasm/node'
 import { omitUndefineds } from '@livestore/utils'
-import { Vitest } from '@livestore/utils-dev/node-vitest'
 import {
   Chunk,
   Context,
@@ -49,6 +47,8 @@ import {
   WebChannel,
 } from '@livestore/utils/effect'
 import { PlatformNode } from '@livestore/utils/node'
+import { Vitest } from '@livestore/utils-dev/node-vitest'
+import { expect, assert } from 'vitest'
 
 import { commands, events, schema, tables } from './fixture.ts'
 
@@ -71,6 +71,8 @@ const withTestCtx = (
     /** Warning: Setting `livePull` to `false` will lead to some less explored scenarios (e.g. only pulls once on boot) */
     syncOptions?: Partial<SyncOptions>
     captureShutdown?: boolean
+    mockBackendOptions?: MockSyncBackendOptions
+    seedMockBackend?: (mockBackend: MockSyncBackend) => Effect.Effect<void>
     mockBackendOverride?: (mock: MockSyncBackend) => SyncBackend.SyncBackendConstructor
   } = {},
 ) =>
@@ -87,6 +89,18 @@ const withPlatformCtx = Vitest.makeWithTestCtx({
   makeLayer: () => Layer.merge(PlatformNode.NodeFileSystem.layer, Logger.minimumLogLevel(LogLevel.Debug)),
   forceOtel: true,
 })
+
+const seedPaginatedBackendTodos = (mockBackend: MockSyncBackend) => {
+  const backendFactory = makeEventFactory({
+    client: EventFactory.clientIdentity('mock-backend', 'static-session-id'),
+  })
+
+  return mockBackend.advance(
+    backendFactory.todoCreated.next({ id: 'backend-1', text: 'b1', completed: false }),
+    backendFactory.todoCreated.next({ id: 'backend-2', text: 'b2', completed: false }),
+    backendFactory.todoCreated.next({ id: 'backend-3', text: 'b3', completed: false }),
+  )
+}
 
 Vitest.describe.concurrent('LeaderSyncProcessor', { timeout: 60000 }, () => {
   Vitest.scopedLive('sync', (test) =>
@@ -117,7 +131,183 @@ Vitest.describe.concurrent('LeaderSyncProcessor', { timeout: 60000 }, () => {
     }).pipe(withTestCtx()(test)),
   )
 
-  Vitest.scopedLive('local push old-gen items fail promptly with LeaderAheadError', (test) =>
+  Vitest.scopedLive('non-live paginated pull does not stall local pushes', (test) =>
+    Effect.gen(function* () {
+      const leaderThreadCtx = yield* LeaderThreadCtx
+      const testContext = yield* TestContext
+
+      const pulledStateOption = yield* leaderThreadCtx.syncProcessor.syncState.changes.pipe(
+        Stream.filter((state) => state.localHead.global === 3),
+        Stream.take(1),
+        Stream.runHead,
+        Effect.timeout('5 seconds'),
+      )
+
+      expect(pulledStateOption._tag).toBe('Some')
+      if (pulledStateOption._tag !== 'Some') {
+        return
+      }
+
+      const syncState = yield* leaderThreadCtx.syncProcessor.syncState.get
+      const nextPair = EventSequenceNumber.Client.nextPair({
+        seqNum: syncState.localHead,
+        isClient: false,
+      })
+
+      const localEvent = LiveStoreEvent.Client.EncodedWithMeta.make({
+        ...LiveStoreEvent.Global.toClientEncoded(
+          testContext.eventFactory.todoCreated.next({ id: 'local-after-pull', text: 'local', completed: false }),
+        ),
+        seqNum: nextPair.seqNum,
+        parentSeqNum: nextPair.parentSeqNum,
+      })
+
+      yield* leaderThreadCtx.syncProcessor.push([localEvent], { waitForProcessing: true })
+
+      yield* testContext.mockSyncBackend.pushedEvents.pipe(Stream.take(1), Stream.runDrain, Effect.timeout(5000))
+
+      const rows = leaderThreadCtx.dbState.select<{ id: string }>(tables.todos.asSql().query)
+      expect(rows.map((row) => row.id).toSorted()).toEqual(['backend-1', 'backend-2', 'backend-3', 'local-after-pull'])
+    }).pipe(
+      withTestCtx({
+        syncOptions: { livePull: false, onSyncError: 'ignore' },
+        mockBackendOptions: { nonLiveChunkSize: 1 },
+        seedMockBackend: seedPaginatedBackendTodos,
+      })(test),
+    ),
+  )
+
+  Vitest.scopedLive('mid-pagination pull failure releases local push mutex', (test) =>
+    Effect.gen(function* () {
+      const leaderThreadCtx = yield* LeaderThreadCtx
+      const testContext = yield* TestContext
+
+      const syncStateBeforeWait = yield* leaderThreadCtx.syncProcessor.syncState.get
+      if (syncStateBeforeWait.localHead.global < 1) {
+        const firstPageApplied = yield* leaderThreadCtx.syncProcessor.syncState.changes.pipe(
+          Stream.filter((state) => state.localHead.global === 1),
+          Stream.take(1),
+          Stream.runHead,
+          Effect.timeout('5 seconds'),
+        )
+
+        expect(firstPageApplied._tag).toBe('Some')
+        if (firstPageApplied._tag !== 'Some') {
+          return
+        }
+      }
+
+      const syncState = yield* leaderThreadCtx.syncProcessor.syncState.get
+      const nextPair = EventSequenceNumber.Client.nextPair({
+        seqNum: syncState.localHead,
+        isClient: false,
+      })
+
+      const localEvent = LiveStoreEvent.Client.EncodedWithMeta.make({
+        ...LiveStoreEvent.Global.toClientEncoded(
+          testContext.eventFactory.todoCreated.next({
+            id: 'local-after-pull-failure',
+            text: 'local',
+            completed: false,
+          }),
+        ),
+        seqNum: nextPair.seqNum,
+        parentSeqNum: nextPair.parentSeqNum,
+      })
+
+      yield* leaderThreadCtx.syncProcessor.push([localEvent], { waitForProcessing: true })
+
+      const rows = leaderThreadCtx.dbState.select<{ id: string }>(tables.todos.asSql().query)
+      expect(rows.map((row) => row.id).toSorted()).toEqual(['backend-1', 'local-after-pull-failure'])
+    }).pipe(
+      withTestCtx({
+        syncOptions: { livePull: false, onSyncError: 'ignore' },
+        mockBackendOptions: { nonLiveChunkSize: 1 },
+        seedMockBackend: seedPaginatedBackendTodos,
+        mockBackendOverride: (mockBackend) => () =>
+          Effect.gen(function* () {
+            const syncBackend = yield* mockBackend.makeSyncBackend
+            return {
+              ...syncBackend,
+              pull: (cursor, pullOptions) =>
+                Stream.concat(
+                  syncBackend.pull(cursor, pullOptions).pipe(Stream.take(1)),
+                  Stream.fromEffect(
+                    Effect.fail(
+                      new UnknownError({ cause: new Error('Simulated mid-pagination pull failure') }),
+                    ),
+                  ),
+                ),
+            }
+          }),
+      })(test),
+    ),
+  )
+
+  Vitest.scopedLive('mid-pagination pull interruption releases local push mutex', (test) =>
+    Effect.gen(function* () {
+      const leaderThreadCtx = yield* LeaderThreadCtx
+      const testContext = yield* TestContext
+
+      const syncStateBeforeWait = yield* leaderThreadCtx.syncProcessor.syncState.get
+      if (syncStateBeforeWait.localHead.global < 1) {
+        const firstPageApplied = yield* leaderThreadCtx.syncProcessor.syncState.changes.pipe(
+          Stream.filter((state) => state.localHead.global === 1),
+          Stream.take(1),
+          Stream.runHead,
+          Effect.timeout('5 seconds'),
+        )
+
+        expect(firstPageApplied._tag).toBe('Some')
+        if (firstPageApplied._tag !== 'Some') {
+          return
+        }
+      }
+
+      const syncState = yield* leaderThreadCtx.syncProcessor.syncState.get
+      const nextPair = EventSequenceNumber.Client.nextPair({
+        seqNum: syncState.localHead,
+        isClient: false,
+      })
+
+      const localEvent = LiveStoreEvent.Client.EncodedWithMeta.make({
+        ...LiveStoreEvent.Global.toClientEncoded(
+          testContext.eventFactory.todoCreated.next({
+            id: 'local-after-pull-interrupt',
+            text: 'local',
+            completed: false,
+          }),
+        ),
+        seqNum: nextPair.seqNum,
+        parentSeqNum: nextPair.parentSeqNum,
+      })
+
+      yield* leaderThreadCtx.syncProcessor.push([localEvent], { waitForProcessing: true })
+
+      const rows = leaderThreadCtx.dbState.select<{ id: string }>(tables.todos.asSql().query)
+      expect(rows.map((row) => row.id).toSorted()).toEqual(['backend-1', 'local-after-pull-interrupt'])
+    }).pipe(
+      withTestCtx({
+        syncOptions: { livePull: false, onSyncError: 'ignore' },
+        mockBackendOptions: { nonLiveChunkSize: 1 },
+        seedMockBackend: seedPaginatedBackendTodos,
+        mockBackendOverride: (mockBackend) => () =>
+          Effect.gen(function* () {
+            const syncBackend = yield* mockBackend.makeSyncBackend
+            return {
+              ...syncBackend,
+              pull: (cursor, pullOptions) =>
+                Stream.concat(
+                  syncBackend.pull(cursor, pullOptions).pipe(Stream.take(1)),
+                  Stream.fromEffect(Effect.interrupt),
+                ),
+            }
+          }),
+      })(test),
+    ),
+  )
+
+  Vitest.scopedLive('local push old-gen items fail promptly with StaleRebaseGenerationError', (test) =>
     Effect.gen(function* () {
       const leaderThreadCtx = yield* LeaderThreadCtx
       const testContext = yield* TestContext
@@ -149,13 +339,15 @@ Vitest.describe.concurrent('LeaderSyncProcessor', { timeout: 60000 }, () => {
         parentSeqNum: staleParent,
       })
 
-      const leaderAheadError = yield* leaderThreadCtx.syncProcessor
+      const error = yield* leaderThreadCtx.syncProcessor
         .push([staleEvent], { waitForProcessing: true })
         .pipe(Effect.flip)
 
-      expect(leaderAheadError._tag).toBe('LeaderAheadError')
-      expect(leaderAheadError.minimumExpectedNum).toEqual(syncStateBefore.localHead)
-      expect(leaderAheadError.providedNum).toEqual(staleSeq)
+      expect(error._tag).toBe('StaleRebaseGenerationError')
+      assert(error instanceof StaleRebaseGenerationError)
+
+      expect(error.currentRebaseGeneration).toBe(syncStateBefore.localHead.rebaseGeneration)
+      expect(error.providedRebaseGeneration).toBe(staleSeq.rebaseGeneration)
     }).pipe(withTestCtx()(test)),
   )
 
@@ -353,11 +545,9 @@ Vitest.describe.concurrent('LeaderSyncProcessor', { timeout: 60000 }, () => {
       yield* testContext.mockSyncBackend.failNextPushes(
         1,
         () =>
-          new InvalidPushError({
-            cause: new ServerAheadError({
-              minimumExpectedNum: EventSequenceNumber.Global.make(2),
-              providedNum: EventSequenceNumber.Global.make(1),
-            }),
+          new ServerAheadError({
+            minimumExpectedNum: EventSequenceNumber.Global.make(2),
+            providedNum: EventSequenceNumber.Global.make(1),
           }),
       )
 
@@ -461,17 +651,16 @@ Vitest.describe.concurrent('LeaderSyncProcessor', { timeout: 60000 }, () => {
 
       // Fail the next push due to backend id mismatch
       yield* testContext.mockSyncBackend.failNextPushes(1, () =>
-        Effect.fail(new InvalidPushError({ cause: new BackendIdMismatchError({ expected: 'a', received: 'b' }) })),
+        Effect.fail(new BackendIdMismatchError({ expected: 'a', received: 'b' })),
       )
 
       // Trigger a local push
       yield* testContext.pushEncoded(eventFactory.todoCreated.next({ id: 'mismatch', text: 'x', completed: false }))
 
-      // Expect a shutdown message to be sent with InvalidPushError/BackendIdMismatchError
+      // Expect a shutdown message to be sent with BackendIdMismatchError
       const shutdownMsg = yield* testContext.shutdownDeferred.pipe(Effect.flip, Effect.timeout(3000))
 
-      expect(shutdownMsg._tag).toEqual('InvalidPushError')
-      expect((shutdownMsg as InvalidPushError).cause._tag).toEqual('BackendIdMismatchError')
+      expect(shutdownMsg._tag).toEqual('BackendIdMismatchError')
     }).pipe(
       withTestCtx({
         syncOptions: { onBackendIdMismatch: 'shutdown', livePull: false },
@@ -504,9 +693,7 @@ Vitest.describe.concurrent('LeaderSyncProcessor', { timeout: 60000 }, () => {
 
       // Fail the next push due to backend id mismatch
       yield* testContext.mockSyncBackend.failNextPushes(1, () =>
-        Effect.fail(
-          new InvalidPushError({ cause: new BackendIdMismatchError({ expected: 'new-id', received: 'old-id' }) }),
-        ),
+        Effect.fail(new BackendIdMismatchError({ expected: 'new-id', received: 'old-id' })),
       )
 
       // Trigger another push that will fail
@@ -515,7 +702,7 @@ Vitest.describe.concurrent('LeaderSyncProcessor', { timeout: 60000 }, () => {
       // Expect a shutdown message with IntentionalShutdownCause and reason 'backend-id-mismatch'
       const shutdownMsg = yield* testContext.shutdownDeferred.pipe(Effect.flip, Effect.timeout(3000))
 
-      expect(shutdownMsg._tag).toEqual('LiveStore.IntentionalShutdownCause')
+      expect(shutdownMsg._tag).toEqual('IntentionalShutdownCause')
       expect((shutdownMsg as IntentionalShutdownCause).reason).toEqual('backend-id-mismatch')
 
       // Verify databases were cleared
@@ -553,18 +740,16 @@ Vitest.describe.concurrent('LeaderSyncProcessor', { timeout: 60000 }, () => {
 
       // Fail the next push due to backend id mismatch
       yield* testContext.mockSyncBackend.failNextPushes(1, () =>
-        Effect.fail(
-          new InvalidPushError({ cause: new BackendIdMismatchError({ expected: 'new-id', received: 'old-id' }) }),
-        ),
+        Effect.fail(new BackendIdMismatchError({ expected: 'new-id', received: 'old-id' })),
       )
 
       // Trigger another push that will fail
       yield* testContext.pushEncoded(eventFactory.todoCreated.next({ id: '2', text: 't2', completed: false }))
 
-      // Expect a shutdown message with InvalidPushError (not IntentionalShutdownCause)
+      // Expect a shutdown message with BackendIdMismatchError (not IntentionalShutdownCause)
       const shutdownMsg = yield* testContext.shutdownDeferred.pipe(Effect.flip, Effect.timeout(3000))
 
-      expect(shutdownMsg._tag).toEqual('InvalidPushError')
+      expect(shutdownMsg._tag).toEqual('BackendIdMismatchError')
 
       // Verify databases were NOT cleared
       const afterRows = leaderThreadCtx.dbEventlog.select<{ name: string }>(`SELECT name FROM eventlog`)
@@ -592,9 +777,7 @@ Vitest.describe.concurrent('LeaderSyncProcessor', { timeout: 60000 }, () => {
 
       // Fail the next push due to backend id mismatch
       yield* testContext.mockSyncBackend.failNextPushes(1, () =>
-        Effect.fail(
-          new InvalidPushError({ cause: new BackendIdMismatchError({ expected: 'new-id', received: 'old-id' }) }),
-        ),
+        Effect.fail(new BackendIdMismatchError({ expected: 'new-id', received: 'old-id' })),
       )
 
       // Trigger another push that will fail
@@ -968,7 +1151,7 @@ class TestContext extends Context.Tag('TestContext')<
     /** Equivalent to the ClientSessionSyncProcessor calling `.push` on the LeaderThreadCtx */
     pushEncoded: (
       ...events: ReadonlyArray<LiveStoreEvent.Global.Encoded>
-    ) => Effect.Effect<void, UnknownError | LeaderAheadError, Scope.Scope | LeaderThreadCtx>
+    ) => Effect.Effect<void, RejectedPushError, Scope.Scope | LeaderThreadCtx>
     /** Push a command to the leader for execution */
     pushCommand: (
       command: ReturnType<typeof makeCommandInstance>,
@@ -981,6 +1164,8 @@ const LeaderThreadCtxLive = ({
   params,
   syncOptions,
   captureShutdown,
+  mockBackendOptions,
+  seedMockBackend,
   mockBackendOverride,
 }: {
   syncProcessor?: NonNullable<MakeLeaderThreadLayerParams['testing']>['syncProcessor']
@@ -988,18 +1173,25 @@ const LeaderThreadCtxLive = ({
   /** Optional overrides for sync options (e.g. custom backend, livePull flag) */
   syncOptions?: Partial<SyncOptions>
   captureShutdown?: boolean
+  mockBackendOptions?: MockSyncBackendOptions
+  seedMockBackend?: (mockBackend: MockSyncBackend) => Effect.Effect<void>
   mockBackendOverride?: (mock: MockSyncBackend) => SyncBackend.SyncBackendConstructor
 }) =>
   Effect.gen(function* () {
-    const mockSyncBackend = yield* makeMockSyncBackend()
+    const mockSyncBackend = yield* makeMockSyncBackend(mockBackendOptions)
+
+    if (seedMockBackend !== undefined) {
+      yield* seedMockBackend(mockSyncBackend)
+    }
 
     const sqlite3 = yield* Effect.promise(() => loadSqlite3Wasm()).pipe(
       Effect.withSpan('@livestore/adapter-node:leader-thread:loadSqlite3Wasm'),
     )
 
-    const makeSqliteDb = (yield* sqliteDbFactory({ sqlite3 }))
+    const makeSqliteDb = yield* sqliteDbFactory({ sqlite3 })
 
-    const shutdownProxy = captureShutdown !== undefined ? yield* WebChannel.queueChannelProxy({ schema: Shutdown.All }) : undefined
+    const shutdownProxy =
+      captureShutdown === true ? yield* WebChannel.queueChannelProxy({ schema: Shutdown.All }) : undefined
 
     const leaderContextLayer = makeLeaderThreadLayer({
       schema,

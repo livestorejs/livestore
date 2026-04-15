@@ -51,11 +51,7 @@ export const Footer = () => {
           </a>
         </li>
       </ul>
-      <button
-        type="button"
-        className="clear-completed"
-        onClick={handleClearCompleted}
-      >
+      <button type="button" className="clear-completed" onClick={handleClearCompleted}>
         Clear completed
       </button>
     </footer>

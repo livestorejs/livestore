@@ -219,12 +219,9 @@ export class Store<TSchema extends LiveStoreSchema = LiveStoreSchema.Any, TConte
 
     const reactivityGraph = makeReactivityGraph()
 
-    const syncSpan = otelOptions.tracer.startSpan('LiveStore:sync', {}, otelOptions.rootSpanContext)
-
     const syncProcessor = makeClientSessionSyncProcessor({
       schema,
       clientSession,
-      runtime: effectContext.runtime,
       materializeEvent: Effect.fn('client-session-sync-processor:materialize-event')(
         (eventEncoded, { withChangeset, materializerHashLeader }) =>
           // We need to use `Effect.gen` (even though we're using `Effect.fn`) so that we can pass `this` to the function
@@ -342,7 +339,6 @@ export class Store<TSchema extends LiveStoreSchema = LiveStoreSchema.Any, TConte
 
         this[StoreInternalsSymbol].pendingCommandConfirmations.delete(commandId)
       },
-      span: syncSpan,
       params: {
         ...omitUndefineds({
           leaderPushBatchSize: params.leaderPushBatchSize,
@@ -418,7 +414,6 @@ export class Store<TSchema extends LiveStoreSchema = LiveStoreSchema.Any, TConte
           }
 
           // End the otel spans
-          syncSpan.end()
           mutationsSpan.end()
           queriesSpan.end()
         }),
@@ -849,23 +844,20 @@ export class Store<TSchema extends LiveStoreSchema = LiveStoreSchema.Any, TConte
 
       const localRuntime = yield* Effect.runtime()
 
-      const materializeEventsTx = Effect.try({
-        try: () => {
-          const runMaterializeEvents = () => {
-            return this[StoreInternalsSymbol].syncProcessor.push(events).pipe(Runtime.runSync(localRuntime))
-          }
+      const encodedEvents = yield* this[StoreInternalsSymbol].syncProcessor.encodeEvents(events)
 
-          if (events.length > 1) {
-            return this[StoreInternalsSymbol].sqliteDbWrapper.txn(runMaterializeEvents)
-          } else {
-            return runMaterializeEvents()
-          }
+      const { writeTables } = yield* Effect.try({
+        try: () => {
+          const materialize = () =>
+            this[StoreInternalsSymbol].syncProcessor.materializeEvents(encodedEvents).pipe(Runtime.runSync(localRuntime))
+          return events.length > 1
+            ? this[StoreInternalsSymbol].sqliteDbWrapper.txn(materialize)
+            : materialize()
         },
         catch: (cause) => UnknownError.make({ cause }),
       })
 
-      // Materialize events to state
-      const { writeTables } = yield* materializeEventsTx
+      yield* this[StoreInternalsSymbol].syncProcessor.push(encodedEvents)
 
       const tablesToUpdate: [Ref<null, ReactivityGraphContext, RefreshReason>, null][] = []
       for (const tableName of writeTables) {

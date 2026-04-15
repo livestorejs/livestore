@@ -34,14 +34,13 @@ const processReadableStream = (
         // Decode the chunk
         const decoded = parser.decode(value as Uint8Array)
 
-        // Handle array of messages - we get [[message]] from server
+        // Handle array of messages from server.
+        // Server sends `parser.encode([message])` per enqueue, so each decoded value is `[message]`.
+        // When CF DO RPC merges enqueues in production, we get `[[msg1], [msg2], ...]`.
+        // `flat(1)` normalizes both single and merged cases to `[msg1, msg2, ...]`.
         let messages: any[]
-        if (Array.isArray(decoded) === true && decoded.length === 1 && Array.isArray(decoded[0]) === true) {
-          // Double-wrapped array [[message]] -> [message]
-          messages = decoded[0]
-        } else if (Array.isArray(decoded) === true) {
-          // Single array [message]
-          messages = decoded
+        if (Array.isArray(decoded) === true) {
+          messages = decoded.flat(1)
         } else {
           messages = [decoded]
         }
@@ -129,14 +128,10 @@ const makeProtocolDurableObject = ({
           // Handle regular Uint8Array responses
           const decoded = parser.decode(serializedResponse as Uint8Array)
 
-          // Handle potential nested array from server serialization
+          // Normalize nested arrays from server serialization (same as streaming path)
           let responseArray: any[]
-          if (Array.isArray(decoded) === true && decoded.length === 1 && Array.isArray(decoded[0]) === true) {
-            // Double-wrapped array [[Exit]] -> [Exit]
-            responseArray = decoded[0]
-          } else if (Array.isArray(decoded) === true) {
-            // Single array [Exit]
-            responseArray = decoded
+          if (Array.isArray(decoded) === true) {
+            responseArray = decoded.flat(1)
           } else {
             responseArray = [decoded]
           }

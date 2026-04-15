@@ -9,6 +9,9 @@ exports[`useClientDocument > otel > should update the data based on component ke
   },
   "children": [
     {
+      "_name": "makeClientSessionSyncProcessor",
+    },
+    {
       "_name": "livestore.in-memory-db:execute",
       "attributes": {
         "sql.query": "
@@ -21,29 +24,31 @@ exports[`useClientDocument > otel > should update the data based on component ke
       },
     },
     {
-      "_name": "@livestore/common:LeaderSyncProcessor:push",
-      "attributes": {
-        "batch": "undefined",
-        "batchSize": 1,
-      },
-    },
-    {
-      "_name": "@livestore/common:LeaderSyncProcessor:push",
-      "attributes": {
-        "batch": "undefined",
-        "batchSize": 1,
-      },
-    },
-    {
-      "_name": "client-session-sync-processor:pull",
-      "attributes": {
-        "code.stacktrace": "<STACKTRACE>",
-        "span.label": "⚠︎ Interrupted",
-        "status.interrupted": true,
-      },
-    },
-    {
-      "_name": "LiveStore:sync",
+      "_name": "client-session-sync-processor:boot",
+      "children": [
+        {
+          "_name": "@livestore/common:LeaderSyncProcessor:push",
+          "attributes": {
+            "batch": "undefined",
+            "batchSize": 1,
+          },
+        },
+        {
+          "_name": "@livestore/common:LeaderSyncProcessor:push",
+          "attributes": {
+            "batch": "undefined",
+            "batchSize": 1,
+          },
+        },
+        {
+          "_name": "client-session-sync-processor:pull",
+          "attributes": {
+            "code.stacktrace": "<STACKTRACE>",
+            "span.label": "⚠︎ Interrupted",
+            "status.interrupted": true,
+          },
+        },
+      ],
     },
     {
       "_name": "LiveStore:mutations",
@@ -233,14 +238,10 @@ exports[`useClientDocument > otel > should update the data based on component ke
     },
     "children": [
       {
-        "_name": "client-session-sync-processor:push",
-        "attributes": {
-          "batchSize": 1,
-          "eventCounts": "{
-  "UserInfoSet": 1
-}",
-          "mergeResultTag": "advance",
-        },
+        "_name": "client-session-sync-processor:encode-events",
+      },
+      {
+        "_name": "client-session-sync-processor:materialize-events",
         "children": [
           {
             "_name": "client-session-sync-processor:materialize-event",
@@ -259,6 +260,16 @@ exports[`useClientDocument > otel > should update the data based on component ke
           },
         ],
       },
+      {
+        "_name": "client-session-sync-processor:push",
+        "attributes": {
+          "batchSize": 1,
+          "eventCounts": "{
+  "UserInfoSet": 1
+}",
+          "mergeResultTag": "advance",
+        },
+      },
     ],
   },
   {
@@ -271,14 +282,10 @@ exports[`useClientDocument > otel > should update the data based on component ke
     },
     "children": [
       {
-        "_name": "client-session-sync-processor:push",
-        "attributes": {
-          "batchSize": 1,
-          "eventCounts": "{
-  "UserInfoSet": 1
-}",
-          "mergeResultTag": "advance",
-        },
+        "_name": "client-session-sync-processor:encode-events",
+      },
+      {
+        "_name": "client-session-sync-processor:materialize-events",
         "children": [
           {
             "_name": "client-session-sync-processor:materialize-event",
@@ -297,6 +304,16 @@ exports[`useClientDocument > otel > should update the data based on component ke
           },
         ],
       },
+      {
+        "_name": "client-session-sync-processor:push",
+        "attributes": {
+          "batchSize": 1,
+          "eventCounts": "{
+  "UserInfoSet": 1
+}",
+          "mergeResultTag": "advance",
+        },
+      },
     ],
   },
 ]
@@ -311,6 +328,9 @@ exports[`useClientDocument > otel > should update the data based on component ke
   },
   "children": [
     {
+      "_name": "makeClientSessionSyncProcessor",
+    },
+    {
       "_name": "livestore.in-memory-db:execute",
       "attributes": {
         "sql.query": "
@@ -323,29 +343,31 @@ exports[`useClientDocument > otel > should update the data based on component ke
       },
     },
     {
-      "_name": "@livestore/common:LeaderSyncProcessor:push",
-      "attributes": {
-        "batch": "undefined",
-        "batchSize": 1,
-      },
-    },
-    {
-      "_name": "@livestore/common:LeaderSyncProcessor:push",
-      "attributes": {
-        "batch": "undefined",
-        "batchSize": 1,
-      },
-    },
-    {
-      "_name": "client-session-sync-processor:pull",
-      "attributes": {
-        "code.stacktrace": "<STACKTRACE>",
-        "span.label": "⚠︎ Interrupted",
-        "status.interrupted": true,
-      },
-    },
-    {
-      "_name": "LiveStore:sync",
+      "_name": "client-session-sync-processor:boot",
+      "children": [
+        {
+          "_name": "@livestore/common:LeaderSyncProcessor:push",
+          "attributes": {
+            "batch": "undefined",
+            "batchSize": 1,
+          },
+        },
+        {
+          "_name": "@livestore/common:LeaderSyncProcessor:push",
+          "attributes": {
+            "batch": "undefined",
+            "batchSize": 1,
+          },
+        },
+        {
+          "_name": "client-session-sync-processor:pull",
+          "attributes": {
+            "code.stacktrace": "<STACKTRACE>",
+            "span.label": "⚠︎ Interrupted",
+            "status.interrupted": true,
+          },
+        },
+      ],
     },
     {
       "_name": "LiveStore:mutations",
@@ -473,14 +495,10 @@ exports[`useClientDocument > otel > should update the data based on component ke
     },
     "children": [
       {
-        "_name": "client-session-sync-processor:push",
-        "attributes": {
-          "batchSize": 1,
-          "eventCounts": "{
-  "UserInfoSet": 1
-}",
-          "mergeResultTag": "advance",
-        },
+        "_name": "client-session-sync-processor:encode-events",
+      },
+      {
+        "_name": "client-session-sync-processor:materialize-events",
         "children": [
           {
             "_name": "client-session-sync-processor:materialize-event",
@@ -499,6 +517,16 @@ exports[`useClientDocument > otel > should update the data based on component ke
           },
         ],
       },
+      {
+        "_name": "client-session-sync-processor:push",
+        "attributes": {
+          "batchSize": 1,
+          "eventCounts": "{
+  "UserInfoSet": 1
+}",
+          "mergeResultTag": "advance",
+        },
+      },
     ],
   },
   {
@@ -511,14 +539,10 @@ exports[`useClientDocument > otel > should update the data based on component ke
     },
     "children": [
       {
-        "_name": "client-session-sync-processor:push",
-        "attributes": {
-          "batchSize": 1,
-          "eventCounts": "{
-  "UserInfoSet": 1
-}",
-          "mergeResultTag": "advance",
-        },
+        "_name": "client-session-sync-processor:encode-events",
+      },
+      {
+        "_name": "client-session-sync-processor:materialize-events",
         "children": [
           {
             "_name": "client-session-sync-processor:materialize-event",
@@ -536,6 +560,16 @@ exports[`useClientDocument > otel > should update the data based on component ke
             ],
           },
         ],
+      },
+      {
+        "_name": "client-session-sync-processor:push",
+        "attributes": {
+          "batchSize": 1,
+          "eventCounts": "{
+  "UserInfoSet": 1
+}",
+          "mergeResultTag": "advance",
+        },
       },
     ],
   },

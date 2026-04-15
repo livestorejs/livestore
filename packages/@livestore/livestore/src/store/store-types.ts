@@ -5,13 +5,11 @@ import {
   type ClientSessionSyncProcessor,
   type ClientSessionSyncProcessorSimulationParams,
   type IntentionalShutdownCause,
-  type InvalidPullError,
-  type IsOfflineError,
   isQueryBuilder,
   type MaterializeError,
   type QueryBuilder,
   type StoreInterrupted,
-  type SyncError,
+  type BackendIdMismatchError,
   type UnknownError,
 } from '@livestore/common'
 import type { StreamEventsOptions } from '@livestore/common/leader-thread'
@@ -51,16 +49,16 @@ export type LiveStoreContext<TSchema extends LiveStoreSchema = LiveStoreSchema.A
     }
   | {
       stage: 'shutdown'
-      cause: IntentionalShutdownCause | StoreInterrupted | SyncError
+      cause: IntentionalShutdownCause | StoreInterrupted | UnknownError
     }
 
 export type ShutdownDeferred = Deferred.Deferred<
   IntentionalShutdownCause,
-  UnknownError | SyncError | StoreInterrupted | MaterializeError | InvalidPullError | IsOfflineError
+  UnknownError | StoreInterrupted | MaterializeError | BackendIdMismatchError
 >
 export const makeShutdownDeferred: Effect.Effect<ShutdownDeferred> = Deferred.make<
   IntentionalShutdownCause,
-  UnknownError | SyncError | StoreInterrupted | MaterializeError | InvalidPullError | IsOfflineError
+  UnknownError | StoreInterrupted | MaterializeError | BackendIdMismatchError
 >()
 
 /**

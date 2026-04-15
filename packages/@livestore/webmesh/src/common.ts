@@ -19,12 +19,11 @@ export type ChannelName = string
 export type ChannelKey = `target:${MeshNodeName}, channelName:${ChannelName}`
 
 // TODO actually use this to avoid timeouts in certain cases
-// export class NoConnectionRouteSignal extends Schema.TaggedError<NoConnectionRouteSignal>()(
-//   'NoConnectionRouteSignal',
-//   {},
-// ) {}
+// export class NoConnectionRouteSignal extends Schema.TaggedError<NoConnectionRouteSignal>(
+//   '~@livestore/webmesh/NoConnectionRouteSignal',
+// )('NoConnectionRouteSignal', {}) {}
 
-export class EdgeAlreadyExistsError extends Schema.TaggedError<EdgeAlreadyExistsError>()('EdgeAlreadyExistsError', {
+export class EdgeAlreadyExistsError extends Schema.TaggedError<EdgeAlreadyExistsError>('~@livestore/webmesh/EdgeAlreadyExistsError')('EdgeAlreadyExistsError', {
   target: Schema.String,
 }) {}
 

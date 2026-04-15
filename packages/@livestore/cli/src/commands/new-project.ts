@@ -32,23 +32,23 @@ const PackageJsonScriptsSchema = Schema.Struct({
 })
 
 // Error types
-export class ExampleNotFoundError extends Schema.TaggedError<ExampleNotFoundError>()('ExampleNotFoundError', {
+export class ExampleNotFoundError extends Schema.TaggedError<ExampleNotFoundError>('~@livestore/cli/ExampleNotFoundError')('ExampleNotFoundError', {
   exampleName: Schema.String,
   availableExamples: Schema.Array(Schema.String),
   message: Schema.String,
 }) {}
 
-export class NetworkError extends Schema.TaggedError<NetworkError>()('NetworkError', {
+export class NetworkError extends Schema.TaggedError<NetworkError>('~@livestore/cli/NetworkError')('NetworkError', {
   cause: Schema.Unknown,
   message: Schema.String,
 }) {}
 
-export class DirectoryExistsError extends Schema.TaggedError<DirectoryExistsError>()('DirectoryExistsError', {
+export class DirectoryExistsError extends Schema.TaggedError<DirectoryExistsError>('~@livestore/cli/DirectoryExistsError')('DirectoryExistsError', {
   path: Schema.String,
   message: Schema.String,
 }) {}
 
-export class NoExamplesError extends Schema.TaggedError<NoExamplesError>()('NoExamplesError', {
+export class NoExamplesError extends Schema.TaggedError<NoExamplesError>('~@livestore/cli/NoExamplesError')('NoExamplesError', {
   message: Schema.String,
 }) {}
 

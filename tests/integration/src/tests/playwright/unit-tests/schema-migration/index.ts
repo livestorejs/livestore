@@ -103,6 +103,6 @@ const collectArchiveSnapshot = Effect.gen(function* () {
 
   return fileChunks.pipe(Chunk.toReadonlyArray)
 }).pipe(
-  Effect.catchTag('@livestore/utils/Web/NotFoundError', () => Effect.succeed([])),
+  Effect.catchTag('NotFoundError', () => Effect.succeed([])),
   UnknownError.mapToUnknownError,
 )

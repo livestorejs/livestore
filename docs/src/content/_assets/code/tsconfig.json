@@ -40,7 +40,7 @@
     ],
     "rootDir": "./",
     "jsx": "react-jsx",
-    "types": ["vite/client", "node", "@cloudflare/workers-types"],
+    "types": ["vite/client", "node", "@cloudflare/workers-types", "@types/react", "@types/react-dom"],
     "noEmit": true,
     "composite": false
   },

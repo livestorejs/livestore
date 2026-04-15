@@ -8,6 +8,9 @@ test.describe('TodoMVC (custom-elements)', () => {
 
     await page.goto(baseURL)
 
+    const todoList = page.locator('todo-list')
+    await expect(todoList).toHaveAttribute('data-store-ready', 'true', { timeout: 30_000 })
+
     const input = page.locator('todo-list').locator('input[placeholder="What needs to be done?"]')
     await expect(input).toBeVisible({ timeout: 30_000 })
 
@@ -31,6 +34,9 @@ test.describe('TodoMVC (custom-elements)', () => {
 
     await page.goto(baseURL)
 
+    const todoList = page.locator('todo-list')
+    await expect(todoList).toHaveAttribute('data-store-ready', 'true', { timeout: 30_000 })
+
     const input = page.locator('todo-list').locator('input[placeholder="What needs to be done?"]')
     await expect(input).toBeVisible({ timeout: 30_000 })
 
@@ -43,10 +49,14 @@ test.describe('TodoMVC (custom-elements)', () => {
     // Sanity-check persistence: on a normal reload, the draft text should come back.
     await page.reload()
     // Wait for the input to be visible again after reload (store needs to initialize)
+    await expect(todoList).toHaveAttribute('data-store-ready', 'true', { timeout: 30_000 })
     await expect(input).toBeVisible({ timeout: 30_000 })
     await expect(input).toHaveValue(draftText, { timeout: 15_000 })
 
     await page.goto(`${baseURL}?reset`)
+
+    const todoListAfterReset = page.locator('todo-list')
+    await expect(todoListAfterReset).toHaveAttribute('data-store-ready', 'true', { timeout: 30_000 })
 
     const inputAfterReset = page.locator('todo-list').locator('input[placeholder="What needs to be done?"]')
     await expect(inputAfterReset).toBeVisible({ timeout: 30_000 })
@@ -58,6 +68,7 @@ test.describe('TodoMVC (custom-elements)', () => {
 
     // Double-check by reloading without `?reset` again: draft must stay cleared.
     await page.reload()
+    await expect(todoListAfterReset).toHaveAttribute('data-store-ready', 'true', { timeout: 30_000 })
     await expect(inputAfterReset).toHaveValue('')
   })
 })

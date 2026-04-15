@@ -1,4 +1,4 @@
-import { Devtools, LogConfig, liveStoreVersion, UnknownError } from '@livestore/common'
+import { Devtools, isWorkerTransportError, LogConfig, liveStoreVersion, UnknownError } from '@livestore/common'
 import * as DevtoolsWeb from '@livestore/devtools-web-common/web-channel'
 import * as WebmeshWorker from '@livestore/devtools-web-common/worker'
 import { isDevEnv, isNotUndefined, LS_DEV } from '@livestore/utils'
@@ -9,7 +9,7 @@ import {
   FetchHttpClient,
   identity,
   Layer,
-  ParseResult,
+  Option,
   Ref,
   Schema,
   Scope,
@@ -17,7 +17,6 @@ import {
   SubscriptionRef,
   TaskTracing,
   Worker,
-  WorkerError,
   WorkerRunner,
 } from '@livestore/utils/effect'
 import { BrowserWorker, BrowserWorkerRunner } from '@livestore/utils/effect/browser'
@@ -62,22 +61,14 @@ const makeWorkerRunner = Effect.gen(function* () {
     Effect.map((_) => _.worker),
   )
 
-  const forwardRequest = <TReq extends WorkerSchema.LeaderWorkerInnerRequest>(
-    req: TReq,
-  ): Effect.Effect<
-    Schema.WithResult.Success<TReq>,
-    UnknownError | Schema.WithResult.Failure<TReq>,
-    Schema.WithResult.Context<TReq>
-  > =>
-    // Forward the request to the active worker and normalize platform errors into UnknownError.
+  const forwardRequest = <A, I, E, EI, R>(
+    req: WorkerSchema.LeaderWorkerInnerRequest & Schema.WithResult<A, I, E, EI, R>,
+  ): Effect.Effect<A, E, R> =>
+    // Forward the request to the active worker and convert transport errors to defects.
     waitForWorker.pipe(
       // Effect.logBefore(`forwardRequest: ${req._tag}`),
-      Effect.andThen((worker) =>
-        worker.executeEffect(req) as unknown as Effect.Effect<
-          Schema.WithResult.Success<TReq>,
-          WorkerError.WorkerError | ParseResult.ParseError | Schema.WithResult.Failure<TReq>
-        >,
-      ),
+      Effect.andThen((worker) => worker.executeEffect(req)),
+      Effect.catchIf(isWorkerTransportError, (e) => Effect.die(e)),
       // Effect.tap((_) => Effect.log(`forwardRequest: ${req._tag}`, _)),
       // Effect.tapError((cause) => Effect.logError(`forwardRequest err: ${req._tag}`, cause)),
       Effect.interruptible,
@@ -85,36 +76,18 @@ const makeWorkerRunner = Effect.gen(function* () {
         label: `@livestore/adapter-web:shared-worker:forwardRequest:${req._tag}`,
         duration: 500,
       }),
-      Effect.mapError((cause) =>
-        Schema.is(UnknownError)(cause) === true
-          ? cause
-          : ParseResult.isParseError(cause) === true || Schema.is(WorkerError.WorkerError)(cause) === true
-            ? new UnknownError({ cause })
-            : cause,
-      ),
-      Effect.catchAllDefect((cause) => new UnknownError({ cause })),
       Effect.tapCauseLogPretty,
-    ) as Effect.Effect<
-      Schema.WithResult.Success<TReq>,
-      UnknownError | Schema.WithResult.Failure<TReq>,
-      Schema.WithResult.Context<TReq>
-    >
+    )
 
-  const forwardRequestStream = <TReq extends WorkerSchema.LeaderWorkerInnerRequest>(
-    req: TReq,
-  ): Stream.Stream<
-    Schema.WithResult.Success<TReq>,
-    UnknownError | Schema.WithResult.Failure<TReq>,
-    Schema.WithResult.Context<TReq>
-  > =>
+  const forwardRequestStream = <A, I, E, EI, R>(
+    req: WorkerSchema.LeaderWorkerInnerRequest & Schema.WithResult<A, I, E, EI, R>,
+  ): Stream.Stream<A, E, R> =>
     Effect.gen(function* () {
       yield* Effect.logDebug(`forwardRequestStream: ${req._tag}`)
       const { worker, scope } = yield* SubscriptionRef.waitUntil(leaderWorkerContextSubRef, isNotUndefined)
-      const stream = worker.execute(req) as unknown as Stream.Stream<
-        Schema.WithResult.Success<TReq>,
-        WorkerError.WorkerError | ParseResult.ParseError | Schema.WithResult.Failure<TReq>
-      >
-
+      const stream = worker.execute(req).pipe(
+        Stream.refineOrDie((e) => isWorkerTransportError(e) === true ? Option.none() : Option.some(e)),
+      )
       // It seems the request stream is not automatically interrupted when the scope shuts down
       // so we need to manually interrupt it when the scope shuts down
       const shutdownDeferred = yield* Deferred.make<void>()
@@ -129,16 +102,10 @@ const makeWorkerRunner = Effect.gen(function* () {
       return Stream.merge(stream, scopeShutdownStream, { haltStrategy: 'either' })
     }).pipe(
       Effect.interruptible,
-      UnknownError.mapToUnknownError,
       Effect.tapCauseLogPretty,
       Stream.unwrap,
       Stream.ensuring(Effect.logDebug(`shutting down stream for ${req._tag}`)),
-      UnknownError.mapToUnknownErrorStream,
-    ) as Stream.Stream<
-      Schema.WithResult.Success<TReq>,
-      UnknownError | Schema.WithResult.Failure<TReq>,
-      Schema.WithResult.Context<TReq>
-    >
+    )
 
   const resetCurrentWorkerCtx = Effect.gen(function* () {
     const prevWorker = yield* SubscriptionRef.get(leaderWorkerContextSubRef)
@@ -245,7 +212,6 @@ const makeWorkerRunner = Effect.gen(function* () {
         }).pipe(Effect.tapCauseLogPretty, Scope.extend(scope), Effect.forkIn(scope))
       }).pipe(
         Effect.withSpan('@livestore/adapter-web:shared-worker:updateMessagePort'),
-        UnknownError.mapToUnknownError,
         Effect.tapCauseLogPretty,
       ),
 

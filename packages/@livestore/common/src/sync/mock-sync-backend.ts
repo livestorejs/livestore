@@ -3,7 +3,7 @@ import { Effect, Mailbox, Option, Queue, Ref, Stream, SubscriptionRef } from '@l
 
 import { UnknownError } from '../errors.ts'
 import { EventSequenceNumber, type LiveStoreEvent } from '../schema/mod.ts'
-import { InvalidPullError, InvalidPushError } from './errors.ts'
+import { type BackendIdMismatchError, type ServerAheadError } from './errors.ts'
 import * as SyncBackend from './sync-backend.ts'
 import { validatePushPayload } from './validate-push-payload.ts'
 
@@ -13,13 +13,18 @@ export interface MockSyncBackend {
   disconnect: Effect.Effect<void>
   makeSyncBackend: Effect.Effect<SyncBackend.SyncBackend, UnknownError, Scope.Scope>
   advance: (...batch: LiveStoreEvent.Global.Encoded[]) => Effect.Effect<void>
-  /** Fail the next N push calls with an InvalidPushError (or custom error) */
+  /** Fail the next N push calls with an UnknownError, ServerAheadError, BackendIdMismatchError, or custom error */
   failNextPushes: (
     count: number,
-    error?: (batch: ReadonlyArray<LiveStoreEvent.Global.Encoded>) => Effect.Effect<never, InvalidPushError>,
+    error?: (
+      batch: ReadonlyArray<LiveStoreEvent.Global.Encoded>,
+    ) => Effect.Effect<never, UnknownError | ServerAheadError | BackendIdMismatchError>,
   ) => Effect.Effect<void>
-  /** Fail the next N pull calls with an InvalidPullError (or custom error) */
-  failNextPulls: (count: number, error?: () => Effect.Effect<never, InvalidPullError>) => Effect.Effect<void>
+  /** Fail the next N pull calls with an UnknownError, BackendIdMismatchError, or custom error */
+  failNextPulls: (
+    count: number,
+    error?: () => Effect.Effect<never, UnknownError | BackendIdMismatchError>,
+  ) => Effect.Effect<void>
 }
 
 export interface MockSyncBackendOptions {
@@ -47,10 +52,13 @@ export const makeMockSyncBackend = (
     const pushedEventsQueue = yield* Mailbox.make<LiveStoreEvent.Global.Encoded>()
 
     // Failure simulation state
-    const failPushRef = yield* Ref.make<FailureState<InvalidPushError, [ReadonlyArray<LiveStoreEvent.Global.Encoded>]>>(
-      { remaining: 0, error: undefined },
-    )
-    const failPullRef = yield* Ref.make<FailureState<InvalidPullError, []>>({ remaining: 0, error: undefined })
+    const failPushRef = yield* Ref.make<
+      FailureState<UnknownError | ServerAheadError | BackendIdMismatchError, [ReadonlyArray<LiveStoreEvent.Global.Encoded>]>
+    >({ remaining: 0, error: undefined })
+    const failPullRef = yield* Ref.make<FailureState<UnknownError | BackendIdMismatchError, []>>({
+      remaining: 0,
+      error: undefined,
+    })
 
     const nonLiveChunkSize = Math.max(1, options?.nonLiveChunkSize ?? 100)
 
@@ -134,9 +142,7 @@ export const makeMockSyncBackend = (
           Stream.fromEffect(
             checkFailure(
               failPullRef,
-              new InvalidPullError({
-                cause: new UnknownError({ cause: new Error('MockSyncBackend: simulated pull failure') }),
-              }),
+              new UnknownError({ cause: new Error('MockSyncBackend: simulated pull failure') }),
             ),
           ).pipe(
             Stream.flatMap(() => (pullOptions?.live === true ? pullLive : pullNonLive(cursor))),
@@ -149,9 +155,7 @@ export const makeMockSyncBackend = (
 
             yield* checkFailure(
               failPushRef,
-              new InvalidPushError({
-                cause: new UnknownError({ cause: new Error('MockSyncBackend: simulated push failure') }),
-              }),
+              new UnknownError({ cause: new Error('MockSyncBackend: simulated push failure') }),
               batch,
             )
 
@@ -194,11 +198,15 @@ export const makeMockSyncBackend = (
 
     const failNextPushes = (
       count: number,
-      error?: (batch: ReadonlyArray<LiveStoreEvent.Global.Encoded>) => Effect.Effect<never, InvalidPushError>,
+      error?: (
+        batch: ReadonlyArray<LiveStoreEvent.Global.Encoded>,
+      ) => Effect.Effect<never, UnknownError | ServerAheadError | BackendIdMismatchError>,
     ) => Ref.set(failPushRef, { remaining: count, error })
 
-    const failNextPulls = (count: number, error?: () => Effect.Effect<never, InvalidPullError>) =>
-      Ref.set(failPullRef, { remaining: count, error })
+    const failNextPulls = (
+      count: number,
+      error?: () => Effect.Effect<never, UnknownError | BackendIdMismatchError>,
+    ) => Ref.set(failPullRef, { remaining: count, error })
 
     return {
       pushedEvents: Mailbox.toStream(pushedEventsQueue),

@@ -1,5 +1,6 @@
-import { queryDb } from '@livestore/livestore'
 import type React from 'react'
+
+import { queryDb } from '@livestore/livestore'
 
 import { useMailboxStore } from '../stores/mailbox'
 import { mailboxTables } from '../stores/mailbox/schema.ts'

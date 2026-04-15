@@ -1,4 +1,4 @@
-import { InvalidPullError, InvalidPushError, SyncBackend, UnknownError } from '@livestore/common'
+import { SyncBackend, UnknownError } from '@livestore/common'
 import type { EventSequenceNumber } from '@livestore/common/schema'
 import { splitChunkBySize } from '@livestore/common/sync'
 import { omit } from '@livestore/utils'
@@ -168,7 +168,9 @@ export const makeHttpSync =
           Stream.tap((res) => backendIdHelper.lazySet(res.backendId)),
           Stream.map((res) => omit(res, ['backendId'])),
           Stream.mapError((cause) =>
-            cause._tag === 'InvalidPullError' ? cause : InvalidPullError.make({ cause: new UnknownError({ cause }) }),
+            cause._tag === 'UnknownError' || cause._tag === 'BackendIdMismatchError'
+              ? cause
+              : new UnknownError({ cause }),
           ),
           Stream.withSpan('http-sync-client:pull'),
         )
@@ -193,7 +195,7 @@ export const makeHttpSync =
                 backendId,
               }),
             }),
-            Effect.mapError((cause) => new InvalidPushError({ cause: new UnknownError({ cause }) })),
+            Effect.mapError((cause) => new UnknownError({ cause })),
           )
 
           for (const chunk of Chunk.toReadonlyArray(batchChunks)) {
@@ -203,7 +205,9 @@ export const makeHttpSync =
         },
         pushSemaphore.withPermits(1),
         Effect.mapError((cause) =>
-          cause._tag === 'InvalidPushError' ? cause : new InvalidPushError({ cause: new UnknownError({ cause }) }),
+          cause._tag === 'UnknownError' || cause._tag === 'ServerAheadError' || cause._tag === 'BackendIdMismatchError'
+            ? cause
+            : new UnknownError({ cause }),
         ),
       )
 

@@ -1,7 +1,8 @@
-import { queryDb } from '@livestore/livestore'
-import { useStore } from '@livestore/react'
 import type React from 'react'
 import { useState } from 'react'
+
+import { queryDb } from '@livestore/livestore'
+import { useStore } from '@livestore/react'
 
 import { useMailboxStore } from '../stores/mailbox'
 import { mailboxTables } from '../stores/mailbox/schema.ts'

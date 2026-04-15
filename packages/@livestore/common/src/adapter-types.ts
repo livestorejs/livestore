@@ -13,7 +13,7 @@ import type * as Devtools from './devtools/mod.ts'
 import type { IntentionalShutdownCause, MaterializeError, UnknownError } from './errors.ts'
 import type { LiveStoreSchema } from './schema/mod.ts'
 import type { SqliteDb } from './sqlite-types.ts'
-import type { IsOfflineError, SyncError } from './sync/index.ts'
+import type { BackendIdMismatchError } from './sync/index.ts'
 
 export * as ClientSessionLeaderThreadProxy from './ClientSessionLeaderThreadProxy.ts'
 export * from './defs.ts'
@@ -34,7 +34,10 @@ export interface ClientSession {
   /** Status info whether current session is leader or not */
   lockStatus: SubscriptionRef.SubscriptionRef<LockStatus>
   shutdown: (
-    cause: Exit.Exit<IntentionalShutdownCause, UnknownError | SyncError | MaterializeError>,
+    cause: Exit.Exit<
+      IntentionalShutdownCause,
+      UnknownError | MaterializeError | BackendIdMismatchError
+    >,
   ) => Effect.Effect<void>
   /** A proxy API to communicate with the leader thread */
   leaderThread: ClientSessionLeaderThreadProxy
@@ -160,7 +163,10 @@ export interface AdapterArgs {
   debugInstanceId: string
   bootStatusQueue: Queue.Queue<BootStatus>
   shutdown: (
-    exit: Exit.Exit<IntentionalShutdownCause, UnknownError | SyncError | MaterializeError | IsOfflineError>,
+    exit: Exit.Exit<
+      IntentionalShutdownCause,
+      UnknownError | MaterializeError | BackendIdMismatchError
+    >,
   ) => Effect.Effect<void>
   connectDevtoolsToStore: ConnectDevtoolsToStore
   /**

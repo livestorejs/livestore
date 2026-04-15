@@ -199,7 +199,7 @@ export const getFactsGroupForEventArgs = ({
         }
       }
 
-      notYetImplemented(`getFactsGroupForEventArgs: ${prop.toString()} is not yet implemented`)
+      return notYetImplemented(`getFactsGroupForEventArgs: ${prop.toString()} is not yet implemented`)
     },
   })
 

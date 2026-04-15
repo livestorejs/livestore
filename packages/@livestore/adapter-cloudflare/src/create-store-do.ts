@@ -1,4 +1,4 @@
-import { LogConfig } from '@livestore/common'
+import { LogConfig, type SyncOptions } from '@livestore/common'
 import type { CfTypes, HelperTypes } from '@livestore/common-cf'
 import { createStore, type LiveStoreSchema, provideOtel } from '@livestore/livestore'
 import type * as CfSyncBackend from '@livestore/sync-cf/cf-worker'
@@ -43,6 +43,12 @@ export type CreateStoreDoOptions<TSchema extends LiveStoreSchema, TEnv, TState> 
    * Note: Only use this for development purposes.
    */
   resetPersistence?: boolean
+  /**
+   * Controls how initial sync behaves when the store boots.
+   *
+   * @default { _tag: 'Blocking', timeout: 500 }
+   */
+  initialSyncOptions?: SyncOptions['initialSyncOptions']
 } & LogConfig.WithLoggerOptions
 
 /**
@@ -99,6 +105,7 @@ export const createStoreDo = <
   syncBackendStub,
   livePull = false,
   resetPersistence = false,
+  initialSyncOptions = { _tag: 'Blocking', timeout: 500 },
 }: CreateStoreDoOptions<TSchema, TEnv, TState>) =>
   Effect.gen(function* () {
     const { ctx, bindingName } = durableObject
@@ -117,7 +124,7 @@ export const createStoreDo = <
           durableObjectContext: { bindingName, durableObjectId },
         }),
         livePull, // Uses DO RPC callbacks for reactive pull
-        initialSyncOptions: { _tag: 'Blocking', timeout: 500 },
+        initialSyncOptions,
       },
     })
 

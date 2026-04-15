@@ -1,6 +1,5 @@
 import {
   BackendIdMismatchError,
-  InvalidPushError,
   ServerAheadError,
   SyncBackend,
   UnknownError,
@@ -201,7 +200,11 @@ export const makePush =
           }
         }),
       ),
-      Effect.mapError((cause) => InvalidPushError.make({ cause })),
+      Effect.mapError((cause) =>
+        cause._tag === 'BackendIdMismatchError' || cause._tag === 'ServerAheadError' || cause._tag === 'UnknownError'
+          ? cause
+          : new UnknownError({ cause }),
+      ),
       Effect.withSpan('sync-cf:do:push', { attributes: { storeId, batchSize: pushRequest.batch.length } }),
     )
 

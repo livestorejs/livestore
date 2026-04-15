@@ -27,26 +27,36 @@ jobs:
       run:
         shell: bash
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
       - name: Install Nix
         uses: DeterminateSystems/determinate-nix-action@v3
         with:
           extra-conf: |
+            experimental-features = nix-command flakes
+            accept-flake-config = true
             extra-substituters = https://devenv.cachix.org
             extra-trusted-public-keys = devenv.cachix.org-1:w1cLUi8dv3hnoSPGAuibQv+f9TZLr6cv/Hm9XgU50cw=
             access-tokens = github.com=${{ github.token }}
             extra-substituters = https://cache.nixos.org
             extra-trusted-public-keys = cache.nixos.org-1:6NCHdD59X431o0gWypbMrAURkbJ16ZPMQFGspcDShjY=
+          summarize: true
       - name: Enable Cachix cache
-        uses: cachix/cachix-action@v16
+        uses: cachix/cachix-action@v17
         with:
           name: livestore
           authToken: '${{ env.CACHIX_AUTH_TOKEN }}'
-      - name: Install megarepo CLI
-        run: 'nix profile install github:overengineeringstudio/effect-utils#megarepo'
-        shell: bash
       - name: Sync megarepo dependencies
-        run: mr sync --frozen
+        env:
+          MEGAREPO_STORE: '${{ runner.temp }}/megarepo-store/${{ github.run_id }}/${{ github.run_attempt }}/${{ github.job }}'
+        run: |
+          EU_REV=$(jq -r '.members["effect-utils"].commit' megarepo.lock)
+          if [ -z "$EU_REV" ] || [ "$EU_REV" = "null" ]; then
+            echo '::error::megarepo.lock missing members["effect-utils"].commit'
+            exit 1
+          fi
+          mkdir -p "$MEGAREPO_STORE"
+          echo "Using job-local megarepo store: $MEGAREPO_STORE"
+          nix run "github:overengineeringstudio/effect-utils/$EU_REV#megarepo" -- apply --all
         shell: bash
       - name: Use pinned devenv from lock
         run: |
@@ -58,7 +68,20 @@ jobs:
           echo "DEVENV_REV=$DEVENV_REV" >> "$GITHUB_ENV"
           echo "Pinned devenv rev: $DEVENV_REV"
         shell: bash
-      - name: Validate Nix store
+      - name: Isolate pnpm state
+        shell: bash
+        run: |
+          echo "PNPM_STORE_DIR=${{ runner.temp }}/pnpm-store/${{ github.job }}" >> "$GITHUB_ENV"
+          echo "PNPM_HOME=${{ github.workspace }}/.pnpm-home" >> "$GITHUB_ENV"
+      - id: restore-pnpm-state
+        name: Restore pnpm state
+        uses: actions/cache/restore@v4
+        with:
+          path: |
+            ${{ github.workspace }}/.pnpm-home
+            ${{ runner.temp }}/pnpm-store/${{ github.job }}
+          key: "livestore-pnpm-state-v1-${{ runner.os }}-${{ runner.arch }}-${{ hashFiles('**/pnpm-lock.yaml') }}"
+      - name: Resolve devenv
         run: |
           if [ -z "${DEVENV_REV:-}" ]; then
             DEVENV_REV=$(jq -r .nodes.devenv.locked.rev devenv.lock)
@@ -72,14 +95,7 @@ jobs:
             nix build --no-link --print-out-paths "github:cachix/devenv/$DEVENV_REV#devenv"
           }
 
-          # Always append restrict-eval=false so caller-provided NIX_CONFIG keeps its settings.
-          if [ -n "${NIX_CONFIG:-}" ]; then
-            NIX_CONFIG_WITH_UNRESTRICTED_EVAL="$NIX_CONFIG"$'\n''restrict-eval = false'
-          else
-            NIX_CONFIG_WITH_UNRESTRICTED_EVAL='restrict-eval = false'
-          fi
-
-          # Temporary: capture complete diagnostics for #272 root-cause analysis.
+          # Temporary: capture diagnostics dir for #272 root-cause analysis.
           DIAG_ROOT="${RUNNER_TEMP:-/tmp}/nix-store-diagnostics-${GITHUB_JOB:-job}-${RUNNER_OS:-unknown}-${GITHUB_RUN_ATTEMPT:-0}"
           mkdir -p "$DIAG_ROOT"
           echo "NIX_STORE_DIAGNOSTICS_DIR=$DIAG_ROOT" >> "$GITHUB_ENV"
@@ -91,48 +107,151 @@ jobs:
             echo "runner_arch=${RUNNER_ARCH:-unknown}"
             echo "github_job=${GITHUB_JOB:-unknown}"
             echo "github_run_id=${GITHUB_RUN_ID:-unknown}"
-            echo "github_run_attempt=${GITHUB_RUN_ATTEMPT:-unknown}"
             echo "nix_user_conf_files=${NIX_USER_CONF_FILES:-}"
-            echo ""
-            echo "== uname -a =="
-            uname -a || true
-            if command -v sw_vers > /dev/null 2>&1; then
-              echo ""
-              echo "== sw_vers =="
-              sw_vers || true
-            fi
-            echo ""
-            echo "== nix --version =="
             nix --version || true
           } > "$DIAG_ROOT/environment.txt" 2>&1
 
-          pre_resolve_log="$DIAG_ROOT/resolve-devenv-pre-repair.log"
-          pre_info_log="$DIAG_ROOT/devenv-info-pre-repair.log"
-          verify_log="$DIAG_ROOT/nix-store-verify-pre-repair.log"
-          repair_log="$DIAG_ROOT/nix-store-verify-repair.log"
-          post_resolve_log="$DIAG_ROOT/resolve-devenv-post-repair.log"
-          post_info_log="$DIAG_ROOT/devenv-info-post-repair.log"
+          if ! DEVENV_OUT=$(resolve_devenv 2> >(tee "$DIAG_ROOT/resolve-devenv.log" >&2)); then
+            echo "::error::resolve_devenv failed. Last 30 lines of log:"
+            tail -30 "$DIAG_ROOT/resolve-devenv.log" || true
+            exit 1
+          fi
+          DEVENV_BIN="$DEVENV_OUT/bin/devenv"
 
-          if DEVENV_OUT=$(resolve_devenv 2>"$pre_resolve_log") && DEVENV_BIN="$DEVENV_OUT/bin/devenv" && NIX_CONFIG="$NIX_CONFIG_WITH_UNRESTRICTED_EVAL" "$DEVENV_BIN" info > "$pre_info_log" 2>&1; then
-            echo "Nix store OK"
-          else
-            echo "::warning::Nix store validation failed, collecting diagnostics and repairing..."
-            if ! nix-store --verify --check-contents > "$verify_log" 2>&1; then
-              echo "::warning::nix-store --verify --check-contents reported issues (see diagnostics artifact)"
-            fi
-            if ! nix-store --verify --check-contents --repair > "$repair_log" 2>&1; then
-              echo "::warning::nix-store --verify --check-contents --repair reported issues (see diagnostics artifact)"
-            fi
+          # Fast validity check on the devenv store path (~1-2s vs ~25s for devenv info).
+          if ! nix-store --check-validity "$DEVENV_OUT" 2>/dev/null; then
+            echo "::warning::devenv store path invalid, repairing targeted path..."
+            nix-store --repair-path "$DEVENV_OUT" > "$DIAG_ROOT/nix-store-verify-repair.log" 2>&1 || true
             rm -rf ~/.cache/nix/eval-cache-*
-            DEVENV_OUT=$(resolve_devenv 2>"$post_resolve_log")
+            if ! DEVENV_OUT=$(resolve_devenv 2> >(tee "$DIAG_ROOT/resolve-devenv-post-repair.log" >&2)); then
+              echo "::error::resolve_devenv failed after repair. Last 30 lines of log:"
+              tail -30 "$DIAG_ROOT/resolve-devenv-post-repair.log" || true
+              exit 1
+            fi
             DEVENV_BIN="$DEVENV_OUT/bin/devenv"
-            NIX_CONFIG="$NIX_CONFIG_WITH_UNRESTRICTED_EVAL" "$DEVENV_BIN" info > "$post_info_log" 2>&1
           fi
 
           echo "DEVENV_BIN=$DEVENV_BIN" >> "$GITHUB_ENV"
           "$DEVENV_BIN" version | tee "$DIAG_ROOT/devenv-version.txt"
         shell: bash
-      - run: "if [ -n \"${NIX_CONFIG:-}\" ]; then NIX_CONFIG_WITH_UNRESTRICTED_EVAL=\"$NIX_CONFIG\"$'\\n''restrict-eval = false'; else NIX_CONFIG_WITH_UNRESTRICTED_EVAL='restrict-eval = false'; fi; NIX_CONFIG=\"$NIX_CONFIG_WITH_UNRESTRICTED_EVAL\" \"${DEVENV_BIN:?DEVENV_BIN not set}\" tasks run lint:full:with-megarepo-check --mode before"
+      - name: Run lint checks
+        run: |
+          __nix_gc_retry_helper=$(mktemp)
+          cat > "$__nix_gc_retry_helper" <<'EOF'
+          #!/usr/bin/env bash
+
+          run_nix_gc_race_retry() {
+            local task="$1"
+            local command="$2"
+            local max="${NIX_GC_RACE_MAX_RETRIES:-10}"
+            local heartbeat="${CI_PROGRESS_HEARTBEAT_SECONDS:-60}"
+            local attempt=1
+            local log rc path start now elapsed hb_pid flattened saw_invalid_path saw_cachix_signature had_errexit
+
+            start="$(date +%s)"
+
+            write_summary() {
+              [ -n "${GITHUB_STEP_SUMMARY:-}" ] || return 0
+              {
+                echo "### CI Task"
+                echo "- Task: $task"
+                echo "- Status: $1"
+                echo "- Duration: $elapsed s"
+                echo "- Attempts: $attempt/$max"
+                [ -z "${2:-}" ] || echo "- Note: $2"
+              } >> "$GITHUB_STEP_SUMMARY"
+            }
+
+            while [ "$attempt" -le "$max" ]; do
+              echo "::notice::[ci] starting $task (attempt $attempt/$max)"
+              (
+                while sleep "$heartbeat"; do
+                  now=$(date +%s)
+                  elapsed=$((now - start))
+                  echo "::notice::[ci] $task still running after $elapsed s (attempt $attempt/$max)"
+                done
+              ) &
+              hb_pid=$!
+
+              log=$(mktemp)
+              had_errexit=false
+              case $- in
+                *e*) had_errexit=true ;;
+              esac
+              set +e
+              eval "$command" > >(tee -a "$log") 2> >(tee -a "$log" >&2)
+              rc=$?
+              if [ "$had_errexit" = true ]; then
+                set -e
+              fi
+
+              kill "$hb_pid" 2>/dev/null || true
+              wait "$hb_pid" 2>/dev/null || true
+
+              now=$(date +%s)
+              elapsed=$((now - start))
+
+              if [ "$rc" -eq 0 ]; then
+                echo "::notice::[ci] completed $task in $elapsed s"
+                if [ "$attempt" -gt 1 ]; then
+                  write_summary success "Recovered from Nix GC race after retry"
+                else
+                  write_summary success
+                fi
+                rm -f "$log"
+                return 0
+              fi
+
+              flattened=$(tr '\r\n' '  ' < "$log" | sed -E $'s/\x1B\\[[0-9;]*m//g')
+              path=$(printf '%s' "$flattened" |
+                grep -o "error:[[:space:]]*path '/nix/store/[^']*'[[:space:]]*is not valid" |
+                head -1 |
+                grep -o "/nix/store/[^']*" |
+                tr -d '[:space:]' || true)
+              saw_invalid_path=false
+              saw_cachix_signature=false
+              [ -n "$path" ] && saw_invalid_path=true
+              printf '%s' "$flattened" | grep -q 'Failed to convert config\.cachix to JSON' && saw_cachix_signature=true || true
+              printf '%s' "$flattened" | grep -q 'while evaluating the option' && printf '%s' "$flattened" | grep -q 'cachix\.package' && saw_cachix_signature=true || true
+              rm -f "$log"
+
+              if [ "$saw_invalid_path" != true ] && [ "$saw_cachix_signature" != true ]; then
+                echo "::warning::[ci] $task failed after $elapsed s without a detected Nix store validity race"
+                write_summary failure "No Nix GC race signature detected"
+                return "$rc"
+              fi
+
+              if [ "$saw_cachix_signature" = true ] && [ -n "$path" ]; then
+                echo "::warning::Nix store validity race detected for $task via cachix eval wrapper (attempt $attempt/$max): $path"
+              elif [ "$saw_cachix_signature" = true ]; then
+                echo "::warning::Nix store validity race detected for $task via cachix eval wrapper without extracted store path (attempt $attempt/$max)"
+              else
+                echo "::warning::Nix store validity race detected for $task (attempt $attempt/$max): $path"
+              fi
+
+              [ -z "$path" ] || nix-store --realise "$path" 2>/dev/null || true
+              rm -rf ~/.cache/nix/eval-cache-*
+              attempt=$((attempt + 1))
+            done
+
+            now=$(date +%s)
+            elapsed=$((now - start))
+            echo "::error::Nix GC race retry exhausted for $task ($max attempts)"
+            write_summary failure "Nix GC race retry exhausted"
+            return 1
+          }
+          EOF
+          . "$__nix_gc_retry_helper"
+          rm -f "$__nix_gc_retry_helper"
+          run_nix_gc_race_retry 'devenv tasks run lint:full:with-megarepo-check --mode before' 'if [ -n "${NIX_CONFIG:-}" ]; then NIX_CONFIG_WITH_APPEND=$(printf '"'"'%s\n%s'"'"' "$NIX_CONFIG" '"'"'restrict-eval = false'"'"'); else NIX_CONFIG_WITH_APPEND='"'"'restrict-eval = false'"'"'; fi; NIX_CONFIG="$NIX_CONFIG_WITH_APPEND" PNPM_HOME="${PNPM_HOME:-${{ github.workspace }}/.pnpm-home}" PNPM_STORE_DIR="${PNPM_STORE_DIR:-${{ runner.temp }}/pnpm-store/${{ github.job }}}" DT_PASSTHROUGH=1 "${DEVENV_BIN:?DEVENV_BIN not set}" tasks run lint:full:with-megarepo-check --mode before'
+      - name: Save pnpm state
+        if: "${{ success() && steps.restore-pnpm-state.outputs.cache-hit != 'true' }}"
+        uses: actions/cache/save@v4
+        with:
+          path: |
+            ${{ github.workspace }}/.pnpm-home
+            ${{ runner.temp }}/pnpm-store/${{ github.job }}
+          key: "livestore-pnpm-state-v1-${{ runner.os }}-${{ runner.arch }}-${{ hashFiles('**/pnpm-lock.yaml') }}"
       - name: Upload Nix diagnostics artifact
         if: failure() && env.NIX_STORE_DIAGNOSTICS_DIR != ''
         uses: actions/upload-artifact@v4
@@ -147,26 +266,36 @@ jobs:
       run:
         shell: bash
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
       - name: Install Nix
         uses: DeterminateSystems/determinate-nix-action@v3
         with:
           extra-conf: |
+            experimental-features = nix-command flakes
+            accept-flake-config = true
             extra-substituters = https://devenv.cachix.org
             extra-trusted-public-keys = devenv.cachix.org-1:w1cLUi8dv3hnoSPGAuibQv+f9TZLr6cv/Hm9XgU50cw=
             access-tokens = github.com=${{ github.token }}
             extra-substituters = https://cache.nixos.org
             extra-trusted-public-keys = cache.nixos.org-1:6NCHdD59X431o0gWypbMrAURkbJ16ZPMQFGspcDShjY=
+          summarize: true
       - name: Enable Cachix cache
-        uses: cachix/cachix-action@v16
+        uses: cachix/cachix-action@v17
         with:
           name: livestore
           authToken: '${{ env.CACHIX_AUTH_TOKEN }}'
-      - name: Install megarepo CLI
-        run: 'nix profile install github:overengineeringstudio/effect-utils#megarepo'
-        shell: bash
       - name: Sync megarepo dependencies
-        run: mr sync --frozen
+        env:
+          MEGAREPO_STORE: '${{ runner.temp }}/megarepo-store/${{ github.run_id }}/${{ github.run_attempt }}/${{ github.job }}'
+        run: |
+          EU_REV=$(jq -r '.members["effect-utils"].commit' megarepo.lock)
+          if [ -z "$EU_REV" ] || [ "$EU_REV" = "null" ]; then
+            echo '::error::megarepo.lock missing members["effect-utils"].commit'
+            exit 1
+          fi
+          mkdir -p "$MEGAREPO_STORE"
+          echo "Using job-local megarepo store: $MEGAREPO_STORE"
+          nix run "github:overengineeringstudio/effect-utils/$EU_REV#megarepo" -- apply --all
         shell: bash
       - name: Use pinned devenv from lock
         run: |
@@ -178,7 +307,20 @@ jobs:
           echo "DEVENV_REV=$DEVENV_REV" >> "$GITHUB_ENV"
           echo "Pinned devenv rev: $DEVENV_REV"
         shell: bash
-      - name: Validate Nix store
+      - name: Isolate pnpm state
+        shell: bash
+        run: |
+          echo "PNPM_STORE_DIR=${{ runner.temp }}/pnpm-store/${{ github.job }}" >> "$GITHUB_ENV"
+          echo "PNPM_HOME=${{ github.workspace }}/.pnpm-home" >> "$GITHUB_ENV"
+      - id: restore-pnpm-state
+        name: Restore pnpm state
+        uses: actions/cache/restore@v4
+        with:
+          path: |
+            ${{ github.workspace }}/.pnpm-home
+            ${{ runner.temp }}/pnpm-store/${{ github.job }}
+          key: "livestore-pnpm-state-v1-${{ runner.os }}-${{ runner.arch }}-${{ hashFiles('**/pnpm-lock.yaml') }}"
+      - name: Resolve devenv
         run: |
           if [ -z "${DEVENV_REV:-}" ]; then
             DEVENV_REV=$(jq -r .nodes.devenv.locked.rev devenv.lock)
@@ -192,14 +334,7 @@ jobs:
             nix build --no-link --print-out-paths "github:cachix/devenv/$DEVENV_REV#devenv"
           }
 
-          # Always append restrict-eval=false so caller-provided NIX_CONFIG keeps its settings.
-          if [ -n "${NIX_CONFIG:-}" ]; then
-            NIX_CONFIG_WITH_UNRESTRICTED_EVAL="$NIX_CONFIG"$'\n''restrict-eval = false'
-          else
-            NIX_CONFIG_WITH_UNRESTRICTED_EVAL='restrict-eval = false'
-          fi
-
-          # Temporary: capture complete diagnostics for #272 root-cause analysis.
+          # Temporary: capture diagnostics dir for #272 root-cause analysis.
           DIAG_ROOT="${RUNNER_TEMP:-/tmp}/nix-store-diagnostics-${GITHUB_JOB:-job}-${RUNNER_OS:-unknown}-${GITHUB_RUN_ATTEMPT:-0}"
           mkdir -p "$DIAG_ROOT"
           echo "NIX_STORE_DIAGNOSTICS_DIR=$DIAG_ROOT" >> "$GITHUB_ENV"
@@ -211,48 +346,151 @@ jobs:
             echo "runner_arch=${RUNNER_ARCH:-unknown}"
             echo "github_job=${GITHUB_JOB:-unknown}"
             echo "github_run_id=${GITHUB_RUN_ID:-unknown}"
-            echo "github_run_attempt=${GITHUB_RUN_ATTEMPT:-unknown}"
             echo "nix_user_conf_files=${NIX_USER_CONF_FILES:-}"
-            echo ""
-            echo "== uname -a =="
-            uname -a || true
-            if command -v sw_vers > /dev/null 2>&1; then
-              echo ""
-              echo "== sw_vers =="
-              sw_vers || true
-            fi
-            echo ""
-            echo "== nix --version =="
             nix --version || true
           } > "$DIAG_ROOT/environment.txt" 2>&1
 
-          pre_resolve_log="$DIAG_ROOT/resolve-devenv-pre-repair.log"
-          pre_info_log="$DIAG_ROOT/devenv-info-pre-repair.log"
-          verify_log="$DIAG_ROOT/nix-store-verify-pre-repair.log"
-          repair_log="$DIAG_ROOT/nix-store-verify-repair.log"
-          post_resolve_log="$DIAG_ROOT/resolve-devenv-post-repair.log"
-          post_info_log="$DIAG_ROOT/devenv-info-post-repair.log"
+          if ! DEVENV_OUT=$(resolve_devenv 2> >(tee "$DIAG_ROOT/resolve-devenv.log" >&2)); then
+            echo "::error::resolve_devenv failed. Last 30 lines of log:"
+            tail -30 "$DIAG_ROOT/resolve-devenv.log" || true
+            exit 1
+          fi
+          DEVENV_BIN="$DEVENV_OUT/bin/devenv"
 
-          if DEVENV_OUT=$(resolve_devenv 2>"$pre_resolve_log") && DEVENV_BIN="$DEVENV_OUT/bin/devenv" && NIX_CONFIG="$NIX_CONFIG_WITH_UNRESTRICTED_EVAL" "$DEVENV_BIN" info > "$pre_info_log" 2>&1; then
-            echo "Nix store OK"
-          else
-            echo "::warning::Nix store validation failed, collecting diagnostics and repairing..."
-            if ! nix-store --verify --check-contents > "$verify_log" 2>&1; then
-              echo "::warning::nix-store --verify --check-contents reported issues (see diagnostics artifact)"
-            fi
-            if ! nix-store --verify --check-contents --repair > "$repair_log" 2>&1; then
-              echo "::warning::nix-store --verify --check-contents --repair reported issues (see diagnostics artifact)"
-            fi
+          # Fast validity check on the devenv store path (~1-2s vs ~25s for devenv info).
+          if ! nix-store --check-validity "$DEVENV_OUT" 2>/dev/null; then
+            echo "::warning::devenv store path invalid, repairing targeted path..."
+            nix-store --repair-path "$DEVENV_OUT" > "$DIAG_ROOT/nix-store-verify-repair.log" 2>&1 || true
             rm -rf ~/.cache/nix/eval-cache-*
-            DEVENV_OUT=$(resolve_devenv 2>"$post_resolve_log")
+            if ! DEVENV_OUT=$(resolve_devenv 2> >(tee "$DIAG_ROOT/resolve-devenv-post-repair.log" >&2)); then
+              echo "::error::resolve_devenv failed after repair. Last 30 lines of log:"
+              tail -30 "$DIAG_ROOT/resolve-devenv-post-repair.log" || true
+              exit 1
+            fi
             DEVENV_BIN="$DEVENV_OUT/bin/devenv"
-            NIX_CONFIG="$NIX_CONFIG_WITH_UNRESTRICTED_EVAL" "$DEVENV_BIN" info > "$post_info_log" 2>&1
           fi
 
           echo "DEVENV_BIN=$DEVENV_BIN" >> "$GITHUB_ENV"
           "$DEVENV_BIN" version | tee "$DIAG_ROOT/devenv-version.txt"
         shell: bash
-      - run: "if [ -n \"${NIX_CONFIG:-}\" ]; then NIX_CONFIG_WITH_UNRESTRICTED_EVAL=\"$NIX_CONFIG\"$'\\n''restrict-eval = false'; else NIX_CONFIG_WITH_UNRESTRICTED_EVAL='restrict-eval = false'; fi; NIX_CONFIG=\"$NIX_CONFIG_WITH_UNRESTRICTED_EVAL\" \"${DEVENV_BIN:?DEVENV_BIN not set}\" tasks run ts:build --mode before"
+      - name: Run type-check
+        run: |
+          __nix_gc_retry_helper=$(mktemp)
+          cat > "$__nix_gc_retry_helper" <<'EOF'
+          #!/usr/bin/env bash
+
+          run_nix_gc_race_retry() {
+            local task="$1"
+            local command="$2"
+            local max="${NIX_GC_RACE_MAX_RETRIES:-10}"
+            local heartbeat="${CI_PROGRESS_HEARTBEAT_SECONDS:-60}"
+            local attempt=1
+            local log rc path start now elapsed hb_pid flattened saw_invalid_path saw_cachix_signature had_errexit
+
+            start="$(date +%s)"
+
+            write_summary() {
+              [ -n "${GITHUB_STEP_SUMMARY:-}" ] || return 0
+              {
+                echo "### CI Task"
+                echo "- Task: $task"
+                echo "- Status: $1"
+                echo "- Duration: $elapsed s"
+                echo "- Attempts: $attempt/$max"
+                [ -z "${2:-}" ] || echo "- Note: $2"
+              } >> "$GITHUB_STEP_SUMMARY"
+            }
+
+            while [ "$attempt" -le "$max" ]; do
+              echo "::notice::[ci] starting $task (attempt $attempt/$max)"
+              (
+                while sleep "$heartbeat"; do
+                  now=$(date +%s)
+                  elapsed=$((now - start))
+                  echo "::notice::[ci] $task still running after $elapsed s (attempt $attempt/$max)"
+                done
+              ) &
+              hb_pid=$!
+
+              log=$(mktemp)
+              had_errexit=false
+              case $- in
+                *e*) had_errexit=true ;;
+              esac
+              set +e
+              eval "$command" > >(tee -a "$log") 2> >(tee -a "$log" >&2)
+              rc=$?
+              if [ "$had_errexit" = true ]; then
+                set -e
+              fi
+
+              kill "$hb_pid" 2>/dev/null || true
+              wait "$hb_pid" 2>/dev/null || true
+
+              now=$(date +%s)
+              elapsed=$((now - start))
+
+              if [ "$rc" -eq 0 ]; then
+                echo "::notice::[ci] completed $task in $elapsed s"
+                if [ "$attempt" -gt 1 ]; then
+                  write_summary success "Recovered from Nix GC race after retry"
+                else
+                  write_summary success
+                fi
+                rm -f "$log"
+                return 0
+              fi
+
+              flattened=$(tr '\r\n' '  ' < "$log" | sed -E $'s/\x1B\\[[0-9;]*m//g')
+              path=$(printf '%s' "$flattened" |
+                grep -o "error:[[:space:]]*path '/nix/store/[^']*'[[:space:]]*is not valid" |
+                head -1 |
+                grep -o "/nix/store/[^']*" |
+                tr -d '[:space:]' || true)
+              saw_invalid_path=false
+              saw_cachix_signature=false
+              [ -n "$path" ] && saw_invalid_path=true
+              printf '%s' "$flattened" | grep -q 'Failed to convert config\.cachix to JSON' && saw_cachix_signature=true || true
+              printf '%s' "$flattened" | grep -q 'while evaluating the option' && printf '%s' "$flattened" | grep -q 'cachix\.package' && saw_cachix_signature=true || true
+              rm -f "$log"
+
+              if [ "$saw_invalid_path" != true ] && [ "$saw_cachix_signature" != true ]; then
+                echo "::warning::[ci] $task failed after $elapsed s without a detected Nix store validity race"
+                write_summary failure "No Nix GC race signature detected"
+                return "$rc"
+              fi
+
+              if [ "$saw_cachix_signature" = true ] && [ -n "$path" ]; then
+                echo "::warning::Nix store validity race detected for $task via cachix eval wrapper (attempt $attempt/$max): $path"
+              elif [ "$saw_cachix_signature" = true ]; then
+                echo "::warning::Nix store validity race detected for $task via cachix eval wrapper without extracted store path (attempt $attempt/$max)"
+              else
+                echo "::warning::Nix store validity race detected for $task (attempt $attempt/$max): $path"
+              fi
+
+              [ -z "$path" ] || nix-store --realise "$path" 2>/dev/null || true
+              rm -rf ~/.cache/nix/eval-cache-*
+              attempt=$((attempt + 1))
+            done
+
+            now=$(date +%s)
+            elapsed=$((now - start))
+            echo "::error::Nix GC race retry exhausted for $task ($max attempts)"
+            write_summary failure "Nix GC race retry exhausted"
+            return 1
+          }
+          EOF
+          . "$__nix_gc_retry_helper"
+          rm -f "$__nix_gc_retry_helper"
+          run_nix_gc_race_retry 'devenv tasks run ts:build --mode before' 'if [ -n "${NIX_CONFIG:-}" ]; then NIX_CONFIG_WITH_APPEND=$(printf '"'"'%s\n%s'"'"' "$NIX_CONFIG" '"'"'restrict-eval = false'"'"'); else NIX_CONFIG_WITH_APPEND='"'"'restrict-eval = false'"'"'; fi; NIX_CONFIG="$NIX_CONFIG_WITH_APPEND" PNPM_HOME="${PNPM_HOME:-${{ github.workspace }}/.pnpm-home}" PNPM_STORE_DIR="${PNPM_STORE_DIR:-${{ runner.temp }}/pnpm-store/${{ github.job }}}" DT_PASSTHROUGH=1 "${DEVENV_BIN:?DEVENV_BIN not set}" tasks run ts:build --mode before'
+      - name: Save pnpm state
+        if: "${{ success() && steps.restore-pnpm-state.outputs.cache-hit != 'true' }}"
+        uses: actions/cache/save@v4
+        with:
+          path: |
+            ${{ github.workspace }}/.pnpm-home
+            ${{ runner.temp }}/pnpm-store/${{ github.job }}
+          key: "livestore-pnpm-state-v1-${{ runner.os }}-${{ runner.arch }}-${{ hashFiles('**/pnpm-lock.yaml') }}"
       - name: Upload Nix diagnostics artifact
         if: failure() && env.NIX_STORE_DIAGNOSTICS_DIR != ''
         uses: actions/upload-artifact@v4
@@ -267,26 +505,36 @@ jobs:
       run:
         shell: bash
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
       - name: Install Nix
         uses: DeterminateSystems/determinate-nix-action@v3
         with:
           extra-conf: |
+            experimental-features = nix-command flakes
+            accept-flake-config = true
             extra-substituters = https://devenv.cachix.org
             extra-trusted-public-keys = devenv.cachix.org-1:w1cLUi8dv3hnoSPGAuibQv+f9TZLr6cv/Hm9XgU50cw=
             access-tokens = github.com=${{ github.token }}
             extra-substituters = https://cache.nixos.org
             extra-trusted-public-keys = cache.nixos.org-1:6NCHdD59X431o0gWypbMrAURkbJ16ZPMQFGspcDShjY=
+          summarize: true
       - name: Enable Cachix cache
-        uses: cachix/cachix-action@v16
+        uses: cachix/cachix-action@v17
         with:
           name: livestore
           authToken: '${{ env.CACHIX_AUTH_TOKEN }}'
-      - name: Install megarepo CLI
-        run: 'nix profile install github:overengineeringstudio/effect-utils#megarepo'
-        shell: bash
       - name: Sync megarepo dependencies
-        run: mr sync --frozen
+        env:
+          MEGAREPO_STORE: '${{ runner.temp }}/megarepo-store/${{ github.run_id }}/${{ github.run_attempt }}/${{ github.job }}'
+        run: |
+          EU_REV=$(jq -r '.members["effect-utils"].commit' megarepo.lock)
+          if [ -z "$EU_REV" ] || [ "$EU_REV" = "null" ]; then
+            echo '::error::megarepo.lock missing members["effect-utils"].commit'
+            exit 1
+          fi
+          mkdir -p "$MEGAREPO_STORE"
+          echo "Using job-local megarepo store: $MEGAREPO_STORE"
+          nix run "github:overengineeringstudio/effect-utils/$EU_REV#megarepo" -- apply --all
         shell: bash
       - name: Use pinned devenv from lock
         run: |
@@ -298,7 +546,20 @@ jobs:
           echo "DEVENV_REV=$DEVENV_REV" >> "$GITHUB_ENV"
           echo "Pinned devenv rev: $DEVENV_REV"
         shell: bash
-      - name: Validate Nix store
+      - name: Isolate pnpm state
+        shell: bash
+        run: |
+          echo "PNPM_STORE_DIR=${{ runner.temp }}/pnpm-store/${{ github.job }}" >> "$GITHUB_ENV"
+          echo "PNPM_HOME=${{ github.workspace }}/.pnpm-home" >> "$GITHUB_ENV"
+      - id: restore-pnpm-state
+        name: Restore pnpm state
+        uses: actions/cache/restore@v4
+        with:
+          path: |
+            ${{ github.workspace }}/.pnpm-home
+            ${{ runner.temp }}/pnpm-store/${{ github.job }}
+          key: "livestore-pnpm-state-v1-${{ runner.os }}-${{ runner.arch }}-${{ hashFiles('**/pnpm-lock.yaml') }}"
+      - name: Resolve devenv
         run: |
           if [ -z "${DEVENV_REV:-}" ]; then
             DEVENV_REV=$(jq -r .nodes.devenv.locked.rev devenv.lock)
@@ -312,14 +573,7 @@ jobs:
             nix build --no-link --print-out-paths "github:cachix/devenv/$DEVENV_REV#devenv"
           }
 
-          # Always append restrict-eval=false so caller-provided NIX_CONFIG keeps its settings.
-          if [ -n "${NIX_CONFIG:-}" ]; then
-            NIX_CONFIG_WITH_UNRESTRICTED_EVAL="$NIX_CONFIG"$'\n''restrict-eval = false'
-          else
-            NIX_CONFIG_WITH_UNRESTRICTED_EVAL='restrict-eval = false'
-          fi
-
-          # Temporary: capture complete diagnostics for #272 root-cause analysis.
+          # Temporary: capture diagnostics dir for #272 root-cause analysis.
           DIAG_ROOT="${RUNNER_TEMP:-/tmp}/nix-store-diagnostics-${GITHUB_JOB:-job}-${RUNNER_OS:-unknown}-${GITHUB_RUN_ATTEMPT:-0}"
           mkdir -p "$DIAG_ROOT"
           echo "NIX_STORE_DIAGNOSTICS_DIR=$DIAG_ROOT" >> "$GITHUB_ENV"
@@ -331,48 +585,151 @@ jobs:
             echo "runner_arch=${RUNNER_ARCH:-unknown}"
             echo "github_job=${GITHUB_JOB:-unknown}"
             echo "github_run_id=${GITHUB_RUN_ID:-unknown}"
-            echo "github_run_attempt=${GITHUB_RUN_ATTEMPT:-unknown}"
             echo "nix_user_conf_files=${NIX_USER_CONF_FILES:-}"
-            echo ""
-            echo "== uname -a =="
-            uname -a || true
-            if command -v sw_vers > /dev/null 2>&1; then
-              echo ""
-              echo "== sw_vers =="
-              sw_vers || true
-            fi
-            echo ""
-            echo "== nix --version =="
             nix --version || true
           } > "$DIAG_ROOT/environment.txt" 2>&1
 
-          pre_resolve_log="$DIAG_ROOT/resolve-devenv-pre-repair.log"
-          pre_info_log="$DIAG_ROOT/devenv-info-pre-repair.log"
-          verify_log="$DIAG_ROOT/nix-store-verify-pre-repair.log"
-          repair_log="$DIAG_ROOT/nix-store-verify-repair.log"
-          post_resolve_log="$DIAG_ROOT/resolve-devenv-post-repair.log"
-          post_info_log="$DIAG_ROOT/devenv-info-post-repair.log"
+          if ! DEVENV_OUT=$(resolve_devenv 2> >(tee "$DIAG_ROOT/resolve-devenv.log" >&2)); then
+            echo "::error::resolve_devenv failed. Last 30 lines of log:"
+            tail -30 "$DIAG_ROOT/resolve-devenv.log" || true
+            exit 1
+          fi
+          DEVENV_BIN="$DEVENV_OUT/bin/devenv"
 
-          if DEVENV_OUT=$(resolve_devenv 2>"$pre_resolve_log") && DEVENV_BIN="$DEVENV_OUT/bin/devenv" && NIX_CONFIG="$NIX_CONFIG_WITH_UNRESTRICTED_EVAL" "$DEVENV_BIN" info > "$pre_info_log" 2>&1; then
-            echo "Nix store OK"
-          else
-            echo "::warning::Nix store validation failed, collecting diagnostics and repairing..."
-            if ! nix-store --verify --check-contents > "$verify_log" 2>&1; then
-              echo "::warning::nix-store --verify --check-contents reported issues (see diagnostics artifact)"
-            fi
-            if ! nix-store --verify --check-contents --repair > "$repair_log" 2>&1; then
-              echo "::warning::nix-store --verify --check-contents --repair reported issues (see diagnostics artifact)"
-            fi
+          # Fast validity check on the devenv store path (~1-2s vs ~25s for devenv info).
+          if ! nix-store --check-validity "$DEVENV_OUT" 2>/dev/null; then
+            echo "::warning::devenv store path invalid, repairing targeted path..."
+            nix-store --repair-path "$DEVENV_OUT" > "$DIAG_ROOT/nix-store-verify-repair.log" 2>&1 || true
             rm -rf ~/.cache/nix/eval-cache-*
-            DEVENV_OUT=$(resolve_devenv 2>"$post_resolve_log")
+            if ! DEVENV_OUT=$(resolve_devenv 2> >(tee "$DIAG_ROOT/resolve-devenv-post-repair.log" >&2)); then
+              echo "::error::resolve_devenv failed after repair. Last 30 lines of log:"
+              tail -30 "$DIAG_ROOT/resolve-devenv-post-repair.log" || true
+              exit 1
+            fi
             DEVENV_BIN="$DEVENV_OUT/bin/devenv"
-            NIX_CONFIG="$NIX_CONFIG_WITH_UNRESTRICTED_EVAL" "$DEVENV_BIN" info > "$post_info_log" 2>&1
           fi
 
           echo "DEVENV_BIN=$DEVENV_BIN" >> "$GITHUB_ENV"
           "$DEVENV_BIN" version | tee "$DIAG_ROOT/devenv-version.txt"
         shell: bash
-      - run: "if [ -n \"${NIX_CONFIG:-}\" ]; then NIX_CONFIG_WITH_UNRESTRICTED_EVAL=\"$NIX_CONFIG\"$'\\n''restrict-eval = false'; else NIX_CONFIG_WITH_UNRESTRICTED_EVAL='restrict-eval = false'; fi; NIX_CONFIG=\"$NIX_CONFIG_WITH_UNRESTRICTED_EVAL\" \"${DEVENV_BIN:?DEVENV_BIN not set}\" tasks run test:unit --mode before"
+      - name: Run unit tests
+        run: |
+          __nix_gc_retry_helper=$(mktemp)
+          cat > "$__nix_gc_retry_helper" <<'EOF'
+          #!/usr/bin/env bash
+
+          run_nix_gc_race_retry() {
+            local task="$1"
+            local command="$2"
+            local max="${NIX_GC_RACE_MAX_RETRIES:-10}"
+            local heartbeat="${CI_PROGRESS_HEARTBEAT_SECONDS:-60}"
+            local attempt=1
+            local log rc path start now elapsed hb_pid flattened saw_invalid_path saw_cachix_signature had_errexit
+
+            start="$(date +%s)"
+
+            write_summary() {
+              [ -n "${GITHUB_STEP_SUMMARY:-}" ] || return 0
+              {
+                echo "### CI Task"
+                echo "- Task: $task"
+                echo "- Status: $1"
+                echo "- Duration: $elapsed s"
+                echo "- Attempts: $attempt/$max"
+                [ -z "${2:-}" ] || echo "- Note: $2"
+              } >> "$GITHUB_STEP_SUMMARY"
+            }
+
+            while [ "$attempt" -le "$max" ]; do
+              echo "::notice::[ci] starting $task (attempt $attempt/$max)"
+              (
+                while sleep "$heartbeat"; do
+                  now=$(date +%s)
+                  elapsed=$((now - start))
+                  echo "::notice::[ci] $task still running after $elapsed s (attempt $attempt/$max)"
+                done
+              ) &
+              hb_pid=$!
+
+              log=$(mktemp)
+              had_errexit=false
+              case $- in
+                *e*) had_errexit=true ;;
+              esac
+              set +e
+              eval "$command" > >(tee -a "$log") 2> >(tee -a "$log" >&2)
+              rc=$?
+              if [ "$had_errexit" = true ]; then
+                set -e
+              fi
+
+              kill "$hb_pid" 2>/dev/null || true
+              wait "$hb_pid" 2>/dev/null || true
+
+              now=$(date +%s)
+              elapsed=$((now - start))
+
+              if [ "$rc" -eq 0 ]; then
+                echo "::notice::[ci] completed $task in $elapsed s"
+                if [ "$attempt" -gt 1 ]; then
+                  write_summary success "Recovered from Nix GC race after retry"
+                else
+                  write_summary success
+                fi
+                rm -f "$log"
+                return 0
+              fi
+
+              flattened=$(tr '\r\n' '  ' < "$log" | sed -E $'s/\x1B\\[[0-9;]*m//g')
+              path=$(printf '%s' "$flattened" |
+                grep -o "error:[[:space:]]*path '/nix/store/[^']*'[[:space:]]*is not valid" |
+                head -1 |
+                grep -o "/nix/store/[^']*" |
+                tr -d '[:space:]' || true)
+              saw_invalid_path=false
+              saw_cachix_signature=false
+              [ -n "$path" ] && saw_invalid_path=true
+              printf '%s' "$flattened" | grep -q 'Failed to convert config\.cachix to JSON' && saw_cachix_signature=true || true
+              printf '%s' "$flattened" | grep -q 'while evaluating the option' && printf '%s' "$flattened" | grep -q 'cachix\.package' && saw_cachix_signature=true || true
+              rm -f "$log"
+
+              if [ "$saw_invalid_path" != true ] && [ "$saw_cachix_signature" != true ]; then
+                echo "::warning::[ci] $task failed after $elapsed s without a detected Nix store validity race"
+                write_summary failure "No Nix GC race signature detected"
+                return "$rc"
+              fi
+
+              if [ "$saw_cachix_signature" = true ] && [ -n "$path" ]; then
+                echo "::warning::Nix store validity race detected for $task via cachix eval wrapper (attempt $attempt/$max): $path"
+              elif [ "$saw_cachix_signature" = true ]; then
+                echo "::warning::Nix store validity race detected for $task via cachix eval wrapper without extracted store path (attempt $attempt/$max)"
+              else
+                echo "::warning::Nix store validity race detected for $task (attempt $attempt/$max): $path"
+              fi
+
+              [ -z "$path" ] || nix-store --realise "$path" 2>/dev/null || true
+              rm -rf ~/.cache/nix/eval-cache-*
+              attempt=$((attempt + 1))
+            done
+
+            now=$(date +%s)
+            elapsed=$((now - start))
+            echo "::error::Nix GC race retry exhausted for $task ($max attempts)"
+            write_summary failure "Nix GC race retry exhausted"
+            return 1
+          }
+          EOF
+          . "$__nix_gc_retry_helper"
+          rm -f "$__nix_gc_retry_helper"
+          run_nix_gc_race_retry 'devenv tasks run test:unit --mode before' 'if [ -n "${NIX_CONFIG:-}" ]; then NIX_CONFIG_WITH_APPEND=$(printf '"'"'%s\n%s'"'"' "$NIX_CONFIG" '"'"'restrict-eval = false'"'"'); else NIX_CONFIG_WITH_APPEND='"'"'restrict-eval = false'"'"'; fi; NIX_CONFIG="$NIX_CONFIG_WITH_APPEND" PNPM_HOME="${PNPM_HOME:-${{ github.workspace }}/.pnpm-home}" PNPM_STORE_DIR="${PNPM_STORE_DIR:-${{ runner.temp }}/pnpm-store/${{ github.job }}}" DT_PASSTHROUGH=1 "${DEVENV_BIN:?DEVENV_BIN not set}" tasks run test:unit --mode before'
+      - name: Save pnpm state
+        if: "${{ success() && steps.restore-pnpm-state.outputs.cache-hit != 'true' }}"
+        uses: actions/cache/save@v4
+        with:
+          path: |
+            ${{ github.workspace }}/.pnpm-home
+            ${{ runner.temp }}/pnpm-store/${{ github.job }}
+          key: "livestore-pnpm-state-v1-${{ runner.os }}-${{ runner.arch }}-${{ hashFiles('**/pnpm-lock.yaml') }}"
       - name: Upload Nix diagnostics artifact
         if: failure() && env.NIX_STORE_DIAGNOSTICS_DIR != ''
         uses: actions/upload-artifact@v4
@@ -387,26 +744,36 @@ jobs:
       run:
         shell: bash
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
       - name: Install Nix
         uses: DeterminateSystems/determinate-nix-action@v3
         with:
           extra-conf: |
+            experimental-features = nix-command flakes
+            accept-flake-config = true
             extra-substituters = https://devenv.cachix.org
             extra-trusted-public-keys = devenv.cachix.org-1:w1cLUi8dv3hnoSPGAuibQv+f9TZLr6cv/Hm9XgU50cw=
             access-tokens = github.com=${{ github.token }}
             extra-substituters = https://cache.nixos.org
             extra-trusted-public-keys = cache.nixos.org-1:6NCHdD59X431o0gWypbMrAURkbJ16ZPMQFGspcDShjY=
+          summarize: true
       - name: Enable Cachix cache
-        uses: cachix/cachix-action@v16
+        uses: cachix/cachix-action@v17
         with:
           name: livestore
           authToken: '${{ env.CACHIX_AUTH_TOKEN }}'
-      - name: Install megarepo CLI
-        run: 'nix profile install github:overengineeringstudio/effect-utils#megarepo'
-        shell: bash
       - name: Sync megarepo dependencies
-        run: mr sync --frozen
+        env:
+          MEGAREPO_STORE: '${{ runner.temp }}/megarepo-store/${{ github.run_id }}/${{ github.run_attempt }}/${{ github.job }}'
+        run: |
+          EU_REV=$(jq -r '.members["effect-utils"].commit' megarepo.lock)
+          if [ -z "$EU_REV" ] || [ "$EU_REV" = "null" ]; then
+            echo '::error::megarepo.lock missing members["effect-utils"].commit'
+            exit 1
+          fi
+          mkdir -p "$MEGAREPO_STORE"
+          echo "Using job-local megarepo store: $MEGAREPO_STORE"
+          nix run "github:overengineeringstudio/effect-utils/$EU_REV#megarepo" -- apply --all
         shell: bash
       - name: Use pinned devenv from lock
         run: |
@@ -418,7 +785,20 @@ jobs:
           echo "DEVENV_REV=$DEVENV_REV" >> "$GITHUB_ENV"
           echo "Pinned devenv rev: $DEVENV_REV"
         shell: bash
-      - name: Validate Nix store
+      - name: Isolate pnpm state
+        shell: bash
+        run: |
+          echo "PNPM_STORE_DIR=${{ runner.temp }}/pnpm-store/${{ github.job }}" >> "$GITHUB_ENV"
+          echo "PNPM_HOME=${{ github.workspace }}/.pnpm-home" >> "$GITHUB_ENV"
+      - id: restore-pnpm-state
+        name: Restore pnpm state
+        uses: actions/cache/restore@v4
+        with:
+          path: |
+            ${{ github.workspace }}/.pnpm-home
+            ${{ runner.temp }}/pnpm-store/${{ github.job }}
+          key: "livestore-pnpm-state-v1-${{ runner.os }}-${{ runner.arch }}-${{ hashFiles('**/pnpm-lock.yaml') }}"
+      - name: Resolve devenv
         run: |
           if [ -z "${DEVENV_REV:-}" ]; then
             DEVENV_REV=$(jq -r .nodes.devenv.locked.rev devenv.lock)
@@ -432,14 +812,7 @@ jobs:
             nix build --no-link --print-out-paths "github:cachix/devenv/$DEVENV_REV#devenv"
           }
 
-          # Always append restrict-eval=false so caller-provided NIX_CONFIG keeps its settings.
-          if [ -n "${NIX_CONFIG:-}" ]; then
-            NIX_CONFIG_WITH_UNRESTRICTED_EVAL="$NIX_CONFIG"$'\n''restrict-eval = false'
-          else
-            NIX_CONFIG_WITH_UNRESTRICTED_EVAL='restrict-eval = false'
-          fi
-
-          # Temporary: capture complete diagnostics for #272 root-cause analysis.
+          # Temporary: capture diagnostics dir for #272 root-cause analysis.
           DIAG_ROOT="${RUNNER_TEMP:-/tmp}/nix-store-diagnostics-${GITHUB_JOB:-job}-${RUNNER_OS:-unknown}-${GITHUB_RUN_ATTEMPT:-0}"
           mkdir -p "$DIAG_ROOT"
           echo "NIX_STORE_DIAGNOSTICS_DIR=$DIAG_ROOT" >> "$GITHUB_ENV"
@@ -451,42 +824,28 @@ jobs:
             echo "runner_arch=${RUNNER_ARCH:-unknown}"
             echo "github_job=${GITHUB_JOB:-unknown}"
             echo "github_run_id=${GITHUB_RUN_ID:-unknown}"
-            echo "github_run_attempt=${GITHUB_RUN_ATTEMPT:-unknown}"
             echo "nix_user_conf_files=${NIX_USER_CONF_FILES:-}"
-            echo ""
-            echo "== uname -a =="
-            uname -a || true
-            if command -v sw_vers > /dev/null 2>&1; then
-              echo ""
-              echo "== sw_vers =="
-              sw_vers || true
-            fi
-            echo ""
-            echo "== nix --version =="
             nix --version || true
           } > "$DIAG_ROOT/environment.txt" 2>&1
 
-          pre_resolve_log="$DIAG_ROOT/resolve-devenv-pre-repair.log"
-          pre_info_log="$DIAG_ROOT/devenv-info-pre-repair.log"
-          verify_log="$DIAG_ROOT/nix-store-verify-pre-repair.log"
-          repair_log="$DIAG_ROOT/nix-store-verify-repair.log"
-          post_resolve_log="$DIAG_ROOT/resolve-devenv-post-repair.log"
-          post_info_log="$DIAG_ROOT/devenv-info-post-repair.log"
+          if ! DEVENV_OUT=$(resolve_devenv 2> >(tee "$DIAG_ROOT/resolve-devenv.log" >&2)); then
+            echo "::error::resolve_devenv failed. Last 30 lines of log:"
+            tail -30 "$DIAG_ROOT/resolve-devenv.log" || true
+            exit 1
+          fi
+          DEVENV_BIN="$DEVENV_OUT/bin/devenv"
 
-          if DEVENV_OUT=$(resolve_devenv 2>"$pre_resolve_log") && DEVENV_BIN="$DEVENV_OUT/bin/devenv" && NIX_CONFIG="$NIX_CONFIG_WITH_UNRESTRICTED_EVAL" "$DEVENV_BIN" info > "$pre_info_log" 2>&1; then
-            echo "Nix store OK"
-          else
-            echo "::warning::Nix store validation failed, collecting diagnostics and repairing..."
-            if ! nix-store --verify --check-contents > "$verify_log" 2>&1; then
-              echo "::warning::nix-store --verify --check-contents reported issues (see diagnostics artifact)"
-            fi
-            if ! nix-store --verify --check-contents --repair > "$repair_log" 2>&1; then
-              echo "::warning::nix-store --verify --check-contents --repair reported issues (see diagnostics artifact)"
-            fi
+          # Fast validity check on the devenv store path (~1-2s vs ~25s for devenv info).
+          if ! nix-store --check-validity "$DEVENV_OUT" 2>/dev/null; then
+            echo "::warning::devenv store path invalid, repairing targeted path..."
+            nix-store --repair-path "$DEVENV_OUT" > "$DIAG_ROOT/nix-store-verify-repair.log" 2>&1 || true
             rm -rf ~/.cache/nix/eval-cache-*
-            DEVENV_OUT=$(resolve_devenv 2>"$post_resolve_log")
+            if ! DEVENV_OUT=$(resolve_devenv 2> >(tee "$DIAG_ROOT/resolve-devenv-post-repair.log" >&2)); then
+              echo "::error::resolve_devenv failed after repair. Last 30 lines of log:"
+              tail -30 "$DIAG_ROOT/resolve-devenv-post-repair.log" || true
+              exit 1
+            fi
             DEVENV_BIN="$DEVENV_OUT/bin/devenv"
-            NIX_CONFIG="$NIX_CONFIG_WITH_UNRESTRICTED_EVAL" "$DEVENV_BIN" info > "$post_info_log" 2>&1
           fi
 
           echo "DEVENV_BIN=$DEVENV_BIN" >> "$GITHUB_ENV"
@@ -503,7 +862,115 @@ jobs:
           # Disable in Vite (otherwise CORS issues)
           echo "VITE_OTEL_EXPORTER_OTLP_ENDPOINT=" >> $GITHUB_ENV
       - name: Run node-sync integration tests
-        run: "if [ -n \"${NIX_CONFIG:-}\" ]; then NIX_CONFIG_WITH_UNRESTRICTED_EVAL=\"$NIX_CONFIG\"$'\\n''restrict-eval = false'; else NIX_CONFIG_WITH_UNRESTRICTED_EVAL='restrict-eval = false'; fi; NIX_CONFIG=\"$NIX_CONFIG_WITH_UNRESTRICTED_EVAL\" \"${DEVENV_BIN:?DEVENV_BIN not set}\" tasks run test:integration:node-sync:allow-flaky --mode before"
+        run: |
+          __nix_gc_retry_helper=$(mktemp)
+          cat > "$__nix_gc_retry_helper" <<'EOF'
+          #!/usr/bin/env bash
+
+          run_nix_gc_race_retry() {
+            local task="$1"
+            local command="$2"
+            local max="${NIX_GC_RACE_MAX_RETRIES:-10}"
+            local heartbeat="${CI_PROGRESS_HEARTBEAT_SECONDS:-60}"
+            local attempt=1
+            local log rc path start now elapsed hb_pid flattened saw_invalid_path saw_cachix_signature had_errexit
+
+            start="$(date +%s)"
+
+            write_summary() {
+              [ -n "${GITHUB_STEP_SUMMARY:-}" ] || return 0
+              {
+                echo "### CI Task"
+                echo "- Task: $task"
+                echo "- Status: $1"
+                echo "- Duration: $elapsed s"
+                echo "- Attempts: $attempt/$max"
+                [ -z "${2:-}" ] || echo "- Note: $2"
+              } >> "$GITHUB_STEP_SUMMARY"
+            }
+
+            while [ "$attempt" -le "$max" ]; do
+              echo "::notice::[ci] starting $task (attempt $attempt/$max)"
+              (
+                while sleep "$heartbeat"; do
+                  now=$(date +%s)
+                  elapsed=$((now - start))
+                  echo "::notice::[ci] $task still running after $elapsed s (attempt $attempt/$max)"
+                done
+              ) &
+              hb_pid=$!
+
+              log=$(mktemp)
+              had_errexit=false
+              case $- in
+                *e*) had_errexit=true ;;
+              esac
+              set +e
+              eval "$command" > >(tee -a "$log") 2> >(tee -a "$log" >&2)
+              rc=$?
+              if [ "$had_errexit" = true ]; then
+                set -e
+              fi
+
+              kill "$hb_pid" 2>/dev/null || true
+              wait "$hb_pid" 2>/dev/null || true
+
+              now=$(date +%s)
+              elapsed=$((now - start))
+
+              if [ "$rc" -eq 0 ]; then
+                echo "::notice::[ci] completed $task in $elapsed s"
+                if [ "$attempt" -gt 1 ]; then
+                  write_summary success "Recovered from Nix GC race after retry"
+                else
+                  write_summary success
+                fi
+                rm -f "$log"
+                return 0
+              fi
+
+              flattened=$(tr '\r\n' '  ' < "$log" | sed -E $'s/\x1B\\[[0-9;]*m//g')
+              path=$(printf '%s' "$flattened" |
+                grep -o "error:[[:space:]]*path '/nix/store/[^']*'[[:space:]]*is not valid" |
+                head -1 |
+                grep -o "/nix/store/[^']*" |
+                tr -d '[:space:]' || true)
+              saw_invalid_path=false
+              saw_cachix_signature=false
+              [ -n "$path" ] && saw_invalid_path=true
+              printf '%s' "$flattened" | grep -q 'Failed to convert config\.cachix to JSON' && saw_cachix_signature=true || true
+              printf '%s' "$flattened" | grep -q 'while evaluating the option' && printf '%s' "$flattened" | grep -q 'cachix\.package' && saw_cachix_signature=true || true
+              rm -f "$log"
+
+              if [ "$saw_invalid_path" != true ] && [ "$saw_cachix_signature" != true ]; then
+                echo "::warning::[ci] $task failed after $elapsed s without a detected Nix store validity race"
+                write_summary failure "No Nix GC race signature detected"
+                return "$rc"
+              fi
+
+              if [ "$saw_cachix_signature" = true ] && [ -n "$path" ]; then
+                echo "::warning::Nix store validity race detected for $task via cachix eval wrapper (attempt $attempt/$max): $path"
+              elif [ "$saw_cachix_signature" = true ]; then
+                echo "::warning::Nix store validity race detected for $task via cachix eval wrapper without extracted store path (attempt $attempt/$max)"
+              else
+                echo "::warning::Nix store validity race detected for $task (attempt $attempt/$max): $path"
+              fi
+
+              [ -z "$path" ] || nix-store --realise "$path" 2>/dev/null || true
+              rm -rf ~/.cache/nix/eval-cache-*
+              attempt=$((attempt + 1))
+            done
+
+            now=$(date +%s)
+            elapsed=$((now - start))
+            echo "::error::Nix GC race retry exhausted for $task ($max attempts)"
+            write_summary failure "Nix GC race retry exhausted"
+            return 1
+          }
+          EOF
+          . "$__nix_gc_retry_helper"
+          rm -f "$__nix_gc_retry_helper"
+          run_nix_gc_race_retry 'devenv tasks run test:integration:node-sync:allow-flaky --mode before' 'if [ -n "${NIX_CONFIG:-}" ]; then NIX_CONFIG_WITH_APPEND=$(printf '"'"'%s\n%s'"'"' "$NIX_CONFIG" '"'"'restrict-eval = false'"'"'); else NIX_CONFIG_WITH_APPEND='"'"'restrict-eval = false'"'"'; fi; NIX_CONFIG="$NIX_CONFIG_WITH_APPEND" PNPM_HOME="${PNPM_HOME:-${{ github.workspace }}/.pnpm-home}" PNPM_STORE_DIR="${PNPM_STORE_DIR:-${{ runner.temp }}/pnpm-store/${{ github.job }}}" DT_PASSTHROUGH=1 "${DEVENV_BIN:?DEVENV_BIN not set}" tasks run test:integration:node-sync:allow-flaky --mode before'
       - name: Display node-sync logs
         if: always()
         run: |
@@ -526,6 +993,14 @@ jobs:
           name: node-sync-logs
           path: tests/integration/tmp/logs/
           retention-days: 30
+      - name: Save pnpm state
+        if: "${{ success() && steps.restore-pnpm-state.outputs.cache-hit != 'true' }}"
+        uses: actions/cache/save@v4
+        with:
+          path: |
+            ${{ github.workspace }}/.pnpm-home
+            ${{ runner.temp }}/pnpm-store/${{ github.job }}
+          key: "livestore-pnpm-state-v1-${{ runner.os }}-${{ runner.arch }}-${{ hashFiles('**/pnpm-lock.yaml') }}"
       - name: Upload Nix diagnostics artifact
         if: failure() && env.NIX_STORE_DIAGNOSTICS_DIR != ''
         uses: actions/upload-artifact@v4
@@ -552,26 +1027,36 @@ jobs:
       run:
         shell: bash
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
       - name: Install Nix
         uses: DeterminateSystems/determinate-nix-action@v3
         with:
           extra-conf: |
+            experimental-features = nix-command flakes
+            accept-flake-config = true
             extra-substituters = https://devenv.cachix.org
             extra-trusted-public-keys = devenv.cachix.org-1:w1cLUi8dv3hnoSPGAuibQv+f9TZLr6cv/Hm9XgU50cw=
             access-tokens = github.com=${{ github.token }}
             extra-substituters = https://cache.nixos.org
             extra-trusted-public-keys = cache.nixos.org-1:6NCHdD59X431o0gWypbMrAURkbJ16ZPMQFGspcDShjY=
+          summarize: true
       - name: Enable Cachix cache
-        uses: cachix/cachix-action@v16
+        uses: cachix/cachix-action@v17
         with:
           name: livestore
           authToken: '${{ env.CACHIX_AUTH_TOKEN }}'
-      - name: Install megarepo CLI
-        run: 'nix profile install github:overengineeringstudio/effect-utils#megarepo'
-        shell: bash
       - name: Sync megarepo dependencies
-        run: mr sync --frozen
+        env:
+          MEGAREPO_STORE: '${{ runner.temp }}/megarepo-store/${{ github.run_id }}/${{ github.run_attempt }}/${{ github.job }}'
+        run: |
+          EU_REV=$(jq -r '.members["effect-utils"].commit' megarepo.lock)
+          if [ -z "$EU_REV" ] || [ "$EU_REV" = "null" ]; then
+            echo '::error::megarepo.lock missing members["effect-utils"].commit'
+            exit 1
+          fi
+          mkdir -p "$MEGAREPO_STORE"
+          echo "Using job-local megarepo store: $MEGAREPO_STORE"
+          nix run "github:overengineeringstudio/effect-utils/$EU_REV#megarepo" -- apply --all
         shell: bash
       - name: Use pinned devenv from lock
         run: |
@@ -583,7 +1068,20 @@ jobs:
           echo "DEVENV_REV=$DEVENV_REV" >> "$GITHUB_ENV"
           echo "Pinned devenv rev: $DEVENV_REV"
         shell: bash
-      - name: Validate Nix store
+      - name: Isolate pnpm state
+        shell: bash
+        run: |
+          echo "PNPM_STORE_DIR=${{ runner.temp }}/pnpm-store/${{ github.job }}" >> "$GITHUB_ENV"
+          echo "PNPM_HOME=${{ github.workspace }}/.pnpm-home" >> "$GITHUB_ENV"
+      - id: restore-pnpm-state
+        name: Restore pnpm state
+        uses: actions/cache/restore@v4
+        with:
+          path: |
+            ${{ github.workspace }}/.pnpm-home
+            ${{ runner.temp }}/pnpm-store/${{ github.job }}
+          key: "livestore-pnpm-state-v1-${{ runner.os }}-${{ runner.arch }}-${{ hashFiles('**/pnpm-lock.yaml') }}"
+      - name: Resolve devenv
         run: |
           if [ -z "${DEVENV_REV:-}" ]; then
             DEVENV_REV=$(jq -r .nodes.devenv.locked.rev devenv.lock)
@@ -597,14 +1095,7 @@ jobs:
             nix build --no-link --print-out-paths "github:cachix/devenv/$DEVENV_REV#devenv"
           }
 
-          # Always append restrict-eval=false so caller-provided NIX_CONFIG keeps its settings.
-          if [ -n "${NIX_CONFIG:-}" ]; then
-            NIX_CONFIG_WITH_UNRESTRICTED_EVAL="$NIX_CONFIG"$'\n''restrict-eval = false'
-          else
-            NIX_CONFIG_WITH_UNRESTRICTED_EVAL='restrict-eval = false'
-          fi
-
-          # Temporary: capture complete diagnostics for #272 root-cause analysis.
+          # Temporary: capture diagnostics dir for #272 root-cause analysis.
           DIAG_ROOT="${RUNNER_TEMP:-/tmp}/nix-store-diagnostics-${GITHUB_JOB:-job}-${RUNNER_OS:-unknown}-${GITHUB_RUN_ATTEMPT:-0}"
           mkdir -p "$DIAG_ROOT"
           echo "NIX_STORE_DIAGNOSTICS_DIR=$DIAG_ROOT" >> "$GITHUB_ENV"
@@ -616,42 +1107,28 @@ jobs:
             echo "runner_arch=${RUNNER_ARCH:-unknown}"
             echo "github_job=${GITHUB_JOB:-unknown}"
             echo "github_run_id=${GITHUB_RUN_ID:-unknown}"
-            echo "github_run_attempt=${GITHUB_RUN_ATTEMPT:-unknown}"
             echo "nix_user_conf_files=${NIX_USER_CONF_FILES:-}"
-            echo ""
-            echo "== uname -a =="
-            uname -a || true
-            if command -v sw_vers > /dev/null 2>&1; then
-              echo ""
-              echo "== sw_vers =="
-              sw_vers || true
-            fi
-            echo ""
-            echo "== nix --version =="
             nix --version || true
           } > "$DIAG_ROOT/environment.txt" 2>&1
 
-          pre_resolve_log="$DIAG_ROOT/resolve-devenv-pre-repair.log"
-          pre_info_log="$DIAG_ROOT/devenv-info-pre-repair.log"
-          verify_log="$DIAG_ROOT/nix-store-verify-pre-repair.log"
-          repair_log="$DIAG_ROOT/nix-store-verify-repair.log"
-          post_resolve_log="$DIAG_ROOT/resolve-devenv-post-repair.log"
-          post_info_log="$DIAG_ROOT/devenv-info-post-repair.log"
+          if ! DEVENV_OUT=$(resolve_devenv 2> >(tee "$DIAG_ROOT/resolve-devenv.log" >&2)); then
+            echo "::error::resolve_devenv failed. Last 30 lines of log:"
+            tail -30 "$DIAG_ROOT/resolve-devenv.log" || true
+            exit 1
+          fi
+          DEVENV_BIN="$DEVENV_OUT/bin/devenv"
 
-          if DEVENV_OUT=$(resolve_devenv 2>"$pre_resolve_log") && DEVENV_BIN="$DEVENV_OUT/bin/devenv" && NIX_CONFIG="$NIX_CONFIG_WITH_UNRESTRICTED_EVAL" "$DEVENV_BIN" info > "$pre_info_log" 2>&1; then
-            echo "Nix store OK"
-          else
-            echo "::warning::Nix store validation failed, collecting diagnostics and repairing..."
-            if ! nix-store --verify --check-contents > "$verify_log" 2>&1; then
-              echo "::warning::nix-store --verify --check-contents reported issues (see diagnostics artifact)"
-            fi
-            if ! nix-store --verify --check-contents --repair > "$repair_log" 2>&1; then
-              echo "::warning::nix-store --verify --check-contents --repair reported issues (see diagnostics artifact)"
-            fi
+          # Fast validity check on the devenv store path (~1-2s vs ~25s for devenv info).
+          if ! nix-store --check-validity "$DEVENV_OUT" 2>/dev/null; then
+            echo "::warning::devenv store path invalid, repairing targeted path..."
+            nix-store --repair-path "$DEVENV_OUT" > "$DIAG_ROOT/nix-store-verify-repair.log" 2>&1 || true
             rm -rf ~/.cache/nix/eval-cache-*
-            DEVENV_OUT=$(resolve_devenv 2>"$post_resolve_log")
+            if ! DEVENV_OUT=$(resolve_devenv 2> >(tee "$DIAG_ROOT/resolve-devenv-post-repair.log" >&2)); then
+              echo "::error::resolve_devenv failed after repair. Last 30 lines of log:"
+              tail -30 "$DIAG_ROOT/resolve-devenv-post-repair.log" || true
+              exit 1
+            fi
             DEVENV_BIN="$DEVENV_OUT/bin/devenv"
-            NIX_CONFIG="$NIX_CONFIG_WITH_UNRESTRICTED_EVAL" "$DEVENV_BIN" info > "$post_info_log" 2>&1
           fi
 
           echo "DEVENV_BIN=$DEVENV_BIN" >> "$GITHUB_ENV"
@@ -682,9 +1159,126 @@ jobs:
           done
         shell: bash
       - name: 'Run sync-provider tests for ${{ matrix.provider }}'
-        run: "if [ -n \"${NIX_CONFIG:-}\" ]; then NIX_CONFIG_WITH_UNRESTRICTED_EVAL=\"$NIX_CONFIG\"$'\\n''restrict-eval = false'; else NIX_CONFIG_WITH_UNRESTRICTED_EVAL='restrict-eval = false'; fi; NIX_CONFIG=\"$NIX_CONFIG_WITH_UNRESTRICTED_EVAL\" \"${DEVENV_BIN:?DEVENV_BIN not set}\" tasks run test:integration:sync-provider:matrix --mode before"
+        run: |
+          __nix_gc_retry_helper=$(mktemp)
+          cat > "$__nix_gc_retry_helper" <<'EOF'
+          #!/usr/bin/env bash
+
+          run_nix_gc_race_retry() {
+            local task="$1"
+            local command="$2"
+            local max="${NIX_GC_RACE_MAX_RETRIES:-10}"
+            local heartbeat="${CI_PROGRESS_HEARTBEAT_SECONDS:-60}"
+            local attempt=1
+            local log rc path start now elapsed hb_pid flattened saw_invalid_path saw_cachix_signature had_errexit
+
+            start="$(date +%s)"
+
+            write_summary() {
+              [ -n "${GITHUB_STEP_SUMMARY:-}" ] || return 0
+              {
+                echo "### CI Task"
+                echo "- Task: $task"
+                echo "- Status: $1"
+                echo "- Duration: $elapsed s"
+                echo "- Attempts: $attempt/$max"
+                [ -z "${2:-}" ] || echo "- Note: $2"
+              } >> "$GITHUB_STEP_SUMMARY"
+            }
+
+            while [ "$attempt" -le "$max" ]; do
+              echo "::notice::[ci] starting $task (attempt $attempt/$max)"
+              (
+                while sleep "$heartbeat"; do
+                  now=$(date +%s)
+                  elapsed=$((now - start))
+                  echo "::notice::[ci] $task still running after $elapsed s (attempt $attempt/$max)"
+                done
+              ) &
+              hb_pid=$!
+
+              log=$(mktemp)
+              had_errexit=false
+              case $- in
+                *e*) had_errexit=true ;;
+              esac
+              set +e
+              eval "$command" > >(tee -a "$log") 2> >(tee -a "$log" >&2)
+              rc=$?
+              if [ "$had_errexit" = true ]; then
+                set -e
+              fi
+
+              kill "$hb_pid" 2>/dev/null || true
+              wait "$hb_pid" 2>/dev/null || true
+
+              now=$(date +%s)
+              elapsed=$((now - start))
+
+              if [ "$rc" -eq 0 ]; then
+                echo "::notice::[ci] completed $task in $elapsed s"
+                if [ "$attempt" -gt 1 ]; then
+                  write_summary success "Recovered from Nix GC race after retry"
+                else
+                  write_summary success
+                fi
+                rm -f "$log"
+                return 0
+              fi
+
+              flattened=$(tr '\r\n' '  ' < "$log" | sed -E $'s/\x1B\\[[0-9;]*m//g')
+              path=$(printf '%s' "$flattened" |
+                grep -o "error:[[:space:]]*path '/nix/store/[^']*'[[:space:]]*is not valid" |
+                head -1 |
+                grep -o "/nix/store/[^']*" |
+                tr -d '[:space:]' || true)
+              saw_invalid_path=false
+              saw_cachix_signature=false
+              [ -n "$path" ] && saw_invalid_path=true
+              printf '%s' "$flattened" | grep -q 'Failed to convert config\.cachix to JSON' && saw_cachix_signature=true || true
+              printf '%s' "$flattened" | grep -q 'while evaluating the option' && printf '%s' "$flattened" | grep -q 'cachix\.package' && saw_cachix_signature=true || true
+              rm -f "$log"
+
+              if [ "$saw_invalid_path" != true ] && [ "$saw_cachix_signature" != true ]; then
+                echo "::warning::[ci] $task failed after $elapsed s without a detected Nix store validity race"
+                write_summary failure "No Nix GC race signature detected"
+                return "$rc"
+              fi
+
+              if [ "$saw_cachix_signature" = true ] && [ -n "$path" ]; then
+                echo "::warning::Nix store validity race detected for $task via cachix eval wrapper (attempt $attempt/$max): $path"
+              elif [ "$saw_cachix_signature" = true ]; then
+                echo "::warning::Nix store validity race detected for $task via cachix eval wrapper without extracted store path (attempt $attempt/$max)"
+              else
+                echo "::warning::Nix store validity race detected for $task (attempt $attempt/$max): $path"
+              fi
+
+              [ -z "$path" ] || nix-store --realise "$path" 2>/dev/null || true
+              rm -rf ~/.cache/nix/eval-cache-*
+              attempt=$((attempt + 1))
+            done
+
+            now=$(date +%s)
+            elapsed=$((now - start))
+            echo "::error::Nix GC race retry exhausted for $task ($max attempts)"
+            write_summary failure "Nix GC race retry exhausted"
+            return 1
+          }
+          EOF
+          . "$__nix_gc_retry_helper"
+          rm -f "$__nix_gc_retry_helper"
+          run_nix_gc_race_retry 'devenv tasks run test:integration:sync-provider:matrix --mode before' 'if [ -n "${NIX_CONFIG:-}" ]; then NIX_CONFIG_WITH_APPEND=$(printf '"'"'%s\n%s'"'"' "$NIX_CONFIG" '"'"'restrict-eval = false'"'"'); else NIX_CONFIG_WITH_APPEND='"'"'restrict-eval = false'"'"'; fi; NIX_CONFIG="$NIX_CONFIG_WITH_APPEND" PNPM_HOME="${PNPM_HOME:-${{ github.workspace }}/.pnpm-home}" PNPM_STORE_DIR="${PNPM_STORE_DIR:-${{ runner.temp }}/pnpm-store/${{ github.job }}}" DT_PASSTHROUGH=1 "${DEVENV_BIN:?DEVENV_BIN not set}" tasks run test:integration:sync-provider:matrix --mode before'
         env:
+          OTEL_STATE_DIR: ''
           TEST_SYNC_PROVIDER: '${{ matrix.provider }}'
+      - name: Save pnpm state
+        if: "${{ success() && steps.restore-pnpm-state.outputs.cache-hit != 'true' }}"
+        uses: actions/cache/save@v4
+        with:
+          path: |
+            ${{ github.workspace }}/.pnpm-home
+            ${{ runner.temp }}/pnpm-store/${{ github.job }}
+          key: "livestore-pnpm-state-v1-${{ runner.os }}-${{ runner.arch }}-${{ hashFiles('**/pnpm-lock.yaml') }}"
       - name: Upload Nix diagnostics artifact
         if: failure() && env.NIX_STORE_DIAGNOSTICS_DIR != ''
         uses: actions/upload-artifact@v4
@@ -702,26 +1296,36 @@ jobs:
       run:
         shell: bash
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
       - name: Install Nix
         uses: DeterminateSystems/determinate-nix-action@v3
         with:
           extra-conf: |
+            experimental-features = nix-command flakes
+            accept-flake-config = true
             extra-substituters = https://devenv.cachix.org
             extra-trusted-public-keys = devenv.cachix.org-1:w1cLUi8dv3hnoSPGAuibQv+f9TZLr6cv/Hm9XgU50cw=
             access-tokens = github.com=${{ github.token }}
             extra-substituters = https://cache.nixos.org
             extra-trusted-public-keys = cache.nixos.org-1:6NCHdD59X431o0gWypbMrAURkbJ16ZPMQFGspcDShjY=
+          summarize: true
       - name: Enable Cachix cache
-        uses: cachix/cachix-action@v16
+        uses: cachix/cachix-action@v17
         with:
           name: livestore
           authToken: '${{ env.CACHIX_AUTH_TOKEN }}'
-      - name: Install megarepo CLI
-        run: 'nix profile install github:overengineeringstudio/effect-utils#megarepo'
-        shell: bash
       - name: Sync megarepo dependencies
-        run: mr sync --frozen
+        env:
+          MEGAREPO_STORE: '${{ runner.temp }}/megarepo-store/${{ github.run_id }}/${{ github.run_attempt }}/${{ github.job }}'
+        run: |
+          EU_REV=$(jq -r '.members["effect-utils"].commit' megarepo.lock)
+          if [ -z "$EU_REV" ] || [ "$EU_REV" = "null" ]; then
+            echo '::error::megarepo.lock missing members["effect-utils"].commit'
+            exit 1
+          fi
+          mkdir -p "$MEGAREPO_STORE"
+          echo "Using job-local megarepo store: $MEGAREPO_STORE"
+          nix run "github:overengineeringstudio/effect-utils/$EU_REV#megarepo" -- apply --all
         shell: bash
       - name: Use pinned devenv from lock
         run: |
@@ -733,7 +1337,20 @@ jobs:
           echo "DEVENV_REV=$DEVENV_REV" >> "$GITHUB_ENV"
           echo "Pinned devenv rev: $DEVENV_REV"
         shell: bash
-      - name: Validate Nix store
+      - name: Isolate pnpm state
+        shell: bash
+        run: |
+          echo "PNPM_STORE_DIR=${{ runner.temp }}/pnpm-store/${{ github.job }}" >> "$GITHUB_ENV"
+          echo "PNPM_HOME=${{ github.workspace }}/.pnpm-home" >> "$GITHUB_ENV"
+      - id: restore-pnpm-state
+        name: Restore pnpm state
+        uses: actions/cache/restore@v4
+        with:
+          path: |
+            ${{ github.workspace }}/.pnpm-home
+            ${{ runner.temp }}/pnpm-store/${{ github.job }}
+          key: "livestore-pnpm-state-v1-${{ runner.os }}-${{ runner.arch }}-${{ hashFiles('**/pnpm-lock.yaml') }}"
+      - name: Resolve devenv
         run: |
           if [ -z "${DEVENV_REV:-}" ]; then
             DEVENV_REV=$(jq -r .nodes.devenv.locked.rev devenv.lock)
@@ -747,14 +1364,7 @@ jobs:
             nix build --no-link --print-out-paths "github:cachix/devenv/$DEVENV_REV#devenv"
           }
 
-          # Always append restrict-eval=false so caller-provided NIX_CONFIG keeps its settings.
-          if [ -n "${NIX_CONFIG:-}" ]; then
-            NIX_CONFIG_WITH_UNRESTRICTED_EVAL="$NIX_CONFIG"$'\n''restrict-eval = false'
-          else
-            NIX_CONFIG_WITH_UNRESTRICTED_EVAL='restrict-eval = false'
-          fi
-
-          # Temporary: capture complete diagnostics for #272 root-cause analysis.
+          # Temporary: capture diagnostics dir for #272 root-cause analysis.
           DIAG_ROOT="${RUNNER_TEMP:-/tmp}/nix-store-diagnostics-${GITHUB_JOB:-job}-${RUNNER_OS:-unknown}-${GITHUB_RUN_ATTEMPT:-0}"
           mkdir -p "$DIAG_ROOT"
           echo "NIX_STORE_DIAGNOSTICS_DIR=$DIAG_ROOT" >> "$GITHUB_ENV"
@@ -766,42 +1376,28 @@ jobs:
             echo "runner_arch=${RUNNER_ARCH:-unknown}"
             echo "github_job=${GITHUB_JOB:-unknown}"
             echo "github_run_id=${GITHUB_RUN_ID:-unknown}"
-            echo "github_run_attempt=${GITHUB_RUN_ATTEMPT:-unknown}"
             echo "nix_user_conf_files=${NIX_USER_CONF_FILES:-}"
-            echo ""
-            echo "== uname -a =="
-            uname -a || true
-            if command -v sw_vers > /dev/null 2>&1; then
-              echo ""
-              echo "== sw_vers =="
-              sw_vers || true
-            fi
-            echo ""
-            echo "== nix --version =="
             nix --version || true
           } > "$DIAG_ROOT/environment.txt" 2>&1
 
-          pre_resolve_log="$DIAG_ROOT/resolve-devenv-pre-repair.log"
-          pre_info_log="$DIAG_ROOT/devenv-info-pre-repair.log"
-          verify_log="$DIAG_ROOT/nix-store-verify-pre-repair.log"
-          repair_log="$DIAG_ROOT/nix-store-verify-repair.log"
-          post_resolve_log="$DIAG_ROOT/resolve-devenv-post-repair.log"
-          post_info_log="$DIAG_ROOT/devenv-info-post-repair.log"
+          if ! DEVENV_OUT=$(resolve_devenv 2> >(tee "$DIAG_ROOT/resolve-devenv.log" >&2)); then
+            echo "::error::resolve_devenv failed. Last 30 lines of log:"
+            tail -30 "$DIAG_ROOT/resolve-devenv.log" || true
+            exit 1
+          fi
+          DEVENV_BIN="$DEVENV_OUT/bin/devenv"
 
-          if DEVENV_OUT=$(resolve_devenv 2>"$pre_resolve_log") && DEVENV_BIN="$DEVENV_OUT/bin/devenv" && NIX_CONFIG="$NIX_CONFIG_WITH_UNRESTRICTED_EVAL" "$DEVENV_BIN" info > "$pre_info_log" 2>&1; then
-            echo "Nix store OK"
-          else
-            echo "::warning::Nix store validation failed, collecting diagnostics and repairing..."
-            if ! nix-store --verify --check-contents > "$verify_log" 2>&1; then
-              echo "::warning::nix-store --verify --check-contents reported issues (see diagnostics artifact)"
-            fi
-            if ! nix-store --verify --check-contents --repair > "$repair_log" 2>&1; then
-              echo "::warning::nix-store --verify --check-contents --repair reported issues (see diagnostics artifact)"
-            fi
+          # Fast validity check on the devenv store path (~1-2s vs ~25s for devenv info).
+          if ! nix-store --check-validity "$DEVENV_OUT" 2>/dev/null; then
+            echo "::warning::devenv store path invalid, repairing targeted path..."
+            nix-store --repair-path "$DEVENV_OUT" > "$DIAG_ROOT/nix-store-verify-repair.log" 2>&1 || true
             rm -rf ~/.cache/nix/eval-cache-*
-            DEVENV_OUT=$(resolve_devenv 2>"$post_resolve_log")
+            if ! DEVENV_OUT=$(resolve_devenv 2> >(tee "$DIAG_ROOT/resolve-devenv-post-repair.log" >&2)); then
+              echo "::error::resolve_devenv failed after repair. Last 30 lines of log:"
+              tail -30 "$DIAG_ROOT/resolve-devenv-post-repair.log" || true
+              exit 1
+            fi
             DEVENV_BIN="$DEVENV_OUT/bin/devenv"
-            NIX_CONFIG="$NIX_CONFIG_WITH_UNRESTRICTED_EVAL" "$DEVENV_BIN" info > "$post_info_log" 2>&1
           fi
 
           echo "DEVENV_BIN=$DEVENV_BIN" >> "$GITHUB_ENV"
@@ -820,7 +1416,115 @@ jobs:
       - name: Run integration tests
         env:
           PLAYWRIGHT_SUITE: '${{ matrix.suite }}'
-        run: "if [ -n \"${NIX_CONFIG:-}\" ]; then NIX_CONFIG_WITH_UNRESTRICTED_EVAL=\"$NIX_CONFIG\"$'\\n''restrict-eval = false'; else NIX_CONFIG_WITH_UNRESTRICTED_EVAL='restrict-eval = false'; fi; NIX_CONFIG=\"$NIX_CONFIG_WITH_UNRESTRICTED_EVAL\" \"${DEVENV_BIN:?DEVENV_BIN not set}\" tasks run test:integration:playwright:suite --mode before"
+        run: |
+          __nix_gc_retry_helper=$(mktemp)
+          cat > "$__nix_gc_retry_helper" <<'EOF'
+          #!/usr/bin/env bash
+
+          run_nix_gc_race_retry() {
+            local task="$1"
+            local command="$2"
+            local max="${NIX_GC_RACE_MAX_RETRIES:-10}"
+            local heartbeat="${CI_PROGRESS_HEARTBEAT_SECONDS:-60}"
+            local attempt=1
+            local log rc path start now elapsed hb_pid flattened saw_invalid_path saw_cachix_signature had_errexit
+
+            start="$(date +%s)"
+
+            write_summary() {
+              [ -n "${GITHUB_STEP_SUMMARY:-}" ] || return 0
+              {
+                echo "### CI Task"
+                echo "- Task: $task"
+                echo "- Status: $1"
+                echo "- Duration: $elapsed s"
+                echo "- Attempts: $attempt/$max"
+                [ -z "${2:-}" ] || echo "- Note: $2"
+              } >> "$GITHUB_STEP_SUMMARY"
+            }
+
+            while [ "$attempt" -le "$max" ]; do
+              echo "::notice::[ci] starting $task (attempt $attempt/$max)"
+              (
+                while sleep "$heartbeat"; do
+                  now=$(date +%s)
+                  elapsed=$((now - start))
+                  echo "::notice::[ci] $task still running after $elapsed s (attempt $attempt/$max)"
+                done
+              ) &
+              hb_pid=$!
+
+              log=$(mktemp)
+              had_errexit=false
+              case $- in
+                *e*) had_errexit=true ;;
+              esac
+              set +e
+              eval "$command" > >(tee -a "$log") 2> >(tee -a "$log" >&2)
+              rc=$?
+              if [ "$had_errexit" = true ]; then
+                set -e
+              fi
+
+              kill "$hb_pid" 2>/dev/null || true
+              wait "$hb_pid" 2>/dev/null || true
+
+              now=$(date +%s)
+              elapsed=$((now - start))
+
+              if [ "$rc" -eq 0 ]; then
+                echo "::notice::[ci] completed $task in $elapsed s"
+                if [ "$attempt" -gt 1 ]; then
+                  write_summary success "Recovered from Nix GC race after retry"
+                else
+                  write_summary success
+                fi
+                rm -f "$log"
+                return 0
+              fi
+
+              flattened=$(tr '\r\n' '  ' < "$log" | sed -E $'s/\x1B\\[[0-9;]*m//g')
+              path=$(printf '%s' "$flattened" |
+                grep -o "error:[[:space:]]*path '/nix/store/[^']*'[[:space:]]*is not valid" |
+                head -1 |
+                grep -o "/nix/store/[^']*" |
+                tr -d '[:space:]' || true)
+              saw_invalid_path=false
+              saw_cachix_signature=false
+              [ -n "$path" ] && saw_invalid_path=true
+              printf '%s' "$flattened" | grep -q 'Failed to convert config\.cachix to JSON' && saw_cachix_signature=true || true
+              printf '%s' "$flattened" | grep -q 'while evaluating the option' && printf '%s' "$flattened" | grep -q 'cachix\.package' && saw_cachix_signature=true || true
+              rm -f "$log"
+
+              if [ "$saw_invalid_path" != true ] && [ "$saw_cachix_signature" != true ]; then
+                echo "::warning::[ci] $task failed after $elapsed s without a detected Nix store validity race"
+                write_summary failure "No Nix GC race signature detected"
+                return "$rc"
+              fi
+
+              if [ "$saw_cachix_signature" = true ] && [ -n "$path" ]; then
+                echo "::warning::Nix store validity race detected for $task via cachix eval wrapper (attempt $attempt/$max): $path"
+              elif [ "$saw_cachix_signature" = true ]; then
+                echo "::warning::Nix store validity race detected for $task via cachix eval wrapper without extracted store path (attempt $attempt/$max)"
+              else
+                echo "::warning::Nix store validity race detected for $task (attempt $attempt/$max): $path"
+              fi
+
+              [ -z "$path" ] || nix-store --realise "$path" 2>/dev/null || true
+              rm -rf ~/.cache/nix/eval-cache-*
+              attempt=$((attempt + 1))
+            done
+
+            now=$(date +%s)
+            elapsed=$((now - start))
+            echo "::error::Nix GC race retry exhausted for $task ($max attempts)"
+            write_summary failure "Nix GC race retry exhausted"
+            return 1
+          }
+          EOF
+          . "$__nix_gc_retry_helper"
+          rm -f "$__nix_gc_retry_helper"
+          run_nix_gc_race_retry 'devenv tasks run test:integration:playwright:suite --mode before' 'if [ -n "${NIX_CONFIG:-}" ]; then NIX_CONFIG_WITH_APPEND=$(printf '"'"'%s\n%s'"'"' "$NIX_CONFIG" '"'"'restrict-eval = false'"'"'); else NIX_CONFIG_WITH_APPEND='"'"'restrict-eval = false'"'"'; fi; NIX_CONFIG="$NIX_CONFIG_WITH_APPEND" PNPM_HOME="${PNPM_HOME:-${{ github.workspace }}/.pnpm-home}" PNPM_STORE_DIR="${PNPM_STORE_DIR:-${{ runner.temp }}/pnpm-store/${{ github.job }}}" DT_PASSTHROUGH=1 "${DEVENV_BIN:?DEVENV_BIN not set}" tasks run test:integration:playwright:suite --mode before'
       - uses: actions/upload-artifact@v4
         if: '${{ !cancelled() }}'
         with:
@@ -832,7 +1536,123 @@ jobs:
         env:
           NETLIFY_AUTH_TOKEN: '${{ secrets.NETLIFY_AUTH_TOKEN }}'
           PLAYWRIGHT_SUITE: '${{ matrix.suite }}'
-        run: "if [ -n \"${NIX_CONFIG:-}\" ]; then NIX_CONFIG_WITH_UNRESTRICTED_EVAL=\"$NIX_CONFIG\"$'\\n''restrict-eval = false'; else NIX_CONFIG_WITH_UNRESTRICTED_EVAL='restrict-eval = false'; fi; NIX_CONFIG=\"$NIX_CONFIG_WITH_UNRESTRICTED_EVAL\" \"${DEVENV_BIN:?DEVENV_BIN not set}\" tasks run test:integration:playwright:upload-trace --mode before"
+        run: |
+          __nix_gc_retry_helper=$(mktemp)
+          cat > "$__nix_gc_retry_helper" <<'EOF'
+          #!/usr/bin/env bash
+
+          run_nix_gc_race_retry() {
+            local task="$1"
+            local command="$2"
+            local max="${NIX_GC_RACE_MAX_RETRIES:-10}"
+            local heartbeat="${CI_PROGRESS_HEARTBEAT_SECONDS:-60}"
+            local attempt=1
+            local log rc path start now elapsed hb_pid flattened saw_invalid_path saw_cachix_signature had_errexit
+
+            start="$(date +%s)"
+
+            write_summary() {
+              [ -n "${GITHUB_STEP_SUMMARY:-}" ] || return 0
+              {
+                echo "### CI Task"
+                echo "- Task: $task"
+                echo "- Status: $1"
+                echo "- Duration: $elapsed s"
+                echo "- Attempts: $attempt/$max"
+                [ -z "${2:-}" ] || echo "- Note: $2"
+              } >> "$GITHUB_STEP_SUMMARY"
+            }
+
+            while [ "$attempt" -le "$max" ]; do
+              echo "::notice::[ci] starting $task (attempt $attempt/$max)"
+              (
+                while sleep "$heartbeat"; do
+                  now=$(date +%s)
+                  elapsed=$((now - start))
+                  echo "::notice::[ci] $task still running after $elapsed s (attempt $attempt/$max)"
+                done
+              ) &
+              hb_pid=$!
+
+              log=$(mktemp)
+              had_errexit=false
+              case $- in
+                *e*) had_errexit=true ;;
+              esac
+              set +e
+              eval "$command" > >(tee -a "$log") 2> >(tee -a "$log" >&2)
+              rc=$?
+              if [ "$had_errexit" = true ]; then
+                set -e
+              fi
+
+              kill "$hb_pid" 2>/dev/null || true
+              wait "$hb_pid" 2>/dev/null || true
+
+              now=$(date +%s)
+              elapsed=$((now - start))
+
+              if [ "$rc" -eq 0 ]; then
+                echo "::notice::[ci] completed $task in $elapsed s"
+                if [ "$attempt" -gt 1 ]; then
+                  write_summary success "Recovered from Nix GC race after retry"
+                else
+                  write_summary success
+                fi
+                rm -f "$log"
+                return 0
+              fi
+
+              flattened=$(tr '\r\n' '  ' < "$log" | sed -E $'s/\x1B\\[[0-9;]*m//g')
+              path=$(printf '%s' "$flattened" |
+                grep -o "error:[[:space:]]*path '/nix/store/[^']*'[[:space:]]*is not valid" |
+                head -1 |
+                grep -o "/nix/store/[^']*" |
+                tr -d '[:space:]' || true)
+              saw_invalid_path=false
+              saw_cachix_signature=false
+              [ -n "$path" ] && saw_invalid_path=true
+              printf '%s' "$flattened" | grep -q 'Failed to convert config\.cachix to JSON' && saw_cachix_signature=true || true
+              printf '%s' "$flattened" | grep -q 'while evaluating the option' && printf '%s' "$flattened" | grep -q 'cachix\.package' && saw_cachix_signature=true || true
+              rm -f "$log"
+
+              if [ "$saw_invalid_path" != true ] && [ "$saw_cachix_signature" != true ]; then
+                echo "::warning::[ci] $task failed after $elapsed s without a detected Nix store validity race"
+                write_summary failure "No Nix GC race signature detected"
+                return "$rc"
+              fi
+
+              if [ "$saw_cachix_signature" = true ] && [ -n "$path" ]; then
+                echo "::warning::Nix store validity race detected for $task via cachix eval wrapper (attempt $attempt/$max): $path"
+              elif [ "$saw_cachix_signature" = true ]; then
+                echo "::warning::Nix store validity race detected for $task via cachix eval wrapper without extracted store path (attempt $attempt/$max)"
+              else
+                echo "::warning::Nix store validity race detected for $task (attempt $attempt/$max): $path"
+              fi
+
+              [ -z "$path" ] || nix-store --realise "$path" 2>/dev/null || true
+              rm -rf ~/.cache/nix/eval-cache-*
+              attempt=$((attempt + 1))
+            done
+
+            now=$(date +%s)
+            elapsed=$((now - start))
+            echo "::error::Nix GC race retry exhausted for $task ($max attempts)"
+            write_summary failure "Nix GC race retry exhausted"
+            return 1
+          }
+          EOF
+          . "$__nix_gc_retry_helper"
+          rm -f "$__nix_gc_retry_helper"
+          run_nix_gc_race_retry 'devenv tasks run test:integration:playwright:upload-trace --mode before' 'if [ -n "${NIX_CONFIG:-}" ]; then NIX_CONFIG_WITH_APPEND=$(printf '"'"'%s\n%s'"'"' "$NIX_CONFIG" '"'"'restrict-eval = false'"'"'); else NIX_CONFIG_WITH_APPEND='"'"'restrict-eval = false'"'"'; fi; NIX_CONFIG="$NIX_CONFIG_WITH_APPEND" PNPM_HOME="${PNPM_HOME:-${{ github.workspace }}/.pnpm-home}" PNPM_STORE_DIR="${PNPM_STORE_DIR:-${{ runner.temp }}/pnpm-store/${{ github.job }}}" DT_PASSTHROUGH=1 "${DEVENV_BIN:?DEVENV_BIN not set}" tasks run test:integration:playwright:upload-trace --mode before'
+      - name: Save pnpm state
+        if: "${{ success() && steps.restore-pnpm-state.outputs.cache-hit != 'true' }}"
+        uses: actions/cache/save@v4
+        with:
+          path: |
+            ${{ github.workspace }}/.pnpm-home
+            ${{ runner.temp }}/pnpm-store/${{ github.job }}
+          key: "livestore-pnpm-state-v1-${{ runner.os }}-${{ runner.arch }}-${{ hashFiles('**/pnpm-lock.yaml') }}"
       - name: Upload Nix diagnostics artifact
         if: failure() && env.NIX_STORE_DIAGNOSTICS_DIR != ''
         uses: actions/upload-artifact@v4
@@ -855,21 +1675,31 @@ jobs:
         uses: DeterminateSystems/determinate-nix-action@v3
         with:
           extra-conf: |
+            experimental-features = nix-command flakes
+            accept-flake-config = true
             extra-substituters = https://devenv.cachix.org
             extra-trusted-public-keys = devenv.cachix.org-1:w1cLUi8dv3hnoSPGAuibQv+f9TZLr6cv/Hm9XgU50cw=
             access-tokens = github.com=${{ github.token }}
             extra-substituters = https://cache.nixos.org
             extra-trusted-public-keys = cache.nixos.org-1:6NCHdD59X431o0gWypbMrAURkbJ16ZPMQFGspcDShjY=
+          summarize: true
       - name: Enable Cachix cache
-        uses: cachix/cachix-action@v16
+        uses: cachix/cachix-action@v17
         with:
           name: livestore
           authToken: '${{ env.CACHIX_AUTH_TOKEN }}'
-      - name: Install megarepo CLI
-        run: 'nix profile install github:overengineeringstudio/effect-utils#megarepo'
-        shell: bash
       - name: Sync megarepo dependencies
-        run: mr sync --frozen
+        env:
+          MEGAREPO_STORE: '${{ runner.temp }}/megarepo-store/${{ github.run_id }}/${{ github.run_attempt }}/${{ github.job }}'
+        run: |
+          EU_REV=$(jq -r '.members["effect-utils"].commit' megarepo.lock)
+          if [ -z "$EU_REV" ] || [ "$EU_REV" = "null" ]; then
+            echo '::error::megarepo.lock missing members["effect-utils"].commit'
+            exit 1
+          fi
+          mkdir -p "$MEGAREPO_STORE"
+          echo "Using job-local megarepo store: $MEGAREPO_STORE"
+          nix run "github:overengineeringstudio/effect-utils/$EU_REV#megarepo" -- apply --all
         shell: bash
       - name: Use pinned devenv from lock
         run: |
@@ -881,7 +1711,20 @@ jobs:
           echo "DEVENV_REV=$DEVENV_REV" >> "$GITHUB_ENV"
           echo "Pinned devenv rev: $DEVENV_REV"
         shell: bash
-      - name: Validate Nix store
+      - name: Isolate pnpm state
+        shell: bash
+        run: |
+          echo "PNPM_STORE_DIR=${{ runner.temp }}/pnpm-store/${{ github.job }}" >> "$GITHUB_ENV"
+          echo "PNPM_HOME=${{ github.workspace }}/.pnpm-home" >> "$GITHUB_ENV"
+      - id: restore-pnpm-state
+        name: Restore pnpm state
+        uses: actions/cache/restore@v4
+        with:
+          path: |
+            ${{ github.workspace }}/.pnpm-home
+            ${{ runner.temp }}/pnpm-store/${{ github.job }}
+          key: "livestore-pnpm-state-v1-${{ runner.os }}-${{ runner.arch }}-${{ hashFiles('**/pnpm-lock.yaml') }}"
+      - name: Resolve devenv
         run: |
           if [ -z "${DEVENV_REV:-}" ]; then
             DEVENV_REV=$(jq -r .nodes.devenv.locked.rev devenv.lock)
@@ -895,14 +1738,7 @@ jobs:
             nix build --no-link --print-out-paths "github:cachix/devenv/$DEVENV_REV#devenv"
           }
 
-          # Always append restrict-eval=false so caller-provided NIX_CONFIG keeps its settings.
-          if [ -n "${NIX_CONFIG:-}" ]; then
-            NIX_CONFIG_WITH_UNRESTRICTED_EVAL="$NIX_CONFIG"$'\n''restrict-eval = false'
-          else
-            NIX_CONFIG_WITH_UNRESTRICTED_EVAL='restrict-eval = false'
-          fi
-
-          # Temporary: capture complete diagnostics for #272 root-cause analysis.
+          # Temporary: capture diagnostics dir for #272 root-cause analysis.
           DIAG_ROOT="${RUNNER_TEMP:-/tmp}/nix-store-diagnostics-${GITHUB_JOB:-job}-${RUNNER_OS:-unknown}-${GITHUB_RUN_ATTEMPT:-0}"
           mkdir -p "$DIAG_ROOT"
           echo "NIX_STORE_DIAGNOSTICS_DIR=$DIAG_ROOT" >> "$GITHUB_ENV"
@@ -914,42 +1750,28 @@ jobs:
             echo "runner_arch=${RUNNER_ARCH:-unknown}"
             echo "github_job=${GITHUB_JOB:-unknown}"
             echo "github_run_id=${GITHUB_RUN_ID:-unknown}"
-            echo "github_run_attempt=${GITHUB_RUN_ATTEMPT:-unknown}"
             echo "nix_user_conf_files=${NIX_USER_CONF_FILES:-}"
-            echo ""
-            echo "== uname -a =="
-            uname -a || true
-            if command -v sw_vers > /dev/null 2>&1; then
-              echo ""
-              echo "== sw_vers =="
-              sw_vers || true
-            fi
-            echo ""
-            echo "== nix --version =="
             nix --version || true
           } > "$DIAG_ROOT/environment.txt" 2>&1
 
-          pre_resolve_log="$DIAG_ROOT/resolve-devenv-pre-repair.log"
-          pre_info_log="$DIAG_ROOT/devenv-info-pre-repair.log"
-          verify_log="$DIAG_ROOT/nix-store-verify-pre-repair.log"
-          repair_log="$DIAG_ROOT/nix-store-verify-repair.log"
-          post_resolve_log="$DIAG_ROOT/resolve-devenv-post-repair.log"
-          post_info_log="$DIAG_ROOT/devenv-info-post-repair.log"
+          if ! DEVENV_OUT=$(resolve_devenv 2> >(tee "$DIAG_ROOT/resolve-devenv.log" >&2)); then
+            echo "::error::resolve_devenv failed. Last 30 lines of log:"
+            tail -30 "$DIAG_ROOT/resolve-devenv.log" || true
+            exit 1
+          fi
+          DEVENV_BIN="$DEVENV_OUT/bin/devenv"
 
-          if DEVENV_OUT=$(resolve_devenv 2>"$pre_resolve_log") && DEVENV_BIN="$DEVENV_OUT/bin/devenv" && NIX_CONFIG="$NIX_CONFIG_WITH_UNRESTRICTED_EVAL" "$DEVENV_BIN" info > "$pre_info_log" 2>&1; then
-            echo "Nix store OK"
-          else
-            echo "::warning::Nix store validation failed, collecting diagnostics and repairing..."
-            if ! nix-store --verify --check-contents > "$verify_log" 2>&1; then
-              echo "::warning::nix-store --verify --check-contents reported issues (see diagnostics artifact)"
-            fi
-            if ! nix-store --verify --check-contents --repair > "$repair_log" 2>&1; then
-              echo "::warning::nix-store --verify --check-contents --repair reported issues (see diagnostics artifact)"
-            fi
+          # Fast validity check on the devenv store path (~1-2s vs ~25s for devenv info).
+          if ! nix-store --check-validity "$DEVENV_OUT" 2>/dev/null; then
+            echo "::warning::devenv store path invalid, repairing targeted path..."
+            nix-store --repair-path "$DEVENV_OUT" > "$DIAG_ROOT/nix-store-verify-repair.log" 2>&1 || true
             rm -rf ~/.cache/nix/eval-cache-*
-            DEVENV_OUT=$(resolve_devenv 2>"$post_resolve_log")
+            if ! DEVENV_OUT=$(resolve_devenv 2> >(tee "$DIAG_ROOT/resolve-devenv-post-repair.log" >&2)); then
+              echo "::error::resolve_devenv failed after repair. Last 30 lines of log:"
+              tail -30 "$DIAG_ROOT/resolve-devenv-post-repair.log" || true
+              exit 1
+            fi
             DEVENV_BIN="$DEVENV_OUT/bin/devenv"
-            NIX_CONFIG="$NIX_CONFIG_WITH_UNRESTRICTED_EVAL" "$DEVENV_BIN" info > "$post_info_log" 2>&1
           fi
 
           echo "DEVENV_BIN=$DEVENV_BIN" >> "$GITHUB_ENV"
@@ -966,11 +1788,127 @@ jobs:
           # Disable in Vite (otherwise CORS issues)
           echo "VITE_OTEL_EXPORTER_OTLP_ENDPOINT=" >> $GITHUB_ENV
       - name: Run performance tests
-        run: "if [ -n \"${NIX_CONFIG:-}\" ]; then NIX_CONFIG_WITH_UNRESTRICTED_EVAL=\"$NIX_CONFIG\"$'\\n''restrict-eval = false'; else NIX_CONFIG_WITH_UNRESTRICTED_EVAL='restrict-eval = false'; fi; NIX_CONFIG=\"$NIX_CONFIG_WITH_UNRESTRICTED_EVAL\" \"${DEVENV_BIN:?DEVENV_BIN not set}\" tasks run test:perf --mode before"
+        run: |
+          __nix_gc_retry_helper=$(mktemp)
+          cat > "$__nix_gc_retry_helper" <<'EOF'
+          #!/usr/bin/env bash
+
+          run_nix_gc_race_retry() {
+            local task="$1"
+            local command="$2"
+            local max="${NIX_GC_RACE_MAX_RETRIES:-10}"
+            local heartbeat="${CI_PROGRESS_HEARTBEAT_SECONDS:-60}"
+            local attempt=1
+            local log rc path start now elapsed hb_pid flattened saw_invalid_path saw_cachix_signature had_errexit
+
+            start="$(date +%s)"
+
+            write_summary() {
+              [ -n "${GITHUB_STEP_SUMMARY:-}" ] || return 0
+              {
+                echo "### CI Task"
+                echo "- Task: $task"
+                echo "- Status: $1"
+                echo "- Duration: $elapsed s"
+                echo "- Attempts: $attempt/$max"
+                [ -z "${2:-}" ] || echo "- Note: $2"
+              } >> "$GITHUB_STEP_SUMMARY"
+            }
+
+            while [ "$attempt" -le "$max" ]; do
+              echo "::notice::[ci] starting $task (attempt $attempt/$max)"
+              (
+                while sleep "$heartbeat"; do
+                  now=$(date +%s)
+                  elapsed=$((now - start))
+                  echo "::notice::[ci] $task still running after $elapsed s (attempt $attempt/$max)"
+                done
+              ) &
+              hb_pid=$!
+
+              log=$(mktemp)
+              had_errexit=false
+              case $- in
+                *e*) had_errexit=true ;;
+              esac
+              set +e
+              eval "$command" > >(tee -a "$log") 2> >(tee -a "$log" >&2)
+              rc=$?
+              if [ "$had_errexit" = true ]; then
+                set -e
+              fi
+
+              kill "$hb_pid" 2>/dev/null || true
+              wait "$hb_pid" 2>/dev/null || true
+
+              now=$(date +%s)
+              elapsed=$((now - start))
+
+              if [ "$rc" -eq 0 ]; then
+                echo "::notice::[ci] completed $task in $elapsed s"
+                if [ "$attempt" -gt 1 ]; then
+                  write_summary success "Recovered from Nix GC race after retry"
+                else
+                  write_summary success
+                fi
+                rm -f "$log"
+                return 0
+              fi
+
+              flattened=$(tr '\r\n' '  ' < "$log" | sed -E $'s/\x1B\\[[0-9;]*m//g')
+              path=$(printf '%s' "$flattened" |
+                grep -o "error:[[:space:]]*path '/nix/store/[^']*'[[:space:]]*is not valid" |
+                head -1 |
+                grep -o "/nix/store/[^']*" |
+                tr -d '[:space:]' || true)
+              saw_invalid_path=false
+              saw_cachix_signature=false
+              [ -n "$path" ] && saw_invalid_path=true
+              printf '%s' "$flattened" | grep -q 'Failed to convert config\.cachix to JSON' && saw_cachix_signature=true || true
+              printf '%s' "$flattened" | grep -q 'while evaluating the option' && printf '%s' "$flattened" | grep -q 'cachix\.package' && saw_cachix_signature=true || true
+              rm -f "$log"
+
+              if [ "$saw_invalid_path" != true ] && [ "$saw_cachix_signature" != true ]; then
+                echo "::warning::[ci] $task failed after $elapsed s without a detected Nix store validity race"
+                write_summary failure "No Nix GC race signature detected"
+                return "$rc"
+              fi
+
+              if [ "$saw_cachix_signature" = true ] && [ -n "$path" ]; then
+                echo "::warning::Nix store validity race detected for $task via cachix eval wrapper (attempt $attempt/$max): $path"
+              elif [ "$saw_cachix_signature" = true ]; then
+                echo "::warning::Nix store validity race detected for $task via cachix eval wrapper without extracted store path (attempt $attempt/$max)"
+              else
+                echo "::warning::Nix store validity race detected for $task (attempt $attempt/$max): $path"
+              fi
+
+              [ -z "$path" ] || nix-store --realise "$path" 2>/dev/null || true
+              rm -rf ~/.cache/nix/eval-cache-*
+              attempt=$((attempt + 1))
+            done
+
+            now=$(date +%s)
+            elapsed=$((now - start))
+            echo "::error::Nix GC race retry exhausted for $task ($max attempts)"
+            write_summary failure "Nix GC race retry exhausted"
+            return 1
+          }
+          EOF
+          . "$__nix_gc_retry_helper"
+          rm -f "$__nix_gc_retry_helper"
+          run_nix_gc_race_retry 'devenv tasks run test:perf --mode before' 'if [ -n "${NIX_CONFIG:-}" ]; then NIX_CONFIG_WITH_APPEND=$(printf '"'"'%s\n%s'"'"' "$NIX_CONFIG" '"'"'restrict-eval = false'"'"'); else NIX_CONFIG_WITH_APPEND='"'"'restrict-eval = false'"'"'; fi; NIX_CONFIG="$NIX_CONFIG_WITH_APPEND" PNPM_HOME="${PNPM_HOME:-${{ github.workspace }}/.pnpm-home}" PNPM_STORE_DIR="${PNPM_STORE_DIR:-${{ runner.temp }}/pnpm-store/${{ github.job }}}" DT_PASSTHROUGH=1 "${DEVENV_BIN:?DEVENV_BIN not set}" tasks run test:perf --mode before'
         env:
           COMMIT_SHA: '${{ github.event.pull_request.head.sha || github.sha }}'
           GRAFANA_ENDPOINT: 'https://livestore.grafana.net'
           OTEL_EXPORTER_OTLP_ENDPOINT: 'https://otlp-gateway-prod-us-east-2.grafana.net/otlp'
+      - name: Save pnpm state
+        if: "${{ success() && steps.restore-pnpm-state.outputs.cache-hit != 'true' }}"
+        uses: actions/cache/save@v4
+        with:
+          path: |
+            ${{ github.workspace }}/.pnpm-home
+            ${{ runner.temp }}/pnpm-store/${{ github.job }}
+          key: "livestore-pnpm-state-v1-${{ runner.os }}-${{ runner.arch }}-${{ hashFiles('**/pnpm-lock.yaml') }}"
       - name: Upload Nix diagnostics artifact
         if: failure() && env.NIX_STORE_DIAGNOSTICS_DIR != ''
         uses: actions/upload-artifact@v4
@@ -985,26 +1923,36 @@ jobs:
       run:
         shell: bash
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
       - name: Install Nix
         uses: DeterminateSystems/determinate-nix-action@v3
         with:
           extra-conf: |
+            experimental-features = nix-command flakes
+            accept-flake-config = true
             extra-substituters = https://devenv.cachix.org
             extra-trusted-public-keys = devenv.cachix.org-1:w1cLUi8dv3hnoSPGAuibQv+f9TZLr6cv/Hm9XgU50cw=
             access-tokens = github.com=${{ github.token }}
             extra-substituters = https://cache.nixos.org
             extra-trusted-public-keys = cache.nixos.org-1:6NCHdD59X431o0gWypbMrAURkbJ16ZPMQFGspcDShjY=
+          summarize: true
       - name: Enable Cachix cache
-        uses: cachix/cachix-action@v16
+        uses: cachix/cachix-action@v17
         with:
           name: livestore
           authToken: '${{ env.CACHIX_AUTH_TOKEN }}'
-      - name: Install megarepo CLI
-        run: 'nix profile install github:overengineeringstudio/effect-utils#megarepo'
-        shell: bash
       - name: Sync megarepo dependencies
-        run: mr sync --frozen
+        env:
+          MEGAREPO_STORE: '${{ runner.temp }}/megarepo-store/${{ github.run_id }}/${{ github.run_attempt }}/${{ github.job }}'
+        run: |
+          EU_REV=$(jq -r '.members["effect-utils"].commit' megarepo.lock)
+          if [ -z "$EU_REV" ] || [ "$EU_REV" = "null" ]; then
+            echo '::error::megarepo.lock missing members["effect-utils"].commit'
+            exit 1
+          fi
+          mkdir -p "$MEGAREPO_STORE"
+          echo "Using job-local megarepo store: $MEGAREPO_STORE"
+          nix run "github:overengineeringstudio/effect-utils/$EU_REV#megarepo" -- apply --all
         shell: bash
       - name: Use pinned devenv from lock
         run: |
@@ -1016,7 +1964,20 @@ jobs:
           echo "DEVENV_REV=$DEVENV_REV" >> "$GITHUB_ENV"
           echo "Pinned devenv rev: $DEVENV_REV"
         shell: bash
-      - name: Validate Nix store
+      - name: Isolate pnpm state
+        shell: bash
+        run: |
+          echo "PNPM_STORE_DIR=${{ runner.temp }}/pnpm-store/${{ github.job }}" >> "$GITHUB_ENV"
+          echo "PNPM_HOME=${{ github.workspace }}/.pnpm-home" >> "$GITHUB_ENV"
+      - id: restore-pnpm-state
+        name: Restore pnpm state
+        uses: actions/cache/restore@v4
+        with:
+          path: |
+            ${{ github.workspace }}/.pnpm-home
+            ${{ runner.temp }}/pnpm-store/${{ github.job }}
+          key: "livestore-pnpm-state-v1-${{ runner.os }}-${{ runner.arch }}-${{ hashFiles('**/pnpm-lock.yaml') }}"
+      - name: Resolve devenv
         run: |
           if [ -z "${DEVENV_REV:-}" ]; then
             DEVENV_REV=$(jq -r .nodes.devenv.locked.rev devenv.lock)
@@ -1030,14 +1991,7 @@ jobs:
             nix build --no-link --print-out-paths "github:cachix/devenv/$DEVENV_REV#devenv"
           }
 
-          # Always append restrict-eval=false so caller-provided NIX_CONFIG keeps its settings.
-          if [ -n "${NIX_CONFIG:-}" ]; then
-            NIX_CONFIG_WITH_UNRESTRICTED_EVAL="$NIX_CONFIG"$'\n''restrict-eval = false'
-          else
-            NIX_CONFIG_WITH_UNRESTRICTED_EVAL='restrict-eval = false'
-          fi
-
-          # Temporary: capture complete diagnostics for #272 root-cause analysis.
+          # Temporary: capture diagnostics dir for #272 root-cause analysis.
           DIAG_ROOT="${RUNNER_TEMP:-/tmp}/nix-store-diagnostics-${GITHUB_JOB:-job}-${RUNNER_OS:-unknown}-${GITHUB_RUN_ATTEMPT:-0}"
           mkdir -p "$DIAG_ROOT"
           echo "NIX_STORE_DIAGNOSTICS_DIR=$DIAG_ROOT" >> "$GITHUB_ENV"
@@ -1049,42 +2003,28 @@ jobs:
             echo "runner_arch=${RUNNER_ARCH:-unknown}"
             echo "github_job=${GITHUB_JOB:-unknown}"
             echo "github_run_id=${GITHUB_RUN_ID:-unknown}"
-            echo "github_run_attempt=${GITHUB_RUN_ATTEMPT:-unknown}"
             echo "nix_user_conf_files=${NIX_USER_CONF_FILES:-}"
-            echo ""
-            echo "== uname -a =="
-            uname -a || true
-            if command -v sw_vers > /dev/null 2>&1; then
-              echo ""
-              echo "== sw_vers =="
-              sw_vers || true
-            fi
-            echo ""
-            echo "== nix --version =="
             nix --version || true
           } > "$DIAG_ROOT/environment.txt" 2>&1
 
-          pre_resolve_log="$DIAG_ROOT/resolve-devenv-pre-repair.log"
-          pre_info_log="$DIAG_ROOT/devenv-info-pre-repair.log"
-          verify_log="$DIAG_ROOT/nix-store-verify-pre-repair.log"
-          repair_log="$DIAG_ROOT/nix-store-verify-repair.log"
-          post_resolve_log="$DIAG_ROOT/resolve-devenv-post-repair.log"
-          post_info_log="$DIAG_ROOT/devenv-info-post-repair.log"
+          if ! DEVENV_OUT=$(resolve_devenv 2> >(tee "$DIAG_ROOT/resolve-devenv.log" >&2)); then
+            echo "::error::resolve_devenv failed. Last 30 lines of log:"
+            tail -30 "$DIAG_ROOT/resolve-devenv.log" || true
+            exit 1
+          fi
+          DEVENV_BIN="$DEVENV_OUT/bin/devenv"
 
-          if DEVENV_OUT=$(resolve_devenv 2>"$pre_resolve_log") && DEVENV_BIN="$DEVENV_OUT/bin/devenv" && NIX_CONFIG="$NIX_CONFIG_WITH_UNRESTRICTED_EVAL" "$DEVENV_BIN" info > "$pre_info_log" 2>&1; then
-            echo "Nix store OK"
-          else
-            echo "::warning::Nix store validation failed, collecting diagnostics and repairing..."
-            if ! nix-store --verify --check-contents > "$verify_log" 2>&1; then
-              echo "::warning::nix-store --verify --check-contents reported issues (see diagnostics artifact)"
-            fi
-            if ! nix-store --verify --check-contents --repair > "$repair_log" 2>&1; then
-              echo "::warning::nix-store --verify --check-contents --repair reported issues (see diagnostics artifact)"
-            fi
+          # Fast validity check on the devenv store path (~1-2s vs ~25s for devenv info).
+          if ! nix-store --check-validity "$DEVENV_OUT" 2>/dev/null; then
+            echo "::warning::devenv store path invalid, repairing targeted path..."
+            nix-store --repair-path "$DEVENV_OUT" > "$DIAG_ROOT/nix-store-verify-repair.log" 2>&1 || true
             rm -rf ~/.cache/nix/eval-cache-*
-            DEVENV_OUT=$(resolve_devenv 2>"$post_resolve_log")
+            if ! DEVENV_OUT=$(resolve_devenv 2> >(tee "$DIAG_ROOT/resolve-devenv-post-repair.log" >&2)); then
+              echo "::error::resolve_devenv failed after repair. Last 30 lines of log:"
+              tail -30 "$DIAG_ROOT/resolve-devenv-post-repair.log" || true
+              exit 1
+            fi
             DEVENV_BIN="$DEVENV_OUT/bin/devenv"
-            NIX_CONFIG="$NIX_CONFIG_WITH_UNRESTRICTED_EVAL" "$DEVENV_BIN" info > "$post_info_log" 2>&1
           fi
 
           echo "DEVENV_BIN=$DEVENV_BIN" >> "$GITHUB_ENV"
@@ -1101,13 +2041,237 @@ jobs:
           # Disable in Vite (otherwise CORS issues)
           echo "VITE_OTEL_EXPORTER_OTLP_ENDPOINT=" >> $GITHUB_ENV
       - name: Build wa-sqlite
-        run: "if [ -n \"${NIX_CONFIG:-}\" ]; then NIX_CONFIG_WITH_UNRESTRICTED_EVAL=\"$NIX_CONFIG\"$'\\n''restrict-eval = false'; else NIX_CONFIG_WITH_UNRESTRICTED_EVAL='restrict-eval = false'; fi; NIX_CONFIG=\"$NIX_CONFIG_WITH_UNRESTRICTED_EVAL\" \"${DEVENV_BIN:?DEVENV_BIN not set}\" tasks run test:integration:wa-sqlite:build --mode before"
+        run: |
+          __nix_gc_retry_helper=$(mktemp)
+          cat > "$__nix_gc_retry_helper" <<'EOF'
+          #!/usr/bin/env bash
+
+          run_nix_gc_race_retry() {
+            local task="$1"
+            local command="$2"
+            local max="${NIX_GC_RACE_MAX_RETRIES:-10}"
+            local heartbeat="${CI_PROGRESS_HEARTBEAT_SECONDS:-60}"
+            local attempt=1
+            local log rc path start now elapsed hb_pid flattened saw_invalid_path saw_cachix_signature had_errexit
+
+            start="$(date +%s)"
+
+            write_summary() {
+              [ -n "${GITHUB_STEP_SUMMARY:-}" ] || return 0
+              {
+                echo "### CI Task"
+                echo "- Task: $task"
+                echo "- Status: $1"
+                echo "- Duration: $elapsed s"
+                echo "- Attempts: $attempt/$max"
+                [ -z "${2:-}" ] || echo "- Note: $2"
+              } >> "$GITHUB_STEP_SUMMARY"
+            }
+
+            while [ "$attempt" -le "$max" ]; do
+              echo "::notice::[ci] starting $task (attempt $attempt/$max)"
+              (
+                while sleep "$heartbeat"; do
+                  now=$(date +%s)
+                  elapsed=$((now - start))
+                  echo "::notice::[ci] $task still running after $elapsed s (attempt $attempt/$max)"
+                done
+              ) &
+              hb_pid=$!
+
+              log=$(mktemp)
+              had_errexit=false
+              case $- in
+                *e*) had_errexit=true ;;
+              esac
+              set +e
+              eval "$command" > >(tee -a "$log") 2> >(tee -a "$log" >&2)
+              rc=$?
+              if [ "$had_errexit" = true ]; then
+                set -e
+              fi
+
+              kill "$hb_pid" 2>/dev/null || true
+              wait "$hb_pid" 2>/dev/null || true
+
+              now=$(date +%s)
+              elapsed=$((now - start))
+
+              if [ "$rc" -eq 0 ]; then
+                echo "::notice::[ci] completed $task in $elapsed s"
+                if [ "$attempt" -gt 1 ]; then
+                  write_summary success "Recovered from Nix GC race after retry"
+                else
+                  write_summary success
+                fi
+                rm -f "$log"
+                return 0
+              fi
+
+              flattened=$(tr '\r\n' '  ' < "$log" | sed -E $'s/\x1B\\[[0-9;]*m//g')
+              path=$(printf '%s' "$flattened" |
+                grep -o "error:[[:space:]]*path '/nix/store/[^']*'[[:space:]]*is not valid" |
+                head -1 |
+                grep -o "/nix/store/[^']*" |
+                tr -d '[:space:]' || true)
+              saw_invalid_path=false
+              saw_cachix_signature=false
+              [ -n "$path" ] && saw_invalid_path=true
+              printf '%s' "$flattened" | grep -q 'Failed to convert config\.cachix to JSON' && saw_cachix_signature=true || true
+              printf '%s' "$flattened" | grep -q 'while evaluating the option' && printf '%s' "$flattened" | grep -q 'cachix\.package' && saw_cachix_signature=true || true
+              rm -f "$log"
+
+              if [ "$saw_invalid_path" != true ] && [ "$saw_cachix_signature" != true ]; then
+                echo "::warning::[ci] $task failed after $elapsed s without a detected Nix store validity race"
+                write_summary failure "No Nix GC race signature detected"
+                return "$rc"
+              fi
+
+              if [ "$saw_cachix_signature" = true ] && [ -n "$path" ]; then
+                echo "::warning::Nix store validity race detected for $task via cachix eval wrapper (attempt $attempt/$max): $path"
+              elif [ "$saw_cachix_signature" = true ]; then
+                echo "::warning::Nix store validity race detected for $task via cachix eval wrapper without extracted store path (attempt $attempt/$max)"
+              else
+                echo "::warning::Nix store validity race detected for $task (attempt $attempt/$max): $path"
+              fi
+
+              [ -z "$path" ] || nix-store --realise "$path" 2>/dev/null || true
+              rm -rf ~/.cache/nix/eval-cache-*
+              attempt=$((attempt + 1))
+            done
+
+            now=$(date +%s)
+            elapsed=$((now - start))
+            echo "::error::Nix GC race retry exhausted for $task ($max attempts)"
+            write_summary failure "Nix GC race retry exhausted"
+            return 1
+          }
+          EOF
+          . "$__nix_gc_retry_helper"
+          rm -f "$__nix_gc_retry_helper"
+          run_nix_gc_race_retry 'devenv tasks run test:integration:wa-sqlite:build --mode before' 'if [ -n "${NIX_CONFIG:-}" ]; then NIX_CONFIG_WITH_APPEND=$(printf '"'"'%s\n%s'"'"' "$NIX_CONFIG" '"'"'restrict-eval = false'"'"'); else NIX_CONFIG_WITH_APPEND='"'"'restrict-eval = false'"'"'; fi; NIX_CONFIG="$NIX_CONFIG_WITH_APPEND" PNPM_HOME="${PNPM_HOME:-${{ github.workspace }}/.pnpm-home}" PNPM_STORE_DIR="${PNPM_STORE_DIR:-${{ runner.temp }}/pnpm-store/${{ github.job }}}" DT_PASSTHROUGH=1 "${DEVENV_BIN:?DEVENV_BIN not set}" tasks run test:integration:wa-sqlite:build --mode before'
       - name: Run wa-sqlite tests
-        run: "if [ -n \"${NIX_CONFIG:-}\" ]; then NIX_CONFIG_WITH_UNRESTRICTED_EVAL=\"$NIX_CONFIG\"$'\\n''restrict-eval = false'; else NIX_CONFIG_WITH_UNRESTRICTED_EVAL='restrict-eval = false'; fi; NIX_CONFIG=\"$NIX_CONFIG_WITH_UNRESTRICTED_EVAL\" \"${DEVENV_BIN:?DEVENV_BIN not set}\" tasks run test:integration:wa-sqlite --mode before"
+        run: |
+          __nix_gc_retry_helper=$(mktemp)
+          cat > "$__nix_gc_retry_helper" <<'EOF'
+          #!/usr/bin/env bash
+
+          run_nix_gc_race_retry() {
+            local task="$1"
+            local command="$2"
+            local max="${NIX_GC_RACE_MAX_RETRIES:-10}"
+            local heartbeat="${CI_PROGRESS_HEARTBEAT_SECONDS:-60}"
+            local attempt=1
+            local log rc path start now elapsed hb_pid flattened saw_invalid_path saw_cachix_signature had_errexit
+
+            start="$(date +%s)"
+
+            write_summary() {
+              [ -n "${GITHUB_STEP_SUMMARY:-}" ] || return 0
+              {
+                echo "### CI Task"
+                echo "- Task: $task"
+                echo "- Status: $1"
+                echo "- Duration: $elapsed s"
+                echo "- Attempts: $attempt/$max"
+                [ -z "${2:-}" ] || echo "- Note: $2"
+              } >> "$GITHUB_STEP_SUMMARY"
+            }
+
+            while [ "$attempt" -le "$max" ]; do
+              echo "::notice::[ci] starting $task (attempt $attempt/$max)"
+              (
+                while sleep "$heartbeat"; do
+                  now=$(date +%s)
+                  elapsed=$((now - start))
+                  echo "::notice::[ci] $task still running after $elapsed s (attempt $attempt/$max)"
+                done
+              ) &
+              hb_pid=$!
+
+              log=$(mktemp)
+              had_errexit=false
+              case $- in
+                *e*) had_errexit=true ;;
+              esac
+              set +e
+              eval "$command" > >(tee -a "$log") 2> >(tee -a "$log" >&2)
+              rc=$?
+              if [ "$had_errexit" = true ]; then
+                set -e
+              fi
+
+              kill "$hb_pid" 2>/dev/null || true
+              wait "$hb_pid" 2>/dev/null || true
+
+              now=$(date +%s)
+              elapsed=$((now - start))
+
+              if [ "$rc" -eq 0 ]; then
+                echo "::notice::[ci] completed $task in $elapsed s"
+                if [ "$attempt" -gt 1 ]; then
+                  write_summary success "Recovered from Nix GC race after retry"
+                else
+                  write_summary success
+                fi
+                rm -f "$log"
+                return 0
+              fi
+
+              flattened=$(tr '\r\n' '  ' < "$log" | sed -E $'s/\x1B\\[[0-9;]*m//g')
+              path=$(printf '%s' "$flattened" |
+                grep -o "error:[[:space:]]*path '/nix/store/[^']*'[[:space:]]*is not valid" |
+                head -1 |
+                grep -o "/nix/store/[^']*" |
+                tr -d '[:space:]' || true)
+              saw_invalid_path=false
+              saw_cachix_signature=false
+              [ -n "$path" ] && saw_invalid_path=true
+              printf '%s' "$flattened" | grep -q 'Failed to convert config\.cachix to JSON' && saw_cachix_signature=true || true
+              printf '%s' "$flattened" | grep -q 'while evaluating the option' && printf '%s' "$flattened" | grep -q 'cachix\.package' && saw_cachix_signature=true || true
+              rm -f "$log"
+
+              if [ "$saw_invalid_path" != true ] && [ "$saw_cachix_signature" != true ]; then
+                echo "::warning::[ci] $task failed after $elapsed s without a detected Nix store validity race"
+                write_summary failure "No Nix GC race signature detected"
+                return "$rc"
+              fi
+
+              if [ "$saw_cachix_signature" = true ] && [ -n "$path" ]; then
+                echo "::warning::Nix store validity race detected for $task via cachix eval wrapper (attempt $attempt/$max): $path"
+              elif [ "$saw_cachix_signature" = true ]; then
+                echo "::warning::Nix store validity race detected for $task via cachix eval wrapper without extracted store path (attempt $attempt/$max)"
+              else
+                echo "::warning::Nix store validity race detected for $task (attempt $attempt/$max): $path"
+              fi
+
+              [ -z "$path" ] || nix-store --realise "$path" 2>/dev/null || true
+              rm -rf ~/.cache/nix/eval-cache-*
+              attempt=$((attempt + 1))
+            done
+
+            now=$(date +%s)
+            elapsed=$((now - start))
+            echo "::error::Nix GC race retry exhausted for $task ($max attempts)"
+            write_summary failure "Nix GC race retry exhausted"
+            return 1
+          }
+          EOF
+          . "$__nix_gc_retry_helper"
+          rm -f "$__nix_gc_retry_helper"
+          run_nix_gc_race_retry 'devenv tasks run test:integration:wa-sqlite --mode before' 'if [ -n "${NIX_CONFIG:-}" ]; then NIX_CONFIG_WITH_APPEND=$(printf '"'"'%s\n%s'"'"' "$NIX_CONFIG" '"'"'restrict-eval = false'"'"'); else NIX_CONFIG_WITH_APPEND='"'"'restrict-eval = false'"'"'; fi; NIX_CONFIG="$NIX_CONFIG_WITH_APPEND" PNPM_HOME="${PNPM_HOME:-${{ github.workspace }}/.pnpm-home}" PNPM_STORE_DIR="${PNPM_STORE_DIR:-${{ runner.temp }}/pnpm-store/${{ github.job }}}" DT_PASSTHROUGH=1 "${DEVENV_BIN:?DEVENV_BIN not set}" tasks run test:integration:wa-sqlite --mode before'
         env:
           COMMIT_SHA: '${{ github.event.pull_request.head.sha || github.sha }}'
           GRAFANA_ENDPOINT: 'https://livestore.grafana.net'
           OTEL_EXPORTER_OTLP_ENDPOINT: 'https://otlp-gateway-prod-us-east-2.grafana.net/otlp'
+      - name: Save pnpm state
+        if: "${{ success() && steps.restore-pnpm-state.outputs.cache-hit != 'true' }}"
+        uses: actions/cache/save@v4
+        with:
+          path: |
+            ${{ github.workspace }}/.pnpm-home
+            ${{ runner.temp }}/pnpm-store/${{ github.job }}
+          key: "livestore-pnpm-state-v1-${{ runner.os }}-${{ runner.arch }}-${{ hashFiles('**/pnpm-lock.yaml') }}"
       - name: Upload Nix diagnostics artifact
         if: failure() && env.NIX_STORE_DIAGNOSTICS_DIR != ''
         uses: actions/upload-artifact@v4
@@ -1124,26 +2288,36 @@ jobs:
       run:
         shell: bash
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
       - name: Install Nix
         uses: DeterminateSystems/determinate-nix-action@v3
         with:
           extra-conf: |
+            experimental-features = nix-command flakes
+            accept-flake-config = true
             extra-substituters = https://devenv.cachix.org
             extra-trusted-public-keys = devenv.cachix.org-1:w1cLUi8dv3hnoSPGAuibQv+f9TZLr6cv/Hm9XgU50cw=
             access-tokens = github.com=${{ github.token }}
             extra-substituters = https://cache.nixos.org
             extra-trusted-public-keys = cache.nixos.org-1:6NCHdD59X431o0gWypbMrAURkbJ16ZPMQFGspcDShjY=
+          summarize: true
       - name: Enable Cachix cache
-        uses: cachix/cachix-action@v16
+        uses: cachix/cachix-action@v17
         with:
           name: livestore
           authToken: '${{ env.CACHIX_AUTH_TOKEN }}'
-      - name: Install megarepo CLI
-        run: 'nix profile install github:overengineeringstudio/effect-utils#megarepo'
-        shell: bash
       - name: Sync megarepo dependencies
-        run: mr sync --frozen
+        env:
+          MEGAREPO_STORE: '${{ runner.temp }}/megarepo-store/${{ github.run_id }}/${{ github.run_attempt }}/${{ github.job }}'
+        run: |
+          EU_REV=$(jq -r '.members["effect-utils"].commit' megarepo.lock)
+          if [ -z "$EU_REV" ] || [ "$EU_REV" = "null" ]; then
+            echo '::error::megarepo.lock missing members["effect-utils"].commit'
+            exit 1
+          fi
+          mkdir -p "$MEGAREPO_STORE"
+          echo "Using job-local megarepo store: $MEGAREPO_STORE"
+          nix run "github:overengineeringstudio/effect-utils/$EU_REV#megarepo" -- apply --all
         shell: bash
       - name: Use pinned devenv from lock
         run: |
@@ -1155,7 +2329,20 @@ jobs:
           echo "DEVENV_REV=$DEVENV_REV" >> "$GITHUB_ENV"
           echo "Pinned devenv rev: $DEVENV_REV"
         shell: bash
-      - name: Validate Nix store
+      - name: Isolate pnpm state
+        shell: bash
+        run: |
+          echo "PNPM_STORE_DIR=${{ runner.temp }}/pnpm-store/${{ github.job }}" >> "$GITHUB_ENV"
+          echo "PNPM_HOME=${{ github.workspace }}/.pnpm-home" >> "$GITHUB_ENV"
+      - id: restore-pnpm-state
+        name: Restore pnpm state
+        uses: actions/cache/restore@v4
+        with:
+          path: |
+            ${{ github.workspace }}/.pnpm-home
+            ${{ runner.temp }}/pnpm-store/${{ github.job }}
+          key: "livestore-pnpm-state-v1-${{ runner.os }}-${{ runner.arch }}-${{ hashFiles('**/pnpm-lock.yaml') }}"
+      - name: Resolve devenv
         run: |
           if [ -z "${DEVENV_REV:-}" ]; then
             DEVENV_REV=$(jq -r .nodes.devenv.locked.rev devenv.lock)
@@ -1169,14 +2356,7 @@ jobs:
             nix build --no-link --print-out-paths "github:cachix/devenv/$DEVENV_REV#devenv"
           }
 
-          # Always append restrict-eval=false so caller-provided NIX_CONFIG keeps its settings.
-          if [ -n "${NIX_CONFIG:-}" ]; then
-            NIX_CONFIG_WITH_UNRESTRICTED_EVAL="$NIX_CONFIG"$'\n''restrict-eval = false'
-          else
-            NIX_CONFIG_WITH_UNRESTRICTED_EVAL='restrict-eval = false'
-          fi
-
-          # Temporary: capture complete diagnostics for #272 root-cause analysis.
+          # Temporary: capture diagnostics dir for #272 root-cause analysis.
           DIAG_ROOT="${RUNNER_TEMP:-/tmp}/nix-store-diagnostics-${GITHUB_JOB:-job}-${RUNNER_OS:-unknown}-${GITHUB_RUN_ATTEMPT:-0}"
           mkdir -p "$DIAG_ROOT"
           echo "NIX_STORE_DIAGNOSTICS_DIR=$DIAG_ROOT" >> "$GITHUB_ENV"
@@ -1188,50 +2368,153 @@ jobs:
             echo "runner_arch=${RUNNER_ARCH:-unknown}"
             echo "github_job=${GITHUB_JOB:-unknown}"
             echo "github_run_id=${GITHUB_RUN_ID:-unknown}"
-            echo "github_run_attempt=${GITHUB_RUN_ATTEMPT:-unknown}"
             echo "nix_user_conf_files=${NIX_USER_CONF_FILES:-}"
-            echo ""
-            echo "== uname -a =="
-            uname -a || true
-            if command -v sw_vers > /dev/null 2>&1; then
-              echo ""
-              echo "== sw_vers =="
-              sw_vers || true
-            fi
-            echo ""
-            echo "== nix --version =="
             nix --version || true
           } > "$DIAG_ROOT/environment.txt" 2>&1
 
-          pre_resolve_log="$DIAG_ROOT/resolve-devenv-pre-repair.log"
-          pre_info_log="$DIAG_ROOT/devenv-info-pre-repair.log"
-          verify_log="$DIAG_ROOT/nix-store-verify-pre-repair.log"
-          repair_log="$DIAG_ROOT/nix-store-verify-repair.log"
-          post_resolve_log="$DIAG_ROOT/resolve-devenv-post-repair.log"
-          post_info_log="$DIAG_ROOT/devenv-info-post-repair.log"
+          if ! DEVENV_OUT=$(resolve_devenv 2> >(tee "$DIAG_ROOT/resolve-devenv.log" >&2)); then
+            echo "::error::resolve_devenv failed. Last 30 lines of log:"
+            tail -30 "$DIAG_ROOT/resolve-devenv.log" || true
+            exit 1
+          fi
+          DEVENV_BIN="$DEVENV_OUT/bin/devenv"
 
-          if DEVENV_OUT=$(resolve_devenv 2>"$pre_resolve_log") && DEVENV_BIN="$DEVENV_OUT/bin/devenv" && NIX_CONFIG="$NIX_CONFIG_WITH_UNRESTRICTED_EVAL" "$DEVENV_BIN" info > "$pre_info_log" 2>&1; then
-            echo "Nix store OK"
-          else
-            echo "::warning::Nix store validation failed, collecting diagnostics and repairing..."
-            if ! nix-store --verify --check-contents > "$verify_log" 2>&1; then
-              echo "::warning::nix-store --verify --check-contents reported issues (see diagnostics artifact)"
-            fi
-            if ! nix-store --verify --check-contents --repair > "$repair_log" 2>&1; then
-              echo "::warning::nix-store --verify --check-contents --repair reported issues (see diagnostics artifact)"
-            fi
+          # Fast validity check on the devenv store path (~1-2s vs ~25s for devenv info).
+          if ! nix-store --check-validity "$DEVENV_OUT" 2>/dev/null; then
+            echo "::warning::devenv store path invalid, repairing targeted path..."
+            nix-store --repair-path "$DEVENV_OUT" > "$DIAG_ROOT/nix-store-verify-repair.log" 2>&1 || true
             rm -rf ~/.cache/nix/eval-cache-*
-            DEVENV_OUT=$(resolve_devenv 2>"$post_resolve_log")
+            if ! DEVENV_OUT=$(resolve_devenv 2> >(tee "$DIAG_ROOT/resolve-devenv-post-repair.log" >&2)); then
+              echo "::error::resolve_devenv failed after repair. Last 30 lines of log:"
+              tail -30 "$DIAG_ROOT/resolve-devenv-post-repair.log" || true
+              exit 1
+            fi
             DEVENV_BIN="$DEVENV_OUT/bin/devenv"
-            NIX_CONFIG="$NIX_CONFIG_WITH_UNRESTRICTED_EVAL" "$DEVENV_BIN" info > "$post_info_log" 2>&1
           fi
 
           echo "DEVENV_BIN=$DEVENV_BIN" >> "$GITHUB_ENV"
           "$DEVENV_BIN" version | tee "$DIAG_ROOT/devenv-version.txt"
         shell: bash
-      - run: "if [ -n \"${NIX_CONFIG:-}\" ]; then NIX_CONFIG_WITH_UNRESTRICTED_EVAL=\"$NIX_CONFIG\"$'\\n''restrict-eval = false'; else NIX_CONFIG_WITH_UNRESTRICTED_EVAL='restrict-eval = false'; fi; NIX_CONFIG=\"$NIX_CONFIG_WITH_UNRESTRICTED_EVAL\" \"${DEVENV_BIN:?DEVENV_BIN not set}\" tasks run release:snapshot:git-sha --mode before"
+      - name: Publish snapshot version
+        run: |
+          __nix_gc_retry_helper=$(mktemp)
+          cat > "$__nix_gc_retry_helper" <<'EOF'
+          #!/usr/bin/env bash
+
+          run_nix_gc_race_retry() {
+            local task="$1"
+            local command="$2"
+            local max="${NIX_GC_RACE_MAX_RETRIES:-10}"
+            local heartbeat="${CI_PROGRESS_HEARTBEAT_SECONDS:-60}"
+            local attempt=1
+            local log rc path start now elapsed hb_pid flattened saw_invalid_path saw_cachix_signature had_errexit
+
+            start="$(date +%s)"
+
+            write_summary() {
+              [ -n "${GITHUB_STEP_SUMMARY:-}" ] || return 0
+              {
+                echo "### CI Task"
+                echo "- Task: $task"
+                echo "- Status: $1"
+                echo "- Duration: $elapsed s"
+                echo "- Attempts: $attempt/$max"
+                [ -z "${2:-}" ] || echo "- Note: $2"
+              } >> "$GITHUB_STEP_SUMMARY"
+            }
+
+            while [ "$attempt" -le "$max" ]; do
+              echo "::notice::[ci] starting $task (attempt $attempt/$max)"
+              (
+                while sleep "$heartbeat"; do
+                  now=$(date +%s)
+                  elapsed=$((now - start))
+                  echo "::notice::[ci] $task still running after $elapsed s (attempt $attempt/$max)"
+                done
+              ) &
+              hb_pid=$!
+
+              log=$(mktemp)
+              had_errexit=false
+              case $- in
+                *e*) had_errexit=true ;;
+              esac
+              set +e
+              eval "$command" > >(tee -a "$log") 2> >(tee -a "$log" >&2)
+              rc=$?
+              if [ "$had_errexit" = true ]; then
+                set -e
+              fi
+
+              kill "$hb_pid" 2>/dev/null || true
+              wait "$hb_pid" 2>/dev/null || true
+
+              now=$(date +%s)
+              elapsed=$((now - start))
+
+              if [ "$rc" -eq 0 ]; then
+                echo "::notice::[ci] completed $task in $elapsed s"
+                if [ "$attempt" -gt 1 ]; then
+                  write_summary success "Recovered from Nix GC race after retry"
+                else
+                  write_summary success
+                fi
+                rm -f "$log"
+                return 0
+              fi
+
+              flattened=$(tr '\r\n' '  ' < "$log" | sed -E $'s/\x1B\\[[0-9;]*m//g')
+              path=$(printf '%s' "$flattened" |
+                grep -o "error:[[:space:]]*path '/nix/store/[^']*'[[:space:]]*is not valid" |
+                head -1 |
+                grep -o "/nix/store/[^']*" |
+                tr -d '[:space:]' || true)
+              saw_invalid_path=false
+              saw_cachix_signature=false
+              [ -n "$path" ] && saw_invalid_path=true
+              printf '%s' "$flattened" | grep -q 'Failed to convert config\.cachix to JSON' && saw_cachix_signature=true || true
+              printf '%s' "$flattened" | grep -q 'while evaluating the option' && printf '%s' "$flattened" | grep -q 'cachix\.package' && saw_cachix_signature=true || true
+              rm -f "$log"
+
+              if [ "$saw_invalid_path" != true ] && [ "$saw_cachix_signature" != true ]; then
+                echo "::warning::[ci] $task failed after $elapsed s without a detected Nix store validity race"
+                write_summary failure "No Nix GC race signature detected"
+                return "$rc"
+              fi
+
+              if [ "$saw_cachix_signature" = true ] && [ -n "$path" ]; then
+                echo "::warning::Nix store validity race detected for $task via cachix eval wrapper (attempt $attempt/$max): $path"
+              elif [ "$saw_cachix_signature" = true ]; then
+                echo "::warning::Nix store validity race detected for $task via cachix eval wrapper without extracted store path (attempt $attempt/$max)"
+              else
+                echo "::warning::Nix store validity race detected for $task (attempt $attempt/$max): $path"
+              fi
+
+              [ -z "$path" ] || nix-store --realise "$path" 2>/dev/null || true
+              rm -rf ~/.cache/nix/eval-cache-*
+              attempt=$((attempt + 1))
+            done
+
+            now=$(date +%s)
+            elapsed=$((now - start))
+            echo "::error::Nix GC race retry exhausted for $task ($max attempts)"
+            write_summary failure "Nix GC race retry exhausted"
+            return 1
+          }
+          EOF
+          . "$__nix_gc_retry_helper"
+          rm -f "$__nix_gc_retry_helper"
+          run_nix_gc_race_retry 'devenv tasks run release:snapshot:git-sha --mode before' 'if [ -n "${NIX_CONFIG:-}" ]; then NIX_CONFIG_WITH_APPEND=$(printf '"'"'%s\n%s'"'"' "$NIX_CONFIG" '"'"'restrict-eval = false'"'"'); else NIX_CONFIG_WITH_APPEND='"'"'restrict-eval = false'"'"'; fi; NIX_CONFIG="$NIX_CONFIG_WITH_APPEND" PNPM_HOME="${PNPM_HOME:-${{ github.workspace }}/.pnpm-home}" PNPM_STORE_DIR="${PNPM_STORE_DIR:-${{ runner.temp }}/pnpm-store/${{ github.job }}}" DT_PASSTHROUGH=1 "${DEVENV_BIN:?DEVENV_BIN not set}" tasks run release:snapshot:git-sha --mode before'
         env:
           GIT_SHA: '${{ github.sha }}'
+      - name: Save pnpm state
+        if: "${{ success() && steps.restore-pnpm-state.outputs.cache-hit != 'true' }}"
+        uses: actions/cache/save@v4
+        with:
+          path: |
+            ${{ github.workspace }}/.pnpm-home
+            ${{ runner.temp }}/pnpm-store/${{ github.job }}
+          key: "livestore-pnpm-state-v1-${{ runner.os }}-${{ runner.arch }}-${{ hashFiles('**/pnpm-lock.yaml') }}"
       - name: Upload Nix diagnostics artifact
         if: failure() && env.NIX_STORE_DIAGNOSTICS_DIR != ''
         uses: actions/upload-artifact@v4
@@ -1246,26 +2529,36 @@ jobs:
       run:
         shell: bash
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
       - name: Install Nix
         uses: DeterminateSystems/determinate-nix-action@v3
         with:
           extra-conf: |
+            experimental-features = nix-command flakes
+            accept-flake-config = true
             extra-substituters = https://devenv.cachix.org
             extra-trusted-public-keys = devenv.cachix.org-1:w1cLUi8dv3hnoSPGAuibQv+f9TZLr6cv/Hm9XgU50cw=
             access-tokens = github.com=${{ github.token }}
             extra-substituters = https://cache.nixos.org
             extra-trusted-public-keys = cache.nixos.org-1:6NCHdD59X431o0gWypbMrAURkbJ16ZPMQFGspcDShjY=
+          summarize: true
       - name: Enable Cachix cache
-        uses: cachix/cachix-action@v16
+        uses: cachix/cachix-action@v17
         with:
           name: livestore
           authToken: '${{ env.CACHIX_AUTH_TOKEN }}'
-      - name: Install megarepo CLI
-        run: 'nix profile install github:overengineeringstudio/effect-utils#megarepo'
-        shell: bash
       - name: Sync megarepo dependencies
-        run: mr sync --frozen
+        env:
+          MEGAREPO_STORE: '${{ runner.temp }}/megarepo-store/${{ github.run_id }}/${{ github.run_attempt }}/${{ github.job }}'
+        run: |
+          EU_REV=$(jq -r '.members["effect-utils"].commit' megarepo.lock)
+          if [ -z "$EU_REV" ] || [ "$EU_REV" = "null" ]; then
+            echo '::error::megarepo.lock missing members["effect-utils"].commit'
+            exit 1
+          fi
+          mkdir -p "$MEGAREPO_STORE"
+          echo "Using job-local megarepo store: $MEGAREPO_STORE"
+          nix run "github:overengineeringstudio/effect-utils/$EU_REV#megarepo" -- apply --all
         shell: bash
       - name: Use pinned devenv from lock
         run: |
@@ -1277,7 +2570,20 @@ jobs:
           echo "DEVENV_REV=$DEVENV_REV" >> "$GITHUB_ENV"
           echo "Pinned devenv rev: $DEVENV_REV"
         shell: bash
-      - name: Validate Nix store
+      - name: Isolate pnpm state
+        shell: bash
+        run: |
+          echo "PNPM_STORE_DIR=${{ runner.temp }}/pnpm-store/${{ github.job }}" >> "$GITHUB_ENV"
+          echo "PNPM_HOME=${{ github.workspace }}/.pnpm-home" >> "$GITHUB_ENV"
+      - id: restore-pnpm-state
+        name: Restore pnpm state
+        uses: actions/cache/restore@v4
+        with:
+          path: |
+            ${{ github.workspace }}/.pnpm-home
+            ${{ runner.temp }}/pnpm-store/${{ github.job }}
+          key: "livestore-pnpm-state-v1-${{ runner.os }}-${{ runner.arch }}-${{ hashFiles('**/pnpm-lock.yaml') }}"
+      - name: Resolve devenv
         run: |
           if [ -z "${DEVENV_REV:-}" ]; then
             DEVENV_REV=$(jq -r .nodes.devenv.locked.rev devenv.lock)
@@ -1291,14 +2597,7 @@ jobs:
             nix build --no-link --print-out-paths "github:cachix/devenv/$DEVENV_REV#devenv"
           }
 
-          # Always append restrict-eval=false so caller-provided NIX_CONFIG keeps its settings.
-          if [ -n "${NIX_CONFIG:-}" ]; then
-            NIX_CONFIG_WITH_UNRESTRICTED_EVAL="$NIX_CONFIG"$'\n''restrict-eval = false'
-          else
-            NIX_CONFIG_WITH_UNRESTRICTED_EVAL='restrict-eval = false'
-          fi
-
-          # Temporary: capture complete diagnostics for #272 root-cause analysis.
+          # Temporary: capture diagnostics dir for #272 root-cause analysis.
           DIAG_ROOT="${RUNNER_TEMP:-/tmp}/nix-store-diagnostics-${GITHUB_JOB:-job}-${RUNNER_OS:-unknown}-${GITHUB_RUN_ATTEMPT:-0}"
           mkdir -p "$DIAG_ROOT"
           echo "NIX_STORE_DIAGNOSTICS_DIR=$DIAG_ROOT" >> "$GITHUB_ENV"
@@ -1310,59 +2609,485 @@ jobs:
             echo "runner_arch=${RUNNER_ARCH:-unknown}"
             echo "github_job=${GITHUB_JOB:-unknown}"
             echo "github_run_id=${GITHUB_RUN_ID:-unknown}"
-            echo "github_run_attempt=${GITHUB_RUN_ATTEMPT:-unknown}"
             echo "nix_user_conf_files=${NIX_USER_CONF_FILES:-}"
-            echo ""
-            echo "== uname -a =="
-            uname -a || true
-            if command -v sw_vers > /dev/null 2>&1; then
-              echo ""
-              echo "== sw_vers =="
-              sw_vers || true
-            fi
-            echo ""
-            echo "== nix --version =="
             nix --version || true
           } > "$DIAG_ROOT/environment.txt" 2>&1
 
-          pre_resolve_log="$DIAG_ROOT/resolve-devenv-pre-repair.log"
-          pre_info_log="$DIAG_ROOT/devenv-info-pre-repair.log"
-          verify_log="$DIAG_ROOT/nix-store-verify-pre-repair.log"
-          repair_log="$DIAG_ROOT/nix-store-verify-repair.log"
-          post_resolve_log="$DIAG_ROOT/resolve-devenv-post-repair.log"
-          post_info_log="$DIAG_ROOT/devenv-info-post-repair.log"
+          if ! DEVENV_OUT=$(resolve_devenv 2> >(tee "$DIAG_ROOT/resolve-devenv.log" >&2)); then
+            echo "::error::resolve_devenv failed. Last 30 lines of log:"
+            tail -30 "$DIAG_ROOT/resolve-devenv.log" || true
+            exit 1
+          fi
+          DEVENV_BIN="$DEVENV_OUT/bin/devenv"
 
-          if DEVENV_OUT=$(resolve_devenv 2>"$pre_resolve_log") && DEVENV_BIN="$DEVENV_OUT/bin/devenv" && NIX_CONFIG="$NIX_CONFIG_WITH_UNRESTRICTED_EVAL" "$DEVENV_BIN" info > "$pre_info_log" 2>&1; then
-            echo "Nix store OK"
-          else
-            echo "::warning::Nix store validation failed, collecting diagnostics and repairing..."
-            if ! nix-store --verify --check-contents > "$verify_log" 2>&1; then
-              echo "::warning::nix-store --verify --check-contents reported issues (see diagnostics artifact)"
-            fi
-            if ! nix-store --verify --check-contents --repair > "$repair_log" 2>&1; then
-              echo "::warning::nix-store --verify --check-contents --repair reported issues (see diagnostics artifact)"
-            fi
+          # Fast validity check on the devenv store path (~1-2s vs ~25s for devenv info).
+          if ! nix-store --check-validity "$DEVENV_OUT" 2>/dev/null; then
+            echo "::warning::devenv store path invalid, repairing targeted path..."
+            nix-store --repair-path "$DEVENV_OUT" > "$DIAG_ROOT/nix-store-verify-repair.log" 2>&1 || true
             rm -rf ~/.cache/nix/eval-cache-*
-            DEVENV_OUT=$(resolve_devenv 2>"$post_resolve_log")
+            if ! DEVENV_OUT=$(resolve_devenv 2> >(tee "$DIAG_ROOT/resolve-devenv-post-repair.log" >&2)); then
+              echo "::error::resolve_devenv failed after repair. Last 30 lines of log:"
+              tail -30 "$DIAG_ROOT/resolve-devenv-post-repair.log" || true
+              exit 1
+            fi
             DEVENV_BIN="$DEVENV_OUT/bin/devenv"
-            NIX_CONFIG="$NIX_CONFIG_WITH_UNRESTRICTED_EVAL" "$DEVENV_BIN" info > "$post_info_log" 2>&1
           fi
 
           echo "DEVENV_BIN=$DEVENV_BIN" >> "$GITHUB_ENV"
           "$DEVENV_BIN" version | tee "$DIAG_ROOT/devenv-version.txt"
         shell: bash
       - name: Install examples dependencies
-        run: "if [ -n \"${NIX_CONFIG:-}\" ]; then NIX_CONFIG_WITH_UNRESTRICTED_EVAL=\"$NIX_CONFIG\"$'\\n''restrict-eval = false'; else NIX_CONFIG_WITH_UNRESTRICTED_EVAL='restrict-eval = false'; fi; NIX_CONFIG=\"$NIX_CONFIG_WITH_UNRESTRICTED_EVAL\" \"${DEVENV_BIN:?DEVENV_BIN not set}\" tasks run examples:install --mode before"
+        run: |
+          __nix_gc_retry_helper=$(mktemp)
+          cat > "$__nix_gc_retry_helper" <<'EOF'
+          #!/usr/bin/env bash
+
+          run_nix_gc_race_retry() {
+            local task="$1"
+            local command="$2"
+            local max="${NIX_GC_RACE_MAX_RETRIES:-10}"
+            local heartbeat="${CI_PROGRESS_HEARTBEAT_SECONDS:-60}"
+            local attempt=1
+            local log rc path start now elapsed hb_pid flattened saw_invalid_path saw_cachix_signature had_errexit
+
+            start="$(date +%s)"
+
+            write_summary() {
+              [ -n "${GITHUB_STEP_SUMMARY:-}" ] || return 0
+              {
+                echo "### CI Task"
+                echo "- Task: $task"
+                echo "- Status: $1"
+                echo "- Duration: $elapsed s"
+                echo "- Attempts: $attempt/$max"
+                [ -z "${2:-}" ] || echo "- Note: $2"
+              } >> "$GITHUB_STEP_SUMMARY"
+            }
+
+            while [ "$attempt" -le "$max" ]; do
+              echo "::notice::[ci] starting $task (attempt $attempt/$max)"
+              (
+                while sleep "$heartbeat"; do
+                  now=$(date +%s)
+                  elapsed=$((now - start))
+                  echo "::notice::[ci] $task still running after $elapsed s (attempt $attempt/$max)"
+                done
+              ) &
+              hb_pid=$!
+
+              log=$(mktemp)
+              had_errexit=false
+              case $- in
+                *e*) had_errexit=true ;;
+              esac
+              set +e
+              eval "$command" > >(tee -a "$log") 2> >(tee -a "$log" >&2)
+              rc=$?
+              if [ "$had_errexit" = true ]; then
+                set -e
+              fi
+
+              kill "$hb_pid" 2>/dev/null || true
+              wait "$hb_pid" 2>/dev/null || true
+
+              now=$(date +%s)
+              elapsed=$((now - start))
+
+              if [ "$rc" -eq 0 ]; then
+                echo "::notice::[ci] completed $task in $elapsed s"
+                if [ "$attempt" -gt 1 ]; then
+                  write_summary success "Recovered from Nix GC race after retry"
+                else
+                  write_summary success
+                fi
+                rm -f "$log"
+                return 0
+              fi
+
+              flattened=$(tr '\r\n' '  ' < "$log" | sed -E $'s/\x1B\\[[0-9;]*m//g')
+              path=$(printf '%s' "$flattened" |
+                grep -o "error:[[:space:]]*path '/nix/store/[^']*'[[:space:]]*is not valid" |
+                head -1 |
+                grep -o "/nix/store/[^']*" |
+                tr -d '[:space:]' || true)
+              saw_invalid_path=false
+              saw_cachix_signature=false
+              [ -n "$path" ] && saw_invalid_path=true
+              printf '%s' "$flattened" | grep -q 'Failed to convert config\.cachix to JSON' && saw_cachix_signature=true || true
+              printf '%s' "$flattened" | grep -q 'while evaluating the option' && printf '%s' "$flattened" | grep -q 'cachix\.package' && saw_cachix_signature=true || true
+              rm -f "$log"
+
+              if [ "$saw_invalid_path" != true ] && [ "$saw_cachix_signature" != true ]; then
+                echo "::warning::[ci] $task failed after $elapsed s without a detected Nix store validity race"
+                write_summary failure "No Nix GC race signature detected"
+                return "$rc"
+              fi
+
+              if [ "$saw_cachix_signature" = true ] && [ -n "$path" ]; then
+                echo "::warning::Nix store validity race detected for $task via cachix eval wrapper (attempt $attempt/$max): $path"
+              elif [ "$saw_cachix_signature" = true ]; then
+                echo "::warning::Nix store validity race detected for $task via cachix eval wrapper without extracted store path (attempt $attempt/$max)"
+              else
+                echo "::warning::Nix store validity race detected for $task (attempt $attempt/$max): $path"
+              fi
+
+              [ -z "$path" ] || nix-store --realise "$path" 2>/dev/null || true
+              rm -rf ~/.cache/nix/eval-cache-*
+              attempt=$((attempt + 1))
+            done
+
+            now=$(date +%s)
+            elapsed=$((now - start))
+            echo "::error::Nix GC race retry exhausted for $task ($max attempts)"
+            write_summary failure "Nix GC race retry exhausted"
+            return 1
+          }
+          EOF
+          . "$__nix_gc_retry_helper"
+          rm -f "$__nix_gc_retry_helper"
+          run_nix_gc_race_retry 'devenv tasks run examples:install --mode before' 'if [ -n "${NIX_CONFIG:-}" ]; then NIX_CONFIG_WITH_APPEND=$(printf '"'"'%s\n%s'"'"' "$NIX_CONFIG" '"'"'restrict-eval = false'"'"'); else NIX_CONFIG_WITH_APPEND='"'"'restrict-eval = false'"'"'; fi; NIX_CONFIG="$NIX_CONFIG_WITH_APPEND" PNPM_HOME="${PNPM_HOME:-${{ github.workspace }}/.pnpm-home}" PNPM_STORE_DIR="${PNPM_STORE_DIR:-${{ runner.temp }}/pnpm-store/${{ github.job }}}" DT_PASSTHROUGH=1 "${DEVENV_BIN:?DEVENV_BIN not set}" tasks run examples:install --mode before'
       - name: Build examples
-        run: "if [ -n \"${NIX_CONFIG:-}\" ]; then NIX_CONFIG_WITH_UNRESTRICTED_EVAL=\"$NIX_CONFIG\"$'\\n''restrict-eval = false'; else NIX_CONFIG_WITH_UNRESTRICTED_EVAL='restrict-eval = false'; fi; NIX_CONFIG=\"$NIX_CONFIG_WITH_UNRESTRICTED_EVAL\" \"${DEVENV_BIN:?DEVENV_BIN not set}\" tasks run examples:build:src --mode before"
+        run: |
+          __nix_gc_retry_helper=$(mktemp)
+          cat > "$__nix_gc_retry_helper" <<'EOF'
+          #!/usr/bin/env bash
+
+          run_nix_gc_race_retry() {
+            local task="$1"
+            local command="$2"
+            local max="${NIX_GC_RACE_MAX_RETRIES:-10}"
+            local heartbeat="${CI_PROGRESS_HEARTBEAT_SECONDS:-60}"
+            local attempt=1
+            local log rc path start now elapsed hb_pid flattened saw_invalid_path saw_cachix_signature had_errexit
+
+            start="$(date +%s)"
+
+            write_summary() {
+              [ -n "${GITHUB_STEP_SUMMARY:-}" ] || return 0
+              {
+                echo "### CI Task"
+                echo "- Task: $task"
+                echo "- Status: $1"
+                echo "- Duration: $elapsed s"
+                echo "- Attempts: $attempt/$max"
+                [ -z "${2:-}" ] || echo "- Note: $2"
+              } >> "$GITHUB_STEP_SUMMARY"
+            }
+
+            while [ "$attempt" -le "$max" ]; do
+              echo "::notice::[ci] starting $task (attempt $attempt/$max)"
+              (
+                while sleep "$heartbeat"; do
+                  now=$(date +%s)
+                  elapsed=$((now - start))
+                  echo "::notice::[ci] $task still running after $elapsed s (attempt $attempt/$max)"
+                done
+              ) &
+              hb_pid=$!
+
+              log=$(mktemp)
+              had_errexit=false
+              case $- in
+                *e*) had_errexit=true ;;
+              esac
+              set +e
+              eval "$command" > >(tee -a "$log") 2> >(tee -a "$log" >&2)
+              rc=$?
+              if [ "$had_errexit" = true ]; then
+                set -e
+              fi
+
+              kill "$hb_pid" 2>/dev/null || true
+              wait "$hb_pid" 2>/dev/null || true
+
+              now=$(date +%s)
+              elapsed=$((now - start))
+
+              if [ "$rc" -eq 0 ]; then
+                echo "::notice::[ci] completed $task in $elapsed s"
+                if [ "$attempt" -gt 1 ]; then
+                  write_summary success "Recovered from Nix GC race after retry"
+                else
+                  write_summary success
+                fi
+                rm -f "$log"
+                return 0
+              fi
+
+              flattened=$(tr '\r\n' '  ' < "$log" | sed -E $'s/\x1B\\[[0-9;]*m//g')
+              path=$(printf '%s' "$flattened" |
+                grep -o "error:[[:space:]]*path '/nix/store/[^']*'[[:space:]]*is not valid" |
+                head -1 |
+                grep -o "/nix/store/[^']*" |
+                tr -d '[:space:]' || true)
+              saw_invalid_path=false
+              saw_cachix_signature=false
+              [ -n "$path" ] && saw_invalid_path=true
+              printf '%s' "$flattened" | grep -q 'Failed to convert config\.cachix to JSON' && saw_cachix_signature=true || true
+              printf '%s' "$flattened" | grep -q 'while evaluating the option' && printf '%s' "$flattened" | grep -q 'cachix\.package' && saw_cachix_signature=true || true
+              rm -f "$log"
+
+              if [ "$saw_invalid_path" != true ] && [ "$saw_cachix_signature" != true ]; then
+                echo "::warning::[ci] $task failed after $elapsed s without a detected Nix store validity race"
+                write_summary failure "No Nix GC race signature detected"
+                return "$rc"
+              fi
+
+              if [ "$saw_cachix_signature" = true ] && [ -n "$path" ]; then
+                echo "::warning::Nix store validity race detected for $task via cachix eval wrapper (attempt $attempt/$max): $path"
+              elif [ "$saw_cachix_signature" = true ]; then
+                echo "::warning::Nix store validity race detected for $task via cachix eval wrapper without extracted store path (attempt $attempt/$max)"
+              else
+                echo "::warning::Nix store validity race detected for $task (attempt $attempt/$max): $path"
+              fi
+
+              [ -z "$path" ] || nix-store --realise "$path" 2>/dev/null || true
+              rm -rf ~/.cache/nix/eval-cache-*
+              attempt=$((attempt + 1))
+            done
+
+            now=$(date +%s)
+            elapsed=$((now - start))
+            echo "::error::Nix GC race retry exhausted for $task ($max attempts)"
+            write_summary failure "Nix GC race retry exhausted"
+            return 1
+          }
+          EOF
+          . "$__nix_gc_retry_helper"
+          rm -f "$__nix_gc_retry_helper"
+          run_nix_gc_race_retry 'devenv tasks run examples:build:src --mode before' 'if [ -n "${NIX_CONFIG:-}" ]; then NIX_CONFIG_WITH_APPEND=$(printf '"'"'%s\n%s'"'"' "$NIX_CONFIG" '"'"'restrict-eval = false'"'"'); else NIX_CONFIG_WITH_APPEND='"'"'restrict-eval = false'"'"'; fi; NIX_CONFIG="$NIX_CONFIG_WITH_APPEND" PNPM_HOME="${PNPM_HOME:-${{ github.workspace }}/.pnpm-home}" PNPM_STORE_DIR="${PNPM_STORE_DIR:-${{ runner.temp }}/pnpm-store/${{ github.job }}}" DT_PASSTHROUGH=1 "${DEVENV_BIN:?DEVENV_BIN not set}" tasks run examples:build:src --mode before'
       - name: Test examples
-        run: "if [ -n \"${NIX_CONFIG:-}\" ]; then NIX_CONFIG_WITH_UNRESTRICTED_EVAL=\"$NIX_CONFIG\"$'\\n''restrict-eval = false'; else NIX_CONFIG_WITH_UNRESTRICTED_EVAL='restrict-eval = false'; fi; NIX_CONFIG=\"$NIX_CONFIG_WITH_UNRESTRICTED_EVAL\" \"${DEVENV_BIN:?DEVENV_BIN not set}\" tasks run examples:test --mode before"
+        run: |
+          __nix_gc_retry_helper=$(mktemp)
+          cat > "$__nix_gc_retry_helper" <<'EOF'
+          #!/usr/bin/env bash
+
+          run_nix_gc_race_retry() {
+            local task="$1"
+            local command="$2"
+            local max="${NIX_GC_RACE_MAX_RETRIES:-10}"
+            local heartbeat="${CI_PROGRESS_HEARTBEAT_SECONDS:-60}"
+            local attempt=1
+            local log rc path start now elapsed hb_pid flattened saw_invalid_path saw_cachix_signature had_errexit
+
+            start="$(date +%s)"
+
+            write_summary() {
+              [ -n "${GITHUB_STEP_SUMMARY:-}" ] || return 0
+              {
+                echo "### CI Task"
+                echo "- Task: $task"
+                echo "- Status: $1"
+                echo "- Duration: $elapsed s"
+                echo "- Attempts: $attempt/$max"
+                [ -z "${2:-}" ] || echo "- Note: $2"
+              } >> "$GITHUB_STEP_SUMMARY"
+            }
+
+            while [ "$attempt" -le "$max" ]; do
+              echo "::notice::[ci] starting $task (attempt $attempt/$max)"
+              (
+                while sleep "$heartbeat"; do
+                  now=$(date +%s)
+                  elapsed=$((now - start))
+                  echo "::notice::[ci] $task still running after $elapsed s (attempt $attempt/$max)"
+                done
+              ) &
+              hb_pid=$!
+
+              log=$(mktemp)
+              had_errexit=false
+              case $- in
+                *e*) had_errexit=true ;;
+              esac
+              set +e
+              eval "$command" > >(tee -a "$log") 2> >(tee -a "$log" >&2)
+              rc=$?
+              if [ "$had_errexit" = true ]; then
+                set -e
+              fi
+
+              kill "$hb_pid" 2>/dev/null || true
+              wait "$hb_pid" 2>/dev/null || true
+
+              now=$(date +%s)
+              elapsed=$((now - start))
+
+              if [ "$rc" -eq 0 ]; then
+                echo "::notice::[ci] completed $task in $elapsed s"
+                if [ "$attempt" -gt 1 ]; then
+                  write_summary success "Recovered from Nix GC race after retry"
+                else
+                  write_summary success
+                fi
+                rm -f "$log"
+                return 0
+              fi
+
+              flattened=$(tr '\r\n' '  ' < "$log" | sed -E $'s/\x1B\\[[0-9;]*m//g')
+              path=$(printf '%s' "$flattened" |
+                grep -o "error:[[:space:]]*path '/nix/store/[^']*'[[:space:]]*is not valid" |
+                head -1 |
+                grep -o "/nix/store/[^']*" |
+                tr -d '[:space:]' || true)
+              saw_invalid_path=false
+              saw_cachix_signature=false
+              [ -n "$path" ] && saw_invalid_path=true
+              printf '%s' "$flattened" | grep -q 'Failed to convert config\.cachix to JSON' && saw_cachix_signature=true || true
+              printf '%s' "$flattened" | grep -q 'while evaluating the option' && printf '%s' "$flattened" | grep -q 'cachix\.package' && saw_cachix_signature=true || true
+              rm -f "$log"
+
+              if [ "$saw_invalid_path" != true ] && [ "$saw_cachix_signature" != true ]; then
+                echo "::warning::[ci] $task failed after $elapsed s without a detected Nix store validity race"
+                write_summary failure "No Nix GC race signature detected"
+                return "$rc"
+              fi
+
+              if [ "$saw_cachix_signature" = true ] && [ -n "$path" ]; then
+                echo "::warning::Nix store validity race detected for $task via cachix eval wrapper (attempt $attempt/$max): $path"
+              elif [ "$saw_cachix_signature" = true ]; then
+                echo "::warning::Nix store validity race detected for $task via cachix eval wrapper without extracted store path (attempt $attempt/$max)"
+              else
+                echo "::warning::Nix store validity race detected for $task (attempt $attempt/$max): $path"
+              fi
+
+              [ -z "$path" ] || nix-store --realise "$path" 2>/dev/null || true
+              rm -rf ~/.cache/nix/eval-cache-*
+              attempt=$((attempt + 1))
+            done
+
+            now=$(date +%s)
+            elapsed=$((now - start))
+            echo "::error::Nix GC race retry exhausted for $task ($max attempts)"
+            write_summary failure "Nix GC race retry exhausted"
+            return 1
+          }
+          EOF
+          . "$__nix_gc_retry_helper"
+          rm -f "$__nix_gc_retry_helper"
+          run_nix_gc_race_retry 'devenv tasks run examples:test --mode before' 'if [ -n "${NIX_CONFIG:-}" ]; then NIX_CONFIG_WITH_APPEND=$(printf '"'"'%s\n%s'"'"' "$NIX_CONFIG" '"'"'restrict-eval = false'"'"'); else NIX_CONFIG_WITH_APPEND='"'"'restrict-eval = false'"'"'; fi; NIX_CONFIG="$NIX_CONFIG_WITH_APPEND" PNPM_HOME="${PNPM_HOME:-${{ github.workspace }}/.pnpm-home}" PNPM_STORE_DIR="${PNPM_STORE_DIR:-${{ runner.temp }}/pnpm-store/${{ github.job }}}" DT_PASSTHROUGH=1 "${DEVENV_BIN:?DEVENV_BIN not set}" tasks run examples:test --mode before'
       - name: Deploy examples to Cloudflare
         if: github.event.pull_request.head.repo.fork != true
-        run: "if [ -n \"${NIX_CONFIG:-}\" ]; then NIX_CONFIG_WITH_UNRESTRICTED_EVAL=\"$NIX_CONFIG\"$'\\n''restrict-eval = false'; else NIX_CONFIG_WITH_UNRESTRICTED_EVAL='restrict-eval = false'; fi; NIX_CONFIG=\"$NIX_CONFIG_WITH_UNRESTRICTED_EVAL\" \"${DEVENV_BIN:?DEVENV_BIN not set}\" tasks run examples:deploy --mode before"
+        run: |
+          __nix_gc_retry_helper=$(mktemp)
+          cat > "$__nix_gc_retry_helper" <<'EOF'
+          #!/usr/bin/env bash
+
+          run_nix_gc_race_retry() {
+            local task="$1"
+            local command="$2"
+            local max="${NIX_GC_RACE_MAX_RETRIES:-10}"
+            local heartbeat="${CI_PROGRESS_HEARTBEAT_SECONDS:-60}"
+            local attempt=1
+            local log rc path start now elapsed hb_pid flattened saw_invalid_path saw_cachix_signature had_errexit
+
+            start="$(date +%s)"
+
+            write_summary() {
+              [ -n "${GITHUB_STEP_SUMMARY:-}" ] || return 0
+              {
+                echo "### CI Task"
+                echo "- Task: $task"
+                echo "- Status: $1"
+                echo "- Duration: $elapsed s"
+                echo "- Attempts: $attempt/$max"
+                [ -z "${2:-}" ] || echo "- Note: $2"
+              } >> "$GITHUB_STEP_SUMMARY"
+            }
+
+            while [ "$attempt" -le "$max" ]; do
+              echo "::notice::[ci] starting $task (attempt $attempt/$max)"
+              (
+                while sleep "$heartbeat"; do
+                  now=$(date +%s)
+                  elapsed=$((now - start))
+                  echo "::notice::[ci] $task still running after $elapsed s (attempt $attempt/$max)"
+                done
+              ) &
+              hb_pid=$!
+
+              log=$(mktemp)
+              had_errexit=false
+              case $- in
+                *e*) had_errexit=true ;;
+              esac
+              set +e
+              eval "$command" > >(tee -a "$log") 2> >(tee -a "$log" >&2)
+              rc=$?
+              if [ "$had_errexit" = true ]; then
+                set -e
+              fi
+
+              kill "$hb_pid" 2>/dev/null || true
+              wait "$hb_pid" 2>/dev/null || true
+
+              now=$(date +%s)
+              elapsed=$((now - start))
+
+              if [ "$rc" -eq 0 ]; then
+                echo "::notice::[ci] completed $task in $elapsed s"
+                if [ "$attempt" -gt 1 ]; then
+                  write_summary success "Recovered from Nix GC race after retry"
+                else
+                  write_summary success
+                fi
+                rm -f "$log"
+                return 0
+              fi
+
+              flattened=$(tr '\r\n' '  ' < "$log" | sed -E $'s/\x1B\\[[0-9;]*m//g')
+              path=$(printf '%s' "$flattened" |
+                grep -o "error:[[:space:]]*path '/nix/store/[^']*'[[:space:]]*is not valid" |
+                head -1 |
+                grep -o "/nix/store/[^']*" |
+                tr -d '[:space:]' || true)
+              saw_invalid_path=false
+              saw_cachix_signature=false
+              [ -n "$path" ] && saw_invalid_path=true
+              printf '%s' "$flattened" | grep -q 'Failed to convert config\.cachix to JSON' && saw_cachix_signature=true || true
+              printf '%s' "$flattened" | grep -q 'while evaluating the option' && printf '%s' "$flattened" | grep -q 'cachix\.package' && saw_cachix_signature=true || true
+              rm -f "$log"
+
+              if [ "$saw_invalid_path" != true ] && [ "$saw_cachix_signature" != true ]; then
+                echo "::warning::[ci] $task failed after $elapsed s without a detected Nix store validity race"
+                write_summary failure "No Nix GC race signature detected"
+                return "$rc"
+              fi
+
+              if [ "$saw_cachix_signature" = true ] && [ -n "$path" ]; then
+                echo "::warning::Nix store validity race detected for $task via cachix eval wrapper (attempt $attempt/$max): $path"
+              elif [ "$saw_cachix_signature" = true ]; then
+                echo "::warning::Nix store validity race detected for $task via cachix eval wrapper without extracted store path (attempt $attempt/$max)"
+              else
+                echo "::warning::Nix store validity race detected for $task (attempt $attempt/$max): $path"
+              fi
+
+              [ -z "$path" ] || nix-store --realise "$path" 2>/dev/null || true
+              rm -rf ~/.cache/nix/eval-cache-*
+              attempt=$((attempt + 1))
+            done
+
+            now=$(date +%s)
+            elapsed=$((now - start))
+            echo "::error::Nix GC race retry exhausted for $task ($max attempts)"
+            write_summary failure "Nix GC race retry exhausted"
+            return 1
+          }
+          EOF
+          . "$__nix_gc_retry_helper"
+          rm -f "$__nix_gc_retry_helper"
+          run_nix_gc_race_retry 'devenv tasks run examples:deploy --mode before' 'if [ -n "${NIX_CONFIG:-}" ]; then NIX_CONFIG_WITH_APPEND=$(printf '"'"'%s\n%s'"'"' "$NIX_CONFIG" '"'"'restrict-eval = false'"'"'); else NIX_CONFIG_WITH_APPEND='"'"'restrict-eval = false'"'"'; fi; NIX_CONFIG="$NIX_CONFIG_WITH_APPEND" PNPM_HOME="${PNPM_HOME:-${{ github.workspace }}/.pnpm-home}" PNPM_STORE_DIR="${PNPM_STORE_DIR:-${{ runner.temp }}/pnpm-store/${{ github.job }}}" DT_PASSTHROUGH=1 "${DEVENV_BIN:?DEVENV_BIN not set}" tasks run examples:deploy --mode before'
         env:
           CLOUDFLARE_API_TOKEN: '${{ secrets.CLOUDFLARE_API_TOKEN }}'
           CLOUDFLARE_ACCOUNT_ID: '${{ secrets.CLOUDFLARE_ACCOUNT_ID }}'
+      - name: Save pnpm state
+        if: "${{ success() && steps.restore-pnpm-state.outputs.cache-hit != 'true' }}"
+        uses: actions/cache/save@v4
+        with:
+          path: |
+            ${{ github.workspace }}/.pnpm-home
+            ${{ runner.temp }}/pnpm-store/${{ github.job }}
+          key: "livestore-pnpm-state-v1-${{ runner.os }}-${{ runner.arch }}-${{ hashFiles('**/pnpm-lock.yaml') }}"
       - name: Upload Nix diagnostics artifact
         if: failure() && env.NIX_STORE_DIAGNOSTICS_DIR != ''
         uses: actions/upload-artifact@v4
@@ -1377,26 +3102,36 @@ jobs:
       run:
         shell: bash
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
       - name: Install Nix
         uses: DeterminateSystems/determinate-nix-action@v3
         with:
           extra-conf: |
+            experimental-features = nix-command flakes
+            accept-flake-config = true
             extra-substituters = https://devenv.cachix.org
             extra-trusted-public-keys = devenv.cachix.org-1:w1cLUi8dv3hnoSPGAuibQv+f9TZLr6cv/Hm9XgU50cw=
             access-tokens = github.com=${{ github.token }}
             extra-substituters = https://cache.nixos.org
             extra-trusted-public-keys = cache.nixos.org-1:6NCHdD59X431o0gWypbMrAURkbJ16ZPMQFGspcDShjY=
+          summarize: true
       - name: Enable Cachix cache
-        uses: cachix/cachix-action@v16
+        uses: cachix/cachix-action@v17
         with:
           name: livestore
           authToken: '${{ env.CACHIX_AUTH_TOKEN }}'
-      - name: Install megarepo CLI
-        run: 'nix profile install github:overengineeringstudio/effect-utils#megarepo'
-        shell: bash
       - name: Sync megarepo dependencies
-        run: mr sync --frozen
+        env:
+          MEGAREPO_STORE: '${{ runner.temp }}/megarepo-store/${{ github.run_id }}/${{ github.run_attempt }}/${{ github.job }}'
+        run: |
+          EU_REV=$(jq -r '.members["effect-utils"].commit' megarepo.lock)
+          if [ -z "$EU_REV" ] || [ "$EU_REV" = "null" ]; then
+            echo '::error::megarepo.lock missing members["effect-utils"].commit'
+            exit 1
+          fi
+          mkdir -p "$MEGAREPO_STORE"
+          echo "Using job-local megarepo store: $MEGAREPO_STORE"
+          nix run "github:overengineeringstudio/effect-utils/$EU_REV#megarepo" -- apply --all
         shell: bash
       - name: Use pinned devenv from lock
         run: |
@@ -1408,7 +3143,20 @@ jobs:
           echo "DEVENV_REV=$DEVENV_REV" >> "$GITHUB_ENV"
           echo "Pinned devenv rev: $DEVENV_REV"
         shell: bash
-      - name: Validate Nix store
+      - name: Isolate pnpm state
+        shell: bash
+        run: |
+          echo "PNPM_STORE_DIR=${{ runner.temp }}/pnpm-store/${{ github.job }}" >> "$GITHUB_ENV"
+          echo "PNPM_HOME=${{ github.workspace }}/.pnpm-home" >> "$GITHUB_ENV"
+      - id: restore-pnpm-state
+        name: Restore pnpm state
+        uses: actions/cache/restore@v4
+        with:
+          path: |
+            ${{ github.workspace }}/.pnpm-home
+            ${{ runner.temp }}/pnpm-store/${{ github.job }}
+          key: "livestore-pnpm-state-v1-${{ runner.os }}-${{ runner.arch }}-${{ hashFiles('**/pnpm-lock.yaml') }}"
+      - name: Resolve devenv
         run: |
           if [ -z "${DEVENV_REV:-}" ]; then
             DEVENV_REV=$(jq -r .nodes.devenv.locked.rev devenv.lock)
@@ -1422,14 +3170,7 @@ jobs:
             nix build --no-link --print-out-paths "github:cachix/devenv/$DEVENV_REV#devenv"
           }
 
-          # Always append restrict-eval=false so caller-provided NIX_CONFIG keeps its settings.
-          if [ -n "${NIX_CONFIG:-}" ]; then
-            NIX_CONFIG_WITH_UNRESTRICTED_EVAL="$NIX_CONFIG"$'\n''restrict-eval = false'
-          else
-            NIX_CONFIG_WITH_UNRESTRICTED_EVAL='restrict-eval = false'
-          fi
-
-          # Temporary: capture complete diagnostics for #272 root-cause analysis.
+          # Temporary: capture diagnostics dir for #272 root-cause analysis.
           DIAG_ROOT="${RUNNER_TEMP:-/tmp}/nix-store-diagnostics-${GITHUB_JOB:-job}-${RUNNER_OS:-unknown}-${GITHUB_RUN_ATTEMPT:-0}"
           mkdir -p "$DIAG_ROOT"
           echo "NIX_STORE_DIAGNOSTICS_DIR=$DIAG_ROOT" >> "$GITHUB_ENV"
@@ -1441,56 +3182,474 @@ jobs:
             echo "runner_arch=${RUNNER_ARCH:-unknown}"
             echo "github_job=${GITHUB_JOB:-unknown}"
             echo "github_run_id=${GITHUB_RUN_ID:-unknown}"
-            echo "github_run_attempt=${GITHUB_RUN_ATTEMPT:-unknown}"
             echo "nix_user_conf_files=${NIX_USER_CONF_FILES:-}"
-            echo ""
-            echo "== uname -a =="
-            uname -a || true
-            if command -v sw_vers > /dev/null 2>&1; then
-              echo ""
-              echo "== sw_vers =="
-              sw_vers || true
-            fi
-            echo ""
-            echo "== nix --version =="
             nix --version || true
           } > "$DIAG_ROOT/environment.txt" 2>&1
 
-          pre_resolve_log="$DIAG_ROOT/resolve-devenv-pre-repair.log"
-          pre_info_log="$DIAG_ROOT/devenv-info-pre-repair.log"
-          verify_log="$DIAG_ROOT/nix-store-verify-pre-repair.log"
-          repair_log="$DIAG_ROOT/nix-store-verify-repair.log"
-          post_resolve_log="$DIAG_ROOT/resolve-devenv-post-repair.log"
-          post_info_log="$DIAG_ROOT/devenv-info-post-repair.log"
+          if ! DEVENV_OUT=$(resolve_devenv 2> >(tee "$DIAG_ROOT/resolve-devenv.log" >&2)); then
+            echo "::error::resolve_devenv failed. Last 30 lines of log:"
+            tail -30 "$DIAG_ROOT/resolve-devenv.log" || true
+            exit 1
+          fi
+          DEVENV_BIN="$DEVENV_OUT/bin/devenv"
 
-          if DEVENV_OUT=$(resolve_devenv 2>"$pre_resolve_log") && DEVENV_BIN="$DEVENV_OUT/bin/devenv" && NIX_CONFIG="$NIX_CONFIG_WITH_UNRESTRICTED_EVAL" "$DEVENV_BIN" info > "$pre_info_log" 2>&1; then
-            echo "Nix store OK"
-          else
-            echo "::warning::Nix store validation failed, collecting diagnostics and repairing..."
-            if ! nix-store --verify --check-contents > "$verify_log" 2>&1; then
-              echo "::warning::nix-store --verify --check-contents reported issues (see diagnostics artifact)"
-            fi
-            if ! nix-store --verify --check-contents --repair > "$repair_log" 2>&1; then
-              echo "::warning::nix-store --verify --check-contents --repair reported issues (see diagnostics artifact)"
-            fi
+          # Fast validity check on the devenv store path (~1-2s vs ~25s for devenv info).
+          if ! nix-store --check-validity "$DEVENV_OUT" 2>/dev/null; then
+            echo "::warning::devenv store path invalid, repairing targeted path..."
+            nix-store --repair-path "$DEVENV_OUT" > "$DIAG_ROOT/nix-store-verify-repair.log" 2>&1 || true
             rm -rf ~/.cache/nix/eval-cache-*
-            DEVENV_OUT=$(resolve_devenv 2>"$post_resolve_log")
+            if ! DEVENV_OUT=$(resolve_devenv 2> >(tee "$DIAG_ROOT/resolve-devenv-post-repair.log" >&2)); then
+              echo "::error::resolve_devenv failed after repair. Last 30 lines of log:"
+              tail -30 "$DIAG_ROOT/resolve-devenv-post-repair.log" || true
+              exit 1
+            fi
             DEVENV_BIN="$DEVENV_OUT/bin/devenv"
-            NIX_CONFIG="$NIX_CONFIG_WITH_UNRESTRICTED_EVAL" "$DEVENV_BIN" info > "$post_info_log" 2>&1
           fi
 
           echo "DEVENV_BIN=$DEVENV_BIN" >> "$GITHUB_ENV"
           "$DEVENV_BIN" version | tee "$DIAG_ROOT/devenv-version.txt"
         shell: bash
       - name: Build docs snippets
-        run: "if [ -n \"${NIX_CONFIG:-}\" ]; then NIX_CONFIG_WITH_UNRESTRICTED_EVAL=\"$NIX_CONFIG\"$'\\n''restrict-eval = false'; else NIX_CONFIG_WITH_UNRESTRICTED_EVAL='restrict-eval = false'; fi; NIX_CONFIG=\"$NIX_CONFIG_WITH_UNRESTRICTED_EVAL\" \"${DEVENV_BIN:?DEVENV_BIN not set}\" tasks run docs:build:phase:snippets --mode before"
+        run: |
+          __nix_gc_retry_helper=$(mktemp)
+          cat > "$__nix_gc_retry_helper" <<'EOF'
+          #!/usr/bin/env bash
+
+          run_nix_gc_race_retry() {
+            local task="$1"
+            local command="$2"
+            local max="${NIX_GC_RACE_MAX_RETRIES:-10}"
+            local heartbeat="${CI_PROGRESS_HEARTBEAT_SECONDS:-60}"
+            local attempt=1
+            local log rc path start now elapsed hb_pid flattened saw_invalid_path saw_cachix_signature had_errexit
+
+            start="$(date +%s)"
+
+            write_summary() {
+              [ -n "${GITHUB_STEP_SUMMARY:-}" ] || return 0
+              {
+                echo "### CI Task"
+                echo "- Task: $task"
+                echo "- Status: $1"
+                echo "- Duration: $elapsed s"
+                echo "- Attempts: $attempt/$max"
+                [ -z "${2:-}" ] || echo "- Note: $2"
+              } >> "$GITHUB_STEP_SUMMARY"
+            }
+
+            while [ "$attempt" -le "$max" ]; do
+              echo "::notice::[ci] starting $task (attempt $attempt/$max)"
+              (
+                while sleep "$heartbeat"; do
+                  now=$(date +%s)
+                  elapsed=$((now - start))
+                  echo "::notice::[ci] $task still running after $elapsed s (attempt $attempt/$max)"
+                done
+              ) &
+              hb_pid=$!
+
+              log=$(mktemp)
+              had_errexit=false
+              case $- in
+                *e*) had_errexit=true ;;
+              esac
+              set +e
+              eval "$command" > >(tee -a "$log") 2> >(tee -a "$log" >&2)
+              rc=$?
+              if [ "$had_errexit" = true ]; then
+                set -e
+              fi
+
+              kill "$hb_pid" 2>/dev/null || true
+              wait "$hb_pid" 2>/dev/null || true
+
+              now=$(date +%s)
+              elapsed=$((now - start))
+
+              if [ "$rc" -eq 0 ]; then
+                echo "::notice::[ci] completed $task in $elapsed s"
+                if [ "$attempt" -gt 1 ]; then
+                  write_summary success "Recovered from Nix GC race after retry"
+                else
+                  write_summary success
+                fi
+                rm -f "$log"
+                return 0
+              fi
+
+              flattened=$(tr '\r\n' '  ' < "$log" | sed -E $'s/\x1B\\[[0-9;]*m//g')
+              path=$(printf '%s' "$flattened" |
+                grep -o "error:[[:space:]]*path '/nix/store/[^']*'[[:space:]]*is not valid" |
+                head -1 |
+                grep -o "/nix/store/[^']*" |
+                tr -d '[:space:]' || true)
+              saw_invalid_path=false
+              saw_cachix_signature=false
+              [ -n "$path" ] && saw_invalid_path=true
+              printf '%s' "$flattened" | grep -q 'Failed to convert config\.cachix to JSON' && saw_cachix_signature=true || true
+              printf '%s' "$flattened" | grep -q 'while evaluating the option' && printf '%s' "$flattened" | grep -q 'cachix\.package' && saw_cachix_signature=true || true
+              rm -f "$log"
+
+              if [ "$saw_invalid_path" != true ] && [ "$saw_cachix_signature" != true ]; then
+                echo "::warning::[ci] $task failed after $elapsed s without a detected Nix store validity race"
+                write_summary failure "No Nix GC race signature detected"
+                return "$rc"
+              fi
+
+              if [ "$saw_cachix_signature" = true ] && [ -n "$path" ]; then
+                echo "::warning::Nix store validity race detected for $task via cachix eval wrapper (attempt $attempt/$max): $path"
+              elif [ "$saw_cachix_signature" = true ]; then
+                echo "::warning::Nix store validity race detected for $task via cachix eval wrapper without extracted store path (attempt $attempt/$max)"
+              else
+                echo "::warning::Nix store validity race detected for $task (attempt $attempt/$max): $path"
+              fi
+
+              [ -z "$path" ] || nix-store --realise "$path" 2>/dev/null || true
+              rm -rf ~/.cache/nix/eval-cache-*
+              attempt=$((attempt + 1))
+            done
+
+            now=$(date +%s)
+            elapsed=$((now - start))
+            echo "::error::Nix GC race retry exhausted for $task ($max attempts)"
+            write_summary failure "Nix GC race retry exhausted"
+            return 1
+          }
+          EOF
+          . "$__nix_gc_retry_helper"
+          rm -f "$__nix_gc_retry_helper"
+          run_nix_gc_race_retry 'devenv tasks run docs:build:phase:snippets --mode before' 'if [ -n "${NIX_CONFIG:-}" ]; then NIX_CONFIG_WITH_APPEND=$(printf '"'"'%s\n%s'"'"' "$NIX_CONFIG" '"'"'restrict-eval = false'"'"'); else NIX_CONFIG_WITH_APPEND='"'"'restrict-eval = false'"'"'; fi; NIX_CONFIG="$NIX_CONFIG_WITH_APPEND" PNPM_HOME="${PNPM_HOME:-${{ github.workspace }}/.pnpm-home}" PNPM_STORE_DIR="${PNPM_STORE_DIR:-${{ runner.temp }}/pnpm-store/${{ github.job }}}" DT_PASSTHROUGH=1 "${DEVENV_BIN:?DEVENV_BIN not set}" tasks run docs:build:phase:snippets --mode before'
       - name: Build docs diagrams
-        run: "if [ -n \"${NIX_CONFIG:-}\" ]; then NIX_CONFIG_WITH_UNRESTRICTED_EVAL=\"$NIX_CONFIG\"$'\\n''restrict-eval = false'; else NIX_CONFIG_WITH_UNRESTRICTED_EVAL='restrict-eval = false'; fi; NIX_CONFIG=\"$NIX_CONFIG_WITH_UNRESTRICTED_EVAL\" \"${DEVENV_BIN:?DEVENV_BIN not set}\" tasks run docs:build:phase:diagrams --mode before"
+        run: |
+          __nix_gc_retry_helper=$(mktemp)
+          cat > "$__nix_gc_retry_helper" <<'EOF'
+          #!/usr/bin/env bash
+
+          run_nix_gc_race_retry() {
+            local task="$1"
+            local command="$2"
+            local max="${NIX_GC_RACE_MAX_RETRIES:-10}"
+            local heartbeat="${CI_PROGRESS_HEARTBEAT_SECONDS:-60}"
+            local attempt=1
+            local log rc path start now elapsed hb_pid flattened saw_invalid_path saw_cachix_signature had_errexit
+
+            start="$(date +%s)"
+
+            write_summary() {
+              [ -n "${GITHUB_STEP_SUMMARY:-}" ] || return 0
+              {
+                echo "### CI Task"
+                echo "- Task: $task"
+                echo "- Status: $1"
+                echo "- Duration: $elapsed s"
+                echo "- Attempts: $attempt/$max"
+                [ -z "${2:-}" ] || echo "- Note: $2"
+              } >> "$GITHUB_STEP_SUMMARY"
+            }
+
+            while [ "$attempt" -le "$max" ]; do
+              echo "::notice::[ci] starting $task (attempt $attempt/$max)"
+              (
+                while sleep "$heartbeat"; do
+                  now=$(date +%s)
+                  elapsed=$((now - start))
+                  echo "::notice::[ci] $task still running after $elapsed s (attempt $attempt/$max)"
+                done
+              ) &
+              hb_pid=$!
+
+              log=$(mktemp)
+              had_errexit=false
+              case $- in
+                *e*) had_errexit=true ;;
+              esac
+              set +e
+              eval "$command" > >(tee -a "$log") 2> >(tee -a "$log" >&2)
+              rc=$?
+              if [ "$had_errexit" = true ]; then
+                set -e
+              fi
+
+              kill "$hb_pid" 2>/dev/null || true
+              wait "$hb_pid" 2>/dev/null || true
+
+              now=$(date +%s)
+              elapsed=$((now - start))
+
+              if [ "$rc" -eq 0 ]; then
+                echo "::notice::[ci] completed $task in $elapsed s"
+                if [ "$attempt" -gt 1 ]; then
+                  write_summary success "Recovered from Nix GC race after retry"
+                else
+                  write_summary success
+                fi
+                rm -f "$log"
+                return 0
+              fi
+
+              flattened=$(tr '\r\n' '  ' < "$log" | sed -E $'s/\x1B\\[[0-9;]*m//g')
+              path=$(printf '%s' "$flattened" |
+                grep -o "error:[[:space:]]*path '/nix/store/[^']*'[[:space:]]*is not valid" |
+                head -1 |
+                grep -o "/nix/store/[^']*" |
+                tr -d '[:space:]' || true)
+              saw_invalid_path=false
+              saw_cachix_signature=false
+              [ -n "$path" ] && saw_invalid_path=true
+              printf '%s' "$flattened" | grep -q 'Failed to convert config\.cachix to JSON' && saw_cachix_signature=true || true
+              printf '%s' "$flattened" | grep -q 'while evaluating the option' && printf '%s' "$flattened" | grep -q 'cachix\.package' && saw_cachix_signature=true || true
+              rm -f "$log"
+
+              if [ "$saw_invalid_path" != true ] && [ "$saw_cachix_signature" != true ]; then
+                echo "::warning::[ci] $task failed after $elapsed s without a detected Nix store validity race"
+                write_summary failure "No Nix GC race signature detected"
+                return "$rc"
+              fi
+
+              if [ "$saw_cachix_signature" = true ] && [ -n "$path" ]; then
+                echo "::warning::Nix store validity race detected for $task via cachix eval wrapper (attempt $attempt/$max): $path"
+              elif [ "$saw_cachix_signature" = true ]; then
+                echo "::warning::Nix store validity race detected for $task via cachix eval wrapper without extracted store path (attempt $attempt/$max)"
+              else
+                echo "::warning::Nix store validity race detected for $task (attempt $attempt/$max): $path"
+              fi
+
+              [ -z "$path" ] || nix-store --realise "$path" 2>/dev/null || true
+              rm -rf ~/.cache/nix/eval-cache-*
+              attempt=$((attempt + 1))
+            done
+
+            now=$(date +%s)
+            elapsed=$((now - start))
+            echo "::error::Nix GC race retry exhausted for $task ($max attempts)"
+            write_summary failure "Nix GC race retry exhausted"
+            return 1
+          }
+          EOF
+          . "$__nix_gc_retry_helper"
+          rm -f "$__nix_gc_retry_helper"
+          run_nix_gc_race_retry 'devenv tasks run docs:build:phase:diagrams --mode before' 'if [ -n "${NIX_CONFIG:-}" ]; then NIX_CONFIG_WITH_APPEND=$(printf '"'"'%s\n%s'"'"' "$NIX_CONFIG" '"'"'restrict-eval = false'"'"'); else NIX_CONFIG_WITH_APPEND='"'"'restrict-eval = false'"'"'; fi; NIX_CONFIG="$NIX_CONFIG_WITH_APPEND" PNPM_HOME="${PNPM_HOME:-${{ github.workspace }}/.pnpm-home}" PNPM_STORE_DIR="${PNPM_STORE_DIR:-${{ runner.temp }}/pnpm-store/${{ github.job }}}" DT_PASSTHROUGH=1 "${DEVENV_BIN:?DEVENV_BIN not set}" tasks run docs:build:phase:diagrams --mode before'
       - name: Build Astro docs bundle
-        run: "if [ -n \"${NIX_CONFIG:-}\" ]; then NIX_CONFIG_WITH_UNRESTRICTED_EVAL=\"$NIX_CONFIG\"$'\\n''restrict-eval = false'; else NIX_CONFIG_WITH_UNRESTRICTED_EVAL='restrict-eval = false'; fi; NIX_CONFIG=\"$NIX_CONFIG_WITH_UNRESTRICTED_EVAL\" \"${DEVENV_BIN:?DEVENV_BIN not set}\" tasks run docs:build:phase:astro --mode before"
+        run: |
+          __nix_gc_retry_helper=$(mktemp)
+          cat > "$__nix_gc_retry_helper" <<'EOF'
+          #!/usr/bin/env bash
+
+          run_nix_gc_race_retry() {
+            local task="$1"
+            local command="$2"
+            local max="${NIX_GC_RACE_MAX_RETRIES:-10}"
+            local heartbeat="${CI_PROGRESS_HEARTBEAT_SECONDS:-60}"
+            local attempt=1
+            local log rc path start now elapsed hb_pid flattened saw_invalid_path saw_cachix_signature had_errexit
+
+            start="$(date +%s)"
+
+            write_summary() {
+              [ -n "${GITHUB_STEP_SUMMARY:-}" ] || return 0
+              {
+                echo "### CI Task"
+                echo "- Task: $task"
+                echo "- Status: $1"
+                echo "- Duration: $elapsed s"
+                echo "- Attempts: $attempt/$max"
+                [ -z "${2:-}" ] || echo "- Note: $2"
+              } >> "$GITHUB_STEP_SUMMARY"
+            }
+
+            while [ "$attempt" -le "$max" ]; do
+              echo "::notice::[ci] starting $task (attempt $attempt/$max)"
+              (
+                while sleep "$heartbeat"; do
+                  now=$(date +%s)
+                  elapsed=$((now - start))
+                  echo "::notice::[ci] $task still running after $elapsed s (attempt $attempt/$max)"
+                done
+              ) &
+              hb_pid=$!
+
+              log=$(mktemp)
+              had_errexit=false
+              case $- in
+                *e*) had_errexit=true ;;
+              esac
+              set +e
+              eval "$command" > >(tee -a "$log") 2> >(tee -a "$log" >&2)
+              rc=$?
+              if [ "$had_errexit" = true ]; then
+                set -e
+              fi
+
+              kill "$hb_pid" 2>/dev/null || true
+              wait "$hb_pid" 2>/dev/null || true
+
+              now=$(date +%s)
+              elapsed=$((now - start))
+
+              if [ "$rc" -eq 0 ]; then
+                echo "::notice::[ci] completed $task in $elapsed s"
+                if [ "$attempt" -gt 1 ]; then
+                  write_summary success "Recovered from Nix GC race after retry"
+                else
+                  write_summary success
+                fi
+                rm -f "$log"
+                return 0
+              fi
+
+              flattened=$(tr '\r\n' '  ' < "$log" | sed -E $'s/\x1B\\[[0-9;]*m//g')
+              path=$(printf '%s' "$flattened" |
+                grep -o "error:[[:space:]]*path '/nix/store/[^']*'[[:space:]]*is not valid" |
+                head -1 |
+                grep -o "/nix/store/[^']*" |
+                tr -d '[:space:]' || true)
+              saw_invalid_path=false
+              saw_cachix_signature=false
+              [ -n "$path" ] && saw_invalid_path=true
+              printf '%s' "$flattened" | grep -q 'Failed to convert config\.cachix to JSON' && saw_cachix_signature=true || true
+              printf '%s' "$flattened" | grep -q 'while evaluating the option' && printf '%s' "$flattened" | grep -q 'cachix\.package' && saw_cachix_signature=true || true
+              rm -f "$log"
+
+              if [ "$saw_invalid_path" != true ] && [ "$saw_cachix_signature" != true ]; then
+                echo "::warning::[ci] $task failed after $elapsed s without a detected Nix store validity race"
+                write_summary failure "No Nix GC race signature detected"
+                return "$rc"
+              fi
+
+              if [ "$saw_cachix_signature" = true ] && [ -n "$path" ]; then
+                echo "::warning::Nix store validity race detected for $task via cachix eval wrapper (attempt $attempt/$max): $path"
+              elif [ "$saw_cachix_signature" = true ]; then
+                echo "::warning::Nix store validity race detected for $task via cachix eval wrapper without extracted store path (attempt $attempt/$max)"
+              else
+                echo "::warning::Nix store validity race detected for $task (attempt $attempt/$max): $path"
+              fi
+
+              [ -z "$path" ] || nix-store --realise "$path" 2>/dev/null || true
+              rm -rf ~/.cache/nix/eval-cache-*
+              attempt=$((attempt + 1))
+            done
+
+            now=$(date +%s)
+            elapsed=$((now - start))
+            echo "::error::Nix GC race retry exhausted for $task ($max attempts)"
+            write_summary failure "Nix GC race retry exhausted"
+            return 1
+          }
+          EOF
+          . "$__nix_gc_retry_helper"
+          rm -f "$__nix_gc_retry_helper"
+          run_nix_gc_race_retry 'devenv tasks run docs:build:phase:astro --mode before' 'if [ -n "${NIX_CONFIG:-}" ]; then NIX_CONFIG_WITH_APPEND=$(printf '"'"'%s\n%s'"'"' "$NIX_CONFIG" '"'"'restrict-eval = false'"'"'); else NIX_CONFIG_WITH_APPEND='"'"'restrict-eval = false'"'"'; fi; NIX_CONFIG="$NIX_CONFIG_WITH_APPEND" PNPM_HOME="${PNPM_HOME:-${{ github.workspace }}/.pnpm-home}" PNPM_STORE_DIR="${PNPM_STORE_DIR:-${{ runner.temp }}/pnpm-store/${{ github.job }}}" DT_PASSTHROUGH=1 "${DEVENV_BIN:?DEVENV_BIN not set}" tasks run docs:build:phase:astro --mode before'
       - name: Collect docs build diagnostics on failure
         if: '${{ failure() }}'
-        run: "if [ -n \"${NIX_CONFIG:-}\" ]; then NIX_CONFIG_WITH_UNRESTRICTED_EVAL=\"$NIX_CONFIG\"$'\\n''restrict-eval = false'; else NIX_CONFIG_WITH_UNRESTRICTED_EVAL='restrict-eval = false'; fi; NIX_CONFIG=\"$NIX_CONFIG_WITH_UNRESTRICTED_EVAL\" \"${DEVENV_BIN:?DEVENV_BIN not set}\" tasks run docs:build:diagnostics --mode before"
+        run: |
+          __nix_gc_retry_helper=$(mktemp)
+          cat > "$__nix_gc_retry_helper" <<'EOF'
+          #!/usr/bin/env bash
+
+          run_nix_gc_race_retry() {
+            local task="$1"
+            local command="$2"
+            local max="${NIX_GC_RACE_MAX_RETRIES:-10}"
+            local heartbeat="${CI_PROGRESS_HEARTBEAT_SECONDS:-60}"
+            local attempt=1
+            local log rc path start now elapsed hb_pid flattened saw_invalid_path saw_cachix_signature had_errexit
+
+            start="$(date +%s)"
+
+            write_summary() {
+              [ -n "${GITHUB_STEP_SUMMARY:-}" ] || return 0
+              {
+                echo "### CI Task"
+                echo "- Task: $task"
+                echo "- Status: $1"
+                echo "- Duration: $elapsed s"
+                echo "- Attempts: $attempt/$max"
+                [ -z "${2:-}" ] || echo "- Note: $2"
+              } >> "$GITHUB_STEP_SUMMARY"
+            }
+
+            while [ "$attempt" -le "$max" ]; do
+              echo "::notice::[ci] starting $task (attempt $attempt/$max)"
+              (
+                while sleep "$heartbeat"; do
+                  now=$(date +%s)
+                  elapsed=$((now - start))
+                  echo "::notice::[ci] $task still running after $elapsed s (attempt $attempt/$max)"
+                done
+              ) &
+              hb_pid=$!
+
+              log=$(mktemp)
+              had_errexit=false
+              case $- in
+                *e*) had_errexit=true ;;
+              esac
+              set +e
+              eval "$command" > >(tee -a "$log") 2> >(tee -a "$log" >&2)
+              rc=$?
+              if [ "$had_errexit" = true ]; then
+                set -e
+              fi
+
+              kill "$hb_pid" 2>/dev/null || true
+              wait "$hb_pid" 2>/dev/null || true
+
+              now=$(date +%s)
+              elapsed=$((now - start))
+
+              if [ "$rc" -eq 0 ]; then
+                echo "::notice::[ci] completed $task in $elapsed s"
+                if [ "$attempt" -gt 1 ]; then
+                  write_summary success "Recovered from Nix GC race after retry"
+                else
+                  write_summary success
+                fi
+                rm -f "$log"
+                return 0
+              fi
+
+              flattened=$(tr '\r\n' '  ' < "$log" | sed -E $'s/\x1B\\[[0-9;]*m//g')
+              path=$(printf '%s' "$flattened" |
+                grep -o "error:[[:space:]]*path '/nix/store/[^']*'[[:space:]]*is not valid" |
+                head -1 |
+                grep -o "/nix/store/[^']*" |
+                tr -d '[:space:]' || true)
+              saw_invalid_path=false
+              saw_cachix_signature=false
+              [ -n "$path" ] && saw_invalid_path=true
+              printf '%s' "$flattened" | grep -q 'Failed to convert config\.cachix to JSON' && saw_cachix_signature=true || true
+              printf '%s' "$flattened" | grep -q 'while evaluating the option' && printf '%s' "$flattened" | grep -q 'cachix\.package' && saw_cachix_signature=true || true
+              rm -f "$log"
+
+              if [ "$saw_invalid_path" != true ] && [ "$saw_cachix_signature" != true ]; then
+                echo "::warning::[ci] $task failed after $elapsed s without a detected Nix store validity race"
+                write_summary failure "No Nix GC race signature detected"
+                return "$rc"
+              fi
+
+              if [ "$saw_cachix_signature" = true ] && [ -n "$path" ]; then
+                echo "::warning::Nix store validity race detected for $task via cachix eval wrapper (attempt $attempt/$max): $path"
+              elif [ "$saw_cachix_signature" = true ]; then
+                echo "::warning::Nix store validity race detected for $task via cachix eval wrapper without extracted store path (attempt $attempt/$max)"
+              else
+                echo "::warning::Nix store validity race detected for $task (attempt $attempt/$max): $path"
+              fi
+
+              [ -z "$path" ] || nix-store --realise "$path" 2>/dev/null || true
+              rm -rf ~/.cache/nix/eval-cache-*
+              attempt=$((attempt + 1))
+            done
+
+            now=$(date +%s)
+            elapsed=$((now - start))
+            echo "::error::Nix GC race retry exhausted for $task ($max attempts)"
+            write_summary failure "Nix GC race retry exhausted"
+            return 1
+          }
+          EOF
+          . "$__nix_gc_retry_helper"
+          rm -f "$__nix_gc_retry_helper"
+          run_nix_gc_race_retry 'devenv tasks run docs:build:diagnostics --mode before' 'if [ -n "${NIX_CONFIG:-}" ]; then NIX_CONFIG_WITH_APPEND=$(printf '"'"'%s\n%s'"'"' "$NIX_CONFIG" '"'"'restrict-eval = false'"'"'); else NIX_CONFIG_WITH_APPEND='"'"'restrict-eval = false'"'"'; fi; NIX_CONFIG="$NIX_CONFIG_WITH_APPEND" PNPM_HOME="${PNPM_HOME:-${{ github.workspace }}/.pnpm-home}" PNPM_STORE_DIR="${PNPM_STORE_DIR:-${{ runner.temp }}/pnpm-store/${{ github.job }}}" DT_PASSTHROUGH=1 "${DEVENV_BIN:?DEVENV_BIN not set}" tasks run docs:build:diagnostics --mode before'
       - name: Upload docs build logs
         if: '${{ always() }}'
         uses: actions/upload-artifact@v4
@@ -1500,9 +3659,125 @@ jobs:
           retention-days: 14
       - name: Deploy docs
         if: "${{ success() && (github.event_name != 'pull_request' || github.event.pull_request.head.repo.fork != true) }}"
-        run: "if [ -n \"${NIX_CONFIG:-}\" ]; then NIX_CONFIG_WITH_UNRESTRICTED_EVAL=\"$NIX_CONFIG\"$'\\n''restrict-eval = false'; else NIX_CONFIG_WITH_UNRESTRICTED_EVAL='restrict-eval = false'; fi; NIX_CONFIG=\"$NIX_CONFIG_WITH_UNRESTRICTED_EVAL\" \"${DEVENV_BIN:?DEVENV_BIN not set}\" tasks run docs:deploy --mode before"
+        run: |
+          __nix_gc_retry_helper=$(mktemp)
+          cat > "$__nix_gc_retry_helper" <<'EOF'
+          #!/usr/bin/env bash
+
+          run_nix_gc_race_retry() {
+            local task="$1"
+            local command="$2"
+            local max="${NIX_GC_RACE_MAX_RETRIES:-10}"
+            local heartbeat="${CI_PROGRESS_HEARTBEAT_SECONDS:-60}"
+            local attempt=1
+            local log rc path start now elapsed hb_pid flattened saw_invalid_path saw_cachix_signature had_errexit
+
+            start="$(date +%s)"
+
+            write_summary() {
+              [ -n "${GITHUB_STEP_SUMMARY:-}" ] || return 0
+              {
+                echo "### CI Task"
+                echo "- Task: $task"
+                echo "- Status: $1"
+                echo "- Duration: $elapsed s"
+                echo "- Attempts: $attempt/$max"
+                [ -z "${2:-}" ] || echo "- Note: $2"
+              } >> "$GITHUB_STEP_SUMMARY"
+            }
+
+            while [ "$attempt" -le "$max" ]; do
+              echo "::notice::[ci] starting $task (attempt $attempt/$max)"
+              (
+                while sleep "$heartbeat"; do
+                  now=$(date +%s)
+                  elapsed=$((now - start))
+                  echo "::notice::[ci] $task still running after $elapsed s (attempt $attempt/$max)"
+                done
+              ) &
+              hb_pid=$!
+
+              log=$(mktemp)
+              had_errexit=false
+              case $- in
+                *e*) had_errexit=true ;;
+              esac
+              set +e
+              eval "$command" > >(tee -a "$log") 2> >(tee -a "$log" >&2)
+              rc=$?
+              if [ "$had_errexit" = true ]; then
+                set -e
+              fi
+
+              kill "$hb_pid" 2>/dev/null || true
+              wait "$hb_pid" 2>/dev/null || true
+
+              now=$(date +%s)
+              elapsed=$((now - start))
+
+              if [ "$rc" -eq 0 ]; then
+                echo "::notice::[ci] completed $task in $elapsed s"
+                if [ "$attempt" -gt 1 ]; then
+                  write_summary success "Recovered from Nix GC race after retry"
+                else
+                  write_summary success
+                fi
+                rm -f "$log"
+                return 0
+              fi
+
+              flattened=$(tr '\r\n' '  ' < "$log" | sed -E $'s/\x1B\\[[0-9;]*m//g')
+              path=$(printf '%s' "$flattened" |
+                grep -o "error:[[:space:]]*path '/nix/store/[^']*'[[:space:]]*is not valid" |
+                head -1 |
+                grep -o "/nix/store/[^']*" |
+                tr -d '[:space:]' || true)
+              saw_invalid_path=false
+              saw_cachix_signature=false
+              [ -n "$path" ] && saw_invalid_path=true
+              printf '%s' "$flattened" | grep -q 'Failed to convert config\.cachix to JSON' && saw_cachix_signature=true || true
+              printf '%s' "$flattened" | grep -q 'while evaluating the option' && printf '%s' "$flattened" | grep -q 'cachix\.package' && saw_cachix_signature=true || true
+              rm -f "$log"
+
+              if [ "$saw_invalid_path" != true ] && [ "$saw_cachix_signature" != true ]; then
+                echo "::warning::[ci] $task failed after $elapsed s without a detected Nix store validity race"
+                write_summary failure "No Nix GC race signature detected"
+                return "$rc"
+              fi
+
+              if [ "$saw_cachix_signature" = true ] && [ -n "$path" ]; then
+                echo "::warning::Nix store validity race detected for $task via cachix eval wrapper (attempt $attempt/$max): $path"
+              elif [ "$saw_cachix_signature" = true ]; then
+                echo "::warning::Nix store validity race detected for $task via cachix eval wrapper without extracted store path (attempt $attempt/$max)"
+              else
+                echo "::warning::Nix store validity race detected for $task (attempt $attempt/$max): $path"
+              fi
+
+              [ -z "$path" ] || nix-store --realise "$path" 2>/dev/null || true
+              rm -rf ~/.cache/nix/eval-cache-*
+              attempt=$((attempt + 1))
+            done
+
+            now=$(date +%s)
+            elapsed=$((now - start))
+            echo "::error::Nix GC race retry exhausted for $task ($max attempts)"
+            write_summary failure "Nix GC race retry exhausted"
+            return 1
+          }
+          EOF
+          . "$__nix_gc_retry_helper"
+          rm -f "$__nix_gc_retry_helper"
+          run_nix_gc_race_retry 'devenv tasks run docs:deploy --mode before' 'if [ -n "${NIX_CONFIG:-}" ]; then NIX_CONFIG_WITH_APPEND=$(printf '"'"'%s\n%s'"'"' "$NIX_CONFIG" '"'"'restrict-eval = false'"'"'); else NIX_CONFIG_WITH_APPEND='"'"'restrict-eval = false'"'"'; fi; NIX_CONFIG="$NIX_CONFIG_WITH_APPEND" PNPM_HOME="${PNPM_HOME:-${{ github.workspace }}/.pnpm-home}" PNPM_STORE_DIR="${PNPM_STORE_DIR:-${{ runner.temp }}/pnpm-store/${{ github.job }}}" DT_PASSTHROUGH=1 "${DEVENV_BIN:?DEVENV_BIN not set}" tasks run docs:deploy --mode before'
         env:
           NETLIFY_AUTH_TOKEN: '${{ secrets.NETLIFY_AUTH_TOKEN }}'
+      - name: Save pnpm state
+        if: "${{ success() && steps.restore-pnpm-state.outputs.cache-hit != 'true' }}"
+        uses: actions/cache/save@v4
+        with:
+          path: |
+            ${{ github.workspace }}/.pnpm-home
+            ${{ runner.temp }}/pnpm-store/${{ github.job }}
+          key: "livestore-pnpm-state-v1-${{ runner.os }}-${{ runner.arch }}-${{ hashFiles('**/pnpm-lock.yaml') }}"
       - name: Upload Nix diagnostics artifact
         if: failure() && env.NIX_STORE_DIAGNOSTICS_DIR != ''
         uses: actions/upload-artifact@v4
@@ -1519,7 +3794,7 @@ jobs:
       - name: Dispatch alignment to coordinator
         env:
           GH_TOKEN: '${{ secrets.MEGAREPO_ALIGNMENT_TOKEN }}'
-        run: 'printf ''{"event_type":"upstream-changed","client_payload":{"source_repo":"%s","source_sha":"%s"}}'' "${{ github.repository }}" "${{ github.sha }}" | gh api repos/schickling/megarepo-all/dispatches --input -'
+        run: "export NIX_CONFIG=\"${NIX_CONFIG:+$NIX_CONFIG$'\\n'}access-tokens = github.com=${GH_TOKEN}\" && printf '{\"event_type\":\"upstream-changed\",\"client_payload\":{\"source_repo\":\"%s\",\"source_sha\":\"%s\"}}' \"${{ github.repository }}\" \"${{ github.sha }}\" | nix run nixpkgs#gh -- api repos/schickling/megarepo-all/dispatches --input -"
         shell: bash
   build-example-create:
     if: github.event.pull_request.head.repo.fork != true
@@ -1537,18 +3812,17 @@ jobs:
       - name: Setup pnpm
         uses: pnpm/action-setup@v4
         with:
-          version: latest
           standalone: true
       - name: Get app's workspace @livestore dependencies
         run: |
           DEPS=$(jq -r '[(.dependencies // {}), (.devDependencies // {}) | to_entries[] | select(.key | startswith("@livestore/")) | .key] | .[]' ${{ env.APP_PATH }}/package.json | while read dep; do dir="packages/@livestore/${dep#@livestore/}"; [ -d "$dir" ] && echo "$dep"; done | tr '\n' ' ')
           echo "WORKSPACE_DEPS=$DEPS" >> $GITHUB_ENV
       - name: Copy example app
-        run: 'pnpm dlx @livestore/cli@${{ env.SNAPSHOT_VERSION }} create --example ${{ matrix.app }} --ref ${{ github.ref }} ${{ runner.temp }}/${{ env.APP_PATH }}'
+        run: 'pnpm dlx --allow-build=@mixedbread/cli --allow-build=@myobie/pty --allow-build=@parcel/watcher --allow-build=cbor-extract --allow-build=dtrace-provider --allow-build=esbuild --allow-build=msgpackr-extract --allow-build=node-pty --allow-build=protobufjs --allow-build=puppeteer --allow-build=sharp --allow-build=unix-dgram --allow-build=workerd @livestore/cli@${{ env.SNAPSHOT_VERSION }} create --example ${{ matrix.app }} --ref ${{ github.event.pull_request.head.sha || github.sha }} ${{ runner.temp }}/${{ env.APP_PATH }}'
       - name: Use snapshot version of workspace dependencies
         working-directory: '${{ runner.temp }}/${{ env.APP_PATH }}'
         run: |
-          pnpm add $(
+          pnpm add --allow-build=@mixedbread/cli --allow-build=@myobie/pty --allow-build=@parcel/watcher --allow-build=cbor-extract --allow-build=dtrace-provider --allow-build=esbuild --allow-build=msgpackr-extract --allow-build=node-pty --allow-build=protobufjs --allow-build=puppeteer --allow-build=sharp --allow-build=unix-dgram --allow-build=workerd $(
             for dep in $WORKSPACE_DEPS; do
               echo "$dep@${{ env.SNAPSHOT_VERSION }}"
             done

@@ -195,29 +195,52 @@ describe('StoreRegistry', () => {
     await nextStore.shutdownPromise()
   })
 
-  // This test is skipped because Effect doesn't yet support different `idleTimeToLive` values for each resource in `RcMap`
-  // See https://github.com/livestorejs/livestore/issues/917
-  it.skip('allows call-site options to override default options', async () => {
+  it('allows call-site options to override default options', async () => {
     const storeRegistry = new StoreRegistry({
       defaultOptions: {
-        unusedCacheTime: 1000, // Default is long
+        unusedCacheTime: 10_000, // Long default
       },
     })
 
+    const unusedCacheTimeOverride = 25
     const options = testStoreOptions({
-      unusedCacheTime: 10, // Override with shorter time
+      unusedCacheTime: unusedCacheTimeOverride,
     })
 
     const store = await storeRegistry.getOrLoadPromise(options)
 
-    // Wait for the override time (10ms)
-    await sleep(10)
+    // Wait for the override time + buffer
+    await sleep(unusedCacheTimeOverride + 100)
 
     // Should be disposed according to the override time, not default
     const nextStore = await storeRegistry.getOrLoadPromise(options)
     expect(nextStore).not.toBe(store)
 
     await nextStore.shutdownPromise()
+  })
+
+  it('disposes different stores according to their own unusedCacheTime', async () => {
+    const storeRegistry = new StoreRegistry({
+      defaultOptions: { unusedCacheTime: 1000 },
+    })
+
+    const shortOptions = testStoreOptions({ storeId: 'short-lived', unusedCacheTime: 25 })
+    const longOptions = testStoreOptions({ storeId: 'long-lived', unusedCacheTime: 10_000 })
+
+    const shortStore = await storeRegistry.getOrLoadPromise(shortOptions)
+    const longStore = await storeRegistry.getOrLoadPromise(longOptions)
+
+    // Wait for short store's unusedCacheTime to expire + buffer
+    await sleep(25 + 100)
+
+    // Short store should be disposed, long store should still be cached
+    const nextShortStore = await storeRegistry.getOrLoadPromise(shortOptions)
+    expect(nextShortStore).not.toBe(shortStore)
+    expect(storeRegistry.getOrLoadPromise(longOptions)).toBe(longStore)
+
+    // Clean up
+    await nextShortStore.shutdownPromise()
+    await longStore.shutdownPromise()
   })
 
   // This test is skipped because we don't yet support dynamic `unusedCacheTime` updates for cached stores.

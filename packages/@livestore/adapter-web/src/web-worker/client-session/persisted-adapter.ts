@@ -1,6 +1,7 @@
 import type { Adapter, BootWarningReason, ClientSession, LockStatus } from '@livestore/common'
 import {
   IntentionalShutdownCause,
+  isWorkerTransportError,
   liveStoreVersion,
   makeClientSession,
   StoreInterrupted,
@@ -20,14 +21,13 @@ import {
   Exit,
   Fiber,
   Layer,
-  ParseResult,
+  Option,
   Queue,
   Schema,
   Stream,
   Subscribable,
   SubscriptionRef,
   Worker,
-  WorkerError,
 } from '@livestore/utils/effect'
 import { BrowserWorker, Opfs, WebError, WebLock } from '@livestore/utils/effect/browser'
 import { nanoid } from '@livestore/utils/nanoid'
@@ -255,7 +255,7 @@ export const makePersistedAdapter =
       yield* shutdownChannel.listen.pipe(
         Stream.flatten(),
         Stream.tap((cause) =>
-          shutdown(cause._tag === 'LiveStore.IntentionalShutdownCause' ? Exit.succeed(cause) : Exit.fail(cause)),
+          shutdown(cause._tag === 'IntentionalShutdownCause' ? Exit.succeed(cause) : Exit.fail(cause)),
         ),
         Stream.runDrain,
         Effect.interruptible,
@@ -278,7 +278,7 @@ export const makePersistedAdapter =
       }).pipe(
         Effect.provide(sharedWorkerContext),
         Effect.tapCauseLogPretty,
-        UnknownError.mapToUnknownError,
+        Effect.orDie,
         Effect.tapErrorCause((cause) => shutdown(Exit.failCause(cause))),
         Effect.withSpan('@livestore/adapter-web:client-session:setupSharedWorker'),
         Effect.forkScoped,
@@ -375,15 +375,14 @@ export const makePersistedAdapter =
         yield* runLocked.pipe(Effect.interruptible, Effect.tapCauseLogPretty, Effect.forkScoped)
       }
 
-      const runInWorker = <TReq extends typeof WorkerSchema.SharedWorkerRequest.Type>(
-        req: TReq,
-      ): TReq extends Schema.WithResult<infer A, infer _I, infer E, infer _EI, infer R>
-        ? Effect.Effect<A, UnknownError | E, R>
-        : never =>
+      const runInWorker = <A, I, E, EI, R>(
+        req: WorkerSchema.SharedWorkerRequest & Schema.WithResult<A, I, E, EI, R>,
+      ): Effect.Effect<A, E, R> =>
         Fiber.join(sharedWorkerFiber).pipe(
           // NOTE we need to wait for the shared worker to be initialized before we can send requests to it
           Effect.tap(() => waitForSharedWorkerInitialized),
-          Effect.flatMap((worker) => worker.executeEffect(req) as any),
+          Effect.flatMap((worker) => worker.executeEffect(req)),
+          Effect.catchIf(isWorkerTransportError, (e) => Effect.die(e)),
           // NOTE we want to treat worker requests as atomic and therefore not allow them to be interrupted
           // Interruption usually only happens during leader re-election or store shutdown
           // Effect.uninterruptible,
@@ -392,34 +391,18 @@ export const makePersistedAdapter =
             duration: 2000,
           }),
           Effect.withSpan(`@livestore/adapter-web:client-session:runInWorker:${req._tag}`),
-          Effect.mapError((cause) =>
-            Schema.is(UnknownError)(cause) === true
-              ? cause
-              : ParseResult.isParseError(cause) === true || Schema.is(WorkerError.WorkerError)(cause) === true
-                ? new UnknownError({ cause })
-                : cause,
-          ),
-          Effect.catchAllDefect((cause) => new UnknownError({ cause })),
-        ) as any
+        )
 
-      const runInWorkerStream = <TReq extends typeof WorkerSchema.SharedWorkerRequest.Type>(
-        req: TReq,
-      ): TReq extends Schema.WithResult<infer A, infer _I, infer _E, infer _EI, infer R>
-        ? Stream.Stream<A, UnknownError, R>
-        : never =>
+      const runInWorkerStream = <A, I, E, EI, R>(
+        req: WorkerSchema.SharedWorkerRequest & Schema.WithResult<A, I, E, EI, R>,
+      ): Stream.Stream<A, E, R> =>
         Effect.gen(function* () {
           const sharedWorker = yield* Fiber.join(sharedWorkerFiber)
-          return sharedWorker.execute(req as any).pipe(
-            Stream.mapError((cause) =>
-              Schema.is(UnknownError)(cause) === true
-                ? cause
-                : ParseResult.isParseError(cause) === true || Schema.is(WorkerError.WorkerError)(cause) === true
-                  ? new UnknownError({ cause })
-                  : cause,
-            ),
+          return sharedWorker.execute(req).pipe(
+            Stream.refineOrDie((e) => isWorkerTransportError(e) === true ? Option.none() : Option.some(e)),
             Stream.withSpan(`@livestore/adapter-web:client-session:runInWorkerStream:${req._tag}`),
           )
-        }).pipe(Stream.unwrap) as any
+        }).pipe(Stream.unwrap)
 
       const bootStatusFiber = yield* runInWorkerStream(new WorkerSchema.LeaderWorkerInnerBootStatusStream()).pipe(
         Stream.tap((_) => Queue.offer(bootStatusQueue, _)),
@@ -512,8 +495,7 @@ export const makePersistedAdapter =
 
       const leaderThread: ClientSession['leaderThread'] = {
         export: runInWorker(new WorkerSchema.LeaderWorkerInnerExport()).pipe(
-          Effect.timeout(10_000),
-          UnknownError.mapToUnknownError,
+          Effect.timeoutOrDie(10_000),
           Effect.withSpan('@livestore/adapter-web:client-session:export'),
         ),
 
@@ -548,14 +530,12 @@ export const makePersistedAdapter =
         },
 
         getEventlogData: runInWorker(new WorkerSchema.LeaderWorkerInnerExportEventlog()).pipe(
-          Effect.timeout(10_000),
-          UnknownError.mapToUnknownError,
+          Effect.timeoutOrDie(10_000),
           Effect.withSpan('@livestore/adapter-web:client-session:getEventlogData'),
         ),
 
         syncState: Subscribable.make({
           get: runInWorker(new WorkerSchema.LeaderWorkerInnerGetLeaderSyncState()).pipe(
-            UnknownError.mapToUnknownError,
             Effect.withSpan('@livestore/adapter-web:client-session:getLeaderSyncState'),
           ),
           changes: runInWorkerStream(new WorkerSchema.LeaderWorkerInnerSyncStateStream()).pipe(Stream.orDie),
@@ -563,12 +543,11 @@ export const makePersistedAdapter =
 
         sendDevtoolsMessage: (message) =>
           runInWorker(new WorkerSchema.LeaderWorkerInnerExtraDevtoolsMessage({ message })).pipe(
-            UnknownError.mapToUnknownError,
             Effect.withSpan('@livestore/adapter-web:client-session:devtoolsMessageForLeader'),
           ),
         networkStatus: Subscribable.make({
-          get: runInWorker(new WorkerSchema.LeaderWorkerInnerGetNetworkStatus()).pipe(Effect.orDie),
-          changes: runInWorkerStream(new WorkerSchema.LeaderWorkerInnerNetworkStatusStream()).pipe(Stream.orDie),
+          get: runInWorker(new WorkerSchema.LeaderWorkerInnerGetNetworkStatus()),
+          changes: runInWorkerStream(new WorkerSchema.LeaderWorkerInnerNetworkStatusStream()),
         }),
       }
 

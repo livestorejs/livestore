@@ -1,5 +1,5 @@
 import { requiredCIJobs } from '../genie/ci.ts'
-import { githubRuleset } from '../repos/effect-utils/packages/@overeng/genie/src/runtime/mod.ts'
+import { githubRuleset } from '../genie/repo.ts'
 
 export default githubRuleset({
   name: 'dev-branch-rules',

@@ -12,7 +12,7 @@ export default tsconfigJson({
     lib: [...domLib],
     rootDir: './',
     ...reactJsx,
-    types: ['vite/client', 'node', '@cloudflare/workers-types'],
+    types: ['vite/client', 'node', '@cloudflare/workers-types', '@types/react', '@types/react-dom'],
     noEmit: true,
     composite: false,
     declaration: false,

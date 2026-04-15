@@ -19,12 +19,12 @@ export type ColumnDefaultValue<T> = T | null | ColumnDefaultThunk<T | null> | Sq
 export const resolveColumnDefault = <T>(value: ColumnDefaultValue<T>): T | null | SqlDefaultValue =>
   isDefaultThunk(value) === true ? value() : value
 
-export type ColumnDefinition<TEncoded, TDecoded> = {
+export type ColumnDefinition<TEncoded, TDecoded, TNullable extends boolean = boolean> = {
   readonly columnType: FieldColumnType
   readonly schema: Schema.Schema<TDecoded, TEncoded>
   readonly default: Option.Option<ColumnDefaultValue<TDecoded>>
   /** @default false */
-  readonly nullable: boolean
+  readonly nullable: TNullable
   /** @default false */
   readonly primaryKey: boolean
   /** @default false */

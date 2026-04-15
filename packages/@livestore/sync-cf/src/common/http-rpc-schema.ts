@@ -1,4 +1,4 @@
-import { InvalidPullError, InvalidPushError, UnknownError } from '@livestore/common'
+import { BackendIdMismatchError, ServerAheadError, UnknownError } from '@livestore/common'
 import { Rpc, RpcGroup, Schema } from '@livestore/utils/effect'
 
 import * as SyncMessage from './sync-message-types.ts'
@@ -18,7 +18,7 @@ export class SyncHttpRpc extends RpcGroup.make(
       ...SyncMessage.PullRequest.fields,
     }),
     success: SyncMessage.PullResponse,
-    error: InvalidPullError,
+    error: Schema.Union(UnknownError, BackendIdMismatchError),
     stream: true,
   }),
   Rpc.make('SyncHttpRpc.Push', {
@@ -28,7 +28,7 @@ export class SyncHttpRpc extends RpcGroup.make(
       ...SyncMessage.PushRequest.fields,
     }),
     success: SyncMessage.PushAck,
-    error: InvalidPushError,
+    error: Schema.Union(UnknownError, ServerAheadError, BackendIdMismatchError),
   }),
   Rpc.make('SyncHttpRpc.Ping', {
     payload: Schema.Struct({

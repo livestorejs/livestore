@@ -1,9 +1,4 @@
-import {
-  baseOxlintCategories,
-  baseOxlintIgnorePatterns,
-  baseOxlintPlugins,
-} from './repos/effect-utils/genie/external.ts'
-import { oxlintConfig } from './repos/effect-utils/packages/@overeng/genie/src/runtime/mod.ts'
+import { baseOxlintCategories, baseOxlintIgnorePatterns, baseOxlintPlugins, oxlintConfig } from './genie/repo.ts'
 
 /**
  * LiveStore oxlint configuration (Phase 1 — permissive).

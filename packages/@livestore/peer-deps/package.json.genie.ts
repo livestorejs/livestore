@@ -1,36 +1,32 @@
-import { catalog, livestorePackageDefaults, packageJson } from '../../../genie/repo.ts'
+import {
+  catalog,
+  livestorePackageDefaults,
+  packageJson,
+  utilsEffectPeerDeps,
+  workspaceMember,
+} from '../../../genie/repo.ts'
 
-export default packageJson({
-  name: '@livestore/peer-deps',
-  ...livestorePackageDefaults,
+/** Derives dependencies from the canonical utilsEffectPeerDeps list */
+const runtimeDeps = catalog.compose({
+  workspace: workspaceMember('packages/@livestore/peer-deps'),
   dependencies: {
-    ...catalog.pick(
-      '@effect/ai',
-      '@effect/cli',
-      '@effect/cluster',
-      '@effect/experimental',
-      '@effect/opentelemetry',
-      '@effect/platform',
-      '@effect/platform-browser',
-      '@effect/platform-bun',
-      '@effect/platform-node',
-      '@effect/printer',
-      '@effect/printer-ansi',
-      '@effect/rpc',
-      '@effect/sql',
-      '@effect/typeclass',
-      '@opentelemetry/api',
-      '@opentelemetry/resources',
-      'effect',
-    ),
-  },
-  description:
-    'This is a convenience package that can be installed to satisfy peer dependencies of Livestore packages.',
-  files: ['package.json'],
-  publishConfig: {
-    access: 'public',
-  },
-  scripts: {
-    test: "echo 'No tests for peer-deps'",
+    external: catalog.pick(...utilsEffectPeerDeps),
   },
 })
+
+export default packageJson(
+  {
+    name: '@livestore/peer-deps',
+    ...livestorePackageDefaults,
+    description:
+      'This is a convenience package that can be installed to satisfy peer dependencies of Livestore packages.',
+    files: ['package.json'],
+    publishConfig: {
+      access: 'public',
+    },
+    scripts: {
+      test: "echo 'No tests for peer-deps'",
+    },
+  },
+  runtimeDeps,
+)

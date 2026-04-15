@@ -1,4 +1,4 @@
-import { InvalidPullError, InvalidPushError, IsOfflineError, UnknownError } from '@livestore/common'
+import { BackendIdMismatchError, IsOfflineError, ServerAheadError, UnknownError } from '@livestore/common'
 import { LiveStoreEvent } from '@livestore/common/schema'
 import { SyncMessage } from '@livestore/sync-cf/common'
 /** Explicit type imports so TypeScript can name inferred types in declaration emit (fixes TS2742). */
@@ -29,7 +29,7 @@ export class DoRpcProxyRpcs extends RpcGroup.make(
     }),
     // Mirror the PullResItem from SyncBackend
     success: SyncMessage.PullResponse,
-    error: Schema.Union(IsOfflineError, InvalidPullError),
+    error: Schema.Union(IsOfflineError, UnknownError, BackendIdMismatchError),
     stream: true,
   }),
 
@@ -40,7 +40,7 @@ export class DoRpcProxyRpcs extends RpcGroup.make(
       batch: Schema.Array(LiveStoreEvent.Global.Encoded),
     }),
     success: Schema.Void,
-    error: Schema.Union(IsOfflineError, InvalidPushError),
+    error: Schema.Union(IsOfflineError, UnknownError, ServerAheadError, BackendIdMismatchError),
   }),
 
   // Mirror the ping method

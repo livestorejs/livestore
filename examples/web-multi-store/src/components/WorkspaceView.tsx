@@ -1,7 +1,9 @@
-import { queryDb } from '@livestore/livestore'
-import { useStore, useStoreRegistry } from '@livestore/react'
 import { Suspense, useCallback, useState } from 'react'
 import { ErrorBoundary } from 'react-error-boundary'
+
+import { queryDb } from '@livestore/livestore'
+import { useStore, useStoreRegistry } from '@livestore/react'
+
 import { issueStoreOptions } from '../stores/issue/index.ts'
 import { workspaceStoreOptions } from '../stores/workspace/index.ts'
 import { workspaceEvents, workspaceTables } from '../stores/workspace/schema.ts'

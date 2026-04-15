@@ -1,34 +1,49 @@
-import { catalog, livestorePackageDefaults, packageJson } from '../../../genie/repo.ts'
+import {
+  catalog,
+  livestorePackageDefaults,
+  packageJson,
+  workspaceMember,
+  getUtilsPeerDeps,
+} from '../../../genie/repo.ts'
+import adapterWebPkg from '../adapter-web/package.json.genie.ts'
+import commonPkg from '../common/package.json.genie.ts'
+import livestorePkg from '../livestore/package.json.genie.ts'
+import utilsDevPkg from '../utils-dev/package.json.genie.ts'
 import utilsPkg from '../utils/package.json.genie.ts'
 
-export default packageJson({
-  name: '@livestore/framework-toolkit',
-  ...livestorePackageDefaults,
-  exports: {
-    '.': './src/mod.ts',
-    './testing': './src/testing.ts',
-  },
+const runtimeDeps = catalog.compose({
+  workspace: workspaceMember('packages/@livestore/framework-toolkit'),
   dependencies: {
-    ...catalog.pick(
-      '@livestore/adapter-web',
-      '@livestore/common',
-      '@livestore/livestore',
-      '@livestore/utils',
-      '@opentelemetry/api',
-    ),
+    workspace: [adapterWebPkg, commonPkg, livestorePkg, utilsPkg],
+    external: catalog.pick('@opentelemetry/api'),
   },
   devDependencies: {
-    ...catalog.pick('@livestore/utils-dev', 'typescript'),
+    workspace: [utilsDevPkg],
+    external: catalog.pick('typescript'),
   },
-  peerDependencies: utilsPkg.data.peerDependencies,
-  publishConfig: {
-    access: 'public',
-    exports: {
-      '.': './dist/mod.js',
-      './testing': './dist/testing.js',
-    },
-  },
-  scripts: {
-    build: 'tsc',
+  peerDependencies: {
+    external: getUtilsPeerDeps(),
   },
 })
+
+export default packageJson(
+  {
+    name: '@livestore/framework-toolkit',
+    ...livestorePackageDefaults,
+    exports: {
+      '.': './src/mod.ts',
+      './testing': './src/testing.ts',
+    },
+    publishConfig: {
+      access: 'public',
+      exports: {
+        '.': './dist/mod.js',
+        './testing': './dist/testing.js',
+      },
+    },
+    scripts: {
+      build: 'tsc',
+    },
+  },
+  runtimeDeps,
+)

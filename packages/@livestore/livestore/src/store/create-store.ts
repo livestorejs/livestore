@@ -7,13 +7,12 @@ import {
   type ClientSessionDevtoolsChannel,
   type ClientSessionSyncProcessorSimulationParams,
   type IntentionalShutdownCause,
-  type InvalidPullError,
-  type IsOfflineError,
   LogConfig,
   type MaterializeError,
+  type BackendIdMismatchError,
   type MigrationsReport,
   provideOtel,
-  type SyncError,
+  type ServerAheadError,
   UnknownError,
 } from '@livestore/common'
 import type { LiveStoreSchema } from '@livestore/common/schema'
@@ -326,7 +325,7 @@ export const createStore = <
       const shutdown = (
         exit: Exit.Exit<
           IntentionalShutdownCause,
-          UnknownError | MaterializeError | SyncError | InvalidPullError | IsOfflineError
+          UnknownError | MaterializeError | BackendIdMismatchError
         >,
       ) =>
         Effect.gen(function* () {

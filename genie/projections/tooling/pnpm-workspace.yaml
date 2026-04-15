@@ -1,0 +1,91 @@
+# Generated file - DO NOT EDIT
+# Source: pnpm-workspace.yaml.genie.ts
+
+dedupePeerDependents: true
+
+strictPeerDependencies: false
+
+peerDependencyRules:
+  allowedVersions:
+    '@effect/experimental': '>=0.58.0'
+    '@effect/platform': '>=0.94.2'
+    '@effect/rpc': '>=0.73.0'
+
+enableGlobalVirtualStore: true
+
+optimisticRepeatInstall: false
+
+verifyDepsBeforeRun: false
+
+supportedArchitectures:
+  os: [linux, darwin]
+  cpu: [x64, arm64]
+  libc: [glibc, musl]
+
+allowBuilds:
+  '@parcel/watcher': true
+  '@myobie/pty': true
+  esbuild: true
+  msgpackr-extract: true
+  node-pty: true
+  sharp: true
+  unix-dgram: true
+  '@mixedbread/cli': true
+  cbor-extract: true
+  dtrace-provider: true
+  protobufjs: true
+  puppeteer: true
+  workerd: true
+
+packageExtensions:
+  react-error-boundary:
+    dependencies:
+      '@types/react': 19.2.7
+      '@types/react-dom': 19.2.3
+  starlight-auto-sidebar:
+    dependencies:
+      astro: '>=5.0.0'
+  starlight-links-validator:
+    dependencies:
+      astro: '>=5.0.0'
+  starlight-sidebar-topics:
+    dependencies:
+      astro: '>=5.0.0'
+  typedoc:
+    dependencies:
+      typedoc-plugin-markdown: ^4.8.1
+
+packages:
+  - ../../../docs
+  - ../../../docs/src/content/_assets/code
+  - ../../../packages/@livestore/adapter-cloudflare
+  - ../../../packages/@livestore/adapter-expo
+  - ../../../packages/@livestore/adapter-node
+  - ../../../packages/@livestore/adapter-web
+  - ../../../packages/@livestore/cli
+  - ../../../packages/@livestore/common
+  - ../../../packages/@livestore/common-cf
+  - ../../../packages/@livestore/devtools-expo
+  - ../../../packages/@livestore/devtools-web-common
+  - ../../../packages/@livestore/effect-playwright
+  - ../../../packages/@livestore/framework-toolkit
+  - ../../../packages/@livestore/graphql
+  - ../../../packages/@livestore/livestore
+  - ../../../packages/@livestore/peer-deps
+  - ../../../packages/@livestore/react
+  - ../../../packages/@livestore/solid
+  - ../../../packages/@livestore/sqlite-wasm
+  - ../../../packages/@livestore/svelte
+  - ../../../packages/@livestore/sync-cf
+  - ../../../packages/@livestore/sync-electric
+  - ../../../packages/@livestore/sync-s2
+  - ../../../packages/@livestore/utils
+  - ../../../packages/@livestore/utils-dev
+  - ../../../packages/@livestore/wa-sqlite
+  - ../../../packages/@livestore/webmesh
+  - ../../../packages/@local/astro-tldraw
+  - ../../../packages/@local/astro-twoslash-code
+  - ../../../packages/@local/shared
+  - ../../../scripts
+  - ../../../tests/integration
+  - ../../../tests/sync-provider

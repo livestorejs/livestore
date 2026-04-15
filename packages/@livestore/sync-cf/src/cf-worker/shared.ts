@@ -1,4 +1,4 @@
-import type { InvalidPullError, InvalidPushError } from '@livestore/common'
+import type { UnknownError } from '@livestore/common'
 import type { CfTypes } from '@livestore/common-cf'
 import { Effect, Schema, UrlParams } from '@livestore/utils/effect'
 
@@ -27,9 +27,9 @@ export type CallbackContext = {
 
 export type MakeDurableObjectClassOptions = {
   onPush?: (message: SyncMessage.PushRequest, context: CallbackContext) => Effect.SyncOrPromiseOrEffect<void>
-  onPushRes?: (message: SyncMessage.PushAck | InvalidPushError) => Effect.SyncOrPromiseOrEffect<void>
+  onPushRes?: (message: SyncMessage.PushAck | UnknownError) => Effect.SyncOrPromiseOrEffect<void>
   onPull?: (message: SyncMessage.PullRequest, context: CallbackContext) => Effect.SyncOrPromiseOrEffect<void>
-  onPullRes?: (message: SyncMessage.PullResponse | InvalidPullError) => Effect.SyncOrPromiseOrEffect<void>
+  onPullRes?: (message: SyncMessage.PullResponse | UnknownError) => Effect.SyncOrPromiseOrEffect<void>
 
   /**
    * Forward request headers to `onPush`/`onPull` callbacks for authentication.

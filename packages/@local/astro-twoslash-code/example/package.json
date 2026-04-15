@@ -12,22 +12,46 @@
   },
   "dependencies": {
     "@astrojs/starlight": "0.35.2",
-    "@livestore/utils": "file:../../../@livestore/utils",
-    "@local/astro-twoslash-code": "file:..",
+    "@livestore/utils": "workspace:^",
+    "@local/astro-twoslash-code": "workspace:^",
     "astro": "5.13.4",
     "astro-expressive-code": "0.41.5",
     "expressive-code": "0.41.5",
     "expressive-code-twoslash": "0.5.3"
   },
   "devDependencies": {
-    "@playwright/test": "1.58.0",
+    "@effect/ai": "0.35.0",
+    "@effect/cli": "0.75.0",
+    "@effect/cluster": "0.58.0",
+    "@effect/experimental": "0.60.0",
+    "@effect/opentelemetry": "0.63.0",
+    "@effect/platform": "0.96.0",
+    "@effect/platform-browser": "0.76.0",
+    "@effect/platform-bun": "0.89.0",
+    "@effect/platform-node": "0.106.0",
+    "@effect/printer": "0.49.0",
+    "@effect/printer-ansi": "0.49.0",
+    "@effect/rpc": "0.75.0",
+    "@effect/sql": "0.51.0",
+    "@effect/typeclass": "0.40.0",
+    "@effect/vitest": "0.29.0",
+    "@opentelemetry/api": "1.9.0",
+    "@opentelemetry/resources": "2.2.0",
+    "@playwright/test": "1.58.2",
+    "@standard-schema/spec": "1.1.0",
     "@tailwindcss/vite": "4.1.18",
     "@types/node": "25.3.3",
+    "effect": "3.21.0",
     "tailwindcss": "4.1.18",
     "typescript": "5.9.3"
   },
   "$genie": {
     "source": "package.json.genie.ts",
-    "warning": "DO NOT EDIT - changes will be overwritten"
+    "warning": "DO NOT EDIT - changes will be overwritten",
+    "workspaceClosureDirs": [
+      "packages/@livestore/utils",
+      "packages/@local/astro-twoslash-code",
+      "packages/@local/astro-twoslash-code/example"
+    ]
   }
 }

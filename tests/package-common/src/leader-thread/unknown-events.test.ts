@@ -62,8 +62,8 @@ Vitest.describe.concurrent('unknown event handling in materializeEvent', () => {
         throw new Error('Expected materializeEvent to fail for fail strategy')
       }
       const error = result.left
-      expect(error._tag).toEqual('LiveStore.MaterializeError')
-      if (error.cause._tag !== 'LiveStore.UnknownEventError') {
+      expect(error._tag).toEqual('MaterializeError')
+      if (error.cause._tag !== 'UnknownEventError') {
         throw new Error(`Unexpected failure cause: ${error.cause._tag}`)
       }
       expect(error.cause.reason).toEqual('event-definition-missing')

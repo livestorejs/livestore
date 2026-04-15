@@ -211,7 +211,7 @@ const makeWorkerRunnerInner = ({ schema, sync: syncOptions, syncPayloadSchema }:
 
       const snapshot = workerCtx.dbState.export()
       return { snapshot, migrationsReport: workerCtx.initialState.migrationsReport }
-    }, UnknownError.mapToUnknownError),
+    }),
     PullStream: ({ cursor }) =>
       Effect.gen(function* () {
         const { syncProcessor } = yield* LeaderThreadCtx // <- syncState comes from here
@@ -249,12 +249,10 @@ const makeWorkerRunnerInner = ({ schema, sync: syncOptions, syncPayloadSchema }:
       ),
     Export: () =>
       Effect.andThen(LeaderThreadCtx, (_) => _.dbState.export()).pipe(
-        UnknownError.mapToUnknownError,
         Effect.withSpan('@livestore/adapter-web:worker:Export'),
       ),
     ExportEventlog: () =>
       Effect.andThen(LeaderThreadCtx, (_) => _.dbEventlog.export()).pipe(
-        UnknownError.mapToUnknownError,
         Effect.withSpan('@livestore/adapter-web:worker:ExportEventlog'),
       ),
     BootStatusStream: () =>
@@ -262,11 +260,11 @@ const makeWorkerRunnerInner = ({ schema, sync: syncOptions, syncPayloadSchema }:
     GetLeaderHead: Effect.fn('@livestore/adapter-web:worker:GetLeaderHead')(function* () {
       const workerCtx = yield* LeaderThreadCtx
       return Eventlog.getClientHeadFromDb(workerCtx.dbEventlog)
-    }, UnknownError.mapToUnknownError),
+    }),
     GetLeaderSyncState: Effect.fn('@livestore/adapter-web:worker:GetLeaderSyncState')(function* () {
       const workerCtx = yield* LeaderThreadCtx
       return yield* workerCtx.syncProcessor.syncState
-    }, UnknownError.mapToUnknownError),
+    }),
     SyncStateStream: () =>
       Effect.gen(function* () {
         const workerCtx = yield* LeaderThreadCtx
@@ -275,7 +273,7 @@ const makeWorkerRunnerInner = ({ schema, sync: syncOptions, syncPayloadSchema }:
     GetNetworkStatus: Effect.fn('@livestore/adapter-web:worker:GetNetworkStatus')(function* () {
       const workerCtx = yield* LeaderThreadCtx
       return yield* workerCtx.networkStatus
-    }, UnknownError.mapToUnknownError),
+    }),
     NetworkStatusStream: () =>
       Effect.gen(function* () {
         const workerCtx = yield* LeaderThreadCtx
@@ -287,10 +285,9 @@ const makeWorkerRunnerInner = ({ schema, sync: syncOptions, syncPayloadSchema }:
       // Buy some time for Otel to flush
       // TODO find a cleaner way to do this
       yield* Effect.sleep(300)
-    }, UnknownError.mapToUnknownError),
+    }),
     ExtraDevtoolsMessage: ({ message }) =>
       Effect.andThen(LeaderThreadCtx, (_) => _.extraIncomingMessagesQueue.offer(message)).pipe(
-        UnknownError.mapToUnknownError,
         Effect.withSpan('@livestore/adapter-web:worker:ExtraDevtoolsMessage'),
       ),
     'DevtoolsWebCommon.CreateConnection': WebmeshWorker.CreateConnection,

@@ -1,6 +1,7 @@
 import { playwrightSuites, syncProviderMatrix } from '../../genie/ci.ts'
 import {
   bashShellDefaults,
+  defaultActionlintConfig,
   dispatchAlignmentStep,
   githubWorkflow,
   livestoreSetupSteps,
@@ -8,7 +9,9 @@ import {
   namespaceRunner,
   nixDiagnosticsArtifactStep,
   otelSetupStep,
+  repoPnpmOnlyBuiltDependencies,
   runDevenvTasksBefore,
+  savePnpmStateStep,
 } from '../../genie/repo.ts'
 
 // =============================================================================
@@ -20,6 +23,8 @@ const GITHUB_SHA = '${{ github.sha }}'
 const GITHUB_REF = '${{ github.ref }}'
 const PR_HEAD_SHA = '${{ github.event.pull_request.head.sha || github.sha }}'
 const IS_NOT_FORK = 'github.event.pull_request.head.repo.fork != true'
+const DLX_ALLOW_BUILD_FLAGS = repoPnpmOnlyBuiltDependencies.map((name) => `--allow-build=${name}`).join(' ')
+const PNPM_ADD_ALLOW_BUILD_FLAGS = repoPnpmOnlyBuiltDependencies.map((name) => `--allow-build=${name}`).join(' ')
 
 // =============================================================================
 // Job Helpers
@@ -39,7 +44,11 @@ const namespaceRunnerConfig = {
   'runs-on': namespaceRunner(GITHUB_RUN_ID),
 }
 
-const withNixDiagnosticsOnFailure = (steps: unknown[]) => [...steps, nixDiagnosticsArtifactStep()]
+const withNixDiagnosticsOnFailure = (steps: unknown[]) => [
+  ...steps,
+  savePnpmStateStep({ keyPrefix: 'livestore-pnpm-state-v1' }),
+  nixDiagnosticsArtifactStep(),
+]
 
 /** Standard CI job configuration (namespace runner + bash shell) */
 const standardCIJob = (config: { env?: Record<string, string>; steps: unknown[] }) => ({
@@ -67,6 +76,7 @@ const otelCIJob = (config: { env?: Record<string, string>; steps: unknown[] }) =
 export default githubWorkflow({
   name: 'ci',
   'run-name': `\${{ github.event.pull_request.title || format('Push to {0}', github.ref_name) }} (${PR_HEAD_SHA})`,
+  actionlint: defaultActionlintConfig,
 
   permissions: {
     'id-token': 'write',
@@ -90,16 +100,19 @@ export default githubWorkflow({
 
   jobs: {
     lint: standardCIJob({
-      steps: [...livestoreSetupSteps, { run: runDevenvTasksBefore('lint:full:with-megarepo-check') }],
+      steps: [
+        ...livestoreSetupSteps,
+        { name: 'Run lint checks', run: runDevenvTasksBefore('lint:full:with-megarepo-check') },
+      ],
     }),
 
     'type-check': standardCIJob({
       // TODO(oep-1n3.9): Switch back to patched tsc once Effect diagnostics backlog is addressed.
-      steps: [...livestoreSetupSteps, { run: runDevenvTasksBefore('ts:build') }],
+      steps: [...livestoreSetupSteps, { name: 'Run type-check', run: runDevenvTasksBefore('ts:build') }],
     }),
 
     'test-unit': standardCIJob({
-      steps: [...livestoreSetupSteps, { run: runDevenvTasksBefore('test:unit') }],
+      steps: [...livestoreSetupSteps, { name: 'Run unit tests', run: runDevenvTasksBefore('test:unit') }],
     }),
 
     // TODO: Remove flaky test wrapper once node-sync flakiness is resolved
@@ -171,8 +184,9 @@ done`,
         {
           name: 'Run sync-provider tests for ${{ matrix.provider }}',
           run: runDevenvTasksBefore('test:integration:sync-provider:matrix'),
-          env: { TEST_SYNC_PROVIDER: '${{ matrix.provider }}' },
+          env: { OTEL_STATE_DIR: '', TEST_SYNC_PROVIDER: '${{ matrix.provider }}' },
         },
+        savePnpmStateStep({ keyPrefix: 'livestore-pnpm-state-v1' }),
         nixDiagnosticsArtifactStep(),
       ],
     },
@@ -212,6 +226,7 @@ done`,
           },
           run: runDevenvTasksBefore('test:integration:playwright:upload-trace'),
         },
+        savePnpmStateStep({ keyPrefix: 'livestore-pnpm-state-v1' }),
         nixDiagnosticsArtifactStep(),
       ],
     },
@@ -238,6 +253,7 @@ done`,
             OTEL_EXPORTER_OTLP_ENDPOINT: 'https://otlp-gateway-prod-us-east-2.grafana.net/otlp',
           },
         },
+        savePnpmStateStep({ keyPrefix: 'livestore-pnpm-state-v1' }),
         nixDiagnosticsArtifactStep(),
       ],
     },
@@ -259,6 +275,7 @@ done`,
             OTEL_EXPORTER_OTLP_ENDPOINT: 'https://otlp-gateway-prod-us-east-2.grafana.net/otlp',
           },
         },
+        savePnpmStateStep({ keyPrefix: 'livestore-pnpm-state-v1' }),
         nixDiagnosticsArtifactStep(),
       ],
     },
@@ -280,7 +297,11 @@ done`,
       defaults: bashShellDefaults,
       steps: withNixDiagnosticsOnFailure([
         ...livestoreSetupSteps,
-        { run: runDevenvTasksBefore('release:snapshot:git-sha'), env: { GIT_SHA: GITHUB_SHA } },
+        {
+          name: 'Publish snapshot version',
+          run: runDevenvTasksBefore('release:snapshot:git-sha'),
+          env: { GIT_SHA: GITHUB_SHA },
+        },
       ]),
     },
 
@@ -405,7 +426,7 @@ done`,
           // to simulate a simple, user-facing setup.
           name: 'Setup pnpm',
           uses: 'pnpm/action-setup@v4',
-          with: { version: 'latest', standalone: true },
+          with: { standalone: true },
         },
         {
           /** Only include @livestore/* deps that exist in this workspace (excludes externally-published packages like devtools-vite) */
@@ -415,21 +436,16 @@ echo "WORKSPACE_DEPS=$DEPS" >> $GITHUB_ENV`,
         },
         {
           /**
-           * - We use `github.ref` instead of `github.sha` because, when a workflow is triggered by a pull request,
-           *   `github.sha` refers to a temporary commit SHA that can become inaccessible in some contexts.
-           * - We use `github.ref` instead of `github.ref_name` because GitHub's public API requires full refs.
-           *   `github.ref_name` produces shortened refs like `123/merge` for PRs, which the API doesn't recognize.
-           *   `github.ref` provides the full ref (e.g., `refs/pull/123/merge`) that the API understands.
-           *
-           * See https://www.kenmuse.com/blog/the-many-shas-of-a-github-pull-request/
+           * Use PR head SHA for pull_request events. `refs/pull/<id>/merge` can be missing when
+           * merge commits are unavailable, which makes GitHub contents API calls fail.
            */
           name: 'Copy example app',
-          run: `pnpm dlx @livestore/cli@\${{ env.SNAPSHOT_VERSION }} create --example \${{ matrix.app }} --ref ${GITHUB_REF} \${{ runner.temp }}/\${{ env.APP_PATH }}`,
+          run: `pnpm dlx ${DLX_ALLOW_BUILD_FLAGS} @livestore/cli@\${{ env.SNAPSHOT_VERSION }} create --example \${{ matrix.app }} --ref ${PR_HEAD_SHA} \${{ runner.temp }}/\${{ env.APP_PATH }}`,
         },
         {
           name: 'Use snapshot version of workspace dependencies',
           'working-directory': '${{ runner.temp }}/${{ env.APP_PATH }}',
-          run: `pnpm add $(
+          run: `pnpm add ${PNPM_ADD_ALLOW_BUILD_FLAGS} $(
   for dep in $WORKSPACE_DEPS; do
     echo "$dep@\${{ env.SNAPSHOT_VERSION }}"
   done

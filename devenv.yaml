@@ -1,18 +1,15 @@
 inputs:
   nixpkgs:
-    url: github:NixOS/nixpkgs/nixos-unstable
+    follows: effect-utils/nixpkgs
   git-hooks:
     url: github:cachix/git-hooks.nix
     inputs:
       nixpkgs:
         follows: nixpkgs
   playwright:
-    url: github:overengineeringstudio/effect-utils?dir=nix/playwright-flake
+    url: github:overengineeringstudio/effect-utils/main?dir=nix/playwright-flake
     inputs:
       nixpkgs:
         follows: nixpkgs
   effect-utils:
-    url: github:overengineeringstudio/effect-utils
-    inputs:
-      nixpkgs:
-        follows: nixpkgs
+    url: github:overengineeringstudio/effect-utils/main

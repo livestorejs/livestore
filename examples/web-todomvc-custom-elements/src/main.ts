@@ -3,7 +3,7 @@
 
 import { makePersistedAdapter } from '@livestore/adapter-web'
 import LiveStoreSharedWorker from '@livestore/adapter-web/shared-worker?sharedworker'
-import { createStorePromise, liveStoreVersion, queryDb } from '@livestore/livestore'
+import { createStorePromise, liveStoreVersion, queryDb, type BootStatus } from '@livestore/livestore'
 
 import LiveStoreWorker from './livestore.worker.ts?worker'
 import { events, SyncPayload, schema, tables } from './schema.ts'
@@ -48,10 +48,41 @@ const adapter = makePersistedAdapter({
 
 const syncPayload = { authToken: 'insecure-token-change-me' }
 
+let storeBootStatus: BootStatus = { stage: 'loading' }
+const storeBootDoneListeners = new Set<() => void>()
+
+const notifyStoreBootStatus = (status: BootStatus) => {
+  storeBootStatus = status
+
+  if (status.stage !== 'done') {
+    return
+  }
+
+  for (const listener of storeBootDoneListeners) {
+    listener()
+  }
+
+  storeBootDoneListeners.clear()
+}
+
+const onStoreBootDone = (listener: () => void) => {
+  if (storeBootStatus.stage === 'done') {
+    listener()
+    return () => {}
+  }
+
+  storeBootDoneListeners.add(listener)
+
+  return () => {
+    storeBootDoneListeners.delete(listener)
+  }
+}
+
 const store = await createStorePromise({
   schema,
   adapter,
   storeId: 'todomvc-custom-elements',
+  onBootStatus: notifyStoreBootStatus,
   syncPayloadSchema: SyncPayload,
   syncPayload,
 })
@@ -216,6 +247,29 @@ class TodoList extends HTMLElement {
     store.subscribe(appState$, (newValue) => {
       input.value = newValue.newTodoText
     })
+
+    const markStoreReady = () => {
+      if (this.dataset.storeReady === 'true') {
+        return
+      }
+
+      /**
+       * Boot completion is the closest lifecycle boundary we have to "persistence rehydration is settled".
+       * We do one post-boot app-state read before exposing `data-store-ready` so tests don't race an
+       * early empty snapshot during reloads.
+       *
+       * TODO expose a first-class hydration-complete signal from LiveStore so examples don't need this latch.
+       */
+      let unsubscribeReadyCheck: (() => void) | undefined
+      unsubscribeReadyCheck = store.subscribe(appState$, (newValue) => {
+        input.value = newValue.newTodoText
+        this.dataset.storeReady = 'true'
+        queueMicrotask(() => unsubscribeReadyCheck?.())
+      })
+    }
+
+    // TODO unsubscribe
+    onStoreBootDone(markStoreReady)
   }
 
   updateTodoItems() {

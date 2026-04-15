@@ -11,7 +11,7 @@ import { Opfs, type WebError } from '@livestore/utils/effect/browser'
 
 import type * as WorkerSchema from './worker-schema.ts'
 
-export class PersistedSqliteError extends Schema.TaggedError<PersistedSqliteError>()('PersistedSqliteError', {
+export class PersistedSqliteError extends Schema.TaggedError<PersistedSqliteError>('~@livestore/adapter-web/PersistedSqliteError')('PersistedSqliteError', {
   message: Schema.String,
   cause: Schema.optional(Schema.Defect),
 }) {}
@@ -91,7 +91,7 @@ export const resetPersistedDataFromClientSession = Effect.fn(
     const directory = yield* sanitizeOpfsDir(storageOptions.directory, storeId)
     yield* Opfs.remove(directory, { recursive: true }).pipe(
       // We ignore NotFoundError here as it may not exist or have already been deleted
-      Effect.catchTag('@livestore/utils/Web/NotFoundError', () => Effect.void),
+      Effect.catchTag('NotFoundError', () => Effect.void),
     )
   },
   Effect.retry({
