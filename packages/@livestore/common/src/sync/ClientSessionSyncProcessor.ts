@@ -157,26 +157,27 @@ export const makeClientSessionSyncProcessor = Effect.fn('makeClientSessionSyncPr
     yield* BucketQueue.offerAll(leaderPushQueue, mergeResult.newEvents)
   })
 
-  const materializeEvents: ClientSessionSyncProcessor['materializeEvents'] = (events) =>
-    Effect.gen(function* () {
-      const writeTables = new Set<string>()
-      for (const event of events) {
-        const {
-          writeTables: newWriteTables,
-          sessionChangeset,
-          materializerHash,
-        } = yield* materializeEvent(event, {
-          withChangeset: true,
-          materializerHashLeader: Option.none(),
-        })
-        for (const table of newWriteTables) {
-          writeTables.add(table)
-        }
-        event.meta.sessionChangeset = sessionChangeset
-        event.meta.materializerHashSession = materializerHash
+  const materializeEvents: ClientSessionSyncProcessor['materializeEvents'] = Effect.fn('client-session-sync-processor:materialize-events')(function* (
+    events,
+  ) {
+    const writeTables = new Set<string>()
+    for (const event of events) {
+      const {
+        writeTables: newWriteTables,
+        sessionChangeset,
+        materializerHash,
+      } = yield* materializeEvent(event, {
+        withChangeset: true,
+        materializerHashLeader: Option.none(),
+      })
+      for (const table of newWriteTables) {
+        writeTables.add(table)
       }
-      return { writeTables }
-    })
+      event.meta.sessionChangeset = sessionChangeset
+      event.meta.materializerHashSession = materializerHash
+    }
+    return { writeTables }
+  })
 
   const debugInfo = {
     rebaseCount: 0,

@@ -68,13 +68,18 @@ exports[`otel > QueryBuilder subscription - async iterator 2`] = `
         "_name": "client-session-sync-processor:encodeEvents",
       },
       {
-        "_name": "client-session-sync-processor:materialize-event",
+        "_name": "client-session-sync-processor:materialize-events",
         "children": [
           {
-            "_name": "livestore.in-memory-db:execute",
-            "attributes": {
-              "sql.query": "INSERT INTO 'todos' ("id", "text", "completed") VALUES (?, ?, ?)",
-            },
+            "_name": "client-session-sync-processor:materialize-event",
+            "children": [
+              {
+                "_name": "livestore.in-memory-db:execute",
+                "attributes": {
+                  "sql.query": "INSERT INTO 'todos' ("id", "text", "completed") VALUES (?, ?, ?)",
+                },
+              },
+            ],
           },
         ],
       },
@@ -161,13 +166,18 @@ exports[`otel > QueryBuilder subscription - async iterator with skipInitialRun 2
         "_name": "client-session-sync-processor:encodeEvents",
       },
       {
-        "_name": "client-session-sync-processor:materialize-event",
+        "_name": "client-session-sync-processor:materialize-events",
         "children": [
           {
-            "_name": "livestore.in-memory-db:execute",
-            "attributes": {
-              "sql.query": "INSERT INTO 'todos' ("id", "text", "completed") VALUES (?, ?, ?)",
-            },
+            "_name": "client-session-sync-processor:materialize-event",
+            "children": [
+              {
+                "_name": "livestore.in-memory-db:execute",
+                "attributes": {
+                  "sql.query": "INSERT INTO 'todos' ("id", "text", "completed") VALUES (?, ?, ?)",
+                },
+              },
+            ],
           },
         ],
       },
@@ -300,13 +310,18 @@ exports[`otel > QueryBuilder subscription - basic functionality 2`] = `
         "_name": "client-session-sync-processor:encodeEvents",
       },
       {
-        "_name": "client-session-sync-processor:materialize-event",
+        "_name": "client-session-sync-processor:materialize-events",
         "children": [
           {
-            "_name": "livestore.in-memory-db:execute",
-            "attributes": {
-              "sql.query": "INSERT INTO 'todos' ("id", "text", "completed") VALUES (?, ?, ?)",
-            },
+            "_name": "client-session-sync-processor:materialize-event",
+            "children": [
+              {
+                "_name": "livestore.in-memory-db:execute",
+                "attributes": {
+                  "sql.query": "INSERT INTO 'todos' ("id", "text", "completed") VALUES (?, ?, ?)",
+                },
+              },
+            ],
           },
         ],
       },
@@ -439,13 +454,18 @@ exports[`otel > QueryBuilder subscription - direct table subscription 2`] = `
         "_name": "client-session-sync-processor:encodeEvents",
       },
       {
-        "_name": "client-session-sync-processor:materialize-event",
+        "_name": "client-session-sync-processor:materialize-events",
         "children": [
           {
-            "_name": "livestore.in-memory-db:execute",
-            "attributes": {
-              "sql.query": "INSERT INTO 'todos' ("id", "text", "completed") VALUES (?, ?, ?)",
-            },
+            "_name": "client-session-sync-processor:materialize-event",
+            "children": [
+              {
+                "_name": "livestore.in-memory-db:execute",
+                "attributes": {
+                  "sql.query": "INSERT INTO 'todos' ("id", "text", "completed") VALUES (?, ?, ?)",
+                },
+              },
+            ],
           },
         ],
       },
@@ -578,13 +598,18 @@ exports[`otel > QueryBuilder subscription - skipInitialRun 2`] = `
         "_name": "client-session-sync-processor:encodeEvents",
       },
       {
-        "_name": "client-session-sync-processor:materialize-event",
+        "_name": "client-session-sync-processor:materialize-events",
         "children": [
           {
-            "_name": "livestore.in-memory-db:execute",
-            "attributes": {
-              "sql.query": "INSERT INTO 'todos' ("id", "text", "completed") VALUES (?, ?, ?)",
-            },
+            "_name": "client-session-sync-processor:materialize-event",
+            "children": [
+              {
+                "_name": "livestore.in-memory-db:execute",
+                "attributes": {
+                  "sql.query": "INSERT INTO 'todos' ("id", "text", "completed") VALUES (?, ?, ?)",
+                },
+              },
+            ],
           },
         ],
       },
@@ -750,13 +775,18 @@ exports[`otel > QueryBuilder subscription - unsubscribe functionality 2`] = `
         "_name": "client-session-sync-processor:encodeEvents",
       },
       {
-        "_name": "client-session-sync-processor:materialize-event",
+        "_name": "client-session-sync-processor:materialize-events",
         "children": [
           {
-            "_name": "livestore.in-memory-db:execute",
-            "attributes": {
-              "sql.query": "INSERT INTO 'todos' ("id", "text", "completed") VALUES (?, ?, ?)",
-            },
+            "_name": "client-session-sync-processor:materialize-event",
+            "children": [
+              {
+                "_name": "livestore.in-memory-db:execute",
+                "attributes": {
+                  "sql.query": "INSERT INTO 'todos' ("id", "text", "completed") VALUES (?, ?, ?)",
+                },
+              },
+            ],
           },
         ],
       },
@@ -785,13 +815,18 @@ exports[`otel > QueryBuilder subscription - unsubscribe functionality 2`] = `
         "_name": "client-session-sync-processor:encodeEvents",
       },
       {
-        "_name": "client-session-sync-processor:materialize-event",
+        "_name": "client-session-sync-processor:materialize-events",
         "children": [
           {
-            "_name": "livestore.in-memory-db:execute",
-            "attributes": {
-              "sql.query": "INSERT INTO 'todos' ("id", "text", "completed") VALUES (?, ?, ?)",
-            },
+            "_name": "client-session-sync-processor:materialize-event",
+            "children": [
+              {
+                "_name": "livestore.in-memory-db:execute",
+                "attributes": {
+                  "sql.query": "INSERT INTO 'todos' ("id", "text", "completed") VALUES (?, ?, ?)",
+                },
+              },
+            ],
           },
         ],
       },
@@ -914,13 +949,18 @@ exports[`otel > otel 4`] = `
         "_name": "client-session-sync-processor:encodeEvents",
       },
       {
-        "_name": "client-session-sync-processor:materialize-event",
+        "_name": "client-session-sync-processor:materialize-events",
         "children": [
           {
-            "_name": "livestore.in-memory-db:execute",
-            "attributes": {
-              "sql.query": "INSERT INTO 'todos' ("id", "text", "completed") VALUES (?, ?, ?)",
-            },
+            "_name": "client-session-sync-processor:materialize-event",
+            "children": [
+              {
+                "_name": "livestore.in-memory-db:execute",
+                "attributes": {
+                  "sql.query": "INSERT INTO 'todos' ("id", "text", "completed") VALUES (?, ?, ?)",
+                },
+              },
+            ],
           },
         ],
       },
@@ -1221,13 +1261,18 @@ exports[`otel > with thunks 8`] = `
         "_name": "client-session-sync-processor:encodeEvents",
       },
       {
-        "_name": "client-session-sync-processor:materialize-event",
+        "_name": "client-session-sync-processor:materialize-events",
         "children": [
           {
-            "_name": "livestore.in-memory-db:execute",
-            "attributes": {
-              "sql.query": "INSERT INTO 'todos' ("id", "text", "completed") VALUES (?, ?, ?)",
-            },
+            "_name": "client-session-sync-processor:materialize-event",
+            "children": [
+              {
+                "_name": "livestore.in-memory-db:execute",
+                "attributes": {
+                  "sql.query": "INSERT INTO 'todos' ("id", "text", "completed") VALUES (?, ?, ?)",
+                },
+              },
+            ],
           },
         ],
       },
@@ -1356,13 +1401,18 @@ exports[`otel > with thunks with query builder and without labels 4`] = `
         "_name": "client-session-sync-processor:encodeEvents",
       },
       {
-        "_name": "client-session-sync-processor:materialize-event",
+        "_name": "client-session-sync-processor:materialize-events",
         "children": [
           {
-            "_name": "livestore.in-memory-db:execute",
-            "attributes": {
-              "sql.query": "INSERT INTO 'todos' ("id", "text", "completed") VALUES (?, ?, ?)",
-            },
+            "_name": "client-session-sync-processor:materialize-event",
+            "children": [
+              {
+                "_name": "livestore.in-memory-db:execute",
+                "attributes": {
+                  "sql.query": "INSERT INTO 'todos' ("id", "text", "completed") VALUES (?, ?, ?)",
+                },
+              },
+            ],
           },
         ],
       },
