@@ -130,7 +130,7 @@ exports[`useClientDocument > otel > should update the data based on component ke
     },
     "children": [
       {
-        "_name": "client-session-sync-processor:encodeEvents",
+        "_name": "client-session-sync-processor:encode-events",
       },
       {
         "_name": "client-session-sync-processor:materialize-events",
@@ -174,7 +174,7 @@ exports[`useClientDocument > otel > should update the data based on component ke
     },
     "children": [
       {
-        "_name": "client-session-sync-processor:encodeEvents",
+        "_name": "client-session-sync-processor:encode-events",
       },
       {
         "_name": "client-session-sync-processor:materialize-events",

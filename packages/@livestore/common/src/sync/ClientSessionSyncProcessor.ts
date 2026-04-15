@@ -101,7 +101,7 @@ export const makeClientSessionSyncProcessor = Effect.fn('makeClientSessionSyncPr
   /** We're queuing push requests to reduce the number of messages sent to the leader by batching them */
   const leaderPushQueue = yield* BucketQueue.make<LiveStoreEvent.Client.EncodedWithMeta>()
 
-  const encodeEvents: ClientSessionSyncProcessor['encodeEvents'] = Effect.fn('client-session-sync-processor:encodeEvents')(function* (
+  const encodeEvents: ClientSessionSyncProcessor['encodeEvents'] = Effect.fn('client-session-sync-processor:encode-events')(function* (
     events,
   ) {
     let baseEventSequenceNumber = syncStateRef.current.localHead

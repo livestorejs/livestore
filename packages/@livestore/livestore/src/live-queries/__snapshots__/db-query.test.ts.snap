@@ -65,7 +65,7 @@ exports[`otel > QueryBuilder subscription - async iterator 2`] = `
     },
     "children": [
       {
-        "_name": "client-session-sync-processor:encodeEvents",
+        "_name": "client-session-sync-processor:encode-events",
       },
       {
         "_name": "client-session-sync-processor:materialize-events",
@@ -163,7 +163,7 @@ exports[`otel > QueryBuilder subscription - async iterator with skipInitialRun 2
     },
     "children": [
       {
-        "_name": "client-session-sync-processor:encodeEvents",
+        "_name": "client-session-sync-processor:encode-events",
       },
       {
         "_name": "client-session-sync-processor:materialize-events",
@@ -307,7 +307,7 @@ exports[`otel > QueryBuilder subscription - basic functionality 2`] = `
     },
     "children": [
       {
-        "_name": "client-session-sync-processor:encodeEvents",
+        "_name": "client-session-sync-processor:encode-events",
       },
       {
         "_name": "client-session-sync-processor:materialize-events",
@@ -451,7 +451,7 @@ exports[`otel > QueryBuilder subscription - direct table subscription 2`] = `
     },
     "children": [
       {
-        "_name": "client-session-sync-processor:encodeEvents",
+        "_name": "client-session-sync-processor:encode-events",
       },
       {
         "_name": "client-session-sync-processor:materialize-events",
@@ -595,7 +595,7 @@ exports[`otel > QueryBuilder subscription - skipInitialRun 2`] = `
     },
     "children": [
       {
-        "_name": "client-session-sync-processor:encodeEvents",
+        "_name": "client-session-sync-processor:encode-events",
       },
       {
         "_name": "client-session-sync-processor:materialize-events",
@@ -772,7 +772,7 @@ exports[`otel > QueryBuilder subscription - unsubscribe functionality 2`] = `
     },
     "children": [
       {
-        "_name": "client-session-sync-processor:encodeEvents",
+        "_name": "client-session-sync-processor:encode-events",
       },
       {
         "_name": "client-session-sync-processor:materialize-events",
@@ -812,7 +812,7 @@ exports[`otel > QueryBuilder subscription - unsubscribe functionality 2`] = `
     },
     "children": [
       {
-        "_name": "client-session-sync-processor:encodeEvents",
+        "_name": "client-session-sync-processor:encode-events",
       },
       {
         "_name": "client-session-sync-processor:materialize-events",
@@ -946,7 +946,7 @@ exports[`otel > otel 4`] = `
     },
     "children": [
       {
-        "_name": "client-session-sync-processor:encodeEvents",
+        "_name": "client-session-sync-processor:encode-events",
       },
       {
         "_name": "client-session-sync-processor:materialize-events",
@@ -1258,7 +1258,7 @@ exports[`otel > with thunks 8`] = `
     },
     "children": [
       {
-        "_name": "client-session-sync-processor:encodeEvents",
+        "_name": "client-session-sync-processor:encode-events",
       },
       {
         "_name": "client-session-sync-processor:materialize-events",
@@ -1398,7 +1398,7 @@ exports[`otel > with thunks with query builder and without labels 4`] = `
     },
     "children": [
       {
-        "_name": "client-session-sync-processor:encodeEvents",
+        "_name": "client-session-sync-processor:encode-events",
       },
       {
         "_name": "client-session-sync-processor:materialize-events",
