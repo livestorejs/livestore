@@ -41,28 +41,39 @@ packages:
   - tests/perf-eventlog
   - tests/sync-provider
   - tests/wa-sqlite
-
-overrides:
-  '@tanstack/router-core': 1.139.14
-  '@tanstack/history': 1.139.0
-  '@tanstack/react-router': 1.139.14
-  '@tanstack/react-start': 1.139.14
-  '@tanstack/router-devtools': 1.139.14
-  '@tanstack/router-devtools-core': 1.139.14
-  '@tanstack/react-router-devtools': 1.139.14
-  '@tanstack/router-plugin': 1.139.14
-  '@tanstack/start-plugin-core': 1.139.14
-  '@tanstack/start-server-core': 1.139.14
-  '@tanstack/start-client-core': 1.139.14
-
-supportedArchitectures:
-  os: [linux, darwin]
-  cpu: [x64, arm64]
+allowBuilds:
+  '@mixedbread/cli': set this to true or false
+  '@parcel/watcher': set this to true or false
+  cbor-extract: set this to true or false
+  dtrace-provider: set this to true or false
+  esbuild: set this to true or false
+  msgpackr-extract: set this to true or false
+  protobufjs: set this to true or false
+  puppeteer: set this to true or false
+  sharp: set this to true or false
+  workerd: set this to true or false
 
 dedupePeerDependents: true
-
-strictPeerDependencies: true
 
 enableGlobalVirtualStore: true
 
 linkWorkspacePackages: true
+
+overrides:
+  '@tanstack/history': 1.139.0
+  '@tanstack/react-router': 1.139.14
+  '@tanstack/react-router-devtools': 1.139.14
+  '@tanstack/react-start': 1.139.14
+  '@tanstack/router-core': 1.139.14
+  '@tanstack/router-devtools': 1.139.14
+  '@tanstack/router-devtools-core': 1.139.14
+  '@tanstack/router-plugin': 1.139.14
+  '@tanstack/start-client-core': 1.139.14
+  '@tanstack/start-plugin-core': 1.139.14
+  '@tanstack/start-server-core': 1.139.14
+
+strictPeerDependencies: true
+
+supportedArchitectures:
+  cpu: [ x64, arm64 ]
+  os: [ linux, darwin ]
