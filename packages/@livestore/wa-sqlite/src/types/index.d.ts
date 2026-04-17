@@ -17,6 +17,20 @@
  */
 type SQLiteCompatibleType = number | string | Uint8Array<ArrayBuffer> | Array<number> | bigint | null
 
+/** https://sqlite.org/session/c_changeset_conflict.html */
+type SQLiteChangesetConflictType =
+  | typeof import('@livestore/wa-sqlite/src/sqlite-constants.js').SQLITE_CHANGESET_DATA
+  | typeof import('@livestore/wa-sqlite/src/sqlite-constants.js').SQLITE_CHANGESET_NOTFOUND
+  | typeof import('@livestore/wa-sqlite/src/sqlite-constants.js').SQLITE_CHANGESET_CONFLICT
+  | typeof import('@livestore/wa-sqlite/src/sqlite-constants.js').SQLITE_CHANGESET_CONSTRAINT
+  | typeof import('@livestore/wa-sqlite/src/sqlite-constants.js').SQLITE_CHANGESET_FOREIGN_KEY
+
+/** https://sqlite.org/session/c_changeset_abort.html */
+type SQLiteChangesetAction =
+  | typeof import('@livestore/wa-sqlite/src/sqlite-constants.js').SQLITE_CHANGESET_OMIT
+  | typeof import('@livestore/wa-sqlite/src/sqlite-constants.js').SQLITE_CHANGESET_REPLACE
+  | typeof import('@livestore/wa-sqlite/src/sqlite-constants.js').SQLITE_CHANGESET_ABORT
+
 /**
  * SQLite Virtual File System object
  *
@@ -964,18 +978,29 @@ interface SQLiteAPI {
   changeset_invert(input: Uint8Array<ArrayBuffer>): Uint8Array<ArrayBuffer>
 
   /**
-   * Apply a changeset to a database.
+   * Apply a changeset to the main database of the database handle passed.
    *
-   * @param db database pointer
-   * @param changeset changeset to apply
-   * @returns `SQLITE_OK` (throws exception on error)
+   * @param db - database handle pointer
+   * @param changeset - changeset to apply
+   * @param xFilter - Optional filter callback invoked once per table in the
+   *   changeset. Return zero to skip changes for that table, non-zero to
+   *   include them. Pass null to include all tables.
+   * @param xConflict - Conflict handler invoked for each conflict with the
+   *   conflict type `eConflict` ({@link SQLITE_CHANGESET_DATA},
+   *   {@link SQLITE_CHANGESET_NOTFOUND}, {@link SQLITE_CHANGESET_CONFLICT},
+   *   {@link SQLITE_CHANGESET_CONSTRAINT}, or {@link SQLITE_CHANGESET_FOREIGN_KEY}).
+   *   Must return {@link SQLITE_CHANGESET_OMIT}, {@link SQLITE_CHANGESET_REPLACE},
+   *   or {@link SQLITE_CHANGESET_ABORT}.
+   * @returns {@link SQLITE_OK} if successful.
+   * @throws {@link SQLiteError} if an error occurs.
+   *
+   * @see {@link https://sqlite.org/session/sqlite3changeset_apply.html}
    */
   changeset_apply(
     db: number,
     changeset: Uint8Array<ArrayBuffer>,
-    options?: {
-      onConflict?: (conflictType: number) => 0 | 1 | 2
-    },
+    xFilter: ((zTab: string) => number) | null,
+    xConflict: (eConflict: SQLiteChangesetConflictType) => SQLiteChangesetAction,
   ): number
 }
 
@@ -1218,6 +1243,14 @@ declare module '@livestore/wa-sqlite/src/sqlite-constants.js' {
   export const SQLITE_LIMIT_VARIABLE_NUMBER: 9
   export const SQLITE_LIMIT_TRIGGER_DEPTH: 10
   export const SQLITE_LIMIT_WORKER_THREADS: 11
+  export const SQLITE_CHANGESET_DATA: 1
+  export const SQLITE_CHANGESET_NOTFOUND: 2
+  export const SQLITE_CHANGESET_CONFLICT: 3
+  export const SQLITE_CHANGESET_CONSTRAINT: 4
+  export const SQLITE_CHANGESET_FOREIGN_KEY: 5
+  export const SQLITE_CHANGESET_OMIT: 0
+  export const SQLITE_CHANGESET_REPLACE: 1
+  export const SQLITE_CHANGESET_ABORT: 2
   export const SQLITE_PREPARE_PERSISTENT: 0x01
   export const SQLITE_PREPARE_NORMALIZED: 0x02
   export const SQLITE_PREPARE_NO_VTAB: 0x04

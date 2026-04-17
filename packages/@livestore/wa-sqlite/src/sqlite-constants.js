@@ -270,6 +270,20 @@ export const SQLITE_LIMIT_VARIABLE_NUMBER = 9
 export const SQLITE_LIMIT_TRIGGER_DEPTH = 10
 export const SQLITE_LIMIT_WORKER_THREADS = 11
 
+// Changeset conflict types.
+// https://sqlite.org/session/c_changeset_conflict.html
+export const SQLITE_CHANGESET_DATA = 1
+export const SQLITE_CHANGESET_NOTFOUND = 2
+export const SQLITE_CHANGESET_CONFLICT = 3
+export const SQLITE_CHANGESET_CONSTRAINT = 4
+export const SQLITE_CHANGESET_FOREIGN_KEY = 5
+
+// Changeset conflict handler return values.
+// https://sqlite.org/session/c_changeset_abort.html
+export const SQLITE_CHANGESET_OMIT = 0
+export const SQLITE_CHANGESET_REPLACE = 1
+export const SQLITE_CHANGESET_ABORT = 2
+
 export const SQLITE_PREPARE_PERSISTENT = 0x01
 export const SQLITE_PREPARE_NORMALIZED = 0x02
 export const SQLITE_PREPARE_NO_VTAB = 0x04
