@@ -77,20 +77,28 @@ export const makeLeaderThread = ({
       }
 
       return storage.type === 'in-memory'
-        ? makeSqliteDb({
-            _tag: 'in-memory',
-            configureDb: (db) =>
-              configureConnection(db, { foreignKeys: true }).pipe(Effect.provide(runtime), Effect.runSync),
-          }).pipe(Effect.acquireRelease((db) => Effect.sync(() => db.close())))
-        : makeSqliteDb({
-            _tag: 'fs',
-            directory: path.join(storage.baseDirectory ?? '', storeId),
-            fileName:
-              kind === 'state' ? getStateDbFileName(schemaHashSuffix) : `eventlog@${liveStoreStorageFormatVersion}.db`,
-            // TODO enable WAL for nodejs
-            configureDb: (db) =>
-              configureConnection(db, { foreignKeys: true }).pipe(Effect.provide(runtime), Effect.runSync),
-          }).pipe(Effect.acquireRelease((db) => Effect.sync(() => db.close())))
+        ? Effect.acquireRelease(
+            makeSqliteDb({
+              _tag: 'in-memory',
+              configureDb: (db) =>
+                configureConnection(db, { foreignKeys: true }).pipe(Effect.provide(runtime), Effect.runSync),
+            }),
+            (db) => Effect.sync(() => db.close()),
+          )
+        : Effect.acquireRelease(
+            makeSqliteDb({
+              _tag: 'fs',
+              directory: path.join(storage.baseDirectory ?? '', storeId),
+              fileName:
+                kind === 'state'
+                  ? getStateDbFileName(schemaHashSuffix)
+                  : `eventlog@${liveStoreStorageFormatVersion}.db`,
+              // TODO enable WAL for nodejs
+              configureDb: (db) =>
+                configureConnection(db, { foreignKeys: true }).pipe(Effect.provide(runtime), Effect.runSync),
+            }),
+            (db) => Effect.sync(() => db.close()),
+          )
     }
 
     // Might involve some async work, so we're running them concurrently
