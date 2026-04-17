@@ -1129,47 +1129,22 @@ export function Factory(Module) {
     }
   })()
 
-  sqlite3.changeset_apply = (function () {
-    const fname = 'sqlite3changeset_apply'
-    const f = Module.cwrap(fname, ...decl('nnnnnn:n'))
-    return function (db, changesetData, options) {
-      /*
-        int sqlite3changeset_apply(
-          sqlite3 *db,                    Apply change to "main" db of this handle
-          int nChangeset,                 Size of changeset in bytes 
-          void *pChangeset,               Changeset blob
-          int(*xFilter)(
-            void *pCtx,                   Copy of sixth arg to _apply() 
-            const char *zTab              Table name 
-          ),
-          int(*xConflict)(
-            void *pCtx,                   Copy of sixth arg to _apply() 
-            int eConflict,                DATA, MISSING, CONFLICT, CONSTRAINT 
-            sqlite3_changeset_iter *p     Handle describing change and conflict
-          ),
-          void *pCtx                      First argument passed to xConflict
-        );
-      */
-      const inPtr = Module._sqlite3_malloc(changesetData.length)
-      Module.HEAPU8.subarray(inPtr).set(changesetData)
+  sqlite3.changeset_apply = function (db, changesetData, xFilter, xConflict) {
+    const inPtr = Module._sqlite3_malloc(changesetData.length)
+    Module.HEAPU8.subarray(inPtr).set(changesetData)
 
-      // https://sqlite.org/session/c_changeset_abort.html
-      const SQLITE_CHANGESET_REPLACE = 1
-      const onConflict = () => {
-        return SQLITE_CHANGESET_REPLACE
-      }
-
-      const result = f(db, changesetData.length, inPtr, null, onConflict, null)
-
-      Module._sqlite3_free(inPtr)
+    try {
+      const result = Module.changeset_apply(db, changesetData.length, inPtr, xFilter, xConflict)
 
       if (result !== SQLite.SQLITE_OK) {
-        check(fname, result)
+        check('sqlite3changeset_apply', result)
       }
 
       return result
+    } finally {
+      Module._sqlite3_free(inPtr)
     }
-  })()
+  }
 
   // Session extension bindings end
 

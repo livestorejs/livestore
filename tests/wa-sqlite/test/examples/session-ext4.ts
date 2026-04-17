@@ -103,7 +103,12 @@ const main = async () => {
 
   for (let i = changesets.length - 1; i >= 0; i--) {
     const inverted = sqlite3.changeset_invert(changesets[i]!)
-    sqlite3.changeset_apply(db, inverted)
+    sqlite3.changeset_apply(db, inverted, null, (eConflict) =>
+      // REPLACE is only valid for DATA and CONFLICT; use OMIT for all other conflict types
+      eConflict === WaSqlite.SQLITE_CHANGESET_DATA || eConflict === WaSqlite.SQLITE_CHANGESET_CONFLICT
+        ? WaSqlite.SQLITE_CHANGESET_REPLACE
+        : WaSqlite.SQLITE_CHANGESET_OMIT,
+    )
     console.log(`app[${i}]`, syncDb.select('SELECT * FROM app'))
   }
 

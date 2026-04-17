@@ -438,6 +438,7 @@ See the [S2 sync provider docs](https://dev.docs.livestore.dev/reference/syncing
 - Fix OPFS file pool capacity exhaustion from old state databases (#569)
 - Upgrade wa-sqlite to SQLite 3.50.4 (#581)
 - **WAL snapshot guard:** `@livestore/sqlite-wasm` now aborts WAL-mode snapshot imports with an explicit `SqliteError`, preventing silent corruption when loading backups ([#694](https://github.com/livestorejs/livestore/issues/694)).
+- **Fix `changeset_apply` crash during rebase rollback:** The conflict callback was coerced to a null pointer when passed to WASM, causing `RuntimeError: function signature mismatch` during concurrent multi-tab edits. Now wired through the C adapter relay pattern matching other callback APIs. `xConflict` and `xFilter` are explicit parameters on the public API (#998). Thanks, @slashv for the detailed reproduction and @acusti for the initial investigation.
 
 ##### Concurrency & Lifecycle
 
