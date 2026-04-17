@@ -20,12 +20,11 @@ experience is recommended:
 - Experience with TypeScript monorepo setups
 - Experience with distributed systems
 
-### Required tooling: Nix + devenv + direnv
+### Required tooling: Nix + devenv
 
 LiveStore requires [Nix](https://nixos.org/) with [devenv](https://devenv.sh)
 to manage all development dependencies (Node.js, Bun, pnpm, oxlint, OTEL stack,
-Playwright browsers, etc.). [direnv](https://direnv.net) is also required to
-auto-load the environment when you `cd` into the repo.
+Playwright browsers, etc.). Enter the development shell with `devenv shell`.
 
 #### Why this is a hard requirement
 
@@ -53,9 +52,12 @@ We recommend the
 uninstall. Any Nix install with flakes enabled works; Determinate is simply
 the path of least resistance.
 
-After installing Nix, install [devenv](https://devenv.sh/getting-started/)
-and [direnv](https://direnv.net/docs/installation.html) following their
-respective install guides.
+After installing Nix, install
+[devenv](https://devenv.sh/getting-started/) following its install guide.
+
+(Optional) If you prefer the dev environment to auto-load when you `cd`
+into the repo, also install [direnv](https://direnv.net) — the repo ships
+an `.envrc` that wires devenv into direnv. Not required.
 
 ### Manual setup (discouraged)
 
@@ -69,9 +71,10 @@ devenv unless you have a very specific reason not to.
 ```bash
 git clone git@github.com:livestorejs/livestore.git
 cd livestore
-direnv allow
-# direnv triggers devenv's setup task which installs deps, runs genie, and
-# builds TypeScript. Subsequent `cd`s into the repo auto-load the environment.
+devenv shell
+# Entering the shell runs devenv's setup task, which installs deps, runs
+# genie, and builds TypeScript. Run `devenv shell` again (or stay in the
+# shell) whenever you need the project toolchain on your `$PATH`.
 ```
 
 ## General notes
@@ -98,19 +101,20 @@ direnv allow
 - [OpenTelemetry](https://opentelemetry.io/)
 - [wa-sqlite](https://github.com/rhashimoto/wa-sqlite) (included as git subtree) - see [wa-sqlite management](../../../../../../contributor-docs/wa-sqlite-management.md)
 - [Nix](https://zero-to-nix.com/)
-- [Direnv](https://direnv.net/)
 - [devenv](https://devenv.sh)
 
 ### Environment variables
 
-The `.envrc` file contains all necessary environment variables for the project.
-You can create a `.envrc.local` file to override or add variables for your local
-setup. You'll need to run `direnv allow` to load the environment variables.
+Project environment variables are exported by `devenv shell` (defined in
+`devenv.nix`). For local overrides (e.g. credentials, local service
+endpoints), export them in your shell before running `devenv shell`. If
+you use direnv, the repo's `.envrc` sources a git-ignored `.envrc.local`
+for the same purpose.
 
 ### Common commands
 
-Once the devenv shell is active (via direnv), the `dt` task runner is on
-`$PATH`. Run `dt --list` to see all available tasks. Commonly used ones:
+Inside `devenv shell`, the `dt` task runner is on `$PATH`. Run
+`devenv tasks list` to see all available tasks. Commonly used ones:
 
 - `dt ts:build` / `dt ts:build-watch` — build TypeScript across the monorepo
 - `dt ts:check` — run the TypeScript build/check
@@ -151,7 +155,8 @@ you should also run the following manually for a tighter feedback loop:
 As a local OpenTelemetry setup, we recommend the
 [docker-otel-lgtm](https://github.com/grafana/docker-otel-lgtm) setup.
 
-Add the following to your `.envrc.local` file:
+Export the following before entering `devenv shell` (or in your
+`.envrc.local` if you use direnv):
 
 ```bash
 export VITE_GRAFANA_ENDPOINT="http://localhost:30003"
