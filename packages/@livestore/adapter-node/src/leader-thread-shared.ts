@@ -81,7 +81,7 @@ export const makeLeaderThread = ({
             _tag: 'in-memory',
             configureDb: (db) =>
               configureConnection(db, { foreignKeys: true }).pipe(Effect.provide(runtime), Effect.runSync),
-          })
+          }).pipe(Effect.acquireRelease((db) => Effect.sync(() => db.close())))
         : makeSqliteDb({
             _tag: 'fs',
             directory: path.join(storage.baseDirectory ?? '', storeId),

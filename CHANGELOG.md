@@ -434,6 +434,7 @@ See the [S2 sync provider docs](https://dev.docs.livestore.dev/reference/syncing
 
 ##### SQLite & Storage
 
+- Fix SQLite connections not closed on store disposal, preventing database reset after file deletion in the Expo adapter. Also fix in-memory database connections not closed in the Node adapter ([#1171](https://github.com/livestorejs/livestore/issues/1171)). Thanks @OrkhanAlikhanov for the detailed repro and patch.
 - Fix in-memory SQLite database connection handling in Expo adapter
 - Fix OPFS file pool capacity exhaustion from old state databases (#569)
 - Upgrade wa-sqlite to SQLite 3.50.4 (#581)
