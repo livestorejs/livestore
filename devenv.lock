@@ -24,11 +24,11 @@
         "tsgo": "tsgo"
       },
       "locked": {
-        "lastModified": 1776544732,
+        "lastModified": 1776545465,
         "narHash": "sha256-4EG+2y0Akj6+WUjBC4J5zCZBUnhv0yenUm5P3TfGNUs=",
         "owner": "overengineeringstudio",
         "repo": "effect-utils",
-        "rev": "b3b073c74816eccbbe8c71241f37595628244cd6",
+        "rev": "ad96132d63c5262566eaf5aee5fd1a3dbac2dfbc",
         "type": "github"
       },
       "original": {
@@ -190,17 +190,17 @@
       },
       "locked": {
         "dir": "nix/playwright-flake",
-        "lastModified": 1776544732,
+        "lastModified": 1776545465,
         "narHash": "sha256-4EG+2y0Akj6+WUjBC4J5zCZBUnhv0yenUm5P3TfGNUs=",
         "owner": "overengineeringstudio",
         "repo": "effect-utils",
-        "rev": "b3b073c74816eccbbe8c71241f37595628244cd6",
+        "rev": "ad96132d63c5262566eaf5aee5fd1a3dbac2dfbc",
         "type": "github"
       },
       "original": {
         "dir": "nix/playwright-flake",
         "owner": "overengineeringstudio",
-        "ref": "schickling/2026-04-18-drop-beads-cleanup",
+        "ref": "main",
         "repo": "effect-utils",
         "type": "github"
       }
