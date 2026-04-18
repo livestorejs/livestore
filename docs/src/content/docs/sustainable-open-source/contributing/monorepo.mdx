@@ -13,35 +13,93 @@ Depending on the kind of contribution you're interested in, the following
 experience is recommended:
 
 - Deep experience with TypeScript (incl. type-level programming)
+- Solid working knowledge of [Effect-TS](https://effect.website) — LiveStore is
+  implemented on top of Effect and makes heavy use of its primitives (`Effect`,
+  `Layer`, `Schema`, `Stream`, `FiberRef`, `Ref`, etc.). Willingness to ramp up
+  is acceptable, but most non-trivial contributions assume fluency.
 - Experience with TypeScript monorepo setups
 - Experience with distributed systems
-- Experience with [Effect](https://effect.website) (or willingness to learn)
 
-### Recommended tooling: Use devenv + direnv for a consistent setup
+### Required tooling: Nix + devenv
 
-To make development easy and consistent across systems and platforms, this
-project uses [Nix](https://zero-to-nix.com/) with [devenv](https://devenv.sh)
-to manage "system dependencies" such as Node.js, Bun, etc.
-Use [direnv](https://direnv.net) (recommended) to automatically load the
-environment, or run commands explicitly with devenv, for example:
-`devenv shell pnpm install`.
+LiveStore requires [Nix](https://nixos.org/) with [devenv](https://devenv.sh)
+to manage all development dependencies (Node.js, Bun, pnpm, oxlint, OTEL stack,
+Playwright browsers, etc.). Enter the development shell with `devenv shell`.
 
-### Manual setup
+#### Why this is a hard requirement
 
-You'll need to have a recent version the following tools installed:
+LiveStore is developed alongside a family of projects that share tooling
+through [`effect-utils`](https://github.com/overengineeringstudio/effect-utils)
+— a Nix flake that provides the exact oxlint (with custom plugins), `dt` task
+runner, `genie` config generator, `megarepo` CLI, OTEL dashboards, and
+Playwright integration used here. Standing this up outside of Nix/devenv
+means reimplementing a moving target and drifting from CI.
 
-- Node.js
-- Bun
-- pnpm
+By requiring Nix + devenv we get:
+
+- **Version parity with CI and every other LiveStore/effect-utils project** —
+  the same compiler, linter, and task-runner versions everywhere.
+- **Reproducible builds** — no "works on my machine" drift between
+  contributors.
+- **Single source of truth** — tool versions live in `devenv.nix`, not
+  scattered across READMEs.
+
+#### Install Nix
+
+We recommend the
+[Determinate Nix Installer](https://docs.determinate.systems/determinate-nix/)
+— it sets sane defaults, enables flakes out of the box, and is easy to
+uninstall. Any Nix install with flakes enabled works; Determinate is simply
+the path of least resistance.
+
+After installing Nix, install
+[devenv](https://devenv.sh/getting-started/) following its install guide.
+
+(Optional) If you prefer the dev environment to auto-load when you `cd`
+into the repo, also install [direnv](https://direnv.net) — the repo ships
+an `.envrc` that wires devenv into direnv. Not required.
+
+### Manual setup (discouraged)
+
+It is technically possible to set up the toolchain manually (Node.js, Bun,
+pnpm, etc.), but this path is **not supported**: you'll diverge from CI,
+miss linter plugins, and have to track tool versions by hand. Use Nix +
+devenv unless you have a very specific reason not to.
 
 ## Initial setup
 
 ```bash
 git clone git@github.com:livestorejs/livestore.git
 cd livestore
-# Loads env vars, installs deps and builds the project
-./bootstrap.sh
+devenv shell
 ```
+
+Entering the shell builds the Nix environment, puts the full toolchain
+(Node.js, Bun, pnpm, `dt`, `mono`, oxlint, oxfmt, etc.) on `$PATH`, and
+runs the project `setup` task (which installs pnpm deps, regenerates
+`genie` outputs, and builds TypeScript).
+
+## Working with devenv
+
+`devenv shell` is the primary entry point. Everything the repo provides —
+packages, env vars, tasks, background processes — comes from `devenv.nix`
+and is surfaced through the devenv CLI:
+
+- `devenv shell` — open an interactive subshell with the full dev
+  environment. Type `exit` to leave. Re-run after closing the terminal.
+- `devenv shell <cmd> [args...]` — run a single command inside the
+  environment without staying in the subshell. Useful for scripts and
+  CI (`devenv shell dt ts:check`).
+- `devenv tasks list` — list all defined tasks (see
+  [Common commands](#common-commands) below for the most-used ones).
+- `devenv tasks run <task>` — run a task directly. The project's
+  pre-commit hook uses this (`devenv tasks run check:quick`).
+- `devenv up` — start long-running processes defined in `devenv.nix`
+  (e.g. the local OTEL stack — see [OpenTelemetry setup](#opentelemetry-setup)).
+- `devenv info` — print a summary of what the current environment
+  provides (packages, env vars, processes, tasks). Handy when debugging.
+
+See the [devenv docs](https://devenv.sh) for the full CLI reference.
 
 ## General notes
 
@@ -67,32 +125,40 @@ cd livestore
 - [OpenTelemetry](https://opentelemetry.io/)
 - [wa-sqlite](https://github.com/rhashimoto/wa-sqlite) (included as git subtree) - see [wa-sqlite management](../../../../../../contributor-docs/wa-sqlite-management.md)
 - [Nix](https://zero-to-nix.com/)
-- [Direnv](https://direnv.net/)
 - [devenv](https://devenv.sh)
 
 ### Environment variables
 
-The `.envrc` file contains all necessary environment variables for the project.
-You can create a `.envrc.local` file to override or add variables for your local
-setup. You'll need to run `direnv allow` to load the environment variables.
+Project env vars are declared in `devenv.nix` and set by `devenv shell`.
+For local overrides (credentials, custom service endpoints), export them
+in your parent shell before running `devenv shell` — they propagate
+through. If you use direnv, the repo's `.envrc` sources a git-ignored
+`.envrc.local` for the same purpose.
 
-### VSCode tasks
+### Common commands
 
-- This project is primarily developed in VSCode and makes use of
-  [tasks](https://code.visualstudio.com/docs/editor/tasks) to run commands.
-- Common tasks are:
-  - `dev:ts:watch` to run the TypeScript compiler in watch mode for the entire
-    monorepo
-  - `pnpm:install` to install all dependencies (e.g. when changing a
-    `package.json`)
+Inside `devenv shell`, the `dt` CLI is a thin wrapper around
+`devenv tasks run` that adds status-check caching and OTEL
+instrumentation. From outside the shell, use
+`devenv shell dt <task>` or `devenv tasks run <task>` directly.
+Most-used tasks:
+
+- `dt ts:build` / `dt ts:build-watch` — build TypeScript across the monorepo
+- `dt ts:check` — run the TypeScript build/check
+- `dt lint:full` / `dt lint:full:fix` — run (and auto-fix) lint + format
+- `dt test:unit` / `dt test:perf` / `dt test:integration:*` — run test suites
+- `dt docs:dev` / `dt docs:build` / `dt docs:deploy` — docs workflows
+- `dt examples:install` / `dt examples:test` / `dt examples:deploy` —
+  example workflows
 
 ## Tasks to run before committing
 
-Please run the following tasks before committing & pushing:
+A `pre-commit` hook runs `devenv tasks run check:quick` automatically, but
+you should also run the following manually for a tighter feedback loop:
 
-- `mono ts` to build the TypeScript code
-- `mono lint` to run the linting checks
-- `mono test` to run the tests
+- `dt lint:full:fix` — auto-fix lint + format issues
+- `dt ts:check` — ensure TypeScript passes
+- `dt test:unit` (and relevant `dt test:integration:*` suites) — run tests
 
 ## Examples
 
@@ -116,7 +182,8 @@ Please run the following tasks before committing & pushing:
 As a local OpenTelemetry setup, we recommend the
 [docker-otel-lgtm](https://github.com/grafana/docker-otel-lgtm) setup.
 
-Add the following to your `.envrc.local` file:
+Export the following before entering `devenv shell` (or in your
+`.envrc.local` if you use direnv):
 
 ```bash
 export VITE_GRAFANA_ENDPOINT="http://localhost:30003"
@@ -140,19 +207,12 @@ export VITE_OTEL_EXPORTER_OTLP_ENDPOINT="http://localhost:4318"
 - We also need to manually add peer dependencies for each package.
 - We should try to avoid duplicate dependencies across the monorepo as much as
   possible as duplicate dependencies can lead to a lot of issues and pain.
-  - We're also using the `resolutions` field in the root `package.json` to force
-    some packages to be the same across the monorepo (ideally not needed but for
-    some packages it's necessary currently).
-- We're using [syncpack](https://github.com/JamieMason/syncpack) to help
-  maintain consistent dependency versions across the monorepo.
-  - See `syncpack.config.mjs` for the configuration.
-  - Common commands:
-    - `bunx syncpack format` to format the `package.json` files
-    - `bunx syncpack lint` to check all version ranges
-    - `bunx syncpack fix-mismatches` to adjust versions across `package.json`
-      files (check before with `lint`)
-    - `bunx syncpack update` to update packages across the monorepo to the
-      latest versions
+- Many `package.json` files are generated by `genie` from `.genie.ts` sources —
+  edit the `.genie.ts` and run `dt genie:run` (or let the pre-commit hook run
+  it) rather than editing generated `package.json` files directly.
+- For updating dependencies across the monorepo, see
+  [`contributor-docs/dependency-management.md`](https://github.com/livestorejs/livestore/blob/dev/contributor-docs/dependency-management.md)
+  (catalog policy, peer-dep handling, validation).
 
 ### Notes on external dependencies
 
@@ -177,8 +237,9 @@ The following packages need to be updated with extra care:
 
 #### Updating dependencies
 
-- Either update the versions manually in each `package.json` file or use
-  `bunx syncpack update`.
+See
+[dependency-management.md](https://github.com/livestorejs/livestore/blob/dev/contributor-docs/dependency-management.md)
+for the full workflow.
 
 ### Notes on monorepo structure
 
