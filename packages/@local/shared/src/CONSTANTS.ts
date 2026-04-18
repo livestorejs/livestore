@@ -8,7 +8,13 @@ export const MIN_NODE_VERSION = '23.0.0'
 
 export const DISCORD_INVITE_URL = 'https://discord.gg/RbMcjUAPd7'
 
+const workspaceRoot = process.env.WORKSPACE_ROOT
+
+if (!workspaceRoot) {
+  throw new Error('WORKSPACE_ROOT must be set')
+}
+
 export const LIVESTORE_DEVTOOLS_CHROME_DIST_PATH = path.resolve(
-  process.env.WORKSPACE_ROOT,
+  workspaceRoot,
   'tmp/devtools/chrome-extension',
 )
