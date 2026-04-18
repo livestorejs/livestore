@@ -90,11 +90,6 @@ let
 in
 {
   imports = [
-    # Beads integration: daemon, sync task, commit correlation hook
-    (taskModules.beads {
-      beadsPrefix = "oep";
-      beadsRepoName = "overeng-beads-public";
-    })
     # dt command for running devenv tasks
     effectUtils.devenvModules.dt
     # OTEL observability stack with livestore-specific dashboards

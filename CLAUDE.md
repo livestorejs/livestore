@@ -34,14 +34,12 @@ Use the `mono` CLI for common workflows:
 - Keep exported members at the top of the file and move unexported helpers to the bottom.
 - Never add `paths` to `tsconfig.json`. Prefer using `package.json#exports` instead.
 
-## Task Management (Beads)
+## Task Management
 
-This repo uses [beads](https://github.com/steveyegge/beads) for task tracking via the megarepo setup.
+Use GitHub issues or an issue checklist for non-trivial work.
 
-- The beads database lives in the `overeng-beads-public` repo, **not** in this repo. Run `bd` commands from within that repo directory (e.g. `cd ./repos/overeng-beads-public/`). Do **not** run `bd init` in the livestore repo.
-- Create an **epic** for larger work items and correlate it with the PR
-- Create **follow-up beads** (or a follow-up epic for larger scope) for out-of-scope work discovered during implementation
-- Run `bd sync` in the overeng-beads-public repo before pushing to keep beads in sync with git
+- Link the issue in the PR when the repo workflow expects it
+- File follow-up GitHub issues for out-of-scope work discovered during implementation
 
 ## Git
 
