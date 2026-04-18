@@ -15,8 +15,8 @@ on:
   pull_request: {}
 
 env:
-  GITHUB_BRANCH_NAME: '${{ github.head_ref || github.ref_name }}'
-  CACHIX_AUTH_TOKEN: '${{ secrets.CACHIX_AUTH_TOKEN }}'
+  GITHUB_BRANCH_NAME: ${{ github.head_ref || github.ref_name }}
+  CACHIX_AUTH_TOKEN: ${{ secrets.CACHIX_AUTH_TOKEN }}
   FORCE_SETUP: '1'
   CI: 'true'
 
@@ -44,7 +44,7 @@ jobs:
         uses: cachix/cachix-action@v17
         with:
           name: livestore
-          authToken: '${{ env.CACHIX_AUTH_TOKEN }}'
+          authToken: ${{ env.CACHIX_AUTH_TOKEN }}
       - name: Sync megarepo dependencies
         env:
           MEGAREPO_STORE: '${{ runner.temp }}/megarepo-store/${{ github.run_id }}/${{ github.run_attempt }}/${{ github.job }}'
@@ -122,7 +122,7 @@ jobs:
           if ! nix-store --check-validity "$DEVENV_OUT" 2>/dev/null; then
             echo "::warning::devenv store path invalid, repairing targeted path..."
             nix-store --repair-path "$DEVENV_OUT" > "$DIAG_ROOT/nix-store-verify-repair.log" 2>&1 || true
-            rm -rf ~/.cache/nix/eval-cache-*
+            rm -rf "${XDG_CACHE_HOME:-$HOME/.cache}"/nix/eval-cache-* ~/.cache/nix/eval-cache-*
             if ! DEVENV_OUT=$(resolve_devenv 2> >(tee "$DIAG_ROOT/resolve-devenv-post-repair.log" >&2)); then
               echo "::error::resolve_devenv failed after repair. Last 30 lines of log:"
               tail -30 "$DIAG_ROOT/resolve-devenv-post-repair.log" || true
@@ -245,7 +245,7 @@ jobs:
           rm -f "$__nix_gc_retry_helper"
           run_nix_gc_race_retry 'devenv tasks run lint:full:with-megarepo-check --mode before' 'if [ -n "${NIX_CONFIG:-}" ]; then NIX_CONFIG_WITH_APPEND=$(printf '"'"'%s\n%s'"'"' "$NIX_CONFIG" '"'"'restrict-eval = false'"'"'); else NIX_CONFIG_WITH_APPEND='"'"'restrict-eval = false'"'"'; fi; NIX_CONFIG="$NIX_CONFIG_WITH_APPEND" PNPM_HOME="${PNPM_HOME:-${{ github.workspace }}/.pnpm-home}" PNPM_STORE_DIR="${PNPM_STORE_DIR:-${{ runner.temp }}/pnpm-store/${{ github.job }}}" DT_PASSTHROUGH=1 "${DEVENV_BIN:?DEVENV_BIN not set}" tasks run lint:full:with-megarepo-check --mode before'
       - name: Save pnpm state
-        if: "${{ success() && steps.restore-pnpm-state.outputs.cache-hit != 'true' }}"
+        if: ${{ success() && steps.restore-pnpm-state.outputs.cache-hit != 'true' }}
         uses: actions/cache/save@v4
         with:
           path: |
@@ -257,7 +257,7 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: 'nix-store-diagnostics-${{ github.job }}-${{ runner.os }}-run-${{ github.run_id }}-attempt-${{ github.run_attempt }}'
-          path: '${{ env.NIX_STORE_DIAGNOSTICS_DIR }}'
+          path: ${{ env.NIX_STORE_DIAGNOSTICS_DIR }}
           if-no-files-found: ignore
           retention-days: 14
   type-check:
@@ -283,7 +283,7 @@ jobs:
         uses: cachix/cachix-action@v17
         with:
           name: livestore
-          authToken: '${{ env.CACHIX_AUTH_TOKEN }}'
+          authToken: ${{ env.CACHIX_AUTH_TOKEN }}
       - name: Sync megarepo dependencies
         env:
           MEGAREPO_STORE: '${{ runner.temp }}/megarepo-store/${{ github.run_id }}/${{ github.run_attempt }}/${{ github.job }}'
@@ -361,7 +361,7 @@ jobs:
           if ! nix-store --check-validity "$DEVENV_OUT" 2>/dev/null; then
             echo "::warning::devenv store path invalid, repairing targeted path..."
             nix-store --repair-path "$DEVENV_OUT" > "$DIAG_ROOT/nix-store-verify-repair.log" 2>&1 || true
-            rm -rf ~/.cache/nix/eval-cache-*
+            rm -rf "${XDG_CACHE_HOME:-$HOME/.cache}"/nix/eval-cache-* ~/.cache/nix/eval-cache-*
             if ! DEVENV_OUT=$(resolve_devenv 2> >(tee "$DIAG_ROOT/resolve-devenv-post-repair.log" >&2)); then
               echo "::error::resolve_devenv failed after repair. Last 30 lines of log:"
               tail -30 "$DIAG_ROOT/resolve-devenv-post-repair.log" || true
@@ -484,7 +484,7 @@ jobs:
           rm -f "$__nix_gc_retry_helper"
           run_nix_gc_race_retry 'devenv tasks run ts:build --mode before' 'if [ -n "${NIX_CONFIG:-}" ]; then NIX_CONFIG_WITH_APPEND=$(printf '"'"'%s\n%s'"'"' "$NIX_CONFIG" '"'"'restrict-eval = false'"'"'); else NIX_CONFIG_WITH_APPEND='"'"'restrict-eval = false'"'"'; fi; NIX_CONFIG="$NIX_CONFIG_WITH_APPEND" PNPM_HOME="${PNPM_HOME:-${{ github.workspace }}/.pnpm-home}" PNPM_STORE_DIR="${PNPM_STORE_DIR:-${{ runner.temp }}/pnpm-store/${{ github.job }}}" DT_PASSTHROUGH=1 "${DEVENV_BIN:?DEVENV_BIN not set}" tasks run ts:build --mode before'
       - name: Save pnpm state
-        if: "${{ success() && steps.restore-pnpm-state.outputs.cache-hit != 'true' }}"
+        if: ${{ success() && steps.restore-pnpm-state.outputs.cache-hit != 'true' }}
         uses: actions/cache/save@v4
         with:
           path: |
@@ -496,7 +496,7 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: 'nix-store-diagnostics-${{ github.job }}-${{ runner.os }}-run-${{ github.run_id }}-attempt-${{ github.run_attempt }}'
-          path: '${{ env.NIX_STORE_DIAGNOSTICS_DIR }}'
+          path: ${{ env.NIX_STORE_DIAGNOSTICS_DIR }}
           if-no-files-found: ignore
           retention-days: 14
   test-unit:
@@ -522,7 +522,7 @@ jobs:
         uses: cachix/cachix-action@v17
         with:
           name: livestore
-          authToken: '${{ env.CACHIX_AUTH_TOKEN }}'
+          authToken: ${{ env.CACHIX_AUTH_TOKEN }}
       - name: Sync megarepo dependencies
         env:
           MEGAREPO_STORE: '${{ runner.temp }}/megarepo-store/${{ github.run_id }}/${{ github.run_attempt }}/${{ github.job }}'
@@ -600,7 +600,7 @@ jobs:
           if ! nix-store --check-validity "$DEVENV_OUT" 2>/dev/null; then
             echo "::warning::devenv store path invalid, repairing targeted path..."
             nix-store --repair-path "$DEVENV_OUT" > "$DIAG_ROOT/nix-store-verify-repair.log" 2>&1 || true
-            rm -rf ~/.cache/nix/eval-cache-*
+            rm -rf "${XDG_CACHE_HOME:-$HOME/.cache}"/nix/eval-cache-* ~/.cache/nix/eval-cache-*
             if ! DEVENV_OUT=$(resolve_devenv 2> >(tee "$DIAG_ROOT/resolve-devenv-post-repair.log" >&2)); then
               echo "::error::resolve_devenv failed after repair. Last 30 lines of log:"
               tail -30 "$DIAG_ROOT/resolve-devenv-post-repair.log" || true
@@ -723,7 +723,7 @@ jobs:
           rm -f "$__nix_gc_retry_helper"
           run_nix_gc_race_retry 'devenv tasks run test:unit --mode before' 'if [ -n "${NIX_CONFIG:-}" ]; then NIX_CONFIG_WITH_APPEND=$(printf '"'"'%s\n%s'"'"' "$NIX_CONFIG" '"'"'restrict-eval = false'"'"'); else NIX_CONFIG_WITH_APPEND='"'"'restrict-eval = false'"'"'; fi; NIX_CONFIG="$NIX_CONFIG_WITH_APPEND" PNPM_HOME="${PNPM_HOME:-${{ github.workspace }}/.pnpm-home}" PNPM_STORE_DIR="${PNPM_STORE_DIR:-${{ runner.temp }}/pnpm-store/${{ github.job }}}" DT_PASSTHROUGH=1 "${DEVENV_BIN:?DEVENV_BIN not set}" tasks run test:unit --mode before'
       - name: Save pnpm state
-        if: "${{ success() && steps.restore-pnpm-state.outputs.cache-hit != 'true' }}"
+        if: ${{ success() && steps.restore-pnpm-state.outputs.cache-hit != 'true' }}
         uses: actions/cache/save@v4
         with:
           path: |
@@ -735,7 +735,7 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: 'nix-store-diagnostics-${{ github.job }}-${{ runner.os }}-run-${{ github.run_id }}-attempt-${{ github.run_attempt }}'
-          path: '${{ env.NIX_STORE_DIAGNOSTICS_DIR }}'
+          path: ${{ env.NIX_STORE_DIAGNOSTICS_DIR }}
           if-no-files-found: ignore
           retention-days: 14
   test-integration-node-sync:
@@ -761,7 +761,7 @@ jobs:
         uses: cachix/cachix-action@v17
         with:
           name: livestore
-          authToken: '${{ env.CACHIX_AUTH_TOKEN }}'
+          authToken: ${{ env.CACHIX_AUTH_TOKEN }}
       - name: Sync megarepo dependencies
         env:
           MEGAREPO_STORE: '${{ runner.temp }}/megarepo-store/${{ github.run_id }}/${{ github.run_attempt }}/${{ github.job }}'
@@ -839,7 +839,7 @@ jobs:
           if ! nix-store --check-validity "$DEVENV_OUT" 2>/dev/null; then
             echo "::warning::devenv store path invalid, repairing targeted path..."
             nix-store --repair-path "$DEVENV_OUT" > "$DIAG_ROOT/nix-store-verify-repair.log" 2>&1 || true
-            rm -rf ~/.cache/nix/eval-cache-*
+            rm -rf "${XDG_CACHE_HOME:-$HOME/.cache}"/nix/eval-cache-* ~/.cache/nix/eval-cache-*
             if ! DEVENV_OUT=$(resolve_devenv 2> >(tee "$DIAG_ROOT/resolve-devenv-post-repair.log" >&2)); then
               echo "::error::resolve_devenv failed after repair. Last 30 lines of log:"
               tail -30 "$DIAG_ROOT/resolve-devenv-post-repair.log" || true
@@ -854,7 +854,7 @@ jobs:
       - name: Set OTEL_EXPORTER_OTLP_HEADERS environment variable
         env:
           GRAFANA_CLOUD_OTLP_INSTANCE_ID: '1227256'
-          GRAFANA_CLOUD_OTLP_API_KEY: '${{ secrets.GRAFANA_CLOUD_OTLP_API_KEY }}'
+          GRAFANA_CLOUD_OTLP_API_KEY: ${{ secrets.GRAFANA_CLOUD_OTLP_API_KEY }}
         run: |
           echo "OTEL_EXPORTER_OTLP_HEADERS=Authorization=Basic $(echo -n "$GRAFANA_CLOUD_OTLP_INSTANCE_ID:$GRAFANA_CLOUD_OTLP_API_KEY" | base64 -w 0)" >> $GITHUB_ENV
           echo "GRAFANA_ENDPOINT=https://livestore.grafana.net" >> $GITHUB_ENV
@@ -994,7 +994,7 @@ jobs:
           path: tests/integration/tmp/logs/
           retention-days: 30
       - name: Save pnpm state
-        if: "${{ success() && steps.restore-pnpm-state.outputs.cache-hit != 'true' }}"
+        if: ${{ success() && steps.restore-pnpm-state.outputs.cache-hit != 'true' }}
         uses: actions/cache/save@v4
         with:
           path: |
@@ -1006,7 +1006,7 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: 'nix-store-diagnostics-${{ github.job }}-${{ runner.os }}-run-${{ github.run_id }}-attempt-${{ github.run_attempt }}'
-          path: '${{ env.NIX_STORE_DIAGNOSTICS_DIR }}'
+          path: ${{ env.NIX_STORE_DIAGNOSTICS_DIR }}
           if-no-files-found: ignore
           retention-days: 14
   test-integration-sync-provider:
@@ -1044,7 +1044,7 @@ jobs:
         uses: cachix/cachix-action@v17
         with:
           name: livestore
-          authToken: '${{ env.CACHIX_AUTH_TOKEN }}'
+          authToken: ${{ env.CACHIX_AUTH_TOKEN }}
       - name: Sync megarepo dependencies
         env:
           MEGAREPO_STORE: '${{ runner.temp }}/megarepo-store/${{ github.run_id }}/${{ github.run_attempt }}/${{ github.job }}'
@@ -1122,7 +1122,7 @@ jobs:
           if ! nix-store --check-validity "$DEVENV_OUT" 2>/dev/null; then
             echo "::warning::devenv store path invalid, repairing targeted path..."
             nix-store --repair-path "$DEVENV_OUT" > "$DIAG_ROOT/nix-store-verify-repair.log" 2>&1 || true
-            rm -rf ~/.cache/nix/eval-cache-*
+            rm -rf "${XDG_CACHE_HOME:-$HOME/.cache}"/nix/eval-cache-* ~/.cache/nix/eval-cache-*
             if ! DEVENV_OUT=$(resolve_devenv 2> >(tee "$DIAG_ROOT/resolve-devenv-post-repair.log" >&2)); then
               echo "::error::resolve_devenv failed after repair. Last 30 lines of log:"
               tail -30 "$DIAG_ROOT/resolve-devenv-post-repair.log" || true
@@ -1137,7 +1137,7 @@ jobs:
       - name: Set OTEL_EXPORTER_OTLP_HEADERS environment variable
         env:
           GRAFANA_CLOUD_OTLP_INSTANCE_ID: '1227256'
-          GRAFANA_CLOUD_OTLP_API_KEY: '${{ secrets.GRAFANA_CLOUD_OTLP_API_KEY }}'
+          GRAFANA_CLOUD_OTLP_API_KEY: ${{ secrets.GRAFANA_CLOUD_OTLP_API_KEY }}
         run: |
           echo "OTEL_EXPORTER_OTLP_HEADERS=Authorization=Basic $(echo -n "$GRAFANA_CLOUD_OTLP_INSTANCE_ID:$GRAFANA_CLOUD_OTLP_API_KEY" | base64 -w 0)" >> $GITHUB_ENV
           echo "GRAFANA_ENDPOINT=https://livestore.grafana.net" >> $GITHUB_ENV
@@ -1145,7 +1145,7 @@ jobs:
           # Disable in Vite (otherwise CORS issues)
           echo "VITE_OTEL_EXPORTER_OTLP_ENDPOINT=" >> $GITHUB_ENV
       - name: Start s2-lite container
-        if: "${{ matrix.provider == 's2' }}"
+        if: ${{ matrix.provider == 's2' }}
         run: |
           docker run -d --name s2-lite -p 4566:80 ghcr.io/s2-streamstore/s2 lite
           # Wait for s2-lite to be ready
@@ -1270,9 +1270,9 @@ jobs:
           run_nix_gc_race_retry 'devenv tasks run test:integration:sync-provider:matrix --mode before' 'if [ -n "${NIX_CONFIG:-}" ]; then NIX_CONFIG_WITH_APPEND=$(printf '"'"'%s\n%s'"'"' "$NIX_CONFIG" '"'"'restrict-eval = false'"'"'); else NIX_CONFIG_WITH_APPEND='"'"'restrict-eval = false'"'"'; fi; NIX_CONFIG="$NIX_CONFIG_WITH_APPEND" PNPM_HOME="${PNPM_HOME:-${{ github.workspace }}/.pnpm-home}" PNPM_STORE_DIR="${PNPM_STORE_DIR:-${{ runner.temp }}/pnpm-store/${{ github.job }}}" DT_PASSTHROUGH=1 "${DEVENV_BIN:?DEVENV_BIN not set}" tasks run test:integration:sync-provider:matrix --mode before'
         env:
           OTEL_STATE_DIR: ''
-          TEST_SYNC_PROVIDER: '${{ matrix.provider }}'
+          TEST_SYNC_PROVIDER: ${{ matrix.provider }}
       - name: Save pnpm state
-        if: "${{ success() && steps.restore-pnpm-state.outputs.cache-hit != 'true' }}"
+        if: ${{ success() && steps.restore-pnpm-state.outputs.cache-hit != 'true' }}
         uses: actions/cache/save@v4
         with:
           path: |
@@ -1284,7 +1284,7 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: 'nix-store-diagnostics-${{ github.job }}-${{ runner.os }}-run-${{ github.run_id }}-attempt-${{ github.run_attempt }}'
-          path: '${{ env.NIX_STORE_DIAGNOSTICS_DIR }}'
+          path: ${{ env.NIX_STORE_DIAGNOSTICS_DIR }}
           if-no-files-found: ignore
           retention-days: 14
   test-integration-playwright:
@@ -1313,7 +1313,7 @@ jobs:
         uses: cachix/cachix-action@v17
         with:
           name: livestore
-          authToken: '${{ env.CACHIX_AUTH_TOKEN }}'
+          authToken: ${{ env.CACHIX_AUTH_TOKEN }}
       - name: Sync megarepo dependencies
         env:
           MEGAREPO_STORE: '${{ runner.temp }}/megarepo-store/${{ github.run_id }}/${{ github.run_attempt }}/${{ github.job }}'
@@ -1391,7 +1391,7 @@ jobs:
           if ! nix-store --check-validity "$DEVENV_OUT" 2>/dev/null; then
             echo "::warning::devenv store path invalid, repairing targeted path..."
             nix-store --repair-path "$DEVENV_OUT" > "$DIAG_ROOT/nix-store-verify-repair.log" 2>&1 || true
-            rm -rf ~/.cache/nix/eval-cache-*
+            rm -rf "${XDG_CACHE_HOME:-$HOME/.cache}"/nix/eval-cache-* ~/.cache/nix/eval-cache-*
             if ! DEVENV_OUT=$(resolve_devenv 2> >(tee "$DIAG_ROOT/resolve-devenv-post-repair.log" >&2)); then
               echo "::error::resolve_devenv failed after repair. Last 30 lines of log:"
               tail -30 "$DIAG_ROOT/resolve-devenv-post-repair.log" || true
@@ -1406,7 +1406,7 @@ jobs:
       - name: Set OTEL_EXPORTER_OTLP_HEADERS environment variable
         env:
           GRAFANA_CLOUD_OTLP_INSTANCE_ID: '1227256'
-          GRAFANA_CLOUD_OTLP_API_KEY: '${{ secrets.GRAFANA_CLOUD_OTLP_API_KEY }}'
+          GRAFANA_CLOUD_OTLP_API_KEY: ${{ secrets.GRAFANA_CLOUD_OTLP_API_KEY }}
         run: |
           echo "OTEL_EXPORTER_OTLP_HEADERS=Authorization=Basic $(echo -n "$GRAFANA_CLOUD_OTLP_INSTANCE_ID:$GRAFANA_CLOUD_OTLP_API_KEY" | base64 -w 0)" >> $GITHUB_ENV
           echo "GRAFANA_ENDPOINT=https://livestore.grafana.net" >> $GITHUB_ENV
@@ -1415,7 +1415,7 @@ jobs:
           echo "VITE_OTEL_EXPORTER_OTLP_ENDPOINT=" >> $GITHUB_ENV
       - name: Run integration tests
         env:
-          PLAYWRIGHT_SUITE: '${{ matrix.suite }}'
+          PLAYWRIGHT_SUITE: ${{ matrix.suite }}
         run: |
           __nix_gc_retry_helper=$(mktemp)
           cat > "$__nix_gc_retry_helper" <<'EOF'
@@ -1526,16 +1526,16 @@ jobs:
           rm -f "$__nix_gc_retry_helper"
           run_nix_gc_race_retry 'devenv tasks run test:integration:playwright:suite --mode before' 'if [ -n "${NIX_CONFIG:-}" ]; then NIX_CONFIG_WITH_APPEND=$(printf '"'"'%s\n%s'"'"' "$NIX_CONFIG" '"'"'restrict-eval = false'"'"'); else NIX_CONFIG_WITH_APPEND='"'"'restrict-eval = false'"'"'; fi; NIX_CONFIG="$NIX_CONFIG_WITH_APPEND" PNPM_HOME="${PNPM_HOME:-${{ github.workspace }}/.pnpm-home}" PNPM_STORE_DIR="${PNPM_STORE_DIR:-${{ runner.temp }}/pnpm-store/${{ github.job }}}" DT_PASSTHROUGH=1 "${DEVENV_BIN:?DEVENV_BIN not set}" tasks run test:integration:playwright:suite --mode before'
       - uses: actions/upload-artifact@v4
-        if: '${{ !cancelled() }}'
+        if: ${{ !cancelled() }}
         with:
           name: 'playwright-report-${{ matrix.suite }}'
           path: tests/integration/playwright-report/
           retention-days: 30
       - name: Upload trace
-        if: '${{ !cancelled() }}'
+        if: ${{ !cancelled() }}
         env:
-          NETLIFY_AUTH_TOKEN: '${{ secrets.NETLIFY_AUTH_TOKEN }}'
-          PLAYWRIGHT_SUITE: '${{ matrix.suite }}'
+          NETLIFY_AUTH_TOKEN: ${{ secrets.NETLIFY_AUTH_TOKEN }}
+          PLAYWRIGHT_SUITE: ${{ matrix.suite }}
         run: |
           __nix_gc_retry_helper=$(mktemp)
           cat > "$__nix_gc_retry_helper" <<'EOF'
@@ -1646,7 +1646,7 @@ jobs:
           rm -f "$__nix_gc_retry_helper"
           run_nix_gc_race_retry 'devenv tasks run test:integration:playwright:upload-trace --mode before' 'if [ -n "${NIX_CONFIG:-}" ]; then NIX_CONFIG_WITH_APPEND=$(printf '"'"'%s\n%s'"'"' "$NIX_CONFIG" '"'"'restrict-eval = false'"'"'); else NIX_CONFIG_WITH_APPEND='"'"'restrict-eval = false'"'"'; fi; NIX_CONFIG="$NIX_CONFIG_WITH_APPEND" PNPM_HOME="${PNPM_HOME:-${{ github.workspace }}/.pnpm-home}" PNPM_STORE_DIR="${PNPM_STORE_DIR:-${{ runner.temp }}/pnpm-store/${{ github.job }}}" DT_PASSTHROUGH=1 "${DEVENV_BIN:?DEVENV_BIN not set}" tasks run test:integration:playwright:upload-trace --mode before'
       - name: Save pnpm state
-        if: "${{ success() && steps.restore-pnpm-state.outputs.cache-hit != 'true' }}"
+        if: ${{ success() && steps.restore-pnpm-state.outputs.cache-hit != 'true' }}
         uses: actions/cache/save@v4
         with:
           path: |
@@ -1658,7 +1658,7 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: 'nix-store-diagnostics-${{ github.job }}-${{ runner.os }}-run-${{ github.run_id }}-attempt-${{ github.run_attempt }}'
-          path: '${{ env.NIX_STORE_DIAGNOSTICS_DIR }}'
+          path: ${{ env.NIX_STORE_DIAGNOSTICS_DIR }}
           if-no-files-found: ignore
           retention-days: 14
   perf-test:
@@ -1670,7 +1670,7 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v4
         with:
-          ref: '${{ github.event.pull_request.head.sha || github.sha }}'
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
       - name: Install Nix
         uses: DeterminateSystems/determinate-nix-action@v3
         with:
@@ -1687,7 +1687,7 @@ jobs:
         uses: cachix/cachix-action@v17
         with:
           name: livestore
-          authToken: '${{ env.CACHIX_AUTH_TOKEN }}'
+          authToken: ${{ env.CACHIX_AUTH_TOKEN }}
       - name: Sync megarepo dependencies
         env:
           MEGAREPO_STORE: '${{ runner.temp }}/megarepo-store/${{ github.run_id }}/${{ github.run_attempt }}/${{ github.job }}'
@@ -1765,7 +1765,7 @@ jobs:
           if ! nix-store --check-validity "$DEVENV_OUT" 2>/dev/null; then
             echo "::warning::devenv store path invalid, repairing targeted path..."
             nix-store --repair-path "$DEVENV_OUT" > "$DIAG_ROOT/nix-store-verify-repair.log" 2>&1 || true
-            rm -rf ~/.cache/nix/eval-cache-*
+            rm -rf "${XDG_CACHE_HOME:-$HOME/.cache}"/nix/eval-cache-* ~/.cache/nix/eval-cache-*
             if ! DEVENV_OUT=$(resolve_devenv 2> >(tee "$DIAG_ROOT/resolve-devenv-post-repair.log" >&2)); then
               echo "::error::resolve_devenv failed after repair. Last 30 lines of log:"
               tail -30 "$DIAG_ROOT/resolve-devenv-post-repair.log" || true
@@ -1780,7 +1780,7 @@ jobs:
       - name: Set OTEL_EXPORTER_OTLP_HEADERS environment variable
         env:
           GRAFANA_CLOUD_OTLP_INSTANCE_ID: '1227256'
-          GRAFANA_CLOUD_OTLP_API_KEY: '${{ secrets.GRAFANA_CLOUD_OTLP_API_KEY }}'
+          GRAFANA_CLOUD_OTLP_API_KEY: ${{ secrets.GRAFANA_CLOUD_OTLP_API_KEY }}
         run: |
           echo "OTEL_EXPORTER_OTLP_HEADERS=Authorization=Basic $(echo -n "$GRAFANA_CLOUD_OTLP_INSTANCE_ID:$GRAFANA_CLOUD_OTLP_API_KEY" | base64 -w 0)" >> $GITHUB_ENV
           echo "GRAFANA_ENDPOINT=https://livestore.grafana.net" >> $GITHUB_ENV
@@ -1898,11 +1898,11 @@ jobs:
           rm -f "$__nix_gc_retry_helper"
           run_nix_gc_race_retry 'devenv tasks run test:perf --mode before' 'if [ -n "${NIX_CONFIG:-}" ]; then NIX_CONFIG_WITH_APPEND=$(printf '"'"'%s\n%s'"'"' "$NIX_CONFIG" '"'"'restrict-eval = false'"'"'); else NIX_CONFIG_WITH_APPEND='"'"'restrict-eval = false'"'"'; fi; NIX_CONFIG="$NIX_CONFIG_WITH_APPEND" PNPM_HOME="${PNPM_HOME:-${{ github.workspace }}/.pnpm-home}" PNPM_STORE_DIR="${PNPM_STORE_DIR:-${{ runner.temp }}/pnpm-store/${{ github.job }}}" DT_PASSTHROUGH=1 "${DEVENV_BIN:?DEVENV_BIN not set}" tasks run test:perf --mode before'
         env:
-          COMMIT_SHA: '${{ github.event.pull_request.head.sha || github.sha }}'
+          COMMIT_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
           GRAFANA_ENDPOINT: 'https://livestore.grafana.net'
           OTEL_EXPORTER_OTLP_ENDPOINT: 'https://otlp-gateway-prod-us-east-2.grafana.net/otlp'
       - name: Save pnpm state
-        if: "${{ success() && steps.restore-pnpm-state.outputs.cache-hit != 'true' }}"
+        if: ${{ success() && steps.restore-pnpm-state.outputs.cache-hit != 'true' }}
         uses: actions/cache/save@v4
         with:
           path: |
@@ -1914,7 +1914,7 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: 'nix-store-diagnostics-${{ github.job }}-${{ runner.os }}-run-${{ github.run_id }}-attempt-${{ github.run_attempt }}'
-          path: '${{ env.NIX_STORE_DIAGNOSTICS_DIR }}'
+          path: ${{ env.NIX_STORE_DIAGNOSTICS_DIR }}
           if-no-files-found: ignore
           retention-days: 14
   wa-sqlite-test:
@@ -1940,7 +1940,7 @@ jobs:
         uses: cachix/cachix-action@v17
         with:
           name: livestore
-          authToken: '${{ env.CACHIX_AUTH_TOKEN }}'
+          authToken: ${{ env.CACHIX_AUTH_TOKEN }}
       - name: Sync megarepo dependencies
         env:
           MEGAREPO_STORE: '${{ runner.temp }}/megarepo-store/${{ github.run_id }}/${{ github.run_attempt }}/${{ github.job }}'
@@ -2018,7 +2018,7 @@ jobs:
           if ! nix-store --check-validity "$DEVENV_OUT" 2>/dev/null; then
             echo "::warning::devenv store path invalid, repairing targeted path..."
             nix-store --repair-path "$DEVENV_OUT" > "$DIAG_ROOT/nix-store-verify-repair.log" 2>&1 || true
-            rm -rf ~/.cache/nix/eval-cache-*
+            rm -rf "${XDG_CACHE_HOME:-$HOME/.cache}"/nix/eval-cache-* ~/.cache/nix/eval-cache-*
             if ! DEVENV_OUT=$(resolve_devenv 2> >(tee "$DIAG_ROOT/resolve-devenv-post-repair.log" >&2)); then
               echo "::error::resolve_devenv failed after repair. Last 30 lines of log:"
               tail -30 "$DIAG_ROOT/resolve-devenv-post-repair.log" || true
@@ -2033,7 +2033,7 @@ jobs:
       - name: Set OTEL_EXPORTER_OTLP_HEADERS environment variable
         env:
           GRAFANA_CLOUD_OTLP_INSTANCE_ID: '1227256'
-          GRAFANA_CLOUD_OTLP_API_KEY: '${{ secrets.GRAFANA_CLOUD_OTLP_API_KEY }}'
+          GRAFANA_CLOUD_OTLP_API_KEY: ${{ secrets.GRAFANA_CLOUD_OTLP_API_KEY }}
         run: |
           echo "OTEL_EXPORTER_OTLP_HEADERS=Authorization=Basic $(echo -n "$GRAFANA_CLOUD_OTLP_INSTANCE_ID:$GRAFANA_CLOUD_OTLP_API_KEY" | base64 -w 0)" >> $GITHUB_ENV
           echo "GRAFANA_ENDPOINT=https://livestore.grafana.net" >> $GITHUB_ENV
@@ -2261,11 +2261,11 @@ jobs:
           rm -f "$__nix_gc_retry_helper"
           run_nix_gc_race_retry 'devenv tasks run test:integration:wa-sqlite --mode before' 'if [ -n "${NIX_CONFIG:-}" ]; then NIX_CONFIG_WITH_APPEND=$(printf '"'"'%s\n%s'"'"' "$NIX_CONFIG" '"'"'restrict-eval = false'"'"'); else NIX_CONFIG_WITH_APPEND='"'"'restrict-eval = false'"'"'; fi; NIX_CONFIG="$NIX_CONFIG_WITH_APPEND" PNPM_HOME="${PNPM_HOME:-${{ github.workspace }}/.pnpm-home}" PNPM_STORE_DIR="${PNPM_STORE_DIR:-${{ runner.temp }}/pnpm-store/${{ github.job }}}" DT_PASSTHROUGH=1 "${DEVENV_BIN:?DEVENV_BIN not set}" tasks run test:integration:wa-sqlite --mode before'
         env:
-          COMMIT_SHA: '${{ github.event.pull_request.head.sha || github.sha }}'
+          COMMIT_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
           GRAFANA_ENDPOINT: 'https://livestore.grafana.net'
           OTEL_EXPORTER_OTLP_ENDPOINT: 'https://otlp-gateway-prod-us-east-2.grafana.net/otlp'
       - name: Save pnpm state
-        if: "${{ success() && steps.restore-pnpm-state.outputs.cache-hit != 'true' }}"
+        if: ${{ success() && steps.restore-pnpm-state.outputs.cache-hit != 'true' }}
         uses: actions/cache/save@v4
         with:
           path: |
@@ -2277,7 +2277,7 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: 'nix-store-diagnostics-${{ github.job }}-${{ runner.os }}-run-${{ github.run_id }}-attempt-${{ github.run_attempt }}'
-          path: '${{ env.NIX_STORE_DIAGNOSTICS_DIR }}'
+          path: ${{ env.NIX_STORE_DIAGNOSTICS_DIR }}
           if-no-files-found: ignore
           retention-days: 14
   publish-snapshot-version:
@@ -2305,7 +2305,7 @@ jobs:
         uses: cachix/cachix-action@v17
         with:
           name: livestore
-          authToken: '${{ env.CACHIX_AUTH_TOKEN }}'
+          authToken: ${{ env.CACHIX_AUTH_TOKEN }}
       - name: Sync megarepo dependencies
         env:
           MEGAREPO_STORE: '${{ runner.temp }}/megarepo-store/${{ github.run_id }}/${{ github.run_attempt }}/${{ github.job }}'
@@ -2383,7 +2383,7 @@ jobs:
           if ! nix-store --check-validity "$DEVENV_OUT" 2>/dev/null; then
             echo "::warning::devenv store path invalid, repairing targeted path..."
             nix-store --repair-path "$DEVENV_OUT" > "$DIAG_ROOT/nix-store-verify-repair.log" 2>&1 || true
-            rm -rf ~/.cache/nix/eval-cache-*
+            rm -rf "${XDG_CACHE_HOME:-$HOME/.cache}"/nix/eval-cache-* ~/.cache/nix/eval-cache-*
             if ! DEVENV_OUT=$(resolve_devenv 2> >(tee "$DIAG_ROOT/resolve-devenv-post-repair.log" >&2)); then
               echo "::error::resolve_devenv failed after repair. Last 30 lines of log:"
               tail -30 "$DIAG_ROOT/resolve-devenv-post-repair.log" || true
@@ -2506,9 +2506,9 @@ jobs:
           rm -f "$__nix_gc_retry_helper"
           run_nix_gc_race_retry 'devenv tasks run release:snapshot:git-sha --mode before' 'if [ -n "${NIX_CONFIG:-}" ]; then NIX_CONFIG_WITH_APPEND=$(printf '"'"'%s\n%s'"'"' "$NIX_CONFIG" '"'"'restrict-eval = false'"'"'); else NIX_CONFIG_WITH_APPEND='"'"'restrict-eval = false'"'"'; fi; NIX_CONFIG="$NIX_CONFIG_WITH_APPEND" PNPM_HOME="${PNPM_HOME:-${{ github.workspace }}/.pnpm-home}" PNPM_STORE_DIR="${PNPM_STORE_DIR:-${{ runner.temp }}/pnpm-store/${{ github.job }}}" DT_PASSTHROUGH=1 "${DEVENV_BIN:?DEVENV_BIN not set}" tasks run release:snapshot:git-sha --mode before'
         env:
-          GIT_SHA: '${{ github.sha }}'
+          GIT_SHA: ${{ github.sha }}
       - name: Save pnpm state
-        if: "${{ success() && steps.restore-pnpm-state.outputs.cache-hit != 'true' }}"
+        if: ${{ success() && steps.restore-pnpm-state.outputs.cache-hit != 'true' }}
         uses: actions/cache/save@v4
         with:
           path: |
@@ -2520,7 +2520,7 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: 'nix-store-diagnostics-${{ github.job }}-${{ runner.os }}-run-${{ github.run_id }}-attempt-${{ github.run_attempt }}'
-          path: '${{ env.NIX_STORE_DIAGNOSTICS_DIR }}'
+          path: ${{ env.NIX_STORE_DIAGNOSTICS_DIR }}
           if-no-files-found: ignore
           retention-days: 14
   build-and-deploy-examples-src:
@@ -2546,7 +2546,7 @@ jobs:
         uses: cachix/cachix-action@v17
         with:
           name: livestore
-          authToken: '${{ env.CACHIX_AUTH_TOKEN }}'
+          authToken: ${{ env.CACHIX_AUTH_TOKEN }}
       - name: Sync megarepo dependencies
         env:
           MEGAREPO_STORE: '${{ runner.temp }}/megarepo-store/${{ github.run_id }}/${{ github.run_attempt }}/${{ github.job }}'
@@ -2624,7 +2624,7 @@ jobs:
           if ! nix-store --check-validity "$DEVENV_OUT" 2>/dev/null; then
             echo "::warning::devenv store path invalid, repairing targeted path..."
             nix-store --repair-path "$DEVENV_OUT" > "$DIAG_ROOT/nix-store-verify-repair.log" 2>&1 || true
-            rm -rf ~/.cache/nix/eval-cache-*
+            rm -rf "${XDG_CACHE_HOME:-$HOME/.cache}"/nix/eval-cache-* ~/.cache/nix/eval-cache-*
             if ! DEVENV_OUT=$(resolve_devenv 2> >(tee "$DIAG_ROOT/resolve-devenv-post-repair.log" >&2)); then
               echo "::error::resolve_devenv failed after repair. Last 30 lines of log:"
               tail -30 "$DIAG_ROOT/resolve-devenv-post-repair.log" || true
@@ -3078,10 +3078,10 @@ jobs:
           rm -f "$__nix_gc_retry_helper"
           run_nix_gc_race_retry 'devenv tasks run examples:deploy --mode before' 'if [ -n "${NIX_CONFIG:-}" ]; then NIX_CONFIG_WITH_APPEND=$(printf '"'"'%s\n%s'"'"' "$NIX_CONFIG" '"'"'restrict-eval = false'"'"'); else NIX_CONFIG_WITH_APPEND='"'"'restrict-eval = false'"'"'; fi; NIX_CONFIG="$NIX_CONFIG_WITH_APPEND" PNPM_HOME="${PNPM_HOME:-${{ github.workspace }}/.pnpm-home}" PNPM_STORE_DIR="${PNPM_STORE_DIR:-${{ runner.temp }}/pnpm-store/${{ github.job }}}" DT_PASSTHROUGH=1 "${DEVENV_BIN:?DEVENV_BIN not set}" tasks run examples:deploy --mode before'
         env:
-          CLOUDFLARE_API_TOKEN: '${{ secrets.CLOUDFLARE_API_TOKEN }}'
-          CLOUDFLARE_ACCOUNT_ID: '${{ secrets.CLOUDFLARE_ACCOUNT_ID }}'
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
       - name: Save pnpm state
-        if: "${{ success() && steps.restore-pnpm-state.outputs.cache-hit != 'true' }}"
+        if: ${{ success() && steps.restore-pnpm-state.outputs.cache-hit != 'true' }}
         uses: actions/cache/save@v4
         with:
           path: |
@@ -3093,7 +3093,7 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: 'nix-store-diagnostics-${{ github.job }}-${{ runner.os }}-run-${{ github.run_id }}-attempt-${{ github.run_attempt }}'
-          path: '${{ env.NIX_STORE_DIAGNOSTICS_DIR }}'
+          path: ${{ env.NIX_STORE_DIAGNOSTICS_DIR }}
           if-no-files-found: ignore
           retention-days: 14
   build-deploy-docs:
@@ -3119,7 +3119,7 @@ jobs:
         uses: cachix/cachix-action@v17
         with:
           name: livestore
-          authToken: '${{ env.CACHIX_AUTH_TOKEN }}'
+          authToken: ${{ env.CACHIX_AUTH_TOKEN }}
       - name: Sync megarepo dependencies
         env:
           MEGAREPO_STORE: '${{ runner.temp }}/megarepo-store/${{ github.run_id }}/${{ github.run_attempt }}/${{ github.job }}'
@@ -3197,7 +3197,7 @@ jobs:
           if ! nix-store --check-validity "$DEVENV_OUT" 2>/dev/null; then
             echo "::warning::devenv store path invalid, repairing targeted path..."
             nix-store --repair-path "$DEVENV_OUT" > "$DIAG_ROOT/nix-store-verify-repair.log" 2>&1 || true
-            rm -rf ~/.cache/nix/eval-cache-*
+            rm -rf "${XDG_CACHE_HOME:-$HOME/.cache}"/nix/eval-cache-* ~/.cache/nix/eval-cache-*
             if ! DEVENV_OUT=$(resolve_devenv 2> >(tee "$DIAG_ROOT/resolve-devenv-post-repair.log" >&2)); then
               echo "::error::resolve_devenv failed after repair. Last 30 lines of log:"
               tail -30 "$DIAG_ROOT/resolve-devenv-post-repair.log" || true
@@ -3540,7 +3540,7 @@ jobs:
           rm -f "$__nix_gc_retry_helper"
           run_nix_gc_race_retry 'devenv tasks run docs:build:phase:astro --mode before' 'if [ -n "${NIX_CONFIG:-}" ]; then NIX_CONFIG_WITH_APPEND=$(printf '"'"'%s\n%s'"'"' "$NIX_CONFIG" '"'"'restrict-eval = false'"'"'); else NIX_CONFIG_WITH_APPEND='"'"'restrict-eval = false'"'"'; fi; NIX_CONFIG="$NIX_CONFIG_WITH_APPEND" PNPM_HOME="${PNPM_HOME:-${{ github.workspace }}/.pnpm-home}" PNPM_STORE_DIR="${PNPM_STORE_DIR:-${{ runner.temp }}/pnpm-store/${{ github.job }}}" DT_PASSTHROUGH=1 "${DEVENV_BIN:?DEVENV_BIN not set}" tasks run docs:build:phase:astro --mode before'
       - name: Collect docs build diagnostics on failure
-        if: '${{ failure() }}'
+        if: ${{ failure() }}
         run: |
           __nix_gc_retry_helper=$(mktemp)
           cat > "$__nix_gc_retry_helper" <<'EOF'
@@ -3651,14 +3651,14 @@ jobs:
           rm -f "$__nix_gc_retry_helper"
           run_nix_gc_race_retry 'devenv tasks run docs:build:diagnostics --mode before' 'if [ -n "${NIX_CONFIG:-}" ]; then NIX_CONFIG_WITH_APPEND=$(printf '"'"'%s\n%s'"'"' "$NIX_CONFIG" '"'"'restrict-eval = false'"'"'); else NIX_CONFIG_WITH_APPEND='"'"'restrict-eval = false'"'"'; fi; NIX_CONFIG="$NIX_CONFIG_WITH_APPEND" PNPM_HOME="${PNPM_HOME:-${{ github.workspace }}/.pnpm-home}" PNPM_STORE_DIR="${PNPM_STORE_DIR:-${{ runner.temp }}/pnpm-store/${{ github.job }}}" DT_PASSTHROUGH=1 "${DEVENV_BIN:?DEVENV_BIN not set}" tasks run docs:build:diagnostics --mode before'
       - name: Upload docs build logs
-        if: '${{ always() }}'
+        if: ${{ always() }}
         uses: actions/upload-artifact@v4
         with:
           name: docs-build-logs
           path: tmp/ci-docs/
           retention-days: 14
       - name: Deploy docs
-        if: "${{ success() && (github.event_name != 'pull_request' || github.event.pull_request.head.repo.fork != true) }}"
+        if: ${{ success() && (github.event_name != 'pull_request' || github.event.pull_request.head.repo.fork != true) }}
         run: |
           __nix_gc_retry_helper=$(mktemp)
           cat > "$__nix_gc_retry_helper" <<'EOF'
@@ -3769,9 +3769,9 @@ jobs:
           rm -f "$__nix_gc_retry_helper"
           run_nix_gc_race_retry 'devenv tasks run docs:deploy --mode before' 'if [ -n "${NIX_CONFIG:-}" ]; then NIX_CONFIG_WITH_APPEND=$(printf '"'"'%s\n%s'"'"' "$NIX_CONFIG" '"'"'restrict-eval = false'"'"'); else NIX_CONFIG_WITH_APPEND='"'"'restrict-eval = false'"'"'; fi; NIX_CONFIG="$NIX_CONFIG_WITH_APPEND" PNPM_HOME="${PNPM_HOME:-${{ github.workspace }}/.pnpm-home}" PNPM_STORE_DIR="${PNPM_STORE_DIR:-${{ runner.temp }}/pnpm-store/${{ github.job }}}" DT_PASSTHROUGH=1 "${DEVENV_BIN:?DEVENV_BIN not set}" tasks run docs:deploy --mode before'
         env:
-          NETLIFY_AUTH_TOKEN: '${{ secrets.NETLIFY_AUTH_TOKEN }}'
+          NETLIFY_AUTH_TOKEN: ${{ secrets.NETLIFY_AUTH_TOKEN }}
       - name: Save pnpm state
-        if: "${{ success() && steps.restore-pnpm-state.outputs.cache-hit != 'true' }}"
+        if: ${{ success() && steps.restore-pnpm-state.outputs.cache-hit != 'true' }}
         uses: actions/cache/save@v4
         with:
           path: |
@@ -3783,7 +3783,7 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: 'nix-store-diagnostics-${{ github.job }}-${{ runner.os }}-run-${{ github.run_id }}-attempt-${{ github.run_attempt }}'
-          path: '${{ env.NIX_STORE_DIAGNOSTICS_DIR }}'
+          path: ${{ env.NIX_STORE_DIAGNOSTICS_DIR }}
           if-no-files-found: ignore
           retention-days: 14
   notify-alignment:
@@ -3793,7 +3793,7 @@ jobs:
     steps:
       - name: Dispatch alignment to coordinator
         env:
-          GH_TOKEN: '${{ secrets.MEGAREPO_ALIGNMENT_TOKEN }}'
+          GH_TOKEN: ${{ secrets.MEGAREPO_ALIGNMENT_TOKEN }}
         run: "export NIX_CONFIG=\"${NIX_CONFIG:+$NIX_CONFIG$'\\n'}access-tokens = github.com=${GH_TOKEN}\" && printf '{\"event_type\":\"upstream-changed\",\"client_payload\":{\"source_repo\":\"%s\",\"source_sha\":\"%s\"}}' \"${{ github.repository }}\" \"${{ github.sha }}\" | nix run nixpkgs#gh -- api repos/schickling/megarepo-all/dispatches --input -"
         shell: bash
   build-example-create:
@@ -3827,6 +3827,6 @@ jobs:
               echo "$dep@${{ env.SNAPSHOT_VERSION }}"
             done
           )
-      - if: "${{ matrix.app != 'expo-linearlite' }}"
+      - if: ${{ matrix.app != 'expo-linearlite' }}
         working-directory: '${{ runner.temp }}/${{ env.APP_PATH }}'
         run: pnpm build

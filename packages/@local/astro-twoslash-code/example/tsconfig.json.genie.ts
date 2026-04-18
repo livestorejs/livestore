@@ -9,6 +9,7 @@ export default tsconfigJson({
     declaration: true,
     declarationMap: true,
     sourceMap: true,
+    rootDir: '.',
     outDir: './dist',
     types: ['node', '@astrojs/astro-types'],
     jsx: 'preserve',
