@@ -14,7 +14,4 @@ if (workspaceRoot === undefined || workspaceRoot === '') {
   throw new Error('WORKSPACE_ROOT must be set')
 }
 
-export const LIVESTORE_DEVTOOLS_CHROME_DIST_PATH = path.resolve(
-  workspaceRoot,
-  'tmp/devtools/chrome-extension',
-)
+export const LIVESTORE_DEVTOOLS_CHROME_DIST_PATH = path.resolve(workspaceRoot, 'tmp/devtools/chrome-extension')
