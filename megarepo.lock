@@ -4,16 +4,16 @@
     "effect-utils": {
       "url": "https://github.com/overengineeringstudio/effect-utils",
       "ref": "schickling/2026-04-18-drop-beads-cleanup",
-      "commit": "42ca9d06d652e11e956b285a65aa4c803bb3835f",
+      "commit": "d9be285b71dc64aae078ff8f990fdb0e147b1aa5",
       "pinned": false,
-      "lockedAt": "2026-04-18T19:00:00.000Z"
+      "lockedAt": "2026-04-18T20:23:26.861Z"
     },
     "effect": {
       "url": "https://github.com/effect-ts/effect",
       "ref": "main",
-      "commit": "ec5c50507b1a2f5ad712c148a7da0fadb8cb9f52",
+      "commit": "b56a6ec05688c1461574b54a8044a849e7fe639c",
       "pinned": false,
-      "lockedAt": "2026-04-03T17:30:23.284Z"
+      "lockedAt": "2026-04-18T20:06:47.619Z"
     }
   }
 }
