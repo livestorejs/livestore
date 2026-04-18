@@ -10,7 +10,7 @@ export const DISCORD_INVITE_URL = 'https://discord.gg/RbMcjUAPd7'
 
 const workspaceRoot = process.env.WORKSPACE_ROOT
 
-if (!workspaceRoot) {
+if (workspaceRoot === undefined || workspaceRoot === '') {
   throw new Error('WORKSPACE_ROOT must be set')
 }
 
