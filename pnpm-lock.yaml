@@ -3307,6 +3307,9 @@ importers:
       '@types/react-dom':
         specifier: 19.2.3
         version: 19.2.3(@types/react@19.2.7)
+      '@types/react-window':
+        specifier: 1.8.8
+        version: 1.8.8
       jsdom:
         specifier: 26.1.0
         version: 26.1.0
