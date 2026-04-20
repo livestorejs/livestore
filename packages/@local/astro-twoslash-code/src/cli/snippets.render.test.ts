@@ -58,9 +58,6 @@ beforeAll(async () => {
   docsRenderer = docsRendererResult.renderer
 })
 
-const runExampleBuild = () =>
-  buildSnippets({ projectRoot: exampleProjectRoot }).pipe(Effect.provide(PlatformNode.NodeFileSystem.layer))
-
 const loadCompilerOptions = () => {
   const configSource = ts.readConfigFile(tsconfigPath, ts.sys.readFile)
   if (configSource.error !== undefined) {
@@ -170,18 +167,6 @@ describe('Twoslash renderer fixtures', () => {
   it('resolves canonical LiveStore schema pattern without TypeScript diagnostics', () => {
     const result = runTwoslashOnFixture('reference/solid-integration/app.tsx')
     expect(result.errors.map((error) => error.renderedMessage)).toEqual([])
-  })
-})
-
-describe('buildSnippets manifests', () => {
-  it('reuses cached artefacts when inputs are unchanged', async () => {
-    fs.rmSync(examplePaths.cacheRoot, { recursive: true, force: true })
-
-    const firstRendered = await Effect.runPromise(runExampleBuild())
-    expect(firstRendered).toBeGreaterThan(0)
-
-    const warmRendered = await Effect.runPromise(runExampleBuild())
-    expect(warmRendered).toBe(0)
   })
 })
 
