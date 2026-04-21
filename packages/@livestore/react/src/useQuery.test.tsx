@@ -1,6 +1,5 @@
 import * as ReactTesting from '@testing-library/react'
 import React from 'react'
-// @ts-expect-error no types
 import * as ReactWindow from 'react-window'
 import { expect } from 'vitest'
 

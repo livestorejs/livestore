@@ -64,6 +64,7 @@ export const livestoreOnlyCatalog = {
   '@types/hast': '3.0.4',
   '@types/jasmine': '5.1.4',
   '@types/jsdom': '21.1.7',
+  '@types/react-window': '1.8.8',
   '@types/wicg-file-system-access': '2023.10.6',
   '@vitest/ui': '3.2.4',
   'solid-js': '1.9.10',
