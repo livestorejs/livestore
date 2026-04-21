@@ -394,17 +394,18 @@ done`,
       ]),
     },
 
-    'notify-alignment': {
-      'runs-on': 'ubuntu-latest',
-      needs: [
-        'test-unit',
-        'test-integration-node-sync',
-        'test-integration-sync-provider',
-        'test-integration-playwright',
-      ],
-      if: "(github.ref == 'refs/heads/main' || github.ref == 'refs/heads/dev') && github.event_name == 'push'",
-      steps: [dispatchAlignmentStep({ targetRepo: 'schickling/megarepo-all' })],
-    },
+    // TODO(#1183): Disable notify job until root cause is fixed.
+    // 'notify-alignment': {
+    //   'runs-on': 'ubuntu-latest',
+    //   needs: [
+    //     'test-unit',
+    //     'test-integration-node-sync',
+    //     'test-integration-sync-provider',
+    //     'test-integration-playwright',
+    //   ],
+    //   if: "(github.ref == 'refs/heads/main' || github.ref == 'refs/heads/dev') && github.event_name == 'push'",
+    //   steps: [dispatchAlignmentStep({ targetRepo: 'schickling/megarepo-all' })],
+    // },
 
     'build-example-create': {
       if: IS_NOT_FORK,
