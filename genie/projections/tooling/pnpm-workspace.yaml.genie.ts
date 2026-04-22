@@ -1,6 +1,6 @@
 import { toolingWorkspacePackages } from '../../../package.json.genie.ts'
-import { createGenieOutput } from '../../../repos/effect-utils/packages/@overeng/genie/src/runtime/core.ts'
-import { stringify } from '../../../repos/effect-utils/packages/@overeng/genie/src/runtime/utils/yaml.ts'
+import { createGenieOutput } from '#mr/effect-utils/packages/@overeng/genie/src/runtime/core.ts'
+import { stringify } from '#mr/effect-utils/packages/@overeng/genie/src/runtime/utils/yaml.ts'
 import { commonPnpmPolicySettings, pnpmWorkspaceYaml, repoPackageExtensions, repoPnpmAllowBuilds } from '../../repo.ts'
 
 const toolingWorkspaceRoot = pnpmWorkspaceYaml.root({
