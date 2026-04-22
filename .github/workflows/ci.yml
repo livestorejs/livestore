@@ -56,6 +56,11 @@ jobs:
           fi
           mkdir -p "$MEGAREPO_STORE"
           echo "Using job-local megarepo store: $MEGAREPO_STORE"
+          if [ -n "${GITHUB_ENV:-}" ]; then
+            printf 'MEGAREPO_STORE=%s
+          ' "$MEGAREPO_STORE" >> "$GITHUB_ENV"
+          fi
+
           nix run "github:overengineeringstudio/effect-utils/$EU_REV#megarepo" -- apply --all
         shell: bash
       - name: Use pinned devenv from lock
@@ -202,7 +207,7 @@ jobs:
                 return 0
               fi
 
-              flattened=$(tr '\r\n' '  ' < "$log" | sed -E $'s/\x1B\\[[0-9;]*m//g')
+              flattened=$(tr '\r\n' '  ' < "$log" | sed -E $'s/\x1B\[[0-9;]*m//g')
               path=$(printf '%s' "$flattened" |
                 grep -o "error:[[:space:]]*path '/nix/store/[^']*'[[:space:]]*is not valid" |
                 head -1 |
@@ -211,8 +216,8 @@ jobs:
               saw_invalid_path=false
               saw_cachix_signature=false
               [ -n "$path" ] && saw_invalid_path=true
-              printf '%s' "$flattened" | grep -q 'Failed to convert config\.cachix to JSON' && saw_cachix_signature=true || true
-              printf '%s' "$flattened" | grep -q 'while evaluating the option' && printf '%s' "$flattened" | grep -q 'cachix\.package' && saw_cachix_signature=true || true
+              printf '%s' "$flattened" | grep -Eq 'error:[[:space:]]*.*Failed to convert config\.cachix to JSON' && saw_cachix_signature=true || true
+              printf '%s' "$flattened" | grep -Eq 'error:[[:space:]]*.*while evaluating the option.*cachix\.package' && saw_cachix_signature=true || true
               rm -f "$log"
 
               if [ "$saw_invalid_path" != true ] && [ "$saw_cachix_signature" != true ]; then
@@ -295,6 +300,11 @@ jobs:
           fi
           mkdir -p "$MEGAREPO_STORE"
           echo "Using job-local megarepo store: $MEGAREPO_STORE"
+          if [ -n "${GITHUB_ENV:-}" ]; then
+            printf 'MEGAREPO_STORE=%s
+          ' "$MEGAREPO_STORE" >> "$GITHUB_ENV"
+          fi
+
           nix run "github:overengineeringstudio/effect-utils/$EU_REV#megarepo" -- apply --all
         shell: bash
       - name: Use pinned devenv from lock
@@ -441,7 +451,7 @@ jobs:
                 return 0
               fi
 
-              flattened=$(tr '\r\n' '  ' < "$log" | sed -E $'s/\x1B\\[[0-9;]*m//g')
+              flattened=$(tr '\r\n' '  ' < "$log" | sed -E $'s/\x1B\[[0-9;]*m//g')
               path=$(printf '%s' "$flattened" |
                 grep -o "error:[[:space:]]*path '/nix/store/[^']*'[[:space:]]*is not valid" |
                 head -1 |
@@ -450,8 +460,8 @@ jobs:
               saw_invalid_path=false
               saw_cachix_signature=false
               [ -n "$path" ] && saw_invalid_path=true
-              printf '%s' "$flattened" | grep -q 'Failed to convert config\.cachix to JSON' && saw_cachix_signature=true || true
-              printf '%s' "$flattened" | grep -q 'while evaluating the option' && printf '%s' "$flattened" | grep -q 'cachix\.package' && saw_cachix_signature=true || true
+              printf '%s' "$flattened" | grep -Eq 'error:[[:space:]]*.*Failed to convert config\.cachix to JSON' && saw_cachix_signature=true || true
+              printf '%s' "$flattened" | grep -Eq 'error:[[:space:]]*.*while evaluating the option.*cachix\.package' && saw_cachix_signature=true || true
               rm -f "$log"
 
               if [ "$saw_invalid_path" != true ] && [ "$saw_cachix_signature" != true ]; then
@@ -534,6 +544,11 @@ jobs:
           fi
           mkdir -p "$MEGAREPO_STORE"
           echo "Using job-local megarepo store: $MEGAREPO_STORE"
+          if [ -n "${GITHUB_ENV:-}" ]; then
+            printf 'MEGAREPO_STORE=%s
+          ' "$MEGAREPO_STORE" >> "$GITHUB_ENV"
+          fi
+
           nix run "github:overengineeringstudio/effect-utils/$EU_REV#megarepo" -- apply --all
         shell: bash
       - name: Use pinned devenv from lock
@@ -680,7 +695,7 @@ jobs:
                 return 0
               fi
 
-              flattened=$(tr '\r\n' '  ' < "$log" | sed -E $'s/\x1B\\[[0-9;]*m//g')
+              flattened=$(tr '\r\n' '  ' < "$log" | sed -E $'s/\x1B\[[0-9;]*m//g')
               path=$(printf '%s' "$flattened" |
                 grep -o "error:[[:space:]]*path '/nix/store/[^']*'[[:space:]]*is not valid" |
                 head -1 |
@@ -689,8 +704,8 @@ jobs:
               saw_invalid_path=false
               saw_cachix_signature=false
               [ -n "$path" ] && saw_invalid_path=true
-              printf '%s' "$flattened" | grep -q 'Failed to convert config\.cachix to JSON' && saw_cachix_signature=true || true
-              printf '%s' "$flattened" | grep -q 'while evaluating the option' && printf '%s' "$flattened" | grep -q 'cachix\.package' && saw_cachix_signature=true || true
+              printf '%s' "$flattened" | grep -Eq 'error:[[:space:]]*.*Failed to convert config\.cachix to JSON' && saw_cachix_signature=true || true
+              printf '%s' "$flattened" | grep -Eq 'error:[[:space:]]*.*while evaluating the option.*cachix\.package' && saw_cachix_signature=true || true
               rm -f "$log"
 
               if [ "$saw_invalid_path" != true ] && [ "$saw_cachix_signature" != true ]; then
@@ -773,6 +788,11 @@ jobs:
           fi
           mkdir -p "$MEGAREPO_STORE"
           echo "Using job-local megarepo store: $MEGAREPO_STORE"
+          if [ -n "${GITHUB_ENV:-}" ]; then
+            printf 'MEGAREPO_STORE=%s
+          ' "$MEGAREPO_STORE" >> "$GITHUB_ENV"
+          fi
+
           nix run "github:overengineeringstudio/effect-utils/$EU_REV#megarepo" -- apply --all
         shell: bash
       - name: Use pinned devenv from lock
@@ -929,7 +949,7 @@ jobs:
                 return 0
               fi
 
-              flattened=$(tr '\r\n' '  ' < "$log" | sed -E $'s/\x1B\\[[0-9;]*m//g')
+              flattened=$(tr '\r\n' '  ' < "$log" | sed -E $'s/\x1B\[[0-9;]*m//g')
               path=$(printf '%s' "$flattened" |
                 grep -o "error:[[:space:]]*path '/nix/store/[^']*'[[:space:]]*is not valid" |
                 head -1 |
@@ -938,8 +958,8 @@ jobs:
               saw_invalid_path=false
               saw_cachix_signature=false
               [ -n "$path" ] && saw_invalid_path=true
-              printf '%s' "$flattened" | grep -q 'Failed to convert config\.cachix to JSON' && saw_cachix_signature=true || true
-              printf '%s' "$flattened" | grep -q 'while evaluating the option' && printf '%s' "$flattened" | grep -q 'cachix\.package' && saw_cachix_signature=true || true
+              printf '%s' "$flattened" | grep -Eq 'error:[[:space:]]*.*Failed to convert config\.cachix to JSON' && saw_cachix_signature=true || true
+              printf '%s' "$flattened" | grep -Eq 'error:[[:space:]]*.*while evaluating the option.*cachix\.package' && saw_cachix_signature=true || true
               rm -f "$log"
 
               if [ "$saw_invalid_path" != true ] && [ "$saw_cachix_signature" != true ]; then
@@ -1056,6 +1076,11 @@ jobs:
           fi
           mkdir -p "$MEGAREPO_STORE"
           echo "Using job-local megarepo store: $MEGAREPO_STORE"
+          if [ -n "${GITHUB_ENV:-}" ]; then
+            printf 'MEGAREPO_STORE=%s
+          ' "$MEGAREPO_STORE" >> "$GITHUB_ENV"
+          fi
+
           nix run "github:overengineeringstudio/effect-utils/$EU_REV#megarepo" -- apply --all
         shell: bash
       - name: Use pinned devenv from lock
@@ -1226,7 +1251,7 @@ jobs:
                 return 0
               fi
 
-              flattened=$(tr '\r\n' '  ' < "$log" | sed -E $'s/\x1B\\[[0-9;]*m//g')
+              flattened=$(tr '\r\n' '  ' < "$log" | sed -E $'s/\x1B\[[0-9;]*m//g')
               path=$(printf '%s' "$flattened" |
                 grep -o "error:[[:space:]]*path '/nix/store/[^']*'[[:space:]]*is not valid" |
                 head -1 |
@@ -1235,8 +1260,8 @@ jobs:
               saw_invalid_path=false
               saw_cachix_signature=false
               [ -n "$path" ] && saw_invalid_path=true
-              printf '%s' "$flattened" | grep -q 'Failed to convert config\.cachix to JSON' && saw_cachix_signature=true || true
-              printf '%s' "$flattened" | grep -q 'while evaluating the option' && printf '%s' "$flattened" | grep -q 'cachix\.package' && saw_cachix_signature=true || true
+              printf '%s' "$flattened" | grep -Eq 'error:[[:space:]]*.*Failed to convert config\.cachix to JSON' && saw_cachix_signature=true || true
+              printf '%s' "$flattened" | grep -Eq 'error:[[:space:]]*.*while evaluating the option.*cachix\.package' && saw_cachix_signature=true || true
               rm -f "$log"
 
               if [ "$saw_invalid_path" != true ] && [ "$saw_cachix_signature" != true ]; then
@@ -1325,6 +1350,11 @@ jobs:
           fi
           mkdir -p "$MEGAREPO_STORE"
           echo "Using job-local megarepo store: $MEGAREPO_STORE"
+          if [ -n "${GITHUB_ENV:-}" ]; then
+            printf 'MEGAREPO_STORE=%s
+          ' "$MEGAREPO_STORE" >> "$GITHUB_ENV"
+          fi
+
           nix run "github:overengineeringstudio/effect-utils/$EU_REV#megarepo" -- apply --all
         shell: bash
       - name: Use pinned devenv from lock
@@ -1483,7 +1513,7 @@ jobs:
                 return 0
               fi
 
-              flattened=$(tr '\r\n' '  ' < "$log" | sed -E $'s/\x1B\\[[0-9;]*m//g')
+              flattened=$(tr '\r\n' '  ' < "$log" | sed -E $'s/\x1B\[[0-9;]*m//g')
               path=$(printf '%s' "$flattened" |
                 grep -o "error:[[:space:]]*path '/nix/store/[^']*'[[:space:]]*is not valid" |
                 head -1 |
@@ -1492,8 +1522,8 @@ jobs:
               saw_invalid_path=false
               saw_cachix_signature=false
               [ -n "$path" ] && saw_invalid_path=true
-              printf '%s' "$flattened" | grep -q 'Failed to convert config\.cachix to JSON' && saw_cachix_signature=true || true
-              printf '%s' "$flattened" | grep -q 'while evaluating the option' && printf '%s' "$flattened" | grep -q 'cachix\.package' && saw_cachix_signature=true || true
+              printf '%s' "$flattened" | grep -Eq 'error:[[:space:]]*.*Failed to convert config\.cachix to JSON' && saw_cachix_signature=true || true
+              printf '%s' "$flattened" | grep -Eq 'error:[[:space:]]*.*while evaluating the option.*cachix\.package' && saw_cachix_signature=true || true
               rm -f "$log"
 
               if [ "$saw_invalid_path" != true ] && [ "$saw_cachix_signature" != true ]; then
@@ -1603,7 +1633,7 @@ jobs:
                 return 0
               fi
 
-              flattened=$(tr '\r\n' '  ' < "$log" | sed -E $'s/\x1B\\[[0-9;]*m//g')
+              flattened=$(tr '\r\n' '  ' < "$log" | sed -E $'s/\x1B\[[0-9;]*m//g')
               path=$(printf '%s' "$flattened" |
                 grep -o "error:[[:space:]]*path '/nix/store/[^']*'[[:space:]]*is not valid" |
                 head -1 |
@@ -1612,8 +1642,8 @@ jobs:
               saw_invalid_path=false
               saw_cachix_signature=false
               [ -n "$path" ] && saw_invalid_path=true
-              printf '%s' "$flattened" | grep -q 'Failed to convert config\.cachix to JSON' && saw_cachix_signature=true || true
-              printf '%s' "$flattened" | grep -q 'while evaluating the option' && printf '%s' "$flattened" | grep -q 'cachix\.package' && saw_cachix_signature=true || true
+              printf '%s' "$flattened" | grep -Eq 'error:[[:space:]]*.*Failed to convert config\.cachix to JSON' && saw_cachix_signature=true || true
+              printf '%s' "$flattened" | grep -Eq 'error:[[:space:]]*.*while evaluating the option.*cachix\.package' && saw_cachix_signature=true || true
               rm -f "$log"
 
               if [ "$saw_invalid_path" != true ] && [ "$saw_cachix_signature" != true ]; then
@@ -1699,6 +1729,11 @@ jobs:
           fi
           mkdir -p "$MEGAREPO_STORE"
           echo "Using job-local megarepo store: $MEGAREPO_STORE"
+          if [ -n "${GITHUB_ENV:-}" ]; then
+            printf 'MEGAREPO_STORE=%s
+          ' "$MEGAREPO_STORE" >> "$GITHUB_ENV"
+          fi
+
           nix run "github:overengineeringstudio/effect-utils/$EU_REV#megarepo" -- apply --all
         shell: bash
       - name: Use pinned devenv from lock
@@ -1855,7 +1890,7 @@ jobs:
                 return 0
               fi
 
-              flattened=$(tr '\r\n' '  ' < "$log" | sed -E $'s/\x1B\\[[0-9;]*m//g')
+              flattened=$(tr '\r\n' '  ' < "$log" | sed -E $'s/\x1B\[[0-9;]*m//g')
               path=$(printf '%s' "$flattened" |
                 grep -o "error:[[:space:]]*path '/nix/store/[^']*'[[:space:]]*is not valid" |
                 head -1 |
@@ -1864,8 +1899,8 @@ jobs:
               saw_invalid_path=false
               saw_cachix_signature=false
               [ -n "$path" ] && saw_invalid_path=true
-              printf '%s' "$flattened" | grep -q 'Failed to convert config\.cachix to JSON' && saw_cachix_signature=true || true
-              printf '%s' "$flattened" | grep -q 'while evaluating the option' && printf '%s' "$flattened" | grep -q 'cachix\.package' && saw_cachix_signature=true || true
+              printf '%s' "$flattened" | grep -Eq 'error:[[:space:]]*.*Failed to convert config\.cachix to JSON' && saw_cachix_signature=true || true
+              printf '%s' "$flattened" | grep -Eq 'error:[[:space:]]*.*while evaluating the option.*cachix\.package' && saw_cachix_signature=true || true
               rm -f "$log"
 
               if [ "$saw_invalid_path" != true ] && [ "$saw_cachix_signature" != true ]; then
@@ -1952,6 +1987,11 @@ jobs:
           fi
           mkdir -p "$MEGAREPO_STORE"
           echo "Using job-local megarepo store: $MEGAREPO_STORE"
+          if [ -n "${GITHUB_ENV:-}" ]; then
+            printf 'MEGAREPO_STORE=%s
+          ' "$MEGAREPO_STORE" >> "$GITHUB_ENV"
+          fi
+
           nix run "github:overengineeringstudio/effect-utils/$EU_REV#megarepo" -- apply --all
         shell: bash
       - name: Use pinned devenv from lock
@@ -2108,7 +2148,7 @@ jobs:
                 return 0
               fi
 
-              flattened=$(tr '\r\n' '  ' < "$log" | sed -E $'s/\x1B\\[[0-9;]*m//g')
+              flattened=$(tr '\r\n' '  ' < "$log" | sed -E $'s/\x1B\[[0-9;]*m//g')
               path=$(printf '%s' "$flattened" |
                 grep -o "error:[[:space:]]*path '/nix/store/[^']*'[[:space:]]*is not valid" |
                 head -1 |
@@ -2117,8 +2157,8 @@ jobs:
               saw_invalid_path=false
               saw_cachix_signature=false
               [ -n "$path" ] && saw_invalid_path=true
-              printf '%s' "$flattened" | grep -q 'Failed to convert config\.cachix to JSON' && saw_cachix_signature=true || true
-              printf '%s' "$flattened" | grep -q 'while evaluating the option' && printf '%s' "$flattened" | grep -q 'cachix\.package' && saw_cachix_signature=true || true
+              printf '%s' "$flattened" | grep -Eq 'error:[[:space:]]*.*Failed to convert config\.cachix to JSON' && saw_cachix_signature=true || true
+              printf '%s' "$flattened" | grep -Eq 'error:[[:space:]]*.*while evaluating the option.*cachix\.package' && saw_cachix_signature=true || true
               rm -f "$log"
 
               if [ "$saw_invalid_path" != true ] && [ "$saw_cachix_signature" != true ]; then
@@ -2218,7 +2258,7 @@ jobs:
                 return 0
               fi
 
-              flattened=$(tr '\r\n' '  ' < "$log" | sed -E $'s/\x1B\\[[0-9;]*m//g')
+              flattened=$(tr '\r\n' '  ' < "$log" | sed -E $'s/\x1B\[[0-9;]*m//g')
               path=$(printf '%s' "$flattened" |
                 grep -o "error:[[:space:]]*path '/nix/store/[^']*'[[:space:]]*is not valid" |
                 head -1 |
@@ -2227,8 +2267,8 @@ jobs:
               saw_invalid_path=false
               saw_cachix_signature=false
               [ -n "$path" ] && saw_invalid_path=true
-              printf '%s' "$flattened" | grep -q 'Failed to convert config\.cachix to JSON' && saw_cachix_signature=true || true
-              printf '%s' "$flattened" | grep -q 'while evaluating the option' && printf '%s' "$flattened" | grep -q 'cachix\.package' && saw_cachix_signature=true || true
+              printf '%s' "$flattened" | grep -Eq 'error:[[:space:]]*.*Failed to convert config\.cachix to JSON' && saw_cachix_signature=true || true
+              printf '%s' "$flattened" | grep -Eq 'error:[[:space:]]*.*while evaluating the option.*cachix\.package' && saw_cachix_signature=true || true
               rm -f "$log"
 
               if [ "$saw_invalid_path" != true ] && [ "$saw_cachix_signature" != true ]; then
@@ -2317,6 +2357,11 @@ jobs:
           fi
           mkdir -p "$MEGAREPO_STORE"
           echo "Using job-local megarepo store: $MEGAREPO_STORE"
+          if [ -n "${GITHUB_ENV:-}" ]; then
+            printf 'MEGAREPO_STORE=%s
+          ' "$MEGAREPO_STORE" >> "$GITHUB_ENV"
+          fi
+
           nix run "github:overengineeringstudio/effect-utils/$EU_REV#megarepo" -- apply --all
         shell: bash
       - name: Use pinned devenv from lock
@@ -2463,7 +2508,7 @@ jobs:
                 return 0
               fi
 
-              flattened=$(tr '\r\n' '  ' < "$log" | sed -E $'s/\x1B\\[[0-9;]*m//g')
+              flattened=$(tr '\r\n' '  ' < "$log" | sed -E $'s/\x1B\[[0-9;]*m//g')
               path=$(printf '%s' "$flattened" |
                 grep -o "error:[[:space:]]*path '/nix/store/[^']*'[[:space:]]*is not valid" |
                 head -1 |
@@ -2472,8 +2517,8 @@ jobs:
               saw_invalid_path=false
               saw_cachix_signature=false
               [ -n "$path" ] && saw_invalid_path=true
-              printf '%s' "$flattened" | grep -q 'Failed to convert config\.cachix to JSON' && saw_cachix_signature=true || true
-              printf '%s' "$flattened" | grep -q 'while evaluating the option' && printf '%s' "$flattened" | grep -q 'cachix\.package' && saw_cachix_signature=true || true
+              printf '%s' "$flattened" | grep -Eq 'error:[[:space:]]*.*Failed to convert config\.cachix to JSON' && saw_cachix_signature=true || true
+              printf '%s' "$flattened" | grep -Eq 'error:[[:space:]]*.*while evaluating the option.*cachix\.package' && saw_cachix_signature=true || true
               rm -f "$log"
 
               if [ "$saw_invalid_path" != true ] && [ "$saw_cachix_signature" != true ]; then
@@ -2558,6 +2603,11 @@ jobs:
           fi
           mkdir -p "$MEGAREPO_STORE"
           echo "Using job-local megarepo store: $MEGAREPO_STORE"
+          if [ -n "${GITHUB_ENV:-}" ]; then
+            printf 'MEGAREPO_STORE=%s
+          ' "$MEGAREPO_STORE" >> "$GITHUB_ENV"
+          fi
+
           nix run "github:overengineeringstudio/effect-utils/$EU_REV#megarepo" -- apply --all
         shell: bash
       - name: Use pinned devenv from lock
@@ -2704,7 +2754,7 @@ jobs:
                 return 0
               fi
 
-              flattened=$(tr '\r\n' '  ' < "$log" | sed -E $'s/\x1B\\[[0-9;]*m//g')
+              flattened=$(tr '\r\n' '  ' < "$log" | sed -E $'s/\x1B\[[0-9;]*m//g')
               path=$(printf '%s' "$flattened" |
                 grep -o "error:[[:space:]]*path '/nix/store/[^']*'[[:space:]]*is not valid" |
                 head -1 |
@@ -2713,8 +2763,8 @@ jobs:
               saw_invalid_path=false
               saw_cachix_signature=false
               [ -n "$path" ] && saw_invalid_path=true
-              printf '%s' "$flattened" | grep -q 'Failed to convert config\.cachix to JSON' && saw_cachix_signature=true || true
-              printf '%s' "$flattened" | grep -q 'while evaluating the option' && printf '%s' "$flattened" | grep -q 'cachix\.package' && saw_cachix_signature=true || true
+              printf '%s' "$flattened" | grep -Eq 'error:[[:space:]]*.*Failed to convert config\.cachix to JSON' && saw_cachix_signature=true || true
+              printf '%s' "$flattened" | grep -Eq 'error:[[:space:]]*.*while evaluating the option.*cachix\.package' && saw_cachix_signature=true || true
               rm -f "$log"
 
               if [ "$saw_invalid_path" != true ] && [ "$saw_cachix_signature" != true ]; then
@@ -2814,7 +2864,7 @@ jobs:
                 return 0
               fi
 
-              flattened=$(tr '\r\n' '  ' < "$log" | sed -E $'s/\x1B\\[[0-9;]*m//g')
+              flattened=$(tr '\r\n' '  ' < "$log" | sed -E $'s/\x1B\[[0-9;]*m//g')
               path=$(printf '%s' "$flattened" |
                 grep -o "error:[[:space:]]*path '/nix/store/[^']*'[[:space:]]*is not valid" |
                 head -1 |
@@ -2823,8 +2873,8 @@ jobs:
               saw_invalid_path=false
               saw_cachix_signature=false
               [ -n "$path" ] && saw_invalid_path=true
-              printf '%s' "$flattened" | grep -q 'Failed to convert config\.cachix to JSON' && saw_cachix_signature=true || true
-              printf '%s' "$flattened" | grep -q 'while evaluating the option' && printf '%s' "$flattened" | grep -q 'cachix\.package' && saw_cachix_signature=true || true
+              printf '%s' "$flattened" | grep -Eq 'error:[[:space:]]*.*Failed to convert config\.cachix to JSON' && saw_cachix_signature=true || true
+              printf '%s' "$flattened" | grep -Eq 'error:[[:space:]]*.*while evaluating the option.*cachix\.package' && saw_cachix_signature=true || true
               rm -f "$log"
 
               if [ "$saw_invalid_path" != true ] && [ "$saw_cachix_signature" != true ]; then
@@ -2924,7 +2974,7 @@ jobs:
                 return 0
               fi
 
-              flattened=$(tr '\r\n' '  ' < "$log" | sed -E $'s/\x1B\\[[0-9;]*m//g')
+              flattened=$(tr '\r\n' '  ' < "$log" | sed -E $'s/\x1B\[[0-9;]*m//g')
               path=$(printf '%s' "$flattened" |
                 grep -o "error:[[:space:]]*path '/nix/store/[^']*'[[:space:]]*is not valid" |
                 head -1 |
@@ -2933,8 +2983,8 @@ jobs:
               saw_invalid_path=false
               saw_cachix_signature=false
               [ -n "$path" ] && saw_invalid_path=true
-              printf '%s' "$flattened" | grep -q 'Failed to convert config\.cachix to JSON' && saw_cachix_signature=true || true
-              printf '%s' "$flattened" | grep -q 'while evaluating the option' && printf '%s' "$flattened" | grep -q 'cachix\.package' && saw_cachix_signature=true || true
+              printf '%s' "$flattened" | grep -Eq 'error:[[:space:]]*.*Failed to convert config\.cachix to JSON' && saw_cachix_signature=true || true
+              printf '%s' "$flattened" | grep -Eq 'error:[[:space:]]*.*while evaluating the option.*cachix\.package' && saw_cachix_signature=true || true
               rm -f "$log"
 
               if [ "$saw_invalid_path" != true ] && [ "$saw_cachix_signature" != true ]; then
@@ -3035,7 +3085,7 @@ jobs:
                 return 0
               fi
 
-              flattened=$(tr '\r\n' '  ' < "$log" | sed -E $'s/\x1B\\[[0-9;]*m//g')
+              flattened=$(tr '\r\n' '  ' < "$log" | sed -E $'s/\x1B\[[0-9;]*m//g')
               path=$(printf '%s' "$flattened" |
                 grep -o "error:[[:space:]]*path '/nix/store/[^']*'[[:space:]]*is not valid" |
                 head -1 |
@@ -3044,8 +3094,8 @@ jobs:
               saw_invalid_path=false
               saw_cachix_signature=false
               [ -n "$path" ] && saw_invalid_path=true
-              printf '%s' "$flattened" | grep -q 'Failed to convert config\.cachix to JSON' && saw_cachix_signature=true || true
-              printf '%s' "$flattened" | grep -q 'while evaluating the option' && printf '%s' "$flattened" | grep -q 'cachix\.package' && saw_cachix_signature=true || true
+              printf '%s' "$flattened" | grep -Eq 'error:[[:space:]]*.*Failed to convert config\.cachix to JSON' && saw_cachix_signature=true || true
+              printf '%s' "$flattened" | grep -Eq 'error:[[:space:]]*.*while evaluating the option.*cachix\.package' && saw_cachix_signature=true || true
               rm -f "$log"
 
               if [ "$saw_invalid_path" != true ] && [ "$saw_cachix_signature" != true ]; then
@@ -3131,6 +3181,11 @@ jobs:
           fi
           mkdir -p "$MEGAREPO_STORE"
           echo "Using job-local megarepo store: $MEGAREPO_STORE"
+          if [ -n "${GITHUB_ENV:-}" ]; then
+            printf 'MEGAREPO_STORE=%s
+          ' "$MEGAREPO_STORE" >> "$GITHUB_ENV"
+          fi
+
           nix run "github:overengineeringstudio/effect-utils/$EU_REV#megarepo" -- apply --all
         shell: bash
       - name: Use pinned devenv from lock
@@ -3277,7 +3332,7 @@ jobs:
                 return 0
               fi
 
-              flattened=$(tr '\r\n' '  ' < "$log" | sed -E $'s/\x1B\\[[0-9;]*m//g')
+              flattened=$(tr '\r\n' '  ' < "$log" | sed -E $'s/\x1B\[[0-9;]*m//g')
               path=$(printf '%s' "$flattened" |
                 grep -o "error:[[:space:]]*path '/nix/store/[^']*'[[:space:]]*is not valid" |
                 head -1 |
@@ -3286,8 +3341,8 @@ jobs:
               saw_invalid_path=false
               saw_cachix_signature=false
               [ -n "$path" ] && saw_invalid_path=true
-              printf '%s' "$flattened" | grep -q 'Failed to convert config\.cachix to JSON' && saw_cachix_signature=true || true
-              printf '%s' "$flattened" | grep -q 'while evaluating the option' && printf '%s' "$flattened" | grep -q 'cachix\.package' && saw_cachix_signature=true || true
+              printf '%s' "$flattened" | grep -Eq 'error:[[:space:]]*.*Failed to convert config\.cachix to JSON' && saw_cachix_signature=true || true
+              printf '%s' "$flattened" | grep -Eq 'error:[[:space:]]*.*while evaluating the option.*cachix\.package' && saw_cachix_signature=true || true
               rm -f "$log"
 
               if [ "$saw_invalid_path" != true ] && [ "$saw_cachix_signature" != true ]; then
@@ -3387,7 +3442,7 @@ jobs:
                 return 0
               fi
 
-              flattened=$(tr '\r\n' '  ' < "$log" | sed -E $'s/\x1B\\[[0-9;]*m//g')
+              flattened=$(tr '\r\n' '  ' < "$log" | sed -E $'s/\x1B\[[0-9;]*m//g')
               path=$(printf '%s' "$flattened" |
                 grep -o "error:[[:space:]]*path '/nix/store/[^']*'[[:space:]]*is not valid" |
                 head -1 |
@@ -3396,8 +3451,8 @@ jobs:
               saw_invalid_path=false
               saw_cachix_signature=false
               [ -n "$path" ] && saw_invalid_path=true
-              printf '%s' "$flattened" | grep -q 'Failed to convert config\.cachix to JSON' && saw_cachix_signature=true || true
-              printf '%s' "$flattened" | grep -q 'while evaluating the option' && printf '%s' "$flattened" | grep -q 'cachix\.package' && saw_cachix_signature=true || true
+              printf '%s' "$flattened" | grep -Eq 'error:[[:space:]]*.*Failed to convert config\.cachix to JSON' && saw_cachix_signature=true || true
+              printf '%s' "$flattened" | grep -Eq 'error:[[:space:]]*.*while evaluating the option.*cachix\.package' && saw_cachix_signature=true || true
               rm -f "$log"
 
               if [ "$saw_invalid_path" != true ] && [ "$saw_cachix_signature" != true ]; then
@@ -3497,7 +3552,7 @@ jobs:
                 return 0
               fi
 
-              flattened=$(tr '\r\n' '  ' < "$log" | sed -E $'s/\x1B\\[[0-9;]*m//g')
+              flattened=$(tr '\r\n' '  ' < "$log" | sed -E $'s/\x1B\[[0-9;]*m//g')
               path=$(printf '%s' "$flattened" |
                 grep -o "error:[[:space:]]*path '/nix/store/[^']*'[[:space:]]*is not valid" |
                 head -1 |
@@ -3506,8 +3561,8 @@ jobs:
               saw_invalid_path=false
               saw_cachix_signature=false
               [ -n "$path" ] && saw_invalid_path=true
-              printf '%s' "$flattened" | grep -q 'Failed to convert config\.cachix to JSON' && saw_cachix_signature=true || true
-              printf '%s' "$flattened" | grep -q 'while evaluating the option' && printf '%s' "$flattened" | grep -q 'cachix\.package' && saw_cachix_signature=true || true
+              printf '%s' "$flattened" | grep -Eq 'error:[[:space:]]*.*Failed to convert config\.cachix to JSON' && saw_cachix_signature=true || true
+              printf '%s' "$flattened" | grep -Eq 'error:[[:space:]]*.*while evaluating the option.*cachix\.package' && saw_cachix_signature=true || true
               rm -f "$log"
 
               if [ "$saw_invalid_path" != true ] && [ "$saw_cachix_signature" != true ]; then
@@ -3608,7 +3663,7 @@ jobs:
                 return 0
               fi
 
-              flattened=$(tr '\r\n' '  ' < "$log" | sed -E $'s/\x1B\\[[0-9;]*m//g')
+              flattened=$(tr '\r\n' '  ' < "$log" | sed -E $'s/\x1B\[[0-9;]*m//g')
               path=$(printf '%s' "$flattened" |
                 grep -o "error:[[:space:]]*path '/nix/store/[^']*'[[:space:]]*is not valid" |
                 head -1 |
@@ -3617,8 +3672,8 @@ jobs:
               saw_invalid_path=false
               saw_cachix_signature=false
               [ -n "$path" ] && saw_invalid_path=true
-              printf '%s' "$flattened" | grep -q 'Failed to convert config\.cachix to JSON' && saw_cachix_signature=true || true
-              printf '%s' "$flattened" | grep -q 'while evaluating the option' && printf '%s' "$flattened" | grep -q 'cachix\.package' && saw_cachix_signature=true || true
+              printf '%s' "$flattened" | grep -Eq 'error:[[:space:]]*.*Failed to convert config\.cachix to JSON' && saw_cachix_signature=true || true
+              printf '%s' "$flattened" | grep -Eq 'error:[[:space:]]*.*while evaluating the option.*cachix\.package' && saw_cachix_signature=true || true
               rm -f "$log"
 
               if [ "$saw_invalid_path" != true ] && [ "$saw_cachix_signature" != true ]; then
@@ -3726,7 +3781,7 @@ jobs:
                 return 0
               fi
 
-              flattened=$(tr '\r\n' '  ' < "$log" | sed -E $'s/\x1B\\[[0-9;]*m//g')
+              flattened=$(tr '\r\n' '  ' < "$log" | sed -E $'s/\x1B\[[0-9;]*m//g')
               path=$(printf '%s' "$flattened" |
                 grep -o "error:[[:space:]]*path '/nix/store/[^']*'[[:space:]]*is not valid" |
                 head -1 |
@@ -3735,8 +3790,8 @@ jobs:
               saw_invalid_path=false
               saw_cachix_signature=false
               [ -n "$path" ] && saw_invalid_path=true
-              printf '%s' "$flattened" | grep -q 'Failed to convert config\.cachix to JSON' && saw_cachix_signature=true || true
-              printf '%s' "$flattened" | grep -q 'while evaluating the option' && printf '%s' "$flattened" | grep -q 'cachix\.package' && saw_cachix_signature=true || true
+              printf '%s' "$flattened" | grep -Eq 'error:[[:space:]]*.*Failed to convert config\.cachix to JSON' && saw_cachix_signature=true || true
+              printf '%s' "$flattened" | grep -Eq 'error:[[:space:]]*.*while evaluating the option.*cachix\.package' && saw_cachix_signature=true || true
               rm -f "$log"
 
               if [ "$saw_invalid_path" != true ] && [ "$saw_cachix_signature" != true ]; then
