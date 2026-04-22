@@ -41,8 +41,8 @@ import {
   type WorkspaceMetadata,
   type WorkspacePackage,
   type WorkspacePackageLike,
-} from '../repos/effect-utils/genie/external.ts'
-import { baseOxfmtIgnorePatterns, baseOxfmtOptions } from '../repos/effect-utils/genie/oxfmt-base.ts'
+} from '#mr/effect-utils/genie/external.ts'
+import { baseOxfmtIgnorePatterns, baseOxfmtOptions } from '#mr/effect-utils/genie/oxfmt-base.ts'
 import { livestoreOnlyCatalog, livestoreWorkspaceCatalog } from './external.ts'
 
 export { baseTsconfigCompilerOptions, domLib, reactJsx }
@@ -232,7 +232,7 @@ import {
   nixDiagnosticsArtifactStep,
   savePnpmStateStep,
   validateNixStoreStep,
-} from '../repos/effect-utils/genie/ci-workflow.ts'
+} from '#mr/effect-utils/genie/ci-workflow.ts'
 
 export const devenvShellDefaults = {
   run: { shell: 'devenv shell bash -- -e {0}' },
