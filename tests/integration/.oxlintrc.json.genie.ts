@@ -5,7 +5,7 @@ import {
   livestoreOxlintPlugins,
   livestoreOxlintRules,
 } from '../../.oxlintrc.json.genie.ts'
-import { oxlintConfig } from '../../repos/effect-utils/genie/external.ts'
+import { oxlintConfig } from '#mr/effect-utils/genie/external.ts'
 
 export default oxlintConfig({
   plugins: livestoreOxlintPlugins,
