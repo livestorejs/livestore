@@ -1,4 +1,4 @@
 members {
-    effect-utils "overengineeringstudio/effect-utils#schickling/2026-04-23-effect-deps"
+    effect-utils "overengineeringstudio/effect-utils"
     effect "effect-ts/effect"
 }

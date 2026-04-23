@@ -3,10 +3,10 @@
   "members": {
     "effect-utils": {
       "url": "https://github.com/overengineeringstudio/effect-utils",
-      "ref": "schickling/2026-04-23-effect-deps",
-      "commit": "3a2455112cab6f684557c2e33324d1abf89f12a0",
+      "ref": "main",
+      "commit": "de0632bd88ee3e58f2423421f673383eb1c1fb82",
       "pinned": false,
-      "lockedAt": "2026-04-23T10:47:30.912Z"
+      "lockedAt": "2026-04-23T13:57:46.230Z"
     },
     "effect": {
       "url": "https://github.com/effect-ts/effect",
