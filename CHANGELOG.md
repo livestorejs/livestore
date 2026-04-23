@@ -480,7 +480,7 @@ See the [S2 sync provider docs](https://dev.docs.livestore.dev/reference/syncing
 
 #### Updated (peer) dependencies
 
-- Effect updated to 3.17.14
+- Effect updated to 3.21.2 (`@effect/platform` 0.96.1, `@effect/rpc` 0.75.1). Includes an upstream `msgpackr` bump to 1.11.10 that fixes silent RPC decode failures on Cloudflare Workers ([Effect-TS/effect#6169](https://github.com/Effect-TS/effect/issues/6169), [#1179](https://github.com/livestorejs/livestore/issues/1179)).
 - React updated to 19.1.1
 - Vite updated to 7.1.7
 - TypeScript 5.9.2 compatibility
