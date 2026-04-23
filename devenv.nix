@@ -187,7 +187,6 @@ in
       requiredTasks = [ ];
       optionalTasks = [
         "pnpm:install"
-        "genie:run"
         "ts:build"
       ];
     })
