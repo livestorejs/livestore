@@ -3,17 +3,17 @@
   "members": {
     "effect-utils": {
       "url": "https://github.com/overengineeringstudio/effect-utils",
-      "ref": "main",
-      "commit": "fc67e5c9c0d3edf7db306687cbaa8f330e6eaa1e",
-      "pinned": false,
-      "lockedAt": "2026-04-22T10:35:00.000Z"
+      "ref": "e443f977c1274165b6e20d9c5d0bd277f8e0b832",
+      "commit": "e443f977c1274165b6e20d9c5d0bd277f8e0b832",
+      "pinned": true,
+      "lockedAt": "2026-04-24T21:02:00.068Z"
     },
     "effect": {
       "url": "https://github.com/effect-ts/effect",
       "ref": "main",
-      "commit": "b56a6ec05688c1461574b54a8044a849e7fe639c",
+      "commit": "70ce155cd73a3b4cd723fe955454b5837b428f76",
       "pinned": false,
-      "lockedAt": "2026-04-18T20:06:47.619Z"
+      "lockedAt": "2026-04-24T21:02:07.430Z"
     }
   }
 }

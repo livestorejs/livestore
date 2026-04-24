@@ -7,9 +7,9 @@ inputs:
       nixpkgs:
         follows: nixpkgs
   playwright:
-    url: github:overengineeringstudio/effect-utils/main?dir=nix/playwright-flake
+    url: github:overengineeringstudio/effect-utils/schickling/2026-04-24-pnpm-fix?dir=nix/playwright-flake
     inputs:
       nixpkgs:
         follows: nixpkgs
   effect-utils:
-    url: github:overengineeringstudio/effect-utils/main
+    url: github:overengineeringstudio/effect-utils/schickling/2026-04-24-pnpm-fix

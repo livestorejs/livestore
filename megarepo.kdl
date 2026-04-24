@@ -1,4 +1,4 @@
 members {
-    effect-utils "overengineeringstudio/effect-utils"
+    effect-utils "overengineeringstudio/effect-utils#e443f977c1274165b6e20d9c5d0bd277f8e0b832"
     effect "effect-ts/effect"
 }
