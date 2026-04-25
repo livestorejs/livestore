@@ -3,11 +3,11 @@
     "devenv": {
       "locked": {
         "dir": "src/modules",
-        "lastModified": 1776802132,
-        "narHash": "sha256-2yO2SGA7zVFYKe0qyJjdg7WHuMOKNwTQmigL7ydD8hI=",
+        "lastModified": 1777040077,
+        "narHash": "sha256-21hK/8gia6FbcE2+R49WNCD24yd6Qf0VPpiYi1qEI3I=",
         "owner": "cachix",
         "repo": "devenv",
-        "rev": "91affc7a7b6646852a0079678eadf12ac5029d9d",
+        "rev": "0b0246b7fed27e788d639cb82364c452b405970c",
         "type": "github"
       },
       "original": {
@@ -24,16 +24,16 @@
         "tsgo": "tsgo"
       },
       "locked": {
-        "lastModified": 1776801359,
-        "narHash": "sha256-Gxs/6wh70X8PCwh8Xaqw3bD4LZJoH5LTkFztlc9DXgE=",
+        "lastModified": 1777120553,
+        "narHash": "sha256-0BMeua2blAesHtmSAqLapHDGJjq3jhWHtY9Vvlmk5ZI=",
         "owner": "overengineeringstudio",
         "repo": "effect-utils",
-        "rev": "fc67e5c9c0d3edf7db306687cbaa8f330e6eaa1e",
+        "rev": "3ec99b7af558e67ba60d7a4e1e8983ea89f7f61b",
         "type": "github"
       },
       "original": {
         "owner": "overengineeringstudio",
-        "ref": "main",
+        "ref": "schickling/2026-04-25-pnpm-shared-store",
         "repo": "effect-utils",
         "type": "github"
       }
@@ -190,17 +190,17 @@
       },
       "locked": {
         "dir": "nix/playwright-flake",
-        "lastModified": 1776801359,
-        "narHash": "sha256-Gxs/6wh70X8PCwh8Xaqw3bD4LZJoH5LTkFztlc9DXgE=",
+        "lastModified": 1777120553,
+        "narHash": "sha256-0BMeua2blAesHtmSAqLapHDGJjq3jhWHtY9Vvlmk5ZI=",
         "owner": "overengineeringstudio",
         "repo": "effect-utils",
-        "rev": "fc67e5c9c0d3edf7db306687cbaa8f330e6eaa1e",
+        "rev": "3ec99b7af558e67ba60d7a4e1e8983ea89f7f61b",
         "type": "github"
       },
       "original": {
         "dir": "nix/playwright-flake",
         "owner": "overengineeringstudio",
-        "ref": "main",
+        "ref": "schickling/2026-04-25-pnpm-shared-store",
         "repo": "effect-utils",
         "type": "github"
       }

@@ -1,4 +1,4 @@
 members {
-    effect-utils "overengineeringstudio/effect-utils"
+    effect-utils "overengineeringstudio/effect-utils#schickling/2026-04-25-pnpm-shared-store"
     effect "effect-ts/effect"
 }
