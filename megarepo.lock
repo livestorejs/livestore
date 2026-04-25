@@ -3,10 +3,10 @@
   "members": {
     "effect-utils": {
       "url": "https://github.com/overengineeringstudio/effect-utils",
-      "ref": "main",
-      "commit": "256b971c7a75350c851d2633ccbf578058e939c4",
+      "ref": "schickling/2026-04-25-pnpm-shared-store",
+      "commit": "3ec99b7af558e67ba60d7a4e1e8983ea89f7f61b",
       "pinned": true,
-      "lockedAt": "2026-04-25T10:33:52.299Z"
+      "lockedAt": "2026-04-25T13:18:42.250Z"
     },
     "effect": {
       "url": "https://github.com/effect-ts/effect",
