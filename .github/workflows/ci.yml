@@ -45,6 +45,7 @@ jobs:
         with:
           name: livestore
           authToken: ${{ env.CACHIX_AUTH_TOKEN }}
+          skipPush: true
       - name: Sync megarepo dependencies
         env:
           MEGAREPO_STORE: '${{ runner.temp }}/megarepo-store/${{ github.run_id }}/${{ github.run_attempt }}/${{ github.job }}'
@@ -289,6 +290,7 @@ jobs:
         with:
           name: livestore
           authToken: ${{ env.CACHIX_AUTH_TOKEN }}
+          skipPush: true
       - name: Sync megarepo dependencies
         env:
           MEGAREPO_STORE: '${{ runner.temp }}/megarepo-store/${{ github.run_id }}/${{ github.run_attempt }}/${{ github.job }}'
@@ -533,6 +535,7 @@ jobs:
         with:
           name: livestore
           authToken: ${{ env.CACHIX_AUTH_TOKEN }}
+          skipPush: true
       - name: Sync megarepo dependencies
         env:
           MEGAREPO_STORE: '${{ runner.temp }}/megarepo-store/${{ github.run_id }}/${{ github.run_attempt }}/${{ github.job }}'
@@ -777,6 +780,7 @@ jobs:
         with:
           name: livestore
           authToken: ${{ env.CACHIX_AUTH_TOKEN }}
+          skipPush: true
       - name: Sync megarepo dependencies
         env:
           MEGAREPO_STORE: '${{ runner.temp }}/megarepo-store/${{ github.run_id }}/${{ github.run_attempt }}/${{ github.job }}'
@@ -1065,6 +1069,7 @@ jobs:
         with:
           name: livestore
           authToken: ${{ env.CACHIX_AUTH_TOKEN }}
+          skipPush: true
       - name: Sync megarepo dependencies
         env:
           MEGAREPO_STORE: '${{ runner.temp }}/megarepo-store/${{ github.run_id }}/${{ github.run_attempt }}/${{ github.job }}'
@@ -1339,6 +1344,7 @@ jobs:
         with:
           name: livestore
           authToken: ${{ env.CACHIX_AUTH_TOKEN }}
+          skipPush: true
       - name: Sync megarepo dependencies
         env:
           MEGAREPO_STORE: '${{ runner.temp }}/megarepo-store/${{ github.run_id }}/${{ github.run_attempt }}/${{ github.job }}'
@@ -1718,6 +1724,7 @@ jobs:
         with:
           name: livestore
           authToken: ${{ env.CACHIX_AUTH_TOKEN }}
+          skipPush: true
       - name: Sync megarepo dependencies
         env:
           MEGAREPO_STORE: '${{ runner.temp }}/megarepo-store/${{ github.run_id }}/${{ github.run_attempt }}/${{ github.job }}'
@@ -1976,6 +1983,7 @@ jobs:
         with:
           name: livestore
           authToken: ${{ env.CACHIX_AUTH_TOKEN }}
+          skipPush: true
       - name: Sync megarepo dependencies
         env:
           MEGAREPO_STORE: '${{ runner.temp }}/megarepo-store/${{ github.run_id }}/${{ github.run_attempt }}/${{ github.job }}'
@@ -2346,6 +2354,7 @@ jobs:
         with:
           name: livestore
           authToken: ${{ env.CACHIX_AUTH_TOKEN }}
+          skipPush: true
       - name: Sync megarepo dependencies
         env:
           MEGAREPO_STORE: '${{ runner.temp }}/megarepo-store/${{ github.run_id }}/${{ github.run_attempt }}/${{ github.job }}'
@@ -2704,6 +2713,7 @@ jobs:
         with:
           name: livestore
           authToken: ${{ env.CACHIX_AUTH_TOKEN }}
+          skipPush: true
       - name: Sync megarepo dependencies
         env:
           MEGAREPO_STORE: '${{ runner.temp }}/megarepo-store/${{ github.run_id }}/${{ github.run_attempt }}/${{ github.job }}'
@@ -3282,6 +3292,7 @@ jobs:
         with:
           name: livestore
           authToken: ${{ env.CACHIX_AUTH_TOKEN }}
+          skipPush: true
       - name: Sync megarepo dependencies
         env:
           MEGAREPO_STORE: '${{ runner.temp }}/megarepo-store/${{ github.run_id }}/${{ github.run_attempt }}/${{ github.job }}'
