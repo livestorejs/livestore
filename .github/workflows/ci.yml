@@ -45,6 +45,7 @@ jobs:
         with:
           name: livestore
           authToken: ${{ env.CACHIX_AUTH_TOKEN }}
+          skipPush: true
       - name: Sync megarepo dependencies
         env:
           MEGAREPO_STORE: '${{ runner.temp }}/megarepo-store/${{ github.run_id }}/${{ github.run_attempt }}/${{ github.job }}'
@@ -289,6 +290,7 @@ jobs:
         with:
           name: livestore
           authToken: ${{ env.CACHIX_AUTH_TOKEN }}
+          skipPush: true
       - name: Sync megarepo dependencies
         env:
           MEGAREPO_STORE: '${{ runner.temp }}/megarepo-store/${{ github.run_id }}/${{ github.run_attempt }}/${{ github.job }}'
@@ -533,6 +535,7 @@ jobs:
         with:
           name: livestore
           authToken: ${{ env.CACHIX_AUTH_TOKEN }}
+          skipPush: true
       - name: Sync megarepo dependencies
         env:
           MEGAREPO_STORE: '${{ runner.temp }}/megarepo-store/${{ github.run_id }}/${{ github.run_attempt }}/${{ github.job }}'
@@ -777,6 +780,7 @@ jobs:
         with:
           name: livestore
           authToken: ${{ env.CACHIX_AUTH_TOKEN }}
+          skipPush: true
       - name: Sync megarepo dependencies
         env:
           MEGAREPO_STORE: '${{ runner.temp }}/megarepo-store/${{ github.run_id }}/${{ github.run_attempt }}/${{ github.job }}'
@@ -1065,6 +1069,7 @@ jobs:
         with:
           name: livestore
           authToken: ${{ env.CACHIX_AUTH_TOKEN }}
+          skipPush: true
       - name: Sync megarepo dependencies
         env:
           MEGAREPO_STORE: '${{ runner.temp }}/megarepo-store/${{ github.run_id }}/${{ github.run_attempt }}/${{ github.job }}'
@@ -1339,6 +1344,7 @@ jobs:
         with:
           name: livestore
           authToken: ${{ env.CACHIX_AUTH_TOKEN }}
+          skipPush: true
       - name: Sync megarepo dependencies
         env:
           MEGAREPO_STORE: '${{ runner.temp }}/megarepo-store/${{ github.run_id }}/${{ github.run_attempt }}/${{ github.job }}'
@@ -1718,6 +1724,7 @@ jobs:
         with:
           name: livestore
           authToken: ${{ env.CACHIX_AUTH_TOKEN }}
+          skipPush: true
       - name: Sync megarepo dependencies
         env:
           MEGAREPO_STORE: '${{ runner.temp }}/megarepo-store/${{ github.run_id }}/${{ github.run_attempt }}/${{ github.job }}'
@@ -1976,6 +1983,7 @@ jobs:
         with:
           name: livestore
           authToken: ${{ env.CACHIX_AUTH_TOKEN }}
+          skipPush: true
       - name: Sync megarepo dependencies
         env:
           MEGAREPO_STORE: '${{ runner.temp }}/megarepo-store/${{ github.run_id }}/${{ github.run_attempt }}/${{ github.job }}'
@@ -2346,6 +2354,7 @@ jobs:
         with:
           name: livestore
           authToken: ${{ env.CACHIX_AUTH_TOKEN }}
+          skipPush: true
       - name: Sync megarepo dependencies
         env:
           MEGAREPO_STORE: '${{ runner.temp }}/megarepo-store/${{ github.run_id }}/${{ github.run_attempt }}/${{ github.job }}'
@@ -2551,7 +2560,119 @@ jobs:
           rm -f "$__nix_gc_retry_helper"
           run_nix_gc_race_retry 'devenv tasks run release:snapshot:git-sha --mode before' 'if [ -n "${NIX_CONFIG:-}" ]; then NIX_CONFIG_WITH_APPEND=$(printf '"'"'%s\n%s'"'"' "$NIX_CONFIG" '"'"'restrict-eval = false'"'"'); else NIX_CONFIG_WITH_APPEND='"'"'restrict-eval = false'"'"'; fi; NIX_CONFIG="$NIX_CONFIG_WITH_APPEND" PNPM_HOME="${PNPM_HOME:-${{ github.workspace }}/.pnpm-home}" PNPM_STORE_DIR="${PNPM_STORE_DIR:-${{ runner.temp }}/pnpm-store/${{ github.job }}}" DT_PASSTHROUGH=1 "${DEVENV_BIN:?DEVENV_BIN not set}" tasks run release:snapshot:git-sha --mode before'
         env:
-          GIT_SHA: ${{ github.sha }}
+          GIT_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
+      - name: Publish DevTools artifact snapshot
+        run: |
+          __nix_gc_retry_helper=$(mktemp)
+          cat > "$__nix_gc_retry_helper" <<'EOF'
+          #!/usr/bin/env bash
+
+          run_nix_gc_race_retry() {
+            local task="$1"
+            local command="$2"
+            local max="${NIX_GC_RACE_MAX_RETRIES:-10}"
+            local heartbeat="${CI_PROGRESS_HEARTBEAT_SECONDS:-60}"
+            local attempt=1
+            local log rc path start now elapsed hb_pid flattened saw_invalid_path saw_cachix_signature had_errexit
+
+            start="$(date +%s)"
+
+            write_summary() {
+              [ -n "${GITHUB_STEP_SUMMARY:-}" ] || return 0
+              {
+                echo "### CI Task"
+                echo "- Task: $task"
+                echo "- Status: $1"
+                echo "- Duration: $elapsed s"
+                echo "- Attempts: $attempt/$max"
+                [ -z "${2:-}" ] || echo "- Note: $2"
+              } >> "$GITHUB_STEP_SUMMARY"
+            }
+
+            while [ "$attempt" -le "$max" ]; do
+              echo "::notice::[ci] starting $task (attempt $attempt/$max)"
+              (
+                while sleep "$heartbeat"; do
+                  now=$(date +%s)
+                  elapsed=$((now - start))
+                  echo "::notice::[ci] $task still running after $elapsed s (attempt $attempt/$max)"
+                done
+              ) &
+              hb_pid=$!
+
+              log=$(mktemp)
+              had_errexit=false
+              case $- in
+                *e*) had_errexit=true ;;
+              esac
+              set +e
+              eval "$command" > >(tee -a "$log") 2> >(tee -a "$log" >&2)
+              rc=$?
+              if [ "$had_errexit" = true ]; then
+                set -e
+              fi
+
+              kill "$hb_pid" 2>/dev/null || true
+              wait "$hb_pid" 2>/dev/null || true
+
+              now=$(date +%s)
+              elapsed=$((now - start))
+
+              if [ "$rc" -eq 0 ]; then
+                echo "::notice::[ci] completed $task in $elapsed s"
+                if [ "$attempt" -gt 1 ]; then
+                  write_summary success "Recovered from Nix GC race after retry"
+                else
+                  write_summary success
+                fi
+                rm -f "$log"
+                return 0
+              fi
+
+              flattened=$(tr '\r\n' '  ' < "$log" | sed -E $'s/\x1B\[[0-9;]*m//g')
+              path=$(printf '%s' "$flattened" |
+                grep -o "error:[[:space:]]*path '/nix/store/[^']*'[[:space:]]*is not valid" |
+                head -1 |
+                grep -o "/nix/store/[^']*" |
+                tr -d '[:space:]' || true)
+              saw_invalid_path=false
+              saw_cachix_signature=false
+              [ -n "$path" ] && saw_invalid_path=true
+              printf '%s' "$flattened" | grep -Eq 'error:[[:space:]]*.*Failed to convert config\.cachix to JSON' && saw_cachix_signature=true || true
+              printf '%s' "$flattened" | grep -Eq 'error:[[:space:]]*.*while evaluating the option.*cachix\.package' && saw_cachix_signature=true || true
+              rm -f "$log"
+
+              if [ "$saw_invalid_path" != true ] && [ "$saw_cachix_signature" != true ]; then
+                echo "::warning::[ci] $task failed after $elapsed s without a detected Nix store validity race"
+                write_summary failure "No Nix GC race signature detected"
+                return "$rc"
+              fi
+
+              if [ "$saw_cachix_signature" = true ] && [ -n "$path" ]; then
+                echo "::warning::Nix store validity race detected for $task via cachix eval wrapper (attempt $attempt/$max): $path"
+              elif [ "$saw_cachix_signature" = true ]; then
+                echo "::warning::Nix store validity race detected for $task via cachix eval wrapper without extracted store path (attempt $attempt/$max)"
+              else
+                echo "::warning::Nix store validity race detected for $task (attempt $attempt/$max): $path"
+              fi
+
+              [ -z "$path" ] || nix-store --realise "$path" 2>/dev/null || true
+              rm -rf ~/.cache/nix/eval-cache-*
+              attempt=$((attempt + 1))
+            done
+
+            now=$(date +%s)
+            elapsed=$((now - start))
+            echo "::error::Nix GC race retry exhausted for $task ($max attempts)"
+            write_summary failure "Nix GC race retry exhausted"
+            return 1
+          }
+          EOF
+          . "$__nix_gc_retry_helper"
+          rm -f "$__nix_gc_retry_helper"
+          run_nix_gc_race_retry 'devenv tasks run release:devtools-artifact:publish --mode before' 'if [ -n "${NIX_CONFIG:-}" ]; then NIX_CONFIG_WITH_APPEND=$(printf '"'"'%s\n%s'"'"' "$NIX_CONFIG" '"'"'restrict-eval = false'"'"'); else NIX_CONFIG_WITH_APPEND='"'"'restrict-eval = false'"'"'; fi; NIX_CONFIG="$NIX_CONFIG_WITH_APPEND" PNPM_HOME="${PNPM_HOME:-${{ github.workspace }}/.pnpm-home}" PNPM_STORE_DIR="${PNPM_STORE_DIR:-${{ runner.temp }}/pnpm-store/${{ github.job }}}" DT_PASSTHROUGH=1 "${DEVENV_BIN:?DEVENV_BIN not set}" tasks run release:devtools-artifact:publish --mode before'
+        env:
+          LIVESTORE_RELEASE_VERSION: '0.0.0-snapshot-${{ github.event.pull_request.head.sha || github.sha }}'
       - name: Save pnpm state
         if: ${{ success() && steps.restore-pnpm-state.outputs.cache-hit != 'true' }}
         uses: actions/cache/save@v4
@@ -2592,6 +2713,7 @@ jobs:
         with:
           name: livestore
           authToken: ${{ env.CACHIX_AUTH_TOKEN }}
+          skipPush: true
       - name: Sync megarepo dependencies
         env:
           MEGAREPO_STORE: '${{ runner.temp }}/megarepo-store/${{ github.run_id }}/${{ github.run_attempt }}/${{ github.job }}'
@@ -3170,6 +3292,7 @@ jobs:
         with:
           name: livestore
           authToken: ${{ env.CACHIX_AUTH_TOKEN }}
+          skipPush: true
       - name: Sync megarepo dependencies
         env:
           MEGAREPO_STORE: '${{ runner.temp }}/megarepo-store/${{ github.run_id }}/${{ github.run_attempt }}/${{ github.job }}'
@@ -3850,7 +3973,7 @@ jobs:
     runs-on: [namespace-profile-linux-x86-64, 'namespace-features:github.run-id=${{ github.run_id }}']
     env:
       APP_PATH: 'examples/${{ matrix.app }}'
-      SNAPSHOT_VERSION: '0.0.0-snapshot-${{ github.sha }}'
+      SNAPSHOT_VERSION: '0.0.0-snapshot-${{ github.event.pull_request.head.sha || github.sha }}'
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4

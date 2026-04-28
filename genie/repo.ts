@@ -222,7 +222,6 @@ import {
   dispatchAlignmentStep,
   namespaceRunner as namespaceRunnerBase,
   installNixStep,
-  cachixStep,
   applyMegarepoLockStep,
   checkoutStep,
   preparePinnedDevenvStep,
@@ -252,7 +251,15 @@ export const livestoreSetupStepsAfterCheckout = [
     extraConf:
       'extra-substituters = https://cache.nixos.org\nextra-trusted-public-keys = cache.nixos.org-1:6NCHdD59X431o0gWypbMrAURkbJ16ZPMQFGspcDShjY=',
   }),
-  cachixStep({ name: 'livestore', authToken: '${{ env.CACHIX_AUTH_TOKEN }}' }),
+  {
+    name: 'Enable Cachix cache',
+    uses: 'cachix/cachix-action@v17',
+    with: {
+      name: 'livestore',
+      authToken: '${{ env.CACHIX_AUTH_TOKEN }}',
+      skipPush: true,
+    },
+  },
   applyMegarepoLockStep(),
   preparePinnedDevenvStep,
   pnpmStateSetupStep,
