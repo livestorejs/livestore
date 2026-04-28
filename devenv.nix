@@ -27,22 +27,6 @@ let
     inherit pkgs oxlintNpm;
   };
 
-  # Pre-compiled Grafana dashboards for livestore OTEL traces
-  livestoreDashboards = effectUtils.lib.buildOtelDashboards {
-    inherit pkgs;
-    src = ./nix/otel-dashboards;
-    dashboardNames = [
-      "livestore-overview"
-      "livestore-cli"
-      "livestore-sync"
-      "livestore-test-runs"
-      "livestore-leader-thread"
-      "livestore-sync-providers"
-      "livestore-browser"
-      "livestore-sql"
-    ];
-  };
-
   # Packages managed by pnpm (shared between pnpm and clean modules)
   # NOTE: Using pnpm temporarily due to bun bugs. Plan to switch back once fixed.
   # See: effect-utils/context/workarounds/bun-issues.md
@@ -93,14 +77,10 @@ in
     # dt command for running devenv tasks
     effectUtils.devenvModules.dt
     # OTEL observability stack with livestore-specific dashboards
-    (effectUtils.devenvModules.otel {
-      extraDashboards = [
-        {
-          name = "livestore";
-          path = livestoreDashboards;
-        }
-      ];
-    })
+    # Keep release/task automation independent from user machine-level OTEL
+    # dashboard sync state. System OTEL remains useful for interactive shells,
+    # but the repository task contract needs deterministic local module wiring.
+    (effectUtils.devenvModules.otel { mode = "local"; })
     # Playwright browser drivers and environment setup
     inputs.playwright.devenvModules.default
     # Shared task modules from effect-utils
@@ -242,6 +222,68 @@ in
   tasks."lint:check:format".execIfModified = lib.mkForce [ ];
   tasks."lint:check:oxlint".execIfModified = lib.mkForce [ ];
 
+  tasks."release:devtools-artifact:verify" = {
+    description = "Verify a public LiveStore DevTools artifact handoff";
+    exec = ''
+      set -euo pipefail
+      cd "$DEVENV_ROOT"
+
+      artifact_args=(--manifest "''${LIVESTORE_DEVTOOLS_MANIFEST:-release/devtools-artifact.json}")
+      if [[ -n "''${LIVESTORE_DEVTOOLS_METADATA:-}" || -n "''${LIVESTORE_DEVTOOLS_TARBALL:-}" ]]; then
+        : "''${LIVESTORE_DEVTOOLS_METADATA:?Set both LIVESTORE_DEVTOOLS_METADATA and LIVESTORE_DEVTOOLS_TARBALL, or neither to use the checked-in manifest}"
+        : "''${LIVESTORE_DEVTOOLS_TARBALL:?Set both LIVESTORE_DEVTOOLS_METADATA and LIVESTORE_DEVTOOLS_TARBALL, or neither to use the checked-in manifest}"
+        artifact_args=(--metadata "$LIVESTORE_DEVTOOLS_METADATA" --tarball "$LIVESTORE_DEVTOOLS_TARBALL")
+      fi
+
+      bun scripts/src/commands/devtools-artifact.ts verify "''${artifact_args[@]}"
+    '';
+    after = [ "pnpm:install" ];
+  };
+
+  tasks."release:devtools-artifact:repack-dryrun" = {
+    description = "Verify and repack a public LiveStore DevTools artifact for a LiveStore release version";
+    exec = ''
+      set -euo pipefail
+      cd "$DEVENV_ROOT"
+
+      : "''${LIVESTORE_RELEASE_VERSION:?Set LIVESTORE_RELEASE_VERSION to the LiveStore release-group version}"
+      artifact_args=(--manifest "''${LIVESTORE_DEVTOOLS_MANIFEST:-release/devtools-artifact.json}")
+      if [[ -n "''${LIVESTORE_DEVTOOLS_METADATA:-}" || -n "''${LIVESTORE_DEVTOOLS_TARBALL:-}" ]]; then
+        : "''${LIVESTORE_DEVTOOLS_METADATA:?Set both LIVESTORE_DEVTOOLS_METADATA and LIVESTORE_DEVTOOLS_TARBALL, or neither to use the checked-in manifest}"
+        : "''${LIVESTORE_DEVTOOLS_TARBALL:?Set both LIVESTORE_DEVTOOLS_METADATA and LIVESTORE_DEVTOOLS_TARBALL, or neither to use the checked-in manifest}"
+        artifact_args=(--metadata "$LIVESTORE_DEVTOOLS_METADATA" --tarball "$LIVESTORE_DEVTOOLS_TARBALL")
+      fi
+
+      bun scripts/src/commands/devtools-artifact.ts repack \
+        "''${artifact_args[@]}" \
+        --version "$LIVESTORE_RELEASE_VERSION" \
+        --dry-run
+    '';
+    after = [ "pnpm:install" ];
+  };
+
+  tasks."release:devtools-artifact:publish" = {
+    description = "Verify, repack, and publish a public LiveStore DevTools artifact for a LiveStore release version";
+    exec = ''
+      set -euo pipefail
+      cd "$DEVENV_ROOT"
+
+      : "''${LIVESTORE_RELEASE_VERSION:?Set LIVESTORE_RELEASE_VERSION to the LiveStore release-group version}"
+      artifact_args=(--manifest "''${LIVESTORE_DEVTOOLS_MANIFEST:-release/devtools-artifact.json}")
+      if [[ -n "''${LIVESTORE_DEVTOOLS_METADATA:-}" || -n "''${LIVESTORE_DEVTOOLS_TARBALL:-}" ]]; then
+        : "''${LIVESTORE_DEVTOOLS_METADATA:?Set both LIVESTORE_DEVTOOLS_METADATA and LIVESTORE_DEVTOOLS_TARBALL, or neither to use the checked-in manifest}"
+        : "''${LIVESTORE_DEVTOOLS_TARBALL:?Set both LIVESTORE_DEVTOOLS_METADATA and LIVESTORE_DEVTOOLS_TARBALL, or neither to use the checked-in manifest}"
+        artifact_args=(--metadata "$LIVESTORE_DEVTOOLS_METADATA" --tarball "$LIVESTORE_DEVTOOLS_TARBALL")
+      fi
+
+      bun scripts/src/commands/devtools-artifact.ts repack \
+        "''${artifact_args[@]}" \
+        --version "$LIVESTORE_RELEASE_VERSION" \
+        --publish
+    '';
+    after = [ "pnpm:install" ];
+  };
+
   # NOTE: check:quick is provided by effect-utils taskModules.check.
 
   git-hooks.enable = true;
@@ -314,7 +356,9 @@ in
 
     # Setup runs via setup module (taskModules.setup) - auto-wired to enterShell
 
-    [ -f "$WORKSPACE_ROOT/scripts/completions.sh" ] && source "$WORKSPACE_ROOT/scripts/completions.sh"
+    if [ "''${CI:-}" != "true" ] && [ "''${LIVESTORE_SKIP_COMPLETIONS:-}" != "1" ]; then
+      [ -f "$WORKSPACE_ROOT/scripts/completions.sh" ] && source "$WORKSPACE_ROOT/scripts/completions.sh"
+    fi
 
     if [ -d "$WORKSPACE_ROOT/scripts/.completions/zsh/site-functions" ]; then
       export FPATH="$WORKSPACE_ROOT/scripts/.completions/zsh/site-functions''${FPATH:+:''${FPATH}}"

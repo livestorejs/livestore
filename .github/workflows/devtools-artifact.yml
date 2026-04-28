@@ -1,0 +1,216 @@
+# Generated file - DO NOT EDIT
+# Source: devtools-artifact.yml.genie.ts
+
+name: DevTools artifact manifest
+
+on:
+  repository_dispatch:
+    types: [devtools-artifact-published]
+  workflow_dispatch:
+    inputs:
+      metadata_url:
+        description: Public release-metadata.json URL
+        required: true
+        type: string
+      tarball_url:
+        description: Public artifact tarball URL
+        required: true
+        type: string
+      sha256:
+        description: Artifact tarball SHA-256
+        required: true
+        type: string
+      devtools_build_id:
+        description: Public DevTools build id
+        required: false
+        type: string
+
+permissions:
+  contents: write
+  pull-requests: write
+
+env:
+  CACHIX_AUTH_TOKEN: ${{ secrets.CACHIX_AUTH_TOKEN }}
+  CI: 'true'
+  FORCE_SETUP: '1'
+  ARTIFACT_METADATA_URL: ${{ github.event.client_payload.artifactMetadataUrl || inputs.metadata_url }}
+  ARTIFACT_TARBALL_URL: ${{ github.event.client_payload.artifactTarballUrl || inputs.tarball_url }}
+  ARTIFACT_SHA256: ${{ github.event.client_payload.sha256 || inputs.sha256 }}
+  DEVTOOLS_BUILD_ID: ${{ github.event.client_payload.devtoolsBuildId || inputs.devtools_build_id }}
+  BASE_BRANCH: ${{ github.event.repository.default_branch }}
+
+jobs:
+  update-manifest-pr:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        shell: bash
+    steps:
+      - uses: actions/checkout@v6
+      - name: Install Nix
+        uses: DeterminateSystems/determinate-nix-action@v3
+        with:
+          extra-conf: |
+            experimental-features = nix-command flakes
+            accept-flake-config = true
+            extra-substituters = https://devenv.cachix.org
+            extra-trusted-public-keys = devenv.cachix.org-1:w1cLUi8dv3hnoSPGAuibQv+f9TZLr6cv/Hm9XgU50cw=
+            access-tokens = github.com=${{ github.token }}
+            extra-substituters = https://cache.nixos.org
+            extra-trusted-public-keys = cache.nixos.org-1:6NCHdD59X431o0gWypbMrAURkbJ16ZPMQFGspcDShjY=
+          summarize: true
+      - name: Enable Cachix cache
+        uses: cachix/cachix-action@v17
+        with:
+          name: livestore
+          authToken: ${{ env.CACHIX_AUTH_TOKEN }}
+      - name: Sync megarepo dependencies
+        env:
+          MEGAREPO_STORE: '${{ runner.temp }}/megarepo-store/${{ github.run_id }}/${{ github.run_attempt }}/${{ github.job }}'
+        run: |
+          EU_REV=$(jq -r '.members["effect-utils"].commit' megarepo.lock)
+          if [ -z "$EU_REV" ] || [ "$EU_REV" = "null" ]; then
+            echo '::error::megarepo.lock missing members["effect-utils"].commit'
+            exit 1
+          fi
+          mkdir -p "$MEGAREPO_STORE"
+          echo "Using job-local megarepo store: $MEGAREPO_STORE"
+          if [ -n "${GITHUB_ENV:-}" ]; then
+            printf 'MEGAREPO_STORE=%s
+          ' "$MEGAREPO_STORE" >> "$GITHUB_ENV"
+          fi
+
+          nix run "github:overengineeringstudio/effect-utils/$EU_REV#megarepo" -- apply --all
+        shell: bash
+      - name: Use pinned devenv from lock
+        run: |
+          DEVENV_REV=$(jq -r .nodes.devenv.locked.rev devenv.lock)
+          if [ -z "$DEVENV_REV" ] || [ "$DEVENV_REV" = "null" ]; then
+            echo '::error::devenv.lock missing .nodes.devenv.locked.rev'
+            exit 1
+          fi
+          echo "DEVENV_REV=$DEVENV_REV" >> "$GITHUB_ENV"
+          echo "Pinned devenv rev: $DEVENV_REV"
+        shell: bash
+      - name: Isolate pnpm state
+        shell: bash
+        run: |
+          echo "PNPM_STORE_DIR=${{ runner.temp }}/pnpm-store/${{ github.job }}" >> "$GITHUB_ENV"
+          echo "PNPM_HOME=${{ github.workspace }}/.pnpm-home" >> "$GITHUB_ENV"
+      - id: restore-pnpm-state
+        name: Restore pnpm state
+        uses: actions/cache/restore@v4
+        with:
+          path: |
+            ${{ github.workspace }}/.pnpm-home
+            ${{ runner.temp }}/pnpm-store/${{ github.job }}
+          key: "livestore-pnpm-state-v1-${{ runner.os }}-${{ runner.arch }}-${{ hashFiles('**/pnpm-lock.yaml') }}"
+      - name: Resolve devenv
+        run: |
+          if [ -z "${DEVENV_REV:-}" ]; then
+            DEVENV_REV=$(jq -r .nodes.devenv.locked.rev devenv.lock)
+          if [ -z "$DEVENV_REV" ] || [ "$DEVENV_REV" = "null" ]; then
+            echo '::error::devenv.lock missing .nodes.devenv.locked.rev'
+            exit 1
+          fi
+          fi
+
+          resolve_devenv() {
+            nix build --no-link --print-out-paths "github:cachix/devenv/$DEVENV_REV#devenv"
+          }
+
+          # Temporary: capture diagnostics dir for #272 root-cause analysis.
+          DIAG_ROOT="${RUNNER_TEMP:-/tmp}/nix-store-diagnostics-${GITHUB_JOB:-job}-${RUNNER_OS:-unknown}-${GITHUB_RUN_ATTEMPT:-0}"
+          mkdir -p "$DIAG_ROOT"
+          echo "NIX_STORE_DIAGNOSTICS_DIR=$DIAG_ROOT" >> "$GITHUB_ENV"
+
+          {
+            echo "timestamp_utc=$(date -u +%Y-%m-%dT%H:%M:%SZ)"
+            echo "runner_name=${RUNNER_NAME:-unknown}"
+            echo "runner_os=${RUNNER_OS:-unknown}"
+            echo "runner_arch=${RUNNER_ARCH:-unknown}"
+            echo "github_job=${GITHUB_JOB:-unknown}"
+            echo "github_run_id=${GITHUB_RUN_ID:-unknown}"
+            echo "nix_user_conf_files=${NIX_USER_CONF_FILES:-}"
+            nix --version || true
+          } > "$DIAG_ROOT/environment.txt" 2>&1
+
+          if ! DEVENV_OUT=$(resolve_devenv 2> >(tee "$DIAG_ROOT/resolve-devenv.log" >&2)); then
+            echo "::error::resolve_devenv failed. Last 30 lines of log:"
+            tail -30 "$DIAG_ROOT/resolve-devenv.log" || true
+            exit 1
+          fi
+          DEVENV_BIN="$DEVENV_OUT/bin/devenv"
+
+          # Fast validity check on the devenv store path (~1-2s vs ~25s for devenv info).
+          if ! nix-store --check-validity "$DEVENV_OUT" 2>/dev/null; then
+            echo "::warning::devenv store path invalid, repairing targeted path..."
+            nix-store --repair-path "$DEVENV_OUT" > "$DIAG_ROOT/nix-store-verify-repair.log" 2>&1 || true
+            rm -rf "${XDG_CACHE_HOME:-$HOME/.cache}"/nix/eval-cache-* ~/.cache/nix/eval-cache-*
+            if ! DEVENV_OUT=$(resolve_devenv 2> >(tee "$DIAG_ROOT/resolve-devenv-post-repair.log" >&2)); then
+              echo "::error::resolve_devenv failed after repair. Last 30 lines of log:"
+              tail -30 "$DIAG_ROOT/resolve-devenv-post-repair.log" || true
+              exit 1
+            fi
+            DEVENV_BIN="$DEVENV_OUT/bin/devenv"
+          fi
+
+          echo "DEVENV_BIN=$DEVENV_BIN" >> "$GITHUB_ENV"
+          "$DEVENV_BIN" version | tee "$DIAG_ROOT/devenv-version.txt"
+        shell: bash
+      - name: Write artifact manifest
+        run: |
+          set -euo pipefail
+          : "${ARTIFACT_METADATA_URL:?Missing artifact metadata URL}"
+          : "${ARTIFACT_TARBALL_URL:?Missing artifact tarball URL}"
+          : "${ARTIFACT_SHA256:?Missing artifact SHA-256}"
+
+          mkdir -p release
+          jq -n \
+            --arg metadataUrl "$ARTIFACT_METADATA_URL" \
+            --arg tarballUrl "$ARTIFACT_TARBALL_URL" \
+            --arg sha256 "$ARTIFACT_SHA256" \
+            '{
+              schemaVersion: 1,
+              artifact: {
+                metadataUrl: $metadataUrl,
+                tarballUrl: $tarballUrl,
+                sha256: $sha256
+              }
+            }' > release/devtools-artifact.json
+      - name: Verify artifact manifest
+        run: '$DEVENV_BIN tasks run release:devtools-artifact:verify --mode before --no-tui'
+      - name: Open manifest update PR
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          set -euo pipefail
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+
+          suffix="${DEVTOOLS_BUILD_ID:-$(date -u +%Y%m%d%H%M%S)}"
+          branch="automation/devtools-artifact-${suffix}"
+          git checkout -B "$branch"
+          git add release/devtools-artifact.json
+
+          if git diff --cached --quiet; then
+            echo "Artifact manifest already current."
+            exit 0
+          fi
+
+          git commit -m "Update LiveStore DevTools artifact manifest"
+          git push --force-with-lease origin "$branch"
+
+          title="Update LiveStore DevTools artifact manifest"
+          body="$(cat <<'BODY'
+          Updates the public DevTools artifact manifest from a sanitized artifact release.
+
+          This PR only changes public artifact URLs and checksums. The workflow verifies the tarball before opening the PR.
+          BODY
+          )"
+
+          if gh pr view "$branch" --repo "$GITHUB_REPOSITORY" >/dev/null 2>&1; then
+            gh pr edit "$branch" --repo "$GITHUB_REPOSITORY" --title "$title" --body "$body" --base "$BASE_BRANCH"
+          else
+            gh pr create --repo "$GITHUB_REPOSITORY" --base "$BASE_BRANCH" --head "$branch" --title "$title" --body "$body"
+          fi

@@ -1,0 +1,8 @@
+{
+  "schemaVersion": 1,
+  "artifact": {
+    "metadataUrl": "https://github.com/livestorejs/livestore-devtools-artifacts/releases/download/devtools-artifact-0.4.0-dev.22-dt-20260428-05ca43eb/release-metadata.json",
+    "tarballUrl": "https://github.com/livestorejs/livestore-devtools-artifacts/releases/download/devtools-artifact-0.4.0-dev.22-dt-20260428-05ca43eb/livestore-devtools-vite.tgz",
+    "sha256": "37552cd2670decb442a124c7695221eca673ac5186ad6b5384ee24d434a16f6c"
+  }
+}
