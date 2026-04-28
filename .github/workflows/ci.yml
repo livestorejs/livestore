@@ -2560,7 +2560,7 @@ jobs:
           rm -f "$__nix_gc_retry_helper"
           run_nix_gc_race_retry 'devenv tasks run release:snapshot:git-sha --mode before' 'if [ -n "${NIX_CONFIG:-}" ]; then NIX_CONFIG_WITH_APPEND=$(printf '"'"'%s\n%s'"'"' "$NIX_CONFIG" '"'"'restrict-eval = false'"'"'); else NIX_CONFIG_WITH_APPEND='"'"'restrict-eval = false'"'"'; fi; NIX_CONFIG="$NIX_CONFIG_WITH_APPEND" PNPM_HOME="${PNPM_HOME:-${{ github.workspace }}/.pnpm-home}" PNPM_STORE_DIR="${PNPM_STORE_DIR:-${{ runner.temp }}/pnpm-store/${{ github.job }}}" DT_PASSTHROUGH=1 "${DEVENV_BIN:?DEVENV_BIN not set}" tasks run release:snapshot:git-sha --mode before'
         env:
-          GIT_SHA: ${{ github.sha }}
+          GIT_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
       - name: Publish DevTools artifact snapshot
         run: |
           __nix_gc_retry_helper=$(mktemp)
@@ -2672,7 +2672,7 @@ jobs:
           rm -f "$__nix_gc_retry_helper"
           run_nix_gc_race_retry 'devenv tasks run release:devtools-artifact:publish --mode before' 'if [ -n "${NIX_CONFIG:-}" ]; then NIX_CONFIG_WITH_APPEND=$(printf '"'"'%s\n%s'"'"' "$NIX_CONFIG" '"'"'restrict-eval = false'"'"'); else NIX_CONFIG_WITH_APPEND='"'"'restrict-eval = false'"'"'; fi; NIX_CONFIG="$NIX_CONFIG_WITH_APPEND" PNPM_HOME="${PNPM_HOME:-${{ github.workspace }}/.pnpm-home}" PNPM_STORE_DIR="${PNPM_STORE_DIR:-${{ runner.temp }}/pnpm-store/${{ github.job }}}" DT_PASSTHROUGH=1 "${DEVENV_BIN:?DEVENV_BIN not set}" tasks run release:devtools-artifact:publish --mode before'
         env:
-          LIVESTORE_RELEASE_VERSION: '0.0.0-snapshot-${{ github.sha }}'
+          LIVESTORE_RELEASE_VERSION: '0.0.0-snapshot-${{ github.event.pull_request.head.sha || github.sha }}'
       - name: Save pnpm state
         if: ${{ success() && steps.restore-pnpm-state.outputs.cache-hit != 'true' }}
         uses: actions/cache/save@v4
@@ -3973,7 +3973,7 @@ jobs:
     runs-on: [namespace-profile-linux-x86-64, 'namespace-features:github.run-id=${{ github.run_id }}']
     env:
       APP_PATH: 'examples/${{ matrix.app }}'
-      SNAPSHOT_VERSION: '0.0.0-snapshot-${{ github.sha }}'
+      SNAPSHOT_VERSION: '0.0.0-snapshot-${{ github.event.pull_request.head.sha || github.sha }}'
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4

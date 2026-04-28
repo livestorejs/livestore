@@ -19,8 +19,6 @@ import {
 // =============================================================================
 
 const GITHUB_RUN_ID = '${{ github.run_id }}'
-const GITHUB_SHA = '${{ github.sha }}'
-const GITHUB_REF = '${{ github.ref }}'
 const PR_HEAD_SHA = '${{ github.event.pull_request.head.sha || github.sha }}'
 const IS_NOT_FORK = 'github.event.pull_request.head.repo.fork != true'
 const DLX_ALLOW_BUILD_FLAGS = repoPnpmOnlyBuiltDependencies.map((name) => `--allow-build=${name}`).join(' ')
@@ -300,12 +298,12 @@ done`,
         {
           name: 'Publish snapshot version',
           run: runDevenvTasksBefore('release:snapshot:git-sha'),
-          env: { GIT_SHA: GITHUB_SHA },
+          env: { GIT_SHA: PR_HEAD_SHA },
         },
         {
           name: 'Publish DevTools artifact snapshot',
           run: runDevenvTasksBefore('release:devtools-artifact:publish'),
-          env: { LIVESTORE_RELEASE_VERSION: `0.0.0-snapshot-${GITHUB_SHA}` },
+          env: { LIVESTORE_RELEASE_VERSION: `0.0.0-snapshot-${PR_HEAD_SHA}` },
         },
       ]),
     },
@@ -423,7 +421,7 @@ done`,
       ...namespaceRunnerConfig,
       env: {
         APP_PATH: 'examples/${{ matrix.app }}',
-        SNAPSHOT_VERSION: `0.0.0-snapshot-${GITHUB_SHA}`,
+        SNAPSHOT_VERSION: `0.0.0-snapshot-${PR_HEAD_SHA}`,
       },
       steps: [
         { name: 'Checkout repository', uses: 'actions/checkout@v4' },
