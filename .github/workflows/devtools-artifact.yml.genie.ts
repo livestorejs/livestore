@@ -5,6 +5,15 @@ export default githubWorkflow({
   actionlint: defaultActionlintConfig,
 
   on: {
+    pull_request: {
+      paths: [
+        '.github/workflows/devtools-artifact.yml',
+        '.github/workflows/devtools-artifact.yml.genie.ts',
+        'genie/repo.ts',
+        'release/devtools-artifact.json',
+        'scripts/src/commands/devtools-artifact.ts',
+      ],
+    },
     repository_dispatch: {
       types: ['devtools-artifact-published'],
     },
@@ -59,6 +68,12 @@ export default githubWorkflow({
         {
           name: 'Write artifact manifest',
           run: `set -euo pipefail
+if [ -z "\${ARTIFACT_METADATA_URL:-}" ] && [ "\${GITHUB_EVENT_NAME:-}" = "pull_request" ]; then
+  ARTIFACT_METADATA_URL="$(jq -r '.artifact.metadataUrl' release/devtools-artifact.json)"
+  ARTIFACT_TARBALL_URL="$(jq -r '.artifact.tarballUrl' release/devtools-artifact.json)"
+  ARTIFACT_SHA256="$(jq -r '.artifact.sha256' release/devtools-artifact.json)"
+fi
+
 : "\${ARTIFACT_METADATA_URL:?Missing artifact metadata URL}"
 : "\${ARTIFACT_TARBALL_URL:?Missing artifact tarball URL}"
 : "\${ARTIFACT_SHA256:?Missing artifact SHA-256}"
@@ -83,6 +98,7 @@ jq -n \\
         },
         {
           name: 'Open manifest update PR',
+          if: "github.event_name != 'pull_request'",
           env: {
             GH_TOKEN: '${{ secrets.GITHUB_TOKEN }}',
           },
