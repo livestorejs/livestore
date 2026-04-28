@@ -302,6 +302,11 @@ done`,
           run: runDevenvTasksBefore('release:snapshot:git-sha'),
           env: { GIT_SHA: GITHUB_SHA },
         },
+        {
+          name: 'Publish DevTools artifact snapshot',
+          run: runDevenvTasksBefore('release:devtools-artifact:publish'),
+          env: { LIVESTORE_RELEASE_VERSION: `0.0.0-snapshot-${GITHUB_SHA}` },
+        },
       ]),
     },
 

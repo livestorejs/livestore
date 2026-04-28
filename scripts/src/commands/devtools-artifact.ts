@@ -321,7 +321,10 @@ const repackArtifact = async (flags: Map<string, string | true>) => {
     run(['npm', 'publish', '--dry-run', '--tag', publishTag, repackedPath], { cwd: workDir })
   }
   if (hasFlag(flags, 'publish') === true) {
-    run(['npm', 'publish', '--tag', publishTag, '--access', 'public', repackedPath], { cwd: workDir })
+    const publishArgs = ['npm', 'publish', '--tag', publishTag, '--access', 'public']
+    if (process.env.GITHUB_ACTIONS === 'true') publishArgs.push('--provenance')
+    publishArgs.push(repackedPath)
+    run(publishArgs, { cwd: workDir })
   }
 
   console.log(JSON.stringify({ repackedPath, sha256: sha256(repackedPath) }, null, 2))
