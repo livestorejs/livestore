@@ -1,3 +1,5 @@
+import semver from 'semver'
+
 import { shouldNeverHappen } from '@livestore/utils'
 import { CurrentWorkingDirectory, cmd, cmdText } from '@livestore/utils-dev/node'
 import { Effect, FileSystem, Schedule, Schema } from '@livestore/utils/effect'
@@ -21,11 +23,50 @@ type TMutablePackageJson = {
   optionalDependencies?: Record<string, string>
 }
 
+const ReleasePlan = Schema.Struct({
+  schemaVersion: Schema.Literal(1),
+  version: Schema.String,
+  npmTag: Schema.String,
+})
+
+type TReleasePlan = Schema.Schema.Type<typeof ReleasePlan>
+
 const toErrorMessage = (cause: unknown) => (cause instanceof Error ? cause.message : String(cause))
 
 const dependencyFields = ['dependencies', 'devDependencies', 'peerDependencies', 'optionalDependencies'] as const
 
 const isSnapshotVersion = (version: string) => version.includes('-snapshot-')
+
+const validateReleaseVersion = (version: string) =>
+  Effect.sync(() => semver.valid(version)).pipe(
+    Effect.flatMap((validVersion) =>
+      validVersion === null
+        ? Effect.fail(new Error(`Invalid npm semver version: ${version}`))
+        : version.includes('-snapshot-') === true
+          ? Effect.fail(new Error(`Stable release versions must not use snapshot versions: ${version}`))
+          : Effect.succeed(validVersion),
+    ),
+  )
+
+const releasePlanPath = (cwd: string) => `${cwd}/release/release-plan.json`
+
+const readReleasePlan = (cwd: string, planPath: string) =>
+  Effect.gen(function* () {
+    const fsEffect = yield* FileSystem.FileSystem
+    const absolutePlanPath = planPath.startsWith('/') === true ? planPath : `${cwd}/${planPath}`
+    const content = yield* fsEffect.readFileString(absolutePlanPath)
+    const plan = yield* Schema.decodeUnknown(ReleasePlan)(JSON.parse(content))
+    yield* validateReleaseVersion(plan.version)
+    return plan
+  })
+
+const writeReleasePlan = (cwd: string, plan: TReleasePlan) =>
+  Effect.gen(function* () {
+    yield* validateReleaseVersion(plan.version)
+    const fsEffect = yield* FileSystem.FileSystem
+    yield* fsEffect.makeDirectory(`${cwd}/release`, { recursive: true })
+    yield* fsEffect.writeFileString(releasePlanPath(cwd), `${JSON.stringify(plan, null, 2)}\n`)
+  })
 
 /**
  * Snapshot publishing only rewrites public `@livestore/*` packages.
@@ -188,21 +229,191 @@ const listSnapshotPackages = (cwd: string) =>
     ),
   )
 
-const formatSnapshotSummaryMarkdown = ({
+const formatReleaseSummaryMarkdown = ({
   packages,
-  snapshotVersion,
+  version,
+  npmTag,
   dryRun,
+  title,
 }: {
   packages: ReadonlyArray<string>
-  snapshotVersion: string
+  version: string
+  npmTag: string
   dryRun: boolean
+  title: string
 }) =>
   formatMarkdownTable({
-    title: 'Snapshot release',
+    title,
     headers: ['Package', 'Version', 'Tag', 'Mode'],
-    rows: packages.map((pkg) => [pkg, snapshotVersion, 'snapshot', dryRun === true ? 'dry-run' : 'published']),
-    emptyMessage: '_No packages matched the snapshot filter._',
+    rows: packages.map((pkg) => [pkg, version, npmTag, dryRun === true ? 'dry-run' : 'published']),
+    emptyMessage: '_No packages matched the release filter._',
   })
+
+const restoreGeneratedReleaseFiles = (cwd: string) =>
+  Effect.gen(function* () {
+    /** Restore original dev versions (read-only) and verify files are in sync. */
+    yield* cmd('DT_PASSTHROUGH=1 genie', { shell: true }).pipe(Effect.provide(CurrentWorkingDirectory.fromPath(cwd)))
+    yield* cmd('DT_PASSTHROUGH=1 genie --check', { shell: true }).pipe(
+      Effect.provide(CurrentWorkingDirectory.fromPath(cwd)),
+    )
+  }).pipe(
+    Effect.catchAll((error) =>
+      Effect.logWarning(`Failed to restore generated release files: ${toErrorMessage(error)}`),
+    ),
+  )
+
+const publishReleasePackages = ({
+  cwd,
+  version,
+  npmTag,
+  packages,
+  dryRun,
+  allowExisting,
+  tscBin,
+}: {
+  cwd: string
+  version: string
+  npmTag: string
+  packages: ReadonlyArray<string>
+  dryRun: boolean
+  allowExisting: boolean
+  tscBin: string
+}) =>
+  Effect.gen(function* () {
+    const isCI = process.env.CI === 'true' || process.env.CI === '1'
+
+    /**
+     * Regenerate all genie-managed files with the release version (writable for pnpm publish).
+     * TODO: Replace CLI invocations with genie SDK once skipValidation is available
+     * (https://github.com/overengineeringstudio/effect-utils/issues/196)
+     */
+    yield* cmd(`DT_PASSTHROUGH=1 LIVESTORE_RELEASE_VERSION=${version} genie --writeable`, { shell: true }).pipe(
+      Effect.provide(CurrentWorkingDirectory.fromPath(cwd)),
+    )
+
+    yield* rewriteSnapshotInternalDependencyRanges({ cwd, snapshotPackages: packages, snapshotVersion: version })
+
+    /** Rebuild TypeScript so dist/ picks up the release version from package.json (emit-only, type checking is separate). */
+    yield* cmd(`DT_PASSTHROUGH=1 ${tscBin} --build tsconfig.dev.json --noCheck`, { shell: true }).pipe(
+      Effect.provide(CurrentWorkingDirectory.fromPath(cwd)),
+    )
+
+    for (const pkg of packages) {
+      const pkgDir = `${cwd}/packages/${pkg}`
+      const cwdLayer = CurrentWorkingDirectory.fromPath(pkgDir)
+
+      const alreadyPublished = yield* cmd(`npm view ${pkg}@${version} version`, {
+        stdout: 'pipe',
+        stderr: 'pipe',
+      }).pipe(
+        Effect.provide(cwdLayer),
+        Effect.as(true),
+        Effect.catchTag('CmdError', () => Effect.succeed(false)),
+      )
+
+      if (alreadyPublished === true) {
+        if (dryRun === true || allowExisting === false) {
+          return yield* Effect.fail(new Error(`${pkg}@${version} already exists on npm`))
+        }
+
+        yield* Effect.log(`${pkg}@${version} already published, skipping`)
+        continue
+      }
+
+      const publishArgs = ['pnpm', 'publish', `--tag=${npmTag}`, '--access=public', '--no-git-checks']
+      if (isCI === true) publishArgs.push('--provenance')
+      if (dryRun === true) publishArgs.push('--dry-run')
+      yield* cmd(`DT_PASSTHROUGH=1 ${publishArgs.join(' ')}`, { shell: true }).pipe(Effect.provide(cwdLayer))
+      yield* Effect.log(`${dryRun === true ? 'Dry-ran' : 'Published'} ${pkg}@${version}`)
+    }
+
+    if (dryRun === false) {
+      yield* Effect.log('Verifying packages are available on the registry...')
+      for (const pkg of packages) {
+        yield* cmd(`npm view ${pkg}@${version} version`, { stdout: 'pipe', stderr: 'pipe' }).pipe(
+          Effect.provide(CurrentWorkingDirectory.fromPath(cwd)),
+          Effect.retry(Schedule.spaced('5 seconds').pipe(Schedule.intersect(Schedule.recurs(60)))),
+        )
+        yield* Effect.log(`Verified ${pkg}@${version}`)
+      }
+    }
+  }).pipe(Effect.ensuring(restoreGeneratedReleaseFiles(cwd)))
+
+export const releasePlanCommand = Cli.Command.make(
+  'plan',
+  {
+    releaseVersion: Cli.Options.text('release-version'),
+    npmTag: Cli.Options.text('npm-tag').pipe(Cli.Options.withDefault('latest')),
+    cwd: Cli.Options.text('cwd').pipe(
+      Cli.Options.withDefault(
+        process.env.WORKSPACE_ROOT ?? shouldNeverHappen(`WORKSPACE_ROOT is not set. Make sure to run 'direnv allow'`),
+      ),
+    ),
+  },
+  Effect.fn(function* ({ releaseVersion, npmTag, cwd }) {
+    const validVersion = yield* validateReleaseVersion(releaseVersion)
+    yield* writeReleasePlan(cwd, { schemaVersion: 1, version: validVersion, npmTag })
+    yield* Effect.log(`Wrote release plan for ${validVersion} (${npmTag})`)
+  }),
+)
+
+export const releaseStableCommand = Cli.Command.make(
+  'stable',
+  {
+    plan: Cli.Options.text('plan').pipe(Cli.Options.withDefault('release/release-plan.json')),
+    dryRun: Cli.Options.boolean('dry-run').pipe(Cli.Options.withDefault(false)),
+    allowExisting: Cli.Options.boolean('allow-existing').pipe(Cli.Options.withDefault(false)),
+    yes: Cli.Options.boolean('yes').pipe(
+      Cli.Options.withDefault(false),
+      Cli.Options.withDescription('Skip interactive confirmation prompt'),
+    ),
+    cwd: Cli.Options.text('cwd').pipe(
+      Cli.Options.withDefault(
+        process.env.WORKSPACE_ROOT ?? shouldNeverHappen(`WORKSPACE_ROOT is not set. Make sure to run 'direnv allow'`),
+      ),
+    ),
+    tscBin: Cli.Options.text('tsc-bin').pipe(Cli.Options.optional),
+  },
+  Effect.fn(function* ({ plan: planPath, dryRun, allowExisting, yes, cwd, tscBin: tscBinOption }) {
+    const plan = yield* readReleasePlan(cwd, planPath)
+    const packages = yield* listSnapshotPackages(cwd)
+    const isCI = process.env.CI === 'true' || process.env.CI === '1'
+
+    const skipConfirmation = yes || isCI
+    if (skipConfirmation === false) {
+      yield* Effect.log(
+        `About to publish ${packages.length} package(s) as ${plan.version} with npm tag ${plan.npmTag}${dryRun === true ? ' (dry-run)' : ''}`,
+      )
+      const confirmed = yield* Cli.Prompt.confirm({ message: 'Proceed with stable release?' })
+      if (confirmed === false) {
+        yield* Effect.log('Stable release aborted by user')
+        return
+      }
+    }
+
+    const tsc = tscBinOption._tag === 'Some' ? tscBinOption.value : 'tsc'
+    yield* publishReleasePackages({
+      cwd,
+      version: plan.version,
+      npmTag: plan.npmTag,
+      packages,
+      dryRun,
+      allowExisting,
+      tscBin: tsc,
+    })
+
+    yield* appendGithubSummaryMarkdown({
+      markdown: formatReleaseSummaryMarkdown({
+        packages,
+        version: plan.version,
+        npmTag: plan.npmTag,
+        dryRun,
+        title: 'Stable release',
+      }),
+      context: 'stable release',
+    })
+  }),
+)
 
 export const releaseSnapshotCommand = Cli.Command.make(
   'snapshot',
@@ -244,85 +455,30 @@ export const releaseSnapshotCommand = Cli.Command.make(
       }
     }
 
-    /**
-     * Regenerate all genie-managed files with snapshot version (writable for pnpm publish).
-     * TODO: Replace CLI invocations with genie SDK once skipValidation is available
-     * (https://github.com/overengineeringstudio/effect-utils/issues/196)
-     */
-    yield* cmd(`LIVESTORE_RELEASE_VERSION=${snapshotVersion} genie --writeable`, { shell: true }).pipe(
-      Effect.provide(CurrentWorkingDirectory.fromPath(cwd)),
-    )
-
-    /**
-     * Snapshot prereleases must pin internal @livestore package edges exactly.
-     * Semver ranges on prereleases allow pnpm to resolve an older snapshot,
-     * which breaks standalone installs like `pnpm dlx @livestore/cli@<snapshot>`.
-     */
-    yield* rewriteSnapshotInternalDependencyRanges({ cwd, snapshotPackages, snapshotVersion })
-
-    /** Rebuild TypeScript so dist/ picks up the snapshot version from package.json (emit-only, type checking is separate) */
     const tsc = tscBinOption._tag === 'Some' ? tscBinOption.value : 'tsc'
-    yield* cmd(`${tsc} --build tsconfig.dev.json --noCheck`, { shell: true }).pipe(
-      Effect.provide(CurrentWorkingDirectory.fromPath(cwd)),
-    )
-
-    /**
-     * Publish each package sequentially via pnpm publish.
-     * Internal snapshot ranges are already rewritten to exact versions above so
-     * the published prerelease graph remains self-consistent.
-     */
-    for (const pkg of snapshotPackages) {
-      const pkgDir = `${cwd}/packages/${pkg}`
-      const cwdLayer = CurrentWorkingDirectory.fromPath(pkgDir)
-
-      /** Pre-check: skip if already published (idempotent reruns). Uses cmd() which validates exit codes. */
-      const alreadyPublished = yield* cmd(`npm view ${pkg}@${snapshotVersion} version`, {
-        stdout: 'pipe',
-        stderr: 'pipe',
-      }).pipe(
-        Effect.provide(cwdLayer),
-        Effect.as(true),
-        Effect.catchTag('CmdError', () => Effect.succeed(false)),
-      )
-
-      if (alreadyPublished === true) {
-        yield* Effect.log(`${pkg}@${snapshotVersion} already published, skipping`)
-        continue
-      }
-
-      const publishArgs = ['pnpm', 'publish', '--tag=snapshot', '--access=public', '--no-git-checks']
-      if (isCI === true) publishArgs.push('--provenance')
-      if (dryRun === true) publishArgs.push('--dry-run')
-      yield* cmd(publishArgs.join(' '), { shell: true }).pipe(Effect.provide(cwdLayer))
-      yield* Effect.log(`Published ${pkg}@${snapshotVersion}`)
-    }
-
-    /**
-     * Verify all published packages are installable from the registry.
-     * npm publish returns 200 before the package is globally available due to
-     * CouchDB replication + Fastly CDN cache propagation (up to ~5 minutes).
-     * See https://github.com/livestorejs/livestore/issues/1039
-     */
-    if (dryRun === false) {
-      yield* Effect.log('Verifying snapshot packages are available on the registry...')
-      for (const pkg of snapshotPackages) {
-        yield* cmd(`npm view ${pkg}@${snapshotVersion} version`, { stdout: 'pipe', stderr: 'pipe' }).pipe(
-          Effect.provide(CurrentWorkingDirectory.fromPath(cwd)),
-          Effect.retry(Schedule.spaced('5 seconds').pipe(Schedule.intersect(Schedule.recurs(60)))),
-        )
-        yield* Effect.log(`Verified ${pkg}@${snapshotVersion}`)
-      }
-    }
-
-    /** Restore original dev versions (read-only) and verify files are in sync */
-    yield* cmd('genie', { shell: true }).pipe(Effect.provide(CurrentWorkingDirectory.fromPath(cwd)))
-    yield* cmd('genie --check', { shell: true }).pipe(Effect.provide(CurrentWorkingDirectory.fromPath(cwd)))
+    yield* publishReleasePackages({
+      cwd,
+      version: snapshotVersion,
+      npmTag: 'snapshot',
+      packages: snapshotPackages,
+      dryRun,
+      allowExisting: true,
+      tscBin: tsc,
+    })
 
     yield* appendGithubSummaryMarkdown({
-      markdown: formatSnapshotSummaryMarkdown({ packages: snapshotPackages, snapshotVersion, dryRun }),
+      markdown: formatReleaseSummaryMarkdown({
+        packages: snapshotPackages,
+        version: snapshotVersion,
+        npmTag: 'snapshot',
+        dryRun,
+        title: 'Snapshot release',
+      }),
       context: 'snapshot release',
     })
   }),
 )
 
-export const releaseCommand = Cli.Command.make('release').pipe(Cli.Command.withSubcommands([releaseSnapshotCommand]))
+export const releaseCommand = Cli.Command.make('release').pipe(
+  Cli.Command.withSubcommands([releasePlanCommand, releaseStableCommand, releaseSnapshotCommand]),
+)
