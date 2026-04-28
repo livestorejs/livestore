@@ -19,7 +19,7 @@ export default defineConfig({
       // Skip looking for a package-level Svelte config to avoid noisy warnings in tests
       configFile: false,
     }),
-    svelteTesting(),
+    svelteTesting({ autoCleanup: false }),
   ],
   resolve: {
     conditions: ['svelte'],
