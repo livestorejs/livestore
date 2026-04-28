@@ -14,6 +14,18 @@ import {
 
 const isGithubAction = process.env.GITHUB_ACTIONS === 'true'
 
+const ciUnitTestPackageConcurrency = (() => {
+  const raw = process.env.LIVESTORE_TEST_UNIT_CONCURRENCY
+  if (raw === undefined || raw === '') return 4
+
+  const parsed = Number.parseInt(raw, 10)
+  if (Number.isFinite(parsed) === false || parsed < 1) {
+    throw new Error(`LIVESTORE_TEST_UNIT_CONCURRENCY must be a positive integer, got ${JSON.stringify(raw)}`)
+  }
+
+  return parsed
+})()
+
 // GitHub actions log groups
 const runTestGroup =
   (name: string) =>
@@ -208,7 +220,7 @@ export const testUnitCommand = Cli.Command.make(
                   : ['vitest', 'run', `${workspaceRoot}/${target.path}`]
               return cmd(args).pipe(Effect.provide(LivestoreWorkspace.toCwd()))
             },
-            { concurrency: 'unbounded' },
+            { concurrency: ciUnitTestPackageConcurrency },
           ),
         )
       }
