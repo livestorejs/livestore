@@ -7,57 +7,45 @@ importers:
     configDependencies: {}
     packageManagerDependencies:
       '@pnpm/exe':
-        specifier: 11.0.0-rc.5
-        version: 11.0.0-rc.5
+        specifier: 11.0.0-beta.2
+        version: 11.0.0-beta.2
       pnpm:
-        specifier: 11.0.0-rc.5
-        version: 11.0.0-rc.5
+        specifier: 11.0.0-beta.2
+        version: 11.0.0-beta.2
 
 packages:
 
-  '@pnpm/exe@11.0.0-rc.5':
-    resolution: {integrity: sha512-HT1HxzeFc6RVIMhngQZ7bQgTNzF0IckeFpOvnwCJKfsjfsD/po3LvUVsidCvpALxCWOft1TuBZUkdHq03pEolA==}
+  '@pnpm/exe@11.0.0-beta.2':
+    resolution: {integrity: sha512-lL5LbpWXZPdngSGE98S9vWqzeWLhZqNHcpJ/i6HDBjtOPGxDPEZ5yv9nGM4fXqy0VagA6VfDlTpaGrGkc6w9Zg==}
     hasBin: true
 
-  '@pnpm/linux-arm64@11.0.0-rc.5':
-    resolution: {integrity: sha512-AreNJJI0r5oEsv5+i+FMVK8AeYs0MpWTGWc2GQwf7qi/w8uA8UxVlIDwhgwY+R6YgdrYVrEjgbU4WcqIqYfgog==}
+  '@pnpm/linux-arm64@11.0.0-beta.2':
+    resolution: {integrity: sha512-hnw5djVGiYD7dM1nG1YhCp+2O1q1D+qLLyNJvD/XpCtoP+5Hvb8E99zK3iw0phKwqAEg32lcXvRtprXolox28g==}
     cpu: [arm64]
     os: [linux]
 
-  '@pnpm/linux-x64@11.0.0-rc.5':
-    resolution: {integrity: sha512-NzZPWeIVxCEfQs84wR/O3IND2HSDOClPB2L8vvkWb8KQ4pczOG2x3aNkltXDwYVKxvw4URmwct5u57JGTEvtfg==}
+  '@pnpm/linux-x64@11.0.0-beta.2':
+    resolution: {integrity: sha512-Mt7qrbHymoTloGJXiLB6TSoZ0CrXETBOy8OG6MOBN3T2FSbzvpAWREcNmokbjWZfmQRMo6ZpVSHCZEUPyeF3rg==}
     cpu: [x64]
     os: [linux]
 
-  '@pnpm/linuxstatic-arm64@11.0.0-rc.5':
-    resolution: {integrity: sha512-xK+U/fJDkvzs4ktswrCZ03cTSEAeFTfgUG88r2J+6JEDGuY/foNOMnnSNOiSplpaufY+Ie+uL+PEDlTyIy46Xg==}
-    cpu: [arm64]
-    os: [linux]
-    libc: [musl]
-
-  '@pnpm/linuxstatic-x64@11.0.0-rc.5':
-    resolution: {integrity: sha512-Z1kSilngaM2URfPhBjam/xhMDAn5jl8V0L5CjG/Gg5unmKkipyF93OYMpfnny7A9p1KWi6sNql/KufzUmRP4Eg==}
-    cpu: [x64]
-    os: [linux]
-    libc: [musl]
-
-  '@pnpm/macos-arm64@11.0.0-rc.5':
-    resolution: {integrity: sha512-98p3ilSzkyusC2bxk7Ya34CWt9MeJy/+kpXfwn9YgnOD7GDqCjYY9dlPB9yrkdtKUUMeOIvOuacAQTWnCg2GOQ==}
+  '@pnpm/macos-arm64@11.0.0-beta.2':
+    resolution: {integrity: sha512-HEPSe+en48F1beN5QybWOMqjgVj2pm9irnZnEWbvhVnb2R9NJQVm0riLsfRAEE5cS2nhYzeTB6cEOOWAMcitRQ==}
     cpu: [arm64]
     os: [darwin]
 
-  '@pnpm/macos-x64@11.0.0-rc.5':
-    resolution: {integrity: sha512-WZ9UqjTbZN+dMZcy4qaPDsEo4sxTIrw5H+fDvdxT1GUavsf8SBDpvzZMHrGDQ/k22H8oKvPtJ+RGd/Ie5dvbuA==}
+  '@pnpm/macos-x64@11.0.0-beta.2':
+    resolution: {integrity: sha512-1auLDYhExxrdGRr7+aaqQkMrz2deHjcTmgbC+dlLBKoeqICo0kFaGv4NfbZLavn0Lja8c9HMFuFv9mObEX711g==}
     cpu: [x64]
     os: [darwin]
 
-  '@pnpm/win-arm64@11.0.0-rc.5':
-    resolution: {integrity: sha512-hxgDmF4xpSVvUPvH+HdMllvHcV2zuYUn/uK182gzFvZ9DE0xEGVj09XaSn5VMbpa32i25oIqaT89QfMcOw/TJg==}
+  '@pnpm/win-arm64@11.0.0-beta.2':
+    resolution: {integrity: sha512-wTCcaTK10cwsIwucgs1/KDVKw1k/xNX21OwOQ7oEDkPaYFfvuaUpotS5ioDFaNsDEzyqBjCWeGWycfM1zC9blQ==}
     cpu: [arm64]
     os: [win32]
 
-  '@pnpm/win-x64@11.0.0-rc.5':
-    resolution: {integrity: sha512-B1H/6jhzW/6VLr8Bc3zOhMd2P3srANWytuBq0uppR5c7OJwUlqXqJtB6Q4nOEjWYZ2sA5m2xuFiaMeioZiiqgA==}
+  '@pnpm/win-x64@11.0.0-beta.2':
+    resolution: {integrity: sha512-PMgk4yorJso46bWRhfta7cLpp0vfY7DpuAqcTGy9+74lSAM4WKgQXJCS2/wtwgyVkuBuap72XKDFtnqXaHPiow==}
     cpu: [x64]
     os: [win32]
 
@@ -117,53 +105,40 @@ packages:
     resolution: {integrity: sha512-DmCG8GzysnCZ15bres3N5AHCmwBwYgp0As6xjhQ47rAUTUXxJiK+lLUxaGsX3hd/30qUpVElh05PbGuxRPgJwA==}
     engines: {node: '>= 10'}
 
-  detect-libc@2.1.2:
-    resolution: {integrity: sha512-Btj2BOOO83o3WyH59e8MgXsxEQVcarkUOpEYrubB0urwnN10yQ364rsiByU11nZlqWYZm05i/of7io4mzihBtQ==}
-    engines: {node: '>=8'}
-
-  pnpm@11.0.0-rc.5:
-    resolution: {integrity: sha512-xGn7aqE6meV67JNc17hv9CJwH0YC7KwiMdPcIJEFhuv7a1CntFXQd47CKuVpEtjY6I6fngoDwIdaakF4OpShvQ==}
+  pnpm@11.0.0-beta.2:
+    resolution: {integrity: sha512-co1Z2JmjMvt5v6JWMBDMGMc/BjBEyimcdGWnb0BrfoA4uH7W4UCVLJsIlD+qt+fkFy2woQOG90YBw6ctBo38og==}
     engines: {node: '>=22.13'}
     hasBin: true
 
 snapshots:
 
-  '@pnpm/exe@11.0.0-rc.5':
+  '@pnpm/exe@11.0.0-beta.2':
     dependencies:
       '@reflink/reflink': 0.1.19
-      detect-libc: 2.1.2
     optionalDependencies:
-      '@pnpm/linux-arm64': 11.0.0-rc.5
-      '@pnpm/linux-x64': 11.0.0-rc.5
-      '@pnpm/linuxstatic-arm64': 11.0.0-rc.5
-      '@pnpm/linuxstatic-x64': 11.0.0-rc.5
-      '@pnpm/macos-arm64': 11.0.0-rc.5
-      '@pnpm/macos-x64': 11.0.0-rc.5
-      '@pnpm/win-arm64': 11.0.0-rc.5
-      '@pnpm/win-x64': 11.0.0-rc.5
+      '@pnpm/linux-arm64': 11.0.0-beta.2
+      '@pnpm/linux-x64': 11.0.0-beta.2
+      '@pnpm/macos-arm64': 11.0.0-beta.2
+      '@pnpm/macos-x64': 11.0.0-beta.2
+      '@pnpm/win-arm64': 11.0.0-beta.2
+      '@pnpm/win-x64': 11.0.0-beta.2
 
-  '@pnpm/linux-arm64@11.0.0-rc.5':
+  '@pnpm/linux-arm64@11.0.0-beta.2':
     optional: true
 
-  '@pnpm/linux-x64@11.0.0-rc.5':
+  '@pnpm/linux-x64@11.0.0-beta.2':
     optional: true
 
-  '@pnpm/linuxstatic-arm64@11.0.0-rc.5':
+  '@pnpm/macos-arm64@11.0.0-beta.2':
     optional: true
 
-  '@pnpm/linuxstatic-x64@11.0.0-rc.5':
+  '@pnpm/macos-x64@11.0.0-beta.2':
     optional: true
 
-  '@pnpm/macos-arm64@11.0.0-rc.5':
+  '@pnpm/win-arm64@11.0.0-beta.2':
     optional: true
 
-  '@pnpm/macos-x64@11.0.0-rc.5':
-    optional: true
-
-  '@pnpm/win-arm64@11.0.0-rc.5':
-    optional: true
-
-  '@pnpm/win-x64@11.0.0-rc.5':
+  '@pnpm/win-x64@11.0.0-beta.2':
     optional: true
 
   '@reflink/reflink-darwin-arm64@0.1.19':
@@ -201,9 +176,7 @@ snapshots:
       '@reflink/reflink-win32-arm64-msvc': 0.1.19
       '@reflink/reflink-win32-x64-msvc': 0.1.19
 
-  detect-libc@2.1.2: {}
-
-  pnpm@11.0.0-rc.5: {}
+  pnpm@11.0.0-beta.2: {}
 
 ---
 lockfileVersion: '9.0'
@@ -459,8 +432,8 @@ importers:
         version: 5.0.0
     devDependencies:
       '@playwright/test':
-        specifier: 1.59.0
-        version: 1.59.0
+        specifier: 1.58.2
+        version: 1.58.2
       '@types/hast':
         specifier: 3.0.4
         version: 3.0.4
@@ -2923,8 +2896,8 @@ importers:
         specifier: 2.2.0
         version: 2.2.0(@opentelemetry/api@1.9.0)
       '@playwright/test':
-        specifier: 1.59.0
-        version: 1.59.0
+        specifier: 1.58.2
+        version: 1.58.2
       '@standard-schema/spec':
         specifier: 1.1.0
         version: 1.1.0
@@ -4402,8 +4375,8 @@ importers:
         specifier: 2.2.0
         version: 2.2.0(@opentelemetry/api@1.9.0)
       '@playwright/test':
-        specifier: 1.59.0
-        version: 1.59.0
+        specifier: 1.58.2
+        version: 1.58.2
       '@standard-schema/spec':
         specifier: 1.1.0
         version: 1.1.0
@@ -4640,8 +4613,8 @@ importers:
         specifier: 2.2.0
         version: 2.2.0(@opentelemetry/api@1.9.0)
       '@playwright/test':
-        specifier: 1.59.0
-        version: 1.59.0
+        specifier: 1.58.2
+        version: 1.58.2
       '@standard-schema/spec':
         specifier: 1.1.0
         version: 1.1.0
@@ -4803,8 +4776,8 @@ importers:
         specifier: 2.2.0
         version: 2.2.0(@opentelemetry/api@1.9.0)
       '@playwright/test':
-        specifier: 1.59.0
-        version: 1.59.0
+        specifier: 1.58.2
+        version: 1.58.2
       '@types/node':
         specifier: 25.3.3
         version: 25.3.3
@@ -4997,8 +4970,8 @@ importers:
         specifier: 0.4.0-dev.22
         version: 0.4.0-dev.22(afc24c42203439310a41d59a9a62e9fb)
       '@playwright/test':
-        specifier: 1.59.0
-        version: 1.59.0
+        specifier: 1.58.2
+        version: 1.58.2
       '@standard-schema/spec':
         specifier: 1.1.0
         version: 1.1.0
@@ -6876,7 +6849,7 @@ packages:
 
   '@expo/bunyan@4.0.1':
     resolution: {integrity: sha512-+Lla7nYSiHZirgK+U/uYzsLv/X+HaJienbD5AKX1UQZHYfWaP+9uuQluRB4GrEVWF0GZ7vEVp/jzaOT9k/SQlg==}
-    engines: {node: '>=0.10.0'}
+    engines: {'0': node >=0.10.0}
 
   '@expo/cli@54.0.10':
     resolution: {integrity: sha512-iw9gAnN6+PKWWLIyYmiskY/wzZjuFMctunqGXuC8BGATWgtr/HpzjVqWbcL3KIX/GvEBCCh74Tkckrh+Ylxh5Q==}
@@ -8203,11 +8176,6 @@ packages:
 
   '@playwright/test@1.58.2':
     resolution: {integrity: sha512-akea+6bHYBBfA9uQqSYmlJXn61cTa+jbO87xVLCWbTqbWadRVmhxlXATaOjOgcBaWU4ePo0wB41KMFv3o35IXA==}
-    engines: {node: '>=18'}
-    hasBin: true
-
-  '@playwright/test@1.59.0':
-    resolution: {integrity: sha512-TOA5sTLd49rTDaZpYpvCQ9hGefHQq/OYOyCVnGqS2mjMfX+lGZv2iddIJd0I48cfxqSPttS9S3OuLKyylHcO1w==}
     engines: {node: '>=18'}
     hasBin: true
 
@@ -22992,10 +22960,6 @@ snapshots:
     dependencies:
       playwright: 1.58.2
 
-  '@playwright/test@1.59.0':
-    dependencies:
-      playwright: 1.59.0
-
   '@pnpm/tabtab@0.5.4':
     dependencies:
       debug: 4.4.3(supports-color@8.1.1)
@@ -30827,7 +30791,7 @@ snapshots:
 
   jest-worker@27.5.1:
     dependencies:
-      '@types/node': 25.3.3
+      '@types/node': 24.12.0
       merge-stream: 2.0.0
       supports-color: 8.1.1
 
@@ -33030,7 +32994,8 @@ snapshots:
 
   playwright-core@1.58.2: {}
 
-  playwright-core@1.59.0: {}
+  playwright-core@1.59.0:
+    optional: true
 
   playwright@1.58.2:
     dependencies:
@@ -33043,6 +33008,7 @@ snapshots:
       playwright-core: 1.59.0
     optionalDependencies:
       fsevents: 2.3.2
+    optional: true
 
   plist@3.1.0:
     dependencies:
