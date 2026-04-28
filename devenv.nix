@@ -71,6 +71,38 @@ let
     "examples"
     "scripts"
   ];
+
+  devtoolsArtifactRepackExec = publishFlag: ''
+    set -euo pipefail
+    cd "$DEVENV_ROOT"
+
+    : "''${LIVESTORE_RELEASE_VERSION:?Set LIVESTORE_RELEASE_VERSION to the LiveStore release-group version}"
+    artifact_args=(--manifest "''${LIVESTORE_DEVTOOLS_MANIFEST:-release/devtools-artifact.json}")
+    if [[ -n "''${LIVESTORE_DEVTOOLS_METADATA:-}" || -n "''${LIVESTORE_DEVTOOLS_TARBALL:-}" ]]; then
+      : "''${LIVESTORE_DEVTOOLS_METADATA:?Set both LIVESTORE_DEVTOOLS_METADATA and LIVESTORE_DEVTOOLS_TARBALL, or neither to use the checked-in manifest}"
+      : "''${LIVESTORE_DEVTOOLS_TARBALL:?Set both LIVESTORE_DEVTOOLS_METADATA and LIVESTORE_DEVTOOLS_TARBALL, or neither to use the checked-in manifest}"
+      artifact_args=(--metadata "$LIVESTORE_DEVTOOLS_METADATA" --tarball "$LIVESTORE_DEVTOOLS_TARBALL")
+    fi
+
+    bun scripts/src/commands/devtools-artifact.ts repack \
+      "''${artifact_args[@]}" \
+      --version "$LIVESTORE_RELEASE_VERSION" \
+      ${publishFlag}
+  '';
+
+  devtoolsArtifactRepackTask =
+    {
+      description,
+      publishFlag,
+      withInstall ? true,
+    }:
+    {
+      inherit description;
+      exec = devtoolsArtifactRepackExec publishFlag;
+    }
+    // lib.optionalAttrs withInstall {
+      after = [ "pnpm:install" ];
+    };
 in
 {
   imports = [
@@ -240,48 +272,26 @@ in
     after = [ "pnpm:install" ];
   };
 
-  tasks."release:devtools-artifact:repack-dryrun" = {
+  tasks."release:devtools-artifact:repack-dryrun" = devtoolsArtifactRepackTask {
     description = "Verify and repack a public LiveStore DevTools artifact for a LiveStore release version";
-    exec = ''
-      set -euo pipefail
-      cd "$DEVENV_ROOT"
-
-      : "''${LIVESTORE_RELEASE_VERSION:?Set LIVESTORE_RELEASE_VERSION to the LiveStore release-group version}"
-      artifact_args=(--manifest "''${LIVESTORE_DEVTOOLS_MANIFEST:-release/devtools-artifact.json}")
-      if [[ -n "''${LIVESTORE_DEVTOOLS_METADATA:-}" || -n "''${LIVESTORE_DEVTOOLS_TARBALL:-}" ]]; then
-        : "''${LIVESTORE_DEVTOOLS_METADATA:?Set both LIVESTORE_DEVTOOLS_METADATA and LIVESTORE_DEVTOOLS_TARBALL, or neither to use the checked-in manifest}"
-        : "''${LIVESTORE_DEVTOOLS_TARBALL:?Set both LIVESTORE_DEVTOOLS_METADATA and LIVESTORE_DEVTOOLS_TARBALL, or neither to use the checked-in manifest}"
-        artifact_args=(--metadata "$LIVESTORE_DEVTOOLS_METADATA" --tarball "$LIVESTORE_DEVTOOLS_TARBALL")
-      fi
-
-      bun scripts/src/commands/devtools-artifact.ts repack \
-        "''${artifact_args[@]}" \
-        --version "$LIVESTORE_RELEASE_VERSION" \
-        --dry-run
-    '';
-    after = [ "pnpm:install" ];
+    publishFlag = "--dry-run";
   };
 
-  tasks."release:devtools-artifact:publish" = {
+  tasks."release:devtools-artifact:repack-dryrun:no-install" = devtoolsArtifactRepackTask {
+    description = "Verify and repack a public LiveStore DevTools artifact after release setup has already run";
+    publishFlag = "--dry-run";
+    withInstall = false;
+  };
+
+  tasks."release:devtools-artifact:publish" = devtoolsArtifactRepackTask {
     description = "Verify, repack, and publish a public LiveStore DevTools artifact for a LiveStore release version";
-    exec = ''
-      set -euo pipefail
-      cd "$DEVENV_ROOT"
+    publishFlag = "--publish";
+  };
 
-      : "''${LIVESTORE_RELEASE_VERSION:?Set LIVESTORE_RELEASE_VERSION to the LiveStore release-group version}"
-      artifact_args=(--manifest "''${LIVESTORE_DEVTOOLS_MANIFEST:-release/devtools-artifact.json}")
-      if [[ -n "''${LIVESTORE_DEVTOOLS_METADATA:-}" || -n "''${LIVESTORE_DEVTOOLS_TARBALL:-}" ]]; then
-        : "''${LIVESTORE_DEVTOOLS_METADATA:?Set both LIVESTORE_DEVTOOLS_METADATA and LIVESTORE_DEVTOOLS_TARBALL, or neither to use the checked-in manifest}"
-        : "''${LIVESTORE_DEVTOOLS_TARBALL:?Set both LIVESTORE_DEVTOOLS_METADATA and LIVESTORE_DEVTOOLS_TARBALL, or neither to use the checked-in manifest}"
-        artifact_args=(--metadata "$LIVESTORE_DEVTOOLS_METADATA" --tarball "$LIVESTORE_DEVTOOLS_TARBALL")
-      fi
-
-      bun scripts/src/commands/devtools-artifact.ts repack \
-        "''${artifact_args[@]}" \
-        --version "$LIVESTORE_RELEASE_VERSION" \
-        --publish
-    '';
-    after = [ "pnpm:install" ];
+  tasks."release:devtools-artifact:publish:no-install" = devtoolsArtifactRepackTask {
+    description = "Verify, repack, and publish a public LiveStore DevTools artifact after release setup has already run";
+    publishFlag = "--publish";
+    withInstall = false;
   };
 
   # NOTE: check:quick is provided by effect-utils taskModules.check.
