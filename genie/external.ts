@@ -76,7 +76,7 @@ export const livestoreOnlyCatalog = {
   '@solidjs/testing-library': '0.8.10',
   '@testing-library/dom': '10.4.1',
   '@testing-library/jest-dom': '6.6.3',
-  '@testing-library/svelte': '5.2.4',
+  '@testing-library/svelte': '5.3.1',
   '@web/dev-server': '0.4.6',
   '@web/test-runner': '0.20.0',
   '@web/test-runner-core': '0.13.4',
