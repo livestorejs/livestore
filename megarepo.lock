@@ -4,9 +4,9 @@
     "effect-utils": {
       "url": "https://github.com/overengineeringstudio/effect-utils",
       "ref": "schickling/2026-04-28-pnpm-gvs-content-health",
-      "commit": "fbac96672ca8d7490e34bcd652116b9bd2c0cc08",
+      "commit": "be6755344e1b2af2e7ded3c90d1b41b23e6ea0d5",
       "pinned": true,
-      "lockedAt": "2026-04-28T22:01:54.253Z"
+      "lockedAt": "2026-04-28T22:16:21.289Z"
     },
     "effect": {
       "url": "https://github.com/effect-ts/effect",
