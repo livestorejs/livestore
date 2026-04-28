@@ -293,8 +293,18 @@ const repackArtifact = async (flags: Map<string, string | true>) => {
   const pkg = JSON.parse(readFileSync(packageJsonPath, 'utf8')) as {
     version?: string
     dependencies?: Record<string, string>
+    homepage?: string
+    repository?: string | { readonly type?: string; readonly url?: string; readonly directory?: string }
+    bugs?: { readonly url?: string }
   }
   pkg.version = version
+  pkg.repository = {
+    type: 'git',
+    url: 'https://github.com/livestorejs/livestore',
+    directory: 'packages/@livestore/devtools-vite',
+  }
+  pkg.homepage = 'https://github.com/livestorejs/livestore/tree/main/packages/@livestore/devtools-vite'
+  pkg.bugs = { url: 'https://github.com/livestorejs/livestore/issues' }
   pkg.dependencies = {
     ...pkg.dependencies,
     '@livestore/adapter-web': version,
