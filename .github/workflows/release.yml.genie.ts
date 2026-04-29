@@ -40,6 +40,13 @@ export default githubWorkflow({
           default: 'latest',
           type: 'string',
         },
+        mode: {
+          description: 'Release workflow mode',
+          required: true,
+          default: 'create-release-pr',
+          type: 'choice',
+          options: ['create-release-pr', 'validate-release-plan'],
+        },
       },
     },
     pull_request: {
@@ -64,9 +71,10 @@ export default githubWorkflow({
 
   jobs: {
     'create-release-pr': {
-      if: "github.event_name == 'workflow_dispatch'",
+      if: "github.event_name == 'workflow_dispatch' && inputs.mode == 'create-release-pr'",
       'runs-on': 'ubuntu-latest',
       permissions: {
+        actions: 'write',
         contents: 'write',
         'id-token': 'write',
         'pull-requests': 'write',
@@ -92,10 +100,12 @@ export default githubWorkflow({
           name: 'Open release plan PR',
           env: {
             GH_TOKEN: '${{ secrets.GITHUB_TOKEN }}',
+            LIVESTORE_NPM_TAG: '${{ inputs.npm_tag }}',
           },
           run: `set -euo pipefail
 LIVESTORE_RELEASE_VERSION="$(jq -r '.version' release/release-plan.json)"
 : "\${LIVESTORE_RELEASE_VERSION:?Missing generated release version}"
+: "\${LIVESTORE_NPM_TAG:?Missing npm tag}"
 
 git config user.name "github-actions[bot]"
 git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
@@ -122,9 +132,9 @@ else
 fi
 
 body="$(cat <<BODY
-Prepares a LiveStore release group for \`$LIVESTORE_RELEASE_VERSION\` from the pending Changesets.
+Prepares a LiveStore release group for $LIVESTORE_RELEASE_VERSION from the pending Changesets.
 
-The release workflow dry-runs the npm publish for the LiveStore packages and the public DevTools artifact repack on this PR. After merge into \`dev\`, the same workflow publishes the release group.
+The release workflow dry-runs the npm publish for the LiveStore packages and the public DevTools artifact repack on this PR. After merge into dev, the same workflow publishes the release group.
 
 ## Rationale
 
@@ -141,13 +151,18 @@ else
     --head "$branch" \\
     --title "Prepare LiveStore $LIVESTORE_RELEASE_VERSION release" \\
     --body "$body"
-fi`,
+fi
+
+gh workflow run ci.yml --repo "$GITHUB_REPOSITORY" --ref "$branch"
+gh workflow run release.yml --repo "$GITHUB_REPOSITORY" --ref "$branch" \\
+  -f mode=validate-release-plan \\
+  -f npm_tag="$LIVESTORE_NPM_TAG"`,
         },
       ],
     },
 
     'validate-release-plan': {
-      if: "github.event_name == 'pull_request'",
+      if: "github.event_name == 'pull_request' || (github.event_name == 'workflow_dispatch' && inputs.mode == 'validate-release-plan')",
       'runs-on': 'ubuntu-24.04',
       defaults: bashShellDefaults,
       steps: withNixDiagnosticsOnFailure([

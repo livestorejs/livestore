@@ -87,6 +87,7 @@ export default githubWorkflow({
       // Only run on pushes to main/dev to keep docs deploys consistent
       branches: ['main', 'dev'],
     },
+    workflow_dispatch: {},
     pull_request: {},
   },
 
