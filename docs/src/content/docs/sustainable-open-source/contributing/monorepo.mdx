@@ -151,6 +151,9 @@ Most-used tasks:
 - `dt examples:install` / `dt examples:test` / `dt examples:deploy` —
   example workflows
 
+Release workflows are documented in
+[`contributor-docs/release-workflows.md`](https://github.com/livestorejs/livestore/blob/dev/contributor-docs/release-workflows.md).
+
 ## Tasks to run before committing
 
 A `pre-commit` hook runs `devenv tasks run check:quick` automatically, but
@@ -257,5 +260,5 @@ The LiveStore docs are built with
 ## Related external repos
 
 - [Fork of wa-sqlite](https://github.com/livestorejs/wa-sqlite) with Nix build setup included as git subtree.
-- The source code of the devtools is currently not part of this monorepo but in
-  a separate private repo.
+- DevTools distributable assets are consumed through public artifact releases;
+  this repository should not contain non-public DevTools source.
