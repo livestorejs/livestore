@@ -4238,6 +4238,8 @@ jobs:
           echo "WORKSPACE_DEPS=$DEPS" >> $GITHUB_ENV
       - name: Copy example app
         run: 'pnpm dlx --allow-build=@mixedbread/cli --allow-build=@myobie/pty --allow-build=@parcel/watcher --allow-build=cbor-extract --allow-build=dtrace-provider --allow-build=esbuild --allow-build=msgpackr-extract --allow-build=node-pty --allow-build=protobufjs --allow-build=puppeteer --allow-build=sharp --allow-build=unix-dgram --allow-build=workerd @livestore/cli@${{ env.SNAPSHOT_VERSION }} create --example ${{ matrix.app }} --ref ${{ github.event.pull_request.head.sha || github.sha }} ${{ runner.temp }}/${{ env.APP_PATH }}'
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
       - name: Use snapshot version of workspace dependencies
         working-directory: '${{ runner.temp }}/${{ env.APP_PATH }}'
         run: |
