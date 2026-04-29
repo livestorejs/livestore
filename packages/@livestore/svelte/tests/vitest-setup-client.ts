@@ -2,7 +2,8 @@ import '@testing-library/jest-dom/vitest'
 import { readFile } from 'node:fs/promises'
 import path from 'node:path'
 
-import { vi } from 'vitest'
+import { act, cleanup, setup } from '@testing-library/svelte'
+import { beforeEach, vi } from 'vitest'
 
 import { shouldNeverHappen } from '@livestore/utils'
 
@@ -26,6 +27,15 @@ const customFetch = async (input: RequestInfo | URL, init?: RequestInit) => {
 
 /** Shim fetch to serve wa-sqlite wasm from disk in jsdom environment */
 globalThis.fetch = Object.assign(customFetch, originalFetch) as typeof globalThis.fetch
+
+beforeEach(() => {
+  setup()
+
+  return async () => {
+    await act()
+    cleanup()
+  }
+})
 
 // required for svelte5 + jsdom as jsdom does not support matchMedia
 Object.defineProperty(globalThis, 'matchMedia', {

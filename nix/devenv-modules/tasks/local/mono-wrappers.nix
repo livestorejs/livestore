@@ -329,6 +329,30 @@ in
       after = [ "setup:strict" ];
     };
 
+    "release:plan" = {
+      description = "Write release/release-plan.json for a stable release PR";
+      exec = ''
+        set -euo pipefail
+        : "''${LIVESTORE_RELEASE_VERSION:?Set LIVESTORE_RELEASE_VERSION to the LiveStore release-group version}"
+        mono release plan \
+          --release-version "$LIVESTORE_RELEASE_VERSION" \
+          --npm-tag "''${LIVESTORE_NPM_TAG:-latest}"
+      '';
+      after = [ "pnpm:install" ];
+    };
+
+    "release:stable:dryrun" = {
+      description = "Dry-run stable release publishing from release/release-plan.json";
+      exec = "mono release stable --dry-run --yes";
+      after = [ "setup:strict" ];
+    };
+
+    "release:stable:publish" = {
+      description = "Publish stable release from release/release-plan.json";
+      exec = "mono release stable --yes --allow-existing";
+      after = [ "setup:strict" ];
+    };
+
     # =========================================================================
     # Lint (dt-native)
     # =========================================================================

@@ -21,7 +21,7 @@
   },
   "devDependencies": {
     "@livestore/devtools-vite": "0.4.0-dev.22",
-    "@playwright/test": "^1.56.0",
+    "@playwright/test": "^1.59.1",
     "@tanstack/react-router": "1.139.14",
     "@tanstack/router-devtools": "1.139.14",
     "@tanstack/router-plugin": "1.139.14",
