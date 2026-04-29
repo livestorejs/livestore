@@ -224,6 +224,13 @@ release_version="$(jq -r '.version' release/release-plan.json)"
 echo "LIVESTORE_RELEASE_VERSION=$release_version" >> "$GITHUB_ENV"`,
         },
         {
+          name: 'Configure npm token fallback',
+          run: `set -euo pipefail
+: "\${NODE_AUTH_TOKEN:?Missing NPM_TOKEN secret}"
+printf '%s\\n' "always-auth=true" > "$HOME/.npmrc"
+printf '%s\\n' "//registry.npmjs.org/:_authToken=$NODE_AUTH_TOKEN" >> "$HOME/.npmrc"`,
+        },
+        {
           name: 'Publish stable package release',
           run: runDevenvTasksBefore('release:stable:publish'),
         },
