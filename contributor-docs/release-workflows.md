@@ -5,6 +5,32 @@ state. Local release commands are still useful for dry-runs and emergency
 operations, but the preferred stable release path is to let GitHub Actions open
 and validate a release-plan PR.
 
+## Release intent
+
+Changesets are the release-intent ledger for public LiveStore package changes.
+The public `@livestore/*` packages are configured as a fixed Changesets group,
+so any accepted changeset bumps the whole LiveStore release group together.
+
+`CHANGELOG.md` remains the curated user-facing release narrative. Do not let
+generated release notes replace it. Maintainers fold PR-level changeset
+information into the handcrafted changelog structure before cutting a stable
+release.
+
+PRs that change public package files must include one of:
+
+- A regular `.changeset/*.md` file for release-impacting changes.
+- An empty changeset for package-affecting changes that do not need release
+  notes.
+
+```bash
+pnpm exec changeset
+pnpm exec changeset add --empty
+```
+
+The baseline `.changeset/livestore-0-4-0-baseline.md` mirrors the existing
+handcrafted `CHANGELOG.md` 0.4.0 unreleased section. Keep both in sync until the
+supervised 0.4.0 release consumes that baseline.
+
 ## Release kinds
 
 ### Snapshot releases
@@ -34,8 +60,9 @@ provenance and package identity match the reviewed commit.
 
 ### Stable release groups
 
-Stable releases use `release/release-plan.json` as the source of truth. The
-plan records the LiveStore release-group version and npm dist-tag:
+Stable releases use Changesets to calculate the next fixed-group version, then
+write `release/release-plan.json` as the publish intent. The plan records the
+LiveStore release-group version and npm dist-tag:
 
 ```json
 {
@@ -47,10 +74,12 @@ plan records the LiveStore release-group version and npm dist-tag:
 
 The preferred flow is:
 
-1. Run the `Release` workflow manually from the `dev` branch with the target
-   version and npm tag.
-2. Let the workflow open or update `automation/release-<version>` with the
-   generated `release/release-plan.json`.
+1. Ensure pending changesets and `CHANGELOG.md` agree on the intended release
+   contents.
+2. Run the `Release` workflow manually from `dev` with the intended npm tag.
+   The workflow consumes changesets, syncs `release/version.json`, regenerates
+   Genie-managed manifests, refreshes the lockfile, and opens or updates the
+   release-plan PR.
 3. Review the release-plan PR and wait for CI to pass.
 4. Merge the release-plan PR into `dev`.
 5. Let the push-triggered `Release` workflow publish the release group.
@@ -74,8 +103,10 @@ tooling changes.
 Create a release plan:
 
 ```bash
-LIVESTORE_RELEASE_VERSION=0.4.0 LIVESTORE_NPM_TAG=latest dt release:plan
+LIVESTORE_NPM_TAG=latest dt release:changeset:version
 ```
+
+This is the local equivalent of the workflow-dispatch release PR generator.
 
 Dry-run the package publish:
 
@@ -135,7 +166,15 @@ artifact as `@livestore/devtools-vite@<livestore-version>`.
   artifact metadata.
 - Treat `release/release-plan.json` as reviewable release intent, not a scratch
   file.
+- Treat `release/version.json` as the Genie source of truth for the checked-in
+  package version. Snapshot and dry-run publishes may still override the version
+  with `LIVESTORE_RELEASE_VERSION`.
+- Keep checked-in release-plan PRs installable before publish. The stable
+  `@livestore/devtools-vite` artifact is injected by the dry-run/publish tasks
+  via `LIVESTORE_RELEASE_VERSION`; it is not required to exist before the PR is
+  validated.
 - Regenerate generated workflow files through Genie; do not edit generated
   `.github/workflows/*.yml` files directly.
-- Prefer CI-created release-plan PRs for stable releases so dry-run validation
-  and publish behavior stay aligned.
+- Do not publish patch, minor, or major releases while testing this Changesets
+  integration. Use snapshots and non-`latest` prerelease tags until the final
+  supervised release.

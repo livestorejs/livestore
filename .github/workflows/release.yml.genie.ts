@@ -20,9 +20,11 @@ const releasePlanPaths = [
   'genie/repo.ts',
   'nix/devenv-modules/tasks/local/mono-wrappers.nix',
   'release/release-plan.json',
+  'release/version.json',
   'release/devtools-artifact.json',
   'scripts/src/commands/release.ts',
   'scripts/src/commands/devtools-artifact.ts',
+  'scripts/src/commands/changesets.ts',
 ]
 
 export default githubWorkflow({
@@ -32,11 +34,6 @@ export default githubWorkflow({
   on: {
     workflow_dispatch: {
       inputs: {
-        version: {
-          description: 'LiveStore release-group version',
-          required: true,
-          type: 'string',
-        },
         npm_tag: {
           description: 'npm dist-tag for the release',
           required: true,
@@ -71,6 +68,7 @@ export default githubWorkflow({
       'runs-on': 'ubuntu-latest',
       permissions: {
         contents: 'write',
+        'id-token': 'write',
         'pull-requests': 'write',
       },
       defaults: bashShellDefaults,
@@ -82,37 +80,39 @@ export default githubWorkflow({
             ref: 'dev',
           },
         },
+        ...livestoreSetupSteps.slice(1),
+        {
+          name: 'Generate release plan from Changesets',
+          run: runDevenvTasksBefore('release:changeset:version'),
+          env: {
+            LIVESTORE_NPM_TAG: '${{ inputs.npm_tag }}',
+          },
+        },
         {
           name: 'Open release plan PR',
           env: {
             GH_TOKEN: '${{ secrets.GITHUB_TOKEN }}',
-            LIVESTORE_RELEASE_VERSION: '${{ inputs.version }}',
-            LIVESTORE_NPM_TAG: '${{ inputs.npm_tag }}',
           },
           run: `set -euo pipefail
-case "$LIVESTORE_RELEASE_VERSION" in
-  *snapshot*)
-    echo "Release version must not be a snapshot version"
-    exit 1
-    ;;
-esac
-
-mkdir -p release
-jq -n \\
-  --arg version "$LIVESTORE_RELEASE_VERSION" \\
-  --arg npmTag "$LIVESTORE_NPM_TAG" \\
-  '{
-    schemaVersion: 1,
-    version: $version,
-    npmTag: $npmTag
-  }' > release/release-plan.json
+LIVESTORE_RELEASE_VERSION="$(jq -r '.version' release/release-plan.json)"
+: "\${LIVESTORE_RELEASE_VERSION:?Missing generated release version}"
 
 git config user.name "github-actions[bot]"
 git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
 
 branch="automation/release-$LIVESTORE_RELEASE_VERSION"
 git checkout -B "$branch"
-git add release/release-plan.json
+git add \\
+  .changeset \\
+  package.json \\
+  pnpm-lock.yaml \\
+  release/release-plan.json \\
+  release/version.json \\
+  docs/package.json \\
+  docs/src/content/_assets/code/package.json \\
+  examples \\
+  packages \\
+  tests
 
 if git diff --cached --quiet; then
   echo "Release plan already current."
@@ -122,13 +122,13 @@ else
 fi
 
 body="$(cat <<BODY
-Prepares a LiveStore release group for \`$LIVESTORE_RELEASE_VERSION\`.
+Prepares a LiveStore release group for \`$LIVESTORE_RELEASE_VERSION\` from the pending Changesets.
 
 The release workflow dry-runs the npm publish for the LiveStore packages and the public DevTools artifact repack on this PR. After merge into \`dev\`, the same workflow publishes the release group.
 
 ## Rationale
 
-Release cutting is represented as a reviewable data change instead of a local operator action. The workflow keeps the public repository self-contained while consuming only the checked-in public DevTools artifact manifest.
+Release cutting is represented as a reviewable data change instead of a local operator action. Changesets provide the release intent and fixed-group version calculation; LiveStore's existing publisher remains responsible for package provenance and DevTools artifact repacking.
 BODY
 )"
 

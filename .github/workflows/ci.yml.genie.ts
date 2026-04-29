@@ -49,8 +49,9 @@ const withNixDiagnosticsOnFailure = (steps: unknown[]) => [
 ]
 
 /** Standard CI job configuration (namespace runner + bash shell) */
-const standardCIJob = (config: { env?: Record<string, string>; steps: unknown[] }) => ({
+const standardCIJob = (config: { env?: Record<string, string>; if?: string; steps: unknown[] }) => ({
   ...namespaceRunnerConfig,
+  if: config.if,
   env: config.env,
   defaults: bashShellDefaults,
   steps: withNixDiagnosticsOnFailure(config.steps),
@@ -101,6 +102,24 @@ export default githubWorkflow({
       steps: [
         ...livestoreSetupSteps,
         { name: 'Run lint checks', run: runDevenvTasksBefore('lint:full:with-megarepo-check') },
+      ],
+    }),
+
+    'changeset-check': standardCIJob({
+      if: "github.event_name == 'pull_request'",
+      steps: [
+        ...livestoreSetupSteps,
+        {
+          name: 'Fetch changeset comparison base',
+          run: 'git fetch origin "${{ github.base_ref }}" --depth=1',
+        },
+        {
+          name: 'Check release intent',
+          run: runDevenvTasksBefore('release:changeset:check-pr'),
+          env: {
+            CHANGESET_BASE_REF: 'origin/${{ github.base_ref }}',
+          },
+        },
       ],
     }),
 

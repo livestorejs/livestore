@@ -29,6 +29,9 @@
             "context": "lint"
           },
           {
+            "context": "changeset-check"
+          },
+          {
             "context": "type-check"
           },
           {

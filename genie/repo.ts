@@ -43,6 +43,7 @@ import {
   type WorkspacePackageLike,
 } from '#mr/effect-utils/genie/external.ts'
 import { baseOxfmtIgnorePatterns, baseOxfmtOptions } from '#mr/effect-utils/genie/oxfmt-base.ts'
+import { readFileSync } from 'node:fs'
 import { livestoreOnlyCatalog, livestoreWorkspaceCatalog } from './external.ts'
 
 export { baseTsconfigCompilerOptions, domLib, reactJsx }
@@ -90,6 +91,10 @@ export const packageTsconfigCompilerOptions = {
  * source of truth. Package closures are derived from workspace metadata at
  * build time instead of being committed as package-local pnpm-workspace files.
  */
+
+const releaseVersion = JSON.parse(readFileSync('release/version.json', 'utf8')) as {
+  readonly version: string
+}
 
 /** Composed catalog - effect-utils base + livestore-specific + workspace packages */
 export const catalog = defineCatalog({
@@ -140,7 +145,7 @@ export const repoPackageExtensions = {
 
 /** Common fields for published @livestore packages */
 export const livestorePackageDefaults = {
-  version: process.env.LIVESTORE_RELEASE_VERSION ?? '0.4.0-dev.22',
+  version: process.env.LIVESTORE_RELEASE_VERSION ?? releaseVersion.version,
   type: 'module' as const,
   sideEffects: false as const,
   license: 'Apache-2.0' as const,
