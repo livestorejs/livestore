@@ -116,6 +116,17 @@ const runCapture = (command: ReadonlyArray<string>, options: { readonly cwd?: st
 const sha256 = (file: string) => createHash('sha256').update(readFileSync(file)).digest('hex')
 const integrity = (file: string) => `sha512-${createHash('sha512').update(readFileSync(file)).digest('base64')}`
 
+const publishTagForVersion = (version: string) => {
+  const prerelease = version.split('-')[1]
+  if (prerelease === undefined) return 'latest'
+
+  const prereleaseChannel = prerelease.split(/[.-]/)[0]
+  if (prereleaseChannel === 'dev') return 'dev'
+  if (prereleaseChannel === 'snapshot') return 'snapshot'
+
+  return 'next'
+}
+
 const downloadToFile = async (source: string, target: string, redirects = 0): Promise<void> => {
   if (redirects > 5) throw new Error(`Too many redirects while fetching ${source}`)
 
@@ -326,7 +337,7 @@ const repackArtifact = async (flags: Map<string, string | true>) => {
   const repackedPath = path.join(workDir, `livestore-devtools-vite-${version}.tgz`)
   renameSync(path.join(workDir, firstPacked.filename), repackedPath)
 
-  const publishTag = version.includes('-') === true ? 'snapshot' : 'latest'
+  const publishTag = publishTagForVersion(version)
   if (hasFlag(flags, 'dry-run') === true) {
     run(['npm', 'publish', '--dry-run', '--tag', publishTag, repackedPath], { cwd: workDir })
   }
