@@ -128,7 +128,8 @@ if git diff --cached --quiet; then
   echo "Release plan already current."
 else
   git commit -m "Prepare LiveStore $LIVESTORE_RELEASE_VERSION release"
-  git push --force-with-lease origin "$branch"
+  git fetch origin "refs/heads/$branch:refs/remotes/origin/$branch" || true
+  git push --force-with-lease="refs/heads/$branch" origin "$branch"
 fi
 
 body="$(cat <<BODY
