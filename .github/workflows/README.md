@@ -43,6 +43,15 @@ On push to `dev` when `release/release-plan.json` changes, the workflow publishe
 the release group and the matching public DevTools artifact package. In normal
 operation this happens when the supervised release PR is merged.
 
+Manual dispatch with `mode=publish-release` reruns the publish job for the
+checked-in release plan. Use it only after confirming the current `dev` release
+plan is still the intended release; the publisher is idempotent for already
+published packages.
+
+The publish job uses the repository `NPM_TOKEN` secret. Snapshot publishing uses
+npm trusted publishing from `ci.yml`; stable/dev release publishing should move
+to trusted publishing too once `release.yml` is authorized for the npm packages.
+
 ## `devtools-artifact.yml`
 
 Maintains `release/devtools-artifact.json`, the public manifest that tells the

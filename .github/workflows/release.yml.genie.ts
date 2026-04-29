@@ -45,7 +45,7 @@ export default githubWorkflow({
           required: true,
           default: 'create-release-pr',
           type: 'choice',
-          options: ['create-release-pr', 'validate-release-plan'],
+          options: ['create-release-pr', 'validate-release-plan', 'publish-release'],
         },
       },
     },
@@ -135,7 +135,7 @@ fi
 body="$(cat <<BODY
 Prepares a LiveStore release group for $LIVESTORE_RELEASE_VERSION from the pending Changesets.
 
-The release workflow dry-runs the npm publish for the LiveStore packages and the public DevTools artifact repack on this PR. After merge into dev, the same workflow publishes the release group.
+The release workflow dry-runs the npm publish for the LiveStore packages and the public DevTools artifact repack on this PR. After merge into dev, the same workflow publishes the release group. The publish job can also be manually dispatched after an operator verifies that the checked-in release plan is still the intended release.
 
 ## Rationale
 
@@ -204,11 +204,14 @@ echo "LIVESTORE_RELEASE_VERSION=$release_version" >> "$GITHUB_ENV"`,
     },
 
     'publish-release': {
-      if: "github.event_name == 'push'",
+      if: "github.event_name == 'push' || (github.event_name == 'workflow_dispatch' && inputs.mode == 'publish-release')",
       'runs-on': 'ubuntu-24.04',
       permissions: {
         contents: 'read',
         'id-token': 'write',
+      },
+      env: {
+        NODE_AUTH_TOKEN: '${{ secrets.NPM_TOKEN }}',
       },
       defaults: bashShellDefaults,
       steps: withNixDiagnosticsOnFailure([
