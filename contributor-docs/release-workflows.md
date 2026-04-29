@@ -76,12 +76,12 @@ The preferred flow is:
 
 1. Ensure pending changesets and `CHANGELOG.md` agree on the intended release
    contents.
-2. Run the `Release` workflow manually from `dev` with the intended npm tag.
+2. Run the `Release` workflow manually from `main` with the intended npm tag.
    The workflow consumes changesets, syncs `release/version.json`, regenerates
    Genie-managed manifests, refreshes the lockfile, and opens or updates the
    release-plan PR.
 3. Review the release-plan PR and wait for CI to pass.
-4. Merge the release-plan PR into `dev`.
+4. Merge the release-plan PR into `main`.
 5. Let the push-triggered `Release` workflow publish the release group.
 
 The release-plan PR validates the exact work that will run after merge:
@@ -90,7 +90,7 @@ The release-plan PR validates the exact work that will run after merge:
 - `release:devtools-artifact:repack-dryrun:no-install` verifies and repacks the
   public DevTools artifact for the same LiveStore version without publishing it.
 
-After merge to `dev`, the push-triggered workflow runs:
+After merge to `main`, the push-triggered workflow runs:
 
 - `release:stable:publish`
 - `release:devtools-artifact:publish:no-install`
@@ -155,7 +155,7 @@ release:
 4. Open a PR with only the manifest change unless release tooling also changed.
 
 The release PR will then dry-run the repack using that manifest. When the
-release-plan PR merges to `dev`, the publish job repackages and publishes the
+release-plan PR merges to `main`, the publish job repackages and publishes the
 artifact as `@livestore/devtools-vite@<livestore-version>`.
 
 ## Safety rules

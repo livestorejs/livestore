@@ -107,7 +107,7 @@ const syncRulesetsCommand = Cli.Command.make(
   {
     branch: Cli.Options.choice('branch', ['dev', 'main'] as const).pipe(
       Cli.Options.withDescription('Ruleset variant to sync from generated repo-settings file'),
-      Cli.Options.withDefault('dev'),
+      Cli.Options.withDefault('main'),
     ),
     dryRun: Cli.Options.boolean('dry-run').pipe(Cli.Options.withDefault(false)),
   },
@@ -140,7 +140,7 @@ const showRulesetsCommand = Cli.Command.make(
   {
     branch: Cli.Options.choice('branch', ['dev', 'main'] as const).pipe(
       Cli.Options.withDescription('Ruleset variant to show'),
-      Cli.Options.withDefault('dev'),
+      Cli.Options.withDefault('main'),
     ),
   },
   Effect.fn(function* ({ branch }) {

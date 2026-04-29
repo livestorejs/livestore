@@ -81,7 +81,7 @@ const checkPr = (flags: Map<string, string | true>) => {
     return
   }
 
-  const base = readFlag(flags, 'base') ?? process.env.CHANGESET_BASE_REF ?? 'origin/dev'
+  const base = readFlag(flags, 'base') ?? process.env.CHANGESET_BASE_REF ?? 'origin/main'
   const files = changedFiles(base)
   const publicPackageDirs = publicLivestorePackages().map((pkg) => `${pkg.dir}/`)
   const packageFilesChanged = files.some((file) => publicPackageDirs.some((dir) => file.startsWith(dir)))

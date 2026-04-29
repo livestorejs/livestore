@@ -6,7 +6,7 @@ generated YAML directly. `sync-docs.yml` is currently handwritten.
 
 ## `ci.yml`
 
-Primary validation workflow for pull requests, `dev`/`main` pushes, and manual
+Primary validation workflow for pull requests, `main`/`dev` pushes, and manual
 workflow-dispatch runs.
 
 It runs the normal repository quality gates: linting, Changesets release-intent
@@ -29,7 +29,7 @@ the generated release branch.
 Release orchestration workflow for the PR-driven release process.
 
 Manual dispatch with `mode=create-release-pr` runs Changesets versioning on
-`dev`, writes `release/release-plan.json`, updates package versions and the
+`main`, writes `release/release-plan.json`, updates package versions and the
 lockfile, and opens or updates a draft release PR such as
 `automation/release-0.4.0`. The generated PR is the human review gate. Keep it
 as draft until the release is intentionally ready to publish.
@@ -39,7 +39,7 @@ pipeline files, dry-runs the package publisher and public DevTools artifact
 repack path. This checks the stable release machinery without publishing a
 stable release.
 
-On push to `dev` when `release/release-plan.json` changes, the workflow publishes
+On push to `main` when `release/release-plan.json` changes, the workflow publishes
 the release group and the matching public DevTools artifact package. In normal
 operation this happens when the supervised release PR is merged.
 

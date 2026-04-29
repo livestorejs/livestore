@@ -30,7 +30,7 @@ on:
       - scripts/src/commands/devtools-artifact.ts
       - scripts/src/commands/changesets.ts
   push:
-    branches: [dev]
+    branches: [main]
     paths: [release/release-plan.json]
 
 permissions:
@@ -58,7 +58,7 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
         with:
-          ref: dev
+          ref: main
       - name: Install Nix
         uses: DeterminateSystems/determinate-nix-action@v3
         with:
@@ -321,7 +321,7 @@ jobs:
           body="$(cat <<BODY
           Prepares a LiveStore release group for $LIVESTORE_RELEASE_VERSION from the pending Changesets.
 
-          The release workflow dry-runs the npm publish for the LiveStore packages and the public DevTools artifact repack on this PR. After merge into dev, the same workflow publishes the release group. The publish job can also be manually dispatched after an operator verifies that the checked-in release plan is still the intended release.
+          The release workflow dry-runs the npm publish for the LiveStore packages and the public DevTools artifact repack on this PR. After merge into main, the same workflow publishes the release group. The publish job can also be manually dispatched after an operator verifies that the checked-in release plan is still the intended release.
 
           ## Rationale
 
@@ -334,7 +334,7 @@ jobs:
           else
             gh pr create \
               --repo "$GITHUB_REPOSITORY" \
-              --base dev \
+              --base main \
               --head "$branch" \
               --title "Prepare LiveStore $LIVESTORE_RELEASE_VERSION release" \
               --body "$body"
@@ -464,10 +464,21 @@ jobs:
           echo "DEVENV_BIN=$DEVENV_BIN" >> "$GITHUB_ENV"
           "$DEVENV_BIN" version | tee "$DIAG_ROOT/devenv-version.txt"
         shell: bash
-      - name: Create synthetic release plan when testing release tooling changes
+      - name: Select release plan for validation
         run: |
           set -euo pipefail
-          if [ -f release/release-plan.json ]; then
+          use_synthetic_plan=false
+
+          if [ "$GITHUB_EVENT_NAME" = "pull_request" ]; then
+            git fetch origin "${{ github.base_ref }}" --depth=1
+            if ! git diff --name-only "origin/${{ github.base_ref }}...HEAD" | grep -qx 'release/release-plan.json'; then
+              use_synthetic_plan=true
+            fi
+          elif [ ! -f release/release-plan.json ]; then
+            use_synthetic_plan=true
+          fi
+
+          if [ "$use_synthetic_plan" = "false" ]; then
             exit 0
           fi
 
