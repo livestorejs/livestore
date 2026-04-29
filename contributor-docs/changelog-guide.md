@@ -32,10 +32,20 @@ The changelog should meet the goals of an application developer as follows:
 
 ## Active Release Workflow
 
-1. Keep an "Upcoming" (or next-version) section at the top of the changelog.
-2. Add entries to the upcoming section as features, fixes, or documentation updates land.
-3. Ensure reviewers verify that the changelog reflects the changes in the PR.
-4. When preparing a release, confirm the upcoming section only contains changes merged since the last version tag.
+1. Add a changeset for every public package change. Use an empty changeset only
+   when the change has no release-note impact.
+2. Keep an "Upcoming" (or next-version) section at the top of the changelog.
+3. Fold release-impacting changesets into the upcoming section as features,
+   fixes, or documentation updates land.
+4. Ensure reviewers verify that the changeset and changelog reflect the change
+   in the PR.
+5. When preparing a release, confirm the upcoming section only contains changes
+   merged since the last version tag.
+
+Changesets provide the PR-level release ledger and semver signal. `CHANGELOG.md`
+is still the editorial source for the public release narrative. Preserve the
+handcrafted section ordering and wording unless there is an intentional
+maintainer edit.
 
 ## Upcoming Release Preface
 

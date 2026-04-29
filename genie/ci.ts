@@ -20,6 +20,7 @@ export const playwrightSuites = ['misc', 'todomvc', 'devtools'] as const
 
 export const requiredCIJobs = [
   'lint',
+  'changeset-check',
   'type-check',
   'test-unit',
   'test-integration-node-sync',

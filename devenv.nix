@@ -294,6 +294,56 @@ in
     withInstall = false;
   };
 
+  tasks."release:changeset:check-pr" = {
+    description = "Require PR-level changeset intent when public LiveStore package files change";
+    exec = ''
+      set -euo pipefail
+      cd "$DEVENV_ROOT"
+
+      bun scripts/src/commands/changesets.ts check-pr --base "''${CHANGESET_BASE_REF:-origin/dev}"
+    '';
+  };
+
+  tasks."release:changeset:status" = {
+    description = "Show pending Changesets release status";
+    exec = ''
+      set -euo pipefail
+      cd "$DEVENV_ROOT"
+
+      DT_PASSTHROUGH=1 pnpm exec changeset status --since "''${CHANGESET_BASE_REF:-origin/dev}"
+    '';
+    after = [ "pnpm:install" ];
+  };
+
+  tasks."release:changeset:version" = {
+    description = "Consume changesets, sync Genie release version source, regenerate manifests, and write release plan";
+    exec = ''
+      set -euo pipefail
+      cd "$DEVENV_ROOT"
+
+      # Changesets edits generated package manifests before Genie re-materializes
+      # them from release/version.json.
+      git ls-files '*package.json' | xargs chmod u+w
+      DT_PASSTHROUGH=1 pnpm exec changeset version
+      bun scripts/src/commands/changesets.ts sync-version-source
+      DT_PASSTHROUGH=1 genie
+      DT_PASSTHROUGH=1 pnpm install --lockfile-only --no-frozen-lockfile
+      bun scripts/src/commands/changesets.ts assert-fixed-versions
+      bun scripts/src/commands/changesets.ts write-release-plan --npm-tag "''${LIVESTORE_NPM_TAG:-latest}"
+    '';
+    after = [ "pnpm:install" ];
+  };
+
+  tasks."release:changeset:verify-baseline" = {
+    description = "Verify the baseline changeset losslessly mirrors the handcrafted 0.4.0 changelog section";
+    exec = ''
+      set -euo pipefail
+      cd "$DEVENV_ROOT"
+
+      bun scripts/src/commands/changesets.ts verify-baseline-changelog
+    '';
+  };
+
   # NOTE: check:quick is provided by effect-utils taskModules.check.
 
   git-hooks.enable = true;

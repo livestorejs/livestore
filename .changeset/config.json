@@ -1,0 +1,38 @@
+{
+  "$schema": "https://unpkg.com/@changesets/config@3.1.1/schema.json",
+  "changelog": false,
+  "commit": false,
+  "fixed": [
+    [
+      "@livestore/adapter-cloudflare",
+      "@livestore/adapter-expo",
+      "@livestore/adapter-node",
+      "@livestore/adapter-web",
+      "@livestore/cli",
+      "@livestore/common",
+      "@livestore/common-cf",
+      "@livestore/devtools-expo",
+      "@livestore/devtools-web-common",
+      "@livestore/framework-toolkit",
+      "@livestore/graphql",
+      "@livestore/livestore",
+      "@livestore/peer-deps",
+      "@livestore/react",
+      "@livestore/solid",
+      "@livestore/sqlite-wasm",
+      "@livestore/svelte",
+      "@livestore/sync-cf",
+      "@livestore/sync-electric",
+      "@livestore/sync-s2",
+      "@livestore/utils",
+      "@livestore/utils-dev",
+      "@livestore/wa-sqlite",
+      "@livestore/webmesh"
+    ]
+  ],
+  "linked": [],
+  "access": "public",
+  "baseBranch": "dev",
+  "updateInternalDependencies": "patch",
+  "ignore": ["@livestore/effect-playwright"]
+}

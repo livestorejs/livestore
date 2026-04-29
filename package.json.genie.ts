@@ -133,12 +133,49 @@ export const toolingWorkspacePackages = rootWorkspacePackages.filter((workspaceP
   toolingWorkspacePackagesByPath.has(workspacePackage.meta.workspace.memberPath),
 )
 
-const rootWorkspace = packageJson.aggregateFromPackages({
+const rootWorkspaceBase = packageJson.aggregateFromPackages({
   packages: rootWorkspacePackages,
   name: 'livestore-workspace',
   repoName: 'livestore',
   extraMembers: ['examples/*'],
 })
+
+const rootWorkspaceExtraFields = {
+  scripts: {
+    changeset: 'changeset',
+    'changeset:status': 'changeset status',
+    'changeset:version': 'changeset version',
+  },
+  devDependencies: {
+    '@changesets/cli': '^2.31.0',
+  },
+} as const
+
+const rootWorkspace = {
+  ...rootWorkspaceBase,
+  data: {
+    ...rootWorkspaceBase.data,
+    ...rootWorkspaceExtraFields,
+  },
+  stringify: (ctx: Parameters<typeof rootWorkspaceBase.stringify>[0]) => {
+    const generated = JSON.parse(rootWorkspaceBase.stringify(ctx))
+    return `${JSON.stringify(
+      {
+        ...generated,
+        scripts: {
+          ...generated.scripts,
+          ...rootWorkspaceExtraFields.scripts,
+        },
+        devDependencies: {
+          ...generated.devDependencies,
+          ...rootWorkspaceExtraFields.devDependencies,
+        },
+      },
+      null,
+      2,
+    )}\n`
+  },
+} satisfies typeof rootWorkspaceBase
 
 export const rootWorkspaceMemberPaths = rootWorkspace.data.workspaces
 
