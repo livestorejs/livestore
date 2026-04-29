@@ -465,6 +465,9 @@ echo "WORKSPACE_DEPS=$DEPS" >> $GITHUB_ENV`,
            */
           name: 'Copy example app',
           run: `pnpm dlx ${DLX_ALLOW_BUILD_FLAGS} @livestore/cli@\${{ env.SNAPSHOT_VERSION }} create --example \${{ matrix.app }} --ref ${PR_HEAD_SHA} \${{ runner.temp }}/\${{ env.APP_PATH }}`,
+          env: {
+            GITHUB_TOKEN: '${{ github.token }}',
+          },
         },
         {
           name: 'Use snapshot version of workspace dependencies',
