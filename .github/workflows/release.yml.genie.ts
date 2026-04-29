@@ -122,9 +122,9 @@ else
 fi
 
 body="$(cat <<BODY
-Prepares a LiveStore release group for \`$LIVESTORE_RELEASE_VERSION\` from the pending Changesets.
+Prepares a LiveStore release group for $LIVESTORE_RELEASE_VERSION from the pending Changesets.
 
-The release workflow dry-runs the npm publish for the LiveStore packages and the public DevTools artifact repack on this PR. After merge into \`dev\`, the same workflow publishes the release group.
+The release workflow dry-runs the npm publish for the LiveStore packages and the public DevTools artifact repack on this PR. After merge into dev, the same workflow publishes the release group.
 
 ## Rationale
 
