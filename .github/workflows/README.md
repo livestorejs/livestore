@@ -14,6 +14,13 @@ checks, TypeScript builds, unit tests, integration tests, Playwright tests,
 performance tests, docs/examples builds, dev docs/examples deploys, snapshot publishing, DevTools artifact
 snapshot publishing, and create-example smoke tests.
 
+Docs deployment uses `mono docs deploy`. Normal `main` pushes update the dev
+Netlify site, pull requests publish sticky and commit-specific aliases on the
+dev site, and stable release publishing is the only workflow path that updates
+the production docs domain. Use `mono docs deploy --plan` when changing deploy
+routing logic; it prints the resolved site and target without building or
+deploying.
+
 The snapshot and create-example jobs are intentionally part of CI. They verify
 that the exact commit under test can publish snapshot packages and that users
 can create projects from those snapshots. Forked PRs skip jobs that require

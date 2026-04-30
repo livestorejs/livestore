@@ -310,9 +310,14 @@ export const docsCommand = Cli.Command.make('docs').pipe(
           Cli.Options.optional,
           Cli.Options.withDescription('Build the docs before deploying (split flow)'),
         ),
+        plan: Cli.Options.boolean('plan').pipe(
+          Cli.Options.withDefault(false),
+          Cli.Options.optional,
+          Cli.Options.withDescription('Print the resolved deploy plan without building or deploying'),
+        ),
       },
       Effect.fn(
-        function* ({ prod: prodOption, alias: aliasOption, site: siteOption, purgeCdn, build: buildOption }) {
+        function* ({ prod: prodOption, alias: aliasOption, site: siteOption, purgeCdn, build: buildOption, plan }) {
           const branchName = yield* Effect.gen(function* () {
             if (isGithubAction === true) {
               const branchFromEnv = process.env.GITHUB_HEAD_REF ?? process.env.GITHUB_REF_NAME
@@ -411,8 +416,37 @@ export const docsCommand = Cli.Command.make('docs').pipe(
 
           // Split mode: build first only when requested via --build
           const shouldBuild = buildOption._tag === 'Some' && buildOption.value === true
+          const docsSiteUrl = site === DOCS_PROD_SITE ? DOCS_PROD_URL : DOCS_DEV_URL
+
+          const shouldPrintPlan = plan._tag === 'Some' && plan.value === true
+
+          if (shouldPrintPlan === true) {
+            console.log(
+              JSON.stringify(
+                {
+                  branchName,
+                  isPr,
+                  liveStoreVersion,
+                  site,
+                  siteUrl: docsSiteUrl,
+                  build: shouldBuild,
+                  deployTarget:
+                    prAliases !== undefined
+                      ? { _tag: 'pr-aliases', ...prAliases }
+                      : prod === true
+                        ? { _tag: 'prod' }
+                        : { _tag: 'alias', alias: branchAlias },
+                  purgeCdn,
+                },
+                null,
+                2,
+              ),
+            )
+            return
+          }
+
           if (shouldBuild === true) {
-            process.env.LIVESTORE_DOCS_SITE_URL = site === DOCS_PROD_SITE ? DOCS_PROD_URL : DOCS_DEV_URL
+            process.env.LIVESTORE_DOCS_SITE_URL = docsSiteUrl
             yield* docsBuildCommand.handler({ apiDocs: true, clean: false, skipDeps: false })
           }
 
