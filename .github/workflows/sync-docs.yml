@@ -33,4 +33,4 @@ jobs:
         env:
           MXBAI_API_KEY: ${{ secrets.MXBAI_API_KEY }}
           MXBAI_VECTOR_STORE_ID: ${{ secrets.MXBAI_VECTOR_STORE_ID }}
-        run: mxbai vs sync "${MXBAI_VECTOR_STORE_ID}" "./src/content/**/*.mdx" "./src/content/**/*.md" --yes --strategy fast
+        run: mxbai store sync "${MXBAI_VECTOR_STORE_ID}" "./src/content/**/*.mdx" "./src/content/**/*.md" --yes --strategy fast

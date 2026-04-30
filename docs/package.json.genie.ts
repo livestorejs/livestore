@@ -99,9 +99,9 @@ export default packageJson(
       build: 'astro check && astro build',
       dev: 'astro dev',
       'dev:docs:sync':
-        'mxbai vs sync "livestore-docs-dev" "./src/content/**/*.mdx" "./src/content/**/*.md"  --yes --strategy fast',
+        'mxbai store sync "livestore-docs-dev" "./src/content/**/*.mdx" "./src/content/**/*.md"  --yes --strategy fast',
       'dev:docs:sync:dry-run':
-        'mxbai vs sync "livestore-docs-dev" "./src/content/**/*.mdx" "./src/content/**/*.md" --dry-run',
+        'mxbai store sync "livestore-docs-dev" "./src/content/**/*.mdx" "./src/content/**/*.md" --dry-run',
       preview: 'astro preview',
       start: 'astro dev',
     },

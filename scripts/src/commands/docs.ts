@@ -394,7 +394,19 @@ export const docsCommand = Cli.Command.make('docs').pipe(
                 : branchName === 'main' || branchName === devBranchName
 
           if (prod === true && site === 'livestore-docs' && liveStoreVersion.includes('dev') === true) {
-            return yield* Effect.die('Cannot deploy docs for dev version of LiveStore to prod')
+            yield* Effect.logWarning(
+              `Skipping prod docs deploy for dev version ${liveStoreVersion}; docs were built but prod deploy waits for a stable release version.`,
+            )
+            yield* appendGithubSummaryMarkdown({
+              context: 'docs deploy',
+              markdown: [
+                '## Docs deploy',
+                '',
+                `Skipped production docs deploy for dev version \`${liveStoreVersion}\`.`,
+                '',
+              ].join('\n'),
+            })
+            return
           }
 
           const deployAliasLabel =
