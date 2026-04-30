@@ -1,15 +1,19 @@
-import { StoreRegistryProvider } from '@livestore/react'
 import { createFileRoute } from '@tanstack/react-router'
 import { Suspense } from 'react'
 import { ErrorBoundary } from 'react-error-boundary'
-import { ErrorFallback } from '@/components/ErrorFallback.tsx'
-import { WorkspaceView } from '@/components/WorkspaceView.tsx'
+
+import { StoreRegistryProvider } from '@livestore/react'
+
+import { ErrorFallback } from '../components/ErrorFallback.tsx'
+import { WorkspaceView } from '../components/WorkspaceView.tsx'
 
 export const Route = createFileRoute('/chained')({
   component: ChainedDemoRoute,
 })
 
-function ChainedDemoRoute() {
+const loadingWorkspaceStoreFallback = <div className="loading">Loading workspace store...</div>
+
+const ChainedDemoRoute = () => {
   const { storeRegistry } = Route.useRouteContext()
 
   return (
@@ -23,7 +27,7 @@ function ChainedDemoRoute() {
 
       <StoreRegistryProvider storeRegistry={storeRegistry}>
         <ErrorBoundary FallbackComponent={ErrorFallback}>
-          <Suspense fallback={<div className="loading">Loading workspace store...</div>}>
+          <Suspense fallback={loadingWorkspaceStoreFallback}>
             <WorkspaceView />
           </Suspense>
         </ErrorBoundary>

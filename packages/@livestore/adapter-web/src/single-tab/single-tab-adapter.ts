@@ -16,6 +16,7 @@
 import type { Adapter, BootWarningReason, ClientSession, LockStatus } from '@livestore/common'
 import {
   IntentionalShutdownCause,
+  isWorkerTransportError,
   makeClientSession,
   StoreInterrupted,
   sessionChangesetMetaTable,
@@ -30,17 +31,17 @@ import {
   Exit,
   Fiber,
   Layer,
-  ParseResult,
+  Option,
   Queue,
   Schema,
   Stream,
   Subscribable,
   SubscriptionRef,
   Worker,
-  WorkerError,
 } from '@livestore/utils/effect'
 import { BrowserWorker, Opfs, WebError } from '@livestore/utils/effect/browser'
 import { nanoid } from '@livestore/utils/nanoid'
+
 import { loadSqlite3 } from '../web-worker/client-session/sqlite-loader.ts'
 import {
   readPersistedStateDbFromClientSession,
@@ -193,7 +194,7 @@ export const makeSingleTabAdapter =
       yield* shutdownChannel.listen.pipe(
         Stream.flatten(),
         Stream.tap((cause) =>
-          shutdown(cause._tag === 'LiveStore.IntentionalShutdownCause' ? Exit.succeed(cause) : Exit.fail(cause)),
+          shutdown(cause._tag === 'IntentionalShutdownCause' ? Exit.succeed(cause) : Exit.fail(cause)),
         ),
         Stream.runDrain,
         Effect.interruptible,
@@ -241,60 +242,43 @@ export const makeSingleTabAdapter =
       }).pipe(
         Effect.provide(innerWorkerContext),
         Effect.tapCauseLogPretty,
-        UnknownError.mapToUnknownError,
+        Effect.orDie,
         Effect.tapErrorCause((cause) => shutdown(Exit.failCause(cause))),
         Effect.withSpan('@livestore/adapter-web:single-tab:setupInnerWorker'),
         Effect.forkScoped,
       )
 
       // Helper to run requests against the worker
-      const runInWorker = <TReq extends WorkerSchema.LeaderWorkerInnerRequest>(
-        req: TReq,
-      ): TReq extends Schema.WithResult<infer A, infer _I, infer E, infer _EI, infer R>
-        ? Effect.Effect<A, UnknownError | E, R>
-        : never =>
+      const runInWorker = <A, I, E, EI, R>(
+        req: WorkerSchema.LeaderWorkerInnerRequest & Schema.WithResult<A, I, E, EI, R>,
+      ): Effect.Effect<A, E, R> =>
         Fiber.join(innerWorkerFiber).pipe(
-          Effect.flatMap((worker) => worker.executeEffect(req) as any),
+          Effect.flatMap((worker) => worker.executeEffect(req)),
+          Effect.catchIf(isWorkerTransportError, (e) => Effect.die(e)),
           Effect.logWarnIfTakesLongerThan({
             label: `@livestore/adapter-web:single-tab:runInWorker:${req._tag}`,
             duration: 2000,
           }),
           Effect.withSpan(`@livestore/adapter-web:single-tab:runInWorker:${req._tag}`),
-          Effect.mapError((cause) =>
-            Schema.is(UnknownError)(cause)
-              ? cause
-              : ParseResult.isParseError(cause) || Schema.is(WorkerError.WorkerError)(cause)
-                ? new UnknownError({ cause })
-                : cause,
-          ),
-          Effect.catchAllDefect((cause) => new UnknownError({ cause })),
-        ) as any
+        )
 
-      const runInWorkerStream = <TReq extends WorkerSchema.LeaderWorkerInnerRequest>(
-        req: TReq,
-      ): TReq extends Schema.WithResult<infer A, infer _I, infer _E, infer _EI, infer R>
-        ? Stream.Stream<A, UnknownError, R>
-        : never =>
+      const runInWorkerStream = <A, I, E, EI, R>(
+        req: WorkerSchema.LeaderWorkerInnerRequest & Schema.WithResult<A, I, E, EI, R>,
+      ): Stream.Stream<A, E, R> =>
         Effect.gen(function* () {
           const innerWorker = yield* Fiber.join(innerWorkerFiber)
-          return innerWorker.execute(req as any).pipe(
-            Stream.mapError((cause) =>
-              Schema.is(UnknownError)(cause)
-                ? cause
-                : ParseResult.isParseError(cause) || Schema.is(WorkerError.WorkerError)(cause)
-                  ? new UnknownError({ cause })
-                  : cause,
-            ),
+          return innerWorker.execute(req).pipe(
+            Stream.refineOrDie((e) => isWorkerTransportError(e) === true ? Option.none() : Option.some(e)),
             Stream.withSpan(`@livestore/adapter-web:single-tab:runInWorkerStream:${req._tag}`),
           )
-        }).pipe(Stream.unwrap) as any
+        }).pipe(Stream.unwrap)
 
       // Forward boot status from worker
       const bootStatusFiber = yield* runInWorkerStream(new WorkerSchema.LeaderWorkerInnerBootStatusStream()).pipe(
         Stream.tap((_) => Queue.offer(bootStatusQueue, _)),
         Stream.runDrain,
         Effect.tapErrorCause((cause) =>
-          Cause.isInterruptedOnly(cause) ? Effect.void : shutdown(Exit.failCause(cause)),
+          Cause.isInterruptedOnly(cause) === true ? Effect.void : shutdown(Exit.failCause(cause)),
         ),
         Effect.interruptible,
         Effect.tapCauseLogPretty,
@@ -347,18 +331,19 @@ export const makeSingleTabAdapter =
           .first(),
       )
 
-      const initialLeaderHead = initialLeaderHeadRes
-        ? EventSequenceNumber.Client.Composite.make({
-            global: initialLeaderHeadRes.seqNumGlobal,
-            client: initialLeaderHeadRes.seqNumClient,
-            rebaseGeneration: initialLeaderHeadRes.seqNumRebaseGeneration,
-          })
-        : EventSequenceNumber.Client.ROOT
+      const initialLeaderHead =
+        initialLeaderHeadRes !== undefined
+          ? EventSequenceNumber.Client.Composite.make({
+              global: initialLeaderHeadRes.seqNumGlobal,
+              client: initialLeaderHeadRes.seqNumClient,
+              rebaseGeneration: initialLeaderHeadRes.seqNumRebaseGeneration,
+            })
+          : EventSequenceNumber.Client.ROOT
 
       yield* Effect.addFinalizer((ex) =>
         Effect.gen(function* () {
           if (
-            Exit.isFailure(ex) &&
+            Exit.isFailure(ex) === true &&
             Exit.isInterrupted(ex) === false &&
             Schema.is(IntentionalShutdownCause)(Cause.squash(ex.cause)) === false &&
             Schema.is(StoreInterrupted)(Cause.squash(ex.cause)) === false
@@ -372,8 +357,7 @@ export const makeSingleTabAdapter =
 
       const leaderThread: ClientSession['leaderThread'] = {
         export: runInWorker(new WorkerSchema.LeaderWorkerInnerExport()).pipe(
-          Effect.timeout(10_000),
-          UnknownError.mapToUnknownError,
+          Effect.timeoutOrDie(10_000),
           Effect.withSpan('@livestore/adapter-web:single-tab:export'),
         ),
 
@@ -400,14 +384,12 @@ export const makeSingleTabAdapter =
         },
 
         getEventlogData: runInWorker(new WorkerSchema.LeaderWorkerInnerExportEventlog()).pipe(
-          Effect.timeout(10_000),
-          UnknownError.mapToUnknownError,
+          Effect.timeoutOrDie(10_000),
           Effect.withSpan('@livestore/adapter-web:single-tab:getEventlogData'),
         ),
 
         syncState: Subscribable.make({
           get: runInWorker(new WorkerSchema.LeaderWorkerInnerGetLeaderSyncState()).pipe(
-            UnknownError.mapToUnknownError,
             Effect.withSpan('@livestore/adapter-web:single-tab:getLeaderSyncState'),
           ),
           changes: runInWorkerStream(new WorkerSchema.LeaderWorkerInnerSyncStateStream()).pipe(Stream.orDie),
@@ -458,7 +440,7 @@ const getPersistedId = (key: string, storageType: 'session' | 'local') => {
         ? sessionStorage
         : storageType === 'local'
           ? localStorage
-          : shouldNeverHappen(`[@livestore/adapter-web] Invalid storage type: ${storageType}`)
+          : shouldNeverHappen(`[@livestore/adapter-web] Invalid storage type: ${String(storageType)}`)
 
   if (storage === undefined) {
     return makeId()
@@ -467,7 +449,7 @@ const getPersistedId = (key: string, storageType: 'session' | 'local') => {
   const fullKey = `livestore:${key}`
   const storedKey = storage.getItem(fullKey)
 
-  if (storedKey) return storedKey
+  if (storedKey !== null) return storedKey
 
   const newKey = makeId()
   storage.setItem(fullKey, newKey)
@@ -478,7 +460,7 @@ const getPersistedId = (key: string, storageType: 'session' | 'local') => {
 const ensureBrowserRequirements = Effect.gen(function* () {
   const validate = (condition: boolean, label: string) =>
     Effect.gen(function* () {
-      if (condition) {
+      if (condition === true) {
         return yield* UnknownError.make({
           cause: `[@livestore/adapter-web] Browser not supported. The LiveStore web adapter needs '${label}' to work properly`,
         })
@@ -504,7 +486,7 @@ const checkOpfsAvailability = Effect.gen(function* () {
     Effect.as(undefined),
     Effect.catchAll((error) => {
       const reason: BootWarningReason =
-        Schema.is(WebError.SecurityError)(error) || Schema.is(WebError.NotAllowedError)(error)
+        Schema.is(WebError.SecurityError)(error) === true || Schema.is(WebError.NotAllowedError)(error) === true
           ? 'private-browsing'
           : 'storage-unavailable'
       const message =

@@ -1,12 +1,14 @@
+import { useCallback } from 'react'
 import { Button } from 'react-aria-components'
+
 import { useFrontendState } from '../../../livestore/queries.ts'
 import { Icon } from '../../icons/index.tsx'
 
 export const ToolbarButton = () => {
   const [frontendState, setFrontendState] = useFrontendState()
-  const onClick = () => {
+  const onClick = useCallback(() => {
     setFrontendState({ ...frontendState, showToolbar: !frontendState.showToolbar })
-  }
+  }, [frontendState, setFrontendState])
 
   return (
     <Button

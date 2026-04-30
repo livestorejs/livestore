@@ -1,4 +1,4 @@
-import { InvalidPullError, InvalidPushError, SyncBackend, UnknownError } from '@livestore/common'
+import { SyncBackend, UnknownError } from '@livestore/common'
 import type { EventSequenceNumber } from '@livestore/common/schema'
 import { splitChunkBySize } from '@livestore/common/sync'
 import { omit } from '@livestore/utils'
@@ -19,6 +19,7 @@ import {
   SubscriptionRef,
   UrlParams,
 } from '@livestore/utils/effect'
+
 import { MAX_HTTP_REQUEST_BYTES, MAX_PUSH_EVENTS_PER_REQUEST } from '../../common/constants.ts'
 import { SyncHttpRpc } from '../../common/http-rpc-schema.ts'
 import { SearchParamsSchema } from '../../common/mod.ts'
@@ -134,7 +135,7 @@ export const makeHttpSync =
           payload,
           cursor: mapCursor(cursor),
         }).pipe(
-          options?.live
+          options?.live === true
             ? // Phase 2: Simulate `live` pull by polling for new events
               Stream.concatWithLastElement((lastElement) => {
                 const initialPhase2Cursor = lastElement.pipe(
@@ -166,14 +167,18 @@ export const makeHttpSync =
             : identity,
           Stream.tap((res) => backendIdHelper.lazySet(res.backendId)),
           Stream.map((res) => omit(res, ['backendId'])),
-          Stream.mapError((cause) => (cause._tag === 'InvalidPullError' ? cause : InvalidPullError.make({ cause }))),
+          Stream.mapError((cause) =>
+            cause._tag === 'UnknownError' || cause._tag === 'BackendIdMismatchError'
+              ? cause
+              : new UnknownError({ cause }),
+          ),
           Stream.withSpan('http-sync-client:pull'),
         )
 
       const pushSemaphore = yield* Effect.makeSemaphore(1)
 
-      const push: SyncBackend.SyncBackend<SyncMetadata>['push'] = (batch) =>
-        Effect.gen(function* () {
+      const push: SyncBackend.SyncBackend<SyncMetadata>['push'] = Effect.fn('http-sync-client:push')(
+        function* (batch) {
           if (batch.length === 0) {
             return
           }
@@ -190,20 +195,21 @@ export const makeHttpSync =
                 backendId,
               }),
             }),
-            Effect.mapError((cause) => new InvalidPushError({ cause: new UnknownError({ cause }) })),
+            Effect.mapError((cause) => new UnknownError({ cause })),
           )
 
           for (const chunk of Chunk.toReadonlyArray(batchChunks)) {
             const chunkArray = Chunk.toReadonlyArray(chunk)
             yield* rpcClient.SyncHttpRpc.Push({ storeId, payload, batch: chunkArray, backendId })
           }
-        }).pipe(
-          pushSemaphore.withPermits(1),
-          Effect.mapError((cause) =>
-            cause._tag === 'InvalidPushError' ? cause : new InvalidPushError({ cause: new UnknownError({ cause }) }),
-          ),
-          Effect.withSpan('http-sync-client:push'),
-        )
+        },
+        pushSemaphore.withPermits(1),
+        Effect.mapError((cause) =>
+          cause._tag === 'UnknownError' || cause._tag === 'ServerAheadError' || cause._tag === 'BackendIdMismatchError'
+            ? cause
+            : new UnknownError({ cause }),
+        ),
+      )
 
       return SyncBackend.of({
         connect,

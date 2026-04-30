@@ -5,6 +5,7 @@
 
 import { existsSync, mkdirSync, statSync, unlinkSync, writeFileSync } from 'node:fs'
 import * as path from 'node:path'
+
 import { exec, exportDb, loadSqlite3Wasm } from '../lib/sqlite-utils.ts'
 
 const FIXTURES_DIR = path.join(path.dirname(path.dirname(__filename || import.meta.url)), 'fixtures')

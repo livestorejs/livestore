@@ -1,11 +1,15 @@
-import type { LiveQueryDef } from '@livestore/livestore'
-import { useQuery } from '@livestore/react'
 import type { FC } from 'react'
 
-declare const state$: LiveQueryDef<number>
+import { queryDb } from '@livestore/livestore'
 
-export const MyComponent: FC = () => {
-  const value = useQuery(state$)
+import { tables } from '../framework-integrations/react/schema.ts'
+import { useAppStore } from '../framework-integrations/react/store.ts'
 
-  return <div>{value}</div>
+const todos$ = queryDb(tables.todos.orderBy('createdAt', 'desc'), { label: 'todos' })
+
+export const TodoList: FC = () => {
+  const store = useAppStore()
+  const todos = store.useQuery(todos$)
+
+  return <div>{todos.length} items</div>
 }

@@ -1,8 +1,12 @@
-import { SyncBackend } from '@livestore/common'
+import { expect } from 'vitest'
+
+import { BackendIdMismatchError, SyncBackend } from '@livestore/common'
 import { EventFactory } from '@livestore/common/testing'
 import type { LiveStoreEvent } from '@livestore/livestore'
 import { EventSequenceNumber, nanoid } from '@livestore/livestore'
 import { events } from '@livestore/livestore/internal/testing-utils'
+import { OtelLiveHttp } from '@livestore/utils-dev/node'
+import { Vitest } from '@livestore/utils-dev/node-vitest'
 import {
   Chunk,
   Duration,
@@ -19,9 +23,7 @@ import {
   Schema,
   Stream,
 } from '@livestore/utils/effect'
-import { OtelLiveHttp } from '@livestore/utils-dev/node'
-import { Vitest } from '@livestore/utils-dev/node-vitest'
-import { expect } from 'vitest'
+
 import { providerKeys, providerRegistry } from './providers/registry.ts'
 import { SyncProviderImpl, type SyncProviderOptions } from './types.ts'
 
@@ -312,7 +314,7 @@ Vitest.describe.each(providerLayers)('$name sync provider', { timeout: 60000 }, 
           expect(stats.totalEvents).toBe(scenario.eventCount)
           expect(stats.nonEmptyBatches).toBeGreaterThan(0)
 
-          if (scenario.variant === 'manySmall' && name.toLowerCase().includes('cloudflare')) {
+          if (scenario.variant === 'manySmall' && name.toLowerCase().includes('cloudflare') === true) {
             expect(stats.nonEmptyBatches).toBeGreaterThan(1)
           }
         }).pipe(
@@ -351,7 +353,7 @@ Vitest.describe.each(providerLayers)('$name sync provider', { timeout: 60000 }, 
           expect(stats.totalEvents).toBe(scenario.eventCount)
           expect(stats.nonEmptyBatches).toBeGreaterThan(0)
 
-          if (scenario.variant === 'manySmall' && name.toLowerCase().includes('cloudflare')) {
+          if (scenario.variant === 'manySmall' && name.toLowerCase().includes('cloudflare') === true) {
             expect(stats.nonEmptyBatches).toBeGreaterThan(1)
           }
         }).pipe(
@@ -621,8 +623,8 @@ Vitest.describe.each(providerLayers)('$name sync provider', { timeout: 60000 }, 
         // Verify first event after cursor has higher sequence number
         if (
           eventsFromMiddle.length > 0 &&
-          middleEvent.eventEncoded.seqNum &&
-          eventsFromMiddle[0]?.eventEncoded.seqNum
+          middleEvent.eventEncoded.seqNum !== undefined &&
+          eventsFromMiddle[0]?.eventEncoded.seqNum !== undefined
         ) {
           const firstAfterCursor = eventsFromMiddle[0]
           const firstSeqNum = firstAfterCursor.eventEncoded.seqNum
@@ -632,5 +634,42 @@ Vitest.describe.each(providerLayers)('$name sync provider', { timeout: 60000 }, 
         }
       }
     }).pipe(withTestCtx({ suffix: 'large-batch', timeout: Duration.minutes(2) })(test)),
+  )
+
+  /**
+   * Tests that BackendIdMismatchError is properly serialized and deserialized
+   * over the RPC boundary.
+   *
+   * This test creates the error, encodes it to JSON, and verifies all fields
+   * are preserved - which was broken before the fix for issue #981 where
+   * Schema.Defect lost the structured error fields during serialization.
+   *
+   * @see https://github.com/livestorejs/livestore/issues/981
+   */
+  Vitest.scopedLive('BackendIdMismatchError serializes correctly', (test) =>
+    Effect.gen(function* () {
+      const originalError = new BackendIdMismatchError({
+        expected: 'expected-backend-id-123',
+        received: 'received-backend-id-456',
+      })
+
+      // Verify the error structure before serialization
+      expect(originalError._tag).toBe('BackendIdMismatchError')
+      expect(originalError.expected).toBe('expected-backend-id-123')
+      expect(originalError.received).toBe('received-backend-id-456')
+
+      // Simulate what happens during RPC: encode to JSON and decode back
+      const str = yield* Schema.encode(Schema.parseJson())(originalError)
+      const encoded = (yield* Schema.decodeUnknown(Schema.parseJson())(str)) as {
+        _tag: string
+        expected: string
+        received: string
+      }
+
+      // The encoded form should preserve the structure (this was broken before the fix)
+      expect(encoded._tag).toBe('BackendIdMismatchError')
+      expect(encoded.expected).toBe('expected-backend-id-123')
+      expect(encoded.received).toBe('received-backend-id-456')
+    }).pipe(withTestCtx()(test)),
   )
 })

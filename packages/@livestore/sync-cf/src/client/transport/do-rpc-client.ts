@@ -1,4 +1,4 @@
-import { InvalidPullError, InvalidPushError, SyncBackend, UnknownError } from '@livestore/common'
+import { SyncBackend, UnknownError } from '@livestore/common'
 import { splitChunkBySize } from '@livestore/common/sync'
 import { type CfTypes, layerProtocolDurableObject } from '@livestore/common-cf'
 import { omit, shouldNeverHappen } from '@livestore/utils'
@@ -15,6 +15,7 @@ import {
   Stream,
   SubscriptionRef,
 } from '@livestore/utils/effect'
+
 import type { SyncBackendRpcInterface } from '../../cf-worker/shared.ts'
 import { MAX_DO_RPC_REQUEST_BYTES, MAX_PUSH_EVENTS_PER_REQUEST } from '../../common/constants.ts'
 import { SyncDoRpc } from '../../common/do-rpc-schema.ts'
@@ -73,9 +74,9 @@ export const makeDoRpcSync =
             })),
           ),
           storeId,
-          rpcContext: options?.live ? { callerContext: durableObjectContext } : undefined,
+          rpcContext: options?.live === true ? { callerContext: durableObjectContext } : undefined,
         }).pipe(
-          options?.live
+          options?.live === true
             ? Stream.concatWithLastElement((res) =>
                 Effect.gen(function* () {
                   if (res._tag === 'None')
@@ -93,12 +94,16 @@ export const makeDoRpcSync =
             : identity,
           Stream.tap((res) => backendIdHelper.lazySet(res.backendId)),
           Stream.map((res) => omit(res, ['backendId'])),
-          Stream.mapError((cause) => (cause._tag === 'InvalidPullError' ? cause : InvalidPullError.make({ cause }))),
+          Stream.mapError((cause) =>
+            cause._tag === 'UnknownError' || cause._tag === 'BackendIdMismatchError'
+              ? cause
+              : new UnknownError({ cause }),
+          ),
           Stream.withSpan('rpc-sync-client:pull'),
         )
 
-      const push: SyncBackend.SyncBackend<{ createdAt: string }>['push'] = (batch) =>
-        Effect.gen(function* () {
+      const push: SyncBackend.SyncBackend<{ createdAt: string }>['push'] = Effect.fn('rpc-sync-client:push')(
+        function* (batch) {
           if (batch.length === 0) {
             return
           }
@@ -114,19 +119,20 @@ export const makeDoRpcSync =
                 backendId,
               }),
             }),
-            Effect.mapError((cause) => new InvalidPushError({ cause: new UnknownError({ cause }) })),
+            Effect.mapError((cause) => new UnknownError({ cause })),
           )
 
           for (const chunk of Chunk.toReadonlyArray(batchChunks)) {
             const chunkArray = Chunk.toReadonlyArray(chunk)
             yield* rpcClient.SyncDoRpc.Push({ batch: chunkArray, storeId, backendId })
           }
-        }).pipe(
-          Effect.mapError((cause) =>
-            cause._tag === 'InvalidPushError' ? cause : InvalidPushError.make({ cause: new UnknownError({ cause }) }),
-          ),
-          Effect.withSpan('rpc-sync-client:push'),
-        )
+        },
+        Effect.mapError((cause) =>
+          cause._tag === 'UnknownError' || cause._tag === 'ServerAheadError' || cause._tag === 'BackendIdMismatchError'
+            ? cause
+            : new UnknownError({ cause }),
+        ),
+      )
 
       const ping: SyncBackend.SyncBackend<{ createdAt: string }>['ping'] = rpcClient.SyncDoRpc.Ping({
         storeId,
@@ -170,7 +176,7 @@ export const makeDoRpcSync =
 export const handleSyncUpdateRpc = (payload: unknown) =>
   Effect.gen(function* () {
     const decodedPayload = yield* Schema.decodeUnknown(ResponseChunkEncoded)(payload)
-    const decoded = yield* Schema.decodeUnknown(SyncMessage.PullResponse)(decodedPayload.values[0]!)
+    const decoded = yield* Schema.decodeUnknown(SyncMessage.PullResponse)(decodedPayload.values[0])
 
     const pullStreamMailbox = requestIdMailboxMap.get(decodedPayload.requestId)
 

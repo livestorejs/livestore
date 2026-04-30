@@ -1,7 +1,8 @@
 /// <reference types="astro/client" />
 
-import type { TwoslashSnippetPayload } from '@local/astro-twoslash-code'
 import type { AstroComponentFactory } from 'astro/runtime'
+
+import type { TwoslashSnippetPayload } from '@local/astro-twoslash-code'
 
 declare module '*.astro' {
   const Component: AstroComponentFactory

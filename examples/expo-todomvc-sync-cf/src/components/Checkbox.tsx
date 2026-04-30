@@ -1,17 +1,16 @@
 import { Entypo } from '@expo/vector-icons'
-import type React from 'react'
+import { useCallback } from 'react'
 import { StyleSheet, TouchableOpacity } from 'react-native'
 
 import { events } from '../livestore/schema.ts'
 import { useAppStore } from '../livestore/store.ts'
 
-export const Checkbox: React.FC<{
-  id: string
-  isCompleted: boolean
-}> = ({ id, isCompleted }) => {
+export const Checkbox = ({ id, isCompleted }: { id: string; isCompleted: boolean }) => {
   const store = useAppStore()
 
-  const handleCheckbox = () => store.commit(isCompleted ? events.todoUncompleted({ id }) : events.todoCompleted({ id }))
+  const handleCheckbox = useCallback(() => {
+    store.commit(isCompleted ? events.todoUncompleted({ id }) : events.todoCompleted({ id }))
+  }, [id, isCompleted, store])
 
   return (
     <TouchableOpacity onPress={handleCheckbox} style={isCompleted ? styles.checked : styles.unChecked}>

@@ -131,6 +131,7 @@ export {
   SortedMap,
   STM,
   SynchronizedRef,
+  TestClock,
   TestServices,
   TQueue,
   TRef,

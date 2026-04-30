@@ -20,6 +20,7 @@ DECLARE(I, ipp, P, P);
 DECLARE(I, ippp, P, P, P);
 DECLARE(void, vppp, P, P, P);
 DECLARE(I, ipppj, P, P, P, J);
+DECLARE(I, ippip, P, P, I, P);
 DECLARE(I, ipppi, P, P, P, I);
 DECLARE(I, ipppp, P, P, P, P);
 DECLARE(I, ipppip, P, P, P, I, P);

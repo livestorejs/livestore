@@ -124,7 +124,7 @@ const trimInfoForHasing = (obj: Table | Column | Index | ForeignKey | DbSchema):
 
       // NEW: Include schema hash for JSON columns
       // This ensures that changes to the JSON schema are detected
-      if (isJsonColumn(obj) && obj.schema) {
+      if (isJsonColumn(obj) === true && obj.schema !== undefined) {
         // Use Effect's Schema.hash for consistent hashing
         baseInfo.jsonSchemaHash = Schema.hash(obj.schema)
       }
@@ -155,7 +155,7 @@ const trimInfoForHasing = (obj: Table | Column | Index | ForeignKey | DbSchema):
       }
     }
     default: {
-      throw new Error(`Unreachable: ${obj}`)
+      throw new Error(`Unreachable: ${String(obj)}`)
     }
   }
 }

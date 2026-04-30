@@ -1,5 +1,6 @@
-import { Events, makeSchema, Schema, State } from '@livestore/livestore'
 import { Option } from 'effect'
+
+import { Events, makeSchema, Schema, State } from '@livestore/livestore'
 
 // Define event payloads
 export const events = {
@@ -108,9 +109,9 @@ const materializers = State.SQLite.materializers(events, {
   userCreated: ({ id, name, email }) => tables.users.insert({ id, name, email, isActive: true, createdAt: new Date() }),
   userUpdated: ({ id, name, email, isActive }) => {
     const updates: { name?: string; email?: string; isActive?: boolean } = {}
-    if (Option.isSome(name)) updates.name = name.value
-    if (Option.isSome(email)) updates.email = email.value
-    if (Option.isSome(isActive)) updates.isActive = isActive.value
+    if (Option.isSome(name) === true) updates.name = name.value
+    if (Option.isSome(email) === true) updates.email = email.value
+    if (Option.isSome(isActive) === true) updates.isActive = isActive.value
     return tables.users.update(updates).where({ id })
   },
   todoCreated: ({ id, text, completed }) => tables.todos.insert({ id, text, completed, createdAt: new Date() }),
@@ -119,9 +120,9 @@ const materializers = State.SQLite.materializers(events, {
     tables.products.insert({ id, name, description, price, createdAt: new Date() }),
   productUpdated: ({ id, name, description, price }) => {
     const updates: { name?: string; description?: string; price?: number } = {}
-    if (Option.isSome(name)) updates.name = name.value
-    if (Option.isSome(description)) updates.description = description.value
-    if (Option.isSome(price)) updates.price = price.value
+    if (Option.isSome(name) === true) updates.name = name.value
+    if (Option.isSome(description) === true) updates.description = description.value
+    if (Option.isSome(price) === true) updates.price = price.value
     return tables.products.update(updates).where({ id })
   },
   itemCreated: () => [], // Item events don't have a corresponding table

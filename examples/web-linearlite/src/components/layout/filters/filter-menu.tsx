@@ -1,29 +1,48 @@
 import { CheckIcon } from '@heroicons/react/16/solid'
-import type React from 'react'
+import React from 'react'
 import { Header, Menu, MenuItem, MenuSection, MenuTrigger, Popover, Separator } from 'react-aria-components'
+
 import { priorityOptions } from '../../../data/priority-options.ts'
 import { statusOptions } from '../../../data/status-options.ts'
 import { useFilterState } from '../../../livestore/queries.ts'
 import type { Priority } from '../../../types/priority.ts'
 import type { Status } from '../../../types/status.ts'
-import { Icon, type IconName } from '../../icons/index.tsx'
+import { Icon } from '../../icons/index.tsx'
 
 export const FilterMenu = ({ type, children }: { type?: 'status' | 'priority'; children?: React.ReactNode }) => {
   const [filterState, setFilterState] = useFilterState()
 
-  const toggleFilter = ({ type, value }: { type: 'status'; value: Status } | { type: 'priority'; value: Priority }) => {
-    let filters: (Status | Priority)[] | undefined = [...(filterState[type] ?? [])]
-    if (filters.includes(value)) filters.splice(filters.indexOf(value), 1)
-    else filters.push(value)
-    if (!filters.length) filters = undefined
-    setFilterState({ [type]: filters })
-  }
+  const toggleFilter = React.useCallback(
+    ({ type, value }: { type: 'status'; value: Status } | { type: 'priority'; value: Priority }) => {
+      let filters: Status[] | undefined = [...(filterState[type] ?? [])]
+      if (filters.includes(value)) filters.splice(filters.indexOf(value), 1)
+      else filters.push(value)
+      if (!filters.length) filters = undefined
+      setFilterState({ [type]: filters })
+    },
+    [filterState, setFilterState],
+  )
+
+  const handleAction = React.useCallback(
+    (key: React.Key) => {
+      if (typeof key !== 'string') return
+      const [filterType, rawValue] = key.split(':')
+      if (filterType === 'status') {
+        toggleFilter({ type: 'status', value: Number(rawValue) as Status })
+        return
+      }
+      if (filterType === 'priority') {
+        toggleFilter({ type: 'priority', value: Number(rawValue) as Priority })
+      }
+    },
+    [toggleFilter],
+  )
 
   return (
     <MenuTrigger>
       {children}
       <Popover className="w-48 bg-white dark:bg-neutral-800 rounded-lg shadow-md border border-neutral-200 dark:border-neutral-700 text-sm leading-none">
-        <Menu className="focus:outline-none" selectionMode="multiple">
+        <Menu className="focus:outline-none" selectionMode="multiple" onAction={handleAction}>
           {type !== 'priority' && (
             <MenuSection key="status" className="p-2">
               <Header className="p-2 text-2xs uppercase font-medium tracking-wide text-neutral-400">Status</Header>
@@ -31,8 +50,7 @@ export const FilterMenu = ({ type, children }: { type?: 'status' | 'priority'; c
                 const active = filterState.status?.includes(statusOption as Status)
                 return (
                   <MenuItem
-                    key={name}
-                    onAction={() => toggleFilter({ type: 'status', value: statusOption as Status })}
+                    key={`status:${statusOption}`}
                     className="group/item p-2 pl-9 rounded-md hover:bg-neutral-100 dark:hover:bg-neutral-700 focus:outline-none focus:bg-neutral-100 dark:focus:bg-neutral-700 cursor-pointer flex items-center gap-2"
                   >
                     <div
@@ -40,7 +58,7 @@ export const FilterMenu = ({ type, children }: { type?: 'status' | 'priority'; c
                     >
                       {active && <CheckIcon className="size-4 text-white" />}
                     </div>
-                    <Icon name={icon as IconName} className={`size-3.5 ${style}`} />
+                    <Icon name={icon} className={`size-3.5 ${style}`} />
                     <span>{name}</span>
                   </MenuItem>
                 )
@@ -55,8 +73,7 @@ export const FilterMenu = ({ type, children }: { type?: 'status' | 'priority'; c
                 const active = filterState.priority?.includes(priorityOption as Priority)
                 return (
                   <MenuItem
-                    key={name}
-                    onAction={() => toggleFilter({ type: 'priority', value: priorityOption as Priority })}
+                    key={`priority:${priorityOption}`}
                     className="group/item p-2 pl-9 rounded-md hover:bg-neutral-100 dark:hover:bg-neutral-700 focus:outline-none focus:bg-neutral-100 dark:focus:bg-neutral-700 cursor-pointer flex items-center gap-2"
                   >
                     <div
@@ -64,7 +81,7 @@ export const FilterMenu = ({ type, children }: { type?: 'status' | 'priority'; c
                     >
                       {active && <CheckIcon className="size-4 text-white" />}
                     </div>
-                    <Icon name={icon as IconName} className={`size-3.5 ${style}`} />
+                    <Icon name={icon} className={`size-3.5 ${style}`} />
                     <span>{name}</span>
                   </MenuItem>
                 )

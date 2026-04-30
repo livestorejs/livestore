@@ -1,5 +1,6 @@
 import type { CollectionEntry } from 'astro:content'
 import { getCollection } from 'astro:content'
+
 import { docsSidebar, type TSidebarItem } from '../data/sidebar.ts'
 
 /**
@@ -88,7 +89,7 @@ const getDocsForDirectory = (
   entries: ReadonlyArray<TLlmsEntry>,
   docs: ReadonlyArray<TLlmsDoc>,
 ): ReadonlyArray<TLlmsEntry> => {
-  const normalizedDirectory = directory.endsWith('/') ? directory.slice(0, -1) : directory
+  const normalizedDirectory = directory.endsWith('/') === true ? directory.slice(0, -1) : directory
   const prefix = `${normalizedDirectory}/`
 
   // Create a map from slug to original doc for order info
@@ -103,12 +104,12 @@ const getDocsForDirectory = (
       if (entry.slug === normalizedDirectory) return true
 
       // Match docs in this directory but not nested subdirectories
-      if (!entry.slug.startsWith(prefix)) return false
+      if (entry.slug.startsWith(prefix) === false) return false
       const remaining = entry.slug.slice(prefix.length)
       // Don't include nested items (they'll be handled by their own autogenerate)
       return !remaining.includes('/')
     })
-    .sort((a, b) => {
+    .toSorted((a, b) => {
       const docA = docBySlug.get(a.slug)
       const docB = docBySlug.get(b.slug)
       const orderA = docA?.data.sidebar?.order ?? 999
@@ -140,7 +141,7 @@ const renderSidebarItems = (items: ReadonlyArray<TSidebarItem>, ctx: TRenderCont
     switch (item._tag) {
       case 'link': {
         const entry = ctx.docsMap.get(item.slug)
-        if (entry) {
+        if (entry !== undefined) {
           lines.push(renderDocLink(entry))
         }
         break
@@ -216,7 +217,7 @@ ${docsSection}
 const LLMS_SHORT_PATTERN = /<LlmsShort[^>]*\/>/g
 
 export const replaceLlmsShortPlaceholders = ({ markdown, docs, site }: TReplaceOptions): string => {
-  if (!markdown.includes('<LlmsShort')) {
+  if (markdown.includes('<LlmsShort') === false) {
     return markdown
   }
 

@@ -1,5 +1,4 @@
 import process from 'node:process'
-
 import { envTruish } from '@livestore/utils'
 import { Context, Effect, Layer, Option, Schema, Stream } from '@livestore/utils/effect'
 import * as PW from '@playwright/test'
@@ -53,7 +52,7 @@ export const browserContext = ({
         PW.chromium.launchPersistentContext(persistentContextPath, {
           ...launchOptions,
           headless,
-          devtools: true,
+          args: [...(launchOptions?.args ?? []), '--auto-open-devtools-for-tabs'],
         }),
       )
     } else {
@@ -64,7 +63,7 @@ export const browserContext = ({
           ...launchOptions,
           headless: false, // Using `--headless` flag below instead
           args: [
-            headless ? `--headless=new` : '', // Headless mode https://playwright.dev/docs/chrome-extensions#headless-mode
+            headless === true ? `--headless=new` : '', // Headless mode https://playwright.dev/docs/chrome-extensions#headless-mode
             `--disable-extensions-except=${extensionPath}`,
             `--load-extension=${extensionPath}`,
           ],
@@ -126,18 +125,19 @@ const parsePlaywrightConsoleMessage = async (
 ): Promise<Option.Option<typeof ConsoleMessage.Type>> => {
   const msgType = message.type() as PlaywrightConsoleMessageType
   const msg = message.text()
-  const args_ = shouldEvaluateArgs
-    ? await Promise.all(
-        message.args().map(async (argHandle) => {
-          const isDisposable = await argHandle
-            .evaluate((arg) => arg instanceof MessagePort || arg instanceof Uint8Array || arg instanceof ArrayBuffer)
-            .catch((e) => `<Error in serialization: ${e.message}>`)
-          return isDisposable
-            ? '<Disposable>'
-            : await argHandle.jsonValue().catch((e) => `<Error in serialization: ${e.message}>`)
-        }),
-      )
-    : []
+  const args_ =
+    shouldEvaluateArgs === true
+      ? await Promise.all(
+          message.args().map(async (argHandle) => {
+            const isDisposable = await argHandle
+              .evaluate((arg) => arg instanceof MessagePort || arg instanceof Uint8Array || arg instanceof ArrayBuffer)
+              .catch((e) => `<Error in serialization: ${e.message}>`)
+            return isDisposable === true
+              ? '<Disposable>'
+              : await argHandle.jsonValue().catch((e) => `<Error in serialization: ${e.message}>`)
+          }),
+        )
+      : []
 
   // We don't want to repeat the message in the args
   const args = args_.join(' ') === msg ? [] : args_
@@ -200,13 +200,13 @@ export const pageConsole = ({
         const errorGroupRef = ref<{ errorMessages: (typeof ConsoleMessage.Type)[] } | undefined>(undefined)
         const onConsole = async (pwConsoleMessage: PW.ConsoleMessage) => {
           const parsed = await parsePlaywrightConsoleMessage(pwConsoleMessage, shouldEvaluateArgs)
-          if (Option.isSome(parsed)) {
+          if (Option.isSome(parsed) === true) {
             const message = parsed.value
 
             // TODO nested groups
             if (
               (message.type === 'group' || message.type === 'groupCollapsed') &&
-              message.message.includes('%cERROR%c')
+              message.message.includes('%cERROR%c') === true
             ) {
               errorGroupRef.current = { errorMessages: [message] }
             } else if (message.type === 'groupEnd' && errorGroupRef.current !== undefined) {
@@ -252,7 +252,7 @@ export const pageConsole = ({
     ),
   )
 
-export class SiteError extends Schema.TaggedError<SiteError>()('Playwright.SiteError', {
+export class SiteError extends Schema.TaggedError<SiteError>('~@livestore/effect-playwright/SiteError')('SiteError', {
   // TODO remove `label` again once error tracing works properly with Playwright
   label: Schema.String,
   messages: Schema.Union(Schema.Array(ConsoleMessage), Schema.Defect),

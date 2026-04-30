@@ -1,6 +1,8 @@
 import { LS_DEV, shouldNeverHappen } from '@livestore/utils'
 import { Chunk, Effect, Option, Schema } from '@livestore/utils/effect'
+
 import type { SqliteDb } from '../adapter-types.ts'
+import { migrateTable } from '../schema-management/migrations.ts'
 import * as EventSequenceNumber from '../schema/EventSequenceNumber/mod.ts'
 import * as LiveStoreEvent from '../schema/LiveStoreEvent/mod.ts'
 import {
@@ -10,7 +12,6 @@ import {
   SYNC_STATUS_TABLE,
 } from '../schema/state/sqlite/system-tables/eventlog-tables.ts'
 import { sessionChangesetMetaTable } from '../schema/state/sqlite/system-tables/state-tables.ts'
-import { migrateTable } from '../schema-management/migrations.ts'
 import { insertRow, updateRows } from '../sql-queries/sql-queries.ts'
 import type { PreparedBindValues } from '../util.ts'
 import { sql } from '../util.ts'
@@ -58,13 +59,14 @@ export const getEventsSince = ({
     sessionChangesetMetaTable.where('seqNumGlobal', '>=', since.global),
   )
 
+  // Create a Map for O(1) lookup instead of O(n) find
+  const sessionChangesetMap = new Map(
+    sessionChangesetRowsDecoded.map((row) => [`${row.seqNumGlobal}:${row.seqNumClient}`, row]),
+  )
+
   return pendingEvents
     .map((eventlogEvent) => {
-      const sessionChangeset = sessionChangesetRowsDecoded.find(
-        (readModelEvent) =>
-          readModelEvent.seqNumGlobal === eventlogEvent.seqNumGlobal &&
-          readModelEvent.seqNumClient === eventlogEvent.seqNumClient,
-      )
+      const sessionChangeset = sessionChangesetMap.get(`${eventlogEvent.seqNumGlobal}:${eventlogEvent.seqNumClient}`)
       return LiveStoreEvent.Client.EncodedWithMeta.make({
         name: eventlogEvent.name,
         args: eventlogEvent.argsJson,
@@ -82,7 +84,7 @@ export const getEventsSince = ({
         sessionId: eventlogEvent.sessionId,
         meta: {
           sessionChangeset:
-            sessionChangeset && sessionChangeset.changeset !== null
+            sessionChangeset !== undefined && sessionChangeset.changeset !== null
               ? {
                   _tag: 'sessionChangeset' as const,
                   data: sessionChangeset.changeset,
@@ -96,7 +98,7 @@ export const getEventsSince = ({
       })
     })
     .filter((_) => EventSequenceNumber.Client.compare(_.seqNum, since) > 0)
-    .sort((a, b) => EventSequenceNumber.Client.compare(a.seqNum, b.seqNum))
+    .toSorted((a, b) => EventSequenceNumber.Client.compare(a.seqNum, b.seqNum))
 }
 
 export const getEventsFromEventlog = ({
@@ -113,19 +115,19 @@ export const getEventsFromEventlog = ({
     const makeQuery = () => {
       let query = eventlogMetaTable.where('seqNumGlobal', '>', since.global)
 
-      if (options.until) {
+      if (options.until !== undefined) {
         query = query.where('seqNumGlobal', '<=', options.until.global)
       }
 
-      if (options.filter && options.filter.length > 0) {
+      if (options.filter !== undefined && options.filter.length > 0) {
         query = query.where({ name: { op: 'IN', value: options.filter } })
       }
 
-      if (options.clientIds && options.clientIds.length > 0) {
+      if (options.clientIds !== undefined && options.clientIds.length > 0) {
         query = query.where({ clientId: { op: 'IN', value: options.clientIds } })
       }
 
-      if (options.sessionIds && options.sessionIds.length > 0) {
+      if (options.sessionIds !== undefined && options.sessionIds.length > 0) {
         query = query.where({ sessionId: { op: 'IN', value: options.sessionIds } })
       }
 
@@ -185,7 +187,7 @@ export const getClientHeadFromDb = (dbEventlog: SqliteDb): EventSequenceNumber.C
     sql`select seqNumGlobal, seqNumClient, seqNumRebaseGeneration from ${EVENTLOG_META_TABLE} order by seqNumGlobal DESC, seqNumClient DESC limit 1`,
   )[0]
 
-  return res
+  return res !== undefined
     ? { global: res.seqNumGlobal, client: res.seqNumClient, rebaseGeneration: res.seqNumRebaseGeneration }
     : EventSequenceNumber.Client.ROOT
 }
@@ -215,7 +217,7 @@ export const insertIntoEventlog = (
 ) =>
   Effect.gen(function* () {
     // Check history consistency during LS_DEV
-    if (LS_DEV && eventEncoded.parentSeqNum.global !== EventSequenceNumber.Client.ROOT.global) {
+    if (LS_DEV === true && eventEncoded.parentSeqNum.global !== EventSequenceNumber.Client.ROOT.global) {
       const parentEventExists =
         dbEventlog.select<{ count: number }>(
           `SELECT COUNT(*) as count FROM ${EVENTLOG_META_TABLE} WHERE seqNumGlobal = ? AND seqNumClient = ?`,

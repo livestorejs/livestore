@@ -1,9 +1,11 @@
-import { StoreRegistryProvider } from '@livestore/react'
 import { createFileRoute } from '@tanstack/react-router'
 import { Suspense } from 'react'
 import { ErrorBoundary } from 'react-error-boundary'
-import { ErrorFallback } from '@/components/ErrorFallback.tsx'
-import { IssueView } from '@/components/IssueView.tsx'
+
+import { StoreRegistryProvider } from '@livestore/react'
+
+import { ErrorFallback } from '../components/ErrorFallback.tsx'
+import { IssueView } from '../components/IssueView.tsx'
 
 export const Route = createFileRoute('/recursive')({
   ssr: false,
@@ -17,7 +19,9 @@ export const Route = createFileRoute('/recursive')({
   component: RecursiveRoute,
 })
 
-function RecursiveRoute() {
+const loadingAllRecursiveIssueStoresFallback = <div className="loading">Loading all issue stores...</div>
+
+const RecursiveRoute = () => {
   const { storeRegistry } = Route.useRouteContext()
 
   return (
@@ -31,7 +35,7 @@ function RecursiveRoute() {
 
       <StoreRegistryProvider storeRegistry={storeRegistry}>
         <ErrorBoundary FallbackComponent={ErrorFallback}>
-          <Suspense fallback={<div className="loading">Loading all issue stores...</div>}>
+          <Suspense fallback={loadingAllRecursiveIssueStoresFallback}>
             <IssueView issueId="root-issue" />
           </Suspense>
         </ErrorBoundary>

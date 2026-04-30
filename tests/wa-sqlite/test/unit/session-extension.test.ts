@@ -1,5 +1,8 @@
-import type { SQLiteAPI } from '@livestore/wa-sqlite'
 import { afterEach, beforeEach, describe, expect, it } from 'vitest'
+
+import { type SQLiteAPI } from '@livestore/wa-sqlite'
+import * as SqliteConstants from '@livestore/wa-sqlite/src/sqlite-constants.js'
+
 import { makeSynchronousDatabase } from '../lib/lib.ts'
 import { loadSqlite3Wasm, makeInMemoryDb } from '../lib/sqlite-utils.ts'
 
@@ -112,7 +115,11 @@ describe('SQLite Session Extension', () => {
     const invertedChangeset = sqlite3.changeset_invert(new Uint8Array(changeset.changeset))
 
     // Apply the inverted changeset to revert changes
-    sqlite3.changeset_apply(db, invertedChangeset)
+    sqlite3.changeset_apply(db, invertedChangeset, null, (eConflict) =>
+      eConflict === SqliteConstants.SQLITE_CHANGESET_DATA || eConflict === SqliteConstants.SQLITE_CHANGESET_CONFLICT
+        ? SqliteConstants.SQLITE_CHANGESET_REPLACE
+        : SqliteConstants.SQLITE_CHANGESET_OMIT,
+    )
 
     // Verify changes were reverted
     const revertedUsers = syncDb.select<{ id: number; name: string; email: string; age: number }>(
@@ -201,6 +208,228 @@ describe('SQLite Session Extension', () => {
     const changeset2 = sqlite3.session_changeset(session)
 
     expect(changeset1.changeset).toEqual(changeset2.changeset)
+
+    sqlite3.session_delete(session)
+  })
+
+  it('should invoke xConflict callback on DATA conflict', () => {
+    const session = sqlite3.session_create(db, 'main')
+    sqlite3.session_attach(session, null)
+
+    // Record a changeset that updates Alice's age
+    sqlite3.session_enable(session, true)
+    syncDb.execute("UPDATE users SET age = 40 WHERE name = 'Alice'")
+    sqlite3.session_enable(session, false)
+
+    const changeset = sqlite3.session_changeset(session)
+    if (!changeset.changeset) throw new Error('Expected changeset')
+
+    // Revert Alice's age to something different from both original and changeset
+    syncDb.execute("UPDATE users SET age = 99 WHERE name = 'Alice'")
+
+    // Apply the changeset — Alice's current age (99) doesn't match the old value
+    // the changeset expects (30), so SQLite raises a DATA conflict
+    const conflicts: number[] = []
+    sqlite3.changeset_apply(db, new Uint8Array(changeset.changeset), null, (eConflict) => {
+      conflicts.push(eConflict)
+      return SqliteConstants.SQLITE_CHANGESET_REPLACE
+    })
+
+    expect(conflicts).toHaveLength(1)
+    expect(conflicts[0]).toBe(SqliteConstants.SQLITE_CHANGESET_DATA)
+
+    // REPLACE means the changeset's value wins
+    const users = syncDb.select<{ age: number }>("SELECT age FROM users WHERE name = 'Alice'")
+    expect(users[0]?.age).toBe(40)
+
+    sqlite3.session_delete(session)
+  })
+
+  it('should invoke xConflict callback on CONFLICT (insert with existing PK)', () => {
+    const session = sqlite3.session_create(db, 'main')
+    sqlite3.session_attach(session, null)
+
+    // Record a changeset that inserts a new user
+    sqlite3.session_enable(session, true)
+    syncDb.execute("INSERT INTO users (id, name, email, age) VALUES (100, 'Eve', 'eve@example.com', 25)")
+    sqlite3.session_enable(session, false)
+
+    const changeset = sqlite3.session_changeset(session)
+    if (!changeset.changeset) throw new Error('Expected changeset')
+
+    // Delete Eve, then insert a different user with the same PK
+    syncDb.execute('DELETE FROM users WHERE id = 100')
+    syncDb.execute("INSERT INTO users (id, name, email, age) VALUES (100, 'Mallory', 'mallory@example.com', 35)")
+
+    // Apply the changeset — PK 100 already exists with different data → CONFLICT
+    const conflicts: number[] = []
+    sqlite3.changeset_apply(db, new Uint8Array(changeset.changeset), null, (eConflict) => {
+      conflicts.push(eConflict)
+      return SqliteConstants.SQLITE_CHANGESET_REPLACE
+    })
+
+    expect(conflicts).toHaveLength(1)
+    expect(conflicts[0]).toBe(SqliteConstants.SQLITE_CHANGESET_CONFLICT)
+
+    // REPLACE means the changeset's insert overwrites Mallory with Eve
+    const users = syncDb.select<{ name: string }>("SELECT name FROM users WHERE id = 100")
+    expect(users[0]?.name).toBe('Eve')
+
+    sqlite3.session_delete(session)
+  })
+
+  it('should invoke xConflict callback on NOTFOUND', () => {
+    const session = sqlite3.session_create(db, 'main')
+    sqlite3.session_attach(session, null)
+
+    // Record a changeset that updates Alice
+    sqlite3.session_enable(session, true)
+    syncDb.execute("UPDATE users SET age = 50 WHERE name = 'Alice'")
+    sqlite3.session_enable(session, false)
+
+    const changeset = sqlite3.session_changeset(session)
+    if (!changeset.changeset) throw new Error('Expected changeset')
+    const inverted = sqlite3.changeset_invert(new Uint8Array(changeset.changeset))
+
+    // Delete Alice entirely
+    syncDb.execute("DELETE FROM users WHERE name = 'Alice'")
+
+    // Apply the inverted changeset — it tries to revert Alice's age,
+    // but the row no longer exists → NOTFOUND
+    const conflicts: number[] = []
+    sqlite3.changeset_apply(db, inverted, null, (eConflict) => {
+      conflicts.push(eConflict)
+      return SqliteConstants.SQLITE_CHANGESET_OMIT
+    })
+
+    expect(conflicts).toHaveLength(1)
+    expect(conflicts[0]).toBe(SqliteConstants.SQLITE_CHANGESET_NOTFOUND)
+
+    sqlite3.session_delete(session)
+  })
+
+  it('should support xConflict returning OMIT to skip conflicting changes', () => {
+    const session = sqlite3.session_create(db, 'main')
+    sqlite3.session_attach(session, null)
+
+    // Record a changeset that updates Alice's age
+    sqlite3.session_enable(session, true)
+    syncDb.execute("UPDATE users SET age = 40 WHERE name = 'Alice'")
+    sqlite3.session_enable(session, false)
+
+    const changeset = sqlite3.session_changeset(session)
+    if (!changeset.changeset) throw new Error('Expected changeset')
+
+    // Change Alice's age to something else to trigger DATA conflict
+    syncDb.execute("UPDATE users SET age = 99 WHERE name = 'Alice'")
+
+    // Apply with OMIT — skip the conflicting change
+    sqlite3.changeset_apply(db, new Uint8Array(changeset.changeset), null, () => {
+      return SqliteConstants.SQLITE_CHANGESET_OMIT
+    })
+
+    // OMIT means Alice keeps her current value
+    const users = syncDb.select<{ age: number }>("SELECT age FROM users WHERE name = 'Alice'")
+    expect(users[0]?.age).toBe(99)
+
+    sqlite3.session_delete(session)
+  })
+
+  it('should support xFilter to exclude tables from changeset application', () => {
+    // Create a second table
+    syncDb.execute(`
+      CREATE TABLE products (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        name TEXT,
+        price REAL
+      )
+    `)
+
+    const session = sqlite3.session_create(db, 'main')
+    sqlite3.session_attach(session, null)
+
+    // Record changes to both tables
+    sqlite3.session_enable(session, true)
+    syncDb.execute("INSERT INTO users (name, email, age) VALUES ('Filtered', 'filtered@example.com', 50)")
+    syncDb.execute("INSERT INTO products (name, price) VALUES ('Widget', 9.99)")
+    sqlite3.session_enable(session, false)
+
+    const changeset = sqlite3.session_changeset(session)
+    if (!changeset.changeset) throw new Error('Expected changeset')
+
+    // Delete both rows so we can re-apply the changeset
+    syncDb.execute("DELETE FROM users WHERE name = 'Filtered'")
+    syncDb.execute("DELETE FROM products WHERE name = 'Widget'")
+
+    // Apply with xFilter that excludes 'users' table
+    sqlite3.changeset_apply(
+      db,
+      new Uint8Array(changeset.changeset),
+      (zTab) => (zTab === 'users' ? 0 : 1),
+      () => SqliteConstants.SQLITE_CHANGESET_REPLACE,
+    )
+
+    // Users change was filtered out, products change was applied
+    const users = syncDb.select<{ name: string }>("SELECT name FROM users WHERE name = 'Filtered'")
+    expect(users).toHaveLength(0)
+
+    const products = syncDb.select<{ name: string }>("SELECT name FROM products WHERE name = 'Widget'")
+    expect(products).toHaveLength(1)
+
+    sqlite3.session_delete(session)
+  })
+
+  it('should return SQLITE_OK when changeset applies without conflicts', () => {
+    const session = sqlite3.session_create(db, 'main')
+    sqlite3.session_attach(session, null)
+
+    sqlite3.session_enable(session, true)
+    syncDb.execute("INSERT INTO users (name, email, age) VALUES ('NoConflict', 'nc@example.com', 20)")
+    sqlite3.session_enable(session, false)
+
+    const changeset = sqlite3.session_changeset(session)
+    if (!changeset.changeset) throw new Error('Expected changeset')
+
+    // Delete the row so the changeset can be cleanly re-applied
+    syncDb.execute("DELETE FROM users WHERE name = 'NoConflict'")
+
+    const result = sqlite3.changeset_apply(
+      db,
+      new Uint8Array(changeset.changeset),
+      null,
+      () => SqliteConstants.SQLITE_CHANGESET_OMIT,
+    )
+
+    expect(result).toBe(SqliteConstants.SQLITE_OK)
+
+    sqlite3.session_delete(session)
+  })
+
+  it('should throw SQLITE_ABORT when xConflict returns ABORT', () => {
+    const session = sqlite3.session_create(db, 'main')
+    sqlite3.session_attach(session, null)
+
+    sqlite3.session_enable(session, true)
+    syncDb.execute("UPDATE users SET age = 40 WHERE name = 'Alice'")
+    sqlite3.session_enable(session, false)
+
+    const changeset = sqlite3.session_changeset(session)
+    if (!changeset.changeset) throw new Error('Expected changeset')
+    const changesetData = new Uint8Array(changeset.changeset)
+
+    // Modify Alice to trigger a DATA conflict
+    syncDb.execute("UPDATE users SET age = 99 WHERE name = 'Alice'")
+
+    // ABORT tells SQLite to roll back and fail
+    expect(() => {
+      sqlite3.changeset_apply(db, changesetData, null, () => {
+        return SqliteConstants.SQLITE_CHANGESET_ABORT
+      })
+    }).toThrow()
+
+    // The changeset was rolled back, so Alice keeps her current value
+    const users = syncDb.select<{ age: number }>("SELECT age FROM users WHERE name = 'Alice'")
+    expect(users[0]?.age).toBe(99)
 
     sqlite3.session_delete(session)
   })

@@ -1,5 +1,6 @@
-import { livestoreDevtoolsPlugin } from '@livestore/devtools-vite'
 import { defineConfig } from 'vite'
+
+import { livestoreDevtoolsPlugin } from '@livestore/devtools-vite'
 
 const TEST_LIVESTORE_SCHEMA_PATH_JSON = process.env.TEST_LIVESTORE_SCHEMA_PATH_JSON
 
@@ -25,7 +26,7 @@ export default defineConfig({
     ],
   },
   plugins: [
-    TEST_LIVESTORE_SCHEMA_PATH_JSON
+    TEST_LIVESTORE_SCHEMA_PATH_JSON !== undefined
       ? livestoreDevtoolsPlugin({ schemaPath: JSON.parse(TEST_LIVESTORE_SCHEMA_PATH_JSON) })
       : undefined,
   ],

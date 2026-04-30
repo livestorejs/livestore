@@ -43,17 +43,17 @@ export const ExportFileSchema = Schema.Struct({
 
 export type ExportFile = typeof ExportFileSchema.Type
 
-export class ConnectionError extends Schema.TaggedError<ConnectionError>()('ConnectionError', {
+export class ConnectionError extends Schema.TaggedError<ConnectionError>('~@livestore/cli/ConnectionError')('ConnectionError', {
   cause: Schema.Defect,
   note: Schema.String,
 }) {}
 
-export class ExportError extends Schema.TaggedError<ExportError>()('ExportError', {
+export class ExportError extends Schema.TaggedError<ExportError>('~@livestore/cli/ExportError')('ExportError', {
   cause: Schema.Defect,
   note: Schema.String,
 }) {}
 
-export class ImportError extends Schema.TaggedError<ImportError>()('ImportError', {
+export class ImportError extends Schema.TaggedError<ImportError>('~@livestore/cli/ImportError')('ImportError', {
   cause: Schema.Defect,
   note: Schema.String,
 }) {}
@@ -81,7 +81,7 @@ export const makeSyncBackend = ({
   Effect.gen(function* () {
     const { syncBackendConstructor, syncPayload } = yield* loadModuleConfig({ configPath })
 
-    const syncBackend = yield* (syncBackendConstructor as SyncBackend.SyncBackendConstructor)({
+    const syncBackend = yield* syncBackendConstructor({
       storeId,
       clientId,
       /** syncPayload is validated against syncPayloadSchema by loadModuleConfig */
@@ -103,7 +103,7 @@ export const makeSyncBackend = ({
     yield* syncBackend.ping.pipe(
       Effect.timeout(CONNECTION_TIMEOUT_MS),
       Effect.catchAll((cause) => {
-        if (Cause.isTimeoutException(cause)) {
+        if (Cause.isTimeoutException(cause) === true) {
           return Effect.fail(
             new ConnectionError({
               cause,
@@ -123,8 +123,8 @@ export const makeSyncBackend = ({
     return syncBackend
   })
 
-const releaseSyncBackend = (syncBackend: SyncBackend.SyncBackend): Effect.Effect<void, never> => {
-  const maybeDisconnect = (syncBackend as { disconnect?: Effect.Effect<void, never> }).disconnect
+const releaseSyncBackend = (syncBackend: SyncBackend.SyncBackend): Effect.Effect<void> => {
+  const maybeDisconnect = (syncBackend as { disconnect?: Effect.Effect<void> }).disconnect
   const releaseEffect = maybeDisconnect ?? SubscriptionRef.set(syncBackend.isConnected, false)
   return releaseEffect.pipe(Effect.orElse(() => Effect.void))
 }
@@ -168,7 +168,7 @@ export const pullEventsFromSyncBackend = ({
             (cause) =>
               new ExportError({
                 cause,
-                note: `Failed to pull events from sync backend: ${cause}`,
+                note: `Failed to pull events from sync backend: ${String(cause)}`,
               }),
           ),
         )
@@ -228,8 +228,8 @@ export const validateExportData = ({
       Effect.mapError(
         (cause) =>
           new ImportError({
-            cause: new Error(`Invalid export file format: ${cause}`),
-            note: `Invalid export file format: ${cause}`,
+            cause: new Error(`Invalid export file format: ${String(cause)}`),
+            note: `Invalid export file format: ${String(cause)}`,
           }),
       ),
     )
@@ -262,7 +262,7 @@ export const pushEventsToSyncBackend = ({
   data: unknown
   force: boolean
   dryRun: boolean
-  onProgress?: (pushed: number, total: number) => Effect.Effect<void, never>
+  onProgress?: (pushed: number, total: number) => Effect.Effect<void>
 }): Effect.Effect<
   ImportResult,
   ImportError | UnknownError | ConnectionError,
@@ -276,20 +276,20 @@ export const pushEventsToSyncBackend = ({
           Effect.mapError(
             (cause) =>
               new ImportError({
-                cause: new Error(`Invalid export file format: ${cause}`),
-                note: `Invalid export file format: ${cause}`,
+                cause: new Error(`Invalid export file format: ${String(cause)}`),
+                note: `Invalid export file format: ${String(cause)}`,
               }),
           ),
         )
 
-        if (exportData.storeId !== storeId && !force) {
+        if (exportData.storeId !== storeId && force === false) {
           return yield* new ImportError({
             cause: new Error(`Store ID mismatch: file has '${exportData.storeId}', expected '${storeId}'`),
             note: `The export file was created for a different store. Use force option to import anyway.`,
           })
         }
 
-        if (dryRun) {
+        if (dryRun === true) {
           return {
             storeId,
             eventCount: exportData.events.length,
@@ -307,12 +307,12 @@ export const pushEventsToSyncBackend = ({
             (cause) =>
               new ImportError({
                 cause,
-                note: `Failed to check existing events: ${cause}`,
+                note: `Failed to check existing events: ${String(cause)}`,
               }),
           ),
         )
 
-        if (Option.isSome(existingBatchOption)) {
+        if (Option.isSome(existingBatchOption) === true) {
           const existingBatch = existingBatchOption.value
           const estimatedCount =
             existingBatch.pageInfo._tag === 'MoreKnown'
@@ -338,13 +338,13 @@ export const pushEventsToSyncBackend = ({
               (cause) =>
                 new ImportError({
                   cause,
-                  note: `Failed to push events at position ${i}: ${cause}`,
+                  note: `Failed to push events at position ${i}: ${String(cause)}`,
                 }),
             ),
           )
 
           pushed += batch.length
-          if (onProgress) {
+          if (onProgress !== undefined) {
             yield* onProgress(pushed, total)
           }
         }

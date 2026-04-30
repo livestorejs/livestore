@@ -1,6 +1,7 @@
 import path from 'node:path'
-import { Effect, FileSystem, Schema } from '@livestore/utils/effect'
+
 import { cmd, LivestoreWorkspace } from '@livestore/utils-dev/node'
+import { Effect, FileSystem, Schema } from '@livestore/utils/effect'
 
 /**
  * Given the LiveStore monorepo is sometimes embedded in another git repo as a submodule,
@@ -50,7 +51,7 @@ export const appendGithubSummaryMarkdown = ({ markdown, context }: { markdown: s
   Effect.gen(function* () {
     const summaryPath = process.env.GITHUB_STEP_SUMMARY
 
-    if (!summaryPath || summaryPath.trim() === '') {
+    if (summaryPath == null || summaryPath.trim() === '') {
       yield* Effect.logDebug(`GITHUB_STEP_SUMMARY not set; skipping ${context} summary emission`)
       return
     }

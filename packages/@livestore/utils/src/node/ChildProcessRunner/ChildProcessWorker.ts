@@ -1,4 +1,5 @@
 import type * as ChildProcess from 'node:child_process'
+
 import * as Worker from '@effect/platform/Worker'
 import { WorkerError } from '@effect/platform/WorkerError'
 import * as Deferred from 'effect/Deferred'
@@ -14,7 +15,7 @@ const childProcesses = new Set<ChildProcess.ChildProcess>()
 const forceCleanupChildren = (signal: NodeJS.Signals = 'SIGKILL') => {
   for (const child of childProcesses) {
     try {
-      if (!child.killed) {
+      if (child.killed === false) {
         child.kill(signal)
       }
     } catch {
@@ -28,7 +29,7 @@ const forceCleanupChildren = (signal: NodeJS.Signals = 'SIGKILL') => {
 let signalHandlersInstalled = false
 
 const installSignalHandlers = () => {
-  if (signalHandlersInstalled) return
+  if (signalHandlersInstalled === true) return
   signalHandlersInstalled = true
 
   // Use 'beforeExit' instead of signal handlers since tests may interfere with signals
@@ -95,14 +96,14 @@ const platformWorkerImpl = Worker.makePlatform<ChildProcess.ChildProcess>()({
             Effect.catchAllCause(() =>
               Effect.sync(() => {
                 // Enhanced cleanup with escalating signals
-                if (!childProcess.killed) {
+                if (childProcess.killed === false) {
                   try {
                     // First try SIGTERM
                     childProcess.kill('SIGTERM')
 
                     // If still running after a short delay, use SIGKILL
                     setTimeout(() => {
-                      if (!childProcess.killed) {
+                      if (childProcess.killed === false) {
                         childProcess.kill('SIGKILL')
                       }
                     }, 1000)

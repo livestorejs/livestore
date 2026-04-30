@@ -1,6 +1,7 @@
-import { InvalidPullError, InvalidPushError } from '@livestore/common'
+import { UnknownError } from '@livestore/common'
 import { WsContext } from '@livestore/common-cf'
 import { Effect, identity, Layer, RpcServer, Schema, Stream } from '@livestore/utils/effect'
+
 import { SyncWsRpc } from '../../../common/ws-rpc-schema.ts'
 import { headersRecordToMap, WebSocketAttachmentSchema } from '../../shared.ts'
 import { DoCtx, type DoCtxInput } from '../layer.ts'
@@ -14,9 +15,13 @@ export const makeRpcServer = ({ doSelf, doOptions }: Omit<DoCtxInput, 'from'>) =
         const headers = yield* getForwardedHeaders
         return makeEndingPullStream({ req, payload: req.payload, headers }).pipe(
           // Needed to keep the stream alive on the client side for phase 2 (i.e. not send the `Exit` stream RPC message)
-          req.live ? Stream.concat(Stream.never) : identity,
+          req.live === true ? Stream.concat(Stream.never) : identity,
           Stream.provideLayer(DoCtx.Default({ doSelf, doOptions, from: { storeId: req.storeId } })),
-          Stream.mapError((cause) => (cause._tag === 'InvalidPullError' ? cause : InvalidPullError.make({ cause }))),
+          Stream.mapError((cause) =>
+            cause._tag === 'UnknownError' || cause._tag === 'BackendIdMismatchError'
+              ? cause
+              : new UnknownError({ cause }),
+          ),
         )
       }).pipe(Stream.unwrap),
     'SyncWsRpc.Push': (req) =>
@@ -29,7 +34,11 @@ export const makeRpcServer = ({ doSelf, doOptions }: Omit<DoCtxInput, 'from'>) =
         return yield* push(req)
       }).pipe(
         Effect.provide(DoCtx.Default({ doSelf, doOptions, from: { storeId: req.storeId } })),
-        Effect.mapError((cause) => (cause._tag === 'InvalidPushError' ? cause : InvalidPushError.make({ cause }))),
+        Effect.mapError((cause) =>
+          cause._tag === 'UnknownError' || cause._tag === 'ServerAheadError' || cause._tag === 'BackendIdMismatchError'
+            ? cause
+            : new UnknownError({ cause }),
+        ),
         Effect.tapCauseLogPretty,
       ),
   })

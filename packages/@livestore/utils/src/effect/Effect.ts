@@ -6,9 +6,6 @@ import {
   Duration,
   Effect,
   Fiber,
-  FiberRef,
-  HashSet,
-  Logger,
   pipe,
   Scope,
   type Stream,
@@ -18,10 +15,11 @@ import { log } from 'effect/Console'
 import { dual, type LazyArg } from 'effect/Function'
 import type { Predicate, Refinement } from 'effect/Predicate'
 
-import { isPromise } from '../mod.ts'
+import { isDevEnv, isPromise, objectToString } from '../mod.ts'
 import { UnknownError } from './Error.ts'
 
 export * from 'effect/Effect'
+export { spanEvent } from './spanEvent.ts'
 
 // export const log = <A>(message: A, ...rest: any[]): Effect.Effect<void> =>
 //   Effect.sync(() => {
@@ -57,16 +55,16 @@ export type SyncOrPromiseOrEffect<TResult, TError = never, TContext = never> =
 
 export const tryAll = <Res>(
   fn: () => Res,
-): Res extends Effect.Effect<infer A, infer E, never>
-  ? Effect.Effect<A, E | UnknownException, never>
+): Res extends Effect.Effect<infer A, infer E>
+  ? Effect.Effect<A, E | UnknownException>
   : Res extends Promise<infer A>
-    ? Effect.Effect<A, UnknownException, never>
-    : Effect.Effect<Res, UnknownException, never> =>
+    ? Effect.Effect<A, UnknownException>
+    : Effect.Effect<Res, UnknownException> =>
   Effect.try(() => fn()).pipe(
     Effect.andThen((fnRes) =>
-      Effect.isEffect(fnRes)
+      Effect.isEffect(fnRes) === true
         ? (fnRes as any as Effect.Effect<any>)
-        : isPromise(fnRes)
+        : isPromise(fnRes) === true
           ? Effect.promise(() => fnRes)
           : Effect.succeed(fnRes),
     ),
@@ -89,7 +87,7 @@ export const logBefore =
 export const tapCauseLogPretty = <R, E, A>(eff: Effect.Effect<A, E, R>): Effect.Effect<A, E, R> =>
   Effect.tapErrorCause(eff, (cause) =>
     Effect.gen(function* () {
-      if (Cause.isInterruptedOnly(cause)) {
+      if (Cause.isInterruptedOnly(cause) === true) {
         // console.log('interrupted', Cause.pretty(err), err)
         return
       }
@@ -106,6 +104,47 @@ export const tapCauseLogPretty = <R, E, A>(eff: Effect.Effect<A, E, R>): Effect.
       )
     }),
   )
+
+/**
+ * Creates a defect, pausing at a breakpoint in development.
+ *
+ * @param msg - The error message to include in the defect.
+ * @param args - Arbitrary arguments available for inspection during debugging.
+ *
+ * @see {@link shouldNeverHappen} for the non-Effect equivalent that throws synchronously.
+ * @see {@link orDieDebugger}
+ */
+export const dieDebugger = (msg: string, ...args: ReadonlyArray<unknown>): Effect.Effect<never> =>
+  Effect.suspend(() => {
+    if (isDevEnv() === true) {
+      // oxlint-disable-next-line eslint(no-debugger) -- intentional breakpoint during development
+      debugger
+      void args // Keeps the variable in scope so it's inspectable when the debugger pauses
+    }
+    return Effect.dieMessage(msg)
+  })
+
+/**
+ * Converts a failure into a defect, pausing at a breakpoint in development.
+ *
+ * @param self - The effect on which to apply the operation.
+ *
+ * @see {@link Effect.orDie}
+ * @see {@link dieDebugger}
+ */
+export const orDieDebugger = <A, E, R>(self: Effect.Effect<A, E, R>): Effect.Effect<A, never, R> =>
+  Effect.matchEffect(self, {
+    onFailure: (error) =>
+      // Keep the debugger hook so that `debugger` runs only when the wrapped effect actually fails, not while building the wrapper.
+      Effect.dieSync(() => {
+        if (isDevEnv() === true) {
+          // oxlint-disable-next-line eslint(no-debugger) -- intentional breakpoint for impossible states during development
+          debugger
+        }
+        return error
+      }),
+    onSuccess: Effect.succeed,
+  })
 
 export const ignoreIf: {
   <E, EB extends E>(
@@ -124,11 +163,11 @@ export const ignoreIf: {
 export const eventListener = <TEvent = unknown>(
   target: Stream.EventListener<TEvent>,
   type: string,
-  handler: (event: TEvent) => Effect.Effect<void, never, never>,
+  handler: (event: TEvent) => Effect.Effect<void>,
   options?: { once?: boolean },
 ) =>
   Effect.gen(function* () {
-    const runtime = yield* Effect.runtime<never>()
+    const runtime = yield* Effect.runtime()
 
     const handlerFn = (event: TEvent) => handler(event).pipe(Effect.provide(runtime), Effect.runFork)
 
@@ -137,16 +176,11 @@ export const eventListener = <TEvent = unknown>(
     yield* Effect.addFinalizer(() => Effect.sync(() => target.removeEventListener(type, handlerFn)))
   })
 
-export const spanEvent = (message: any, attributes?: Record<string, any>) =>
-  Effect.locallyWith(Effect.log(message).pipe(Effect.annotateLogs(attributes ?? {})), FiberRef.currentLoggers, () =>
-    HashSet.make(Logger.tracerLogger),
-  )
-
 export const logWarnIfTakesLongerThan =
   ({ label, duration }: { label: string; duration: Duration.DurationInput }) =>
   <R, E, A>(eff: Effect.Effect<A, E, R>): Effect.Effect<A, E, R> =>
     Effect.gen(function* () {
-      const runtime = yield* Effect.runtime<never>()
+      const runtime = yield* Effect.runtime()
 
       let tookLongerThanTimer = false
 
@@ -154,7 +188,7 @@ export const logWarnIfTakesLongerThan =
         Effect.tap(() => {
           tookLongerThanTimer = true
           // TODO include span info
-          return Effect.logWarning(`${label}: Took longer than ${duration}ms`)
+          return Effect.logWarning(`${label}: Took longer than ${objectToString(duration)}ms`)
         }),
         Effect.provide(runtime),
         Effect.runFork,
@@ -169,13 +203,14 @@ export const logWarnIfTakesLongerThan =
 
             yield* Fiber.interrupt(timeoutFiber)
 
-            if (tookLongerThanTimer) {
+            if (tookLongerThanTimer === true) {
               yield* Effect.logWarning(`${label}: Interrupted after ${end - start}ms`)
             }
           }),
         ),
       )
 
+      // eslint-disable-next-line overeng/explicit-boolean-compare -- mutated in forked fiber; TS can't see the mutation
       if (tookLongerThanTimer) {
         const end = Date.now()
         yield* Effect.logWarning(`${label}: Actual duration: ${end - start}ms`)
@@ -208,19 +243,61 @@ export const debugLogEnv = (msg?: string): Effect.Effect<Context.Context<never>>
     Effect.tap((env) => log(msg ?? 'debugLogEnv', env)),
   )
 
-export const timeoutDie =
-  <E1>(options: { onTimeout: LazyArg<E1>; duration: Duration.DurationInput }) =>
-  <R, E, A>(self: Effect.Effect<A, E, R>): Effect.Effect<A, E, R> =>
-    Effect.orDie(Effect.timeoutFail(options)(self))
+/**
+ * Enforces a time limit on an effect, triggering a defect on timeout.
+ *
+ * @remarks
+ *
+ * This function allows you to enforce a time limit on the execution of an
+ * effect. If the effect does not complete within the given duration, it dies
+ * with a {@link Cause.TimeoutException} as an unchecked defect. Unlike
+ * {@link Effect.timeout}, which adds `TimeoutException` to the error channel,
+ * this function keeps the error channel unchanged by treating the timeout as
+ * a defect.
+ *
+ * The returned effect will either:
+ * - Succeed with the original effect's result if it completes within the
+ *   specified duration.
+ * - Die with a {@link Cause.TimeoutException} defect if the time limit is exceeded.
+ *
+ * @see {@link timeoutOrDieMessage} for a version with a custom message.
+ * @see {@link Effect.timeout} for a version that raises a `TimeoutException` as a typed error.
+ * @see {@link Effect.timeoutFailCause} for a version that raises a custom defect.
+ */
+export const timeoutOrDie = (duration: Duration.DurationInput) =>
+  <A, E, R>(self: Effect.Effect<A, E, R>): Effect.Effect<A, E, R> =>
+    Effect.timeoutFailCause(self, {
+      duration,
+      onTimeout: () => Cause.die(new Cause.TimeoutException())
+    })
 
-export const timeoutDieMsg =
-  (options: { error: string; duration: Duration.DurationInput }) =>
-  <R, E, A>(self: Effect.Effect<A, E, R>): Effect.Effect<A, E, R> =>
-    Effect.orDie(
-      Effect.timeoutFail({ onTimeout: () => new UnknownError({ cause: options.error }), duration: options.duration })(
-        self,
-      ),
-    )
+/**
+ * Enforces a time limit on an effect, triggering a defect with a custom
+ * message on timeout.
+ *
+ * @remarks
+ *
+ * This function behaves like {@link timeoutOrDie}, but allows you to provide
+ * a custom message for the {@link Cause.TimeoutException} defect. This is useful
+ * for adding context about which operation timed out, making it easier to
+ * diagnose issues in logs or error reports.
+ *
+ * The returned effect will either:
+ * - Succeed with the original effect's result if it completes within the
+ *   specified duration.
+ * - Die with a {@link Cause.TimeoutException} defect containing the provided
+ *   message if the time limit is exceeded.
+ *
+ * @see {@link timeoutOrDie} for a version without a custom message.
+ * @see {@link Effect.timeout} for a version that raises a `TimeoutException` as a typed error.
+ * @see {@link Effect.timeoutFailCause} for a version that raises a custom defect.
+ */
+export const timeoutOrDieMessage = (duration: Duration.DurationInput, message: string) =>
+  <A, E, R>(self: Effect.Effect<A, E, R>): Effect.Effect<A, E, R> =>
+    Effect.timeoutFailCause(self, {
+      duration,
+      onTimeout: () => Cause.die(new Cause.TimeoutException(message))
+    })
 
 export const toForkedDeferred = <R, E, A>(
   eff: Effect.Effect<A, E, R>,
@@ -274,7 +351,12 @@ const getSpanTrace = () => {
 
 const logSpanTrace = () => console.log(getSpanTrace())
 
-// @ts-expect-error TODO fix types
+declare global {
+  /** Debug helper: returns the current Effect span trace */
+  var getSpanTrace: () => string
+  /** Debug helper: logs the current Effect span trace */
+  var logSpanTrace: () => void
+}
+
 globalThis.getSpanTrace = getSpanTrace
-// @ts-expect-error TODO fix types
 globalThis.logSpanTrace = logSpanTrace

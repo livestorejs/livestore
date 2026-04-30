@@ -10,7 +10,7 @@ export const isDevEnv = () => {
   }
 
   // @ts-expect-error Only exists in Expo / RN
-  if (globalThis?.__DEV__) {
+  if (globalThis?.__DEV__ === true) {
     return true
   }
 
@@ -46,10 +46,18 @@ export const tryAsFunctionAndNew = <TArg, TResult>(
 export const envTruish = (env: string | undefined) =>
   env !== undefined && env.toLowerCase() !== 'false' && env.toLowerCase() !== '0'
 
-export const shouldNeverHappen = (msg?: string, ...args: any[]): never => {
+/**
+ * Logs and throws for impossible states, pausing at a breakpoint in development.
+ *
+ * @param msg - The error message to log and pass to the error.
+ * @param args - Arbitrary arguments to include in the log.
+ *
+ * @see {@link dieDebugger} for the Effect equivalent.
+ */
+export const shouldNeverHappen = (msg?: string, ...args: ReadonlyArray<unknown>): never => {
   console.error(msg, ...args)
-  if (isDevEnv()) {
-    // biome-ignore lint/suspicious/noDebugger: debugging
+  if (isDevEnv() === true) {
+    // oxlint-disable-next-line eslint(no-debugger) -- intentional breakpoint during development
     debugger
   }
 

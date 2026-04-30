@@ -8,8 +8,8 @@ import type {
   SqliteDbSession,
 } from '@livestore/common'
 import { SqliteDbHelper, SqliteError } from '@livestore/common'
-import { EventSequenceNumber } from '@livestore/common/schema'
 import type { CfTypes } from '@livestore/common-cf'
+import { EventSequenceNumber } from '@livestore/common/schema'
 import { Effect } from '@livestore/utils/effect'
 
 // Simplified prepared statement implementation using only public API
@@ -24,7 +24,10 @@ class CloudflarePreparedStatement implements PreparedStatement {
 
   execute = (bindValues?: PreparedBindValues, options?: { onRowsChanged?: (count: number) => void }) => {
     try {
-      const cursor = this.sqlStorage.exec(this.sql, ...(bindValues ? Object.values(bindValues) : []))
+      if (isTransactionControlStatement(this.sql) === true) return
+
+
+      const cursor = this.sqlStorage.exec(this.sql, ...(bindValues !== undefined ? Object.values(bindValues) : []))
 
       // Count affected rows by iterating through cursor
       let changedCount = 0
@@ -32,7 +35,7 @@ class CloudflarePreparedStatement implements PreparedStatement {
         changedCount++
       }
 
-      if (options?.onRowsChanged) {
+      if (options?.onRowsChanged !== undefined) {
         options.onRowsChanged(changedCount)
       }
     } catch (e) {
@@ -48,7 +51,7 @@ class CloudflarePreparedStatement implements PreparedStatement {
     try {
       const cursor = this.sqlStorage.exec<Record<string, CfTypes.SqlStorageValue>>(
         this.sql,
-        ...(bindValues ? Object.values(bindValues) : []),
+        ...(bindValues !== undefined ? Object.values(bindValues) : []),
       )
       const results: T[] = []
 
@@ -97,14 +100,12 @@ export type MakeCloudflareSqliteDb = MakeSqliteDb<Metadata, CloudflareDatabaseIn
 
 export const makeSqliteDb: MakeCloudflareSqliteDb = (input: CloudflareDatabaseInput) =>
   Effect.gen(function* () {
-    // console.log('makeSqliteDb', input)
     if (input._tag === 'in-memory') {
       return makeSqliteDb_<Metadata>({
         sqlStorage: input.db,
         metadata: {
           _tag: 'file' as const,
           dbPointer: 0,
-          // persistenceInfo: { fileName: ':memory:' },
           persistenceInfo: { fileName: 'cf' },
           input,
           configureDb: input.configureDb,
@@ -118,7 +119,6 @@ export const makeSqliteDb: MakeCloudflareSqliteDb = (input: CloudflareDatabaseIn
         metadata: {
           _tag: 'file' as const,
           dbPointer: 0,
-          // persistenceInfo: { fileName: `${input.directory}/${input.databaseName}` },
           persistenceInfo: { fileName: 'cf' },
           input,
           configureDb: input.configureDb,
@@ -130,7 +130,6 @@ export const makeSqliteDb: MakeCloudflareSqliteDb = (input: CloudflareDatabaseIn
 export const makeSqliteDb_ = <
   TMetadata extends {
     persistenceInfo: PersistenceInfo
-    // deleteDb: () => void
     configureDb: (db: SqliteDb<TMetadata>) => void
   },
 >({
@@ -188,14 +187,13 @@ export const makeSqliteDb_ = <
     destroy: () => {
       sqliteDb.close()
 
-      // metadata.deleteDb()
       throw new SqliteError({
         code: -1,
         cause: 'Database destroy not supported with public SqlStorage API',
       })
     },
     close: () => {
-      if (isClosed) {
+      if (isClosed === true) {
         return
       }
 
@@ -254,4 +252,41 @@ export const makeSqliteDb_ = <
   metadata.configureDb(sqliteDb)
 
   return sqliteDb
+}
+
+/**
+ * CF DO SQLite rejects SQL-level transaction control and requires `storage.transactionSync()` instead.
+ * The current adapter only detects and suppresses those SQL statements. It does not yet translate the
+ * caller's transaction intent into a shared Durable Object storage transaction.
+ *
+ * ## Consistency implications
+ *
+ * `LeaderSyncProcessor.materializeEventsBatch()` wraps both `dbState` and `dbEventlog` in
+ * `BEGIN`/`COMMIT` to keep them consistent. Because this adapter drops those statements,
+ * eventlog INSERTs are auto-committed individually while `dbState` (VFS-backed) still has
+ * real transaction boundaries. If a batch partially fails, earlier eventlog rows survive
+ * while `dbState` rolls back.
+ *
+ * This is safe because:
+ * - The eventlog is append-only and idempotent — replaying already-inserted events is a no-op.
+ * - State is always rebuildable from the eventlog on cold start (`recreateDb`).
+ * - A Durable Object is single-threaded, so no concurrent reader can observe the
+ *   intermediate inconsistency.
+ *
+ * Uses prefix matching to cover all SQLite variants:
+ * - `BEGIN [DEFERRED | IMMEDIATE | EXCLUSIVE] [TRANSACTION]`
+ * - `COMMIT [TRANSACTION]` / `END [TRANSACTION]`
+ * - `ROLLBACK [TRANSACTION] [TO [SAVEPOINT] name]`
+ * - `SAVEPOINT name` / `RELEASE [SAVEPOINT] name`
+ */
+const isTransactionControlStatement = (sql: string): boolean => {
+  const upper = sql.trim().toUpperCase()
+  return (
+    upper.startsWith('BEGIN') === true ||
+    upper.startsWith('COMMIT') === true ||
+    upper.startsWith('END') === true ||
+    upper.startsWith('ROLLBACK') === true ||
+    upper.startsWith('SAVEPOINT') === true ||
+    upper.startsWith('RELEASE') === true
+  )
 }

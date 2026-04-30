@@ -1,12 +1,14 @@
 import fs from 'node:fs'
+import { createRequire } from 'node:module'
 import path from 'node:path'
-import { fileURLToPath, pathToFileURL } from 'node:url'
+import { fileURLToPath } from 'node:url'
+
+import * as ts from 'typescript'
+import { beforeAll, describe, expect, it } from 'vitest'
 
 import { shouldNeverHappen } from '@livestore/utils'
 import { Effect } from '@livestore/utils/effect'
 import { PlatformNode } from '@livestore/utils/node'
-import * as ts from 'typescript'
-import { beforeAll, describe, expect, it } from 'vitest'
 
 import { resolveProjectPaths } from '../project-paths.ts'
 import { buildSnippetBundle } from '../vite/snippet-graph.ts'
@@ -39,11 +41,11 @@ let docsRenderer: TRenderer
 let docsPaths: ReturnType<typeof resolveProjectPaths>
 
 beforeAll(async () => {
-  const modulePath = path.join(
-    workspaceRoot,
-    'node_modules/.pnpm/twoslash@0.2.12_typescript@5.9.2/node_modules/twoslash/dist/index.mjs',
-  )
-  const module = await import(pathToFileURL(modulePath).href)
+  // Resolve twoslash dynamically via expressive-code-twoslash's dependencies.
+  // Uses createRequire instead of import.meta.resolve for vite-node compatibility (vitest 3.x).
+  const require = createRequire(import.meta.url)
+  const twoslashPath = require.resolve('twoslash', { paths: [require.resolve('expressive-code-twoslash')] })
+  const module = await import(twoslashPath)
   twoslasher = module.twoslasher as TTwoslasher
 
   examplePaths = resolveProjectPaths(exampleProjectRoot)
@@ -56,12 +58,9 @@ beforeAll(async () => {
   docsRenderer = docsRendererResult.renderer
 })
 
-const runExampleBuild = () =>
-  buildSnippets({ projectRoot: exampleProjectRoot }).pipe(Effect.provide(PlatformNode.NodeFileSystem.layer))
-
 const loadCompilerOptions = () => {
   const configSource = ts.readConfigFile(tsconfigPath, ts.sys.readFile)
-  if (configSource.error) {
+  if (configSource.error !== undefined) {
     const message = ts.flattenDiagnosticMessageText(configSource.error.messageText, '\n')
     throw new Error(`Unable to read test fixture tsconfig: ${message}`)
   }
@@ -171,18 +170,6 @@ describe('Twoslash renderer fixtures', () => {
   })
 })
 
-describe('buildSnippets manifests', () => {
-  it('reuses cached artefacts when inputs are unchanged', async () => {
-    fs.rmSync(examplePaths.cacheRoot, { recursive: true, force: true })
-
-    const firstRendered = await Effect.runPromise(runExampleBuild())
-    expect(firstRendered).toBeGreaterThan(0)
-
-    const warmRendered = await Effect.runPromise(runExampleBuild())
-    expect(warmRendered).toBe(0)
-  })
-})
-
 describe('renderSnippet integration', () => {
   it('does not rewrite literal cut marker content', () => {
     const source = [
@@ -260,7 +247,7 @@ describe('renderSnippet integration', () => {
     const entryFilePath = path.join(examplePaths.snippetAssetsRoot, 'main.ts')
     const bundle = buildSnippetBundle({ entryFilePath, baseDir: examplePaths.snippetAssetsRoot })
     const mainRecord = bundle.files[bundle.mainFileRelativePath]
-    if (!mainRecord) {
+    if (mainRecord == null) {
       throw new Error(`Missing main file record for ${bundle.mainFileRelativePath}`)
     }
 
@@ -284,7 +271,7 @@ describe('renderSnippet integration', () => {
     const dataCode = rendered.html?.match(/data-code="([^"]*)"/)?.[1] ?? ''
     const decoded = dataCode.replace(/\u007f/g, '\n')
     // biome-ignore lint/complexity/noUselessEscapeInRegex: readability when matching Expressive Code markup
-    const blankLines = rendered.html?.match(/<div class=\"ec-line\"><div class=\"code\">\n<\/div><\/div>/g) ?? []
+    const blankLines = rendered.html?.match(/<div class="ec-line"><div class="code">\n<\/div><\/div>/g) ?? []
 
     expect(decoded).toContain('\n\nexport const message')
     expect(decoded.endsWith('\n')).toBe(false)

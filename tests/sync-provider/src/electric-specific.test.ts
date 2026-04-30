@@ -1,8 +1,12 @@
+import { expect } from 'vitest'
+
 import { SyncBackend } from '@livestore/common'
 import { EventFactory } from '@livestore/common/testing'
 import { nanoid } from '@livestore/livestore'
 import { events } from '@livestore/livestore/internal/testing-utils'
 import type * as ElectricSync from '@livestore/sync-electric'
+import { OtelLiveHttp } from '@livestore/utils-dev/node'
+import { Vitest } from '@livestore/utils-dev/node-vitest'
 import {
   Effect,
   FetchHttpClient,
@@ -15,9 +19,6 @@ import {
   Option,
   Stream,
 } from '@livestore/utils/effect'
-import { OtelLiveHttp } from '@livestore/utils-dev/node'
-import { Vitest } from '@livestore/utils-dev/node-vitest'
-import { expect } from 'vitest'
 
 import * as ElectricProvider from './providers/electric.ts'
 import { SyncProviderImpl } from './types.ts'
@@ -51,7 +52,7 @@ Vitest.describe('ElectricSQL specific error handling', { timeout: 60000 }, () =>
   })
 
   Vitest.afterAll(async () => {
-    if (runtime) {
+    if (runtime !== undefined) {
       await runtime.dispose()
     }
   })
@@ -101,12 +102,12 @@ Vitest.describe('ElectricSQL specific error handling', { timeout: 60000 }, () =>
       const pullResult = yield* syncBackend
         .pull(initialPullRes.pipe(Option.flatMap(SyncBackend.cursorFromPullResItem)), { live: true })
         .pipe(
-          // Drain items until the stream fails with InvalidPullError, then flip to capture the error as success
+          // Drain items until the stream fails with UnknownError, then flip to capture the error as success
           Stream.runDrain,
           Effect.flip,
         )
 
-      expect(pullResult._tag).toBe('InvalidPullError')
+      expect(pullResult._tag).toBe('UnknownError')
       const cause = pullResult.cause as any
       expect(cause._tag).toBe('InvalidOperationError')
       expect(cause.operation).toBe('delete')
@@ -149,7 +150,7 @@ Vitest.describe('ElectricSQL specific error handling', { timeout: 60000 }, () =>
         .pull(initialPullRes.pipe(Option.flatMap(SyncBackend.cursorFromPullResItem)), { live: true })
         .pipe(Stream.runDrain, Effect.flip)
 
-      expect(pullResult._tag).toBe('InvalidPullError')
+      expect(pullResult._tag).toBe('UnknownError')
       const cause = pullResult.cause as any
       expect(cause._tag).toBe('InvalidOperationError')
       expect(cause.operation).toBe('update')

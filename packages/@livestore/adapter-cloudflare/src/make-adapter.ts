@@ -7,6 +7,7 @@ import {
   type SyncOptions,
   UnknownError,
 } from '@livestore/common'
+import type { CfTypes } from '@livestore/common-cf'
 import {
   type DevtoolsOptions,
   Eventlog,
@@ -14,9 +15,9 @@ import {
   makeLeaderThreadLayer,
   streamEventsWithSyncState,
 } from '@livestore/common/leader-thread'
-import type { CfTypes } from '@livestore/common-cf'
 import { LiveStoreEvent } from '@livestore/livestore'
-import { sqliteDbFactory } from '@livestore/sqlite-wasm/cf'
+import { CF_SQL_VFS_REQUIRED_PRAGMAS, sqliteDbFactory } from '@livestore/sqlite-wasm/cf'
+import { makeSqliteDb as makeDoSqliteDb } from './make-sqlite-db.ts'
 import { loadSqlite3Wasm } from '@livestore/sqlite-wasm/load-wasm'
 import { Effect, FetchHttpClient, Layer, Schedule, SubscriptionRef, WebChannel } from '@livestore/utils/effect'
 
@@ -57,34 +58,32 @@ export const makeAdapter =
       const schemaHashSuffix =
         schema.state.sqlite.migrations.strategy === 'manual' ? 'fixed' : schema.state.sqlite.hash.toString()
 
-      const stateDbFileName = getStateDbFileName(schemaHashSuffix)
-      const eventlogDbFileName = getEventlogDbFileName()
-
       if (resetPersistence === true) {
-        yield* resetDurableObjectPersistence({
-          storage,
-          storeId,
-          dbFileNames: [stateDbFileName, eventlogDbFileName],
-        })
+        yield* resetDurableObjectPersistence({ storage, storeId })
       }
+
+      const stateDbFileName = getStateDbFileName(schemaHashSuffix)
 
       const dbState = yield* makeSqliteDb({
         _tag: 'storage',
         storage,
         fileName: stateDbFileName,
-        configureDb: () => {},
+        configureDb: (db) =>
+          db.execute(
+            [...CF_SQL_VFS_REQUIRED_PRAGMAS, 'cache_size=-8000'].map((p) => `PRAGMA ${p}`).join(';\n'),
+          ),
       }).pipe(UnknownError.mapToUnknownError)
 
-      const dbEventlog = yield* makeSqliteDb({
-        _tag: 'storage',
-        storage,
-        fileName: eventlogDbFileName,
+      // dbEventlog runs on DO SQLite directly (not through the VFS). SQL-level transaction
+      // control (BEGIN/COMMIT/ROLLBACK) is silently dropped — see isTransactionControlStatement
+      // in make-sqlite-db.ts for details on why this is safe.
+      const dbEventlog = yield* makeDoSqliteDb({
+        _tag: 'file',
+        db: storage.sql,
         configureDb: () => {},
       }).pipe(UnknownError.mapToUnknownError)
 
       const shutdownChannel = yield* WebChannel.noopChannel<any, any>()
-
-      // Use Durable Object sync backend if no backend is specified
 
       const layer = yield* Layer.build(
         makeLeaderThreadLayer({
@@ -155,7 +154,7 @@ export const makeAdapter =
         sqliteDb: syncInMemoryDb,
         webmeshMode: 'proxy',
         connectWebmeshNode: Effect.fnUntraced(function* ({ webmeshNode }) {
-          if (devtoolsOptions.enabled) {
+          if (devtoolsOptions.enabled === true) {
             console.log('connectWebmeshNode', { webmeshNode })
             //   yield* Webmesh.connectViaWebSocket({
             //     node: webmeshNode,
@@ -182,25 +181,23 @@ export const makeAdapter =
 
 const getStateDbFileName = (suffix: string) => `state${suffix}@${liveStoreStorageFormatVersion}.db`
 
-const getEventlogDbFileName = () => `eventlog@${liveStoreStorageFormatVersion}.db`
-
 const resetDurableObjectPersistence = ({
   storage,
   storeId,
-  dbFileNames,
 }: {
   storage: CfTypes.DurableObjectStorage
   storeId: string
-  dbFileNames: ReadonlyArray<string>
 }) =>
   Effect.try({
     try: () =>
+      // All three tables live in the DO's single storage.sql database but are
+      // owned by different layers during normal operation:
+      // - vfs_pages: written by the wa-sqlite VFS layer (backs dbState)
+      // - eventlog, __livestore_sync_status: written directly by dbEventlog via storage.sql
       storage.transactionSync(() => {
-        for (const baseName of dbFileNames) {
-          const likePattern = `${baseName}%`
-          safeSqlExec(storage, 'DELETE FROM vfs_blocks WHERE file_path LIKE ?', likePattern)
-          safeSqlExec(storage, 'DELETE FROM vfs_files WHERE file_path LIKE ?', likePattern)
-        }
+        safeSqlExec(storage, 'DELETE FROM vfs_pages')
+        safeSqlExec(storage, 'DELETE FROM eventlog')
+        safeSqlExec(storage, 'DELETE FROM __livestore_sync_status')
       }),
     catch: (cause) =>
       new UnknownError({
@@ -212,11 +209,11 @@ const resetDurableObjectPersistence = ({
     Effect.withSpan('@livestore/adapter-cloudflare:resetPersistence', { attributes: { storeId } }),
   )
 
-const safeSqlExec = (storage: CfTypes.DurableObjectStorage, query: string, binding: string) => {
+const safeSqlExec = (storage: CfTypes.DurableObjectStorage, query: string, binding?: string) => {
   try {
-    storage.sql.exec(query, binding)
+    binding !== undefined ? storage.sql.exec(query, binding) : storage.sql.exec(query)
   } catch (error) {
-    if (isMissingVfsTableError(error)) {
+    if (isMissingTableError(error) === true) {
       return
     }
 
@@ -224,5 +221,5 @@ const safeSqlExec = (storage: CfTypes.DurableObjectStorage, query: string, bindi
   }
 }
 
-const isMissingVfsTableError = (error: unknown): boolean =>
+const isMissingTableError = (error: unknown): boolean =>
   error instanceof Error && error.message.toLowerCase().includes('no such table')

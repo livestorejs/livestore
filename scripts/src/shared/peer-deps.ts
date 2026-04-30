@@ -6,10 +6,12 @@
  */
 
 import path from 'node:path'
-import { Console, Effect, FileSystem, Schema } from '@livestore/utils/effect'
-import { LivestoreWorkspace } from '@livestore/utils-dev/node'
+
 import semver from 'semver'
 import * as yaml from 'yaml'
+
+import { LivestoreWorkspace } from '@livestore/utils-dev/node'
+import { Console, Effect, FileSystem, Schema } from '@livestore/utils/effect'
 
 /** Represents a single peer dependency violation */
 export interface PeerDepViolation {
@@ -36,13 +38,13 @@ export class PeerDepCheckError extends Schema.TaggedError<PeerDepCheckError>()('
 const parsePackageSpec = (spec: string): { name: string; version: string } | undefined => {
   // Handle scoped packages (@scope/name@version)
   const scopedMatch = spec.match(/^(@[^@]+)@([^@(]+)/)
-  if (scopedMatch) {
+  if (scopedMatch !== null) {
     return { name: scopedMatch[1]!, version: scopedMatch[2]! }
   }
 
   // Handle regular packages (name@version)
   const regularMatch = spec.match(/^([^@]+)@([^@(]+)/)
-  if (regularMatch) {
+  if (regularMatch !== null) {
     return { name: regularMatch[1]!, version: regularMatch[2]! }
   }
 
@@ -78,6 +80,16 @@ export const checkPeerDependencies = Effect.gen(function* () {
   const workspaceRoot = yield* LivestoreWorkspace
   const lockfilePath = path.join(workspaceRoot, 'pnpm-lock.yaml')
 
+  const exists = yield* fs.exists(lockfilePath)
+  if (exists === false) {
+    return yield* Effect.fail(
+      new PeerDepCheckError({
+        message:
+          'Missing repo-root pnpm-lock.yaml. Run pnpm install from the repo root to refresh the authoritative lockfile.',
+      }),
+    )
+  }
+
   // Read and parse the lockfile
   const lockfileContent = yield* fs
     .readFileString(lockfilePath)
@@ -100,8 +112,8 @@ export const checkPeerDependencies = Effect.gen(function* () {
 
   for (const snapshotKey of Object.keys(snapshots)) {
     const parsed = parsePackageSpec(snapshotKey)
-    if (parsed) {
-      if (!resolvedVersions.has(parsed.name)) {
+    if (parsed !== undefined) {
+      if (resolvedVersions.has(parsed.name) === false) {
         resolvedVersions.set(parsed.name, new Set())
       }
       resolvedVersions.get(parsed.name)!.add(parsed.version)
@@ -111,8 +123,8 @@ export const checkPeerDependencies = Effect.gen(function* () {
   // Also add versions from the packages section
   for (const packageKey of Object.keys(packages)) {
     const parsed = parsePackageSpec(packageKey)
-    if (parsed) {
-      if (!resolvedVersions.has(parsed.name)) {
+    if (parsed !== undefined) {
+      if (resolvedVersions.has(parsed.name) === false) {
         resolvedVersions.set(parsed.name, new Set())
       }
       resolvedVersions.get(parsed.name)!.add(parsed.version)
@@ -124,18 +136,18 @@ export const checkPeerDependencies = Effect.gen(function* () {
   // Check peer dependencies defined in the packages section
   for (const [packageKey, packageData] of Object.entries(packages)) {
     const parsed = parsePackageSpec(packageKey)
-    if (!parsed || !packageData.peerDependencies) continue
+    if (parsed == null || packageData.peerDependencies == null) continue
 
     for (const [peerDep, requiredRange] of Object.entries(packageData.peerDependencies)) {
       const ignoreKey = `${parsed.name}->${peerDep}`
-      if (ignoredPeerViolations.has(ignoreKey)) continue
+      if (ignoredPeerViolations.has(ignoreKey) === true) continue
 
       const isOptional = packageData.peerDependenciesMeta?.[peerDep]?.optional === true
-      if (isOptional) continue
+      if (isOptional === true) continue
 
       const resolvedSet = resolvedVersions.get(peerDep)
 
-      if (!resolvedSet || resolvedSet.size === 0) {
+      if (resolvedSet == null || resolvedSet.size === 0) {
         // Peer dependency not found at all - this might be optional or provided differently
         // We'll skip these for now as pnpm handles optional peers
         continue
@@ -147,13 +159,13 @@ export const checkPeerDependencies = Effect.gen(function* () {
 
       for (const resolvedVersion of resolvedSet) {
         bestResolvedVersion = resolvedVersion
-        if (semver.satisfies(resolvedVersion, requiredRange, { loose: true })) {
+        if (semver.satisfies(resolvedVersion, requiredRange, { loose: true }) === true) {
           satisfied = true
           break
         }
       }
 
-      if (!satisfied && bestResolvedVersion) {
+      if (satisfied === false && bestResolvedVersion !== undefined) {
         violations.push({
           package: parsed.name,
           packageVersion: parsed.version,
@@ -188,7 +200,7 @@ export const runPeerDepCheck = Effect.gen(function* () {
   const byPeerDep = new Map<string, PeerDepViolation[]>()
   for (const v of violations) {
     const key = v.peerDep
-    if (!byPeerDep.has(key)) {
+    if (byPeerDep.has(key) === false) {
       byPeerDep.set(key, [])
     }
     byPeerDep.get(key)!.push(v)

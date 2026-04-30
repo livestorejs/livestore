@@ -17,13 +17,14 @@ import type { MaterializeError } from '../errors.ts'
 import type {
   BootStatus,
   Devtools,
-  LeaderAheadError,
   MakeSqliteDb,
   PersistenceInfo,
   SqliteDb,
   SyncBackend,
   UnknownError,
+  UnknownEventError,
 } from '../index.ts'
+import type { RejectedPushError } from './RejectedPushError.ts'
 import { EventSequenceNumber, type LiveStoreEvent, type LiveStoreSchema } from '../schema/mod.ts'
 import type * as SyncState from '../sync/syncstate.ts'
 import type { ShutdownChannel } from './shutdown-channel.ts'
@@ -186,11 +187,11 @@ export interface LeaderSyncProcessor {
   /** Used by client sessions to subscribe to upstream sync state changes */
   pull: (args: {
     cursor: EventSequenceNumber.Client.Composite
-  }) => Stream.Stream<{ payload: typeof SyncState.PayloadUpstream.Type }, UnknownError>
+  }) => Stream.Stream<{ payload: typeof SyncState.PayloadUpstream.Type }>
   /** The `pullQueue` API can be used instead of `pull` when more convenient */
   pullQueue: (args: {
     cursor: EventSequenceNumber.Client.Composite
-  }) => Effect.Effect<Queue.Queue<{ payload: typeof SyncState.PayloadUpstream.Type }>, UnknownError, Scope.Scope>
+  }) => Effect.Effect<Queue.Queue<{ payload: typeof SyncState.PayloadUpstream.Type }>, never, Scope.Scope>
 
   /** Used by client sessions to push events to the leader thread */
   push: (
@@ -204,18 +205,18 @@ export interface LeaderSyncProcessor {
        */
       waitForProcessing?: boolean
     },
-  ) => Effect.Effect<void, LeaderAheadError>
+  ) => Effect.Effect<void, RejectedPushError>
 
   /** Currently only used by devtools which don't provide their own event numbers */
   pushPartial: (args: {
     event: LiveStoreEvent.Input.Encoded
     clientId: string
     sessionId: string
-  }) => Effect.Effect<void, UnknownError>
+  }) => Effect.Effect<void, UnknownEventError>
 
   boot: Effect.Effect<
     { initialLeaderHead: EventSequenceNumber.Client.Composite },
-    UnknownError,
+    never,
     LeaderThreadCtx | Scope.Scope | HttpClient.HttpClient
   >
   syncState: Subscribable.Subscribable<SyncState.SyncState>

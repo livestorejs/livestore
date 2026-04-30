@@ -17,7 +17,7 @@ export namespace UnknownEvents {
   export type Callback = (
     context: UnknownEventContext,
     error: UnknownEventError,
-  ) => Effect.SyncOrPromiseOrEffect<void, unknown, never>
+  ) => Effect.SyncOrPromiseOrEffect<void, unknown>
 
   export type HandlingConfig =
     | { readonly strategy: 'warn' }
@@ -60,7 +60,7 @@ const handleUnknownEvent = ({
 
     switch (config.strategy) {
       case 'fail': {
-        return yield* Effect.fail(error)
+        return yield* error
       }
       case 'warn': {
         yield* Effect.logWarning('@livestore/common:schema:unknown-event', context)

@@ -4,13 +4,21 @@
 
 import type * as CF from '@cloudflare/workers-types'
 
-export const ReadableStream = globalThis.ReadableStream as unknown as typeof CF.ReadableStream
-export const Request = globalThis.Request as unknown as typeof CF.Request
-export const Response = globalThis.Response as unknown as typeof CF.Response
-export const WebSocket = globalThis.WebSocket as unknown as typeof CF.WebSocket
-export const Rpc = globalThis.Rpc as unknown as typeof CF.Rpc
-// @ts-expect-error WebSocketPair is not defined in the globalThis object
-export const WebSocketPair = globalThis.WebSocketPair as unknown as typeof CF.WebSocketPair
-export const WebSocketRequestResponsePair =
-  // @ts-expect-error WebSocketRequestResponsePair is not defined in the globalThis object
-  globalThis.WebSocketRequestResponsePair as unknown as typeof CF.WebSocketRequestResponsePair
+// oxlint-disable-next-line typescript-eslint(no-unsafe-type-assertion) -- bridging standard Web API types to Cloudflare Worker types; inherent platform type mismatch
+const cfGlobalThis = globalThis as typeof globalThis & {
+  ReadableStream: typeof CF.ReadableStream
+  Request: typeof CF.Request
+  Response: typeof CF.Response
+  WebSocket: typeof CF.WebSocket
+  Rpc: typeof CF.Rpc
+  WebSocketPair: typeof CF.WebSocketPair
+  WebSocketRequestResponsePair: typeof CF.WebSocketRequestResponsePair
+}
+
+export const ReadableStream = cfGlobalThis.ReadableStream
+export const Request = cfGlobalThis.Request
+export const Response = cfGlobalThis.Response
+export const WebSocket = cfGlobalThis.WebSocket
+export const Rpc = cfGlobalThis.Rpc
+export const WebSocketPair = cfGlobalThis.WebSocketPair
+export const WebSocketRequestResponsePair = cfGlobalThis.WebSocketRequestResponsePair

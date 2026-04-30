@@ -1,6 +1,7 @@
 import * as fs from 'node:fs'
 import path from 'node:path'
 import util from 'node:util'
+
 import {
   Cause,
   Effect,
@@ -120,7 +121,7 @@ export const prettyLoggerTty = (options: {
   readonly formatDate: (date: Date) => string
   readonly onLog?: (str: string) => void
 }) => {
-  const color = options.colors ? withColor : withColorNoop
+  const color = options.colors === true ? withColor : withColorNoop
   return Logger.make<unknown, string>(({ annotations, cause, date, fiberId, logLevel, message: message_, spans }) => {
     let str = ''
 
@@ -141,7 +142,7 @@ export const prettyLoggerTty = (options: {
       ` ${color(logLevel.label, ...logLevelColors[logLevel._tag])}` +
       ` (${FiberId.threadName(fiberId)})`
 
-    if (List.isCons(spans)) {
+    if (List.isCons(spans) === true) {
       const now = date.getTime()
       const render = LogSpan.render(now)
       for (const span of spans) {
@@ -162,7 +163,7 @@ export const prettyLoggerTty = (options: {
     log(firstLine)
     // if (!processIsBun) console.group()
 
-    if (!Cause.isEmpty(cause)) {
+    if (Cause.isEmpty(cause) === false) {
       logIndented(Cause.pretty(cause, { renderErrorCause: true }))
     }
 

@@ -58,6 +58,7 @@ export {
   type StoreInternals,
   StoreInternalsSymbol,
   type SubscribeOptions,
+  type SyncStatus,
   type Unsubscribe,
 } from './store/store-types.ts'
 export { exposeDebugUtils } from './utils/dev.ts'

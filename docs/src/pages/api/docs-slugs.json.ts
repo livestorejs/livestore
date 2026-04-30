@@ -21,8 +21,8 @@ const toSlug = (id: string, slug: string | undefined): string => {
     .replace(/\/index$/i, '')
 }
 
-export async function GET() {
-  if (!import.meta.env.DEV) {
+export const GET = async () => {
+  if (import.meta.env.DEV === false) {
     return new Response('Not found', { status: 404 })
   }
 

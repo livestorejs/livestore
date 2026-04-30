@@ -10,7 +10,7 @@ const snapshot = {
 }
 
 const root = document.getElementById('root')
-if (!root) {
+if (root == null) {
   throw new Error('Root element not found')
 }
 

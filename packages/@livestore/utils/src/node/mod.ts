@@ -1,6 +1,8 @@
 import * as http from 'node:http'
+
 import { layer as ParcelWatcherLayer } from '@effect/platform-node/NodeFileSystem/ParcelWatcher'
 import { Effect, Layer } from 'effect'
+
 import { OtelTracer, UnknownError } from '../effect/mod.ts'
 import { makeNoopTracer } from '../NoopTracer.ts'
 
@@ -27,7 +29,7 @@ export const getFreePort: Effect.Effect<number, UnknownError> = Effect.async<num
   server.listen(0, () => {
     const address = server.address()
 
-    if (address && typeof address === 'object') {
+    if (address !== null && typeof address === 'object') {
       const port = address.port
       server.close(() => cb(Effect.succeed(port)))
     } else {

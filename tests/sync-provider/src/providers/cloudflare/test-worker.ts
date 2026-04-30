@@ -1,6 +1,7 @@
 /// <reference types="@cloudflare/workers-types" />
 
 import { DurableObject } from 'cloudflare:workers'
+
 import type { SyncBackend } from '@livestore/common'
 import { type ClientDoWithRpcCallback, setupDurableObjectWebSocketRpc } from '@livestore/common-cf'
 import type { CfDeclare } from '@livestore/common-cf/declare'
@@ -22,6 +23,7 @@ import {
   RpcServer,
   Stream,
 } from '@livestore/utils/effect'
+
 import { DoRpcProxyRpcs } from './do-rpc-proxy-schema.ts'
 
 declare class Request extends CfDeclare.Request {}
@@ -70,7 +72,7 @@ export class TestClientDo extends DurableObjectBase implements ClientDoWithRpcCa
     const getSyncBackend = ({ clientId, storeId, payload }: { clientId: string; storeId: string; payload: any }) =>
       Effect.gen(this, function* () {
         const key = JSON.stringify({ clientId, storeId, payload })
-        if (syncBackendMap.has(key)) {
+        if (syncBackendMap.has(key) === true) {
           return syncBackendMap.get(key)!
         }
 
@@ -134,7 +136,7 @@ export class TestClientDo extends DurableObjectBase implements ClientDoWithRpcCa
     })
   }
 
-  async fetch(request: Request): Promise<Response> {
+  override async fetch(request: CfTypes.Request): Promise<CfTypes.Response> {
     const upgradeHeader = request.headers.get('Upgrade')
     if (upgradeHeader === undefined || upgradeHeader !== 'websocket') {
       return new Response('Durable Object expected Upgrade: websocket', { status: 426 })
@@ -180,7 +182,7 @@ export default {
       })
     }
 
-    if (url.pathname.endsWith('/do-rpc-ws-proxy')) {
+    if (url.pathname.endsWith('/do-rpc-ws-proxy') === true) {
       const doName = 'test-client-do' // TODO make configurable/dynamic
 
       const id = env.TEST_CLIENT_DO.idFromName(doName)

@@ -1,7 +1,9 @@
-import { queryDb, Schema, sql } from '@livestore/livestore'
 import { Stack, useGlobalSearchParams, useRouter } from 'expo-router'
 import { Undo2Icon } from 'lucide-react-native'
+import { useCallback, useMemo } from 'react'
 import { Image, Pressable, SafeAreaView, ScrollView, StyleSheet, Text, useColorScheme, View } from 'react-native'
+
+import { queryDb, Schema, sql } from '@livestore/livestore'
 
 import { IssueDetailsBottomTab } from '../components/IssueDetailsBottomTab.tsx'
 import { IssueStatusIcon, PriorityIcon } from '../components/IssueItem.tsx'
@@ -134,6 +136,7 @@ const styles = StyleSheet.create({
   undoText: {
     color: '#007AFF',
   },
+  emptyHeaderTitle: {},
 })
 
 const IssueDetailsScreen = () => {
@@ -142,6 +145,28 @@ const IssueDetailsScreen = () => {
   const router = useRouter()
   const theme = useColorScheme()
   const isDark = theme === 'dark'
+  const deletedNoticeStyle = useMemo(
+    () => StyleSheet.compose(styles.deletedNotice, isDark ? styles.deletedNoticeDark : undefined),
+    [isDark],
+  )
+  const metadataContainerStyle = useMemo(
+    () => StyleSheet.compose(styles.metadataContainer, isDark ? styles.metadataContainerDark : undefined),
+    [isDark],
+  )
+  const titleStyle = useMemo(() => StyleSheet.compose(styles.title, isDark ? styles.titleDark : undefined), [isDark])
+
+  const handleRestoreIssue = useCallback(() => store.commit(events.issueRestored({ id: issueId })), [issueId, store])
+  const handleEditIssue = useCallback(() => router.push(`/edit-issue?issueId=${issueId}`), [issueId, router])
+
+  const screenOptions = useMemo(
+    () => ({
+      headerTitle: `ENG-${issueId.slice(0, 4)}`,
+      headerTitleAlign: 'left' as const,
+      headerLargeTitleStyle: styles.emptyHeaderTitle,
+      headerLeft: EmptyHeaderLeft,
+    }),
+    [issueId],
+  )
 
   const issue = store.useQuery(
     queryDb(
@@ -211,19 +236,12 @@ const IssueDetailsScreen = () => {
 
   return (
     <>
-      <Stack.Screen
-        options={{
-          headerTitle: `ENG-${issueId.slice(0, 4)}`,
-          headerTitleAlign: 'left',
-          headerLargeTitleStyle: {},
-          headerLeft: () => <></>,
-        }}
-      />
+      <Stack.Screen options={screenOptions} />
       <SafeAreaView style={styles.container}>
         <ScrollView style={styles.scrollView}>
           <View style={styles.contentContainer}>
             {issue.deletedAt ? (
-              <View style={[styles.deletedNotice, issue.deletedAt && styles.deletedNoticeDark]}>
+              <View style={deletedNoticeStyle}>
                 <ThemedText style={styles.deletedText}>
                   Deleted on {new Date(issue.deletedAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}{' '}
                   at{' '}
@@ -233,19 +251,16 @@ const IssueDetailsScreen = () => {
                     hour12: true,
                   })}{' '}
                 </ThemedText>
-                <Pressable
-                  onPress={() => store.commit(events.issueRestored({ id: issue.id }))}
-                  style={styles.undoButton}
-                >
+                <Pressable onPress={handleRestoreIssue} style={styles.undoButton}>
                   <Undo2Icon size={18} />
                   <ThemedText style={styles.undoText}>Undo</ThemedText>
                 </Pressable>
               </View>
             ) : null}
-            <Pressable onPress={() => router.push(`/edit-issue?issueId=${issue.id}`)}>
-              <Text style={[styles.title, styles.titleDark]}>{issue.title}</Text>
+            <Pressable onPress={handleEditIssue}>
+              <Text style={titleStyle}>{issue.title}</Text>
 
-              <View style={[styles.metadataContainer, styles.metadataContainerDark]}>
+              <View style={metadataContainerStyle}>
                 <View style={styles.metadataItem}>
                   <IssueStatusIcon status={issue.status as Status} />
                   <ThemedText style={styles.metadataText}>{issue.status}</ThemedText>
@@ -257,7 +272,7 @@ const IssueDetailsScreen = () => {
                 </View>
 
                 <View style={styles.metadataItem}>
-                  <Image source={{ uri: issue.assigneePhotoUrl! }} style={styles.avatar} />
+                  <Image source={toUriImageSource(issue.assigneePhotoUrl!)} style={styles.avatar} />
                   <ThemedText style={styles.metadataText}>{issue.assigneeName}</ThemedText>
                 </View>
               </View>
@@ -268,9 +283,12 @@ const IssueDetailsScreen = () => {
             <View style={styles.commentsContainer}>
               <ThemedText>{comments.length} comments</ThemedText>
               {comments.map((comment) => (
-                <View key={comment.id} style={[styles.commentCard, isDark && styles.commentCardDark]}>
+                <View
+                  key={comment.id}
+                  style={StyleSheet.compose(styles.commentCard, isDark ? styles.commentCardDark : undefined)}
+                >
                   <View style={styles.commentHeader}>
-                    <Image source={{ uri: comment.authorPhotoUrl }} style={styles.avatar} />
+                    <Image source={toUriImageSource(comment.authorPhotoUrl)} style={styles.avatar} />
                     <ThemedText style={styles.commentAuthor} numberOfLines={1}>
                       {comment.authorName}
                     </ThemedText>
@@ -280,7 +298,10 @@ const IssueDetailsScreen = () => {
 
                   <View style={styles.reactionsContainer}>
                     {comment.reactions.map((reaction) => (
-                      <View key={reaction.id} style={[styles.reactionBadge, isDark && styles.reactionBadgeDark]}>
+                      <View
+                        key={reaction.id}
+                        style={StyleSheet.compose(styles.reactionBadge, isDark ? styles.reactionBadgeDark : undefined)}
+                      >
                         <ThemedText style={styles.reactionText}>{reaction.emoji} 1</ThemedText>
                       </View>
                     ))}
@@ -297,3 +318,7 @@ const IssueDetailsScreen = () => {
 }
 
 export default IssueDetailsScreen
+
+const EmptyHeaderLeft = () => <></>
+
+const toUriImageSource = (uri: string) => ({ uri })

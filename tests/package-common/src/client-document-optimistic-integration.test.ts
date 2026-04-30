@@ -1,10 +1,11 @@
+import { expect } from 'vitest'
+
 import { makeAdapter } from '@livestore/adapter-node'
 import { makeSchema, State } from '@livestore/common/schema'
 import { createStore, SessionIdSymbol } from '@livestore/livestore'
+import { Vitest } from '@livestore/utils-dev/node-vitest'
 import { Effect, FileSystem, Schema } from '@livestore/utils/effect'
 import { PlatformNode } from '@livestore/utils/node'
-import { Vitest } from '@livestore/utils-dev/node-vitest'
-import { expect } from 'vitest'
 
 Vitest.describe('Client Document Optimistic Decoding Integration', () => {
   const getTmpDbDir = Effect.gen(function* () {

@@ -32,7 +32,7 @@ class TodoListElement extends HTMLElement {
     this.list.style.margin = '16px 0 0'
 
     this.input.addEventListener('keydown', (event) => {
-      if (event.key === 'Enter' && this.input.value.trim()) {
+      if (event.key === 'Enter' && this.input.value.trim() !== '') {
         store.commit(events.todoCreated({ id: crypto.randomUUID(), text: this.input.value.trim() }))
         this.input.value = ''
       }
@@ -53,7 +53,9 @@ class TodoListElement extends HTMLElement {
       item.textContent = todo.text
       item.style.cursor = 'pointer'
       item.addEventListener('click', () => {
-        store.commit(todo.completed ? events.todoUncompleted({ id: todo.id }) : events.todoCompleted({ id: todo.id }))
+        store.commit(
+          todo.completed === true ? events.todoUncompleted({ id: todo.id }) : events.todoCompleted({ id: todo.id }),
+        )
       })
 
       const deleteButton = document.createElement('button')

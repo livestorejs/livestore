@@ -1,3 +1,5 @@
+import * as otel from '@opentelemetry/api'
+
 import {
   type Adapter,
   type BootStatus,
@@ -5,13 +7,12 @@ import {
   type ClientSessionDevtoolsChannel,
   type ClientSessionSyncProcessorSimulationParams,
   type IntentionalShutdownCause,
-  type InvalidPullError,
-  type IsOfflineError,
   LogConfig,
   type MaterializeError,
+  type BackendIdMismatchError,
   type MigrationsReport,
   provideOtel,
-  type SyncError,
+  type ServerAheadError,
   UnknownError,
 } from '@livestore/common'
 import type { LiveStoreSchema } from '@livestore/common/schema'
@@ -32,16 +33,20 @@ import {
   TaskTracing,
 } from '@livestore/utils/effect'
 import { nanoid } from '@livestore/utils/nanoid'
-import * as otel from '@opentelemetry/api'
 
 import { connectDevtoolsToStore } from './devtools.ts'
-import { STORE_DEFAULT_PARAMS, Store } from './store.ts'
 import type {
   LiveStoreContextRunning as LiveStoreContextRunning_,
   OtelOptions,
   ShutdownDeferred,
 } from './store-types.ts'
 import { StoreInternalsSymbol } from './store-types.ts'
+import { STORE_DEFAULT_PARAMS, Store } from './store.ts'
+
+declare global {
+  /** Store instances for console debugging */
+  var __debugLiveStore: Record<string, Store<any, any>> | undefined
+}
 
 /**
  * @deprecated Use `makeStoreContext()` from `@livestore/livestore/effect` instead.
@@ -320,7 +325,7 @@ export const createStore = <
       const shutdown = (
         exit: Exit.Exit<
           IntentionalShutdownCause,
-          UnknownError | MaterializeError | SyncError | InvalidPullError | IsOfflineError
+          UnknownError | MaterializeError | BackendIdMismatchError
         >,
       ) =>
         Effect.gen(function* () {
@@ -332,7 +337,7 @@ export const createStore = <
             ),
           )
 
-          if (shutdownDeferred) {
+          if (shutdownDeferred !== undefined) {
             yield* Deferred.done(shutdownDeferred, exit)
           }
 
@@ -364,7 +369,7 @@ export const createStore = <
         syncPayloadEncoded,
       }).pipe(Effect.withPerformanceMeasure('livestore:makeAdapter'), Effect.withSpan('createStore:makeAdapter'))
 
-      if (LS_DEV && clientSession.leaderThread.initialState.migrationsReport.migrations.length > 0) {
+      if (LS_DEV === true && clientSession.leaderThread.initialState.migrationsReport.migrations.length > 0) {
         yield* Effect.logDebug(
           '[@livestore/livestore:createStore] migrationsReport',
           ...clientSession.leaderThread.initialState.migrationsReport.migrations.map((m) =>
@@ -383,7 +388,7 @@ export const createStore = <
         effectContext: { lifetimeScope, runtime },
         // TODO find a better way to detect if we're running LiveStore in the LiveStore devtools
         // But for now this is a good enough approximation with little downsides
-        __runningInDevtools: getDevtoolsEnabled(disableDevtools) === false,
+        __runningInDevtools: ! getDevtoolsEnabled(disableDevtools),
         confirmUnsavedChanges,
         // NOTE during boot we're not yet executing events in a batched context
         // but only set the provided `batchUpdates` function after boot
@@ -420,11 +425,21 @@ export const createStore = <
 
       yield* Deferred.succeed(storeDeferred, store as any as Store)
 
+      // Expose store on globalThis for console debugging
+      globalThis.__debugLiveStore ??= {}
+      globalThis.__debugLiveStore[storeId] = store
+
+      yield* Effect.addFinalizer(() =>
+        Effect.sync(() => {
+          delete globalThis.__debugLiveStore?.[storeId]
+        }),
+      )
+
       return store
     }).pipe(
       Effect.withSpan('createStore', { attributes: { debugInstanceId, storeId } }),
       Effect.annotateLogs({ debugInstanceId, storeId }),
-      LS_DEV ? TaskTracing.withAsyncTaggingTracing((name) => (console as any).createTask(name)) : identity,
+      LS_DEV === true ? TaskTracing.withAsyncTaggingTracing((name) => (console as any).createTask(name)) : identity,
       Scope.extend(lifetimeScope),
     )
   })
@@ -433,7 +448,7 @@ const validateStoreId = (storeId: string) =>
   Effect.gen(function* () {
     const validChars = /^[a-zA-Z0-9_-]+$/
 
-    if (!validChars.test(storeId)) {
+    if (validChars.test(storeId) === false) {
       return yield* UnknownError.make({
         cause: `Invalid storeId: ${storeId}. Only alphanumeric characters, underscores, and hyphens are allowed.`,
         payload: { storeId },

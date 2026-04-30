@@ -13,7 +13,7 @@ declare const makeDb: (storeId: string) => {
 // ---cut---
 
 // GET /api/electric - Pull events (proxied through Electric)
-export async function GET(request: Request) {
+export const GET = async (request: Request) => {
   const searchParams = new URL(request.url).searchParams
   const { url, storeId, needsInit } = makeElectricUrl({
     electricHost,
@@ -27,7 +27,7 @@ export async function GET(request: Request) {
   // }
 
   // Initialize database tables if needed
-  if (needsInit) {
+  if (needsInit === true) {
     const db = makeDb(storeId)
     await db.migrate()
     await db.disconnect()
@@ -38,7 +38,7 @@ export async function GET(request: Request) {
 }
 
 // POST /api/electric - Push events (direct database write)
-export async function POST(request: Request) {
+export const POST = async (request: Request) => {
   const payload = await request.json()
   const parsed = Schema.decodeUnknownSync(ApiSchema.PushPayload)(payload)
 

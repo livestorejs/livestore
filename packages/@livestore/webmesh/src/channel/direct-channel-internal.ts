@@ -4,7 +4,6 @@ import {
   Deferred,
   Effect,
   Exit,
-  OtelTracer,
   Predicate,
   Queue,
   Schema,
@@ -15,11 +14,6 @@ import {
 
 import { type ChannelName, type MeshNodeName, type MessageQueueItem, packetAsOtelAttributes } from '../common.ts'
 import * as MeshSchema from '../mesh-schema.ts'
-
-// WORKAROUND: @effect/opentelemetry mis-parses `Span.addEvent(name, attributes)` and treats the attributes object as a
-// time input, causing `TypeError: {} is not iterable` at runtime.
-// Upstream: https://github.com/Effect-TS/effect/pull/5929
-// TODO: simplify back to the 2-arg overload once the upstream fix is released and adopted.
 
 export interface MakeDirectChannelArgs {
   nodeName: MeshNodeName
@@ -94,11 +88,6 @@ export const makeDirectChannelInternal = ({
 
     const deferred = yield* makeDeferredResult()
 
-    const span = yield* OtelTracer.currentOtelSpan.pipe(Effect.catchAll(() => Effect.succeed(undefined)))
-    // const span = {
-    //   addEvent: (...msg: any[]) => console.log(`${nodeName}→${channelName}→${target}[${channelVersion}]`, ...msg),
-    // }
-
     const schema = {
       send: Schema.Union(schema_.send, MeshSchema.DirectChannelPing, MeshSchema.DirectChannelPong),
       listen: Schema.Union(schema_.listen, MeshSchema.DirectChannelPing, MeshSchema.DirectChannelPong),
@@ -112,16 +101,12 @@ export const makeDirectChannelInternal = ({
       Effect.gen(function* () {
         const channelState = channelStateRef.current
 
-        span?.addEvent(
-          `process:${packet._tag}`,
-          {
-            channelState: channelState._tag,
-            packetId: packet.id,
-            packetReqId: packet.reqId,
-            packetChannelVersion: Predicate.hasProperty('channelVersion')(packet) ? packet.channelVersion : undefined,
-          },
-          undefined,
-        )
+        yield* Effect.spanEvent(`process:${packet._tag}`, {
+          channelState: channelState._tag,
+          packetId: packet.id,
+          packetReqId: packet.reqId,
+          ...(Predicate.hasProperty('channelVersion')(packet) === true ? { packetChannelVersion: packet.channelVersion } : {}),
+        })
 
         // const reqIdStr =
         //   Predicate.hasProperty('reqId')(packet) && packet.reqId !== undefined ? ` for ${packet.reqId}` : ''
@@ -139,7 +124,7 @@ export const makeDirectChannelInternal = ({
         // If the other side has a higher version, we need to close this channel and
         // recreate it with the new version
         if (packet.channelVersion > channelVersion) {
-          span?.addEvent(`incoming packet has higher version (${packet.channelVersion}), closing channel`)
+          yield* Effect.spanEvent(`incoming packet has higher version (${packet.channelVersion}), closing channel`)
           yield* Scope.close(scope, Exit.succeed('higher-version-expected'))
           // TODO include expected version in the error so the channel gets recreated with the new version
           return 'close'
@@ -158,7 +143,7 @@ export const makeDirectChannelInternal = ({
             remainingHops: packet.hops,
             reqId: undefined,
           })
-          span?.addEvent(
+          yield* Effect.spanEvent(
             `incoming packet has lower version (${packet.channelVersion}), sending request to reconnect (${newPacket.id})`,
           )
 
@@ -173,7 +158,7 @@ export const makeDirectChannelInternal = ({
           } else {
             // In case the instance of the source has changed, we need to close the channel
             // and reconnect with a new channel
-            span?.addEvent(`force-new-channel`)
+            yield* Effect.spanEvent(`force-new-channel`)
             yield* Scope.close(scope, Exit.succeed('force-new-channel'))
             return 'close'
           }
@@ -200,15 +185,15 @@ export const makeDirectChannelInternal = ({
                 remainingHops: packet.hops,
                 reqId: packet.id,
               })
-              span?.addEvent(`Re-sending new request (${newRequestPacket.id}) for incoming request (${packet.id})`)
+              yield* Effect.spanEvent(`Re-sending new request (${newRequestPacket.id}) for incoming request (${packet.id})`)
 
               yield* sendPacket(newRequestPacket)
             }
 
             const isWinner = nodeName > target
 
-            if (isWinner) {
-              span?.addEvent(`winner side: creating direct channel and sending response`)
+            if (isWinner === true) {
+              yield* Effect.spanEvent(`winner side: creating direct channel and sending response`)
               const mc = new MessageChannel()
 
               // We're using a direct channel with acks here to make sure messages are not lost
@@ -236,8 +221,6 @@ export const makeDirectChannelInternal = ({
 
               channelStateRef.current = { _tag: 'winner:ResponseSent', channel, otherSourceId: packet.sourceId }
 
-              // span?.addEvent(`winner side: waiting for ping`)
-
               // Now we wait for the other side to respond via the channel
               yield* channel.listen.pipe(
                 Stream.flatten(),
@@ -246,21 +229,19 @@ export const makeDirectChannelInternal = ({
                 Stream.runDrain,
               )
 
-              // span?.addEvent(`winner side: sending pong`)
-
               yield* channel.send(MeshSchema.DirectChannelPong.make({}))
 
-              span?.addEvent(`winner side: established`)
+              yield* Effect.spanEvent(`winner side: established`)
               channelStateRef.current = { _tag: 'Established', otherSourceId: packet.sourceId }
 
               yield* Deferred.succeed(deferred, channel)
             } else {
-              span?.addEvent(`loser side: waiting for response`)
+              yield* Effect.spanEvent(`loser side: waiting for response`)
               // Wait for `DirectChannelResponseSuccess` packet
               channelStateRef.current = { _tag: 'loser:WaitingForResponse', otherSourceId: packet.sourceId }
             }
 
-            break
+            return
           }
           case 'DirectChannelResponseSuccess': {
             if (channelState._tag !== 'loser:WaitingForResponse') {
@@ -284,8 +265,6 @@ export const makeDirectChannelInternal = ({
               Effect.fork,
             )
 
-            // span?.addEvent(`loser side: sending ping`)
-
             // There seems to be some scenario where the initial ping message is lost.
             // As a workaround until we find the root cause, we're retrying the ping a few times.
             // TODO write a test that reproduces this issue and fix the root cause ()
@@ -294,11 +273,9 @@ export const makeDirectChannelInternal = ({
               .send(MeshSchema.DirectChannelPing.make({}))
               .pipe(Effect.timeout(10), Effect.retry({ times: 2 }))
 
-            // span?.addEvent(`loser side: waiting for pong`)
-
             yield* waitForPongFiber
 
-            span?.addEvent(`loser side: established`)
+            yield* Effect.spanEvent(`loser side: established`)
             channelStateRef.current = { _tag: 'Established', otherSourceId: channelState.otherSourceId }
 
             yield* Deferred.succeed(deferred, channel)
@@ -354,7 +331,7 @@ export const makeDirectChannelInternal = ({
       }
 
       yield* sendPacket(packet)
-      span?.addEvent(`initial edge request sent (${packet.id})`)
+      yield* Effect.spanEvent(`initial edge request sent (${packet.id})`)
     })
 
     yield* edgeRequest

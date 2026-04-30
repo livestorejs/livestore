@@ -1,26 +1,24 @@
 {
   "name": "@livestore/sync-cf",
   "version": "0.4.0-dev.22",
-  "type": "module",
-  "sideEffects": false,
-  "exports": {
-    "./client": "./src/client/mod.ts",
-    "./common": "./src/common/mod.ts",
-    "./cf-worker": "./src/cf-worker/mod.ts"
-  },
-  "dependencies": {
-    "@cloudflare/workers-types": "catalog:",
-    "@livestore/common": "workspace:*",
-    "@livestore/common-cf": "workspace:*",
-    "@livestore/utils": "workspace:*"
+  "license": "Apache-2.0",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/livestorejs/livestore.git"
   },
   "files": [
     "dist",
-    "src",
     "package.json",
+    "src",
     "README.md"
   ],
-  "license": "Apache-2.0",
+  "type": "module",
+  "sideEffects": false,
+  "exports": {
+    "./cf-worker": "./src/cf-worker/mod.ts",
+    "./client": "./src/client/mod.ts",
+    "./common": "./src/common/mod.ts"
+  },
   "publishConfig": {
     "access": "public",
     "exports": {
@@ -31,5 +29,65 @@
   },
   "scripts": {
     "test": "echo 'No tests yet'"
+  },
+  "dependencies": {
+    "@cloudflare/workers-types": "4.20251118.0",
+    "@livestore/common": "workspace:^",
+    "@livestore/common-cf": "workspace:^",
+    "@livestore/utils": "workspace:^"
+  },
+  "devDependencies": {
+    "@effect/ai": "0.35.0",
+    "@effect/cli": "0.75.1",
+    "@effect/cluster": "0.58.2",
+    "@effect/experimental": "0.60.0",
+    "@effect/opentelemetry": "0.63.0",
+    "@effect/platform": "0.96.1",
+    "@effect/platform-browser": "0.76.0",
+    "@effect/platform-bun": "0.89.0",
+    "@effect/platform-node": "0.106.0",
+    "@effect/printer": "0.49.0",
+    "@effect/printer-ansi": "0.49.0",
+    "@effect/rpc": "0.75.1",
+    "@effect/sql": "0.51.1",
+    "@effect/typeclass": "0.40.0",
+    "@effect/vitest": "0.29.0",
+    "@opentelemetry/api": "1.9.0",
+    "@opentelemetry/resources": "2.2.0",
+    "@standard-schema/spec": "1.1.0",
+    "effect": "3.21.2"
+  },
+  "peerDependencies": {
+    "@effect/ai": "^0.35.0",
+    "@effect/cli": "^0.75.1",
+    "@effect/cluster": "^0.58.2",
+    "@effect/experimental": "^0.60.0",
+    "@effect/opentelemetry": "^0.63.0",
+    "@effect/platform": "^0.96.1",
+    "@effect/platform-browser": "^0.76.0",
+    "@effect/platform-bun": "^0.89.0",
+    "@effect/platform-node": "^0.106.0",
+    "@effect/printer": "^0.49.0",
+    "@effect/printer-ansi": "^0.49.0",
+    "@effect/rpc": "^0.75.1",
+    "@effect/sql": "^0.51.1",
+    "@effect/typeclass": "^0.40.0",
+    "@effect/vitest": "^0.29.0",
+    "@opentelemetry/api": "^1.9.0",
+    "@opentelemetry/resources": "^2.2.0",
+    "@standard-schema/spec": "^1.1.0",
+    "effect": "^3.21.2"
+  },
+  "$genie": {
+    "source": "package.json.genie.ts",
+    "warning": "DO NOT EDIT - changes will be overwritten",
+    "workspaceClosureDirs": [
+      "packages/@livestore/common",
+      "packages/@livestore/common-cf",
+      "packages/@livestore/sync-cf",
+      "packages/@livestore/utils",
+      "packages/@livestore/utils-dev",
+      "packages/@livestore/webmesh"
+    ]
   }
 }

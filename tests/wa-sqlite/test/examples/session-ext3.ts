@@ -1,6 +1,7 @@
 import * as WaSqlite from '@livestore/wa-sqlite'
 import WaSqliteFactory from '@livestore/wa-sqlite/dist/wa-sqlite.node.mjs'
 import { MemoryVFS } from '@livestore/wa-sqlite/src/examples/MemoryVFS.js'
+
 import { makeSynchronousDatabase } from '../lib/lib.ts'
 
 // TODO better understand changesets and e.g. whether they are invalidated when the db schema changes
@@ -19,8 +20,7 @@ const main = async () => {
   const module = await WaSqliteFactory()
   const sqlite3 = WaSqlite.Factory(module)
 
-  if (sqlite3.vfs_registered.has('memory-vfs') === false) {
-    // @ts-expect-error TODO fix types
+  if (!sqlite3.vfs_registered.has('memory-vfs')) {
     const vfs = new MemoryVFS('memory-vfs', (sqlite3 as any).module)
 
     // @ts-expect-error TODO fix types
@@ -67,13 +67,18 @@ const main = async () => {
 
   const inverted = sqlite3.changeset_invert(changeset!)
   console.log('inverted', inverted)
-  const inverted2 = sqlite3.changeset_invert(inverted!)
+  const inverted2 = sqlite3.changeset_invert(inverted)
   console.log('inverted2', inverted2)
 
   console.log('res1', syncDb.select('SELECT * FROM app'))
 
   // sqlite3.changeset_apply(db, invertedBlob)
-  sqlite3.changeset_apply(db, blob)
+  sqlite3.changeset_apply(db, blob, null, (eConflict) =>
+    // REPLACE is only valid for DATA and CONFLICT; use OMIT for all other conflict types
+    eConflict === WaSqlite.SQLITE_CHANGESET_DATA || eConflict === WaSqlite.SQLITE_CHANGESET_CONFLICT
+      ? WaSqlite.SQLITE_CHANGESET_REPLACE
+      : WaSqlite.SQLITE_CHANGESET_OMIT,
+  )
   // const inverted = sqlite3.changeset_invert(blob)
   // sqlite3.changeset_apply(db, inverted)
 

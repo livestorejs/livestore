@@ -1,17 +1,8 @@
-import { queryDb, State, type Store } from '@livestore/livestore'
+import { queryDb, type Store } from '@livestore/livestore'
 
-declare const store: Store
+import { type schema, tables } from '../framework-integrations/react/schema.ts'
 
-const tables = {
-  todos: State.SQLite.table({
-    name: 'todos',
-    columns: {
-      id: State.SQLite.text({ primaryKey: true }),
-      title: State.SQLite.text(),
-      completed: State.SQLite.boolean({ default: false }),
-    },
-  }),
-} as const
+declare const store: Store<typeof schema>
 
 const count$ = queryDb(tables.todos.count(), { label: 'count$' })
 const count = store.query(count$)

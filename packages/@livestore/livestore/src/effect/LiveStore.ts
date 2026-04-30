@@ -3,10 +3,11 @@ import type { LiveStoreEvent, LiveStoreSchema } from '@livestore/common/schema'
 import { omitUndefineds } from '@livestore/utils'
 import type { Cause, OtelTracer, Scope } from '@livestore/utils/effect'
 import { Context, Deferred, Duration, Effect, Layer, pipe } from '@livestore/utils/effect'
+
 import type { LiveStoreContextProps } from '../store/create-store.ts'
 import { createStore, DeferredStoreContext, LiveStoreContextRunning } from '../store/create-store.ts'
-import type { Store as StoreClass } from '../store/store.ts'
 import type { LiveStoreContextRunning as LiveStoreContextRunningType, Queryable } from '../store/store-types.ts'
+import type { Store as StoreClass } from '../store/store.ts'
 
 export const makeLiveStoreContext = <TSchema extends LiveStoreSchema, TContext = {}>({
   schema,
@@ -33,12 +34,6 @@ export const makeLiveStoreContext = <TSchema extends LiveStoreSchema, TContext =
         batchUpdates,
         ...omitUndefineds({ context, boot, disableDevtools, onBootStatus, syncPayload, syncPayloadSchema }),
       })
-
-      globalThis.__debugLiveStore ??= {}
-      if (Object.keys(globalThis.__debugLiveStore).length === 0) {
-        globalThis.__debugLiveStore._ = store
-      }
-      globalThis.__debugLiveStore[storeId] = store
 
       return { stage: 'running', store } as any as LiveStoreContextRunning['Type']
     }),
@@ -115,12 +110,20 @@ export type StoreLayerProps<TSchema extends LiveStoreSchema, TContext = {}> = Om
  *
  * Note: This uses a type alias with a new() signature to make it extendable.
  */
-export type StoreTagClass<TSchema extends LiveStoreSchema, TStoreId extends string> = {
+/**
+ * Type for a Store.Tag class. Uses self-referential identifier so that `yield*`
+ * and method R channels resolve to the same type, enabling proper layer composition.
+ *
+ * Uses `interface` (not `type`) to allow the self-referential identifier without
+ * triggering TS2456 (circular type alias).
+ */
+export interface StoreTagClass<TSchema extends LiveStoreSchema, TStoreId extends string>
+  extends Context.Tag<StoreTagClass<TSchema, TStoreId>, LiveStoreContextRunningType<TSchema>> {
   /** Constructor signature (makes the type extendable as a class) */
-  new (): Context.Tag<StoreContextId<TSchema, TStoreId>, LiveStoreContextRunningType<TSchema>>
+  new (): Context.Tag<StoreTagClass<TSchema, TStoreId>, LiveStoreContextRunningType<TSchema>>
 
   /** Tag identity type (from Context.Tag) */
-  readonly Id: StoreContextId<TSchema, TStoreId>
+  readonly Id: StoreTagClass<TSchema, TStoreId>
 
   /** Service type (from Context.Tag) */
   readonly Type: LiveStoreContextRunningType<TSchema>
@@ -132,7 +135,7 @@ export type StoreTagClass<TSchema extends LiveStoreSchema, TStoreId extends stri
   readonly storeId: TStoreId
 
   /** Creates a layer that initializes the store */
-  layer<TContext = {}>(
+  layer<TContext>(
     props: StoreLayerProps<TSchema, TContext>,
   ): Layer.Layer<StoreTagClass<TSchema, TStoreId>, UnknownError | Cause.TimeoutException, OtelTracer.OtelTracer>
 
@@ -143,7 +146,7 @@ export type StoreTagClass<TSchema extends LiveStoreSchema, TStoreId extends stri
   >
 
   /** Layer that provides the Deferred tag */
-  readonly DeferredLayer: Layer.Layer<DeferredContextId<TStoreId>, never, never>
+  readonly DeferredLayer: Layer.Layer<DeferredContextId<TStoreId>>
 
   /** Layer that waits for Deferred and provides the running store */
   readonly fromDeferred: Layer.Layer<StoreTagClass<TSchema, TStoreId>, UnknownError, DeferredContextId<TStoreId>>
@@ -160,7 +163,7 @@ export type StoreTagClass<TSchema extends LiveStoreSchema, TStoreId extends stri
   use<A, E, R>(
     f: (ctx: LiveStoreContextRunningType<TSchema>) => Effect.Effect<A, E, R>,
   ): Effect.Effect<A, E, R | StoreTagClass<TSchema, TStoreId>>
-} & Context.Tag<StoreContextId<TSchema, TStoreId>, LiveStoreContextRunningType<TSchema>>
+}
 
 /**
  * Create a typed store context class for use with Effect.
@@ -248,12 +251,6 @@ const makeStoreTag = <TSchema extends LiveStoreSchema, TStoreId extends string>(
               syncPayloadSchema: props.syncPayloadSchema,
             }),
           })
-
-          globalThis.__debugLiveStore ??= {}
-          if (Object.keys(globalThis.__debugLiveStore).length === 0) {
-            globalThis.__debugLiveStore._ = store
-          }
-          globalThis.__debugLiveStore[storeId] = store
 
           const ctx: RunningType = { stage: 'running', store: store as StoreClass<TSchema> }
 
@@ -349,7 +346,7 @@ export interface StoreContext<TSchema extends LiveStoreSchema, TStoreId extends 
   readonly Layer: <TContext = {}>(
     props: Omit<LiveStoreContextProps<TSchema, TContext>, 'storeId'>,
   ) => Layer.Layer<StoreContextId<TSchema, TStoreId>, UnknownError | Cause.TimeoutException, OtelTracer.OtelTracer>
-  readonly DeferredLayer: Layer.Layer<DeferredContextId<TStoreId>, never, never>
+  readonly DeferredLayer: Layer.Layer<DeferredContextId<TStoreId>>
   readonly fromDeferred: Layer.Layer<StoreContextId<TSchema, TStoreId>, UnknownError, DeferredContextId<TStoreId>>
 }
 
@@ -398,12 +395,6 @@ export const makeStoreContext =
               syncPayloadSchema: props.syncPayloadSchema,
             }),
           })
-
-          globalThis.__debugLiveStore ??= {}
-          if (Object.keys(globalThis.__debugLiveStore).length === 0) {
-            globalThis.__debugLiveStore._ = store
-          }
-          globalThis.__debugLiveStore[storeId] = store
 
           const ctx: RunningType = { stage: 'running', store: store as StoreClass<TSchema> }
 

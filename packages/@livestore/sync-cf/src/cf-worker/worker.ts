@@ -1,7 +1,9 @@
 import { env as importedEnv } from 'cloudflare:workers'
+
 import { UnknownError } from '@livestore/common'
 import type { HelperTypes } from '@livestore/common-cf'
 import { Effect, Schema } from '@livestore/utils/effect'
+
 import type { CfTypes, SearchParams } from '../common/mod.ts'
 import type { CfDeclare } from './mod.ts'
 import { type Env, type ForwardedHeaders, matchSyncRequest } from './shared.ts'
@@ -80,15 +82,16 @@ export const makeWorker = <
     fetch: async (request, env, _ctx) => {
       const url = new URL(request.url)
 
-      const corsHeaders: CfTypes.HeadersInit = options.enableCORS
-        ? {
-            'Access-Control-Allow-Origin': '*',
-            'Access-Control-Allow-Methods': 'GET, POST, OPTIONS',
-            'Access-Control-Allow-Headers': request.headers.get('Access-Control-Request-Headers') ?? '*',
-          }
-        : {}
+      const corsHeaders: CfTypes.HeadersInit =
+        options.enableCORS === true
+          ? {
+              'Access-Control-Allow-Origin': '*',
+              'Access-Control-Allow-Methods': 'GET, POST, OPTIONS',
+              'Access-Control-Allow-Headers': request.headers.get('Access-Control-Request-Headers') ?? '*',
+            }
+          : {}
 
-      if (request.method === 'OPTIONS' && options.enableCORS) {
+      if (request.method === 'OPTIONS' && options.enableCORS === true) {
         return new Response(null, {
           status: 204,
           headers: corsHeaders,
@@ -202,16 +205,16 @@ export const handleSyncRequest = <
         if (decodedEither._tag === 'Left') {
           const message = decodedEither.left.toString()
           console.error('Invalid payload (decode failed)', message)
-          return new Response(message, { status: 400, headers })
+          return new Response(message, { status: 400, ...(headers !== undefined ? { headers } : {}) })
         }
 
         const result = yield* Effect.promise(async () =>
-          validatePayload(decodedEither.right as TSyncPayload, { storeId, headers: requestHeaders }),
+          validatePayload(decodedEither.right, { storeId, headers: requestHeaders }),
         ).pipe(UnknownError.mapToUnknownError, Effect.either)
 
         if (result._tag === 'Left') {
           console.error('Invalid payload (validation failed)', result.left)
-          return new Response(result.left.toString(), { status: 400, headers })
+          return new Response(result.left.toString(), { status: 400, ...(headers !== undefined ? { headers } : {}) })
         }
       } else {
         const result = yield* Effect.promise(async () =>
@@ -220,7 +223,7 @@ export const handleSyncRequest = <
 
         if (result._tag === 'Left') {
           console.error('Invalid payload (validation failed)', result.left)
-          return new Response(result.left.toString(), { status: 400, headers })
+          return new Response(result.left.toString(), { status: 400, ...(headers !== undefined ? { headers } : {}) })
         }
       }
     }
@@ -232,7 +235,7 @@ export const handleSyncRequest = <
         `Failed dependency: Required Durable Object binding '${syncBackendBinding as string}' not available`,
         {
           status: 424,
-          headers,
+          ...(headers !== undefined ? { headers } : {}),
         },
       )
     }
@@ -249,7 +252,7 @@ export const handleSyncRequest = <
     if (transport === 'ws' && (upgradeHeader === null || upgradeHeader !== 'websocket')) {
       return new Response('Durable Object expected Upgrade: websocket', {
         status: 426,
-        headers,
+        ...(headers !== undefined ? { headers } : {}),
       })
     }
 

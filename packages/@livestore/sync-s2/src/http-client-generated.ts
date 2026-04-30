@@ -677,7 +677,7 @@ export const make = (
     )
   const withResponse: <A, E>(
     f: (response: HttpClientResponse.HttpClientResponse) => Effect.Effect<A, E>,
-  ) => (request: HttpClientRequest.HttpClientRequest) => Effect.Effect<any, any> = options.transformClient
+  ) => (request: HttpClientRequest.HttpClientRequest) => Effect.Effect<any, any> = options.transformClient !== undefined
     ? (f) => (request) =>
         Effect.flatMap(
           Effect.flatMap(options.transformClient!(httpClient), (client) => client.execute(request)),
@@ -697,6 +697,7 @@ export const make = (
   return {
     httpClient,
     listAccessTokens: (options) =>
+      // @effect-diagnostics-next-line anyUnknownInErrorContext:off
       HttpClientRequest.get(`/access-tokens`).pipe(
         HttpClientRequest.setUrlParams({
           prefix: options?.prefix as any,
@@ -713,6 +714,7 @@ export const make = (
         ),
       ),
     issueAccessToken: (options) =>
+      // @effect-diagnostics-next-line anyUnknownInErrorContext:off
       HttpClientRequest.post(`/access-tokens`).pipe(
         HttpClientRequest.bodyUnsafeJson(options),
         withResponse(
@@ -726,6 +728,7 @@ export const make = (
         ),
       ),
     revokeAccessToken: (id) =>
+      // @effect-diagnostics-next-line anyUnknownInErrorContext:off
       HttpClientRequest.del(`/access-tokens/${id}`).pipe(
         withResponse(
           HttpClientResponse.matchStatus({
@@ -737,6 +740,7 @@ export const make = (
         ),
       ),
     listBasins: (options) =>
+      // @effect-diagnostics-next-line anyUnknownInErrorContext:off
       HttpClientRequest.get(`/basins`).pipe(
         HttpClientRequest.setUrlParams({
           prefix: options?.prefix as any,
@@ -753,6 +757,7 @@ export const make = (
         ),
       ),
     createBasin: (options) =>
+      // @effect-diagnostics-next-line anyUnknownInErrorContext:off
       HttpClientRequest.post(`/basins`).pipe(
         HttpClientRequest.bodyUnsafeJson(options),
         withResponse(
@@ -768,6 +773,7 @@ export const make = (
         ),
       ),
     getBasinConfig: (basin) =>
+      // @effect-diagnostics-next-line anyUnknownInErrorContext:off
       HttpClientRequest.get(`/basins/${basin}`).pipe(
         withResponse(
           HttpClientResponse.matchStatus({
@@ -780,6 +786,7 @@ export const make = (
         ),
       ),
     createOrReconfigureBasin: (basin, options) =>
+      // @effect-diagnostics-next-line anyUnknownInErrorContext:off
       HttpClientRequest.put(`/basins/${basin}`).pipe(
         HttpClientRequest.setHeaders({ 's2-request-token': options.params?.['s2-request-token'] ?? undefined }),
         HttpClientRequest.bodyUnsafeJson(options.payload),
@@ -794,6 +801,7 @@ export const make = (
         ),
       ),
     deleteBasin: (basin) =>
+      // @effect-diagnostics-next-line anyUnknownInErrorContext:off
       HttpClientRequest.del(`/basins/${basin}`).pipe(
         withResponse(
           HttpClientResponse.matchStatus({
@@ -807,6 +815,7 @@ export const make = (
         ),
       ),
     reconfigureBasin: (basin, options) =>
+      // @effect-diagnostics-next-line anyUnknownInErrorContext:off
       HttpClientRequest.patch(`/basins/${basin}`).pipe(
         HttpClientRequest.bodyUnsafeJson(options),
         withResponse(
@@ -820,6 +829,7 @@ export const make = (
         ),
       ),
     accountMetrics: (options) =>
+      // @effect-diagnostics-next-line anyUnknownInErrorContext:off
       HttpClientRequest.get(`/metrics`).pipe(
         HttpClientRequest.setUrlParams({
           set: options?.set as any,
@@ -837,6 +847,7 @@ export const make = (
         ),
       ),
     basinMetrics: (basin, options) =>
+      // @effect-diagnostics-next-line anyUnknownInErrorContext:off
       HttpClientRequest.get(`/metrics/${basin}`).pipe(
         HttpClientRequest.setUrlParams({
           set: options?.set as any,
@@ -854,6 +865,7 @@ export const make = (
         ),
       ),
     streamMetrics: (basin, stream, options) =>
+      // @effect-diagnostics-next-line anyUnknownInErrorContext:off
       HttpClientRequest.get(`/metrics/${basin}/${stream}`).pipe(
         HttpClientRequest.setUrlParams({
           set: options?.set as any,
@@ -871,6 +883,7 @@ export const make = (
         ),
       ),
     listStreams: (options) =>
+      // @effect-diagnostics-next-line anyUnknownInErrorContext:off
       HttpClientRequest.get(`/streams`).pipe(
         HttpClientRequest.setUrlParams({
           prefix: options?.prefix as any,
@@ -888,6 +901,7 @@ export const make = (
         ),
       ),
     createStream: (options) =>
+      // @effect-diagnostics-next-line anyUnknownInErrorContext:off
       HttpClientRequest.post(`/streams`).pipe(
         HttpClientRequest.bodyUnsafeJson(options),
         withResponse(
@@ -902,6 +916,7 @@ export const make = (
         ),
       ),
     getStreamConfig: (stream) =>
+      // @effect-diagnostics-next-line anyUnknownInErrorContext:off
       HttpClientRequest.get(`/streams/${stream}`).pipe(
         withResponse(
           HttpClientResponse.matchStatus({
@@ -915,6 +930,7 @@ export const make = (
         ),
       ),
     createOrReconfigureStream: (stream, options) =>
+      // @effect-diagnostics-next-line anyUnknownInErrorContext:off
       HttpClientRequest.put(`/streams/${stream}`).pipe(
         HttpClientRequest.setHeaders({ 's2-request-token': options.params?.['s2-request-token'] ?? undefined }),
         HttpClientRequest.bodyUnsafeJson(options.payload),
@@ -931,6 +947,7 @@ export const make = (
         ),
       ),
     deleteStream: (stream) =>
+      // @effect-diagnostics-next-line anyUnknownInErrorContext:off
       HttpClientRequest.del(`/streams/${stream}`).pipe(
         withResponse(
           HttpClientResponse.matchStatus({
@@ -943,6 +960,7 @@ export const make = (
         ),
       ),
     reconfigureStream: (stream, options) =>
+      // @effect-diagnostics-next-line anyUnknownInErrorContext:off
       HttpClientRequest.patch(`/streams/${stream}`).pipe(
         HttpClientRequest.bodyUnsafeJson(options),
         withResponse(
@@ -957,6 +975,7 @@ export const make = (
         ),
       ),
     read: (stream, options) =>
+      // @effect-diagnostics-next-line anyUnknownInErrorContext:off
       HttpClientRequest.get(`/streams/${stream}/records`).pipe(
         HttpClientRequest.setUrlParams({
           seq_num: options?.seq_num as any,
@@ -982,6 +1001,7 @@ export const make = (
         ),
       ),
     append: (stream, options) =>
+      // @effect-diagnostics-next-line anyUnknownInErrorContext:off
       HttpClientRequest.post(`/streams/${stream}/records`).pipe(
         HttpClientRequest.setHeaders({ 's2-format': options.params?.['s2-format'] ?? undefined }),
         HttpClientRequest.bodyUnsafeJson(options.payload),
@@ -999,6 +1019,7 @@ export const make = (
         ),
       ),
     checkTail: (stream) =>
+      // @effect-diagnostics-next-line anyUnknownInErrorContext:off
       HttpClientRequest.get(`/streams/${stream}/records/tail`).pipe(
         withResponse(
           HttpClientResponse.matchStatus({
@@ -1021,13 +1042,13 @@ export interface Client {
    * List access tokens.
    */
   readonly listAccessTokens: (
-    options?: typeof ListAccessTokensParams.Encoded | undefined,
+    options?: typeof ListAccessTokensParams.Encoded  ,
   ) => Effect.Effect<
     typeof ListAccessTokensResponse.Type,
     | HttpClientError.HttpClientError
     | ParseResult.ParseError
     | ClientError<'ErrorResponse', typeof ErrorResponse.Type>
-    | ClientError<'ErrorResponse', typeof ErrorResponse.Type>
+     
   >
   /**
    * Issue a new access token.
@@ -1039,8 +1060,8 @@ export interface Client {
     | HttpClientError.HttpClientError
     | ParseResult.ParseError
     | ClientError<'ErrorResponse', typeof ErrorResponse.Type>
-    | ClientError<'ErrorResponse', typeof ErrorResponse.Type>
-    | ClientError<'ErrorResponse', typeof ErrorResponse.Type>
+     
+     
   >
   /**
    * Revoke an access token.
@@ -1052,19 +1073,19 @@ export interface Client {
     | HttpClientError.HttpClientError
     | ParseResult.ParseError
     | ClientError<'ErrorResponse', typeof ErrorResponse.Type>
-    | ClientError<'ErrorResponse', typeof ErrorResponse.Type>
+     
   >
   /**
    * List basins.
    */
   readonly listBasins: (
-    options?: typeof ListBasinsParams.Encoded | undefined,
+    options?: typeof ListBasinsParams.Encoded  ,
   ) => Effect.Effect<
     typeof ListBasinsResponse.Type,
     | HttpClientError.HttpClientError
     | ParseResult.ParseError
     | ClientError<'ErrorResponse', typeof ErrorResponse.Type>
-    | ClientError<'ErrorResponse', typeof ErrorResponse.Type>
+     
   >
   /**
    * Create a basin.
@@ -1072,13 +1093,13 @@ export interface Client {
   readonly createBasin: (
     options: typeof CreateBasinRequest.Encoded,
   ) => Effect.Effect<
-    typeof BasinInfo.Type | typeof BasinInfo.Type,
+    typeof BasinInfo.Type  ,
     | HttpClientError.HttpClientError
     | ParseResult.ParseError
     | ClientError<'ErrorResponse', typeof ErrorResponse.Type>
-    | ClientError<'ErrorResponse', typeof ErrorResponse.Type>
-    | ClientError<'ErrorResponse', typeof ErrorResponse.Type>
-    | ClientError<'ErrorResponse', typeof ErrorResponse.Type>
+     
+     
+     
   >
   /**
    * Get basin configuration.
@@ -1090,8 +1111,8 @@ export interface Client {
     | HttpClientError.HttpClientError
     | ParseResult.ParseError
     | ClientError<'ErrorResponse', typeof ErrorResponse.Type>
-    | ClientError<'ErrorResponse', typeof ErrorResponse.Type>
-    | ClientError<'ErrorResponse', typeof ErrorResponse.Type>
+     
+     
   >
   /**
    * Create or reconfigure a basin.
@@ -1103,7 +1124,7 @@ export interface Client {
       readonly payload: typeof CreateOrReconfigureBasinRequest.Encoded
     },
   ) => Effect.Effect<
-    typeof BasinInfo.Type | typeof BasinInfo.Type,
+    typeof BasinInfo.Type  ,
     HttpClientError.HttpClientError | ParseResult.ParseError | ClientError<'ErrorResponse', typeof ErrorResponse.Type>
   >
   /**
@@ -1116,9 +1137,9 @@ export interface Client {
     | HttpClientError.HttpClientError
     | ParseResult.ParseError
     | ClientError<'ErrorResponse', typeof ErrorResponse.Type>
-    | ClientError<'ErrorResponse', typeof ErrorResponse.Type>
-    | ClientError<'ErrorResponse', typeof ErrorResponse.Type>
-    | ClientError<'ErrorResponse', typeof ErrorResponse.Type>
+     
+     
+     
   >
   /**
    * Reconfigure a basin.
@@ -1131,8 +1152,8 @@ export interface Client {
     | HttpClientError.HttpClientError
     | ParseResult.ParseError
     | ClientError<'ErrorResponse', typeof ErrorResponse.Type>
-    | ClientError<'ErrorResponse', typeof ErrorResponse.Type>
-    | ClientError<'ErrorResponse', typeof ErrorResponse.Type>
+     
+     
   >
   /**
    * Account-level metrics.
@@ -1144,7 +1165,7 @@ export interface Client {
     | HttpClientError.HttpClientError
     | ParseResult.ParseError
     | ClientError<'ErrorResponse', typeof ErrorResponse.Type>
-    | ClientError<'ErrorResponse', typeof ErrorResponse.Type>
+     
   >
   /**
    * Basin-level metrics.
@@ -1157,7 +1178,7 @@ export interface Client {
     | HttpClientError.HttpClientError
     | ParseResult.ParseError
     | ClientError<'ErrorResponse', typeof ErrorResponse.Type>
-    | ClientError<'ErrorResponse', typeof ErrorResponse.Type>
+     
   >
   /**
    * Stream-level metrics.
@@ -1171,20 +1192,20 @@ export interface Client {
     | HttpClientError.HttpClientError
     | ParseResult.ParseError
     | ClientError<'ErrorResponse', typeof ErrorResponse.Type>
-    | ClientError<'ErrorResponse', typeof ErrorResponse.Type>
+     
   >
   /**
    * List streams.
    */
   readonly listStreams: (
-    options?: typeof ListStreamsParams.Encoded | undefined,
+    options?: typeof ListStreamsParams.Encoded  ,
   ) => Effect.Effect<
     typeof ListStreamsResponse.Type,
     | HttpClientError.HttpClientError
     | ParseResult.ParseError
     | ClientError<'ErrorResponse', typeof ErrorResponse.Type>
-    | ClientError<'ErrorResponse', typeof ErrorResponse.Type>
-    | ClientError<'ErrorResponse', typeof ErrorResponse.Type>
+     
+     
   >
   /**
    * Create a stream.
@@ -1196,9 +1217,9 @@ export interface Client {
     | HttpClientError.HttpClientError
     | ParseResult.ParseError
     | ClientError<'ErrorResponse', typeof ErrorResponse.Type>
-    | ClientError<'ErrorResponse', typeof ErrorResponse.Type>
-    | ClientError<'ErrorResponse', typeof ErrorResponse.Type>
-    | ClientError<'ErrorResponse', typeof ErrorResponse.Type>
+     
+     
+     
   >
   /**
    * Get stream configuration.
@@ -1210,9 +1231,9 @@ export interface Client {
     | HttpClientError.HttpClientError
     | ParseResult.ParseError
     | ClientError<'ErrorResponse', typeof ErrorResponse.Type>
-    | ClientError<'ErrorResponse', typeof ErrorResponse.Type>
-    | ClientError<'ErrorResponse', typeof ErrorResponse.Type>
-    | ClientError<'ErrorResponse', typeof ErrorResponse.Type>
+     
+     
+     
   >
   /**
    * Create or reconfigure a stream.
@@ -1228,9 +1249,9 @@ export interface Client {
     | HttpClientError.HttpClientError
     | ParseResult.ParseError
     | ClientError<'ErrorResponse', typeof ErrorResponse.Type>
-    | ClientError<'ErrorResponse', typeof ErrorResponse.Type>
-    | ClientError<'ErrorResponse', typeof ErrorResponse.Type>
-    | ClientError<'ErrorResponse', typeof ErrorResponse.Type>
+     
+     
+     
   >
   /**
    * Delete a stream.
@@ -1242,8 +1263,8 @@ export interface Client {
     | HttpClientError.HttpClientError
     | ParseResult.ParseError
     | ClientError<'ErrorResponse', typeof ErrorResponse.Type>
-    | ClientError<'ErrorResponse', typeof ErrorResponse.Type>
-    | ClientError<'ErrorResponse', typeof ErrorResponse.Type>
+     
+     
   >
   /**
    * Reconfigure a stream.
@@ -1256,26 +1277,26 @@ export interface Client {
     | HttpClientError.HttpClientError
     | ParseResult.ParseError
     | ClientError<'ErrorResponse', typeof ErrorResponse.Type>
-    | ClientError<'ErrorResponse', typeof ErrorResponse.Type>
-    | ClientError<'ErrorResponse', typeof ErrorResponse.Type>
-    | ClientError<'ErrorResponse', typeof ErrorResponse.Type>
+     
+     
+     
   >
   /**
    * Read records.
    */
   readonly read: (
     stream: string,
-    options?: typeof ReadParams.Encoded | undefined,
+    options?: typeof ReadParams.Encoded  ,
   ) => Effect.Effect<
     typeof ReadBatch.Type,
     | HttpClientError.HttpClientError
     | ParseResult.ParseError
     | ClientError<'ErrorResponse', typeof ErrorResponse.Type>
-    | ClientError<'ErrorResponse', typeof ErrorResponse.Type>
-    | ClientError<'ErrorResponse', typeof ErrorResponse.Type>
-    | ClientError<'ErrorResponse', typeof ErrorResponse.Type>
+     
+     
+     
     | ClientError<'TailResponse', typeof TailResponse.Type>
-    | ClientError<'ErrorResponse', typeof ErrorResponse.Type>
+     
   >
   /**
    * Append records.
@@ -1291,11 +1312,11 @@ export interface Client {
     | HttpClientError.HttpClientError
     | ParseResult.ParseError
     | ClientError<'ErrorResponse', typeof ErrorResponse.Type>
-    | ClientError<'ErrorResponse', typeof ErrorResponse.Type>
-    | ClientError<'ErrorResponse', typeof ErrorResponse.Type>
-    | ClientError<'ErrorResponse', typeof ErrorResponse.Type>
+     
+     
+     
     | ClientError<'AppendConditionFailed', typeof AppendConditionFailed.Type>
-    | ClientError<'ErrorResponse', typeof ErrorResponse.Type>
+     
   >
   /**
    * Check the tail.
@@ -1307,10 +1328,10 @@ export interface Client {
     | HttpClientError.HttpClientError
     | ParseResult.ParseError
     | ClientError<'ErrorResponse', typeof ErrorResponse.Type>
-    | ClientError<'ErrorResponse', typeof ErrorResponse.Type>
-    | ClientError<'ErrorResponse', typeof ErrorResponse.Type>
-    | ClientError<'ErrorResponse', typeof ErrorResponse.Type>
-    | ClientError<'ErrorResponse', typeof ErrorResponse.Type>
+     
+     
+     
+     
   >
 }
 

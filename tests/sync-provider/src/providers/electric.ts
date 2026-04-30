@@ -10,11 +10,16 @@
  */
 import http from 'node:http'
 import path from 'node:path'
+
+import postgres from 'postgres'
+
 import { UnknownError } from '@livestore/common'
 import type { LiveStoreEvent } from '@livestore/livestore'
 import { nanoid, Schema } from '@livestore/livestore'
 import * as ElectricSync from '@livestore/sync-electric'
+import { type DockerComposeError, DockerComposeService } from '@livestore/utils-dev/node'
 import {
+  type Cause,
   type CommandExecutor,
   Effect,
   HttpClient,
@@ -26,8 +31,7 @@ import {
   type PlatformError,
 } from '@livestore/utils/effect'
 import { getFreePort, PlatformNode } from '@livestore/utils/node'
-import { type DockerComposeError, DockerComposeService } from '@livestore/utils-dev/node'
-import postgres from 'postgres'
+
 import { SyncProviderImpl, type SyncProviderLayer } from '../types.ts'
 
 // Also support scenarios where Docker is not running locally but via a Docker remote context (@schickling needs this)
@@ -49,8 +53,8 @@ export const prepare: Effect.Effect<
 export const getProviderSpecific = (provider: SyncProviderImpl['Type']) =>
   provider.providerSpecific as {
     getDbForTesting: (storeId: string) => {
-      migrate: Effect.Effect<void, unknown>
-      disconnect: Effect.Effect<void, unknown>
+      migrate: Effect.Effect<void, Cause.UnknownException>
+      disconnect: Effect.Effect<void, Cause.UnknownException>
       sql: any
       tableName: string
     }
@@ -155,7 +159,7 @@ const makeRouter = ({ electricPort, postgresPort }: { electricPort: number; post
         //   )
         // }
 
-        if (needsInit) {
+        if (needsInit === true) {
           const db = makeDb({ storeId, postgresPort })
           yield* db.migrate
           yield* db.disconnect

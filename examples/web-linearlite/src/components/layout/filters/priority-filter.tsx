@@ -1,13 +1,16 @@
 import { XMarkIcon } from '@heroicons/react/16/solid'
+import { useCallback } from 'react'
 import { Button } from 'react-aria-components'
+
 import { priorityOptions } from '../../../data/priority-options.ts'
 import { useFilterState } from '../../../livestore/queries.ts'
 import type { Priority } from '../../../types/priority.ts'
-import { Icon, type IconName } from '../../icons/index.tsx'
+import { Icon } from '../../icons/index.tsx'
 import { FilterMenu } from './filter-menu.tsx'
 
 export const PriorityFilter = () => {
   const [filterState, setFilterState] = useFilterState()
+  const handleClear = useCallback(() => setFilterState({ priority: null }), [setFilterState])
   if (!filterState.priority) return null
 
   return (
@@ -21,11 +24,11 @@ export const PriorityFilter = () => {
           {filterState.priority.length === 1 ? (
             <>
               <Icon
-                name={priorityOptions[filterState.priority[0] as Priority]!.icon as IconName}
-                className={`h-3.5 ${priorityOptions[filterState.priority[0] as Priority]!.style}`}
+                name={priorityOptions[filterState.priority[0]]!.icon}
+                className={`h-3.5 ${priorityOptions[filterState.priority[0]]!.style}`}
               />
               <span className="font-medium text-neutral-600 dark:text-neutral-200">
-                {priorityOptions[filterState.priority[0] as Priority]!.name}
+                {priorityOptions[filterState.priority[0]]!.name}
               </span>
             </>
           ) : (
@@ -34,7 +37,7 @@ export const PriorityFilter = () => {
         </Button>
       </FilterMenu>
       <Button
-        onPress={() => setFilterState({ priority: null })}
+        onPress={handleClear}
         className="h-full flex items-center px-1 group hover:bg-neutral-50 dark:hover:bg-neutral-800 focus:outline-none focus:bg-neutral-100 dark:focus:bg-neutral-800 border-l border-neutral-200 dark:border-neutral-700"
       >
         <XMarkIcon className="size-4 group-hover:text-neutral-700 dark:group-hover:text-neutral-200" />

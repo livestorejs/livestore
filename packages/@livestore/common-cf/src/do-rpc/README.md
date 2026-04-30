@@ -68,7 +68,7 @@ async rpc(payload: Uint8Array): Promise<Uint8Array | ReadableStream> {
   return handler(payload).pipe(Effect.runPromise)
 }
 
-// Client setup  
+// Client setup
 const client = RpcClient.make(MyRpcs, {
   layer: layerProtocolDurableObject(
     (payload) => serverDO.rpc(payload)
@@ -82,4 +82,3 @@ const result3 = yield* client.CountUp({ startValue: 0 }).pipe(Stream.take(10), S
 ```
 
 ## Effect RPC reference
-

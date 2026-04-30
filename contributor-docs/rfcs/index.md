@@ -35,6 +35,7 @@ docs/src/content/rfcs/NNNN-descriptive-name.md
 ```
 
 Include:
+
 - **Context**: Just enough context necessary to frame the rest of the RFC. The content should be indisputable facts, not opinions.
 - **Problem**: A description of the problem that this RFC is trying to address, the constraints, and why this problem is worth solving now.
 - **Proposed Solution**: Detailed API design with examples.
@@ -51,5 +52,6 @@ Include:
 ### 3. Acceptance
 
 Once the RFC has been reviewed and refined:
+
 - Merge the PR to formally accept the RFC
 - Implementation can begin

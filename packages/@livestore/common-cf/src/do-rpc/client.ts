@@ -8,6 +8,7 @@ import {
   RpcSerialization,
   type Scope,
 } from '@livestore/utils/effect'
+
 import type * as CfTypes from '../cf-types.ts'
 
 /**
@@ -17,8 +18,8 @@ import type * as CfTypes from '../cf-types.ts'
 const processReadableStream = (
   stream: CfTypes.ReadableStream,
   parser: ReturnType<typeof RpcSerialization.msgPack.unsafeMake>,
-  writeResponse: (response: any) => Effect.Effect<void, never, never>,
-): Effect.Effect<void, never, never> =>
+  writeResponse: (response: any) => Effect.Effect<void>,
+): Effect.Effect<void> =>
   Effect.gen(function* () {
     const reader = stream.getReader()
 
@@ -26,21 +27,20 @@ const processReadableStream = (
       while (true) {
         const { done, value } = yield* Effect.tryPromise(() => reader.read()).pipe(Effect.orDie)
 
-        if (done) {
+        if (done === true) {
           break
         }
 
         // Decode the chunk
         const decoded = parser.decode(value as Uint8Array)
 
-        // Handle array of messages - we get [[message]] from server
+        // Handle array of messages from server.
+        // Server sends `parser.encode([message])` per enqueue, so each decoded value is `[message]`.
+        // When CF DO RPC merges enqueues in production, we get `[[msg1], [msg2], ...]`.
+        // `flat(1)` normalizes both single and merged cases to `[msg1, msg2, ...]`.
         let messages: any[]
-        if (Array.isArray(decoded) && decoded.length === 1 && Array.isArray(decoded[0])) {
-          // Double-wrapped array [[message]] -> [message]
-          messages = decoded[0]
-        } else if (Array.isArray(decoded)) {
-          // Single array [message]
-          messages = decoded
+        if (Array.isArray(decoded) === true) {
+          messages = decoded.flat(1)
         } else {
           messages = [decoded]
         }
@@ -72,7 +72,7 @@ interface MakeDoRpcProtocolArgs {
  */
 export const layerProtocolDurableObject = (
   args: MakeDoRpcProtocolArgs,
-): Layer.Layer<RpcClient.Protocol, never, never> => Layer.scoped(RpcClient.Protocol, makeProtocolDurableObject(args))
+): Layer.Layer<RpcClient.Protocol> => Layer.scoped(RpcClient.Protocol, makeProtocolDurableObject(args))
 
 /**
  * Implementation of the RPC Protocol interface using Cloudflare Durable Object RPC calls.
@@ -88,7 +88,7 @@ const makeProtocolDurableObject = ({
       // const fiberMap = new Map<string, Fiber.RuntimeFiber<void, never>>()
       const fiberMap = yield* FiberMap.make<string, void, never>()
 
-      const send = (message: RpcMessage.FromClientEncoded): Effect.Effect<void, never, never> => {
+  const send = (message: RpcMessage.FromClientEncoded): Effect.Effect<void> => {
         if (message._tag !== 'Request') {
           if (message._tag === 'Interrupt') {
             return Effect.gen(function* () {
@@ -128,14 +128,10 @@ const makeProtocolDurableObject = ({
           // Handle regular Uint8Array responses
           const decoded = parser.decode(serializedResponse as Uint8Array)
 
-          // Handle potential nested array from server serialization
+          // Normalize nested arrays from server serialization (same as streaming path)
           let responseArray: any[]
-          if (Array.isArray(decoded) && decoded.length === 1 && Array.isArray(decoded[0])) {
-            // Double-wrapped array [[Exit]] -> [Exit]
-            responseArray = decoded[0]
-          } else if (Array.isArray(decoded)) {
-            // Single array [Exit]
-            responseArray = decoded
+          if (Array.isArray(decoded) === true) {
+            responseArray = decoded.flat(1)
           } else {
             responseArray = [decoded]
           }

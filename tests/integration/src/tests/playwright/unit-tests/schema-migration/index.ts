@@ -4,6 +4,7 @@ import type { BootStatus } from '@livestore/common'
 import { liveStoreStorageFormatVersion, UnknownError } from '@livestore/common'
 import { Chunk, Effect, Layer, Logger, LogLevel, Queue, Schedule, Schema, Stream } from '@livestore/utils/effect'
 import { Opfs } from '@livestore/utils/effect/browser'
+
 import { ResultMultipleMigrations } from '../bridge.ts'
 import LiveStoreWorker from '../livestore.worker.ts?worker'
 import { schema } from '../schema.ts'
@@ -56,7 +57,7 @@ export const testMultipleMigrations = () =>
           Effect.repeat(Schedule.forever.pipe(Schedule.untilInput((_: BootStatus) => _.stage === 'done'))),
           // Count a migration when we see a "done" status after a "migrating" status
           Effect.tapSync(() => {
-            if (hasMigrated) migrationsCount++
+            if (hasMigrated === true) migrationsCount++
           }),
         )
       }).pipe(Effect.scoped)
@@ -102,6 +103,6 @@ const collectArchiveSnapshot = Effect.gen(function* () {
 
   return fileChunks.pipe(Chunk.toReadonlyArray)
 }).pipe(
-  Effect.catchTag('@livestore/utils/Web/NotFoundError', () => Effect.succeed([])),
+  Effect.catchTag('NotFoundError', () => Effect.succeed([])),
   UnknownError.mapToUnknownError,
 )

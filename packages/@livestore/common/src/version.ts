@@ -1,8 +1,4 @@
-// TODO bring back when Expo and Playwright supports `with` imports
-// import packageJson from '../package.json' with { type: 'json' }
-// export const liveStoreVersion = packageJson.version
-
-const _liveStoreVersion = '0.4.0-dev.22' as const
+import pkg from '../package.json' with { type: 'json' }
 
 /**
  * Current LiveStore version used for DevTools version compatibility checks.
@@ -10,7 +6,7 @@ const _liveStoreVersion = '0.4.0-dev.22' as const
  * Can be overridden at runtime via `globalThis.__LIVESTORE_VERSION_OVERRIDE__` for testing purposes.
  * This allows Playwright tests to simulate version mismatch scenarios without rebuilding.
  */
-export const liveStoreVersion: string = (globalThis as any).__LIVESTORE_VERSION_OVERRIDE__ ?? _liveStoreVersion
+export const liveStoreVersion: string = (globalThis as any).__LIVESTORE_VERSION_OVERRIDE__ ?? pkg.version
 
 /**
  * CRITICAL: Increment this version whenever you modify client-side EVENTLOG table schemas.

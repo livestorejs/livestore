@@ -60,7 +60,8 @@ export const LiveList = <TItem,>({ items$, renderItem, getKey, store }: LiveList
           itemKey={key}
           item$={item$}
           store={store}
-          opts={{ isInitialListRender: !hasMounted, index }}
+          index={index}
+          isInitialListRender={!hasMounted}
           renderItem={renderItem}
         />
       ))}
@@ -70,17 +71,20 @@ export const LiveList = <TItem,>({ items$, renderItem, getKey, store }: LiveList
 
 const ItemWrapper = <TItem,>({
   item$,
-  opts,
+  index,
+  isInitialListRender,
   renderItem,
   store,
 }: {
   itemKey: string | number
   item$: LiveQueryDef<TItem>
-  opts: { index: number; isInitialListRender: boolean }
+  index: number
+  isInitialListRender: boolean
   renderItem: (item: TItem, opts: { index: number; isInitialListRender: boolean }) => React.ReactNode
   store: Store<any, any>
 }) => {
   const item = useQuery(item$, { store })
+  const opts = React.useMemo(() => ({ index, isInitialListRender }), [index, isInitialListRender])
 
   return <>{renderItem(item, opts)}</>
 }
@@ -91,6 +95,6 @@ const ItemWrapperMemo = React.memo(
     prev.itemKey === next.itemKey &&
     prev.renderItem === next.renderItem &&
     prev.store === next.store &&
-    prev.opts.index === next.opts.index &&
-    prev.opts.isInitialListRender === next.opts.isInitialListRender,
+    prev.index === next.index &&
+    prev.isInitialListRender === next.isInitialListRender,
 ) as typeof ItemWrapper

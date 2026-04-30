@@ -1,7 +1,9 @@
-import { queryDb } from '@livestore/livestore'
 import type React from 'react'
 import { Suspense } from 'react'
 import { ErrorBoundary } from 'react-error-boundary'
+
+import { queryDb } from '@livestore/livestore'
+
 import { useMailboxStore } from '../stores/mailbox/index.ts'
 import { mailboxTables } from '../stores/mailbox/schema.ts'
 import { LabelSidebar } from './LabelSidebar.tsx'
@@ -9,6 +11,8 @@ import { ThreadList } from './ThreadList.tsx'
 import { ThreadView } from './ThreadView.tsx'
 
 const labelsQuery = queryDb(mailboxTables.labels.where({}), { label: 'labels' })
+const threadErrorFallback = <ThreadError />
+const threadLoadingFallback = <ThreadLoading />
 
 export const AppLayout: React.FC = () => {
   const mailboxStore = useMailboxStore()
@@ -36,8 +40,8 @@ export const AppLayout: React.FC = () => {
         {/* Main Content */}
         <main className="flex-1 overflow-hidden">
           {uiState.selectedThreadId ? (
-            <ErrorBoundary fallback={<ThreadError />}>
-              <Suspense fallback={<ThreadLoading />}>
+            <ErrorBoundary fallback={threadErrorFallback}>
+              <Suspense fallback={threadLoadingFallback}>
                 <ThreadView threadId={uiState.selectedThreadId} />
               </Suspense>
             </ErrorBoundary>

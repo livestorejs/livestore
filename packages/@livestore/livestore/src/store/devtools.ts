@@ -7,8 +7,8 @@ import { nanoid } from '@livestore/utils/nanoid'
 
 import { NOT_REFRESHED_YET } from '../reactive.ts'
 import { emptyDebugInfo as makeEmptyDebugInfo } from '../SqliteDbWrapper.ts'
-import type { Store } from './store.ts'
 import { StoreInternalsSymbol } from './store-types.ts'
+import type { Store } from './store.ts'
 
 type Unsub = () => void
 type RequestId = string
@@ -23,7 +23,7 @@ const requestNextTick: (cb: () => void) => number =
 const cancelTick: (id: number) => void =
   globalThis.cancelAnimationFrame === undefined ? (id: number) => clearTimeout(id) : globalThis.cancelAnimationFrame
 
-export const connectDevtoolsToStore = ({
+export const connectDevtoolsToStore = Effect.fn('LSD.devtools.connectStoreToDevtools')(function* ({
   storeDevtoolsChannel,
   store,
 }: {
@@ -32,8 +32,7 @@ export const connectDevtoolsToStore = ({
     Devtools.ClientSession.MessageFromApp
   >
   store: Store
-}) =>
-  Effect.gen(function* () {
+}) {
     const reactivityGraphSubcriptions: SubMap = new Map()
     const liveQueriesSubscriptions: SubMap = new Map()
     const debugInfoHistorySubscriptions: SubMap = new Map()
@@ -88,7 +87,7 @@ export const connectDevtoolsToStore = ({
       // So far I could only observe this problem with webmesh proxy channels (e.g. for Expo)
       // Proof: https://share.cleanshot.com/V9G87B0B
       // Also see `leader-worker-devtools.ts` for same problem
-      if (handledRequestIds.has(requestId)) {
+      if (handledRequestIds.has(requestId) === true) {
         return
       }
 
@@ -347,4 +346,4 @@ export const connectDevtoolsToStore = ({
       Stream.runDrain,
       Effect.withSpan('LSD.devtools.onMessage'),
     )
-  }).pipe(UnknownError.mapToUnknownError, Effect.withSpan('LSD.devtools.connectStoreToDevtools'))
+}, UnknownError.mapToUnknownError)

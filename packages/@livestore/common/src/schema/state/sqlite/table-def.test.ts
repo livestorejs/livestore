@@ -1,5 +1,8 @@
+import { objectToString } from '@livestore/utils'
+
 import { Schema } from '@livestore/utils/effect'
-import { describe, expect, it } from 'vitest'
+import { describe, expect, expectTypeOf, it } from 'vitest'
+
 import { State } from '../../mod.ts'
 
 describe('table function overloads', () => {
@@ -79,16 +82,32 @@ describe('table function overloads', () => {
     expect(todosTable.sqliteDef.columns).toHaveProperty('optionalComplex')
 
     expect(todosTable.sqliteDef.columns.optionalBoolean.nullable).toBe(true)
-    expect(todosTable.sqliteDef.columns.optionalBoolean.schema.toString()).toBe('(number <-> boolean) | null')
+    expect(objectToString(todosTable.sqliteDef.columns.optionalBoolean.schema)).toBe('(number <-> boolean) | null')
     expect((todosTable.rowSchema as any).fields.optionalBoolean.toString()).toBe('(number <-> boolean) | null')
 
     expect(todosTable.sqliteDef.columns.optionalComplex.nullable).toBe(true)
-    expect(todosTable.sqliteDef.columns.optionalComplex.schema.toString()).toBe(
+    expect(objectToString(todosTable.sqliteDef.columns.optionalComplex.schema)).toBe(
       '(parseJson <-> { readonly color: string } | undefined) | null',
     )
     expect((todosTable.rowSchema as any).fields.optionalComplex.toString()).toBe(
       '(parseJson <-> { readonly color: string } | undefined) | null',
     )
+  })
+
+  it('should allow explicit first two generic arguments without options generic', () => {
+    const columns = {
+      id: State.SQLite.text({ primaryKey: true }),
+      text: State.SQLite.text({ default: '' }),
+    }
+
+    const todosTable = State.SQLite.table<'todos', typeof columns>({
+      name: 'todos',
+      columns,
+    })
+
+    expect(todosTable.sqliteDef.name).toBe('todos')
+    expect(todosTable.sqliteDef.columns).toHaveProperty('id')
+    expect(todosTable.sqliteDef.columns).toHaveProperty('text')
   })
 
   it('should work with schema parameter', () => {
@@ -301,6 +320,50 @@ describe('table function overloads', () => {
     expect(userTable.sqliteDef.columns.metadata.nullable).toBe(true)
   })
 
+  it('should allow omitting nullable fields in insert()', () => {
+    const UserSchema = Schema.Struct({
+      id: Schema.String.pipe(State.SQLite.withPrimaryKey),
+      undefined: Schema.Undefined,
+      null: Schema.Null,
+      undefinedOrString: Schema.UndefinedOr(Schema.String),
+      nullOrString: Schema.NullOr(Schema.String),
+      optionalString: Schema.optional(Schema.String),
+      optionalNullOrString: Schema.optional(Schema.NullOr(Schema.String)),
+    })
+
+    const usersTable = State.SQLite.table({
+      name: 'users',
+      schema: UserSchema,
+    })
+
+    // Non-nullable fields (id) are required — omitting id should be rejected
+    expectTypeOf<{ undefined: undefined }>().not.toExtend<Parameters<typeof usersTable.insert>[0]>()
+
+    // Nullable fields (NullOr, optional+NullOr) are omittable — SQL defaults to NULL
+    expectTypeOf(usersTable.insert)
+      .toBeCallableWith({ id: '1' })
+      .toBeCallableWith({ id: '1', undefined: undefined })
+      .toBeCallableWith({ id: '1', undefined: undefined, null: null })
+      .toBeCallableWith({ id: '1', undefined: undefined, null: null, undefinedOrString: undefined })
+      .toBeCallableWith({ id: '1', undefined: undefined, null: null, undefinedOrString: 'string' })
+      .toBeCallableWith({ id: '1', undefined: undefined, null: null, undefinedOrString: 'string', nullOrString: null })
+      .toBeCallableWith({ id: '1', undefined: undefined, null: null, undefinedOrString: 'string', nullOrString: 'string' })
+      .toBeCallableWith({ id: '1', undefined: undefined, null: null, undefinedOrString: 'string', nullOrString: 'string', optionalString: 'string' })
+      .toBeCallableWith({ id: '1', undefined: undefined, null: null, undefinedOrString: 'string', nullOrString: 'string', optionalString: 'string', optionalNullOrString: null })
+      .toBeCallableWith({ id: '1', undefined: undefined, null: null, undefinedOrString: 'string', nullOrString: 'string', optionalString: 'string', optionalNullOrString: 'string' })
+
+    expect(() => usersTable.insert({ id: '1' }).asSql()).not.toThrow()
+    expect(() => usersTable.insert({ id: '1', undefined: undefined }).asSql()).not.toThrow()
+    expect(() => usersTable.insert({ id: '1', undefined: undefined, null: null }).asSql()).not.toThrow()
+    expect(() => usersTable.insert({ id: '1', undefined: undefined, null: null, undefinedOrString: undefined }).asSql()).not.toThrow()
+    expect(() => usersTable.insert({ id: '1', undefined: undefined, null: null, undefinedOrString: 'string' }).asSql()).not.toThrow()
+    expect(() => usersTable.insert({ id: '1', undefined: undefined, null: null, undefinedOrString: 'string', nullOrString: null }).asSql()).not.toThrow()
+    expect(() => usersTable.insert({ id: '1', undefined: undefined, null: null, undefinedOrString: 'string', nullOrString: 'string' }).asSql()).not.toThrow()
+    expect(() => usersTable.insert({ id: '1', undefined: undefined, null: null, undefinedOrString: 'string', nullOrString: 'string', optionalString: 'string' }).asSql()).not.toThrow()
+    expect(() => usersTable.insert({ id: '1', undefined: undefined, null: null, undefinedOrString: 'string', nullOrString: 'string', optionalString: 'string', optionalNullOrString: null }).asSql()).not.toThrow()
+    expect(() => usersTable.insert({ id: '1', undefined: undefined, null: null, undefinedOrString: 'string', nullOrString: 'string', optionalString: 'string', optionalNullOrString: 'string' }).asSql()).not.toThrow()
+  })
+
   it('supports discriminated unions with parsed JSON payloads', () => {
     const CircleDataSchema = Schema.Struct({
       radius: Schema.Number,
@@ -327,7 +390,7 @@ describe('table function overloads', () => {
 
     expect(shapes.sqliteDef.columns.kind.columnType).toBe('text')
 
-    const kindSchema = shapes.sqliteDef.columns.kind.schema.toString()
+    const kindSchema = objectToString(shapes.sqliteDef.columns.kind.schema)
     expect(kindSchema).toContain('"circle" | "square"')
 
     expect(() =>

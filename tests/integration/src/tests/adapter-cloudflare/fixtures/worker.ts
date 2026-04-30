@@ -1,8 +1,9 @@
 /// <reference types="@cloudflare/workers-types" />
 
 import { DurableObject } from 'cloudflare:workers'
+
 import { type ClientDoWithRpcCallback, createStoreDoPromise } from '@livestore/adapter-cloudflare'
-import { liveStoreStorageFormatVersion } from '@livestore/common'
+import { CfDeclare } from '@livestore/common-cf/declare'
 import type { Store } from '@livestore/livestore'
 import {
   type CfTypes,
@@ -13,7 +14,14 @@ import {
 } from '@livestore/sync-cf/cf-worker'
 import { handleSyncUpdateRpc } from '@livestore/sync-cf/client'
 import { shouldNeverHappen } from '@livestore/utils'
+
 import { events, schema, tables } from '../schema.ts'
+
+/**
+ * Bridge Cloudflare's worker `Response` constructor back to the worker type in this mixed DOM/worker TS program.
+ */
+const makeCfResponse = (...args: ConstructorParameters<typeof CfDeclare.Response>): CfTypes.Response =>
+  new CfDeclare.Response(...args)
 
 type PersistenceSnapshot = {
   state: PersistenceCounts
@@ -21,8 +29,7 @@ type PersistenceSnapshot = {
 }
 
 type PersistenceCounts = {
-  files: number
-  blocks: number
+  count: number
 }
 
 type ResetPersistenceSnapshot = {
@@ -33,35 +40,83 @@ type ResetPersistenceSnapshot = {
 type Env = {
   SYNC_BACKEND_DO: CfTypes.DurableObjectNamespace<SyncBackendRpcInterface>
   TEST_STORE_DO: CfTypes.DurableObjectNamespace<ClientDoWithRpcCallback>
-  DB: CfTypes.D1Database
 }
+
+const DurableObjectBase = DurableObject as any as new (
+  state: CfTypes.DurableObjectState,
+  env: Env,
+) => CfTypes.DurableObject & { ctx: CfTypes.DurableObjectState; env: Env }
 
 export class SyncBackendDO extends makeDurableObject({}) {}
 
-export class TestStoreDo extends DurableObject<Env> implements ClientDoWithRpcCallback {
+/**
+ * Wraps `storage.sql` to intercept every `exec()` call and accumulate
+ * `cursor.rowsWritten` after iteration. This gives us exact write counts
+ * without modifying any adapter code.
+ */
+const wrapSqlForTracking = (sql: CfTypes.SqlStorage) => {
+  let totalRowsWritten = 0
+  let totalRowsRead = 0
+
+  const trackedExec: CfTypes.SqlStorage['exec'] = <T extends Record<string, CfTypes.SqlStorageValue>>(
+    query: string,
+    ...bindings: any[]
+  ): CfTypes.SqlStorageCursor<T> => {
+    const cursor = sql.exec<T>(query, ...bindings)
+
+    // Track rowsWritten immediately — CF cursors expose the count as a
+    // property on the cursor object right after exec() returns, before
+    // iteration. Most VFS write operations (INSERT, UPDATE, DELETE) never
+    // iterate the cursor, so we must capture the count eagerly.
+    totalRowsWritten += cursor.rowsWritten
+    totalRowsRead += cursor.rowsRead
+
+    return cursor
+  }
+
+  const trackedSql = new Proxy(sql, {
+    get(target, prop, receiver) {
+      if (prop === 'exec') return trackedExec
+      if (prop === 'totalRowsWritten') return totalRowsWritten
+      if (prop === 'totalRowsRead') return totalRowsRead
+      if (prop === 'resetMetrics') {
+        return () => {
+          totalRowsWritten = 0
+          totalRowsRead = 0
+        }
+      }
+      return Reflect.get(target, prop, receiver)
+    },
+  }) as CfTypes.SqlStorage & { totalRowsWritten: number; totalRowsRead: number; resetMetrics: () => void }
+
+  return trackedSql
+}
+
+export class TestStoreDo extends DurableObjectBase implements ClientDoWithRpcCallback {
   __DURABLE_OBJECT_BRAND = 'TestStoreDo' as never
   private cachedStore: Store<typeof schema> | undefined
   private cachedStoreId: string | undefined
   /** Captures the VFS counts immediately before/after a reset so tests can assert the deletion actually happened. */
   private lastResetSnapshot: ResetPersistenceSnapshot | undefined
+  private trackedSql: ReturnType<typeof wrapSqlForTracking> | undefined
 
-  async fetch(request: Request): Promise<Response> {
+  override async fetch(request: CfTypes.Request): Promise<CfTypes.Response> {
     const url = new URL(request.url)
     const storeId = url.searchParams.get('storeId')
 
     if (storeId === null) {
-      return new Response('storeId is required', { status: 400 })
+      return makeCfResponse('storeId is required', { status: 400 })
     }
 
     if (url.pathname === '/store/todos') {
       if (request.method === 'POST') {
-        const payload = (await request.json()) as { id?: string; title: string }
+        const payload = await request.json<{ id?: string; title: string }>()
         const id = payload.id ?? crypto.randomUUID()
         const store = await this.ensureStore({ storeId, resetPersistence: false })
 
         store.commit(events.todoCreated({ id, title: payload.title }))
 
-        return new Response(JSON.stringify({ id }), {
+        return makeCfResponse(JSON.stringify({ id }), {
           status: 201,
           headers: { 'content-type': 'application/json' },
         })
@@ -71,12 +126,12 @@ export class TestStoreDo extends DurableObject<Env> implements ClientDoWithRpcCa
         const store = await this.ensureStore({ storeId, resetPersistence: false })
         const todos = store.query(tables.todos)
 
-        return new Response(JSON.stringify(todos), {
+        return makeCfResponse(JSON.stringify(todos), {
           headers: { 'content-type': 'application/json' },
         })
       }
 
-      return new Response('Method not allowed', { status: 405 })
+      return makeCfResponse('Method not allowed', { status: 405 })
     }
 
     if (url.pathname === '/store/persistence' && request.method === 'GET') {
@@ -86,7 +141,7 @@ export class TestStoreDo extends DurableObject<Env> implements ClientDoWithRpcCa
 
       const persistence = this.getPersistenceSnapshot()
 
-      return new Response(JSON.stringify({ persistence }), {
+      return makeCfResponse(JSON.stringify({ persistence }), {
         headers: { 'content-type': 'application/json' },
       })
     }
@@ -97,7 +152,7 @@ export class TestStoreDo extends DurableObject<Env> implements ClientDoWithRpcCa
       const persistence = this.getPersistenceSnapshot()
       const resetSnapshot = this.lastResetSnapshot ?? null
 
-      return new Response(
+      return makeCfResponse(
         JSON.stringify({
           todos,
           persistence,
@@ -109,11 +164,61 @@ export class TestStoreDo extends DurableObject<Env> implements ClientDoWithRpcCa
       )
     }
 
-    return new Response('Not found', { status: 404 })
+    if (url.pathname === '/store/metrics') {
+      if (request.method === 'GET') {
+        await this.ensureStore({ storeId, resetPersistence: false })
+
+        return makeCfResponse(
+          JSON.stringify({
+            totalRowsWritten: this.trackedSql?.totalRowsWritten ?? 0,
+            totalRowsRead: this.trackedSql?.totalRowsRead ?? 0,
+          }),
+          { headers: { 'content-type': 'application/json' } },
+        )
+      }
+
+      if (request.method === 'DELETE') {
+        this.trackedSql?.resetMetrics()
+
+        return makeCfResponse(JSON.stringify({ totalRowsWritten: 0, totalRowsRead: 0 }), {
+          headers: { 'content-type': 'application/json' },
+        })
+      }
+
+      return makeCfResponse('Method not allowed', { status: 405 })
+    }
+
+    if (url.pathname === '/store/shutdown' && request.method === 'POST') {
+      if (this.cachedStore !== undefined) {
+        await this.cachedStore.shutdownPromise()
+        this.cachedStore = undefined
+        this.cachedStoreId = undefined
+      }
+
+      return makeCfResponse(JSON.stringify({ ok: true }), {
+        headers: { 'content-type': 'application/json' },
+      })
+    }
+
+    return makeCfResponse('Not found', { status: 404 })
   }
 
   async syncUpdateRpc(payload: unknown) {
     await handleSyncUpdateRpc(payload)
+  }
+
+  private ensureSqlTracking() {
+    if (this.trackedSql !== undefined) return
+
+    // Install the tracking proxy on storage.sql permanently. The VFS and
+    // DO SQLite adapters capture storage.sql at init time, so the proxy
+    // must be in place before any store is created and stay active for the
+    // entire DO lifetime.
+    this.trackedSql = wrapSqlForTracking(this.ctx.storage.sql)
+    Object.defineProperty(this.ctx.storage, 'sql', {
+      get: () => this.trackedSql,
+      configurable: true,
+    })
   }
 
   private async ensureStore({
@@ -123,11 +228,13 @@ export class TestStoreDo extends DurableObject<Env> implements ClientDoWithRpcCa
     storeId: string
     resetPersistence: boolean
   }): Promise<Store<typeof schema>> {
+    this.ensureSqlTracking()
+
     // If the caller requested a reset (or we're handling a different store ID),
     // make sure to dispose the previous store instance so we can boot with a clean slate.
-    const shouldRecreate = resetPersistence === true || this.cachedStore === undefined || this.cachedStoreId !== storeId
+    const shouldRecreate = resetPersistence || this.cachedStore === undefined || this.cachedStoreId !== storeId
 
-    if (shouldRecreate) {
+    if (shouldRecreate === true) {
       if (this.cachedStore !== undefined) {
         await this.cachedStore.shutdownPromise()
       }
@@ -138,14 +245,14 @@ export class TestStoreDo extends DurableObject<Env> implements ClientDoWithRpcCa
           storeId,
           clientId: 'integration-client',
           sessionId: crypto.randomUUID(),
-          durableObject: { ctx: this.ctx as CfTypes.DurableObjectState, env: this.env, bindingName: 'TEST_STORE_DO' },
+          durableObject: { ctx: this.ctx, env: this.env, bindingName: 'TEST_STORE_DO' },
           syncBackendStub: this.env.SYNC_BACKEND_DO.get(this.env.SYNC_BACKEND_DO.idFromName(storeId)),
           resetPersistence,
         })
 
       let snapshotDuringReset: ResetPersistenceSnapshot | undefined
 
-      if (resetPersistence) {
+      if (resetPersistence === true) {
         const storage = this.ctx.storage
         const originalTransactionSync = storage.transactionSync
         const invokeOriginalTransactionSync = <T>(callback: () => T): T =>
@@ -190,38 +297,32 @@ export class TestStoreDo extends DurableObject<Env> implements ClientDoWithRpcCa
   }
 
   private getPersistenceSnapshot(): PersistenceSnapshot {
-    const schemaHashSuffix =
-      schema.state.sqlite.migrations.strategy === 'manual' ? 'fixed' : schema.state.sqlite.hash.toString()
-
-    // The adapter stores SQLite data inside Durable Object persistence using the
-    // liveStoreStorageFormatVersion as part of the VFS file path. Looking up
-    // matching records lets the test confirm whether the reset logic wiped the
-    // relevant rows.
+    // Single vfs_pages table — no file_path filtering needed.
+    // "state" counts VFS pages (dbState), "eventlog" counts DO SQLite eventlog rows.
     return {
-      state: this.countPersistenceEntries(getStateDbFileName(schemaHashSuffix)),
-      eventlog: this.countPersistenceEntries(getEventlogDbFileName()),
+      state: this.countVfsPages(),
+      eventlog: this.countEventlogRows(),
     }
   }
 
-  private countPersistenceEntries(baseName: string): PersistenceCounts {
-    const likePattern = `${baseName}%`
-
-    return {
-      files: this.countMatchingRecords('vfs_files', likePattern),
-      blocks: this.countMatchingRecords('vfs_blocks', likePattern),
+  private countVfsPages(): PersistenceCounts {
+    try {
+      const rows = this.ctx.storage.sql.exec<{ count: number }>('SELECT COUNT(*) AS count FROM vfs_pages')
+      const [row] = Array.from(rows)
+      return { count: Number(row?.count ?? 0) }
+    } catch {
+      return { count: 0 }
     }
   }
 
-  private countMatchingRecords(table: 'vfs_files' | 'vfs_blocks', likePattern: string): number {
-    const rows = this.ctx.storage.sql.exec(`SELECT COUNT(*) AS count FROM ${table} WHERE file_path LIKE ?`, likePattern)
-
-    if (rows === undefined) {
-      return 0
+  private countEventlogRows(): PersistenceCounts {
+    try {
+      const rows = this.ctx.storage.sql.exec<{ count: number }>('SELECT COUNT(*) AS count FROM eventlog')
+      const [row] = Array.from(rows)
+      return { count: Number(row?.count ?? 0) }
+    } catch {
+      return { count: 0 }
     }
-
-    const [row] = Array.from(rows)
-
-    return Number(row?.count ?? 0)
   }
 }
 
@@ -241,20 +342,16 @@ export default {
 
     const url = new URL(request.url)
 
-    if (url.pathname.startsWith('/store')) {
+    if (url.pathname.startsWith('/store') === true) {
       const storeId = url.searchParams.get('storeId')
       if (storeId === null) {
-        return new Response('storeId is required', { status: 400 })
+        return makeCfResponse('storeId is required', { status: 400 })
       }
 
       const id = env.TEST_STORE_DO.idFromName(storeId)
       return env.TEST_STORE_DO.get(id).fetch(request)
     }
 
-    return new Response('Not found', { status: 404 })
+    return makeCfResponse('Not found', { status: 404 })
   },
 }
-
-const getStateDbFileName = (suffix: string) => `state${suffix}@${liveStoreStorageFormatVersion}.db`
-
-const getEventlogDbFileName = () => `eventlog@${liveStoreStorageFormatVersion}.db`

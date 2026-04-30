@@ -1,10 +1,16 @@
+import { useCallback } from 'react'
 import AutoSizer from 'react-virtualized-auto-sizer'
 import { FixedSizeList } from 'react-window'
+
 import { useDebouncedScrollState } from '../../../livestore/queries.ts'
 import { VirtualRow } from './virtual-row.tsx'
 
 export const FilteredList = ({ filteredIssueIds }: { filteredIssueIds: readonly number[] }) => {
   const [scrollState, setScrollState] = useDebouncedScrollState('filtered-list')
+  const handleScroll = useCallback(
+    (e: { scrollOffset: number }) => setScrollState({ list: e.scrollOffset }),
+    [setScrollState],
+  )
 
   return (
     <div className="grow">
@@ -17,7 +23,7 @@ export const FilteredList = ({ filteredIssueIds }: { filteredIssueIds: readonly 
             itemData={filteredIssueIds}
             overscanCount={10}
             width={width}
-            onScroll={(e) => setScrollState({ list: e.scrollOffset })}
+            onScroll={handleScroll}
             initialScrollOffset={scrollState.list ?? 0}
           >
             {VirtualRow}

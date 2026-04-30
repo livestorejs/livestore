@@ -1,6 +1,7 @@
 <script setup lang="ts">
-import { queryDb } from '@livestore/livestore'
 import { useQuery } from 'vue-livestore'
+
+import { queryDb } from '@livestore/livestore'
 
 import { tables } from './livestore/schema.ts'
 

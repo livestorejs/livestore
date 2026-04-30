@@ -63,7 +63,7 @@ type MakeOpfsWebDatabase = MakeSqliteDb<
   VfsBackend | OpfsPool | Scope.Scope
 >
 
-export function sqliteDbFactory({ sqlite3 }: { sqlite3: SQLiteAPI }) {
+export const sqliteDbFactory = ({ sqlite3 }: { sqlite3: SQLiteAPI }) => {
   function makeDb(input: WebDatabaseInputInMemory): ReturnType<MakeInMemoryWebDatabase>
   function makeDb(input: WebDatabaseInputOpfs): ReturnType<MakeOpfsWebDatabase>
   function makeDb(

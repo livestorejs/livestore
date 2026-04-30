@@ -21,7 +21,7 @@ export const MAX_RECORDS_PER_BATCH = 1_000
 
 const LimitType = Schema.Literal('record-metered-bytes', 'batch-metered-bytes', 'batch-count')
 
-export class S2LimitExceededError extends Schema.TaggedError<S2LimitExceededError>()('S2LimitExceededError', {
+export class S2LimitExceededError extends Schema.TaggedError<S2LimitExceededError>('~@livestore/sync-s2/S2LimitExceededError')('S2LimitExceededError', {
   limitType: LimitType,
   max: Schema.Number,
   actual: Schema.Number,
@@ -121,7 +121,7 @@ export const chunkEventsForS2 = (events: ReadonlyArray<LiveStoreEvent.Global.Enc
 
     return mapPreparedChunks(chunks)
   } catch (error) {
-    if (error && typeof error === 'object' && (error as any)._tag === 'OversizeChunkItemError') {
+    if (error !== undefined && typeof error === 'object' && (error as any)._tag === 'OversizeChunkItemError') {
       const oversize = error as { size: number; maxBytes: number; _tag: string }
       throw new S2LimitExceededError({
         limitType: 'record-metered-bytes',

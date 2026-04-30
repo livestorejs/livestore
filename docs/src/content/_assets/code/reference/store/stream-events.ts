@@ -12,7 +12,7 @@ const iterator = store.events()[Symbol.asyncIterator]()
 try {
   while (true) {
     const { value, done } = await iterator.next()
-    if (done) break
+    if (done === true) break
     console.log('event from stream:', value)
   }
 } finally {

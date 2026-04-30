@@ -1,4 +1,5 @@
-import type { TestDetails } from '@playwright/test'
+import type { Page, TestDetails } from '@playwright/test'
+
 import { test } from './fixtures.ts'
 
 export const repeatSuite = (
@@ -14,7 +15,7 @@ export const repeatSuite = (
   }
 
   test.describe(suiteName, suiteDetails, () => {
-    if (shouldRecordPerfProfile) {
+    if (shouldRecordPerfProfile === true) {
       console.warn(`Skipping repetitions for suite "${suiteName}" due to performance profiling.`)
       test.describe('Performance Profiling', suiteCallback)
       return
@@ -27,3 +28,17 @@ export const repeatSuite = (
 }
 
 export const shouldRecordPerfProfile = process.env.PERF_PROFILER === '1'
+
+export const assertPerfAppReady = async (page: Page): Promise<void> => {
+  try {
+    await page.locator('#create1k').waitFor({ state: 'visible', timeout: 8000 })
+  } catch {
+    const bodyText = await page
+      .locator('body')
+      .innerText()
+      .catch(() => '<body unavailable>')
+    throw new Error(
+      `Perf test app did not become ready (expected #create1k). Current body text: ${bodyText.slice(0, 200)}`,
+    )
+  }
+}

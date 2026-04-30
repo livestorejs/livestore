@@ -1,5 +1,7 @@
 import { useAtomSet } from '@effect-atom/atom-react'
 import { Context, Effect } from 'effect'
+import { useCallback } from 'react'
+
 import { StoreTag } from './atoms.ts'
 import { events } from './schema.ts'
 
@@ -21,7 +23,7 @@ export const useCommit = () => useAtomSet(StoreTag.commit)
 export const createItemAtom = StoreTag.runtime.fn<string>()((itemName, get) => {
   return Effect.sync(() => {
     const store = get(StoreTag.storeUnsafe)
-    if (store) {
+    if (store !== undefined) {
       store.commit(
         events.itemCreated({
           id: crypto.randomUUID(),
@@ -34,12 +36,12 @@ export const createItemAtom = StoreTag.runtime.fn<string>()((itemName, get) => {
 })
 
 // Use in a React component
-export function CreateItemButton() {
+export const CreateItemButton = () => {
   const createItem = useAtomSet(createItemAtom)
 
-  const handleClick = () => {
+  const handleClick = useCallback(() => {
     createItem('New Item')
-  }
+  }, [createItem])
 
   return (
     <button type="button" onClick={handleClick}>

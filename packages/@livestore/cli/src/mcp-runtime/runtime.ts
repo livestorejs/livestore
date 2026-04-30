@@ -30,7 +30,7 @@ export const init = ({
   sessionId?: string
 }): Effect.Effect<Store<any>, UnknownError> =>
   Effect.gen(function* () {
-    if (!storeId || typeof storeId !== 'string') {
+    if (storeId === '' || typeof storeId !== 'string') {
       return yield* UnknownError.make({ cause: new Error('Invalid storeId: expected a non-empty string') })
     }
 
@@ -39,8 +39,8 @@ export const init = ({
     // Build Node adapter internally
     const adapter = makeNodeAdapter({
       storage: { type: 'in-memory' },
-      ...(clientId ? { clientId } : {}),
-      ...(sessionId ? { sessionId } : {}),
+      ...(clientId !== undefined && clientId !== '' ? { clientId } : {}),
+      ...(sessionId !== undefined && sessionId !== '' ? { sessionId } : {}),
       sync: {
         backend: syncBackendConstructor,
         initialSyncOptions: { _tag: 'Blocking', timeout: 5000 },
@@ -61,7 +61,7 @@ export const init = ({
     )
 
     // Replace existing store if any
-    if (store) {
+    if (store !== undefined) {
       yield* Effect.promise(async () => {
         try {
           await store!.shutdownPromise()
@@ -83,7 +83,7 @@ export const status = Effect.gen(function* () {
     }
   }
   const s = opt.value
-  const tableCounts = (Array.from(s.schema.state.sqlite.tables.keys()) as string[])
+  const tableCounts = Array.from(s.schema.state.sqlite.tables.keys())
     .filter((name) => !SystemTables.isStateSystemTable(name))
     .reduce(
       (acc, name) => {
@@ -102,34 +102,42 @@ export const status = Effect.gen(function* () {
   }
 }).pipe(Effect.withSpan('mcp-runtime:status'))
 
-export const query = ({ sql, bindValues }: { sql: string; bindValues?: readonly any[] | Record<string, unknown> }) =>
-  Effect.gen(function* () {
-    const opt = yield* getStore
-    if (opt._tag === 'None') {
-      return yield* Effect.dieMessage('LiveStore not connected. Call livestore_instance_connect first.')
-    }
-    const s = opt.value
+export const query = Effect.fn('mcp-runtime:query')(function* ({
+  sql,
+  bindValues,
+}: {
+  sql: string
+  bindValues?: readonly any[] | Record<string, unknown>
+}) {
+  const opt = yield* getStore
+  if (opt._tag === 'None') {
+    return yield* Effect.dieMessage('LiveStore not connected. Call livestore_instance_connect first.')
+  }
+  const s = opt.value
 
-    const rows = s.query({ query: sql, bindValues: (bindValues as any) ?? [] }) as Array<Record<string, unknown>>
-    const jsonRows = rows.map((r) => Object.fromEntries(Object.entries(r).map(([k, v]) => [k, v as Schema.JsonValue])))
-    return { rows: jsonRows, rowCount: jsonRows.length }
-  }).pipe(Effect.withSpan('mcp-runtime:query'))
+  const rows = s.query<Array<Record<string, unknown>>>({ query: sql, bindValues: (bindValues as any) ?? [] })
+  const jsonRows = rows.map((r) => Object.fromEntries(Object.entries(r).map(([k, v]) => [k, v as Schema.JsonValue])))
+  return { rows: jsonRows, rowCount: jsonRows.length }
+})
 
-export const commit = ({ events }: { events: ReadonlyArray<{ name: string; args: Schema.JsonValue }> }) =>
-  Effect.gen(function* () {
-    const opt = yield* getStore
-    if (opt._tag === 'None') {
-      return yield* Effect.dieMessage('LiveStore not connected. Call livestore_instance_connect first.')
-    }
-    const s = opt.value
-    const InputEventSchema = LiveStoreEvent.Input.makeSchema(s.schema) as Schema.Schema<any>
-    const decoded = events.map((e) => Schema.decodeSync(InputEventSchema)(e))
-    s.commit(...decoded)
-    return { committed: decoded.length }
-  }).pipe(Effect.withSpan('mcp-runtime:commit'))
+export const commit = Effect.fn('mcp-runtime:commit')(function* ({
+  events,
+}: {
+  events: ReadonlyArray<{ name: string; args: Schema.JsonValue }>
+}) {
+  const opt = yield* getStore
+  if (opt._tag === 'None') {
+    return yield* Effect.dieMessage('LiveStore not connected. Call livestore_instance_connect first.')
+  }
+  const s = opt.value
+  const InputEventSchema = LiveStoreEvent.Input.makeSchema(s.schema) as Schema.Schema<any>
+  const decoded = events.map((e) => Schema.decodeSync(InputEventSchema)(e))
+  s.commit(...decoded)
+  return { committed: decoded.length }
+})
 
 export const disconnect = Effect.promise(async () => {
-  if (store) {
+  if (store !== undefined) {
     try {
       await store.shutdownPromise()
     } catch {}

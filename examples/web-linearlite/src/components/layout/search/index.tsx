@@ -1,4 +1,5 @@
 import { queryDb } from '@livestore/livestore'
+
 import { filterState$, useFilterState } from '../../../livestore/queries.ts'
 import { tables } from '../../../livestore/schema/index.ts'
 import { useAppStore } from '../../../livestore/store.ts'
@@ -15,6 +16,8 @@ const filteredIssueIds$ = queryDb(
   { label: 'List.visibleIssueIds' },
 )
 
+const emptyIssueIds: readonly number[] = []
+
 export const Search = () => {
   const store = useAppStore()
   const filteredIssueIds = store.useQuery(filteredIssueIds$)
@@ -23,7 +26,7 @@ export const Search = () => {
   return (
     <>
       <Filters filteredCount={filterState.query ? filteredIssueIds.length : 0} search />
-      <FilteredList filteredIssueIds={filterState.query ? filteredIssueIds : []} />
+      <FilteredList filteredIssueIds={filterState.query ? filteredIssueIds : emptyIssueIds} />
     </>
   )
 }

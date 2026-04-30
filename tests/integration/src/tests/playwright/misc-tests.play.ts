@@ -1,6 +1,7 @@
+import { expect, test } from '@playwright/test'
+
 import { UnknownError } from '@livestore/common'
 import { Effect, Exit } from '@livestore/utils/effect'
-import { expect, test } from '@playwright/test'
 
 import { runAndGetExit, runTest } from './shared-test.ts'
 import * as Bridge from './unit-tests/bridge.ts'
@@ -43,9 +44,12 @@ test(
         schema: Bridge.ResultStoreBootError,
       })
 
-      expect(exit).toStrictEqual(
-        Exit.fail(UnknownError.make({ cause: new Error('Boom!', { cause: { name: 'Error', message: 'Boom!' } }) })),
-      )
+      // The TestError class is serialized with name: 'TestError', so we need to match that
+      const expectedError = new Error('Boom!')
+      expectedError.name = 'TestError'
+      ;(expectedError as any).cause = { name: 'TestError', message: 'Boom!' }
+
+      expect(exit).toStrictEqual(Exit.fail(UnknownError.make({ cause: expectedError })))
     }),
   ),
 )

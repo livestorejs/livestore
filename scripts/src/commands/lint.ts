@@ -1,8 +1,12 @@
-import { Console, Effect } from '@livestore/utils/effect'
-import { Cli } from '@livestore/utils/node'
 import { cmd, cmdText, LivestoreWorkspace } from '@livestore/utils-dev/node'
-import { hasParentGitRepo } from '../shared/misc.ts'
+import { Console, Effect, Schema } from '@livestore/utils/effect'
+import { Cli } from '@livestore/utils/node'
+
 import { runPeerDepCheck } from '../shared/peer-deps.ts'
+
+export class LintError extends Schema.TaggedError<LintError>()('LintError', {
+  message: Schema.String,
+}) {}
 
 /**
  * Checks that no `.md` files contain ESM import statements.
@@ -30,37 +34,62 @@ const checkMdFilesNoImports = Effect.gen(function* () {
     yield* Console.error(
       `Error: Found .md files with import statements. These must be renamed to .mdx:\n${filesWithImports.map((p) => `  - ${p}`).join('\n')}`,
     )
-    return yield* Effect.fail(new Error('Found .md files with imports'))
+    return yield* new LintError({ message: 'Found .md files with imports' })
   }
 }).pipe(Effect.withSpan('checkMdFilesNoImports'))
+
+/**
+ * Exclude patterns for oxfmt (genie-generated read-only files).
+ * Note: Generated .jsonc files and package.json/tsconfig.json are in .oxfmtrc.json ignorePatterns.
+ */
+const oxfmtExcludePatterns = ['!.github/workflows/*.yml']
+
+/** Run oxfmt format check (uses .oxfmtrc.json) */
+const runFormatCheck = cmd(['oxfmt', '--check', '.', ...oxfmtExcludePatterns]).pipe(
+  Effect.provide(LivestoreWorkspace.toCwd()),
+  Effect.withSpan('formatCheck'),
+)
+
+/** Run oxfmt format fix (uses .oxfmtrc.json) */
+const runFormatFix = cmd(['oxfmt', '.', ...oxfmtExcludePatterns]).pipe(
+  Effect.provide(LivestoreWorkspace.toCwd()),
+  Effect.withSpan('formatFix'),
+)
+
+/** Run oxlint check (uses .oxlintrc.json) */
+// TODO(oep-3632.1) enable --type-aware once remaining no-unsafe-type-assertion violations are addressed (~567 remaining)
+const runLintCheck = cmd(['oxlint', '--import-plugin', '--deny-warnings']).pipe(
+  Effect.provide(LivestoreWorkspace.toCwd()),
+  Effect.withSpan('lintCheck'),
+)
+
+/** Run oxlint fix (uses .oxlintrc.json) */
+const runLintFix = cmd(['oxlint', '--import-plugin', '--deny-warnings', '--fix']).pipe(
+  Effect.provide(LivestoreWorkspace.toCwd()),
+  Effect.withSpan('lintFix'),
+)
 
 export const lintCommand = Cli.Command.make(
   'lint',
   { fix: Cli.Options.boolean('fix').pipe(Cli.Options.withDefault(false)) },
   Effect.fn(function* ({ fix }) {
-    const fixFlag = fix ? '--fix --unsafe' : ''
-    yield* cmd(`biome check scripts tests packages docs examples --error-on-warnings ${fixFlag}`, {
-      shell: true,
-    }).pipe(Effect.provide(LivestoreWorkspace.toCwd()))
-    if (fix) {
-      yield* cmd('syncpack fix-mismatches').pipe(Effect.provide(LivestoreWorkspace.toCwd()))
-      yield* cmd('syncpack format').pipe(Effect.provide(LivestoreWorkspace.toCwd()))
-
-      if ((yield* hasParentGitRepo) === false) {
-        yield* cmd('pnpm install --fix-lockfile').pipe(Effect.provide(LivestoreWorkspace.toCwd()))
-      }
+    // Run oxfmt and oxlint (format + lint)
+    if (fix === true) {
+      yield* runFormatFix
+      yield* runLintFix
+    } else {
+      yield* runFormatCheck
+      yield* runLintCheck
     }
 
-    yield* cmd('syncpack lint').pipe(Effect.provide(LivestoreWorkspace.toCwd()))
-
     // Shell needed for wildcards
-    yield* cmd('madge --circular --no-spinner examples/*/src packages/*/*/src', { shell: true }).pipe(
-      Effect.provide(LivestoreWorkspace.toCwd()),
-    )
+    yield* cmd('./scripts/node_modules/.bin/madge --circular --no-spinner examples/*/src packages/*/*/src', {
+      shell: true,
+    }).pipe(Effect.provide(LivestoreWorkspace.toCwd()))
 
     // Check peer dependencies (warn-only for now, doesn't fail the build)
     const peerDepsOk = yield* runPeerDepCheck
-    if (!peerDepsOk) {
+    if (peerDepsOk === false) {
       yield* Console.warn('Peer dependency check found violations (see above)')
     }
 

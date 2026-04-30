@@ -1,5 +1,7 @@
-import { Schema } from '@livestore/utils/effect'
 import { describe, expect, it } from 'vitest'
+
+import { Schema } from '@livestore/utils/effect'
+import { objectToString } from '@livestore/utils'
 
 import { State } from '../../../mod.ts'
 import type { QueryBuilder } from './api.ts'
@@ -101,7 +103,7 @@ const db = { todos, todosWithIntId, comments, issue, selections, UiState, UiStat
 const dump = (qb: QueryBuilder<any, any, any>) => ({
   bindValues: qb.asSql().bindValues,
   query: qb.asSql().query,
-  schema: getResultSchema(qb).toString(),
+  schema: objectToString(getResultSchema(qb)),
 })
 
 describe('query builder', () => {

@@ -36,6 +36,7 @@ Clicking on a specific bar in the chart will open the corresponding commit in Gi
 Latency is measured using the [Event Timing API](https://web.dev/articles/custom-metrics#event-timing-api). This API captures the time (**rounded to 8 ms** for security and privacy reasons) between when the browser receives the interaction event until it's able to paint the next frame after finishing executing all synchronous code initiated from the event handlers.
 
 Each latency test scenario is run **15 times** to reduce the impact of any outliers, and provide more stable and reliable metrics. We summarize these runs using:
+
 - **Median (instead of mean/average)**: represents typical performance, resistant to outliers.
 - **IQR (Interquartile Range)**: measures the variability within the core 50% of measurements. A tight IQR points to stable performance, while a broad IQR indicates less predictability.
 - **Min/Max**: captures the full range of observed latencies to identify potential outliers or boundary conditions.
@@ -74,21 +75,22 @@ pnpm test:profiler
 ## Future improvements
 
 ### General
+
 - [ ] Display the latest test results on the documentation website.
   - To make this work, we would probably need to create a separate public grafana dashboard and panels due to the [Grafana limitations](https://grafana.com/docs/grafana/latest/dashboards/share-dashboards-panels/shared-dashboards/#limitations) around variables.
 - [ ] Automatically detect performance regressions and fail the workflow job on GitHub Actions if the performance is significantly degraded.
 - [ ] Being able to easily compare test results between branches on the dashboard.
 - [ ] Run the tests (on GitHub Actions) for old versions of LiveStore to see how the performance has changed between versions.
 - [ ] Have a consistent testing environment between test runs for more reliable results.
-  - See https://aakinshin.net/posts/github-actions-perf-stability/ 
+  - See https://aakinshin.net/posts/github-actions-perf-stability/
   - Potential solutions:
     - Calibrate and throttle CPU before tests. Requires https://developer.chrome.com/blog/new-in-devtools-134#calibrated-cpu-throttling to be accessible with the Chrome Devtools Protocol.
     - Use dedicated GitHub Actions runners. Requires a paid plan.
 
-
 ### Test scenarios
+
 - [ ] Test throughput within a client session
-  - Could help inform LiveStore's runtime parameters such as batch size, timeouts, etc. 
+  - Could help inform LiveStore's runtime parameters such as batch size, timeouts, etc.
 - [ ] Test startup latency
   - Cold vs. warm
   - With pending events from the backend
@@ -99,6 +101,6 @@ pnpm test:profiler
 - [ ] Test client-session<>client-session latency
 
 ### Test dimensions
+
 - [ ] Test on different browsers (Chrome, Firefox, Safari)
 - [ ] Test on different device types (desktop, mobile)
-

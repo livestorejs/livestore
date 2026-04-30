@@ -1,5 +1,6 @@
 node_modules
 .node_modules
+.pnpm-home
 .idea/
 .DS_Store
 
@@ -13,7 +14,7 @@ playwright-report
 # Process IDs
 *.pid
 
-.envrc.local
+.envrc.*
 
 tmp*
 dist
@@ -25,6 +26,7 @@ dist
 *.db
 
 .direnv
+repos/
 
 # Codex project-local config
 .codex
@@ -50,9 +52,11 @@ scripts/.completions
 
 .devenv
 .devenv*
+.pre-commit-config.yaml
 
 # Generated markdown bundle embedded into @livestore/livestore
 packages/@livestore/livestore/docs
 
-# Task context files
-tasks/
+# Task context files (agent work tracking, not part of codebase)
+/tasks/
+.claude/settings.local.json

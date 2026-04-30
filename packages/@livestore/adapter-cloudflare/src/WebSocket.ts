@@ -27,14 +27,18 @@ export const makeWebSocket = ({
 
     const socket = yield* Effect.tryPromise({
       try: () =>
-        durableObject.fetch(url, { headers: { Upgrade: 'websocket' } }).then((res: any) => {
-          if (!res.webSocket) {
+        // NOTE: .toString() required due to type mismatch between standard URL and CF's URL types
+        durableObject.fetch(url.toString(), { headers: { Upgrade: 'websocket' } }).then((res: any) => {
+          if (res.webSocket == null) {
             throw new Error('WebSocket upgrade failed')
           }
           return res.webSocket as CfTypes.WebSocket
         }),
       catch: (cause) => new WebSocket.WebSocketError({ cause }),
-    }).pipe(reconnect ? Effect.retry(reconnect) : identity, Effect.withSpan('make-websocket-durable-object'))
+    }).pipe(
+      reconnect !== undefined && reconnect !== false ? Effect.retry(reconnect) : identity,
+      Effect.withSpan('make-websocket-durable-object'),
+    )
 
     socket.accept()
 
@@ -55,7 +59,7 @@ export const makeWebSocket = ({
       Effect.fn(function* (exit) {
         yield* Effect.try({
           try: () => {
-            if (Exit.isFailure(exit)) {
+            if (Exit.isFailure(exit) === true) {
               socket.close(3000)
             } else {
               socket.close(1000)

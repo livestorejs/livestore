@@ -1,4 +1,7 @@
 import './polyfill.ts'
+import * as ExpoApplication from 'expo-application'
+import * as SQLite from 'expo-sqlite'
+import * as RN from 'react-native'
 
 import {
   type Adapter,
@@ -35,9 +38,6 @@ import {
   SubscriptionRef,
 } from '@livestore/utils/effect'
 import * as Webmesh from '@livestore/webmesh'
-import * as ExpoApplication from 'expo-application'
-import * as SQLite from 'expo-sqlite'
-import * as RN from 'react-native'
 
 import type { MakeExpoSqliteDb } from './make-sqlite-db.ts'
 import { makeSqliteDb } from './make-sqlite-db.ts'
@@ -153,7 +153,7 @@ export const makePersistedAdapter =
       yield* shutdownChannel.listen.pipe(
         Stream.flatten(),
         Stream.tap((cause) =>
-          shutdown(cause._tag === 'LiveStore.IntentionalShutdownCause' ? Exit.succeed(cause) : Exit.fail(cause)),
+          shutdown(cause._tag === 'IntentionalShutdownCause' ? Exit.succeed(cause) : Exit.fail(cause)),
         ),
         Stream.runDrain,
         Effect.interruptible,
@@ -161,7 +161,7 @@ export const makePersistedAdapter =
         Effect.forkScoped,
       )
 
-      const devtoolsUrl = devtoolsEnabled ? getDevtoolsUrl().toString() : 'ws://127.0.0.1:4242'
+      const devtoolsUrl = devtoolsEnabled === true ? getDevtoolsUrl().toString() : 'ws://127.0.0.1:4242'
 
       const { leaderThread, initialSnapshot } = yield* makeLeaderThread({
         storeId,
@@ -177,7 +177,10 @@ export const makePersistedAdapter =
         devtoolsUrl,
       })
 
-      const sqliteDb = yield* makeSqliteDb({ _tag: 'in-memory' })
+      const sqliteDb = yield* Effect.acquireRelease(
+        makeSqliteDb({ _tag: 'in-memory' }),
+        (db) => Effect.try(() => db.close()).pipe(Effect.ignoreLogged)
+      )
       sqliteDb.import(initialSnapshot)
 
       const clientSession = yield* makeClientSession({
@@ -190,7 +193,7 @@ export const makePersistedAdapter =
         sqliteDb,
         webmeshMode: 'proxy',
         connectWebmeshNode: Effect.fnUntraced(function* ({ webmeshNode }) {
-          if (devtoolsEnabled) {
+          if (devtoolsEnabled === true) {
             yield* Webmesh.connectViaWebSocket({
               node: webmeshNode,
               url: devtoolsUrl,
@@ -246,8 +249,14 @@ const makeLeaderThread = ({
       schema,
     })
 
-    const dbState = yield* makeSqliteDb({ _tag: 'file', databaseName: stateDatabaseName, directory })
-    const dbEventlog = yield* makeSqliteDb({ _tag: 'file', databaseName: eventlogDatabaseName, directory })
+    const dbState = yield* Effect.acquireRelease(
+      makeSqliteDb({ _tag: 'file', databaseName: stateDatabaseName, directory }),
+      (db) => Effect.try(() => db.close()).pipe(Effect.ignoreLogged),
+    )
+    const dbEventlog = yield* Effect.acquireRelease(
+      makeSqliteDb({ _tag: 'file', databaseName: eventlogDatabaseName, directory }),
+      (db) => Effect.try(() => db.close()).pipe(Effect.ignoreLogged),
+    )
 
     const devtoolsOptions = yield* makeDevtoolsOptions({
       devtoolsEnabled,
@@ -309,8 +318,7 @@ const makeLeaderThread = ({
               .push(
                 batch.map((item) => new LiveStoreEvent.Client.EncodedWithMeta(item)),
                 { waitForProcessing: true },
-              )
-              .pipe(Effect.provide(layer), Effect.scoped),
+              ),
           stream: (options) =>
             streamEventsWithSyncState({
               dbEventlog,
@@ -345,7 +353,7 @@ const resolveExpoPersistencePaths = ({
   schema: LiveStoreSchema
   storage: { directory?: string; subDirectory?: string } | undefined
 }) => {
-  const subDirectory = storage?.subDirectory ? `${storage.subDirectory.replace(/\/$/, '')}/` : ''
+  const subDirectory = storage?.subDirectory !== undefined ? `${storage.subDirectory.replace(/\/$/, '')}/` : ''
   const pathJoin = (...paths: string[]) => paths.join('/').replaceAll(/\/+/g, '/')
   const directoryBasePath = storage?.directory ?? SQLite.defaultDatabaseDirectory
 

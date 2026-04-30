@@ -1,6 +1,8 @@
+import tanstackHandler from '@tanstack/react-start/server-entry'
+
 import * as SyncBackend from '@livestore/sync-cf/cf-worker'
 import type { CfTypes } from '@livestore/sync-cf/common'
-import tanstackHandler from '@tanstack/react-start/server-entry'
+
 import { SyncPayload } from './livestore/schema/index.ts'
 
 export class SyncBackendDO extends SyncBackend.makeDurableObject({
@@ -12,7 +14,7 @@ export class SyncBackendDO extends SyncBackend.makeDurableObject({
   },
 }) {}
 
-const validatePayload = (payload: typeof SyncPayload.Type | undefined, context: { storeId: string }) => {
+const validatePayload = (payload: { authToken: string } | undefined, context: { storeId: string }) => {
   console.log(`Validating connection for store: ${context.storeId}`)
   if (payload?.authToken !== 'insecure-token-change-me') {
     throw new Error('Invalid auth token')

@@ -1,13 +1,13 @@
 name: 🐛 Bug Report
 description: Report a bug or unexpected behavior in LiveStore
-title: "[Bug]: "
-labels: ["bug"]
+title: '[Bug]: '
+labels: ['bug']
 body:
   - type: markdown
     attributes:
       value: |
         Thanks for taking the time to report a bug! Please fill out this form as completely as possible.
-        
+
         **Before you start:** Please search [existing issues](https://github.com/livestorejs/livestore/issues) to see if your bug has already been reported.
 
   - type: textarea
@@ -32,7 +32,7 @@ body:
         Please provide:
         - Link to StackBlitz/CodeSandbox/GitHub repo
         - Or paste minimal code example here
-        
+
         Example:
         https://stackblitz.com/edit/...
     validations:
@@ -91,7 +91,7 @@ body:
       label: Error Logs/Screenshots
       description: |
         If applicable, add error logs, stack traces, or screenshots to help explain the problem.
-        
+
         **Tip:** You can attach images by clicking this area to highlight it and then dragging files in.
       render: shell
 

@@ -31,7 +31,7 @@ export type DbSchemaFromInputSchema<TSchemaInput extends DbSchemaInput> =
 export const makeDbSchema = <TDbSchemaInput extends DbSchemaInput>(
   schema: TDbSchemaInput,
 ): DbSchemaFromInputSchema<TDbSchemaInput> => {
-  return Array.isArray(schema) ? Object.fromEntries(schema.map((_) => [_.name, _])) : (schema as any)
+  return Array.isArray(schema) === true ? Object.fromEntries(schema.map((_) => [_.name, _])) : (schema as any)
 }
 
 export const table = <TTableName extends string, TColumns extends Columns, TIndexes extends Index[]>(
@@ -76,6 +76,7 @@ export const insertStructSchemaForTable = <TTableDefinition extends TableDefinit
     Object.fromEntries(
       tableDef.ast.columns.map((column) => [
         column.name,
+
         column.nullable === true || column.default._tag === 'Some' ? Schema.optional(column.schema) : column.schema,
       ]),
     ),
@@ -195,8 +196,7 @@ export namespace FromColumns {
   }
 
   export type NullableColumnNames<TColumns extends Columns> = keyof {
-    // TODO double check why there is a `true` in the type
-    [K in keyof TColumns as TColumns[K] extends ColumnDefinition<any, true> ? K : never]: {}
+    [K in keyof TColumns as TColumns[K]['nullable'] extends true ? K : never]: {}
   }
 
   export type RequiredInsertColumns<TColumns extends Columns> = {

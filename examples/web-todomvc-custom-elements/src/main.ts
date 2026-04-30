@@ -3,10 +3,28 @@
 
 import { makePersistedAdapter } from '@livestore/adapter-web'
 import LiveStoreSharedWorker from '@livestore/adapter-web/shared-worker?sharedworker'
-import { createStorePromise, liveStoreVersion, queryDb } from '@livestore/livestore'
+import { createStorePromise, liveStoreVersion, queryDb, type BootStatus } from '@livestore/livestore'
 
 import LiveStoreWorker from './livestore.worker.ts?worker'
-import { events, SyncPayload, schema, type Todo, tables } from './schema.ts'
+import { events, SyncPayload, schema, tables } from './schema.ts'
+
+type TodoItemData = {
+  id: string
+  text: string
+  completed: boolean
+}
+
+export const parseTemplate = (source: string) => {
+  const el = document.createElement('template')
+  el.innerHTML = source
+
+  return {
+    source,
+    cloneNode() {
+      return el.content.cloneNode(true)
+    },
+  }
+}
 
 // These are here to try to get editors to highlight strings correctly 😔
 export const html = (strings: TemplateStringsArray, ...values: unknown[]) =>
@@ -30,10 +48,41 @@ const adapter = makePersistedAdapter({
 
 const syncPayload = { authToken: 'insecure-token-change-me' }
 
+let storeBootStatus: BootStatus = { stage: 'loading' }
+const storeBootDoneListeners = new Set<() => void>()
+
+const notifyStoreBootStatus = (status: BootStatus) => {
+  storeBootStatus = status
+
+  if (status.stage !== 'done') {
+    return
+  }
+
+  for (const listener of storeBootDoneListeners) {
+    listener()
+  }
+
+  storeBootDoneListeners.clear()
+}
+
+const onStoreBootDone = (listener: () => void) => {
+  if (storeBootStatus.stage === 'done') {
+    listener()
+    return () => {}
+  }
+
+  storeBootDoneListeners.add(listener)
+
+  return () => {
+    storeBootDoneListeners.delete(listener)
+  }
+}
+
 const store = await createStorePromise({
   schema,
   adapter,
   storeId: 'todomvc-custom-elements',
+  onBootStatus: notifyStoreBootStatus,
   syncPayloadSchema: SyncPayload,
   syncPayload,
 })
@@ -65,7 +114,7 @@ const updatedNewTodoText = (text: string) => store.commit(events.uiStateSet({ ne
 const todoCreated = (text: string) =>
   store.commit(events.todoCreated({ id: crypto.randomUUID(), text }), events.uiStateSet({ newTodoText: '' }))
 
-const toggleTodo = (todo: Todo) => {
+const toggleTodo = (todo: TodoItemData) => {
   if (todo.completed) {
     store.commit(events.todoUncompleted({ id: todo.id }))
   } else {
@@ -73,7 +122,7 @@ const toggleTodo = (todo: Todo) => {
   }
 }
 
-const todoDeleted = (todo: Todo) => store.commit(events.todoDeleted({ id: todo.id, deletedAt: new Date() }))
+const todoDeleted = (todo: TodoItemData) => store.commit(events.todoDeleted({ id: todo.id, deletedAt: new Date() }))
 
 const TodoItemTemplate = html`
   <link rel="stylesheet" href="/src/index.css" />
@@ -91,7 +140,7 @@ const TodoItemTemplate = html`
 `
 
 class TodoItem extends HTMLElement {
-  #todo: Todo | null
+  #todo: TodoItemData | null
 
   constructor() {
     super()
@@ -118,12 +167,12 @@ class TodoItem extends HTMLElement {
     }
   }
 
-  set todo(t: Todo | null) {
+  set todo(t: TodoItemData | null) {
     this.#todo = t
     this.updateTemplate()
   }
 
-  get todo(): Todo | null {
+  get todo(): TodoItemData | null {
     return this.#todo
   }
 
@@ -185,7 +234,7 @@ class TodoList extends HTMLElement {
   #todos: ReadonlyArray<Todo> = []
 
   connectedCallback() {
-    const input = this.shadowRoot!.querySelector('input')!
+    const input = this.shadowRoot.querySelector('input')!
 
     // NOTE: can we get an AsyncIterator for newValues as well?
     // TODO unsubscribe
@@ -198,6 +247,29 @@ class TodoList extends HTMLElement {
     store.subscribe(appState$, (newValue) => {
       input.value = newValue.newTodoText
     })
+
+    const markStoreReady = () => {
+      if (this.dataset.storeReady === 'true') {
+        return
+      }
+
+      /**
+       * Boot completion is the closest lifecycle boundary we have to "persistence rehydration is settled".
+       * We do one post-boot app-state read before exposing `data-store-ready` so tests don't race an
+       * early empty snapshot during reloads.
+       *
+       * TODO expose a first-class hydration-complete signal from LiveStore so examples don't need this latch.
+       */
+      let unsubscribeReadyCheck: (() => void) | undefined
+      unsubscribeReadyCheck = store.subscribe(appState$, (newValue) => {
+        input.value = newValue.newTodoText
+        this.dataset.storeReady = 'true'
+        queueMicrotask(() => unsubscribeReadyCheck?.())
+      })
+    }
+
+    // TODO unsubscribe
+    onStoreBootDone(markStoreReady)
   }
 
   updateTodoItems() {
@@ -213,15 +285,3 @@ class TodoList extends HTMLElement {
 }
 
 customElements.define('todo-list', TodoList)
-
-export function parseTemplate(source: string) {
-  const el = document.createElement('template')
-  el.innerHTML = source
-
-  return {
-    source,
-    cloneNode() {
-      return el.content.cloneNode(true)
-    },
-  }
-}

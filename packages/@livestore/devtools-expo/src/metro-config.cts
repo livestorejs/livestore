@@ -1,13 +1,19 @@
 // eslint-disable-next-line @typescript-eslint/no-require-imports, unicorn/prefer-module, @typescript-eslint/consistent-type-imports
-const { Effect, Logger, LogLevel, Layer } =
-  require('@livestore/utils/effect') as typeof import('@livestore/utils/effect', { with: {
-    'resolution-mode': 'import',
-  }})
+const { Effect, Logger, LogLevel, Layer } = require('@livestore/utils/effect') as typeof import(
+  '@livestore/utils/effect',
+  {
+    with: {
+      'resolution-mode': 'import',
+    },
+  }
+)
 
 // eslint-disable-next-line @typescript-eslint/no-require-imports, unicorn/prefer-module, @typescript-eslint/consistent-type-imports
-const { PlatformNode } = require('@livestore/utils/node') as typeof import('@livestore/utils/node', { with: {
-  'resolution-mode': 'import',
-}})
+const { PlatformNode } = require('@livestore/utils/node') as typeof import('@livestore/utils/node', {
+  with: {
+    'resolution-mode': 'import',
+  },
+})
 
 import type { MetroConfig } from 'expo/metro-config'
 
@@ -18,7 +24,7 @@ import type { Middleware, Options } from './types.ts'
  */
 const addLiveStoreDevtoolsMiddleware = (config: MutableDeep<MetroConfig>, options: Options) => {
   // NOTE in CI we want to skip this
-  if (process.env.CI || !process.stdout.isTTY) {
+  if (process.env.CI !== undefined || process.stdout.isTTY === false) {
     return
   }
   const host = options.host ?? '0.0.0.0' // Defaulting to a hostname that can be reached from the device
@@ -72,7 +78,7 @@ const addLiveStoreDevtoolsMiddleware = (config: MutableDeep<MetroConfig>, option
     const enhancedMiddleware = previousEnhanceMiddleware(metroMiddleware, server)
 
     return (req, res, next) =>
-      req.url?.startsWith('/_livestore')
+      req.url?.startsWith('/_livestore') === true
         ? redirectMiddleware(req, res, () => enhancedMiddleware(req, res, next))
         : enhancedMiddleware(req, res, next)
   }

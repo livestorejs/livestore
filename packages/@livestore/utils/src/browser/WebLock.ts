@@ -18,16 +18,16 @@ export const withLock =
 
       const exit = yield* Effect.tryPromise<Exit.Exit<A, E>, E | E2>({
         try: (signal) => {
-          if (signal.aborted) return 'aborted' as never
+          if (signal.aborted === true) return 'aborted' as never
 
           // NOTE The 'signal' and 'ifAvailable' options cannot be used together.
           const requestOptions = options?.ifAvailable === true ? options : { ...options, signal }
-          return navigator.locks.request(lockName, requestOptions, async (lock) => {
+          return navigator.locks.request(lockName, requestOptions, async (lock: Lock | null) => {
             if (lock === null) {
-              if (onTaken) {
-                const exit = await Runtime.runPromiseExit(runtime)(onTaken)
-                if (exit._tag === 'Failure') {
-                  return exit
+              if (onTaken !== undefined) {
+                const onTakenExit = await Runtime.runPromiseExit(runtime)(onTaken)
+                if (onTakenExit._tag === 'Failure') {
+                  return onTakenExit
                 }
               }
               return
@@ -49,10 +49,10 @@ export const withLock =
 
 export const waitForDeferredLock = (deferred: Deferred.Deferred<void>, lockName: string) =>
   Effect.async<void>((cb, signal) => {
-    if (signal.aborted) return
+    if (signal.aborted === true) return
 
     navigator.locks
-      .request(lockName, { signal, mode: 'exclusive', ifAvailable: false }, (_lock) => {
+      .request(lockName, { signal, mode: 'exclusive', ifAvailable: false }, (_lock: Lock | null) => {
         // immediately continuing calling Effect since we have the lock
         cb(Effect.void)
 
@@ -72,7 +72,7 @@ export const waitForDeferredLock = (deferred: Deferred.Deferred<void>, lockName:
 
 export const tryGetDeferredLock = (deferred: Deferred.Deferred<void>, lockName: string) =>
   Effect.async<boolean>((cb, signal) => {
-    navigator.locks.request(lockName, { mode: 'exclusive', ifAvailable: true }, (lock) => {
+    navigator.locks.request(lockName, { mode: 'exclusive', ifAvailable: true }, (lock: Lock | null) => {
       cb(Effect.succeed(lock !== null))
 
       // the code below is still running
@@ -96,7 +96,7 @@ export const tryGetDeferredLock = (deferred: Deferred.Deferred<void>, lockName: 
 
 export const stealDeferredLock = (deferred: Deferred.Deferred<void>, lockName: string) =>
   Effect.async<boolean>((cb, signal) => {
-    navigator.locks.request(lockName, { mode: 'exclusive', steal: true }, (lock) => {
+    navigator.locks.request(lockName, { mode: 'exclusive', steal: true }, (lock: Lock | null) => {
       cb(Effect.succeed(lock !== null))
 
       // the code below is still running
@@ -117,9 +117,9 @@ export const stealDeferredLock = (deferred: Deferred.Deferred<void>, lockName: s
 
 export const waitForLock = (lockName: string) =>
   Effect.async<void>((cb, signal) => {
-    if (signal.aborted) return
+    if (signal.aborted === true) return
 
-    navigator.locks.request(lockName, { mode: 'shared', signal, ifAvailable: false }, (_lock) => {
+    navigator.locks.request(lockName, { mode: 'shared', signal, ifAvailable: false }, (_lock: Lock | null) => {
       cb(Effect.succeed(void 0))
     })
   })
@@ -127,10 +127,10 @@ export const waitForLock = (lockName: string) =>
 /** Attempts to get the lock if available and waits for it to be stolen */
 export const getLockAndWaitForSteal = (lockName: string) =>
   Effect.async<void>((cb, signal) => {
-    if (signal.aborted) return
+    if (signal.aborted === true) return
 
     navigator.locks
-      .request(lockName, { mode: 'exclusive', ifAvailable: true }, async (lock) => {
+      .request(lockName, { mode: 'exclusive', ifAvailable: true }, async (lock: Lock | null) => {
         if (lock === null) {
           // Lock wasn't available, resolve immediately
           cb(Effect.succeed(void 0))
@@ -148,7 +148,7 @@ export const getLockAndWaitForSteal = (lockName: string) =>
             resolve()
           })
 
-          return Promise.race([holdLock, signal.aborted ? Promise.resolve() : holdLock]).catch(() => {})
+          return Promise.race([holdLock, signal.aborted === true ? Promise.resolve() : holdLock]).catch(() => {})
         }).catch(() => {})
 
         cb(Effect.succeed(void 0))

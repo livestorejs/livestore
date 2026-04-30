@@ -47,7 +47,7 @@ export const NavigationHistoryTracker = () => {
     setTimeout(() => {
       router.push(path as any)
     }, 100)
-  }, [constructPathWithParams, globalParams, navigationHistory, pathname, router.push]) // Empty dependency array ensures this only runs once on mount
+  }, [constructPathWithParams, globalParams, navigationHistory, pathname, router])
 
   return null
 }

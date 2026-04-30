@@ -6,6 +6,7 @@ import { Protocol } from '@effect/rpc/RpcClient'
 import { constPing, type FromServerEncoded } from '@effect/rpc/RpcMessage'
 import { Cause, Deferred, Effect, Layer, Option, Schedule, type Scope } from 'effect'
 import { constVoid, identity } from 'effect/Function'
+
 import * as SubscriptionRef from './SubscriptionRef.ts'
 
 // This is based on `makeProtocolSocket` / `layerProtocolSocket` from `@effect/rpc` in order to:
@@ -119,8 +120,8 @@ export const makeProtocolSocketWithIsConnected = (options: {
 
             const error = Cause.failureOption(cause)
             if (
-              options?.retryTransientErrors &&
-              Option.isSome(error) &&
+              options?.retryTransientErrors !== undefined &&
+              Option.isSome(error) === true &&
               (error.value.reason === 'Open' || error.value.reason === 'OpenTimeout')
             ) {
               return
@@ -137,7 +138,7 @@ export const makeProtocolSocketWithIsConnected = (options: {
           }),
         ),
         // CHANGED: make configurable via schedule
-        options?.retryTransientErrors ? Effect.retry(options.retryTransientErrors) : identity,
+        options?.retryTransientErrors !== undefined ? Effect.retry(options.retryTransientErrors) : identity,
         Effect.annotateLogs({
           module: 'RpcClient',
           method: 'makeProtocolSocket',
@@ -171,7 +172,7 @@ const makePinger = Effect.fnUntraced(function* <A, E, R>(
   pingSchedule: Schedule.Schedule<unknown> = Schedule.spaced(10000).pipe(Schedule.addDelay(() => 5000)),
 ) {
   // CHANGED: add manual ping deferreds
-  const manualPingDeferreds = new Set<Deferred.Deferred<void, never>>()
+  const manualPingDeferreds = new Set<Deferred.Deferred<void>>()
 
   let recievedPong = true
   const latch = Effect.unsafeMakeLatch()
@@ -188,7 +189,7 @@ const makePinger = Effect.fnUntraced(function* <A, E, R>(
   }
   yield* Effect.suspend(() => {
     // Starting new ping
-    if (!recievedPong) return latch.open
+    if (recievedPong === false) return latch.open
     recievedPong = false
     return writePing
   }).pipe(
@@ -202,7 +203,7 @@ const makePinger = Effect.fnUntraced(function* <A, E, R>(
 
   // CHANGED: add manual ping
   const ping = Effect.gen(function* () {
-    const deferred = yield* Deferred.make<void, never>()
+    const deferred = yield* Deferred.make<void>()
     manualPingDeferreds.add(deferred)
     yield* deferred
     manualPingDeferreds.delete(deferred)

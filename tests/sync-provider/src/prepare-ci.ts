@@ -1,5 +1,6 @@
-import { type CommandExecutor, Effect, type PlatformError } from '@livestore/utils/effect'
 import type { DockerComposeError } from '@livestore/utils-dev/node'
+import { type CommandExecutor, Effect, type PlatformError } from '@livestore/utils/effect'
+
 import { providerKeys, providerRegistry } from './providers/registry.ts'
 
 // Meant to separate test preparation from test execution (e.g. pulling docker images)

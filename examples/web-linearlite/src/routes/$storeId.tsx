@@ -1,4 +1,5 @@
 import { createFileRoute, Outlet } from '@tanstack/react-router'
+
 import { KeyboardShortcuts } from '../components/common/keyboard-shortcuts.tsx'
 import { Layout } from '../components/layout/index.tsx'
 import { NewIssueModal } from '../components/layout/issue/new-issue-modal.tsx'

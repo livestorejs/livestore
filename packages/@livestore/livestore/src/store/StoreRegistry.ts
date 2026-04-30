@@ -16,7 +16,8 @@ import {
   type Schema,
   type Scope,
 } from '@livestore/utils/effect'
-import { type CreateStoreOptions, createStore } from './create-store.ts'
+
+import { createStore, type CreateStoreOptions } from './create-store.ts'
 import type { Store } from './store.ts'
 import type { OtelOptions } from './store-types.ts'
 
@@ -65,10 +66,10 @@ export interface RegistryStoreOptions<
    * have unmounted.
    *
    * @remarks
-   * - **Limitation:** Per-store values are not yet supported. Only the registry-level default
-   *   (via `StoreRegistry` constructor's `defaultOptions.unusedCacheTime`) is used.
-   *   See {@link https://github.com/livestorejs/livestore/issues/917 | #917} for per-store support
-   *   and {@link https://github.com/livestorejs/livestore/issues/918 | #918} for dynamic "longest wins" behavior.
+   * - Per-store values override the registry-level default (set via `StoreRegistry` constructor's
+   *   `defaultOptions.unusedCacheTime`)
+   * - The value is fixed when the store is first loaded into the registry. If the same `storeId` is
+   *   requested again with a different `unusedCacheTime`, the original value is kept.
    * - If set to `Infinity`, will disable automatic disposal
    * - The maximum allowed time is about {@link https://developer.mozilla.org/en-US/docs/Web/API/Window/setTimeout#maximum_delay_value | 24 days}
    *
@@ -155,15 +156,16 @@ export class StoreRegistry {
   readonly #runtime: Runtime.Runtime<Scope.Scope | OtelTracer.OtelTracer>
 
   /**
+   * Disposal callback for the runtime created by the registry.
+   * Undefined when caller provided their own runtime (caller owns cleanup in that case).
+   */
+  readonly #disposeOwnedRuntime: (() => Promise<void>) | undefined
+
+  /**
    * In-flight loading promises keyed by storeId.
    * Ensures concurrent `getOrLoadPromise` calls receive the same Promise reference.
    */
   readonly #loadingPromises: Map<string, Promise<Store<any, any>>> = new Map()
-
-  /**
-   * Default options merged into all store configurations at load time.
-   */
-  readonly #defaultOptions: StoreRegistryConfig['defaultOptions']
 
   /**
    * Creates a new StoreRegistry instance.
@@ -179,15 +181,18 @@ export class StoreRegistry {
    * ```
    */
   constructor(config: StoreRegistryConfig = {}) {
-    this.#defaultOptions = config.defaultOptions
-    this.#runtime =
-      config.runtime ??
-      ManagedRuntime.make(Layer.mergeAll(Layer.scope, OtelLiveDummy)).runtimeEffect.pipe(Effect.runSync)
+    if (config.runtime !== undefined) {
+      this.#runtime = config.runtime
+    } else {
+      const ownedRuntime = ManagedRuntime.make(Layer.mergeAll(Layer.scope, OtelLiveDummy))
+      this.#runtime = ownedRuntime.runtimeEffect.pipe(Effect.runSync)
+      this.#disposeOwnedRuntime = () => ownedRuntime.dispose()
+    }
 
     this.#rcMap = RcMap.make({
       lookup: ({ options }: StoreCacheKey) => {
         // Merge registry defaults with call-site options (call-site takes precedence)
-        const mergedOptions = { ...this.#defaultOptions, ...options }
+        const mergedOptions = { ...config.defaultOptions, ...options }
         return createStore(mergedOptions).pipe(
           Effect.catchAllDefect((cause) => UnknownError.make({ cause })),
           Effect.withSpan(`StoreRegistry.lookup:${mergedOptions.storeId}`),
@@ -200,9 +205,7 @@ export class StoreRegistry {
           ),
         )
       },
-      // TODO: Make idleTimeToLive vary for each store when Effect supports per-resource TTL
-      // See https://github.com/livestorejs/livestore/issues/917
-      idleTimeToLive: config.defaultOptions?.unusedCacheTime ?? DEFAULT_UNUSED_CACHE_TIME,
+      idleTimeToLive: ({ options }: StoreCacheKey) => options.unusedCacheTime ?? config.defaultOptions?.unusedCacheTime ?? DEFAULT_UNUSED_CACHE_TIME,
     }).pipe(Runtime.runSync(this.#runtime))
   }
 
@@ -260,29 +263,34 @@ export class StoreRegistry {
   ): Store<TSchema, TContext> | Promise<Store<TSchema, TContext>> => {
     const exit = this.getOrLoad(options).pipe(Effect.scoped, Runtime.runSyncExit(this.#runtime))
 
-    if (Exit.isSuccess(exit)) return exit.value
+    if (Exit.isSuccess(exit) === true) return exit.value
 
     // Check if the failure is due to async work
     const defect = Cause.dieOption(exit.cause)
-    if (defect._tag === 'Some' && Runtime.isAsyncFiberException(defect.value)) {
-      const { storeId } = options
-
-      // Return cached promise if one exists (ensures concurrent calls get the same Promise reference)
-      const cached = this.#loadingPromises.get(storeId)
-      if (cached) return cached as Promise<Store<TSchema, TContext>>
-
-      // Create and cache the promise
-      const fiber = defect.value.fiber
-      const promise = Fiber.join(fiber)
-        .pipe(Runtime.runPromise(this.#runtime))
-        .finally(() => this.#loadingPromises.delete(storeId)) as Promise<Store<TSchema, TContext>>
-
-      this.#loadingPromises.set(storeId, promise)
-      return promise
+    if (defect._tag !== 'Some') {
+      // Handle synchronous failure
+      throw Cause.squash(exit.cause)
     }
 
-    // Handle synchronous failure
-    throw Cause.squash(exit.cause)
+    if (Runtime.isAsyncFiberException(defect.value) === false) {
+      // Handle synchronous failure
+      throw Cause.squash(exit.cause)
+    }
+
+    const { storeId } = options
+
+    // Return cached promise if one exists (ensures concurrent calls get the same Promise reference)
+    const cached = this.#loadingPromises.get(storeId)
+    if (cached !== undefined) return cached as Promise<Store<TSchema, TContext>>
+
+    // Create and cache the promise
+    const fiber = defect.value.fiber as Fiber.RuntimeFiber<Store<TSchema, TContext>>
+    const promise = Fiber.join(fiber)
+      .pipe(Runtime.runPromise(this.#runtime))
+      .finally(() => this.#loadingPromises.delete(storeId))
+
+    this.#loadingPromises.set(storeId, promise)
+    return promise
   }
 
   /**
@@ -344,6 +352,25 @@ export class StoreRegistry {
       // Do nothing; preload is best-effort
     }
   }
+
+  /**
+   * Disposes the registry and all its managed stores, immediately releasing resources
+   * (database connections, WebSocket connections, web workers, etc.).
+   *
+   * Most applications should use a single `StoreRegistry` and don't need to call
+   * this method. It's only necessary when creating multiple short-lived registries to
+   * immediately release resources and avoid conflicts with subsequent registries.
+   *
+   * @returns A promise that resolves when disposal is complete
+   *
+   * @remarks
+   * - No-op if a custom `runtime` was provided to the constructor (caller owns cleanup)
+   * - Idempotent: safe to call multiple times
+   * - After disposal, the registry should not be used
+   */
+  dispose = async (): Promise<void> => {
+    await this.#disposeOwnedRuntime?.()
+  }
 }
 
 /**
@@ -382,12 +409,10 @@ export class StoreRegistry {
  * });
  * ```
  */
-export function storeOptions<
+export const storeOptions = <
   TSchema extends LiveStoreSchema,
   TContext = {},
   TSyncPayloadSchema extends Schema.Schema<any> = typeof Schema.JsonValue,
 >(
   options: RegistryStoreOptions<TSchema, TContext, TSyncPayloadSchema>,
-): RegistryStoreOptions<TSchema, TContext, TSyncPayloadSchema> {
-  return options
-}
+): RegistryStoreOptions<TSchema, TContext, TSyncPayloadSchema> => options

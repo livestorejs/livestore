@@ -1,4 +1,4 @@
-import { InvalidPullError, InvalidPushError } from '@livestore/common'
+import { UnknownError } from '@livestore/common'
 import { type CfTypes, toDurableObjectHandler } from '@livestore/common-cf'
 import {
   Effect,
@@ -11,6 +11,7 @@ import {
   RpcSerialization,
   Stream,
 } from '@livestore/utils/effect'
+
 import { SyncDoRpc } from '../../../common/do-rpc-schema.ts'
 import { SyncMessage } from '../../../common/mod.ts'
 import { DoCtx, type DoCtxInput } from '../layer.ts'
@@ -39,13 +40,13 @@ export const createDoRpcHandler = (
           const { rpcSubscriptions } = yield* DoCtx
 
           // TODO rename `req.rpcContext` to something more appropriate
-          if (req.rpcContext) {
+          if (req.rpcContext !== undefined) {
             rpcSubscriptions.set(req.storeId, {
               storeId: req.storeId,
-              payload: req.payload,
               subscribedAt: Date.now(),
               requestId: Headers.get(headers, 'x-rpc-request-id').pipe(Option.getOrThrow),
               callerContext: req.rpcContext.callerContext,
+              ...(req.payload !== undefined ? { payload: req.payload } : {}),
             })
           }
 
@@ -58,7 +59,11 @@ export const createDoRpcHandler = (
             rpcRequestId: Headers.get(headers, 'x-rpc-request-id').pipe(Option.getOrThrow),
           })),
           Stream.provideLayer(DoCtx.Default({ ...input, from: { storeId: req.storeId } })),
-          Stream.mapError((cause) => (cause._tag === 'InvalidPullError' ? cause : InvalidPullError.make({ cause }))),
+          Stream.mapError((cause) =>
+            cause._tag === 'UnknownError' || cause._tag === 'BackendIdMismatchError'
+              ? cause
+              : new UnknownError({ cause }),
+          ),
           Stream.tapErrorCause(Effect.log),
         ),
       'SyncDoRpc.Push': (req) =>
@@ -70,7 +75,11 @@ export const createDoRpcHandler = (
           return yield* push(req)
         }).pipe(
           Effect.provide(DoCtx.Default({ ...input, from: { storeId: req.storeId } })),
-          Effect.mapError((cause) => (cause._tag === 'InvalidPushError' ? cause : InvalidPushError.make({ cause }))),
+          Effect.mapError((cause) =>
+            cause._tag === 'UnknownError' || cause._tag === 'ServerAheadError' || cause._tag === 'BackendIdMismatchError'
+              ? cause
+              : new UnknownError({ cause }),
+          ),
           Effect.tapCauseLogPretty,
         ),
     })

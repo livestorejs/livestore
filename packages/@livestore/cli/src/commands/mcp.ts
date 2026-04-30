@@ -1,5 +1,6 @@
 import { Effect, Layer, Logger, McpServer } from '@livestore/utils/effect'
 import { Cli, PlatformNode } from '@livestore/utils/node'
+
 import { architectureContent } from '../mcp-content/architecture.ts'
 import { featuresContent } from '../mcp-content/features.ts'
 import { gettingStartedContent } from '../mcp-content/getting-started.ts'

@@ -1,15 +1,17 @@
 import { hostname } from 'node:os'
 import path from 'node:path'
+import type { URL } from 'node:url'
 import * as WT from 'node:worker_threads'
+
 import {
   type Adapter,
   type BootStatus,
   ClientSessionLeaderThreadProxy,
   IntentionalShutdownCause,
+  isWorkerTransportError,
   type LockStatus,
   type MakeSqliteDb,
   makeClientSession,
-  type SyncError,
   type SyncOptions,
   UnknownError,
 } from '@livestore/common'
@@ -27,7 +29,7 @@ import {
   Fiber,
   FileSystem,
   Layer,
-  ParseResult,
+  Option,
   Queue,
   Schedule,
   Schema,
@@ -35,7 +37,6 @@ import {
   Subscribable,
   SubscriptionRef,
   Worker,
-  WorkerError,
 } from '@livestore/utils/effect'
 import { PlatformNode } from '@livestore/utils/node'
 import * as Webmesh from '@livestore/webmesh'
@@ -232,7 +233,7 @@ const makeAdapterImpl = ({
       yield* shutdownChannel.listen.pipe(
         Stream.flatten(),
         Stream.tap((cause) =>
-          shutdown(cause._tag === 'LiveStore.IntentionalShutdownCause' ? Exit.succeed(cause) : Exit.fail(cause)),
+          shutdown(cause._tag === 'IntentionalShutdownCause' ? Exit.succeed(cause) : Exit.fail(cause)),
         ),
         Stream.runDrain,
         Effect.interruptible,
@@ -246,7 +247,7 @@ const makeAdapterImpl = ({
       const lockStatus = yield* SubscriptionRef.make<LockStatus>('has-lock')
 
       const devtoolsOptions: WorkerSchema.LeaderWorkerInnerInitialMessage['devtools'] =
-        devtoolsEnabled && devtoolsOptionsInput !== undefined
+        devtoolsEnabled === true && devtoolsOptionsInput !== undefined
           ? {
               enabled: true,
               schemaPath:
@@ -297,7 +298,7 @@ const makeAdapterImpl = ({
         sqliteDb: syncInMemoryDb,
         webmeshMode: 'proxy',
         connectWebmeshNode: Effect.fnUntraced(function* ({ webmeshNode }) {
-          if (devtoolsOptions.enabled) {
+          if (devtoolsOptions.enabled === true) {
             yield* Webmesh.connectViaWebSocket({
               node: webmeshNode,
               url: `ws://${devtoolsOptions.host}:${devtoolsOptions.port}`,
@@ -446,7 +447,7 @@ const makeWorkerLeaderThread = ({
   syncPayloadEncoded,
   testing,
 }: {
-  shutdown: (cause: Exit.Exit<IntentionalShutdownCause, UnknownError | SyncError>) => Effect.Effect<void>
+  shutdown: (cause: Exit.Exit<IntentionalShutdownCause, UnknownError>) => Effect.Effect<void>
   storeId: string
   clientId: string
   sessionId: string
@@ -462,8 +463,8 @@ const makeWorkerLeaderThread = ({
 }) =>
   Effect.gen(function* () {
     const nodeWorker = new WT.Worker(workerUrl, {
-      execArgv: process.env.DEBUG_WORKER ? ['--inspect --enable-source-maps'] : ['--enable-source-maps'],
-      argv: [Schema.encodeSync(WorkerSchema.WorkerArgv)({ storeId, clientId, sessionId, extraArgs: workerExtraArgs })],
+      execArgv: process.env.DEBUG_WORKER !== undefined ? ['--inspect --enable-source-maps'] : ['--enable-source-maps'],
+      argv: [yield* Schema.encode(WorkerSchema.WorkerArgv)({ storeId, clientId, sessionId, extraArgs: workerExtraArgs }).pipe(Effect.orDie)],
     })
     const nodeWorkerLayer = yield* Layer.build(PlatformNode.NodeWorker.layer(() => nodeWorker))
 
@@ -485,47 +486,30 @@ const makeWorkerLeaderThread = ({
       Effect.withSpan('@livestore/adapter-node:adapter:setupLeaderThread'),
     )
 
-    const runInWorker = <TReq extends typeof WorkerSchema.LeaderWorkerInnerRequest.Type>(
-      req: TReq,
-    ): TReq extends Schema.WithResult<infer A, infer _I, infer _E, infer _EI, infer R>
-      ? Effect.Effect<A, UnknownError, R>
-      : never =>
-      (worker.executeEffect(req) as any).pipe(
+    const runInWorker = <A, I, E, EI, R>(
+      req: WorkerSchema.LeaderWorkerInnerRequest & Schema.WithResult<A, I, E, EI, R>,
+    ): Effect.Effect<A, E, R> =>
+      worker.executeEffect(req).pipe(
+        Effect.catchIf(isWorkerTransportError, (e) => Effect.die(e)),
         Effect.logWarnIfTakesLongerThan({
           label: `@livestore/adapter-node:client-session:runInWorker:${req._tag}`,
           duration: 2000,
         }),
         Effect.withSpan(`@livestore/adapter-node:client-session:runInWorker:${req._tag}`),
-        Effect.mapError((cause) =>
-          Schema.is(UnknownError)(cause)
-            ? cause
-            : ParseResult.isParseError(cause) || Schema.is(WorkerError.WorkerError)(cause)
-              ? new UnknownError({ cause })
-              : cause,
-        ),
-        Effect.catchAllDefect((cause) => new UnknownError({ cause })),
-      ) as any
+      )
 
-    const runInWorkerStream = <TReq extends typeof WorkerSchema.LeaderWorkerInnerRequest.Type>(
-      req: TReq,
-    ): TReq extends Schema.WithResult<infer A, infer _I, infer _E, infer _EI, infer R>
-      ? Stream.Stream<A, UnknownError, R>
-      : never =>
-      worker.execute(req as any).pipe(
-        Stream.mapError((cause) =>
-          Schema.is(UnknownError)(cause)
-            ? cause
-            : ParseResult.isParseError(cause) || Schema.is(WorkerError.WorkerError)(cause)
-              ? new UnknownError({ cause })
-              : cause,
-        ),
+    const runInWorkerStream = <A, I, E, EI, R>(
+      req: WorkerSchema.LeaderWorkerInnerRequest & Schema.WithResult<A, I, E, EI, R>,
+    ): Stream.Stream<A, E, R> =>
+      worker.execute(req).pipe(
+        Stream.refineOrDie((e) => isWorkerTransportError(e) === true ? Option.none() : Option.some(e)),
         Stream.withSpan(`@livestore/adapter-node:client-session:runInWorkerStream:${req._tag}`),
-      ) as any
+      )
 
     const bootStatusFiber = yield* runInWorkerStream(new WorkerSchema.LeaderWorkerInnerBootStatusStream()).pipe(
       Stream.tap((bootStatus) => Queue.offer(bootStatusQueue, bootStatus)),
       Stream.runDrain,
-      Effect.tapErrorCause((cause) => (Cause.isInterruptedOnly(cause) ? Effect.void : shutdown(Exit.failCause(cause)))),
+      Effect.tapErrorCause((cause) => (Cause.isInterruptedOnly(cause) === true ? Effect.void : shutdown(Exit.failCause(cause)))),
       Effect.interruptible,
       Effect.tapCauseLogPretty,
       Effect.forkScoped,
@@ -540,8 +524,7 @@ const makeWorkerLeaderThread = ({
     const initialLeaderHead = yield* runInWorker(new WorkerSchema.LeaderWorkerInnerGetLeaderHead())
 
     const bootResult = yield* runInWorker(new WorkerSchema.LeaderWorkerInnerGetRecreateSnapshot()).pipe(
-      Effect.timeout(10_000),
-      UnknownError.mapToUnknownError,
+      Effect.timeoutOrDie(10_000),
       Effect.withSpan('@livestore/adapter-node:client-session:export'),
     )
 
@@ -568,21 +551,18 @@ const makeWorkerLeaderThread = ({
           storageMode: 'persisted',
         },
         export: runInWorker(new WorkerSchema.LeaderWorkerInnerExport()).pipe(
-          Effect.timeout(10_000),
-          UnknownError.mapToUnknownError,
+          Effect.timeoutOrDie(10_000),
           Effect.withSpan('@livestore/adapter-node:client-session:export'),
         ),
         getEventlogData: Effect.dieMessage('Not implemented'),
         syncState: Subscribable.make({
           get: runInWorker(new WorkerSchema.LeaderWorkerInnerGetLeaderSyncState()).pipe(
-            UnknownError.mapToUnknownError,
             Effect.withSpan('@livestore/adapter-node:client-session:getLeaderSyncState'),
           ),
           changes: runInWorkerStream(new WorkerSchema.LeaderWorkerInnerSyncStateStream()).pipe(Stream.orDie),
         }),
         sendDevtoolsMessage: (message) =>
           runInWorker(new WorkerSchema.LeaderWorkerInnerExtraDevtoolsMessage({ message })).pipe(
-            UnknownError.mapToUnknownError,
             Effect.withSpan('@livestore/adapter-node:client-session:devtoolsMessageForLeader'),
           ),
         networkStatus: Subscribable.make({

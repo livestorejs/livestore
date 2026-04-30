@@ -9,7 +9,7 @@ import {
   SessionIdSymbol,
   UnknownError,
 } from '@livestore/common'
-import { deepEqual, omitUndefineds, shouldNeverHappen } from '@livestore/utils'
+import { deepEqual, objectToString, omitUndefineds, shouldNeverHappen } from '@livestore/utils'
 import { Equal, Hash, Predicate, Schema, TreeFormatter } from '@livestore/utils/effect'
 import * as otel from '@opentelemetry/api'
 
@@ -103,7 +103,7 @@ export const queryDb: {
 } = (queryInput, options) => {
   const { queryString, extraDeps } = getQueryStringAndExtraDeps(queryInput)
 
-  const hash = [queryString, options?.deps ? depsToString(options.deps) : undefined, depsToString(extraDeps)]
+  const hash = [queryString, options?.deps !== undefined ? depsToString(options.deps) : undefined, depsToString(extraDeps)]
     .filter(Boolean)
     .join('-')
 
@@ -112,7 +112,7 @@ export const queryDb: {
   }
 
   if (hash.trim() === '') {
-    return shouldNeverHappen(`Invalid query hash for query: ${queryInput}`)
+      return shouldNeverHappen('Invalid query hash for query:', objectToString(queryInput))
   }
 
   const label = options?.label ?? queryString
@@ -155,12 +155,12 @@ const bindValuesToDepKey = (bindValues: Bindable | undefined): DepKey => {
 const getQueryStringAndExtraDeps = (
   queryInput: QueryInput<any, any> | ((get: GetAtomResult) => QueryInput<any, any>),
 ): { queryString: string; extraDeps: DepKey } => {
-  if (isQueryBuilder(queryInput)) {
+  if (isQueryBuilder(queryInput) === true) {
     const { query, bindValues } = queryInput.asSql()
     return { queryString: query, extraDeps: bindValuesToDepKey(bindValues) }
   }
 
-  if (isQueryInputRaw(queryInput)) {
+  if (isQueryInputRaw(queryInput) === true) {
     return { queryString: queryInput.query, extraDeps: bindValuesToDepKey(queryInput.bindValues) }
   }
 
@@ -168,7 +168,7 @@ const getQueryStringAndExtraDeps = (
     return { queryString: queryInput.toString(), extraDeps: [] }
   }
 
-  return shouldNeverHappen(`Invalid query input: ${queryInput}`)
+  return shouldNeverHappen(`Invalid query input: ${String(queryInput)}`)
 }
 
 /* An object encapsulating a reactive SQL query */
@@ -216,7 +216,7 @@ export class LiveStoreDbQuery<TResultSchema, TResult = TResultSchema> extends Li
 
     const schemaRef: { current: Schema.Schema<any, any> | undefined } = {
       current:
-        typeof queryInput === 'function' ? undefined : isQueryBuilder(queryInput) ? undefined : queryInput.schema,
+        typeof queryInput === 'function' ? undefined : isQueryBuilder(queryInput) === true ? undefined : queryInput.schema,
     }
 
     const execBeforeFirstRunRef: {
@@ -270,7 +270,7 @@ export class LiveStoreDbQuery<TResultSchema, TResult = TResultSchema> extends Li
 
           let queryInputRaw: TQueryInputRaw
 
-          if (isQueryBuilder(queryInputResult)) {
+          if (isQueryBuilder(queryInputResult) === true) {
             const res = fromQueryBuilder(queryInputResult, otelContext)
             queryInputRaw = res.queryInputRaw
             // setting label dynamically here
@@ -297,7 +297,7 @@ export class LiveStoreDbQuery<TResultSchema, TResult = TResultSchema> extends Li
       this.queryInput$ = queryInputRaw$OrQueryInputRaw
     } else {
       let queryInputRaw: TQueryInputRaw
-      if (isQueryBuilder(queryInput)) {
+      if (isQueryBuilder(queryInput) === true) {
         const res = fromQueryBuilder(queryInput, otelContext)
         queryInputRaw = res.queryInputRaw
         label = res.label
@@ -310,7 +310,7 @@ export class LiveStoreDbQuery<TResultSchema, TResult = TResultSchema> extends Li
       queryInputRaw$OrQueryInputRaw = queryInputRaw
 
       // this.label = inputLabel ? this.label : `db(${})`
-      if (inputLabel === undefined && isQueryBuilder(queryInput)) {
+      if (inputLabel === undefined && isQueryBuilder(queryInput) === true) {
         const ast = queryInput[QueryBuilderAstSymbol]
         if (ast._tag === 'RowQuery') {
           label = `db(${rowQueryLabel(ast.tableDef, ast.id)})`
@@ -342,7 +342,7 @@ export class LiveStoreDbQuery<TResultSchema, TResult = TResultSchema> extends Li
           'db:...', // NOTE span name will be overridden further down
           {
             attributes: {
-              'livestore.debugRefreshReason': Predicate.hasProperty(debugRefreshReason, 'label')
+              'livestore.debugRefreshReason': Predicate.hasProperty(debugRefreshReason, 'label') === true
                 ? (debugRefreshReason.label as string)
                 : debugRefreshReason?._tag,
             },
@@ -357,7 +357,7 @@ export class LiveStoreDbQuery<TResultSchema, TResult = TResultSchema> extends Li
               execBeforeFirstRunRef.current = undefined
             }
 
-            const queryInputResult = isThunk(queryInputRaw$OrQueryInputRaw)
+            const queryInputResult = isThunk(queryInputRaw$OrQueryInputRaw) === true
               ? (get(queryInputRaw$OrQueryInputRaw, otelContext, debugRefreshReason) as TQueryInputRaw)
               : (queryInputRaw$OrQueryInputRaw as TQueryInputRaw)
 
@@ -383,12 +383,12 @@ export class LiveStoreDbQuery<TResultSchema, TResult = TResultSchema> extends Li
             span.setAttribute('sql.query', sqlString)
             span.updateName(`db:${sqlString.slice(0, 50)}`)
 
-            const rawDbResults = store[StoreInternalsSymbol].sqliteDbWrapper.cachedSelect<any>(
+            const rawDbResults = store[StoreInternalsSymbol].sqliteDbWrapper.cachedSelect(
               sqlString,
-              bindValues ? prepareBindValues(bindValues, sqlString) : undefined,
+              bindValues !== undefined ? prepareBindValues(bindValues, sqlString) : undefined,
               {
-                queriedTables: queriedTablesRef.current,
                 otelContext,
+                ...(queriedTablesRef.current !== undefined ? { queriedTables: queriedTablesRef.current } : {}),
               },
             )
 

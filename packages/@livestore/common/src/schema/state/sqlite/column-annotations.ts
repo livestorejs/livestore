@@ -1,5 +1,6 @@
 import type { Schema } from '@livestore/utils/effect'
 import { dual, Option, SchemaAST } from '@livestore/utils/effect'
+
 import type { SqliteDsl } from './db-schema/mod.ts'
 
 export const PrimaryKeyId = Symbol.for('livestore/state/sqlite/annotations/primary-key')
@@ -79,7 +80,7 @@ const validateSchemaColumnTypeCompatibility = (
 const applyAnnotations = <T extends Schema.Schema.All>(schema: T, overrides: Record<PropertyKey, unknown>): T => {
   const identifier = SchemaAST.getIdentifierAnnotation(schema.ast)
   const shouldPreserveIdentifier = Option.isSome(identifier) && !(SchemaAST.IdentifierAnnotationId in overrides)
-  const annotations: Record<PropertyKey, unknown> = shouldPreserveIdentifier
+  const annotations: Record<PropertyKey, unknown> = shouldPreserveIdentifier === true
     ? { ...overrides, [SchemaAST.IdentifierAnnotationId]: identifier.value }
     : overrides
 

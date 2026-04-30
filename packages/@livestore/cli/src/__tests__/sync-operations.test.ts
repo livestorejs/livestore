@@ -1,8 +1,10 @@
+import { expect } from 'vitest'
+
 import type { LiveStoreEvent } from '@livestore/common/schema'
+import { Vitest } from '@livestore/utils-dev/node-vitest'
 import { Chunk, Effect, FetchHttpClient, Layer, Mailbox, Stream } from '@livestore/utils/effect'
 import { PlatformNode } from '@livestore/utils/node'
-import { Vitest } from '@livestore/utils-dev/node-vitest'
-import { expect } from 'vitest'
+
 import { pullEventsFromSyncBackend, pushEventsToSyncBackend } from '../sync-operations.ts'
 import { makeEventFactory, useMockConfig } from './fixtures/mock-config.ts'
 

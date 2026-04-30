@@ -12,4 +12,3 @@ The basic idea is to listen query results and emit events when the query results
 ```ts
 // TODO (contribution welcome)
 ```
-

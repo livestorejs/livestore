@@ -1,4 +1,5 @@
 import type { QueryBuilder } from '@livestore/livestore'
+
 import type { FilterState, tables } from './schema/index.ts'
 
 export const filterStateToWhere = (filterState: FilterState) => {

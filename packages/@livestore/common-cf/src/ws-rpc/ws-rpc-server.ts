@@ -31,6 +31,7 @@ import {
   Scope,
   Stream,
 } from '@livestore/utils/effect'
+
 import type * as CfTypes from '../cf-types.ts'
 
 /**
@@ -70,7 +71,7 @@ export interface DurableObjectWebSocketRpcConfig {
   rpcLayer: Layer.Layer<never, never, RpcServer.Protocol | WsContext>
   /** Function to get access to incoming requests */
   onMessage?: (msg: RpcMessage.FromClientEncoded, ws: CfTypes.WebSocket) => void
-  mainLayer?: Layer.Layer<never, never, never>
+  mainLayer?: Layer.Layer<never>
 }
 
 /**
@@ -154,7 +155,7 @@ export const setupDurableObjectWebSocketRpc = ({
 
   const launchServer = (ws: CfTypes.WebSocket) =>
     Effect.gen(function* () {
-      if (serverCtxMap.has(ws)) {
+      if (serverCtxMap.has(ws) === true) {
         return serverCtxMap.get(ws)!
       }
 
@@ -162,7 +163,7 @@ export const setupDurableObjectWebSocketRpc = ({
 
       const scope = yield* Scope.make()
 
-      const incomingQueue = yield* Mailbox.make<Uint8Array<ArrayBufferLike> | string>()
+      const incomingQueue = yield* Mailbox.make<Uint8Array | string>()
 
       yield* Scope.addFinalizer(scope, incomingQueue.shutdown)
 
@@ -182,7 +183,7 @@ export const setupDurableObjectWebSocketRpc = ({
         scope,
         onMessage: (message: string | ArrayBuffer) =>
           incomingQueue
-            .offer(message as Uint8Array<ArrayBufferLike> | string)
+            .offer(message as Uint8Array | string)
             .pipe(
               Effect.asVoid,
               Effect.withSpan('ws-rpc-server/onMessage', { root: true }),
@@ -212,7 +213,7 @@ export const setupDurableObjectWebSocketRpc = ({
   const webSocketClose: CfTypes.DurableObject['webSocketClose'] = async (ws, _code, _reason, _wasClean) => {
     const ctx = serverCtxMap.get(ws)
     // console.log('webSocketClose', ctx, ws)
-    if (ctx) {
+    if (ctx !== undefined) {
       await Scope.close(ctx.scope, Exit.void).pipe(Effect.runPromise)
       serverCtxMap.delete(ws)
     }
@@ -234,7 +235,7 @@ export interface WsRpcServerArgs {
   ws: CfTypes.WebSocket
   onMessage?: (message: RpcMessage.FromClientEncoded, ws: CfTypes.WebSocket) => void
   /** Mailbox queue for receiving incoming messages from the WebSocket */
-  incomingQueue: Mailbox.Mailbox<Uint8Array<ArrayBufferLike> | string>
+  incomingQueue: Mailbox.Mailbox<Uint8Array | string>
 }
 
 /**
@@ -270,7 +271,7 @@ const makeSocketProtocol = ({ incomingQueue, ws, onMessage }: WsRpcServerArgs) =
     const serialization = yield* RpcSerialization.RpcSerialization
     const disconnects = yield* Mailbox.make<number>()
 
-    const writeRaw = (msg: Uint8Array<ArrayBufferLike> | string) => Effect.succeed(ws.send(msg))
+    const writeRaw = (msg: Uint8Array | string) => Effect.succeed(ws.send(msg))
 
     let writeRequest!: (clientId: number, message: RpcMessage.FromClientEncoded) => Effect.Effect<void>
 
@@ -303,7 +304,7 @@ const makeSocketProtocol = ({ incomingQueue, ws, onMessage }: WsRpcServerArgs) =
               while: () => i < decoded.length,
               body: () => {
                 const request = decoded[i++]!
-                if (onMessage) {
+                if (onMessage !== undefined) {
                   onMessage(request, ws)
                 }
                 return writeRequest(id, request)

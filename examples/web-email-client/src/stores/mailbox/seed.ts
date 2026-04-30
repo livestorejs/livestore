@@ -1,4 +1,5 @@
 import { nanoid, type Store } from '@livestore/livestore'
+
 import type { schema } from './schema.ts'
 import { mailboxEvents } from './schema.ts'
 

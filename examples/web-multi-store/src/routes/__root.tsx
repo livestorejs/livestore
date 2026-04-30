@@ -1,7 +1,9 @@
-import type { StoreRegistry } from '@livestore/react'
 import { createRootRouteWithContext, HeadContent, Link, Outlet, Scripts } from '@tanstack/react-router'
 import type { ReactNode } from 'react'
-import stylesheetUrl from '@/styles.css?url'
+
+import type { StoreRegistry } from '@livestore/livestore'
+
+import stylesheetUrl from '../styles.css?url'
 
 type RouterContext = {
   storeRegistry: StoreRegistry
@@ -30,7 +32,9 @@ const tabs = [
   { to: '/recursive', label: 'Recursive' },
 ] as const
 
-function RootComponent() {
+const activeTabProps = { className: 'active' } as const
+
+const RootComponent = () => {
   return (
     <RootDocument>
       <main>
@@ -41,7 +45,7 @@ function RootComponent() {
 
         <nav>
           {tabs.map((tab) => (
-            <Link key={tab.to} to={tab.to} activeProps={{ className: 'active' }}>
+            <Link key={tab.to} to={tab.to} activeProps={activeTabProps}>
               {tab.label}
             </Link>
           ))}
@@ -55,7 +59,7 @@ function RootComponent() {
   )
 }
 
-function RootDocument({ children }: Readonly<{ children: ReactNode }>) {
+const RootDocument = ({ children }: Readonly<{ children: ReactNode }>) => {
   return (
     <html lang="en">
       <head>

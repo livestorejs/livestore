@@ -1,9 +1,10 @@
 import process from 'node:process'
 
 import { cloudflare } from '@cloudflare/vite-plugin'
-import { livestoreDevtoolsPlugin } from '@livestore/devtools-vite'
 import { svelte } from '@sveltejs/vite-plugin-svelte'
 import { defineConfig } from 'vite'
+
+import { livestoreDevtoolsPlugin } from '@livestore/devtools-vite'
 
 export default defineConfig({
   server: {

@@ -1,7 +1,8 @@
 import { Result, useAtomValue } from '@effect-atom/atom-react'
+
 import { activeUsersAtom } from './queries.ts'
 
-export function UserList() {
+export const UserList = () => {
   const users = useAtomValue(activeUsersAtom)
 
   return Result.builder(users)

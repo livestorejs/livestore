@@ -1,7 +1,7 @@
 import inspector from 'node:inspector'
 import path from 'node:path'
 
-if (process.execArgv.includes('--inspect')) {
+if (process.execArgv.includes('--inspect') === true) {
   inspector.open()
   inspector.waitForDebugger()
 }
@@ -64,13 +64,13 @@ export const makeLeaderThread = ({
   Scope.Scope
 > =>
   Effect.gen(function* () {
-    const runtime = yield* Effect.runtime<never>()
+    const runtime = yield* Effect.runtime()
 
     const schemaHashSuffix =
       schema.state.sqlite.migrations.strategy === 'manual' ? 'fixed' : schema.state.sqlite.hash.toString()
 
     const makeDb = (kind: 'state' | 'eventlog') => {
-      if (testing?.makeLeaderThread) {
+      if (testing?.makeLeaderThread !== undefined) {
         return testing
           .makeLeaderThread(makeSqliteDb)
           .pipe(Effect.map(({ dbEventlog, dbState }) => (kind === 'state' ? dbState : dbEventlog)))
@@ -184,7 +184,7 @@ const makeDevtoolsOptions = ({
           eventlog: dbEventlog.metadata.persistenceInfo,
         }
 
-        return { node, persistenceInfo, mode: 'proxy' }
+        return { node, persistenceInfo, mode: 'proxy' as const }
       }),
     }
   })

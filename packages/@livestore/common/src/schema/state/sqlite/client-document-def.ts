@@ -95,7 +95,7 @@ export const clientDocument = <
   Object.defineProperty(setEventDef, 'schema', {
     value: Schema.Struct({
       id: Schema.String,
-      value: options.partialSet ? Schema.partial(valueSchema) : valueSchema,
+      value: options.partialSet === true ? Schema.partial(valueSchema) : valueSchema,
     }).annotations({ title: `${name}Set:Args` }),
   })
   Object.defineProperty(setEventDef, 'options', {
@@ -108,20 +108,26 @@ export const clientDocument = <
     TEncoded,
     ClientDocumentTableOptions<TType>
   > = {
+    // oxlint-disable-next-line typescript-eslint(no-unsafe-type-assertion) -- dynamic table def composition; type safety ensured by ClientDocumentTableDef.Trait
     get: makeGetQueryBuilder(() => clientDocumentTableDef) as any,
+    // oxlint-disable-next-line typescript-eslint(no-unsafe-type-assertion) -- dynamic table def composition; type safety ensured by SetEventDefLike signature
     set: setEventDef as any,
+    // oxlint-disable-next-line typescript-eslint(no-unsafe-type-assertion) -- phantom type field for generic inference only
     Value: 'only-for-type-inference' as any,
     default: options.default,
     valueSchema,
     [ClientDocumentTableDefSymbol]: {
       derived: {
+        // oxlint-disable-next-line typescript-eslint(no-unsafe-type-assertion) -- dynamic event def composition; type checked at usage sites
         setEventDef: derivedSetEventDef as any,
+        // oxlint-disable-next-line typescript-eslint(no-unsafe-type-assertion) -- dynamic materializer composition; type checked at usage sites
         setMaterializer: derivedSetMaterializer as any,
       },
       options,
     },
   }
 
+  // oxlint-disable-next-line typescript-eslint(no-unsafe-type-assertion) -- composing tableDef + clientDocumentTableDefTrait into final type; validated by satisfies above
   const clientDocumentTableDef = {
     ...tableDef,
     ...clientDocumentTableDefTrait,
@@ -141,11 +147,14 @@ export const mergeDefaultValues = <T>(defaultValues: T, explicitDefaultValues: T
   }
 
   // Get all unique keys from both objects
+  // oxlint-disable-next-line typescript-eslint(no-unsafe-type-assertion) -- Object.keys requires indexable type; T is constrained to object by preceding typeof checks
   const allKeys = new Set([...Object.keys(defaultValues as any), ...Object.keys(explicitDefaultValues as any)])
 
   return Array.from(allKeys).reduce((acc, key) => {
+    // oxlint-disable-next-line typescript-eslint(no-unsafe-type-assertion) -- dynamic key access on generic object; keys validated from Object.keys above
     acc[key] = (explicitDefaultValues as any)[key] ?? (defaultValues as any)[key]
     return acc
+    // oxlint-disable-next-line typescript-eslint(no-unsafe-type-assertion) -- reduce accumulator type; result type is T
   }, {} as any)
 }
 
@@ -177,7 +186,7 @@ export const createOptimisticEventSchema = ({
   defaultValue: any
   partialSet: boolean
 }) => {
-  const targetSchema = partialSet ? Schema.partial(valueSchema) : valueSchema
+  const targetSchema = partialSet === true ? Schema.partial(valueSchema) : valueSchema
   // The transform decode must yield values in the target schema's ENCODED shape.
   // This keeps JSON columns consistent when Encoded != Type (e.g. Option).
   const encodeTarget = Schema.encodeSync(targetSchema)
@@ -197,11 +206,13 @@ export const createOptimisticEventSchema = ({
 
           // Handle null/undefined/non-object cases
           if (typeof eventValue !== 'object' || eventValue === null) {
-            console.warn(`Client document: Non-object event value, using ${partialSet ? 'empty partial' : 'defaults'}`)
-            return encodeTarget(partialSet ? {} : defaultValue)
+            console.warn(
+              `Client document: Non-object event value, using ${partialSet === true ? 'empty partial' : 'defaults'}`,
+            )
+            return encodeTarget(partialSet === true ? {} : defaultValue)
           }
 
-          if (partialSet) {
+          if (partialSet === true) {
             // For partial sets: only preserve fields that exist in new schema
             const partialResult: Record<string, unknown> = {}
             let hasValidFields = false
@@ -214,7 +225,7 @@ export const createOptimisticEventSchema = ({
               // Drop fields that don't exist in new schema
             }
 
-            if (hasValidFields) {
+            if (hasValidFields === true) {
               try {
                 const decoded = Schema.decodeUnknownSync(targetSchema)(partialResult)
                 return encodeTarget(decoded)
@@ -366,11 +377,14 @@ const makeGetQueryBuilder = <TTableDef extends ClientDocumentTableDef<any, any, 
     return {
       [QueryBuilderTypeId]: QueryBuilderTypeId,
       [QueryBuilderAstSymbol]: ast,
+      // oxlint-disable-next-line typescript-eslint(no-unsafe-type-assertion) -- phantom type field for generic inference only
       ResultType: 'only-for-type-inference' as any,
       asSql: () => ({ query, bindValues: [id] }),
       toString: () => query.toString(),
+      // oxlint-disable-next-line typescript-eslint(no-unsafe-type-assertion) -- spreading empty object to satisfy QueryBuilder interface requirements
       ...({} as any), // Needed for type cast
     }
+    // oxlint-disable-next-line typescript-eslint(no-unsafe-type-assertion) -- makeGetQueryBuilder return type uses complex conditional generics
   }) as any
 }
 

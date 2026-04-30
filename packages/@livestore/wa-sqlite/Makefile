@@ -14,6 +14,7 @@ CFILES = \
 	libauthorizer.c \
 	libfunction.c \
 	libhook.c \
+	libsession.c \
 	libprogress.c \
 	libvfs.c \
 	$(CFILES_EXTRA)
@@ -22,6 +23,7 @@ JSFILES = \
 	src/libauthorizer.js \
 	src/libfunction.js \
 	src/libhook.js \
+	src/libsession.js \
 	src/libprogress.js \
 	src/libvfs.js
 
@@ -55,6 +57,9 @@ EMFLAGS_COMMON = \
 	-s ENVIRONMENT="web,worker" \
 	-s STACK_SIZE=512KB \
 	-s WASM_BIGINT=0 \
+	-s DISABLE_EXCEPTION_CATCHING=1 \
+	-s DISABLE_EXCEPTION_THROWING=1 \
+	-fno-exceptions \
 	$(EMFLAGS_EXTRA)
 
 EMFLAGS_DEBUG = \
@@ -76,6 +81,7 @@ EMFLAGS_LIBRARIES = \
 	--post-js src/libauthorizer.js \
 	--post-js src/libfunction.js \
 	--post-js src/libhook.js \
+	--post-js src/libsession.js \
 	--post-js src/libprogress.js \
 	--post-js src/libvfs.js
 

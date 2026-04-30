@@ -28,10 +28,10 @@
  *   DO NOT couple these systems together or assume 1:1 correspondence.
  *
  * Errors
- * - push → InvalidPushError on non‑2xx; pull → InvalidPullError on non‑2xx; ping/connect map timeouts to offline.
+ * - push → UnknownError on non‑2xx; pull → UnknownError on non‑2xx; ping/connect map timeouts to offline.
  * - The proxy should surface helpful status codes and error bodies.
  */
-import { InvalidPullError, InvalidPushError, SyncBackend, UnknownError } from '@livestore/common'
+import { SyncBackend, UnknownError } from '@livestore/common'
 import type { EventSequenceNumber } from '@livestore/common/schema'
 import { shouldNeverHappen } from '@livestore/utils'
 import {
@@ -47,6 +47,7 @@ import {
   Stream,
   SubscriptionRef,
 } from '@livestore/utils/effect'
+
 import * as ApiSchema from './api-schema.ts'
 import { decodeReadBatch } from './decode.ts'
 import * as HttpClientGenerated from './http-client-generated.ts'
@@ -71,13 +72,25 @@ export interface SyncS2Options {
   }
   retry?: {
     /** Custom retry schedule for non-live pulls (default: 2 recurs, 100ms spaced) */
-    pull?: Schedule.Schedule<number, InvalidPullError>
+    pull?: Schedule.Schedule<number, UnknownError>
     /** Custom retry schedule for pushes (default: 2 recurs, 100ms spaced) */
-    push?: Schedule.Schedule<number, InvalidPushError>
+    push?: Schedule.Schedule<number, UnknownError>
   }
 }
 
 export const defaultRetry = Schedule.compose(Schedule.recurs(2), Schedule.spaced(100))
+
+const getBrowserOrigin = () => {
+  if (typeof globalThis !== 'object' || globalThis === null || !('location' in globalThis)) {
+    return undefined
+  }
+
+  const { location } = globalThis as typeof globalThis & {
+    location?: { origin?: unknown } | undefined
+  }
+
+  return typeof location?.origin === 'string' ? location.origin : undefined
+}
 
 export const makeSyncBackend =
   ({ endpoint, ping: pingOptions, retry }: SyncS2Options): SyncBackend.SyncBackendConstructor<SyncMetadata> =>
@@ -90,9 +103,9 @@ export const makeSyncBackend =
 
       const httpClient = yield* HttpClient.HttpClient
 
+      const browserOrigin = getBrowserOrigin()
       const pullEndpointHasSameOrigin =
-        pullEndpoint.startsWith('/') ||
-        (globalThis.location !== undefined && globalThis.location.origin === new URL(pullEndpoint).origin)
+        pullEndpoint.startsWith('/') || (browserOrigin !== undefined && browserOrigin === new URL(pullEndpoint).origin)
 
       const pingTimeout = pingOptions?.requestTimeout ?? 10_000
 
@@ -111,9 +124,8 @@ export const makeSyncBackend =
       }
 
       // No need to connect if the pull endpoint has the same origin as the current page
-      const connect: SyncBackend.SyncBackend<SyncMetadata>['connect'] = pullEndpointHasSameOrigin
-        ? Effect.void
-        : ping.pipe(UnknownError.mapToUnknownError)
+      const connect: SyncBackend.SyncBackend<SyncMetadata>['connect'] =
+        pullEndpointHasSameOrigin === true ? Effect.void : ping.pipe(UnknownError.mapToUnknownError)
 
       const runPullSse = (
         cursor: Option.Option<{
@@ -121,7 +133,7 @@ export const makeSyncBackend =
           metadata: Option.Option<SyncMetadata>
         }>,
         live: boolean,
-      ): Stream.Stream<SyncBackend.PullResItem<SyncMetadata>, InvalidPullError> => {
+      ): Stream.Stream<SyncBackend.PullResItem<SyncMetadata>, UnknownError> => {
         // Extract S2 seqNum from metadata for SSE cursor
         const s2SeqNum = cursor.pipe(
           Option.flatMap((_) => _.metadata),
@@ -145,7 +157,7 @@ export const makeSyncBackend =
                 const evt = msg.event.toLowerCase()
                 if (evt === 'ping') return Option.none()
                 if (evt === 'error') {
-                  return yield* new InvalidPullError({ cause: new Error(`SSE error: ${msg.data}`) })
+                  return yield* new UnknownError({ cause: new Error(`SSE error: ${msg.data}`) })
                 }
                 if (evt === 'batch') {
                   const readBatch = yield* Schema.decode(Schema.parseJson(HttpClientGenerated.ReadBatch))(msg.data)
@@ -177,7 +189,9 @@ export const makeSyncBackend =
               }),
             ),
             Stream.filterMap((_) => _), // filter out Option.none()
-            Stream.mapError((cause) => (cause._tag === 'InvalidPullError' ? cause : new InvalidPullError({ cause }))),
+            Stream.mapError((cause) =>
+              cause._tag === 'UnknownError' ? cause : new UnknownError({ cause }),
+            ),
             Stream.retry(retry?.pull ?? defaultRetry),
           )
       }
@@ -187,7 +201,7 @@ export const makeSyncBackend =
           eventSequenceNumber: EventSequenceNumber.Global.Type
           metadata: Option.Option<SyncMetadata>
         }>,
-      ): Stream.Stream<SyncBackend.PullResItem<SyncMetadata>, InvalidPullError> => {
+      ): Stream.Stream<SyncBackend.PullResItem<SyncMetadata>, UnknownError> => {
         const computeNextCursor = (
           lastItem: Option.Option<SyncBackend.PullResItem<SyncMetadata>>,
           current: Option.Option<{
@@ -198,7 +212,7 @@ export const makeSyncBackend =
           lastItem.pipe(
             Option.flatMap((item) => {
               const lastBatchItem = item.batch.at(-1)
-              if (!lastBatchItem) return Option.none()
+              if (lastBatchItem == null) return Option.none()
               return Option.some({
                 eventSequenceNumber: lastBatchItem.eventEncoded.seqNum,
                 metadata: lastBatchItem.metadata,
@@ -213,7 +227,7 @@ export const makeSyncBackend =
             metadata: Option.Option<SyncMetadata>
           }>,
           isFirst: boolean,
-        ): Stream.Stream<SyncBackend.PullResItem<SyncMetadata>, InvalidPullError> => {
+        ): Stream.Stream<SyncBackend.PullResItem<SyncMetadata>, UnknownError> => {
           const sseStream = (live: boolean) =>
             runPullSse(cursor, live).pipe(
               Stream.emitIfEmpty({
@@ -222,7 +236,7 @@ export const makeSyncBackend =
               } as SyncBackend.PullResItem<SyncMetadata>),
             )
 
-          const stream = isFirst ? sseStream(false) : sseStream(true)
+          const stream = isFirst === true ? sseStream(false) : sseStream(true)
 
           return stream.pipe(
             // Reconnect from last item if stream
@@ -236,7 +250,7 @@ export const makeSyncBackend =
       return SyncBackend.of({
         connect,
         pull: (cursor, options) => {
-          if (options?.live) {
+          if (options?.live === true) {
             return ssePull(cursor)
           } else {
             return runPullSse(cursor, false).pipe(
@@ -249,13 +263,9 @@ export const makeSyncBackend =
         },
         push: (batch) =>
           Effect.gen(function* () {
-            const makeInvalidPushError = (cause: unknown): InvalidPushError => {
-              if (cause instanceof InvalidPushError) {
-                return cause
-              }
-
+            const toUnknownError = (cause: unknown): UnknownError => {
               if (cause instanceof UnknownError) {
-                return new InvalidPushError({ cause })
+                return cause
               }
 
               if (cause instanceof S2LimitExceededError) {
@@ -264,24 +274,22 @@ export const makeSyncBackend =
                     ? `S2 record exceeded ${cause.max} metered bytes (actual: ${cause.actual})`
                     : `S2 batch exceeded ${cause.max} (type: ${cause.limitType}, actual: ${cause.actual})`
 
-                return new InvalidPushError({
-                  cause: new UnknownError({
-                    cause,
-                    note,
-                    payload: {
-                      limitType: cause.limitType,
-                      max: cause.max,
-                      actual: cause.actual,
-                      recordIndex: cause.recordIndex,
-                    },
-                  }),
+                return new UnknownError({
+                  cause,
+                  note,
+                  payload: {
+                    limitType: cause.limitType,
+                    max: cause.max,
+                    actual: cause.actual,
+                    recordIndex: cause.recordIndex,
+                  },
                 })
               }
 
-              return new InvalidPushError({ cause: new UnknownError({ cause }) })
+              return new UnknownError({ cause })
             }
 
-            const chunks = yield* Effect.sync(() => chunkEventsForS2(batch)).pipe(Effect.mapError(makeInvalidPushError))
+            const chunks = yield* Effect.sync(() => chunkEventsForS2(batch)).pipe(Effect.mapError(toUnknownError))
 
             for (const chunk of chunks) {
               yield* HttpClientRequest.schemaBodyJson(ApiSchema.PushPayload)(HttpClientRequest.post(pushEndpoint), {
@@ -290,7 +298,7 @@ export const makeSyncBackend =
               }).pipe(
                 Effect.andThen(httpClient.pipe(HttpClient.filterStatusOk).execute),
                 Effect.andThen(HttpClientResponse.schemaBodyJson(ApiSchema.PushResponse)),
-                Effect.mapError(makeInvalidPushError),
+                Effect.mapError(toUnknownError),
                 Effect.retry(retry?.push ?? defaultRetry),
               )
             }

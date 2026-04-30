@@ -1,8 +1,8 @@
 /// <reference types="@cloudflare/workers-types" />
 
 import '@livestore/adapter-cloudflare/polyfill'
-
 import * as SyncBackend from '@livestore/sync-cf/cf-worker'
+
 import type { CrossStoreEvent, Env } from './shared.ts'
 
 export default {

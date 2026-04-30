@@ -13,7 +13,7 @@ const DynamicIndexHtml = () => {
   const hasRun = React.useRef(false)
 
   React.useEffect(() => {
-    if (hasRun.current) return
+    if (hasRun.current === true) return
     hasRun.current = true
 
     const main = async () => {

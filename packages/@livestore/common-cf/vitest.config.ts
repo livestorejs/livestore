@@ -1,3 +1,10 @@
-import { defineConfig } from 'vitest/config'
+import { defineProject } from 'vitest/config'
 
-export default defineConfig({})
+export default defineProject({
+  test: {
+    name: '@livestore/common-cf',
+    root: import.meta.dirname,
+    include: ['src/**/*.test.ts'],
+    server: { deps: { inline: ['@effect/vitest'] } },
+  },
+})

@@ -1,5 +1,6 @@
 import { Effect, Option, Stream } from 'effect'
 import { describe, expect, it } from 'vitest'
+
 import { concatWithLastElement, runCollectReadonlyArray } from './Stream.ts'
 
 describe('concatWithLastElement', () => {
@@ -9,7 +10,7 @@ describe('concatWithLastElement', () => {
       lastElement.pipe(
         Option.match({
           onNone: () => Stream.make('no-previous'),
-          onSome: (last) => Stream.make(`last-was-${last}`, 'continuing'),
+          onSome: (last) => Stream.make(`last-was-${String(last)}`, 'continuing'),
         }),
       ),
     )
@@ -24,7 +25,7 @@ describe('concatWithLastElement', () => {
       lastElement.pipe(
         Option.match({
           onNone: () => Stream.make('no-previous-element'),
-          onSome: (last) => Stream.make(`last-was-${last}`),
+          onSome: (last) => Stream.make(`last-was-${String(last)}`),
         }),
       ),
     )
@@ -39,7 +40,7 @@ describe('concatWithLastElement', () => {
       lastElement.pipe(
         Option.match({
           onNone: () => Stream.make('unexpected'),
-          onSome: (last) => Stream.make(`after-${last}`),
+          onSome: (last) => Stream.make(`after-${String(last)}`),
         }),
       ),
     )
@@ -83,7 +84,7 @@ describe('concatWithLastElement', () => {
     const result = concatWithLastElement(stream1, (lastElement) =>
       lastElement.pipe(
         Option.match({
-          onNone: () => Stream.make('no-number') as Stream.Stream<number | string, never, never>,
+          onNone: () => Stream.make('no-number') as Stream.Stream<number | string>,
           onSome: (last) => Stream.make(last * 10, last * 100),
         }),
       ),

@@ -1,7 +1,7 @@
 // https://hideoo.dev/notes/starlight-og-images/
 
-import { getCollection } from 'astro:content'
 import { OGImageRoute } from 'astro-og-canvas'
+import { getCollection } from 'astro:content'
 
 const ogEnabled = process.env.LS_SKIP_OG_IMAGES !== '1'
 
@@ -32,7 +32,7 @@ const ogRoute = OGImageRoute({
 
 export const prerender = ogEnabled
 
-export const getStaticPaths = ogEnabled ? ogRoute.getStaticPaths : () => []
+export const getStaticPaths = ogEnabled === true ? ogRoute.getStaticPaths : () => []
 
 let generationQueue: Promise<void> = Promise.resolve()
 
@@ -46,6 +46,7 @@ const enqueue = <T>(task: () => Promise<T>): Promise<T> => {
   return run
 }
 
-export const GET: typeof ogRoute.GET = ogEnabled
-  ? async (context) => enqueue(async () => ogRoute.GET(context))
-  : async () => new Response('OG image generation disabled', { status: 204 })
+export const GET: typeof ogRoute.GET =
+  ogEnabled === true
+    ? async (context) => enqueue(async () => ogRoute.GET(context))
+    : async () => new Response('OG image generation disabled', { status: 204 })

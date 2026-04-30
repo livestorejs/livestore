@@ -1,15 +1,14 @@
 {
   inputs = {
-    nixpkgs.url = "github:NixOS/nixpkgs/nixos-25.05";
-    nixpkgsUnstable.url = "github:NixOS/nixpkgs/nixos-unstable";
+    workspace.url = "github:overengineeringstudio/effect-utils";
+    nixpkgs.follows = "workspace/nixpkgs";
     flake-utils.url = "github:numtide/flake-utils";
   };
 
-  outputs = { self, nixpkgs, nixpkgsUnstable, flake-utils }:
+  outputs = { self, nixpkgs, flake-utils, ... }:
     flake-utils.lib.eachDefaultSystem (system:
       let
         pkgs = import nixpkgs { inherit system; };
-        pkgsUnstable = import nixpkgsUnstable { inherit system; };
 
         # https://www.sqlite.org/chronology.html
         sqliteVersion = "3.50.4";
@@ -58,9 +57,8 @@
             zip
             gzip
             brotli
-          ] ++ (with pkgsUnstable; [
             emscripten
-          ]);
+          ];
 
           unpackPhase = ''
             runHook preUnpack
@@ -289,6 +287,7 @@ EOF
                 rm -rf ./dist
               fi
               cp -r "$RESULT/dist" ./
+              chmod -R u+w ./dist
               echo "✓ Build complete - dist directory regenerated with session support and FTS5 variant"
             else
               echo "ERROR: No dist directory found in build result"
@@ -312,9 +311,8 @@ EOF
             zip
             brotli
             gzip
-          ] ++ (with pkgsUnstable; [
             emscripten
-          ]);
+          ];
         };
       }
     );

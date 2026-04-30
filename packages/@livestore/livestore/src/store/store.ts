@@ -16,12 +16,13 @@ import {
   QueryBuilderAstSymbol,
   replaceSessionIdSymbol,
   type StorageMode,
+  type SyncState,
   UnknownError,
 } from '@livestore/common'
 import type { StreamEventsOptions } from '@livestore/common/leader-thread'
 import type { LiveStoreSchema } from '@livestore/common/schema'
-import { LiveStoreEvent, resolveEventDef, SystemTables } from '@livestore/common/schema'
-import { assertNever, isDevEnv, omitUndefineds, shouldNeverHappen } from '@livestore/utils'
+import { EventSequenceNumber, LiveStoreEvent, resolveEventDef, SystemTables } from '@livestore/common/schema'
+import { assertNever, isDevEnv, objectToString, omitUndefineds, shouldNeverHappen } from '@livestore/utils'
 import type { Scope } from '@livestore/utils/effect'
 import {
   Cause,
@@ -56,6 +57,7 @@ import {
   StoreInternalsSymbol,
   type StoreOtel,
   type SubscribeOptions,
+  type SyncStatus,
   type Unsubscribe,
 } from './store-types.ts'
 
@@ -68,7 +70,7 @@ export type SubscribeFn = {
   <TResult>(query: Queryable<TResult>, options?: SubscribeOptions<TResult>): AsyncIterable<TResult>
 }
 
-if (isDevEnv()) {
+if (isDevEnv() === true) {
   exposeDebugUtils()
 }
 
@@ -181,7 +183,7 @@ export class Store<TSchema extends LiveStoreSchema = LiveStoreSchema.Any, TConte
    */
   readonly [StoreInternalsSymbol]: StoreInternals
 
-  // #region constructor
+  //#region constructor
   constructor({
     clientSession,
     schema,
@@ -205,12 +207,9 @@ export class Store<TSchema extends LiveStoreSchema = LiveStoreSchema.Any, TConte
 
     const reactivityGraph = makeReactivityGraph()
 
-    const syncSpan = otelOptions.tracer.startSpan('LiveStore:sync', {}, otelOptions.rootSpanContext)
-
     const syncProcessor = makeClientSessionSyncProcessor({
       schema,
       clientSession,
-      runtime: effectContext.runtime,
       materializeEvent: Effect.fn('client-session-sync-processor:materialize-event')(
         (eventEncoded, { withChangeset, materializerHashLeader }) =>
           // We need to use `Effect.gen` (even though we're using `Effect.fn`) so that we can pass `this` to the function
@@ -239,7 +238,8 @@ export class Store<TSchema extends LiveStoreSchema = LiveStoreSchema.Any, TConte
               event: { decoded: undefined, encoded: eventEncoded },
             })
 
-            const materializerHash = isDevEnv() ? Option.some(hashMaterializerResults(execArgsArr)) : Option.none()
+            const materializerHash =
+              isDevEnv() === true ? Option.some(hashMaterializerResults(execArgsArr)) : Option.none()
 
             // Hash mismatch detection only occurs during the pull path (when receiving events from the leader).
             // During push path (local commits), materializerHashLeader is always Option.none(), so this condition
@@ -311,7 +311,6 @@ export class Store<TSchema extends LiveStoreSchema = LiveStoreSchema.Any, TConte
         }
         reactivityGraph.setRefs(tablesToUpdate)
       },
-      span: syncSpan,
       params: {
         ...omitUndefineds({
           leaderPushBatchSize: params.leaderPushBatchSize,
@@ -321,7 +320,7 @@ export class Store<TSchema extends LiveStoreSchema = LiveStoreSchema.Any, TConte
           : {}),
       },
       confirmUnsavedChanges,
-    })
+    }).pipe(Runtime.runSync(effectContext.runtime))
 
     // TODO generalize the `tableRefs` concept to allow finer-grained refs
     const tableRefs: { [key: string]: Ref<null, ReactivityGraphContext, RefreshReason> } = {}
@@ -352,7 +351,7 @@ export class Store<TSchema extends LiveStoreSchema = LiveStoreSchema.Any, TConte
     const allTableNames = new Set(
       // NOTE we're excluding the LiveStore schema and events tables as they are not user-facing
       // unless LiveStore is running in the devtools
-      __runningInDevtools
+      __runningInDevtools === true
         ? this.schema.state.sqlite.tables.keys()
         : Array.from(this.schema.state.sqlite.tables.keys()).filter((_) => !SystemTables.isStateSystemTable(_)),
     )
@@ -366,7 +365,7 @@ export class Store<TSchema extends LiveStoreSchema = LiveStoreSchema.Any, TConte
         existingTableRefs.get(tableName) ??
         reactivityGraph.makeRef(null, {
           equal: () => false,
-          label: `tableRef:${tableName}`,
+          label: `tableRef:${String(tableName)}`,
           meta: { liveStoreRefType: 'table' },
         })
     }
@@ -382,7 +381,6 @@ export class Store<TSchema extends LiveStoreSchema = LiveStoreSchema.Any, TConte
           }
 
           // End the otel spans
-          syncSpan.end()
           commitsSpan.end()
           queriesSpan.end()
         }),
@@ -415,7 +413,7 @@ export class Store<TSchema extends LiveStoreSchema = LiveStoreSchema.Any, TConte
     // Initialize stable network status property from client session
     this.networkStatus = clientSession.leaderThread.networkStatus
   }
-  // #endregion constructor
+  //#endregion constructor
 
   /**
    * Current session identifier for this Store instance.
@@ -438,7 +436,7 @@ export class Store<TSchema extends LiveStoreSchema = LiveStoreSchema.Any, TConte
   }
 
   private checkShutdown = (operation: string): void => {
-    if (this[StoreInternalsSymbol].isShutdown) {
+    if (this[StoreInternalsSymbol].isShutdown === true) {
       throw new UnknownError({
         cause: `Store has been shut down (while performing "${operation}").`,
         note: `You cannot perform this operation after the store has been shut down.`,
@@ -485,19 +483,25 @@ export class Store<TSchema extends LiveStoreSchema = LiveStoreSchema.Any, TConte
 
     return this[StoreInternalsSymbol].otel.tracer.startActiveSpan(
       `LiveStore.subscribe`,
-      { attributes: { label: options?.label, queryLabel: isQueryBuilder(query) ? query.toString() : query.label } },
+      {
+        attributes: {
+          label: options?.label,
+          queryLabel: isQueryBuilder(query) === true ? query.toString() : query.label,
+        },
+      },
       options?.otelContext ?? this[StoreInternalsSymbol].otel.queriesSpanContext,
       (span) => {
         const otelContext = otel.trace.setSpan(otel.context.active(), span)
 
-        const queryRcRef = isQueryBuilder(query)
-          ? queryDb(query).make(this[StoreInternalsSymbol].reactivityGraph.context!)
-          : query._tag === 'def' || query._tag === 'signal-def'
-            ? query.make(this[StoreInternalsSymbol].reactivityGraph.context!)
-            : {
-                value: query as LiveQuery<TResult>,
-                deref: () => {},
-              }
+        const queryRcRef =
+          isQueryBuilder(query) === true
+            ? queryDb(query).make(this[StoreInternalsSymbol].reactivityGraph.context!)
+            : query._tag === 'def' || query._tag === 'signal-def'
+              ? query.make(this[StoreInternalsSymbol].reactivityGraph.context!)
+              : {
+                  value: query,
+                  deref: () => {},
+                }
         const query$ = queryRcRef.value
 
         const label = `subscribe:${options?.label}`
@@ -505,7 +509,7 @@ export class Store<TSchema extends LiveStoreSchema = LiveStoreSchema.Any, TConte
         const effect = this[StoreInternalsSymbol].reactivityGraph.makeEffect(
           (get, _otelContext, debugRefreshReason) => {
             const result = get(query$.results$, otelContext, debugRefreshReason)
-            if (suppressCallback) {
+            if (suppressCallback === true) {
               return
             }
             onUpdate(result)
@@ -519,7 +523,7 @@ export class Store<TSchema extends LiveStoreSchema = LiveStoreSchema.Any, TConte
           })
         }
 
-        if (options?.stackInfo) {
+        if (options?.stackInfo !== undefined) {
           query$.activeSubscriptions.add(options.stackInfo)
         }
 
@@ -527,8 +531,8 @@ export class Store<TSchema extends LiveStoreSchema = LiveStoreSchema.Any, TConte
 
         this[StoreInternalsSymbol].activeQueries.add(query$ as LiveQuery<TResult>)
 
-        if (!query$.isDestroyed) {
-          if (suppressCallback) {
+        if (query$.isDestroyed === false) {
+          if (suppressCallback === true) {
             // We still run once to register dependencies in the reactive graph, but suppress the initial callback so the
             // caller truly skips the first emission; subsequent runs (after commits) will call the callback.
             runInitialEffect()
@@ -543,7 +547,7 @@ export class Store<TSchema extends LiveStoreSchema = LiveStoreSchema.Any, TConte
             this[StoreInternalsSymbol].reactivityGraph.destroyNode(effect)
             this[StoreInternalsSymbol].activeQueries.remove(query$ as LiveQuery<TResult>)
 
-            if (options?.stackInfo) {
+            if (options?.stackInfo !== undefined) {
               query$.activeSubscriptions.delete(options.stackInfo)
             }
 
@@ -575,12 +579,13 @@ export class Store<TSchema extends LiveStoreSchema = LiveStoreSchema.Any, TConte
         const otelSpan = yield* OtelTracer.currentOtelSpan.pipe(
           Effect.catchTag('NoSuchElementException', () => Effect.succeed(undefined)),
         )
-        const otelContext = otelSpan ? otel.trace.setSpan(otel.context.active(), otelSpan) : otel.context.active()
+        const otelContext =
+          otelSpan !== undefined ? otel.trace.setSpan(otel.context.active(), otelSpan) : otel.context.active()
 
         yield* Effect.acquireRelease(
           Effect.sync(() =>
             this.subscribe(query, (result) => emit.single(result), {
-              ...(options ?? {}),
+              ...options,
               otelContext,
             }),
           ),
@@ -617,11 +622,11 @@ export class Store<TSchema extends LiveStoreSchema = LiveStoreSchema.Any, TConte
           ...omitUndefineds({ otelContext: options?.otelContext }),
         },
       ) as any
-      if (query.schema) {
+      if (query.schema !== undefined) {
         return Schema.decodeSync(query.schema)(res)
       }
       return res
-    } else if (isQueryBuilder(query)) {
+    } else if (isQueryBuilder(query) === true) {
       const ast = query[QueryBuilderAstSymbol]
       if (ast._tag === 'RowQuery') {
         makeExecBeforeFirstRun({
@@ -636,7 +641,7 @@ export class Store<TSchema extends LiveStoreSchema = LiveStoreSchema.Any, TConte
       const schema = getResultSchema(query)
 
       // Replace SessionIdSymbol in bind values before executing the query
-      if (sqlRes.bindValues) {
+      if (sqlRes.bindValues !== undefined) {
         replaceSessionIdSymbol(sqlRes.bindValues, this[StoreInternalsSymbol].clientSession.sessionId)
       }
 
@@ -654,8 +659,8 @@ export class Store<TSchema extends LiveStoreSchema = LiveStoreSchema.Any, TConte
         return decodeResult.right
       } else {
         return shouldNeverHappen(
-          `Failed to decode query result with for schema:`,
-          schema.toString(),
+          'Failed to decode query result with for schema:',
+          objectToString(schema),
           'raw result:',
           rawRes,
           'decode error:',
@@ -709,7 +714,7 @@ export class Store<TSchema extends LiveStoreSchema = LiveStoreSchema.Any, TConte
     }
   }
 
-  // #region commit
+  //#region commit
   /**
    * Commit a list of events to the store which will immediately update the local database
    * and sync the events across other clients (similar to a `git commit`).
@@ -797,23 +802,20 @@ export class Store<TSchema extends LiveStoreSchema = LiveStoreSchema.Any, TConte
 
       const localRuntime = yield* Effect.runtime()
 
-      const materializeEventsTx = Effect.try({
-        try: () => {
-          const runMaterializeEvents = () => {
-            return this[StoreInternalsSymbol].syncProcessor.push(events).pipe(Runtime.runSync(localRuntime))
-          }
+      const encodedEvents = yield* this[StoreInternalsSymbol].syncProcessor.encodeEvents(events)
 
-          if (events.length > 1) {
-            return this[StoreInternalsSymbol].sqliteDbWrapper.txn(runMaterializeEvents)
-          } else {
-            return runMaterializeEvents()
-          }
+      const { writeTables } = yield* Effect.try({
+        try: () => {
+          const materialize = () =>
+            this[StoreInternalsSymbol].syncProcessor.materializeEvents(encodedEvents).pipe(Runtime.runSync(localRuntime))
+          return events.length > 1
+            ? this[StoreInternalsSymbol].sqliteDbWrapper.txn(materialize)
+            : materialize()
         },
         catch: (cause) => UnknownError.make({ cause }),
       })
 
-      // Materialize events to state
-      const { writeTables } = yield* materializeEventsTx
+      yield* this[StoreInternalsSymbol].syncProcessor.push(encodedEvents)
 
       const tablesToUpdate: [Ref<null, ReactivityGraphContext, RefreshReason>, null][] = []
       for (const tableName of writeTables) {
@@ -857,7 +859,7 @@ export class Store<TSchema extends LiveStoreSchema = LiveStoreSchema.Any, TConte
       Runtime.runSync(this[StoreInternalsSymbol].effectContext.runtime),
     )
   }
-  // #endregion commit
+  //#endregion commit
 
   /**
    * Returns an async iterable of events from the eventlog.
@@ -939,6 +941,113 @@ export class Store<TSchema extends LiveStoreSchema = LiveStoreSchema.Any, TConte
   }
 
   /**
+   * Returns the current synchronization status of the store.
+   *
+   * This is a synchronous operation that returns the sync state between the
+   * client session and the leader thread. Use this to display sync indicators
+   * or check if local changes have been pushed to the leader.
+   *
+   * @example
+   * ```ts
+   * const status = store.syncStatus()
+   * console.log(status.isSynced ? 'Synced' : `${status.pendingCount} pending`)
+   * ```
+   *
+   * @example
+   * ```ts
+   * // Health check for backend connectivity
+   * const status = store.syncStatus()
+   * if (!status.isSynced && status.pendingCount > 100) {
+   *   console.warn('Large backlog of unsynced events')
+   * }
+   * ```
+   */
+  syncStatus = (): SyncStatus => {
+    this.checkShutdown('syncStatus')
+
+    const syncState = this[StoreInternalsSymbol].syncProcessor.syncState.pipe(Effect.runSync)
+    const pendingCount = syncState.pending.length
+
+    return {
+      localHead: EventSequenceNumber.Client.toString(syncState.localHead),
+      upstreamHead: EventSequenceNumber.Client.toString(syncState.upstreamHead),
+      pendingCount,
+      isSynced: pendingCount === 0,
+    }
+  }
+
+  /**
+   * Returns an Effect Stream of sync status updates.
+   *
+   * Emits the current status immediately and then whenever the sync state changes.
+   * Use this for Effect-based workflows or when you need more control over the stream.
+   *
+   * @example
+   * ```ts
+   * store.syncStatusStream().pipe(
+   *   Stream.tap((status) => Effect.log(`Sync status: ${status.isSynced}`)),
+   *   Stream.runDrain,
+   * )
+   * ```
+   */
+  syncStatusStream = (): Stream.Stream<SyncStatus> => {
+    const syncStateSubscribable = this[StoreInternalsSymbol].syncProcessor.syncState
+
+    return Stream.concat(
+      Stream.fromEffect(syncStateSubscribable.pipe(Effect.map(this.makeSyncStatus))),
+      syncStateSubscribable.changes.pipe(Stream.map(this.makeSyncStatus)),
+    )
+  }
+
+  /**
+   * Subscribes to sync status changes.
+   *
+   * The callback is invoked immediately with the current status and then
+   * whenever the sync state changes (e.g., when events are pushed or confirmed).
+   *
+   * @param onUpdate - Callback invoked with the current sync status
+   * @returns Unsubscribe function to stop receiving updates
+   *
+   * @example
+   * ```ts
+   * const unsubscribe = store.subscribeSyncStatus((status) => {
+   *   updateUI(status.isSynced ? 'Synced' : 'Syncing...')
+   * })
+   *
+   * // Later, stop listening
+   * unsubscribe()
+   * ```
+   */
+  subscribeSyncStatus = (onUpdate: (status: SyncStatus) => void): Unsubscribe => {
+    this.checkShutdown('subscribeSyncStatus')
+
+    const fiber = this.syncStatusStream().pipe(
+      Stream.tap((status) => Effect.sync(() => onUpdate(status))),
+      Stream.runDrain,
+      this.runEffectFork,
+    )
+
+    return () => {
+      Fiber.interrupt(fiber).pipe(Runtime.runFork(this[StoreInternalsSymbol].effectContext.runtime))
+    }
+  }
+
+  private makeSyncStatus = (syncState: {
+    localHead: EventSequenceNumber.Client.Composite
+    upstreamHead: EventSequenceNumber.Client.Composite
+    pending: readonly any[]
+  }): SyncStatus => {
+    const pendingCount = syncState.pending.length
+
+    return {
+      localHead: EventSequenceNumber.Client.toString(syncState.localHead),
+      upstreamHead: EventSequenceNumber.Client.toString(syncState.upstreamHead),
+      pendingCount,
+      isSynced: pendingCount === 0,
+    }
+  }
+
+  /**
    * This can be used in combination with `skipRefresh` when committing events.
    * We might need a better solution for this. Let's see.
    */
@@ -967,7 +1076,11 @@ export class Store<TSchema extends LiveStoreSchema = LiveStoreSchema.Any, TConte
     this.checkShutdown('shutdownPromise')
 
     this[StoreInternalsSymbol].isShutdown = true
-    await this.shutdown(cause ? Cause.fail(cause) : undefined).pipe(this.runEffectFork, Fiber.join, Effect.runPromise)
+    await this.shutdown(cause !== undefined ? Cause.fail(cause) : undefined).pipe(
+      this.runEffectFork,
+      Fiber.join,
+      Effect.runPromise,
+    )
   }
 
   /**
@@ -978,7 +1091,7 @@ export class Store<TSchema extends LiveStoreSchema = LiveStoreSchema.Any, TConte
   shutdown = (cause?: Cause.Cause<UnknownError | MaterializeError>): Effect.Effect<void> => {
     this[StoreInternalsSymbol].isShutdown = true
     return this[StoreInternalsSymbol].clientSession.shutdown(
-      cause ? Exit.failCause(cause) : Exit.succeed(IntentionalShutdownCause.make({ reason: 'manual' })),
+      cause !== undefined ? Exit.failCause(cause) : Exit.succeed(IntentionalShutdownCause.make({ reason: 'manual' })),
     )
   }
 
@@ -1028,7 +1141,8 @@ export class Store<TSchema extends LiveStoreSchema = LiveStoreSchema.Any, TConte
         .pipe(this.runEffectFork)
     },
 
-    syncStates: () =>
+    // NOTE: Explicit return type needed to avoid TS2742 (inferred type references internal path)
+    syncStates: (): Promise<{ session: SyncState.SyncState; leader: SyncState.SyncState }> =>
       Effect.gen(this, function* () {
         const session = yield* this[StoreInternalsSymbol].syncProcessor.syncState
         const leader = yield* this[StoreInternalsSymbol].clientSession.leaderThread.syncState
@@ -1039,11 +1153,14 @@ export class Store<TSchema extends LiveStoreSchema = LiveStoreSchema.Any, TConte
       Effect.gen(this, function* () {
         const session = yield* this[StoreInternalsSymbol].syncProcessor.syncState
         yield* Effect.log(
-          `Session sync state: ${session.localHead} (upstream: ${session.upstreamHead})`,
+          `Session sync state: ${objectToString(session.localHead)} (upstream: ${objectToString(session.upstreamHead)})`,
           session.toJSON(),
         )
         const leader = yield* this[StoreInternalsSymbol].clientSession.leaderThread.syncState
-        yield* Effect.log(`Leader sync state: ${leader.localHead} (upstream: ${leader.upstreamHead})`, leader.toJSON())
+        yield* Effect.log(
+          `Leader sync state: ${objectToString(leader.localHead)} (upstream: ${objectToString(leader.upstreamHead)})`,
+          leader.toJSON(),
+        )
       }).pipe(this.runEffectFork)
     },
 

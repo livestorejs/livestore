@@ -1,5 +1,6 @@
 import { LanguageModel } from '@effect/ai'
 import { OpenAiClient, OpenAiLanguageModel } from '@effect/ai-openai'
+
 import { AiError, Config, Effect, FetchHttpClient, Layer, Prompt, Schema, Tool } from '@livestore/utils/effect'
 
 // Define the coach tool that analyzes LiveStore usage
@@ -57,7 +58,7 @@ type CoachToolResult = {
 export const coachToolHandler: (input: CoachToolHandlerInput) => Effect.Effect<CoachToolResult, AiError.AiError> =
   Effect.fn('mcp-coach-handler')(({ code, codeType }) => {
     const effect = Effect.gen(function* () {
-      const codeTypeContext = codeType ? `This is ${codeType} code using LiveStore. ` : 'This is LiveStore code. '
+      const codeTypeContext = codeType !== undefined ? `This is ${codeType} code using LiveStore. ` : 'This is LiveStore code. '
 
       const prompt = Prompt.makeMessage('user', {
         content: [
@@ -113,11 +114,11 @@ Format your response as constructive feedback that helps developers improve thei
         .slice(0, 5)
 
       const scoreMatch = feedback.match(/(?:score|rating|quality).*?(\d+(?:\.\d+)?)/i)
-      const score = scoreMatch ? Number.parseFloat(scoreMatch[1] ?? '0') : undefined
+      const score = scoreMatch !== null ? Number.parseFloat(scoreMatch[1] ?? '0') : undefined
 
       return {
         feedback,
-        score: score && score >= 1 && score <= 10 ? score : undefined,
+        score: score !== undefined && score >= 1 && score <= 10 ? score : undefined,
         suggestions,
       }
     })

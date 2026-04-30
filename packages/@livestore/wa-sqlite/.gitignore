@@ -18,3 +18,6 @@ node_modules
 
 # Nix build results
 result
+
+# tsc composite build output (dist/ contains pre-built WASM, not tsc output)
+.tsc-out

@@ -1,5 +1,6 @@
 import { LiveStoreEvent } from '@livestore/common/schema'
 import { Option, Schema } from '@livestore/utils/effect'
+
 import type * as HttpClientGenerated from './http-client-generated.ts'
 import { S2SeqNum } from './types.ts'
 

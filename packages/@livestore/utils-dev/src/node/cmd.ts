@@ -17,6 +17,7 @@ import {
   Schema,
   Stream,
 } from '@livestore/utils/effect'
+
 import { applyLoggingToCommand } from './cmd-log.ts'
 import * as FileLogger from './FileLogger.ts'
 import { CurrentWorkingDirectory } from './workspace.ts'
@@ -26,23 +27,21 @@ const SUCCESS_EXIT_CODE: CommandExecutor.ExitCode = 0 as CommandExecutor.ExitCod
 
 export const cmd: (
   commandInput: string | (string | undefined)[],
-  options?:
-    | {
-        stderr?: 'inherit' | 'pipe'
-        stdout?: 'inherit' | 'pipe'
-        shell?: boolean
-        env?: Record<string, string | undefined>
-        /**
-         * When provided, streams command output to terminal AND to a canonical log file (`${logDir}/dev.log`) in this directory.
-         * Also archives the previous run to `${logDir}/archive/dev-<ISO>.log` and keeps only the latest 50 archives.
-         */
-        logDir?: string
-        /** Optional basename for the canonical log file; defaults to 'dev.log' */
-        logFileName?: string
-        /** Optional number of archived logs to retain; defaults to 50 */
-        logRetention?: number
-      }
-    | undefined,
+  options?: {
+    stderr?: 'inherit' | 'pipe'
+    stdout?: 'inherit' | 'pipe'
+    shell?: boolean
+    env?: Record<string, string | undefined>
+    /**
+     * When provided, streams command output to terminal AND to a canonical log file (`${logDir}/dev.log`) in this directory.
+     * Also archives the previous run to `${logDir}/archive/dev-<ISO>.log` and keeps only the latest 50 archives.
+     */
+    logDir?: string
+    /** Optional basename for the canonical log file; defaults to 'dev.log' */
+    logFileName?: string
+    /** Optional number of archived logs to retain; defaults to 50 */
+    logRetention?: number
+  },
 ) => Effect.Effect<
   CommandExecutor.ExitCode,
   PlatformError.PlatformError | CmdError,
@@ -51,27 +50,26 @@ export const cmd: (
   const cwd = yield* CurrentWorkingDirectory
 
   const asArray = Array.isArray(commandInput)
-  const parts = asArray ? (commandInput as (string | undefined)[]).filter(isNotUndefined) : undefined
-  const [command, ...args] = asArray ? (parts as string[]) : (commandInput as string).split(' ')
+  const parts = asArray === true ? commandInput.filter(isNotUndefined) : undefined
+  const [command, ...args] = asArray === true ? (parts as string[]) : commandInput.split(' ')
 
   const debugEnvStr = Object.entries(options?.env ?? {})
-    .map(([key, value]) => `${key}='${value}' `)
+    .map(([key, value]) => `${key}='${String(value)}' `)
     .join('')
 
   const loggingOpts = {
-    ...(options?.logDir ? { logDir: options.logDir } : {}),
-    ...(options?.logFileName ? { logFileName: options.logFileName } : {}),
-    ...(options?.logRetention ? { logRetention: options.logRetention } : {}),
+    ...(options?.logDir !== undefined ? { logDir: options.logDir } : {}),
+    ...(options?.logFileName !== undefined ? { logFileName: options.logFileName } : {}),
+    ...(options?.logRetention !== undefined ? { logRetention: options.logRetention } : {}),
   } as const
   const { input: finalInput, subshell: needsShell, logPath } = yield* applyLoggingToCommand(commandInput, loggingOpts)
 
   const stdoutMode = options?.stdout ?? 'inherit'
   const stderrMode = options?.stderr ?? 'inherit'
-  const useShell = (options?.shell ? true : false) || needsShell
+  const useShell = (options?.shell === true ? true : false) || needsShell
 
-  const commandDebugStr =
-    debugEnvStr + (Array.isArray(finalInput) ? (finalInput as string[]).join(' ') : (finalInput as string))
-  const subshellStr = useShell ? ' (in subshell)' : ''
+  const commandDebugStr = debugEnvStr + (Array.isArray(finalInput) === true ? finalInput.join(' ') : finalInput)
+  const subshellStr = useShell === true ? ' (in subshell)' : ''
 
   yield* Effect.logDebug(`Running '${commandDebugStr}' in '${cwd}'${subshellStr}`)
   yield* Effect.annotateCurrentSpan({
@@ -91,7 +89,7 @@ export const cmd: (
     useShell,
   } as const
 
-  const exitCode = yield* isNotUndefined(logPath)
+  const exitCode = yield* isNotUndefined(logPath) === true
     ? Effect.gen(function* () {
         yield* Effect.sync(() => console.log(`Logging output to ${logPath}`))
         return yield* runWithLogging({ ...baseArgs, logPath, threadName: commandDebugStr })
@@ -99,15 +97,13 @@ export const cmd: (
     : runWithoutLogging(baseArgs)
 
   if (exitCode !== SUCCESS_EXIT_CODE) {
-    return yield* Effect.fail(
-      CmdError.make({
-        command: command!,
-        args,
-        cwd,
-        env: options?.env ?? {},
-        stderr: stderrMode,
-      }),
-    )
+    return yield* CmdError.make({
+      command: command!,
+      args,
+      cwd,
+      env: options?.env ?? {},
+      stderr: stderrMode,
+    })
   }
 
   return exitCode
@@ -123,15 +119,14 @@ export const cmdText: (
 ) => Effect.Effect<string, PlatformError.PlatformError, CommandExecutor.CommandExecutor | CurrentWorkingDirectory> =
   Effect.fn('cmdText')(function* (commandInput, options) {
     const cwd = yield* CurrentWorkingDirectory
-    const [command, ...args] = Array.isArray(commandInput)
-      ? commandInput.filter(isNotUndefined)
-      : commandInput.split(' ')
+    const [command, ...args] =
+      Array.isArray(commandInput) === true ? commandInput.filter(isNotUndefined) : commandInput.split(' ')
     const debugEnvStr = Object.entries(options?.env ?? {})
-      .map(([key, value]) => `${key}='${value}' `)
+      .map(([key, value]) => `${key}='${String(value)}' `)
       .join('')
 
     const commandDebugStr = debugEnvStr + [command, ...args].join(' ')
-    const subshellStr = options?.runInShell ? ' (in subshell)' : ''
+    const subshellStr = options?.runInShell === true ? ' (in subshell)' : ''
 
     yield* Effect.logDebug(`Running '${commandDebugStr}' in '${cwd}'${subshellStr}`)
     yield* Effect.annotateCurrentSpan({ 'span.label': commandDebugStr, command, cwd })
@@ -140,13 +135,13 @@ export const cmdText: (
       // inherit = Stream stderr to process.stderr, pipe = Stream stderr to process.stdout
       Command.stderr(options?.stderr ?? 'inherit'),
       Command.workingDirectory(cwd),
-      options?.runInShell ? Command.runInShell(true) : identity,
+      options?.runInShell === true ? Command.runInShell(true) : identity,
       Command.env(options?.env ?? {}),
       Command.string,
     )
   })
 
-export class CmdError extends Schema.TaggedError<CmdError>()('CmdError', {
+export class CmdError extends Schema.TaggedError<CmdError>('~@livestore/utils-dev/CmdError')('CmdError', {
   command: Schema.String,
   args: Schema.Array(Schema.String),
   cwd: Schema.String,
@@ -169,7 +164,7 @@ const runWithoutLogging = ({ commandInput, cwd, env, stdoutMode, stderrMode, use
     Command.stdout(stdoutMode),
     Command.stderr(stderrMode),
     Command.workingDirectory(cwd),
-    useShell ? Command.runInShell(true) : identity,
+    useShell === true ? Command.runInShell(true) : identity,
     Command.env(env),
     Command.exitCode,
   )
@@ -228,14 +223,16 @@ const runWithLogging = ({
         Command.stdout('pipe'),
         Command.stderr('pipe'),
         Command.workingDirectory(cwd),
-        useShell ? Command.runInShell(true) : identity,
+        useShell === true ? Command.runInShell(true) : identity,
         Command.env(envWithColor),
       )
 
       // Acquire/start the command and make sure we kill it on interruption.
       const runningProcess = yield* Effect.acquireRelease(command.pipe(Command.start), (proc) =>
         proc.isRunning.pipe(
-          Effect.flatMap((running) => (running ? proc.kill().pipe(Effect.catchAll(() => Effect.void)) : Effect.void)),
+          Effect.flatMap((running) =>
+            running === true ? proc.kill().pipe(Effect.catchAll(() => Effect.void)) : Effect.void,
+          ),
           Effect.ignore,
         ),
       )
@@ -266,7 +263,7 @@ const runWithLogging = ({
       // Dump any buffered data and finish both stream fibers before we return.
       const flushOutputs = Effect.gen(function* () {
         const stillRunning = yield* runningProcess.isRunning.pipe(Effect.catchAll(() => Effect.succeed(false)))
-        if (stillRunning) {
+        if (stillRunning === true) {
           yield* Effect.ignore(runningProcess.kill())
         }
         yield* Effect.ignore(Fiber.join(stdoutFiber))
@@ -282,12 +279,12 @@ const runWithLogging = ({
   )
 
 const buildCommand = (input: string | string[], useShell: boolean) => {
-  if (Array.isArray(input)) {
+  if (Array.isArray(input) === true) {
     const [c, ...a] = input
     return Command.make(c!, ...a)
   }
 
-  if (useShell) {
+  if (useShell === true) {
     return Command.make(input)
   }
 
@@ -298,8 +295,8 @@ const buildCommand = (input: string | string[], useShell: boolean) => {
 type TLineTerminator = 'newline' | 'carriage-return' | 'none'
 
 type TStreamHandler = {
-  readonly onChunk: (chunk: string) => Effect.Effect<void, never>
-  readonly flush: () => Effect.Effect<void, never>
+  readonly onChunk: (chunk: string) => Effect.Effect<void>
+  readonly flush: () => Effect.Effect<void>
 }
 
 const makeStreamHandler = ({
@@ -309,7 +306,7 @@ const makeStreamHandler = ({
 }: {
   readonly channel: 'stdout' | 'stderr'
   readonly mirrorTarget?: NodeJS.WriteStream
-  readonly appendLog: (args: { channel: 'stdout' | 'stderr'; content: string }) => Effect.Effect<void, never>
+  readonly appendLog: (args: { channel: 'stdout' | 'stderr'; content: string }) => Effect.Effect<void>
 }): TStreamHandler => {
   let buffer = ''
 
@@ -322,11 +319,11 @@ const makeStreamHandler = ({
       channel,
       content,
       terminator,
-      ...(mirrorTarget ? { mirrorTarget } : {}),
+      ...(mirrorTarget !== undefined ? { mirrorTarget } : {}),
       appendLog,
     })
 
-  const consumeBuffer = (): Effect.Effect<void, never> => {
+  const consumeBuffer = (): Effect.Effect<void> => {
     if (buffer.length === 0) return Effect.void
 
     const lastChar = buffer[buffer.length - 1]
@@ -390,10 +387,10 @@ const emitSegment = ({
   readonly content: string
   readonly terminator: TLineTerminator
   readonly mirrorTarget?: NodeJS.WriteStream
-  readonly appendLog: (args: { channel: 'stdout' | 'stderr'; content: string }) => Effect.Effect<void, never>
+  readonly appendLog: (args: { channel: 'stdout' | 'stderr'; content: string }) => Effect.Effect<void>
 }) =>
   Effect.gen(function* () {
-    if (mirrorTarget) {
+    if (mirrorTarget !== undefined) {
       yield* Effect.sync(() => mirrorSegment(mirrorTarget, content, terminator))
     }
 

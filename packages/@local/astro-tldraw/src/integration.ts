@@ -1,8 +1,10 @@
 import { fileURLToPath } from 'node:url'
 
+import type { AstroIntegration } from 'astro'
+
 import { Effect } from '@livestore/utils/effect'
 import { PlatformNode } from '@livestore/utils/node'
-import type { AstroIntegration } from 'astro'
+
 import { type BuildDiagramsOptions, buildDiagrams } from './cli.ts'
 import { createTldrawPlugin } from './vite-plugin.ts'
 
@@ -23,7 +25,7 @@ export const createAstroTldrawIntegration = (options: AstroTldrawOptions = {}): 
   let resolvedBuildOptions: BuildDiagramsOptions | undefined
 
   const runDiagramBuild = () =>
-    resolvedBuildOptions
+    resolvedBuildOptions !== undefined
       ? Effect.runPromise(buildDiagrams(resolvedBuildOptions).pipe(Effect.provide(PlatformNode.NodeFileSystem.layer)))
       : Promise.resolve()
 
@@ -54,14 +56,14 @@ export const createAstroTldrawIntegration = (options: AstroTldrawOptions = {}): 
         })
       },
       'astro:server:start': async (_context: ServerStartContext) => {
-        if (!autoBuild || shouldSkipAutoBuild()) {
+        if (autoBuild === false || shouldSkipAutoBuild() === true) {
           return
         }
 
         await runDiagramBuild()
       },
       'astro:build:start': async (_context: BuildStartContext) => {
-        if (!autoBuild || shouldSkipAutoBuild()) {
+        if (autoBuild === false || shouldSkipAutoBuild() === true) {
           return
         }
 

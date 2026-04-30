@@ -1,5 +1,7 @@
-import { Option, Schema } from '@livestore/utils/effect'
 import { describe, expect, it } from 'vitest'
+
+import { Option, Schema } from '@livestore/utils/effect'
+
 import { makeColumnSpec } from './column-spec.ts'
 import { SqliteAst } from './db-schema/mod.ts'
 

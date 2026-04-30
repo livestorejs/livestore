@@ -1,22 +1,22 @@
+import type * as otel from '@opentelemetry/api'
+
 import {
   type ClientSession,
   type ClientSessionSyncProcessor,
   type ClientSessionSyncProcessorSimulationParams,
   type IntentionalShutdownCause,
-  type InvalidPullError,
-  type IsOfflineError,
   isQueryBuilder,
   type MaterializeError,
   type QueryBuilder,
   type StoreInterrupted,
-  type SyncError,
+  type BackendIdMismatchError,
   type UnknownError,
 } from '@livestore/common'
 import type { StreamEventsOptions } from '@livestore/common/leader-thread'
 import type { LiveStoreEvent, LiveStoreSchema } from '@livestore/common/schema'
 import type { Effect, Runtime, Schema, Scope } from '@livestore/utils/effect'
 import { Deferred, Predicate } from '@livestore/utils/effect'
-import type * as otel from '@opentelemetry/api'
+
 import type {
   LiveQuery,
   LiveQueryDef,
@@ -45,20 +45,20 @@ export type LiveStoreContext<TSchema extends LiveStoreSchema = LiveStoreSchema.A
   | LiveStoreContextRunning<TSchema>
   | {
       stage: 'error'
-      error: UnknownError | unknown
+      error: unknown
     }
   | {
       stage: 'shutdown'
-      cause: IntentionalShutdownCause | StoreInterrupted | SyncError
+      cause: IntentionalShutdownCause | StoreInterrupted | UnknownError
     }
 
 export type ShutdownDeferred = Deferred.Deferred<
   IntentionalShutdownCause,
-  UnknownError | SyncError | StoreInterrupted | MaterializeError | InvalidPullError | IsOfflineError
+  UnknownError | StoreInterrupted | MaterializeError | BackendIdMismatchError
 >
 export const makeShutdownDeferred: Effect.Effect<ShutdownDeferred> = Deferred.make<
   IntentionalShutdownCause,
-  UnknownError | SyncError | StoreInterrupted | MaterializeError | InvalidPullError | IsOfflineError
+  UnknownError | StoreInterrupted | MaterializeError | BackendIdMismatchError
 >()
 
 /**
@@ -416,3 +416,42 @@ export const isLiveQueryInstance = (value: unknown): value is LiveQuery<any> => 
  */
 export const isQueryable = (value: unknown): value is Queryable<unknown> =>
   isQueryBuilder(value) || isLiveQueryInstance(value) || isLiveQueryDef(value)
+
+/**
+ * Represents the current synchronization status of the store.
+ *
+ * This provides visibility into the sync state between the client session
+ * and the leader thread, allowing applications to show sync indicators
+ * or determine backend health.
+ *
+ * @example
+ * ```ts
+ * const status = store.syncStatus()
+ * if (status.isSynced) {
+ *   console.log('All changes synced')
+ * } else {
+ *   console.log(`${status.pendingCount} events pending sync`)
+ * }
+ * ```
+ */
+export type SyncStatus = {
+  /**
+   * The local head sequence number (most recent event in the client session).
+   * Represented as a string in the format "e{global}.{client}" (e.g., "e5.2").
+   */
+  localHead: string
+  /**
+   * The upstream head sequence number (what the leader thread has confirmed).
+   * Represented as a string in the format "e{global}" (e.g., "e3").
+   */
+  upstreamHead: string
+  /**
+   * Number of events pending synchronization to the leader thread.
+   */
+  pendingCount: number
+  /**
+   * Whether the client session is fully synced with the leader thread.
+   * True when there are no pending events (pendingCount === 0).
+   */
+  isSynced: boolean
+}

@@ -16,7 +16,7 @@ export const compactEvents = (inputDag: HistoryDag): { dag: HistoryDag; compacte
   const dag = inputDag.copy()
   const compactedEventCount = 0
 
-  const orderedEventSequenceNumberStrs = dag.topologicalNodeIds().reverse()
+  const orderedEventSequenceNumberStrs = dag.topologicalNodeIds().toReversed()
 
   // drop root
   orderedEventSequenceNumberStrs.pop()
@@ -29,7 +29,7 @@ export const compactEvents = (inputDag: HistoryDag): { dag: HistoryDag; compacte
     const subDagsForEvent = Array.from(makeSubDagsForEvent(dag, eventNumStr))
     for (const subDag of subDagsForEvent) {
       let shouldRetry = true
-      while (shouldRetry) {
+      while (shouldRetry === true) {
         const subDagsInHistory = findSubDagsInHistory(dag, subDag, eventNumStr)
 
         // console.debug(
@@ -64,7 +64,7 @@ export const compactEvents = (inputDag: HistoryDag): { dag: HistoryDag; compacte
   return { dag, compactedEventCount }
 }
 
-function* makeSubDagsForEvent(inputDag: HistoryDag, eventNumStr: string): Generator<HistoryDag> {
+const makeSubDagsForEvent = function* (inputDag: HistoryDag, eventNumStr: string): Generator<HistoryDag> {
   /** Map from eventNumStr to array of eventNumStrs that are dependencies */
   let nextIterationEls: Map<string, string[]> = new Map([[eventNumStr, []]])
   let previousDag: HistoryDag | undefined
@@ -131,7 +131,7 @@ const findSubDagsInHistory = (
         allOutsideDependencies.push(outsideDependencies)
       }
 
-      if (outsideDependencies.length === 0 && dagReplacesDag(subDag, targetSubDag)) {
+      if (outsideDependencies.length === 0 && dagReplacesDag(subDag, targetSubDag) === true) {
         subDags.push(subDag)
       } else {
         break
@@ -171,7 +171,7 @@ const dagDependsOnDag = (dagA: HistoryDag, dagB: HistoryDag, inputDag: HistoryDa
     for (const edgeEntryA of inputDag.inboundEdgeEntries(nodeAIdStr)) {
       if (edgeEntryA.attributes.type === 'facts') {
         const depNodeIdStr = edgeEntryA.target
-        if (dagB.hasNode(depNodeIdStr)) {
+        if (dagB.hasNode(depNodeIdStr) === true) {
           return true
         }
       }

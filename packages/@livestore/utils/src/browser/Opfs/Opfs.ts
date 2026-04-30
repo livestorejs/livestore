@@ -1,6 +1,7 @@
 /// <reference lib="webworker" />
 
 import { Effect, Option, Schema, Stream } from 'effect'
+
 import * as WebError from '../WebError.ts'
 
 /**
@@ -102,9 +103,16 @@ export class Opfs extends Effect.Service<Opfs>()('@livestore/utils/Opfs', {
      *
      * @see {@link https://developer.mozilla.org/en-US/docs/Web/API/FileSystemDirectoryHandle/values | MDN Reference}
      */
-    const values = (directory: FileSystemDirectoryHandle) =>
-      Stream.fromAsyncIterable(directory.values(), (u) =>
-        WebError.parseWebError(u, [WebError.NotAllowedError, WebError.NotFoundError]),
+    const values = (
+      directory: FileSystemDirectoryHandle,
+    ): Stream.Stream<
+      FileSystemHandle,
+      WebError.NotAllowedError | WebError.NotFoundError | WebError.UnknownError,
+      never
+    > =>
+      Stream.fromAsyncIterable(
+        (directory as unknown as { values(): AsyncIterable<FileSystemHandle> }).values(),
+        (u) => WebError.parseWebError(u, [WebError.NotAllowedError, WebError.NotFoundError]),
       )
 
     /**
@@ -422,7 +430,7 @@ export const noopOpfs = new Opfs({
 /**
  * Error raised when OPFS operations fail.
  */
-export class OpfsError extends Schema.TaggedError<OpfsError>()('@livestore/utils/Opfs/Error', {
+export class OpfsError extends Schema.TaggedError<OpfsError>('~@livestore/utils/OpfsError')('OpfsError', {
   message: Schema.String,
   cause: Schema.optional(Schema.Defect),
 }) {}

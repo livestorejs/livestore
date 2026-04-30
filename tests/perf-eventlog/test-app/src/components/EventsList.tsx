@@ -1,8 +1,22 @@
 import { EventSequenceNumber } from '@livestore/common/schema'
 import React from 'react'
+
 import { useAppStore } from '../livestore/store.ts'
 
 const MAX_EVENT_ITEMS = 500
+
+const sectionStyle = { marginTop: '1.5rem' } as const
+const headingStyle = { margin: '0 0 0.75rem 0' } as const
+const listStyle = { maxHeight: '26rem', overflowY: 'auto', padding: 0, listStyle: 'none', margin: 0 } as const
+const listItemStyle = {
+  borderBottom: '1px solid #ddd',
+  padding: '0.5rem 0.25rem',
+  fontFamily: 'monospace',
+  fontSize: '0.85rem',
+  whiteSpace: 'pre-wrap',
+  wordBreak: 'break-word',
+} as const
+const emptyStateStyle = { color: '#555' } as const
 
 type DisplayEvent = {
   id: string
@@ -44,10 +58,10 @@ export const EventsList: React.FC<EventsListProps> = ({ batchSize, until }) => {
 
     const run = async () => {
       try {
-        while (!cancelled) {
+        while (cancelled === false) {
           const { value, done } = await iterator.next()
-          if (done || cancelled) break
-          if (!value) continue
+          if (done === true || cancelled === true) break
+          if (value == null) continue
 
           const seqNumGlobal = typeof value.seqNum?.global === 'number' ? value.seqNum.global : null
           const seqNumClient = typeof value.seqNum?.client === 'number' ? value.seqNum.client : null
@@ -80,32 +94,19 @@ export const EventsList: React.FC<EventsListProps> = ({ batchSize, until }) => {
   }, [preferredBatchSize, until, store])
 
   return (
-    <section style={{ marginTop: '1.5rem' }}>
-      <h2 style={{ margin: '0 0 0.75rem 0' }}>Live event stream</h2>
+    <section style={sectionStyle}>
+      <h2 style={headingStyle}>Live event stream</h2>
       <div>
         Events streamed: <span data-testid="events-streamed">{streamedCount}</span>
       </div>
-      <ul
-        style={{ maxHeight: '26rem', overflowY: 'auto', padding: 0, listStyle: 'none', margin: 0 }}
-        data-testid="event-stream-list"
-      >
+      <ul style={listStyle} data-testid="event-stream-list">
         {events.map((event) => (
-          <li
-            key={event.id}
-            style={{
-              borderBottom: '1px solid #ddd',
-              padding: '0.5rem 0.25rem',
-              fontFamily: 'monospace',
-              fontSize: '0.85rem',
-              whiteSpace: 'pre-wrap',
-              wordBreak: 'break-word',
-            }}
-          >
+          <li key={event.id} style={listItemStyle}>
             {event.json}
           </li>
         ))}
       </ul>
-      {events.length === 0 && <p style={{ color: '#555' }}>No events yet. Start streaming to see incoming events.</p>}
+      {events.length === 0 && <p style={emptyStateStyle}>No events yet. Start streaming to see incoming events.</p>}
     </section>
   )
 }
@@ -128,8 +129,8 @@ export const SimpleEventsStream: React.FC<EventsListProps> = ({ batchSize, until
           batchSize: preferredBatchSize,
           ...(until !== undefined && { until: EventSequenceNumber.Client.fromString(`e${until}`) }),
         })) {
-          if (cancelled) break
-          if (!event) continue
+          if (cancelled === true) break
+          if (event == null) continue
           setStreamedCount((prev) => prev + 1)
         }
       } catch (error) {
@@ -145,8 +146,8 @@ export const SimpleEventsStream: React.FC<EventsListProps> = ({ batchSize, until
   }, [preferredBatchSize, until, store])
 
   return (
-    <section style={{ marginTop: '1.5rem' }}>
-      <h2 style={{ margin: '0 0 0.75rem 0' }}>Live event stream</h2>
+    <section style={sectionStyle}>
+      <h2 style={headingStyle}>Live event stream</h2>
       <div>
         Events streamed: <span data-testid="events-streamed">{streamedCount}</span>
       </div>

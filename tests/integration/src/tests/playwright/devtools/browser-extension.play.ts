@@ -2,7 +2,6 @@
 import fs from 'node:fs'
 import os from 'node:os'
 import path from 'node:path'
-
 import * as Playwright from '@livestore/effect-playwright'
 import { shouldNeverHappen } from '@livestore/utils'
 import {
@@ -14,6 +13,7 @@ import {
   Layer,
   Logger,
   OtelTracer,
+  Schema,
 } from '@livestore/utils/effect'
 import { PlatformNode } from '@livestore/utils/node'
 import { OtelLiveHttp } from '@livestore/utils-dev/node'
@@ -21,8 +21,13 @@ import { LIVESTORE_DEVTOOLS_CHROME_DIST_PATH } from '@local/shared'
 import type * as otel from '@opentelemetry/api'
 import type * as PW from '@playwright/test'
 import { expect, test } from '@playwright/test'
+
 import { downloadChromeExtension } from '../../../../scripts/download-chrome-extension.ts'
 import { checkDevtoolsState, checkVersionMismatchOverlay } from './shared.ts'
+
+export class TestError extends Schema.TaggedError<TestError>()('TestError', {
+  message: Schema.String,
+}) {}
 
 const usedPages = new Set<PW.Page>()
 
@@ -58,7 +63,7 @@ const makeTabPair = (url: string, tabName: string, adapter: AdapterKind, options
         .find((p) => p.url() === 'about:blank') ?? (yield* newPage)
 
     // Inject version override before page loads (for version mismatch testing)
-    if (options?.appVersionOverride) {
+    if (options?.appVersionOverride !== undefined) {
       yield* Effect.tryPromise(() =>
         page.addInitScript(`globalThis.__LIVESTORE_VERSION_OVERRIDE__ = '${options.appVersionOverride}';`),
       )
@@ -73,12 +78,13 @@ const makeTabPair = (url: string, tabName: string, adapter: AdapterKind, options
 
     usedPages.add(page)
 
-    const sep = url.includes('?') ? '&' : '?'
+    const sep = url.includes('?') === true ? '&' : '?'
     yield* Effect.tryPromise(() => page.goto(`${url}${sep}sessionId=${tabName}&clientId=${tabName}&adapter=${adapter}`))
 
+    const openPages = browserContext.pages().map((_) => _.url())
     const devtools =
       browserContext.pages().filter(isUnused).find(isDevtools) ??
-      shouldNeverHappen(`No devtools page found. Current pages: ${browserContext.pages().map((_) => _.url())}`)
+      shouldNeverHappen('No devtools page found. Current pages:', openPages)
 
     const devtoolsConsoleFiber = yield* Playwright.handlePageConsole({
       page: devtools,
@@ -109,7 +115,7 @@ const getLiveStoreDevtoolsFrame = (devtools: PW.Page, label: string) =>
 
       const liveStoreDevtoolsPromise = new Promise<PW.Frame>((resolve) => {
         devtools.on('framenavigated', (frame) => {
-          if (frame.url().includes('_livestore/browser-extension')) {
+          if (frame.url().includes('_livestore/browser-extension') === true) {
             resolve(frame)
           }
         })
@@ -122,7 +128,7 @@ const getLiveStoreDevtoolsFrame = (devtools: PW.Page, label: string) =>
   })
 
 const runTest =
-  (eff: Effect.Effect<void, unknown, Playwright.BrowserContext>) =>
+  <E>(eff: Effect.Effect<void, E, Playwright.BrowserContext>) =>
   (
     {}: PW.PlaywrightTestArgs & PW.PlaywrightTestOptions & PW.PlaywrightWorkerArgs & PW.PlaywrightWorkerOptions,
     testInfo: PW.TestInfo,
@@ -134,7 +140,7 @@ const runTest =
     )
 
     return Effect.gen(function* () {
-      const parentSpanContext = JSON.parse(process.env.SPAN_CONTEXT_JSON ?? '{}') as otel.SpanContext
+      const parentSpanContext = (yield* Schema.decodeUnknown(Schema.parseJson())(process.env.SPAN_CONTEXT_JSON ?? '{}')) as otel.SpanContext
       const parentSpan = OtelTracer.makeExternalSpan({
         traceId: parentSpanContext.traceId,
         spanId: parentSpanContext.spanId,
@@ -164,7 +170,7 @@ const getExtensionPath = Effect.gen(function* () {
   const fs = yield* FileSystem.FileSystem
 
   const extensionPathFromEnv = process.env.LIVESTORE_DEVTOOLS_CHROME_DIST_PATH
-  if (extensionPathFromEnv) {
+  if (extensionPathFromEnv !== undefined) {
     yield* Effect.logInfo(`Using extension path from env LIVESTORE_DEVTOOLS_CHROME_DIST_PATH: ${extensionPathFromEnv}`)
     return extensionPathFromEnv
   }
@@ -180,7 +186,7 @@ const getExtensionPath = Effect.gen(function* () {
     Effect.gen(function* () {
       const fs = yield* FileSystem.FileSystem
       if ((yield* fs.exists(path)) === false) {
-        return yield* Effect.fail(new Error(`Chrome extension not found at ${path}`))
+        return yield* new TestError({ message: `Chrome extension not found at ${path}` })
       }
     }),
   ),
@@ -193,7 +199,7 @@ const PWLive = ({ extensionPath }: { extensionPath: string }) =>
     return Playwright.browserContextLayer({
       persistentContextPath,
       extensionPath,
-      launchOptions: { devtools: true },
+      launchOptions: { args: ['--auto-open-devtools-for-tabs'] },
     })
   }).pipe(Layer.unwrapEffect)
 
@@ -341,7 +347,7 @@ const PWLive = ({ extensionPath }: { extensionPath: string }) =>
             expect: { leader: true, alreadyLoaded: false, tables },
           })
         }).pipe(
-          process.env.CI
+          process.env.CI !== undefined
             ? identity
             : Effect.tapErrorTag('UnknownException', () => Effect.promise(() => tab1.page.pause())),
           Effect.raceFirst(
@@ -365,8 +371,8 @@ const PWLive = ({ extensionPath }: { extensionPath: string }) =>
     runTest(
       Effect.gen(function* () {
         const port = process.env.LIVESTORE_PLAYWRIGHT_DEV_SERVER_PORT
-        if (!port) {
-          return yield* Effect.fail(new Error('LIVESTORE_PLAYWRIGHT_DEV_SERVER_PORT not set'))
+        if (port == null) {
+          return yield* new TestError({ message: 'LIVESTORE_PLAYWRIGHT_DEV_SERVER_PORT not set' })
         }
 
         // Open two tabs on different origins
@@ -402,7 +408,7 @@ const PWLive = ({ extensionPath }: { extensionPath: string }) =>
             const cur = new URL(u)
             const base = new URL('/_livestore/browser-extension/', cur.origin)
             const tabId = cur.searchParams.get('tabId')
-            if (tabId) base.searchParams.set('tabId', tabId)
+            if (tabId !== null) base.searchParams.set('tabId', tabId)
             return base.toString()
           }
           await tabLocalhost.liveStoreDevtools.goto(toIndexUrl(tabLocalhost.liveStoreDevtools.url()))

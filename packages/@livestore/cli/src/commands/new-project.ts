@@ -1,5 +1,6 @@
 import * as os from 'node:os'
 import * as nodePath from 'node:path'
+
 import { sluggify } from '@livestore/utils'
 import {
   Command,
@@ -25,25 +26,35 @@ const GitHubContentSchema = Schema.Struct({
 
 const GitHubContentsResponseSchema = Schema.Array(GitHubContentSchema)
 
+const githubRequest = (url: string) => {
+  const request = HttpClientRequest.get(url).pipe(HttpClientRequest.setHeader('accept', 'application/vnd.github+json'))
+  const token = process.env.GITHUB_TOKEN ?? process.env.GH_TOKEN
+  return token === undefined ? request : request.pipe(HttpClientRequest.setHeader('authorization', `Bearer ${token}`))
+}
+
 /** Schema for parsing package.json scripts (dev or start) */
 const PackageJsonScriptsSchema = Schema.Struct({
   scripts: Schema.Union(Schema.Struct({ dev: Schema.String }), Schema.Struct({ start: Schema.String })),
 })
 
 // Error types
-export class ExampleNotFoundError extends Schema.TaggedError<ExampleNotFoundError>()('ExampleNotFoundError', {
+export class ExampleNotFoundError extends Schema.TaggedError<ExampleNotFoundError>('~@livestore/cli/ExampleNotFoundError')('ExampleNotFoundError', {
   exampleName: Schema.String,
   availableExamples: Schema.Array(Schema.String),
   message: Schema.String,
 }) {}
 
-export class NetworkError extends Schema.TaggedError<NetworkError>()('NetworkError', {
+export class NetworkError extends Schema.TaggedError<NetworkError>('~@livestore/cli/NetworkError')('NetworkError', {
   cause: Schema.Unknown,
   message: Schema.String,
 }) {}
 
-export class DirectoryExistsError extends Schema.TaggedError<DirectoryExistsError>()('DirectoryExistsError', {
+export class DirectoryExistsError extends Schema.TaggedError<DirectoryExistsError>('~@livestore/cli/DirectoryExistsError')('DirectoryExistsError', {
   path: Schema.String,
+  message: Schema.String,
+}) {}
+
+export class NoExamplesError extends Schema.TaggedError<NoExamplesError>('~@livestore/cli/NoExamplesError')('NoExamplesError', {
   message: Schema.String,
 }) {}
 
@@ -54,26 +65,26 @@ const fetchExamples = (ref: string) =>
 
     yield* Effect.log(`Fetching examples from ref: ${ref}`)
 
-    const request = HttpClientRequest.get(url)
+    const request = githubRequest(url)
     const response = yield* HttpClient.execute(request).pipe(
       Effect.scoped,
       Effect.catchAll(
         (error) =>
           new NetworkError({
             cause: error,
-            message: `Failed to fetch examples from GitHub: ${error}`,
+            message: `Failed to fetch examples from GitHub: ${String(error)}`,
           }),
       ),
     )
 
     const responseText = yield* response.text
 
-    const examples = yield* Schema.decodeUnknown(GitHubContentsResponseSchema)(JSON.parse(responseText)).pipe(
+    const examples = yield* Schema.decodeUnknown(Schema.parseJson(GitHubContentsResponseSchema))(responseText).pipe(
       Effect.catchAll(
         (error) =>
           new NetworkError({
             cause: error,
-            message: `Failed to parse GitHub API response: ${error}`,
+            message: `Failed to parse GitHub API response: ${String(error)}`,
           }),
       ),
     )
@@ -81,7 +92,7 @@ const fetchExamples = (ref: string) =>
     const exampleNames = examples
       .filter((item) => item.type === 'dir')
       .map((item) => item.name)
-      .sort()
+      .toSorted()
 
     yield* Effect.log(`Found ${exampleNames.length} examples: ${exampleNames.join(', ')}`)
 
@@ -92,7 +103,7 @@ const fetchExamples = (ref: string) =>
 const selectExample = (examples: string[]) =>
   Effect.gen(function* () {
     if (examples.length === 0) {
-      return yield* Effect.fail(new Error('No examples available'))
+      return yield* new NoExamplesError({ message: 'No examples available' })
     }
 
     const prompt = Cli.Prompt.select({
@@ -117,7 +128,7 @@ const downloadExample = (exampleName: string, ref: string, destinationPath: stri
     const tarballUrl = `https://api.github.com/repos/livestorejs/livestore/tarball/${ref}`
 
     // Download tarball directly
-    const request = HttpClientRequest.get(tarballUrl)
+    const request = githubRequest(tarballUrl)
 
     const response = yield* HttpClient.execute(request).pipe(
       Effect.scoped,
@@ -125,7 +136,7 @@ const downloadExample = (exampleName: string, ref: string, destinationPath: stri
         (error) =>
           new NetworkError({
             cause: error,
-            message: `Failed to download tarball: ${error}`,
+            message: `Failed to download tarball: ${String(error)}`,
           }),
       ),
     )
@@ -150,7 +161,7 @@ const downloadExample = (exampleName: string, ref: string, destinationPath: stri
         (error) =>
           new NetworkError({
             cause: error,
-            message: `Failed to extract tarball: ${error}`,
+            message: `Failed to extract tarball: ${String(error)}`,
           }),
       ),
     )
@@ -171,7 +182,7 @@ const downloadExample = (exampleName: string, ref: string, destinationPath: stri
     // Check if the example exists
     const exampleExists = yield* fs.exists(exampleSourcePath)
 
-    if (!exampleExists) {
+    if (exampleExists === false) {
       return yield* new ExampleNotFoundError({
         exampleName,
         availableExamples: [],
@@ -186,7 +197,7 @@ const downloadExample = (exampleName: string, ref: string, destinationPath: stri
         (error) =>
           new NetworkError({
             cause: error,
-            message: `Failed to copy example files: ${error}`,
+            message: `Failed to copy example files: ${String(error)}`,
           }),
       ),
     )
@@ -211,7 +222,7 @@ export const createCommand = Cli.Command.make(
       Cli.Options.withAlias('commit'),
       Cli.Options.withAlias('branch'),
       Cli.Options.withAlias('tag'),
-      Cli.Options.withDefault('dev'),
+      Cli.Options.withDefault('main'),
       Cli.Options.withDescription(
         'The name of the commit/branch/tag to fetch examples from. Pull requests refs must be fully-formed (e.g., `refs/pull/123/merge`).',
       ),
@@ -245,10 +256,10 @@ export const createCommand = Cli.Command.make(
     }
 
     // Select example (from CLI option or interactive prompt)
-    const selectedExample = Option.isSome(example) ? example.value : yield* selectExample(examples)
+    const selectedExample = Option.isSome(example) === true ? example.value : yield* selectExample(examples)
 
     // Validate selected example exists
-    if (!examples.includes(selectedExample)) {
+    if (examples.includes(selectedExample) === false) {
       yield* Console.log(`❌ Example "${selectedExample}" not found`)
       yield* Console.log(`Available examples: ${examples.join(', ')}`)
       return yield* new ExampleNotFoundError({
@@ -259,7 +270,7 @@ export const createCommand = Cli.Command.make(
     }
 
     // Determine destination path
-    const destinationPath = Option.isSome(path) ? nodePath.resolve(path.value) : nodePath.resolve(selectedExample)
+    const destinationPath = Option.isSome(path) === true ? nodePath.resolve(path.value) : nodePath.resolve(selectedExample)
 
     // Download and extract the example
     yield* downloadExample(selectedExample, ref, destinationPath)

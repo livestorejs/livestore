@@ -1,9 +1,15 @@
-import { StoreRegistry, StoreRegistryProvider } from '@livestore/react'
 import { Suspense, useEffect, useState } from 'react'
 import { unstable_batchedUpdates as batchUpdates } from 'react-dom'
 import { ErrorBoundary } from 'react-error-boundary'
+
+import { StoreRegistry } from '@livestore/livestore'
+import { StoreRegistryProvider } from '@livestore/react'
+
 import { AppLayout } from './components/AppLayout.tsx'
 import { mailboxStoreId } from './stores/mailbox/index.ts'
+
+const appErrorFallback = <AppError />
+const appLoadingFallback = <AppLoading />
 
 export const App: React.FC = () => {
   const [storeRegistry] = useState(() => new StoreRegistry({ defaultOptions: { batchUpdates } }))
@@ -12,8 +18,8 @@ export const App: React.FC = () => {
 
   return (
     <div className="h-dvh bg-gray-100">
-      <ErrorBoundary fallback={<AppError />}>
-        <Suspense fallback={<AppLoading />}>
+      <ErrorBoundary fallback={appErrorFallback}>
+        <Suspense fallback={appLoadingFallback}>
           <StoreRegistryProvider storeRegistry={storeRegistry}>
             <AppLayout />
           </StoreRegistryProvider>

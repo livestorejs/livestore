@@ -1,5 +1,6 @@
 import type { CfTypes } from '@livestore/sync-cf/cf-worker'
 import * as SyncBackend from '@livestore/sync-cf/cf-worker'
+
 import type { Env } from './env.ts'
 import { storeIdFromRequest } from './shared.ts'
 
@@ -19,7 +20,7 @@ export default {
       })
     }
 
-    if (url.pathname.endsWith('/client-do')) {
+    if (url.pathname.endsWith('/client-do') === true) {
       const storeId = storeIdFromRequest(request)
       const id = env.CLIENT_DO.idFromName(storeId)
       return env.CLIENT_DO.get(id).fetch(request)

@@ -1,4 +1,4 @@
-import { StoreRegistry } from '@livestore/react'
+import { StoreRegistry } from '@livestore/livestore'
 
 import { liveStoreAdapter } from './adapter.ts'
 import { schema } from './schema.ts'
@@ -11,7 +11,7 @@ const snapshot = {
 }
 
 const root = document.getElementById('root')
-if (!root) {
+if (root == null) {
   throw new Error('Root element not found')
 }
 
