@@ -69,7 +69,7 @@ const otelCIJob = (config: { env?: Record<string, string>; steps: unknown[] }) =
 // =============================================================================
 
 /**
- * Required status checks are managed by `.github/repo-settings.*.json.genie.ts`.
+ * Required status checks are managed by `.github/repo-settings.json.genie.ts`.
  * Keep matrix values aligned with `genie/ci.ts` so rulesets and workflow stay in sync.
  */
 export default githubWorkflow({

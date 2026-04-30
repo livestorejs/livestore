@@ -35,15 +35,13 @@ const RulesetRequestBody = Schema.Struct({
 })
 
 type TRulesetRequestBody = typeof RulesetRequestBody.Type
-type TRulesetBranch = 'dev' | 'main'
 
-const getRulesetFilePath = (branch: TRulesetBranch) =>
-  path.join(process.env.WORKSPACE_ROOT ?? '.', '.github', `repo-settings.${branch}.json`)
+const getRulesetFilePath = () => path.join(process.env.WORKSPACE_ROOT ?? '.', '.github', 'repo-settings.json')
 
-const loadRulesetBody = (branch: TRulesetBranch) =>
+const loadRulesetBody = () =>
   Effect.gen(function* () {
     const fs = yield* FileSystem.FileSystem
-    const filePath = getRulesetFilePath(branch)
+    const filePath = getRulesetFilePath()
     const raw = yield* fs.readFileString(filePath)
     const parser = Schema.parseJson(RulesetRequestBody)
     return yield* Schema.decode(parser)(raw)
@@ -105,20 +103,16 @@ const updateRuleset = (rulesetId: number, body: TRulesetRequestBody) =>
 const syncRulesetsCommand = Cli.Command.make(
   'sync',
   {
-    branch: Cli.Options.choice('branch', ['dev', 'main'] as const).pipe(
-      Cli.Options.withDescription('Ruleset variant to sync from generated repo-settings file'),
-      Cli.Options.withDefault('main'),
-    ),
     dryRun: Cli.Options.boolean('dry-run').pipe(Cli.Options.withDefault(false)),
   },
-  Effect.fn(function* ({ branch, dryRun }) {
+  Effect.fn(function* ({ dryRun }) {
     yield* cmdText('gh --version', { stderr: 'pipe' }).pipe(Effect.provide(LivestoreWorkspace.toCwd()))
 
-    const body = yield* loadRulesetBody(branch)
+    const body = yield* loadRulesetBody()
     const existing = yield* getRulesetByName(body.name)
 
     if (dryRun === true) {
-      console.log(`Ruleset file: ${getRulesetFilePath(branch)}`)
+      console.log(`Ruleset file: ${getRulesetFilePath()}`)
       console.log(`Ruleset name: ${body.name}`)
       console.log(`Existing: ${existing !== null ? `yes (id: ${existing.id})` : 'no'}`)
       console.log(`Action: ${existing !== null ? 'update' : 'create'}`)
@@ -137,21 +131,16 @@ const syncRulesetsCommand = Cli.Command.make(
 
 const showRulesetsCommand = Cli.Command.make(
   'show',
-  {
-    branch: Cli.Options.choice('branch', ['dev', 'main'] as const).pipe(
-      Cli.Options.withDescription('Ruleset variant to show'),
-      Cli.Options.withDefault('main'),
-    ),
-  },
-  Effect.fn(function* ({ branch }) {
+  {},
+  Effect.fn(function* () {
     yield* cmdText('gh --version', { stderr: 'pipe' }).pipe(Effect.provide(LivestoreWorkspace.toCwd()))
 
-    const body = yield* loadRulesetBody(branch)
+    const body = yield* loadRulesetBody()
     const existing = yield* getRulesetByName(body.name)
 
     if (existing == null) {
       console.log(`No ruleset found with name '${body.name}'`)
-      console.log(`Run 'mono github rulesets sync --branch ${branch}' to create one.`)
+      console.log(`Run 'mono github rulesets sync' to create one.`)
       return
     }
 
