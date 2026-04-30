@@ -1,7 +1,7 @@
 import { expect } from '@playwright/test'
 
-import { test } from '../fixtures.js'
-import { repeatSuite } from '../utils.js'
+import { test } from '../fixtures.ts'
+import { assertPerfAppReady, repeatSuite } from '../utils.ts'
 
 const REPETITIONS_PER_TEST = 15
 
@@ -14,6 +14,7 @@ repeatSuite(
   () => {
     test.beforeEach(async ({ page }) => {
       await page.goto('/')
+      await assertPerfAppReady(page)
     })
 
     test.afterEach(async ({ page }, testInfo) => {
@@ -24,7 +25,7 @@ repeatSuite(
             const clickEntries = entries.filter((entry) => entry.name === 'click')
             // The last click entry is the one we are interested in
             const lastClickEntry = clickEntries.at(-1)
-            if (!lastClickEntry) throw new Error('No click entry found')
+            if (lastClickEntry == null) throw new Error('No click entry found')
             resolve(lastClickEntry.duration) // Duration is provided rounded to the nearest 8 ms for privacy reasons
           }).observe({
             type: 'event',
@@ -175,7 +176,9 @@ repeatSuite(
           await expect(page.locator(`tbody>tr:nth-of-type(${itemToClick})>td:nth-of-type(1)`)).toHaveText(
             itemToClick.toString(),
           )
-          await page.locator(`tbody>tr:nth-of-type(${itemToClick})>td:nth-of-type(3)>button>span:nth-of-type(1)`).click()
+          await page
+            .locator(`tbody>tr:nth-of-type(${itemToClick})>td:nth-of-type(3)>button>span:nth-of-type(1)`)
+            .click()
           await expect(page.locator(`tbody>tr:nth-of-type(${itemToClick})>td:nth-of-type(1)`)).toHaveText(
             `${itemsToSkip + warmupCount + 1}`,
           )
@@ -183,7 +186,9 @@ repeatSuite(
         await expect(page.locator(`tbody>tr:nth-of-type(${itemsToSkip + 1})>td:nth-of-type(1)`)).toHaveText(
           `${itemsToSkip + warmupCount + 1}`,
         )
-        await expect(page.locator(`tbody>tr:nth-of-type(${itemsToSkip})>td:nth-of-type(1)`)).toHaveText(`${itemsToSkip}`)
+        await expect(page.locator(`tbody>tr:nth-of-type(${itemsToSkip})>td:nth-of-type(1)`)).toHaveText(
+          `${itemsToSkip}`,
+        )
 
         // Click on a item the second time
         await expect(page.locator(`tbody>tr:nth-of-type(${itemsToSkip + 2})>td:nth-of-type(1)`)).toHaveText(

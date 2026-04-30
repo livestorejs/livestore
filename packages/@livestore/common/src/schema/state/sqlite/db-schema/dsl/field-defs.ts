@@ -1,43 +1,69 @@
 import { casesHandled } from '@livestore/utils'
 import { Option, Schema } from '@livestore/utils/effect'
 
-export type ColumnDefinition<TEncoded, TDecoded> = {
-  readonly columnType: FieldColumnType
-  readonly schema: Schema.Schema<TDecoded, TEncoded>
-  readonly default: Option.Option<TEncoded>
-  /** @default false */
-  readonly nullable: boolean
-  /** @default false */
-  readonly primaryKey: boolean
-}
-
-export const isColumnDefinition = (value: unknown): value is ColumnDefinition<any, any> => {
-  const validColumnTypes = ['text', 'integer', 'real', 'blob'] as const
-  return (
-    typeof value === 'object' &&
-    value !== null &&
-    'columnType' in value &&
-    validColumnTypes.includes(value['columnType'] as any)
-  )
-}
-
-export type ColumnDefinitionInput = {
-  readonly schema?: Schema.Schema<unknown>
-  readonly default?: unknown | NoDefault
-  readonly nullable?: boolean
-  readonly primaryKey?: boolean
-}
-
-export const NoDefault = Symbol.for('NoDefault')
-export type NoDefault = typeof NoDefault
-
 export type SqlDefaultValue = {
   readonly sql: string
 }
 
 export const isSqlDefaultValue = (value: unknown): value is SqlDefaultValue => {
-  return typeof value === 'object' && value !== null && 'sql' in value && typeof value['sql'] === 'string'
+  // oxlint-disable-next-line typescript-eslint(no-unsafe-type-assertion) -- type guard property access after structural check
+  return typeof value === 'object' && value !== null && 'sql' in value && typeof (value as any).sql === 'string'
 }
+
+export type ColumnDefaultThunk<T> = () => T
+
+export const isDefaultThunk = (value: unknown): value is ColumnDefaultThunk<unknown> => typeof value === 'function'
+
+export type ColumnDefaultValue<T> = T | null | ColumnDefaultThunk<T | null> | SqlDefaultValue
+
+export const resolveColumnDefault = <T>(value: ColumnDefaultValue<T>): T | null | SqlDefaultValue =>
+  isDefaultThunk(value) === true ? value() : value
+
+export type ColumnDefinition<TEncoded, TDecoded, TNullable extends boolean = boolean> = {
+  readonly columnType: FieldColumnType
+  readonly schema: Schema.Schema<TDecoded, TEncoded>
+  readonly default: Option.Option<ColumnDefaultValue<TDecoded>>
+  /** @default false */
+  readonly nullable: TNullable
+  /** @default false */
+  readonly primaryKey: boolean
+  /** @default false */
+  readonly autoIncrement: boolean
+}
+
+export declare namespace ColumnDefinition {
+  export type Any = ColumnDefinition<any, any>
+}
+
+export const isColumnDefinition = (value: unknown): value is ColumnDefinition.Any => {
+  const validColumnTypes = ['text', 'integer', 'real', 'blob'] as const
+  return (
+    typeof value === 'object' &&
+    value !== null &&
+    'columnType' in value &&
+    // oxlint-disable-next-line typescript-eslint(no-unsafe-type-assertion) -- type guard narrowing; columnType checked to be in valid set
+    validColumnTypes.includes(value.columnType as any)
+  )
+}
+
+type MaybeNull<T, TNullable extends boolean> = T | (TNullable extends true ? null : never)
+
+type ColumnDefaultArg<T, TNullable extends boolean> =
+  | MaybeNull<T, TNullable>
+  | ColumnDefaultThunk<MaybeNull<T, TNullable>>
+  | SqlDefaultValue
+  | NoDefault
+
+export type ColumnDefinitionInput = {
+  readonly schema?: Schema.Schema<unknown>
+  readonly default?: ColumnDefaultArg<unknown, boolean>
+  readonly nullable?: boolean
+  readonly primaryKey?: boolean
+  readonly autoIncrement?: boolean
+}
+
+export const NoDefault = Symbol.for('NoDefault')
+export type NoDefault = typeof NoDefault
 
 export type ColDefFn<TColumnType extends FieldColumnType> = {
   (): {
@@ -46,18 +72,21 @@ export type ColDefFn<TColumnType extends FieldColumnType> = {
     default: Option.None<never>
     nullable: false
     primaryKey: false
+    autoIncrement: false
   }
   <
     TEncoded extends DefaultEncodedForColumnType<TColumnType>,
     TDecoded = DefaultEncodedForColumnType<TColumnType>,
     const TNullable extends boolean = false,
-    const TDefault extends TDecoded | SqlDefaultValue | NoDefault | (TNullable extends true ? null : never) = NoDefault,
+    const TDefault extends ColumnDefaultArg<NoInfer<TDecoded>, TNullable> = NoDefault,
     const TPrimaryKey extends boolean = false,
+    const TAutoIncrement extends boolean = false,
   >(args: {
     schema?: Schema.Schema<TDecoded, TEncoded>
     default?: TDefault
     nullable?: TNullable
     primaryKey?: TPrimaryKey
+    autoIncrement?: TAutoIncrement
   }): {
     columnType: TColumnType
     schema: TNullable extends true
@@ -66,6 +95,7 @@ export type ColDefFn<TColumnType extends FieldColumnType> = {
     default: TDefault extends NoDefault ? Option.None<never> : Option.Some<NoInfer<TDefault>>
     nullable: NoInfer<TNullable>
     primaryKey: NoInfer<TPrimaryKey>
+    autoIncrement: NoInfer<TAutoIncrement>
   }
 }
 
@@ -77,12 +107,14 @@ const makeColDef =
     const schema = nullable === true ? Schema.NullOr(schemaWithoutNull) : schemaWithoutNull
     const default_ = def?.default === undefined || def.default === NoDefault ? Option.none() : Option.some(def.default)
 
+    // oxlint-disable-next-line typescript-eslint(no-unsafe-type-assertion) -- column factory return type uses complex conditional generics; consumer type safety enforced by ColDefFn signature
     return {
       columnType,
       schema,
       default: default_,
       nullable,
       primaryKey: def?.primaryKey ?? false,
+      autoIncrement: def?.autoIncrement ?? false,
     } as any
   }
 
@@ -115,12 +147,14 @@ export type SpecializedColDefFn<
     default: Option.None<never>
     nullable: false
     primaryKey: false
+    autoIncrement: false
   }
   <
     TDecoded = TBaseDecoded,
     const TNullable extends boolean = false,
-    const TDefault extends TDecoded | NoDefault | (TNullable extends true ? null : never) = NoDefault,
+    const TDefault extends ColumnDefaultArg<NoInfer<TDecoded>, TNullable> = NoDefault,
     const TPrimaryKey extends boolean = false,
+    const TAutoIncrement extends boolean = false,
   >(
     args: TAllowsCustomSchema extends true
       ? {
@@ -128,11 +162,13 @@ export type SpecializedColDefFn<
           default?: TDefault
           nullable?: TNullable
           primaryKey?: TPrimaryKey
+          autoIncrement?: TAutoIncrement
         }
       : {
           default?: TDefault
           nullable?: TNullable
           primaryKey?: TPrimaryKey
+          autoIncrement?: TAutoIncrement
         },
   ): {
     columnType: TColumnType
@@ -142,6 +178,7 @@ export type SpecializedColDefFn<
     default: TDefault extends NoDefault ? Option.None<never> : Option.Some<TDefault>
     nullable: NoInfer<TNullable>
     primaryKey: NoInfer<TPrimaryKey>
+    autoIncrement: NoInfer<TAutoIncrement>
   }
 }
 
@@ -166,16 +203,19 @@ type MakeSpecializedColDefFn = {
 
 const makeSpecializedColDef: MakeSpecializedColDefFn = (columnType, opts) => (def?: ColumnDefinitionInput) => {
   const nullable = def?.nullable ?? false
+  // oxlint-disable-next-line typescript-eslint(no-unsafe-type-assertion) -- schema type variance; custom schema compatibility checked at call site
   const schemaWithoutNull = opts._tag === 'baseSchemaFn' ? opts.baseSchemaFn(def?.schema as any) : opts.baseSchema
   const schema = nullable === true ? Schema.NullOr(schemaWithoutNull) : schemaWithoutNull
   const default_ = def?.default === undefined || def.default === NoDefault ? Option.none() : Option.some(def.default)
 
+  // oxlint-disable-next-line typescript-eslint(no-unsafe-type-assertion) -- specialized column factory return type uses complex conditional generics; consumer type safety enforced by SpecializedColDefFn signature
   return {
     columnType,
     schema,
     default: default_,
     nullable,
     primaryKey: def?.primaryKey ?? false,
+    autoIncrement: def?.autoIncrement ?? false,
   } as any
 }
 
@@ -201,7 +241,7 @@ export const boolean: SpecializedColDefFn<'integer', false, boolean> = makeSpeci
   _tag: 'baseSchema',
   baseSchema: Schema.transform(Schema.Number, Schema.Boolean, {
     decode: (_) => _ === 1,
-    encode: (_) => (_ ? 1 : 0),
+    encode: (_) => (_ === true ? 1 : 0),
   }),
 })
 
@@ -214,7 +254,7 @@ export type DefaultEncodedForColumnType<TColumnType extends FieldColumnType> = T
     : TColumnType extends 'real'
       ? number
       : TColumnType extends 'blob'
-        ? Uint8Array
+        ? Uint8Array<ArrayBuffer>
         : never
 
 export const defaultSchemaForColumnType = <TColumnType extends FieldColumnType>(
@@ -224,15 +264,19 @@ export const defaultSchemaForColumnType = <TColumnType extends FieldColumnType>(
 
   switch (columnType) {
     case 'text': {
+      // oxlint-disable-next-line typescript-eslint(no-unsafe-type-assertion) -- switch-based type narrowing for column type to schema mapping; each case is correct for its branch
       return Schema.String as any as Schema.Schema<T>
     }
     case 'integer': {
+      // oxlint-disable-next-line typescript-eslint(no-unsafe-type-assertion) -- switch-based type narrowing for column type to schema mapping; each case is correct for its branch
       return Schema.Number as any as Schema.Schema<T>
     }
     case 'real': {
+      // oxlint-disable-next-line typescript-eslint(no-unsafe-type-assertion) -- switch-based type narrowing for column type to schema mapping; each case is correct for its branch
       return Schema.Number as any as Schema.Schema<T>
     }
     case 'blob': {
+      // oxlint-disable-next-line typescript-eslint(no-unsafe-type-assertion) -- switch-based type narrowing for column type to schema mapping; each case is correct for its branch
       return Schema.Uint8ArrayFromSelf as any as Schema.Schema<T>
     }
     default: {

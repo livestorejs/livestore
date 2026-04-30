@@ -1,0 +1,4 @@
+services:
+  hello-world:
+    image: hello-world
+    profiles: [manual] # Don't auto-start this service

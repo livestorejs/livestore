@@ -9,25 +9,25 @@ const calculateColumnWidths = (headers: string[], rows: string[][]): number[] =>
   headers.map((header, columnIndex) => {
     const maxContentWidth = Math.max(
       header.length,
-      ...rows.map((row) => (row[columnIndex] ? row[columnIndex]!.toString().length : 0)),
+      ...rows.map((row) => (row[columnIndex] !== undefined ? row[columnIndex].toString().length : 0)),
     )
     return maxContentWidth + 2 // Add padding
   })
 
 const printTableHeader = (headers: string[], columnWidths: number[], firstColumnLeftAligned: boolean): void => {
-  console.log('┌' + columnWidths.map((width) => '─'.repeat(width)).join('┬') + '┐')
+  console.log(`┌${columnWidths.map((width) => '─'.repeat(width)).join('┬')}┐`)
 
   const headerRow = headers
     .map((header, i) => {
       // First column left-aligned if specified, others right-aligned
-      return i === 0 && firstColumnLeftAligned
+      return i === 0 && firstColumnLeftAligned === true
         ? header.padEnd(columnWidths[i]!)
         : header.padStart(columnWidths[i]! - 1).padEnd(columnWidths[i]!)
     })
     .join('│')
 
-  console.log('│' + headerRow + '│')
-  console.log('├' + columnWidths.map((width) => '─'.repeat(width)).join('┼') + '┤')
+  console.log(`│${headerRow}│`)
+  console.log(`├${columnWidths.map((width) => '─'.repeat(width)).join('┼')}┤`)
 }
 
 const printTableRows = (rows: string[][], columnWidths: number[], firstColumnLeftAligned: boolean): void => {
@@ -35,7 +35,7 @@ const printTableRows = (rows: string[][], columnWidths: number[], firstColumnLef
     const formattedRow = row
       .map((cell, i) => {
         // First column left-aligned if specified, others right-aligned
-        return i === 0 && firstColumnLeftAligned
+        return i === 0 && firstColumnLeftAligned === true
           ? cell.toString().padEnd(columnWidths[i]!)
           : cell
               .toString()
@@ -43,10 +43,10 @@ const printTableRows = (rows: string[][], columnWidths: number[], firstColumnLef
               .padEnd(columnWidths[i]!)
       })
       .join('│')
-    console.log('│' + formattedRow + '│')
+    console.log(`│${formattedRow}│`)
   }
 }
 
 const printTableFooter = (columnWidths: number[]): void => {
-  console.log('└' + columnWidths.map((width) => '─'.repeat(width)).join('┴') + '┘')
+  console.log(`└${columnWidths.map((width) => '─'.repeat(width)).join('┴')}┘`)
 }

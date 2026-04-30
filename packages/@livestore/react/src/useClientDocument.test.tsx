@@ -1,16 +1,19 @@
+/** biome-ignore-all lint/a11y/useValidAriaRole: not needed for testing */
+/** biome-ignore-all lint/a11y/noStaticElementInteractions: not needed for testing */
 import * as LiveStore from '@livestore/livestore'
-import { getSimplifiedRootSpan } from '@livestore/livestore/internal/testing-utils'
+import { StoreInternalsSymbol } from '@livestore/livestore'
+import { getAllSimplifiedRootSpans, getSimplifiedRootSpan } from '@livestore/livestore/internal/testing-utils'
 import { Effect, ReadonlyRecord, Schema } from '@livestore/utils/effect'
 import { Vitest } from '@livestore/utils-dev/node-vitest'
 import * as otel from '@opentelemetry/api'
 import { BasicTracerProvider, InMemorySpanExporter, SimpleSpanProcessor } from '@opentelemetry/sdk-trace-base'
 import * as ReactTesting from '@testing-library/react'
-import React from 'react'
+import * as React from 'react'
 import { beforeEach, expect, it } from 'vitest'
 
-import { events, makeTodoMvcReact, tables } from './__tests__/fixture.js'
-import type * as LiveStoreReact from './mod.js'
-import { __resetUseRcResourceCache } from './useRcResource.js'
+import { events, makeTodoMvcReact, tables } from './__tests__/fixture.tsx'
+import type * as LiveStoreReact from './mod.ts'
+import { __resetUseRcResourceCache } from './useRcResource.ts'
 
 // const strictMode = process.env.REACT_STRICT_MODE !== undefined
 
@@ -37,12 +40,12 @@ Vitest.describe('useClientDocument', () => {
       expect(result.current.id).toBe('u1')
       expect(result.current.state.username).toBe('')
       expect(renderCount.val).toBe(1)
-      expect(store.reactivityGraph.getSnapshot({ includeResults: true })).toMatchSnapshot()
+      expect(store[StoreInternalsSymbol].reactivityGraph.getSnapshot({ includeResults: true })).toMatchSnapshot()
       store.commit(tables.userInfo.set({ username: 'username_u2' }, 'u2'))
 
       rerender('u2')
 
-      expect(store.reactivityGraph.getSnapshot({ includeResults: true })).toMatchSnapshot()
+      expect(store[StoreInternalsSymbol].reactivityGraph.getSnapshot({ includeResults: true })).toMatchSnapshot()
       expect(result.current.id).toBe('u2')
       expect(result.current.state.username).toBe('username_u2')
       expect(renderCount.val).toBe(2)
@@ -117,25 +120,35 @@ Vitest.describe('useClientDocument', () => {
         renderCount.inc()
 
         const [state, setState] = store.useClientDocument(tables.AppRouterSchema, 'singleton')
+        const setCurrentTaskId = React.useCallback((taskId: string) => setState({ currentTaskId: taskId }), [setState])
 
         globalSetState = setState
 
         return (
           <div>
-            <TasksList setTaskId={(taskId) => setState({ currentTaskId: taskId })} />
+            <TasksList setTaskId={setCurrentTaskId} />
             <div role="current-id">Current Task Id: {state.currentTaskId ?? '-'}</div>
-            {state.currentTaskId ? <TaskDetails id={state.currentTaskId} /> : <div>Click on a task to see details</div>}
+            {state.currentTaskId !== null ? <TaskDetails id={state.currentTaskId} /> : <div>Click on a task to see details</div>}
           </div>
         )
       }
 
       const TasksList: React.FC<{ setTaskId: (_: string) => void }> = ({ setTaskId }) => {
         const allTodos = store.useQuery(allTodos$)
+        const handleTaskClick = React.useCallback(
+          (event: React.MouseEvent<HTMLDivElement>) => {
+            const taskId = event.currentTarget.dataset.taskId
+            if (taskId !== undefined) {
+              setTaskId(taskId)
+            }
+          },
+          [setTaskId],
+        )
 
         return (
           <div>
             {allTodos.map((_) => (
-              <div key={_.id} onClick={() => setTaskId(_.id)}>
+              <div key={_.id} data-task-id={_.id} onClick={handleTaskClick}>
                 {_.id}
               </div>
             ))}
@@ -152,13 +165,7 @@ Vitest.describe('useClientDocument', () => {
 
       expect(renderCount.val).toBe(1)
 
-      ReactTesting.act(() =>
-        store.commit(
-          LiveStore.rawSqlEvent({
-            sql: LiveStore.sql`INSERT INTO todos (id, text, completed) VALUES ('t1', 'buy milk', 0)`,
-          }),
-        ),
-      )
+      ReactTesting.act(() => store.commit(events.todoCreated({ id: 't1', text: 'buy milk', completed: false })))
 
       expect(renderCount.val).toBe(1)
       expect(renderResult.getByRole('current-id').innerHTML).toMatchInlineSnapshot('"Current Task Id: -"')
@@ -228,81 +235,110 @@ Vitest.describe('useClientDocument', () => {
     }),
   )
 
-  Vitest.describe('otel', () => {
-    it.each([{ strictMode: true }, { strictMode: false }])(
-      'should update the data based on component key strictMode=%s',
-      async ({ strictMode }) => {
-        const exporter = new InMemorySpanExporter()
+  Vitest.scopedLive('kv client document overwrites value (Schema.Any, no partial merge)', () =>
+    Effect.gen(function* () {
+      const { wrapper, store, renderCount } = yield* makeTodoMvcReact({})
 
-        const provider = new BasicTracerProvider({
-          spanProcessors: [new SimpleSpanProcessor(exporter)],
+      const { result } = ReactTesting.renderHook(
+        (id: string) => {
+          renderCount.inc()
+
+          const [state, setState] = store.useClientDocument(tables.kv, id)
+          return { state, setState, id }
+        },
+        { wrapper, initialProps: 'k1' },
+      )
+
+      expect(result.current.id).toBe('k1')
+      expect(result.current.state).toBe(null)
+      expect(renderCount.val).toBe(1)
+
+      ReactTesting.act(() => result.current.setState(1))
+      expect(result.current.state).toEqual(1)
+      expect(renderCount.val).toBe(2)
+
+      ReactTesting.act(() => result.current.setState({ b: 2 }))
+      expect(result.current.state).toEqual({ b: 2 })
+      expect(renderCount.val).toBe(3)
+    }),
+  )
+
+  Vitest.describe('otel', () => {
+    it.each([
+      { strictMode: true },
+      { strictMode: false },
+    ])('should update the data based on component key strictMode=%s', async ({ strictMode }) => {
+      const exporter = new InMemorySpanExporter()
+
+      const provider = new BasicTracerProvider({
+        spanProcessors: [new SimpleSpanProcessor(exporter)],
+      })
+
+      const otelTracer = provider.getTracer(`testing-${strictMode !== undefined ? 'strict' : 'non-strict'}`)
+
+      const span = otelTracer.startSpan('test-root')
+      const otelContext = otel.trace.setSpan(otel.context.active(), span)
+
+      await Effect.gen(function* () {
+        const { wrapper, store, renderCount } = yield* makeTodoMvcReact({
+          otelContext,
+          otelTracer,
+          strictMode,
         })
 
-        const otelTracer = provider.getTracer(`testing-${strictMode ? 'strict' : 'non-strict'}`)
+        const { result, rerender, unmount } = ReactTesting.renderHook(
+          (userId: string) => {
+            renderCount.inc()
 
-        const span = otelTracer.startSpan('test-root')
-        const otelContext = otel.trace.setSpan(otel.context.active(), span)
+            const [state, setState, id] = store.useClientDocument(tables.userInfo, userId)
+            return { state, setState, id }
+          },
+          { wrapper, initialProps: 'u1' },
+        )
 
-        await Effect.gen(function* () {
-          const { wrapper, store, renderCount } = yield* makeTodoMvcReact({
-            otelContext,
-            otelTracer,
-            strictMode,
-          })
+        expect(result.current.id).toBe('u1')
+        expect(result.current.state.username).toBe('')
+        expect(renderCount.val).toBe(1)
 
-          const { result, rerender, unmount } = ReactTesting.renderHook(
-            (userId: string) => {
-              renderCount.inc()
+        // For u2 we'll make sure that the row already exists,
+        // so the lazy `insert` will be skipped
+        ReactTesting.act(() => store.commit(events.UserInfoSet({ username: 'username_u2' }, 'u2')))
 
-              const [state, setState, id] = store.useClientDocument(tables.userInfo, userId)
-              return { state, setState, id }
-            },
-            { wrapper, initialProps: 'u1' },
-          )
+        rerender('u2')
 
-          expect(result.current.id).toBe('u1')
-          expect(result.current.state.username).toBe('')
-          expect(renderCount.val).toBe(1)
+        expect(result.current.id).toBe('u2')
+        expect(result.current.state.username).toBe('username_u2')
+        expect(renderCount.val).toBe(2)
 
-          // For u2 we'll make sure that the row already exists,
-          // so the lazy `insert` will be skipped
-          ReactTesting.act(() => store.commit(events.UserInfoSet({ username: 'username_u2' }, 'u2')))
+        unmount()
+        span.end()
+      }).pipe(Effect.scoped, Effect.tapCauseLogPretty, Effect.runPromise)
 
-          rerender('u2')
+      await provider.forceFlush()
 
-          expect(result.current.id).toBe('u2')
-          expect(result.current.state.username).toBe('username_u2')
-          expect(renderCount.val).toBe(2)
+      const mapAttributes = (attributes: otel.Attributes) => {
+        return ReadonlyRecord.map(attributes, (val, key) => {
+          if (key === 'code.stacktrace') {
+            return '<STACKTRACE>'
+          } else if (key === 'firstStackInfo') {
+            const stackInfo = JSON.parse(val as string) as LiveStore.StackInfo
+            // stackInfo.frames.shift() // Removes `renderHook.wrapper` from the stack
+            stackInfo.frames.forEach((_) => {
+              if (_.name.includes('renderHook.wrapper') === true) {
+                _.name = 'renderHook.wrapper'
+              }
+              _.filePath = '__REPLACED_FOR_SNAPSHOT__'
+            })
+            return JSON.stringify(stackInfo)
+          }
+          return val
+        })
+      }
 
-          unmount()
-          span.end()
-        }).pipe(Effect.scoped, Effect.tapCauseLogPretty, Effect.runPromise)
+      expect(getSimplifiedRootSpan(exporter, 'createStore', mapAttributes)).toMatchSnapshot()
+      expect(getAllSimplifiedRootSpans(exporter, 'LiveStore:commit', mapAttributes)).toMatchSnapshot()
 
-        await provider.forceFlush()
-
-        const mapAttributes = (attributes: otel.Attributes) => {
-          return ReadonlyRecord.map(attributes, (val, key) => {
-            if (key === 'code.stacktrace') {
-              return '<STACKTRACE>'
-            } else if (key === 'firstStackInfo') {
-              const stackInfo = JSON.parse(val as string) as LiveStore.StackInfo
-              // stackInfo.frames.shift() // Removes `renderHook.wrapper` from the stack
-              stackInfo.frames.forEach((_) => {
-                if (_.name.includes('renderHook.wrapper')) {
-                  _.name = 'renderHook.wrapper'
-                }
-                _.filePath = '__REPLACED_FOR_SNAPSHOT__'
-              })
-              return JSON.stringify(stackInfo)
-            }
-            return val
-          })
-        }
-
-        expect(getSimplifiedRootSpan(exporter, mapAttributes)).toMatchSnapshot()
-
-        await provider.shutdown()
-      },
-    )
+      await provider.shutdown()
+    })
   })
 })

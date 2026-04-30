@@ -12,21 +12,22 @@ import type {
 import { Context, Schema } from '@livestore/utils/effect'
 import type { MeshNode } from '@livestore/webmesh'
 
-import type { LeaderPullCursor, SqliteError } from '../adapter-types.js'
+import type { MigrationsReport } from '../defs.ts'
+import type { MaterializeError } from '../errors.ts'
 import type {
   BootStatus,
   Devtools,
-  LeaderAheadError,
   MakeSqliteDb,
-  MigrationsReport,
   PersistenceInfo,
   SqliteDb,
   SyncBackend,
-  UnexpectedError,
-} from '../index.js'
-import type { EventSequenceNumber, LiveStoreEvent, LiveStoreSchema } from '../schema/mod.js'
-import type * as SyncState from '../sync/syncstate.js'
-import type { ShutdownChannel } from './shutdown-channel.js'
+  UnknownError,
+  UnknownEventError,
+} from '../index.ts'
+import type { RejectedPushError } from './RejectedPushError.ts'
+import { EventSequenceNumber, type LiveStoreEvent, type LiveStoreSchema } from '../schema/mod.ts'
+import type * as SyncState from '../sync/syncstate.ts'
+import type { ShutdownChannel } from './shutdown-channel.ts'
 
 export type ShutdownState = 'running' | 'shutting-down'
 
@@ -43,7 +44,7 @@ export const InitialSyncOptions = Schema.Union(InitialSyncOptionsSkip, InitialSy
 export type InitialSyncOptions = typeof InitialSyncOptions.Type
 
 export type InitialSyncInfo = Option.Option<{
-  cursor: EventSequenceNumber.EventSequenceNumber
+  eventSequenceNumber: EventSequenceNumber.Global.Type
   metadata: Option.Option<Schema.JsonValue>
 }>
 
@@ -66,7 +67,7 @@ export type DevtoolsOptions =
           persistenceInfo: PersistenceInfoPair
           mode: 'proxy' | 'direct'
         },
-        UnexpectedError,
+        UnknownError,
         Scope.Scope | HttpClient.HttpClient | LeaderThreadCtx
       >
     }
@@ -96,13 +97,13 @@ export class LeaderThreadCtx extends Context.Tag('LeaderThreadCtx')<
     // TODO we should find a more elegant way to handle cases which need this ref for their implementation
     shutdownStateSubRef: SubscriptionRef.SubscriptionRef<ShutdownState>
     shutdownChannel: ShutdownChannel
-    eventSchema: LiveStoreEvent.ForEventDefRecord<any>
+    eventSchema: LiveStoreEvent.ForEventDef.ForRecord<any>
     devtools: DevtoolsContext
-    syncBackend: SyncBackend | undefined
+    syncBackend: SyncBackend.SyncBackend | undefined
     syncProcessor: LeaderSyncProcessor
     materializeEvent: MaterializeEvent
     initialState: {
-      leaderHead: EventSequenceNumber.EventSequenceNumber
+      leaderHead: EventSequenceNumber.Client.Composite
       migrationsReport: MigrationsReport
     }
     /**
@@ -111,67 +112,112 @@ export class LeaderThreadCtx extends Context.Tag('LeaderThreadCtx')<
      * This is currently separated from `.devtools` as it also needs to work when devtools are disabled
      */
     extraIncomingMessagesQueue: Queue.Queue<Devtools.Leader.MessageToApp>
+    networkStatus: Subscribable.Subscribable<SyncBackend.NetworkStatus>
   }
 >() {}
 
 export type MaterializeEvent = (
-  eventEncoded: LiveStoreEvent.EncodedWithMeta,
+  eventEncoded: LiveStoreEvent.Client.EncodedWithMeta,
   options?: {
     /** Needed for rematerializeFromEventlog */
     skipEventlog?: boolean
   },
 ) => Effect.Effect<
   {
-    sessionChangeset: { _tag: 'sessionChangeset'; data: Uint8Array; debug: any } | { _tag: 'no-op' }
+    sessionChangeset: { _tag: 'sessionChangeset'; data: Uint8Array<ArrayBuffer>; debug: any } | { _tag: 'no-op' }
     hash: Option.Option<number>
   },
-  SqliteError | UnexpectedError
+  MaterializeError
 >
 
 export type InitialBlockingSyncContext = {
   blockingDeferred: Deferred.Deferred<void> | undefined
-  update: (_: { remaining: number; processed: number }) => Effect.Effect<void>
+  update: (_: { pageInfo: SyncBackend.PullResPageInfo; processed: number }) => Effect.Effect<void>
+}
+
+export const STREAM_EVENTS_BATCH_SIZE_DEFAULT = 100
+export const STREAM_EVENTS_BATCH_SIZE_MAX = 1_000
+
+export const StreamEventsOptionsFields = {
+  since: Schema.optional(EventSequenceNumber.Client.Composite),
+  until: Schema.optional(EventSequenceNumber.Client.Composite),
+  filter: Schema.optional(Schema.Array(Schema.String)),
+  clientIds: Schema.optional(Schema.Array(Schema.String)),
+  sessionIds: Schema.optional(Schema.Array(Schema.String)),
+  batchSize: Schema.optional(Schema.Int.pipe(Schema.between(1, STREAM_EVENTS_BATCH_SIZE_MAX))),
+  includeClientOnly: Schema.optional(Schema.Boolean),
+} as const
+
+export const StreamEventsOptionsSchema = Schema.Struct(StreamEventsOptionsFields)
+
+export interface StreamEventsOptions {
+  /**
+   * Only include events after this logical timestamp (exclusive).
+   * Defaults to `EventSequenceNumber.Client.ROOT` when omitted.
+   */
+  since?: EventSequenceNumber.Client.Composite
+  /**
+   * Only include events up to this logical timestamp (inclusive).
+   */
+  until?: EventSequenceNumber.Client.Composite
+  /**
+   * Only include events of the given names.
+   */
+  filter?: ReadonlyArray<string>
+  /**
+   * Only include events from specific client identifiers.
+   */
+  clientIds?: ReadonlyArray<string>
+  /**
+   * Only include events from specific session identifiers.
+   */
+  sessionIds?: ReadonlyArray<string>
+  /**
+   * Number of events to fetch in each batch when streaming from the eventlog.
+   * Defaults to 100.
+   */
+  batchSize?: number
+  /**
+   * Include client-only events (i.e. events with a positive client sequence number).
+   */
+  includeClientOnly?: boolean
 }
 
 export interface LeaderSyncProcessor {
   /** Used by client sessions to subscribe to upstream sync state changes */
   pull: (args: {
-    cursor: LeaderPullCursor
-  }) => Stream.Stream<{ payload: typeof SyncState.PayloadUpstream.Type; mergeCounter: number }, UnexpectedError>
+    cursor: EventSequenceNumber.Client.Composite
+  }) => Stream.Stream<{ payload: typeof SyncState.PayloadUpstream.Type }>
   /** The `pullQueue` API can be used instead of `pull` when more convenient */
   pullQueue: (args: {
-    cursor: LeaderPullCursor
-  }) => Effect.Effect<
-    Queue.Queue<{ payload: typeof SyncState.PayloadUpstream.Type; mergeCounter: number }>,
-    UnexpectedError,
-    Scope.Scope
-  >
+    cursor: EventSequenceNumber.Client.Composite
+  }) => Effect.Effect<Queue.Queue<{ payload: typeof SyncState.PayloadUpstream.Type }>, never, Scope.Scope>
 
   /** Used by client sessions to push events to the leader thread */
   push: (
     /** `batch` needs to follow the same rules as `batch` in `SyncBackend.push` */
-    batch: ReadonlyArray<LiveStoreEvent.EncodedWithMeta>,
+    batch: ReadonlyArray<LiveStoreEvent.Client.EncodedWithMeta>,
     options?: {
       /**
        * If true, the effect will only finish when the local push has been processed (i.e. succeeded or was rejected).
+       * `true` doesn't mean the events have been pushed to the sync backend.
        * @default false
        */
       waitForProcessing?: boolean
     },
-  ) => Effect.Effect<void, LeaderAheadError>
+  ) => Effect.Effect<void, RejectedPushError>
 
   /** Currently only used by devtools which don't provide their own event numbers */
   pushPartial: (args: {
-    event: LiveStoreEvent.PartialAnyEncoded
+    event: LiveStoreEvent.Input.Encoded
     clientId: string
     sessionId: string
-  }) => Effect.Effect<void, UnexpectedError>
+  }) => Effect.Effect<void, UnknownEventError>
 
   boot: Effect.Effect<
-    { initialLeaderHead: EventSequenceNumber.EventSequenceNumber },
-    UnexpectedError,
+    { initialLeaderHead: EventSequenceNumber.Client.Composite },
+    never,
     LeaderThreadCtx | Scope.Scope | HttpClient.HttpClient
   >
   syncState: Subscribable.Subscribable<SyncState.SyncState>
-  getMergeCounter: () => number
 }

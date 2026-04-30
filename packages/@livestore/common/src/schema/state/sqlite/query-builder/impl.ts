@@ -1,24 +1,24 @@
+/** biome-ignore-all lint/complexity/noArguments: using arguments is fine here */
 import { casesHandled, shouldNeverHappen } from '@livestore/utils'
 import { Match, Option, Predicate, Schema } from '@livestore/utils/effect'
 
-import type { TableDefBase } from '../table-def.js'
-import type { QueryBuilder, QueryBuilderAst } from './api.js'
-import { QueryBuilderAstSymbol, QueryBuilderTypeId } from './api.js'
-import { astToSql } from './astToSql.js'
+import type { TableDefBase } from '../table-def.ts'
+import type { QueryBuilder, QueryBuilderAst } from './api.ts'
+import { QueryBuilderAstSymbol, QueryBuilderTypeId } from './api.ts'
+import { astToSql } from './astToSql.ts'
 export const makeQueryBuilder = <TResult, TTableDef extends TableDefBase>(
   tableDef: TTableDef,
   ast: QueryBuilderAst = emptyAst(tableDef),
-): QueryBuilder<TResult, TTableDef, never> => {
+): QueryBuilder<TResult, TTableDef> => {
   const api = {
-    // eslint-disable-next-line prefer-arrow/prefer-arrow-functions
     select() {
       assertSelectQueryBuilderAst(ast)
 
-      // eslint-disable-next-line prefer-rest-params
       const params = [...arguments]
 
       // Pluck if there's only one column selected
       if (params.length === 1) {
+        // oxlint-disable-next-line typescript-eslint(no-unsafe-type-assertion) -- arguments-based overload dispatch requires manual narrowing
         const [col] = params as any as [string]
         return makeQueryBuilder(tableDef, {
           ...ast,
@@ -27,8 +27,10 @@ export const makeQueryBuilder = <TResult, TTableDef extends TableDefBase>(
         })
       }
 
+      // oxlint-disable-next-line typescript-eslint(no-unsafe-type-assertion) -- arguments-based overload dispatch requires manual narrowing
       const columns = params as unknown as ReadonlyArray<string>
 
+      // oxlint-disable-next-line typescript-eslint(no-unsafe-type-assertion) -- query builder return type depends on AST state; consumer type safety enforced by api.ts
       return makeQueryBuilder(tableDef, {
         ...ast,
         resultSchemaSingle:
@@ -36,18 +38,17 @@ export const makeQueryBuilder = <TResult, TTableDef extends TableDefBase>(
         select: { columns },
       }) as any
     },
-    // eslint-disable-next-line prefer-arrow/prefer-arrow-functions
     where: function () {
       if (ast._tag === 'InsertQuery') return invalidQueryBuilder('Cannot use where with insert')
       if (ast._tag === 'RowQuery') return invalidQueryBuilder('Cannot use where with row')
 
       if (arguments.length === 1) {
-        // eslint-disable-next-line prefer-rest-params
         const params = arguments[0]
         const newOps = Object.entries(params)
           .filter(([, value]) => value !== undefined)
           .map<QueryBuilderAst.Where>(([col, value]) =>
-            Predicate.hasProperty(value, 'op') && Predicate.hasProperty(value, 'value')
+            Predicate.hasProperty(value, 'op') === true && Predicate.hasProperty(value, 'value') === true
+              // oxlint-disable-next-line typescript-eslint(no-unsafe-type-assertion) -- where clause construction; shape validated at runtime
               ? ({ col, op: value.op, value: value.value } as any)
               : { col, op: '=', value },
           )
@@ -57,6 +58,7 @@ export const makeQueryBuilder = <TResult, TTableDef extends TableDefBase>(
           case 'SelectQuery':
           case 'UpdateQuery':
           case 'DeleteQuery': {
+            // oxlint-disable-next-line typescript-eslint(no-unsafe-type-assertion) -- query builder return type depends on AST state; consumer type safety enforced by api.ts
             return makeQueryBuilder(tableDef, {
               ...ast,
               where: [...ast.where, ...newOps],
@@ -68,7 +70,6 @@ export const makeQueryBuilder = <TResult, TTableDef extends TableDefBase>(
         }
       }
 
-      // eslint-disable-next-line prefer-rest-params
       const [col, opOrValue, valueOrUndefined] = arguments
       const op = valueOrUndefined === undefined ? '=' : opOrValue
       const value = valueOrUndefined === undefined ? opOrValue : valueOrUndefined
@@ -78,6 +79,7 @@ export const makeQueryBuilder = <TResult, TTableDef extends TableDefBase>(
         case 'SelectQuery':
         case 'UpdateQuery':
         case 'DeleteQuery': {
+          // oxlint-disable-next-line typescript-eslint(no-unsafe-type-assertion) -- query builder return type depends on AST state; consumer type safety enforced by api.ts
           return makeQueryBuilder(tableDef, {
             ...ast,
             where: [...ast.where, { col, op, value }],
@@ -88,14 +90,14 @@ export const makeQueryBuilder = <TResult, TTableDef extends TableDefBase>(
         }
       }
     },
-    // eslint-disable-next-line prefer-arrow/prefer-arrow-functions
+
     orderBy() {
       assertSelectQueryBuilderAst(ast)
 
       if (arguments.length === 0 || arguments.length > 2) return invalidQueryBuilder()
 
       if (arguments.length === 1) {
-        // eslint-disable-next-line prefer-rest-params
+        // oxlint-disable-next-line typescript-eslint(no-unsafe-type-assertion) -- arguments-based overload dispatch requires manual narrowing
         const params = arguments[0] as QueryBuilder.OrderByParams<TTableDef>
         return makeQueryBuilder(tableDef, {
           ...ast,
@@ -103,9 +105,10 @@ export const makeQueryBuilder = <TResult, TTableDef extends TableDefBase>(
         })
       }
 
-      // eslint-disable-next-line prefer-rest-params
+      // oxlint-disable-next-line typescript-eslint(no-unsafe-type-assertion) -- arguments-based overload dispatch requires manual narrowing
       const [col, direction] = arguments as any as [keyof TTableDef['sqliteDef']['columns'] & string, 'asc' | 'desc']
 
+      // oxlint-disable-next-line typescript-eslint(no-unsafe-type-assertion) -- query builder return type depends on AST state; consumer type safety enforced by api.ts
       return makeQueryBuilder(tableDef, {
         ...ast,
         orderBy: [...ast.orderBy, { col, direction }],
@@ -122,7 +125,7 @@ export const makeQueryBuilder = <TResult, TTableDef extends TableDefBase>(
       return makeQueryBuilder(tableDef, { ...ast, offset: Option.some(offset) })
     },
     count: () => {
-      if (isRowQuery(ast) || ast._tag === 'InsertQuery' || ast._tag === 'UpdateQuery' || ast._tag === 'DeleteQuery')
+      if (isRowQuery(ast) === true || ast._tag === 'InsertQuery' || ast._tag === 'UpdateQuery' || ast._tag === 'DeleteQuery')
         return invalidQueryBuilder()
 
       return makeQueryBuilder(tableDef, {
@@ -136,7 +139,7 @@ export const makeQueryBuilder = <TResult, TTableDef extends TableDefBase>(
         ),
       })
     },
-    first: (options) => {
+    first: (behaviour) => {
       assertSelectQueryBuilderAst(ast)
 
       if (ast.limit._tag === 'Some') return invalidQueryBuilder(`.first() can't be called after .limit()`)
@@ -144,17 +147,16 @@ export const makeQueryBuilder = <TResult, TTableDef extends TableDefBase>(
       return makeQueryBuilder(tableDef, {
         ...ast,
         limit: Option.some(1),
-        pickFirst:
-          options?.fallback !== undefined && options.fallback !== 'throws' ? { fallback: options.fallback } : 'throws',
+        pickFirst: { _tag: 'enabled', ...(behaviour ?? { behaviour: 'undefined' }) },
       })
     },
-    // // eslint-disable-next-line prefer-arrow/prefer-arrow-functions
+    //
     // getOrCreate() {
     //   if (tableDef.options.isClientDocumentTable === false) {
     //     return invalidQueryBuilder(`getOrCreate() is not allowed when table is not a client document table`)
     //   }
 
-    //   // eslint-disable-next-line prefer-rest-params
+    //
     //   const params = [...arguments]
 
     //   let id: string | number
@@ -178,6 +180,7 @@ export const makeQueryBuilder = <TResult, TTableDef extends TableDefBase>(
     insert: (values) => {
       const filteredValues = Object.fromEntries(Object.entries(values).filter(([, value]) => value !== undefined))
 
+      // oxlint-disable-next-line typescript-eslint(no-unsafe-type-assertion) -- query builder return type depends on AST state; consumer type safety enforced by api.ts
       return makeQueryBuilder(tableDef, {
         _tag: 'InsertQuery',
         tableDef,
@@ -192,7 +195,7 @@ export const makeQueryBuilder = <TResult, TTableDef extends TableDefBase>(
       action: 'ignore' | 'replace' | 'update',
       updateValues?: Record<string, unknown>,
     ) => {
-      const targets = Array.isArray(targetOrTargets) ? targetOrTargets : [targetOrTargets]
+      const targets = Array.isArray(targetOrTargets) === true ? targetOrTargets : [targetOrTargets]
 
       assertInsertQueryBuilderAst(ast)
 
@@ -206,6 +209,7 @@ export const makeQueryBuilder = <TResult, TTableDef extends TableDefBase>(
         Match.exhaustive,
       )
 
+      // oxlint-disable-next-line typescript-eslint(no-unsafe-type-assertion) -- query builder return type depends on AST state; consumer type safety enforced by api.ts
       return makeQueryBuilder(tableDef, {
         ...ast,
         onConflict,
@@ -215,6 +219,7 @@ export const makeQueryBuilder = <TResult, TTableDef extends TableDefBase>(
     returning: (...columns) => {
       assertWriteQueryBuilderAst(ast)
 
+      // oxlint-disable-next-line typescript-eslint(no-unsafe-type-assertion) -- query builder return type depends on AST state; consumer type safety enforced by api.ts
       return makeQueryBuilder(tableDef, {
         ...ast,
         returning: columns,
@@ -225,21 +230,29 @@ export const makeQueryBuilder = <TResult, TTableDef extends TableDefBase>(
     update: (values) => {
       const filteredValues = Object.fromEntries(Object.entries(values).filter(([, value]) => value !== undefined))
 
+      // Preserve where clauses if coming from a SelectQuery
+      const whereClause = ast._tag === 'SelectQuery' ? ast.where : []
+
+      // oxlint-disable-next-line typescript-eslint(no-unsafe-type-assertion) -- query builder return type depends on AST state; consumer type safety enforced by api.ts
       return makeQueryBuilder(tableDef, {
         _tag: 'UpdateQuery',
         tableDef,
         values: filteredValues,
-        where: [],
+        where: whereClause,
         returning: undefined,
         resultSchema: Schema.Void,
       }) as any
     },
 
     delete: () => {
+      // Preserve where clauses if coming from a SelectQuery
+      const whereClause = ast._tag === 'SelectQuery' ? ast.where : []
+
+      // oxlint-disable-next-line typescript-eslint(no-unsafe-type-assertion) -- query builder return type depends on AST state; consumer type safety enforced by api.ts
       return makeQueryBuilder(tableDef, {
         _tag: 'DeleteQuery',
         tableDef,
-        where: [],
+        where: whereClause,
         returning: undefined,
         resultSchema: Schema.Void,
       }) as any
@@ -249,7 +262,8 @@ export const makeQueryBuilder = <TResult, TTableDef extends TableDefBase>(
   return {
     [QueryBuilderTypeId]: QueryBuilderTypeId,
     [QueryBuilderAstSymbol]: ast,
-    ['ResultType']: 'only-for-type-inference' as TResult,
+    // oxlint-disable-next-line typescript-eslint(no-unsafe-type-assertion) -- phantom type field for generic inference only
+    ResultType: 'only-for-type-inference' as TResult,
     asSql: () => astToSql(ast),
     toString: () => {
       try {
@@ -266,7 +280,7 @@ export const makeQueryBuilder = <TResult, TTableDef extends TableDefBase>(
 const emptyAst = (tableDef: TableDefBase): QueryBuilderAst.SelectQuery => ({
   _tag: 'SelectQuery',
   columns: [],
-  pickFirst: false,
+  pickFirst: { _tag: 'disabled' },
   select: { columns: [] },
   orderBy: [],
   offset: Option.none(),
@@ -277,31 +291,29 @@ const emptyAst = (tableDef: TableDefBase): QueryBuilderAst.SelectQuery => ({
 })
 
 // Helper functions
-// eslint-disable-next-line prefer-arrow/prefer-arrow-functions
-function assertSelectQueryBuilderAst(ast: QueryBuilderAst): asserts ast is QueryBuilderAst.SelectQuery {
+
+const assertSelectQueryBuilderAst: (ast: QueryBuilderAst) => asserts ast is QueryBuilderAst.SelectQuery = (ast) => {
   if (ast._tag !== 'SelectQuery') {
-    return shouldNeverHappen('Expected SelectQuery but got ' + ast._tag)
+    return shouldNeverHappen(`Expected SelectQuery but got ${ast._tag}`)
   }
 }
 
-// eslint-disable-next-line prefer-arrow/prefer-arrow-functions
-function assertInsertQueryBuilderAst(ast: QueryBuilderAst): asserts ast is QueryBuilderAst.InsertQuery {
+const assertInsertQueryBuilderAst: (ast: QueryBuilderAst) => asserts ast is QueryBuilderAst.InsertQuery = (ast) => {
   if (ast._tag !== 'InsertQuery') {
-    return shouldNeverHappen('Expected InsertQuery but got ' + ast._tag)
+    return shouldNeverHappen(`Expected InsertQuery but got ${ast._tag}`)
   }
 }
 
-// eslint-disable-next-line prefer-arrow/prefer-arrow-functions
-function assertWriteQueryBuilderAst(ast: QueryBuilderAst): asserts ast is QueryBuilderAst.WriteQuery {
+const assertWriteQueryBuilderAst: (ast: QueryBuilderAst) => asserts ast is QueryBuilderAst.WriteQuery = (ast) => {
   if (ast._tag !== 'InsertQuery' && ast._tag !== 'UpdateQuery' && ast._tag !== 'DeleteQuery') {
-    return shouldNeverHappen('Expected WriteQuery but got ' + ast._tag)
+    return shouldNeverHappen(`Expected WriteQuery but got ${ast._tag}`)
   }
 }
 
 const isRowQuery = (ast: QueryBuilderAst): ast is QueryBuilderAst.RowQuery => ast._tag === 'RowQuery'
 
 export const invalidQueryBuilder = (msg?: string) => {
-  return shouldNeverHappen('Invalid query builder' + (msg ? `: ${msg}` : ''))
+  return shouldNeverHappen(`Invalid query builder${msg !== undefined ? `: ${msg}` : ''}`)
 }
 
 export const getResultSchema = (qb: QueryBuilder<any, any, any>): Schema.Schema<any> => {
@@ -309,9 +321,12 @@ export const getResultSchema = (qb: QueryBuilder<any, any, any>): Schema.Schema<
   switch (queryAst._tag) {
     case 'SelectQuery': {
       const arraySchema = Schema.Array(queryAst.resultSchemaSingle)
-      if (queryAst.pickFirst === false) {
+      if (queryAst.pickFirst._tag === 'disabled') {
         return arraySchema
-      } else if (queryAst.pickFirst === 'throws') {
+      } else if (queryAst.pickFirst.behaviour === 'undefined') {
+        const arraySchema = Schema.Array(Schema.UndefinedOr(queryAst.resultSchemaSingle))
+        return arraySchema.pipe(Schema.headOrElse(() => undefined))
+      } else if (queryAst.pickFirst.behaviour === 'error') {
         // Will throw if the array is empty
         return arraySchema.pipe(Schema.headOrElse())
       } else {
@@ -328,7 +343,7 @@ export const getResultSchema = (qb: QueryBuilder<any, any, any>): Schema.Schema<
     case 'UpdateQuery':
     case 'DeleteQuery': {
       // For write operations with RETURNING clause, we need to return the appropriate schema
-      if (queryAst.returning && queryAst.returning.length > 0) {
+      if (queryAst.returning !== undefined && queryAst.returning.length > 0) {
         // Create a schema for the returned columns
         return queryAst.tableDef.rowSchema.pipe(Schema.pick(...queryAst.returning), Schema.Array)
       }
@@ -344,8 +359,7 @@ export const getResultSchema = (qb: QueryBuilder<any, any, any>): Schema.Schema<
         Schema.headOrElse(),
       )
     }
-    default: {
-      casesHandled(queryAst)
-    }
+    default:
+      return casesHandled(queryAst)
   }
 }

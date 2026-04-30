@@ -1,0 +1,25 @@
+---
+import '../styles/tailwind.css'
+import DiagnosticsSnippet from '../content/_assets/code/diagnostics.ts?snippet'
+import PrimarySnippet from '../content/_assets/code/main.ts?snippet'
+---
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <title>Twoslash Code Demo</title>
+  </head>
+<body class="min-h-screen bg-slate-950 text-slate-100">
+  <main class="mx-auto flex min-h-screen max-w-4xl flex-col gap-6 px-6 py-16">
+    <h1 class="text-balance text-4xl font-semibold tracking-tight">Twoslash Snippet Demo</h1>
+    <p class="text-pretty text-lg text-slate-300">The snippet below is pre-rendered and hydrated via the workspace package.</p>
+    <PrimarySnippet class="ls-demo-primary" />
+
+    <h2 class="text-2xl font-semibold">Diagnostics example</h2>
+    <p class="text-slate-300">
+      Twoslash should surface TypeScript diagnostics inside the toolbar and tab indicator when the snippet
+      contains type errors.
+    </p>
+    <DiagnosticsSnippet class="ls-demo-diagnostics" />
+  </main>
+</body>
+</html>

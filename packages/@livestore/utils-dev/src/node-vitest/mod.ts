@@ -1,1 +1,3 @@
-export * as Vitest from '@effect/vitest'
+import './global.ts'
+
+export * as Vitest from './Vitest.ts'

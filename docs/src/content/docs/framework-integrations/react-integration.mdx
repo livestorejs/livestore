@@ -1,0 +1,303 @@
+---
+title: React integration for LiveStore
+sidebar:
+  label: React
+description: How to integrate LiveStore with React.
+---
+
+import AppSnippet from '../../_assets/code/reference/framework-integrations/react/App.tsx?snippet'
+import StoreSnippet from '../../_assets/code/reference/framework-integrations/react/store.ts?snippet'
+import ReactUseClientDocumentSnippet from '../../_assets/code/reference/framework-integrations/react/use-client-document.tsx?snippet'
+import ReactUseQuerySnippet from '../../_assets/code/reference/framework-integrations/react/use-query.tsx?snippet'
+import ReactUseStoreSnippet from '../../_assets/code/reference/framework-integrations/react/use-store.tsx?snippet'
+import IssueStoreOptionsSnippet from '../../_assets/code/reference/framework-integrations/react/issue.store.ts?snippet'
+import IssueViewSnippet from '../../_assets/code/reference/framework-integrations/react/IssueView.tsx?snippet'
+import PreloadedIssueSnippet from '../../_assets/code/reference/framework-integrations/react/PreloadedIssue.tsx?snippet'
+import MinimalSnippet from '../../_assets/code/reference/framework-integrations/react/minimal.tsx?snippet'
+import StoreWithLoggingSnippet from '../../_assets/code/reference/framework-integrations/react/store-with-logging.ts?snippet'
+import { getBranchName } from '../../../data/data.ts'
+
+While LiveStore is framework agnostic, the `@livestore/react` package provides a first-class integration with React.
+
+## Features
+
+- High performance
+- Fine-grained reactivity (using LiveStore's signals-based reactivity system)
+- Instant, synchronous query results (without the need for `useEffect` and `isLoading` checks)
+- Supports multiple store instances
+- Transactional state transitions (via `batchUpdates`)
+- Also supports Expo / React Native via `@livestore/adapter-expo`
+
+## Core Concepts
+
+When using LiveStore in React, you'll primarily interact with these fundamental components:
+
+- [**`StoreRegistry`**](#new-storeregistryconfig) - Manages store instances with automatic caching and disposal
+- [**`<StoreRegistryProvider>`**](#storeregistryprovider) - React context provider that supplies the registry to components
+- [**`useStore()`**](#usestoreoptions) - Suspense-enabled hook for accessing store instances
+
+Stores are cached by their `storeId` and automatically disposed after being unused for a configurable duration (`unusedCacheTime`).
+
+<MinimalSnippet />
+
+## Setting Up
+
+### 1. Configure the Store
+
+Create a store configuration file that exports a custom hook wrapping [`useStore()`](#usestoreoptions):
+
+<StoreSnippet />
+
+The [`useStore()`](#usestoreoptions) hook accepts store configuration options and returns a store instance. It suspends while the store is loading, so components using it need to be wrapped in a `Suspense` boundary.
+
+### 2. Set Up the Registry
+
+Create a [`StoreRegistry`](#new-storeregistryconfig) and provide it via [`<StoreRegistryProvider>`](#storeregistryprovider). Wrap in a `<Suspense>` to handle loading states and a `<ErrorBoundary>` to handle errors:
+
+<AppSnippet />
+
+### 3. Use the Store
+
+Components can now access the store via your custom hook:
+
+<ReactUseStoreSnippet />
+
+## Querying Data
+
+Use [`store.useQuery()`](#storeusequeryqueryable) to subscribe to reactive queries:
+
+<ReactUseQuerySnippet />
+
+## Client Documents
+
+Use [`store.useClientDocument()`](#storeuseclientdocumenttable-id-options) for client-specific state:
+
+<ReactUseClientDocumentSnippet />
+
+## Advanced Patterns
+
+### Multiple Stores
+
+You can have multiple stores within a single React application. This is useful for:
+
+- **Partial data synchronization** - Load only the data you need, when you need it
+- **Multi-tenant applications** - Separate stores for each workspace, organization, or team (like Slack workspaces or Linear teams)
+
+Use the [`storeOptions()`](#storeoptionsoptions) helper for type-safe, reusable configurations, and then create multiple instances for the same store configuration by using different `storeId` values:
+
+<IssueStoreOptionsSnippet/>
+
+<IssueViewSnippet/>
+
+Each store instance is completely isolated with its own data, event log, and synchronization state.
+
+### Preloading Stores
+
+When you know a store will be needed soon, preload it in advance to warm up the cache:
+
+<PreloadedIssueSnippet />
+
+### StoreId Guidelines
+
+When creating `storeId` values:
+
+- **Valid characters** - Only alphanumeric characters, underscores (`_`), and hyphens (`-`) are allowed (regex: `/^[a-zA-Z0-9_-]+$/`)
+- **Globally unique** - Prefer globally unique IDs (e.g., nanoid) to prevent collisions
+- **Use namespaces** - Prefix with the entity type (e.g., `workspace-abc123`, `issue-456`) to avoid collisions and easier identification when debugging
+- **Keep them stable** - The same entity should always use the same `storeId` across renders
+- **Sanitize user input** - If incorporating user data, validate/sanitize to prevent injection attacks
+- **Document your conventions** - Document special IDs like `user-current` as they're part of your API contract
+
+### Logging
+
+You can customize the logger and log level for debugging:
+
+<StoreWithLoggingSnippet />
+
+Use `LogLevel.None` to disable logging entirely.
+
+## API Reference
+
+### `storeOptions(options)`
+
+Helper for defining reusable store options with full type inference. Returns options that can be passed to [`useStore()`](#usestoreoptions) or [`storeRegistry.preload()`](#storeregistrypreloadoptions).
+
+Options:
+- `storeId` - Unique identifier for this store instance
+- `schema` - The LiveStore schema
+- `adapter` - The platform adapter
+- `unusedCacheTime?` - Time in ms to keep this store in cache after it becomes unused (default: `60_000` in browser, `Infinity` in non-browser environments). Overrides the registry-level default when set.
+- `batchUpdates?` - Function for batching React updates (recommended)
+- `boot?` - Function called when the store is loaded
+- `onBootStatus?` - Callback for boot status updates
+- `context?` - User-defined context for dependency injection
+- `syncPayload?` - Payload sent to sync backend (e.g., auth tokens)
+- `syncPayloadSchema?` - Schema for type-safe sync payload validation
+- `confirmUnsavedChanges?` - Register beforeunload handler (default: `true`, web only)
+- `logger?` - Custom logger implementation
+- `logLevel?` - Log level (e.g., `LogLevel.Info`, `LogLevel.Debug`, `LogLevel.None`)
+- `otelOptions?` - OpenTelemetry configuration (`{ tracer, rootSpanContext }`)
+- `disableDevtools?` - Whether to disable devtools (`boolean | 'auto'`, default: `'auto'`)
+- `debug?` - Debug options (`{ instanceId?: string }`)
+
+### `useStore(options)`
+
+Returns a store instance augmented with hooks ([`store.useQuery()`](#storeusequeryqueryable) and [`store.useClientDocument()`](#storeuseclientdocumenttable-id-options)) for reactive queries.
+
+- Suspends until the store is loaded.
+- Throws an error if loading fails.
+- Store gets cached by its `storeId` in the [`StoreRegistry`](#new-storeregistryconfig). Multiple calls with the same `storeId` return the same store instance.
+- Store is cached as long as it's being used, and after `unusedCacheTime` expires (default `60_000` ms in browser, `Infinity` in non-browser)
+- Default store options can be configured in [`StoreRegistry`](#new-storeregistryconfig) constructor.
+- Store options are only applied when the store is loaded. Subsequent calls with different options will not affect the store if it's already loaded and cached in the registry.
+
+### `store.commit(...events)` / `store.commit(txnFn)`
+
+Commits events to the store. Supports multiple calling patterns:
+
+- `store.commit(...events)` - Commit one or more events
+- `store.commit(txnFn)` - Commit events via a transaction function
+- `store.commit(options, ...events)` - Commit with options
+- `store.commit(options, txnFn)` - Options with transaction function
+
+Options:
+- `skipRefresh` - Skip refreshing reactive queries after commit (advanced)
+
+### `store.useQuery(queryable)`
+
+Subscribes to a reactive query. Re-renders the component when the result changes.
+
+- Takes any `Queryable`: `QueryBuilder`, `LiveQueryDef`, `SignalDef`, or `LiveQuery` instance
+- Returns the query result
+
+### `store.useClientDocument(table, id?, options?)`
+
+React.useState-like hook for client-document tables.
+
+- Returns `[row, setRow, id, query$]` tuple
+- Works only with tables defined via `State.SQLite.clientDocument()`
+- If the table has a default id, the `id` argument is optional
+
+### `store.useSyncStatus()`
+
+React hook that subscribes to sync status changes. Re-renders the component when sync status changes.
+
+```tsx
+function SyncIndicator() {
+  const store = useStore(storeOptions)
+  const status = store.useSyncStatus()
+  
+  return <span>{status.isSynced ? '✓ Synced' : `Syncing (${status.pendingCount} pending)...`}</span>
+}
+```
+
+For the `SyncStatus` type and non-React APIs (`syncStatus()`, `subscribeSyncStatus()`, `syncStatusStream()`), see the [Store documentation](/building-with-livestore/store#sync-status).
+
+### `new StoreRegistry(config?)`
+
+Creates a registry that coordinates store loading, caching, and retention.
+
+Config:
+- `defaultOptions?` - Default options that are applied to all stores when they are loaded.:
+  - `batchUpdates?` - Function for batching React updates
+  - `unusedCacheTime?` - Cache time for unused stores
+  - `disableDevtools?` - Whether to disable devtools
+  - `confirmUnsavedChanges?` - beforeunload confirmation
+  - `otelOptions?` - OpenTelemetry configuration
+  - `debug?` - Debug options
+- `runtime?` - Effect runtime for registry operations
+
+### `<StoreRegistryProvider>`
+
+React context provider that makes a [`StoreRegistry`](#new-storeregistryconfig) available to descendant components.
+
+Props:
+- `storeRegistry` - The registry instance
+
+### `useStoreRegistry(override?)`
+
+Hook that returns the [`StoreRegistry`](#new-storeregistryconfig) provided by the nearest [`<StoreRegistryProvider>`](#storeregistryprovider) ancestor, or the `override` if provided.
+
+### `storeRegistry.preload(options)`
+
+Loads a store (without suspending) to warm up the cache. Returns a Promise that resolves when loading completes. This is a fire-and-forget operation useful for warming up the cache.
+
+## Framework-Specific Notes
+
+### Vite
+
+LiveStore works with Vite out of the box.
+
+### Tanstack Start
+
+LiveStore works with Tanstack Start out of the box.
+
+#### Provider Placement
+
+When using LiveStore with TanStack Start, place [`<StoreRegistryProvider>`](#storeregistryprovider) in the correct location to avoid remounting on navigation.
+
+:::caution
+**Do NOT place `<StoreRegistryProvider>` inside `shellComponent`**. The `shellComponent` can be re-rendered on navigation, causing LiveStore to remount and show the loading screen on every page transition.
+:::
+
+Use the `component` prop on `createRootRoute` for `<StoreRegistryProvider>`:
+
+```tsx
+import { Outlet, HeadContent, Scripts, createRootRoute } from '@tanstack/react-router'
+import { StoreRegistry } from '@livestore/livestore'
+import { StoreRegistryProvider } from '@livestore/react'
+import { Suspense, useState } from 'react'
+
+export const Route = createRootRoute({
+  shellComponent: RootShell,    // HTML structure only - NO state or providers
+  component: RootComponent,      // App shell - StoreRegistryProvider goes HERE
+})
+
+// HTML document shell - keep this stateless
+function RootShell({ children }: { children: React.ReactNode }) {
+  return (
+    <html lang="en">
+      <head><HeadContent /></head>
+      <body>
+        {children}
+        <Scripts />
+      </body>
+    </html>
+  )
+}
+
+// App shell - persists across SPA navigation
+function RootComponent() {
+  const [storeRegistry] = useState(() => new StoreRegistry())
+
+  return (
+    <Suspense fallback={<div>Loading LiveStore...</div>}>
+      <StoreRegistryProvider storeRegistry={storeRegistry}>
+        <Outlet />
+      </StoreRegistryProvider>
+    </Suspense>
+  )
+}
+```
+
+TanStack Start's `shellComponent` is designed for SSR HTML streaming and may be re-evaluated on server requests during navigation. When `<StoreRegistryProvider>` is placed there, the WebSocket connection is re-established and all LiveStore state is re-initialized on each navigation.
+
+If you see the loading screen on every navigation, check your server logs for multiple "Launching WebSocket" messages.
+
+### Expo / React Native
+
+LiveStore has a first-class integration with Expo / React Native via `@livestore/adapter-expo`. See the [Expo Adapter documentation](/platform-adapters/expo-adapter).
+
+### Next.js
+
+Given various Next.js limitations, LiveStore doesn't yet work with Next.js out of the box.
+
+### Complete Example
+
+See the <a href={`https://github.com/livestorejs/livestore/tree/${getBranchName()}/examples/web-multi-store`}>Multi-Store example</a> for a complete working application demonstrating various multi-store patterns.
+
+
+## Technical Notes
+
+- `@livestore/react` uses `React.useState()` under the hood for `useQuery()` / `useClientDocument()` to bind LiveStore's reactivity to React's reactivity. Some libraries use `React.useSyncExternalStore()` for similar purposes but `React.useState()` is more efficient for LiveStore's architecture.
+- `@livestore/react` supports React Strict Mode.

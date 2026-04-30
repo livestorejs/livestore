@@ -1,6 +1,6 @@
-import * as EventSequenceNumber from '../../schema/EventSequenceNumber.js'
-import { factsToString, validateFacts } from './facts.js'
-import { emptyHistoryDag, type HistoryDagNode, rootParentNum } from './history-dag-common.js'
+import * as EventSequenceNumber from '../../schema/EventSequenceNumber/mod.ts'
+import { factsToString, validateFacts } from './facts.ts'
+import { emptyHistoryDag, type HistoryDagNode, rootParentNum } from './history-dag-common.ts'
 
 export const historyDagFromNodes = (dagNodes: HistoryDagNode[], options?: { skipFactsCheck: boolean }) => {
   if (options?.skipFactsCheck !== true) {
@@ -18,13 +18,19 @@ export const historyDagFromNodes = (dagNodes: HistoryDagNode[], options?: { skip
 
   const dag = emptyHistoryDag()
 
-  dagNodes.forEach((node) => dag.addNode(EventSequenceNumber.toString(node.seqNum), node))
+  dagNodes.forEach((node) => {
+    dag.addNode(EventSequenceNumber.Client.toString(node.seqNum), node)
+  })
 
   dagNodes.forEach((node) => {
-    if (EventSequenceNumber.toString(node.parentSeqNum) !== EventSequenceNumber.toString(rootParentNum)) {
-      dag.addEdge(EventSequenceNumber.toString(node.parentSeqNum), EventSequenceNumber.toString(node.seqNum), {
-        type: 'parent',
-      })
+    if (EventSequenceNumber.Client.toString(node.parentSeqNum) !== EventSequenceNumber.Client.toString(rootParentNum)) {
+      dag.addEdge(
+        EventSequenceNumber.Client.toString(node.parentSeqNum),
+        EventSequenceNumber.Client.toString(node.seqNum),
+        {
+          type: 'parent',
+        },
+      )
     }
   })
 
@@ -33,16 +39,16 @@ export const historyDagFromNodes = (dagNodes: HistoryDagNode[], options?: { skip
     for (const factKey of factKeys) {
       // Find the first ancestor node with a matching fact key (via modifySet or modifyUnset) by traversing the graph backwards via the parent edges
       const depNode = (() => {
-        let currentSeqNumStr = EventSequenceNumber.toString(node.seqNum)
+        let currentSeqNumStr = EventSequenceNumber.Client.toString(node.seqNum)
 
-        while (currentSeqNumStr !== EventSequenceNumber.toString(rootParentNum)) {
+        while (currentSeqNumStr !== EventSequenceNumber.Client.toString(rootParentNum)) {
           const parentEdge = dag.inEdges(currentSeqNumStr).find((e) => dag.getEdgeAttribute(e, 'type') === 'parent')
-          if (!parentEdge) return null
+          if (parentEdge == null) return null
 
           const parentSeqNumStr = dag.source(parentEdge)
           const parentNode = dag.getNodeAttributes(parentSeqNumStr)
 
-          if (parentNode.factsGroup.modifySet.has(factKey) || parentNode.factsGroup.modifyUnset.has(factKey)) {
+          if (parentNode.factsGroup.modifySet.has(factKey) === true || parentNode.factsGroup.modifyUnset.has(factKey) === true) {
             return parentNode
           }
 
@@ -52,9 +58,9 @@ export const historyDagFromNodes = (dagNodes: HistoryDagNode[], options?: { skip
         return null
       })()
 
-      if (depNode) {
-        const depNodeIdStr = EventSequenceNumber.toString(depNode.seqNum)
-        const nodeIdStr = EventSequenceNumber.toString(node.seqNum)
+      if (depNode !== null) {
+        const depNodeIdStr = EventSequenceNumber.Client.toString(depNode.seqNum)
+        const nodeIdStr = EventSequenceNumber.Client.toString(node.seqNum)
         if (dag.edges(depNodeIdStr, nodeIdStr).filter((e) => dag.getEdgeAttributes(e).type === 'facts').length === 0) {
           dag.addEdge(depNodeIdStr, nodeIdStr, { type: 'facts' })
         }

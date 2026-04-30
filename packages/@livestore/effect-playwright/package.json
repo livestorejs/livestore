@@ -1,25 +1,49 @@
 {
   "name": "@livestore/effect-playwright",
   "version": "0.0.0",
-  "type": "module",
   "private": true,
+  "type": "module",
   "exports": {
-    ".": {
-      "types": "./dist/index.d.ts",
-      "default": "./dist/index.js"
-    }
-  },
-  "dependencies": {
-    "@livestore/utils": "workspace:*"
-  },
-  "devDependencies": {
-    "@playwright/test": "^1.52.0",
-    "@types/node": "^22.15.17"
-  },
-  "peerDependencies": {
-    "@playwright/test": "~1.52.0"
+    ".": "./src/index.ts"
   },
   "scripts": {
     "test": "echo 'No tests'"
+  },
+  "dependencies": {
+    "@livestore/utils": "workspace:^"
+  },
+  "devDependencies": {
+    "@effect/ai": "0.35.0",
+    "@effect/cli": "0.75.1",
+    "@effect/cluster": "0.58.2",
+    "@effect/experimental": "0.60.0",
+    "@effect/opentelemetry": "0.63.0",
+    "@effect/platform": "0.96.1",
+    "@effect/platform-browser": "0.76.0",
+    "@effect/platform-bun": "0.89.0",
+    "@effect/platform-node": "0.106.0",
+    "@effect/printer": "0.49.0",
+    "@effect/printer-ansi": "0.49.0",
+    "@effect/rpc": "0.75.1",
+    "@effect/sql": "0.51.1",
+    "@effect/typeclass": "0.40.0",
+    "@effect/vitest": "0.29.0",
+    "@opentelemetry/api": "1.9.0",
+    "@opentelemetry/resources": "2.2.0",
+    "@playwright/test": "1.59.1",
+    "@standard-schema/spec": "1.1.0",
+    "@types/node": "25.3.3",
+    "effect": "3.21.2"
+  },
+  "peerDependencies": {
+    "@playwright/test": "^1.56.0"
+  },
+  "$genie": {
+    "source": "package.json.genie.ts",
+    "warning": "DO NOT EDIT - changes will be overwritten",
+    "workspaceClosureDirs": [
+      "packages/@livestore/effect-playwright",
+      "packages/@livestore/utils"
+    ]
   }
 }

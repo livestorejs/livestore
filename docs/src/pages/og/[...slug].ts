@@ -1,7 +1,9 @@
 // https://hideoo.dev/notes/starlight-og-images/
 
-import { getCollection } from 'astro:content'
 import { OGImageRoute } from 'astro-og-canvas'
+import { getCollection } from 'astro:content'
+
+const ogEnabled = process.env.LS_SKIP_OG_IMAGES !== '1'
 
 // Get all entries from the `docs` content collection.
 const docs = await getCollection(
@@ -15,23 +17,36 @@ const docs = await getCollection(
 // frontmatter data as value.
 const pages = Object.fromEntries(docs.map(({ data, id }) => [id, { data }]))
 
-export const { getStaticPaths, GET } = OGImageRoute({
-  // Pass down the documentation pages.
+const ogRoute = OGImageRoute({
   pages,
-  // Define the name of the parameter used in the endpoint path, here `slug`
-  // as the file is named `[...slug].ts`.
   param: 'slug',
-  // Define a function called for each page to customize the generated image.
-  getImageOptions: (_id, page: (typeof pages)[number]) => {
-    return {
-      // Use the page title and description as the image title and description.
-      title: page.data.title,
-      description: page.data.description,
-      // Customize various colors and add a border.
-      bgGradient: [[24, 24, 27]],
-      border: { color: [63, 63, 70], width: 20 },
-      padding: 60,
-      logo: { path: './src/logo.png', size: [180] },
-    }
-  },
+  getImageOptions: (_id: string, page: (typeof pages)[string]) => ({
+    title: page.data.title,
+    description: page.data.description ?? '',
+    bgGradient: [[24, 24, 27]],
+    border: { color: [63, 63, 70], width: 20 },
+    padding: 60,
+    logo: { path: './src/logo.png', size: [180] },
+  }),
 })
+
+export const prerender = ogEnabled
+
+export const getStaticPaths = ogEnabled === true ? ogRoute.getStaticPaths : () => []
+
+let generationQueue: Promise<void> = Promise.resolve()
+
+/** Serialise OG rendering to prevent CanvasKit FontMgr crashes under load. */
+const enqueue = <T>(task: () => Promise<T>): Promise<T> => {
+  const run = generationQueue.then(task, task)
+  generationQueue = run.then(
+    () => undefined,
+    () => undefined,
+  )
+  return run
+}
+
+export const GET: typeof ogRoute.GET =
+  ogEnabled === true
+    ? async (context) => enqueue(async () => ogRoute.GET(context))
+    : async () => new Response('OG image generation disabled', { status: 204 })

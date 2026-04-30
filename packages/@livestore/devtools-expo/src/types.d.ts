@@ -11,8 +11,12 @@ export type Options = {
    * File path must be relative to the project root and will be imported via Vite.
    *
    * Example: `./src/schema.ts`
+   *
+   * If your app uses multiple schemas, you can provide an array of schema paths.
+   *
+   * Example: `[./src/schema.ts, ./src/schema2.ts]`
    */
-  schemaPath: string
+  schemaPath: string | ReadonlyArray<string>
   /**
    * The port to listen on for the devtools server
    *

@@ -8,18 +8,48 @@ NOTE we're mapping to absolute paths here to avoid issues where tests seem to be
 */
 
 const rootDir = import.meta.dirname
+const resolveProjectPath = (packageDir: string): string => {
+  const rootConfig = path.join(packageDir, 'vitest.config.ts')
+  if (fs.existsSync(rootConfig)) {
+    return rootConfig
+  }
+
+  const testsConfig = path.join(packageDir, 'tests/vitest.config.ts')
+  if (fs.existsSync(testsConfig)) {
+    return testsConfig
+  }
+
+  return packageDir
+}
+
 const rootPackages = fs
   .readdirSync(path.join(rootDir, './packages/@livestore'))
   .filter((dir) => fs.statSync(path.join(rootDir, './packages/@livestore', dir)).isDirectory())
-  .map((dir) => path.join(rootDir, './packages/@livestore', dir))
+  // Exclude solid - it has separate client/ssr configs added explicitly below
+  .filter((dir) => dir !== 'solid')
+  .map((dir) => resolveProjectPath(path.join(rootDir, './packages/@livestore', dir)))
 
 export default defineConfig({
   test: {
-    workspace: [
+    projects: [
       ...rootPackages,
+      // Solid needs separate client/ssr configs for different vite-plugin-solid settings
+      path.join(rootDir, 'packages/@livestore/solid/vitest.client.config.ts'),
+      path.join(rootDir, 'packages/@livestore/solid/vitest.ssr.config.ts'),
       // path.join(rootDir, 'tests/'),
+      path.join(rootDir, 'packages/@local/astro-twoslash-code/vitest.config.ts'),
+      path.join(rootDir, 'packages/@local/astro-tldraw/vitest.config.ts'),
       path.join(rootDir, 'tests/integration/src/tests/node-sync/vitest.config.ts'),
+      path.join(rootDir, 'tests/integration/src/tests/node-misc/vitest.config.ts'),
+      path.join(rootDir, 'tests/integration/src/tests/adapter-cloudflare/vitest.config.ts'),
+      path.join(rootDir, 'tests/integration/src/tests/adapter-web/vitest.config.ts'),
+      path.join(rootDir, 'tests/integration/src/tests/devtools/vitest.config.ts'),
+      path.join(rootDir, 'tests/sync-provider/vitest.config.ts'),
       path.join(rootDir, 'tests/package-common'),
+      path.join(rootDir, 'tests/wa-sqlite/vitest.config.ts'),
+      path.join(rootDir, 'docs/vitest.config.ts'),
+      path.join(rootDir, 'scripts'),
     ],
+    server: { deps: { inline: ['@effect/vitest'] } },
   },
 })

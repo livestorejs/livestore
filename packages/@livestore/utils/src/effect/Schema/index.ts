@@ -1,14 +1,13 @@
 import { Transferable } from '@effect/platform'
-import type { SchemaAST } from 'effect'
 import { Effect, Hash, ParseResult, Schema } from 'effect'
 import type { ParseError } from 'effect/ParseResult'
 import type { ParseOptions } from 'effect/SchemaAST'
+import * as SchemaAST from 'effect/SchemaAST'
 
-import { shouldNeverHappen } from '../../index.js'
+import { shouldNeverHappen } from '../../mod.ts'
 
 export * from 'effect/Schema'
-export * from './debug-diff.js'
-export * from './msgpack.js'
+export * from './debug-diff.ts'
 
 // NOTE this is a temporary workaround until Effect schema has a better way to hash schemas
 // https://github.com/Effect-TS/effect/issues/2719
@@ -24,9 +23,27 @@ export const hash = (schema: Schema.Schema<any>) => {
   }
 }
 
+const resolveStructAst = (ast: SchemaAST.AST): SchemaAST.AST => {
+  if (SchemaAST.isTransformation(ast) === true) {
+    return resolveStructAst(ast.from)
+  }
+
+  return ast
+}
+
+export const getResolvedPropertySignatures = (
+  schema: Schema.Schema.AnyNoContext,
+): ReadonlyArray<SchemaAST.PropertySignature> => {
+  const resolvedAst = resolveStructAst(schema.ast)
+  return SchemaAST.getPropertySignatures(resolvedAst)
+}
+
+/** Objects that can be transferred between contexts (workers, etc.) */
+type TransferableObject = ArrayBuffer | MessagePort
+
 export const encodeWithTransferables =
-  <A, I, R>(schema: Schema.Schema<A, I, R>, options?: ParseOptions | undefined) =>
-  (a: A, overrideOptions?: ParseOptions | undefined): Effect.Effect<[I, Transferable[]], ParseError, R> =>
+  <A, I, R>(schema: Schema.Schema<A, I, R>, options?: ParseOptions) =>
+  (a: A, overrideOptions?: ParseOptions): Effect.Effect<[I, TransferableObject[]], ParseError, R> =>
     Effect.gen(function* () {
       const collector = yield* Transferable.makeCollector
 
@@ -34,11 +51,11 @@ export const encodeWithTransferables =
         Effect.provideService(Transferable.Collector, collector),
       )
 
-      return [encoded, collector.unsafeRead() as Transferable[]]
+      return [encoded, collector.unsafeRead() as TransferableObject[]]
     })
 
 export const decodeSyncDebug: <A, I>(
-  schema: Schema.Schema<A, I, never>,
+  schema: Schema.Schema<A, I>,
   options?: SchemaAST.ParseOptions,
 ) => (i: I, overrideOptions?: SchemaAST.ParseOptions) => A = (schema, options) => (input, overrideOptions) => {
   const res = Schema.decodeEither(schema, options)(input, overrideOptions)
@@ -50,7 +67,7 @@ export const decodeSyncDebug: <A, I>(
 }
 
 export const encodeSyncDebug: <A, I>(
-  schema: Schema.Schema<A, I, never>,
+  schema: Schema.Schema<A, I>,
   options?: SchemaAST.ParseOptions,
 ) => (a: A, overrideOptions?: SchemaAST.ParseOptions) => I = (schema, options) => (input, overrideOptions) => {
   const res = Schema.encodeEither(schema, options)(input, overrideOptions)
@@ -82,4 +99,4 @@ export const JsonValue: Schema.Schema<JsonValue> = Schema.Union(
   Schema.Null,
   Schema.Array(Schema.suspend(() => JsonValue)),
   Schema.Record({ key: Schema.String, value: Schema.suspend(() => JsonValue) }),
-).annotations({ title: 'JsonValue' })
+).annotations({ identifier: 'JsonValue' })

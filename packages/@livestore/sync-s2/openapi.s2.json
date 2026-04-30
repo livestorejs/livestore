@@ -1,0 +1,2933 @@
+{
+  "openapi": "3.1.0",
+  "info": {
+    "title": "S2 API",
+    "description": "Serverless API for streaming data backed by object storage.",
+    "termsOfService": "https://s2.dev/terms",
+    "contact": {
+      "email": "hi@s2.dev"
+    },
+    "license": {
+      "name": "Apache 2.0"
+    },
+    "version": "1.0.0"
+  },
+  "servers": [
+    {
+      "url": "https://aws.s2.dev/v1"
+    }
+  ],
+  "paths": {
+    "/access-tokens": {
+      "get": {
+        "tags": ["access-tokens"],
+        "summary": "List access tokens.",
+        "operationId": "list_access_tokens",
+        "parameters": [
+          {
+            "name": "prefix",
+            "in": "query",
+            "description": "Filter to access tokens whose ID begins with this prefix.",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "default": ""
+            }
+          },
+          {
+            "name": "start_after",
+            "in": "query",
+            "description": "Filter to access tokens whose ID lexicographically starts after this string.",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "default": ""
+            }
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "description": "Number of results, up to a maximum of 1000.",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "default": 1000,
+              "maximum": 1000,
+              "minimum": 0
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ListAccessTokensResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "tags": ["access-tokens"],
+        "summary": "Issue a new access token.",
+        "operationId": "issue_access_token",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AccessTokenInfo"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/IssueAccessTokenResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/access-tokens/{id}": {
+      "delete": {
+        "tags": ["access-tokens"],
+        "summary": "Revoke an access token.",
+        "operationId": "revoke_access_token",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "description": "Access token ID.",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": ""
+          },
+          "400": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/basins": {
+      "get": {
+        "tags": ["basins"],
+        "summary": "List basins.",
+        "operationId": "list_basins",
+        "parameters": [
+          {
+            "name": "prefix",
+            "in": "query",
+            "description": "Filter to basins whose names begin with this prefix.",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "default": ""
+            }
+          },
+          {
+            "name": "start_after",
+            "in": "query",
+            "description": "Filter to basins whose names lexicographically start after this string.\nIt must be greater than or equal to the `prefix` if specified.",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "default": ""
+            }
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "description": "Number of results, up to a maximum of 1000.",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "default": 1000,
+              "maximum": 1000,
+              "minimum": 0
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ListBasinsResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "tags": ["basins"],
+        "summary": "Create a basin.",
+        "operationId": "create_basin",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateBasinRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BasinInfo"
+                }
+              }
+            }
+          },
+          "201": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BasinInfo"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/basins/{basin}": {
+      "get": {
+        "tags": ["basins"],
+        "summary": "Get basin configuration.",
+        "operationId": "get_basin_config",
+        "parameters": [
+          {
+            "name": "basin",
+            "in": "path",
+            "description": "Basin name.",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "maximum": 48,
+              "minimum": 8,
+              "pattern": "^(?!-)[a-z0-9-]{8,48}(?<!-)$"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BasinConfig"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      },
+      "put": {
+        "tags": ["basins"],
+        "summary": "Create or reconfigure a basin.",
+        "operationId": "create_or_reconfigure_basin",
+        "parameters": [
+          {
+            "name": "s2-request-token",
+            "in": "header",
+            "description": "Client-specified request token for idempotent retries.",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "basin",
+            "in": "path",
+            "description": "Basin name.",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "maximum": 48,
+              "minimum": 8,
+              "pattern": "^(?!-)[a-z0-9-]{8,48}(?<!-)$"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "oneOf": [
+                  {
+                    "type": "null"
+                  },
+                  {
+                    "$ref": "#/components/schemas/CreateOrReconfigureBasinRequest"
+                  }
+                ]
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BasinInfo"
+                }
+              }
+            }
+          },
+          "201": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BasinInfo"
+                }
+              }
+            }
+          },
+          "204": {
+            "description": ""
+          },
+          "400": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      },
+      "delete": {
+        "tags": ["basins"],
+        "summary": "Delete a basin.",
+        "operationId": "delete_basin",
+        "parameters": [
+          {
+            "name": "basin",
+            "in": "path",
+            "description": "Basin name.",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "maximum": 48,
+              "minimum": 8,
+              "pattern": "^(?!-)[a-z0-9-]{8,48}(?<!-)$"
+            }
+          }
+        ],
+        "responses": {
+          "202": {
+            "description": ""
+          },
+          "400": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      },
+      "patch": {
+        "tags": ["basins"],
+        "summary": "Reconfigure a basin.",
+        "operationId": "reconfigure_basin",
+        "parameters": [
+          {
+            "name": "basin",
+            "in": "path",
+            "description": "Basin name.",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "maximum": 48,
+              "minimum": 8,
+              "pattern": "^(?!-)[a-z0-9-]{8,48}(?<!-)$"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/BasinReconfiguration"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BasinConfig"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/metrics": {
+      "get": {
+        "tags": ["metrics"],
+        "summary": "Account-level metrics.",
+        "operationId": "account_metrics",
+        "parameters": [
+          {
+            "name": "set",
+            "in": "query",
+            "description": "Metric set to return.",
+            "required": true,
+            "schema": {
+              "$ref": "#/components/schemas/AccountMetricSet"
+            }
+          },
+          {
+            "name": "start",
+            "in": "query",
+            "description": "Start timestamp as Unix epoch seconds, if applicable for the metric set.",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "format": "int32",
+              "minimum": 0
+            }
+          },
+          {
+            "name": "end",
+            "in": "query",
+            "description": "End timestamp as Unix epoch seconds, if applicable for the metric set.",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "format": "int32",
+              "minimum": 0
+            }
+          },
+          {
+            "name": "interval",
+            "in": "query",
+            "description": "Interval to aggregate over for timeseries metric sets.",
+            "required": false,
+            "schema": {
+              "$ref": "#/components/schemas/TimeseriesInterval"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MetricSetResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/metrics/{basin}": {
+      "get": {
+        "tags": ["metrics"],
+        "summary": "Basin-level metrics.",
+        "operationId": "basin_metrics",
+        "parameters": [
+          {
+            "name": "set",
+            "in": "query",
+            "description": "Metric set to return.",
+            "required": true,
+            "schema": {
+              "$ref": "#/components/schemas/BasinMetricSet"
+            }
+          },
+          {
+            "name": "start",
+            "in": "query",
+            "description": "Start timestamp as Unix epoch seconds, if applicable for the metric set.",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "format": "int32",
+              "minimum": 0
+            }
+          },
+          {
+            "name": "end",
+            "in": "query",
+            "description": "End timestamp as Unix epoch seconds, if applicable for the metric set.",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "format": "int32",
+              "minimum": 0
+            }
+          },
+          {
+            "name": "interval",
+            "in": "query",
+            "description": "Interval to aggregate over for timeseries metric sets.",
+            "required": false,
+            "schema": {
+              "$ref": "#/components/schemas/TimeseriesInterval"
+            }
+          },
+          {
+            "name": "basin",
+            "in": "path",
+            "description": "Basin name.",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "maximum": 48,
+              "minimum": 8,
+              "pattern": "^(?!-)[a-z0-9-]{8,48}(?<!-)$"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MetricSetResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/metrics/{basin}/{stream}": {
+      "get": {
+        "tags": ["metrics"],
+        "summary": "Stream-level metrics.",
+        "operationId": "stream_metrics",
+        "parameters": [
+          {
+            "name": "set",
+            "in": "query",
+            "description": "Metric set to return.",
+            "required": true,
+            "schema": {
+              "$ref": "#/components/schemas/StreamMetricSet"
+            }
+          },
+          {
+            "name": "start",
+            "in": "query",
+            "description": "Start timestamp as Unix epoch seconds, if applicable for the metric set.",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "format": "int32",
+              "minimum": 0
+            }
+          },
+          {
+            "name": "end",
+            "in": "query",
+            "description": "End timestamp as Unix epoch seconds, if applicable for metric set.",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "format": "int32",
+              "minimum": 0
+            }
+          },
+          {
+            "name": "interval",
+            "in": "query",
+            "description": "Interval to aggregate over for timeseries metric sets.",
+            "required": false,
+            "schema": {
+              "$ref": "#/components/schemas/TimeseriesInterval"
+            }
+          },
+          {
+            "name": "basin",
+            "in": "path",
+            "description": "Basin name.",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "maximum": 48,
+              "minimum": 8,
+              "pattern": "^(?!-)[a-z0-9-]{8,48}(?<!-)$"
+            }
+          },
+          {
+            "name": "stream",
+            "in": "path",
+            "description": "Stream name.",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MetricSetResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/streams": {
+      "get": {
+        "tags": ["streams"],
+        "summary": "List streams.",
+        "operationId": "list_streams",
+        "parameters": [
+          {
+            "name": "prefix",
+            "in": "query",
+            "description": "Filter to streams whose name begins with this prefix.",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "default": ""
+            }
+          },
+          {
+            "name": "start_after",
+            "in": "query",
+            "description": "Filter to streams whose name begins with this prefix.\nIt must be greater than or equal to the `prefix` if specified.",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "default": ""
+            }
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "description": "Number of results, up to a maximum of 1000.",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "default": 1000,
+              "maximum": 1000,
+              "minimum": 0
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ListStreamsResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        },
+        "servers": [
+          {
+            "url": "https://{basin}.b.aws.s2.dev/v1",
+            "description": "Endpoint for the basin",
+            "variables": {
+              "basin": {
+                "default": "",
+                "description": "Basin name"
+              }
+            }
+          }
+        ]
+      },
+      "post": {
+        "tags": ["streams"],
+        "summary": "Create a stream.",
+        "operationId": "create_stream",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateStreamRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/StreamInfo"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        },
+        "servers": [
+          {
+            "url": "https://{basin}.b.aws.s2.dev/v1",
+            "description": "Endpoint for the basin",
+            "variables": {
+              "basin": {
+                "default": "",
+                "description": "Basin name"
+              }
+            }
+          }
+        ]
+      }
+    },
+    "/streams/{stream}": {
+      "get": {
+        "tags": ["streams"],
+        "summary": "Get stream configuration.",
+        "operationId": "get_stream_config",
+        "parameters": [
+          {
+            "name": "stream",
+            "in": "path",
+            "description": "Stream name.",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/StreamConfig"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        },
+        "servers": [
+          {
+            "url": "https://{basin}.b.aws.s2.dev/v1",
+            "description": "Endpoint for the basin",
+            "variables": {
+              "basin": {
+                "default": "",
+                "description": "Basin name"
+              }
+            }
+          }
+        ]
+      },
+      "put": {
+        "tags": ["streams"],
+        "summary": "Create or reconfigure a stream.",
+        "operationId": "create_or_reconfigure_stream",
+        "parameters": [
+          {
+            "name": "stream",
+            "in": "path",
+            "description": "Stream name.",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "s2-request-token",
+            "in": "header",
+            "description": "Client-specified request token for idempotent retries.",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "oneOf": [
+                  {
+                    "type": "null"
+                  },
+                  {
+                    "$ref": "#/components/schemas/StreamConfig"
+                  }
+                ]
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/StreamInfo"
+                }
+              }
+            }
+          },
+          "204": {
+            "description": ""
+          },
+          "400": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        },
+        "servers": [
+          {
+            "url": "https://{basin}.b.aws.s2.dev/v1",
+            "description": "Endpoint for the basin",
+            "variables": {
+              "basin": {
+                "default": "",
+                "description": "Basin name"
+              }
+            }
+          }
+        ]
+      },
+      "delete": {
+        "tags": ["streams"],
+        "summary": "Delete a stream.",
+        "operationId": "delete_stream",
+        "parameters": [
+          {
+            "name": "stream",
+            "in": "path",
+            "description": "Stream name.",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "202": {
+            "description": ""
+          },
+          "400": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        },
+        "servers": [
+          {
+            "url": "https://{basin}.b.aws.s2.dev/v1",
+            "description": "Endpoint for the basin",
+            "variables": {
+              "basin": {
+                "default": "",
+                "description": "Basin name"
+              }
+            }
+          }
+        ]
+      },
+      "patch": {
+        "tags": ["streams"],
+        "summary": "Reconfigure a stream.",
+        "operationId": "reconfigure_stream",
+        "parameters": [
+          {
+            "name": "stream",
+            "in": "path",
+            "description": "Stream name.",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/StreamReconfiguration"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/StreamConfig"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        },
+        "servers": [
+          {
+            "url": "https://{basin}.b.aws.s2.dev/v1",
+            "description": "Endpoint for the basin",
+            "variables": {
+              "basin": {
+                "default": "",
+                "description": "Basin name"
+              }
+            }
+          }
+        ]
+      }
+    },
+    "/streams/{stream}/records": {
+      "get": {
+        "tags": ["records"],
+        "summary": "Read records.",
+        "operationId": "read",
+        "parameters": [
+          {
+            "name": "stream",
+            "in": "path",
+            "description": "Stream name.",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "s2-format",
+            "in": "header",
+            "description": "Defines the interpretation of record data (header name, header value, and body) with the JSON content type.\nUse `raw` (default) for efficient transmission and storage of Unicode data — storage will be in UTF-8.\nUse `base64` for safe transmission with efficient storage of binary data.",
+            "required": false,
+            "schema": {
+              "$ref": "#/components/schemas/S2Format"
+            }
+          },
+          {
+            "name": "seq_num",
+            "in": "query",
+            "description": "Start from a sequence number.",
+            "required": false,
+            "schema": {
+              "$ref": "#/components/schemas/u64"
+            }
+          },
+          {
+            "name": "timestamp",
+            "in": "query",
+            "description": "Start from a timestamp.",
+            "required": false,
+            "schema": {
+              "$ref": "#/components/schemas/u64"
+            }
+          },
+          {
+            "name": "tail_offset",
+            "in": "query",
+            "description": "Start from number of records before the next sequence number.",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "format": "int64",
+              "minimum": 0
+            }
+          },
+          {
+            "name": "count",
+            "in": "query",
+            "description": "Limit total records to return.\nIf this is provided, tailing will be disabled.",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "format": "int64",
+              "minimum": 0
+            }
+          },
+          {
+            "name": "bytes",
+            "in": "query",
+            "description": "Limit total metered bytes to return.\nIf this is provided, tailing will be disabled.",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "minimum": 0
+            }
+          },
+          {
+            "name": "until",
+            "in": "query",
+            "description": "Exclusive timestamp to read until.\nIf this is provided, tailing will be disabled.",
+            "required": false,
+            "schema": {
+              "$ref": "#/components/schemas/u64"
+            }
+          },
+          {
+            "name": "clamp",
+            "in": "query",
+            "description": "Clamp the start position at the tail position.\nIf set, the read will start at the tail of the stream if the requested position is greater than it.",
+            "required": false,
+            "schema": {
+              "type": "boolean"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ReadBatch"
+                }
+              },
+              "text/event-stream": {
+                "schema": {
+                  "$ref": "#/components/schemas/ReadEvent"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "416": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TailResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        },
+        "servers": [
+          {
+            "url": "https://{basin}.b.aws.s2.dev/v1",
+            "description": "Endpoint for the basin",
+            "variables": {
+              "basin": {
+                "default": "",
+                "description": "Basin name"
+              }
+            }
+          }
+        ]
+      },
+      "post": {
+        "tags": ["records"],
+        "summary": "Append records.",
+        "operationId": "append",
+        "parameters": [
+          {
+            "name": "stream",
+            "in": "path",
+            "description": "Stream name.",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "s2-format",
+            "in": "header",
+            "description": "Defines the interpretation of record data (header name, header value, and body) with the JSON content type.\nUse `raw` (default) for efficient transmission and storage of Unicode data — storage will be in UTF-8.\nUse `base64` for safe transmission with efficient storage of binary data.",
+            "required": false,
+            "schema": {
+              "$ref": "#/components/schemas/S2Format"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AppendInput"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AppendAck"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "412": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AppendConditionFailed"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        },
+        "servers": [
+          {
+            "url": "https://{basin}.b.aws.s2.dev/v1",
+            "description": "Endpoint for the basin",
+            "variables": {
+              "basin": {
+                "default": "",
+                "description": "Basin name"
+              }
+            }
+          }
+        ]
+      }
+    },
+    "/streams/{stream}/records/tail": {
+      "get": {
+        "tags": ["records"],
+        "summary": "Check the tail.",
+        "operationId": "check_tail",
+        "parameters": [
+          {
+            "name": "stream",
+            "in": "path",
+            "description": "Stream name.",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TailResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        },
+        "servers": [
+          {
+            "url": "https://{basin}.b.aws.s2.dev/v1",
+            "description": "Endpoint for the basin",
+            "variables": {
+              "basin": {
+                "default": "",
+                "description": "Basin name"
+              }
+            }
+          }
+        ]
+      }
+    }
+  },
+  "components": {
+    "schemas": {
+      "AccessTokenInfo": {
+        "type": "object",
+        "required": ["id", "scope"],
+        "properties": {
+          "auto_prefix_streams": {
+            "type": "boolean",
+            "description": "Namespace streams based on the configured stream-level scope, which must be a prefix.\nStream name arguments will be automatically prefixed, and the prefix will be stripped when listing streams.",
+            "default": false
+          },
+          "expires_at": {
+            "type": ["string", "null"],
+            "format": "time",
+            "description": "Expiration time in ISO 8601 format.\nIf not set, the expiration will be set to that of the requestor's token."
+          },
+          "id": {
+            "type": "string",
+            "description": "Access token ID.\nIt must be unique to the account and between 1 and 96 bytes in length."
+          },
+          "scope": {
+            "$ref": "#/components/schemas/AccessTokenScope",
+            "description": "Access token scope."
+          }
+        }
+      },
+      "AccessTokenScope": {
+        "type": "object",
+        "properties": {
+          "access_tokens": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "$ref": "#/components/schemas/ResourceSet",
+                "description": "Token IDs allowed."
+              }
+            ]
+          },
+          "basins": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "$ref": "#/components/schemas/ResourceSet",
+                "description": "Basin names allowed."
+              }
+            ]
+          },
+          "op_groups": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "$ref": "#/components/schemas/PermittedOperationGroups",
+                "description": "Access permissions at operation group level."
+              }
+            ]
+          },
+          "ops": {
+            "type": ["array", "null"],
+            "items": {
+              "$ref": "#/components/schemas/Operation"
+            },
+            "description": "Operations allowed for the token.\nA union of allowed operations and groups is used as an effective set of allowed operations."
+          },
+          "streams": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "$ref": "#/components/schemas/ResourceSet",
+                "description": "Stream names allowed."
+              }
+            ]
+          }
+        }
+      },
+      "AccountMetricSet": {
+        "type": "string",
+        "enum": ["active-basins", "account-ops"]
+      },
+      "Accumulation": {
+        "type": "object",
+        "required": ["name", "unit", "bucket_length", "values"],
+        "properties": {
+          "bucket_length": {
+            "$ref": "#/components/schemas/TimeseriesInterval",
+            "description": "The duration of bucket for the accumulation."
+          },
+          "name": {
+            "type": "string",
+            "description": "Timeseries name."
+          },
+          "unit": {
+            "$ref": "#/components/schemas/MetricUnit",
+            "description": "Unit of the metric."
+          },
+          "values": {
+            "type": "array",
+            "items": {
+              "type": "array",
+              "items": false,
+              "prefixItems": [
+                {
+                  "type": "integer",
+                  "format": "int32",
+                  "minimum": 0
+                },
+                {
+                  "type": "number",
+                  "format": "double"
+                }
+              ]
+            },
+            "description": "Timeseries values.\nEach element is a tuple of a timestamp in Unix epoch seconds and a data point.\nThe data point represents the accumulated value for a bucket of time starting at the provided timestamp, lasting for the duration of the `bucket_length` parameter."
+          }
+        }
+      },
+      "AppendAck": {
+        "type": "object",
+        "description": "Success response to an `append` request.",
+        "required": ["start", "end", "tail"],
+        "properties": {
+          "end": {
+            "$ref": "#/components/schemas/StreamPosition",
+            "description": "Sequence number of the last record that was appended `+ 1`, and timestamp of the last record that was appended.\nThe difference between `end.seq_num` and `start.seq_num` will be the number of records appended."
+          },
+          "start": {
+            "$ref": "#/components/schemas/StreamPosition",
+            "description": "Sequence number and timestamp of the first record that was appended."
+          },
+          "tail": {
+            "$ref": "#/components/schemas/StreamPosition",
+            "description": "Sequence number that will be assigned to the next record on the stream, and timestamp of the last record on the stream.\nThis can be greater than the `end` position in case of concurrent appends."
+          }
+        }
+      },
+      "AppendConditionFailed": {
+        "oneOf": [
+          {
+            "type": "object",
+            "title": "fencing token",
+            "description": "Fencing token did not match.\nThe expected fencing token is returned.",
+            "required": ["fencing_token_mismatch"],
+            "properties": {
+              "fencing_token_mismatch": {
+                "type": "string",
+                "description": "Fencing token did not match.\nThe expected fencing token is returned."
+              }
+            }
+          },
+          {
+            "type": "object",
+            "title": "seq num",
+            "description": "Sequence number did not match the tail of the stream.\nThe expected next sequence number is returned.",
+            "required": ["seq_num_mismatch"],
+            "properties": {
+              "seq_num_mismatch": {
+                "type": "integer",
+                "format": "int64",
+                "description": "Sequence number did not match the tail of the stream.\nThe expected next sequence number is returned.",
+                "minimum": 0
+              }
+            }
+          }
+        ],
+        "description": "Aborted due to a failed condition."
+      },
+      "AppendInput": {
+        "type": "object",
+        "description": "Payload of an `append` request.",
+        "required": ["records"],
+        "properties": {
+          "fencing_token": {
+            "type": ["string", "null"],
+            "description": "Enforce a fencing token, which starts out as an empty string that can be overridden by a `fence` command record."
+          },
+          "match_seq_num": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "$ref": "#/components/schemas/u64",
+                "description": "Enforce that the sequence number assigned to the first record matches."
+              }
+            ]
+          },
+          "records": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/AppendRecord"
+            },
+            "description": "Batch of records to append atomically, which must contain at least one record, and no more than 1000.\nThe total size of a batch of records may not exceed 1 MiB of metered bytes."
+          }
+        }
+      },
+      "AppendRecord": {
+        "type": "object",
+        "description": "Record to be appended to a stream.",
+        "properties": {
+          "body": {
+            "type": "string",
+            "description": "Body of the record."
+          },
+          "headers": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/Header"
+            },
+            "description": "Series of name-value pairs for this record."
+          },
+          "timestamp": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "$ref": "#/components/schemas/u64",
+                "description": "Timestamp for this record.\nThe service will always ensure monotonicity by adjusting it up if necessary to the maximum observed timestamp.\nRefer to stream timestamping configuration for the finer semantics around whether a client-specified timestamp is required, and whether it will be capped at the arrival time."
+              }
+            ]
+          }
+        }
+      },
+      "BasinConfig": {
+        "type": "object",
+        "properties": {
+          "create_stream_on_append": {
+            "type": "boolean",
+            "description": "Create stream on append if it doesn't exist, using the default stream configuration."
+          },
+          "create_stream_on_read": {
+            "type": "boolean",
+            "description": "Create stream on read if it doesn't exist, using the default stream configuration."
+          },
+          "default_stream_config": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "$ref": "#/components/schemas/StreamConfig",
+                "description": "Default stream configuration."
+              }
+            ]
+          }
+        }
+      },
+      "BasinInfo": {
+        "type": "object",
+        "required": ["name", "scope", "state"],
+        "properties": {
+          "name": {
+            "type": "string",
+            "description": "Basin name."
+          },
+          "scope": {
+            "$ref": "#/components/schemas/BasinScope",
+            "description": "Basin scope."
+          },
+          "state": {
+            "$ref": "#/components/schemas/BasinState",
+            "description": "Basin state."
+          }
+        }
+      },
+      "BasinMetricSet": {
+        "type": "string",
+        "enum": ["storage", "append-ops", "read-ops", "read-throughput", "append-throughput", "basin-ops"]
+      },
+      "BasinReconfiguration": {
+        "type": "object",
+        "properties": {
+          "create_stream_on_append": {
+            "type": ["boolean", "null"],
+            "description": "Create a stream on append."
+          },
+          "create_stream_on_read": {
+            "type": ["boolean", "null"],
+            "description": "Create a stream on read."
+          },
+          "default_stream_config": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "$ref": "#/components/schemas/StreamReconfiguration",
+                "description": "Basin configuration."
+              }
+            ]
+          }
+        }
+      },
+      "BasinScope": {
+        "type": "string",
+        "enum": ["aws:us-east-1"]
+      },
+      "BasinState": {
+        "type": "string",
+        "enum": ["active", "creating", "deleting"]
+      },
+      "CreateBasinRequest": {
+        "type": "object",
+        "required": ["basin"],
+        "properties": {
+          "basin": {
+            "type": "string",
+            "description": "Basin name which must be globally unique.\nIt can be between 8 and 48 characters in length, and comprise lowercase letters, numbers and hyphens.\nIt cannot begin or end with a hyphen."
+          },
+          "config": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "$ref": "#/components/schemas/BasinConfig",
+                "description": "Basin configuration."
+              }
+            ]
+          },
+          "scope": {
+            "oneOf": [
+              {
+                "$ref": "#/components/schemas/BasinScope",
+                "description": "Basin scope."
+              }
+            ],
+            "default": "aws:us-east-1"
+          }
+        }
+      },
+      "CreateOrReconfigureBasinRequest": {
+        "type": "object",
+        "properties": {
+          "config": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "$ref": "#/components/schemas/BasinConfig",
+                "description": "Basin configuration."
+              }
+            ]
+          },
+          "scope": {
+            "oneOf": [
+              {
+                "$ref": "#/components/schemas/BasinScope",
+                "description": "Basin scope.\nThis cannot be reconfigured."
+              }
+            ],
+            "default": "aws:us-east-1"
+          }
+        }
+      },
+      "CreateStreamRequest": {
+        "type": "object",
+        "required": ["stream"],
+        "properties": {
+          "config": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "$ref": "#/components/schemas/StreamConfig",
+                "description": "Stream configuration."
+              }
+            ]
+          },
+          "stream": {
+            "type": "string",
+            "description": "Stream name that is unique to the basin.\nIt can be between 1 and 512 bytes in length."
+          }
+        }
+      },
+      "DeleteOnEmptyConfig": {
+        "type": "object",
+        "properties": {
+          "min_age_secs": {
+            "type": "integer",
+            "format": "int64",
+            "description": "Minimum age in seconds before an empty stream can be deleted.\nSet to 0 (default) to disable delete-on-empty (don't delete automatically).",
+            "minimum": 0
+          }
+        }
+      },
+      "DeleteOnEmptyReconfiguration": {
+        "type": "object",
+        "properties": {
+          "min_age_secs": {
+            "type": ["integer", "null"],
+            "format": "int64",
+            "description": "Minimum age in seconds before an empty stream can be deleted.\nSet to 0 to disable delete-on-empty (don't delete automatically).",
+            "minimum": 0
+          }
+        }
+      },
+      "ErrorResponse": {
+        "type": "object",
+        "required": ["message"],
+        "properties": {
+          "code": {
+            "type": ["string", "null"]
+          },
+          "message": {
+            "type": "string"
+          }
+        }
+      },
+      "Gauge": {
+        "type": "object",
+        "required": ["name", "unit", "values"],
+        "properties": {
+          "name": {
+            "type": "string",
+            "description": "Timeseries name."
+          },
+          "unit": {
+            "$ref": "#/components/schemas/MetricUnit",
+            "description": "Unit of the metric."
+          },
+          "values": {
+            "type": "array",
+            "items": {
+              "type": "array",
+              "items": false,
+              "prefixItems": [
+                {
+                  "type": "integer",
+                  "format": "int32",
+                  "minimum": 0
+                },
+                {
+                  "type": "number",
+                  "format": "double"
+                }
+              ]
+            },
+            "description": "Timeseries values.\nEach element is a tuple of a timestamp in Unix epoch seconds and a data point.\nThe data point represents the value at the instant of the timestamp."
+          }
+        }
+      },
+      "Header": {
+        "type": "array",
+        "items": {
+          "type": "string",
+          "description": "Headers add structured information to a record as name-value pairs.\n\nThe name cannot be empty, with the exception of an S2 command record."
+        },
+        "description": "Headers add structured information to a record as name-value pairs.\n\nThe name cannot be empty, with the exception of an S2 command record.",
+        "maxItems": 2,
+        "minItems": 2
+      },
+      "InfiniteRetention": {
+        "type": "object"
+      },
+      "IssueAccessTokenResponse": {
+        "type": "object",
+        "required": ["access_token"],
+        "properties": {
+          "access_token": {
+            "type": "string",
+            "description": "Created access token."
+          }
+        }
+      },
+      "Label": {
+        "type": "object",
+        "required": ["name", "values"],
+        "properties": {
+          "name": {
+            "type": "string",
+            "description": "Label name."
+          },
+          "values": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "description": "Label values."
+          }
+        }
+      },
+      "ListAccessTokensResponse": {
+        "type": "object",
+        "required": ["access_tokens", "has_more"],
+        "properties": {
+          "access_tokens": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/AccessTokenInfo"
+            },
+            "description": "Matching access tokens.",
+            "maxItems": 1000
+          },
+          "has_more": {
+            "type": "boolean",
+            "description": "Indicates that there are more access tokens that match the criteria."
+          }
+        }
+      },
+      "ListBasinsResponse": {
+        "type": "object",
+        "required": ["basins", "has_more"],
+        "properties": {
+          "basins": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/BasinInfo"
+            },
+            "description": "Matching basins.",
+            "maxItems": 1000
+          },
+          "has_more": {
+            "type": "boolean",
+            "description": "Indicates that there are more basins that match the criteria."
+          }
+        }
+      },
+      "ListStreamsResponse": {
+        "type": "object",
+        "required": ["streams", "has_more"],
+        "properties": {
+          "has_more": {
+            "type": "boolean",
+            "description": "Indicates that there are more results that match the criteria."
+          },
+          "streams": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/StreamInfo"
+            },
+            "description": "Matching streams.",
+            "maxItems": 1000
+          }
+        }
+      },
+      "Metric": {
+        "oneOf": [
+          {
+            "type": "object",
+            "description": "Single named value.",
+            "required": ["scalar"],
+            "properties": {
+              "scalar": {
+                "$ref": "#/components/schemas/Scalar",
+                "description": "Single named value."
+              }
+            }
+          },
+          {
+            "type": "object",
+            "description": "Named series of `(timestamp, value)` points representing an accumulation over a specified\nbucket.",
+            "required": ["accumulation"],
+            "properties": {
+              "accumulation": {
+                "$ref": "#/components/schemas/Accumulation",
+                "description": "Named series of `(timestamp, value)` points representing an accumulation over a specified\nbucket."
+              }
+            }
+          },
+          {
+            "type": "object",
+            "description": "Named series of `(timestamp, value)` points each representing an instantaneous value.",
+            "required": ["gauge"],
+            "properties": {
+              "gauge": {
+                "$ref": "#/components/schemas/Gauge",
+                "description": "Named series of `(timestamp, value)` points each representing an instantaneous value."
+              }
+            }
+          },
+          {
+            "type": "object",
+            "description": "Set of string labels.",
+            "required": ["label"],
+            "properties": {
+              "label": {
+                "$ref": "#/components/schemas/Label",
+                "description": "Set of string labels."
+              }
+            }
+          }
+        ]
+      },
+      "MetricSetResponse": {
+        "type": "object",
+        "required": ["values"],
+        "properties": {
+          "values": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/Metric"
+            },
+            "description": "Metrics comprising the set."
+          }
+        }
+      },
+      "MetricUnit": {
+        "type": "string",
+        "enum": ["bytes", "operations"]
+      },
+      "Operation": {
+        "type": "string",
+        "enum": [
+          "list-basins",
+          "create-basin",
+          "delete-basin",
+          "reconfigure-basin",
+          "get-basin-config",
+          "issue-access-token",
+          "revoke-access-token",
+          "list-access-tokens",
+          "list-streams",
+          "create-stream",
+          "delete-stream",
+          "get-stream-config",
+          "reconfigure-stream",
+          "check-tail",
+          "append",
+          "read",
+          "trim",
+          "fence",
+          "account-metrics",
+          "basin-metrics",
+          "stream-metrics"
+        ]
+      },
+      "PermittedOperationGroups": {
+        "type": "object",
+        "properties": {
+          "account": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "$ref": "#/components/schemas/ReadWritePermissions",
+                "description": "Account-level access permissions."
+              }
+            ]
+          },
+          "basin": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "$ref": "#/components/schemas/ReadWritePermissions",
+                "description": "Basin-level access permissions."
+              }
+            ]
+          },
+          "stream": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "$ref": "#/components/schemas/ReadWritePermissions",
+                "description": "Stream-level access permissions."
+              }
+            ]
+          }
+        }
+      },
+      "PingEventData": {
+        "type": "object",
+        "required": ["timestamp"],
+        "properties": {
+          "timestamp": {
+            "type": "integer",
+            "format": "int64",
+            "minimum": 0
+          }
+        }
+      },
+      "ReadBatch": {
+        "type": "object",
+        "required": ["records"],
+        "properties": {
+          "records": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/SequencedRecord"
+            },
+            "description": "Records that are durably sequenced on the stream, retrieved based on the requested criteria.\nThis can only be empty in response to a regular (non-SSE) read, if the request cannot be satisfied without violating an explicit limit."
+          },
+          "tail": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "$ref": "#/components/schemas/StreamPosition",
+                "description": "Sequence number that will be assigned to the next record on the stream, and timestamp of the last record.\nThis will only be present when reading recent records."
+              }
+            ]
+          }
+        }
+      },
+      "ReadEvent": {
+        "oneOf": [
+          {
+            "type": "object",
+            "title": "batch",
+            "required": ["event", "data", "id"],
+            "properties": {
+              "data": {
+                "$ref": "#/components/schemas/ReadBatch"
+              },
+              "event": {
+                "type": "string",
+                "enum": ["batch"]
+              },
+              "id": {
+                "type": "string",
+                "pattern": "^[0-9]+,[0-9]+,[0-9]+$"
+              }
+            }
+          },
+          {
+            "type": "object",
+            "title": "error",
+            "required": ["event", "data"],
+            "properties": {
+              "data": {
+                "type": "string"
+              },
+              "event": {
+                "type": "string",
+                "enum": ["error"]
+              }
+            }
+          },
+          {
+            "type": "object",
+            "title": "ping",
+            "required": ["event", "data"],
+            "properties": {
+              "data": {
+                "$ref": "#/components/schemas/PingEventData"
+              },
+              "event": {
+                "type": "string",
+                "enum": ["ping"]
+              }
+            }
+          }
+        ]
+      },
+      "ReadWritePermissions": {
+        "type": "object",
+        "properties": {
+          "read": {
+            "type": "boolean",
+            "description": "Read permission.",
+            "default": false
+          },
+          "write": {
+            "type": "boolean",
+            "description": "Write permission.",
+            "default": false
+          }
+        }
+      },
+      "ResourceSet": {
+        "oneOf": [
+          {
+            "type": "object",
+            "title": "exact",
+            "description": "Match only the resource with this exact name.\nUse an empty string to match no resources.",
+            "required": ["exact"],
+            "properties": {
+              "exact": {
+                "type": "string",
+                "description": "Match only the resource with this exact name.\nUse an empty string to match no resources."
+              }
+            }
+          },
+          {
+            "type": "object",
+            "title": "prefix",
+            "description": "Match all resources that start with this prefix.\nUse an empty string to match all resource.",
+            "required": ["prefix"],
+            "properties": {
+              "prefix": {
+                "type": "string",
+                "description": "Match all resources that start with this prefix.\nUse an empty string to match all resource."
+              }
+            }
+          }
+        ]
+      },
+      "RetentionPolicy": {
+        "oneOf": [
+          {
+            "type": "object",
+            "description": "Age in seconds for automatic trimming of records older than this threshold.\nThis must be set to a value greater than 0 seconds.\n(While S2 is in public preview, this is capped at 28 days. Let us know if you'd like the cap removed.)",
+            "required": ["age"],
+            "properties": {
+              "age": {
+                "type": "integer",
+                "format": "int64",
+                "description": "Age in seconds for automatic trimming of records older than this threshold.\nThis must be set to a value greater than 0 seconds.\n(While S2 is in public preview, this is capped at 28 days. Let us know if you'd like the cap removed.)",
+                "minimum": 0
+              }
+            }
+          },
+          {
+            "type": "object",
+            "description": "Retain records unless explicitly trimmed.",
+            "required": ["infinite"],
+            "properties": {
+              "infinite": {
+                "$ref": "#/components/schemas/InfiniteRetention",
+                "description": "Retain records unless explicitly trimmed."
+              }
+            }
+          }
+        ]
+      },
+      "S2Format": {
+        "type": "string",
+        "enum": ["raw", "base64"]
+      },
+      "Scalar": {
+        "type": "object",
+        "required": ["name", "unit", "value"],
+        "properties": {
+          "name": {
+            "type": "string",
+            "description": "Metric name."
+          },
+          "unit": {
+            "$ref": "#/components/schemas/MetricUnit",
+            "description": "Unit of the metric."
+          },
+          "value": {
+            "type": "number",
+            "format": "double",
+            "description": "Metric value."
+          }
+        }
+      },
+      "SequencedRecord": {
+        "type": "object",
+        "description": "Record that is durably sequenced on a stream.",
+        "required": ["seq_num", "timestamp"],
+        "properties": {
+          "body": {
+            "type": "string",
+            "description": "Body of the record."
+          },
+          "headers": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/Header"
+            },
+            "description": "Series of name-value pairs for this record."
+          },
+          "seq_num": {
+            "$ref": "#/components/schemas/u64",
+            "description": "Sequence number assigned by the service."
+          },
+          "timestamp": {
+            "$ref": "#/components/schemas/u64",
+            "description": "Timestamp for this record."
+          }
+        }
+      },
+      "StorageClass": {
+        "type": "string",
+        "enum": ["standard", "express"]
+      },
+      "StreamConfig": {
+        "type": "object",
+        "properties": {
+          "delete_on_empty": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "$ref": "#/components/schemas/DeleteOnEmptyConfig",
+                "description": "Delete-on-empty configuration."
+              }
+            ]
+          },
+          "retention_policy": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "$ref": "#/components/schemas/RetentionPolicy",
+                "description": "Retention policy for the stream.\nIf unspecified, the default is to retain records for 7 days."
+              }
+            ]
+          },
+          "storage_class": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "$ref": "#/components/schemas/StorageClass",
+                "description": "Storage class for recent writes."
+              }
+            ]
+          },
+          "timestamping": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "$ref": "#/components/schemas/TimestampingConfig",
+                "description": "Timestamping behavior."
+              }
+            ]
+          }
+        }
+      },
+      "StreamInfo": {
+        "type": "object",
+        "required": ["name", "created_at"],
+        "properties": {
+          "created_at": {
+            "type": "string",
+            "format": "time",
+            "description": "Creation time in ISO 8601 format."
+          },
+          "deleted_at": {
+            "type": ["string", "null"],
+            "format": "time",
+            "description": "Deletion time in ISO 8601 format, if the stream is being deleted."
+          },
+          "name": {
+            "type": "string",
+            "description": "Stream name."
+          }
+        }
+      },
+      "StreamMetricSet": {
+        "type": "string",
+        "enum": ["storage"]
+      },
+      "StreamPosition": {
+        "type": "object",
+        "description": "Position of a record in a stream.",
+        "required": ["seq_num", "timestamp"],
+        "properties": {
+          "seq_num": {
+            "type": "integer",
+            "format": "int64",
+            "description": "Sequence number assigned by the service.",
+            "minimum": 0
+          },
+          "timestamp": {
+            "type": "integer",
+            "format": "int64",
+            "description": "Timestamp, which may be client-specified or assigned by the service.\nIf it is assigned by the service, it will represent milliseconds since Unix epoch.",
+            "minimum": 0
+          }
+        }
+      },
+      "StreamReconfiguration": {
+        "type": "object",
+        "properties": {
+          "delete_on_empty": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "$ref": "#/components/schemas/DeleteOnEmptyReconfiguration",
+                "description": "Delete-on-empty configuration."
+              }
+            ]
+          },
+          "retention_policy": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "$ref": "#/components/schemas/RetentionPolicy",
+                "description": "Retention policy for the stream.\nIf unspecified, the default is to retain records for 7 days."
+              }
+            ]
+          },
+          "storage_class": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "$ref": "#/components/schemas/StorageClass",
+                "description": "Storage class for recent writes."
+              }
+            ]
+          },
+          "timestamping": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "$ref": "#/components/schemas/TimestampingReconfiguration",
+                "description": "Timestamping behavior."
+              }
+            ]
+          }
+        }
+      },
+      "TailResponse": {
+        "type": "object",
+        "required": ["tail"],
+        "properties": {
+          "tail": {
+            "$ref": "#/components/schemas/StreamPosition",
+            "description": "Sequence number that will be assigned to the next record on the stream, and timestamp of the last record."
+          }
+        }
+      },
+      "TimeseriesInterval": {
+        "type": "string",
+        "enum": ["minute", "hour", "day"]
+      },
+      "TimestampingConfig": {
+        "type": "object",
+        "properties": {
+          "mode": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "$ref": "#/components/schemas/TimestampingMode",
+                "description": "Timestamping mode for appends that influences how timestamps are handled."
+              }
+            ]
+          },
+          "uncapped": {
+            "type": ["boolean", "null"],
+            "description": "Allow client-specified timestamps to exceed the arrival time.\nIf this is `false` or not set, client timestamps will be capped at the arrival time."
+          }
+        }
+      },
+      "TimestampingMode": {
+        "type": "string",
+        "enum": ["client-prefer", "client-require", "arrival"]
+      },
+      "TimestampingReconfiguration": {
+        "type": "object",
+        "properties": {
+          "mode": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "$ref": "#/components/schemas/TimestampingMode",
+                "description": "Timestamping mode for appends that influences how timestamps are handled."
+              }
+            ]
+          },
+          "uncapped": {
+            "type": ["boolean", "null"],
+            "description": "Allow client-specified timestamps to exceed the arrival time."
+          }
+        }
+      },
+      "u64": {
+        "type": "integer",
+        "format": "int64",
+        "minimum": 0
+      }
+    },
+    "securitySchemes": {
+      "access_token": {
+        "type": "http",
+        "scheme": "bearer",
+        "description": "Bearer authentication header of the form `Bearer <token>`, where `<token>` is your access token."
+      }
+    }
+  },
+  "security": [
+    {
+      "access_token": []
+    }
+  ],
+  "tags": [
+    {
+      "name": "metrics",
+      "description": "Usage metrics and data."
+    },
+    {
+      "name": "basins",
+      "description": "Manage basins"
+    },
+    {
+      "name": "access-tokens",
+      "description": "Manage access tokens"
+    },
+    {
+      "name": "streams",
+      "description": "Manage streams"
+    },
+    {
+      "name": "records",
+      "description": "Manage records"
+    }
+  ]
+}

@@ -1,71 +1,98 @@
 import { Effect, FiberMap, Option, Stream, SubscriptionRef } from '@livestore/utils/effect'
 import { nanoid } from '@livestore/utils/nanoid'
 
-import { Devtools, IntentionalShutdownCause, liveStoreVersion, UnexpectedError } from '../index.js'
-import { SystemTables } from '../schema/mod.js'
-import type { DevtoolsOptions, PersistenceInfoPair } from './types.js'
-import { LeaderThreadCtx } from './types.js'
+import { Devtools, IntentionalShutdownCause, liveStoreVersion, UnknownError } from '../index.ts'
+import { SystemTables } from '../schema/mod.ts'
+import type { DevtoolsOptions, PersistenceInfoPair } from './types.ts'
+import { LeaderThreadCtx } from './types.ts'
 
 type SendMessageToDevtools = (message: Devtools.Leader.MessageFromApp) => Effect.Effect<void>
 
+/**
+ * Type guard for DevtoolsViteNotInstalledError.
+ * This error is defined in @livestore/adapter-node but we need to handle it here.
+ */
+const isDevtoolsViteNotInstalledError = (
+  error: unknown,
+): error is { _tag: 'DevtoolsViteNotInstalledError'; message: string } =>
+  typeof error === 'object' && error !== null && '_tag' in error && error._tag === 'DevtoolsViteNotInstalledError'
+
 // TODO bind scope to the webchannel lifetime
-export const bootDevtools = (options: DevtoolsOptions) =>
-  Effect.gen(function* () {
-    if (options.enabled === false) {
-      return
-    }
+export const bootDevtools = Effect.fn('@livestore/common:leader-thread:devtools:boot')(function* (
+  options: DevtoolsOptions,
+) {
+  if (options.enabled === false) {
+    return
+  }
 
-    const { syncProcessor, extraIncomingMessagesQueue, clientId, storeId } = yield* LeaderThreadCtx
+  const { syncProcessor, extraIncomingMessagesQueue, clientId, storeId } = yield* LeaderThreadCtx
 
-    yield* listenToDevtools({
-      incomingMessages: Stream.fromQueue(extraIncomingMessagesQueue),
-      sendMessage: () => Effect.void,
-    }).pipe(Effect.tapCauseLogPretty, Effect.forkScoped)
+  yield* listenToDevtools({
+    incomingMessages: Stream.fromQueue(extraIncomingMessagesQueue),
+    sendMessage: () => Effect.void,
+  }).pipe(Effect.tapCauseLogPretty, Effect.forkScoped)
 
-    const { node, persistenceInfo, mode } = yield* options.boot
-
-    yield* node.listenForChannel.pipe(
-      Stream.filter(
-        (res) =>
-          Devtools.isChannelName.devtoolsClientLeader(res.channelName, { storeId, clientId }) && res.mode === mode,
+  const bootResult = yield* options.boot.pipe(
+    Effect.map(Option.some),
+    Effect.catchIf(isDevtoolsViteNotInstalledError, (error) =>
+      Effect.logWarning(`[@livestore/devtools] ${error.message} Devtools will be disabled.`).pipe(
+        Effect.as(Option.none()),
       ),
-      Stream.tap(({ channelName, source }) =>
-        Effect.gen(function* () {
-          const channel = yield* node.makeChannel({
-            target: source,
-            channelName,
-            schema: { listen: Devtools.Leader.MessageToApp, send: Devtools.Leader.MessageFromApp },
-            mode,
-          })
+    ),
+    Effect.catchAllCause((cause) =>
+      Effect.logWarning(
+        `[@livestore/devtools] Failed to start devtools server. Devtools will be disabled.`,
+        cause,
+      ).pipe(Effect.as(Option.none())),
+    ),
+  )
 
-          const sendMessage: SendMessageToDevtools = (message) =>
-            channel
-              .send(message)
-              .pipe(
-                Effect.withSpan('@livestore/common:leader-thread:devtools:sendToDevtools'),
-                Effect.interruptible,
-                Effect.ignoreLogged,
-              )
+  if (Option.isNone(bootResult) === true) {
+    return
+  }
 
-          const syncState = yield* syncProcessor.syncState
-          const mergeCounter = syncProcessor.getMergeCounter()
+  const { node, persistenceInfo, mode } = bootResult.value
 
-          yield* syncProcessor.pull({ cursor: { mergeCounter, eventNum: syncState.localHead } }).pipe(
-            Stream.tap(({ payload }) => sendMessage(Devtools.Leader.SyncPull.make({ payload, liveStoreVersion }))),
-            Stream.runDrain,
-            Effect.forkScoped,
-          )
+  yield* node.listenForChannel.pipe(
+    Stream.filter(
+      (res) => Devtools.isChannelName.devtoolsClientLeader(res.channelName, { storeId, clientId }) && res.mode === mode,
+    ),
+    Stream.tap(({ channelName, source }) =>
+      Effect.gen(function* () {
+        const channel = yield* node.makeChannel({
+          target: source,
+          channelName,
+          schema: { listen: Devtools.Leader.MessageToApp, send: Devtools.Leader.MessageFromApp },
+          mode,
+        })
 
-          yield* listenToDevtools({
-            incomingMessages: channel.listen.pipe(Stream.flatten(), Stream.orDie),
-            sendMessage,
-            persistenceInfo,
-          })
-        }).pipe(Effect.tapCauseLogPretty, Effect.forkScoped),
-      ),
-      Stream.runDrain,
-    )
-  }).pipe(Effect.withSpan('@livestore/common:leader-thread:devtools:boot'))
+        const sendMessage: SendMessageToDevtools = (message) =>
+          channel
+            .send(message)
+            .pipe(
+              Effect.withSpan('@livestore/common:leader-thread:devtools:sendToDevtools'),
+              Effect.interruptible,
+              Effect.ignoreLogged,
+            )
+
+        const syncState = yield* syncProcessor.syncState
+
+        yield* syncProcessor.pull({ cursor: syncState.localHead }).pipe(
+          Stream.tap(({ payload }) => sendMessage(Devtools.Leader.SyncPull.make({ payload, liveStoreVersion }))),
+          Stream.runDrain,
+          Effect.forkScoped,
+        )
+
+        yield* listenToDevtools({
+          incomingMessages: channel.listen.pipe(Stream.flatten(), Stream.orDie),
+          sendMessage,
+          persistenceInfo,
+        })
+      }).pipe(Effect.tapCauseLogPretty, Effect.forkScoped),
+    ),
+    Stream.runDrain,
+  )
+})
 
 const listenToDevtools = ({
   incomingMessages,
@@ -95,6 +122,22 @@ const listenToDevtools = ({
     type RequestId = string
     const handledRequestIds = new Set<RequestId>()
 
+    type LoadDatabaseKind = 'state' | 'eventlog'
+    const loadDatabaseBatchTracker = new Map<string, Set<LoadDatabaseKind>>()
+
+    const registerBatchProgress = (batchId: string, kind: LoadDatabaseKind) => {
+      const entry = loadDatabaseBatchTracker.get(batchId) ?? new Set<LoadDatabaseKind>()
+      entry.add(kind)
+      loadDatabaseBatchTracker.set(batchId, entry)
+      const finished = entry.has('state') && entry.has('eventlog')
+
+      if (finished === true) {
+        loadDatabaseBatchTracker.delete(batchId)
+      }
+
+      return finished
+    }
+
     yield* incomingMessages.pipe(
       Stream.tap((decodedEvent) =>
         Effect.gen(function* () {
@@ -114,7 +157,7 @@ const listenToDevtools = ({
           // So far I could only observe this problem with webmesh proxy channels (e.g. for Expo)
           // Proof: https://share.cleanshot.com/V9G87B0B
           // Also see `store/devtools.ts` for same problem
-          if (handledRequestIds.has(requestId)) {
+          if (handledRequestIds.has(requestId) === true) {
             // yield* Effect.logWarning(`Duplicate message`, decodedEvent)
             return
           }
@@ -123,6 +166,17 @@ const listenToDevtools = ({
 
           switch (decodedEvent._tag) {
             case 'LSD.Leader.Ping': {
+              // Check version mismatch and respond with VersionMismatch if versions don't match
+              if (decodedEvent.liveStoreVersion !== liveStoreVersion) {
+                yield* sendMessage(
+                  Devtools.Leader.VersionMismatch.make({
+                    ...reqPayload,
+                    appVersion: liveStoreVersion,
+                    receivedVersion: decodedEvent.liveStoreVersion,
+                  }),
+                )
+                return
+              }
               yield* sendMessage(Devtools.Leader.Pong.make({ ...reqPayload }))
               return
             }
@@ -134,74 +188,85 @@ const listenToDevtools = ({
               return
             }
             case 'LSD.Leader.LoadDatabaseFile.Request': {
-              const { data } = decodedEvent
+              const { data, batchId } = decodedEvent
 
-              let tableNames: Set<string>
-
-              try {
-                const tmpDb = yield* makeSqliteDb({ _tag: 'in-memory' })
-                tmpDb.import(data)
-                const tableNameResults = tmpDb.select<{ name: string }>(
-                  `select name from sqlite_master where type = 'table'`,
-                )
-
-                tableNames = new Set(tableNameResults.map((_) => _.name))
-
-                tmpDb.close()
-              } catch (cause) {
-                yield* Effect.logError(`Error importing database file`, cause)
-                yield* sendMessage(
-                  Devtools.Leader.LoadDatabaseFile.Error.make({
-                    ...reqPayload,
-                    cause: { _tag: 'unexpected-error', cause },
-                  }),
-                )
-
-                return
-              }
-
-              try {
-                if (tableNames.has(SystemTables.EVENTLOG_META_TABLE)) {
-                  // Is eventlog db
-                  yield* SubscriptionRef.set(shutdownStateSubRef, 'shutting-down')
-
-                  dbEventlog.import(data)
-
-                  dbState.destroy()
-                } else if (
-                  tableNames.has(SystemTables.SCHEMA_META_TABLE) &&
-                  tableNames.has(SystemTables.SCHEMA_EVENT_DEFS_META_TABLE)
-                ) {
-                  // Is state db
-                  yield* SubscriptionRef.set(shutdownStateSubRef, 'shutting-down')
-
-                  dbState.import(data)
-
-                  dbEventlog.destroy()
-                } else {
-                  yield* sendMessage(
-                    Devtools.Leader.LoadDatabaseFile.Error.make({
-                      ...reqPayload,
-                      cause: { _tag: 'unsupported-database' },
+              const handleLoadDb = Effect.gen(function* () {
+                const tableNames = yield* Effect.acquireRelease(makeSqliteDb({ _tag: 'in-memory' }), (db) =>
+                  Effect.sync(() => db.close()),
+                ).pipe(
+                  Effect.flatMap((db) =>
+                    Effect.try(() => {
+                      db.import(data)
+                      const rows = db.select<{ name: string }>(`select name from sqlite_master where type = 'table'`)
+                      return new Set(rows.map((r) => r.name))
                     }),
-                  )
-                  return
+                  ),
+                )
+
+                let databaseKind: LoadDatabaseKind | undefined
+
+                if (tableNames.has(SystemTables.EVENTLOG_META_TABLE) === true) {
+                  databaseKind = 'eventlog'
+                  yield* SubscriptionRef.set(shutdownStateSubRef, 'shutting-down')
+                  yield* Effect.try(() => dbEventlog.import(data))
+
+                  if (batchId === undefined) {
+                    yield* Effect.try(() => dbState.destroy())
+                  }
+                } else if (
+                  tableNames.has(SystemTables.SCHEMA_META_TABLE) === true &&
+                  tableNames.has(SystemTables.SCHEMA_EVENT_DEFS_META_TABLE) === true
+                ) {
+                  databaseKind = 'state'
+                  yield* SubscriptionRef.set(shutdownStateSubRef, 'shutting-down')
+                  yield* Effect.try(() => dbState.import(data))
+
+                  if (batchId === undefined) {
+                    yield* Effect.try(() => dbEventlog.destroy())
+                  }
+                } else {
+                  return yield* Effect.fail({ _tag: 'unsupported-database' } as const)
                 }
 
-                yield* sendMessage(Devtools.Leader.LoadDatabaseFile.Success.make({ ...reqPayload }))
-                yield* shutdownChannel.send(IntentionalShutdownCause.make({ reason: 'devtools-import' })) ?? Effect.void
+                const resolvedDatabaseKind = databaseKind
+                if (resolvedDatabaseKind === undefined) {
+                  return yield* Effect.fail({ _tag: 'unsupported-database' } as const)
+                }
 
-                return
-              } catch (cause) {
-                yield* Effect.logError(`Error importing database file`, cause)
-                yield* sendMessage(
-                  Devtools.Leader.LoadDatabaseFile.Error.make({
-                    ...reqPayload,
-                    cause: { _tag: 'unexpected-error', cause },
-                  }),
-                )
-                return
-              }
+                const shouldShutdown =
+                  batchId === undefined ? true : registerBatchProgress(batchId, resolvedDatabaseKind)
+
+                yield* sendMessage(Devtools.Leader.LoadDatabaseFile.Success.make({ ...reqPayload }))
+
+                if (shouldShutdown === true) {
+                  yield* shutdownChannel.send(IntentionalShutdownCause.make({ reason: 'devtools-import' }))
+                }
+              })
+
+              yield* handleLoadDb.pipe(
+                Effect.catchTag('unsupported-database', () =>
+                  sendMessage(
+                    Devtools.Leader.LoadDatabaseFile.Error.make({
+                      ...reqPayload,
+                      cause: { _tag: 'unsupported-database' as const },
+                    }),
+                  ),
+                ),
+                Effect.catchAll((cause) =>
+                  Effect.logWarning('Error importing database file', cause).pipe(
+                    Effect.zipRight(
+                      sendMessage(
+                        Devtools.Leader.LoadDatabaseFile.Error.make({
+                          ...reqPayload,
+                          cause: { _tag: 'unknown-error' as const, cause },
+                        }),
+                      ),
+                    ),
+                  ),
+                ),
+              )
+
+              return
             }
             case 'LSD.Leader.ResetAllData.Request': {
               const { mode } = decodedEvent
@@ -216,7 +281,7 @@ const listenToDevtools = ({
 
               yield* sendMessage(Devtools.Leader.ResetAllData.Success.make({ ...reqPayload }))
 
-              yield* shutdownChannel.send(IntentionalShutdownCause.make({ reason: 'devtools-reset' })) ?? Effect.void
+              yield* shutdownChannel.send(IntentionalShutdownCause.make({ reason: 'devtools-reset' }))
 
               return
             }
@@ -263,7 +328,7 @@ const listenToDevtools = ({
 
               if (syncBackend !== undefined) {
                 // TODO consider piggybacking on the existing leader-thread sync-pulling
-                yield* syncBackend.pull(Option.none()).pipe(
+                yield* syncBackend.pull(Option.none(), { live: true }).pipe(
                   Stream.map((_) => _.batch),
                   Stream.flattenIterables,
                   Stream.tap(({ eventEncoded, metadata }) =>
@@ -315,12 +380,18 @@ const listenToDevtools = ({
 
                 yield* Stream.zipLatest(
                   syncBackend.isConnected.changes,
-                  devtools.enabled ? devtools.syncBackendLatchState.changes : Stream.make({ latchClosed: false }),
+                  devtools.enabled === true
+                    ? devtools.syncBackendLatchState.changes
+                    : Stream.make({ latchClosed: false }),
                 ).pipe(
                   Stream.tap(([isConnected, { latchClosed }]) =>
                     sendMessage(
                       Devtools.Leader.NetworkStatusRes.make({
-                        networkStatus: { isConnected, timestampMs: Date.now(), latchClosed },
+                        networkStatus: {
+                          isConnected,
+                          timestampMs: Date.now(),
+                          devtools: { latchClosed },
+                        },
                         subscriptionId,
                         ...reqPayload,
                         requestId: nanoid(10),
@@ -396,7 +467,7 @@ const listenToDevtools = ({
           }
         }).pipe(Effect.withSpan(`@livestore/common:leader-thread:onDevtoolsMessage:${decodedEvent._tag}`)),
       ),
-      UnexpectedError.mapToUnexpectedErrorStream,
+      UnknownError.mapToUnknownErrorStream,
       Stream.runDrain,
     )
   })

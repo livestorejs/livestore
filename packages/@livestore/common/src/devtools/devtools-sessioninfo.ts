@@ -21,6 +21,12 @@ export const SessionInfo = Schema.TaggedStruct('SessionInfo', {
   sessionId: Schema.String,
   schemaAlias: Schema.String,
   isLeader: Schema.Boolean,
+  /**
+   * Browser origin that produced this SessionInfo (for example, 'http://localhost:5173').
+   * Set by browser-based publishers so DevTools can defensively filter by origin.
+   * Currently only needed by the browser extension; non‑browser publishers typically set `undefined`.
+   */
+  origin: Schema.UndefinedOr(Schema.String),
 })
 export type SessionInfo = typeof SessionInfo.Type
 
@@ -55,7 +61,7 @@ export const requestSessionInfoSubscription = ({
   webChannel: WebChannel.WebChannel<Message, Message>
   pollInterval?: Duration.DurationInput
   staleTimeout?: Duration.DurationInput
-}): Effect.Effect<Subscribable.Subscribable<Set<SessionInfo>>, ParseResult.ParseError, Scope.Scope> =>
+}): Effect.Effect<Subscribable.Subscribable<HashSet.HashSet<SessionInfo>>, ParseResult.ParseError, Scope.Scope> =>
   Effect.gen(function* () {
     yield* webChannel
       .send(RequestSessions.make({}))
@@ -94,8 +100,5 @@ export const requestSessionInfoSubscription = ({
       Effect.forkScoped,
     )
 
-    return Subscribable.make({
-      get: sessionInfoSubRef.get.pipe(Effect.map((sessionInfos) => new Set(sessionInfos))),
-      changes: sessionInfoSubRef.changes.pipe(Stream.map((sessionInfos) => new Set(sessionInfos))),
-    })
+    return Subscribable.make({ get: sessionInfoSubRef.get, changes: sessionInfoSubRef.changes })
   })

@@ -1,9 +1,10 @@
-import { UnexpectedError } from '@livestore/common'
-import { Effect, Exit } from '@livestore/utils/effect'
 import { expect, test } from '@playwright/test'
 
-import { runAndGetExit, runTest } from './shared-test.js'
-import { Bridge } from './unit-tests/shared.js'
+import { UnknownError } from '@livestore/common'
+import { Effect, Exit } from '@livestore/utils/effect'
+
+import { runAndGetExit, runTest } from './shared-test.ts'
+import * as Bridge from './unit-tests/bridge.ts'
 
 const modulePrefix = '../unit-tests'
 
@@ -25,7 +26,7 @@ test(
             { stage: 'done' },
           ],
           migrationsReport: {
-            migrations: [{ tableName: 'todos', hashes: { expected: 27_118_251_376, actual: undefined } }],
+            migrations: [{ tableName: 'todos', hashes: { expected: -35_462_037_457, actual: undefined } }],
           },
         }),
       )
@@ -43,7 +44,43 @@ test(
         schema: Bridge.ResultStoreBootError,
       })
 
-      expect(exit).toStrictEqual(Exit.fail(UnexpectedError.make({ cause: new Error('Boom!') })))
+      // The TestError class is serialized with name: 'TestError', so we need to match that
+      const expectedError = new Error('Boom!')
+      expectedError.name = 'TestError'
+      ;(expectedError as any).cause = { name: 'TestError', message: 'Boom!' }
+
+      expect(exit).toStrictEqual(Exit.fail(UnknownError.make({ cause: expectedError })))
+    }),
+  ),
+)
+
+test(
+  'schema-migration',
+  runTest(
+    Effect.gen(function* () {
+      const exit = yield* runAndGetExit({
+        importPath: `${modulePrefix}/schema-migration/index.ts`,
+        exportName: 'testMultipleMigrations',
+        schema: Bridge.ResultMultipleMigrations,
+      })
+
+      expect(exit._tag).toBe('Success')
+      if (exit._tag !== 'Success') throw new Error(`Expected success exit, received ${exit._tag}`)
+
+      const { migrationsCount, archivedStateDbFiles } = exit.value
+
+      // Verify that after 22 migrations, we can still complete the process without running out of file handles
+      // See packages/@livestore/sqlite-wasm/src/browser/opfs/AccessHandlePoolVFS.ts for default file handle pool size
+      expect(migrationsCount).toBe(22)
+
+      // Verify that we have 3 archived state DB files
+      // See packages/@livestore/adapter-web/src/web-worker/common/persisted-sqlite.ts for default retention count
+      expect(archivedStateDbFiles.length).toBe(3)
+
+      // Verify that each archived file isn’t empty
+      archivedStateDbFiles.forEach((file) => {
+        expect(file.size).toBeGreaterThan(0)
+      })
     }),
   ),
 )

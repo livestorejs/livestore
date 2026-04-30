@@ -1,34 +1,67 @@
 {
   "name": "@livestore/devtools-web-common",
-  "version": "0.3.1",
+  "version": "0.4.0-dev.22",
+  "license": "Apache-2.0",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/livestorejs/livestore.git"
+  },
+  "files": [
+    "dist",
+    "package.json",
+    "src"
+  ],
   "type": "module",
   "sideEffects": false,
   "exports": {
-    "./web-channel": {
-      "types": "./dist/web-channel/index.d.ts",
-      "default": "./dist/web-channel/index.js"
-    },
-    "./worker": {
-      "types": "./dist/worker/mod.d.ts",
-      "default": "./dist/worker/mod.js"
-    }
+    "./web-channel": "./src/web-channel/index.ts",
+    "./worker": "./src/worker/mod.ts"
   },
-  "dependencies": {
-    "@livestore/common": "workspace:*",
-    "@livestore/utils": "workspace:*",
-    "@livestore/webmesh": "workspace:*"
-  },
-  "devDependencies": {},
-  "files": [
-    "package.json",
-    "src",
-    "dist"
-  ],
-  "license": "Apache-2.0",
   "publishConfig": {
-    "access": "public"
+    "access": "public",
+    "exports": {
+      "./web-channel": "./dist/web-channel/index.js",
+      "./worker": "./dist/worker/mod.js"
+    }
   },
   "scripts": {
     "test": "echo No tests yet"
+  },
+  "dependencies": {
+    "@livestore/common": "workspace:^",
+    "@livestore/utils": "workspace:^",
+    "@livestore/webmesh": "workspace:^"
+  },
+  "peerDependencies": {
+    "@effect/ai": "^0.35.0",
+    "@effect/cli": "^0.75.1",
+    "@effect/cluster": "^0.58.2",
+    "@effect/experimental": "^0.60.0",
+    "@effect/opentelemetry": "^0.63.0",
+    "@effect/platform": "^0.96.1",
+    "@effect/platform-browser": "^0.76.0",
+    "@effect/platform-bun": "^0.89.0",
+    "@effect/platform-node": "^0.106.0",
+    "@effect/printer": "^0.49.0",
+    "@effect/printer-ansi": "^0.49.0",
+    "@effect/rpc": "^0.75.1",
+    "@effect/sql": "^0.51.1",
+    "@effect/typeclass": "^0.40.0",
+    "@effect/vitest": "^0.29.0",
+    "@opentelemetry/api": "^1.9.0",
+    "@opentelemetry/resources": "^2.2.0",
+    "@standard-schema/spec": "^1.1.0",
+    "effect": "^3.21.2"
+  },
+  "$genie": {
+    "source": "package.json.genie.ts",
+    "warning": "DO NOT EDIT - changes will be overwritten",
+    "workspaceClosureDirs": [
+      "packages/@livestore/common",
+      "packages/@livestore/devtools-web-common",
+      "packages/@livestore/utils",
+      "packages/@livestore/utils-dev",
+      "packages/@livestore/webmesh"
+    ]
   }
 }

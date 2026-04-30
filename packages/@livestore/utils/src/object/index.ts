@@ -1,7 +1,8 @@
 import { pipe } from 'effect'
 
-export * from './pick.js'
-export * from './omit.js'
+export * from './omit.ts'
+export * from './pick.ts'
+export * from './stringify-object.ts'
 
 type ValueOfRecord<R extends Record<any, any>> = R extends Record<any, infer V> ? V : never
 
@@ -21,4 +22,4 @@ export const keyObjectFromObject = <TObj extends Record<string, any>>(obj: TObj)
   pipe(
     objectEntries(obj).map(([k]) => [k, k]),
     Object.fromEntries,
-  ) as any
+  )

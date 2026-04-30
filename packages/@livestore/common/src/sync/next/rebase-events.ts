@@ -1,14 +1,14 @@
-import type { EventDef, EventDefFactsSnapshot } from '../../schema/EventDef.js'
-import * as EventSequenceNumber from '../../schema/EventSequenceNumber.js'
-import type * as LiveStoreEvent from '../../schema/LiveStoreEvent.js'
+import type { EventDef, EventDefFactsSnapshot } from '../../schema/EventDef/mod.ts'
+import * as EventSequenceNumber from '../../schema/EventSequenceNumber/mod.ts'
+import type * as LiveStoreEvent from '../../schema/LiveStoreEvent/mod.ts'
 import {
   applyFactGroups,
-  factsIntersect,
   type FactValidationResult,
+  factsIntersect,
   getFactsGroupForEventArgs,
   validateFacts,
-} from './facts.js'
-import type { HistoryDagNode } from './history-dag-common.js'
+} from './facts.ts'
+import type { HistoryDagNode } from './history-dag-common.ts'
 
 export type RebaseEventWithConflict = HistoryDagNode & {
   conflictType: 'overlap' | 'missing-requirement'
@@ -19,25 +19,26 @@ export type RebaseInput = {
   newRemoteEvents: RebaseEventWithConflict[]
   pendingLocalEvents: RebaseEventWithConflict[]
   validate: (args: {
-    rebasedLocalEvents: LiveStoreEvent.PartialAnyDecoded[]
+    rebasedLocalEvents: LiveStoreEvent.Input.Decoded[]
     eventDefs: Record<string, EventDef.Any>
   }) => FactValidationResult
 }
 
 export type RebaseOutput = {
-  rebasedLocalEvents: LiveStoreEvent.PartialAnyDecoded[]
+  rebasedLocalEvents: LiveStoreEvent.Input.Decoded[]
 }
 
 export type RebaseFn = (input: RebaseInput) => RebaseOutput
 
 export const defaultRebaseFn: RebaseFn = ({ pendingLocalEvents }) => {
-  if (pendingLocalEvents.some((_) => _.conflictType === 'missing-requirement')) {
+  if (pendingLocalEvents.some((_) => _.conflictType === 'missing-requirement') === true) {
     throw new Error('missing-requirement conflicts must be resolved before rebasing')
   }
 
   return { rebasedLocalEvents: pendingLocalEvents }
 }
 
+// TODO replace in favour of current rebase impl
 export const rebaseEvents = ({
   rebaseFn,
   pendingLocalEvents,
@@ -52,7 +53,7 @@ export const rebaseEvents = ({
   currentFactsSnapshot: EventDefFactsSnapshot
   clientId: string
   sessionId: string
-}): ReadonlyArray<LiveStoreEvent.AnyDecoded> => {
+}): ReadonlyArray<LiveStoreEvent.Client.Decoded> => {
   const initialSnapshot = new Map(currentFactsSnapshot)
   applyFactGroups(
     newRemoteEvents.map((event) => event.factsGroup),
@@ -93,18 +94,18 @@ export const rebaseEvents = ({
   return rebasedLocalEvents.map(
     (event, index) =>
       ({
-        seqNum: EventSequenceNumber.make({
+        seqNum: EventSequenceNumber.Client.Composite.make({
           global: headGlobalId + index + 1,
-          client: EventSequenceNumber.clientDefault,
+          client: EventSequenceNumber.Client.DEFAULT,
         }),
-        parentSeqNum: EventSequenceNumber.make({
+        parentSeqNum: EventSequenceNumber.Client.Composite.make({
           global: headGlobalId + index,
-          client: EventSequenceNumber.clientDefault,
+          client: EventSequenceNumber.Client.DEFAULT,
         }),
         name: event.name,
         args: event.args,
         clientId,
         sessionId,
-      }) satisfies LiveStoreEvent.AnyDecoded,
+      }) satisfies LiveStoreEvent.Client.Decoded,
   )
 }

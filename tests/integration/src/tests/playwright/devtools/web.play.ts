@@ -1,20 +1,28 @@
+/** biome-ignore-all lint/correctness/noEmptyPattern: playwright expects destructuring */
 import fs from 'node:fs'
 import os from 'node:os'
 import path from 'node:path'
 
-import * as Playwright from '@livestore/effect-playwright'
-import type { Scope } from '@livestore/utils/effect'
-import { Effect, Fiber, Layer, Logger, OtelTracer, Schema, Tracer } from '@livestore/utils/effect'
-import { OtelLiveHttp } from '@livestore/utils-dev/node'
 import type * as otel from '@opentelemetry/api'
 import type * as PW from '@playwright/test'
 import { test } from '@playwright/test'
 
-import { checkDevtoolsState } from './shared.js'
+import * as Playwright from '@livestore/effect-playwright'
+import { OtelLiveHttp } from '@livestore/utils-dev/node'
+import type { Scope } from '@livestore/utils/effect'
+import { Effect, Fiber, Layer, Logger, OtelTracer, Schema, Tracer } from '@livestore/utils/effect'
+
+import { checkDevtoolsState, checkVersionMismatchOverlay } from './shared.ts'
 
 const usedPages = new Set<PW.Page>()
 
-const makeTabPair = (url: string, tabName: string) =>
+type AdapterKind = 'persisted' | 'inmemory'
+
+/**
+ * Creates a tab pair with an app page and a DevTools page.
+ * @param appVersionOverride - Optional version override to inject via globalThis.__LIVESTORE_VERSION_OVERRIDE__ for testing version mismatch scenarios.
+ */
+const makeTabPair = (url: string, tabName: string, adapter: AdapterKind, options?: { appVersionOverride?: string }) =>
   Effect.gen(function* () {
     const { browserContext } = yield* Playwright.BrowserContext
 
@@ -22,15 +30,15 @@ const makeTabPair = (url: string, tabName: string) =>
 
     const isUnused = (p: PW.Page) => !usedPages.has(p)
 
-    const newPage = Effect.promise(() => browserContext.newPage()).pipe(
+    const newPage = Effect.tryPromise(() => browserContext.newPage()).pipe(
       Effect.acquireRelease(
         Effect.fn('close-page')(function* (page, exit) {
           const reason =
             exit._tag === 'Failure' ? exit.cause.toString() : `Closing ${url}#${tabName} due to ${exit._tag}`
 
           yield* Effect.log(reason)
-          yield* Effect.promise(() => page.close({ reason }))
-        }),
+          yield* Effect.tryPromise(() => page.close({ reason }))
+        }, Effect.orDie),
       ),
     )
 
@@ -40,6 +48,21 @@ const makeTabPair = (url: string, tabName: string) =>
         .pages()
         .filter(isUnused)
         .find((p) => p.url() === 'about:blank') ?? (yield* newPage)
+
+    const session = yield* Effect.tryPromise(() => page.context().newCDPSession(page))
+
+    yield* Effect.tryPromise(() => session.send('Debugger.enable'))
+
+    session.on('Debugger.paused', async (_event) => {
+      await page.pause()
+    })
+
+    // Inject version override before page loads (for version mismatch testing)
+    if (options?.appVersionOverride !== undefined) {
+      yield* Effect.tryPromise(() =>
+        page.addInitScript(`globalThis.__LIVESTORE_VERSION_OVERRIDE__ = '${options.appVersionOverride}';`),
+      )
+    }
 
     // NOTE we need to start the console listening right away, otherwise we might miss some messages
     const pageConsoleFiber = yield* Playwright.handlePageConsole({
@@ -51,17 +74,25 @@ const makeTabPair = (url: string, tabName: string) =>
     usedPages.add(page)
     yield* Effect.addFinalizer(() => Effect.sync(() => usedPages.delete(page)))
 
-    yield* Effect.promise(() => page.goto(`${url}/devtools/todomvc#${tabName}`))
-
-    const rootSpanContext = yield* Effect.promise(() =>
-      page
-        .waitForFunction('window.__debugLiveStore?.default !== undefined')
-        .then(() => page.evaluate('window.__debugLiveStore.default._dev.otel.rootSpanContext()')),
-    ).pipe(Effect.andThen(Schema.decodeUnknown(Schema.Struct({ traceId: Schema.String, spanId: Schema.String }))))
-
-    yield* Effect.linkSpanCurrent(
-      Tracer.externalSpan({ traceId: rootSpanContext.traceId, spanId: rootSpanContext.spanId }),
+    yield* Effect.tryPromise(() =>
+      page.goto(`${url}/devtools/todomvc?sessionId=${tabName}&clientId=${tabName}&adapter=${adapter}`),
     )
+
+    // Skip OTel span linking when testing version mismatch (app may not initialize properly)
+    if (options?.appVersionOverride == null) {
+      const rootSpanContext = yield* Effect.tryPromise(() =>
+        page
+          .waitForFunction('window.__debugLiveStore?.default !== undefined')
+          .then(() => page.evaluate('window.__debugLiveStore.default._dev.otel.rootSpanContext()')),
+      ).pipe(Effect.andThen(Schema.decodeUnknown(Schema.Struct({ traceId: Schema.String, spanId: Schema.String }))))
+
+      yield* Effect.linkSpanCurrent(
+        Tracer.externalSpan({
+          traceId: rootSpanContext.traceId,
+          spanId: rootSpanContext.spanId,
+        }),
+      )
+    }
 
     const devtools = yield* newPage
 
@@ -71,7 +102,7 @@ const makeTabPair = (url: string, tabName: string) =>
       shouldEvaluateArgs: false,
     }).pipe(Effect.forkScoped)
 
-    yield* Effect.promise(() => devtools.goto(`${url}_livestore/web#${tabName}`))
+    yield* Effect.tryPromise(() => devtools.goto(`${url}/_livestore/web#${tabName}`))
 
     usedPages.add(devtools)
 
@@ -85,7 +116,7 @@ const PWLive = Effect.gen(function* () {
 }).pipe(Layer.unwrapEffect)
 
 const runTest =
-  (eff: Effect.Effect<void, unknown, Playwright.BrowserContext | Scope.Scope>) =>
+  <E>(eff: Effect.Effect<void, E, Playwright.BrowserContext | Scope.Scope>) =>
   (
     {}: PW.PlaywrightTestArgs & PW.PlaywrightTestOptions & PW.PlaywrightWorkerArgs & PW.PlaywrightWorkerOptions,
     testInfo: PW.TestInfo,
@@ -113,146 +144,230 @@ const runTest =
     )
   }
 
+;(['persisted', 'inmemory'] as const).forEach((adapter) => {
+  test(
+    `single tab (adapter=${adapter})`,
+    runTest(
+      Effect.gen(function* () {
+        const tab1 = yield* makeTabPair(
+          `http://localhost:${process.env.LIVESTORE_PLAYWRIGHT_DEV_SERVER_PORT}`,
+          'tab-1',
+          adapter,
+        )
+
+        yield* Effect.gen(function* () {
+          yield* Effect.tryPromise(async () => {
+            const el = tab1.page.locator('.new-todo').describe('tab-1:new-todo')
+            await el.waitFor({ timeout: 3000 })
+
+            await el.fill('Buy milk')
+            await el.press('Enter')
+
+            await tab1.page.locator('.todo-list li label:text("Buy milk")').waitFor()
+
+            const tab1ChannelId = await tab1.page.evaluate<string>(
+              `window.__debugLiveStore.default.clientId + ':' + window.__debugLiveStore.default.sessionId`,
+            )
+            await tab1.devtools.locator(`a:text("${tab1ChannelId}")`).describe('devtools-tab-1:click').click()
+
+            const tables = ['uiState (1)', 'todos (1)']
+
+            await checkDevtoolsState({
+              devtools: tab1.devtools,
+              label: 'devtools-tab-1',
+              expect: { leader: true, alreadyLoaded: false, tables },
+            })
+
+            await test.step('devtools-tab-1:reload', async () => {
+              await tab1.page.reload()
+            })
+
+            // Why: In-memory adapter is volatile; events aren’t persisted, so after reload the eventlog is empty and todos reset to 0.
+            const tablesAfterReload = adapter === 'inmemory' ? ['uiState (1)', 'todos (0)'] : tables
+
+            await checkDevtoolsState({
+              devtools: tab1.devtools,
+              label: 'devtools-tab-1',
+              expect: { leader: true, alreadyLoaded: false, tables: tablesAfterReload },
+            })
+          })
+
+          yield* shutdownTab(tab1.page)
+
+          yield* Effect.sleep(500).pipe(Effect.withSpan('wait-for-otel-flush'))
+        }).pipe(
+          Effect.raceFirst(
+            Fiber.joinAll([
+              tab1.pageConsoleFiber,
+              tab1.devtoolsConsoleFiber,
+              // TODO bring back background
+              // backgroundPageConsoleFiber!,
+            ]),
+          ),
+        )
+      }),
+      // .pipe(Effect.scoped, Effect.retry({ times: 2 })),
+    ),
+  )
+
+  // Only test two-tabs with persisted adapter: in-memory is per-tab and volatile, so state isn’t shared across tabs.
+  if (adapter === 'persisted') {
+    test(
+      `two tabs (adapter=${adapter})`,
+      runTest(
+        Effect.gen(function* () {
+          const tab1 = yield* makeTabPair(
+            `http://localhost:${process.env.LIVESTORE_PLAYWRIGHT_DEV_SERVER_PORT}`,
+            'tab-1',
+            adapter,
+          )
+          const tab2 = yield* makeTabPair(
+            `http://localhost:${process.env.LIVESTORE_PLAYWRIGHT_DEV_SERVER_PORT}`,
+            'tab-2',
+            adapter,
+          )
+
+          yield* Effect.gen(function* () {
+            yield* Effect.addFinalizer(() =>
+              Effect.all([shutdownTab(tab1.page), shutdownTab(tab2.page)], {
+                concurrency: 'unbounded',
+              }).pipe(Effect.orDie),
+            )
+
+            yield* Effect.tryPromise(async () => {
+              await tab1.page.focus('body')
+
+              const el = tab1.page.locator('.new-todo')
+              await el.waitFor({ timeout: 3000 })
+
+              await el.fill('Buy milk')
+              await el.press('Enter')
+
+              await tab1.page.locator('.todo-list li label:text("Buy milk")').waitFor()
+
+              const tab1ChannelId = await tab1.page.evaluate<string>(
+                `window.__debugLiveStore.default.clientId + ':' + window.__debugLiveStore.default.sessionId`,
+              )
+              const tab2ChannelId = await tab2.page.evaluate<string>(
+                `window.__debugLiveStore.default.clientId + ':' + window.__debugLiveStore.default.sessionId`,
+              )
+
+              const tables = ['uiState (2)', 'todos (1)']
+
+              await Promise.all([
+                tab1.devtools
+                  .locator(`a:text("${tab1ChannelId}")`)
+                  .describe('devtools-tab-1:click')
+                  .click()
+                  .then(() =>
+                    checkDevtoolsState({
+                      devtools: tab1.devtools,
+                      label: 'devtools-tab-1',
+                      expect: { leader: true, alreadyLoaded: false, tables },
+                    }),
+                  ),
+                tab2.devtools
+                  .locator(`a:text("${tab2ChannelId}")`)
+                  .describe('devtools-tab-2:click')
+                  .click()
+                  .then(() =>
+                    checkDevtoolsState({
+                      devtools: tab2.devtools,
+                      label: 'devtools-tab-2',
+                      expect: { leader: false, alreadyLoaded: false, tables },
+                    }),
+                  ),
+              ])
+
+              await tab1.page.reload()
+
+              await Promise.all([
+                tab1.page.locator('.todo-list li label:text("Buy milk")').describe('tab-1:Buy milk').waitFor(),
+                checkDevtoolsState({
+                  devtools: tab1.devtools,
+                  label: 'devtools-tab-1',
+                  expect: { leader: false, alreadyLoaded: true, tables },
+                }),
+                checkDevtoolsState({
+                  devtools: tab2.devtools,
+                  label: 'devtools-tab-2',
+                  expect: { leader: true, alreadyLoaded: true, tables },
+                }),
+              ])
+            })
+          }).pipe(
+            Effect.raceFirst(
+              Fiber.joinAll([
+                tab1.pageConsoleFiber,
+                tab1.devtoolsConsoleFiber,
+                tab2.pageConsoleFiber,
+                tab2.devtoolsConsoleFiber,
+              ]),
+            ),
+          )
+        }),
+      ),
+    )
+  }
+})
+
+const shutdownTab = Effect.fn('shutdown-tab')(function* (tab: PW.Page) {
+  // yield* Playwright.withPage(() => tab.pause())
+  yield* Effect.sleep(1000)
+  yield* Playwright.withPage(() => tab.evaluate('console.log(window.__debugLiveStore)'))
+  yield* Playwright.withPage(() => tab.evaluate('window.__debugLiveStore.default.shutdown()'), {
+    label: 'shutdown',
+  }).pipe(Effect.timeout(1000))
+
+  yield* Playwright.withPage(() => tab.getByText('LiveStore Shutdown').waitFor())
+})
+
 test(
-  'single tab',
+  'version mismatch overlay',
   runTest(
     Effect.gen(function* () {
-      const tab1 = yield* makeTabPair(`http://localhost:${process.env.LIVESTORE_PLAYWRIGHT_DEV_SERVER_PORT}/`, 'tab-1')
+      const fakeAppVersion = '0.0.0-fake-version'
+
+      const tab1 = yield* makeTabPair(
+        `http://localhost:${process.env.LIVESTORE_PLAYWRIGHT_DEV_SERVER_PORT}`,
+        'tab-version-mismatch',
+        'inmemory',
+        { appVersionOverride: fakeAppVersion },
+      )
 
       yield* Effect.gen(function* () {
-        yield* Effect.promise(async () => {
-          const el = tab1.page.locator('.new-todo')
+        yield* Effect.tryPromise(async () => {
+          // Wait for the app to load
+          const el = tab1.page.locator('.new-todo').describe('tab-version-mismatch:new-todo')
           await el.waitFor({ timeout: 3000 })
 
-          await el.fill('Buy milk')
-          await el.press('Enter')
+          // Click on the session in devtools to connect
+          const tabChannelId = await tab1.page.evaluate<string>(
+            `window.__debugLiveStore.default.clientId + ':' + window.__debugLiveStore.default.sessionId`,
+          )
+          await tab1.devtools.locator(`a:text("${tabChannelId}")`).describe('devtools:click-session').click()
 
-          await tab1.page.locator('.todo-list li label:text("Buy milk")').waitFor()
+          // Get the DevTools version (the real version since DevTools isn't overridden)
+          const devtoolsVersion = await tab1.devtools.evaluate<string>(() => {
+            // The devtools bundles the same liveStoreVersion constant
+            return (window as any).__LIVESTORE_DEVTOOLS_VERSION__ ?? 'unknown'
+          })
 
-          await tab1.devtools.locator('a').click()
-
-          const tables = ['uiState (1)', 'todos (1)']
-
-          await checkDevtoolsState({ devtools: tab1.devtools, expect: { leader: true, alreadyLoaded: false, tables } })
-
-          await tab1.page.reload()
-
-          await checkDevtoolsState({ devtools: tab1.devtools, expect: { leader: true, alreadyLoaded: false, tables } })
+          // Check version mismatch overlay is displayed
+          await checkVersionMismatchOverlay({
+            devtools: tab1.devtools,
+            label: 'devtools-version-mismatch',
+            expect: {
+              devtoolsVersion: devtoolsVersion !== 'unknown' ? devtoolsVersion : '0.4', // Partial match
+              appVersion: fakeAppVersion,
+            },
+          })
         })
 
         yield* shutdownTab(tab1.page)
 
         yield* Effect.sleep(500).pipe(Effect.withSpan('wait-for-otel-flush'))
-      }).pipe(
-        Effect.raceFirst(
-          Fiber.joinAll([
-            tab1.pageConsoleFiber,
-            tab1.devtoolsConsoleFiber,
-            // TODO bring back background
-            // backgroundPageConsoleFiber!,
-          ]),
-        ),
-      )
+      }).pipe(Effect.raceFirst(Fiber.joinAll([tab1.pageConsoleFiber, tab1.devtoolsConsoleFiber])))
     }),
-    // .pipe(Effect.scoped, Effect.retry({ times: 2 })),
   ),
 )
-
-test(
-  'two tabs',
-  runTest(
-    Effect.gen(function* () {
-      const tab1 = yield* makeTabPair(`http://localhost:${process.env.LIVESTORE_PLAYWRIGHT_DEV_SERVER_PORT}/`, 'tab-1')
-      const tab2 = yield* makeTabPair(`http://localhost:${process.env.LIVESTORE_PLAYWRIGHT_DEV_SERVER_PORT}/`, 'tab-2')
-
-      // const browserContext = yield* Playwright.BrowserContext
-
-      yield* Effect.gen(function* () {
-        yield* Effect.addFinalizer(() =>
-          Effect.all([shutdownTab(tab1.page), shutdownTab(tab2.page)], { concurrency: 'unbounded' }).pipe(Effect.orDie),
-        )
-
-        yield* Effect.promise(async () => {
-          await tab1.page.focus('body')
-
-          const el = tab1.page.locator('.new-todo')
-          await el.waitFor({ timeout: 3000 })
-
-          await el.fill('Buy milk')
-          await el.press('Enter')
-
-          await tab1.page.locator('.todo-list li label:text("Buy milk")').waitFor()
-          // await tab2.page.locator('.todo-list li label:text("Buy milk")').waitFor()
-
-          const tab1ChannelId = await tab1.page.evaluate<string>(
-            `window.__debugLiveStore.default.clientId + ':' + window.__debugLiveStore.default.clientSession.sessionId`,
-          )
-          const tab2ChannelId = await tab2.page.evaluate<string>(
-            `window.__debugLiveStore.default.clientId + ':' + window.__debugLiveStore.default.clientSession.sessionId`,
-          )
-
-          const tables = ['uiState (2)', 'todos (1)']
-
-          // const workersPage = await browserContext.browserContext.newPage()
-          // await workersPage.goto('chrome://inspect/#workers')
-          // await workersPage.locator('#workers-list div.actions span').getByText('inspect').first().click()
-
-          await Promise.all([
-            tab1.devtools
-              .locator(`a:text("${tab1ChannelId}")`)
-              .click()
-              .then(() =>
-                checkDevtoolsState({ devtools: tab1.devtools, expect: { leader: true, alreadyLoaded: false, tables } }),
-              ),
-            tab2.devtools
-              .locator(`a:text("${tab2ChannelId}")`)
-              .click()
-              .then(() =>
-                checkDevtoolsState({
-                  devtools: tab2.devtools,
-                  expect: { leader: false, alreadyLoaded: false, tables },
-                }),
-              ),
-          ])
-
-          await tab1.page.reload()
-
-          // try {
-          await Promise.all([
-            tab1.page.locator('.todo-list li label:text("Buy milk")').waitFor(),
-            checkDevtoolsState({ devtools: tab1.devtools, expect: { leader: false, alreadyLoaded: true, tables } }),
-            checkDevtoolsState({ devtools: tab2.devtools, expect: { leader: true, alreadyLoaded: true, tables } }),
-          ])
-          // } catch (e) {
-          //   console.log('pausing devtools', e)
-          //   await tab1.devtools.pause()
-          // }
-        })
-      }).pipe(
-        Effect.raceFirst(
-          Fiber.joinAll([
-            tab1.pageConsoleFiber,
-            tab1.devtoolsConsoleFiber,
-            tab2.pageConsoleFiber,
-            tab2.devtoolsConsoleFiber,
-            // TODO bring back background
-            // backgroundPageConsoleFiber!,
-          ]),
-        ),
-      )
-    }),
-    // .pipe(Effect.scoped, Effect.retry({ times: 2 })),
-  ),
-)
-
-const shutdownTab = (tab: PW.Page) =>
-  Effect.gen(function* () {
-    // yield* Playwright.withPage(() => tab.pause())
-    yield* Effect.sleep(1000)
-    yield* Playwright.withPage(() => tab.evaluate('console.log(window.__debugLiveStore)'))
-    yield* Playwright.withPage(() => tab.evaluate('window.__debugLiveStore.default.shutdown()'), {
-      label: 'shutdown',
-    }).pipe(Effect.timeout(1000))
-
-    yield* Playwright.withPage(() => tab.getByText('LiveStore Shutdown').waitFor())
-  }).pipe(Effect.withSpan('shutdown-tab'))

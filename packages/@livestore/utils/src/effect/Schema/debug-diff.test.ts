@@ -1,8 +1,8 @@
 import { Schema } from 'effect'
 import { describe, expect, test } from 'vitest'
 
-import type { DiffItem } from './debug-diff.js'
-import { debugDiff } from './debug-diff.js'
+import type { DiffItem } from './debug-diff.ts'
+import { debugDiff } from './debug-diff.ts'
 
 describe('debug-diff', () => {
   test('simple object', () => {
@@ -75,8 +75,8 @@ describe('debug-diff', () => {
 
   test('tagged union', () => {
     const schema = Schema.Union(
-      Schema.Struct({ _tag: Schema.Literal('a'), a: Schema.String }),
-      Schema.Struct({ _tag: Schema.Literal('b'), b: Schema.Number }),
+      Schema.TaggedStruct('a', { a: Schema.String }),
+      Schema.TaggedStruct('b', { b: Schema.Number }),
     )
     const a = { _tag: 'a', a: 'hello' } as const
     const b = { _tag: 'b', b: 1 } as const
