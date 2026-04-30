@@ -59,8 +59,7 @@ export const configureConnection = (sqliteDb: SqliteDb, { foreignKeys, lockingMo
     // integrity. If the thread using SQLite crashes in the middle of a transaction, then the database file will very
     // likely go corrupt.
     sql`
-    -- disable WAL until we have it working properly
-    -- PRAGMA journal_mode=WAL;
+    PRAGMA journal_mode=WAL;
     PRAGMA page_size=8192;
     PRAGMA foreign_keys=${foreignKeys === true ? 'ON' : 'OFF'};
     ${lockingMode === undefined ? '' : sql`PRAGMA locking_mode=${lockingMode};`}
