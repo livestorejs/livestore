@@ -1,0 +1,8 @@
+# Release-sensitive repository policy and release automation.
+/.github/ @schickling
+/.changeset/ @schickling
+/release/ @schickling
+/scripts/src/commands/changesets.ts @schickling
+/scripts/src/commands/devtools-artifact.ts @schickling
+/scripts/src/commands/release.ts @schickling
+

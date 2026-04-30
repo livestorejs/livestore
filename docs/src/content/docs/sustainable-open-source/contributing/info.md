@@ -60,6 +60,22 @@ Please get in touch if you'd like to discuss any of these topics!
 
 - Please include a [minimal reproducible example](https://stackoverflow.com/help/minimal-reproducible-example) for how to reproduce the bug.
 
+## Pull requests
+
+Every pull request must include a changeset. Use a normal changeset for
+user-visible or package-affecting changes, and use an empty changeset for
+changes that do not need release notes:
+
+```bash
+pnpm exec changeset
+pnpm exec changeset add --empty
+```
+
+See [`.changeset/README.md`](https://github.com/livestorejs/livestore/tree/main/.changeset#readme)
+for the short contributor-facing rule and
+[`contributor-docs/release-workflows.md`](https://github.com/livestorejs/livestore/blob/main/contributor-docs/release-workflows.md)
+for the maintainer release workflow.
+
 ## Guiding principles {#guiding-principles}
 
 - Keep it as simple as possible
