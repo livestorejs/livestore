@@ -83,21 +83,14 @@ const checkPr = (flags: Map<string, string | true>) => {
 
   const base = readFlag(flags, 'base') ?? process.env.CHANGESET_BASE_REF ?? 'origin/main'
   const files = changedFiles(base)
-  const publicPackageDirs = publicLivestorePackages().map((pkg) => `${pkg.dir}/`)
-  const packageFilesChanged = files.some((file) => publicPackageDirs.some((dir) => file.startsWith(dir)))
-  if (packageFilesChanged === false) {
-    console.log('No public @livestore package files changed; changeset not required.')
-    return
-  }
-
   if (files.some(isChangesetMarkdown) === true) {
-    console.log('Public package files changed and this PR changes a changeset file.')
+    console.log('This PR changes a changeset file.')
     return
   }
 
   throw new Error(
     [
-      'Public @livestore package files changed, but this PR does not add or modify a changeset.',
+      'This PR does not add or modify a changeset.',
       'Run `pnpm exec changeset` for a release-impacting change.',
       'Run `pnpm exec changeset add --empty` when the package change does not need release notes.',
     ].join('\n'),

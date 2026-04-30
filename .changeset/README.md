@@ -9,8 +9,8 @@ files record PR-level release intent and semver impact; maintainers fold that
 information into `CHANGELOG.md` using the existing changelog guide before a
 stable release.
 
-Use an empty changeset for package-affecting changes that do not need release
-notes:
+Every pull request should include a changeset. Use an empty changeset for
+changes that do not need release notes:
 
 ```bash
 pnpm exec changeset add --empty
