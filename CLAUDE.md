@@ -43,7 +43,7 @@ Use GitHub issues or an issue checklist for non-trivial work.
 
 ## Git
 
-- The default branch of this repository is `dev`.
+- The default branch of this repository is `main`.
 - Before committing, run `dt lint:full:fix` to auto-fix most linting errors. Make sure there are no type check/lint errors.
 
 ### Branch Naming Conventions

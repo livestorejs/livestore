@@ -300,7 +300,7 @@ in
       set -euo pipefail
       cd "$DEVENV_ROOT"
 
-      bun scripts/src/commands/changesets.ts check-pr --base "''${CHANGESET_BASE_REF:-origin/dev}"
+      bun scripts/src/commands/changesets.ts check-pr --base "''${CHANGESET_BASE_REF:-origin/main}"
     '';
   };
 
@@ -310,7 +310,7 @@ in
       set -euo pipefail
       cd "$DEVENV_ROOT"
 
-      DT_PASSTHROUGH=1 pnpm exec changeset status --since "''${CHANGESET_BASE_REF:-origin/dev}"
+      DT_PASSTHROUGH=1 pnpm exec changeset status --since "''${CHANGESET_BASE_REF:-origin/main}"
     '';
     after = [ "pnpm:install" ];
   };

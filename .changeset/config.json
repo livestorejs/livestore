@@ -32,7 +32,7 @@
   ],
   "linked": [],
   "access": "public",
-  "baseBranch": "dev",
+  "baseBranch": "main",
   "updateInternalDependencies": "patch",
   "ignore": ["@livestore/effect-playwright"]
 }

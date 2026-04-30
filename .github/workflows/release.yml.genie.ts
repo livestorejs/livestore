@@ -53,7 +53,7 @@ export default githubWorkflow({
       paths: releasePlanPaths,
     },
     push: {
-      branches: ['dev'],
+      branches: ['main'],
       paths: ['release/release-plan.json'],
     },
   },
@@ -85,7 +85,7 @@ export default githubWorkflow({
           name: 'Checkout',
           uses: 'actions/checkout@v4',
           with: {
-            ref: 'dev',
+            ref: 'main',
           },
         },
         ...livestoreSetupSteps.slice(1),
@@ -135,7 +135,7 @@ fi
 body="$(cat <<BODY
 Prepares a LiveStore release group for $LIVESTORE_RELEASE_VERSION from the pending Changesets.
 
-The release workflow dry-runs the npm publish for the LiveStore packages and the public DevTools artifact repack on this PR. After merge into dev, the same workflow publishes the release group. The publish job can also be manually dispatched after an operator verifies that the checked-in release plan is still the intended release.
+The release workflow dry-runs the npm publish for the LiveStore packages and the public DevTools artifact repack on this PR. After merge into main, the same workflow publishes the release group. The publish job can also be manually dispatched after an operator verifies that the checked-in release plan is still the intended release.
 
 ## Rationale
 
@@ -148,7 +148,7 @@ if gh pr view "$branch" --repo "$GITHUB_REPOSITORY" >/dev/null 2>&1; then
 else
   gh pr create \\
     --repo "$GITHUB_REPOSITORY" \\
-    --base dev \\
+    --base main \\
     --head "$branch" \\
     --title "Prepare LiveStore $LIVESTORE_RELEASE_VERSION release" \\
     --body "$body"
@@ -169,9 +169,20 @@ gh workflow run release.yml --repo "$GITHUB_REPOSITORY" --ref "$branch" \\
       steps: withNixDiagnosticsOnFailure([
         ...livestoreSetupSteps,
         {
-          name: 'Create synthetic release plan when testing release tooling changes',
+          name: 'Select release plan for validation',
           run: `set -euo pipefail
-if [ -f release/release-plan.json ]; then
+use_synthetic_plan=false
+
+if [ "$GITHUB_EVENT_NAME" = "pull_request" ]; then
+  git fetch origin "\${{ github.base_ref }}" --depth=1
+  if ! git diff --name-only "origin/\${{ github.base_ref }}...HEAD" | grep -qx 'release/release-plan.json'; then
+    use_synthetic_plan=true
+  fi
+elif [ ! -f release/release-plan.json ]; then
+  use_synthetic_plan=true
+fi
+
+if [ "$use_synthetic_plan" = "false" ]; then
   exit 0
 fi
 
