@@ -6,8 +6,8 @@ generated YAML directly. `sync-docs.yml` is currently handwritten.
 
 ## `ci.yml`
 
-Primary validation workflow for pull requests, `main`/`dev` pushes, and manual
-workflow-dispatch runs.
+Primary validation workflow for pull requests, `main` pushes, and manual
+workflow-dispatch runs. `main` is the canonical default and release branch.
 
 It runs the normal repository quality gates: linting, Changesets release-intent
 checks, TypeScript builds, unit tests, integration tests, Playwright tests,
@@ -44,13 +44,13 @@ the release group and the matching public DevTools artifact package. In normal
 operation this happens when the supervised release PR is merged.
 
 Manual dispatch with `mode=publish-release` reruns the publish job for the
-checked-in release plan. Use it only after confirming the current `dev` release
+checked-in release plan. Use it only after confirming the current `main` release
 plan is still the intended release; the publisher is idempotent for already
 published packages.
 
 The publish job uses the repository `NPM_TOKEN` secret. Snapshot publishing uses
-npm trusted publishing from `ci.yml`; stable/dev release publishing should move
-to trusted publishing too once `release.yml` is authorized for the npm packages.
+npm trusted publishing from `ci.yml`; release publishing should move to trusted
+publishing too once `release.yml` is authorized for the npm packages.
 
 ## `devtools-artifact.yml`
 

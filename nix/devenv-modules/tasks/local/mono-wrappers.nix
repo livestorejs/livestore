@@ -324,7 +324,7 @@ in
           echo "Error: GIT_SHA is required"
           exit 1
         fi
-        mono release snapshot --git-sha="$GIT_SHA"
+        mono release snapshot --git-sha="$GIT_SHA" --yes
       '';
       after = [ "setup:strict" ];
     };

@@ -48,6 +48,36 @@ const validateReleaseVersion = (version: string) =>
     ),
   )
 
+const validateReleasePlan = (plan: TReleasePlan) =>
+  validateReleaseVersion(plan.version).pipe(
+    Effect.flatMap((validVersion) =>
+      Effect.sync(() => {
+        const prerelease = semver.prerelease(validVersion)
+
+        if (plan.npmTag === 'snapshot') {
+          throw new Error('The npm tag "snapshot" is reserved for CI snapshot publishing')
+        }
+
+        if (plan.npmTag === 'latest' && prerelease !== null) {
+          throw new Error(`The npm tag "latest" requires a stable version, got ${validVersion}`)
+        }
+
+        if (plan.npmTag === 'dev') {
+          if (prerelease?.[0] !== 'dev') {
+            throw new Error(`The npm tag "dev" requires a dev prerelease version, got ${validVersion}`)
+          }
+          return validVersion
+        }
+
+        if (plan.npmTag !== 'latest' && prerelease === null) {
+          throw new Error(`The npm tag "${plan.npmTag}" requires a prerelease version, got ${validVersion}`)
+        }
+
+        return validVersion
+      }),
+    ),
+  )
+
 const releasePlanPath = (cwd: string) => `${cwd}/release/release-plan.json`
 
 const readReleasePlan = (cwd: string, planPath: string) =>
@@ -56,13 +86,13 @@ const readReleasePlan = (cwd: string, planPath: string) =>
     const absolutePlanPath = planPath.startsWith('/') === true ? planPath : `${cwd}/${planPath}`
     const content = yield* fsEffect.readFileString(absolutePlanPath)
     const plan = yield* Schema.decodeUnknown(ReleasePlan)(JSON.parse(content))
-    yield* validateReleaseVersion(plan.version)
+    yield* validateReleasePlan(plan)
     return plan
   })
 
 const writeReleasePlan = (cwd: string, plan: TReleasePlan) =>
   Effect.gen(function* () {
-    yield* validateReleaseVersion(plan.version)
+    yield* validateReleasePlan(plan)
     const fsEffect = yield* FileSystem.FileSystem
     yield* fsEffect.makeDirectory(`${cwd}/release`, { recursive: true })
     yield* fsEffect.writeFileString(releasePlanPath(cwd), `${JSON.stringify(plan, null, 2)}\n`)

@@ -7,7 +7,7 @@ and validate a release-plan PR.
 
 ## Release intent
 
-Changesets are the release-intent ledger for public LiveStore package changes.
+Changesets are the release-intent ledger for LiveStore pull requests.
 The public `@livestore/*` packages are configured as a fixed Changesets group,
 so any accepted changeset bumps the whole LiveStore release group together.
 
@@ -16,11 +16,10 @@ generated release notes replace it. Maintainers fold PR-level changeset
 information into the handcrafted changelog structure before cutting a stable
 release.
 
-PRs that change public package files must include one of:
+Every PR must include one of:
 
 - A regular `.changeset/*.md` file for release-impacting changes.
-- An empty changeset for package-affecting changes that do not need release
-  notes.
+- An empty changeset for changes that do not need release notes.
 
 ```bash
 pnpm exec changeset
@@ -83,6 +82,14 @@ The preferred flow is:
 3. Review the release-plan PR and wait for CI to pass.
 4. Merge the release-plan PR into `main`.
 5. Let the push-triggered `Release` workflow publish the release group.
+
+Release plans are validated against the npm dist-tag before dry-run or publish:
+
+- `latest` only accepts stable versions such as `0.4.0`.
+- `dev` only accepts dev prereleases such as `0.4.0-dev.24`.
+- Other non-`latest` tags only accept prerelease versions.
+- `snapshot` is reserved for CI snapshot publishing and cannot be used through
+  `release.yml`.
 
 The release-plan PR validates the exact work that will run after merge:
 
@@ -160,6 +167,7 @@ artifact as `@livestore/devtools-vite@<livestore-version>`.
 
 ## Safety rules
 
+- `main` is the only canonical release branch. Do not cut releases from `dev`.
 - Do not add non-public DevTools source, internal paths, credentials, or local
   machine details to this repository.
 - Do not paste secrets into release plans, PR descriptions, workflow inputs, or
@@ -178,3 +186,5 @@ artifact as `@livestore/devtools-vite@<livestore-version>`.
 - Do not publish patch, minor, or major releases while testing this Changesets
   integration. Use snapshots and non-`latest` prerelease tags until the final
   supervised release.
+- Release-sensitive files are code-owned and should be reviewed by a maintainer:
+  `.github/`, `.changeset/`, `release/`, and release command scripts.
