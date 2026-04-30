@@ -1,5 +1,6 @@
 import process from 'node:process'
 
+import { liveStoreVersion } from '@livestore/common'
 import { cmd, cmdText, LivestoreWorkspace } from '@livestore/utils-dev/node'
 import { Effect, FileSystem, Layer, Logger, LogLevel, Option, Schema } from '@livestore/utils/effect'
 import { Cli, PlatformNode } from '@livestore/utils/node'
@@ -16,6 +17,11 @@ import {
   resolveWorkerName,
   resolveWorkersSubdomain,
 } from '../../shared/cloudflare.ts'
+import {
+  assertProductionDeployAllowed,
+  isPrimaryIntegrationBranch,
+  type DeploymentKind,
+} from '../../shared/deploy-target.ts'
 import { appendGithubSummaryMarkdown, formatMarkdownTable } from '../../shared/misc.ts'
 
 export class ScriptError extends Schema.TaggedError<ScriptError>()('ScriptError', {
@@ -143,8 +149,6 @@ export const runExampleTests = (examples: ReadonlyArray<string>, options: { skip
     }
   })
 
-const DEV_BRANCH_NAME = 'dev'
-
 interface DeploymentSummary {
   example: string
   workerName: string
@@ -205,13 +209,11 @@ const determineDeploymentKind = ({
   prod: boolean
   branchName: string
 }): CloudflareEnvironmentKind => {
-  const normalizedBranch = branchName.toLowerCase()
-
-  if (prod === true || normalizedBranch === 'main') {
+  if (prod === true) {
     return 'prod'
   }
 
-  if (normalizedBranch === DEV_BRANCH_NAME) {
+  if (isPrimaryIntegrationBranch(branchName) === true) {
     return 'dev'
   }
 
@@ -222,6 +224,9 @@ const formatDomain = (domain: { domain: string; name: string }) =>
   domain.name === '@' ? domain.domain : `${domain.name}.${domain.domain}`
 
 const deploymentKindLabel = (kind: CloudflareEnvironmentKind) => kind
+
+const deploymentKindDescription = (kind: DeploymentKind) =>
+  kind === 'prod' ? 'to production' : kind === 'dev' ? 'to dev' : 'to preview'
 
 /**
  * Build + deploy a single example, returning a summary that can be rendered in the CLI table.
@@ -295,6 +300,11 @@ export const command = Cli.Command.make(
     const { branchName } = yield* getBranchInfo
     console.log(`Deploy branch: ${branchName}`)
 
+    const requestedProd = prod === true
+    if (requestedProd === true) {
+      yield* Effect.sync(() => assertProductionDeployAllowed(liveStoreVersion))
+    }
+
     const filteredExamples = cloudflareExamples.filter((example) =>
       Option.isSome(exampleFilter) === true ? example.slug.includes(exampleFilter.value) : true,
     )
@@ -310,8 +320,11 @@ export const command = Cli.Command.make(
     }
 
     const workersSubdomain = yield* resolveWorkersSubdomain
+    const deploymentKind = determineDeploymentKind({ prod: requestedProd, branchName })
     console.log(
-      `Deploying${prod === true ? ' (to prod)' : ''}: ${filteredExamples.map((example) => example.slug).join(', ')} using ${workersSubdomain}.workers.dev`,
+      `Deploying (${deploymentKindDescription(deploymentKind)}): ${filteredExamples
+        .map((example) => example.slug)
+        .join(', ')} using ${workersSubdomain}.workers.dev`,
     )
 
     const results = yield* Effect.forEach(
@@ -319,7 +332,7 @@ export const command = Cli.Command.make(
       (example) =>
         deployExample({
           exampleSlug: example.slug,
-          prod,
+          prod: requestedProd,
           branchName,
           workersSubdomain,
         }),

@@ -11,7 +11,7 @@ workflow-dispatch runs. `main` is the canonical default and release branch.
 
 It runs the normal repository quality gates: linting, Changesets release-intent
 checks, TypeScript builds, unit tests, integration tests, Playwright tests,
-performance tests, docs/examples builds, snapshot publishing, DevTools artifact
+performance tests, docs/examples builds, dev docs/examples deploys, snapshot publishing, DevTools artifact
 snapshot publishing, and create-example smoke tests.
 
 The snapshot and create-example jobs are intentionally part of CI. They verify
@@ -40,13 +40,16 @@ repack path. This checks the stable release machinery without publishing a
 stable release.
 
 On push to `main` when `release/release-plan.json` changes, the workflow publishes
-the release group and the matching public DevTools artifact package. In normal
-operation this happens when the supervised release PR is merged.
+the release group and the matching public DevTools artifact package. For stable
+`latest` releases it then deploys the production docs, production examples, and
+production docs search index. In normal operation this happens when the
+supervised release PR is merged.
 
 Manual dispatch with `mode=publish-release` reruns the publish job for the
 checked-in release plan. Use it only after confirming the current `main` release
 plan is still the intended release; the publisher is idempotent for already
-published packages.
+published packages, but production deploys still reflect the checked-in release
+state.
 
 The publish job uses the repository `NPM_TOKEN` secret. Snapshot publishing uses
 npm trusted publishing from `ci.yml`; release publishing should move to trusted
@@ -76,7 +79,9 @@ review.
 ## `sync-docs.yml`
 
 Synchronizes documentation Markdown/MDX files from `main` into the Mixedbread
-vector store used by docs search/RAG tooling.
+vector store used by docs search/RAG tooling. Pushes to `main` update the dev
+search index. Manual dispatch can target either `dev` or `prod`; production
+sync is also run by the stable release publish workflow.
 
 It runs on pushes to `main` that touch docs content and can also be dispatched
 manually. It is separate from the docs build/deploy jobs in `ci.yml`: CI verifies

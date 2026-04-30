@@ -93,8 +93,8 @@ For snippet guidelines, see: `/contributor-docs/docs/snippets.md`
 
 ## Deploying the docs
 
-- Run `direnv exec . mono docs deploy` to build and deploy the documentation to the dev domain (`https://dev.docs.livestore.dev`).
-- Passing `--prod` targets the production domain (`https://docs.livestore.dev`) when you are on `main` (otherwise the command deploys using a branch alias).
+- Run `direnv exec . mono docs deploy` to deploy the already-built documentation to the dev Netlify site. On `main`, this updates the dev domain (`https://dev.docs.livestore.dev`); on pull requests and feature branches, it uses a branch alias on the dev site.
+- Passing `--prod` targets the production domain (`https://docs.livestore.dev`) and is only allowed for stable LiveStore release versions.
 - Use `--site=<slug>` if you need to override the default Netlify site name.
 - Add `--purge-cdn` when you need to invalidate Netlify's CDN cache after deploying; this ensures new edge handlers or content-negotiation changes take effect immediately.
-- CI automatically builds and deploys the docs: `main` updates `https://docs.livestore.dev`, `dev` updates `https://dev.docs.livestore.dev`, and feature branches publish to the dev domain behind a branch alias.
+- CI automatically builds and deploys the docs: normal `main` pushes update `https://dev.docs.livestore.dev`, pull requests publish aliases on the dev site, and the release workflow updates `https://docs.livestore.dev` only after publishing a stable release.
