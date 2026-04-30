@@ -434,12 +434,16 @@ See the [S2 sync provider docs](https://dev.docs.livestore.dev/reference/syncing
 
 ##### SQLite & Storage
 
+- Fix SQLite connections not closed on store disposal, preventing database reset after file deletion in the Expo adapter ([#1171](https://github.com/livestorejs/livestore/issues/1171)). Thanks @OrkhanAlikhanov for the detailed repro.
 - Fix in-memory SQLite database connection handling in Expo adapter
 - Fix OPFS file pool capacity exhaustion from old state databases (#569)
 - Upgrade wa-sqlite to SQLite 3.50.4 (#581)
 - **WAL snapshot guard:** `@livestore/sqlite-wasm` now aborts WAL-mode snapshot imports with an explicit `SqliteError`, preventing silent corruption when loading backups ([#694](https://github.com/livestorejs/livestore/issues/694)).
+- **Fix `changeset_apply` crash during rebase rollback:** The conflict callback was coerced to a null pointer when passed to WASM, causing `RuntimeError: function signature mismatch` during concurrent multi-tab edits. Now wired through the C adapter relay pattern matching other callback APIs. `xConflict` and `xFilter` are explicit parameters on the public API (#998). Thanks, @slashv for the detailed reproduction and @acusti for the initial investigation.
 
 ##### Concurrency & Lifecycle
+
+- Fix `useStore` hook-order violation in React strict mode by moving the `retain` effect after the `React.use()` suspension point ([#1181](https://github.com/livestorejs/livestore/issues/1181))
 
 - Fix background push fiber dying silently on non-`RejectedPushError` failures in `ClientSessionSyncProcessor`, leaving sessions unable to push ([#1133](https://github.com/livestorejs/livestore/issues/1133))
 - Fix `toGlobal()` leaking a debug `toJSON` method onto the returned `Global.Encoded` object, causing `JSON.stringify` to produce string seqNums instead of integers in custom sync backends (#1165). Thanks @OrkhanAlikhanov for diagnosing the root cause.

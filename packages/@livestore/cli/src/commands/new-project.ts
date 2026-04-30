@@ -26,6 +26,12 @@ const GitHubContentSchema = Schema.Struct({
 
 const GitHubContentsResponseSchema = Schema.Array(GitHubContentSchema)
 
+const githubRequest = (url: string) => {
+  const request = HttpClientRequest.get(url).pipe(HttpClientRequest.setHeader('accept', 'application/vnd.github+json'))
+  const token = process.env.GITHUB_TOKEN ?? process.env.GH_TOKEN
+  return token === undefined ? request : request.pipe(HttpClientRequest.setHeader('authorization', `Bearer ${token}`))
+}
+
 /** Schema for parsing package.json scripts (dev or start) */
 const PackageJsonScriptsSchema = Schema.Struct({
   scripts: Schema.Union(Schema.Struct({ dev: Schema.String }), Schema.Struct({ start: Schema.String })),
@@ -59,7 +65,7 @@ const fetchExamples = (ref: string) =>
 
     yield* Effect.log(`Fetching examples from ref: ${ref}`)
 
-    const request = HttpClientRequest.get(url)
+    const request = githubRequest(url)
     const response = yield* HttpClient.execute(request).pipe(
       Effect.scoped,
       Effect.catchAll(
@@ -122,7 +128,7 @@ const downloadExample = (exampleName: string, ref: string, destinationPath: stri
     const tarballUrl = `https://api.github.com/repos/livestorejs/livestore/tarball/${ref}`
 
     // Download tarball directly
-    const request = HttpClientRequest.get(tarballUrl)
+    const request = githubRequest(tarballUrl)
 
     const response = yield* HttpClient.execute(request).pipe(
       Effect.scoped,
@@ -216,7 +222,7 @@ export const createCommand = Cli.Command.make(
       Cli.Options.withAlias('commit'),
       Cli.Options.withAlias('branch'),
       Cli.Options.withAlias('tag'),
-      Cli.Options.withDefault('dev'),
+      Cli.Options.withDefault('main'),
       Cli.Options.withDescription(
         'The name of the commit/branch/tag to fetch examples from. Pull requests refs must be fully-formed (e.g., `refs/pull/123/merge`).',
       ),

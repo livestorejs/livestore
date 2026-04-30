@@ -12,11 +12,12 @@ permissions:
 on:
   push:
     branches: [main, dev]
+  workflow_dispatch: {}
   pull_request: {}
 
 env:
-  GITHUB_BRANCH_NAME: '${{ github.head_ref || github.ref_name }}'
-  CACHIX_AUTH_TOKEN: '${{ secrets.CACHIX_AUTH_TOKEN }}'
+  GITHUB_BRANCH_NAME: ${{ github.head_ref || github.ref_name }}
+  CACHIX_AUTH_TOKEN: ${{ secrets.CACHIX_AUTH_TOKEN }}
   FORCE_SETUP: '1'
   CI: 'true'
 
@@ -44,7 +45,8 @@ jobs:
         uses: cachix/cachix-action@v17
         with:
           name: livestore
-          authToken: '${{ env.CACHIX_AUTH_TOKEN }}'
+          authToken: ${{ env.CACHIX_AUTH_TOKEN }}
+          skipPush: true
       - name: Sync megarepo dependencies
         env:
           MEGAREPO_STORE: '${{ runner.temp }}/megarepo-store/${{ github.run_id }}/${{ github.run_attempt }}/${{ github.job }}'
@@ -56,6 +58,11 @@ jobs:
           fi
           mkdir -p "$MEGAREPO_STORE"
           echo "Using job-local megarepo store: $MEGAREPO_STORE"
+          if [ -n "${GITHUB_ENV:-}" ]; then
+            printf 'MEGAREPO_STORE=%s
+          ' "$MEGAREPO_STORE" >> "$GITHUB_ENV"
+          fi
+
           nix run "github:overengineeringstudio/effect-utils/$EU_REV#megarepo" -- apply --all
         shell: bash
       - name: Use pinned devenv from lock
@@ -122,7 +129,7 @@ jobs:
           if ! nix-store --check-validity "$DEVENV_OUT" 2>/dev/null; then
             echo "::warning::devenv store path invalid, repairing targeted path..."
             nix-store --repair-path "$DEVENV_OUT" > "$DIAG_ROOT/nix-store-verify-repair.log" 2>&1 || true
-            rm -rf ~/.cache/nix/eval-cache-*
+            rm -rf "${XDG_CACHE_HOME:-$HOME/.cache}"/nix/eval-cache-* ~/.cache/nix/eval-cache-*
             if ! DEVENV_OUT=$(resolve_devenv 2> >(tee "$DIAG_ROOT/resolve-devenv-post-repair.log" >&2)); then
               echo "::error::resolve_devenv failed after repair. Last 30 lines of log:"
               tail -30 "$DIAG_ROOT/resolve-devenv-post-repair.log" || true
@@ -202,7 +209,7 @@ jobs:
                 return 0
               fi
 
-              flattened=$(tr '\r\n' '  ' < "$log" | sed -E $'s/\x1B\\[[0-9;]*m//g')
+              flattened=$(tr '\r\n' '  ' < "$log" | sed -E $'s/\x1B\[[0-9;]*m//g')
               path=$(printf '%s' "$flattened" |
                 grep -o "error:[[:space:]]*path '/nix/store/[^']*'[[:space:]]*is not valid" |
                 head -1 |
@@ -211,8 +218,8 @@ jobs:
               saw_invalid_path=false
               saw_cachix_signature=false
               [ -n "$path" ] && saw_invalid_path=true
-              printf '%s' "$flattened" | grep -q 'Failed to convert config\.cachix to JSON' && saw_cachix_signature=true || true
-              printf '%s' "$flattened" | grep -q 'while evaluating the option' && printf '%s' "$flattened" | grep -q 'cachix\.package' && saw_cachix_signature=true || true
+              printf '%s' "$flattened" | grep -Eq 'error:[[:space:]]*.*Failed to convert config\.cachix to JSON' && saw_cachix_signature=true || true
+              printf '%s' "$flattened" | grep -Eq 'error:[[:space:]]*.*while evaluating the option.*cachix\.package' && saw_cachix_signature=true || true
               rm -f "$log"
 
               if [ "$saw_invalid_path" != true ] && [ "$saw_cachix_signature" != true ]; then
@@ -245,7 +252,7 @@ jobs:
           rm -f "$__nix_gc_retry_helper"
           run_nix_gc_race_retry 'devenv tasks run lint:full:with-megarepo-check --mode before' 'if [ -n "${NIX_CONFIG:-}" ]; then NIX_CONFIG_WITH_APPEND=$(printf '"'"'%s\n%s'"'"' "$NIX_CONFIG" '"'"'restrict-eval = false'"'"'); else NIX_CONFIG_WITH_APPEND='"'"'restrict-eval = false'"'"'; fi; NIX_CONFIG="$NIX_CONFIG_WITH_APPEND" PNPM_HOME="${PNPM_HOME:-${{ github.workspace }}/.pnpm-home}" PNPM_STORE_DIR="${PNPM_STORE_DIR:-${{ runner.temp }}/pnpm-store/${{ github.job }}}" DT_PASSTHROUGH=1 "${DEVENV_BIN:?DEVENV_BIN not set}" tasks run lint:full:with-megarepo-check --mode before'
       - name: Save pnpm state
-        if: "${{ success() && steps.restore-pnpm-state.outputs.cache-hit != 'true' }}"
+        if: ${{ success() && steps.restore-pnpm-state.outputs.cache-hit != 'true' }}
         uses: actions/cache/save@v4
         with:
           path: |
@@ -257,11 +264,12 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: 'nix-store-diagnostics-${{ github.job }}-${{ runner.os }}-run-${{ github.run_id }}-attempt-${{ github.run_attempt }}'
-          path: '${{ env.NIX_STORE_DIAGNOSTICS_DIR }}'
+          path: ${{ env.NIX_STORE_DIAGNOSTICS_DIR }}
           if-no-files-found: ignore
           retention-days: 14
-  type-check:
+  changeset-check:
     runs-on: [namespace-profile-linux-x86-64, 'namespace-features:github.run-id=${{ github.run_id }}']
+    if: github.event_name == 'pull_request'
     defaults:
       run:
         shell: bash
@@ -283,7 +291,8 @@ jobs:
         uses: cachix/cachix-action@v17
         with:
           name: livestore
-          authToken: '${{ env.CACHIX_AUTH_TOKEN }}'
+          authToken: ${{ env.CACHIX_AUTH_TOKEN }}
+          skipPush: true
       - name: Sync megarepo dependencies
         env:
           MEGAREPO_STORE: '${{ runner.temp }}/megarepo-store/${{ github.run_id }}/${{ github.run_attempt }}/${{ github.job }}'
@@ -295,6 +304,11 @@ jobs:
           fi
           mkdir -p "$MEGAREPO_STORE"
           echo "Using job-local megarepo store: $MEGAREPO_STORE"
+          if [ -n "${GITHUB_ENV:-}" ]; then
+            printf 'MEGAREPO_STORE=%s
+          ' "$MEGAREPO_STORE" >> "$GITHUB_ENV"
+          fi
+
           nix run "github:overengineeringstudio/effect-utils/$EU_REV#megarepo" -- apply --all
         shell: bash
       - name: Use pinned devenv from lock
@@ -361,7 +375,256 @@ jobs:
           if ! nix-store --check-validity "$DEVENV_OUT" 2>/dev/null; then
             echo "::warning::devenv store path invalid, repairing targeted path..."
             nix-store --repair-path "$DEVENV_OUT" > "$DIAG_ROOT/nix-store-verify-repair.log" 2>&1 || true
-            rm -rf ~/.cache/nix/eval-cache-*
+            rm -rf "${XDG_CACHE_HOME:-$HOME/.cache}"/nix/eval-cache-* ~/.cache/nix/eval-cache-*
+            if ! DEVENV_OUT=$(resolve_devenv 2> >(tee "$DIAG_ROOT/resolve-devenv-post-repair.log" >&2)); then
+              echo "::error::resolve_devenv failed after repair. Last 30 lines of log:"
+              tail -30 "$DIAG_ROOT/resolve-devenv-post-repair.log" || true
+              exit 1
+            fi
+            DEVENV_BIN="$DEVENV_OUT/bin/devenv"
+          fi
+
+          echo "DEVENV_BIN=$DEVENV_BIN" >> "$GITHUB_ENV"
+          "$DEVENV_BIN" version | tee "$DIAG_ROOT/devenv-version.txt"
+        shell: bash
+      - name: Fetch changeset comparison base
+        run: 'git fetch origin "${{ github.base_ref }}" --depth=1'
+      - name: Check release intent
+        run: |
+          __nix_gc_retry_helper=$(mktemp)
+          cat > "$__nix_gc_retry_helper" <<'EOF'
+          #!/usr/bin/env bash
+
+          run_nix_gc_race_retry() {
+            local task="$1"
+            local command="$2"
+            local max="${NIX_GC_RACE_MAX_RETRIES:-10}"
+            local heartbeat="${CI_PROGRESS_HEARTBEAT_SECONDS:-60}"
+            local attempt=1
+            local log rc path start now elapsed hb_pid flattened saw_invalid_path saw_cachix_signature had_errexit
+
+            start="$(date +%s)"
+
+            write_summary() {
+              [ -n "${GITHUB_STEP_SUMMARY:-}" ] || return 0
+              {
+                echo "### CI Task"
+                echo "- Task: $task"
+                echo "- Status: $1"
+                echo "- Duration: $elapsed s"
+                echo "- Attempts: $attempt/$max"
+                [ -z "${2:-}" ] || echo "- Note: $2"
+              } >> "$GITHUB_STEP_SUMMARY"
+            }
+
+            while [ "$attempt" -le "$max" ]; do
+              echo "::notice::[ci] starting $task (attempt $attempt/$max)"
+              (
+                while sleep "$heartbeat"; do
+                  now=$(date +%s)
+                  elapsed=$((now - start))
+                  echo "::notice::[ci] $task still running after $elapsed s (attempt $attempt/$max)"
+                done
+              ) &
+              hb_pid=$!
+
+              log=$(mktemp)
+              had_errexit=false
+              case $- in
+                *e*) had_errexit=true ;;
+              esac
+              set +e
+              eval "$command" > >(tee -a "$log") 2> >(tee -a "$log" >&2)
+              rc=$?
+              if [ "$had_errexit" = true ]; then
+                set -e
+              fi
+
+              kill "$hb_pid" 2>/dev/null || true
+              wait "$hb_pid" 2>/dev/null || true
+
+              now=$(date +%s)
+              elapsed=$((now - start))
+
+              if [ "$rc" -eq 0 ]; then
+                echo "::notice::[ci] completed $task in $elapsed s"
+                if [ "$attempt" -gt 1 ]; then
+                  write_summary success "Recovered from Nix GC race after retry"
+                else
+                  write_summary success
+                fi
+                rm -f "$log"
+                return 0
+              fi
+
+              flattened=$(tr '\r\n' '  ' < "$log" | sed -E $'s/\x1B\[[0-9;]*m//g')
+              path=$(printf '%s' "$flattened" |
+                grep -o "error:[[:space:]]*path '/nix/store/[^']*'[[:space:]]*is not valid" |
+                head -1 |
+                grep -o "/nix/store/[^']*" |
+                tr -d '[:space:]' || true)
+              saw_invalid_path=false
+              saw_cachix_signature=false
+              [ -n "$path" ] && saw_invalid_path=true
+              printf '%s' "$flattened" | grep -Eq 'error:[[:space:]]*.*Failed to convert config\.cachix to JSON' && saw_cachix_signature=true || true
+              printf '%s' "$flattened" | grep -Eq 'error:[[:space:]]*.*while evaluating the option.*cachix\.package' && saw_cachix_signature=true || true
+              rm -f "$log"
+
+              if [ "$saw_invalid_path" != true ] && [ "$saw_cachix_signature" != true ]; then
+                echo "::warning::[ci] $task failed after $elapsed s without a detected Nix store validity race"
+                write_summary failure "No Nix GC race signature detected"
+                return "$rc"
+              fi
+
+              if [ "$saw_cachix_signature" = true ] && [ -n "$path" ]; then
+                echo "::warning::Nix store validity race detected for $task via cachix eval wrapper (attempt $attempt/$max): $path"
+              elif [ "$saw_cachix_signature" = true ]; then
+                echo "::warning::Nix store validity race detected for $task via cachix eval wrapper without extracted store path (attempt $attempt/$max)"
+              else
+                echo "::warning::Nix store validity race detected for $task (attempt $attempt/$max): $path"
+              fi
+
+              [ -z "$path" ] || nix-store --realise "$path" 2>/dev/null || true
+              rm -rf ~/.cache/nix/eval-cache-*
+              attempt=$((attempt + 1))
+            done
+
+            now=$(date +%s)
+            elapsed=$((now - start))
+            echo "::error::Nix GC race retry exhausted for $task ($max attempts)"
+            write_summary failure "Nix GC race retry exhausted"
+            return 1
+          }
+          EOF
+          . "$__nix_gc_retry_helper"
+          rm -f "$__nix_gc_retry_helper"
+          run_nix_gc_race_retry 'devenv tasks run release:changeset:check-pr --mode before' 'if [ -n "${NIX_CONFIG:-}" ]; then NIX_CONFIG_WITH_APPEND=$(printf '"'"'%s\n%s'"'"' "$NIX_CONFIG" '"'"'restrict-eval = false'"'"'); else NIX_CONFIG_WITH_APPEND='"'"'restrict-eval = false'"'"'; fi; NIX_CONFIG="$NIX_CONFIG_WITH_APPEND" PNPM_HOME="${PNPM_HOME:-${{ github.workspace }}/.pnpm-home}" PNPM_STORE_DIR="${PNPM_STORE_DIR:-${{ runner.temp }}/pnpm-store/${{ github.job }}}" DT_PASSTHROUGH=1 "${DEVENV_BIN:?DEVENV_BIN not set}" tasks run release:changeset:check-pr --mode before'
+        env:
+          CHANGESET_BASE_REF: 'origin/${{ github.base_ref }}'
+      - name: Save pnpm state
+        if: ${{ success() && steps.restore-pnpm-state.outputs.cache-hit != 'true' }}
+        uses: actions/cache/save@v4
+        with:
+          path: |
+            ${{ github.workspace }}/.pnpm-home
+            ${{ runner.temp }}/pnpm-store/${{ github.job }}
+          key: "livestore-pnpm-state-v1-${{ runner.os }}-${{ runner.arch }}-${{ hashFiles('**/pnpm-lock.yaml') }}"
+      - name: Upload Nix diagnostics artifact
+        if: failure() && env.NIX_STORE_DIAGNOSTICS_DIR != ''
+        uses: actions/upload-artifact@v4
+        with:
+          name: 'nix-store-diagnostics-${{ github.job }}-${{ runner.os }}-run-${{ github.run_id }}-attempt-${{ github.run_attempt }}'
+          path: ${{ env.NIX_STORE_DIAGNOSTICS_DIR }}
+          if-no-files-found: ignore
+          retention-days: 14
+  type-check:
+    runs-on: [namespace-profile-linux-x86-64, 'namespace-features:github.run-id=${{ github.run_id }}']
+    defaults:
+      run:
+        shell: bash
+    steps:
+      - uses: actions/checkout@v6
+      - name: Install Nix
+        uses: DeterminateSystems/determinate-nix-action@v3
+        with:
+          extra-conf: |
+            experimental-features = nix-command flakes
+            accept-flake-config = true
+            extra-substituters = https://devenv.cachix.org
+            extra-trusted-public-keys = devenv.cachix.org-1:w1cLUi8dv3hnoSPGAuibQv+f9TZLr6cv/Hm9XgU50cw=
+            access-tokens = github.com=${{ github.token }}
+            extra-substituters = https://cache.nixos.org
+            extra-trusted-public-keys = cache.nixos.org-1:6NCHdD59X431o0gWypbMrAURkbJ16ZPMQFGspcDShjY=
+          summarize: true
+      - name: Enable Cachix cache
+        uses: cachix/cachix-action@v17
+        with:
+          name: livestore
+          authToken: ${{ env.CACHIX_AUTH_TOKEN }}
+          skipPush: true
+      - name: Sync megarepo dependencies
+        env:
+          MEGAREPO_STORE: '${{ runner.temp }}/megarepo-store/${{ github.run_id }}/${{ github.run_attempt }}/${{ github.job }}'
+        run: |
+          EU_REV=$(jq -r '.members["effect-utils"].commit' megarepo.lock)
+          if [ -z "$EU_REV" ] || [ "$EU_REV" = "null" ]; then
+            echo '::error::megarepo.lock missing members["effect-utils"].commit'
+            exit 1
+          fi
+          mkdir -p "$MEGAREPO_STORE"
+          echo "Using job-local megarepo store: $MEGAREPO_STORE"
+          if [ -n "${GITHUB_ENV:-}" ]; then
+            printf 'MEGAREPO_STORE=%s
+          ' "$MEGAREPO_STORE" >> "$GITHUB_ENV"
+          fi
+
+          nix run "github:overengineeringstudio/effect-utils/$EU_REV#megarepo" -- apply --all
+        shell: bash
+      - name: Use pinned devenv from lock
+        run: |
+          DEVENV_REV=$(jq -r .nodes.devenv.locked.rev devenv.lock)
+          if [ -z "$DEVENV_REV" ] || [ "$DEVENV_REV" = "null" ]; then
+            echo '::error::devenv.lock missing .nodes.devenv.locked.rev'
+            exit 1
+          fi
+          echo "DEVENV_REV=$DEVENV_REV" >> "$GITHUB_ENV"
+          echo "Pinned devenv rev: $DEVENV_REV"
+        shell: bash
+      - name: Isolate pnpm state
+        shell: bash
+        run: |
+          echo "PNPM_STORE_DIR=${{ runner.temp }}/pnpm-store/${{ github.job }}" >> "$GITHUB_ENV"
+          echo "PNPM_HOME=${{ github.workspace }}/.pnpm-home" >> "$GITHUB_ENV"
+      - id: restore-pnpm-state
+        name: Restore pnpm state
+        uses: actions/cache/restore@v4
+        with:
+          path: |
+            ${{ github.workspace }}/.pnpm-home
+            ${{ runner.temp }}/pnpm-store/${{ github.job }}
+          key: "livestore-pnpm-state-v1-${{ runner.os }}-${{ runner.arch }}-${{ hashFiles('**/pnpm-lock.yaml') }}"
+      - name: Resolve devenv
+        run: |
+          if [ -z "${DEVENV_REV:-}" ]; then
+            DEVENV_REV=$(jq -r .nodes.devenv.locked.rev devenv.lock)
+          if [ -z "$DEVENV_REV" ] || [ "$DEVENV_REV" = "null" ]; then
+            echo '::error::devenv.lock missing .nodes.devenv.locked.rev'
+            exit 1
+          fi
+          fi
+
+          resolve_devenv() {
+            nix build --no-link --print-out-paths "github:cachix/devenv/$DEVENV_REV#devenv"
+          }
+
+          # Temporary: capture diagnostics dir for #272 root-cause analysis.
+          DIAG_ROOT="${RUNNER_TEMP:-/tmp}/nix-store-diagnostics-${GITHUB_JOB:-job}-${RUNNER_OS:-unknown}-${GITHUB_RUN_ATTEMPT:-0}"
+          mkdir -p "$DIAG_ROOT"
+          echo "NIX_STORE_DIAGNOSTICS_DIR=$DIAG_ROOT" >> "$GITHUB_ENV"
+
+          {
+            echo "timestamp_utc=$(date -u +%Y-%m-%dT%H:%M:%SZ)"
+            echo "runner_name=${RUNNER_NAME:-unknown}"
+            echo "runner_os=${RUNNER_OS:-unknown}"
+            echo "runner_arch=${RUNNER_ARCH:-unknown}"
+            echo "github_job=${GITHUB_JOB:-unknown}"
+            echo "github_run_id=${GITHUB_RUN_ID:-unknown}"
+            echo "nix_user_conf_files=${NIX_USER_CONF_FILES:-}"
+            nix --version || true
+          } > "$DIAG_ROOT/environment.txt" 2>&1
+
+          if ! DEVENV_OUT=$(resolve_devenv 2> >(tee "$DIAG_ROOT/resolve-devenv.log" >&2)); then
+            echo "::error::resolve_devenv failed. Last 30 lines of log:"
+            tail -30 "$DIAG_ROOT/resolve-devenv.log" || true
+            exit 1
+          fi
+          DEVENV_BIN="$DEVENV_OUT/bin/devenv"
+
+          # Fast validity check on the devenv store path (~1-2s vs ~25s for devenv info).
+          if ! nix-store --check-validity "$DEVENV_OUT" 2>/dev/null; then
+            echo "::warning::devenv store path invalid, repairing targeted path..."
+            nix-store --repair-path "$DEVENV_OUT" > "$DIAG_ROOT/nix-store-verify-repair.log" 2>&1 || true
+            rm -rf "${XDG_CACHE_HOME:-$HOME/.cache}"/nix/eval-cache-* ~/.cache/nix/eval-cache-*
             if ! DEVENV_OUT=$(resolve_devenv 2> >(tee "$DIAG_ROOT/resolve-devenv-post-repair.log" >&2)); then
               echo "::error::resolve_devenv failed after repair. Last 30 lines of log:"
               tail -30 "$DIAG_ROOT/resolve-devenv-post-repair.log" || true
@@ -441,7 +704,7 @@ jobs:
                 return 0
               fi
 
-              flattened=$(tr '\r\n' '  ' < "$log" | sed -E $'s/\x1B\\[[0-9;]*m//g')
+              flattened=$(tr '\r\n' '  ' < "$log" | sed -E $'s/\x1B\[[0-9;]*m//g')
               path=$(printf '%s' "$flattened" |
                 grep -o "error:[[:space:]]*path '/nix/store/[^']*'[[:space:]]*is not valid" |
                 head -1 |
@@ -450,8 +713,8 @@ jobs:
               saw_invalid_path=false
               saw_cachix_signature=false
               [ -n "$path" ] && saw_invalid_path=true
-              printf '%s' "$flattened" | grep -q 'Failed to convert config\.cachix to JSON' && saw_cachix_signature=true || true
-              printf '%s' "$flattened" | grep -q 'while evaluating the option' && printf '%s' "$flattened" | grep -q 'cachix\.package' && saw_cachix_signature=true || true
+              printf '%s' "$flattened" | grep -Eq 'error:[[:space:]]*.*Failed to convert config\.cachix to JSON' && saw_cachix_signature=true || true
+              printf '%s' "$flattened" | grep -Eq 'error:[[:space:]]*.*while evaluating the option.*cachix\.package' && saw_cachix_signature=true || true
               rm -f "$log"
 
               if [ "$saw_invalid_path" != true ] && [ "$saw_cachix_signature" != true ]; then
@@ -484,7 +747,7 @@ jobs:
           rm -f "$__nix_gc_retry_helper"
           run_nix_gc_race_retry 'devenv tasks run ts:build --mode before' 'if [ -n "${NIX_CONFIG:-}" ]; then NIX_CONFIG_WITH_APPEND=$(printf '"'"'%s\n%s'"'"' "$NIX_CONFIG" '"'"'restrict-eval = false'"'"'); else NIX_CONFIG_WITH_APPEND='"'"'restrict-eval = false'"'"'; fi; NIX_CONFIG="$NIX_CONFIG_WITH_APPEND" PNPM_HOME="${PNPM_HOME:-${{ github.workspace }}/.pnpm-home}" PNPM_STORE_DIR="${PNPM_STORE_DIR:-${{ runner.temp }}/pnpm-store/${{ github.job }}}" DT_PASSTHROUGH=1 "${DEVENV_BIN:?DEVENV_BIN not set}" tasks run ts:build --mode before'
       - name: Save pnpm state
-        if: "${{ success() && steps.restore-pnpm-state.outputs.cache-hit != 'true' }}"
+        if: ${{ success() && steps.restore-pnpm-state.outputs.cache-hit != 'true' }}
         uses: actions/cache/save@v4
         with:
           path: |
@@ -496,7 +759,7 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: 'nix-store-diagnostics-${{ github.job }}-${{ runner.os }}-run-${{ github.run_id }}-attempt-${{ github.run_attempt }}'
-          path: '${{ env.NIX_STORE_DIAGNOSTICS_DIR }}'
+          path: ${{ env.NIX_STORE_DIAGNOSTICS_DIR }}
           if-no-files-found: ignore
           retention-days: 14
   test-unit:
@@ -522,7 +785,8 @@ jobs:
         uses: cachix/cachix-action@v17
         with:
           name: livestore
-          authToken: '${{ env.CACHIX_AUTH_TOKEN }}'
+          authToken: ${{ env.CACHIX_AUTH_TOKEN }}
+          skipPush: true
       - name: Sync megarepo dependencies
         env:
           MEGAREPO_STORE: '${{ runner.temp }}/megarepo-store/${{ github.run_id }}/${{ github.run_attempt }}/${{ github.job }}'
@@ -534,6 +798,11 @@ jobs:
           fi
           mkdir -p "$MEGAREPO_STORE"
           echo "Using job-local megarepo store: $MEGAREPO_STORE"
+          if [ -n "${GITHUB_ENV:-}" ]; then
+            printf 'MEGAREPO_STORE=%s
+          ' "$MEGAREPO_STORE" >> "$GITHUB_ENV"
+          fi
+
           nix run "github:overengineeringstudio/effect-utils/$EU_REV#megarepo" -- apply --all
         shell: bash
       - name: Use pinned devenv from lock
@@ -600,7 +869,7 @@ jobs:
           if ! nix-store --check-validity "$DEVENV_OUT" 2>/dev/null; then
             echo "::warning::devenv store path invalid, repairing targeted path..."
             nix-store --repair-path "$DEVENV_OUT" > "$DIAG_ROOT/nix-store-verify-repair.log" 2>&1 || true
-            rm -rf ~/.cache/nix/eval-cache-*
+            rm -rf "${XDG_CACHE_HOME:-$HOME/.cache}"/nix/eval-cache-* ~/.cache/nix/eval-cache-*
             if ! DEVENV_OUT=$(resolve_devenv 2> >(tee "$DIAG_ROOT/resolve-devenv-post-repair.log" >&2)); then
               echo "::error::resolve_devenv failed after repair. Last 30 lines of log:"
               tail -30 "$DIAG_ROOT/resolve-devenv-post-repair.log" || true
@@ -680,7 +949,7 @@ jobs:
                 return 0
               fi
 
-              flattened=$(tr '\r\n' '  ' < "$log" | sed -E $'s/\x1B\\[[0-9;]*m//g')
+              flattened=$(tr '\r\n' '  ' < "$log" | sed -E $'s/\x1B\[[0-9;]*m//g')
               path=$(printf '%s' "$flattened" |
                 grep -o "error:[[:space:]]*path '/nix/store/[^']*'[[:space:]]*is not valid" |
                 head -1 |
@@ -689,8 +958,8 @@ jobs:
               saw_invalid_path=false
               saw_cachix_signature=false
               [ -n "$path" ] && saw_invalid_path=true
-              printf '%s' "$flattened" | grep -q 'Failed to convert config\.cachix to JSON' && saw_cachix_signature=true || true
-              printf '%s' "$flattened" | grep -q 'while evaluating the option' && printf '%s' "$flattened" | grep -q 'cachix\.package' && saw_cachix_signature=true || true
+              printf '%s' "$flattened" | grep -Eq 'error:[[:space:]]*.*Failed to convert config\.cachix to JSON' && saw_cachix_signature=true || true
+              printf '%s' "$flattened" | grep -Eq 'error:[[:space:]]*.*while evaluating the option.*cachix\.package' && saw_cachix_signature=true || true
               rm -f "$log"
 
               if [ "$saw_invalid_path" != true ] && [ "$saw_cachix_signature" != true ]; then
@@ -723,7 +992,7 @@ jobs:
           rm -f "$__nix_gc_retry_helper"
           run_nix_gc_race_retry 'devenv tasks run test:unit --mode before' 'if [ -n "${NIX_CONFIG:-}" ]; then NIX_CONFIG_WITH_APPEND=$(printf '"'"'%s\n%s'"'"' "$NIX_CONFIG" '"'"'restrict-eval = false'"'"'); else NIX_CONFIG_WITH_APPEND='"'"'restrict-eval = false'"'"'; fi; NIX_CONFIG="$NIX_CONFIG_WITH_APPEND" PNPM_HOME="${PNPM_HOME:-${{ github.workspace }}/.pnpm-home}" PNPM_STORE_DIR="${PNPM_STORE_DIR:-${{ runner.temp }}/pnpm-store/${{ github.job }}}" DT_PASSTHROUGH=1 "${DEVENV_BIN:?DEVENV_BIN not set}" tasks run test:unit --mode before'
       - name: Save pnpm state
-        if: "${{ success() && steps.restore-pnpm-state.outputs.cache-hit != 'true' }}"
+        if: ${{ success() && steps.restore-pnpm-state.outputs.cache-hit != 'true' }}
         uses: actions/cache/save@v4
         with:
           path: |
@@ -735,7 +1004,7 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: 'nix-store-diagnostics-${{ github.job }}-${{ runner.os }}-run-${{ github.run_id }}-attempt-${{ github.run_attempt }}'
-          path: '${{ env.NIX_STORE_DIAGNOSTICS_DIR }}'
+          path: ${{ env.NIX_STORE_DIAGNOSTICS_DIR }}
           if-no-files-found: ignore
           retention-days: 14
   test-integration-node-sync:
@@ -761,7 +1030,8 @@ jobs:
         uses: cachix/cachix-action@v17
         with:
           name: livestore
-          authToken: '${{ env.CACHIX_AUTH_TOKEN }}'
+          authToken: ${{ env.CACHIX_AUTH_TOKEN }}
+          skipPush: true
       - name: Sync megarepo dependencies
         env:
           MEGAREPO_STORE: '${{ runner.temp }}/megarepo-store/${{ github.run_id }}/${{ github.run_attempt }}/${{ github.job }}'
@@ -773,6 +1043,11 @@ jobs:
           fi
           mkdir -p "$MEGAREPO_STORE"
           echo "Using job-local megarepo store: $MEGAREPO_STORE"
+          if [ -n "${GITHUB_ENV:-}" ]; then
+            printf 'MEGAREPO_STORE=%s
+          ' "$MEGAREPO_STORE" >> "$GITHUB_ENV"
+          fi
+
           nix run "github:overengineeringstudio/effect-utils/$EU_REV#megarepo" -- apply --all
         shell: bash
       - name: Use pinned devenv from lock
@@ -839,7 +1114,7 @@ jobs:
           if ! nix-store --check-validity "$DEVENV_OUT" 2>/dev/null; then
             echo "::warning::devenv store path invalid, repairing targeted path..."
             nix-store --repair-path "$DEVENV_OUT" > "$DIAG_ROOT/nix-store-verify-repair.log" 2>&1 || true
-            rm -rf ~/.cache/nix/eval-cache-*
+            rm -rf "${XDG_CACHE_HOME:-$HOME/.cache}"/nix/eval-cache-* ~/.cache/nix/eval-cache-*
             if ! DEVENV_OUT=$(resolve_devenv 2> >(tee "$DIAG_ROOT/resolve-devenv-post-repair.log" >&2)); then
               echo "::error::resolve_devenv failed after repair. Last 30 lines of log:"
               tail -30 "$DIAG_ROOT/resolve-devenv-post-repair.log" || true
@@ -854,7 +1129,7 @@ jobs:
       - name: Set OTEL_EXPORTER_OTLP_HEADERS environment variable
         env:
           GRAFANA_CLOUD_OTLP_INSTANCE_ID: '1227256'
-          GRAFANA_CLOUD_OTLP_API_KEY: '${{ secrets.GRAFANA_CLOUD_OTLP_API_KEY }}'
+          GRAFANA_CLOUD_OTLP_API_KEY: ${{ secrets.GRAFANA_CLOUD_OTLP_API_KEY }}
         run: |
           echo "OTEL_EXPORTER_OTLP_HEADERS=Authorization=Basic $(echo -n "$GRAFANA_CLOUD_OTLP_INSTANCE_ID:$GRAFANA_CLOUD_OTLP_API_KEY" | base64 -w 0)" >> $GITHUB_ENV
           echo "GRAFANA_ENDPOINT=https://livestore.grafana.net" >> $GITHUB_ENV
@@ -929,7 +1204,7 @@ jobs:
                 return 0
               fi
 
-              flattened=$(tr '\r\n' '  ' < "$log" | sed -E $'s/\x1B\\[[0-9;]*m//g')
+              flattened=$(tr '\r\n' '  ' < "$log" | sed -E $'s/\x1B\[[0-9;]*m//g')
               path=$(printf '%s' "$flattened" |
                 grep -o "error:[[:space:]]*path '/nix/store/[^']*'[[:space:]]*is not valid" |
                 head -1 |
@@ -938,8 +1213,8 @@ jobs:
               saw_invalid_path=false
               saw_cachix_signature=false
               [ -n "$path" ] && saw_invalid_path=true
-              printf '%s' "$flattened" | grep -q 'Failed to convert config\.cachix to JSON' && saw_cachix_signature=true || true
-              printf '%s' "$flattened" | grep -q 'while evaluating the option' && printf '%s' "$flattened" | grep -q 'cachix\.package' && saw_cachix_signature=true || true
+              printf '%s' "$flattened" | grep -Eq 'error:[[:space:]]*.*Failed to convert config\.cachix to JSON' && saw_cachix_signature=true || true
+              printf '%s' "$flattened" | grep -Eq 'error:[[:space:]]*.*while evaluating the option.*cachix\.package' && saw_cachix_signature=true || true
               rm -f "$log"
 
               if [ "$saw_invalid_path" != true ] && [ "$saw_cachix_signature" != true ]; then
@@ -994,7 +1269,7 @@ jobs:
           path: tests/integration/tmp/logs/
           retention-days: 30
       - name: Save pnpm state
-        if: "${{ success() && steps.restore-pnpm-state.outputs.cache-hit != 'true' }}"
+        if: ${{ success() && steps.restore-pnpm-state.outputs.cache-hit != 'true' }}
         uses: actions/cache/save@v4
         with:
           path: |
@@ -1006,7 +1281,7 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: 'nix-store-diagnostics-${{ github.job }}-${{ runner.os }}-run-${{ github.run_id }}-attempt-${{ github.run_attempt }}'
-          path: '${{ env.NIX_STORE_DIAGNOSTICS_DIR }}'
+          path: ${{ env.NIX_STORE_DIAGNOSTICS_DIR }}
           if-no-files-found: ignore
           retention-days: 14
   test-integration-sync-provider:
@@ -1044,7 +1319,8 @@ jobs:
         uses: cachix/cachix-action@v17
         with:
           name: livestore
-          authToken: '${{ env.CACHIX_AUTH_TOKEN }}'
+          authToken: ${{ env.CACHIX_AUTH_TOKEN }}
+          skipPush: true
       - name: Sync megarepo dependencies
         env:
           MEGAREPO_STORE: '${{ runner.temp }}/megarepo-store/${{ github.run_id }}/${{ github.run_attempt }}/${{ github.job }}'
@@ -1056,6 +1332,11 @@ jobs:
           fi
           mkdir -p "$MEGAREPO_STORE"
           echo "Using job-local megarepo store: $MEGAREPO_STORE"
+          if [ -n "${GITHUB_ENV:-}" ]; then
+            printf 'MEGAREPO_STORE=%s
+          ' "$MEGAREPO_STORE" >> "$GITHUB_ENV"
+          fi
+
           nix run "github:overengineeringstudio/effect-utils/$EU_REV#megarepo" -- apply --all
         shell: bash
       - name: Use pinned devenv from lock
@@ -1122,7 +1403,7 @@ jobs:
           if ! nix-store --check-validity "$DEVENV_OUT" 2>/dev/null; then
             echo "::warning::devenv store path invalid, repairing targeted path..."
             nix-store --repair-path "$DEVENV_OUT" > "$DIAG_ROOT/nix-store-verify-repair.log" 2>&1 || true
-            rm -rf ~/.cache/nix/eval-cache-*
+            rm -rf "${XDG_CACHE_HOME:-$HOME/.cache}"/nix/eval-cache-* ~/.cache/nix/eval-cache-*
             if ! DEVENV_OUT=$(resolve_devenv 2> >(tee "$DIAG_ROOT/resolve-devenv-post-repair.log" >&2)); then
               echo "::error::resolve_devenv failed after repair. Last 30 lines of log:"
               tail -30 "$DIAG_ROOT/resolve-devenv-post-repair.log" || true
@@ -1137,7 +1418,7 @@ jobs:
       - name: Set OTEL_EXPORTER_OTLP_HEADERS environment variable
         env:
           GRAFANA_CLOUD_OTLP_INSTANCE_ID: '1227256'
-          GRAFANA_CLOUD_OTLP_API_KEY: '${{ secrets.GRAFANA_CLOUD_OTLP_API_KEY }}'
+          GRAFANA_CLOUD_OTLP_API_KEY: ${{ secrets.GRAFANA_CLOUD_OTLP_API_KEY }}
         run: |
           echo "OTEL_EXPORTER_OTLP_HEADERS=Authorization=Basic $(echo -n "$GRAFANA_CLOUD_OTLP_INSTANCE_ID:$GRAFANA_CLOUD_OTLP_API_KEY" | base64 -w 0)" >> $GITHUB_ENV
           echo "GRAFANA_ENDPOINT=https://livestore.grafana.net" >> $GITHUB_ENV
@@ -1145,7 +1426,7 @@ jobs:
           # Disable in Vite (otherwise CORS issues)
           echo "VITE_OTEL_EXPORTER_OTLP_ENDPOINT=" >> $GITHUB_ENV
       - name: Start s2-lite container
-        if: "${{ matrix.provider == 's2' }}"
+        if: ${{ matrix.provider == 's2' }}
         run: |
           docker run -d --name s2-lite -p 4566:80 ghcr.io/s2-streamstore/s2 lite
           # Wait for s2-lite to be ready
@@ -1226,7 +1507,7 @@ jobs:
                 return 0
               fi
 
-              flattened=$(tr '\r\n' '  ' < "$log" | sed -E $'s/\x1B\\[[0-9;]*m//g')
+              flattened=$(tr '\r\n' '  ' < "$log" | sed -E $'s/\x1B\[[0-9;]*m//g')
               path=$(printf '%s' "$flattened" |
                 grep -o "error:[[:space:]]*path '/nix/store/[^']*'[[:space:]]*is not valid" |
                 head -1 |
@@ -1235,8 +1516,8 @@ jobs:
               saw_invalid_path=false
               saw_cachix_signature=false
               [ -n "$path" ] && saw_invalid_path=true
-              printf '%s' "$flattened" | grep -q 'Failed to convert config\.cachix to JSON' && saw_cachix_signature=true || true
-              printf '%s' "$flattened" | grep -q 'while evaluating the option' && printf '%s' "$flattened" | grep -q 'cachix\.package' && saw_cachix_signature=true || true
+              printf '%s' "$flattened" | grep -Eq 'error:[[:space:]]*.*Failed to convert config\.cachix to JSON' && saw_cachix_signature=true || true
+              printf '%s' "$flattened" | grep -Eq 'error:[[:space:]]*.*while evaluating the option.*cachix\.package' && saw_cachix_signature=true || true
               rm -f "$log"
 
               if [ "$saw_invalid_path" != true ] && [ "$saw_cachix_signature" != true ]; then
@@ -1270,9 +1551,9 @@ jobs:
           run_nix_gc_race_retry 'devenv tasks run test:integration:sync-provider:matrix --mode before' 'if [ -n "${NIX_CONFIG:-}" ]; then NIX_CONFIG_WITH_APPEND=$(printf '"'"'%s\n%s'"'"' "$NIX_CONFIG" '"'"'restrict-eval = false'"'"'); else NIX_CONFIG_WITH_APPEND='"'"'restrict-eval = false'"'"'; fi; NIX_CONFIG="$NIX_CONFIG_WITH_APPEND" PNPM_HOME="${PNPM_HOME:-${{ github.workspace }}/.pnpm-home}" PNPM_STORE_DIR="${PNPM_STORE_DIR:-${{ runner.temp }}/pnpm-store/${{ github.job }}}" DT_PASSTHROUGH=1 "${DEVENV_BIN:?DEVENV_BIN not set}" tasks run test:integration:sync-provider:matrix --mode before'
         env:
           OTEL_STATE_DIR: ''
-          TEST_SYNC_PROVIDER: '${{ matrix.provider }}'
+          TEST_SYNC_PROVIDER: ${{ matrix.provider }}
       - name: Save pnpm state
-        if: "${{ success() && steps.restore-pnpm-state.outputs.cache-hit != 'true' }}"
+        if: ${{ success() && steps.restore-pnpm-state.outputs.cache-hit != 'true' }}
         uses: actions/cache/save@v4
         with:
           path: |
@@ -1284,7 +1565,7 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: 'nix-store-diagnostics-${{ github.job }}-${{ runner.os }}-run-${{ github.run_id }}-attempt-${{ github.run_attempt }}'
-          path: '${{ env.NIX_STORE_DIAGNOSTICS_DIR }}'
+          path: ${{ env.NIX_STORE_DIAGNOSTICS_DIR }}
           if-no-files-found: ignore
           retention-days: 14
   test-integration-playwright:
@@ -1313,7 +1594,8 @@ jobs:
         uses: cachix/cachix-action@v17
         with:
           name: livestore
-          authToken: '${{ env.CACHIX_AUTH_TOKEN }}'
+          authToken: ${{ env.CACHIX_AUTH_TOKEN }}
+          skipPush: true
       - name: Sync megarepo dependencies
         env:
           MEGAREPO_STORE: '${{ runner.temp }}/megarepo-store/${{ github.run_id }}/${{ github.run_attempt }}/${{ github.job }}'
@@ -1325,6 +1607,11 @@ jobs:
           fi
           mkdir -p "$MEGAREPO_STORE"
           echo "Using job-local megarepo store: $MEGAREPO_STORE"
+          if [ -n "${GITHUB_ENV:-}" ]; then
+            printf 'MEGAREPO_STORE=%s
+          ' "$MEGAREPO_STORE" >> "$GITHUB_ENV"
+          fi
+
           nix run "github:overengineeringstudio/effect-utils/$EU_REV#megarepo" -- apply --all
         shell: bash
       - name: Use pinned devenv from lock
@@ -1391,7 +1678,7 @@ jobs:
           if ! nix-store --check-validity "$DEVENV_OUT" 2>/dev/null; then
             echo "::warning::devenv store path invalid, repairing targeted path..."
             nix-store --repair-path "$DEVENV_OUT" > "$DIAG_ROOT/nix-store-verify-repair.log" 2>&1 || true
-            rm -rf ~/.cache/nix/eval-cache-*
+            rm -rf "${XDG_CACHE_HOME:-$HOME/.cache}"/nix/eval-cache-* ~/.cache/nix/eval-cache-*
             if ! DEVENV_OUT=$(resolve_devenv 2> >(tee "$DIAG_ROOT/resolve-devenv-post-repair.log" >&2)); then
               echo "::error::resolve_devenv failed after repair. Last 30 lines of log:"
               tail -30 "$DIAG_ROOT/resolve-devenv-post-repair.log" || true
@@ -1406,7 +1693,7 @@ jobs:
       - name: Set OTEL_EXPORTER_OTLP_HEADERS environment variable
         env:
           GRAFANA_CLOUD_OTLP_INSTANCE_ID: '1227256'
-          GRAFANA_CLOUD_OTLP_API_KEY: '${{ secrets.GRAFANA_CLOUD_OTLP_API_KEY }}'
+          GRAFANA_CLOUD_OTLP_API_KEY: ${{ secrets.GRAFANA_CLOUD_OTLP_API_KEY }}
         run: |
           echo "OTEL_EXPORTER_OTLP_HEADERS=Authorization=Basic $(echo -n "$GRAFANA_CLOUD_OTLP_INSTANCE_ID:$GRAFANA_CLOUD_OTLP_API_KEY" | base64 -w 0)" >> $GITHUB_ENV
           echo "GRAFANA_ENDPOINT=https://livestore.grafana.net" >> $GITHUB_ENV
@@ -1415,7 +1702,7 @@ jobs:
           echo "VITE_OTEL_EXPORTER_OTLP_ENDPOINT=" >> $GITHUB_ENV
       - name: Run integration tests
         env:
-          PLAYWRIGHT_SUITE: '${{ matrix.suite }}'
+          PLAYWRIGHT_SUITE: ${{ matrix.suite }}
         run: |
           __nix_gc_retry_helper=$(mktemp)
           cat > "$__nix_gc_retry_helper" <<'EOF'
@@ -1483,7 +1770,7 @@ jobs:
                 return 0
               fi
 
-              flattened=$(tr '\r\n' '  ' < "$log" | sed -E $'s/\x1B\\[[0-9;]*m//g')
+              flattened=$(tr '\r\n' '  ' < "$log" | sed -E $'s/\x1B\[[0-9;]*m//g')
               path=$(printf '%s' "$flattened" |
                 grep -o "error:[[:space:]]*path '/nix/store/[^']*'[[:space:]]*is not valid" |
                 head -1 |
@@ -1492,8 +1779,8 @@ jobs:
               saw_invalid_path=false
               saw_cachix_signature=false
               [ -n "$path" ] && saw_invalid_path=true
-              printf '%s' "$flattened" | grep -q 'Failed to convert config\.cachix to JSON' && saw_cachix_signature=true || true
-              printf '%s' "$flattened" | grep -q 'while evaluating the option' && printf '%s' "$flattened" | grep -q 'cachix\.package' && saw_cachix_signature=true || true
+              printf '%s' "$flattened" | grep -Eq 'error:[[:space:]]*.*Failed to convert config\.cachix to JSON' && saw_cachix_signature=true || true
+              printf '%s' "$flattened" | grep -Eq 'error:[[:space:]]*.*while evaluating the option.*cachix\.package' && saw_cachix_signature=true || true
               rm -f "$log"
 
               if [ "$saw_invalid_path" != true ] && [ "$saw_cachix_signature" != true ]; then
@@ -1526,16 +1813,16 @@ jobs:
           rm -f "$__nix_gc_retry_helper"
           run_nix_gc_race_retry 'devenv tasks run test:integration:playwright:suite --mode before' 'if [ -n "${NIX_CONFIG:-}" ]; then NIX_CONFIG_WITH_APPEND=$(printf '"'"'%s\n%s'"'"' "$NIX_CONFIG" '"'"'restrict-eval = false'"'"'); else NIX_CONFIG_WITH_APPEND='"'"'restrict-eval = false'"'"'; fi; NIX_CONFIG="$NIX_CONFIG_WITH_APPEND" PNPM_HOME="${PNPM_HOME:-${{ github.workspace }}/.pnpm-home}" PNPM_STORE_DIR="${PNPM_STORE_DIR:-${{ runner.temp }}/pnpm-store/${{ github.job }}}" DT_PASSTHROUGH=1 "${DEVENV_BIN:?DEVENV_BIN not set}" tasks run test:integration:playwright:suite --mode before'
       - uses: actions/upload-artifact@v4
-        if: '${{ !cancelled() }}'
+        if: ${{ !cancelled() }}
         with:
           name: 'playwright-report-${{ matrix.suite }}'
           path: tests/integration/playwright-report/
           retention-days: 30
       - name: Upload trace
-        if: '${{ !cancelled() }}'
+        if: ${{ !cancelled() }}
         env:
-          NETLIFY_AUTH_TOKEN: '${{ secrets.NETLIFY_AUTH_TOKEN }}'
-          PLAYWRIGHT_SUITE: '${{ matrix.suite }}'
+          NETLIFY_AUTH_TOKEN: ${{ secrets.NETLIFY_AUTH_TOKEN }}
+          PLAYWRIGHT_SUITE: ${{ matrix.suite }}
         run: |
           __nix_gc_retry_helper=$(mktemp)
           cat > "$__nix_gc_retry_helper" <<'EOF'
@@ -1603,7 +1890,7 @@ jobs:
                 return 0
               fi
 
-              flattened=$(tr '\r\n' '  ' < "$log" | sed -E $'s/\x1B\\[[0-9;]*m//g')
+              flattened=$(tr '\r\n' '  ' < "$log" | sed -E $'s/\x1B\[[0-9;]*m//g')
               path=$(printf '%s' "$flattened" |
                 grep -o "error:[[:space:]]*path '/nix/store/[^']*'[[:space:]]*is not valid" |
                 head -1 |
@@ -1612,8 +1899,8 @@ jobs:
               saw_invalid_path=false
               saw_cachix_signature=false
               [ -n "$path" ] && saw_invalid_path=true
-              printf '%s' "$flattened" | grep -q 'Failed to convert config\.cachix to JSON' && saw_cachix_signature=true || true
-              printf '%s' "$flattened" | grep -q 'while evaluating the option' && printf '%s' "$flattened" | grep -q 'cachix\.package' && saw_cachix_signature=true || true
+              printf '%s' "$flattened" | grep -Eq 'error:[[:space:]]*.*Failed to convert config\.cachix to JSON' && saw_cachix_signature=true || true
+              printf '%s' "$flattened" | grep -Eq 'error:[[:space:]]*.*while evaluating the option.*cachix\.package' && saw_cachix_signature=true || true
               rm -f "$log"
 
               if [ "$saw_invalid_path" != true ] && [ "$saw_cachix_signature" != true ]; then
@@ -1646,7 +1933,7 @@ jobs:
           rm -f "$__nix_gc_retry_helper"
           run_nix_gc_race_retry 'devenv tasks run test:integration:playwright:upload-trace --mode before' 'if [ -n "${NIX_CONFIG:-}" ]; then NIX_CONFIG_WITH_APPEND=$(printf '"'"'%s\n%s'"'"' "$NIX_CONFIG" '"'"'restrict-eval = false'"'"'); else NIX_CONFIG_WITH_APPEND='"'"'restrict-eval = false'"'"'; fi; NIX_CONFIG="$NIX_CONFIG_WITH_APPEND" PNPM_HOME="${PNPM_HOME:-${{ github.workspace }}/.pnpm-home}" PNPM_STORE_DIR="${PNPM_STORE_DIR:-${{ runner.temp }}/pnpm-store/${{ github.job }}}" DT_PASSTHROUGH=1 "${DEVENV_BIN:?DEVENV_BIN not set}" tasks run test:integration:playwright:upload-trace --mode before'
       - name: Save pnpm state
-        if: "${{ success() && steps.restore-pnpm-state.outputs.cache-hit != 'true' }}"
+        if: ${{ success() && steps.restore-pnpm-state.outputs.cache-hit != 'true' }}
         uses: actions/cache/save@v4
         with:
           path: |
@@ -1658,7 +1945,7 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: 'nix-store-diagnostics-${{ github.job }}-${{ runner.os }}-run-${{ github.run_id }}-attempt-${{ github.run_attempt }}'
-          path: '${{ env.NIX_STORE_DIAGNOSTICS_DIR }}'
+          path: ${{ env.NIX_STORE_DIAGNOSTICS_DIR }}
           if-no-files-found: ignore
           retention-days: 14
   perf-test:
@@ -1670,7 +1957,7 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v4
         with:
-          ref: '${{ github.event.pull_request.head.sha || github.sha }}'
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
       - name: Install Nix
         uses: DeterminateSystems/determinate-nix-action@v3
         with:
@@ -1687,7 +1974,8 @@ jobs:
         uses: cachix/cachix-action@v17
         with:
           name: livestore
-          authToken: '${{ env.CACHIX_AUTH_TOKEN }}'
+          authToken: ${{ env.CACHIX_AUTH_TOKEN }}
+          skipPush: true
       - name: Sync megarepo dependencies
         env:
           MEGAREPO_STORE: '${{ runner.temp }}/megarepo-store/${{ github.run_id }}/${{ github.run_attempt }}/${{ github.job }}'
@@ -1699,6 +1987,11 @@ jobs:
           fi
           mkdir -p "$MEGAREPO_STORE"
           echo "Using job-local megarepo store: $MEGAREPO_STORE"
+          if [ -n "${GITHUB_ENV:-}" ]; then
+            printf 'MEGAREPO_STORE=%s
+          ' "$MEGAREPO_STORE" >> "$GITHUB_ENV"
+          fi
+
           nix run "github:overengineeringstudio/effect-utils/$EU_REV#megarepo" -- apply --all
         shell: bash
       - name: Use pinned devenv from lock
@@ -1765,7 +2058,7 @@ jobs:
           if ! nix-store --check-validity "$DEVENV_OUT" 2>/dev/null; then
             echo "::warning::devenv store path invalid, repairing targeted path..."
             nix-store --repair-path "$DEVENV_OUT" > "$DIAG_ROOT/nix-store-verify-repair.log" 2>&1 || true
-            rm -rf ~/.cache/nix/eval-cache-*
+            rm -rf "${XDG_CACHE_HOME:-$HOME/.cache}"/nix/eval-cache-* ~/.cache/nix/eval-cache-*
             if ! DEVENV_OUT=$(resolve_devenv 2> >(tee "$DIAG_ROOT/resolve-devenv-post-repair.log" >&2)); then
               echo "::error::resolve_devenv failed after repair. Last 30 lines of log:"
               tail -30 "$DIAG_ROOT/resolve-devenv-post-repair.log" || true
@@ -1780,7 +2073,7 @@ jobs:
       - name: Set OTEL_EXPORTER_OTLP_HEADERS environment variable
         env:
           GRAFANA_CLOUD_OTLP_INSTANCE_ID: '1227256'
-          GRAFANA_CLOUD_OTLP_API_KEY: '${{ secrets.GRAFANA_CLOUD_OTLP_API_KEY }}'
+          GRAFANA_CLOUD_OTLP_API_KEY: ${{ secrets.GRAFANA_CLOUD_OTLP_API_KEY }}
         run: |
           echo "OTEL_EXPORTER_OTLP_HEADERS=Authorization=Basic $(echo -n "$GRAFANA_CLOUD_OTLP_INSTANCE_ID:$GRAFANA_CLOUD_OTLP_API_KEY" | base64 -w 0)" >> $GITHUB_ENV
           echo "GRAFANA_ENDPOINT=https://livestore.grafana.net" >> $GITHUB_ENV
@@ -1855,7 +2148,7 @@ jobs:
                 return 0
               fi
 
-              flattened=$(tr '\r\n' '  ' < "$log" | sed -E $'s/\x1B\\[[0-9;]*m//g')
+              flattened=$(tr '\r\n' '  ' < "$log" | sed -E $'s/\x1B\[[0-9;]*m//g')
               path=$(printf '%s' "$flattened" |
                 grep -o "error:[[:space:]]*path '/nix/store/[^']*'[[:space:]]*is not valid" |
                 head -1 |
@@ -1864,8 +2157,8 @@ jobs:
               saw_invalid_path=false
               saw_cachix_signature=false
               [ -n "$path" ] && saw_invalid_path=true
-              printf '%s' "$flattened" | grep -q 'Failed to convert config\.cachix to JSON' && saw_cachix_signature=true || true
-              printf '%s' "$flattened" | grep -q 'while evaluating the option' && printf '%s' "$flattened" | grep -q 'cachix\.package' && saw_cachix_signature=true || true
+              printf '%s' "$flattened" | grep -Eq 'error:[[:space:]]*.*Failed to convert config\.cachix to JSON' && saw_cachix_signature=true || true
+              printf '%s' "$flattened" | grep -Eq 'error:[[:space:]]*.*while evaluating the option.*cachix\.package' && saw_cachix_signature=true || true
               rm -f "$log"
 
               if [ "$saw_invalid_path" != true ] && [ "$saw_cachix_signature" != true ]; then
@@ -1898,11 +2191,11 @@ jobs:
           rm -f "$__nix_gc_retry_helper"
           run_nix_gc_race_retry 'devenv tasks run test:perf --mode before' 'if [ -n "${NIX_CONFIG:-}" ]; then NIX_CONFIG_WITH_APPEND=$(printf '"'"'%s\n%s'"'"' "$NIX_CONFIG" '"'"'restrict-eval = false'"'"'); else NIX_CONFIG_WITH_APPEND='"'"'restrict-eval = false'"'"'; fi; NIX_CONFIG="$NIX_CONFIG_WITH_APPEND" PNPM_HOME="${PNPM_HOME:-${{ github.workspace }}/.pnpm-home}" PNPM_STORE_DIR="${PNPM_STORE_DIR:-${{ runner.temp }}/pnpm-store/${{ github.job }}}" DT_PASSTHROUGH=1 "${DEVENV_BIN:?DEVENV_BIN not set}" tasks run test:perf --mode before'
         env:
-          COMMIT_SHA: '${{ github.event.pull_request.head.sha || github.sha }}'
+          COMMIT_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
           GRAFANA_ENDPOINT: 'https://livestore.grafana.net'
           OTEL_EXPORTER_OTLP_ENDPOINT: 'https://otlp-gateway-prod-us-east-2.grafana.net/otlp'
       - name: Save pnpm state
-        if: "${{ success() && steps.restore-pnpm-state.outputs.cache-hit != 'true' }}"
+        if: ${{ success() && steps.restore-pnpm-state.outputs.cache-hit != 'true' }}
         uses: actions/cache/save@v4
         with:
           path: |
@@ -1914,7 +2207,7 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: 'nix-store-diagnostics-${{ github.job }}-${{ runner.os }}-run-${{ github.run_id }}-attempt-${{ github.run_attempt }}'
-          path: '${{ env.NIX_STORE_DIAGNOSTICS_DIR }}'
+          path: ${{ env.NIX_STORE_DIAGNOSTICS_DIR }}
           if-no-files-found: ignore
           retention-days: 14
   wa-sqlite-test:
@@ -1940,7 +2233,8 @@ jobs:
         uses: cachix/cachix-action@v17
         with:
           name: livestore
-          authToken: '${{ env.CACHIX_AUTH_TOKEN }}'
+          authToken: ${{ env.CACHIX_AUTH_TOKEN }}
+          skipPush: true
       - name: Sync megarepo dependencies
         env:
           MEGAREPO_STORE: '${{ runner.temp }}/megarepo-store/${{ github.run_id }}/${{ github.run_attempt }}/${{ github.job }}'
@@ -1952,6 +2246,11 @@ jobs:
           fi
           mkdir -p "$MEGAREPO_STORE"
           echo "Using job-local megarepo store: $MEGAREPO_STORE"
+          if [ -n "${GITHUB_ENV:-}" ]; then
+            printf 'MEGAREPO_STORE=%s
+          ' "$MEGAREPO_STORE" >> "$GITHUB_ENV"
+          fi
+
           nix run "github:overengineeringstudio/effect-utils/$EU_REV#megarepo" -- apply --all
         shell: bash
       - name: Use pinned devenv from lock
@@ -2018,7 +2317,7 @@ jobs:
           if ! nix-store --check-validity "$DEVENV_OUT" 2>/dev/null; then
             echo "::warning::devenv store path invalid, repairing targeted path..."
             nix-store --repair-path "$DEVENV_OUT" > "$DIAG_ROOT/nix-store-verify-repair.log" 2>&1 || true
-            rm -rf ~/.cache/nix/eval-cache-*
+            rm -rf "${XDG_CACHE_HOME:-$HOME/.cache}"/nix/eval-cache-* ~/.cache/nix/eval-cache-*
             if ! DEVENV_OUT=$(resolve_devenv 2> >(tee "$DIAG_ROOT/resolve-devenv-post-repair.log" >&2)); then
               echo "::error::resolve_devenv failed after repair. Last 30 lines of log:"
               tail -30 "$DIAG_ROOT/resolve-devenv-post-repair.log" || true
@@ -2033,7 +2332,7 @@ jobs:
       - name: Set OTEL_EXPORTER_OTLP_HEADERS environment variable
         env:
           GRAFANA_CLOUD_OTLP_INSTANCE_ID: '1227256'
-          GRAFANA_CLOUD_OTLP_API_KEY: '${{ secrets.GRAFANA_CLOUD_OTLP_API_KEY }}'
+          GRAFANA_CLOUD_OTLP_API_KEY: ${{ secrets.GRAFANA_CLOUD_OTLP_API_KEY }}
         run: |
           echo "OTEL_EXPORTER_OTLP_HEADERS=Authorization=Basic $(echo -n "$GRAFANA_CLOUD_OTLP_INSTANCE_ID:$GRAFANA_CLOUD_OTLP_API_KEY" | base64 -w 0)" >> $GITHUB_ENV
           echo "GRAFANA_ENDPOINT=https://livestore.grafana.net" >> $GITHUB_ENV
@@ -2108,7 +2407,7 @@ jobs:
                 return 0
               fi
 
-              flattened=$(tr '\r\n' '  ' < "$log" | sed -E $'s/\x1B\\[[0-9;]*m//g')
+              flattened=$(tr '\r\n' '  ' < "$log" | sed -E $'s/\x1B\[[0-9;]*m//g')
               path=$(printf '%s' "$flattened" |
                 grep -o "error:[[:space:]]*path '/nix/store/[^']*'[[:space:]]*is not valid" |
                 head -1 |
@@ -2117,8 +2416,8 @@ jobs:
               saw_invalid_path=false
               saw_cachix_signature=false
               [ -n "$path" ] && saw_invalid_path=true
-              printf '%s' "$flattened" | grep -q 'Failed to convert config\.cachix to JSON' && saw_cachix_signature=true || true
-              printf '%s' "$flattened" | grep -q 'while evaluating the option' && printf '%s' "$flattened" | grep -q 'cachix\.package' && saw_cachix_signature=true || true
+              printf '%s' "$flattened" | grep -Eq 'error:[[:space:]]*.*Failed to convert config\.cachix to JSON' && saw_cachix_signature=true || true
+              printf '%s' "$flattened" | grep -Eq 'error:[[:space:]]*.*while evaluating the option.*cachix\.package' && saw_cachix_signature=true || true
               rm -f "$log"
 
               if [ "$saw_invalid_path" != true ] && [ "$saw_cachix_signature" != true ]; then
@@ -2218,7 +2517,7 @@ jobs:
                 return 0
               fi
 
-              flattened=$(tr '\r\n' '  ' < "$log" | sed -E $'s/\x1B\\[[0-9;]*m//g')
+              flattened=$(tr '\r\n' '  ' < "$log" | sed -E $'s/\x1B\[[0-9;]*m//g')
               path=$(printf '%s' "$flattened" |
                 grep -o "error:[[:space:]]*path '/nix/store/[^']*'[[:space:]]*is not valid" |
                 head -1 |
@@ -2227,8 +2526,8 @@ jobs:
               saw_invalid_path=false
               saw_cachix_signature=false
               [ -n "$path" ] && saw_invalid_path=true
-              printf '%s' "$flattened" | grep -q 'Failed to convert config\.cachix to JSON' && saw_cachix_signature=true || true
-              printf '%s' "$flattened" | grep -q 'while evaluating the option' && printf '%s' "$flattened" | grep -q 'cachix\.package' && saw_cachix_signature=true || true
+              printf '%s' "$flattened" | grep -Eq 'error:[[:space:]]*.*Failed to convert config\.cachix to JSON' && saw_cachix_signature=true || true
+              printf '%s' "$flattened" | grep -Eq 'error:[[:space:]]*.*while evaluating the option.*cachix\.package' && saw_cachix_signature=true || true
               rm -f "$log"
 
               if [ "$saw_invalid_path" != true ] && [ "$saw_cachix_signature" != true ]; then
@@ -2261,11 +2560,11 @@ jobs:
           rm -f "$__nix_gc_retry_helper"
           run_nix_gc_race_retry 'devenv tasks run test:integration:wa-sqlite --mode before' 'if [ -n "${NIX_CONFIG:-}" ]; then NIX_CONFIG_WITH_APPEND=$(printf '"'"'%s\n%s'"'"' "$NIX_CONFIG" '"'"'restrict-eval = false'"'"'); else NIX_CONFIG_WITH_APPEND='"'"'restrict-eval = false'"'"'; fi; NIX_CONFIG="$NIX_CONFIG_WITH_APPEND" PNPM_HOME="${PNPM_HOME:-${{ github.workspace }}/.pnpm-home}" PNPM_STORE_DIR="${PNPM_STORE_DIR:-${{ runner.temp }}/pnpm-store/${{ github.job }}}" DT_PASSTHROUGH=1 "${DEVENV_BIN:?DEVENV_BIN not set}" tasks run test:integration:wa-sqlite --mode before'
         env:
-          COMMIT_SHA: '${{ github.event.pull_request.head.sha || github.sha }}'
+          COMMIT_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
           GRAFANA_ENDPOINT: 'https://livestore.grafana.net'
           OTEL_EXPORTER_OTLP_ENDPOINT: 'https://otlp-gateway-prod-us-east-2.grafana.net/otlp'
       - name: Save pnpm state
-        if: "${{ success() && steps.restore-pnpm-state.outputs.cache-hit != 'true' }}"
+        if: ${{ success() && steps.restore-pnpm-state.outputs.cache-hit != 'true' }}
         uses: actions/cache/save@v4
         with:
           path: |
@@ -2277,7 +2576,7 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: 'nix-store-diagnostics-${{ github.job }}-${{ runner.os }}-run-${{ github.run_id }}-attempt-${{ github.run_attempt }}'
-          path: '${{ env.NIX_STORE_DIAGNOSTICS_DIR }}'
+          path: ${{ env.NIX_STORE_DIAGNOSTICS_DIR }}
           if-no-files-found: ignore
           retention-days: 14
   publish-snapshot-version:
@@ -2305,7 +2604,8 @@ jobs:
         uses: cachix/cachix-action@v17
         with:
           name: livestore
-          authToken: '${{ env.CACHIX_AUTH_TOKEN }}'
+          authToken: ${{ env.CACHIX_AUTH_TOKEN }}
+          skipPush: true
       - name: Sync megarepo dependencies
         env:
           MEGAREPO_STORE: '${{ runner.temp }}/megarepo-store/${{ github.run_id }}/${{ github.run_attempt }}/${{ github.job }}'
@@ -2317,6 +2617,11 @@ jobs:
           fi
           mkdir -p "$MEGAREPO_STORE"
           echo "Using job-local megarepo store: $MEGAREPO_STORE"
+          if [ -n "${GITHUB_ENV:-}" ]; then
+            printf 'MEGAREPO_STORE=%s
+          ' "$MEGAREPO_STORE" >> "$GITHUB_ENV"
+          fi
+
           nix run "github:overengineeringstudio/effect-utils/$EU_REV#megarepo" -- apply --all
         shell: bash
       - name: Use pinned devenv from lock
@@ -2383,7 +2688,7 @@ jobs:
           if ! nix-store --check-validity "$DEVENV_OUT" 2>/dev/null; then
             echo "::warning::devenv store path invalid, repairing targeted path..."
             nix-store --repair-path "$DEVENV_OUT" > "$DIAG_ROOT/nix-store-verify-repair.log" 2>&1 || true
-            rm -rf ~/.cache/nix/eval-cache-*
+            rm -rf "${XDG_CACHE_HOME:-$HOME/.cache}"/nix/eval-cache-* ~/.cache/nix/eval-cache-*
             if ! DEVENV_OUT=$(resolve_devenv 2> >(tee "$DIAG_ROOT/resolve-devenv-post-repair.log" >&2)); then
               echo "::error::resolve_devenv failed after repair. Last 30 lines of log:"
               tail -30 "$DIAG_ROOT/resolve-devenv-post-repair.log" || true
@@ -2463,7 +2768,7 @@ jobs:
                 return 0
               fi
 
-              flattened=$(tr '\r\n' '  ' < "$log" | sed -E $'s/\x1B\\[[0-9;]*m//g')
+              flattened=$(tr '\r\n' '  ' < "$log" | sed -E $'s/\x1B\[[0-9;]*m//g')
               path=$(printf '%s' "$flattened" |
                 grep -o "error:[[:space:]]*path '/nix/store/[^']*'[[:space:]]*is not valid" |
                 head -1 |
@@ -2472,8 +2777,8 @@ jobs:
               saw_invalid_path=false
               saw_cachix_signature=false
               [ -n "$path" ] && saw_invalid_path=true
-              printf '%s' "$flattened" | grep -q 'Failed to convert config\.cachix to JSON' && saw_cachix_signature=true || true
-              printf '%s' "$flattened" | grep -q 'while evaluating the option' && printf '%s' "$flattened" | grep -q 'cachix\.package' && saw_cachix_signature=true || true
+              printf '%s' "$flattened" | grep -Eq 'error:[[:space:]]*.*Failed to convert config\.cachix to JSON' && saw_cachix_signature=true || true
+              printf '%s' "$flattened" | grep -Eq 'error:[[:space:]]*.*while evaluating the option.*cachix\.package' && saw_cachix_signature=true || true
               rm -f "$log"
 
               if [ "$saw_invalid_path" != true ] && [ "$saw_cachix_signature" != true ]; then
@@ -2506,9 +2811,121 @@ jobs:
           rm -f "$__nix_gc_retry_helper"
           run_nix_gc_race_retry 'devenv tasks run release:snapshot:git-sha --mode before' 'if [ -n "${NIX_CONFIG:-}" ]; then NIX_CONFIG_WITH_APPEND=$(printf '"'"'%s\n%s'"'"' "$NIX_CONFIG" '"'"'restrict-eval = false'"'"'); else NIX_CONFIG_WITH_APPEND='"'"'restrict-eval = false'"'"'; fi; NIX_CONFIG="$NIX_CONFIG_WITH_APPEND" PNPM_HOME="${PNPM_HOME:-${{ github.workspace }}/.pnpm-home}" PNPM_STORE_DIR="${PNPM_STORE_DIR:-${{ runner.temp }}/pnpm-store/${{ github.job }}}" DT_PASSTHROUGH=1 "${DEVENV_BIN:?DEVENV_BIN not set}" tasks run release:snapshot:git-sha --mode before'
         env:
-          GIT_SHA: '${{ github.sha }}'
+          GIT_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
+      - name: Publish DevTools artifact snapshot
+        run: |
+          __nix_gc_retry_helper=$(mktemp)
+          cat > "$__nix_gc_retry_helper" <<'EOF'
+          #!/usr/bin/env bash
+
+          run_nix_gc_race_retry() {
+            local task="$1"
+            local command="$2"
+            local max="${NIX_GC_RACE_MAX_RETRIES:-10}"
+            local heartbeat="${CI_PROGRESS_HEARTBEAT_SECONDS:-60}"
+            local attempt=1
+            local log rc path start now elapsed hb_pid flattened saw_invalid_path saw_cachix_signature had_errexit
+
+            start="$(date +%s)"
+
+            write_summary() {
+              [ -n "${GITHUB_STEP_SUMMARY:-}" ] || return 0
+              {
+                echo "### CI Task"
+                echo "- Task: $task"
+                echo "- Status: $1"
+                echo "- Duration: $elapsed s"
+                echo "- Attempts: $attempt/$max"
+                [ -z "${2:-}" ] || echo "- Note: $2"
+              } >> "$GITHUB_STEP_SUMMARY"
+            }
+
+            while [ "$attempt" -le "$max" ]; do
+              echo "::notice::[ci] starting $task (attempt $attempt/$max)"
+              (
+                while sleep "$heartbeat"; do
+                  now=$(date +%s)
+                  elapsed=$((now - start))
+                  echo "::notice::[ci] $task still running after $elapsed s (attempt $attempt/$max)"
+                done
+              ) &
+              hb_pid=$!
+
+              log=$(mktemp)
+              had_errexit=false
+              case $- in
+                *e*) had_errexit=true ;;
+              esac
+              set +e
+              eval "$command" > >(tee -a "$log") 2> >(tee -a "$log" >&2)
+              rc=$?
+              if [ "$had_errexit" = true ]; then
+                set -e
+              fi
+
+              kill "$hb_pid" 2>/dev/null || true
+              wait "$hb_pid" 2>/dev/null || true
+
+              now=$(date +%s)
+              elapsed=$((now - start))
+
+              if [ "$rc" -eq 0 ]; then
+                echo "::notice::[ci] completed $task in $elapsed s"
+                if [ "$attempt" -gt 1 ]; then
+                  write_summary success "Recovered from Nix GC race after retry"
+                else
+                  write_summary success
+                fi
+                rm -f "$log"
+                return 0
+              fi
+
+              flattened=$(tr '\r\n' '  ' < "$log" | sed -E $'s/\x1B\[[0-9;]*m//g')
+              path=$(printf '%s' "$flattened" |
+                grep -o "error:[[:space:]]*path '/nix/store/[^']*'[[:space:]]*is not valid" |
+                head -1 |
+                grep -o "/nix/store/[^']*" |
+                tr -d '[:space:]' || true)
+              saw_invalid_path=false
+              saw_cachix_signature=false
+              [ -n "$path" ] && saw_invalid_path=true
+              printf '%s' "$flattened" | grep -Eq 'error:[[:space:]]*.*Failed to convert config\.cachix to JSON' && saw_cachix_signature=true || true
+              printf '%s' "$flattened" | grep -Eq 'error:[[:space:]]*.*while evaluating the option.*cachix\.package' && saw_cachix_signature=true || true
+              rm -f "$log"
+
+              if [ "$saw_invalid_path" != true ] && [ "$saw_cachix_signature" != true ]; then
+                echo "::warning::[ci] $task failed after $elapsed s without a detected Nix store validity race"
+                write_summary failure "No Nix GC race signature detected"
+                return "$rc"
+              fi
+
+              if [ "$saw_cachix_signature" = true ] && [ -n "$path" ]; then
+                echo "::warning::Nix store validity race detected for $task via cachix eval wrapper (attempt $attempt/$max): $path"
+              elif [ "$saw_cachix_signature" = true ]; then
+                echo "::warning::Nix store validity race detected for $task via cachix eval wrapper without extracted store path (attempt $attempt/$max)"
+              else
+                echo "::warning::Nix store validity race detected for $task (attempt $attempt/$max): $path"
+              fi
+
+              [ -z "$path" ] || nix-store --realise "$path" 2>/dev/null || true
+              rm -rf ~/.cache/nix/eval-cache-*
+              attempt=$((attempt + 1))
+            done
+
+            now=$(date +%s)
+            elapsed=$((now - start))
+            echo "::error::Nix GC race retry exhausted for $task ($max attempts)"
+            write_summary failure "Nix GC race retry exhausted"
+            return 1
+          }
+          EOF
+          . "$__nix_gc_retry_helper"
+          rm -f "$__nix_gc_retry_helper"
+          run_nix_gc_race_retry 'devenv tasks run release:devtools-artifact:publish --mode before' 'if [ -n "${NIX_CONFIG:-}" ]; then NIX_CONFIG_WITH_APPEND=$(printf '"'"'%s\n%s'"'"' "$NIX_CONFIG" '"'"'restrict-eval = false'"'"'); else NIX_CONFIG_WITH_APPEND='"'"'restrict-eval = false'"'"'; fi; NIX_CONFIG="$NIX_CONFIG_WITH_APPEND" PNPM_HOME="${PNPM_HOME:-${{ github.workspace }}/.pnpm-home}" PNPM_STORE_DIR="${PNPM_STORE_DIR:-${{ runner.temp }}/pnpm-store/${{ github.job }}}" DT_PASSTHROUGH=1 "${DEVENV_BIN:?DEVENV_BIN not set}" tasks run release:devtools-artifact:publish --mode before'
+        env:
+          LIVESTORE_RELEASE_VERSION: '0.0.0-snapshot-${{ github.event.pull_request.head.sha || github.sha }}'
       - name: Save pnpm state
-        if: "${{ success() && steps.restore-pnpm-state.outputs.cache-hit != 'true' }}"
+        if: ${{ success() && steps.restore-pnpm-state.outputs.cache-hit != 'true' }}
         uses: actions/cache/save@v4
         with:
           path: |
@@ -2520,7 +2937,7 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: 'nix-store-diagnostics-${{ github.job }}-${{ runner.os }}-run-${{ github.run_id }}-attempt-${{ github.run_attempt }}'
-          path: '${{ env.NIX_STORE_DIAGNOSTICS_DIR }}'
+          path: ${{ env.NIX_STORE_DIAGNOSTICS_DIR }}
           if-no-files-found: ignore
           retention-days: 14
   build-and-deploy-examples-src:
@@ -2546,7 +2963,8 @@ jobs:
         uses: cachix/cachix-action@v17
         with:
           name: livestore
-          authToken: '${{ env.CACHIX_AUTH_TOKEN }}'
+          authToken: ${{ env.CACHIX_AUTH_TOKEN }}
+          skipPush: true
       - name: Sync megarepo dependencies
         env:
           MEGAREPO_STORE: '${{ runner.temp }}/megarepo-store/${{ github.run_id }}/${{ github.run_attempt }}/${{ github.job }}'
@@ -2558,6 +2976,11 @@ jobs:
           fi
           mkdir -p "$MEGAREPO_STORE"
           echo "Using job-local megarepo store: $MEGAREPO_STORE"
+          if [ -n "${GITHUB_ENV:-}" ]; then
+            printf 'MEGAREPO_STORE=%s
+          ' "$MEGAREPO_STORE" >> "$GITHUB_ENV"
+          fi
+
           nix run "github:overengineeringstudio/effect-utils/$EU_REV#megarepo" -- apply --all
         shell: bash
       - name: Use pinned devenv from lock
@@ -2624,7 +3047,7 @@ jobs:
           if ! nix-store --check-validity "$DEVENV_OUT" 2>/dev/null; then
             echo "::warning::devenv store path invalid, repairing targeted path..."
             nix-store --repair-path "$DEVENV_OUT" > "$DIAG_ROOT/nix-store-verify-repair.log" 2>&1 || true
-            rm -rf ~/.cache/nix/eval-cache-*
+            rm -rf "${XDG_CACHE_HOME:-$HOME/.cache}"/nix/eval-cache-* ~/.cache/nix/eval-cache-*
             if ! DEVENV_OUT=$(resolve_devenv 2> >(tee "$DIAG_ROOT/resolve-devenv-post-repair.log" >&2)); then
               echo "::error::resolve_devenv failed after repair. Last 30 lines of log:"
               tail -30 "$DIAG_ROOT/resolve-devenv-post-repair.log" || true
@@ -2704,7 +3127,7 @@ jobs:
                 return 0
               fi
 
-              flattened=$(tr '\r\n' '  ' < "$log" | sed -E $'s/\x1B\\[[0-9;]*m//g')
+              flattened=$(tr '\r\n' '  ' < "$log" | sed -E $'s/\x1B\[[0-9;]*m//g')
               path=$(printf '%s' "$flattened" |
                 grep -o "error:[[:space:]]*path '/nix/store/[^']*'[[:space:]]*is not valid" |
                 head -1 |
@@ -2713,8 +3136,8 @@ jobs:
               saw_invalid_path=false
               saw_cachix_signature=false
               [ -n "$path" ] && saw_invalid_path=true
-              printf '%s' "$flattened" | grep -q 'Failed to convert config\.cachix to JSON' && saw_cachix_signature=true || true
-              printf '%s' "$flattened" | grep -q 'while evaluating the option' && printf '%s' "$flattened" | grep -q 'cachix\.package' && saw_cachix_signature=true || true
+              printf '%s' "$flattened" | grep -Eq 'error:[[:space:]]*.*Failed to convert config\.cachix to JSON' && saw_cachix_signature=true || true
+              printf '%s' "$flattened" | grep -Eq 'error:[[:space:]]*.*while evaluating the option.*cachix\.package' && saw_cachix_signature=true || true
               rm -f "$log"
 
               if [ "$saw_invalid_path" != true ] && [ "$saw_cachix_signature" != true ]; then
@@ -2814,7 +3237,7 @@ jobs:
                 return 0
               fi
 
-              flattened=$(tr '\r\n' '  ' < "$log" | sed -E $'s/\x1B\\[[0-9;]*m//g')
+              flattened=$(tr '\r\n' '  ' < "$log" | sed -E $'s/\x1B\[[0-9;]*m//g')
               path=$(printf '%s' "$flattened" |
                 grep -o "error:[[:space:]]*path '/nix/store/[^']*'[[:space:]]*is not valid" |
                 head -1 |
@@ -2823,8 +3246,8 @@ jobs:
               saw_invalid_path=false
               saw_cachix_signature=false
               [ -n "$path" ] && saw_invalid_path=true
-              printf '%s' "$flattened" | grep -q 'Failed to convert config\.cachix to JSON' && saw_cachix_signature=true || true
-              printf '%s' "$flattened" | grep -q 'while evaluating the option' && printf '%s' "$flattened" | grep -q 'cachix\.package' && saw_cachix_signature=true || true
+              printf '%s' "$flattened" | grep -Eq 'error:[[:space:]]*.*Failed to convert config\.cachix to JSON' && saw_cachix_signature=true || true
+              printf '%s' "$flattened" | grep -Eq 'error:[[:space:]]*.*while evaluating the option.*cachix\.package' && saw_cachix_signature=true || true
               rm -f "$log"
 
               if [ "$saw_invalid_path" != true ] && [ "$saw_cachix_signature" != true ]; then
@@ -2924,7 +3347,7 @@ jobs:
                 return 0
               fi
 
-              flattened=$(tr '\r\n' '  ' < "$log" | sed -E $'s/\x1B\\[[0-9;]*m//g')
+              flattened=$(tr '\r\n' '  ' < "$log" | sed -E $'s/\x1B\[[0-9;]*m//g')
               path=$(printf '%s' "$flattened" |
                 grep -o "error:[[:space:]]*path '/nix/store/[^']*'[[:space:]]*is not valid" |
                 head -1 |
@@ -2933,8 +3356,8 @@ jobs:
               saw_invalid_path=false
               saw_cachix_signature=false
               [ -n "$path" ] && saw_invalid_path=true
-              printf '%s' "$flattened" | grep -q 'Failed to convert config\.cachix to JSON' && saw_cachix_signature=true || true
-              printf '%s' "$flattened" | grep -q 'while evaluating the option' && printf '%s' "$flattened" | grep -q 'cachix\.package' && saw_cachix_signature=true || true
+              printf '%s' "$flattened" | grep -Eq 'error:[[:space:]]*.*Failed to convert config\.cachix to JSON' && saw_cachix_signature=true || true
+              printf '%s' "$flattened" | grep -Eq 'error:[[:space:]]*.*while evaluating the option.*cachix\.package' && saw_cachix_signature=true || true
               rm -f "$log"
 
               if [ "$saw_invalid_path" != true ] && [ "$saw_cachix_signature" != true ]; then
@@ -3035,7 +3458,7 @@ jobs:
                 return 0
               fi
 
-              flattened=$(tr '\r\n' '  ' < "$log" | sed -E $'s/\x1B\\[[0-9;]*m//g')
+              flattened=$(tr '\r\n' '  ' < "$log" | sed -E $'s/\x1B\[[0-9;]*m//g')
               path=$(printf '%s' "$flattened" |
                 grep -o "error:[[:space:]]*path '/nix/store/[^']*'[[:space:]]*is not valid" |
                 head -1 |
@@ -3044,8 +3467,8 @@ jobs:
               saw_invalid_path=false
               saw_cachix_signature=false
               [ -n "$path" ] && saw_invalid_path=true
-              printf '%s' "$flattened" | grep -q 'Failed to convert config\.cachix to JSON' && saw_cachix_signature=true || true
-              printf '%s' "$flattened" | grep -q 'while evaluating the option' && printf '%s' "$flattened" | grep -q 'cachix\.package' && saw_cachix_signature=true || true
+              printf '%s' "$flattened" | grep -Eq 'error:[[:space:]]*.*Failed to convert config\.cachix to JSON' && saw_cachix_signature=true || true
+              printf '%s' "$flattened" | grep -Eq 'error:[[:space:]]*.*while evaluating the option.*cachix\.package' && saw_cachix_signature=true || true
               rm -f "$log"
 
               if [ "$saw_invalid_path" != true ] && [ "$saw_cachix_signature" != true ]; then
@@ -3078,10 +3501,10 @@ jobs:
           rm -f "$__nix_gc_retry_helper"
           run_nix_gc_race_retry 'devenv tasks run examples:deploy --mode before' 'if [ -n "${NIX_CONFIG:-}" ]; then NIX_CONFIG_WITH_APPEND=$(printf '"'"'%s\n%s'"'"' "$NIX_CONFIG" '"'"'restrict-eval = false'"'"'); else NIX_CONFIG_WITH_APPEND='"'"'restrict-eval = false'"'"'; fi; NIX_CONFIG="$NIX_CONFIG_WITH_APPEND" PNPM_HOME="${PNPM_HOME:-${{ github.workspace }}/.pnpm-home}" PNPM_STORE_DIR="${PNPM_STORE_DIR:-${{ runner.temp }}/pnpm-store/${{ github.job }}}" DT_PASSTHROUGH=1 "${DEVENV_BIN:?DEVENV_BIN not set}" tasks run examples:deploy --mode before'
         env:
-          CLOUDFLARE_API_TOKEN: '${{ secrets.CLOUDFLARE_API_TOKEN }}'
-          CLOUDFLARE_ACCOUNT_ID: '${{ secrets.CLOUDFLARE_ACCOUNT_ID }}'
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
       - name: Save pnpm state
-        if: "${{ success() && steps.restore-pnpm-state.outputs.cache-hit != 'true' }}"
+        if: ${{ success() && steps.restore-pnpm-state.outputs.cache-hit != 'true' }}
         uses: actions/cache/save@v4
         with:
           path: |
@@ -3093,7 +3516,7 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: 'nix-store-diagnostics-${{ github.job }}-${{ runner.os }}-run-${{ github.run_id }}-attempt-${{ github.run_attempt }}'
-          path: '${{ env.NIX_STORE_DIAGNOSTICS_DIR }}'
+          path: ${{ env.NIX_STORE_DIAGNOSTICS_DIR }}
           if-no-files-found: ignore
           retention-days: 14
   build-deploy-docs:
@@ -3119,7 +3542,8 @@ jobs:
         uses: cachix/cachix-action@v17
         with:
           name: livestore
-          authToken: '${{ env.CACHIX_AUTH_TOKEN }}'
+          authToken: ${{ env.CACHIX_AUTH_TOKEN }}
+          skipPush: true
       - name: Sync megarepo dependencies
         env:
           MEGAREPO_STORE: '${{ runner.temp }}/megarepo-store/${{ github.run_id }}/${{ github.run_attempt }}/${{ github.job }}'
@@ -3131,6 +3555,11 @@ jobs:
           fi
           mkdir -p "$MEGAREPO_STORE"
           echo "Using job-local megarepo store: $MEGAREPO_STORE"
+          if [ -n "${GITHUB_ENV:-}" ]; then
+            printf 'MEGAREPO_STORE=%s
+          ' "$MEGAREPO_STORE" >> "$GITHUB_ENV"
+          fi
+
           nix run "github:overengineeringstudio/effect-utils/$EU_REV#megarepo" -- apply --all
         shell: bash
       - name: Use pinned devenv from lock
@@ -3197,7 +3626,7 @@ jobs:
           if ! nix-store --check-validity "$DEVENV_OUT" 2>/dev/null; then
             echo "::warning::devenv store path invalid, repairing targeted path..."
             nix-store --repair-path "$DEVENV_OUT" > "$DIAG_ROOT/nix-store-verify-repair.log" 2>&1 || true
-            rm -rf ~/.cache/nix/eval-cache-*
+            rm -rf "${XDG_CACHE_HOME:-$HOME/.cache}"/nix/eval-cache-* ~/.cache/nix/eval-cache-*
             if ! DEVENV_OUT=$(resolve_devenv 2> >(tee "$DIAG_ROOT/resolve-devenv-post-repair.log" >&2)); then
               echo "::error::resolve_devenv failed after repair. Last 30 lines of log:"
               tail -30 "$DIAG_ROOT/resolve-devenv-post-repair.log" || true
@@ -3277,7 +3706,7 @@ jobs:
                 return 0
               fi
 
-              flattened=$(tr '\r\n' '  ' < "$log" | sed -E $'s/\x1B\\[[0-9;]*m//g')
+              flattened=$(tr '\r\n' '  ' < "$log" | sed -E $'s/\x1B\[[0-9;]*m//g')
               path=$(printf '%s' "$flattened" |
                 grep -o "error:[[:space:]]*path '/nix/store/[^']*'[[:space:]]*is not valid" |
                 head -1 |
@@ -3286,8 +3715,8 @@ jobs:
               saw_invalid_path=false
               saw_cachix_signature=false
               [ -n "$path" ] && saw_invalid_path=true
-              printf '%s' "$flattened" | grep -q 'Failed to convert config\.cachix to JSON' && saw_cachix_signature=true || true
-              printf '%s' "$flattened" | grep -q 'while evaluating the option' && printf '%s' "$flattened" | grep -q 'cachix\.package' && saw_cachix_signature=true || true
+              printf '%s' "$flattened" | grep -Eq 'error:[[:space:]]*.*Failed to convert config\.cachix to JSON' && saw_cachix_signature=true || true
+              printf '%s' "$flattened" | grep -Eq 'error:[[:space:]]*.*while evaluating the option.*cachix\.package' && saw_cachix_signature=true || true
               rm -f "$log"
 
               if [ "$saw_invalid_path" != true ] && [ "$saw_cachix_signature" != true ]; then
@@ -3387,7 +3816,7 @@ jobs:
                 return 0
               fi
 
-              flattened=$(tr '\r\n' '  ' < "$log" | sed -E $'s/\x1B\\[[0-9;]*m//g')
+              flattened=$(tr '\r\n' '  ' < "$log" | sed -E $'s/\x1B\[[0-9;]*m//g')
               path=$(printf '%s' "$flattened" |
                 grep -o "error:[[:space:]]*path '/nix/store/[^']*'[[:space:]]*is not valid" |
                 head -1 |
@@ -3396,8 +3825,8 @@ jobs:
               saw_invalid_path=false
               saw_cachix_signature=false
               [ -n "$path" ] && saw_invalid_path=true
-              printf '%s' "$flattened" | grep -q 'Failed to convert config\.cachix to JSON' && saw_cachix_signature=true || true
-              printf '%s' "$flattened" | grep -q 'while evaluating the option' && printf '%s' "$flattened" | grep -q 'cachix\.package' && saw_cachix_signature=true || true
+              printf '%s' "$flattened" | grep -Eq 'error:[[:space:]]*.*Failed to convert config\.cachix to JSON' && saw_cachix_signature=true || true
+              printf '%s' "$flattened" | grep -Eq 'error:[[:space:]]*.*while evaluating the option.*cachix\.package' && saw_cachix_signature=true || true
               rm -f "$log"
 
               if [ "$saw_invalid_path" != true ] && [ "$saw_cachix_signature" != true ]; then
@@ -3497,7 +3926,7 @@ jobs:
                 return 0
               fi
 
-              flattened=$(tr '\r\n' '  ' < "$log" | sed -E $'s/\x1B\\[[0-9;]*m//g')
+              flattened=$(tr '\r\n' '  ' < "$log" | sed -E $'s/\x1B\[[0-9;]*m//g')
               path=$(printf '%s' "$flattened" |
                 grep -o "error:[[:space:]]*path '/nix/store/[^']*'[[:space:]]*is not valid" |
                 head -1 |
@@ -3506,8 +3935,8 @@ jobs:
               saw_invalid_path=false
               saw_cachix_signature=false
               [ -n "$path" ] && saw_invalid_path=true
-              printf '%s' "$flattened" | grep -q 'Failed to convert config\.cachix to JSON' && saw_cachix_signature=true || true
-              printf '%s' "$flattened" | grep -q 'while evaluating the option' && printf '%s' "$flattened" | grep -q 'cachix\.package' && saw_cachix_signature=true || true
+              printf '%s' "$flattened" | grep -Eq 'error:[[:space:]]*.*Failed to convert config\.cachix to JSON' && saw_cachix_signature=true || true
+              printf '%s' "$flattened" | grep -Eq 'error:[[:space:]]*.*while evaluating the option.*cachix\.package' && saw_cachix_signature=true || true
               rm -f "$log"
 
               if [ "$saw_invalid_path" != true ] && [ "$saw_cachix_signature" != true ]; then
@@ -3540,7 +3969,7 @@ jobs:
           rm -f "$__nix_gc_retry_helper"
           run_nix_gc_race_retry 'devenv tasks run docs:build:phase:astro --mode before' 'if [ -n "${NIX_CONFIG:-}" ]; then NIX_CONFIG_WITH_APPEND=$(printf '"'"'%s\n%s'"'"' "$NIX_CONFIG" '"'"'restrict-eval = false'"'"'); else NIX_CONFIG_WITH_APPEND='"'"'restrict-eval = false'"'"'; fi; NIX_CONFIG="$NIX_CONFIG_WITH_APPEND" PNPM_HOME="${PNPM_HOME:-${{ github.workspace }}/.pnpm-home}" PNPM_STORE_DIR="${PNPM_STORE_DIR:-${{ runner.temp }}/pnpm-store/${{ github.job }}}" DT_PASSTHROUGH=1 "${DEVENV_BIN:?DEVENV_BIN not set}" tasks run docs:build:phase:astro --mode before'
       - name: Collect docs build diagnostics on failure
-        if: '${{ failure() }}'
+        if: ${{ failure() }}
         run: |
           __nix_gc_retry_helper=$(mktemp)
           cat > "$__nix_gc_retry_helper" <<'EOF'
@@ -3608,7 +4037,7 @@ jobs:
                 return 0
               fi
 
-              flattened=$(tr '\r\n' '  ' < "$log" | sed -E $'s/\x1B\\[[0-9;]*m//g')
+              flattened=$(tr '\r\n' '  ' < "$log" | sed -E $'s/\x1B\[[0-9;]*m//g')
               path=$(printf '%s' "$flattened" |
                 grep -o "error:[[:space:]]*path '/nix/store/[^']*'[[:space:]]*is not valid" |
                 head -1 |
@@ -3617,8 +4046,8 @@ jobs:
               saw_invalid_path=false
               saw_cachix_signature=false
               [ -n "$path" ] && saw_invalid_path=true
-              printf '%s' "$flattened" | grep -q 'Failed to convert config\.cachix to JSON' && saw_cachix_signature=true || true
-              printf '%s' "$flattened" | grep -q 'while evaluating the option' && printf '%s' "$flattened" | grep -q 'cachix\.package' && saw_cachix_signature=true || true
+              printf '%s' "$flattened" | grep -Eq 'error:[[:space:]]*.*Failed to convert config\.cachix to JSON' && saw_cachix_signature=true || true
+              printf '%s' "$flattened" | grep -Eq 'error:[[:space:]]*.*while evaluating the option.*cachix\.package' && saw_cachix_signature=true || true
               rm -f "$log"
 
               if [ "$saw_invalid_path" != true ] && [ "$saw_cachix_signature" != true ]; then
@@ -3651,14 +4080,14 @@ jobs:
           rm -f "$__nix_gc_retry_helper"
           run_nix_gc_race_retry 'devenv tasks run docs:build:diagnostics --mode before' 'if [ -n "${NIX_CONFIG:-}" ]; then NIX_CONFIG_WITH_APPEND=$(printf '"'"'%s\n%s'"'"' "$NIX_CONFIG" '"'"'restrict-eval = false'"'"'); else NIX_CONFIG_WITH_APPEND='"'"'restrict-eval = false'"'"'; fi; NIX_CONFIG="$NIX_CONFIG_WITH_APPEND" PNPM_HOME="${PNPM_HOME:-${{ github.workspace }}/.pnpm-home}" PNPM_STORE_DIR="${PNPM_STORE_DIR:-${{ runner.temp }}/pnpm-store/${{ github.job }}}" DT_PASSTHROUGH=1 "${DEVENV_BIN:?DEVENV_BIN not set}" tasks run docs:build:diagnostics --mode before'
       - name: Upload docs build logs
-        if: '${{ always() }}'
+        if: ${{ always() }}
         uses: actions/upload-artifact@v4
         with:
           name: docs-build-logs
           path: tmp/ci-docs/
           retention-days: 14
       - name: Deploy docs
-        if: "${{ success() && (github.event_name != 'pull_request' || github.event.pull_request.head.repo.fork != true) }}"
+        if: ${{ success() && (github.event_name != 'pull_request' || github.event.pull_request.head.repo.fork != true) }}
         run: |
           __nix_gc_retry_helper=$(mktemp)
           cat > "$__nix_gc_retry_helper" <<'EOF'
@@ -3726,7 +4155,7 @@ jobs:
                 return 0
               fi
 
-              flattened=$(tr '\r\n' '  ' < "$log" | sed -E $'s/\x1B\\[[0-9;]*m//g')
+              flattened=$(tr '\r\n' '  ' < "$log" | sed -E $'s/\x1B\[[0-9;]*m//g')
               path=$(printf '%s' "$flattened" |
                 grep -o "error:[[:space:]]*path '/nix/store/[^']*'[[:space:]]*is not valid" |
                 head -1 |
@@ -3735,8 +4164,8 @@ jobs:
               saw_invalid_path=false
               saw_cachix_signature=false
               [ -n "$path" ] && saw_invalid_path=true
-              printf '%s' "$flattened" | grep -q 'Failed to convert config\.cachix to JSON' && saw_cachix_signature=true || true
-              printf '%s' "$flattened" | grep -q 'while evaluating the option' && printf '%s' "$flattened" | grep -q 'cachix\.package' && saw_cachix_signature=true || true
+              printf '%s' "$flattened" | grep -Eq 'error:[[:space:]]*.*Failed to convert config\.cachix to JSON' && saw_cachix_signature=true || true
+              printf '%s' "$flattened" | grep -Eq 'error:[[:space:]]*.*while evaluating the option.*cachix\.package' && saw_cachix_signature=true || true
               rm -f "$log"
 
               if [ "$saw_invalid_path" != true ] && [ "$saw_cachix_signature" != true ]; then
@@ -3769,9 +4198,9 @@ jobs:
           rm -f "$__nix_gc_retry_helper"
           run_nix_gc_race_retry 'devenv tasks run docs:deploy --mode before' 'if [ -n "${NIX_CONFIG:-}" ]; then NIX_CONFIG_WITH_APPEND=$(printf '"'"'%s\n%s'"'"' "$NIX_CONFIG" '"'"'restrict-eval = false'"'"'); else NIX_CONFIG_WITH_APPEND='"'"'restrict-eval = false'"'"'; fi; NIX_CONFIG="$NIX_CONFIG_WITH_APPEND" PNPM_HOME="${PNPM_HOME:-${{ github.workspace }}/.pnpm-home}" PNPM_STORE_DIR="${PNPM_STORE_DIR:-${{ runner.temp }}/pnpm-store/${{ github.job }}}" DT_PASSTHROUGH=1 "${DEVENV_BIN:?DEVENV_BIN not set}" tasks run docs:deploy --mode before'
         env:
-          NETLIFY_AUTH_TOKEN: '${{ secrets.NETLIFY_AUTH_TOKEN }}'
+          NETLIFY_AUTH_TOKEN: ${{ secrets.NETLIFY_AUTH_TOKEN }}
       - name: Save pnpm state
-        if: "${{ success() && steps.restore-pnpm-state.outputs.cache-hit != 'true' }}"
+        if: ${{ success() && steps.restore-pnpm-state.outputs.cache-hit != 'true' }}
         uses: actions/cache/save@v4
         with:
           path: |
@@ -3783,19 +4212,9 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: 'nix-store-diagnostics-${{ github.job }}-${{ runner.os }}-run-${{ github.run_id }}-attempt-${{ github.run_attempt }}'
-          path: '${{ env.NIX_STORE_DIAGNOSTICS_DIR }}'
+          path: ${{ env.NIX_STORE_DIAGNOSTICS_DIR }}
           if-no-files-found: ignore
           retention-days: 14
-  notify-alignment:
-    runs-on: ubuntu-latest
-    needs: [test-unit, test-integration-node-sync, test-integration-sync-provider, test-integration-playwright]
-    if: (github.ref == 'refs/heads/main' || github.ref == 'refs/heads/dev') && github.event_name == 'push'
-    steps:
-      - name: Dispatch alignment to coordinator
-        env:
-          GH_TOKEN: '${{ secrets.MEGAREPO_ALIGNMENT_TOKEN }}'
-        run: "export NIX_CONFIG=\"${NIX_CONFIG:+$NIX_CONFIG$'\\n'}access-tokens = github.com=${GH_TOKEN}\" && printf '{\"event_type\":\"upstream-changed\",\"client_payload\":{\"source_repo\":\"%s\",\"source_sha\":\"%s\"}}' \"${{ github.repository }}\" \"${{ github.sha }}\" | nix run nixpkgs#gh -- api repos/schickling/megarepo-all/dispatches --input -"
-        shell: bash
   build-example-create:
     if: github.event.pull_request.head.repo.fork != true
     needs: publish-snapshot-version
@@ -3805,7 +4224,7 @@ jobs:
     runs-on: [namespace-profile-linux-x86-64, 'namespace-features:github.run-id=${{ github.run_id }}']
     env:
       APP_PATH: 'examples/${{ matrix.app }}'
-      SNAPSHOT_VERSION: '0.0.0-snapshot-${{ github.sha }}'
+      SNAPSHOT_VERSION: '0.0.0-snapshot-${{ github.event.pull_request.head.sha || github.sha }}'
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
@@ -3819,6 +4238,8 @@ jobs:
           echo "WORKSPACE_DEPS=$DEPS" >> $GITHUB_ENV
       - name: Copy example app
         run: 'pnpm dlx --allow-build=@mixedbread/cli --allow-build=@myobie/pty --allow-build=@parcel/watcher --allow-build=cbor-extract --allow-build=dtrace-provider --allow-build=esbuild --allow-build=msgpackr-extract --allow-build=node-pty --allow-build=protobufjs --allow-build=puppeteer --allow-build=sharp --allow-build=unix-dgram --allow-build=workerd @livestore/cli@${{ env.SNAPSHOT_VERSION }} create --example ${{ matrix.app }} --ref ${{ github.event.pull_request.head.sha || github.sha }} ${{ runner.temp }}/${{ env.APP_PATH }}'
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
       - name: Use snapshot version of workspace dependencies
         working-directory: '${{ runner.temp }}/${{ env.APP_PATH }}'
         run: |
@@ -3827,6 +4248,6 @@ jobs:
               echo "$dep@${{ env.SNAPSHOT_VERSION }}"
             done
           )
-      - if: "${{ matrix.app != 'expo-linearlite' }}"
+      - if: ${{ matrix.app != 'expo-linearlite' }}
         working-directory: '${{ runner.temp }}/${{ env.APP_PATH }}'
         run: pnpm build

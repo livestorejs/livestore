@@ -63,7 +63,12 @@ const main = async () => {
       changeset: sqlite3.changeset_invert(new Uint8Array(changeset.changeset?.slice() ?? [])),
     }
 
-    sqlite3.changeset_apply(db, invertedChangeset.changeset)
+    sqlite3.changeset_apply(db, invertedChangeset.changeset, null, (eConflict) =>
+      // REPLACE is only valid for DATA and CONFLICT; use OMIT for all other conflict types
+      eConflict === WaSqlite.SQLITE_CHANGESET_DATA || eConflict === WaSqlite.SQLITE_CHANGESET_CONFLICT
+        ? WaSqlite.SQLITE_CHANGESET_REPLACE
+        : WaSqlite.SQLITE_CHANGESET_OMIT,
+    )
   }
 
   const result = syncDb.select('SELECT * FROM todo')

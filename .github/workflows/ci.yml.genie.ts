@@ -19,8 +19,6 @@ import {
 // =============================================================================
 
 const GITHUB_RUN_ID = '${{ github.run_id }}'
-const GITHUB_SHA = '${{ github.sha }}'
-const GITHUB_REF = '${{ github.ref }}'
 const PR_HEAD_SHA = '${{ github.event.pull_request.head.sha || github.sha }}'
 const IS_NOT_FORK = 'github.event.pull_request.head.repo.fork != true'
 const DLX_ALLOW_BUILD_FLAGS = repoPnpmOnlyBuiltDependencies.map((name) => `--allow-build=${name}`).join(' ')
@@ -51,8 +49,9 @@ const withNixDiagnosticsOnFailure = (steps: unknown[]) => [
 ]
 
 /** Standard CI job configuration (namespace runner + bash shell) */
-const standardCIJob = (config: { env?: Record<string, string>; steps: unknown[] }) => ({
+const standardCIJob = (config: { env?: Record<string, string>; if?: string; steps: unknown[] }) => ({
   ...namespaceRunnerConfig,
+  if: config.if,
   env: config.env,
   defaults: bashShellDefaults,
   steps: withNixDiagnosticsOnFailure(config.steps),
@@ -70,7 +69,7 @@ const otelCIJob = (config: { env?: Record<string, string>; steps: unknown[] }) =
 // =============================================================================
 
 /**
- * Required status checks are managed by `.github/repo-settings.*.json.genie.ts`.
+ * Required status checks are managed by `.github/repo-settings.json.genie.ts`.
  * Keep matrix values aligned with `genie/ci.ts` so rulesets and workflow stay in sync.
  */
 export default githubWorkflow({
@@ -88,6 +87,7 @@ export default githubWorkflow({
       // Only run on pushes to main/dev to keep docs deploys consistent
       branches: ['main', 'dev'],
     },
+    workflow_dispatch: {},
     pull_request: {},
   },
 
@@ -103,6 +103,24 @@ export default githubWorkflow({
       steps: [
         ...livestoreSetupSteps,
         { name: 'Run lint checks', run: runDevenvTasksBefore('lint:full:with-megarepo-check') },
+      ],
+    }),
+
+    'changeset-check': standardCIJob({
+      if: "github.event_name == 'pull_request'",
+      steps: [
+        ...livestoreSetupSteps,
+        {
+          name: 'Fetch changeset comparison base',
+          run: 'git fetch origin "${{ github.base_ref }}" --depth=1',
+        },
+        {
+          name: 'Check release intent',
+          run: runDevenvTasksBefore('release:changeset:check-pr'),
+          env: {
+            CHANGESET_BASE_REF: 'origin/${{ github.base_ref }}',
+          },
+        },
       ],
     }),
 
@@ -300,7 +318,12 @@ done`,
         {
           name: 'Publish snapshot version',
           run: runDevenvTasksBefore('release:snapshot:git-sha'),
-          env: { GIT_SHA: GITHUB_SHA },
+          env: { GIT_SHA: PR_HEAD_SHA },
+        },
+        {
+          name: 'Publish DevTools artifact snapshot',
+          run: runDevenvTasksBefore('release:devtools-artifact:publish'),
+          env: { LIVESTORE_RELEASE_VERSION: `0.0.0-snapshot-${PR_HEAD_SHA}` },
         },
       ]),
     },
@@ -394,17 +417,18 @@ done`,
       ]),
     },
 
-    'notify-alignment': {
-      'runs-on': 'ubuntu-latest',
-      needs: [
-        'test-unit',
-        'test-integration-node-sync',
-        'test-integration-sync-provider',
-        'test-integration-playwright',
-      ],
-      if: "(github.ref == 'refs/heads/main' || github.ref == 'refs/heads/dev') && github.event_name == 'push'",
-      steps: [dispatchAlignmentStep({ targetRepo: 'schickling/megarepo-all' })],
-    },
+    // TODO(#1183): Disable notify job until root cause is fixed.
+    // 'notify-alignment': {
+    //   'runs-on': 'ubuntu-latest',
+    //   needs: [
+    //     'test-unit',
+    //     'test-integration-node-sync',
+    //     'test-integration-sync-provider',
+    //     'test-integration-playwright',
+    //   ],
+    //   if: "(github.ref == 'refs/heads/main' || github.ref == 'refs/heads/dev') && github.event_name == 'push'",
+    //   steps: [dispatchAlignmentStep({ targetRepo: 'schickling/megarepo-all' })],
+    // },
 
     'build-example-create': {
       if: IS_NOT_FORK,
@@ -417,7 +441,7 @@ done`,
       ...namespaceRunnerConfig,
       env: {
         APP_PATH: 'examples/${{ matrix.app }}',
-        SNAPSHOT_VERSION: `0.0.0-snapshot-${GITHUB_SHA}`,
+        SNAPSHOT_VERSION: `0.0.0-snapshot-${PR_HEAD_SHA}`,
       },
       steps: [
         { name: 'Checkout repository', uses: 'actions/checkout@v4' },
@@ -441,6 +465,9 @@ echo "WORKSPACE_DEPS=$DEPS" >> $GITHUB_ENV`,
            */
           name: 'Copy example app',
           run: `pnpm dlx ${DLX_ALLOW_BUILD_FLAGS} @livestore/cli@\${{ env.SNAPSHOT_VERSION }} create --example \${{ matrix.app }} --ref ${PR_HEAD_SHA} \${{ runner.temp }}/\${{ env.APP_PATH }}`,
+          env: {
+            GITHUB_TOKEN: '${{ github.token }}',
+          },
         },
         {
           name: 'Use snapshot version of workspace dependencies',

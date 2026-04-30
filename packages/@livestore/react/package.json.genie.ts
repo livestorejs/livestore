@@ -26,6 +26,7 @@ const runtimeDeps = catalog.compose({
       '@testing-library/react',
       '@types/react',
       '@types/react-dom',
+      '@types/react-window',
       'jsdom',
       'react',
       'react-dom',

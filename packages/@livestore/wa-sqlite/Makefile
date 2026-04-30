@@ -14,6 +14,7 @@ CFILES = \
 	libauthorizer.c \
 	libfunction.c \
 	libhook.c \
+	libsession.c \
 	libprogress.c \
 	libvfs.c \
 	$(CFILES_EXTRA)
@@ -22,6 +23,7 @@ JSFILES = \
 	src/libauthorizer.js \
 	src/libfunction.js \
 	src/libhook.js \
+	src/libsession.js \
 	src/libprogress.js \
 	src/libvfs.js
 
@@ -79,6 +81,7 @@ EMFLAGS_LIBRARIES = \
 	--post-js src/libauthorizer.js \
 	--post-js src/libfunction.js \
 	--post-js src/libhook.js \
+	--post-js src/libsession.js \
 	--post-js src/libprogress.js \
 	--post-js src/libvfs.js
 

@@ -63,14 +63,6 @@ export const useStore = <
 ): Store<TSchema, TContext> & ReactApi => {
   const storeRegistry = useStoreRegistry()
 
-  // NOTE: retain() is called in useEffect (after render), while getOrLoadPromise() is called
-  // during render. This creates a timing gap where with very short unusedCacheTime
-  // values (e.g., 0), the store could theoretically be disposed before the effect fires.
-  // In practice, this is not an issue with the default 60s cache time, but it becomes an issue when
-  // `unusedCacheTime` is configured to values less than ~100ms.
-  // See https://github.com/livestorejs/livestore/issues/916
-  React.useEffect(() => storeRegistry.retain(options), [storeRegistry, options])
-
   // Called on every render (intentionally not memoized). For already-loaded stores this returns
   // the Store synchronously, so React.use() is skipped entirely. Caching the initial Promise via
   // useMemo would cause React.use() to be called with a resolved Promise on subsequent renders,
@@ -78,6 +70,21 @@ export const useStore = <
   const storeOrPromise = storeRegistry.getOrLoadPromise(options)
 
   const store = storeOrPromise instanceof Promise ? React.use(storeOrPromise) : storeOrPromise
+
+  // NOTE: retain() must be declared AFTER the React.use() call above. When React.use() suspends
+  // the component, any hooks declared before it get committed while hooks after the suspension
+  // point (including those in the caller) don't. On re-render when the store resolves synchronously,
+  // those late hooks appear for the first time, causing a hook-order violation in strict mode.
+  // By placing useEffect after React.use(), no effect hooks are committed during suspension,
+  // so React treats all effects as fresh mounts on the first successful render.
+  //
+  // retain() is called in useEffect (after render), while getOrLoadPromise() is called during
+  // render. This creates a timing gap where with very short unusedCacheTime values (e.g., 0),
+  // the store could theoretically be disposed before the effect fires. In practice, this is not
+  // an issue with the default 60s cache time, but it becomes an issue when `unusedCacheTime` is
+  // configured to values less than ~100ms.
+  // See https://github.com/livestorejs/livestore/issues/916
+  React.useEffect(() => storeRegistry.retain(options), [storeRegistry, options])
 
   return withReactApi(store)
 }

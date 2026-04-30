@@ -3,11 +3,11 @@
     "devenv": {
       "locked": {
         "dir": "src/modules",
-        "lastModified": 1774574416,
-        "narHash": "sha256-lSDwajbwYOAXggD0EAs/pOaBcnSfRjX1ScPo4fk8+tI=",
+        "lastModified": 1776802132,
+        "narHash": "sha256-2yO2SGA7zVFYKe0qyJjdg7WHuMOKNwTQmigL7ydD8hI=",
         "owner": "cachix",
         "repo": "devenv",
-        "rev": "4dbca34da522d2169cffb62e56965e4b8ee2453d",
+        "rev": "91affc7a7b6646852a0079678eadf12ac5029d9d",
         "type": "github"
       },
       "original": {
@@ -24,16 +24,15 @@
         "tsgo": "tsgo"
       },
       "locked": {
+        "lastModified": 1777448354,
+        "narHash": "sha256-l6kvxxGhRPt2fIrNmdFK5Bcid4ZyHQWWuqTJsi6gPtQ=",
         "owner": "overengineeringstudio",
         "repo": "effect-utils",
-        "rev": "7d5211e655e2094aff9b16729f170e0188d99b90",
-        "type": "github",
-        "narHash": "sha256-56TnqQ1SB0/xRInnvlWp2wXmXV4UmALjAFZS5Bkk58s=",
-        "lastModified": 1776082163
+        "rev": "350d1b98baa943dcae63412eeffded7b5160bc8a",
+        "type": "github"
       },
       "original": {
         "owner": "overengineeringstudio",
-        "ref": "main",
         "repo": "effect-utils",
         "type": "github"
       }
@@ -99,11 +98,11 @@
         ]
       },
       "locked": {
-        "lastModified": 1774104215,
-        "narHash": "sha256-EAtviqz0sEAxdHS4crqu7JGR5oI3BwaqG0mw7CmXkO8=",
+        "lastModified": 1776796298,
+        "narHash": "sha256-PcRvlWayisPSjd0UcRQbhG8Oqw78AcPE6x872cPRHN8=",
         "owner": "cachix",
         "repo": "git-hooks.nix",
-        "rev": "f799ae951fde0627157f40aec28dec27b22076d0",
+        "rev": "3cfd774b0a530725a077e17354fbdb87ea1c4aad",
         "type": "github"
       },
       "original": {
@@ -135,11 +134,11 @@
     },
     "nixpkgs": {
       "locked": {
-        "lastModified": 1769461804,
-        "narHash": "sha256-msG8SU5WsBUfVVa/9RPLaymvi5bI8edTavbIq3vRlhI=",
+        "lastModified": 1775036866,
+        "narHash": "sha256-ZojAnPuCdy657PbTq5V0Y+AHKhZAIwSIT2cb8UgAz/U=",
         "owner": "NixOS",
         "repo": "nixpkgs",
-        "rev": "bfc1b8a4574108ceef22f02bafcf6611380c100d",
+        "rev": "6201e203d09599479a3b3450ed24fa81537ebc4e",
         "type": "github"
       },
       "original": {
@@ -190,17 +189,16 @@
       },
       "locked": {
         "dir": "nix/playwright-flake",
+        "lastModified": 1777448354,
+        "narHash": "sha256-l6kvxxGhRPt2fIrNmdFK5Bcid4ZyHQWWuqTJsi6gPtQ=",
         "owner": "overengineeringstudio",
         "repo": "effect-utils",
-        "rev": "7d5211e655e2094aff9b16729f170e0188d99b90",
-        "type": "github",
-        "narHash": "sha256-56TnqQ1SB0/xRInnvlWp2wXmXV4UmALjAFZS5Bkk58s=",
-        "lastModified": 1776082163
+        "rev": "350d1b98baa943dcae63412eeffded7b5160bc8a",
+        "type": "github"
       },
       "original": {
         "dir": "nix/playwright-flake",
         "owner": "overengineeringstudio",
-        "ref": "main",
         "repo": "effect-utils",
         "type": "github"
       }
@@ -214,11 +212,11 @@
         ]
       },
       "locked": {
-        "lastModified": 1773232445,
-        "narHash": "sha256-r4ZLQXS7t68KVnG/8sW2EggvKFrZUj9DrYJHInw/bkg=",
+        "lastModified": 1776795162,
+        "narHash": "sha256-F4/R9j+3kEBzoYwD522FdGBADivDg6VPNs1hXcLP+ME=",
         "owner": "pietdevries94",
         "repo": "playwright-web-flake",
-        "rev": "6762287e9abba66b0bc78d96e2c9d9e164b6d75e",
+        "rev": "fcea924dc16d62c128fdbefcce52e26a2fd08185",
         "type": "github"
       },
       "original": {
@@ -277,11 +275,11 @@
         "typescript-src": "typescript-src"
       },
       "locked": {
-        "lastModified": 1773387039,
-        "narHash": "sha256-v7O3R7RxDqK/T+ot3JPEZcBcLZsAMIjD2EbpYy1/t1I=",
+        "lastModified": 1774889517,
+        "narHash": "sha256-wl+OjG7kVWMt6B9ROP2keiT3CELQkNyL0bh1SoCKXh0=",
         "owner": "Effect-TS",
         "repo": "tsgo",
-        "rev": "c219f226cb0579a8c077fab3192d7ddf190ba77a",
+        "rev": "24a8a96ec80681a1d15243da30c2423d73cb1193",
         "type": "github"
       },
       "original": {
@@ -293,17 +291,17 @@
     "typescript-go-src": {
       "flake": false,
       "locked": {
-        "lastModified": 1773275612,
-        "narHash": "sha256-S5TnTCE3/e7ZyQgsBKYzBp5aqCvecflo1JAEL0LDv4Q=",
+        "lastModified": 1774829605,
+        "narHash": "sha256-t6imfxEDl9Vm2weZjkumqSL+K5z3YcYm7w2GgNMrpSA=",
         "owner": "microsoft",
         "repo": "typescript-go",
-        "rev": "8b515c6ce5f821ed382cdb540c6df488738bb515",
+        "rev": "8a834dad086d6912b091e8b467e98499dab68cd9",
         "type": "github"
       },
       "original": {
         "owner": "microsoft",
         "repo": "typescript-go",
-        "rev": "8b515c6ce5f821ed382cdb540c6df488738bb515",
+        "rev": "8a834dad086d6912b091e8b467e98499dab68cd9",
         "type": "github"
       }
     },

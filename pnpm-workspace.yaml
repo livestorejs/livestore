@@ -43,13 +43,13 @@ packages:
   - tests/wa-sqlite
 
 overrides:
-  effect: 3.21.0
-  '@effect/platform': 0.96.0
+  effect: 3.21.2
+  '@effect/platform': 0.96.1
   '@effect/platform-browser': 0.76.0
   '@effect/platform-bun': 0.89.0
   '@effect/platform-node': 0.106.0
   '@effect/platform-node-shared': 0.59.0
-  '@effect/cli': 0.75.0
+  '@effect/cli': 0.75.1
   '@effect/experimental': 0.60.0
   '@effect/opentelemetry': 0.63.0
   '@effect/printer': 0.49.0
@@ -68,9 +68,6 @@ overrides:
   '@tanstack/start-plugin-core': 1.145.7
   '@tanstack/start-server-core': 1.145.7
   '@tanstack/start-client-core': 1.145.7
-
-patchedDependencies:
-  '@effect/rpc@0.75.0': patches/@effect__rpc@0.75.0.patch
 
 packageExtensions:
   react-error-boundary:

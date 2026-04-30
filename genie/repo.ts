@@ -41,8 +41,9 @@ import {
   type WorkspaceMetadata,
   type WorkspacePackage,
   type WorkspacePackageLike,
-} from '../repos/effect-utils/genie/external.ts'
-import { baseOxfmtIgnorePatterns, baseOxfmtOptions } from '../repos/effect-utils/genie/oxfmt-base.ts'
+} from '#mr/effect-utils/genie/external.ts'
+import { baseOxfmtIgnorePatterns, baseOxfmtOptions } from '#mr/effect-utils/genie/oxfmt-base.ts'
+import { readFileSync } from 'node:fs'
 import { livestoreOnlyCatalog, livestoreWorkspaceCatalog } from './external.ts'
 
 export { baseTsconfigCompilerOptions, domLib, reactJsx }
@@ -90,6 +91,10 @@ export const packageTsconfigCompilerOptions = {
  * source of truth. Package closures are derived from workspace metadata at
  * build time instead of being committed as package-local pnpm-workspace files.
  */
+
+const releaseVersion = JSON.parse(readFileSync('release/version.json', 'utf8')) as {
+  readonly version: string
+}
 
 /** Composed catalog - effect-utils base + livestore-specific + workspace packages */
 export const catalog = defineCatalog({
@@ -140,7 +145,7 @@ export const repoPackageExtensions = {
 
 /** Common fields for published @livestore packages */
 export const livestorePackageDefaults = {
-  version: process.env.LIVESTORE_RELEASE_VERSION ?? '0.4.0-dev.22',
+  version: process.env.LIVESTORE_RELEASE_VERSION ?? releaseVersion.version,
   type: 'module' as const,
   sideEffects: false as const,
   license: 'Apache-2.0' as const,
@@ -222,7 +227,6 @@ import {
   dispatchAlignmentStep,
   namespaceRunner as namespaceRunnerBase,
   installNixStep,
-  cachixStep,
   applyMegarepoLockStep,
   checkoutStep,
   preparePinnedDevenvStep,
@@ -232,7 +236,7 @@ import {
   nixDiagnosticsArtifactStep,
   savePnpmStateStep,
   validateNixStoreStep,
-} from '../repos/effect-utils/genie/ci-workflow.ts'
+} from '#mr/effect-utils/genie/ci-workflow.ts'
 
 export const devenvShellDefaults = {
   run: { shell: 'devenv shell bash -- -e {0}' },
@@ -252,7 +256,15 @@ export const livestoreSetupStepsAfterCheckout = [
     extraConf:
       'extra-substituters = https://cache.nixos.org\nextra-trusted-public-keys = cache.nixos.org-1:6NCHdD59X431o0gWypbMrAURkbJ16ZPMQFGspcDShjY=',
   }),
-  cachixStep({ name: 'livestore', authToken: '${{ env.CACHIX_AUTH_TOKEN }}' }),
+  {
+    name: 'Enable Cachix cache',
+    uses: 'cachix/cachix-action@v17',
+    with: {
+      name: 'livestore',
+      authToken: '${{ env.CACHIX_AUTH_TOKEN }}',
+      skipPush: true,
+    },
+  },
   applyMegarepoLockStep(),
   preparePinnedDevenvStep,
   pnpmStateSetupStep,

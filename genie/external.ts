@@ -48,7 +48,12 @@ export const livestoreWorkspaceCatalog = {
 
 /** LiveStore-only versions not provided by effect-utils base catalog. */
 export const livestoreOnlyCatalog = {
-  '@livestore/devtools-vite': '0.4.0-dev.22',
+  /**
+   * Snapshot releases pin every `@livestore/*` package — including the
+   * externally-published `devtools-vite` from overeng — to the same
+   * `LIVESTORE_RELEASE_VERSION`. Default to the dev tag for normal builds.
+   */
+  '@livestore/devtools-vite': process.env.LIVESTORE_RELEASE_VERSION ?? '0.4.0-dev.22',
   /** Tanstack router sub-packages not in effect-utils catalog (react-router/react-start/router-plugin are there) */
   '@tanstack/router-core': '1.145.7',
   '@tanstack/history': '1.145.7',
@@ -64,13 +69,14 @@ export const livestoreOnlyCatalog = {
   '@types/hast': '3.0.4',
   '@types/jasmine': '5.1.4',
   '@types/jsdom': '21.1.7',
+  '@types/react-window': '1.8.8',
   '@types/wicg-file-system-access': '2023.10.6',
   '@vitest/ui': '3.2.4',
   'solid-js': '1.9.10',
   '@solidjs/testing-library': '0.8.10',
   '@testing-library/dom': '10.4.1',
   '@testing-library/jest-dom': '6.6.3',
-  '@testing-library/svelte': '5.2.4',
+  '@testing-library/svelte': '5.3.1',
   '@web/dev-server': '0.4.6',
   '@web/test-runner': '0.20.0',
   '@web/test-runner-core': '0.13.4',

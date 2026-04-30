@@ -4,6 +4,7 @@ const SIGNATURES = [
   'ippp', // xClose, xSectorSize, xDeviceCharacteristics
   'vppp', // xShmBarrier, xFinal
   'ipppj', // xTruncate
+  'ippip', // xConflict (changeset_apply)
   'ipppi', // xSleep, xSync, xLock, xUnlock, xShmUnmap
   'ipppp', // xFileSize, xCheckReservedLock, xCurrentTime, xCurrentTimeInt64
   'ipppip', // xFileControl, xRandomness, xGetLastError
