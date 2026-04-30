@@ -1,4 +1,4 @@
-import type { DbSchema } from './sqlite.js'
+import type { DbSchema } from './sqlite.ts'
 
 // TODO
 export const validate = (_dbSchema: DbSchema) => {

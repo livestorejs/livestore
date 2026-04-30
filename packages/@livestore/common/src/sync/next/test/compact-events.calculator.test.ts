@@ -1,11 +1,12 @@
-import { defineEvent } from '@livestore/common/schema'
-import { Schema } from '@livestore/utils/effect'
 import { describe, expect, it } from 'vitest'
 
-import { compactEvents } from '../compact-events.js'
-import { historyDagFromNodes } from '../history-dag.js'
-import { customSerializer } from './compact-events.test.js'
-import { printEvent, toEventNodes } from './event-fixtures.js'
+import { defineEvent } from '@livestore/common/schema'
+import { Schema } from '@livestore/utils/effect'
+
+import { compactEvents } from '../compact-events.ts'
+import { historyDagFromNodes } from '../history-dag.ts'
+import { customSerializer } from './compact-events.test.ts'
+import { printEvent, toEventNodes } from './event-fixtures.ts'
 
 expect.addSnapshotSerializer(customSerializer)
 
@@ -33,7 +34,7 @@ const eventDefs = {
     schema: Schema.Struct({ value: Schema.Number }),
     facts: ({ value }, currentFacts) => ({
       modify: {
-        set: value === 0 || currentFacts.has(facts.multiplyByZero) ? [facts.multiplyByZero] : [],
+        set: value === 0 || currentFacts.has(facts.multiplyByZero) === true ? [facts.multiplyByZero] : [],
         unset: value === 0 ? [] : [facts.multiplyByZero],
       },
     }),

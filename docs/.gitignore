@@ -1,10 +1,17 @@
 # build output
 dist/
-# generated types
-.astro/
+# generated types (selective ignore - keep TypeScript definitions)
+.astro/*
+!.astro/types.d.ts
+!.astro/content.d.ts
+!.astro/env.d.ts
 
 # dependencies
 node_modules/
+.cache/snippets/
+
+# tldraw diagram cache
+node_modules/.astro-tldraw/
 
 # logs
 npm-debug.log*
@@ -25,3 +32,4 @@ pnpm-debug.log*
 # build output
 src/content/docs/api/*
 !src/content/docs/api/index.md
+public/generated-d2/

@@ -2,7 +2,7 @@ import { HttpClient } from '@effect/platform'
 import type { Schedule, Scope } from 'effect'
 import { Effect, Exit, identity, Schema } from 'effect'
 
-export class WebSocketError extends Schema.TaggedError<WebSocketError>()('WebSocketError', {
+export class WebSocketError extends Schema.TaggedError<WebSocketError>('~@livestore/utils/WebSocketError')('WebSocketError', {
   cause: Schema.Defect,
 }) {}
 
@@ -63,7 +63,7 @@ export const makeWebSocket = ({
       }
     }).pipe(
       Effect.tapErrorTag('WebSocketError', () => tryLogWebsocketConnectError(url)),
-      reconnect ? Effect.retry(reconnect) : identity,
+      reconnect !== undefined ? Effect.retry(reconnect) : identity,
     )
 
     /**
@@ -81,16 +81,17 @@ export const makeWebSocket = ({
      */
     yield* Effect.addFinalizer(
       Effect.fn(function* (exit) {
-        try {
-          if (Exit.isFailure(exit)) {
-            socket.close(3000)
-          } else {
-            socket.close(1000)
-          }
-        } catch (error) {
-          yield* Effect.die(new WebSocketError({ cause: error }))
-        }
-      }),
+        yield* Effect.try({
+          try: () => {
+            if (Exit.isFailure(exit) === true) {
+              socket.close(3000)
+            } else {
+              socket.close(1000)
+            }
+          },
+          catch: (error) => new WebSocketError({ cause: error }),
+        })
+      }, Effect.orDie),
     )
 
     return socket

@@ -1,1 +1,1 @@
-website/src/content/docs/docs/misc/CODE_OF_CONDUCT.md
+docs/src/content/docs/misc/CODE_OF_CONDUCT.md

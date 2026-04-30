@@ -1,43 +1,43 @@
-/* eslint-disable no-var */
-
 // Copied from fast-deep-equal
 // MIT License
 
 export const deepEqual = <T>(a: T, b: T): boolean => {
   if (a === b) return true
 
-  if (a && b && typeof a == 'object' && typeof b == 'object') {
+  if (a != null && b != null && typeof a === 'object' && typeof b === 'object') {
     if (a.constructor !== b.constructor) return false
 
-    var length, i, keys
-    if (Array.isArray(a)) {
+    let length: number
+    let i: any
+    let keys: any
+    if (Array.isArray(a) === true) {
       length = a.length
       // @ts-expect-error ...
-      if (length != b.length) return false
+      if (length !== b.length) return false
       for (i = length; i-- !== 0; )
         // @ts-expect-error ...
-        if (!deepEqual(a[i], b[i])) return false
+        if (deepEqual(a[i], b[i]) === false) return false
       return true
     }
 
     if (a instanceof Map && b instanceof Map) {
       if (a.size !== b.size) return false
-      for (i of a.entries()) if (!b.has(i[0])) return false
-      for (i of a.entries()) if (!deepEqual(i[1], b.get(i[0]))) return false
+      for (i of a.entries()) if (b.has(i[0]) === false) return false
+      for (i of a.entries()) if (deepEqual(i[1], b.get(i[0])) === false) return false
       return true
     }
 
     if (a instanceof Set && b instanceof Set) {
       if (a.size !== b.size) return false
-      for (i of a.entries()) if (!b.has(i[0])) return false
+      for (i of a.entries()) if (b.has(i[0]) === false) return false
       return true
     }
 
-    if (ArrayBuffer.isView(a) && ArrayBuffer.isView(b)) {
+    if (ArrayBuffer.isView(a) === true && ArrayBuffer.isView(b) === true) {
       // @ts-expect-error ...
       length = a.length
       // @ts-expect-error ...
-      if (length != b.length) return false
+      if (length !== b.length) return false
       for (i = length; i-- !== 0; )
         // @ts-expect-error ...
         if (a[i] !== b[i]) return false
@@ -53,20 +53,19 @@ export const deepEqual = <T>(a: T, b: T): boolean => {
     length = keys.length
     if (length !== Object.keys(b).length) return false
 
-    for (i = length; i-- !== 0; )
-      // @ts-expect-error ...
-      if (!Object.prototype.hasOwnProperty.call(b, keys[i])) return false
+    for (i = length; i-- !== 0; ) if (Object.prototype.hasOwnProperty.call(b, keys[i]) === false) return false
 
     for (i = length; i-- !== 0; ) {
-      var key = keys[i]
+      const key = keys[i]
 
       // @ts-expect-error ...
-      if (!deepEqual(a[key], b[key])) return false
+      if (deepEqual(a[key], b[key]) === false) return false
     }
 
     return true
   }
 
   // true if both NaN, false otherwise
+  // biome-ignore lint/suspicious/noSelfCompare: comparing to itself is fine here
   return a !== a && b !== b
 }

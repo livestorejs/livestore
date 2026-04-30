@@ -1,107 +1,44 @@
-import { makeInMemoryAdapter } from '@livestore/adapter-web'
-import { provideOtel } from '@livestore/common'
-import { Events, makeSchema, State } from '@livestore/common/schema'
+import type { UnknownError } from '@livestore/common'
+import {
+  type AppState,
+  type CreateTodoMvcStoreOptions,
+  createTodoMvcStore,
+  events,
+  type Filter,
+  schema,
+  type Todo,
+  tables,
+} from '@livestore/framework-toolkit/testing'
 import type { Store } from '@livestore/livestore'
-import { createStore } from '@livestore/livestore'
-import { Effect, Schema } from '@livestore/utils/effect'
-import type * as otel from '@opentelemetry/api'
+import { Effect, type Scope } from '@livestore/utils/effect'
 import React from 'react'
 
-import * as LiveStoreReact from '../mod.js'
+import * as LiveStoreReact from '../mod.ts'
 
-export type Todo = {
-  id: string
-  text: string
-  completed: boolean
+// Re-export shared types and schema
+export { events, schema, tables }
+export type { AppState, Filter, Todo }
+
+export type MakeTodoMvcReactOptions = CreateTodoMvcStoreOptions & {
+  strictMode?: boolean | undefined
 }
 
-export type Filter = 'all' | 'active' | 'completed'
-
-export type AppState = {
-  newTodoText: string
-  filter: Filter
-}
-
-const todos = State.SQLite.table({
-  name: 'todos',
-  columns: {
-    id: State.SQLite.text({ primaryKey: true }),
-    text: State.SQLite.text({ default: '', nullable: false }),
-    completed: State.SQLite.boolean({ default: false, nullable: false }),
+export const makeTodoMvcReact: (opts?: MakeTodoMvcReactOptions) => Effect.Effect<
+  {
+    wrapper: ({ children }: any) => React.JSX.Element
+    store: Store<typeof schema> & LiveStoreReact.ReactApi
+    renderCount: { readonly val: number; inc: () => void }
   },
-})
-
-const app = State.SQLite.table({
-  name: 'app',
-  columns: {
-    id: State.SQLite.text({ primaryKey: true, default: 'static' }),
-    newTodoText: State.SQLite.text({ default: '', nullable: true }),
-    filter: State.SQLite.text({ default: 'all', nullable: false }),
-  },
-})
-
-const userInfo = State.SQLite.clientDocument({
-  name: 'UserInfo',
-  schema: Schema.Struct({
-    username: Schema.String,
-    text: Schema.String,
-  }),
-  default: { value: { username: '', text: '' } },
-})
-
-const AppRouterSchema = State.SQLite.clientDocument({
-  name: 'AppRouter',
-  schema: Schema.Struct({
-    currentTaskId: Schema.String.pipe(Schema.NullOr),
-  }),
-  default: {
-    value: { currentTaskId: null },
-    id: 'singleton',
-  },
-})
-
-export const events = {
-  todoCreated: Events.synced({
-    name: 'todoCreated',
-    schema: Schema.Struct({ id: Schema.String, text: Schema.String, completed: Schema.Boolean }),
-  }),
-  todoUpdated: Events.synced({
-    name: 'todoUpdated',
-    schema: Schema.Struct({
-      id: Schema.String,
-      text: Schema.String.pipe(Schema.optional),
-      completed: Schema.Boolean.pipe(Schema.optional),
-    }),
-  }),
-  AppRouterSet: AppRouterSchema.set,
-  UserInfoSet: userInfo.set,
-}
-
-const materializers = State.SQLite.materializers(events, {
-  todoCreated: ({ id, text, completed }) => todos.insert({ id, text, completed }),
-  todoUpdated: ({ id, text, completed }) => todos.update({ completed, text }).where({ id }),
-})
-
-export const tables = { todos, app, userInfo, AppRouterSchema }
-
-const state = State.SQLite.makeState({ tables, materializers })
-export const schema = makeSchema({ state, events })
-
-export const makeTodoMvcReact = ({
-  otelTracer,
-  otelContext,
-  strictMode,
-}: {
-  otelTracer?: otel.Tracer
-  otelContext?: otel.Context
-  strictMode?: boolean
-} = {}) =>
+  UnknownError,
+  Scope.Scope
+> = (opts: MakeTodoMvcReactOptions = {}) =>
   Effect.gen(function* () {
+    const { strictMode } = opts
     const makeRenderCount = () => {
       let val = 0
 
       const inc = () => {
-        val += strictMode ? 0.5 : 1
+        val += strictMode === true ? 0.5 : 1
       }
 
       return {
@@ -112,32 +49,15 @@ export const makeTodoMvcReact = ({
       }
     }
 
-    const store: Store<any> = yield* createStore({
-      schema,
-      storeId: 'default',
-      adapter: makeInMemoryAdapter(),
-      debug: { instanceId: 'test' },
-    })
+    const store = yield* createTodoMvcStore(opts)
 
     const storeWithReactApi = LiveStoreReact.withReactApi(store)
 
-    // TODO improve typing of `LiveStoreContext`
-    const storeContext = {
-      stage: 'running' as const,
-      store: storeWithReactApi,
-    }
+    const MaybeStrictMode = strictMode === true ? React.StrictMode : React.Fragment
 
-    const MaybeStrictMode = strictMode ? React.StrictMode : React.Fragment
-
-    const wrapper = ({ children }: any) => (
-      <MaybeStrictMode>
-        <LiveStoreReact.LiveStoreContext.Provider value={storeContext}>
-          {children}
-        </LiveStoreReact.LiveStoreContext.Provider>
-      </MaybeStrictMode>
-    )
+    const wrapper = ({ children }: any) => <MaybeStrictMode>{children}</MaybeStrictMode>
 
     const renderCount = makeRenderCount()
 
     return { wrapper, store: storeWithReactApi, renderCount }
-  }).pipe(provideOtel({ parentSpanContext: otelContext, otelTracer }))
+  })

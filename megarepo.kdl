@@ -1,0 +1,4 @@
+members {
+    effect-utils "overengineeringstudio/effect-utils"
+    effect "effect-ts/effect"
+}

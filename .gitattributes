@@ -1,1 +1,20 @@
-examples/standalone/** linguist-generated=true
+# Mark SQLite benchmark files as vendored to exclude from GitHub language stats
+# These are test fixtures with generated data, not actual source code
+packages/@livestore/wa-sqlite/demo/benchmarks/*.sql linguist-vendored
+
+# Genie-generated files - collapse in GitHub PR diffs
+# These files are generated from *.genie.ts sources
+package.json linguist-generated=true
+**/package.json linguist-generated=true
+tsconfig.json linguist-generated=true
+**/tsconfig.json linguist-generated=true
+tsconfig.*.json linguist-generated=true
+.github/workflows/*.yml linguist-generated=true
+
+# Lock files - collapse in GitHub PR diffs
+*.lock linguist-generated=true
+**/*.lock linguist-generated=true
+*.lockb linguist-generated=true
+**/*.lockb linguist-generated=true
+pnpm-lock.yaml linguist-generated=true
+**/pnpm-lock.yaml linguist-generated=true

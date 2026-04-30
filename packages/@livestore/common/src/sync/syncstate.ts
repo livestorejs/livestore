@@ -1,9 +1,8 @@
-import { casesHandled, LS_DEV, shouldNeverHappen } from '@livestore/utils'
-import { Match, ReadonlyArray, Schema } from '@livestore/utils/effect'
+import { casesHandled } from '@livestore/utils'
+import { Effect, Match, ReadonlyArray, Schema } from '@livestore/utils/effect'
 
-import { UnexpectedError } from '../adapter-types.js'
-import * as EventSequenceNumber from '../schema/EventSequenceNumber.js'
-import * as LiveStoreEvent from '../schema/LiveStoreEvent.js'
+import * as EventSequenceNumber from '../schema/EventSequenceNumber/mod.ts'
+import * as LiveStoreEvent from '../schema/LiveStoreEvent/mod.ts'
 
 /**
  * SyncState represents the current sync state of a sync node relative to an upstream node.
@@ -16,7 +15,7 @@ import * as LiveStoreEvent from '../schema/LiveStoreEvent.js'
  *                 +------------------------+
  *               ▼                       ▼
  *        Upstream Head             Local Head
- *             (1,0)     (1,1), (1,2), (2,0)
+ *              e1        e1.1, e1.2, e2
  * ```
  *
  * **Pending Events**: Events awaiting acknowledgment from the upstream.
@@ -32,7 +31,7 @@ import * as LiveStoreEvent from '../schema/LiveStoreEvent.js'
  * Invariants:
  * 1. **Chain Continuity**: Each event must reference its immediate parent.
  * 2. **Head Ordering**: Upstream Head ≤ Local Head.
- * 3. **Event number sequence**: Must follow the pattern (1,0)→(1,1)→(1,2)→(2,0).
+ * 3. **Event number sequence**: Must follow the pattern e1→e1.1→e1.2→e2.
  *
  * A few further notes to help form an intuition:
  * - The goal is to keep the pending events as small as possible (i.e. to have synced with the next upstream node)
@@ -43,16 +42,16 @@ import * as LiveStoreEvent from '../schema/LiveStoreEvent.js'
  * handling cases such as upstream rebase, advance and local push.
  */
 export class SyncState extends Schema.Class<SyncState>('SyncState')({
-  pending: Schema.Array(LiveStoreEvent.EncodedWithMeta),
+  pending: Schema.Array(LiveStoreEvent.Client.EncodedWithMeta),
   /** What this node expects the next upstream node to have as its own local head */
-  upstreamHead: EventSequenceNumber.EventSequenceNumber,
+  upstreamHead: EventSequenceNumber.Client.Composite,
   /** Equivalent to `pending.at(-1)?.id` if there are pending events */
-  localHead: EventSequenceNumber.EventSequenceNumber,
+  localHead: EventSequenceNumber.Client.Composite,
 }) {
   toJSON = (): any => ({
     pending: this.pending.map((e) => e.toJSON()),
-    upstreamHead: EventSequenceNumber.toString(this.upstreamHead),
-    localHead: EventSequenceNumber.toString(this.localHead),
+    upstreamHead: EventSequenceNumber.Client.toString(this.upstreamHead),
+    localHead: EventSequenceNumber.Client.toString(this.localHead),
   })
 }
 
@@ -61,17 +60,17 @@ export class SyncState extends Schema.Class<SyncState>('SyncState')({
  */
 export class PayloadUpstreamRebase extends Schema.TaggedStruct('upstream-rebase', {
   /** Events which need to be rolled back */
-  rollbackEvents: Schema.Array(LiveStoreEvent.EncodedWithMeta),
+  rollbackEvents: Schema.Array(LiveStoreEvent.Client.EncodedWithMeta),
   /** Events which need to be applied after the rollback (already rebased by the upstream node) */
-  newEvents: Schema.Array(LiveStoreEvent.EncodedWithMeta),
+  newEvents: Schema.Array(LiveStoreEvent.Client.EncodedWithMeta),
 }) {}
 
 export class PayloadUpstreamAdvance extends Schema.TaggedStruct('upstream-advance', {
-  newEvents: Schema.Array(LiveStoreEvent.EncodedWithMeta),
+  newEvents: Schema.Array(LiveStoreEvent.Client.EncodedWithMeta),
 }) {}
 
 export class PayloadLocalPush extends Schema.TaggedStruct('local-push', {
-  newEvents: Schema.Array(LiveStoreEvent.EncodedWithMeta),
+  newEvents: Schema.Array(LiveStoreEvent.Client.EncodedWithMeta),
 }) {}
 
 export class Payload extends Schema.Union(PayloadUpstreamRebase, PayloadUpstreamAdvance, PayloadLocalPush) {}
@@ -110,9 +109,9 @@ export class MergeContext extends Schema.Class<MergeContext>('MergeContext')({
 export class MergeResultAdvance extends Schema.Class<MergeResultAdvance>('MergeResultAdvance')({
   _tag: Schema.Literal('advance'),
   newSyncState: SyncState,
-  newEvents: Schema.Array(LiveStoreEvent.EncodedWithMeta),
+  newEvents: Schema.Array(LiveStoreEvent.Client.EncodedWithMeta),
   /** Events which were previously pending but are now confirmed */
-  confirmedEvents: Schema.Array(LiveStoreEvent.EncodedWithMeta),
+  confirmedEvents: Schema.Array(LiveStoreEvent.Client.EncodedWithMeta),
   mergeContext: MergeContext,
 }) {
   toJSON = (): any => {
@@ -129,9 +128,9 @@ export class MergeResultAdvance extends Schema.Class<MergeResultAdvance>('MergeR
 export class MergeResultRebase extends Schema.Class<MergeResultRebase>('MergeResultRebase')({
   _tag: Schema.Literal('rebase'),
   newSyncState: SyncState,
-  newEvents: Schema.Array(LiveStoreEvent.EncodedWithMeta),
+  newEvents: Schema.Array(LiveStoreEvent.Client.EncodedWithMeta),
   /** Events which need to be rolled back */
-  rollbackEvents: Schema.Array(LiveStoreEvent.EncodedWithMeta),
+  rollbackEvents: Schema.Array(LiveStoreEvent.Client.EncodedWithMeta),
   mergeContext: MergeContext,
 }) {
   toJSON = (): any => {
@@ -148,40 +147,39 @@ export class MergeResultRebase extends Schema.Class<MergeResultRebase>('MergeRes
 export class MergeResultReject extends Schema.Class<MergeResultReject>('MergeResultReject')({
   _tag: Schema.Literal('reject'),
   /** The minimum id that the new events must have */
-  expectedMinimumId: EventSequenceNumber.EventSequenceNumber,
+  expectedMinimumId: EventSequenceNumber.Client.Composite,
   mergeContext: MergeContext,
 }) {
   toJSON = (): any => {
     return {
       _tag: this._tag,
-      expectedMinimumId: EventSequenceNumber.toString(this.expectedMinimumId),
+      expectedMinimumId: EventSequenceNumber.Client.toString(this.expectedMinimumId),
       mergeContext: this.mergeContext.toJSON(),
     }
   }
 }
 
-export class MergeResultUnexpectedError extends Schema.Class<MergeResultUnexpectedError>('MergeResultUnexpectedError')({
-  _tag: Schema.Literal('unexpected-error'),
-  cause: UnexpectedError,
-}) {}
-
 export class MergeResult extends Schema.Union(
   MergeResultAdvance,
   MergeResultRebase,
   MergeResultReject,
-  MergeResultUnexpectedError,
 ) {}
 
-const unexpectedError = (cause: unknown): MergeResultUnexpectedError => {
-  if (LS_DEV) {
-    debugger
-  }
-
-  return MergeResultUnexpectedError.make({
-    _tag: 'unexpected-error',
-    cause: new UnexpectedError({ cause }),
-  })
-}
+export const payloadFromMergeResult = (
+  mergeResult: typeof MergeResultAdvance.Type | typeof MergeResultRebase.Type,
+): typeof PayloadUpstream.Type =>
+  Match.value(mergeResult).pipe(
+    Match.tag('advance', (result) => ({
+      _tag: 'upstream-advance' as const,
+      newEvents: result.newEvents,
+    })),
+    Match.tag('rebase', (result) => ({
+      _tag: 'upstream-rebase' as const,
+      newEvents: result.newEvents,
+      rollbackEvents: result.rollbackEvents,
+    })),
+    Match.exhaustive,
+  )
 
 // TODO Idea: call merge recursively through hierarchy levels
 /*
@@ -190,7 +188,7 @@ The same applies to even further hierarchy levels
 
 TODO: possibly even keep the client events in a separate table in the client leader
 */
-export const merge = ({
+export const merge = Effect.fnUntraced(function* ({
   syncState,
   payload,
   isClientEvent,
@@ -199,13 +197,13 @@ export const merge = ({
 }: {
   syncState: SyncState
   payload: typeof Payload.Type
-  isClientEvent: (event: LiveStoreEvent.EncodedWithMeta) => boolean
-  isEqualEvent: (a: LiveStoreEvent.EncodedWithMeta, b: LiveStoreEvent.EncodedWithMeta) => boolean
+  isClientEvent: (event: LiveStoreEvent.Client.EncodedWithMeta) => boolean
+  isEqualEvent: (a: LiveStoreEvent.Client.EncodedWithMeta, b: LiveStoreEvent.Client.EncodedWithMeta) => boolean
   /** This is used in the leader which should ignore client events when receiving an upstream-advance payload */
   ignoreClientEvents?: boolean
-}): typeof MergeResult.Type => {
-  validateSyncState(syncState)
-  validatePayload(payload)
+}) {
+  yield* validateSyncState(syncState)
+  yield* validatePayload(payload)
 
   const mergeContext = MergeContext.make({ payload, syncState })
 
@@ -223,7 +221,7 @@ export const merge = ({
         isClientEvent,
       })
 
-      return validateMergeResult(
+      return yield* validateMergeResult(
         MergeResultRebase.make({
           _tag: 'rebase',
           newSyncState: new SyncState({
@@ -238,10 +236,10 @@ export const merge = ({
       )
     }
 
-    // #region upstream-advance
+    //#region upstream-advance
     case 'upstream-advance': {
       if (payload.newEvents.length === 0) {
-        return validateMergeResult(
+        return yield* validateMergeResult(
           MergeResultAdvance.make({
             _tag: 'advance',
             newSyncState: new SyncState({
@@ -258,20 +256,23 @@ export const merge = ({
 
       // Validate that newEvents are sorted in ascending order by eventNum
       for (let i = 1; i < payload.newEvents.length; i++) {
-        if (EventSequenceNumber.isGreaterThan(payload.newEvents[i - 1]!.seqNum, payload.newEvents[i]!.seqNum)) {
-          return unexpectedError(
-            `Events must be sorted in ascending order by event number. Received: [${payload.newEvents.map((e) => EventSequenceNumber.toString(e.seqNum)).join(', ')}]`,
+        if (
+          EventSequenceNumber.Client.isGreaterThan(payload.newEvents[i - 1]!.seqNum, payload.newEvents[i]!.seqNum) ===
+          true
+        ) {
+          return yield* Effect.dieDebugger(
+            `Events must be sorted in ascending order by event number. Received: [${payload.newEvents.map((e) => EventSequenceNumber.Client.toString(e.seqNum)).join(', ')}]`,
           )
         }
       }
 
       // Validate that incoming events are larger than upstream head
       if (
-        EventSequenceNumber.isGreaterThan(syncState.upstreamHead, payload.newEvents[0]!.seqNum) ||
-        EventSequenceNumber.isEqual(syncState.upstreamHead, payload.newEvents[0]!.seqNum)
+        EventSequenceNumber.Client.isGreaterThan(syncState.upstreamHead, payload.newEvents[0]!.seqNum) === true ||
+        EventSequenceNumber.Client.isEqual(syncState.upstreamHead, payload.newEvents[0]!.seqNum) === true
       ) {
-        return unexpectedError(
-          `Incoming events must be greater than upstream head. Expected greater than: ${EventSequenceNumber.toString(syncState.upstreamHead)}. Received: [${payload.newEvents.map((e) => EventSequenceNumber.toString(e.seqNum)).join(', ')}]`,
+        return yield* Effect.dieDebugger(
+          `Incoming events must be greater than upstream head. Expected greater than: ${EventSequenceNumber.Client.toString(syncState.upstreamHead)}. Received: [${payload.newEvents.map((e) => EventSequenceNumber.Client.toString(e.seqNum)).join(', ')}]`,
         )
       }
 
@@ -303,27 +304,27 @@ export const merge = ({
         const [pendingMatching, pendingRemaining] = ReadonlyArray.splitWhere(
           syncState.pending,
           (pendingEvent, index) => {
-            if (ignoreClientEvents && isClientEvent(pendingEvent)) {
+            if (ignoreClientEvents === true && isClientEvent(pendingEvent) === true) {
               clientIndexOffset++
               return false
             }
 
             const newEvent = payload.newEvents.at(index - clientIndexOffset)
-            if (!newEvent) {
+            if (newEvent == null) {
               return true
             }
-            return isEqualEvent(pendingEvent, newEvent) === false
+            return !isEqualEvent(pendingEvent, newEvent)
           },
         )
 
-        return validateMergeResult(
+        return yield* validateMergeResult(
           MergeResultAdvance.make({
             _tag: 'advance',
             newSyncState: new SyncState({
               pending: pendingRemaining,
               upstreamHead: newUpstreamHead,
               localHead:
-                pendingRemaining.at(-1)?.seqNum ?? EventSequenceNumber.max(syncState.localHead, newUpstreamHead),
+                pendingRemaining.at(-1)?.seqNum ?? EventSequenceNumber.Client.max(syncState.localHead, newUpstreamHead),
             }),
             newEvents,
             confirmedEvents: pendingMatching,
@@ -346,7 +347,7 @@ export const merge = ({
           ignoreClientEvents,
         })
 
-        return validateMergeResult(
+        return yield* validateMergeResult(
           MergeResultRebase.make({
             _tag: 'rebase',
             newSyncState: new SyncState({
@@ -361,12 +362,12 @@ export const merge = ({
         )
       }
     }
-    // #endregion
+    //#endregion upstream-advance
 
     // This is the same as what's running in the sync backend
     case 'local-push': {
       if (payload.newEvents.length === 0) {
-        return validateMergeResult(
+        return yield* validateMergeResult(
           MergeResultAdvance.make({
             _tag: 'advance',
             newSyncState: syncState,
@@ -378,12 +379,17 @@ export const merge = ({
       }
 
       const newEventsFirst = payload.newEvents.at(0)!
-      const invalidEventSequenceNumber =
-        EventSequenceNumber.isGreaterThan(newEventsFirst.seqNum, syncState.localHead) === false
+      const invalidEventSequenceNumber = !EventSequenceNumber.Client.isGreaterThan(
+        newEventsFirst.seqNum,
+        syncState.localHead,
+      )
 
-      if (invalidEventSequenceNumber) {
-        const expectedMinimumId = EventSequenceNumber.nextPair(syncState.localHead, true).seqNum
-        return validateMergeResult(
+      if (invalidEventSequenceNumber === true) {
+        const expectedMinimumId = EventSequenceNumber.Client.nextPair({
+          seqNum: syncState.localHead,
+          isClient: true,
+        }).seqNum
+        return yield* validateMergeResult(
           MergeResultReject.make({
             _tag: 'reject',
             expectedMinimumId,
@@ -391,13 +397,19 @@ export const merge = ({
           }),
         )
       } else {
-        return validateMergeResult(
+        const nonClientEvents =
+          ignoreClientEvents === true ? payload.newEvents.filter((event) => !isClientEvent(event)) : payload.newEvents
+        const newPending = [...syncState.pending, ...nonClientEvents]
+        const newLocalHead =
+          newPending.at(-1)?.seqNum ?? EventSequenceNumber.Client.max(syncState.localHead, syncState.upstreamHead)
+
+        return yield* validateMergeResult(
           MergeResultAdvance.make({
             _tag: 'advance',
             newSyncState: new SyncState({
-              pending: [...syncState.pending, ...payload.newEvents],
+              pending: newPending,
               upstreamHead: syncState.upstreamHead,
-              localHead: payload.newEvents.at(-1)!.seqNum,
+              localHead: newLocalHead,
             }),
             newEvents: payload.newEvents,
             confirmedEvents: [],
@@ -407,11 +419,10 @@ export const merge = ({
       }
     }
 
-    default: {
-      casesHandled(payload)
-    }
+    default:
+      return casesHandled(payload)
   }
-}
+  })
 
 /**
  * Gets the index relative to `existingEvents` where the divergence point is
@@ -424,13 +435,13 @@ export const findDivergencePoint = ({
   isClientEvent,
   ignoreClientEvents,
 }: {
-  existingEvents: ReadonlyArray<LiveStoreEvent.EncodedWithMeta>
-  incomingEvents: ReadonlyArray<LiveStoreEvent.EncodedWithMeta>
-  isEqualEvent: (a: LiveStoreEvent.EncodedWithMeta, b: LiveStoreEvent.EncodedWithMeta) => boolean
-  isClientEvent: (event: LiveStoreEvent.EncodedWithMeta) => boolean
+  existingEvents: ReadonlyArray<LiveStoreEvent.Client.EncodedWithMeta>
+  incomingEvents: ReadonlyArray<LiveStoreEvent.Client.EncodedWithMeta>
+  isEqualEvent: (a: LiveStoreEvent.Client.EncodedWithMeta, b: LiveStoreEvent.Client.EncodedWithMeta) => boolean
+  isClientEvent: (event: LiveStoreEvent.Client.EncodedWithMeta) => boolean
   ignoreClientEvents: boolean
 }): number => {
-  if (ignoreClientEvents) {
+  if (ignoreClientEvents === true) {
     const filteredExistingEvents = existingEvents.filter((event) => !isClientEvent(event))
     const divergencePointWithoutClientEvents = findDivergencePoint({
       existingEvents: filteredExistingEvents,
@@ -445,14 +456,14 @@ export const findDivergencePoint = ({
     const divergencePointEventSequenceNumber = existingEvents[divergencePointWithoutClientEvents]!.seqNum
     // Now find the divergence point in the original array
     return existingEvents.findIndex((event) =>
-      EventSequenceNumber.isEqual(event.seqNum, divergencePointEventSequenceNumber),
+      EventSequenceNumber.Client.isEqual(event.seqNum, divergencePointEventSequenceNumber),
     )
   }
 
   return existingEvents.findIndex((existingEvent, index) => {
     const incomingEvent = incomingEvents[index]
     // return !incomingEvent || !isEqualEvent(existingEvent, incomingEvent)
-    return incomingEvent && !isEqualEvent(existingEvent, incomingEvent)
+    return incomingEvent !== undefined && isEqualEvent(existingEvent, incomingEvent) === false
   })
 }
 
@@ -461,14 +472,19 @@ const rebaseEvents = ({
   baseEventSequenceNumber,
   isClientEvent,
 }: {
-  events: ReadonlyArray<LiveStoreEvent.EncodedWithMeta>
-  baseEventSequenceNumber: EventSequenceNumber.EventSequenceNumber
-  isClientEvent: (event: LiveStoreEvent.EncodedWithMeta) => boolean
-}): ReadonlyArray<LiveStoreEvent.EncodedWithMeta> => {
+  events: ReadonlyArray<LiveStoreEvent.Client.EncodedWithMeta>
+  baseEventSequenceNumber: EventSequenceNumber.Client.Composite
+  isClientEvent: (event: LiveStoreEvent.Client.EncodedWithMeta) => boolean
+}): ReadonlyArray<LiveStoreEvent.Client.EncodedWithMeta> => {
   let prevEventSequenceNumber = baseEventSequenceNumber
+  const rebaseGeneration = baseEventSequenceNumber.rebaseGeneration + 1
   return events.map((event) => {
-    const isLocal = isClientEvent(event)
-    const newEvent = event.rebase(prevEventSequenceNumber, isLocal)
+    const isClient = isClientEvent(event)
+    const newEvent = event.rebase({
+      parentSeqNum: prevEventSequenceNumber,
+      isClient,
+      rebaseGeneration,
+    })
     prevEventSequenceNumber = newEvent.seqNum
     return newEvent
   })
@@ -483,65 +499,75 @@ const rebaseEvents = ({
  */
 const _flattenMergeResults = (_updateResults: ReadonlyArray<MergeResult>) => {}
 
-const validatePayload = (payload: typeof Payload.Type) => {
-  for (let i = 1; i < payload.newEvents.length; i++) {
-    if (EventSequenceNumber.isGreaterThanOrEqual(payload.newEvents[i - 1]!.seqNum, payload.newEvents[i]!.seqNum)) {
-      return unexpectedError(
-        `Events must be ordered in monotonically ascending order by eventNum. Received: [${payload.newEvents.map((e) => EventSequenceNumber.toString(e.seqNum)).join(', ')}]`,
-      )
+const validatePayload = (payload: typeof Payload.Type) =>
+  Effect.gen(function* () {
+    for (let i = 1; i < payload.newEvents.length; i++) {
+      if (
+        EventSequenceNumber.Client.isGreaterThanOrEqual(
+          payload.newEvents[i - 1]!.seqNum,
+          payload.newEvents[i]!.seqNum,
+        ) === true
+      ) {
+        return yield* Effect.dieDebugger(
+          `Events must be ordered in monotonically ascending order by eventNum. Received: [${payload.newEvents.map((e) => EventSequenceNumber.Client.toString(e.seqNum)).join(', ')}]`,
+        )
+      }
     }
-  }
-}
+  })
 
-const validateSyncState = (syncState: SyncState) => {
+const validateSyncState = Effect.fnUntraced(function* (
+  syncState: SyncState,
+) {
   for (let i = 0; i < syncState.pending.length; i++) {
     const event = syncState.pending[i]!
     const nextEvent = syncState.pending[i + 1]
     if (nextEvent === undefined) break // Reached end of chain
 
-    if (EventSequenceNumber.isGreaterThanOrEqual(event.seqNum, nextEvent.seqNum)) {
-      shouldNeverHappen(
-        `Events must be ordered in monotonically ascending order by eventNum. Received: [${syncState.pending.map((e) => EventSequenceNumber.toString(e.seqNum)).join(', ')}]`,
-        {
-          event,
-          nextEvent,
-        },
+    if (EventSequenceNumber.Client.isGreaterThanOrEqual(event.seqNum, nextEvent.seqNum) === true) {
+      return yield* Effect.dieDebugger(
+        `Events must be ordered in monotonically ascending order by eventNum. Received: [${syncState.pending.map((e) => EventSequenceNumber.Client.toString(e.seqNum)).join(', ')}]`,
+        { event, nextEvent },
       )
     }
 
     // If the global id has increased, then the client id must be 0
     const globalIdHasIncreased = nextEvent.seqNum.global > event.seqNum.global
-    if (globalIdHasIncreased) {
+    if (globalIdHasIncreased === true) {
       if (nextEvent.seqNum.client !== 0) {
-        shouldNeverHappen(
-          `New global events must point to clientId 0 in the parentSeqNum. Received: (${EventSequenceNumber.toString(nextEvent.seqNum)})`,
+        return yield* Effect.dieDebugger(
+          `New global events must point to clientId 0 in the parentSeqNum. Received: (${EventSequenceNumber.Client.toString(nextEvent.seqNum)})`,
           syncState.pending,
-          {
-            event,
-            nextEvent,
-          },
+          { event, nextEvent },
         )
       }
     } else {
       // Otherwise, the parentSeqNum must be the same as the previous event's id
-      if (EventSequenceNumber.isEqual(nextEvent.parentSeqNum, event.seqNum) === false) {
-        shouldNeverHappen('Events must be linked in a continuous chain via the parentSeqNum', syncState.pending, {
-          event,
-          nextEvent,
-        })
+      if (EventSequenceNumber.Client.isEqual(nextEvent.parentSeqNum, event.seqNum) === false) {
+        return yield* Effect.dieDebugger(
+          'Events must be linked in a continuous chain via the parentSeqNum',
+          syncState.pending,
+          { event, nextEvent },
+        )
       }
     }
   }
-}
+})
 
-const validateMergeResult = (mergeResult: typeof MergeResult.Type) => {
-  if (mergeResult._tag === 'unexpected-error' || mergeResult._tag === 'reject') return mergeResult
+const validateMergeResult = Effect.fnUntraced(function* (
+  mergeResult: typeof MergeResult.Type,
+) {
+  if (mergeResult._tag === 'reject') return mergeResult
 
-  validateSyncState(mergeResult.newSyncState)
+  yield* validateSyncState(mergeResult.newSyncState)
 
   // Ensure local head is always greater than or equal to upstream head
-  if (EventSequenceNumber.isGreaterThan(mergeResult.newSyncState.upstreamHead, mergeResult.newSyncState.localHead)) {
-    shouldNeverHappen('Local head must be greater than or equal to upstream head', {
+  if (
+    EventSequenceNumber.Client.isGreaterThan(
+      mergeResult.newSyncState.upstreamHead,
+      mergeResult.newSyncState.localHead,
+    ) === true
+  ) {
+    return yield* Effect.dieDebugger('Local head must be greater than or equal to upstream head', {
       localHead: mergeResult.newSyncState.localHead,
       upstreamHead: mergeResult.newSyncState.upstreamHead,
     })
@@ -549,12 +575,12 @@ const validateMergeResult = (mergeResult: typeof MergeResult.Type) => {
 
   // Ensure new local head is greater than or equal to the previous local head
   if (
-    EventSequenceNumber.isGreaterThanOrEqual(
+    EventSequenceNumber.Client.isGreaterThanOrEqual(
       mergeResult.newSyncState.localHead,
       mergeResult.mergeContext.syncState.localHead,
     ) === false
   ) {
-    shouldNeverHappen('New local head must be greater than or equal to the previous local head', {
+    return yield* Effect.dieDebugger('New local head must be greater than or equal to the previous local head', {
       localHead: mergeResult.newSyncState.localHead,
       previousLocalHead: mergeResult.mergeContext.syncState.localHead,
     })
@@ -562,16 +588,16 @@ const validateMergeResult = (mergeResult: typeof MergeResult.Type) => {
 
   // Ensure new upstream head is greater than or equal to the previous upstream head
   if (
-    EventSequenceNumber.isGreaterThanOrEqual(
+    EventSequenceNumber.Client.isGreaterThanOrEqual(
       mergeResult.newSyncState.upstreamHead,
       mergeResult.mergeContext.syncState.upstreamHead,
     ) === false
   ) {
-    shouldNeverHappen('New upstream head must be greater than or equal to the previous upstream head', {
+    return yield* Effect.dieDebugger('New upstream head must be greater than or equal to the previous upstream head', {
       upstreamHead: mergeResult.newSyncState.upstreamHead,
       previousUpstreamHead: mergeResult.mergeContext.syncState.upstreamHead,
     })
   }
 
   return mergeResult
-}
+})

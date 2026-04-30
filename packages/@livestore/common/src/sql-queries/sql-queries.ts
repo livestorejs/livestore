@@ -1,10 +1,10 @@
 import { shouldNeverHappen } from '@livestore/utils'
 import { pipe, ReadonlyArray, Schema, TreeFormatter } from '@livestore/utils/effect'
 
-import type { SqliteDsl } from '../schema/state/sqlite/db-schema/mod.js'
-import { sql } from '../util.js'
-import { objectEntries } from './misc.js'
-import * as ClientTypes from './types.js'
+import type { SqliteDsl } from '../schema/state/sqlite/db-schema/mod.ts'
+import { sql } from '../util.ts'
+import { objectEntries } from './misc.ts'
+import * as ClientTypes from './types.ts'
 
 export type BindValues = {
   readonly [columnName: string]: any
@@ -23,7 +23,7 @@ export const findManyRows = <TColumns extends SqliteDsl.Columns>({
 }): [string, BindValues] => {
   const whereSql = buildWhereSql({ where })
   const whereModifier = whereSql === '' ? '' : `WHERE ${whereSql}`
-  const limitModifier = limit ? `LIMIT ${limit}` : ''
+  const limitModifier = limit !== undefined ? `LIMIT ${limit}` : ''
 
   const whereBindValues = makeBindValues({ columns, values: where, variablePrefix: 'where_', skipNil: true })
 
@@ -80,7 +80,7 @@ export const insertRowPrepared = <TColumns extends SqliteDsl.Columns>({
   const keysStr = keys.join(', ')
   const valuesStr = keys.map((key) => `$${key}`).join(', ')
 
-  return sql`INSERT ${options.orReplace ? 'OR REPLACE ' : ''}INTO ${tableName} (${keysStr}) VALUES (${valuesStr})`
+  return sql`INSERT ${options.orReplace === true ? 'OR REPLACE ' : ''}INTO ${tableName} (${keysStr}) VALUES (${valuesStr})`
 }
 
 export const insertRows = <TColumns extends SqliteDsl.Columns>({
@@ -106,6 +106,7 @@ export const insertRows = <TColumns extends SqliteDsl.Columns>({
 
   const bindValues = valuesArray.reduce(
     (acc, values, itemIndex) => ({
+      // biome-ignore lint/performance/noAccumulatingSpread: TODO improve this some day
       ...acc,
       ...makeBindValues({ columns, values, variablePrefix: `item_${itemIndex}_` }),
     }),
@@ -133,7 +134,7 @@ export const insertOrIgnoreRow = <TColumns extends SqliteDsl.Columns>({
     .join(', ')
 
   const bindValues = makeBindValues({ columns, values })
-  const returningStmt = returnRow ? 'RETURNING *' : ''
+  const returningStmt = returnRow === true ? 'RETURNING *' : ''
 
   return [sql`INSERT OR IGNORE INTO ${tableName} (${keysStr}) VALUES (${valuesStr}) ${returningStmt}`, bindValues]
 }
@@ -246,7 +247,15 @@ export const createTable = ({
     .map(([columnName, _]) => columnName)
   const columnDefStrs = Object.entries(table.columns).map(([columnName, columnDef]) => {
     const nullModifier = columnDef.nullable === true ? '' : 'NOT NULL'
-    const defaultModifier = columnDef.default._tag === 'None' ? '' : `DEFAULT ${columnDef.default.value}`
+    const defaultModifier = (() => {
+      if (columnDef.default._tag === 'None') return ''
+      const defaultValue = columnDef.default.value
+      if (typeof defaultValue === 'function') return ''
+      if (defaultValue !== undefined && typeof defaultValue === 'object' && 'sql' in defaultValue) {
+        return `DEFAULT ${defaultValue.sql}`
+      }
+      return `DEFAULT ${defaultValue}`
+    })()
     return sql`${columnName} ${columnDef.columnType} ${nullModifier} ${defaultModifier}`
   })
 
@@ -292,6 +301,7 @@ Error: ${parseErrorStr}
 Value:`,
             value,
           )
+          // oxlint-disable-next-line eslint(no-debugger) -- intentional breakpoint for SQL decode errors
           debugger
           throw res.left
         } else {
@@ -339,7 +349,11 @@ const buildWhereSql = <TColumns extends SqliteDsl.Columns>({
   const getWhereOp = (columnName: string, value: ClientTypes.WhereValueForDecoded<any>) => {
     if (value === null) {
       return `IS NULL`
-    } else if (typeof value === 'object' && typeof value.op === 'string' && ClientTypes.isValidWhereOp(value.op)) {
+    } else if (
+      typeof value === 'object' &&
+      typeof value.op === 'string' &&
+      ClientTypes.isValidWhereOp(value.op) === true
+    ) {
       return `${value.op} $where_${columnName}`
     } else if (typeof value === 'object' && typeof value.op === 'string' && value.op === 'in') {
       return `in (${value.val.map((_: any, i: number) => `$where_${columnName}_${i}`).join(', ')})`

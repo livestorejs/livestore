@@ -1,12 +1,12 @@
-import './thread-polyfill.js'
-
+import './thread-polyfill.ts'
 import path from 'node:path'
 
 import { makeAdapter, makeWorkerAdapter } from '@livestore/adapter-node'
 import type { ShutdownDeferred, Store } from '@livestore/livestore'
 import { createStore, makeShutdownDeferred, queryDb } from '@livestore/livestore'
-import { makeCfSync } from '@livestore/sync-cf'
+import { makeWsSync } from '@livestore/sync-cf/client'
 import { IS_CI } from '@livestore/utils'
+import { OtelLiveHttp } from '@livestore/utils-dev/node'
 import {
   Context,
   Effect,
@@ -21,10 +21,10 @@ import {
 } from '@livestore/utils/effect'
 import { nanoid } from '@livestore/utils/nanoid'
 import { ChildProcessRunner, OtelLiveDummy, PlatformNode } from '@livestore/utils/node'
-import { OtelLiveHttp } from '@livestore/utils-dev/node'
 
-import { events, schema, tables } from './schema.js'
-import * as WorkerSchema from './worker-schema.js'
+import { makeFileLogger } from './fixtures/file-logger.ts'
+import { events, schema, tables } from './schema.ts'
+import * as WorkerSchema from './worker-schema.ts'
 
 class WorkerContext extends Context.Tag('WorkerContext')<
   WorkerContext,
@@ -35,7 +35,7 @@ class WorkerContext extends Context.Tag('WorkerContext')<
 >() {}
 
 const runner = WorkerRunner.layerSerialized(WorkerSchema.Request, {
-  InitialMessage: ({ storeId, clientId, adapterType, storageType, params }) =>
+  InitialMessage: ({ storeId, clientId, adapterType, storageType, params, syncUrl }) =>
     Effect.gen(function* () {
       const storage =
         storageType === 'fs'
@@ -51,15 +51,16 @@ const runner = WorkerRunner.layerSerialized(WorkerSchema.Request, {
             }
           : { type: 'in-memory' as const }
 
-      const sync = { backend: makeCfSync({ url: `ws://localhost:${process.env.LIVESTORE_SYNC_PORT}` }) }
+      const sync = { backend: makeWsSync({ url: syncUrl }) }
 
       const adapter =
         adapterType === 'single-threaded'
           ? makeAdapter({ storage, clientId, sync })
           : makeWorkerAdapter({
-              workerUrl: new URL('./livestore.worker.js', import.meta.url),
+              workerUrl: new URL('./livestore.worker.ts', import.meta.url),
               storage: { type: 'in-memory' },
               clientId,
+              workerExtraArgs: { syncUrl },
             })
 
       const shutdownDeferred = yield* makeShutdownDeferred
@@ -70,7 +71,10 @@ const runner = WorkerRunner.layerSerialized(WorkerSchema.Request, {
         storeId,
         disableDevtools: true,
         shutdownDeferred,
-        params: { leaderPushBatchSize: params.leaderPushBatchSize },
+        params: {
+          leaderPushBatchSize: params?.leaderPushBatchSize,
+          simulation: params?.simulation !== undefined ? { clientSessionSyncProcessor: params.simulation } : undefined,
+        },
       })
       // @ts-expect-error for debugging
       globalThis.store = store
@@ -104,30 +108,28 @@ const runner = WorkerRunner.layerSerialized(WorkerSchema.Request, {
       const query$ = queryDb(tables.todo.orderBy('id', 'desc'))
       return store.subscribeStream(query$)
     }).pipe(Stream.unwrap, Stream.withSpan('@livestore/adapter-node-sync:test:stream-todos')),
-  OnShutdown: () =>
-    Effect.gen(function* () {
-      const { shutdownDeferred } = yield* WorkerContext
-      yield* shutdownDeferred.pipe(Effect.catchTag('LiveStore.StoreInterrupted', () => Effect.void))
-    }).pipe(Effect.withSpan('@livestore/adapter-node-sync:test:on-shutdown')),
+  OnShutdown: Effect.fn('@livestore/adapter-node-sync:test:on-shutdown')(function* () {
+    const { shutdownDeferred } = yield* WorkerContext
+    yield* shutdownDeferred.pipe(Effect.catchTag('StoreInterrupted', () => Effect.void))
+  }),
 })
 
-const clientId = process.argv[2]
+const clientId = process.argv[2]!
 
 const serviceName = `node-sync-test:${clientId}`
 
 runner.pipe(
   Layer.provide(PlatformNode.NodeContext.layer),
   Layer.provide(ChildProcessRunner.layer),
-  // Layer.provide(PlatformNode.NodeWorkerRunner.layer),
   WorkerRunner.launch,
   // TODO this parent span is currently missing in the trace
   Effect.withSpan(`@livestore/adapter-node-sync:run-worker-${clientId}`),
-  Effect.provide(IS_CI ? OtelLiveDummy : OtelLiveHttp({ serviceName, skipLogUrl: true })),
+  Effect.provide(IS_CI === true ? OtelLiveDummy : OtelLiveHttp({ serviceName, skipLogUrl: true })),
   Effect.scoped,
   Effect.tapCauseLogPretty,
   Effect.annotateLogs({ thread: serviceName, clientId }),
   Effect.annotateSpans({ clientId }),
-  Effect.provide(Logger.prettyWithThread(serviceName)),
+  Effect.provide(makeFileLogger(`worker-${clientId}`)),
   Logger.withMinimumLogLevel(LogLevel.Debug),
-  Effect.runFork,
+  PlatformNode.NodeRuntime.runMain({ disablePrettyLogger: true }),
 )

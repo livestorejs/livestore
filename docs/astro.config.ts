@@ -1,0 +1,450 @@
+import os from 'node:os'
+import { fileURLToPath } from 'node:url'
+
+import netlify from '@astrojs/netlify'
+import react from '@astrojs/react'
+import starlight from '@astrojs/starlight'
+import tailwind from '@tailwindcss/vite'
+import astroD2 from 'astro-d2'
+import { defineConfig, envField } from 'astro/config'
+import rehypeMermaid from 'rehype-mermaid'
+import remarkCustomHeaderId from 'remark-custom-header-id'
+import starlightContextualMenu from 'starlight-contextual-menu'
+// import starlightAutoSidebar from 'starlight-auto-sidebar'
+import starlightLinksValidator from 'starlight-links-validator'
+import starlightSidebarTopics from 'starlight-sidebar-topics'
+import starlightTypeDoc from 'starlight-typedoc'
+
+import { liveStoreVersion } from '@livestore/common'
+import { createAstroTldrawIntegration } from '@local/astro-tldraw'
+import { createAstroTwoslashCodeIntegration } from '@local/astro-twoslash-code/integration'
+import { DISCORD_INVITE_URL } from '@local/shared'
+
+import { getBranchName } from './src/data/data.ts'
+import { rehypeExternalLinks } from './src/plugins/rehype/externalLinks.js'
+import { remarkGithubIssueLinks } from './src/plugins/remark/githubIssueLinks.js'
+import { createCopyPageClipboardFallbackIntegration } from './src/plugins/starlight/contextual-menu-fallback/plugin.ts'
+import starlightMarkdown from './src/plugins/starlight/markdown/index.js'
+import { starlightMixedbread } from './src/plugins/starlight/mixedbread/plugin.js'
+
+const port = 5252
+
+const branch = getBranchName()
+
+// Netlify preview domain (see https://docs.netlify.com/configure-builds/environment-variables/#build-metadata)
+const domain =
+  process.env.DEPLOY_PRIME_URL !== undefined
+    ? new URL(process.env.DEPLOY_PRIME_URL).hostname
+    : process.env.NODE_ENV === 'production'
+      ? branch === 'main'
+        ? 'docs.livestore.dev'
+        : 'dev.docs.livestore.dev'
+      : `localhost:${port}`
+
+const site = `https://${domain}`
+
+// https://astro.build/config
+export default defineConfig({
+  site,
+  output: 'static',
+  server: { port, host: '0.0.0.0' },
+  adapter: process.env.NODE_ENV === 'production' ? netlify() : undefined,
+  image: {
+    domains: ['gitbucket.schickling.dev'],
+  },
+  build: {
+    concurrency: os.cpus().length,
+  },
+  env: {
+    schema: {
+      MXBAI_API_KEY: envField.string({
+        context: 'server',
+        access: 'secret',
+        optional: true,
+      }),
+      MXBAI_VECTOR_STORE_ID: envField.string({
+        context: 'server',
+        access: 'secret',
+        optional: true,
+      }),
+    },
+  },
+  integrations: [
+    // We're using a custom D2 theme (see `docs/src/content/base.d2`)
+    astroD2({
+      sketch: true,
+      pad: 40,
+      inline: true,
+      // skipGeneration: true,
+      output: 'generated-d2',
+    }),
+    createAstroTwoslashCodeIntegration(),
+    createAstroTldrawIntegration(),
+    react(),
+    createCopyPageClipboardFallbackIntegration(),
+    starlight({
+      title: `LiveStore (${liveStoreVersion})`,
+      social: [
+        {
+          icon: 'github',
+          label: 'GitHub',
+          href: `https://github.com/livestorejs/livestore/tree/${branch}`,
+        },
+        { icon: 'discord', label: 'Discord', href: DISCORD_INVITE_URL },
+        { icon: 'x.com', label: 'X', href: 'https://x.com/livestoredev' },
+        {
+          icon: 'blueSky',
+          label: 'Bluesky',
+          href: 'https://bsky.app/profile/livestore.dev',
+        },
+      ],
+      expressiveCode: {
+        themes: ['github-dark', 'github-dark'],
+      },
+      components: {
+        SocialIcons: './src/components/SocialIcons.astro',
+      },
+      editLink: {
+        baseUrl: `https://github.com/livestorejs/livestore/edit/${getBranchName()}/docs/`,
+      },
+      routeMiddleware: './src/routeMiddleware.ts',
+      plugins: [
+        // Generate Markdown versions of pages for contextual menu "View as Markdown".
+        // The upstream plugin has a bug in how it resolves entries during build.
+        // We alias it to a local drop-in replacement that fixes path resolution.
+        starlightMarkdown(),
+        // Add contextual menu to pages (copy/view, optional providers)
+        starlightContextualMenu({ injectMarkdownRoutes: false }),
+        // Used to adjust the order of sidebar items
+        // https://starlight-auto-sidebar.netlify.app/guides/using-metadata/
+        // TODO re-enable this when fixed https://github.com/HiDeoo/starlight-auto-sidebar/issues/4
+        // starlightAutoSidebar(),
+
+        starlightMixedbread({
+          apiKey: process.env.MXBAI_API_KEY ?? '',
+          vectorStoreId: process.env.MXBAI_VECTOR_STORE_ID ?? '',
+          maxResults: 8,
+        }),
+
+        starlightSidebarTopics([
+          {
+            label: 'Docs',
+            link: '/',
+            icon: 'open-book',
+            items: [
+              'index',
+              {
+                label: 'Getting started',
+                autogenerate: { directory: 'getting-started' },
+              },
+              {
+                label: 'Tutorial',
+                autogenerate: { directory: 'tutorial' },
+              },
+              {
+                label: 'Overview',
+                autogenerate: { directory: 'overview' },
+              },
+              {
+                label: 'Building with LiveStore',
+                items: [
+                  // Top-level files first (manually ordered)
+                  'building-with-livestore/rules-for-ai-agents',
+                  'building-with-livestore/events',
+                  'building-with-livestore/data-modeling',
+                  'building-with-livestore/crud',
+                  'building-with-livestore/store',
+                  'building-with-livestore/complex-ui-state',
+                  'building-with-livestore/reactivity-system',
+                  'building-with-livestore/syncing',
+                  'building-with-livestore/debugging',
+                  'building-with-livestore/devtools',
+                  'building-with-livestore/opentelemetry',
+                  'building-with-livestore/production-checklist',
+                  // Then nested directories with explicit labels
+                  { label: 'State', autogenerate: { directory: 'building-with-livestore/state' } },
+                  { label: 'Tools', autogenerate: { directory: 'building-with-livestore/tools' } },
+                  { label: 'Examples', autogenerate: { directory: 'building-with-livestore/examples' } },
+                ],
+              },
+              {
+                label: 'Framework integrations',
+                autogenerate: { directory: 'framework-integrations' },
+              },
+              {
+                label: 'Platform adapters',
+                autogenerate: { directory: 'platform-adapters' },
+              },
+              {
+                label: 'Sync providers',
+                autogenerate: { directory: 'sync-providers' },
+              },
+              {
+                label: 'Patterns',
+                autogenerate: { directory: 'patterns' },
+              },
+              {
+                label: 'Understanding LiveStore',
+                autogenerate: { directory: 'understanding-livestore' },
+              },
+              {
+                label: 'Sustainable open source',
+                items: [
+                  'sustainable-open-source/sponsoring',
+                  {
+                    label: 'Contributing',
+                    autogenerate: { directory: 'sustainable-open-source/contributing' },
+                  },
+                ],
+              },
+              {
+                label: 'Miscellaneous',
+                autogenerate: { directory: 'misc' },
+              },
+              {
+                label: 'Changelog',
+                link: '/changelog',
+              },
+              // Sidebar structure is defined in ./src/data/sidebar.ts
+              // to be shared with llms.txt generators
+              // ...toStarlightSidebar(docsSidebar),
+            ],
+          },
+          {
+            label: 'API',
+            link: '/api/',
+            icon: 'forward-slash',
+
+            items: [
+              'api', // 'api/index.mdx'
+              {
+                label: '@livestore/livestore',
+                autogenerate: { directory: 'api/livestore' },
+                collapsed: true,
+              },
+              {
+                label: '@livestore/react',
+                autogenerate: { directory: 'api/react' },
+                collapsed: true,
+              },
+              {
+                label: 'Adapters',
+                items: [
+                  {
+                    label: '@livestore/adapter-web',
+                    autogenerate: { directory: 'api/adapter-web' },
+                    collapsed: true,
+                  },
+                  {
+                    label: '@livestore/adapter-node',
+                    autogenerate: { directory: 'api/adapter-node' },
+                    collapsed: true,
+                  },
+                  {
+                    label: '@livestore/adapter-expo',
+                    autogenerate: { directory: 'api/adapter-expo' },
+                    collapsed: true,
+                  },
+                ],
+              },
+              {
+                label: 'Syncing',
+                items: [
+                  {
+                    label: '@livestore/sync-cf',
+                    autogenerate: { directory: 'api/sync-cf' },
+                    collapsed: true,
+                  },
+                  {
+                    label: '@livestore/sync-electric',
+                    autogenerate: { directory: 'api/sync-electric' },
+                    collapsed: true,
+                  },
+                ],
+              },
+            ],
+          },
+          {
+            label: 'Examples',
+            link: '/examples/',
+            icon: 'rocket',
+            items: [
+              'examples', // 'examples/index.mdx'
+              'examples/web-adapter',
+              'examples/node-adapter',
+              'examples/expo-adapter',
+              'examples/cloudflare-adapter',
+            ],
+          },
+        ]),
+
+        // Only runs on `astro build`
+        starlightLinksValidator({
+          // `exclude` specifies the links to be excluded, not the files that contain the links
+          exclude: [
+            '/examples', // Custom pages are not yet supported by this plugin https://github.com/HiDeoo/starlight-links-validator/issues/39
+            '/api/**',
+          ],
+          // Currently ignoring relative links as there are some problems with the generated api docs
+          // Didn't yet take the time to investigate/fix the root cause https://share.cleanshot.com/88lpCkCl
+          errorOnRelativeLinks: false,
+        }),
+        ...(process.env.STARLIGHT_INCLUDE_API_DOCS !== undefined
+          ? [
+              starlightTypeDoc({
+                entryPoints: ['../packages/@livestore/livestore/src/mod.ts'],
+                tsconfig: '../packages/@livestore/livestore/tsconfig.json',
+                output: 'api/livestore',
+                typeDoc: {
+                  excludeExternals: true,
+                  externalPattern: ['**/@effect/**', '**/effect/**'],
+                  // The genie-generated tsconfigs include the @effect/language-service plugin which
+                  // emits TS diagnostics (warnings). TypeDoc treats any diagnostic as a fatal error
+                  // and returns no reflections. skipErrorChecking bypasses this check.
+                  skipErrorChecking: true,
+                },
+              }),
+              starlightTypeDoc({
+                entryPoints: ['../packages/@livestore/react/src/mod.ts'],
+                tsconfig: '../packages/@livestore/react/tsconfig.json',
+                output: 'api/react',
+                typeDoc: {
+                  excludeExternals: true,
+                  externalPattern: ['**/@effect/**', '**/effect/**'],
+                  // The genie-generated tsconfigs include the @effect/language-service plugin which
+                  // emits TS diagnostics (warnings). TypeDoc treats any diagnostic as a fatal error
+                  // and returns no reflections. skipErrorChecking bypasses this check.
+                  skipErrorChecking: true,
+                },
+              }),
+              starlightTypeDoc({
+                entryPoints: ['../packages/@livestore/adapter-web/src/index.ts'],
+                tsconfig: '../packages/@livestore/adapter-web/tsconfig.json',
+                output: 'api/adapter-web',
+                typeDoc: {
+                  excludeExternals: true,
+                  externalPattern: ['**/@effect/**', '**/effect/**'],
+                  // The genie-generated tsconfigs include the @effect/language-service plugin which
+                  // emits TS diagnostics (warnings). TypeDoc treats any diagnostic as a fatal error
+                  // and returns no reflections. skipErrorChecking bypasses this check.
+                  skipErrorChecking: true,
+                },
+              }),
+              starlightTypeDoc({
+                entryPoints: ['../packages/@livestore/adapter-node/src/index.ts'],
+                tsconfig: '../packages/@livestore/adapter-node/tsconfig.json',
+                output: 'api/adapter-node',
+                typeDoc: {
+                  excludeExternals: true,
+                  externalPattern: ['**/@effect/**', '**/effect/**'],
+                  // The genie-generated tsconfigs include the @effect/language-service plugin which
+                  // emits TS diagnostics (warnings). TypeDoc treats any diagnostic as a fatal error
+                  // and returns no reflections. skipErrorChecking bypasses this check.
+                  skipErrorChecking: true,
+                },
+              }),
+              starlightTypeDoc({
+                entryPoints: ['../packages/@livestore/adapter-expo/src/index.ts'],
+                tsconfig: '../packages/@livestore/adapter-expo/tsconfig.json',
+                output: 'api/adapter-expo',
+                typeDoc: {
+                  excludeExternals: true,
+                  externalPattern: ['**/@effect/**', '**/effect/**'],
+                  // The genie-generated tsconfigs include the @effect/language-service plugin which
+                  // emits TS diagnostics (warnings). TypeDoc treats any diagnostic as a fatal error
+                  // and returns no reflections. skipErrorChecking bypasses this check.
+                  skipErrorChecking: true,
+                },
+              }),
+              starlightTypeDoc({
+                entryPoints: [
+                  '../packages/@livestore/sync-cf/src/sync-impl/mod.ts',
+                  '../packages/@livestore/sync-cf/src/cf-worker/mod.ts',
+                ],
+                tsconfig: '../packages/@livestore/sync-cf/tsconfig.json',
+                output: 'api/sync-cf',
+                typeDoc: {
+                  excludeExternals: true,
+                  externalPattern: ['**/@effect/**', '**/effect/**'],
+                  // The genie-generated tsconfigs include the @effect/language-service plugin which
+                  // emits TS diagnostics (warnings). TypeDoc treats any diagnostic as a fatal error
+                  // and returns no reflections. skipErrorChecking bypasses this check.
+                  skipErrorChecking: true,
+                },
+              }),
+              starlightTypeDoc({
+                entryPoints: ['../packages/@livestore/sync-electric/src/index.ts'],
+                tsconfig: '../packages/@livestore/sync-electric/tsconfig.json',
+                output: 'api/sync-electric',
+                typeDoc: {
+                  excludeExternals: true,
+                  externalPattern: ['**/@effect/**', '**/effect/**'],
+                  // The genie-generated tsconfigs include the @effect/language-service plugin which
+                  // emits TS diagnostics (warnings). TypeDoc treats any diagnostic as a fatal error
+                  // and returns no reflections. skipErrorChecking bypasses this check.
+                  skipErrorChecking: true,
+                },
+              }),
+            ]
+          : []),
+      ],
+      customCss: ['./src/fonts/geist-font.css', './src/tailwind.css'],
+      logo: {
+        light: './src/assets/logo-beta-light.png',
+        dark: './src/assets/logo-beta-dark.png',
+        alt: 'LiveStore Logo',
+        replacesTitle: true,
+      },
+    }),
+  ],
+  redirects: {
+    '/getting-started': '/getting-started/react-web',
+    '/reference/syncing/sync-provider': '/reference/syncing/sync-provider/cloudflare',
+  },
+  vite: {
+    resolve: {
+      alias: {
+        // Keep third-party integrations (e.g. starlight-contextual-menu) pointed at our implementation.
+        // They still import `starlight-markdown` by name before aliases apply, so this mapping must exist
+        // as long as we own the markdown route handler.
+        'starlight-markdown': fileURLToPath(new URL('./src/plugins/starlight/markdown/index.js', import.meta.url)),
+      },
+    },
+    server: {
+      fs: {
+        // Needed to load the CHANGELOG.md file which is outside this package
+        strict: false,
+      },
+      // Allow to be accessed via Tailscale
+      allowedHosts: [os.hostname(), process.env.DEVSERVER_HOSTNAME ?? ''],
+    },
+    optimizeDeps: {
+      // Avoid pre-bundling the minimum RN/Expo modules that break esbuild.
+      // - RN ships Flow-typed sources (not supported by esbuild):
+      //   https://github.com/evanw/esbuild/issues/79
+      //   Example Flow file: getDevServer.js in react-native
+      // - expo-sqlite publishes JSX in .js which triggers:
+      //   "JSX syntax extension is not currently enabled":
+      //   https://github.com/evanw/esbuild/issues/1888
+      // Reference RN Flow discussion: https://github.com/facebook/react-native/issues/36343
+      exclude: ['react-native', 'expo-sqlite'],
+    },
+    plugins: [tailwind()],
+  },
+  markdown: {
+    syntaxHighlight: {
+      type: 'shiki',
+      excludeLangs: ['mermaid', 'math', 'd2'],
+    },
+    remarkPlugins: [
+      remarkGithubIssueLinks,
+      // MD: {#custom-id}
+      // MDX: \{#custom-id\}
+      remarkCustomHeaderId,
+    ],
+    rehypePlugins: [
+      [rehypeMermaid, { strategy: 'img-svg', dark: true }],
+      [rehypeExternalLinks, { internalDomains: ['livestore.dev', 'localhost'] }],
+    ],
+  },
+})

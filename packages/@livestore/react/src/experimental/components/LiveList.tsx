@@ -1,8 +1,8 @@
-import type { LiveQueryDef } from '@livestore/livestore'
+import type { LiveQueryDef, Store } from '@livestore/livestore'
 import { computed } from '@livestore/livestore'
 import React from 'react'
 
-import { useQuery } from '../../useQuery.js'
+import { useQuery } from '../../useQuery.ts'
 
 /*
 TODO:
@@ -16,6 +16,8 @@ export type LiveListProps<TItem> = {
   renderItem: (item: TItem, opts: { index: number; isInitialListRender: boolean }) => React.ReactNode
   /** Needs to be unique across all list items */
   getKey: (item: TItem, index: number) => string | number
+  /** The store instance to use for queries */
+  store: Store<any, any>
 }
 
 /**
@@ -26,12 +28,15 @@ export type LiveListProps<TItem> = {
  * In the future we want to make this component even more efficient by using incremental rendering (https://github.com/livestorejs/livestore/pull/55)
  * e.g. when an item is added/removed/moved to only re-render the affected DOM nodes.
  */
-export const LiveList = <TItem,>({ items$, renderItem, getKey }: LiveListProps<TItem>): React.ReactNode => {
+export const LiveList = <TItem,>({ items$, renderItem, getKey, store }: LiveListProps<TItem>): React.ReactNode => {
   const [hasMounted, setHasMounted] = React.useState(false)
 
   React.useEffect(() => setHasMounted(true), [])
 
-  const keys = useQuery(computed((get) => get(items$).map(getKey)))
+  const keys = useQuery(
+    computed((get) => get(items$).map(getKey)),
+    { store },
+  )
   const arr = React.useMemo(
     () =>
       keys.map(
@@ -54,7 +59,9 @@ export const LiveList = <TItem,>({ items$, renderItem, getKey }: LiveListProps<T
           key={key}
           itemKey={key}
           item$={item$}
-          opts={{ isInitialListRender: !hasMounted, index }}
+          store={store}
+          index={index}
+          isInitialListRender={!hasMounted}
           renderItem={renderItem}
         />
       ))}
@@ -64,15 +71,20 @@ export const LiveList = <TItem,>({ items$, renderItem, getKey }: LiveListProps<T
 
 const ItemWrapper = <TItem,>({
   item$,
-  opts,
+  index,
+  isInitialListRender,
   renderItem,
+  store,
 }: {
   itemKey: string | number
   item$: LiveQueryDef<TItem>
-  opts: { index: number; isInitialListRender: boolean }
+  index: number
+  isInitialListRender: boolean
   renderItem: (item: TItem, opts: { index: number; isInitialListRender: boolean }) => React.ReactNode
+  store: Store<any, any>
 }) => {
-  const item = useQuery(item$)
+  const item = useQuery(item$, { store })
+  const opts = React.useMemo(() => ({ index, isInitialListRender }), [index, isInitialListRender])
 
   return <>{renderItem(item, opts)}</>
 }
@@ -81,7 +93,8 @@ const ItemWrapperMemo = React.memo(
   ItemWrapper,
   (prev, next) =>
     prev.itemKey === next.itemKey &&
-    prev.renderItem === prev.renderItem &&
-    prev.opts.index === next.opts.index &&
-    prev.opts.isInitialListRender === next.opts.isInitialListRender,
+    prev.renderItem === next.renderItem &&
+    prev.store === next.store &&
+    prev.index === next.index &&
+    prev.isInitialListRender === next.isInitialListRender,
 ) as typeof ItemWrapper

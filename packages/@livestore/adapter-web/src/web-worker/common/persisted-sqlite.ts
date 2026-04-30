@@ -1,143 +1,264 @@
-import { liveStoreStorageFormatVersion, UnexpectedError } from '@livestore/common'
+import { liveStoreStorageFormatVersion } from '@livestore/common'
 import type { LiveStoreSchema } from '@livestore/common/schema'
-import { decodeSAHPoolFilename, HEADER_OFFSET_DATA } from '@livestore/sqlite-wasm/browser'
-import { Effect, Schedule, Schema } from '@livestore/utils/effect'
+import {
+  decodeAccessHandlePoolFilename,
+  HEADER_OFFSET_DATA,
+  type WebDatabaseMetadataOpfs,
+} from '@livestore/sqlite-wasm/browser'
+import { isDevEnv } from '@livestore/utils'
+import { Chunk, Effect, Option, Order, Schedule, Schema, Stream } from '@livestore/utils/effect'
+import { Opfs, type WebError } from '@livestore/utils/effect/browser'
 
-import * as OpfsUtils from '../../opfs-utils.js'
-import type * as WorkerSchema from './worker-schema.js'
+import type * as WorkerSchema from './worker-schema.ts'
 
-export class PersistedSqliteError extends Schema.TaggedError<PersistedSqliteError>()('PersistedSqliteError', {
-  cause: Schema.Defect,
+export class PersistedSqliteError extends Schema.TaggedError<PersistedSqliteError>('~@livestore/adapter-web/PersistedSqliteError')('PersistedSqliteError', {
+  message: Schema.String,
+  cause: Schema.optional(Schema.Defect),
 }) {}
 
-export const readPersistedAppDbFromClientSession = ({
-  storageOptions,
-  storeId,
-  schema,
-}: {
+export const readPersistedStateDbFromClientSession: (args: {
   storageOptions: WorkerSchema.StorageType
   storeId: string
   schema: LiveStoreSchema
-}) =>
-  Effect.promise(async () => {
-    const directory = sanitizeOpfsDir(storageOptions.directory, storeId)
-    const sahPoolOpaqueDir = await OpfsUtils.getDirHandle(directory).catch(() => undefined)
+}) => Effect.Effect<
+  Uint8Array<ArrayBuffer>,
+  // All the following errors could actually happen:
+  | PersistedSqliteError
+  | WebError.UnknownError
+  | WebError.TypeError
+  | WebError.NotFoundError
+  | WebError.NotAllowedError
+  | WebError.TypeMismatchError
+  | WebError.SecurityError
+  | Opfs.OpfsError,
+  Opfs.Opfs
+> = Effect.fn('@livestore/adapter-web:readPersistedStateDbFromClientSession')(
+  function* ({ storageOptions, storeId, schema }) {
+    const accessHandlePoolDirString = yield* sanitizeOpfsDir(storageOptions.directory, storeId)
 
-    if (sahPoolOpaqueDir === undefined) {
-      return undefined
-    }
+    const accessHandlePoolDirHandle = yield* Opfs.getDirectoryHandleByPath(accessHandlePoolDirString)
 
-    const tryGetDbFile = async (fileHandle: FileSystemFileHandle) => {
-      const file = await fileHandle.getFile()
-      const fileName = await decodeSAHPoolFilename(file)
-      return fileName ? { fileName, file } : undefined
-    }
+    const stateDbFileName = `/${getStateDbFileName(schema)}`
 
-    const getAllFiles = async (asyncIterator: AsyncIterable<FileSystemHandle>): Promise<FileSystemFileHandle[]> => {
-      const results: FileSystemFileHandle[] = []
-      for await (const value of asyncIterator) {
-        if (value.kind === 'file') {
-          results.push(value as FileSystemFileHandle)
-        }
-      }
-      return results
-    }
+    const handlesStream = yield* Opfs.Opfs.values(accessHandlePoolDirHandle)
 
-    const files = await getAllFiles(sahPoolOpaqueDir.values())
-
-    const fileResults = await Promise.all(files.map(tryGetDbFile))
-
-    const appDbFileName = '/' + getStateDbFileName(schema)
-
-    const dbFileRes = fileResults.find((_) => _?.fileName === appDbFileName)
-    // console.debug('fileResults', fileResults, 'dbFileRes', dbFileRes)
-
-    if (dbFileRes !== undefined) {
-      const data = await dbFileRes.file.slice(HEADER_OFFSET_DATA).arrayBuffer()
-      // console.debug('readPersistedAppDbFromClientSession', data.byteLength, data)
-
-      // Given the SAH pool always eagerly creates files with empty non-header data,
-      // we want to return undefined if the file exists but is empty
-      if (data.byteLength === 0) {
-        return undefined
-      }
-
-      return new Uint8Array(data)
-    }
-
-    return undefined
-  }).pipe(
-    Effect.logWarnIfTakesLongerThan({
-      duration: 1000,
-      label: '@livestore/adapter-web:readPersistedAppDbFromClientSession',
-    }),
-    Effect.withPerformanceMeasure('@livestore/adapter-web:readPersistedAppDbFromClientSession'),
-    Effect.withSpan('@livestore/adapter-web:readPersistedAppDbFromClientSession'),
-  )
-
-export const resetPersistedDataFromClientSession = ({
-  storageOptions,
-  storeId,
-}: {
-  storageOptions: WorkerSchema.StorageType
-  storeId: string
-}) =>
-  Effect.gen(function* () {
-    const directory = sanitizeOpfsDir(storageOptions.directory, storeId)
-    yield* opfsDeleteAbs(directory)
-  }).pipe(
-    Effect.retry({
-      schedule: Schedule.exponentialBackoff10Sec,
-    }),
-    Effect.withSpan('@livestore/adapter-web:resetPersistedDataFromClientSession'),
-  )
-
-const opfsDeleteAbs = (absPath: string) =>
-  Effect.promise(async () => {
-    // Get the root directory handle
-    const root = await OpfsUtils.rootHandlePromise
-
-    // Split the absolute path to traverse directories
-    const pathParts = absPath.split('/').filter((part) => part.length)
-
-    try {
-      // Traverse to the target file handle
-      let currentDir = root
-      for (let i = 0; i < pathParts.length - 1; i++) {
-        currentDir = await currentDir.getDirectoryHandle(pathParts[i]!)
-      }
-
-      // Delete the file
-      await currentDir.removeEntry(pathParts.at(-1)!, { recursive: true })
-    } catch (error) {
-      if (error instanceof DOMException && error.name === 'NotFoundError') {
-        // Can ignore as it's already been deleted or not there in the first place
-        return
-      } else {
-        throw error
-      }
-    }
-  }).pipe(
-    UnexpectedError.mapToUnexpectedError,
-    Effect.withSpan('@livestore/adapter-web:worker:opfsDeleteFile', { attributes: { absFilePath: absPath } }),
-  )
-
-export const sanitizeOpfsDir = (directory: string | undefined, storeId: string) => {
-  // Root dir should be `''` not `/`
-  if (directory === undefined || directory === '' || directory === '/')
-    return `livestore-${storeId}@${liveStoreStorageFormatVersion}`
-
-  if (directory.includes('/')) {
-    throw new Error(
-      `@livestore/adapter-web:worker:sanitizeOpfsDir: Nested directories are not yet supported ('${directory}')`,
+    const stateDbFileOption = yield* handlesStream.pipe(
+      Stream.filter((handle): handle is FileSystemFileHandle => handle.kind === 'file'),
+      Stream.mapEffect(
+        (fileHandle) =>
+          Effect.gen(function* () {
+            const file = yield* Opfs.Opfs.getFile(fileHandle)
+            const fileName = yield* Effect.promise(() => decodeAccessHandlePoolFilename(file))
+            return { file, fileName }
+          }),
+        { concurrency: 'unbounded' },
+      ),
+      Stream.find(({ fileName }) => fileName === stateDbFileName),
+      Stream.runHead,
     )
+
+    if (Option.isNone(stateDbFileOption) === true) {
+      return yield* new PersistedSqliteError({
+        message: `State database file not found in client session (expected '${stateDbFileName}' in '${accessHandlePoolDirString}')`,
+      })
+    }
+
+    const stateDbBuffer = yield* Effect.promise(() =>
+      stateDbFileOption.value.file.slice(HEADER_OFFSET_DATA).arrayBuffer(),
+    )
+
+    // Given the access handle pool always eagerly creates files with empty non-header data,
+    // we want to return undefined if the file exists but is empty
+    if (stateDbBuffer.byteLength === 0) {
+      return yield* new PersistedSqliteError({
+        message: `State database file is empty in client session (expected '${stateDbFileName}' in '${accessHandlePoolDirString}')`,
+      })
+    }
+
+    return new Uint8Array(stateDbBuffer)
+  },
+  Effect.logWarnIfTakesLongerThan({
+    duration: 1000,
+    label: '@livestore/adapter-web:readPersistedStateDbFromClientSession',
+  }),
+  Effect.withPerformanceMeasure('@livestore/adapter-web:readPersistedStateDbFromClientSession'),
+)
+
+export const resetPersistedDataFromClientSession = Effect.fn(
+  '@livestore/adapter-web:resetPersistedDataFromClientSession',
+)(
+  function* ({ storageOptions, storeId }: { storageOptions: WorkerSchema.StorageType; storeId: string }) {
+    const directory = yield* sanitizeOpfsDir(storageOptions.directory, storeId)
+    yield* Opfs.remove(directory, { recursive: true }).pipe(
+      // We ignore NotFoundError here as it may not exist or have already been deleted
+      Effect.catchTag('NotFoundError', () => Effect.void),
+    )
+  },
+  Effect.retry({
+    schedule: Schedule.exponentialBackoff10Sec,
+  }),
+)
+
+export const sanitizeOpfsDir = Effect.fn('@livestore/adapter-web:sanitizeOpfsDir')(function* (
+  directory: string | undefined,
+  storeId: string,
+) {
+  if (directory === undefined || directory === '' || directory === '/') {
+    return `livestore-${storeId}@${liveStoreStorageFormatVersion}`
+  }
+
+  if (directory.includes('/') === true) {
+    return yield* new PersistedSqliteError({
+      message: `Nested directories are not yet supported ('${directory}')`,
+    })
   }
 
   return `${directory}@${liveStoreStorageFormatVersion}`
-}
+})
 
 export const getStateDbFileName = (schema: LiveStoreSchema) => {
   const schemaHashSuffix =
     schema.state.sqlite.migrations.strategy === 'manual' ? 'fixed' : schema.state.sqlite.hash.toString()
   return `state${schemaHashSuffix}.db`
 }
+
+export const MAX_ARCHIVED_STATE_DBS_IN_DEV = 3
+export const ARCHIVE_DIR_NAME = 'archive'
+
+/**
+ * Cleanup old state database files after successful migration.
+ * This prevents OPFS file pool capacity from being exhausted by accumulated schema files.
+ *
+ * @param vfs - The AccessHandlePoolVFS instance for safe file operations
+ * @param currentSchema - Current schema (to avoid deleting the active database)
+ */
+export const cleanupOldStateDbFiles: (options: {
+  vfs: WebDatabaseMetadataOpfs['vfs']
+  currentSchema: LiveStoreSchema
+  opfsDirectory: string
+}) => Effect.Effect<
+  void,
+  // All the following errors could actually happen:
+  | WebError.AbortError
+  | WebError.DataCloneError
+  | WebError.EvalError
+  | WebError.InvalidModificationError
+  | WebError.InvalidStateError
+  | WebError.NoModificationAllowedError
+  | WebError.NotAllowedError
+  | WebError.NotFoundError
+  | WebError.QuotaExceededError
+  | WebError.RangeError
+  | WebError.ReferenceError
+  | WebError.SecurityError
+  | WebError.TypeError
+  | WebError.TypeMismatchError
+  | WebError.URIError
+  | WebError.UnknownError
+  | Opfs.OpfsError
+  | PersistedSqliteError,
+  Opfs.Opfs
+> = Effect.fn('@livestore/adapter-web:cleanupOldStateDbFiles')(function* ({ vfs, currentSchema, opfsDirectory }) {
+  // Only cleanup for auto migration strategy because:
+  // - Auto strategy: Creates new database files per schema change (e.g., state123.db, state456.db)
+  //   which accumulate over time and can exhaust OPFS file pool capacity
+  // - Manual strategy: Always reuses the same database file (statefixed.db) across schema changes,
+  //   so there are never multiple old files to clean up
+  if (currentSchema.state.sqlite.migrations.strategy === 'manual') {
+    yield* Effect.logDebug('Skipping state db cleanup - manual migration strategy uses fixed filename')
+    return
+  }
+
+  const isDev = isDevEnv()
+  const currentDbFileName = getStateDbFileName(currentSchema)
+  const currentPath = `/${currentDbFileName}`
+
+  const allPaths = yield* Effect.sync(() => vfs.getTrackedFilePaths())
+  const oldStateDbPaths = allPaths.filter(
+    (path) => path.startsWith('/state') && path.endsWith('.db') && path !== currentPath,
+  )
+
+  if (oldStateDbPaths.length === 0) {
+    yield* Effect.logDebug('No old database files found')
+    return
+  }
+
+  const absoluteArchiveDirName = `${opfsDirectory}/${ARCHIVE_DIR_NAME}`
+  if (isDev === true && (yield* Opfs.exists(absoluteArchiveDirName)) === false)
+    yield* Opfs.makeDirectory(absoluteArchiveDirName)
+
+  for (const path of oldStateDbPaths) {
+    const fileName = path.startsWith('/') === true ? path.slice(1) : path
+
+    if (isDev === true) {
+      const archiveFileData = yield* vfs.readFilePayload(fileName)
+
+      const archiveFileName = `${Date.now()}-${fileName}`
+      const archivePath = `${opfsDirectory}/archive/${archiveFileName}`
+      const archiveData = new Uint8Array(archiveFileData)
+
+      // Prefer writeFile (atomic) when createWritable is available (Chrome, Firefox, Safari 26+),
+      // fall back to syncWriteFile (non-atomic) for Safari 18.x compatibility.
+      // TODO: Remove feature detection and use writeFile directly when Safari >= 26 is widely available.
+      const supportsCreateWritable =
+        typeof FileSystemFileHandle !== 'undefined' && 'createWritable' in FileSystemFileHandle.prototype
+
+      if (supportsCreateWritable === true) {
+        yield* Opfs.writeFile(archivePath, archiveData)
+      } else {
+        yield* Opfs.syncWriteFile(archivePath, archiveData)
+      }
+    }
+
+    const vfsResultCode = yield* Effect.try({
+      try: () => vfs.jDelete(fileName, 0),
+      catch: (cause) =>
+        new PersistedSqliteError({ message: `Failed to delete old state database file: ${fileName}`, cause }),
+    })
+
+    // 0 indicates a successful result in SQLite.
+    // See https://www.sqlite.org/c3ref/c_abort.html
+    if (vfsResultCode !== 0) {
+      return yield* new PersistedSqliteError({
+        message: `Failed to delete old state database file: ${fileName}, got result code: ${vfsResultCode}`,
+      })
+    }
+
+    yield* Effect.logDebug(`Deleted old state database file: ${fileName}`)
+  }
+
+  if (isDev === true) {
+    yield* pruneArchiveDirectory({
+      archiveDirectory: absoluteArchiveDirName,
+      keep: MAX_ARCHIVED_STATE_DBS_IN_DEV,
+    })
+  }
+})
+
+const pruneArchiveDirectory = Effect.fn('@livestore/adapter-web:pruneArchiveDirectory')(function* ({
+  archiveDirectory,
+  keep,
+}: {
+  archiveDirectory: string
+  keep: number
+}) {
+  const archiveDirHandle = yield* Opfs.getDirectoryHandleByPath(archiveDirectory)
+  const handlesStream = yield* Opfs.Opfs.values(archiveDirHandle)
+  const filesWithMetadata = yield* handlesStream.pipe(
+    Stream.filter((handle): handle is FileSystemFileHandle => handle.kind === 'file'),
+    Stream.mapEffect((fileHandle) => Opfs.getMetadata(fileHandle)),
+    Stream.runCollect,
+  )
+  const filesToDelete = filesWithMetadata.pipe(
+    // oxlint-disable-next-line unicorn/no-array-sort -- false positive: Effect Chunk.sort is immutable, not Array#sort (https://github.com/oxc-project/oxc/issues/19110)
+    Chunk.sort(Order.mapInput(Order.number, (entry: { lastModified: number }) => entry.lastModified)),
+    Chunk.drop(keep),
+    Chunk.toReadonlyArray,
+  )
+
+  if (filesToDelete.length === 0) return
+
+  yield* Effect.forEach(filesToDelete, ({ name }) => Opfs.Opfs.removeEntry(archiveDirHandle, name))
+
+  yield* Effect.logDebug(`Pruned ${filesToDelete.length} old database file(s) from archive directory`)
+})

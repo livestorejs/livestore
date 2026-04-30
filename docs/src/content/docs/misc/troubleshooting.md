@@ -12,23 +12,82 @@ While hopefully rare in practice, it might still happen that a client or a sync 
 To avoid being stuck, you can either:
 
 - use a different `storeId`
-- or reset the sync backend and local client for the given `storeId` 
+- or reset the sync backend and local client for the given `storeId`
+
+### Client shows stale data after backend reset
+
+If you reset your sync backend (e.g., deleted `.wrangler/state` for Cloudflare, reset Postgres, or used a `--reset` flag) and your client is still showing old data, the client needs to detect that the backend identity has changed.
+
+By default (`onBackendIdMismatch: 'reset'`), LiveStore will automatically clear local storage when it detects that the sync backend was reset. The app will shut down and needs to be restarted to sync fresh data from the backend.
+
+If you're seeing stale data, check that:
+
+1. The `onBackendIdMismatch` option is set to `'reset'` (the default)
+2. The app was restarted after the backend reset
+3. For browser apps, you may need to close all tabs and reopen
+
+See the [Backend Reset Detection](/building-with-livestore/syncing#backend-reset-detection) section in the syncing docs for more details.
 
 ## React related issues
 
+### Rebase loop triggers repeated event emissions
+
+Symptoms
+
+- Logs repeatedly show messages like: `merge:pull:rebase: rollback` and the same local events being rolled back and replayed.
+
+Why this happens
+
+- LiveStore uses optimistic local commits and rebasing during sync. On pull, the client rolls back local events, applies the remote head, then replays local events — and only then refreshes reactive queries (transactional from the UI’s perspective).
+- If your app emits events from a reactive effect based on read‑model changes (e.g., “when the latest item changes, emit X”), the effect runs after each completed rebase. Without a rebase‑safe guard, it can emit the same logical event repeatedly across rebases.
+- Multiple windows/devices for the same user can also emit the same logical event at nearly the same time. Even if writes are idempotent, the extra local commits still cause additional rebases and effect re‑runs.
+
+Circuit breaker fix (rebase‑safe)
+
+- Implement a session‑local circuit breaker: track which logical actions you’ve already emitted in this session using an in‑memory set. This guard is not affected by rollback/replay, so it prevents re‑emitting across rebases.
+- Avoid feedback loops: don’t use the same store state you’re writing as the primary trigger.
+
+Example pattern (React)
+
+```tsx
+// Pseudocode – rebase‑safe circuit breaker for side‑effects
+const circuitBreakerRef = useRef<Set<string>>(new Set())
+const latest = useLatestItemFromStore() // derived read‑model state
+
+React.useEffect(() => {
+  if (!latest) return
+
+  const key = latest.logicalId
+  if (circuitBreakerRef.current.has(key)) return // session‑local guard (not rolled back)
+
+  circuitBreakerRef.current.add(key) // open the breaker before emitting
+  store.commit(events.someEvent({ id: deterministicIdFrom(latest), ... }))
+}, [latest, store])
+```
+
+Checklist
+
+- Use a deterministic id for the event when possible.
+- Gate emission with a session‑local circuit breaker to avoid re‑emitting across rebases.
+- Keep effect dependencies minimal; avoid depending on store state that you also update in the same effect.
+
+Note on terminology
+
+- “Circuit breaker” here refers to an app‑level guard that prevents repeated side‑effect emissions across rebases. It is distinct from the traditional network/service circuit‑breaker pattern (failure threshold/open/half‑open) but serves a similar purpose of preventing repeated work under specific conditions.
+
 ### Query doesn't update properly
 
-If you notice the result of a `useQuery` hook is not updating properly, you might be missing some dependencies in the query's hash.
+If you notice the result of a `useQuery()` hook is not updating properly, you might be missing some dependencies in the query's hash.
 
 For example, the following query:
 
 ```ts
 // Don't do this
-const query$ = useQuery(queryDb(tables.issues.query.where({ id: issueId }).first()))
+const query$ = store.useQuery(queryDb(tables.issues.query.where({ id: issueId }).first()))
 //                                                              ^^^^^^^ missing in deps
 
 // Do this instead
-const query$ = useQuery(queryDb(tables.issues.query.where({ id: issueId }).first(), { deps: [issueId] }))
+const query$ = store.useQuery(queryDb(tables.issues.query.where({ id: issueId }).first(), { deps: [issueId] }))
 ```
 
 ## `node_modules` related issues

@@ -6,22 +6,27 @@ sidebar:
 ---
 
 import { Code, Steps, Tabs, TabItem } from '@astrojs/starlight/components'
-import { makeTiged, versionNpmSuffix } from '../../../../data.js'
-import { MIN_NODE_VERSION } from '../../../../../CONSTANTS.ts'
-import babelConfigCode from '../../../../../examples/standalone/expo-todomvc-sync-cf/babel.config.js?raw'
-import metroConfigCode from '../../../../../examples/standalone/expo-todomvc-sync-cf/metro.config.js?raw'
-import schemaCode from '../../../../../examples/standalone/expo-todomvc-sync-cf/src/livestore/schema.ts?raw'
-import rootCode from '../../../../../examples/standalone/expo-todomvc-sync-cf/src/Root.tsx?raw'
-import headerCode from '../../../../../examples/standalone/expo-todomvc-sync-cf/src/components/NewTodo.tsx?raw'
-import mainSectionCode from '../../../../../examples/standalone/expo-todomvc-sync-cf/src/components/ListTodos.tsx?raw'
+import { makeCreate, versionNpmSuffix } from '../../../data/data.ts'
+import { MIN_NODE_VERSION } from '@local/shared'
+import babelConfigCode from '../../../../../examples/expo-todomvc-sync-cf/babel.config.js?raw'
+import metroConfigCode from '../../../../../examples/expo-todomvc-sync-cf/metro.config.js?raw'
+import SchemaSnippet from '../../_assets/code/getting-started/expo/livestore/schema.ts?snippet'
+import StoreSnippet from '../../_assets/code/getting-started/expo/livestore/store.ts?snippet'
+import RootSnippet from '../../_assets/code/getting-started/expo/Root.tsx?snippet'
+import NewTodoSnippet from '../../_assets/code/getting-started/expo/components/NewTodo.tsx?snippet'
+import ListTodosSnippet from '../../_assets/code/getting-started/expo/components/ListTodos.tsx?snippet'
 
 export const CODE = {
   babelConfig: babelConfigCode,
   metroConfig: metroConfigCode,
-  schema: schemaCode,
-  root: rootCode,
-  header: headerCode,
-  mainSection: mainSectionCode,
+}
+
+export const SNIPPETS = {
+  schema: SchemaSnippet,
+  store: StoreSnippet,
+  root: RootSnippet,
+  newTodo: NewTodoSnippet,
+  listTodos: ListTodosSnippet,
 }
 
 {/* We're adjusting the package to use the dev version on the dev branch */}
@@ -30,7 +35,7 @@ export const manualInstallDepsStr = [
   '@livestore/adapter-expo' + versionNpmSuffix,
   '@livestore/livestore' + versionNpmSuffix,
   '@livestore/react' + versionNpmSuffix,
-  '@livestore/sync-cf' + versionNpmSuffix,
+  '@livestore/sync-cf/client' + versionNpmSuffix,
   '@livestore/peer-deps' + versionNpmSuffix,
   'expo-sqlite',
 ].join(' ')
@@ -54,16 +59,16 @@ For existing projects see [Existing project setup](#existing-project-setup).
 
     <Tabs syncKey="package-manager">
       <TabItem label="bun">
-        <Code code={makeTiged('expo-todomvc-sync-cf', 'bunx')} lang="sh" />
+        <Code code={makeCreate('expo-todomvc-sync-cf', 'bunx')} lang="sh" />
       </TabItem>
       <TabItem label="pnpm">
-        <Code code={makeTiged('expo-todomvc-sync-cf', 'pnpm dlx')} lang="sh" />
+        <Code code={makeCreate('expo-todomvc-sync-cf', 'pnpm dlx')} lang="sh" />
       </TabItem>
       <TabItem label="npm">
-        <Code code={makeTiged('expo-todomvc-sync-cf', 'npx')} lang="sh" />
+        <Code code={makeCreate('expo-todomvc-sync-cf', 'npx')} lang="sh" />
       </TabItem>
       <TabItem label="yarn">
-        <Code code={makeTiged('expo-todomvc-sync-cf', 'yarn dlx')} lang="sh" />
+        <Code code={makeCreate('expo-todomvc-sync-cf', 'yarn dlx')} lang="sh" />
       </TabItem>
     </Tabs>
 
@@ -197,39 +202,43 @@ For existing projects see [Existing project setup](#existing-project-setup).
 
 </Steps>
 
-## Define Your Schema
+## Define your schema
 
 Create a file named `schema.ts` inside the `src/livestore` folder. This file defines your LiveStore schema consisting of your app's event definitions (describing how data changes), derived state (i.e. SQLite tables), and materializers (how state is derived from events).
 
 Here's an example schema:
 
-<Code code={CODE.schema} lang="ts" title="src/livestore/schema.ts" />
+<SNIPPETS.schema />
 
-## Add the LiveStore Provider
+## Configure the store
 
-To make the LiveStore available throughout your app, wrap your app's root component with the `LiveStoreProvider` component from `@livestore/react`. This provider manages your app’s data store, loading, and error states.
+Create a `store.ts` file in the `src/livestore` folder. This file configures the store adapter and exports a custom hook that components will use to access the store.
 
-Here's an example:
+The `useStore()` hook accepts store configuration options (schema, adapter, store ID) and returns a store instance. It suspends while the store is loading, so make sure to use a `Suspense` boundary to handle the loading state.
 
-<Code code={CODE.root} lang="tsx" title="src/Root.tsx" />
+<SNIPPETS.store />
 
-### Commit events
+## Set up the store registry
 
-After wrapping your app with the `LiveStoreProvider`, you can use the `useStore` hook from any component to commit events.
+To enable store management throughout your app, create a `StoreRegistry` and provide it with a `<StoreRegistryProvider>`. The registry manages store instance lifecycles (loading, caching, disposal).
 
-Here's an example:
+Wrap the provider in a `Suspense` boundary to handle the loading state for when the store is loading.
 
-<Code code={CODE.header} lang="tsx" title="src/components/NewTodo.tsx" />
+<SNIPPETS.root />
+
+## Commit events
+
+After setting up the registry, use the `useAppStore()` hook from any component to access the store and commit events.
+
+<SNIPPETS.newTodo />
 
 ## Queries
 
-To retrieve data from the database, first define a query using `queryDb` from `@livestore/livestore`. Then, execute the query with the `useQuery` hook from `@livestore/react`.
+To retrieve data from the database, define a query using `queryDb` from `@livestore/livestore`, then execute it with `store.useQuery()`.
 
 Consider abstracting queries into a separate file to keep your code organized, though you can also define them directly within components if preferred.
 
-Here's an example:
-
-<Code code={CODE.mainSection} lang="tsx" title="src/components/ListTodos.tsx" />
+<SNIPPETS.listTodos />
 
 ## Devtools
 

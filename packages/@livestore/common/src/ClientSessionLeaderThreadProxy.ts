@@ -1,0 +1,55 @@
+import type { Effect, Stream, Subscribable } from '@livestore/utils/effect'
+
+import type { StorageMode } from './adapter-types.ts'
+import type { MigrationsReport } from './defs.ts'
+import type * as Devtools from './devtools/mod.ts'
+import type { StreamEventsOptions } from './leader-thread/types.ts'
+import type * as EventSequenceNumber from './schema/EventSequenceNumber/mod.ts'
+import type { LiveStoreEvent } from './schema/mod.ts'
+import type { RejectedPushError } from './leader-thread/RejectedPushError.ts'
+import type { SyncBackend } from './sync/sync.ts'
+import type { PayloadUpstream, SyncState } from './sync/syncstate.ts'
+
+export interface ClientSessionLeaderThreadProxy {
+  events: {
+    pull: (args: {
+      cursor: EventSequenceNumber.Client.Composite
+    }) => Stream.Stream<{ payload: typeof PayloadUpstream.Type }>
+    /** It's important that a client session doesn't call `push` concurrently. */
+    push(batch: ReadonlyArray<LiveStoreEvent.Client.Encoded>): Effect.Effect<void, RejectedPushError>
+    /** Stream events with filtering */
+    stream(options: StreamEventsOptions): Stream.Stream<LiveStoreEvent.Client.Encoded>
+  }
+  /** The initial state after the leader thread has booted */
+  readonly initialState: {
+    /** The latest event sequence number during boot. Used for the client session to resume syncing. */
+    readonly leaderHead: EventSequenceNumber.Client.Composite
+    /** The migrations report from the leader thread */
+    readonly migrationsReport: MigrationsReport
+    /**
+     * Indicates how data is being stored.
+     * - `persisted`: Data is persisted to disk (e.g., via OPFS)
+     * - `in-memory`: Data is only stored in memory and will be lost on page refresh (e.g., private browsing)
+     */
+    readonly storageMode: StorageMode
+  }
+  export: Effect.Effect<Uint8Array<ArrayBuffer>>
+  getEventlogData: Effect.Effect<Uint8Array<ArrayBuffer>>
+  syncState: Subscribable.Subscribable<SyncState>
+  /** For debugging purposes it can be useful to manually trigger devtools messages (e.g. to reset the database) */
+  sendDevtoolsMessage: (message: Devtools.Leader.MessageToApp) => Effect.Effect<void>
+  /**
+   * Reactive stream describing the connectivity between the leader and its upstream sync backend.
+   * Includes raw connection state, last transition timestamp, and devtools overrides (latch state).
+   */
+  networkStatus: Subscribable.Subscribable<SyncBackend.NetworkStatus>
+}
+
+export const of = (
+  proxy: ClientSessionLeaderThreadProxy,
+  options?: { overrides?: (original: ClientSessionLeaderThreadProxy) => Partial<ClientSessionLeaderThreadProxy> },
+): ClientSessionLeaderThreadProxy => {
+  if (options?.overrides === undefined) return proxy
+
+  return { ...proxy, ...options.overrides(proxy) }
+}

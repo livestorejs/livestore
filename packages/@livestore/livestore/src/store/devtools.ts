@@ -1,23 +1,14 @@
-import type { ClientSession, ClientSessionSyncProcessor, DebugInfo, SyncState } from '@livestore/common'
-import { Devtools, liveStoreVersion, UnexpectedError } from '@livestore/common'
+import type { DebugInfo, SyncState } from '@livestore/common'
+import { Devtools, liveStoreVersion, UnknownError } from '@livestore/common'
 import { throttle } from '@livestore/utils'
 import type { WebChannel } from '@livestore/utils/effect'
 import { Effect, Stream } from '@livestore/utils/effect'
 import { nanoid } from '@livestore/utils/nanoid'
 
-import type { LiveQuery, ReactivityGraph } from '../live-queries/base-class.js'
-import { NOT_REFRESHED_YET } from '../reactive.js'
-import type { SqliteDbWrapper } from '../SqliteDbWrapper.js'
-import { emptyDebugInfo as makeEmptyDebugInfo } from '../SqliteDbWrapper.js'
-import type { ReferenceCountedSet } from '../utils/data-structures.js'
-
-type IStore = {
-  clientSession: ClientSession
-  reactivityGraph: ReactivityGraph
-  sqliteDbWrapper: SqliteDbWrapper
-  activeQueries: ReferenceCountedSet<LiveQuery<any>>
-  syncProcessor: ClientSessionSyncProcessor
-}
+import { NOT_REFRESHED_YET } from '../reactive.ts'
+import { emptyDebugInfo as makeEmptyDebugInfo } from '../SqliteDbWrapper.ts'
+import { StoreInternalsSymbol } from './store-types.ts'
+import type { Store } from './store.ts'
 
 type Unsub = () => void
 type RequestId = string
@@ -32,7 +23,7 @@ const requestNextTick: (cb: () => void) => number =
 const cancelTick: (id: number) => void =
   globalThis.cancelAnimationFrame === undefined ? (id: number) => clearTimeout(id) : globalThis.cancelAnimationFrame
 
-export const connectDevtoolsToStore = ({
+export const connectDevtoolsToStore = Effect.fn('LSD.devtools.connectStoreToDevtools')(function* ({
   storeDevtoolsChannel,
   store,
 }: {
@@ -40,15 +31,14 @@ export const connectDevtoolsToStore = ({
     Devtools.ClientSession.MessageToApp,
     Devtools.ClientSession.MessageFromApp
   >
-  store: IStore
-}) =>
-  Effect.gen(function* () {
+  store: Store
+}) {
     const reactivityGraphSubcriptions: SubMap = new Map()
     const liveQueriesSubscriptions: SubMap = new Map()
     const debugInfoHistorySubscriptions: SubMap = new Map()
     const syncHeadClientSessionSubscriptions: SubMap = new Map()
 
-    const { clientId, sessionId } = store.clientSession
+    const { clientId, sessionId } = store[StoreInternalsSymbol].clientSession
 
     yield* Effect.addFinalizer(() =>
       Effect.sync(() => {
@@ -73,7 +63,21 @@ export const connectDevtoolsToStore = ({
       }
 
       if (decodedMessage._tag === 'LSD.ClientSession.Disconnect') {
-        // console.error('TODO handle disconnect properly in store')
+        // Gracefully tear down all DevTools subscriptions and close the channel.
+        // This prevents background fibers from lingering after DevTools closes
+        // (e.g. when a window is closed without sending explicit unsubs).
+        for (const unsub of reactivityGraphSubcriptions.values()) unsub()
+        reactivityGraphSubcriptions.clear()
+        for (const unsub of liveQueriesSubscriptions.values()) unsub()
+        liveQueriesSubscriptions.clear()
+        for (const unsub of debugInfoHistorySubscriptions.values()) unsub()
+        debugInfoHistorySubscriptions.clear()
+        for (const unsub of syncHeadClientSessionSubscriptions.values()) unsub()
+        syncHeadClientSessionSubscriptions.clear()
+
+        // Signal the WebChannel to shut down; this causes the `listen` stream
+        // to complete and allows the surrounding scoped fiber to exit.
+        storeDevtoolsChannel.shutdown.pipe(Effect.runFork)
         return
       }
 
@@ -83,7 +87,7 @@ export const connectDevtoolsToStore = ({
       // So far I could only observe this problem with webmesh proxy channels (e.g. for Expo)
       // Proof: https://share.cleanshot.com/V9G87B0B
       // Also see `leader-worker-devtools.ts` for same problem
-      if (handledRequestIds.has(requestId)) {
+      if (handledRequestIds.has(requestId) === true) {
         return
       }
 
@@ -103,7 +107,7 @@ export const connectDevtoolsToStore = ({
               () =>
                 sendToDevtools(
                   Devtools.ClientSession.ReactivityGraphRes.make({
-                    reactivityGraph: store.reactivityGraph.getSnapshot({ includeResults }),
+                    reactivityGraph: store[StoreInternalsSymbol].reactivityGraph.getSnapshot({ includeResults }),
                     requestId: nanoid(10),
                     clientId,
                     sessionId,
@@ -121,14 +125,17 @@ export const connectDevtoolsToStore = ({
           // This might need to be tweaked further and possibly be exposed to the user in some way.
           const throttledSend = throttle(send, 20)
 
-          reactivityGraphSubcriptions.set(subscriptionId, store.reactivityGraph.subscribeToRefresh(throttledSend))
+          reactivityGraphSubcriptions.set(
+            subscriptionId,
+            store[StoreInternalsSymbol].reactivityGraph.subscribeToRefresh(throttledSend),
+          )
 
           break
         }
         case 'LSD.ClientSession.DebugInfoReq': {
           sendToDevtools(
             Devtools.ClientSession.DebugInfoRes.make({
-              debugInfo: store.sqliteDbWrapper.debugInfo,
+              debugInfo: store[StoreInternalsSymbol].sqliteDbWrapper.debugInfo,
               requestId,
               clientId,
               sessionId,
@@ -144,13 +151,13 @@ export const connectDevtoolsToStore = ({
           let tickHandle: number | undefined
 
           const tick = () => {
-            buffer.push(store.sqliteDbWrapper.debugInfo)
+            buffer.push(store[StoreInternalsSymbol].sqliteDbWrapper.debugInfo)
 
             // NOTE this resets the debug info, so all other "readers" e.g. in other `requestAnimationFrame` loops,
             // will get the empty debug info
             // TODO We need to come up with a more graceful way to do store. Probably via a single global
             // `requestAnimationFrame` loop that is passed in somehow.
-            store.sqliteDbWrapper.debugInfo = makeEmptyDebugInfo()
+            store[StoreInternalsSymbol].sqliteDbWrapper.debugInfo = makeEmptyDebugInfo()
 
             if (buffer.length > 10) {
               sendToDevtools(
@@ -194,7 +201,7 @@ export const connectDevtoolsToStore = ({
           break
         }
         case 'LSD.ClientSession.DebugInfoResetReq': {
-          store.sqliteDbWrapper.debugInfo.slowQueries.clear()
+          store[StoreInternalsSymbol].sqliteDbWrapper.debugInfo.slowQueries.clear()
           sendToDevtools(
             Devtools.ClientSession.DebugInfoResetRes.make({ requestId, clientId, sessionId, liveStoreVersion }),
           )
@@ -202,7 +209,10 @@ export const connectDevtoolsToStore = ({
         }
         case 'LSD.ClientSession.DebugInfoRerunQueryReq': {
           const { queryStr, bindValues, queriedTables } = decodedMessage
-          store.sqliteDbWrapper.cachedSelect(queryStr, bindValues, { queriedTables, skipCache: true })
+          store[StoreInternalsSymbol].sqliteDbWrapper.cachedSelect(queryStr, bindValues, {
+            queriedTables,
+            skipCache: true,
+          })
           sendToDevtools(
             Devtools.ClientSession.DebugInfoRerunQueryRes.make({ requestId, clientId, sessionId, liveStoreVersion }),
           )
@@ -223,7 +233,8 @@ export const connectDevtoolsToStore = ({
               () =>
                 sendToDevtools(
                   Devtools.ClientSession.LiveQueriesRes.make({
-                    liveQueries: [...store.activeQueries].map((q) => ({
+                    liveQueries: [...store[StoreInternalsSymbol].activeQueries].map((q) => ({
+                      /** TODO: include schema metadata for schema-aware rendering in devtools (e.g., schema AST/hash/identifier or table+columns for QueryBuilder-derived queries). */
                       _tag: q._tag,
                       id: q.id,
                       label: q.label,
@@ -251,7 +262,10 @@ export const connectDevtoolsToStore = ({
           // Same as in the reactivity graph subscription case above, we need to throttle the updates
           const throttledSend = throttle(send, 20)
 
-          liveQueriesSubscriptions.set(subscriptionId, store.reactivityGraph.subscribeToRefresh(throttledSend))
+          liveQueriesSubscriptions.set(
+            subscriptionId,
+            store[StoreInternalsSymbol].reactivityGraph.subscribeToRefresh(throttledSend),
+          )
 
           break
         }
@@ -278,11 +292,11 @@ export const connectDevtoolsToStore = ({
               }),
             )
 
-          send(store.syncProcessor.syncState.pipe(Effect.runSync))
+          send(store[StoreInternalsSymbol].syncProcessor.syncState.pipe(Effect.runSync))
 
           syncHeadClientSessionSubscriptions.set(
             subscriptionId,
-            store.syncProcessor.syncState.changes.pipe(
+            store[StoreInternalsSymbol].syncProcessor.syncState.changes.pipe(
               Stream.tap((syncState) => send(syncState)),
               Stream.runDrain,
               Effect.interruptible,
@@ -302,6 +316,20 @@ export const connectDevtoolsToStore = ({
           break
         }
         case 'LSD.ClientSession.Ping': {
+          // Check version mismatch and respond with VersionMismatch if versions don't match
+          if (decodedMessage.liveStoreVersion !== liveStoreVersion) {
+            sendToDevtools(
+              Devtools.ClientSession.VersionMismatch.make({
+                requestId,
+                clientId,
+                sessionId,
+                liveStoreVersion,
+                appVersion: liveStoreVersion,
+                receivedVersion: decodedMessage.liveStoreVersion,
+              }),
+            )
+            break
+          }
           sendToDevtools(Devtools.ClientSession.Pong.make({ requestId, clientId, sessionId, liveStoreVersion }))
           break
         }
@@ -318,4 +346,4 @@ export const connectDevtoolsToStore = ({
       Stream.runDrain,
       Effect.withSpan('LSD.devtools.onMessage'),
     )
-  }).pipe(UnexpectedError.mapToUnexpectedError, Effect.withSpan('LSD.devtools.connectStoreToDevtools'))
+}, UnknownError.mapToUnknownError)

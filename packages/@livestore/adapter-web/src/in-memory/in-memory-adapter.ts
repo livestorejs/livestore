@@ -1,28 +1,40 @@
-import type { Adapter, ClientSessionLeaderThreadProxy, LockStatus, SyncOptions } from '@livestore/common'
-import { Devtools, makeClientSession, UnexpectedError } from '@livestore/common'
+import {
+  type Adapter,
+  ClientSessionLeaderThreadProxy,
+  Devtools,
+  type LockStatus,
+  makeClientSession,
+  migrateDb,
+  type SyncOptions,
+  UnknownError,
+} from '@livestore/common'
 import type { DevtoolsOptions, LeaderSqliteDb } from '@livestore/common/leader-thread'
-import { configureConnection, Eventlog, LeaderThreadCtx, makeLeaderThreadLayer } from '@livestore/common/leader-thread'
+import {
+  configureConnection,
+  Eventlog,
+  LeaderThreadCtx,
+  makeLeaderThreadLayer,
+  streamEventsWithSyncState,
+} from '@livestore/common/leader-thread'
 import type { LiveStoreSchema } from '@livestore/common/schema'
 import { LiveStoreEvent } from '@livestore/common/schema'
 import * as DevtoolsWeb from '@livestore/devtools-web-common/web-channel'
 import type * as WebmeshWorker from '@livestore/devtools-web-common/worker'
 import type { MakeWebSqliteDb } from '@livestore/sqlite-wasm/browser'
 import { sqliteDbFactory } from '@livestore/sqlite-wasm/browser'
-import { loadSqlite3Wasm } from '@livestore/sqlite-wasm/load-wasm'
 import { tryAsFunctionAndNew } from '@livestore/utils'
-import type { Schema, Scope } from '@livestore/utils/effect'
-import { BrowserWorker, Effect, FetchHttpClient, Fiber, Layer, SubscriptionRef, Worker } from '@livestore/utils/effect'
+import type { Scope } from '@livestore/utils/effect'
+import { Effect, FetchHttpClient, Fiber, Layer, type Schema, SubscriptionRef, Worker } from '@livestore/utils/effect'
+import { BrowserWorker } from '@livestore/utils/effect/browser'
 import { nanoid } from '@livestore/utils/nanoid'
 import * as Webmesh from '@livestore/webmesh'
 
-import { connectWebmeshNodeClientSession } from '../web-worker/client-session/client-session-devtools.js'
-import { makeShutdownChannel } from '../web-worker/common/shutdown-channel.js'
-
-// NOTE we're starting to initialize the sqlite wasm binary here to speed things up
-const sqlite3Promise = loadSqlite3Wasm()
+import { connectWebmeshNodeClientSession } from '../web-worker/client-session/client-session-devtools.ts'
+import { loadSqlite3 } from '../web-worker/client-session/sqlite-loader.ts'
+import { makeShutdownChannel } from '../web-worker/common/shutdown-channel.ts'
 
 export interface InMemoryAdapterOptions {
-  importSnapshot?: Uint8Array
+  importSnapshot?: Uint8Array<ArrayBuffer>
   sync?: SyncOptions
   /**
    * The client ID to use for the adapter.
@@ -41,36 +53,82 @@ export interface InMemoryAdapterOptions {
   devtools?: {
     sharedWorker:
       | ((options: { name: string }) => globalThis.SharedWorker)
-      | (new (options: { name: string }) => globalThis.SharedWorker)
+      | (new (options: {
+          name: string
+        }) => globalThis.SharedWorker)
   }
 }
 
+/**
+ * Creates a web-only in-memory LiveStore adapter.
+ *
+ * This adapter runs entirely in memory with no persistence. Ideal for:
+ * - Unit tests and integration tests
+ * - Sandboxes and demos
+ * - Ephemeral sessions where persistence isn't needed
+ *
+ * **Characteristics:**
+ * - Fast, zero I/O overhead
+ * - Works in all browser contexts: Window, WebWorker, SharedWorker, ServiceWorker
+ * - Supports optional sync backends for real-time collaboration
+ * - No data persists after page reload
+ *
+ * For persistent storage, use `makePersistedAdapter` instead.
+ *
+ * @example
+ * ```ts
+ * import { makeInMemoryAdapter } from '@livestore/adapter-web'
+ *
+ * const adapter = makeInMemoryAdapter()
+ * ```
+ *
+ * @example
+ * ```ts
+ * // With sync backend for real-time collaboration
+ * import { makeInMemoryAdapter } from '@livestore/adapter-web'
+ * import { makeWsSync } from '@livestore/sync-cf/client'
+ *
+ * const adapter = makeInMemoryAdapter({
+ *   sync: {
+ *     backend: makeWsSync({ url: 'wss://api.example.com/sync' }),
+ *   },
+ * })
+ * ```
+ *
+ * @example
+ * ```ts
+ * // Pre-populate with existing data
+ * const adapter = makeInMemoryAdapter({
+ *   importSnapshot: existingDbSnapshot,
+ * })
+ * ```
+ */
 export const makeInMemoryAdapter =
   (options: InMemoryAdapterOptions = {}): Adapter =>
   (adapterArgs) =>
     Effect.gen(function* () {
-      const { schema, shutdown, syncPayload, storeId, devtoolsEnabled } = adapterArgs
-      const sqlite3 = yield* Effect.promise(() => sqlite3Promise)
+      const { schema, shutdown, syncPayloadEncoded, syncPayloadSchema, storeId, devtoolsEnabled } = adapterArgs
+      const sqlite3 = yield* Effect.promise(() => loadSqlite3())
 
       const sqliteDb = yield* sqliteDbFactory({ sqlite3 })({ _tag: 'in-memory' })
 
       const clientId = options.clientId ?? nanoid(6)
       const sessionId = options.sessionId ?? nanoid(6)
 
-      const sharedWebWorker = options.devtools?.sharedWorker
+      const sharedWebWorker = options.devtools?.sharedWorker !== undefined
         ? tryAsFunctionAndNew(options.devtools.sharedWorker, {
             name: `livestore-shared-worker-${storeId}`,
           })
         : undefined
 
-      const sharedWorkerFiber = sharedWebWorker
+      const sharedWorkerFiber = sharedWebWorker !== undefined
         ? yield* Worker.makePoolSerialized<typeof WebmeshWorker.Schema.Request.Type>({
             size: 1,
             concurrency: 100,
           }).pipe(
             Effect.provide(BrowserWorker.layer(() => sharedWebWorker)),
             Effect.tapCauseLogPretty,
-            UnexpectedError.mapToUnexpectedError,
+            UnknownError.mapToUnknownError,
             Effect.forkScoped,
           )
         : undefined
@@ -81,7 +139,8 @@ export const makeInMemoryAdapter =
         clientId,
         makeSqliteDb: sqliteDbFactory({ sqlite3 }),
         syncOptions: options.sync,
-        syncPayload,
+        syncPayloadEncoded,
+        syncPayloadSchema,
         importSnapshot: options.importSnapshot,
         devtoolsEnabled,
         sharedWorkerFiber,
@@ -101,6 +160,8 @@ export const makeInMemoryAdapter =
         lockStatus,
         shutdown,
         webmeshMode: 'direct',
+        // Can be undefined in Node.js
+        origin: globalThis.location?.origin,
         connectWebmeshNode: ({ sessionInfo, webmeshNode }) =>
           Effect.gen(function* () {
             if (sharedWorkerFiber === undefined || devtoolsEnabled === false) {
@@ -122,7 +183,7 @@ export const makeInMemoryAdapter =
       })
 
       return clientSession
-    }).pipe(UnexpectedError.mapToUnexpectedError, Effect.provide(FetchHttpClient.layer))
+    }).pipe(UnknownError.mapToUnknownError, Effect.provide(FetchHttpClient.layer))
 
 export interface MakeLeaderThreadArgs {
   schema: LiveStoreSchema
@@ -130,8 +191,9 @@ export interface MakeLeaderThreadArgs {
   clientId: string
   makeSqliteDb: MakeWebSqliteDb
   syncOptions: SyncOptions | undefined
-  syncPayload: Schema.JsonValue | undefined
-  importSnapshot: Uint8Array | undefined
+  syncPayloadEncoded: Schema.JsonValue | undefined
+  syncPayloadSchema: Schema.Schema<any> | undefined
+  importSnapshot: Uint8Array<ArrayBuffer> | undefined
   devtoolsEnabled: boolean
   sharedWorkerFiber: SharedWorkerFiber | undefined
 }
@@ -142,13 +204,14 @@ const makeLeaderThread = ({
   clientId,
   makeSqliteDb,
   syncOptions,
-  syncPayload,
+  syncPayloadEncoded,
+  syncPayloadSchema,
   importSnapshot,
   devtoolsEnabled,
   sharedWorkerFiber,
 }: MakeLeaderThreadArgs) =>
   Effect.gen(function* () {
-    const runtime = yield* Effect.runtime<never>()
+    const runtime = yield* Effect.runtime()
 
     const makeDb = (_kind: 'state' | 'eventlog') => {
       return makeSqliteDb({
@@ -163,8 +226,10 @@ const makeLeaderThread = ({
     // Might involve some async work, so we're running them concurrently
     const [dbState, dbEventlog] = yield* Effect.all([makeDb('state'), makeDb('eventlog')], { concurrency: 2 })
 
-    if (importSnapshot) {
+    if (importSnapshot !== undefined) {
       dbState.import(importSnapshot)
+
+      const _migrationsReport = yield* migrateDb({ db: dbState, schema })
     }
 
     const devtoolsOptions = yield* makeDevtoolsOptions({
@@ -187,30 +252,43 @@ const makeLeaderThread = ({
         dbEventlog,
         devtoolsOptions,
         shutdownChannel,
-        syncPayload,
+        syncPayloadEncoded,
+        syncPayloadSchema,
       }),
     )
 
     return yield* Effect.gen(function* () {
-      const { dbState, dbEventlog, syncProcessor, extraIncomingMessagesQueue, initialState } = yield* LeaderThreadCtx
+      const { dbState, dbEventlog, syncProcessor, extraIncomingMessagesQueue, initialState, networkStatus } =
+        yield* LeaderThreadCtx
 
       const initialLeaderHead = Eventlog.getClientHeadFromDb(dbEventlog)
 
-      const leaderThread = {
+      const leaderThread = ClientSessionLeaderThreadProxy.of({
         events: {
           pull: ({ cursor }) => syncProcessor.pull({ cursor }),
           push: (batch) =>
             syncProcessor.push(
-              batch.map((item) => new LiveStoreEvent.EncodedWithMeta(item)),
+              batch.map((item) => new LiveStoreEvent.Client.EncodedWithMeta(item)),
               { waitForProcessing: true },
             ),
+          stream: (options) =>
+            streamEventsWithSyncState({
+              dbEventlog,
+              syncState: syncProcessor.syncState,
+              options,
+            }),
         },
-        initialState: { leaderHead: initialLeaderHead, migrationsReport: initialState.migrationsReport },
+        initialState: {
+          leaderHead: initialLeaderHead,
+          migrationsReport: initialState.migrationsReport,
+          storageMode: 'in-memory',
+        },
         export: Effect.sync(() => dbState.export()),
         getEventlogData: Effect.sync(() => dbEventlog.export()),
-        getSyncState: syncProcessor.syncState,
+        syncState: syncProcessor.syncState,
         sendDevtoolsMessage: (message) => extraIncomingMessagesQueue.offer(message),
-      } satisfies ClientSessionLeaderThreadProxy
+        networkStatus,
+      })
 
       const initialSnapshot = dbState.export()
 
@@ -220,7 +298,7 @@ const makeLeaderThread = ({
 
 type SharedWorkerFiber = Fiber.Fiber<
   Worker.SerializedWorkerPool<typeof WebmeshWorker.Schema.Request.Type>,
-  UnexpectedError
+  UnknownError
 >
 
 const makeDevtoolsOptions = ({
@@ -237,7 +315,7 @@ const makeDevtoolsOptions = ({
   dbEventlog: LeaderSqliteDb
   storeId: string
   clientId: string
-}): Effect.Effect<DevtoolsOptions, UnexpectedError, Scope.Scope> =>
+}): Effect.Effect<DevtoolsOptions, UnknownError, Scope.Scope> =>
   Effect.gen(function* () {
     if (devtoolsEnabled === false || sharedWorkerFiber === undefined) {
       return { enabled: false }

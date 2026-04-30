@@ -1,22 +1,29 @@
-import type { IsOfflineError, SyncBackend, SyncBackendConstructor } from '@livestore/common'
-import { InvalidPullError, InvalidPushError, UnexpectedError } from '@livestore/common'
+import { type IsOfflineError, SyncBackend, UnknownError } from '@livestore/common'
 import { LiveStoreEvent } from '@livestore/common/schema'
-import { notYetImplemented, shouldNeverHappen } from '@livestore/utils'
+import { notYetImplemented } from '@livestore/utils'
 import {
-  Chunk,
+  type Duration,
   Effect,
   HttpClient,
   HttpClientRequest,
   HttpClientResponse,
   Option,
+  ReadonlyArray,
+  Schedule,
   Schema,
   Stream,
   SubscriptionRef,
 } from '@livestore/utils/effect'
 
-import * as ApiSchema from './api-schema.js'
+import * as ApiSchema from './api-schema.ts'
 
-export * as ApiSchema from './api-schema.js'
+export class InvalidOperationError extends Schema.TaggedError<InvalidOperationError>('~@livestore/sync-electric/InvalidOperationError')('InvalidOperationError', {
+  operation: Schema.Literal('delete', 'update'),
+  message: Schema.String,
+}) {}
+
+export * as ApiSchema from './api-schema.ts'
+export * from './make-electric-url.ts'
 
 /*
 Example data:
@@ -65,27 +72,31 @@ const LiveStoreEventGlobalFromStringRecord = Schema.Struct({
   args: Schema.parseJson(Schema.Any),
   clientId: Schema.String,
   sessionId: Schema.String,
-}).pipe(
-  Schema.transform(LiveStoreEvent.AnyEncodedGlobal, {
-    decode: (_) => _,
-    encode: (_) => _,
-  }),
-)
+})
+  .pipe(Schema.compose(LiveStoreEvent.Global.Encoded))
+  .annotations({ title: '@livestore/sync-electric:LiveStoreEventGlobalFromStringRecord' })
 
-const ResponseItem = Schema.Struct({
+const ResponseItemInsert = Schema.Struct({
   /** Postgres path (e.g. `"public"."events_9069baf0_b3e6_42f7_980f_188416eab3fx3"/"0"`) */
   key: Schema.optional(Schema.String),
-  value: Schema.optional(LiveStoreEventGlobalFromStringRecord),
-  headers: Schema.Union(
-    Schema.Struct({
-      operation: Schema.Union(Schema.Literal('insert'), Schema.Literal('update'), Schema.Literal('delete')),
-      relation: Schema.Array(Schema.String),
-    }),
-    Schema.Struct({
-      control: Schema.String,
-    }),
-  ),
-})
+  value: LiveStoreEventGlobalFromStringRecord,
+  headers: Schema.Struct({ operation: Schema.Literal('insert'), relation: Schema.Array(Schema.String) }),
+}).annotations({ title: '@livestore/sync-electric:ResponseItemInsert' })
+
+const ResponseItemInvalid = Schema.Struct({
+  /** Postgres path (e.g. `"public"."events_9069baf0_b3e6_42f7_980f_188416eab3fx3"/"0"`) */
+  key: Schema.optional(Schema.String),
+  value: Schema.Any,
+  headers: Schema.Struct({ operation: Schema.Literal('update', 'delete'), relation: Schema.Array(Schema.String) }),
+}).annotations({ title: '@livestore/sync-electric:ResponseItemInvalid' })
+
+const ResponseItemControl = Schema.Struct({
+  key: Schema.optional(Schema.String),
+  value: Schema.optional(Schema.Any),
+  headers: Schema.Struct({ control: Schema.String }),
+}).annotations({ title: '@livestore/sync-electric:ResponseItemControl' })
+
+const ResponseItem = Schema.Union(ResponseItemInsert, ResponseItemInvalid, ResponseItemControl)
 
 const ResponseHeaders = Schema.Struct({
   'electric-handle': Schema.String,
@@ -94,76 +105,7 @@ const ResponseHeaders = Schema.Struct({
   'electric-offset': Schema.String,
 })
 
-export const syncBackend = {} as any
-
 export const syncBackendOptions = <TOptions extends SyncBackendOptions>(options: TOptions) => options
-
-/**
- * This function should be called in a trusted environment (e.g. a proxy server) as it
- * requires access to senstive information (e.g. `apiSecret` / `sourceSecret`).
- */
-export const makeElectricUrl = ({
-  electricHost,
-  searchParams: providedSearchParams,
-  sourceId,
-  sourceSecret,
-  apiSecret,
-}: {
-  electricHost: string
-  /**
-   * Needed to extract information from the search params which the `@livestore/sync-electric`
-   * client implementation automatically adds:
-   * - `handle`: the ElectricSQL handle
-   * - `storeId`: the Livestore storeId
-   */
-  searchParams: URLSearchParams
-  /** Needed for Electric Cloud */
-  sourceId?: string
-  /** Needed for Electric Cloud */
-  sourceSecret?: string
-  /** For self-hosted ElectricSQL */
-  apiSecret?: string
-}) => {
-  const endpointUrl = `${electricHost}/v1/shape`
-  const argsResult = Schema.decodeUnknownEither(Schema.Struct({ args: Schema.parseJson(ApiSchema.PullPayload) }))(
-    Object.fromEntries(providedSearchParams.entries()),
-  )
-
-  if (argsResult._tag === 'Left') {
-    return shouldNeverHappen(
-      'Invalid search params provided to makeElectricUrl',
-      providedSearchParams,
-      Object.fromEntries(providedSearchParams.entries()),
-    )
-  }
-
-  const args = argsResult.right.args
-  const tableName = toTableName(args.storeId)
-  const searchParams = new URLSearchParams()
-  searchParams.set('table', tableName)
-  if (sourceId !== undefined) {
-    searchParams.set('source_id', sourceId)
-  }
-  if (sourceSecret !== undefined) {
-    searchParams.set('source_secret', sourceSecret)
-  }
-  if (apiSecret !== undefined) {
-    searchParams.set('api_secret', apiSecret)
-  }
-  if (args.handle._tag === 'None') {
-    searchParams.set('offset', '-1')
-  } else {
-    searchParams.set('offset', args.handle.value.offset)
-    searchParams.set('handle', args.handle.value.handle)
-    searchParams.set('live', 'true')
-  }
-
-  const payload = args.payload
-
-  const url = `${endpointUrl}?${searchParams.toString()}`
-
-  return { url, storeId: args.storeId, needsInit: args.handle._tag === 'None', payload }
-}
 
 export interface SyncBackendOptions {
   /**
@@ -179,7 +121,25 @@ export interface SyncBackendOptions {
     | {
         push: string
         pull: string
+        ping: string
       }
+
+  ping?: {
+    /**
+     * @default true
+     */
+    enabled?: boolean
+    /**
+     * How long to wait for a ping response before timing out
+     * @default 10 seconds
+     */
+    requestTimeout?: Duration.DurationInput
+    /**
+     * How often to send ping requests
+     * @default 10 seconds
+     */
+    requestInterval?: Duration.DurationInput
+  }
 }
 
 export const SyncMetadata = Schema.Struct({
@@ -188,48 +148,94 @@ export const SyncMetadata = Schema.Struct({
   handle: Schema.String,
 })
 
-type SyncMetadata = {
-  offset: string
-  // TODO move this into some kind of "global" sync metadata as it's the same for each event
-  handle: string
-}
+export type SyncMetadata = typeof SyncMetadata.Type
 
+/**
+ * Creates a sync backend that uses ElectricSQL for real-time event synchronization.
+ *
+ * ElectricSQL enables real-time sync by streaming PostgreSQL changes to clients.
+ * This backend handles push (inserting events) and pull (streaming events via Electric's
+ * shape-based sync protocol).
+ *
+ * The endpoint should typically be part of your API layer to handle authentication,
+ * rate limiting, and proxying requests to the Electric server.
+ *
+ * @example
+ * ```ts
+ * import { makeSyncBackend } from '@livestore/sync-electric'
+ *
+ * const adapter = makePersistedAdapter({
+ *   sync: {
+ *     backend: makeSyncBackend({
+ *       endpoint: '/api/electric',
+ *     }),
+ *   },
+ * })
+ * ```
+ *
+ * @example
+ * ```ts
+ * // With separate endpoints for push/pull/ping
+ * const backend = makeSyncBackend({
+ *   endpoint: {
+ *     push: '/api/push-event',
+ *     pull: '/api/pull-events',
+ *     ping: '/api/ping',
+ *   },
+ *   ping: {
+ *     enabled: true,
+ *     requestInterval: 15_000, // 15 seconds
+ *   },
+ * })
+ * ```
+ *
+ * @see https://livestore.dev/docs/sync/electric for setup guide
+ */
 export const makeSyncBackend =
-  ({ endpoint }: SyncBackendOptions): SyncBackendConstructor<SyncMetadata> =>
+  ({ endpoint, ...options }: SyncBackendOptions): SyncBackend.SyncBackendConstructor<SyncMetadata> =>
   ({ storeId, payload }) =>
     Effect.gen(function* () {
-      const isConnected = yield* SubscriptionRef.make(true)
+      const isConnected = yield* SubscriptionRef.make(false)
       const pullEndpoint = typeof endpoint === 'string' ? endpoint : endpoint.pull
       const pushEndpoint = typeof endpoint === 'string' ? endpoint : endpoint.push
+      const pingEndpoint = typeof endpoint === 'string' ? endpoint : endpoint.ping
 
-      const pull = (
+      const httpClient = yield* HttpClient.HttpClient
+
+      const runPull = (
         handle: Option.Option<SyncMetadata>,
+        { live }: { live: boolean },
       ): Effect.Effect<
         Option.Option<
           readonly [
-            Chunk.Chunk<{
+            /** The batch of events */
+            ReadonlyArray<{
               metadata: Option.Option<SyncMetadata>
-              eventEncoded: LiveStoreEvent.AnyEncodedGlobal
+              eventEncoded: LiveStoreEvent.Global.Encoded
             }>,
+            /** The next handle to use for the next pull */
             Option.Option<SyncMetadata>,
           ]
         >,
-        InvalidPullError | IsOfflineError,
-        HttpClient.HttpClient
+        UnknownError | IsOfflineError
       > =>
         Effect.gen(function* () {
-          const argsJson = yield* Schema.encode(Schema.parseJson(ApiSchema.PullPayload))(
-            ApiSchema.PullPayload.make({ storeId, handle, payload }),
+          const argsJson = yield* Schema.encode(ApiSchema.ArgsSchema)(
+            ApiSchema.PullPayload.make({ storeId, handle, payload, live }),
           )
           const url = `${pullEndpoint}?args=${argsJson}`
 
-          const resp = yield* HttpClient.get(url)
+          const resp = yield* httpClient.get(url)
 
           if (resp.status === 401) {
             const body = yield* resp.text.pipe(Effect.catchAll(() => Effect.succeed('-')))
-            return yield* InvalidPullError.make({
-              message: `Unauthorized (401): Couldn't connect to ElectricSQL: ${body}`,
+            return yield* new UnknownError({
+              cause: new Error(`Unauthorized (401): Couldn't connect to ElectricSQL: ${body}`),
             })
+          } else if (resp.status === 400) {
+            // Electric returns 400 when table doesn't exist
+            // Return empty result for non-existent tables
+            return Option.some([[], Option.none()] as const)
           } else if (resp.status === 409) {
             // https://electric-sql.com/openapi.html#/paths/~1v1~1shape/get
             // {
@@ -243,9 +249,8 @@ export const makeSyncBackend =
             // until we found a new event, then, continue with the new handle
             return notYetImplemented(`Electric shape not found`)
           } else if (resp.status < 200 || resp.status >= 300) {
-            return yield* InvalidPullError.make({
-              message: `Unexpected status code: ${resp.status}`,
-            })
+            const body = yield* resp.text
+            return yield* new UnknownError({ cause: new Error(`Unexpected status code: ${resp.status}: ${body}`) })
           }
 
           const headers = yield* HttpClientResponse.schemaHeaders(ResponseHeaders)(resp)
@@ -257,75 +262,123 @@ export const makeSyncBackend =
           // Electric completes the long-poll request after ~20 seconds with a 204 status
           // In this case we just retry where we left off
           if (resp.status === 204) {
-            return Option.some([Chunk.empty(), Option.some(nextHandle)] as const)
+            return Option.some([[], Option.some(nextHandle)] as const)
           }
 
-          const body = yield* HttpClientResponse.schemaBodyJson(Schema.Array(ResponseItem), {
+          const allItems = yield* HttpClientResponse.schemaBodyJson(Schema.Array(ResponseItem), {
             onExcessProperty: 'preserve',
           })(resp)
 
-          const items = body
-            .filter((item) => item.value !== undefined && (item.headers as any).operation === 'insert')
-            .map((item) => ({
-              metadata: Option.some({ offset: nextHandle.offset!, handle: nextHandle.handle }),
-              eventEncoded: item.value! as LiveStoreEvent.AnyEncodedGlobal,
-            }))
+          // Check for delete/update operations and throw descriptive error
+          const invalidOperations = ReadonlyArray.filterMap(allItems, (item) =>
+            Schema.is(ResponseItemInvalid)(item) === true ? Option.some(item.headers.operation) : Option.none(),
+          )
 
-          // // TODO implement proper `remaining` handling
-          // remaining: 0,
+          if (invalidOperations.length > 0) {
+            const operation = invalidOperations[0]!
+            return yield* new InvalidOperationError({
+              operation,
+              message: `ElectricSQL '${operation}' event received. This results from directly mutating the event log. Append a series of events that produce the desired state instead of mutating the event log.`,
+            })
+          }
 
-          // if (listenForNew === false && items.length === 0) {
-          //   return Option.none()
-          // }
+          const items = allItems.filter(Schema.is(ResponseItemInsert)).map((item) => ({
+            metadata: Option.some({ offset: nextHandle.offset, handle: nextHandle.handle }),
+            eventEncoded: item.value,
+          }))
 
-          return Option.some([Chunk.fromIterable(items), Option.some(nextHandle)] as const)
+          yield* Effect.annotateCurrentSpan({ itemsCount: items.length, nextHandle })
+
+          return Option.some([items, Option.some(nextHandle)] as const)
         }).pipe(
           Effect.scoped,
           Effect.mapError((cause) =>
-            cause._tag === 'InvalidPullError' ? cause : InvalidPullError.make({ message: cause.toString() }),
+            cause._tag === 'UnknownError' ? cause : new UnknownError({ cause }),
           ),
+          Effect.withSpan('electric-provider:runPull', { attributes: { handle, live } }),
         )
 
       const pullEndpointHasSameOrigin =
         pullEndpoint.startsWith('/') ||
         (globalThis.location !== undefined && globalThis.location.origin === new URL(pullEndpoint).origin)
 
-      return {
-        // If the pull endpoint has the same origin as the current page, we can assume that we already have a connection
-        // otherwise we send a HEAD request to speed up the connection process
-        connect: pullEndpointHasSameOrigin
-          ? Effect.void
-          : HttpClient.head(pullEndpoint).pipe(UnexpectedError.mapToUnexpectedError),
-        pull: (args) =>
-          Stream.unfoldChunkEffect(
-            args.pipe(
-              Option.map((_) => _.metadata),
-              Option.flatten,
-            ),
-            (metadataOption) => pull(metadataOption),
+      const pingTimeout = options.ping?.requestTimeout ?? 10_000
+
+      const ping: SyncBackend.SyncBackend<SyncMetadata>['ping'] = Effect.gen(function* () {
+        yield* httpClient.pipe(HttpClient.filterStatusOk).head(pingEndpoint)
+
+        yield* SubscriptionRef.set(isConnected, true)
+      }).pipe(
+        UnknownError.mapToUnknownError,
+        Effect.timeout(pingTimeout),
+        Effect.catchTag('TimeoutException', () => SubscriptionRef.set(isConnected, false)),
+        Effect.withSpan('electric-provider:ping'),
+      )
+
+      const pingInterval = options.ping?.requestInterval ?? 10_000
+
+      if (options.ping?.enabled !== false) {
+        // Automatically ping the server to keep the connection alive
+        yield* ping.pipe(Effect.repeat(Schedule.spaced(pingInterval)), Effect.tapCauseLogPretty, Effect.forkScoped)
+      }
+
+      // If the pull endpoint has the same origin as the current page, we can assume that we already have a connection
+      // otherwise we send a HEAD request to speed up the connection process
+      const connect: SyncBackend.SyncBackend<SyncMetadata>['connect'] =
+        pullEndpointHasSameOrigin === true ? Effect.void : ping.pipe(UnknownError.mapToUnknownError)
+
+      return SyncBackend.of({
+        connect,
+        pull: (cursor, options) => {
+          let hasEmittedAtLeastOnce = false
+
+          return Stream.unfoldEffect(cursor.pipe(Option.flatMap((_) => _.metadata)), (metadataOption) =>
+            Effect.gen(function* () {
+              const result = yield* runPull(metadataOption, { live: options?.live ?? false })
+              if (Option.isNone(result) === true) return Option.none()
+
+              const [batch, nextMetadataOption] = result.value
+
+              // Continue pagination if we have data
+              if (batch.length > 0) {
+                hasEmittedAtLeastOnce = true
+                return Option.some([{ batch, hasMore: true }, nextMetadataOption])
+              }
+
+              // Make sure we emit at least once even if there's no data or we're live-pulling
+              if (hasEmittedAtLeastOnce === false || options?.live === true) {
+                hasEmittedAtLeastOnce = true
+                return Option.some([{ batch, hasMore: false }, nextMetadataOption])
+              }
+
+              // Stop on empty batch (when not live)
+              return Option.none()
+            }),
           ).pipe(
-            Stream.chunks,
-            Stream.map((chunk) => ({ batch: [...chunk], remaining: 0 })),
-          ),
+            Stream.map(({ batch, hasMore }) => ({
+              batch,
+              pageInfo: hasMore === true ? SyncBackend.pageInfoMoreUnknown : SyncBackend.pageInfoNoMore,
+            })),
+            Stream.withSpan('electric-provider:pull'),
+          )
+        },
 
-        push: (batch) =>
-          Effect.gen(function* () {
-            const resp = yield* HttpClientRequest.schemaBodyJson(ApiSchema.PushPayload)(
-              HttpClientRequest.post(pushEndpoint),
-              ApiSchema.PushPayload.make({ storeId, batch }),
-            ).pipe(
-              Effect.andThen(HttpClient.execute),
-              Effect.andThen(HttpClientResponse.schemaBodyJson(Schema.Struct({ success: Schema.Boolean }))),
-              Effect.scoped,
-              Effect.mapError((cause) =>
-                InvalidPushError.make({ reason: { _tag: 'Unexpected', message: cause.toString() } }),
-              ),
-            )
+        push: Effect.fn('electric-provider:push')(function* (batch) {
+          const resp = yield* HttpClientRequest.schemaBodyJson(ApiSchema.PushPayload)(
+            HttpClientRequest.post(pushEndpoint),
+            ApiSchema.PushPayload.make({ storeId, batch }),
+          ).pipe(
+            Effect.andThen(httpClient.pipe(HttpClient.filterStatusOk).execute),
+            Effect.andThen(HttpClientResponse.schemaBodyJson(Schema.Struct({ success: Schema.Boolean }))),
+            Effect.scoped,
+            Effect.mapError((cause) => UnknownError.make({ cause })),
+          )
 
-            if (!resp.success) {
-              yield* InvalidPushError.make({ reason: { _tag: 'Unexpected', message: 'Push failed' } })
-            }
-          }),
+          if (resp.success === false) {
+            return yield* new UnknownError({ cause: new Error('Push failed') })
+          }
+        }),
+        ping,
         isConnected,
         metadata: {
           name: '@livestore/sync-electric',
@@ -333,17 +386,11 @@ export const makeSyncBackend =
           protocol: 'http',
           endpoint,
         },
-      } satisfies SyncBackend<SyncMetadata>
+        supports: {
+          // Given Electric is heavily optimized for immutable caching, we can't know the remaining count
+          // until we've reached the end of the stream
+          pullPageInfoKnown: false,
+          pullLive: true,
+        },
+      })
     })
-
-/**
- * Needs to be bumped when the storage format changes (e.g. eventlogTable schema changes)
- *
- * Changing this version number will lead to a "soft reset".
- */
-export const PERSISTENCE_FORMAT_VERSION = 6
-
-export const toTableName = (storeId: string) => {
-  const escapedStoreId = storeId.replaceAll(/[^a-zA-Z0-9_]/g, '_')
-  return `eventlog_${PERSISTENCE_FORMAT_VERSION}_${escapedStoreId}`
-}

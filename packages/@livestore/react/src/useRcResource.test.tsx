@@ -2,14 +2,14 @@ import * as ReactTesting from '@testing-library/react'
 import * as React from 'react'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 
-import { __resetUseRcResourceCache, useRcResource } from './useRcResource.js'
+import { __resetUseRcResourceCache, useRcResource } from './useRcResource.ts'
 
 describe.each([{ strictMode: true }, { strictMode: false }])('useRcResource (strictMode=%s)', ({ strictMode }) => {
   beforeEach(() => {
     __resetUseRcResourceCache()
   })
 
-  const wrapper = strictMode ? React.StrictMode : React.Fragment
+  const wrapper = strictMode === true ? React.StrictMode : React.Fragment
 
   it('should create a stateful entity using make and call cleanup on unmount', () => {
     const makeSpy = vi.fn(() => Symbol('statefulResource'))

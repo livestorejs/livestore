@@ -1,7 +1,19 @@
-export { LiveStoreContextLayer, LiveStoreContextDeferred } from './LiveStore.js'
 export {
-  LiveStoreContextRunning as LiveStoreContext,
-  LiveStoreContextRunning,
   DeferredStoreContext,
   type LiveStoreContextProps,
-} from '../store/create-store.js'
+  LiveStoreContextRunning as LiveStoreContext,
+  LiveStoreContextRunning,
+} from '../store/create-store.ts'
+// Store.Tag - Idiomatic Effect API
+// Legacy API (deprecated)
+export {
+  type DeferredContextId,
+  LiveStoreContextDeferred,
+  LiveStoreContextLayer,
+  makeStoreContext,
+  Store,
+  type StoreContext,
+  type StoreContextId,
+  type StoreLayerProps,
+  type StoreTagClass,
+} from './LiveStore.ts'

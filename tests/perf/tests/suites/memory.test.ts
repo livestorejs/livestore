@@ -1,7 +1,7 @@
 import { type CDPSession, expect } from '@playwright/test'
 
-import { test } from '../fixtures.js'
-import { repeatSuite } from '../utils.js'
+import { test } from '../fixtures.ts'
+import { assertPerfAppReady, repeatSuite } from '../utils.ts'
 
 const REPETITIONS_PER_TEST = 1
 
@@ -25,6 +25,7 @@ repeatSuite(
   () => {
     test.beforeEach(async ({ page }) => {
       await page.goto('/')
+      await assertPerfAppReady(page)
     })
 
     test.afterEach(async ({ page, context }, testInfo) => {

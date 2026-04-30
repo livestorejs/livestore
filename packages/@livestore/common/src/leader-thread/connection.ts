@@ -1,11 +1,11 @@
 // import type { WaSqlite } from '@livestore/sqlite-wasm'
 import { Effect } from '@livestore/utils/effect'
 
-import type { SqliteDb } from '../adapter-types.js'
-import { SqliteError } from '../adapter-types.js'
-import type { BindValues } from '../sql-queries/index.js'
-import type { PreparedBindValues } from '../util.js'
-import { prepareBindValues, sql } from '../util.js'
+import type { SqliteDb } from '../adapter-types.ts'
+import { SqliteError } from '../adapter-types.ts'
+import type { BindValues } from '../sql-queries/index.ts'
+import type { PreparedBindValues } from '../util.ts'
+import { prepareBindValues, sql } from '../util.ts'
 
 // TODO
 namespace WaSqlite {
@@ -62,7 +62,7 @@ export const configureConnection = (sqliteDb: SqliteDb, { foreignKeys, lockingMo
     -- disable WAL until we have it working properly
     -- PRAGMA journal_mode=WAL;
     PRAGMA page_size=8192;
-    PRAGMA foreign_keys=${foreignKeys ? 'ON' : 'OFF'};
+    PRAGMA foreign_keys=${foreignKeys === true ? 'ON' : 'OFF'};
     ${lockingMode === undefined ? '' : sql`PRAGMA locking_mode=${lockingMode};`}
   `,
     {},

@@ -1,9 +1,13 @@
 // Based on https://github.com/rhashimoto/wa-sqlite/blob/master/src/FacadeVFS.js
+//
+// This TypeScript version lives in @livestore/sqlite-wasm instead of @livestore/wa-sqlite because:
+// - @livestore/wa-sqlite is a direct wrapper of upstream wa-sqlite (kept as JavaScript for easier upstream sync)
+// - @livestore/sqlite-wasm is where we add TypeScript abstractions on top of wa-sqlite
 
-/* eslint-disable unicorn/prefer-code-point */
-/* eslint-disable @typescript-eslint/no-unused-vars */
-/* eslint-disable prefer-arrow/prefer-arrow-functions */
-// eslint-disable-next-line @typescript-eslint/ban-ts-comment
+/** biome-ignore-all lint/complexity/useLiteralKeys: not needed for this file */
+/** biome-ignore-all lint/correctness/noUnusedFunctionParameters: not needed for this file */
+/** biome-ignore-all lint/complexity/noUselessConstructor: keep constructor for compatibility */
+
 // @ts-nocheck
 import * as VFS from '@livestore/wa-sqlite/src/VFS.js'
 
@@ -14,9 +18,6 @@ export class FacadeVFS extends VFS.Base {
    * @param {string} name
    * @param {object} module
    */
-  constructor(name, module) {
-    super(name, module)
-  }
 
   /**
    * Override to indicate which methods are asynchronous.
@@ -212,7 +213,7 @@ export class FacadeVFS extends VFS.Base {
   xOpen(pVfs, zName, pFile, flags, pOutFlags): number {
     const filename = this.#decodeFilename(zName, flags)
     const pOutFlagsView = this.#makeTypedDataView('Int32', pOutFlags)
-    this['log']?.('jOpen', filename, pFile, '0x' + flags.toString(16))
+    this['log']?.('jOpen', filename, pFile, `0x${flags.toString(16)}`)
     return this.jOpen(filename, pFile, flags, pOutFlagsView)
   }
 
@@ -424,18 +425,18 @@ export class FacadeVFS extends VFS.Base {
           dataView = makeDataView()
         }
         if (prop === getter) {
-          return function (byteOffset, littleEndian) {
-            if (!littleEndian) throw new Error('must be little endian')
+          return (byteOffset, littleEndian) => {
+            if (littleEndian === false) throw new Error('must be little endian')
             return dataView[prop](byteOffset, littleEndian)
           }
         }
         if (prop === setter) {
-          return function (byteOffset, value, littleEndian) {
-            if (!littleEndian) throw new Error('must be little endian')
+          return (byteOffset, value, littleEndian) => {
+            if (littleEndian === false) throw new Error('must be little endian')
             return dataView[prop](byteOffset, value, littleEndian)
           }
         }
-        if (typeof prop === 'string' && /^(get)|(set)/.test(prop)) {
+        if (typeof prop === 'string' && /^(get)|(set)/.test(prop) === true) {
           throw new Error('invalid type')
         }
         const result = dataView[prop]
@@ -463,19 +464,19 @@ export class FacadeVFS extends VFS.Base {
   }
 
   #decodeFilename(zName, flags) {
-    if (flags & VFS.SQLITE_OPEN_URI) {
+    if ((flags & VFS.SQLITE_OPEN_URI) !== 0) {
       // The first null-terminated string is the URI path. Subsequent
       // strings are query parameter keys and values.
       // https://www.sqlite.org/c3ref/open.html#urifilenamesinsqlite3open
       let pName = zName
       let state = 1
       const charCodes = []
-      while (state) {
+      while (state !== null) {
         const charCode = this._module.HEAPU8[pName++]
-        if (charCode) {
+        if (charCode !== 0) {
           charCodes.push(charCode)
         } else {
-          if (!this._module.HEAPU8[pName]) state = null
+          if (this._module.HEAPU8[pName] === 0) state = null
           switch (state) {
             case 1: {
               // path
@@ -500,11 +501,9 @@ export class FacadeVFS extends VFS.Base {
       }
       return new TextDecoder().decode(new Uint8Array(charCodes))
     }
-    return zName ? this._module.UTF8ToString(zName) : null
+    return zName !== 0 ? this._module.UTF8ToString(zName) : null
   }
 }
 // Emscripten "legalizes" 64-bit integer arguments by passing them as
 // two 32-bit signed integers.
-function delegalize(lo32, hi32) {
-  return hi32 * 0x1_00_00_00_00 + lo32 + (lo32 < 0 ? 2 ** 32 : 0)
-}
+const delegalize = (lo32, hi32) => hi32 * 0x1_00_00_00_00 + lo32 + (lo32 < 0 ? 2 ** 32 : 0)

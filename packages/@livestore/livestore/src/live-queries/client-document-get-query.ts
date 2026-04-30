@@ -1,10 +1,12 @@
+import type * as otel from '@opentelemetry/api'
+
 import type { PreparedBindValues } from '@livestore/common'
 import { SessionIdSymbol } from '@livestore/common'
 import { State } from '@livestore/common/schema'
 import { shouldNeverHappen } from '@livestore/utils'
-import type * as otel from '@opentelemetry/api'
 
-import type { ReactivityGraphContext } from './base-class.js'
+import { StoreInternalsSymbol } from '../store/store-types.ts'
+import type { ReactivityGraphContext } from './base-class.ts'
 
 export const rowQueryLabel = (
   table: State.SQLite.ClientDocumentTableDef.Any,
@@ -30,17 +32,17 @@ export const makeExecBeforeFirstRun =
       )
     }
 
-    const otelContext = otelContext_ ?? store.otel.queriesSpanContext
+    const otelContext = otelContext_ ?? store[StoreInternalsSymbol].otel.queriesSpanContext
 
     const idVal = id === SessionIdSymbol ? store.sessionId : id!
     const rowExists =
-      store.sqliteDbWrapper.cachedSelect(
+      store[StoreInternalsSymbol].sqliteDbWrapper.cachedSelect(
         `SELECT 1 FROM '${table.sqliteDef.name}' WHERE id = ?`,
         [idVal] as any as PreparedBindValues,
         { otelContext },
       ).length === 1
 
-    if (rowExists) return
+    if (rowExists === true) return
 
     // It's important that we only commit and don't refresh here, as this function might be called during a render
     // and otherwise we might end up in a "reactive loop"

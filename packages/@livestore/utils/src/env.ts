@@ -1,4 +1,6 @@
-import { envTruish } from './misc.js'
+/// <reference types="bun" />
+
+import { envTruish } from './misc.ts'
 
 export const env = (name: string): string | undefined => {
   if (typeof process !== 'undefined' && process.env !== undefined) {
@@ -24,4 +26,5 @@ export const IS_CI = envTruish(env('CI'))
 
 export const IS_BUN = typeof Bun !== 'undefined'
 
-export const IS_REACT_NATIVE = typeof navigator !== 'undefined' && navigator.product === 'ReactNative'
+export const IS_REACT_NATIVE =
+  typeof navigator !== 'undefined' && (navigator as unknown as Record<string, unknown>)['product'] === 'ReactNative'
