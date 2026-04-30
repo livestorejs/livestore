@@ -8,6 +8,14 @@ import { Cli, getFreePort } from '@livestore/utils/node'
 import { buildDiagrams, watchDiagrams } from '@local/astro-tldraw'
 import { buildSnippets, createSnippetsCommand } from '@local/astro-twoslash-code'
 
+import {
+  assertProductionDeployAllowed,
+  DOCS_DEV_SITE,
+  DOCS_DEV_URL,
+  DOCS_PROD_SITE,
+  DOCS_PROD_URL,
+  isPrimaryIntegrationBranch,
+} from '../shared/deploy-target.ts'
 import { appendGithubSummaryMarkdown, formatMarkdownTable } from '../shared/misc.ts'
 import { deployToNetlify, purgeNetlifyCdn } from '../shared/netlify.ts'
 import { exportMarkdownCommand } from './docs-export.ts'
@@ -302,9 +310,14 @@ export const docsCommand = Cli.Command.make('docs').pipe(
           Cli.Options.optional,
           Cli.Options.withDescription('Build the docs before deploying (split flow)'),
         ),
+        plan: Cli.Options.boolean('plan').pipe(
+          Cli.Options.withDefault(false),
+          Cli.Options.optional,
+          Cli.Options.withDescription('Print the resolved deploy plan without building or deploying'),
+        ),
       },
       Effect.fn(
-        function* ({ prod: prodOption, alias: aliasOption, site: siteOption, purgeCdn, build: buildOption }) {
+        function* ({ prod: prodOption, alias: aliasOption, site: siteOption, purgeCdn, build: buildOption, plan }) {
           const branchName = yield* Effect.gen(function* () {
             if (isGithubAction === true) {
               const branchFromEnv = process.env.GITHUB_HEAD_REF ?? process.env.GITHUB_REF_NAME
@@ -323,16 +336,16 @@ export const docsCommand = Cli.Command.make('docs').pipe(
 
           yield* Effect.log(`Branch name: "${branchName}"`)
 
-          const devBranchName = 'dev'
+          const isPr = isGithubAction && process.env.GITHUB_EVENT_NAME === 'pull_request'
+          const explicitProd = prodOption._tag === 'Some' && prodOption.value === true
 
           const site =
-            siteOption._tag === 'Some'
-              ? siteOption.value
-              : branchName === 'main'
-                ? 'livestore-docs' // Prod site
-                : 'livestore-docs-dev' // Dev site
+            siteOption._tag === 'Some' ? siteOption.value : explicitProd === true ? DOCS_PROD_SITE : DOCS_DEV_SITE
 
-          const isPr = isGithubAction && process.env.GITHUB_EVENT_NAME === 'pull_request'
+          if (explicitProd === true) {
+            yield* Effect.sync(() => assertProductionDeployAllowed(liveStoreVersion))
+          }
+
           const prNumber = (() => {
             const ref = process.env.GITHUB_REF
             if (typeof ref === 'string') {
@@ -387,27 +400,11 @@ export const docsCommand = Cli.Command.make('docs').pipe(
                 : undefined
 
           const prod =
-            prodOption._tag === 'Some' && prodOption.value === true // TODO clean up when Effect CLI boolean flag is fixed
-              ? prodOption.value
+            explicitProd === true // TODO clean up when Effect CLI boolean flag is fixed
+              ? true
               : isPr === true
                 ? false
-                : branchName === 'main' || branchName === devBranchName
-
-          if (prod === true && site === 'livestore-docs' && liveStoreVersion.includes('dev') === true) {
-            yield* Effect.logWarning(
-              `Skipping prod docs deploy for dev version ${liveStoreVersion}; docs were built but prod deploy waits for a stable release version.`,
-            )
-            yield* appendGithubSummaryMarkdown({
-              context: 'docs deploy',
-              markdown: [
-                '## Docs deploy',
-                '',
-                `Skipped production docs deploy for dev version \`${liveStoreVersion}\`.`,
-                '',
-              ].join('\n'),
-            })
-            return
-          }
+                : site === DOCS_DEV_SITE && isPrimaryIntegrationBranch(branchName)
 
           const deployAliasLabel =
             prAliases !== undefined
@@ -419,7 +416,37 @@ export const docsCommand = Cli.Command.make('docs').pipe(
 
           // Split mode: build first only when requested via --build
           const shouldBuild = buildOption._tag === 'Some' && buildOption.value === true
+          const docsSiteUrl = site === DOCS_PROD_SITE ? DOCS_PROD_URL : DOCS_DEV_URL
+
+          const shouldPrintPlan = plan._tag === 'Some' && plan.value === true
+
+          if (shouldPrintPlan === true) {
+            console.log(
+              JSON.stringify(
+                {
+                  branchName,
+                  isPr,
+                  liveStoreVersion,
+                  site,
+                  siteUrl: docsSiteUrl,
+                  build: shouldBuild,
+                  deployTarget:
+                    prAliases !== undefined
+                      ? { _tag: 'pr-aliases', ...prAliases }
+                      : prod === true
+                        ? { _tag: 'prod' }
+                        : { _tag: 'alias', alias: branchAlias },
+                  purgeCdn,
+                },
+                null,
+                2,
+              ),
+            )
+            return
+          }
+
           if (shouldBuild === true) {
+            process.env.LIVESTORE_DOCS_SITE_URL = docsSiteUrl
             yield* docsBuildCommand.handler({ apiDocs: true, clean: false, skipDeps: false })
           }
 
@@ -432,19 +459,19 @@ export const docsCommand = Cli.Command.make('docs').pipe(
           const { stickyDeploy, commitDeploy } = yield* Effect.gen(function* () {
             if (prAliases !== undefined) {
               /** PR deploy: first create sticky alias, then commit-specific alias */
-              const stickyDeploy: NetlifyDeploySummary = yield* deployToNetlify({
+              const stickyPrDeploy: NetlifyDeploySummary = yield* deployToNetlify({
                 site,
                 target: { _tag: 'alias', alias: prAliases.stickyAlias },
                 message: buildMessage(contextLabelFor(false, prAliases.stickyAlias)),
               }).pipe(docsWorkspaceCwd)
 
-              const commitDeploy: NetlifyDeploySummary = yield* deployToNetlify({
+              const commitPrDeploy: NetlifyDeploySummary = yield* deployToNetlify({
                 site,
                 target: { _tag: 'alias', alias: prAliases.commitAlias },
                 message: buildMessage(contextLabelFor(false, prAliases.commitAlias)),
               }).pipe(docsWorkspaceCwd)
 
-              return { stickyDeploy, commitDeploy }
+              return { stickyDeploy: stickyPrDeploy, commitDeploy: commitPrDeploy }
             } else {
               /** Non-PR deploy: single deploy with prod or branch alias */
               const deploy: NetlifyDeploySummary = yield* deployToNetlify({

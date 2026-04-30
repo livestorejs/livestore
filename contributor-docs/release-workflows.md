@@ -101,6 +101,12 @@ After merge to `main`, the push-triggered workflow runs:
 
 - `release:stable:publish`
 - `release:devtools-artifact:publish:no-install`
+- For stable `latest` releases only: `docs:deploy:prod`,
+  `examples:deploy:prod`, and the production docs search sync.
+
+Normal CI deploys docs/examples to the dev surfaces. Production docs, examples,
+and search are only updated by an explicit stable release publish so regular
+`main` integration work cannot accidentally update the public latest surfaces.
 
 ## Local stable release checks
 
@@ -168,6 +174,8 @@ artifact as `@livestore/devtools-vite@<livestore-version>`.
 ## Safety rules
 
 - `main` is the only canonical release branch. Do not cut releases from `dev`.
+- Do not use `--prod` docs/examples deploys for snapshots or prereleases. The
+  deploy commands reject non-stable LiveStore versions.
 - Do not add non-public DevTools source, internal paths, credentials, or local
   machine details to this repository.
 - Do not paste secrets into release plans, PR descriptions, workflow inputs, or

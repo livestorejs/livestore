@@ -224,6 +224,11 @@ in
       exec = "mono docs deploy";
     };
 
+    "docs:deploy:prod" = {
+      description = "Build and deploy production docs";
+      exec = "mono docs deploy --prod --build --purge-cdn";
+    };
+
     "docs:build:phase:snippets" = {
       description = "Build docs snippets (CI phase)";
       exec = ''
@@ -287,6 +292,11 @@ in
     "examples:deploy" = {
       description = "Deploy examples to Cloudflare";
       exec = "mono examples deploy";
+    };
+
+    "examples:deploy:prod" = {
+      description = "Deploy examples to production Cloudflare Workers";
+      exec = "mono examples deploy --prod";
     };
 
     "examples:install" = {

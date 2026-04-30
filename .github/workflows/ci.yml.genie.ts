@@ -84,8 +84,8 @@ export default githubWorkflow({
 
   on: {
     push: {
-      // Only run on pushes to main/dev to keep docs deploys consistent
-      branches: ['main', 'dev'],
+      // Only main is an integration branch. Regular pushes deploy dev docs/examples surfaces.
+      branches: ['main'],
     },
     workflow_dispatch: {},
     pull_request: {},
@@ -369,9 +369,9 @@ printf '%s\\n' "//registry.npmjs.org/:_authToken=$NODE_AUTH_TOKEN" >> "$HOME/.np
      * Docs deployment mapping (authoritative, with domains) — handled by `mono docs deploy`:
      * - pull_request (any base): deploy alias on dev docs site (no purge)
      *     example domain: https://<alias>--livestore-docs-dev.netlify.app
-     * - push to dev: deploy to dev docs site as prod
+     * - push to main: deploy to dev docs site as prod
      *     domain: https://dev.docs.livestore.dev
-     * - push to main: deploy to prod docs site as prod
+     * - stable release publish: release.yml deploys prod docs explicitly
      *     domain: https://docs.livestore.dev
      * `mono docs deploy` applies filter="docs" and infers context from GitHub env.
      */
@@ -437,7 +437,7 @@ printf '%s\\n' "//registry.npmjs.org/:_authToken=$NODE_AUTH_TOKEN" >> "$HOME/.np
     //     'test-integration-sync-provider',
     //     'test-integration-playwright',
     //   ],
-    //   if: "(github.ref == 'refs/heads/main' || github.ref == 'refs/heads/dev') && github.event_name == 'push'",
+    //   if: "github.ref == 'refs/heads/main' && github.event_name == 'push'",
     //   steps: [dispatchAlignmentStep({ targetRepo: 'schickling/megarepo-all' })],
     // },
 
