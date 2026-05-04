@@ -3858,8 +3858,8 @@ importers:
         specifier: 7.0.1
         version: 7.0.1
       qrcode-generator:
-        specifier: 1.4.4
-        version: 1.4.4
+        specifier: 2.0.4
+        version: 2.0.4
     devDependencies:
       '@effect/ai':
         specifier: 0.35.0
@@ -16289,9 +16289,6 @@ packages:
 
   pure-rand@6.1.0:
     resolution: {integrity: sha512-bVWawvoZoBYpp6yIoQtQXHZjmz35RSVHnUOTefl8Vcjr8snTPY1wnpSPMWekcFwbxI6gtmT7rSYPFvz71ldiOA==}
-
-  qrcode-generator@1.4.4:
-    resolution: {integrity: sha512-HM7yY8O2ilqhmULxGMpcHSF1EhJJ9yBj8gvDEuZ6M+KGJ0YY2hKpnXvRD+hZPLrDVck3ExIGhmPtSdcjC+guuw==}
 
   qrcode-generator@2.0.4:
     resolution: {integrity: sha512-mZSiP6RnbHl4xL2Ap5HfkjLnmxfKcPWpWe/c+5XxCuetEenqmNFf1FH/ftXPCtFG5/TDobjsjz6sSNL0Sr8Z9g==}
@@ -33702,8 +33699,6 @@ snapshots:
       - utf-8-validate
 
   pure-rand@6.1.0: {}
-
-  qrcode-generator@1.4.4: {}
 
   qrcode-generator@2.0.4: {}
 
