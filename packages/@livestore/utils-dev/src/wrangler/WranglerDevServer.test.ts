@@ -2,7 +2,7 @@ import { expect } from 'vitest'
 
 import { Vitest } from '@livestore/utils-dev/node-vitest'
 import { Effect, FetchHttpClient, Layer } from '@livestore/utils/effect'
-import { getFreePort, PlatformNode } from '@livestore/utils/node'
+import { getFreePort } from '@livestore/utils/node'
 
 import {
   type StartWranglerDevServerArgs,
@@ -10,6 +10,7 @@ import {
   WranglerDevServerService,
 } from './WranglerDevServer.ts'
 
+import * as NodeServices from '@effect/platform-node/NodeServices'
 const testTimeout = 60_000
 
 const WranglerDevServerTest = (args: Partial<StartWranglerDevServerArgs> = {}) =>
@@ -23,7 +24,7 @@ Vitest.describe('WranglerDevServer', { timeout: testTimeout }, () => {
     const withBasicTest = (args: Partial<StartWranglerDevServerArgs> = {}) =>
       Vitest.makeWithTestCtx({
         timeout: testTimeout,
-        makeLayer: () => WranglerDevServerTest(args).pipe(Layer.provide(PlatformNode.NodeContext.layer)),
+        makeLayer: () => WranglerDevServerTest(args).pipe(Layer.provide(NodeServices.layer)),
       })
 
     Vitest.scopedLive('should start wrangler dev server and return port', (test) =>
@@ -51,7 +52,7 @@ Vitest.describe('WranglerDevServer', { timeout: testTimeout }, () => {
     const withErrorTest = (args: Partial<StartWranglerDevServerArgs> = {}) =>
       Vitest.makeWithTestCtx({
         timeout: testTimeout,
-        makeLayer: () => WranglerDevServerTest(args).pipe(Layer.provide(PlatformNode.NodeContext.layer)),
+        makeLayer: () => WranglerDevServerTest(args).pipe(Layer.provide(NodeServices.layer)),
       })
 
     Vitest.scopedLive('should handle missing wrangler.toml but should timeout', (test) =>
@@ -62,7 +63,7 @@ Vitest.describe('WranglerDevServer', { timeout: testTimeout }, () => {
               cwd: '/tmp',
               wranglerConfigPath: '/dev/null',
               readiness: { connectTimeout: '500 millis' },
-            }).pipe(Layer.provide(PlatformNode.NodeContext.layer)),
+            }).pipe(Layer.provide(NodeServices.layer)),
           ),
           Effect.flip,
         )
@@ -77,7 +78,7 @@ Vitest.describe('WranglerDevServer', { timeout: testTimeout }, () => {
           Effect.provide(
             WranglerDevServerTest({
               cwd: '/completely/nonexistent/directory',
-            }).pipe(Layer.provide(PlatformNode.NodeContext.layer)),
+            }).pipe(Layer.provide(NodeServices.layer)),
           ),
           Effect.either,
         )
@@ -109,7 +110,7 @@ Vitest.describe('WranglerDevServer', { timeout: testTimeout }, () => {
     const withServiceTest = (args: Partial<StartWranglerDevServerArgs> = {}) =>
       Vitest.makeWithTestCtx({
         timeout: testTimeout,
-        makeLayer: () => WranglerDevServerTest(args).pipe(Layer.provide(PlatformNode.NodeContext.layer)),
+        makeLayer: () => WranglerDevServerTest(args).pipe(Layer.provide(NodeServices.layer)),
       })
 
     Vitest.scopedLive('should work with service pattern', (test) =>

@@ -30,7 +30,7 @@ export const SessionInfo = Schema.TaggedStruct('SessionInfo', {
 })
 export type SessionInfo = typeof SessionInfo.Type
 
-export const Message = Schema.Union(RequestSessions, SessionInfo)
+export const Message = Schema.Union([RequestSessions, SessionInfo])
 export type Message = typeof Message.Type
 
 /** Usually called in client session */

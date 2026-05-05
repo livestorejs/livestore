@@ -84,7 +84,7 @@ const makeTabPair = (url: string, tabName: string, adapter: AdapterKind, options
         page
           .waitForFunction('window.__debugLiveStore?.default !== undefined')
           .then(() => page.evaluate('window.__debugLiveStore.default._dev.otel.rootSpanContext()')),
-      ).pipe(Effect.andThen(Schema.decodeUnknown(Schema.Struct({ traceId: Schema.String, spanId: Schema.String }))))
+      ).pipe(Effect.andThen(Schema.decodeUnknownEffect(Schema.Struct({ traceId: Schema.String, spanId: Schema.String }))))
 
       yield* Effect.linkSpanCurrent(
         Tracer.externalSpan({
@@ -113,7 +113,7 @@ const PWLive = Effect.gen(function* () {
   const persistentContextPath = fs.mkdtempSync(path.join(os.tmpdir(), '/livestore-playwright'))
 
   return Playwright.browserContextLayer({ persistentContextPath })
-}).pipe(Layer.unwrapEffect)
+}).pipe(Layer.unwrap)
 
 const runTest =
   <E>(eff: Effect.Effect<void, E, Playwright.BrowserContext | Scope.Scope>) =>

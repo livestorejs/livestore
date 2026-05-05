@@ -6,8 +6,8 @@ import { loadSqlite3Wasm } from '@livestore/sqlite-wasm/load-wasm'
 import { sqliteDbFactory } from '@livestore/sqlite-wasm/node'
 import { Vitest } from '@livestore/utils-dev/node-vitest'
 import { Effect, Schema } from '@livestore/utils/effect'
-import { PlatformNode } from '@livestore/utils/node'
 
+import * as NodeFileSystem from '@effect/platform-node/NodeFileSystem'
 Vitest.describe('SQLite State', () => {
   Vitest.describe('DB Schema', () => {
     const setup = (tableDef: State.SQLite.TableDef.Any) =>
@@ -48,10 +48,10 @@ Vitest.describe('SQLite State', () => {
         const rawResult = db.select(sql`select * from test`)
         expect(rawResult).toEqual([{ id: 1, json: null }])
 
-        const result = yield* Schema.decodeUnknown(testTable.rowSchema.pipe(Schema.Array, Schema.headOrElse()))(rawResult)
+        const result = yield* Schema.decodeUnknownEffect(testTable.rowSchema.pipe(Schema.Array, Schema.headOrElse()))(rawResult)
 
         expect(result).toEqual({ id: 1, json: null })
-      }, Effect.provide(PlatformNode.NodeFileSystem.layer)),
+      }, Effect.provide(NodeFileSystem.layer)),
     )
 
     // Probably a very unlikely scenario but hey 🤷
@@ -73,10 +73,10 @@ Vitest.describe('SQLite State', () => {
         const rawResult = db.select(sql`select * from test`)
         expect(rawResult).toEqual([{ id: 1, json: '"null"' }])
 
-        const result = yield* Schema.decodeUnknown(testTable.rowSchema.pipe(Schema.Array, Schema.headOrElse()))(rawResult)
+        const result = yield* Schema.decodeUnknownEffect(testTable.rowSchema.pipe(Schema.Array, Schema.headOrElse()))(rawResult)
 
         expect(result).toEqual({ id: 1, json: 'null' })
-      }, Effect.provide(PlatformNode.NodeFileSystem.layer)),
+      }, Effect.provide(NodeFileSystem.layer)),
     )
   })
 })

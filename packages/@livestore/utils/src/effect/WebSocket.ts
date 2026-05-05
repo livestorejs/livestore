@@ -25,7 +25,7 @@ export const makeWebSocket = ({
   Effect.gen(function* () {
     yield* validateUrl(url)
 
-    const socket = yield* Effect.async<globalThis.WebSocket, WebSocketError>((cb, signal) => {
+    const socket = yield* Effect.callback<globalThis.WebSocket, WebSocketError>((cb, signal) => {
       try {
         const socket = new globalThis.WebSocket(url)
 

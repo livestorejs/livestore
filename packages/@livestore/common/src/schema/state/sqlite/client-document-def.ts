@@ -96,7 +96,7 @@ export const clientDocument = <
     value: Schema.Struct({
       id: Schema.String,
       value: options.partialSet === true ? Schema.partial(valueSchema) : valueSchema,
-    }).annotations({ title: `${name}Set:Args` }),
+    }).annotate({ title: `${name}Set:Args` }),
   })
   Object.defineProperty(setEventDef, 'options', {
     value: { derived: true, clientOnly: true, facts: undefined, deprecated: undefined },
@@ -280,9 +280,9 @@ export const deriveEventAndMaterializer = ({
   const derivedSetEventDef = defineEvent({
     name: `${name}Set`,
     schema: Schema.Struct({
-      id: Schema.Union(Schema.String, Schema.UniqueSymbolFromSelf(SessionIdSymbol)),
+      id: Schema.Union([Schema.String, Schema.UniqueSymbolFromSelf(SessionIdSymbol)]),
       value: createOptimisticEventSchema({ valueSchema, defaultValue, partialSet }),
-    }).annotations({ title: `${name}Set:Args` }),
+    }).annotate({ title: `${name}Set:Args` }),
     clientOnly: true,
     derived: true,
   })
@@ -295,7 +295,7 @@ export const deriveEventAndMaterializer = ({
     // Override the full value if it's not an object or no partial set is allowed
     const schemaProps = Schema.getResolvedPropertySignatures(valueSchema)
     if (schemaProps.length === 0 || partialSet === false) {
-      const valueColJsonSchema = Schema.parseJson(valueSchema)
+      const valueColJsonSchema = Schema.fromJsonString(valueSchema)
       const encodedInsertValue = Schema.encodeSyncDebug(valueColJsonSchema)(value ?? defaultValue)
       const encodedUpdateValue = Schema.encodeSyncDebug(valueColJsonSchema)(value)
 
@@ -305,7 +305,7 @@ export const deriveEventAndMaterializer = ({
         writeTables: new Set([name]),
       }
     } else {
-      const valueColJsonSchema = Schema.parseJson(Schema.partial(valueSchema))
+      const valueColJsonSchema = Schema.fromJsonString(Schema.partial(valueSchema))
 
       const encodedInsertValue = Schema.encodeSyncDebug(valueColJsonSchema)(mergeDefaultValues(defaultValue, value))
 

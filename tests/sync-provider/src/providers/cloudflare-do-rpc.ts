@@ -16,11 +16,11 @@ import {
   Stream,
   SubscriptionRef,
 } from '@livestore/utils/effect'
-import { PlatformNode } from '@livestore/utils/node'
 
 import { SyncProviderImpl, type SyncProviderLayer } from '../types.ts'
 import { DoRpcProxyRpcs } from './cloudflare/do-rpc-proxy-schema.ts'
 
+import * as NodeServices from '@effect/platform-node/NodeServices'
 export const name = 'Cloudflare Durable Object RPC'
 
 export const prepare = Effect.void
@@ -47,7 +47,7 @@ const makeLayer = (config?: { wranglerConfigPath?: string; label: string }): Syn
       WranglerDevServerService.Default({
         cwd: path.join(import.meta.dirname, 'cloudflare'),
         ...(config?.wranglerConfigPath && { wranglerConfigPath: config.wranglerConfigPath }),
-      }).pipe(Layer.provide(PlatformNode.NodeContext.layer)),
+      }).pipe(Layer.provide(NodeServices.layer)),
     ),
     UnknownError.mapToUnknownErrorLayer,
   )

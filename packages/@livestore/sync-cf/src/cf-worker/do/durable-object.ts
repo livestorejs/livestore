@@ -146,7 +146,7 @@ export const makeDurableObject: MakeDurableObjectClass = (options) => {
     }
 
     override fetch = async (request: Request): Promise<Response> =>
-      Effect.gen(this, function* () {
+      Effect.gen({ self: this }, function* () {
         const searchParams = matchSyncRequest(request)
         if (searchParams === undefined) {
           throw new Error('No search params found in request URL')
@@ -200,7 +200,7 @@ export const makeDurableObject: MakeDurableObjectClass = (options) => {
         })
       }).pipe(
         Effect.tapCauseLogPretty, // Also log errors to console before catching them
-        Effect.catchAllCause((cause) =>
+        Effect.catchCause((cause) =>
           Effect.succeed(new Response('Error', { status: 500, statusText: cause.toString() })),
         ),
         Effect.withSpan('@livestore/sync-cf:durable-object:fetch'),
@@ -237,7 +237,7 @@ export const makeDurableObject: MakeDurableObjectClass = (options) => {
     private runEffectAsPromise = <T, E = never>(effect: Effect.Effect<T, E, Scope.Scope>): Promise<T> =>
       effect.pipe(
         Effect.tapCauseLogPretty,
-        Logger.withMinimumLogLevel(LogLevel.Debug),
+        Logger.withMinimumLogLevel('Debug'),
         Effect.provide(Layer.mergeAll(Observability, Logging)),
         Effect.scoped,
         Effect.runPromise,

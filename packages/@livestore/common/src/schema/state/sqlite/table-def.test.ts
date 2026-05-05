@@ -11,7 +11,7 @@ describe('table function overloads', () => {
       id: Schema.String,
       text: Schema.String,
       completed: Schema.Boolean,
-    }).annotations({ title: 'todos' })
+    }).annotate({ title: 'todos' })
 
     const todosTable = State.SQLite.table({
       schema: TodoSchema,
@@ -25,7 +25,7 @@ describe('table function overloads', () => {
       id: Schema.String,
       text: Schema.String,
       completed: Schema.Boolean,
-    }).annotations({ identifier: 'TodoItem' })
+    }).annotate({ identifier: 'TodoItem' })
 
     const todosTable = State.SQLite.table({ schema: TodoSchema })
 
@@ -37,7 +37,7 @@ describe('table function overloads', () => {
       id: Schema.String,
       text: Schema.String,
       completed: Schema.Boolean,
-    }).annotations({
+    }).annotate({
       title: 'todos',
       identifier: 'TodoItem',
     })
@@ -370,7 +370,7 @@ describe('table function overloads', () => {
     })
     const CircleSchema = Schema.Struct({
       kind: Schema.Literal('circle'),
-      data: Schema.parseJson(CircleDataSchema),
+      data: Schema.fromJsonString(CircleDataSchema),
     })
 
     const SquareDataSchema = Schema.Struct({
@@ -378,10 +378,10 @@ describe('table function overloads', () => {
     })
     const SquareSchema = Schema.Struct({
       kind: Schema.Literal('square'),
-      data: Schema.parseJson(SquareDataSchema),
+      data: Schema.fromJsonString(SquareDataSchema),
     })
 
-    const ShapeSchema = Schema.Union(CircleSchema, SquareSchema)
+    const ShapeSchema = Schema.Union([CircleSchema, SquareSchema])
 
     const shapes = State.SQLite.table({
       name: 'shapes',

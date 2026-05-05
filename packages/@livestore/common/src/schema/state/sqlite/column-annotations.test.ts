@@ -10,7 +10,7 @@ describe.concurrent('annotations', () => {
       const schema = Schema.String
       const result = withPrimaryKey(schema)
 
-      expect(SchemaAST.annotations(result.ast, {})).toMatchInlineSnapshot(`
+      expect(SchemaAST.annotate(result.ast, {})).toMatchInlineSnapshot(`
         {
           "_tag": "StringKeyword",
           "annotations": {
@@ -66,7 +66,7 @@ describe.concurrent('annotations', () => {
       })
 
       test('Union of same type with compatible column type', () => {
-        const unionSchema = Schema.Literal('a', 'b')
+        const unionSchema = Schema.Literals(['a', 'b'])
         expect(() => withColumnType(unionSchema, 'text')).not.toThrow()
       })
 
@@ -180,7 +180,7 @@ describe.concurrent('annotations', () => {
         const schema = Schema.String
         const result = withColumnType(schema, 'text')
 
-        expect(SchemaAST.annotations(result.ast, {})).toMatchInlineSnapshot(`
+        expect(SchemaAST.annotate(result.ast, {})).toMatchInlineSnapshot(`
           {
             "_tag": "StringKeyword",
             "annotations": {
@@ -196,7 +196,7 @@ describe.concurrent('annotations', () => {
         const schema = withPrimaryKey(Schema.String)
         const result = withColumnType(schema, 'text')
 
-        expect(SchemaAST.annotations(result.ast, {})).toMatchInlineSnapshot(`
+        expect(SchemaAST.annotate(result.ast, {})).toMatchInlineSnapshot(`
           {
             "_tag": "StringKeyword",
             "annotations": {

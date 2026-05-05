@@ -7,19 +7,21 @@ import { createStore, queryDb, Schema } from '@livestore/livestore'
 import { makeWsSync } from '@livestore/sync-cf/client'
 import { OtelLiveHttp } from '@livestore/utils-dev/node'
 import { Effect, Layer, Logger, LogLevel, Option, Stream } from '@livestore/utils/effect'
-import { Cli, PlatformNode } from '@livestore/utils/node'
+import { Cli } from '@livestore/utils/node'
 
+import * as NodeRuntime from '@effect/platform-node/NodeRuntime'
+import * as NodeServices from '@effect/platform-node/NodeServices'
 const storeIdOption = Cli.Options.text('store-id').pipe(Cli.Options.withDefault('default'))
 const baseDirectoryOption = Cli.Options.text('storage-fs-base-directory').pipe(Cli.Options.withDefault(''))
 const schemaPathOption = Cli.Options.text('schema-path')
 const enableDevtoolsOption = Cli.Options.boolean('enable-devtools').pipe(Cli.Options.withDefault(false))
 const adapterTypeOption = Cli.Options.text('storage').pipe(
-  Cli.Options.withSchema(Schema.Literal('fs', 'in-memory')),
+  Cli.Options.withSchema(Schema.Literals(['fs', 'in-memory'])),
   Cli.Options.withDefault('fs'),
 )
 
 const syncPayloadOption = Cli.Options.text('sync-payload').pipe(
-  Cli.Options.withSchema(Schema.parseJson(Schema.JsonValue)),
+  Cli.Options.withSchema(Schema.fromJsonString(Schema.JsonValue)),
   Cli.Options.optional,
 )
 
@@ -101,11 +103,11 @@ const command = Cli.Command.make('livestore').pipe(
 
 const cli = Cli.Command.run(command, { name: 'LiveStore CLI', version: liveStoreVersion })
 
-const layer = Layer.mergeAll(PlatformNode.NodeContext.layer, Logger.prettyWithThread('cli-main'))
+const layer = Layer.mergeAll(NodeServices.layer, Logger.prettyWithThread('cli-main'))
 
 cli(process.argv).pipe(
   Effect.annotateLogs({ thread: 'cli-main' }),
-  Logger.withMinimumLogLevel(LogLevel.Debug),
+  Logger.withMinimumLogLevel('Debug'),
   Effect.provide(layer),
-  PlatformNode.NodeRuntime.runMain({ disablePrettyLogger: true }),
+  NodeRuntime.runMain({ disablePrettyLogger: true }),
 )

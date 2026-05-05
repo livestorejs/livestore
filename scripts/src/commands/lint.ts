@@ -4,7 +4,7 @@ import { Cli } from '@livestore/utils/node'
 
 import { runPeerDepCheck } from '../shared/peer-deps.ts'
 
-export class LintError extends Schema.TaggedError<LintError>()('LintError', {
+export class LintError extends Schema.TaggedErrorClass<LintError>()('LintError', {
   message: Schema.String,
 }) {}
 

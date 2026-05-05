@@ -10,7 +10,7 @@ import {
   Scope,
   type Stream,
 } from 'effect'
-import type { UnknownException } from 'effect/Cause'
+import type { UnknownError } from 'effect/Cause'
 import { log } from 'effect/Console'
 import { dual, type LazyArg } from 'effect/Function'
 import type { Predicate, Refinement } from 'effect/Predicate'
@@ -45,7 +45,7 @@ export const scopeWithCloseable = <R, E, A>(
     // const scope = yield* Scope.fork(parentScope, ExecutionStrategy.sequential)
     const scope = yield* Scope.make()
     yield* Effect.addFinalizer((exit) => Scope.close(scope, exit))
-    return yield* fn(scope).pipe(Scope.extend(scope))
+    return yield* fn(scope).pipe(Scope.provide(scope))
   })
 
 export type SyncOrPromiseOrEffect<TResult, TError = never, TContext = never> =
@@ -56,11 +56,11 @@ export type SyncOrPromiseOrEffect<TResult, TError = never, TContext = never> =
 export const tryAll = <Res>(
   fn: () => Res,
 ): Res extends Effect.Effect<infer A, infer E>
-  ? Effect.Effect<A, E | UnknownException>
+  ? Effect.Effect<A, E | UnknownError>
   : Res extends Promise<infer A>
-    ? Effect.Effect<A, UnknownException>
-    : Effect.Effect<Res, UnknownException> =>
-  Effect.try(() => fn()).pipe(
+    ? Effect.Effect<A, UnknownError>
+    : Effect.Effect<Res, UnknownError> =>
+  Effect.try({ try: () => fn(), catch: (cause) => new UnknownError({ cause }) }).pipe(
     Effect.andThen((fnRes) =>
       Effect.isEffect(fnRes) === true
         ? (fnRes as any as Effect.Effect<any>)
@@ -87,13 +87,13 @@ export const logBefore =
 export const tapCauseLogPretty = <R, E, A>(eff: Effect.Effect<A, E, R>): Effect.Effect<A, E, R> =>
   Effect.tapErrorCause(eff, (cause) =>
     Effect.gen(function* () {
-      if (Cause.isInterruptedOnly(cause) === true) {
+      if (Cause.hasInterruptsOnly(cause) === true) {
         // console.log('interrupted', Cause.pretty(err), err)
         return
       }
 
       const span = yield* OtelTracer.currentOtelSpan.pipe(
-        Effect.catchTag('NoSuchElementException', (_) => Effect.succeed(undefined)),
+        Effect.catchTag('NoSuchElementError', (_) => Effect.succeed(undefined)),
       )
 
       const firstErrLine = cause.toString().split('\n')[0]
@@ -167,9 +167,9 @@ export const eventListener = <TEvent = unknown>(
   options?: { once?: boolean },
 ) =>
   Effect.gen(function* () {
-    const runtime = yield* Effect.runtime()
+    const context = yield* Effect.context()
 
-    const handlerFn = (event: TEvent) => handler(event).pipe(Effect.provide(runtime), Effect.runFork)
+    const handlerFn = (event: TEvent) => Effect.runForkWith(context)(handler(event))
 
     target.addEventListener(type, handlerFn, { once: options?.once ?? false })
 
@@ -180,7 +180,7 @@ export const logWarnIfTakesLongerThan =
   ({ label, duration }: { label: string; duration: Duration.DurationInput }) =>
   <R, E, A>(eff: Effect.Effect<A, E, R>): Effect.Effect<A, E, R> =>
     Effect.gen(function* () {
-      const runtime = yield* Effect.runtime()
+      const context = yield* Effect.context<R>()
 
       let tookLongerThanTimer = false
 
@@ -190,8 +190,7 @@ export const logWarnIfTakesLongerThan =
           // TODO include span info
           return Effect.logWarning(`${label}: Took longer than ${objectToString(duration)}ms`)
         }),
-        Effect.provide(runtime),
-        Effect.runFork,
+        Effect.runForkWith(context),
       )
 
       const start = Date.now()
@@ -250,25 +249,25 @@ export const debugLogEnv = (msg?: string): Effect.Effect<Context.Context<never>>
  *
  * This function allows you to enforce a time limit on the execution of an
  * effect. If the effect does not complete within the given duration, it dies
- * with a {@link Cause.TimeoutException} as an unchecked defect. Unlike
- * {@link Effect.timeout}, which adds `TimeoutException` to the error channel,
+ * with a {@link Cause.TimeoutError} as an unchecked defect. Unlike
+ * {@link Effect.timeout}, which adds `TimeoutError` to the error channel,
  * this function keeps the error channel unchanged by treating the timeout as
  * a defect.
  *
  * The returned effect will either:
  * - Succeed with the original effect's result if it completes within the
  *   specified duration.
- * - Die with a {@link Cause.TimeoutException} defect if the time limit is exceeded.
+ * - Die with a {@link Cause.TimeoutError} defect if the time limit is exceeded.
  *
  * @see {@link timeoutOrDieMessage} for a version with a custom message.
- * @see {@link Effect.timeout} for a version that raises a `TimeoutException` as a typed error.
+ * @see {@link Effect.timeout} for a version that raises a `TimeoutError` as a typed error.
  * @see {@link Effect.timeoutFailCause} for a version that raises a custom defect.
  */
 export const timeoutOrDie = (duration: Duration.DurationInput) =>
   <A, E, R>(self: Effect.Effect<A, E, R>): Effect.Effect<A, E, R> =>
     Effect.timeoutFailCause(self, {
       duration,
-      onTimeout: () => Cause.die(new Cause.TimeoutException())
+      onTimeout: () => Cause.die(new Cause.TimeoutError())
     })
 
 /**
@@ -278,25 +277,25 @@ export const timeoutOrDie = (duration: Duration.DurationInput) =>
  * @remarks
  *
  * This function behaves like {@link timeoutOrDie}, but allows you to provide
- * a custom message for the {@link Cause.TimeoutException} defect. This is useful
+ * a custom message for the {@link Cause.TimeoutError} defect. This is useful
  * for adding context about which operation timed out, making it easier to
  * diagnose issues in logs or error reports.
  *
  * The returned effect will either:
  * - Succeed with the original effect's result if it completes within the
  *   specified duration.
- * - Die with a {@link Cause.TimeoutException} defect containing the provided
+ * - Die with a {@link Cause.TimeoutError} defect containing the provided
  *   message if the time limit is exceeded.
  *
  * @see {@link timeoutOrDie} for a version without a custom message.
- * @see {@link Effect.timeout} for a version that raises a `TimeoutException` as a typed error.
+ * @see {@link Effect.timeout} for a version that raises a `TimeoutError` as a typed error.
  * @see {@link Effect.timeoutFailCause} for a version that raises a custom defect.
  */
 export const timeoutOrDieMessage = (duration: Duration.DurationInput, message: string) =>
   <A, E, R>(self: Effect.Effect<A, E, R>): Effect.Effect<A, E, R> =>
     Effect.timeoutFailCause(self, {
       duration,
-      onTimeout: () => Cause.die(new Cause.TimeoutException(message))
+      onTimeout: () => Cause.die(new Cause.TimeoutError(message))
     })
 
 export const toForkedDeferred = <R, E, A>(
@@ -337,7 +336,7 @@ const getSpanTrace = () => {
   // const msg = Effect.runSync(
   //   Effect.fail({ message: '' }).pipe(
   //     Effect.withParentSpan(fiberOption.value.currentSpan),
-  //     Effect.catchAllCause((cause) => Effect.succeed(cause.toString())),
+  //     Effect.catchCause((cause) => Effect.succeed(cause.toString())),
   //   ),
   // )
 

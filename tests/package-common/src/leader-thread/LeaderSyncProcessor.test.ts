@@ -34,12 +34,12 @@ import {
   Stream,
   WebChannel,
 } from '@livestore/utils/effect'
-import { PlatformNode } from '@livestore/utils/node'
 import { Vitest } from '@livestore/utils-dev/node-vitest'
 import { expect, assert } from 'vitest'
 
 import { events, schema, tables } from './fixture.ts'
 
+import * as NodeFileSystem from '@effect/platform-node/NodeFileSystem'
 /*
 TODO:
 - batch queued events which are about to be pushed
@@ -66,8 +66,8 @@ const withTestCtx = (
 ) =>
   Vitest.makeWithTestCtx({
     makeLayer: () =>
-      Layer.provideMerge(LeaderThreadCtxLive(args), PlatformNode.NodeFileSystem.layer).pipe(
-        Layer.provide(Logger.minimumLogLevel(LogLevel.Debug)),
+      Layer.provideMerge(LeaderThreadCtxLive(args), NodeFileSystem.layer).pipe(
+        Layer.provide(Logger.minimumLogLevel('Debug')),
       ),
     forceOtel: true,
   })
@@ -421,7 +421,7 @@ Vitest.describe.concurrent('LeaderSyncProcessor', { timeout: 60000 }, () => {
       for (let i = 0; i < 5; i++) {
         yield* testContext.mockSyncBackend
           .advance(backendFactory.todoCreated.next({ id: `backend_${i}`, text: '', completed: false }))
-          .pipe(Effect.fork)
+          .pipe(Effect.forkChild)
       }
 
       for (let i = 0; i < 5; i++) {
@@ -806,7 +806,7 @@ Vitest.describe.concurrent('LeaderSyncProcessor', { timeout: 60000 }, () => {
 
 type LeaderEventFactory = ReturnType<typeof makeEventFactory>
 
-class TestContext extends Context.Tag('TestContext')<
+class TestContext extends Context.Service<
   TestContext,
   {
     mockSyncBackend: MockSyncBackend
@@ -818,7 +818,7 @@ class TestContext extends Context.Tag('TestContext')<
       ...events: ReadonlyArray<LiveStoreEvent.Global.Encoded>
     ) => Effect.Effect<void, RejectedPushError, Scope.Scope | LeaderThreadCtx>
   }
->() {}
+>()('TestContext') {}
 
 const LeaderThreadCtxLive = ({
   syncProcessor,

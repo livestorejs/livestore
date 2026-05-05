@@ -39,7 +39,7 @@ import type * as CfTypes from '../cf-types.ts'
  * This is useful for reading WebSocket attachment data (e.g., forwarded headers)
  * inside RPC handlers.
  */
-export class WsContext extends Context.Tag('WsContext')<WsContext, { readonly ws: CfTypes.WebSocket }>() {}
+export class WsContext extends Context.Service<WsContext, { readonly ws: CfTypes.WebSocket }>()('WsContext') {}
 
 /**
  * Configuration options for setting up WebSocket RPC on a Durable Object.
@@ -197,7 +197,7 @@ export const setupDurableObjectWebSocketRpc = ({
       return ctx
     }).pipe(
       Effect.tapCauseLogPretty,
-      Logger.withMinimumLogLevel(LogLevel.Debug), // Useful for debugging
+      Logger.withMinimumLogLevel('Debug'), // Useful for debugging
       Effect.provide(Layer.mergeAll(Logger.consoleWithThread('ws-rpc-server'), mainLayer ?? Layer.empty)),
       Effect.withSpan('effect-ws-rpc-server'),
       Effect.runPromise,
@@ -317,7 +317,7 @@ const makeSocketProtocol = ({ incomingQueue, ws, onMessage }: WsRpcServerArgs) =
         }),
         Stream.runDrain,
         Effect.tapCauseLogPretty,
-        Effect.fork,
+        Effect.forkChild,
       )
 
       // Start the message processing

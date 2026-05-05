@@ -5,7 +5,7 @@
  */
 
 import type { SubscriptionRef } from 'effect'
-import { Effect, Effectable, Readable, Stream } from 'effect'
+import { Effect, Stream } from 'effect'
 import { dual } from 'effect/Function'
 import { hasProperty } from 'effect/Predicate'
 
@@ -25,8 +25,10 @@ export type TypeId = typeof TypeId
  * @since 2.0.0
  * @category models
  */
-export interface Subscribable<A, E = never, R = never> extends Readable.Readable<A, E, R>, Effect.Effect<A, E, R> {
+export interface Subscribable<A, E = never, R = never>
+  extends Effect.Yieldable<Subscribable<A, E, R>, A, E, R> {
   readonly [TypeId]: TypeId
+  readonly get: Effect.Effect<A, E, R>
   readonly changes: Stream.Stream<A, E, R>
 }
 
@@ -44,11 +46,9 @@ export const isSubscribable = (u: unknown): u is Subscribable<unknown, unknown, 
 //   },
 // }
 
-class SubscribableImpl<in out A> extends Effectable.Class<A> implements Subscribable<A> {
+class SubscribableImpl<in out A> extends Effect.YieldableClass<A> implements Subscribable<A> {
   // @ts-expect-error type symbol
   readonly [TypeId] = TypeId
-  // @ts-expect-error type symbol
-  readonly [Readable.TypeId] = Readable.TypeId
   readonly get: Effect.Effect<A>
   readonly changes: Stream.Stream<A>
   constructor(get: Effect.Effect<A>, changes: Stream.Stream<A>) {
@@ -57,7 +57,7 @@ class SubscribableImpl<in out A> extends Effectable.Class<A> implements Subscrib
     this.changes = changes
   }
 
-  commit() {
+  asEffect() {
     return this.get
   }
 }

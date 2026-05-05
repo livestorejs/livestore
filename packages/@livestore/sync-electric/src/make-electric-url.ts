@@ -44,7 +44,7 @@ export const makeElectricUrl = ({
 } => {
   const endpointUrl = `${electricHost}/v1/shape`
   const UrlParamsSchema = Schema.Struct({ args: ApiSchema.ArgsSchema })
-  const argsResult = Schema.decodeUnknownEither(UrlParamsSchema)(Object.fromEntries(providedSearchParams.entries()))
+  const argsResult = Schema.decodeUnknownExit(UrlParamsSchema)(Object.fromEntries(providedSearchParams.entries()))
 
   if (argsResult._tag === 'Left') {
     return shouldNeverHappen(

@@ -24,7 +24,7 @@ const providerLayer = S2Provider.layer.pipe(
   Layer.provideMerge(FetchHttpClient.layer),
   Layer.provideMerge(KeyValueStore.layerMemory),
   Layer.provide(Logger.prettyWithThread('s2-specific')),
-  Layer.provide(Logger.minimumLogLevel(LogLevel.Debug)),
+  Layer.provide(Logger.minimumLogLevel('Debug')),
   Layer.orDie,
 )
 
@@ -67,7 +67,7 @@ Vitest.describe('S2-specific', { timeout: 60000 }, () => {
       const fiber = yield* syncBackend.pull(Option.none(), { live: true }).pipe(
         Stream.filter((i) => i.batch.length > 0),
         Stream.runFirstUnsafe,
-        Effect.fork,
+        Effect.forkChild,
       )
 
       // Give SSE a moment to connect and be closed by proxy, then push an event
@@ -169,7 +169,7 @@ Vitest.describe('S2-specific', { timeout: 60000 }, () => {
         parentSeqNum: EventSequenceNumber.Global.make(1),
       })
 
-      const jsonEncode = Schema.encode(Schema.parseJson())
+      const jsonEncode = Schema.encodeEffect(Schema.UnknownFromJsonString)
       yield* providerSpecific.appendRaw(storeId, [yield* jsonEncode(ev1), yield* jsonEncode(ev2)])
 
       // Non-live pull should yield the 2 events

@@ -133,8 +133,8 @@ export type DurableObjectId = string
  */
 export const PERSISTENCE_FORMAT_VERSION = 7
 
-export const encodeOutgoingMessage = Schema.encodeSync(Schema.parseJson(SyncMessage.BackendToClientMessage))
-export const encodeIncomingMessage = Schema.encodeSync(Schema.parseJson(SyncMessage.ClientToBackendMessage))
+export const encodeOutgoingMessage = Schema.encodeSync(Schema.fromJsonString(SyncMessage.BackendToClientMessage))
+export const encodeIncomingMessage = Schema.encodeSync(Schema.fromJsonString(SyncMessage.ClientToBackendMessage))
 
 /**
  * Extracts the LiveStore sync search parameters from a request. Returns
@@ -174,8 +174,7 @@ export interface SyncBackendRpcInterface {
   rpc(payload: Uint8Array): Promise<Uint8Array | CfTypes.ReadableStream>
 }
 
-export const WebSocketAttachmentSchema = Schema.parseJson(
-  Schema.Struct({
+export const WebSocketAttachmentSchema = Schema.fromJsonString(Schema.Struct({
     // Same across all websocket connections
     storeId: Schema.String,
     // Different for each websocket connection
@@ -183,8 +182,7 @@ export const WebSocketAttachmentSchema = Schema.parseJson(
     pullRequestIds: Schema.Array(Schema.String),
     // Headers forwarded from the initial request (via forwardHeaders option)
     headers: Schema.optional(Schema.Record(Schema.String, Schema.String)),
-  }),
-)
+  }))
 
 /** Helper to extract headers from a request based on the forwardHeaders option */
 export const extractForwardedHeaders = (

@@ -16,7 +16,7 @@ export const hasParentGitRepo = Effect.gen(function* () {
   }).pipe(Effect.provide(LivestoreWorkspace.toCwd('..')), Effect.isSuccess)
 })
 
-export class GithubSummaryWriteError extends Schema.TaggedError<GithubSummaryWriteError>()('GithubSummaryWriteError', {
+export class GithubSummaryWriteError extends Schema.TaggedErrorClass<GithubSummaryWriteError>()('GithubSummaryWriteError', {
   context: Schema.String,
   message: Schema.String,
   path: Schema.String,

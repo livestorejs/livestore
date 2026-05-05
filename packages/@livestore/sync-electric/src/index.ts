@@ -18,7 +18,7 @@ import {
 import * as ApiSchema from './api-schema.ts'
 
 export class InvalidOperationError extends Schema.TaggedErrorClass<InvalidOperationError>()('InvalidOperationError', {
-  operation: Schema.Literal('delete', 'update'),
+  operation: Schema.Literals(['delete', 'update']),
   message: Schema.String,
 }) {}
 
@@ -69,34 +69,34 @@ const LiveStoreEventGlobalFromStringRecord = Schema.Struct({
   seqNum: Schema.NumberFromString,
   parentSeqNum: Schema.NumberFromString,
   name: Schema.String,
-  args: Schema.parseJson(Schema.Any),
+  args: Schema.fromJsonString(Schema.Any),
   clientId: Schema.String,
   sessionId: Schema.String,
 })
-  .pipe(Schema.compose(LiveStoreEvent.Global.Encoded))
-  .annotations({ title: '@livestore/sync-electric:LiveStoreEventGlobalFromStringRecord' })
+  .pipe(Schema.decodeTo(LiveStoreEvent.Global.Encoded))
+  .annotate({ title: '@livestore/sync-electric:LiveStoreEventGlobalFromStringRecord' })
 
 const ResponseItemInsert = Schema.Struct({
   /** Postgres path (e.g. `"public"."events_9069baf0_b3e6_42f7_980f_188416eab3fx3"/"0"`) */
   key: Schema.optional(Schema.String),
   value: LiveStoreEventGlobalFromStringRecord,
   headers: Schema.Struct({ operation: Schema.Literal('insert'), relation: Schema.Array(Schema.String) }),
-}).annotations({ title: '@livestore/sync-electric:ResponseItemInsert' })
+}).annotate({ title: '@livestore/sync-electric:ResponseItemInsert' })
 
 const ResponseItemInvalid = Schema.Struct({
   /** Postgres path (e.g. `"public"."events_9069baf0_b3e6_42f7_980f_188416eab3fx3"/"0"`) */
   key: Schema.optional(Schema.String),
   value: Schema.Any,
-  headers: Schema.Struct({ operation: Schema.Literal('update', 'delete'), relation: Schema.Array(Schema.String) }),
-}).annotations({ title: '@livestore/sync-electric:ResponseItemInvalid' })
+  headers: Schema.Struct({ operation: Schema.Literals(['update', 'delete']), relation: Schema.Array(Schema.String) }),
+}).annotate({ title: '@livestore/sync-electric:ResponseItemInvalid' })
 
 const ResponseItemControl = Schema.Struct({
   key: Schema.optional(Schema.String),
   value: Schema.optional(Schema.Any),
   headers: Schema.Struct({ control: Schema.String }),
-}).annotations({ title: '@livestore/sync-electric:ResponseItemControl' })
+}).annotate({ title: '@livestore/sync-electric:ResponseItemControl' })
 
-const ResponseItem = Schema.Union(ResponseItemInsert, ResponseItemInvalid, ResponseItemControl)
+const ResponseItem = Schema.Union([ResponseItemInsert, ResponseItemInvalid, ResponseItemControl])
 
 const ResponseHeaders = Schema.Struct({
   'electric-handle': Schema.String,
@@ -220,7 +220,7 @@ export const makeSyncBackend =
         UnknownError | IsOfflineError
       > =>
         Effect.gen(function* () {
-          const argsJson = yield* Schema.encode(ApiSchema.ArgsSchema)(
+          const argsJson = yield* Schema.encodeEffect(ApiSchema.ArgsSchema)(
             ApiSchema.PullPayload.make({ storeId, handle, payload, live }),
           )
           const url = `${pullEndpoint}?args=${argsJson}`
@@ -228,7 +228,7 @@ export const makeSyncBackend =
           const resp = yield* httpClient.get(url)
 
           if (resp.status === 401) {
-            const body = yield* resp.text.pipe(Effect.catchAll(() => Effect.succeed('-')))
+            const body = yield* resp.text.pipe(Effect.catch(() => Effect.succeed('-')))
             return yield* new UnknownError({
               cause: new Error(`Unauthorized (401): Couldn't connect to ElectricSQL: ${body}`),
             })
@@ -311,7 +311,7 @@ export const makeSyncBackend =
       }).pipe(
         UnknownError.mapToUnknownError,
         Effect.timeout(pingTimeout),
-        Effect.catchTag('TimeoutException', () => SubscriptionRef.set(isConnected, false)),
+        Effect.catchTag('TimeoutError', () => SubscriptionRef.set(isConnected, false)),
         Effect.withSpan('electric-provider:ping'),
       )
 

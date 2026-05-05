@@ -1,5 +1,6 @@
 import { objectToString, omitUndefineds } from '@livestore/utils'
 import {
+  Context,
   Duration,
   Effect,
   Fiber,
@@ -60,7 +61,7 @@ export interface DockerComposeOperations {
 
 const generateProjectName = (): string => `ls-test-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`
 
-export class DockerComposeService extends Effect.Service<DockerComposeService>()('DockerComposeService', {
+export class DockerComposeService extends Context.Service<DockerComposeService>()('DockerComposeService', {
   scoped: (args: DockerComposeArgs) =>
     Effect.gen(function* () {
       const { cwd, serviceName } = args
@@ -85,13 +86,13 @@ export class DockerComposeService extends Effect.Service<DockerComposeService>()
         const stdoutFiber = yield* process.stdout.pipe(
           Stream.decodeText('utf8'),
           Stream.runFold('', (acc, chunk) => acc + chunk),
-          Effect.fork,
+          Effect.forkChild,
         )
 
         const stderrFiber = yield* process.stderr.pipe(
           Stream.decodeText('utf8'),
           Stream.runFold('', (acc, chunk) => acc + chunk),
-          Effect.fork,
+          Effect.forkChild,
         )
 
         const exitCode = yield* process.exitCode
@@ -271,7 +272,7 @@ export class DockerComposeService extends Effect.Service<DockerComposeService>()
       yield* Effect.addFinalizer(() =>
         down({ volumes: true, removeOrphans: true }).pipe(
           Effect.tap(() => Effect.log(`Docker Compose cleanup completed for project ${projectName}`)),
-          Effect.catchAll((error) =>
+          Effect.catch((error) =>
             Effect.log('Docker Compose cleanup failed for project', projectName, objectToString(error)),
           ),
         ),
@@ -296,7 +297,7 @@ const performHealthCheck = ({
     const checkHealth = ChildProcess.make('curl', ['-f', '-s', url]).pipe(
       ChildProcessSpawner.ChildProcessSpawner.exitCode,
       Effect.map((code: number) => code === 0),
-      Effect.catchAll(() => Effect.succeed(false)),
+      Effect.catch(() => Effect.succeed(false)),
     )
 
     const healthCheck = checkHealth.pipe(

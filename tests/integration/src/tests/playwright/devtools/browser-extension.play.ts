@@ -1,3 +1,4 @@
+import * as NodeServices from '@effect/platform-node/NodeServices'
 /** biome-ignore-all lint/correctness/noEmptyPattern: playwright expects destructuring */
 import fs from 'node:fs'
 import os from 'node:os'
@@ -15,7 +16,6 @@ import {
   OtelTracer,
   Schema,
 } from '@livestore/utils/effect'
-import { PlatformNode } from '@livestore/utils/node'
 import { OtelLiveHttp } from '@livestore/utils-dev/node'
 import { LIVESTORE_DEVTOOLS_CHROME_DIST_PATH } from '@local/shared'
 import type * as otel from '@opentelemetry/api'
@@ -25,7 +25,7 @@ import { expect, test } from '@playwright/test'
 import { downloadChromeExtension } from '../../../../scripts/download-chrome-extension.ts'
 import { checkDevtoolsState, checkVersionMismatchOverlay } from './shared.ts'
 
-export class TestError extends Schema.TaggedError<TestError>()('TestError', {
+export class TestError extends Schema.TaggedErrorClass<TestError>()('TestError', {
   message: Schema.String,
 }) {}
 
@@ -47,7 +47,7 @@ const makeTabPair = (url: string, tabName: string, adapter: AdapterKind, options
     const newPage = Effect.gen(function* () {
       // const pageEventFiber = yield* Effect.async((cb) => {
       //   browserContext.on('page', () => cb(Effect.void))
-      // }).pipe(Effect.fork)
+      // }).pipe(Effect.forkChild)
 
       const page = yield* Effect.tryPromise(() => browserContext.newPage())
       // yield* Fiber.await(pageEventFiber)
@@ -74,7 +74,7 @@ const makeTabPair = (url: string, tabName: string, adapter: AdapterKind, options
       page,
       name: `${tabName}-page`,
       shouldEvaluateArgs: false,
-    }).pipe(Effect.fork)
+    }).pipe(Effect.forkChild)
 
     usedPages.add(page)
 
@@ -90,7 +90,7 @@ const makeTabPair = (url: string, tabName: string, adapter: AdapterKind, options
       page: devtools,
       name: `${tabName}-devtools`,
       shouldEvaluateArgs: false,
-    }).pipe(Effect.fork)
+    }).pipe(Effect.forkChild)
 
     usedPages.add(devtools)
 
@@ -135,12 +135,12 @@ const runTest =
   ) => {
     const outerLayer = Layer.mergeAll(
       Logger.prettyWithThread('playwright-worker'),
-      PlatformNode.NodeContext.layer,
+      NodeServices.layer,
       FetchHttpClient.layer,
     )
 
     return Effect.gen(function* () {
-      const parentSpanContext = (yield* Schema.decodeUnknown(Schema.parseJson())(process.env.SPAN_CONTEXT_JSON ?? '{}')) as otel.SpanContext
+      const parentSpanContext = (yield* Schema.decodeUnknownEffect(Schema.UnknownFromJsonString)(process.env.SPAN_CONTEXT_JSON ?? '{}')) as otel.SpanContext
       const parentSpan = OtelTracer.makeExternalSpan({
         traceId: parentSpanContext.traceId,
         spanId: parentSpanContext.spanId,
@@ -201,7 +201,7 @@ const PWLive = ({ extensionPath }: { extensionPath: string }) =>
       extensionPath,
       launchOptions: { args: ['--auto-open-devtools-for-tabs'] },
     })
-  }).pipe(Layer.unwrapEffect)
+  }).pipe(Layer.unwrap)
 
 ;(['persisted', 'inmemory'] as const).forEach((adapter) => {
   test(
@@ -349,7 +349,7 @@ const PWLive = ({ extensionPath }: { extensionPath: string }) =>
         }).pipe(
           process.env.CI !== undefined
             ? identity
-            : Effect.tapErrorTag('UnknownException', () => Effect.promise(() => tab1.page.pause())),
+            : Effect.tapErrorTag('UnknownError', () => Effect.promise(() => tab1.page.pause())),
           Effect.raceFirst(
             Fiber.joinAll([
               tab1.pageConsoleFiber,

@@ -8,10 +8,10 @@ import { Data, Effect, ManagedRuntime, Metric, type MetricState, Option, Pretty,
 
 import { printConsoleTable } from './print-console-table.ts'
 
-const MeasurementUnit = Schema.Literal('ms', 'bytes')
+const MeasurementUnit = Schema.Literals(['ms', 'bytes'])
 type MeasurementUnit = typeof MeasurementUnit.Type
 
-const DisplayUnit = Schema.Literal('ms', 'MB')
+const DisplayUnit = Schema.Literals(['ms', 'MB'])
 type DisplayUnit = typeof DisplayUnit.Type
 
 class MissingAnnotationError extends Data.TaggedError('MissingAnnotationError')<{
@@ -69,12 +69,7 @@ const getRequiredAnnotationSync = <T extends AnyAnnotation['type']>(
   return annotation
 }
 
-const AnyAnnotation = Schema.Union(
-  MeasurementAnnotation,
-  MeasurementUnitAnnotation,
-  CpuThrottlingRateAnnotation,
-  WarmupRunsAnnotation,
-)
+const AnyAnnotation = Schema.Union([MeasurementAnnotation, MeasurementUnitAnnotation, CpuThrottlingRateAnnotation, WarmupRunsAnnotation])
 type AnyAnnotation = Schema.Schema.Type<typeof AnyAnnotation>
 
 const Annotations = Schema.NonEmptyArray(AnyAnnotation)
@@ -89,7 +84,7 @@ const Cpus = Schema.NonEmptyArray(
     Schema.Struct({
       model: Schema.String,
       count: Schema.Number,
-      speed: Schema.Number.annotations({
+      speed: Schema.Number.annotate({
         pretty: () => (value) => `${(value / 1000).toFixed(2)} GHz`,
       }),
     }),
@@ -114,14 +109,14 @@ const SystemInfo = Schema.Struct({
   }),
   cpus: Cpus,
   memory: Schema.Struct({
-    total: Schema.Number.annotations({
+    total: Schema.Number.annotate({
       pretty: () => (value) => `${(value / (1024 * 1024 * 1024)).toFixed(2)} GB`,
     }),
-    free: Schema.Number.annotations({
+    free: Schema.Number.annotate({
       pretty: () => (value) => `${(value / (1024 * 1024 * 1024)).toFixed(2)} GB`,
     }),
   }),
-}).annotations({
+}).annotate({
   pretty: () => (value) => {
     return `
 🖥️  System Information:
@@ -336,7 +331,7 @@ export default class MeasurementsReporter implements Reporter {
     Effect.all(
       Object.entries(this.measurementsByTestTitle).reduce(
         (acc, [testTitle, trackedMeasurement]) => {
-          acc[testTitle] = Effect.gen(this, function* () {
+          acc[testTitle] = Effect.gen({ self: this }, function* () {
             const metric = this.makeMetric(trackedMeasurement)
             yield* Effect.forEach(trackedMeasurement.measurements, (value) => metric(Effect.succeed(value)), {
               concurrency: 'unbounded',

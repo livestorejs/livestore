@@ -7,13 +7,13 @@ import { CurrentWorkingDirectory, cmdText } from '@livestore/utils-dev/node'
 import { Effect, Fiber, HttpClient, HttpClientRequest, Schema, Stream } from '@livestore/utils/effect'
 import { ChildProcess } from 'effect/unstable/process'
 
-export class NetlifyError extends Schema.TaggedError<NetlifyError>()('NetlifyError', {
-  reason: Schema.Literal('auth', 'unknown'),
+export class NetlifyError extends Schema.TaggedErrorClass<NetlifyError>()('NetlifyError', {
+  reason: Schema.Literals(['auth', 'unknown']),
   message: Schema.String,
   cause: Schema.optional(Schema.Unknown),
 }) {}
 
-class FileReadError extends Schema.TaggedError<FileReadError>()('FileReadError', {
+class FileReadError extends Schema.TaggedErrorClass<FileReadError>()('FileReadError', {
   cause: Schema.Defect,
   path: Schema.String,
 }) {}
@@ -132,7 +132,7 @@ export const deployToNetlify = ({
           (p) =>
             p.isRunning.pipe(
               Effect.flatMap((running) =>
-                running === true ? p.kill().pipe(Effect.catchAll(() => Effect.void)) : Effect.void,
+                running === true ? p.kill().pipe(Effect.catch(() => Effect.void)) : Effect.void,
               ),
               Effect.ignore,
             ),
@@ -164,8 +164,8 @@ export const deployToNetlify = ({
       yield* Effect.logWarning(`[deploy-to-netlify] Deploy stderr for ${site}: ${rawStderr}`)
     }
 
-    const result = yield* Schema.decode(Schema.parseJson(NetlifyDeployResultSchema))(rawOutput).pipe(
-      Effect.catchAll((error) =>
+    const result = yield* Schema.decodeEffect(Schema.fromJsonString(NetlifyDeployResultSchema))(rawOutput).pipe(
+      Effect.catch((error) =>
         Effect.gen(function* () {
           yield* Effect.logError(
             `[deploy-to-netlify] Failed to decode Netlify deploy JSON for ${site}; raw output follows:`,
@@ -236,7 +236,7 @@ const resolveNetlifyAuthToken = Effect.gen(function* () {
     })
   }
 
-  const config = yield* Schema.decode(Schema.parseJson(NetlifyCliConfigSchema))(configContent).pipe(
+  const config = yield* Schema.decodeEffect(Schema.fromJsonString(NetlifyCliConfigSchema))(configContent).pipe(
     Effect.mapError(
       (error) =>
         new NetlifyError({
@@ -278,7 +278,7 @@ const resolveSiteIdViaApi = Effect.fn('resolveSiteIdViaApi')(function* (siteName
     )
     .pipe(
       Effect.andThen((res) => res.json),
-      Effect.andThen(Schema.decodeUnknown(NetlifySiteListSchema)),
+      Effect.andThen(Schema.decodeUnknownEffect(NetlifySiteListSchema)),
       Effect.mapError(
         (cause) =>
           new NetlifyError({

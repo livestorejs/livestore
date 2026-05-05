@@ -177,7 +177,7 @@ const CompositeSchema = S.Struct({
   client: Schema,
   // Client only
   rebaseGeneration: S.Int,
-}).annotations({
+}).annotate({
   title: 'EventSequenceNumber.Composite',
   pretty: () => (seqNum) => toString(seqNum),
 })

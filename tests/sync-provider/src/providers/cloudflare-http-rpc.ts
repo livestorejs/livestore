@@ -4,10 +4,10 @@ import { UnknownError } from '@livestore/common'
 import { makeHttpSync } from '@livestore/sync-cf/client'
 import { WranglerDevServerService } from '@livestore/utils-dev/wrangler'
 import { Effect, Layer } from '@livestore/utils/effect'
-import { PlatformNode } from '@livestore/utils/node'
 
 import { SyncProviderImpl, type SyncProviderLayer } from '../types.ts'
 
+import * as NodeServices from '@effect/platform-node/NodeServices'
 export const name = 'Cloudflare HTTP RPC'
 
 export const prepare = Effect.void
@@ -36,7 +36,7 @@ const makeLayer = (config?: { wranglerConfigPath?: string; label: string }): Syn
       WranglerDevServerService.Default({
         cwd: path.join(import.meta.dirname, 'cloudflare'),
         ...(config?.wranglerConfigPath && { wranglerConfigPath: config.wranglerConfigPath }),
-      }).pipe(Layer.provide(PlatformNode.NodeContext.layer)),
+      }).pipe(Layer.provide(NodeServices.layer)),
     ),
     UnknownError.mapToUnknownErrorLayer,
   )

@@ -1,6 +1,6 @@
 import type { BroadcastChannel as NodeBroadcastChannel } from 'node:worker_threads'
 
-import type { Either, SchemaIssue } from '@livestore/utils/effect'
+import type { Result, SchemaIssue } from '@livestore/utils/effect'
 import { Deferred, Effect, Exit, Schema, Scope, Stream, WebChannel } from '@livestore/utils/effect'
 
 export const makeBroadcastChannel = <Msg, MsgEncoded>({
@@ -25,20 +25,20 @@ export const makeBroadcastChannel = <Msg, MsgEncoded>({
 
       const send = (message: Msg) =>
         Effect.gen(function* () {
-          const messageEncoded = yield* Schema.encode(schema)(message)
+          const messageEncoded = yield* Schema.encodeEffect(schema)(message)
           channel.postMessage(messageEncoded)
         })
 
       // TODO also listen to `messageerror` in parallel
       // const listen = Stream.fromEventListener<MessageEvent>(channel, 'message').pipe(
-      //   Stream.map((_) => Schema.decodeEither(listenSchema)(_.data)),
+      //   Stream.map((_) => Schema.decodeExit(listenSchema)(_.data)),
       // )
 
-      const listen = Stream.asyncPush<Either.Either<Msg, SchemaIssue.Issue>>((emit) =>
+      const listen = Stream.asyncPush<Result.Result<Msg, SchemaIssue.Issue>>((emit) =>
         Effect.acquireRelease(
           Effect.gen(function* () {
             channel.onmessage = (event: any) => {
-              return emit.single(Schema.decodeEither(schema)(event.data))
+              return emit.single(Schema.decodeExit(schema)(event.data))
             }
 
             return channel

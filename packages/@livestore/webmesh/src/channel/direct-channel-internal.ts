@@ -89,8 +89,8 @@ export const makeDirectChannelInternal = ({
     const deferred = yield* makeDeferredResult()
 
     const schema = {
-      send: Schema.Union(schema_.send, MeshSchema.DirectChannelPing, MeshSchema.DirectChannelPong),
-      listen: Schema.Union(schema_.listen, MeshSchema.DirectChannelPing, MeshSchema.DirectChannelPong),
+      send: Schema.Union([schema_.send, MeshSchema.DirectChannelPing, MeshSchema.DirectChannelPong]),
+      listen: Schema.Union([schema_.listen, MeshSchema.DirectChannelPing, MeshSchema.DirectChannelPong]),
     }
 
     const channelStateRef: { current: ChannelState } = {
@@ -262,7 +262,7 @@ export const makeDirectChannelInternal = ({
               Stream.filter(Schema.is(MeshSchema.DirectChannelPong)),
               Stream.take(1),
               Stream.runDrain,
-              Effect.fork,
+              Effect.forkChild,
             )
 
             // There seems to be some scenario where the initial ping message is lost.

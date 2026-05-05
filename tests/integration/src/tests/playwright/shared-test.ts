@@ -38,7 +38,7 @@ const PWLive = Effect.gen(function* () {
   const persistentContextPath = fs.mkdtempSync(path.join(os.tmpdir(), '/livestore-playwright'))
 
   return Playwright.browserContextLayer({ persistentContextPath })
-}).pipe(Layer.unwrapEffect)
+}).pipe(Layer.unwrap)
 
 export const runAndGetExit = <Tag extends string, A>({
   importPath,
@@ -59,7 +59,7 @@ export const runAndGetExit = <Tag extends string, A>({
       ),
     )
 
-    const pageConsoleFiber = yield* Playwright.handlePageConsole({ page, name: `tab-1` }).pipe(Effect.fork)
+    const pageConsoleFiber = yield* Playwright.handlePageConsole({ page, name: `tab-1` }).pipe(Effect.forkChild)
 
     return yield* Effect.gen(function* () {
       const deferred = yield* Deferred.make<(typeof schema.Type)['exit']>()

@@ -73,9 +73,9 @@ export class PayloadLocalPush extends Schema.TaggedStruct('local-push', {
   newEvents: Schema.Array(LiveStoreEvent.Client.EncodedWithMeta),
 }) {}
 
-export class Payload extends Schema.Union(PayloadUpstreamRebase, PayloadUpstreamAdvance, PayloadLocalPush) {}
+export class Payload extends Schema.Union([PayloadUpstreamRebase, PayloadUpstreamAdvance, PayloadLocalPush]) {}
 
-export class PayloadUpstream extends Schema.Union(PayloadUpstreamRebase, PayloadUpstreamAdvance) {}
+export class PayloadUpstream extends Schema.Union([PayloadUpstreamRebase, PayloadUpstreamAdvance]) {}
 
 /** Only used for debugging purposes */
 export class MergeContext extends Schema.Class<MergeContext>('MergeContext')({
@@ -159,11 +159,7 @@ export class MergeResultReject extends Schema.Class<MergeResultReject>('MergeRes
   }
 }
 
-export class MergeResult extends Schema.Union(
-  MergeResultAdvance,
-  MergeResultRebase,
-  MergeResultReject,
-) {}
+export class MergeResult extends Schema.Union([MergeResultAdvance, MergeResultRebase, MergeResultReject]) {}
 
 export const payloadFromMergeResult = (
   mergeResult: typeof MergeResultAdvance.Type | typeof MergeResultRebase.Type,

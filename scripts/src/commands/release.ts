@@ -7,7 +7,7 @@ import { Cli } from '@livestore/utils/node'
 
 import { appendGithubSummaryMarkdown, formatMarkdownTable } from '../shared/misc.ts'
 
-class PackageJsonParseError extends Schema.TaggedError<PackageJsonParseError>()('PackageJsonParseError', {
+class PackageJsonParseError extends Schema.TaggedErrorClass<PackageJsonParseError>()('PackageJsonParseError', {
   message: Schema.String,
   cause: Schema.Defect,
 }) {}
@@ -85,7 +85,7 @@ const readReleasePlan = (cwd: string, planPath: string) =>
     const fsEffect = yield* FileSystem.FileSystem
     const absolutePlanPath = planPath.startsWith('/') === true ? planPath : `${cwd}/${planPath}`
     const content = yield* fsEffect.readFileString(absolutePlanPath)
-    const plan = yield* Schema.decodeUnknown(ReleasePlan)(JSON.parse(content))
+    const plan = yield* Schema.decodeUnknownEffect(ReleasePlan)(JSON.parse(content))
     yield* validateReleasePlan(plan)
     return plan
   })
@@ -250,7 +250,7 @@ const listSnapshotPackages = (cwd: string) =>
     packages.sort((a, b) => a.localeCompare(b))
     return packages
   }).pipe(
-    Effect.catchAll((error) =>
+    Effect.catch((error) =>
       Effect.gen(function* () {
         const message = toErrorMessage(error)
         yield* Effect.logWarning(`Unable to enumerate snapshot packages: ${message}`)
@@ -287,7 +287,7 @@ const restoreGeneratedReleaseFiles = (cwd: string) =>
       Effect.provide(CurrentWorkingDirectory.fromPath(cwd)),
     )
   }).pipe(
-    Effect.catchAll((error) =>
+    Effect.catch((error) =>
       Effect.logWarning(`Failed to restore generated release files: ${toErrorMessage(error)}`),
     ),
   )

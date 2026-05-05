@@ -22,7 +22,7 @@ export const makeLiveStoreContext = <TSchema extends LiveStoreSchema, TContext =
   syncPayloadSchema,
 }: LiveStoreContextProps<TSchema, TContext>): Effect.Effect<
   LiveStoreContextRunning['Type'],
-  UnknownError | Cause.TimeoutException,
+  UnknownError | Cause.TimeoutError,
   DeferredStoreContext | Scope.Scope | OtelTracer.OtelTracer
 > =>
   pipe(
@@ -60,7 +60,7 @@ export const makeLiveStoreContext = <TSchema extends LiveStoreSchema, TContext =
  */
 export const LiveStoreContextLayer = <TSchema extends LiveStoreSchema, TContext = {}>(
   props: LiveStoreContextProps<TSchema, TContext>,
-): Layer.Layer<LiveStoreContextRunning, UnknownError | Cause.TimeoutException, OtelTracer.OtelTracer> =>
+): Layer.Layer<LiveStoreContextRunning, UnknownError | Cause.TimeoutError, OtelTracer.OtelTracer> =>
   Layer.scoped(LiveStoreContextRunning, makeLiveStoreContext(props)).pipe(
     Layer.withSpan('LiveStore'),
     Layer.provide(LiveStoreContextDeferred),
@@ -137,7 +137,7 @@ export interface StoreTagClass<TSchema extends LiveStoreSchema, TStoreId extends
   /** Creates a layer that initializes the store */
   layer<TContext>(
     props: StoreLayerProps<TSchema, TContext>,
-  ): Layer.Layer<StoreTagClass<TSchema, TStoreId>, UnknownError | Cause.TimeoutException, OtelTracer.OtelTracer>
+  ): Layer.Layer<StoreTagClass<TSchema, TStoreId>, UnknownError | Cause.TimeoutError, OtelTracer.OtelTracer>
 
   /** Deferred store tag for async initialization patterns */
   readonly Deferred: Context.Tag<
@@ -230,7 +230,7 @@ const makeStoreTag = <TSchema extends LiveStoreSchema, TStoreId extends string>(
 
   const _DeferredLayer = Layer.effect(_DeferredTag, Deferred.make<RunningType, UnknownError>())
 
-  class Tag extends Context.Tag(`@livestore/store/${storeId}`)<Tag, RunningType>() {
+  class Tag extends Context.Service<Tag, RunningType>()(`@livestore/store/${storeId}`) {
     static readonly schema: TSchema = schema
     static readonly storeId: TStoreId = storeId
 
@@ -345,7 +345,7 @@ export interface StoreContext<TSchema extends LiveStoreSchema, TStoreId extends 
   >
   readonly Layer: <TContext = {}>(
     props: Omit<LiveStoreContextProps<TSchema, TContext>, 'storeId'>,
-  ) => Layer.Layer<StoreContextId<TSchema, TStoreId>, UnknownError | Cause.TimeoutException, OtelTracer.OtelTracer>
+  ) => Layer.Layer<StoreContextId<TSchema, TStoreId>, UnknownError | Cause.TimeoutError, OtelTracer.OtelTracer>
   readonly DeferredLayer: Layer.Layer<DeferredContextId<TStoreId>>
   readonly fromDeferred: Layer.Layer<StoreContextId<TSchema, TStoreId>, UnknownError, DeferredContextId<TStoreId>>
 }
@@ -378,7 +378,7 @@ export const makeStoreContext =
 
     const makeLayer = <TContext = {}>(
       props: Omit<LiveStoreContextProps<TSchema, TContext>, 'storeId'>,
-    ): Layer.Layer<StoreContextId<TSchema, TStoreId>, UnknownError | Cause.TimeoutException, OtelTracer.OtelTracer> =>
+    ): Layer.Layer<StoreContextId<TSchema, TStoreId>, UnknownError | Cause.TimeoutError, OtelTracer.OtelTracer> =>
       pipe(
         Effect.gen(function* () {
           const store = yield* createStore({

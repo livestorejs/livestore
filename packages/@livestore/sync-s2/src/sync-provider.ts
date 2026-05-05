@@ -115,7 +115,7 @@ export const makeSyncBackend =
       }).pipe(
         UnknownError.mapToUnknownError,
         Effect.timeout(pingTimeout),
-        Effect.catchTag('TimeoutException', () => SubscriptionRef.set(isConnected, false)),
+        Effect.catchTag('TimeoutError', () => SubscriptionRef.set(isConnected, false)),
       )
 
       const pingInterval = pingOptions?.requestInterval ?? 10_000
@@ -160,7 +160,7 @@ export const makeSyncBackend =
                   return yield* new UnknownError({ cause: new Error(`SSE error: ${msg.data}`) })
                 }
                 if (evt === 'batch') {
-                  const readBatch = yield* Schema.decode(Schema.parseJson(HttpClientGenerated.ReadBatch))(msg.data)
+                  const readBatch = yield* Schema.decodeEffect(Schema.fromJsonString(HttpClientGenerated.ReadBatch))(msg.data)
                   const batch = decodeReadBatch(readBatch)
 
                   const lastS2SeqNum = batch.at(-1)?.metadata.pipe(

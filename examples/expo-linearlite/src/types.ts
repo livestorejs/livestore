@@ -1,6 +1,6 @@
 import { Schema } from '@livestore/livestore'
 
-export const Filter = Schema.Literal('all', 'active', 'completed')
+export const Filter = Schema.Literals(['all', 'active', 'completed'])
 export type Filter = typeof Filter.Type
 
 export const STATUSES = {

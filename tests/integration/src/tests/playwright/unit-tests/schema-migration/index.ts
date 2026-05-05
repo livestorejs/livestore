@@ -74,7 +74,7 @@ export const testMultipleMigrations = () =>
     Effect.tapSync((exit) => {
       window.postMessage(Schema.encodeSync(ResultMultipleMigrations)(ResultMultipleMigrations.make({ exit })))
     }),
-    Logger.withMinimumLogLevel(LogLevel.Debug),
+    Logger.withMinimumLogLevel('Debug'),
     Effect.provide(Layer.mergeAll(Opfs.Opfs.Default, Logger.pretty)),
     Effect.scoped,
     Effect.runPromise,

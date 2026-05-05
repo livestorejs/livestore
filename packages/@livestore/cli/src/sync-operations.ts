@@ -102,8 +102,8 @@ export const makeSyncBackend = ({
     /** Verify connectivity with a ping (with timeout) */
     yield* syncBackend.ping.pipe(
       Effect.timeout(CONNECTION_TIMEOUT_MS),
-      Effect.catchAll((cause) => {
-        if (Cause.isTimeoutException(cause) === true) {
+      Effect.catch((cause) => {
+        if (Cause.isTimeoutError(cause) === true) {
           return Effect.fail(
             new ConnectionError({
               cause,
@@ -224,7 +224,7 @@ export const validateExportData = ({
   targetStoreId: string
 }): Effect.Effect<ImportValidationResult, ImportError> =>
   Effect.gen(function* () {
-    const exportData = yield* Schema.decodeUnknown(ExportFileSchema)(data).pipe(
+    const exportData = yield* Schema.decodeUnknownEffect(ExportFileSchema)(data).pipe(
       Effect.mapError(
         (cause) =>
           new ImportError({
@@ -272,7 +272,7 @@ export const pushEventsToSyncBackend = ({
     makeSyncBackend({ configPath, storeId, clientId }),
     (syncBackend) =>
       Effect.gen(function* () {
-        const exportData = yield* Schema.decodeUnknown(ExportFileSchema)(data).pipe(
+        const exportData = yield* Schema.decodeUnknownEffect(ExportFileSchema)(data).pipe(
           Effect.mapError(
             (cause) =>
               new ImportError({

@@ -155,7 +155,7 @@ export const makeSingleTabAdapter =
 
       const sqlite3 = yield* Effect.promise(() => loadSqlite3())
 
-      const storageOptions = yield* Schema.decode(WorkerSchema.StorageType)(options.storage)
+      const storageOptions = yield* Schema.decodeEffect(WorkerSchema.StorageType)(options.storage)
 
       const shutdownChannel = yield* makeShutdownChannel(storeId)
 
@@ -278,7 +278,7 @@ export const makeSingleTabAdapter =
         Stream.tap((_) => Queue.offer(bootStatusQueue, _)),
         Stream.runDrain,
         Effect.tapErrorCause((cause) =>
-          Cause.isInterruptedOnly(cause) === true ? Effect.void : shutdown(Exit.failCause(cause)),
+          Cause.hasInterruptsOnly(cause) === true ? Effect.void : shutdown(Exit.failCause(cause)),
         ),
         Effect.interruptible,
         Effect.tapCauseLogPretty,
@@ -484,7 +484,7 @@ const checkOpfsAvailability = Effect.gen(function* () {
   const opfs = yield* Opfs.Opfs
   return yield* opfs.getRootDirectoryHandle.pipe(
     Effect.as(undefined),
-    Effect.catchAll((error) => {
+    Effect.catch((error) => {
       const reason: BootWarningReason =
         Schema.is(WebError.SecurityError)(error) === true || Schema.is(WebError.NotAllowedError)(error) === true
           ? 'private-browsing'

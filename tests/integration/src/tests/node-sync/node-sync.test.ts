@@ -19,11 +19,12 @@ import {
   Worker,
 } from '@livestore/utils/effect'
 import { nanoid } from '@livestore/utils/nanoid'
-import { ChildProcessWorker, PlatformNode } from '@livestore/utils/node'
+import { ChildProcessWorker } from '@livestore/utils/node'
 
 import { makeFileLogger } from './fixtures/file-logger.ts'
 import * as WorkerSchema from './worker-schema.ts'
 
+import * as NodeServices from '@effect/platform-node/NodeServices'
 // Timeout needs to be long enough to allow for all the test runs to complete, especially in CI where the environment is slower.
 // A single test run can take significant time depending on the passed todo count and simulation params.
 const testTimeout = Duration.toMillis(IS_CI === true ? Duration.minutes(10) : Duration.minutes(15))
@@ -44,9 +45,9 @@ const withTestCtx = ({ suffix }: { suffix?: string } = {}) =>
         }).pipe(
           Layer.provide(
             Layer.mergeAll(
-              PlatformNode.NodeContext.layer,
+              NodeServices.layer,
               FetchHttpClient.layer,
-              Logger.minimumLogLevel(LogLevel.Debug),
+              Logger.minimumLogLevel('Debug'),
             ),
           ),
         ),
@@ -84,9 +85,9 @@ Vitest.describe.concurrent('node-sync', { timeout: testTimeout }, () => {
   )
 
   // Warning: A high CreateCount coupled with high simulation params can lead to very long test runs since those get multiplied with the number of todos.
-  const CreateCount = Schema.Int.pipe(Schema.between(1, 400))
-  const CommitBatchSize = Schema.Literal(1, 2, 10, 100)
-  const LEADER_PUSH_BATCH_SIZE = Schema.Literal(1, 2, 10, 100)
+  const CreateCount = Schema.Int.pipe(Schema.isBetween(1, 400))
+  const CommitBatchSize = Schema.Literals([1, 2, 10, 100])
+  const LEADER_PUSH_BATCH_SIZE = Schema.Literals([1, 2, 10, 100])
   // TODO introduce random delays in async operations as part of prop testing
 
   // TODO investigate why stoping this test in VSC Vitest UI often doesn't stop the test runs
@@ -163,11 +164,11 @@ Vitest.describe.concurrent('node-sync', { timeout: testTimeout }, () => {
         // TODO also alternate the order and delay of todo creation as part of prop testing
         yield* clientA
           .executeEffect(WorkerSchema.CreateTodos.make({ count: todoCountA, commitBatchSize }))
-          .pipe(Effect.fork)
+          .pipe(Effect.forkChild)
 
         yield* clientB
           .executeEffect(WorkerSchema.CreateTodos.make({ count: todoCountB, commitBatchSize }))
-          .pipe(Effect.fork)
+          .pipe(Effect.forkChild)
 
         const exec = Effect.all(
           [

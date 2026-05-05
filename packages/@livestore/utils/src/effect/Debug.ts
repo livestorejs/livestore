@@ -5,7 +5,6 @@ import type * as Exit from 'effect/Exit'
 import type * as Fiber from 'effect/Fiber'
 import * as Graph from 'effect/Graph'
 import * as Option from 'effect/Option'
-import { RuntimeFlags } from 'effect'
 import * as Scope from 'effect/Scope'
 import type * as Tracer from 'effect/Tracer'
 
@@ -88,7 +87,7 @@ const addEvent = (traceId: string, spanId: string, event: SpanEvent) => {
 const addNodeExit = (traceId: string, spanId: string, exit: Exit.Exit<any, any>) => {
   const [mutableGraph, nodeId] = ensureSpan(traceId, spanId)
   Graph.updateNode(mutableGraph, nodeId, (previousInfo) => {
-    const isInterruptedOnly = exit._tag === 'Failure' && Cause.isInterruptedOnly(exit.cause)
+    const isInterruptedOnly = exit._tag === 'Failure' && Cause.hasInterruptsOnly(exit.cause)
     return {
       ...previousInfo,
       exitTag: isInterruptedOnly === true ? ('Interrupted' as const) : exit._tag,
@@ -422,9 +421,7 @@ export const logDebug = (options: LogDebugOptions = {}) => {
   // fibers
   lines = [...lines, 'Active Fibers:']
   for (const fiber of knownFibers) {
-    // oxlint-disable-next-line typescript-eslint(no-unsafe-type-assertion) -- accessing fiber.currentRuntimeFlags; internal Effect runtime property
-    const interruptible = RuntimeFlags.interruptible((fiber as any).currentRuntimeFlags)
-    lines = [...lines, `- #${fiber.id().id}${interruptible === false ? ' [uninterruptible]' : ''}`]
+    lines = [...lines, `- #${(fiber as any).id ?? 'unknown'}`]
   }
   if (knownFibers.size === 0) {
     lines = [...lines, '- No active effect fibers']

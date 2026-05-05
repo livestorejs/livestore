@@ -13,7 +13,7 @@ const todos = State.SQLite.table({
     id: State.SQLite.text({ primaryKey: true }),
     text: State.SQLite.text({ default: '', nullable: false }),
     completed: State.SQLite.boolean({ default: false, nullable: false }),
-    status: State.SQLite.text({ schema: Schema.Literal('active', 'completed') }),
+    status: State.SQLite.text({ schema: Schema.Literals(['active', 'completed']) }),
     deletedAt: State.SQLite.datetime({ nullable: true }),
     // TODO consider leaning more into Effect schema
     // other: Schema.Number.pipe(State.SQLite.asInteger),
@@ -25,7 +25,7 @@ const todosWithIntId = State.SQLite.table({
   columns: {
     id: State.SQLite.integer({ primaryKey: true }),
     text: State.SQLite.text({ default: '', nullable: false }),
-    status: State.SQLite.text({ schema: Schema.Literal('active', 'completed') }),
+    status: State.SQLite.text({ schema: Schema.Literals(['active', 'completed']) }),
   },
 })
 
@@ -41,7 +41,7 @@ const comments = State.SQLite.table({
 const UiState = State.SQLite.clientDocument({
   name: 'UiState',
   schema: Schema.Struct({
-    filter: Schema.Literal('all', 'active', 'completed'),
+    filter: Schema.Literals(['all', 'active', 'completed']),
   }),
   default: { value: { filter: 'all' } },
 })
@@ -49,7 +49,7 @@ const UiState = State.SQLite.clientDocument({
 const UiStateWithDefaultId = State.SQLite.clientDocument({
   name: 'UiState',
   schema: Schema.Struct({
-    filter: Schema.Literal('all', 'active', 'completed'),
+    filter: Schema.Literals(['all', 'active', 'completed']),
   }),
   default: {
     id: 'static',
@@ -63,7 +63,7 @@ const issue = State.SQLite.table({
     id: State.SQLite.integer({ primaryKey: true }),
     title: State.SQLite.text({ default: '' }),
     creator: State.SQLite.text({ default: '' }),
-    priority: State.SQLite.integer({ schema: Schema.Literal(0, 1, 2, 3, 4), default: 0 }),
+    priority: State.SQLite.integer({ schema: Schema.Literals([0, 1, 2, 3, 4]), default: 0 }),
     created: State.SQLite.integer({ schema: Schema.DateFromNumber }),
     deleted: State.SQLite.integer({ nullable: true, schema: Schema.DateFromNumber }),
     modified: State.SQLite.integer({ schema: Schema.DateFromNumber }),
@@ -83,7 +83,7 @@ const selections = State.SQLite.table({
   },
 })
 
-const Source = Schema.Literal('google', 'linkedin', 'facebook')
+const Source = Schema.Literals(['google', 'linkedin', 'facebook'])
 const ProfileAttribute = Schema.Struct({ key: Schema.String, value: Schema.String })
 
 const personProfiles = State.SQLite.table({

@@ -113,8 +113,8 @@ import { resolveProjectPaths, type TwoslashProjectPaths } from '../project-paths
 import type { SnippetBundle } from '../vite/snippet-graph.ts'
 import { buildSnippetBundle, __internal as snippetGraphInternal } from '../vite/snippet-graph.ts'
 
-const jsonStringify = Schema.encodeSync(Schema.parseJson())
-const jsonStringifyPretty = Schema.encodeSync(Schema.parseJson({ space: 2 }))
+const jsonStringify = Schema.encodeSync(Schema.UnknownFromJsonString)
+const jsonStringifyPretty = Schema.encodeSync(Schema.UnknownFromJsonString)
 
 type THastRendererResult = {
   renderedGroupAst: THastElement
@@ -1648,8 +1648,8 @@ const watchSnippetsInternal = (
 
     const snippetRootExists = yield* fs
       .exists(paths.snippetAssetsRoot)
-      .pipe(Effect.catchAll(() => Effect.succeed(false)))
-    const sourceRootExists = yield* fs.exists(paths.srcRoot).pipe(Effect.catchAll(() => Effect.succeed(false)))
+      .pipe(Effect.catch(() => Effect.succeed(false)))
+    const sourceRootExists = yield* fs.exists(paths.srcRoot).pipe(Effect.catch(() => Effect.succeed(false)))
 
     const watchStreams: Array<Stream.Stream<WatchEventSummary, PlatformError.PlatformError>> = []
     if (snippetRootExists === true) {
@@ -1711,7 +1711,7 @@ const watchSnippetsInternal = (
     )
 
     yield* streamEffect.pipe(
-      Effect.catchAll((cause) =>
+      Effect.catch((cause) =>
         Effect.logWarning(`Snippets watch: stream failed with ${String(cause)}`).pipe(Effect.zipRight(Effect.never)),
       ),
     )

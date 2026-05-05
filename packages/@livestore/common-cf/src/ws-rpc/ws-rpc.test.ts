@@ -15,10 +15,10 @@ import {
   Socket,
   Stream,
 } from '@livestore/utils/effect'
-import { PlatformNode } from '@livestore/utils/node'
 
 import { TestRpcs } from './test-fixtures/rpc-schema.ts'
 
+import * as NodeServices from '@effect/platform-node/NodeServices'
 const testTimeout = 60_000
 
 const withWranglerTest = Vitest.makeWithTestCtx({
@@ -28,7 +28,7 @@ const withWranglerTest = Vitest.makeWithTestCtx({
       cwd: `${import.meta.dirname}/test-fixtures`,
     }).pipe(
       Layer.provide(
-        Layer.mergeAll(PlatformNode.NodeContext.layer, FetchHttpClient.layer, Logger.minimumLogLevel(LogLevel.Debug)),
+        Layer.mergeAll(NodeServices.layer, FetchHttpClient.layer, Logger.minimumLogLevel('Debug')),
       ),
     ),
 })
@@ -41,7 +41,7 @@ const ProtocolLive = Layer.suspend(() =>
       Layer.provide(Socket.layerWebSocketConstructorGlobal),
       Layer.provide(RpcSerialization.layerJson),
     )
-  }).pipe(Layer.unwrapEffect),
+  }).pipe(Layer.unwrap),
 )
 
 Vitest.describe('Durable Object WebSocket RPC', { timeout: testTimeout }, () => {

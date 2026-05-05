@@ -8,12 +8,7 @@ import {
   UnknownError,
 } from '../index.ts'
 
-export class All extends Schema.Union(
-  IntentionalShutdownCause,
-  UnknownError,
-  BackendIdMismatchError,
-  MaterializeError,
-) {}
+export class All extends Schema.Union([IntentionalShutdownCause, UnknownError, BackendIdMismatchError, MaterializeError]) {}
 
 /**
  * Used internally by an adapter to shutdown gracefully.

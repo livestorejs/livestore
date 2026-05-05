@@ -2,7 +2,7 @@ import {
   Cause,
   Deferred,
   Effect,
-  Either,
+  Result,
   Exit,
   Option,
   Queue,
@@ -99,7 +99,7 @@ export const makeDirectChannel = ({
             Stream.take(1),
             Stream.runDrain,
             Effect.as('new-edge' as const),
-            Effect.fork,
+            Effect.forkChild,
           )
 
           const makeChannel = makeDirectChannelInternal({
@@ -115,7 +115,7 @@ export const makeDirectChannel = ({
             sendPacket,
             scope: makeDirectChannelScope,
           }).pipe(
-            Scope.extend(makeDirectChannelScope),
+            Scope.provide(makeDirectChannelScope),
             Effect.forkIn(makeDirectChannelScope),
             // Given we only call `Effect.exit` later when joining the fiber,
             // we don't want Effect to produce a "unhandled error" log message
@@ -211,7 +211,7 @@ export const makeDirectChannel = ({
           debugInfo.pendingSends--
         }).pipe(Effect.scoped, Effect.withParentSpan(parentSpan))
 
-      const listen = Stream.fromQueue(listenQueue, { maxChunkSize: 1 }).pipe(Stream.map(Either.right))
+      const listen = Stream.fromQueue(listenQueue, { maxChunkSize: 1 }).pipe(Stream.map(Result.succeed))
 
       const closedDeferred = yield* Deferred.make<void>().pipe(Effect.acquireRelease(Deferred.done(Exit.void)))
 

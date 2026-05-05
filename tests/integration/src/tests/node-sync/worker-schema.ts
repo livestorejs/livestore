@@ -4,8 +4,8 @@ import { Schema } from '@livestore/utils/effect'
 
 import { tables } from './schema.ts'
 
-export const StorageType = Schema.Literal('in-memory', 'fs')
-export const AdapterType = Schema.Literal('single-threaded', 'worker')
+export const StorageType = Schema.Literals(['in-memory', 'fs'])
+export const AdapterType = Schema.Literals(['single-threaded', 'worker'])
 
 export const Params = Schema.Struct({
   leaderPushBatchSize: Schema.optional(Schema.Number),
@@ -48,4 +48,4 @@ export class OnShutdown extends Schema.TaggedRequest<OnShutdown>()('OnShutdown',
   failure: ShutdownChannel.All,
 }) {}
 
-export class Request extends Schema.Union(InitialMessage, CreateTodos, StreamTodos, OnShutdown) {}
+export class Request extends Schema.Union([InitialMessage, CreateTodos, StreamTodos, OnShutdown]) {}

@@ -38,7 +38,6 @@ import {
   SubscriptionRef,
   Worker,
 } from '@livestore/utils/effect'
-import { PlatformNode } from '@livestore/utils/node'
 import * as Webmesh from '@livestore/webmesh'
 
 import type { TestingOverrides } from '../leader-thread-shared.ts'
@@ -46,6 +45,8 @@ import { makeLeaderThread } from '../leader-thread-shared.ts'
 import { makeShutdownChannel } from '../shutdown-channel.ts'
 import * as WorkerSchema from '../worker-schema.ts'
 
+import * as NodeFileSystem from '@effect/platform-node/NodeFileSystem'
+import * as NodeWorker from '@effect/platform-node/NodeWorker'
 export interface NodeAdapterOptions {
   storage: WorkerSchema.StorageType
   /** The default is the hostname of the current machine */
@@ -319,7 +320,7 @@ const makeAdapterImpl = ({
       return clientSession
     }).pipe(
       Effect.withSpan('@livestore/adapter-node:adapter'),
-      Effect.provide(Layer.mergeAll(PlatformNode.NodeFileSystem.layer, FetchHttpClient.layer)),
+      Effect.provide(Layer.mergeAll(NodeFileSystem.layer, FetchHttpClient.layer)),
     )) satisfies Adapter
 
 const resetNodePersistence = ({
@@ -464,9 +465,9 @@ const makeWorkerLeaderThread = ({
   Effect.gen(function* () {
     const nodeWorker = new WT.Worker(workerUrl, {
       execArgv: process.env.DEBUG_WORKER !== undefined ? ['--inspect --enable-source-maps'] : ['--enable-source-maps'],
-      argv: [yield* Schema.encode(WorkerSchema.WorkerArgv)({ storeId, clientId, sessionId, extraArgs: workerExtraArgs }).pipe(Effect.orDie)],
+      argv: [yield* Schema.encodeEffect(WorkerSchema.WorkerArgv)({ storeId, clientId, sessionId, extraArgs: workerExtraArgs }).pipe(Effect.orDie)],
     })
-    const nodeWorkerLayer = yield* Layer.build(PlatformNode.NodeWorker.layer(() => nodeWorker))
+    const nodeWorkerLayer = yield* Layer.build(NodeWorker.layer(() => nodeWorker))
 
     const worker = yield* Worker.makePoolSerialized<typeof WorkerSchema.LeaderWorkerInnerRequest.Type>({
       size: 1,
@@ -509,7 +510,7 @@ const makeWorkerLeaderThread = ({
     const bootStatusFiber = yield* runInWorkerStream(new WorkerSchema.LeaderWorkerInnerBootStatusStream()).pipe(
       Stream.tap((bootStatus) => Queue.offer(bootStatusQueue, bootStatus)),
       Stream.runDrain,
-      Effect.tapErrorCause((cause) => (Cause.isInterruptedOnly(cause) === true ? Effect.void : shutdown(Exit.failCause(cause)))),
+      Effect.tapErrorCause((cause) => (Cause.hasInterruptsOnly(cause) === true ? Effect.void : shutdown(Exit.failCause(cause)))),
       Effect.interruptible,
       Effect.tapCauseLogPretty,
       Effect.forkScoped,

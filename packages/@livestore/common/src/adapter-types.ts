@@ -60,7 +60,7 @@ export const BootStateProgress = Schema.Struct({
  * - `storage-unavailable`: OPFS access denied for other reasons (permissions, quota)
  * - `unknown`: Unexpected error during storage initialization
  */
-export const BootWarningReason = Schema.Literal('private-browsing', 'storage-unavailable', 'unknown')
+export const BootWarningReason = Schema.Literals(['private-browsing', 'storage-unavailable', 'unknown'])
 export type BootWarningReason = typeof BootWarningReason.Type
 
 /**
@@ -70,25 +70,14 @@ export type BootWarningReason = typeof BootWarningReason.Type
  * - `persisted`: Data is persisted to disk (e.g., via OPFS)
  * - `in-memory`: Data is only stored in memory and will be lost on page refresh
  */
-export const StorageMode = Schema.Literal('persisted', 'in-memory')
+export const StorageMode = Schema.Literals(['persisted', 'in-memory'])
 export type StorageMode = typeof StorageMode.Type
 
-export const BootStatus = Schema.Union(
-  Schema.Struct({ stage: Schema.Literal('loading') }),
-  Schema.Struct({ stage: Schema.Literal('migrating'), progress: BootStateProgress }),
-  Schema.Struct({ stage: Schema.Literal('rehydrating'), progress: BootStateProgress }),
-  Schema.Struct({ stage: Schema.Literal('syncing'), progress: BootStateProgress }),
-  Schema.Struct({ stage: Schema.Literal('done') }),
-  /**
-   * Indicates a non-fatal issue occurred during boot that may degrade functionality.
-   * LiveStore continues running but without full capabilities (e.g., no persistence).
-   */
-  Schema.Struct({
+export const BootStatus = Schema.Union([Schema.Struct({ stage: Schema.Literal('loading') }), Schema.Struct({ stage: Schema.Literal('migrating'), progress: BootStateProgress }), Schema.Struct({ stage: Schema.Literal('rehydrating'), progress: BootStateProgress }), Schema.Struct({ stage: Schema.Literal('syncing'), progress: BootStateProgress }), Schema.Struct({ stage: Schema.Literal('done') }), Schema.Struct({
     stage: Schema.Literal('warning'),
     reason: BootWarningReason,
     message: Schema.String,
-  }),
-).annotations({ title: 'BootStatus' })
+  })]).annotate({ title: 'BootStatus' })
 
 export type BootStatus = typeof BootStatus.Type
 

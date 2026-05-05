@@ -1,6 +1,6 @@
 import { cmd, LivestoreWorkspace, OtelLiveHttp } from '@livestore/utils-dev/node'
 import { Effect, FetchHttpClient, Layer, Logger, LogLevel } from '@livestore/utils/effect'
-import { Cli, PlatformNode } from '@livestore/utils/node'
+import { Cli } from '@livestore/utils/node'
 
 import { debugCommand } from './commands/debug.ts'
 import { docsCommand } from './commands/docs.ts'
@@ -11,6 +11,8 @@ import { releaseCommand } from './commands/release.ts'
 import { testCommand } from './commands/test-commands.ts'
 import { updateDepsCommand } from './commands/update-deps.ts'
 
+import * as NodeRuntime from '@effect/platform-node/NodeRuntime'
+import * as NodeServices from '@effect/platform-node/NodeServices'
 const tsCommand = Cli.Command.make(
   'ts',
   {
@@ -70,7 +72,7 @@ if (import.meta.main) {
   })
 
   const layer = Layer.mergeAll(
-    PlatformNode.NodeContext.layer,
+    NodeServices.layer,
     FetchHttpClient.layer,
     OtelLiveHttp({
       serviceName: 'mono',
@@ -85,8 +87,8 @@ if (import.meta.main) {
   cli(process.argv).pipe(
     Effect.provide(layer),
     Effect.annotateLogs({ thread: 'mono' }),
-    Logger.withMinimumLogLevel(LogLevel.Debug),
+    Logger.withMinimumLogLevel('Debug'),
     Effect.scoped,
-    PlatformNode.NodeRuntime.runMain,
+    NodeRuntime.runMain,
   )
 }

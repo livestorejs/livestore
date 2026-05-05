@@ -1,8 +1,8 @@
 import * as Runner from 'effect/unstable/workers/WorkerRunner'
 import { Context, Effect, Layer, Option, Stream } from 'effect'
 
-// import { NodeRuntime, NodeWorkerRunner } from '@effect/platform-node'
-import { PlatformNode } from '../../mod.ts'
+import * as NodeRuntime from '@effect/platform-node/NodeRuntime'
+import * as NodeWorkerRunner from '@effect/platform-node/NodeWorkerRunner'
 import * as ChildProcessRunner from '../ChildProcessRunner.ts'
 import { Person, User, WorkerMessage } from './schema.ts'
 
@@ -50,7 +50,7 @@ const WorkerLive = Runner.layerSerialized(WorkerMessage, {
     Effect.gen(function* () {
       // Start a blocking operation that won't respond to normal shutdown signals
       const pid = process.pid
-      yield* Effect.fork(
+      yield* Effect.forkChild(
         Effect.gen(function* () {
           // Block for the specified duration, ignoring shutdown attempts
           yield* Effect.sleep(`${blockDuration} millis`)
@@ -60,6 +60,6 @@ const WorkerLive = Runner.layerSerialized(WorkerMessage, {
       return { pid }
     }),
 }).pipe(Layer.provide(ChildProcessRunner.layer))
-// }).pipe(Layer.provide(PlatformNode.NodeWorkerRunner.layer))
+// }).pipe(Layer.provide(NodeWorkerRunner.layer))
 
-PlatformNode.NodeRuntime.runMain(Runner.launch(WorkerLive))
+NodeRuntime.runMain(Runner.launch(WorkerLive))

@@ -6,7 +6,7 @@ export const CloudflareDomainSchema = Schema.Struct({
   /** Host label to bind under the apex (e.g. `web-todomvc` or `dev.web-todomvc`). */
   name: Schema.String,
   /** Which environment the domain represents so deploy + DNS can scope correctly. */
-  scope: Schema.Literal('prod', 'dev'),
+  scope: Schema.Literals(['prod', 'dev']),
 })
 
 export type CloudflareDomain = typeof CloudflareDomainSchema.Type

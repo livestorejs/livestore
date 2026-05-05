@@ -31,7 +31,7 @@ export const issueEvents = {
     name: 'v1.IssueStatusChanged',
     schema: Schema.Struct({
       id: Schema.String,
-      status: Schema.Literal('todo', 'in-progress', 'done'),
+      status: Schema.Literals(['todo', 'in-progress', 'done']),
     }),
   }),
 }

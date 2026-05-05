@@ -1,24 +1,20 @@
 import process from 'node:process'
 
-import { WorkerError } from 'effect/unstable/workers/WorkerError'
-import type { CloseLatch } from 'effect/unstable/workers/WorkerRunner'
+import { WorkerError, WorkerReceiveError, WorkerSpawnError, WorkerUnknownError } from 'effect/unstable/workers/WorkerError'
 import * as Runner from 'effect/unstable/workers/WorkerRunner'
 import * as Cause from 'effect/Cause'
-import * as Context from 'effect/Context'
 import * as Deferred from 'effect/Deferred'
 import * as Effect from 'effect/Effect'
 import * as Exit from 'effect/Exit'
-import * as FiberSet from 'effect/FiberSet'
+import * as Fiber from 'effect/Fiber'
 import * as Layer from 'effect/Layer'
-import * as Runtime from 'effect/Runtime'
-import * as Scope from 'effect/Scope'
 
 // Parent death monitoring setup
 let parentDeathDetectionEnabled = false
 let parentDeathTimer: NodeJS.Timeout | null = null
 
 type SetupParentDeathDetectionMessage = ['setup-parent-death-detection', { parentPid: number }]
-type RunnerMessage<I> = Runner.BackingRunner.Message<I> | SetupParentDeathDetectionMessage
+type RunnerMessage<I> = Runner.PlatformMessage<I> | SetupParentDeathDetectionMessage
 
 const isSetupParentDeathDetectionMessage = (
   message: unknown,
@@ -73,37 +69,38 @@ const setupParentDeathMonitoring = (parentPid: number) => {
   parentDeathTimer = setTimeout(checkParentAlive, 5000)
 }
 
-const platformRunnerImpl = Runner.PlatformRunner.of({
-  [Runner.PlatformRunnerTypeId]: Runner.PlatformRunnerTypeId,
-  start<I, O>(closeLatch: typeof CloseLatch.Service) {
+const platformRunnerImpl = Runner.WorkerRunnerPlatform.of({
+  start<O = unknown, I = unknown>() {
     return Effect.gen(function* () {
       if (process.send == null) {
-        return yield* new WorkerError({ reason: 'spawn', cause: new Error('not in a child process') })
+        return yield* new WorkerError({
+          reason: new WorkerSpawnError({ message: 'not in a child process' }),
+        })
       }
+      const closeLatch = Deferred.makeUnsafe<void, WorkerError>()
       const port = {
         postMessage: (message: any) => process.send!(message),
         on: (event: string, handler: (message: any) => void) => process.on(event, handler),
         close: () => process.disconnect?.(),
       }
+      const sendUnsafe = (_portId: number, message: O, _transfers?: ReadonlyArray<unknown>) =>
+        port.postMessage(message)
       const send = (_portId: number, message: O, _transfers?: ReadonlyArray<unknown>) =>
-        Effect.sync(() => port.postMessage([1, message] /*, transfers as any*/))
+        Effect.sync(() => sendUnsafe(_portId, [1, message] as any))
 
       const run = Effect.fnUntraced(function* <A, E, R>(
         // biome-ignore lint/suspicious/noConfusingVoidType: need to support void
         handler: (portId: number, message: I) => Effect.Effect<A, E, R> | void,
       ) {
-        const runtime = (yield* Effect.interruptible(Effect.runtime<R | Scope.Scope>())).pipe(
-          Runtime.updateContext(Context.omit(Scope.Scope)),
-        ) as Runtime.Runtime<R>
-        const fiberSet = yield* FiberSet.make<any, WorkerError | E>()
-        const runFork = Runtime.runFork(runtime)
+        const services = yield* Effect.context<R>()
+        const runFork = Effect.runForkWith(services)
+        const trackFiber = Fiber.runIn(yield* Effect.scope)
         const onExit = (exit: Exit.Exit<any, E>) => {
-          if (exit._tag === 'Failure' && Cause.isInterruptedOnly(exit.cause) === false) {
-            // Deferred.unsafeDone(closeLatch, Exit.die(Cause.squash(exit.cause)))
-            Deferred.unsafeDone(closeLatch, Exit.die(exit.cause))
+          if (exit._tag === 'Failure' && Cause.hasInterruptsOnly(exit.cause) === false) {
+            Deferred.doneUnsafe(closeLatch, Exit.die(exit.cause))
           }
         }
-         port.on('message', (message: RunnerMessage<I>) => {
+        port.on('message', (message: RunnerMessage<I>) => {
           // console.log('message', message)
 
           // Handle parent death detection setup messages
@@ -121,28 +118,39 @@ const platformRunnerImpl = Runner.PlatformRunner.of({
               if (Effect.isEffect(result) === true) {
                 const fiber = runFork(result)
                 fiber.addObserver(onExit)
-                FiberSet.unsafeAdd(fiberSet, fiber)
+                trackFiber(fiber)
               }
             } else {
               // Graceful shutdown requested by parent: stop monitoring and close port
               stopParentDeathMonitoring()
-              Deferred.unsafeDone(closeLatch, Exit.void)
+              Deferred.doneUnsafe(closeLatch, Exit.void)
               port.close()
             }
           }
         })
         port.on('messageerror', (cause) => {
-          Deferred.unsafeDone(closeLatch, new WorkerError({ reason: 'decode', cause }))
+          Deferred.doneUnsafe(
+            closeLatch,
+            new WorkerError({
+              reason: new WorkerReceiveError({ message: 'received messageerror event', cause }),
+            }).asEffect(),
+          )
         })
         port.on('error', (cause) => {
-          Deferred.unsafeDone(closeLatch, new WorkerError({ reason: 'unknown', cause }))
+          Deferred.doneUnsafe(
+            closeLatch,
+            new WorkerError({
+              reason: new WorkerUnknownError({ message: 'received error event', cause }),
+            }).asEffect(),
+          )
         })
         port.postMessage([0])
+        return yield* Deferred.await(closeLatch)
       })
 
-      return { run, send }
+      return { run, send, sendUnsafe }
     })
   },
 })
 
-export const layer = Layer.succeed(Runner.PlatformRunner, platformRunnerImpl)
+export const layer = Layer.succeed(Runner.WorkerRunnerPlatform, platformRunnerImpl)

@@ -19,7 +19,7 @@ export const MAX_BATCH_METERED_BYTES = 1_048_576 // 1 MiB
  */
 export const MAX_RECORDS_PER_BATCH = 1_000
 
-const LimitType = Schema.Literal('record-metered-bytes', 'batch-metered-bytes', 'batch-count')
+const LimitType = Schema.Literals(['record-metered-bytes', 'batch-metered-bytes', 'batch-count'])
 
 export class S2LimitExceededError extends Schema.TaggedErrorClass<S2LimitExceededError>()('S2LimitExceededError', {
   limitType: LimitType,

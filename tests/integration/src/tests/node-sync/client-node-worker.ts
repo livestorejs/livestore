@@ -20,19 +20,21 @@ import {
   WorkerRunner,
 } from '@livestore/utils/effect'
 import { nanoid } from '@livestore/utils/nanoid'
-import { ChildProcessRunner, OtelLiveDummy, PlatformNode } from '@livestore/utils/node'
+import { ChildProcessRunner, OtelLiveDummy } from '@livestore/utils/node'
 
 import { makeFileLogger } from './fixtures/file-logger.ts'
 import { events, schema, tables } from './schema.ts'
 import * as WorkerSchema from './worker-schema.ts'
 
-class WorkerContext extends Context.Tag('WorkerContext')<
+import * as NodeRuntime from '@effect/platform-node/NodeRuntime'
+import * as NodeServices from '@effect/platform-node/NodeServices'
+class WorkerContext extends Context.Service<
   WorkerContext,
   {
     store: Store<any>
     shutdownDeferred: ShutdownDeferred
   }
->() {}
+>()('WorkerContext') {}
 
 const runner = WorkerRunner.layerSerialized(WorkerSchema.Request, {
   InitialMessage: ({ storeId, clientId, adapterType, storageType, params, syncUrl }) =>
@@ -119,7 +121,7 @@ const clientId = process.argv[2]!
 const serviceName = `node-sync-test:${clientId}`
 
 runner.pipe(
-  Layer.provide(PlatformNode.NodeContext.layer),
+  Layer.provide(NodeServices.layer),
   Layer.provide(ChildProcessRunner.layer),
   WorkerRunner.launch,
   // TODO this parent span is currently missing in the trace
@@ -130,6 +132,6 @@ runner.pipe(
   Effect.annotateLogs({ thread: serviceName, clientId }),
   Effect.annotateSpans({ clientId }),
   Effect.provide(makeFileLogger(`worker-${clientId}`)),
-  Logger.withMinimumLogLevel(LogLevel.Debug),
-  PlatformNode.NodeRuntime.runMain({ disablePrettyLogger: true }),
+  Logger.withMinimumLogLevel('Debug'),
+  NodeRuntime.runMain({ disablePrettyLogger: true }),
 )

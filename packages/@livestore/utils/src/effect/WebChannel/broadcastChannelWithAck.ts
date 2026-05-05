@@ -23,7 +23,7 @@ const PayloadMessage = Schema.TaggedStruct('PayloadMessage', {
   payload: Schema.Any,
 })
 
-const Message = Schema.Union(ConnectMessage, ConnectAckMessage, DisconnectMessage, PayloadMessage)
+const Message = Schema.Union([ConnectMessage, ConnectAckMessage, DisconnectMessage, PayloadMessage])
 
 /**
  * Same as `broadcastChannel`, but with a queue in between to guarantee message delivery and meant
@@ -53,7 +53,7 @@ export const broadcastChannelWithAck = <MsgListen, MsgSend, MsgListenEncoded, Ms
         Effect.gen(function* () {
           yield* connectedLatch.await
 
-          const payload = yield* Schema.encode(schema.send)(message)
+          const payload = yield* Schema.encodeEffect(schema.send)(message)
           postMessage(PayloadMessage.make({ from: connectionId, to: peerIdRef.current!, payload }))
         })
 
@@ -89,7 +89,7 @@ export const broadcastChannelWithAck = <MsgListen, MsgSend, MsgListenEncoded, Ms
               }
               case 'PayloadMessage': {
                 if (data.to === connectionId) {
-                  return Schema.decodeEither(schema.listen)(data.payload)
+                  return Schema.decodeExit(schema.listen)(data.payload)
                 }
                 return undefined
               }

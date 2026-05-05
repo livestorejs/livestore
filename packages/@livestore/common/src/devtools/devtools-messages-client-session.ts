@@ -86,7 +86,7 @@ export class LiveQueriesUnsubscribe extends LSDClientSessionReqResMessage('LSD.C
 }) {}
 
 export class SerializedLiveQuery extends Schema.Struct({
-  _tag: Schema.Literal('computed', 'db', 'graphql', 'signal'),
+  _tag: Schema.Literals(['computed', 'db', 'graphql', 'signal']),
   id: Schema.Number,
   label: Schema.String,
   hash: Schema.String,
@@ -120,35 +120,10 @@ export class VersionMismatch extends LSDClientSessionReqResMessage('LSD.ClientSe
 
 export class Disconnect extends LSDClientSessionChannelMessage('LSD.ClientSession.Disconnect', {}) {}
 
-export const MessageToApp = Schema.Union(
-  DebugInfoReq,
-  DebugInfoHistorySubscribe,
-  DebugInfoHistoryUnsubscribe,
-  DebugInfoResetReq,
-  DebugInfoRerunQueryReq,
-  ReactivityGraphSubscribe,
-  ReactivityGraphUnsubscribe,
-  LiveQueriesSubscribe,
-  LiveQueriesUnsubscribe,
-  Disconnect,
-  Ping,
-  SyncHeadSubscribe,
-  SyncHeadUnsubscribe,
-).annotations({ identifier: 'LSD.ClientSession.MessageToApp' })
+export const MessageToApp = Schema.Union([DebugInfoReq, DebugInfoHistorySubscribe, DebugInfoHistoryUnsubscribe, DebugInfoResetReq, DebugInfoRerunQueryReq, ReactivityGraphSubscribe, ReactivityGraphUnsubscribe, LiveQueriesSubscribe, LiveQueriesUnsubscribe, Disconnect, Ping, SyncHeadSubscribe, SyncHeadUnsubscribe]).annotate({ identifier: 'LSD.ClientSession.MessageToApp' })
 
 export type MessageToApp = typeof MessageToApp.Type
 
-export const MessageFromApp = Schema.Union(
-  DebugInfoRes,
-  DebugInfoHistoryRes,
-  DebugInfoResetRes,
-  DebugInfoRerunQueryRes,
-  ReactivityGraphRes,
-  LiveQueriesRes,
-  Disconnect,
-  Pong,
-  VersionMismatch,
-  SyncHeadRes,
-).annotations({ identifier: 'LSD.ClientSession.MessageFromApp' })
+export const MessageFromApp = Schema.Union([DebugInfoRes, DebugInfoHistoryRes, DebugInfoResetRes, DebugInfoRerunQueryRes, ReactivityGraphRes, LiveQueriesRes, Disconnect, Pong, VersionMismatch, SyncHeadRes]).annotate({ identifier: 'LSD.ClientSession.MessageFromApp' })
 
 export type MessageFromApp = typeof MessageFromApp.Type

@@ -70,7 +70,7 @@ export const makeWsSync =
   (options: WsSyncOptions): SyncBackend.SyncBackendConstructor<SyncMetadata> =>
   ({ storeId, payload }) =>
     Effect.gen(function* () {
-      const urlParamsData = yield* Schema.encode(SearchParamsSchema)({
+      const urlParamsData = yield* Schema.encodeEffect(SearchParamsSchema)({
         storeId,
         payload,
         transport: 'ws',
@@ -122,7 +122,7 @@ export const makeWsSync =
         yield* SubscriptionRef.set(isConnected, true)
       }).pipe(
         Effect.timeout(pingTimeout),
-        Effect.catchTag('TimeoutException', () => SubscriptionRef.set(isConnected, false)),
+        Effect.catchTag('TimeoutError', () => SubscriptionRef.set(isConnected, false)),
         UnknownError.mapToUnknownError,
         Effect.withSpan('ping'),
       )

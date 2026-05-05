@@ -27,6 +27,7 @@ import {
   Schema,
   Stream,
   TaskTracing,
+  Tracer,
   WorkerRunner,
 } from '@livestore/utils/effect'
 import { BrowserWorkerRunner, Opfs, WebError } from '@livestore/utils/effect/browser'
@@ -60,7 +61,7 @@ export const makeWorker = (options: WorkerOptions) => {
 
 export const makeWorkerEffect = (options: WorkerOptions) => {
   const TracingLive = options.otelOptions?.tracer !== undefined
-    ? Layer.unwrapEffect(Effect.map(OtelTracer.make, Layer.setTracer)).pipe(
+    ? Layer.effect(Tracer.Tracer, OtelTracer.make).pipe(
         Layer.provideMerge(Layer.succeed(OtelTracer.OtelTracer, options.otelOptions.tracer)),
       )
     : undefined
@@ -330,7 +331,7 @@ const checkOpfsAvailability = Effect.gen(function* () {
   const opfs = yield* Opfs.Opfs
   return yield* opfs.getRootDirectoryHandle.pipe(
     Effect.as(undefined),
-    Effect.catchAll((error) => {
+    Effect.catch((error) => {
       const reason: BootWarningReason =
         Schema.is(WebError.SecurityError)(error) === true || Schema.is(WebError.NotAllowedError)(error) === true
           ? 'private-browsing'

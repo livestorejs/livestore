@@ -12,7 +12,7 @@ const todos = State.SQLite.table({
   },
 })
 
-const Filter = Schema.Literal('all', 'active', 'completed')
+const Filter = Schema.Literals(['all', 'active', 'completed'])
 export type Filter = typeof Filter.Type
 
 const uiState = State.SQLite.clientDocument({

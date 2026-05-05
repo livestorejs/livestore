@@ -65,7 +65,7 @@ const uiState = State.SQLite.clientDocument({
     newIssueText: Schema.String,
     newIssueDescription: Schema.String,
     filter: Filter,
-    selectedHomeTab: Schema.Literal('assigned', 'created'),
+    selectedHomeTab: Schema.Literals(['assigned', 'created']),
     assignedTabGrouping: Schema.String,
     assignedTabOrdering: Schema.String,
     assignedTabCompletedIssues: Schema.String,

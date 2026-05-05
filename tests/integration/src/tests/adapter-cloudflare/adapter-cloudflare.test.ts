@@ -11,10 +11,10 @@ import {
   Schema,
 } from '@livestore/utils/effect'
 import { nanoid } from '@livestore/utils/nanoid'
-import { PlatformNode } from '@livestore/utils/node'
 import { Vitest } from '@livestore/utils-dev/node-vitest'
 import { expect } from 'vitest'
 
+import * as NodeServices from '@effect/platform-node/NodeServices'
 const testDir = path.dirname(fileURLToPath(import.meta.url))
 const fixturesDir = path.join(testDir, 'fixtures')
 const testTimeout = Duration.toMillis(Duration.seconds(45))
@@ -37,7 +37,7 @@ const withTestCtx = Vitest.makeWithTestCtx({
       WranglerDevServerService.Default({
         cwd: fixturesDir,
         readiness: { connectTimeout: Duration.seconds(15) },
-      }).pipe(Layer.provide(Layer.mergeAll(PlatformNode.NodeContext.layer, FetchHttpClient.layer))),
+      }).pipe(Layer.provide(Layer.mergeAll(NodeServices.layer, FetchHttpClient.layer))),
       FetchHttpClient.layer,
     ),
 })
@@ -96,7 +96,7 @@ const makeStoreHelpers = (serverUrl: string, storeId: string) =>
               Schema.Struct({
                 todos: Schema.Array(Schema.Struct({ id: Schema.String, title: Schema.String })),
                 persistence: PersistenceSnapshotSchema,
-                resetSnapshot: Schema.Union(Schema.Null, ResetPersistenceSnapshotSchema),
+                resetSnapshot: Schema.Union([Schema.Null, ResetPersistenceSnapshotSchema]),
               }),
             ),
           ),

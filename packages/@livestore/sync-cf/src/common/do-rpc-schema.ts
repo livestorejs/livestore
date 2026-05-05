@@ -35,7 +35,7 @@ export class SyncDoRpc extends RpcGroup.make(
       rpcRequestId: Schema.String,
       ...SyncMessage.PullResponse.fields,
     }),
-    error: Schema.Union(UnknownError, BackendIdMismatchError),
+    error: Schema.Union([UnknownError, BackendIdMismatchError]),
     stream: true,
   }),
   Rpc.make('SyncDoRpc.Push', {
@@ -44,7 +44,7 @@ export class SyncDoRpc extends RpcGroup.make(
       ...commonPayloadFields,
     },
     success: SyncMessage.PushAck,
-    error: Schema.Union(UnknownError, ServerAheadError, BackendIdMismatchError),
+    error: Schema.Union([UnknownError, ServerAheadError, BackendIdMismatchError]),
   }),
   Rpc.make('SyncDoRpc.Ping', {
     payload: {

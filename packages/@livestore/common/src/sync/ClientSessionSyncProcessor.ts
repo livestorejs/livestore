@@ -22,7 +22,7 @@ import type { LiveStoreSchema } from '../schema/mod.ts'
 import * as SyncState from './syncstate.ts'
 
 /** Serialize value to JSON string for trace attributes */
-const jsonStringify = Schema.encodeSync(Schema.parseJson())
+const jsonStringify = Schema.encodeSync(Schema.UnknownFromJsonString)
 
 /**
  * Rebase behaviour:
@@ -134,7 +134,7 @@ export const makeClientSessionSyncProcessor = Effect.fn('makeClientSessionSyncPr
       Effect.forever,
       Effect.interruptible,
       Effect.tapCauseLogPretty,
-      Effect.catchAllCause((cause) => clientSession.shutdown(Exit.failCause(cause))),
+      Effect.catchCause((cause) => clientSession.shutdown(Exit.failCause(cause))),
     )
 
     yield* FiberHandle.run(leaderPushingFiberHandle, backgroundLeaderPushing)
@@ -251,7 +251,7 @@ export const makeClientSessionSyncProcessor = Effect.fn('makeClientSessionSyncPr
           yield* syncStateUpdateQueue.offer(mergeResult.newSyncState)
         }).pipe(
           Effect.tapCauseLogPretty,
-          Effect.catchAllCause((cause) => clientSession.shutdown(Exit.failCause(cause))),
+          Effect.catchCause((cause) => clientSession.shutdown(Exit.failCause(cause))),
         ),
       ),
       Stream.runDrain,
@@ -404,11 +404,11 @@ const SIMULATION_ENABLED = true
 // Warning: High values for the simulation params can lead to very long test runs since those get multiplied with the number of events
 export const ClientSessionSyncProcessorSimulationParams = Schema.Struct({
   pull: Schema.Struct({
-    '1_before_leader_push_fiber_interrupt': Schema.Int.pipe(Schema.between(0, 15)),
-    '2_before_leader_push_queue_clear': Schema.Int.pipe(Schema.between(0, 15)),
-    '3_before_rebase_rollback': Schema.Int.pipe(Schema.between(0, 15)),
-    '4_before_leader_push_queue_offer': Schema.Int.pipe(Schema.between(0, 15)),
-    '5_before_leader_push_fiber_run': Schema.Int.pipe(Schema.between(0, 15)),
+    '1_before_leader_push_fiber_interrupt': Schema.Int.pipe(Schema.isBetween(0, 15)),
+    '2_before_leader_push_queue_clear': Schema.Int.pipe(Schema.isBetween(0, 15)),
+    '3_before_rebase_rollback': Schema.Int.pipe(Schema.isBetween(0, 15)),
+    '4_before_leader_push_queue_offer': Schema.Int.pipe(Schema.isBetween(0, 15)),
+    '5_before_leader_push_fiber_run': Schema.Int.pipe(Schema.isBetween(0, 15)),
   }),
 })
 type ClientSessionSyncProcessorSimulationParams = typeof ClientSessionSyncProcessorSimulationParams.Type

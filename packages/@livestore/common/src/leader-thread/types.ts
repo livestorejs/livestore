@@ -35,12 +35,12 @@ export const InitialSyncOptionsSkip = Schema.TaggedStruct('Skip', {})
 export type InitialSyncOptionsSkip = typeof InitialSyncOptionsSkip.Type
 
 export const InitialSyncOptionsBlocking = Schema.TaggedStruct('Blocking', {
-  timeout: Schema.Union(Schema.DurationFromMillis, Schema.Number),
+  timeout: Schema.Union([Schema.DurationFromMillis, Schema.Number]),
 })
 
 export type InitialSyncOptionsBlocking = typeof InitialSyncOptionsBlocking.Type
 
-export const InitialSyncOptions = Schema.Union(InitialSyncOptionsSkip, InitialSyncOptionsBlocking)
+export const InitialSyncOptions = Schema.Union([InitialSyncOptionsSkip, InitialSyncOptionsBlocking])
 export type InitialSyncOptions = typeof InitialSyncOptions.Type
 
 export type InitialSyncInfo = Option.Option<{
@@ -84,7 +84,7 @@ export type DevtoolsContext =
       enabled: false
     }
 
-export class LeaderThreadCtx extends Context.Tag('LeaderThreadCtx')<
+export class LeaderThreadCtx extends Context.Service<
   LeaderThreadCtx,
   {
     schema: LiveStoreSchema
@@ -114,7 +114,7 @@ export class LeaderThreadCtx extends Context.Tag('LeaderThreadCtx')<
     extraIncomingMessagesQueue: Queue.Queue<Devtools.Leader.MessageToApp>
     networkStatus: Subscribable.Subscribable<SyncBackend.NetworkStatus>
   }
->() {}
+>()('LeaderThreadCtx') {}
 
 export type MaterializeEvent = (
   eventEncoded: LiveStoreEvent.Client.EncodedWithMeta,
@@ -144,7 +144,7 @@ export const StreamEventsOptionsFields = {
   filter: Schema.optional(Schema.Array(Schema.String)),
   clientIds: Schema.optional(Schema.Array(Schema.String)),
   sessionIds: Schema.optional(Schema.Array(Schema.String)),
-  batchSize: Schema.optional(Schema.Int.pipe(Schema.between(1, STREAM_EVENTS_BATCH_SIZE_MAX))),
+  batchSize: Schema.optional(Schema.Int.pipe(Schema.isBetween(1, STREAM_EVENTS_BATCH_SIZE_MAX))),
   includeClientOnly: Schema.optional(Schema.Boolean),
 } as const
 

@@ -15,8 +15,8 @@ import { loadSqlite3Wasm } from '@livestore/sqlite-wasm/load-wasm'
 import { sqliteDbFactory } from '@livestore/sqlite-wasm/node'
 import { Vitest } from '@livestore/utils-dev/node-vitest'
 import { Effect, Option, Schema } from '@livestore/utils/effect'
-import { PlatformNode } from '@livestore/utils/node'
 
+import * as NodeFileSystem from '@effect/platform-node/NodeFileSystem'
 // Verifies the behaviour of LiveStore's unknown-event handling strategies across
 // materialization paths, ensuring events are either skipped, logged, or cause
 // structured failures according to the selected strategy.
@@ -34,7 +34,7 @@ Vitest.describe.concurrent('unknown event handling in materializeEvent', () => {
 
       const rows = dbEventlog.select<{ name: string; schemaHash: number }>(sql`SELECT name, schemaHash FROM eventlog`)
       expect(rows).toEqual([{ name: event.name, schemaHash: UNKNOWN_EVENT_SCHEMA_HASH }])
-    }).pipe(Effect.provide(PlatformNode.NodeFileSystem.layer), Vitest.withTestCtx(test)),
+    }).pipe(Effect.provide(NodeFileSystem.layer), Vitest.withTestCtx(test)),
   )
 
   Vitest.scopedLive('ignore strategy behaves like warn but silent', (test) =>
@@ -49,7 +49,7 @@ Vitest.describe.concurrent('unknown event handling in materializeEvent', () => {
 
       const rows = dbEventlog.select<{ name: string; schemaHash: number }>(sql`SELECT name, schemaHash FROM eventlog`)
       expect(rows).toEqual([{ name: event.name, schemaHash: UNKNOWN_EVENT_SCHEMA_HASH }])
-    }).pipe(Effect.provide(PlatformNode.NodeFileSystem.layer), Vitest.withTestCtx(test)),
+    }).pipe(Effect.provide(NodeFileSystem.layer), Vitest.withTestCtx(test)),
   )
 
   Vitest.scopedLive('fail strategy surfaces UnknownEventError', (test) =>
@@ -67,7 +67,7 @@ Vitest.describe.concurrent('unknown event handling in materializeEvent', () => {
         throw new Error(`Unexpected failure cause: ${error.cause._tag}`)
       }
       expect(error.cause.reason).toEqual('event-definition-missing')
-    }).pipe(Effect.provide(PlatformNode.NodeFileSystem.layer), Vitest.withTestCtx(test)),
+    }).pipe(Effect.provide(NodeFileSystem.layer), Vitest.withTestCtx(test)),
   )
 
   Vitest.scopedLive('callback strategy invokes observer once', (test) =>
@@ -85,7 +85,7 @@ Vitest.describe.concurrent('unknown event handling in materializeEvent', () => {
 
       expect(result.sessionChangeset._tag).toEqual('no-op')
       expect(calls).toEqual([{ eventName: event.name, reason: 'event-definition-missing' }])
-    }).pipe(Effect.provide(PlatformNode.NodeFileSystem.layer), Vitest.withTestCtx(test)),
+    }).pipe(Effect.provide(NodeFileSystem.layer), Vitest.withTestCtx(test)),
   )
 
   Vitest.scopedLive('warn strategy skips events missing materializers', (test) =>
@@ -121,7 +121,7 @@ Vitest.describe.concurrent('unknown event handling in materializeEvent', () => {
       const result = yield* materializeEvent(event, {})
 
       expect(result.sessionChangeset._tag).toEqual('no-op')
-    }).pipe(Effect.provide(PlatformNode.NodeFileSystem.layer), Vitest.withTestCtx(test)),
+    }).pipe(Effect.provide(NodeFileSystem.layer), Vitest.withTestCtx(test)),
   )
 })
 

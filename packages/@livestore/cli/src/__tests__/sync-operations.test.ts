@@ -3,12 +3,12 @@ import { expect } from 'vitest'
 import type { LiveStoreEvent } from '@livestore/common/schema'
 import { Vitest } from '@livestore/utils-dev/node-vitest'
 import { Chunk, Effect, FetchHttpClient, Layer, Mailbox, Stream } from '@livestore/utils/effect'
-import { PlatformNode } from '@livestore/utils/node'
 
 import { pullEventsFromSyncBackend, pushEventsToSyncBackend } from '../sync-operations.ts'
 import { makeEventFactory, useMockConfig } from './fixtures/mock-config.ts'
 
-const baseLayer = Layer.mergeAll(PlatformNode.NodeFileSystem.layer, FetchHttpClient.layer)
+import * as NodeFileSystem from '@effect/platform-node/NodeFileSystem'
+const baseLayer = Layer.mergeAll(NodeFileSystem.layer, FetchHttpClient.layer)
 const withTestCtx = Vitest.makeWithTestCtx({ makeLayer: () => baseLayer })
 
 /** Each test acquires its own temporary config module via useMockConfig, avoiding shared state. */

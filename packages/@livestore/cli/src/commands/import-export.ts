@@ -6,8 +6,8 @@ import { Cli } from '@livestore/utils/node'
 
 import * as SyncOps from '../sync-operations.ts'
 
-const jsonStringifyPretty = Schema.encodeSync(Schema.parseJson({ space: 2 }))
-const jsonParse = Schema.decodeUnknownSync(Schema.parseJson())
+const jsonStringifyPretty = Schema.encodeSync(Schema.UnknownFromJsonString)
+const jsonParse = Schema.decodeUnknownSync(Schema.UnknownFromJsonString)
 
 const LARGE_EVENT_WARNING_THRESHOLD = 100_000
 

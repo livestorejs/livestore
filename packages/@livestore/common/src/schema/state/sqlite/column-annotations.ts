@@ -84,5 +84,5 @@ const applyAnnotations = <T extends Schema.Schema.All>(schema: T, overrides: Rec
     ? { ...overrides, [SchemaAST.IdentifierAnnotationId]: identifier.value }
     : overrides
 
-  return schema.annotations(annotations) as T
+  return schema.annotate(annotations) as T
 }

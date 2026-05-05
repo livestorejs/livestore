@@ -49,7 +49,7 @@ const BoundArraySchemaFromSelf = <A, I, R>(
       pretty: () => (_) => `BoundArray(${_.length})`,
       arbitrary: () => (fc) => fc.anything() as any,
       equivalence: () => {
-        const elementEquivalence = Schema.equivalence(item)
+        const elementEquivalence = Schema.toEquivalence(item)
         return (a: unknown, b: unknown) => {
           if (a === b) {
             return true
@@ -90,7 +90,7 @@ export const DebugInfo = Schema.Struct({
   slowQueries: BoundArraySchema(SlowQueryInfo),
   queryFrameDuration: Schema.Number,
   queryFrameCount: Schema.Number,
-  events: BoundArraySchema(Schema.Tuple(Schema.String, Schema.Any)),
+  events: BoundArraySchema(Schema.Tuple([Schema.String, Schema.Any])),
 })
 
 export type DebugInfo = typeof DebugInfo.Type

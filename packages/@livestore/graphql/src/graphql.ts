@@ -134,7 +134,7 @@ export class LiveStoreGraphQLQuery<
         ? (res: TResult) => res as any as TResultMapped
         : Schema.isSchema(map) === true
           ? (res: TResult) => {
-              const parseResult = Schema.decodeEither(map as Schema.Schema<TResultMapped, TResult>)(res)
+              const parseResult = Schema.decodeExit(map as Schema.Schema<TResultMapped, TResult>)(res)
               if (parseResult._tag === 'Left') {
                 console.error(`Error parsing GraphQL query result: ${String(parseResult.left)}`)
                 return shouldNeverHappen(`Error parsing SQL query result: ${String(parseResult.left)}`)

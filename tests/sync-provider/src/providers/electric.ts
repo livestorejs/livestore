@@ -1,3 +1,5 @@
+import * as NodeHttpServer from '@effect/platform-node/NodeHttpServer'
+import * as NodeServices from '@effect/platform-node/NodeServices'
 /**
  * ElectricSQL Test Provider
  *
@@ -30,7 +32,7 @@ import {
   type PlatformError,
 } from '@livestore/utils/effect'
 import type { ChildProcessSpawner } from 'effect/unstable/process/ChildProcessSpawner'
-import { getFreePort, PlatformNode } from '@livestore/utils/node'
+import { getFreePort } from '@livestore/utils/node'
 
 import { SyncProviderImpl, type SyncProviderLayer } from '../types.ts'
 
@@ -53,8 +55,8 @@ export const prepare: Effect.Effect<
 export const getProviderSpecific = (provider: SyncProviderImpl['Type']) =>
   provider.providerSpecific as {
     getDbForTesting: (storeId: string) => {
-      migrate: Effect.Effect<void, Cause.UnknownException>
-      disconnect: Effect.Effect<void, Cause.UnknownException>
+      migrate: Effect.Effect<void, Cause.UnknownError>
+      disconnect: Effect.Effect<void, Cause.UnknownError>
       sql: any
       tableName: string
     }
@@ -85,7 +87,7 @@ export const layer: SyncProviderLayer = Layer.scoped(
   }),
 ).pipe(
   Layer.provide(DockerComposeLive),
-  Layer.provide(PlatformNode.NodeContext.layer),
+  Layer.provide(NodeServices.layer),
   UnknownError.mapToUnknownErrorLayer,
 )
 
@@ -126,7 +128,7 @@ const startElectricApi = Effect.gen(function* () {
   yield* makeRouter({ electricPort, postgresPort }).pipe(
     // HttpMiddleware.logger, // Can be useful for debugging
     HttpServer.serve(),
-    Layer.provide(PlatformNode.NodeHttpServer.layer(() => http.createServer(), { port: endpointPort })),
+    Layer.provide(NodeHttpServer.layer(() => http.createServer(), { port: endpointPort })),
     Layer.launch,
     Effect.tapCauseLogPretty,
     Effect.forkScoped,
@@ -180,7 +182,7 @@ const makeRouter = ({ electricPort, postgresPort }: { electricPort: number; post
       Effect.gen(function* () {
         const request = yield* HttpServerRequest.HttpServerRequest
         const body = yield* request.json
-        const parsedPayload = yield* Schema.decodeUnknown(ElectricSync.ApiSchema.PushPayload)(body)
+        const parsedPayload = yield* Schema.decodeUnknownEffect(ElectricSync.ApiSchema.PushPayload)(body)
 
         const db = makeDb({ storeId: parsedPayload.storeId, postgresPort })
 

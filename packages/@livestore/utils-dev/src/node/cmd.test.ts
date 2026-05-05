@@ -1,7 +1,6 @@
 import fs from 'node:fs'
 import path from 'node:path'
 import { Duration, Effect, Layer } from '@livestore/utils/effect'
-import { PlatformNode } from '@livestore/utils/node'
 import { Vitest } from '@livestore/utils-dev/node-vitest'
 import * as ChildProcessSpawner from 'effect/unstable/process/ChildProcessSpawner'
 import { expect } from 'vitest'
@@ -9,8 +8,9 @@ import { expect } from 'vitest'
 import { cmd } from './cmd.ts'
 import { CurrentWorkingDirectory } from './workspace.ts'
 
+import * as NodeServices from '@effect/platform-node/NodeServices'
 const withNode = Vitest.makeWithTestCtx({
-  makeLayer: () => Layer.mergeAll(PlatformNode.NodeContext.layer, CurrentWorkingDirectory.live),
+  makeLayer: () => Layer.mergeAll(NodeServices.layer, CurrentWorkingDirectory.live),
   timeout: 20_000,
 })
 

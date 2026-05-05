@@ -322,7 +322,7 @@ export class LiveStoreDbQuery<TResultSchema, TResult = TResultSchema> extends Li
 
     const makeResultsEqual = (resultSchema: Schema.Schema<any, any>) => {
       // Creating the equivalence function eagerly in outer scope as it might be expensive
-      const eq = Schema.equivalence(resultSchema)
+      const eq = Schema.toEquivalence(resultSchema)
       return (a: TResult, b: TResult) => (a === NOT_REFRESHED_YET || b === NOT_REFRESHED_YET ? false : eq(a, b))
     }
 
@@ -394,7 +394,7 @@ export class LiveStoreDbQuery<TResultSchema, TResult = TResultSchema> extends Li
 
             span.setAttribute('sql.rowsCount', rawDbResults.length)
 
-            const parsedResult = Schema.decodeEither(schemaRef.current!)(rawDbResults)
+            const parsedResult = Schema.decodeExit(schemaRef.current!)(rawDbResults)
 
             if (parsedResult._tag === 'Left') {
               const parseErrorStr = String(parsedResult.left)

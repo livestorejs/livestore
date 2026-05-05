@@ -7,8 +7,9 @@ import { BrowserContext, browserContextLayer } from '@livestore/effect-playwrigh
 import { CurrentWorkingDirectory, cmd } from '@livestore/utils-dev/node'
 import { Vitest } from '@livestore/utils-dev/node-vitest'
 import { Duration, Effect, FetchHttpClient, HttpClient, Layer, Schedule } from '@livestore/utils/effect'
-import { getFreePort, PlatformNode } from '@livestore/utils/node'
+import { getFreePort } from '@livestore/utils/node'
 
+import * as NodeServices from '@effect/platform-node/NodeServices'
 const testDir = path.dirname(fileURLToPath(import.meta.url))
 const integrationRoot = path.resolve(testDir, '../../..')
 const viteConfigRel = 'src/tests/playwright/fixtures/vite.config.ts'
@@ -18,7 +19,7 @@ const withTestCtx = Vitest.makeWithTestCtx({
   timeout: testTimeout,
   makeLayer: () =>
     Layer.mergeAll(
-      PlatformNode.NodeContext.layer,
+      NodeServices.layer,
       FetchHttpClient.layer,
       browserContextLayer({ persistentContextPath: '', headless: true }),
     ),
@@ -91,7 +92,7 @@ Vitest.describe('adapter-web', { timeout: testTimeout }, () => {
           catch: () => false,
         }).pipe(
           Effect.map(() => true),
-          Effect.catchAll(() => Effect.succeed(false)),
+          Effect.catch(() => Effect.succeed(false)),
         )
 
       const [boot1, boot2] = yield* Effect.all([didBoot(page1), didBoot(page2)])
@@ -151,7 +152,7 @@ Vitest.describe('adapter-web', { timeout: testTimeout }, () => {
         catch: () => false,
       }).pipe(
         Effect.map(() => true),
-        Effect.catchAll(() => Effect.succeed(false)),
+        Effect.catch(() => Effect.succeed(false)),
       )
 
       expect(didBoot).toBe(true)
@@ -227,7 +228,7 @@ Vitest.describe('adapter-web', { timeout: testTimeout }, () => {
           catch: () => false,
         }).pipe(
           Effect.map(() => true),
-          Effect.catchAll(() => Effect.succeed(false)),
+          Effect.catch(() => Effect.succeed(false)),
         )
 
       const [boot1, boot2] = yield* Effect.all([didBoot(page1), didBoot(page2)])

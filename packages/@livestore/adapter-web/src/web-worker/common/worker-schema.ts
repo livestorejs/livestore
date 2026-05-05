@@ -86,7 +86,7 @@ export class LeaderWorkerInnerPushToLeader extends Schema.TaggedRequest<LeaderWo
   'PushToLeader',
   {
     payload: {
-      batch: Schema.Array(Schema.typeSchema(LiveStoreEvent.Client.Encoded)),
+      batch: Schema.Array(Schema.toType(LiveStoreEvent.Client.Encoded)),
     },
     success: Schema.Void as Schema.Schema<void>,
     failure: RejectedPushError,
@@ -95,7 +95,7 @@ export class LeaderWorkerInnerPushToLeader extends Schema.TaggedRequest<LeaderWo
 
 export class LeaderWorkerInnerPullStream extends Schema.TaggedRequest<LeaderWorkerInnerPullStream>()('PullStream', {
   payload: {
-    cursor: Schema.typeSchema(EventSequenceNumber.Client.Composite),
+    cursor: Schema.toType(EventSequenceNumber.Client.Composite),
   },
   success: Schema.Struct({
     payload: SyncState.PayloadUpstream,
@@ -143,7 +143,7 @@ export class LeaderWorkerInnerGetLeaderHead extends Schema.TaggedRequest<LeaderW
   'GetLeaderHead',
   {
     payload: {},
-    success: Schema.typeSchema(EventSequenceNumber.Client.Composite),
+    success: Schema.toType(EventSequenceNumber.Client.Composite),
     failure: Schema.Never,
   },
 ) {}
@@ -201,24 +201,7 @@ export class LeaderWorkerInnerExtraDevtoolsMessage extends Schema.TaggedRequest<
   },
 ) {}
 
-export const LeaderWorkerInnerRequest = Schema.Union(
-  LeaderWorkerInnerInitialMessage,
-  LeaderWorkerInnerBootStatusStream,
-  LeaderWorkerInnerPushToLeader,
-  LeaderWorkerInnerPullStream,
-  LeaderWorkerInnerStreamEvents,
-  LeaderWorkerInnerExport,
-  LeaderWorkerInnerExportEventlog,
-  LeaderWorkerInnerGetRecreateSnapshot,
-  LeaderWorkerInnerGetLeaderHead,
-  LeaderWorkerInnerGetLeaderSyncState,
-  LeaderWorkerInnerSyncStateStream,
-  LeaderWorkerInnerGetNetworkStatus,
-  LeaderWorkerInnerNetworkStatusStream,
-  LeaderWorkerInnerShutdown,
-  LeaderWorkerInnerExtraDevtoolsMessage,
-  WebmeshWorker.Schema.CreateConnection,
-)
+export const LeaderWorkerInnerRequest = Schema.Union([LeaderWorkerInnerInitialMessage, LeaderWorkerInnerBootStatusStream, LeaderWorkerInnerPushToLeader, LeaderWorkerInnerPullStream, LeaderWorkerInnerStreamEvents, LeaderWorkerInnerExport, LeaderWorkerInnerExportEventlog, LeaderWorkerInnerGetRecreateSnapshot, LeaderWorkerInnerGetLeaderHead, LeaderWorkerInnerGetLeaderSyncState, LeaderWorkerInnerSyncStateStream, LeaderWorkerInnerGetNetworkStatus, LeaderWorkerInnerNetworkStatusStream, LeaderWorkerInnerShutdown, LeaderWorkerInnerExtraDevtoolsMessage, WebmeshWorker.Schema.CreateConnection])
 export type LeaderWorkerInnerRequest = typeof LeaderWorkerInnerRequest.Type
 
 export class SharedWorkerUpdateMessagePort extends Schema.TaggedRequest<SharedWorkerUpdateMessagePort>()(
@@ -241,25 +224,5 @@ export class SharedWorkerUpdateMessagePort extends Schema.TaggedRequest<SharedWo
   },
 ) {}
 
-export const SharedWorkerRequest = Schema.Union(
-  SharedWorkerUpdateMessagePort,
-
-  // Proxied requests
-  LeaderWorkerInnerBootStatusStream,
-  LeaderWorkerInnerPushToLeader,
-  LeaderWorkerInnerPullStream,
-  LeaderWorkerInnerStreamEvents,
-  LeaderWorkerInnerExport,
-  LeaderWorkerInnerGetRecreateSnapshot,
-  LeaderWorkerInnerExportEventlog,
-  LeaderWorkerInnerGetLeaderHead,
-  LeaderWorkerInnerGetLeaderSyncState,
-  LeaderWorkerInnerSyncStateStream,
-  LeaderWorkerInnerGetNetworkStatus,
-  LeaderWorkerInnerNetworkStatusStream,
-  LeaderWorkerInnerShutdown,
-  LeaderWorkerInnerExtraDevtoolsMessage,
-
-  WebmeshWorker.Schema.CreateConnection,
-)
+export const SharedWorkerRequest = Schema.Union([SharedWorkerUpdateMessagePort, LeaderWorkerInnerBootStatusStream, LeaderWorkerInnerPushToLeader, LeaderWorkerInnerPullStream, LeaderWorkerInnerStreamEvents, LeaderWorkerInnerExport, LeaderWorkerInnerGetRecreateSnapshot, LeaderWorkerInnerExportEventlog, LeaderWorkerInnerGetLeaderHead, LeaderWorkerInnerGetLeaderSyncState, LeaderWorkerInnerSyncStateStream, LeaderWorkerInnerGetNetworkStatus, LeaderWorkerInnerNetworkStatusStream, LeaderWorkerInnerShutdown, LeaderWorkerInnerExtraDevtoolsMessage, WebmeshWorker.Schema.CreateConnection])
 export type SharedWorkerRequest = typeof SharedWorkerRequest.Type

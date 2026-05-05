@@ -1,4 +1,4 @@
-import { Deferred, Either, Exit, GlobalValue, identity, Option, PubSub, Queue, Scope } from 'effect'
+import { Deferred, Result, Exit, identity, Option, PubSub, Queue, Scope } from 'effect'
 import type { DurationInput } from 'effect/Duration'
 
 import { shouldNeverHappen } from '../../misc.ts'
@@ -57,7 +57,7 @@ export const messagePortChannel: <MsgListen, MsgSend, MsgListenEncoded, MsgSendE
 
       const listen = Stream.fromEventListener<MessageEvent>(port, 'message').pipe(
         // Stream.tap((_) => Effect.log(`${label}:message`, _.data)),
-        Stream.map((_) => Schema.decodeEither(schema.listen)(_.data)),
+        Stream.map((_) => Schema.decodeExit(schema.listen)(_.data)),
         listenToDebugPing(label),
       )
 
@@ -82,10 +82,16 @@ export const messagePortChannel: <MsgListen, MsgSend, MsgListenEncoded, MsgSendE
     }).pipe(Effect.withSpan(`WebChannel:messagePortChannel`)),
   )
 
-const sameThreadChannels = GlobalValue.globalValue(
-  'livestore:sameThreadChannels',
-  () => new Map<string, PubSub.PubSub<any>>(),
-)
+function globalValue<A>(key: string, init: () => A): A {
+  const globalKey = Symbol.for(key)
+  const globalStore = globalThis as typeof globalThis & Record<symbol, unknown>
+  if (Object.prototype.hasOwnProperty.call(globalStore, globalKey) === false) {
+    globalStore[globalKey] = init()
+  }
+  return globalStore[globalKey] as A
+}
+
+const sameThreadChannels = globalValue('livestore:sameThreadChannels', () => new Map<string, PubSub.PubSub<any>>())
 
 export const sameThreadChannel = <MsgListen, MsgSend, MsgListenEncoded, MsgSendEncoded>({
   schema: inputSchema,
@@ -106,7 +112,7 @@ export const sameThreadChannel = <MsgListen, MsgSend, MsgListenEncoded, MsgSendE
 
       const send = (message: MsgSend) => PubSub.publish(pubSub, message)
 
-      const listen = Stream.fromPubSub(pubSub).pipe(Stream.map(Either.right), listenToDebugPing(channelName))
+      const listen = Stream.fromPubSub(pubSub).pipe(Stream.map(Result.succeed), listenToDebugPing(channelName))
 
       const closedDeferred = yield* Deferred.make<void>().pipe(Effect.acquireRelease(Deferred.done(Exit.void)))
 
@@ -138,12 +144,12 @@ export const messagePortChannelWithAck: <MsgListen, MsgSend, MsgListenEncoded, M
 
       const ChannelRequest = Schema.TaggedStruct('ChannelRequest', {
         id: Schema.String,
-        payload: Schema.Union(schema.listen, schema.send),
-      }).annotations({ title: 'webmesh.ChannelRequest' })
+        payload: Schema.Union([schema.listen, schema.send]),
+      }).annotate({ title: 'webmesh.ChannelRequest' })
       const ChannelRequestAck = Schema.TaggedStruct('ChannelRequestAck', {
         reqId: Schema.String,
-      }).annotations({ title: 'webmesh.ChannelRequestAck' })
-      const ChannelMessage = Schema.Union(ChannelRequest, ChannelRequestAck).annotations({
+      }).annotate({ title: 'webmesh.ChannelRequestAck' })
+      const ChannelMessage = Schema.Union([ChannelRequest, ChannelRequestAck]).annotate({
         title: 'webmesh.ChannelMessage',
       })
 
@@ -183,27 +189,27 @@ export const messagePortChannelWithAck: <MsgListen, MsgSend, MsgListenEncoded, M
       const listen = Stream.fromEventListener<MessageEvent>(port, 'message').pipe(
         // Stream.onStart(Effect.log(`${label}:listen:start`)),
         // Stream.tap((_) => Effect.log(`${label}:message`, _.data)),
-        Stream.map((_) => Schema.decodeEither(ChannelMessage)(_.data)),
+        Stream.map((_) => Schema.decodeExit(ChannelMessage)(_.data)),
         Stream.tap((msg) =>
           Effect.gen(function* () {
-            if (msg._tag === 'Right') {
-              if (msg.right._tag === 'ChannelRequestAck') {
-                yield* Deferred.succeed(requestAckMap.get(msg.right.reqId)!, void 0)
-              } else if (msg.right._tag === 'ChannelRequest') {
+            if (msg._tag === 'Success') {
+              if (msg.success._tag === 'ChannelRequestAck') {
+                yield* Deferred.succeed(requestAckMap.get(msg.success.reqId)!, void 0)
+              } else if (msg.success._tag === 'ChannelRequest') {
                 debugInfo.listenTotal++
-                port.postMessage(yield* Schema.encode(ChannelMessage)({ _tag: 'ChannelRequestAck', reqId: msg.right.id }))
+                port.postMessage(yield* Schema.encodeEffect(ChannelMessage)({ _tag: 'ChannelRequestAck', reqId: msg.success.id }))
               }
             }
           }),
         ),
         Stream.filterMap((msg) =>
-          msg._tag === 'Left'
+          msg._tag === 'Failure'
             ? Option.some(msg as any)
-            : msg.right._tag === 'ChannelRequest'
-              ? Option.some(Either.right(msg.right.payload))
+            : msg.success._tag === 'ChannelRequest'
+              ? Option.some(Result.succeed(msg.success.payload))
               : Option.none(),
         ),
-        (_) => _ as Stream.Stream<Either.Either<any, any>>,
+        (_) => _ as Stream.Stream<Result.Result<any, any>>,
         listenToDebugPing(label),
       )
 
@@ -226,6 +232,7 @@ export const messagePortChannelWithAck: <MsgListen, MsgSend, MsgListenEncoded, M
       }
     }).pipe(Effect.withSpan(`WebChannel:messagePortChannelWithAck`)),
   )
+
 
 export type QueueChannelProxy<MsgListen, MsgSend> = {
   /** Only meant to be used externally */
@@ -260,7 +267,7 @@ export const queueChannelProxy = <MsgListen, MsgSend>({
 
       const send = (message: MsgSend) => Queue.offer(sendQueue, message)
 
-      const listen = Stream.fromQueue(listenQueue).pipe(Stream.map(Either.right), listenToDebugPing('queueChannel'))
+      const listen = Stream.fromQueue(listenQueue).pipe(Stream.map(Result.succeed), listenToDebugPing('queueChannel'))
 
       const closedDeferred = yield* Deferred.make<void>().pipe(Effect.acquireRelease(Deferred.done(Exit.void)))
       const supportsTransferables = true
@@ -298,7 +305,7 @@ export const toOpenChannel = <MsgListen, MsgSend>(
   },
 ): Effect.Effect<WebChannel<MsgListen, MsgSend>, never, Scope.Scope> =>
   Effect.gen(function* () {
-    const queue = yield* Queue.unbounded<Either.Either<MsgListen, any>>().pipe(Effect.acquireRelease(Queue.shutdown))
+    const queue = yield* Queue.unbounded<Result.Result<MsgListen, any>>().pipe(Effect.acquireRelease(Queue.shutdown))
 
     const heartbeatChannel = channel as WebChannel<
       MsgListen | typeof WebChannelHeartbeat.Type,
@@ -314,13 +321,13 @@ export const toOpenChannel = <MsgListen, MsgSend>(
       options?.heartbeat !== undefined
         ? Stream.filterEffect(
             Effect.fn(function* (msg) {
-              if (msg._tag === 'Right' && Schema.is(WebChannelHeartbeat)(msg.right) === true) {
-                if (msg.right._tag === 'WebChannel.Ping') {
-                  yield* heartbeatChannel.send(WebChannelPong.make({ requestId: msg.right.requestId }))
+              if (msg._tag === 'Success' && Schema.is(WebChannelHeartbeat)(msg.success) === true) {
+                if (msg.success._tag === 'WebChannel.Ping') {
+                  yield* heartbeatChannel.send(WebChannelPong.make({ requestId: msg.success.requestId }))
                 } else {
                   const { deferred, requestId } = pendingPingDeferredRef.current ?? shouldNeverHappen('No pending ping')
-                  if (requestId !== msg.right.requestId) {
-                    shouldNeverHappen('Received pong for unexpected requestId', requestId, msg.right.requestId)
+                  if (requestId !== msg.success.requestId) {
+                    shouldNeverHappen('Received pong for unexpected requestId', requestId, msg.success.requestId)
                   }
                   yield* Deferred.succeed(deferred, void 0)
                 }
@@ -347,7 +354,7 @@ export const toOpenChannel = <MsgListen, MsgSend>(
           pendingPingDeferredRef.current = { deferred, requestId }
           yield* deferred.pipe(
             Effect.timeout(timeout),
-            Effect.catchTag('TimeoutException', () => channel.shutdown),
+            Effect.catchTag('TimeoutError', () => channel.shutdown),
           )
         }
       }).pipe(Effect.withSpan(`WebChannel:heartbeat`), Effect.forkScoped)

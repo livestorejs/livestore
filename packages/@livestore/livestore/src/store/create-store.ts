@@ -64,10 +64,10 @@ declare global {
  * const { store } = yield* AppStore.Tag
  * ```
  */
-export class LiveStoreContextRunning extends Context.Tag('@livestore/livestore/effect/LiveStoreContextRunning')<
+export class LiveStoreContextRunning extends Context.Service<
   LiveStoreContextRunning,
   LiveStoreContextRunning_
->() {
+>()('@livestore/livestore/effect/LiveStoreContextRunning') {
   static fromDeferred = Effect.gen(function* () {
     const deferred = yield* DeferredStoreContext
     const ctx = yield* deferred
@@ -78,10 +78,10 @@ export class LiveStoreContextRunning extends Context.Tag('@livestore/livestore/e
 /**
  * @deprecated Use `StoreContext.DeferredTag` from `makeStoreContext()` instead.
  */
-export class DeferredStoreContext extends Context.Tag('@livestore/livestore/effect/DeferredStoreContext')<
+export class DeferredStoreContext extends Context.Service<
   DeferredStoreContext,
   Deferred.Deferred<LiveStoreContextRunning['Type'], UnknownError>
->() {}
+>()('@livestore/livestore/effect/DeferredStoreContext') {}
 
 export type LiveStoreContextProps<
   TSchema extends LiveStoreSchema,
@@ -251,7 +251,7 @@ export const createStorePromise = async <
       })
     }
 
-    return yield* createStore({ ...options }).pipe(Scope.extend(scope))
+    return yield* createStore({ ...options }).pipe(Scope.provide(scope))
   }).pipe(
     Effect.withSpan('createStore', {
       attributes: { storeId: options.storeId, disableDevtools: options.disableDevtools },
@@ -332,7 +332,7 @@ export const createStore = <
           yield* Scope.close(lifetimeScope, exit).pipe(
             Effect.logWarnIfTakesLongerThan({ label: '@livestore/livestore:shutdown', duration: 500 }),
             Effect.timeout(1000),
-            Effect.catchTag('TimeoutException', () =>
+            Effect.catchTag('TimeoutError', () =>
               Effect.logError('@livestore/livestore:shutdown: Timed out after 1 second'),
             ),
           )
@@ -355,7 +355,7 @@ export const createStore = <
       const syncPayloadEncoded =
         syncPayload === undefined
           ? undefined
-          : yield* Schema.encode(resolvedSyncPayloadSchema)(syncPayload).pipe(UnknownError.mapToUnknownError)
+          : yield* Schema.encodeEffect(resolvedSyncPayloadSchema)(syncPayload).pipe(UnknownError.mapToUnknownError)
 
       const clientSession: ClientSession = yield* adapter({
         schema,
@@ -440,7 +440,7 @@ export const createStore = <
       Effect.withSpan('createStore', { attributes: { debugInstanceId, storeId } }),
       Effect.annotateLogs({ debugInstanceId, storeId }),
       LS_DEV === true ? TaskTracing.withAsyncTaggingTracing((name) => (console as any).createTask(name)) : identity,
-      Scope.extend(lifetimeScope),
+      Scope.provide(lifetimeScope),
     )
   })
 

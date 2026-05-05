@@ -19,10 +19,11 @@ import {
   Schema,
   Stream,
 } from '@livestore/utils/effect'
-import { getFreePort, PlatformNode } from '@livestore/utils/node'
+import { getFreePort } from '@livestore/utils/node'
 
 import { SyncProviderImpl, type SyncProviderLayer } from '../types.ts'
 
+import * as NodeHttpServer from '@effect/platform-node/NodeHttpServer'
 /** S2-Lite based sync provider for testing. Uses the open-source s2-lite container. */
 export const name = 'S2-Lite'
 
@@ -139,7 +140,7 @@ const startS2LiteProxy = Effect.gen(function* () {
 
   yield* makeRouter({ s2Config, basinClient }).pipe(
     HttpServer.serve(),
-    Layer.provide(PlatformNode.NodeHttpServer.layer(() => http.createServer(), { port: endpointPort })),
+    Layer.provide(NodeHttpServer.layer(() => http.createServer(), { port: endpointPort })),
     Layer.launch,
     Effect.tapCauseLogPretty,
     Effect.forkScoped,
@@ -199,7 +200,7 @@ const makeRouter = ({
         return yield* HttpServerResponse.stream(bodyStream, { contentType: 'text/event-stream' })
       }).pipe(
         // Never fail the route: return empty ReadBatch on unexpected error to keep the pull stream alive
-        Effect.catchAll(() => HttpServerResponse.json({ records: [] })),
+        Effect.catch(() => HttpServerResponse.json({ records: [] })),
       ),
     ),
 
@@ -209,7 +210,7 @@ const makeRouter = ({
       Effect.gen(function* () {
         const request = yield* HttpServerRequest.HttpServerRequest
         const body = yield* request.json
-        const parsed = yield* Schema.decodeUnknown(S2Sync.ApiSchema.PushPayload)(body)
+        const parsed = yield* Schema.decodeUnknownEffect(S2Sync.ApiSchema.PushPayload)(body)
 
         const streamName = S2Sync.makeS2StreamName(parsed.storeId)
         if (createdStreams.has(streamName) === false) {

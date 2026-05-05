@@ -3,13 +3,13 @@ import { envTruish } from '@livestore/utils'
 import { Context, Effect, Layer, Option, Schema, Stream } from '@livestore/utils/effect'
 import * as PW from '@playwright/test'
 
-export class BrowserContext extends Context.Tag('Playwright.BrowserContext')<
+export class BrowserContext extends Context.Service<
   BrowserContext,
   {
     browserContext: PW.BrowserContext
     // backgroundPageConsoleFiber: Fiber.Fiber<void, SiteError> | undefined
   }
->() {}
+>()('Playwright.BrowserContext') {}
 
 export type MakeBrowserContextParams = {
   extensionPath?: string
@@ -72,7 +72,7 @@ export const browserContext = ({
 
       // TODO bring back once Playwright supports console messages for workers/service workers
       // const backgroundPage = browserContext.serviceWorkers()[0] ?? (yield* Effect.promise(() => browserContext.waitForEvent('serviceworker')))
-      // backgroundPageConsoleFiber = yield* handlePageConsole(backgroundPage, 'background').pipe(Effect.fork)
+      // backgroundPageConsoleFiber = yield* handlePageConsole(backgroundPage, 'background').pipe(Effect.forkChild)
     }
 
     yield* Effect.addFinalizer(() => Effect.promise(() => browserContext.close()))
@@ -93,7 +93,7 @@ export const withPage = <T>(f: () => Promise<T>, options?: { label?: string }): 
   }).pipe(Effect.withSpan(`withPage:${options?.label ?? f.toString()}`))
 
 export class ConsoleMessage extends Schema.TaggedStruct('Playwright.ConsoleMessage', {
-  type: Schema.Literal('error', 'log', 'warn', 'info', 'debug', 'group', 'groupCollapsed', 'groupEnd'),
+  type: Schema.Literals(['error', 'log', 'warn', 'info', 'debug', 'group', 'groupCollapsed', 'groupEnd']),
   message: Schema.String,
   args: Schema.Array(Schema.Any),
 }) {}
@@ -255,5 +255,5 @@ export const pageConsole = ({
 export class SiteError extends Schema.TaggedErrorClass<SiteError>()('SiteError', {
   // TODO remove `label` again once error tracing works properly with Playwright
   label: Schema.String,
-  messages: Schema.Union(Schema.Array(ConsoleMessage), Schema.Defect),
+  messages: Schema.Union([Schema.Array(ConsoleMessage), Schema.Defect]),
 }) {}

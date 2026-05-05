@@ -39,7 +39,7 @@ export const bootDevtools = Effect.fn('@livestore/common:leader-thread:devtools:
         Effect.as(Option.none()),
       ),
     ),
-    Effect.catchAllCause((cause) =>
+    Effect.catchCause((cause) =>
       Effect.logWarning(
         `[@livestore/devtools] Failed to start devtools server. Devtools will be disabled.`,
         cause,
@@ -252,7 +252,7 @@ const listenToDevtools = ({
                     }),
                   ),
                 ),
-                Effect.catchAll((cause) =>
+                Effect.catch((cause) =>
                   Effect.logWarning('Error importing database file', cause).pipe(
                     Effect.zipRight(
                       sendMessage(

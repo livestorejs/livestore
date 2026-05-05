@@ -15,11 +15,12 @@ import {
   HttpServerResponse,
   Layer,
 } from '@livestore/utils/effect'
-import { PlatformNode } from '@livestore/utils/node'
 import { makeMeshNode, makeWebSocketEdge } from '@livestore/webmesh'
 
 import { makeViteMiddleware } from './vite-dev-server.ts'
 
+import * as NodeHttpServer from '@effect/platform-node/NodeHttpServer'
+import * as NodeHttpServerRequest from '@effect/platform-node/NodeHttpServerRequest'
 /**
  * Determines if a request URL should be routed to the Vite middleware.
  * Includes LiveStore devtools paths and Vite internal paths like `/@fs/`, `/@vite/`, etc.
@@ -111,8 +112,8 @@ export const startDevtoolsServer = ({
           // Here we're delegating to the Vite middleware
 
           // TODO replace this once @effect/platform-node supports Node HTTP middlewares
-          const nodeReq = PlatformNode.NodeHttpServerRequest.toIncomingMessage(req)
-          const nodeRes = PlatformNode.NodeHttpServerRequest.toServerResponse(req)
+          const nodeReq = NodeHttpServerRequest.toIncomingMessage(req)
+          const nodeRes = NodeHttpServerRequest.toServerResponse(req)
           const deferred = yield* Deferred.make()
           viteMiddleware.middlewares(nodeReq, nodeRes, () => Deferred.unsafeDone(deferred, Exit.void))
           yield* deferred
@@ -143,7 +144,7 @@ export const startDevtoolsServer = ({
     }),
     HttpMiddleware.withLoggerDisabled,
     Layer.unwrapScoped,
-    Layer.provide(PlatformNode.NodeHttpServer.layer(() => http.createServer(), { port, host })),
+    Layer.provide(NodeHttpServer.layer(() => http.createServer(), { port, host })),
     Layer.launch,
     Effect.orDie,
   )

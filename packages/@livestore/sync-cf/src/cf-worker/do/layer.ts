@@ -2,7 +2,7 @@ import { UnknownError } from '@livestore/common'
 import type { CfTypes } from '@livestore/common-cf'
 import { EventSequenceNumber, State } from '@livestore/common/schema'
 import { shouldNeverHappen } from '@livestore/utils'
-import { Effect, Predicate } from '@livestore/utils/effect'
+import { Context, Effect, Predicate } from '@livestore/utils/effect'
 import { nanoid } from '@livestore/utils/nanoid'
 
 import type { Env, MakeDurableObjectClassOptions, RpcSubscription } from '../shared.ts'
@@ -20,7 +20,7 @@ export interface DoCtxInput {
   from: CfTypes.Request | { storeId: string }
 }
 
-export class DoCtx extends Effect.Service<DoCtx>()('DoCtx', {
+export class DoCtx extends Context.Service<DoCtx>()('DoCtx', {
   effect: Effect.fn(
     function* ({ doSelf, doOptions, from }: DoCtxInput) {
       if ((doSelf as any)[CacheSymbol] !== undefined) {

@@ -26,7 +26,7 @@ export interface DoRpcHandlerOptions {
 export const createDoRpcHandler = (
   options: DoRpcHandlerOptions,
 ): Effect.Effect<Uint8Array<ArrayBuffer> | CfTypes.ReadableStream> =>
-  Effect.gen(this, function* () {
+  Effect.gen({ self: this }, function* () {
     const { payload, input } = options
     // const { rpcSubscriptions, backendId, doOptions, ctx, env } = yield* DoCtx
 
@@ -36,7 +36,7 @@ export const createDoRpcHandler = (
         return Effect.succeed(SyncMessage.Pong.make({}))
       },
       'SyncDoRpc.Pull': (req, { headers }) =>
-        Effect.gen(this, function* () {
+        Effect.gen({ self: this }, function* () {
           const { rpcSubscriptions } = yield* DoCtx
 
           // TODO rename `req.rpcContext` to something more appropriate
@@ -67,7 +67,7 @@ export const createDoRpcHandler = (
           Stream.tapErrorCause(Effect.log),
         ),
       'SyncDoRpc.Push': (req) =>
-        Effect.gen(this, function* () {
+        Effect.gen({ self: this }, function* () {
           const { doOptions, ctx, env, storeId } = yield* DoCtx
           // DO-RPC doesn't have HTTP headers context - headers are undefined
           const push = makePush({ storeId, payload: req.payload, headers: undefined, options: doOptions, ctx, env })
@@ -87,7 +87,7 @@ export const createDoRpcHandler = (
     const handler = toDurableObjectHandler(SyncDoRpc, {
       layer: Layer.mergeAll(RpcLive, RpcSerialization.layerJson, HttpServer.layerContext).pipe(
         Layer.provide(Logger.consoleWithThread('SyncDo')),
-        Layer.provide(Logger.minimumLogLevel(LogLevel.Debug)),
+        Layer.provide(Logger.minimumLogLevel('Debug')),
       ),
     })
 

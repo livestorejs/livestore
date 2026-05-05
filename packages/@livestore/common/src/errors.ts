@@ -10,7 +10,7 @@ export class UnknownError extends Schema.TaggedErrorClass<UnknownError>()('Unkno
   static mapToUnknownError = <A, E, R>(effect: Effect.Effect<A, E, R>) =>
     effect.pipe(
       Effect.mapError((cause) => (Schema.is(UnknownError)(cause) === true ? cause : new UnknownError({ cause }))),
-      Effect.catchAllDefect((cause) => new UnknownError({ cause })),
+      Effect.catchDefect((cause) => new UnknownError({ cause })),
     )
 
   static mapToUnknownErrorLayer = <A, E, R>(layer: Layer.Layer<A, E, R>) =>
@@ -35,7 +35,7 @@ export class MaterializerHashMismatchError extends Schema.TaggedErrorClass<Mater
 ) {}
 
 export class IntentionalShutdownCause extends Schema.TaggedErrorClass<IntentionalShutdownCause>()('IntentionalShutdownCause', {
-  reason: Schema.Literal('devtools-reset', 'devtools-import', 'adapter-reset', 'manual', 'backend-id-mismatch'),
+  reason: Schema.Literals(['devtools-reset', 'devtools-import', 'adapter-reset', 'manual', 'backend-id-mismatch']),
 }) {}
 
 export class StoreInterrupted extends Schema.TaggedErrorClass<StoreInterrupted>()('StoreInterrupted', {
@@ -46,13 +46,13 @@ export class SqliteError extends Schema.TaggedErrorClass<SqliteError>()('SqliteE
   query: Schema.optional(
     Schema.Struct({
       sql: Schema.String,
-      bindValues: Schema.Union(Schema.Record(Schema.String, Schema.Any), Schema.Array(Schema.Any)),
+      bindValues: Schema.Union([Schema.Record(Schema.String, Schema.Any), Schema.Array(Schema.Any)]),
     }),
   ),
   /** The SQLite result code */
   // code: Schema.optional(Schema.Number),
   // Added string support for Expo SQLite (we should refactor this to have a unified error type)
-  code: Schema.optional(Schema.Union(Schema.Number, Schema.String)),
+  code: Schema.optional(Schema.Union([Schema.Number, Schema.String])),
   /** The original SQLite3 error */
   cause: Schema.Defect,
   note: Schema.optional(Schema.String),
@@ -60,12 +60,12 @@ export class SqliteError extends Schema.TaggedErrorClass<SqliteError>()('SqliteE
 
 export class UnknownEventError extends Schema.TaggedErrorClass<UnknownEventError>()('UnknownEventError', {
   event: LiveStoreEvent.Client.Encoded.pipe(Schema.pick('name', 'args', 'seqNum', 'clientId', 'sessionId')),
-  reason: Schema.Literal('event-definition-missing', 'materializer-missing'),
+  reason: Schema.Literals(['event-definition-missing', 'materializer-missing']),
   operation: Schema.String,
   note: Schema.optional(Schema.String),
 }) {}
 
 export class MaterializeError extends Schema.TaggedErrorClass<MaterializeError>()('MaterializeError', {
-  cause: Schema.Union(MaterializerHashMismatchError, SqliteError, UnknownEventError),
+  cause: Schema.Union([MaterializerHashMismatchError, SqliteError, UnknownEventError]),
   note: Schema.optional(Schema.String),
 }) {}

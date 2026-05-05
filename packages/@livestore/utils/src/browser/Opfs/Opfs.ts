@@ -1,6 +1,6 @@
 /// <reference lib="webworker" />
 
-import { Effect, Option, Schema, Stream } from 'effect'
+import { Context, Effect, Option, Schema, Stream } from 'effect'
 
 import * as WebError from '../WebError.ts'
 
@@ -13,7 +13,7 @@ import * as WebError from '../WebError.ts'
  *
  * @see {@link https://developer.mozilla.org/en-US/docs/Web/API/Origin_private_file_system | MDN Reference}
  */
-export class Opfs extends Effect.Service<Opfs>()('@livestore/utils/Opfs', {
+export class Opfs extends Context.Service<Opfs>()('@livestore/utils/Opfs', {
   sync: () => {
     /**
      * Acquire the OPFS root directory handle.

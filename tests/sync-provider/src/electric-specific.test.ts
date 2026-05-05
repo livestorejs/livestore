@@ -43,7 +43,7 @@ Vitest.describe('ElectricSQL specific error handling', { timeout: 60000 }, () =>
         Layer.provideMerge(FetchHttpClient.layer),
         Layer.provide(OtelLiveHttp({ rootSpanName: 'beforeAll', serviceName: 'vitest-runner', skipLogUrl: false })),
         Layer.provide(Logger.prettyWithThread('test-runner')),
-        Layer.provide(Logger.minimumLogLevel(LogLevel.Debug)),
+        Layer.provide(Logger.minimumLogLevel('Debug')),
         Layer.orDie,
       ),
     )

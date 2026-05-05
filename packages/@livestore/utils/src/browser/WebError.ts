@@ -133,13 +133,9 @@ const domExceptionWithName = (expectedName: string) =>
  * @see {@link https://webidl.spec.whatwg.org/#quotaexceedederror | Specification}
  */
 export class QuotaExceededError extends Schema.TaggedErrorClass<QuotaExceededError>()('QuotaExceededError', {
-  cause: Schema.Union(
-    typeof globalThis.QuotaExceededError === 'function'
+  cause: Schema.Union([typeof globalThis.QuotaExceededError === 'function'
       ? Schema.instanceOf(globalThis.QuotaExceededError)
-      : Schema.Never,
-    // Deprecated but still in use in some browsers
-    domExceptionWithName('QuotaExceededError'),
-  ),
+      : Schema.Never, domExceptionWithName('QuotaExceededError')]),
 }) {
   readonly [TypeId] = TypeId
   override get message(): string {
@@ -436,28 +432,7 @@ export const WebError: Schema.Union<
     // Custom Errors
     typeof UnknownError,
   ]
-> = Schema.Union(
-  // Simple Exception Errors
-  EvalError,
-  RangeError,
-  ReferenceError,
-  TypeError,
-  URIError,
-  // Predefined DOMException Errors
-  QuotaExceededError,
-  // Base DOMException Errors
-  NoModificationAllowedError,
-  NotFoundError,
-  NotAllowedError,
-  TypeMismatchError,
-  InvalidStateError,
-  AbortError,
-  InvalidModificationError,
-  SecurityError,
-  DataCloneError,
-  // Custom Errors
-  UnknownError,
-)
+> = Schema.Union([EvalError, RangeError, ReferenceError, TypeError, URIError, QuotaExceededError, NoModificationAllowedError, NotFoundError, NotAllowedError, TypeMismatchError, InvalidStateError, AbortError, InvalidModificationError, SecurityError, DataCloneError, UnknownError])
 
 /**
  * Constructor type for any `WebError` variant exposed by the schema union.

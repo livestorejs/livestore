@@ -4,10 +4,10 @@ import { expect } from 'vitest'
 
 import { Vitest } from '@livestore/utils-dev/node-vitest'
 import { Duration, Effect, Layer, Stream } from '@livestore/utils/effect'
-import { PlatformNode } from '@livestore/utils/node'
 
 import { type DockerComposeArgs, DockerComposeService } from './DockerComposeService.ts'
 
+import * as NodeServices from '@effect/platform-node/NodeServices'
 const testTimeout = 30_000
 const testFixturePath = path.join(import.meta.dirname, 'test-fixtures')
 
@@ -22,7 +22,7 @@ Vitest.describe('DockerComposeService', { timeout: testTimeout }, () => {
     const withBasicTest = (args: Partial<DockerComposeArgs> = {}) =>
       Vitest.makeWithTestCtx({
         timeout: testTimeout,
-        makeLayer: () => DockerComposeTest(args).pipe(Layer.provide(PlatformNode.NodeContext.layer)),
+        makeLayer: () => DockerComposeTest(args).pipe(Layer.provide(NodeServices.layer)),
       })
 
     Vitest.scopedLive('can pull docker images', (test) =>
@@ -68,7 +68,7 @@ Vitest.describe('DockerComposeService', { timeout: testTimeout }, () => {
     const withHealthCheckTest = (args: Partial<DockerComposeArgs> = {}) =>
       Vitest.makeWithTestCtx({
         timeout: testTimeout,
-        makeLayer: () => DockerComposeTest(args).pipe(Layer.provide(PlatformNode.NodeContext.layer)),
+        makeLayer: () => DockerComposeTest(args).pipe(Layer.provide(NodeServices.layer)),
       })
 
     Vitest.scopedLive('handles health check timeout gracefully', (test) =>

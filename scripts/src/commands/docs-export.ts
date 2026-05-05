@@ -91,7 +91,7 @@ ${llmsList}`
   }),
 )
 
-export class SnippetManifestMissing extends Schema.TaggedError<SnippetManifestMissing>()('SnippetManifestMissing', {
+export class SnippetManifestMissing extends Schema.TaggedErrorClass<SnippetManifestMissing>()('SnippetManifestMissing', {
   message: Schema.String,
   checked: Schema.Array(Schema.String),
 }) {}

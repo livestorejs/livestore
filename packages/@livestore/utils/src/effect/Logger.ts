@@ -1,4 +1,4 @@
-import { Cause, HashMap, Logger, LogLevel } from 'effect'
+import { Cause, Logger, type LogLevel } from 'effect'
 
 export * from 'effect/Logger'
 
@@ -18,25 +18,32 @@ export const prettyWithThread = (threadName: string, options: { mode?: 'tty' | '
   )
 
 export const consoleLogger = (threadName: string) =>
-  Logger.make(({ message, annotations, date, logLevel, cause }) => {
+  Logger.make((options_) => {
+    const { message, annotations, date, logLevel, cause = Cause.empty } = options_ as any
     const isCloudflareWorker = typeof navigator !== 'undefined' && navigator.userAgent === 'Cloudflare-Workers'
     const consoleFn =
-      logLevel === LogLevel.Debug
+      logLevel === 'Debug'
         ? // Cloudflare Workers doesn't support console.debug 🤷
           isCloudflareWorker === true
           ? console.log
           : console.debug
-        : logLevel === LogLevel.Info
+        : logLevel === 'Info'
           ? console.info
-          : logLevel === LogLevel.Warning
+          : logLevel === 'Warn'
             ? console.warn
             : console.error
 
-    const annotationsObj = Object.fromEntries(HashMap.entries(annotations))
+    const annotationsObj = Object.fromEntries(
+      annotations === undefined
+        ? []
+        : typeof annotations[Symbol.iterator] === 'function'
+          ? Array.from(annotations as Iterable<[string, unknown]>)
+          : Object.entries(annotations),
+    )
 
     const messages = Array.isArray(message) === true ? message : [message]
-    if (Cause.isEmpty(cause) === false) {
-      messages.push(Cause.pretty(cause, { renderErrorCause: true }))
+    if (cause.reasons.length > 0) {
+      messages.push(Cause.pretty(cause))
     }
 
     if (Object.keys(annotationsObj).length > 0) {

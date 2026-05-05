@@ -142,7 +142,7 @@ const makeWorkerRunner = Effect.gen(function* () {
   })
   type Invariants = typeof InvariantsSchema.Type
   const invariantsRef = yield* Ref.make<Invariants | undefined>(undefined)
-  const sameInvariants = Schema.equivalence(InvariantsSchema)
+  const sameInvariants = Schema.toEquivalence(InvariantsSchema)
 
   // @effect-diagnostics-next-line anyUnknownInErrorContext:off -- `SerializedRunner.Handlers` uses `any` in the R channel
   return WorkerRunner.layerSerialized(WorkerSchema.SharedWorkerRequest, {
@@ -209,7 +209,7 @@ const makeWorkerRunner = Effect.gen(function* () {
           }).pipe(Effect.tapCauseLogPretty, Effect.forkScoped)
 
           yield* SubscriptionRef.set(leaderWorkerContextSubRef, { worker, scope })
-        }).pipe(Effect.tapCauseLogPretty, Scope.extend(scope), Effect.forkIn(scope))
+        }).pipe(Effect.tapCauseLogPretty, Scope.provide(scope), Effect.forkIn(scope))
       }).pipe(
         Effect.withSpan('@livestore/adapter-web:shared-worker:updateMessagePort'),
         Effect.tapCauseLogPretty,

@@ -7,10 +7,10 @@ import type * as SharedWorkerSchema from './schema.ts'
 
 export * as Schema from './schema.ts'
 
-export class CacheService extends Context.Tag('@livestore/devtools-web-common:CacheService')<
+export class CacheService extends Context.Service<
   CacheService,
   { node: MeshNode }
->() {
+>()('@livestore/devtools-web-common:CacheService') {
   static layer = ({ nodeName }: { nodeName: string }) =>
     Effect.gen(function* () {
       const node = yield* makeMeshNode(nodeName)

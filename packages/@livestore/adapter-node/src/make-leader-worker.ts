@@ -1,6 +1,9 @@
 import './thread-polyfill.ts'
 import inspector from 'node:inspector'
 
+import * as NodeFileSystem from '@effect/platform-node/NodeFileSystem'
+import * as NodeRuntime from '@effect/platform-node/NodeRuntime'
+import * as NodeWorkerRunner from '@effect/platform-node/NodeWorkerRunner'
 if (process.execArgv.includes('--inspect') === true) {
   inspector.open()
   inspector.waitForDebugger()
@@ -16,8 +19,7 @@ import type { LiveStoreSchema } from '@livestore/common/schema'
 import { LiveStoreEvent } from '@livestore/common/schema'
 import { loadSqlite3Wasm } from '@livestore/sqlite-wasm/load-wasm'
 import { sqliteDbFactory } from '@livestore/sqlite-wasm/node'
-import { Effect, FetchHttpClient, Layer, OtelTracer, Schema, Stream, WorkerRunner } from '@livestore/utils/effect'
-import { PlatformNode } from '@livestore/utils/node'
+import { Effect, FetchHttpClient, Layer, OtelTracer, Schema, Stream, Tracer, WorkerRunner } from '@livestore/utils/effect'
 
 import type { TestingOverrides } from './leader-thread-shared.ts'
 import { makeLeaderThread } from './leader-thread-shared.ts'
@@ -38,12 +40,12 @@ export type WorkerOptions = {
 export const getWorkerArgs = () => Schema.decodeSync(WorkerSchema.WorkerArgv)(process.argv[2]!)
 
 export const makeWorker = (options: WorkerOptions) => {
-  makeWorkerEffect(options).pipe(PlatformNode.NodeRuntime.runMain)
+  makeWorkerEffect(options).pipe(NodeRuntime.runMain)
 }
 
 export const makeWorkerEffect = (options: WorkerOptions) => {
   const TracingLive = options.otelOptions?.tracer !== undefined
-    ? Layer.unwrapEffect(Effect.map(OtelTracer.make, Layer.setTracer)).pipe(
+    ? Layer.effect(Tracer.Tracer, OtelTracer.make).pipe(
         Layer.provideMerge(Layer.succeed(OtelTracer.OtelTracer, options.otelOptions.tracer)),
       )
     : undefined
@@ -51,7 +53,7 @@ export const makeWorkerEffect = (options: WorkerOptions) => {
   // Merge the runtime dependencies once so we can provide them together without chaining Effect.provide.
   const runtimeLayer = Layer.mergeAll(
     FetchHttpClient.layer,
-    PlatformNode.NodeFileSystem.layer,
+    NodeFileSystem.layer,
     TracingLive ?? Layer.empty,
   )
 
@@ -160,7 +162,7 @@ export const makeWorkerEffect = (options: WorkerOptions) => {
         Effect.withSpan('@livestore/adapter-node:worker:ExtraDevtoolsMessage'),
       ),
   }).pipe(
-    Layer.provide(PlatformNode.NodeWorkerRunner.layer),
+    Layer.provide(NodeWorkerRunner.layer),
     WorkerRunner.launch,
     Effect.scoped,
     Effect.tapCauseLogPretty,

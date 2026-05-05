@@ -59,7 +59,7 @@ export const DeprecatedId = Symbol.for('livestore/schema/annotations/deprecated'
 export const deprecated =
   (reason: string) =>
   <T extends { annotations: (annotations: { readonly [DeprecatedId]?: string }) => T }>(schema: T): T =>
-    schema.annotations({ [DeprecatedId]: reason })
+    schema.annotate({ [DeprecatedId]: reason })
 
 /**
  * Checks if a schema has a deprecation annotation.

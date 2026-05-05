@@ -93,7 +93,7 @@ const platformWorkerImpl = Worker.makePlatform<ChildProcess.ChildProcess>()({
           }).pipe(
             Effect.timeout(3000), // Reduced timeout for faster cleanup
             Effect.interruptible,
-            Effect.catchAllCause(() =>
+            Effect.catchCause(() =>
               Effect.sync(() => {
                 // Enhanced cleanup with escalating signals
                 if (childProcess.killed === false) {

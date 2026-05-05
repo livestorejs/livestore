@@ -114,7 +114,7 @@ const makeProtocolDurableObject = ({
               writeResponse,
             ).pipe(
               // Effect.tapCauseLogPretty,
-              Effect.fork,
+              Effect.forkChild,
             )
 
             // fiberMap.set(message.id, fiber)

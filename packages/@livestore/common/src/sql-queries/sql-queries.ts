@@ -285,7 +285,7 @@ export const makeBindValues = <TColumns extends SqliteDsl.Columns, TKeys extends
       columnName,
       (value: any) => {
         if (columnDef.nullable === true && (value === null || value === undefined)) return null
-        const res = Schema.encodeEither(columnDef.schema)(value)
+        const res = Schema.encodeExit(columnDef.schema)(value)
         if (res._tag === 'Left') {
           const parseErrorStr = String(res.left)
           const expectedSchemaStr = String(columnDef.schema.ast)

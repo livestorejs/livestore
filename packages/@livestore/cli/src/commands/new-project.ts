@@ -20,7 +20,7 @@ import { detectPackageManager, pmCommands } from '../package-manager.ts'
 // Schema for GitHub API response
 const GitHubContentSchema = Schema.Struct({
   name: Schema.String,
-  type: Schema.Literal('dir', 'file'),
+  type: Schema.Literals(['dir', 'file']),
   path: Schema.String,
   download_url: Schema.NullOr(Schema.String),
 })
@@ -35,7 +35,7 @@ const githubRequest = (url: string) => {
 
 /** Schema for parsing package.json scripts (dev or start) */
 const PackageJsonScriptsSchema = Schema.Struct({
-  scripts: Schema.Union(Schema.Struct({ dev: Schema.String }), Schema.Struct({ start: Schema.String })),
+  scripts: Schema.Union([Schema.Struct({ dev: Schema.String }), Schema.Struct({ start: Schema.String })]),
 })
 
 // Error types
@@ -69,7 +69,7 @@ const fetchExamples = (ref: string) =>
     const request = githubRequest(url)
     const response = yield* HttpClient.execute(request).pipe(
       Effect.scoped,
-      Effect.catchAll(
+      Effect.catch(
         (error) =>
           new NetworkError({
             cause: error,
@@ -80,8 +80,8 @@ const fetchExamples = (ref: string) =>
 
     const responseText = yield* response.text
 
-    const examples = yield* Schema.decodeUnknown(Schema.parseJson(GitHubContentsResponseSchema))(responseText).pipe(
-      Effect.catchAll(
+    const examples = yield* Schema.decodeUnknownEffect(Schema.fromJsonString(GitHubContentsResponseSchema))(responseText).pipe(
+      Effect.catch(
         (error) =>
           new NetworkError({
             cause: error,
@@ -133,7 +133,7 @@ const downloadExample = (exampleName: string, ref: string, destinationPath: stri
 
     const response = yield* HttpClient.execute(request).pipe(
       Effect.scoped,
-      Effect.catchAll(
+      Effect.catch(
         (error) =>
           new NetworkError({
             cause: error,
@@ -157,7 +157,7 @@ const downloadExample = (exampleName: string, ref: string, destinationPath: stri
 
     yield* ChildProcess.make('tar', ['-xzf', tarballPath, '-C', extractDir]).pipe(
       ChildProcessSpawner.ChildProcessSpawner.exitCode,
-      Effect.catchAll(
+      Effect.catch(
         (error) =>
           new NetworkError({
             cause: error,
@@ -192,7 +192,7 @@ const downloadExample = (exampleName: string, ref: string, destinationPath: stri
 
     yield* ChildProcess.make('cp', ['-r', `${exampleSourcePath}/.`, destinationPath]).pipe(
       ChildProcessSpawner.ChildProcessSpawner.exitCode,
-      Effect.catchAll(
+      Effect.catch(
         (error) =>
           new NetworkError({
             cause: error,
@@ -202,10 +202,10 @@ const downloadExample = (exampleName: string, ref: string, destinationPath: stri
     )
 
     // Clean up extract directory
-    yield* fs.remove(extractDir, { recursive: true }).pipe(Effect.catchAll(() => Effect.void))
+    yield* fs.remove(extractDir, { recursive: true }).pipe(Effect.catch(() => Effect.void))
 
     // Clean up tarball
-    yield* fs.remove(tarballPath).pipe(Effect.catchAll(() => Effect.void))
+    yield* fs.remove(tarballPath).pipe(Effect.catch(() => Effect.void))
 
     yield* Console.log(`✅ Example "${exampleName}" created successfully at: ${destinationPath}`)
   })
@@ -280,7 +280,7 @@ export const createCommand = Cli.Command.make(
     const fs = yield* FileSystem.FileSystem
     const packageJsonPath = nodePath.join(destinationPath, 'package.json')
     const packageJsonContent = yield* fs.readFileString(packageJsonPath)
-    const runScript = yield* Schema.decodeUnknown(Schema.parseJson(PackageJsonScriptsSchema))(packageJsonContent).pipe(
+    const runScript = yield* Schema.decodeUnknownEffect(Schema.fromJsonString(PackageJsonScriptsSchema))(packageJsonContent).pipe(
       Effect.map((pkg) => ('dev' in pkg.scripts ? ('dev' as const) : ('start' as const))),
       Effect.orElseSucceed(() => undefined),
     )

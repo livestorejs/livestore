@@ -116,7 +116,7 @@ export class AccessHandlePoolVFS extends FacadeVFS {
    * string that is not meaningful to the application.
    */
   getOpfsFileName = Effect.fn((zName: string) =>
-    Effect.gen(this, function* () {
+    Effect.gen({ self: this }, function* () {
       const path = this.#getPath(zName)
       const accessHandle = this.#mapPathToAccessHandle.get(path)!
       return this.#mapAccessHandleToName.get(accessHandle)!
@@ -133,7 +133,7 @@ export class AccessHandlePoolVFS extends FacadeVFS {
    * the file cannot be modified by other threads.
    */
   readFilePayload = Effect.fn((zName: string) =>
-    Effect.gen(this, function* () {
+    Effect.gen({ self: this }, function* () {
       const path = this.#getPath(zName)
       const accessHandle = this.#mapPathToAccessHandle.get(path)
 
@@ -160,7 +160,7 @@ export class AccessHandlePoolVFS extends FacadeVFS {
   )
 
   resetAccessHandle = Effect.fn((zName: string) =>
-    Effect.gen(this, function* () {
+    Effect.gen({ self: this }, function* () {
       const path = this.#getPath(zName)
       const accessHandle = this.#mapPathToAccessHandle.get(path)!
       yield* Opfs.Opfs.syncTruncate(accessHandle, HEADER_OFFSET_DATA)
@@ -170,7 +170,7 @@ export class AccessHandlePoolVFS extends FacadeVFS {
   )
 
   override jOpen(zName: string, fileId: number, flags: number, pOutFlags: DataView): number {
-    return Effect.gen(this, function* () {
+    return Effect.gen({ self: this }, function* () {
       // First try to open a path that already exists in the file system.
       const name = zName as unknown
       const path = typeof name === 'string' && name !== '' ? this.#getPath(name) : Math.random().toString(36)
@@ -198,13 +198,13 @@ export class AccessHandlePoolVFS extends FacadeVFS {
       return VFS.SQLITE_OK
     }).pipe(
       Effect.tapCauseLogPretty,
-      Effect.catchAllCause(() => Effect.succeed(VFS.SQLITE_CANTOPEN)),
+      Effect.catchCause(() => Effect.succeed(VFS.SQLITE_CANTOPEN)),
       Runtime.runSync(this.#runtime),
     )
   }
 
   override jClose(fileId: number): number {
-    return Effect.gen(this, function* () {
+    return Effect.gen({ self: this }, function* () {
       const file = this.#mapIdToFile.get(fileId)
       if (file !== undefined) {
         yield* Opfs.Opfs.syncFlush(file.accessHandle)
@@ -216,13 +216,13 @@ export class AccessHandlePoolVFS extends FacadeVFS {
       return VFS.SQLITE_OK
     }).pipe(
       Effect.tapCauseLogPretty,
-      Effect.catchAllCause(() => Effect.succeed(VFS.SQLITE_IOERR_CLOSE)),
+      Effect.catchCause(() => Effect.succeed(VFS.SQLITE_IOERR_CLOSE)),
       Runtime.runSync(this.#runtime),
     )
   }
 
   override jRead(fileId: number, pData: Uint8Array<ArrayBuffer>, iOffset: number): number {
-    return Effect.gen(this, function* () {
+    return Effect.gen({ self: this }, function* () {
       const file = this.#mapIdToFile.get(fileId)!
       const nBytes = yield* Opfs.Opfs.syncRead(file.accessHandle, pData.subarray(), {
         at: HEADER_OFFSET_DATA + iOffset,
@@ -234,13 +234,13 @@ export class AccessHandlePoolVFS extends FacadeVFS {
       return VFS.SQLITE_OK
     }).pipe(
       Effect.tapCauseLogPretty,
-      Effect.catchAllCause(() => Effect.succeed(VFS.SQLITE_IOERR_READ)),
+      Effect.catchCause(() => Effect.succeed(VFS.SQLITE_IOERR_READ)),
       Runtime.runSync(this.#runtime),
     )
   }
 
   override jWrite(fileId: number, pData: Uint8Array<ArrayBuffer>, iOffset: number): number {
-    return Effect.gen(this, function* () {
+    return Effect.gen({ self: this }, function* () {
       const file = this.#mapIdToFile.get(fileId)!
       const nBytes = yield* Opfs.Opfs.syncWrite(file.accessHandle, pData.subarray(), {
         at: HEADER_OFFSET_DATA + iOffset,
@@ -251,37 +251,37 @@ export class AccessHandlePoolVFS extends FacadeVFS {
       return VFS.SQLITE_OK
     }).pipe(
       Effect.tapCauseLogPretty,
-      Effect.catchAllCause(() => Effect.succeed(VFS.SQLITE_IOERR_WRITE)),
+      Effect.catchCause(() => Effect.succeed(VFS.SQLITE_IOERR_WRITE)),
       Runtime.runSync(this.#runtime),
     )
   }
 
   override jTruncate(fileId: number, iSize: number): number {
-    return Effect.gen(this, function* () {
+    return Effect.gen({ self: this }, function* () {
       const file = this.#mapIdToFile.get(fileId)!
       yield* Opfs.Opfs.syncTruncate(file.accessHandle, HEADER_OFFSET_DATA + iSize)
       return VFS.SQLITE_OK
     }).pipe(
       Effect.tapCauseLogPretty,
-      Effect.catchAllCause(() => Effect.succeed(VFS.SQLITE_IOERR_TRUNCATE)),
+      Effect.catchCause(() => Effect.succeed(VFS.SQLITE_IOERR_TRUNCATE)),
       Runtime.runSync(this.#runtime),
     )
   }
 
   override jSync(fileId: number, _flags: number): number {
-    return Effect.gen(this, function* () {
+    return Effect.gen({ self: this }, function* () {
       const file = this.#mapIdToFile.get(fileId)!
       yield* Opfs.Opfs.syncFlush(file.accessHandle)
       return VFS.SQLITE_OK
     }).pipe(
       Effect.tapCauseLogPretty,
-      Effect.catchAllCause(() => Effect.succeed(VFS.SQLITE_IOERR_FSYNC)),
+      Effect.catchCause(() => Effect.succeed(VFS.SQLITE_IOERR_FSYNC)),
       Runtime.runSync(this.#runtime),
     )
   }
 
   override jFileSize(fileId: number, pSize64: DataView): number {
-    return Effect.gen(this, function* () {
+    return Effect.gen({ self: this }, function* () {
       const file = this.#mapIdToFile.get(fileId)!
       const opfsFileSize = yield* Opfs.Opfs.syncGetSize(file.accessHandle)
       const size = opfsFileSize - HEADER_OFFSET_DATA
@@ -289,7 +289,7 @@ export class AccessHandlePoolVFS extends FacadeVFS {
       return VFS.SQLITE_OK
     }).pipe(
       Effect.tapCauseLogPretty,
-      Effect.catchAllCause(() => Effect.succeed(VFS.SQLITE_IOERR_FSTAT)),
+      Effect.catchCause(() => Effect.succeed(VFS.SQLITE_IOERR_FSTAT)),
       Runtime.runSync(this.#runtime),
     )
   }
@@ -303,25 +303,25 @@ export class AccessHandlePoolVFS extends FacadeVFS {
   }
 
   override jAccess(zName: string, _flags: number, pResOut: DataView): number {
-    return Effect.gen(this, function* () {
+    return Effect.gen({ self: this }, function* () {
       const path = this.#getPath(zName)
       pResOut.setInt32(0, this.#mapPathToAccessHandle.has(path) === true ? 1 : 0, true)
       return VFS.SQLITE_OK
     }).pipe(
       Effect.tapCauseLogPretty,
-      Effect.catchAllCause(() => Effect.succeed(VFS.SQLITE_IOERR_ACCESS)),
+      Effect.catchCause(() => Effect.succeed(VFS.SQLITE_IOERR_ACCESS)),
       Runtime.runSync(this.#runtime),
     )
   }
 
   override jDelete(zName: string, _syncDir: number): number {
-    return Effect.gen(this, function* () {
+    return Effect.gen({ self: this }, function* () {
       const path = this.#getPath(zName)
       yield* this.#deletePath(path)
       return VFS.SQLITE_OK
     }).pipe(
       Effect.tapCauseLogPretty,
-      Effect.catchAllCause(() => Effect.succeed(VFS.SQLITE_IOERR_DELETE)),
+      Effect.catchCause(() => Effect.succeed(VFS.SQLITE_IOERR_DELETE)),
       Runtime.runSync(this.#runtime),
     )
   }
@@ -331,7 +331,7 @@ export class AccessHandlePoolVFS extends FacadeVFS {
   }
 
   async isReady() {
-    return Effect.gen(this, function* () {
+    return Effect.gen({ self: this }, function* () {
       if (this.#directoryHandle == null) {
         // All files are stored in a single directory.
         this.#directoryHandle = yield* Opfs.getDirectoryHandleByPath(this.#directoryPath, { create: true })
@@ -374,7 +374,7 @@ export class AccessHandlePoolVFS extends FacadeVFS {
    */
   addCapacity: (n: number) => Effect.Effect<void, WebError.WebError, Opfs.Opfs | Scope.Scope> = Effect.fn((n: number) =>
     Effect.repeatN(
-      Effect.gen(this, function* () {
+      Effect.gen({ self: this }, function* () {
         const name = Math.random().toString(36).replace('0.', '')
         const accessHandle = yield* Opfs.Opfs.getFileHandle(this.#directoryHandle!, name, { create: true }).pipe(
           Effect.andThen((handle) => Opfs.Opfs.createSyncAccessHandle(handle)),
@@ -394,12 +394,12 @@ export class AccessHandlePoolVFS extends FacadeVFS {
    * file system.
    */
   removeCapacity = Effect.fn((n: number) =>
-    Effect.gen(this, function* () {
+    Effect.gen({ self: this }, function* () {
       let nRemoved = 0
       yield* Effect.forEach(
         this.#availableAccessHandles,
         (accessHandle) =>
-          Effect.gen(this, function* () {
+          Effect.gen({ self: this }, function* () {
             if (nRemoved === n || this.getSize() === this.getCapacity()) return nRemoved
 
             const name = this.#mapAccessHandleToName.get(accessHandle)!
@@ -417,14 +417,14 @@ export class AccessHandlePoolVFS extends FacadeVFS {
   )
 
   #acquireAccessHandles = Effect.fn(() =>
-    Effect.gen(this, function* () {
+    Effect.gen({ self: this }, function* () {
       const handlesStream = yield* Opfs.Opfs.values(this.#directoryHandle!)
 
       yield* handlesStream.pipe(
         Stream.filter((handle): handle is FileSystemFileHandle => handle.kind === 'file'),
         Stream.mapEffect(
           (fileHandle) =>
-            Effect.gen(this, function* () {
+            Effect.gen({ self: this }, function* () {
               const accessHandle = yield* Opfs.Opfs.createSyncAccessHandle(fileHandle)
               return {
                 accessHandle,
@@ -435,7 +435,7 @@ export class AccessHandlePoolVFS extends FacadeVFS {
           { concurrency: 'unbounded' },
         ),
         Stream.runForEach(({ opfsFileName, accessHandle, path }) =>
-          Effect.gen(this, function* () {
+          Effect.gen({ self: this }, function* () {
             this.#mapAccessHandleToName.set(accessHandle, opfsFileName)
             if (path !== '') {
               this.#mapPathToAccessHandle.set(path, accessHandle)
@@ -449,7 +449,7 @@ export class AccessHandlePoolVFS extends FacadeVFS {
   )
 
   #releaseAccessHandles = Effect.fn(() =>
-    Effect.gen(this, function* () {
+    Effect.gen({ self: this }, function* () {
       yield* Effect.forEach(
         this.#mapAccessHandleToName.keys(),
         (accessHandle) => Effect.sync(() => accessHandle.close()),
@@ -467,7 +467,7 @@ export class AccessHandlePoolVFS extends FacadeVFS {
    * @returns {string} path or empty string
    */
   #getAssociatedPath = Effect.fn((accessHandle: FileSystemSyncAccessHandle) =>
-    Effect.gen(this, function* () {
+    Effect.gen({ self: this }, function* () {
       // Read the path and digest of the path from the file.
       const corpus = new Uint8Array(HEADER_CORPUS_SIZE)
       yield* Opfs.Opfs.syncRead(accessHandle, corpus, { at: 0 })
@@ -510,7 +510,7 @@ export class AccessHandlePoolVFS extends FacadeVFS {
    * Set the path on an OPFS file header.
    */
   #setAssociatedPath = Effect.fn((accessHandle: FileSystemSyncAccessHandle, path: string, flags: number) =>
-    Effect.gen(this, function* () {
+    Effect.gen({ self: this }, function* () {
       // Convert the path string to UTF-8.
       const corpus = new Uint8Array(HEADER_CORPUS_SIZE)
       const encodedResult = new TextEncoder().encodeInto(path, corpus)
@@ -578,7 +578,7 @@ export class AccessHandlePoolVFS extends FacadeVFS {
    * @param {string} path
    */
   #deletePath = Effect.fn((path: string) =>
-    Effect.gen(this, function* () {
+    Effect.gen({ self: this }, function* () {
       const accessHandle = this.#mapPathToAccessHandle.get(path)
       if (accessHandle !== undefined) {
         // Un-associate the SQLite path from the OPFS file.

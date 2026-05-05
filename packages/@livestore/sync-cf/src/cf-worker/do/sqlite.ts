@@ -15,7 +15,7 @@ export const eventlogTable = State.SQLite.table({
     seqNum: State.SQLite.integer({ primaryKey: true, schema: EventSequenceNumber.Global.Schema }),
     parentSeqNum: State.SQLite.integer({ schema: EventSequenceNumber.Global.Schema }),
     name: State.SQLite.text({}),
-    args: State.SQLite.text({ schema: Schema.parseJson(Schema.Any), nullable: true }),
+    args: State.SQLite.text({ schema: Schema.fromJsonString(Schema.Any), nullable: true }),
     /** ISO date format. Currently only used for debugging purposes. */
     createdAt: State.SQLite.text({}),
     clientId: State.SQLite.text({}),

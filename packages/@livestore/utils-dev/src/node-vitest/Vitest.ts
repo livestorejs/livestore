@@ -21,6 +21,8 @@ import { OtelLiveHttp } from '../node/mod.ts'
 
 export * from '@effect/vitest'
 
+export { live as scopedLive } from '@effect/vitest'
+
 export const DEBUGGER_ACTIVE = Boolean(process.env.DEBUGGER_ACTIVE ?? inspector.url() !== undefined)
 
 export const makeWithTestCtx: <ROut = never, E1 = never, RIn = never>(
@@ -29,7 +31,7 @@ export const makeWithTestCtx: <ROut = never, E1 = never, RIn = never>(
   self: Effect.Effect<A, E, R>,
 ) => Effect.Effect<
   A,
-  E | E1 | Cause.TimeoutException,
+  E | E1 | Cause.TimeoutError,
   // Exclude dependencies provided by `withTestCtx` from the layer dependencies
   | Exclude<RIn, OtelTracer.OtelTracer | Scope.Scope>
   // Exclude dependencies provided by `withTestCtx` **and** dependencies produced
@@ -63,7 +65,7 @@ export const withTestCtx =
     self: Effect.Effect<A, E, R>,
   ): Effect.Effect<
     A,
-    E | E1 | Cause.TimeoutException,
+    E | E1 | Cause.TimeoutError,
     // Exclude dependencies provided internally from the provided layer's dependencies
     | Exclude<RIn, OtelTracer.OtelTracer | Scope.Scope>
     // Exclude dependencies provided internally **and** dependencies produced by the
@@ -85,7 +87,7 @@ export const withTestCtx =
         ? identity
         : Effect.logWarnIfTakesLongerThan({
             duration: Duration.toMillis(timeout) * 0.8,
-            label: `${spanName} approaching timeout (timeout: ${Duration.format(timeout)})`,
+            label: `${spanName} approaching timeout (timeout: ${String(timeout)})`,
           }),
       DEBUGGER_ACTIVE === true ? identity : Effect.timeout(timeout),
       Effect.provide(combinedLayer),

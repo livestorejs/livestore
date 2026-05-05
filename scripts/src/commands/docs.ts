@@ -224,7 +224,7 @@ export const docsCommand = Cli.Command.make('docs').pipe(
 
         if (skipDeps === false) {
           yield* runDocsDiagramsWatchNoInitialBuild.pipe(
-            Effect.catchAllCause((cause) => Effect.logWarning('Diagrams watch stopped', cause)),
+            Effect.catchCause((cause) => Effect.logWarning('Diagrams watch stopped', cause)),
             Effect.forkScoped,
           )
         }

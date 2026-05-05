@@ -11,14 +11,12 @@ import { StreamEventsOptionsFields } from '@livestore/common/leader-thread'
 import { EventSequenceNumber, LiveStoreEvent } from '@livestore/common/schema'
 import { Schema, Transferable } from '@livestore/utils/effect'
 
-export const WorkerArgv = Schema.parseJson(
-  Schema.Struct({
+export const WorkerArgv = Schema.fromJsonString(Schema.Struct({
     clientId: Schema.String,
     storeId: Schema.String,
     sessionId: Schema.String,
     extraArgs: Schema.UndefinedOr(Schema.JsonValue),
-  }),
-)
+  }))
 
 export const StorageTypeInMemory = Schema.Struct({
   type: Schema.Literal('in-memory'),
@@ -43,7 +41,7 @@ export const StorageTypeFs = Schema.Struct({
 
 export type StorageTypeFs = typeof StorageTypeFs.Type
 
-export const StorageType = Schema.Union(StorageTypeInMemory, StorageTypeFs)
+export const StorageType = Schema.Union([StorageTypeInMemory, StorageTypeFs])
 export type StorageType = typeof StorageType.Type
 export type StorageTypeEncoded = typeof StorageType.Encoded
 
@@ -76,17 +74,14 @@ export class LeaderWorkerInnerInitialMessage extends Schema.TaggedRequest<Leader
       clientId: Schema.String,
       storage: StorageType,
       syncPayloadEncoded: Schema.UndefinedOr(Schema.JsonValue),
-      devtools: Schema.Union(
-        Schema.Struct({
+      devtools: Schema.Union([Schema.Struct({
           enabled: Schema.Literal(true),
           schemaPath: Schema.String,
           port: Schema.Number,
           host: Schema.String,
           schemaAlias: Schema.String,
           useExistingDevtoolsServer: Schema.Boolean,
-        }),
-        Schema.Struct({ enabled: Schema.Literal(false) }),
-      ),
+        }), Schema.Struct({ enabled: Schema.Literal(false) })]),
     },
     success: Schema.Void,
     failure: UnknownError,
@@ -104,7 +99,7 @@ export class LeaderWorkerInnerBootStatusStream extends Schema.TaggedRequest<Lead
 
 export class LeaderWorkerInnerPullStream extends Schema.TaggedRequest<LeaderWorkerInnerPullStream>()('PullStream', {
   payload: {
-    cursor: Schema.typeSchema(EventSequenceNumber.Client.Composite),
+    cursor: Schema.toType(EventSequenceNumber.Client.Composite),
   },
   success: Schema.Struct({
     payload: SyncState.PayloadUpstream,
@@ -125,7 +120,7 @@ export class LeaderWorkerInnerPushToLeader extends Schema.TaggedRequest<LeaderWo
   'PushToLeader',
   {
     payload: {
-      batch: Schema.Array(Schema.typeSchema(LiveStoreEvent.Client.Encoded)),
+      batch: Schema.Array(Schema.toType(LiveStoreEvent.Client.Encoded)),
     },
     success: Schema.Void as Schema.Schema<void>,
     failure: RejectedPushError,
@@ -163,7 +158,7 @@ export class LeaderWorkerInnerGetLeaderHead extends Schema.TaggedRequest<LeaderW
   'GetLeaderHead',
   {
     payload: {},
-    success: Schema.typeSchema(EventSequenceNumber.Client.Composite),
+    success: Schema.toType(EventSequenceNumber.Client.Composite),
     failure: Schema.Never,
   },
 ) {}
@@ -221,21 +216,5 @@ export class LeaderWorkerInnerExtraDevtoolsMessage extends Schema.TaggedRequest<
   },
 ) {}
 
-export const LeaderWorkerInnerRequest = Schema.Union(
-  LeaderWorkerInnerInitialMessage,
-  LeaderWorkerInnerBootStatusStream,
-  LeaderWorkerInnerPullStream,
-  LeaderWorkerInnerStreamEvents,
-  LeaderWorkerInnerPushToLeader,
-  LeaderWorkerInnerExport,
-  LeaderWorkerInnerGetRecreateSnapshot,
-  LeaderWorkerInnerExportEventlog,
-  LeaderWorkerInnerGetLeaderHead,
-  LeaderWorkerInnerGetLeaderSyncState,
-  LeaderWorkerInnerSyncStateStream,
-  LeaderWorkerInnerGetNetworkStatus,
-  LeaderWorkerInnerNetworkStatusStream,
-  LeaderWorkerInnerShutdown,
-  LeaderWorkerInnerExtraDevtoolsMessage,
-)
+export const LeaderWorkerInnerRequest = Schema.Union([LeaderWorkerInnerInitialMessage, LeaderWorkerInnerBootStatusStream, LeaderWorkerInnerPullStream, LeaderWorkerInnerStreamEvents, LeaderWorkerInnerPushToLeader, LeaderWorkerInnerExport, LeaderWorkerInnerGetRecreateSnapshot, LeaderWorkerInnerExportEventlog, LeaderWorkerInnerGetLeaderHead, LeaderWorkerInnerGetLeaderSyncState, LeaderWorkerInnerSyncStateStream, LeaderWorkerInnerGetNetworkStatus, LeaderWorkerInnerNetworkStatusStream, LeaderWorkerInnerShutdown, LeaderWorkerInnerExtraDevtoolsMessage])
 export type LeaderWorkerInnerRequest = typeof LeaderWorkerInnerRequest.Type

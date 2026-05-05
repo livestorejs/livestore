@@ -3,13 +3,15 @@ import path from 'node:path'
 import { UnknownError } from '@livestore/common'
 import type { Option, PlatformError } from '@livestore/utils/effect'
 import { Effect, FetchHttpClient, Layer, Logger, LogLevel, OtelTracer, Schema } from '@livestore/utils/effect'
-import { Cli, getFreePort, PlatformNode } from '@livestore/utils/node'
+import { Cli, getFreePort } from '@livestore/utils/node'
 import { type CmdError, CurrentWorkingDirectory, cmd } from '@livestore/utils-dev/node'
 import { LIVESTORE_DEVTOOLS_CHROME_DIST_PATH } from '@local/shared'
 import type { ChildProcessSpawner } from 'effect/unstable/process/ChildProcessSpawner'
 
 import { downloadChromeExtension } from './download-chrome-extension.ts'
 
+import * as NodeRuntime from '@effect/platform-node/NodeRuntime'
+import * as NodeServices from '@effect/platform-node/NodeServices'
 const cwd = path.resolve(import.meta.dirname, '..')
 
 const modeOption = Cli.Options.choice('mode', ['headless', 'ui', 'dev-server']).pipe(
@@ -35,7 +37,7 @@ const viteDevServer = ({
     yield* cmd(`./node_modules/.bin/vite --config src/tests/playwright/fixtures/vite.config.ts dev --port ${devPort}`, {
       env: {
         // Relative to vite config
-        TEST_LIVESTORE_SCHEMA_PATH_JSON: yield* Schema.encode(Schema.parseJson())(
+        TEST_LIVESTORE_SCHEMA_PATH_JSON: yield* Schema.encodeEffect(Schema.UnknownFromJsonString)(
           './devtools/todomvc/livestore/schema.ts',
         ).pipe(Effect.orDie),
         LSD_DEVTOOLS_LOCAL_PREVIEW: useDevtoolsLocalPreview === true ? '1' : undefined,
@@ -139,7 +141,7 @@ export const setupDevtools: Cli.Command.Command<
 
     yield* downloadChromeExtension({
       targetDir,
-    }).pipe(Effect.provide(Layer.mergeAll(FetchHttpClient.layer, PlatformNode.NodeContext.layer)))
+    }).pipe(Effect.provide(Layer.mergeAll(FetchHttpClient.layer, NodeServices.layer)))
 
     yield* Effect.logInfo(`Chrome extension downloaded to ${targetDir}`)
   }, UnknownError.mapToUnknownError),
@@ -169,7 +171,7 @@ export const devtoolsTest: Cli.Command.Command<
 
       const spanContext = yield* OtelTracer.currentOtelSpan.pipe(
         Effect.map((span) => JSON.stringify(span.spanContext())),
-        Effect.catchAll(() => Effect.succeed(undefined)),
+        Effect.catch(() => Effect.succeed(undefined)),
       )
 
       if (mode === 'dev-server') {
@@ -213,8 +215,8 @@ if (import.meta.main === true) {
   })
 
   cli(process.argv).pipe(
-    Logger.withMinimumLogLevel(LogLevel.Debug),
-    Effect.provide(Layer.mergeAll(PlatformNode.NodeContext.layer, Logger.prettyWithThread('cli-run-tests'))),
-    PlatformNode.NodeRuntime.runMain({ disablePrettyLogger: true }),
+    Logger.withMinimumLogLevel('Debug'),
+    Effect.provide(Layer.mergeAll(NodeServices.layer, Logger.prettyWithThread('cli-run-tests'))),
+    NodeRuntime.runMain({ disablePrettyLogger: true }),
   )
 }

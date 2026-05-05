@@ -64,7 +64,7 @@ Vitest.describe.each(providerLayers)('$name sync provider', { timeout: 60000 }, 
         Layer.provideMerge(FetchHttpClient.layer),
         Layer.provide(OtelLiveHttp({ rootSpanName: 'beforeAll', serviceName: 'vitest-runner', skipLogUrl: false })),
         Layer.provide(Logger.prettyWithThread('test-runner')),
-        Layer.provide(Logger.minimumLogLevel(LogLevel.Debug)),
+        Layer.provide(Logger.minimumLogLevel('Debug')),
         Layer.orDie,
       ),
     )
@@ -157,7 +157,7 @@ Vitest.describe.each(providerLayers)('$name sync provider', { timeout: 60000 }, 
         const eventFactory = makeFactory({ client: defaultClient, startSeq: 1, initialParent: 'root' })
 
         // Start live pull and wait for the first non-empty batch in a fiber
-        const fiber = yield* syncBackend.pull(Option.none(), { live: true }).pipe(runFirstNonEmpty, Effect.fork)
+        const fiber = yield* syncBackend.pull(Option.none(), { live: true }).pipe(runFirstNonEmpty, Effect.forkChild)
 
         // Let the live pull idle for a bit (covers long-poll/SSE)
         yield* Effect.sleep(800)
@@ -197,9 +197,9 @@ Vitest.describe.each(providerLayers)('$name sync provider', { timeout: 60000 }, 
 
     const fewLargeScenarioSchema = Schema.Struct({
       variant: Schema.Literal('fewLarge'),
-      eventCount: Schema.Int.pipe(Schema.between(20, 28)),
-      payloadSize: Schema.Int.pipe(Schema.between(70_000, 110_000)),
-      pushBatchSize: Schema.Int.pipe(Schema.between(6, 12)),
+      eventCount: Schema.Int.pipe(Schema.isBetween(20, 28)),
+      payloadSize: Schema.Int.pipe(Schema.isBetween(70_000, 110_000)),
+      pushBatchSize: Schema.Int.pipe(Schema.isBetween(6, 12)),
     }).pipe(
       Schema.filter((scenario) => scenario.eventCount * scenario.payloadSize >= MIN_BATCH_PAYLOAD_BYTES, {
         message: () => 'Large batch scenarios should exceed provider payload limits',
@@ -208,16 +208,16 @@ Vitest.describe.each(providerLayers)('$name sync provider', { timeout: 60000 }, 
 
     const manySmallScenarioSchema = Schema.Struct({
       variant: Schema.Literal('manySmall'),
-      eventCount: Schema.Int.pipe(Schema.between(1_200, 1_600)),
-      payloadSize: Schema.Int.pipe(Schema.between(900, 1_200)),
-      pushBatchSize: Schema.Int.pipe(Schema.between(30, 160)),
+      eventCount: Schema.Int.pipe(Schema.isBetween(1_200, 1_600)),
+      payloadSize: Schema.Int.pipe(Schema.isBetween(900, 1_200)),
+      pushBatchSize: Schema.Int.pipe(Schema.isBetween(30, 160)),
     }).pipe(
       Schema.filter((scenario) => scenario.eventCount * scenario.payloadSize >= MIN_BATCH_PAYLOAD_BYTES, {
         message: () => 'Small batch scenarios should exceed provider payload limits',
       }),
     )
 
-    const LargeBatchScenarioSchema = Schema.Union(fewLargeScenarioSchema, manySmallScenarioSchema)
+    const LargeBatchScenarioSchema = Schema.Union([fewLargeScenarioSchema, manySmallScenarioSchema])
 
     type LargeBatchScenario = Schema.Schema.Type<typeof LargeBatchScenarioSchema>
 
@@ -395,7 +395,7 @@ Vitest.describe.each(providerLayers)('$name sync provider', { timeout: 60000 }, 
       Effect.gen(function* () {
         const syncBackend = yield* makeProvider(test.task.name)
 
-        const fiber = yield* syncBackend.pull(Option.none(), { live: true }).pipe(runFirstNonEmpty, Effect.fork)
+        const fiber = yield* syncBackend.pull(Option.none(), { live: true }).pipe(runFirstNonEmpty, Effect.forkChild)
 
         const syncProvider = yield* SyncProviderImpl
 
@@ -659,8 +659,8 @@ Vitest.describe.each(providerLayers)('$name sync provider', { timeout: 60000 }, 
       expect(originalError.received).toBe('received-backend-id-456')
 
       // Simulate what happens during RPC: encode to JSON and decode back
-      const str = yield* Schema.encode(Schema.parseJson())(originalError)
-      const encoded = (yield* Schema.decodeUnknown(Schema.parseJson())(str)) as {
+      const str = yield* Schema.encodeEffect(Schema.UnknownFromJsonString)(originalError)
+      const encoded = (yield* Schema.decodeUnknownEffect(Schema.UnknownFromJsonString)(str)) as {
         _tag: string
         expected: string
         received: string

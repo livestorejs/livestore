@@ -5,8 +5,8 @@ import { Effect, FileSystem, Schema } from '@livestore/utils/effect'
 
 import type { RenderResult } from './renderer.ts'
 
-const jsonStringifyPretty = Schema.encodeSync(Schema.parseJson({ space: 2 }))
-const jsonParse = Schema.decodeUnknownSync(Schema.parseJson())
+const jsonStringifyPretty = Schema.encodeSync(Schema.UnknownFromJsonString)
+const jsonParse = Schema.decodeUnknownSync(Schema.UnknownFromJsonString)
 
 const hashString = (value: string): string => crypto.createHash('sha256').update(value).digest('hex')
 
@@ -83,7 +83,7 @@ export const loadManifest = (
       const manifest = yield* fs.readFileString(manifestPath).pipe(
         Effect.map((content) => JSON.parse(content) as DiagramManifest),
         Effect.mapError((cause) => new FileSystemError({ path: manifestPath, operation: 'read manifest', cause })),
-        Effect.catchAll(() =>
+        Effect.catch(() =>
           Effect.succeed({
             entries: [],
             version: CACHE_VERSION,

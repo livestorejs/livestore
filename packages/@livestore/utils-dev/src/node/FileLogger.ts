@@ -5,14 +5,10 @@ import util from 'node:util'
 import {
   Cause,
   Effect,
-  FiberId,
-  HashMap,
   Inspectable,
   Layer,
-  List,
   Logger,
   type LogLevel,
-  LogSpan,
   ReadonlyArray,
 } from '@livestore/utils/effect'
 
@@ -72,6 +68,7 @@ const logLevelColors: Record<LogLevel.LogLevel['_tag'], ReadonlyArray<string>> =
   Trace: [colors.gray],
   Debug: [colors.blue],
   Info: [colors.green],
+  Warn: [colors.yellow],
   Warning: [colors.yellow],
   Error: [colors.red],
   Fatal: [colors.bgBrightRed, colors.black],
@@ -91,7 +88,7 @@ export const structuredMessage = (u: unknown): unknown => {
       return String(u)
     }
     default: {
-      return Inspectable.toJSON(u)
+      return Inspectable.toJson(u)
     }
   }
 }
@@ -122,7 +119,15 @@ export const prettyLoggerTty = (options: {
   readonly onLog?: (str: string) => void
 }) => {
   const color = options.colors === true ? withColor : withColorNoop
-  return Logger.make<unknown, string>(({ annotations, cause, date, fiberId, logLevel, message: message_, spans }) => {
+  return Logger.make<unknown, string>((options_) => {
+    const {
+      annotations,
+      cause = Cause.empty,
+      date,
+      fiber,
+      logLevel,
+      message: message_,
+    } = options_ as any
     let str = ''
 
     const log = (...s: any[]) => {
@@ -136,19 +141,13 @@ export const prettyLoggerTty = (options: {
     }
 
     const message = ReadonlyArray.ensure(message_)
+    const logLevelKey = typeof logLevel === 'string' ? logLevel : logLevel._tag
+    const logLevelLabel = typeof logLevel === 'string' ? (logLevel === 'Warn' ? 'WARN' : logLevel.toUpperCase()) : logLevel.label
 
     let firstLine =
       color(`[${options.formatDate(date)}]`, colors.white) +
-      ` ${color(logLevel.label, ...logLevelColors[logLevel._tag])}` +
-      ` (${FiberId.threadName(fiberId)})`
-
-    if (List.isCons(spans) === true) {
-      const now = date.getTime()
-      const render = LogSpan.render(now)
-      for (const span of spans) {
-        firstLine += ` ${render(span)}`
-      }
-    }
+      ` ${color(logLevelLabel, ...logLevelColors[logLevelKey])}` +
+      ` (#${fiber?.id ?? 0})`
 
     firstLine += ':'
     let messageIndex = 0
@@ -163,8 +162,8 @@ export const prettyLoggerTty = (options: {
     log(firstLine)
     // if (!processIsBun) console.group()
 
-    if (Cause.isEmpty(cause) === false) {
-      logIndented(Cause.pretty(cause, { renderErrorCause: true }))
+    if (cause.reasons.length > 0) {
+      logIndented(Cause.pretty(cause))
     }
 
     if (messageIndex < message.length) {
@@ -185,8 +184,15 @@ export const prettyLoggerTty = (options: {
       }
     }
 
-    if (HashMap.size(annotations) > 0) {
-      for (const [key, value] of annotations) {
+    const annotationEntries =
+      annotations === undefined
+        ? []
+        : typeof annotations[Symbol.iterator] === 'function'
+          ? Array.from(annotations as Iterable<[string, unknown]>)
+          : Object.entries(annotations)
+
+    if (annotationEntries.length > 0) {
+      for (const [key, value] of annotationEntries) {
         const formattedValue =
           typeof value === 'object' && value !== null
             ? util.inspect(structuredMessage(value), {

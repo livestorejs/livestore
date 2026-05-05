@@ -220,7 +220,7 @@ const IssueDetailsScreen = () => {
             Schema.Struct({
               authorName: Schema.String,
               authorPhotoUrl: Schema.String,
-              reactions: Schema.parseJson(Schema.Array(Schema.Struct({ id: Schema.String, emoji: Schema.String }))),
+              reactions: Schema.fromJsonString(Schema.Array(Schema.Struct({ id: Schema.String, emoji: Schema.String }))),
             }),
           ),
           Schema.Array,

@@ -6,7 +6,7 @@ import * as SyncState from '../sync/syncstate.ts'
 import { LeaderReqResMessage, LSDMessage, LSDReqResMessage, NetworkStatus } from './devtools-messages-common.ts'
 
 export class ResetAllDataReq extends LSDReqResMessage('LSD.Leader.ResetAllDataReq', {
-  mode: Schema.Literal('all-data', 'only-app-db'),
+  mode: Schema.Literals(['all-data', 'only-app-db']),
 }) {}
 
 export class DatabaseFileInfoReq extends LSDReqResMessage('LSD.Leader.DatabaseFileInfoReq', {}) {}
@@ -81,11 +81,7 @@ export const LoadDatabaseFile = LeaderReqResMessage('LSD.Leader.LoadDatabaseFile
   },
   success: {},
   error: {
-    cause: Schema.Union(
-      Schema.TaggedStruct('unsupported-file', {}),
-      Schema.TaggedStruct('unsupported-database', {}),
-      Schema.TaggedStruct('unknown-error', { cause: Schema.Defect }),
-    ),
+    cause: Schema.Union([Schema.TaggedStruct('unsupported-file', {}), Schema.TaggedStruct('unsupported-database', {}), Schema.TaggedStruct('unknown-error', { cause: Schema.Defect })]),
   },
 })
 
@@ -133,7 +129,7 @@ export const SetSyncLatch = LeaderReqResMessage('LSD.Leader.SetSyncLatch', {
 
 export const ResetAllData = LeaderReqResMessage('LSD.Leader.ResetAllData', {
   payload: {
-    mode: Schema.Literal('all-data', 'only-app-db'),
+    mode: Schema.Literals(['all-data', 'only-app-db']),
   },
   success: {},
 })
@@ -162,43 +158,10 @@ export const ResetAllData = LeaderReqResMessage('LSD.Leader.ResetAllData', {
 // export type MessageToApp_ = typeof MessageToApp_.Type
 //
 
-export const MessageToApp = Schema.Union(
-  SnapshotReq,
-  LoadDatabaseFile.Request,
-  EventlogReq,
-  ResetAllData.Request,
-  NetworkStatusSubscribe,
-  NetworkStatusUnsubscribe,
-  Disconnect,
-  CommitEventReq,
-  Ping,
-  DatabaseFileInfoReq,
-  SyncHistorySubscribe,
-  SyncHistoryUnsubscribe,
-  SyncingInfoReq,
-  SyncHeadSubscribe,
-  SyncHeadUnsubscribe,
-  SetSyncLatch.Request,
-).annotations({ identifier: 'LSD.Leader.MessageToApp' })
+export const MessageToApp = Schema.Union([SnapshotReq, LoadDatabaseFile.Request, EventlogReq, ResetAllData.Request, NetworkStatusSubscribe, NetworkStatusUnsubscribe, Disconnect, CommitEventReq, Ping, DatabaseFileInfoReq, SyncHistorySubscribe, SyncHistoryUnsubscribe, SyncingInfoReq, SyncHeadSubscribe, SyncHeadUnsubscribe, SetSyncLatch.Request]).annotate({ identifier: 'LSD.Leader.MessageToApp' })
 
 export type MessageToApp = typeof MessageToApp.Type
 
-export const MessageFromApp = Schema.Union(
-  SnapshotRes,
-  LoadDatabaseFile.Response,
-  EventlogRes,
-  Disconnect,
-  SyncPull,
-  NetworkStatusRes,
-  CommitEventRes,
-  Pong,
-  VersionMismatch,
-  DatabaseFileInfoRes,
-  SyncHistoryRes,
-  SyncingInfoRes,
-  SyncHeadRes,
-  ResetAllData.Success,
-  SetSyncLatch.Success,
-).annotations({ identifier: 'LSD.Leader.MessageFromApp' })
+export const MessageFromApp = Schema.Union([SnapshotRes, LoadDatabaseFile.Response, EventlogRes, Disconnect, SyncPull, NetworkStatusRes, CommitEventRes, Pong, VersionMismatch, DatabaseFileInfoRes, SyncHistoryRes, SyncingInfoRes, SyncHeadRes, ResetAllData.Success, SetSyncLatch.Success]).annotate({ identifier: 'LSD.Leader.MessageFromApp' })
 
 export type MessageFromApp = typeof MessageFromApp.Type

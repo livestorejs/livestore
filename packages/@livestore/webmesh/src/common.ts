@@ -38,7 +38,7 @@ export const packetAsOtelAttributes = (packet: typeof Packet.Type) => ({
 export const ListenForChannelResult = Schema.Struct({
   channelName: Schema.String,
   source: Schema.String,
-  mode: Schema.Literal('proxy', 'direct'),
+  mode: Schema.Literals(['proxy', 'direct']),
 })
 
 export type ListenForChannelResult = typeof ListenForChannelResult.Type

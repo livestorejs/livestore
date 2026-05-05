@@ -62,7 +62,7 @@ export const mailboxEvents = {
     schema: Schema.Struct({
       id: Schema.String,
       name: Schema.String,
-      type: Schema.Literal('system', 'user'),
+      type: Schema.Literals(['system', 'user']),
       color: Schema.String.pipe(Schema.NullOr),
       displayOrder: Schema.Number,
       createdAt: Schema.Date,

@@ -19,8 +19,8 @@ import {
   RpcServer,
   Schema,
 } from '@livestore/utils/effect'
-import { PlatformNode } from '@livestore/utils/node'
 
+import * as NodeHttpServer from '@effect/platform-node/NodeHttpServer'
 /*
  * ## Why is this custom file logger needed?
  *
@@ -63,7 +63,7 @@ export const makeFileLogger = (
       const spanName = `${exposeTestContext.testContext.task.suite?.name}:${exposeTestContext.testContext.task.name}`
       const testRunId = sluggify(spanName)
 
-      return Layer.unwrapEffect(
+      return Layer.unwrap(
         Effect.gen(function* () {
           yield* HttpServer.addressWith((address) =>
             Effect.sync(() => {
@@ -77,7 +77,7 @@ export const makeFileLogger = (
           process.env.TEST_RUN_ID = testRunId
           return Layer.provide(makeRpcClient(threadName), RpcLogger({ testRunId }))
         }),
-      ).pipe(Layer.provide(PlatformNode.NodeHttpServer.layer(() => http.createServer(), { port: 0 })), Layer.orDie)
+      ).pipe(Layer.provide(NodeHttpServer.layer(() => http.createServer(), { port: 0 })), Layer.orDie)
     } else {
       return makeRpcClient(threadName)
     }
@@ -137,7 +137,7 @@ export const makeRpcClient = (threadName: string) => {
         const formattedMessage = prettyLogger.log(args)
         return client.LogMessage({ message: formattedMessage }).pipe(
           Effect.provide(runtime),
-          Effect.catchAll(() => Effect.void),
+          Effect.catch(() => Effect.void),
           Effect.runFork,
         )
       })

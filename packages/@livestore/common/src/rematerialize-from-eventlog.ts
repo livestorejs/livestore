@@ -9,7 +9,7 @@ import type { PreparedBindValues } from './util.ts'
 import { sql } from './util.ts'
 
 /** Parse JSON string to unknown value */
-const jsonParse = Schema.decodeUnknownSync(Schema.parseJson())
+const jsonParse = Schema.decodeUnknownSync(Schema.UnknownFromJsonString)
 
 export const rematerializeFromEventlog = Effect.fn('@livestore/common:rematerializeFromEventlog')(function* ({
   dbEventlog,
@@ -72,7 +72,7 @@ export const rematerializeFromEventlog = Effect.fn('@livestore/common:rematerial
       }
 
       // Checking whether the schema has changed in an incompatible way
-      yield* Schema.decodeUnknown(eventDef.schema)(args).pipe(
+      yield* Schema.decodeUnknownEffect(eventDef.schema)(args).pipe(
         Effect.mapError((cause) =>
           UnknownError.make({
             cause,

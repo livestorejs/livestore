@@ -29,13 +29,13 @@ export const broadcastChannel = <MsgListen, MsgSend, MsgListenEncoded, MsgSendEn
 
       const send = (message: MsgSend) =>
         Effect.gen(function* () {
-          const messageEncoded = yield* Schema.encode(schema.send)(message)
+          const messageEncoded = yield* Schema.encodeEffect(schema.send)(message)
           channel.postMessage(messageEncoded)
         })
 
       // TODO also listen to `messageerror` in parallel
       const listen = Stream.fromEventListener<MessageEvent>(channel, 'message').pipe(
-        Stream.map((_) => Schema.decodeEither(schema.listen)(_.data)),
+        Stream.map((_) => Schema.decodeExit(schema.listen)(_.data)),
         listenToDebugPing(channelName),
       )
 
@@ -85,13 +85,13 @@ export const windowChannel = <MsgListen, MsgSend, MsgListenEncoded, MsgSendEncod
         message: schema.listen,
         from: Schema.Literal(ids.other),
         to: Schema.Literal(ids.own),
-      }).annotations({ title: 'webmesh.WindowMessageListen' })
+      }).annotate({ title: 'webmesh.WindowMessageListen' })
 
       const WindowMessageSend = Schema.Struct({
         message: schema.send,
         from: Schema.Literal(ids.own),
         to: Schema.Literal(ids.other),
-      }).annotations({ title: 'webmesh.WindowMessageSend' })
+      }).annotate({ title: 'webmesh.WindowMessageSend' })
 
       const send = (message: MsgSend) =>
         Effect.gen(function* () {
@@ -106,10 +106,10 @@ export const windowChannel = <MsgListen, MsgSend, MsgListenEncoded, MsgSendEncod
         })
 
       const listen = Stream.fromEventListener<MessageEvent>(listenWindow, 'message').pipe(
-        Stream.filter((_) => Schema.is(Schema.encodedSchema(WindowMessageListen))(_.data)),
+        Stream.filter((_) => Schema.is(Schema.toEncoded(WindowMessageListen))(_.data)),
         Stream.map((_) => {
           debugInfo.listenTotal++
-          return Schema.decodeEither(schema.listen)(_.data.message)
+          return Schema.decodeExit(schema.listen)(_.data.message)
         }),
         listenToDebugPing('window'),
       )

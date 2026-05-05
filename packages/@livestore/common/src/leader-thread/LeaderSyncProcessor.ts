@@ -36,7 +36,7 @@ import type { InitialBlockingSyncContext, LeaderSyncProcessor } from './types.ts
 import { LeaderThreadCtx } from './types.ts'
 
 /** Serialize value to JSON string for trace attributes */
-const jsonStringify = Schema.encodeSync(Schema.parseJson())
+const jsonStringify = Schema.encodeSync(Schema.UnknownFromJsonString)
 
 type LocalPushQueueItem = [
   event: LiveStoreEvent.Client.EncodedWithMeta,
@@ -343,7 +343,7 @@ export const makeLeaderSyncProcessor = ({
           delay: testing?.delays?.localPushProcessing,
         },
       }).pipe(
-        Effect.catchAllCause(maybeShutdownOnError),
+        Effect.catchCause(maybeShutdownOnError),
         Effect.forkScoped,
       )
 
@@ -354,7 +354,7 @@ export const makeLeaderSyncProcessor = ({
         backendPushBatchSize,
       }).pipe(
         Effect.catchTag('BackendIdMismatchError', handleBackendIdMismatchError),
-        Effect.catchAllCause(maybeShutdownOnError),
+        Effect.catchCause(maybeShutdownOnError),
       )
 
       yield* FiberHandle.run(backendPushingFiberHandle, backendPushingEffect)
@@ -389,7 +389,7 @@ export const makeLeaderSyncProcessor = ({
           until: (error): error is Exclude<typeof error, IsOfflineError> => error._tag !== 'IsOfflineError',
         }),
         Effect.catchTag('BackendIdMismatchError', handleBackendIdMismatchError),
-        Effect.catchAllCause(maybeShutdownOnError),
+        Effect.catchCause(maybeShutdownOnError),
         // Needed to avoid `Fiber terminated with an unhandled error` logs which seem to happen because of the `Effect.retry` above.
         // This might be a bug in Effect. Only seems to happen in the browser.
         Effect.provide(Layer.setUnhandledErrorLogLevel(Option.none())),

@@ -88,11 +88,7 @@ export class LeaderAheadError extends Schema.TaggedErrorClass<LeaderAheadError>(
   }
 }
 
-export const RejectedPushError = Schema.Union(
-  LeaderAheadError,
-  NonMonotonicBatchError,
-  StaleRebaseGenerationError,
-)
+export const RejectedPushError = Schema.Union([LeaderAheadError, NonMonotonicBatchError, StaleRebaseGenerationError])
 
 export type RejectedPushError = typeof RejectedPushError.Type
 
