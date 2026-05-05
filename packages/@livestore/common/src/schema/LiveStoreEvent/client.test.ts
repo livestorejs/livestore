@@ -1,6 +1,6 @@
 import { expect } from 'vitest'
 
-import { Option } from '@livestore/utils/effect'
+import { Option, Schema } from '@livestore/utils/effect'
 import { Vitest } from '@livestore/utils-dev/node-vitest'
 
 import * as EventSequenceNumber from '../EventSequenceNumber/mod.ts'
@@ -93,5 +93,47 @@ Vitest.describe('isEqualEncoded', () => {
     const a = { ...makeEncodedEvent({ id: 'abc' }), name: 'eventA' }
     const b = { ...makeEncodedEvent({ id: 'abc' }), name: 'eventB' }
     expect(isEqualEncoded(a, b)).toBe(false)
+  })
+
+  // Regression tests for the hash-mismatch bug: locally-encoded events with
+  // `Schema.UndefinedOr` (or loose `Schema.optional`) fields end up with shape
+  // `{ ..., flag: undefined }`. JSON wire transport drops the key, producing
+  // `{ ... }`. Without canonicalization at the encode boundary, the two forms
+  // compare unequal here, and the sync merge falsely takes the rebase path —
+  // which then surfaces as `MaterializerHashMismatchError` when materializers
+  // are state-dependent.
+  Vitest.it('should consider events with undefined-valued and missing keys as equal', () => {
+    const a = makeEncodedEvent({ id: 'abc', flag: undefined })
+    const b = makeEncodedEvent({ id: 'abc' })
+    expect(isEqualEncoded(a, b)).toBe(true)
+  })
+
+  Vitest.it('should consider events with nested undefined-valued and missing keys as equal', () => {
+    const a = makeEncodedEvent({ outer: { x: 1, y: undefined } })
+    const b = makeEncodedEvent({ outer: { x: 1 } })
+    expect(isEqualEncoded(a, b)).toBe(true)
+  })
+
+  Vitest.it('should consider Effect Schema UndefinedOr-encoded args equal to their JSON-roundtripped form', () => {
+    const argsSchema = Schema.Struct({
+      id: Schema.String,
+      flag: Schema.UndefinedOr(Schema.Boolean),
+    })
+    // Effect Schema's Struct encoder materializes the omitted `flag` field as
+    // `{ ..., flag: undefined }` — the local pending event's shape.
+    const localArgs = Schema.encodeUnknownSync(argsSchema)({ id: 'abc' } as any)
+    // JSON.parse(JSON.stringify(...)) is exactly what the sync wire transport does.
+    const wireArgs = JSON.parse(JSON.stringify(localArgs))
+    expect(isEqualEncoded(makeEncodedEvent(localArgs), makeEncodedEvent(wireArgs))).toBe(true)
+  })
+
+  Vitest.it('should consider Effect Schema loose-optional encoded args equal to their JSON-roundtripped form', () => {
+    const argsSchema = Schema.Struct({
+      id: Schema.String,
+      label: Schema.optional(Schema.String),
+    })
+    const localArgs = Schema.encodeUnknownSync(argsSchema)({ id: 'abc', label: undefined } as any)
+    const wireArgs = JSON.parse(JSON.stringify(localArgs))
+    expect(isEqualEncoded(makeEncodedEvent(localArgs), makeEncodedEvent(wireArgs))).toBe(true)
   })
 })

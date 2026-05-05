@@ -1,5 +1,5 @@
 import { Vitest } from '@livestore/utils-dev/node-vitest'
-import { Cause, Effect, Exit } from '@livestore/utils/effect'
+import { Cause, Effect, Exit, Schema } from '@livestore/utils/effect'
 import { assert, expect } from 'vitest'
 
 import * as EventSequenceNumber from '../schema/EventSequenceNumber/mod.ts'
@@ -370,6 +370,59 @@ Vitest.describe('syncstate', () => {
           )
           assert(Exit.isFailure(exit))
           expect(Cause.isDie(exit.cause)).toBe(true)
+        }),
+      )
+
+      // Regression for hash-mismatch bug: when an event-def schema uses
+      // `Schema.UndefinedOr` (or loose `Schema.optional`) and the optional
+      // field is omitted at commit time, Effect Schema's encoder produces
+      // `{ ..., flag: undefined }` while JSON wire transport drops the key.
+      // The local pending event and the same event JSON-roundtripped through
+      // the sync provider therefore have different `Object.keys`. `deepEqual`
+      // returns false for the pair, and merge falsely takes the rebase path.
+      // For state-dependent materializers, the rebase rerun produces different
+      // SQL bind values and surfaces as `MaterializerHashMismatchError`.
+      Vitest.it.effect('should advance (not rebase) when pending event has undefined-valued key dropped by JSON wire round-trip', () =>
+        Effect.gen(function* () {
+          const argsSchema = Schema.Struct({
+            id: Schema.String,
+            flag: Schema.UndefinedOr(Schema.Boolean),
+          })
+          // Local pending shape: Effect Schema adds `flag` back as undefined.
+          const localArgs = Schema.encodeUnknownSync(argsSchema)({ id: 'abc' } as any)
+          // Wire shape: JSON.parse(JSON.stringify(...)) strips the undefined-valued key.
+          const wireArgs = JSON.parse(JSON.stringify(localArgs))
+
+          const localPending = new TestEvent({
+            seqNum: e1_0.seqNum,
+            parentSeqNum: e1_0.parentSeqNum,
+            name: e1_0.name,
+            args: localArgs,
+            clientId: e1_0.clientId,
+            sessionId: e1_0.sessionId,
+          })
+          const fromUpstream = new TestEvent({
+            seqNum: e1_0.seqNum,
+            parentSeqNum: e1_0.parentSeqNum,
+            name: e1_0.name,
+            args: wireArgs,
+            clientId: e1_0.clientId,
+            sessionId: e1_0.sessionId,
+          })
+
+          const syncState = new SyncState.SyncState({
+            pending: [localPending],
+            upstreamHead: EventSequenceNumber.Client.ROOT,
+            localHead: localPending.seqNum,
+          })
+          const result = yield* merge({
+            syncState,
+            payload: SyncState.PayloadUpstreamAdvance.make({ newEvents: [fromUpstream] }),
+          })
+
+          expectAdvance(result)
+          expect(result.confirmedEvents).toHaveLength(1)
+          expect(result.newSyncState.pending).toHaveLength(0)
         }),
       )
     })
