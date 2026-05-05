@@ -226,7 +226,7 @@ fi`,
       if: "github.event_name == 'push' || (github.event_name == 'workflow_dispatch' && inputs.mode == 'publish-release')",
       'runs-on': 'ubuntu-24.04',
       permissions: {
-        contents: 'read',
+        contents: 'write',
         'id-token': 'write',
       },
       env: {
