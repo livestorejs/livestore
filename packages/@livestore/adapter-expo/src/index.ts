@@ -179,7 +179,7 @@ export const makePersistedAdapter =
 
       const sqliteDb = yield* Effect.acquireRelease(
         makeSqliteDb({ _tag: 'in-memory' }),
-        (db) => Effect.try(() => db.close()).pipe(Effect.ignoreLogged)
+        (db) => Effect.try({ try: () => db.close(), catch: (cause) => cause }).pipe(Effect.ignoreLogged)
       )
       sqliteDb.import(initialSnapshot)
 
@@ -251,11 +251,11 @@ const makeLeaderThread = ({
 
     const dbState = yield* Effect.acquireRelease(
       makeSqliteDb({ _tag: 'file', databaseName: stateDatabaseName, directory }),
-      (db) => Effect.try(() => db.close()).pipe(Effect.ignoreLogged),
+      (db) => Effect.try({ try: () => db.close(), catch: (cause) => cause }).pipe(Effect.ignoreLogged),
     )
     const dbEventlog = yield* Effect.acquireRelease(
       makeSqliteDb({ _tag: 'file', databaseName: eventlogDatabaseName, directory }),
-      (db) => Effect.try(() => db.close()).pipe(Effect.ignoreLogged),
+      (db) => Effect.try({ try: () => db.close(), catch: (cause) => cause }).pipe(Effect.ignoreLogged),
     )
 
     const devtoolsOptions = yield* makeDevtoolsOptions({

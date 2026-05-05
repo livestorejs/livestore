@@ -25,7 +25,9 @@ export const broadcastChannel = <MsgListen, MsgSend, MsgListenEncoded, MsgSendEn
 
       const channel = new BroadcastChannel(channelName)
 
-      yield* Effect.addFinalizer(() => Effect.try(() => channel.close()).pipe(Effect.ignoreLogged))
+      yield* Effect.addFinalizer(() =>
+        Effect.try({ try: () => channel.close(), catch: (cause) => cause }).pipe(Effect.ignoreLogged),
+      )
 
       const send = (message: MsgSend) =>
         Effect.gen(function* () {

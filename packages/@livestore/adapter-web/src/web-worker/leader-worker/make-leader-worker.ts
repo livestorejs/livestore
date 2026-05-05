@@ -120,7 +120,7 @@ const makeWorkerRunnerInner = ({ schema, sync: syncOptions, syncPayloadSchema }:
       Effect.gen(function* () {
         const sqlite3 = yield* Effect.promise(() => loadSqlite3Wasm())
         const makeSqliteDb = sqliteDbFactory({ sqlite3 })
-        const runtime = yield* Effect.runtime()
+        const context = yield* Effect.context()
 
         // Check OPFS availability and determine storage mode
         const opfsCheck = yield* checkOpfsAvailability
@@ -151,15 +151,23 @@ const makeWorkerRunnerInner = ({ schema, sync: syncOptions, syncPayloadSchema }:
                 // TODO bring back exclusive locking mode when `WAL` is working properly
                 // lockingMode: 'EXCLUSIVE',
                 foreignKeys: true,
-              }).pipe(Effect.provide(runtime), Effect.runSync),
-          }).pipe(Effect.acquireRelease((db) => Effect.try(() => db.close()).pipe(Effect.ignoreLogged)))
+              }).pipe(Effect.runSyncWith(context)),
+          }).pipe(
+            Effect.acquireRelease((db) =>
+              Effect.try({ try: () => db.close(), catch: (cause) => cause }).pipe(Effect.ignoreLogged),
+            ),
+          )
 
         const makeInMemoryDb = () =>
           makeSqliteDb({
             _tag: 'in-memory',
             configureDb: (db) =>
-              configureConnection(db, { foreignKeys: true }).pipe(Effect.provide(runtime), Effect.runSync),
-          }).pipe(Effect.acquireRelease((db) => Effect.try(() => db.close()).pipe(Effect.ignoreLogged)))
+              configureConnection(db, { foreignKeys: true }).pipe(Effect.runSyncWith(context)),
+          }).pipe(
+            Effect.acquireRelease((db) =>
+              Effect.try({ try: () => db.close(), catch: (cause) => cause }).pipe(Effect.ignoreLogged),
+            ),
+          )
 
         // Use OPFS if available, otherwise fall back to in-memory
         const [dbState, dbEventlog] = useOpfs === true

@@ -68,7 +68,9 @@ export const messagePortChannel: <MsgListen, MsgSend, MsgListenEncoded, MsgSendE
       const closedDeferred = yield* Deferred.make<void>().pipe(Effect.acquireRelease(Deferred.done(Exit.void)))
       const supportsTransferables = true
 
-      yield* Effect.addFinalizer(() => Effect.try(() => port.close()).pipe(Effect.ignoreLogged))
+      yield* Effect.addFinalizer(() =>
+        Effect.try({ try: () => port.close(), catch: (cause) => cause }).pipe(Effect.ignoreLogged),
+      )
 
       return {
         [WebChannelSymbol]: WebChannelSymbol,
@@ -218,7 +220,9 @@ export const messagePortChannelWithAck: <MsgListen, MsgSend, MsgListenEncoded, M
       const closedDeferred = yield* Deferred.make<void>().pipe(Effect.acquireRelease(Deferred.done(Exit.void)))
       const supportsTransferables = true
 
-      yield* Effect.addFinalizer(() => Effect.try(() => port.close()).pipe(Effect.ignoreLogged))
+      yield* Effect.addFinalizer(() =>
+        Effect.try({ try: () => port.close(), catch: (cause) => cause }).pipe(Effect.ignoreLogged),
+      )
 
       return {
         [WebChannelSymbol]: WebChannelSymbol,

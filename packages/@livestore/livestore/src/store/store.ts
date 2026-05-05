@@ -32,7 +32,6 @@ import {
   Inspectable,
   Option,
   OtelTracer,
-  Runtime,
   Schema,
   Stream,
 } from '@livestore/utils/effect'
@@ -320,7 +319,7 @@ export class Store<TSchema extends LiveStoreSchema = LiveStoreSchema.Any, TConte
           : {}),
       },
       confirmUnsavedChanges,
-    }).pipe(Runtime.runSync(effectContext.runtime))
+    }).pipe(Effect.runSyncWith(effectContext.context))
 
     // TODO generalize the `tableRefs` concept to allow finer-grained refs
     const tableRefs: { [key: string]: Ref<null, ReactivityGraphContext, RefreshReason> } = {}
@@ -800,14 +799,16 @@ export class Store<TSchema extends LiveStoreSchema = LiveStoreSchema.Any, TConte
 
       if (events.length === 0) return
 
-      const localRuntime = yield* Effect.runtime()
+      const localContext = yield* Effect.context()
 
       const encodedEvents = yield* this[StoreInternalsSymbol].syncProcessor.encodeEvents(events)
 
       const { writeTables } = yield* Effect.try({
         try: () => {
           const materialize = () =>
-            this[StoreInternalsSymbol].syncProcessor.materializeEvents(encodedEvents).pipe(Runtime.runSync(localRuntime))
+            this[StoreInternalsSymbol].syncProcessor.materializeEvents(encodedEvents).pipe(
+              Effect.runSyncWith(localContext),
+            )
           return events.length > 1
             ? this[StoreInternalsSymbol].sqliteDbWrapper.txn(materialize)
             : materialize()
@@ -856,7 +857,7 @@ export class Store<TSchema extends LiveStoreSchema = LiveStoreSchema.Any, TConte
       }),
       Effect.tapErrorCause(Effect.logError),
       Effect.catchCause((cause) => Effect.forkChild(this.shutdown(cause))),
-      Runtime.runSync(this[StoreInternalsSymbol].effectContext.runtime),
+      Effect.runSyncWith(this[StoreInternalsSymbol].effectContext.context),
     )
   }
   //#endregion commit
@@ -1028,7 +1029,7 @@ export class Store<TSchema extends LiveStoreSchema = LiveStoreSchema.Any, TConte
     )
 
     return () => {
-      Fiber.interrupt(fiber).pipe(Runtime.runFork(this[StoreInternalsSymbol].effectContext.runtime))
+      Fiber.interrupt(fiber).pipe(Effect.runForkWith(this[StoreInternalsSymbol].effectContext.context))
     }
   }
 
@@ -1181,11 +1182,11 @@ export class Store<TSchema extends LiveStoreSchema = LiveStoreSchema.Any, TConte
     effect.pipe(
       Effect.forkIn(this[StoreInternalsSymbol].effectContext.lifetimeScope),
       Effect.tapCauseLogPretty,
-      Runtime.runFork(this[StoreInternalsSymbol].effectContext.runtime),
+      Effect.runForkWith(this[StoreInternalsSymbol].effectContext.context),
     )
 
   private runEffectPromise = <A, E>(effect: Effect.Effect<A, E, Scope.Scope>) =>
-    effect.pipe(Effect.tapCauseLogPretty, Runtime.runPromise(this[StoreInternalsSymbol].effectContext.runtime))
+    effect.pipe(Effect.tapCauseLogPretty, Effect.runPromiseWith(this[StoreInternalsSymbol].effectContext.context))
 
   private getCommitArgs = (
     firstEventOrTxnFnOrOptions: any,

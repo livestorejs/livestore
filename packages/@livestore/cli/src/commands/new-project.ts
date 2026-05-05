@@ -143,6 +143,7 @@ const downloadExample = (exampleName: string, ref: string, destinationPath: stri
     )
 
     const fs = yield* FileSystem.FileSystem
+    const spawner = yield* ChildProcessSpawner.ChildProcessSpawner
 
     // Write tarball to temp file
     const tarballBuffer = yield* response.arrayBuffer
@@ -155,8 +156,7 @@ const downloadExample = (exampleName: string, ref: string, destinationPath: stri
     const extractDir = nodePath.join(tempDir, `extract-${Date.now()}`)
     yield* fs.makeDirectory(extractDir, { recursive: true })
 
-    yield* ChildProcess.make('tar', ['-xzf', tarballPath, '-C', extractDir]).pipe(
-      ChildProcessSpawner.ChildProcessSpawner.exitCode,
+    yield* spawner.exitCode(ChildProcess.make('tar', ['-xzf', tarballPath, '-C', extractDir])).pipe(
       Effect.catch(
         (error) =>
           new NetworkError({
@@ -190,8 +190,7 @@ const downloadExample = (exampleName: string, ref: string, destinationPath: stri
       })
     }
 
-    yield* ChildProcess.make('cp', ['-r', `${exampleSourcePath}/.`, destinationPath]).pipe(
-      ChildProcessSpawner.ChildProcessSpawner.exitCode,
+    yield* spawner.exitCode(ChildProcess.make('cp', ['-r', `${exampleSourcePath}/.`, destinationPath])).pipe(
       Effect.catch(
         (error) =>
           new NetworkError({

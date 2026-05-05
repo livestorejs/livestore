@@ -177,7 +177,7 @@ export const setupDurableObjectWebSocketRpc = ({
 
       yield* Layer.launch(ServerLive).pipe(Effect.tapCauseLogPretty, Effect.forkIn(scope))
 
-      const runtime = yield* Effect.runtime()
+      const context = yield* Effect.context()
 
       const ctx = {
         scope,
@@ -187,8 +187,7 @@ export const setupDurableObjectWebSocketRpc = ({
             .pipe(
               Effect.asVoid,
               Effect.withSpan('ws-rpc-server/onMessage', { root: true }),
-              Effect.provide(runtime),
-              Effect.runPromise,
+              Effect.runPromiseWith(context),
             ),
       }
 

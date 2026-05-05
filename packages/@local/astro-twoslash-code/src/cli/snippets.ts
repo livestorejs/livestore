@@ -1293,10 +1293,13 @@ const loadPreviousManifest = (
     }
 
     const manifestSource = manifestSourceResult.right
-    const parsedEither = yield* Effect.try(() => JSON.parse(manifestSource) as TSnippetManifest).pipe(Effect.either)
-    if (parsedEither._tag === 'Left') {
+    const parsedEither = yield* Effect.try({
+      try: () => JSON.parse(manifestSource) as TSnippetManifest,
+      catch: (cause) => cause,
+    }).pipe(Effect.result)
+    if (parsedEither._tag === 'Failure') {
       yield* Effect.logWarning(
-        `Unable to parse existing snippet manifest at ${paths.manifestPath}: ${String(parsedEither.left)}`,
+        `Unable to parse existing snippet manifest at ${paths.manifestPath}: ${String(parsedEither.failure)}`,
       )
       return null
     }

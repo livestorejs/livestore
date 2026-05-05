@@ -131,14 +131,13 @@ export const makeRpcClient = (threadName: string) => {
 
       const client = yield* RpcClient.make(LoggerRpcs).pipe(Effect.provide(ProtocolLive))
 
-      const runtime = yield* Effect.runtime()
+      const context = yield* Effect.context()
 
       return Logger.make((args) => {
         const formattedMessage = prettyLogger.log(args)
         return client.LogMessage({ message: formattedMessage }).pipe(
-          Effect.provide(runtime),
           Effect.catch(() => Effect.void),
-          Effect.runFork,
+          Effect.runForkWith(context),
         )
       })
     }),

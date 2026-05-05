@@ -68,6 +68,7 @@ export class DockerComposeService extends Context.Service<DockerComposeService>(
       const projectName = args.projectName ?? generateProjectName()
 
       const childProcessContext = yield* Effect.context<ChildProcessSpawner.ChildProcessSpawner>()
+      const spawner = yield* ChildProcessSpawner.ChildProcessSpawner
 
       const baseComposeArgs = ['-p', projectName]
 
@@ -169,7 +170,7 @@ export class DockerComposeService extends Context.Service<DockerComposeService>(
 
         // Perform health check if requested
         if (healthCheck !== undefined) {
-          yield* performHealthCheck(healthCheck).pipe(Effect.provide(commandExecutorContext))
+          yield* performHealthCheck(healthCheck).pipe(Effect.provide(childProcessContext))
         }
 
         yield* Effect.log(`Docker Compose services started successfully in ${cwd}`)
@@ -183,8 +184,7 @@ export class DockerComposeService extends Context.Service<DockerComposeService>(
             ? ChildProcess.make('docker', ['compose', ...baseComposeArgs, 'stop', serviceName], { cwd })
             : ChildProcess.make('docker', ['compose', ...baseComposeArgs, 'stop'], { cwd })
 
-        yield* stopCommand.pipe(
-          ChildProcessSpawner.ChildProcessSpawner.exitCode,
+        yield* spawner.exitCode(stopCommand).pipe(
           Effect.flatMap((exitCode: number) =>
             exitCode === 0
               ? Effect.void
@@ -247,11 +247,12 @@ export class DockerComposeService extends Context.Service<DockerComposeService>(
         if (options?.removeOrphans === true) downArgs.push('--remove-orphans')
         if (serviceName !== undefined) downArgs.push(serviceName)
 
-        yield* ChildProcess.make(downArgs[0]!, downArgs.slice(1), {
+        const downCommand = ChildProcess.make(downArgs[0]!, downArgs.slice(1), {
           cwd,
           env: options?.env ?? {},
-        }).pipe(
-          ChildProcessSpawner.ChildProcessSpawner.exitCode,
+        })
+
+        yield* spawner.exitCode(downCommand).pipe(
           Effect.flatMap((exitCode: number) =>
             exitCode === 0
               ? Effect.void
@@ -293,9 +294,9 @@ const performHealthCheck = ({
 }): Effect.Effect<void, DockerComposeError, ChildProcessSpawner.ChildProcessSpawner | Scope.Scope> =>
   Effect.gen(function* () {
     yield* Effect.log(`Performing health check on ${url}`)
+    const spawner = yield* ChildProcessSpawner.ChildProcessSpawner
 
-    const checkHealth = ChildProcess.make('curl', ['-f', '-s', url]).pipe(
-      ChildProcessSpawner.ChildProcessSpawner.exitCode,
+    const checkHealth = spawner.exitCode(ChildProcess.make('curl', ['-f', '-s', url])).pipe(
       Effect.map((code: number) => code === 0),
       Effect.catch(() => Effect.succeed(false)),
     )

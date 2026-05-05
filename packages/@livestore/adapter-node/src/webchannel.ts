@@ -21,7 +21,9 @@ export const makeBroadcastChannel = <Msg, MsgEncoded>({
       // from `node:worker_threads` is not yet stable in Deno
       const channel = new globalThis.BroadcastChannel(channelName) as any as NodeBroadcastChannel
 
-      yield* Effect.addFinalizer(() => Effect.try(() => channel.close()).pipe(Effect.ignoreLogged))
+      yield* Effect.addFinalizer(() =>
+        Effect.try({ try: () => channel.close(), catch: (cause) => cause }).pipe(Effect.ignoreLogged),
+      )
 
       const send = (message: Msg) =>
         Effect.gen(function* () {

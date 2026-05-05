@@ -211,13 +211,13 @@ const makeLeaderThread = ({
   sharedWorkerFiber,
 }: MakeLeaderThreadArgs) =>
   Effect.gen(function* () {
-    const runtime = yield* Effect.runtime()
+    const context = yield* Effect.context()
 
     const makeDb = (_kind: 'state' | 'eventlog') => {
       return makeSqliteDb({
         _tag: 'in-memory',
         configureDb: (db) =>
-          configureConnection(db, { foreignKeys: true }).pipe(Effect.provide(runtime), Effect.runSync),
+          configureConnection(db, { foreignKeys: true }).pipe(Effect.runSyncWith(context)),
       })
     }
 
