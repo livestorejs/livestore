@@ -18,16 +18,17 @@ import {
 import * as WebmeshSchema from './mesh-schema.ts'
 import type { MeshNode } from './node.ts'
 
-export class WSEdgeInit extends Schema.TaggedStruct('WSEdgeInit', {
+export class WSEdgeInit extends Schema.TaggedClass<WSEdgeInit>()('WSEdgeInit', {
   from: Schema.String,
 }) {}
 
-export class WSEdgePayload extends Schema.TaggedStruct('WSEdgePayload', {
+export class WSEdgePayload extends Schema.TaggedClass<WSEdgePayload>()('WSEdgePayload', {
   from: Schema.String,
   payload: Schema.Any,
 }) {}
 
-export class WSEdgeMessage extends Schema.Union([WSEdgeInit, WSEdgePayload]) {}
+export const WSEdgeMessage = Schema.Union([WSEdgeInit, WSEdgePayload])
+export type WSEdgeMessage = typeof WSEdgeMessage.Type
 
 export const MessageMsgPack = MsgPack.schema(WSEdgeMessage)
 
@@ -60,7 +61,7 @@ export const connectViaWebSocket = ({
 
     yield* node
       .addEdge({ target: 'ws', edgeChannel: edgeChannel.webChannel, replaceIfExists: true })
-      .pipe(Effect.acquireRelease(() => node.removeEdge('ws').pipe(Effect.orDie)))
+      .pipe((acquire) => Effect.acquireRelease(acquire, () => node.removeEdge('ws').pipe(Effect.orDie)))
 
     yield* edgeChannel.webChannel.closedDeferred
   }).pipe(Effect.scoped, Effect.forever, Effect.interruptible, Effect.provide(binaryWebSocketConstructorLayer))
@@ -99,7 +100,7 @@ export const makeWebSocketEdge = ({
 
       const isConnectedLatch = yield* Effect.makeLatch(true)
 
-      const closedDeferred = yield* Deferred.make<void>().pipe(Effect.acquireRelease(Deferred.done(Exit.void)))
+      const closedDeferred = yield* Effect.acquireRelease(Deferred.make<void>(), Deferred.done(Exit.void))
 
       const retryOpenTimeoutSchedule = Schedule.union(Schedule.exponential(100), Schedule.spaced(5000)).pipe(
         Schedule.whileInput((_: Socket.SocketError) => _.reason === 'OpenTimeout' || _.reason === 'Open'),

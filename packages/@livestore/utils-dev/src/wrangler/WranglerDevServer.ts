@@ -2,7 +2,7 @@ import * as path from 'node:path'
 
 import * as Toml from '@iarna/toml'
 import { IS_CI } from '@livestore/utils'
-import { Cause, Context, Duration, Effect, FileSystem, HttpClient, Schedule, Schema } from '@livestore/utils/effect'
+import { Cause, Context, Duration, Effect, FileSystem, HttpClient, Layer, Schedule, Schema } from '@livestore/utils/effect'
 import { getFreePort } from '@livestore/utils/node'
 import * as wrangler from 'wrangler'
 
@@ -65,8 +65,10 @@ export interface StartWranglerDevServerArgs {
  * TODO: Allow for config to be passed in via code instead of `wrangler.toml` file
  * (would need to be placed in temporary file as wrangler only accepts files as config)
  */
-export class WranglerDevServerService extends Context.Service<WranglerDevServerService>()('WranglerDevServerService', {
-  scoped: (args: StartWranglerDevServerArgs) =>
+export class WranglerDevServerService extends Context.Service<WranglerDevServerService, WranglerDevServer>()(
+  'WranglerDevServerService',
+  {
+    make: (args: StartWranglerDevServerArgs) =>
     Effect.gen(function* () {
       const showLogs = args.showLogs ?? false
 
@@ -179,7 +181,11 @@ export class WranglerDevServerService extends Context.Service<WranglerDevServerS
         attributes: { preferredPort: args.preferredPort ?? 'auto', cwd: args.cwd },
       }),
     ),
-}) {}
+  },
+) {}
+
+export const makeWranglerDevServerLayer = (args: StartWranglerDevServerArgs) =>
+  Layer.scoped(WranglerDevServerService, WranglerDevServerService.make(args))
 
 /**
  * Verifies the server is actually accepting HTTP connections by making a test request

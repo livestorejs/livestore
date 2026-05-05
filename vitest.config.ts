@@ -25,8 +25,8 @@ const resolveProjectPath = (packageDir: string): string => {
 const rootPackages = fs
   .readdirSync(path.join(rootDir, './packages/@livestore'))
   .filter((dir) => fs.statSync(path.join(rootDir, './packages/@livestore', dir)).isDirectory())
-  // Exclude solid - it has separate client/ssr configs added explicitly below
-  .filter((dir) => dir !== 'solid')
+  // Exclude packages with dedicated test harnesses added explicitly below.
+  .filter((dir) => dir !== 'solid' && dir !== 'wa-sqlite')
   .map((dir) => resolveProjectPath(path.join(rootDir, './packages/@livestore', dir)))
 
 export default defineConfig({

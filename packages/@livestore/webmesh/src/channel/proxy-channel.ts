@@ -162,8 +162,9 @@ export const makeProxyChannel = ({
       const getCombinedChannelId = (otherSideChannelIdCandidate: string) =>
         [channelIdCandidate, otherSideChannelIdCandidate].toSorted().join('_')
 
-      const earlyPayloadBuffer = yield* Queue.unbounded<typeof MeshSchema.ProxyChannelPayload.Type>().pipe(
-        Effect.acquireRelease(Queue.shutdown),
+      const earlyPayloadBuffer = yield* Effect.acquireRelease(
+        Queue.unbounded<typeof MeshSchema.ProxyChannelPayload.Type>(),
+        Queue.shutdown,
       )
 
       const processProxyPacket = ({ packet, respondToSender }: ProxyQueueItem) =>
@@ -450,7 +451,7 @@ export const makeProxyChannel = ({
             // TODO make this configurable
             // Schedule.exponential(10): 10, 20, 40, 80, 160, 320, ...
             yield* innerSend.pipe(Effect.timeout(100), Effect.retry(Schedule.exponential(10)), Effect.orDie)
-          }).pipe(Effect.tapErrorCause(Effect.logError))
+          }).pipe(Effect.tapCause(Effect.logError))
 
           const rerunOnNewChannelFiber = yield* connectedStateRef.changes.pipe(
             Stream.filter((_) => _ === false),
@@ -461,7 +462,7 @@ export const makeProxyChannel = ({
 
           yield* FiberHandle.run(sendFiberHandle, trySend)
 
-          yield* sentDeferred
+          yield* Deferred.await(sentDeferred)
 
           yield* Fiber.interrupt(rerunOnNewChannelFiber)
         }).pipe(
@@ -472,7 +473,7 @@ export const makeProxyChannel = ({
 
       const listen = Stream.fromQueue(listenQueue).pipe(Stream.map(Result.succeed))
 
-      const closedDeferred = yield* Deferred.make<void>().pipe(Effect.acquireRelease(Deferred.done(Exit.void)))
+      const closedDeferred = yield* Effect.acquireRelease(Deferred.make<void>(), Deferred.done(Exit.void))
 
       const context = yield* Effect.context()
 

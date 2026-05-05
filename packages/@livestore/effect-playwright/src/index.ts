@@ -92,7 +92,7 @@ export const withPage = <T>(f: () => Promise<T>, options?: { label?: string }): 
     catch: (cause) => new SiteError({ label: options?.label ?? f.toString(), messages: cause }),
   }).pipe(Effect.withSpan(`withPage:${options?.label ?? f.toString()}`))
 
-export class ConsoleMessage extends Schema.TaggedStruct('Playwright.ConsoleMessage', {
+export class ConsoleMessage extends Schema.TaggedClass<ConsoleMessage>()('Playwright.ConsoleMessage', {
   type: Schema.Literals(['error', 'log', 'warn', 'info', 'debug', 'group', 'groupCollapsed', 'groupEnd']),
   message: Schema.String,
   args: Schema.Array(Schema.Any),

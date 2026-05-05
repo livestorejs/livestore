@@ -90,7 +90,7 @@ export const makeLeaderThreadLayer = ({
     const syncPayloadDecoded =
       syncPayloadEncoded === undefined ? undefined : yield* Schema.decodeUnknownEffect(syncPayloadSchema)(syncPayloadEncoded)
 
-    const bootStatusQueue = yield* Queue.unbounded<BootStatus>().pipe(Effect.acquireRelease(Queue.shutdown))
+    const bootStatusQueue = yield* Effect.acquireRelease(Queue.unbounded<BootStatus>(), Queue.shutdown)
 
     // Emit boot warning if present (e.g., OPFS unavailable in private browsing)
     if (bootWarning !== undefined) {

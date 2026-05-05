@@ -221,11 +221,11 @@ const listSnapshotPackages = (cwd: string) =>
             catch: (cause) => new PackageJsonParseError({ message: `Failed to parse ${packageJsonPath}`, cause }),
           }),
         ),
-        Effect.either,
+        Effect.result,
       )
 
-      if (pkgResult._tag === 'Left') {
-        const error = pkgResult.left
+      if (pkgResult._tag === 'Failure') {
+        const error = pkgResult.failure
         const message = toErrorMessage(error)
         yield* Effect.logWarning(
           `Unable to read package metadata for ${packageJsonPath} while preparing snapshot summary: ${message}`,
@@ -233,7 +233,7 @@ const listSnapshotPackages = (cwd: string) =>
         continue
       }
 
-      const pkgJson = pkgResult.right
+      const pkgJson = pkgResult.value
       const name = typeof pkgJson.name === 'string' ? pkgJson.name : undefined
       if (name == null) {
         yield* Effect.logWarning(`Skipping ${packageJsonPath} while preparing snapshot summary: missing package name`)

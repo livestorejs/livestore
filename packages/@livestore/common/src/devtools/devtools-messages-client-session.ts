@@ -85,7 +85,7 @@ export class LiveQueriesUnsubscribe extends LSDClientSessionReqResMessage('LSD.C
   subscriptionId: Schema.String,
 }) {}
 
-export class SerializedLiveQuery extends Schema.Struct({
+export class SerializedLiveQuery extends Schema.Class<SerializedLiveQuery>('SerializedLiveQuery')({
   _tag: Schema.Literals(['computed', 'db', 'graphql', 'signal']),
   id: Schema.Number,
   label: Schema.String,

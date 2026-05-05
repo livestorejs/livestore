@@ -85,7 +85,7 @@ export const logBefore =
 
 /** Logs both on errors and defects */
 export const tapCauseLogPretty = <R, E, A>(eff: Effect.Effect<A, E, R>): Effect.Effect<A, E, R> =>
-  Effect.tapErrorCause(eff, (cause) =>
+  Effect.tapCause(eff, (cause) =>
     Effect.gen(function* () {
       if (Cause.hasInterruptsOnly(cause) === true) {
         // console.log('interrupted', Cause.pretty(err), err)

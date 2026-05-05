@@ -90,7 +90,7 @@ export const makeLeaderThread = ({
             // TODO enable WAL for nodejs
             configureDb: (db) =>
               configureConnection(db, { foreignKeys: true }).pipe(Effect.runSyncWith(context)),
-          }).pipe(Effect.acquireRelease((db) => Effect.sync(() => db.close())))
+          }).pipe((acquire) => Effect.acquireRelease(acquire, (db) => Effect.sync(() => db.close())))
     }
 
     // Might involve some async work, so we're running them concurrently

@@ -483,7 +483,7 @@ const makeWorkerLeaderThread = ({
     }).pipe(
       Effect.provide(nodeWorkerLayer),
       UnknownError.mapToUnknownError,
-      Effect.tapErrorCause((cause) => shutdown(Exit.failCause(cause))),
+      Effect.tapCause((cause) => shutdown(Exit.failCause(cause))),
       Effect.withSpan('@livestore/adapter-node:adapter:setupLeaderThread'),
     )
 
@@ -510,7 +510,7 @@ const makeWorkerLeaderThread = ({
     const bootStatusFiber = yield* runInWorkerStream(new WorkerSchema.LeaderWorkerInnerBootStatusStream()).pipe(
       Stream.tap((bootStatus) => Queue.offer(bootStatusQueue, bootStatus)),
       Stream.runDrain,
-      Effect.tapErrorCause((cause) => (Cause.hasInterruptsOnly(cause) === true ? Effect.void : shutdown(Exit.failCause(cause)))),
+      Effect.tapCause((cause) => (Cause.hasInterruptsOnly(cause) === true ? Effect.void : shutdown(Exit.failCause(cause)))),
       Effect.interruptible,
       Effect.tapCauseLogPretty,
       Effect.forkScoped,

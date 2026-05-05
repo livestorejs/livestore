@@ -223,9 +223,14 @@ describe('client document table', () => {
           "bindValues": [
             "id1",
             "{"a":"hello"}",
-            "{"a":"hello"}",
+            "$.a",
+            ""hello"",
           ],
-          "sql": "INSERT INTO 'test' (id, value) VALUES (?, ?) ON CONFLICT (id) DO UPDATE SET value = ?",
+          "sql": "
+              INSERT INTO 'test' (id, value)
+              VALUES (?, ?)
+              ON CONFLICT (id) DO UPDATE SET value = json_set(value, ?, json(?))
+            ",
           "writeTables": Set {
             "test",
           },

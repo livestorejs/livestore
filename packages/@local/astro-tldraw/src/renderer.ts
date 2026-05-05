@@ -132,10 +132,10 @@ const renderSvgWithTheme = (
       // retry loop with capped attempts and delay
       // using explicit loop keeps retry logging and delay simple and Effect-friendly
       while (true) {
-        const attemptResult = yield* Effect.either(renderEffect)
+        const attemptResult = yield* Effect.result(renderEffect)
 
-        if (attemptResult._tag === 'Right') {
-          const outputPaths = attemptResult.right.map((value) => (typeof value === 'string' ? value : value.toString()))
+        if (attemptResult._tag === 'Success') {
+          const outputPaths = attemptResult.value.map((value) => (typeof value === 'string' ? value : value.toString()))
 
           if (outputPaths.length === 0) {
             return shouldNeverHappen(`No SVG generated for ${tldrPath}`)
@@ -180,7 +180,7 @@ const renderSvgWithTheme = (
           }
         }
 
-        const error = attemptResult.left
+        const error = attemptResult.failure
         if (attempt >= MAX_RETRIES) {
           return yield* error
         }

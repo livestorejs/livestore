@@ -209,15 +209,15 @@ const resolveNetlifyAuthToken = Effect.gen(function* () {
     const readResult = yield* Effect.try({
       try: () => readFileSync(candidate, 'utf8'),
       catch: (error) => new FileReadError({ cause: error, path: candidate }),
-    }).pipe(Effect.either)
+    }).pipe(Effect.result)
 
-    if (readResult._tag === 'Right') {
-      configContent = readResult.right
+    if (readResult._tag === 'Success') {
+      configContent = readResult.value
       configPath = candidate
       break
     }
 
-    const readError = readResult.left
+    const readError = readResult.failure
     if (isFileMissingError(readError) === true) {
       continue
     }

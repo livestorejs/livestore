@@ -68,7 +68,7 @@ export const skipRepeated_ = <R, E, A>(
  * It's different than `Stream.runHead` which runs the stream to completion.
  * */
 export const runFirst = <A, E, R>(stream: Stream.Stream<A, E, R>): Effect.Effect<Option.Option<A>, E, R> =>
-  stream.pipe(Stream.take(1), Stream.runCollect, Effect.map(Chunk.head))
+  stream.pipe(Stream.take(1), Stream.runCollect, Effect.map(Option.fromIterable))
 
 /**
  * Returns the first element of the stream or throws a `NoSuchElementError` if the stream is empty.
@@ -79,7 +79,7 @@ export const runFirstUnsafe = <A, E, R>(
 ): Effect.Effect<A, Cause.NoSuchElementError | E, R> => runFirst(stream).pipe(Effect.flatten)
 
 export const runCollectReadonlyArray = <A, E, R>(stream: Stream.Stream<A, E, R>): Effect.Effect<readonly A[], E, R> =>
-  stream.pipe(Stream.runCollect, Effect.map(Chunk.toReadonlyArray))
+  stream.pipe(Stream.runCollect)
 
 /**
  * Concatenates two streams where the second stream has access to the last element

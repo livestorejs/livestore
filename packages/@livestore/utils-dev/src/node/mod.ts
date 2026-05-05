@@ -22,6 +22,7 @@ export {
   DockerComposeService,
   type LogsOptions,
   type StartOptions,
+  makeDockerComposeLayer,
   startDockerComposeServicesScoped,
 } from './DockerComposeService/DockerComposeService.ts'
 export * as FileLogger from './FileLogger.ts'

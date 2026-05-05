@@ -18,6 +18,6 @@ describe('ApiSchema', () => {
   it('decodes PushPayload with typed events', () => {
     const payload = Api.PushPayload.make({ storeId: 's', batch: [] })
     const decoded = Schema.decodeUnknownExit(Api.PushPayload)(payload)
-    expect(decoded._tag).toBe('Right')
+    expect(decoded._tag).toBe('Success')
   })
 })

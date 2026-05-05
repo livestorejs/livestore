@@ -54,9 +54,9 @@ export const sqliteDbFactory = ({
 }: {
   sqlite3: SQLiteAPI
 }): Effect.Effect<MakeNodeSqliteDb, never, FileSystem.FileSystem> =>
-  Effect.andThen(
-    FileSystem.FileSystem,
-    (fs) => (input) =>
+  Effect.gen(function* () {
+    const fs = yield* Effect.service(FileSystem.FileSystem)
+    return (input) =>
       Effect.gen(function* () {
         if (input._tag === 'in-memory') {
           const { dbPointer, vfs } = makeInMemoryDb(sqlite3)
@@ -93,8 +93,8 @@ export const sqliteDbFactory = ({
             configureDb: input.configureDb ?? (() => {}),
           },
         })
-      }),
-  )
+      })
+  })
 
 const makeNodeFsDb = ({
   sqlite3,

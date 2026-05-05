@@ -19,7 +19,7 @@ export type PullArgs = typeof PullArgs.Type
 export type PushPayload = typeof PushPayload.Type
 
 /** Encoded form for query parameter `args` */
-export const ArgsSchema = Schema.decodeTo(Schema.StringFromUriComponent, Schema.fromJsonString(PullArgs))
+export const ArgsSchema = Schema.StringFromUriComponent.pipe(Schema.decodeTo(Schema.fromJsonString(PullArgs)))
 
 export const PushResponse = Schema.Struct({ success: Schema.Boolean })
 export type PushResponse = typeof PushResponse.Type

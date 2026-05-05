@@ -855,7 +855,7 @@ export class Store<TSchema extends LiveStoreSchema = LiveStoreSchema.Any, TConte
           ...(options?.spanLinks?.map(OtelTracer.makeSpanLink) ?? []),
         ],
       }),
-      Effect.tapErrorCause(Effect.logError),
+      Effect.tapCause(Effect.logError),
       Effect.catchCause((cause) => Effect.forkChild(this.shutdown(cause))),
       Effect.runSyncWith(this[StoreInternalsSymbol].effectContext.context),
     )

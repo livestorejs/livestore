@@ -64,7 +64,8 @@ export class LeaderWorkerOuterInitialMessage extends Schema.TaggedRequest<Leader
   },
 ) {}
 
-export class LeaderWorkerOuterRequest extends Schema.Union([LeaderWorkerOuterInitialMessage]) {}
+export const LeaderWorkerOuterRequest = Schema.Union([LeaderWorkerOuterInitialMessage])
+export type LeaderWorkerOuterRequest = typeof LeaderWorkerOuterRequest.Type
 
 export class LeaderWorkerInnerInitialMessage extends Schema.TaggedRequest<LeaderWorkerInnerInitialMessage>()(
   'InitialMessage',

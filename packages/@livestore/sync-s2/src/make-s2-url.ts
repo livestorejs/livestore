@@ -12,7 +12,7 @@ export const decodePullArgsFromSearchParams = (searchParams: URLSearchParams): t
   const UrlParamsSchema = Schema.Struct({ args: ApiSchema.ArgsSchema })
   const argsResult = Schema.decodeUnknownExit(UrlParamsSchema)(Object.fromEntries(searchParams.entries()))
 
-  if (argsResult._tag === 'Left') {
+  if (argsResult._tag !== 'Success') {
     return shouldNeverHappen(
       'Invalid search params provided to decodePullArgsFromSearchParams',
       searchParams,
@@ -20,5 +20,5 @@ export const decodePullArgsFromSearchParams = (searchParams: URLSearchParams): t
     )
   }
 
-  return argsResult.right.args
+  return argsResult.value.args
 }

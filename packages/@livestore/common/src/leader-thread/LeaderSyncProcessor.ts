@@ -12,6 +12,8 @@ import {
   Option,
   Queue,
   ReadonlyArray,
+  References,
+  Result,
   Schedule,
   Schema,
   Stream,
@@ -324,7 +326,8 @@ export const makeLeaderSyncProcessor = ({
             return
           }
 
-          const errorToSend = Cause.isFailType(cause) === true ? cause.error : UnknownError.make({ cause })
+          const fail = Cause.findFail(cause)
+          const errorToSend = Result.isSuccess(fail) === true ? fail.value.error : UnknownError.make({ cause })
           yield* shutdownChannel.send(errorToSend).pipe(Effect.orDie)
 
           return yield* Effect.failCause(cause).pipe(Effect.orDie)
@@ -392,7 +395,7 @@ export const makeLeaderSyncProcessor = ({
         Effect.catchCause(maybeShutdownOnError),
         // Needed to avoid `Fiber terminated with an unhandled error` logs which seem to happen because of the `Effect.retry` above.
         // This might be a bug in Effect. Only seems to happen in the browser.
-        Effect.provide(Layer.setUnhandledErrorLogLevel(Option.none())),
+        Effect.provideService(References.UnhandledLogLevel, undefined),
         Effect.forkScoped,
       )
 
@@ -889,20 +892,20 @@ const backgroundBackendPushing = Effect.fn('@livestore/common:LeaderSyncProcesso
     yield* Effect.gen(function* () {
       const iteration = yield* Schedule.CurrentIterationMetadata
 
-      const pushResult = yield* syncBackend.push(queueItems.map((_) => _.toGlobal())).pipe(Effect.either)
+      const pushResult = yield* Effect.result(syncBackend.push(queueItems.map((_) => _.toGlobal())))
 
       const retries = iteration.recurrence
-      if (retries > 0 && pushResult._tag === 'Right') {
+      if (retries > 0 && pushResult._tag === 'Success') {
         yield* Effect.spanEvent('backend-push-retry-success', { retries, batchSize: queueItems.length })
       }
 
-      if (pushResult._tag === 'Left') {
+      if (pushResult._tag === 'Failure') {
         yield* Effect.spanEvent('backend-push-error', {
-          error: pushResult.left.toString(),
+          error: pushResult.failure.toString(),
           retries,
           batchSize: queueItems.length,
         })
-        const error = pushResult.left
+        const error = pushResult.failure
         if (error._tag === 'ServerAheadError') {
           // It's a core part of the sync protocol that the sync backend will emit a new pull chunk alongside the ServerAheadError
           yield* Effect.logDebug('handled backend-push-error (waiting for interupt caused by pull)', { error })
@@ -964,9 +967,9 @@ const makePullQueueSet = Effect.gen(function* () {
 
   const makeQueue: PullQueueSet['makeQueue'] = (cursor) =>
     Effect.gen(function* () {
-      const queue = yield* Queue.unbounded<{
+      const queue = yield* Effect.acquireRelease(Queue.unbounded<{
         payload: typeof SyncState.PayloadUpstream.Type
-      }>().pipe(Effect.acquireRelease(Queue.shutdown))
+      }>(), Queue.shutdown)
 
       yield* Effect.addFinalizer(() => Effect.sync(() => set.delete(queue)))
 

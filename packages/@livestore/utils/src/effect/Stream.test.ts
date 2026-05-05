@@ -61,10 +61,10 @@ describe('concatWithLastElement', () => {
     const stream1 = Stream.fail('first-error')
     const result = concatWithLastElement(stream1, () => Stream.make('should-not-reach'))
 
-    const outcome = await Effect.runPromise(Effect.either(runCollectReadonlyArray(result)))
-    expect(outcome._tag).toBe('Left')
-    if (outcome._tag === 'Left') {
-      expect(outcome.left).toBe('first-error')
+    const outcome = await Effect.runPromise(Effect.result(runCollectReadonlyArray(result)))
+    expect(outcome._tag).toBe('Failure')
+    if (outcome._tag === 'Failure') {
+      expect(outcome.failure).toBe('first-error')
     }
   })
 
@@ -72,10 +72,10 @@ describe('concatWithLastElement', () => {
     const stream1 = Stream.make(1, 2)
     const result = concatWithLastElement(stream1, () => Stream.fail('second-error'))
 
-    const outcome = await Effect.runPromise(Effect.either(runCollectReadonlyArray(result)))
-    expect(outcome._tag).toBe('Left')
-    if (outcome._tag === 'Left') {
-      expect(outcome.left).toBe('second-error')
+    const outcome = await Effect.runPromise(Effect.result(runCollectReadonlyArray(result)))
+    expect(outcome._tag).toBe('Failure')
+    if (outcome._tag === 'Failure') {
+      expect(outcome.failure).toBe('second-error')
     }
   })
 

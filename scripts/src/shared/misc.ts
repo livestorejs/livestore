@@ -68,11 +68,11 @@ export const appendGithubSummaryMarkdown = ({ markdown, context }: { markdown: s
             cause,
           }),
       ),
-      Effect.either,
+      Effect.result,
     )
 
-    if (writeResult._tag === 'Left') {
-      const error = writeResult.left
+    if (writeResult._tag === 'Failure') {
+      const error = writeResult.failure
       yield* Effect.logWarning(`Unable to append ${context} summary to ${summaryPath}: ${error.message}`)
       return
     }

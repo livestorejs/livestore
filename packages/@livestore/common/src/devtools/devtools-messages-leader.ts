@@ -11,7 +11,7 @@ export class ResetAllDataReq extends LSDReqResMessage('LSD.Leader.ResetAllDataRe
 
 export class DatabaseFileInfoReq extends LSDReqResMessage('LSD.Leader.DatabaseFileInfoReq', {}) {}
 
-export class DatabaseFileInfo extends Schema.Struct({
+export class DatabaseFileInfo extends Schema.Class<DatabaseFileInfo>('DatabaseFileInfo')({
   fileSize: Schema.Number,
   persistenceInfo: Schema.Struct({ fileName: Schema.String }, { key: Schema.String, value: Schema.Any }),
 }) {}
@@ -35,7 +35,7 @@ export class NetworkStatusRes extends LSDReqResMessage('LSD.Leader.NetworkStatus
 
 export class SyncingInfoReq extends LSDReqResMessage('LSD.Leader.SyncingInfoReq', {}) {}
 
-export class SyncingInfo extends Schema.Struct({
+export class SyncingInfo extends Schema.Class<SyncingInfo>('SyncingInfo')({
   enabled: Schema.Boolean,
   metadata: Schema.Record(Schema.String, Schema.Any),
 }) {}

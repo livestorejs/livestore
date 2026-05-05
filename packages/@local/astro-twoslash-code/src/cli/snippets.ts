@@ -1273,26 +1273,26 @@ const loadPreviousManifest = (
   expectedConfigHash: string,
 ): Effect.Effect<TPreviousManifest | null> =>
   Effect.gen(function* () {
-    const manifestExistsResult = yield* fs.exists(paths.manifestPath).pipe(Effect.either)
-    if (manifestExistsResult._tag === 'Left') {
+    const manifestExistsResult = yield* Effect.result(fs.exists(paths.manifestPath))
+    if (manifestExistsResult._tag === 'Failure') {
       yield* Effect.logWarning(
-        `Unable to check existing snippet manifest at ${paths.manifestPath}: ${String(manifestExistsResult.left)}`,
+        `Unable to check existing snippet manifest at ${paths.manifestPath}: ${String(manifestExistsResult.failure)}`,
       )
       return null
     }
-    if (manifestExistsResult.right === false) {
+    if (manifestExistsResult.success === false) {
       return null
     }
 
-    const manifestSourceResult = yield* fs.readFileString(paths.manifestPath).pipe(Effect.either)
-    if (manifestSourceResult._tag === 'Left') {
+    const manifestSourceResult = yield* Effect.result(fs.readFileString(paths.manifestPath))
+    if (manifestSourceResult._tag === 'Failure') {
       yield* Effect.logWarning(
-        `Unable to read existing snippet manifest at ${paths.manifestPath}: ${String(manifestSourceResult.left)}`,
+        `Unable to read existing snippet manifest at ${paths.manifestPath}: ${String(manifestSourceResult.failure)}`,
       )
       return null
     }
 
-    const manifestSource = manifestSourceResult.right
+    const manifestSource = manifestSourceResult.success
     const parsedEither = yield* Effect.try({
       try: () => JSON.parse(manifestSource) as TSnippetManifest,
       catch: (cause) => cause,
@@ -1303,7 +1303,7 @@ const loadPreviousManifest = (
       )
       return null
     }
-    const parsed = parsedEither.right
+    const parsed = parsedEither.success
 
     if (parsed.version !== 1 || parsed.configHash !== expectedConfigHash) {
       return null
@@ -1675,11 +1675,11 @@ const watchSnippetsInternal = (
           yield* Effect.log('Snippets watch: running initial build')
         }
 
-        const result = yield* buildSnippetsInternal(resolved).pipe(Effect.either)
+        const result = yield* Effect.result(buildSnippetsInternal(resolved))
         const durationMs = Date.now() - startedAt
 
-        if (result._tag === 'Left') {
-          const error = result.left
+        if (result._tag === 'Failure') {
+          const error = result.failure
           yield* Effect.logError(
             `Snippets watch: build failed${event !== null ? ` (trigger: ${event.relativePath})` : ''}: ${error.message}`,
           )
@@ -1687,7 +1687,7 @@ const watchSnippetsInternal = (
           return
         }
 
-        const renderedCount = result.right ?? 0
+        const renderedCount = result.success ?? 0
         yield* Effect.log(
           `Snippets watch: rendered ${renderedCount} bundle${renderedCount === 1 ? '' : 's'} in ${durationMs}ms`,
         )

@@ -495,14 +495,14 @@ Vitest.describe.concurrent('LeaderSyncProcessor', { timeout: 60000 }, () => {
       // Session B resumes with a stale pending mutation followed by two fresh events
       const pushResult = yield* testContext
         .pushEncoded(staleEventB, followUpB1, followUpB2)
-        .pipe(Effect.either, Effect.timeout(Duration.seconds(5)))
+        .pipe(Effect.result, Effect.timeout(Duration.seconds(5)))
 
-      expect(pushResult._tag).toBe('Left')
-      if (pushResult._tag !== 'Left') {
+      expect(pushResult._tag).toBe('Failure')
+      if (pushResult._tag !== 'Failure') {
         return
       }
 
-      const error = pushResult.left
+      const error = pushResult.failure
       expect(error._tag).toBe('LeaderAheadError')
       if (error._tag !== 'LeaderAheadError') {
         return

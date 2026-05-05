@@ -48,4 +48,5 @@ export class OnShutdown extends Schema.TaggedRequest<OnShutdown>()('OnShutdown',
   failure: ShutdownChannel.All,
 }) {}
 
-export class Request extends Schema.Union([InitialMessage, CreateTodos, StreamTodos, OnShutdown]) {}
+export const Request = Schema.Union([InitialMessage, CreateTodos, StreamTodos, OnShutdown])
+export type Request = typeof Request.Type

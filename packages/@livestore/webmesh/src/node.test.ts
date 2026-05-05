@@ -98,7 +98,6 @@ Vitest.describe('webmesh node', { timeout: testTimeout }, () => {
     Schema.Tuple([Schema.Literal('A'), Schema.Literal('B')]),
     Schema.Tuple([Schema.Literal('B'), Schema.Literal('A')]),
   ])
-  )
 
   const fromChannelType = (
     channelType: typeof ChannelType.Type,

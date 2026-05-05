@@ -4,8 +4,9 @@ import {
   Effect,
   Result,
   Exit,
-  Option,
+  Fiber,
   Queue,
+  References,
   Schema,
   Scope,
   Stream,
@@ -118,25 +119,27 @@ export const makeDirectChannel = ({
             Effect.forkIn(makeDirectChannelScope),
             // Given we only call `Effect.exit` later when joining the fiber,
             // we don't want Effect to produce a "unhandled error" log message
-            Effect.withUnhandledErrorLogLevel(Option.none()),
+            Effect.provideService(References.UnhandledLogLevel, undefined),
           )
 
-          const raceResult = yield* Effect.raceFirst(makeChannel, waitForNewEdgeFiber.pipe(Effect.disconnect))
+          const raceResult = yield* Effect.raceFirst(makeChannel, Fiber.join(waitForNewEdgeFiber))
 
           if (raceResult === 'new-edge') {
             yield* Scope.close(makeDirectChannelScope, Exit.fail('new-edge'))
             // We'll try again
           } else {
-            const channelExit = yield* raceResult.pipe(Effect.exit)
+            const channelExit = yield* Fiber.await(raceResult)
             if (channelExit._tag === 'Failure') {
               yield* Scope.close(makeDirectChannelScope, channelExit)
 
+              const fail = Cause.findFail(channelExit.cause)
+
               if (
-                Cause.isFailType(channelExit.cause) === true &&
-                Schema.is(WebmeshSchema.DirectChannelResponseNoTransferables)(channelExit.cause.error) === true
+                Result.isSuccess(fail) === true &&
+                Schema.is(WebmeshSchema.DirectChannelResponseNoTransferables)(fail.value.error) === true
               ) {
                 // Only retry when there is a new edge available
-                yield* waitForNewEdgeFiber.pipe(Effect.exit)
+                yield* Fiber.await(waitForNewEdgeFiber)
               }
             } else {
               const channel = channelExit.value
@@ -148,7 +151,7 @@ export const makeDirectChannel = ({
         }
 
         // Now we wait until the first channel is established
-        const { channel, makeDirectChannelScope, channelVersion } = yield* resultDeferred
+        const { channel, makeDirectChannelScope, channelVersion } = yield* Deferred.await(resultDeferred)
 
         yield* Effect.spanEvent(`Connected#${channelVersion}`)
         debugInfo.isConnected = true
@@ -158,7 +161,7 @@ export const makeDirectChannel = ({
 
         // We'll now forward all incoming messages to the listen queue
         yield* channel.listen.pipe(
-          Stream.flatten(),
+          Stream.mapEffect(Effect.fromResult),
           // Stream.tap((msg) => Effect.log(`${target}→${channelName}→${nodeName}:message:${msg.message}`)),
           Stream.tapChunk((chunk) => Queue.offerAll(listenQueue, chunk)),
           Stream.runDrain,
@@ -205,14 +208,14 @@ export const makeDirectChannel = ({
 
           yield* Queue.offer(sendQueue, [message, sentDeferred])
 
-          yield* sentDeferred
+          yield* Deferred.await(sentDeferred)
 
           debugInfo.pendingSends--
         }).pipe(Effect.scoped, Effect.withParentSpan(parentSpan))
 
       const listen = Stream.fromQueue(listenQueue, { maxChunkSize: 1 }).pipe(Stream.map(Result.succeed))
 
-      const closedDeferred = yield* Deferred.make<void>().pipe(Effect.acquireRelease(Deferred.done(Exit.void)))
+      const closedDeferred = yield* Effect.acquireRelease(Deferred.make<void>(), Deferred.done(Exit.void))
 
       const webChannel = {
         [WebChannel.WebChannelSymbol]: WebChannel.WebChannelSymbol,

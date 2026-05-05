@@ -125,9 +125,9 @@ export const runExampleTests = (examples: ReadonlyArray<string>, options: { skip
       }
 
       const packageJsonContent = yield* fs.readFileString(packageJsonPath)
-      const decoded = yield* parseExamplePackageJson(packageJsonContent).pipe(Effect.either)
+      const decoded = yield* Effect.result(parseExamplePackageJson(packageJsonContent))
 
-      if (decoded._tag === 'Left') {
+      if (decoded._tag === 'Failure') {
         if (skipMissing === true) {
           yield* Effect.logWarning(`Skipping ${example}: unable to decode package.json`)
           continue
@@ -135,7 +135,7 @@ export const runExampleTests = (examples: ReadonlyArray<string>, options: { skip
         return yield* new ScriptError({ message: `Cannot run tests for ${example}: invalid package.json` })
       }
 
-      const packageJson = decoded.right
+      const packageJson = decoded.value
       if (typeof packageJson.scripts?.test !== 'string') {
         if (skipMissing === true) {
           yield* Effect.logWarning(`Skipping ${example}: no test script defined`)

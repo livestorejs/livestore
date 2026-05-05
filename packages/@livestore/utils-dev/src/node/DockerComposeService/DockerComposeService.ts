@@ -4,6 +4,7 @@ import {
   Duration,
   Effect,
   Fiber,
+  Layer,
   type PlatformError,
   Schedule,
   Schema,
@@ -61,8 +62,10 @@ export interface DockerComposeOperations {
 
 const generateProjectName = (): string => `ls-test-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`
 
-export class DockerComposeService extends Context.Service<DockerComposeService>()('DockerComposeService', {
-  scoped: (args: DockerComposeArgs) =>
+export class DockerComposeService extends Context.Service<DockerComposeService, DockerComposeOperations>()(
+  'DockerComposeService',
+  {
+    make: (args: DockerComposeArgs) =>
     Effect.gen(function* () {
       const { cwd, serviceName } = args
       const projectName = args.projectName ?? generateProjectName()
@@ -281,7 +284,11 @@ export class DockerComposeService extends Context.Service<DockerComposeService>(
 
       return { pull, start, stop, down, logs, projectName }
     }),
-}) {}
+  },
+) {}
+
+export const makeDockerComposeLayer = (args: DockerComposeArgs) =>
+  Layer.scoped(DockerComposeService, DockerComposeService.make(args))
 
 const performHealthCheck = ({
   url,

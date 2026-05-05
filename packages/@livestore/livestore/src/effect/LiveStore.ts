@@ -37,7 +37,7 @@ export const makeLiveStoreContext = <TSchema extends LiveStoreSchema, TContext =
 
       return { stage: 'running', store } as any as LiveStoreContextRunning['Type']
     }),
-    Effect.tapErrorCause((cause) => Effect.flatMap(DeferredStoreContext, (def) => Deferred.failCause(def, cause))),
+    Effect.tapCause((cause) => Effect.flatMap(DeferredStoreContext, (def) => Deferred.failCause(def, cause))),
     Effect.tap((storeCtx) => Effect.flatMap(DeferredStoreContext, (def) => Deferred.succeed(def, storeCtx))),
     // This can take quite a while.
     // TODO make this configurable

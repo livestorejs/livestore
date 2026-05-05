@@ -30,8 +30,7 @@
  * @module
  */
 
-import type { Schema } from '@livestore/utils/effect'
-import { Effect, Option, SchemaAST } from '@livestore/utils/effect'
+import { Effect, Option, Schema, SchemaAST } from '@livestore/utils/effect'
 
 import type { EventDef } from './event-def.ts'
 
@@ -94,8 +93,8 @@ export const findDeprecatedFieldsWithValues = (
   const result: Array<{ field: string; reason: string }> = []
   const ast = schema.ast
 
-  // Handle TypeLiteral (Struct) schemas
-  if (ast._tag === 'TypeLiteral') {
+  // Handle v4 Struct schemas.
+  if (SchemaAST.isObjects(ast)) {
     for (const prop of ast.propertySignatures) {
       const fieldName = String(prop.name)
       const fieldValue = args[fieldName]
@@ -103,7 +102,7 @@ export const findDeprecatedFieldsWithValues = (
       // Only check fields that have a value (not undefined)
       if (fieldValue !== undefined) {
         // Check deprecation on the property signature itself (for Schema.optional(...).pipe(deprecated(...)))
-        const propAnnotations = prop.annotations as Record<symbol, unknown> | undefined
+        const propAnnotations = prop.annotations as Record<PropertyKey, unknown> | undefined
         const deprecationReason = propAnnotations?.[DeprecatedId] as string | undefined
 
         // Also check deprecation on the type (for direct field deprecation)

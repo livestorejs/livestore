@@ -217,7 +217,7 @@ export const makeSingleTabAdapter =
       }).pipe(
         Effect.provide(BrowserWorker.layer(() => worker)),
         UnknownError.mapToUnknownError,
-        Effect.tapErrorCause((cause) => shutdown(Exit.failCause(cause))),
+        Effect.tapCause((cause) => shutdown(Exit.failCause(cause))),
         Effect.withSpan('@livestore/adapter-web:single-tab:setupDedicatedWorker'),
         Effect.tapCauseLogPretty,
         Effect.forkScoped,
@@ -243,7 +243,7 @@ export const makeSingleTabAdapter =
         Effect.provide(innerWorkerContext),
         Effect.tapCauseLogPretty,
         Effect.orDie,
-        Effect.tapErrorCause((cause) => shutdown(Exit.failCause(cause))),
+        Effect.tapCause((cause) => shutdown(Exit.failCause(cause))),
         Effect.withSpan('@livestore/adapter-web:single-tab:setupInnerWorker'),
         Effect.forkScoped,
       )
@@ -277,7 +277,7 @@ export const makeSingleTabAdapter =
       const bootStatusFiber = yield* runInWorkerStream(new WorkerSchema.LeaderWorkerInnerBootStatusStream()).pipe(
         Stream.tap((_) => Queue.offer(bootStatusQueue, _)),
         Stream.runDrain,
-        Effect.tapErrorCause((cause) =>
+        Effect.tapCause((cause) =>
           Cause.hasInterruptsOnly(cause) === true ? Effect.void : shutdown(Exit.failCause(cause)),
         ),
         Effect.interruptible,

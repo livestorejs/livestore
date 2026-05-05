@@ -279,7 +279,7 @@ export const makePersistedAdapter =
         Effect.provide(sharedWorkerContext),
         Effect.tapCauseLogPretty,
         Effect.orDie,
-        Effect.tapErrorCause((cause) => shutdown(Exit.failCause(cause))),
+        Effect.tapCause((cause) => shutdown(Exit.failCause(cause))),
         Effect.withSpan('@livestore/adapter-web:client-session:setupSharedWorker'),
         Effect.forkScoped,
       )
@@ -321,7 +321,7 @@ export const makePersistedAdapter =
         }).pipe(
           Effect.provide(BrowserWorker.layer(() => worker)),
           UnknownError.mapToUnknownError,
-          Effect.tapErrorCause((cause) => shutdown(Exit.failCause(cause))),
+          Effect.tapCause((cause) => shutdown(Exit.failCause(cause))),
           Effect.withSpan('@livestore/adapter-web:client-session:setupDedicatedWorker'),
           Effect.tapCauseLogPretty,
           Effect.forkScoped,
@@ -347,7 +347,7 @@ export const makePersistedAdapter =
           )
           .pipe(
             UnknownError.mapToUnknownError,
-            Effect.tapErrorCause((cause) => shutdown(Exit.failCause(cause))),
+            Effect.tapCause((cause) => shutdown(Exit.failCause(cause))),
           )
 
         yield* Deferred.succeed(waitForSharedWorkerInitialized, undefined)
@@ -407,7 +407,7 @@ export const makePersistedAdapter =
       const bootStatusFiber = yield* runInWorkerStream(new WorkerSchema.LeaderWorkerInnerBootStatusStream()).pipe(
         Stream.tap((_) => Queue.offer(bootStatusQueue, _)),
         Stream.runDrain,
-        Effect.tapErrorCause((cause) =>
+        Effect.tapCause((cause) =>
           Cause.hasInterruptsOnly(cause) === true ? Effect.void : shutdown(Exit.failCause(cause)),
         ),
         Effect.interruptible,

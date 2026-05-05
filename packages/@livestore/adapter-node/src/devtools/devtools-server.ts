@@ -66,7 +66,7 @@ export const startDevtoolsServer = ({
 
         return viteConfig
       },
-    }).pipe(Effect.acquireRelease((viteMiddleware) => Effect.promise(() => viteMiddleware.close())))
+    }).pipe((acquire) => Effect.acquireRelease(acquire, (viteMiddleware) => Effect.promise(() => viteMiddleware.close())))
 
     const relayNodeName = 'ws'
 
@@ -91,7 +91,7 @@ export const startDevtoolsServer = ({
           Effect.gen(function* () {
             yield* node
               .addEdge({ target: from, edgeChannel: webChannel, replaceIfExists: true })
-              .pipe(Effect.acquireRelease(() => node.removeEdge(from).pipe(Effect.orDie)))
+              .pipe((acquire) => Effect.acquireRelease(acquire, () => node.removeEdge(from).pipe(Effect.orDie)))
 
             if (LS_DEV === true) {
               yield* Effect.log(`WS Relay ${relayNodeName}: added edge from '${from}'`)

@@ -77,11 +77,11 @@ Vitest.describe('sync-operations', { timeout: 10_000 }, () => {
         },
         force: false,
         dryRun: false,
-      }).pipe(Effect.either)
+      }).pipe(Effect.result)
 
-      expect(result._tag).toBe('Left')
-      if (result._tag === 'Left') {
-        expect(result.left._tag).toBe('ImportError')
+      expect(result._tag).toBe('Failure')
+      if (result._tag === 'Failure') {
+        expect(result.failure._tag).toBe('ImportError')
       }
 
       const lifecycle = yield* expectConnectLifecycle(connectionEvents)
@@ -218,11 +218,11 @@ Vitest.describe('sync-operations', { timeout: 10_000 }, () => {
         },
         force: false,
         dryRun: false,
-      }).pipe(Effect.either)
+      }).pipe(Effect.result)
 
-      expect(result._tag).toBe('Left')
-      if (result._tag === 'Left') {
-        expect(result.left._tag).toBe('ImportError')
+      expect(result._tag).toBe('Failure')
+      if (result._tag === 'Failure') {
+        expect(result.failure._tag).toBe('ImportError')
       }
 
       const lifecycle = yield* expectConnectLifecycle(connectionEvents)

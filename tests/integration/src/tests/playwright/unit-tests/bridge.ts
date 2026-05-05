@@ -1,7 +1,7 @@
 import { BootStatus, MigrationsReport, UnknownError } from '@livestore/common'
 import { Schema } from '@livestore/utils/effect'
 
-export class ResultBootStatus extends Schema.TaggedStruct('Bridge.ResultBootStatus', {
+export class ResultBootStatus extends Schema.TaggedClass<ResultBootStatus>()('Bridge.ResultBootStatus', {
   exit: Schema.Exit({
     success: Schema.Struct({
       bootStatusUpdates: Schema.Array(BootStatus),
@@ -12,7 +12,7 @@ export class ResultBootStatus extends Schema.TaggedStruct('Bridge.ResultBootStat
   }),
 }) {}
 
-export class ResultStoreBootError extends Schema.TaggedStruct('Bridge.ResultStoreBootError', {
+export class ResultStoreBootError extends Schema.TaggedClass<ResultStoreBootError>()('Bridge.ResultStoreBootError', {
   exit: Schema.Exit({
     success: Schema.Any,
     failure: UnknownError,
@@ -20,7 +20,7 @@ export class ResultStoreBootError extends Schema.TaggedStruct('Bridge.ResultStor
   }),
 }) {}
 
-export class ResultMultipleMigrations extends Schema.TaggedStruct('Bridge.ResultMultipleMigrations', {
+export class ResultMultipleMigrations extends Schema.TaggedClass<ResultMultipleMigrations>()('Bridge.ResultMultipleMigrations', {
   exit: Schema.Exit({
     success: Schema.Struct({
       migrationsCount: Schema.Number,

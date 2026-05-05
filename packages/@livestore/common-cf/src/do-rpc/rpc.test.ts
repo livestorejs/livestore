@@ -23,7 +23,7 @@ const testTimeout = 60_000
 const withWranglerTest = Vitest.makeWithTestCtx({
   timeout: testTimeout,
   makeLayer: () =>
-    WranglerDevServerService.Default({
+    makeWranglerDevServerLayer({
       cwd: `${import.meta.dirname}/test-fixtures`,
     }).pipe(
       Layer.provide(

@@ -51,12 +51,12 @@ const getForwardedHeaders = Effect.gen(function* () {
   const { ws } = yield* WsContext
   const attachment = ws.deserializeAttachment()
   const decoded = Schema.decodeUnknownExit(WebSocketAttachmentSchema)(attachment)
-  if (decoded._tag === 'Left') {
-    yield* Effect.logError('Failed to decode WebSocket attachment for forwarded headers', { error: decoded.left })
+  if (decoded._tag !== 'Success') {
+    yield* Effect.logError('Failed to decode WebSocket attachment for forwarded headers', { error: decoded.cause })
     ws.close(1011, 'invalid-attachment')
     return yield* Effect.die('Invalid WebSocket attachment (headers decode failed)')
   }
 
-  const headers = headersRecordToMap(decoded.right.headers)
+  const headers = headersRecordToMap(decoded.value.headers)
   return headers
 })

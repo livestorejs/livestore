@@ -41,7 +41,7 @@ const dockerHostName = process.env.DOCKER_CONTEXT ?? 'localhost'
 
 export const name = 'ElectricSQL'
 
-const DockerComposeLive = DockerComposeService.Default({ cwd: path.join(import.meta.dirname, 'electric') })
+const DockerComposeLive = makeDockerComposeLayer({ cwd: path.join(import.meta.dirname, 'electric') })
 
 export const prepare: Effect.Effect<
   void,

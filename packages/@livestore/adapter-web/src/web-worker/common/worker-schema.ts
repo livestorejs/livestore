@@ -54,7 +54,8 @@ export class LeaderWorkerOuterInitialMessage extends Schema.TaggedRequest<Leader
   },
 ) {}
 
-export class LeaderWorkerOuterRequest extends Schema.Union([LeaderWorkerOuterInitialMessage]) {}
+export const LeaderWorkerOuterRequest = Schema.Union([LeaderWorkerOuterInitialMessage])
+export type LeaderWorkerOuterRequest = typeof LeaderWorkerOuterRequest.Type
 
 // TODO unify this code with schema from node adapter
 export class LeaderWorkerInnerInitialMessage extends Schema.TaggedRequest<LeaderWorkerInnerInitialMessage>()(

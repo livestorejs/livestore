@@ -25,23 +25,55 @@ export const hash = (schema: Schema.Schema<any>) => {
 export const getResolvedPropertySignatures = (
   schema: Schema.Schema.AnyNoContext,
 ): ReadonlyArray<SchemaAST.PropertySignature> => {
-  const resolvedAst = Schema.toEncoded(schema).ast
-  if (SchemaAST.isObjects(resolvedAst) === false) return []
+  const resolvedProperties = getPropertySignatures(Schema.toEncoded(schema).ast)
+  if (resolvedProperties.length === 0) return []
 
-  const typeAst = Schema.toType(schema).ast
-  if (SchemaAST.isObjects(typeAst) === false) return resolvedAst.propertySignatures
+  const sourceProperties = getPropertySignatures(schema.ast)
+  const shouldPreserveSourceSchemas =
+    sourceProperties.length === resolvedProperties.length &&
+    sourceProperties.every((sourceProperty) =>
+      resolvedProperties.some((resolvedProperty) => resolvedProperty.name === sourceProperty.name),
+    )
+  const sourcePropertiesByName = shouldPreserveSourceSchemas === true
+    ? new Map(sourceProperties.map((property) => [property.name, property]))
+    : new Map<PropertyKey, SchemaAST.PropertySignature>()
+  const typeProperties = getPropertySignatures(Schema.toType(schema).ast)
+  if (typeProperties.length === 0) {
+    return resolvedProperties.map((property) => sourcePropertiesByName.get(property.name) ?? property)
+  }
 
-  const typeProperties = new Map(typeAst.propertySignatures.map((property) => [property.name, property]))
+  const typePropertiesByName = new Map(typeProperties.map((property) => [property.name, property]))
 
-  return resolvedAst.propertySignatures.map((property) => {
-    const typeProperty = typeProperties.get(property.name)
+  return resolvedProperties.map((property) => {
+    const sourceProperty = sourcePropertiesByName.get(property.name) ?? property
+    const typeProperty = typePropertiesByName.get(property.name)
     const annotations = typeProperty === undefined ? undefined : SchemaAST.resolve(typeProperty.type)
-    if (annotations === undefined) return property
+    if (annotations === undefined) return sourceProperty
 
     return new SchemaAST.PropertySignature(
-      property.name,
-      Schema.make(property.type).annotate(annotations).ast,
+      sourceProperty.name,
+      Schema.make(sourceProperty.type).annotate(annotations).ast,
     )
+  })
+}
+
+const getPropertySignatures = (ast: SchemaAST.AST): ReadonlyArray<SchemaAST.PropertySignature> => {
+  if (SchemaAST.isObjects(ast) === true) return ast.propertySignatures
+
+  if (SchemaAST.isUnion(ast) === false || ast.types.every(SchemaAST.isObjects) === false) return []
+
+  const propertiesByName = new Map<PropertyKey, ReadonlyArray<SchemaAST.PropertySignature>>()
+  for (const member of ast.types) {
+    if (SchemaAST.isObjects(member) === false) continue
+    for (const property of member.propertySignatures) {
+      propertiesByName.set(property.name, [...(propertiesByName.get(property.name) ?? []), property])
+    }
+  }
+
+  return Array.from(propertiesByName, ([name, properties]) => {
+    const types = properties.map((property) => property.type)
+    const propertyType = types.length === 1 ? types[0]! : new SchemaAST.Union(types, 'anyOf')
+    return new SchemaAST.PropertySignature(name, propertyType)
   })
 }
 
@@ -58,7 +90,7 @@ export const encodeWithTransferables =
         Effect.provideService(Transferable.Collector, collector),
       )
 
-      return [encoded, collector.unsafeRead() as TransferableObject[]]
+      return [encoded, collector.readUnsafe() as TransferableObject[]]
     })
 
 export const decodeSyncDebug: <A, I>(

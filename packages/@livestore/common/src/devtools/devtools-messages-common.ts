@@ -14,10 +14,10 @@ export const sessionId = Schema.String
 export const liveStoreVersion = Schema.String
 
 export const LSDMessage = <Tag extends string, Fields extends Schema.Struct.Fields>(tag: Tag, fields: Fields) =>
-  Schema.TaggedStruct(tag, {
+  Schema.TaggedClass<any>()(tag, {
     liveStoreVersion,
     ...fields,
-  }).annotate({ identifier: tag })
+  }, { identifier: tag })
 
 export const LSDChannelMessage = <Tag extends string, Fields extends Schema.Struct.Fields>(tag: Tag, fields: Fields) =>
   LSDMessage(tag, {

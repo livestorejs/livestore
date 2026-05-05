@@ -1,4 +1,4 @@
-import { Cause, Effect, Layer, Schema, Stream, Struct } from '@livestore/utils/effect'
+import { Cause, Effect, Layer, Result, Schema, Stream, Struct } from '@livestore/utils/effect'
 
 import * as LiveStoreEvent from './schema/LiveStoreEvent/mod.ts'
 
@@ -15,11 +15,13 @@ export class UnknownError extends Schema.TaggedErrorClass<UnknownError>()('Unkno
 
   static mapToUnknownErrorLayer = <A, E, R>(layer: Layer.Layer<A, E, R>) =>
     layer.pipe(
-      Layer.catchAllCause((cause) =>
-        Cause.isFailType(cause) === true && Schema.is(UnknownError)(cause.error) === true
-          ? Layer.fail(cause.error)
-          : Layer.fail(new UnknownError({ cause: cause })),
-      ),
+      Layer.catchAllCause((cause) => {
+        const fail = Cause.findFail(cause)
+
+        return Result.isSuccess(fail) === true && Schema.is(UnknownError)(fail.value.error) === true
+          ? Layer.fail(fail.value.error)
+          : Layer.fail(new UnknownError({ cause: cause }))
+      }),
     )
 
   static mapToUnknownErrorStream = <A, E, R>(stream: Stream.Stream<A, E, R>) =>

@@ -44,7 +44,7 @@ const makeLayer = (config?: { wranglerConfigPath?: string; label: string }): Syn
     }),
   ).pipe(
     Layer.provide(
-      WranglerDevServerService.Default({
+      makeWranglerDevServerLayer({
         cwd: path.join(import.meta.dirname, 'cloudflare'),
         ...(config?.wranglerConfigPath && { wranglerConfigPath: config.wranglerConfigPath }),
       }).pipe(Layer.provide(NodeServices.layer)),

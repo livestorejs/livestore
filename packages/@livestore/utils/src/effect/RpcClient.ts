@@ -4,7 +4,7 @@ import { Socket } from 'effect/unstable/socket'
 import { RpcClient, RpcClientError, RpcSerialization } from 'effect/unstable/rpc'
 import { Protocol } from 'effect/unstable/rpc/RpcClient'
 import { constPing, type FromServerEncoded } from 'effect/unstable/rpc/RpcMessage'
-import { Cause, Deferred, Effect, Layer, Option, Schedule, type Scope } from 'effect'
+import { Cause, Deferred, Effect, Layer, Option, References, Schedule, type Scope } from 'effect'
 import { constVoid, identity } from 'effect/Function'
 
 import * as SubscriptionRef from './SubscriptionRef.ts'
@@ -111,7 +111,7 @@ export const makeProtocolSocketWithIsConnected = (options: {
             }),
           ),
         ),
-        Effect.tapErrorCause(
+        Effect.tapCause(
           Effect.fn(function* (cause) {
             // CHANGED: set isConnected to false on error
             if (options?.isConnected !== undefined) {
@@ -145,7 +145,7 @@ export const makeProtocolSocketWithIsConnected = (options: {
         }),
         Effect.interruptible,
         Effect.ignore, // Errors are already handled
-        Effect.provide(Layer.setUnhandledErrorLogLevel(Option.none())),
+        Effect.provideService(References.UnhandledLogLevel, undefined),
         Effect.forkScoped,
       )
 

@@ -28,13 +28,13 @@ delete process.env.https_proxy
 delete process.env.ALL_PROXY
 delete process.env.all_proxy
 
-const { WranglerDevServerService } = await import('@livestore/utils-dev/wrangler')
+const { WranglerDevServerService, makeWranglerDevServerLayer } = await import('@livestore/utils-dev/wrangler')
 
 const withTestCtx = Vitest.makeWithTestCtx({
   timeout: testTimeout,
   makeLayer: () =>
     Layer.mergeAll(
-      WranglerDevServerService.Default({
+      makeWranglerDevServerLayer({
         cwd: fixturesDir,
         readiness: { connectTimeout: Duration.seconds(15) },
       }).pipe(Layer.provide(Layer.mergeAll(NodeServices.layer, FetchHttpClient.layer))),

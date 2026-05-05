@@ -8,13 +8,14 @@ import {
   type StartWranglerDevServerArgs,
   WranglerDevServerError,
   WranglerDevServerService,
+  makeWranglerDevServerLayer,
 } from './WranglerDevServer.ts'
 
 import * as NodeServices from '@effect/platform-node/NodeServices'
 const testTimeout = 60_000
 
 const WranglerDevServerTest = (args: Partial<StartWranglerDevServerArgs> = {}) =>
-  WranglerDevServerService.Default({
+  makeWranglerDevServerLayer({
     cwd: `${import.meta.dirname}/fixtures`,
     ...args,
   }).pipe(Layer.provide(FetchHttpClient.layer))
@@ -80,12 +81,12 @@ Vitest.describe('WranglerDevServer', { timeout: testTimeout }, () => {
               cwd: '/completely/nonexistent/directory',
             }).pipe(Layer.provide(NodeServices.layer)),
           ),
-          Effect.either,
+          Effect.result,
         )
 
-        expect(result._tag).toBe('Left')
-        if (result._tag === 'Left') {
-          expect(result.left).toBeInstanceOf(WranglerDevServerError)
+        expect(result._tag).toBe('Failure')
+        if (result._tag === 'Failure') {
+          expect(result.failure).toBeInstanceOf(WranglerDevServerError)
         }
       }).pipe(Vitest.withTestCtx(test)),
     )
@@ -96,12 +97,12 @@ Vitest.describe('WranglerDevServer', { timeout: testTimeout }, () => {
         const result = yield* WranglerDevServerService.pipe(
           // Override the timeout for this test to be shorter
           Effect.timeout('5 seconds'),
-          Effect.either,
+          Effect.result,
         )
 
         // This might succeed or fail depending on actual wrangler behavior
         // The main point is testing timeout functionality
-        expect(['Left', 'Right']).toContain(result._tag)
+        expect(['Failure', 'Success']).toContain(result._tag)
       }).pipe(withErrorTest()(test)),
     )
   })
