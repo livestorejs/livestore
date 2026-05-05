@@ -1,9 +1,9 @@
-import { Schema, Transferable } from '@livestore/utils/effect'
+import { Effect, Schema, Transferable } from '@livestore/utils/effect'
 import { nanoid } from '@livestore/utils/nanoid'
 
 const id = Schema.String.pipe(
   Schema.optional,
-  Schema.withDefaults({ constructor: () => nanoid(10), decoding: () => nanoid(10) }),
+  Schema.withDecodingDefaultType(Effect.sync(() => nanoid(10))),
 )
 
 const defaultPacketFields = {
@@ -121,11 +121,27 @@ export const BroadcastChannelPacket = Schema.TaggedStruct('BroadcastChannelPacke
   target: Schema.Literal('-'),
 })
 
-export class DirectChannelPacket extends Schema.Union([DirectChannelRequest, DirectChannelResponseSuccess, DirectChannelResponseNoTransferables]) {}
+export class DirectChannelPacket extends Schema.Union([
+  DirectChannelRequest,
+  DirectChannelResponseSuccess,
+  DirectChannelResponseNoTransferables,
+]) {}
 
-export class ProxyChannelPacket extends Schema.Union([ProxyChannelRequest, ProxyChannelResponseSuccess, ProxyChannelPayload, ProxyChannelPayloadAck]) {}
+export class ProxyChannelPacket extends Schema.Union([
+  ProxyChannelRequest,
+  ProxyChannelResponseSuccess,
+  ProxyChannelPayload,
+  ProxyChannelPayloadAck,
+]) {}
 
-export class Packet extends Schema.Union([DirectChannelPacket, ProxyChannelPacket, NetworkEdgeAdded, NetworkTopologyRequest, NetworkTopologyResponse, BroadcastChannelPacket]) {}
+export class Packet extends Schema.Union([
+  DirectChannelPacket,
+  ProxyChannelPacket,
+  NetworkEdgeAdded,
+  NetworkTopologyRequest,
+  NetworkTopologyResponse,
+  BroadcastChannelPacket,
+]) {}
 
 export class DirectChannelPing extends Schema.TaggedStruct('DirectChannelPing', {}) {}
 export class DirectChannelPong extends Schema.TaggedStruct('DirectChannelPong', {}) {}

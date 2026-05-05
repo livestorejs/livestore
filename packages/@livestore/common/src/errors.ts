@@ -1,4 +1,4 @@
-import { Cause, Effect, Layer, Schema, Stream } from '@livestore/utils/effect'
+import { Cause, Effect, Layer, Schema, Stream, Struct } from '@livestore/utils/effect'
 
 import * as LiveStoreEvent from './schema/LiveStoreEvent/mod.ts'
 
@@ -28,9 +28,11 @@ export class UnknownError extends Schema.TaggedErrorClass<UnknownError>()('Unkno
 
 export class MaterializerHashMismatchError extends Schema.TaggedErrorClass<MaterializerHashMismatchError>()('MaterializerHashMismatchError', {
     eventName: Schema.String,
-    note: Schema.optionalWith(Schema.String, {
-      default: () => 'Please make sure your event materializer is a pure function without side effects.',
-    }),
+    note: Schema.String.pipe(
+      Schema.withDecodingDefaultType(
+        Effect.succeed('Please make sure your event materializer is a pure function without side effects.'),
+      ),
+    ),
   },
 ) {}
 
@@ -59,7 +61,7 @@ export class SqliteError extends Schema.TaggedErrorClass<SqliteError>()('SqliteE
 }) {}
 
 export class UnknownEventError extends Schema.TaggedErrorClass<UnknownEventError>()('UnknownEventError', {
-  event: LiveStoreEvent.Client.Encoded.pipe(Schema.pick('name', 'args', 'seqNum', 'clientId', 'sessionId')),
+  event: LiveStoreEvent.Client.Encoded.mapFields(Struct.pick(['name', 'args', 'seqNum', 'clientId', 'sessionId'])),
   reason: Schema.Literals(['event-definition-missing', 'materializer-missing']),
   operation: Schema.String,
   note: Schema.optional(Schema.String),

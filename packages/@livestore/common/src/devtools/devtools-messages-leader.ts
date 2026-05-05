@@ -153,7 +153,7 @@ export const ResetAllData = LeaderReqResMessage('LSD.Leader.ResetAllData', {
 //   failure: UnknownError,
 // }) {}
 
-// export const MessageToApp_ = Schema.Union(DatabaseFileInfo_, NetworkStatus_)
+// export const MessageToApp_ = Schema.Union([DatabaseFileInfo_, NetworkStatus_])
 
 // export type MessageToApp_ = typeof MessageToApp_.Type
 //

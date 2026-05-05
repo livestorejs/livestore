@@ -22,19 +22,27 @@ export const hash = (schema: Schema.Schema<any>) => {
   }
 }
 
-const resolveStructAst = (ast: SchemaAST.AST): SchemaAST.AST => {
-  if (SchemaAST.isTransformation(ast) === true) {
-    return resolveStructAst(ast.from)
-  }
-
-  return ast
-}
-
 export const getResolvedPropertySignatures = (
   schema: Schema.Schema.AnyNoContext,
 ): ReadonlyArray<SchemaAST.PropertySignature> => {
-  const resolvedAst = resolveStructAst(schema.ast)
-  return SchemaAST.getPropertySignatures(resolvedAst)
+  const resolvedAst = Schema.toEncoded(schema).ast
+  if (SchemaAST.isObjects(resolvedAst) === false) return []
+
+  const typeAst = Schema.toType(schema).ast
+  if (SchemaAST.isObjects(typeAst) === false) return resolvedAst.propertySignatures
+
+  const typeProperties = new Map(typeAst.propertySignatures.map((property) => [property.name, property]))
+
+  return resolvedAst.propertySignatures.map((property) => {
+    const typeProperty = typeProperties.get(property.name)
+    const annotations = typeProperty === undefined ? undefined : SchemaAST.resolve(typeProperty.type)
+    if (annotations === undefined) return property
+
+    return new SchemaAST.PropertySignature(
+      property.name,
+      Schema.make(property.type).annotate(annotations).ast,
+    )
+  })
 }
 
 /** Objects that can be transferred between contexts (workers, etc.) */
@@ -57,11 +65,10 @@ export const decodeSyncDebug: <A, I>(
   schema: Schema.Schema<A, I>,
   options?: SchemaAST.ParseOptions,
 ) => (i: I, overrideOptions?: SchemaAST.ParseOptions) => A = (schema, options) => (input, overrideOptions) => {
-  const res = Schema.decodeExit(schema, options)(input, overrideOptions)
-  if (res._tag === 'Left') {
-    return shouldNeverHappen(`decodeSyncDebug failed:`, res.left)
-  } else {
-    return res.right
+  try {
+    return Schema.decodeSync(schema, options)(input, overrideOptions)
+  } catch (error) {
+    return shouldNeverHappen(`decodeSyncDebug failed:`, error)
   }
 }
 
@@ -69,11 +76,10 @@ export const encodeSyncDebug: <A, I>(
   schema: Schema.Schema<A, I>,
   options?: SchemaAST.ParseOptions,
 ) => (a: A, overrideOptions?: SchemaAST.ParseOptions) => I = (schema, options) => (input, overrideOptions) => {
-  const res = Schema.encodeExit(schema, options)(input, overrideOptions)
-  if (res._tag === 'Left') {
-    return shouldNeverHappen(`encodeSyncDebug failed:`, res.left)
-  } else {
-    return res.right
+  try {
+    return Schema.encodeSync(schema, options)(input, overrideOptions)
+  } catch (error) {
+    return shouldNeverHappen(`encodeSyncDebug failed:`, error)
   }
 }
 

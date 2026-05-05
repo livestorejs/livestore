@@ -94,7 +94,10 @@ Vitest.describe('webmesh node', { timeout: testTimeout }, () => {
   const Delay = Schema.UndefinedOr(Schema.Literals([0, 1, 10, 50]))
   // NOTE for message channels, we test both with and without transferables (i.e. proxying)
   const ChannelType = Schema.Literals(['direct', 'proxy(via-messagechannel-edge)', 'proxy'])
-  const NodeNames = Schema.Union([Schema.Tuple(Schema.Literal('A'), Schema.Literal('B')), Schema.Tuple(Schema.Literal('B'), Schema.Literal('A'))])
+  const NodeNames = Schema.Union([
+    Schema.Tuple([Schema.Literal('A'), Schema.Literal('B')]),
+    Schema.Tuple([Schema.Literal('B'), Schema.Literal('A')]),
+  ])
   )
 
   const fromChannelType = (
@@ -399,7 +402,7 @@ Vitest.describe('webmesh node', { timeout: testTimeout }, () => {
         // TODO we need to improve latency when sending messages concurrently
         Vitest.scopedLive.prop(
           'concurrent messages',
-          [ChannelType, Schema.Int.pipe(Schema.isBetween(1, 50))],
+          [ChannelType, Schema.Int.check(Schema.isBetween(1, 50))],
           ([channelType, count], test) =>
             Effect.gen(function* () {
               const nodeA = yield* makeMeshNode('A')

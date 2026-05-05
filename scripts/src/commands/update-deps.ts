@@ -57,7 +57,7 @@ const ExpoConstraints = Schema.Record(Schema.String, Schema.String)
 
 const PatchedDependencies = Schema.Record(Schema.String, Schema.String)
 
-const DepsRecord = Schema.optional(Schema.mutable(Schema.Record(Schema.String, Schema.String)))
+const DepsRecord = Schema.optional(Schema.Record(Schema.String, Schema.String))
 
 const WorkspacePackageJson = Schema.Struct(
   { dependencies: DepsRecord, devDependencies: DepsRecord, peerDependencies: DepsRecord },

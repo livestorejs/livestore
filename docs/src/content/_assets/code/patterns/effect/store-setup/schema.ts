@@ -16,9 +16,9 @@ export const events = {
     name: 'userUpdated',
     schema: Schema.Struct({
       id: Schema.String,
-      name: Schema.optionalWith(Schema.String, { as: 'Option' }),
-      email: Schema.optionalWith(Schema.String, { as: 'Option' }),
-      isActive: Schema.optionalWith(Schema.Boolean, { as: 'Option' }),
+      name: Schema.OptionFromOptional(Schema.String),
+      email: Schema.OptionFromOptional(Schema.String),
+      isActive: Schema.OptionFromOptional(Schema.Boolean),
     }),
   }),
   productCreated: Events.clientOnly({
@@ -34,9 +34,9 @@ export const events = {
     name: 'productUpdated',
     schema: Schema.Struct({
       id: Schema.String,
-      name: Schema.optionalWith(Schema.String, { as: 'Option' }),
-      description: Schema.optionalWith(Schema.String, { as: 'Option' }),
-      price: Schema.optionalWith(Schema.Number, { as: 'Option' }),
+      name: Schema.OptionFromOptional(Schema.String),
+      description: Schema.OptionFromOptional(Schema.String),
+      price: Schema.OptionFromOptional(Schema.Number),
     }),
   }),
   todoCreated: Events.clientOnly({
@@ -59,7 +59,7 @@ export const events = {
     schema: Schema.Struct({
       id: Schema.String,
       name: Schema.String,
-      metadata: Schema.Record({ key: Schema.String, value: Schema.Unknown }),
+      metadata: Schema.Record(Schema.String, Schema.Unknown),
     }),
   }),
   itemUpdated: Events.clientOnly({

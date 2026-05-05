@@ -7,10 +7,7 @@ const UserSchema = Schema.Struct({
   age: Schema.Int.pipe(State.SQLite.withDefault(0)),
   isActive: Schema.Boolean.pipe(State.SQLite.withDefault(true)),
   metadata: Schema.optional(
-    Schema.Record({
-      key: Schema.String,
-      value: Schema.Unknown,
-    }),
+    Schema.Record(Schema.String, Schema.Unknown),
   ),
 }).annotations({ title: 'users' })
 

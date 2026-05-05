@@ -197,22 +197,22 @@ Vitest.describe.each(providerLayers)('$name sync provider', { timeout: 60000 }, 
 
     const fewLargeScenarioSchema = Schema.Struct({
       variant: Schema.Literal('fewLarge'),
-      eventCount: Schema.Int.pipe(Schema.isBetween(20, 28)),
-      payloadSize: Schema.Int.pipe(Schema.isBetween(70_000, 110_000)),
-      pushBatchSize: Schema.Int.pipe(Schema.isBetween(6, 12)),
-    }).pipe(
-      Schema.filter((scenario) => scenario.eventCount * scenario.payloadSize >= MIN_BATCH_PAYLOAD_BYTES, {
+      eventCount: Schema.Int.check(Schema.isBetween(20, 28)),
+      payloadSize: Schema.Int.check(Schema.isBetween(70_000, 110_000)),
+      pushBatchSize: Schema.Int.check(Schema.isBetween(6, 12)),
+    }).check(
+      Schema.makeFilter((scenario) => scenario.eventCount * scenario.payloadSize >= MIN_BATCH_PAYLOAD_BYTES, {
         message: () => 'Large batch scenarios should exceed provider payload limits',
       }),
     )
 
     const manySmallScenarioSchema = Schema.Struct({
       variant: Schema.Literal('manySmall'),
-      eventCount: Schema.Int.pipe(Schema.isBetween(1_200, 1_600)),
-      payloadSize: Schema.Int.pipe(Schema.isBetween(900, 1_200)),
-      pushBatchSize: Schema.Int.pipe(Schema.isBetween(30, 160)),
-    }).pipe(
-      Schema.filter((scenario) => scenario.eventCount * scenario.payloadSize >= MIN_BATCH_PAYLOAD_BYTES, {
+      eventCount: Schema.Int.check(Schema.isBetween(1_200, 1_600)),
+      payloadSize: Schema.Int.check(Schema.isBetween(900, 1_200)),
+      pushBatchSize: Schema.Int.check(Schema.isBetween(30, 160)),
+    }).check(
+      Schema.makeFilter((scenario) => scenario.eventCount * scenario.payloadSize >= MIN_BATCH_PAYLOAD_BYTES, {
         message: () => 'Small batch scenarios should exceed provider payload limits',
       }),
     )

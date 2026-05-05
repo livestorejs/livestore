@@ -1,5 +1,5 @@
 import { casesHandled } from '@livestore/utils'
-import { Option, Schema } from '@livestore/utils/effect'
+import { Option, Schema, SchemaTransformation } from '@livestore/utils/effect'
 
 export type SqlDefaultValue = {
   readonly sql: string
@@ -226,23 +226,33 @@ export const json: SpecializedColDefFn<'text', true, unknown> = makeSpecializedC
 
 export const datetime: SpecializedColDefFn<'text', false, Date> = makeSpecializedColDef('text', {
   _tag: 'baseSchema',
-  baseSchema: Schema.Date,
+  baseSchema: Schema.DateFromString,
 })
 
 export const datetimeInteger: SpecializedColDefFn<'integer', false, Date> = makeSpecializedColDef('integer', {
   _tag: 'baseSchema',
-  baseSchema: Schema.transform(Schema.Number, Schema.Date, {
-    decode: (ms) => new Date(ms),
-    encode: (date) => date.getTime(),
-  }),
+  baseSchema: Schema.Number.pipe(
+    Schema.decodeTo(
+      Schema.Date,
+      SchemaTransformation.transform({
+        decode: (ms) => new Date(ms),
+        encode: (date) => date.getTime(),
+      }),
+    ),
+  ),
 })
 
 export const boolean: SpecializedColDefFn<'integer', false, boolean> = makeSpecializedColDef('integer', {
   _tag: 'baseSchema',
-  baseSchema: Schema.transform(Schema.Number, Schema.Boolean, {
-    decode: (_) => _ === 1,
-    encode: (_) => (_ === true ? 1 : 0),
-  }),
+  baseSchema: Schema.Number.pipe(
+    Schema.decodeTo(
+      Schema.Boolean,
+      SchemaTransformation.transform({
+        decode: (_) => _ === 1,
+        encode: (_) => (_ === true ? 1 : 0),
+      }),
+    ),
+  ),
 })
 
 export type FieldColumnType = 'text' | 'integer' | 'real' | 'blob'
@@ -277,7 +287,7 @@ export const defaultSchemaForColumnType = <TColumnType extends FieldColumnType>(
     }
     case 'blob': {
       // oxlint-disable-next-line typescript-eslint(no-unsafe-type-assertion) -- switch-based type narrowing for column type to schema mapping; each case is correct for its branch
-      return Schema.Uint8ArrayFromSelf as any as Schema.Schema<T>
+      return Schema.Uint8Array as any as Schema.Schema<T>
     }
     default: {
       return casesHandled(columnType)

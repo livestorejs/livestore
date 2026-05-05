@@ -1,7 +1,6 @@
 import { assert, describe, expect, it } from 'vitest'
 
-import { Schema } from '@livestore/utils/effect'
-import { objectToString } from '@livestore/utils'
+import { Schema, SchemaAST, SchemaTransformation, Struct } from '@livestore/utils/effect'
 
 import * as State from '../mod.ts'
 import { withAutoIncrement, withColumnType, withDefault, withPrimaryKey, withUnique } from './column-annotations.ts'
@@ -26,15 +25,15 @@ describe('getColumnDefForSchema', () => {
     it('should map Schema.Date to text column', () => {
       const columnDef = State.SQLite.getColumnDefForSchema(Schema.Date)
       expect(columnDef.columnType).toBe('text')
-      expect(Schema.toEncoded(columnDef.schema).toString()).toBe('string')
-      expect(Schema.toType(columnDef.schema).toString()).toBe('Date')
+      expect(SchemaAST.isString(Schema.toEncoded(columnDef.schema).ast)).toBe(true)
+      expect(SchemaAST.resolve(Schema.toType(columnDef.schema).ast)?.expected).toBe('Date')
     })
 
-    it('should map Schema.DateFromNumber to integer column', () => {
-      const columnDef = State.SQLite.getColumnDefForSchema(Schema.DateFromNumber)
-      expect(columnDef.columnType).toBe('integer')
-      expect(Schema.toEncoded(columnDef.schema).toString()).toBe('number')
-      expect(Schema.toType(columnDef.schema).toString()).toBe('DateFromSelf')
+    it('should map Schema.DateFromString to text column', () => {
+      const columnDef = State.SQLite.getColumnDefForSchema(Schema.DateFromString)
+      expect(columnDef.columnType).toBe('text')
+      expect(SchemaAST.isString(Schema.toEncoded(columnDef.schema).ast)).toBe(true)
+      expect(SchemaAST.resolve(Schema.toType(columnDef.schema).ast)?.expected).toBe('Date')
     })
 
     it('should map Schema.BigInt to text column', () => {
@@ -53,11 +52,11 @@ describe('getColumnDefForSchema', () => {
       const refinements = [
         { schema: Schema.NonEmptyString, name: 'NonEmptyString' },
         { schema: Schema.Trim, name: 'Trim' },
-        { schema: Schema.UUID, name: 'UUID' },
-        { schema: Schema.ULID, name: 'ULID' },
-        { schema: Schema.String.pipe(Schema.isMinLength(5)), name: 'minLength' },
+        { schema: Schema.String.check(Schema.isUUID()), name: 'UUID' },
+        { schema: Schema.String.check(Schema.isULID()), name: 'ULID' },
+        { schema: Schema.String.check(Schema.isMinLength(5)), name: 'minLength' },
         {
-          schema: Schema.String.pipe(Schema.pattern(/^[A-Z]+$/)),
+          schema: Schema.String.check(Schema.isPattern(/^[A-Z]+$/)),
           name: 'pattern',
         },
       ]
@@ -71,8 +70,8 @@ describe('getColumnDefForSchema', () => {
     it('should map number refinements to real column', () => {
       const refinements = [
         { schema: Schema.Finite, name: 'Finite' },
-        { schema: Schema.Number.pipe(Schema.positive()), name: 'positive' },
-        { schema: Schema.Number.pipe(Schema.isBetween(0, 100)), name: 'between' },
+        { schema: Schema.Number.check(Schema.isGreaterThan(0)), name: 'positive' },
+        { schema: Schema.Number.check(Schema.isBetween(0, 100)), name: 'between' },
       ]
 
       for (const { schema, name } of refinements) {
@@ -102,10 +101,13 @@ describe('getColumnDefForSchema', () => {
   describe('transformations', () => {
     it('should map transformations based on target type', () => {
       const StringToNumber = Schema.String.pipe(
-        Schema.transform(Schema.Number, {
-          decode: Number.parseFloat,
-          encode: String,
-        }),
+        Schema.decodeTo(
+          Schema.Number,
+          SchemaTransformation.transform({
+            decode: Number.parseFloat,
+            encode: String,
+          }),
+        ),
       )
 
       const columnDef = State.SQLite.getColumnDefForSchema(StringToNumber)
@@ -195,7 +197,7 @@ describe('getColumnDefForSchema', () => {
 
     it('should handle never schema', () => {
       // Create a schema that should never validate
-      const neverSchema = Schema.String.pipe(Schema.filter(() => false, { message: () => 'Always fails' }))
+      const neverSchema = Schema.String.check(Schema.makeFilter(() => 'Always fails'))
 
       const columnDef = State.SQLite.getColumnDefForSchema(neverSchema)
       expect(columnDef.columnType).toBe('text')
@@ -231,7 +233,7 @@ describe('getColumnDefForSchema', () => {
         email: Schema.String,
       })
 
-      const PickedSchema = UserSchema.pipe(Schema.pick('id', 'name'))
+      const PickedSchema = UserSchema.mapFields(Struct.pick(['id', 'name']))
 
       const columnDef = State.SQLite.getColumnDefForSchema(PickedSchema)
       expect(columnDef.columnType).toBe('text')
@@ -244,7 +246,7 @@ describe('getColumnDefForSchema', () => {
         password: Schema.String,
       })
 
-      const PublicUserSchema = UserSchema.pipe(Schema.omit('password'))
+      const PublicUserSchema = UserSchema.mapFields(Struct.omit(['password']))
 
       const columnDef = State.SQLite.getColumnDefForSchema(PublicUserSchema)
       expect(columnDef.columnType).toBe('text')
@@ -265,7 +267,7 @@ describe('getColumnDefForSchema', () => {
 
   describe('enums and literal unions', () => {
     it('should handle enums and literal unions as text', () => {
-      const StatusEnum = Schema.Enums({
+      const StatusEnum = Schema.Enum({
         PENDING: 'pending',
         ACTIVE: 'active',
         INACTIVE: 'inactive',
@@ -298,7 +300,7 @@ describe('getColumnDefForSchema', () => {
     it('should handle Uint8Array as blob column', () => {
       const columnDef = State.SQLite.getColumnDefForSchema(Schema.Uint8Array)
       expect(columnDef.columnType).toBe('blob')
-      expect(objectToString(columnDef.schema)).toBe('Uint8ArrayFromSelf')
+      expect(SchemaAST.resolve(Schema.toType(columnDef.schema).ast)?.expected).toBe('Uint8Array')
     })
   })
 
@@ -340,9 +342,8 @@ describe('getColumnDefForSchema', () => {
       expect(userTable.sqliteDef.columns.id.nullable).toBe(false)
       expect(userTable.sqliteDef.columns.name.nullable).toBe(false)
 
-      // Row schema should show | null for optional fields
-      expect((userTable.rowSchema as any).fields.email.toString()).toBe('string | null')
-      expect((userTable.rowSchema as any).fields.age.toString()).toBe('number | null')
+      expectNullableSchema((userTable.rowSchema as any).fields.email, SchemaAST.isString)
+      expectNullableSchema((userTable.rowSchema as any).fields.age, SchemaAST.isNumber)
     })
 
     it('should handle optional boolean with proper transformation', () => {
@@ -355,8 +356,8 @@ describe('getColumnDefForSchema', () => {
 
       expect(table.sqliteDef.columns.active.nullable).toBe(true)
       expect(table.sqliteDef.columns.active.columnType).toBe('integer')
-      expect(objectToString(table.sqliteDef.columns.active.schema)).toBe('(number <-> boolean) | null')
-      expect(String((table.rowSchema as any).fields.active)).toBe('(number <-> boolean) | null')
+      expectNullableSchema(table.sqliteDef.columns.active.schema, SchemaAST.isBoolean)
+      expectNullableSchema((table.rowSchema as any).fields.active, SchemaAST.isBoolean)
     })
 
     it('should handle optional complex types with JSON encoding', () => {
@@ -370,14 +371,11 @@ describe('getColumnDefForSchema', () => {
 
       expect(table.sqliteDef.columns.metadata.nullable).toBe(true)
       expect(table.sqliteDef.columns.metadata.columnType).toBe('text')
-      expect((table.rowSchema as any).fields.metadata.toString()).toBe(
-        '(parseJson <-> { readonly color: string }) | null',
-        // '(parseJson <-> { readonly color: string } | null)', //  not sure yet about which semantics we want here
-      )
+      expectNullableSchema((table.rowSchema as any).fields.metadata, SchemaAST.isObjects)
 
       expect(table.sqliteDef.columns.tags.nullable).toBe(true)
       expect(table.sqliteDef.columns.tags.columnType).toBe('text')
-      expect((table.rowSchema as any).fields.tags.toString()).toBe('(parseJson <-> ReadonlyArray<string>) | null')
+      expectNullableSchema((table.rowSchema as any).fields.tags, SchemaAST.isArrays)
     })
 
     it('should handle Schema.NullOr', () => {
@@ -392,8 +390,11 @@ describe('getColumnDefForSchema', () => {
       expect(table.sqliteDef.columns.description.nullable).toBe(true)
       expect(table.sqliteDef.columns.count.nullable).toBe(true)
 
-      expect((table.rowSchema as any).fields.description.toString()).toBe('string | null')
-      expect((table.rowSchema as any).fields.count.toString()).toBe('Int | null')
+      expectNullableSchema((table.rowSchema as any).fields.description, SchemaAST.isString)
+      expectNullableSchema(
+        (table.rowSchema as any).fields.count,
+        (ast) => SchemaAST.isNumber(ast) === true && SchemaAST.resolve(ast)?.expected === 'an integer',
+      )
     })
 
     it('should treat unions of string literals as text columns without JSON parsing', () => {
@@ -405,8 +406,8 @@ describe('getColumnDefForSchema', () => {
       const table = State.SQLite.table({ name: 'timers', schema })
 
       expect(table.sqliteDef.columns.status.columnType).toBe('text')
-      expect(objectToString(table.sqliteDef.columns.status.schema)).toBe('"idle" | "running" | "stopped"')
-      expect(String((table.rowSchema as any).fields.status)).toBe('"idle" | "running" | "stopped"')
+      expectLiteralValues(table.sqliteDef.columns.status.schema, ['idle', 'running', 'stopped'])
+      expectLiteralValues((table.rowSchema as any).fields.status, ['idle', 'running', 'stopped'])
     })
 
     it('should handle Schema.NullOr with complex types', () => {
@@ -418,7 +419,7 @@ describe('getColumnDefForSchema', () => {
 
       expect(table.sqliteDef.columns.data.nullable).toBe(true)
       expect(table.sqliteDef.columns.data.columnType).toBe('text')
-      expect((table.rowSchema as any).fields.data.toString()).toBe('(parseJson <-> { readonly value: number }) | null')
+      expectNullableSchema((table.rowSchema as any).fields.data, SchemaAST.isObjects)
     })
 
     it('should handle mixed nullable and optional fields', () => {
@@ -435,12 +436,9 @@ describe('getColumnDefForSchema', () => {
       expect(table.sqliteDef.columns.optionalText.nullable).toBe(true)
       expect(table.sqliteDef.columns.optionalJson.nullable).toBe(true)
 
-      // Schema representations
-      expect((table.rowSchema as any).fields.nullableText.toString()).toBe('string | null')
-      expect((table.rowSchema as any).fields.optionalText.toString()).toBe('string | null')
-      expect((table.rowSchema as any).fields.optionalJson.toString()).toBe(
-        '(parseJson <-> { readonly x: number }) | null',
-      )
+      expectNullableSchema((table.rowSchema as any).fields.nullableText, SchemaAST.isString)
+      expectNullableSchema((table.rowSchema as any).fields.optionalText, SchemaAST.isString)
+      expectNullableSchema((table.rowSchema as any).fields.optionalJson, SchemaAST.isObjects)
     })
 
     // TODO bring back some time later
@@ -771,3 +769,23 @@ describe('getColumnDefForSchema', () => {
     })
   })
 })
+
+const getSchemaAsts = (schema: Schema.Schema.Any): ReadonlyArray<SchemaAST.AST> =>
+  SchemaAST.isUnion(schema.ast) === true ? schema.ast.types : [schema.ast]
+
+const expectNullableSchema = (
+  schema: Schema.Schema.Any,
+  predicate: (ast: SchemaAST.AST) => boolean,
+): void => {
+  const members = getSchemaAsts(schema)
+  expect(members.some((ast) => SchemaAST.isNull(ast))).toBe(true)
+  expect(members.some(predicate)).toBe(true)
+}
+
+const expectLiteralValues = (schema: Schema.Schema.Any, expectedValues: ReadonlyArray<SchemaAST.LiteralValue>): void => {
+  const values = getSchemaAsts(schema)
+    .filter(SchemaAST.isLiteral)
+    .map((ast) => ast.literal)
+
+  expect(values).toEqual(expectedValues)
+}

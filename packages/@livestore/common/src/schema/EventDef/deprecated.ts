@@ -68,7 +68,7 @@ export const deprecated =
  * @returns The deprecation reason if deprecated, None otherwise
  */
 export const getDeprecatedReason = <A, I, R>(schema: Schema.Schema<A, I, R>): Option.Option<string> =>
-  SchemaAST.getAnnotation<string>(DeprecatedId)(schema.ast)
+  getAstAnnotation<string>(schema.ast, DeprecatedId)
 
 /**
  * Checks if a schema is deprecated.
@@ -107,7 +107,7 @@ export const findDeprecatedFieldsWithValues = (
         const deprecationReason = propAnnotations?.[DeprecatedId] as string | undefined
 
         // Also check deprecation on the type (for direct field deprecation)
-        const typeDeprecation = SchemaAST.getAnnotation<string>(DeprecatedId)(prop.type)
+        const typeDeprecation = getAstAnnotation<string>(prop.type, DeprecatedId)
 
         const reason = deprecationReason ?? (Option.isSome(typeDeprecation) === true ? typeDeprecation.value : undefined)
         if (reason !== undefined) {
@@ -119,6 +119,9 @@ export const findDeprecatedFieldsWithValues = (
 
   return result
 }
+
+const getAstAnnotation = <T>(ast: SchemaAST.AST, annotationId: PropertyKey): Option.Option<T> =>
+  Option.fromNullishOr(SchemaAST.resolve(ast)?.[annotationId] as T | undefined)
 
 /** Set of event names that have already logged deprecation warnings. */
 const warnedDeprecatedEvents = new Set<string>()

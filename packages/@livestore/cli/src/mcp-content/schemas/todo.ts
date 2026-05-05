@@ -36,7 +36,7 @@ export const tables = {
     name: 'uiState',
     schema: Schema.Struct({ 
       newTodoText: Schema.String, 
-      filter: Schema.Literal('all', 'active', 'completed'),
+      filter: Schema.Literals(['all', 'active', 'completed']),
       selectedTags: Schema.Array(Schema.String)
     }),
     default: { id: SessionIdSymbol, value: { newTodoText: '', filter: 'all', selectedTags: [] } },

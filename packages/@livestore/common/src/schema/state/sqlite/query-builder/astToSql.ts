@@ -1,5 +1,5 @@
 import { shouldNeverHappen } from '@livestore/utils'
-import { Schema, SchemaAST } from '@livestore/utils/effect'
+import { Schema, SchemaAST, Struct } from '@livestore/utils/effect'
 
 import { SessionIdSymbol } from '../../../../adapter-types.ts'
 import type { SqlValue } from '../../../../util.ts'
@@ -7,42 +7,25 @@ import type { State } from '../../../mod.ts'
 import type { QueryBuilderAst } from './api.ts'
 
 /**
- * Extracts array element schema from a JSON array transformation AST.
- * Returns the element schema, or undefined if not a JSON array transformation.
- */
-const extractArrayElementFromTransformation = (ast: SchemaAST.AST): Schema.Schema.Any | undefined => {
-  if (SchemaAST.isTransformation(ast) === false) return undefined
-
-  const toAst = ast.to
-  // Check if the "to" side is a TupleType (Effect's internal representation of Array)
-  if (SchemaAST.isTupleType(toAst) === false) return undefined
-
-  // For Schema.Array, rest contains { type: AST } elements - get the first one's type
-  const restElement = toAst.rest[0]
-  if (restElement === undefined) return undefined
-
-  return Schema.make(restElement.type)
-}
-
-/**
- * For JSON array columns, extracts the element schema from Schema.parseJson(Schema.Array(ElementSchema)).
- * Also handles nullable JSON arrays (Schema.NullOr(Schema.parseJson(Schema.Array(...)))).
+ * For JSON array columns, extracts the element schema from Schema.fromJsonString(Schema.Array(ElementSchema)).
+ * Also handles nullable JSON arrays (Schema.NullOr(Schema.fromJsonString(Schema.Array(...)))).
  * Returns the element schema, or undefined if the column is not a JSON array.
  */
 const getJsonArrayElementSchema = (colSchema: Schema.Schema.Any): Schema.Schema.Any | undefined => {
-  const ast = colSchema.ast
+  const ast = Schema.toType(colSchema).ast
+  return extractArrayElementFromAst(ast)
+}
 
-  // Case 1: Direct transformation (non-nullable JSON array)
-  // Schema.parseJson(Schema.Array(ElementSchema)) creates a Transformation AST
-  if (SchemaAST.isTransformation(ast) === true) {
-    return extractArrayElementFromTransformation(ast)
+const extractArrayElementFromAst = (ast: SchemaAST.AST): Schema.Schema.Any | undefined => {
+  if (SchemaAST.isArrays(ast) === true) {
+    const restElement = ast.rest[0]
+    return restElement === undefined ? undefined : Schema.make(restElement)
   }
 
-  // Case 2: Nullable JSON array - Schema.NullOr wraps the parseJson in a Union
-  // Structure: Union([Transformation (JSON array), Literal (null)])
+  // Nullable JSON arrays wrap the array schema in a Union.
   if (SchemaAST.isUnion(ast) === true) {
     for (const member of ast.types) {
-      const result = extractArrayElementFromTransformation(member)
+      const result = extractArrayElementFromAst(member)
       if (result !== undefined) return result
     }
   }
@@ -237,7 +220,7 @@ export const astToSql = (ast: QueryBuilderAst): { query: string; bindValues: Sql
       // return shouldNeverHappen('UPDATE query requires at least one column to set.')
     }
 
-    const encodedValues = Schema.encodeSync(Schema.partial(ast.tableDef.rowSchema))(ast.values)
+    const encodedValues = Schema.encodeSync(ast.tableDef.rowSchema.mapFields(Struct.map(Schema.optional)))(ast.values)
 
     // Ensure bind values are added in the same order as columns
     setColumns.forEach((col) => {

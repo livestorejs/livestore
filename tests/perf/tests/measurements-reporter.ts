@@ -4,7 +4,20 @@ import process from 'node:process'
 import type { FullConfig, Reporter, Suite, TestCase, TestResult } from '@playwright/test/reporter'
 
 import { OtelLiveHttp } from '@livestore/utils-dev/node'
-import { Data, Effect, ManagedRuntime, Metric, type MetricState, Option, Pretty, ReadonlyArray, Schema, SchemaIssue } from '@livestore/utils/effect'
+import {
+  Data,
+  Effect,
+  ManagedRuntime,
+  Metric,
+  type MetricState,
+  Option,
+  Pretty,
+  ReadonlyArray,
+  Schema,
+  SchemaGetter,
+  SchemaIssue,
+  SchemaTransformation,
+} from '@livestore/utils/effect'
 
 import { printConsoleTable } from './print-console-table.ts'
 
@@ -26,26 +39,28 @@ const StringDescribedAnnotation = <T extends string>(typeLiteral: T) =>
   })
 
 const NumberFromDescriptionAnnotation = <T extends string>(typeLiteral: T) =>
-  Schema.transformOrFail(
-    StringDescribedAnnotation(typeLiteral),
-    Schema.Struct({
+  StringDescribedAnnotation(typeLiteral).pipe(
+    Schema.decodeTo(
+      Schema.Struct({
       type: Schema.Literal(typeLiteral),
       description: Schema.Number,
-    }),
-    {
-      decode: ({ description, ...rest }) =>
-        Effect.sync(() => Number.parseFloat(description)).pipe(
-          Effect.filterOrFail(
-            (num) => !Number.isNaN(num),
-            () =>
-              new SchemaIssue.InvalidValue(Option.some(description), {
-                message: `Invalid ${rest.type} description: ${description}`,
-              }),
+      }),
+      {
+        decode: SchemaGetter.transformOrFail(({ description, ...rest }) =>
+          Effect.sync(() => Number.parseFloat(description)).pipe(
+            Effect.filterOrFail(
+              (num) => !Number.isNaN(num),
+              () =>
+                new SchemaIssue.InvalidValue(Option.some(description), {
+                  message: `Invalid ${rest.type} description: ${description}`,
+                }),
+            ),
+            Effect.map((parsedDescription) => ({ ...rest, description: parsedDescription })),
           ),
-          Effect.map((parsedDescription) => ({ ...rest, description: parsedDescription })),
         ),
-      encode: ({ description, ...rest }) => Effect.succeed({ ...rest, description: String(description) }),
-    },
+        encode: SchemaGetter.transform(({ description, ...rest }) => ({ ...rest, description: String(description) })),
+      },
+    ),
   )
 
 const MeasurementAnnotation = NumberFromDescriptionAnnotation('measurement')
@@ -80,7 +95,7 @@ const Cpus = Schema.NonEmptyArray(
     speed: Schema.Number,
   }),
 ).pipe(
-  Schema.transform(
+  Schema.decodeTo(
     Schema.Struct({
       model: Schema.String,
       count: Schema.Number,
@@ -88,15 +103,14 @@ const Cpus = Schema.NonEmptyArray(
         pretty: () => (value) => `${(value / 1000).toFixed(2)} GHz`,
       }),
     }),
-    {
+    SchemaTransformation.transform({
       encode: ({ count, ...value }) => ReadonlyArray.replicate(value, count),
       decode: (cpus) => ({
         model: cpus[0].model,
         speed: cpus[0].speed,
         count: cpus.length,
       }),
-      strict: false,
-    },
+    }),
   ),
 )
 

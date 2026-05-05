@@ -224,8 +224,8 @@ export function table<
       tempTableName = args.name
     } else {
       // Use title or identifier, with preference for title
-      tempTableName = SchemaAST.getTitleAnnotation(args.schema.ast).pipe(
-        Option.orElse(() => SchemaAST.getIdentifierAnnotation(args.schema.ast)),
+      tempTableName = Option.fromNullishOr(SchemaAST.resolveTitle(args.schema.ast)).pipe(
+        Option.orElse(() => Option.fromNullishOr(SchemaAST.resolveIdentifier(args.schema.ast))),
         Option.getOrElse(() =>
           shouldNeverHappen(
             'When using schema without explicit name, the schema must have a title or identifier annotation',

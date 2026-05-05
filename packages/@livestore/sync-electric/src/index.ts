@@ -100,7 +100,7 @@ const ResponseItem = Schema.Union([ResponseItemInsert, ResponseItemInvalid, Resp
 
 const ResponseHeaders = Schema.Struct({
   'electric-handle': Schema.String,
-  // 'electric-schema': Schema.parseJson(Schema.Any),
+  // 'electric-schema': Schema.fromJsonString(Schema.Any),
   /** e.g. 26799576_0 */
   'electric-offset': Schema.String,
 })

@@ -29,19 +29,19 @@ export type StorageTypeOpfs = typeof StorageTypeOpfs.Type
 // export const StorageTypeIndexeddb = Schema.Struct({
 //   type: Schema.Literal('indexeddb'),
 //   /** @default "livestore" */
-//   databaseName: Schema.optionalWith(Schema.String, { default: () => 'livestore' }),
+//   databaseName: Schema.String.pipe(Schema.withDecodingDefaultType(Effect.succeed('livestore'))),
 //   /** @default "livestore-" */
-//   storeNamePrefix: Schema.optionalWith(Schema.String, { default: () => 'livestore-' }),
+//   storeNamePrefix: Schema.String.pipe(Schema.withDecodingDefaultType(Effect.succeed('livestore-'))),
 // })
 
-export const StorageType = Schema.Union(
+export const StorageType = Schema.Union([
   StorageTypeOpfs,
   // StorageTypeIndexeddb
-)
+])
 export type StorageType = typeof StorageType.Type
 export type StorageTypeEncoded = typeof StorageType.Encoded
 
-// export const SyncBackendOptions = Schema.Union(SyncBackendOptionsWebsocket)
+// export const SyncBackendOptions = Schema.Union([SyncBackendOptionsWebsocket])
 export const SyncBackendOptions = Schema.Record(Schema.String, Schema.JsonValue)
 export type SyncBackendOptions = Record<string, Schema.JsonValue>
 
@@ -54,7 +54,7 @@ export class LeaderWorkerOuterInitialMessage extends Schema.TaggedRequest<Leader
   },
 ) {}
 
-export class LeaderWorkerOuterRequest extends Schema.Union(LeaderWorkerOuterInitialMessage) {}
+export class LeaderWorkerOuterRequest extends Schema.Union([LeaderWorkerOuterInitialMessage]) {}
 
 // TODO unify this code with schema from node adapter
 export class LeaderWorkerInnerInitialMessage extends Schema.TaggedRequest<LeaderWorkerInnerInitialMessage>()(

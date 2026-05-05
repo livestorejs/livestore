@@ -12,7 +12,7 @@ import { Brand, Schema } from '@livestore/utils/effect'
  */
 export type S2SeqNum = Brand.Branded<number, 'S2SeqNum'>
 export const s2SeqNum = Brand.nominal<S2SeqNum>()
-export const S2SeqNum = Schema.fromBrand(s2SeqNum)(Schema.Int.pipe(Schema.isGreaterThanOrEqualTo(0)))
+export const S2SeqNum = Schema.Int.check(Schema.isGreaterThanOrEqualTo(0)).pipe(Schema.fromBrand('S2SeqNum', s2SeqNum))
 
 /**
  * Metadata for tracking S2-specific cursor information.

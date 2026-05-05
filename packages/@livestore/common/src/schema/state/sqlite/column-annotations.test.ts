@@ -1,6 +1,6 @@
 import { describe, expect, test } from 'vitest'
 
-import { Schema, SchemaAST } from '@livestore/utils/effect'
+import { Schema, SchemaAST, SchemaTransformation } from '@livestore/utils/effect'
 
 import { withColumnType, withPrimaryKey } from './column-annotations.ts'
 
@@ -41,8 +41,8 @@ describe.concurrent('annotations', () => {
         expect(() => withColumnType(Schema.Boolean, 'integer')).not.toThrow()
       })
 
-      test('Schema.Uint8ArrayFromSelf with blob column type', () => {
-        expect(() => withColumnType(Schema.Uint8ArrayFromSelf, 'blob')).not.toThrow()
+      test('Schema.Uint8Array with blob column type', () => {
+        expect(() => withColumnType(Schema.Uint8Array, 'blob')).not.toThrow()
       })
 
       test('Schema.Date with text column type', () => {
@@ -71,10 +71,15 @@ describe.concurrent('annotations', () => {
       })
 
       test('Transformation schema with compatible base type', () => {
-        const transformSchema = Schema.transform(Schema.String, Schema.String, {
-          decode: (s) => s.toUpperCase(),
-          encode: (s) => s.toLowerCase(),
-        })
+        const transformSchema = Schema.String.pipe(
+          Schema.decodeTo(
+            Schema.String,
+            SchemaTransformation.transform({
+              decode: (s) => s.toUpperCase(),
+              encode: (s) => s.toLowerCase(),
+            }),
+          ),
+        )
         expect(() => withColumnType(transformSchema, 'text')).not.toThrow()
       })
     })
@@ -129,8 +134,8 @@ describe.concurrent('annotations', () => {
     //     )
     //   })
 
-    //   test('Schema.Uint8ArrayFromSelf with text column type should throw', () => {
-    //     expect(() => withColumnType(Schema.Uint8ArrayFromSelf, 'text')).toThrow(
+    //   test('Schema.Uint8Array with text column type should throw', () => {
+    //     expect(() => withColumnType(Schema.Uint8Array, 'text')).toThrow(
     //       "Schema type 'uint8array' is incompatible with column type 'text'",
     //     )
     //   })

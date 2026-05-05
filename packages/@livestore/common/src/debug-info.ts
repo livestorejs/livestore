@@ -1,5 +1,14 @@
 /// <reference lib="dom" />
-import { Effect, Option, Schema, SchemaIssue, SchemaParser } from '@livestore/utils/effect'
+import {
+  Effect,
+  Option,
+  Schema,
+  SchemaIssue,
+  SchemaParser,
+  SchemaRepresentation,
+  SchemaTransformation,
+  Struct,
+} from '@livestore/utils/effect'
 
 import { BoundArray } from './bounded-collections.ts'
 import { PreparedBindValues } from './util.ts'
@@ -31,6 +40,11 @@ const isBoundArrayLike = (value: unknown): value is BoundArray<unknown> =>
   value instanceof BoundArray ||
   (value !== null && typeof value === 'object' && typeof (value as { sizeLimit?: number }).sizeLimit === 'number')
 
+const formatSchemaType = (schema: Schema.Top) =>
+  SchemaRepresentation.toCodeDocument(
+    SchemaRepresentation.toMultiDocument(SchemaRepresentation.fromAST(schema.ast)),
+  ).codes[0]?.Type ?? 'unknown'
+
 const BoundArraySchemaFromSelf = <A, I, R>(
   item: Schema.Schema<A, I, R>,
 ): Schema.Schema<BoundArray<A>, BoundArray<I>, R> =>
@@ -45,7 +59,7 @@ const BoundArraySchemaFromSelf = <A, I, R>(
         return Effect.fail(new SchemaIssue.InvalidType(ast, Option.some(input)))
       },
     {
-      description: `BoundArray<${Schema.format(item)}>`,
+      description: `BoundArray<${formatSchemaType(item)}>`,
       pretty: () => (_) => `BoundArray(${_.length})`,
       arbitrary: () => (fc) => fc.anything() as any,
       equivalence: () => {
@@ -74,16 +88,17 @@ const BoundArraySchemaFromSelf = <A, I, R>(
   )
 
 export const BoundArraySchema = <ItemDecoded, ItemEncoded>(elSchema: Schema.Schema<ItemDecoded, ItemEncoded>) =>
-  Schema.transform(
-    Schema.Struct({
-      size: Schema.Number,
-      items: Schema.Array(elSchema),
-    }),
-    BoundArraySchemaFromSelf(Schema.toType(elSchema)),
-    {
-      encode: (_) => ({ size: _.sizeLimit, items: [..._] }),
-      decode: (_) => BoundArray.make(_.size, _.items),
-    },
+  Schema.Struct({
+    size: Schema.Number,
+    items: Schema.Array(elSchema),
+  }).pipe(
+    Schema.decodeTo(
+      BoundArraySchemaFromSelf(Schema.toType(elSchema)),
+      SchemaTransformation.transform({
+        encode: (_) => ({ size: _.sizeLimit, items: [..._] }),
+        decode: (_) => BoundArray.make(_.size, _.items),
+      }),
+    ),
   )
 
 export const DebugInfo = Schema.Struct({
@@ -95,5 +110,5 @@ export const DebugInfo = Schema.Struct({
 
 export type DebugInfo = typeof DebugInfo.Type
 
-export const MutableDebugInfo = Schema.mutable(DebugInfo)
+export const MutableDebugInfo = DebugInfo.mapFields(Struct.map(Schema.mutableKey))
 export type MutableDebugInfo = typeof MutableDebugInfo.Type

@@ -285,13 +285,17 @@ export const getSyncBackendCursorInfo = ({ remoteHead }: { remoteHead: EventSequ
 
     const EventlogQuerySchema = Schema.Struct({
       syncMetadataJson: Schema.fromJsonString(Schema.Option(Schema.JsonValue)),
-    }).pipe(Schema.pluck('syncMetadataJson'), Schema.Array, Schema.head)
+    }).pipe(Schema.Array, Schema.head)
 
     const syncMetadataOption = yield* Effect.sync(() =>
       dbEventlog.select<{ syncMetadataJson: string }>(
         sql`SELECT syncMetadataJson FROM ${EVENTLOG_META_TABLE} WHERE seqNumGlobal = ${remoteHead} ORDER BY seqNumClient ASC LIMIT 1`,
       ),
-    ).pipe(Effect.andThen(Schema.decodeEffect(EventlogQuerySchema)), Effect.map(Option.flatten), Effect.orDie)
+    ).pipe(
+      Effect.andThen(Schema.decodeEffect(EventlogQuerySchema)),
+      Effect.map((result) => Option.flatMap(result, (_) => _.syncMetadataJson)),
+      Effect.orDie,
+    )
 
     return Option.some({
       eventSequenceNumber: remoteHead,

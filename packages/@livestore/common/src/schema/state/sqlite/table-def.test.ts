@@ -1,6 +1,6 @@
 import { objectToString } from '@livestore/utils'
 
-import { Schema } from '@livestore/utils/effect'
+import { Schema, SchemaTransformation } from '@livestore/utils/effect'
 import { describe, expect, expectTypeOf, it } from 'vitest'
 
 import { State } from '../../mod.ts'
@@ -205,9 +205,9 @@ describe('table function overloads', () => {
       contactEmail: Schema.String.pipe(State.SQLite.withUnique),
     })
 
-    const Nested = Schema.transform(
-      Flat,
-      Schema.Struct({
+    const Nested = Flat.pipe(
+      Schema.decodeTo(
+        Schema.Struct({
         id: Schema.String,
         contact: Schema.Struct({
           firstName: Schema.String,
@@ -215,22 +215,24 @@ describe('table function overloads', () => {
           email: Schema.String,
         }),
       }),
-      {
-        decode: ({ id, contactFirstName, contactLastName, contactEmail }) => ({
-          id,
-          contact: {
-            firstName: contactFirstName,
-            lastName: contactLastName,
-            email: contactEmail,
-          },
         }),
-        encode: ({ id, contact }) => ({
-          id,
-          contactFirstName: contact.firstName,
-          contactLastName: contact.lastName,
-          contactEmail: contact.email,
+        SchemaTransformation.transform({
+          decode: ({ id, contactFirstName, contactLastName, contactEmail }) => ({
+            id,
+            contact: {
+              firstName: contactFirstName,
+              lastName: contactLastName,
+              email: contactEmail,
+            },
+          }),
+          encode: ({ id, contact }) => ({
+            id,
+            contactFirstName: contact.firstName,
+            contactLastName: contact.lastName,
+            contactEmail: contact.email,
+          }),
         }),
-      },
+      ),
     )
 
     const contactsTable = State.SQLite.table({

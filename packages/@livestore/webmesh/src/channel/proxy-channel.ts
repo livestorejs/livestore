@@ -39,11 +39,11 @@ export const ProxyChannelSimulationParams = Schema.Struct({
    */
   onPayload: Schema.Struct({
     /** Delay before sending the ACK response (simulates slow ACK send) */
-    beforeAckSend: Schema.Int.pipe(Schema.isBetween(0, 500)),
+    beforeAckSend: Schema.Int.check(Schema.isBetween(0, 500)),
     /** Delay after forking the ACK send, before adding message to listen queue */
-    afterAckFork: Schema.Int.pipe(Schema.isBetween(0, 500)),
+    afterAckFork: Schema.Int.check(Schema.isBetween(0, 500)),
     /** Delay after adding message to listen queue */
-    afterListenQueueOffer: Schema.Int.pipe(Schema.isBetween(0, 500)),
+    afterListenQueueOffer: Schema.Int.check(Schema.isBetween(0, 500)),
   }),
 })
 

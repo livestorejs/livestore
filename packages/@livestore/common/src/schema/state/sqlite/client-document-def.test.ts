@@ -1,6 +1,6 @@
 import { describe, expect, test } from 'vitest'
 
-import { Schema } from '@livestore/utils/effect'
+import { Schema, SchemaTransformation } from '@livestore/utils/effect'
 
 import { tables } from '../../../__tests__/fixture.ts'
 import type * as LiveStoreEvent from '../../LiveStoreEvent/mod.ts'
@@ -11,6 +11,16 @@ import {
   mergeDefaultValues,
 } from './client-document-def.ts'
 import { getResultSchema } from './query-builder/impl.ts'
+
+const DateFromMillis = Schema.Number.pipe(
+  Schema.decodeTo(
+    Schema.Date,
+    SchemaTransformation.transform({
+      decode: (ms) => new Date(ms),
+      encode: (date) => date.getTime(),
+    }),
+  ),
+)
 
 describe('client document table', () => {
   test('set event', () => {
@@ -260,7 +270,7 @@ describe('client document table', () => {
   describe('optimistic schema', () => {
     /** Models persisted JSON using epoch numbers + base64 while app code expects Date + Uint8Array. */
     const valueSchema = Schema.Struct({
-      createdAt: Schema.DateFromNumber,
+      createdAt: DateFromMillis,
       avatar: Schema.Uint8ArrayFromBase64,
     })
     const defaultValue = {
@@ -389,6 +399,7 @@ describe('client document table', () => {
     })
   })
 })
+
 
 const patchId = (muationEvent: LiveStoreEvent.Input.Decoded) => {
   // TODO use new id paradigm

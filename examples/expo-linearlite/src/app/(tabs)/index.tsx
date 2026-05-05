@@ -168,8 +168,15 @@ const HomeScreen = () => {
             LIMIT 50
           `,
         schema: tables.issues.rowSchema.pipe(
-          Schema.pick('title', 'id', 'assigneeId', 'status', 'priority'),
-          Schema.extend(Schema.Struct({ assigneePhotoUrl: Schema.String })),
+          (_) =>
+            _.mapFields((fields) => ({
+              title: fields.title,
+              id: fields.id,
+              assigneeId: fields.assigneeId,
+              status: fields.status,
+              priority: fields.priority,
+            })),
+          Schema.fieldsAssign({ assigneePhotoUrl: Schema.String }),
           Schema.Array,
         ),
       },
