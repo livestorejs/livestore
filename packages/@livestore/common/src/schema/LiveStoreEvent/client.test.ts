@@ -95,13 +95,6 @@ Vitest.describe('isEqualEncoded', () => {
     expect(isEqualEncoded(a, b)).toBe(false)
   })
 
-  // Regression tests for the hash-mismatch bug: locally-encoded events with
-  // `Schema.UndefinedOr` (or loose `Schema.optional`) fields end up with shape
-  // `{ ..., flag: undefined }`. JSON wire transport drops the key, producing
-  // `{ ... }`. Without canonicalization at the encode boundary, the two forms
-  // compare unequal here, and the sync merge falsely takes the rebase path —
-  // which then surfaces as `MaterializerHashMismatchError` when materializers
-  // are state-dependent.
   Vitest.it('should consider events with undefined-valued and missing keys as equal', () => {
     const a = makeEncodedEvent({ id: 'abc', flag: undefined })
     const b = makeEncodedEvent({ id: 'abc' })
@@ -119,10 +112,7 @@ Vitest.describe('isEqualEncoded', () => {
       id: Schema.String,
       flag: Schema.UndefinedOr(Schema.Boolean),
     })
-    // Effect Schema's Struct encoder materializes the omitted `flag` field as
-    // `{ ..., flag: undefined }` — the local pending event's shape.
     const localArgs = Schema.encodeUnknownSync(argsSchema)({ id: 'abc' } as any)
-    // JSON.parse(JSON.stringify(...)) is exactly what the sync wire transport does.
     const wireArgs = JSON.parse(JSON.stringify(localArgs))
     expect(isEqualEncoded(makeEncodedEvent(localArgs), makeEncodedEvent(wireArgs))).toBe(true)
   })

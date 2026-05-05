@@ -373,24 +373,13 @@ Vitest.describe('syncstate', () => {
         }),
       )
 
-      // Regression for hash-mismatch bug: when an event-def schema uses
-      // `Schema.UndefinedOr` (or loose `Schema.optional`) and the optional
-      // field is omitted at commit time, Effect Schema's encoder produces
-      // `{ ..., flag: undefined }` while JSON wire transport drops the key.
-      // The local pending event and the same event JSON-roundtripped through
-      // the sync provider therefore have different `Object.keys`. `deepEqual`
-      // returns false for the pair, and merge falsely takes the rebase path.
-      // For state-dependent materializers, the rebase rerun produces different
-      // SQL bind values and surfaces as `MaterializerHashMismatchError`.
       Vitest.it.effect('should advance (not rebase) when pending event has undefined-valued key dropped by JSON wire round-trip', () =>
         Effect.gen(function* () {
           const argsSchema = Schema.Struct({
             id: Schema.String,
             flag: Schema.UndefinedOr(Schema.Boolean),
           })
-          // Local pending shape: Effect Schema adds `flag` back as undefined.
           const localArgs = Schema.encodeUnknownSync(argsSchema)({ id: 'abc' } as any)
-          // Wire shape: JSON.parse(JSON.stringify(...)) strips the undefined-valued key.
           const wireArgs = JSON.parse(JSON.stringify(localArgs))
 
           const localPending = new TestEvent({
