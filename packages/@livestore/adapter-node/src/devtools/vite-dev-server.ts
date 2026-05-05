@@ -12,9 +12,7 @@ import { getFreePort } from '@livestore/utils/node'
  * Error thrown when @livestore/devtools-vite is not installed.
  * This is a peer dependency that must be installed separately.
  */
-export class DevtoolsViteNotInstalledError extends Schema.TaggedError<DevtoolsViteNotInstalledError>(
-  '~@livestore/adapter-node/DevtoolsViteNotInstalledError',
-)('DevtoolsViteNotInstalledError', {
+export class DevtoolsViteNotInstalledError extends Schema.TaggedErrorClass<DevtoolsViteNotInstalledError>()('DevtoolsViteNotInstalledError', {
   cause: Schema.Defect,
 }) {
   override get message(): string {
@@ -27,9 +25,7 @@ export class DevtoolsViteNotInstalledError extends Schema.TaggedError<DevtoolsVi
 }
 
 /** Error thrown when vite is not installed for the devtools server path. */
-export class ViteNotInstalledError extends Schema.TaggedError<ViteNotInstalledError>(
-  '~@livestore/adapter-node/ViteNotInstalledError',
-)('ViteNotInstalledError', {
+export class ViteNotInstalledError extends Schema.TaggedErrorClass<ViteNotInstalledError>()('ViteNotInstalledError', {
   cause: Schema.Defect,
 }) {
   override get message(): string {

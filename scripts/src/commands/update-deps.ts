@@ -48,18 +48,18 @@ const PackageUpdate = Schema.Struct({
   targetVersion: Schema.String,
 })
 
-const PackageFileUpdates = Schema.Record({ key: Schema.String, value: Schema.String })
-const NCUOutput = Schema.Record({ key: Schema.String, value: PackageFileUpdates })
+const PackageFileUpdates = Schema.Record(Schema.String, Schema.String)
+const NCUOutput = Schema.Record(Schema.String, PackageFileUpdates)
 
-const ExpoConstraints = Schema.Record({ key: Schema.String, value: Schema.String })
+const ExpoConstraints = Schema.Record(Schema.String, Schema.String)
 
-const PatchedDependencies = Schema.Record({ key: Schema.String, value: Schema.String })
+const PatchedDependencies = Schema.Record(Schema.String, Schema.String)
 
-const DepsRecord = Schema.optional(Schema.mutable(Schema.Record({ key: Schema.String, value: Schema.String })))
+const DepsRecord = Schema.optional(Schema.mutable(Schema.Record(Schema.String, Schema.String)))
 
 const WorkspacePackageJson = Schema.Struct(
   { dependencies: DepsRecord, devDependencies: DepsRecord, peerDependencies: DepsRecord },
-  Schema.Record({ key: Schema.String, value: Schema.Unknown }),
+  Schema.Record(Schema.String, Schema.Unknown),
 )
 
 const RootPackageJson = Schema.Struct({

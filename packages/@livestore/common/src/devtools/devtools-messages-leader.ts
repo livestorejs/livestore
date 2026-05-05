@@ -37,7 +37,7 @@ export class SyncingInfoReq extends LSDReqResMessage('LSD.Leader.SyncingInfoReq'
 
 export class SyncingInfo extends Schema.Struct({
   enabled: Schema.Boolean,
-  metadata: Schema.Record({ key: Schema.String, value: Schema.Any }),
+  metadata: Schema.Record(Schema.String, Schema.Any),
 }) {}
 
 export class SyncingInfoRes extends LSDReqResMessage('LSD.Leader.SyncingInfoRes', {

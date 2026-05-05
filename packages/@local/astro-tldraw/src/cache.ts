@@ -10,7 +10,7 @@ const jsonParse = Schema.decodeUnknownSync(Schema.parseJson())
 
 const hashString = (value: string): string => crypto.createHash('sha256').update(value).digest('hex')
 
-export class FileSystemError extends Schema.TaggedError<FileSystemError>()('Tldraw.FileSystemError', {
+export class FileSystemError extends Schema.TaggedErrorClass<FileSystemError>()('Tldraw.FileSystemError', {
   path: Schema.String,
   operation: Schema.String,
   cause: Schema.Any,

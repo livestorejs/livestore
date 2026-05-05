@@ -1,4 +1,4 @@
-import type { ParseResult, Scope, WebChannel } from '@livestore/utils/effect'
+import type { SchemaIssue, Scope, WebChannel } from '@livestore/utils/effect'
 import {
   Data,
   Duration,
@@ -40,7 +40,7 @@ export const provideSessionInfo = ({
 }: {
   webChannel: WebChannel.WebChannel<Message, Message>
   sessionInfo: SessionInfo
-}): Effect.Effect<void, ParseResult.ParseError> =>
+}): Effect.Effect<void, SchemaIssue.Issue> =>
   Effect.gen(function* () {
     yield* webChannel.send(sessionInfo)
 
@@ -61,7 +61,7 @@ export const requestSessionInfoSubscription = ({
   webChannel: WebChannel.WebChannel<Message, Message>
   pollInterval?: Duration.DurationInput
   staleTimeout?: Duration.DurationInput
-}): Effect.Effect<Subscribable.Subscribable<HashSet.HashSet<SessionInfo>>, ParseResult.ParseError, Scope.Scope> =>
+}): Effect.Effect<Subscribable.Subscribable<HashSet.HashSet<SessionInfo>>, SchemaIssue.Issue, Scope.Scope> =>
   Effect.gen(function* () {
     yield* webChannel
       .send(RequestSessions.make({}))

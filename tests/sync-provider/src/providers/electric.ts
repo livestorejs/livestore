@@ -20,7 +20,6 @@ import * as ElectricSync from '@livestore/sync-electric'
 import { type DockerComposeError, DockerComposeService } from '@livestore/utils-dev/node'
 import {
   type Cause,
-  type CommandExecutor,
   Effect,
   HttpClient,
   HttpRouter,
@@ -30,6 +29,7 @@ import {
   Layer,
   type PlatformError,
 } from '@livestore/utils/effect'
+import type { ChildProcessSpawner } from 'effect/unstable/process/ChildProcessSpawner'
 import { getFreePort, PlatformNode } from '@livestore/utils/node'
 
 import { SyncProviderImpl, type SyncProviderLayer } from '../types.ts'
@@ -44,7 +44,7 @@ const DockerComposeLive = DockerComposeService.Default({ cwd: path.join(import.m
 export const prepare: Effect.Effect<
   void,
   PlatformError.PlatformError | DockerComposeError,
-  CommandExecutor.CommandExecutor
+  ChildProcessSpawner
 > = Effect.gen(function* () {
   const dockerCompose = yield* DockerComposeService
   yield* dockerCompose.pull

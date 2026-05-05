@@ -1,4 +1,5 @@
-import type { Deferred, Either, ParseResult } from 'effect'
+import type { Deferred, Either } from 'effect'
+import type { SchemaIssue } from 'effect'
 import { Effect, Predicate, Schema, Stream } from 'effect'
 
 export const WebChannelSymbol = Symbol('WebChannel')
@@ -9,8 +10,8 @@ export const isWebChannel = <MsgListen, MsgSend>(value: unknown): value is WebCh
 
 export interface WebChannel<MsgListen, MsgSend, E = never> {
   readonly [WebChannelSymbol]: unknown
-  send: (a: MsgSend) => Effect.Effect<void, ParseResult.ParseError | E>
-  listen: Stream.Stream<Either.Either<MsgListen, ParseResult.ParseError>, E>
+  send: (a: MsgSend) => Effect.Effect<void, SchemaIssue.Issue | E>
+  listen: Stream.Stream<Either.Either<MsgListen, SchemaIssue.Issue>, E>
   supportsTransferables: boolean
   closedDeferred: Deferred.Deferred<void>
   shutdown: Effect.Effect<void>
@@ -61,8 +62,8 @@ export const mapSchema = <MsgListen, MsgSend, MsgListenEncoded, MsgSendEncoded>(
 export const listenToDebugPing =
   (channelName: string) =>
   <MsgListen>(
-    stream: Stream.Stream<Either.Either<MsgListen, ParseResult.ParseError>>,
-  ): Stream.Stream<Either.Either<MsgListen, ParseResult.ParseError>> =>
+    stream: Stream.Stream<Either.Either<MsgListen, SchemaIssue.Issue>>,
+  ): Stream.Stream<Either.Either<MsgListen, SchemaIssue.Issue>> =>
     stream.pipe(
       Stream.filterEffect(
         Effect.fn(function* (msg) {

@@ -4,7 +4,7 @@ import process from 'node:process'
 import type { FullConfig, Reporter, Suite, TestCase, TestResult } from '@playwright/test/reporter'
 
 import { OtelLiveHttp } from '@livestore/utils-dev/node'
-import { Data, Effect, ManagedRuntime, Metric, type MetricState, Option, ParseResult, Pretty, ReadonlyArray, Schema } from '@livestore/utils/effect'
+import { Data, Effect, ManagedRuntime, Metric, type MetricState, Option, Pretty, ReadonlyArray, Schema, SchemaIssue } from '@livestore/utils/effect'
 
 import { printConsoleTable } from './print-console-table.ts'
 
@@ -33,11 +33,14 @@ const NumberFromDescriptionAnnotation = <T extends string>(typeLiteral: T) =>
       description: Schema.Number,
     }),
     {
-      decode: ({ description, ...rest }, _, ast) =>
+      decode: ({ description, ...rest }) =>
         Effect.sync(() => Number.parseFloat(description)).pipe(
           Effect.filterOrFail(
             (num) => !Number.isNaN(num),
-            () => new ParseResult.Type(ast, description, `Invalid ${rest.type} description: ${description}`),
+            () =>
+              new SchemaIssue.InvalidValue(Option.some(description), {
+                message: `Invalid ${rest.type} description: ${description}`,
+              }),
           ),
           Effect.map((parsedDescription) => ({ ...rest, description: parsedDescription })),
         ),
@@ -328,7 +331,7 @@ export default class MeasurementsReporter implements Reporter {
 
   private computeMetricStates = (): Effect.Effect<
     Record<string, TrackedMeasurementState>,
-    ParseResult.ParseError | MissingAnnotationError
+    SchemaIssue.Issue | MissingAnnotationError
   > =>
     Effect.all(
       Object.entries(this.measurementsByTestTitle).reduce(
@@ -346,7 +349,7 @@ export default class MeasurementsReporter implements Reporter {
           })
           return acc
         },
-        {} as Record<string, Effect.Effect<TrackedMeasurementState, ParseResult.ParseError | MissingAnnotationError>>,
+        {} as Record<string, Effect.Effect<TrackedMeasurementState, SchemaIssue.Issue | MissingAnnotationError>>,
       ),
       { concurrency: 'unbounded' },
     )

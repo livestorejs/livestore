@@ -1,7 +1,7 @@
 import type * as ChildProcess from 'node:child_process'
 
-import * as Worker from '@effect/platform/Worker'
-import { WorkerError } from '@effect/platform/WorkerError'
+import * as Worker from 'effect/unstable/workers/Worker'
+import { WorkerError } from 'effect/unstable/workers/WorkerError'
 import * as Deferred from 'effect/Deferred'
 import * as Effect from 'effect/Effect'
 import * as Exit from 'effect/Exit'
@@ -145,15 +145,15 @@ const platformWorkerImpl = Worker.makePlatform<ChildProcess.ChildProcess>()({
   },
 })
 
-export const layerWorker = Layer.succeed(Worker.PlatformWorker, platformWorkerImpl)
+export const layerWorker = Layer.succeed(Worker.WorkerPlatform, platformWorkerImpl)
 
-export const layerManager = Layer.provide(Worker.layerManager, layerWorker)
+export const layerManager = layerWorker
 
 /**
  * @example
  * ```ts
  * import * as ChildProcess from 'node:child_process'
- * import { Effect, Worker } from '@effect/platform/Worker'
+ * import { Effect, Worker } from 'effect/unstable/workers/Worker'
  * import { ChildProcessWorker } from '@livestore/utils/node'
  *
  * Worker.makePoolSerialized<WorkerMessage>({

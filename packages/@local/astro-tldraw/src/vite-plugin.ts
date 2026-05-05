@@ -35,7 +35,7 @@ export interface TldrawDiagramPayload {
   generatedAt: string
 }
 
-export class CachedDiagramMissingError extends Schema.TaggedError<CachedDiagramMissingError>()(
+export class CachedDiagramMissingError extends Schema.TaggedErrorClass<CachedDiagramMissingError>()(
   'Tldraw.CachedDiagramMissingError',
   {
     entryRelative: Schema.String,

@@ -44,9 +44,9 @@ const examplesDir = `${workspaceRoot}/examples`
 // Accept only the fields we care about (scripts) while tolerating extra metadata from Vite or toolchains.
 const ExamplePackageJsonSchema = Schema.Struct(
   {
-    scripts: Schema.optional(Schema.Record({ key: Schema.String, value: Schema.String })),
+    scripts: Schema.optional(Schema.Record(Schema.String, Schema.String)),
   },
-  Schema.Record({ key: Schema.String, value: Schema.Unknown }),
+  Schema.Record(Schema.String, Schema.Unknown),
 )
 
 const parseExamplePackageJson = Schema.decodeUnknown(Schema.parseJson(ExamplePackageJsonSchema))

@@ -54,7 +54,7 @@ export type StorageTypeEncoded = typeof StorageType.Encoded
 // })
 
 // export const SyncBackendOptions = Schema.Union(SyncBackendOptionsWebsocket)
-export const SyncBackendOptions = Schema.Record({ key: Schema.String, value: Schema.JsonValue })
+export const SyncBackendOptions = Schema.Record(Schema.String, Schema.JsonValue)
 export type SyncBackendOptions = Record<string, Schema.JsonValue>
 
 export class LeaderWorkerOuterInitialMessage extends Schema.TaggedRequest<LeaderWorkerOuterInitialMessage>()(

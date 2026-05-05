@@ -1,4 +1,4 @@
-import * as Runner from '@effect/platform/WorkerRunner'
+import * as Runner from 'effect/unstable/workers/WorkerRunner'
 import { Context, Effect, Layer, Option, Stream } from 'effect'
 
 // import { NodeRuntime, NodeWorkerRunner } from '@effect/platform-node'

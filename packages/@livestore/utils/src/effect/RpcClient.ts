@@ -1,15 +1,15 @@
-export * from '@effect/rpc/RpcClient'
+export * from 'effect/unstable/rpc/RpcClient'
 
-import { Socket } from '@effect/platform'
-import { RpcClient, RpcClientError, RpcSerialization } from '@effect/rpc'
-import { Protocol } from '@effect/rpc/RpcClient'
-import { constPing, type FromServerEncoded } from '@effect/rpc/RpcMessage'
+import { Socket } from 'effect/unstable/socket'
+import { RpcClient, RpcClientError, RpcSerialization } from 'effect/unstable/rpc'
+import { Protocol } from 'effect/unstable/rpc/RpcClient'
+import { constPing, type FromServerEncoded } from 'effect/unstable/rpc/RpcMessage'
 import { Cause, Deferred, Effect, Layer, Option, Schedule, type Scope } from 'effect'
 import { constVoid, identity } from 'effect/Function'
 
 import * as SubscriptionRef from './SubscriptionRef.ts'
 
-// This is based on `makeProtocolSocket` / `layerProtocolSocket` from `@effect/rpc` in order to:
+// This is based on `makeProtocolSocket` / `layerProtocolSocket` from `effect/unstable/rpc` in order to:
 // - Add a `isConnected` subscription ref to track the connection state
 // - Add a ping schedule to the socket
 // - Add a retry schedule to the socket

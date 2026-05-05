@@ -135,7 +135,7 @@ describe('getColumnDefForSchema', () => {
     })
 
     it('should map records to json column', () => {
-      const columnDef = State.SQLite.getColumnDefForSchema(Schema.Record({ key: Schema.String, value: Schema.Number }))
+      const columnDef = State.SQLite.getColumnDefForSchema(Schema.Record(Schema.String, Schema.Number))
       expect(columnDef.columnType).toBe('text')
     })
 

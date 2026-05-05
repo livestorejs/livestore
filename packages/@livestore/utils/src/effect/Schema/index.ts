@@ -1,6 +1,5 @@
-import { Transferable } from '@effect/platform'
-import { Effect, Hash, ParseResult, Schema } from 'effect'
-import type { ParseError } from 'effect/ParseResult'
+import { Transferable } from 'effect/unstable/workers'
+import { Effect, Hash, Schema, SchemaIssue, SchemaParser } from 'effect'
 import type { ParseOptions } from 'effect/SchemaAST'
 import * as SchemaAST from 'effect/SchemaAST'
 
@@ -43,11 +42,11 @@ type TransferableObject = ArrayBuffer | MessagePort
 
 export const encodeWithTransferables =
   <A, I, R>(schema: Schema.Schema<A, I, R>, options?: ParseOptions) =>
-  (a: A, overrideOptions?: ParseOptions): Effect.Effect<[I, TransferableObject[]], ParseError, R> =>
+  (a: A, overrideOptions?: ParseOptions): Effect.Effect<[I, TransferableObject[]], SchemaIssue.Issue, R> =>
     Effect.gen(function* () {
       const collector = yield* Transferable.makeCollector
 
-      const encoded: I = yield* Schema.encode(schema, options)(a, overrideOptions).pipe(
+      const encoded: I = yield* SchemaParser.encodeEffect(schema)(a, overrideOptions ?? options).pipe(
         Effect.provideService(Transferable.Collector, collector),
       )
 
@@ -79,10 +78,7 @@ export const encodeSyncDebug: <A, I>(
 }
 
 export const swap = <A, I, R>(schema: Schema.Schema<A, I, R>): Schema.Schema<I, A, R> =>
-  Schema.transformOrFail(Schema.typeSchema(schema), Schema.encodedSchema(schema), {
-    decode: ParseResult.encode(schema),
-    encode: ParseResult.decode(schema),
-  })
+  Schema.flip(schema) as Schema.Schema<I, A, R>
 
 export const Base64FromUint8Array: Schema.Schema<string, Uint8Array> = swap(Schema.Uint8ArrayFromBase64)
 
@@ -92,11 +88,11 @@ export interface JsonObject {
 }
 export type JsonValue = string | number | boolean | null | JsonObject | JsonArray
 
-export const JsonValue: Schema.Schema<JsonValue> = Schema.Union(
+export const JsonValue: Schema.Schema<JsonValue> = Schema.Union([
   Schema.String,
   Schema.Number,
   Schema.Boolean,
   Schema.Null,
   Schema.Array(Schema.suspend(() => JsonValue)),
-  Schema.Record({ key: Schema.String, value: Schema.suspend(() => JsonValue) }),
-).annotations({ identifier: 'JsonValue' })
+  Schema.Record(Schema.String, Schema.suspend(() => JsonValue)),
+]).annotate({ identifier: 'JsonValue' })

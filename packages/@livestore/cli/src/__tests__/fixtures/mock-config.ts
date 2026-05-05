@@ -8,7 +8,7 @@ import { Effect, FileSystem, type Mailbox, Schema } from '@livestore/utils/effec
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url))
 
-class DynamicImportError extends Schema.TaggedError<DynamicImportError>()('DynamicImportError', {
+class DynamicImportError extends Schema.TaggedErrorClass<DynamicImportError>()('DynamicImportError', {
   cause: Schema.Defect,
   path: Schema.String,
 }) {}

@@ -1,4 +1,4 @@
-// import * as Transferable from '@effect/platform/Transferable'
+// import * as Transferable from 'effect/unstable/workers/Transferable'
 import * as Schema from 'effect/Schema'
 
 export class User extends Schema.Class<User>('User')({

@@ -1,6 +1,6 @@
 import path from 'node:path'
 
-import { FileSystem } from '@effect/platform'
+import { FileSystem } from 'effect'
 import { NodeFileSystem } from '@effect/platform-node'
 import * as Vitest from '@effect/vitest'
 import { Effect, Queue } from 'effect'

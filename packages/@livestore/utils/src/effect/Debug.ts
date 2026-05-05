@@ -5,7 +5,7 @@ import type * as Exit from 'effect/Exit'
 import type * as Fiber from 'effect/Fiber'
 import * as Graph from 'effect/Graph'
 import * as Option from 'effect/Option'
-import * as RuntimeFlags from 'effect/RuntimeFlags'
+import { RuntimeFlags } from 'effect'
 import * as Scope from 'effect/Scope'
 import type * as Tracer from 'effect/Tracer'
 

@@ -182,7 +182,7 @@ export const WebSocketAttachmentSchema = Schema.parseJson(
     payload: Schema.optional(Schema.JsonValue),
     pullRequestIds: Schema.Array(Schema.String),
     // Headers forwarded from the initial request (via forwardHeaders option)
-    headers: Schema.optional(Schema.Record({ key: Schema.String, value: Schema.String })),
+    headers: Schema.optional(Schema.Record(Schema.String, Schema.String)),
   }),
 )
 

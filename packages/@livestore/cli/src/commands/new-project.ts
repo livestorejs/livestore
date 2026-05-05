@@ -3,7 +3,6 @@ import * as nodePath from 'node:path'
 
 import { sluggify } from '@livestore/utils'
 import {
-  Command,
   Console,
   Effect,
   FileSystem,
@@ -13,6 +12,8 @@ import {
   Schema,
 } from '@livestore/utils/effect'
 import { Cli } from '@livestore/utils/node'
+import { ChildProcess } from 'effect/unstable/process'
+import * as ChildProcessSpawner from 'effect/unstable/process/ChildProcessSpawner'
 
 import { detectPackageManager, pmCommands } from '../package-manager.ts'
 
@@ -38,23 +39,23 @@ const PackageJsonScriptsSchema = Schema.Struct({
 })
 
 // Error types
-export class ExampleNotFoundError extends Schema.TaggedError<ExampleNotFoundError>('~@livestore/cli/ExampleNotFoundError')('ExampleNotFoundError', {
+export class ExampleNotFoundError extends Schema.TaggedErrorClass<ExampleNotFoundError>()('ExampleNotFoundError', {
   exampleName: Schema.String,
   availableExamples: Schema.Array(Schema.String),
   message: Schema.String,
 }) {}
 
-export class NetworkError extends Schema.TaggedError<NetworkError>('~@livestore/cli/NetworkError')('NetworkError', {
+export class NetworkError extends Schema.TaggedErrorClass<NetworkError>()('NetworkError', {
   cause: Schema.Unknown,
   message: Schema.String,
 }) {}
 
-export class DirectoryExistsError extends Schema.TaggedError<DirectoryExistsError>('~@livestore/cli/DirectoryExistsError')('DirectoryExistsError', {
+export class DirectoryExistsError extends Schema.TaggedErrorClass<DirectoryExistsError>()('DirectoryExistsError', {
   path: Schema.String,
   message: Schema.String,
 }) {}
 
-export class NoExamplesError extends Schema.TaggedError<NoExamplesError>('~@livestore/cli/NoExamplesError')('NoExamplesError', {
+export class NoExamplesError extends Schema.TaggedErrorClass<NoExamplesError>()('NoExamplesError', {
   message: Schema.String,
 }) {}
 
@@ -154,9 +155,8 @@ const downloadExample = (exampleName: string, ref: string, destinationPath: stri
     const extractDir = nodePath.join(tempDir, `extract-${Date.now()}`)
     yield* fs.makeDirectory(extractDir, { recursive: true })
 
-    // Extract tarball using Effect Command
-    yield* Command.make('tar', '-xzf', tarballPath, '-C', extractDir).pipe(
-      Command.exitCode,
+    yield* ChildProcess.make('tar', ['-xzf', tarballPath, '-C', extractDir]).pipe(
+      ChildProcessSpawner.ChildProcessSpawner.exitCode,
       Effect.catchAll(
         (error) =>
           new NetworkError({
@@ -190,9 +190,8 @@ const downloadExample = (exampleName: string, ref: string, destinationPath: stri
       })
     }
 
-    // Copy the example directory contents to the destination using Effect Command
-    yield* Command.make('cp', '-r', `${exampleSourcePath}/.`, destinationPath).pipe(
-      Command.exitCode,
+    yield* ChildProcess.make('cp', ['-r', `${exampleSourcePath}/.`, destinationPath]).pipe(
+      ChildProcessSpawner.ChildProcessSpawner.exitCode,
       Effect.catchAll(
         (error) =>
           new NetworkError({

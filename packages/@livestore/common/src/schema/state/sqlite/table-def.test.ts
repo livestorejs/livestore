@@ -272,7 +272,7 @@ describe('table function overloads', () => {
       name: Schema.String,
       age: Schema.Int,
       active: Schema.Boolean,
-      metadata: Schema.optional(Schema.Record({ key: Schema.String, value: Schema.Unknown })),
+      metadata: Schema.optional(Schema.Record(Schema.String, Schema.Unknown)),
     })
 
     const userTable = State.SQLite.table({

@@ -46,7 +46,7 @@ export const livestoreWorkspaceCatalog = {
   '@local/tests-wa-sqlite': 'workspace:*',
 } as const
 
-/** LiveStore-only versions not provided by effect-utils base catalog. */
+/** LiveStore-specific catalog entries and overrides for the effect-utils base catalog. */
 export const livestoreOnlyCatalog = {
   /**
    * Snapshot releases pin every `@livestore/*` package — including the
@@ -83,11 +83,15 @@ export const livestoreOnlyCatalog = {
   'jasmine-core': '4.5.0',
   jsdom: '26.1.0',
   'web-test-runner-jasmine': '0.0.6',
-  '@effect/ai-openai': '0.39.0',
-  '@effect/platform-browser': '0.76.0',
-  '@effect/platform-bun': '0.89.0',
-  '@effect/platform-node-shared': '0.59.0',
-  '@effect/sql-sqlite-node': '0.52.0',
+  effect: '4.0.0-beta.60',
+  '@effect/ai-openai': '4.0.0-beta.60',
+  '@effect/opentelemetry': '4.0.0-beta.60',
+  '@effect/platform-browser': '4.0.0-beta.60',
+  '@effect/platform-bun': '4.0.0-beta.60',
+  '@effect/platform-node': '4.0.0-beta.60',
+  '@effect/platform-node-shared': '4.0.0-beta.60',
+  '@effect/sql-sqlite-node': '4.0.0-beta.60',
+  '@effect/vitest': '4.0.0-beta.60',
   '@opentelemetry/context-zone': '2.2.0',
   '@opentelemetry/core': '2.2.0',
   '@opentelemetry/exporter-metrics-otlp-grpc': '0.208.0',

@@ -141,13 +141,13 @@ Returns on success:
       sql: Schema.String.annotations({ description: 'The SQL query to execute' }),
       bindValues: Schema.Union(
         Schema.Array(Schema.JsonValue),
-        Schema.Record({ key: Schema.String, value: Schema.JsonValue }),
+        Schema.Record(Schema.String, Schema.JsonValue),
       ).annotations({
         description: 'Bind values for the SQL query (array or record). Record keys must not start with $.',
       }),
     },
     success: Schema.Struct({
-      rows: Schema.Array(Schema.Record({ key: Schema.String, value: Schema.JsonValue })),
+      rows: Schema.Array(Schema.Record(Schema.String, Schema.JsonValue)),
       rowCount: Schema.Number,
     }),
   }).annotate(Tool.Destructive, false),
@@ -211,7 +211,7 @@ Returns when not connected:
         storeId: Schema.String,
         clientId: Schema.String,
         sessionId: Schema.String,
-        tableCounts: Schema.Record({ key: Schema.String, value: Schema.Number }).annotations({
+        tableCounts: Schema.Record(Schema.String, Schema.Number).annotations({
           description: 'Tables in the LiveStore instance with their row count',
         }),
       }),

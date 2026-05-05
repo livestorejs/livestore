@@ -14,13 +14,13 @@ const MAX_RETRIES = 3
 /** Delay between retries - 2s to allow system resources to stabilize */
 const RETRY_DELAY_MS = 2_000
 
-export class RenderTimeoutError extends Schema.TaggedError<RenderTimeoutError>()('Tldraw.RenderTimeoutError', {
+export class RenderTimeoutError extends Schema.TaggedErrorClass<RenderTimeoutError>()('Tldraw.RenderTimeoutError', {
   message: Schema.String,
   diagram: Schema.String,
   theme: Schema.String,
 }) {}
 
-export class RenderInvocationError extends Schema.TaggedError<RenderInvocationError>()('Tldraw.RenderInvocationError', {
+export class RenderInvocationError extends Schema.TaggedErrorClass<RenderInvocationError>()('Tldraw.RenderInvocationError', {
   message: Schema.String,
   diagram: Schema.String,
   theme: Schema.String,

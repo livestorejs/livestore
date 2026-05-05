@@ -1,5 +1,5 @@
 /// <reference lib="dom" />
-import { ParseResult, Schema } from '@livestore/utils/effect'
+import { Effect, Option, Schema, SchemaIssue, SchemaParser } from '@livestore/utils/effect'
 
 import { BoundArray } from './bounded-collections.ts'
 import { PreparedBindValues } from './util.ts'
@@ -34,25 +34,16 @@ const isBoundArrayLike = (value: unknown): value is BoundArray<unknown> =>
 const BoundArraySchemaFromSelf = <A, I, R>(
   item: Schema.Schema<A, I, R>,
 ): Schema.Schema<BoundArray<A>, BoundArray<I>, R> =>
-  Schema.declare(
+  Schema.declareConstructor<BoundArray<A>, BoundArray<I>>()(
     [item],
-    {
-      decode: (item) => (input, parseOptions, ast) => {
+    ([item]) =>
+      (input, ast, parseOptions) => {
         if (isBoundArrayLike(input) === true) {
-          const elements = ParseResult.decodeUnknown(Schema.Array(item))([...input], parseOptions)
-          return ParseResult.map(elements, (as): BoundArray<A> => BoundArray.make(getSizeLimit(input), as))
+          const elements = SchemaParser.decodeUnknownEffect(Schema.Array(item))([...input], parseOptions)
+          return Effect.map(elements, (as): BoundArray<A> => BoundArray.make(getSizeLimit(input), as))
         }
-        return ParseResult.fail(new ParseResult.Type(ast, input))
+        return Effect.fail(new SchemaIssue.InvalidType(ast, Option.some(input)))
       },
-      encode: (item) => (input, parseOptions, ast) => {
-        if (isBoundArrayLike(input) === true) {
-          const items = [...input]
-          const elements = ParseResult.encodeUnknown(Schema.Array(item))(items, parseOptions)
-          return ParseResult.map(elements, (is): BoundArray<I> => BoundArray.make(getSizeLimit(input), is))
-        }
-        return ParseResult.fail(new ParseResult.Type(ast, input))
-      },
-    },
     {
       description: `BoundArray<${Schema.format(item)}>`,
       pretty: () => (_) => `BoundArray(${_.length})`,
@@ -88,7 +79,7 @@ export const BoundArraySchema = <ItemDecoded, ItemEncoded>(elSchema: Schema.Sche
       size: Schema.Number,
       items: Schema.Array(elSchema),
     }),
-    BoundArraySchemaFromSelf(Schema.typeSchema(elSchema)),
+    BoundArraySchemaFromSelf(Schema.toType(elSchema)),
     {
       encode: (_) => ({ size: _.sizeLimit, items: [..._] }),
       decode: (_) => BoundArray.make(_.size, _.items),

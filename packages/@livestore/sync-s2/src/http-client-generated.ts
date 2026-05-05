@@ -10,7 +10,7 @@ import {
   HttpClientError,
   HttpClientRequest,
   HttpClientResponse,
-  type ParseResult,
+  type SchemaIssue,
   Schema as S,
 } from '@livestore/utils/effect'
 
@@ -1046,7 +1046,7 @@ export interface Client {
   ) => Effect.Effect<
     typeof ListAccessTokensResponse.Type,
     | HttpClientError.HttpClientError
-    | ParseResult.ParseError
+    | SchemaIssue.Issue
     | ClientError<'ErrorResponse', typeof ErrorResponse.Type>
      
   >
@@ -1058,7 +1058,7 @@ export interface Client {
   ) => Effect.Effect<
     typeof IssueAccessTokenResponse.Type,
     | HttpClientError.HttpClientError
-    | ParseResult.ParseError
+    | SchemaIssue.Issue
     | ClientError<'ErrorResponse', typeof ErrorResponse.Type>
      
      
@@ -1071,7 +1071,7 @@ export interface Client {
   ) => Effect.Effect<
     void,
     | HttpClientError.HttpClientError
-    | ParseResult.ParseError
+    | SchemaIssue.Issue
     | ClientError<'ErrorResponse', typeof ErrorResponse.Type>
      
   >
@@ -1083,7 +1083,7 @@ export interface Client {
   ) => Effect.Effect<
     typeof ListBasinsResponse.Type,
     | HttpClientError.HttpClientError
-    | ParseResult.ParseError
+    | SchemaIssue.Issue
     | ClientError<'ErrorResponse', typeof ErrorResponse.Type>
      
   >
@@ -1095,7 +1095,7 @@ export interface Client {
   ) => Effect.Effect<
     typeof BasinInfo.Type  ,
     | HttpClientError.HttpClientError
-    | ParseResult.ParseError
+    | SchemaIssue.Issue
     | ClientError<'ErrorResponse', typeof ErrorResponse.Type>
      
      
@@ -1109,7 +1109,7 @@ export interface Client {
   ) => Effect.Effect<
     typeof BasinConfig.Type,
     | HttpClientError.HttpClientError
-    | ParseResult.ParseError
+    | SchemaIssue.Issue
     | ClientError<'ErrorResponse', typeof ErrorResponse.Type>
      
      
@@ -1125,7 +1125,7 @@ export interface Client {
     },
   ) => Effect.Effect<
     typeof BasinInfo.Type  ,
-    HttpClientError.HttpClientError | ParseResult.ParseError | ClientError<'ErrorResponse', typeof ErrorResponse.Type>
+    HttpClientError.HttpClientError | SchemaIssue.Issue | ClientError<'ErrorResponse', typeof ErrorResponse.Type>
   >
   /**
    * Delete a basin.
@@ -1135,7 +1135,7 @@ export interface Client {
   ) => Effect.Effect<
     void,
     | HttpClientError.HttpClientError
-    | ParseResult.ParseError
+    | SchemaIssue.Issue
     | ClientError<'ErrorResponse', typeof ErrorResponse.Type>
      
      
@@ -1150,7 +1150,7 @@ export interface Client {
   ) => Effect.Effect<
     typeof BasinConfig.Type,
     | HttpClientError.HttpClientError
-    | ParseResult.ParseError
+    | SchemaIssue.Issue
     | ClientError<'ErrorResponse', typeof ErrorResponse.Type>
      
      
@@ -1163,7 +1163,7 @@ export interface Client {
   ) => Effect.Effect<
     typeof MetricSetResponse.Type,
     | HttpClientError.HttpClientError
-    | ParseResult.ParseError
+    | SchemaIssue.Issue
     | ClientError<'ErrorResponse', typeof ErrorResponse.Type>
      
   >
@@ -1176,7 +1176,7 @@ export interface Client {
   ) => Effect.Effect<
     typeof MetricSetResponse.Type,
     | HttpClientError.HttpClientError
-    | ParseResult.ParseError
+    | SchemaIssue.Issue
     | ClientError<'ErrorResponse', typeof ErrorResponse.Type>
      
   >
@@ -1190,7 +1190,7 @@ export interface Client {
   ) => Effect.Effect<
     typeof MetricSetResponse.Type,
     | HttpClientError.HttpClientError
-    | ParseResult.ParseError
+    | SchemaIssue.Issue
     | ClientError<'ErrorResponse', typeof ErrorResponse.Type>
      
   >
@@ -1202,7 +1202,7 @@ export interface Client {
   ) => Effect.Effect<
     typeof ListStreamsResponse.Type,
     | HttpClientError.HttpClientError
-    | ParseResult.ParseError
+    | SchemaIssue.Issue
     | ClientError<'ErrorResponse', typeof ErrorResponse.Type>
      
      
@@ -1215,7 +1215,7 @@ export interface Client {
   ) => Effect.Effect<
     typeof StreamInfo.Type,
     | HttpClientError.HttpClientError
-    | ParseResult.ParseError
+    | SchemaIssue.Issue
     | ClientError<'ErrorResponse', typeof ErrorResponse.Type>
      
      
@@ -1229,7 +1229,7 @@ export interface Client {
   ) => Effect.Effect<
     typeof StreamConfig.Type,
     | HttpClientError.HttpClientError
-    | ParseResult.ParseError
+    | SchemaIssue.Issue
     | ClientError<'ErrorResponse', typeof ErrorResponse.Type>
      
      
@@ -1247,7 +1247,7 @@ export interface Client {
   ) => Effect.Effect<
     typeof StreamInfo.Type,
     | HttpClientError.HttpClientError
-    | ParseResult.ParseError
+    | SchemaIssue.Issue
     | ClientError<'ErrorResponse', typeof ErrorResponse.Type>
      
      
@@ -1261,7 +1261,7 @@ export interface Client {
   ) => Effect.Effect<
     void,
     | HttpClientError.HttpClientError
-    | ParseResult.ParseError
+    | SchemaIssue.Issue
     | ClientError<'ErrorResponse', typeof ErrorResponse.Type>
      
      
@@ -1275,7 +1275,7 @@ export interface Client {
   ) => Effect.Effect<
     typeof StreamConfig.Type,
     | HttpClientError.HttpClientError
-    | ParseResult.ParseError
+    | SchemaIssue.Issue
     | ClientError<'ErrorResponse', typeof ErrorResponse.Type>
      
      
@@ -1290,7 +1290,7 @@ export interface Client {
   ) => Effect.Effect<
     typeof ReadBatch.Type,
     | HttpClientError.HttpClientError
-    | ParseResult.ParseError
+    | SchemaIssue.Issue
     | ClientError<'ErrorResponse', typeof ErrorResponse.Type>
      
      
@@ -1310,7 +1310,7 @@ export interface Client {
   ) => Effect.Effect<
     typeof AppendAck.Type,
     | HttpClientError.HttpClientError
-    | ParseResult.ParseError
+    | SchemaIssue.Issue
     | ClientError<'ErrorResponse', typeof ErrorResponse.Type>
      
      
@@ -1326,7 +1326,7 @@ export interface Client {
   ) => Effect.Effect<
     typeof TailResponse.Type,
     | HttpClientError.HttpClientError
-    | ParseResult.ParseError
+    | SchemaIssue.Issue
     | ClientError<'ErrorResponse', typeof ErrorResponse.Type>
      
      

@@ -4,7 +4,8 @@ import { join } from 'node:path'
 
 import { isNotUndefined } from '@livestore/utils'
 import { CurrentWorkingDirectory, cmdText } from '@livestore/utils-dev/node'
-import { Command, Effect, Fiber, HttpClient, HttpClientRequest, Schema, Stream } from '@livestore/utils/effect'
+import { Effect, Fiber, HttpClient, HttpClientRequest, Schema, Stream } from '@livestore/utils/effect'
+import { ChildProcess } from 'effect/unstable/process'
 
 export class NetlifyError extends Schema.TaggedError<NetlifyError>()('NetlifyError', {
   reason: Schema.Literal('auth', 'unknown'),
@@ -34,7 +35,7 @@ const NetlifyCliUserSchema = Schema.Struct({
 })
 
 const NetlifyCliConfigSchema = Schema.Struct({
-  users: Schema.optional(Schema.Record({ key: Schema.String, value: NetlifyCliUserSchema })),
+  users: Schema.optional(Schema.Record(Schema.String, NetlifyCliUserSchema)),
 })
 
 const NetlifyPurgeRequestSchema = Schema.Struct({
@@ -119,16 +120,15 @@ export const deployToNetlify = ({
     const { stdout: rawOutput, stderr: rawStderr } = yield* Effect.scoped(
       Effect.gen(function* () {
         const proc = yield* Effect.acquireRelease(
-          Command.make(deployCmd, ...deployRest).pipe(
-            Command.stdout('pipe'),
-            Command.stderr('pipe'),
-            Command.workingDirectory(cwd),
-            Command.env({
+          ChildProcess.make(deployCmd, deployRest, {
+            cwd,
+            stdout: 'pipe',
+            stderr: 'pipe',
+            env: {
               CI: '1',
               NETLIFY_CONFIG: join(cwd, 'netlify.toml'),
-            }),
-            Command.start,
-          ),
+            },
+          }),
           (p) =>
             p.isRunning.pipe(
               Effect.flatMap((running) =>

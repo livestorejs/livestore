@@ -1,5 +1,5 @@
 import { shouldNeverHappen } from '@livestore/utils'
-import { pipe, ReadonlyArray, Schema, TreeFormatter } from '@livestore/utils/effect'
+import { pipe, ReadonlyArray, Schema } from '@livestore/utils/effect'
 
 import type { SqliteDsl } from '../schema/state/sqlite/db-schema/mod.ts'
 import { sql } from '../util.ts'
@@ -287,7 +287,7 @@ export const makeBindValues = <TColumns extends SqliteDsl.Columns, TKeys extends
         if (columnDef.nullable === true && (value === null || value === undefined)) return null
         const res = Schema.encodeEither(columnDef.schema)(value)
         if (res._tag === 'Left') {
-          const parseErrorStr = TreeFormatter.formatErrorSync(res.left)
+          const parseErrorStr = String(res.left)
           const expectedSchemaStr = String(columnDef.schema.ast)
 
           console.error(

@@ -10,7 +10,7 @@ import {
   UnknownError,
 } from '@livestore/common'
 import { deepEqual, objectToString, omitUndefineds, shouldNeverHappen } from '@livestore/utils'
-import { Equal, Hash, Predicate, Schema, TreeFormatter } from '@livestore/utils/effect'
+import { Equal, Hash, Predicate, Schema } from '@livestore/utils/effect'
 import * as otel from '@opentelemetry/api'
 
 import type { Thunk } from '../reactive.ts'
@@ -397,7 +397,7 @@ export class LiveStoreDbQuery<TResultSchema, TResult = TResultSchema> extends Li
             const parsedResult = Schema.decodeEither(schemaRef.current!)(rawDbResults)
 
             if (parsedResult._tag === 'Left') {
-              const parseErrorStr = TreeFormatter.formatErrorSync(parsedResult.left)
+              const parseErrorStr = String(parsedResult.left)
               const expectedSchemaStr = String(schemaRef.current!.ast)
               const bindValuesStr = bindValues === undefined ? '' : `\nBind values: ${JSON.stringify(bindValues)}`
 

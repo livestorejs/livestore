@@ -69,6 +69,6 @@ export class DoRpcProxyRpcs extends RpcGroup.make(
     success: Schema.Struct({
       name: Schema.String,
       description: Schema.String,
-    }).pipe(Schema.extend(Schema.Record({ key: Schema.String, value: Schema.JsonValue }))),
+    }).pipe(Schema.extend(Schema.Record(Schema.String, Schema.JsonValue))),
   }),
 ) {}

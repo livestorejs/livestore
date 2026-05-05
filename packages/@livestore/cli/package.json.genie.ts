@@ -18,12 +18,8 @@ const runtimeDeps = catalog.compose({
   dependencies: {
     workspace: [adapterNodePkg, commonPkg, livestorePkg, peerDepsPkg, utilsPkg],
     external: catalog.pick(
-      '@effect/ai',
       '@effect/ai-openai',
-      '@effect/experimental',
       '@effect/opentelemetry',
-      '@effect/platform',
-      '@effect/rpc',
       'effect',
     ),
   },

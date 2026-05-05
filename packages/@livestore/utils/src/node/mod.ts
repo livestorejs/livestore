@@ -6,8 +6,8 @@ import { Effect, Layer } from 'effect'
 import { OtelTracer, UnknownError } from '../effect/mod.ts'
 import { makeNoopTracer } from '../NoopTracer.ts'
 
-export * as Cli from '@effect/cli'
-export * as SocketServer from '@effect/platform/SocketServer'
+export * as Cli from 'effect/unstable/cli'
+export * as SocketServer from 'effect/unstable/socket/SocketServer'
 export * as PlatformNode from '@effect/platform-node'
 
 export * as ChildProcessRunner from './ChildProcessRunner/ChildProcessRunner.ts'

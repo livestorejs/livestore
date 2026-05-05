@@ -1,5 +1,51 @@
 import '../global.ts'
 
+// export { DevTools as EffectDevtools } from '@effect/experimental'
+export { Sse, Msgpack as MsgPack } from 'effect/unstable/encoding'
+export { Otlp } from 'effect/unstable/observability'
+export { FileSystem, PlatformError, Terminal } from 'effect'
+export {
+  FetchHttpClient,
+  Headers,
+  HttpEffect as HttpApp,
+  HttpClient,
+  HttpClientError,
+  HttpClientRequest,
+  HttpClientResponse,
+  HttpMiddleware,
+  HttpRouter,
+  HttpServer,
+  HttpServerRequest,
+  HttpServerResponse,
+  UrlParams,
+} from 'effect/unstable/http'
+export {
+  HttpApi,
+  HttpApiClient,
+  HttpApiEndpoint,
+  HttpApiGroup,
+} from 'effect/unstable/httpapi'
+export { KeyValueStore } from 'effect/unstable/persistence'
+export { Socket } from 'effect/unstable/socket'
+export {
+  Transferable,
+  Worker,
+  WorkerError,
+  WorkerRunner,
+} from 'effect/unstable/workers'
+export {
+  Rpc,
+  // RpcClient, // TODO bring back "original" RpcClient from effect/rpc
+  RpcClientError,
+  RpcGroup,
+  RpcMessage,
+  RpcMiddleware,
+  RpcSchema,
+  RpcSerialization,
+  RpcServer,
+  RpcTest,
+  RpcWorker,
+} from 'effect/unstable/rpc'
 export {
   AiError,
   LanguageModel,
@@ -13,54 +59,7 @@ export {
   Tool as AiTool,
   Toolkit,
   Toolkit as AiToolkit,
-} from '@effect/ai'
-// export { DevTools as EffectDevtools } from '@effect/experimental'
-export { Sse } from '@effect/experimental'
-export * as Otlp from '@effect/opentelemetry/Otlp'
-export {
-  Command,
-  CommandExecutor,
-  Error as PlatformError,
-  FetchHttpClient,
-  FileSystem,
-  Headers,
-  HttpApi,
-  HttpApiClient,
-  HttpApiEndpoint,
-  HttpApiGroup,
-  HttpApp,
-  HttpClient,
-  HttpClientError,
-  HttpClientRequest,
-  HttpClientResponse,
-  HttpMiddleware,
-  HttpRouter,
-  HttpServer,
-  HttpServerRequest,
-  HttpServerResponse,
-  KeyValueStore,
-  MsgPack,
-  Socket,
-  Terminal,
-  Transferable,
-  UrlParams,
-  Worker,
-  WorkerError,
-  WorkerRunner,
-} from '@effect/platform'
-export {
-  Rpc,
-  // RpcClient, // TODO bring back "original" RpcClient from effect/rpc
-  RpcClientError,
-  RpcGroup,
-  RpcMessage,
-  RpcMiddleware,
-  RpcSchema,
-  RpcSerialization,
-  RpcServer,
-  RpcTest,
-  RpcWorker,
-} from '@effect/rpc'
+} from 'effect/unstable/ai'
 export * as StandardSchema from '@standard-schema/spec'
 export {
   Array as ReadonlyArray,
@@ -109,7 +108,6 @@ export {
   MutableHashSet,
   Option,
   Order,
-  ParseResult,
   Predicate,
   Pretty,
   PrimaryKey,
@@ -123,9 +121,12 @@ export {
   Redacted,
   Ref,
   Request,
+  Result,
   Runtime,
   RuntimeFlags,
   Scope,
+  SchemaIssue,
+  SchemaParser,
   ScopedRef,
   Sink,
   SortedMap,
@@ -141,7 +142,6 @@ export {
 export type { NonEmptyArray } from 'effect/Array'
 export { constVoid, dual } from 'effect/Function'
 export * as Graph from 'effect/Graph'
-export { TreeFormatter } from 'effect/ParseResult'
 export type { Serializable, SerializableWithResult } from 'effect/Schema'
 export * as SchemaAST from 'effect/SchemaAST'
 export * as BucketQueue from './BucketQueue.ts'
