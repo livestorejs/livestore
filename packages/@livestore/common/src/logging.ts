@@ -56,8 +56,16 @@ export const withLoggerConfig = <TEnv, TError, TOut>(
   config?: WithLoggerOptions,
   defaults?: LoggerDefaults,
 ): ((effect: Effect.Effect<TOut, TError, TEnv>) => Effect.Effect<TOut, TError, TEnv>) => {
-  const _level = resolveLogLevel(config, defaults)
-  void _level
+  const level = resolveLogLevel(config, defaults)
   const layer = resolveLoggerLayer(config, defaults)
-  return (effect) => effect.pipe(Effect.provide(layer)) as Effect.Effect<TOut, TError, TEnv>
+  const hasOnlyEffectDefaultLogger = (loggers: ReadonlySet<Logger.Logger<unknown, any>>) =>
+    loggers.size === 0 || (loggers.size === 1 && loggers.has(Logger.defaultLogger))
+
+  return (effect) =>
+    Effect.gen(function* () {
+      const currentLoggers = yield* Effect.service(Logger.CurrentLoggers)
+      const shouldProvideLogger = config?.logger !== undefined || hasOnlyEffectDefaultLogger(currentLoggers)
+      const configuredEffect = shouldProvideLogger === true ? effect.pipe(Effect.provide(layer)) : effect
+      return yield* configuredEffect.pipe(Logger.withMinimumLogLevel(level))
+    }) as Effect.Effect<TOut, TError, TEnv>
 }
