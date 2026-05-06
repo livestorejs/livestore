@@ -649,28 +649,28 @@ importers:
         specifier: 4.20251118.0
         version: 4.20251118.0
       '@livestore/adapter-cloudflare':
-        specifier: 0.4.0-dev.22
+        specifier: 0.4.0
         version: link:../../packages/@livestore/adapter-cloudflare
       '@livestore/adapter-node':
-        specifier: 0.4.0-dev.22
+        specifier: 0.4.0
         version: link:../../packages/@livestore/adapter-node
       '@livestore/adapter-web':
-        specifier: 0.4.0-dev.22
+        specifier: 0.4.0
         version: link:../../packages/@livestore/adapter-web
       '@livestore/livestore':
-        specifier: 0.4.0-dev.22
+        specifier: 0.4.0
         version: link:../../packages/@livestore/livestore
       '@livestore/react':
-        specifier: 0.4.0-dev.22
+        specifier: 0.4.0
         version: link:../../packages/@livestore/react
       '@livestore/sqlite-wasm':
-        specifier: 0.4.0-dev.22
+        specifier: 0.4.0
         version: link:../../packages/@livestore/sqlite-wasm
       '@livestore/sync-cf':
-        specifier: 0.4.0-dev.22
+        specifier: 0.4.0
         version: link:../../packages/@livestore/sync-cf
       '@livestore/wa-sqlite':
-        specifier: 0.4.0-dev.22
+        specifier: 0.4.0
         version: link:../../packages/@livestore/wa-sqlite
       react:
         specifier: 19.2.3
@@ -725,28 +725,28 @@ importers:
         specifier: 4.20251118.0
         version: 4.20251118.0
       '@livestore/adapter-cloudflare':
-        specifier: 0.4.0-dev.22
+        specifier: 0.4.0
         version: link:../../packages/@livestore/adapter-cloudflare
       '@livestore/adapter-node':
-        specifier: 0.4.0-dev.22
+        specifier: 0.4.0
         version: link:../../packages/@livestore/adapter-node
       '@livestore/adapter-web':
-        specifier: 0.4.0-dev.22
+        specifier: 0.4.0
         version: link:../../packages/@livestore/adapter-web
       '@livestore/livestore':
-        specifier: 0.4.0-dev.22
+        specifier: 0.4.0
         version: link:../../packages/@livestore/livestore
       '@livestore/solid':
-        specifier: 0.4.0-dev.22
+        specifier: 0.4.0
         version: link:../../packages/@livestore/solid
       '@livestore/sqlite-wasm':
-        specifier: 0.4.0-dev.22
+        specifier: 0.4.0
         version: link:../../packages/@livestore/sqlite-wasm
       '@livestore/sync-cf':
-        specifier: 0.4.0-dev.22
+        specifier: 0.4.0
         version: link:../../packages/@livestore/sync-cf
       '@livestore/wa-sqlite':
-        specifier: 0.4.0-dev.22
+        specifier: 0.4.0
         version: link:../../packages/@livestore/wa-sqlite
       solid-js:
         specifier: 1.9.10
@@ -789,16 +789,16 @@ importers:
         specifier: 4.20251118.0
         version: 4.20251118.0
       '@livestore/adapter-cloudflare':
-        specifier: 0.4.0-dev.22
+        specifier: 0.4.0
         version: link:../../packages/@livestore/adapter-cloudflare
       '@livestore/livestore':
-        specifier: 0.4.0-dev.22
+        specifier: 0.4.0
         version: link:../../packages/@livestore/livestore
       '@livestore/peer-deps':
-        specifier: 0.4.0-dev.22
+        specifier: 0.4.0
         version: link:../../packages/@livestore/peer-deps
       '@livestore/sync-cf':
-        specifier: 0.4.0-dev.22
+        specifier: 0.4.0
         version: link:../../packages/@livestore/sync-cf
     devDependencies:
       wrangler:
@@ -811,19 +811,19 @@ importers:
         specifier: 15.0.2
         version: 15.0.2(expo-font@14.0.8(expo@54.0.12)(react-native@0.81.4(@babel/core@7.29.0)(@types/react@19.2.7)(react@19.2.3))(react@19.2.3))(react-native@0.81.4(@babel/core@7.29.0)(@types/react@19.2.7)(react@19.2.3))(react@19.2.3)
       '@livestore/adapter-expo':
-        specifier: 0.4.0-dev.22
+        specifier: 0.4.0
         version: link:../../packages/@livestore/adapter-expo
       '@livestore/devtools-expo':
-        specifier: 0.4.0-dev.22
+        specifier: 0.4.0
         version: link:../../packages/@livestore/devtools-expo
       '@livestore/livestore':
-        specifier: 0.4.0-dev.22
+        specifier: 0.4.0
         version: link:../../packages/@livestore/livestore
       '@livestore/peer-deps':
-        specifier: 0.4.0-dev.22
+        specifier: 0.4.0
         version: link:../../packages/@livestore/peer-deps
       '@livestore/react':
-        specifier: 0.4.0-dev.22
+        specifier: 0.4.0
         version: link:../../packages/@livestore/react
       '@react-native-segmented-control/segmented-control':
         specifier: 2.5.7
@@ -962,22 +962,22 @@ importers:
         specifier: 15.0.2
         version: 15.0.2(expo-font@14.0.8(expo@54.0.12)(react-native@0.81.4(@babel/core@7.29.0)(@types/react@19.2.7)(react@19.2.3))(react@19.2.3))(react-native@0.81.4(@babel/core@7.29.0)(@types/react@19.2.7)(react@19.2.3))(react@19.2.3)
       '@livestore/adapter-expo':
-        specifier: 0.4.0-dev.22
+        specifier: 0.4.0
         version: link:../../packages/@livestore/adapter-expo
       '@livestore/devtools-expo':
-        specifier: 0.4.0-dev.22
+        specifier: 0.4.0
         version: link:../../packages/@livestore/devtools-expo
       '@livestore/livestore':
-        specifier: 0.4.0-dev.22
+        specifier: 0.4.0
         version: link:../../packages/@livestore/livestore
       '@livestore/peer-deps':
-        specifier: 0.4.0-dev.22
+        specifier: 0.4.0
         version: link:../../packages/@livestore/peer-deps
       '@livestore/react':
-        specifier: 0.4.0-dev.22
+        specifier: 0.4.0
         version: link:../../packages/@livestore/react
       '@livestore/sync-cf':
-        specifier: 0.4.0-dev.22
+        specifier: 0.4.0
         version: link:../../packages/@livestore/sync-cf
       babel-preset-expo:
         specifier: 54.0.3
@@ -1038,23 +1038,23 @@ importers:
   examples/node-effect-cli:
     dependencies:
       '@livestore/adapter-node':
-        specifier: 0.4.0-dev.22
+        specifier: 0.4.0
         version: link:../../packages/@livestore/adapter-node
       '@livestore/common':
-        specifier: 0.4.0-dev.22
+        specifier: 0.4.0
         version: link:../../packages/@livestore/common
       '@livestore/livestore':
-        specifier: 0.4.0-dev.22
+        specifier: 0.4.0
         version: link:../../packages/@livestore/livestore
       '@livestore/sync-cf':
-        specifier: 0.4.0-dev.22
+        specifier: 0.4.0
         version: link:../../packages/@livestore/sync-cf
       '@livestore/utils':
-        specifier: 0.4.0-dev.22
+        specifier: 0.4.0
         version: link:../../packages/@livestore/utils
     devDependencies:
       '@livestore/utils-dev':
-        specifier: 0.4.0-dev.22
+        specifier: 0.4.0
         version: link:../../packages/@livestore/utils-dev
       typescript:
         specifier: ^5.9.2
@@ -1063,13 +1063,13 @@ importers:
   examples/node-todomvc-sync-cf:
     dependencies:
       '@livestore/adapter-node':
-        specifier: 0.4.0-dev.22
+        specifier: 0.4.0
         version: link:../../packages/@livestore/adapter-node
       '@livestore/livestore':
-        specifier: 0.4.0-dev.22
+        specifier: 0.4.0
         version: link:../../packages/@livestore/livestore
       '@livestore/sync-cf':
-        specifier: 0.4.0-dev.22
+        specifier: 0.4.0
         version: link:../../packages/@livestore/sync-cf
     devDependencies:
       '@types/node':
@@ -1125,25 +1125,25 @@ importers:
         specifier: 4.20251118.0
         version: 4.20251118.0
       '@livestore/adapter-cloudflare':
-        specifier: 0.4.0-dev.22
+        specifier: 0.4.0
         version: link:../../packages/@livestore/adapter-cloudflare
       '@livestore/adapter-web':
-        specifier: 0.4.0-dev.22
+        specifier: 0.4.0
         version: link:../../packages/@livestore/adapter-web
       '@livestore/livestore':
-        specifier: 0.4.0-dev.22
+        specifier: 0.4.0
         version: link:../../packages/@livestore/livestore
       '@livestore/react':
-        specifier: 0.4.0-dev.22
+        specifier: 0.4.0
         version: link:../../packages/@livestore/react
       '@livestore/sqlite-wasm':
-        specifier: 0.4.0-dev.22
+        specifier: 0.4.0
         version: link:../../packages/@livestore/sqlite-wasm
       '@livestore/sync-cf':
-        specifier: 0.4.0-dev.22
+        specifier: 0.4.0
         version: link:../../packages/@livestore/sync-cf
       '@livestore/wa-sqlite':
-        specifier: 0.4.0-dev.22
+        specifier: 0.4.0
         version: link:../../packages/@livestore/wa-sqlite
       react:
         specifier: 19.2.3
@@ -1192,25 +1192,25 @@ importers:
         specifier: 2.2.0
         version: 2.2.0(react@19.2.3)
       '@livestore/adapter-web':
-        specifier: 0.4.0-dev.22
+        specifier: 0.4.0
         version: link:../../packages/@livestore/adapter-web
       '@livestore/livestore':
-        specifier: 0.4.0-dev.22
+        specifier: 0.4.0
         version: link:../../packages/@livestore/livestore
       '@livestore/peer-deps':
-        specifier: 0.4.0-dev.22
+        specifier: 0.4.0
         version: link:../../packages/@livestore/peer-deps
       '@livestore/react':
-        specifier: 0.4.0-dev.22
+        specifier: 0.4.0
         version: link:../../packages/@livestore/react
       '@livestore/sync-cf':
-        specifier: 0.4.0-dev.22
+        specifier: 0.4.0
         version: link:../../packages/@livestore/sync-cf
       '@livestore/utils':
-        specifier: 0.4.0-dev.22
+        specifier: 0.4.0
         version: link:../../packages/@livestore/utils
       '@livestore/wa-sqlite':
-        specifier: 0.4.0-dev.22
+        specifier: 0.4.0
         version: link:../../packages/@livestore/wa-sqlite
       '@overengineering/fps-meter':
         specifier: 0.2.4
@@ -1349,22 +1349,22 @@ importers:
   examples/web-multi-store:
     dependencies:
       '@livestore/adapter-node':
-        specifier: 0.4.0-dev.22
+        specifier: 0.4.0
         version: link:../../packages/@livestore/adapter-node
       '@livestore/adapter-web':
-        specifier: 0.4.0-dev.22
+        specifier: 0.4.0
         version: link:../../packages/@livestore/adapter-web
       '@livestore/livestore':
-        specifier: 0.4.0-dev.22
+        specifier: 0.4.0
         version: link:../../packages/@livestore/livestore
       '@livestore/peer-deps':
-        specifier: 0.4.0-dev.22
+        specifier: 0.4.0
         version: link:../../packages/@livestore/peer-deps
       '@livestore/react':
-        specifier: 0.4.0-dev.22
+        specifier: 0.4.0
         version: link:../../packages/@livestore/react
       '@livestore/wa-sqlite':
-        specifier: 0.4.0-dev.22
+        specifier: 0.4.0
         version: link:../../packages/@livestore/wa-sqlite
       '@tanstack/react-router':
         specifier: 1.145.7
@@ -1413,19 +1413,19 @@ importers:
   examples/web-todomvc:
     dependencies:
       '@livestore/adapter-web':
-        specifier: 0.4.0-dev.22
+        specifier: 0.4.0
         version: link:../../packages/@livestore/adapter-web
       '@livestore/livestore':
-        specifier: 0.4.0-dev.22
+        specifier: 0.4.0
         version: link:../../packages/@livestore/livestore
       '@livestore/peer-deps':
-        specifier: 0.4.0-dev.22
+        specifier: 0.4.0
         version: link:../../packages/@livestore/peer-deps
       '@livestore/react':
-        specifier: 0.4.0-dev.22
+        specifier: 0.4.0
         version: link:../../packages/@livestore/react
       '@livestore/wa-sqlite':
-        specifier: 0.4.0-dev.22
+        specifier: 0.4.0
         version: link:../../packages/@livestore/wa-sqlite
       '@overengineering/fps-meter':
         specifier: 0.2.4
@@ -1477,19 +1477,19 @@ importers:
   examples/web-todomvc-custom-elements:
     dependencies:
       '@livestore/adapter-web':
-        specifier: 0.4.0-dev.22
+        specifier: 0.4.0
         version: link:../../packages/@livestore/adapter-web
       '@livestore/livestore':
-        specifier: 0.4.0-dev.22
+        specifier: 0.4.0
         version: link:../../packages/@livestore/livestore
       '@livestore/peer-deps':
-        specifier: 0.4.0-dev.22
+        specifier: 0.4.0
         version: link:../../packages/@livestore/peer-deps
       '@livestore/sync-cf':
-        specifier: 0.4.0-dev.22
+        specifier: 0.4.0
         version: link:../../packages/@livestore/sync-cf
       '@livestore/wa-sqlite':
-        specifier: 0.4.0-dev.22
+        specifier: 0.4.0
         version: link:../../packages/@livestore/wa-sqlite
       react:
         specifier: 19.2.3
@@ -1541,22 +1541,22 @@ importers:
   examples/web-todomvc-experimental:
     dependencies:
       '@livestore/adapter-web':
-        specifier: 0.4.0-dev.22
+        specifier: 0.4.0
         version: link:../../packages/@livestore/adapter-web
       '@livestore/livestore':
-        specifier: 0.4.0-dev.22
+        specifier: 0.4.0
         version: link:../../packages/@livestore/livestore
       '@livestore/peer-deps':
-        specifier: 0.4.0-dev.22
+        specifier: 0.4.0
         version: link:../../packages/@livestore/peer-deps
       '@livestore/react':
-        specifier: 0.4.0-dev.22
+        specifier: 0.4.0
         version: link:../../packages/@livestore/react
       '@livestore/sync-cf':
-        specifier: 0.4.0-dev.22
+        specifier: 0.4.0
         version: link:../../packages/@livestore/sync-cf
       '@livestore/wa-sqlite':
-        specifier: 0.4.0-dev.22
+        specifier: 0.4.0
         version: link:../../packages/@livestore/wa-sqlite
       '@overengineering/fps-meter':
         specifier: 0.2.4
@@ -1608,19 +1608,19 @@ importers:
   examples/web-todomvc-react-router:
     dependencies:
       '@livestore/adapter-web':
-        specifier: 0.4.0-dev.22
+        specifier: 0.4.0
         version: link:../../packages/@livestore/adapter-web
       '@livestore/livestore':
-        specifier: 0.4.0-dev.22
+        specifier: 0.4.0
         version: link:../../packages/@livestore/livestore
       '@livestore/peer-deps':
-        specifier: 0.4.0-dev.22
+        specifier: 0.4.0
         version: link:../../packages/@livestore/peer-deps
       '@livestore/react':
-        specifier: 0.4.0-dev.22
+        specifier: 0.4.0
         version: link:../../packages/@livestore/react
       '@livestore/wa-sqlite':
-        specifier: 0.4.0-dev.22
+        specifier: 0.4.0
         version: link:../../packages/@livestore/wa-sqlite
       '@overengineering/fps-meter':
         specifier: 0.2.4
@@ -1666,22 +1666,22 @@ importers:
   examples/web-todomvc-redwood:
     dependencies:
       '@livestore/adapter-web':
-        specifier: 0.4.0-dev.22
+        specifier: 0.4.0
         version: link:../../packages/@livestore/adapter-web
       '@livestore/livestore':
-        specifier: 0.4.0-dev.22
+        specifier: 0.4.0
         version: link:../../packages/@livestore/livestore
       '@livestore/peer-deps':
-        specifier: 0.4.0-dev.22
+        specifier: 0.4.0
         version: link:../../packages/@livestore/peer-deps
       '@livestore/react':
-        specifier: 0.4.0-dev.22
+        specifier: 0.4.0
         version: link:../../packages/@livestore/react
       '@livestore/sqlite-wasm':
-        specifier: 0.4.0-dev.22
+        specifier: 0.4.0
         version: link:../../packages/@livestore/sqlite-wasm
       '@livestore/wa-sqlite':
-        specifier: 0.4.0-dev.22
+        specifier: 0.4.0
         version: link:../../packages/@livestore/wa-sqlite
       '@overengineering/fps-meter':
         specifier: 0.2.4
@@ -1733,19 +1733,19 @@ importers:
   examples/web-todomvc-script:
     dependencies:
       '@livestore/adapter-web':
-        specifier: 0.4.0-dev.22
+        specifier: 0.4.0
         version: link:../../packages/@livestore/adapter-web
       '@livestore/livestore':
-        specifier: 0.4.0-dev.22
+        specifier: 0.4.0
         version: link:../../packages/@livestore/livestore
       '@livestore/peer-deps':
-        specifier: 0.4.0-dev.22
+        specifier: 0.4.0
         version: link:../../packages/@livestore/peer-deps
       '@livestore/sync-cf':
-        specifier: 0.4.0-dev.22
+        specifier: 0.4.0
         version: link:../../packages/@livestore/sync-cf
       '@livestore/wa-sqlite':
-        specifier: 0.4.0-dev.22
+        specifier: 0.4.0
         version: link:../../packages/@livestore/wa-sqlite
     devDependencies:
       '@cloudflare/vite-plugin':
@@ -1773,19 +1773,19 @@ importers:
   examples/web-todomvc-solid:
     dependencies:
       '@livestore/adapter-web':
-        specifier: 0.4.0-dev.22
+        specifier: 0.4.0
         version: link:../../packages/@livestore/adapter-web
       '@livestore/livestore':
-        specifier: 0.4.0-dev.22
+        specifier: 0.4.0
         version: link:../../packages/@livestore/livestore
       '@livestore/peer-deps':
-        specifier: 0.4.0-dev.22
+        specifier: 0.4.0
         version: link:../../packages/@livestore/peer-deps
       '@livestore/solid':
-        specifier: 0.4.0-dev.22
+        specifier: 0.4.0
         version: link:../../packages/@livestore/solid
       '@livestore/wa-sqlite':
-        specifier: 0.4.0-dev.22
+        specifier: 0.4.0
         version: link:../../packages/@livestore/wa-sqlite
       solid-js:
         specifier: 1.9.10
@@ -1828,19 +1828,19 @@ importers:
   examples/web-todomvc-svelte:
     dependencies:
       '@livestore/adapter-web':
-        specifier: 0.4.0-dev.22
+        specifier: 0.4.0
         version: link:../../packages/@livestore/adapter-web
       '@livestore/livestore':
-        specifier: 0.4.0-dev.22
+        specifier: 0.4.0
         version: link:../../packages/@livestore/livestore
       '@livestore/peer-deps':
-        specifier: 0.4.0-dev.22
+        specifier: 0.4.0
         version: link:../../packages/@livestore/peer-deps
       '@livestore/svelte':
-        specifier: 0.4.0-dev.22
+        specifier: 0.4.0
         version: link:../../packages/@livestore/svelte
       '@livestore/wa-sqlite':
-        specifier: 0.4.0-dev.22
+        specifier: 0.4.0
         version: link:../../packages/@livestore/wa-sqlite
       svelte:
         specifier: 5.43.14
@@ -1880,22 +1880,22 @@ importers:
   examples/web-todomvc-sync-cf:
     dependencies:
       '@livestore/adapter-web':
-        specifier: 0.4.0-dev.22
+        specifier: 0.4.0
         version: link:../../packages/@livestore/adapter-web
       '@livestore/livestore':
-        specifier: 0.4.0-dev.22
+        specifier: 0.4.0
         version: link:../../packages/@livestore/livestore
       '@livestore/peer-deps':
-        specifier: 0.4.0-dev.22
+        specifier: 0.4.0
         version: link:../../packages/@livestore/peer-deps
       '@livestore/react':
-        specifier: 0.4.0-dev.22
+        specifier: 0.4.0
         version: link:../../packages/@livestore/react
       '@livestore/sync-cf':
-        specifier: 0.4.0-dev.22
+        specifier: 0.4.0
         version: link:../../packages/@livestore/sync-cf
       '@livestore/wa-sqlite':
-        specifier: 0.4.0-dev.22
+        specifier: 0.4.0
         version: link:../../packages/@livestore/wa-sqlite
       '@overengineering/fps-meter':
         specifier: 0.2.4
@@ -1947,28 +1947,28 @@ importers:
   examples/web-todomvc-sync-electric:
     dependencies:
       '@livestore/adapter-node':
-        specifier: 0.4.0-dev.22
+        specifier: 0.4.0
         version: link:../../packages/@livestore/adapter-node
       '@livestore/adapter-web':
-        specifier: 0.4.0-dev.22
+        specifier: 0.4.0
         version: link:../../packages/@livestore/adapter-web
       '@livestore/common':
-        specifier: 0.4.0-dev.22
+        specifier: 0.4.0
         version: link:../../packages/@livestore/common
       '@livestore/livestore':
-        specifier: 0.4.0-dev.22
+        specifier: 0.4.0
         version: link:../../packages/@livestore/livestore
       '@livestore/peer-deps':
-        specifier: 0.4.0-dev.22
+        specifier: 0.4.0
         version: link:../../packages/@livestore/peer-deps
       '@livestore/react':
-        specifier: 0.4.0-dev.22
+        specifier: 0.4.0
         version: link:../../packages/@livestore/react
       '@livestore/sync-electric':
-        specifier: 0.4.0-dev.22
+        specifier: 0.4.0
         version: link:../../packages/@livestore/sync-electric
       '@livestore/wa-sqlite':
-        specifier: 0.4.0-dev.22
+        specifier: 0.4.0
         version: link:../../packages/@livestore/wa-sqlite
       '@overengineering/fps-meter':
         specifier: 0.2.4
@@ -2029,31 +2029,31 @@ importers:
   examples/web-todomvc-sync-s2:
     dependencies:
       '@livestore/adapter-node':
-        specifier: 0.4.0-dev.22
+        specifier: 0.4.0
         version: link:../../packages/@livestore/adapter-node
       '@livestore/adapter-web':
-        specifier: 0.4.0-dev.22
+        specifier: 0.4.0
         version: link:../../packages/@livestore/adapter-web
       '@livestore/common':
-        specifier: 0.4.0-dev.22
+        specifier: 0.4.0
         version: link:../../packages/@livestore/common
       '@livestore/livestore':
-        specifier: 0.4.0-dev.22
+        specifier: 0.4.0
         version: link:../../packages/@livestore/livestore
       '@livestore/peer-deps':
-        specifier: 0.4.0-dev.22
+        specifier: 0.4.0
         version: link:../../packages/@livestore/peer-deps
       '@livestore/react':
-        specifier: 0.4.0-dev.22
+        specifier: 0.4.0
         version: link:../../packages/@livestore/react
       '@livestore/sync-s2':
-        specifier: 0.4.0-dev.22
+        specifier: 0.4.0
         version: link:../../packages/@livestore/sync-s2
       '@livestore/utils':
-        specifier: 0.4.0-dev.22
+        specifier: 0.4.0
         version: link:../../packages/@livestore/utils
       '@livestore/wa-sqlite':
-        specifier: 0.4.0-dev.22
+        specifier: 0.4.0
         version: link:../../packages/@livestore/wa-sqlite
       '@overengineering/fps-meter':
         specifier: 0.2.4
@@ -6914,7 +6914,7 @@ packages:
 
   '@expo/bunyan@4.0.1':
     resolution: {integrity: sha512-+Lla7nYSiHZirgK+U/uYzsLv/X+HaJienbD5AKX1UQZHYfWaP+9uuQluRB4GrEVWF0GZ7vEVp/jzaOT9k/SQlg==}
-    engines: {'0': node >=0.10.0}
+    engines: {node: '>=0.10.0'}
 
   '@expo/cli@54.0.10':
     resolution: {integrity: sha512-iw9gAnN6+PKWWLIyYmiskY/wzZjuFMctunqGXuC8BGATWgtr/HpzjVqWbcL3KIX/GvEBCCh74Tkckrh+Ylxh5Q==}
@@ -7921,6 +7921,7 @@ packages:
   '@oclif/screen@3.0.8':
     resolution: {integrity: sha512-yx6KAqlt3TAHBduS2fMQtJDL2ufIHnDRArrJEOoTTuizxqmjLT+psGYOHpmMl3gvQpFJ11Hs76guUUktzAF9Bg==}
     engines: {node: '>=12.0.0'}
+    deprecated: Package no longer supported. Contact Support at https://www.npmjs.com/support for more info.
 
   '@oozcitak/dom@2.0.2':
     resolution: {integrity: sha512-GjpKhkSYC3Mj4+lfwEyI1dqnsKTgwGy48ytZEhm4A/xnH/8z9M3ZVXKr/YGQi3uCLs1AEBS+x5T2JPiueEDW8w==}
@@ -10594,6 +10595,7 @@ packages:
 
   '@ungap/structured-clone@1.3.0':
     resolution: {integrity: sha512-WmoN8qaIAo7WTYWbAZuG8PYEhn5fkz7dZrqTBZ7dtt//lL2Gwms1IcnQ5yHqjDfX8Ft5j4YzDM23f87zBfDe9g==}
+    deprecated: Potential CWE-502 - Update to 1.3.1 or higher
 
   '@upsetjs/venn.js@2.0.0':
     resolution: {integrity: sha512-WbBhLrooyePuQ1VZxrJjtLvTc4NVfpOyKx0sKqioq9bX1C1m7Jgykkn8gLrtwumBioXIqam8DLxp88Adbue6Hw==}
@@ -10883,10 +10885,12 @@ packages:
   '@xmldom/xmldom@0.7.13':
     resolution: {integrity: sha512-lm2GW5PkosIzccsaZIz7tp8cPADSIlIHWDFTR1N0SzfinhhYgeIQjFMz4rYzanCScr3DqQLeomUDArp6MWKm+g==}
     engines: {node: '>=10.0.0'}
+    deprecated: this version has critical issues, please update to the latest version
 
   '@xmldom/xmldom@0.8.12':
     resolution: {integrity: sha512-9k/gHF6n/pAi/9tqr3m3aqkuiNosYTurLLUtc7xQ9sxB/wm7WPygCv8GYa6mS0fLJEHhqMC1ATYhz++U/lRHqg==}
     engines: {node: '>=10.0.0'}
+    deprecated: this version has critical issues, please update to the latest version
 
   '@xtuc/ieee754@1.2.0':
     resolution: {integrity: sha512-DX8nKgqcGwsc0eJSqYt5lwP4DH5FlHnmuWWBRy7X0NcaGR0ZtuyeESgMwTYVEtxmsNGY+qit4QYT/MIYTOTPeA==}
@@ -11366,6 +11370,7 @@ packages:
   basic-ftp@5.2.0:
     resolution: {integrity: sha512-VoMINM2rqJwJgfdHq6RiUudKt2BV+FY5ZFezP/ypmwayk68+NzzAQy4XXLlqsGD4MCzq3DrmNFD/uUmBJuGoXw==}
     engines: {node: '>=10.0.0'}
+    deprecated: Security vulnerability fixed in 5.2.1, please upgrade
 
   bcp-47-match@2.0.3:
     resolution: {integrity: sha512-JtTezzbAibu8G0R9op9zb3vcWZd9JF6M0xOYGPn0fNCd7wOpRB1mU2mH9T8gaBGbAAyIIVgB2G7xG0GP98zMAQ==}
@@ -13486,11 +13491,13 @@ packages:
 
   glob@10.5.0:
     resolution: {integrity: sha512-DfXN8DfhJ7NH3Oe7cFmu3NCu1wKbkReJ8TorzSAFbSKrlNaQSKfIzqYqVY8zlbs2NLBbWpRiU52GX2PbaBVNkg==}
+    deprecated: Old versions of glob are not supported, and contain widely publicized security vulnerabilities, which have been fixed in the current version. Please update. Support for old versions may be purchased (at exorbitant rates) by contacting i@izs.me
     hasBin: true
 
   glob@11.0.3:
     resolution: {integrity: sha512-2Nim7dha1KVkaiF4q6Dj+ngPPMdfvLJEOpZk/jKiUAkqKebpGAWQXAq9z1xu9HKu5lWfqw/FASuccEjyznjPaA==}
     engines: {node: 20 || >=22}
+    deprecated: Old versions of glob are not supported, and contain widely publicized security vulnerabilities, which have been fixed in the current version. Please update. Support for old versions may be purchased (at exorbitant rates) by contacting i@izs.me
     hasBin: true
 
   glob@13.0.6:
@@ -13499,9 +13506,11 @@ packages:
 
   glob@6.0.4:
     resolution: {integrity: sha512-MKZeRNyYZAVVVG1oZeLaWie1uweH40m9AZwIwxyPbTSX4hHrVYSzLg0Ro5Z5R7XKkIX+Cc6oD1rqeDJnwsB8/A==}
+    deprecated: Old versions of glob are not supported, and contain widely publicized security vulnerabilities, which have been fixed in the current version. Please update. Support for old versions may be purchased (at exorbitant rates) by contacting i@izs.me
 
   glob@7.2.3:
     resolution: {integrity: sha512-nFR0zLpU2YCaRxwoCJvL6UvCH2JFyFVIvwTLsIf21AuHlMskA1hhTdk+LlYJtOlYt9v6dvszD2BGRqBL+iQK9Q==}
+    deprecated: Old versions of glob are not supported, and contain widely publicized security vulnerabilities, which have been fixed in the current version. Please update. Support for old versions may be purchased (at exorbitant rates) by contacting i@izs.me
 
   globalthis@1.0.4:
     resolution: {integrity: sha512-DpLKbNU4WylpxJykQujfCcwYWiV/Jhm50Goo0wrVILAv5jOr9d+H+UR3PhSCD2rCCEIg0uc+G+muBTwD54JhDQ==}
@@ -13687,6 +13696,7 @@ packages:
 
   hast@1.0.0:
     resolution: {integrity: sha512-vFUqlRV5C+xqP76Wwq2SrM0kipnmpxJm7OfvVXpB35Fp+Fn4MV+ozr+JZr5qFvyR1q/U+Foim2x+3P+x9S1PLA==}
+    deprecated: Renamed to rehype
 
   hastscript@9.0.1:
     resolution: {integrity: sha512-g7df9rMFX/SPi34tyGCyUBREQoKkapwdY/T04Qn9TDWfHhAYt4/I0gMVirzK5wEzeUqIjEB+LXC/ypb7Aqno5w==}
@@ -13883,6 +13893,7 @@ packages:
 
   inflight@1.0.6:
     resolution: {integrity: sha512-k92I/b08q4wvFscXCLvqfsHCrjrF7yiXsQuIVvVE7N82W3+aqpzuUdBbfhWcy/FZR3/4IgflMgKLOsvPDrGCJA==}
+    deprecated: This module is not supported, and leaks memory. Do not use it. Check out lru-cache if you want a good and tested way to coalesce async requests by a key value, which is much more comprehensive and powerful.
 
   inherits@2.0.3:
     resolution: {integrity: sha512-x00IRNXNy63jwGkJmzPigoySHbaqpNuzKbBOmzK+g2OdZpQ9w+sxCN+VSB3ja7IAge2OP2qpfxTjeNcyjmW1uw==}
@@ -14720,6 +14731,7 @@ packages:
 
   lodash.get@4.4.2:
     resolution: {integrity: sha512-z+Uw/vLuy6gQe8cfaFWD7p0wVv8fJl3mbzXh33RS+0oW2wvUqiRXiQ69gLWSLpgB5/6sU+r6BlQR0MBILadqTQ==}
+    deprecated: This package is deprecated. Use the optional chaining (?.) operator instead.
 
   lodash.includes@4.3.0:
     resolution: {integrity: sha512-W3Bx6mdkRTGtlJISOvVD/lbqjTlPPUDTMnlXZFnVwi9NKJ6tiAk6LVdlhZMm17VZisqhKcgzpO5Wz91PCt5b0w==}
@@ -15477,6 +15489,7 @@ packages:
   node-domexception@1.0.0:
     resolution: {integrity: sha512-/jKZoMpw0F8GRwl4/eLROPA3cfcXtLApP0QzLmUT/HuPCZWyB7IY9ZrMeKw2O/nFIqPQB3PVM9aYm0F312AXDQ==}
     engines: {node: '>=10.5.0'}
+    deprecated: Use your platform's native DOMException instead
 
   node-exports-info@1.6.0:
     resolution: {integrity: sha512-pyFS63ptit/P5WqUkt+UUfe+4oevH+bFeIiPPdfb0pFeYEu/1ELnJu5l+5EcTKYL5M7zaAa7S8ddywgXypqKCw==}
@@ -16534,6 +16547,7 @@ packages:
   react-server-dom-webpack@19.1.0:
     resolution: {integrity: sha512-GUbawkNSN0oj8GnuNhMzsvyIHpXqqpAmyOY5NRqNNQ/M8wvUUN8YBoGjDUj9lbmBrmAHS65BByp6325CcWA0eg==}
     engines: {node: '>=0.10.0'}
+    deprecated: Critical Security Vulnerability in React Server Components
     peerDependencies:
       react: 19.2.3
       react-dom: 19.2.3
@@ -16874,10 +16888,12 @@ packages:
 
   rimraf@2.4.5:
     resolution: {integrity: sha512-J5xnxTyqaiw06JjMftq7L9ouA448dw/E7dKghkP9WpKNuwmARNNg+Gk8/u5ryb9N/Yo2+z3MCwuqFK/+qPOPfQ==}
+    deprecated: Rimraf versions prior to v4 are no longer supported
     hasBin: true
 
   rimraf@3.0.2:
     resolution: {integrity: sha512-JZkJMZkAGFFPP2YqXZXPbMlMBgsxzE8ILs4lMIX/2o0L9UBw9O/Y3o6wFw/i9YLapcUJWwqbi3kdxIPdC62TIA==}
+    deprecated: Rimraf versions prior to v4 are no longer supported
     hasBin: true
 
   rimraf@5.0.10:
@@ -17550,6 +17566,7 @@ packages:
   tar@6.2.1:
     resolution: {integrity: sha512-DZ4yORTwrbTj/7MZYq2w+/ZFdI6OZ/f9SFHR+71gIVUZhOQPHzVCLpvRnPgyaMpfWxxk/4ONva3GQSyNIKRv6A==}
     engines: {node: '>=10'}
+    deprecated: Old versions of tar are not supported, and contain widely publicized security vulnerabilities, which have been fixed in the current version. Please update. Support for old versions may be purchased (at exorbitant rates) by contacting i@izs.me
 
   tar@7.5.13:
     resolution: {integrity: sha512-tOG/7GyXpFevhXVh8jOPJrmtRpOTsYqUIkVdVooZYJS/z8WhfQUX8RJILmeuJNinGAMSu1veBr4asSHFt5/hng==}
@@ -18194,14 +18211,17 @@ packages:
 
   uuid@7.0.3:
     resolution: {integrity: sha512-DPSke0pXhTZgoF/d+WSt2QaKMCFSfx7QegxEWT+JOuHF5aWrKEn0G+ztjuJg/gG8/ItK+rbPCD/yNv8yyih6Cg==}
+    deprecated: uuid@10 and below is no longer supported.  For ESM codebases, update to uuid@latest.  For CommonJS codebases, use uuid@11 (but be aware this version will likely be deprecated in 2028).
     hasBin: true
 
   uuid@8.3.2:
     resolution: {integrity: sha512-+NYs2QeMWy+GWFOEm9xnn6HCDp0l7QBD7ml8zLUmJ+93Q5NF0NocErnwkTkXVFNiX3/fpC6afS8Dhb/gz7R7eg==}
+    deprecated: uuid@10 and below is no longer supported.  For ESM codebases, update to uuid@latest.  For CommonJS codebases, use uuid@11 (but be aware this version will likely be deprecated in 2028).
     hasBin: true
 
   uuid@9.0.1:
     resolution: {integrity: sha512-b+1eJOlsR9K8HJpow9Ok3fiWOWSIcIzXodvv0rQjVoOVNpWMpxf1wZNpt4y9h10odCNrqnYp1OBzRktckBe3sA==}
+    deprecated: uuid@10 and below is no longer supported.  For ESM codebases, update to uuid@latest.  For CommonJS codebases, use uuid@11 (but be aware this version will likely be deprecated in 2028).
     hasBin: true
 
   v8-compile-cache-lib@3.0.1:
@@ -18597,6 +18617,7 @@ packages:
   whatwg-encoding@3.1.1:
     resolution: {integrity: sha512-6qN4hJdMwfYBtE3YBTTHhoeuUrDBPZmbQaxWAqSALV/MeEnR5z1xd8UKud2RAkFoPkmB+hli1TZSnyi84xz1vQ==}
     engines: {node: '>=18'}
+    deprecated: Use @exodus/bytes instead for a more spec-conformant and faster implementation
 
   whatwg-fetch@3.6.20:
     resolution: {integrity: sha512-EqhiFU6daOA8kpjOWTL0olhVOF3i7OrFzSYiGsEMB8GcXS+RrzauAERX65xMeNWVqxA6HXH2m69Z9LaKKdisfg==}
