@@ -29,7 +29,6 @@ import {
   Fiber,
   FileSystem,
   Layer,
-  Option,
   Queue,
   Schedule,
   Schema,
@@ -45,8 +44,7 @@ import { makeLeaderThread } from '../leader-thread-shared.ts'
 import { makeShutdownChannel } from '../shutdown-channel.ts'
 import * as WorkerSchema from '../worker-schema.ts'
 
-import * as NodeFileSystem from '@effect/platform-node/NodeFileSystem'
-import * as NodeWorker from '@effect/platform-node/NodeWorker'
+import { NodeFileSystem, NodeWorker } from '@effect/platform-node'
 export interface NodeAdapterOptions {
   storage: WorkerSchema.StorageType
   /** The default is the hostname of the current machine */
@@ -423,7 +421,7 @@ const makeLocalLeaderThread = ({
           export: Effect.sync(() => dbState.export()),
           getEventlogData: Effect.sync(() => dbEventlog.export()),
           syncState: syncProcessor.syncState,
-          sendDevtoolsMessage: (message) => extraIncomingMessagesQueue.offer(message),
+          sendDevtoolsMessage: (message) => Queue.offer(extraIncomingMessagesQueue, message),
           networkStatus,
         },
         { ...omitUndefineds({ overrides: testing?.overrides?.clientSession?.leaderThreadProxy }) },
@@ -487,9 +485,7 @@ const makeWorkerLeaderThread = ({
       Effect.withSpan('@livestore/adapter-node:adapter:setupLeaderThread'),
     )
 
-    const runInWorker = <A, I, E, EI, R>(
-      req: WorkerSchema.LeaderWorkerInnerRequest & Schema.WithResult<A, I, E, EI, R>,
-    ): Effect.Effect<A, E, R> =>
+    const runInWorker = (req: WorkerSchema.LeaderWorkerInnerRequest): Effect.Effect<any, never, never> =>
       worker.executeEffect(req).pipe(
         Effect.catchIf(isWorkerTransportError, (e) => Effect.die(e)),
         Effect.logWarnIfTakesLongerThan({
@@ -497,15 +493,13 @@ const makeWorkerLeaderThread = ({
           duration: 2000,
         }),
         Effect.withSpan(`@livestore/adapter-node:client-session:runInWorker:${req._tag}`),
-      )
+      ) as Effect.Effect<any, never, never>
 
-    const runInWorkerStream = <A, I, E, EI, R>(
-      req: WorkerSchema.LeaderWorkerInnerRequest & Schema.WithResult<A, I, E, EI, R>,
-    ): Stream.Stream<A, E, R> =>
+    const runInWorkerStream = (req: WorkerSchema.LeaderWorkerInnerRequest): Stream.Stream<any, never, never> =>
       worker.execute(req).pipe(
-        Stream.refineOrDie((e) => isWorkerTransportError(e) === true ? Option.none() : Option.some(e)),
+        Stream.catchIf(isWorkerTransportError, (e) => Stream.die(e)),
         Stream.withSpan(`@livestore/adapter-node:client-session:runInWorkerStream:${req._tag}`),
-      )
+      ) as Stream.Stream<any, never, never>
 
     const bootStatusFiber = yield* runInWorkerStream(new WorkerSchema.LeaderWorkerInnerBootStatusStream()).pipe(
       Stream.tap((bootStatus) => Queue.offer(bootStatusQueue, bootStatus)),

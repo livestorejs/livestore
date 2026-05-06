@@ -1,7 +1,7 @@
 import type { BroadcastChannel as NodeBroadcastChannel } from 'node:worker_threads'
 
 import type { Result, SchemaIssue } from '@livestore/utils/effect'
-import { Deferred, Effect, Exit, Schema, Scope, Stream, WebChannel } from '@livestore/utils/effect'
+import { Deferred, Effect, Exit, Queue, Schema, Scope, Stream, WebChannel } from '@livestore/utils/effect'
 
 export const makeBroadcastChannel = <Msg, MsgEncoded>({
   channelName,
@@ -36,15 +36,15 @@ export const makeBroadcastChannel = <Msg, MsgEncoded>({
 	      //   Stream.map((_) => Schema.decodeUnknownResult(listenSchema)(_.data)),
       // )
 
-      const listen = Stream.asyncPush<Result.Result<Msg, SchemaIssue.Issue>>((emit) =>
+      const listen = Stream.callback<Result.Result<Msg, SchemaIssue.Issue>>((queue) =>
         Effect.acquireRelease(
-          Effect.gen(function* () {
-	            channel.onmessage = (event: any) => emit.single(Schema.decodeUnknownResult(schema)(event.data))
-
+          Effect.sync(() => {
+            channel.onmessage = (event: any) => Queue.offerUnsafe(queue, Schema.decodeUnknownResult(schema)(event.data))
             return channel
           }),
           (channel) =>
             Effect.sync(() => {
+              channel.onmessage = null
               // NOTE not all BroadcastChannel implementations have the `unref` method
               if (typeof channel.unref === 'function') {
                 channel.unref()
@@ -58,7 +58,7 @@ export const makeBroadcastChannel = <Msg, MsgEncoded>({
 
       return {
         [WebChannel.WebChannelSymbol]: WebChannel.WebChannelSymbol,
-        send,
+        send: send as WebChannel.WebChannel<Msg, Msg>['send'],
         listen,
         closedDeferred,
         schema: { listen: schema, send: schema },

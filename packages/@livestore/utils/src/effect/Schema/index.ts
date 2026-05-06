@@ -91,6 +91,29 @@ export const head = (schema: Schema_.Top) =>
     }) as any,
   )
 
+export const optionalWith = <S extends Schema_.Top>(
+  schema: S,
+  options?: { readonly nullable?: boolean; readonly default?: () => unknown },
+) => {
+  const withNull = options?.nullable === true ? Schema_.NullOr(schema as any) : schema
+  const optional = Schema_.optional(withNull as any)
+
+  return options?.default === undefined ? optional : optional.pipe(Schema_.withDecodingDefaultKey(options.default as any))
+}
+
+export const greaterThanOrEqualTo = (minimum: number, annotations?: Parameters<typeof Schema_.isGreaterThanOrEqualTo>[1]) =>
+  <S extends Schema_.Top & { readonly check: (...filters: any[]) => any }>(schema: S) =>
+    schema.check(Schema_.isGreaterThanOrEqualTo(minimum, annotations))
+export const lessThanOrEqualTo = (maximum: number, annotations?: Parameters<typeof Schema_.isLessThanOrEqualTo>[1]) =>
+  <S extends Schema_.Top & { readonly check: (...filters: any[]) => any }>(schema: S) =>
+    schema.check(Schema_.isLessThanOrEqualTo(maximum, annotations))
+export const minItems = (minimum: number, annotations?: Parameters<typeof Schema_.isMinLength>[1]) =>
+  <S extends Schema_.Top & { readonly check: (...filters: any[]) => any }>(schema: S) =>
+    schema.check(Schema_.isMinLength(minimum, annotations))
+export const maxItems = (maximum: number, annotations?: Parameters<typeof Schema_.isMaxLength>[1]) =>
+  <S extends Schema_.Top & { readonly check: (...filters: any[]) => any }>(schema: S) =>
+    schema.check(Schema_.isMaxLength(maximum, annotations))
+
 export type WithResult<A, _I = unknown, E = never, _EI = unknown, R = never> = {
   readonly _tag: string
   readonly __success?: A

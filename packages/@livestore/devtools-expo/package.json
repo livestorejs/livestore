@@ -28,6 +28,7 @@
     "@livestore/utils": "workspace:^"
   },
   "devDependencies": {
+    "@effect/platform-node": "4.0.0-beta.60",
     "@types/node": "25.3.3",
     "expo": "54.0.12",
     "vite": "7.3.1"

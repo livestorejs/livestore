@@ -19,8 +19,7 @@ import { makeMeshNode, makeWebSocketEdge } from '@livestore/webmesh'
 
 import { makeViteMiddleware } from './vite-dev-server.ts'
 
-import * as NodeHttpServer from '@effect/platform-node/NodeHttpServer'
-import * as NodeHttpServerRequest from '@effect/platform-node/NodeHttpServerRequest'
+import { NodeHttpServer, NodeHttpServerRequest } from '@effect/platform-node'
 /**
  * Determines if a request URL should be routed to the Vite middleware.
  * Includes LiveStore devtools paths and Vite internal paths like `/@fs/`, `/@vite/`, etc.
@@ -101,7 +100,7 @@ export const startDevtoolsServer = ({
             // We want to keep the websocket open until the client disconnects or the server shuts down
             return yield* Effect.never
           }),
-          webChannel.closedDeferred,
+          Deferred.await(webChannel.closedDeferred),
         )
 
         return HttpServerResponse.empty({ status: 101 })
@@ -114,8 +113,8 @@ export const startDevtoolsServer = ({
           // TODO replace this once @effect/platform-node supports Node HTTP middlewares
           const nodeReq = NodeHttpServerRequest.toIncomingMessage(req)
           const nodeRes = NodeHttpServerRequest.toServerResponse(req)
-          const deferred = yield* Deferred.make()
-          viteMiddleware.middlewares(nodeReq, nodeRes, () => Deferred.unsafeDone(deferred, Exit.void))
+          const deferred = yield* Deferred.make<void>()
+          viteMiddleware.middlewares(nodeReq, nodeRes, () => Effect.runFork(Deferred.done(deferred, Exit.void)))
           yield* Deferred.await(deferred)
 
           // The response is already sent, so we need to return an empty response (which won't be sent)
@@ -147,4 +146,4 @@ export const startDevtoolsServer = ({
     Layer.provide(NodeHttpServer.layer(() => http.createServer(), { port, host })),
     Layer.launch,
     Effect.orDie,
-  )
+  ) as Effect.Effect<never, never, HttpClient.HttpClient>

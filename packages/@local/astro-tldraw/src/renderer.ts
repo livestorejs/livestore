@@ -117,14 +117,16 @@ const renderSvgWithTheme = (
             cause,
           }),
       }).pipe(
-        Effect.timeoutFail({
-          onTimeout: () =>
-            new RenderTimeoutError({
+        Effect.timeoutOrElse({
+          duration: Duration.millis(RENDER_TIMEOUT_MS),
+          orElse: () =>
+            Effect.fail(
+              new RenderTimeoutError({
               message: `Tldraw render timed out after ${RENDER_TIMEOUT_MS}ms`,
               diagram: tldrPath,
               theme,
-            }),
-          duration: Duration.millis(RENDER_TIMEOUT_MS),
+              }),
+            ),
         }),
       )
 
@@ -135,7 +137,7 @@ const renderSvgWithTheme = (
         const attemptResult = yield* Effect.result(renderEffect)
 
         if (attemptResult._tag === 'Success') {
-          const outputPaths = attemptResult.value.map((value) => (typeof value === 'string' ? value : value.toString()))
+          const outputPaths = attemptResult.success.map((value) => (typeof value === 'string' ? value : value.toString()))
 
           if (outputPaths.length === 0) {
             return shouldNeverHappen(`No SVG generated for ${tldrPath}`)
@@ -182,7 +184,7 @@ const renderSvgWithTheme = (
 
         const error = attemptResult.failure
         if (attempt >= MAX_RETRIES) {
-          return yield* error
+          return yield* Effect.fail(error)
         }
 
         yield* Effect.logWarning(

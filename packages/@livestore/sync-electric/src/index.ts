@@ -8,7 +8,6 @@ import {
   HttpClientRequest,
   HttpClientResponse,
   Option,
-  ReadonlyArray,
   Schedule,
   Schema,
   Stream,
@@ -133,12 +132,12 @@ export interface SyncBackendOptions {
      * How long to wait for a ping response before timing out
      * @default 10 seconds
      */
-    requestTimeout?: Duration.DurationInput
+    requestTimeout?: Duration.Input
     /**
      * How often to send ping requests
      * @default 10 seconds
      */
-    requestInterval?: Duration.DurationInput
+    requestInterval?: Duration.Input
   }
 }
 
@@ -149,6 +148,18 @@ export const SyncMetadata = Schema.Struct({
 })
 
 export type SyncMetadata = typeof SyncMetadata.Type
+
+type PullBatchItem = {
+  metadata: Option.Option<SyncMetadata>
+  eventEncoded: LiveStoreEvent.Global.Encoded
+}
+
+type PullResult = Option.Option<readonly [ReadonlyArray<PullBatchItem>, Option.Option<SyncMetadata>]>
+
+type PullStreamItem = {
+  batch: ReadonlyArray<PullBatchItem>
+  hasMore: boolean
+}
 
 /**
  * Creates a sync backend that uses ElectricSQL for real-time event synchronization.
@@ -205,20 +216,7 @@ export const makeSyncBackend =
       const runPull = (
         handle: Option.Option<SyncMetadata>,
         { live }: { live: boolean },
-      ): Effect.Effect<
-        Option.Option<
-          readonly [
-            /** The batch of events */
-            ReadonlyArray<{
-              metadata: Option.Option<SyncMetadata>
-              eventEncoded: LiveStoreEvent.Global.Encoded
-            }>,
-            /** The next handle to use for the next pull */
-            Option.Option<SyncMetadata>,
-          ]
-        >,
-        UnknownError | IsOfflineError
-      > =>
+      ): Effect.Effect<PullResult, UnknownError | IsOfflineError> =>
         Effect.gen(function* () {
           const argsJson = yield* Schema.encodeEffect(ApiSchema.ArgsSchema)(
             ApiSchema.PullPayload.make({ storeId, handle, payload, live }),
@@ -270,9 +268,9 @@ export const makeSyncBackend =
           })(resp)
 
           // Check for delete/update operations and throw descriptive error
-          const invalidOperations = ReadonlyArray.filterMap(allItems, (item) =>
-            Schema.is(ResponseItemInvalid)(item) === true ? Option.some(item.headers.operation) : Option.none(),
-          )
+          const invalidOperations = allItems
+            .filter(Schema.is(ResponseItemInvalid))
+            .map((item) => item.headers.operation)
 
           if (invalidOperations.length > 0) {
             const operation = invalidOperations[0]!
@@ -296,7 +294,7 @@ export const makeSyncBackend =
             cause._tag === 'UnknownError' ? cause : new UnknownError({ cause }),
           ),
           Effect.withSpan('electric-provider:runPull', { attributes: { handle, live } }),
-        )
+        ) as unknown as Effect.Effect<PullResult, UnknownError | IsOfflineError>
 
       const pullEndpointHasSameOrigin =
         pullEndpoint.startsWith('/') ||
@@ -332,28 +330,30 @@ export const makeSyncBackend =
         pull: (cursor, options) => {
           let hasEmittedAtLeastOnce = false
 
-          return Stream.unfoldEffect(cursor.pipe(Option.flatMap((_) => _.metadata)), (metadataOption) =>
-            Effect.gen(function* () {
+          return Stream.unfold<Option.Option<SyncMetadata>, PullStreamItem, UnknownError | IsOfflineError, never>(
+            cursor.pipe(Option.flatMap((_) => _.metadata)),
+            (metadataOption) =>
+              Effect.gen(function* () {
               const result = yield* runPull(metadataOption, { live: options?.live ?? false })
-              if (Option.isNone(result) === true) return Option.none()
+              if (Option.isNone(result) === true) return undefined
 
               const [batch, nextMetadataOption] = result.value
 
               // Continue pagination if we have data
               if (batch.length > 0) {
                 hasEmittedAtLeastOnce = true
-                return Option.some([{ batch, hasMore: true }, nextMetadataOption])
+                return [{ batch, hasMore: true } satisfies PullStreamItem, nextMetadataOption] as const
               }
 
               // Make sure we emit at least once even if there's no data or we're live-pulling
               if (hasEmittedAtLeastOnce === false || options?.live === true) {
                 hasEmittedAtLeastOnce = true
-                return Option.some([{ batch, hasMore: false }, nextMetadataOption])
+                return [{ batch, hasMore: false } satisfies PullStreamItem, nextMetadataOption] as const
               }
 
               // Stop on empty batch (when not live)
-              return Option.none()
-            }),
+              return undefined
+              }) as Effect.Effect<readonly [PullStreamItem, Option.Option<SyncMetadata>] | undefined, UnknownError | IsOfflineError>,
           ).pipe(
             Stream.map(({ batch, hasMore }) => ({
               batch,

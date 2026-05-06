@@ -1,5 +1,5 @@
 // eslint-disable-next-line @typescript-eslint/no-require-imports, unicorn/prefer-module, @typescript-eslint/consistent-type-imports
-const { Effect, Logger, LogLevel, Layer } = require('@livestore/utils/effect') as typeof import(
+const { Effect, Logger, Layer } = require('@livestore/utils/effect') as typeof import(
   '@livestore/utils/effect',
   {
     with: {
@@ -9,7 +9,7 @@ const { Effect, Logger, LogLevel, Layer } = require('@livestore/utils/effect') a
 )
 
 // eslint-disable-next-line @typescript-eslint/no-require-imports, unicorn/prefer-module, @typescript-eslint/consistent-type-imports
-const { PlatformNode } = require('@livestore/utils/node') as typeof import('@livestore/utils/node', {
+const { NodeHttpClient } = require('@effect/platform-node') as typeof import('@effect/platform-node', {
   with: {
     'resolution-mode': 'import',
   },
@@ -36,7 +36,7 @@ const addLiveStoreDevtoolsMiddleware = (config: MutableDeep<MetroConfig>, option
   import('@livestore/adapter-node/devtools')
     .then(async ({ startDevtoolsServer }) => {
       const layer = Layer.mergeAll(
-        PlatformNode.NodeHttpClient.layer,
+        NodeHttpClient.layerNodeHttp,
         Logger.prettyWithThread('@livestore/devtools-expo:metro-config'),
       )
 
@@ -47,9 +47,9 @@ const addLiveStoreDevtoolsMiddleware = (config: MutableDeep<MetroConfig>, option
         port,
       }).pipe(
         Effect.provide(layer),
-        Logger.withMinimumLogLevel(LogLevel.Debug),
+        Logger.minimumLogLevel('Debug'),
         Effect.tapCauseLogPretty,
-        Effect.runPromise,
+        (effect: any) => Effect.runPromise(effect),
       )
     })
     .catch((error) => {

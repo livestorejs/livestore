@@ -1,4 +1,5 @@
-import { Cause, Logger, type LogLevel } from 'effect'
+import { Cause, Effect, Logger, References } from 'effect'
+import type { LogLevel } from 'effect/LogLevel'
 
 export * from 'effect/Logger'
 
@@ -53,3 +54,10 @@ export const consoleLogger = (threadName: string) =>
   })
 
 export const consoleWithThread = (threadName: string) => Logger.layer([consoleLogger(threadName)])
+
+export const minimumLogLevel =
+  (level: LogLevel) =>
+  <A, E, R>(self: Effect.Effect<A, E, R>): Effect.Effect<A, E, R> =>
+    Effect.provideService(self, References.MinimumLogLevel, level)
+
+export const withMinimumLogLevel = minimumLogLevel

@@ -19,7 +19,7 @@ import { LiveStoreEvent } from '@livestore/livestore'
 import { CF_SQL_VFS_REQUIRED_PRAGMAS, sqliteDbFactory } from '@livestore/sqlite-wasm/cf'
 import { makeSqliteDb as makeDoSqliteDb } from './make-sqlite-db.ts'
 import { loadSqlite3Wasm } from '@livestore/sqlite-wasm/load-wasm'
-import { Effect, FetchHttpClient, Layer, Schedule, SubscriptionRef, WebChannel } from '@livestore/utils/effect'
+import { Effect, FetchHttpClient, Layer, Queue, Schedule, SubscriptionRef, WebChannel } from '@livestore/utils/effect'
 
 export const makeAdapter =
   ({
@@ -132,7 +132,7 @@ export const makeAdapter =
             export: Effect.sync(() => dbState.export()),
             getEventlogData: Effect.sync(() => dbEventlog.export()),
             syncState: syncProcessor.syncState,
-            sendDevtoolsMessage: (message) => extraIncomingMessagesQueue.offer(message),
+            sendDevtoolsMessage: (message) => Queue.offer(extraIncomingMessagesQueue, message),
             networkStatus,
           },
           {

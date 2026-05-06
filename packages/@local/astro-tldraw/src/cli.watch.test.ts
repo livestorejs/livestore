@@ -59,7 +59,7 @@ Vitest.describe('summarizeWatchEvent', () => {
 })
 
 Vitest.describe('watchDiagrams', () => {
-  Vitest.scopedLive(
+  Vitest.live(
     'runs initial build on start (empty diagrams dir)',
     Effect.fn(function* () {
       const fs = yield* FileSystem.FileSystem
@@ -87,7 +87,7 @@ Vitest.describe('watchDiagrams', () => {
     { timeout: 10000 },
   )
 
-  Vitest.scopedLive(
+  Vitest.live(
     'ignores non-.tldr file changes',
     Effect.fn(function* () {
       const fs = yield* FileSystem.FileSystem
@@ -124,7 +124,7 @@ Vitest.describe('watchDiagrams', () => {
     { timeout: 10000 },
   )
 
-  Vitest.scopedLive(
+  Vitest.live(
     'triggers rebuild when .tldr file is created',
     Effect.fn(function* () {
       const fs = yield* FileSystem.FileSystem

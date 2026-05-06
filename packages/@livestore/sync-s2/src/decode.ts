@@ -19,7 +19,7 @@ export const decodeReadBatch = (
   eventEncoded: LiveStoreEvent.Global.Encoded
   metadata: Option.Option<{ s2SeqNum: S2SeqNum }>
 }> => {
-  const decoded = Schema.decodeSync(ReadBatchSchema)(readBatch)
+  const decoded = Schema.decodeSync(ReadBatchSchema)(readBatch) as typeof ReadBatchSchema.Type
   return decoded.records
     .filter((r): r is { body: LiveStoreEvent.Global.Encoded; seq_num: S2SeqNum } => r.body !== undefined)
     .map((r) => ({

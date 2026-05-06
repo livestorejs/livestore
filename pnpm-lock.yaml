@@ -268,7 +268,7 @@ importers:
         version: link:../packages/@livestore/common
       '@livestore/devtools-vite':
         specifier: 0.4.0-dev.22
-        version: 0.4.0-dev.22(a114698bb63a34c0bb198196ced9bcb9)
+        version: 0.4.0-dev.22(b3ff8f22e5189671c122fd490a687083)
       '@livestore/livestore':
         specifier: workspace:^
         version: link:../packages/@livestore/livestore
@@ -467,7 +467,7 @@ importers:
         version: link:../../../../../packages/@livestore/devtools-expo
       '@livestore/devtools-vite':
         specifier: 0.4.0-dev.22
-        version: 0.4.0-dev.22(a114698bb63a34c0bb198196ced9bcb9)
+        version: 0.4.0-dev.22(b3ff8f22e5189671c122fd490a687083)
       '@livestore/livestore':
         specifier: workspace:^
         version: link:../../../../../packages/@livestore/livestore
@@ -627,7 +627,7 @@ importers:
         version: 1.13.12(vite@7.3.1(@types/node@25.3.3)(jiti@2.6.1)(lightningcss@1.32.0)(terser@5.46.1)(tsx@4.21.0)(yaml@2.8.3))(workerd@1.20251008.0)(wrangler@4.42.2(@cloudflare/workers-types@4.20251118.0))
       '@livestore/devtools-vite':
         specifier: 0.4.0-dev.22
-        version: 0.4.0-dev.22(a114698bb63a34c0bb198196ced9bcb9)
+        version: 0.4.0-dev.22(b3ff8f22e5189671c122fd490a687083)
       '@playwright/test':
         specifier: ^1.59.1
         version: 1.59.1
@@ -697,7 +697,7 @@ importers:
         version: 1.13.12(vite@7.3.1(@types/node@25.3.3)(jiti@2.6.1)(lightningcss@1.32.0)(terser@5.46.1)(tsx@4.21.0)(yaml@2.8.3))(workerd@1.20251008.0)(wrangler@4.42.2(@cloudflare/workers-types@4.20251118.0))
       '@livestore/devtools-vite':
         specifier: 0.4.0-dev.22
-        version: 0.4.0-dev.22(a114698bb63a34c0bb198196ced9bcb9)
+        version: 0.4.0-dev.22(b3ff8f22e5189671c122fd490a687083)
       '@playwright/test':
         specifier: ^1.59.1
         version: 1.59.1
@@ -1094,7 +1094,7 @@ importers:
     devDependencies:
       '@livestore/devtools-vite':
         specifier: 0.4.0-dev.22
-        version: 0.4.0-dev.22(a114698bb63a34c0bb198196ced9bcb9)
+        version: 0.4.0-dev.22(b3ff8f22e5189671c122fd490a687083)
       '@tailwindcss/vite':
         specifier: ^4.1.13
         version: 4.1.18(vite@7.3.1(@types/node@25.3.3)(jiti@2.6.1)(lightningcss@1.32.0)(terser@5.46.1)(tsx@4.21.0)(yaml@2.8.3))
@@ -1227,7 +1227,7 @@ importers:
         version: 1.13.12(vite@7.3.1(@types/node@24.12.0)(jiti@2.6.1)(lightningcss@1.32.0)(terser@5.46.1)(tsx@4.21.0)(yaml@2.8.3))(workerd@1.20251008.0)(wrangler@4.42.2(@cloudflare/workers-types@4.20251118.0))
       '@livestore/devtools-vite':
         specifier: 0.4.0-dev.22
-        version: 0.4.0-dev.22(1ce799dd2066413567665490ed0d6d64)
+        version: 0.4.0-dev.22(e2898f00ffa6ed40a8c3c3ceccfc590b)
       '@playwright/test':
         specifier: ^1.59.1
         version: 1.59.1
@@ -1321,7 +1321,7 @@ importers:
     devDependencies:
       '@livestore/devtools-vite':
         specifier: 0.4.0-dev.22
-        version: 0.4.0-dev.22(1ce799dd2066413567665490ed0d6d64)
+        version: 0.4.0-dev.22(e2898f00ffa6ed40a8c3c3ceccfc590b)
       '@types/node':
         specifier: ^24.9.2
         version: 24.12.0
@@ -1388,7 +1388,7 @@ importers:
         version: 4.20251118.0
       '@livestore/devtools-vite':
         specifier: 0.4.0-dev.22
-        version: 0.4.0-dev.22(a114698bb63a34c0bb198196ced9bcb9)
+        version: 0.4.0-dev.22(b3ff8f22e5189671c122fd490a687083)
       '@playwright/test':
         specifier: ^1.59.1
         version: 1.59.1
@@ -1446,7 +1446,7 @@ importers:
         version: 4.20251118.0
       '@livestore/devtools-vite':
         specifier: 0.4.0-dev.22
-        version: 0.4.0-dev.22(a114698bb63a34c0bb198196ced9bcb9)
+        version: 0.4.0-dev.22(b3ff8f22e5189671c122fd490a687083)
       '@playwright/test':
         specifier: ^1.59.1
         version: 1.59.1
@@ -1519,7 +1519,7 @@ importers:
         version: 4.20251118.0
       '@livestore/devtools-vite':
         specifier: 0.4.0-dev.22
-        version: 0.4.0-dev.22(a114698bb63a34c0bb198196ced9bcb9)
+        version: 0.4.0-dev.22(b3ff8f22e5189671c122fd490a687083)
       '@playwright/test':
         specifier: ^1.59.1
         version: 1.59.1
@@ -1580,7 +1580,7 @@ importers:
     devDependencies:
       '@livestore/devtools-vite':
         specifier: 0.4.0-dev.22
-        version: 0.4.0-dev.22(a114698bb63a34c0bb198196ced9bcb9)
+        version: 0.4.0-dev.22(b3ff8f22e5189671c122fd490a687083)
       '@playwright/test':
         specifier: ^1.59.1
         version: 1.59.1
@@ -1693,7 +1693,7 @@ importers:
         version: 4.20251118.0
       '@livestore/devtools-vite':
         specifier: 0.4.0-dev.22
-        version: 0.4.0-dev.22(a114698bb63a34c0bb198196ced9bcb9)
+        version: 0.4.0-dev.22(b3ff8f22e5189671c122fd490a687083)
       '@playwright/test':
         specifier: ^1.59.1
         version: 1.59.1
@@ -1742,7 +1742,7 @@ importers:
         version: 4.20251118.0
       '@livestore/devtools-vite':
         specifier: 0.4.0-dev.22
-        version: 0.4.0-dev.22(a114698bb63a34c0bb198196ced9bcb9)
+        version: 0.4.0-dev.22(b3ff8f22e5189671c122fd490a687083)
       '@playwright/test':
         specifier: ^1.59.1
         version: 1.59.1
@@ -1797,7 +1797,7 @@ importers:
         version: 4.20251118.0
       '@livestore/devtools-vite':
         specifier: 0.4.0-dev.22
-        version: 0.4.0-dev.22(a114698bb63a34c0bb198196ced9bcb9)
+        version: 0.4.0-dev.22(b3ff8f22e5189671c122fd490a687083)
       '@playwright/test':
         specifier: ^1.59.1
         version: 1.59.1
@@ -1858,7 +1858,7 @@ importers:
         version: 4.20251118.0
       '@livestore/devtools-vite':
         specifier: 0.4.0-dev.22
-        version: 0.4.0-dev.22(a114698bb63a34c0bb198196ced9bcb9)
+        version: 0.4.0-dev.22(b3ff8f22e5189671c122fd490a687083)
       '@playwright/test':
         specifier: ^1.59.1
         version: 1.59.1
@@ -1925,7 +1925,7 @@ importers:
     devDependencies:
       '@livestore/devtools-vite':
         specifier: 0.4.0-dev.22
-        version: 0.4.0-dev.22(1ce799dd2066413567665490ed0d6d64)
+        version: 0.4.0-dev.22(e2898f00ffa6ed40a8c3c3ceccfc590b)
       '@playwright/test':
         specifier: ^1.59.1
         version: 1.59.1
@@ -2010,7 +2010,7 @@ importers:
     devDependencies:
       '@livestore/devtools-vite':
         specifier: 0.4.0-dev.22
-        version: 0.4.0-dev.22(1ce799dd2066413567665490ed0d6d64)
+        version: 0.4.0-dev.22(e2898f00ffa6ed40a8c3c3ceccfc590b)
       '@playwright/test':
         specifier: ^1.59.1
         version: 1.59.1
@@ -2143,9 +2143,12 @@ importers:
         specifier: 1.9.0
         version: 1.9.0
     devDependencies:
+      '@effect/platform-node':
+        specifier: 4.0.0-beta.60
+        version: 4.0.0-beta.60(effect@4.0.0-beta.60)
       '@livestore/devtools-vite':
         specifier: 0.4.0-dev.22
-        version: 0.4.0-dev.22(a114698bb63a34c0bb198196ced9bcb9)
+        version: 0.4.0-dev.22(b3ff8f22e5189671c122fd490a687083)
       '@rollup/plugin-commonjs':
         specifier: 28.0.6
         version: 28.0.6(rollup@4.49.0)
@@ -2307,6 +2310,9 @@ importers:
         specifier: workspace:^
         version: link:../utils
     devDependencies:
+      '@effect/platform-node':
+        specifier: 4.0.0-beta.60
+        version: 4.0.0-beta.60(effect@4.0.0-beta.60)
       '@types/node':
         specifier: 25.3.3
         version: 25.3.3
@@ -3273,7 +3279,7 @@ importers:
         version: link:../../packages/@livestore/common-cf
       '@livestore/devtools-vite':
         specifier: 0.4.0-dev.22
-        version: 0.4.0-dev.22(a114698bb63a34c0bb198196ced9bcb9)
+        version: 0.4.0-dev.22(b3ff8f22e5189671c122fd490a687083)
       '@livestore/effect-playwright':
         specifier: workspace:^
         version: link:../../packages/@livestore/effect-playwright
@@ -3416,7 +3422,7 @@ importers:
         version: 4.0.0-beta.60(effect@4.0.0-beta.60)(vitest@3.2.4(@types/debug@4.1.13)(@types/node@25.3.3)(jiti@2.6.1)(jsdom@26.1.0)(lightningcss@1.32.0)(terser@5.46.1)(tsx@4.21.0)(yaml@2.8.3))
       '@livestore/devtools-vite':
         specifier: 0.4.0-dev.22
-        version: 0.4.0-dev.22(a114698bb63a34c0bb198196ced9bcb9)
+        version: 0.4.0-dev.22(b3ff8f22e5189671c122fd490a687083)
       '@livestore/utils-dev':
         specifier: workspace:^
         version: link:../../packages/@livestore/utils-dev
@@ -3595,7 +3601,7 @@ importers:
         version: 4.0.0-beta.60(effect@4.0.0-beta.60)(vitest@3.2.4(@types/debug@4.1.13)(@types/node@25.3.3)(jiti@2.6.1)(jsdom@26.1.0)(lightningcss@1.32.0)(terser@5.46.1)(tsx@4.21.0)(yaml@2.8.3))
       '@livestore/devtools-vite':
         specifier: 0.4.0-dev.22
-        version: 0.4.0-dev.22(a114698bb63a34c0bb198196ced9bcb9)
+        version: 0.4.0-dev.22(b3ff8f22e5189671c122fd490a687083)
       '@playwright/test':
         specifier: 1.59.1
         version: 1.59.1
@@ -3665,7 +3671,7 @@ importers:
         version: 4.0.0-beta.60(effect@4.0.0-beta.60)(vitest@3.2.4(@types/debug@4.1.13)(@types/node@25.3.3)(jiti@2.6.1)(jsdom@26.1.0)(lightningcss@1.32.0)(terser@5.46.1)(tsx@4.21.0)(yaml@2.8.3))
       '@livestore/devtools-vite':
         specifier: 0.4.0-dev.22
-        version: 0.4.0-dev.22(a114698bb63a34c0bb198196ced9bcb9)
+        version: 0.4.0-dev.22(b3ff8f22e5189671c122fd490a687083)
       '@livestore/utils-dev':
         specifier: workspace:^
         version: link:../../packages/@livestore/utils-dev
@@ -6166,6 +6172,8 @@ packages:
 
   '@livestore/devtools-vite@0.4.0-dev.22':
     resolution: {integrity: sha512-J+hKbCPmdXGNW5Y6JK3ia0bHXzEi0zIRXP6xJATm77arCCmIYU2SrQanK4s/9oAGfx3VARONupYCtC+a+JNbsQ==}
+    peerDependencies:
+      vite: ^7.2.4
 
   '@livestore/devtools-web-common@0.3.1':
     resolution: {integrity: sha512-jU7IvebelTtvSTQ2zKNzSm5qZodwUiPsNsDURsY5Yw0DXpafcfpRobs/WYd+Wd4Q1E4oFaK05hPfWZGbVFdw7Q==}
@@ -20336,42 +20344,7 @@ snapshots:
       - '@opentelemetry/resources'
       - effect
 
-  '@livestore/devtools-vite@0.4.0-dev.22(1ce799dd2066413567665490ed0d6d64)':
-    dependencies:
-      '@livestore/adapter-web': 0.4.0-dev.22(e9e22493d0eb7e530110ca056d568426)
-      '@livestore/utils': 0.4.0-dev.22(10e807ae7447e2de9a30f43cea18a4db)
-      vite: 7.3.1(@types/node@24.12.0)(jiti@2.6.1)(lightningcss@1.32.0)(terser@5.46.1)(tsx@4.21.0)(yaml@2.8.3)
-    transitivePeerDependencies:
-      - '@effect/ai'
-      - '@effect/cli'
-      - '@effect/cluster'
-      - '@effect/experimental'
-      - '@effect/opentelemetry'
-      - '@effect/platform'
-      - '@effect/platform-browser'
-      - '@effect/platform-bun'
-      - '@effect/platform-node'
-      - '@effect/printer'
-      - '@effect/printer-ansi'
-      - '@effect/rpc'
-      - '@effect/sql'
-      - '@effect/typeclass'
-      - '@opentelemetry/api'
-      - '@opentelemetry/resources'
-      - '@types/node'
-      - effect
-      - jiti
-      - less
-      - lightningcss
-      - sass
-      - sass-embedded
-      - stylus
-      - sugarss
-      - terser
-      - tsx
-      - yaml
-
-  '@livestore/devtools-vite@0.4.0-dev.22(a114698bb63a34c0bb198196ced9bcb9)':
+  '@livestore/devtools-vite@0.4.0-dev.22(b3ff8f22e5189671c122fd490a687083)':
     dependencies:
       '@livestore/adapter-web': 0.4.0-dev.22(e9e22493d0eb7e530110ca056d568426)
       '@livestore/utils': 0.4.0-dev.22(10e807ae7447e2de9a30f43cea18a4db)
@@ -20393,18 +20366,31 @@ snapshots:
       - '@effect/typeclass'
       - '@opentelemetry/api'
       - '@opentelemetry/resources'
-      - '@types/node'
       - effect
-      - jiti
-      - less
-      - lightningcss
-      - sass
-      - sass-embedded
-      - stylus
-      - sugarss
-      - terser
-      - tsx
-      - yaml
+
+  '@livestore/devtools-vite@0.4.0-dev.22(e2898f00ffa6ed40a8c3c3ceccfc590b)':
+    dependencies:
+      '@livestore/adapter-web': 0.4.0-dev.22(e9e22493d0eb7e530110ca056d568426)
+      '@livestore/utils': 0.4.0-dev.22(10e807ae7447e2de9a30f43cea18a4db)
+      vite: 7.3.1(@types/node@24.12.0)(jiti@2.6.1)(lightningcss@1.32.0)(terser@5.46.1)(tsx@4.21.0)(yaml@2.8.3)
+    transitivePeerDependencies:
+      - '@effect/ai'
+      - '@effect/cli'
+      - '@effect/cluster'
+      - '@effect/experimental'
+      - '@effect/opentelemetry'
+      - '@effect/platform'
+      - '@effect/platform-browser'
+      - '@effect/platform-bun'
+      - '@effect/platform-node'
+      - '@effect/printer'
+      - '@effect/printer-ansi'
+      - '@effect/rpc'
+      - '@effect/sql'
+      - '@effect/typeclass'
+      - '@opentelemetry/api'
+      - '@opentelemetry/resources'
+      - effect
 
   '@livestore/devtools-web-common@0.3.1(@effect/opentelemetry@4.0.0-beta.60(@opentelemetry/api@1.9.0)(@opentelemetry/resources@2.2.0(@opentelemetry/api@1.9.0))(@opentelemetry/sdk-logs@0.208.0(@opentelemetry/api@1.9.0))(@opentelemetry/sdk-metrics@2.2.0(@opentelemetry/api@1.9.0))(@opentelemetry/sdk-trace-base@2.2.0(@opentelemetry/api@1.9.0))(@opentelemetry/sdk-trace-node@2.2.0(@opentelemetry/api@1.9.0))(@opentelemetry/sdk-trace-web@2.2.0(@opentelemetry/api@1.9.0))(@opentelemetry/semantic-conventions@1.40.0)(effect@4.0.0-beta.60))(@effect/platform-browser@4.0.0-beta.60(effect@4.0.0-beta.60))(@effect/platform-bun@4.0.0-beta.60(effect@4.0.0-beta.60))(@effect/platform-node@4.0.0-beta.60(effect@4.0.0-beta.60))(@opentelemetry/api@1.9.0)(@opentelemetry/resources@2.2.0(@opentelemetry/api@1.9.0))(effect@4.0.0-beta.60)':
     dependencies:

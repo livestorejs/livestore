@@ -90,6 +90,7 @@ export {
   FiberHandle,
   FiberMap,
   FiberSet,
+  Filter,
   Hash,
   HashMap,
   HashSet,
@@ -193,16 +194,18 @@ type SerializedRequest =
   | { readonly _tag: 'Request'; readonly requestId: number; readonly request: any }
   | { readonly _tag: 'InitialMessage'; readonly request: any }
 
-const collectTransferables = (value: unknown, seen = new Set<object>()): globalThis.Transferable[] => {
+type TransferableValue = MessagePort | ArrayBuffer
+
+const collectTransferables = (value: unknown, seen = new Set<object>()): TransferableValue[] => {
   if (value === null || typeof value !== 'object' || seen.has(value)) return []
   seen.add(value)
 
-  const transferables: globalThis.Transferable[] = []
+  const transferables: TransferableValue[] = []
   if (
     (typeof MessagePort !== 'undefined' && value instanceof MessagePort) ||
     (typeof ArrayBuffer !== 'undefined' && value instanceof ArrayBuffer)
   ) {
-    transferables.push(value as globalThis.Transferable)
+    transferables.push(value as TransferableValue)
   }
 
   if (Array.isArray(value)) {

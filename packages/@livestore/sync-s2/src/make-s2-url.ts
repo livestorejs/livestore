@@ -10,7 +10,7 @@ export const makeS2StreamName = (storeId: string) => storeId.replace(/[^a-zA-Z0-
  */
 export const decodePullArgsFromSearchParams = (searchParams: URLSearchParams): typeof ApiSchema.PullArgs.Type => {
   const UrlParamsSchema = Schema.Struct({ args: ApiSchema.ArgsSchema })
-  const argsResult = Schema.decodeUnknownExit(UrlParamsSchema)(Object.fromEntries(searchParams.entries()))
+  const argsResult = Schema.decodeUnknownExit(UrlParamsSchema as any)(Object.fromEntries(searchParams.entries()))
 
   if (argsResult._tag !== 'Success') {
     return shouldNeverHappen(
@@ -20,5 +20,5 @@ export const decodePullArgsFromSearchParams = (searchParams: URLSearchParams): t
     )
   }
 
-  return argsResult.value.args
+  return (argsResult.value as typeof UrlParamsSchema.Type).args
 }

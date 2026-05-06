@@ -21,4 +21,4 @@ export const PullPayload = Schema.TaggedStruct('@livestore/sync-electric.Pull', 
 export const ApiPayload = Schema.Union([PullPayload, PushPayload])
 
 // Format for the query params
-export const ArgsSchema = Schema.decodeTo(Schema.StringFromUriComponent, Schema.fromJsonString(PullPayload))
+export const ArgsSchema = Schema.StringFromUriComponent.pipe(Schema.decodeTo(Schema.fromJsonString(PullPayload)))

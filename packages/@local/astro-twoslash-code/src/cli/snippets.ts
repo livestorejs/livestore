@@ -1334,11 +1334,11 @@ type ResolvedBuildOptions = {
 }
 
 type NormalizedWatchOptions = {
-  debounce: Duration.DurationInput
+  debounce: Duration.Input
   onRebuild: (info: WatchSnippetsRebuildInfo) => Effect.Effect<void>
 }
 
-const DEFAULT_WATCH_DEBOUNCE: Duration.DurationInput = '150 millis'
+const DEFAULT_WATCH_DEBOUNCE: Duration.Input = '150 millis'
 
 type WatchScope = 'snippet' | 'source'
 
@@ -1357,7 +1357,7 @@ export type WatchSnippetsRebuildInfo = {
 }
 
 export type WatchSnippetsOptions = BuildSnippetsOptions & {
-  debounce?: Duration.DurationInput
+  debounce?: Duration.Input
   onRebuild?: (info: WatchSnippetsRebuildInfo) => Effect.Effect<void>
 }
 

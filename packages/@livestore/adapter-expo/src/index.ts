@@ -267,7 +267,7 @@ const makeLeaderThread = ({
       clientId,
     })
 
-    const layer = yield* Layer.memoize(
+    const layer = yield* Layer.build(
       makeLeaderThreadLayer({
         clientId,
         dbState,
@@ -334,7 +334,7 @@ const makeLeaderThread = ({
         export: Effect.sync(() => db.export()),
         getEventlogData: Effect.sync(() => dbEventlog.export()),
         syncState: syncProcessor.syncState,
-        sendDevtoolsMessage: (message) => extraIncomingMessagesQueue.offer(message),
+        sendDevtoolsMessage: (message) => Queue.offer(extraIncomingMessagesQueue, message),
         networkStatus,
       })
 

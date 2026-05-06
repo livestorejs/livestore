@@ -1,9 +1,7 @@
 import './thread-polyfill.ts'
 import inspector from 'node:inspector'
 
-import * as NodeFileSystem from '@effect/platform-node/NodeFileSystem'
-import * as NodeRuntime from '@effect/platform-node/NodeRuntime'
-import * as NodeWorkerRunner from '@effect/platform-node/NodeWorkerRunner'
+import { NodeFileSystem, NodeRuntime, NodeWorkerRunner } from '@effect/platform-node'
 if (process.execArgv.includes('--inspect') === true) {
   inspector.open()
   inspector.waitForDebugger()
@@ -19,7 +17,7 @@ import type { LiveStoreSchema } from '@livestore/common/schema'
 import { LiveStoreEvent } from '@livestore/common/schema'
 import { loadSqlite3Wasm } from '@livestore/sqlite-wasm/load-wasm'
 import { sqliteDbFactory } from '@livestore/sqlite-wasm/node'
-import { Effect, FetchHttpClient, Layer, OtelTracer, Schema, Stream, Tracer, WorkerRunner } from '@livestore/utils/effect'
+import { Effect, FetchHttpClient, Layer, OtelTracer, Queue, Schema, Stream, Tracer, WorkerRunner } from '@livestore/utils/effect'
 
 import type { TestingOverrides } from './leader-thread-shared.ts'
 import { makeLeaderThread } from './leader-thread-shared.ts'
@@ -40,7 +38,7 @@ export type WorkerOptions = {
 export const getWorkerArgs = () => Schema.decodeSync(WorkerSchema.WorkerArgv)(process.argv[2]!)
 
 export const makeWorker = (options: WorkerOptions) => {
-  makeWorkerEffect(options).pipe(NodeRuntime.runMain)
+  makeWorkerEffect(options).pipe((effect) => NodeRuntime.runMain(effect as unknown as Effect.Effect<unknown, unknown, never>))
 }
 
 export const makeWorkerEffect = (options: WorkerOptions) => {
@@ -75,22 +73,25 @@ export const makeWorkerEffect = (options: WorkerOptions) => {
         })
       }).pipe(Layer.unwrapScoped),
     PushToLeader: ({ batch }) =>
-      Effect.andThen(LeaderThreadCtx, (_) =>
+      Effect.andThen(LeaderThreadCtx.asEffect(), (_) =>
         _.syncProcessor.push(
-          batch.map((item) => new LiveStoreEvent.Client.EncodedWithMeta(item)),
+          batch.map(
+            (item: (typeof WorkerSchema.LeaderWorkerInnerPushToLeader.Type)['batch'][number]) =>
+              new LiveStoreEvent.Client.EncodedWithMeta(item),
+          ),
           // We'll wait in order to keep back pressure on the client session
           { waitForProcessing: true },
         ),
       ).pipe(Effect.uninterruptible, Effect.withSpan('@livestore/adapter-node:worker:PushToLeader')),
     BootStatusStream: () =>
-      Effect.andThen(LeaderThreadCtx, (_) => Stream.fromQueue(_.bootStatusQueue)).pipe(Stream.unwrap),
+      Effect.map(LeaderThreadCtx.asEffect(), (_) => Stream.fromQueue(_.bootStatusQueue)).pipe(Stream.unwrap),
     PullStream: ({ cursor }) =>
       Effect.gen(function* () {
         const { syncProcessor } = yield* LeaderThreadCtx
         return syncProcessor.pull({ cursor })
       }).pipe(Stream.unwrapScoped),
     StreamEvents: (options: WorkerSchema.LeaderWorkerInnerStreamEvents) =>
-      LeaderThreadCtx.pipe(
+      LeaderThreadCtx.asEffect().pipe(
         Effect.map(({ dbEventlog, syncProcessor }) => {
           const { _tag: _ignored, ...payload } = options
           const streamOptions = payload as StreamEventsOptions
@@ -104,11 +105,11 @@ export const makeWorkerEffect = (options: WorkerOptions) => {
         Stream.withSpan('@livestore/adapter-node:worker:StreamEvents'),
       ),
     Export: () =>
-      Effect.andThen(LeaderThreadCtx, (_) => _.dbState.export()).pipe(
+      Effect.map(LeaderThreadCtx.asEffect(), (_) => _.dbState.export()).pipe(
         Effect.withSpan('@livestore/adapter-node:worker:Export'),
       ),
     ExportEventlog: () =>
-      Effect.andThen(LeaderThreadCtx, (_) => _.dbEventlog.export()).pipe(
+      Effect.map(LeaderThreadCtx.asEffect(), (_) => _.dbEventlog.export()).pipe(
         Effect.withSpan('@livestore/adapter-node:worker:ExportEventlog'),
       ),
     GetLeaderHead: Effect.fn('@livestore/adapter-node:worker:GetLeaderHead')(function* () {
@@ -158,11 +159,11 @@ export const makeWorkerEffect = (options: WorkerOptions) => {
       // yield* Effect.sleep(1000)
     }),
     ExtraDevtoolsMessage: ({ message }) =>
-      Effect.andThen(LeaderThreadCtx, (_) => _.extraIncomingMessagesQueue.offer(message)).pipe(
+      Effect.andThen(LeaderThreadCtx.asEffect(), (_) => Queue.offer(_.extraIncomingMessagesQueue, message)).pipe(
         Effect.withSpan('@livestore/adapter-node:worker:ExtraDevtoolsMessage'),
       ),
   }).pipe(
-    Layer.provide(NodeWorkerRunner.layer),
+    (layer) => Layer.provide(layer as any, NodeWorkerRunner.layer as any) as any,
     WorkerRunner.launch,
     Effect.scoped,
     Effect.tapCauseLogPretty,

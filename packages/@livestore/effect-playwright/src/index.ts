@@ -1,6 +1,6 @@
 import process from 'node:process'
 import { envTruish } from '@livestore/utils'
-import { Context, Effect, Layer, Option, Schema, Stream } from '@livestore/utils/effect'
+import { Cause, Context, Effect, Layer, Option, Queue, Schema, Stream } from '@livestore/utils/effect'
 import * as PW from '@playwright/test'
 
 export class BrowserContext extends Context.Service<
@@ -84,7 +84,7 @@ export const browserContext = ({
   })
 
 export const browserContextLayer = (params: MakeBrowserContextParams) =>
-  Layer.scoped(BrowserContext, browserContext(params))
+  Layer.effect(BrowserContext, browserContext(params))
 
 export const withPage = <T>(f: () => Promise<T>, options?: { label?: string }): Effect.Effect<T, SiteError> =>
   Effect.tryPromise({
@@ -194,7 +194,7 @@ export const pageConsole = ({
   label: string
   shouldEvaluateArgs: boolean
 }) =>
-  Stream.asyncPush<typeof ConsoleMessage.Type, SiteError>((emit) =>
+  Stream.callback<typeof ConsoleMessage.Type, SiteError>((queue) =>
     Effect.acquireRelease(
       Effect.sync(() => {
         const errorGroupRef = ref<{ errorMessages: (typeof ConsoleMessage.Type)[] } | undefined>(undefined)
@@ -210,11 +210,12 @@ export const pageConsole = ({
             ) {
               errorGroupRef.current = { errorMessages: [message] }
             } else if (message.type === 'groupEnd' && errorGroupRef.current !== undefined) {
-              emit.fail(
-                new SiteError({
+              Queue.failCauseUnsafe(
+                queue,
+                Cause.fail(new SiteError({
                   label,
                   messages: errorGroupRef.current.errorMessages,
-                }),
+                })),
               )
             } else if (
               message.type === 'error' &&
@@ -227,18 +228,19 @@ export const pageConsole = ({
               message.message.includes('All fibers interrupted without errors') === false
             ) {
               if (errorGroupRef.current === undefined) {
-                emit.fail(new SiteError({ label, messages: [message] }))
+                Queue.failCauseUnsafe(queue, Cause.fail(new SiteError({ label, messages: [message] })))
               } else {
                 errorGroupRef.current.errorMessages.push(message)
               }
             } else {
-              emit.single(message)
+              Queue.offerUnsafe(queue, message)
             }
           }
         }
         page.on('console', onConsole)
 
-        const onPageError = (cause: Error) => emit.fail(new SiteError({ label, messages: [cause] }))
+        const onPageError = (cause: Error) =>
+          Queue.failCauseUnsafe(queue, Cause.fail(new SiteError({ label, messages: [cause] })))
         page.on('pageerror', onPageError)
 
         return { onConsole, onPageError }
