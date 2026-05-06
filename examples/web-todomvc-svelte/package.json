@@ -1,14 +1,14 @@
 {
   "name": "livestore-example-web-todomvc-svelte",
-  "version": "0.0.0",
+  "version": "0.0.1",
   "type": "module",
   "private": true,
   "dependencies": {
-    "@livestore/adapter-web": "0.4.0-dev.22",
-    "@livestore/livestore": "0.4.0-dev.22",
-    "@livestore/peer-deps": "0.4.0-dev.22",
-    "@livestore/svelte": "0.4.0-dev.22",
-    "@livestore/wa-sqlite": "0.4.0-dev.22",
+    "@livestore/adapter-web": "0.4.0",
+    "@livestore/livestore": "0.4.0",
+    "@livestore/peer-deps": "0.4.0",
+    "@livestore/svelte": "0.4.0",
+    "@livestore/wa-sqlite": "0.4.0",
     "svelte": "5.43.14",
     "todomvc-app-css": "2.4.3",
     "uuid": "11.1.0"

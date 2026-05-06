@@ -48,6 +48,36 @@ const validateReleaseVersion = (version: string) =>
     ),
   )
 
+const validateReleasePlan = (plan: TReleasePlan) =>
+  validateReleaseVersion(plan.version).pipe(
+    Effect.flatMap((validVersion) =>
+      Effect.sync(() => {
+        const prerelease = semver.prerelease(validVersion)
+
+        if (plan.npmTag === 'snapshot') {
+          throw new Error('The npm tag "snapshot" is reserved for CI snapshot publishing')
+        }
+
+        if (plan.npmTag === 'latest' && prerelease !== null) {
+          throw new Error(`The npm tag "latest" requires a stable version, got ${validVersion}`)
+        }
+
+        if (plan.npmTag === 'dev') {
+          if (prerelease?.[0] !== 'dev') {
+            throw new Error(`The npm tag "dev" requires a dev prerelease version, got ${validVersion}`)
+          }
+          return validVersion
+        }
+
+        if (plan.npmTag !== 'latest' && prerelease === null) {
+          throw new Error(`The npm tag "${plan.npmTag}" requires a prerelease version, got ${validVersion}`)
+        }
+
+        return validVersion
+      }),
+    ),
+  )
+
 const releasePlanPath = (cwd: string) => `${cwd}/release/release-plan.json`
 
 const readReleasePlan = (cwd: string, planPath: string) =>
@@ -56,13 +86,13 @@ const readReleasePlan = (cwd: string, planPath: string) =>
     const absolutePlanPath = planPath.startsWith('/') === true ? planPath : `${cwd}/${planPath}`
     const content = yield* fsEffect.readFileString(absolutePlanPath)
     const plan = yield* Schema.decodeUnknown(ReleasePlan)(JSON.parse(content))
-    yield* validateReleaseVersion(plan.version)
+    yield* validateReleasePlan(plan)
     return plan
   })
 
 const writeReleasePlan = (cwd: string, plan: TReleasePlan) =>
   Effect.gen(function* () {
-    yield* validateReleaseVersion(plan.version)
+    yield* validateReleasePlan(plan)
     const fsEffect = yield* FileSystem.FileSystem
     yield* fsEffect.makeDirectory(`${cwd}/release`, { recursive: true })
     yield* fsEffect.writeFileString(releasePlanPath(cwd), `${JSON.stringify(plan, null, 2)}\n`)
@@ -323,7 +353,37 @@ const publishReleasePackages = ({
       const publishArgs = ['pnpm', 'publish', `--tag=${npmTag}`, '--access=public', '--no-git-checks']
       if (isCI === true) publishArgs.push('--provenance')
       if (dryRun === true) publishArgs.push('--dry-run')
-      yield* cmd(`DT_PASSTHROUGH=1 ${publishArgs.join(' ')}`, { shell: true }).pipe(Effect.provide(cwdLayer))
+      yield* cmd(`DT_PASSTHROUGH=1 ${publishArgs.join(' ')}`, { shell: true }).pipe(
+        Effect.provide(cwdLayer),
+        Effect.catchTag('CmdError', (error) => {
+          if (isCI === false || dryRun === true || isSnapshotVersion(version) === false) return Effect.fail(error)
+
+          const alreadyVisible = cmd(`npm view ${pkg}@${version} version`, { stdout: 'pipe', stderr: 'pipe' }).pipe(
+            Effect.provide(cwdLayer),
+            Effect.as(true),
+            Effect.catchTag('CmdError', () => Effect.succeed(false)),
+          )
+
+          return alreadyVisible.pipe(
+            Effect.flatMap((isVisible) => {
+              if (isVisible === true) {
+                return Effect.logWarning(
+                  `${pkg}@${version} became visible after a failed provenance publish; continuing`,
+                )
+              }
+
+              const fallbackArgs = publishArgs.filter((arg) => arg !== '--provenance')
+              return Effect.logWarning(
+                `Retrying ${pkg}@${version} snapshot publish without provenance after provenance publish failed`,
+              ).pipe(
+                Effect.zipRight(
+                  cmd(`DT_PASSTHROUGH=1 ${fallbackArgs.join(' ')}`, { shell: true }).pipe(Effect.provide(cwdLayer)),
+                ),
+              )
+            }),
+          )
+        }),
+      )
       yield* Effect.log(`${dryRun === true ? 'Dry-ran' : 'Published'} ${pkg}@${version}`)
     }
 

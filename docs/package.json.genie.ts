@@ -55,7 +55,7 @@ const runtimeDeps = catalog.compose({
       '@astrojs/netlify': '6.5.9',
       '@astrojs/react': '4.3.0',
       '@astrojs/starlight-tailwind': '4.0.1',
-      '@mixedbread/cli': '1.2.1',
+      '@mixedbread/cli': '2.3.2',
       '@mixedbread/sdk': '0.28.1',
       '@tailwindcss/vite': '4.1.18',
       'astro-d2': '0.8.1',
@@ -99,9 +99,11 @@ export default packageJson(
       build: 'astro check && astro build',
       dev: 'astro dev',
       'dev:docs:sync':
-        'mxbai vs sync "livestore-docs-dev" "./src/content/**/*.mdx" "./src/content/**/*.md"  --yes --strategy fast',
+        'mxbai store sync "livestore-docs-dev" "./src/content/**/*.mdx" "./src/content/**/*.md"  --yes --strategy fast',
+      'prod:docs:sync':
+        'mxbai store sync "livestore-docs" "./src/content/**/*.mdx" "./src/content/**/*.md" --yes --strategy fast',
       'dev:docs:sync:dry-run':
-        'mxbai vs sync "livestore-docs-dev" "./src/content/**/*.mdx" "./src/content/**/*.md" --dry-run',
+        'mxbai store sync "livestore-docs-dev" "./src/content/**/*.mdx" "./src/content/**/*.md" --dry-run',
       preview: 'astro preview',
       start: 'astro dev',
     },

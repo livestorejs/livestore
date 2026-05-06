@@ -78,10 +78,13 @@ let
 
     : "''${LIVESTORE_RELEASE_VERSION:?Set LIVESTORE_RELEASE_VERSION to the LiveStore release-group version}"
     artifact_args=(--manifest "''${LIVESTORE_DEVTOOLS_MANIFEST:-release/devtools-artifact.json}")
-    if [[ -n "''${LIVESTORE_DEVTOOLS_METADATA:-}" || -n "''${LIVESTORE_DEVTOOLS_TARBALL:-}" ]]; then
+    if [[ -n "''${LIVESTORE_DEVTOOLS_METADATA:-}" || -n "''${LIVESTORE_DEVTOOLS_TARBALL:-}" || -n "''${LIVESTORE_DEVTOOLS_CHROME_ZIP:-}" ]]; then
       : "''${LIVESTORE_DEVTOOLS_METADATA:?Set both LIVESTORE_DEVTOOLS_METADATA and LIVESTORE_DEVTOOLS_TARBALL, or neither to use the checked-in manifest}"
       : "''${LIVESTORE_DEVTOOLS_TARBALL:?Set both LIVESTORE_DEVTOOLS_METADATA and LIVESTORE_DEVTOOLS_TARBALL, or neither to use the checked-in manifest}"
       artifact_args=(--metadata "$LIVESTORE_DEVTOOLS_METADATA" --tarball "$LIVESTORE_DEVTOOLS_TARBALL")
+      if [[ -n "''${LIVESTORE_DEVTOOLS_CHROME_ZIP:-}" ]]; then
+        artifact_args+=(--chrome-zip "$LIVESTORE_DEVTOOLS_CHROME_ZIP")
+      fi
     fi
 
     bun scripts/src/commands/devtools-artifact.ts repack \
@@ -261,10 +264,13 @@ in
       cd "$DEVENV_ROOT"
 
       artifact_args=(--manifest "''${LIVESTORE_DEVTOOLS_MANIFEST:-release/devtools-artifact.json}")
-      if [[ -n "''${LIVESTORE_DEVTOOLS_METADATA:-}" || -n "''${LIVESTORE_DEVTOOLS_TARBALL:-}" ]]; then
+      if [[ -n "''${LIVESTORE_DEVTOOLS_METADATA:-}" || -n "''${LIVESTORE_DEVTOOLS_TARBALL:-}" || -n "''${LIVESTORE_DEVTOOLS_CHROME_ZIP:-}" ]]; then
         : "''${LIVESTORE_DEVTOOLS_METADATA:?Set both LIVESTORE_DEVTOOLS_METADATA and LIVESTORE_DEVTOOLS_TARBALL, or neither to use the checked-in manifest}"
         : "''${LIVESTORE_DEVTOOLS_TARBALL:?Set both LIVESTORE_DEVTOOLS_METADATA and LIVESTORE_DEVTOOLS_TARBALL, or neither to use the checked-in manifest}"
         artifact_args=(--metadata "$LIVESTORE_DEVTOOLS_METADATA" --tarball "$LIVESTORE_DEVTOOLS_TARBALL")
+        if [[ -n "''${LIVESTORE_DEVTOOLS_CHROME_ZIP:-}" ]]; then
+          artifact_args+=(--chrome-zip "$LIVESTORE_DEVTOOLS_CHROME_ZIP")
+        fi
       fi
 
       bun scripts/src/commands/devtools-artifact.ts verify "''${artifact_args[@]}"

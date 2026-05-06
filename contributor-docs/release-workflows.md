@@ -7,7 +7,7 @@ and validate a release-plan PR.
 
 ## Release intent
 
-Changesets are the release-intent ledger for public LiveStore package changes.
+Changesets are the release-intent ledger for LiveStore pull requests.
 The public `@livestore/*` packages are configured as a fixed Changesets group,
 so any accepted changeset bumps the whole LiveStore release group together.
 
@@ -16,11 +16,10 @@ generated release notes replace it. Maintainers fold PR-level changeset
 information into the handcrafted changelog structure before cutting a stable
 release.
 
-PRs that change public package files must include one of:
+Every PR must include one of:
 
 - A regular `.changeset/*.md` file for release-impacting changes.
-- An empty changeset for package-affecting changes that do not need release
-  notes.
+- An empty changeset for changes that do not need release notes.
 
 ```bash
 pnpm exec changeset
@@ -84,6 +83,14 @@ The preferred flow is:
 4. Merge the release-plan PR into `main`.
 5. Let the push-triggered `Release` workflow publish the release group.
 
+Release plans are validated against the npm dist-tag before dry-run or publish:
+
+- `latest` only accepts stable versions such as `0.4.0`.
+- `dev` only accepts dev prereleases such as `0.4.0-dev.24`.
+- Other non-`latest` tags only accept prerelease versions.
+- `snapshot` is reserved for CI snapshot publishing and cannot be used through
+  `release.yml`.
+
 The release-plan PR validates the exact work that will run after merge:
 
 - `release:stable:dryrun` dry-runs npm publishing for the LiveStore package set.
@@ -94,6 +101,12 @@ After merge to `main`, the push-triggered workflow runs:
 
 - `release:stable:publish`
 - `release:devtools-artifact:publish:no-install`
+- For stable `latest` releases only: `docs:deploy:prod`,
+  `examples:deploy:prod`, and the production docs search sync.
+
+Normal CI deploys docs/examples to the dev surfaces. Production docs, examples,
+and search are only updated by an explicit stable release publish so regular
+`main` integration work cannot accidentally update the public latest surfaces.
 
 ## Local stable release checks
 
@@ -127,7 +140,13 @@ already run in the same CI job or local shell.
 
 LiveStore consumes DevTools through a checked-in public artifact manifest at
 `release/devtools-artifact.json`. The manifest points at versioned public
-artifact files and may include the expected tarball SHA-256.
+artifact files and includes the expected tarball SHA-256.
+
+Public DevTools artifact releases are identified by the artifact build id, for
+example `devtools-artifact-dt-20260505-398c5feb`. The DevTools implementation
+version may appear inside `release-metadata.json` for traceability, but it is
+not the public artifact release identity and it does not decide the LiveStore
+package version.
 
 The LiveStore release workflow only consumes those published artifacts. It must
 not require, copy, log, or publish non-public DevTools source. Artifact
@@ -140,8 +159,10 @@ The repacked package writes `dist/release-metadata.json` with both identities:
 - `devtoolsArtifact.devtoolsBuildId`
 - `livestoreVersion`
 
-Use those fields to correlate a published LiveStore package with the exact
-public DevTools artifact when investigating failures.
+Use `devtoolsArtifact.devtoolsBuildId` to correlate a published LiveStore
+package with the exact public DevTools artifact when investigating failures.
+Use `livestoreVersion` to correlate the republished npm package and GitHub
+Chrome ZIP asset with the LiveStore release group or snapshot.
 
 ## Updating the DevTools artifact manifest
 
@@ -160,6 +181,9 @@ artifact as `@livestore/devtools-vite@<livestore-version>`.
 
 ## Safety rules
 
+- `main` is the only canonical release branch. Do not cut releases from `dev`.
+- Do not use `--prod` docs/examples deploys for snapshots or prereleases. The
+  deploy commands reject non-stable LiveStore versions.
 - Do not add non-public DevTools source, internal paths, credentials, or local
   machine details to this repository.
 - Do not paste secrets into release plans, PR descriptions, workflow inputs, or
@@ -178,3 +202,5 @@ artifact as `@livestore/devtools-vite@<livestore-version>`.
 - Do not publish patch, minor, or major releases while testing this Changesets
   integration. Use snapshots and non-`latest` prerelease tags until the final
   supervised release.
+- Release-sensitive files are code-owned and should be reviewed by a maintainer:
+  `.github/`, `.changeset/`, `release/`, and release command scripts.

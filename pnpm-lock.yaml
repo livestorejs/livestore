@@ -333,8 +333,8 @@ importers:
         specifier: workspace:^
         version: link:../packages/@local/shared
       '@mixedbread/cli':
-        specifier: 1.2.1
-        version: 1.2.1(@types/node@25.3.3)
+        specifier: 2.3.2
+        version: 2.3.2
       '@mixedbread/sdk':
         specifier: 0.28.1
         version: 0.28.1
@@ -649,28 +649,28 @@ importers:
         specifier: 4.20251118.0
         version: 4.20251118.0
       '@livestore/adapter-cloudflare':
-        specifier: 0.4.0-dev.22
+        specifier: 0.4.0
         version: link:../../packages/@livestore/adapter-cloudflare
       '@livestore/adapter-node':
-        specifier: 0.4.0-dev.22
+        specifier: 0.4.0
         version: link:../../packages/@livestore/adapter-node
       '@livestore/adapter-web':
-        specifier: 0.4.0-dev.22
+        specifier: 0.4.0
         version: link:../../packages/@livestore/adapter-web
       '@livestore/livestore':
-        specifier: 0.4.0-dev.22
+        specifier: 0.4.0
         version: link:../../packages/@livestore/livestore
       '@livestore/react':
-        specifier: 0.4.0-dev.22
+        specifier: 0.4.0
         version: link:../../packages/@livestore/react
       '@livestore/sqlite-wasm':
-        specifier: 0.4.0-dev.22
+        specifier: 0.4.0
         version: link:../../packages/@livestore/sqlite-wasm
       '@livestore/sync-cf':
-        specifier: 0.4.0-dev.22
+        specifier: 0.4.0
         version: link:../../packages/@livestore/sync-cf
       '@livestore/wa-sqlite':
-        specifier: 0.4.0-dev.22
+        specifier: 0.4.0
         version: link:../../packages/@livestore/wa-sqlite
       react:
         specifier: 19.2.3
@@ -725,28 +725,28 @@ importers:
         specifier: 4.20251118.0
         version: 4.20251118.0
       '@livestore/adapter-cloudflare':
-        specifier: 0.4.0-dev.22
+        specifier: 0.4.0
         version: link:../../packages/@livestore/adapter-cloudflare
       '@livestore/adapter-node':
-        specifier: 0.4.0-dev.22
+        specifier: 0.4.0
         version: link:../../packages/@livestore/adapter-node
       '@livestore/adapter-web':
-        specifier: 0.4.0-dev.22
+        specifier: 0.4.0
         version: link:../../packages/@livestore/adapter-web
       '@livestore/livestore':
-        specifier: 0.4.0-dev.22
+        specifier: 0.4.0
         version: link:../../packages/@livestore/livestore
       '@livestore/solid':
-        specifier: 0.4.0-dev.22
+        specifier: 0.4.0
         version: link:../../packages/@livestore/solid
       '@livestore/sqlite-wasm':
-        specifier: 0.4.0-dev.22
+        specifier: 0.4.0
         version: link:../../packages/@livestore/sqlite-wasm
       '@livestore/sync-cf':
-        specifier: 0.4.0-dev.22
+        specifier: 0.4.0
         version: link:../../packages/@livestore/sync-cf
       '@livestore/wa-sqlite':
-        specifier: 0.4.0-dev.22
+        specifier: 0.4.0
         version: link:../../packages/@livestore/wa-sqlite
       solid-js:
         specifier: 1.9.10
@@ -789,16 +789,16 @@ importers:
         specifier: 4.20251118.0
         version: 4.20251118.0
       '@livestore/adapter-cloudflare':
-        specifier: 0.4.0-dev.22
+        specifier: 0.4.0
         version: link:../../packages/@livestore/adapter-cloudflare
       '@livestore/livestore':
-        specifier: 0.4.0-dev.22
+        specifier: 0.4.0
         version: link:../../packages/@livestore/livestore
       '@livestore/peer-deps':
-        specifier: 0.4.0-dev.22
+        specifier: 0.4.0
         version: link:../../packages/@livestore/peer-deps
       '@livestore/sync-cf':
-        specifier: 0.4.0-dev.22
+        specifier: 0.4.0
         version: link:../../packages/@livestore/sync-cf
     devDependencies:
       wrangler:
@@ -811,19 +811,19 @@ importers:
         specifier: 15.0.2
         version: 15.0.2(expo-font@14.0.8(expo@54.0.12)(react-native@0.81.4(@babel/core@7.29.0)(@types/react@19.2.7)(react@19.2.3))(react@19.2.3))(react-native@0.81.4(@babel/core@7.29.0)(@types/react@19.2.7)(react@19.2.3))(react@19.2.3)
       '@livestore/adapter-expo':
-        specifier: 0.4.0-dev.22
+        specifier: 0.4.0
         version: link:../../packages/@livestore/adapter-expo
       '@livestore/devtools-expo':
-        specifier: 0.4.0-dev.22
+        specifier: 0.4.0
         version: link:../../packages/@livestore/devtools-expo
       '@livestore/livestore':
-        specifier: 0.4.0-dev.22
+        specifier: 0.4.0
         version: link:../../packages/@livestore/livestore
       '@livestore/peer-deps':
-        specifier: 0.4.0-dev.22
+        specifier: 0.4.0
         version: link:../../packages/@livestore/peer-deps
       '@livestore/react':
-        specifier: 0.4.0-dev.22
+        specifier: 0.4.0
         version: link:../../packages/@livestore/react
       '@react-native-segmented-control/segmented-control':
         specifier: 2.5.7
@@ -962,22 +962,22 @@ importers:
         specifier: 15.0.2
         version: 15.0.2(expo-font@14.0.8(expo@54.0.12)(react-native@0.81.4(@babel/core@7.29.0)(@types/react@19.2.7)(react@19.2.3))(react@19.2.3))(react-native@0.81.4(@babel/core@7.29.0)(@types/react@19.2.7)(react@19.2.3))(react@19.2.3)
       '@livestore/adapter-expo':
-        specifier: 0.4.0-dev.22
+        specifier: 0.4.0
         version: link:../../packages/@livestore/adapter-expo
       '@livestore/devtools-expo':
-        specifier: 0.4.0-dev.22
+        specifier: 0.4.0
         version: link:../../packages/@livestore/devtools-expo
       '@livestore/livestore':
-        specifier: 0.4.0-dev.22
+        specifier: 0.4.0
         version: link:../../packages/@livestore/livestore
       '@livestore/peer-deps':
-        specifier: 0.4.0-dev.22
+        specifier: 0.4.0
         version: link:../../packages/@livestore/peer-deps
       '@livestore/react':
-        specifier: 0.4.0-dev.22
+        specifier: 0.4.0
         version: link:../../packages/@livestore/react
       '@livestore/sync-cf':
-        specifier: 0.4.0-dev.22
+        specifier: 0.4.0
         version: link:../../packages/@livestore/sync-cf
       babel-preset-expo:
         specifier: 54.0.3
@@ -1038,23 +1038,23 @@ importers:
   examples/node-effect-cli:
     dependencies:
       '@livestore/adapter-node':
-        specifier: 0.4.0-dev.22
+        specifier: 0.4.0
         version: link:../../packages/@livestore/adapter-node
       '@livestore/common':
-        specifier: 0.4.0-dev.22
+        specifier: 0.4.0
         version: link:../../packages/@livestore/common
       '@livestore/livestore':
-        specifier: 0.4.0-dev.22
+        specifier: 0.4.0
         version: link:../../packages/@livestore/livestore
       '@livestore/sync-cf':
-        specifier: 0.4.0-dev.22
+        specifier: 0.4.0
         version: link:../../packages/@livestore/sync-cf
       '@livestore/utils':
-        specifier: 0.4.0-dev.22
+        specifier: 0.4.0
         version: link:../../packages/@livestore/utils
     devDependencies:
       '@livestore/utils-dev':
-        specifier: 0.4.0-dev.22
+        specifier: 0.4.0
         version: link:../../packages/@livestore/utils-dev
       typescript:
         specifier: ^5.9.2
@@ -1063,13 +1063,13 @@ importers:
   examples/node-todomvc-sync-cf:
     dependencies:
       '@livestore/adapter-node':
-        specifier: 0.4.0-dev.22
+        specifier: 0.4.0
         version: link:../../packages/@livestore/adapter-node
       '@livestore/livestore':
-        specifier: 0.4.0-dev.22
+        specifier: 0.4.0
         version: link:../../packages/@livestore/livestore
       '@livestore/sync-cf':
-        specifier: 0.4.0-dev.22
+        specifier: 0.4.0
         version: link:../../packages/@livestore/sync-cf
     devDependencies:
       '@types/node':
@@ -1125,25 +1125,25 @@ importers:
         specifier: 4.20251118.0
         version: 4.20251118.0
       '@livestore/adapter-cloudflare':
-        specifier: 0.4.0-dev.22
+        specifier: 0.4.0
         version: link:../../packages/@livestore/adapter-cloudflare
       '@livestore/adapter-web':
-        specifier: 0.4.0-dev.22
+        specifier: 0.4.0
         version: link:../../packages/@livestore/adapter-web
       '@livestore/livestore':
-        specifier: 0.4.0-dev.22
+        specifier: 0.4.0
         version: link:../../packages/@livestore/livestore
       '@livestore/react':
-        specifier: 0.4.0-dev.22
+        specifier: 0.4.0
         version: link:../../packages/@livestore/react
       '@livestore/sqlite-wasm':
-        specifier: 0.4.0-dev.22
+        specifier: 0.4.0
         version: link:../../packages/@livestore/sqlite-wasm
       '@livestore/sync-cf':
-        specifier: 0.4.0-dev.22
+        specifier: 0.4.0
         version: link:../../packages/@livestore/sync-cf
       '@livestore/wa-sqlite':
-        specifier: 0.4.0-dev.22
+        specifier: 0.4.0
         version: link:../../packages/@livestore/wa-sqlite
       react:
         specifier: 19.2.3
@@ -1192,25 +1192,25 @@ importers:
         specifier: 2.2.0
         version: 2.2.0(react@19.2.3)
       '@livestore/adapter-web':
-        specifier: 0.4.0-dev.22
+        specifier: 0.4.0
         version: link:../../packages/@livestore/adapter-web
       '@livestore/livestore':
-        specifier: 0.4.0-dev.22
+        specifier: 0.4.0
         version: link:../../packages/@livestore/livestore
       '@livestore/peer-deps':
-        specifier: 0.4.0-dev.22
+        specifier: 0.4.0
         version: link:../../packages/@livestore/peer-deps
       '@livestore/react':
-        specifier: 0.4.0-dev.22
+        specifier: 0.4.0
         version: link:../../packages/@livestore/react
       '@livestore/sync-cf':
-        specifier: 0.4.0-dev.22
+        specifier: 0.4.0
         version: link:../../packages/@livestore/sync-cf
       '@livestore/utils':
-        specifier: 0.4.0-dev.22
+        specifier: 0.4.0
         version: link:../../packages/@livestore/utils
       '@livestore/wa-sqlite':
-        specifier: 0.4.0-dev.22
+        specifier: 0.4.0
         version: link:../../packages/@livestore/wa-sqlite
       '@overengineering/fps-meter':
         specifier: 0.2.4
@@ -1349,22 +1349,22 @@ importers:
   examples/web-multi-store:
     dependencies:
       '@livestore/adapter-node':
-        specifier: 0.4.0-dev.22
+        specifier: 0.4.0
         version: link:../../packages/@livestore/adapter-node
       '@livestore/adapter-web':
-        specifier: 0.4.0-dev.22
+        specifier: 0.4.0
         version: link:../../packages/@livestore/adapter-web
       '@livestore/livestore':
-        specifier: 0.4.0-dev.22
+        specifier: 0.4.0
         version: link:../../packages/@livestore/livestore
       '@livestore/peer-deps':
-        specifier: 0.4.0-dev.22
+        specifier: 0.4.0
         version: link:../../packages/@livestore/peer-deps
       '@livestore/react':
-        specifier: 0.4.0-dev.22
+        specifier: 0.4.0
         version: link:../../packages/@livestore/react
       '@livestore/wa-sqlite':
-        specifier: 0.4.0-dev.22
+        specifier: 0.4.0
         version: link:../../packages/@livestore/wa-sqlite
       '@tanstack/react-router':
         specifier: 1.145.7
@@ -1413,19 +1413,19 @@ importers:
   examples/web-todomvc:
     dependencies:
       '@livestore/adapter-web':
-        specifier: 0.4.0-dev.22
+        specifier: 0.4.0
         version: link:../../packages/@livestore/adapter-web
       '@livestore/livestore':
-        specifier: 0.4.0-dev.22
+        specifier: 0.4.0
         version: link:../../packages/@livestore/livestore
       '@livestore/peer-deps':
-        specifier: 0.4.0-dev.22
+        specifier: 0.4.0
         version: link:../../packages/@livestore/peer-deps
       '@livestore/react':
-        specifier: 0.4.0-dev.22
+        specifier: 0.4.0
         version: link:../../packages/@livestore/react
       '@livestore/wa-sqlite':
-        specifier: 0.4.0-dev.22
+        specifier: 0.4.0
         version: link:../../packages/@livestore/wa-sqlite
       '@overengineering/fps-meter':
         specifier: 0.2.4
@@ -1477,19 +1477,19 @@ importers:
   examples/web-todomvc-custom-elements:
     dependencies:
       '@livestore/adapter-web':
-        specifier: 0.4.0-dev.22
+        specifier: 0.4.0
         version: link:../../packages/@livestore/adapter-web
       '@livestore/livestore':
-        specifier: 0.4.0-dev.22
+        specifier: 0.4.0
         version: link:../../packages/@livestore/livestore
       '@livestore/peer-deps':
-        specifier: 0.4.0-dev.22
+        specifier: 0.4.0
         version: link:../../packages/@livestore/peer-deps
       '@livestore/sync-cf':
-        specifier: 0.4.0-dev.22
+        specifier: 0.4.0
         version: link:../../packages/@livestore/sync-cf
       '@livestore/wa-sqlite':
-        specifier: 0.4.0-dev.22
+        specifier: 0.4.0
         version: link:../../packages/@livestore/wa-sqlite
       react:
         specifier: 19.2.3
@@ -1541,22 +1541,22 @@ importers:
   examples/web-todomvc-experimental:
     dependencies:
       '@livestore/adapter-web':
-        specifier: 0.4.0-dev.22
+        specifier: 0.4.0
         version: link:../../packages/@livestore/adapter-web
       '@livestore/livestore':
-        specifier: 0.4.0-dev.22
+        specifier: 0.4.0
         version: link:../../packages/@livestore/livestore
       '@livestore/peer-deps':
-        specifier: 0.4.0-dev.22
+        specifier: 0.4.0
         version: link:../../packages/@livestore/peer-deps
       '@livestore/react':
-        specifier: 0.4.0-dev.22
+        specifier: 0.4.0
         version: link:../../packages/@livestore/react
       '@livestore/sync-cf':
-        specifier: 0.4.0-dev.22
+        specifier: 0.4.0
         version: link:../../packages/@livestore/sync-cf
       '@livestore/wa-sqlite':
-        specifier: 0.4.0-dev.22
+        specifier: 0.4.0
         version: link:../../packages/@livestore/wa-sqlite
       '@overengineering/fps-meter':
         specifier: 0.2.4
@@ -1608,19 +1608,19 @@ importers:
   examples/web-todomvc-react-router:
     dependencies:
       '@livestore/adapter-web':
-        specifier: 0.4.0-dev.22
+        specifier: 0.4.0
         version: link:../../packages/@livestore/adapter-web
       '@livestore/livestore':
-        specifier: 0.4.0-dev.22
+        specifier: 0.4.0
         version: link:../../packages/@livestore/livestore
       '@livestore/peer-deps':
-        specifier: 0.4.0-dev.22
+        specifier: 0.4.0
         version: link:../../packages/@livestore/peer-deps
       '@livestore/react':
-        specifier: 0.4.0-dev.22
+        specifier: 0.4.0
         version: link:../../packages/@livestore/react
       '@livestore/wa-sqlite':
-        specifier: 0.4.0-dev.22
+        specifier: 0.4.0
         version: link:../../packages/@livestore/wa-sqlite
       '@overengineering/fps-meter':
         specifier: 0.2.4
@@ -1666,22 +1666,22 @@ importers:
   examples/web-todomvc-redwood:
     dependencies:
       '@livestore/adapter-web':
-        specifier: 0.4.0-dev.22
+        specifier: 0.4.0
         version: link:../../packages/@livestore/adapter-web
       '@livestore/livestore':
-        specifier: 0.4.0-dev.22
+        specifier: 0.4.0
         version: link:../../packages/@livestore/livestore
       '@livestore/peer-deps':
-        specifier: 0.4.0-dev.22
+        specifier: 0.4.0
         version: link:../../packages/@livestore/peer-deps
       '@livestore/react':
-        specifier: 0.4.0-dev.22
+        specifier: 0.4.0
         version: link:../../packages/@livestore/react
       '@livestore/sqlite-wasm':
-        specifier: 0.4.0-dev.22
+        specifier: 0.4.0
         version: link:../../packages/@livestore/sqlite-wasm
       '@livestore/wa-sqlite':
-        specifier: 0.4.0-dev.22
+        specifier: 0.4.0
         version: link:../../packages/@livestore/wa-sqlite
       '@overengineering/fps-meter':
         specifier: 0.2.4
@@ -1733,19 +1733,19 @@ importers:
   examples/web-todomvc-script:
     dependencies:
       '@livestore/adapter-web':
-        specifier: 0.4.0-dev.22
+        specifier: 0.4.0
         version: link:../../packages/@livestore/adapter-web
       '@livestore/livestore':
-        specifier: 0.4.0-dev.22
+        specifier: 0.4.0
         version: link:../../packages/@livestore/livestore
       '@livestore/peer-deps':
-        specifier: 0.4.0-dev.22
+        specifier: 0.4.0
         version: link:../../packages/@livestore/peer-deps
       '@livestore/sync-cf':
-        specifier: 0.4.0-dev.22
+        specifier: 0.4.0
         version: link:../../packages/@livestore/sync-cf
       '@livestore/wa-sqlite':
-        specifier: 0.4.0-dev.22
+        specifier: 0.4.0
         version: link:../../packages/@livestore/wa-sqlite
     devDependencies:
       '@cloudflare/vite-plugin':
@@ -1773,19 +1773,19 @@ importers:
   examples/web-todomvc-solid:
     dependencies:
       '@livestore/adapter-web':
-        specifier: 0.4.0-dev.22
+        specifier: 0.4.0
         version: link:../../packages/@livestore/adapter-web
       '@livestore/livestore':
-        specifier: 0.4.0-dev.22
+        specifier: 0.4.0
         version: link:../../packages/@livestore/livestore
       '@livestore/peer-deps':
-        specifier: 0.4.0-dev.22
+        specifier: 0.4.0
         version: link:../../packages/@livestore/peer-deps
       '@livestore/solid':
-        specifier: 0.4.0-dev.22
+        specifier: 0.4.0
         version: link:../../packages/@livestore/solid
       '@livestore/wa-sqlite':
-        specifier: 0.4.0-dev.22
+        specifier: 0.4.0
         version: link:../../packages/@livestore/wa-sqlite
       solid-js:
         specifier: 1.9.10
@@ -1828,19 +1828,19 @@ importers:
   examples/web-todomvc-svelte:
     dependencies:
       '@livestore/adapter-web':
-        specifier: 0.4.0-dev.22
+        specifier: 0.4.0
         version: link:../../packages/@livestore/adapter-web
       '@livestore/livestore':
-        specifier: 0.4.0-dev.22
+        specifier: 0.4.0
         version: link:../../packages/@livestore/livestore
       '@livestore/peer-deps':
-        specifier: 0.4.0-dev.22
+        specifier: 0.4.0
         version: link:../../packages/@livestore/peer-deps
       '@livestore/svelte':
-        specifier: 0.4.0-dev.22
+        specifier: 0.4.0
         version: link:../../packages/@livestore/svelte
       '@livestore/wa-sqlite':
-        specifier: 0.4.0-dev.22
+        specifier: 0.4.0
         version: link:../../packages/@livestore/wa-sqlite
       svelte:
         specifier: 5.43.14
@@ -1880,22 +1880,22 @@ importers:
   examples/web-todomvc-sync-cf:
     dependencies:
       '@livestore/adapter-web':
-        specifier: 0.4.0-dev.22
+        specifier: 0.4.0
         version: link:../../packages/@livestore/adapter-web
       '@livestore/livestore':
-        specifier: 0.4.0-dev.22
+        specifier: 0.4.0
         version: link:../../packages/@livestore/livestore
       '@livestore/peer-deps':
-        specifier: 0.4.0-dev.22
+        specifier: 0.4.0
         version: link:../../packages/@livestore/peer-deps
       '@livestore/react':
-        specifier: 0.4.0-dev.22
+        specifier: 0.4.0
         version: link:../../packages/@livestore/react
       '@livestore/sync-cf':
-        specifier: 0.4.0-dev.22
+        specifier: 0.4.0
         version: link:../../packages/@livestore/sync-cf
       '@livestore/wa-sqlite':
-        specifier: 0.4.0-dev.22
+        specifier: 0.4.0
         version: link:../../packages/@livestore/wa-sqlite
       '@overengineering/fps-meter':
         specifier: 0.2.4
@@ -1947,28 +1947,28 @@ importers:
   examples/web-todomvc-sync-electric:
     dependencies:
       '@livestore/adapter-node':
-        specifier: 0.4.0-dev.22
+        specifier: 0.4.0
         version: link:../../packages/@livestore/adapter-node
       '@livestore/adapter-web':
-        specifier: 0.4.0-dev.22
+        specifier: 0.4.0
         version: link:../../packages/@livestore/adapter-web
       '@livestore/common':
-        specifier: 0.4.0-dev.22
+        specifier: 0.4.0
         version: link:../../packages/@livestore/common
       '@livestore/livestore':
-        specifier: 0.4.0-dev.22
+        specifier: 0.4.0
         version: link:../../packages/@livestore/livestore
       '@livestore/peer-deps':
-        specifier: 0.4.0-dev.22
+        specifier: 0.4.0
         version: link:../../packages/@livestore/peer-deps
       '@livestore/react':
-        specifier: 0.4.0-dev.22
+        specifier: 0.4.0
         version: link:../../packages/@livestore/react
       '@livestore/sync-electric':
-        specifier: 0.4.0-dev.22
+        specifier: 0.4.0
         version: link:../../packages/@livestore/sync-electric
       '@livestore/wa-sqlite':
-        specifier: 0.4.0-dev.22
+        specifier: 0.4.0
         version: link:../../packages/@livestore/wa-sqlite
       '@overengineering/fps-meter':
         specifier: 0.2.4
@@ -2029,31 +2029,31 @@ importers:
   examples/web-todomvc-sync-s2:
     dependencies:
       '@livestore/adapter-node':
-        specifier: 0.4.0-dev.22
+        specifier: 0.4.0
         version: link:../../packages/@livestore/adapter-node
       '@livestore/adapter-web':
-        specifier: 0.4.0-dev.22
+        specifier: 0.4.0
         version: link:../../packages/@livestore/adapter-web
       '@livestore/common':
-        specifier: 0.4.0-dev.22
+        specifier: 0.4.0
         version: link:../../packages/@livestore/common
       '@livestore/livestore':
-        specifier: 0.4.0-dev.22
+        specifier: 0.4.0
         version: link:../../packages/@livestore/livestore
       '@livestore/peer-deps':
-        specifier: 0.4.0-dev.22
+        specifier: 0.4.0
         version: link:../../packages/@livestore/peer-deps
       '@livestore/react':
-        specifier: 0.4.0-dev.22
+        specifier: 0.4.0
         version: link:../../packages/@livestore/react
       '@livestore/sync-s2':
-        specifier: 0.4.0-dev.22
+        specifier: 0.4.0
         version: link:../../packages/@livestore/sync-s2
       '@livestore/utils':
-        specifier: 0.4.0-dev.22
+        specifier: 0.4.0
         version: link:../../packages/@livestore/utils
       '@livestore/wa-sqlite':
-        specifier: 0.4.0-dev.22
+        specifier: 0.4.0
         version: link:../../packages/@livestore/wa-sqlite
       '@overengineering/fps-meter':
         specifier: 0.2.4
@@ -3858,8 +3858,8 @@ importers:
         specifier: 7.0.1
         version: 7.0.1
       qrcode-generator:
-        specifier: 1.4.4
-        version: 1.4.4
+        specifier: 2.0.4
+        version: 2.0.4
     devDependencies:
       '@effect/ai':
         specifier: 0.35.0
@@ -5980,6 +5980,12 @@ packages:
   '@chevrotain/utils@11.1.2':
     resolution: {integrity: sha512-4mudFAQ6H+MqBTfqLmU7G1ZwRzCLfJEooL/fsF6rCX5eePMbGhoy5n4g+G4vlh2muDcsCTJtL+uKbOzWxs5LHA==}
 
+  '@clack/core@1.2.0':
+    resolution: {integrity: sha512-qfxof/3T3t9DPU/Rj3OmcFyZInceqj/NVtO9rwIuJqCUgh32gwPjpFQQp/ben07qKlhpwq7GzfWpST4qdJ5Drg==}
+
+  '@clack/prompts@1.2.0':
+    resolution: {integrity: sha512-4jmztR9fMqPMjz6H/UZXj0zEmE43ha1euENwkckKKel4XpSfokExPo5AiVStdHSAlHekz4d0CA/r45Ok1E4D3w==}
+
   '@cloudflare/kv-asset-handler@0.4.0':
     resolution: {integrity: sha512-+tv3z+SPp+gqTIcImN9o0hqE9xyfQjI1XD9pL6NuKjua9B1y7mNYv0S9cP+QEbA4ppVgGZEmKOvHX5G5Ei1CVA==}
     engines: {node: '>=18.0.0'}
@@ -6908,7 +6914,7 @@ packages:
 
   '@expo/bunyan@4.0.1':
     resolution: {integrity: sha512-+Lla7nYSiHZirgK+U/uYzsLv/X+HaJienbD5AKX1UQZHYfWaP+9uuQluRB4GrEVWF0GZ7vEVp/jzaOT9k/SQlg==}
-    engines: {'0': node >=0.10.0}
+    engines: {node: '>=0.10.0'}
 
   '@expo/cli@54.0.10':
     resolution: {integrity: sha512-iw9gAnN6+PKWWLIyYmiskY/wzZjuFMctunqGXuC8BGATWgtr/HpzjVqWbcL3KIX/GvEBCCh74Tkckrh+Ylxh5Q==}
@@ -7494,10 +7500,6 @@ packages:
       '@types/node':
         optional: true
 
-  '@inquirer/figures@1.0.15':
-    resolution: {integrity: sha512-t2IEY+unGHOzAaVM5Xx6DEWKeXlDDcNPeDyUpsRc6CUhBfU3VQOEl+Vssh7VNp1dR8MdUJBWhuObjXCsVpjN5g==}
-    engines: {node: '>=18'}
-
   '@internationalized/date@3.12.0':
     resolution: {integrity: sha512-/PyIMzK29jtXaGU23qTvNZxvBXRtKbNnGDFD+PY6CZw/Y8Ex8pFUzkuCJCG9aOqmShjqhS9mPqP6Dk5onQY8rQ==}
 
@@ -7701,17 +7703,17 @@ packages:
   '@mermaid-js/parser@1.0.1':
     resolution: {integrity: sha512-opmV19kN1JsK0T6HhhokHpcVkqKpF+x2pPDKKM2ThHtZAB5F4PROopk0amuVYK5qMrIA4erzpNm8gmPNJgMDxQ==}
 
-  '@mixedbread/cli@1.2.1':
-    resolution: {integrity: sha512-IrDO4zG6i1Lf6b1vjohvd1xXmoIpJv+USZj9LVH0Bft6J4vbqgPD1yAiSazrNPSzLIKavLtAkh6uRUzI2wpHEA==}
+  '@mixedbread/cli@2.3.2':
+    resolution: {integrity: sha512-WlZJ3QYTX1yhmNc+tr7di+N4kK0OGPEYO5jPTs9KEwSZCDOHohQ6A2A8URytQd67Fn+N6FGrtXoDq+mnvM5Gpw==}
     engines: {node: '>=20'}
-    hasBin: true
-
-  '@mixedbread/sdk@0.26.0':
-    resolution: {integrity: sha512-B0Un0thpz4UKN69QVmgdVsCIgiz+jR4V+nxuCOgdm/P0Iie1NctqY092VQ/iobY/FSMzhHJofXij086y/9E5rg==}
     hasBin: true
 
   '@mixedbread/sdk@0.28.1':
     resolution: {integrity: sha512-+YMo8VoxnKS91WCG127fRmY1vM6Wj/AB7hIbruNRJa0gDwqhhUXwu+pSq7iKT1omqjaTz69giceB6bEVHIC/5g==}
+    hasBin: true
+
+  '@mixedbread/sdk@0.57.1':
+    resolution: {integrity: sha512-lMczeYXD2yhUomNseQURN/Wzm4aa5olu21s8/aoGbuLnxNMXEllAJatkvJvZUCdtw2hx0XW/Gfrjy6BMwlbpgQ==}
     hasBin: true
 
   '@msgpackr-extract/msgpackr-extract-darwin-arm64@3.0.3':
@@ -7919,6 +7921,7 @@ packages:
   '@oclif/screen@3.0.8':
     resolution: {integrity: sha512-yx6KAqlt3TAHBduS2fMQtJDL2ufIHnDRArrJEOoTTuizxqmjLT+psGYOHpmMl3gvQpFJ11Hs76guUUktzAF9Bg==}
     engines: {node: '>=12.0.0'}
+    deprecated: Package no longer supported. Contact Support at https://www.npmjs.com/support for more info.
 
   '@oozcitak/dom@2.0.2':
     resolution: {integrity: sha512-GjpKhkSYC3Mj4+lfwEyI1dqnsKTgwGy48ytZEhm4A/xnH/8z9M3ZVXKr/YGQi3uCLs1AEBS+x5T2JPiueEDW8w==}
@@ -10592,6 +10595,7 @@ packages:
 
   '@ungap/structured-clone@1.3.0':
     resolution: {integrity: sha512-WmoN8qaIAo7WTYWbAZuG8PYEhn5fkz7dZrqTBZ7dtt//lL2Gwms1IcnQ5yHqjDfX8Ft5j4YzDM23f87zBfDe9g==}
+    deprecated: Potential CWE-502 - Update to 1.3.1 or higher
 
   '@upsetjs/venn.js@2.0.0':
     resolution: {integrity: sha512-WbBhLrooyePuQ1VZxrJjtLvTc4NVfpOyKx0sKqioq9bX1C1m7Jgykkn8gLrtwumBioXIqam8DLxp88Adbue6Hw==}
@@ -10881,10 +10885,12 @@ packages:
   '@xmldom/xmldom@0.7.13':
     resolution: {integrity: sha512-lm2GW5PkosIzccsaZIz7tp8cPADSIlIHWDFTR1N0SzfinhhYgeIQjFMz4rYzanCScr3DqQLeomUDArp6MWKm+g==}
     engines: {node: '>=10.0.0'}
+    deprecated: this version has critical issues, please update to the latest version
 
   '@xmldom/xmldom@0.8.12':
     resolution: {integrity: sha512-9k/gHF6n/pAi/9tqr3m3aqkuiNosYTurLLUtc7xQ9sxB/wm7WPygCv8GYa6mS0fLJEHhqMC1ATYhz++U/lRHqg==}
     engines: {node: '>=10.0.0'}
+    deprecated: this version has critical issues, please update to the latest version
 
   '@xtuc/ieee754@1.2.0':
     resolution: {integrity: sha512-DX8nKgqcGwsc0eJSqYt5lwP4DH5FlHnmuWWBRy7X0NcaGR0ZtuyeESgMwTYVEtxmsNGY+qit4QYT/MIYTOTPeA==}
@@ -11364,6 +11370,7 @@ packages:
   basic-ftp@5.2.0:
     resolution: {integrity: sha512-VoMINM2rqJwJgfdHq6RiUudKt2BV+FY5ZFezP/ypmwayk68+NzzAQy4XXLlqsGD4MCzq3DrmNFD/uUmBJuGoXw==}
     engines: {node: '>=10.0.0'}
+    deprecated: Security vulnerability fixed in 5.2.1, please upgrade
 
   bcp-47-match@2.0.3:
     resolution: {integrity: sha512-JtTezzbAibu8G0R9op9zb3vcWZd9JF6M0xOYGPn0fNCd7wOpRB1mU2mH9T8gaBGbAAyIIVgB2G7xG0GP98zMAQ==}
@@ -11729,10 +11736,6 @@ packages:
     resolution: {integrity: sha512-I/zHAwsKf9FqGoXM4WWRACob9+SNukZTd94DWF57E4toouRulbCxcUh6RKUEOQlYTHJnzkPMySvPNaaSLNfLZw==}
     engines: {node: '>=8'}
 
-  cli-cursor@5.0.0:
-    resolution: {integrity: sha512-aCj4O5wKyszjMmDT4tZj93kxyydN/K5zPWSCe6/0AV/AA1pqe5ZBIw0a2ZfPQV7lL5/yb5HsUreJ6UFAF1tEQw==}
-    engines: {node: '>=18'}
-
   cli-progress@3.12.0:
     resolution: {integrity: sha512-tRkV3HJ1ASwm19THiiLIXLO7Im7wlTuKnvkYaTkyoAPefqjNg7W7DHKUlGRxy9vxDvbyCYQkQozvptuMkGCg8A==}
     engines: {node: '>=4'}
@@ -11744,10 +11747,6 @@ packages:
   cli-table3@0.6.5:
     resolution: {integrity: sha512-+W/5efTR7y5HRD7gACw9yQjqMVvEMLBHmboM/kPWam+H+Hmyrgjh6YncVKK122YZkXrLudzTuAukUw9FnMf7IQ==}
     engines: {node: 10.* || >= 12.*}
-
-  cli-width@4.1.0:
-    resolution: {integrity: sha512-ouuZd4/dm2Sw5Gmqy6bGyNNNe1qt9RpmxveLSO7KcgsTnU7RXfsw+/bukWGo1abgBiMAic068rclZsO4IWmmxQ==}
-    engines: {node: '>= 12'}
 
   client-only@0.0.1:
     resolution: {integrity: sha512-IV3Ou0jSMzZrd3pZ48nLkT9DA7Ag1pnPzaiQhpW7c3RbcqqzvzzVu+L8gfqMp/8IM2MQtSiqaCxrrcfu8I8rMA==}
@@ -11859,6 +11858,10 @@ packages:
   commander@12.1.0:
     resolution: {integrity: sha512-Vw8qHK3bZM9y/P10u3Vib8o/DdkvA2OtPtZvD871QKjy74Wj1WSKFILMPRPSdUSx5RFK1arlJzEtA4PkFgnbuA==}
     engines: {node: '>=18'}
+
+  commander@14.0.3:
+    resolution: {integrity: sha512-H+y0Jo/T1RZ9qPP4Eh1pkcQcLRglraJaSLoyOtHxu6AapkjWVCy2Sit1QQ4x3Dng8qDlSsZEet7g5Pq06MvTgw==}
+    engines: {node: '>=20'}
 
   commander@2.20.3:
     resolution: {integrity: sha512-GpVkmM8vF2vQUkj2LvZmD35JxeJOLCwJ9cUkugyk2nuhbv3+mJvpLYYt+0+USMxE+oj+ey/lJEnhZw75x/OMcQ==}
@@ -13166,8 +13169,17 @@ packages:
   fast-sha256@1.3.0:
     resolution: {integrity: sha512-n11RGP/lrWEFI/bWdygLxhI+pVeo1ZYIVwvvPkW7azl/rOy+F3HYRZ2K5zeE9mmkhQppyv9sQFx0JM9UabnpPQ==}
 
+  fast-string-truncated-width@1.2.1:
+    resolution: {integrity: sha512-Q9acT/+Uu3GwGj+5w/zsGuQjh9O1TyywhIwAxHudtWrgF09nHOPrvTLhQevPbttcxjr/SNN7mJmfOw/B1bXgow==}
+
+  fast-string-width@1.1.0:
+    resolution: {integrity: sha512-O3fwIVIH5gKB38QNbdg+3760ZmGz0SZMgvwJbA1b2TGXceKE6A2cOlfogh1iw8lr049zPyd7YADHy+B7U4W9bQ==}
+
   fast-uri@3.1.0:
     resolution: {integrity: sha512-iPeeDKJSWf4IEOasVVrknXpaBV0IApz/gp7S2bb7Z4Lljbl2MGJRqInZiUrQwV16cpzw/D3S5j5Julj/gT52AA==}
+
+  fast-wrap-ansi@0.1.6:
+    resolution: {integrity: sha512-HlUwET7a5gqjURj70D5jl7aC3Zmy4weA1SHUfM0JFI0Ptq987NH2TwbBFLoERhfwk+E+eaq4EK3jXoT+R3yp3w==}
 
   fastq@1.20.1:
     resolution: {integrity: sha512-GGToxJ/w1x32s/D2EKND7kTil4n8OVk/9mycTc4VDza13lOvpUZTGX3mFSCtV9ksdGBVzvsyAVLM6mHFThxXxw==}
@@ -13479,11 +13491,13 @@ packages:
 
   glob@10.5.0:
     resolution: {integrity: sha512-DfXN8DfhJ7NH3Oe7cFmu3NCu1wKbkReJ8TorzSAFbSKrlNaQSKfIzqYqVY8zlbs2NLBbWpRiU52GX2PbaBVNkg==}
+    deprecated: Old versions of glob are not supported, and contain widely publicized security vulnerabilities, which have been fixed in the current version. Please update. Support for old versions may be purchased (at exorbitant rates) by contacting i@izs.me
     hasBin: true
 
   glob@11.0.3:
     resolution: {integrity: sha512-2Nim7dha1KVkaiF4q6Dj+ngPPMdfvLJEOpZk/jKiUAkqKebpGAWQXAq9z1xu9HKu5lWfqw/FASuccEjyznjPaA==}
     engines: {node: 20 || >=22}
+    deprecated: Old versions of glob are not supported, and contain widely publicized security vulnerabilities, which have been fixed in the current version. Please update. Support for old versions may be purchased (at exorbitant rates) by contacting i@izs.me
     hasBin: true
 
   glob@13.0.6:
@@ -13492,9 +13506,11 @@ packages:
 
   glob@6.0.4:
     resolution: {integrity: sha512-MKZeRNyYZAVVVG1oZeLaWie1uweH40m9AZwIwxyPbTSX4hHrVYSzLg0Ro5Z5R7XKkIX+Cc6oD1rqeDJnwsB8/A==}
+    deprecated: Old versions of glob are not supported, and contain widely publicized security vulnerabilities, which have been fixed in the current version. Please update. Support for old versions may be purchased (at exorbitant rates) by contacting i@izs.me
 
   glob@7.2.3:
     resolution: {integrity: sha512-nFR0zLpU2YCaRxwoCJvL6UvCH2JFyFVIvwTLsIf21AuHlMskA1hhTdk+LlYJtOlYt9v6dvszD2BGRqBL+iQK9Q==}
+    deprecated: Old versions of glob are not supported, and contain widely publicized security vulnerabilities, which have been fixed in the current version. Please update. Support for old versions may be purchased (at exorbitant rates) by contacting i@izs.me
 
   globalthis@1.0.4:
     resolution: {integrity: sha512-DpLKbNU4WylpxJykQujfCcwYWiV/Jhm50Goo0wrVILAv5jOr9d+H+UR3PhSCD2rCCEIg0uc+G+muBTwD54JhDQ==}
@@ -13680,6 +13696,7 @@ packages:
 
   hast@1.0.0:
     resolution: {integrity: sha512-vFUqlRV5C+xqP76Wwq2SrM0kipnmpxJm7OfvVXpB35Fp+Fn4MV+ozr+JZr5qFvyR1q/U+Foim2x+3P+x9S1PLA==}
+    deprecated: Renamed to rehype
 
   hastscript@9.0.1:
     resolution: {integrity: sha512-g7df9rMFX/SPi34tyGCyUBREQoKkapwdY/T04Qn9TDWfHhAYt4/I0gMVirzK5wEzeUqIjEB+LXC/ypb7Aqno5w==}
@@ -13876,6 +13893,7 @@ packages:
 
   inflight@1.0.6:
     resolution: {integrity: sha512-k92I/b08q4wvFscXCLvqfsHCrjrF7yiXsQuIVvVE7N82W3+aqpzuUdBbfhWcy/FZR3/4IgflMgKLOsvPDrGCJA==}
+    deprecated: This module is not supported, and leaks memory. Do not use it. Check out lru-cache if you want a good and tested way to coalesce async requests by a key value, which is much more comprehensive and powerful.
 
   inherits@2.0.3:
     resolution: {integrity: sha512-x00IRNXNy63jwGkJmzPigoySHbaqpNuzKbBOmzK+g2OdZpQ9w+sxCN+VSB3ja7IAge2OP2qpfxTjeNcyjmW1uw==}
@@ -13895,10 +13913,6 @@ packages:
 
   inline-style-prefixer@7.0.1:
     resolution: {integrity: sha512-lhYo5qNTQp3EvSSp3sRvXMbVQTLrvGV6DycRMJ5dm2BLMiJ30wpXKdDdgX+GmJZ5uQMucwRKHamXSst3Sj/Giw==}
-
-  inquirer@9.3.8:
-    resolution: {integrity: sha512-pFGGdaHrmRKMh4WoDDSowddgjT1Vkl90atobmTeSmcPGdYiwikch/m/Ef5wRaiamHejtw0cUUMMerzDUXCci2w==}
-    engines: {node: '>=18'}
 
   internal-ip@6.2.0:
     resolution: {integrity: sha512-D8WGsR6yDt8uq7vDMu7mjcR+yRMm3dW8yufyChmszWRjcSHuxLBkR3GdS2HZAjodsaGuCvXeEJpueisXJULghg==}
@@ -14044,10 +14058,6 @@ packages:
     resolution: {integrity: sha512-2HvIEKRoqS62guEC+qBjpvRubdX910WCMuJTZ+I9yvqKU2/12eSL549HMwtabb4oupdj2sMP50k+XJfB/8JE6w==}
     engines: {node: '>=8'}
 
-  is-interactive@2.0.0:
-    resolution: {integrity: sha512-qP1vozQRI+BMOPcjFzrjXuQvdak2pHNUMZoeG2eRbiSqyvbEf/wQtEOTOX1guk6E3t36RkaqiSt8A/6YElNxLQ==}
-    engines: {node: '>=12'}
-
   is-ip@3.1.0:
     resolution: {integrity: sha512-35vd5necO7IitFPjd/YBeqwWnyDWbuLH9ZXQdMfDA8TEo7pv5X8yfrvVO3xbJbLUlERCMvf6X0hTUamQxCYJ9Q==}
     engines: {node: '>=8'}
@@ -14158,10 +14168,6 @@ packages:
   is-unicode-supported@0.1.0:
     resolution: {integrity: sha512-knxG2q4UC3u8stRGyAVJCOdxFmv5DZiRcdlIaAQXAbSfJya+OhopNotLQrstBhququ4ZpuKbDc/8S6mgXgPFPw==}
     engines: {node: '>=10'}
-
-  is-unicode-supported@1.3.0:
-    resolution: {integrity: sha512-43r2mRvz+8JRIKnWJ+3j8JtjRKZ6GmjzfaE/qiBJnikNnYv/6bagRJ1kUhNk8R5EX/GkobD+r+sfxCPJsiKBLQ==}
-    engines: {node: '>=12'}
 
   is-unicode-supported@2.1.0:
     resolution: {integrity: sha512-mE00Gnza5EEB3Ds0HfMyllZzbBrmLOX3vfWoj9A9PEnTfratQ/BcaJOuMhnkhjXvb2+FkY3VuHqtAGpTPmglFQ==}
@@ -14725,6 +14731,7 @@ packages:
 
   lodash.get@4.4.2:
     resolution: {integrity: sha512-z+Uw/vLuy6gQe8cfaFWD7p0wVv8fJl3mbzXh33RS+0oW2wvUqiRXiQ69gLWSLpgB5/6sU+r6BlQR0MBILadqTQ==}
+    deprecated: This package is deprecated. Use the optional chaining (?.) operator instead.
 
   lodash.includes@4.3.0:
     resolution: {integrity: sha512-W3Bx6mdkRTGtlJISOvVD/lbqjTlPPUDTMnlXZFnVwi9NKJ6tiAk6LVdlhZMm17VZisqhKcgzpO5Wz91PCt5b0w==}
@@ -14766,10 +14773,6 @@ packages:
   log-symbols@4.1.0:
     resolution: {integrity: sha512-8XPvpAA8uyhfteu8pIvQxpJZ7SYYdpUivZpGy6sFsBuKRY/7rQGavedeB8aK+Zkyq6upMFVL/9AW6vOYzfRyLg==}
     engines: {node: '>=10'}
-
-  log-symbols@6.0.0:
-    resolution: {integrity: sha512-i24m8rpwhmPIS4zscNzK6MSEhk0DUWa/8iYQWxhffV8jkI4Phvs3F+quL5xvS0gdQR0FyTCMMH33Y78dDTzzIw==}
-    engines: {node: '>=18'}
 
   log-update@4.0.0:
     resolution: {integrity: sha512-9fkkDevMefjg0mmzWFBW8YkFP91OrizzkW3diF7CpG+S2EYdy4+TVfGwz1zeF8x7hCx1ovSPTOE9Ngib74qqUg==}
@@ -15266,10 +15269,6 @@ packages:
     resolution: {integrity: sha512-vqiC06CuhBTUdZH+RYl8sFrL096vA45Ok5ISO6sE/Mr1jRbGH4Csnhi8f3wKVl7x8mO4Au7Ir9D3Oyv1VYMFJw==}
     engines: {node: '>=12'}
 
-  mimic-function@5.0.1:
-    resolution: {integrity: sha512-VP79XUPxV2CigYP3jWwAUFSku2aKqBH7uTAapFWCBqutsbmDo96KY5o8uh6U+/YSIn5OxJnXp73beVkpqMIGhA==}
-    engines: {node: '>=18'}
-
   min-indent@1.0.1:
     resolution: {integrity: sha512-I9jwMn07Sy/IwOj3zVkVik2JTvgpaykDZEigL6Rx6N9LbMywwUSMtxET+7lVoDLLd3O3IXwJwvuuns8UB/HeAg==}
     engines: {node: '>=4'}
@@ -15399,10 +15398,6 @@ packages:
   mute-stream@0.0.8:
     resolution: {integrity: sha512-nnbWWOkoWyUsTjKrhgD0dcz22mdkSnpYqbEjIm2nhwhuxlSkpywJmBo8h0ZqJdkp73mb90SssHkN4rsRaBAfAA==}
 
-  mute-stream@1.0.0:
-    resolution: {integrity: sha512-avsJQhyd+680gKXyG/sQc0nXaC6rBkPOfyHYcFb9+hdkqQkR9bdnkJ0AMZhke0oesPqIO+mFFJ+IdBc7mst4IA==}
-    engines: {node: ^14.17.0 || ^16.13.0 || >=18.0.0}
-
   mv@2.1.1:
     resolution: {integrity: sha512-at/ZndSy3xEGJ8i0ygALh8ru9qy7gWW1cmkaqBN29JmMlIvM//MEO9y1sk/avxuwnPcfhkejkLsuPxH81BrkSg==}
     engines: {node: '>=0.8.0'}
@@ -15494,6 +15489,7 @@ packages:
   node-domexception@1.0.0:
     resolution: {integrity: sha512-/jKZoMpw0F8GRwl4/eLROPA3cfcXtLApP0QzLmUT/HuPCZWyB7IY9ZrMeKw2O/nFIqPQB3PVM9aYm0F312AXDQ==}
     engines: {node: '>=10.5.0'}
+    deprecated: Use your platform's native DOMException instead
 
   node-exports-info@1.6.0:
     resolution: {integrity: sha512-pyFS63ptit/P5WqUkt+UUfe+4oevH+bFeIiPPdfb0pFeYEu/1ELnJu5l+5EcTKYL5M7zaAa7S8ddywgXypqKCw==}
@@ -15687,10 +15683,6 @@ packages:
     resolution: {integrity: sha512-1FlR+gjXK7X+AsAHso35MnyN5KqGwJRi/31ft6x0M194ht7S+rWAvd7PHss9xSKMzE0asv1pyIHaJYq+BbacAQ==}
     engines: {node: '>=12'}
 
-  onetime@7.0.0:
-    resolution: {integrity: sha512-VXJjc87FScF88uafS3JllDgvAm+c/Slfz06lorj2uAY34rlUu0Nt+v8wreiImcrgAjjIHp1rXpTDlLOGw29WwQ==}
-    engines: {node: '>=18'}
-
   oniguruma-parser@0.12.1:
     resolution: {integrity: sha512-8Unqkvk1RYc6yq2WBYRj4hdnsAxVze8i7iPfQr8e4uSP3tRv0rpZcbGUDvxfQQcdwHt/e9PrMvGCsa8OqG9X3w==}
 
@@ -15723,10 +15715,6 @@ packages:
   ora@5.4.1:
     resolution: {integrity: sha512-5b6Y85tPxZZ7QytO+BQzysW31HJku27cRIlkbAXaNx+BdcVi+LlRFmVXzeF6a7JCwJpyw5c4b+YSVImQIrBpuQ==}
     engines: {node: '>=10'}
-
-  ora@8.2.0:
-    resolution: {integrity: sha512-weP+BZ8MVNnlCm8c0Qdc1WSWq4Qn7I+9CJGm7Qali6g44e/PUzbjNqJX5NJ9ljlNMosfJvg1fKEGILklK9cwnw==}
-    engines: {node: '>=18'}
 
   orderedmap@2.1.1:
     resolution: {integrity: sha512-TvAWxi0nDe1j/rtMcWcIj94+Ffe6n7zhow33h40SKxmsmozs6dz/e+EajymfoFcHd7sxNn8yHM8839uixMOV6g==}
@@ -15769,6 +15757,10 @@ packages:
   p-limit@6.2.0:
     resolution: {integrity: sha512-kuUqqHNUqoIWp/c467RI4X6mmyuojY5jGutNU0wVTmEOOfcuwLqyMVoAi9MKi2Ak+5i9+nhmrK4ufZE8069kHA==}
     engines: {node: '>=18'}
+
+  p-limit@7.3.0:
+    resolution: {integrity: sha512-7cIXg/Z0M5WZRblrsOla88S4wAK+zOQQWeBYfV3qJuJXMr+LnbYjaadrFaS0JILfEDPVqHyKnZ1Z/1d6J9VVUw==}
+    engines: {node: '>=20'}
 
   p-locate@4.1.0:
     resolution: {integrity: sha512-R79ZZ/0wAxKGu3oYMlz8jy/kbhsNrS7SKZ7PxEHBgJ5+F2mtFW2fK2cOtBh1cHYkQsbzFV7I+EoRKe6Yt0oK7A==}
@@ -16311,9 +16303,6 @@ packages:
   pure-rand@6.1.0:
     resolution: {integrity: sha512-bVWawvoZoBYpp6yIoQtQXHZjmz35RSVHnUOTefl8Vcjr8snTPY1wnpSPMWekcFwbxI6gtmT7rSYPFvz71ldiOA==}
 
-  qrcode-generator@1.4.4:
-    resolution: {integrity: sha512-HM7yY8O2ilqhmULxGMpcHSF1EhJJ9yBj8gvDEuZ6M+KGJ0YY2hKpnXvRD+hZPLrDVck3ExIGhmPtSdcjC+guuw==}
-
   qrcode-generator@2.0.4:
     resolution: {integrity: sha512-mZSiP6RnbHl4xL2Ap5HfkjLnmxfKcPWpWe/c+5XxCuetEenqmNFf1FH/ftXPCtFG5/TDobjsjz6sSNL0Sr8Z9g==}
 
@@ -16558,6 +16547,7 @@ packages:
   react-server-dom-webpack@19.1.0:
     resolution: {integrity: sha512-GUbawkNSN0oj8GnuNhMzsvyIHpXqqpAmyOY5NRqNNQ/M8wvUUN8YBoGjDUj9lbmBrmAHS65BByp6325CcWA0eg==}
     engines: {node: '>=0.10.0'}
+    deprecated: Critical Security Vulnerability in React Server Components
     peerDependencies:
       react: 19.2.3
       react-dom: 19.2.3
@@ -16862,10 +16852,6 @@ packages:
     resolution: {integrity: sha512-l+sSefzHpj5qimhFSE5a8nufZYAM3sBSVMAPtYkmC+4EH2anSGaEMXSD0izRQbu9nfyQ9y5JrVmp7E8oZrUjvA==}
     engines: {node: '>=8'}
 
-  restore-cursor@5.1.0:
-    resolution: {integrity: sha512-oMA2dcrw6u0YfxJQXm342bFKX/E4sG9rbTzO9ptUcR/e8A33cHuvStiYOwH7fszkZlZ1z/ta9AAoPk2F4qIOHA==}
-    engines: {node: '>=18'}
-
   restructure@3.0.2:
     resolution: {integrity: sha512-gSfoiOEA0VPE6Tukkrr7I0RBdE0s7H1eFCDBk05l1KIQT1UIKNc5JZy6jdyW6eYH3aR3g5b3PuL77rq0hvwtAw==}
 
@@ -16902,10 +16888,12 @@ packages:
 
   rimraf@2.4.5:
     resolution: {integrity: sha512-J5xnxTyqaiw06JjMftq7L9ouA448dw/E7dKghkP9WpKNuwmARNNg+Gk8/u5ryb9N/Yo2+z3MCwuqFK/+qPOPfQ==}
+    deprecated: Rimraf versions prior to v4 are no longer supported
     hasBin: true
 
   rimraf@3.0.2:
     resolution: {integrity: sha512-JZkJMZkAGFFPP2YqXZXPbMlMBgsxzE8ILs4lMIX/2o0L9UBw9O/Y3o6wFw/i9YLapcUJWwqbi3kdxIPdC62TIA==}
+    deprecated: Rimraf versions prior to v4 are no longer supported
     hasBin: true
 
   rimraf@5.0.10:
@@ -16939,10 +16927,6 @@ packages:
     resolution: {integrity: sha512-DPe5pVFaAsinSaV6QjQ6gdiedWDcRCbUuiQfQa2wmWV7+xC9bGulGI8+TdRmoFkAPaBXk8CrAbnlY2ISniJ47Q==}
     engines: {node: '>=18'}
 
-  run-async@3.0.0:
-    resolution: {integrity: sha512-540WwVDOMxA6dN6We19EcT9sc3hkXPw5mzRNGM3FkdN/vtE9NFvj5lFAPNwUDmJjXidm3v7TC1cTE7t17Ulm1Q==}
-    engines: {node: '>=0.12.0'}
-
   run-parallel@1.2.0:
     resolution: {integrity: sha512-5l4VyZR86LZ/lDxZTR6jqL8AFE2S0IFLMP26AbjsLVADxHdhB/c0GUsH+y39UfCi3dzz8OlQuPmnaJOMoDHQBA==}
 
@@ -16959,9 +16943,6 @@ packages:
       react-server-dom-webpack: '>=19.3.0-canary-4fdf7cf2-20251003 <20.0.0'
       vite: ^6.2.6 || 7.x
       wrangler: ^4.35.0
-
-  rxjs@7.8.2:
-    resolution: {integrity: sha512-dhKf903U/PQZY6boNNtAGdWbG85WAbjT/1xYoZIC7FAY0yWapOBQVsVrDl58W86//e1VpMNBtRV4MaXfdMySFA==}
 
   safe-array-concat@1.1.3:
     resolution: {integrity: sha512-AURm5f0jYEOydBj7VQlVvDrjeFgthDdEF5H1dP+6mNpoXOMo1quQqJ4wvJDyRZ9+pO3kGWoOdmV08cSv2aJV6Q==}
@@ -17360,10 +17341,6 @@ packages:
   std-env@3.10.0:
     resolution: {integrity: sha512-5GS12FdOZNliM5mAOxFRg7Ir0pWz8MdpYm6AY6VPkGpbA7ZzmbzNcBJQ0GPvvyWgcY7QAhCgf9Uy89I03faLkg==}
 
-  stdin-discarder@0.2.2:
-    resolution: {integrity: sha512-UhDfHmA92YAlNnCfhmq0VeNL5bDbiZGg7sZ2IvPsXubGkiNa9EC+tUTsjBRsYUAz87btI6/1wf4XoVvQ3uRnmQ==}
-    engines: {node: '>=18'}
-
   stop-iteration-iterator@1.1.0:
     resolution: {integrity: sha512-eLoXW/DHyl62zxY4SCaIgnRhuMr6ri4juEYARS8E6sCEqzKpOiE521Ucofdx+KnDZl5xmvGYaaKCk5FEOxJCoQ==}
     engines: {node: '>= 0.4'}
@@ -17589,6 +17566,7 @@ packages:
   tar@6.2.1:
     resolution: {integrity: sha512-DZ4yORTwrbTj/7MZYq2w+/ZFdI6OZ/f9SFHR+71gIVUZhOQPHzVCLpvRnPgyaMpfWxxk/4ONva3GQSyNIKRv6A==}
     engines: {node: '>=10'}
+    deprecated: Old versions of tar are not supported, and contain widely publicized security vulnerabilities, which have been fixed in the current version. Please update. Support for old versions may be purchased (at exorbitant rates) by contacting i@izs.me
 
   tar@7.5.13:
     resolution: {integrity: sha512-tOG/7GyXpFevhXVh8jOPJrmtRpOTsYqUIkVdVooZYJS/z8WhfQUX8RJILmeuJNinGAMSu1veBr4asSHFt5/hng==}
@@ -18233,14 +18211,17 @@ packages:
 
   uuid@7.0.3:
     resolution: {integrity: sha512-DPSke0pXhTZgoF/d+WSt2QaKMCFSfx7QegxEWT+JOuHF5aWrKEn0G+ztjuJg/gG8/ItK+rbPCD/yNv8yyih6Cg==}
+    deprecated: uuid@10 and below is no longer supported.  For ESM codebases, update to uuid@latest.  For CommonJS codebases, use uuid@11 (but be aware this version will likely be deprecated in 2028).
     hasBin: true
 
   uuid@8.3.2:
     resolution: {integrity: sha512-+NYs2QeMWy+GWFOEm9xnn6HCDp0l7QBD7ml8zLUmJ+93Q5NF0NocErnwkTkXVFNiX3/fpC6afS8Dhb/gz7R7eg==}
+    deprecated: uuid@10 and below is no longer supported.  For ESM codebases, update to uuid@latest.  For CommonJS codebases, use uuid@11 (but be aware this version will likely be deprecated in 2028).
     hasBin: true
 
   uuid@9.0.1:
     resolution: {integrity: sha512-b+1eJOlsR9K8HJpow9Ok3fiWOWSIcIzXodvv0rQjVoOVNpWMpxf1wZNpt4y9h10odCNrqnYp1OBzRktckBe3sA==}
+    deprecated: uuid@10 and below is no longer supported.  For ESM codebases, update to uuid@latest.  For CommonJS codebases, use uuid@11 (but be aware this version will likely be deprecated in 2028).
     hasBin: true
 
   v8-compile-cache-lib@3.0.1:
@@ -18636,6 +18617,7 @@ packages:
   whatwg-encoding@3.1.1:
     resolution: {integrity: sha512-6qN4hJdMwfYBtE3YBTTHhoeuUrDBPZmbQaxWAqSALV/MeEnR5z1xd8UKud2RAkFoPkmB+hli1TZSnyi84xz1vQ==}
     engines: {node: '>=18'}
+    deprecated: Use @exodus/bytes instead for a more spec-conformant and faster implementation
 
   whatwg-fetch@3.6.20:
     resolution: {integrity: sha512-EqhiFU6daOA8kpjOWTL0olhVOF3i7OrFzSYiGsEMB8GcXS+RrzauAERX65xMeNWVqxA6HXH2m69Z9LaKKdisfg==}
@@ -18933,10 +18915,6 @@ packages:
   yocto-spinner@0.2.3:
     resolution: {integrity: sha512-sqBChb33loEnkoXte1bLg45bEBsOP9N1kzQh5JZNKj/0rik4zAPTNSAVPj3uQAdc6slYJ0Ksc403G2XgxsJQFQ==}
     engines: {node: '>=18.19'}
-
-  yoctocolors-cjs@2.1.3:
-    resolution: {integrity: sha512-U/PBtDf35ff0D8X8D0jfdzHYEPFxAI7jJlxZXwCSez5M3190m+QobIfh+sWDWSHMCWWJN2AWamkegn6vr6YBTw==}
-    engines: {node: '>=18'}
 
   yoctocolors@2.1.2:
     resolution: {integrity: sha512-CzhO+pFNo8ajLM2d2IW/R93ipy99LWjtwblvC1RsoSUMZgyLbYFr221TnSNT7GjGdYui6P459mw9JH/g/zW2ug==}
@@ -20225,6 +20203,18 @@ snapshots:
   '@chevrotain/types@11.1.2': {}
 
   '@chevrotain/utils@11.1.2': {}
+
+  '@clack/core@1.2.0':
+    dependencies:
+      fast-wrap-ansi: 0.1.6
+      sisteransi: 1.0.5
+
+  '@clack/prompts@1.2.0':
+    dependencies:
+      '@clack/core': 1.2.0
+      fast-string-width: 1.1.0
+      fast-wrap-ansi: 0.1.6
+      sisteransi: 1.0.5
 
   '@cloudflare/kv-asset-handler@0.4.0':
     dependencies:
@@ -21782,8 +21772,6 @@ snapshots:
     optionalDependencies:
       '@types/node': 25.3.3
 
-  '@inquirer/figures@1.0.15': {}
-
   '@internationalized/date@3.12.0':
     dependencies:
       '@swc/helpers': 0.5.20
@@ -22448,29 +22436,26 @@ snapshots:
     dependencies:
       langium: 4.2.1
 
-  '@mixedbread/cli@1.2.1(@types/node@25.3.3)':
+  '@mixedbread/cli@2.3.2':
     dependencies:
-      '@mixedbread/sdk': 0.26.0
+      '@clack/prompts': 1.2.0
+      '@mixedbread/sdk': 0.57.1
       '@pnpm/tabtab': 0.5.4
       chalk: 5.6.2
       cli-table3: 0.6.5
-      commander: 12.1.0
-      dotenv: 16.6.1
-      glob: 10.5.0
-      inquirer: 9.3.8(@types/node@25.3.3)
+      commander: 14.0.3
+      glob: 13.0.6
       mime-types: 3.0.2
       minimatch: 10.2.5
-      ora: 8.2.0
-      p-limit: 6.2.0
-      yaml: 2.8.1
+      p-limit: 7.3.0
+      yaml: 2.8.3
       zod: 4.3.6
     transitivePeerDependencies:
-      - '@types/node'
       - supports-color
 
-  '@mixedbread/sdk@0.26.0': {}
-
   '@mixedbread/sdk@0.28.1': {}
+
+  '@mixedbread/sdk@0.57.1': {}
 
   '@msgpackr-extract/msgpackr-extract-darwin-arm64@3.0.3':
     optional: true
@@ -28035,10 +28020,6 @@ snapshots:
     dependencies:
       restore-cursor: 3.1.0
 
-  cli-cursor@5.0.0:
-    dependencies:
-      restore-cursor: 5.1.0
-
   cli-progress@3.12.0:
     dependencies:
       string-width: 4.2.3
@@ -28050,8 +28031,6 @@ snapshots:
       string-width: 4.2.3
     optionalDependencies:
       '@colors/colors': 1.5.0
-
-  cli-width@4.1.0: {}
 
   client-only@0.0.1: {}
 
@@ -28159,6 +28138,8 @@ snapshots:
   commander@11.1.0: {}
 
   commander@12.1.0: {}
+
+  commander@14.0.3: {}
 
   commander@2.20.3: {}
 
@@ -29807,7 +29788,17 @@ snapshots:
 
   fast-sha256@1.3.0: {}
 
+  fast-string-truncated-width@1.2.1: {}
+
+  fast-string-width@1.1.0:
+    dependencies:
+      fast-string-truncated-width: 1.2.1
+
   fast-uri@3.1.0: {}
+
+  fast-wrap-ansi@0.1.6:
+    dependencies:
+      fast-string-width: 1.1.0
 
   fastq@1.20.1:
     dependencies:
@@ -30711,23 +30702,6 @@ snapshots:
     dependencies:
       css-in-js-utils: 3.1.0
 
-  inquirer@9.3.8(@types/node@25.3.3):
-    dependencies:
-      '@inquirer/external-editor': 1.0.3(@types/node@25.3.3)
-      '@inquirer/figures': 1.0.15
-      ansi-escapes: 4.3.2
-      cli-width: 4.1.0
-      mute-stream: 1.0.0
-      ora: 5.4.1
-      run-async: 3.0.0
-      rxjs: 7.8.2
-      string-width: 4.2.3
-      strip-ansi: 6.0.1
-      wrap-ansi: 6.2.0
-      yoctocolors-cjs: 2.1.3
-    transitivePeerDependencies:
-      - '@types/node'
-
   internal-ip@6.2.0:
     dependencies:
       default-gateway: 6.0.3
@@ -30898,8 +30872,6 @@ snapshots:
 
   is-interactive@1.0.0: {}
 
-  is-interactive@2.0.0: {}
-
   is-ip@3.1.0:
     dependencies:
       ip-regex: 4.3.0
@@ -30984,8 +30956,6 @@ snapshots:
       which-typed-array: 1.1.20
 
   is-unicode-supported@0.1.0: {}
-
-  is-unicode-supported@1.3.0: {}
 
   is-unicode-supported@2.1.0: {}
 
@@ -31613,11 +31583,6 @@ snapshots:
     dependencies:
       chalk: 4.1.2
       is-unicode-supported: 0.1.0
-
-  log-symbols@6.0.0:
-    dependencies:
-      chalk: 5.6.2
-      is-unicode-supported: 1.3.0
 
   log-update@4.0.0:
     dependencies:
@@ -32640,8 +32605,6 @@ snapshots:
 
   mimic-fn@4.0.0: {}
 
-  mimic-function@5.0.1: {}
-
   min-indent@1.0.1: {}
 
   mini-svg-data-uri@1.4.4: {}
@@ -32779,8 +32742,6 @@ snapshots:
   multipasta@0.2.7: {}
 
   mute-stream@0.0.8: {}
-
-  mute-stream@1.0.0: {}
 
   mv@2.1.1:
     dependencies:
@@ -33023,10 +32984,6 @@ snapshots:
     dependencies:
       mimic-fn: 4.0.0
 
-  onetime@7.0.0:
-    dependencies:
-      mimic-function: 5.0.1
-
   oniguruma-parser@0.12.1: {}
 
   oniguruma-to-es@4.3.5:
@@ -33087,18 +33044,6 @@ snapshots:
       strip-ansi: 6.0.1
       wcwidth: 1.0.1
 
-  ora@8.2.0:
-    dependencies:
-      chalk: 5.6.2
-      cli-cursor: 5.0.0
-      cli-spinners: 2.9.2
-      is-interactive: 2.0.0
-      is-unicode-supported: 2.1.0
-      log-symbols: 6.0.0
-      stdin-discarder: 0.2.2
-      string-width: 7.2.0
-      strip-ansi: 7.2.0
-
   orderedmap@2.1.1: {}
 
   outdent@0.5.0: {}
@@ -33136,6 +33081,10 @@ snapshots:
       yocto-queue: 1.2.2
 
   p-limit@6.2.0:
+    dependencies:
+      yocto-queue: 1.2.2
+
+  p-limit@7.3.0:
     dependencies:
       yocto-queue: 1.2.2
 
@@ -33771,8 +33720,6 @@ snapshots:
       - utf-8-validate
 
   pure-rand@6.1.0: {}
-
-  qrcode-generator@1.4.4: {}
 
   qrcode-generator@2.0.4: {}
 
@@ -34586,11 +34533,6 @@ snapshots:
       onetime: 5.1.2
       signal-exit: 3.0.7
 
-  restore-cursor@5.1.0:
-    dependencies:
-      onetime: 7.0.0
-      signal-exit: 4.1.0
-
   restructure@3.0.2: {}
 
   retext-latin@4.0.0:
@@ -34686,8 +34628,6 @@ snapshots:
 
   run-applescript@7.1.0: {}
 
-  run-async@3.0.0: {}
-
   run-parallel@1.2.0:
     dependencies:
       queue-microtask: 1.2.3
@@ -34747,10 +34687,6 @@ snapshots:
       - supports-color
       - typescript
       - utf-8-validate
-
-  rxjs@7.8.2:
-    dependencies:
-      tslib: 2.8.1
 
   safe-array-concat@1.1.3:
     dependencies:
@@ -35313,8 +35249,6 @@ snapshots:
   statuses@2.0.2: {}
 
   std-env@3.10.0: {}
-
-  stdin-discarder@0.2.2: {}
 
   stop-iteration-iterator@1.1.0:
     dependencies:
@@ -37100,8 +37034,6 @@ snapshots:
   yocto-spinner@0.2.3:
     dependencies:
       yoctocolors: 2.1.2
-
-  yoctocolors-cjs@2.1.3: {}
 
   yoctocolors@2.1.2: {}
 

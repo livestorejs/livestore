@@ -29,7 +29,7 @@ export const makeTiged = (example: string, approach: 'bunx' | 'pnpm dlx' | 'npx'
 
 export const makeCreate = (example: string, approach: 'bunx' | 'pnpm dlx' | 'npx' | 'yarn dlx') => {
   const branch = getBranchName()
-  const branchFlag = branch !== 'dev' ? ` --branch ${branch}` : ''
+  const branchFlag = branch !== 'main' ? ` --branch ${branch}` : ''
   const packageName = `@livestore/cli${npmTagSuffix}`
   return `${approach} ${packageName} create --example ${example}${branchFlag} livestore-app`
 }

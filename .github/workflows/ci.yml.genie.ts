@@ -69,7 +69,7 @@ const otelCIJob = (config: { env?: Record<string, string>; steps: unknown[] }) =
 // =============================================================================
 
 /**
- * Required status checks are managed by `.github/repo-settings.*.json.genie.ts`.
+ * Required status checks are managed by `.github/repo-settings.json.genie.ts`.
  * Keep matrix values aligned with `genie/ci.ts` so rulesets and workflow stay in sync.
  */
 export default githubWorkflow({
@@ -84,8 +84,8 @@ export default githubWorkflow({
 
   on: {
     push: {
-      // Only run on pushes to main/dev to keep docs deploys consistent
-      branches: ['main', 'dev'],
+      // Only main is an integration branch. Regular pushes deploy dev docs/examples surfaces.
+      branches: ['main'],
     },
     workflow_dispatch: {},
     pull_request: {},
@@ -301,20 +301,36 @@ done`,
     /**
      * Publish job runs on GitHub-hosted runner (not Namespace) because npm OIDC
      * trusted publishing with --provenance requires sigstore, which only supports
-     * GitHub-hosted runners.
+     * GitHub-hosted runners. We still configure the npm token fallback to avoid
+     * interactive auth if trusted publishing is unavailable for a package.
      */
     'publish-snapshot-version': {
       if: IS_NOT_FORK,
       'runs-on': 'ubuntu-24.04',
+      permissions: {
+        contents: 'write',
+        'id-token': 'write',
+      },
       needs: [
         'test-unit',
         'test-integration-node-sync',
         'test-integration-sync-provider',
         'test-integration-playwright',
       ],
+      env: {
+        GH_TOKEN: '${{ github.token }}',
+        NODE_AUTH_TOKEN: '${{ secrets.NPM_TOKEN }}',
+      },
       defaults: bashShellDefaults,
       steps: withNixDiagnosticsOnFailure([
         ...livestoreSetupSteps,
+        {
+          name: 'Configure npm token fallback',
+          run: `set -euo pipefail
+: "\${NODE_AUTH_TOKEN:?Missing NPM_TOKEN secret}"
+printf '%s\\n' "always-auth=true" > "$HOME/.npmrc"
+printf '%s\\n' "//registry.npmjs.org/:_authToken=$NODE_AUTH_TOKEN" >> "$HOME/.npmrc"`,
+        },
         {
           name: 'Publish snapshot version',
           run: runDevenvTasksBefore('release:snapshot:git-sha'),
@@ -358,9 +374,9 @@ done`,
      * Docs deployment mapping (authoritative, with domains) — handled by `mono docs deploy`:
      * - pull_request (any base): deploy alias on dev docs site (no purge)
      *     example domain: https://<alias>--livestore-docs-dev.netlify.app
-     * - push to dev: deploy to dev docs site as prod
+     * - push to main: deploy to dev docs site as prod
      *     domain: https://dev.docs.livestore.dev
-     * - push to main: deploy to prod docs site as prod
+     * - stable release publish: release.yml deploys prod docs explicitly
      *     domain: https://docs.livestore.dev
      * `mono docs deploy` applies filter="docs" and infers context from GitHub env.
      */
@@ -426,7 +442,7 @@ done`,
     //     'test-integration-sync-provider',
     //     'test-integration-playwright',
     //   ],
-    //   if: "(github.ref == 'refs/heads/main' || github.ref == 'refs/heads/dev') && github.event_name == 'push'",
+    //   if: "github.ref == 'refs/heads/main' && github.event_name == 'push'",
     //   steps: [dispatchAlignmentStep({ targetRepo: 'schickling/megarepo-all' })],
     // },
 

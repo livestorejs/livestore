@@ -29,6 +29,14 @@ on:
         description: Artifact tarball SHA-256
         required: true
         type: string
+      chrome_zip_url:
+        description: Public Chrome extension ZIP URL
+        required: false
+        type: string
+      chrome_zip_sha256:
+        description: Chrome extension ZIP SHA-256
+        required: false
+        type: string
       devtools_build_id:
         description: Public DevTools build id
         required: false
@@ -45,6 +53,8 @@ env:
   ARTIFACT_METADATA_URL: ${{ github.event.client_payload.artifactMetadataUrl || inputs.metadata_url }}
   ARTIFACT_TARBALL_URL: ${{ github.event.client_payload.artifactTarballUrl || inputs.tarball_url }}
   ARTIFACT_SHA256: ${{ github.event.client_payload.sha256 || inputs.sha256 }}
+  ARTIFACT_CHROME_ZIP_URL: ${{ github.event.client_payload.artifactChromeZipUrl || inputs.chrome_zip_url }}
+  ARTIFACT_CHROME_ZIP_SHA256: ${{ github.event.client_payload.chromeZipSha256 || inputs.chrome_zip_sha256 }}
   DEVTOOLS_BUILD_ID: ${{ github.event.client_payload.devtoolsBuildId || inputs.devtools_build_id }}
   BASE_BRANCH: ${{ github.event.repository.default_branch }}
 
@@ -175,17 +185,25 @@ jobs:
             ARTIFACT_METADATA_URL="$(jq -r '.artifact.metadataUrl' release/devtools-artifact.json)"
             ARTIFACT_TARBALL_URL="$(jq -r '.artifact.tarballUrl' release/devtools-artifact.json)"
             ARTIFACT_SHA256="$(jq -r '.artifact.sha256' release/devtools-artifact.json)"
+            ARTIFACT_CHROME_ZIP_URL="$(jq -r '.artifact.chromeZipUrl // ""' release/devtools-artifact.json)"
+            ARTIFACT_CHROME_ZIP_SHA256="$(jq -r '.artifact.chromeZipSha256 // ""' release/devtools-artifact.json)"
           fi
 
           : "${ARTIFACT_METADATA_URL:?Missing artifact metadata URL}"
           : "${ARTIFACT_TARBALL_URL:?Missing artifact tarball URL}"
           : "${ARTIFACT_SHA256:?Missing artifact SHA-256}"
+          if [ -n "${ARTIFACT_CHROME_ZIP_URL:-}" ] && [ -z "${ARTIFACT_CHROME_ZIP_SHA256:-}" ]; then
+            echo "Missing Chrome ZIP SHA-256"
+            exit 1
+          fi
 
           mkdir -p release
           jq -n \
             --arg metadataUrl "$ARTIFACT_METADATA_URL" \
             --arg tarballUrl "$ARTIFACT_TARBALL_URL" \
             --arg sha256 "$ARTIFACT_SHA256" \
+            --arg chromeZipUrl "${ARTIFACT_CHROME_ZIP_URL:-}" \
+            --arg chromeZipSha256 "${ARTIFACT_CHROME_ZIP_SHA256:-}" \
             '{
               schemaVersion: 1,
               artifact: {
@@ -193,7 +211,13 @@ jobs:
                 tarballUrl: $tarballUrl,
                 sha256: $sha256
               }
-            }' > release/devtools-artifact.json
+            }
+            | if $chromeZipUrl == "" then .
+              else .artifact += {
+                chromeZipUrl: $chromeZipUrl,
+                chromeZipSha256: $chromeZipSha256
+              }
+            end' > release/devtools-artifact.json
       - name: Verify artifact manifest
         run: '$DEVENV_BIN tasks run release:devtools-artifact:verify --mode before --no-tui'
       - name: Open manifest update PR
