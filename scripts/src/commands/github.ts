@@ -53,6 +53,38 @@ interface TExistingRuleset {
   enforcement: string
 }
 
+const ManagedRulesetSchema = Schema.Struct({
+  name: Schema.String,
+  target: Schema.Literal('branch', 'tag'),
+  enforcement: Schema.Literal('disabled', 'active', 'evaluate'),
+  bypass_actors: Schema.optional(Schema.NullOr(RulesetRequestBody.fields.bypass_actors)),
+  conditions: RulesetRequestBody.fields.conditions,
+  rules: RulesetRequestBody.fields.rules,
+})
+
+const normalizeRuleset = (ruleset: typeof ManagedRulesetSchema.Type): TRulesetRequestBody => ({
+  name: ruleset.name,
+  target: ruleset.target,
+  enforcement: ruleset.enforcement,
+  bypass_actors: ruleset.bypass_actors ?? [],
+  conditions: ruleset.conditions,
+  rules: ruleset.rules,
+})
+
+const getViewerPermission = Effect.gen(function* () {
+  const response = yield* cmdText(['gh', 'repo', 'view', `${OWNER}/${REPO}`, '--json', 'viewerPermission'], {
+    stderr: 'pipe',
+  }).pipe(Effect.provide(LivestoreWorkspace.toCwd()))
+
+  const ViewerPermissionSchema = Schema.parseJson(
+    Schema.Struct({
+      viewerPermission: Schema.String,
+    }),
+  )
+  const parsed = yield* Schema.decode(ViewerPermissionSchema)(response)
+  return parsed.viewerPermission
+})
+
 const getRulesetByName = (name: string) =>
   Effect.gen(function* () {
     const response = yield* cmdText(['gh', 'api', `repos/${OWNER}/${REPO}/rulesets`, '--jq', '.'], {
@@ -70,6 +102,16 @@ const getRulesetByName = (name: string) =>
     )
     const rulesets = yield* Schema.decode(ExistingRulesetSchema)(response)
     return rulesets.find((ruleset) => ruleset.name === name) ?? null
+  })
+
+const getRulesetDetails = (rulesetId: number) =>
+  Effect.gen(function* () {
+    const details = yield* cmdText(['gh', 'api', `repos/${OWNER}/${REPO}/rulesets/${rulesetId}`, '--jq', '.'], {
+      stderr: 'pipe',
+    }).pipe(Effect.provide(LivestoreWorkspace.toCwd()))
+
+    const parser = Schema.parseJson(ManagedRulesetSchema)
+    return yield* Schema.decode(parser)(details)
   })
 
 const writeRulesetBodyToTmp = (body: TRulesetRequestBody) =>
@@ -100,6 +142,47 @@ const updateRuleset = (rulesetId: number, body: TRulesetRequestBody) =>
     }).pipe(Effect.provide(LivestoreWorkspace.toCwd()))
   })
 
+type TJsonValue = null | boolean | number | string | ReadonlyArray<TJsonValue> | { readonly [key: string]: TJsonValue }
+
+const isJsonObject = (value: TJsonValue): value is { readonly [key: string]: TJsonValue } =>
+  typeof value === 'object' && value !== null && Array.isArray(value) === false
+
+const formatPath = (pathParts: ReadonlyArray<string>) => (pathParts.length === 0 ? '$' : `$.${pathParts.join('.')}`)
+
+const formatValue = (value: TJsonValue) => JSON.stringify(value)
+
+const isBypassActorsDiff = (diff: string) => diff.startsWith('$.bypass_actors')
+
+const collectDiffs = (
+  desired: TJsonValue,
+  live: TJsonValue,
+  pathParts: ReadonlyArray<string> = [],
+): ReadonlyArray<string> => {
+  if (Object.is(desired, live) === true) return []
+
+  if (Array.isArray(desired) === true || Array.isArray(live) === true) {
+    if (Array.isArray(desired) === false || Array.isArray(live) === false) {
+      return [`${formatPath(pathParts)}: desired ${formatValue(desired)}, live ${formatValue(live)}`]
+    }
+
+    const maxLength = Math.max(desired.length, live.length)
+    return Array.from({ length: maxLength }).flatMap((_, index) =>
+      collectDiffs(desired[index] ?? null, live[index] ?? null, [...pathParts, String(index)]),
+    )
+  }
+
+  if (isJsonObject(desired) === true || isJsonObject(live) === true) {
+    if (isJsonObject(desired) === false || isJsonObject(live) === false) {
+      return [`${formatPath(pathParts)}: desired ${formatValue(desired)}, live ${formatValue(live)}`]
+    }
+
+    const keys = Object.keys(desired).toSorted((a, b) => a.localeCompare(b))
+    return keys.flatMap((key) => collectDiffs(desired[key] ?? null, live[key] ?? null, [...pathParts, key]))
+  }
+
+  return [`${formatPath(pathParts)}: desired ${formatValue(desired)}, live ${formatValue(live)}`]
+}
+
 const syncRulesetsCommand = Cli.Command.make(
   'sync',
   {
@@ -110,12 +193,22 @@ const syncRulesetsCommand = Cli.Command.make(
 
     const body = yield* loadRulesetBody()
     const existing = yield* getRulesetByName(body.name)
+    const live = existing === null ? null : yield* getRulesetDetails(existing.id).pipe(Effect.map(normalizeRuleset))
+    const diffs = live === null ? [] : collectDiffs(body as TJsonValue, live as TJsonValue)
 
     if (dryRun === true) {
       console.log(`Ruleset file: ${getRulesetFilePath()}`)
       console.log(`Ruleset name: ${body.name}`)
       console.log(`Existing: ${existing !== null ? `yes (id: ${existing.id})` : 'no'}`)
       console.log(`Action: ${existing !== null ? 'update' : 'create'}`)
+      if (existing !== null) {
+        if (diffs.length === 0) {
+          console.log('Drift: none')
+        } else {
+          console.log('Drift:')
+          for (const diff of diffs) console.log(`- ${diff}`)
+        }
+      }
       return
     }
 
@@ -128,6 +221,43 @@ const syncRulesetsCommand = Cli.Command.make(
     }
   }),
 ).pipe(Cli.Command.withDescription('Create or update repository ruleset from generated repo-settings file'))
+
+const checkRulesetsCommand = Cli.Command.make(
+  'check',
+  {},
+  Effect.fn(function* () {
+    yield* cmdText('gh --version', { stderr: 'pipe' }).pipe(Effect.provide(LivestoreWorkspace.toCwd()))
+
+    const body = yield* loadRulesetBody()
+    const existing = yield* getRulesetByName(body.name)
+
+    if (existing === null) {
+      console.error(`No live ruleset found with name '${body.name}'`)
+      console.error("Run 'mono github rulesets sync' to create one.")
+      process.exitCode = 1
+      return
+    }
+
+    const live = yield* getRulesetDetails(existing.id).pipe(Effect.map(normalizeRuleset))
+    const viewerPermission = yield* getViewerPermission
+    const allDiffs = collectDiffs(body as TJsonValue, live as TJsonValue)
+    const diffs =
+      viewerPermission === 'ADMIN' ? allDiffs : allDiffs.filter((diff) => isBypassActorsDiff(diff) === false)
+
+    if (diffs.length === 0) {
+      console.log(`Ruleset '${body.name}' is in sync with ${getRulesetFilePath()}.`)
+      if (viewerPermission !== 'ADMIN' && allDiffs.some(isBypassActorsDiff) === true) {
+        console.log('Bypass actor visibility requires repository admin permission; skipped bypass_actors comparison.')
+      }
+      return
+    }
+
+    console.error(`Ruleset '${body.name}' drift detected against ${getRulesetFilePath()}:`)
+    for (const diff of diffs) console.error(`- ${diff}`)
+    console.error("Run 'mono github rulesets sync' with admin permissions to reconcile it.")
+    process.exitCode = 1
+  }),
+).pipe(Cli.Command.withDescription('Check whether the live GitHub ruleset matches the generated source file'))
 
 const showRulesetsCommand = Cli.Command.make(
   'show',
@@ -148,13 +278,9 @@ const showRulesetsCommand = Cli.Command.make(
     console.log(`ID: ${existing.id}`)
     console.log(`Enforcement: ${existing.enforcement}`)
 
-    const details = yield* cmdText(['gh', 'api', `repos/${OWNER}/${REPO}/rulesets/${existing.id}`, '--jq', '.'], {
-      stderr: 'pipe',
-    }).pipe(Effect.provide(LivestoreWorkspace.toCwd()))
-
     console.log('\nFull details:')
-    const parsed = yield* Schema.decode(Schema.parseJson(Schema.Unknown))(details)
-    console.dir(parsed, { depth: null })
+    const details = yield* getRulesetDetails(existing.id)
+    console.dir(details, { depth: null })
   }),
 ).pipe(Cli.Command.withDescription('Show current ruleset configuration'))
 
@@ -162,7 +288,7 @@ export const githubCommand = Cli.Command.make('github').pipe(
   Cli.Command.withSubcommands([
     Cli.Command.make('rulesets').pipe(
       Cli.Command.withDescription('Manage repository rulesets from generated repo-settings files'),
-      Cli.Command.withSubcommands([syncRulesetsCommand, showRulesetsCommand]),
+      Cli.Command.withSubcommands([syncRulesetsCommand, checkRulesetsCommand, showRulesetsCommand]),
     ),
   ]),
 )
