@@ -351,6 +351,16 @@ in
     '';
   };
 
+  tasks."github:rulesets:check" = {
+    description = "Check live GitHub repository rulesets against generated source files";
+    exec = ''
+      set -euo pipefail
+      cd "$DEVENV_ROOT"
+
+      mono github rulesets check
+    '';
+  };
+
   # NOTE: check:quick is provided by effect-utils taskModules.check.
 
   git-hooks.enable = true;
