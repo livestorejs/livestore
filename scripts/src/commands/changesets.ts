@@ -6,6 +6,7 @@ import semver from 'semver'
 
 const usage = `Usage:
   bun scripts/src/commands/changesets.ts check-pr [--base <ref>]
+  bun scripts/src/commands/changesets.ts restore-prerelease-changesets
   bun scripts/src/commands/changesets.ts sync-version-source
   bun scripts/src/commands/changesets.ts sync-standalone-consumers
   bun scripts/src/commands/changesets.ts write-release-plan [--npm-tag <tag>]
@@ -88,6 +89,8 @@ const changedFiles = (base: string) => {
 const isChangesetMarkdown = (file: string) =>
   file.startsWith('.changeset/') && file.endsWith('.md') && path.basename(file) !== 'README.md'
 
+const isPrereleaseNpmTag = (npmTag: string) => npmTag !== 'latest'
+
 const checkPr = (flags: Map<string, string | true>) => {
   if (process.env.LIVESTORE_CHANGESET_CHECK_ALLOW_MISSING === '1') {
     console.log('Changeset PR check skipped by LIVESTORE_CHANGESET_CHECK_ALLOW_MISSING=1')
@@ -111,6 +114,26 @@ const checkPr = (flags: Map<string, string | true>) => {
 }
 
 const readReleaseVersion = () => readJson<{ version: string }>('release/version.json').version
+
+const deletedChangesetFiles = () =>
+  runCapture(['git', 'diff', '--name-only', '--diff-filter=D', '--', '.changeset'])
+    .split('\n')
+    .filter((file) => file.length > 0 && isChangesetMarkdown(file) === true)
+
+const restorePrereleaseChangesets = () => {
+  const npmTag = process.env.LIVESTORE_NPM_TAG ?? 'latest'
+  if (isPrereleaseNpmTag(npmTag) === false) {
+    console.log(`Keeping consumed changesets for ${npmTag} release`)
+    return
+  }
+
+  const restored = deletedChangesetFiles()
+  for (const file of restored) {
+    writeFileSync(file, runCapture(['git', 'show', `HEAD:${file}`]))
+  }
+
+  console.log(`Restored ${restored.length} pending changesets for ${npmTag} prerelease`)
+}
 
 type DependencySection = Record<string, string>
 
@@ -251,6 +274,7 @@ const main = () => {
     return
   }
   if (command === 'check-pr') return checkPr(flags)
+  if (command === 'restore-prerelease-changesets') return restorePrereleaseChangesets()
   if (command === 'sync-version-source') return syncVersionSource()
   if (command === 'sync-standalone-consumers') return syncStandaloneConsumers()
   if (command === 'write-release-plan') return writeReleasePlan(flags)

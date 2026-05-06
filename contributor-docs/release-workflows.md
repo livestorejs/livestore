@@ -88,6 +88,12 @@ the current npm `dev` dist-tag for `@livestore/common`. For example, if the
 dist-tag points at `0.4.0-dev.23`, the next generated dev release is
 `0.4.0-dev.24`.
 
+Dev and other prerelease release PRs do not consume pending changesets. The
+generator temporarily runs Changesets to calculate the fixed-group package
+version, then restores pending `.changeset/*.md` files before opening the PR.
+This keeps prereleases as publish rehearsals and reserves release-intent
+consumption for the supervised stable `latest` release.
+
 After Genie regenerates the fixed public package versions, the release PR
 generator also syncs standalone examples and other non-workspace consumers to
 the exact release version. This keeps `pnpm install --lockfile-only` validating
