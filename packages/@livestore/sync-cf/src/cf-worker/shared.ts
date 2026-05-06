@@ -1,6 +1,6 @@
 import type { UnknownError } from '@livestore/common'
 import type { CfTypes } from '@livestore/common-cf'
-import { Effect, Schema, UrlParams } from '@livestore/utils/effect'
+import { type Effect, Schema, UrlParams } from '@livestore/utils/effect'
 
 import type { SearchParams } from '../common/mod.ts'
 import { SearchParamsSchema, SyncMessage } from '../common/mod.ts'
@@ -144,13 +144,15 @@ export const encodeIncomingMessage = Schema.encodeSync(Schema.fromJsonString(Syn
 export const matchSyncRequest = (request: CfTypes.Request): SearchParams | undefined => {
   const url = new URL(request.url)
   const urlParams = UrlParams.fromInput(url.searchParams)
-  const paramsResult = UrlParams.schemaStruct(SearchParamsSchema)(urlParams).pipe(Effect.option, Effect.runSync)
+  const paramsResult = Schema.decodeUnknownExit(
+    UrlParams.schemaRecord.pipe(Schema.decodeTo(SearchParamsSchema)) as any,
+  )(urlParams)
 
-  if (paramsResult._tag === 'None') {
+  if (paramsResult._tag !== 'Success') {
     return undefined
   }
 
-  return paramsResult.value
+  return paramsResult.value as SearchParams
 }
 
 // RPC subscription storage (TODO refactor)

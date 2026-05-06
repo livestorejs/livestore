@@ -117,15 +117,12 @@ export default {
                 Effect.tapCause((cause) => Effect.log('log3', cause)),
               ),
           }).pipe(
-            Layer.provideMerge(RpcServer.layerProtocolHttp({ path: '/rpc' })),
             Layer.provideMerge(RpcSerialization.layerJson),
           )
 
           // Create the HTTP RPC app
-          const httpApp = RpcServer.toHttpApp(TestRpcs).pipe(Effect.provide(handlersLayer))
-
-          // Run the app and convert to web handler
-          const webHandler = yield* httpApp.pipe(Effect.map(HttpApp.toWebHandler))
+          const httpEffect = yield* RpcServer.toHttpEffect(TestRpcs).pipe(Effect.provide(handlersLayer))
+          const webHandler = HttpApp.toWebHandler(httpEffect)
 
           return yield* Effect.promise(() => webHandler(request))
         }).pipe(
@@ -133,7 +130,7 @@ export default {
           Effect.scoped,
           Effect.withSpan('@livestore/common-cf/do-rpc/test-fixtures/worker:fetch'),
           // Effect.provide(ProtocolLive),
-          Effect.runPromise,
+          (_) => Effect.runPromise(_ as Effect.Effect<Response>),
         )
       }
 

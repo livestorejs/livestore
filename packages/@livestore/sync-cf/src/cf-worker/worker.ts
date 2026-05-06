@@ -201,7 +201,7 @@ export const handleSyncRequest = <
       // Always decode with the supplied schema when present, even if payload is undefined.
       // This ensures required payloads are enforced by the schema.
       if (syncPayloadSchema !== undefined) {
-        const decodedEither = Schema.decodeUnknownExit(syncPayloadSchema)(payload)
+        const decodedEither = Schema.decodeUnknownExit(syncPayloadSchema as any)(payload)
         if (decodedEither._tag !== 'Success') {
           const message = decodedEither.cause.toString()
           console.error('Invalid payload (decode failed)', message)
@@ -209,7 +209,7 @@ export const handleSyncRequest = <
         }
 
         const result = yield* Effect.promise(async () =>
-          validatePayload(decodedEither.value, { storeId, headers: requestHeaders }),
+          validatePayload(decodedEither.value as TSyncPayload, { storeId, headers: requestHeaders }),
         ).pipe(UnknownError.mapToUnknownError, Effect.result)
 
         if (result._tag === 'Failure') {

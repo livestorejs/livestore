@@ -66,11 +66,11 @@ export const makeDoRpcSync =
       const backendIdHelper = yield* SyncBackend.makeBackendIdHelper
 
       const pull: SyncBackend.SyncBackend<SyncMetadata>['pull'] = (cursor, options) =>
-        rpcClient.SyncDoRpc.Pull({
+        rpcClient['SyncDoRpc.Pull']({
           cursor: cursor.pipe(
             Option.map((a) => ({
               eventSequenceNumber: a.eventSequenceNumber,
-              backendId: backendIdHelper.get().pipe(Option.getOrThrow),
+              backendId: Option.getOrThrow(Option.fromNullable(backendIdHelper.get())),
             })),
           ),
           storeId,
@@ -82,8 +82,9 @@ export const makeDoRpcSync =
                   if (res._tag === 'None')
                     return shouldNeverHappen('There should at least be a no-more page info response')
 
-                  const mailbox = yield* Mailbox.make<SyncMessage.PullResponse>().pipe(
-                    Effect.acquireRelease((mailbox) => mailbox.shutdown),
+                  const mailbox = yield* Effect.acquireRelease(
+                    Mailbox.make<SyncMessage.PullResponse>(),
+                    (mailbox) => mailbox.shutdown,
                   )
 
                   requestIdMailboxMap.set(res.value.rpcRequestId, mailbox)
@@ -100,7 +101,7 @@ export const makeDoRpcSync =
               : new UnknownError({ cause }),
           ),
           Stream.withSpan('rpc-sync-client:pull'),
-        )
+        ) as ReturnType<SyncBackend.SyncBackend<SyncMetadata>['pull']>
 
       const push: SyncBackend.SyncBackend<{ createdAt: string }>['push'] = Effect.fn('rpc-sync-client:push')(
         function* (batch) {
@@ -108,7 +109,7 @@ export const makeDoRpcSync =
             return
           }
 
-          const backendId = backendIdHelper.get()
+          const backendId = Option.fromNullable(backendIdHelper.get())
           const batchChunks = yield* Chunk.fromIterable(batch).pipe(
             splitChunkBySize({
               maxItems: MAX_PUSH_EVENTS_PER_REQUEST,
@@ -124,7 +125,7 @@ export const makeDoRpcSync =
 
           for (const chunk of Chunk.toReadonlyArray(batchChunks)) {
             const chunkArray = Chunk.toReadonlyArray(chunk)
-            yield* rpcClient.SyncDoRpc.Push({ batch: chunkArray, storeId, backendId })
+            yield* rpcClient['SyncDoRpc.Push']({ batch: chunkArray, storeId, backendId })
           }
         },
         Effect.mapError((cause) =>
@@ -132,12 +133,14 @@ export const makeDoRpcSync =
             ? cause
             : new UnknownError({ cause }),
         ),
-      )
+      ) as SyncBackend.SyncBackend<SyncMetadata>['push']
 
-      const ping: SyncBackend.SyncBackend<{ createdAt: string }>['ping'] = rpcClient.SyncDoRpc.Ping({
+      const ping: SyncBackend.SyncBackend<{ createdAt: string }>['ping'] = rpcClient['SyncDoRpc.Ping']({
         storeId,
         payload,
-      }).pipe(UnknownError.mapToUnknownError, Effect.withSpan('rpc-sync-client:ping'))
+      }).pipe(Effect.asVoid, UnknownError.mapToUnknownError, Effect.withSpan('rpc-sync-client:ping')) as SyncBackend.SyncBackend<{
+        createdAt: string
+      }>['ping']
 
       return SyncBackend.of({
         connect,

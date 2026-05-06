@@ -23,8 +23,9 @@ import {
   Exit,
   Layer,
   Logger,
-  LogLevel,
   Mailbox,
+  Queue,
+  References,
   RpcMessage,
   RpcSerialization,
   RpcServer,
@@ -148,7 +149,7 @@ export const setupDurableObjectWebSocketRpc = ({
   const serverCtxMap = new Map<
     CfTypes.WebSocket,
     {
-      scope: Scope.CloseableScope
+      scope: Scope.Scope
       onMessage: (message: string | ArrayBuffer) => Promise<void>
     }
   >()
@@ -196,10 +197,10 @@ export const setupDurableObjectWebSocketRpc = ({
       return ctx
     }).pipe(
       Effect.tapCauseLogPretty,
-      Logger.withMinimumLogLevel('Debug'), // Useful for debugging
+      Effect.provideService(References.MinimumLogLevel, 'Debug'), // Useful for debugging
       Effect.provide(Layer.mergeAll(Logger.consoleWithThread('ws-rpc-server'), mainLayer ?? Layer.empty)),
       Effect.withSpan('effect-ws-rpc-server'),
-      Effect.runPromise,
+      (_) => Effect.runPromise(_ as Effect.Effect<{ scope: Scope.Scope; onMessage: (message: string | ArrayBuffer) => Promise<void> }>),
     )
 
   const webSocketMessage: CfTypes.DurableObject['webSocketMessage'] = async (ws, message) => {
@@ -252,7 +253,7 @@ export interface WsRpcServerArgs {
  * @internal This is typically used internally by `setupDurableObjectWebSocketRpc`
  */
 export const layerRpcServerWebsocket = (args: WsRpcServerArgs) =>
-  Layer.mergeAll(Layer.scoped(RpcServer.Protocol, makeSocketProtocol(args)), Layer.succeed(WsContext, { ws: args.ws }))
+  Layer.mergeAll(Layer.effect(RpcServer.Protocol)(makeSocketProtocol(args)), Layer.succeed(WsContext, { ws: args.ws }))
 
 /**
  * Creates the low-level RPC protocol implementation for WebSocket communication.
@@ -268,13 +269,13 @@ export const layerRpcServerWebsocket = (args: WsRpcServerArgs) =>
 const makeSocketProtocol = ({ incomingQueue, ws, onMessage }: WsRpcServerArgs) =>
   Effect.gen(function* () {
     const serialization = yield* RpcSerialization.RpcSerialization
-    const disconnects = yield* Mailbox.make<number>()
+    const disconnects = yield* Queue.unbounded<number>()
 
     const writeRaw = (msg: Uint8Array | string) => Effect.succeed(ws.send(msg))
 
     let writeRequest!: (clientId: number, message: RpcMessage.FromClientEncoded) => Effect.Effect<void>
 
-    const parser = serialization.unsafeMake()
+    const parser = serialization.makeUnsafe()
     const id = 0
 
     const write = (response: RpcMessage.FromServerEncoded) => {

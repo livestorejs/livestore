@@ -18,8 +18,8 @@ export const createHttpRpcHandler = Effect.fn('createHttpRpcHandler')(function* 
   forwardedHeaders?: Record<string, string>
 }) {
   const handlerLayer = createHttpRpcLayer(forwardedHeaders)
-  const httpApp = RpcServer.toHttpApp(SyncHttpRpc).pipe(Effect.provide(handlerLayer))
-  const webHandler = yield* httpApp.pipe(Effect.map(HttpApp.toWebHandler))
+  const httpEffect = yield* RpcServer.toHttpEffect(SyncHttpRpc).pipe(Effect.provide(handlerLayer))
+  const webHandler = HttpApp.toWebHandler(httpEffect)
 
   const response = yield* Effect.promise(
     () => webHandler(request as TODO as Request) as TODO as Promise<CfTypes.Response>,
@@ -50,8 +50,5 @@ const createHttpRpcLayer = (forwardedHeaders: Record<string, string> | undefined
       }),
 
     'SyncHttpRpc.Ping': () => Effect.succeed(SyncMessage.Pong.make({})),
-  }).pipe(
-    Layer.provideMerge(RpcServer.layerProtocolHttp({ path: '/http-rpc' })),
-    Layer.provideMerge(RpcSerialization.layerJson),
-  )
+  }).pipe(Layer.provideMerge(RpcSerialization.layerJson))
 }

@@ -1,14 +1,12 @@
 import { expect } from 'vitest'
 
 import { Vitest } from '@livestore/utils-dev/node-vitest'
-import { WranglerDevServerService } from '@livestore/utils-dev/wrangler'
+import { NodeServices } from '@livestore/utils-dev/node'
+import { WranglerDevServerService, makeWranglerDevServerLayer } from '@livestore/utils-dev/wrangler'
 import {
-  Chunk,
   Effect,
   FetchHttpClient,
   Layer,
-  Logger,
-  LogLevel,
   Option,
   RpcClient,
   RpcSerialization,
@@ -18,7 +16,6 @@ import {
 
 import { TestRpcs } from './test-fixtures/rpc-schema.ts'
 
-import * as NodeServices from '@effect/platform-node/NodeServices'
 const testTimeout = 60_000
 
 const withWranglerTest = Vitest.makeWithTestCtx({
@@ -27,9 +24,7 @@ const withWranglerTest = Vitest.makeWithTestCtx({
     makeWranglerDevServerLayer({
       cwd: `${import.meta.dirname}/test-fixtures`,
     }).pipe(
-      Layer.provide(
-        Layer.mergeAll(NodeServices.layer, FetchHttpClient.layer, Logger.minimumLogLevel('Debug')),
-      ),
+      Layer.provide(Layer.mergeAll(NodeServices.layer, FetchHttpClient.layer)),
     ),
 })
 
@@ -114,7 +109,7 @@ Vitest.describe('Durable Object WebSocket RPC', { timeout: testTimeout }, () => 
         Stream.map((c) => c.maybeNumber.pipe(Option.getOrUndefined)),
       )
       const chunks = yield* Stream.runCollect(stream)
-      expect(Chunk.toReadonlyArray(chunks)).toEqual([1, 4, 9, 16]) // squares of 1,2,3,4
+      expect(chunks).toEqual([1, 4, 9, 16]) // squares of 1,2,3,4
     }).pipe(Effect.provide(ProtocolLive), withWranglerTest(test)),
   )
 
@@ -161,7 +156,7 @@ Vitest.describe('Durable Object WebSocket RPC', { timeout: testTimeout }, () => 
       const client = yield* RpcClient.make(TestRpcs)
       const stream = client.StreamInterruptible({ delay: 50, interruptAfterCount: 3 }).pipe(Stream.take(3))
       const chunks = yield* Stream.runCollect(stream)
-      expect(Chunk.toReadonlyArray(chunks)).toEqual([1, 2, 3])
+      expect(chunks).toEqual([1, 2, 3])
     }).pipe(Effect.provide(ProtocolLive), withWranglerTest(test)),
   )
 })
@@ -223,7 +218,7 @@ Vitest.describe('Hibernation Tests', { timeout: 25000 }, () => {
         Stream.map((c) => c.maybeNumber.pipe(Option.getOrUndefined)),
       )
       const chunks = yield* Stream.runCollect(stream)
-      expect(Chunk.toReadonlyArray(chunks)).toEqual([1, 4, 9]) // squares of 1,2,3
+      expect(chunks).toEqual([1, 4, 9]) // squares of 1,2,3
       console.log('✅ Streaming after hibernation successful')
 
       console.log('🎉 All RPC operations successful after hibernation!')

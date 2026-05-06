@@ -189,7 +189,7 @@ export const makePush =
       )
 
       // We need to yield here to make sure the fork above is kicked off before we let Effect RPC finish the request
-      yield* Effect.yieldNow()
+      yield* Effect.yieldNow
 
       return SyncMessage.PushAck.make({})
     }).pipe(
@@ -200,11 +200,12 @@ export const makePush =
           }
         }),
       ),
-      Effect.mapError((cause) =>
-        cause._tag === 'BackendIdMismatchError' || cause._tag === 'ServerAheadError' || cause._tag === 'UnknownError'
-          ? cause
-          : new UnknownError({ cause }),
-      ),
+      Effect.mapError((cause: unknown) => {
+        const tag = (cause as { _tag?: string })._tag
+        return tag === 'BackendIdMismatchError' || tag === 'ServerAheadError' || tag === 'UnknownError'
+          ? (cause as BackendIdMismatchError | ServerAheadError | UnknownError)
+          : new UnknownError({ cause })
+      }),
       Effect.withSpan('sync-cf:do:push', { attributes: { storeId, batchSize: pushRequest.batch.length } }),
     )
 
@@ -215,9 +216,9 @@ const blockConcurrencyWhile =
   (ctx: CfTypes.DurableObjectState) =>
   <A, E, R>(eff: Effect.Effect<A, E, R>) =>
     Effect.gen(function* () {
-      const runtime = yield* Effect.runtime<R>()
+      const context = yield* Effect.context<R>()
       const exit = yield* Effect.promise(() =>
-        ctx.blockConcurrencyWhile(() => eff.pipe(Effect.provide(runtime), Effect.runPromiseExit)),
+        ctx.blockConcurrencyWhile(() => Effect.runPromiseExitWith(context)(eff)),
       )
 
       return yield* exit

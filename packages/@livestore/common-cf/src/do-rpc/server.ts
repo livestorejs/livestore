@@ -1,11 +1,9 @@
 import {
-  Chunk,
   Effect,
   Exit,
   Headers,
   type Layer,
   type NonEmptyArray,
-  Option,
   Rpc,
   type RpcGroup,
   type RpcMessage,
@@ -41,7 +39,7 @@ export const toDurableObjectHandler =
   ) => Effect.Effect<Uint8Array<ArrayBuffer> | CfTypes.ReadableStream>) =>
   (serializedPayload) =>
     Effect.gen(function* () {
-      const parser = RpcSerialization.msgPack.unsafeMake()
+      const parser = RpcSerialization.msgPack.makeUnsafe()
 
       // Decode incoming requests - client sends array of requests
       const decoded = parser.decode(serializedPayload)
@@ -73,7 +71,7 @@ export const toDurableObjectHandler =
         // oxlint-disable-next-line typescript-eslint(no-unsafe-type-assertion) -- RpcGroup.requests map returns Rpc.Any; narrowing to AnyWithProps for property access
         const rpc = group.requests.get(request.tag)! as unknown as Rpc.AnyWithProps
         // oxlint-disable-next-line typescript-eslint(no-unsafe-type-assertion) -- context.unsafeMap dynamic lookup; type safety ensured by RpcGroup registration
-        const entry = context.unsafeMap.get(rpc.key) as Rpc.Handler<Rpcs['_tag']>
+        const entry = context.mapUnsafe.get(rpc.key) as Rpc.Handler<Rpcs['_tag']>
 
         if (rpc == null || entry == null) {
           responses.push({
@@ -96,10 +94,12 @@ export const toDurableObjectHandler =
         // Execute the handler
         const result = yield* Effect.gen(function* () {
           const handlerResult = entry.handler(request.payload, {
-            clientId: 0, // TODO: add proper clientId if needed
+            client: new Rpc.ServerClient(0), // TODO: add proper client id if needed
+            requestId: request.id,
             headers: Headers.fromInput({
               'x-rpc-request-id': request.id.toString(),
             }),
+            rpc,
           })
 
           let value: any
@@ -199,29 +199,32 @@ const createStreamingResponse = <Rpcs extends Rpc.Any, LE>(
   rpc: Rpc.AnyWithProps,
   entry: Rpc.Handler<Rpcs['_tag']>,
   request: any,
-  parser: ReturnType<typeof RpcSerialization.msgPack.unsafeMake>,
+  parser: ReturnType<typeof RpcSerialization.msgPack.makeUnsafe>,
   layer: Layer.Layer<Rpc.ToHandler<Rpcs> | Rpc.Middleware<Rpcs>, LE>,
 ): Effect.Effect<CfTypes.ReadableStream, never, Scope.Scope> =>
   Effect.gen(function* () {
     // Execute the handler to get the stream
     const handlerResult = entry.handler(request.payload, {
-      clientId: 0, // TODO: add proper clientId if needed
+      client: new Rpc.ServerClient(0), // TODO: add proper client id if needed
+      requestId: request.id,
       headers: Headers.fromInput({
         'x-rpc-request-id': request.id.toString(),
       }),
+      rpc,
     })
 
     // @effect-diagnostics-next-line anyUnknownInErrorContext:off -- `Rpc.Handler.handler` returns `Effect<any, any>` due to dynamic dispatch; orDie converts the error to a defect handled by the downstream catchAllCause
-    const stream: Stream.Stream<any, any> =
-      Effect.isEffect(handlerResult) === true ? yield* Effect.orDie(handlerResult) : handlerResult
+    const stream = (
+      Effect.isEffect(handlerResult) === true ? yield* Effect.orDie(handlerResult as Effect.Effect<any>) : handlerResult
+    ) as Stream.Stream<any, any>
 
     // Get the stream schemas for proper chunk-level encoding
     // oxlint-disable-next-line typescript-eslint(no-unsafe-type-assertion) -- Rpc.Handler doesn't expose successSchema publicly; see https://github.com/Effect-TS/effect/issues/6064
-    const streamSchemas = RpcSchema.getStreamSchemas((rpc as any).successSchema.ast)
+    const successSchema = (rpc as any).successSchema
     const chunkEncoder =
-      Option.isSome(streamSchemas) === true
+      RpcSchema.isStreamSchema(successSchema) === true
         ? // oxlint-disable-next-line typescript-eslint(no-unsafe-type-assertion) -- stream schema success type is inferred as unknown; cast needed for encodeUnknown
-          Schema.encodeUnknownEffect(Schema.Array(streamSchemas.value.success as Schema.Schema<any>))
+          Schema.encodeUnknownEffect(Schema.Array(successSchema.success as Schema.Schema<any>))
         : // oxlint-disable-next-line typescript-eslint(no-unsafe-type-assertion) -- Schema.Any needs explicit cast for Schema.Array compatibility
           Schema.encodeUnknownEffect(Schema.Array(Schema.Any as Schema.Schema<any>))
 
@@ -231,9 +234,8 @@ const createStreamingResponse = <Rpcs extends Rpc.Any, LE>(
         // Run the stream and send chunks + final exit
         const runStream = Effect.gen(function* () {
           // Process stream chunks - let chunk encoder handle Effect objects properly
-          yield* Stream.runForEachChunk(stream, (chunk) =>
+          yield* Stream.runForEachArray(stream, (chunkArray) =>
             Effect.gen(function* () {
-              const chunkArray = Chunk.toReadonlyArray(chunk)
               if (chunkArray.length === 0) return
 
               // Encode the chunk using the proper chunk encoder (like official RPC)
@@ -291,7 +293,12 @@ const createStreamingResponse = <Rpcs extends Rpc.Any, LE>(
         )
 
         // Run the stream processing
-        runStream.pipe(Effect.provide(layer), Effect.scoped, Effect.tapCauseLogPretty, Effect.runPromise)
+        runStream.pipe(
+          Effect.provide(layer),
+          Effect.scoped,
+          Effect.tapCauseLogPretty,
+          (_) => Effect.runPromise(_ as Effect.Effect<void>),
+        )
       },
       // oxlint-disable-next-line typescript-eslint(no-unsafe-type-assertion) -- bridging standard Web API ReadableStream to Cloudflare Worker ReadableStream type
     }) as any as CfTypes.ReadableStream
