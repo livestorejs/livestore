@@ -83,6 +83,16 @@ The preferred flow is:
 4. Merge the release-plan PR into `main`.
 5. Let the push-triggered `Release` workflow publish the release group.
 
+For `dev` releases, the release PR generator derives the next prerelease from
+the current npm `dev` dist-tag for `@livestore/common`. For example, if the
+dist-tag points at `0.4.0-dev.23`, the next generated dev release is
+`0.4.0-dev.24`.
+
+After Genie regenerates the fixed public package versions, the release PR
+generator also syncs standalone examples and other non-workspace consumers to
+the exact release version. This keeps `pnpm install --lockfile-only` validating
+the same package graph that the release will publish.
+
 Release plans are validated against the npm dist-tag before dry-run or publish:
 
 - `latest` only accepts stable versions such as `0.4.0`.
