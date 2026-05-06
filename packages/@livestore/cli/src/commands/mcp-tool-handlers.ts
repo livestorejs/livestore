@@ -1,3 +1,4 @@
+import { NodeFileSystem } from '@effect/platform-node'
 import { Effect, FetchHttpClient, Layer, type Toolkit } from '@livestore/utils/effect'
 
 import { blogSchemaContent } from '../mcp-content/schemas/blog.ts'
@@ -9,7 +10,6 @@ import * as SyncOps from '../sync-operations.ts'
 import { coachToolHandler } from './mcp-coach.ts'
 import { livestoreToolkit } from './mcp-tools-defs.ts'
 
-import * as NodeFileSystem from '@effect/platform-node/NodeFileSystem'
 /** Layer providing FileSystem and HttpClient for sync operations */
 const SyncOpsLayer = Layer.mergeAll(NodeFileSystem.layer, FetchHttpClient.layer)
 

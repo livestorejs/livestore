@@ -1,25 +1,22 @@
 import path from 'node:path'
 
+import { NodeRuntime, NodeServices } from '@effect/platform-node'
 import { UnknownError } from '@livestore/common'
-import type { Option, PlatformError } from '@livestore/utils/effect'
-import { Effect, FetchHttpClient, Layer, Logger, LogLevel, OtelTracer, Schema } from '@livestore/utils/effect'
+import { Effect, FetchHttpClient, Layer, Logger, OtelTracer, Schema } from '@livestore/utils/effect'
 import { Cli, getFreePort } from '@livestore/utils/node'
-import { type CmdError, CurrentWorkingDirectory, cmd } from '@livestore/utils-dev/node'
+import { CurrentWorkingDirectory, cmd } from '@livestore/utils-dev/node'
 import { LIVESTORE_DEVTOOLS_CHROME_DIST_PATH } from '@local/shared'
-import type { ChildProcessSpawner } from 'effect/unstable/process/ChildProcessSpawner'
 
 import { downloadChromeExtension } from './download-chrome-extension.ts'
 
-import * as NodeRuntime from '@effect/platform-node/NodeRuntime'
-import * as NodeServices from '@effect/platform-node/NodeServices'
 const cwd = path.resolve(import.meta.dirname, '..')
 
-const modeOption = Cli.Options.choice('mode', ['headless', 'ui', 'dev-server']).pipe(
-  Cli.Options.withDefault('headless'),
+const modeOption = Cli.Flag.choice('mode', ['headless', 'ui', 'dev-server']).pipe(
+  Cli.Flag.withDefault('headless'),
 )
 
-export const localDevtoolsPreviewOption = Cli.Options.boolean('local-devtools-preview').pipe(
-  Cli.Options.withDefault(false),
+export const localDevtoolsPreviewOption = Cli.Flag.boolean('local-devtools-preview').pipe(
+  Cli.Flag.withDefault(false),
 )
 
 const viteDevServer = ({
@@ -47,15 +44,7 @@ const viteDevServer = ({
     return { devPort }
   })
 
-export const miscTest: Cli.Command.Command<
-  'misc',
-  ChildProcessSpawner,
-  UnknownError | PlatformError.PlatformError | CmdError,
-  {
-    readonly mode: 'headless' | 'ui' | 'dev-server'
-    readonly localDevtoolsPreview: boolean
-  }
-> = Cli.Command.make(
+export const miscTest = Cli.Command.make(
   'misc',
   {
     mode: modeOption,
@@ -88,15 +77,7 @@ export const miscTest: Cli.Command.Command<
   ),
 )
 
-export const todomvcTest: Cli.Command.Command<
-  'todomvc',
-  ChildProcessSpawner,
-  UnknownError | PlatformError.PlatformError | CmdError,
-  {
-    readonly mode: 'headless' | 'ui' | 'dev-server'
-    readonly localDevtoolsPreview: boolean
-  }
-> = Cli.Command.make(
+export const todomvcTest = Cli.Command.make(
   'todomvc',
   {
     mode: modeOption,
@@ -128,12 +109,7 @@ export const todomvcTest: Cli.Command.Command<
   ),
 )
 
-export const setupDevtools: Cli.Command.Command<
-  'setup-devtools',
-  ChildProcessSpawner,
-  UnknownError | PlatformError.PlatformError,
-  {}
-> = Cli.Command.make(
+export const setupDevtools = Cli.Command.make(
   'setup-devtools',
   {},
   Effect.fn(function* () {
@@ -147,15 +123,7 @@ export const setupDevtools: Cli.Command.Command<
   }, UnknownError.mapToUnknownError),
 )
 
-export const devtoolsTest: Cli.Command.Command<
-  'devtools',
-  ChildProcessSpawner,
-  UnknownError | PlatformError.PlatformError | CmdError,
-  {
-    readonly mode: 'headless' | 'ui' | 'dev-server'
-    readonly localDevtoolsPreview: boolean
-  }
-> = Cli.Command.make(
+export const devtoolsTest = Cli.Command.make(
   'devtools',
   {
     mode: modeOption,
@@ -199,24 +167,15 @@ export const devtoolsTest: Cli.Command.Command<
 
 export const commands = [miscTest, todomvcTest, devtoolsTest, setupDevtools] as const
 
-export const command: Cli.Command.Command<
-  'integration-misc',
-  ChildProcessSpawner,
-  UnknownError | PlatformError.PlatformError | CmdError,
-  {
-    readonly subcommand: Option.Option<{ readonly headless: boolean } | {}>
-  }
-> = Cli.Command.make('integration-misc').pipe(Cli.Command.withSubcommands(commands))
+export const command = Cli.Command.make('integration-misc').pipe(Cli.Command.withSubcommands(commands))
 
 if (import.meta.main === true) {
   const cli = Cli.Command.run(command, {
-    name: 'Run Tests',
     version: '0.0.0',
   })
 
-  cli(process.argv).pipe(
-    Logger.withMinimumLogLevel('Debug'),
+  cli.pipe(
     Effect.provide(Layer.mergeAll(NodeServices.layer, Logger.prettyWithThread('cli-run-tests'))),
-    NodeRuntime.runMain({ disablePrettyLogger: true }),
+    NodeRuntime.runMain,
   )
 }

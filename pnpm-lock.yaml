@@ -2226,6 +2226,9 @@ importers:
         specifier: 4.0.0-beta.60
         version: 4.0.0-beta.60
     devDependencies:
+      '@effect/platform-node':
+        specifier: 4.0.0-beta.60
+        version: 4.0.0-beta.60(effect@4.0.0-beta.60)
       '@livestore/utils-dev':
         specifier: workspace:^
         version: link:../utils-dev

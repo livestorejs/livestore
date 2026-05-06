@@ -7,6 +7,7 @@ import {
   type ClientSession,
   type ClientSessionLeaderThreadProxy,
   makeMockSyncBackend,
+  type SqliteDb,
   SyncState,
   type UnknownError,
 } from '@livestore/common'
@@ -54,7 +55,7 @@ const withTestCtx = Vitest.makeWithTestCtx({
       TestContextLive,
       NodeFileSystem.layer,
       FetchHttpClient.layer,
-      Logger.minimumLogLevel('Debug'),
+      Logger.layer([Logger.consolePretty()]),
     ),
 })
 
@@ -230,23 +231,23 @@ Vitest.describe.concurrent('ClientSessionSyncProcessor', () => {
           clientId: 'other-client',
           sessionId: 'static-session-id',
         }),
-      ).pipe(Effect.repeatN(1))
+      ).pipe(Effect.repeat({ times: 1 }))
 
       // Merge invariant violations are defects (not typed errors), so the shutdown
       // deferred receives an Exit with a Die cause containing the error message.
-      const exit = yield* Effect.exit(shutdownDeferred)
+      const exit = yield* Effect.exit(Deferred.await(shutdownDeferred))
 
       expect(Exit.isFailure(exit)).toBe(true)
       assert(Exit.isFailure(exit))
 
       const defect = Cause.findDefect(exit.cause)
-      expect(defect._tag).toBe('Some')
-      assert(defect._tag === 'Some')
+      expect(defect._tag).toBe('Success')
+      assert(defect._tag === 'Success')
 
-      expect(defect.value).toBeInstanceOf(Error)
-      assert(defect.value instanceof Error)
+      expect(defect.success).toBeInstanceOf(Error)
+      assert(defect.success instanceof Error)
 
-      expect(defect.value.message).toEqual(
+      expect(defect.success.message).toEqual(
         'Incoming events must be greater than upstream head. Expected greater than: e1. Received: [e1]',
       )
     }).pipe(withTestCtx(test)),
@@ -269,8 +270,11 @@ Vitest.describe.concurrent('ClientSessionSyncProcessor', () => {
 
       yield* mockSyncBackend.advance(eventFactory.todoCreated.next({ id: `backend_0`, text: 't2', completed: false }))
 
-      const makeLeaderThread = yield* Effect.cachedFunction(
-        Effect.fn(function* (makeSqliteDb: MakeNodeSqliteDb) {
+      let cachedLeaderThread: { dbEventlog: SqliteDb; dbState: SqliteDb } | undefined
+      const makeLeaderThread = Effect.fn(function* (makeSqliteDb: MakeNodeSqliteDb) {
+        if (cachedLeaderThread !== undefined) return cachedLeaderThread
+
+        cachedLeaderThread = yield* Effect.gen(function* () {
           const dbEventlog = yield* makeSqliteDb({ _tag: 'in-memory' })
 
           yield* Eventlog.initEventlogDb(dbEventlog)
@@ -296,9 +300,9 @@ Vitest.describe.concurrent('ClientSessionSyncProcessor', () => {
           yield* recreateDb({ dbState, dbEventlog, schema, bootStatusQueue, materializeEvent })
 
           return { dbEventlog, dbState }
-        }, Effect.orDie),
-        () => true, // always cache
-      )
+        })
+        return cachedLeaderThread
+      }, Effect.orDie)
 
       const adapter = makeAdapter({
         storage: { type: 'in-memory' },
@@ -429,7 +433,7 @@ Vitest.describe.concurrent('ClientSessionSyncProcessor', () => {
 
       store.commit(events.todoDeletedNonPure({ id: '1' }))
 
-      const error = yield* shutdownDeferred.pipe(Effect.flip)
+      const error = yield* Deferred.await(shutdownDeferred).pipe(Effect.flip)
 
       expect(error._tag).toEqual('MaterializeError')
     }).pipe(withTestCtx(test)),
@@ -485,7 +489,7 @@ Vitest.describe.concurrent('ClientSessionSyncProcessor', () => {
       yield* Queue.offer(pullQueue, eventFromLeader)
 
       // Wait for the shutdown to be triggered by the client-side hash mismatch detection
-      const error = yield* shutdownDeferred.pipe(Effect.flip)
+      const error = yield* Deferred.await(shutdownDeferred).pipe(Effect.flip)
 
       expect(error._tag).toEqual('MaterializeError')
     }).pipe(withTestCtx(test)),
@@ -590,7 +594,7 @@ Vitest.describe.concurrent('ClientSessionSyncProcessor', () => {
 
       expect(materializedEvents).toHaveLength(1)
       expect(materializedEvents[0]?.name).toEqual('unknown_event_test')
-      expect(materializedEvents[0]?.meta.sessionChangeset._tag).toEqual('no-op')
+      expect(materializedEvents[0]!.meta!.sessionChangeset._tag).toEqual('no-op')
     }).pipe(withTestCtx(test)),
   )
 
@@ -618,17 +622,17 @@ Vitest.describe.concurrent('ClientSessionSyncProcessor', () => {
 
       store.commit(events.todoCreated({ id: 'trigger', text: 'boom', completed: false }))
 
-      const exit = yield* Effect.exit(shutdownDeferred)
+      const exit = yield* Effect.exit(Deferred.await(shutdownDeferred))
 
       expect(Exit.isFailure(exit)).toBe(true)
       assert(Exit.isFailure(exit))
 
       const defect = Cause.findDefect(exit.cause)
-      expect(defect._tag).toBe('Some')
-      assert(defect._tag === 'Some')
-      expect(defect.value).toBeInstanceOf(Error)
-      assert(defect.value instanceof Error)
-      expect(defect.value.message).toBe('unexpected transport failure')
+      expect(defect._tag).toBe('Success')
+      assert(defect._tag === 'Success')
+      expect(defect.success).toBeInstanceOf(Error)
+      assert(defect.success instanceof Error)
+      expect(defect.success.message).toBe('unexpected transport failure')
     }).pipe(withTestCtx(test)),
   )
 
@@ -656,7 +660,7 @@ class TestContext extends Context.Service<
   }
 >()('TestContext') {}
 
-const TestContextLive = Layer.scoped(
+const TestContextLive = Layer.effect(
   TestContext,
   Effect.gen(function* () {
     const mockSyncBackend = yield* makeMockSyncBackend()

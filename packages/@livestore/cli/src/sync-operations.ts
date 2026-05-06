@@ -7,7 +7,6 @@ import { UnknownError } from '@livestore/common'
 import { LiveStoreEvent } from '@livestore/common/schema'
 import {
   Cause,
-  Chunk,
   Effect,
   type FileSystem,
   type HttpClient,
@@ -126,7 +125,7 @@ export const makeSyncBackend = ({
 const releaseSyncBackend = (syncBackend: SyncBackend.SyncBackend): Effect.Effect<void> => {
   const maybeDisconnect = (syncBackend as { disconnect?: Effect.Effect<void> }).disconnect
   const releaseEffect = maybeDisconnect ?? SubscriptionRef.set(syncBackend.isConnected, false)
-  return releaseEffect.pipe(Effect.orElse(() => Effect.void))
+  return releaseEffect.pipe(Effect.catch(() => Effect.void))
 }
 
 export interface ExportResult {
@@ -173,9 +172,7 @@ export const pullEventsFromSyncBackend = ({
           ),
         )
 
-        const events = Chunk.toReadonlyArray(batchesChunk)
-          .flatMap((item) => item.batch)
-          .map((item) => item.eventEncoded)
+        const events = batchesChunk.flatMap((item) => item.batch).map((item) => item.eventEncoded)
 
         const exportedAt = new Date().toISOString()
         const exportData: ExportFile = {
@@ -283,10 +280,10 @@ export const pushEventsToSyncBackend = ({
         )
 
         if (exportData.storeId !== storeId && force === false) {
-          return yield* new ImportError({
+          return yield* Effect.fail(new ImportError({
             cause: new Error(`Store ID mismatch: file has '${exportData.storeId}', expected '${storeId}'`),
             note: `The export file was created for a different store. Use force option to import anyway.`,
-          })
+          }))
         }
 
         if (dryRun === true) {
@@ -319,10 +316,10 @@ export const pushEventsToSyncBackend = ({
               ? existingBatch.batch.length + existingBatch.pageInfo.remaining
               : existingBatch.batch.length
 
-          return yield* new ImportError({
+          return yield* Effect.fail(new ImportError({
             cause: new Error(`Sync backend already contains at least ${estimatedCount} events`),
             note: `Cannot import into a non-empty sync backend. The sync backend must be empty.`,
-          })
+          }))
         }
 
         /** Push events in batches of 100 (sync backend constraint) */

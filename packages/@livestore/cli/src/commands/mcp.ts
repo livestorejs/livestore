@@ -1,11 +1,10 @@
+import { NodeStdio } from '@effect/platform-node'
 import { Effect, Layer, Logger, McpServer } from '@livestore/utils/effect'
 import { Cli } from '@livestore/utils/node'
 
 import { architectureContent } from '../mcp-content/architecture.ts'
 import { featuresContent } from '../mcp-content/features.ts'
 import { gettingStartedContent } from '../mcp-content/getting-started.ts'
-import * as NodeSink from '@effect/platform-node/NodeSink'
-import * as NodeStream from '@effect/platform-node/NodeStream'
 // Content imports
 import { overviewContent } from '../mcp-content/overview.ts'
 import { blogSchemaContent } from '../mcp-content/schemas/blog.ts'
@@ -86,12 +85,11 @@ const mcpServerCommand = Cli.Command.make(
     return yield* McpServer.layerStdio({
       name: 'livestore-mcp',
       version: '0.1.0',
-      stdin: NodeStream.stdin,
-      stdout: NodeSink.stdout,
     }).pipe(
       Layer.provide(LivestoreResources),
       Layer.provide(LivestoreTools),
-      Layer.provide(Logger.add(Logger.prettyLogger({ stderr: true }))),
+      Layer.provide(NodeStdio.layer),
+      Layer.provide(Layer.mergeAll(Layer.succeed(Logger.LogToStderr)(true), Logger.layer([Logger.consolePretty()]))),
       Layer.launch,
     )
   }),

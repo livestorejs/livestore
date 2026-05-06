@@ -7,7 +7,7 @@ import { AiError, Config, Effect, FetchHttpClient, Layer, Prompt, Schema, Tool }
 export const coachTool = Tool.make('livestore_coach', {
   description:
     'Analyze LiveStore code (schemas, queries, mutations, etc.) and provide AI-powered feedback on best practices, performance, and improvements.',
-  parameters: {
+  parameters: Schema.Struct({
     code: Schema.String.annotate({
       description: 'The LiveStore code to analyze (TypeScript/JavaScript)',
     }),
@@ -16,7 +16,7 @@ export const coachTool = Tool.make('livestore_coach', {
         description: "Type of code being analyzed: 'schema', 'query', 'mutation', 'component', or 'general'",
       }),
     ),
-  },
+  }),
   success: Schema.Struct({
     feedback: Schema.String.annotate({
       description: 'AI-generated feedback and recommendations for the code',

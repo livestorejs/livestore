@@ -3,11 +3,11 @@ import { UnknownError } from '@livestore/common'
 import { LiveStoreEvent, SystemTables } from '@livestore/common/schema'
 import type { Store } from '@livestore/livestore'
 import { createStorePromise } from '@livestore/livestore'
+import { NodeFileSystem } from '@effect/platform-node'
 import { Effect, FetchHttpClient, Layer, Option, Schema } from '@livestore/utils/effect'
 
 import { loadModuleConfig } from '../module-loader.ts'
 
-import * as NodeFileSystem from '@effect/platform-node/NodeFileSystem'
 /** Currently connected store */
 let store: Store<any> | undefined
 

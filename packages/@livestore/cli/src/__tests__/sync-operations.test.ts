@@ -1,13 +1,13 @@
 import { expect } from 'vitest'
 
+import { NodeFileSystem } from '@effect/platform-node'
 import type { LiveStoreEvent } from '@livestore/common/schema'
 import { Vitest } from '@livestore/utils-dev/node-vitest'
-import { Chunk, Effect, FetchHttpClient, Layer, Mailbox, Stream } from '@livestore/utils/effect'
+import { Effect, FetchHttpClient, Layer, Mailbox, Stream } from '@livestore/utils/effect'
 
 import { pullEventsFromSyncBackend, pushEventsToSyncBackend } from '../sync-operations.ts'
 import { makeEventFactory, useMockConfig } from './fixtures/mock-config.ts'
 
-import * as NodeFileSystem from '@effect/platform-node/NodeFileSystem'
 const baseLayer = Layer.mergeAll(NodeFileSystem.layer, FetchHttpClient.layer)
 const withTestCtx = Vitest.makeWithTestCtx({ makeLayer: () => baseLayer })
 
@@ -23,7 +23,7 @@ Vitest.describe('sync-operations', { timeout: 10_000 }, () => {
     Mailbox.toStream(mailbox).pipe(
       Stream.take(2),
       Stream.runCollect,
-      Effect.map((chunk) => Chunk.toReadonlyArray(chunk)),
+      Effect.map((events) => events),
     )
 
   Vitest.scopedLive('exports events and releases the backend connection', (test: Vitest.TestContext) =>
@@ -154,7 +154,7 @@ Vitest.describe('sync-operations', { timeout: 10_000 }, () => {
       const pushedEvents = yield* mockBackend.pushedEvents.pipe(
         Stream.take(importBatch.length),
         Stream.runCollect,
-        Effect.map((chunk: Chunk.Chunk<LiveStoreEvent.Global.Encoded>) => Chunk.toReadonlyArray(chunk)),
+        Effect.map((events: ReadonlyArray<LiveStoreEvent.Global.Encoded>) => events),
       )
       expect(pushedEvents.map((event) => event.seqNum)).toHaveLength(importBatch.length)
 
@@ -190,7 +190,7 @@ Vitest.describe('sync-operations', { timeout: 10_000 }, () => {
       const pushedEvents = yield* mockBackend.pushedEvents.pipe(
         Stream.take(1),
         Stream.runCollect,
-        Effect.map((chunk: Chunk.Chunk<LiveStoreEvent.Global.Encoded>) => Chunk.toReadonlyArray(chunk)),
+        Effect.map((events: ReadonlyArray<LiveStoreEvent.Global.Encoded>) => events),
       )
       expect(pushedEvents).toHaveLength(1)
 

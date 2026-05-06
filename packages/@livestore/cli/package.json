@@ -43,6 +43,7 @@
     "effect": "4.0.0-beta.60"
   },
   "devDependencies": {
+    "@effect/platform-node": "4.0.0-beta.60",
     "@livestore/utils-dev": "workspace:^",
     "@types/node": "25.3.3",
     "typescript": "5.9.3",

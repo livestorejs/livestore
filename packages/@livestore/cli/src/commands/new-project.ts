@@ -71,10 +71,10 @@ const fetchExamples = (ref: string) =>
       Effect.scoped,
       Effect.catch(
         (error) =>
-          new NetworkError({
+          Effect.fail(new NetworkError({
             cause: error,
             message: `Failed to fetch examples from GitHub: ${String(error)}`,
-          }),
+          })),
       ),
     )
 
@@ -83,10 +83,10 @@ const fetchExamples = (ref: string) =>
     const examples = yield* Schema.decodeUnknownEffect(Schema.fromJsonString(GitHubContentsResponseSchema))(responseText).pipe(
       Effect.catch(
         (error) =>
-          new NetworkError({
+          Effect.fail(new NetworkError({
             cause: error,
             message: `Failed to parse GitHub API response: ${String(error)}`,
-          }),
+          })),
       ),
     )
 
@@ -104,7 +104,7 @@ const fetchExamples = (ref: string) =>
 const selectExample = (examples: string[]) =>
   Effect.gen(function* () {
     if (examples.length === 0) {
-      return yield* new NoExamplesError({ message: 'No examples available' })
+      return yield* Effect.fail(new NoExamplesError({ message: 'No examples available' }))
     }
 
     const prompt = Cli.Prompt.select({
@@ -135,10 +135,10 @@ const downloadExample = (exampleName: string, ref: string, destinationPath: stri
       Effect.scoped,
       Effect.catch(
         (error) =>
-          new NetworkError({
+          Effect.fail(new NetworkError({
             cause: error,
             message: `Failed to download tarball: ${String(error)}`,
-          }),
+          })),
       ),
     )
 
@@ -159,10 +159,10 @@ const downloadExample = (exampleName: string, ref: string, destinationPath: stri
     yield* spawner.exitCode(ChildProcess.make('tar', ['-xzf', tarballPath, '-C', extractDir])).pipe(
       Effect.catch(
         (error) =>
-          new NetworkError({
+          Effect.fail(new NetworkError({
             cause: error,
             message: `Failed to extract tarball: ${String(error)}`,
-          }),
+          })),
       ),
     )
 
@@ -170,10 +170,10 @@ const downloadExample = (exampleName: string, ref: string, destinationPath: stri
     const extractedDirs = yield* fs.readDirectory(extractDir)
 
     if (extractedDirs.length === 0) {
-      return yield* new NetworkError({
+      return yield* Effect.fail(new NetworkError({
         cause: 'No extracted directory found',
         message: 'Failed to find extracted repository directory',
-      })
+      }))
     }
 
     const repoDir = nodePath.join(extractDir, extractedDirs[0]!)
@@ -183,20 +183,20 @@ const downloadExample = (exampleName: string, ref: string, destinationPath: stri
     const exampleExists = yield* fs.exists(exampleSourcePath)
 
     if (exampleExists === false) {
-      return yield* new ExampleNotFoundError({
+      return yield* Effect.fail(new ExampleNotFoundError({
         exampleName,
         availableExamples: [],
         message: `Example "${exampleName}" not found in the extracted repository`,
-      })
+      }))
     }
 
     yield* spawner.exitCode(ChildProcess.make('cp', ['-r', `${exampleSourcePath}/.`, destinationPath])).pipe(
       Effect.catch(
         (error) =>
-          new NetworkError({
+          Effect.fail(new NetworkError({
             cause: error,
             message: `Failed to copy example files: ${String(error)}`,
-          }),
+          })),
       ),
     )
 
@@ -212,22 +212,22 @@ const downloadExample = (exampleName: string, ref: string, destinationPath: stri
 export const createCommand = Cli.Command.make(
   'create',
   {
-    example: Cli.Options.text('example').pipe(
-      Cli.Options.optional,
-      Cli.Options.withDescription('Example name to create (bypasses interactive selection)'),
+    example: Cli.Flag.string('example').pipe(
+      Cli.Flag.optional,
+      Cli.Flag.withDescription('Example name to create (bypasses interactive selection)'),
     ),
-    ref: Cli.Options.text('ref').pipe(
-      Cli.Options.withAlias('commit'),
-      Cli.Options.withAlias('branch'),
-      Cli.Options.withAlias('tag'),
-      Cli.Options.withDefault('main'),
-      Cli.Options.withDescription(
+    ref: Cli.Flag.string('ref').pipe(
+      Cli.Flag.withAlias('commit'),
+      Cli.Flag.withAlias('branch'),
+      Cli.Flag.withAlias('tag'),
+      Cli.Flag.withDefault('main'),
+      Cli.Flag.withDescription(
         'The name of the commit/branch/tag to fetch examples from. Pull requests refs must be fully-formed (e.g., `refs/pull/123/merge`).',
       ),
     ),
-    path: Cli.Args.text({ name: 'path' }).pipe(
-      Cli.Args.optional,
-      Cli.Args.withDescription('Destination path for the new project'),
+    path: Cli.Argument.string('path').pipe(
+      Cli.Argument.optional,
+      Cli.Argument.withDescription('Destination path for the new project'),
     ),
   },
   Effect.fn(function* ({
@@ -246,11 +246,11 @@ export const createCommand = Cli.Command.make(
 
     if (examples.length === 0) {
       yield* Console.log('❌ No examples found in the repository')
-      return yield* new ExampleNotFoundError({
+      return yield* Effect.fail(new ExampleNotFoundError({
         exampleName: '',
         availableExamples: [],
         message: 'No examples available',
-      })
+      }))
     }
 
     // Select example (from CLI option or interactive prompt)
@@ -260,11 +260,11 @@ export const createCommand = Cli.Command.make(
     if (examples.includes(selectedExample) === false) {
       yield* Console.log(`❌ Example "${selectedExample}" not found`)
       yield* Console.log(`Available examples: ${examples.join(', ')}`)
-      return yield* new ExampleNotFoundError({
+      return yield* Effect.fail(new ExampleNotFoundError({
         exampleName: selectedExample,
         availableExamples: examples,
         message: `Example "${selectedExample}" not found`,
-      })
+      }))
     }
 
     // Determine destination path

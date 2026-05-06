@@ -1,6 +1,7 @@
 import './thread-polyfill.ts'
 import path from 'node:path'
 
+import { NodeRuntime, NodeServices } from '@effect/platform-node'
 import { makeAdapter, makeWorkerAdapter } from '@livestore/adapter-node'
 import type { ShutdownDeferred, Store } from '@livestore/livestore'
 import { createStore, makeShutdownDeferred, queryDb } from '@livestore/livestore'
@@ -9,6 +10,7 @@ import { IS_CI } from '@livestore/utils'
 import { OtelLiveHttp } from '@livestore/utils-dev/node'
 import {
   Context,
+  Deferred,
   Effect,
   Layer,
   Logger,
@@ -26,8 +28,6 @@ import { makeFileLogger } from './fixtures/file-logger.ts'
 import { events, schema, tables } from './schema.ts'
 import * as WorkerSchema from './worker-schema.ts'
 
-import * as NodeRuntime from '@effect/platform-node/NodeRuntime'
-import * as NodeServices from '@effect/platform-node/NodeServices'
 class WorkerContext extends Context.Service<
   WorkerContext,
   {
@@ -112,7 +112,7 @@ const runner = WorkerRunner.layerSerialized(WorkerSchema.Request, {
     }).pipe(Stream.unwrap, Stream.withSpan('@livestore/adapter-node-sync:test:stream-todos')),
   OnShutdown: Effect.fn('@livestore/adapter-node-sync:test:on-shutdown')(function* () {
     const { shutdownDeferred } = yield* WorkerContext
-    yield* shutdownDeferred.pipe(Effect.catchTag('StoreInterrupted', () => Effect.void))
+    yield* Effect.catchTag(Deferred.await(shutdownDeferred), 'StoreInterrupted', () => Effect.void)
   }),
 })
 
@@ -132,6 +132,5 @@ runner.pipe(
   Effect.annotateLogs({ thread: serviceName, clientId }),
   Effect.annotateSpans({ clientId }),
   Effect.provide(makeFileLogger(`worker-${clientId}`)),
-  Logger.withMinimumLogLevel('Debug'),
-  NodeRuntime.runMain({ disablePrettyLogger: true }),
+  NodeRuntime.runMain,
 )

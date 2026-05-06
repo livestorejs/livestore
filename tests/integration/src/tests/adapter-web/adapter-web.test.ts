@@ -52,8 +52,7 @@ Vitest.describe('adapter-web', { timeout: testTimeout }, () => {
       const appUrl = (pathname: string) => `http://localhost:${port}${pathname}`
 
       // Wait for dev server to be ready
-      const httpClient = yield* HttpClient.HttpClient.pipe(Effect.andThen(HttpClient.filterStatusOk))
-      yield* httpClient.head(appUrl('/')).pipe(
+      yield* HttpClient.head(appUrl('/')).pipe(
         Effect.retry(Schedule.exponentialBackoff10Sec),
         Effect.mapError((error) => new Error('Dev server did not start in time', { cause: error })),
       )
@@ -124,8 +123,7 @@ Vitest.describe('adapter-web', { timeout: testTimeout }, () => {
       const appUrl = (pathname: string) => `http://localhost:${port}${pathname}`
 
       // Wait for dev server to be ready
-      const httpClient = yield* HttpClient.HttpClient.pipe(Effect.andThen(HttpClient.filterStatusOk))
-      yield* httpClient.head(appUrl('/')).pipe(
+      yield* HttpClient.head(appUrl('/')).pipe(
         Effect.retry(Schedule.exponentialBackoff10Sec),
         Effect.mapError((error) => new Error('Dev server did not start in time', { cause: error })),
       )
@@ -186,8 +184,7 @@ Vitest.describe('adapter-web', { timeout: testTimeout }, () => {
 
       const appUrl = (pathname: string) => `http://localhost:${port}${pathname}`
 
-      const httpClient = yield* HttpClient.HttpClient.pipe(Effect.andThen(HttpClient.filterStatusOk))
-      yield* httpClient.head(appUrl('/')).pipe(
+      yield* HttpClient.head(appUrl('/')).pipe(
         Effect.retry(Schedule.exponentialBackoff10Sec),
         Effect.mapError((error) => new Error('Dev server did not start in time', { cause: error })),
       )
