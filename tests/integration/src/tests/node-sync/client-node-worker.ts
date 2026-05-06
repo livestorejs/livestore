@@ -120,10 +120,12 @@ const clientId = process.argv[2]!
 
 const serviceName = `node-sync-test:${clientId}`
 
-runner.pipe(
-  Layer.provide(NodeServices.layer),
-  Layer.provide(ChildProcessRunner.layer),
-  WorkerRunner.launch,
+WorkerRunner.launch(
+  runner.pipe(
+    Layer.provide(NodeServices.layer),
+    Layer.provide(ChildProcessRunner.layer),
+  ) as Layer.Layer<any, any, any>,
+).pipe(
   // TODO this parent span is currently missing in the trace
   Effect.withSpan(`@livestore/adapter-node-sync:run-worker-${clientId}`),
   Effect.provide(IS_CI === true ? OtelLiveDummy : OtelLiveHttp({ serviceName, skipLogUrl: true })),
@@ -132,5 +134,5 @@ runner.pipe(
   Effect.annotateLogs({ thread: serviceName, clientId }),
   Effect.annotateSpans({ clientId }),
   Effect.provide(makeFileLogger(`worker-${clientId}`)),
-  NodeRuntime.runMain,
+  (effect) => NodeRuntime.runMain(effect as Effect.Effect<never, unknown>),
 )

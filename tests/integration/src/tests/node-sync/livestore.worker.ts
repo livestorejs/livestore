@@ -22,4 +22,4 @@ const layer = Layer.mergeAll(
 makeWorkerEffect({
   sync: { backend: makeWsSync({ url: syncUrl }) },
   schema,
-}).pipe(Effect.provide(layer), NodeRuntime.runMain)
+}).pipe(Effect.provide(layer), (effect) => NodeRuntime.runMain(effect as Effect.Effect<never, unknown>))

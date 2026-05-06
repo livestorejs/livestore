@@ -10,11 +10,11 @@ test(
   runTest(
     Effect.gen(function* () {
       const { browserContext } = yield* Playwright.BrowserContext
-      const page = yield* Effect.promise(() => browserContext.newPage())
+      const page = yield* Effect.tryPromise(() => browserContext.newPage())
 
       const pageConsoleFiber = yield* Playwright.handlePageConsole({ page, name: `tab-1` }).pipe(Effect.forkChild)
 
-      yield* Effect.promise(async () => {
+      yield* Effect.tryPromise(async () => {
         await page.goto(`http://localhost:${process.env.LIVESTORE_PLAYWRIGHT_DEV_SERVER_PORT}/devtools/todomvc`)
         // const el = await page.waitForSelector('.new-todo', { timeout: 5000 })
         const el = page.locator('.new-todo')

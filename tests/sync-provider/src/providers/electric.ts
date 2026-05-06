@@ -19,22 +19,12 @@ import { UnknownError } from '@livestore/common'
 import type { LiveStoreEvent } from '@livestore/livestore'
 import { nanoid, Schema } from '@livestore/livestore'
 import * as ElectricSync from '@livestore/sync-electric'
-import { type DockerComposeError, DockerComposeService } from '@livestore/utils-dev/node'
-import {
-  type Cause,
-  Effect,
-  HttpClient,
-  HttpRouter,
-  HttpServer,
-  HttpServerRequest,
-  HttpServerResponse,
-  Layer,
-  type PlatformError,
-} from '@livestore/utils/effect'
+import { type DockerComposeError, DockerComposeService, makeDockerComposeLayer } from '@livestore/utils-dev/node'
+import { type Cause, Effect, HttpClient, HttpRouter, HttpServerResponse, Layer, type PlatformError } from '@livestore/utils/effect'
 import type { ChildProcessSpawner } from 'effect/unstable/process/ChildProcessSpawner'
 import { getFreePort } from '@livestore/utils/node'
 
-import { SyncProviderImpl, type SyncProviderLayer } from '../types.ts'
+import { SyncProviderImpl, type SyncProvider, type SyncProviderLayer } from '../types.ts'
 
 // Also support scenarios where Docker is not running locally but via a Docker remote context (@schickling needs this)
 const dockerHostName = process.env.DOCKER_CONTEXT ?? 'localhost'
@@ -52,7 +42,7 @@ export const prepare: Effect.Effect<
   yield* dockerCompose.pull
 }).pipe(Effect.provide(DockerComposeLive), Effect.withSpan('electric-provider:prepare'))
 
-export const getProviderSpecific = (provider: SyncProviderImpl['Type']) =>
+export const getProviderSpecific = (provider: SyncProvider) =>
   provider.providerSpecific as {
     getDbForTesting: (storeId: string) => {
       migrate: Effect.Effect<void, Cause.UnknownError>
@@ -62,7 +52,7 @@ export const getProviderSpecific = (provider: SyncProviderImpl['Type']) =>
     }
   }
 
-export const layer: SyncProviderLayer = Layer.scoped(
+export const layer: SyncProviderLayer = Layer.effect(
   SyncProviderImpl,
   Effect.gen(function* () {
     const { endpointPort, postgresPort } = yield* startElectricApi
@@ -89,7 +79,7 @@ export const layer: SyncProviderLayer = Layer.scoped(
   Layer.provide(DockerComposeLive),
   Layer.provide(NodeServices.layer),
   UnknownError.mapToUnknownErrorLayer,
-)
+) as SyncProviderLayer
 
 const startElectricApi = Effect.gen(function* () {
   const electricPort = yield* getFreePort
@@ -127,7 +117,7 @@ const startElectricApi = Effect.gen(function* () {
   // Start the HTTP server in the background
   yield* makeRouter({ electricPort, postgresPort }).pipe(
     // HttpMiddleware.logger, // Can be useful for debugging
-    HttpServer.serve(),
+    HttpRouter.serve,
     Layer.provide(NodeHttpServer.layer(() => http.createServer(), { port: endpointPort })),
     Layer.launch,
     Effect.tapCauseLogPretty,
@@ -141,13 +131,13 @@ const makeRouter = ({ electricPort, postgresPort }: { electricPort: number; post
   const electricHost = `http://${dockerHostName}:${electricPort}`
   const apiSecret = 'change-me-electric-secret'
 
-  return HttpRouter.empty.pipe(
+  return HttpRouter.addAll([
     // GET / (pull)
-    HttpRouter.get(
+    HttpRouter.route(
+      'GET',
       '/',
-      Effect.gen(function* () {
-        const request = yield* HttpServerRequest.HttpServerRequest
-
+      (request) =>
+        Effect.gen(function* () {
         const { url, storeId, needsInit /* payload */ } = ElectricSync.makeElectricUrl({
           electricHost,
           searchParams: new URL(request.url, `http://localhost`).searchParams,
@@ -169,7 +159,7 @@ const makeRouter = ({ electricPort, postgresPort }: { electricPort: number; post
 
         const electricResponse = yield* HttpClient.get(url)
 
-        return yield* HttpServerResponse.stream(electricResponse.stream, {
+        return HttpServerResponse.stream(electricResponse.stream, {
           headers: electricResponse.headers,
           status: electricResponse.status,
         })
@@ -177,10 +167,11 @@ const makeRouter = ({ electricPort, postgresPort }: { electricPort: number; post
     ),
 
     // POST / (push)
-    HttpRouter.post(
+    HttpRouter.route(
+      'POST',
       '/',
-      Effect.gen(function* () {
-        const request = yield* HttpServerRequest.HttpServerRequest
+      (request) =>
+        Effect.gen(function* () {
         const body = yield* request.json
         const parsedPayload = yield* Schema.decodeUnknownEffect(ElectricSync.ApiSchema.PushPayload)(body)
 
@@ -195,18 +186,19 @@ const makeRouter = ({ electricPort, postgresPort }: { electricPort: number; post
     ),
 
     // HEAD / (ping)
-    HttpRouter.head(
+    HttpRouter.route(
+      'HEAD',
       '/',
       Effect.gen(function* () {
         const electricResponse = yield* HttpClient.head(electricHost)
 
-        return yield* HttpServerResponse.empty().pipe(
+        return HttpServerResponse.empty().pipe(
           HttpServerResponse.setStatus(electricResponse.status),
           HttpServerResponse.setHeaders(electricResponse.headers),
         )
       }),
     ),
-  )
+  ])
 }
 
 const makeDb = ({ storeId, postgresPort }: { storeId: string; postgresPort: number }) => {

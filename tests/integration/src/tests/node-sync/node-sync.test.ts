@@ -6,14 +6,13 @@ import { expect } from 'vitest'
 import { ClientSessionSyncProcessorSimulationParams } from '@livestore/common'
 import { IS_CI, stringifyObject } from '@livestore/utils'
 import { Vitest } from '@livestore/utils-dev/node-vitest'
-import { WranglerDevServerService } from '@livestore/utils-dev/wrangler'
+import { makeWranglerDevServerLayer, WranglerDevServerService } from '@livestore/utils-dev/wrangler'
 import {
   Duration,
   Effect,
   FetchHttpClient,
   Layer,
   Logger,
-  LogLevel,
   Schema,
   Stream,
   Worker,
@@ -24,7 +23,7 @@ import { ChildProcessWorker } from '@livestore/utils/node'
 import { makeFileLogger } from './fixtures/file-logger.ts'
 import * as WorkerSchema from './worker-schema.ts'
 
-import * as NodeServices from '@effect/platform-node/NodeServices'
+import { NodeServices } from '@effect/platform-node'
 // Timeout needs to be long enough to allow for all the test runs to complete, especially in CI where the environment is slower.
 // A single test run can take significant time depending on the passed todo count and simulation params.
 const testTimeout = Duration.toMillis(IS_CI === true ? Duration.minutes(10) : Duration.minutes(15))
@@ -47,7 +46,7 @@ const withTestCtx = ({ suffix }: { suffix?: string } = {}) =>
             Layer.mergeAll(
               NodeServices.layer,
               FetchHttpClient.layer,
-              Logger.minimumLogLevel('Debug'),
+              Logger.layer([Logger.consolePretty()]),
             ),
           ),
         ),
@@ -76,7 +75,7 @@ Vitest.describe.concurrent('node-sync', { timeout: testTimeout }, () => {
         const result = yield* clientB.execute(WorkerSchema.StreamTodos.make()).pipe(
           Stream.filter((_) => _.length === todoCount),
           Stream.runHead,
-          Effect.flatten,
+          Effect.andThen((option) => option._tag === 'Some' ? Effect.succeed(option.value) : Effect.die('no todos emitted')),
         )
 
         expect(result.length).toEqual(todoCount)
@@ -85,7 +84,7 @@ Vitest.describe.concurrent('node-sync', { timeout: testTimeout }, () => {
   )
 
   // Warning: A high CreateCount coupled with high simulation params can lead to very long test runs since those get multiplied with the number of todos.
-  const CreateCount = Schema.Int.check(Schema.isBetween(1, 400))
+  const CreateCount = Schema.Int.check(Schema.isBetween({ minimum: 1, maximum: 400 }))
   const CommitBatchSize = Schema.Literals([1, 2, 10, 100])
   const LEADER_PUSH_BATCH_SIZE = Schema.Literals([1, 2, 10, 100])
   // TODO introduce random delays in async operations as part of prop testing
@@ -175,12 +174,12 @@ Vitest.describe.concurrent('node-sync', { timeout: testTimeout }, () => {
             clientA.execute(WorkerSchema.StreamTodos.make()).pipe(
               Stream.filter((_) => _.length === totalCount),
               Stream.runHead,
-              Effect.flatten,
+              Effect.andThen((option) => option._tag === 'Some' ? Effect.succeed(option.value) : Effect.die('client-a todos not emitted')),
             ),
             clientB.execute(WorkerSchema.StreamTodos.make()).pipe(
               Stream.filter((_) => _.length === totalCount),
               Stream.runHead,
-              Effect.flatten,
+              Effect.andThen((option) => option._tag === 'Some' ? Effect.succeed(option.value) : Effect.die('client-b todos not emitted')),
             ),
           ],
           { concurrency: 'unbounded' },

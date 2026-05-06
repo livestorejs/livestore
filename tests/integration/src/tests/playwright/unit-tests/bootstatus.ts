@@ -1,7 +1,7 @@
 import { makePersistedAdapter } from '@livestore/adapter-web'
 import LiveStoreSharedWorker from '@livestore/adapter-web/shared-worker?sharedworker'
 import type { BootStatus } from '@livestore/common'
-import { Effect, Queue, Schedule, Schema } from '@livestore/utils/effect'
+import { Effect, Queue, Schema } from '@livestore/utils/effect'
 
 import { ResultBootStatus } from './bridge.ts'
 import LiveStoreWorker from './livestore.worker.ts?worker'
@@ -29,10 +29,11 @@ export const test = () =>
 
     // NOTE We can't use `Queue.takeAll` since sometimes it takes a bit longer for the updates to come in
     const bootStatusUpdates: BootStatus[] = []
-    yield* Queue.take(bootStatusQueue).pipe(
-      Effect.tapSync((update) => bootStatusUpdates.push(update)),
-      Effect.repeat(Schedule.forever.pipe(Schedule.untilInput((_: BootStatus) => _.stage === 'done'))),
-    )
+    while (true) {
+      const update = yield* Queue.take(bootStatusQueue)
+      bootStatusUpdates.push(update)
+      if (update.stage === 'done') break
+    }
 
     return { bootStatusUpdates, migrationsReport: clientSession.leaderThread.initialState.migrationsReport }
   }).pipe(

@@ -13,7 +13,7 @@ export class TestError extends Schema.TaggedErrorClass<TestError>()('TestError',
 export const test = () =>
   Effect.gen(function* () {
     const adapter = makeInMemoryAdapter()
-    const boot = () => new TestError({ message: 'Boom!' })
+    const boot = () => Effect.fail(new TestError({ message: 'Boom!' }))
 
     yield* createStore({ schema, adapter, boot, storeId: 'default' })
   }).pipe(

@@ -2,7 +2,7 @@ import path from 'node:path'
 
 import { UnknownError } from '@livestore/common'
 import { makeWsSync } from '@livestore/sync-cf/client'
-import { WranglerDevServerService } from '@livestore/utils-dev/wrangler'
+import { WranglerDevServerService, makeWranglerDevServerLayer } from '@livestore/utils-dev/wrangler'
 import { Effect, Layer } from '@livestore/utils/effect'
 
 import { SyncProviderImpl, type SyncProviderLayer } from '../types.ts'
@@ -13,7 +13,7 @@ export const name = 'Cloudflare WebSocket'
 export const prepare = Effect.void
 
 const makeLayer = (config?: { wranglerConfigPath?: string; label: string }): SyncProviderLayer =>
-  Layer.scoped(
+  Layer.effect(
     SyncProviderImpl,
     Effect.gen(function* () {
       const server = yield* WranglerDevServerService
@@ -33,7 +33,7 @@ const makeLayer = (config?: { wranglerConfigPath?: string; label: string }): Syn
       }).pipe(Layer.provide(NodeServices.layer)),
     ),
     UnknownError.mapToUnknownErrorLayer,
-  )
+  ) as SyncProviderLayer
 
 export const d1 = {
   name: `${name} (D1)`,

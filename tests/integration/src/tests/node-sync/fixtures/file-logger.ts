@@ -2,6 +2,7 @@ import * as fs from 'node:fs/promises'
 import * as http from 'node:http'
 import path from 'node:path'
 
+import { NodeHttpServer } from '@effect/platform-node'
 import { shouldNeverHappen, sluggify } from '@livestore/utils'
 import { FileLogger } from '@livestore/utils-dev/node'
 import type { Vitest } from '@livestore/utils-dev/node-vitest'
@@ -20,7 +21,6 @@ import {
   Schema,
 } from '@livestore/utils/effect'
 
-import * as NodeHttpServer from '@effect/platform-node/NodeHttpServer'
 /*
  * ## Why is this custom file logger needed?
  *
@@ -65,15 +65,13 @@ export const makeFileLogger = (
 
       return Layer.unwrap(
         Effect.gen(function* () {
-          yield* HttpServer.addressWith((address) =>
-            Effect.sync(() => {
-              if (address._tag === 'TcpAddress') {
-                process.env.LOGGER_SERVER_PORT = String(address.port)
-              } else {
-                shouldNeverHappen('Expected a TcpAddress', { address })
-              }
-            }),
-          )
+          const server = yield* HttpServer.HttpServer
+          const address = server.address
+          if (address._tag === 'TcpAddress') {
+            process.env.LOGGER_SERVER_PORT = String(address.port)
+          } else {
+            shouldNeverHappen('Expected a TcpAddress', { address })
+          }
           process.env.TEST_RUN_ID = testRunId
           return Layer.provide(makeRpcClient(threadName), RpcLogger({ testRunId }))
         }),
@@ -109,7 +107,7 @@ export const RpcLogger = ({ testRunId }: { testRunId: string }) =>
       path: '/rpc',
     }).pipe(Layer.provide(RpcSerialization.layerNdjson))
 
-    return HttpRouter.Default.serve().pipe(Layer.provide(RpcLayer), Layer.provide(HttpProtocol))
+    return HttpRouter.serve(RpcLayer.pipe(Layer.provide(HttpProtocol)))
   }).pipe(Layer.unwrapScoped, Layer.orDie)
 
 export const makeRpcClient = (threadName: string) => {
@@ -119,27 +117,28 @@ export const makeRpcClient = (threadName: string) => {
     formatDate: (date) => `${FileLogger.defaultDateFormat(date)} ${threadName}`,
   })
 
-  return Logger.replaceScoped(
-    Logger.defaultLogger,
-    Effect.gen(function* () {
-      const serverPort = process.env.LOGGER_SERVER_PORT ?? shouldNeverHappen('LOGGER_SERVER_PORT is not set')
-      const baseUrl = `http://localhost:${serverPort}`
+  return Logger.layer(
+    [
+      Effect.gen(function* () {
+        const serverPort = process.env.LOGGER_SERVER_PORT ?? shouldNeverHappen('LOGGER_SERVER_PORT is not set')
+        const baseUrl = `http://localhost:${serverPort}`
 
-      const ProtocolLive = RpcClient.layerProtocolHttp({
-        url: `${baseUrl}/rpc`,
-      }).pipe(Layer.provide([FetchHttpClient.layer, RpcSerialization.layerNdjson]))
+        const ProtocolLive = RpcClient.layerProtocolHttp({
+          url: `${baseUrl}/rpc`,
+        }).pipe(Layer.provide([FetchHttpClient.layer, RpcSerialization.layerNdjson]))
 
-      const client = yield* RpcClient.make(LoggerRpcs).pipe(Effect.provide(ProtocolLive))
+        const client = yield* RpcClient.make(LoggerRpcs).pipe(Effect.provide(ProtocolLive))
 
-      const context = yield* Effect.context()
+        const context = yield* Effect.context()
 
-      return Logger.make((args) => {
-        const formattedMessage = prettyLogger.log(args)
-        return client.LogMessage({ message: formattedMessage }).pipe(
-          Effect.catch(() => Effect.void),
-          Effect.runForkWith(context),
-        )
-      })
-    }),
+        return Logger.make((args) => {
+          const formattedMessage = prettyLogger.log(args)
+          return client.LogMessage({ message: formattedMessage }).pipe(
+            Effect.catch(() => Effect.void),
+            Effect.runForkWith(context),
+          )
+        })
+      }),
+    ],
   )
 }

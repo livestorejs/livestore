@@ -19,4 +19,6 @@ export class SyncProviderImpl extends Context.Service<
   }
 >()('SyncProviderImpl') {}
 
+export type SyncProvider = Context.Service.Shape<typeof SyncProviderImpl>
+
 export type SyncProviderLayer = Layer.Layer<SyncProviderImpl, UnknownError, HttpClient.HttpClient>

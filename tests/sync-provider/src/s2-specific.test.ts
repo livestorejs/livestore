@@ -6,6 +6,7 @@ import { Vitest } from '@livestore/utils-dev/node-vitest'
 import {
   Effect,
   FetchHttpClient,
+  Fiber,
   KeyValueStore,
   Layer,
   Logger,
@@ -24,7 +25,6 @@ const providerLayer = S2Provider.layer.pipe(
   Layer.provideMerge(FetchHttpClient.layer),
   Layer.provideMerge(KeyValueStore.layerMemory),
   Layer.provide(Logger.prettyWithThread('s2-specific')),
-  Layer.provide(Logger.minimumLogLevel('Debug')),
   Layer.orDie,
 )
 
@@ -43,7 +43,7 @@ Vitest.describe('S2-specific', { timeout: 60000 }, () => {
 
   const makeProvider = (testName?: string) =>
     Effect.suspend(() =>
-      Effect.andThen(SyncProviderImpl, (_) =>
+      Effect.andThen(SyncProviderImpl.asEffect(), (_) =>
         _.makeProvider({
           storeId: `s2-specific-${testName}-${testId}`,
           clientId: 'test-client',
@@ -56,7 +56,7 @@ Vitest.describe('S2-specific', { timeout: 60000 }, () => {
     Effect.gen(function* () {
       // Create a backend with payload to trigger one-time SSE close in proxy
       const storeId = `s2-reconnect-${test.task.name}-${testId}`
-      const provider = yield* SyncProviderImpl
+      const provider = yield* SyncProviderImpl.asEffect()
       const syncBackend = yield* provider.makeProvider({
         storeId,
         clientId: 'test-client',
@@ -83,7 +83,7 @@ Vitest.describe('S2-specific', { timeout: 60000 }, () => {
         }),
       ])
 
-      const result = yield* fiber
+      const result = yield* Fiber.join(fiber)
       expect(result.batch.length).toBe(1)
     }).pipe(withTestCtx()(test)),
   )
@@ -91,7 +91,7 @@ Vitest.describe('S2-specific', { timeout: 60000 }, () => {
   Vitest.scopedLive('retries transient append failure', (test) =>
     Effect.gen(function* () {
       const storeId = `s2-retry-append-${test.task.name}-${testId}`
-      const provider = yield* SyncProviderImpl
+      const provider = yield* SyncProviderImpl.asEffect()
       const providerSpecific = provider.providerSpecific as S2Provider.ProviderSpecific
       const syncBackend = yield* provider.makeProvider({ storeId, clientId: 'test-client', payload: undefined })
 
@@ -119,7 +119,7 @@ Vitest.describe('S2-specific', { timeout: 60000 }, () => {
   Vitest.scopedLive('retries transient non-live read failure', (test) =>
     Effect.gen(function* () {
       const storeId = `s2-retry-read-${test.task.name}-${testId}`
-      const provider = yield* SyncProviderImpl
+      const provider = yield* SyncProviderImpl.asEffect()
       const providerSpecific = provider.providerSpecific as S2Provider.ProviderSpecific
       const syncBackend = yield* provider.makeProvider({ storeId, clientId: 'test-client', payload: undefined })
 
@@ -150,7 +150,7 @@ Vitest.describe('S2-specific', { timeout: 60000 }, () => {
       const syncBackend = yield* makeProvider(test.task.name)
 
       // Append raw records via providerSpecific (two valid LiveStore events)
-      const provider = yield* SyncProviderImpl
+      const provider = yield* SyncProviderImpl.asEffect()
       const storeId = `s2-specific-${test.task.name}-${testId}`
       const providerSpecific = provider.providerSpecific as S2Provider.ProviderSpecific
 

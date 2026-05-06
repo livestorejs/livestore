@@ -6,7 +6,6 @@ import process from 'node:process'
 
 import type * as PW from '@playwright/test'
 
-import type { UnknownError } from '@livestore/common'
 import * as Playwright from '@livestore/effect-playwright'
 import { Deferred, Duration, Effect, Fiber, Layer, Logger, Schema } from '@livestore/utils/effect'
 
@@ -40,20 +39,20 @@ const PWLive = Effect.gen(function* () {
   return Playwright.browserContextLayer({ persistentContextPath })
 }).pipe(Layer.unwrap)
 
-export const runAndGetExit = <Tag extends string, A>({
+export const runAndGetExit = <S extends { readonly Type: { readonly exit: unknown } }>({
   importPath,
   exportName,
   schema,
 }: {
   importPath: string
   exportName: string
-  schema: Schema.TaggedStruct<Tag, { exit: Schema.Exit<Schema.Schema<A>, typeof UnknownError, typeof Schema.Defect> }>
+  schema: S
 }) =>
   Effect.gen(function* () {
     const { browserContext } = yield* Playwright.BrowserContext
-    const page = yield* Effect.promise(() => browserContext.newPage())
+    const page = yield* Effect.tryPromise(() => browserContext.newPage())
 
-    yield* Effect.promise(() =>
+    yield* Effect.tryPromise(() =>
       page.goto(
         `http://localhost:${process.env.LIVESTORE_PLAYWRIGHT_DEV_SERVER_PORT}/dynamic-index-html?importPath=${importPath}&exportName=${exportName}`,
       ),
@@ -62,17 +61,17 @@ export const runAndGetExit = <Tag extends string, A>({
     const pageConsoleFiber = yield* Playwright.handlePageConsole({ page, name: `tab-1` }).pipe(Effect.forkChild)
 
     return yield* Effect.gen(function* () {
-      const deferred = yield* Deferred.make<(typeof schema.Type)['exit']>()
+      const deferred = yield* Deferred.make<S['Type']['exit']>()
 
       page.exposeFunction('onMessageReceived', (message: string) => {
-        const result = Schema.decodeUnknownOption(schema)(message)
+        const result = Schema.decodeUnknownOption(schema as unknown as Schema.Decoder<unknown, never>)(message)
         // console.log('onMessageReceived', message, result)
         if (result._tag === 'Some') {
-          Deferred.succeed(deferred, result.value.exit).pipe(Effect.runSync)
+          Deferred.succeed(deferred, (result.value as S['Type']).exit).pipe(Effect.runSync)
         }
       })
 
-      yield* Effect.promise(() =>
+      yield* Effect.tryPromise(() =>
         page.evaluate(() => {
           window.addEventListener('message', (event) => {
             ;(globalThis as any).onMessageReceived(event.data)
@@ -80,6 +79,6 @@ export const runAndGetExit = <Tag extends string, A>({
         }),
       )
 
-      return yield* deferred.pipe(Effect.timeout(runAndGetExitTimeoutMs))
-    }).pipe(Effect.raceFirst(Fiber.joinAll([pageConsoleFiber]) as Effect.Effect<never, Playwright.SiteError>))
+      return yield* Deferred.await(deferred).pipe(Effect.timeout(runAndGetExitTimeoutMs))
+    }).pipe(Effect.raceFirst(Fiber.joinAll([pageConsoleFiber]) as unknown as Effect.Effect<never, Playwright.SiteError>))
   })
