@@ -179,7 +179,7 @@ const CompositeSchema = S.Struct({
   rebaseGeneration: S.Int,
 }).annotate({
   title: 'EventSequenceNumber.Composite',
-  pretty: () => (seqNum) => toString(seqNum),
+  pretty: () => (seqNum: Composite) => toString(seqNum),
 })
 
 /**

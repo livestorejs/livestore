@@ -56,7 +56,8 @@ export const cmd: (
     ...(options?.logFileName !== undefined ? { logFileName: options.logFileName } : {}),
     ...(options?.logRetention !== undefined ? { logRetention: options.logRetention } : {}),
   } as const
-  const { input: finalInput, subshell: needsShell, logPath } = yield* applyLoggingToCommand(commandInput, loggingOpts)
+  const { input: finalInput_, subshell: needsShell, logPath } = yield* applyLoggingToCommand(commandInput, loggingOpts)
+  const finalInput = Array.isArray(finalInput_) === true ? finalInput_.filter(isNotUndefined) : finalInput_
 
   const stdoutMode = options?.stdout ?? 'inherit'
   const stderrMode = options?.stderr ?? 'inherit'
@@ -127,7 +128,9 @@ export const cmdText: (
 
     const spawner = yield* ChildProcessSpawner.ChildProcessSpawner
 
-    return yield* spawner.string(buildCommand(commandInput, options?.runInShell === true, {
+    const commandInput_ = Array.isArray(commandInput) === true ? commandInput.filter(isNotUndefined) : commandInput
+
+    return yield* spawner.string(buildCommand(commandInput_, options?.runInShell === true, {
       cwd,
       stderr: options?.stderr ?? 'inherit',
       env: options?.env ?? {},
@@ -204,7 +207,7 @@ const runWithLogging = ({
             logLevel: channel === 'stdout' ? 'Info' : 'Warn',
             message: [`[${channel}]${content.length > 0 ? ` ${content}` : ''}`],
             cause: Cause.empty,
-            fiber: { id: 0 },
+            fiber: { id: 0 } as any,
             date: new Date(),
           })
           fs.writeSync(logFile, formatted)
@@ -241,13 +244,13 @@ const runWithLogging = ({
       })
 
       const stdoutFiber = yield* runningProcess.stdout.pipe(
-        Stream.decodeText('utf8'),
+        Stream.decodeText({ encoding: 'utf8' }),
         Stream.runForEach((chunk) => stdoutHandler.onChunk(chunk)),
         Effect.forkScoped,
       )
 
       const stderrFiber = yield* runningProcess.stderr.pipe(
-        Stream.decodeText('utf8'),
+        Stream.decodeText({ encoding: 'utf8' }),
         Stream.runForEach((chunk) => stderrHandler.onChunk(chunk)),
         Effect.forkScoped,
       )

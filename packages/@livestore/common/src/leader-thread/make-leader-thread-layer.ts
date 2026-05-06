@@ -4,7 +4,9 @@ import {
   Deferred,
   Effect,
   KeyValueStore,
+  Latch,
   Layer,
+  Option,
   PlatformError,
   Queue,
   Schema,
@@ -113,25 +115,37 @@ export const makeLeaderThreadLayer = ({
                 KeyValueStore.KeyValueStore,
                 KeyValueStore.makeStringOnly({
                   get: (_key) =>
-                    Effect.sync(() => Eventlog.getBackendIdFromDb(dbEventlog)).pipe(
+                    Effect.sync(() => Option.getOrUndefined(Eventlog.getBackendIdFromDb(dbEventlog))).pipe(
                       Effect.catchDefect((cause) =>
-                        PlatformError.BadArgument.make({
-                          method: 'getBackendIdFromDb',
-                          description: 'Failed to get backendId',
-                          module: 'KeyValueStore',
-                          cause,
-                        }),
+                        Effect.fail(
+                          new KeyValueStore.KeyValueStoreError({
+                            method: 'getBackendIdFromDb',
+                            message: 'Failed to get backendId',
+                            cause: new PlatformError.BadArgument({
+                              method: 'getBackendIdFromDb',
+                              description: 'Failed to get backendId',
+                              module: 'KeyValueStore',
+                              cause,
+                            }),
+                          }),
+                        ),
                       ),
                     ),
                   set: (_key, value) =>
                     Effect.sync(() => Eventlog.updateBackendId(dbEventlog, value)).pipe(
                       Effect.catchDefect((cause) =>
-                        PlatformError.BadArgument.make({
-                          method: 'updateBackendId',
-                          module: 'KeyValueStore',
-                          description: 'Failed to update backendId',
-                          cause,
-                        }),
+                        Effect.fail(
+                          new KeyValueStore.KeyValueStoreError({
+                            method: 'updateBackendId',
+                            message: 'Failed to update backendId',
+                            cause: new PlatformError.BadArgument({
+                              method: 'updateBackendId',
+                              module: 'KeyValueStore',
+                              description: 'Failed to update backendId',
+                              cause,
+                            }),
+                          }),
+                        ),
                       ),
                     ),
                   clear: Effect.dieMessage(`Not implemented. Should never be used.`),
@@ -180,15 +194,16 @@ export const makeLeaderThreadLayer = ({
       },
     })
 
-    const extraIncomingMessagesQueue = yield* Queue.unbounded<Devtools.Leader.MessageToApp>().pipe(
-      Effect.acquireRelease(Queue.shutdown),
+    const extraIncomingMessagesQueue = yield* Effect.acquireRelease(
+      Queue.unbounded<Devtools.Leader.MessageToApp>(),
+      Queue.shutdown,
     )
 
     const devtoolsContext =
       devtoolsOptions.enabled === true
         ? {
             enabled: true as const,
-            syncBackendLatch: yield* Effect.makeLatch(true),
+            syncBackendLatch: yield* Latch.make(true),
             syncBackendLatchState: yield* SubscriptionRef.make<{ latchClosed: boolean }>({ latchClosed: false }),
           }
         : { enabled: false as const }
@@ -213,7 +228,7 @@ export const makeLeaderThreadLayer = ({
       devtools: devtoolsContext,
       networkStatus,
       // State will be set during `bootLeaderThread`
-      initialState: {} as any as LeaderThreadCtx['Type']['initialState'],
+      initialState: {} as any as (typeof LeaderThreadCtx.Service)['initialState'],
     } satisfies typeof LeaderThreadCtx.Service
 
     // @ts-expect-error For debugging purposes
@@ -234,7 +249,7 @@ export const makeLeaderThreadLayer = ({
     UnknownError.mapToUnknownError,
     Effect.tapCauseLogPretty,
     Layer.unwrapScoped,
-  )
+  ) as Layer.Layer<LeaderThreadCtx, UnknownError, Scope.Scope | HttpClient.HttpClient>
 
 const hasEventlogTables = (db: SqliteDb) => {
   const tableNames = new Set(db.select<{ name: string }>(sql`select name from sqlite_master`).map((_) => _.name))
@@ -361,7 +376,7 @@ const bootLeaderThread = ({
   initialBlockingSyncContext: InitialBlockingSyncContext
   devtoolsOptions: DevtoolsOptions
 }): Effect.Effect<
-  LeaderThreadCtx['Type']['initialState'],
+  (typeof LeaderThreadCtx.Service)['initialState'],
   UnknownError | MaterializerHashMismatchError,
   LeaderThreadCtx | Scope.Scope | HttpClient.HttpClient
 > =>
@@ -378,7 +393,7 @@ const bootLeaderThread = ({
         progress: { done: 0, total: -1 },
       })
 
-      yield* initialBlockingSyncContext.blockingDeferred.pipe(
+      yield* Deferred.await(initialBlockingSyncContext.blockingDeferred).pipe(
         Effect.withSpan('@livestore/common:leader-thread:initial-sync-blocking'),
       )
     }
@@ -388,7 +403,11 @@ const bootLeaderThread = ({
     yield* bootDevtools(devtoolsOptions).pipe(Effect.tapCauseLogPretty, Effect.forkScoped)
 
     return { migrationsReport, leaderHead: initialLeaderHead }
-  })
+  }) as Effect.Effect<
+    (typeof LeaderThreadCtx.Service)['initialState'],
+    UnknownError | MaterializerHashMismatchError,
+    LeaderThreadCtx | Scope.Scope | HttpClient.HttpClient
+  >
 
 /** @internal */
 export const makeNetworkStatusSubscribable = ({
@@ -421,7 +440,7 @@ export const makeNetworkStatusSubscribable = ({
       }))
 
     if (syncBackend !== undefined) {
-      yield* syncBackend.isConnected.changes.pipe(
+      yield* SubscriptionRef.changes(syncBackend.isConnected).pipe(
         Stream.tap((isConnected) => updateNetworkStatus({ isConnected })),
         Stream.runDrain,
         Effect.interruptible,
@@ -431,7 +450,7 @@ export const makeNetworkStatusSubscribable = ({
     }
 
     if (devtoolsContext.enabled === true) {
-      yield* devtoolsContext.syncBackendLatchState.changes.pipe(
+      yield* SubscriptionRef.changes(devtoolsContext.syncBackendLatchState).pipe(
         Stream.tap(({ latchClosed }) => updateNetworkStatus({ latchClosed })),
         Stream.runDrain,
         Effect.interruptible,

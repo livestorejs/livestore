@@ -14,18 +14,18 @@ export const make = <A>(): Effect.Effect<BucketQueue<A>> =>
 
 export const offerAll = <A>(self: BucketQueue<A>, elements: ReadonlyArray<A>) =>
   Ref.update(self.items, (bucket) => Array.appendAll(bucket, elements)).pipe(
-    Effect.zipRight(Queue.offerAll(self.queue, elements)),
+    Effect.andThen(Queue.offerAll(self.queue, elements)),
   )
 
 export const replace = <A>(self: BucketQueue<A>, elements: ReadonlyArray<A>) =>
   Queue.takeAll(self.queue).pipe(
     Effect.ignore,
-    Effect.zipRight(Ref.set(self.items, elements)),
-    Effect.zipRight(Queue.offerAll(self.queue, elements)),
+    Effect.andThen(Ref.set(self.items, elements)),
+    Effect.andThen(Queue.offerAll(self.queue, elements)),
   )
 
 export const clear = <A>(self: BucketQueue<A>) =>
-  Queue.takeAll(self.queue).pipe(Effect.ignore, Effect.zipRight(Ref.set(self.items, [])))
+  Queue.takeAll(self.queue).pipe(Effect.ignore, Effect.andThen(Ref.set(self.items, [])))
 
 export const takeBetween = <A>(
   bucket: BucketQueue<A>,
@@ -51,10 +51,16 @@ export const peekAll = <A>(bucket: BucketQueue<A>) => Ref.get(bucket.items)
  */
 export const takeSplitWhere = <A>(bucket: BucketQueue<A>, predicate: (a: A) => boolean) =>
   Effect.gen(function* () {
-    const [elements, rest] = yield* Ref.modify(bucket.items, (bucketValue) => {
-      const [elements, rest] = Array.splitWhere(bucketValue, predicate)
-      return [elements, rest] as const
-    })
+    const [elements, rest] = yield* Ref.modify(
+      bucket.items,
+      (bucketValue): readonly [readonly [ReadonlyArray<A>, ReadonlyArray<A>], ReadonlyArray<A>] => {
+        const splitAt = bucketValue.findIndex(predicate)
+        const index = splitAt === -1 ? bucketValue.length : splitAt
+        const elements = bucketValue.slice(0, index)
+        const rest = bucketValue.slice(index)
+        return [[elements, rest] as const, rest] as const
+      },
+    )
     if (elements.length > 0) {
       yield* Queue.takeAll(bucket.queue).pipe(Effect.ignore)
       yield* Queue.offerAll(bucket.queue, rest)

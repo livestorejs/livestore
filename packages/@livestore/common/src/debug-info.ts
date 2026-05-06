@@ -45,10 +45,10 @@ const formatSchemaType = (schema: Schema.Top) =>
     SchemaRepresentation.toMultiDocument(SchemaRepresentation.fromAST(schema.ast)),
   ).codes[0]?.Type ?? 'unknown'
 
-const BoundArraySchemaFromSelf = <A, I, R>(
-  item: Schema.Schema<A, I, R>,
-): Schema.Schema<BoundArray<A>, BoundArray<I>, R> =>
-  Schema.declareConstructor<BoundArray<A>, BoundArray<I>>()(
+const BoundArraySchemaFromSelf = <A>(
+  item: Schema.Schema<A>,
+): Schema.Schema<BoundArray<A>> =>
+  Schema.declareConstructor<BoundArray<A>, BoundArray<A>>()(
     [item],
     ([item]) =>
       (input, ast, parseOptions) => {
@@ -60,8 +60,8 @@ const BoundArraySchemaFromSelf = <A, I, R>(
       },
     {
       description: `BoundArray<${formatSchemaType(item)}>`,
-      pretty: () => (_) => `BoundArray(${_.length})`,
-      arbitrary: () => (fc) => fc.anything() as any,
+      pretty: () => (_: BoundArray<A>) => `BoundArray(${_.length})`,
+      arbitrary: () => (fc: any) => fc.anything() as any,
       equivalence: () => {
         const elementEquivalence = Schema.toEquivalence(item)
         return (a: unknown, b: unknown) => {
@@ -95,9 +95,9 @@ export const BoundArraySchema = <ItemDecoded, ItemEncoded>(elSchema: Schema.Sche
     Schema.decodeTo(
       BoundArraySchemaFromSelf(Schema.toType(elSchema)),
       SchemaTransformation.transform({
-        encode: (_) => ({ size: _.sizeLimit, items: [..._] }),
-        decode: (_) => BoundArray.make(_.size, _.items),
-      }),
+        encode: (_: BoundArray<ItemDecoded>) => ({ size: _.sizeLimit, items: [..._] }),
+        decode: (_: { readonly size: number; readonly items: readonly ItemDecoded[] }) => BoundArray.make(_.size, _.items),
+      }) as any,
     ),
   )
 

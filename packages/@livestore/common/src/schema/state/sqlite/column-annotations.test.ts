@@ -10,7 +10,7 @@ describe.concurrent('annotations', () => {
       const schema = Schema.String
       const result = withPrimaryKey(schema)
 
-      expect(SchemaAST.resolve(result.ast)?.[PrimaryKeyId]).toBe(true)
+      expect((SchemaAST.resolve(result.ast) as any)?.[PrimaryKeyId]).toBe(true)
     })
   })
 
@@ -176,15 +176,15 @@ describe.concurrent('annotations', () => {
         const schema = Schema.String
         const result = withColumnType(schema, 'text')
 
-        expect(SchemaAST.resolve(result.ast)?.[ColumnType]).toBe('text')
+        expect((SchemaAST.resolve(result.ast) as any)?.[ColumnType]).toBe('text')
       })
 
       test('should preserve existing annotations', () => {
         const schema = withPrimaryKey(Schema.String)
         const result = withColumnType(schema, 'text')
 
-        expect(SchemaAST.resolve(result.ast)?.[PrimaryKeyId]).toBe(true)
-        expect(SchemaAST.resolve(result.ast)?.[ColumnType]).toBe('text')
+        expect((SchemaAST.resolve(result.ast) as any)?.[PrimaryKeyId]).toBe(true)
+        expect((SchemaAST.resolve(result.ast) as any)?.[ColumnType]).toBe('text')
       })
     })
   })

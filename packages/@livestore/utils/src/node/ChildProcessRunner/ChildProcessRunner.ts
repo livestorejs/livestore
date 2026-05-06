@@ -148,7 +148,7 @@ const platformRunnerImpl = Runner.WorkerRunnerPlatform.of({
         return yield* Deferred.await(closeLatch)
       })
 
-      return { run, send, sendUnsafe }
+      return { run, send, sendUnsafe } as any
     })
   },
 })

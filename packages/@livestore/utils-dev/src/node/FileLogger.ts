@@ -28,15 +28,14 @@ export const makeFileLogger = (
         (fd) => Effect.sync(() => fs.closeSync(fd)),
       )
 
-      return Logger.replace(
-        Logger.defaultLogger,
+      return Logger.layer([
         prettyLoggerTty({
           colors: options?.colors ?? false,
           stderr: false,
           formatDate: (date) => `${defaultDateFormat(date)} ${options?.threadName ?? ''}`,
           onLog: (str) => fs.writeSync(logFile, str),
         }),
-      )
+      ])
     }),
   )
 
@@ -62,7 +61,7 @@ const colors = {
   bgBrightRed: '101',
 } as const
 
-const logLevelColors: Record<LogLevel.LogLevel['_tag'], ReadonlyArray<string>> = {
+const logLevelColors: Record<string, ReadonlyArray<string>> = {
   None: [],
   All: [],
   Trace: [colors.gray],
@@ -112,6 +111,8 @@ const consoleLogToString = (...s: any[]) => {
     .join(' ')
 }
 
+const redact = (value: unknown): string => (typeof value === 'string' ? value : util.inspect(structuredMessage(value)))
+
 export const prettyLoggerTty = (options: {
   readonly colors: boolean
   readonly stderr: boolean
@@ -146,7 +147,7 @@ export const prettyLoggerTty = (options: {
 
     let firstLine =
       color(`[${options.formatDate(date)}]`, colors.white) +
-      ` ${color(logLevelLabel, ...logLevelColors[logLevelKey])}` +
+      ` ${color(logLevelLabel, ...(logLevelColors[logLevelKey] ?? []))}` +
       ` (#${fiber?.id ?? 0})`
 
     firstLine += ':'
@@ -179,7 +180,7 @@ export const prettyLoggerTty = (options: {
             }),
           )
         } else {
-          logIndented(Inspectable.redact(msg))
+          logIndented(redact(msg))
         }
       }
     }
@@ -201,7 +202,7 @@ export const prettyLoggerTty = (options: {
                 compact: false,
                 breakLength: 120,
               })
-            : Inspectable.redact(value)
+            : redact(value)
         logIndented(color(`${key}:`, colors.bold, colors.white), formattedValue)
       }
     }

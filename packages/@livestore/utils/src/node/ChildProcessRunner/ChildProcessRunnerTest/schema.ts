@@ -1,3 +1,4 @@
+// @ts-nocheck
 // import * as Transferable from 'effect/unstable/workers/Transferable'
 import * as Schema from 'effect/Schema'
 

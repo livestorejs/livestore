@@ -341,7 +341,7 @@ export const connectDevtoolsToStore = Effect.fn('LSD.devtools.connectStoreToDevt
 
     yield* storeDevtoolsChannel.listen.pipe(
       // Stream.tapLogWithLabel('@livestore/livestore:store:devtools:onMessage'),
-      Stream.flatten(),
+      Stream.mapEffect(Effect.fromResult),
       Stream.tapSync((message) => onMessage(message)),
       Stream.runDrain,
       Effect.withSpan('LSD.devtools.onMessage'),

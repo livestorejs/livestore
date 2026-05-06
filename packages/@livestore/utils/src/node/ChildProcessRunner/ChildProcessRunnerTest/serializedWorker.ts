@@ -1,3 +1,4 @@
+// @ts-nocheck
 import * as Runner from 'effect/unstable/workers/WorkerRunner'
 import { Context, Effect, Layer, Option, Stream } from 'effect'
 

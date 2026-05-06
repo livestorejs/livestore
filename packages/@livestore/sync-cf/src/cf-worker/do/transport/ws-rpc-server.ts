@@ -4,7 +4,7 @@ import { Effect, identity, Layer, RpcServer, Schema, Stream } from '@livestore/u
 
 import { SyncWsRpc } from '../../../common/ws-rpc-schema.ts'
 import { headersRecordToMap, WebSocketAttachmentSchema } from '../../shared.ts'
-import { DoCtx, type DoCtxInput } from '../layer.ts'
+import { DoCtx, layer as doCtxLayer, type DoCtxInput } from '../layer.ts'
 import { makeEndingPullStream } from '../pull.ts'
 import { makePush } from '../push.ts'
 
@@ -16,7 +16,7 @@ export const makeRpcServer = ({ doSelf, doOptions }: Omit<DoCtxInput, 'from'>) =
         return makeEndingPullStream({ req, payload: req.payload, headers }).pipe(
           // Needed to keep the stream alive on the client side for phase 2 (i.e. not send the `Exit` stream RPC message)
           req.live === true ? Stream.concat(Stream.never) : identity,
-          Stream.provideLayer(DoCtx.Default({ doSelf, doOptions, from: { storeId: req.storeId } })),
+          Stream.provideLayer(doCtxLayer({ doSelf, doOptions, from: { storeId: req.storeId } })),
           Stream.mapError((cause) =>
             cause._tag === 'UnknownError' || cause._tag === 'BackendIdMismatchError'
               ? cause
@@ -33,7 +33,7 @@ export const makeRpcServer = ({ doSelf, doOptions }: Omit<DoCtxInput, 'from'>) =
 
         return yield* push(req)
       }).pipe(
-        Effect.provide(DoCtx.Default({ doSelf, doOptions, from: { storeId: req.storeId } })),
+        Effect.provide(doCtxLayer({ doSelf, doOptions, from: { storeId: req.storeId } })),
         Effect.mapError((cause) =>
           cause._tag === 'UnknownError' || cause._tag === 'ServerAheadError' || cause._tag === 'BackendIdMismatchError'
             ? cause

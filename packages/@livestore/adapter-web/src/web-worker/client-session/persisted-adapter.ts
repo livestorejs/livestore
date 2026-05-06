@@ -253,7 +253,7 @@ export const makePersistedAdapter =
       const workerDisconnectChannel = yield* makeWorkerDisconnectChannel(storeId)
 
       yield* shutdownChannel.listen.pipe(
-        Stream.flatten(),
+        Stream.mapEffect(Effect.fromResult),
         Stream.tap((cause) =>
           shutdown(cause._tag === 'IntentionalShutdownCause' ? Exit.succeed(cause) : Exit.fail(cause)),
         ),
@@ -569,7 +569,7 @@ export const makePersistedAdapter =
       })
 
       return clientSession
-    }).pipe(Effect.provide(Opfs.Opfs.Default), UnknownError.mapToUnknownError)
+    }).pipe(Effect.provide(Opfs.layer), UnknownError.mapToUnknownError)
 
 // NOTE for `local` storage we could also use the eventlog db to store the data
 const getPersistedId = (key: string, storageType: 'session' | 'local') => {

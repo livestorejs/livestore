@@ -1,7 +1,7 @@
 import type * as ChildProcess from 'node:child_process'
 
 import * as Worker from 'effect/unstable/workers/Worker'
-import { WorkerError } from 'effect/unstable/workers/WorkerError'
+import { WorkerError, WorkerReceiveError, WorkerUnknownError } from 'effect/unstable/workers/WorkerError'
 import * as Deferred from 'effect/Deferred'
 import * as Effect from 'effect/Effect'
 import * as Exit from 'effect/Exit'
@@ -73,7 +73,7 @@ const platformWorkerImpl = Worker.makePlatform<ChildProcess.ChildProcess>()({
       childProcess.on('exit', () => {
         // Remove from tracking when process exits
         childProcesses.delete(childProcess)
-        Deferred.unsafeDone(exitDeferred, Exit.void)
+        Deferred.doneUnsafe(exitDeferred, Exit.void)
       })
 
       childProcess.send(['setup-parent-death-detection', { parentPid: process.pid }])
@@ -130,15 +130,23 @@ const platformWorkerImpl = Worker.makePlatform<ChildProcess.ChildProcess>()({
       emit(message)
     })
     port.on('messageerror', (cause) => {
-      Deferred.unsafeDone(deferred, new WorkerError({ reason: 'decode', cause }))
+      Deferred.doneUnsafe(
+        deferred,
+        new WorkerError({ reason: new WorkerReceiveError({ message: 'received messageerror event', cause }) }).asEffect(),
+      )
     })
     port.on('error', (cause) => {
-      Deferred.unsafeDone(deferred, new WorkerError({ reason: 'unknown', cause }))
+      Deferred.doneUnsafe(
+        deferred,
+        new WorkerError({ reason: new WorkerUnknownError({ message: 'received error event', cause }) }).asEffect(),
+      )
     })
     port.on('exit', (code) => {
-      Deferred.unsafeDone(
+      Deferred.doneUnsafe(
         deferred,
-        new WorkerError({ reason: 'unknown', cause: new Error(`exited with code ${code}`) }),
+        new WorkerError({
+          reason: new WorkerUnknownError({ message: 'worker exited', cause: new Error(`exited with code ${code}`) }),
+        }).asEffect(),
       )
     })
     return Effect.void

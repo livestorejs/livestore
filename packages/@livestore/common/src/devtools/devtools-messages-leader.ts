@@ -13,7 +13,7 @@ export class DatabaseFileInfoReq extends LSDReqResMessage('LSD.Leader.DatabaseFi
 
 export class DatabaseFileInfo extends Schema.Class<DatabaseFileInfo>('DatabaseFileInfo')({
   fileSize: Schema.Number,
-  persistenceInfo: Schema.Struct({ fileName: Schema.String }, { key: Schema.String, value: Schema.Any }),
+  persistenceInfo: Schema.Record(Schema.String, Schema.Any),
 }) {}
 
 export class DatabaseFileInfoRes extends LSDReqResMessage('LSD.Leader.DatabaseFileInfoRes', {

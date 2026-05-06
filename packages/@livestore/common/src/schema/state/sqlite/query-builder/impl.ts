@@ -9,7 +9,7 @@ import { astToSql } from './astToSql.ts'
 
 const pickStructSchema = (schema: Schema.Top, keys: ReadonlyArray<string>): Schema.Top =>
   typeof (schema as { mapFields?: unknown }).mapFields === 'function'
-    ? ((schema as any).mapFields(Struct.pick(keys)) as Schema.Top)
+    ? ((schema as any).mapFields(Struct.pick(keys as any)) as Schema.Top)
     : schema
 
 const pluckStructSchema = (schema: any, key: string): Schema.Top =>

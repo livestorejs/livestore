@@ -1,5 +1,5 @@
 import type { Deferred, Result } from 'effect'
-import type { SchemaIssue } from 'effect'
+import type { Schema as EffectSchema, SchemaIssue } from 'effect'
 import { Effect, Predicate, Schema, Stream } from 'effect'
 
 export const WebChannelSymbol = Symbol('WebChannel')
@@ -10,12 +10,12 @@ export const isWebChannel = <MsgListen, MsgSend>(value: unknown): value is WebCh
 
 export interface WebChannel<MsgListen, MsgSend, E = never> {
   readonly [WebChannelSymbol]: unknown
-  send: (a: MsgSend) => Effect.Effect<void, SchemaIssue.Issue | E>
+  send: (a: MsgSend) => Effect.Effect<void, EffectSchema.SchemaError | SchemaIssue.Issue | E>
   listen: Stream.Stream<Result.Result<MsgListen, SchemaIssue.Issue>, E>
   supportsTransferables: boolean
   closedDeferred: Deferred.Deferred<void>
   shutdown: Effect.Effect<void>
-  schema: { listen: Schema.Schema<MsgListen, any>; send: Schema.Schema<MsgSend, any> }
+  schema: { listen: Schema.Codec<MsgListen, any, any, any>; send: Schema.Codec<MsgSend, any, any, any> }
   debugInfo?: Record<string, any> | undefined
 }
 
@@ -44,12 +44,12 @@ export const schemaWithWebChannelMessages = <MsgListen, MsgSend>(
 })
 
 export type InputSchema<MsgListen, MsgSend, MsgListenEncoded, MsgSendEncoded> =
-  | Schema.Schema<MsgListen | MsgSend, MsgListenEncoded | MsgSendEncoded>
+  | Schema.Codec<MsgListen | MsgSend, MsgListenEncoded | MsgSendEncoded, any, any>
   | OutputSchema<MsgListen, MsgSend, MsgListenEncoded, MsgSendEncoded>
 
 export type OutputSchema<MsgListen, MsgSend, MsgListenEncoded, MsgSendEncoded> = {
-  listen: Schema.Schema<MsgListen, MsgListenEncoded>
-  send: Schema.Schema<MsgSend, MsgSendEncoded>
+  listen: Schema.Codec<MsgListen, MsgListenEncoded, any, any>
+  send: Schema.Codec<MsgSend, MsgSendEncoded, any, any>
 }
 
 export const mapSchema = <MsgListen, MsgSend, MsgListenEncoded, MsgSendEncoded>(

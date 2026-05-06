@@ -1,4 +1,4 @@
-import { Deferred, Exit, Scope } from 'effect'
+import { Deferred, Exit, Scope, type SchemaIssue } from 'effect'
 
 import * as Effect from '../effect/Effect.ts'
 import * as Schema from '../effect/Schema/index.ts'
@@ -29,17 +29,17 @@ export const broadcastChannel = <MsgListen, MsgSend, MsgListenEncoded, MsgSendEn
         Effect.try({ try: () => channel.close(), catch: (cause) => cause }).pipe(Effect.ignoreLogged),
       )
 
-      const send = (message: MsgSend) =>
+      const send = (message: MsgSend): Effect.Effect<void, SchemaIssue.Issue> =>
         Effect.gen(function* () {
           const messageEncoded = yield* Schema.encodeEffect(schema.send)(message)
           channel.postMessage(messageEncoded)
-        })
+        }) as Effect.Effect<void, SchemaIssue.Issue>
 
       // TODO also listen to `messageerror` in parallel
-      const listen = Stream.fromEventListener<MessageEvent>(channel, 'message').pipe(
-        Stream.map((_) => Schema.decodeExit(schema.listen)(_.data)),
-        listenToDebugPing(channelName),
-      )
+	    const listen = Stream.fromEventListener<MessageEvent>(channel, 'message').pipe(
+	      Stream.map((_) => Schema.decodeUnknownResult(schema.listen)(_.data)),
+	      listenToDebugPing(channelName),
+	    )
 
       const closedDeferred = yield* Effect.acquireRelease(Deferred.make<void>(), Deferred.done(Exit.void))
       const supportsTransferables = false
@@ -95,7 +95,7 @@ export const windowChannel = <MsgListen, MsgSend, MsgListenEncoded, MsgSendEncod
         to: Schema.Literal(ids.other),
       }).annotate({ title: 'webmesh.WindowMessageSend' })
 
-      const send = (message: MsgSend) =>
+      const send = (message: MsgSend): Effect.Effect<void, SchemaIssue.Issue> =>
         Effect.gen(function* () {
           debugInfo.sendTotal++
 
@@ -105,14 +105,14 @@ export const windowChannel = <MsgListen, MsgSend, MsgListenEncoded, MsgSendEncod
             to: ids.other,
           })
           sendWindow.postMessage(messageEncoded, targetOrigin, transferables)
-        })
+        }) as Effect.Effect<void, SchemaIssue.Issue>
 
       const listen = Stream.fromEventListener<MessageEvent>(listenWindow, 'message').pipe(
         Stream.filter((_) => Schema.is(Schema.toEncoded(WindowMessageListen))(_.data)),
         Stream.map((_) => {
           debugInfo.listenTotal++
-          return Schema.decodeExit(schema.listen)(_.data.message)
-        }),
+	          return Schema.decodeUnknownResult(schema.listen)(_.data.message)
+	        }),
         listenToDebugPing('window'),
       )
 

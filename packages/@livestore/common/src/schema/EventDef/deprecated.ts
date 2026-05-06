@@ -57,8 +57,13 @@ export const DeprecatedId = Symbol.for('livestore/schema/annotations/deprecated'
  */
 export const deprecated =
   (reason: string) =>
-  <T extends { annotations: (annotations: { readonly [DeprecatedId]?: string }) => T }>(schema: T): T =>
-    schema.annotate({ [DeprecatedId]: reason })
+  <T>(schema: T): T => {
+    const schemaWithAnnotations = schema as T & {
+      annotations?: (annotations: { readonly [DeprecatedId]?: string }) => T
+      annotate?: (annotations: { readonly [DeprecatedId]?: string }) => T
+    }
+    return schemaWithAnnotations.annotations?.({ [DeprecatedId]: reason }) ?? schemaWithAnnotations.annotate!({ [DeprecatedId]: reason })
+  }
 
 /**
  * Checks if a schema has a deprecation annotation.
@@ -102,8 +107,8 @@ export const findDeprecatedFieldsWithValues = (
       // Only check fields that have a value (not undefined)
       if (fieldValue !== undefined) {
         // Check deprecation on the property signature itself (for Schema.optional(...).pipe(deprecated(...)))
-        const propAnnotations = prop.annotations as Record<PropertyKey, unknown> | undefined
-        const deprecationReason = propAnnotations?.[DeprecatedId] as string | undefined
+        const propAnnotations = (prop as any).annotations as Record<PropertyKey, unknown> | undefined
+        const deprecationReason = propAnnotations?.[DeprecatedId as any] as string | undefined
 
         // Also check deprecation on the type (for direct field deprecation)
         const typeDeprecation = getAstAnnotation<string>(prop.type, DeprecatedId)
@@ -120,7 +125,7 @@ export const findDeprecatedFieldsWithValues = (
 }
 
 const getAstAnnotation = <T>(ast: SchemaAST.AST, annotationId: PropertyKey): Option.Option<T> =>
-  Option.fromNullishOr(SchemaAST.resolve(ast)?.[annotationId] as T | undefined)
+  Option.fromNullishOr(SchemaAST.resolve(ast)?.[annotationId as any] as T | undefined)
 
 /** Set of event names that have already logged deprecation warnings. */
 const warnedDeprecatedEvents = new Set<string>()

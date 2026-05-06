@@ -7,7 +7,7 @@
 import { expect } from 'vitest'
 
 import { Vitest } from '@livestore/utils-dev/node-vitest'
-import { Effect, Result, Schema, WebChannel } from '@livestore/utils/effect'
+import { Effect, Exit, Schema, WebChannel } from '@livestore/utils/effect'
 
 import * as MeshSchema from './mesh-schema.ts'
 import { MessageMsgPack, WSEdgeInit, WSEdgePayload } from './websocket-edge.ts'
@@ -70,10 +70,10 @@ Vitest.describe('websocket-edge', () => {
 
       // WebChannel.Ping should be decodable via the wrapped listen schema
       const pingPayload = { _tag: 'WebChannel.Ping' as const, requestId: 'test-123' }
-      const result = Schema.decodeUnknownExit(schema.listen)(pingPayload)
+      const result = Schema.decodeUnknownExit(schema.listen as any)(pingPayload)
 
       // mapSchema adds WebChannel messages to the schema
-      expect(Result.isSuccess(result)).toBe(true)
+      expect(Exit.isSuccess(result)).toBe(true)
     }).pipe(Vitest.withTestCtx(test)),
   )
 

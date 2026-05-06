@@ -197,9 +197,10 @@ export const makeClientSessionSyncProcessor = Effect.fn('makeClientSessionSyncPr
 
             for (let i = mergeResult.rollbackEvents.length - 1; i >= 0; i--) {
               const event = mergeResult.rollbackEvents[i]!
-              if (event.meta.sessionChangeset._tag !== 'no-op' && event.meta.sessionChangeset._tag !== 'unset') {
-                rollback(event.meta.sessionChangeset.data)
-                event.meta.sessionChangeset = { _tag: 'unset' }
+              const eventMeta = event.meta!
+              if (eventMeta.sessionChangeset._tag !== 'no-op' && eventMeta.sessionChangeset._tag !== 'unset') {
+                rollback(eventMeta.sessionChangeset.data)
+                eventMeta.sessionChangeset = { _tag: 'unset' }
               }
             }
 
@@ -223,32 +224,33 @@ export const makeClientSessionSyncProcessor = Effect.fn('makeClientSessionSyncPr
 
           if (mergeResult.newEvents.length === 0) {
             // If there are no new events, we need to update the sync state as well
-            yield* syncStateUpdateQueue.offer(mergeResult.newSyncState)
+            yield* Queue.offer(syncStateUpdateQueue, mergeResult.newSyncState)
             return
           }
 
           const writeTables = new Set<string>()
           for (const event of mergeResult.newEvents) {
+            const eventMeta = event.meta!
             const {
               writeTables: newWriteTables,
               sessionChangeset,
               materializerHash,
             } = yield* materializeEvent(event, {
               withChangeset: true,
-              materializerHashLeader: event.meta.materializerHashLeader,
+              materializerHashLeader: eventMeta.materializerHashLeader,
             })
             for (const table of newWriteTables) {
               writeTables.add(table)
             }
 
-            event.meta.sessionChangeset = sessionChangeset
-            event.meta.materializerHashSession = materializerHash
+            eventMeta.sessionChangeset = sessionChangeset
+            eventMeta.materializerHashSession = materializerHash
           }
 
           refreshTables(writeTables)
 
           // We're only triggering the sync state update after all events have been materialized
-          yield* syncStateUpdateQueue.offer(mergeResult.newSyncState)
+          yield* Queue.offer(syncStateUpdateQueue, mergeResult.newSyncState)
         }).pipe(
           Effect.tapCauseLogPretty,
           Effect.catchCause((cause) => clientSession.shutdown(Exit.failCause(cause))),
@@ -294,6 +296,7 @@ export const makeClientSessionSyncProcessor = Effect.fn('makeClientSessionSyncPr
   ) {
     const writeTables = new Set<string>()
     for (const event of events) {
+      const eventMeta = event.meta!
       const {
         writeTables: newWriteTables,
         sessionChangeset,
@@ -305,8 +308,8 @@ export const makeClientSessionSyncProcessor = Effect.fn('makeClientSessionSyncPr
       for (const table of newWriteTables) {
         writeTables.add(table)
       }
-      event.meta.sessionChangeset = sessionChangeset
-      event.meta.materializerHashSession = materializerHash
+      eventMeta.sessionChangeset = sessionChangeset
+      eventMeta.materializerHashSession = materializerHash
     }
     return { writeTables }
   })
@@ -337,7 +340,7 @@ export const makeClientSessionSyncProcessor = Effect.fn('makeClientSessionSyncPr
     })
 
     syncStateRef.current = mergeResult.newSyncState
-    yield* syncStateUpdateQueue.offer(mergeResult.newSyncState)
+    yield* Queue.offer(syncStateUpdateQueue, mergeResult.newSyncState)
     yield* BucketQueue.offerAll(leaderPushQueue, mergeResult.newEvents)
   })
 
@@ -404,11 +407,11 @@ const SIMULATION_ENABLED = true
 // Warning: High values for the simulation params can lead to very long test runs since those get multiplied with the number of events
 export const ClientSessionSyncProcessorSimulationParams = Schema.Struct({
   pull: Schema.Struct({
-    '1_before_leader_push_fiber_interrupt': Schema.Int.check(Schema.isBetween(0, 15)),
-    '2_before_leader_push_queue_clear': Schema.Int.check(Schema.isBetween(0, 15)),
-    '3_before_rebase_rollback': Schema.Int.check(Schema.isBetween(0, 15)),
-    '4_before_leader_push_queue_offer': Schema.Int.check(Schema.isBetween(0, 15)),
-    '5_before_leader_push_fiber_run': Schema.Int.check(Schema.isBetween(0, 15)),
+    '1_before_leader_push_fiber_interrupt': Schema.Int.check(Schema.isBetween({ minimum: 0, maximum: 15 })),
+    '2_before_leader_push_queue_clear': Schema.Int.check(Schema.isBetween({ minimum: 0, maximum: 15 })),
+    '3_before_rebase_rollback': Schema.Int.check(Schema.isBetween({ minimum: 0, maximum: 15 })),
+    '4_before_leader_push_queue_offer': Schema.Int.check(Schema.isBetween({ minimum: 0, maximum: 15 })),
+    '5_before_leader_push_fiber_run': Schema.Int.check(Schema.isBetween({ minimum: 0, maximum: 15 })),
   }),
 })
 type ClientSessionSyncProcessorSimulationParams = typeof ClientSessionSyncProcessorSimulationParams.Type

@@ -275,7 +275,7 @@ const makeStoreTag = <TSchema extends LiveStoreSchema, TStoreId extends string>(
     static readonly fromDeferred = pipe(
       Effect.gen(function* () {
         const deferred = yield* _DeferredTag
-        const ctx = yield* deferred
+        const ctx = yield* Deferred.await(deferred)
         return Layer.succeed(Tag, ctx)
       }),
       Layer.unwrapScoped,
@@ -419,7 +419,7 @@ export const makeStoreContext =
     > = pipe(
       Effect.gen(function* () {
         const deferred = yield* DeferredTag
-        const ctx = yield* deferred
+        const ctx = yield* Deferred.await(deferred)
         return Layer.succeed(Tag, ctx)
       }),
       Layer.unwrapScoped,

@@ -84,7 +84,7 @@ export const bootDevtools = Effect.fn('@livestore/common:leader-thread:devtools:
         )
 
         yield* listenToDevtools({
-          incomingMessages: channel.listen.pipe(Stream.flatten(), Stream.orDie),
+          incomingMessages: channel.listen.pipe(Stream.mapEffect(Effect.fromResult), Stream.orDie),
           sendMessage,
           persistenceInfo,
         })
@@ -247,7 +247,13 @@ const listenToDevtools = ({
               })
 
               yield* handleLoadDb.pipe(
-                Effect.catchTag('unsupported-database', () =>
+                Effect.catchIf(
+                  (cause): cause is { _tag: 'unsupported-database' } =>
+                    typeof cause === 'object' &&
+                    cause !== null &&
+                    '_tag' in cause &&
+                    cause._tag === 'unsupported-database',
+                  () =>
                   sendMessage(
                     Devtools.Leader.LoadDatabaseFile.Error.make({
                       ...reqPayload,
@@ -382,9 +388,9 @@ const listenToDevtools = ({
                 yield* Effect.sleep(1000)
 
                 yield* Stream.zipLatest(
-                  syncBackend.isConnected.changes,
+                  SubscriptionRef.changes(syncBackend.isConnected),
                   devtools.enabled === true
-                    ? devtools.syncBackendLatchState.changes
+                    ? SubscriptionRef.changes(devtools.syncBackendLatchState)
                     : Stream.make({ latchClosed: false }),
                 ).pipe(
                   Stream.tap(([isConnected, { latchClosed }]) =>

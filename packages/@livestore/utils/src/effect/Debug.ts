@@ -26,6 +26,10 @@ interface GraphNodeInfo {
   readonly events: Array<SpanEvent>
 }
 
+type RuntimeFiber<A = any, E = any> = Fiber.Fiber<A, E> & {
+  readonly currentTracer?: Tracer.Tracer
+}
+
 export type MutableSpanGraph = Graph.MutableGraph<GraphNodeInfo, void>
 export type MutableSpanGraphInfo = {
   readonly graph: MutableSpanGraph
@@ -46,7 +50,7 @@ const ensureSpan = (traceId: string, spanId: string): [MutableSpanGraph, number]
   let nodeId = info.nodeIdBySpanId.get(spanId)
   if (nodeId === undefined) {
     nodeId = Graph.addNode(info.graph, {
-      span: { _tag: 'ExternalSpan', spanId, traceId, sampled: false, context: Context.empty() },
+      span: { _tag: 'ExternalSpan', spanId, traceId, sampled: false, annotations: Context.empty() },
       events: [],
       exitTag: undefined,
     })
@@ -135,7 +139,7 @@ const createPropertyInterceptor = <T extends object, K extends keyof T>(
 type EffectDevtoolsHookEvent =
   | {
       _tag: 'FiberAllocated'
-      fiber: Fiber.RuntimeFiber<any, any>
+      fiber: RuntimeFiber
     }
   | {
       _tag: 'ScopeAllocated'
@@ -143,7 +147,7 @@ type EffectDevtoolsHookEvent =
     }
 
 type GlobalWithFiberCurrent = {
-  'effect/FiberCurrent': Fiber.RuntimeFiber<any, any> | undefined
+  'effect/FiberCurrent': RuntimeFiber | undefined
   'effect/DevtoolsHook'?: {
     onEvent: (event: EffectDevtoolsHookEvent) => void
   }
@@ -177,19 +181,21 @@ const ensureTracerPatched = (currentTracer: Tracer.Tracer) => {
   }
 
   const oldContext = currentTracer.context
-  currentTracer.context = function (f, fiber, ...args) {
-    const context = oldContext.apply(this, [f, fiber, ...args])
+  ;(currentTracer as Tracer.Tracer & {
+    context: NonNullable<Tracer.Tracer['context']>
+  }).context = function (f, fiber) {
+    const context = oldContext?.apply(this, [f, fiber]) ?? f
     ensureFiberPatched(fiber)
     // oxlint-disable-next-line typescript-eslint(no-unsafe-type-assertion) -- Effect Tracer.context return type is opaque; patching requires cast
     return context as any
   }
 }
 
-interface ScopeImpl extends Scope.Scope {
+interface ScopeImpl {
   readonly state:
     | {
         readonly _tag: 'Open'
-        readonly finalizers: Map<{}, Scope.Scope.Finalizer>
+        readonly finalizers: Map<{}, unknown>
       }
     | {
         readonly _tag: 'Closed'
@@ -199,10 +205,10 @@ interface ScopeImpl extends Scope.Scope {
 
 const knownScopes = new Map<
   ScopeImpl,
-  { id: number; allocationFiber: Fiber.RuntimeFiber<any, any> | undefined; allocationSpan: Tracer.AnySpan | undefined }
+  { id: number; allocationFiber: RuntimeFiber | undefined; allocationSpan: Tracer.AnySpan | undefined }
 >()
 let lastScopeId = 0
-const ensureScopePatched = (scope: ScopeImpl, allocationFiber: Fiber.RuntimeFiber<any, any> | undefined) => {
+const ensureScopePatched = (scope: ScopeImpl, allocationFiber: RuntimeFiber | undefined) => {
   if (scope.state._tag === 'Closed') return
   if (knownScopes.has(scope) === true) return
   const id = lastScopeId++
@@ -232,12 +238,14 @@ const cleanupScopes = () => {
   }
 }
 
-const knownFibers = new Set<Fiber.RuntimeFiber<any, any>>()
-const ensureFiberPatched = (fiber: Fiber.RuntimeFiber<any, any>) => {
+const knownFibers = new Set<RuntimeFiber>()
+const ensureFiberPatched = (fiber: RuntimeFiber) => {
   // patch tracer
-  ensureTracerPatched(fiber.currentTracer)
+  if (fiber.currentTracer !== undefined) {
+    ensureTracerPatched(fiber.currentTracer)
+  }
   // patch scope
-  const currentScope = Context.getOrElse(fiber.currentContext, Scope.Scope, () => undefined)
+  const currentScope = Context.getOrElse(fiber.context, Scope.Scope, () => undefined)
   // oxlint-disable-next-line typescript-eslint(no-unsafe-type-assertion) -- casting Scope to ScopeImpl; internal Effect type not publicly exported
   if (currentScope !== undefined) ensureScopePatched(currentScope as any as ScopeImpl, undefined)
   // patch fiber
@@ -250,18 +258,18 @@ const ensureFiberPatched = (fiber: Fiber.RuntimeFiber<any, any>) => {
 }
 
 let patchScopeClose = false
-let onFiberResumed: undefined | ((fiber: Fiber.RuntimeFiber<any, any>) => void)
-let onFiberSuspended: undefined | ((fiber: Fiber.RuntimeFiber<any, any>) => void)
-let onFiberCompleted: undefined | ((fiber: Fiber.RuntimeFiber<any, any>, exit: Exit.Exit<any, any>) => void)
+let onFiberResumed: undefined | ((fiber: RuntimeFiber) => void)
+let onFiberSuspended: undefined | ((fiber: RuntimeFiber) => void)
+let onFiberCompleted: undefined | ((fiber: RuntimeFiber, exit: Exit.Exit<any, any>) => void)
 export const attachSlowDebugInstrumentation = (options: {
   /** If set to true, the scope prototype will be patched to attach a span to visualize pending scope closing */
   readonly patchScopeClose?: boolean
   /** An optional callback that will be called when any fiber resumes performing a run loop */
-  readonly onFiberResumed?: (fiber: Fiber.RuntimeFiber<any, any>) => void
+  readonly onFiberResumed?: (fiber: RuntimeFiber) => void
   /** An optional callback that will be called when any fiber stops performing a run loop */
-  readonly onFiberSuspended?: (fiber: Fiber.RuntimeFiber<any, any>) => void
+  readonly onFiberSuspended?: (fiber: RuntimeFiber) => void
   /** An optional callback that will be called when any fiber completes with a exit */
-  readonly onFiberCompleted?: (fiber: Fiber.RuntimeFiber<any, any>, exit: Exit.Exit<any, any>) => void
+  readonly onFiberCompleted?: (fiber: RuntimeFiber, exit: Exit.Exit<any, any>) => void
 }): void => {
   // oxlint-disable-next-line typescript-eslint(no-unsafe-type-assertion) -- accessing Effect's global fiber tracking via well-known symbol keys
   const _globalThis = globalThis as any as GlobalWithFiberCurrent
@@ -274,7 +282,7 @@ export const attachSlowDebugInstrumentation = (options: {
   onFiberResumed = options.onFiberResumed
   onFiberSuspended = options.onFiberSuspended
   onFiberCompleted = options.onFiberCompleted
-  let lastFiber: undefined | Fiber.RuntimeFiber<any, any>
+  let lastFiber: undefined | RuntimeFiber
   // oxlint-disable-next-line typescript-eslint(no-unsafe-type-assertion) -- accessing Effect's global fiber tracking via well-known symbol keys
   createPropertyInterceptor(globalThis as any as GlobalWithFiberCurrent, 'effect/FiberCurrent', (value) => {
     if (value !== undefined && knownFibers.has(value) === true) onFiberResumed?.(value)
@@ -370,7 +378,7 @@ const renderSpanNode = (graph: Graph.Graph<GraphNodeInfo, void>, nodeId: number)
     .filter(
       (fiber) => fiber.currentSpan?.spanId === info.span.spanId && fiber.currentSpan?.traceId === info.span.traceId,
     )
-    .map((fiber) => `#${fiber.id().id}`)
+    .map((fiber) => `#${fiber.id}`)
     .join(', ')
   const runningOnFibers = fiberIds.length > 0 ? ` [fibers ${fiberIds}]` : ''
 
@@ -448,12 +456,12 @@ export const logDebug = (options: LogDebugOptions = {}) => {
   lines = [...lines, 'Open Scopes:']
   for (const [scope, info] of knownScopes) {
     const fiberIds = Array.from(knownFibers)
-      .filter((fiber) => Context.getOrElse(fiber.currentContext, Scope.Scope, () => undefined) === scope)
-      .map((fiber) => `#${fiber.id().id}`)
+      .filter((fiber) => Context.getOrElse(fiber.context, Scope.Scope, () => undefined) === scope)
+      .map((fiber) => `#${fiber.id}`)
       .join(', ')
     const usedByFibers = fiberIds.length > 0 ? ` [used by: ${fiberIds}]` : ''
     const allocationFiber =
-      info.allocationFiber !== undefined ? ` [allocated in fiber #${info.allocationFiber.id().id}]` : ''
+      info.allocationFiber !== undefined ? ` [allocated in fiber #${info.allocationFiber.id}]` : ''
     const allocationSpan =
       info.allocationSpan !== undefined ? ` [allocated in span: ${getSpanName(info.allocationSpan)}]` : ''
     lines = [...lines, `- #${info.id}${usedByFibers}${allocationFiber}${allocationSpan}`]

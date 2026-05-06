@@ -1,5 +1,7 @@
 import '../global.ts'
 
+import { Effect as Effect_, Layer as Layer_, Option as Option_, Queue as Queue_, Stream as Stream_ } from 'effect'
+
 // export { DevTools as EffectDevtools } from '@effect/experimental'
 export { Sse, Msgpack as MsgPack } from 'effect/unstable/encoding'
 export { Otlp } from 'effect/unstable/observability'
@@ -84,23 +86,21 @@ export {
   Hash,
   HashMap,
   HashSet,
-  Inspectable,
-  identity,
-  Layer,
-  LogLevel,
+	  Inspectable,
+	  identity,
+	  Latch,
+	  LogLevel,
   ManagedRuntime,
   Match,
   Metric,
   MutableHashMap,
   MutableHashSet,
-  Option,
   Order,
   Predicate,
   PrimaryKey,
   PubSub,
   // Subscribable,
   pipe,
-  Queue,
   RcMap,
   RcRef,
   Record as ReadonlyRecord,
@@ -108,9 +108,10 @@ export {
   References,
   Ref,
   Request,
-  Result,
-  Runtime,
-  SchemaGetter,
+	  Result,
+	  Runtime,
+	  Semaphore,
+	  SchemaGetter,
   Scope,
   SchemaIssue,
   SchemaParser,
@@ -130,8 +131,62 @@ export * as TestClock from 'effect/testing/TestClock'
 export type { NonEmptyArray } from 'effect/Array'
 export { constVoid, dual } from 'effect/Function'
 export * as Graph from 'effect/Graph'
-export type { Serializable, SerializableWithResult } from 'effect/Schema'
 export * as SchemaAST from 'effect/SchemaAST'
+
+export namespace Mailbox {
+  export interface Mailbox<A> {
+    readonly offer: (value: A) => Effect_.Effect<boolean>
+    readonly offerAll: (values: Iterable<A>) => Effect_.Effect<Array<A>>
+    readonly shutdown: Effect_.Effect<void>
+    readonly queue: Queue_.Queue<A>
+  }
+}
+
+export const Mailbox = {
+  make: <A>(): Effect_.Effect<Mailbox.Mailbox<A>> =>
+    Queue_.unbounded<A>().pipe(
+      Effect_.map((queue) => ({
+        offer: (value) => Queue_.offer(queue, value),
+        offerAll: (values) => Queue_.offerAll(queue, values),
+        shutdown: Queue_.shutdown(queue),
+        queue,
+      })),
+    ),
+  toStream: <A>(mailbox: Mailbox.Mailbox<A>): Stream_.Stream<A> => Stream_.fromQueue(mailbox.queue),
+}
+
+export const Layer = {
+  ...Layer_,
+  unwrapScoped: Layer_.unwrap,
+  catchAllCause: Layer_.catchCause,
+  fail: <E>(error: E) => Layer_.unwrap(Effect_.fail(error)),
+}
+
+export namespace Layer {
+  export type Layer<A, E = never, R = never> = Layer_.Layer<A, E, R>
+}
+
+export const Queue = {
+  ...Queue_,
+}
+
+export namespace Queue {
+  export type Queue<A, E = never> = Queue_.Queue<A, E>
+  export type Enqueue<A, E = never> = Queue_.Enqueue<A, E>
+  export type Dequeue<A, E = never> = Queue_.Dequeue<A, E>
+}
+
+export const Option = {
+  ...Option_,
+  fromNullable: Option_.fromNullishOr,
+}
+
+export namespace Option {
+  export type Option<A> = Option_.Option<A>
+  export type Some<A> = Option_.Some<A>
+  export type None<A = never> = Option_.None<A>
+}
+
 export * as BucketQueue from './BucketQueue.ts'
 export * as Debug from './Debug.ts'
 export * as Effect from './Effect.ts'

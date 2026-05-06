@@ -116,7 +116,7 @@ export const startDevtoolsServer = ({
           const nodeRes = NodeHttpServerRequest.toServerResponse(req)
           const deferred = yield* Deferred.make()
           viteMiddleware.middlewares(nodeReq, nodeRes, () => Deferred.unsafeDone(deferred, Exit.void))
-          yield* deferred
+          yield* Deferred.await(deferred)
 
           // The response is already sent, so we need to return an empty response (which won't be sent)
           return HttpServerResponse.empty()

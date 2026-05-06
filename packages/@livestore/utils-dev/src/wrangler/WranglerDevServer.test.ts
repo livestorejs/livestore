@@ -58,7 +58,9 @@ Vitest.describe('WranglerDevServer', { timeout: testTimeout }, () => {
 
     Vitest.scopedLive('should handle missing wrangler.toml but should timeout', (test) =>
       Effect.gen(function* () {
-        const error = yield* WranglerDevServerService.pipe(
+        const error = yield* Effect.gen(function* () {
+          return yield* WranglerDevServerService
+        }).pipe(
           Effect.provide(
             WranglerDevServerTest({
               cwd: '/tmp',
@@ -75,7 +77,9 @@ Vitest.describe('WranglerDevServer', { timeout: testTimeout }, () => {
 
     Vitest.scopedLive('should handle invalid working directory', (test) =>
       Effect.gen(function* () {
-        const result = yield* WranglerDevServerService.pipe(
+        const result = yield* Effect.gen(function* () {
+          return yield* WranglerDevServerService
+        }).pipe(
           Effect.provide(
             WranglerDevServerTest({
               cwd: '/completely/nonexistent/directory',
@@ -94,7 +98,9 @@ Vitest.describe('WranglerDevServer', { timeout: testTimeout }, () => {
     Vitest.scopedLive('should timeout if server fails to start', (test) =>
       Effect.gen(function* () {
         // Create a command that will never output "Ready on"
-        const result = yield* WranglerDevServerService.pipe(
+        const result = yield* Effect.gen(function* () {
+          return yield* WranglerDevServerService
+        }).pipe(
           // Override the timeout for this test to be shorter
           Effect.timeout('5 seconds'),
           Effect.result,

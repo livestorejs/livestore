@@ -1,7 +1,7 @@
 /** biome-ignore-all lint/suspicious/useIterableCallbackReturn: Biome bug */
 export * from 'effect/Stream'
 
-import { type Cause, Chunk, Effect, Option, pipe, Ref, Stream } from 'effect'
+import { type Cause, Effect, Option, pipe, Ref, Stream } from 'effect'
 import { dual } from 'effect/Function'
 
 export const tapLog = <R, E, A>(stream: Stream.Stream<A, E, R>): Stream.Stream<A, E, R> =>
@@ -18,13 +18,12 @@ export const tapLogWithLabel =
     tapChunk<never, never, A, void>(Effect.forEach((_) => Effect.succeed(console.log(label, _))))(stream)
 
 export const tapChunk =
-  <R1, E1, A, Z>(f: (a: Chunk.Chunk<A>) => Effect.Effect<Z, E1, R1>) =>
+  <R1, E1, A, Z>(f: (a: ReadonlyArray<A>) => Effect.Effect<Z, E1, R1>) =>
   <R, E>(self: Stream.Stream<A, E, R>): Stream.Stream<A, E1 | E, R1 | R> =>
-    Stream.mapChunksEffect(self, (chunks) =>
-      pipe(
-        f(chunks),
-        Effect.map(() => chunks),
-      ),
+    self.pipe(
+      Stream.chunks,
+      Stream.mapEffect((chunk) => f(chunk).pipe(Effect.as(chunk))),
+      Stream.flatMap(Stream.fromIterable),
     )
 
 const isIdentity = <A>(a1: A, a2: A): boolean => a1 === a2
@@ -76,10 +75,16 @@ export const runFirst = <A, E, R>(stream: Stream.Stream<A, E, R>): Effect.Effect
  * */
 export const runFirstUnsafe = <A, E, R>(
   stream: Stream.Stream<A, E, R>,
-): Effect.Effect<A, Cause.NoSuchElementError | E, R> => runFirst(stream).pipe(Effect.flatten)
+): Effect.Effect<A, Cause.NoSuchElementError | E, R> =>
+  Effect.gen(function* () {
+    return yield* (yield* runFirst(stream))
+  })
 
 export const runCollectReadonlyArray = <A, E, R>(stream: Stream.Stream<A, E, R>): Effect.Effect<readonly A[], E, R> =>
   stream.pipe(Stream.runCollect)
+
+export const flattenIterables = Stream.flattenIterable
+export const unwrapScoped = Stream.unwrap
 
 /**
  * Concatenates two streams where the second stream has access to the last element

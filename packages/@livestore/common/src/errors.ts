@@ -10,7 +10,7 @@ export class UnknownError extends Schema.TaggedErrorClass<UnknownError>()('Unkno
   static mapToUnknownError = <A, E, R>(effect: Effect.Effect<A, E, R>) =>
     effect.pipe(
       Effect.mapError((cause) => (Schema.is(UnknownError)(cause) === true ? cause : new UnknownError({ cause }))),
-      Effect.catchDefect((cause) => new UnknownError({ cause })),
+      Effect.catchDefect((cause) => Effect.fail(new UnknownError({ cause }))),
     )
 
   static mapToUnknownErrorLayer = <A, E, R>(layer: Layer.Layer<A, E, R>) =>
@@ -18,8 +18,8 @@ export class UnknownError extends Schema.TaggedErrorClass<UnknownError>()('Unkno
       Layer.catchAllCause((cause) => {
         const fail = Cause.findFail(cause)
 
-        return Result.isSuccess(fail) === true && Schema.is(UnknownError)(fail.value.error) === true
-          ? Layer.fail(fail.value.error)
+        return Result.isSuccess(fail) === true && Schema.is(UnknownError)(fail.success.error) === true
+          ? Layer.fail(fail.success.error)
           : Layer.fail(new UnknownError({ cause: cause }))
       }),
     )

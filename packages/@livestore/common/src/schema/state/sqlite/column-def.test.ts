@@ -71,7 +71,7 @@ describe('getColumnDefForSchema', () => {
       const refinements = [
         { schema: Schema.Finite, name: 'Finite' },
         { schema: Schema.Number.check(Schema.isGreaterThan(0)), name: 'positive' },
-        { schema: Schema.Number.check(Schema.isBetween(0, 100)), name: 'between' },
+        { schema: Schema.Number.check(Schema.isBetween({ minimum: 0, maximum: 100 })), name: 'between' },
       ]
 
       for (const { schema, name } of refinements) {

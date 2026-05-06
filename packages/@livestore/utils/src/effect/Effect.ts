@@ -10,7 +10,6 @@ import {
   Scope,
   type Stream,
 } from 'effect'
-import type { UnknownError } from 'effect/Cause'
 import { log } from 'effect/Console'
 import { dual, type LazyArg } from 'effect/Function'
 import type { Predicate, Refinement } from 'effect/Predicate'
@@ -20,6 +19,16 @@ import { UnknownError } from './Error.ts'
 
 export * from 'effect/Effect'
 export { spanEvent } from './spanEvent.ts'
+
+export type Latch = import('effect').Latch.Latch
+export type Semaphore = import('effect').Semaphore.Semaphore
+export const zipRight = Effect.andThen
+export const fromNullable = Effect.fromNullishOr
+export const dieMessage = (message: string) => Effect.die(new Error(message))
+export const filterOrDieMessage =
+  <A, B extends A>(predicate: (value: A) => value is B, message: string) =>
+  <E, R>(self: Effect.Effect<A, E, R>): Effect.Effect<B, E, R> =>
+    Effect.filterOrElse(self, predicate, () => Effect.die(new Error(message))) as Effect.Effect<B, E, R>
 
 // export const log = <A>(message: A, ...rest: any[]): Effect.Effect<void> =>
 //   Effect.sync(() => {
@@ -38,7 +47,7 @@ export { spanEvent } from './spanEvent.ts'
 
 /** Same as `Effect.scopeWith` but with a `CloseableScope` instead of a `Scope`. */
 export const scopeWithCloseable = <R, E, A>(
-  fn: (scope: Scope.CloseableScope) => Effect.Effect<A, E, R | Scope.Scope>,
+  fn: (scope: Scope.Scope) => Effect.Effect<A, E, R | Scope.Scope>,
 ): Effect.Effect<A, E, R | Scope.Scope> =>
   Effect.gen(function* () {
     // const parentScope = yield* Scope.Scope
@@ -121,7 +130,7 @@ export const dieDebugger = (msg: string, ...args: ReadonlyArray<unknown>): Effec
       debugger
       void args // Keeps the variable in scope so it's inspectable when the debugger pauses
     }
-    return Effect.dieMessage(msg)
+    return Effect.die(new Error(msg))
   })
 
 /**
@@ -136,12 +145,12 @@ export const orDieDebugger = <A, E, R>(self: Effect.Effect<A, E, R>): Effect.Eff
   Effect.matchEffect(self, {
     onFailure: (error) =>
       // Keep the debugger hook so that `debugger` runs only when the wrapped effect actually fails, not while building the wrapper.
-      Effect.dieSync(() => {
+      Effect.suspend(() => {
         if (isDevEnv() === true) {
           // oxlint-disable-next-line eslint(no-debugger) -- intentional breakpoint for impossible states during development
           debugger
         }
-        return error
+        return Effect.die(error)
       }),
     onSuccess: Effect.succeed,
   })
@@ -177,7 +186,7 @@ export const eventListener = <TEvent = unknown>(
   })
 
 export const logWarnIfTakesLongerThan =
-  ({ label, duration }: { label: string; duration: Duration.DurationInput }) =>
+  ({ label, duration }: { label: string; duration: Duration.Input }) =>
   <R, E, A>(eff: Effect.Effect<A, E, R>): Effect.Effect<A, E, R> =>
     Effect.gen(function* () {
       const context = yield* Effect.context<R>()
@@ -227,7 +236,7 @@ export const logDuration =
       const start = Date.now()
       const res = yield* eff
       const end = Date.now()
-      yield* Effect.log(`${label}: ${Duration.format(end - start)}`)
+      yield* Effect.log(`${label}: ${Duration.format(Duration.millis(end - start))}`)
       return res
     })
 
@@ -263,11 +272,11 @@ export const debugLogEnv = (msg?: string): Effect.Effect<Context.Context<never>>
  * @see {@link Effect.timeout} for a version that raises a `TimeoutError` as a typed error.
  * @see {@link Effect.timeoutFailCause} for a version that raises a custom defect.
  */
-export const timeoutOrDie = (duration: Duration.DurationInput) =>
+export const timeoutOrDie = (duration: Duration.Input) =>
   <A, E, R>(self: Effect.Effect<A, E, R>): Effect.Effect<A, E, R> =>
-    Effect.timeoutFailCause(self, {
+    Effect.timeoutOrElse(self, {
       duration,
-      onTimeout: () => Cause.die(new Cause.TimeoutError())
+      orElse: () => Effect.die(new Cause.TimeoutError()),
     })
 
 /**
@@ -291,11 +300,11 @@ export const timeoutOrDie = (duration: Duration.DurationInput) =>
  * @see {@link Effect.timeout} for a version that raises a `TimeoutError` as a typed error.
  * @see {@link Effect.timeoutFailCause} for a version that raises a custom defect.
  */
-export const timeoutOrDieMessage = (duration: Duration.DurationInput, message: string) =>
+export const timeoutOrDieMessage = (duration: Duration.Input, message: string) =>
   <A, E, R>(self: Effect.Effect<A, E, R>): Effect.Effect<A, E, R> =>
-    Effect.timeoutFailCause(self, {
+    Effect.timeoutOrElse(self, {
       duration,
-      onTimeout: () => Cause.die(new Cause.TimeoutError(message))
+      orElse: () => Effect.die(new Cause.TimeoutError(message)),
     })
 
 export const toForkedDeferred = <R, E, A>(
@@ -327,8 +336,8 @@ export const withPerformanceMeasure =
     )
 
 const getSpanTrace = () => {
-  const fiberOption = Fiber.getCurrentFiber()
-  if (fiberOption._tag === 'None' || fiberOption.value.currentSpan === undefined) {
+  const fiber = Fiber.getCurrent()
+  if (fiber === undefined || fiber.currentSpan === undefined) {
     return 'No current fiber'
   }
 
@@ -359,3 +368,5 @@ declare global {
 
 globalThis.getSpanTrace = getSpanTrace
 globalThis.logSpanTrace = logSpanTrace
+
+export const ignoreLogged = Effect.ignore

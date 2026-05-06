@@ -95,7 +95,7 @@ const makeWorkerRunner = Effect.gen(function* () {
 
       // Here we're creating an empty stream that will finish when the scope shuts down
       const scopeShutdownStream = Effect.gen(function* () {
-        yield* shutdownDeferred
+        yield* Deferred.await(shutdownDeferred)
         return Stream.empty
       }).pipe(Stream.unwrap)
 
@@ -180,7 +180,7 @@ const makeWorkerRunner = Effect.gen(function* () {
           const shutdownChannel = yield* makeShutdownChannel(initial.storeId)
 
           yield* shutdownChannel.listen.pipe(
-            Stream.flatten(),
+            Stream.mapEffect(Effect.fromResult),
             Stream.tap(() => reset),
             Stream.runDrain,
             Effect.tapCauseLogPretty,

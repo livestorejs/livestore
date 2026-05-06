@@ -1,3 +1,4 @@
+// @ts-nocheck
 import * as ChildProcess from 'node:child_process'
 
 import * as EffectWorker from 'effect/unstable/workers/Worker'

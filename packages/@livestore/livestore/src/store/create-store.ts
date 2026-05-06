@@ -69,7 +69,7 @@ export class LiveStoreContextRunning extends Context.Service<
 >()('@livestore/livestore/effect/LiveStoreContextRunning') {
   static fromDeferred = Effect.gen(function* () {
     const deferred = yield* DeferredStoreContext
-    const ctx = yield* deferred
+    const ctx = yield* Deferred.await(deferred)
     return Layer.succeed(LiveStoreContextRunning, ctx)
   }).pipe(Layer.unwrapScoped)
 }
@@ -315,7 +315,7 @@ export const createStore = <
 
       const connectDevtoolsToStore_ = (storeDevtoolsChannel: ClientSessionDevtoolsChannel) =>
         Effect.gen(function* () {
-          const store = yield* storeDeferred
+          const store = yield* Deferred.await(storeDeferred)
           yield* connectDevtoolsToStore({ storeDevtoolsChannel, store })
         })
 

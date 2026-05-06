@@ -9,7 +9,9 @@ export { OversizeChunkItemError, splitChunkBySize }
 
 export const SearchParamsSchema = Schema.Struct({
   storeId: Schema.String,
-  payload: Schema.decodeTo(Schema.StringFromUriComponent, Schema.fromJsonString(Schema.JsonValue)).pipe(Schema.UndefinedOr),
+  payload: Schema.UndefinedOr(
+    Schema.decodeTo(Schema.fromJsonString(Schema.JsonValue))(Schema.StringFromUriComponent) as any,
+  ),
   // NOTE `do-rpc` is handled differently
   transport: Schema.Literals(['http', 'ws']),
 })

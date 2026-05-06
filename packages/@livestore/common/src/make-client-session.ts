@@ -1,5 +1,5 @@
 import type { Scope, SubscriptionRef } from '@livestore/utils/effect'
-import { Effect, Stream } from '@livestore/utils/effect'
+import { Effect, Latch, Stream } from '@livestore/utils/effect'
 import * as Webmesh from '@livestore/webmesh'
 
 import type {
@@ -52,7 +52,7 @@ export const makeClientSession = <R>({
 }): Effect.Effect<ClientSession, never, Scope.Scope | R> =>
   Effect.gen(function* () {
     const devtools: ClientSession['devtools'] = devtoolsEnabled === true
-      ? { enabled: true, pullLatch: yield* Effect.makeLatch(true), pushLatch: yield* Effect.makeLatch(true) }
+      ? { enabled: true, pullLatch: yield* Latch.make(true), pushLatch: yield* Latch.make(true) }
       : { enabled: false }
 
     if (devtoolsEnabled === true) {
@@ -91,8 +91,8 @@ export const makeClientSession = <R>({
               res.mode === webmeshMode,
           ),
           Stream.tap(
-            Effect.fnUntraced(
-              function* ({ channelName, source }) {
+            ({ channelName, source }) =>
+              Effect.gen(function* () {
                 const clientSessionDevtoolsChannel = yield* webmeshNode.makeChannel({
                   target: source,
                   channelName,
@@ -114,10 +114,7 @@ export const makeClientSession = <R>({
                 )
 
                 yield* connectDevtoolsToStore(clientSessionDevtoolsChannel)
-              },
-              Effect.tapCauseLogPretty,
-              Effect.forkScoped,
-            ),
+              }).pipe(Effect.tapCauseLogPretty, Effect.forkScoped),
           ),
           Stream.runDrain,
         )
@@ -138,4 +135,4 @@ export const makeClientSession = <R>({
       shutdown,
       debugInstanceId,
     } satisfies ClientSession
-  }).pipe(Effect.withSpan('@livestore/common:make-client-session'))
+  }).pipe(Effect.withSpan('@livestore/common:make-client-session')) as Effect.Effect<ClientSession, never, Scope.Scope | R>

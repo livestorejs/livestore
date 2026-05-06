@@ -14,7 +14,7 @@ import {
 
 import { SyncDoRpc } from '../../../common/do-rpc-schema.ts'
 import { SyncMessage } from '../../../common/mod.ts'
-import { DoCtx, type DoCtxInput } from '../layer.ts'
+import { DoCtx, layer as doCtxLayer, type DoCtxInput } from '../layer.ts'
 import { makeEndingPullStream } from '../pull.ts'
 import { makePush } from '../push.ts'
 
@@ -58,7 +58,7 @@ export const createDoRpcHandler = (
             ...res,
             rpcRequestId: Headers.get(headers, 'x-rpc-request-id').pipe(Option.getOrThrow),
           })),
-          Stream.provideLayer(DoCtx.Default({ ...input, from: { storeId: req.storeId } })),
+          Stream.provideLayer(doCtxLayer({ ...input, from: { storeId: req.storeId } })),
           Stream.mapError((cause) =>
             cause._tag === 'UnknownError' || cause._tag === 'BackendIdMismatchError'
               ? cause
@@ -74,7 +74,7 @@ export const createDoRpcHandler = (
 
           return yield* push(req)
         }).pipe(
-          Effect.provide(DoCtx.Default({ ...input, from: { storeId: req.storeId } })),
+          Effect.provide(doCtxLayer({ ...input, from: { storeId: req.storeId } })),
           Effect.mapError((cause) =>
             cause._tag === 'UnknownError' || cause._tag === 'ServerAheadError' || cause._tag === 'BackendIdMismatchError'
               ? cause

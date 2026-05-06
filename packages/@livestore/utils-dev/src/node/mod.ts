@@ -11,6 +11,7 @@ import { IS_BUN, isNonEmptyString } from '@livestore/utils'
 import type { Tracer } from '@livestore/utils/effect'
 import { Config, Effect, Layer, LogLevel, OtelTracer, References, Schema } from '@livestore/utils/effect'
 import { OtelLiveDummy } from '@livestore/utils/node'
+import type * as LayerType from 'effect/Layer'
 
 export { OTLPMetricExporter } from '@opentelemetry/exporter-metrics-otlp-http'
 export { OTLPTraceExporter } from '@opentelemetry/exporter-trace-otlp-http'
@@ -42,21 +43,19 @@ export const OtelLiveHttp = ({
   rootSpanAttributes?: Record<string, unknown>
   skipLogUrl?: boolean
   traceNodeBootstrap?: boolean
-} = {}): Layer.Layer<OtelTracer.OtelTracer | Tracer.ParentSpan> =>
+} = {}): LayerType.Layer<OtelTracer.OtelTracer | Tracer.ParentSpan> =>
   Effect.gen(function* () {
     const configRes = yield* Config.all({
-      exporterUrl: Config.string('OTEL_EXPORTER_OTLP_ENDPOINT').pipe(
-        Config.validate({ message: 'OTEL_EXPORTER_OTLP_ENDPOINT must be set', validation: isNonEmptyString }),
-      ),
+      exporterUrl: Config.string('OTEL_EXPORTER_OTLP_ENDPOINT'),
       serviceName: serviceName !== undefined
         ? Config.succeed(serviceName)
         : Config.string('OTEL_SERVICE_NAME').pipe(Config.withDefault('livestore-utils-dev')),
       rootSpanName: rootSpanName !== undefined
         ? Config.succeed(rootSpanName)
         : Config.string('OTEL_ROOT_SPAN_NAME').pipe(Config.withDefault('RootSpan')),
-    }).pipe(Effect.option)
+    }).pipe(Config.option)
 
-    if (configRes._tag === 'None') {
+    if (configRes._tag === 'None' || isNonEmptyString(configRes.value.exporterUrl) === false) {
       const RootSpanLive = Layer.span('DummyRoot', {})
       return RootSpanLive.pipe(Layer.provideMerge(OtelLiveDummy)) as any
     }
@@ -77,27 +76,15 @@ export const OtelLiveHttp = ({
         new OTLPTraceExporter({ url: `${config.exporterUrl}/v1/traces`, headers: {} }),
         { scheduledDelayMillis: 50 },
       ),
-    })).pipe(
-      // If an OpenTelemetry backend is not available, the `OtelNodeSdk` layer
-      // will ignore the error when attempting to connect and emit a debug log
-      // stating the reason for the error (in this case `ECONNREFUSED`). This
-      // can cause problems for programs which rely on clean `stdout` (e.g.
-      // command-line applications). To remedy this, the below code sets the
-      // minimum log level `FiberRef` to `"None"` for the duration of the
-      // `OtelNodeSdk`'s layer constructor.
-      //
-      // This can likely be removed when Livestore is migrated to the Effect
-      // native Otlp exporters.
-      Layer.locally(References.MinimumLogLevel, 'None'),
-    )
+    }))
 
     const RootSpanLive = Layer.span(config.rootSpanName, {
       attributes: { config, ...rootSpanAttributes },
-      onEnd: skipLogUrl === true ? undefined : (span: any) => logTraceUiUrlForSpan()(span.span),
+      onEnd: skipLogUrl === true ? undefined : (span: any) => logTraceUiUrlForSpan()(span.span).pipe(Effect.asVoid, Effect.orDie),
       parent: parentSpan,
     })
 
-    const layer = yield* Layer.memoize(RootSpanLive.pipe(Layer.provideMerge(OtelLive)))
+    const layer = RootSpanLive.pipe(Layer.provideMerge(OtelLive))
 
     if (traceNodeBootstrap === true && IS_BUN === false) {
       /**
@@ -149,7 +136,7 @@ export const logTraceUiUrlForSpan = (printMsg?: (url: string) => string) => (spa
 
 export const getTracingBackendUrl = (span: otel.Span) =>
   Effect.gen(function* () {
-    const endpoint = yield* Config.string('GRAFANA_ENDPOINT').pipe(Config.option, Effect.orDie)
+    const endpoint = yield* Config.string('GRAFANA_ENDPOINT').pipe(Config.option)
     if (endpoint._tag === 'None') return
 
     const traceId = span.spanContext().traceId

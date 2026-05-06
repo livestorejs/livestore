@@ -1,5 +1,5 @@
 import { IS_CI, omitUndefineds } from '@livestore/utils'
-import { Chunk, Deferred, Effect, Exit, Schema, Scope, Stream, WebChannel } from '@livestore/utils/effect'
+import { Chunk, Deferred, Duration, Effect, Exit, Fiber, Option, Schedule, Schema, Scope, Stream, WebChannel } from '@livestore/utils/effect'
 import { Vitest } from '@livestore/utils-dev/node-vitest'
 import { expect } from 'vitest'
 
@@ -47,17 +47,22 @@ const connectNodesViaBroadcastChannel = (nodeA: MeshNode, nodeB: MeshNode, optio
       schema: Packet,
     })
 
-    yield* nodeA.addEdge({
-      target: nodeB.nodeName,
-      edgeChannel: broadcastWebChannelA,
-      ...omitUndefineds({ replaceIfExists: options?.replaceIfExists }),
-    })
-    yield* nodeB.addEdge({
-      target: nodeA.nodeName,
-      edgeChannel: broadcastWebChannelB,
-      ...omitUndefineds({ replaceIfExists: options?.replaceIfExists }),
-    })
-  }).pipe(Effect.withSpan(`connectNodesViaBroadcastChannel:${nodeA.nodeName}↔${nodeB.nodeName}`))
+	    yield* Effect.all(
+	      [
+	        nodeA.addEdge({
+	          target: nodeB.nodeName,
+	          edgeChannel: broadcastWebChannelA,
+	          ...omitUndefineds({ replaceIfExists: options?.replaceIfExists }),
+	        }),
+	        nodeB.addEdge({
+	          target: nodeA.nodeName,
+	          edgeChannel: broadcastWebChannelB,
+	          ...omitUndefineds({ replaceIfExists: options?.replaceIfExists }),
+	        }),
+	      ],
+	      { concurrency: 'unbounded' },
+	    )
+	  }).pipe(Effect.withSpan(`connectNodesViaBroadcastChannel:${nodeA.nodeName}↔${nodeB.nodeName}`))
 
 const createChannel = (source: MeshNode, target: string, options?: Partial<Parameters<MeshNode['makeChannel']>[0]>) =>
   source.makeChannel({
@@ -71,7 +76,7 @@ const createChannel = (source: MeshNode, target: string, options?: Partial<Param
 
 const getFirstMessage = <T1, T2>(channel: WebChannel.WebChannel<T1, T2>) =>
   channel.listen.pipe(
-    Stream.flatten(),
+    Stream.mapEffect(Effect.fromResult),
     Stream.take(1),
     Stream.runCollect,
     Effect.map(([message]) => message),
@@ -81,9 +86,9 @@ const getFirstMessage = <T1, T2>(channel: WebChannel.WebChannel<T1, T2>) =>
 const maybeDelay =
   (delay: number | undefined, label: string) =>
   <A, E, R>(effect: Effect.Effect<A, E, R>) =>
-    delay === undefined
-      ? effect
-      : Effect.sleep(delay).pipe(Effect.withSpan(`${label}:delay(${delay})`), Effect.andThen(effect))
+	    delay === undefined
+	      ? effect
+	      : Effect.sleep(Duration.millis(delay)).pipe(Effect.withSpan(`${label}:delay(${delay})`), Effect.andThen(effect))
 
 const testTimeout = IS_CI === true ? 30_000 : 1000
 const propTestTimeout = IS_CI === true ? 60_000 : 20_000
@@ -238,10 +243,10 @@ Vitest.describe('webmesh node', { timeout: testTimeout }, () => {
               yield* channelAToB.send({ message: 'A1' })
               expect(yield* getFirstMessage(channelAToB)).toEqual({ message: 'B1' })
 
-              console.log('nodeACode:waiting for B to be offline')
-              if (waitForBToBeOffline !== undefined) {
-                yield* waitForBToBeOffline
-              }
+	              console.log('nodeACode:waiting for B to be offline')
+	              if (waitForBToBeOffline !== undefined) {
+	                yield* Deferred.await(waitForBToBeOffline)
+	              }
 
               yield* channelAToB.send({ message: 'A2' })
               expect(yield* getFirstMessage(channelAToB)).toEqual({ message: 'B2' })
@@ -366,7 +371,7 @@ Vitest.describe('webmesh node', { timeout: testTimeout }, () => {
               yield* channelXToY.send({ message: `${nodeLabel.x}1` })
               expect(yield* getFirstMessage(channelXToY)).toEqual({ message: `${nodeLabel.y}1` })
 
-              yield* waitForEdgeReplacement
+	              yield* Deferred.await(waitForEdgeReplacement)
 
               yield* channelXToY.send({ message: `${nodeLabel.x}2` })
               expect(yield* getFirstMessage(channelXToY)).toEqual({ message: `${nodeLabel.y}2` })
@@ -401,7 +406,7 @@ Vitest.describe('webmesh node', { timeout: testTimeout }, () => {
         // TODO we need to improve latency when sending messages concurrently
         Vitest.scopedLive.prop(
           'concurrent messages',
-          [ChannelType, Schema.Int.check(Schema.isBetween(1, 50))],
+          [ChannelType, Schema.Int.check(Schema.isBetween({ minimum: 1, maximum: 50 }))],
           ([channelType, count], test) =>
             Effect.gen(function* () {
               const nodeA = yield* makeMeshNode('A')
@@ -420,7 +425,7 @@ Vitest.describe('webmesh node', { timeout: testTimeout }, () => {
                   { concurrency: 'unbounded' },
                 )
 
-                expect(yield* channelAToB.listen.pipe(Stream.flatten(), Stream.take(count), Stream.runCollect)).toEqual(
+                expect(yield* channelAToB.listen.pipe(Stream.mapEffect(Effect.fromResult), Stream.take(count), Stream.runCollect)).toEqual(
                   Chunk.makeBy(count, (i) => ({ message: `B${i}` })),
                 )
                 // expect(yield* getFirstMessage(channelAToB)).toEqual({ message: 'A2' })
@@ -436,7 +441,7 @@ Vitest.describe('webmesh node', { timeout: testTimeout }, () => {
                   { concurrency: 'unbounded' },
                 )
 
-                expect(yield* channelBToA.listen.pipe(Stream.flatten(), Stream.take(count), Stream.runCollect)).toEqual(
+                expect(yield* channelBToA.listen.pipe(Stream.mapEffect(Effect.fromResult), Stream.take(count), Stream.runCollect)).toEqual(
                   Chunk.makeBy(count, (i) => ({ message: `A${i}` })),
                 )
               })
@@ -468,7 +473,7 @@ Vitest.describe('webmesh node', { timeout: testTimeout }, () => {
           const bFiber = yield* Effect.gen(function* () {
             const channelBToA = yield* createChannel(nodeB, 'A')
             yield* channelBToA.listen.pipe(
-              Stream.flatten(),
+              Stream.mapEffect(Effect.fromResult),
               Stream.tap((msg) => channelBToA.send({ message: `resp:${msg.message}` })),
               Stream.take(messageCount),
               Stream.runDrain,
@@ -482,9 +487,9 @@ Vitest.describe('webmesh node', { timeout: testTimeout }, () => {
             const channelAToB = yield* createChannel(nodeA, 'B')
             yield* channelAToB.send({ message: 'A' })
             expect(yield* getFirstMessage(channelAToB)).toEqual({ message: 'resp:A' })
-          }).pipe(Effect.scoped, Effect.repeatN(messageCount))
+          }).pipe(Effect.scoped, Effect.repeat(Schedule.recurs(messageCount - 1)))
 
-          yield* bFiber
+	          yield* Fiber.join(bFiber)
         }).pipe(Vitest.withTestCtx(test)),
       )
     })
@@ -661,11 +666,11 @@ Vitest.describe('webmesh node', { timeout: testTimeout }, () => {
           )
           // Receive responses
           const responses = yield* channelAToC.listen.pipe(
-            Stream.flatten(),
+            Stream.mapEffect(Effect.fromResult),
             Stream.take(messageCount),
             Stream.runCollect,
           )
-          expect(Chunk.size(responses)).toBe(messageCount)
+          expect(responses.length).toBe(messageCount)
         })
 
         const nodeCCode = Effect.gen(function* () {
@@ -678,11 +683,11 @@ Vitest.describe('webmesh node', { timeout: testTimeout }, () => {
           )
           // Receive responses
           const responses = yield* channelCToA.listen.pipe(
-            Stream.flatten(),
+            Stream.mapEffect(Effect.fromResult),
             Stream.take(messageCount),
             Stream.runCollect,
           )
-          expect(Chunk.size(responses)).toBe(messageCount)
+          expect(responses.length).toBe(messageCount)
         })
 
         yield* Effect.all([nodeACode, nodeCCode], { concurrency: 'unbounded' })
@@ -767,7 +772,7 @@ Vitest.describe('webmesh node', { timeout: testTimeout }, () => {
             })
 
             yield* channelBToA.listen.pipe(
-              Stream.flatten(),
+              Stream.mapEffect(Effect.fromResult),
               Stream.tap((msg) =>
                 Effect.sync(() => {
                   receivedMessages.push(msg.message)
@@ -856,7 +861,7 @@ Vitest.describe('webmesh node', { timeout: testTimeout }, () => {
             })
 
             yield* channelBToA.listen.pipe(
-              Stream.flatten(),
+              Stream.mapEffect(Effect.fromResult),
               Stream.tap((msg) =>
                 Effect.sync(() => {
                   receivedMessages.push(msg.message)
@@ -1272,23 +1277,23 @@ Vitest.describe('webmesh node', { timeout: testTimeout }, () => {
         const channelOnC = yield* nodeC.makeBroadcastChannel({ channelName: 'test', schema: Schema.String })
 
         const listenOnAFiber = yield* channelOnA.listen.pipe(
-          Stream.flatten(),
+          Stream.mapEffect(Effect.fromResult),
           Stream.runHead,
-          Effect.flatten,
+          Effect.map(Option.getOrThrow),
           Effect.forkChild,
         )
         const listenOnCFiber = yield* channelOnC.listen.pipe(
-          Stream.flatten(),
+          Stream.mapEffect(Effect.fromResult),
           Stream.runHead,
-          Effect.flatten,
+          Effect.map(Option.getOrThrow),
           Effect.forkChild,
         )
 
         yield* channelOnA.send('A1')
         yield* channelOnC.send('C1')
 
-        expect(yield* listenOnAFiber).toEqual('C1')
-        expect(yield* listenOnCFiber).toEqual('A1')
+	        expect(yield* Fiber.join(listenOnAFiber)).toEqual('C1')
+	        expect(yield* Fiber.join(listenOnCFiber)).toEqual('A1')
       }).pipe(Vitest.withTestCtx(test)),
     )
   })

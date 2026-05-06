@@ -79,7 +79,11 @@ export const connectWebmeshNodeClientSession = Effect.fn(function* ({
         DevtoolsWeb.ClientSessionContentscriptMainReq.make({ clientId, sessionId, storeId }),
       )
 
-      const { tabId } = yield* clientSessionStaticChannel.listen.pipe(Stream.flatten(), Stream.runHead, Effect.flatten)
+      const { tabId } = yield* clientSessionStaticChannel.listen.pipe(
+        Stream.mapEffect(Effect.fromResult),
+        Stream.runHead,
+        Effect.flatten,
+      )
 
       const contentscriptMainNodeName = DevtoolsWeb.makeNodeName.browserExtension.contentscriptMain(tabId)
 

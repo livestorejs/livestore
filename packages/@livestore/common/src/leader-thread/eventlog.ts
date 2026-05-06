@@ -249,7 +249,7 @@ export const insertIntoEventlog = (
           clientId,
           sessionId,
           schemaHash: eventDefSchemaHash,
-          syncMetadataJson: eventEncoded.meta.syncMetadata,
+          syncMetadataJson: eventEncoded.meta?.syncMetadata ?? Option.none(),
         },
       }),
     )
@@ -271,7 +271,7 @@ export const updateSyncMetadata = (items: ReadonlyArray<LiveStoreEvent.Client.En
           tableName: EVENTLOG_META_TABLE,
           columns: eventlogMetaTable.sqliteDef.columns,
           where: { seqNumGlobal: event.seqNum.global, seqNumClient: event.seqNum.client },
-          updateValues: { syncMetadataJson: event.meta.syncMetadata },
+          updateValues: { syncMetadataJson: event.meta?.syncMetadata ?? Option.none() },
         }),
       )
     }
@@ -283,17 +283,19 @@ export const getSyncBackendCursorInfo = ({ remoteHead }: { remoteHead: EventSequ
 
     if (remoteHead === EventSequenceNumber.Client.ROOT.global) return Option.none()
 
-    const EventlogQuerySchema = Schema.Struct({
-      syncMetadataJson: Schema.fromJsonString(Schema.Option(Schema.JsonValue)),
-    }).pipe(Schema.Array, Schema.head)
+    const EventlogQuerySchema = Schema.Array(
+      Schema.Struct({
+        syncMetadataJson: Schema.fromJsonString(Schema.Option(Schema.JsonValue)),
+      }),
+    )
 
     const syncMetadataOption = yield* Effect.sync(() =>
       dbEventlog.select<{ syncMetadataJson: string }>(
         sql`SELECT syncMetadataJson FROM ${EVENTLOG_META_TABLE} WHERE seqNumGlobal = ${remoteHead} ORDER BY seqNumClient ASC LIMIT 1`,
       ),
     ).pipe(
-      Effect.andThen(Schema.decodeEffect(EventlogQuerySchema)),
-      Effect.map((result) => Option.flatMap(result, (_) => _.syncMetadataJson)),
+      Effect.flatMap((rows) => Schema.decodeEffect(EventlogQuerySchema)(rows)),
+      Effect.map((result) => (result[0]?.syncMetadataJson ?? Option.none()) as Option.Option<Schema.JsonValue>),
       Effect.orDie,
     )
 

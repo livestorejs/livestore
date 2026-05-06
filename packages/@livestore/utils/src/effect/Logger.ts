@@ -9,13 +9,12 @@ const defaultDateFormat = (date: Date): string =>
     .padStart(2, '0')}.${date.getMilliseconds().toString().padStart(3, '0')}`
 
 export const prettyWithThread = (threadName: string, options: { mode?: 'tty' | 'browser' } = {}) =>
-  Logger.replace(
-    Logger.defaultLogger,
-    Logger.prettyLogger({
-      formatDate: (date) => `${defaultDateFormat(date)} ${threadName}`,
+  Logger.layer([
+    Logger.consolePretty({
+      formatDate: (date: Date) => `${defaultDateFormat(date)} ${threadName}`,
       mode: options.mode,
     }),
-  )
+  ])
 
 export const consoleLogger = (threadName: string) =>
   Logger.make((options_) => {
@@ -53,4 +52,4 @@ export const consoleLogger = (threadName: string) =>
     consoleFn(`[${defaultDateFormat(date)} ${threadName}]`, ...messages)
   })
 
-export const consoleWithThread = (threadName: string) => Logger.replace(Logger.defaultLogger, consoleLogger(threadName))
+export const consoleWithThread = (threadName: string) => Logger.layer([consoleLogger(threadName)])

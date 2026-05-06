@@ -232,7 +232,7 @@ const makeAdapterImpl = ({
       }
 
       yield* shutdownChannel.listen.pipe(
-        Stream.flatten(),
+        Stream.mapEffect(Effect.fromResult),
         Stream.tap((cause) =>
           shutdown(cause._tag === 'IntentionalShutdownCause' ? Exit.succeed(cause) : Exit.fail(cause)),
         ),

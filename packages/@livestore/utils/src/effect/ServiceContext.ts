@@ -1,5 +1,4 @@
-import type { Runtime } from 'effect'
-import { Cause, Effect, Exit, Fiber, Layer, pipe, Scope } from 'effect'
+import { Cause, type Context, Effect, Exit, Fiber, Layer, Scope } from 'effect'
 
 export interface MainLayer<Ctx> {
   layer: Layer.Layer<Ctx>
@@ -8,29 +7,28 @@ export interface MainLayer<Ctx> {
 
 export const unsafeMainLayer = <Ctx>(original: Layer.Layer<Ctx>): MainLayer<Ctx> => {
   const scope = Effect.runSync(Scope.make())
-  const layer = pipe(
-    original,
-    Layer.memoize,
-    Effect.parallelFinalizers, // NOTE this runs the layer teardown in parallel
-    Effect.provideService(Scope.Scope, scope),
-    Effect.runSync,
+  const context = Effect.runSync(
+    Layer.build(original).pipe(
+      Effect.provideService(Scope.Scope, scope),
+    ),
   )
+  const layer = Layer.succeedContext(context)
   return { layer, close: Scope.close(scope, Exit.void) }
 }
 
 export const make = <TStaticData, Ctx>(
   staticData: TStaticData,
-  runtime: Runtime.Runtime<Ctx>,
-  close: Effect.Effect<void> = Effect.dieMessage('close not implemented'),
+  runtime: Context.Context<Ctx>,
+  close: Effect.Effect<void> = Effect.die(new Error('close not implemented')),
 ): ServiceContext<Ctx, TStaticData> => {
   return {
     provide: (self) => self.pipe(Effect.provide(runtime)),
     runWithErrorLog: <E, A>(self: Effect.Effect<A, E, Ctx>) => runWithErrorLog(self.pipe(Effect.provide(runtime))),
-    runSync: <E, A>(self: Effect.Effect<A, E, Ctx>) => Effect.runSync(self.pipe(Effect.provide(runtime))),
+    runSync: <E, A>(self: Effect.Effect<A, E, Ctx>) => Effect.runSyncWith(runtime)(self),
     runPromiseWithErrorLog: <E, A>(self: Effect.Effect<A, E, Ctx>) =>
       runPromiseWithErrorLog(self.pipe(Effect.provide(runtime))),
-    runPromiseExit: <E, A>(self: Effect.Effect<A, E, Ctx>) => Effect.runPromiseExit(self.pipe(Effect.provide(runtime))),
-    runPromise: <E, A>(self: Effect.Effect<A, E, Ctx>) => Effect.runPromise(self.pipe(Effect.provide(runtime))),
+    runPromiseExit: <E, A>(self: Effect.Effect<A, E, Ctx>) => Effect.runPromiseExitWith(runtime)(self),
+    runPromise: <E, A>(self: Effect.Effect<A, E, Ctx>) => Effect.runPromiseWith(runtime)(self),
     withRuntime: (fn) => fn(runtime),
     close: close,
     closePromise: () => Effect.runPromise(close),
@@ -60,7 +58,7 @@ export interface ServiceContext<Ctx, TStaticData> {
   readonly runPromiseExit: <E, A>(self: Effect.Effect<A, E, Ctx>) => Promise<Exit.Exit<A, E>>
   readonly runPromise: <E, A>(self: Effect.Effect<A, E, Ctx>) => Promise<A>
 
-  readonly withRuntime: (fn: (runtime: Runtime.Runtime<Ctx>) => void) => void
+  readonly withRuntime: (fn: (runtime: Context.Context<Ctx>) => void) => void
 
   /** Closes the ServiceContext and closing all its layers */
   readonly close: Effect.Effect<void>
@@ -102,7 +100,7 @@ export const empty = <Ctx, TStaticData>(): ServiceContext<Ctx, TStaticData> => (
   runPromiseExit: () => Effect.runPromiseExit(MissingContext),
   runPromise: () => Effect.runPromise(MissingContext),
   withRuntime: () => Effect.runSync(MissingContext),
-  close: Effect.dieMessage('Empty ServiceContext cannot be closed'),
+  close: Effect.die(new Error('Empty ServiceContext cannot be closed')),
   closePromise: () => Promise.reject('Empty ServiceContext cannot be closed'),
   staticData: {} as TStaticData,
 })

@@ -66,7 +66,7 @@ export const makeDirectChannel = ({
         const resultDeferred = yield* Deferred.make<{
           channel: WebChannel.WebChannel<any, any>
           channelVersion: number
-          makeDirectChannelScope: Scope.CloseableScope
+          makeDirectChannelScope: Scope.Closeable
         }>()
 
         while (true) {
@@ -95,6 +95,7 @@ export const makeDirectChannel = ({
            *   - We need to make sure that "interruption" isn't "bubbling out"
            */
           const waitForNewEdgeFiber = yield* Stream.fromPubSub(newEdgeAvailablePubSub).pipe(
+            Stream.filter((edgeName) => edgeName === target),
             Stream.tap((edgeName) => Effect.spanEvent(`new-conn:${edgeName}`)),
             Stream.take(1),
             Stream.runDrain,
@@ -128,18 +129,23 @@ export const makeDirectChannel = ({
             yield* Scope.close(makeDirectChannelScope, Exit.fail('new-edge'))
             // We'll try again
           } else {
-            const channelExit = yield* Fiber.await(raceResult)
-            if (channelExit._tag === 'Failure') {
-              yield* Scope.close(makeDirectChannelScope, channelExit)
+	            const channelExit = yield* Fiber.await(raceResult)
+	            if (channelExit._tag === 'Failure') {
+	              yield* Scope.close(makeDirectChannelScope, channelExit)
 
               const fail = Cause.findFail(channelExit.cause)
 
               if (
                 Result.isSuccess(fail) === true &&
-                Schema.is(WebmeshSchema.DirectChannelResponseNoTransferables)(fail.value.error) === true
+                Schema.is(WebmeshSchema.DirectChannelResponseNoTransferables)(fail.success.error) === true
               ) {
                 // Only retry when there is a new edge available
-                yield* Fiber.await(waitForNewEdgeFiber)
+                yield* Stream.fromPubSub(newEdgeAvailablePubSub).pipe(
+                  Stream.filter((edgeName) => edgeName === target),
+                  Stream.tap((edgeName) => Effect.spanEvent(`retry-on-new-conn:${edgeName}`)),
+                  Stream.take(1),
+                  Stream.runDrain,
+                )
               }
             } else {
               const channel = channelExit.value
@@ -182,7 +188,7 @@ export const makeDirectChannel = ({
         }).pipe(Effect.forkIn(makeDirectChannelScope))
 
         // Wait until the channel is closed and then try to reconnect
-        yield* channel.closedDeferred
+        yield* Deferred.await(channel.closedDeferred)
 
         yield* Scope.close(makeDirectChannelScope, Exit.succeed('channel-closed'))
 
@@ -213,7 +219,7 @@ export const makeDirectChannel = ({
           debugInfo.pendingSends--
         }).pipe(Effect.scoped, Effect.withParentSpan(parentSpan))
 
-      const listen = Stream.fromQueue(listenQueue, { maxChunkSize: 1 }).pipe(Stream.map(Result.succeed))
+      const listen = Stream.fromQueue(listenQueue).pipe(Stream.map(Result.succeed))
 
       const closedDeferred = yield* Effect.acquireRelease(Deferred.make<void>(), Deferred.done(Exit.void))
 

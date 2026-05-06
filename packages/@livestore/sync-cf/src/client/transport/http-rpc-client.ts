@@ -14,6 +14,7 @@ import {
   RpcClient,
   RpcSerialization,
   Schedule,
+  Semaphore,
   Schema,
   Stream,
   SubscriptionRef,
@@ -175,7 +176,7 @@ export const makeHttpSync =
           Stream.withSpan('http-sync-client:pull'),
         )
 
-      const pushSemaphore = yield* Effect.makeSemaphore(1)
+      const pushSemaphore = yield* Semaphore.make(1)
 
       const push: SyncBackend.SyncBackend<SyncMetadata>['push'] = Effect.fn('http-sync-client:push')(
         function* (batch) {

@@ -1,6 +1,5 @@
 import type { SchemaIssue, Scope, WebChannel } from '@livestore/utils/effect'
 import {
-  Data,
   Duration,
   Effect,
   FiberMap,
@@ -45,12 +44,12 @@ export const provideSessionInfo = ({
     yield* webChannel.send(sessionInfo)
 
     yield* webChannel.listen.pipe(
-      Stream.flatten(),
+      Stream.mapEffect(Effect.fromResult),
       Stream.filter(Schema.is(RequestSessions)),
       Stream.tap(() => webChannel.send(sessionInfo)),
       Stream.runDrain,
     )
-  })
+  }) as Effect.Effect<void, SchemaIssue.Issue>
 
 /** Usually called in devtools */
 export const requestSessionInfoSubscription = ({
@@ -59,8 +58,8 @@ export const requestSessionInfoSubscription = ({
   staleTimeout = Duration.seconds(5),
 }: {
   webChannel: WebChannel.WebChannel<Message, Message>
-  pollInterval?: Duration.DurationInput
-  staleTimeout?: Duration.DurationInput
+  pollInterval?: Duration.Input
+  staleTimeout?: Duration.Input
 }): Effect.Effect<Subscribable.Subscribable<HashSet.HashSet<SessionInfo>>, SchemaIssue.Issue, Scope.Scope> =>
   Effect.gen(function* () {
     yield* webChannel
@@ -77,20 +76,19 @@ export const requestSessionInfoSubscription = ({
     const sessionInfoSubRef = yield* SubscriptionRef.make<HashSet.HashSet<SessionInfo>>(HashSet.empty())
 
     yield* webChannel.listen.pipe(
-      Stream.flatten(),
+      Stream.mapEffect(Effect.fromResult),
       Stream.filter(Schema.is(SessionInfo)),
-      Stream.map(Data.struct),
       Stream.tap(
         Effect.fn(function* (sessionInfo) {
-          yield* SubscriptionRef.getAndUpdate(sessionInfoSubRef, HashSet.add(sessionInfo))
+          yield* SubscriptionRef.getAndUpdate(sessionInfoSubRef, HashSet.add(sessionInfo) as any)
 
           // Remove sessionInfo from cache after staleTimeout (unless a new identical item resets the timeout)
           yield* FiberMap.run(
-            timeoutFiberMap,
+            timeoutFiberMap as any,
             sessionInfo,
             Effect.gen(function* () {
               yield* Effect.sleep(staleTimeout)
-              yield* SubscriptionRef.getAndUpdate(sessionInfoSubRef, HashSet.remove(sessionInfo))
+              yield* SubscriptionRef.getAndUpdate(sessionInfoSubRef, HashSet.remove(sessionInfo) as any)
             }),
           )
         }),
@@ -100,5 +98,8 @@ export const requestSessionInfoSubscription = ({
       Effect.forkScoped,
     )
 
-    return Subscribable.make({ get: sessionInfoSubRef.get, changes: sessionInfoSubRef.changes })
-  })
+    return Subscribable.make({
+      get: SubscriptionRef.get(sessionInfoSubRef),
+      changes: SubscriptionRef.changes(sessionInfoSubRef),
+    }) as Subscribable.Subscribable<HashSet.HashSet<SessionInfo>>
+  }) as Effect.Effect<Subscribable.Subscribable<HashSet.HashSet<SessionInfo>>, SchemaIssue.Issue, Scope.Scope>

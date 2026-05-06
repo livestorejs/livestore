@@ -32,16 +32,14 @@ export const makeBroadcastChannel = <Msg, MsgEncoded>({
         })
 
       // TODO also listen to `messageerror` in parallel
-      // const listen = Stream.fromEventListener<MessageEvent>(channel, 'message').pipe(
-      //   Stream.map((_) => Schema.decodeExit(listenSchema)(_.data)),
+	      // const listen = Stream.fromEventListener<MessageEvent>(channel, 'message').pipe(
+	      //   Stream.map((_) => Schema.decodeUnknownResult(listenSchema)(_.data)),
       // )
 
       const listen = Stream.asyncPush<Result.Result<Msg, SchemaIssue.Issue>>((emit) =>
         Effect.acquireRelease(
           Effect.gen(function* () {
-            channel.onmessage = (event: any) => {
-              return emit.single(Schema.decodeExit(schema)(event.data))
-            }
+	            channel.onmessage = (event: any) => emit.single(Schema.decodeUnknownResult(schema)(event.data))
 
             return channel
           }),

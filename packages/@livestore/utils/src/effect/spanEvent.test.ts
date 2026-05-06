@@ -14,7 +14,7 @@ const makeTestTracer = () => {
   const spanEvents = new Map<string, Array<RecordedEvent>>()
 
   const tracer = Tracer.make({
-    span(name, parent, context, links, startTime, kind) {
+    span({ name, parent, annotations, links, startTime, kind }) {
       const events: Array<RecordedEvent> = []
       spanEvents.set(name, events)
       const attributes = new Map<string, unknown>()
@@ -24,7 +24,7 @@ const makeTestTracer = () => {
         spanId: `test-${name}`,
         traceId: 'test-trace',
         parent,
-        context,
+        annotations,
         status: { _tag: 'Started' as const, startTime },
         attributes,
         links: [...links],
@@ -41,7 +41,7 @@ const makeTestTracer = () => {
       }
     },
     context(f) {
-      return f()
+      return f as any
     },
   })
 

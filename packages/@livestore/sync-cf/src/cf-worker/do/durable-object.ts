@@ -24,7 +24,7 @@ import {
   type SyncBackendRpcInterface,
   WebSocketAttachmentSchema,
 } from '../shared.ts'
-import { DoCtx } from './layer.ts'
+import { layer as doCtxLayer } from './layer.ts'
 import { createDoRpcHandler } from './transport/do-rpc-server.ts'
 import { createHttpRpcHandler } from './transport/http-rpc-server.ts'
 import { makeRpcServer } from './transport/ws-rpc-server.ts'
@@ -204,7 +204,7 @@ export const makeDurableObject: MakeDurableObjectClass = (options) => {
           Effect.succeed(new Response('Error', { status: 500, statusText: cause.toString() })),
         ),
         Effect.withSpan('@livestore/sync-cf:durable-object:fetch'),
-        Effect.provide(DoCtx.Default({ doSelf: this, doOptions: options, from: request })),
+        Effect.provide(doCtxLayer({ doSelf: this, doOptions: options, from: request })),
         this.runEffectAsPromise,
       )
 

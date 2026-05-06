@@ -68,12 +68,12 @@ const hasPropertyAnnotation = <T>(
 }
 
 const getAstAnnotation = <T>(ast: SchemaAST.AST, annotationId: PropertyKey): Option.Option<T> =>
-  getAnnotationRecordValue<T>(SchemaAST.resolve(ast), annotationId)
+  getAnnotationRecordValue<T>(SchemaAST.resolve(ast) as any, annotationId)
 
 const getAnnotationRecordValue = <T>(
   annotations: Record<PropertyKey, unknown> | undefined,
   annotationId: PropertyKey,
-): Option.Option<T> => Option.fromNullishOr(annotations?.[annotationId] as T | undefined)
+): Option.Option<T> => Option.fromNullishOr(annotations?.[annotationId as any] as T | undefined)
 
 /**
  * Maps schema property signatures to SQLite column definitions.

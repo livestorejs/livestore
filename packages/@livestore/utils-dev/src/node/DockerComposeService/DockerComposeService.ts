@@ -85,17 +85,17 @@ export class DockerComposeService extends Context.Service<DockerComposeService, 
           stderr: 'pipe',
         })
 
-        const process = yield* pullCommand.pipe(Effect.provide(childProcessContext))
+        const process = yield* spawner.spawn(pullCommand)
 
         const stdoutFiber = yield* process.stdout.pipe(
-          Stream.decodeText('utf8'),
-          Stream.runFold('', (acc, chunk) => acc + chunk),
+          Stream.decodeText({ encoding: 'utf8' }),
+          Stream.runFold(() => '', (acc, chunk) => acc + chunk),
           Effect.forkChild,
         )
 
         const stderrFiber = yield* process.stderr.pipe(
-          Stream.decodeText('utf8'),
-          Stream.runFold('', (acc, chunk) => acc + chunk),
+          Stream.decodeText({ encoding: 'utf8' }),
+          Stream.runFold(() => '', (acc, chunk) => acc + chunk),
           Effect.forkChild,
         )
 
@@ -140,12 +140,12 @@ export class DockerComposeService extends Context.Service<DockerComposeService, 
         if (detached === true) startArgs.push('-d')
         if (serviceName !== undefined) startArgs.push(serviceName)
 
-        const command = yield* ChildProcess.make(startArgs[0]!, startArgs.slice(1), {
+        const command = yield* spawner.spawn(ChildProcess.make(startArgs[0]!, startArgs.slice(1), {
           cwd,
           env: options.env ?? {},
           stderr: 'inherit',
           stdout: 'inherit',
-        }).pipe(
+        })).pipe(
           Effect.mapError(
             (cause) =>
               new DockerComposeError({
@@ -153,7 +153,6 @@ export class DockerComposeService extends Context.Service<DockerComposeService, 
                 note: `Failed to start Docker Compose services in ${cwd}`,
               }),
           ),
-          Effect.provide(childProcessContext),
         )
 
         // Wait for command completion
@@ -168,7 +167,6 @@ export class DockerComposeService extends Context.Service<DockerComposeService, 
                   }),
                 ),
           ),
-          Effect.provide(childProcessContext),
         )
 
         // Perform health check if requested
@@ -214,7 +212,7 @@ export class DockerComposeService extends Context.Service<DockerComposeService, 
           if (since !== undefined) logsArgs.push('--since', since)
           if (serviceName !== undefined) logsArgs.push(serviceName)
 
-          const command = yield* ChildProcess.make(logsArgs[0]!, logsArgs.slice(1), { cwd }).pipe(
+          const command = yield* spawner.spawn(ChildProcess.make(logsArgs[0]!, logsArgs.slice(1), { cwd })).pipe(
             Effect.mapError(
               (cause) =>
                 new DockerComposeError({
@@ -222,11 +220,10 @@ export class DockerComposeService extends Context.Service<DockerComposeService, 
                   note: `Failed to read Docker Compose logs in ${cwd}`,
                 }),
             ),
-            Effect.provide(childProcessContext),
           )
 
           return command.stdout.pipe(
-            Stream.decodeText('utf8'),
+            Stream.decodeText({ encoding: 'utf8' }),
             Stream.splitLines,
             Stream.mapError(
               (cause) =>
@@ -236,7 +233,7 @@ export class DockerComposeService extends Context.Service<DockerComposeService, 
                 }),
             ),
           )
-        }).pipe(Stream.unwrapScoped)
+        }).pipe(Stream.unwrap)
 
       const down = Effect.fn('downDockerCompose')(function* (options?: {
         readonly env?: Record<string, string>
@@ -288,7 +285,7 @@ export class DockerComposeService extends Context.Service<DockerComposeService, 
 ) {}
 
 export const makeDockerComposeLayer = (args: DockerComposeArgs) =>
-  Layer.scoped(DockerComposeService, DockerComposeService.make(args))
+  Layer.effect(DockerComposeService, DockerComposeService.make(args))
 
 const performHealthCheck = ({
   url,

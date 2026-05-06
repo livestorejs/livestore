@@ -19,7 +19,7 @@ const partialStructSchema = (schema: Schema.Top): Schema.Top =>
 
 const pickStructSchema = (schema: Schema.Top, keys: ReadonlyArray<string>): Schema.Top =>
   typeof (schema as { mapFields?: unknown }).mapFields === 'function'
-    ? ((schema as any).mapFields(Struct.pick(keys)) as Schema.Top)
+    ? ((schema as any).mapFields(Struct.pick(keys as any)) as Schema.Top)
     : schema
 
 /**
@@ -307,8 +307,8 @@ export const deriveEventAndMaterializer = ({
     const schemaProps = Schema.getResolvedPropertySignatures(valueSchema)
     if (schemaProps.length === 0 || partialSet === false) {
       const valueColJsonSchema = Schema.fromJsonString(valueSchema)
-      const encodedInsertValue = Schema.encodeSyncDebug(valueColJsonSchema)(value ?? defaultValue)
-      const encodedUpdateValue = Schema.encodeSyncDebug(valueColJsonSchema)(value)
+      const encodedInsertValue = Schema.encodeSyncDebug(valueColJsonSchema as any)(value ?? defaultValue)
+      const encodedUpdateValue = Schema.encodeSyncDebug(valueColJsonSchema as any)(value)
 
       return {
         sql: `INSERT INTO '${name}' (id, value) VALUES (?, ?) ON CONFLICT (id) DO UPDATE SET value = ?`,
@@ -318,14 +318,14 @@ export const deriveEventAndMaterializer = ({
     } else {
       const valueColJsonSchema = Schema.fromJsonString(partialStructSchema(valueSchema))
 
-      const encodedInsertValue = Schema.encodeSyncDebug(valueColJsonSchema)(mergeDefaultValues(defaultValue, value))
+      const encodedInsertValue = Schema.encodeSyncDebug(valueColJsonSchema as any)(mergeDefaultValues(defaultValue, value))
 
       let jsonSetSql = 'value'
       const setBindValues: unknown[] = []
 
       const keys = Object.keys(value)
       const partialUpdateSchema = pickStructSchema(valueSchema, keys)
-      const encodedPartialUpdate = Schema.encodeSyncDebug(partialUpdateSchema)(value)
+      const encodedPartialUpdate = Schema.encodeSyncDebug(partialUpdateSchema as any)(value)
 
       for (const key in encodedPartialUpdate) {
         const encodedValueForKey = encodedPartialUpdate[key]

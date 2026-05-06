@@ -192,7 +192,7 @@ export const makeSingleTabAdapter =
       const sessionId = options.sessionId ?? getPersistedId(`sessionId:${storeId}`, 'session')
 
       yield* shutdownChannel.listen.pipe(
-        Stream.flatten(),
+        Stream.mapEffect(Effect.fromResult),
         Stream.tap((cause) =>
           shutdown(cause._tag === 'IntentionalShutdownCause' ? Exit.succeed(cause) : Exit.fail(cause)),
         ),
@@ -427,7 +427,7 @@ export const makeSingleTabAdapter =
       })
 
       return clientSession
-    }).pipe(Effect.provide(Opfs.Opfs.Default), UnknownError.mapToUnknownError)
+    }).pipe(Effect.provide(Opfs.layer), UnknownError.mapToUnknownError)
 
 /** Persists clientId/sessionId to storage */
 const getPersistedId = (key: string, storageType: 'session' | 'local') => {

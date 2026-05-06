@@ -101,7 +101,7 @@ const makeWorkerRunnerOuter = (
           Effect.tapCauseLogPretty,
           Effect.provide(
             Layer.mergeAll(
-              Opfs.Opfs.Default,
+              Opfs.layer,
               WebmeshWorker.CacheService.layer({
                 nodeName: Devtools.makeNodeName.client.leader({ storeId, clientId }),
               }),

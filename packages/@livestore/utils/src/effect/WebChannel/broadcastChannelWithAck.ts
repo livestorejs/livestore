@@ -1,6 +1,7 @@
-import { Deferred, Exit, Latch, Predicate, Queue, Schema, Scope, Stream } from 'effect'
+import { Deferred, Exit, Latch, Predicate, Queue, Scope, Stream, type SchemaIssue } from 'effect'
 
 import * as Effect from '../Effect.ts'
+import * as Schema from '../Schema/index.ts'
 import type { InputSchema, WebChannel } from './common.ts'
 import { listenToDebugPing, mapSchema, WebChannelSymbol } from './common.ts'
 
@@ -49,20 +50,22 @@ export const broadcastChannelWithAck = <MsgListen, MsgSend, MsgListenEncoded, Ms
 
       const postMessage = (msg: typeof Message.Type) => channel.postMessage(Schema.encodeSync(Message)(msg))
 
-      const send = (message: MsgSend) =>
-        Effect.gen(function* () {
-          yield* connectedLatch.await
+	      const send = (message: MsgSend): Effect.Effect<void, SchemaIssue.Issue> =>
+	        Effect.gen(function* () {
+	          postMessage(ConnectMessage.make({ from: connectionId }))
+	          yield* connectedLatch.await
 
-          const payload = yield* Schema.encodeEffect(schema.send)(message)
+	          const payload = yield* Schema.encodeEffect(schema.send)(message)
           postMessage(PayloadMessage.make({ from: connectionId, to: peerIdRef.current!, payload }))
-        })
+        }) as Effect.Effect<void, SchemaIssue.Issue>
 
-      const listen = Stream.fromEventListener<MessageEvent>(channel, 'message').pipe(
-        Stream.map(({ data }) => data),
-        Stream.map(Schema.decodeOption(Message)),
-        Stream.filterMap((_) => _),
-        Stream.mapEffect((data) =>
+	      const incoming = Stream.fromEventListener<MessageEvent>(channel, 'message').pipe(
+	        Stream.map(({ data }) => data),
+	        Stream.map((data) => Schema.decodeUnknownResult(Message)(data)),
+        Stream.mapEffect((decoded) =>
           Effect.gen(function* () {
+            if (decoded._tag === 'Failure') return decoded as any
+            const data = decoded.success
             switch (data._tag) {
               // Case: other side sends connect message (because otherside wasn't yet online when this side send their connect message)
               case 'ConnectMessage': {
@@ -89,22 +92,31 @@ export const broadcastChannelWithAck = <MsgListen, MsgSend, MsgListenEncoded, Ms
               }
               case 'PayloadMessage': {
                 if (data.to === connectionId) {
-                  return Schema.decodeExit(schema.listen)(data.payload)
+	                  return Schema.decodeUnknownResult(schema.listen)(data.payload)
                 }
                 return undefined
               }
             }
           }),
         ),
-        Stream.filter(Predicate.isNotUndefined),
-        listenToDebugPing(channelName),
-      )
+	        Stream.filter(Predicate.isNotUndefined),
+	        listenToDebugPing(channelName),
+	      )
 
-      const establishConnection = Effect.gen(function* () {
-        postMessage(ConnectMessage.make({ from: connectionId }))
-      })
+	      const establishConnection = Effect.gen(function* () {
+	        postMessage(ConnectMessage.make({ from: connectionId }))
+	      })
 
-      yield* establishConnection
+	      const listenQueue = yield* Effect.acquireRelease(Queue.unbounded<any>(), Queue.shutdown)
+	      yield* incoming.pipe(
+	        Stream.tap((msg) => Queue.offer(listenQueue, msg)),
+	        Stream.runDrain,
+	        Effect.tapCauseLogPretty,
+	        Effect.forkScoped,
+	      )
+	      yield* Effect.yieldNow
+
+	      yield* establishConnection
 
       yield* Effect.addFinalizer(() =>
         Effect.gen(function* () {
@@ -118,8 +130,8 @@ export const broadcastChannelWithAck = <MsgListen, MsgSend, MsgListenEncoded, Ms
 
       return {
         [WebChannelSymbol]: WebChannelSymbol,
-        send,
-        listen,
+	        send,
+	        listen: Stream.fromQueue(listenQueue),
         closedDeferred,
         shutdown: Scope.close(scope, Exit.void),
         schema,

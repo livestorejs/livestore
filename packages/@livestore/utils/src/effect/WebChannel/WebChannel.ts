@@ -1,5 +1,5 @@
-import { Deferred, Result, Exit, identity, Option, PubSub, Queue, Scope } from 'effect'
-import type { DurationInput } from 'effect/Duration'
+import { Deferred, Result, Exit, identity, Option, Predicate, PubSub, Queue, Scope, type SchemaIssue } from 'effect'
+import type { Input as DurationInput } from 'effect/Duration'
 
 import { shouldNeverHappen } from '../../misc.ts'
 import * as Effect from '../Effect.ts'
@@ -49,17 +49,17 @@ export const messagePortChannel: <MsgListen, MsgSend, MsgListenEncoded, MsgSendE
 
       const label = debugId === undefined ? 'messagePort' : `messagePort:${debugId}`
 
-      const send = (message: any) =>
+      const send = (message: any): Effect.Effect<void, SchemaIssue.Issue> =>
         Effect.gen(function* () {
           const [messageEncoded, transferables] = yield* Schema.encodeWithTransferables(schema.send)(message)
           port.postMessage(messageEncoded, transferables)
-        })
+        }) as Effect.Effect<void, SchemaIssue.Issue>
 
-      const listen = Stream.fromEventListener<MessageEvent>(port, 'message').pipe(
-        // Stream.tap((_) => Effect.log(`${label}:message`, _.data)),
-        Stream.map((_) => Schema.decodeExit(schema.listen)(_.data)),
-        listenToDebugPing(label),
-      )
+	      const listen = Stream.fromEventListener<MessageEvent>(port, 'message').pipe(
+	        // Stream.tap((_) => Effect.log(`${label}:message`, _.data)),
+	        Stream.map((_) => Schema.decodeUnknownResult(schema.listen)(_.data)),
+	        listenToDebugPing(label),
+	      )
 
       // NOTE unfortunately MessagePorts don't emit a `close` event when the other end is closed
 
@@ -162,7 +162,7 @@ export const messagePortChannelWithAck: <MsgListen, MsgSend, MsgListenEncoded, M
         id: debugId,
       }
 
-      const send = (message: any) =>
+      const send = (message: any): Effect.Effect<void, SchemaIssue.Issue> =>
         Effect.gen(function* () {
           debugInfo.sendTotal++
           debugInfo.sendPending++
@@ -179,38 +179,37 @@ export const messagePortChannelWithAck: <MsgListen, MsgSend, MsgListenEncoded, M
 
           port.postMessage(messageEncoded, transferables)
 
-          yield* ack
+          yield* Deferred.await(ack)
 
           requestAckMap.delete(id)
 
           debugInfo.sendPending--
-        })
+        }) as Effect.Effect<void, SchemaIssue.Issue>
 
-      // TODO re-implement this via `port.onmessage`
-      // https://github.com/livestorejs/livestore/issues/262
-      const listen = Stream.fromEventListener<MessageEvent>(port, 'message').pipe(
-        // Stream.onStart(Effect.log(`${label}:listen:start`)),
-        // Stream.tap((_) => Effect.log(`${label}:message`, _.data)),
-        Stream.map((_) => Schema.decodeExit(ChannelMessage)(_.data)),
-        Stream.tap((msg) =>
-          Effect.gen(function* () {
-            if (msg._tag === 'Success') {
-              if (msg.success._tag === 'ChannelRequestAck') {
-                yield* Deferred.succeed(requestAckMap.get(msg.success.reqId)!, void 0)
-              } else if (msg.success._tag === 'ChannelRequest') {
-                debugInfo.listenTotal++
-                port.postMessage(yield* Schema.encodeEffect(ChannelMessage)({ _tag: 'ChannelRequestAck', reqId: msg.success.id }))
-              }
-            }
-          }),
-        ),
-        Stream.filterMap((msg) =>
+	      const listen = Stream.fromEventListener<MessageEvent>(port, 'message').pipe(
+	        // Stream.onStart(Effect.log(`${label}:listen:start`)),
+	        // Stream.tap((_) => Effect.log(`${label}:message`, _.data)),
+	        Stream.map((_) => Schema.decodeUnknownResult(ChannelMessage)(_.data)),
+	        Stream.tap((msg) =>
+	          Effect.gen(function* () {
+	            if (msg._tag === 'Success') {
+					if (msg.success._tag === 'ChannelRequestAck') {
+						yield* Deferred.succeed(requestAckMap.get(msg.success.reqId)!, void 0)
+					} else if (msg.success._tag === 'ChannelRequest') {
+						debugInfo.listenTotal++
+						port.postMessage(yield* Schema.encodeEffect(ChannelMessage)({ _tag: 'ChannelRequestAck', reqId: msg.success.id }))
+					}
+				}
+	          }),
+	        ),
+        Stream.map((msg) =>
           msg._tag === 'Failure'
-            ? Option.some(msg as any)
+            ? (msg as any)
             : msg.success._tag === 'ChannelRequest'
-              ? Option.some(Result.succeed(msg.success.payload))
-              : Option.none(),
+              ? Result.succeed(msg.success.payload)
+              : undefined,
         ),
+        Stream.filter(Predicate.isNotUndefined),
         (_) => _ as Stream.Stream<Result.Result<any, any>>,
         listenToDebugPing(label),
       )
@@ -220,9 +219,9 @@ export const messagePortChannelWithAck: <MsgListen, MsgSend, MsgListenEncoded, M
       const closedDeferred = yield* Effect.acquireRelease(Deferred.make<void>(), Deferred.done(Exit.void))
       const supportsTransferables = true
 
-      yield* Effect.addFinalizer(() =>
-        Effect.try({ try: () => port.close(), catch: (cause) => cause }).pipe(Effect.ignore({ log: true })),
-      )
+	      yield* Effect.addFinalizer(() =>
+	        Effect.try({ try: () => port.close(), catch: (cause) => cause }).pipe(Effect.ignore({ log: true })),
+	      )
 
       return {
         [WebChannelSymbol]: WebChannelSymbol,
@@ -261,8 +260,8 @@ export const queueChannelProxy = <MsgListen, MsgSend>({
   schema: inputSchema,
 }: {
   schema:
-    | Schema.Schema<MsgListen | MsgSend, any>
-    | { listen: Schema.Schema<MsgListen, any>; send: Schema.Schema<MsgSend, any> }
+    | Schema.Codec<MsgListen | MsgSend, any, any, any>
+    | { listen: Schema.Codec<MsgListen, any, any, any>; send: Schema.Codec<MsgSend, any, any, any> }
 }): Effect.Effect<QueueChannelProxy<MsgListen, MsgSend>, never, Scope.Scope> =>
   Effect.scopeWithCloseable((scope) =>
     Effect.gen(function* () {
@@ -320,9 +319,9 @@ export const toOpenChannel = <MsgListen, MsgSend>(
       current: undefined as { deferred: Deferred.Deferred<void>; requestId: string } | undefined,
     }
 
-    yield* channel.listen.pipe(
-      // TODO implement this on the "chunk" level for better performance
-      options?.heartbeat !== undefined
+	yield* channel.listen.pipe(
+		// TODO implement this on the "chunk" level for better performance
+		options?.heartbeat !== undefined
         ? Stream.filterEffect(
             Effect.fn(function* (msg) {
               if (msg._tag === 'Success' && Schema.is(WebChannelHeartbeat)(msg.success) === true) {
@@ -342,12 +341,13 @@ export const toOpenChannel = <MsgListen, MsgSend>(
             }),
           )
         : identity,
-      Stream.tapChunk((chunk) => Queue.offerAll(queue, chunk)),
-      Stream.runDrain,
-      Effect.forkScoped,
-    )
+	      Stream.tap((msg) => Queue.offer(queue, msg)),
+	      Stream.runDrain,
+	      Effect.forkScoped,
+	    )
+	yield* Effect.yieldNow
 
-    if (options?.heartbeat !== undefined) {
+	if (options?.heartbeat !== undefined) {
       const { interval, timeout } = options.heartbeat
       yield* Effect.gen(function* () {
         while (true) {
@@ -356,7 +356,7 @@ export const toOpenChannel = <MsgListen, MsgSend>(
           yield* heartbeatChannel.send(WebChannelPing.make({ requestId }))
           const deferred = yield* Deferred.make<void>()
           pendingPingDeferredRef.current = { deferred, requestId }
-          yield* deferred.pipe(
+          yield* Deferred.await(deferred).pipe(
             Effect.timeout(timeout),
             Effect.catchTag('TimeoutError', () => channel.shutdown),
           )
@@ -367,7 +367,7 @@ export const toOpenChannel = <MsgListen, MsgSend>(
     // We're currently limiting the chunk size to 1 to not drop messages in scearnios where
     // the listen stream get subscribed to, only take N messages and then unsubscribe.
     // Without this limit, messages would be dropped.
-    const listen = Stream.fromQueue(queue, { maxChunkSize: 1 })
+    const listen = Stream.fromQueue(queue)
 
     return {
       [WebChannelSymbol]: WebChannelSymbol,
