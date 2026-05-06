@@ -2582,8 +2582,12 @@ jobs:
   publish-snapshot-version:
     if: github.event.pull_request.head.repo.fork != true
     runs-on: ubuntu-24.04
+    permissions:
+      contents: write
+      id-token: write
     needs: [test-unit, test-integration-node-sync, test-integration-sync-provider, test-integration-playwright]
     env:
+      GH_TOKEN: ${{ github.token }}
       NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
     defaults:
       run:

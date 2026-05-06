@@ -307,6 +307,10 @@ done`,
     'publish-snapshot-version': {
       if: IS_NOT_FORK,
       'runs-on': 'ubuntu-24.04',
+      permissions: {
+        contents: 'write',
+        'id-token': 'write',
+      },
       needs: [
         'test-unit',
         'test-integration-node-sync',
@@ -314,6 +318,7 @@ done`,
         'test-integration-playwright',
       ],
       env: {
+        GH_TOKEN: '${{ github.token }}',
         NODE_AUTH_TOKEN: '${{ secrets.NPM_TOKEN }}',
       },
       defaults: bashShellDefaults,
