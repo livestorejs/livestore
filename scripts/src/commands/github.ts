@@ -50,8 +50,8 @@ interface TExistingRuleset {
 
 const ManagedRulesetSchema = Schema.Struct({
   name: Schema.String,
-  target: Schema.Literal('branch', 'tag'),
-  enforcement: Schema.Literal('disabled', 'active', 'evaluate'),
+  target: Schema.Literals(['branch', 'tag']),
+  enforcement: Schema.Literals(['disabled', 'active', 'evaluate']),
   bypass_actors: Schema.optional(Schema.NullOr(RulesetRequestBody.fields.bypass_actors)),
   conditions: RulesetRequestBody.fields.conditions,
   rules: RulesetRequestBody.fields.rules,
@@ -71,12 +71,12 @@ const getViewerPermission = Effect.gen(function* () {
     stderr: 'pipe',
   }).pipe(Effect.provide(LivestoreWorkspace.toCwd()))
 
-  const ViewerPermissionSchema = Schema.parseJson(
+  const ViewerPermissionSchema = Schema.fromJsonString(
     Schema.Struct({
       viewerPermission: Schema.String,
     }),
   )
-  const parsed = yield* Schema.decode(ViewerPermissionSchema)(response)
+  const parsed = yield* Schema.decodeEffect(ViewerPermissionSchema)(response)
   return parsed.viewerPermission
 })
 
@@ -86,13 +86,15 @@ const getRulesetByName = (name: string) =>
       stderr: 'pipe',
     }).pipe(Effect.provide(LivestoreWorkspace.toCwd()))
 
-    const ExistingRulesetSchema = Schema.fromJsonString(Schema.Array(
+    const ExistingRulesetSchema = Schema.fromJsonString(
+      Schema.Array(
         Schema.Struct({
           id: Schema.Number,
           name: Schema.String,
           enforcement: Schema.String,
         }),
-      ))
+      ),
+    )
     const rulesets = yield* Schema.decodeEffect(ExistingRulesetSchema)(response)
     return rulesets.find((ruleset) => ruleset.name === name) ?? null
   })
@@ -103,8 +105,8 @@ const getRulesetDetails = (rulesetId: number) =>
       stderr: 'pipe',
     }).pipe(Effect.provide(LivestoreWorkspace.toCwd()))
 
-    const parser = Schema.parseJson(ManagedRulesetSchema)
-    return yield* Schema.decode(parser)(details)
+    const parser = Schema.fromJsonString(ManagedRulesetSchema)
+    return yield* Schema.decodeEffect(parser)(details)
   })
 
 const writeRulesetBodyToTmp = (body: TRulesetRequestBody) =>

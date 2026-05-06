@@ -22,13 +22,13 @@ import {
   SubscriptionRef,
 } from '@livestore/utils/effect'
 
-import { type MaterializeError, type SqliteDb, UnknownError } from '../adapter-types.ts'
+import { MaterializeError, type SqliteDb, UnknownError } from '../adapter-types.ts'
 import { IntentionalShutdownCause } from '../errors.ts'
 import { makeMaterializerHash } from '../materializer-helper.ts'
 import type { LiveStoreSchema } from '../schema/mod.ts'
 import { EventSequenceNumber, LiveStoreEvent, resolveEventDef, SystemTables } from '../schema/mod.ts'
 import { EVENTLOG_META_TABLE, SYNC_STATUS_TABLE } from '../schema/state/sqlite/system-tables/eventlog-tables.ts'
-import type { BackendIdMismatchError, IsOfflineError, SyncBackend } from '../sync/sync.ts'
+import { BackendIdMismatchError, type IsOfflineError, type SyncBackend } from '../sync/sync.ts'
 import { isRejectedPushError, LeaderAheadError, NonMonotonicBatchError, StaleRebaseGenerationError } from './RejectedPushError.ts'
 import * as SyncState from '../sync/syncstate.ts'
 import { sql } from '../util.ts'
@@ -313,12 +313,10 @@ export const makeLeaderSyncProcessor = ({
       const handleBackendIdMismatchError = (error: BackendIdMismatchError) =>
         handleBackendIdMismatch({ error, onBackendIdMismatch, shutdownChannel })
 
-      const maybeShutdownOnError = (
-        cause: Cause.Cause<
-          | UnknownError
-          | MaterializeError
-        >,
-      ) =>
+      const isShutdownChannelError = (error: unknown): error is UnknownError | MaterializeError | BackendIdMismatchError =>
+        Schema.is(UnknownError)(error) || Schema.is(MaterializeError)(error) || Schema.is(BackendIdMismatchError)(error)
+
+      const maybeShutdownOnError = (cause: Cause.Cause<unknown>) =>
         Effect.gen(function* () {
           if (Cause.hasInterruptsOnly(cause) === true) {
             return
@@ -335,7 +333,10 @@ export const makeLeaderSyncProcessor = ({
           }
 
           const fail = Cause.findFail(cause)
-          const errorToSend = Result.isSuccess(fail) === true ? fail.success.error : UnknownError.make({ cause })
+          const errorToSend =
+            Result.isSuccess(fail) === true && isShutdownChannelError(fail.success.error) === true
+              ? fail.success.error
+              : UnknownError.make({ cause })
           yield* shutdownChannel.send(errorToSend).pipe(Effect.orDie)
 
           return yield* Effect.failCause(cause).pipe(Effect.orDie)
@@ -363,9 +364,7 @@ export const makeLeaderSyncProcessor = ({
         syncBackendPushQueue,
         devtoolsLatch: ctxRef.current?.devtoolsLatch,
         backendPushBatchSize,
-      }).pipe(
-        Effect.catchCause(maybeShutdownOnError),
-      )
+      }).pipe(Effect.catchCause(maybeShutdownOnError))
 
       yield* FiberHandle.run(backendPushingFiberHandle, backendPushingEffect)
 
