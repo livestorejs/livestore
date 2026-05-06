@@ -249,9 +249,7 @@ export const makeSingleTabAdapter =
       )
 
       // Helper to run requests against the worker
-      const runInWorker = <A, I, E, EI, R>(
-        req: WorkerSchema.LeaderWorkerInnerRequest & Schema.WithResult<A, I, E, EI, R>,
-      ): Effect.Effect<A, E, R> =>
+      const runInWorker = (req: WorkerSchema.LeaderWorkerInnerRequest): Effect.Effect<any, never, never> =>
         Fiber.join(innerWorkerFiber).pipe(
           Effect.flatMap((worker) => worker.executeEffect(req)),
           Effect.catchIf(isWorkerTransportError, (e) => Effect.die(e)),
@@ -260,18 +258,16 @@ export const makeSingleTabAdapter =
             duration: 2000,
           }),
           Effect.withSpan(`@livestore/adapter-web:single-tab:runInWorker:${req._tag}`),
-        )
+        ) as Effect.Effect<any, never, never>
 
-      const runInWorkerStream = <A, I, E, EI, R>(
-        req: WorkerSchema.LeaderWorkerInnerRequest & Schema.WithResult<A, I, E, EI, R>,
-      ): Stream.Stream<A, E, R> =>
+      const runInWorkerStream = (req: WorkerSchema.LeaderWorkerInnerRequest): Stream.Stream<any, never, never> =>
         Effect.gen(function* () {
           const innerWorker = yield* Fiber.join(innerWorkerFiber)
           return innerWorker.execute(req).pipe(
-            Stream.refineOrDie((e) => isWorkerTransportError(e) === true ? Option.none() : Option.some(e)),
+            Stream.catchIf(isWorkerTransportError, (e) => Stream.die(e)),
             Stream.withSpan(`@livestore/adapter-web:single-tab:runInWorkerStream:${req._tag}`),
           )
-        }).pipe(Stream.unwrap)
+        }).pipe(Stream.unwrap) as Stream.Stream<any, never, never>
 
       // Forward boot status from worker
       const bootStatusFiber = yield* runInWorkerStream(new WorkerSchema.LeaderWorkerInnerBootStatusStream()).pipe(
@@ -344,7 +340,7 @@ export const makeSingleTabAdapter =
         Effect.gen(function* () {
           if (
             Exit.isFailure(ex) === true &&
-            Exit.isInterrupted(ex) === false &&
+            Cause.hasInterruptsOnly(ex.cause) === false &&
             Schema.is(IntentionalShutdownCause)(Cause.squash(ex.cause)) === false &&
             Schema.is(StoreInterrupted)(Cause.squash(ex.cause)) === false
           ) {

@@ -292,12 +292,12 @@ export const connectDevtoolsToStore = Effect.fn('LSD.devtools.connectStoreToDevt
               }),
             )
 
-          send(store[StoreInternalsSymbol].syncProcessor.syncState.pipe(Effect.runSync))
+          send(store[StoreInternalsSymbol].syncProcessor.syncState.get.pipe(Effect.runSync))
 
           syncHeadClientSessionSubscriptions.set(
             subscriptionId,
             store[StoreInternalsSymbol].syncProcessor.syncState.changes.pipe(
-              Stream.tap((syncState) => send(syncState)),
+              Stream.tap((syncState) => Effect.sync(() => send(syncState))),
               Stream.runDrain,
               Effect.interruptible,
               Effect.tapCauseLogPretty,

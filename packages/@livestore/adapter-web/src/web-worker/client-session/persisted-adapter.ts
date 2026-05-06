@@ -375,12 +375,10 @@ export const makePersistedAdapter =
         yield* runLocked.pipe(Effect.interruptible, Effect.tapCauseLogPretty, Effect.forkScoped)
       }
 
-      const runInWorker = <A, I, E, EI, R>(
-        req: WorkerSchema.SharedWorkerRequest & Schema.WithResult<A, I, E, EI, R>,
-      ): Effect.Effect<A, E, R> =>
+      const runInWorker = (req: WorkerSchema.SharedWorkerRequest): Effect.Effect<any, never, never> =>
         Fiber.join(sharedWorkerFiber).pipe(
           // NOTE we need to wait for the shared worker to be initialized before we can send requests to it
-          Effect.tap(() => waitForSharedWorkerInitialized),
+          Effect.tap(() => Deferred.await(waitForSharedWorkerInitialized)),
           Effect.flatMap((worker) => worker.executeEffect(req)),
           Effect.catchIf(isWorkerTransportError, (e) => Effect.die(e)),
           // NOTE we want to treat worker requests as atomic and therefore not allow them to be interrupted
@@ -391,18 +389,16 @@ export const makePersistedAdapter =
             duration: 2000,
           }),
           Effect.withSpan(`@livestore/adapter-web:client-session:runInWorker:${req._tag}`),
-        )
+        ) as Effect.Effect<any, never, never>
 
-      const runInWorkerStream = <A, I, E, EI, R>(
-        req: WorkerSchema.SharedWorkerRequest & Schema.WithResult<A, I, E, EI, R>,
-      ): Stream.Stream<A, E, R> =>
+      const runInWorkerStream = (req: WorkerSchema.SharedWorkerRequest): Stream.Stream<any, never, never> =>
         Effect.gen(function* () {
           const sharedWorker = yield* Fiber.join(sharedWorkerFiber)
           return sharedWorker.execute(req).pipe(
-            Stream.refineOrDie((e) => isWorkerTransportError(e) === true ? Option.none() : Option.some(e)),
+            Stream.catchIf(isWorkerTransportError, (e) => Stream.die(e)),
             Stream.withSpan(`@livestore/adapter-web:client-session:runInWorkerStream:${req._tag}`),
           )
-        }).pipe(Stream.unwrap)
+        }).pipe(Stream.unwrap) as Stream.Stream<any, never, never>
 
       const bootStatusFiber = yield* runInWorkerStream(new WorkerSchema.LeaderWorkerInnerBootStatusStream()).pipe(
         Stream.tap((_) => Queue.offer(bootStatusQueue, _)),
@@ -478,7 +474,7 @@ export const makePersistedAdapter =
         Effect.gen(function* () {
           if (
             Exit.isFailure(ex) === true &&
-            Exit.isInterrupted(ex) === false &&
+            Cause.hasInterruptsOnly(ex.cause) === false &&
             Schema.is(IntentionalShutdownCause)(Cause.squash(ex.cause)) === false &&
             Schema.is(StoreInterrupted)(Cause.squash(ex.cause)) === false
           ) {

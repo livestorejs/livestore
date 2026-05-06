@@ -23,6 +23,7 @@ import {
   identity,
   Layer,
   OtelTracer,
+  Queue,
   Scheduler,
   Schema,
   Stream,
@@ -56,7 +57,7 @@ if (isDevEnv() === true) {
 }
 
 export const makeWorker = (options: WorkerOptions) => {
-  makeWorkerEffect(options).pipe(Effect.runFork)
+  makeWorkerEffect(options).pipe((effect) => Effect.runFork(effect as Effect.Effect<never, unknown, never>))
 }
 
 export const makeWorkerEffect = (options: WorkerOptions) => {
@@ -69,7 +70,7 @@ export const makeWorkerEffect = (options: WorkerOptions) => {
   const runtimeLayer = Layer.mergeAll(FetchHttpClient.layer, TracingLive ?? Layer.empty)
 
   return makeWorkerRunnerOuter(options).pipe(
-    Layer.provide(BrowserWorkerRunner.layer),
+    (layer) => Layer.provide(layer as any, BrowserWorkerRunner.layer as any) as any,
     WorkerRunner.launch,
     Effect.scoped,
     Effect.tapCauseLogPretty,
@@ -94,7 +95,7 @@ const makeWorkerRunnerOuter = (
     InitialMessage: ({ port: incomingRequestsPort, storeId, clientId }) =>
       Effect.gen(function* () {
         yield* makeWorkerRunnerInner(workerOptions).pipe(
-          Layer.provide(BrowserWorkerRunner.layerMessagePort(incomingRequestsPort)),
+          (layer) => Layer.provide(layer as any, BrowserWorkerRunner.layerMessagePort(incomingRequestsPort) as any) as any,
           WorkerRunner.launch,
           Effect.scoped,
           Effect.withSpan('@livestore/adapter-web:worker:wrapper:InitialMessage:innerFiber'),
@@ -153,7 +154,7 @@ const makeWorkerRunnerInner = ({ schema, sync: syncOptions, syncPayloadSchema }:
                 foreignKeys: true,
               }).pipe(Effect.runSyncWith(context)),
           }).pipe(
-            Effect.acquireRelease((db) =>
+            (dbEffect) => Effect.acquireRelease(dbEffect, (db) =>
               Effect.try({ try: () => db.close(), catch: (cause) => cause }).pipe(Effect.ignoreLogged),
             ),
           )
@@ -164,7 +165,7 @@ const makeWorkerRunnerInner = ({ schema, sync: syncOptions, syncPayloadSchema }:
             configureDb: (db) =>
               configureConnection(db, { foreignKeys: true }).pipe(Effect.runSyncWith(context)),
           }).pipe(
-            Effect.acquireRelease((db) =>
+            (dbEffect) => Effect.acquireRelease(dbEffect, (db) =>
               Effect.try({ try: () => db.close(), catch: (cause) => cause }).pipe(Effect.ignoreLogged),
             ),
           )
@@ -231,15 +232,18 @@ const makeWorkerRunnerInner = ({ schema, sync: syncOptions, syncPayloadSchema }:
         // Stream.tapLogWithLabel('@livestore/adapter-web:worker:PullStream'),
       ),
     PushToLeader: ({ batch }) =>
-      Effect.andThen(LeaderThreadCtx, ({ syncProcessor }) =>
+      Effect.andThen(LeaderThreadCtx.asEffect(), ({ syncProcessor }) =>
         syncProcessor.push(
-          batch.map((event) => new LiveStoreEvent.Client.EncodedWithMeta(event)),
+          batch.map(
+            (event: (typeof WorkerSchema.LeaderWorkerInnerPushToLeader.Type)['batch'][number]) =>
+              new LiveStoreEvent.Client.EncodedWithMeta(event),
+          ),
           // We'll wait in order to keep back pressure on the client session
           { waitForProcessing: true },
         ),
       ).pipe(Effect.uninterruptible, Effect.withSpan('@livestore/adapter-web:worker:PushToLeader')),
     StreamEvents: (options) =>
-      LeaderThreadCtx.pipe(
+      LeaderThreadCtx.asEffect().pipe(
         Effect.map(({ dbEventlog, syncProcessor }) => {
           const { _tag: _ignored, ...payload } = options as any
           const streamOptions = payload as StreamEventsOptions
@@ -253,15 +257,15 @@ const makeWorkerRunnerInner = ({ schema, sync: syncOptions, syncPayloadSchema }:
         Stream.withSpan('@livestore/adapter-web:worker:StreamEvents'),
       ),
     Export: () =>
-      Effect.andThen(LeaderThreadCtx, (_) => _.dbState.export()).pipe(
+      Effect.map(LeaderThreadCtx.asEffect(), (_) => _.dbState.export()).pipe(
         Effect.withSpan('@livestore/adapter-web:worker:Export'),
       ),
     ExportEventlog: () =>
-      Effect.andThen(LeaderThreadCtx, (_) => _.dbEventlog.export()).pipe(
+      Effect.map(LeaderThreadCtx.asEffect(), (_) => _.dbEventlog.export()).pipe(
         Effect.withSpan('@livestore/adapter-web:worker:ExportEventlog'),
       ),
     BootStatusStream: () =>
-      Effect.andThen(LeaderThreadCtx, (_) => Stream.fromQueue(_.bootStatusQueue)).pipe(Stream.unwrap),
+      Effect.map(LeaderThreadCtx.asEffect(), (_) => Stream.fromQueue(_.bootStatusQueue)).pipe(Stream.unwrap),
     GetLeaderHead: Effect.fn('@livestore/adapter-web:worker:GetLeaderHead')(function* () {
       const workerCtx = yield* LeaderThreadCtx
       return Eventlog.getClientHeadFromDb(workerCtx.dbEventlog)
@@ -292,7 +296,7 @@ const makeWorkerRunnerInner = ({ schema, sync: syncOptions, syncPayloadSchema }:
       yield* Effect.sleep(300)
     }),
     ExtraDevtoolsMessage: ({ message }) =>
-      Effect.andThen(LeaderThreadCtx, (_) => _.extraIncomingMessagesQueue.offer(message)).pipe(
+      Effect.andThen(LeaderThreadCtx.asEffect(), (_) => Queue.offer(_.extraIncomingMessagesQueue, message)).pipe(
         Effect.withSpan('@livestore/adapter-web:worker:ExtraDevtoolsMessage'),
       ),
     'DevtoolsWebCommon.CreateConnection': WebmeshWorker.CreateConnection,

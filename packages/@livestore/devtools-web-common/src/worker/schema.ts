@@ -9,5 +9,5 @@ export class CreateConnection extends Schema.TaggedRequest<CreateConnection>()('
   failure: Schema.Never,
 }) {}
 
-export const Request = Schema.Union([CreateConnection])
+export const Request = Schema.Union([CreateConnection as any]) as any
 export type Request = typeof Request.Type

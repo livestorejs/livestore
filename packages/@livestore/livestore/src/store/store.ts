@@ -32,6 +32,7 @@ import {
   Inspectable,
   Option,
   OtelTracer,
+  Queue,
   Schema,
   Stream,
 } from '@livestore/utils/effect'
@@ -249,7 +250,10 @@ export class Store<TSchema extends LiveStoreSchema = LiveStoreSchema.Any, TConte
               materializerHash._tag === 'Some' &&
               materializerHashLeader.value !== materializerHash.value
             ) {
-              return yield* MaterializerHashMismatchError.make({ eventName: eventEncoded.name })
+              return yield* MaterializerHashMismatchError.make({
+                eventName: eventEncoded.name,
+                note: 'Client-side materializer hash differed from the leader materializer hash.',
+              })
             }
 
             const span = yield* OtelTracer.currentOtelSpan.pipe(Effect.orDie)
@@ -573,7 +577,7 @@ export class Store<TSchema extends LiveStoreSchema = LiveStoreSchema.Any, TConte
   }
 
   subscribeStream = <TResult>(query: Queryable<TResult>, options?: SubscribeOptions<TResult>): Stream.Stream<TResult> =>
-    Stream.asyncPush<TResult>((emit) =>
+    Stream.callback<TResult>((queue) =>
       Effect.gen({ self: this }, function* () {
         const otelSpan = yield* OtelTracer.currentOtelSpan.pipe(
           Effect.catchTag('NoSuchElementError', () => Effect.succeed(undefined)),
@@ -583,7 +587,7 @@ export class Store<TSchema extends LiveStoreSchema = LiveStoreSchema.Any, TConte
 
         yield* Effect.acquireRelease(
           Effect.sync(() =>
-            this.subscribe(query, (result) => emit.single(result), {
+            this.subscribe(query, (result) => Queue.offerUnsafe(queue, result), {
               ...options,
               otelContext,
             }),
@@ -935,10 +939,10 @@ export class Store<TSchema extends LiveStoreSchema = LiveStoreSchema.Any, TConte
     }
 
     return clientSession.leaderThread.events.stream(baseOptions).pipe(
-      Stream.mapChunksEffect(Schema.decodeEffect(Schema.Chunk(eventSchema))),
-      Stream.catchTag('ParseError', (cause) => Stream.fail(UnknownError.make({ cause }))),
+      Stream.mapEffect((event) => Schema.decodeEffect(eventSchema)(event)),
+      Stream.mapError((cause) => UnknownError.make({ cause })),
       Stream.tapError((error) => Effect.logError('Error in eventsStream', error)),
-    )
+    ) as Stream.Stream<LiveStoreEvent.Client.ForSchema<TSchema>, UnknownError>
   }
 
   /**
@@ -966,7 +970,7 @@ export class Store<TSchema extends LiveStoreSchema = LiveStoreSchema.Any, TConte
   syncStatus = (): SyncStatus => {
     this.checkShutdown('syncStatus')
 
-    const syncState = this[StoreInternalsSymbol].syncProcessor.syncState.pipe(Effect.runSync)
+    const syncState = this[StoreInternalsSymbol].syncProcessor.syncState.get.pipe(Effect.runSync)
     const pendingCount = syncState.pending.length
 
     return {
@@ -995,7 +999,7 @@ export class Store<TSchema extends LiveStoreSchema = LiveStoreSchema.Any, TConte
     const syncStateSubscribable = this[StoreInternalsSymbol].syncProcessor.syncState
 
     return Stream.concat(
-      Stream.fromEffect(syncStateSubscribable.pipe(Effect.map(this.makeSyncStatus))),
+      Stream.fromEffect(syncStateSubscribable.get.pipe(Effect.map(this.makeSyncStatus))),
       syncStateSubscribable.changes.pipe(Stream.map(this.makeSyncStatus)),
     )
   }

@@ -91,6 +91,40 @@ export const head = (schema: Schema_.Top) =>
     }) as any,
   )
 
+export type WithResult<A, _I = unknown, E = never, _EI = unknown, R = never> = {
+  readonly _tag: string
+  readonly __success?: A
+  readonly __failure?: E
+  readonly __services?: R
+}
+
+export const TaggedRequest =
+  <Self = never>() =>
+  <const Fields extends Schema_.Struct.Fields, Success extends Schema_.Top, Failure extends Schema_.Top>(
+    tag: string,
+    options: {
+      readonly payload: Fields
+      readonly success: Success
+      readonly failure: Failure
+    },
+  ): Schema_.Class<
+    Self & WithResult<Success['Type'], Success['Encoded'], Failure['Type'], Failure['Encoded']>,
+    Schema_.TaggedStruct<string, Fields>,
+    {}
+  > & {
+    readonly success: Success
+    readonly failure: Failure
+    readonly make: (
+      args: Schema_.TaggedStruct<string, Fields>['~type.make.in'],
+    ) => Self & WithResult<Success['Type'], Success['Encoded'], Failure['Type'], Failure['Encoded']>
+  } => {
+    const klass = Schema.TaggedClass<Self>()(tag, options.payload as any) as any
+    klass.success = options.success
+    klass.failure = options.failure
+    klass.make = (args: any) => new klass(args)
+    return klass
+  }
+
 // NOTE this is a temporary workaround until Effect schema has a better way to hash schemas
 // https://github.com/Effect-TS/effect/issues/2719
 // TODO remove this once the issue is resolved

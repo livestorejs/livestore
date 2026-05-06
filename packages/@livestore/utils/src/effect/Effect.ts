@@ -25,6 +25,14 @@ export type Semaphore = import('effect').Semaphore.Semaphore
 export const zipRight = Effect.andThen
 export const fromNullable = Effect.fromNullishOr
 export const dieMessage = (message: string) => Effect.die(new Error(message))
+export const withScheduler =
+  (_scheduler: unknown) =>
+  <A, E, R>(self: Effect.Effect<A, E, R>): Effect.Effect<A, E, R> =>
+    self
+export const withMaxOpsBeforeYield =
+  (_maxOps: number) =>
+  <A, E, R>(self: Effect.Effect<A, E, R>): Effect.Effect<A, E, R> =>
+    self
 export const filterOrDieMessage =
   <A, B extends A>(predicate: (value: A) => value is B, message: string) =>
   <E, R>(self: Effect.Effect<A, E, R>): Effect.Effect<B, E, R> =>

@@ -18,12 +18,11 @@ export class CacheService extends Context.Service<
       globalThis.__debugWebmeshNode = node
 
       return { node }
-    }).pipe(Layer.scoped(CacheService))
+    }).pipe(Layer.effect(CacheService))
 }
 
 export const CreateConnection = ({ from, port }: typeof SharedWorkerSchema.CreateConnection.Type) =>
-  Stream.asyncScoped<{}, never, CacheService>((emit) =>
-    Effect.gen(function* () {
+  Effect.gen(function* () {
       const { node } = yield* CacheService
 
       const messagePortChannel = yield* WebChannel.messagePortChannel({ port, schema: WebmeshSchema.Packet })
@@ -34,13 +33,11 @@ export const CreateConnection = ({ from, port }: typeof SharedWorkerSchema.Creat
         yield* Effect.logDebug(`@livestore/devtools-web-common: accepted edge: ${node.nodeName} ← ${from}`)
       }
 
-      emit.single({})
-
       yield* Effect.spanEvent({ connectedTo: [...node.edgeKeys] })
 
-      // Keep connection alive
-      // yield* Effect.never
-
-      // return {}
-    }).pipe(Effect.orDie),
-  ).pipe(Stream.withSpan(`@livestore/devtools-web-common:worker:create-connection:${from}`))
+      return {}
+    }).pipe(
+      Effect.orDie,
+      Stream.fromEffect,
+      Stream.withSpan(`@livestore/devtools-web-common:worker:create-connection:${from}`),
+    )

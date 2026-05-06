@@ -24,7 +24,7 @@ import type { MakeWebSqliteDb } from '@livestore/sqlite-wasm/browser'
 import { sqliteDbFactory } from '@livestore/sqlite-wasm/browser'
 import { tryAsFunctionAndNew } from '@livestore/utils'
 import type { Scope } from '@livestore/utils/effect'
-import { Effect, FetchHttpClient, Fiber, Layer, type Schema, SubscriptionRef, Worker } from '@livestore/utils/effect'
+import { Effect, FetchHttpClient, Fiber, Layer, Queue, type Schema, SubscriptionRef, Worker } from '@livestore/utils/effect'
 import { BrowserWorker } from '@livestore/utils/effect/browser'
 import { nanoid } from '@livestore/utils/nanoid'
 import * as Webmesh from '@livestore/webmesh'
@@ -286,7 +286,7 @@ const makeLeaderThread = ({
         export: Effect.sync(() => dbState.export()),
         getEventlogData: Effect.sync(() => dbEventlog.export()),
         syncState: syncProcessor.syncState,
-        sendDevtoolsMessage: (message) => extraIncomingMessagesQueue.offer(message),
+        sendDevtoolsMessage: (message) => Queue.offer(extraIncomingMessagesQueue, message),
         networkStatus,
       })
 

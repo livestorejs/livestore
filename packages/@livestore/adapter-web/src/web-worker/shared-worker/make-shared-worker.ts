@@ -52,7 +52,7 @@ const makeWorkerRunner = Effect.gen(function* () {
   const leaderWorkerContextSubRef = yield* SubscriptionRef.make<
     | {
         worker: Worker.SerializedWorkerPool<WorkerSchema.LeaderWorkerInnerRequest>
-        scope: Scope.CloseableScope
+        scope: Scope.Closeable
       }
     | undefined
   >(undefined)
@@ -61,9 +61,7 @@ const makeWorkerRunner = Effect.gen(function* () {
     Effect.map((_) => _.worker),
   )
 
-  const forwardRequest = <A, I, E, EI, R>(
-    req: WorkerSchema.LeaderWorkerInnerRequest & Schema.WithResult<A, I, E, EI, R>,
-  ): Effect.Effect<A, E, R> =>
+  const forwardRequest = (req: WorkerSchema.LeaderWorkerInnerRequest): Effect.Effect<any, never, never> =>
     // Forward the request to the active worker and convert transport errors to defects.
     waitForWorker.pipe(
       // Effect.logBefore(`forwardRequest: ${req._tag}`),
@@ -77,16 +75,14 @@ const makeWorkerRunner = Effect.gen(function* () {
         duration: 500,
       }),
       Effect.tapCauseLogPretty,
-    )
+    ) as Effect.Effect<any, never, never>
 
-  const forwardRequestStream = <A, I, E, EI, R>(
-    req: WorkerSchema.LeaderWorkerInnerRequest & Schema.WithResult<A, I, E, EI, R>,
-  ): Stream.Stream<A, E, R> =>
+  const forwardRequestStream = (req: WorkerSchema.LeaderWorkerInnerRequest): Stream.Stream<any, never, never> =>
     Effect.gen(function* () {
       yield* Effect.logDebug(`forwardRequestStream: ${req._tag}`)
       const { worker, scope } = yield* SubscriptionRef.waitUntil(leaderWorkerContextSubRef, isNotUndefined)
       const stream = worker.execute(req).pipe(
-        Stream.refineOrDie((e) => isWorkerTransportError(e) === true ? Option.none() : Option.some(e)),
+        Stream.catchIf(isWorkerTransportError, (e) => Stream.die(e)),
       )
       // It seems the request stream is not automatically interrupted when the scope shuts down
       // so we need to manually interrupt it when the scope shuts down
@@ -105,7 +101,7 @@ const makeWorkerRunner = Effect.gen(function* () {
       Effect.tapCauseLogPretty,
       Stream.unwrap,
       Stream.ensuring(Effect.logDebug(`shutting down stream for ${req._tag}`)),
-    )
+    ) as Stream.Stream<any, never, never>
 
   const resetCurrentWorkerCtx = Effect.gen(function* () {
     const prevWorker = yield* SubscriptionRef.get(leaderWorkerContextSubRef)
@@ -113,7 +109,7 @@ const makeWorkerRunner = Effect.gen(function* () {
       // NOTE we're already unsetting the current worker here, so new incoming requests are queued for the new worker
       yield* SubscriptionRef.set(leaderWorkerContextSubRef, undefined)
 
-      yield* Effect.yieldNow()
+      yield* Effect.yieldNow
 
       yield* Scope.close(prevWorker.scope, Exit.void).pipe(
         Effect.logWarnIfTakesLongerThan({

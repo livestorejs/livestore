@@ -42,7 +42,8 @@ export const readPersistedStateDbFromClientSession: (args: {
 
     const handlesStream = yield* Opfs.values(accessHandlePoolDirHandle)
 
-    const stateDbFileOption = yield* handlesStream.pipe(
+    const stateDbFileOption = Option.fromNullishOr(
+      (yield* handlesStream.pipe(
       Stream.filter((handle): handle is FileSystemFileHandle => handle.kind === 'file'),
       Stream.mapEffect(
         (fileHandle) =>
@@ -53,8 +54,8 @@ export const readPersistedStateDbFromClientSession: (args: {
           }),
         { concurrency: 'unbounded' },
       ),
-      Stream.find(({ fileName }) => fileName === stateDbFileName),
-      Stream.runHead,
+        Stream.runCollect,
+      )).find(({ fileName }) => fileName === stateDbFileName),
     )
 
     if (Option.isNone(stateDbFileOption) === true) {
@@ -249,9 +250,8 @@ const pruneArchiveDirectory = Effect.fn('@livestore/adapter-web:pruneArchiveDire
     Stream.mapEffect((fileHandle) => Opfs.getMetadata(fileHandle)),
     Stream.runCollect,
   )
-  const filesToDelete = filesWithMetadata.pipe(
-    // oxlint-disable-next-line unicorn/no-array-sort -- false positive: Effect Chunk.sort is immutable, not Array#sort (https://github.com/oxc-project/oxc/issues/19110)
-    Chunk.sort(Order.mapInput(Order.number, (entry: { lastModified: number }) => entry.lastModified)),
+  const filesToDelete = Chunk.fromIterable(filesWithMetadata).pipe(
+    Chunk.sort(Order.mapInput(Order.Number, (entry: { lastModified: number }) => entry.lastModified)),
     Chunk.drop(keep),
     Chunk.toReadonlyArray,
   )

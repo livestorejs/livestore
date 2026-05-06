@@ -3,7 +3,7 @@ import { BasicTracerProvider, InMemorySpanExporter, SimpleSpanProcessor } from '
 import { assert, expect } from 'vitest'
 
 import { Vitest } from '@livestore/utils-dev/node-vitest'
-import { Effect, ReadonlyRecord, Schema } from '@livestore/utils/effect'
+import { Effect, ReadonlyRecord, Schema, SchemaTransformation } from '@livestore/utils/effect'
 
 import * as RG from '../reactive.ts'
 import { StoreInternalsSymbol } from '../store/store-types.ts'
@@ -103,7 +103,15 @@ Vitest.describe('otel', () => {
       const query$ = queryDb(
         (get) => ({
           query: `select * from todos ${get(filter)}`,
-          schema: Schema.Array(tables.todos.rowSchema).pipe(Schema.headOrElse(() => defaultTodo)),
+          schema: Schema.Array(tables.todos.rowSchema).pipe(
+            Schema.decodeTo(
+              Schema.toType(tables.todos.rowSchema),
+              SchemaTransformation.transform({
+                decode: (items) => items[0] ?? defaultTodo,
+                encode: (value) => [value],
+              }),
+            ),
+          ),
         }),
         { label: 'all todos' },
       )

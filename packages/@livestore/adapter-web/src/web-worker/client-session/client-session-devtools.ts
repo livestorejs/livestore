@@ -3,7 +3,7 @@ import type { LiveStoreSchema } from '@livestore/common/schema'
 import * as DevtoolsWeb from '@livestore/devtools-web-common/web-channel'
 import { isDevEnv } from '@livestore/utils'
 import type { Worker } from '@livestore/utils/effect'
-import { Effect, Stream } from '@livestore/utils/effect'
+import { Effect, Option, Stream } from '@livestore/utils/effect'
 import { WebChannelBrowser } from '@livestore/utils/effect/browser'
 import * as Webmesh from '@livestore/webmesh'
 
@@ -82,7 +82,12 @@ export const connectWebmeshNodeClientSession = Effect.fn(function* ({
       const { tabId } = yield* clientSessionStaticChannel.listen.pipe(
         Stream.mapEffect(Effect.fromResult),
         Stream.runHead,
-        Effect.flatten,
+        Effect.flatMap(
+          Option.match({
+            onNone: () => Effect.die('No client-session static channel response received'),
+            onSome: Effect.succeed,
+          }),
+        ),
       )
 
       const contentscriptMainNodeName = DevtoolsWeb.makeNodeName.browserExtension.contentscriptMain(tabId)
