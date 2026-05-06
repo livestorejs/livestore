@@ -1,4 +1,4 @@
-import { NodeFileSystem } from '@effect/platform-node'
+import * as NodeFileSystem from '@effect/platform-node/NodeFileSystem'
 import { Effect, FetchHttpClient, Layer, type Toolkit } from '@livestore/utils/effect'
 
 import { blogSchemaContent } from '../mcp-content/schemas/blog.ts'

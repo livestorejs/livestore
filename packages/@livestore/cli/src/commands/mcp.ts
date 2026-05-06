@@ -1,4 +1,4 @@
-import { NodeStdio } from '@effect/platform-node'
+import * as NodeStdio from '@effect/platform-node/NodeStdio'
 import { Effect, Layer, Logger, McpServer } from '@livestore/utils/effect'
 import { Cli } from '@livestore/utils/node'
 

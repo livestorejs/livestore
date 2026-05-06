@@ -1,6 +1,7 @@
 import path from 'node:path'
 
-import { NodeRuntime, NodeServices } from '@effect/platform-node'
+import * as NodeRuntime from '@effect/platform-node/NodeRuntime'
+import * as NodeServices from '@effect/platform-node/NodeServices'
 import { UnknownError } from '@livestore/common'
 import { Effect, FetchHttpClient, Layer, Logger, OtelTracer, Schema } from '@livestore/utils/effect'
 import { Cli, getFreePort } from '@livestore/utils/node'

@@ -18,14 +18,13 @@ export const offerAll = <A>(self: BucketQueue<A>, elements: ReadonlyArray<A>) =>
   )
 
 export const replace = <A>(self: BucketQueue<A>, elements: ReadonlyArray<A>) =>
-  Queue.takeAll(self.queue).pipe(
-    Effect.ignore,
+  Queue.clear(self.queue).pipe(
     Effect.andThen(Ref.set(self.items, elements)),
     Effect.andThen(Queue.offerAll(self.queue, elements)),
   )
 
 export const clear = <A>(self: BucketQueue<A>) =>
-  Queue.takeAll(self.queue).pipe(Effect.ignore, Effect.andThen(Ref.set(self.items, [])))
+  Queue.clear(self.queue).pipe(Effect.andThen(Ref.set(self.items, [])))
 
 export const takeBetween = <A>(
   bucket: BucketQueue<A>,
@@ -62,7 +61,7 @@ export const takeSplitWhere = <A>(bucket: BucketQueue<A>, predicate: (a: A) => b
       },
     )
     if (elements.length > 0) {
-      yield* Queue.takeAll(bucket.queue).pipe(Effect.ignore)
+      yield* Queue.clear(bucket.queue)
       yield* Queue.offerAll(bucket.queue, rest)
     }
     return elements

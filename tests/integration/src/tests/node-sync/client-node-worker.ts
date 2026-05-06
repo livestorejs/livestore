@@ -1,7 +1,8 @@
 import './thread-polyfill.ts'
 import path from 'node:path'
 
-import { NodeRuntime, NodeServices } from '@effect/platform-node'
+import * as NodeRuntime from '@effect/platform-node/NodeRuntime'
+import * as NodeServices from '@effect/platform-node/NodeServices'
 import { makeAdapter, makeWorkerAdapter } from '@livestore/adapter-node'
 import type { ShutdownDeferred, Store } from '@livestore/livestore'
 import { createStore, makeShutdownDeferred, queryDb } from '@livestore/livestore'

@@ -8,7 +8,7 @@ import type { RefreshReason, SqliteDbWrapper, Store } from '@livestore/livestore
 import { StoreInternalsSymbol } from '@livestore/livestore'
 import { LiveQueries, ReactiveGraph } from '@livestore/livestore/internal'
 import { objectToString, omitUndefineds, shouldNeverHappen } from '@livestore/utils'
-import { Equal, Hash, Predicate, Schema } from '@livestore/utils/effect'
+import { Equal, Exit, Hash, Predicate, Schema } from '@livestore/utils/effect'
 
 export type BaseGraphQLContext = {
   queriedTables: Set<string>
@@ -135,11 +135,11 @@ export class LiveStoreGraphQLQuery<
         : Schema.isSchema(map) === true
           ? (res: TResult) => {
               const parseResult = Schema.decodeExit(map as Schema.Schema<TResultMapped, TResult>)(res)
-              if (parseResult._tag === 'Left') {
-                console.error(`Error parsing GraphQL query result: ${String(parseResult.left)}`)
-                return shouldNeverHappen(`Error parsing SQL query result: ${String(parseResult.left)}`)
+              if (Exit.isFailure(parseResult)) {
+                console.error(`Error parsing GraphQL query result: ${String(parseResult.cause)}`)
+                return shouldNeverHappen(`Error parsing SQL query result: ${String(parseResult.cause)}`)
               } else {
-                return parseResult.right
+                return parseResult.value
               }
             }
           : typeof map === 'function'

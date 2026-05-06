@@ -19,7 +19,8 @@ import { makeMeshNode, makeWebSocketEdge } from '@livestore/webmesh'
 
 import { makeViteMiddleware } from './vite-dev-server.ts'
 
-import { NodeHttpServer, NodeHttpServerRequest } from '@effect/platform-node'
+import * as NodeHttpServer from '@effect/platform-node/NodeHttpServer'
+import * as NodeHttpServerRequest from '@effect/platform-node/NodeHttpServerRequest'
 /**
  * Determines if a request URL should be routed to the Vite middleware.
  * Includes LiveStore devtools paths and Vite internal paths like `/@fs/`, `/@vite/`, etc.

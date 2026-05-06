@@ -44,7 +44,8 @@ import { makeLeaderThread } from '../leader-thread-shared.ts'
 import { makeShutdownChannel } from '../shutdown-channel.ts'
 import * as WorkerSchema from '../worker-schema.ts'
 
-import { NodeFileSystem, NodeWorker } from '@effect/platform-node'
+import * as NodeFileSystem from '@effect/platform-node/NodeFileSystem'
+import * as NodeWorker from '@effect/platform-node/NodeWorker'
 export interface NodeAdapterOptions {
   storage: WorkerSchema.StorageType
   /** The default is the hostname of the current machine */

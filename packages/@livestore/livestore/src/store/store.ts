@@ -658,8 +658,8 @@ export class Store<TSchema extends LiveStoreSchema = LiveStoreSchema.Any, TConte
       )
 
       const decodeResult = Schema.decodeExit(schema)(rawRes)
-      if (decodeResult._tag === 'Right') {
-        return decodeResult.right
+      if (Exit.isSuccess(decodeResult)) {
+        return decodeResult.value as TResult
       } else {
         return shouldNeverHappen(
           'Failed to decode query result with for schema:',
@@ -667,7 +667,7 @@ export class Store<TSchema extends LiveStoreSchema = LiveStoreSchema.Any, TConte
           'raw result:',
           rawRes,
           'decode error:',
-          decodeResult.left,
+          decodeResult.cause,
         )
       }
     } else if (query._tag === 'def') {

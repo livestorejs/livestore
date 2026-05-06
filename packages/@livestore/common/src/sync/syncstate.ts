@@ -4,6 +4,9 @@ import { Effect, Match, ReadonlyArray, Schema } from '@livestore/utils/effect'
 import * as EventSequenceNumber from '../schema/EventSequenceNumber/mod.ts'
 import * as LiveStoreEvent from '../schema/LiveStoreEvent/mod.ts'
 
+const InternalEvent = Schema.Any as Schema.Schema<LiveStoreEvent.Client.EncodedWithMeta>
+const InternalEvents = Schema.Array(InternalEvent)
+
 /**
  * SyncState represents the current sync state of a sync node relative to an upstream node.
  * Events flow from local to upstream, with each state maintaining its own event head.
@@ -42,7 +45,7 @@ import * as LiveStoreEvent from '../schema/LiveStoreEvent/mod.ts'
  * handling cases such as upstream rebase, advance and local push.
  */
 export class SyncState extends Schema.Class<SyncState>('SyncState')({
-  pending: Schema.Array(LiveStoreEvent.Client.EncodedWithMeta),
+  pending: InternalEvents,
   /** What this node expects the next upstream node to have as its own local head */
   upstreamHead: EventSequenceNumber.Client.Composite,
   /** Equivalent to `pending.at(-1)?.id` if there are pending events */
@@ -55,34 +58,37 @@ export class SyncState extends Schema.Class<SyncState>('SyncState')({
   })
 }
 
+const InternalSyncState = Schema.Any as Schema.Schema<SyncState>
+
 /**
  * This payload propagates a rebase from the upstream node
  */
 export class PayloadUpstreamRebase extends Schema.TaggedClass<PayloadUpstreamRebase>()('upstream-rebase', {
   /** Events which need to be rolled back */
-  rollbackEvents: Schema.Array(LiveStoreEvent.Client.EncodedWithMeta),
+  rollbackEvents: InternalEvents,
   /** Events which need to be applied after the rollback (already rebased by the upstream node) */
-  newEvents: Schema.Array(LiveStoreEvent.Client.EncodedWithMeta),
+  newEvents: InternalEvents,
 }) {}
 
 export class PayloadUpstreamAdvance extends Schema.TaggedClass<PayloadUpstreamAdvance>()('upstream-advance', {
-  newEvents: Schema.Array(LiveStoreEvent.Client.EncodedWithMeta),
+  newEvents: InternalEvents,
 }) {}
 
 export class PayloadLocalPush extends Schema.TaggedClass<PayloadLocalPush>()('local-push', {
-  newEvents: Schema.Array(LiveStoreEvent.Client.EncodedWithMeta),
+  newEvents: InternalEvents,
 }) {}
 
 export const Payload = Schema.Union([PayloadUpstreamRebase, PayloadUpstreamAdvance, PayloadLocalPush])
 export type Payload = typeof Payload.Type
+const InternalPayload = Schema.Any as Schema.Schema<Payload>
 
 export const PayloadUpstream = Schema.Union([PayloadUpstreamRebase, PayloadUpstreamAdvance])
 export type PayloadUpstream = typeof PayloadUpstream.Type
 
 /** Only used for debugging purposes */
 export class MergeContext extends Schema.Class<MergeContext>('MergeContext')({
-  payload: Payload,
-  syncState: SyncState,
+  payload: InternalPayload,
+  syncState: InternalSyncState,
 }) {
   toJSON = (): any => {
     const payload = Match.value(this.payload).pipe(
@@ -108,13 +114,15 @@ export class MergeContext extends Schema.Class<MergeContext>('MergeContext')({
   }
 }
 
+const InternalMergeContext = Schema.Any as Schema.Schema<MergeContext>
+
 export class MergeResultAdvance extends Schema.Class<MergeResultAdvance>('MergeResultAdvance')({
   _tag: Schema.Literal('advance'),
-  newSyncState: SyncState,
-  newEvents: Schema.Array(LiveStoreEvent.Client.EncodedWithMeta),
+  newSyncState: InternalSyncState,
+  newEvents: InternalEvents,
   /** Events which were previously pending but are now confirmed */
-  confirmedEvents: Schema.Array(LiveStoreEvent.Client.EncodedWithMeta),
-  mergeContext: MergeContext,
+  confirmedEvents: InternalEvents,
+  mergeContext: InternalMergeContext,
 }) {
   toJSON = (): any => {
     return {
@@ -129,11 +137,11 @@ export class MergeResultAdvance extends Schema.Class<MergeResultAdvance>('MergeR
 
 export class MergeResultRebase extends Schema.Class<MergeResultRebase>('MergeResultRebase')({
   _tag: Schema.Literal('rebase'),
-  newSyncState: SyncState,
-  newEvents: Schema.Array(LiveStoreEvent.Client.EncodedWithMeta),
+  newSyncState: InternalSyncState,
+  newEvents: InternalEvents,
   /** Events which need to be rolled back */
-  rollbackEvents: Schema.Array(LiveStoreEvent.Client.EncodedWithMeta),
-  mergeContext: MergeContext,
+  rollbackEvents: InternalEvents,
+  mergeContext: InternalMergeContext,
 }) {
   toJSON = (): any => {
     return {
@@ -150,7 +158,7 @@ export class MergeResultReject extends Schema.Class<MergeResultReject>('MergeRes
   _tag: Schema.Literal('reject'),
   /** The minimum id that the new events must have */
   expectedMinimumId: EventSequenceNumber.Client.Composite,
-  mergeContext: MergeContext,
+  mergeContext: InternalMergeContext,
 }) {
   toJSON = (): any => {
     return {

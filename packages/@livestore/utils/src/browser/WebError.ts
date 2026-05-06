@@ -1,5 +1,5 @@
 import './QuotaExceededError.ts'
-import { Predicate, Result, Schema, SchemaParser, SchemaTransformation } from 'effect'
+import { Predicate, Schema, SchemaTransformation } from 'effect'
 
 /**
  * Unique identifier for web errors.
@@ -114,13 +114,8 @@ export class URIError extends Schema.TaggedErrorClass<URIError>()('URIError', {
 
 const domExceptionWithName = (expectedName: string) =>
   Schema.instanceOf(DOMException).check(
-    Schema.makeFilter((a, _ast, options) => {
-      const result = SchemaParser.decodeUnknownResult(
-        Schema.Struct({
-          name: Schema.Literal(expectedName),
-        }),
-      )(a, options)
-      return Result.isFailure(result) === true ? result.failure : undefined
+    Schema.makeFilter((error) => error.name === expectedName, {
+      expected: `DOMException with name ${expectedName}`,
     }),
   )
 

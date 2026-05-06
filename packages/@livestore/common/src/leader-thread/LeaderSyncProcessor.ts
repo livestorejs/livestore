@@ -321,6 +321,10 @@ export const makeLeaderSyncProcessor = ({
         >,
       ) =>
         Effect.gen(function* () {
+          if (Cause.hasInterruptsOnly(cause) === true) {
+            return
+          }
+
           if (onError === 'ignore') {
             if (LS_DEV === true) {
               yield* Effect.logDebug(
@@ -597,13 +601,6 @@ const backgroundApplyLocalPushes = ({
           }
         }
 
-        yield* SubscriptionRef.set(syncStateSref, mergeResult.newSyncState)
-
-        yield* connectedClientSessionPullQueues.offer({
-          payload: SyncState.PayloadUpstreamAdvance.make({ newEvents: mergeResult.newEvents }),
-          leaderHead: mergeResult.newSyncState.localHead,
-        })
-
         yield* Effect.spanEvent(`push:advance`, {
           batchSize: newEvents.length,
         ...(TRACE_VERBOSE === true ? { mergeResult: jsonStringify(mergeResult) } : {}),
@@ -618,6 +615,13 @@ const backgroundApplyLocalPushes = ({
         yield* BucketQueue.offerAll(syncBackendPushQueue, filteredBatch)
 
         yield* materializeEventsBatch({ batchItems: mergeResult.newEvents, deferreds })
+
+        yield* SubscriptionRef.set(syncStateSref, mergeResult.newSyncState)
+
+        yield* connectedClientSessionPullQueues.offer({
+          payload: SyncState.PayloadUpstreamAdvance.make({ newEvents: mergeResult.newEvents }),
+          leaderHead: mergeResult.newSyncState.localHead,
+        })
       }).pipe(localPushBackendPullMutex.withPermits(1))
     }
   })

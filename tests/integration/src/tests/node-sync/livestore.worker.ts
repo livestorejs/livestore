@@ -1,5 +1,5 @@
 import { getWorkerArgs, makeWorkerEffect } from '@livestore/adapter-node/worker'
-import { NodeRuntime } from '@effect/platform-node'
+import * as NodeRuntime from '@effect/platform-node/NodeRuntime'
 import { makeWsSync } from '@livestore/sync-cf/client'
 import { IS_CI } from '@livestore/utils'
 import { OtelLiveHttp } from '@livestore/utils-dev/node'

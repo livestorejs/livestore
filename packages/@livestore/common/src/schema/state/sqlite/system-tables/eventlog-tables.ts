@@ -1,4 +1,4 @@
-import { Schema } from '@livestore/utils/effect'
+import { Option, Schema, SchemaTransformation } from '@livestore/utils/effect'
 
 import * as EventSequenceNumber from '../../../EventSequenceNumber/mod.ts'
 import { SqliteDsl } from '../db-schema/mod.ts'
@@ -14,6 +14,26 @@ import { table } from '../table-def.ts'
  */
 
 export const EVENTLOG_META_TABLE = 'eventlog'
+
+const syncMetadataJson = Schema.String.pipe(
+  Schema.decodeTo(
+    Schema.Option(Schema.JsonValue),
+    SchemaTransformation.transform({
+      decode: (value) => {
+        const parsed = JSON.parse(value)
+
+        if (parsed === null || parsed === undefined) return Option.none()
+        if (typeof parsed === 'object' && parsed !== null && '_tag' in parsed) {
+          if (parsed._tag === 'None') return Option.none()
+          if (parsed._tag === 'Some' && 'value' in parsed) return Option.some(parsed.value as Schema.JsonValue)
+        }
+
+        return Option.some(parsed as Schema.JsonValue)
+      },
+      encode: (value) => JSON.stringify(Option.isSome(value) ? value.value : null),
+    }),
+  ),
+)
 
 /**
  * Main client-side event log storing all events (global and local/rebased).
@@ -34,7 +54,7 @@ export const eventlogMetaTable = table({
     clientId: SqliteDsl.text({}),
     sessionId: SqliteDsl.text({}),
     schemaHash: SqliteDsl.integer({}),
-    syncMetadataJson: SqliteDsl.text({ schema: Schema.fromJsonString(Schema.Option(Schema.JsonValue)) }),
+    syncMetadataJson: SqliteDsl.text({ schema: syncMetadataJson }),
   },
   indexes: [
     { columns: ['seqNumGlobal'], name: 'idx_eventlog_seqNumGlobal' },

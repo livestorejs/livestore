@@ -2,7 +2,7 @@ import * as fs from 'node:fs/promises'
 import * as http from 'node:http'
 import path from 'node:path'
 
-import { NodeHttpServer } from '@effect/platform-node'
+import * as NodeHttpServer from '@effect/platform-node/NodeHttpServer'
 import { shouldNeverHappen, sluggify } from '@livestore/utils'
 import { FileLogger } from '@livestore/utils-dev/node'
 import type { Vitest } from '@livestore/utils-dev/node-vitest'

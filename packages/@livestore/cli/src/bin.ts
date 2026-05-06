@@ -1,6 +1,7 @@
 #!/usr/bin/env node
 
-import { NodeRuntime, NodeServices } from '@effect/platform-node'
+import * as NodeRuntime from '@effect/platform-node/NodeRuntime'
+import * as NodeServices from '@effect/platform-node/NodeServices'
 
 import { liveStoreVersion } from '@livestore/common'
 import { Console, Effect, FetchHttpClient, Layer, Logger } from '@livestore/utils/effect'

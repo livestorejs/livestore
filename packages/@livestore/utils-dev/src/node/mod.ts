@@ -15,7 +15,7 @@ import type * as LayerType from 'effect/Layer'
 
 export { OTLPMetricExporter } from '@opentelemetry/exporter-metrics-otlp-http'
 export { OTLPTraceExporter } from '@opentelemetry/exporter-trace-otlp-http'
-export { NodeServices } from '@effect/platform-node'
+export * as NodeServices from '@effect/platform-node/NodeServices'
 export * from './cmd.ts'
 export {
   type DockerComposeArgs,

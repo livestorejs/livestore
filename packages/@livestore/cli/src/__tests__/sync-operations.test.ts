@@ -1,6 +1,6 @@
 import { expect } from 'vitest'
 
-import { NodeFileSystem } from '@effect/platform-node'
+import * as NodeFileSystem from '@effect/platform-node/NodeFileSystem'
 import type { LiveStoreEvent } from '@livestore/common/schema'
 import { Vitest } from '@livestore/utils-dev/node-vitest'
 import { Effect, FetchHttpClient, Layer, Mailbox, Stream } from '@livestore/utils/effect'

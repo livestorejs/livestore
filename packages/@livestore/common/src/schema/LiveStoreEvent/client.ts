@@ -7,6 +7,13 @@ import type { LiveStoreSchema } from '../schema.ts'
 import type * as ForEventDef from './for-event-def.ts'
 import type * as Global from './global.ts'
 
+const defaultMeta = () => ({
+  sessionChangeset: { _tag: 'unset' as const },
+  syncMetadata: Option.none(),
+  materializerHashLeader: Option.none(),
+  materializerHashSession: Option.none(),
+})
+
 /** Effect Schema for client events with decoded args. */
 export const Decoded = Schema.Struct({
   name: Schema.String,
@@ -85,14 +92,8 @@ export class EncodedWithMeta extends Schema.Class<EncodedWithMeta>('LiveStoreEve
     .mapFields(Struct.map(Schema.mutableKey))
     .pipe(
       Schema.optional,
-      Schema.withDecodingDefaultType(
-        Effect.sync(() => ({
-          sessionChangeset: { _tag: 'unset' as const },
-          syncMetadata: Option.none(),
-          materializerHashLeader: Option.none(),
-          materializerHashSession: Option.none(),
-        })),
-      ),
+      Schema.withConstructorDefault(Effect.sync(defaultMeta)),
+      Schema.withDecodingDefaultType(Effect.sync(defaultMeta)),
     ),
 }) {
   toJSON = (): any => {
@@ -131,11 +132,16 @@ export class EncodedWithMeta extends Schema.Class<EncodedWithMeta>('LiveStoreEve
     parentSeqNum: EventSequenceNumber.Client.Composite
     isClient: boolean
     rebaseGeneration: number
-  }) =>
-    new EncodedWithMeta({
+  }) => {
+    const EventConstructor = this.constructor as new (
+      args: ConstructorParameters<typeof EncodedWithMeta>[0],
+    ) => EncodedWithMeta
+
+    return new EventConstructor({
       ...this,
       ...EventSequenceNumber.Client.nextPair({ seqNum: parentSeqNum, isClient, rebaseGeneration }),
     })
+  }
 
   static fromGlobal = (
     event: Global.Encoded,

@@ -1,7 +1,9 @@
 import './thread-polyfill.ts'
 import inspector from 'node:inspector'
 
-import { NodeFileSystem, NodeRuntime, NodeWorkerRunner } from '@effect/platform-node'
+import * as NodeFileSystem from '@effect/platform-node/NodeFileSystem'
+import * as NodeRuntime from '@effect/platform-node/NodeRuntime'
+import * as NodeWorkerRunner from '@effect/platform-node/NodeWorkerRunner'
 if (process.execArgv.includes('--inspect') === true) {
   inspector.open()
   inspector.waitForDebugger()

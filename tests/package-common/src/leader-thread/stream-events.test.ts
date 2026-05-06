@@ -8,7 +8,7 @@ import { EventFactory } from '@livestore/common/testing'
 import { loadSqlite3Wasm } from '@livestore/sqlite-wasm/load-wasm'
 import { sqliteDbFactory } from '@livestore/sqlite-wasm/node'
 import { Vitest } from '@livestore/utils-dev/node-vitest'
-import { Effect, Fiber, Option, Queue, Ref, Schema, Stream, Subscribable } from '@livestore/utils/effect'
+import { Effect, FastCheck, Fiber, Option, Queue, Ref, Schema, Stream, Subscribable } from '@livestore/utils/effect'
 
 import { appConfigSetEvent, events as fixtureEvents, schema as fixtureSchema } from './fixture.ts'
 
@@ -487,17 +487,17 @@ Vitest.describe.concurrent('streamEventsWithSyncState', () => {
     ),
   )
 
-  const batchSizeSampleSchema = Schema.Literals([1, 5, 12, 25, 50, 100])
-  const eventCountSampleSchema = Schema.Literals([0, 1, 6, 10, 100])
-  const batchesPerTickSampleSchema = Schema.Literals([1, 3, 10, 100])
+  const batchSizeSample = FastCheck.constantFrom(1, 5, 12, 25, 50, 100)
+  const eventCountSample = FastCheck.constantFrom(0, 1, 6, 10, 100)
+  const batchesPerTickSample = FastCheck.constantFrom(1, 3, 10, 100)
 
   Vitest.asProp(
     Vitest.scopedLive,
     'property: streams events across batches',
     {
-      batchSize: batchSizeSampleSchema,
-      eventCount: eventCountSampleSchema,
-      batchesPerTick: batchesPerTickSampleSchema,
+      batchSize: batchSizeSample,
+      eventCount: eventCountSample,
+      batchesPerTick: batchesPerTickSample,
     },
     ({ batchSize, eventCount, batchesPerTick }, test) =>
       withNodeFs(
