@@ -55,11 +55,17 @@ export const messagePortChannel: <MsgListen, MsgSend, MsgListenEncoded, MsgSendE
           port.postMessage(messageEncoded, transferables)
         }) as Effect.Effect<void, SchemaIssue.Issue>
 
-	      const listen = Stream.fromEventListener<MessageEvent>(port, 'message').pipe(
-	        // Stream.tap((_) => Effect.log(`${label}:message`, _.data)),
-	        Stream.map((_) => Schema.decodeUnknownResult(schema.listen)(_.data)),
-	        listenToDebugPing(label),
-	      )
+      const listenQueue = yield* Effect.acquireRelease(Queue.unbounded<MessageEvent>(), Queue.shutdown)
+      const onMessage = (event: MessageEvent) => {
+        Queue.offerUnsafe(listenQueue, event)
+      }
+      port.addEventListener('message', onMessage)
+
+      const listen = Stream.fromQueue(listenQueue).pipe(
+        // Stream.tap((_) => Effect.log(`${label}:message`, _.data)),
+        Stream.map((_) => Schema.decodeUnknownResult(schema.listen)(_.data)),
+        listenToDebugPing(label),
+      )
 
       // NOTE unfortunately MessagePorts don't emit a `close` event when the other end is closed
 
@@ -69,7 +75,13 @@ export const messagePortChannel: <MsgListen, MsgSend, MsgListenEncoded, MsgSendE
       const supportsTransferables = true
 
       yield* Effect.addFinalizer(() =>
-        Effect.try({ try: () => port.close(), catch: (cause) => cause }).pipe(Effect.ignore({ log: true })),
+        Effect.try({
+          try: () => {
+            port.removeEventListener('message', onMessage)
+            port.close()
+          },
+          catch: (cause) => cause,
+        }).pipe(Effect.ignore({ log: true })),
       )
 
       return {

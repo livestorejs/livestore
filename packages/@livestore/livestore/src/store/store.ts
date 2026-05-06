@@ -573,7 +573,67 @@ export class Store<TSchema extends LiveStoreSchema = LiveStoreSchema.Any, TConte
   ): AsyncIterable<TResult> => {
     this.checkShutdown('subscribe')
 
-    return Stream.toAsyncIterable(this.subscribeStream(query, options))
+    const self = this
+
+    return {
+      [Symbol.asyncIterator](): AsyncIterator<TResult> {
+        const buffered: TResult[] = []
+        const pending: Array<(result: IteratorResult<TResult>) => void> = []
+        let unsubscribe: Unsubscribe | undefined
+        let isDone = false
+
+        const ensureSubscribed = () => {
+          if (unsubscribe !== undefined) return
+
+          unsubscribe = self.subscribeWithCallback(
+            query,
+            (result) => {
+              const resolve = pending.shift()
+              if (resolve !== undefined) {
+                resolve({ done: false, value: result })
+              } else {
+                buffered.push(result)
+              }
+            },
+            options,
+          )
+        }
+
+        const finish = () => {
+          if (isDone === true) return
+          isDone = true
+          unsubscribe?.()
+          unsubscribe = undefined
+
+          for (const resolve of pending.splice(0)) {
+            resolve({ done: true, value: undefined as TResult })
+          }
+        }
+
+        return {
+          next() {
+            if (isDone === true) {
+              return Promise.resolve({ done: true, value: undefined as TResult })
+            }
+
+            ensureSubscribed()
+
+            if (buffered.length > 0) {
+              const value = buffered.shift()!
+              return Promise.resolve({ done: false, value })
+            }
+
+            return new Promise<IteratorResult<TResult>>((resolve) => {
+              pending.push(resolve)
+            })
+          },
+          return() {
+            finish()
+            return Promise.resolve({ done: true, value: undefined as TResult })
+          },
+        }
+      },
+    }
   }
 
   subscribeStream = <TResult>(query: Queryable<TResult>, options?: SubscribeOptions<TResult>): Stream.Stream<TResult> =>

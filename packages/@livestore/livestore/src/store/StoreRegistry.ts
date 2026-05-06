@@ -313,17 +313,30 @@ export class StoreRegistry {
   >(
     options: RegistryStoreOptions<TSchema, TContext, TSyncPayloadSchema>,
   ): (() => void) => {
-    const release = Effect.gen({ self: this }, function* () {
-      // Cast options to satisfy StoreCacheKey's wider type (type safety enforced at API boundary)
-      const key = new StoreCacheKey(options)
-      yield* RcMap.get(this.#rcMap, key)
-      // Effect.never suspends indefinitely, keeping the RcMap reference alive.
-      // When `release()` is called, the fiber is interrupted, closing the scope
-      // and releasing the RcMap entry (which may trigger disposal after idleTimeToLive).
-      yield* Effect.never
-    }).pipe(Effect.scoped, this.#runtime.runCallback)
+    const scope = this.#runtime.runSync(Scope.make())
+    const key = new StoreCacheKey(options)
+    const acquire = RcMap.get(this.#rcMap, key).pipe(Scope.provide(scope), Effect.asVoid)
+    const closeScope = () => {
+      this.#runtime.runSyncExit(Scope.close(scope, Exit.void))
+    }
 
-    return () => release()
+    const exit = this.#runtime.runSyncExit(acquire)
+
+    if (Exit.isSuccess(exit) === true) {
+      return closeScope
+    }
+
+    const defect = Cause.findDefect(exit.cause)
+    if (Result.isFailure(defect) === true || Cause.isAsyncFiberError(defect.success) === false) {
+      closeScope()
+      throw Cause.squash(exit.cause)
+    }
+
+    const fiber = defect.success.fiber as Fiber.Fiber<void, UnknownError>
+    return () => {
+      closeScope()
+      this.#runtime.runFork(Fiber.interrupt(fiber))
+    }
   }
 
   /**

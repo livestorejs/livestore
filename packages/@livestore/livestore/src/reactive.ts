@@ -641,9 +641,7 @@ const serializeAtom = (atom: Atom<any, unknown, any>, includeResult: boolean): S
   }
 
   const previousResult: EncodedOption<string> = includeResult === true
-    ? encodedOptionSome(
-        atom.previousResult === NOT_REFRESHED_YET ? '"SYMBOL_NOT_REFRESHED_YET"' : JSON.stringify(atom.previousResult),
-      )
+    ? encodedOptionSome(atom.previousResult === NOT_REFRESHED_YET ? '"SYMBOL_NOT_REFRESHED_YET"' : stringifyDebugResult(atom.previousResult))
     : encodedOptionNone()
 
   if (atom._tag === 'ref') {
@@ -689,3 +687,19 @@ const serializeEffect = (effect: Effect<any>): SerializedEffect => {
     isDestroyed: effect.isDestroyed,
   }
 }
+
+const stringifyDebugResult = (value: unknown): string =>
+  JSON.stringify(value, function (key, nestedValue) {
+    if (
+      key === 'schema' &&
+      this !== null &&
+      typeof this === 'object' &&
+      'query' in this &&
+      'bindValues' in this &&
+      'queriedTables' in this
+    ) {
+      return undefined
+    }
+
+    return nestedValue
+  })

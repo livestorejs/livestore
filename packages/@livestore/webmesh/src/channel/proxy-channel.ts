@@ -133,6 +133,15 @@ export const makeProxyChannel = ({
 
       const connectedStateRef = yield* SubscriptionRef.make<ProxiedChannelStateEstablished | false>(false)
 
+      const listenQueue = yield* Effect.acquireRelease(Queue.unbounded<any>(), Queue.shutdown)
+
+      const ackMap = new Map<string, Deferred.Deferred<void>>()
+
+      const earlyPayloadBuffer = yield* Effect.acquireRelease(
+        Queue.unbounded<typeof MeshSchema.ProxyChannelPayload.Type>(),
+        Queue.shutdown,
+      )
+
       const waitForEstablished = Effect.gen(function* () {
         const state = yield* SubscriptionRef.waitUntil(connectedStateRef, (state) => state !== false)
 
@@ -143,15 +152,32 @@ export const makeProxyChannel = ({
         Effect.gen(function* () {
           // TODO avoid "double" `Connected` events (we might call `setStateToEstablished` twice during initial edge)
           yield* Effect.spanEvent(`Connected (${channelId})`).pipe(Effect.withParentSpan(channelSpan))
-          channelStateRef.current = {
+          const establishedState = {
             _tag: 'Established',
             listenSchema: schema.listen,
             listenQueue,
             ackMap,
             combinedChannelId: channelId,
-          }
-          yield* SubscriptionRef.set(connectedStateRef, channelStateRef.current)
+          } satisfies ProxiedChannelStateEstablished
+
+          channelStateRef.current = establishedState
+          yield* SubscriptionRef.set(connectedStateRef, establishedState)
           debugInfo.isConnected = true
+
+          const bufferedPackets = yield* Queue.clear(earlyPayloadBuffer)
+          for (const bufferedPacket of bufferedPackets) {
+            if (establishedState.combinedChannelId !== bufferedPacket.combinedChannelId) {
+              yield* Effect.logWarning(
+                `[${nodeName}] Discarding buffered payload ${bufferedPacket.id}: Combined channel ID mismatch during drain. Expected ${establishedState.combinedChannelId}, got ${bufferedPacket.combinedChannelId}`,
+              )
+              continue
+            }
+
+            const decodedMessage = yield* Schema.decodeUnknownEffect(establishedState.listenSchema)(
+              bufferedPacket.payload,
+            )
+            yield* Queue.offer(establishedState.listenQueue, decodedMessage)
+          }
         })
 
       const edgeRequest = Effect.suspend(() =>
@@ -162,11 +188,6 @@ export const makeProxyChannel = ({
 
       const getCombinedChannelId = (otherSideChannelIdCandidate: string) =>
         [channelIdCandidate, otherSideChannelIdCandidate].toSorted().join('_')
-
-      const earlyPayloadBuffer = yield* Effect.acquireRelease(
-        Queue.unbounded<typeof MeshSchema.ProxyChannelPayload.Type>(),
-        Queue.shutdown,
-      )
 
       const processProxyPacket = ({ packet, respondToSender }: ProxyQueueItem) =>
         Effect.gen(function* () {
@@ -266,31 +287,6 @@ export const makeProxyChannel = ({
 
               yield* setStateToEstablished(packet.combinedChannelId)
 
-              const establishedState = channelStateRef.current
-              if (establishedState._tag === 'Established') {
-                //
-                const bufferedPackets = yield* Queue.takeAll(earlyPayloadBuffer)
-                // yield* Effect.logDebug(
-                //   `[${nodeName}] Draining early payload buffer (${bufferedPackets.length}) after ResponseSuccess`,
-                // )
-                for (const bufferedPacket of bufferedPackets) {
-                  if (establishedState.combinedChannelId !== bufferedPacket.combinedChannelId) {
-                    yield* Effect.logWarning(
-                      `[${nodeName}] Discarding buffered payload ${bufferedPacket.id}: Combined channel ID mismatch during drain. Expected ${establishedState.combinedChannelId}, got ${bufferedPacket.combinedChannelId}`,
-                    )
-                    continue
-                  }
-                  const decodedMessage = yield* Schema.decodeUnknownEffect(establishedState.listenSchema)(
-                    bufferedPacket.payload,
-                  )
-                  yield* Queue.offer(establishedState.listenQueue, decodedMessage)
-                }
-              } else {
-                yield* Effect.logError(
-                  `[${nodeName}] State is not Established immediately after setStateToEstablished was called. Cannot drain buffer. State: ${establishedState._tag}`,
-                )
-              }
-
               return
             }
             case 'ProxyChannelPayload': {
@@ -379,11 +375,7 @@ export const makeProxyChannel = ({
         Effect.forkScoped,
       )
 
-      const listenQueue = yield* Queue.unbounded<any>()
-
       yield* Effect.spanEvent(`Connecting`)
-
-      const ackMap = new Map<string, Deferred.Deferred<void>>()
 
       // check if already established via incoming `ProxyChannelRequest` from other side
       // which indicates we already have a edge to the target node
@@ -442,7 +434,6 @@ export const makeProxyChannel = ({
               ackMap.set(packet.id!, ack)
 
               yield* sendPacket(packet)
-
               yield* Deferred.await(ack)
               yield* Deferred.succeed(sentDeferred, void 0)
 

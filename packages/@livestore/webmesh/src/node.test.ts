@@ -425,9 +425,13 @@ Vitest.describe('webmesh node', { timeout: testTimeout }, () => {
                   { concurrency: 'unbounded' },
                 )
 
-                expect(yield* channelAToB.listen.pipe(Stream.mapEffect(Effect.fromResult), Stream.take(count), Stream.runCollect)).toEqual(
-                  Chunk.makeBy(count, (i) => ({ message: `B${i}` })),
-                )
+                expect(
+                  yield* channelAToB.listen.pipe(
+                    Stream.mapEffect(Effect.fromResult),
+                    Stream.take(count),
+                    Stream.runCollect,
+                  ),
+                ).toEqual(Array.from({ length: count }, (_, i) => ({ message: `B${i}` })))
                 // expect(yield* getFirstMessage(channelAToB)).toEqual({ message: 'A2' })
               })
 
@@ -441,9 +445,13 @@ Vitest.describe('webmesh node', { timeout: testTimeout }, () => {
                   { concurrency: 'unbounded' },
                 )
 
-                expect(yield* channelBToA.listen.pipe(Stream.mapEffect(Effect.fromResult), Stream.take(count), Stream.runCollect)).toEqual(
-                  Chunk.makeBy(count, (i) => ({ message: `A${i}` })),
-                )
+                expect(
+                  yield* channelBToA.listen.pipe(
+                    Stream.mapEffect(Effect.fromResult),
+                    Stream.take(count),
+                    Stream.runCollect,
+                  ),
+                ).toEqual(Array.from({ length: count }, (_, i) => ({ message: `A${i}` })))
               })
 
               yield* Effect.all([nodeACode, nodeBCode, connectNodes(nodeA, nodeB).pipe(Effect.delay(100))], {

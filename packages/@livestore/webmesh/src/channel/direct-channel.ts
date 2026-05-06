@@ -103,7 +103,7 @@ export const makeDirectChannel = ({
             Effect.forkChild,
           )
 
-          const makeChannel = makeDirectChannelInternal({
+          const makeChannelFiber = yield* makeDirectChannelInternal({
             nodeName,
             sourceId,
             incomingPacketsQueue,
@@ -123,15 +123,15 @@ export const makeDirectChannel = ({
             Effect.provideService(References.UnhandledLogLevel, undefined),
           )
 
-          const raceResult = yield* Effect.raceFirst(makeChannel, Fiber.join(waitForNewEdgeFiber))
+          const raceResult = yield* Effect.raceFirst(Fiber.await(makeChannelFiber), Fiber.join(waitForNewEdgeFiber))
 
           if (raceResult === 'new-edge') {
             yield* Scope.close(makeDirectChannelScope, Exit.fail('new-edge'))
             // We'll try again
           } else {
-	            const channelExit = yield* Fiber.await(raceResult)
-	            if (channelExit._tag === 'Failure') {
-	              yield* Scope.close(makeDirectChannelScope, channelExit)
+            const channelExit = raceResult
+            if (channelExit._tag === 'Failure') {
+              yield* Scope.close(makeDirectChannelScope, channelExit)
 
               const fail = Cause.findFail(channelExit.cause)
 
@@ -141,7 +141,6 @@ export const makeDirectChannel = ({
               ) {
                 // Only retry when there is a new edge available
                 yield* Stream.fromPubSub(newEdgeAvailablePubSub).pipe(
-                  Stream.filter((edgeName) => edgeName === target),
                   Stream.tap((edgeName) => Effect.spanEvent(`retry-on-new-conn:${edgeName}`)),
                   Stream.take(1),
                   Stream.runDrain,
