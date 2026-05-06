@@ -333,6 +333,7 @@ in
       DT_PASSTHROUGH=1 pnpm exec changeset version
       bun scripts/src/commands/changesets.ts sync-version-source
       DT_PASSTHROUGH=1 genie
+      bun scripts/src/commands/changesets.ts sync-standalone-consumers
       DT_PASSTHROUGH=1 pnpm install --lockfile-only --no-frozen-lockfile
       bun scripts/src/commands/changesets.ts assert-fixed-versions
       bun scripts/src/commands/changesets.ts write-release-plan --npm-tag "''${LIVESTORE_NPM_TAG:-latest}"
