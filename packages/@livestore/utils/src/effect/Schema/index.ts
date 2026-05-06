@@ -10,14 +10,14 @@ export * from './debug-diff.ts'
 
 const Schema = Schema_
 
-export type Schema<A, I = unknown, _R = unknown> = Schema_.Schema<A> & {
+export type Schema<A, _I = unknown, _R = unknown> = Schema_.Schema<A> & {
   readonly Type: A
   readonly Encoded: any
   readonly DecodingServices: any
   readonly EncodingServices: any
 }
 export namespace Schema {
-  export type Schema<A, I = unknown, _R = unknown> = Schema_.Schema<A> & {
+  export type Schema<A, _I = unknown, _R = unknown> = Schema_.Schema<A> & {
     readonly Type: A
     readonly Encoded: any
     readonly DecodingServices: any

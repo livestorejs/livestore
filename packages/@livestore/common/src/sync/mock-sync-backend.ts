@@ -1,4 +1,4 @@
-import type { Schema, Scope } from '@livestore/utils/effect'
+import type { Scope } from '@livestore/utils/effect'
 import { Effect, Mailbox, Option, Queue, Ref, Semaphore, Stream, SubscriptionRef } from '@livestore/utils/effect'
 
 import { UnknownError } from '../errors.ts'

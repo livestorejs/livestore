@@ -269,13 +269,13 @@ export function table<
   // NOTE we're currently patching the existing tableDef object
   // as it's being used as part of the query builder API
   for (const key of Object.keys(query)) {
-    // @ts-expect-error TODO properly implement this
+    // @ts-ignore TODO properly implement this
     tableDef[key] = query[key]
   }
 
-  // @ts-expect-error TODO properly type this
+  // @ts-ignore TODO properly type this
   tableDef[QueryBuilderAstSymbol] = query[QueryBuilderAstSymbol]
-  // @ts-expect-error TODO properly type this
+  // @ts-ignore TODO properly type this
   tableDef[QueryBuilderTypeId] = query[QueryBuilderTypeId]
 
   return tableDef as any

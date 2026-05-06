@@ -6,7 +6,6 @@ import {
   Effect,
   Exit,
   Fiber,
-  Option,
   PubSub,
   Queue,
   Schema,

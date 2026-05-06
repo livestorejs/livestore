@@ -497,15 +497,6 @@ const rebaseEvents = ({
   })
 }
 
-/**
- * TODO: Implement this
- *
- * In certain scenarios e.g. when the client session has a queue of upstream update results,
- * it could make sense to "flatten" update results into a single update result which the client session
- * can process more efficiently which avoids push-threshing
- */
-const _flattenMergeResults = (_updateResults: ReadonlyArray<MergeResult>) => {}
-
 const validatePayload = (payload: typeof Payload.Type) =>
   Effect.gen(function* () {
     for (let i = 1; i < payload.newEvents.length; i++) {

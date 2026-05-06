@@ -231,8 +231,7 @@ export const makeLeaderThreadLayer = ({
       initialState: {} as any as (typeof LeaderThreadCtx.Service)['initialState'],
     } satisfies typeof LeaderThreadCtx.Service
 
-    // @ts-expect-error For debugging purposes
-    globalThis.__leaderThreadCtx = ctx
+    ;(globalThis as typeof globalThis & { __leaderThreadCtx?: typeof ctx }).__leaderThreadCtx = ctx
 
     const layer = Layer.succeed(LeaderThreadCtx, ctx)
 

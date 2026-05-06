@@ -10,7 +10,6 @@ import {
   Hash,
   Layer,
   ManagedRuntime,
-  type OtelTracer,
   RcMap,
   Result,
   type Schema,

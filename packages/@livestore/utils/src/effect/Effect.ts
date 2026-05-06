@@ -11,7 +11,7 @@ import {
   type Stream,
 } from 'effect'
 import { log } from 'effect/Console'
-import { dual, type LazyArg } from 'effect/Function'
+import { dual } from 'effect/Function'
 import type { Predicate, Refinement } from 'effect/Predicate'
 
 import { isDevEnv, isPromise, objectToString } from '../mod.ts'

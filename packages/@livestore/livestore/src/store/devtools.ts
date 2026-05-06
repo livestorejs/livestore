@@ -115,7 +115,6 @@ export const connectDevtoolsToStore = Effect.fn('LSD.devtools.connectStoreToDevt
                     subscriptionId,
                   }),
                 ),
-              { timeout: 500 },
             )
 
           send()
@@ -254,7 +253,6 @@ export const connectDevtoolsToStore = Effect.fn('LSD.devtools.connectStoreToDevt
                     subscriptionId,
                   }),
                 ),
-              { timeout: 500 },
             )
 
           send()

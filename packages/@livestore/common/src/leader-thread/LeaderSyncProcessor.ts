@@ -9,7 +9,6 @@ import {
   Effect,
   Exit,
   FiberHandle,
-  Layer,
   Option,
   Queue,
   ReadonlyArray,
@@ -365,7 +364,6 @@ export const makeLeaderSyncProcessor = ({
         devtoolsLatch: ctxRef.current?.devtoolsLatch,
         backendPushBatchSize,
       }).pipe(
-        Effect.catchTag('BackendIdMismatchError', handleBackendIdMismatchError),
         Effect.catchCause(maybeShutdownOnError),
       )
 

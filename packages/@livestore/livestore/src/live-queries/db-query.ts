@@ -183,7 +183,7 @@ export class LiveStoreDbQuery<TResultSchema, TResult = TResultSchema> extends Li
 
   label: string
 
-  readonly reactivityGraph
+  readonly reactivityGraph: ReactivityGraph
 
   private mapResult: (rows: TResultSchema) => TResult
   def: LiveQueryDef<TResult>

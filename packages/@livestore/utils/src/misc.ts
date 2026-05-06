@@ -9,7 +9,7 @@ export const isDevEnv = () => {
     return import.meta.env.DEV
   }
 
-  // @ts-expect-error Only exists in Expo / RN
+  // @ts-ignore Only exists in Expo / RN
   if (globalThis?.__DEV__ === true) {
     return true
   }

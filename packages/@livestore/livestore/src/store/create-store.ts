@@ -12,7 +12,6 @@ import {
   type BackendIdMismatchError,
   type MigrationsReport,
   provideOtel,
-  type ServerAheadError,
   UnknownError,
 } from '@livestore/common'
 import type { LiveStoreSchema } from '@livestore/common/schema'

@@ -57,6 +57,7 @@ export const withLoggerConfig = <TEnv, TError, TOut>(
   defaults?: LoggerDefaults,
 ): ((effect: Effect.Effect<TOut, TError, TEnv>) => Effect.Effect<TOut, TError, TEnv>) => {
   const _level = resolveLogLevel(config, defaults)
+  void _level
   const layer = resolveLoggerLayer(config, defaults)
   return (effect) => effect.pipe(Effect.provide(layer)) as Effect.Effect<TOut, TError, TEnv>
 }

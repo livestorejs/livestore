@@ -1,4 +1,4 @@
-import { Deferred, Result, Exit, identity, Option, Predicate, PubSub, Queue, Scope, type SchemaIssue } from 'effect'
+import { Deferred, Result, Exit, identity, Predicate, PubSub, Queue, Scope, type SchemaIssue } from 'effect'
 import type { Input as DurationInput } from 'effect/Duration'
 
 import { shouldNeverHappen } from '../../misc.ts'
