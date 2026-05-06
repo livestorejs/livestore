@@ -153,6 +153,10 @@ const formatValue = (value: TJsonValue) => JSON.stringify(value)
 
 const isBypassActorsDiff = (diff: string) => diff.startsWith('$.bypass_actors')
 
+const isGitHubExpandedDefaultDiff = (diff: string) =>
+  diff === '$.rules.0.parameters.allowed_merge_methods: desired null, live ["merge","squash","rebase"]' ||
+  diff === '$.rules.0.parameters.required_reviewers: desired null, live []'
+
 const collectDiffs = (
   desired: TJsonValue,
   live: TJsonValue,
@@ -176,7 +180,9 @@ const collectDiffs = (
       return [`${formatPath(pathParts)}: desired ${formatValue(desired)}, live ${formatValue(live)}`]
     }
 
-    const keys = Object.keys(desired).toSorted((a, b) => a.localeCompare(b))
+    const keys = Array.from(new Set([...Object.keys(desired), ...Object.keys(live)])).toSorted((a, b) =>
+      a.localeCompare(b),
+    )
     return keys.flatMap((key) => collectDiffs(desired[key] ?? null, live[key] ?? null, [...pathParts, key]))
   }
 
@@ -240,7 +246,9 @@ const checkRulesetsCommand = Cli.Command.make(
 
     const live = yield* getRulesetDetails(existing.id).pipe(Effect.map(normalizeRuleset))
     const viewerPermission = yield* getViewerPermission
-    const allDiffs = collectDiffs(body as TJsonValue, live as TJsonValue)
+    const allDiffs = collectDiffs(body as TJsonValue, live as TJsonValue).filter(
+      (diff) => isGitHubExpandedDefaultDiff(diff) === false,
+    )
     const diffs =
       viewerPermission === 'ADMIN' ? allDiffs : allDiffs.filter((diff) => isBypassActorsDiff(diff) === false)
 
