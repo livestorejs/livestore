@@ -2,9 +2,12 @@ import { spawnSync } from 'node:child_process'
 import { existsSync, readdirSync, readFileSync, writeFileSync } from 'node:fs'
 import path from 'node:path'
 
+import semver from 'semver'
+
 const usage = `Usage:
   bun scripts/src/commands/changesets.ts check-pr [--base <ref>]
   bun scripts/src/commands/changesets.ts sync-version-source
+  bun scripts/src/commands/changesets.ts sync-standalone-consumers
   bun scripts/src/commands/changesets.ts write-release-plan [--npm-tag <tag>]
   bun scripts/src/commands/changesets.ts assert-fixed-versions
   bun scripts/src/commands/changesets.ts verify-baseline-changelog
@@ -47,7 +50,17 @@ const runCapture = (command: ReadonlyArray<string>) => {
   return result.stdout
 }
 
+const runCaptureOptional = (command: ReadonlyArray<string>) => {
+  const result = spawnSync(command[0]!, command.slice(1), {
+    encoding: 'utf8',
+    stdio: ['ignore', 'pipe', 'pipe'],
+  })
+  return result.status === 0 ? result.stdout.trim() : undefined
+}
+
 const readJson = <T>(file: string): T => JSON.parse(readFileSync(file, 'utf8')) as T
+
+const writeJson = (file: string, value: unknown) => writeFileSync(file, `${JSON.stringify(value, null, 2)}\n`)
 
 const publicLivestorePackages = () =>
   readdirSync('packages/@livestore')
@@ -99,16 +112,104 @@ const checkPr = (flags: Map<string, string | true>) => {
 
 const readReleaseVersion = () => readJson<{ version: string }>('release/version.json').version
 
+type DependencySection = Record<string, string>
+
+type PackageJson = {
+  dependencies?: DependencySection
+  devDependencies?: DependencySection
+  peerDependencies?: DependencySection
+  optionalDependencies?: DependencySection
+}
+
+const dependencySectionNames = [
+  'dependencies',
+  'devDependencies',
+  'peerDependencies',
+  'optionalDependencies',
+] as const satisfies ReadonlyArray<keyof PackageJson>
+
+const packageJsonFiles = () =>
+  runCapture(['git', 'ls-files', '*package.json'])
+    .split('\n')
+    .filter((file) => file.length > 0)
+
+const syncStandaloneConsumers = () => {
+  const version = readReleaseVersion()
+  const packageNames = new Set(publicLivestorePackages().map((pkg) => pkg.name))
+  let changedFileCount = 0
+  let changedDependencyCount = 0
+
+  for (const file of packageJsonFiles()) {
+    const packageJson = readJson<PackageJson>(file)
+    let changed = false
+
+    for (const sectionName of dependencySectionNames) {
+      const section = packageJson[sectionName]
+      if (section === undefined) continue
+
+      for (const packageName of packageNames) {
+        const current = section[packageName]
+        if (current === undefined || current.startsWith('workspace:') === true || current === version) continue
+        section[packageName] = version
+        changed = true
+        changedDependencyCount++
+      }
+    }
+
+    if (changed === true) {
+      writeJson(file, packageJson)
+      changedFileCount++
+    }
+  }
+
+  console.log(
+    `Synced ${changedDependencyCount} standalone @livestore dependencies in ${changedFileCount} package.json files`,
+  )
+}
+
+const currentDevDistTag = () => {
+  const output = runCaptureOptional(['npm', 'view', '@livestore/common', 'dist-tags.dev', '--json'])
+  if (output === undefined || output.length === 0) return undefined
+  return JSON.parse(output) as unknown
+}
+
+const devPrereleaseVersion = (baseVersion: string) => {
+  const parsedBase = semver.parse(baseVersion)
+  if (parsedBase === null) throw new Error(`Invalid base version from Changesets: ${baseVersion}`)
+
+  const distTag = currentDevDistTag()
+  if (typeof distTag !== 'string') return `${parsedBase.version}-dev.0`
+
+  const parsedDistTag = semver.parse(distTag)
+  const prerelease = parsedDistTag?.prerelease ?? []
+  const distTagBase =
+    parsedDistTag === null ? undefined : `${parsedDistTag.major}.${parsedDistTag.minor}.${parsedDistTag.patch}`
+
+  if (distTagBase !== parsedBase.version || prerelease[0] !== 'dev' || typeof prerelease[1] !== 'number') {
+    return `${parsedBase.version}-dev.0`
+  }
+
+  return `${parsedBase.version}-dev.${prerelease[1] + 1}`
+}
+
+const releaseVersionForNpmTag = (packageVersion: string, npmTag: string) => {
+  if (process.env.LIVESTORE_RELEASE_VERSION !== undefined) return process.env.LIVESTORE_RELEASE_VERSION
+  if (npmTag === 'dev') return devPrereleaseVersion(packageVersion)
+  return packageVersion
+}
+
 const syncVersionSource = () => {
   const packageVersion = readJson<{ version: string }>('packages/@livestore/livestore/package.json').version
-  writeFileSync('release/version.json', `${JSON.stringify({ version: packageVersion }, null, 2)}\n`)
-  console.log(`Synced release/version.json to ${packageVersion}`)
+  const npmTag = process.env.LIVESTORE_NPM_TAG ?? 'latest'
+  const version = releaseVersionForNpmTag(packageVersion, npmTag)
+  writeJson('release/version.json', { version })
+  console.log(`Synced release/version.json to ${version}`)
 }
 
 const writeReleasePlan = (flags: Map<string, string | true>) => {
   const version = readReleaseVersion()
   const npmTag = readFlag(flags, 'npm-tag') ?? process.env.LIVESTORE_NPM_TAG ?? 'latest'
-  writeFileSync('release/release-plan.json', `${JSON.stringify({ schemaVersion: 1, version, npmTag }, null, 2)}\n`)
+  writeJson('release/release-plan.json', { schemaVersion: 1, version, npmTag })
   console.log(`Wrote release/release-plan.json for ${version} (${npmTag})`)
 }
 
@@ -151,6 +252,7 @@ const main = () => {
   }
   if (command === 'check-pr') return checkPr(flags)
   if (command === 'sync-version-source') return syncVersionSource()
+  if (command === 'sync-standalone-consumers') return syncStandaloneConsumers()
   if (command === 'write-release-plan') return writeReleasePlan(flags)
   if (command === 'assert-fixed-versions') return assertFixedVersions()
   if (command === 'verify-baseline-changelog') return verifyBaselineChangelog()

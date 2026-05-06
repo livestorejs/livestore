@@ -2823,8 +2823,8 @@ importers:
         specifier: 7.0.1
         version: 7.0.1
       qrcode-generator:
-        specifier: 1.4.4
-        version: 1.4.4
+        specifier: 2.0.4
+        version: 2.0.4
     devDependencies:
       '@effect/opentelemetry':
         specifier: 4.0.0-beta.60
@@ -14761,9 +14761,6 @@ packages:
 
   pure-rand@8.4.0:
     resolution: {integrity: sha512-IoM8YF/jY0hiugFo/wOWqfmarlE6J0wc6fDK1PhftMk7MGhVZl88sZimmqBBFomLOCSmcCCpsfj7wXASCpvK9A==}
-
-  qrcode-generator@1.4.4:
-    resolution: {integrity: sha512-HM7yY8O2ilqhmULxGMpcHSF1EhJJ9yBj8gvDEuZ6M+KGJ0YY2hKpnXvRD+hZPLrDVck3ExIGhmPtSdcjC+guuw==}
 
   qrcode-generator@2.0.4:
     resolution: {integrity: sha512-mZSiP6RnbHl4xL2Ap5HfkjLnmxfKcPWpWe/c+5XxCuetEenqmNFf1FH/ftXPCtFG5/TDobjsjz6sSNL0Sr8Z9g==}
@@ -31817,8 +31814,6 @@ snapshots:
       - utf-8-validate
 
   pure-rand@8.4.0: {}
-
-  qrcode-generator@1.4.4: {}
 
   qrcode-generator@2.0.4: {}
 

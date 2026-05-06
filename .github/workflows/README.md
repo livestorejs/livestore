@@ -71,6 +71,13 @@ It can be triggered by `repository_dispatch` from the artifact-producing system
 or manually with public artifact URLs and a SHA-256 checksum. It verifies the
 manifest and opens a PR that only changes the public artifact metadata.
 
+Artifact URLs should point at build-id-only release tags such as
+`devtools-artifact-dt-20260505-398c5feb`. The DevTools implementation version
+may appear in public metadata for traceability, but it is not the artifact
+release identity. When LiveStore republishes the artifact, the npm package and
+Chrome ZIP release asset are versioned with the LiveStore release group or
+snapshot version.
+
 The workflow exists so the LiveStore repository can keep release CI
 self-contained while the DevTools source remains outside this repository.
 

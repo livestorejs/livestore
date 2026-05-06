@@ -353,7 +353,37 @@ const publishReleasePackages = ({
       const publishArgs = ['pnpm', 'publish', `--tag=${npmTag}`, '--access=public', '--no-git-checks']
       if (isCI === true) publishArgs.push('--provenance')
       if (dryRun === true) publishArgs.push('--dry-run')
-      yield* cmd(`DT_PASSTHROUGH=1 ${publishArgs.join(' ')}`, { shell: true }).pipe(Effect.provide(cwdLayer))
+      yield* cmd(`DT_PASSTHROUGH=1 ${publishArgs.join(' ')}`, { shell: true }).pipe(
+        Effect.provide(cwdLayer),
+        Effect.catchTag('CmdError', (error) => {
+          if (isCI === false || dryRun === true || isSnapshotVersion(version) === false) return Effect.fail(error)
+
+          const alreadyVisible = cmd(`npm view ${pkg}@${version} version`, { stdout: 'pipe', stderr: 'pipe' }).pipe(
+            Effect.provide(cwdLayer),
+            Effect.as(true),
+            Effect.catchTag('CmdError', () => Effect.succeed(false)),
+          )
+
+          return alreadyVisible.pipe(
+            Effect.flatMap((isVisible) => {
+              if (isVisible === true) {
+                return Effect.logWarning(
+                  `${pkg}@${version} became visible after a failed provenance publish; continuing`,
+                )
+              }
+
+              const fallbackArgs = publishArgs.filter((arg) => arg !== '--provenance')
+              return Effect.logWarning(
+                `Retrying ${pkg}@${version} snapshot publish without provenance after provenance publish failed`,
+              ).pipe(
+                Effect.zipRight(
+                  cmd(`DT_PASSTHROUGH=1 ${fallbackArgs.join(' ')}`, { shell: true }).pipe(Effect.provide(cwdLayer)),
+                ),
+              )
+            }),
+          )
+        }),
+      )
       yield* Effect.log(`${dryRun === true ? 'Dry-ran' : 'Published'} ${pkg}@${version}`)
     }
 
