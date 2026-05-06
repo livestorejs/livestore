@@ -9,6 +9,6 @@ const UserSchema = Schema.Struct({
   metadata: Schema.optional(
     Schema.Record(Schema.String, Schema.Unknown),
   ),
-}).annotations({ title: 'users' })
+}).annotate({ title: 'users' })
 
 export const userTable = State.SQLite.table({ schema: UserSchema })

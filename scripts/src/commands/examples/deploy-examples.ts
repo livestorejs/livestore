@@ -44,12 +44,9 @@ if (workspaceRoot == null) {
 const examplesDir = `${workspaceRoot}/examples`
 
 // Accept only the fields we care about (scripts) while tolerating extra metadata from Vite or toolchains.
-const ExamplePackageJsonSchema = Schema.Struct(
-  {
-    scripts: Schema.optional(Schema.Record(Schema.String, Schema.String)),
-  },
-  Schema.Record(Schema.String, Schema.Unknown),
-)
+const ExamplePackageJsonSchema = Schema.Struct({
+  scripts: Schema.optional(Schema.Record(Schema.String, Schema.String)),
+})
 
 const parseExamplePackageJson = Schema.decodeUnknownEffect(Schema.fromJsonString(ExamplePackageJsonSchema))
 
@@ -135,7 +132,7 @@ export const runExampleTests = (examples: ReadonlyArray<string>, options: { skip
         return yield* new ScriptError({ message: `Cannot run tests for ${example}: invalid package.json` })
       }
 
-      const packageJson = decoded.value
+      const packageJson = decoded.success
       if (typeof packageJson.scripts?.test !== 'string') {
         if (skipMissing === true) {
           yield* Effect.logWarning(`Skipping ${example}: no test script defined`)
@@ -257,7 +254,7 @@ const deployExample = ({
     yield* Effect.log(`Deploying ${exampleSlug} as ${workerName}`)
     yield* deployCloudflareWorker({ example: manifest, kind: deploymentKind }).pipe(
       Effect.retry({ times: 2 }),
-      Effect.tapErrorCause((cause) => Effect.logError(`Error deploying ${exampleSlug}. Cause:`, cause)),
+      Effect.tapError((error) => Effect.logError(`Error deploying ${exampleSlug}. Cause:`, error)),
     )
 
     yield* Effect.annotateCurrentSpan({ deployment_kind: deploymentKindLabel(deploymentKind) })
@@ -290,8 +287,8 @@ const deployExample = ({
 export const command = Cli.Command.make(
   'deploy',
   {
-    exampleFilter: Cli.Options.text('example-filter').pipe(Cli.Options.withAlias('e'), Cli.Options.optional),
-    prod: Cli.Options.boolean('prod').pipe(Cli.Options.withDefault(false)),
+    exampleFilter: Cli.Flag.string('example-filter').pipe(Cli.Flag.withAlias('e'), Cli.Flag.optional),
+    prod: Cli.Flag.boolean('prod').pipe(Cli.Flag.withDefault(false)),
   },
   Effect.fn(function* ({ exampleFilter, prod }) {
     // Ensure credentials are present before kicking off parallel builds; wrangler fails with
@@ -364,11 +361,10 @@ export const command = Cli.Command.make(
 
 if (import.meta.main === true) {
   const cli = Cli.Command.run(command, {
-    name: 'Deploy Examples',
     version: '0.0.0',
   })
 
-  cli(process.argv).pipe(
+  cli.pipe(
     Logger.withMinimumLogLevel('Debug'),
     Effect.provide(Layer.mergeAll(NodeServices.layer, LivestoreWorkspace.fromPath(workspaceRoot))),
     NodeRuntime.runMain,

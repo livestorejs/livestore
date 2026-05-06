@@ -233,7 +233,7 @@ const listSnapshotPackages = (cwd: string) =>
         continue
       }
 
-      const pkgJson = pkgResult.value
+      const pkgJson = pkgResult.success
       const name = typeof pkgJson.name === 'string' ? pkgJson.name : undefined
       if (name == null) {
         yield* Effect.logWarning(`Skipping ${packageJsonPath} while preparing snapshot summary: missing package name`)
@@ -362,7 +362,7 @@ const publishReleasePackages = ({
       for (const pkg of packages) {
         yield* cmd(`npm view ${pkg}@${version} version`, { stdout: 'pipe', stderr: 'pipe' }).pipe(
           Effect.provide(CurrentWorkingDirectory.fromPath(cwd)),
-          Effect.retry(Schedule.spaced('5 seconds').pipe(Schedule.intersect(Schedule.recurs(60)))),
+          Effect.retry(Schedule.spaced('5 seconds').pipe(Schedule.both(Schedule.recurs(60)))),
         )
         yield* Effect.log(`Verified ${pkg}@${version}`)
       }
@@ -372,10 +372,10 @@ const publishReleasePackages = ({
 export const releasePlanCommand = Cli.Command.make(
   'plan',
   {
-    releaseVersion: Cli.Options.text('release-version'),
-    npmTag: Cli.Options.text('npm-tag').pipe(Cli.Options.withDefault('latest')),
-    cwd: Cli.Options.text('cwd').pipe(
-      Cli.Options.withDefault(
+    releaseVersion: Cli.Flag.string('release-version'),
+    npmTag: Cli.Flag.string('npm-tag').pipe(Cli.Flag.withDefault('latest')),
+    cwd: Cli.Flag.string('cwd').pipe(
+      Cli.Flag.withDefault(
         process.env.WORKSPACE_ROOT ?? shouldNeverHappen(`WORKSPACE_ROOT is not set. Make sure to run 'direnv allow'`),
       ),
     ),
@@ -390,19 +390,19 @@ export const releasePlanCommand = Cli.Command.make(
 export const releaseStableCommand = Cli.Command.make(
   'stable',
   {
-    plan: Cli.Options.text('plan').pipe(Cli.Options.withDefault('release/release-plan.json')),
-    dryRun: Cli.Options.boolean('dry-run').pipe(Cli.Options.withDefault(false)),
-    allowExisting: Cli.Options.boolean('allow-existing').pipe(Cli.Options.withDefault(false)),
-    yes: Cli.Options.boolean('yes').pipe(
-      Cli.Options.withDefault(false),
-      Cli.Options.withDescription('Skip interactive confirmation prompt'),
+    plan: Cli.Flag.string('plan').pipe(Cli.Flag.withDefault('release/release-plan.json')),
+    dryRun: Cli.Flag.boolean('dry-run').pipe(Cli.Flag.withDefault(false)),
+    allowExisting: Cli.Flag.boolean('allow-existing').pipe(Cli.Flag.withDefault(false)),
+    yes: Cli.Flag.boolean('yes').pipe(
+      Cli.Flag.withDefault(false),
+      Cli.Flag.withDescription('Skip interactive confirmation prompt'),
     ),
-    cwd: Cli.Options.text('cwd').pipe(
-      Cli.Options.withDefault(
+    cwd: Cli.Flag.string('cwd').pipe(
+      Cli.Flag.withDefault(
         process.env.WORKSPACE_ROOT ?? shouldNeverHappen(`WORKSPACE_ROOT is not set. Make sure to run 'direnv allow'`),
       ),
     ),
-    tscBin: Cli.Options.text('tsc-bin').pipe(Cli.Options.optional),
+    tscBin: Cli.Flag.string('tsc-bin').pipe(Cli.Flag.optional),
   },
   Effect.fn(function* ({ plan: planPath, dryRun, allowExisting, yes, cwd, tscBin: tscBinOption }) {
     const plan = yield* readReleasePlan(cwd, planPath)
@@ -448,19 +448,19 @@ export const releaseStableCommand = Cli.Command.make(
 export const releaseSnapshotCommand = Cli.Command.make(
   'snapshot',
   {
-    gitShaOption: Cli.Options.text('git-sha').pipe(Cli.Options.optional),
-    dryRun: Cli.Options.boolean('dry-run').pipe(Cli.Options.withDefault(false)),
-    yes: Cli.Options.boolean('yes').pipe(
-      Cli.Options.withDefault(false),
-      Cli.Options.withDescription('Skip interactive confirmation prompt'),
+    gitShaOption: Cli.Flag.string('git-sha').pipe(Cli.Flag.optional),
+    dryRun: Cli.Flag.boolean('dry-run').pipe(Cli.Flag.withDefault(false)),
+    yes: Cli.Flag.boolean('yes').pipe(
+      Cli.Flag.withDefault(false),
+      Cli.Flag.withDescription('Skip interactive confirmation prompt'),
     ),
-    cwd: Cli.Options.text('cwd').pipe(
-      Cli.Options.withDefault(
+    cwd: Cli.Flag.string('cwd').pipe(
+      Cli.Flag.withDefault(
         process.env.WORKSPACE_ROOT ?? shouldNeverHappen(`WORKSPACE_ROOT is not set. Make sure to run 'direnv allow'`),
       ),
     ),
-    versionOption: Cli.Options.text('version').pipe(Cli.Options.optional),
-    tscBin: Cli.Options.text('tsc-bin').pipe(Cli.Options.optional),
+    versionOption: Cli.Flag.string('version').pipe(Cli.Flag.optional),
+    tscBin: Cli.Flag.string('tsc-bin').pipe(Cli.Flag.optional),
   },
   Effect.fn(function* ({ gitShaOption, dryRun, yes, cwd, versionOption, tscBin: tscBinOption }) {
     const gitSha =

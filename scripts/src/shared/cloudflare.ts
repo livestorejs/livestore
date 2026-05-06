@@ -17,30 +17,20 @@ export class CloudflareError extends Schema.TaggedErrorClass<CloudflareError>()(
 }) {}
 
 const readEnv = ({ key, message }: { key: string; message: string }): Effect.Effect<string, CloudflareError> =>
-  Config.string(key).pipe(
-    Effect.map((value) => value.trim()),
-    Effect.filterOrFail(
-      (value): value is string => value.length > 0,
-      () =>
-        new CloudflareError({
-          reason: 'auth',
-          message,
-        }),
-    ),
+  Effect.gen(function* () {
+    const value = yield* Config.string(key)
+    const trimmed = value.trim()
+    if (trimmed.length === 0) {
+      return yield* new CloudflareError({ reason: 'auth', message })
+    }
+    return trimmed
+  }).pipe(
     Effect.mapError(
       (error) =>
         new CloudflareError({
           reason: 'auth',
           message,
           cause: error,
-        }),
-    ),
-    Effect.filterOrFail(
-      (value): value is string => value.length > 0,
-      () =>
-        new CloudflareError({
-          reason: 'auth',
-          message,
         }),
     ),
   )

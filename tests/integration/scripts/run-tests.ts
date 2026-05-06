@@ -19,6 +19,11 @@ export const localDevtoolsPreviewOption = Cli.Flag.boolean('local-devtools-previ
   Cli.Flag.withDefault(false),
 )
 
+export type IntegrationTestOptions = {
+  mode: 'headless' | 'ui' | 'dev-server'
+  localDevtoolsPreview: boolean
+}
+
 const viteDevServer = ({
   useWorkspacePort,
   useDevtoolsLocalPreview,
@@ -44,37 +49,64 @@ const viteDevServer = ({
     return { devPort }
   })
 
+export const runMiscTest = Effect.fn(
+  function* ({ mode, localDevtoolsPreview }: IntegrationTestOptions) {
+    const { devPort } = yield* viteDevServer({
+      app: 'todomvc',
+      useWorkspacePort: mode === 'dev-server',
+      useDevtoolsLocalPreview: localDevtoolsPreview,
+    })
+
+    yield* cmd(
+      ['pnpm', 'playwright', 'test', mode === 'ui' ? '--ui' : undefined, 'src/tests/playwright/misc-tests.play.ts'],
+      {
+        env: {
+          FORCE_PLAYWRIGHT_VIA_CLI: '1',
+          PLAYWRIGHT_SUITE: 'misc',
+          LIVESTORE_PLAYWRIGHT_DEV_SERVER_PORT: devPort,
+          DEV_SERVER_COMMAND: `./node_modules/.bin/vite --config src/tests/playwright/fixtures/vite.config.ts dev --port ${devPort}`,
+          PLAYWRIGHT_HEADLESS: mode === 'headless' ? '1' : '0',
+          PLAYWRIGHT_UI: mode === 'ui' ? '1' : '0',
+        },
+      },
+    ).pipe(Effect.provide(CurrentWorkingDirectory.fromPath(cwd)))
+  },
+  Effect.withSpan('test:misc'),
+  Effect.scoped,
+)
+
 export const miscTest = Cli.Command.make(
   'misc',
   {
     mode: modeOption,
     localDevtoolsPreview: localDevtoolsPreviewOption,
   },
-  Effect.fn(
-    function* ({ mode, localDevtoolsPreview }) {
-      const { devPort } = yield* viteDevServer({
-        app: 'todomvc',
-        useWorkspacePort: mode === 'dev-server',
-        useDevtoolsLocalPreview: localDevtoolsPreview,
-      })
+  runMiscTest,
+)
 
-      yield* cmd(
-        ['pnpm', 'playwright', 'test', mode === 'ui' ? '--ui' : undefined, 'src/tests/playwright/misc-tests.play.ts'],
-        {
-          env: {
-            FORCE_PLAYWRIGHT_VIA_CLI: '1',
-            PLAYWRIGHT_SUITE: 'misc',
-            LIVESTORE_PLAYWRIGHT_DEV_SERVER_PORT: devPort,
-            DEV_SERVER_COMMAND: `./node_modules/.bin/vite --config src/tests/playwright/fixtures/vite.config.ts dev --port ${devPort}`,
-            PLAYWRIGHT_HEADLESS: mode === 'headless' ? '1' : '0',
-            PLAYWRIGHT_UI: mode === 'ui' ? '1' : '0',
-          },
+export const runTodomvcTest = Effect.fn(
+  function* ({ mode, localDevtoolsPreview }: IntegrationTestOptions) {
+    const { devPort } = yield* viteDevServer({
+      app: 'todomvc',
+      useWorkspacePort: mode === 'dev-server',
+      useDevtoolsLocalPreview: localDevtoolsPreview,
+    })
+
+    yield* cmd(
+      ['pnpm', 'playwright', 'test', mode === 'ui' ? '--ui' : undefined, 'src/tests/playwright/todomvc.play.ts'],
+      {
+        env: {
+          FORCE_PLAYWRIGHT_VIA_CLI: '1',
+          PLAYWRIGHT_SUITE: 'todomvc',
+          LIVESTORE_PLAYWRIGHT_DEV_SERVER_PORT: devPort,
+          PLAYWRIGHT_HEADLESS: mode === 'headless' ? '1' : '0',
+          PLAYWRIGHT_UI: mode === 'ui' ? '1' : '0',
         },
-      ).pipe(Effect.provide(CurrentWorkingDirectory.fromPath(cwd)))
-    },
-    Effect.withSpan('test:misc'),
-    Effect.scoped,
-  ),
+      },
+    ).pipe(Effect.provide(CurrentWorkingDirectory.fromPath(cwd)))
+  },
+  Effect.withSpan('test:todomvc'),
+  Effect.scoped,
 )
 
 export const todomvcTest = Cli.Command.make(
@@ -83,30 +115,7 @@ export const todomvcTest = Cli.Command.make(
     mode: modeOption,
     localDevtoolsPreview: localDevtoolsPreviewOption,
   },
-  Effect.fn(
-    function* ({ mode, localDevtoolsPreview }) {
-      const { devPort } = yield* viteDevServer({
-        app: 'todomvc',
-        useWorkspacePort: mode === 'dev-server',
-        useDevtoolsLocalPreview: localDevtoolsPreview,
-      })
-
-      yield* cmd(
-        ['pnpm', 'playwright', 'test', mode === 'ui' ? '--ui' : undefined, 'src/tests/playwright/todomvc.play.ts'],
-        {
-          env: {
-            FORCE_PLAYWRIGHT_VIA_CLI: '1',
-            PLAYWRIGHT_SUITE: 'todomvc',
-            LIVESTORE_PLAYWRIGHT_DEV_SERVER_PORT: devPort,
-            PLAYWRIGHT_HEADLESS: mode === 'headless' ? '1' : '0',
-            PLAYWRIGHT_UI: mode === 'ui' ? '1' : '0',
-          },
-        },
-      ).pipe(Effect.provide(CurrentWorkingDirectory.fromPath(cwd)))
-    },
-    Effect.withSpan('test:todomvc'),
-    Effect.scoped,
-  ),
+  runTodomvcTest,
 )
 
 export const setupDevtools = Cli.Command.make(
@@ -123,46 +132,48 @@ export const setupDevtools = Cli.Command.make(
   }, UnknownError.mapToUnknownError),
 )
 
+export const runDevtoolsTest = Effect.fn(
+  function* ({ mode, localDevtoolsPreview }: IntegrationTestOptions) {
+    const { devPort } = yield* viteDevServer({
+      app: 'todomvc',
+      useWorkspacePort: mode === 'dev-server',
+      useDevtoolsLocalPreview: localDevtoolsPreview,
+    })
+
+    const spanContext = yield* OtelTracer.currentOtelSpan.pipe(
+      Effect.map((span) => JSON.stringify(span.spanContext())),
+      Effect.catch(() => Effect.succeed(undefined)),
+    )
+
+    if (mode === 'dev-server') {
+      return yield* Effect.never
+    } else {
+      yield* cmd(
+        ['pnpm', 'playwright', 'test', mode === 'ui' ? '--ui' : undefined, 'src/tests/playwright/devtools/*'],
+        {
+          env: {
+            FORCE_PLAYWRIGHT_VIA_CLI: '1',
+            PLAYWRIGHT_SUITE: 'devtools',
+            PLAYWRIGHT_HEADLESS: mode === 'headless' ? '1' : '0',
+            PLAYWRIGHT_UI: mode === 'ui' ? '1' : '0',
+            LIVESTORE_PLAYWRIGHT_DEV_SERVER_PORT: devPort,
+            SPAN_CONTEXT_JSON: spanContext,
+          },
+        },
+      ).pipe(Effect.provide(CurrentWorkingDirectory.fromPath(cwd)))
+    }
+  },
+  Effect.withSpan('test:devtools'),
+  Effect.scoped,
+)
+
 export const devtoolsTest = Cli.Command.make(
   'devtools',
   {
     mode: modeOption,
     localDevtoolsPreview: localDevtoolsPreviewOption,
   },
-  Effect.fn(
-    function* ({ mode, localDevtoolsPreview }) {
-      const { devPort } = yield* viteDevServer({
-        app: 'todomvc',
-        useWorkspacePort: mode === 'dev-server',
-        useDevtoolsLocalPreview: localDevtoolsPreview,
-      })
-
-      const spanContext = yield* OtelTracer.currentOtelSpan.pipe(
-        Effect.map((span) => JSON.stringify(span.spanContext())),
-        Effect.catch(() => Effect.succeed(undefined)),
-      )
-
-      if (mode === 'dev-server') {
-        return yield* Effect.never
-      } else {
-        yield* cmd(
-          ['pnpm', 'playwright', 'test', mode === 'ui' ? '--ui' : undefined, 'src/tests/playwright/devtools/*'],
-          {
-            env: {
-              FORCE_PLAYWRIGHT_VIA_CLI: '1',
-              PLAYWRIGHT_SUITE: 'devtools',
-              PLAYWRIGHT_HEADLESS: mode === 'headless' ? '1' : '0',
-              PLAYWRIGHT_UI: mode === 'ui' ? '1' : '0',
-              LIVESTORE_PLAYWRIGHT_DEV_SERVER_PORT: devPort,
-              SPAN_CONTEXT_JSON: spanContext,
-            },
-          },
-        ).pipe(Effect.provide(CurrentWorkingDirectory.fromPath(cwd)))
-      }
-    },
-    Effect.withSpan('test:devtools'),
-    Effect.scoped,
-  ),
+  runDevtoolsTest,
 )
 
 export const commands = [miscTest, todomvcTest, devtoolsTest, setupDevtools] as const

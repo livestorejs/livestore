@@ -96,7 +96,7 @@ const updateRuleset = (rulesetId: number, body: TRulesetRequestBody) =>
 const syncRulesetsCommand = Cli.Command.make(
   'sync',
   {
-    dryRun: Cli.Options.boolean('dry-run').pipe(Cli.Options.withDefault(false)),
+    dryRun: Cli.Flag.boolean('dry-run').pipe(Cli.Flag.withDefault(false)),
   },
   Effect.fn(function* ({ dryRun }) {
     yield* cmdText('gh --version', { stderr: 'pipe' }).pipe(Effect.provide(LivestoreWorkspace.toCwd()))

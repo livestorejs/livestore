@@ -6,6 +6,7 @@ import { isNotUndefined } from '@livestore/utils'
 import { CurrentWorkingDirectory, cmdText } from '@livestore/utils-dev/node'
 import { Effect, Fiber, HttpClient, HttpClientRequest, Schema, Stream } from '@livestore/utils/effect'
 import { ChildProcess } from 'effect/unstable/process'
+import { ChildProcessSpawner } from 'effect/unstable/process/ChildProcessSpawner'
 
 export class NetlifyError extends Schema.TaggedErrorClass<NetlifyError>()('NetlifyError', {
   reason: Schema.Literals(['auth', 'unknown']),
@@ -119,8 +120,9 @@ export const deployToNetlify = ({
     /** Capture both stdout and stderr so CLI errors are never silently lost */
     const { stdout: rawOutput, stderr: rawStderr } = yield* Effect.scoped(
       Effect.gen(function* () {
+        const spawner = yield* ChildProcessSpawner
         const proc = yield* Effect.acquireRelease(
-          ChildProcess.make(deployCmd, deployRest, {
+          spawner.spawn(ChildProcess.make(deployCmd, deployRest, {
             cwd,
             stdout: 'pipe',
             stderr: 'pipe',
@@ -128,7 +130,7 @@ export const deployToNetlify = ({
               CI: '1',
               NETLIFY_CONFIG: join(cwd, 'netlify.toml'),
             },
-          }),
+          })),
           (p) =>
             p.isRunning.pipe(
               Effect.flatMap((running) =>
@@ -139,14 +141,14 @@ export const deployToNetlify = ({
         )
 
         const stdoutFiber = yield* proc.stdout.pipe(
-          Stream.decodeText('utf8'),
-          Stream.runFold('', (acc, chunk) => acc + chunk),
+          Stream.decodeText({ encoding: 'utf8' }),
+          Stream.runFold(() => '', (acc, chunk) => acc + chunk),
           Effect.forkScoped,
         )
 
         const stderrFiber = yield* proc.stderr.pipe(
-          Stream.decodeText('utf8'),
-          Stream.runFold('', (acc, chunk) => acc + chunk),
+          Stream.decodeText({ encoding: 'utf8' }),
+          Stream.runFold(() => '', (acc, chunk) => acc + chunk),
           Effect.forkScoped,
         )
 
@@ -212,7 +214,7 @@ const resolveNetlifyAuthToken = Effect.gen(function* () {
     }).pipe(Effect.result)
 
     if (readResult._tag === 'Success') {
-      configContent = readResult.value
+      configContent = readResult.success
       configPath = candidate
       break
     }

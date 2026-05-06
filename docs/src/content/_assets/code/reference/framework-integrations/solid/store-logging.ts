@@ -21,5 +21,5 @@ export const useAppStore = () =>
     storeId: 'default',
     // Optional: swap logger and minimum log level
     logger: Logger.prettyWithThread('window'),
-    logLevel: LogLevel.Info, // use LogLevel.None to disable logs
+    logLevel: 'Info' satisfies LogLevel.LogLevel, // use "None" to disable logs
   })

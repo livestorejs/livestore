@@ -1,6 +1,6 @@
+#!/usr/bin/env bun
 import * as NodeRuntime from '@effect/platform-node/NodeRuntime'
 import * as NodeServices from '@effect/platform-node/NodeServices'
-#!/usr/bin/env bun
 
 /**
  * Dependency Update Script - Consistent dependency management for monorepo
@@ -59,10 +59,11 @@ const PatchedDependencies = Schema.Record(Schema.String, Schema.String)
 
 const DepsRecord = Schema.optional(Schema.Record(Schema.String, Schema.String))
 
-const WorkspacePackageJson = Schema.Struct(
-  { dependencies: DepsRecord, devDependencies: DepsRecord, peerDependencies: DepsRecord },
-  Schema.Record(Schema.String, Schema.Unknown),
-)
+const WorkspacePackageJson = Schema.Struct({
+  dependencies: DepsRecord,
+  devDependencies: DepsRecord,
+  peerDependencies: DepsRecord,
+})
 
 const RootPackageJson = Schema.Struct({
   pnpm: Schema.optional(
@@ -119,7 +120,7 @@ const discoverUpdates = (target: string) =>
       const ncuCommand = `bunx npm-check-updates --deep --jsonUpgraded --packageManager pnpm${target !== 'latest' ? ` --target ${target}` : ''}`
       const ncuOutput = yield* cmdText(ncuCommand).pipe(
         Effect.provide(LivestoreWorkspace.toCwd()),
-        Effect.catch(
+        Effect.mapError(
           (error) => new UpdateDepsError({ message: `Failed to run npm-check-updates: ${objectToString(error)}` }),
         ),
       )
@@ -149,7 +150,7 @@ const fetchExpoConstraints = () =>
       const expoVersion = yield* cmdText('pnpm view expo version').pipe(
         Effect.provide(LivestoreWorkspace.toCwd()),
         Effect.map((version) => version.trim().replace(/(\d+\.\d+)\.\d+/, '$1.0')),
-        Effect.catch(
+        Effect.mapError(
           (error) => new UpdateDepsError({ message: `Failed to get Expo version: ${objectToString(error)}` }),
         ),
       )
@@ -264,17 +265,22 @@ const executeUpdates = (filteredUpdates: Record<string, Record<string, string>>,
             const packageJson = yield* Schema.decodeUnknownEffect(Schema.fromJsonString(WorkspacePackageJson))(content).pipe(
               Effect.mapError(() => new UpdateDepsError({ message: `Failed to parse ${packageJsonPath}` })),
             )
+            const mutablePackageJson = packageJson as {
+              dependencies?: Record<string, string>
+              devDependencies?: Record<string, string>
+              peerDependencies?: Record<string, string>
+            }
 
             // Update dependencies in all sections
             for (const [pkg, version] of Object.entries(updates)) {
-              if (packageJson.dependencies?.[pkg] !== undefined) {
-                packageJson.dependencies[pkg] = version
+              if (mutablePackageJson.dependencies?.[pkg] !== undefined) {
+                mutablePackageJson.dependencies[pkg] = version
               }
-              if (packageJson.devDependencies?.[pkg] !== undefined) {
-                packageJson.devDependencies[pkg] = version
+              if (mutablePackageJson.devDependencies?.[pkg] !== undefined) {
+                mutablePackageJson.devDependencies[pkg] = version
               }
-              if (packageJson.peerDependencies?.[pkg] !== undefined) {
-                packageJson.peerDependencies[pkg] = version
+              if (mutablePackageJson.peerDependencies?.[pkg] !== undefined) {
+                mutablePackageJson.peerDependencies[pkg] = version
               }
             }
 
@@ -316,17 +322,17 @@ const executeUpdates = (filteredUpdates: Record<string, Record<string, string>>,
 export const updateDepsCommand = Cli.Command.make(
   'update-deps',
   {
-    dryRun: Cli.Options.boolean('dry-run').pipe(
-      Cli.Options.withDescription('Preview changes without executing updates'),
-      Cli.Options.withDefault(false),
+    dryRun: Cli.Flag.boolean('dry-run').pipe(
+      Cli.Flag.withDescription('Preview changes without executing updates'),
+      Cli.Flag.withDefault(false),
     ),
-    target: Cli.Options.text('target').pipe(
-      Cli.Options.withDescription('Update target: latest, minor, patch (default: minor)'),
-      Cli.Options.withDefault('minor'),
+    target: Cli.Flag.string('target').pipe(
+      Cli.Flag.withDescription('Update target: latest, minor, patch (default: minor)'),
+      Cli.Flag.withDefault('minor'),
     ),
-    validate: Cli.Options.boolean('validate').pipe(
-      Cli.Options.withDescription('Run validation after updates (default: true)'),
-      Cli.Options.withDefault(true),
+    validate: Cli.Flag.boolean('validate').pipe(
+      Cli.Flag.withDescription('Run validation after updates (default: true)'),
+      Cli.Flag.withDefault(true),
     ),
   },
   Effect.fn(function* ({ dryRun, target, validate }) {
@@ -394,13 +400,12 @@ export const updateDepsCommand = Cli.Command.make(
 
 if (import.meta.main === true) {
   const cli = Cli.Command.run(updateDepsCommand, {
-    name: 'update-deps',
     version: '1.0.0',
   })
 
   const layer = Layer.mergeAll(NodeServices.layer, FetchHttpClient.layer, LivestoreWorkspace.live)
 
-  cli(process.argv).pipe(
+  cli.pipe(
     Effect.annotateLogs({ thread: 'update-deps' }),
     Logger.withMinimumLogLevel('Info'),
     Effect.provide(layer),

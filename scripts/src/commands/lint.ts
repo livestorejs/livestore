@@ -71,7 +71,7 @@ const runLintFix = cmd(['oxlint', '--import-plugin', '--deny-warnings', '--fix']
 
 export const lintCommand = Cli.Command.make(
   'lint',
-  { fix: Cli.Options.boolean('fix').pipe(Cli.Options.withDefault(false)) },
+  { fix: Cli.Flag.boolean('fix').pipe(Cli.Flag.withDefault(false)) },
   Effect.fn(function* ({ fix }) {
     // Run oxfmt and oxlint (format + lint)
     if (fix === true) {

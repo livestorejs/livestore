@@ -17,7 +17,7 @@ import {
   isPrimaryIntegrationBranch,
 } from '../shared/deploy-target.ts'
 import { appendGithubSummaryMarkdown, formatMarkdownTable } from '../shared/misc.ts'
-import { deployToNetlify, purgeNetlifyCdn } from '../shared/netlify.ts'
+import { deployToNetlify, NetlifyError, purgeNetlifyCdn } from '../shared/netlify.ts'
 import { exportMarkdownCommand } from './docs-export.ts'
 
 const workspaceRoot =
@@ -150,20 +150,15 @@ const cleanupChromiumChildren = Effect.fn('cleanup-chromium-children')(function*
   )
 })
 
-const docsBuildCommand = Cli.Command.make(
-  'build',
-  {
-    apiDocs: Cli.Options.boolean('api-docs').pipe(Cli.Options.withDefault(false)),
-    clean: Cli.Options.boolean('clean').pipe(
-      Cli.Options.withDefault(false),
-      Cli.Options.withDescription('Remove docs build artifacts and cached snippet/tldraw renders before compilation'),
-    ),
-    skipDeps: Cli.Options.boolean('skip-deps').pipe(
-      Cli.Options.withDefault(false),
-      Cli.Options.withDescription('Skip building snippets and diagrams'),
-    ),
-  },
-  Effect.fn(function* ({ apiDocs, clean, skipDeps }) {
+const runDocsBuild = Effect.fn(function* ({
+  apiDocs,
+  clean,
+  skipDeps,
+}: {
+  apiDocs: boolean
+  clean: boolean
+  skipDeps: boolean
+}) {
     if (clean === true) {
       // Wipe Astro output plus cached diagram/snippet artefacts to avoid stale renders between builds.
       yield* cmd(
@@ -199,7 +194,22 @@ const docsBuildCommand = Cli.Command.make(
       },
     }).pipe(Effect.provide(LivestoreWorkspace.toCwd('docs')))
     yield* cleanupChromiumChildren()
-  }),
+})
+
+const docsBuildCommand = Cli.Command.make(
+  'build',
+  {
+    apiDocs: Cli.Flag.boolean('api-docs').pipe(Cli.Flag.withDefault(false)),
+    clean: Cli.Flag.boolean('clean').pipe(
+      Cli.Flag.withDefault(false),
+      Cli.Flag.withDescription('Remove docs build artifacts and cached snippet/tldraw renders before compilation'),
+    ),
+    skipDeps: Cli.Flag.boolean('skip-deps').pipe(
+      Cli.Flag.withDefault(false),
+      Cli.Flag.withDescription('Skip building snippets and diagrams'),
+    ),
+  },
+  runDocsBuild,
 )
 
 export const docsCommand = Cli.Command.make('docs').pipe(
@@ -207,10 +217,10 @@ export const docsCommand = Cli.Command.make('docs').pipe(
     Cli.Command.make(
       'dev',
       {
-        open: Cli.Options.boolean('open').pipe(Cli.Options.withDefault(false)),
-        skipDeps: Cli.Options.boolean('skip-deps').pipe(
-          Cli.Options.withDefault(false),
-          Cli.Options.withDescription('Skip building snippets and diagrams'),
+        open: Cli.Flag.boolean('open').pipe(Cli.Flag.withDefault(false)),
+        skipDeps: Cli.Flag.boolean('skip-deps').pipe(
+          Cli.Flag.withDefault(false),
+          Cli.Flag.withDescription('Skip building snippets and diagrams'),
         ),
       },
       Effect.fn(function* ({ open, skipDeps }) {
@@ -242,18 +252,18 @@ export const docsCommand = Cli.Command.make('docs').pipe(
     Cli.Command.make(
       'preview',
       {
-        port: Cli.Options.text('port').pipe(
-          Cli.Options.optional,
-          Cli.Options.withDescription('Port for the preview server'),
+        port: Cli.Flag.string('port').pipe(
+          Cli.Flag.optional,
+          Cli.Flag.withDescription('Port for the preview server'),
         ),
-        build: Cli.Options.boolean('build').pipe(
-          Cli.Options.withDefault(false),
-          Cli.Options.withDescription('Build the docs before starting the preview server'),
+        build: Cli.Flag.boolean('build').pipe(
+          Cli.Flag.withDefault(false),
+          Cli.Flag.withDescription('Build the docs before starting the preview server'),
         ),
       },
       Effect.fn(function* ({ port: portOption, build }) {
         if (build === true) {
-          yield* docsBuildCommand.handler({ apiDocs: false, clean: false, skipDeps: false })
+          yield* runDocsBuild({ apiDocs: false, clean: false, skipDeps: false })
         }
 
         const requestedPort = portOption._tag === 'Some' ? Number.parseInt(portOption.value, 10) : undefined
@@ -298,22 +308,22 @@ export const docsCommand = Cli.Command.make('docs').pipe(
       'deploy',
       {
         // TODO clean up when Effect CLI boolean flag is fixed
-        prod: Cli.Options.boolean('prod').pipe(Cli.Options.withDefault(false), Cli.Options.optional),
-        alias: Cli.Options.text('alias').pipe(Cli.Options.optional),
-        site: Cli.Options.text('site').pipe(Cli.Options.optional),
-        purgeCdn: Cli.Options.boolean('purge-cdn').pipe(
-          Cli.Options.withDefault(false),
-          Cli.Options.withDescription('Purge the Netlify CDN cache after deploying'),
+        prod: Cli.Flag.boolean('prod').pipe(Cli.Flag.withDefault(false), Cli.Flag.optional),
+        alias: Cli.Flag.string('alias').pipe(Cli.Flag.optional),
+        site: Cli.Flag.string('site').pipe(Cli.Flag.optional),
+        purgeCdn: Cli.Flag.boolean('purge-cdn').pipe(
+          Cli.Flag.withDefault(false),
+          Cli.Flag.withDescription('Purge the Netlify CDN cache after deploying'),
         ),
-        build: Cli.Options.boolean('build').pipe(
-          Cli.Options.withDefault(false),
-          Cli.Options.optional,
-          Cli.Options.withDescription('Build the docs before deploying (split flow)'),
+        build: Cli.Flag.boolean('build').pipe(
+          Cli.Flag.withDefault(false),
+          Cli.Flag.optional,
+          Cli.Flag.withDescription('Build the docs before deploying (split flow)'),
         ),
-        plan: Cli.Options.boolean('plan').pipe(
-          Cli.Options.withDefault(false),
-          Cli.Options.optional,
-          Cli.Options.withDescription('Print the resolved deploy plan without building or deploying'),
+        plan: Cli.Flag.boolean('plan').pipe(
+          Cli.Flag.withDefault(false),
+          Cli.Flag.optional,
+          Cli.Flag.withDescription('Print the resolved deploy plan without building or deploying'),
         ),
       },
       Effect.fn(
@@ -447,7 +457,7 @@ export const docsCommand = Cli.Command.make('docs').pipe(
 
           if (shouldBuild === true) {
             process.env.LIVESTORE_DOCS_SITE_URL = docsSiteUrl
-            yield* docsBuildCommand.handler({ apiDocs: true, clean: false, skipDeps: false })
+            yield* runDocsBuild({ apiDocs: true, clean: false, skipDeps: false })
           }
 
           const docsWorkspaceCwd = Effect.provide(LivestoreWorkspace.toCwd('docs'))
@@ -514,7 +524,13 @@ export const docsCommand = Cli.Command.make('docs').pipe(
           })
         },
         Effect.catchIf(
-          (e) => e._tag === 'NetlifyError' && e.reason === 'auth',
+          (e): e is NetlifyError =>
+            typeof e === 'object' &&
+            e !== null &&
+            '_tag' in e &&
+            e._tag === 'NetlifyError' &&
+            'reason' in e &&
+            e.reason === 'auth',
           () => Effect.logWarning('::warning Not logged in to Netlify'),
         ),
       ),
