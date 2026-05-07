@@ -90,6 +90,7 @@ let
     bun scripts/src/commands/devtools-artifact.ts repack \
       "''${artifact_args[@]}" \
       --version "$LIVESTORE_RELEASE_VERSION" \
+      --out-dir "''${LIVESTORE_DEVTOOLS_OUT_DIR:-$(mktemp -d)}" \
       ${publishFlag}
   '';
 
