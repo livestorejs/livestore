@@ -135,6 +135,16 @@ const publishTagForVersion = (version: string) => {
   return 'next'
 }
 
+const isSnapshotVersion = (version: string) => version.includes('-snapshot-')
+
+const packageVersionExists = (packageName: string, version: string) => {
+  const result = spawnSync('npm', ['view', `${packageName}@${version}`, 'version'], {
+    encoding: 'utf8',
+    stdio: ['ignore', 'pipe', 'pipe'],
+  })
+  return result.status === 0
+}
+
 const downloadToFile = async (source: string, target: string, redirects = 0): Promise<void> => {
   if (redirects > 5) throw new Error(`Too many redirects while fetching ${source}`)
 
@@ -439,10 +449,22 @@ const repackArtifact = async (flags: Map<string, string | true>) => {
     run(['npm', 'publish', '--dry-run', '--tag', publishTag, repackedPath], { cwd: workDir })
   }
   if (hasFlag(flags, 'publish') === true) {
+    const alreadyPublished = isSnapshotVersion(version) === true && packageVersionExists(metadata.packageName, version)
     const publishArgs = ['npm', 'publish', '--tag', publishTag, '--access', 'public']
     if (process.env.GITHUB_ACTIONS === 'true') publishArgs.push('--provenance')
     publishArgs.push(repackedPath)
-    run(publishArgs, { cwd: workDir })
+    if (alreadyPublished === true) {
+      console.warn(`${metadata.packageName}@${version} already published, skipping npm publish`)
+    } else {
+      try {
+        run(publishArgs, { cwd: workDir })
+      } catch (error) {
+        if (isSnapshotVersion(version) === false || packageVersionExists(metadata.packageName, version) === false) {
+          throw error
+        }
+        console.warn(`${metadata.packageName}@${version} became visible after npm publish failed; continuing`)
+      }
+    }
     if (chromeZipPath !== undefined) {
       publishChromeZipReleaseAsset(version, chromeZipPath, workDir)
     }
