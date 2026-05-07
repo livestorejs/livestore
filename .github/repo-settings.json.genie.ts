@@ -25,7 +25,7 @@ export default githubRuleset({
     {
       type: 'required_status_checks',
       parameters: {
-        strict_required_status_checks_policy: true,
+        strict_required_status_checks_policy: false,
         do_not_enforce_on_create: false,
         required_status_checks: requiredCIJobs.map((context) => ({ context })),
       },
