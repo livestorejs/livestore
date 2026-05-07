@@ -208,6 +208,7 @@ in
     })
     # Local task: mono command wrappers for uniform dt interface
     ./nix/devenv-modules/tasks/local/mono-wrappers.nix
+    ./nix/devenv-modules/tasks/local/github-rulesets.nix
   ];
 
   packages = [
@@ -349,16 +350,6 @@ in
       cd "$DEVENV_ROOT"
 
       bun scripts/src/commands/changesets.ts verify-baseline-changelog
-    '';
-  };
-
-  tasks."github:rulesets:check" = {
-    description = "Check live GitHub repository rulesets against generated source files";
-    exec = ''
-      set -euo pipefail
-      cd "$DEVENV_ROOT"
-
-      mono github rulesets check
     '';
   };
 
