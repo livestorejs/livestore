@@ -9,9 +9,13 @@ files record PR-level release intent and semver impact; maintainers fold that
 information into `CHANGELOG.md` using the existing changelog guide before a
 stable release.
 
-Every pull request should include a changeset. Use an empty changeset for
-changes that do not need release notes:
+Pull requests that change files in the public LiveStore package graph should
+include a changeset. Use an empty changeset for public package changes that do
+not need release notes:
 
 ```bash
 pnpm exec changeset add --empty
 ```
+
+Infrastructure, documentation, and release-control-plane changes that do not
+touch public package files do not need a changeset.
