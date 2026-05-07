@@ -322,7 +322,7 @@ in
   };
 
   tasks."release:changeset:version" = {
-    description = "Consume changesets, sync Genie release version source, regenerate manifests, and write release plan";
+    description = "Prepare a Changesets release plan, regenerate manifests, and preserve prerelease intent when needed";
     exec = ''
       set -euo pipefail
       cd "$DEVENV_ROOT"
@@ -331,6 +331,7 @@ in
       # them from release/version.json.
       git ls-files '*package.json' | xargs chmod u+w
       DT_PASSTHROUGH=1 pnpm exec changeset version
+      bun scripts/src/commands/changesets.ts restore-prerelease-changesets
       bun scripts/src/commands/changesets.ts sync-version-source
       DT_PASSTHROUGH=1 genie
       bun scripts/src/commands/changesets.ts sync-standalone-consumers
